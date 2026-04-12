@@ -1,0 +1,24 @@
+# R specific
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
+# Python specific
+venv/
+my_python_env/
+__pycache__/
+*.pyc
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+
+
+.DS_Store
+rsconnect/
+.Rhistory
+.RData
+768d5e73109a453b83a1975ad686c59e/
+*.tar.gz
