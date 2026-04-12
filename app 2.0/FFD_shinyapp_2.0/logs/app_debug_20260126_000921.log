@@ -1,0 +1,12 @@
+
+==============================================
+🚀 Session Started: 2026-01-26 00:09:21.952515
+📂 Log Directory: logs
+📄 Log File: app_debug_20260126_000921.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+
+G2;H2;Warningh: Navigation containers expect a collection of `bslib::nav_panel()`/`shiny::tabPanel()`s and/or `bslib::nav_menu()`/`shiny::navbarMenu()`s. Consider using `header` or `footer` if you wish to place content above (or below) every panel's contents.g
+G3;
+Listening on http://127.0.0.1:7751
+g[1] "Error in data retrieval: could not find function \"corp_name\""

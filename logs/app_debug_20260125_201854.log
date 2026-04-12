@@ -1,0 +1,112 @@
+
+==============================================
+🚀 Session Started: 2026-01-25 20:18:54.019794
+📄 Log File: app_debug_20260125_201854.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+
+[1] "✅ setup.R 已成功載入所有函數"
+G2;H2;Warningh: Navigation containers expect a collection of `bslib::nav_panel()`/`shiny::tabPanel()`s and/or `bslib::nav_menu()`/`shiny::navbarMenu()`s. Consider using `header` or `footer` if you wish to place content above (or below) every panel's contents.g
+G3;
+Listening on http://127.0.0.1:7751
+g🌐 執行階梯抓取: AAPL
+⚠️ API 被阻擋，啟動 Chromote 模擬...
+📄 正在模擬抓取頁面: financials
+📄 正在模擬抓取頁面: balance-sheet
+G2;H2;Warningh in (function (..., deparse.level = 1)  :
+  number of columns of result is not a multiple of vector length (arg 17)g
+📄 正在模擬抓取頁面: cash-flow
+G2;H2;Warningh in (function (..., deparse.level = 1)  :
+  number of columns of result is not a multiple of vector length (arg 13)g
+G2;H2;Warningh: Error in d_income_statement: could not find function "d_income_statement"g
+  104: select_clean_metric_row [setup.R#161]
+  102: vbox_fun [kpi_module.R#7]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_gross_profit_margin
+    1: runApp
+G2;H2;Warningh: Error in d_income_statement: could not find function "d_income_statement"g
+  104: select_clean_metric_row [setup.R#161]
+  102: vbox_fun [kpi_module.R#19]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_net_profit_margin
+    1: runApp
+G2;H2;Warningh: Error in d_income_statement: could not find function "d_income_statement"g
+  105: select_clean_metric_row [setup.R#161]
+  102: vbox_fun [kpi_module.R#34]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_gross_profit_growth
+    1: runApp
+G2;H2;Warningh: Error in d_income_statement: could not find function "d_income_statement"g
+  105: select_clean_metric_row [setup.R#161]
+  102: vbox_fun [kpi_module.R#44]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_rev_growth
+    1: runApp
+G2;H2;Warningh: Error in d_income_statement: could not find function "d_income_statement"g
+  104: select_clean_metric_row [setup.R#161]
+  102: vbox_fun [kpi_module.R#54]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_opex_ratio
+    1: runApp
+G2;H2;Warningh: Error in d_balance_sheet: could not find function "d_balance_sheet"g
+  104: select_clean_metric_row [setup.R#161]
+  102: vbox_fun [kpi_module.R#67]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_eqt_multiplier
+    1: runApp
+G2;H2;Warningh: Error in d_cash_flow: could not find function "d_cash_flow"g
+  105: select_clean_metric_row [setup.R#161]
+  102: vbox_fun [kpi_module.R#80]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_op_cash_flow_growth
+    1: runApp
+G2;H2;Warningh: Error in d_cash_flow: could not find function "d_cash_flow"g
+  105: select_clean_metric_row [setup.R#161]
+  102: vbox_fun [kpi_module.R#90]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_inv_cash_flow_growth
+    1: runApp
+G2;H2;Warningh: Error in d_cash_flow: could not find function "d_cash_flow"g
+  105: select_clean_metric_row [setup.R#161]
+  102: vbox_fun [kpi_module.R#100]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_fin_cash_flow_growth
+    1: runApp
+G2;H2;Warningh: Using `size` aesthetic for lines was deprecated in ggplot2 3.4.0.
+ℹ Please use `linewidth` instead.
+This warning is displayed once every 8 hours.
+Call `lifecycle::last_lifecycle_warnings()` to see where this warning was generated.g
+📄 正在模擬抓取頁面: financials
+Error: object 'stock_code' not found
+Called from: paste0("https://finance.yahoo.com/quote/", stock_code, "/", sub_path)
+
+==============================================
+🚀 Session Started: 2026-01-25 20:23:01.441915
+📄 Log File: app_debug_20260125_202301.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+
+[1] "✅ setup.R 已成功載入所有函數"
+🌐 執行階梯抓取: AAPL
+⚠️ API 被阻擋，啟動 Chromote 模擬...
+📄 正在模擬抓取頁面: financials
+📄 正在模擬抓取頁面: balance-sheet
+📄 正在模擬抓取頁面: cash-flow

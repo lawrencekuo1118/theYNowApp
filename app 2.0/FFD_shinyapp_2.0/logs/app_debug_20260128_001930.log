@@ -1,0 +1,158 @@
+
+==============================================
+🚀 Session Started: 2026-01-28 00:19:30.13011
+🖥️ System: Darwin (25.2.0)
+📂 Log File: app_debug_20260128_001930.log
+==============================================
+
+[1/3] 載入核心套件庫...
+
+[2/3] 正在載入邏輯模組...
+  ✔️ Loading: industry_standards.R ... Done.
+  ✔️ Loading: setup.R ... Done.
+  ✔️ Loading: kpi_module.R ... Done.
+  ✔️ Loading: fcf_projection_module.R ... Done.
+  ✔️ Loading: search_module.R ... Done.
+
+[3/3] 環境初始化完成，App 啟動中...
+==============================================
+
+G3;
+Listening on http://127.0.0.1:4337
+g
+🌐 執行階梯抓取: AAPL
+⚠️ API 被阻擋，啟動 Chromote 模擬...
+📄 正在模擬抓取頁面: financials
+✅ financials 處理完成，共 30 列。
+📄 正在模擬抓取頁面: balance-sheet
+✅ balance-sheet 處理完成，共 15 列。
+📄 正在模擬抓取頁面: cash-flow
+✅ cash-flow 處理完成，共 11 列。
+[1] "Error in data retrieval: "
+
+🛑 Session Ended: 1769530843 
+Error in parse(file, keep.source = FALSE, srcfile = src, encoding = enc) : 
+  /Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp :437:1: unexpected ')'
+436:   )
+437: )
+     ^
+G3;Possible extra comma at:
+227:                       htmlOutput("vtxt_dcf_setting_details"),
+                                                                 ^
+gG3;Possible extra comma at:
+260:                         numericInput("wacc_stage2", "第二階段 WACC₂ (%)", value = 9),
+                                                                                      ^
+gG3;Possible extra comma at:
+366:                       actionButton("calc_capm", "📈 估算 rₑ（CAPM）"),
+                                                                      ^
+gG3;Possible unmatched ')' at:
+437:)
+    ^
+gG3;Possible missing comma at:
+702:             function(x) is.null(x) || x == "")
+                             ^
+gG3;Possible missing comma at:
+782:    filename = function() paste0("YNow_Report_", Sys.Date(), ".html"),
+                              ^
+gError in sourceUTF8(fullpath, envir = new.env(parent = sharedEnv)) : 
+  Error sourcing /Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R
+Error in parse(file, keep.source = FALSE, srcfile = src, encoding = enc) : 
+  /Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp :437:1: unexpected ')'
+436:   )
+437: )
+     ^
+G3;Possible extra comma at:
+227:                       htmlOutput("vtxt_dcf_setting_details"),
+                                                                 ^
+gG3;Possible extra comma at:
+260:                         numericInput("wacc_stage2", "第二階段 WACC₂ (%)", value = 9),
+                                                                                      ^
+gG3;Possible extra comma at:
+366:                       actionButton("calc_capm", "📈 估算 rₑ（CAPM）"),
+                                                                      ^
+gG3;Possible unmatched ')' at:
+437:)
+    ^
+gG3;Possible missing comma at:
+702:             function(x) is.null(x) || x == "")
+                             ^
+gG3;Possible missing comma at:
+782:    filename = function() paste0("YNow_Report_", Sys.Date(), ".html"),
+                              ^
+gError in sourceUTF8(fullpath, envir = new.env(parent = sharedEnv)) : 
+  Error sourcing /Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R
+Error in parse(file, keep.source = FALSE, srcfile = src, encoding = enc) : 
+  /Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp :437:1: unexpected ')'
+436:   )
+437: )
+     ^
+G3;Possible extra comma at:
+227:                       htmlOutput("vtxt_dcf_setting_details"),
+                                                                 ^
+gG3;Possible extra comma at:
+260:                         numericInput("wacc_stage2", "第二階段 WACC₂ (%)", value = 9),
+                                                                                      ^
+gG3;Possible extra comma at:
+366:                       actionButton("calc_capm", "📈 估算 rₑ（CAPM）"),
+                                                                      ^
+gG3;Possible unmatched ')' at:
+437:)
+    ^
+gG3;Possible missing comma at:
+702:             function(x) is.null(x) || x == "")
+                             ^
+gG3;Possible missing comma at:
+782:    filename = function() paste0("YNow_Report_", Sys.Date(), ".html"),
+                              ^
+gError in sourceUTF8(fullpath, envir = new.env(parent = sharedEnv)) : 
+  Error sourcing /Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R
+Error in parse(file, keep.source = FALSE, srcfile = src, encoding = enc) : 
+  /Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp :437:1: unexpected ')'
+436:   )
+437: )
+     ^
+G3;Possible extra comma at:
+227:                       htmlOutput("vtxt_dcf_setting_details"),
+                                                                 ^
+gG3;Possible extra comma at:
+260:                         numericInput("wacc_stage2", "第二階段 WACC₂ (%)", value = 9),
+                                                                                      ^
+gG3;Possible extra comma at:
+366:                       actionButton("calc_capm", "📈 估算 rₑ（CAPM）"),
+                                                                      ^
+gG3;Possible unmatched ')' at:
+437:)
+    ^
+gG3;Possible missing comma at:
+702:             function(x) is.null(x) || x == "")
+                             ^
+gG3;Possible missing comma at:
+782:    filename = function() paste0("YNow_Report_", Sys.Date(), ".html"),
+                              ^
+gError in sourceUTF8(fullpath, envir = new.env(parent = sharedEnv)) : 
+  Error sourcing /Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R
+Error in parse(file, keep.source = FALSE, srcfile = src, encoding = enc) : 
+  /Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp :437:1: unexpected ')'
+436:   )
+437: )
+     ^
+G3;Possible extra comma at:
+227:                       htmlOutput("vtxt_dcf_setting_details"),
+                                                                 ^
+gG3;Possible extra comma at:
+260:                         numericInput("wacc_stage2", "第二階段 WACC₂ (%)", value = 9),
+                                                                                      ^
+gG3;Possible extra comma at:
+366:                       actionButton("calc_capm", "📈 估算 rₑ（CAPM）"),
+                                                                      ^
+gG3;Possible unmatched ')' at:
+437:)
+    ^
+gG3;Possible missing comma at:
+702:             function(x) is.null(x) || x == "")
+                             ^
+gG3;Possible missing comma at:
+782:    filename = function() paste0("YNow_Report_", Sys.Date(), ".html"),
+                              ^
+gError in sourceUTF8(fullpath, envir = new.env(parent = sharedEnv)) : 
+  Error sourcing /Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R

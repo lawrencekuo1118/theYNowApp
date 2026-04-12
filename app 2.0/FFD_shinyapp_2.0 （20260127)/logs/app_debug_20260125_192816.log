@@ -1,0 +1,201 @@
+
+==============================================
+🚀 Session Started: 2026-01-25 19:28:16.130938
+📄 Log File: app_debug_20260125_192816.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+
+G2;H2;Warningh: Navigation containers expect a collection of `bslib::nav_panel()`/`shiny::tabPanel()`s and/or `bslib::nav_menu()`/`shiny::navbarMenu()`s. Consider using `header` or `footer` if you wish to place content above (or below) every panel's contents.g
+G3;
+Listening on http://127.0.0.1:3371
+g🌐 執行階梯抓取: AAPL
+⚠️ API 被阻擋，啟動 Chromote 模擬...
+G2;H2;Warningh in (function (..., deparse.level = 1)  :
+  number of columns of result is not a multiple of vector length (arg 32)g
+G2;H2;Warningh in (function (..., deparse.level = 1)  :
+  number of columns of result is not a multiple of vector length (arg 17)g
+G2;H2;Warningh in (function (..., deparse.level = 1)  :
+  number of columns of result is not a multiple of vector length (arg 13)g
+G2;H2;Warningh: Error in [[: attempt to select less than one element in get1indexg
+  103: get_box_color [industry_standards.R#9]
+  102: vbox_fun [kpi_module.R#10]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_gross_profit_margin
+    1: runApp
+G2;H2;Warningh: Error in [[: attempt to select less than one element in get1indexg
+  103: get_box_color [industry_standards.R#9]
+  102: vbox_fun [kpi_module.R#24]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_net_profit_margin
+    1: runApp
+G2;H2;Warningh: Error in [[: attempt to select less than one element in get1indexg
+  103: get_box_color [industry_standards.R#9]
+  102: vbox_fun [kpi_module.R#35]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_gross_profit_growth
+    1: runApp
+G2;H2;Warningh: Error in [[: attempt to select less than one element in get1indexg
+  103: get_box_color [industry_standards.R#9]
+  102: vbox_fun [kpi_module.R#45]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_rev_growth
+    1: runApp
+G2;H2;Warningh: Error in [[: attempt to select less than one element in get1indexg
+  103: get_box_color [industry_standards.R#9]
+  102: vbox_fun [kpi_module.R#57]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_opex_ratio
+    1: runApp
+G2;H2;Warningh: Error in [[: attempt to select less than one element in get1indexg
+  103: get_box_color [industry_standards.R#9]
+  102: vbox_fun [kpi_module.R#70]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_eqt_multiplier
+    1: runApp
+G2;H2;Warningh: Error in [[: attempt to select less than one element in get1indexg
+  103: get_box_color [industry_standards.R#9]
+  102: vbox_fun [kpi_module.R#81]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_op_cash_flow_growth
+    1: runApp
+G2;H2;Warningh: Error in [[: attempt to select less than one element in get1indexg
+  103: get_box_color [industry_standards.R#9]
+  102: vbox_fun [kpi_module.R#91]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_inv_cash_flow_growth
+    1: runApp
+G2;H2;Warningh: Error in [[: attempt to select less than one element in get1indexg
+  103: get_box_color [industry_standards.R#9]
+  102: vbox_fun [kpi_module.R#101]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_fin_cash_flow_growth
+    1: runApp
+G2;H2;Warningh: Error in [[: attempt to select less than one element in get1indexg
+  103: get_box_color [industry_standards.R#9]
+  102: vbox_fun [kpi_module.R#114]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_ROA
+    1: runApp
+G2;H2;Warningh: Error in [[: attempt to select less than one element in get1indexg
+  103: get_box_color [industry_standards.R#9]
+  102: vbox_fun [kpi_module.R#126]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_ROE
+    1: runApp
+G2;H2;Warningh: Error in estimate_historical_growth: could not find function "estimate_historical_growth"g
+  197: <reactive:generate_fcf_plot> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#942]
+  195: .func
+  192: contextFunc
+  191: env$runWith
+  180: ctx$run
+  179: self$.updateValue
+  177: generate_fcf_plot
+  176: renderPlot [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#991]
+  174: func
+  134: drawPlot
+  120: <reactive:plotObj>
+  100: drawReactive
+   87: renderFunc
+   86: output$dft_fcf_plot
+    1: runApp
+G2;H2;Warningh: Error in generate_fcf_plot: c(2026, 2027, 2028, 2029, 2030)c(98767000, 101730010, 104781910.3, 107925367.609, 111163128.63727)c("Gordon 預測", "Gordon 預測", "Gordon 預測", "Gordon 預測", "Gordon 預測")g
+  178: stop
+  177: generate_fcf_plot
+  176: renderPlot [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#1137]
+  174: func
+  134: drawPlot
+  120: <reactive:plotObj>
+  100: drawReactive
+   87: renderFunc
+   86: output$fcf_plot
+    1: runApp
+G2;H2;Warningh: Error in generate_fcf_plot: c(2026, 2027, 2028, 2029, 2030)c(98767000, 101749763.4, 104822606.25468, 107988248.963571, 111249494.082271)c("Gordon 預測", "Gordon 預測", "Gordon 預測", "Gordon 預測", "Gordon 預測")g
+  178: stop
+  177: generate_fcf_plot
+  176: renderPlot [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#1137]
+  174: func
+  134: drawPlot
+  120: <reactive:plotObj>
+  100: drawReactive
+   87: renderFunc
+   86: output$fcf_plot
+    1: runApp
+G2;H2;Warningh: Error in generate_fcf_plot: c(2026, 2027, 2028, 2029, 2030)c(98767000, 106174525, 114137614.375, 122697935.453125, 131900280.612109)c("Gordon 預測", "Gordon 預測", "Gordon 預測", "Gordon 預測", "Gordon 預測")g
+  178: stop
+  177: generate_fcf_plot
+  176: renderPlot [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#1137]
+  174: func
+  134: drawPlot
+  120: <reactive:plotObj>
+  100: drawReactive
+   87: renderFunc
+   86: output$fcf_plot
+    1: runApp
+G2;H2;Warningh: Error in generate_fcf_plot: c(2026, 2027, 2028, 2029, 2030)c(98767000, 106174525, 114137614.375, 122697935.453125, 131900280.612109)c("Gordon 預測", "Gordon 預測", "Gordon 預測", "Gordon 預測", "Gordon 預測")g
+  178: stop
+  177: generate_fcf_plot
+  176: renderPlot [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#1137]
+  174: func
+  134: drawPlot
+  120: <reactive:plotObj>
+  100: drawReactive
+   87: renderFunc
+   86: output$fcf_plot
+    1: runApp
+
+==============================================
+🚀 Session Started: 2026-01-25 19:34:27.698148
+📄 Log File: app_debug_20260125_193427.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+
+
+==============================================
+🚀 Session Started: 2026-01-25 19:35:00.579667
+📄 Log File: app_debug_20260125_193500.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+
+
+==============================================
+🚀 Session Started: 2026-01-25 19:35:35.122466
+📄 Log File: app_debug_20260125_193535.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+
+
+==============================================
+🚀 Session Started: 2026-01-25 19:35:36.281977
+📄 Log File: app_debug_20260125_193536.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+
+
+==============================================
+🚀 Session Started: 2026-01-25 19:35:37.023216
+📄 Log File: app_debug_20260125_193537.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+

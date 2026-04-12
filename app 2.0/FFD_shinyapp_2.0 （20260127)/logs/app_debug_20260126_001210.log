@@ -1,0 +1,214 @@
+
+==============================================
+🚀 Session Started: 2026-01-26 00:12:10.360033
+📂 Log Directory: logs
+📄 Log File: app_debug_20260126_001210.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+
+G2;H2;Warningh: Navigation containers expect a collection of `bslib::nav_panel()`/`shiny::tabPanel()`s and/or `bslib::nav_menu()`/`shiny::navbarMenu()`s. Consider using `header` or `footer` if you wish to place content above (or below) every panel's contents.g
+G3;
+Listening on http://127.0.0.1:7751
+g
+🌐 啟動階梯抓取: AAPL
+⚠️ API 被阻擋，切換 Chromote 模擬...
+G2;H2;Warningh: Error in try_browser_fetch: attempt to apply non-functiong
+  161: try_browser_fetch [setup.R#116]
+  160: get.data [setup.R#78]
+  156: <reactive:tmp> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#454]
+  136: tmp
+  129: <reactive:d_income_statement> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#465]
+  109: d_income_statement
+  102: vbox_fun [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#532]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$ibx_EPS
+    1: runApp
+G2;H2;Warningh: Error in try_browser_fetch: attempt to apply non-functiong
+  161: try_browser_fetch [setup.R#116]
+  160: get.data [setup.R#78]
+  156: <reactive:tmp> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#454]
+  136: tmp
+  129: <reactive:d_income_statement> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#465]
+  109: d_income_statement
+  102: vbox_fun [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#532]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$ibx_EPS
+    1: runApp
+G2;H2;Warningh: Error in try_browser_fetch: attempt to apply non-functiong
+  161: try_browser_fetch [setup.R#116]
+  160: get.data [setup.R#78]
+  156: <reactive:tmp> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#454]
+  136: tmp
+  129: <reactive:d_income_statement> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#465]
+  109: d_income_statement
+  102: vbox_fun [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#532]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$ibx_EPS
+    1: runApp
+G2;H2;Warningh: Error in try_browser_fetch: attempt to apply non-functiong
+  161: try_browser_fetch [setup.R#116]
+  160: get.data [setup.R#78]
+  156: <reactive:tmp> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#454]
+  136: tmp
+  129: <reactive:d_income_statement> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#465]
+  109: d_income_statement
+  102: vbox_fun [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#532]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$ibx_EPS
+    1: runApp
+G2;H2;Warningh: Error in try_browser_fetch: attempt to apply non-functiong
+  161: try_browser_fetch [setup.R#116]
+  160: get.data [setup.R#78]
+  156: <reactive:tmp> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#454]
+  136: tmp
+  129: <reactive:d_income_statement> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#465]
+  109: d_income_statement
+  102: vbox_fun [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#532]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$ibx_EPS
+    1: runApp
+G2;H2;Warningh: Error in try_browser_fetch: attempt to apply non-functiong
+  161: try_browser_fetch [setup.R#116]
+  160: get.data [setup.R#78]
+  156: <reactive:tmp> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#454]
+  136: tmp
+  129: <reactive:d_income_statement> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#465]
+  109: d_income_statement
+  102: vbox_fun [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#532]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$ibx_EPS
+    1: runApp
+G2;H2;Warningh: Error in try_browser_fetch: attempt to apply non-functiong
+  161: try_browser_fetch [setup.R#116]
+  160: get.data [setup.R#78]
+  156: <reactive:tmp> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#454]
+  136: tmp
+  129: <reactive:d_income_statement> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#465]
+  109: d_income_statement
+  102: vbox_fun [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#532]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$ibx_EPS
+    1: runApp
+G2;H2;Warningh: Error in try_browser_fetch: attempt to apply non-functiong
+  137: <Anonymous>
+  136: stop
+  135: tmp
+  128: <reactive:d_cash_flow> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#467]
+  108: d_cash_flow
+  101: renderText [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#629]
+  100: func
+   87: renderFunc
+   86: output$nofreecashflow
+    1: runApp
+G2;H2;Warningh: Error in try_browser_fetch: attempt to apply non-functiong
+  110: <Anonymous>
+  109: stop
+  108: d_cash_flow
+  101: renderText [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#643]
+  100: func
+   87: renderFunc
+   86: output$nooperatingcashflow
+    1: runApp
+G2;H2;Warningh: Error in try_browser_fetch: attempt to apply non-functiong
+  110: <Anonymous>
+  109: stop
+  108: d_cash_flow
+  101: renderText [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#657]
+  100: func
+   87: renderFunc
+   86: output$notdoingbusiness
+    1: runApp
+G2;H2;Warningh: Error in try_browser_fetch: attempt to apply non-functiong
+  110: <Anonymous>
+  109: stop
+  108: d_cash_flow
+  101: renderText [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#672]
+  100: func
+   87: renderFunc
+   86: output$notgettingcashback
+    1: runApp
+G2;H2;Warningh: Error in try_browser_fetch: attempt to apply non-functiong
+  137: <Anonymous>
+  136: stop
+  135: tmp
+  128: <reactive:d_balance_sheet> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#466]
+  108: d_balance_sheet
+  101: renderText [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#687]
+  100: func
+   87: renderFunc
+   86: output$highdebttoequity
+    1: runApp
+G2;H2;Warningh: Error in try_browser_fetch: attempt to apply non-functiong
+  161: try_browser_fetch [setup.R#116]
+  160: get.data [setup.R#78]
+  156: <reactive:tmp> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#454]
+  136: tmp
+  129: <reactive:d_income_statement> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#465]
+  109: d_income_statement
+  102: vbox_fun [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#532]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$ibx_EPS
+    1: runApp
+G2;H2;Warningh: Error in try_browser_fetch: attempt to apply non-functiong
+  111: <Anonymous>
+  110: stop
+  109: d_balance_sheet
+  108: exprFunc [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#563]
+  107: widgetFunc
+  106: ::
+htmlwidgets
+shinyRenderWidget
+  105: func
+   92: renderFunc
+   91: renderFunc
+   87: renderFunc
+   86: output$tbBalanceSheet
+    1: runApp
+G2;H2;Warningh: Error in try_browser_fetch: attempt to apply non-functiong
+  111: <Anonymous>
+  110: stop
+  109: d_cash_flow
+  108: exprFunc [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#573]
+  107: widgetFunc
+  106: ::
+htmlwidgets
+shinyRenderWidget
+  105: func
+   92: renderFunc
+   91: renderFunc
+   87: renderFunc
+   86: output$tbCashFlow
+    1: runApp
+G2;H2;Warningh: Error in try_browser_fetch: attempt to apply non-functiong
+  108: <Anonymous>
+  107: stop
+  106: d_cash_flow
+  105: renderPlotly [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#583]
+  104: func
+  101: shinyRenderWidget
+  100: func
+   87: renderFunc
+   86: output$cf_plot
+    1: runApp
+Error in file(filename, "r", encoding = encoding) : 
+  cannot open the connection
+In addition: Warning message:
+In file(filename, "r", encoding = encoding) :
+  cannot open file 'setup.R': No such file or directory
+[1] 100000

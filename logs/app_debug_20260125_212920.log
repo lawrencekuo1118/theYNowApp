@@ -1,0 +1,147 @@
+
+==============================================
+🚀 Session Started: 2026-01-25 21:29:20.494566
+📂 Log Directory: logs
+📄 Log File: app_debug_20260125_212920.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+
+G2;H2;Warningh: Navigation containers expect a collection of `bslib::nav_panel()`/`shiny::tabPanel()`s and/or `bslib::nav_menu()`/`shiny::navbarMenu()`s. Consider using `header` or `footer` if you wish to place content above (or below) every panel's contents.g
+G3;
+Listening on http://127.0.0.1:7751
+g
+🌐 執行階梯抓取: AAPL
+⚠️ API 被阻擋，啟動 Chromote 模擬...
+📄 正在模擬抓取頁面: financials
+✅ financials 處理完成，共 30 列。
+📄 正在模擬抓取頁面: balance-sheet
+✅ balance-sheet 處理完成，共 15 列。
+📄 正在模擬抓取頁面: cash-flow
+✅ cash-flow 處理完成，共 11 列。
+G2;H2;Warningh: Error in [[: attempt to select less than one element in get1indexg
+  103: get_box_color [industry_standards.R#9]
+  102: vbox_fun [kpi_module.R#10]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_gross_profit_margin
+    1: runApp
+G2;H2;Warningh: Error in [[: attempt to select less than one element in get1indexg
+  103: get_box_color [industry_standards.R#9]
+  102: vbox_fun [kpi_module.R#22]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_net_profit_margin
+    1: runApp
+G2;H2;Warningh: Error in [[: attempt to select less than one element in get1indexg
+  103: get_box_color [industry_standards.R#9]
+  102: vbox_fun [kpi_module.R#31]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_gross_profit_growth
+    1: runApp
+G2;H2;Warningh: Error in [[: attempt to select less than one element in get1indexg
+  103: get_box_color [industry_standards.R#9]
+  102: vbox_fun [kpi_module.R#40]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_rev_growth
+    1: runApp
+G2;H2;Warningh: Error in [[: attempt to select less than one element in get1indexg
+  103: get_box_color [industry_standards.R#9]
+  102: vbox_fun [kpi_module.R#52]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_opex_ratio
+    1: runApp
+G2;H2;Warningh: Error in [[: attempt to select less than one element in get1indexg
+  103: get_box_color [industry_standards.R#9]
+  102: vbox_fun [kpi_module.R#64]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_eqt_multiplier
+    1: runApp
+G2;H2;Warningh: Error in [[: attempt to select less than one element in get1indexg
+  103: get_box_color [industry_standards.R#9]
+  102: vbox_fun [kpi_module.R#74]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_op_cash_flow_growth
+    1: runApp
+G2;H2;Warningh: Error in [[: attempt to select less than one element in get1indexg
+  103: get_box_color [industry_standards.R#9]
+  102: vbox_fun [kpi_module.R#84]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_inv_cash_flow_growth
+    1: runApp
+G2;H2;Warningh: Error in [[: attempt to select less than one element in get1indexg
+  103: get_box_color [industry_standards.R#9]
+  102: vbox_fun [kpi_module.R#94]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_fin_cash_flow_growth
+    1: runApp
+
+
+Error in file(filename, "r", encoding = encoding) : 
+  cannot open the connection
+In addition: Warning message:
+In file(filename, "r", encoding = encoding) :
+  cannot open file 'setup.R': No such file or directory
+
+[1/4] 🚀 開始模擬 Shiny 請求: AAPL
+
+🌐 執行階梯抓取: AAPL
+⚠️ API 被阻擋，啟動 Chromote 模擬...
+📄 正在模擬抓取頁面: financials
+✅ financials 處理完成，共 30 列。
+📄 正在模擬抓取頁面: balance-sheet
+✅ balance-sheet 處理完成，共 15 列。
+📄 正在模擬抓取頁面: cash-flow
+✅ cash-flow 處理完成，共 11 列。
+
+[2/4] ✅ 數據抓取成功，進入參數對接測試...
+    表格            參數名稱 抓取狀態 最新數值
+1 損益表       Total Revenue  SUCCESS $416.16M
+2 損益表        Gross Profit  SUCCESS  $195.2M
+3 損益表          Net Income  SUCCESS $112.01M
+4 資產表        Total Assets  SUCCESS $359.24M
+5 資產表 Common Stock Equity  SUCCESS  $73.73M
+6 現金表 Operating Cash Flow  SUCCESS $111.48M
+7 現金表      Free Cash Flow  SUCCESS  $98.77M
+
+[3/4] 🧮 模擬 KPI 複合計算測試:
+ - 平均毛利率計算: 46.91%
+ - 平均 ROE 計算: 171.42%
+
+✅ 計算邏輯通過！數據類型符合 numeric 要求。
+    表格            參數名稱 抓取狀態 最新數值
+1 損益表       Total Revenue  SUCCESS $416.16M
+2 損益表        Gross Profit  SUCCESS  $195.2M
+3 損益表          Net Income  SUCCESS $112.01M
+4 資產表        Total Assets  SUCCESS $359.24M
+5 資產表 Common Stock Equity  SUCCESS  $73.73M
+6 現金表 Operating Cash Flow  SUCCESS $111.48M
+7 現金表      Free Cash Flow  SUCCESS  $98.77M
+    表格            參數名稱 抓取狀態 最新數值
+1 損益表       Total Revenue  SUCCESS $416.16M
+2 損益表        Gross Profit  SUCCESS  $195.2M
+3 損益表          Net Income  SUCCESS $112.01M
+4 資產表        Total Assets  SUCCESS $359.24M
+5 資產表 Common Stock Equity  SUCCESS  $73.73M
+6 現金表 Operating Cash Flow  SUCCESS $111.48M
+7 現金表      Free Cash Flow  SUCCESS  $98.77M
+
+[4/4] 📂 檔案系統同步檢查:
+ ❌ 圖片遺失: last_sync_financials.png
+ ❌ 圖片遺失: last_sync_balance-sheet.png
+ ❌ 圖片遺失: last_sync_cash-flow.png

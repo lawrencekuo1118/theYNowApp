@@ -1,0 +1,228 @@
+
+==============================================
+🚀 Session Started: 2026-01-25 20:00:23.0542
+📄 Log File: app_debug_20260125_200023.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+
+[1] "✅ setup.R 已成功載入所有函數"
+G2;H2;Warningh: Navigation containers expect a collection of `bslib::nav_panel()`/`shiny::tabPanel()`s and/or `bslib::nav_menu()`/`shiny::navbarMenu()`s. Consider using `header` or `footer` if you wish to place content above (or below) every panel's contents.g
+G3;
+Listening on http://127.0.0.1:7751
+g🌐 執行階梯抓取: AAPL
+⚠️ API 被阻擋，啟動 Chromote 模擬...
+G2;H2;Warningh: Error in $: object of type 'closure' is not subsettableg
+  126: <Anonymous>
+  125: <reactive:d_income_statement> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#465]
+  105: d_income_statement
+  104: select_clean_metric_row [setup.R#153]
+  102: vbox_fun [kpi_module.R#7]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_gross_profit_margin
+    1: runApp
+G2;H2;Warningh in select_clean_metric_row(d_income_statement(), "Net Income from Continuing & Discontinued Operation") :
+  restarting interrupted promise evaluationg
+G2;H2;Warningh: Error in $: object of type 'closure' is not subsettableg
+  107: <Anonymous>
+  106: stop
+  105: d_income_statement
+  104: select_clean_metric_row [setup.R#153]
+  102: vbox_fun [kpi_module.R#19]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_net_profit_margin
+    1: runApp
+G2;H2;Warningh in select_clean_metric_row(d_income_statement(), "Gross Profit") :
+  restarting interrupted promise evaluationg
+G2;H2;Warningh: Error in $: object of type 'closure' is not subsettableg
+  108: <Anonymous>
+  107: stop
+  106: d_income_statement
+  105: select_clean_metric_row [setup.R#153]
+  102: vbox_fun [kpi_module.R#34]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_gross_profit_growth
+    1: runApp
+G2;H2;Warningh in select_clean_metric_row(d_income_statement(), "Total Revenue") :
+  restarting interrupted promise evaluationg
+G2;H2;Warningh: Error in $: object of type 'closure' is not subsettableg
+  108: <Anonymous>
+  107: stop
+  106: d_income_statement
+  105: select_clean_metric_row [setup.R#153]
+  102: vbox_fun [kpi_module.R#44]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_rev_growth
+    1: runApp
+G2;H2;Warningh in select_clean_metric_row(d_income_statement(), "Operating Expense") :
+  restarting interrupted promise evaluationg
+G2;H2;Warningh: Error in $: object of type 'closure' is not subsettableg
+  107: <Anonymous>
+  106: stop
+  105: d_income_statement
+  104: select_clean_metric_row [setup.R#153]
+  102: vbox_fun [kpi_module.R#54]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_opex_ratio
+    1: runApp
+G2;H2;Warningh: Error in $: object of type 'closure' is not subsettableg
+  126: <Anonymous>
+  125: <reactive:d_balance_sheet> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#466]
+  105: d_balance_sheet
+  104: select_clean_metric_row [setup.R#153]
+  102: vbox_fun [kpi_module.R#67]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_eqt_multiplier
+    1: runApp
+G2;H2;Warningh: Error in $: object of type 'closure' is not subsettableg
+  127: <Anonymous>
+  126: <reactive:d_cash_flow> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#467]
+  106: d_cash_flow
+  105: select_clean_metric_row [setup.R#153]
+  102: vbox_fun [kpi_module.R#80]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_op_cash_flow_growth
+    1: runApp
+G2;H2;Warningh in select_clean_metric_row(d_cash_flow(), "Investing Cash Flow") :
+  restarting interrupted promise evaluationg
+G2;H2;Warningh: Error in $: object of type 'closure' is not subsettableg
+  108: <Anonymous>
+  107: stop
+  106: d_cash_flow
+  105: select_clean_metric_row [setup.R#153]
+  102: vbox_fun [kpi_module.R#90]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_inv_cash_flow_growth
+    1: runApp
+G2;H2;Warningh in select_clean_metric_row(d_cash_flow(), "Financing Cash Flow") :
+  restarting interrupted promise evaluationg
+G2;H2;Warningh: Error in $: object of type 'closure' is not subsettableg
+  108: <Anonymous>
+  107: stop
+  106: d_cash_flow
+  105: select_clean_metric_row [setup.R#153]
+  102: vbox_fun [kpi_module.R#100]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_fin_cash_flow_growth
+    1: runApp
+G2;H2;Warningh: Error in $: object of type 'closure' is not subsettableg
+  110: <Anonymous>
+  109: stop
+  108: d_cash_flow
+  101: renderText [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#562]
+  100: func
+   87: renderFunc
+   86: output$nofreecashflow
+    1: runApp
+G2;H2;Warningh: Error in $: object of type 'closure' is not subsettableg
+  110: <Anonymous>
+  109: stop
+  108: d_cash_flow
+  101: renderText [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#576]
+  100: func
+   87: renderFunc
+   86: output$nooperatingcashflow
+    1: runApp
+G2;H2;Warningh: Error in $: object of type 'closure' is not subsettableg
+  110: <Anonymous>
+  109: stop
+  108: d_cash_flow
+  101: renderText [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#590]
+  100: func
+   87: renderFunc
+   86: output$notdoingbusiness
+    1: runApp
+G2;H2;Warningh: Error in $: object of type 'closure' is not subsettableg
+  110: <Anonymous>
+  109: stop
+  108: d_cash_flow
+  101: renderText [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#605]
+  100: func
+   87: renderFunc
+   86: output$notgettingcashback
+    1: runApp
+G2;H2;Warningh: Error in $: object of type 'closure' is not subsettableg
+  110: <Anonymous>
+  109: stop
+  108: d_balance_sheet
+  101: renderText [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#620]
+  100: func
+   87: renderFunc
+   86: output$highdebttoequity
+    1: runApp
+
+==============================================
+🚀 Session Started: 2026-01-25 20:01:27.6328
+📄 Log File: app_debug_20260125_200127.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+
+[1] "✅ setup.R 已成功載入所有函數"
+🌐 執行階梯抓取: AAPL
+⚠️ API 被阻擋，啟動 Chromote 模擬...
+
+==============================================
+🚀 Session Started: 2026-01-25 20:05:42.942051
+📄 Log File: app_debug_20260125_200542.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+
+[1] "✅ setup.R 已成功載入所有函數"
+🌐 執行階梯抓取: AAPL
+[1] "✅ setup.R 已成功載入所有函數"
+
+==============================================
+🚀 Session Started: 2026-01-25 20:10:06.958619
+📄 Log File: app_debug_20260125_201006.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+
+[1] "✅ setup.R 已成功載入所有函數"
+🌐 執行階梯抓取: AAPL
+⚠️ API 被阻擋，啟動 Chromote 模擬...
+[1] "✅ setup.R 已成功載入所有函數"
+
+==============================================
+🚀 Session Started: 2026-01-25 20:18:54.019794
+📄 Log File: app_debug_20260125_201854.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+
+[1] "✅ setup.R 已成功載入所有函數"
+🌐 執行階梯抓取: AAPL
+⚠️ API 被阻擋，啟動 Chromote 模擬...
+📄 正在模擬抓取頁面: financials
+📄 正在模擬抓取頁面: balance-sheet
+📄 正在模擬抓取頁面: cash-flow
+📄 正在模擬抓取頁面: financials
+Called from: paste0("https://finance.yahoo.com/quote/", stock_code, "/", sub_path)
+
+==============================================
+🚀 Session Started: 2026-01-25 20:23:01.441915
+📄 Log File: app_debug_20260125_202301.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+
+[1] "✅ setup.R 已成功載入所有函數"
+🌐 執行階梯抓取: AAPL
+⚠️ API 被阻擋，啟動 Chromote 模擬...
+📄 正在模擬抓取頁面: financials
+📄 正在模擬抓取頁面: balance-sheet
+📄 正在模擬抓取頁面: cash-flow

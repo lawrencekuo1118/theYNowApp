@@ -1,0 +1,256 @@
+
+==============================================
+🚀 Session Started: 2026-01-25 14:20:08.730924
+📄 Log File: app_debug_20260125_142008.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+
+G2;H2;Warningh: Navigation containers expect a collection of `bslib::nav_panel()`/`shiny::tabPanel()`s and/or `bslib::nav_menu()`/`shiny::navbarMenu()`s. Consider using `header` or `footer` if you wish to place content above (or below) every panel's contents.g
+G3;
+Listening on http://127.0.0.1:6137
+g cercando 嘗試透過 API 擷取 AAPL...
+⚠️ API 被阻擋，啟動最後手段：無頭瀏覽器自動化...
+G2;H2;Warningh in file(con, "wb") :
+  cannot open file 'www/last_sync_financials.png': No such file or directoryg
+G2;H2;Warningh in onRejected(...) :
+  An error occurred: Error in file(con, "wb"): cannot open the connection
+g
+G2;H2;Warningh in file(con, "wb") :
+  cannot open file 'www/last_sync_balance-sheet.png': No such file or directoryg
+G2;H2;Warningh in onRejected(...) :
+  An error occurred: Error in file(con, "wb"): cannot open the connection
+g
+G2;H2;Warningh in file(con, "wb") :
+  cannot open file 'www/last_sync_cash-flow.png': No such file or directoryg
+G2;H2;Warningh in onRejected(...) :
+  An error occurred: Error in file(con, "wb"): cannot open the connection
+g
+G2;H2;Warningh: Error in try_browser_fetch: attempt to apply non-functiong
+  167: try_browser_fetch [setup.R#33]
+  166: get.data [setup.R#33]
+  149: <reactive:tmp> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#451]
+  129: tmp
+  122: <reactive:corp_name> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#459]
+  102: corp_name
+  101: renderText [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#465]
+  100: func
+   87: renderFunc
+   86: output$txt_corpname
+    1: runApp
+G2;H2;Warningh: Error in try_browser_fetch: attempt to apply non-functiong
+  167: try_browser_fetch [setup.R#33]
+  166: get.data [setup.R#33]
+  149: <reactive:tmp> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#451]
+  129: tmp
+  122: <reactive:corp_name> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#459]
+  102: corp_name
+  101: renderText [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#465]
+  100: func
+   87: renderFunc
+   86: output$txt_corpname
+    1: runApp
+G2;H2;Warningh: Error in try_browser_fetch: attempt to apply non-functiong
+  167: try_browser_fetch [setup.R#33]
+  166: get.data [setup.R#33]
+  149: <reactive:tmp> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#451]
+  129: tmp
+  122: <reactive:corp_name> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#459]
+  102: corp_name
+  101: renderText [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#465]
+  100: func
+   87: renderFunc
+   86: output$txt_corpname
+    1: runApp
+G2;H2;Warningh: Error in try_browser_fetch: attempt to apply non-functiong
+  167: try_browser_fetch [setup.R#33]
+  166: get.data [setup.R#33]
+  149: <reactive:tmp> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#451]
+  129: tmp
+  122: <reactive:corp_name> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#459]
+  102: corp_name
+  101: renderText [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#465]
+  100: func
+   87: renderFunc
+   86: output$txt_corpname
+    1: runApp
+G2;H2;Warningh: Error in try_browser_fetch: attempt to apply non-functiong
+  167: try_browser_fetch [setup.R#33]
+  166: get.data [setup.R#33]
+  149: <reactive:tmp> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#451]
+  129: tmp
+  122: <reactive:corp_name> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#459]
+  102: corp_name
+  101: renderText [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#465]
+  100: func
+   87: renderFunc
+   86: output$txt_corpname
+    1: runApp
+G2;H2;Warningh: Error in try_browser_fetch: attempt to apply non-functiong
+  167: try_browser_fetch [setup.R#33]
+  166: get.data [setup.R#33]
+  149: <reactive:tmp> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#451]
+  129: tmp
+  122: <reactive:corp_name> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#459]
+  102: corp_name
+  101: renderText [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#465]
+  100: func
+   87: renderFunc
+   86: output$txt_corpname
+    1: runApp
+G2;H2;Warningh: Error in try_browser_fetch: attempt to apply non-functiong
+  167: try_browser_fetch [setup.R#33]
+  166: get.data [setup.R#33]
+  149: <reactive:tmp> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#451]
+  129: tmp
+  122: <reactive:corp_name> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#459]
+  102: corp_name
+  101: renderText [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#465]
+  100: func
+   87: renderFunc
+   86: output$txt_corpname
+    1: runApp
+G2;H2;Warningh: Error in try_browser_fetch: attempt to apply non-functiong
+  167: try_browser_fetch [setup.R#33]
+  166: get.data [setup.R#33]
+  149: <reactive:tmp> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#451]
+  129: tmp
+  122: <reactive:corp_name> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#459]
+  102: corp_name
+  101: renderText [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#465]
+  100: func
+   87: renderFunc
+   86: output$txt_corpname
+    1: runApp
+G2;H2;Warningh: Error in try_browser_fetch: attempt to apply non-functiong
+  167: try_browser_fetch [setup.R#33]
+  166: get.data [setup.R#33]
+  149: <reactive:tmp> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#451]
+  129: tmp
+  122: <reactive:corp_name> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#459]
+  102: corp_name
+  101: renderText [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#465]
+  100: func
+   87: renderFunc
+   86: output$txt_corpname
+    1: runApp
+G2;H2;Warningh: Error in try_browser_fetch: attempt to apply non-functiong
+  167: try_browser_fetch [setup.R#33]
+  166: get.data [setup.R#33]
+  149: <reactive:tmp> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#451]
+  129: tmp
+  122: <reactive:corp_name> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#459]
+  102: corp_name
+  101: renderText [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#465]
+  100: func
+   87: renderFunc
+   86: output$txt_corpname
+    1: runApp
+G2;H2;Warningh: Error in try_browser_fetch: attempt to apply non-functiong
+  167: try_browser_fetch [setup.R#33]
+  166: get.data [setup.R#33]
+  149: <reactive:tmp> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#451]
+  129: tmp
+  122: <reactive:corp_name> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#459]
+  102: corp_name
+  101: renderText [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#465]
+  100: func
+   87: renderFunc
+   86: output$txt_corpname
+    1: runApp
+G2;H2;Warningh: Error in try_browser_fetch: attempt to apply non-functiong
+  167: try_browser_fetch [setup.R#33]
+  166: get.data [setup.R#33]
+  149: <reactive:tmp> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#451]
+  129: tmp
+  122: <reactive:corp_name> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#459]
+  102: corp_name
+  101: renderText [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#465]
+  100: func
+   87: renderFunc
+   86: output$txt_corpname
+    1: runApp
+G2;H2;Warningh: Error in try_browser_fetch: attempt to apply non-functiong
+  167: try_browser_fetch [setup.R#33]
+  166: get.data [setup.R#33]
+  149: <reactive:tmp> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#451]
+  129: tmp
+  122: <reactive:corp_name> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#459]
+  102: corp_name
+  101: renderText [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#465]
+  100: func
+   87: renderFunc
+   86: output$txt_corpname
+    1: runApp
+G2;H2;Warningh: Error in try_browser_fetch: attempt to apply non-functiong
+  167: try_browser_fetch [setup.R#33]
+  166: get.data [setup.R#33]
+  149: <reactive:tmp> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#451]
+  129: tmp
+  122: <reactive:corp_name> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#459]
+  102: corp_name
+  101: renderText [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#465]
+  100: func
+   87: renderFunc
+   86: output$txt_corpname
+    1: runApp
+G2;H2;Warningh: Error in try_browser_fetch: attempt to apply non-functiong
+  167: try_browser_fetch [setup.R#33]
+  166: get.data [setup.R#33]
+  149: <reactive:tmp> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#451]
+  129: tmp
+  122: <reactive:corp_name> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#459]
+  102: corp_name
+  101: renderText [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#465]
+  100: func
+   87: renderFunc
+   86: output$txt_corpname
+    1: runApp
+G2;H2;Warningh: Error in try_browser_fetch: attempt to apply non-functiong
+  167: try_browser_fetch [setup.R#33]
+  166: get.data [setup.R#33]
+  149: <reactive:tmp> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#451]
+  129: tmp
+  122: <reactive:corp_name> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#459]
+  102: corp_name
+  101: renderText [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#465]
+  100: func
+   87: renderFunc
+   86: output$txt_corpname
+    1: runApp
+G2;H2;Warningh: Error in try_browser_fetch: attempt to apply non-functiong
+  167: try_browser_fetch [setup.R#33]
+  166: get.data [setup.R#33]
+  149: <reactive:tmp> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#451]
+  129: tmp
+  122: <reactive:corp_name> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#459]
+  102: corp_name
+  101: renderText [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#465]
+  100: func
+   87: renderFunc
+   86: output$txt_corpname
+    1: runApp
+G2;H2;Warningh: Error in try_browser_fetch: attempt to apply non-functiong
+  167: try_browser_fetch [setup.R#33]
+  166: get.data [setup.R#33]
+  149: <reactive:tmp> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#451]
+  129: tmp
+  122: <reactive:corp_name> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#459]
+  102: corp_name
+  101: renderText [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#465]
+  100: func
+   87: renderFunc
+   86: output$txt_corpname
+    1: runApp
+G2;H2;Warningh: Error in try_browser_fetch: attempt to apply non-functiong
+  167: try_browser_fetch [setup.R#33]
+  166: get.data [setup.R#33]
+  149: <reactive:tmp> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#451]
+  129: tmp
+  122: <reactive:corp_name> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#459]
+  102: corp_name
+  101: renderText [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#465]
+  100: func
+   87: renderFunc
+   86: output$txt_corpname
+    1: runApp
+[1] "Error in data retrieval: attempt to apply non-function"

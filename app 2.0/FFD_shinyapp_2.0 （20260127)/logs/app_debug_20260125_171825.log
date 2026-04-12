@@ -1,0 +1,88 @@
+
+==============================================
+🚀 Session Started: 2026-01-25 17:18:25.420905
+📄 Log File: app_debug_20260125_171825.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+
+G2;H2;Warningh: Navigation containers expect a collection of `bslib::nav_panel()`/`shiny::tabPanel()`s and/or `bslib::nav_menu()`/`shiny::navbarMenu()`s. Consider using `header` or `footer` if you wish to place content above (or below) every panel's contents.g
+G3;
+Listening on http://127.0.0.1:3371
+g🌐 執行階梯抓取: AAPL
+⚠️ API 被阻擋，啟動 Chromote 模擬...
+G2;H2;Warningh in (function (..., deparse.level = 1)  :
+  number of columns of result is not a multiple of vector length (arg 32)g
+G2;H2;Warningh in (function (..., deparse.level = 1)  :
+  number of columns of result is not a multiple of vector length (arg 17)g
+G2;H2;Warningh in (function (..., deparse.level = 1)  :
+  number of columns of result is not a multiple of vector length (arg 13)g
+G2;H2;Warningh: Error in [[: attempt to select less than one element in get1indexg
+  103: get_box_color [industry_standards.R#9]
+  102: vbox_fun [kpi_module.R#91]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_inv_cash_flow_growth
+    1: runApp
+G2;H2;Warningh: Error in [[: attempt to select less than one element in get1indexg
+  103: get_box_color [industry_standards.R#9]
+  102: vbox_fun [kpi_module.R#101]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_fin_cash_flow_growth
+    1: runApp
+
+==============================================
+🚀 Session Started: 2026-01-25 19:16:15.607401
+📄 Log File: app_debug_20260125_191615.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+
+🌐 執行階梯抓取: AAPL
+⚠️ API 被阻擋，啟動 Chromote 模擬...
+⚠️ 找不到指標: basicEps
+
+==============================================
+🚀 Session Started: 2026-01-25 19:28:16.130938
+📄 Log File: app_debug_20260125_192816.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+
+🌐 執行階梯抓取: AAPL
+⚠️ API 被阻擋，啟動 Chromote 模擬...
+
+==============================================
+🚀 Session Started: 2026-01-25 19:34:27.698148
+📄 Log File: app_debug_20260125_193427.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+
+
+==============================================
+🚀 Session Started: 2026-01-25 19:35:00.579667
+📄 Log File: app_debug_20260125_193500.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+
+
+==============================================
+🚀 Session Started: 2026-01-25 19:35:35.122466
+📄 Log File: app_debug_20260125_193535.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+
+
+==============================================
+🚀 Session Started: 2026-01-25 19:35:36.281977
+📄 Log File: app_debug_20260125_193536.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+
+
+==============================================
+🚀 Session Started: 2026-01-25 19:35:37.023216
+📄 Log File: app_debug_20260125_193537.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+

@@ -1,0 +1,165 @@
+
+==============================================
+🚀 Session Started: 2026-01-25 21:20:03.553215
+📂 Log Directory: logs
+📄 Log File: app_debug_20260125_212003.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+
+G2;H2;Warningh in file(filename, "r", encoding = encoding) :
+  cannot open file 'FDD_shinyapp 2.0.R': No such file or directoryg
+Error in file(filename, "r", encoding = encoding) : 
+  cannot open the connection
+Error: object 'stock_code' not found
+Called from: paste0("\n🌐 執行階梯抓取: ", stock_code, "\n")
+
+🌐 執行階梯抓取: KO
+⚠️ API 被阻擋，啟動 Chromote 模擬...
+📄 正在模擬抓取頁面: financials
+✅ financials 處理完成，共 32 列。
+📄 正在模擬抓取頁面: balance-sheet
+✅ balance-sheet 處理完成，共 14 列。
+📄 正在模擬抓取頁面: cash-flow
+✅ cash-flow 處理完成，共 10 列。
+$income_statement
+                                                    Breakdown         TTM  12/31/2024
+2                                               Total Revenue 47663000.00 47061000.00
+3                                             Cost of Revenue 18287000.00 18324000.00
+4                                                Gross Profit 29376000.00 28737000.00
+5                                           Operating Expense 14462000.00 14715000.00
+6                                            Operating Income 14914000.00 14022000.00
+7                   Net Non Operating Interest Income Expense  -897000.00  -668000.00
+8                                        Other Income Expense  1825000.00  -268000.00
+9                                               Pretax Income 15842000.00 13086000.00
+10                                              Tax Provision  2808000.00  2437000.00
+11                             Net Income Common Stockholders 13031000.00 10631000.00
+12                   Diluted NI Available to Com Stockholders 13031000.00 10631000.00
+13                                                  Basic EPS        3.03        2.47
+14                                                Diluted EPS        3.02        2.46
+15                                       Basic Average Shares  4303750.00  4309000.00
+16                                     Diluted Average Shares  4314750.00  4320000.00
+17                         Total Operating Income as Reported 14630000.00  9992000.00
+18                                             Total Expenses 32749000.00 33039000.00
+19        Net Income from Continuing & Discontinued Operation 13031000.00 10631000.00
+20                                          Normalized Income 12996444.51 12247604.00
+21                                            Interest Income   757000.00   988000.00
+22                                           Interest Expense  1654000.00  1656000.00
+23                                        Net Interest Income  -897000.00  -668000.00
+24                                                       EBIT 17496000.00 14742000.00
+25                                                     EBITDA 18586000.00 15817000.00
+26                                 Reconciled Cost of Revenue 18287000.00 18324000.00
+27                                    Reconciled Depreciation  1090000.00  1075000.00
+28 Net Income from Continuing Operation Net Minority Interest 13031000.00 10631000.00
+29                     Total Unusual Items Excluding Goodwill    42000.00 -1986000.00
+30                                        Total Unusual Items    42000.00 -1986000.00
+31                                          Normalized EBITDA 18544000.00 17803000.00
+32                                         Tax Rate for Calcs        0.00        0.00
+33                                Tax Effect of Unusual Items     7444.51  -369396.00
+    12/31/2023  12/31/2022  12/31/2021
+2  45754000.00 43004000.00 38655000.00
+3  18520000.00 18000000.00 15357000.00
+4  27234000.00 25004000.00 23298000.00
+5  14136000.00 12962000.00 12259000.00
+6  13098000.00 12042000.00 11039000.00
+7   -620000.00  -433000.00 -1321000.00
+8    473000.00    77000.00  2707000.00
+9  12952000.00 11686000.00 12425000.00
+10  2249000.00  2115000.00  2621000.00
+11 10714000.00  9542000.00  9771000.00
+12 10714000.00  9542000.00  9771000.00
+13        2.48        2.20        2.26
+14        2.47        2.19        2.25
+15  4323000.00  4328000.00  4315000.00
+16  4339000.00  4350000.00  4340000.00
+17 11311000.00 10909000.00 10308000.00
+18 32656000.00 30962000.00 27616000.00
+19 10714000.00  9542000.00  9771000.00
+20 11655640.00 10469927.00  8892843.00
+21   907000.00   449000.00   276000.00
+22  1527000.00   882000.00  1597000.00
+23  -620000.00  -433000.00 -1321000.00
+24 14479000.00 12568000.00 14022000.00
+25 15607000.00 13828000.00 15474000.00
+26 18520000.00 18000000.00 15357000.00
+27  1128000.00  1260000.00  1452000.00
+28 10714000.00  9542000.00  9771000.00
+29 -1140000.00 -1133000.00  1113000.00
+30 -1140000.00 -1133000.00  1113000.00
+31 16747000.00 14961000.00 14361000.00
+32        0.00        0.00        0.00
+33  -198360.00  -205073.00   234843.00
+
+$balance_sheet
+                                 Breakdown 12/31/2024 12/31/2023 12/31/2022 12/31/2021
+2                             Total Assets  100549000   97703000   92763000   94354000
+3  Total Liabilities Net Minority Interest   74177000   70223000   66937000   69494000
+4     Total Equity Gross Minority Interest   26372000   27480000   25826000   24860000
+5                     Total Capitalization   67231000   61488000   60482000   61115000
+6                      Common Stock Equity   24856000   25941000   24105000   22999000
+7                      Net Tangible Assets   -6584000   -6766000   -9526000  -11614000
+8                          Working Capital     748000    3161000    2867000    2595000
+9                         Invested Capital   69378000   68005000   63254000   65760000
+10                     Tangible Book Value   -6584000   -6766000   -9526000  -11614000
+11                              Total Debt   44522000   42064000   39149000   42761000
+12                                Net Debt   33694000   32698000   29630000   33077000
+13                            Share Issued    7040000    7040000    7040000    7040129
+14                  Ordinary Shares Number    4302000    4308000    4328000    4325129
+15                  Treasury Shares Number    2738000    2732000    2712000    2715000
+
+$cash_flow
+                     Breakdown      TTM 12/31/2024 12/31/2023 12/31/2022 12/31/2021
+2          Operating Cash Flow  7603000    6805000   11599000   11018000   12625000
+3          Investing Cash Flow   194000    2524000   -3349000    -763000   -2765000
+4          Financing Cash Flow -8572000   -6910000   -8310000  -10250000   -6786000
+5            End Cash Position 13386000   11488000    9692000    9825000   10025000
+6          Capital Expenditure -2033000   -2064000   -1852000   -1484000   -1367000
+7    Issuance of Capital Stock   273000     747000     539000     837000     702000
+8             Issuance of Debt  5617000   12061000    6891000    3972000   13094000
+9            Repayment of Debt -5774000   -9533000   -5034000   -4930000  -12866000
+10 Repurchase of Capital Stock -1211000   -1795000   -2289000   -1418000    -111000
+11              Free Cash Flow  5570000    4741000    9747000    9534000   11258000
+
+Error: object 'output' not found
+Error in file(filename, "r", encoding = encoding) : 
+  cannot open the connection
+In addition: Warning message:
+In file(filename, "r", encoding = encoding) :
+  cannot open file 'setup.R': No such file or directory
+Error in file(filename, "r", encoding = encoding) : 
+  cannot open the connection
+In addition: Warning message:
+In file(filename, "r", encoding = encoding) :
+  cannot open file 'setup.R': No such file or directory
+Error in file(filename, "r", encoding = encoding) : 
+  cannot open the connection
+In addition: Warning message:
+In file(filename, "r", encoding = encoding) :
+  cannot open file 'setup.R': No such file or directory
+
+🚀 開始測試抓取流程: AAPL 
+
+🌐 執行階梯抓取: KO
+⚠️ API 被阻擋，啟動 Chromote 模擬...
+📄 正在模擬抓取頁面: financials
+✅ financials 處理完成，共 32 列。
+📄 正在模擬抓取頁面: balance-sheet
+✅ balance-sheet 處理完成，共 14 列。
+📄 正在模擬抓取頁面: cash-flow
+✅ cash-flow 處理完成，共 10 列。
+
+✅ 1. 抓取成功！包含表項: income_statement, balance_sheet, cash_flow 
+
+--- 數據內容檢查 (Breakdown 邏輯) ---
+🟢 營收 (Revenue): 抓取成功 (最新值: $47.66M)
+🟢 淨利 (Net Income): 抓取成功 (最新值: $13.03M)
+🟢 總資產 (Total Assets): 抓取成功 (最新值: $100.55M)
+🟢 營運現金流 (OCF): 抓取成功 (最新值: $7.6M)
+
+--- KPI 模組計算測試 ---
+🔹 模擬毛利率計算: 61.35%
+🔹 模擬 ROE 計算: 46.58%
+
+🎉 [結論] 數據與 KPI 模組對接正常！
+
+--- 檔案系統檢查 ---
+⚠️ www 資料夾中的截圖數量不正確 (目前: 0 張)

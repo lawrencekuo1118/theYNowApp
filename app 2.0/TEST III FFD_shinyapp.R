@@ -1,0 +1,1240 @@
+source("global.R")
+source("setup2.R")
+source("industry_standards.R")
+source("kpi_module.R")
+source("growth_module.R")
+source("fcf_module 2.R")
+source("search_module.R")
+
+#-------------------- UI --------------------#
+
+ui <- dashboardPage(
+  skin = "black",
+  
+  dashboardHeader(
+    title = "The YNow App",
+    titleWidth = 250
+  ),
+  
+  dashboardSidebar(
+    width = 250,
+    collapsed = TRUE,
+    column(
+      width = 12,
+      sidebarSearchForm(textId = "searchText", buttonId = "searchButton", label = "Search..."),
+      hr()
+    ),
+    column(
+      width = 12,
+      sidebarMenu(
+        menuItem("Dashboard", tabName = "dashboard", icon = icon("dashboard")),
+        menuItem("Calculator", tabName = "calculator", icon = icon("equalizer", lib = "glyphicon"), badgeLabel = "new", badgeColor = "green"),
+        menuItem("About", tabName = "about", icon = icon("info-sign", lib = "glyphicon"))
+      ),
+      hr()
+    ),
+    column(
+      width = 12,
+      h5("Recent Search:"),
+      textOutput("recentsearch"),
+      hr()
+    ),
+    column(width = 12, textOutput("today"))
+  ),
+  
+  dashboardBody(
+    tags$head(
+      # 原本 logo 粗體
+      tags$style(HTML('.main-header .logo { font-weight: bold; }')),
+      
+      # 原本 selectize dropdown 高度限制
+      tags$style(HTML("
+    .selectize-dropdown-content {
+      max-height: 300px !important;
+      overflow-y: auto !important;
+    }
+    .selectize-dropdown {
+      max-height: 300px !important;
+    }
+  ")),
+      
+      tags$head(
+        tags$style(HTML("
+    .info-box .info-box-number {
+      font-size: 150% !important;
+      font-weight: bold;
+    }
+  "))
+      )
+    ),
+    
+    fluidRow(
+      column(
+        width = 8,
+        titlePanel(h5("a lawrence kuo shiny app")),
+        textInput("sc", "Stock Code", value = "AAPL"),
+        
+        #h6("Stock Industry Recommendations from Yahoo"),
+        #search_module_ui("search"),
+        #verbatimTextOutput("search_results"),
+        
+        # 產業選單
+        pickerInput(
+          inputId = "industry_choice",
+          label = "Select Industry Standard",
+          choices = sort(names(industry_standards)[names(industry_standards) != "" & !is.na(names(industry_standards))]),
+          selected = "sc.IC_Design",
+          options = list(
+            `live-search` = TRUE,
+            `size` = 10
+          )
+        ),
+        
+        # 用 flexbox 對齊按鈕與公司名稱
+        tags$div(
+          style = "display: flex; align-items: center; gap: 10px;",
+          actionButton("search", "Search", icon = icon("search")),
+          tags$div(
+            style = "font-weight: bold; font-size: 16px; color: #333;",
+            textOutput("txt_corpname")
+          )
+        )
+      )
+    ),
+    br(),
+    
+    fluidRow(
+      infoBoxOutput("ibx_marketcap"),
+      infoBoxOutput("ibx_stockprice"),
+      infoBoxOutput("ibx_EPS")
+    ),
+    
+    tabItems(
+      tabItem(
+        tabName = "dashboard",
+        tabBox(
+          title = "Financial Reports",
+          width = "auto",
+          
+          tabPanel("Finance Summary",
+                   p("This section imports Finance Summaries from Yahoo Finance"),
+                   dataTableOutput("tbFinanceSummary"),
+                   downloadButton('FS_download', "Download the data")
+          ),
+          
+          tabPanel("Income Statement",
+                   p("This section imports Income Statements from Yahoo Finance"),
+                   dataTableOutput("tbIncomeStatement"),
+                   downloadButton('IS_download', "Download the data")
+          ),
+          
+          tabPanel("Balance Sheet",
+                   p("This section imports Balance Sheets from Yahoo Finance"),
+                   dataTableOutput("tbBalanceSheet"),
+                   downloadButton('BS_download', "Download the data")
+          ),
+          
+          tabPanel("Cash Flow",
+                   p("This section imports Cash Flow data from Yahoo Finance"),
+                   selectInput("cf_type", "Select Cash Flow Type",
+                               choices = c("Operating Cash Flow", "Investing Cash Flow", "Financing Cash Flow")),
+                   plotlyOutput("cf_plot"),
+                   dataTableOutput("tbCashFlow"),
+                   downloadButton('CF_download', "Download the data")
+          )
+        ),
+        
+        tabBox(
+          title = "Performance",
+          width = "auto",
+          
+          # KPI by Sheet
+          tabPanel("KPI by Sheet", fluidRow(
+            column(
+              width = 12, 
+              h4("Balance Sheet KPI"), 
+              valueBoxOutput(NS("kpi", "vbx_eqt_multiplier"))
+            ),
+            column(
+              width = 12,
+              h4("Income Statement KPI"),
+              valueBoxOutput(NS("kpi", "vbx_net_profit_margin")),
+              valueBoxOutput(NS("kpi", "vbx_gross_profit_margin")),
+              valueBoxOutput(NS("kpi", "vbx_opex_ratio")),
+              valueBoxOutput(NS("kpi", "vbx_rev_growth")),
+              valueBoxOutput(NS("kpi", "vbx_gross_profit_growth"))
+            ),
+            column(
+              width = 12,
+              h4("Cash Flow KPI"),
+              valueBoxOutput(NS("kpi", "vbx_op_cash_flow_growth")),
+              valueBoxOutput(NS("kpi", "vbx_inv_cash_flow_growth")),
+              valueBoxOutput(NS("kpi", "vbx_fin_cash_flow_growth"))
+            )
+          )),
+          
+          # Crossover KPIs
+          tabPanel("Crossover KPIs", fluidRow(
+            column(
+              width = 12,
+              valueBoxOutput(NS("kpi", "vbx_ROA")),
+              valueBoxOutput(NS("kpi", "vbx_ROE")),
+              valueBoxOutput(NS("kpi", "vbx_asset_turnover"))
+            ),
+            column(
+              width = 12,
+              valueBoxOutput(NS("kpi", "vbx_ocf_net_income"))
+            )
+          )),
+          
+          # 景氣穩定指標表
+          tabPanel("Stable Indicator List", fluidRow(
+            column(width = 12,
+                   h4("Stable Indicator List 景氣穩定指標表"),
+                   tableOutput("stable_indicator_table")
+            )
+          ))
+        ),
+        
+        tabBox(
+          title = "Fraud Warnings",
+          width = "auto",
+          fluidRow(
+            column(width = 12, textOutput("highdebttoequity")),
+            column(width = 12, textOutput("nofreecashflow")),
+            column(width = 12, textOutput("nooperatingcashflow")),
+            column(width = 12, textOutput("notdoingbusiness")),
+            column(width = 12, textOutput("notgettingcashback")),
+            column(width = 12, textOutput("no_fraud_detected"))
+          )
+        )
+      ),
+      
+      tabItem(
+        tabName = "calculator",
+        tabBox(
+          title = "DCF Calculator",
+          width = "auto",
+          
+          tabPanel("Stock Valuation",
+                   fluidRow(
+                     column(width = 12,
+                            fluidRow(
+                              infoBoxOutput("ibx_enterprise_value_dcf"),
+                              infoBoxOutput("ibx_stock_value_dcf")
+                            )
+                     ),
+                     column(width = 6, htmlOutput("vtxt_dcf_results")),
+                     column(width = 6, plotOutput("plt_dft_fcf"))
+                   )
+          ),
+          tabPanel("DCF Calculator",
+                   fluidRow(
+                     column(
+                       width = 4,
+                       radioButtons("dcf_mode", "估值模式",
+                                    choices = c("永續成長法（Gordon Growth）" = "gordon",
+                                                "二階段成長法（Two-Stage Growth）" = "two_stage"),
+                                    selected = "gordon"),
+                       numericInput("years", "預測年數 n", value = 5, min = 1, max = 20),
+                       conditionalPanel(
+                         condition = "input.dcf_mode == 'gordon'",
+                         numericInput("g_gordon", "永續成長率 g (%)", value = 3),
+                         numericInput("wacc_gordon", "折現率 WACC (%)", value = 10)
+                       ),
+                       conditionalPanel(
+                         condition = "input.dcf_mode == 'two_stage'",
+                         numericInput("yr_stage1", "第一階段預測年數", value = 3, min = 1, max = 19),
+                         numericInput("g_stage1", "第一階段成長率 g₁ (%)", value = 5),
+                         numericInput("g_stage2", "第二階段成長率 g₂ (%)", value = 3),
+                         numericInput("wacc_stage1", "第一階段 WACC₁ (%)", value = 10),
+                         numericInput("wacc_stage2", "第二階段 WACC₂ (%)", value = 9)
+                       ),
+                       checkboxInput("use_calculated_wacc", "使用估算的 WACC 作為折現率", value = TRUE),
+                       fluidRow(
+                         column(width = 6, actionButton("calc", "📊 計算DCF")),
+                         column(width = 6, actionButton("reset_dcf", "🔁 回復預設", icon = icon("rotate-left")))
+                       )
+                     ),
+                     column(
+                       width = 8,
+                       h4("🔎 詳細估值結果"),
+                       plotOutput("plt_fcf"),
+                       verbatimTextOutput("vtxt_dcf_results")
+                     )
+                   )
+          ),
+          
+          tabPanel("g Calculator",
+                   fluidRow(
+                     column(width = 6, growth_module_ui("growth")),
+                     column(
+                       width = 6,
+                       checkboxInput("apply_custom_to_fcf", "將估算 g 套用至 FCF 成長預測", value = TRUE),
+                       textOutput("growth_source_txt")
+                     )
+                   )
+          ),
+          
+          tabPanel("WACC Calculator",
+                   fluidRow(
+                     infoBoxOutput("ibx_wacc"),
+                     infoBoxOutput("ibx_re"),
+                     infoBoxOutput("ibx_rd")
+                   ),
+                   br(),
+                   fluidRow(
+                     column(
+                       width = 4,
+                       numericInput("wacc_re", "股權成本 rₑ (%)", value = 10, min = 0, step = 0.1),
+                       checkboxInput("use_estimated_re", "✅ 使用估算的 rₑ（來自 CAPM）", value = FALSE),
+                       numericInput("wacc_rd", "負債成本 rᵈ (%)", value = 5, min = 0, step = 0.1),
+                       numericInput("wacc_tax", "所得稅率 T (%)", value = 20, min = 0, max = 100, step = 1),
+                       actionButton("calc_wacc", "📊 計算 WACC"),
+                       tags$hr(),
+                       h4("📐 使用 CAPM 估算 rₑ"),
+                       numericInput("capm_rf", "無風險利率 Rf (%)", value = 3, step = 0.1),
+                       numericInput("capm_beta", "Beta (β)", value = 1.1, step = 0.1),
+                       numericInput("capm_rm", "市場報酬率 Rm (%)", value = 8, step = 0.1),
+                       actionButton("calc_capm", "📈 估算 rₑ（CAPM）")
+                     ),
+                     column(
+                       width = 8,
+                       h4("📈 CAPM 計算結果"),
+                       htmlOutput("capm_result"),
+                       tags$hr(),
+                       h4("🧮 WACC 計算結果"),
+                       htmlOutput("wacc_result"),
+                       tags$strong("WACC 公式："),
+                       helpText("WACC = E / (E + D) × rₑ + D / (E + D) × rᵈ × (1 - T)")
+                     )
+                   )
+          ),
+          
+          # 🔧 手動輸入 FCF 當自動資料抓取失敗
+          tabPanel("手動輸入 FCF 參數",
+                   helpText("⚠️ 當自動取得資料失敗時，可在此手動輸入必要的財務數值"),
+                   br(),
+                   fcf_estimation_module_ui("fcf"),
+                   br(),
+                   helpText("僅針對缺資料項目顯示手動輸入欄位")
+          ),
+          
+          tabItem(
+            tabName = "about",
+            tags$head(
+              tags$style(HTML("
+    pre { overflow: auto; word-wrap: normal; }
+
+    .btn-blackwhite {
+      background-color: black !important;
+      color: white !important;
+      border: 1px solid #ccc !important;
+      font-weight: bold;
+      padding: 10px 20px;
+      border-radius: 6px;
+    }
+    
+    .btn-blackwhite:hover {
+      background-color: #222 !important;
+      color: #fff !important;
+    }
+  "))
+            ),
+            
+            fluidRow(
+              column(width = 12, h2("About The YNow App")),
+              column(width = 3,  # 跟 infoBox 默認寬度一致
+                     downloadButton("download_report", "📄 下載分析報告 (PDF)", class = "btn-blackwhite"))
+            ),
+            
+            fluidRow(
+              column(
+                width = 8,
+                p(
+                  "Red flags that may indicate financial fraud:", br(),
+                  "- Unusual or unexpected increases in revenue or profits", br(),
+                  "- Large, round numbers in the financial reports", br(),
+                  "- Inflated or overstated assets", br(),
+                  "- Unusual or unnecessary expenses or transfers between accounts", br(),
+                  "- Unusual or inconsistent ratios or trends in the financial statements", br(),
+                  "- Lack of adequate documentation or supporting evidence for transactions", br(),
+                  "- Conflicts of interest among management or employees"
+                )
+              ),
+              column(
+                width = 4,
+                h5("This is a web-based framework for building interactive data dashboards in R. The script loads a set of R packages for data processing, visualization, and presentation, and sets up some functions for retrieving financial data from Yahoo Finance, extracting the relevant period data from the financial reports, and presenting the information in the form of tables and plots. The user interface is defined in the ui object and includes various inputs such as a text input for entering a stock code, info boxes for presenting summary information, and tabbed panels for displaying the finance summary, income statement, and balance sheet. The data retrieval and processing are performed in the get.data and f4Periods functions, and the presentation of the data is done using Shiny components such as dataTableOutput and downloadButton.")
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+)
+
+#-------------------- SERVER --------------------#
+
+server <- function(input, output, session) {
+  values <- reactiveValues(recentsearch = NULL)
+  
+  tmp <- reactive({
+    req(input$sc)
+    isolate({
+      data <- get.data(input$sc)
+      if (is.null(data)) stop("Data not found")
+      data
+    })
+  })
+  
+  corp_name <- reactive({
+    req(tmp())
+    node <- tmp()[[1]] %>% html_nodes(xpath = '//*[@id="nimbus-app"]/section/section/section/article/section[1]/div[1]/div/div[1]/section/h1/text()[1]')
+    if (length(node) == 0) return("Corporation Name not found")
+    html_text(node)
+  })
+  
+  output$txt_corpname <- renderText({ corp_name() })
+  
+  ### FINANCE SUMMARY
+  d_finance_summary <- reactive({
+    req(tmp())
+    
+    tryCatch({
+      page <- tmp()[[1]]  # Assuming this is the rvest-parsed HTML for the finance summary page
+      
+      # Left side: li[1-8]
+      left <- lapply(1:8, function(i) {
+        metric_xpath <- paste0('//*[@id="nimbus-app"]/section/section/section/article/div[3]/ul/li[', i, ']/span[1]')
+        value_xpath  <- paste0('//*[@id="nimbus-app"]/section/section/section/article/div[3]/ul/li[', i, ']/span[2]')
+        metric <- page %>% html_nodes(xpath = metric_xpath) %>% html_text(trim = TRUE)
+        value  <- page %>% html_nodes(xpath = value_xpath) %>% html_text(trim = TRUE)
+        c(metric = ifelse(length(metric) == 1, metric, NA),
+          value  = ifelse(length(value) == 1, value, NA))
+      })
+      
+      # Right side: li[9-16]
+      right <- lapply(9:16, function(i) {
+        metric_xpath <- paste0('//*[@id="nimbus-app"]/section/section/section/article/div[3]/ul/li[', i, ']/span[1]')
+        value_xpath  <- paste0('//*[@id="nimbus-app"]/section/section/section/article/div[3]/ul/li[', i, ']/span[2]')
+        metric <- page %>% html_nodes(xpath = metric_xpath) %>% html_text(trim = TRUE)
+        value  <- page %>% html_nodes(xpath = value_xpath) %>% html_text(trim = TRUE)
+        c(metric = ifelse(length(metric) == 1, metric, NA),
+          value  = ifelse(length(value) == 1, value, NA))
+      })
+      
+      df_left  <- do.call(rbind, left)
+      df_right <- do.call(rbind, right)
+      
+      df_combined <- cbind(df_left, df_right)
+      colnames(df_combined) <- c("-", "-", "-", "-")
+      
+      as.data.frame(df_combined, stringsAsFactors = FALSE)
+      
+    }, error = function(e) {
+      message("Error parsing Finance Summary: ", e$message)
+      data.frame(Error = "Could not retrieve Finance Summary", stringsAsFactors = FALSE)
+    })
+  })
+  
+  output$tbFinanceSummary <- renderDataTable({ d_finance_summary() })
+  
+  output$FS_download <- downloadHandler(
+    filename = function() {
+      paste0(as.character(no_stock()), "_financesummary_", as.character(Sys.Date()), ".csv")
+    }, 
+    content = function(file) {
+      write.csv(d_finance_summary(), file, row.names = FALSE)
+    }
+  )
+  
+  output$ibx_marketcap <- renderInfoBox({
+    req(d_finance_summary())
+    infoBox(title = "Market Cap.", h3(d_finance_summary()[1, 4], style = "font-size:150%;"), icon = icon("money-bill-trend-up"), color = "navy")
+  })
+  
+  output$ibx_stockprice <- renderInfoBox({
+    req(d_finance_summary())
+    infoBox(title = "Stock Price", h3(d_finance_summary()[1, 2], style = "font-size:150%;"), icon = icon("money-bill"), color = "orange")
+  })
+  
+  output$ibx_EPS <- renderInfoBox({
+    req(d_finance_summary())
+    infoBox(title = "EPS", h3(d_finance_summary()[4, 4], style = "font-size:150%;"), icon = icon("percent"), color = "green")
+  })
+  
+  ### INCOME STATEMENT
+  # Reactive: Parse and extract Income Statement table
+  d_income_statement <- reactive({
+    req(tmp())
+    
+    tryCatch({
+      # Step 1: 建立請求
+      url <- paste0("https://finance.yahoo.com/quote/", input$sc, "/financials/")
+      page <- httr::GET(url, httr::add_headers(`User-Agent` = "Mozilla/5.0")) %>%
+        xml2::read_html()
+      
+      # Step 2: 抓欄位標題 TTM + 年份
+      column_headers <- sapply(2:6, function(i) {
+        xpath <- paste0('//*[@id="nimbus-app"]/section/section/section/article/article/section/div/div/div[1]/div/div[', i, ']')
+        node <- rvest::html_node(page, xpath = xpath)
+        if (!is.null(node)) rvest::html_text(node, trim = TRUE) else paste0("Col_", i)
+      })
+      
+      # Step 3: 動態抓第一欄 Breakdown，偵測列數
+      breakdown_nodes <- rvest::html_nodes(
+        page,
+        xpath = '//*[@id="nimbus-app"]/section/section/section/article/article/section/div/div/div[2]/div/div[1]/div'
+      )
+      
+      breakdown <- rvest::html_text(breakdown_nodes, trim = TRUE)
+      n_rows <- length(breakdown)
+      
+      # Step 4: 動態抓每欄資料 (共 5 欄，每欄 n_rows 行)
+      data_columns <- lapply(2:6, function(col_index) {
+        sapply(1:n_rows, function(row_index) {
+          xpath <- paste0('//*[@id="nimbus-app"]/section/section/section/article/article/section/div/div/div[2]/div[',
+                          row_index, ']/div[', col_index, ']')
+          node <- page %>% rvest::html_node(xpath = xpath)
+          if (!is.null(node)) html_text(node, trim = TRUE) else NA_character_
+        })
+      })
+      
+      # Step 5: 整理成 data frame 並加入 Breakdown
+      df_main <- do.call(cbind, data_columns) %>%
+        as.data.frame(stringsAsFactors = FALSE)
+      colnames(df_main) <- column_headers
+      
+      df <- cbind(Breakdown = breakdown, df_main)
+      return(df)
+      
+    }, error = function(e) {
+      message("Error scraping income statement: ", e$message)
+      data.frame(Error = "Failed to retrieve Income Statement", stringsAsFactors = FALSE)
+    })
+  })
+  
+  # Output: DataTable
+  output$tbIncomeStatement <- renderDataTable({
+    d_income_statement()
+  })
+  
+  # Output: Download Handler
+  output$IS_download <- downloadHandler(
+    filename = function() {
+      paste0(input$sc, "_incomestatement_", Sys.Date(), ".csv")
+    },
+    content = function(file) {
+      write.csv(d_income_statement(), file, row.names = FALSE)
+    }
+  )
+  
+  ### BALANCE SHEET
+  # Reactive: Parse and extract Balance Sheet table
+  d_balance_sheet <- reactive({
+    req(tmp())
+    
+    tryCatch({
+      # Step 1: 建立請求
+      url <- paste0("https://finance.yahoo.com/quote/", input$sc, "/balance-sheet/")
+      page <- httr::GET(url, httr::add_headers(`User-Agent` = "Mozilla/5.0")) %>%
+        xml2::read_html()
+      
+      # Step 2: 抓欄位標題 年份
+      column_headers <- sapply(2:5, function(i) {
+        xpath <- paste0('//*[@id="nimbus-app"]/section/section/section/article/article/section/div/div/div[1]/div/div[', i, ']')
+        node <- rvest::html_node(page, xpath = xpath)
+        if (!is.null(node)) rvest::html_text(node, trim = TRUE) else paste0("Col_", i)
+      })
+      
+      # Step 3: 動態抓第一欄 Breakdown，偵測列數
+      breakdown_nodes <- rvest::html_nodes(
+        page,
+        xpath = '//*[@id="nimbus-app"]/section/section/section/article/article/section/div/div/div[2]/div/div[1]/div'
+      )
+      
+      breakdown <- rvest::html_text(breakdown_nodes, trim = TRUE)
+      n_rows <- length(breakdown)
+      
+      # Step 4: 動態抓每欄資料 (共 4 欄，每欄 n_rows 行)
+      data_columns <- lapply(2:5, function(col_index) {
+        sapply(1:n_rows, function(row_index) {
+          xpath <- paste0('//*[@id="nimbus-app"]/section/section/section/article/article/section/div/div/div[2]/div[',
+                          row_index, ']/div[', col_index, ']')
+          node <- page %>% rvest::html_node(xpath = xpath)
+          if (!is.null(node)) html_text(node, trim = TRUE) else NA_character_
+        })
+      })
+      
+      # Step 5: 整理成 data frame 並加入 Breakdown
+      df_main <- do.call(cbind, data_columns) %>%
+        as.data.frame(stringsAsFactors = FALSE)
+      colnames(df_main) <- column_headers
+      
+      df <- cbind(Breakdown = breakdown, df_main)
+      return(df)
+      
+    }, error = function(e) {
+      message("Error scraping balance sheet: ", e$message)
+      data.frame(Error = "Failed to retrieve Balance Sheet", stringsAsFactors = FALSE)
+    })
+  })
+  
+  # Output: DataTable
+  output$tbBalanceSheet <- renderDataTable({
+    d_balance_sheet()
+  })
+  
+  # Output: Download Handler
+  output$BS_download <- downloadHandler(
+    filename = function() {
+      paste0(input$sc, "_balancesheet_", Sys.Date(), ".csv")
+    },
+    content = function(file) {
+      write.csv(d_balance_sheet(), file, row.names = FALSE)
+    }
+  )
+  
+  ### CASH FLOW
+  # Reactive: Parse and extract Cash Flow table
+  d_cash_flow <- reactive({
+    req(tmp())
+    
+    tryCatch({
+      # Step 1: 建立請求
+      url <- paste0("https://finance.yahoo.com/quote/", input$sc, "/cash-flow/")
+      page <- httr::GET(url, httr::add_headers(`User-Agent` = "Mozilla/5.0")) %>%
+        xml2::read_html()
+      
+      # Step 2: 抓欄位標題 TTM + 年份
+      column_headers <- sapply(2:6, function(i) {
+        xpath <- paste0('//*[@id="nimbus-app"]/section/section/section/article/article/section/div/div/div[1]/div/div[', i, ']')
+        node <- rvest::html_node(page, xpath = xpath)
+        if (!is.null(node)) rvest::html_text(node, trim = TRUE) else paste0("Col_", i)
+      })
+      
+      # Step 3: 動態抓第一欄 Breakdown，偵測列數
+      breakdown_nodes <- rvest::html_nodes(
+        page,
+        xpath = '//*[@id="nimbus-app"]/section/section/section/article/article/section/div/div/div[2]/div/div[1]/div'
+      )
+      
+      breakdown <- rvest::html_text(breakdown_nodes, trim = TRUE)
+      n_rows <- length(breakdown)
+      
+      # Step 4: 動態抓每欄資料 (共 5 欄，每欄 n_rows 行)
+      data_columns <- lapply(2:6, function(col_index) {
+        sapply(1:n_rows, function(row_index) {
+          xpath <- paste0('//*[@id="nimbus-app"]/section/section/section/article/article/section/div/div/div[2]/div[',
+                          row_index, ']/div[', col_index, ']')
+          node <- page %>% rvest::html_node(xpath = xpath)
+          if (!is.null(node)) html_text(node, trim = TRUE) else NA_character_
+        })
+      })
+      
+      # Step 5: 整理成 data frame 並加入 Breakdown
+      df_main <- do.call(cbind, data_columns) %>%
+        as.data.frame(stringsAsFactors = FALSE)
+      colnames(df_main) <- column_headers
+      
+      df <- cbind(Breakdown = breakdown, df_main)
+      return(df)
+      
+    }, error = function(e) {
+      message("Error scraping cash flow: ", e$message)
+      data.frame(Error = "Failed to retrieve Cash Flow", stringsAsFactors = FALSE)
+    })
+  })
+  
+  # Output: 互動折線圖
+  # 選哪一種現金流（放在 d_cash_flow 後面）
+  selected_cashflow_data <- reactive({
+    req(d_cash_flow())
+    keyword <- switch(input$cf_type,
+                      "Operating Cash Flow" = "Operating Cash Flow",
+                      "Investing Cash Flow" = "Investing Cash Flow",
+                      "Financing Cash Flow" = "Financing Cash Flow")
+    
+    d_cash_flow()[grepl(keyword, d_cash_flow()$Breakdown, ignore.case = TRUE), ]
+  })
+  
+  output$cf_plot <- renderPlotly({
+    df <- selected_cashflow_data()
+    req(nrow(df) > 0)
+    
+    # 轉成 long format
+    cf_vals <- df[1, -1]
+    cf_vals <- as.numeric(gsub(",", "", cf_vals))
+    cf_labels <- colnames(df)[-1]
+    
+    plot_df <- data.frame(Year = cf_labels, Value = cf_vals)
+    
+    p <- ggplot(plot_df, aes(x = Year, y = Value, group = 1)) +
+      geom_line(color = "black", size = 1.2) +
+      geom_point(aes(color = Value < 0), size = 2.5) +  # 根據負數上色
+      scale_color_manual(values = c("FALSE" = "black", "TRUE" = "red"), guide = "none") +
+      theme_bw() +
+      labs(title = input$cf_type, x = "", y = "USD") +
+      theme(
+        plot.title = element_text(size = 12, face = "bold", color = "black"),
+        axis.text = element_text(color = "black"),
+        axis.title = element_text(color = "black")
+      )
+    
+    ggplotly(p, tooltip = c("x", "y"))
+  })
+  
+  # Output: DataTable
+  output$tbCashFlow <- renderDataTable({
+    d_cash_flow()
+  })
+  
+  # Output: Download Handler
+  output$CF_download <- downloadHandler(
+    filename = function() {
+      paste0(input$sc, "_cashflow_", Sys.Date(), ".csv")
+    },
+    content = function(file) {
+      write.csv(d_cash_flow(), file, row.names = FALSE)
+    }
+  )
+  
+  ### ⬇️ 呼叫 KPI 模組，將主資料餵入
+  kpi_module_server(
+    id = "kpi",
+    d_income_statement = d_income_statement,
+    d_balance_sheet = d_balance_sheet,
+    d_cash_flow = d_cash_flow,
+    industry_choice = reactive(input$industry_choice)
+  )
+  
+  ### Fraud Risk Warnings
+  # 先定義 reactiveValues 來存每個警訊結果
+  fraud_warnings <- reactiveValues(
+    fcf = "",
+    ocf = "",
+    biz = "",
+    cashback = "",
+    debt = ""
+  )
+  
+  # 各種 fraud 判斷邏輯
+  output$nofreecashflow <- renderText({
+    fcf <- get_avg(select_clean_metric_row(d_cash_flow(), "Free Cash Flow"))
+    fraud_warnings$fcf <- if (fcf < 0) {
+      "⚠️ 自由現金流為負數，可能營運困難或大量資本支出"
+    } else {
+      ""
+    }
+    fraud_warnings$fcf
+  })
+  
+  output$nooperatingcashflow <- renderText({
+    ocf <- get_avg(select_clean_metric_row(d_cash_flow(), "Operating Cash Flow"))
+    fraud_warnings$ocf <- if (ocf < 0) {
+      "⚠️ 營業現金流為負數，代表核心業務沒有產生現金"
+    } else {
+      ""
+    }
+    fraud_warnings$ocf
+  })
+  
+  output$notdoingbusiness <- renderText({
+    ocf <- get_avg(select_clean_metric_row(d_cash_flow(), "Operating Cash Flow"))
+    net <- get_avg(select_clean_metric_row(d_income_statement(), "Net Income from Continuing & Discontinued Operation"))
+    fraud_warnings$biz <- if (ocf < net) {
+      "⚠️ 營業現金流低於淨利，帳面賺錢但現金未實現"
+    } else {
+      ""
+    }
+    fraud_warnings$biz
+  })
+  
+  output$notgettingcashback <- renderText({
+    ocf <- get_avg(select_clean_metric_row(d_cash_flow(), "Operating Cash Flow"))
+    net <- get_avg(select_clean_metric_row(d_income_statement(), "Net Income from Continuing & Discontinued Operation"))
+    fraud_warnings$cashback <- if (net > 0 && ocf < 0) {
+      "⚠️ 淨利為正但現金流為負，獲利品質存疑"
+    } else {
+      ""
+    }
+    fraud_warnings$cashback
+  })
+  
+  output$highdebttoequity <- renderText({
+    total_liabilities <- get_avg(select_clean_metric_row(d_balance_sheet(), "Total Debt"))
+    total_equity <- get_avg(select_clean_metric_row(d_balance_sheet(), "Common Stock Equity"))
+    ratio <- total_liabilities / total_equity
+    fraud_warnings$debt <- if (ratio > 2) {
+      "⚠️ 負債對權益比率過高，財務槓桿風險大"
+    } else {
+      ""
+    }
+    fraud_warnings$debt
+  })
+  
+  # fallback 顯示 - 若都沒有風險警訊就顯示這個
+  output$no_fraud_detected <- renderText({
+    if (all(fraud_warnings$fcf == "",
+            fraud_warnings$ocf == "",
+            fraud_warnings$biz == "",
+            fraud_warnings$cashback == "",
+            fraud_warnings$debt == "")) {
+      "✅ Currently no fraud risks detected."
+    } else {
+      ""
+    }
+  })
+  
+  ### Others
+  output$stable_indicator_table <- renderTable({
+    data.frame(
+      指標名稱 = c("毛利率", "OPEX Ratio", "ROA / ROE", "存貨週轉 / 應收週轉", "Equity Multiplier", "自由現金流比"),
+      穩定性 = c("★★★★☆", "★★★★☆", "★★★★☆", "★★★☆☆", "★★★☆☆", "★★★★★"),
+      說明 = c(
+        "技術/品牌優勢的象徵",
+        "管理與營運效率穩定性",
+        "去波動化後能長期觀察企業效率",
+        "營運效率的直接反映",
+        "財務體質穩定，不易劇變",
+        "最能看出企業真實價值創造力"
+      ),
+      stringsAsFactors = FALSE
+    )
+  }, striped = TRUE, hover = TRUE, spacing = "m", width = "100%")
+  
+  ### 📌 Calculator ----------------------------------------------------------
+  
+  fcf_result <- fcf_estimation_module_server(
+    id = "est.fcf",
+    d_income_statement = d_income_statement,
+    d_cash_flow = d_cash_flow,
+    d_balance_sheet = d_balance_sheet,
+    estimated_g = estimated_g
+  )
+  
+  # 反應式變數定義 
+  estimated_g <- reactiveVal(NULL)
+  fcf_forecast_result <- reactiveVal()
+  estimated_r_e <- reactiveVal(NULL)
+  calculated_wacc <- reactiveVal(NULL)
+  dcf_value_result <- reactiveVal()
+  stock_price_estimate_val <- reactiveVal(NULL)
+  
+  # 📌 依據產業選擇自動更新 beta 和 Rm
+  observeEvent(input$industry_choice, {
+    inds <- industry_standards[[input$industry_choice]]
+    if (!is.null(inds$beta_avg)) {
+      updateNumericInput(session, "capm_beta", value = inds$beta_avg)
+    }
+    if (!is.null(inds$rm_avg)) {
+      updateNumericInput(session, "capm_rm", value = inds$rm_avg)
+    }
+  })
+  
+  # 📈 CAPM 股東權益成本估算
+  observeEvent(input$calc_capm, {
+    Rf <- input$capm_rf / 100
+    beta <- input$capm_beta
+    Rm <- input$capm_rm / 100
+    
+    r_e_est <- Rf + beta * (Rm - Rf)
+    estimated_r_e(r_e_est)
+    
+    # 🔁 自動更新至手動欄位 wacc_re
+    updateNumericInput(session, "wacc_re", value = round(r_e_est * 100, 2))
+    
+    # 結果輸出
+    output$capm_result <- renderUI({
+      r_e <- estimated_r_e()
+      if (is.null(r_e)) return(NULL)
+      
+      HTML(glue::glue(
+        "<div style='font-size: 16px; line-height: 1.6;'>
+        <span style='color: teal; font-size: 20px;'>
+          ➤ 股東權益成本 (rₑ) = <b>{round(r_e * 100, 2)} %</b>
+        </span><br/>
+        <span style='color: gray;'>
+          （公式：rₑ = Rf + β × (Rm - Rf)）
+        </span>
+      </div>"
+      ))
+    })
+  })
+  
+  # 🧮 WACC 計算
+  observeEvent(input$calc_wacc, {
+    req(d_balance_sheet())
+    
+    bs_data <- d_balance_sheet()
+    equity <- select_clean_metric_row(bs_data, "Common Stock Equity")[1]
+    debt <- select_clean_metric_row(bs_data, "Total Debt")[1]
+    T <- input$wacc_tax / 100
+    
+    # 使用估算 or 手動輸入 rₑ
+    r_e <- if (input$use_estimated_re && !is.null(estimated_r_e())) {
+      estimated_r_e()
+    } else {
+      input$wacc_re / 100
+    }
+    
+    r_d <- input$wacc_rd / 100
+    total_capital <- equity + debt
+    
+    wacc <- (equity / total_capital) * r_e + (debt / total_capital) * r_d * (1 - T)
+    calculated_wacc(wacc)
+    
+    wacc_percent <- round(wacc * 100, 2)
+    
+    # 自動套用至 DCF 區域
+    if (input$dcf_mode == "gordon") {
+      updateNumericInput(session, "wacc_gordon", value = wacc_percent)
+    } else if (input$dcf_mode == "two_stage") {
+      updateNumericInput(session, "wacc_stage1", value = wacc_percent)
+      updateNumericInput(session, "wacc_stage2", value = wacc_percent)
+    }
+    
+    showNotification(glue::glue("📌 已自動將 WACC {wacc_percent}% 套用至 DCF 折現率參數"), type = "message")
+    
+    # WACC 詳細結果
+    output$wacc_result <- renderUI({
+      wacc <- calculated_wacc()
+      if (is.null(wacc)) return(NULL)
+      
+      HTML(glue::glue(
+        "<div style='font-size: 16px; line-height: 1.6;'>
+        <span style='color: steelblue;'>股東權益 (E)：</span> ${formatC(equity, format = 'f', big.mark = ',', digits = 0)}<br/>
+        <span style='color: steelblue;'>總負債 (D)：</span> ${formatC(debt, format = 'f', big.mark = ',', digits = 0)}<br/>
+        <span style='color: teal;'>股權成本 (rₑ)：</span> <b>{round(r_e * 100, 2)} %</b><br/>
+        <span style='color: limegreen;'>負債成本 (rᵈ)：</span> <b>{round(r_d * 100, 2)} %</b><br/>
+        <span style='color: orange;'>所得稅率 (T)：</span> <b>{input$wacc_tax} %</b><br/><br/>
+        <span style='font-size: 20px; color: purple;'><b>➡️ WACC = {wacc_percent} %</b></span>
+      </div>"
+      ))
+    })
+    
+    # InfoBoxes
+    output$ibx_wacc <- renderInfoBox({
+      infoBox("WACC", h3(paste0(wacc_percent, " %")), icon = icon("percent"), color = "aqua", fill = TRUE)
+    })
+    output$ibx_re <- renderInfoBox({
+      infoBox("股東權益成本 (rₑ)", h3(paste0(round(r_e * 100, 2), " %")), icon = icon("chart-line"), color = "teal", fill = TRUE)
+    })
+    output$ibx_rd <- renderInfoBox({
+      infoBox("負債成本 (rᵈ)", h3(paste0(round(r_d * 100, 2), " %")), icon = icon("university"), color = "lime", fill = TRUE)
+    })
+  })
+  
+  # 📌 自由現金流預測圖與估值結果處理 ---------------------------------------------
+  
+  # 預估 g 成長率的 reactive 變數
+  estimated_g <- reactiveVal()
+  
+  # ⬇️ 建立模組（非常重要！否則 df_fcf 會是 NULL）
+  fcf_module <- fcf_estimation_module_server(
+    id = "fcf_estimator",
+    d_income_statement = d_income_statement,
+    d_balance_sheet = d_balance_sheet,
+    d_cash_flow = d_cash_flow,
+    estimated_g = estimated_g
+  )
+  
+  observeEvent(input$calc, {
+    req(input$sc, input$dcf_mode)
+    
+    fcf_history <- select_clean_metric_row(d_cash_flow(), "Free Cash Flow")
+    if (all(is.na(fcf_history))) {
+      showNotification("⚠️ 無有效自由現金流資料", type = "error")
+      return(NULL)
+    }
+    
+    years <- input$years
+    base_year <- as.numeric(format(Sys.Date(), "%Y"))
+    
+    share_outstanding <- as.numeric(
+      select_clean_metric_row(d_balance_sheet(), "Share Issued")[1]
+    )
+    
+    # 折現率 WACC 計算
+    wacc <- if (input$use_calculated_wacc && !is.null(calculated_wacc())) {
+      calculated_wacc()
+    } else if (input$dcf_mode == "gordon") {
+      input$wacc_gordon / 100
+    } else {
+      input$wacc_stage1 / 100
+    }
+    
+    # 預設初始化
+    dcf_value <- NA
+    fcf_forecast_df <- NULL
+    
+    # Gordon 模式
+    if (input$dcf_mode == "gordon") {
+      g <- input$g_gordon / 100
+      if (g >= wacc) {
+        showNotification("❌ 永續成長率 g 必須小於折現率", type = "error")
+        return(NULL)
+      }
+      
+      df_fcf_proj <- fcf_module$df_fcf()
+      if (is.null(df_fcf_proj)) {
+        showNotification("❌ FCF 模組尚未完成預測或缺資料", type = "error")
+        return(NULL)
+      }
+      
+      fcf_forecast <- df_fcf_proj$FCF
+      
+      pv_fcf <- sum(fcf_forecast / (1 + wacc)^(1:years))
+      terminal_value <- fcf_forecast[years] * (1 + g) / (wacc - g)
+      pv_terminal <- terminal_value / (1 + wacc)^years
+      dcf_value <- pv_fcf + pv_terminal
+      
+      fcf_forecast_df <- df_fcf_proj |>
+        mutate(Type = "Gordon 預測")
+    }
+    
+    # Two-Stage 模式
+    if (input$dcf_mode == "two_stage") {
+      g1 <- input$g_stage1 / 100
+      g2 <- input$g_stage2 / 100
+      r1 <- input$wacc_stage1 / 100
+      r2 <- input$wacc_stage2 / 100
+      yr_stage1 <- input$yr_stage1
+      
+      if (yr_stage1 <= 0 || yr_stage1 >= years) {
+        showNotification("⚠️ 第一階段年數無效", type = "error")
+        return(NULL)
+      }
+      
+      df_fcf_proj <- fcf_module$df_fcf()
+      if (is.null(df_fcf_proj)) {
+        showNotification("❌ FCF 模組尚未完成預測或缺資料", type = "error")
+        return(NULL)
+      }
+      
+      base_year <- min(df_fcf_proj$Year)
+      fcf_base <- df_fcf_proj$FCF[1]
+      
+      fcf_stage1 <- fcf_base * cumprod(rep(1 + g1, yr_stage1))
+      fcf_stage2 <- tail(fcf_stage1, 1) * cumprod(rep(1 + g2, years - yr_stage1))
+      
+      pv_stage1 <- sum(fcf_stage1 / (1 + r1)^(1:yr_stage1))
+      pv_stage2 <- sum(fcf_stage2 / (1 + r2)^((yr_stage1 + 1):years))
+      terminal_value <- tail(fcf_stage2, 1) * (1 + g2) / (r2 - g2)
+      pv_terminal <- terminal_value / (1 + r2)^years
+      dcf_value <- pv_stage1 + pv_stage2 + pv_terminal
+      
+      fcf_forecast_df <- tibble(
+        Year = base_year + 0:(years - 1),
+        FCF = c(fcf_stage1, fcf_stage2),
+        Type = c(rep("第一階段", yr_stage1), rep("第二階段", years - yr_stage1))
+      )
+    }
+    
+    # 預設模式（未選 gordon / two_stage）
+    if (input$dcf_mode != "gordon" && input$dcf_mode != "two_stage") {
+      g_val <- estimated_g()
+      est_growth <- if (!is.null(g_val) && !is.na(g_val)) {
+        g_val / 100
+      } else {
+        revenue_hist <- select_clean_metric_row(d_income_statement(), "Total Revenue") |> na.omit()
+        if (length(revenue_hist) < 2) {
+          showNotification("⚠️ 無法估算成長率", type = "error")
+          return(NULL)
+        }
+        estimate_historical_growth(revenue_hist) / 100
+      }
+      
+      df_dynamic <- fcf_projection_dynamic(
+        df_is = d_income_statement(),
+        df_bs = d_balance_sheet(),
+        df_cf = d_cash_flow(),
+        years = years,
+        revenue_growth = est_growth
+      )
+      
+      if (is.null(df_dynamic)) {
+        fcf_forecast_df <- tibble(
+          Year = NA,
+          FCF = NA,
+          Type = "⚠️ FCF 模型計算失敗"
+        )
+      } else {
+        fcf_forecast_df <- tibble(
+          Year = df_dynamic$Year,
+          FCF = df_dynamic$FCF,
+          Type = glue("預設（動態模型，g = {round(est_growth * 100, 2)}%）")
+        )
+      }
+      
+      dcf_value <- sum(df_dynamic$FCF / (1 + wacc)^(1:years))  # 可選加終值
+    }
+    
+    # 最終輸出結果
+    dcf_value_result(dcf_value)
+    fcf_forecast_result(fcf_forecast_df)
+    
+    # 每股估值
+    if (!is.na(dcf_value) && !is.na(share_outstanding) && share_outstanding > 0) {
+      stock_price_estimate_val(dcf_value / share_outstanding)
+    } else {
+      stock_price_estimate_val(NULL)
+    }
+    
+    # 顯示估值文字 ---------------------------------------------------------------
+    output$vtxt_dcf_results <- renderText({
+      if (is.na(dcf_value_result())) return("⚠️ DCF 計算失敗")
+      
+      msg <- glue::glue("企業總估值（DCF）：${round(dcf_value_result(), 2)}")
+      if (!is.na(share_outstanding) && share_outstanding > 0) {
+        msg <- glue::glue("{msg}\n 每股估值：${round(dcf_value_result() / share_outstanding, 2)}")
+      } else {
+        msg <- glue::glue("{msg}\n⚠️ 股數資訊無效，無法估算每股價格")
+      }
+      
+      # 參數列
+      params <- list(
+        "📌 估值模式" = input$dcf_mode,
+        "📉 自由現金流預測年數" = input$years,
+        "✅ 使用估算 WACC" = if (input$use_calculated_wacc) "是" else "否"
+      )
+      
+      if (input$dcf_mode == "gordon") {
+        params[["📈 永續成長率 g"]] <- paste0(input$g_gordon, " %")
+        params[["🔻 折現率 WACC"]] <- paste0(input$wacc_gordon, " %")
+      } else if (input$dcf_mode == "two_stage") {
+        params[["📈 第一階段成長率 g₁"]] <- paste0(input$g_stage1, " %")
+        params[["📈 第二階段成長率 g₂"]] <- paste0(input$g_stage2, " %")
+        params[["🔻 第一階段 WACC₁"]] <- paste0(input$wacc_stage1, " %")
+        params[["🔻 第二階段 WACC₂"]] <- paste0(input$wacc_stage2, " %")
+        params[["📆 第一階段預測年數"]] <- input$yr_stage1
+      }
+      
+      params[["🕒 估值時間"]] <- format(Sys.time(), "%Y-%m-%d %H:%M:%S")
+      
+      param_text <- paste0(
+        "\n\n使用參數一覽：\n",
+        paste(names(params), params, sep = "：", collapse = "\n")
+      )
+      
+      paste0(msg, param_text)
+    })
+    
+    # 顯示預測圖 ---------------------------------------------------------------
+    output$plt_fcf <- renderPlot({
+      ggplot(fcf_forecast_df, aes(x = Year, y = FCF, linetype = Type)) +
+        geom_line(size = 1.2, color = "steelblue") +
+        geom_point(aes(color = FCF < 0), size = 3) +
+        scale_color_manual(values = c("TRUE" = "red", "FALSE" = "steelblue"), guide = "none") +
+        scale_linetype_manual(values = c(
+          "預設" = "dashed",
+          "Gordon 預測" = "dotted",
+          "第一階段" = "dotted",
+          "第二階段" = "twodash"
+        )) +
+        theme_minimal(base_size = 14) +
+        labs(
+          title = "📉 Free Cash Flow Proj.",
+          x = "Year", y = "FCF"
+        ) +
+        theme(plot.title = element_text(face = "bold"), legend.position = "top")
+    })
+  })
+  
+  # 📌 DCF 預設 FCF 預測圖
+  output$plt_dft_fcf <- renderPlot({
+    df <- fcf_result$df_fcf() 
+    if (is.null(df)) return()
+    df$Type <- "預設"
+    
+    ggplot(df, aes(x = Year, y = FCF, linetype = Type)) +
+      geom_line(size = 1.2, color = "steelblue") +
+      geom_point(aes(color = FCF < 0), size = 3) +
+      scale_color_manual(values = c("TRUE" = "red", "FALSE" = "steelblue"), guide = "none") +
+      scale_linetype_manual(values = c(
+        "預設" = "dashed",
+        "Gordon 預測" = "dotted",
+        "第一階段" = "dotted",
+        "第二階段" = "twodash"
+      )) +
+      theme_minimal(base_size = 14) +
+      labs(title = "📉 自由現金流預測圖（Stock Valuation）", x = "年", y = "FCF") +
+      theme(plot.title = element_text(size = 14, face = "bold"), legend.position = "top")
+  })
+  
+  ### 📦 顯示估算後股價 InfoBox ---------------------------------------------------
+  
+  output$ibx_enterprise_value_dcf <- renderInfoBox({
+    dcf <- dcf_value_result()
+    infoBox(
+      title = "企業估值（DCF）",
+      value = if (is.null(dcf) || is.na(dcf)) "N/A" else format_dollar_abbr(dcf),
+      icon = icon("building"),
+      color = "purple",
+      fill = TRUE
+    )
+  })
+  
+  output$ibx_stock_value_dcf <- renderInfoBox({
+    price <- stock_price_estimate_val()
+    infoBox(
+      title = "每股估值（DCF）",
+      value = if (is.null(price) || is.na(price)) "N/A" else paste0("$", round(price, 2)),
+      icon = icon("money-bill-wave"),
+      color = "maroon",
+      fill = TRUE
+    )
+  })
+  
+  # 🔁 成長率估算邏輯（以營收估算 g）
+  observeEvent(input$calc_growth, {
+    req(d_income_statement())
+    
+    revenue_vec <- select_clean_metric_row(d_income_statement(), "Total Revenue")
+    revenue_vec <- na.omit(revenue_vec)
+    
+    if (length(revenue_vec) < 2) {
+      showNotification("⚠️ 無足夠營收資料來估算成長率", type = "error")
+      estimated_g(NULL)
+      return()
+    }
+    
+    g_rate <- diff(log(revenue_vec))  # 對數成長率向量
+    
+    method <- input$growth_method
+    val <- switch(method,
+                  "mean" = round(mean(g_rate, na.rm = TRUE) * 100, 2),
+                  "median" = round(median(g_rate, na.rm = TRUE) * 100, 2),
+                  "last_year" = round((tail(revenue_vec, 1) / tail(revenue_vec, 2)[1] - 1) * 100, 2),
+                  "custom" = input$custom_g
+    )
+    
+    if (is.null(val) || is.na(val)) {
+      showNotification("⚠️ 無法估算成長率", type = "error")
+      estimated_g(NULL)
+      return()
+    }
+    
+    estimated_g(val)  # 更新 g
+    
+    output$g_result <- renderText({
+      glue::glue("📈 成長率估算結果：{val} % （方法：{switch(method,
+      'mean' = '平均年增率',
+      'median' = '中位數年增率',
+      'last_year' = '最近一年變化率',
+      'custom' = '自訂輸入')}）")
+    })
+    
+    output$ibx_estimated_g <- renderInfoBox({
+      infoBox("估算 g 成長率", paste0(val, " %"),
+              icon = icon("chart-line"),
+              color = "purple", fill = TRUE
+      )
+    })
+  })
+}
+
+#-------------------- SHINY APP --------------------#
+
+shinyApp(ui = ui, server = server)

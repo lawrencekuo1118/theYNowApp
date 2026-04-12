@@ -1,0 +1,183 @@
+
+==============================================
+🚀 Session Started: 2026-01-25 14:44:19.74638
+📄 Log File: app_debug_20260125_144419.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+
+G2;H2;Warningh: Navigation containers expect a collection of `bslib::nav_panel()`/`shiny::tabPanel()`s and/or `bslib::nav_menu()`/`shiny::navbarMenu()`s. Consider using `header` or `footer` if you wish to place content above (or below) every panel's contents.g
+G3;
+Listening on http://127.0.0.1:3371
+g🌐 執行階梯抓取: AAPL
+⚠️ API 被阻擋，啟動 Chromote 模擬...
+G2;H2;Warningh in fetch_page("financials") : NAs introduced by coerciong
+G2;H2;Warningh in fetch_page("financials") : NAs introduced by coerciong
+G2;H2;Warningh in fetch_page("financials") : NAs introduced by coerciong
+G2;H2;Warningh in fetch_page("financials") : NAs introduced by coerciong
+G2;H2;Warningh in fetch_page("financials") : NAs introduced by coerciong
+G2;H2;Warningh in fetch_page("balance-sheet") : NAs introduced by coerciong
+G2;H2;Warningh in fetch_page("balance-sheet") : NAs introduced by coerciong
+G2;H2;Warningh in fetch_page("balance-sheet") : NAs introduced by coerciong
+G2;H2;Warningh in fetch_page("balance-sheet") : NAs introduced by coerciong
+G2;H2;Warningh in fetch_page("cash-flow") : NAs introduced by coerciong
+G2;H2;Warningh in fetch_page("cash-flow") : NAs introduced by coerciong
+G2;H2;Warningh in fetch_page("cash-flow") : NAs introduced by coerciong
+G2;H2;Warningh in fetch_page("cash-flow") : NAs introduced by coerciong
+G2;H2;Warningh in fetch_page("cash-flow") : NAs introduced by coerciong
+G2;H2;Warningh: Error in [[: attempt to select less than one element in get1indexg
+  103: get_box_color [industry_standards.R#9]
+  102: vbox_fun [kpi_module.R#91]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_inv_cash_flow_growth
+    1: runApp
+G2;H2;Warningh: Error in [[: attempt to select less than one element in get1indexg
+  103: get_box_color [industry_standards.R#9]
+  102: vbox_fun [kpi_module.R#101]
+  101: renderUI
+  100: func
+   87: renderFunc
+   86: output$kpi-vbx_fin_cash_flow_growth
+    1: runApp
+G2;H2;Warningh: Using `size` aesthetic for lines was deprecated in ggplot2 3.4.0.
+ℹ Please use `linewidth` instead.
+This warning is displayed once every 8 hours.
+Call `lifecycle::last_lifecycle_warnings()` to see where this warning was generated.g
+G2;H2;Warningh: Error in estimate_historical_growth: could not find function "estimate_historical_growth"g
+  197: <reactive:generate_fcf_plot> [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#864]
+  195: .func
+  192: contextFunc
+  191: env$runWith
+  180: ctx$run
+  179: self$.updateValue
+  177: generate_fcf_plot
+  176: renderPlot [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#913]
+  174: func
+  134: drawPlot
+  120: <reactive:plotObj>
+  100: drawReactive
+   87: renderFunc
+   86: output$dft_fcf_plot
+    1: runApp
+🌐 執行階梯抓取: KO
+⚠️ API 被阻擋，啟動 Chromote 模擬...
+G2;H2;Warningh in fetch_page("financials") : NAs introduced by coerciong
+G2;H2;Warningh in fetch_page("financials") : NAs introduced by coerciong
+G2;H2;Warningh in fetch_page("financials") : NAs introduced by coerciong
+G2;H2;Warningh in fetch_page("financials") : NAs introduced by coerciong
+G2;H2;Warningh in fetch_page("financials") : NAs introduced by coerciong
+G2;H2;Warningh in fetch_page("balance-sheet") : NAs introduced by coerciong
+G2;H2;Warningh in fetch_page("balance-sheet") : NAs introduced by coerciong
+G2;H2;Warningh in fetch_page("balance-sheet") : NAs introduced by coerciong
+G2;H2;Warningh in fetch_page("balance-sheet") : NAs introduced by coerciong
+
+Called from: Sys.sleep(10)
+
+==============================================
+🚀 Session Started: 2026-01-25 16:54:31.571606
+📄 Log File: app_debug_20260125_165431.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+
+🌐 執行階梯抓取: AAPL
+⚠️ API 被阻擋，啟動 Chromote 模擬...
+
+==============================================
+🚀 Session Started: 2026-01-25 17:00:32.686132
+📄 Log File: app_debug_20260125_170032.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+
+🌐 執行階梯抓取: AAPL
+⚠️ API 被阻擋，啟動 Chromote 模擬...
+
+==============================================
+🚀 Session Started: 2026-01-25 17:04:25.853451
+📄 Log File: app_debug_20260125_170425.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+
+🌐 執行階梯抓取: AAPL
+⚠️ API 被阻擋，啟動 Chromote 模擬...
+
+==============================================
+🚀 Session Started: 2026-01-25 17:12:33.705089
+📄 Log File: app_debug_20260125_171233.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+
+🌐 執行階梯抓取: AAPL
+⚠️ API 被阻擋，啟動 Chromote 模擬...
+
+==============================================
+🚀 Session Started: 2026-01-25 17:15:47.349546
+📄 Log File: app_debug_20260125_171547.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+
+🌐 執行階梯抓取: AAPL
+⚠️ API 被阻擋，啟動 Chromote 模擬...
+
+==============================================
+🚀 Session Started: 2026-01-25 17:18:25.420905
+📄 Log File: app_debug_20260125_171825.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+
+🌐 執行階梯抓取: AAPL
+⚠️ API 被阻擋，啟動 Chromote 模擬...
+
+==============================================
+🚀 Session Started: 2026-01-25 19:16:15.607401
+📄 Log File: app_debug_20260125_191615.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+
+🌐 執行階梯抓取: AAPL
+⚠️ API 被阻擋，啟動 Chromote 模擬...
+⚠️ 找不到指標: basicEps
+
+==============================================
+🚀 Session Started: 2026-01-25 19:28:16.130938
+📄 Log File: app_debug_20260125_192816.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+
+🌐 執行階梯抓取: AAPL
+⚠️ API 被阻擋，啟動 Chromote 模擬...
+
+==============================================
+🚀 Session Started: 2026-01-25 19:34:27.698148
+📄 Log File: app_debug_20260125_193427.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+
+
+==============================================
+🚀 Session Started: 2026-01-25 19:35:00.579667
+📄 Log File: app_debug_20260125_193500.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+
+
+==============================================
+🚀 Session Started: 2026-01-25 19:35:35.122466
+📄 Log File: app_debug_20260125_193535.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+
+
+==============================================
+🚀 Session Started: 2026-01-25 19:35:36.281977
+📄 Log File: app_debug_20260125_193536.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+
+
+==============================================
+🚀 Session Started: 2026-01-25 19:35:37.023216
+📄 Log File: app_debug_20260125_193537.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+

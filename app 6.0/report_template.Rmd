@@ -1,0 +1,89 @@
+---
+title: "YNow 企業財務分析報告"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    theme: flatly
+    toc: true
+    toc_float: true
+params:
+  stock_code: NA
+  company_name: NA
+  summary_df: NA
+  income_df: NA
+  balance_df: NA
+  cashflow_df: NA
+  warnings: NA
+  kpi: NA              # 新增：因為下方有呼叫
+---
+
+```{r setup, include=FALSE}
+# 初始化設定：隱藏程式碼，只顯示產出的圖表與表格
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(knitr)
+```
+
+公司概況
+公司代碼: r params$stock_code
+公司名稱: r params$company_name
+
+```{r setup, include=FALSE}
+# 將換行符號轉換為 HTML 的 <br> 標籤，讓排雷文字能正確斷行顯示
+cat(gsub("\n", "<br>", params$warnings))
+```
+
+```{r setup, include=FALSE}
+## 財務摘要
+if (!is.null(params$summary_df) && is.data.frame(params$summary_df)) {
+  # 利用 table.attr 加上 Bootstrap 的 CSS 樣式讓表格更好看
+  kable(params$summary_df, format = "html", table.attr = "class='table table-striped table-hover'")
+} else {
+  cat("目前無摘要資料。")
+}
+```
+
+關鍵指標
+r params$kpi
+
+```{r setup, include=FALSE}
+## 財務健康狀況
+# 將換行符號轉換為 HTML 的 <br> 標籤，讓排雷文字能正確斷行顯示
+if (!is.na(params$warnings)) {
+  cat(gsub("\n", "<br>", params$warnings))
+} else {
+  cat("無異常警訊。")
+}
+```
+
+三大核心財務報表
+
+1. 損益表 (Income Statement)
+```{r setup, include=FALSE}
+if (!is.null(params$income_df) && is.data.frame(params$income_df)) {
+  kable(params$income_df, format = "html", table.attr = "class='table table-striped table-condensed'")
+} else {
+  cat("目前無損益表資料。")
+}
+```
+
+2. 資產負債表 (Balance Sheet)
+```{r setup, include=FALSE}
+if (!is.null(params$balance_df) && is.data.frame(params$balance_df)) {
+  kable(params$balance_df, format = "html", table.attr = "class='table table-striped table-condensed'")
+} else {
+  cat("目前無資產負債表資料。")
+}
+```
+
+3. 現金流量表 (Cash Flow)
+```{r setup, include=FALSE}
+if (!is.null(params$cashflow_df) && is.data.frame(params$cashflow_df)) {
+  kable(params$cashflow_df, format = "html", table.attr = "class='table table-striped table-condensed'")
+} else {
+  cat("目前無現金流量表資料。")
+}
+```
+
+詳細報告
+r params$detailed_summary
+

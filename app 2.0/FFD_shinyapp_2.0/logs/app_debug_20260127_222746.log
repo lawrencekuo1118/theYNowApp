@@ -1,0 +1,36 @@
+
+==============================================
+🚀 Session Started: 2026-01-27 22:27:46.776132
+📂 Log Directory: logs
+📄 Log File: app_debug_20260127_222746.log
+==============================================
+✔️ 所有套件已載入，環境初始化完成。
+
+G3;
+Listening on http://127.0.0.1:4337
+g
+🌐 執行階梯抓取: AAPL
+⚠️ API 被阻擋，啟動 Chromote 模擬...
+📄 正在模擬抓取頁面: financials
+✅ financials 處理完成，共 30 列。
+📄 正在模擬抓取頁面: balance-sheet
+✅ balance-sheet 處理完成，共 15 列。
+📄 正在模擬抓取頁面: cash-flow
+✅ cash-flow 處理完成，共 11 列。
+[1] "Error in data retrieval: "
+G2;H2;Warningh in p <- ggplot(plot_df, aes(x = Year, y = Value, group = 1)) + :
+  Ignoring unknown aesthetics: textg
+G2;H2;Warningh: Error in if: argument is of length zerog
+  109: format_dollar_abbr [setup.R#238]
+  101: renderUI [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#826]
+  100: func
+   87: renderFunc
+   86: output$vtxt_dcf_setting_details
+    1: runApp
+G2;H2;Warningh: Error in if: argument is of length zerog
+  109: format_dollar_abbr [setup.R#238]
+  101: renderUI [/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/app 2.0/FFD_shinyapp_2.0/FFD_shinyapp 2.0.R#826]
+  100: func
+   87: renderFunc
+   86: output$vtxt_dcf_setting_details
+    1: runApp
