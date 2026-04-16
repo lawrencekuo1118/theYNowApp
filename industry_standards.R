@@ -1,45 +1,3 @@
-get_box_color <- function(industry, metric, value) {
-  # 1. 🛑 新增防禦檢查：處理空值或未定義的產業
-  if (is.null(industry) || industry == "" || length(industry) == 0) {
-    return("black") # 預設顯示黑色
-  }
-  
-  # 2. 處理數值無效值
-  if (is.null(value) || is.na(value)) return("lime") 
-  
-  # 3. 檢查數值是否為負
-  if (value < 0) return("red")
-  
-  # 4. 安全地檢查產業標準是否存在 (使用單括號 [ ] 配合 %in% 更安全)
-  if (!(industry %in% names(industry_standards))) {
-    return("black")
-  }
-  
-  # 取得特定指標的標準
-  std <- industry_standards[[industry]][[metric]]
-  
-  if (is.null(std) || length(std) != 2) {
-    return("black")
-  }
-  
-  bounds <- std
-  
-  # 5. 定義方向性並回傳顏色
-  lower_is_better <- metric %in% c("opex_ratio", "eqt_multiplier")
-  
-  if (lower_is_better) {
-    if (value < bounds[1]) return("aqua")
-    if (value > bounds[2]) return("red")
-    return("black")
-  } else {
-    if (value > bounds[2]) return("green")
-    if (value < bounds[1]) return("red")
-    return("black")
-  }
-}
-
-#########
-  
 industry_standards <- list(
   sc.IC_Design = list(
     eqt_multiplier      = c(1.5, 2.5),
@@ -197,3 +155,27 @@ industry_standards <- list(
     rm_avg   = 8.5
   )
 )
+
+# 🎨 KPI 顏色防呆判定 (終極防呆版)
+get_box_color <- function(industry_choice, metric_name, val) {
+  # 1. 終極防呆：檢查參數是否為空 (這行能解決 attempt to select less than one element 錯誤)
+  if (is.null(industry_choice) || length(industry_choice) == 0 || industry_choice == "") return("black")
+  if (is.null(metric_name) || length(metric_name) == 0) return("black")
+  if (is.na(val) || is.null(val)) return("black")
+  
+  # 2. 確保標準清單中有這個產業
+  if (!(industry_choice %in% names(industry_standards))) return("black")
+  
+  # 3. 抓取該產業的該項指標標準區間 (例如 c(30, 50))
+  std <- industry_standards[[industry_choice]][[metric_name]]
+  if (is.null(std) || length(std) != 2) return("black")
+  
+  # 4. 判斷是否落在標準區間內
+  if (val >= std[1] && val <= std[2]) {
+    return("green") # 在標準內亮綠燈
+  } else if (val < std[1]) {
+    return("red")   # 低於標準亮紅燈
+  } else {
+    return("blue")  # 高於標準 (表現優異) 亮藍色
+  }
+}

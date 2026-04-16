@@ -1,64 +1,87 @@
-# 📦 1. 基礎路徑與環境變數設定 -----------------------------------------------
-log_dir <- "logs"
-if (!dir.exists(log_dir)) {
-  dir.create(log_dir)
-}
+# ==========================================
+# global.R - 初始化與環境設定
+# ==========================================
 
-# 🛠️ 定義 Helper 函數 (定義在 rm 之前)
-`%||%` <- function(a, b) if (!is.null(a) && !is.na(a)) a else b
+# knitr 設定（適用於 R Markdown）
+knitr::opts_chunk$set(comment = NA)
+knitr::opts_knit$set(global.par = TRUE)
 
-# --- 🧹 2. 自動清理舊檔案 (僅保留一次即可，包含 log 與 png) ---
-all_files <- list.files(log_dir, pattern = "\\.(log|png)$", full.names = TRUE)
-if (length(all_files) > 0) {
-  file_info <- file.info(all_files)
-  to_delete <- all_files[difftime(Sys.time(), file_info$mtime, units = "days") > 7]
-  if (length(to_delete) > 0) {
-    file.remove(to_delete)
-    cat(paste("🧹 已自動清理", length(to_delete), "個過期日誌與截圖檔案。\n"))
-  }
-}
-
-# --- 📝 3. 日誌系統初始化 ---
-while(sink.number() > 0) sink()
-timestamp    <- format(Sys.time(), "%Y%m%d_%H%M%S")
-log_filename <- paste0("app_debug_", timestamp, ".log")
-log_path     <- file.path(log_dir, log_filename)
-
-log_con <- file(log_path, open = "a") 
-sink(log_con, split = TRUE)          
-sink(log_con, type = "message")      
-
-cat(paste0("\n==============================================\n"))
-cat(paste0("🚀 Session Started: ", Sys.time(), "\n"))
-cat(paste0("📂 Log Directory: ", log_dir, "\n"))
-cat(paste0("📄 Log File: ", log_filename, "\n"))
-cat(paste0("==============================================\n"))
-
-# --- 🧽 4. 環境清理 (確保 rm 不會殺掉剛才定義的東西) ---
-keep_list <- c(
-  "log_filename", "log_path", "log_dir", "log_con", "timestamp",
-  "%||%"
-)
-
-# 清理先前開發遺留的變數
-rm(list = setdiff(ls(all.names = TRUE), keep_list))
-
-# 全域選項設定
+# 全域選項：避免科學記號、數字位數、輸出寬度
 options(scipen = 20, digits = 4, width = 90)
 
-# 📚 5. 套件載入 -----------------------------------------------------------
+# 📚 套件安裝與載入 --------------------------------------------------------
 if (!require("pacman")) install.packages("pacman")
+if (!require("devtools")) install.packages("devtools")
+
 pacman::p_load(
-  dplyr, tidyverse, data.table, lubridate, stringr, magrittr, Hmisc, reshape2,
-  readr, readxl, rio, jsonlite, openxlsx, ggplot2, ggrepel, plotly, DT, 
-  rvest, xml2, shiny, shinydashboard, shinyjs, shinycustomloader, shinyWidgets
+  dplyr, tidyverse, data.table, lubridate, stringr, magrittr, Hmisc, reshape2, purrr,
+  readr, readxl, rio, jsonlite, openxlsx,
+  ggplot2, ggrepel, plotly, DT, wordcloud,
+  NLP, tm,
+  rvest, xml2,
+  shiny, shinydashboard, shinyjs, shinycustomloader, shinyWidgets,
+  DBI, RMySQL,
+  rmarkdown, knitr,
+  chromote
 )
 
-cat("✔️ 所有套件已載入，環境初始化完成。\n\n")
+# ==========================================
+# 🧮 儀表板與財報共用輔助函數 (Helper Functions)
+# ==========================================
 
-# 📂 6. 載入邏輯模組 -------------------------------------------------------
-source("industry_standards.R")
-source("setup.R")
-source("kpi_module.R")
-source("fcf_projection_module.R", encoding = "UTF-8")
-source("search_module.R")
+# 1. 從財報 DataFrame 中抽出特定科目的數值陣列
+select_clean_metric_row <- function(df, metric_name) {
+  if (is.null(df) || nrow(df) == 0) return(NA)
+  
+  # 使用 grep 搜尋關鍵字
+  row_idx <- grep(metric_name, df[[1]], ignore.case = TRUE)
+  if (length(row_idx) == 0) return(NA) 
+  
+  vals <- as.character(df[row_idx[1], -1])
+  vals <- gsub("[\\$,]", "", vals)                # 移除 $ 和 逗號
+  vals <- gsub("\\((.*)\\)", "-\\1", vals)        # 將 (123) 轉為 -123
+  return(as.numeric(vals))
+}
+
+# 2. 計算陣列的平均值
+get_avg <- function(x) {
+  x <- as.numeric(na.omit(x))
+  if (length(x) == 0) return(NA)
+  return(mean(x, na.rm = TRUE))
+}
+
+# 3. 計算陣列的平均成長率
+get_avg_growth <- function(x) {
+  x <- as.numeric(na.omit(x))
+  if (length(x) < 2) return(NA)
+  
+  rates <- diff(x) / head(x, -1)
+  rates <- rates[is.finite(rates)] 
+  
+  if(length(rates) == 0) return(NA)
+  return(mean(rates, na.rm = TRUE) * 100)
+}
+
+# 4. 估算歷史成長率 (供 FCF 模組使用)
+estimate_historical_growth <- function(x) {
+  x <- as.numeric(na.omit(x))
+  if (length(x) < 2) return(5) # 預設給予 5%
+  
+  prev_x <- head(x, -1)
+  diff_x <- diff(x)
+  
+  g <- ifelse(prev_x == 0, NA, diff_x / prev_x)
+  return(round(mean(g, na.rm = TRUE) * 100, 2))
+}
+
+# 🎨 5. KPI 顏色防呆判定 (覆蓋舊版，絕對不回傳 "white")
+get_box_color <- function(industry_choice, metric_name, val) {
+  if (is.na(val) || is.null(val)) return("black") # 如果沒有資料，一律顯示黑色
+  
+  # 簡單的正負值顏色邏輯 (您可以在 industry_standards.R 調整更複雜的判斷)
+  if (val > 0) return("green")
+  return("red")
+}
+
+# ✅ 完成！ --------------------------------------------------------------
+cat("✔️ 所有套件已載入，環境初始化完成。\n")
