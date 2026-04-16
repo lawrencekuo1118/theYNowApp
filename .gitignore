@@ -1,24 +1,29 @@
-# R specific
+# ========================
+# R & Shiny Specific
+# ========================
 .Rproj.user
 .Rhistory
 .RData
 .Ruserdata
+rsconnect/
 
-# Python specific
+# ========================
+# Python Specific
+# ========================
 venv/
 my_python_env/
+.ynow_venv
 __pycache__/
 *.pyc
 
-# OS specific
+# ========================
+# OS Specific (macOS / Windows)
+# ========================
 .DS_Store
 Thumbs.db
 
-
-
-.DS_Store
-rsconnect/
-.Rhistory
-.RData
+# ========================
+# Project Temporary & Cache Files
+# ========================
 768d5e73109a453b83a1975ad686c59e/
 *.tar.gz
