@@ -516,50 +516,63 @@ ui <- dashboardPage(
       ),
       
       tabItem(tabName = "backtest",
-              withMathJax(), # 支持數學公式顯示
+              withMathJax(),
               h2("量化回測實驗室 (Backtest Zone)"),
-              
+              helpText("參數預設依「目前搜尋公司」的財報／動能／安全邊際自動推導；可切換手動覆寫。"),
+
               fluidRow(
                 box(
                   title = tagList(icon("chart-area"), "策略淨值比較圖 (Equity Curve Comparison)"),
                   width = 12, status = "info", solidHeader = TRUE,
-                  plotlyOutput("bt_equity_plot", height = "450px") %>% withSpinner(), # 加入加載動畫
-                  helpText("註：基準線為 1.0 (或 100%)。藍線代表模式 A，紅線代表模式 B，灰線代表大盤基準。")
+                  plotlyOutput("bt_equity_plot", height = "450px") %>% withSpinner(),
+                  helpText("藍＝模式 A（情緒增強），紅＝模式 B（純基本面），灰虛線＝大盤基準（SPY），綠＝該股買進持有。")
                 )
               ),
-              
-              # --- 第一層：大過濾器 (The Great Filter) ---
+
+              fluidRow(
+                box(
+                  title = tagList(icon("sliders-h"), "參數模式"),
+                  width = 12, status = "success", solidHeader = TRUE,
+                  radioButtons(
+                    "bt_param_mode", NULL, inline = TRUE,
+                    choices = c("自動（依公司推導）" = "auto", "手動覆寫" = "manual"),
+                    selected = "auto"
+                  ),
+                  uiOutput("bt_param_notes"),
+                  actionButton("bt_refresh_params", "依目前公司重算參數", icon = icon("sync"))
+                )
+              ),
+
               fluidRow(
                 box(
                   title = tagList(icon("filter"), "1. 大過濾器：估值路徑分流 (The Great Filter)"),
                   width = 12, status = "primary", solidHeader = TRUE, collapsible = TRUE,
-                  column(3, tipify(numericInput("bt_net_margin", "淨利率門檻 (%)", 5), 
-                                   "獲利能力最終指標。若為負值，系統自動切換至 P/S 路徑。", placement = "top")),
-                  column(3, tipify(numericInput("bt_rev_growth", "營收成長門檻 (%)", 25), 
-                                   "衡量擴張速度。高成長代表市場份額擴張中，模型容忍度較高。", placement = "top")),
-                  column(3, tipify(numericInput("bt_eps_growth", "EPS 成長門檻 (g, %)", 15), 
-                                   "計算 PEG (本益成長比)，確保沒有為成長支付過高價格。", placement = "top")),
-                  column(3, tipify(numericInput("bt_fcf_cv", "FCF 變異係數上限", 20), 
-                                   "財務穩定性守門員。CV > 20% 代表現金流極度不穩，容易產生誤判 (GIGO)。", placement = "top"))
+                  column(3, tipify(numericInput("bt_net_margin", "淨利率門檻 (%)", 5),
+                                   "獲利能力門檻。自動模式取該公司歷史淨利率約一半。", placement = "top")),
+                  column(3, tipify(numericInput("bt_rev_growth", "營收成長門檻 (%)", 25),
+                                   "自動模式取該公司歷史營收成長約一半。", placement = "top")),
+                  column(3, tipify(numericInput("bt_eps_growth", "EPS/NI 成長門檻 (g, %)", 15),
+                                   "自動模式取該公司淨利成長約一半。", placement = "top")),
+                  column(3, tipify(numericInput("bt_fcf_cv", "FCF 變異係數上限", 20),
+                                   "自動模式取該公司 FCF CV × 1.25。", placement = "top"))
                 )
               ),
-              
-              # --- 第二層：預測模式權重 (Weighting Factors) ---
+
               fluidRow(
                 tabBox(
                   title = tagList(icon("balance-scale"), "2. 模式 A 與 B 權重因子"),
                   width = 8,
                   tabPanel("模式 A：情緒增強型",
-                           helpText("適合捕捉「強者恆強」的趨勢與市場過熱訊號。"),
-                           sliderInput("bt_w_mom", "短期動能 (Momentum) 權重", 0, 1, 0.4),
-                           bsTooltip("bt_w_mom", "基於 5D/20D 報酬率捕捉市場趨勢。", "right"),
-                           sliderInput("bt_w_rsi", "市場情緒 (RSI) 權重", 0, 1, 0.3),
-                           bsTooltip("bt_w_rsi", "RSI > 80 時自動下修預測機率，防止追高。", "right")
+                           helpText("權重依動能／RSI／MOS 自動分配；適合捕捉趨勢與過熱訊號。"),
+                           sliderInput("bt_w_mom", "短期動能 (Momentum) 權重", 0, 1, 0.4, step = 0.01),
+                           bsTooltip("bt_w_mom", "基於約 20 日報酬率捕捉趨勢。", "right"),
+                           sliderInput("bt_w_rsi", "市場情緒 (RSI) 權重", 0, 1, 0.3, step = 0.01),
+                           bsTooltip("bt_w_rsi", "RSI 過高時降低曝險，防止追高。", "right")
                   ),
                   tabPanel("模式 B：純基本面型",
-                           helpText("核心邏輯：內在價值回歸與企業財務質量。"),
-                           sliderInput("bt_w_vg", "估值偏離 (Valuation Gap) 權重", 0, 1, 0.7),
-                           bsTooltip("bt_w_vg", "股價與目標價距離越遠，得分越高。", "right"),
+                           helpText("核心：通過大過濾器 + 估值偏離（MOS）與均線位置。"),
+                           sliderInput("bt_w_vg", "估值偏離 (Valuation Gap) 權重", 0, 1, 0.7, step = 0.01),
+                           bsTooltip("bt_w_vg", "安全邊際越高，基本面倉位傾向越高。", "right"),
                            tags$div(style = "color: #d9534f; font-weight: bold; padding: 10px; background: #fcf8e3; border-radius: 5px;",
                                     icon("exclamation-triangle"), "價值陷阱警示：若低估長期不漲，請參考模式 A 判斷市場共識何時轉向。")
                   )
@@ -568,11 +581,11 @@ ui <- dashboardPage(
                   title = "執行操作", width = 4, status = "warning",
                   actionButton("run_bt", "▶ 啟動量化回測", class = "btn-warning btn-lg btn-block"),
                   hr(),
-                  p("點擊後系統將模擬過去 5 年數據，並產出下方績效報告。")
+                  p("將使用目前 Ticker 過去約 5 年日線（月頻再平衡），並結合該公司財報特徵產出淨值曲線。"),
+                  uiOutput("bt_run_status")
                 )
               ),
-              
-              # --- 第三層：績效評估指標 (Performance Metrics) ---
+
               uiOutput("perf_metrics")
       ),
       

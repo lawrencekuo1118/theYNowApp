@@ -81,6 +81,7 @@ source("ddm_module.R", encoding = "UTF-8")
 source("fcf_projection_module.R", encoding = "UTF-8")
 source("ri_module.R", encoding = "UTF-8")
 source("pb_asset_module.R", encoding = "UTF-8")
+source("backtest_module.R", encoding = "UTF-8")
 source("default_config.R", encoding = "UTF-8")
 
 cat("✔️ 所有套件已載入，環境初始化完成。（app_10.0）\n")

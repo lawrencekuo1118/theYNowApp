@@ -157,6 +157,31 @@ def get_summary_quote(ticker="AMZN"):
     }
 
 
+def get_price_history(ticker="AMZN", period="5y"):
+    """Daily OHLCV for backtests — plain lists for reticulate."""
+    print(f"📈 yfinance price history: {ticker} period={period}")
+    stock = yf.Ticker(ticker)
+    hist = stock.history(period=period, auto_adjust=True)
+    if hist is None or hist.empty:
+        return {"Date": [], "Close": [], "Volume": []}
+    hist = hist.reset_index()
+    # Date column may be DatetimeIndex name 'Date' or 'index'
+    date_col = "Date" if "Date" in hist.columns else hist.columns[0]
+    dates = []
+    for d in hist[date_col]:
+        try:
+            dates.append(pd.Timestamp(d).strftime("%Y-%m-%d"))
+        except Exception:
+            dates.append(str(d)[:10])
+    closes = [float(x) if pd.notna(x) else None for x in hist["Close"].tolist()]
+    vols = []
+    if "Volume" in hist.columns:
+        vols = [float(x) if pd.notna(x) else 0.0 for x in hist["Volume"].tolist()]
+    else:
+        vols = [0.0] * len(closes)
+    return {"Date": dates, "Close": closes, "Volume": vols}
+
+
 def get_risk_free_rate_yf():
     """10Y Treasury yield (^TNX) via yfinance — no Chromote."""
     print("📊 yfinance Rf ^TNX")
