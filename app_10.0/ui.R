@@ -190,33 +190,70 @@ ui <- dashboardPage(
              ),
              tags$script(HTML("
                (function() {
+                 /* Dropdown only while typing (not on focus/empty). */
+                 var typingOpen = false;
+
+                 function scValue() {
+                   var inp = document.getElementById('sc');
+                   return inp ? (inp.value || '') : '';
+                 }
+
+                 function hasTypedQuery() {
+                   return scValue().trim().length > 0;
+                 }
+
                  function showSuggest() {
                    var el = document.getElementById('sc_ticker_suggest');
-                   if (el && el.children.length) el.style.display = 'block';
+                   if (!el) return;
+                   if (typingOpen && hasTypedQuery() && el.children.length) {
+                     el.style.display = 'block';
+                   } else {
+                     el.style.display = 'none';
+                   }
                  }
+
                  function hideSuggest() {
+                   typingOpen = false;
                    var el = document.getElementById('sc_ticker_suggest');
                    if (el) el.style.display = 'none';
                  }
-                 $(document).on('input focus', '#sc', function() {
+
+                 $(document).on('input', '#sc', function() {
                    var v = $(this).val() || '';
                    Shiny.setInputValue('ticker_typeahead', v, {priority: 'event'});
+                   typingOpen = v.trim().length > 0;
                    showSuggest();
                  });
-                 $(document).on('blur', '#sc', function() {
-                   setTimeout(hideSuggest, 180);
+
+                 $(document).on('blur', '#sc', function(e) {
+                   var rt = e.relatedTarget;
+                   var el = document.getElementById('sc_ticker_suggest');
+                   if (el && rt && el.contains(rt)) return;
+                   hideSuggest();
                  });
+
+                 $(document).on('keydown', '#sc', function(e) {
+                   if (e.key === 'Enter' || e.keyCode === 13) hideSuggest();
+                 });
+
+                 $(document).on('click', '#search', function() {
+                   hideSuggest();
+                 });
+
                  $(document).on('mousedown', '#sc_ticker_suggest .ynow-suggest-item', function(e) {
                    e.preventDefault();
                    var sym = $(this).data('symbol');
+                   hideSuggest();
                    if (sym) {
-                     $('#sc').val(sym).trigger('input').trigger('change');
+                     $('#sc').val(sym).trigger('change');
                      Shiny.setInputValue('sc', sym, {priority: 'event'});
                    }
-                   hideSuggest();
                  });
+
                  $(document).on('shiny:value', function(e) {
-                   if (e.name === 'sc_ticker_suggest_ui') setTimeout(showSuggest, 30);
+                   if (e.name === 'sc_ticker_suggest_ui') {
+                     setTimeout(showSuggest, 0);
+                   }
                  });
                })();
              "))

@@ -1853,13 +1853,27 @@ server <- function(input, output, session) {
     sharpe_a_txt <- if (is.na(m$sharpe_a)) "N/A" else sprintf("%.2f", m$sharpe_a)
     sharpe_b_txt <- if (is.na(m$sharpe_b)) "N/A" else sprintf("%.2f", m$sharpe_b)
 
+    # region agent log
+    try({
+      log_path <- "/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/.cursor/debug-1e8487.log"
+      dir.create(dirname(log_path), recursive = TRUE, showWarnings = FALSE)
+      payload <- sprintf(
+        '{"sessionId":"1e8487","runId":"post-fix","hypothesisId":"H1","location":"server.R:perf_metrics","message":"perf_metrics layout pattern","data":{"pattern":"row1:valueBoxes;row2:hints","hasHintsAfterBox":false},"timestamp":%s}\n',
+        as.numeric(Sys.time()) * 1000
+      )
+      cat(payload, file = log_path, append = TRUE)
+    }, silent = TRUE)
+    # endregion
+
     tagList(
       tags$p(
         style = "margin: 0 0 12px 0; font-size: 12px; color: #666;",
         "以下以 Sharpe 較高的策略為主顯示；A＝", sharpe_a_txt, "，B＝", sharpe_b_txt,
         "。數值僅供策略比較參考，不代表未來績效。"
       ),
+      # valueBox 使用 AdminLTE float；說明文字必須獨立一列，否則會被卡片蓋住
       fluidRow(
+        id = "bt_perf_metrics_boxes",
         column(
           4,
           tipify(
@@ -1870,9 +1884,7 @@ server <- function(input, output, session) {
               color = "green"
             ),
             "年化 Sharpe ≈ 日報酬均值 ÷ 標準差 × √252。愈高代表單位風險下報酬愈佳。", placement = "bottom"
-          ),
-          tags$p(style = "margin: 6px 0 0 4px; font-size: 11px; color: #777;",
-                 "風險調整後報酬；>1 通常視為不錯，>2 屬優異（依市場而異）。")
+          )
         ),
         column(
           4,
@@ -1884,20 +1896,49 @@ server <- function(input, output, session) {
               color = "red"
             ),
             "淨值自歷史高點回落的最大百分比幅度。", placement = "bottom"
-          ),
-          tags$p(style = "margin: 6px 0 0 4px; font-size: 11px; color: #777;",
-                 "歷史最大虧損幅度；愈接近 0 代表回撤愈小（負值愈大風險愈高）。")
+          )
         ),
         column(
           4,
           tipify(
             valueBox(m$plateau, "參數高原（粗評）", icon = icon("mountain"), color = "purple"),
             "比較模式 A/B 的 Sharpe 差距；差距小代表策略分化不大。", placement = "bottom"
-          ),
-          tags$p(style = "margin: 6px 0 0 4px; font-size: 11px; color: #777;",
-                 "「高原」代表參數微調不致劇烈改變結果；「敏感」宜再檢查門檻設定。")
+          )
         )
-      )
+      ),
+      tags$div(style = "clear: both;"),
+      fluidRow(
+        id = "bt_perf_metrics_hints",
+        column(
+          4,
+          tags$p(
+            class = "bt-metric-hint",
+            style = "margin: 4px 4px 12px 4px; font-size: 11px; color: #777; line-height: 1.45;",
+            "風險調整後報酬；>1 通常視為不錯，>2 屬優異（依市場而異）。"
+          )
+        ),
+        column(
+          4,
+          tags$p(
+            class = "bt-metric-hint",
+            style = "margin: 4px 4px 12px 4px; font-size: 11px; color: #777; line-height: 1.45;",
+            "歷史最大虧損幅度；愈接近 0 代表回撤愈小（負值愈大風險愈高）。"
+          )
+        ),
+        column(
+          4,
+          tags$p(
+            class = "bt-metric-hint",
+            style = "margin: 4px 4px 12px 4px; font-size: 11px; color: #777; line-height: 1.45;",
+            "「高原」代表參數微調不致劇烈改變結果；「敏感」宜再檢查門檻設定。"
+          )
+        )
+      ),
+      # region agent log
+      tags$script(HTML(
+        "(function(){\n  function measure(){\n    var boxesRow=document.getElementById('bt_perf_metrics_boxes');\n    var hintsRow=document.getElementById('bt_perf_metrics_hints');\n    if(!boxesRow||!hintsRow) return;\n    var boxes=boxesRow.querySelectorAll('.small-box');\n    var hints=hintsRow.querySelectorAll('.bt-metric-hint');\n    var results=[];\n    var n=Math.min(boxes.length, hints.length);\n    for (var i=0;i<n;i++){\n      var br=boxes[i].getBoundingClientRect();\n      var hr=hints[i].getBoundingClientRect();\n      var cs=window.getComputedStyle(boxes[i]);\n      var overlapY=hr.top<br.bottom-1;\n      var overlapX=hr.left<br.right-1 && hr.right>br.left+1;\n      results.push({i:i,boxH:Math.round(br.height),gap:Math.round(hr.top-br.bottom),overlap: !!(overlapY&&overlapX),float:cs.float});\n    }\n    fetch('http://127.0.0.1:7740/ingest/a130b332-679a-4689-a067-22de401f49a9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'1e8487'},body:JSON.stringify({sessionId:'1e8487',runId:'post-fix',hypothesisId:'H1',location:'perf_metrics:dom',message:'valueBox vs hint overlap after fix',data:{results:results},timestamp:Date.now()})}).catch(function(){});\n  }\n  setTimeout(measure, 80);\n  setTimeout(measure, 400);\n})();"
+      ))
+      # endregion
     )
   })
   
