@@ -17,6 +17,8 @@ Taiwan stock fundamental analysis Shiny app（雲端版：yfinance，無 Chromot
 shiny::runApp("app_10.0")
 ```
 
+Requires R packages used by `app_10.0/setup.R` / `app_10.0/global.R`, and Python deps from `app_10.0/requirements.txt` (yfinance path; no Chrome required for cloud).
+
 ## v10.1 重點
 
 - 側邊欄「推薦」標記（DDM／DCF／P/B）
@@ -25,6 +27,25 @@ shiny::runApp("app_10.0")
 - 搜尋後自動 WACC；DCF 圖含歷史／折現模式
 - Backtest Zone 版面重整（執行面板 + 三步驟參數分頁）
 
-## Cloud
+## Cloud notes
 
-Live: https://hopesmasher1118.shinyapps.io/TheYNowApp/
+- Live: https://hopesmasher1118.shinyapps.io/TheYNowApp/
+- Financials via **yfinance** (no Chromote / Chrome on shinyapps.io)
+- `requirements.txt` / `py_require` for cloud Python; optional local `.ynow_venv`
+- Selenium is local-only fallback
+- Statement shaping aligns with v9 display (TTM column, Yahoo-like row order, reticulate-safe payloads)
+
+## Layout (`app_10.0/`)
+
+| File | Role |
+|------|------|
+| `ui.R` / `server.R` / `global.R` | Shiny app entry |
+| `setup.R` / `default_config.R` | Environment & defaults |
+| `requirements.txt` | Cloud Python dependencies |
+| `*_module.R` | Valuation / KPI / decision modules |
+| `report_template.Rmd` | Report output |
+| `web_crawler.R` / `deep_scraper.py` | Data collection (yfinance-first) |
+
+## Older versions
+
+Historical snapshots live in version folders and as [GitHub Releases](https://github.com/lawrencekuo1118/theYNowApp/releases).
