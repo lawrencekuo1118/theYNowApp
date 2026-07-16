@@ -46,29 +46,33 @@ server <- function(input, output, session) {
     
     withProgress(message = paste('🚀 正在獲取', stock_code, '的最新數據...'), value = 0, {
       tryCatch({
-        incProgress(0.2, detail = "正在讀取 Summary 頁面...")
+        incProgress(0.2, detail = "正在讀取 Summary（yfinance）...")
         sum_df <- get_summary_data(stock_code)
         summary_data(sum_df)
-        
+
         ind_info <- get_yahoo_industry(stock_code)
         if (!is.null(ind_info)) corp_industry_text(ind_info$display_text)
-        
+
         if (!(stock_code %in% values$recentsearch)) {
           values$recentsearch <- head(c(stock_code, values$recentsearch), 5)
         }
-        
-        incProgress(0.5, detail = "正在展開深度財報明細 (快取加速中)...")
+
+        incProgress(0.5, detail = "正在抓取財報明細（yfinance）...")
         res <- cached_scrape_financials(stock_code)
         res <- normalize_all_financials(res)
         scraped_financials(res)
-        
+
         is_expanded(FALSE)
         updateActionButton(session, "btn_expand_all", label = "Expand All", icon = icon("expand"))
-        
+
         incProgress(0.9, detail = "數據同步完成！✅")
-        
+
       }, error = function(e) {
-        showNotification(paste("❌ 獲取資料失敗，請確認代碼。錯誤:", e$message), type = "error")
+        showNotification(
+          paste("❌ 獲取資料失敗，請確認代碼。錯誤:", e$message),
+          type = "error",
+          duration = 12
+        )
       })
     })
   })
@@ -200,11 +204,17 @@ server <- function(input, output, session) {
   # ==========================================
   selected_cashflow_data <- reactive({
     req(d_cash_flow())
+    df <- d_cash_flow()
     keyword <- switch(input$cf_type,
                       "Operating Cash Flow" = "Operating Cash Flow",
                       "Investing Cash Flow" = "Investing Cash Flow",
                       "Financing Cash Flow" = "Financing Cash Flow")
-    d_cash_flow()[grepl(keyword, d_cash_flow()[[1]], ignore.case = TRUE), ]
+    # 先精確匹配科目名，避免命中 "Cash Flow From Continuing ..." 等長名列
+    exact <- which(tolower(trimws(df[[1]])) == tolower(keyword))
+    if (length(exact) > 0) return(df[exact[1], , drop = FALSE])
+    hit <- grepl(keyword, df[[1]], ignore.case = TRUE)
+    if (!any(hit)) return(df[FALSE, , drop = FALSE])
+    df[which(hit)[1], , drop = FALSE]
   })
   
   output$cf_plot <- renderPlotly({
