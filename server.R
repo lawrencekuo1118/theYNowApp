@@ -38,20 +38,33 @@ server <- function(input, output, session) {
   })
 
   # ==========================================
-  # 🔎 主搜尋框 datalist 預選（側邊欄維持原 UI，不改動）
+  # 🔎 主搜尋框預選清單（黑字；側邊欄維持原 UI）
   # ==========================================
   sc_datalist_choices <- reactiveVal(TICKER_PRESETS)
 
-  output$sc_ticker_datalist_ui <- renderUI({
+  output$sc_ticker_suggest_ui <- renderUI({
     ch <- sc_datalist_choices()
     if (is.null(ch) || length(ch) == 0) ch <- TICKER_PRESETS
     labs <- names(ch)
     if (is.null(labs)) labs <- unname(ch)
     labs[!nzchar(labs)] <- unname(ch)[!nzchar(labs)]
-    tags$datalist(
-      id = "sc_ticker_datalist",
-      lapply(seq_along(ch), function(i) {
-        tags$option(value = unname(ch)[[i]], labs[[i]])
+    n <- min(length(ch), 12L)
+    tags$div(
+      id = "sc_ticker_suggest",
+      role = "listbox",
+      lapply(seq_len(n), function(i) {
+        sym <- as.character(unname(ch)[[i]])
+        lab <- as.character(labs[[i]])
+        extra <- sub(paste0("^", sym, "(\\s|[—\\-–])+"), "", lab, perl = TRUE)
+        tags$button(
+          type = "button",
+          class = "ynow-suggest-item",
+          `data-symbol` = sym,
+          tags$span(class = "ynow-suggest-sym", sym),
+          if (nzchar(trimws(extra)) && !identical(trimws(extra), sym)) {
+            tags$span(class = "ynow-suggest-lab", extra)
+          }
+        )
       })
     )
   })
@@ -85,7 +98,6 @@ server <- function(input, output, session) {
   observeEvent(current_ticker(), {
     tk <- current_ticker()
     req(nzchar(tk))
-    # 搜尋成功後把代號放進預選（不改側邊欄）
     base <- sc_datalist_choices()
     if (is.null(base)) base <- TICKER_PRESETS
     if (!(tk %in% unname(base))) {

@@ -60,6 +60,54 @@ ui <- dashboardPage(
         .selectize-dropdown {
           max-height: 300px !important;
         }
+
+        /* 主搜尋框預選清單：黑字白底 */
+        #sc_ticker_suggest {
+          position: absolute;
+          z-index: 2000;
+          left: 0;
+          right: 0;
+          top: 100%;
+          margin-top: 2px;
+          max-height: 260px;
+          overflow-y: auto;
+          background: #ffffff;
+          border: 1px solid #cccccc;
+          border-radius: 4px;
+          box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+          display: none;
+        }
+        #sc_ticker_suggest .ynow-suggest-item {
+          display: block;
+          width: 100%;
+          padding: 8px 12px;
+          color: #000000 !important;
+          background: #ffffff;
+          border: 0;
+          border-bottom: 1px solid #eeeeee;
+          text-align: left;
+          font-size: 13px;
+          cursor: pointer;
+        }
+        #sc_ticker_suggest .ynow-suggest-item:hover,
+        #sc_ticker_suggest .ynow-suggest-item:focus {
+          background: #f2f2f2;
+          color: #000000 !important;
+          outline: none;
+        }
+        #sc_ticker_suggest .ynow-suggest-sym {
+          font-weight: 700;
+          color: #000000;
+          margin-right: 8px;
+        }
+        #sc_ticker_suggest .ynow-suggest-lab {
+          color: #222222;
+          font-weight: 400;
+        }
+        .ynow-sc-wrap {
+          position: relative;
+          max-width: 400px;
+        }
         
         .info-box .info-box-number {
           font-size: 150% !important;
@@ -123,18 +171,42 @@ ui <- dashboardPage(
     fluidRow(
       column(width = 12,
              titlePanel(h5("a lawrence kuo shiny app")),
-             textInput("sc", "Ticker / Stock Code", value = APP_DEFAULTS$stock_code),
-             # 原生 datalist：外觀仍是 textInput，僅多瀏覽器預選建議
-             uiOutput("sc_ticker_datalist_ui"),
+             div(
+               class = "ynow-sc-wrap",
+               textInput("sc", "Ticker / Stock Code", value = APP_DEFAULTS$stock_code),
+               uiOutput("sc_ticker_suggest_ui")
+             ),
              tags$script(HTML("
-               $(document).on('shiny:connected', function() {
-                 $('#sc').attr('list', 'sc_ticker_datalist');
-                 $('#sc').attr('autocomplete', 'on');
-               });
-               $(document).on('input', '#sc', function() {
-                 var v = $(this).val() || '';
-                 Shiny.setInputValue('ticker_typeahead', v, {priority: 'event'});
-               });
+               (function() {
+                 function showSuggest() {
+                   var el = document.getElementById('sc_ticker_suggest');
+                   if (el && el.children.length) el.style.display = 'block';
+                 }
+                 function hideSuggest() {
+                   var el = document.getElementById('sc_ticker_suggest');
+                   if (el) el.style.display = 'none';
+                 }
+                 $(document).on('input focus', '#sc', function() {
+                   var v = $(this).val() || '';
+                   Shiny.setInputValue('ticker_typeahead', v, {priority: 'event'});
+                   showSuggest();
+                 });
+                 $(document).on('blur', '#sc', function() {
+                   setTimeout(hideSuggest, 180);
+                 });
+                 $(document).on('mousedown', '#sc_ticker_suggest .ynow-suggest-item', function(e) {
+                   e.preventDefault();
+                   var sym = $(this).data('symbol');
+                   if (sym) {
+                     $('#sc').val(sym).trigger('input').trigger('change');
+                     Shiny.setInputValue('sc', sym, {priority: 'event'});
+                   }
+                   hideSuggest();
+                 });
+                 $(document).on('shiny:value', function(e) {
+                   if (e.name === 'sc_ticker_suggest_ui') setTimeout(showSuggest, 30);
+                 });
+               })();
              "))
       )
     ),
