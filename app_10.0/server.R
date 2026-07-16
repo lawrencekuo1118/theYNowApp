@@ -365,19 +365,35 @@ server <- function(input, output, session) {
   # ==========================================
   
   # --- 新增 1：歷史股價抓取 (用於決策模組的動能分析) ---
+  # 優先 yfinance（雲端穩定）；quantmod 作後備。快取避免搜尋後重複阻塞 UI。
+  .hist_price_cache <- new.env(parent = emptyenv())
   hist_stock_data <- reactive({
     req(current_ticker())
-    tryCatch({
-      # 使用 quantmod 抓取 Yahoo Finance 數據 (請確保已安裝 quantmod 套件)
-      df <- quantmod::getSymbols(current_ticker(), src = "yahoo", auto.assign = FALSE, 
-                                 from = Sys.Date() - 180, to = Sys.Date())
-      df_final <- data.frame(Date=zoo::index(df), zoo::coredata(df))
-      names(df_final) <- c("Date", "Open", "High", "Low", "Close", "Volume", "Adjusted")
-      return(df_final)
+    tk <- toupper(trimws(current_ticker()))
+    if (exists(tk, envir = .hist_price_cache, inherits = FALSE)) {
+      return(get(tk, envir = .hist_price_cache, inherits = FALSE))
+    }
+    df_final <- tryCatch({
+      # 1y 足夠動能；與 backtest fetch 共用 yfinance-first 路徑
+      hist <- fetch_price_history_df(tk, "1y")
+      if (is.null(hist) || nrow(hist) < 30) stop("insufficient history")
+      # 決策模組只需近約 180 日
+      cutoff <- Sys.Date() - 180
+      hist <- hist[hist$Date >= cutoff, , drop = FALSE]
+      data.frame(
+        Date = hist$Date,
+        Open = NA_real_, High = NA_real_, Low = NA_real_,
+        Close = hist$Close,
+        Volume = if ("Volume" %in% names(hist)) hist$Volume else NA_real_,
+        Adjusted = hist$Close,
+        stringsAsFactors = FALSE
+      )
     }, error = function(e) {
       warning("無法取得歷史股價: ", e$message)
-      return(NULL)
+      NULL
     })
+    if (!is.null(df_final)) assign(tk, df_final, envir = .hist_price_cache)
+    df_final
   })
   
   # --- 新增 2：掛載投資決策漏斗模組 (Decision Funnel) ---
@@ -964,23 +980,35 @@ server <- function(input, output, session) {
     )
     
     if (is.null(val) || any(is.na(val))) {
+      prev_g_na <- isolate(estimated_g())
       estimated_g(NULL)
-      updateSelectInput(session, "g_growth_method", label = "預估 FCFF 成長率 (⚠️ 缺乏數據)")
+      if (!is.null(prev_g_na)) {
+        updateSelectInput(session, "g_growth_method", label = "預估 FCFF 成長率 (⚠️ 缺乏數據)")
+      }
       return()
     }
     
+    prev_g <- isolate(estimated_g())
+    prev_method <- isolate(estimated_g_meta$method)
     estimated_g(val)
     estimated_g_meta$method <- method
     estimated_g_meta$fund_res <- fund_res
-    updateSelectInput(session, "g_growth_method", label = paste0("預估 FCFF 成長率 ➔ ", val, " %"))
+    changed <- !identical(prev_g, val) || !identical(prev_method, method)
+    if (isTRUE(changed)) {
+      updateSelectInput(session, "g_growth_method", label = paste0("預估 FCFF 成長率 ➔ ", val, " %"))
+    }
     
     if (method != "custom" && !is.na(val) && !identical(input$dcf_mode, "two_stage")) {
-      updateNumericInput(session, "g_stage1", value = val)
+      if (is.null(input$g_stage1) || is.na(as.numeric(input$g_stage1)) ||
+          abs(as.numeric(input$g_stage1) - as.numeric(val)) > 1e-4) {
+        updateNumericInput(session, "g_stage1", value = val)
+      }
     }
-    # 觸發 FCFF 投影表依新成長率重算
-    run_calc_trigger(run_calc_trigger() + 1)
+    # 觸發 FCFF 投影表依新成長率重算（必須 isolate，否則 observe 自讀自寫會無限迴圈）
+    if (isTRUE(changed)) {
+      run_calc_trigger(isolate(run_calc_trigger()) + 1)
+    }
   })
-  
   output$g_result <- renderUI({
     method <- estimated_g_meta$method
     fund_res <- estimated_g_meta$fund_res
@@ -1106,7 +1134,9 @@ server <- function(input, output, session) {
     if (is.null(bs) || !is.data.frame(bs) || nrow(bs) == 0) return(invisible(NULL))
 
     shares <- select_current_metric(bs, "Share Issued|Ordinary Shares Number", "stock")
-    if (is.na(shares) || shares == 0) return(invisible(NULL))
+    if (is.na(shares) || shares == 0) {
+      return(invisible(NULL))
+    }
 
     price_val <- NA_real_
     if (!is.null(sum_df) && is.data.frame(sum_df) && "Previous Close" %in% sum_df$Item) {
@@ -1668,9 +1698,18 @@ server <- function(input, output, session) {
     bt_param_notes_txt(p$notes)
   }
 
-  refresh_bt_params <- function() {
+  refresh_bt_params <- function(fetch_hist = TRUE) {
     req(current_ticker(), d_income_statement(), d_cash_flow())
-    hist_long <- tryCatch(fetch_price_history_df(current_ticker(), "1y"), error = function(e) NULL)
+    hist_long <- NULL
+    if (isTRUE(fetch_hist)) {
+      # 優先用搜尋後已快取的股價，避免再打一次網路
+      cached <- tryCatch(hist_stock_data(), error = function(e) NULL)
+      if (!is.null(cached) && nrow(cached) >= 30) {
+        hist_long <- cached[, c("Date", "Close", "Volume"), drop = FALSE]
+      } else {
+        hist_long <- tryCatch(fetch_price_history_df(current_ticker(), "1y"), error = function(e) NULL)
+      }
+    }
     p <- derive_bt_params(
       d_is = d_income_statement(),
       d_bs = d_balance_sheet(),
@@ -1683,17 +1722,18 @@ server <- function(input, output, session) {
     invisible(p)
   }
 
+  # 搜尋後先用財報推導參數（不另抓股價），避免與 Overview 繪圖搶同一條 session
   observeEvent(list(current_ticker(), scraped_financials()), {
     req(current_ticker(), scraped_financials())
     if (!identical(input$bt_param_mode, "auto")) return()
-    tryCatch(refresh_bt_params(), error = function(e) {
+    tryCatch(refresh_bt_params(fetch_hist = FALSE), error = function(e) {
       bt_param_notes_txt(paste("自動推導失敗：", e$message))
     })
   }, ignoreInit = FALSE)
 
   observeEvent(input$bt_refresh_params, {
     tryCatch({
-      refresh_bt_params()
+      refresh_bt_params(fetch_hist = TRUE)
       showNotification("✅ 已依目前公司重算 Backtest 參數", type = "message")
     }, error = function(e) {
       showNotification(paste("參數重算失敗：", e$message), type = "error")
@@ -1702,7 +1742,7 @@ server <- function(input, output, session) {
 
   observeEvent(input$bt_param_mode, {
     if (identical(input$bt_param_mode, "auto")) {
-      tryCatch(refresh_bt_params(), error = function(e) NULL)
+      tryCatch(refresh_bt_params(fetch_hist = FALSE), error = function(e) NULL)
     } else {
       bt_param_notes_txt("手動覆寫模式：調整下方門檻／權重後再執行回測。")
     }
@@ -1711,13 +1751,17 @@ server <- function(input, output, session) {
   # 自動模式：使用者改動參數後不強制鎖死（允許微調）；切回 auto 才重算
 
   output$bt_param_notes <- renderUI({
-    tags$p(style = "margin: 8px 0 0 0; color: #444;", icon("info-circle"), " ", bt_param_notes_txt())
+    msg <- bt_param_notes_txt()
+    tags$div(
+      style = "margin: 8px 0 12px 0; padding: 8px 10px; background: #f9f9f9; border-left: 3px solid #00a65a; border-radius: 3px; font-size: 12px; color: #444; line-height: 1.5;",
+      icon("info-circle"), " ", msg
+    )
   })
 
   output$bt_run_status <- renderUI({
     msg <- bt_run_msg()
     if (!nzchar(msg)) return(NULL)
-    tags$p(style = "color:#666; font-size:12px;", msg)
+    tags$p(style = "margin: 10px 0 0 0; color: #666; font-size: 12px; line-height: 1.45;", icon("clock"), " ", msg)
   })
 
   observeEvent(input$run_bt, {
@@ -1790,42 +1834,69 @@ server <- function(input, output, session) {
   output$perf_metrics <- renderUI({
     res <- bt_result()
     if (is.null(res) || is.null(res$metrics)) {
-      return(helpText("執行回測後顯示 Sharpe、最大回撤與參數穩定性。"))
+      return(
+        tags$div(
+          style = "color: #888; font-size: 12.5px; line-height: 1.55;",
+          icon("chart-bar"),
+          " 執行回測後，此處會顯示 ",
+          tags$b("Sharpe 比率"), "（風險調整後報酬）、",
+          tags$b("最大回撤"), "（歷史最大虧損幅度）與",
+          tags$b("參數高原"), "（兩策略穩定性粗評）。"
+        )
+      )
     }
     m <- res$metrics
     best <- m$best
     sharpe_show <- if (identical(best, "A")) m$sharpe_a else m$sharpe_b
     mdd_show <- if (identical(best, "A")) m$mdd_a else m$mdd_b
     label_best <- if (identical(best, "A")) "模式 A" else "模式 B"
+    sharpe_a_txt <- if (is.na(m$sharpe_a)) "N/A" else sprintf("%.2f", m$sharpe_a)
+    sharpe_b_txt <- if (is.na(m$sharpe_b)) "N/A" else sprintf("%.2f", m$sharpe_b)
 
-    fluidRow(
-      column(4,
-             tipify(
-               valueBox(
-                 if (is.na(sharpe_show)) "N/A" else sprintf("%.2f", sharpe_show),
-                 paste0("Sharpe（較佳：", label_best, "）"),
-                 icon = icon("chart-line"),
-                 color = "green"
-               ),
-               "年化夏普：日報酬均值／標準差 × √252。", placement = "bottom"
-             )
+    tagList(
+      tags$p(
+        style = "margin: 0 0 12px 0; font-size: 12px; color: #666;",
+        "以下以 Sharpe 較高的策略為主顯示；A＝", sharpe_a_txt, "，B＝", sharpe_b_txt,
+        "。數值僅供策略比較參考，不代表未來績效。"
       ),
-      column(4,
-             tipify(
-               valueBox(
-                 if (is.na(mdd_show)) "N/A" else paste0(sprintf("%.1f", mdd_show * 100), "%"),
-                 paste0("Max Drawdown（", label_best, "）"),
-                 icon = icon("arrow-down"),
-                 color = "red"
-               ),
-               "該策略淨值相對歷史高點的最大回撤。", placement = "bottom"
-             )
-      ),
-      column(4,
-             tipify(
-               valueBox(m$plateau, "參數高原（粗評）", icon = icon("mountain"), color = "purple"),
-               "比較模式 A/B Sharpe 差距；敏感代表策略分化大，宜再檢查門檻。", placement = "bottom"
-             )
+      fluidRow(
+        column(
+          4,
+          tipify(
+            valueBox(
+              if (is.na(sharpe_show)) "N/A" else sprintf("%.2f", sharpe_show),
+              paste0("Sharpe 比率（較佳：", label_best, "）"),
+              icon = icon("chart-line"),
+              color = "green"
+            ),
+            "年化 Sharpe ≈ 日報酬均值 ÷ 標準差 × √252。愈高代表單位風險下報酬愈佳。", placement = "bottom"
+          ),
+          tags$p(style = "margin: 6px 0 0 4px; font-size: 11px; color: #777;",
+                 "風險調整後報酬；>1 通常視為不錯，>2 屬優異（依市場而異）。")
+        ),
+        column(
+          4,
+          tipify(
+            valueBox(
+              if (is.na(mdd_show)) "N/A" else paste0(sprintf("%.1f", mdd_show * 100), "%"),
+              paste0("最大回撤 Max DD（", label_best, "）"),
+              icon = icon("arrow-down"),
+              color = "red"
+            ),
+            "淨值自歷史高點回落的最大百分比幅度。", placement = "bottom"
+          ),
+          tags$p(style = "margin: 6px 0 0 4px; font-size: 11px; color: #777;",
+                 "歷史最大虧損幅度；愈接近 0 代表回撤愈小（負值愈大風險愈高）。")
+        ),
+        column(
+          4,
+          tipify(
+            valueBox(m$plateau, "參數高原（粗評）", icon = icon("mountain"), color = "purple"),
+            "比較模式 A/B 的 Sharpe 差距；差距小代表策略分化不大。", placement = "bottom"
+          ),
+          tags$p(style = "margin: 6px 0 0 4px; font-size: 11px; color: #777;",
+                 "「高原」代表參數微調不致劇烈改變結果；「敏感」宜再檢查門檻設定。")
+        )
       )
     )
   })

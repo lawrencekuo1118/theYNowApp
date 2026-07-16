@@ -1,28 +1,30 @@
-# theYNowApp v10.1（雲端相容）
+# theYNowApp
 
 Taiwan stock fundamental analysis Shiny app（雲端版：yfinance，無 Chromote）。
 
-## v10.1
+## 維護方式
 
-- **側邊欄「推薦」標記**：依 Model Selector（配息／FCF／產業）自動在 DD-Model、DCF-Model、P/B-Asset 旁顯示紅色「推薦」徽章
-- 與 Dashboard 估值導航同一套規則（DCF／DDM／雙模型／P/B）
-- **Ticker 下拉預選**：主搜尋框（`sc`）以原生 datalist 提供熱門清單 + Yahoo 即時建議；側邊欄搜尋框維持原樣
-- **永續成長率方法**：Macro（Rf）／Fundamental（Retention×ROE）／Lifecycle，同步 DCF `sgr`、DDM `g`、RI `ri_g`
+本機僅維護此路徑，**每個迭代版本一個資料夾**：
 
-## Run
+`/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp`
+
+- 目前版本：`app_10.0/`（v10.1）
+- 歷史版本：`app 3.0` … `app_9.0`（本機封存；GitHub Releases 另有標籤）
+
+## 執行目前版本
 
 ```r
-# from the repository root
-shiny::runApp()
+shiny::runApp("app_10.0")
 ```
 
-Requires R packages from `global.R` / `setup.R`, and Python deps in `requirements.txt`.
+## v10.1 重點
 
-## Cloud notes
+- 側邊欄「推薦」標記（DDM／DCF／P/B）
+- 主搜尋框 Ticker 預選建議
+- 永續成長率：Macro／Fundamental／Lifecycle
+- 搜尋後自動 WACC；DCF 圖含歷史／折現模式
+- Backtest Zone 版面重整（執行面板 + 三步驟參數分頁）
 
-- Financials via **yfinance**（shinyapps.io 不需 Chrome）
-- `requirements.txt` / reticulate for cloud Python
-- KPI helpers use multi-alias row matching for yfinance naming
-- Backtest Zone：依公司基本面自動帶參數
+## Cloud
 
 Live: https://hopesmasher1118.shinyapps.io/TheYNowApp/
