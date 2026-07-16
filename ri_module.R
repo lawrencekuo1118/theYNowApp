@@ -115,8 +115,7 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
       raw_shares <- select_current_metric(df_bs, "Ordinary Shares Number|Share Issued|Total Shares Outstanding", "stock")
       shares <- if (is.na(raw_shares) || raw_shares <= 0) 1 else raw_shares
       
-      equity <- select_current_metric(df_bs, "Common Stock Equity", "stock")
-      if (is.na(equity)) equity <- select_current_metric(df_bs, "Total Equity Gross Minority Interest", "stock")
+      equity <- select_current_metric_any(df_bs, EQUITY_PATTERNS, "stock")
       
       if (!is.na(equity) && !is.na(shares) && shares > 0) {
         bvps <- equity / shares
@@ -124,8 +123,7 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
       }
       
       # 3. 計算歷史 ROE
-      ni <- select_current_metric(d_income_statement(), "Net Income from Continuing & Discontinued Operation", "flow")
-      if (is.na(ni)) ni <- select_current_metric(d_income_statement(), "Net Income", "flow")
+      ni <- select_current_metric_any(d_income_statement(), NET_INCOME_PATTERNS, "flow")
       
       if (!is.na(ni) && !is.na(equity) && equity > 0) {
         roe <- (ni / equity) * 100
@@ -155,8 +153,7 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
       raw_shares <- select_current_metric(df_bs, "Ordinary Shares Number|Share Issued|Total Shares Outstanding", "stock")
       shares <- if (is.na(raw_shares) || raw_shares <= 0) 1 else raw_shares
       
-      equity <- select_current_metric(df_bs, "Common Stock Equity", "stock")
-      if (is.na(equity)) equity <- select_current_metric(df_bs, "Total Equity Gross Minority Interest", "stock")
+      equity <- select_current_metric_any(df_bs, EQUITY_PATTERNS, "stock")
       
       if (!is.na(equity) && !is.na(shares) && shares > 0) {
         calc_b0 <- round(equity / shares, 2)

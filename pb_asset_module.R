@@ -134,8 +134,7 @@ pb_asset_module_server <- function(id,
       req(d_balance_sheet())
       df_bs <- d_balance_sheet()
       
-      equity <- select_current_metric(df_bs, "Common Stock Equity", "stock")
-      if (is.na(equity)) equity <- select_current_metric(df_bs, "Stockholders Equity|Total Equity Gross Minority Interest", "stock")
+      equity <- select_current_metric_any(df_bs, EQUITY_PATTERNS, "stock")
       
       shares <- select_current_metric(df_bs, "Ordinary Shares Number|Share Issued|Total Shares Outstanding", "stock")
       

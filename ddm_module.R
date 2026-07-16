@@ -63,11 +63,9 @@ ddm_module_server <- function(id, ddm_g = reactive(NULL), ddm_ke = reactive(NULL
       # --- 2. 計算基本面隱含成長率（Fundamental Growth） g = ROE × 保留盈餘率 (Retention Ratio) ---
       if (!is.null(d_income_statement) && !is.null(d_income_statement())) {
         
-        ni <- select_current_metric(d_income_statement(), "Net Income from Continuing & Discontinued Operation", "flow")
-        if (is.na(ni)) ni <- select_current_metric(d_income_statement(), "Net Income", "flow")
+        ni <- select_current_metric_any(d_income_statement(), NET_INCOME_PATTERNS, "flow")
         
-        equity <- select_current_metric(d_balance_sheet(), "Common Stock Equity", "stock")
-        if (is.na(equity)) equity <- select_current_metric(d_balance_sheet(), "Total Equity Gross Minority Interest", "stock")
+        equity <- select_current_metric_any(d_balance_sheet(), EQUITY_PATTERNS, "stock")
         
         if (!is.na(ni) && !is.na(equity) && equity > 0) {
           # 步驟 A: 計算 ROE
