@@ -38,38 +38,26 @@ server <- function(input, output, session) {
   })
 
   # ==========================================
-  # 🔎 Ticker 下拉預選（熱門清單 + Yahoo 即時搜尋）
+  # 🔎 主搜尋框 datalist 預選（側邊欄維持原 UI，不改動）
   # ==========================================
-  .ticker_choices_base <- function(recent = character(0), query = "") {
-    recent <- unique(toupper(trimws(as.character(recent))))
-    recent <- recent[nzchar(recent)]
-    recent_named <- if (length(recent)) stats::setNames(recent, recent) else character(0)
+  sc_datalist_choices <- reactiveVal(TICKER_PRESETS)
 
-    if (nzchar(trimws(query %||% ""))) {
-      hits <- tryCatch(search_ticker_choices(query), error = function(e) TICKER_PRESETS)
-      # Prefer recent matches first
-      extra_recent <- recent_named[!(unname(recent_named) %in% unname(hits))]
-      return(c(extra_recent, hits))
-    }
-
-    presets <- TICKER_PRESETS
-    presets <- presets[!(unname(presets) %in% unname(recent_named))]
-    c(recent_named, presets)
-  }
-
-  .refresh_ticker_selectize <- function(selected = NULL, query = "") {
-    sel <- selected %||% isolate(input$sc) %||% APP_DEFAULTS$stock_code
-    sel <- toupper(trimws(as.character(sel)[1]))
-    ch <- .ticker_choices_base(values$recentsearch, query = query)
-    if (nzchar(sel) && !(sel %in% unname(ch))) {
-      ch <- c(stats::setNames(sel, sel), ch)
-    }
-    updateSelectizeInput(session, "sc", choices = ch, selected = sel, server = FALSE)
-    updateSelectizeInput(session, "txt_search", choices = ch, selected = sel, server = FALSE)
-  }
+  output$sc_ticker_datalist_ui <- renderUI({
+    ch <- sc_datalist_choices()
+    if (is.null(ch) || length(ch) == 0) ch <- TICKER_PRESETS
+    labs <- names(ch)
+    if (is.null(labs)) labs <- unname(ch)
+    labs[!nzchar(labs)] <- unname(ch)[!nzchar(labs)]
+    tags$datalist(
+      id = "sc_ticker_datalist",
+      lapply(seq_along(ch), function(i) {
+        tags$option(value = unname(ch)[[i]], labs[[i]])
+      })
+    )
+  })
 
   session$onFlushed(function() {
-    .refresh_ticker_selectize(APP_DEFAULTS$stock_code)
+    sc_datalist_choices(TICKER_PRESETS)
   }, once = TRUE)
 
   ticker_typeahead_q <- shiny::debounce(
@@ -79,32 +67,29 @@ server <- function(input, output, session) {
 
   observeEvent(ticker_typeahead_q(), {
     q <- trimws(as.character(ticker_typeahead_q() %||% ""))
-    req(nchar(q) >= 1)
-    # Keep whichever box the user is editing as the selected value display
-    cur <- isolate({
-      sc <- trimws(as.character(input$sc %||% ""))
-      sb <- trimws(as.character(input$txt_search %||% ""))
-      if (nzchar(sc)) sc else if (nzchar(sb)) sb else toupper(q)
-    })
-    .refresh_ticker_selectize(selected = cur, query = q)
-  }, ignoreInit = TRUE)
-
-  # 雙框同步（選單／手打擇一後兩邊一致）
-  observeEvent(input$sc, {
-    v <- toupper(trimws(as.character(input$sc %||% "")))
-    req(nzchar(v))
-    sb <- toupper(trimws(as.character(isolate(input$txt_search) %||% "")))
-    if (!identical(v, sb)) {
-      updateSelectizeInput(session, "txt_search", selected = v)
+    if (!nzchar(q)) {
+      base <- TICKER_PRESETS
+      recent <- values$recentsearch
+      if (length(recent)) {
+        recent <- unique(toupper(trimws(recent)))
+        recent_named <- stats::setNames(recent, recent)
+        base <- c(recent_named, base[!(unname(base) %in% recent)])
+      }
+      sc_datalist_choices(base)
+      return()
     }
+    hits <- tryCatch(search_ticker_choices(q), error = function(e) TICKER_PRESETS)
+    sc_datalist_choices(hits)
   }, ignoreInit = TRUE)
 
-  observeEvent(input$txt_search, {
-    v <- toupper(trimws(as.character(input$txt_search %||% "")))
-    req(nzchar(v))
-    scv <- toupper(trimws(as.character(isolate(input$sc) %||% "")))
-    if (!identical(v, scv)) {
-      updateSelectizeInput(session, "sc", selected = v)
+  observeEvent(current_ticker(), {
+    tk <- current_ticker()
+    req(nzchar(tk))
+    # 搜尋成功後把代號放進預選（不改側邊欄）
+    base <- sc_datalist_choices()
+    if (is.null(base)) base <- TICKER_PRESETS
+    if (!(tk %in% unname(base))) {
+      sc_datalist_choices(c(stats::setNames(tk, tk), base))
     }
   }, ignoreInit = TRUE)
   
@@ -127,7 +112,6 @@ server <- function(input, output, session) {
         if (!(stock_code %in% values$recentsearch)) {
           values$recentsearch <- head(c(stock_code, values$recentsearch), 5)
         }
-        .refresh_ticker_selectize(selected = stock_code)
 
         incProgress(0.5, detail = "正在抓取財報明細（yfinance）...")
         res <- cached_scrape_financials(stock_code)
