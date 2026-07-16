@@ -433,3 +433,51 @@ def scrape_all_financials(ticker="AMZN"):
         "Balance Sheet": {"collapsed": empty_payload, "expanded": empty_payload},
         "Cash Flow": {"collapsed": empty_payload, "expanded": empty_payload},
     }
+
+def search_tickers(query="", max_results=12):
+    """
+    Typeahead ticker suggestions via yfinance.Search.
+    Returns plain list of dicts for reticulate: symbol, name, type, exchange, label.
+    """
+    q = (query or "").strip()
+    if len(q) < 1:
+        return []
+    max_results = int(max_results) if max_results else 12
+    max_results = max(1, min(max_results, 25))
+    out = []
+    try:
+        s = yf.Search(q, max_results=max(max_results * 2, 12))
+        quotes = getattr(s, "quotes", None) or []
+        preferred = []
+        other = []
+        for item in quotes:
+            if not isinstance(item, dict):
+                continue
+            sym = item.get("symbol")
+            if not sym:
+                continue
+            name = item.get("shortname") or item.get("longname") or item.get("longName") or ""
+            qtype = item.get("quoteType") or item.get("typeDisp") or ""
+            exch = item.get("exchDisp") or item.get("exchange") or ""
+            label = f"{sym} — {name}" if name else str(sym)
+            if qtype or exch:
+                extras = " · ".join([x for x in [qtype, exch] if x])
+                if extras:
+                    label = f"{label} ({extras})"
+            row = {
+                "symbol": str(sym),
+                "name": str(name),
+                "type": str(qtype),
+                "exchange": str(exch),
+                "label": label,
+            }
+            qt = str(qtype).upper()
+            if qt in ("EQUITY", "ETF", "INDEX"):
+                preferred.append(row)
+            else:
+                other.append(row)
+        out = (preferred + other)[:max_results]
+    except Exception as e:
+        print(f"⚠️ search_tickers failed ({q}): {e}")
+        return []
+    return out

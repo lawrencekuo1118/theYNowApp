@@ -36,6 +36,77 @@ server <- function(input, output, session) {
     req(input$sc)
     current_ticker(toupper(trimws(input$sc)))
   })
+
+  # ==========================================
+  # 🔎 Ticker 下拉預選（熱門清單 + Yahoo 即時搜尋）
+  # ==========================================
+  .ticker_choices_base <- function(recent = character(0), query = "") {
+    recent <- unique(toupper(trimws(as.character(recent))))
+    recent <- recent[nzchar(recent)]
+    recent_named <- if (length(recent)) stats::setNames(recent, recent) else character(0)
+
+    if (nzchar(trimws(query %||% ""))) {
+      hits <- tryCatch(search_ticker_choices(query), error = function(e) TICKER_PRESETS)
+      # Prefer recent matches first
+      extra_recent <- recent_named[!(unname(recent_named) %in% unname(hits))]
+      return(c(extra_recent, hits))
+    }
+
+    presets <- TICKER_PRESETS
+    presets <- presets[!(unname(presets) %in% unname(recent_named))]
+    c(recent_named, presets)
+  }
+
+  .refresh_ticker_selectize <- function(selected = NULL, query = "") {
+    sel <- selected %||% isolate(input$sc) %||% APP_DEFAULTS$stock_code
+    sel <- toupper(trimws(as.character(sel)[1]))
+    ch <- .ticker_choices_base(values$recentsearch, query = query)
+    if (nzchar(sel) && !(sel %in% unname(ch))) {
+      ch <- c(stats::setNames(sel, sel), ch)
+    }
+    updateSelectizeInput(session, "sc", choices = ch, selected = sel, server = FALSE)
+    updateSelectizeInput(session, "txt_search", choices = ch, selected = sel, server = FALSE)
+  }
+
+  session$onFlushed(function() {
+    .refresh_ticker_selectize(APP_DEFAULTS$stock_code)
+  }, once = TRUE)
+
+  ticker_typeahead_q <- shiny::debounce(
+    reactive({ input$ticker_typeahead }),
+    millis = 280
+  )
+
+  observeEvent(ticker_typeahead_q(), {
+    q <- trimws(as.character(ticker_typeahead_q() %||% ""))
+    req(nchar(q) >= 1)
+    # Keep whichever box the user is editing as the selected value display
+    cur <- isolate({
+      sc <- trimws(as.character(input$sc %||% ""))
+      sb <- trimws(as.character(input$txt_search %||% ""))
+      if (nzchar(sc)) sc else if (nzchar(sb)) sb else toupper(q)
+    })
+    .refresh_ticker_selectize(selected = cur, query = q)
+  }, ignoreInit = TRUE)
+
+  # 雙框同步（選單／手打擇一後兩邊一致）
+  observeEvent(input$sc, {
+    v <- toupper(trimws(as.character(input$sc %||% "")))
+    req(nzchar(v))
+    sb <- toupper(trimws(as.character(isolate(input$txt_search) %||% "")))
+    if (!identical(v, sb)) {
+      updateSelectizeInput(session, "txt_search", selected = v)
+    }
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$txt_search, {
+    v <- toupper(trimws(as.character(input$txt_search %||% "")))
+    req(nzchar(v))
+    scv <- toupper(trimws(as.character(isolate(input$sc) %||% "")))
+    if (!identical(v, scv)) {
+      updateSelectizeInput(session, "sc", selected = v)
+    }
+  }, ignoreInit = TRUE)
   
   # ==========================================
   # 🌐 核心爬蟲：只要中央大腦的代碼改變，就自動執行完整抓取
@@ -56,6 +127,7 @@ server <- function(input, output, session) {
         if (!(stock_code %in% values$recentsearch)) {
           values$recentsearch <- head(c(stock_code, values$recentsearch), 5)
         }
+        .refresh_ticker_selectize(selected = stock_code)
 
         incProgress(0.5, detail = "正在抓取財報明細（yfinance）...")
         res <- cached_scrape_financials(stock_code)

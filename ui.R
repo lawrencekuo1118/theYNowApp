@@ -14,7 +14,40 @@ ui <- dashboardPage(
     width = 250,
     collapsed = FALSE,
     column(width = 12,
-           sidebarSearchForm(textId = "txt_search", buttonId = "btn_search", label = "Search..."),
+           div(
+             class = "sidebar-form ynow-ticker-search",
+             style = "padding: 10px 10px 0 10px;",
+             selectizeInput(
+               "txt_search",
+               label = NULL,
+               choices = NULL,
+               selected = APP_DEFAULTS$stock_code,
+               width = "100%",
+               options = list(
+                 placeholder = "Search ticker...",
+                 maxItems = 1,
+                 create = TRUE,
+                 createOnBlur = TRUE,
+                 persist = TRUE,
+                 openOnFocus = TRUE,
+                 dropdownParent = "body",
+                 onType = I("function(str) {
+                   if (str && str.length >= 1) {
+                     Shiny.setInputValue('ticker_typeahead', str, {priority: 'event'});
+                   }
+                 }")
+               )
+             ),
+             div(
+               style = "margin-top: 6px;",
+               actionButton(
+                 "btn_search", "搜尋",
+                 icon = icon("search"),
+                 class = "btn-block btn-primary",
+                 style = "width: 100%;"
+               )
+             )
+           ),
            column(width = 12, textOutput("today"),
                   hr()
            )
@@ -59,6 +92,31 @@ ui <- dashboardPage(
         }
         .selectize-dropdown {
           max-height: 300px !important;
+          z-index: 99999 !important;
+        }
+        .ynow-ticker-search .selectize-control {
+          margin-bottom: 0 !important;
+        }
+        .ynow-ticker-search .selectize-input {
+          background: #1a1a1a !important;
+          border-color: #444 !important;
+          color: #eee !important;
+          min-height: 34px;
+        }
+        .ynow-ticker-search .selectize-input input {
+          color: #eee !important;
+        }
+        .ynow-ticker-search .selectize-dropdown {
+          background: #222 !important;
+          border-color: #555 !important;
+          color: #eee !important;
+        }
+        .ynow-ticker-search .selectize-dropdown .option.active {
+          background: #3a3a3a !important;
+        }
+        #sc + .selectize-control .selectize-dropdown,
+        .selectize-dropdown {
+          font-size: 13px;
         }
         
         .info-box .info-box-number {
@@ -123,8 +181,26 @@ ui <- dashboardPage(
     fluidRow(
       column(width = 12,
              titlePanel(h5("a lawrence kuo shiny app")),
-             textInput("sc", "Ticker / Stock Code", value = APP_DEFAULTS$stock_code)
-             
+             selectizeInput(
+               "sc",
+               "Ticker / Stock Code",
+               choices = NULL,
+               selected = APP_DEFAULTS$stock_code,
+               width = "420px",
+               options = list(
+                 placeholder = "輸入代號或公司名稱…",
+                 maxItems = 1,
+                 create = TRUE,
+                 createOnBlur = TRUE,
+                 persist = TRUE,
+                 openOnFocus = TRUE,
+                 onType = I("function(str) {
+                   if (str && str.length >= 1) {
+                     Shiny.setInputValue('ticker_typeahead', str, {priority: 'event'});
+                   }
+                 }")
+               )
+             )
       )
     ),
     fluidRow(

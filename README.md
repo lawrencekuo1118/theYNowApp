@@ -6,6 +6,7 @@ Taiwan stock fundamental analysis Shiny app（雲端版：yfinance，無 Chromot
 
 - **側邊欄「推薦」標記**：依 Model Selector（配息／FCF／產業）自動在 DD-Model、DCF-Model、P/B-Asset 旁顯示紅色「推薦」徽章
 - 與 Dashboard 估值導航同一套規則（DCF／DDM／雙模型／P/B）
+- **Ticker 下拉預選**：側邊欄與主搜尋框支援熱門清單 + Yahoo 即時搜尋建議（可手打任意代號）
 
 ## Run
 

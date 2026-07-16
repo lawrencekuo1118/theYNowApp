@@ -147,3 +147,95 @@ get_risk_free_rate <- function() {
 }
 
 cached_get_risk_free_rate <- memoise::memoise(get_risk_free_rate, cache = my_cache)
+
+# ==========================================
+# 🔎 5. Ticker 下拉預選／即時搜尋
+# ==========================================
+if (!exists("%||%", mode = "function")) {
+  `%||%` <- function(x, y) if (is.null(x) || (length(x) == 1 && is.na(x))) y else x
+}
+
+TICKER_PRESETS <- c(
+  "AMZN — Amazon.com" = "AMZN",
+  "AAPL — Apple" = "AAPL",
+  "MSFT — Microsoft" = "MSFT",
+  "GOOGL — Alphabet" = "GOOGL",
+  "META — Meta Platforms" = "META",
+  "NVDA — NVIDIA" = "NVDA",
+  "TSLA — Tesla" = "TSLA",
+  "BRK-B — Berkshire Hathaway" = "BRK-B",
+  "JPM — JPMorgan Chase" = "JPM",
+  "V — Visa" = "V",
+  "JNJ — Johnson & Johnson" = "JNJ",
+  "XOM — Exxon Mobil" = "XOM",
+  "UNH — UnitedHealth" = "UNH",
+  "LLY — Eli Lilly" = "LLY",
+  "AVGO — Broadcom" = "AVGO",
+  "TSM — Taiwan Semiconductor (ADR)" = "TSM",
+  "2330.TW — 台積電" = "2330.TW",
+  "2317.TW — 鴻海" = "2317.TW",
+  "2454.TW — 聯發科" = "2454.TW",
+  "2308.TW — 台達電" = "2308.TW",
+  "2382.TW — 廣達" = "2382.TW",
+  "2881.TW — 富邦金" = "2881.TW",
+  "2882.TW — 國泰金" = "2882.TW",
+  "SPY — S&P 500 ETF" = "SPY",
+  "QQQ — Nasdaq 100 ETF" = "QQQ"
+)
+
+#' Yahoo／yfinance typeahead → named character vector (label = symbol)
+search_ticker_choices <- function(query, max_results = 12L) {
+  query <- trimws(as.character(query %||% ""))
+  if (!nzchar(query)) return(TICKER_PRESETS)
+
+  py_hits <- tryCatch({
+    if (!exists("search_tickers", mode = "function")) {
+      return(NULL)
+    }
+    search_tickers(query, as.integer(max_results))
+  }, error = function(e) {
+    message("⚠️ search_tickers: ", e$message)
+    NULL
+  })
+
+  out <- character(0)
+  if (!is.null(py_hits) && length(py_hits) > 0) {
+    # reticulate may return list of named lists or data.frame-like
+    if (is.data.frame(py_hits)) {
+      syms <- as.character(py_hits$symbol)
+      labs <- as.character(py_hits$label)
+    } else {
+      syms <- vapply(py_hits, function(x) {
+        as.character(x[["symbol"]] %||% NA_character_)
+      }, character(1))
+      labs <- vapply(py_hits, function(x) {
+        as.character(x[["label"]] %||% x[["symbol"]] %||% NA_character_)
+      }, character(1))
+    }
+    ok <- !is.na(syms) & nzchar(syms)
+    syms <- syms[ok]
+    labs <- labs[ok]
+    if (length(syms) > 0) {
+      labs[!nzchar(labs)] <- syms[!nzchar(labs)]
+      # named vector: names shown in dropdown, values are symbols
+      out <- stats::setNames(syms, labs)
+      out <- out[!duplicated(out)]
+    }
+  }
+
+  # Local preset filter (ticker or company label) as fallback / supplement
+  q_up <- toupper(query)
+  preset_keep <- grepl(q_up, toupper(TICKER_PRESETS), fixed = TRUE) |
+    grepl(q_up, toupper(names(TICKER_PRESETS)), fixed = TRUE)
+  local_hits <- TICKER_PRESETS[preset_keep]
+
+  if (length(out) == 0) {
+    if (length(local_hits) > 0) return(local_hits)
+    # Still allow exact typed symbol as a choice
+    return(stats::setNames(toupper(query), toupper(query)))
+  }
+
+  # Merge: Yahoo first, then presets not already present
+  extra <- local_hits[!(unname(local_hits) %in% unname(out))]
+  c(out, extra)
+}
