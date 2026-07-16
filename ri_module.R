@@ -100,7 +100,8 @@ ri_module_ui <- function(id) {
 # ⚙️ 後端 Server 邏輯
 # ==========================================
 # 🔴 注意：這裡的參數移除了 scraped_shares，讓模組更獨立
-ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flow, global_re) {
+ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flow, global_re,
+                             global_g = reactive(NULL)) {
   moduleServer(id, function(input, output, session) {
     
     # ==========================================
@@ -140,6 +141,11 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
       } else {
         updateNumericInput(session, "ri_payout", value = 0)
       }
+
+      # 5. 永續 g：若有中央同步則採用
+      if (!is.null(global_g) && !is.null(global_g()) && is.finite(global_g())) {
+        updateNumericInput(session, "ri_g", value = round(as.numeric(global_g()), 2))
+      }
     })
     
     # ==========================================
@@ -167,7 +173,12 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
     # 🔘 按鈕邏輯：重設所有 RI 參數
     observeEvent(input$btn_reset_ri_params, {
       updateNumericInput(session, "ri_years", value = 5)
-      updateNumericInput(session, "ri_g", value = 2.0)
+      g_reset <- if (!is.null(global_g) && !is.null(global_g()) && is.finite(global_g())) {
+        round(as.numeric(global_g()), 2)
+      } else {
+        2.0
+      }
+      updateNumericInput(session, "ri_g", value = g_reset)
       if (!is.null(global_re())) {
         updateNumericInput(session, "ri_ke", value = round(global_re() * 100, 2))
       }
@@ -179,6 +190,15 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
       req(global_re())
       updateNumericInput(session, "ri_ke", value = round(global_re() * 100, 2))
     })
+
+    # 同步中央永續成長率 g
+    observeEvent(global_g(), {
+      req(!is.null(global_g()), is.finite(global_g()))
+      g_val <- round(as.numeric(global_g()), 2)
+      if (is.null(input$ri_g) || abs(as.numeric(input$ri_g) - g_val) > 1e-4) {
+        updateNumericInput(session, "ri_g", value = g_val)
+      }
+    }, ignoreInit = FALSE)
     
     # ==========================================
     # 🧮 核心運算引擎 (RI Model)

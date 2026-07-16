@@ -133,6 +133,14 @@ server <- function(input, output, session) {
         is_expanded(FALSE)
         updateActionButton(session, "btn_expand_all", label = "Expand All", icon = icon("expand"))
 
+        # 先更新即時 Rf，其餘 CAPM／WACC 在財報 reactive 就緒後自動估算
+        tryCatch({
+          rf_now <- cached_get_risk_free_rate()
+          if (is.finite(rf_now) && rf_now > 0) {
+            updateNumericInput(session, "capm_rf", value = round(as.numeric(rf_now), 2))
+          }
+        }, error = function(e) NULL)
+
         incProgress(0.9, detail = "數據同步完成！✅")
 
       }, error = function(e) {
@@ -420,7 +428,9 @@ server <- function(input, output, session) {
   # ==========================================
   ddm_results <- ddm_module_server(
     id = "mod_ddm", 
-    ddm_g = reactive({ APP_DEFAULTS$ddm_g }), 
+    ddm_g = reactive({
+      if (!is.null(input$sgr) && is.finite(as.numeric(input$sgr))) as.numeric(input$sgr) else APP_DEFAULTS$ddm_g
+    }), 
     ddm_ke = reactive({ central_ke() * 100 }),  # 🌟 連動！
     
     scraped_d0 = reactive({
@@ -468,7 +478,8 @@ server <- function(input, output, session) {
     input_nwc_rate   = reactive(input$var_nwc_rate),
     input_manual_fcf = reactive(input$manual_fcf),
     calc_trigger = run_calc_trigger,
-    global_est_g = estimated_g 
+    global_est_g = estimated_g,
+    global_g_method = reactive(input$g_growth_method)
   )
   
   observeEvent({
@@ -499,6 +510,102 @@ server <- function(input, output, session) {
       showNotification(paste("⚠️ 終端成長率不得高於折現率，已修正為", safe_val, "%"), type = "warning")
     }
   })
+
+  # ==========================================
+  # 🌱 中央永續成長率方法（同步 DCF sgr / DDM g / RI ri_g）
+  # ==========================================
+  .current_wacc_pct <- function() {
+    if (isTRUE(input$use_calculated_wacc) && !is.null(calculated_wacc()) && is.finite(calculated_wacc())) {
+      return(as.numeric(calculated_wacc()) * 100)
+    }
+    if (isTRUE(input$dcf_mode == "two_stage") && !is.null(input$wacc_stage2) && is.finite(input$wacc_stage2)) {
+      return(as.numeric(input$wacc_stage2))
+    }
+    if (!is.null(input$wacc_gordon) && is.finite(input$wacc_gordon)) {
+      return(as.numeric(input$wacc_gordon))
+    }
+    APP_DEFAULTS$wacc_gordon
+  }
+
+  .current_rf_pct <- function() {
+    if (!is.null(input$capm_rf) && is.finite(as.numeric(input$capm_rf))) {
+      return(as.numeric(input$capm_rf))
+    }
+    tryCatch(as.numeric(cached_get_risk_free_rate()), error = function(e) APP_DEFAULTS$capm_rf)
+  }
+
+  central_perpetual_g <- reactive({
+    d_is <- tryCatch(d_income_statement(), error = function(e) NULL)
+    d_bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
+    d_cf <- tryCatch(d_cash_flow(), error = function(e) NULL)
+    estimate_perpetual_g(
+      method = input$perpetual_g_method %||% APP_DEFAULTS$perpetual_g_method,
+      rf_pct = .current_rf_pct(),
+      d_is = d_is,
+      d_bs = d_bs,
+      d_cf = d_cf,
+      industry_text = corp_industry_text() %||% "",
+      ticker = current_ticker() %||% APP_DEFAULTS$stock_code,
+      lifecycle_stage = input$lifecycle_stage %||% "auto",
+      wacc_pct = .current_wacc_pct()
+    )
+  })
+
+  output$txt_perpetual_g_reason <- renderUI({
+    est <- central_perpetual_g()
+    tags$div(
+      style = "background:#f8f9fa; border-left:4px solid #e67e22; padding:8px 12px; margin-bottom:12px; font-size:13px; color:#333;",
+      tags$b("目前 g 估計："), est$reason %||% ""
+    )
+  })
+
+  .push_perpetual_g <- function(est, notify_two_stage = TRUE) {
+    if (is.null(est) || !is.finite(est$g_pct)) return(invisible(NULL))
+    g_val <- round(as.numeric(est$g_pct), 2)
+    if (is.null(input$sgr) || is.na(as.numeric(input$sgr)) || abs(as.numeric(input$sgr) - g_val) > 1e-4) {
+      updateNumericInput(session, "sgr", value = g_val)
+    }
+    updateNumericInput(session, "mod_ddm-g", value = g_val)
+    updateNumericInput(session, "mod_ri-ri_g", value = g_val)
+
+    if (isTRUE(est$suggest_two_stage)) {
+      if (!identical(input$dcf_mode, "two_stage")) {
+        updateRadioButtons(session, "dcf_mode", selected = "two_stage")
+        if (isTRUE(notify_two_stage)) {
+          showNotification(
+            "Lifecycle：高速→成熟，已切換 DCF 為 Two-Stage，終值 g 收斂至 2–3% 區間。",
+            type = "message", duration = 6
+          )
+        }
+      }
+      if (is.finite(est$g_stage1_pct)) {
+        g1 <- as.numeric(est$g_stage1_pct)
+        if (is.null(input$g_stage1) || is.na(as.numeric(input$g_stage1)) ||
+            abs(as.numeric(input$g_stage1) - g1) > 1e-4) {
+          updateNumericInput(session, "g_stage1", value = g1)
+        }
+      }
+    }
+    invisible(g_val)
+  }
+
+  observeEvent({
+    list(
+      input$perpetual_g_method,
+      input$lifecycle_stage,
+      input$capm_rf,
+      scraped_financials(),
+      corp_industry_text(),
+      current_ticker(),
+      calculated_wacc(),
+      input$wacc_gordon,
+      input$wacc_stage2,
+      input$use_calculated_wacc
+    )
+  }, {
+    est <- central_perpetual_g()
+    .push_perpetual_g(est, notify_two_stage = TRUE)
+  }, ignoreInit = FALSE)
   
   observeEvent(input$years, {
     n <- as.numeric(input$years)
@@ -517,7 +624,10 @@ server <- function(input, output, session) {
     d_income_statement = d_income_statement, 
     d_balance_sheet = d_balance_sheet, 
     d_cash_flow = d_cash_flow, 
-    global_re = central_ke
+    global_re = central_ke,
+    global_g = reactive({
+      if (!is.null(input$sgr) && is.finite(as.numeric(input$sgr))) as.numeric(input$sgr) else APP_DEFAULTS$sgr
+    })
   )
   
   # ==========================================
@@ -867,6 +977,8 @@ server <- function(input, output, session) {
     if (method != "custom" && !is.na(val) && !identical(input$dcf_mode, "two_stage")) {
       updateNumericInput(session, "g_stage1", value = val)
     }
+    # 觸發 FCFF 投影表依新成長率重算
+    run_calc_trigger(run_calc_trigger() + 1)
   })
   
   output$g_result <- renderUI({
@@ -908,7 +1020,24 @@ server <- function(input, output, session) {
   
   output$ibx_estimated_g <- renderInfoBox({
     val_g <- if (!is.null(estimated_g())) estimated_g() else "N/A"
-    infoBox("預估營收成長率 (est.g)", paste0(val_g, " %"), icon = icon("chart-line"), color = "purple", fill = TRUE) 
+    method <- input$g_growth_method %||% "fundamental"
+    method_lab <- switch(
+      as.character(method),
+      "fundamental" = "基本面",
+      "cagr" = "CAGR",
+      "mean" = "平均",
+      "median" = "中位數",
+      "last_year" = "最近一年",
+      "custom" = "自訂",
+      method
+    )
+    infoBox(
+      paste0("預估 FCFF 成長率 (", method_lab, ")"),
+      paste0(val_g, " %"),
+      icon = icon("chart-line"),
+      color = "purple",
+      fill = TRUE
+    )
   })
   
   output$ibx_sgr <- renderInfoBox({ 
@@ -943,49 +1072,111 @@ server <- function(input, output, session) {
   })
   
   observeEvent(input$calc_capm, {
-    r_e_est <- (input$capm_rf / 100) + input$capm_beta * ((input$capm_rm / 100) - (input$capm_rf / 100))
-    estimated_re(r_e_est)
-    updateNumericInput(session, "wacc_re", value = round(r_e_est * 100, 2))
+    .auto_recalc_capm_wacc(notify = TRUE, wacc_too = FALSE)
   })
   
-  observeEvent(input$calc_wacc, {
-    
-    # 1. 確保有抓到資產負債表
-    req(d_balance_sheet()) 
-    
-    # 2. 正確從資產負債表中取得在外流通股數 (Share Issued)
-    shares <- select_current_metric(d_balance_sheet(), "Share Issued|Ordinary Shares Number", "stock")
-    
-    # 萬一抓不到資料的防呆處理
-    if (is.na(shares) || shares == 0) {
-      showNotification("無法取得股數，請確認資料來源！", type = "error")
-      return()
+  .auto_recalc_capm_wacc <- function(notify = FALSE, wacc_too = TRUE, rf_override = NULL) {
+    # CAPM → Re
+    rf <- if (!is.null(rf_override) && is.finite(as.numeric(rf_override))) {
+      as.numeric(rf_override)
+    } else {
+      suppressWarnings(as.numeric(input$capm_rf))
     }
-    
-    df_sum <- summary_data()
-    price_str <- if("Previous Close" %in% df_sum$Item) df_sum$Value[df_sum$Item == "Previous Close"] else NA
-    price_val <- parse_financial_number(price_str)
-    
-    equity_mv <- if (!is.na(price_val) && shares > 0) shares * price_val else select_current_metric(d_balance_sheet(), "Common Stock Equity", "stock")
-    
-    debt <- select_current_metric(d_balance_sheet(), "Total Debt", "stock")
+    beta <- suppressWarnings(as.numeric(input$capm_beta))
+    rm <- suppressWarnings(as.numeric(input$capm_rm))
+    if (is.finite(rf) && is.finite(beta) && is.finite(rm)) {
+      r_e_est <- (rf / 100) + beta * ((rm / 100) - (rf / 100))
+      estimated_re(r_e_est)
+      updateNumericInput(session, "wacc_re", value = round(r_e_est * 100, 2))
+    }
+
+    if (!isTRUE(wacc_too)) {
+      if (isTRUE(notify) && !is.null(estimated_re())) {
+        showNotification(
+          glue::glue("📌 已估算 rₑ = {round(estimated_re() * 100, 2)}%"),
+          type = "message"
+        )
+      }
+      return(invisible(NULL))
+    }
+
+    # WACC（需財報／股價）
+    bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
+    sum_df <- tryCatch(summary_data(), error = function(e) NULL)
+    if (is.null(bs) || !is.data.frame(bs) || nrow(bs) == 0) return(invisible(NULL))
+
+    shares <- select_current_metric(bs, "Share Issued|Ordinary Shares Number", "stock")
+    if (is.na(shares) || shares == 0) return(invisible(NULL))
+
+    price_val <- NA_real_
+    if (!is.null(sum_df) && is.data.frame(sum_df) && "Previous Close" %in% sum_df$Item) {
+      price_val <- parse_financial_number(sum_df$Value[sum_df$Item == "Previous Close"][1])
+    }
+    equity_mv <- if (!is.na(price_val) && shares > 0) {
+      shares * price_val
+    } else {
+      select_current_metric(bs, "Common Stock Equity", "stock")
+    }
+    debt <- select_current_metric(bs, "Total Debt", "stock")
     debt <- if (is.na(debt)) 0 else debt
-    
+    if (is.na(equity_mv) || equity_mv <= 0) return(invisible(NULL))
+
     total_capital <- equity_mv + debt
-    
-    r_e <- if (input$use_estimated_re && !is.null(estimated_re())) estimated_re() else input$wacc_re / 100
-    r_d <- input$wacc_rd / 100
-    
-    wacc <- (equity_mv / total_capital) * r_e + (debt / total_capital) * r_d * (1 - (input$wacc_tax / 100))
+    if (!is.finite(total_capital) || total_capital <= 0) return(invisible(NULL))
+
+    r_e <- if (isTRUE(input$use_estimated_re) && !is.null(estimated_re())) {
+      estimated_re()
+    } else if (!is.null(input$wacc_re) && is.finite(input$wacc_re)) {
+      input$wacc_re / 100
+    } else {
+      APP_DEFAULTS$wacc_re / 100
+    }
+    r_d <- if (!is.null(input$wacc_rd) && is.finite(input$wacc_rd)) input$wacc_rd / 100 else APP_DEFAULTS$wacc_rd / 100
+    tax <- if (!is.null(input$wacc_tax) && is.finite(input$wacc_tax)) input$wacc_tax / 100 else APP_DEFAULTS$wacc_tax / 100
+
+    wacc <- (equity_mv / total_capital) * r_e + (debt / total_capital) * r_d * (1 - tax)
+    if (!is.finite(wacc) || wacc <= 0) return(invisible(NULL))
+
     calculated_wacc(wacc)
     wacc_percent <- round(wacc * 100, 2)
-    
-    if (input$dcf_mode == "gordon") updateNumericInput(session, "wacc_gordon", value = wacc_percent)
-    else { updateNumericInput(session, "wacc_stage1", value = wacc_percent); updateNumericInput(session, "wacc_stage2", value = wacc_percent) }
-    
-    showNotification(glue::glue("📌 已自動將 WACC {wacc_percent}% 套用至 DCF"), type = "message")
+
+    if (identical(input$dcf_mode, "gordon") || is.null(input$dcf_mode)) {
+      updateNumericInput(session, "wacc_gordon", value = wacc_percent)
+    } else {
+      updateNumericInput(session, "wacc_stage1", value = wacc_percent)
+      updateNumericInput(session, "wacc_stage2", value = wacc_percent)
+    }
+
+    if (isTRUE(notify)) {
+      showNotification(
+        glue::glue("📌 已自動估算並套用 WACC {wacc_percent}%（含 CAPM rₑ）"),
+        type = "message",
+        duration = 5
+      )
+    }
+    invisible(wacc_percent)
+  }
+
+  observeEvent(input$calc_wacc, {
+    .auto_recalc_capm_wacc(notify = TRUE, wacc_too = TRUE)
   })
-  
+
+  # 查詢新股票／財報更新後：自動帶入相關數值並重估 WACC
+  observeEvent(list(scraped_financials(), summary_data()), {
+    req(scraped_financials(), summary_data())
+    rf_now <- tryCatch(as.numeric(cached_get_risk_free_rate()), error = function(e) NA_real_)
+    if (is.finite(rf_now) && rf_now > 0) {
+      updateNumericInput(session, "capm_rf", value = round(rf_now, 2))
+    }
+    .auto_recalc_capm_wacc(notify = TRUE, wacc_too = TRUE, rf_override = rf_now)
+  }, ignoreInit = TRUE)
+
+  # 產業／Beta／Rm 變更時靜默重估（避免重複通知）
+  observeEvent(list(input$capm_beta, input$capm_rm, input$industry_choice), {
+    req(scraped_financials(), summary_data())
+    .auto_recalc_capm_wacc(notify = FALSE, wacc_too = TRUE)
+  }, ignoreInit = TRUE)
+
   output$ibx_re <- renderInfoBox({
     val_re <- input$wacc_re
     if (is.null(val_re)) val_re <- APP_DEFAULTS$wacc_re
@@ -1000,68 +1191,162 @@ server <- function(input, output, session) {
   })
   
   # ==========================================
-  # 📉 DCF 折現軌跡圖 (plt_dcf_trajectory)
+  # 📉 DCF Overview 圖：歷史 FCFF + 預測；可選單純／含折現
   # ==========================================
   output$plt_dcf_trajectory <- renderPlot({
     req(fcf_results$df_fcf(), current_ticker())
     proj_df <- fcf_results$df_fcf()
-    if (nrow(proj_df) < 2) {
+    if (is.null(proj_df) || nrow(proj_df) < 1) {
       plot.new()
-      text(0.5, 0.5, "⚠️ 財報數據不足或年份過少，無法繪圖", cex = 1.4)
+      text(0.5, 0.5, "⚠️ 財報數據不足，無法繪圖", cex = 1.4)
       return()
     }
-    
+
+    chart_mode <- input$dcf_chart_mode %||% "with_dcf"
     n_years <- nrow(proj_df)
-    
+    fcff_vals <- extract_fcff_series(proj_df)
+
+    # --- 歷史 FCFF（財報期，舊→新）---
+    hist_df <- tryCatch({
+      cf <- d_cash_flow()
+      row_idx <- grep("^Free Cash Flow$|Free Cash Flow", cf[[1]], ignore.case = TRUE)
+      if (length(row_idx) == 0) return(NULL)
+      period_cols <- colnames(cf)[-1]
+      period_cols <- period_cols[!grepl("^ttm$", period_cols, ignore.case = TRUE)]
+      if (length(period_cols) == 0) return(NULL)
+      vals <- parse_financial_number(as.character(cf[row_idx[1], period_cols, drop = FALSE]))
+      # 欄位通常為最新→最舊；繪圖改為舊→新
+      ord <- rev(seq_along(period_cols))
+      data.frame(
+        Period = as.character(period_cols[ord]),
+        Value = as.numeric(vals[ord]),
+        Metric = "歷史現金流 (FCFF)",
+        Segment = "History",
+        stringsAsFactors = FALSE
+      )
+    }, error = function(e) NULL)
+
+    if (!is.null(hist_df)) {
+      hist_df <- hist_df[is.finite(hist_df$Value), , drop = FALSE]
+    }
+
+    # --- 預測期標籤 ---
+    forecast_periods <- as.character(proj_df$Year)
+    if (length(forecast_periods) == 0) forecast_periods <- paste0("Y", seq_len(n_years))
+
     wacc_val <- tryCatch({
       if (isTRUE(input$use_calculated_wacc) && !is.null(calculated_wacc())) {
         rep(as.numeric(calculated_wacc()), n_years)
-      } else if (input$dcf_mode == "gordon") {
+      } else if (identical(input$dcf_mode, "gordon")) {
         rep(as.numeric(input$wacc_gordon) / 100, n_years)
       } else {
         s1_yrs <- as.numeric(input$yr_stage1)
-        c(rep(as.numeric(input$wacc_stage1) / 100, min(s1_yrs, n_years)), 
-          rep(as.numeric(input$wacc_stage2) / 100, max(n_years - s1_yrs, 0)))
+        if (!is.finite(s1_yrs)) s1_yrs <- 1
+        c(
+          rep(as.numeric(input$wacc_stage1) / 100, min(s1_yrs, n_years)),
+          rep(as.numeric(input$wacc_stage2) / 100, max(n_years - s1_yrs, 0))
+        )
       }
-    }, error = function(e) rep(0.1, n_years)) 
-    
-    fcff_vals <- extract_fcff_series(proj_df)
+    }, error = function(e) rep(0.1, n_years))
+
     discount_factors <- cumprod(1 + wacc_val)
-    proj_df$DCF <- round(fcff_vals / discount_factors, 2)
-    
+    dcf_vals <- round(fcff_vals / discount_factors, 2)
+
     g_terminal <- if (is.numeric(input$sgr)) input$sgr / 100 else 0.03
     terminal_wacc <- tail(wacc_val, 1)
     tv_annotation <- ""
-    
-    if (!is.na(terminal_wacc) && !is.na(g_terminal) && terminal_wacc > g_terminal) {
+
+    if (identical(chart_mode, "with_dcf") &&
+        is.finite(terminal_wacc) && is.finite(g_terminal) && terminal_wacc > g_terminal) {
       last_fcf <- tail(fcff_vals, 1)
       tv <- (last_fcf * (1 + g_terminal)) / (terminal_wacc - g_terminal)
       pv_tv <- tv / discount_factors[n_years]
-      
-      proj_df$DCF[n_years] <- round(proj_df$DCF[n_years] + pv_tv, 2)
-      tv_annotation <- paste0("\n( 💡 第 ", n_years, " 年的 DCF 點位已包含永續終值現值 PV of TV: $", scales::comma(round(pv_tv, 2)), " )")
+      dcf_vals[n_years] <- round(dcf_vals[n_years] + pv_tv, 2)
+      tv_annotation <- paste0(
+        "\n( 第 ", n_years, " 年 DCF 已含永續終值 PV of TV: $",
+        scales::comma(round(pv_tv, 2)), " )"
+      )
     }
-    
-    plot_df <- data.frame(
-      Year   = rep(proj_df$Year, 2),
-      Value  = c(fcff_vals, proj_df$DCF),
-      Metric = factor(rep(c("預測現金流 (FCFF)", "折現後價值 (DCF)"), each = n_years),
-                      levels = c("預測現金流 (FCFF)", "折現後價值 (DCF)"))
+
+    forecast_fcff <- data.frame(
+      Period = forecast_periods,
+      Value = as.numeric(fcff_vals),
+      Metric = "預測現金流 (FCFF)",
+      Segment = "Forecast",
+      stringsAsFactors = FALSE
     )
-    
-    ggplot(plot_df, aes(x = Year, y = Value, color = Metric, linetype = Metric, group = Metric)) +
-      geom_line(linewidth = 1.2) + 
-      geom_point(size = 3) +
-      geom_text(aes(label = scales::comma(Value)), 
-                vjust = -1.5, size = 4.5, show.legend = FALSE) +
-      scale_color_manual(values = c("預測現金流 (FCFF)" = "#95a5a6", "折現後價值 (DCF)" = "#e74c3c")) +      
-      theme_minimal(base_size = 14) + 
-      labs(title = paste0(current_ticker(), " - FCFF vs DCF 現值折現軌跡圖"), 
-           subtitle = tv_annotation, 
-           x = "年份", y = "USD (Millions)") + 
-      theme(legend.position = "top", 
-            plot.title = element_text(face = "bold", hjust = 0.5),
-            plot.subtitle = element_text(color = "#8e44ad", face = "bold", hjust = 0.5)) 
+
+    plot_parts <- list()
+    if (!is.null(hist_df) && nrow(hist_df) > 0) plot_parts <- c(plot_parts, list(hist_df))
+    plot_parts <- c(plot_parts, list(forecast_fcff))
+
+    if (identical(chart_mode, "with_dcf")) {
+      plot_parts <- c(plot_parts, list(data.frame(
+        Period = forecast_periods,
+        Value = as.numeric(dcf_vals),
+        Metric = "折現後價值 (DCF)",
+        Segment = "Forecast",
+        stringsAsFactors = FALSE
+      )))
+    }
+
+    plot_df <- do.call(rbind, plot_parts)
+    plot_df <- plot_df[is.finite(plot_df$Value), , drop = FALSE]
+    if (nrow(plot_df) == 0) {
+      plot.new()
+      text(0.5, 0.5, "⚠️ 無可繪製數值", cex = 1.4)
+      return()
+    }
+
+    # 固定橫軸順序：歷史期 → 預測期
+    x_levels <- unique(c(
+      if (!is.null(hist_df) && nrow(hist_df) > 0) hist_df$Period else character(0),
+      forecast_periods
+    ))
+    plot_df$Period <- factor(plot_df$Period, levels = x_levels)
+    plot_df$Metric <- factor(
+      plot_df$Metric,
+      levels = c("歷史現金流 (FCFF)", "預測現金流 (FCFF)", "折現後價值 (DCF)")
+    )
+
+    title_txt <- if (identical(chart_mode, "simple")) {
+      paste0(current_ticker(), " - 歷史與預測 FCFF（單純模式）")
+    } else {
+      paste0(current_ticker(), " - 歷史／預測 FCFF vs 折現後 DCF")
+    }
+
+    color_map <- c(
+      "歷史現金流 (FCFF)" = "#3498db",
+      "預測現金流 (FCFF)" = "#95a5a6",
+      "折現後價值 (DCF)" = "#e74c3c"
+    )
+    lty_map <- c(
+      "歷史現金流 (FCFF)" = "solid",
+      "預測現金流 (FCFF)" = "solid",
+      "折現後價值 (DCF)" = "dashed"
+    )
+
+    ggplot(plot_df, aes(x = Period, y = Value, color = Metric, linetype = Metric, group = Metric)) +
+      geom_line(linewidth = 1.15) +
+      geom_point(size = 2.8) +
+      geom_text(
+        aes(label = scales::comma(round(Value, 1))),
+        vjust = -1.2, size = 3.2, show.legend = FALSE, check_overlap = TRUE
+      ) +
+      scale_color_manual(values = color_map, drop = TRUE) +
+      scale_linetype_manual(values = lty_map, drop = TRUE) +
+      theme_minimal(base_size = 14) +
+      labs(
+        title = title_txt,
+        subtitle = if (identical(chart_mode, "with_dcf")) tv_annotation else "不含折現線；僅歷史與預測 FCFF",
+        x = "期間", y = "USD (Millions)"
+      ) +
+      theme(
+        legend.position = "top",
+        axis.text.x = element_text(angle = 30, hjust = 1),
+        plot.title = element_text(face = "bold", hjust = 0.5),
+        plot.subtitle = element_text(color = "#8e44ad", face = "bold", hjust = 0.5)
+      )
   })
   
   output$dft_fcf_plot <- renderPlot({
@@ -1552,12 +1837,20 @@ server <- function(input, output, session) {
   
   observeEvent(input$reset_dcf, {
     updateNumericInput(session, "years", value = APP_DEFAULTS$years)
-    updateNumericInput(session, "sgr", value = APP_DEFAULTS$sgr)
+    updateSelectInput(session, "perpetual_g_method", selected = APP_DEFAULTS$perpetual_g_method)
+    updateSelectInput(session, "lifecycle_stage", selected = APP_DEFAULTS$lifecycle_stage)
     updateNumericInput(session, "wacc_gordon", value = APP_DEFAULTS$wacc_gordon)
     updateNumericInput(session, "yr_stage1", value = APP_DEFAULTS$yr_stage1)
     updateNumericInput(session, "g_stage1", value = APP_DEFAULTS$g_stage1)
     updateNumericInput(session, "wacc_stage1", value = APP_DEFAULTS$wacc_gordon)
     updateNumericInput(session, "wacc_stage2", value = APP_DEFAULTS$wacc_gordon)
+    # 依當前方法重算 g（勿寫死舊 SGR）
+    est <- tryCatch(isolate(central_perpetual_g()), error = function(e) NULL)
+    if (is.null(est) || !is.finite(est$g_pct)) {
+      updateNumericInput(session, "sgr", value = APP_DEFAULTS$sgr)
+    } else {
+      .push_perpetual_g(est, notify_two_stage = FALSE)
+    }
     showNotification("🔁 所有 DCF 模型欄位已回復", type = "message")
   })
   

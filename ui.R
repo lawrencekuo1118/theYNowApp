@@ -448,8 +448,18 @@ ui <- dashboardPage(
                               ),
                               fluidRow(
                                 column(width = 12,
-                                       plotOutput("plt_dcf_trajectory", height = "400px"),
-                                       h6(helpText("提示：啟動時已自動計算。若已自訂相關參數，請點擊按鈕更新。")),
+                                       radioButtons(
+                                         "dcf_chart_mode",
+                                         "圖表顯示模式",
+                                         choices = c(
+                                           "單純模式（歷史＋預測 FCFF，無折現線）" = "simple",
+                                           "顯示折現後價值（DCF）" = "with_dcf"
+                                         ),
+                                         selected = "with_dcf",
+                                         inline = TRUE
+                                       ),
+                                       plotOutput("plt_dcf_trajectory", height = "420px"),
+                                       h6(helpText("提示：圖含歷史 FCFF；切換模式可隱藏／顯示折現後 DCF 線。啟動時已自動計算，自訂參數後可再點試算。")),
                                        fluidRow(
                                          column(width = 6, actionButton("calc", "▶ 試算 DCF", class = "btn-success btn-block", style = "padding: 12px; font-weight: bold; font-size: 16px;")),
                                          column(width = 6, actionButton("reset_dcf", "回復預設", class = "btn-default btn-block", style = "padding: 12px; font-weight: bold; font-size: 16px;"))
@@ -482,6 +492,38 @@ ui <- dashboardPage(
                                 
                                 box(title = "DCF 估值核心參數設定", 
                                     width = 12, status = "warning", solidHeader = TRUE,
+
+                                    selectInput(
+                                      "perpetual_g_method",
+                                      "估計永續成長率方法",
+                                      choices = c(
+                                        "總體經濟錨定法（Macroeconomic Anchoring）" = "macro",
+                                        "永續成長公式法（Fundamental / SGR）" = "fundamental",
+                                        "產業生命週期檢核法（Lifecycle Check）" = "lifecycle"
+                                      ),
+                                      selected = APP_DEFAULTS$perpetual_g_method
+                                    ),
+                                    helpText(
+                                      "Macro：直接套用美國 10 年期公債 Rf。",
+                                      "Fundamental：Retention×ROE（僅適合成熟穩健企業）。",
+                                      "Lifecycle：依產業成熟度反推 g，可手動覆寫自動分類。"
+                                    ),
+                                    conditionalPanel(
+                                      condition = "input.perpetual_g_method == 'lifecycle'",
+                                      selectInput(
+                                        "lifecycle_stage",
+                                        "產業生命週期檔位（可覆寫自動偵測）",
+                                        choices = c(
+                                          "自動偵測" = "auto",
+                                          "夕陽／高度成熟（≈1.5–2%）" = "mature_sunset",
+                                          "成熟科技巨頭（≈2.5–3%）" = "mature_tech",
+                                          "高速成長→成熟（終值≈2.5%，建議 two-stage）" = "growth_to_mature",
+                                          "一般成熟（≈2.5%）" = "mature_general"
+                                        ),
+                                        selected = APP_DEFAULTS$lifecycle_stage
+                                      )
+                                    ),
+                                    uiOutput("txt_perpetual_g_reason"),
                                     
                                     # --- 共用終值永續成長率（避免 gordon / two_stage 重複 ID）---
                                     numericInput("sgr", "終值永續成長率 SGR (%)", value = APP_DEFAULTS$sgr),

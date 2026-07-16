@@ -38,9 +38,9 @@ we <- max(0.05, min(0.95, 1 - default_debt))
 wd <- 1 - we
 default_wacc <- round(we * default_re + wd * default_rd * (1 - default_tax / 100), 2)
 
-# 永續成長率 SGR：長期名義 GDP 水準，且必須明顯低於 WACC
-# 取 Rf 的 70% 與 3.0% 的較小者，並至少比 WACC 低 2pct
-default_sgr <- round(min(max(default_rf * 0.70, 2.0), 3.0), 2)
+# 永續成長率 SGR：預設採 Macro（直接套用 Rf）；仍須明顯低於 WACC
+default_sgr <- round(as.numeric(default_rf), 2)
+if (is.na(default_sgr) || default_sgr <= 0) default_sgr <- 4.0
 default_sgr <- min(default_sgr, max(0.5, default_wacc - 2))
 
 # P/B 預設：優先產業 pb_band，否則用保守通用區間
@@ -69,7 +69,9 @@ APP_DEFAULTS <- list(
   dcf_mode        = "gordon",
   g_growth_method = "fundamental",
   custom_g        = default_g,          # 自訂短期成長（已封頂）
-  sgr             = default_sgr,        # 終值 g < WACC
+  perpetual_g_method = "macro",         # 永續 g 估計方法（預設總體經濟錨定）
+  lifecycle_stage = "auto",             # auto = 依產業／成長自動分類
+  sgr             = default_sgr,        # 終值 g < WACC（預設 = Rf）
   wacc_gordon     = default_wacc,
 
   # --- 4. Two-Stage ---

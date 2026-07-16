@@ -427,6 +427,171 @@ recommend_valuation_models <- function(d_cf, industry_text = "") {
   out
 }
 
+# ==========================================
+# 永續成長率 g 估計方法（DDM / DCF / RI 共用）
+# ==========================================
+if (!exists("%||%", mode = "function")) {
+  `%||%` <- function(x, y) if (is.null(x) || (length(x) == 1 && is.na(x))) y else x
+}
+
+MATURE_TECH_TICKERS <- c(
+  "AAPL", "MSFT", "GOOGL", "GOOG", "AMZN", "META", "NVDA", "TSLA",
+  "AVGO", "ORCL", "CRM", "ADBE", "INTC", "AMD", "QCOM", "TXN", "TSM"
+)
+
+#' 依產業／營收成長自動分類生命週期檔位
+#' @return one of mature_sunset | mature_tech | growth_to_mature | mature_general
+classify_lifecycle_stage <- function(industry_text = "", ticker = "", rev_cagr = NA_real_) {
+  txt <- paste(industry_text %||% "", collapse = " ")
+  tk <- toupper(trimws(as.character(ticker %||% "")[1]))
+
+  if (grepl(
+    "Bank|Insurance|Utility|Utilities|Financial|Conglomerate|fn\\.|Insurance Brokers|Gas Utilities|Electric Utilities",
+    txt, ignore.case = TRUE
+  )) {
+    return("mature_sunset")
+  }
+
+  if (nzchar(tk) && tk %in% MATURE_TECH_TICKERS) {
+    return("mature_tech")
+  }
+  if (grepl(
+    "Software|Internet|Semiconductors|Semiconductor|Consumer Electronics|Information Technology| technolo",
+    txt, ignore.case = TRUE
+  )) {
+    return("mature_tech")
+  }
+
+  if (is.finite(rev_cagr) && rev_cagr > 8) {
+    return("growth_to_mature")
+  }
+  "mature_general"
+}
+
+#' 基本面永續 g（%）= Retention Ratio × ROE
+calc_fundamental_sgr_pct <- function(d_is, d_bs, d_cf) {
+  if (is.null(d_is) || is.null(d_bs) || !is.data.frame(d_is) || !is.data.frame(d_bs)) {
+    return(NA_real_)
+  }
+  ni <- tryCatch(
+    select_current_metric_any(d_is, NET_INCOME_PATTERNS, "flow"),
+    error = function(e) NA_real_
+  )
+  equity <- tryCatch(
+    select_current_metric_any(d_bs, EQUITY_PATTERNS, "stock"),
+    error = function(e) NA_real_
+  )
+  if (is.na(ni) || is.na(equity) || equity <= 0) return(NA_real_)
+
+  roe <- ni / equity
+  div_paid <- tryCatch({
+    if (is.null(d_cf) || !is.data.frame(d_cf)) NA_real_ else {
+      abs(select_current_metric(d_cf, "Cash Dividends Paid", "flow"))
+    }
+  }, error = function(e) NA_real_)
+
+  payout_ratio <- 0
+  if (!is.na(ni) && ni > 0 && !is.na(div_paid)) {
+    payout_ratio <- min(max(div_paid / ni, 0), 1)
+  }
+  retention <- 1 - payout_ratio
+  round(roe * retention * 100, 2)
+}
+
+#' 估計永續成長率（%）並附說明；必要時建議 two-stage
+#' @return list(g_pct, reason, lifecycle_stage, suggest_two_stage, g_stage1_pct, auto_lifecycle)
+estimate_perpetual_g <- function(method = "macro",
+                                 rf_pct = NA_real_,
+                                 d_is = NULL,
+                                 d_bs = NULL,
+                                 d_cf = NULL,
+                                 industry_text = "",
+                                 ticker = "",
+                                 lifecycle_stage = "auto",
+                                 wacc_pct = NA_real_,
+                                 rev_cagr = NA_real_) {
+  method <- as.character(method %||% "macro")[1]
+  rf_pct <- suppressWarnings(as.numeric(rf_pct)[1])
+  wacc_pct <- suppressWarnings(as.numeric(wacc_pct)[1])
+  if (is.na(rev_cagr) || !is.finite(rev_cagr)) {
+    rev_cagr <- tryCatch({
+      get_avg_growth(select_clean_metric_row(d_is, "Total Revenue", include_ttm = FALSE))
+    }, error = function(e) NA_real_)
+  }
+
+  auto_stage <- classify_lifecycle_stage(industry_text, ticker, rev_cagr)
+  stage <- as.character(lifecycle_stage %||% "auto")[1]
+  if (!nzchar(stage) || identical(stage, "auto")) stage <- auto_stage
+
+  g_pct <- NA_real_
+  reason <- ""
+  suggest_two_stage <- FALSE
+  g_stage1_pct <- if (is.finite(rev_cagr)) {
+    round(max(2, min(rev_cagr, 15)), 2)
+  } else {
+    NA_real_
+  }
+
+  if (identical(method, "fundamental")) {
+    g_pct <- calc_fundamental_sgr_pct(d_is, d_bs, d_cf)
+    if (is.na(g_pct) || !is.finite(g_pct)) {
+      g_pct <- if (is.finite(rf_pct)) round(rf_pct, 2) else 3
+      reason <- paste0(
+        "Fundamental／SGR：財報不足以計算 Retention×ROE，已回退 Macro（Rf=",
+        g_pct, "%）。僅適合成熟、財務結構穩定企業。"
+      )
+    } else {
+      reason <- paste0(
+        "Fundamental／SGR：g = Retention Ratio × ROE = ", g_pct,
+        "%。應用限制：僅適合成熟、財務結構穩定企業。"
+      )
+    }
+  } else if (identical(method, "lifecycle")) {
+    if (identical(stage, "mature_sunset")) {
+      g_pct <- 1.75
+      reason <- "Lifecycle：夕陽／高度成熟（金融、公用事業等）→ g≈1.75%（通膨附近 1.5–2%）。"
+    } else if (identical(stage, "mature_tech")) {
+      g_pct <- 2.75
+      reason <- "Lifecycle：成熟科技巨頭 → g≈2.75%（長期上限約 2.5–3%）。"
+    } else if (identical(stage, "growth_to_mature")) {
+      g_pct <- 2.5
+      suggest_two_stage <- TRUE
+      reason <- paste0(
+        "Lifecycle：高速成長轉向成熟 → 終值 g≈2.5%；建議 two-stage，",
+        "前段成長向 2–3% 收斂",
+        if (is.finite(g_stage1_pct)) paste0("（g1≈", g_stage1_pct, "%）") else "",
+        "。"
+      )
+    } else {
+      g_pct <- 2.5
+      reason <- "Lifecycle：一般成熟產業 → g≈2.5%。"
+    }
+    reason <- paste0(reason, " 自動分類=", auto_stage, "；目前採用=", stage, "。")
+  } else {
+    # macro（預設）：直接套用美國國債利率 Rf
+    g_pct <- if (is.finite(rf_pct)) round(rf_pct, 2) else 4
+    reason <- paste0("Macroeconomic Anchoring：直接套用美國 10 年期公債殖利率 Rf=", g_pct, "%。")
+  }
+
+  # 安全閥：g 必須嚴格小於 WACC
+  if (is.finite(wacc_pct) && is.finite(g_pct) && g_pct >= wacc_pct) {
+    safe_g <- max(0.5, round(wacc_pct - 2, 2))
+    reason <- paste0(
+      reason, " ⚠ g≥WACC，已壓至 ", safe_g, "%（WACC−2）。"
+    )
+    g_pct <- safe_g
+  }
+
+  list(
+    g_pct = g_pct,
+    reason = reason,
+    lifecycle_stage = stage,
+    auto_lifecycle = auto_stage,
+    suggest_two_stage = isTRUE(suggest_two_stage),
+    g_stage1_pct = g_stage1_pct
+  )
+}
+
 #' 側邊欄 menuItem 徽章：推薦優先，否則保留原狀態標
 .sidebar_badge <- function(recommended, fallback_label = NULL, fallback_color = NULL) {
   if (isTRUE(recommended)) {

@@ -46,9 +46,9 @@ fcf_projection_module_ui <- function(id) {
              column(4, numericInput(ns("fcf_invested_capital"), "總投入資本", value = 1))
            ),
            
-           # 🌟 修正：改用 paste0 串接 Namespace
+           # g_growth_method 在模組外為全域 ID（無 ns）
            conditionalPanel(
-             condition = paste0("input['", ns("g_growth_method"), "'] == 'fundamental'"),
+             condition = "input.g_growth_method == 'fundamental'",
              checkboxInput(ns("apply_g_ceiling"), 
                            tags$span(style = "color: #d35400; font-weight: bold;", "🔒 啟用 25% 成長率天花板防呆 (建議)"), 
                            value = TRUE)
@@ -75,6 +75,7 @@ fcf_projection_module_ui <- function(id) {
                                   "CAGR" = "cagr", 
                                   "平均數" = "mean", 
                                   "中位數" = "median",
+                                  "最近一年" = "last_year",
                                   "自訂" = "custom"),
                                 selected = APP_DEFAULTS$g_growth_method)
              ),
@@ -131,7 +132,8 @@ fcf_projection_module_server <- function(
     input_capex_rate = reactive(NA), 
     input_nwc_rate   = reactive(NA),
     input_manual_fcf = reactive(NULL),
-    global_est_g     = reactive(NULL)
+    global_est_g     = reactive(NULL),
+    global_g_method  = reactive(NULL)
 ) {
   
   moduleServer(id, function(input, output, session) {
@@ -412,19 +414,32 @@ fcf_projection_module_server <- function(
     })
     
     output$vbx_est_g_fund <- renderValueBox({
+      g_val <- final_sim_g()
+      method <- as.character(global_g_method() %||% "")
+      method_label <- switch(
+        method,
+        "fundamental" = "基本面 (ROIC × RR)",
+        "cagr" = "CAGR",
+        "mean" = "平均成長率",
+        "median" = "中位數成長率",
+        "last_year" = "最近一年成長率",
+        "custom" = "自訂成長率",
+        "預估 FCFF 成長率"
+      )
       res <- fcf_estimator_results()
-      
-      # 🌟 關鍵修復：不管有沒有勾選，畫面上永遠顯示財報真實算出來的數字 (raw_g)
-      display_g <- res$raw_g
-      
-      # 動態標題：如果算出極端值且啟動了防呆，在小字體提醒使用者「進入模型的其實是 25%」
-      subtitle_html <- if(res$ceiling_on && res$raw_g > 25) {
-        HTML("基本面隱含成長率 (ROIC × RR) <span style='color: #ffcccc; font-size: 12px; font-weight: bold;'>(⚠️ 模型代入 25%)</span>")
-      } else {
-        "基本面隱含成長率 (ROIC × RR)"
+      subtitle_html <- method_label
+      if (identical(method, "fundamental") && isTRUE(res$ceiling_on) && isTRUE(res$raw_g > 25)) {
+        subtitle_html <- HTML(paste0(
+          method_label,
+          " <span style='color:#ffcccc;font-size:12px;font-weight:bold;'>(⚠️ 模型代入 25%)</span>"
+        ))
       }
-      
-      valueBox(paste0(display_g, " %"), subtitle_html, icon = icon("microscope"), color = "purple")
+      valueBox(
+        paste0(round(as.numeric(g_val), 2), " %"),
+        subtitle_html,
+        icon = icon("chart-line"),
+        color = "purple"
+      )
     })
     
     output$title_dynamic_years <- renderUI({
