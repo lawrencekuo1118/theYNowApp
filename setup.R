@@ -365,23 +365,82 @@ derive_investment_rating <- function(current_price, target_price) {
 
 # 推薦估值方法（對應決策模組邏輯）
 derive_valuation_method <- function(d_cf, industry_text = "") {
-  fcf_seq <- tryCatch(select_clean_metric_row(d_cf, "Free Cash Flow", include_ttm = FALSE), error = function(e) NULL)
-  div_seq <- tryCatch(select_clean_metric_row(d_cf, "Cash Dividends Paid", include_ttm = FALSE), error = function(e) NULL)
-  is_fcf_pos <- length(fcf_seq) > 0 && !all(is.na(fcf_seq)) && mean(fcf_seq, na.rm = TRUE) > 0
-  is_div <- length(div_seq) > 0 && !all(is.na(div_seq)) && mean(abs(div_seq), na.rm = TRUE) > 0
-  is_financial <- grepl("Bank|Insurance|Financial|Conglomerate|fn\\.|Insurance Brokers", industry_text, ignore.case = TRUE)
-  
-  if (is_financial) {
-    list(method = "P/B（本淨比／資產法）", rationale = "金融／保險／控股體質下，帳面淨值與合理本淨比通常比 FCFF／股利折現更能反映經濟現實。")
-  } else if (is_div && !is_fcf_pos) {
-    list(method = "DDM（股利折現）", rationale = "公司持續配息但 FCF 不穩定，以股東實際現金回報估值較為適切。")
-  } else if (!is_div && is_fcf_pos) {
-    list(method = "DCF（自由現金流折現）", rationale = "公司具備穩健造血能力且未穩定配息，應以 FCFF 折現衡量企業價值。")
-  } else if (is_div && is_fcf_pos) {
-    list(method = "DCF + DDM 交叉驗證", rationale = "現金流與配息皆穩健，建議雙模型交叉驗證以確認安全邊際。")
+  rec <- recommend_valuation_models(d_cf, industry_text)
+  list(method = rec$summary_method, rationale = rec$reason)
+}
+
+#' 模型選擇器 → 側邊欄標記用（與 Dashboard「推薦首選」同一套規則）
+#' @return list(ddm, dcf, pb, ri, tags=character, summary_method, reason)
+recommend_valuation_models <- function(d_cf, industry_text = "") {
+  fcf_seq <- tryCatch(
+    select_clean_metric_row(d_cf, "Free Cash Flow", include_ttm = FALSE),
+    error = function(e) NULL
+  )
+  div_seq <- tryCatch(
+    select_clean_metric_row(d_cf, "Cash Dividends Paid", include_ttm = FALSE),
+    error = function(e) NULL
+  )
+  is_fcf_pos <- length(fcf_seq) > 0 && !all(is.na(fcf_seq)) &&
+    isTRUE(mean(fcf_seq, na.rm = TRUE) > 0)
+  is_div <- length(div_seq) > 0 && !all(is.na(div_seq)) &&
+    isTRUE(mean(abs(div_seq), na.rm = TRUE) > 0)
+  is_financial <- grepl(
+    "Bank|Insurance|Financial|Conglomerate|fn\\.|Insurance Brokers",
+    industry_text,
+    ignore.case = TRUE
+  )
+
+  out <- list(
+    ddm = FALSE, dcf = FALSE, pb = FALSE, ri = FALSE,
+    tags = character(0),
+    summary_method = "P/B／相對估值",
+    reason = "傳統折現模型前提不足，建議以 P/B、淨資產法為主。"
+  )
+
+  if (isTRUE(is_financial)) {
+    out$pb <- TRUE
+    out$tags <- "pb"
+    out$summary_method <- "P/B（本淨比／資產法）"
+    out$reason <- "金融／保險／控股體質下，帳面淨值與合理本淨比通常比 FCFF／股利折現更能反映經濟現實。"
+  } else if (isTRUE(is_div) && !isTRUE(is_fcf_pos)) {
+    out$ddm <- TRUE
+    out$tags <- "ddm"
+    out$summary_method <- "DDM（股利折現）"
+    out$reason <- "公司持續配息但 FCF 不穩定，以股東實際現金回報估值較為適切。"
+  } else if (!isTRUE(is_div) && isTRUE(is_fcf_pos)) {
+    out$dcf <- TRUE
+    out$tags <- "dcf"
+    out$summary_method <- "DCF（自由現金流折現）"
+    out$reason <- "公司具備穩健造血能力且未穩定配息，應以 FCFF 折現衡量企業價值。"
+  } else if (isTRUE(is_div) && isTRUE(is_fcf_pos)) {
+    out$ddm <- TRUE
+    out$dcf <- TRUE
+    out$tags <- c("dcf", "ddm")
+    out$summary_method <- "DCF + DDM 交叉驗證"
+    out$reason <- "現金流與配息皆穩健，建議雙模型交叉驗證以確認安全邊際。"
   } else {
-    list(method = "P/B／相對估值", rationale = "傳統折現模型前提不足，建議以 P/B、淨資產法為主，並輔以相對指標。")
+    out$pb <- TRUE
+    out$tags <- "pb"
+    out$summary_method <- "P/B／相對估值"
+    out$reason <- "該公司不配息且現金流偏弱，傳統折現法難以定價，建議以淨資產／本淨比為主。"
   }
+  out
+}
+
+#' 側邊欄 menuItem 徽章：推薦優先，否則保留原狀態標
+.sidebar_badge <- function(recommended, fallback_label = NULL, fallback_color = NULL) {
+  if (isTRUE(recommended)) {
+    return(list(label = "推薦", color = "red"))
+  }
+  if (!is.null(fallback_label) && nzchar(fallback_label)) {
+    return(list(label = fallback_label, color = fallback_color %||% "green"))
+  }
+  list(label = NULL, color = NULL)
+}
+
+# `%||%` 若環境尚無
+if (!exists("%||%", mode = "function")) {
+  `%||%` <- function(x, y) if (is.null(x) || (length(x) == 1 && is.na(x))) y else x
 }
 
 # 從 Summary 表萃取單一欄位

@@ -301,32 +301,25 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       val_ddm <- if (is_valid(p_ddm)) p_ddm else NA
       val_pb  <- if (is_valid(p_pb))  p_pb  else NA
       
-      fcf_seq <- tryCatch({ select_clean_metric_row(d_cf(), "Free Cash Flow", include_ttm = FALSE) }, error = function(e) NULL)
-      div_seq <- tryCatch({ select_clean_metric_row(d_cf(), "Cash Dividends Paid", include_ttm = FALSE) }, error = function(e) NULL)
-      is_fcf_positive <- length(fcf_seq) > 0 && !all(is.na(fcf_seq)) && mean(fcf_seq, na.rm=TRUE) > 0
-      is_dividend_paying <- length(div_seq) > 0 && !all(is.na(div_seq)) && mean(abs(div_seq), na.rm=TRUE) > 0
       is_financial <- grepl("Bank|Insurance|Financial|Conglomerate|fn\\.", industry_text(), ignore.case = TRUE)
-      
-      if (is_financial) {
-        rec_title <- "推薦首選：P/B／資產估值法"
-        rec_desc <- "偵測到金融／保險／控股屬性。建議以帳面淨值 × 目標本淨比為主，DCF／DDM 僅作交叉參考。"
-        rec_color <- "#2980b9"; rec_icon <- "landmark"
-      } else if (is_dividend_paying && !is_fcf_positive) {
-        rec_title <- "推薦首選：股利折現模型 (DDM)"
-        rec_desc <- "偵測到該公司維持配息，但近期自由現金流不穩定。少數股東應以實際收到的現金 (DDM) 評估最為準確。"
-        rec_color <- "#3498db"; rec_icon <- "hand-holding-usd"
-      } else if (!is_dividend_paying && is_fcf_positive) {
-        rec_title <- "推薦首選：自由現金流模型 (DCF)"
-        rec_desc <- "偵測到該公司不配息，但具備強勁造血能力。獲利皆用於再投資，應採用 DCF 衡量企業真實內在價值。"
-        rec_color <- "#9b59b6"; rec_icon <- "seedling"
-      } else if (is_dividend_paying && is_fcf_positive) {
+      rec_nav <- recommend_valuation_models(d_cf(), industry_text())
+      if (isTRUE(rec_nav$dcf) && isTRUE(rec_nav$ddm)) {
         rec_title <- "雙模型皆適用 (DCF & DDM 交叉驗證)"
-        rec_desc <- "該公司現金流穩健且持續配息，建議同時參考兩個模型以確保估值安全邊際。"
+        rec_desc <- rec_nav$reason
         rec_color <- "#f39c12"; rec_icon <- "balance-scale"
+      } else if (isTRUE(rec_nav$ddm)) {
+        rec_title <- "推薦首選：股利折現模型 (DDM)"
+        rec_desc <- rec_nav$reason
+        rec_color <- "#3498db"; rec_icon <- "hand-holding-usd"
+      } else if (isTRUE(rec_nav$dcf)) {
+        rec_title <- "推薦首選：自由現金流模型 (DCF)"
+        rec_desc <- rec_nav$reason
+        rec_color <- "#9b59b6"; rec_icon <- "seedling"
       } else {
         rec_title <- "推薦首選：P/B／資產估值法"
-        rec_desc <- "該公司不配息且現金流偏弱，傳統折現法難以定價。請至 P/B-Asset 分頁以淨資產法定價。"
-        rec_color <- "#d9534f"; rec_icon <- "landmark"
+        rec_desc <- rec_nav$reason
+        rec_color <- if (is_financial) "#2980b9" else "#d9534f"
+        rec_icon <- "landmark"
       }
       
       plot_dcf <- if (!is.na(val_dcf)) val_dcf else p_curr

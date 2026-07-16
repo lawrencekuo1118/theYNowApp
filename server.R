@@ -141,6 +141,64 @@ server <- function(input, output, session) {
     req(scraped_financials())
     reorder_financial_columns(scraped_financials()[["Cash Flow"]]$expanded)
   })
+
+  # ==========================================
+  # 📌 v10.1：側邊欄依 Model Selector 標記「推薦」
+  # ==========================================
+  model_sidebar_rec <- reactive({
+    cf <- tryCatch(d_cash_flow(), error = function(e) NULL)
+    ind <- corp_industry_text()
+    if (is.null(cf) || !is.data.frame(cf) || nrow(cf) == 0) {
+      return(list(ddm = FALSE, dcf = FALSE, pb = FALSE, ri = FALSE, tags = character(0)))
+    }
+    recommend_valuation_models(cf, industry_text = ind)
+  })
+
+  output$sidebar_menu <- renderMenu({
+    rec <- model_sidebar_rec()
+    sel <- if (!is.null(input$sidebar_tabs) && nzchar(input$sidebar_tabs)) {
+      input$sidebar_tabs
+    } else {
+      "dashboard"
+    }
+
+    mk <- function(text, tab, ic, recommended = FALSE,
+                   fallback_label = NULL, fallback_color = NULL) {
+      b <- .sidebar_badge(recommended, fallback_label, fallback_color)
+      args <- list(
+        text = text,
+        tabName = tab,
+        icon = icon(ic),
+        selected = identical(sel, tab)
+      )
+      if (!is.null(b$label) && nzchar(b$label)) {
+        args$badgeLabel <- b$label
+        args$badgeColor <- b$color
+      }
+      do.call(menuItem, args)
+    }
+
+    sidebarMenu(
+      id = "sidebar_tabs",
+      mk("Dashboard", "dashboard", "chart-line"),
+      mk("DD-Model", "ddm_calculator", "hand-holding-usd",
+         recommended = isTRUE(rec$ddm),
+         fallback_label = "new", fallback_color = "green"),
+      mk("DCF-Model", "dcf_calculator", "calculator",
+         recommended = isTRUE(rec$dcf)),
+      mk("RI-Model", "ri_calculator", "gem",
+         recommended = isTRUE(rec$ri),
+         fallback_label = "pro", fallback_color = "blue"),
+      mk("P/B-Asset", "pb_calculator", "landmark",
+         recommended = isTRUE(rec$pb),
+         fallback_label = "new", fallback_color = "aqua"),
+      mk("Sensitivity", "sensitivity", "sliders-h",
+         fallback_label = "new", fallback_color = "green"),
+      mk("Backtest Zone", "backtest", "vial",
+         fallback_label = "Alpha", fallback_color = "orange"),
+      mk("About", "about", "info-circle")
+    )
+  })
   
   output$tbIncomeStatement <- renderDataTable({
     req(scraped_financials())

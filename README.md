@@ -1,6 +1,11 @@
-# theYNowApp
+# theYNowApp v10.1（雲端相容）
 
-Taiwan stock fundamental analysis Shiny app (current: **v10.0 cloud edition**).
+Taiwan stock fundamental analysis Shiny app（雲端版：yfinance，無 Chromote）。
+
+## v10.1
+
+- **側邊欄「推薦」標記**：依 Model Selector（配息／FCF／產業）自動在 DD-Model、DCF-Model、P/B-Asset 旁顯示紅色「推薦」徽章
+- 與 Dashboard 估值導航同一套規則（DCF／DDM／雙模型／P/B）
 
 ## Run
 
@@ -9,27 +14,13 @@ Taiwan stock fundamental analysis Shiny app (current: **v10.0 cloud edition**).
 shiny::runApp()
 ```
 
-Requires R packages used by `setup.R` / `global.R`, and Python deps from `requirements.txt` (yfinance path; no Chrome required for cloud).
+Requires R packages from `global.R` / `setup.R`, and Python deps in `requirements.txt`.
 
-## Cloud notes (v10.0)
+## Cloud notes
 
-- Financials via **yfinance** (no Chromote / Chrome on shinyapps.io)
-- `requirements.txt` / `py_require` for cloud Python; optional local `.ynow_venv`
-- Selenium is local-only fallback
-- Statement shaping aligns with v9 display (TTM column, Yahoo-like row order, reticulate-safe payloads)
-- KPI helpers use multi-alias row matching for yfinance vs Yahoo HTML naming
+- Financials via **yfinance**（shinyapps.io 不需 Chrome）
+- `requirements.txt` / reticulate for cloud Python
+- KPI helpers use multi-alias row matching for yfinance naming
+- Backtest Zone：依公司基本面自動帶參數
 
-## Layout
-
-| File | Role |
-|------|------|
-| `ui.R` / `server.R` / `global.R` | Shiny app entry |
-| `setup.R` / `default_config.R` | Environment & defaults |
-| `requirements.txt` | Cloud Python dependencies |
-| `*_module.R` | Valuation / KPI / decision modules |
-| `report_template.Rmd` | Report output |
-| `web_crawler.R` / `deep_scraper.py` | Data collection (yfinance-first) |
-
-## Older versions
-
-Historical snapshots are kept as [GitHub Releases](https://github.com/lawrencekuo1118/theYNowApp/releases). The default branch tracks only the current app at repo root.
+Live: https://hopesmasher1118.shinyapps.io/TheYNowApp/

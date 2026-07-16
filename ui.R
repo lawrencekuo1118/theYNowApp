@@ -21,16 +21,7 @@ ui <- dashboardPage(
     ),
     
     column(width = 12,
-           sidebarMenu(
-             menuItem("Dashboard", tabName = "dashboard", icon = icon("chart-line")),
-             menuItem("DD-Model", tabName = "ddm_calculator", icon = icon("hand-holding-usd"), badgeLabel = "new", badgeColor = "green"),
-             menuItem("DCF-Model", tabName = "dcf_calculator", icon = icon("calculator")),
-             menuItem("RI-Model", tabName = "ri_calculator", icon = icon("gem"), badgeLabel = "pro", badgeColor = "blue"),
-             menuItem("P/B-Asset", tabName = "pb_calculator", icon = icon("landmark"), badgeLabel = "new", badgeColor = "aqua"),
-             menuItem("Sensitivity", tabName = "sensitivity", icon = icon("sliders-h"), badgeLabel = "new", badgeColor = "green"),
-             menuItem("Backtest Zone", tabName = "backtest", icon = icon("vial"), badgeLabel = "Alpha", badgeColor = "orange"), # 新增這一行
-             menuItem("About", tabName = "about", icon = icon("info-circle"))
-           ),
+           sidebarMenuOutput("sidebar_menu"),
            hr()
     ),
     
