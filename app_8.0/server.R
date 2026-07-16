@@ -634,14 +634,16 @@ server <- function(input, output, session) {
     ggplot(df, aes(x = Year)) +
       geom_bar(aes(y = FCFF, fill = FCFF > 0), stat = "identity", width = 0.6, alpha = 0.8) +
       scale_fill_manual(values = c("TRUE" = "#00a65a", "FALSE" = "#d9534f"), guide = "none") +
-      geom_line(aes(y = Net_Income, group = 1, color = "預估稅後淨利 (NI)"), size = 1.5) +
-      geom_point(aes(y = Net_Income), size = 3, color = "#3c8dbc") +
-      scale_color_manual(name = "", values = c("預估稅後淨利 (NI)" = "#3c8dbc")) +
+      # 🌟 修正：把 Net_Income 改為 NOPAT，並將圖例名稱改為 NOPAT
+      geom_line(aes(y = NOPAT, group = 1, color = "預估稅後營業利潤 (NOPAT)"), size = 1.5) +
+      geom_point(aes(y = NOPAT), size = 3, color = "#3c8dbc") +
+      scale_color_manual(name = "", values = c("預估稅後營業利潤 (NOPAT)" = "#3c8dbc")) +
       geom_text(aes(y = FCFF, label = paste0("$", round(FCFF, 1))), 
                 vjust = ifelse(df$FCFF >= 0, -0.5, 1.5), size = 4, fontface = "bold") +
       theme_minimal() +
-      labs(title = "FCFF 與 淨利 成長軌跡", x = "預測年份", y = "金額 (百萬)") +
+      labs(title = "FCFF 與 營業利潤 成長軌跡", x = "預測年份", y = "金額 (百萬)") +
       theme(
+        # 🌟 修正：確保這裡是 face 而不是 fontface (其實原本這段就是 face，但保險起見再看一次)
         plot.title = element_text(face = "bold", size = 16),
         axis.text = element_text(size = 12),
         legend.position = "top"
@@ -755,6 +757,7 @@ server <- function(input, output, session) {
     ggplot(plot_df, aes(x = Year, y = Value, color = Metric, linetype = Metric, group = Metric)) +
       geom_line(linewidth = 1.2) + 
       geom_point(size = 3) +
+      # 🌟 geom_text 裡面用 fontface 是可以的 (這是 grid 層級的參數)
       geom_text(aes(label = scales::comma(Value)), 
                 vjust = -1.5, size = 4.5, show.legend = FALSE) +
       scale_color_manual(values = c("預測現金流 (FCF)" = "#95a5a6", "折現後價值 (DCF)" = "#e74c3c")) +      
@@ -764,7 +767,8 @@ server <- function(input, output, session) {
            x = "年份", y = "USD (Millions)") + 
       theme(legend.position = "top", 
             plot.title = element_text(face = "bold", hjust = 0.5),
-            plot.subtitle = element_text(color = "#8e44ad", fontface = "bold", hjust = 0.5))
+            # 🌟 關鍵修正：將 element_text 裡面的 fontface 改為 face
+            plot.subtitle = element_text(color = "#8e44ad", face = "bold", hjust = 0.5)) 
   })
   
   generate_fcf_plot <- reactive({

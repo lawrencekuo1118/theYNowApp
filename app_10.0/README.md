@@ -1,12 +1,27 @@
-# theYNowApp v10.0（雲端相容）
+# theYNowApp v10.1（雲端相容）
 
-與 v9.0 功能相同，但針對 **shinyapps.io** 調整：
+Taiwan stock fundamental analysis Shiny app（雲端版：yfinance，無 Chromote）。
 
-- 財報以 **yfinance API** 為主（無需 Chrome），並後處理對齊 v9.0 顯示：
-  - 合併 `ttm_*` → `TTM` 欄
-  - 數值格式 `742.78B` / `-2.47B`（與 Yahoo HTML 相同）
-  - 列名／列序接近 Yahoo；Expand 使用 collapsed 白名單
-- Selenium 僅本機可選後備（正式結果以 yfinance 為準）
-- 本機可選 `./.ynow_venv` → `~/.venv`（`ln -s ~/.venv .ynow_venv`）
+## v10.1
 
-雲端部署依賴 `requirements.txt` / `py_require`（無需 Selenium）。
+- **側邊欄「推薦」標記**：依 Model Selector（配息／FCF／產業）自動在 DD-Model、DCF-Model、P/B-Asset 旁顯示紅色「推薦」徽章
+- 與 Dashboard 估值導航同一套規則（DCF／DDM／雙模型／P/B）
+- **Ticker 下拉預選**：主搜尋框（`sc`）以原生 datalist 提供熱門清單 + Yahoo 即時建議；側邊欄搜尋框維持原樣
+
+## Run
+
+```r
+# from the repository root
+shiny::runApp()
+```
+
+Requires R packages from `global.R` / `setup.R`, and Python deps in `requirements.txt`.
+
+## Cloud notes
+
+- Financials via **yfinance**（shinyapps.io 不需 Chrome）
+- `requirements.txt` / reticulate for cloud Python
+- KPI helpers use multi-alias row matching for yfinance naming
+- Backtest Zone：依公司基本面自動帶參數
+
+Live: https://hopesmasher1118.shinyapps.io/TheYNowApp/

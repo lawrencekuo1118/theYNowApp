@@ -42,13 +42,37 @@ parse_financial_number <- function(x) {
   out
 }
 
-# 將 Python pandas / 其他表格物件轉為 R data.frame
+# 將 Python pandas / payload / 其他表格物件轉為 R data.frame
 coerce_financial_df <- function(df) {
   if (is.null(df)) return(NULL)
   if (is.data.frame(df)) return(df)
+
+  # app_10.0：Python 回傳 list(columns=..., data=...) 避免 reticulate 吃掉 pandas
+  if (is.list(df) && !is.null(df$columns) && !is.null(df$data)) {
+    cols <- as.character(unlist(df$columns, use.names = FALSE))
+    rows <- df$data
+    if (is.null(rows) || length(rows) == 0) {
+      out <- as.data.frame(matrix(nrow = 0, ncol = length(cols)), stringsAsFactors = FALSE)
+      names(out) <- cols
+      return(out)
+    }
+    mat <- do.call(rbind, lapply(rows, function(r) {
+      r <- as.character(unlist(r, use.names = FALSE))
+      length(r) <- length(cols)
+      r
+    }))
+    out <- as.data.frame(mat, stringsAsFactors = FALSE)
+    names(out) <- cols
+    return(out)
+  }
+
   if (requireNamespace("reticulate", quietly = TRUE)) {
     out <- tryCatch(reticulate::py_to_r(df), error = function(e) NULL)
     if (is.data.frame(out)) return(out)
+    # 遞迴處理 py_to_r 後仍是 columns/data 結構的情況
+    if (is.list(out) && !is.null(out$columns) && !is.null(out$data)) {
+      return(coerce_financial_df(out))
+    }
   }
   tryCatch(as.data.frame(df, stringsAsFactors = FALSE), error = function(e) NULL)
 }
@@ -111,6 +135,32 @@ select_clean_metric_row <- function(df, metric_name, include_ttm = TRUE) {
   parse_financial_number(vals)
 }
 
+# 依偏好順序嘗試多個科目別名（yfinance vs Yahoo HTML 命名差異）
+# 不可把別名用 | 併成單一 grep：列序會讓「較早出現的寬鬆別名」搶先命中
+select_clean_metric_row_any <- function(df, metric_names, include_ttm = TRUE) {
+  for (nm in metric_names) {
+    vals <- select_clean_metric_row(df, nm, include_ttm = include_ttm)
+    if (length(vals) > 0 && !all(is.na(vals))) return(vals)
+  }
+  NA
+}
+
+# 常用科目別名（Yahoo HTML 用 &；yfinance 用 And）
+NET_INCOME_PATTERNS <- c(
+  "Net Income From Continuing (And|&) Discontinued Operation",
+  "Net Income Common Stockholders",
+  "^Net Income$"
+)
+EQUITY_PATTERNS <- c(
+  "Common Stock Equity",
+  "Stockholders Equity",
+  "Total Equity Gross Minority Interest"
+)
+OPEX_PATTERNS <- c(
+  "^Operating Expense$",
+  "^Operating Expenses$"
+)
+
 # 取得當期單一數值：流量科目優先 TTM，存量科目用最新財年
 select_current_metric <- function(df, metric_name, type = c("flow", "stock")) {
   type <- match.arg(type)
@@ -120,12 +170,30 @@ select_current_metric <- function(df, metric_name, type = c("flow", "stock")) {
   vals[1]
 }
 
-# 裁切財務表格至指定科目
+select_current_metric_any <- function(df, metric_names, type = c("flow", "stock")) {
+  type <- match.arg(type)
+  include_ttm <- identical(type, "flow")
+  vals <- select_clean_metric_row_any(df, metric_names, include_ttm = include_ttm)
+  if (length(vals) == 0 || all(is.na(vals))) return(NA_real_)
+  vals[1]
+}
+
+# 裁切財務表格至指定科目（含該列）
+# Yahoo 網頁列序：營收在上、end_metric 在下 → 保留 1:idx
+# 若 end_metric 落在第 1 列（常見於未反轉的 yfinance），改取最後一個命中，避免只剩一列
 trim_financial_table <- function(df, end_metric) {
   if (is.null(df) || nrow(df) == 0) return(df)
   idx <- grep(end_metric, df[[1]], ignore.case = TRUE)
-  if (length(idx) > 0) return(df[1:idx[1], ])
-  return(df)
+  if (length(idx) == 0) return(df)
+  end_i <- idx[1]
+  if (end_i == 1L && length(idx) == 1L && nrow(df) > 1) {
+    # 裁切錨點在頂端 → 視為列序相反，不裁切（保留全表）
+    return(df)
+  }
+  if (end_i == 1L && length(idx) > 1L) {
+    end_i <- idx[length(idx)]
+  }
+  df[seq_len(end_i), , drop = FALSE]
 }
 
 # 取得最新一期期末現金餘額
@@ -229,9 +297,9 @@ collect_fraud_warnings <- function(d_cf, d_is, d_bs) {
   msgs <- character(0)
   fcf <- get_avg(select_clean_metric_row(d_cf, "Free Cash Flow", include_ttm = FALSE))
   ocf <- get_avg(select_clean_metric_row(d_cf, "Operating Cash Flow", include_ttm = FALSE))
-  net <- get_avg(select_clean_metric_row(d_is, "Net Income from Continuing & Discontinued Operation", include_ttm = FALSE))
+  net <- get_avg(select_clean_metric_row_any(d_is, NET_INCOME_PATTERNS, include_ttm = FALSE))
   debt <- get_avg(select_clean_metric_row(d_bs, "Total Debt", include_ttm = FALSE))
-  equity <- get_avg(select_clean_metric_row(d_bs, "Common Stock Equity", include_ttm = FALSE))
+  equity <- get_avg(select_clean_metric_row_any(d_bs, EQUITY_PATTERNS, include_ttm = FALSE))
   
   if (!is.na(fcf) && fcf < 0) msgs <- c(msgs, "自由現金流為負，可能面臨營運或資本支出壓力")
   if (!is.na(ocf) && ocf < 0) msgs <- c(msgs, "營業現金流為負，核心業務現金創造能力不足")
@@ -249,11 +317,11 @@ build_report_kpi_df <- function(d_is, d_bs, d_cf) {
   
   gp <- get_avg(select_clean_metric_row(d_is, "Gross Profit", include_ttm = FALSE))
   rev <- get_avg(select_clean_metric_row(d_is, "Total Revenue", include_ttm = FALSE))
-  net <- get_avg(select_clean_metric_row(d_is, "Net Income from Continuing & Discontinued Operation", include_ttm = FALSE))
+  net <- get_avg(select_clean_metric_row_any(d_is, NET_INCOME_PATTERNS, include_ttm = FALSE))
   ocf <- get_avg(select_clean_metric_row(d_cf, "Operating Cash Flow", include_ttm = FALSE))
   fcf <- get_avg(select_clean_metric_row(d_cf, "Free Cash Flow", include_ttm = FALSE))
   assets <- get_avg(select_clean_metric_row(d_bs, "Total Assets", include_ttm = FALSE))
-  equity <- get_avg(select_clean_metric_row(d_bs, "Common Stock Equity", include_ttm = FALSE))
+  equity <- get_avg(select_clean_metric_row_any(d_bs, EQUITY_PATTERNS, include_ttm = FALSE))
   
   rev_g <- get_avg_growth(select_clean_metric_row(d_is, "Total Revenue", include_ttm = FALSE))
   roa <- if (!is.na(net) && !is.na(assets) && assets != 0) net / assets * 100 else NA
@@ -297,23 +365,247 @@ derive_investment_rating <- function(current_price, target_price) {
 
 # 推薦估值方法（對應決策模組邏輯）
 derive_valuation_method <- function(d_cf, industry_text = "") {
-  fcf_seq <- tryCatch(select_clean_metric_row(d_cf, "Free Cash Flow", include_ttm = FALSE), error = function(e) NULL)
-  div_seq <- tryCatch(select_clean_metric_row(d_cf, "Cash Dividends Paid", include_ttm = FALSE), error = function(e) NULL)
-  is_fcf_pos <- length(fcf_seq) > 0 && !all(is.na(fcf_seq)) && mean(fcf_seq, na.rm = TRUE) > 0
-  is_div <- length(div_seq) > 0 && !all(is.na(div_seq)) && mean(abs(div_seq), na.rm = TRUE) > 0
-  is_financial <- grepl("Bank|Insurance|Financial|Conglomerate|fn\\.|Insurance Brokers", industry_text, ignore.case = TRUE)
-  
-  if (is_financial) {
-    list(method = "P/B（本淨比／資產法）", rationale = "金融／保險／控股體質下，帳面淨值與合理本淨比通常比 FCFF／股利折現更能反映經濟現實。")
-  } else if (is_div && !is_fcf_pos) {
-    list(method = "DDM（股利折現）", rationale = "公司持續配息但 FCF 不穩定，以股東實際現金回報估值較為適切。")
-  } else if (!is_div && is_fcf_pos) {
-    list(method = "DCF（自由現金流折現）", rationale = "公司具備穩健造血能力且未穩定配息，應以 FCFF 折現衡量企業價值。")
-  } else if (is_div && is_fcf_pos) {
-    list(method = "DCF + DDM 交叉驗證", rationale = "現金流與配息皆穩健，建議雙模型交叉驗證以確認安全邊際。")
+  rec <- recommend_valuation_models(d_cf, industry_text)
+  list(method = rec$summary_method, rationale = rec$reason)
+}
+
+#' 模型選擇器 → 側邊欄標記用（與 Dashboard「推薦首選」同一套規則）
+#' @return list(ddm, dcf, pb, ri, tags=character, summary_method, reason)
+recommend_valuation_models <- function(d_cf, industry_text = "") {
+  fcf_seq <- tryCatch(
+    select_clean_metric_row(d_cf, "Free Cash Flow", include_ttm = FALSE),
+    error = function(e) NULL
+  )
+  div_seq <- tryCatch(
+    select_clean_metric_row(d_cf, "Cash Dividends Paid", include_ttm = FALSE),
+    error = function(e) NULL
+  )
+  is_fcf_pos <- length(fcf_seq) > 0 && !all(is.na(fcf_seq)) &&
+    isTRUE(mean(fcf_seq, na.rm = TRUE) > 0)
+  is_div <- length(div_seq) > 0 && !all(is.na(div_seq)) &&
+    isTRUE(mean(abs(div_seq), na.rm = TRUE) > 0)
+  is_financial <- grepl(
+    "Bank|Insurance|Financial|Conglomerate|fn\\.|Insurance Brokers",
+    industry_text,
+    ignore.case = TRUE
+  )
+
+  out <- list(
+    ddm = FALSE, dcf = FALSE, pb = FALSE, ri = FALSE,
+    tags = character(0),
+    summary_method = "P/B／相對估值",
+    reason = "傳統折現模型前提不足，建議以 P/B、淨資產法為主。"
+  )
+
+  if (isTRUE(is_financial)) {
+    out$pb <- TRUE
+    out$tags <- "pb"
+    out$summary_method <- "P/B（本淨比／資產法）"
+    out$reason <- "金融／保險／控股體質下，帳面淨值與合理本淨比通常比 FCFF／股利折現更能反映經濟現實。"
+  } else if (isTRUE(is_div) && !isTRUE(is_fcf_pos)) {
+    out$ddm <- TRUE
+    out$tags <- "ddm"
+    out$summary_method <- "DDM（股利折現）"
+    out$reason <- "公司持續配息但 FCF 不穩定，以股東實際現金回報估值較為適切。"
+  } else if (!isTRUE(is_div) && isTRUE(is_fcf_pos)) {
+    out$dcf <- TRUE
+    out$tags <- "dcf"
+    out$summary_method <- "DCF（自由現金流折現）"
+    out$reason <- "公司具備穩健造血能力且未穩定配息，應以 FCFF 折現衡量企業價值。"
+  } else if (isTRUE(is_div) && isTRUE(is_fcf_pos)) {
+    out$ddm <- TRUE
+    out$dcf <- TRUE
+    out$tags <- c("dcf", "ddm")
+    out$summary_method <- "DCF + DDM 交叉驗證"
+    out$reason <- "現金流與配息皆穩健，建議雙模型交叉驗證以確認安全邊際。"
   } else {
-    list(method = "P/B／相對估值", rationale = "傳統折現模型前提不足，建議以 P/B、淨資產法為主，並輔以相對指標。")
+    out$pb <- TRUE
+    out$tags <- "pb"
+    out$summary_method <- "P/B／相對估值"
+    out$reason <- "該公司不配息且現金流偏弱，傳統折現法難以定價，建議以淨資產／本淨比為主。"
   }
+  out
+}
+
+# ==========================================
+# 永續成長率 g 估計方法（DDM / DCF / RI 共用）
+# ==========================================
+if (!exists("%||%", mode = "function")) {
+  `%||%` <- function(x, y) if (is.null(x) || (length(x) == 1 && is.na(x))) y else x
+}
+
+MATURE_TECH_TICKERS <- c(
+  "AAPL", "MSFT", "GOOGL", "GOOG", "AMZN", "META", "NVDA", "TSLA",
+  "AVGO", "ORCL", "CRM", "ADBE", "INTC", "AMD", "QCOM", "TXN", "TSM"
+)
+
+#' 依產業／營收成長自動分類生命週期檔位
+#' @return one of mature_sunset | mature_tech | growth_to_mature | mature_general
+classify_lifecycle_stage <- function(industry_text = "", ticker = "", rev_cagr = NA_real_) {
+  txt <- paste(industry_text %||% "", collapse = " ")
+  tk <- toupper(trimws(as.character(ticker %||% "")[1]))
+
+  if (grepl(
+    "Bank|Insurance|Utility|Utilities|Financial|Conglomerate|fn\\.|Insurance Brokers|Gas Utilities|Electric Utilities",
+    txt, ignore.case = TRUE
+  )) {
+    return("mature_sunset")
+  }
+
+  if (nzchar(tk) && tk %in% MATURE_TECH_TICKERS) {
+    return("mature_tech")
+  }
+  if (grepl(
+    "Software|Internet|Semiconductors|Semiconductor|Consumer Electronics|Information Technology| technolo",
+    txt, ignore.case = TRUE
+  )) {
+    return("mature_tech")
+  }
+
+  if (is.finite(rev_cagr) && rev_cagr > 8) {
+    return("growth_to_mature")
+  }
+  "mature_general"
+}
+
+#' 基本面永續 g（%）= Retention Ratio × ROE
+calc_fundamental_sgr_pct <- function(d_is, d_bs, d_cf) {
+  if (is.null(d_is) || is.null(d_bs) || !is.data.frame(d_is) || !is.data.frame(d_bs)) {
+    return(NA_real_)
+  }
+  ni <- tryCatch(
+    select_current_metric_any(d_is, NET_INCOME_PATTERNS, "flow"),
+    error = function(e) NA_real_
+  )
+  equity <- tryCatch(
+    select_current_metric_any(d_bs, EQUITY_PATTERNS, "stock"),
+    error = function(e) NA_real_
+  )
+  if (is.na(ni) || is.na(equity) || equity <= 0) return(NA_real_)
+
+  roe <- ni / equity
+  div_paid <- tryCatch({
+    if (is.null(d_cf) || !is.data.frame(d_cf)) NA_real_ else {
+      abs(select_current_metric(d_cf, "Cash Dividends Paid", "flow"))
+    }
+  }, error = function(e) NA_real_)
+
+  payout_ratio <- 0
+  if (!is.na(ni) && ni > 0 && !is.na(div_paid)) {
+    payout_ratio <- min(max(div_paid / ni, 0), 1)
+  }
+  retention <- 1 - payout_ratio
+  round(roe * retention * 100, 2)
+}
+
+#' 估計永續成長率（%）並附說明；必要時建議 two-stage
+#' @return list(g_pct, reason, lifecycle_stage, suggest_two_stage, g_stage1_pct, auto_lifecycle)
+estimate_perpetual_g <- function(method = "macro",
+                                 rf_pct = NA_real_,
+                                 d_is = NULL,
+                                 d_bs = NULL,
+                                 d_cf = NULL,
+                                 industry_text = "",
+                                 ticker = "",
+                                 lifecycle_stage = "auto",
+                                 wacc_pct = NA_real_,
+                                 rev_cagr = NA_real_) {
+  method <- as.character(method %||% "macro")[1]
+  rf_pct <- suppressWarnings(as.numeric(rf_pct)[1])
+  wacc_pct <- suppressWarnings(as.numeric(wacc_pct)[1])
+  if (is.na(rev_cagr) || !is.finite(rev_cagr)) {
+    rev_cagr <- tryCatch({
+      get_avg_growth(select_clean_metric_row(d_is, "Total Revenue", include_ttm = FALSE))
+    }, error = function(e) NA_real_)
+  }
+
+  auto_stage <- classify_lifecycle_stage(industry_text, ticker, rev_cagr)
+  stage <- as.character(lifecycle_stage %||% "auto")[1]
+  if (!nzchar(stage) || identical(stage, "auto")) stage <- auto_stage
+
+  g_pct <- NA_real_
+  reason <- ""
+  suggest_two_stage <- FALSE
+  g_stage1_pct <- if (is.finite(rev_cagr)) {
+    round(max(2, min(rev_cagr, 15)), 2)
+  } else {
+    NA_real_
+  }
+
+  if (identical(method, "fundamental")) {
+    g_pct <- calc_fundamental_sgr_pct(d_is, d_bs, d_cf)
+    if (is.na(g_pct) || !is.finite(g_pct)) {
+      g_pct <- if (is.finite(rf_pct)) round(rf_pct, 2) else 3
+      reason <- paste0(
+        "Fundamental／SGR：財報不足以計算 Retention×ROE，已回退 Macro（Rf=",
+        g_pct, "%）。僅適合成熟、財務結構穩定企業。"
+      )
+    } else {
+      reason <- paste0(
+        "Fundamental／SGR：g = Retention Ratio × ROE = ", g_pct,
+        "%。應用限制：僅適合成熟、財務結構穩定企業。"
+      )
+    }
+  } else if (identical(method, "lifecycle")) {
+    if (identical(stage, "mature_sunset")) {
+      g_pct <- 1.75
+      reason <- "Lifecycle：夕陽／高度成熟（金融、公用事業等）→ g≈1.75%（通膨附近 1.5–2%）。"
+    } else if (identical(stage, "mature_tech")) {
+      g_pct <- 2.75
+      reason <- "Lifecycle：成熟科技巨頭 → g≈2.75%（長期上限約 2.5–3%）。"
+    } else if (identical(stage, "growth_to_mature")) {
+      g_pct <- 2.5
+      suggest_two_stage <- TRUE
+      reason <- paste0(
+        "Lifecycle：高速成長轉向成熟 → 終值 g≈2.5%；建議 two-stage，",
+        "前段成長向 2–3% 收斂",
+        if (is.finite(g_stage1_pct)) paste0("（g1≈", g_stage1_pct, "%）") else "",
+        "。"
+      )
+    } else {
+      g_pct <- 2.5
+      reason <- "Lifecycle：一般成熟產業 → g≈2.5%。"
+    }
+    reason <- paste0(reason, " 自動分類=", auto_stage, "；目前採用=", stage, "。")
+  } else {
+    # macro（預設）：直接套用美國國債利率 Rf
+    g_pct <- if (is.finite(rf_pct)) round(rf_pct, 2) else 4
+    reason <- paste0("Macroeconomic Anchoring：直接套用美國 10 年期公債殖利率 Rf=", g_pct, "%。")
+  }
+
+  # 安全閥：g 必須嚴格小於 WACC
+  if (is.finite(wacc_pct) && is.finite(g_pct) && g_pct >= wacc_pct) {
+    safe_g <- max(0.5, round(wacc_pct - 2, 2))
+    reason <- paste0(
+      reason, " ⚠ g≥WACC，已壓至 ", safe_g, "%（WACC−2）。"
+    )
+    g_pct <- safe_g
+  }
+
+  list(
+    g_pct = g_pct,
+    reason = reason,
+    lifecycle_stage = stage,
+    auto_lifecycle = auto_stage,
+    suggest_two_stage = isTRUE(suggest_two_stage),
+    g_stage1_pct = g_stage1_pct
+  )
+}
+
+#' 側邊欄 menuItem 徽章：推薦優先，否則保留原狀態標
+.sidebar_badge <- function(recommended, fallback_label = NULL, fallback_color = NULL) {
+  if (isTRUE(recommended)) {
+    return(list(label = "推薦", color = "red"))
+  }
+  if (!is.null(fallback_label) && nzchar(fallback_label)) {
+    return(list(label = fallback_label, color = fallback_color %||% "green"))
+  }
+  list(label = NULL, color = NULL)
+}
+
+# `%||%` 若環境尚無
+if (!exists("%||%", mode = "function")) {
+  `%||%` <- function(x, y) if (is.null(x) || (length(x) == 1 && is.na(x))) y else x
 }
 
 # 從 Summary 表萃取單一欄位
@@ -340,58 +632,80 @@ trim_report_table <- function(df, max_rows = 18, max_cols = 7) {
 # =========================================================
 # 此函數會自動處理：大數字格式化 (B/M/K), 負值變紅,  ticker 注入標題, 資訊豐富的懸停提示
 generate_safe_line_plot <- function(data, ticker_name, metric_name) {
-  req(!is.null(data) && nrow(data) > 0)
-  
+  if (is.null(data) || !is.data.frame(data) || nrow(data) == 0) {
+    return(plotly::plotly_empty() %>%
+             plotly::layout(title = paste0(ticker_name, " - ", metric_name, " (無資料)")))
+  }
+
+  # 多列命中時取第一列（呼叫端應已優先挑精確科目）
+  data <- data[1, , drop = FALSE]
+
   # 1. 資料清洗與轉換（支援 B/M/K/T 單位後綴；欄位已為 TTM | 最新→最舊）
   labels <- colnames(data)[-1]
-  vals <- parse_financial_number(as.character(unlist(data[1, -1])))
-  
-  # CAGR 僅用財年欄位（排除 TTM，避免混用）
+  vals <- parse_financial_number(as.character(unlist(data[1, -1], use.names = FALSE)))
+  if (length(labels) == 0 || length(vals) == 0) {
+    return(plotly::plotly_empty() %>%
+             plotly::layout(title = paste0(ticker_name, " - ", metric_name, " (無資料)")))
+  }
+
+  # CAGR 僅用財年欄位（排除 TTM）；必須是有限正值才算，避免 if(NA)
   safe_cagr_msg <- ""
   fy_mask <- !grepl("^ttm$", labels, ignore.case = TRUE)
   fy_vals <- vals[fy_mask]
-  if (length(fy_vals) >= 2 && fy_vals[1] > 0 && tail(fy_vals, 1) > 0) {
+  fy_vals <- fy_vals[is.finite(fy_vals)]
+  if (length(fy_vals) >= 2 &&
+      isTRUE(fy_vals[1] > 0) &&
+      isTRUE(tail(fy_vals, 1) > 0)) {
     n_yr <- length(fy_vals) - 1
     cagr <- ((fy_vals[1] / tail(fy_vals, 1))^(1 / n_yr) - 1) * 100
-    safe_cagr_msg <- paste0(" (", n_yr, "Y CAGR: ", round(cagr, 1), "%)")
+    if (is.finite(cagr)) {
+      safe_cagr_msg <- paste0(" (", n_yr, "Y CAGR: ", round(cagr, 1), "%)")
+    }
   }
-  
+
   # 2. 建立繪圖專用 DataFrame，並設計「更有解讀意義」的懸停文字
+  status_txt <- ifelse(
+    is.na(vals), "N/A",
+    ifelse(vals < 0,
+           "<span style='color:red;'>Negative</span>",
+           "<span style='color:green;'>Positive</span>")
+  )
   plot_df <- data.frame(
-    Year = labels, 
+    Year = labels,
     Value = vals,
-    # 🌟 核心改進：設計豐富的 Hover 內容
     HoverText = paste0(
       "<b>", ticker_name, " - ", metric_name, "</b><br>",
       "---------------------<br>",
       "年份 (FY): <b>", labels, "</b><br>",
-      "數值: <b>$", format(vals, big.mark=",", scientific=F), "</b><br>",
-      "狀態: <b>", ifelse(vals < 0, "<span style='color:red;'>Negative</span>", "<span style='color:green;'>Positive</span>"), "</b>"
-    )
+      "數值: <b>$", ifelse(is.na(vals), "N/A", format(vals, big.mark = ",", scientific = FALSE)), "</b><br>",
+      "狀態: <b>", status_txt, "</b>"
+    ),
+    stringsAsFactors = FALSE
   )
-  
+
+  # 點色：NA 當非負處理，避免 scale 斷裂
+  plot_df$is_neg <- !is.na(plot_df$Value) & plot_df$Value < 0
+
   # 3. 繪製圖表 (使用 ggplot)
-  p <- ggplot(plot_df, aes(x = Year, y = Value, group = 1, text = HoverText)) + # 🌟 綁定設計好的文字
-    geom_line(color = "#7f8c8d", linewidth = 1) + # 使用中性灰色線條
-    geom_point(aes(color = Value < 0), size = 2.5) + # 負值圓點變紅
-    scale_color_manual(values = c("FALSE" = "#2c3e50", "TRUE" = "#e74c3c"), guide = "none") + # 深藍/紅風格
+  p <- ggplot(plot_df, aes(x = Year, y = Value, group = 1, text = HoverText)) +
+    geom_line(color = "#7f8c8d", linewidth = 1, na.rm = TRUE) +
+    geom_point(aes(color = is_neg), size = 2.5, na.rm = TRUE) +
+    scale_color_manual(values = c("FALSE" = "#2c3e50", "TRUE" = "#e74c3c"), guide = "none") +
     scale_y_continuous(
-      # 🌟 核心改進：Y 軸大數字自動格式化 ($123B, $45M)
       labels = scales::label_dollar(scale_cut = scales::cut_short_scale()),
-      expand = expansion(mult = c(0.1, 0.15)) # 騰出空間給點跟文字
+      expand = expansion(mult = c(0.1, 0.15))
     ) +
-    theme_bw() + 
+    theme_bw() +
     labs(
-      # 🌟 核心改進：標題注入 Ticker 與 CAGR
-      title = paste0("📈 ", ticker_name, " - ", metric_name, safe_cagr_msg), 
-      x = "Fiscal Period", 
+      title = paste0("📈 ", ticker_name, " - ", metric_name, safe_cagr_msg),
+      x = "Fiscal Period",
       y = ""
     ) +
     theme(
       plot.title = element_text(face = "bold", size = 15, color = "#2c3e50"),
       axis.text.x = element_text(face = "bold")
     )
-  
+
   # 4. 轉換為 plotly 並指定 tooltip
-  ggplotly(p, tooltip = "text") # 🌟 關鍵修正：只顯示我們設計好的 HoverText
+  ggplotly(p, tooltip = "text")
 }

@@ -15,7 +15,6 @@ default_rm   <- if (!is.null(ind_kpi$rm_avg)) ind_kpi$rm_avg else 8.0
 default_g    <- if (!is.null(ind_kpi$rev_growth)) mean(ind_kpi$rev_growth) else 5
 
 # 🟢 預先計算 CAPM 股東權益成本 (r_e) 作為預設值
-# default_rf <- 4.2  <-- 將原本這行刪掉或註解掉
 default_rf <- get_risk_free_rate()  # 🌟 改成呼叫爬蟲函數，自動抓最新值！
 
 # CAPM 公式: Ke (或 re) = Rf + Beta * (Rm - Rf)

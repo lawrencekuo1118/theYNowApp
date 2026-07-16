@@ -3,6 +3,9 @@
 # 說明：統一管理 UI 與 Server 的初始數值，並動態綁定產業 KPI
 # ==========================================
 
+# 🌟 關鍵修復：給定一個預設的產業代碼 (這要跟你的 industry_standards.R 裡面的名稱一致)
+DEFAULT_IND <- "ecr.Ecommerce_Retail"
+
 # 抓取預設產業的 KPI 數據 (取平均值作為預設參數)
 ind_kpi <- industry_standards[[DEFAULT_IND]]
 

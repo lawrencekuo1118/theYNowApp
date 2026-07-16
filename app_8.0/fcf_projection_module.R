@@ -19,9 +19,9 @@ fcf_projection_module_ui <- function(id) {
            ),
            
            fluidRow(
-             div("FCFF = NI + D&A - ΔNWC - CapEx",
+             div("FCFF = NOPAT + D&A - ΔNWC - CapEx",
                  style = "font-size: 18px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;")
-           ),   
+             ),   
            br(),
            
            fluidRow(
@@ -37,7 +37,7 @@ fcf_projection_module_ui <- function(id) {
            fluidRow(
              # 營收輸入框
              column(4, numericInput(ns("fcf_revenue"), "當期營收 (Revenue)", value = 100)),
-             column(4, numericInput(ns("fcf_net_income"), "稅後淨利 (Net Income)", value = 0)),
+             column(4, numericInput(ns("fcf_nopat"), "稅後營業利潤 (NOPAT)", value = 0)),
              column(4, numericInput(ns("fcf_depreciation"), "折舊與攤銷 (D&A) [+]", value = 0))
            ),
            fluidRow(
@@ -281,16 +281,24 @@ fcf_projection_module_server <- function(
       req(d_cash_flow(), d_income_statement(), d_balance_sheet())
       
       rev  <- select_clean_metric_row(d_income_statement(), "Total Revenue")[1]
-      ni   <- select_clean_metric_row(d_income_statement(), "Net Income from Continuing & Discontinued Operation")[1]
+      ebit <- select_clean_metric_row(d_income_statement(), "Operating Income")[1]
+      tax_exp <- select_clean_metric_row(d_income_statement(), "Income Tax Expense")[1]
+      pre_tax <- select_clean_metric_row(d_income_statement(), "Pretax Income")[1]
+      
+      # 計算有效稅率並推算 NOPAT
+      tax_rate <- if (!is.na(pre_tax) && pre_tax > 0 && !is.na(tax_exp)) max(0, min(tax_exp / pre_tax, 0.5)) else 0.21
+      nopat <- if (!is.na(ebit)) ebit * (1 - tax_rate) else select_clean_metric_row(d_income_statement(), "Net Income")[1]
+      
       dep  <- select_clean_metric_row(d_cash_flow(), "Depreciation")[1]
       raw_nwc <- select_clean_metric_row(d_cash_flow(), "Change in Working Capital")[1]
       cap  <- abs(select_clean_metric_row(d_cash_flow(), "Capital Expenditure")[1])
+      
       asst <- select_clean_metric_row(d_balance_sheet(), "Total Assets")[1]
       liab <- select_clean_metric_row(d_balance_sheet(), "Current Liabilities")[1]
       debt <- select_clean_metric_row(d_balance_sheet(), "Current Debt")[1]
       
       updateNumericInput(session, "fcf_revenue", value = rev)
-      updateNumericInput(session, "fcf_net_income", value = ni)
+      updateNumericInput(session, "fcf_nopat", value = nopat) # 🌟 改為更新 NOPAT
       updateNumericInput(session, "fcf_depreciation", value = dep)
       updateNumericInput(session, "fcf_delta_nwc", value = if(!is.na(raw_nwc)) -raw_nwc else 0)
       updateNumericInput(session, "fcf_capex", value = cap)
@@ -401,13 +409,13 @@ fcf_projection_module_server <- function(
       
       # 取得基礎財報數值
       base_rev       <- safe_num(input$fcf_revenue)
-      base_ni        <- safe_num(input$fcf_net_income)
+      base_nopat     <- safe_num(input$fcf_nopat) # 🌟 接收 NOPAT
       base_depre     <- safe_num(input$fcf_depreciation)
       base_capex     <- safe_num(input$fcf_capex)
       base_delta_nwc <- safe_num(input$fcf_delta_nwc)
       
       # 計算各項佔營收比率 (防呆：分母不為 0)
-      ni_margin        <- if(base_rev == 0) 0 else base_ni / base_rev
+      nopat_margin     <- if(base_rev == 0) 0 else base_nopat / base_rev # 🌟 改算 NOPAT 利潤率
       depre_margin     <- if(base_rev == 0) 0 else base_depre / base_rev
       capex_margin     <- if(base_rev == 0) 0 else base_capex / base_rev
       delta_nwc_margin <- if(base_rev == 0) 0 else base_delta_nwc / base_rev
@@ -416,7 +424,7 @@ fcf_projection_module_server <- function(
       df <- data.frame(
         Year = paste0("Year ", 1:n_years),
         Revenue = numeric(n_years),
-        Net_Income = numeric(n_years),
+        NOPAT = numeric(n_years), # 🌟 表格欄位改為 NOPAT
         Depreciation = numeric(n_years),
         CapEx = numeric(n_years),
         Delta_NWC = numeric(n_years),
@@ -426,7 +434,7 @@ fcf_projection_module_server <- function(
       # 🌟 關鍵修正 2：動態推算 (現在營收會完美跟隨你選擇的方法進行複利)
       for(i in 1:n_years) {
         df$Revenue[i]      <- base_rev * (1 + g_rev_rate)^i
-        df$Net_Income[i]   <- df$Revenue[i] * ni_margin
+        df$NOPAT[i]        <- df$Revenue[i] * nopat_margin # 🌟
         df$Depreciation[i] <- df$Revenue[i] * depre_margin
         df$CapEx[i]        <- df$Revenue[i] * capex_margin
         if (i == 1) {
@@ -435,7 +443,7 @@ fcf_projection_module_server <- function(
           df$Delta_NWC[i] <- (df$Revenue[i] - df$Revenue[i-1]) * delta_nwc_margin
         }
         # FCFF 核心公式：淨利 + 折舊 - 資本支出 - 營運資金增加量
-        df$FCFF[i] <- df$Net_Income[i] + df$Depreciation[i] - df$CapEx[i] - df$Delta_NWC[i]
+        df$FCFF[i] <- df$NOPAT[i] + df$Depreciation[i] - df$CapEx[i] - df$Delta_NWC[i]
       }
       
       return(df)

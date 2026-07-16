@@ -39,35 +39,20 @@ pacman::p_load(
 # 1. 強制清空 Python 路徑緩存，讓 reticulate 重新搜尋
 Sys.setenv(RETICULATE_PYTHON = "")
 
-# 🌟 核心修正：將虛擬環境移出專案資料夾 (避開 OneDrive 雲端同步)
-# 使用 "~/.ynow_venv" 將環境建立在 Mac 的使用者根目錄下的隱藏資料夾
-env_dir <- path.expand("~/.ynow_venv")
+# 🌟 核心修正：使用「替身術 (Symlink)」指向專案內的捷徑
+# 這裡使用相對路徑 "./.ynow_venv"，它會順著捷徑找到外面的 ~/.venv
+env_dir <- "./.ynow_venv"
 python_path <- file.path(env_dir, "bin", "python")
 
-# 3. 強制指定路徑（動態偵測相對路徑是否存在）
+# 3. 強制指定路徑（動態偵測捷徑是否存在）
 if (file.exists(python_path)) {
   Sys.setenv(RETICULATE_PYTHON = python_path)
   reticulate::use_virtualenv(env_dir, required = TRUE)
-  message("✅ 已連結至本機虛擬環境 Python: ", python_path)
+  message("✅ 已透過替身捷徑連結至 Python 虛擬環境: ", python_path)
 } else {
-  message("⚠️ 找不到本機虛擬環境，準備於專案內重新建立 (只需執行一次)...")
-  
-  # 建立虛擬環境
-  reticulate::virtualenv_create(envname = env_dir) 
-  
-  # 🌟 關鍵精簡：合併所有套件為一行，並移除 ignore_installed = TRUE
-  reticulate::virtualenv_install(
-    envname = env_dir, 
-    packages = c("numpy", "pandas", "selenium", "webdriver-manager", "yfinance")
-  )
-  
-  # 建立完成後，綁定剛建好的路徑
-  Sys.setenv(RETICULATE_PYTHON = python_path)
+  # ⚠️ 防呆機制：如果找不到捷徑，停止執行並跳出警告，避免在 OneDrive 內誤建實體環境
+  stop("⚠️ 找不到 .ynow_venv 捷徑！請先在 Terminal 執行：ln -s ~/.venv .ynow_venv")
 }
-
-# 4. 強制 Shiny 使用我們剛建立好的乾淨環境
-reticulate::use_virtualenv(env_dir, required = TRUE)
-message("✅ Python 本機端虛擬環境已成功啟動！")
 
 # ==========================================
 # 應用程式進入點與全域設定
