@@ -2,6 +2,18 @@
 # ui.R - 前端介面設計
 # ==========================================
 
+# Backtest Zone：欄位下方小字說明
+.bt_hint <- function(text) {
+  tags$p(
+    style = "margin: -6px 0 14px 0; font-size: 11.5px; line-height: 1.45; color: #777;",
+    text
+  )
+}
+
+.bt_section_intro <- function(text) {
+  tags$p(style = "margin: 0 0 12px 0; font-size: 12.5px; color: #555; line-height: 1.5;", text)
+}
+
 ui <- dashboardPage(
   skin = "black",
   
@@ -21,16 +33,7 @@ ui <- dashboardPage(
     ),
     
     column(width = 12,
-           sidebarMenu(
-             menuItem("Dashboard", tabName = "dashboard", icon = icon("chart-line")),
-             menuItem("DD-Model", tabName = "ddm_calculator", icon = icon("hand-holding-usd"), badgeLabel = "new", badgeColor = "green"),
-             menuItem("DCF-Model", tabName = "dcf_calculator", icon = icon("calculator")),
-             menuItem("RI-Model", tabName = "ri_calculator", icon = icon("gem"), badgeLabel = "pro", badgeColor = "blue"),
-             menuItem("P/B-Asset", tabName = "pb_calculator", icon = icon("landmark"), badgeLabel = "new", badgeColor = "aqua"),
-             menuItem("Sensitivity", tabName = "sensitivity", icon = icon("sliders-h"), badgeLabel = "new", badgeColor = "green"),
-             menuItem("Backtest Zone", tabName = "backtest", icon = icon("vial"), badgeLabel = "Alpha", badgeColor = "orange"), # 新增這一行
-             menuItem("About", tabName = "about", icon = icon("info-circle"))
-           ),
+           sidebarMenuOutput("sidebar_menu"),
            hr()
     ),
     
@@ -68,6 +71,54 @@ ui <- dashboardPage(
         }
         .selectize-dropdown {
           max-height: 300px !important;
+        }
+
+        /* 主搜尋框預選清單：黑字白底 */
+        #sc_ticker_suggest {
+          position: absolute;
+          z-index: 2000;
+          left: 0;
+          right: 0;
+          top: 100%;
+          margin-top: 2px;
+          max-height: 260px;
+          overflow-y: auto;
+          background: #ffffff;
+          border: 1px solid #cccccc;
+          border-radius: 4px;
+          box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+          display: none;
+        }
+        #sc_ticker_suggest .ynow-suggest-item {
+          display: block;
+          width: 100%;
+          padding: 8px 12px;
+          color: #000000 !important;
+          background: #ffffff;
+          border: 0;
+          border-bottom: 1px solid #eeeeee;
+          text-align: left;
+          font-size: 13px;
+          cursor: pointer;
+        }
+        #sc_ticker_suggest .ynow-suggest-item:hover,
+        #sc_ticker_suggest .ynow-suggest-item:focus {
+          background: #f2f2f2;
+          color: #000000 !important;
+          outline: none;
+        }
+        #sc_ticker_suggest .ynow-suggest-sym {
+          font-weight: 700;
+          color: #000000;
+          margin-right: 8px;
+        }
+        #sc_ticker_suggest .ynow-suggest-lab {
+          color: #222222;
+          font-weight: 400;
+        }
+        .ynow-sc-wrap {
+          position: relative;
+          max-width: 400px;
         }
         
         .info-box .info-box-number {
@@ -132,8 +183,80 @@ ui <- dashboardPage(
     fluidRow(
       column(width = 12,
              titlePanel(h5("a lawrence kuo shiny app")),
-             textInput("sc", "Ticker / Stock Code", value = APP_DEFAULTS$stock_code)
-             
+             div(
+               class = "ynow-sc-wrap",
+               textInput("sc", "Ticker / Stock Code", value = APP_DEFAULTS$stock_code),
+               uiOutput("sc_ticker_suggest_ui")
+             ),
+             tags$script(HTML("
+               (function() {
+                 /* Dropdown only while typing (not on focus/empty). */
+                 var typingOpen = false;
+
+                 function scValue() {
+                   var inp = document.getElementById('sc');
+                   return inp ? (inp.value || '') : '';
+                 }
+
+                 function hasTypedQuery() {
+                   return scValue().trim().length > 0;
+                 }
+
+                 function showSuggest() {
+                   var el = document.getElementById('sc_ticker_suggest');
+                   if (!el) return;
+                   if (typingOpen && hasTypedQuery() && el.children.length) {
+                     el.style.display = 'block';
+                   } else {
+                     el.style.display = 'none';
+                   }
+                 }
+
+                 function hideSuggest() {
+                   typingOpen = false;
+                   var el = document.getElementById('sc_ticker_suggest');
+                   if (el) el.style.display = 'none';
+                 }
+
+                 $(document).on('input', '#sc', function() {
+                   var v = $(this).val() || '';
+                   Shiny.setInputValue('ticker_typeahead', v, {priority: 'event'});
+                   typingOpen = v.trim().length > 0;
+                   showSuggest();
+                 });
+
+                 $(document).on('blur', '#sc', function(e) {
+                   var rt = e.relatedTarget;
+                   var el = document.getElementById('sc_ticker_suggest');
+                   if (el && rt && el.contains(rt)) return;
+                   hideSuggest();
+                 });
+
+                 $(document).on('keydown', '#sc', function(e) {
+                   if (e.key === 'Enter' || e.keyCode === 13) hideSuggest();
+                 });
+
+                 $(document).on('click', '#search', function() {
+                   hideSuggest();
+                 });
+
+                 $(document).on('mousedown', '#sc_ticker_suggest .ynow-suggest-item', function(e) {
+                   e.preventDefault();
+                   var sym = $(this).data('symbol');
+                   hideSuggest();
+                   if (sym) {
+                     $('#sc').val(sym).trigger('change');
+                     Shiny.setInputValue('sc', sym, {priority: 'event'});
+                   }
+                 });
+
+                 $(document).on('shiny:value', function(e) {
+                   if (e.name === 'sc_ticker_suggest_ui') {
+                     setTimeout(showSuggest, 0);
+                   }
+                 });
+               })();
+             "))
       )
     ),
     fluidRow(
@@ -374,8 +497,18 @@ ui <- dashboardPage(
                               ),
                               fluidRow(
                                 column(width = 12,
-                                       plotOutput("plt_dcf_trajectory", height = "400px"),
-                                       h6(helpText("提示：啟動時已自動計算。若已自訂相關參數，請點擊按鈕更新。")),
+                                       radioButtons(
+                                         "dcf_chart_mode",
+                                         "圖表顯示模式",
+                                         choices = c(
+                                           "單純模式（歷史＋預測 FCFF，無折現線）" = "simple",
+                                           "顯示折現後價值（DCF）" = "with_dcf"
+                                         ),
+                                         selected = "with_dcf",
+                                         inline = TRUE
+                                       ),
+                                       plotOutput("plt_dcf_trajectory", height = "420px"),
+                                       h6(helpText("提示：圖含歷史 FCFF；切換模式可隱藏／顯示折現後 DCF 線。啟動時已自動計算，自訂參數後可再點試算。")),
                                        fluidRow(
                                          column(width = 6, actionButton("calc", "▶ 試算 DCF", class = "btn-success btn-block", style = "padding: 12px; font-weight: bold; font-size: 16px;")),
                                          column(width = 6, actionButton("reset_dcf", "回復預設", class = "btn-default btn-block", style = "padding: 12px; font-weight: bold; font-size: 16px;"))
@@ -408,6 +541,38 @@ ui <- dashboardPage(
                                 
                                 box(title = "DCF 估值核心參數設定", 
                                     width = 12, status = "warning", solidHeader = TRUE,
+
+                                    selectInput(
+                                      "perpetual_g_method",
+                                      "估計永續成長率方法",
+                                      choices = c(
+                                        "總體經濟錨定法（Macroeconomic Anchoring）" = "macro",
+                                        "永續成長公式法（Fundamental / SGR）" = "fundamental",
+                                        "產業生命週期檢核法（Lifecycle Check）" = "lifecycle"
+                                      ),
+                                      selected = APP_DEFAULTS$perpetual_g_method
+                                    ),
+                                    helpText(
+                                      "Macro：直接套用美國 10 年期公債 Rf。",
+                                      "Fundamental：Retention×ROE（僅適合成熟穩健企業）。",
+                                      "Lifecycle：依產業成熟度反推 g，可手動覆寫自動分類。"
+                                    ),
+                                    conditionalPanel(
+                                      condition = "input.perpetual_g_method == 'lifecycle'",
+                                      selectInput(
+                                        "lifecycle_stage",
+                                        "產業生命週期檔位（可覆寫自動偵測）",
+                                        choices = c(
+                                          "自動偵測" = "auto",
+                                          "夕陽／高度成熟（≈1.5–2%）" = "mature_sunset",
+                                          "成熟科技巨頭（≈2.5–3%）" = "mature_tech",
+                                          "高速成長→成熟（終值≈2.5%，建議 two-stage）" = "growth_to_mature",
+                                          "一般成熟（≈2.5%）" = "mature_general"
+                                        ),
+                                        selected = APP_DEFAULTS$lifecycle_stage
+                                      )
+                                    ),
+                                    uiOutput("txt_perpetual_g_reason"),
                                     
                                     # --- 共用終值永續成長率（避免 gordon / two_stage 重複 ID）---
                                     numericInput("sgr", "終值永續成長率 SGR (%)", value = APP_DEFAULTS$sgr),
@@ -518,75 +683,159 @@ ui <- dashboardPage(
       tabItem(tabName = "backtest",
               withMathJax(),
               h2("量化回測實驗室 (Backtest Zone)"),
-              helpText("參數預設依「目前搜尋公司」的財報／動能／安全邊際自動推導；可切換手動覆寫。"),
-
-              fluidRow(
-                box(
-                  title = tagList(icon("chart-area"), "策略淨值比較圖 (Equity Curve Comparison)"),
-                  width = 12, status = "info", solidHeader = TRUE,
-                  plotlyOutput("bt_equity_plot", height = "450px") %>% withSpinner(),
-                  helpText("藍＝模式 A（情緒增強），紅＝模式 B（純基本面），灰虛線＝大盤基準（SPY），綠＝該股買進持有。")
-                )
+              .bt_section_intro(
+                "流程：搜尋股票 → 確認參數（自動依財報推導或手動覆寫）→ 啟動回測 → 比較兩種策略淨值與績效指標。"
               ),
 
               fluidRow(
                 box(
-                  title = tagList(icon("sliders-h"), "參數模式"),
-                  width = 12, status = "success", solidHeader = TRUE,
+                  title = tagList(icon("chart-area"), "策略淨值比較圖"),
+                  width = 8, status = "info", solidHeader = TRUE,
+                  plotlyOutput("bt_equity_plot", height = "420px") %>% withSpinner(),
+                  tags$ul(
+                    style = "margin: 10px 0 0 0; padding-left: 18px; font-size: 12px; color: #666; line-height: 1.55;",
+                    tags$li(tags$b("藍線"), " 模式 A（情緒增強）：基本面通過後，再依動能／RSI 調整曝險。"),
+                    tags$li(tags$b("紅線"), " 模式 B（純基本面）：僅依財報門檻與估值偏離（MOS）決定倉位。"),
+                    tags$li(tags$b("綠線"), " 該股買進持有：同期間單純持有標的，作為對照組。"),
+                    tags$li(tags$b("灰虛線"), " 大盤基準（SPY）：衡量是否跑贏市場。")
+                  )
+                ),
+                box(
+                  title = tagList(icon("play-circle"), "執行面板"),
+                  width = 4, status = "warning", solidHeader = TRUE,
+                  tags$ol(
+                    style = "padding-left: 18px; font-size: 12px; color: #555; margin-bottom: 12px; line-height: 1.6;",
+                    tags$li("先在側欄或主頁搜尋股票並載入財報"),
+                    tags$li("選擇參數模式並檢視下方三個設定分頁"),
+                    tags$li("按下啟動回測，等待淨值曲線與績效指標")
+                  ),
                   radioButtons(
-                    "bt_param_mode", NULL, inline = TRUE,
-                    choices = c("自動（依公司推導）" = "auto", "手動覆寫" = "manual"),
+                    "bt_param_mode", "參數模式",
+                    inline = FALSE,
+                    choices = c(
+                      "自動（依目前公司財報推導）" = "auto",
+                      "手動覆寫（自行調整門檻與權重）" = "manual"
+                    ),
                     selected = "auto"
                   ),
+                  .bt_hint("自動模式會在搜尋新股票後更新門檻；手動模式不會覆寫你已調整的數值。"),
                   uiOutput("bt_param_notes"),
-                  actionButton("bt_refresh_params", "依目前公司重算參數", icon = icon("sync"))
-                )
-              ),
-
-              fluidRow(
-                box(
-                  title = tagList(icon("filter"), "1. 大過濾器：估值路徑分流 (The Great Filter)"),
-                  width = 12, status = "primary", solidHeader = TRUE, collapsible = TRUE,
-                  column(3, tipify(numericInput("bt_net_margin", "淨利率門檻 (%)", 5),
-                                   "獲利能力門檻。自動模式取該公司歷史淨利率約一半。", placement = "top")),
-                  column(3, tipify(numericInput("bt_rev_growth", "營收成長門檻 (%)", 25),
-                                   "自動模式取該公司歷史營收成長約一半。", placement = "top")),
-                  column(3, tipify(numericInput("bt_eps_growth", "EPS/NI 成長門檻 (g, %)", 15),
-                                   "自動模式取該公司淨利成長約一半。", placement = "top")),
-                  column(3, tipify(numericInput("bt_fcf_cv", "FCF 變異係數上限", 20),
-                                   "自動模式取該公司 FCF CV × 1.25。", placement = "top"))
+                  actionButton(
+                    "bt_refresh_params", "依目前公司重算參數",
+                    icon = icon("sync"), class = "btn-default btn-block",
+                    style = "margin-bottom: 10px;"
+                  ),
+                  actionButton(
+                    "run_bt", "▶ 啟動量化回測",
+                    class = "btn-warning btn-lg btn-block"
+                  ),
+                  .bt_hint("使用過去約 5 年日線、月頻再平衡；結合財報特徵產出兩種策略淨值。"),
+                  uiOutput("bt_run_status")
                 )
               ),
 
               fluidRow(
                 tabBox(
-                  title = tagList(icon("balance-scale"), "2. 模式 A 與 B 權重因子"),
-                  width = 8,
-                  tabPanel("模式 A：情緒增強型",
-                           helpText("權重依動能／RSI／MOS 自動分配；適合捕捉趨勢與過熱訊號。"),
-                           sliderInput("bt_w_mom", "短期動能 (Momentum) 權重", 0, 1, 0.4, step = 0.01),
-                           bsTooltip("bt_w_mom", "基於約 20 日報酬率捕捉趨勢。", "right"),
-                           sliderInput("bt_w_rsi", "市場情緒 (RSI) 權重", 0, 1, 0.3, step = 0.01),
-                           bsTooltip("bt_w_rsi", "RSI 過高時降低曝險，防止追高。", "right")
+                  title = tagList(icon("sliders-h"), "策略參數設定"),
+                  width = 12,
+                  tabPanel(
+                    title = tagList(icon("filter"), "① 基本面過濾"),
+                    .bt_section_intro(
+                      "大過濾器（The Great Filter）：先以財報品質篩選標的，決定是否進入策略倉位。四項門檻皆需通過，否則該再平衡日視為不持有。"
+                    ),
+                    fluidRow(
+                      column(
+                        3,
+                        tipify(
+                          numericInput("bt_net_margin", "淨利率門檻 (%)", 5),
+                          "獲利能力下限。自動模式取該公司歷史淨利率約一半。", placement = "top"
+                        ),
+                        .bt_hint("淨利率 = 淨利 ÷ 營收。低於門檻代表獲利薄弱，策略傾向減碼或觀望。")
+                      ),
+                      column(
+                        3,
+                        tipify(
+                          numericInput("bt_rev_growth", "營收成長門檻 (%)", 25),
+                          "自動模式取該公司歷史營收成長約一半。", placement = "top"
+                        ),
+                        .bt_hint("年度營收變化率。用於區分高成長與成熟型公司。")
+                      ),
+                      column(
+                        3,
+                        tipify(
+                          numericInput("bt_eps_growth", "EPS／淨利成長門檻 (%)", 15),
+                          "自動模式取該公司淨利成長約一半。", placement = "top"
+                        ),
+                        .bt_hint("g = 盈餘成長率。過濾獲利停滯或衰退的標的。")
+                      ),
+                      column(
+                        3,
+                        tipify(
+                          numericInput("bt_fcf_cv", "FCF 變異係數上限 (%)", 20),
+                          "自動模式取該公司 FCF CV × 1.25。", placement = "top"
+                        ),
+                        .bt_hint("CV = 自由現金流標準差 ÷ |平均 FCF|。愈高代表現金流愈不穩定。")
+                      )
+                    )
                   ),
-                  tabPanel("模式 B：純基本面型",
-                           helpText("核心：通過大過濾器 + 估值偏離（MOS）與均線位置。"),
-                           sliderInput("bt_w_vg", "估值偏離 (Valuation Gap) 權重", 0, 1, 0.7, step = 0.01),
-                           bsTooltip("bt_w_vg", "安全邊際越高，基本面倉位傾向越高。", "right"),
-                           tags$div(style = "color: #d9534f; font-weight: bold; padding: 10px; background: #fcf8e3; border-radius: 5px;",
-                                    icon("exclamation-triangle"), "價值陷阱警示：若低估長期不漲，請參考模式 A 判斷市場共識何時轉向。")
+                  tabPanel(
+                    title = tagList(icon("bolt"), "② 模式 A｜情緒增強"),
+                    .bt_section_intro(
+                      "在通過基本面過濾後，依短期趨勢與市場情緒調整曝險。適合捕捉動能轉強或避免追高過熱區間。"
+                    ),
+                    fluidRow(
+                      column(
+                        6,
+                        sliderInput("bt_w_mom", "短期動能 (Momentum) 權重", 0, 1, 0.4, step = 0.01),
+                        bsTooltip("bt_w_mom", "基於約 20 日報酬率與均線位置捕捉趨勢。", "right"),
+                        .bt_hint("動能：股價是否站上短期／中期均線且呈多頭排列。權重愈高，越重視趨勢延續。")
+                      ),
+                      column(
+                        6,
+                        sliderInput("bt_w_rsi", "市場情緒 (RSI) 權重", 0, 1, 0.3, step = 0.01),
+                        bsTooltip("bt_w_rsi", "RSI 過高時降低曝險，防止追高。", "right"),
+                        .bt_hint("RSI（14 日）：相對強弱指標。過高代表市場過熱，過低可能接近超賣。")
+                      )
+                    ),
+                    tags$div(
+                      style = "padding: 10px 12px; background: #f4f8fb; border-left: 4px solid #3c8dbc; border-radius: 4px; font-size: 12px; color: #555;",
+                      icon("info-circle"),
+                      " 模式 A 的 Mom／RSI 權重會與模式 B 的估值權重互補；三者合計反映總曝險分配邏輯。"
+                    )
+                  ),
+                  tabPanel(
+                    title = tagList(icon("balance-scale"), "③ 模式 B｜純基本面"),
+                    .bt_section_intro(
+                      "僅依財報門檻與估值偏離（安全邊際 MOS）決定倉位，不參考短期技術指標。適合價值型、長期基本面導向。"
+                    ),
+                    fluidRow(
+                      column(
+                        6,
+                        sliderInput("bt_w_vg", "估值偏離 (Valuation Gap) 權重", 0, 1, 0.7, step = 0.01),
+                        bsTooltip("bt_w_vg", "內在價值高於現價（正 MOS）時，基本面倉位傾向提高。", "right"),
+                        .bt_hint("VG／MOS = (內在價值 − 現價) ÷ 內在價值。正值代表可能低估，權重愈高越重視安全邊際。")
+                      ),
+                      column(
+                        6,
+                        tags$div(
+                          style = "margin-top: 28px; padding: 12px; background: #fcf8e3; border: 1px solid #f0e6b2; border-radius: 5px; font-size: 12px; color: #8a6d3b; line-height: 1.55;",
+                          tags$b(icon("exclamation-triangle"), " 價值陷阱提醒"),
+                          tags$br(),
+                          "若標的長期低估卻不漲，可能市場尚未認同基本面。可對照模式 A 的動能／RSI，觀察市場共識是否轉向。"
+                        )
+                      )
+                    )
                   )
-                ),
-                box(
-                  title = "執行操作", width = 4, status = "warning",
-                  actionButton("run_bt", "▶ 啟動量化回測", class = "btn-warning btn-lg btn-block"),
-                  hr(),
-                  p("將使用目前 Ticker 過去約 5 年日線（月頻再平衡），並結合該公司財報特徵產出淨值曲線。"),
-                  uiOutput("bt_run_status")
                 )
               ),
 
-              uiOutput("perf_metrics")
+              fluidRow(
+                box(
+                  title = tagList(icon("trophy"), "回測績效指標"),
+                  width = 12, status = "success", solidHeader = TRUE, collapsible = TRUE, collapsed = FALSE,
+                  uiOutput("perf_metrics")
+                )
+              )
       ),
       
       # ==========================================

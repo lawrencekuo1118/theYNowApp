@@ -42,37 +42,13 @@ parse_financial_number <- function(x) {
   out
 }
 
-# 將 Python pandas / payload / 其他表格物件轉為 R data.frame
+# 將 Python pandas / 其他表格物件轉為 R data.frame
 coerce_financial_df <- function(df) {
   if (is.null(df)) return(NULL)
   if (is.data.frame(df)) return(df)
-
-  # app_10.0：Python 回傳 list(columns=..., data=...) 避免 reticulate 吃掉 pandas
-  if (is.list(df) && !is.null(df$columns) && !is.null(df$data)) {
-    cols <- as.character(unlist(df$columns, use.names = FALSE))
-    rows <- df$data
-    if (is.null(rows) || length(rows) == 0) {
-      out <- as.data.frame(matrix(nrow = 0, ncol = length(cols)), stringsAsFactors = FALSE)
-      names(out) <- cols
-      return(out)
-    }
-    mat <- do.call(rbind, lapply(rows, function(r) {
-      r <- as.character(unlist(r, use.names = FALSE))
-      length(r) <- length(cols)
-      r
-    }))
-    out <- as.data.frame(mat, stringsAsFactors = FALSE)
-    names(out) <- cols
-    return(out)
-  }
-
   if (requireNamespace("reticulate", quietly = TRUE)) {
     out <- tryCatch(reticulate::py_to_r(df), error = function(e) NULL)
     if (is.data.frame(out)) return(out)
-    # 遞迴處理 py_to_r 後仍是 columns/data 結構的情況
-    if (is.list(out) && !is.null(out$columns) && !is.null(out$data)) {
-      return(coerce_financial_df(out))
-    }
   }
   tryCatch(as.data.frame(df, stringsAsFactors = FALSE), error = function(e) NULL)
 }
@@ -135,32 +111,6 @@ select_clean_metric_row <- function(df, metric_name, include_ttm = TRUE) {
   parse_financial_number(vals)
 }
 
-# 依偏好順序嘗試多個科目別名（yfinance vs Yahoo HTML 命名差異）
-# 不可把別名用 | 併成單一 grep：列序會讓「較早出現的寬鬆別名」搶先命中
-select_clean_metric_row_any <- function(df, metric_names, include_ttm = TRUE) {
-  for (nm in metric_names) {
-    vals <- select_clean_metric_row(df, nm, include_ttm = include_ttm)
-    if (length(vals) > 0 && !all(is.na(vals))) return(vals)
-  }
-  NA
-}
-
-# 常用科目別名（Yahoo HTML 用 &；yfinance 用 And）
-NET_INCOME_PATTERNS <- c(
-  "Net Income From Continuing (And|&) Discontinued Operation",
-  "Net Income Common Stockholders",
-  "^Net Income$"
-)
-EQUITY_PATTERNS <- c(
-  "Common Stock Equity",
-  "Stockholders Equity",
-  "Total Equity Gross Minority Interest"
-)
-OPEX_PATTERNS <- c(
-  "^Operating Expense$",
-  "^Operating Expenses$"
-)
-
 # 取得當期單一數值：流量科目優先 TTM，存量科目用最新財年
 select_current_metric <- function(df, metric_name, type = c("flow", "stock")) {
   type <- match.arg(type)
@@ -170,30 +120,12 @@ select_current_metric <- function(df, metric_name, type = c("flow", "stock")) {
   vals[1]
 }
 
-select_current_metric_any <- function(df, metric_names, type = c("flow", "stock")) {
-  type <- match.arg(type)
-  include_ttm <- identical(type, "flow")
-  vals <- select_clean_metric_row_any(df, metric_names, include_ttm = include_ttm)
-  if (length(vals) == 0 || all(is.na(vals))) return(NA_real_)
-  vals[1]
-}
-
-# 裁切財務表格至指定科目（含該列）
-# Yahoo 網頁列序：營收在上、end_metric 在下 → 保留 1:idx
-# 若 end_metric 落在第 1 列（常見於未反轉的 yfinance），改取最後一個命中，避免只剩一列
+# 裁切財務表格至指定科目
 trim_financial_table <- function(df, end_metric) {
   if (is.null(df) || nrow(df) == 0) return(df)
   idx <- grep(end_metric, df[[1]], ignore.case = TRUE)
-  if (length(idx) == 0) return(df)
-  end_i <- idx[1]
-  if (end_i == 1L && length(idx) == 1L && nrow(df) > 1) {
-    # 裁切錨點在頂端 → 視為列序相反，不裁切（保留全表）
-    return(df)
-  }
-  if (end_i == 1L && length(idx) > 1L) {
-    end_i <- idx[length(idx)]
-  }
-  df[seq_len(end_i), , drop = FALSE]
+  if (length(idx) > 0) return(df[1:idx[1], ])
+  return(df)
 }
 
 # 取得最新一期期末現金餘額
@@ -297,9 +229,9 @@ collect_fraud_warnings <- function(d_cf, d_is, d_bs) {
   msgs <- character(0)
   fcf <- get_avg(select_clean_metric_row(d_cf, "Free Cash Flow", include_ttm = FALSE))
   ocf <- get_avg(select_clean_metric_row(d_cf, "Operating Cash Flow", include_ttm = FALSE))
-  net <- get_avg(select_clean_metric_row_any(d_is, NET_INCOME_PATTERNS, include_ttm = FALSE))
+  net <- get_avg(select_clean_metric_row(d_is, "Net Income from Continuing & Discontinued Operation", include_ttm = FALSE))
   debt <- get_avg(select_clean_metric_row(d_bs, "Total Debt", include_ttm = FALSE))
-  equity <- get_avg(select_clean_metric_row_any(d_bs, EQUITY_PATTERNS, include_ttm = FALSE))
+  equity <- get_avg(select_clean_metric_row(d_bs, "Common Stock Equity", include_ttm = FALSE))
   
   if (!is.na(fcf) && fcf < 0) msgs <- c(msgs, "自由現金流為負，可能面臨營運或資本支出壓力")
   if (!is.na(ocf) && ocf < 0) msgs <- c(msgs, "營業現金流為負，核心業務現金創造能力不足")
@@ -317,11 +249,11 @@ build_report_kpi_df <- function(d_is, d_bs, d_cf) {
   
   gp <- get_avg(select_clean_metric_row(d_is, "Gross Profit", include_ttm = FALSE))
   rev <- get_avg(select_clean_metric_row(d_is, "Total Revenue", include_ttm = FALSE))
-  net <- get_avg(select_clean_metric_row_any(d_is, NET_INCOME_PATTERNS, include_ttm = FALSE))
+  net <- get_avg(select_clean_metric_row(d_is, "Net Income from Continuing & Discontinued Operation", include_ttm = FALSE))
   ocf <- get_avg(select_clean_metric_row(d_cf, "Operating Cash Flow", include_ttm = FALSE))
   fcf <- get_avg(select_clean_metric_row(d_cf, "Free Cash Flow", include_ttm = FALSE))
   assets <- get_avg(select_clean_metric_row(d_bs, "Total Assets", include_ttm = FALSE))
-  equity <- get_avg(select_clean_metric_row_any(d_bs, EQUITY_PATTERNS, include_ttm = FALSE))
+  equity <- get_avg(select_clean_metric_row(d_bs, "Common Stock Equity", include_ttm = FALSE))
   
   rev_g <- get_avg_growth(select_clean_metric_row(d_is, "Total Revenue", include_ttm = FALSE))
   roa <- if (!is.na(net) && !is.na(assets) && assets != 0) net / assets * 100 else NA
@@ -408,80 +340,58 @@ trim_report_table <- function(df, max_rows = 18, max_cols = 7) {
 # =========================================================
 # 此函數會自動處理：大數字格式化 (B/M/K), 負值變紅,  ticker 注入標題, 資訊豐富的懸停提示
 generate_safe_line_plot <- function(data, ticker_name, metric_name) {
-  if (is.null(data) || !is.data.frame(data) || nrow(data) == 0) {
-    return(plotly::plotly_empty() %>%
-             plotly::layout(title = paste0(ticker_name, " - ", metric_name, " (無資料)")))
-  }
-
-  # 多列命中時取第一列（呼叫端應已優先挑精確科目）
-  data <- data[1, , drop = FALSE]
-
+  req(!is.null(data) && nrow(data) > 0)
+  
   # 1. 資料清洗與轉換（支援 B/M/K/T 單位後綴；欄位已為 TTM | 最新→最舊）
   labels <- colnames(data)[-1]
-  vals <- parse_financial_number(as.character(unlist(data[1, -1], use.names = FALSE)))
-  if (length(labels) == 0 || length(vals) == 0) {
-    return(plotly::plotly_empty() %>%
-             plotly::layout(title = paste0(ticker_name, " - ", metric_name, " (無資料)")))
-  }
-
-  # CAGR 僅用財年欄位（排除 TTM）；必須是有限正值才算，避免 if(NA)
+  vals <- parse_financial_number(as.character(unlist(data[1, -1])))
+  
+  # CAGR 僅用財年欄位（排除 TTM，避免混用）
   safe_cagr_msg <- ""
   fy_mask <- !grepl("^ttm$", labels, ignore.case = TRUE)
   fy_vals <- vals[fy_mask]
-  fy_vals <- fy_vals[is.finite(fy_vals)]
-  if (length(fy_vals) >= 2 &&
-      isTRUE(fy_vals[1] > 0) &&
-      isTRUE(tail(fy_vals, 1) > 0)) {
+  if (length(fy_vals) >= 2 && fy_vals[1] > 0 && tail(fy_vals, 1) > 0) {
     n_yr <- length(fy_vals) - 1
     cagr <- ((fy_vals[1] / tail(fy_vals, 1))^(1 / n_yr) - 1) * 100
-    if (is.finite(cagr)) {
-      safe_cagr_msg <- paste0(" (", n_yr, "Y CAGR: ", round(cagr, 1), "%)")
-    }
+    safe_cagr_msg <- paste0(" (", n_yr, "Y CAGR: ", round(cagr, 1), "%)")
   }
-
+  
   # 2. 建立繪圖專用 DataFrame，並設計「更有解讀意義」的懸停文字
-  status_txt <- ifelse(
-    is.na(vals), "N/A",
-    ifelse(vals < 0,
-           "<span style='color:red;'>Negative</span>",
-           "<span style='color:green;'>Positive</span>")
-  )
   plot_df <- data.frame(
-    Year = labels,
+    Year = labels, 
     Value = vals,
+    # 🌟 核心改進：設計豐富的 Hover 內容
     HoverText = paste0(
       "<b>", ticker_name, " - ", metric_name, "</b><br>",
       "---------------------<br>",
       "年份 (FY): <b>", labels, "</b><br>",
-      "數值: <b>$", ifelse(is.na(vals), "N/A", format(vals, big.mark = ",", scientific = FALSE)), "</b><br>",
-      "狀態: <b>", status_txt, "</b>"
-    ),
-    stringsAsFactors = FALSE
+      "數值: <b>$", format(vals, big.mark=",", scientific=F), "</b><br>",
+      "狀態: <b>", ifelse(vals < 0, "<span style='color:red;'>Negative</span>", "<span style='color:green;'>Positive</span>"), "</b>"
+    )
   )
-
-  # 點色：NA 當非負處理，避免 scale 斷裂
-  plot_df$is_neg <- !is.na(plot_df$Value) & plot_df$Value < 0
-
+  
   # 3. 繪製圖表 (使用 ggplot)
-  p <- ggplot(plot_df, aes(x = Year, y = Value, group = 1, text = HoverText)) +
-    geom_line(color = "#7f8c8d", linewidth = 1, na.rm = TRUE) +
-    geom_point(aes(color = is_neg), size = 2.5, na.rm = TRUE) +
-    scale_color_manual(values = c("FALSE" = "#2c3e50", "TRUE" = "#e74c3c"), guide = "none") +
+  p <- ggplot(plot_df, aes(x = Year, y = Value, group = 1, text = HoverText)) + # 🌟 綁定設計好的文字
+    geom_line(color = "#7f8c8d", linewidth = 1) + # 使用中性灰色線條
+    geom_point(aes(color = Value < 0), size = 2.5) + # 負值圓點變紅
+    scale_color_manual(values = c("FALSE" = "#2c3e50", "TRUE" = "#e74c3c"), guide = "none") + # 深藍/紅風格
     scale_y_continuous(
+      # 🌟 核心改進：Y 軸大數字自動格式化 ($123B, $45M)
       labels = scales::label_dollar(scale_cut = scales::cut_short_scale()),
-      expand = expansion(mult = c(0.1, 0.15))
+      expand = expansion(mult = c(0.1, 0.15)) # 騰出空間給點跟文字
     ) +
-    theme_bw() +
+    theme_bw() + 
     labs(
-      title = paste0("📈 ", ticker_name, " - ", metric_name, safe_cagr_msg),
-      x = "Fiscal Period",
+      # 🌟 核心改進：標題注入 Ticker 與 CAGR
+      title = paste0("📈 ", ticker_name, " - ", metric_name, safe_cagr_msg), 
+      x = "Fiscal Period", 
       y = ""
     ) +
     theme(
       plot.title = element_text(face = "bold", size = 15, color = "#2c3e50"),
       axis.text.x = element_text(face = "bold")
     )
-
+  
   # 4. 轉換為 plotly 並指定 tooltip
-  ggplotly(p, tooltip = "text")
+  ggplotly(p, tooltip = "text") # 🌟 關鍵修正：只顯示我們設計好的 HoverText
 }

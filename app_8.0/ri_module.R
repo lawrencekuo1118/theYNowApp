@@ -3,29 +3,21 @@
 # 專治：金融股、重資產、負自由現金流但具備龐大帳面淨值的企業
 # ==========================================
 
-# ==========================================
-# 🖥️ 前端 UI 介面 (ri_module_ui)
-# ==========================================
+# ------------------------------------------
+# 🖥️ 前端 UI 介面
+# ------------------------------------------
 ri_module_ui <- function(id) {
   ns <- NS(id)
   
   tabItem(tabName = "ri_calculator",
-          tabBox(title = "RESIDUAL INCOME", width = "auto",
+          tabBox(title = "RESIDUAL INCOME (RI) MODEL", width = "auto",
                  
-                 # --- 💎 子分頁 1：RI 估值主畫面 (Overview) ---
+                 # --- 分頁：RI 估值主畫面 ---
                  tabPanel("RI Overview", icon = icon("gem"),
                           
                           fluidRow(
                             div("Residual Income = Net Income - (Equity Capital × Cost of Equity)",
                                 style = "font-size: 18px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;")
-                          ),
-                          
-                          # 🌟 補回：執行試算的大按鈕
-                          fluidRow(
-                            div(style = "text-align: center; margin-bottom: 20px;",
-                                actionButton(ns("btn_calc_ri"), "▶ 試算 RI 模型", 
-                                             style = "background-color: #27ae60; color: white; font-weight: bold; font-size: 18px; padding: 12px 30px; border-radius: 8px; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1);")
-                            )
                           ),
                           
                           fluidRow(
@@ -37,58 +29,30 @@ ri_module_ui <- function(id) {
                                      box(title = "📈 每股帳面淨值 vs 剩餘收益 軌跡圖", width = 12, status = "info",
                                          plotOutput(ns("plt_ri_trajectory"), height = "350px")
                                      )
-                                   ),
-                                   fluidRow(
-                                     box(title = "📊 剩餘收益預測細節", width = 12, status = "primary",
-                                         tableOutput(ns("tbl_ri_details"))
-                                     )
+                                   )
+                            ),
+                            
+                            column(width = 12,
+                                   box(title = "⚙️ 模型參數假設", width = 12, status = "primary", solidHeader = TRUE,
+                                       numericInput(ns("b0"), "每股帳面淨值 (BVPS, B0)", value = NA, step = 0.1),
+                                       numericInput(ns("roe"), "預估股東權益報酬率 (ROE) %", value = NA, step = 0.1),
+                                       numericInput(ns("ke"), "要求股權報酬率 (Ke) %", value = NA, step = 0.1),
+                                       numericInput(ns("payout"), "預估配息率 (Payout Ratio) %", value = NA, min = 0, max = 100, step = 1),
+                                       numericInput(ns("years"), "預測期 (Years)", value = 5, min = 1, max = 10),
+                                       numericInput(ns("g"), "RI 終端永續成長率 (g) %", value = 0, step = 0.1),
+                                       helpText("實務上 RI 終端成長率通常設為 0 或負數 (超額利潤會隨競爭消失)"),
+                                       
+                                       tags$div(style = "margin-top: 20px;",
+                                                actionButton(ns("btn_calc_ri"), "▶ 試算 RI 合理股價", class = "btn-success", icon = icon("calculator"), style="width: 100%; font-weight: bold; font-size: 16px;")
+                                       )
                                    )
                             )
-                          )
-                 ),
-                 
-                 # --- ⚙️ 子分頁 2：模型參數與 B0 設定 (Settings) ---
-                 tabPanel("RI Settings", icon = icon("cogs"),
-                          
-                          # -- B0 估算區 (仿 FCFF UI 風格) --
-                          h4(tags$b("🎯 每股帳面淨值 (B0) 估算區")),
-                          fluidRow(
-                            div("B0 = 普通股股東權益 (Common Equity) ÷ 發行股數 (Shares Outstanding)",
-                                style = "font-size: 16px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F8F9F9; border-left: 4px solid #2980B9; border-radius: 4px;")
-                          ),
-                          fluidRow(
-                            column(4, 
-                                   numericInput(ns("b0"), "期初每股帳面淨值 B0 (USD)", value = NA, step = 0.5)
-                            ),
-                            column(8,
-                                   br(), # 對齊下推
-                                   actionButton(ns("btn_sync_b0"), "從最新財報自動帶入數值", 
-                                                icon = icon("sync"), 
-                                                class = "btn-sm",
-                                                style = "background-color: #2980b9; color: white; border: none; padding: 8px 15px; font-weight: bold; border-radius: 5px; margin-top: 5px;")
-                            )
                           ),
                           
-                          hr(style = "border-top: 1px solid #BDC3C7;"),
-                          
-                          # -- 核心參數設定區 --
-                          h4(tags$b("⚙️ 模型參數假設")),
+                          # 下方：明細數據表
                           fluidRow(
-                            column(4, numericInput(ns("ri_years"), "預測期 (Years)", value = 5, min = 1, max = 10)),
-                            column(4, numericInput(ns("ri_ke"), "股東權益成本 (Ke, %)", value = 8.0, step = 0.1)),
-                            column(4, numericInput(ns("ri_g"), "終值永續成長率 (g, %)", value = 2.0, step = 0.1))
-                          ),
-                          # 🌟 補回：RI 必備的 ROE 與配息率參數
-                          fluidRow(
-                            column(6, numericInput(ns("ri_roe"), "預期股東權益報酬率 (ROE, %)", value = 15.0, step = 0.1)),
-                            column(6, numericInput(ns("ri_payout"), "預期現金配息率 (Payout Ratio, %)", value = 40.0, step = 1))
-                          ),
-                          fluidRow(
-                            column(12,
-                                   actionButton(ns("btn_reset_ri_params"), "回復系統預設參數", 
-                                                icon = icon("undo"), 
-                                                class = "btn-sm",
-                                                style = "background-color: #7f8c8d; color: white; border: none; margin-top: 10px;")
+                            box(title = "📊 預測期財務明細 (Per Share)", width = 12,
+                                tableOutput(ns("tbl_ri_details"))
                             )
                           )
                  )
@@ -96,102 +60,69 @@ ri_module_ui <- function(id) {
   )
 }
 
-# ==========================================
+# ------------------------------------------
 # ⚙️ 後端 Server 邏輯
-# ==========================================
-# 🔴 注意：這裡的參數移除了 scraped_shares，讓模組更獨立
-ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flow, global_re) {
+# ------------------------------------------
+ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flow, global_re, scraped_shares) {
   moduleServer(id, function(input, output, session) {
     
     # ==========================================
-    # 🔄 自動從財報同步預設值 (初次載入時)
+    # 🔄 自動從財報同步預設值
     # ==========================================
     observeEvent(d_balance_sheet(), {
-      req(d_balance_sheet(), d_income_statement())
+      req(d_balance_sheet(), d_income_statement(), scraped_shares())
       
-      df_bs <- d_balance_sheet()
+      shares <- scraped_shares()
       
-      # 🌟 1. 獨立抓取股數防呆邏輯 (不再依賴 server.R 傳入)
-      raw_shares <- select_current_metric(df_bs, "Ordinary Shares Number|Share Issued|Total Shares Outstanding", "stock")
-      shares <- if (is.na(raw_shares) || raw_shares <= 0) 1 else raw_shares
-      
-      equity <- select_current_metric_any(df_bs, EQUITY_PATTERNS, "stock")
+      # 1. 計算 BVPS (每股淨值 B0)
+      equity <- select_clean_metric_row(d_balance_sheet(), "Common Stock Equity")[1]
+      if (is.na(equity)) equity <- select_clean_metric_row(d_balance_sheet(), "Total Equity Gross Minority Interest")[1]
       
       if (!is.na(equity) && !is.na(shares) && shares > 0) {
         bvps <- equity / shares
         updateNumericInput(session, "b0", value = round(bvps, 2))
       }
       
-      # 3. 計算歷史 ROE
-      ni <- select_current_metric_any(d_income_statement(), NET_INCOME_PATTERNS, "flow")
+      # 2. 計算歷史 ROE
+      ni <- select_clean_metric_row(d_income_statement(), "Net Income from Continuing & Discontinued Operation")[1]
+      if (is.na(ni)) ni <- select_clean_metric_row(d_income_statement(), "Net Income")[1]
       
       if (!is.na(ni) && !is.na(equity) && equity > 0) {
         roe <- (ni / equity) * 100
+        # 防呆：避免極端值 (例如庫藏股導致的異常高 ROE)
         roe_safe <- max(-50, min(roe, 50))
-        updateNumericInput(session, "ri_roe", value = round(roe_safe, 2))
+        updateNumericInput(session, "roe", value = round(roe_safe, 2))
       }
       
-      # 4. 計算歷史配息率
-      div_paid_total <- abs(select_current_metric(d_cash_flow(), "Cash Dividends Paid", "flow"))
+      # 3. 計算歷史配息率
+      div_paid_total <- abs(select_clean_metric_row(d_cash_flow(), "Cash Dividends Paid")[1])
       if (!is.na(div_paid_total) && !is.na(ni) && ni > 0) {
         payout <- (div_paid_total / ni) * 100
         payout_safe <- max(0, min(payout, 100))
-        updateNumericInput(session, "ri_payout", value = round(payout_safe, 2))
+        updateNumericInput(session, "payout", value = round(payout_safe, 2))
       } else {
-        updateNumericInput(session, "ri_payout", value = 0)
+        updateNumericInput(session, "payout", value = 0)
       }
     })
     
-    # ==========================================
-    # 🔘 按鈕邏輯：手動從財報再次同步 B0
-    # ==========================================
-    observeEvent(input$btn_sync_b0, {
-      req(d_balance_sheet())
-      df_bs <- d_balance_sheet()
-      
-      # 🌟 同樣使用獨立抓取邏輯
-      raw_shares <- select_current_metric(df_bs, "Ordinary Shares Number|Share Issued|Total Shares Outstanding", "stock")
-      shares <- if (is.na(raw_shares) || raw_shares <= 0) 1 else raw_shares
-      
-      equity <- select_current_metric_any(df_bs, EQUITY_PATTERNS, "stock")
-      
-      if (!is.na(equity) && !is.na(shares) && shares > 0) {
-        calc_b0 <- round(equity / shares, 2)
-        updateNumericInput(session, "b0", value = calc_b0)
-        showNotification(paste("✅ 已成功從資產負債表更新 B0 為 $", calc_b0), type = "message")
-      } else {
-        showNotification("⚠️ 無法從當前財報讀取完整 B0 所需欄位", type = "error")
-      }
-    })
-    
-    # 🔘 按鈕邏輯：重設所有 RI 參數
-    observeEvent(input$btn_reset_ri_params, {
-      updateNumericInput(session, "ri_years", value = 5)
-      updateNumericInput(session, "ri_g", value = 2.0)
-      if (!is.null(global_re())) {
-        updateNumericInput(session, "ri_ke", value = round(global_re() * 100, 2))
-      }
-      showNotification("🔁 已重設為系統預設參數", type = "message")
-    })
-    
-    # 同步中央大腦的全域 Ke (來自 WACC/CAPM)
+    # 同步全域的 Ke (CAPM)
     observeEvent(global_re(), {
       req(global_re())
-      updateNumericInput(session, "ri_ke", value = round(global_re() * 100, 2))
+      updateNumericInput(session, "ke", value = round(global_re() * 100, 2))
     })
     
     # ==========================================
     # 🧮 核心運算引擎 (RI Model)
     # ==========================================
     ri_calc <- eventReactive(input$btn_calc_ri, {
-      req(input$b0, input$ri_roe, input$ri_ke, input$ri_payout, input$ri_years, input$ri_g)
+      req(input$b0, input$roe, input$ke, input$payout, input$years)
       
       b0 <- input$b0
-      roe <- input$ri_roe / 100
-      ke <- input$ri_ke / 100
-      payout <- input$ri_payout / 100
-      g <- input$ri_g / 100
-      n <- input$ri_years
+      roe <- input$roe / 100
+      ke <- input$ke / 100
+      payout <- input$payout / 100
+      g <- input$g / 100
+      n <- input$years
       
       if (ke <= g) {
         return(list(status = "error", message = "⚠️ 計算無效：要求股權報酬率 (Ke) 必須嚴格大於終端成長率 (g)！"))
@@ -216,14 +147,15 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
         df$EPS[i] <- curr_bv * roe
         df$DPS[i] <- df$EPS[i] * payout
         df$Equity_Charge[i] <- curr_bv * ke
-        df$RI[i] <- df$EPS[i] - df$Equity_Charge[i] 
+        df$RI[i] <- df$EPS[i] - df$Equity_Charge[i]  # 或者寫作 (roe - ke) * curr_bv
         df$PV_RI[i] <- df$RI[i] / ((1 + ke)^i)
         
         discount_sum <- discount_sum + df$PV_RI[i]
-        curr_bv <- curr_bv + df$EPS[i] - df$DPS[i] # 期末淨值 = 期初 + EPS - 股利
+        curr_bv <- curr_bv + df$EPS[i] - df$DPS[i] # 期末淨值
       }
       
-      # 終值 (Terminal Value) 假設最後一年的 RI 以 g 成長
+      # 終值 (Terminal Value)
+      # 假設最後一年的 RI 以 g 成長
       tv_ri <- (df$RI[n] * (1 + g)) / (ke - g)
       pv_tv_ri <- tv_ri / ((1 + ke)^n)
       
@@ -283,6 +215,7 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
       req(res$status == "success")
       df <- res$df
       
+      # 計算累積的 RI 現值，用來畫堆疊圖
       df$Cum_PV_RI <- cumsum(df$PV_RI)
       df$Intrinsic_Path <- res$b0 + df$Cum_PV_RI
       
@@ -303,6 +236,7 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
       req(res$status == "success")
       df <- res$df
       
+      # 美化表格
       out_df <- data.frame(
         "預測年 (Year)" = df$Year,
         "期初淨值 (Beg BV)" = sprintf("$%.2f", df$Beg_BVPS),
@@ -315,7 +249,7 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
       return(out_df)
     }, align = 'c', striped = TRUE, hover = TRUE, bordered = TRUE)
     
-    # 傳出計算結果
+    # 傳出計算結果 (供 Football Field 圖表使用)
     return(list(
       ri_price = reactive({ res <- ri_calc(); if(res$status == "success") res$value else NA })
     ))

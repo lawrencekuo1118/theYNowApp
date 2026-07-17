@@ -46,33 +46,29 @@ server <- function(input, output, session) {
     
     withProgress(message = paste('🚀 正在獲取', stock_code, '的最新數據...'), value = 0, {
       tryCatch({
-        incProgress(0.2, detail = "正在讀取 Summary（yfinance）...")
+        incProgress(0.2, detail = "正在讀取 Summary 頁面...")
         sum_df <- get_summary_data(stock_code)
         summary_data(sum_df)
-
+        
         ind_info <- get_yahoo_industry(stock_code)
         if (!is.null(ind_info)) corp_industry_text(ind_info$display_text)
-
+        
         if (!(stock_code %in% values$recentsearch)) {
           values$recentsearch <- head(c(stock_code, values$recentsearch), 5)
         }
-
-        incProgress(0.5, detail = "正在抓取財報明細（yfinance）...")
+        
+        incProgress(0.5, detail = "正在展開深度財報明細 (快取加速中)...")
         res <- cached_scrape_financials(stock_code)
         res <- normalize_all_financials(res)
         scraped_financials(res)
-
+        
         is_expanded(FALSE)
         updateActionButton(session, "btn_expand_all", label = "Expand All", icon = icon("expand"))
-
+        
         incProgress(0.9, detail = "數據同步完成！✅")
-
+        
       }, error = function(e) {
-        showNotification(
-          paste("❌ 獲取資料失敗，請確認代碼。錯誤:", e$message),
-          type = "error",
-          duration = 12
-        )
+        showNotification(paste("❌ 獲取資料失敗，請確認代碼。錯誤:", e$message), type = "error")
       })
     })
   })
@@ -204,17 +200,11 @@ server <- function(input, output, session) {
   # ==========================================
   selected_cashflow_data <- reactive({
     req(d_cash_flow())
-    df <- d_cash_flow()
     keyword <- switch(input$cf_type,
                       "Operating Cash Flow" = "Operating Cash Flow",
                       "Investing Cash Flow" = "Investing Cash Flow",
                       "Financing Cash Flow" = "Financing Cash Flow")
-    # 先精確匹配科目名，避免命中 "Cash Flow From Continuing ..." 等長名列
-    exact <- which(tolower(trimws(df[[1]])) == tolower(keyword))
-    if (length(exact) > 0) return(df[exact[1], , drop = FALSE])
-    hit <- grepl(keyword, df[[1]], ignore.case = TRUE)
-    if (!any(hit)) return(df[FALSE, , drop = FALSE])
-    df[which(hit)[1], , drop = FALSE]
+    d_cash_flow()[grepl(keyword, d_cash_flow()[[1]], ignore.case = TRUE), ]
   })
   
   output$cf_plot <- renderPlotly({
@@ -427,21 +417,21 @@ server <- function(input, output, session) {
   
   output$notdoingbusiness <- renderText({
     ocf <- get_avg(select_clean_metric_row(d_cash_flow(), "Operating Cash Flow", include_ttm = FALSE))
-    net <- get_avg(select_clean_metric_row_any(d_income_statement(), NET_INCOME_PATTERNS, include_ttm = FALSE))
+    net <- get_avg(select_clean_metric_row(d_income_statement(), "Net Income from Continuing & Discontinued Operation", include_ttm = FALSE))
     fraud_warnings$biz <- if (is.na(ocf) || is.na(net)) "" else if (ocf < net) "⚠️ 營業現金流低於淨利，帳面賺錢但現金未實現" else ""
     fraud_warnings$biz
   })
   
   output$notgettingcashback <- renderText({
     ocf <- get_avg(select_clean_metric_row(d_cash_flow(), "Operating Cash Flow", include_ttm = FALSE))
-    net <- get_avg(select_clean_metric_row_any(d_income_statement(), NET_INCOME_PATTERNS, include_ttm = FALSE))
+    net <- get_avg(select_clean_metric_row(d_income_statement(), "Net Income from Continuing & Discontinued Operation", include_ttm = FALSE))
     fraud_warnings$cashback <- if (is.na(ocf) || is.na(net)) "" else if (net > 0 && ocf < 0) "⚠️ 淨利為正但現金流為負，獲利品質存疑" else ""
     fraud_warnings$cashback
   })
   
   output$highdebttoequity <- renderText({
     total_liabilities <- get_avg(select_clean_metric_row(d_balance_sheet(), "Total Debt", include_ttm = FALSE))
-    total_equity <- get_avg(select_clean_metric_row_any(d_balance_sheet(), EQUITY_PATTERNS, include_ttm = FALSE))
+    total_equity <- get_avg(select_clean_metric_row(d_balance_sheet(), "Common Stock Equity", include_ttm = FALSE))
     ratio <- if (is.na(total_liabilities) || is.na(total_equity) || total_equity == 0) NA else total_liabilities / total_equity
     fraud_warnings$debt <- if (is.na(ratio)) "" else if (ratio > 2) "⚠️ 負債對權益比率過高，財務槓桿風險大" else ""
     fraud_warnings$debt
@@ -1229,192 +1219,54 @@ server <- function(input, output, session) {
     }
   })
   
-  # ==========================================
-  # 🧪 Backtest Zone：公司專屬參數 + 真實回測
-  # ==========================================
-  bt_param_notes_txt <- reactiveVal("請先搜尋股票並載入財報，系統會依公司自動推導參數。")
-  bt_result <- reactiveVal(NULL)
-  bt_run_msg <- reactiveVal("")
-
-  bt_current_mos <- reactive({
-    cur <- tryCatch(scraped_market_cap()$price, error = function(e) NA_real_)
-    tgt <- tryCatch(stock_price_estimate_val(), error = function(e) NA_real_)
-    if (is.null(tgt) || length(tgt) < 1) tgt <- NA_real_
-    cur <- suppressWarnings(as.numeric(cur)[1])
-    tgt <- suppressWarnings(as.numeric(tgt)[1])
-    if (is.na(cur) || is.na(tgt) || !is.finite(cur) || !is.finite(tgt) || tgt == 0) return(NA_real_)
-    (tgt - cur) / tgt
-  })
-
-  apply_bt_params_to_ui <- function(p) {
-    updateNumericInput(session, "bt_net_margin", value = p$bt_net_margin)
-    updateNumericInput(session, "bt_rev_growth", value = p$bt_rev_growth)
-    updateNumericInput(session, "bt_eps_growth", value = p$bt_eps_growth)
-    updateNumericInput(session, "bt_fcf_cv", value = p$bt_fcf_cv)
-    updateSliderInput(session, "bt_w_mom", value = p$bt_w_mom)
-    updateSliderInput(session, "bt_w_rsi", value = p$bt_w_rsi)
-    updateSliderInput(session, "bt_w_vg", value = p$bt_w_vg)
-    bt_param_notes_txt(p$notes)
-  }
-
-  refresh_bt_params <- function() {
-    req(current_ticker(), d_income_statement(), d_cash_flow())
-    hist_long <- tryCatch(fetch_price_history_df(current_ticker(), "1y"), error = function(e) NULL)
-    p <- derive_bt_params(
-      d_is = d_income_statement(),
-      d_bs = d_balance_sheet(),
-      d_cf = d_cash_flow(),
-      hist_df = hist_long,
-      mos = bt_current_mos(),
-      industry_choice = input$industry_choice
-    )
-    apply_bt_params_to_ui(p)
-    invisible(p)
-  }
-
-  observeEvent(list(current_ticker(), scraped_financials()), {
-    req(current_ticker(), scraped_financials())
-    if (!identical(input$bt_param_mode, "auto")) return()
-    tryCatch(refresh_bt_params(), error = function(e) {
-      bt_param_notes_txt(paste("自動推導失敗：", e$message))
-    })
-  }, ignoreInit = FALSE)
-
-  observeEvent(input$bt_refresh_params, {
-    tryCatch({
-      refresh_bt_params()
-      showNotification("✅ 已依目前公司重算 Backtest 參數", type = "message")
-    }, error = function(e) {
-      showNotification(paste("參數重算失敗：", e$message), type = "error")
-    })
-  })
-
-  observeEvent(input$bt_param_mode, {
-    if (identical(input$bt_param_mode, "auto")) {
-      tryCatch(refresh_bt_params(), error = function(e) NULL)
-    } else {
-      bt_param_notes_txt("手動覆寫模式：調整下方門檻／權重後再執行回測。")
-    }
-  })
-
-  # 自動模式：使用者改動參數後不強制鎖死（允許微調）；切回 auto 才重算
-
-  output$bt_param_notes <- renderUI({
-    tags$p(style = "margin: 8px 0 0 0; color: #444;", icon("info-circle"), " ", bt_param_notes_txt())
-  })
-
-  output$bt_run_status <- renderUI({
-    msg <- bt_run_msg()
-    if (!nzchar(msg)) return(NULL)
-    tags$p(style = "color:#666; font-size:12px;", msg)
-  })
-
-  observeEvent(input$run_bt, {
-    req(current_ticker())
-    bt_result(NULL)
-    bt_run_msg("回測計算中…")
-    tryCatch({
-      if (is.null(d_income_statement()) || is.null(d_cash_flow())) {
-        stop("請先在 Dashboard 搜尋並載入該公司財報")
-      }
-      # 若在自動模式，先重算一次再跑
-      if (identical(input$bt_param_mode, "auto")) {
-        tryCatch(refresh_bt_params(), error = function(e) NULL)
-      }
-      params <- list(
-        bt_net_margin = input$bt_net_margin,
-        bt_rev_growth = input$bt_rev_growth,
-        bt_eps_growth = input$bt_eps_growth,
-        bt_fcf_cv = input$bt_fcf_cv,
-        bt_w_mom = input$bt_w_mom,
-        bt_w_rsi = input$bt_w_rsi,
-        bt_w_vg = input$bt_w_vg
-      )
-      withProgress(message = paste("回測", current_ticker(), "中…"), value = 0.3, {
-        res <- run_company_backtest(
-          ticker = current_ticker(),
-          d_is = d_income_statement(),
-          d_bs = d_balance_sheet(),
-          d_cf = d_cash_flow(),
-          params = params,
-          mos = bt_current_mos(),
-          bench_ticker = "SPY",
-          years = 5
-        )
-        incProgress(0.9)
-        bt_result(res)
-        bt_run_msg(sprintf(
-          "完成：%s 日資料，基準=%s，較佳策略=模式 %s",
-          res$n_days, res$bench_ticker, res$metrics$best
-        ))
-      })
-    }, error = function(e) {
-      bt_run_msg(paste("失敗：", e$message))
-      showNotification(paste("❌ 回測失敗：", e$message), type = "error", duration = 12)
-    })
-  })
-
   output$bt_equity_plot <- renderPlotly({
-    res <- bt_result()
-    validate(need(!is.null(res) && !is.null(res$equity_df), "請先成功執行回測"))
-
-    df_plot <- res$equity_df
+    req(input$run_bt) # 只有按下執行按鈕才計算
+    
+    # 模擬數據生成 (實作時請替換成你的回測運算結果)
+    dates <- seq(as.Date("2020-01-01"), Sys.Date(), by="day")
+    n <- length(dates)
+    
+    # 模擬三條曲線：模式 A (高波動)、模式 B (穩健)、大盤
+    set.seed(42)
+    bench <- cumprod(1 + rnorm(n, 0.0003, 0.01))
+    model_a <- cumprod(1 + rnorm(n, 0.0005, 0.015)) 
+    model_b <- cumprod(1 + rnorm(n, 0.0004, 0.008))
+    
+    df_plot <- data.frame(
+      Date = dates,
+      Benchmark = bench,
+      Model_A = model_a,
+      Model_B = model_b
+    )
+    
+    # 使用 ggplot2 繪圖並轉換為 plotly
     p <- ggplot(df_plot, aes(x = Date)) +
-      geom_line(aes(y = Model_A, color = "模式 A (情緒增強)"), linewidth = 0.9) +
-      geom_line(aes(y = Model_B, color = "模式 B (純基本面)"), linewidth = 0.9) +
-      geom_line(aes(y = BuyHold, color = "該股買進持有"), linewidth = 0.7) +
-      geom_line(aes(y = Benchmark, color = "大盤基準"), linetype = "dashed", linewidth = 0.7) +
-      scale_color_manual(values = c(
-        "模式 A (情緒增強)" = "#007bff",
-        "模式 B (純基本面)" = "#dc3545",
-        "該股買進持有" = "#28a745",
-        "大盤基準" = "#6c757d"
-      )) +
+      geom_line(aes(y = Model_A, color = "模式 A (情緒增強)"), size = 1) +
+      geom_line(aes(y = Model_B, color = "模式 B (純基本面)"), size = 1) +
+      geom_line(aes(y = Benchmark, color = "大盤基準"), linetype = "dashed") +
+      scale_color_manual(values = c("模式 A (情緒增強)" = "#007bff", 
+                                    "模式 B (純基本面)" = "#dc3545", 
+                                    "大盤基準" = "#6c757d")) +
       labs(y = "累積淨值", x = "日期", color = "策略") +
       theme_minimal()
-
+    
     ggplotly(p) %>% layout(legend = list(orientation = "h", y = -0.2))
   })
-
+  
   output$perf_metrics <- renderUI({
-    res <- bt_result()
-    if (is.null(res) || is.null(res$metrics)) {
-      return(helpText("執行回測後顯示 Sharpe、最大回撤與參數穩定性。"))
-    }
-    m <- res$metrics
-    best <- m$best
-    sharpe_show <- if (identical(best, "A")) m$sharpe_a else m$sharpe_b
-    mdd_show <- if (identical(best, "A")) m$mdd_a else m$mdd_b
-    label_best <- if (identical(best, "A")) "模式 A" else "模式 B"
-
+    # 假設這些數值來自你的回測模組
     fluidRow(
       column(4,
-             tipify(
-               valueBox(
-                 if (is.na(sharpe_show)) "N/A" else sprintf("%.2f", sharpe_show),
-                 paste0("Sharpe（較佳：", label_best, "）"),
-                 icon = icon("chart-line"),
-                 color = "green"
-               ),
-               "年化夏普：日報酬均值／標準差 × √252。", placement = "bottom"
-             )
+             tipify(valueBox("1.25", "Sharpe Ratio", icon = icon("chart-line"), color = "green"),
+                    "承受單位總風險帶來的超額回報。", placement = "bottom")
       ),
       column(4,
-             tipify(
-               valueBox(
-                 if (is.na(mdd_show)) "N/A" else paste0(sprintf("%.1f", mdd_show * 100), "%"),
-                 paste0("Max Drawdown（", label_best, "）"),
-                 icon = icon("arrow-down"),
-                 color = "red"
-               ),
-               "該策略淨值相對歷史高點的最大回撤。", placement = "bottom"
-             )
+             tipify(valueBox("-12%", "Max Drawdown", icon = icon("descending"), color = "red"),
+                    "資金最大回撤幅度，衡量策略在極端情況下的抗壓能力。", placement = "bottom")
       ),
       column(4,
-             tipify(
-               valueBox(m$plateau, "參數高原（粗評）", icon = icon("mountain"), color = "purple"),
-               "比較模式 A/B Sharpe 差距；敏感代表策略分化大，宜再檢查門檻。", placement = "bottom"
-             )
+             tipify(valueBox("穩定", "參數高原", icon = icon("mountain"), color = "purple"),
+                    "調整成長率 g 績效是否崩盤？若穩定代表無過度擬合。", placement = "bottom")
       )
     )
   })

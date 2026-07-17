@@ -60,38 +60,9 @@ ddm_module_server <- function(id, ddm_g = reactive(NULL), ddm_ke = reactive(NULL
         }
       }
       
-      # --- 2. 計算基本面隱含成長率（Fundamental Growth） g = ROE × 保留盈餘率 (Retention Ratio) ---
-      if (!is.null(d_income_statement) && !is.null(d_income_statement())) {
-        
-        ni <- select_current_metric_any(d_income_statement(), NET_INCOME_PATTERNS, "flow")
-        
-        equity <- select_current_metric_any(d_balance_sheet(), EQUITY_PATTERNS, "stock")
-        
-        if (!is.na(ni) && !is.na(equity) && equity > 0) {
-          # 步驟 A: 計算 ROE
-          roe <- ni / equity
-          
-          # 步驟 B: 計算配息率 (Payout Ratio)
-          payout_ratio <- 0
-          if (ni > 0 && !is.na(div_paid_total)) {
-            payout_ratio <- div_paid_total / ni
-            payout_ratio <- min(max(payout_ratio, 0), 1) 
-          }
-          
-          ## 步驟 C: 計算保留盈餘率 (Retention Ratio)
-          retention_ratio <- 1 - payout_ratio
-          
-          # 步驟 D: 算出 Fundamental g
-          fund_g <- roe * retention_ratio
-          fund_g_pct <- round(fund_g * 100, 2)
-          
-          # 🌟 聽從專業建議：移除硬性極端值裁切，讓模型誠實呈現基本面真實的 g
-          updateNumericInput(session, "g", value = fund_g_pct)
-        } else if (!is.null(ddm_g())) {
-          updateNumericInput(session, "g", value = ddm_g())
-        }
-      } else if (!is.null(ddm_g())) {
-        updateNumericInput(session, "g", value = ddm_g())
+      # --- 2. 永續 g：由主畫面中央方法同步（ddm_g）；不再無條件用 ROE×Retention 覆寫 ---
+      if (!is.null(ddm_g()) && is.numeric(ddm_g()) && length(ddm_g()) == 1 && !is.na(ddm_g())) {
+        updateNumericInput(session, "g", value = round(as.numeric(ddm_g()), 2))
       }
       
       # --- 3. 同步折現率 (ke) ---
