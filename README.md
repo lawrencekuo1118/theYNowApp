@@ -34,6 +34,28 @@ Requires R packages used by `app_11.0/setup.R` / `app_11.0/global.R`, and Python
 - Selenium is local-only fallback
 - Statement shaping aligns with v9 display (TTM column, Yahoo-like row order, reticulate-safe payloads)
 
+## Dev: OneDrive / Google Drive sync guard
+
+開發時若本機 RAM 吃緊，File Provider（OneDrive / Google Drive）同步容易卡住或失敗。用：
+
+```bash
+# 持續監控（建議在開發時另開一個 Terminal）
+./tools/cloud_sync_guard.sh
+
+# 單次檢查 / 只報告不清理
+./tools/cloud_sync_guard.sh --once
+./tools/cloud_sync_guard.sh --once --dry-run
+```
+
+行為摘要：
+
+- 偵測 `~/Library/CloudStorage` 下 OneDrive / Google Drive 根目錄與同步行程
+- 統計 placeholder／暫存同步檔，並讀取近期相關 log 錯誤
+- 記憶體使用率偏高或可用 RAM 過低時：分析高 RSS 行程，清除專案／安全快取（`__pycache__`、chromote/R 暫存等），macOS 會嘗試 `purge`
+- JSONL 日誌：`~/.ynow_cloud_sync_guard.log`
+
+可選：用 `tools/cloud_sync_guard.macos.plist` 當 LaunchAgent（先改路徑再 `launchctl load`）。
+
 ## Layout (`app_11.0/`)
 
 | File | Role |
