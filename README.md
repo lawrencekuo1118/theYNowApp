@@ -8,24 +8,23 @@ Taiwan stock fundamental analysis Shiny app（雲端版：yfinance，無 Chromot
 
 `/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp`
 
-- 目前版本：`app_10.0/`（v10.1）
-- 歷史版本：`app 3.0` … `app_9.0`（本機封存；GitHub Releases 另有標籤）
+- 目前版本：`app_11.0/`（v11.0）
+- 歷史版本：`app 3.0` … `app_10.0`（本機封存；GitHub Releases 另有標籤）
 
 ## 執行目前版本
 
 ```r
-shiny::runApp("app_10.0")
+shiny::runApp("app_11.0")
 ```
 
-Requires R packages used by `app_10.0/setup.R` / `app_10.0/global.R`, and Python deps from `app_10.0/requirements.txt` (yfinance path; no Chrome required for cloud).
+Requires R packages used by `app_11.0/setup.R` / `app_11.0/global.R`, and Python deps from `app_11.0/requirements.txt` (yfinance path; no Chrome required for cloud).
 
-## v10.1 重點
+## v11.0 重點
 
-- 側邊欄「推薦」標記（DDM／DCF／P/B）
-- 主搜尋框 Ticker 預選建議
-- 永續成長率：Macro／Fundamental／Lifecycle
-- 搜尋後自動 WACC；DCF 圖含歷史／折現模式
-- Backtest Zone 版面重整（執行面板 + 三步驟參數分頁）
+- Get Started（模型建議 + DCF 核心參數）與 Snapshot（參數／公式快照下載）
+- Finance Summary 分組卡片網格；KPI 一列五個、φ⁻¹ 等比縮小
+- DCF Overview 預設 Simple Mode；WACC 輸入列重排
+- 回測說明文字與搜尋下拉互動修正
 
 ## Cloud notes
 
@@ -35,7 +34,7 @@ Requires R packages used by `app_10.0/setup.R` / `app_10.0/global.R`, and Python
 - Selenium is local-only fallback
 - Statement shaping aligns with v9 display (TTM column, Yahoo-like row order, reticulate-safe payloads)
 
-## Layout (`app_10.0/`)
+## Layout (`app_11.0/`)
 
 | File | Role |
 |------|------|
