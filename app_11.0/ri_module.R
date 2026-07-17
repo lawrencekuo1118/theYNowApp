@@ -23,7 +23,7 @@ ri_module_ui <- function(id) {
                           # 🌟 補回：執行試算的大按鈕
                           fluidRow(
                             div(style = "text-align: center; margin-bottom: 20px;",
-                                actionButton(ns("btn_calc_ri"), "▶ 試算 RI 模型", 
+                                actionButton(ns("btn_calc_ri"), "試算 RI 模型", 
                                              style = "background-color: #27ae60; color: white; font-weight: bold; font-size: 18px; padding: 12px 30px; border-radius: 8px; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1);")
                             )
                           ),
@@ -34,12 +34,12 @@ ri_module_ui <- function(id) {
                                      uiOutput(ns("ui_ri_result"))
                                    ),
                                    fluidRow(
-                                     box(title = "📈 每股帳面淨值 vs 剩餘收益 軌跡圖", width = 12, status = "info",
+                                     box(title = "每股帳面淨值 vs 剩餘收益 軌跡圖", width = 12, status = "info",
                                          plotOutput(ns("plt_ri_trajectory"), height = "350px")
                                      )
                                    ),
                                    fluidRow(
-                                     box(title = "📊 剩餘收益預測細節", width = 12, status = "primary",
+                                     box(title = "剩餘收益預測細節", width = 12, status = "primary",
                                          tableOutput(ns("tbl_ri_details"))
                                      )
                                    )
@@ -51,7 +51,7 @@ ri_module_ui <- function(id) {
                  tabPanel("RI Settings", icon = icon("cogs"),
                           
                           # -- B0 估算區 (仿 FCFF UI 風格) --
-                          h4(tags$b("🎯 每股帳面淨值 (B0) 估算區")),
+                          h4(tags$b("每股帳面淨值 (B0) 估算區")),
                           fluidRow(
                             div("B0 = 普通股股東權益 (Common Equity) ÷ 發行股數 (Shares Outstanding)",
                                 style = "font-size: 16px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F8F9F9; border-left: 4px solid #2980B9; border-radius: 4px;")
@@ -72,7 +72,7 @@ ri_module_ui <- function(id) {
                           hr(style = "border-top: 1px solid #BDC3C7;"),
                           
                           # -- 核心參數設定區 --
-                          h4(tags$b("⚙️ 模型參數假設")),
+                          h4(tags$b("模型參數假設")),
                           fluidRow(
                             column(4, numericInput(ns("ri_years"), "預測期 (Years)", value = 5, min = 1, max = 10)),
                             column(4, numericInput(ns("ri_ke"), "股東權益成本 (Ke, %)", value = 8.0, step = 0.1)),

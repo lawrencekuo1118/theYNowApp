@@ -49,10 +49,16 @@
       )
     ),
     uiOutput("txt_perpetual_g_reason"),
-    numericInput("sgr", "終值永續成長率 SGR (%)", value = APP_DEFAULTS$sgr),
+    numericInput(
+      "sgr",
+      "DCF／RI 終值永續成長率 SGR (%)",
+      value = APP_DEFAULTS$sgr
+    ),
+    helpText("此為 FCFF／剩餘收益終值成長率（相對 WACC）；與 DDM 股利成長率 g 分開。預設可由上方方法估計，可手動覆寫。"),
     conditionalPanel(
       condition = "input.dcf_mode == 'gordon'",
-      h4(tags$b("Gordon 永續成長假設")),
+      h4(tags$b("DCF：明確預測 + Gordon 終值")),
+      helpText("非單期 EV = FCF₁/(WACC−g)；為 n 年 FCFF 折現 + 終值 TV = FCFₙ(1+g)/(WACC−g)。"),
       numericInput("wacc_gordon", "折現率 WACC (%)", value = APP_DEFAULTS$wacc_gordon, step = 0.01)
     ),
     conditionalPanel(
@@ -65,7 +71,7 @@
       h4(tags$b("PHASE II 永續成長假設")),
       numericInput("wacc_stage2", "第二階段折現率 WACC2 (%)", value = APP_DEFAULTS$wacc_stage2, step = 0.01)
     ),
-    checkboxInput("use_calculated_wacc", "✅ 套用系統估算 WACC", value = APP_DEFAULTS$use_calc_wacc)
+    checkboxInput("use_calculated_wacc", "套用系統估算 WACC", value = APP_DEFAULTS$use_calc_wacc)
   )
 }
 
@@ -107,7 +113,7 @@ ui <- dashboardPage(
     
     column(width = 12,
            div(style = "padding: 15px; border-radius: 5px; border-left: 4px",
-               tags$b("ℹ Data Source:"), tags$br(),
+               tags$b("Data Source:"), tags$br(),
                "This application integrates real-time financial data via web parsing and API resources, applying comprehensive models for valuation."
            )
     )
@@ -440,7 +446,7 @@ ui <- dashboardPage(
       tabItem(
         tabName = "get_started",
         h2("Get Started"),
-        helpText("先確認適合的估值模型，再設定 DCF / DDM / RI 共用的永續成長率。"),
+        helpText("先確認適合的估值模型；下方 SGR 主要供 DCF／RI 終值使用。DDM 股利成長率可在 DD-Model 分頁單獨覆寫。"),
         fluidRow(
           box(
             title = tagList(icon("route"), "Model Selector｜估值模型推薦"),
@@ -572,10 +578,10 @@ ui <- dashboardPage(
                        column(width = 12,
                               div(style = "margin-bottom: 20px; padding: 12px; background: #fdfdfd; border: 1px dashed #ccc; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 13px;",
                                   span(style = "font-weight: bold; margin-right: 15px;", "同業比較圖例:"),
-                                  span(icon("circle", style = "color: #0073b7;"), " 🔵 高於標準 (Better) ", style = "margin-right: 15px;"),
-                                  span(icon("circle", style = "color: #00a65a;"), " ⚫ 符合標準 (Standard) ", style = "margin-right: 15px;"),
-                                  span(icon("circle", style = "color: #dd4b39;"), " 🔴 低於標準 (Worse) ", style = "margin-right: 15px;"),
-                                  span(icon("circle", style = "color: #333;"), " ⚫ 無資料 / 錯誤")
+                                  span(icon("circle", style = "color: #0073b7;"), " 高於標準 (Better) ", style = "margin-right: 15px;"),
+                                  span(icon("circle", style = "color: #00a65a;"), " 符合標準 (Standard) ", style = "margin-right: 15px;"),
+                                  span(icon("circle", style = "color: #dd4b39;"), " 低於標準 (Worse) ", style = "margin-right: 15px;"),
+                                  span(icon("circle", style = "color: #333;"), " 無資料 / 錯誤")
                               )
                        ),
                        column(width = 12,
@@ -614,9 +620,19 @@ ui <- dashboardPage(
                                 column(width = 6,
                                        # 🌟 關鍵修復：統一加上 mod_ddm- 前綴
                                        numericInput("mod_ddm-d0", "今年發放股利 (D0)", value = APP_DEFAULTS$ddm_d0),
-                                       numericInput("mod_ddm-g", "永續成長率 (sgr) %", value = APP_DEFAULTS$ddm_g),
+                                       numericInput(
+                                         "mod_ddm-g",
+                                         "股利永續成長率 g (%)",
+                                         value = APP_DEFAULTS$ddm_g
+                                       ),
+                                       checkboxInput(
+                                         "mod_ddm-sync_g",
+                                         "與中央永續成長率（Get Started SGR）同步",
+                                         value = isTRUE(APP_DEFAULTS$ddm_sync_central_g)
+                                       ),
+                                       helpText("勾選時跟隨中央 SGR；取消勾選後可單獨覆寫股利成長率（不必等於 FCFF 終值 g）。"),
                                        numericInput("mod_ddm-ke", "要求報酬率 (Ke) %", value = APP_DEFAULTS$ddm_ke),
-                                       
+                                       helpText("股利屬股權現金流，以 Ke（CAPM）折現；DCF 的 FCFF 則以 WACC 折現。"),
                                        tags$div(style = "margin-top: 15px; margin-bottom: 15px;",
                                                 actionButton("mod_ddm-btn_calc_ddm", "試算 DDM 合理股價", class = "btn-primary", icon = icon("calculator")),
                                                 HTML("&nbsp;&nbsp;"), 
@@ -676,8 +692,10 @@ ui <- dashboardPage(
                               fluidRow(
                                 column(width = 6,
                                        radioButtons("dcf_mode", "選擇 DCF 估值模型：",
-                                                    choices = list("永續成長法 (Gordon Growth Model)" = "gordon",
-                                                                   "二階段成長法 (Two-Stage Model)" = "two_stage"),
+                                                    choices = list(
+                                                      "明確預測 + Gordon 終值" = "gordon",
+                                                      "二階段成長法 (Two-Stage Model)" = "two_stage"
+                                                    ),
                                                     selected = APP_DEFAULTS$dcf_mode)
                                 ),
                                 column(width = 6, numericInput("years", "預測年數 n", value = APP_DEFAULTS$years, min = 1, max = 30))
@@ -710,7 +728,7 @@ ui <- dashboardPage(
                                        plotOutput("plt_dcf_trajectory", height = "420px"),
                                        h6(helpText("提示：圖含歷史 FCFF；切換模式可隱藏／顯示折現後 DCF 線。啟動時已自動計算，自訂參數後可再點試算。")),
                                        fluidRow(
-                                         column(width = 6, actionButton("calc", "▶ 試算 DCF", class = "btn-success btn-block", style = "padding: 12px; font-weight: bold; font-size: 16px;")),
+                                         column(width = 6, actionButton("calc", "試算 DCF", class = "btn-success btn-block", style = "padding: 12px; font-weight: bold; font-size: 16px;")),
                                          column(width = 6, actionButton("reset_dcf", "回復預設", class = "btn-default btn-block", style = "padding: 12px; font-weight: bold; font-size: 16px;"))
                                        ),
                                        tags$div(style = "margin-top: 10px;", htmlOutput("vtxt_dcf_setting_details"))
@@ -742,7 +760,7 @@ ui <- dashboardPage(
                                 box(
                                   title = tagList(icon("location-arrow"), "核心參數位置"),
                                   width = 12, status = "warning", solidHeader = TRUE,
-                                  "DCF / DDM / RI 共用的永續成長率與 WACC 套用設定已移至側欄 Get Started。"
+                                  "DCF／RI 終值 SGR 與 WACC 設定在側欄 Get Started；DDM 股利成長率可在 DD-Model 單獨覆寫。"
                                 )
                               )
                      ),
@@ -768,7 +786,7 @@ ui <- dashboardPage(
                                     style = "font-size: 18px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"),
                                 box(h4("WACC 估算"),
                                     numericInput("wacc_re", "股權成本 rₑ (%)", value = APP_DEFAULTS$wacc_re, min = 0, step = 0.01),
-                                    checkboxInput("use_estimated_re", "✅ 採用估算 rₑ（來自CAPM）", value = APP_DEFAULTS$use_est_re),
+                                    checkboxInput("use_estimated_re", "採用估算 rₑ（來自CAPM）", value = APP_DEFAULTS$use_est_re),
                                     numericInput("wacc_rd", "負債成本 rᵈ (%)", value = APP_DEFAULTS$wacc_rd, min = 0, step = 0.01),
                                     numericInput("wacc_tax", "所得稅率 T (%)", value = APP_DEFAULTS$wacc_tax, min = 0, max = 100, step = 0.01),
                                     actionButton("calc_wacc", "計算 WACC", class = "btn-primary"),
@@ -800,7 +818,7 @@ ui <- dashboardPage(
                      fluidRow(
                        column(width = 12,
                               h4("敏感度分析矩陣 (Sensitivity Analysis)"),
-                              p(helpText("觀察不同 WACC 與 永續成長率 (sgr) 組合下，推估的每股內在價值。")),
+                              p(helpText("觀察不同 WACC 與 終值成長率 (SGR) 組合下，推估的每股內在價值。")),
                               tableOutput("dcf_sensitivity_table")
                        ),
                        br(), 
@@ -871,7 +889,7 @@ ui <- dashboardPage(
                     style = "margin-bottom: 10px;"
                   ),
                   actionButton(
-                    "run_bt", "▶ 啟動量化回測",
+                    "run_bt", "啟動量化回測",
                     class = "btn-warning btn-lg btn-block"
                   ),
                   .bt_hint("使用過去約 5 年日線、月頻再平衡；結合財報特徵產出兩種策略淨值。"),
@@ -997,7 +1015,7 @@ ui <- dashboardPage(
               
               fluidRow(
                 column(width = 12,
-                       h3(tags$b("🚨 Financial Fraud Red Flags (財務舞弊警訊)")),
+                       h3(tags$b("Financial Fraud Red Flags (財務舞弊警訊)")),
                        p("本系統內建五項核心排雷機制，透過交叉比對現金流與獲利品質，自動偵測潛在的地雷股："),
                        tags$ul(
                          tags$li(tags$b("無自由現金流 (No FCF)："), "長期 FCF 為負，代表企業無法靠自身營運創造現金，需依賴外部融資。"),
@@ -1012,7 +1030,7 @@ ui <- dashboardPage(
               
               fluidRow(
                 column(width = 12,
-                       h3(tags$b("📚 Valuation Methodology (評價方法論)")),
+                       h3(tags$b("Valuation Methodology (評價方法論)")),
                        
                        p("在進行企業估值時，選擇正確的模型與計算數字一樣重要。以下是本系統支援的三大評價邏輯與其適用場景："),
                        
@@ -1020,6 +1038,44 @@ ui <- dashboardPage(
                               
                               # Tab 1: 方法論比較矩陣 (表格)
                               tabPanel("Decision Matrix", icon = icon("table"),
+                                       tags$div(style = "overflow-x: auto; margin-bottom: 18px;",
+                                                HTML("<table class='table table-striped table-hover table-bordered' style='background-color: white;'>
+                                                        <thead style='background-color: #2C3E50; color: white;'>
+                                                          <tr>
+                                                            <th>對照項目</th>
+                                                            <th>DDM（股利 Gordon）</th>
+                                                            <th>DCF（明確預測 + Gordon 終值）</th>
+                                                          </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                          <tr>
+                                                            <td><b>現金流</b></td>
+                                                            <td>每股股利 D（股權請求權）</td>
+                                                            <td>企業自由現金流 FCFF（全體資金提供者）</td>
+                                                          </tr>
+                                                          <tr>
+                                                            <td><b>折現率</b></td>
+                                                            <td>Ke（CAPM 股權成本）</td>
+                                                            <td>WACC（加權平均資本成本）</td>
+                                                          </tr>
+                                                          <tr>
+                                                            <td><b>成長率 g</b></td>
+                                                            <td>股利永續成長率（可與中央 SGR 同步或覆寫）</td>
+                                                            <td>FCFF 終值成長率 SGR（相對 WACC）</td>
+                                                          </tr>
+                                                          <tr>
+                                                            <td><b>「Gordon」含義</b></td>
+                                                            <td>整段估值：P₀ = D₁ / (Ke − g)</td>
+                                                            <td>僅終值：TV = FCFₙ(1+g)/(WACC−g)；另加 n 年明確預測折現</td>
+                                                          </tr>
+                                                          <tr>
+                                                            <td><b>輸出</b></td>
+                                                            <td>直接為每股合理價</td>
+                                                            <td>先得企業價值 EV，再加減淨現金／負債後 ÷ 股數</td>
+                                                          </tr>
+                                                        </tbody>
+                                                      </table>")
+                                       ),
                                        tags$div(style = "overflow-x: auto;",
                                                 HTML("<table class='table table-striped table-hover table-bordered' style='background-color: white;'>
                                                         <thead style='background-color: #2C3E50; color: white;'>
@@ -1062,23 +1118,24 @@ ui <- dashboardPage(
                               
                               # Tab 3: DDM 模型解說
                               tabPanel("Dividend Discount Model (DDM)", icon = icon("hand-holding-usd"),
-                                       h4(tags$b("股利折現模型 (Gordon Growth Model)")),
-                                       p("DDM 將企業價值視為投資人未來能領到的「所有現金股利」的現值。它完全排除了會計作帳的干擾，因為發放出現金是無法作假的。"),
+                                       h4(tags$b("股利折現模型（股利 Gordon）")),
+                                       p("DDM 將普通股價值視為未來現金股利的現值。現金流是股利、折現率是 Ke，與以 FCFF／WACC 為核心的 DCF 屬不同層級。"),
                                        tags$ul(
                                          tags$li(tags$b("$$P_0 = \\frac{D_1}{K_e - g} = \\frac{D_0 \\times (1 + g)}{K_e - g}$$"))
                                        ),
-                                       p("本系統具備動態的基礎成長率 (Fundamental Growth Rate) 推算引擎：$$g = ROE \\times Retention\\ Ratio$$，確保 DDM 的成長假設具備強大的基本面支撐。")
+                                       p("股利成長率 g 可與中央終值 SGR 同步，亦可在 DD-Model 分頁單獨覆寫。基本面法可參考 $$g = ROE \\times Retention\\ Ratio$$，但不宜與 FCFF 終值 g 強制畫上等號。")
                               ),
                               
                               # Tab 2: DCF 模型解說
                               tabPanel("Discounted Cash Flow (DCF)", icon = icon("money-bill-wave"),
                                        h4(tags$b("自由現金流折現模型 (FCFF)")),
-                                       p("DCF 關注的是企業「真實的造血能力」。它將企業未來能創造的所有自由現金流 (Free Cash Flow to Firm, FCFF)，使用加權平均資本成本 (WACC) 折現回今天的價值。"),
+                                       p("DCF 關注企業造血能力：將未來 FCFF 以 WACC 折現得到企業價值，再橋接至股權價值與每股價格。本 app 的「Gordon」模式為明確預測期加上 Gordon 終值，而非單期 EV = FCF₁/(WACC−g)。"),
                                        tags$ul(
                                          tags$li(tags$b("$$FCFF = Net Income + D\\&A - \\Delta NWC - CapEx$$")),
-                                         tags$li(tags$b("$$Enterprise\\ Value = \\sum \\frac{FCFF_t}{(1+WACC)^t} + \\frac{Terminal\\ Value}{(1+WACC)^n}$$"))
+                                         tags$li(tags$b("$$Enterprise\\ Value = \\sum \\frac{FCFF_t}{(1+WACC)^t} + \\frac{Terminal\\ Value}{(1+WACC)^n}$$")),
+                                         tags$li(tags$b("$$Terminal\\ Value = \\frac{FCFF_n \\times (1 + g)}{WACC - g}$$"))
                                        ),
-                                       p("本系統採用業界標準的「兩階段模型」，前 1~5 年使用明確的營收成長率推算，第 5 年後切換為永續成長率 (SGR)。")
+                                       p("兩階段模式則在高速成長期後，將終值成長率收斂至 SGR；約束條件為 g < WACC（不是 Ke）。")
                               )
                        ),
                        

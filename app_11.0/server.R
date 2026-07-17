@@ -400,10 +400,10 @@ server <- function(input, output, session) {
       c("DCF", "Forecast Years (n)", .snapshot_value(input$years), "n"),
       c("DCF", "Chart Mode", .snapshot_value(input$dcf_chart_mode), "simple = history + forecast FCFF; with_dcf = add discounted line"),
       c("Perpetual Growth", "Method", .snapshot_value(input$perpetual_g_method), "macro / fundamental / lifecycle"),
-      c("Perpetual Growth", "Terminal g / SGR (%)", .snapshot_value(input$sgr), "Terminal Value = FCF_n × (1+g) / (WACC-g)"),
+      c("Perpetual Growth", "Terminal g / SGR (%)", .snapshot_value(input$sgr), "DCF/RI terminal g; TV = FCF_n × (1+g) / (WACC-g)"),
       c("Perpetual Growth", "Estimated g (%)", if (!is.null(est_g)) .snapshot_value(est_g$g_pct) else NA_character_, "Selected perpetual-growth method output"),
       c("Perpetual Growth", "Lifecycle Stage", .snapshot_value(input$lifecycle_stage), "Lifecycle classification used when method = lifecycle"),
-      c("DCF - Gordon", "WACC (%)", .snapshot_value(input$wacc_gordon), "EV = FCF1 / (WACC-g)"),
+      c("DCF - Explicit+Gordon TV", "WACC (%)", .snapshot_value(input$wacc_gordon), "EV = Σ PV(FCFF) + PV(TV); not single-period Gordon"),
       c("DCF - Two Stage", "Stage 1 Years", .snapshot_value(input$yr_stage1), "Explicit high-growth period"),
       c("DCF - Two Stage", "g1 (%)", .snapshot_value(input$g_stage1), "FCFF_t = FCFF_(t-1) × (1+g1)"),
       c("DCF - Two Stage", "WACC1 (%)", .snapshot_value(input$wacc_stage1), "PV stage 1 = FCFF_t / (1+WACC1)^t"),
@@ -418,8 +418,9 @@ server <- function(input, output, session) {
       c("WACC", "Rd (%)", .snapshot_value(input$wacc_rd), "Cost of debt"),
       c("WACC", "Tax Rate T (%)", .snapshot_value(input$wacc_tax), "After-tax debt cost = Rd×(1-T)"),
       c("DDM", "D0", .snapshot_value(input[["mod_ddm-d0"]]), "P0 = D1 / (Ke-g); D1 = D0×(1+g)"),
-      c("DDM", "g (%)", .snapshot_value(input[["mod_ddm-g"]]), "Dividend growth rate"),
-      c("DDM", "Ke (%)", .snapshot_value(input[["mod_ddm-ke"]]), "Required return"),
+      c("DDM", "g (%)", .snapshot_value(input[["mod_ddm-g"]]), "Dividend growth; optional sync with central SGR"),
+      c("DDM", "Sync g with SGR", .snapshot_value(input[["mod_ddm-sync_g"]]), "If TRUE, DDM g follows Get Started SGR"),
+      c("DDM", "Ke (%)", .snapshot_value(input[["mod_ddm-ke"]]), "Equity required return (CAPM)"),
       c("RI", "RI g (%)", .snapshot_value(input[["mod_ri-ri_g"]]), "RI terminal growth"),
       c("P/B", "P/B Low", .snapshot_value(input[["mod_pb-pb_low"]]), "Price = BVPS × P/B"),
       c("P/B", "P/B Mid", .snapshot_value(input[["mod_pb-pb_mid"]]), "Price = BVPS × P/B"),
@@ -633,7 +634,7 @@ server <- function(input, output, session) {
       bs <- d_balance_sheet()
       if (is.data.frame(cf) && nrow(cf) > 0 && is.data.frame(bs) && nrow(bs) > 0) {
         div_paid <- select_current_metric(cf, "Cash Dividends Paid", "flow")
-        shares <- select_current_metric(bs, "Share Issued|Ordinary Shares Number", "stock")
+        shares <- select_current_metric_any(bs, SHARE_PATTERNS, "stock")
         if (!is.na(div_paid) && !is.na(shares) && shares > 0) {
           return(round(abs(div_paid) / shares, 2))
         }
@@ -706,7 +707,7 @@ server <- function(input, output, session) {
   })
 
   # ==========================================
-  # 🌱 中央永續成長率方法（同步 DCF sgr / DDM g / RI ri_g）
+  # 🌱 中央永續成長率方法（同步 DCF sgr／RI ri_g；DDM g 可選同步）
   # ==========================================
   .current_wacc_pct <- function() {
     if (isTRUE(input$use_calculated_wacc) && !is.null(calculated_wacc()) && is.finite(calculated_wacc())) {
@@ -759,7 +760,10 @@ server <- function(input, output, session) {
     if (is.null(input$sgr) || is.na(as.numeric(input$sgr)) || abs(as.numeric(input$sgr) - g_val) > 1e-4) {
       updateNumericInput(session, "sgr", value = g_val)
     }
-    updateNumericInput(session, "mod_ddm-g", value = g_val)
+    # DDM 股利 g：僅在勾選「與中央同步」時覆寫，允許與 FCFF 終值 SGR 分開
+    if (isTRUE(input[["mod_ddm-sync_g"]] %||% TRUE)) {
+      updateNumericInput(session, "mod_ddm-g", value = g_val)
+    }
     updateNumericInput(session, "mod_ri-ri_g", value = g_val)
 
     if (isTRUE(est$suggest_two_stage)) {
@@ -1030,7 +1034,9 @@ server <- function(input, output, session) {
         updateNumericInput(session, "custom_g", value = g_mid)
         updateNumericInput(session, "g_stage1", value = g_mid)
       }
-      if (!is.null(inds$pb_band) && length(inds$pb_band) >= 2) {
+      # 僅在勾選「套用產業預設本淨比」時覆寫 P/B 區間
+      if (isTRUE(input[["mod_pb-use_industry_pb"]]) &&
+          !is.null(inds$pb_band) && length(inds$pb_band) >= 2) {
         lo <- inds$pb_band[1]; hi <- inds$pb_band[2]
         mid <- if (length(inds$pb_band) >= 3) inds$pb_band[3] else mean(c(lo, hi))
         updateNumericInput(session, "mod_pb-pb_low",  value = round(lo, 2))
@@ -1046,16 +1052,16 @@ server <- function(input, output, session) {
   
   output$txt_hist_capex <- renderUI({
     params <- fcf_results$hist_params() 
-    if(is.null(params) || is.na(params$capex_rate)) return(HTML("<div style='color: gray; font-size: 13px; margin-bottom: 5px;'>⏳ 系統推算值：等待財報資料匯入...</div>"))
+    if(is.null(params) || is.na(params$capex_rate)) return(HTML("<div style='color: gray; font-size: 13px; margin-bottom: 5px;'>系統推算值：等待財報資料匯入...</div>"))
     val <- round(params$capex_rate * 100, 2)
-    HTML(paste0("<div style='color: #3c8dbc; font-size: 14px; margin-bottom: 5px;'>📊 系統歷史推算值：<b>", val, " %</b></div>"))
+    HTML(paste0("<div style='color: #3c8dbc; font-size: 14px; margin-bottom: 5px;'>系統歷史推算值：<b>", val, " %</b></div>"))
   })
   
   output$txt_hist_nwc <- renderUI({
     params <- fcf_results$hist_params()
-    if(is.null(params) || is.na(params$nwc_rate)) return(HTML("<div style='color: gray; font-size: 13px; margin-bottom: 5px;'>⏳ 系統推算值：等待財報資料匯入...</div>"))
+    if(is.null(params) || is.na(params$nwc_rate)) return(HTML("<div style='color: gray; font-size: 13px; margin-bottom: 5px;'>系統推算值：等待財報資料匯入...</div>"))
     val <- round(params$nwc_rate * 100, 2)
-    HTML(paste0("<div style='color: #3c8dbc; font-size: 14px; margin-bottom: 5px;'>📊 系統歷史推算值：<b>", val, " %</b></div>"))
+    HTML(paste0("<div style='color: #3c8dbc; font-size: 14px; margin-bottom: 5px;'>系統歷史推算值：<b>", val, " %</b></div>"))
   })
   
   output$txt_fcf_sync_status <- renderPrint({
@@ -1161,7 +1167,7 @@ server <- function(input, output, session) {
       prev_g_na <- isolate(estimated_g())
       estimated_g(NULL)
       if (!is.null(prev_g_na)) {
-        updateSelectInput(session, "g_growth_method", label = "預估 FCFF 成長率 (⚠️ 缺乏數據)")
+        updateSelectInput(session, "g_growth_method", label = "預估 FCFF 成長率 (缺乏數據)")
       }
       return()
     }
@@ -1196,16 +1202,16 @@ server <- function(input, output, session) {
       hit_ceiling_raw <- fund_res$raw_g > 25
       
       ceiling_status_msg <- if (hit_ceiling_raw && fund_res$ceiling_applied) {
-        glue::glue("<div style='color: #d9534f; margin-top: 5px; font-weight: bold;'>⚠️ 原始成長率過高，已啟動防呆強制封頂。(實際輸出至模型: 25.00 %)</div>")
+        glue::glue("<div style='color: #d9534f; margin-top: 5px; font-weight: bold;'>原始成長率過高，已啟動防呆強制封頂。(實際輸出至模型: 25.00 %)</div>")
       } else if (hit_ceiling_raw && !fund_res$ceiling_applied) {
-        glue::glue("<div style='color: #8e44ad; margin-top: 5px; font-weight: bold; padding: 5px; border: 1px solid #8e44ad; background: #f4ecf7;'>🔥 警告：已解除天花板！將使用極端成長率進行估值 (實際輸出至模型: {fund_res$g} %)</div>")
+        glue::glue("<div style='color: #8e44ad; margin-top: 5px; font-weight: bold; padding: 5px; border: 1px solid #8e44ad; background: #f4ecf7;'>警告：已解除天花板！將使用極端成長率進行估值 (實際輸出至模型: {fund_res$g} %)</div>")
       } else {
-        glue::glue("<div style='color: #00a65a; margin-top: 5px; font-weight: bold;'>✅ 成長率處於合理範圍內 (實際輸出至模型: {fund_res$g} %)</div>")
+        glue::glue("<div style='color: #00a65a; margin-top: 5px; font-weight: bold;'>成長率處於合理範圍內 (實際輸出至模型: {fund_res$g} %)</div>")
       }
       
       HTML(glue::glue(
         "<div style='padding: 12px; background-color: #fdfaf6; border-left: 4px solid #d35400; font-size: 13px;'>
-           <b>💡 學理推估 (Fundamental) 拆解：</b><br/>
+           <b>學理推估 (Fundamental) 拆解：</b><br/>
            <span style='color: #555;'>公式：投資報酬率 (ROIC) × 再投資率 (RR)</span><br/>
            <span style='color: #2980b9; font-weight: bold;'>
              {round(fund_res$roic * 100, 2)} % × {round(fund_res$rr * 100, 2)} % = {fund_res$raw_g} %
@@ -1248,7 +1254,7 @@ server <- function(input, output, session) {
   
   output$ibx_sgr <- renderInfoBox({ 
     val_sgr <- if (!is.null(input$sgr)) input$sgr else "N/A"
-    infoBox("永續成長率 (SGR)", paste0(val_sgr, " %"), icon = icon("infinity"), color = "maroon", fill = TRUE) 
+    infoBox("DCF／RI 終值永續成長率 (SGR)", paste0(val_sgr, " %"), icon = icon("infinity"), color = "maroon", fill = TRUE) 
   })
   
   output$ibx_wacc <- renderInfoBox({ 
@@ -1570,7 +1576,7 @@ server <- function(input, output, session) {
       geom_point(aes(color = FCFF < 0), size = 3) +
       scale_color_manual(values = c("TRUE" = "red", "FALSE" = "steelblue"), guide = "none") + 
       theme_minimal(base_size = 14) +
-      labs(title = "📉 FCFF 預測即時預覽", x = "預測期", y = "FCFF (USD)") + theme(legend.position = "top")
+      labs(title = "FCFF 預測即時預覽", x = "預測期", y = "FCFF (USD)") + theme(legend.position = "top")
   })
   
   # ==========================================
@@ -1689,7 +1695,7 @@ server <- function(input, output, session) {
     stock_val <- stock_price_estimate_val()
     
     if (length(ev_val) == 0 || is.na(ev_val)) {
-      return("⚠️ 尚未計算 DCF，請確認參數後按下「▶ 試算 DCF」")
+      return("⚠️ 尚未計算 DCF，請確認參數後按下「試算 DCF」")
     }
     
     msg <- glue::glue("企業總價值 (EV)：${round(ev_val, 2)}")
@@ -1835,7 +1841,7 @@ server <- function(input, output, session) {
     )
     
     if (!is.null(alert_box)) {
-      box(title = "⚠️ 核心評價數據缺失提醒", status = "danger", width = 12, solidHeader = TRUE,
+      box(title = "核心評價數據缺失提醒", status = "danger", width = 12, solidHeader = TRUE,
           alert_box, 
           fluidRow(
             if(is.na(scraped_fcf)) column(4, numericInput("manual_fcf", "手動 FCF:", value = NA)) else NULL,

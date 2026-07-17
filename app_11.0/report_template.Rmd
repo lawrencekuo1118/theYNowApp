@@ -268,13 +268,13 @@ if (!is.na(params$fcf_plot_path) && file.exists(params$fcf_plot_path)) {
 warn_text <- safe_vec(params$warnings)
 if (!is.na(warn_text) && nchar(trimws(warn_text)) > 0) {
   cat("<div class='risk-box-warn'>")
-  cat("<strong>⚠️ 檢測到以下風險因子：</strong><ul style='margin-top:10px;'>")
+  cat("<strong>檢測到以下風險因子：</strong><ul style='margin-top:10px;'>")
   for (w in strsplit(warn_text, "\n", fixed = TRUE)[[1]]) {
     if (nchar(trimws(w)) > 0) cat(sprintf("<li>%s</li>", trimws(w)))
   }
   cat("</ul></div>")
 } else {
-  cat("<div class='risk-box-ok'>✅ <strong>財務健康：</strong>系統未偵測到明顯財務舞弊或重大體質警訊。</div>")
+  cat("<div class='risk-box-ok'><strong>財務健康：</strong>系統未偵測到明顯財務舞弊或重大體質警訊。</div>")
 }
 ```
 

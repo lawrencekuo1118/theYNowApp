@@ -156,6 +156,12 @@ EQUITY_PATTERNS <- c(
   "Stockholders Equity",
   "Total Equity Gross Minority Interest"
 )
+# 流通股數偏好序（勿用 | 併成單一 grep）
+SHARE_PATTERNS <- c(
+  "Ordinary Shares Number",
+  "Total Shares Outstanding",
+  "Share Issued"
+)
 OPEX_PATTERNS <- c(
   "^Operating Expense$",
   "^Operating Expenses$"
@@ -733,7 +739,7 @@ generate_safe_line_plot <- function(data, ticker_name, metric_name) {
     ) +
     theme_bw() +
     labs(
-      title = paste0("📈 ", ticker_name, " - ", metric_name, safe_cagr_msg),
+      title = paste0(ticker_name, " - ", metric_name, safe_cagr_msg),
       x = "Fiscal Period",
       y = ""
     ) +
