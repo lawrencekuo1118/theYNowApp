@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Optional macOS LaunchAgent template.
+  Install (edit paths first):
+    cp tools/cloud_sync_guard.macos.plist ~/Library/LaunchAgents/com.ynow.cloud-sync-guard.plist
+    launchctl load ~/Library/LaunchAgents/com.ynow.cloud-sync-guard.plist
+-->
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.ynow.cloud-sync-guard</string>
+    <key>ProgramArguments</key>
+    <array>
+      <string>/usr/bin/python3</string>
+      <string>/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp/tools/cloud_sync_guard.py</string>
+      <string>--project</string>
+      <string>/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp</string>
+      <string>--interval</string>
+      <string>45</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/tmp/ynow_cloud_sync_guard.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/ynow_cloud_sync_guard.err.log</string>
+  </dict>
+</plist>
