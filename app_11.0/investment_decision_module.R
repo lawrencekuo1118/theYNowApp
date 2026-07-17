@@ -50,27 +50,27 @@ decision_ui <- function(id) {
 # 🧠 智能估值決策樹模型 (The Great Filter)
 get_valuation_recommendation <- function(net_margin, rev_growth, eps_growth, is_saas = FALSE, is_financial = FALSE) {
   if (isTRUE(is_financial)) {
-    return(list(model = "🎯 P/B（本淨比／資產法）", reason = "金融／保險／控股企業：帳面淨值與合理本淨比通常優於 DCF／DDM。請至 P/B-Asset 分頁試算。"))
+    return(list(model = "P/B（本淨比／資產法）", reason = "金融／保險／控股企業：帳面淨值與合理本淨比通常優於 DCF／DDM。請至 P/B-Asset 分頁試算。"))
   }
   if(is.na(net_margin) || is.na(rev_growth)) {
-    return(list(model = "⚠️ 資料不足", reason = "無法取得完整損益表數據，請確認財報年份。"))
+    return(list(model = "資料不足", reason = "無法取得完整損益表數據，請確認財報年份。"))
   }
   
   if(net_margin <= 0.02) { 
     if(rev_growth >= 0.20) {
       if(is_saas) {
-        return(list(model = "🎯 EV/Forward Sales", reason = "SaaS 產業且高成長，請套用 Rule of 40 檢視其擴張效率。"))
+        return(list(model = "EV/Forward Sales", reason = "SaaS 產業且高成長，請套用 Rule of 40 檢視其擴張效率。"))
       } else {
-        return(list(model = "🎯 P/S (市銷率)", reason = "公司尚未穩定獲利但具備高成長動能 (>20%)，建議以營收作為估值基準。"))
+        return(list(model = "P/S (市銷率)", reason = "公司尚未穩定獲利但具備高成長動能 (>20%)，建議以營收作為估值基準。"))
       }
     } else {
-      return(list(model = "🎯 P/B (市淨率)", reason = "公司獲利微薄且無顯著成長，建議以淨資產／本淨比為主，並提防價值陷阱。"))
+      return(list(model = "P/B (市淨率)", reason = "公司獲利微薄且無顯著成長，建議以淨資產／本淨比為主，並提防價值陷阱。"))
     }
   } else {
     if(!is.na(eps_growth) && eps_growth >= 0.15) {
-      return(list(model = "🎯 PEG (市盈增長比)", reason = sprintf("具備實質獲利且進入高速成長期 (EPS 增長 %.1f%%)，單用 P/E 會產生高估錯覺，建議引入 PEG。", eps_growth * 100)))
+      return(list(model = "PEG (市盈增長比)", reason = sprintf("具備實質獲利且進入高速成長期 (EPS 增長 %.1f%%)，單用 P/E 會產生高估錯覺，建議引入 PEG。", eps_growth * 100)))
     } else {
-      return(list(model = "🎯 DCF 或 DDM", reason = "獲利穩定、成長放緩 (<15%)，屬於成熟型企業，適合絕對估值模型；金融股請改用 P/B。"))
+      return(list(model = "DCF 或 DDM", reason = "獲利穩定、成長放緩 (<15%)，屬於成熟型企業，適合絕對估值模型；金融股請改用 P/B。"))
     }
   }
 }
@@ -192,31 +192,31 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       mom <- mom_status()
       
       if (f_score < 4 || f_quality == 0) {
-        return(list(class="alert-danger", icon="skull-crossbones", title="⚠️ 價值陷阱警訊", 
+        return(list(class="alert-danger", icon="skull-crossbones", title="價值陷阱警訊", 
                     text="財務質量偏弱或經營現金流無法支撐淨利。就算估值再低，也不建議貿然摸底。"))
       }
       
       if (!is.na(mos) && mos < 0) {
         if (mom$triggered) {
-          return(list(class="alert-warning", icon="fire", title="🔥 動能強勁但估值偏高", 
+          return(list(class="alert-warning", icon="fire", title="動能強勁但估值偏高", 
                       text="右側趨勢良好，但價格已超過內在價值。若持有可續抱，空手者不建議此時追高。"))
         } else {
-          return(list(class="alert-warning", icon="hourglass-half", title="⌛ 估值偏高且動能轉弱", 
+          return(list(class="alert-warning", icon="hourglass-half", title="估值偏高且動能轉弱", 
                       text="好公司但目前價格太貴，且趨勢尚未轉強，建議耐心等待拉回再行佈局。"))
         }
       }
       
       if (!is.na(mos) && mos >= 0.2) {
         if (mom$triggered) {
-          return(list(class="alert-success", icon="rocket", title="🚀 強烈建議：戴維斯雙擊點", 
+          return(list(class="alert-success", icon="rocket", title="強烈建議：戴維斯雙擊點", 
                       text="低估、高質量、且技術面動能已開啟！勝率極高的絕佳擊球點。"))
         } else {
-          return(list(class="alert-info", icon="anchor", title="🟡 左側潛伏區塊", 
+          return(list(class="alert-info", icon="anchor", title="左側潛伏區塊", 
                       text="具備極高投資價值，但市場資金尚未關注。可分批建倉，等待趨勢反轉。"))
         }
       }
       
-      return(list(class="alert-secondary", icon="balance-scale", title="⚖️ 觀望中立", text="估值處於合理區間，體質穩健，可依據個人資產配置決定是否介入。"))
+      return(list(class="alert-secondary", icon="balance-scale", title="觀望中立", text="估值處於合理區間，體質穩健，可依據個人資產配置決定是否介入。"))
     })
     
     # --- Output 渲染 ---
@@ -295,7 +295,7 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       p_curr <- current_price()
       
       is_valid <- function(x) { length(x) == 1 && !is.na(x) && is.numeric(x) && is.finite(x) }
-      if (!is_valid(p_curr)) return(div(class="alert alert-info", "⌛ 正在等待市場資料..."))
+      if (!is_valid(p_curr)) return(div(class="alert alert-info", "正在等待市場資料..."))
       
       val_dcf <- if (is_valid(p_dcf)) p_dcf else NA
       val_ddm <- if (is_valid(p_ddm)) p_ddm else NA
@@ -337,8 +337,8 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       
       anchor <- if (is_financial && !is.na(val_pb)) val_pb else if (!is.na(val_dcf)) val_dcf else if (!is.na(val_pb)) val_pb else val_ddm
       status_text <- "合理區間"; status_color <- "#f39c12"
-      if (!is.na(anchor) && p_curr < anchor * 0.8) { status_text <- "💰 低估 (顯著安全邊際)"; status_color <- "#00a65a" }
-      else if (!is.na(anchor) && p_curr > anchor * 1.2) { status_text <- "🔥 高估 (溢價過高)"; status_color <- "#d9534f" }
+      if (!is.na(anchor) && p_curr < anchor * 0.8) { status_text <- "低估 (顯著安全邊際)"; status_color <- "#00a65a" }
+      else if (!is.na(anchor) && p_curr > anchor * 1.2) { status_text <- "高估 (溢價過高)"; status_color <- "#d9534f" }
       
       HTML(glue::glue("
         <div style='background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; border-top: 3px solid {status_color};'>

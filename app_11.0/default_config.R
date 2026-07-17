@@ -62,8 +62,9 @@ APP_DEFAULTS <- list(
 
   # --- 2. DDM ---
   ddm_d0          = NA,                 # 由財報／Summary 自動帶入
-  ddm_g           = default_sgr,        # 永續 g，對齊 SGR
+  ddm_g           = default_sgr,        # 股利 g；預設對齊中央 SGR，可覆寫
   ddm_ke          = default_re,
+  ddm_sync_central_g = TRUE,            # 與 Get Started SGR 同步
 
   # --- 3. Gordon DCF ---
   dcf_mode        = "gordon",
@@ -72,7 +73,7 @@ APP_DEFAULTS <- list(
   custom_g        = default_g,          # 自訂短期成長（已封頂）
   perpetual_g_method = "macro",         # 永續 g 估計方法（預設總體經濟錨定）
   lifecycle_stage = "auto",             # auto = 依產業／成長自動分類
-  sgr             = default_sgr,        # 終值 g < WACC（預設 = Rf）
+  sgr             = default_sgr,        # DCF／RI 終值 g < WACC（預設 = Rf）
   wacc_gordon     = default_wacc,
 
   # --- 4. Two-Stage ---

@@ -25,7 +25,7 @@ pb_asset_module_ui <- function(id) {
                           ),
                           fluidRow(
                             div(style = "text-align: center; margin-bottom: 20px;",
-                                actionButton(ns("btn_calc_pb"), "▶ 試算 P/B 合理價",
+                                actionButton(ns("btn_calc_pb"), "試算 P/B 合理價",
                                              style = "background-color: #2980b9; color: white; font-weight: bold; font-size: 18px; padding: 12px 30px; border-radius: 8px; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1);")
                             )
                           ),
@@ -33,7 +33,7 @@ pb_asset_module_ui <- function(id) {
                             column(width = 12,
                                    uiOutput(ns("ui_pb_result")),
                                    br(),
-                                   box(title = "📊 估值區間（保守／基準／樂觀）", width = 12, status = "primary", solidHeader = TRUE,
+                                   box(title = "估值區間（保守／基準／樂觀）", width = 12, status = "primary", solidHeader = TRUE,
                                        tableOutput(ns("tbl_pb_band")),
                                        plotOutput(ns("plt_pb_band"), height = "280px")
                                    )
@@ -42,7 +42,7 @@ pb_asset_module_ui <- function(id) {
                  ),
                  
                  tabPanel("P/B Settings", icon = icon("cogs"),
-                          h4(tags$b("🎯 每股帳面淨值 (BVPS) 與資產基礎")),
+                          h4(tags$b("每股帳面淨值 (BVPS) 與資產基礎")),
                           fluidRow(
                             div("BVPS = Common Equity ÷ Shares；Tangible BVPS 另扣除商譽／無形資產（若財報可取得）",
                                 style = "font-size: 15px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F8F9F9; border-left: 4px solid #2980B9; border-radius: 4px;")
@@ -61,7 +61,7 @@ pb_asset_module_ui <- function(id) {
                             column(12, uiOutput(ns("alert_missing_bv")))
                           ),
                           hr(style = "border-top: 1px solid #BDC3C7;"),
-                          h4(tags$b("⚙️ 目標本淨比假設")),
+                          h4(tags$b("目標本淨比假設")),
                           fluidRow(
                             column(4, numericInput(ns("pb_low"),  "保守 P/B (×)", value = APP_DEFAULTS$pb_low,  step = 0.05, min = 0.1)),
                             column(4, numericInput(ns("pb_mid"),  "基準 P/B (×)", value = APP_DEFAULTS$pb_mid,  step = 0.05, min = 0.1)),
@@ -89,7 +89,7 @@ pb_asset_module_ui <- function(id) {
                           ),
                           br(),
                           div(style = "background-color: #f9f9f9; padding: 15px; border-left: 4px solid #2980b9;",
-                              h4(tags$b("📝 使用情境")),
+                              h4(tags$b("使用情境")),
                               p("適用於銀行、保險、控股／綜合企業：折現模型（DCF／DDM）前提常不成立時，以淨資產與合理本淨比定價。"),
                               p(style = "font-size: 13px; color: #7f8c8d; margin-bottom: 0;",
                                 "※ Buffett／Berkshire 實務常以 Book Value 為錨；目標 P/B 請依產業與利率環境調整，勿固定單一倍數。")
@@ -139,7 +139,7 @@ pb_asset_module_server <- function(id,
       # 股數依偏好順序取別名（勿用 | 併 grep，避免 Share Issued 搶先命中）
       shares <- select_current_metric_any(
         df_bs,
-        c("Ordinary Shares Number", "Total Shares Outstanding", "Share Issued"),
+        SHARE_PATTERNS,
         "stock"
       )
       

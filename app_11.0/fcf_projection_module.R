@@ -50,7 +50,7 @@ fcf_projection_module_ui <- function(id) {
            conditionalPanel(
              condition = "input.g_growth_method == 'fundamental'",
              checkboxInput(ns("apply_g_ceiling"), 
-                           tags$span(style = "color: #d35400; font-weight: bold;", "🔒 啟用 25% 成長率天花板防呆 (建議)"), 
+                           tags$span(style = "color: #d35400; font-weight: bold;", "啟用 25% 成長率天花板防呆 (建議)"), 
                            value = TRUE)
            ),
            br(),
@@ -59,7 +59,7 @@ fcf_projection_module_ui <- function(id) {
                         icon = icon("check"), class = "btn-success"),
            
            div(style = "background-color: #f9f9f9; padding: 15px; border-left: 4px solid #00a65a; margin-bottom: 20px;",
-               h4(tags$b("📝 自由現金流 (FCF) 參數拆解")),
+               h4(tags$b("自由現金流 (FCF) 參數拆解")),
                p("您可以點擊「同步按鈕」帶入最新財報，或手動微調參數來模擬不同的營運情境，藉此還原 FCF 與基本面永續成長率 (g) 的計算過程。"),
                
                # 縮寫對照表 (使用灰色小字，不搶視覺焦點)
@@ -234,7 +234,7 @@ fcf_projection_module_server <- function(
         scale_color_brewer(palette = "Set1") +
         scale_fill_brewer(palette = "Set1") +
         theme_minimal(base_size = 14) +
-        labs(title = "📈 歷史與預測自由現金流 (FCFF) 走勢圖", x = "年份", y = "自由現金流 (FCFF)") +
+        labs(title = "歷史與預測自由現金流 (FCFF) 走勢圖", x = "年份", y = "自由現金流 (FCFF)") +
         theme(legend.position = "top", legend.title = element_blank(), plot.title = element_text(face = "bold", size = 16)) +
         expand_limits(y = max(df_plot$FCF, na.rm = TRUE) * 1.2)
     })
@@ -342,9 +342,9 @@ fcf_projection_module_server <- function(
       status_msg <- ""
       # 如果主程式傳來的數值剛好是基本面推估值，才顯示防呆警告
       if (g_val == res$g && hit && res$ceiling_on) {
-        status_msg <- "<div style='color: #d9534f; font-weight: bold; font-size: 12px; margin-top: 5px;'>⚠️ 實際模型輸出: 已強制封頂於 25%</div>"
+        status_msg <- "<div style='color: #d9534f; font-weight: bold; font-size: 12px; margin-top: 5px;'>實際模型輸出: 已強制封頂於 25%</div>"
       } else if (g_val == res$raw_g && hit && !res$ceiling_on) {
-        status_msg <- "<div style='color: #8e44ad; font-weight: bold; font-size: 12px; margin-top: 5px;'>🔥 實際模型輸出: 已解除天花板限制</div>"
+        status_msg <- "<div style='color: #8e44ad; font-weight: bold; font-size: 12px; margin-top: 5px;'>實際模型輸出: 已解除天花板限制</div>"
       }
       
       HTML(paste0("<div style='font-size: 15px; color: #2c3e50;'>目前模型代入成長率: <b style='color: #d35400; font-size: 18px;'>", g_val, " %</b></div>", status_msg))
@@ -431,7 +431,7 @@ fcf_projection_module_server <- function(
       if (identical(method, "fundamental") && isTRUE(res$ceiling_on) && isTRUE(res$raw_g > 25)) {
         subtitle_html <- HTML(paste0(
           method_label,
-          " <span style='color:#ffcccc;font-size:12px;font-weight:bold;'>(⚠️ 模型代入 25%)</span>"
+          " <span style='color:#ffcccc;font-size:12px;font-weight:bold;'>(模型代入 25%)</span>"
         ))
       }
       valueBox(
@@ -443,7 +443,7 @@ fcf_projection_module_server <- function(
     })
     
     output$title_dynamic_years <- renderUI({
-      h4(tags$b(paste0("📈 未來 ", input_years(), " 年自由現金流 (營收佔比推算)")))
+      h4(tags$b(paste0("未來 ", input_years(), " 年自由現金流 (營收佔比推算)")))
     })
     
     output$tbl_fcf_projection <- DT::renderDataTable({
@@ -498,7 +498,7 @@ fcf_projection_module_server <- function(
       
       HTML(glue::glue(
         "<div style='background-color: #f9f9f9; padding: 15px; border-left: 4px solid #00a65a; margin-top: 10px;'>
-           <b>✅ FCF 預測資料已同步！</b><br/>
+           <b>FCF 預測資料已同步！</b><br/>
            -------------------------<br/>
            第 1 年預測現金流: <b>${round(df$FCFF[1], 2)}</b><br/>
            第 {nrow(df)} 年預測現金流: <b>${round(df$FCFF[nrow(df)], 2)}</b><br/>
