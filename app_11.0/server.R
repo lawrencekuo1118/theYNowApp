@@ -1030,7 +1030,9 @@ server <- function(input, output, session) {
         updateNumericInput(session, "custom_g", value = g_mid)
         updateNumericInput(session, "g_stage1", value = g_mid)
       }
-      if (!is.null(inds$pb_band) && length(inds$pb_band) >= 2) {
+      # 僅在勾選「套用產業預設本淨比」時覆寫 P/B 區間
+      if (isTRUE(input[["mod_pb-use_industry_pb"]]) &&
+          !is.null(inds$pb_band) && length(inds$pb_band) >= 2) {
         lo <- inds$pb_band[1]; hi <- inds$pb_band[2]
         mid <- if (length(inds$pb_band) >= 3) inds$pb_band[3] else mean(c(lo, hi))
         updateNumericInput(session, "mod_pb-pb_low",  value = round(lo, 2))

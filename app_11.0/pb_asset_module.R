@@ -15,6 +15,11 @@ pb_asset_module_ui <- function(id) {
                  
                  tabPanel("P/B Overview", icon = icon("landmark"),
                           fluidRow(
+                            column(4, valueBoxOutput(ns("vbx_bvps"), width = 12)),
+                            column(4, valueBoxOutput(ns("vbx_tbvps"), width = 12)),
+                            column(4, valueBoxOutput(ns("vbx_mkt_pb"), width = 12))
+                          ),
+                          fluidRow(
                             div("Fair Price = Book Value per Share (BVPS) × Target P/B Multiple",
                                 style = "font-size: 18px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;")
                           ),
@@ -28,11 +33,6 @@ pb_asset_module_ui <- function(id) {
                             column(width = 12,
                                    uiOutput(ns("ui_pb_result")),
                                    br(),
-                                   fluidRow(
-                                     column(4, valueBoxOutput(ns("vbx_bvps"), width = 12)),
-                                     column(4, valueBoxOutput(ns("vbx_tbvps"), width = 12)),
-                                     column(4, valueBoxOutput(ns("vbx_mkt_pb"), width = 12))
-                                   ),
                                    box(title = "📊 估值區間（保守／基準／樂觀）", width = 12, status = "primary", solidHeader = TRUE,
                                        tableOutput(ns("tbl_pb_band")),
                                        plotOutput(ns("plt_pb_band"), height = "280px")
@@ -136,16 +136,36 @@ pb_asset_module_server <- function(id,
       
       equity <- select_current_metric_any(df_bs, EQUITY_PATTERNS, "stock")
       
-      shares <- select_current_metric(df_bs, "Ordinary Shares Number|Share Issued|Total Shares Outstanding", "stock")
+      # 股數依偏好順序取別名（勿用 | 併 grep，避免 Share Issued 搶先命中）
+      shares <- select_current_metric_any(
+        df_bs,
+        c("Ordinary Shares Number", "Total Shares Outstanding", "Share Issued"),
+        "stock"
+      )
       
+      # TBVPS 扣除：優先 Goodwill + Other Intangible Assets；
+      # 若僅有合計列則只用一次，避免與獨立 Goodwill 雙重扣減
       goodwill <- select_current_metric(df_bs, "^Goodwill$", "stock")
-      intangibles <- select_current_metric(df_bs, "Other Intangible Assets|Intangible Assets", "stock")
-      goodwill <- ifelse(is.na(goodwill), 0, goodwill)
-      intangibles <- ifelse(is.na(intangibles), 0, intangibles)
+      other_intang <- select_current_metric(df_bs, "^Other Intangible Assets$", "stock")
+      combined_gi <- select_current_metric(
+        df_bs,
+        "Goodwill And Other Intangible Assets|Goodwill & Other Intangible Assets",
+        "stock"
+      )
+      if (!is.na(goodwill) || !is.na(other_intang)) {
+        intang_deduct <- ifelse(is.na(goodwill), 0, goodwill) +
+          ifelse(is.na(other_intang), 0, other_intang)
+      } else if (!is.na(combined_gi)) {
+        intang_deduct <- combined_gi
+      } else {
+        # 後備：寬鬆「Intangible Assets」列（排除已含 Goodwill 的合計列）
+        loose <- select_current_metric(df_bs, "^Intangible Assets$", "stock")
+        intang_deduct <- ifelse(is.na(loose), 0, loose)
+      }
       
       if (!is.na(equity) && !is.na(shares) && shares > 0) {
         bvps <- equity / shares
-        tbvps <- max(equity - goodwill - intangibles, 0) / shares
+        tbvps <- max(equity - intang_deduct, 0) / shares
         updateNumericInput(session, "bvps", value = round(bvps, 2))
         updateNumericInput(session, "tbvps", value = round(tbvps, 2))
       } else {
