@@ -23,6 +23,10 @@ server <- function(input, output, session) {
   calculated_wacc <- reactiveVal(NULL)
   dcf_value_result <- reactiveVal(NULL)
   stock_price_estimate_val <- reactiveVal(NULL)
+
+  # CAPM Beta：手動覆寫旗標（換 ticker 後清除，重新跟 Finance Summary 同步）
+  capm_beta_dirty <- reactiveVal(FALSE)
+  capm_beta_updating <- reactiveVal(FALSE)
   
   # ==========================================
   # 🚀 雙按鈕監聽：確保左右兩個搜尋框獨立運作，互不覆寫
@@ -109,7 +113,9 @@ server <- function(input, output, session) {
   # 🌐 核心爬蟲：只要中央大腦的代碼改變，就自動執行完整抓取
   # ==========================================
   observeEvent(current_ticker(), {
-    req(current_ticker()) 
+    req(current_ticker())
+    # 換股票：解除手動覆寫，讓新 Summary β 可自動帶入
+    capm_beta_dirty(FALSE)
     stock_code <- current_ticker()
     
     withProgress(message = paste('🚀 正在獲取', stock_code, '的最新數據...'), value = 0, {
@@ -411,6 +417,7 @@ server <- function(input, output, session) {
       c("DCF - WACC Source", "Use Calculated WACC", .snapshot_value(input$use_calculated_wacc), "TRUE uses system WACC"),
       c("CAPM", "Rf (%)", .snapshot_value(input$capm_rf), "Ke = Rf + Beta × (Rm-Rf)"),
       c("CAPM", "Beta", .snapshot_value(input$capm_beta), "Systematic risk coefficient"),
+      c("CAPM", "Use Industry Beta", .snapshot_value(input$use_industry_beta), "TRUE = industry avg; FALSE = Finance Summary β (manual sticky until ticker change)"),
       c("CAPM", "Rm (%)", .snapshot_value(input$capm_rm), "Expected market return"),
       c("WACC", "Calculated WACC (%)", .snapshot_value(wacc_pct), "WACC = E/(E+D)×Re + D/(E+D)×Rd×(1-T)"),
       c("WACC", "Re (%)", .snapshot_value(input$wacc_re), "Cost of equity"),
@@ -1014,27 +1021,97 @@ server <- function(input, output, session) {
     }
   }, ignoreInit = FALSE)
   
-  # 🎯 智慧標籤：貝他係數 Beta (當數值等於預設時顯示藍色標籤)
-  observeEvent(c(input$capm_beta, input$industry_choice), {
-    req(input$industry_choice)
-    default_beta <- if (!is.null(industry_standards[[input$industry_choice]]$beta_avg)) 
-      industry_standards[[input$industry_choice]]$beta_avg else 1.0
-    
-    if (!is.null(input$capm_beta) && abs(as.numeric(input$capm_beta) - default_beta) < 1e-4) {
-      updateNumericInput(session, "capm_beta", 
+  # ---------- CAPM Beta：Finance Summary 預設／產業平均可選／手動覆寫 ----------
+  .summary_beta_value <- function() {
+    df <- tryCatch(summary_data(), error = function(e) NULL)
+    if (is.null(df) || !is.data.frame(df) || nrow(df) == 0) return(NA_real_)
+    idx <- grep("^Beta", df$Item, ignore.case = TRUE)
+    if (length(idx) == 0) return(NA_real_)
+    parse_financial_number(df$Value[idx[1]])[1]
+  }
+
+  .industry_beta_value <- function() {
+    ind <- input$industry_choice
+    if (is.null(ind) || !nzchar(ind)) return(NA_real_)
+    inds <- industry_standards[[ind]]
+    if (is.null(inds) || is.null(inds$beta_avg)) return(1.0)
+    suppressWarnings(as.numeric(inds$beta_avg))
+  }
+
+  .set_capm_beta <- function(val) {
+    val <- suppressWarnings(as.numeric(val))
+    if (!is.finite(val)) return(invisible(FALSE))
+    val <- round(val, 2)
+    cur <- suppressWarnings(as.numeric(input$capm_beta))
+    if (is.finite(cur) && abs(cur - val) < 1e-4) return(invisible(FALSE))
+    capm_beta_updating(TRUE)
+    updateNumericInput(session, "capm_beta", value = val)
+    invisible(TRUE)
+  }
+
+  .sync_capm_beta <- function() {
+    if (isTRUE(input$use_industry_beta)) {
+      b <- .industry_beta_value()
+      if (is.finite(b)) {
+        capm_beta_dirty(FALSE)
+        .set_capm_beta(b)
+      }
+      return(invisible(NULL))
+    }
+    # 未勾產業平均：跟 Finance Summary（手動覆寫期間不打擾）
+    if (isTRUE(capm_beta_dirty())) return(invisible(NULL))
+    b <- .summary_beta_value()
+    if (is.finite(b)) .set_capm_beta(b)
+    invisible(NULL)
+  }
+
+  # 手動輸入 → dirty（產業平均模式不記 dirty，下次勾選／換產業仍可覆寫）
+  observeEvent(input$capm_beta, {
+    if (isTRUE(capm_beta_updating())) {
+      capm_beta_updating(FALSE)
+      return()
+    }
+    if (!isTRUE(input$use_industry_beta)) {
+      capm_beta_dirty(TRUE)
+    }
+  }, ignoreInit = TRUE)
+
+  # 勾選產業平均／換產業：套用產業 β；取消勾選且非 dirty：改跟 Summary
+  observeEvent(list(input$use_industry_beta, input$industry_choice), {
+    .sync_capm_beta()
+  }, ignoreInit = TRUE)
+
+  # Finance Summary 更新（新股票／重整）→ 非產業模式且非 dirty 時同步 β
+  observeEvent(summary_data(), {
+    if (!isTRUE(input$use_industry_beta) && !isTRUE(capm_beta_dirty())) {
+      .sync_capm_beta()
+    }
+  }, ignoreInit = TRUE)
+
+  # 智慧標籤：產業平均 / Finance Summary / 自訂
+  observeEvent(list(input$capm_beta, input$industry_choice, input$use_industry_beta, summary_data()), {
+    beta <- suppressWarnings(as.numeric(input$capm_beta))
+    if (!is.finite(beta)) return()
+    ind_b <- .industry_beta_value()
+    fs_b <- .summary_beta_value()
+
+    if (isTRUE(input$use_industry_beta) && is.finite(ind_b) && abs(beta - ind_b) < 1e-4) {
+      updateNumericInput(session, "capm_beta",
                          label = HTML("Beta (β) <span style='color: #2980b9; font-size: 12px;'>[套用產業平均值]</span>"))
+    } else if (!isTRUE(input$use_industry_beta) && is.finite(fs_b) && abs(beta - fs_b) < 1e-4) {
+      updateNumericInput(session, "capm_beta",
+                         label = HTML("Beta (β) <span style='color: #27ae60; font-size: 12px;'>[Finance Summary]</span>"))
     } else {
-      updateNumericInput(session, "capm_beta", 
+      updateNumericInput(session, "capm_beta",
                          label = HTML("Beta (β) <span style='color: #e67e22; font-size: 12px;'>[自訂數值]</span>"))
     }
   }, ignoreInit = FALSE)
   
-  # 保留：切換產業時，強制將輸入框的值刷新為該產業預設值
+  # 保留：切換產業時刷新 Rm／成長／P/B；Beta 僅在勾選產業平均時由上方 .sync_capm_beta 處理
   observeEvent(input$industry_choice, {
     req(input$industry_choice)
     inds <- industry_standards[[input$industry_choice]]
     if (!is.null(inds)) {
-      updateNumericInput(session, "capm_beta", value = inds$beta_avg)
       updateNumericInput(session, "capm_rm", value = inds$rm_avg)
       
       # 同步短期成長／P/B 區間（有設定才更新）

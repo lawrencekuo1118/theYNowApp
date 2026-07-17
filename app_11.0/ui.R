@@ -794,7 +794,13 @@ ui <- dashboardPage(
                                 ),
                                 box(h4("CAPM 估算 rₑ"),
                                     numericInput("capm_rf", "無風險利率 Rf (%)", value = APP_DEFAULTS$capm_rf, step = 0.01),
-                                    numericInput("capm_beta", "Beta (β) [套用產業: 預設]", value = APP_DEFAULTS$capm_beta, step = 0.01),
+                                    numericInput("capm_beta", "Beta (β)", value = APP_DEFAULTS$capm_beta, step = 0.01),
+                                    checkboxInput(
+                                      "use_industry_beta",
+                                      tags$span(style = "font-weight: bold;", "套用產業平均值（Beta）"),
+                                      value = isTRUE(APP_DEFAULTS$use_industry_beta)
+                                    ),
+                                    helpText("預設跟 Dashboard → Finance Summary 的 Beta (5Y Monthly)；勾選才用產業平均；亦可直接手動輸入覆寫（換股票代碼後會重新跟 Summary 同步）。"),
                                     numericInput("capm_rm", "市場報酬率 Rm (%)", value = APP_DEFAULTS$capm_rm, step = 0.01),
                                     actionButton("calc_capm", "估算 rₑ（CAPM）", class = "btn-primary"),
                                     tags$br(), htmlOutput("capm_result")

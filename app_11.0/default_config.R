@@ -93,7 +93,8 @@ APP_DEFAULTS <- list(
   use_est_re      = TRUE,
 
   capm_rf         = default_rf,
-  capm_beta       = round(default_beta, 2),
+  capm_beta       = round(default_beta, 2),  # 啟動時占位；搜尋後預設改跟 Finance Summary β
+  use_industry_beta = FALSE,                 # FALSE = 跟 Summary β；TRUE = 產業平均
   capm_rm         = round(default_rm, 2),
 
   # --- 6. P/B／資產法 ---
