@@ -103,5 +103,7 @@ APP_DEFAULTS <- list(
   pb_mid          = round(pb_mid, 2),
   pb_high         = round(pb_hi, 2),
   pb_basis        = "bvps",
-  pb_use_industry = TRUE
+  pb_use_industry = TRUE,
+  # 例外：雙重股權／股數級距校正（預設關閉，由使用者決定是否套用）
+  pb_adjust_share_class = FALSE
 )

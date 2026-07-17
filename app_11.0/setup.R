@@ -2,6 +2,10 @@
 # setup.R - 財報數據處理與輔助函數模組
 # ==========================================
 
+if (!exists("%||%", mode = "function")) {
+  `%||%` <- function(x, y) if (is.null(x) || (length(x) == 1 && is.na(x))) y else x
+}
+
 # 轉換數字為 K / M / B 格式
 format_dollar_abbr <- function(x) {
   if (is.null(x) || is.na(x) || !is.numeric(x)) return("N/A")
@@ -166,6 +170,75 @@ OPEX_PATTERNS <- c(
   "^Operating Expense$",
   "^Operating Expenses$"
 )
+
+#' 解析適配「目前報價股」的流通股數（處理 BRK-B 等雙重股權）
+#' 財報 Ordinary Shares 常為 A 級股數，若直接去除 B 股股價會使 BVPS 失準約 1500 倍。
+#' @return list(shares, method, note)
+resolve_shares_for_price <- function(shares_bs,
+                                     price = NA_real_,
+                                     market_cap = NA_real_,
+                                     ticker = "") {
+  shares_bs <- suppressWarnings(as.numeric(shares_bs)[1])
+  price <- suppressWarnings(as.numeric(price)[1])
+  market_cap <- suppressWarnings(as.numeric(market_cap)[1])
+  ticker <- toupper(gsub("\\.", "-", trimws(as.character(ticker %||% "")[1])))
+
+  shares_implied <- if (is.finite(market_cap) && is.finite(price) && price > 0) {
+    market_cap / price
+  } else {
+    NA_real_
+  }
+
+  # Berkshire Class B = 1/1500 economic interest of Class A
+  if (grepl("^BRK-B$", ticker) && is.finite(shares_bs) && shares_bs > 0) {
+    if (is.finite(shares_implied) && (shares_implied / shares_bs) > 100) {
+      return(list(
+        shares = shares_implied,
+        method = "market_cap_per_price",
+        note = "BRK-B 雙重股權：財報股數偏 A 級，已改用 市值÷股價 作為 B 級約當股數"
+      ))
+    }
+    return(list(
+      shares = shares_bs * 1500,
+      method = "brk_b_x1500",
+      note = "BRK-B：以 Class A 股數 × 1500 換算 B 級約當股數"
+    ))
+  }
+
+  if (is.finite(shares_implied) && is.finite(shares_bs) && shares_bs > 0) {
+    ratio <- shares_implied / shares_bs
+    if (is.finite(ratio) && (ratio > 50 || ratio < (1 / 50))) {
+      return(list(
+        shares = shares_implied,
+        method = "market_cap_per_price",
+        note = sprintf(
+          "股數單位／股權級距與報價不符（約當／財報 ≈ %.0fx），已改用 市值÷股價",
+          ratio
+        )
+      ))
+    }
+  }
+
+  if (is.finite(shares_bs) && shares_bs > 0) {
+    return(list(shares = shares_bs, method = "balance_sheet", note = NULL))
+  }
+  if (is.finite(shares_implied) && shares_implied > 0) {
+    return(list(shares = shares_implied, method = "market_cap_per_price", note = NULL))
+  }
+  list(shares = NA_real_, method = "none", note = NULL)
+}
+
+#' 報價端 Book Value 是否與目前股價同一股權級距（排除 BRK-B 誤用 A 級 BV）
+quote_book_value_is_plausible <- function(book_value, price) {
+  book_value <- suppressWarnings(as.numeric(book_value)[1])
+  price <- suppressWarnings(as.numeric(price)[1])
+  if (!is.finite(book_value) || !is.finite(price) || book_value <= 0 || price <= 0) {
+    return(FALSE)
+  }
+  # 隱含 P/B = price/book 落在合理區間才採用
+  pb <- price / book_value
+  is.finite(pb) && pb >= 0.3 && pb <= 8
+}
 
 # 取得當期單一數值：流量科目優先 TTM，存量科目用最新財年
 select_current_metric <- function(df, metric_name, type = c("flow", "stock")) {

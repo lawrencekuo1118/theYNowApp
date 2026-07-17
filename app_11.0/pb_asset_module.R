@@ -44,9 +44,27 @@ pb_asset_module_ui <- function(id) {
                  tabPanel("P/B Settings", icon = icon("cogs"),
                           h4(tags$b("每股帳面淨值 (BVPS) 與資產基礎")),
                           fluidRow(
-                            div("BVPS = Common Equity ÷ Shares；Tangible BVPS 另扣除商譽／無形資產（若財報可取得）",
-                                style = "font-size: 15px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F8F9F9; border-left: 4px solid #2980B9; border-radius: 4px;")
+                            div("標準公式：BVPS = Common Equity ÷ 財報流通股數；TBVPS 另扣除商譽／無形資產。雙重股權（如 BRK-B）等「報價股 ≠ 財報股數口徑」時，可選擇下方例外校正。",
+                                style = "font-size: 14px; font-weight: bold; color: #2C3E50; text-align: left; margin-bottom: 10px; padding: 10px; background-color: #F8F9F9; border-left: 4px solid #2980B9; border-radius: 4px;")
                           ),
+                          fluidRow(
+                            column(
+                              12,
+                              checkboxInput(
+                                ns("adjust_share_class"),
+                                tags$span(
+                                  style = "font-weight: bold;",
+                                  "套用約當股數校正（例外補償：市值÷股價或 BRK-B×1500）"
+                                ),
+                                value = isTRUE(APP_DEFAULTS$pb_adjust_share_class)
+                              ),
+                              tags$p(
+                                style = "margin: -8px 0 12px 0; font-size: 12px; color: #666; line-height: 1.45;",
+                                "非標準自動估值步驟。僅在財報股數與目前報價股級距明顯不符時勾選；勾選後請按「從最新財報自動帶入」或等待自動同步。"
+                              )
+                            )
+                          ),
+                          uiOutput(ns("txt_shares_resolve_note")),
                           fluidRow(
                             column(4, numericInput(ns("bvps"), "每股帳面淨值 BVPS (USD)", value = APP_DEFAULTS$pb_bvps, step = 0.1, min = 0)),
                             column(4, numericInput(ns("tbvps"), "有形每股淨值 TBVPS (USD)", value = APP_DEFAULTS$pb_tbvps, step = 0.1, min = 0)),
@@ -106,6 +124,8 @@ pb_asset_module_server <- function(id,
                                    d_balance_sheet,
                                    d_income_statement = reactive(NULL),
                                    current_price = reactive(NA),
+                                   market_cap = reactive(NA),
+                                   current_ticker = reactive(""),
                                    industry_choice = reactive(NULL),
                                    industry_text = reactive("")) {
   moduleServer(id, function(input, output, session) {
@@ -128,20 +148,51 @@ pb_asset_module_server <- function(id,
       }
       NULL
     })
+
+    shares_resolve_note <- reactiveVal(NULL)
     
-    # --- 財報同步 BVPS / TBVPS ---
+    # --- 財報同步 BVPS / TBVPS（標準：財報股數；例外校正需使用者勾選）---
     sync_book_values <- function() {
       req(d_balance_sheet())
       df_bs <- d_balance_sheet()
       
       equity <- select_current_metric_any(df_bs, EQUITY_PATTERNS, "stock")
       
-      # 股數依偏好順序取別名（勿用 | 併 grep，避免 Share Issued 搶先命中）
-      shares <- select_current_metric_any(
+      shares_bs <- select_current_metric_any(
         df_bs,
         SHARE_PATTERNS,
         "stock"
       )
+      px <- suppressWarnings(as.numeric(current_price())[1])
+      mcap <- suppressWarnings(as.numeric(market_cap())[1])
+      tk <- tryCatch(current_ticker(), error = function(e) "")
+      sh_adj <- resolve_shares_for_price(shares_bs, price = px, market_cap = mcap, ticker = tk)
+
+      apply_adj <- isTRUE(input$adjust_share_class)
+      if (apply_adj) {
+        shares <- sh_adj$shares
+        shares_resolve_note(sh_adj$note)
+      } else {
+        # 標準路徑：只用財報股數；若偵測到可校正情況，提示使用者自行勾選
+        if (is.finite(shares_bs) && shares_bs > 0) {
+          shares <- shares_bs
+        } else {
+          shares <- sh_adj$shares
+        }
+        if (!is.null(sh_adj$note) && nzchar(sh_adj$note) &&
+            !identical(sh_adj$method, "balance_sheet") &&
+            is.finite(shares_bs) && shares_bs > 0 &&
+            is.finite(sh_adj$shares) &&
+            abs(sh_adj$shares / shares_bs - 1) > 0.05) {
+          shares_resolve_note(paste0(
+            "偵測到股數級距／雙重股權可能不符（未套用校正）。",
+            "若要補償，請勾選「套用約當股數校正」後再同步。",
+            " 建議原因：", sh_adj$note
+          ))
+        } else {
+          shares_resolve_note(NULL)
+        }
+      }
       
       # TBVPS 扣除：優先 Goodwill + Other Intangible Assets；
       # 若僅有合計列則只用一次，避免與獨立 Goodwill 雙重扣減
@@ -158,7 +209,6 @@ pb_asset_module_server <- function(id,
       } else if (!is.na(combined_gi)) {
         intang_deduct <- combined_gi
       } else {
-        # 後備：寬鬆「Intangible Assets」列（排除已含 Goodwill 的合計列）
         loose <- select_current_metric(df_bs, "^Intangible Assets$", "stock")
         intang_deduct <- ifelse(is.na(loose), 0, loose)
       }
@@ -168,18 +218,43 @@ pb_asset_module_server <- function(id,
         tbvps <- max(equity - intang_deduct, 0) / shares
         updateNumericInput(session, "bvps", value = round(bvps, 2))
         updateNumericInput(session, "tbvps", value = round(tbvps, 2))
+        if (apply_adj && !is.null(sh_adj$note) && nzchar(sh_adj$note)) {
+          showNotification(sh_adj$note, type = "message", duration = 8)
+        }
       } else {
-        showNotification("⚠️ 無法從財報推算 BVPS，請手動輸入淨值與股數相關科目", type = "warning", duration = 6)
+        showNotification("無法從財報推算 BVPS，請手動輸入淨值與股數相關科目", type = "warning", duration = 6)
       }
     }
     
-    observeEvent(d_balance_sheet(), {
-      sync_book_values()
-    })
+    observeEvent(
+      list(
+        d_balance_sheet(), current_price(), market_cap(), current_ticker(),
+        input$adjust_share_class
+      ),
+      {
+        sync_book_values()
+      },
+      ignoreInit = FALSE
+    )
     
     observeEvent(input$btn_sync_bv, {
       sync_book_values()
-      showNotification("✅ 已自財報同步 BVPS／TBVPS", type = "message")
+      showNotification("已自財報同步 BVPS／TBVPS", type = "message")
+    })
+    
+    output$txt_shares_resolve_note <- renderUI({
+      note <- shares_resolve_note()
+      if (is.null(note) || !nzchar(note)) return(NULL)
+      applied <- isTRUE(input$adjust_share_class)
+      tags$p(
+        style = paste0(
+          "font-size: 12px; margin: 0 0 10px 0; padding: 8px 10px; border-left: 3px solid ",
+          if (applied) "#e67e22" else "#7f8c8d",
+          "; background: ", if (applied) "#fff8e6" else "#f4f4f4",
+          "; color: ", if (applied) "#b85c00" else "#555", ";"
+        ),
+        if (applied) paste0("已套用例外校正：", note) else note
+      )
     })
     
     observeEvent(list(input$use_industry_pb, industry_choice(), industry_text()), {
@@ -197,8 +272,9 @@ pb_asset_module_server <- function(id,
       updateNumericInput(session, "pb_high", value = APP_DEFAULTS$pb_high)
       updateSelectInput(session, "basis", selected = APP_DEFAULTS$pb_basis)
       updateCheckboxInput(session, "use_industry_pb", value = APP_DEFAULTS$pb_use_industry)
+      updateCheckboxInput(session, "adjust_share_class", value = isTRUE(APP_DEFAULTS$pb_adjust_share_class))
       sync_book_values()
-      showNotification("🔁 P/B 參數已回復系統預設", type = "message")
+      showNotification("P/B 參數已回復系統預設", type = "message")
     })
     
     output$alert_missing_bv <- renderUI({
@@ -212,16 +288,16 @@ pb_asset_module_server <- function(id,
     pb_calc <- eventReactive(input$btn_calc_pb, {
       basis_val <- if (identical(input$basis, "tbvps")) safe_num(input$tbvps) else safe_num(input$bvps)
       if (is.na(basis_val) || basis_val <= 0) {
-        return(list(status = "error", message = "⚠️ 計算無效：請先提供有效的 BVPS／TBVPS（須 > 0）。"))
+        return(list(status = "error", message = "計算無效：請先提供有效的 BVPS／TBVPS（須 > 0）。"))
       }
       lo <- safe_num(input$pb_low)
       mid <- safe_num(input$pb_mid)
       hi <- safe_num(input$pb_high)
       if (lo <= 0 || mid <= 0 || hi <= 0) {
-        return(list(status = "error", message = "⚠️ 目標 P/B 倍數必須大於 0。"))
+        return(list(status = "error", message = "目標 P/B 倍數必須大於 0。"))
       }
       if (lo > mid || mid > hi) {
-        return(list(status = "error", message = "⚠️ 請維持 保守 ≤ 基準 ≤ 樂觀 的 P/B 順序。"))
+        return(list(status = "error", message = "請維持 保守 ≤ 基準 ≤ 樂觀 的 P/B 順序。"))
       }
       
       px <- suppressWarnings(as.numeric(current_price()))

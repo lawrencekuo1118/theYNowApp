@@ -425,6 +425,7 @@ server <- function(input, output, session) {
       c("P/B", "P/B Low", .snapshot_value(input[["mod_pb-pb_low"]]), "Price = BVPS × P/B"),
       c("P/B", "P/B Mid", .snapshot_value(input[["mod_pb-pb_mid"]]), "Price = BVPS × P/B"),
       c("P/B", "P/B High", .snapshot_value(input[["mod_pb-pb_high"]]), "Price = BVPS × P/B"),
+      c("P/B", "約當股數校正", .snapshot_value(input[["mod_pb-adjust_share_class"]]), "例外：市值÷股價／雙重股權"),
       c("Backtest", "Net Margin Threshold (%)", .snapshot_value(input$bt_net_margin), "Pass if Net Margin >= threshold"),
       c("Backtest", "Revenue Growth Threshold (%)", .snapshot_value(input$bt_rev_growth), "Pass if Revenue Growth >= threshold"),
       c("Backtest", "EPS / NI Growth Threshold (%)", .snapshot_value(input$bt_eps_growth), "Pass if EPS/NI Growth >= threshold"),
@@ -838,6 +839,14 @@ server <- function(input, output, session) {
     current_price = reactive({
       tryCatch(scraped_market_cap()$price, error = function(e) NA_real_)
     }),
+    market_cap = reactive({
+      df <- tryCatch(summary_data(), error = function(e) NULL)
+      if (is.null(df) || !is.data.frame(df) || nrow(df) < 1) return(NA_real_)
+      row <- df[df$Item == "Market Cap (intraday)", , drop = FALSE]
+      if (nrow(row) < 1) return(NA_real_)
+      parse_financial_number(row$Value[1])[1]
+    }),
+    current_ticker = current_ticker,
     industry_choice = reactive(input$industry_choice),
     industry_text = corp_industry_text
   )
