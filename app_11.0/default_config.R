@@ -3,7 +3,7 @@
 # 說明：統一管理 UI 與 Server 的初始數值，並動態綁定產業 KPI
 # ==========================================
 
-# 預設產業：電商零售（與 demo AMZN 對齊）
+# 預設產業：電商零售（啟動後會依 Ticker 財報覆寫；預設 Ticker = TSM）
 DEFAULT_IND <- "ecr.Ecommerce_Retail"
 ind_kpi <- industry_standards[[DEFAULT_IND]]
 
@@ -56,7 +56,7 @@ if (!is.null(ind_kpi$pb_band) && length(ind_kpi$pb_band) >= 2) {
 APP_DEFAULTS <- list(
 
   # --- 1. 基本設定 ---
-  stock_code      = "AMZN",
+  stock_code      = "TSM",
   industry_choice = DEFAULT_IND,
   years           = 5,
 

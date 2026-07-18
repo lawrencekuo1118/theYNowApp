@@ -570,7 +570,7 @@ ui <- dashboardPage(
       tabItem(
         tabName = "get_started",
         h2("Get Started"),
-        helpText("先確認適合的估值模型；下方 SGR 主要供 DCF／RI 終值使用。DDM 股利成長率可在 DD-Model 分頁單獨覆寫。"),
+        helpText("先確認適合的估值模型；下方 SGR 主要供 DCF／RI 終值使用。DDM 股利成長率可在 DDM 分頁單獨覆寫。"),
         fluidRow(
           box(
             title = tagList(icon("route"), "Model Selector｜估值模型推薦"),
@@ -888,7 +888,7 @@ ui <- dashboardPage(
                                     style = "margin:0; padding-left:18px; line-height:1.55;",
                                     tags$li("DCF／RI 終值 SGR 與 WACC：側欄 Get Started"),
                                     tags$li("CapEx／ΔNWC 前瞻佔營收比：本頁 FCFF 分頁（驅動預測表）"),
-                                    tags$li("DDM 股利成長率：可在 DD-Model 單獨覆寫")
+                                    tags$li("DDM 股利成長率：可在 DDM 分頁單獨覆寫")
                                   )
                                 )
                               )
@@ -1260,7 +1260,7 @@ ui <- dashboardPage(
                                        tags$ul(
                                          tags$li(tags$b("$$P_0 = \\frac{D_1}{K_e - g} = \\frac{D_0 \\times (1 + g)}{K_e - g}$$"))
                                        ),
-                                       p("股利成長率 g 可與中央終值 SGR 同步，亦可在 DD-Model 分頁單獨覆寫。基本面法可參考 $$g = ROE \\times Retention\\ Ratio$$，但不宜與 FCFF 終值 g 強制畫上等號。")
+                                       p("股利成長率 g 可與中央終值 SGR 同步，亦可在 DDM 分頁單獨覆寫。基本面法可參考 $$g = ROE \\times Retention\\ Ratio$$，但不宜與 FCFF 終值 g 強制畫上等號。")
                               ),
                               
                               # Tab 2: DCF 模型解說

@@ -309,22 +309,23 @@ server <- function(input, output, session) {
       do.call(menuItem, args)
     }
 
+    # 模型順序對齊 Get Started Model Selector（左→右 ⇒ 上→下）：DCF → DDM → P/B → RI
     sidebarMenu(
       id = "sidebar_tabs",
       mk("Get Started", "get_started", "play-circle",
          fallback_label = "start", fallback_color = "purple"),
       mk("Dashboard", "dashboard", "chart-line"),
-      mk("DD-Model", "ddm_calculator", "hand-holding-usd",
-         recommended = isTRUE(rec$ddm),
-         fallback_label = "new", fallback_color = "green"),
       mk("DCF-Model", "dcf_calculator", "calculator",
          recommended = isTRUE(rec$dcf)),
-      mk("RI-Model", "ri_calculator", "gem",
-         recommended = isTRUE(rec$ri),
-         fallback_label = "pro", fallback_color = "blue"),
+      mk("DDM", "ddm_calculator", "hand-holding-usd",
+         recommended = isTRUE(rec$ddm),
+         fallback_label = "new", fallback_color = "green"),
       mk("P/B-Asset", "pb_calculator", "landmark",
          recommended = isTRUE(rec$pb),
          fallback_label = "new", fallback_color = "aqua"),
+      mk("RI-Model", "ri_calculator", "gem",
+         recommended = isTRUE(rec$ri),
+         fallback_label = "pro", fallback_color = "blue"),
       mk("Sensitivity", "sensitivity", "sliders-h",
          fallback_label = "new", fallback_color = "green"),
       mk("Backtest Zone", "backtest", "vial",
