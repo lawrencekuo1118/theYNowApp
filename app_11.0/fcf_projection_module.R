@@ -45,6 +45,34 @@ fcf_projection_module_ui <- function(id) {
              column(4, numericInput(ns("fcf_capex"), "資本支出 (CapEx) [-]", value = 0)),
              column(4, numericInput(ns("fcf_invested_capital"), "總投入資本", value = 1))
            ),
+
+           # 前瞻比率屬 FCFF 預測假設（非 Sensitivity）：空白則用當期絕對金額推算佔比
+           fluidRow(
+             box(
+               title = tagList(icon("percent"), "預測假設：CapEx／ΔNWC 佔營收比"),
+               width = 12, status = "danger", solidHeader = TRUE,
+               p(
+                 style = "font-size:13px; color:#555; margin-top:0;",
+                 "此處比率驅動下方多期 FCFF 預測表。留白時以當期 CapEx、ΔNWC 絕對金額／營收推算；可手動覆寫以模擬更高／更低再投資。"
+               ),
+               fluidRow(
+                 column(
+                   width = 6,
+                   h4(tags$b("CapEx 預估資本支出佔營收比")),
+                   numericInput(ns("proj_capex_rate"), "CapEx / Revenue (%):", value = NA, step = 0.01),
+                   uiOutput(ns("txt_hist_capex")),
+                   h6(helpText("註：空白＝套用當期金額推算（並顯示歷史淨 CapEx 參考值）。"))
+                 ),
+                 column(
+                   width = 6,
+                   h4(tags$b("ΔNWC 預估營運資本佔營收變動比")),
+                   numericInput(ns("proj_nwc_rate"), "ΔNWC / ΔRevenue (%)", value = NA, step = 0.01),
+                   uiOutput(ns("txt_hist_nwc")),
+                   h6(helpText("註：空白＝套用當期金額推算（並顯示歷史 ΔNWC／ΔRevenue 參考值）。"))
+                 )
+               )
+             )
+           ),
            
            # g_growth_method 在模組外為全域 ID（無 ns）
            conditionalPanel(
@@ -239,7 +267,7 @@ fcf_projection_module_server <- function(
         expand_limits(y = max(df_plot$FCF, na.rm = TRUE) * 1.2)
     })
     
-    # 財報載入時同步歷史 CapEx / NWC 比率（供 WACC 旁顯示）
+    # 財報載入時同步歷史 CapEx / NWC 比率（供 FCFF 預測假設參考）
     observeEvent(calc_trigger(), {
       df_is <- d_income_statement()
       df_cf <- d_cash_flow()
@@ -248,6 +276,24 @@ fcf_projection_module_server <- function(
       if (nrow(df_is) == 0 || nrow(df_cf) == 0 || nrow(df_bs) == 0) return()
       params <- extract_dcf_parameters(df_is, df_cf, df_bs)
       hist_params(list(capex_rate = params$net_capex_margin, nwc_rate = params$nwc_margin))
+    })
+
+    output$txt_hist_capex <- renderUI({
+      params <- hist_params()
+      if (is.null(params) || is.na(params$capex_rate)) {
+        return(HTML("<div style='color: gray; font-size: 13px; margin-bottom: 5px;'>系統歷史推算值：等待財報資料匯入...</div>"))
+      }
+      val <- round(params$capex_rate * 100, 2)
+      HTML(paste0("<div style='color: #3c8dbc; font-size: 14px; margin-bottom: 5px;'>系統歷史推算值：<b>", val, " %</b></div>"))
+    })
+
+    output$txt_hist_nwc <- renderUI({
+      params <- hist_params()
+      if (is.null(params) || is.na(params$nwc_rate)) {
+        return(HTML("<div style='color: gray; font-size: 13px; margin-bottom: 5px;'>系統歷史推算值：等待財報資料匯入...</div>"))
+      }
+      val <- round(params$nwc_rate * 100, 2)
+      HTML(paste0("<div style='color: #3c8dbc; font-size: 14px; margin-bottom: 5px;'>系統歷史推算值：<b>", val, " %</b></div>"))
     })
     
     # ==========================================
@@ -365,8 +411,24 @@ fcf_projection_module_server <- function(
       
       nopat_margin     <- if(base_rev == 0) 0 else base_nopat / base_rev
       depre_margin     <- if(base_rev == 0) 0 else base_depre / base_rev
-      capex_margin     <- if(base_rev == 0) 0 else base_capex / base_rev
-      delta_nwc_margin <- if(base_rev == 0) 0 else base_delta_nwc / base_rev
+
+      # 前瞻比率優先：模組內手動覆寫 → 否則當期絕對金額／營收
+      user_capex_pct <- suppressWarnings(as.numeric(input$proj_capex_rate)[1])
+      user_nwc_pct   <- suppressWarnings(as.numeric(input$proj_nwc_rate)[1])
+      capex_margin <- if (is.finite(user_capex_pct)) {
+        user_capex_pct / 100
+      } else if (base_rev == 0) {
+        0
+      } else {
+        base_capex / base_rev
+      }
+      delta_nwc_margin <- if (is.finite(user_nwc_pct)) {
+        user_nwc_pct / 100
+      } else if (base_rev == 0) {
+        0
+      } else {
+        base_delta_nwc / base_rev
+      }
       
       df <- data.frame(
         Year = paste0("Year ", 1:n_years),

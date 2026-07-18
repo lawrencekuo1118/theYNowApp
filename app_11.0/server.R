@@ -677,8 +677,6 @@ server <- function(input, output, session) {
     g_stage1 = reactive(input$g_stage1), 
     g_stage2 = reactive(input$sgr), 
     yr_stage1 = reactive(input$yr_stage1),
-    input_capex_rate = reactive(input$var_capex_rate),
-    input_nwc_rate   = reactive(input$var_nwc_rate),
     input_manual_fcf = reactive(input$manual_fcf),
     calc_trigger = run_calc_trigger,
     global_est_g = estimated_g,
@@ -1134,20 +1132,6 @@ server <- function(input, output, session) {
   
   output$txt_display_years <- renderUI({
     HTML(paste0("<b>目前預測年數：<span style='color:red; font-size:16px;'>", input$years, "</span> 年</b>"))
-  })
-  
-  output$txt_hist_capex <- renderUI({
-    params <- fcf_results$hist_params() 
-    if(is.null(params) || is.na(params$capex_rate)) return(HTML("<div style='color: gray; font-size: 13px; margin-bottom: 5px;'>系統推算值：等待財報資料匯入...</div>"))
-    val <- round(params$capex_rate * 100, 2)
-    HTML(paste0("<div style='color: #3c8dbc; font-size: 14px; margin-bottom: 5px;'>系統歷史推算值：<b>", val, " %</b></div>"))
-  })
-  
-  output$txt_hist_nwc <- renderUI({
-    params <- fcf_results$hist_params()
-    if(is.null(params) || is.na(params$nwc_rate)) return(HTML("<div style='color: gray; font-size: 13px; margin-bottom: 5px;'>系統推算值：等待財報資料匯入...</div>"))
-    val <- round(params$nwc_rate * 100, 2)
-    HTML(paste0("<div style='color: #3c8dbc; font-size: 14px; margin-bottom: 5px;'>系統歷史推算值：<b>", val, " %</b></div>"))
   })
   
   output$txt_fcf_sync_status <- renderPrint({
@@ -1834,21 +1818,8 @@ server <- function(input, output, session) {
   })
 
   output$sensitivity_model_rec <- renderUI({
-    rec <- tryCatch(model_sidebar_rec(), error = function(e) NULL)
-    is_fin <- isTRUE(tryCatch({
-      grepl("Bank|Insurance|Financial|Conglomerate|fn\\.", corp_industry_text() %||% "", ignore.case = TRUE)
-    }, error = function(e) FALSE))
     matrix_model <- .sensitivity_matrix_model()
-
-    if (isTRUE(is_fin) || (isTRUE(rec$pb) && !isTRUE(rec$dcf) && !isTRUE(rec$ddm))) {
-      title_txt <- "P/B（本淨比／資產法）"
-      reason_txt <- "金融／保險／控股等資產驅動企業，帳面淨值與合理本淨比通常優於絕對估值；請改用 P/B-Asset。下方矩陣仍以 DCF 作參考情境。"
-      accent <- "#2980b9"
-    } else {
-      title_txt <- "DCF 或 DDM"
-      reason_txt <- "獲利穩定、成長放緩 (<15%)，屬於成熟型企業，適合絕對估值模型；金融股請改用 P/B。"
-      accent <- if (identical(matrix_model, "DDM")) "#f39c12" else "#00a65a"
-    }
+    accent <- if (identical(matrix_model, "DDM")) "#f39c12" else "#00a65a"
 
     tags$div(
       style = paste0(
@@ -1858,7 +1829,7 @@ server <- function(input, output, session) {
       tags$p(
         style = "font-size:15px; margin:0 0 6px 0;",
         tags$strong("推薦主體："),
-        tags$span(style = paste0("color:", accent, "; font-weight:700;"), title_txt),
+        tags$span(style = paste0("color:", accent, "; font-weight:700;"), "DCF 或 DDM"),
         tags$span(
           style = "margin-left:8px; font-size:12px; color:#666;",
           paste0("（矩陣自動採用 ", matrix_model, "）")
@@ -1866,7 +1837,8 @@ server <- function(input, output, session) {
       ),
       tags$p(
         style = "font-size:13px; color:#555; margin:0;",
-        tags$strong("背後邏輯："), reason_txt
+        tags$strong("背後邏輯："),
+        "獲利穩定、成長放緩 (<15%)，屬於成熟型企業，適合絕對估值模型。"
       )
     )
   })
@@ -2030,7 +2002,8 @@ server <- function(input, output, session) {
     out_df <- cbind(Rate = rownames(sens_matrix), as.data.frame(sens_matrix, check.names = FALSE))
     names(out_df)[1] <- if (identical(st$model, "DDM")) "Ke_Rate" else "WACC_Rate"
     out_df
-  }, digits = 2, striped = TRUE, hover = TRUE, bordered = TRUE, align = "c", na = "無效 (折現率≤g)")
+  }, digits = 2, striped = TRUE, hover = TRUE, bordered = TRUE, align = "c",
+     width = "100%", na = "無效 (折現率≤g)")
 
   output$sensitivity_analysis_panel <- renderUI({
     st <- tryCatch(sensitivity_state(), error = function(e) NULL)
@@ -2076,12 +2049,8 @@ server <- function(input, output, session) {
       paste0("公允價尚未就緒；矩陣以目前 ", st$disc_label, "／SGR 為軸心展開。")
     }
 
-    is_fin <- isTRUE(tryCatch({
-      grepl("Bank|Insurance|Financial|Conglomerate|fn\\.", corp_industry_text() %||% "", ignore.case = TRUE)
-    }, error = function(e) FALSE))
-
     tags$div(
-      style = "background:#f7fbff; border-left:4px solid #3c8dbc; border-radius:6px; padding:14px; font-size:13px; line-height:1.55; color:#333; min-height:180px;",
+      style = "background:#f7fbff; border-left:4px solid #3c8dbc; border-radius:6px; padding:14px; font-size:13px; line-height:1.55; color:#333; margin-top:12px;",
       tags$h5(style = "margin-top:0; color:#3c8dbc; font-weight:700;", icon("lightbulb"), " 簡要分析"),
       tags$p(
         tags$b("目前軸心："),
@@ -2093,11 +2062,7 @@ server <- function(input, output, session) {
       tags$p(
         style = "margin-bottom:0; color:#555;",
         tags$b("適用提醒："),
-        if (is_fin) {
-          "金融股請以 P/B 為主；此矩陣僅供絕對估值情境參考。"
-        } else {
-          "成熟型企業適合 DCF／DDM；金融股請改用 P/B。"
-        }
+        "本矩陣適用絕對估值情境（DCF／DDM）；觀察 WACC（或 Ke）與 g 鄰近組合對每股內在價值的敏感度。"
       )
     )
   })
@@ -2324,73 +2289,58 @@ server <- function(input, output, session) {
     sharpe_a_txt <- if (is.na(m$sharpe_a)) "N/A" else sprintf("%.2f", m$sharpe_a)
     sharpe_b_txt <- if (is.na(m$sharpe_b)) "N/A" else sprintf("%.2f", m$sharpe_b)
 
+    .ynow_metric_card <- function(value, label, caption, icon_name, tone, tip) {
+      tipify(
+        tags$div(
+          class = paste0("ynow-metric-card ynow-metric-card--", tone),
+          tags$div(
+            class = "ynow-metric-card__body",
+            tags$div(
+              class = "ynow-metric-card__top",
+              tags$span(class = "ynow-metric-card__icon", icon(icon_name)),
+              tags$p(class = "ynow-metric-card__label", label)
+            ),
+            tags$div(class = "ynow-metric-card__value", value),
+            tags$p(class = "ynow-metric-card__caption", caption)
+          )
+        ),
+        tip,
+        placement = "bottom"
+      )
+    }
+
     tagList(
       tags$p(
         style = "margin: 0 0 12px 0; font-size: 12px; color: #666;",
         "以下以 Sharpe 較高的策略為主顯示；A＝", sharpe_a_txt, "，B＝", sharpe_b_txt,
         "。數值僅供策略比較參考，不代表未來績效。"
       ),
-      # valueBox 使用 AdminLTE float；說明文字必須獨立一列，否則會被卡片蓋住
-      fluidRow(
+      tags$div(
         id = "bt_perf_metrics_boxes",
-        column(
-          4,
-          tipify(
-            valueBox(
-              if (is.na(sharpe_show)) "N/A" else sprintf("%.2f", sharpe_show),
-              paste0("Sharpe 比率（較佳：", label_best, "）"),
-              icon = icon("chart-line"),
-              color = "green"
-            ),
-            "年化 Sharpe ≈ 日報酬均值 ÷ 標準差 × √252。愈高代表單位風險下報酬愈佳。", placement = "bottom"
-          )
+        class = "ynow-metric-grid",
+        .ynow_metric_card(
+          value = if (is.na(sharpe_show)) "N/A" else sprintf("%.2f", sharpe_show),
+          label = paste0("Sharpe 比率（較佳：", label_best, "）"),
+          caption = "風險調整後報酬；>1 通常視為不錯，>2 屬優異（依市場而異）。",
+          icon_name = "chart-line",
+          tone = "green",
+          tip = "年化 Sharpe ≈ 日報酬均值 ÷ 標準差 × √252。愈高代表單位風險下報酬愈佳。"
         ),
-        column(
-          4,
-          tipify(
-            valueBox(
-              if (is.na(mdd_show)) "N/A" else paste0(sprintf("%.1f", mdd_show * 100), "%"),
-              paste0("最大回撤 Max DD（", label_best, "）"),
-              icon = icon("arrow-down"),
-              color = "red"
-            ),
-            "淨值自歷史高點回落的最大百分比幅度。", placement = "bottom"
-          )
+        .ynow_metric_card(
+          value = if (is.na(mdd_show)) "N/A" else paste0(sprintf("%.1f", mdd_show * 100), "%"),
+          label = paste0("最大回撤 Max DD（", label_best, "）"),
+          caption = "歷史最大虧損幅度；愈接近 0 代表回撤愈小（負值愈大風險愈高）。",
+          icon_name = "arrow-down",
+          tone = "red",
+          tip = "淨值自歷史高點回落的最大百分比幅度。"
         ),
-        column(
-          4,
-          tipify(
-            valueBox(m$plateau, "參數高原（粗評）", icon = icon("mountain"), color = "purple"),
-            "比較模式 A/B 的 Sharpe 差距；差距小代表策略分化不大。", placement = "bottom"
-          )
-        )
-      ),
-      tags$div(style = "clear: both;"),
-      fluidRow(
-        id = "bt_perf_metrics_hints",
-        column(
-          4,
-          tags$p(
-            class = "bt-metric-hint",
-            style = "margin: 4px 4px 12px 4px; font-size: 11px; color: #777; line-height: 1.45;",
-            "風險調整後報酬；>1 通常視為不錯，>2 屬優異（依市場而異）。"
-          )
-        ),
-        column(
-          4,
-          tags$p(
-            class = "bt-metric-hint",
-            style = "margin: 4px 4px 12px 4px; font-size: 11px; color: #777; line-height: 1.45;",
-            "歷史最大虧損幅度；愈接近 0 代表回撤愈小（負值愈大風險愈高）。"
-          )
-        ),
-        column(
-          4,
-          tags$p(
-            class = "bt-metric-hint",
-            style = "margin: 4px 4px 12px 4px; font-size: 11px; color: #777; line-height: 1.45;",
-            "「高原」代表參數微調不致劇烈改變結果；「敏感」宜再檢查門檻設定。"
-          )
+        .ynow_metric_card(
+          value = m$plateau,
+          label = "參數高原（粗評）",
+          caption = "「高原」代表參數微調不致劇烈改變結果；「敏感」宜再檢查門檻設定。",
+          icon_name = "mountain",
+          tone = "violet",
+          tip = "比較模式 A/B 的 Sharpe 差距；差距小代表策略分化不大。"
         )
       )
     )

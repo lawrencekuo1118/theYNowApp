@@ -325,6 +325,130 @@ ui <- dashboardPage(
           color: #333;
           margin: 12px 0 6px 0;
         }
+
+        /* Backtest：績效指標卡片（軟色調 + 左側色條，避免實心色塊） */
+        .ynow-metric-grid {
+          --ynow-metric-green: #2d8a57;
+          --ynow-metric-green-tint: #eef7f1;
+          --ynow-metric-red: #c0392b;
+          --ynow-metric-red-tint: #faf0ef;
+          --ynow-metric-violet: #5c5a8a;
+          --ynow-metric-violet-tint: #f3f2f8;
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 14px;
+          margin: 0 0 4px 0;
+        }
+        @media (max-width: 992px) {
+          .ynow-metric-grid { grid-template-columns: 1fr; }
+        }
+        .ynow-metric-card {
+          background: #ffffff;
+          border: 1px solid #e6e8eb;
+          border-radius: 10px;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+          min-height: 0;
+          transition: box-shadow 0.15s ease, border-color 0.15s ease;
+        }
+        .ynow-metric-card:hover {
+          box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+          border-color: #d5d9de;
+        }
+        .ynow-metric-card--green {
+          border-left: 4px solid var(--ynow-metric-green);
+          background: linear-gradient(180deg, var(--ynow-metric-green-tint) 0%, #ffffff 42%);
+        }
+        .ynow-metric-card--red {
+          border-left: 4px solid var(--ynow-metric-red);
+          background: linear-gradient(180deg, var(--ynow-metric-red-tint) 0%, #ffffff 42%);
+        }
+        .ynow-metric-card--violet {
+          border-left: 4px solid var(--ynow-metric-violet);
+          background: linear-gradient(180deg, var(--ynow-metric-violet-tint) 0%, #ffffff 42%);
+        }
+        .ynow-metric-card__body {
+          padding: 14px 16px 12px 16px;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        .ynow-metric-card__top {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+        .ynow-metric-card__icon {
+          flex: 0 0 auto;
+          width: 34px;
+          height: 34px;
+          border-radius: 8px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 15px;
+          color: #ffffff;
+        }
+        .ynow-metric-card--green .ynow-metric-card__icon { background: var(--ynow-metric-green); }
+        .ynow-metric-card--red .ynow-metric-card__icon { background: var(--ynow-metric-red); }
+        .ynow-metric-card--violet .ynow-metric-card__icon { background: var(--ynow-metric-violet); }
+        .ynow-metric-card__label {
+          font-size: 12px;
+          font-weight: 600;
+          color: #555555;
+          line-height: 1.35;
+          margin: 0;
+        }
+        .ynow-metric-card__value {
+          font-size: clamp(26px, 3.2vw, 34px);
+          font-weight: 800;
+          font-variant-numeric: tabular-nums;
+          letter-spacing: -0.02em;
+          line-height: 1.15;
+          margin: 2px 0 0 0;
+          color: #1a1a1a;
+        }
+        .ynow-metric-card--green .ynow-metric-card__value { color: #1f5c3a; }
+        .ynow-metric-card--red .ynow-metric-card__value { color: #8e2a20; }
+        .ynow-metric-card--violet .ynow-metric-card__value { color: #3f3d62; }
+        .ynow-metric-card__caption {
+          margin: 2px 0 0 0;
+          font-size: 11.5px;
+          color: #6b7280;
+          line-height: 1.45;
+        }
+
+        /* Backtest：策略參數 tabBox 輕量潤飾 */
+        .ynow-bt-params .nav-tabs-custom > .nav-tabs {
+          border-bottom-color: #e5e8eb;
+        }
+        .ynow-bt-params .nav-tabs-custom > .nav-tabs > li > a {
+          border-radius: 6px 6px 0 0;
+          font-size: 12.5px;
+          font-weight: 600;
+        }
+        .ynow-bt-params .nav-tabs-custom > .tab-content {
+          background: #fafbfc;
+          border: 1px solid #e8ecef;
+          border-top: 0;
+          border-radius: 0 0 8px 8px;
+          padding: 14px 16px 10px;
+        }
+        .ynow-bt-params .form-group {
+          background: #ffffff;
+          border: 1px solid #e8ecef;
+          border-radius: 8px;
+          padding: 10px 12px 6px;
+          margin-bottom: 10px;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+        }
+        .ynow-bt-params .form-group > label {
+          font-size: 12.5px;
+          font-weight: 600;
+          color: #333;
+        }
         
         /* 針對 search_results (產業資訊) 進行黑白主題與字體縮小 */
         #search_results {
@@ -760,7 +884,12 @@ ui <- dashboardPage(
                                 box(
                                   title = tagList(icon("location-arrow"), "核心參數位置"),
                                   width = 12, status = "warning", solidHeader = TRUE,
-                                  "DCF／RI 終值 SGR 與 WACC 設定在側欄 Get Started；DDM 股利成長率可在 DD-Model 單獨覆寫。"
+                                  tags$ul(
+                                    style = "margin:0; padding-left:18px; line-height:1.55;",
+                                    tags$li("DCF／RI 終值 SGR 與 WACC：側欄 Get Started"),
+                                    tags$li("CapEx／ΔNWC 前瞻佔營收比：本頁 FCFF 分頁（驅動預測表）"),
+                                    tags$li("DDM 股利成長率：可在 DD-Model 單獨覆寫")
+                                  )
                                 )
                               )
                      ),
@@ -826,35 +955,23 @@ ui <- dashboardPage(
                          width = 12,
                          h4("敏感度分析矩陣 (Sensitivity Analysis)"),
                          uiOutput("sensitivity_model_rec"),
-                         p(helpText("軸心採用 Get Started／Dashboard 目前的 SGR 與 WACC；觀察鄰近組合下的每股內在價值變化。"))
+                         p(helpText("軸心採用 Get Started／Dashboard 目前的 SGR 與 WACC；觀察鄰近組合下的每股內在價值變化。CapEx／ΔNWC 前瞻比率請至 DCF → FCFF 設定。"))
                        )
                      ),
                      fluidRow(
                        column(
-                         width = 8,
-                         tableOutput("dcf_sensitivity_table")
-                       ),
+                         width = 12,
+                         div(
+                           style = "width: 100%; overflow-x: auto;",
+                           tags$style(HTML("#dcf_sensitivity_table table { width: 100% !important; table-layout: fixed; }")),
+                           tableOutput("dcf_sensitivity_table")
+                         )
+                       )
+                     ),
+                     fluidRow(
                        column(
-                         width = 4,
+                         width = 12,
                          uiOutput("sensitivity_analysis_panel")
-                       )
-                     ),
-                     fluidRow(
-                       box(width = 12, status = "danger", solidHeader = TRUE,
-                           fluidRow(
-                             column(width = 6,
-                                    h4(tags$b("CapEx 預估資本支出佔營收比")),
-                                    numericInput("var_capex_rate", "CapEx / Revenue (%):", value = NA, step = 0.01),
-                                    htmlOutput("txt_hist_capex"),
-                                    h6(helpText("註：若為空白，系統將自動套用上方歷史預估值。"))
-                             ),
-                             column(width = 6,
-                                    h4(tags$b("ΔNWC 預估營運資本佔營收變動比")),
-                                    numericInput("var_nwc_rate", "ΔNWC / ΔRevenue (%)", value = NA, step = 0.01),
-                                    htmlOutput("txt_hist_nwc"),
-                                    h6(helpText("註：若為空白，系統將自動套用上方歷史預估值。"))
-                             )
-                           )
                        )
                      )
               )
@@ -915,10 +1032,12 @@ ui <- dashboardPage(
               ),
 
               fluidRow(
-                tabBox(
-                  title = tagList(icon("sliders-h"), "策略參數設定"),
-                  width = 12,
-                  tabPanel(
+                tags$div(
+                  class = "ynow-bt-params",
+                  tabBox(
+                    title = tagList(icon("sliders-h"), "策略參數設定"),
+                    width = 12,
+                    tabPanel(
                     title = tagList(icon("filter"), "① 基本面過濾"),
                     .bt_section_intro(
                       "大過濾器（The Great Filter）：先以財報品質篩選標的，決定是否進入策略倉位。四項門檻皆需通過，否則該再平衡日視為不持有。"
@@ -1006,6 +1125,7 @@ ui <- dashboardPage(
                       )
                     )
                   )
+                )
                 )
               ),
 
