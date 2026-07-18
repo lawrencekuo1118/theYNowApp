@@ -39,8 +39,16 @@ ri_module_ui <- function(id) {
                                      )
                                    ),
                                    fluidRow(
-                                     box(title = "剩餘收益預測細節", width = 12, status = "primary",
+                                     box(
+                                       title = "剩餘收益預測細節", width = 12, status = "primary",
+                                       div(
+                                         style = "width: 100%; overflow-x: auto;",
+                                         tags$style(HTML(paste0(
+                                           "#", ns("tbl_ri_details"),
+                                           " table { width: 100% !important; table-layout: auto; }"
+                                         ))),
                                          tableOutput(ns("tbl_ri_details"))
+                                       )
                                      )
                                    )
                             )
@@ -333,7 +341,7 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
         "折現後 RI (PV)" = sprintf("$%.2f", df$PV_RI)
       )
       return(out_df)
-    }, align = 'c', striped = TRUE, hover = TRUE, bordered = TRUE)
+    }, align = "c", striped = TRUE, hover = TRUE, bordered = TRUE, width = "100%")
     
     # 傳出計算結果
     return(list(

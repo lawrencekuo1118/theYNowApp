@@ -1338,12 +1338,12 @@ server <- function(input, output, session) {
     df <- fcf_results$df_fcf() 
     
     ggplot(df, aes(x = Year)) +
-      geom_bar(aes(y = FCFF, fill = FCFF > 0), stat = "identity", width = 0.6, alpha = 0.8) +
-      scale_fill_manual(values = c("TRUE" = "#00a65a", "FALSE" = "#d9534f"), guide = "none") +
-      geom_line(aes(y = NOPAT, group = 1, color = "預估稅後營業利潤 (NOPAT)"), size = 1.5) +
-      geom_point(aes(y = NOPAT), size = 3, color = "#3c8dbc") +
-      scale_color_manual(name = "", values = c("預估稅後營業利潤 (NOPAT)" = "#3c8dbc")) +
-      geom_text(aes(y = FCFF, label = paste0("$", round(FCFF, 1))), 
+      geom_col(aes(y = NOPAT, fill = "預估稅後營業利潤 (NOPAT)"), width = 0.6, alpha = 0.8) +
+      scale_fill_manual(name = "", values = c("預估稅後營業利潤 (NOPAT)" = "#00a65a")) +
+      geom_line(aes(y = FCFF, group = 1, color = "企業自由現金流 (FCFF)"), size = 1.5) +
+      geom_point(aes(y = FCFF, color = "企業自由現金流 (FCFF)"), size = 3) +
+      scale_color_manual(name = "", values = c("企業自由現金流 (FCFF)" = "#3c8dbc")) +
+      geom_text(aes(y = FCFF, label = paste0("$", round(FCFF, 1))),
                 vjust = ifelse(df$FCFF >= 0, -0.5, 1.5), size = 4, fontface = "bold") +
       theme_minimal() +
       labs(title = "FCFF 與 營業利潤 成長軌跡", x = "預測年份", y = "金額 (百萬)") +
