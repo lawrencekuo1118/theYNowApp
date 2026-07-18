@@ -1823,84 +1823,285 @@ server <- function(input, output, session) {
   })
   
   # ==========================================
-  # 📊 9. 敏感度分析矩陣 
+  # 📊 9. 敏感度分析矩陣（即時 SGR／WACC；自動 DCF 或 DDM）
   # ==========================================
-  output$dcf_sensitivity_table <- renderTable({
-    req(fcf_results$df_fcf(), input$calc) 
-    
+  .sensitivity_matrix_model <- reactive({
+    rec <- tryCatch(model_sidebar_rec(), error = function(e) NULL)
+    if (is.null(rec)) return("DCF")
+    # 僅 DDM 明確推薦、且非 DCF → 用 DDM 矩陣；其餘絕對估值路徑以 DCF 為主
+    if (isTRUE(rec$ddm) && !isTRUE(rec$dcf)) return("DDM")
+    "DCF"
+  })
+
+  output$sensitivity_model_rec <- renderUI({
+    rec <- tryCatch(model_sidebar_rec(), error = function(e) NULL)
+    is_fin <- isTRUE(tryCatch({
+      grepl("Bank|Insurance|Financial|Conglomerate|fn\\.", corp_industry_text() %||% "", ignore.case = TRUE)
+    }, error = function(e) FALSE))
+    matrix_model <- .sensitivity_matrix_model()
+
+    if (isTRUE(is_fin) || (isTRUE(rec$pb) && !isTRUE(rec$dcf) && !isTRUE(rec$ddm))) {
+      title_txt <- "P/B（本淨比／資產法）"
+      reason_txt <- "金融／保險／控股等資產驅動企業，帳面淨值與合理本淨比通常優於絕對估值；請改用 P/B-Asset。下方矩陣仍以 DCF 作參考情境。"
+      accent <- "#2980b9"
+    } else {
+      title_txt <- "DCF 或 DDM"
+      reason_txt <- "獲利穩定、成長放緩 (<15%)，屬於成熟型企業，適合絕對估值模型；金融股請改用 P/B。"
+      accent <- if (identical(matrix_model, "DDM")) "#f39c12" else "#00a65a"
+    }
+
+    tags$div(
+      style = paste0(
+        "background-color:#f8f9fa; border-left:5px solid ", accent,
+        "; padding:12px 14px; border-radius:5px; margin-bottom:12px;"
+      ),
+      tags$p(
+        style = "font-size:15px; margin:0 0 6px 0;",
+        tags$strong("推薦主體："),
+        tags$span(style = paste0("color:", accent, "; font-weight:700;"), title_txt),
+        tags$span(
+          style = "margin-left:8px; font-size:12px; color:#666;",
+          paste0("（矩陣自動採用 ", matrix_model, "）")
+        )
+      ),
+      tags$p(
+        style = "font-size:13px; color:#555; margin:0;",
+        tags$strong("背後邏輯："), reason_txt
+      )
+    )
+  })
+
+  .build_dcf_sensitivity_matrix <- function(base_wacc, base_g) {
     df_fcf <- fcf_results$df_fcf()
     n_years <- as.numeric(input$years)
-    
-    req(nrow(df_fcf) == n_years)
-    future_fcfs <- extract_fcff_series(df_fcf)
-    fcf_n <- tail(future_fcfs, 1) 
-    
-    use_calc <- isTRUE(input$use_calculated_wacc) && !is.null(calculated_wacc())
-    base_wacc <- if (use_calc) {
-      calculated_wacc() * 100 
-    } else if (input$dcf_mode == "gordon") {
-      input$wacc_gordon 
-    } else {
-      input$wacc_stage1
+    if (is.null(df_fcf) || !is.data.frame(df_fcf) || nrow(df_fcf) != n_years) {
+      return(NULL)
     }
-    
-    base_g <- input$sgr
-    
-    if (is.null(base_wacc) || is.na(base_wacc)) base_wacc <- 10
-    if (is.null(base_g) || is.na(base_g)) base_g <- 3
-    
+    future_fcfs <- extract_fcff_series(df_fcf)
+    fcf_n <- tail(future_fcfs, 1)
+
     latest_cash <- get_latest_cash_position(d_cash_flow())
     temp_debt <- select_current_metric(d_balance_sheet(), "Total Debt", "stock")
-    total_debt <- if (!is.null(input$manual_debt) && !is.na(input$manual_debt)) input$manual_debt else ifelse(is.na(temp_debt), 0, temp_debt)
-    
-    shares <- select_current_metric(d_balance_sheet(), "Ordinary Shares Number|Share Issued|Total Shares Outstanding", "stock")
+    total_debt <- if (!is.null(input$manual_debt) && !is.na(input$manual_debt)) {
+      input$manual_debt
+    } else {
+      ifelse(is.na(temp_debt), 0, temp_debt)
+    }
+
+    shares <- select_current_metric(
+      d_balance_sheet(),
+      "Ordinary Shares Number|Share Issued|Total Shares Outstanding",
+      "stock"
+    )
     if (is.na(shares) || shares <= 0) shares <- 1
-    
+
     wacc_range <- seq(base_wacc + 2, base_wacc - 2, length.out = 5)
     g_range <- seq(base_g - 1, base_g + 1, length.out = 5)
-    
-    sens_matrix <- matrix(NA, nrow = 5, ncol = 5, 
-                          dimnames = list(paste0("WACC ", round(wacc_range, 1), "%"), 
-                                          paste0("g ", round(g_range, 1), "%")))
-    
-    base_wacc_seq <- if (input$dcf_mode == "gordon") {
+
+    sens_matrix <- matrix(
+      NA, nrow = 5, ncol = 5,
+      dimnames = list(
+        paste0("WACC ", round(wacc_range, 1), "%"),
+        paste0("g ", round(g_range, 1), "%")
+      )
+    )
+
+    use_calc <- isTRUE(input$use_calculated_wacc) &&
+      !is.null(calculated_wacc()) && is.finite(calculated_wacc())
+    base_wacc_seq <- if (identical(input$dcf_mode, "gordon")) {
       rep(base_wacc / 100, n_years)
     } else {
       s1 <- as.numeric(input$yr_stage1)
-      r2_base <- if(use_calc) base_wacc / 100 else input$wacc_stage2 / 100
+      r2_base <- if (use_calc) {
+        base_wacc / 100
+      } else if (!is.null(input$wacc_stage2) && is.finite(input$wacc_stage2)) {
+        input$wacc_stage2 / 100
+      } else {
+        base_wacc / 100
+      }
+      # 敏感度以「目前 WACC」為軸心：Stage1 也相對目前 WACC 平移
       c(rep(base_wacc / 100, min(s1, n_years)), rep(r2_base, max(n_years - s1, 0)))
     }
-    
-    for (i in 1:5) { 
-      for (j in 1:5) { 
+
+    for (i in 1:5) {
+      for (j in 1:5) {
         w_val <- wacc_range[i] / 100
         g_val <- g_range[j] / 100
-        w_delta <- w_val - (base_wacc / 100) 
-        
+        w_delta <- w_val - (base_wacc / 100)
         scenario_w_seq <- base_wacc_seq + w_delta
         terminal_wacc <- tail(scenario_w_seq, 1)
-        
+
         if (!is.na(terminal_wacc) && !is.na(g_val) && terminal_wacc > g_val) {
           discount_factors <- cumprod(1 + scenario_w_seq)
           pv_fcf <- sum(future_fcfs / discount_factors)
           tv <- (fcf_n * (1 + g_val)) / (terminal_wacc - g_val)
           pv_tv <- tv / discount_factors[n_years]
-          
           ev <- pv_fcf + pv_tv
           equity_val <- ev + latest_cash - total_debt
-          
           if (!is.na(shares) && shares > 0) {
             sens_matrix[i, j] <- equity_val / shares
           }
         }
       }
     }
-    
-    out_df <- cbind(WACC_Rate = rownames(sens_matrix), as.data.frame(sens_matrix))
-    return(out_df)
-    
-  }, digits = 2, striped = TRUE, hover = TRUE, bordered = TRUE, align = 'c', na = "無效 (W<g)")
-  
+    list(matrix = sens_matrix, center = sens_matrix[3, 3], axes = list(wacc = base_wacc, g = base_g))
+  }
+
+  .build_ddm_sensitivity_matrix <- function(base_ke, base_g) {
+    d0 <- tryCatch({
+      if (!is.null(input[["mod_ddm-d0"]]) && is.finite(as.numeric(input[["mod_ddm-d0"]]))) {
+        as.numeric(input[["mod_ddm-d0"]])
+      } else {
+        NA_real_
+      }
+    }, error = function(e) NA_real_)
+    if (is.na(d0) || d0 <= 0) return(NULL)
+
+    ke_range <- seq(base_ke + 2, base_ke - 2, length.out = 5)
+    g_range <- seq(base_g - 1, base_g + 1, length.out = 5)
+    sens_matrix <- matrix(
+      NA, nrow = 5, ncol = 5,
+      dimnames = list(
+        paste0("Ke ", round(ke_range, 1), "%"),
+        paste0("g ", round(g_range, 1), "%")
+      )
+    )
+    for (i in 1:5) {
+      for (j in 1:5) {
+        ke_val <- ke_range[i] / 100
+        g_val <- g_range[j] / 100
+        if (!is.na(ke_val) && !is.na(g_val) && ke_val > g_val) {
+          d1 <- d0 * (1 + g_val)
+          sens_matrix[i, j] <- d1 / (ke_val - g_val)
+        }
+      }
+    }
+    list(matrix = sens_matrix, center = sens_matrix[3, 3], axes = list(ke = base_ke, g = base_g))
+  }
+
+  sensitivity_state <- reactive({
+    req(input$calc)
+    matrix_model <- .sensitivity_matrix_model()
+
+    base_g <- if (!is.null(input$sgr) && is.finite(as.numeric(input$sgr))) {
+      as.numeric(input$sgr)
+    } else {
+      APP_DEFAULTS$sgr
+    }
+
+    if (identical(matrix_model, "DDM")) {
+      base_ke <- tryCatch({
+        ke_ui <- input[["mod_ddm-ke"]]
+        if (!is.null(ke_ui) && is.finite(as.numeric(ke_ui))) {
+          as.numeric(ke_ui)
+        } else {
+          central_ke() * 100
+        }
+      }, error = function(e) central_ke() * 100)
+      if (is.null(base_ke) || !is.finite(base_ke)) base_ke <- 10
+      built <- .build_ddm_sensitivity_matrix(base_ke, base_g)
+      return(list(
+        model = "DDM",
+        base_g = base_g,
+        base_disc = base_ke,
+        disc_label = "Ke",
+        built = built
+      ))
+    }
+
+    # DCF：與 Dashboard／Get Started 同一套「目前 WACC」
+    base_wacc <- tryCatch(.current_wacc_pct(), error = function(e) NA_real_)
+    if (is.null(base_wacc) || !is.finite(base_wacc)) base_wacc <- APP_DEFAULTS$wacc_gordon
+    req(fcf_results$df_fcf())
+    built <- .build_dcf_sensitivity_matrix(base_wacc, base_g)
+    list(
+      model = "DCF",
+      base_g = base_g,
+      base_disc = base_wacc,
+      disc_label = "WACC",
+      built = built
+    )
+  })
+
+  output$dcf_sensitivity_table <- renderTable({
+    st <- sensitivity_state()
+    req(!is.null(st$built), !is.null(st$built$matrix))
+    sens_matrix <- st$built$matrix
+    out_df <- cbind(Rate = rownames(sens_matrix), as.data.frame(sens_matrix, check.names = FALSE))
+    names(out_df)[1] <- if (identical(st$model, "DDM")) "Ke_Rate" else "WACC_Rate"
+    out_df
+  }, digits = 2, striped = TRUE, hover = TRUE, bordered = TRUE, align = "c", na = "無效 (折現率≤g)")
+
+  output$sensitivity_analysis_panel <- renderUI({
+    st <- tryCatch(sensitivity_state(), error = function(e) NULL)
+    if (is.null(st) || is.null(st$built)) {
+      return(tags$div(
+        style = "background:#fff8f0; border:1px solid #f0ad4e; border-radius:6px; padding:12px; font-size:13px; color:#666;",
+        "請先完成 Get Started 參數並執行估值計算後，即可顯示敏感度解讀。"
+      ))
+    }
+
+    center_val <- st$built$center
+    curr_price <- tryCatch({
+      p <- scraped_market_cap()$price
+      if (!is.null(p) && is.finite(as.numeric(p))) as.numeric(p) else NA_real_
+    }, error = function(e) NA_real_)
+    fair_val <- tryCatch({
+      if (identical(st$model, "DDM")) {
+        if (!is.null(ddm_results$ddm_price)) ddm_results$ddm_price() else NA_real_
+      } else {
+        stock_price_estimate_val()
+      }
+    }, error = function(e) NA_real_)
+
+    fmt <- function(x) {
+      if (is.null(x) || length(x) < 1 || !is.finite(as.numeric(x)[1])) return("N/A")
+      sprintf("%.2f", as.numeric(x)[1])
+    }
+
+    vs_price <- if (is.finite(center_val) && is.finite(curr_price) && curr_price > 0) {
+      pct <- (center_val - curr_price) / curr_price * 100
+      sprintf("中心格內在價值 %s，相對現價 %s 約 %+.1f%%。", fmt(center_val), fmt(curr_price), pct)
+    } else if (is.finite(center_val)) {
+      sprintf("中心格內在價值約 %s；現價資料不足，暫無法比較。", fmt(center_val))
+    } else {
+      "中心格組合無效（折現率需大於 g），請調降 SGR 或提高折現率後重算。"
+    }
+
+    vs_fair <- if (is.finite(center_val) && is.finite(as.numeric(fair_val)[1])) {
+      sprintf("與目前 %s 公允價 %s 對照：差異約 %s。",
+              st$model, fmt(fair_val),
+              sprintf("%+.2f", center_val - as.numeric(fair_val)[1]))
+    } else {
+      paste0("公允價尚未就緒；矩陣以目前 ", st$disc_label, "／SGR 為軸心展開。")
+    }
+
+    is_fin <- isTRUE(tryCatch({
+      grepl("Bank|Insurance|Financial|Conglomerate|fn\\.", corp_industry_text() %||% "", ignore.case = TRUE)
+    }, error = function(e) FALSE))
+
+    tags$div(
+      style = "background:#f7fbff; border-left:4px solid #3c8dbc; border-radius:6px; padding:14px; font-size:13px; line-height:1.55; color:#333; min-height:180px;",
+      tags$h5(style = "margin-top:0; color:#3c8dbc; font-weight:700;", icon("lightbulb"), " 簡要分析"),
+      tags$p(
+        tags$b("目前軸心："),
+        sprintf("%s = %s%%，SGR (g) = %s%%（與 Get Started／Dashboard 同步）",
+                st$disc_label, fmt(st$base_disc), fmt(st$base_g))
+      ),
+      tags$p(tags$b("矩陣解讀："), vs_price),
+      tags$p(vs_fair),
+      tags$p(
+        style = "margin-bottom:0; color:#555;",
+        tags$b("適用提醒："),
+        if (is_fin) {
+          "金融股請以 P/B 為主；此矩陣僅供絕對估值情境參考。"
+        } else {
+          "成熟型企業適合 DCF／DDM；金融股請改用 P/B。"
+        }
+      )
+    )
+  })
+
   # ==========================================
   # 🛡️ 10. 數據缺漏檢查 UI 
   # ==========================================

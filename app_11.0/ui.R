@@ -822,13 +822,24 @@ ui <- dashboardPage(
               
               tabBox(title = "SENSITIVITY", width = "auto",
                      fluidRow(
-                       column(width = 12,
-                              h4("敏感度分析矩陣 (Sensitivity Analysis)"),
-                              p(helpText("觀察不同 WACC 與 終值成長率 (SGR) 組合下，推估的每股內在價值。")),
-                              tableOutput("dcf_sensitivity_table")
+                       column(
+                         width = 12,
+                         h4("敏感度分析矩陣 (Sensitivity Analysis)"),
+                         uiOutput("sensitivity_model_rec"),
+                         p(helpText("軸心採用 Get Started／Dashboard 目前的 SGR 與 WACC；觀察鄰近組合下的每股內在價值變化。"))
+                       )
+                     ),
+                     fluidRow(
+                       column(
+                         width = 8,
+                         tableOutput("dcf_sensitivity_table")
                        ),
-                       br(), 
-                       
+                       column(
+                         width = 4,
+                         uiOutput("sensitivity_analysis_panel")
+                       )
+                     ),
+                     fluidRow(
                        box(width = 12, status = "danger", solidHeader = TRUE,
                            fluidRow(
                              column(width = 6,

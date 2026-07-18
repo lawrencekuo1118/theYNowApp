@@ -21,15 +21,13 @@ decision_ui <- function(id) {
       valueBoxOutput(ns("vbox_momentum"), width = 4)  # Timing Third
     ),
     
-    # 第二層：綜合決策與智能導航
+    # 第二層：綜合決策（Model Selector 已移出 Sensitivity；推薦文案改在矩陣旁顯示）
     fluidRow(
       box(
         title = "智能決策矩陣 The Decision Funnel", width = 12, status = "primary", solidHeader = TRUE,
         column(width = 7, 
                h4("決策建議："),
-               uiOutput(ns("ui_recommendation")),
-               hr(),
-               uiOutput(ns("ui_smart_valuation")) # 智能估值路徑建議
+               uiOutput(ns("ui_recommendation"))
         ),
         column(width = 5,
                h4("F-Score 體質檢核清單"),
