@@ -309,12 +309,12 @@ server <- function(input, output, session) {
       do.call(menuItem, args)
     }
 
-    # 模型順序對齊 Get Started Model Selector（左→右 ⇒ 上→下）：DCF → DDM → P/B → RI
     sidebarMenu(
       id = "sidebar_tabs",
       mk("Get Started", "get_started", "play-circle",
          fallback_label = "start", fallback_color = "purple"),
       mk("Dashboard", "dashboard", "chart-line"),
+      # 順序對齊 Model Selector 左→右：DCF → DDM → P/B → RI
       mk("DCF-Model", "dcf_calculator", "calculator",
          recommended = isTRUE(rec$dcf)),
       mk("DDM", "ddm_calculator", "hand-holding-usd",

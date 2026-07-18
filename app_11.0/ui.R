@@ -986,6 +986,14 @@ ui <- dashboardPage(
 
               fluidRow(
                 box(
+                  title = tagList(icon("trophy"), "回測績效指標"),
+                  width = 12, status = "success", solidHeader = TRUE, collapsible = TRUE, collapsed = FALSE,
+                  uiOutput("perf_metrics")
+                )
+              ),
+
+              fluidRow(
+                box(
                   title = tagList(icon("chart-area"), "策略淨值比較圖"),
                   width = 8, status = "info", solidHeader = TRUE,
                   plotlyOutput("bt_equity_plot", height = "420px") %>% withSpinner(),
@@ -1126,14 +1134,6 @@ ui <- dashboardPage(
                     )
                   )
                 )
-                )
-              ),
-
-              fluidRow(
-                box(
-                  title = tagList(icon("trophy"), "回測績效指標"),
-                  width = 12, status = "success", solidHeader = TRUE, collapsible = TRUE, collapsed = FALSE,
-                  uiOutput("perf_metrics")
                 )
               )
       ),
