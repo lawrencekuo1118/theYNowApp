@@ -317,10 +317,13 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
       ggplot(df, aes(x = as.factor(Year))) +
         geom_bar(aes(y = Intrinsic_Path, fill = "累計企業價值 (B0 + PV of RI)"), stat = "identity", alpha = 0.7) +
         geom_hline(yintercept = res$b0, linetype = "dashed", color = "#34495e", linewidth = 1.2) +
-        geom_text(aes(x = 1.5, y = res$b0, label = paste("期初帳面淨值 B0: $", round(res$b0, 2))), vjust = -1, color = "#34495e", fontface = "bold") +
+        geom_text(aes(x = 1.5, y = res$b0,
+                      label = paste0("期初帳面淨值 B0: ", format_dollar_abbr(res$b0))),
+                  vjust = -1, color = "#34495e", fontface = "bold") +
         geom_point(aes(y = Intrinsic_Path), size = 3, color = "#2980b9") +
         geom_line(aes(y = Intrinsic_Path, group = 1), color = "#2980b9", linewidth = 1) +
         scale_fill_manual(name = "", values = c("累計企業價值 (B0 + PV of RI)" = "#aed6f1")) +
+        scale_y_continuous(labels = label_chart_number(prefix = "$")) +
         theme_minimal(base_size = 14) +
         labs(x = "預測年份", y = "每股價值 (USD)") +
         theme(legend.position = "bottom")

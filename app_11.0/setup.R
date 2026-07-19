@@ -6,17 +6,49 @@ if (!exists("%||%", mode = "function")) {
   `%||%` <- function(x, y) if (is.null(x) || (length(x) == 1 && is.na(x))) y else x
 }
 
-# 轉換數字為 K / M / B 格式
-format_dollar_abbr <- function(x) {
-  if (is.null(x) || is.na(x) || !is.numeric(x)) return("N/A")
-  
-  if (abs(x) >= 1e9) {
-    paste0("$", round(x / 1e9, 2), "B")
-  } else if (abs(x) >= 1e6) {
-    paste0("$", round(x / 1e6, 2), "M")
-  } else {
-    paste0("$", round(x, 2))
+# 圖表／縮寫數字：最多 1 位小數；|x|≥1e3 用 K/M/B/T；保留正負號
+# prefix="$" 用於金額；na_str 控制 NA（軸刻度常用 ""）
+.format_one_decimal <- function(x) {
+  sub("\\.0$", "", sprintf("%.1f", x))
+}
+
+format_chart_number <- function(x, prefix = "", na_str = "N/A") {
+  if (is.null(x)) return(na_str)
+  n <- length(x)
+  if (n == 0L) return(character(0))
+
+  nums <- suppressWarnings(as.numeric(x))
+  out <- character(n)
+  for (i in seq_len(n)) {
+    v <- nums[[i]]
+    if (length(v) != 1L || is.na(v) || !is.finite(v)) {
+      out[[i]] <- na_str
+      next
+    }
+    av <- abs(v)
+    if (av >= 1e12) {
+      out[[i]] <- paste0(prefix, .format_one_decimal(v / 1e12), "T")
+    } else if (av >= 1e9) {
+      out[[i]] <- paste0(prefix, .format_one_decimal(v / 1e9), "B")
+    } else if (av >= 1e6) {
+      out[[i]] <- paste0(prefix, .format_one_decimal(v / 1e6), "M")
+    } else if (av >= 1e3) {
+      out[[i]] <- paste0(prefix, .format_one_decimal(v / 1e3), "K")
+    } else {
+      out[[i]] <- paste0(prefix, .format_one_decimal(v))
+    }
   }
+  out
+}
+
+# scales / ggplot 軸刻度專用（NA → 空白）
+label_chart_number <- function(prefix = "") {
+  function(x) format_chart_number(x, prefix = prefix, na_str = "")
+}
+
+# 金額縮寫（valueBox／圖表標籤共用）
+format_dollar_abbr <- function(x) {
+  format_chart_number(x, prefix = "$")
 }
 
 # 解析含英文單位後綴的財報數字 (e.g. 122.15B, -3.2M, 450K, 1.2T)
@@ -792,7 +824,7 @@ generate_safe_line_plot <- function(data, ticker_name, metric_name) {
       "<b>", ticker_name, " - ", metric_name, "</b><br>",
       "---------------------<br>",
       "年份 (FY): <b>", labels, "</b><br>",
-      "數值: <b>$", ifelse(is.na(vals), "N/A", format(vals, big.mark = ",", scientific = FALSE)), "</b><br>",
+      "數值: <b>", format_dollar_abbr(vals), "</b><br>",
       "狀態: <b>", status_txt, "</b>"
     ),
     stringsAsFactors = FALSE
@@ -807,7 +839,7 @@ generate_safe_line_plot <- function(data, ticker_name, metric_name) {
     geom_point(aes(color = is_neg), size = 2.5, na.rm = TRUE) +
     scale_color_manual(values = c("FALSE" = "#2c3e50", "TRUE" = "#e74c3c"), guide = "none") +
     scale_y_continuous(
-      labels = scales::label_dollar(scale_cut = scales::cut_short_scale()),
+      labels = label_chart_number(prefix = "$"),
       expand = expansion(mult = c(0.1, 0.15))
     ) +
     theme_bw() +

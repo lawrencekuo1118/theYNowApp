@@ -173,6 +173,7 @@ derive_bt_params <- function(d_is, d_bs, d_cf,
   bt_fcf_cv     <- round(max(8, min(80, cv_use * 1.25)), 1)
 
   mos_n <- .safe_num(mos, 0)
+  # Mode A（顯示名）：VG 決定估值曝險強度（與 Mom／RSI 無關，不做 1−VG 互補）
   w_vg <- .clip01(0.35 + 0.5 * mos_n, 0.2, 0.8)
 
   mom_on <- FALSE
@@ -187,28 +188,24 @@ derive_bt_params <- function(d_is, d_bs, d_cf,
     rsi_last <- .safe_num(tail(rsi_v, 1), 50)
   }
 
-  rem <- max(0.05, 1 - w_vg)
+  # Mode B（顯示名）：Mom／RSI 為情緒疊加的相對權重（正規化至合計 1）
   if (isTRUE(mom_on)) {
-    w_mom <- .clip01(rem * 0.6)
-    w_rsi <- .clip01(rem * 0.4)
+    w_mom <- 0.60
+    w_rsi <- 0.40
   } else if (isTRUE(rsi_last < 35)) {
-    w_mom <- .clip01(rem * 0.35)
-    w_rsi <- .clip01(rem * 0.65)
+    w_mom <- 0.35
+    w_rsi <- 0.65
   } else {
-    w_mom <- .clip01(rem * 0.45)
-    w_rsi <- .clip01(rem * 0.55)
-  }
-  # 正規化 Mode A 兩個權重之和 = rem（顯示用再對 mom+rsi 正規化到 UI 直覺）
-  s_a <- w_mom + w_rsi
-  if (s_a > 0) {
-    w_mom <- w_mom / s_a * rem
-    w_rsi <- w_rsi / s_a * rem
+    w_mom <- 0.45
+    w_rsi <- 0.55
   }
 
+  # 顯示命名：模式 A＝純基本面基準（equity_b）；模式 B＝情緒疊加（equity_a）
   notes <- sprintf(
     paste0(
-      "依本公司財報推導：淨利率≈%.1f%%、營收成長≈%.1f%%、NI成長≈%.1f%%、FCF CV≈%.1f%%；",
-      "MOS≈%.1f%% → VG權重%.2f；動能%s、RSI≈%.0f → Mom %.2f / RSI %.2f。"
+      "依本公司財報推導：淨利率≈%.1f%%、營收成長≈%.1f%%、NI成長≈%.1f%%、FCF CV≈%.1f%%。",
+      " 基準(模式A)：MOS≈%.1f%% → VG權重%.2f。",
+      " 情緒疊加(模式B)：動能%s、RSI≈%.0f → Mom/RSI 相對權重 %.2f / %.2f（合計1，與VG無關）。"
     ),
     npm_use, rev_use, eps_use, cv_use,
     mos_n * 100, w_vg,
@@ -276,7 +273,6 @@ run_company_backtest <- function(ticker,
   df$RSI <- .calc_rsi(df$Close, 14)
   df$ret5 <- c(rep(NA, 5), df$Close[seq(6, nrow(df))] / df$Close[seq(1, nrow(df) - 5)] - 1)
   df$ret20 <- c(rep(NA, 20), df$Close[seq(21, nrow(df))] / df$Close[seq(1, nrow(df) - 20)] - 1)
-  df$SMA200 <- tryCatch(as.numeric(TTR::SMA(df$Close, 200)), error = function(e) rep(NA_real_, nrow(df)))
 
   # 月終再平衡日
   df$ym <- format(df$Date, "%Y-%m")
@@ -354,18 +350,28 @@ run_company_backtest <- function(ticker,
       rsi <- .safe_num(df$RSI[i], 50)
       rsi_score <- if (rsi >= 80) 0.15 else if (rsi >= 70) 0.4 else if (rsi <= 30) 0.85 else 0.55
 
-      # Mode A：情緒 — 權重混合；過濾不過仍可小倉
-      score_a <- w_mom * mom_score + w_rsi * rsi_score
-      if (!isTRUE(fund_i$pass)) score_a <- score_a * 0.35
-      pos_a <- .clip01(score_a)
-
-      # Mode B：基本面 + 估值偏離
+      # ---- 內部 pos_b＝純基本面基準（顯示為模式 A）----
       vg_score <- .clip01(0.5 + mos_n) # MOS 高→偏多
-      below_sma <- isTRUE(.safe_num(df$Close[i], Inf) < .safe_num(df$SMA200[i], -Inf))
       if (isTRUE(fund_i$pass)) {
-        pos_b <- .clip01(w_vg * vg_score + (1 - w_vg) * if (below_sma) 0.7 else 0.45)
+        # w_vg：估值權重；剩餘以中性基準曝險 0.55（非技術指標）
+        pos_b <- .clip01((1 - w_vg) * 0.55 + w_vg * vg_score)
       } else {
         pos_b <- 0
+      }
+
+      # ---- 內部 pos_a＝情緒疊加（顯示為模式 B）= 基準 × 情緒乘數 ----
+      w_sent <- w_mom + w_rsi
+      if (w_sent > 1e-9) {
+        sent_score <- .clip01((w_mom * mom_score + w_rsi * rsi_score) / w_sent)
+      } else {
+        sent_score <- 0.5
+      }
+      # 情緒乘數約 0.45～1.35：偏弱減碼、偏強略加碼，但不脫離基準
+      sent_mult <- 0.45 + 0.90 * sent_score
+      if (isTRUE(fund_i$pass)) {
+        pos_a <- .clip01(pos_b * sent_mult)
+      } else {
+        pos_a <- 0
       }
     }
 
@@ -375,10 +381,12 @@ run_company_backtest <- function(ticker,
     equity_bm[i] <- equity_bm[i - 1] * (1 + rb)
   }
 
+  # Mode A（顯示）：純基本面基準 ← 內部 equity_b
+  # Mode B（顯示）：情緒疊加 ← 內部 equity_a
   equity_df <- data.frame(
     Date = df$Date,
-    Model_A = equity_a,
-    Model_B = equity_b,
+    Model_A = equity_b,
+    Model_B = equity_a,
     BuyHold = equity_bh,
     Benchmark = equity_bm,
     stringsAsFactors = FALSE
@@ -401,25 +409,24 @@ run_company_backtest <- function(ticker,
     list(sharpe = sharpe, mdd = mdd, cagr = cagr)
   }
 
-  pa <- perf_one(equity_a)
-  pb <- perf_one(equity_b)
+  pa <- perf_one(equity_a) # 情緒疊加（顯示為模式 B）
+  pb <- perf_one(equity_b) # 純基本面（顯示為模式 A）
   # 參數高原：微擾成長門檻 ±20% 看 Sharpe 是否崩
   plateau <- "穩定"
   tryCatch({
     p_hi <- params; p_hi$bt_rev_growth <- thr_rev * 1.2
     p_lo <- params; p_lo$bt_rev_growth <- max(0, thr_rev * 0.8)
-    # 簡化：用 Mode B 最終淨值對門檻的單調性粗評
     plateau <- if (isTRUE(abs(pa$sharpe - pb$sharpe) < 1.5)) "穩定" else "敏感"
   }, error = function(e) NULL)
 
   list(
     equity_df = equity_df,
     metrics = list(
-      sharpe_a = pa$sharpe, sharpe_b = pb$sharpe,
-      mdd_a = pa$mdd, mdd_b = pb$mdd,
-      cagr_a = pa$cagr, cagr_b = pb$cagr,
+      sharpe_a = pb$sharpe, sharpe_b = pa$sharpe,
+      mdd_a = pb$mdd, mdd_b = pa$mdd,
+      cagr_a = pb$cagr, cagr_b = pa$cagr,
       plateau = plateau,
-      best = if (isTRUE(.safe_num(pa$sharpe, -Inf) >= .safe_num(pb$sharpe, -Inf))) "A" else "B"
+      best = if (isTRUE(.safe_num(pb$sharpe, -Inf) >= .safe_num(pa$sharpe, -Inf))) "A" else "B"
     ),
     bench_ticker = bench_ticker,
     n_days = nrow(df)

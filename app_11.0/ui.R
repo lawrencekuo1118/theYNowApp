@@ -999,8 +999,8 @@ ui <- dashboardPage(
                   plotlyOutput("bt_equity_plot", height = "420px") %>% withSpinner(),
                   tags$ul(
                     style = "margin: 10px 0 0 0; padding-left: 18px; font-size: 12px; color: #666; line-height: 1.55;",
-                    tags$li(tags$b("藍線"), " 模式 A（情緒增強）：基本面通過後，再依動能／RSI 調整曝險。"),
-                    tags$li(tags$b("紅線"), " 模式 B（純基本面）：僅依財報門檻與估值偏離（MOS）決定倉位。"),
+                    tags$li(tags$b("紅線"), " 模式 A（純基本面／基準）：僅依財報過濾與估值偏離（MOS／VG）決定倉位。"),
+                    tags$li(tags$b("藍線"), " 模式 B（情緒增強）：以模式 A 基本面倉位為基準，再依動能／RSI 調控曝險。"),
                     tags$li(tags$b("綠線"), " 該股買進持有：同期間單純持有標的，作為對照組。"),
                     tags$li(tags$b("灰虛線"), " 大盤基準（SPY）：衡量是否跑贏市場。")
                   )
@@ -1023,8 +1023,7 @@ ui <- dashboardPage(
                     ),
                     selected = "auto"
                   ),
-                  .bt_hint("自動模式會在搜尋新股票後更新門檻；手動模式不會覆寫你已調整的數值。"),
-                  uiOutput("bt_param_notes"),
+                  .bt_hint("自動模式會在搜尋新股票或按「重算參數」時更新門檻；手動調整拉桿後不會在啟動回測時被覆寫。"),
                   actionButton(
                     "bt_refresh_params", "依目前公司重算參數",
                     icon = icon("sync"), class = "btn-default btn-block",
@@ -1040,15 +1039,22 @@ ui <- dashboardPage(
               ),
 
               fluidRow(
+                column(
+                  width = 12,
+                  uiOutput("bt_param_notes")
+                )
+              ),
+
+              fluidRow(
                 tags$div(
                   class = "ynow-bt-params",
                   tabBox(
                     title = tagList(icon("sliders-h"), "策略參數設定"),
                     width = 12,
                     tabPanel(
-                    title = tagList(icon("filter"), "① 基本面過濾"),
+                    title = tagList(icon("filter"), "基本面過濾"),
                     .bt_section_intro(
-                      "大過濾器（The Great Filter）：先以財報品質篩選標的，決定是否進入策略倉位。四項門檻皆需通過，否則該再平衡日視為不持有。"
+                      "大過濾器（The Great Filter）：兩種策略共用。四項門檻皆需通過，否則該再平衡日基準倉位為 0（模式 B 亦不持股）。"
                     ),
                     fluidRow(
                       column(
@@ -1086,41 +1092,16 @@ ui <- dashboardPage(
                     )
                   ),
                   tabPanel(
-                    title = tagList(icon("bolt"), "② 模式 A｜情緒增強"),
+                    title = tagList(icon("balance-scale"), "模式 A｜純基本面（基準）"),
                     .bt_section_intro(
-                      "在通過基本面過濾後，依短期趨勢與市場情緒調整曝險。適合捕捉動能轉強或避免追高過熱區間。"
-                    ),
-                    fluidRow(
-                      column(
-                        6,
-                        sliderInput("bt_w_mom", "短期動能 (Momentum) 權重", 0, 1, 0.4, step = 0.01),
-                        bsTooltip("bt_w_mom", "基於約 20 日報酬率與均線位置捕捉趨勢。", "right"),
-                        .bt_hint("動能：股價是否站上短期／中期均線且呈多頭排列。權重愈高，越重視趨勢延續。")
-                      ),
-                      column(
-                        6,
-                        sliderInput("bt_w_rsi", "市場情緒 (RSI) 權重", 0, 1, 0.3, step = 0.01),
-                        bsTooltip("bt_w_rsi", "RSI 過高時降低曝險，防止追高。", "right"),
-                        .bt_hint("RSI（14 日）：相對強弱指標。過高代表市場過熱，過低可能接近超賣。")
-                      )
-                    ),
-                    tags$div(
-                      style = "padding: 10px 12px; background: #f4f8fb; border-left: 4px solid #3c8dbc; border-radius: 4px; font-size: 12px; color: #555;",
-                      icon("info-circle"),
-                      " 模式 A 的 Mom／RSI 權重會與模式 B 的估值權重互補；三者合計反映總曝險分配邏輯。"
-                    )
-                  ),
-                  tabPanel(
-                    title = tagList(icon("balance-scale"), "③ 模式 B｜純基本面"),
-                    .bt_section_intro(
-                      "僅依財報門檻與估值偏離（安全邊際 MOS）決定倉位，不參考短期技術指標。適合價值型、長期基本面導向。"
+                      "基準策略：通過過濾後，僅依估值偏離（MOS／VG）決定倉位，不使用動能、RSI 或均線。模式 B 疊加情緒前，先以此倉位為底座。"
                     ),
                     fluidRow(
                       column(
                         6,
                         sliderInput("bt_w_vg", "估值偏離 (Valuation Gap) 權重", 0, 1, 0.7, step = 0.01),
                         bsTooltip("bt_w_vg", "內在價值高於現價（正 MOS）時，基本面倉位傾向提高。", "right"),
-                        .bt_hint("VG／MOS = (內在價值 − 現價) ÷ 內在價值。正值代表可能低估，權重愈高越重視安全邊際。")
+                        .bt_hint("VG／MOS = (內在價值 − 現價) ÷ 內在價值。權重愈高愈重視安全邊際；剩餘權重採中性基準曝險（非技術指標）。")
                       ),
                       column(
                         6,
@@ -1128,9 +1109,34 @@ ui <- dashboardPage(
                           style = "margin-top: 28px; padding: 12px; background: #fcf8e3; border: 1px solid #f0e6b2; border-radius: 5px; font-size: 12px; color: #8a6d3b; line-height: 1.55;",
                           tags$b(icon("exclamation-triangle"), " 價值陷阱提醒"),
                           tags$br(),
-                          "若標的長期低估卻不漲，可能市場尚未認同基本面。可對照模式 A 的動能／RSI，觀察市場共識是否轉向。"
+                          "若標的長期低估卻不漲，可能市場尚未認同基本面。可對照模式 B 的動能／RSI，觀察市場共識是否轉向。"
                         )
                       )
+                    )
+                  ),
+                  tabPanel(
+                    title = tagList(icon("bolt"), "模式 B｜情緒增強（疊加）"),
+                    .bt_section_intro(
+                      "在模式 A 基準倉位之上，依短期動能與 RSI 乘上情緒乘數調控曝險。過濾未通過時兩邊皆空手；不再獨立於基本面另開倉。"
+                    ),
+                    fluidRow(
+                      column(
+                        6,
+                        sliderInput("bt_w_mom", "短期動能 (Momentum) 相對權重", 0, 1, 0.4, step = 0.01),
+                        bsTooltip("bt_w_mom", "與 RSI 權重相對分配情緒疊加；會正規化合計為 1。", "right"),
+                        .bt_hint("動能：約 20 日報酬。與 RSI 為相對權重（合計視為 100% 情緒訊號），與 VG 權重無關。")
+                      ),
+                      column(
+                        6,
+                        sliderInput("bt_w_rsi", "市場情緒 (RSI) 相對權重", 0, 1, 0.3, step = 0.01),
+                        bsTooltip("bt_w_rsi", "RSI 過高時降低情緒乘數，避免在過熱區加碼。", "right"),
+                        .bt_hint("RSI（14 日）。過熱降曝險、超賣略提高；最終倉位 = 模式 A × 情緒乘數。")
+                      )
+                    ),
+                    tags$div(
+                      style = "padding: 10px 12px; background: #f4f8fb; border-left: 4px solid #3c8dbc; border-radius: 4px; font-size: 12px; color: #555;",
+                      icon("info-circle"),
+                      " 架構：基本面過濾 → 模式 A（VG 基準倉）→ 模式 B（A × Mom／RSI 情緒乘數）。VG 與 Mom／RSI 不強制加總為 1。"
                     )
                   )
                 )

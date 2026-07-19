@@ -257,10 +257,11 @@ fcf_projection_module_server <- function(
         geom_bar(stat = "identity", alpha = 0.6, width = 0.5) +
         geom_line(color = "gray50", linewidth = 1.2, group = 1) +
         geom_point(aes(color = Type), size = 3) +
-        geom_text(aes(label = formatC(FCF, format = "f", big.mark = ",", digits = 0)), 
+        geom_text(aes(label = format_dollar_abbr(FCF)),
                   vjust = -0.5, size = 4, color = "black") +
         scale_color_brewer(palette = "Set1") +
         scale_fill_brewer(palette = "Set1") +
+        scale_y_continuous(labels = label_chart_number(prefix = "$")) +
         theme_minimal(base_size = 14) +
         labs(title = "歷史與預測自由現金流 (FCFF) 走勢圖", x = "年份", y = "自由現金流 (FCFF)") +
         theme(legend.position = "top", legend.title = element_blank(), plot.title = element_text(face = "bold", size = 16)) +

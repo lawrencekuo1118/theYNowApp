@@ -409,8 +409,9 @@ pb_asset_module_server <- function(id,
       
       p <- ggplot(df, aes(x = Scenario, y = Price, fill = Scenario)) +
         geom_col(width = 0.55, alpha = 0.85) +
-        geom_text(aes(label = sprintf("$%.2f", Price)), vjust = -0.4, fontface = "bold", size = 4.2) +
+        geom_text(aes(label = format_dollar_abbr(Price)), vjust = -0.4, fontface = "bold", size = 4.2) +
         scale_fill_manual(values = c("保守" = "#7f8c8d", "基準" = "#2980b9", "樂觀" = "#27ae60")) +
+        scale_y_continuous(labels = label_chart_number(prefix = "$")) +
         theme_minimal(base_size = 14) +
         labs(title = "P/B 合理價區間", x = NULL, y = "每股合理價 (USD)") +
         theme(legend.position = "none", plot.title = element_text(face = "bold")) +
@@ -418,7 +419,8 @@ pb_asset_module_server <- function(id,
       
       if (!is.na(res$market_price)) {
         p <- p + geom_hline(yintercept = res$market_price, linetype = "dashed", color = "#c0392b", linewidth = 1) +
-          annotate("text", x = 1.2, y = res$market_price, label = paste0("市價 $", round(res$market_price, 2)),
+          annotate("text", x = 1.2, y = res$market_price,
+                   label = paste0("市價 ", format_dollar_abbr(res$market_price)),
                    vjust = -0.6, color = "#c0392b", fontface = "bold")
       }
       p

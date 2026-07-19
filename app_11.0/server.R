@@ -1343,8 +1343,9 @@ server <- function(input, output, session) {
       geom_line(aes(y = FCFF, group = 1, color = "企業自由現金流 (FCFF)"), size = 1.5) +
       geom_point(aes(y = FCFF, color = "企業自由現金流 (FCFF)"), size = 3) +
       scale_color_manual(name = "", values = c("企業自由現金流 (FCFF)" = "#3c8dbc")) +
-      geom_text(aes(y = FCFF, label = paste0("$", round(FCFF, 1))),
+      geom_text(aes(y = FCFF, label = format_dollar_abbr(FCFF)),
                 vjust = ifelse(df$FCFF >= 0, -0.5, 1.5), size = 4, fontface = "bold") +
+      scale_y_continuous(labels = label_chart_number(prefix = "$")) +
       theme_minimal() +
       labs(title = "FCFF 與 營業利潤 成長軌跡", x = "預測年份", y = "金額 (百萬)") +
       theme(
@@ -1548,8 +1549,8 @@ server <- function(input, output, session) {
       pv_tv <- tv / discount_factors[n_years]
       dcf_vals[n_years] <- round(dcf_vals[n_years] + pv_tv, 2)
       tv_annotation <- paste0(
-        "\n( 第 ", n_years, " 年 DCF 已含永續終值 PV of TV: $",
-        scales::comma(round(pv_tv, 2)), " )"
+        "\n( 第 ", n_years, " 年 DCF 已含永續終值 PV of TV: ",
+        format_dollar_abbr(pv_tv), " )"
       )
     }
 
@@ -1615,11 +1616,12 @@ server <- function(input, output, session) {
       geom_line(linewidth = 1.15) +
       geom_point(size = 2.8) +
       geom_text(
-        aes(label = scales::comma(round(Value, 1))),
+        aes(label = format_dollar_abbr(Value)),
         vjust = -1.2, size = 3.2, show.legend = FALSE, check_overlap = TRUE
       ) +
       scale_color_manual(values = color_map, drop = TRUE) +
       scale_linetype_manual(values = lty_map, drop = TRUE) +
+      scale_y_continuous(labels = label_chart_number(prefix = "$")) +
       theme_minimal(base_size = 14) +
       labs(
         title = title_txt,
@@ -1645,7 +1647,8 @@ server <- function(input, output, session) {
     ggplot(plot_df, aes(x = Year, y = FCFF, group = 1)) + 
       geom_line(linewidth = 1.2, color = "steelblue") + 
       geom_point(aes(color = FCFF < 0), size = 3) +
-      scale_color_manual(values = c("TRUE" = "red", "FALSE" = "steelblue"), guide = "none") + 
+      scale_color_manual(values = c("TRUE" = "red", "FALSE" = "steelblue"), guide = "none") +
+      scale_y_continuous(labels = label_chart_number(prefix = "$")) +
       theme_minimal(base_size = 14) +
       labs(title = "FCFF 預測即時預覽", x = "預測期", y = "FCFF (USD)") + theme(legend.position = "top")
   })
@@ -2113,6 +2116,7 @@ server <- function(input, output, session) {
   bt_param_notes_txt <- reactiveVal("請先搜尋股票並載入財報，系統會依公司自動推導參數。")
   bt_result <- reactiveVal(NULL)
   bt_run_msg <- reactiveVal("")
+  bt_applying_params <- reactiveVal(FALSE)
 
   bt_current_mos <- reactive({
     cur <- tryCatch(scraped_market_cap()$price, error = function(e) NA_real_)
@@ -2125,6 +2129,8 @@ server <- function(input, output, session) {
   })
 
   apply_bt_params_to_ui <- function(p) {
+    bt_applying_params(TRUE)
+    on.exit(bt_applying_params(FALSE), add = TRUE)
     updateNumericInput(session, "bt_net_margin", value = p$bt_net_margin)
     updateNumericInput(session, "bt_rev_growth", value = p$bt_rev_growth)
     updateNumericInput(session, "bt_eps_growth", value = p$bt_eps_growth)
@@ -2181,16 +2187,24 @@ server <- function(input, output, session) {
     if (identical(input$bt_param_mode, "auto")) {
       tryCatch(refresh_bt_params(fetch_hist = FALSE), error = function(e) NULL)
     } else {
-      bt_param_notes_txt("手動覆寫模式：調整下方門檻／權重後再執行回測。")
+      bt_param_notes_txt("手動覆寫模式：調整下方門檻／權重後再執行回測；啟動回測不會覆寫你的設定。")
     }
   })
 
-  # 自動模式：使用者改動參數後不強制鎖死（允許微調）；切回 auto 才重算
+  # 使用者手動調參數時，若仍在自動模式則切到手動
+  observeEvent(list(input$bt_w_vg, input$bt_w_mom, input$bt_w_rsi,
+                    input$bt_net_margin, input$bt_rev_growth, input$bt_eps_growth, input$bt_fcf_cv), {
+    if (isTRUE(bt_applying_params())) return()
+    if (!identical(input$bt_param_mode, "auto")) return()
+    updateRadioButtons(session, "bt_param_mode", selected = "manual")
+  }, ignoreInit = TRUE)
+
+  # 自動模式：搜尋／重算／切回 auto 才覆寫 UI；啟動回測只讀目前輸入
 
   output$bt_param_notes <- renderUI({
     msg <- bt_param_notes_txt()
     tags$div(
-      style = "margin: 8px 0 12px 0; padding: 8px 10px; background: #f9f9f9; border-left: 3px solid #00a65a; border-radius: 3px; font-size: 12px; color: #444; line-height: 1.5;",
+      style = "margin: 0 0 12px 0; padding: 12px 14px; background: #f7fbf8; border-left: 4px solid #00a65a; border-radius: 4px; font-size: 13px; color: #333; line-height: 1.55; width: 100%;",
       icon("info-circle"), " ", msg
     )
   })
@@ -2209,10 +2223,7 @@ server <- function(input, output, session) {
       if (is.null(d_income_statement()) || is.null(d_cash_flow())) {
         stop("請先在 Dashboard 搜尋並載入該公司財報")
       }
-      # 若在自動模式，先重算一次再跑
-      if (identical(input$bt_param_mode, "auto")) {
-        tryCatch(refresh_bt_params(), error = function(e) NULL)
-      }
+      # 啟動回測不再呼叫 refresh_bt_params，避免把手動 VG／權重拉回推導值
       params <- list(
         bt_net_margin = input$bt_net_margin,
         bt_rev_growth = input$bt_rev_growth,
@@ -2251,21 +2262,42 @@ server <- function(input, output, session) {
     validate(need(!is.null(res) && !is.null(res$equity_df), "請先成功執行回測"))
 
     df_plot <- res$equity_df
-    p <- ggplot(df_plot, aes(x = Date)) +
-      geom_line(aes(y = Model_A, color = "模式 A (情緒增強)"), linewidth = 0.9) +
-      geom_line(aes(y = Model_B, color = "模式 B (純基本面)"), linewidth = 0.9) +
-      geom_line(aes(y = BuyHold, color = "該股買進持有"), linewidth = 0.7) +
-      geom_line(aes(y = Benchmark, color = "大盤基準"), linetype = "dashed", linewidth = 0.7) +
+    df_long <- rbind(
+      data.frame(Date = df_plot$Date, Value = df_plot$Model_A, Series = "模式 A (純基本面基準)",
+                 stringsAsFactors = FALSE),
+      data.frame(Date = df_plot$Date, Value = df_plot$Model_B, Series = "模式 B (情緒疊加)",
+                 stringsAsFactors = FALSE),
+      data.frame(Date = df_plot$Date, Value = df_plot$BuyHold, Series = "該股買進持有",
+                 stringsAsFactors = FALSE),
+      data.frame(Date = df_plot$Date, Value = df_plot$Benchmark, Series = "大盤基準",
+                 stringsAsFactors = FALSE)
+    )
+    df_long$Series <- factor(
+      df_long$Series,
+      levels = c("模式 A (純基本面基準)", "模式 B (情緒疊加)", "該股買進持有", "大盤基準")
+    )
+
+    # 勿使用 aes(text=…)／aes(label=…)：ggplot2 不認得，會對 ggplotly 產生 Warning
+    p <- ggplot(df_long, aes(x = Date, y = Value, color = Series, group = Series, linetype = Series)) +
+      geom_line(linewidth = 0.85) +
       scale_color_manual(values = c(
-        "模式 A (情緒增強)" = "#007bff",
-        "模式 B (純基本面)" = "#dc3545",
+        "模式 A (純基本面基準)" = "#dc3545",
+        "模式 B (情緒疊加)" = "#007bff",
         "該股買進持有" = "#28a745",
         "大盤基準" = "#6c757d"
       )) +
-      labs(y = "累積淨值", x = "日期", color = "策略") +
+      scale_linetype_manual(values = c(
+        "模式 A (純基本面基準)" = "solid",
+        "模式 B (情緒疊加)" = "solid",
+        "該股買進持有" = "solid",
+        "大盤基準" = "dashed"
+      )) +
+      scale_y_continuous(labels = label_chart_number()) +
+      labs(y = "累積淨值", x = "日期", color = "策略", linetype = "策略") +
       theme_minimal()
 
-    ggplotly(p) %>% layout(legend = list(orientation = "h", y = -0.2))
+    ggplotly(p, tooltip = c("x", "y", "colour")) %>%
+      layout(legend = list(orientation = "h", y = -0.2))
   })
 
   output$perf_metrics <- renderUI({

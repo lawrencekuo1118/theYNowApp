@@ -226,12 +226,13 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
     })
     
     output$vbox_mos <- renderValueBox({
-      val <- mos_calc()
-      if(is.na(val)) {
-        valueBox("N/A", "安全邊際 (MOS)", icon = icon("shield-halved"), color = "gray")
+      val <- tryCatch(mos_calc(), error = function(e) NA_real_)
+      # shinydashboard 不支援 gray；NA 時用 black
+      if (length(val) != 1 || is.null(val) || is.na(val) || !is.finite(val)) {
+        valueBox("N/A", "安全邊際 (MOS)", icon = icon("shield-halved"), color = "black")
       } else {
-        v_pct <- round(val * 100, 1)
-        color <- if(v_pct >= 20) "green" else if(v_pct >= 0) "yellow" else "red"
+        v_pct <- round(as.numeric(val) * 100, 1)
+        color <- if (v_pct >= 20) "green" else if (v_pct >= 0) "yellow" else "red"
         valueBox(paste0(v_pct, "%"), "安全邊際 (MOS)", icon = icon("shield-halved"), color = color)
       }
     })
