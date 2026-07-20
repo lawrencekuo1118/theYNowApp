@@ -2531,39 +2531,79 @@ server <- function(input, output, session) {
     )
   })
 
-  output$bt_equity_plot <- renderPlotly({
+  .bt_plotly_lines <- function(df_long, color_map, lty_map, y_lab = "累積指數（起點=1）") {
+    df_long$Series <- factor(df_long$Series, levels = names(color_map))
+    p <- ggplot(df_long, aes(x = Date, y = Value, color = Series, group = Series, linetype = Series)) +
+      geom_line(linewidth = 0.85) +
+      scale_color_manual(values = color_map) +
+      scale_linetype_manual(values = lty_map) +
+      scale_y_continuous(labels = label_chart_number()) +
+      labs(y = y_lab, x = "日期", color = "序列", linetype = "序列") +
+      theme_minimal()
+    ggplotly(p, tooltip = c("x", "y", "colour")) %>%
+      layout(legend = list(orientation = "h", y = -0.2))
+  }
+
+  # 上方：PIT 合理價 × 歷史股價（情緒疊加價值）× 大盤
+  output$bt_value_plot <- renderPlotly({
     res <- bt_result()
     validate(need(!is.null(res) && !is.null(res$equity_df), "請先成功執行回測"))
     df_plot <- res$equity_df
     df_long <- rbind(
-      data.frame(Date = df_plot$Date, Value = df_plot$Model_A, Series = "模式 A (合理價試算)", stringsAsFactors = FALSE),
-      data.frame(Date = df_plot$Date, Value = df_plot$Model_B, Series = "模式 B (情緒疊加)", stringsAsFactors = FALSE),
-      data.frame(Date = df_plot$Date, Value = df_plot$BuyHold, Series = "該股買進持有", stringsAsFactors = FALSE),
-      data.frame(Date = df_plot$Date, Value = df_plot$Benchmark, Series = "大盤基準", stringsAsFactors = FALSE)
+      data.frame(Date = df_plot$Date, Value = df_plot$Model_A,
+                 Series = "PIT 合理價（參數×財報）", stringsAsFactors = FALSE),
+      data.frame(Date = df_plot$Date, Value = df_plot$BuyHold,
+                 Series = "歷史股價（情緒疊加價值）", stringsAsFactors = FALSE),
+      data.frame(Date = df_plot$Date, Value = df_plot$Benchmark,
+                 Series = "大盤基準", stringsAsFactors = FALSE)
     )
-    df_long$Series <- factor(
-      df_long$Series,
-      levels = c("模式 A (合理價試算)", "模式 B (情緒疊加)", "該股買進持有", "大盤基準")
-    )
-    p <- ggplot(df_long, aes(x = Date, y = Value, color = Series, group = Series, linetype = Series)) +
-      geom_line(linewidth = 0.85) +
-      scale_color_manual(values = c(
-        "模式 A (合理價試算)" = "#dc3545",
-        "模式 B (情緒疊加)" = "#007bff",
-        "該股買進持有" = "#28a745",
+    .bt_plotly_lines(
+      df_long,
+      color_map = c(
+        "PIT 合理價（參數×財報）" = "#dc3545",
+        "歷史股價（情緒疊加價值）" = "#28a745",
         "大盤基準" = "#6c757d"
-      )) +
-      scale_linetype_manual(values = c(
-        "模式 A (合理價試算)" = "solid",
-        "模式 B (情緒疊加)" = "solid",
-        "該股買進持有" = "solid",
+      ),
+      lty_map = c(
+        "PIT 合理價（參數×財報）" = "solid",
+        "歷史股價（情緒疊加價值）" = "solid",
         "大盤基準" = "dashed"
-      )) +
-      scale_y_continuous(labels = label_chart_number()) +
-      labs(y = "累積指數（起點=1）", x = "日期", color = "序列", linetype = "序列") +
-      theme_minimal()
-    ggplotly(p, tooltip = c("x", "y", "colour")) %>%
-      layout(legend = list(orientation = "h", y = -0.2))
+      )
+    )
+  })
+
+  # 下方：策略淨值比較（曝險模擬）
+  output$bt_equity_plot <- renderPlotly({
+    res <- bt_result()
+    validate(need(!is.null(res) && !is.null(res$equity_df), "請先成功執行回測"))
+    df_plot <- res$equity_df
+    trade_a <- if ("Trade_A" %in% names(df_plot)) df_plot$Trade_A else df_plot$Model_A
+    df_long <- rbind(
+      data.frame(Date = df_plot$Date, Value = trade_a,
+                 Series = "曝險 A（基本面倉位）", stringsAsFactors = FALSE),
+      data.frame(Date = df_plot$Date, Value = df_plot$Model_B,
+                 Series = "情緒疊加策略", stringsAsFactors = FALSE),
+      data.frame(Date = df_plot$Date, Value = df_plot$BuyHold,
+                 Series = "Buy & Hold", stringsAsFactors = FALSE),
+      data.frame(Date = df_plot$Date, Value = df_plot$Benchmark,
+                 Series = "大盤基準", stringsAsFactors = FALSE)
+    )
+    .bt_plotly_lines(
+      df_long,
+      color_map = c(
+        "曝險 A（基本面倉位）" = "#fd7e14",
+        "情緒疊加策略" = "#007bff",
+        "Buy & Hold" = "#28a745",
+        "大盤基準" = "#6c757d"
+      ),
+      lty_map = c(
+        "曝險 A（基本面倉位）" = "solid",
+        "情緒疊加策略" = "solid",
+        "Buy & Hold" = "solid",
+        "大盤基準" = "dashed"
+      ),
+      y_lab = "策略淨值（起點=1）"
+    )
   })
 
   output$bt_mos_table <- renderTable({

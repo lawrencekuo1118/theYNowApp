@@ -1025,17 +1025,17 @@ ui <- dashboardPage(
                 )
               ),
 
-              # 2) 淨值圖 + 執行面板
+              # 2) 合理價 vs 股價 vs 大盤 + 執行面板
               fluidRow(
                 box(
-                  title = tagList(icon("chart-area"), "策略淨值比較圖"),
+                  title = tagList(icon("chart-line"), "合理價 × 歷史股價 × 大盤"),
                   width = 8, status = "info", solidHeader = TRUE,
-                  plotlyOutput("bt_equity_plot", height = "400px") %>% withSpinner(),
+                  plotlyOutput("bt_value_plot", height = "400px") %>% withSpinner(),
                   tags$ul(
                     style = "margin: 10px 0 0 0; padding-left: 18px; font-size: 12px; color: #666; line-height: 1.55;",
-                    tags$li(tags$b("紅線 A"), " 所選估值模型 × 歷史財報的合理價試算路徑（季間依 SGR 延展），與持倉／曝險無關。"),
-                    tags$li(tags$b("藍線 B"), " 曝險模擬 × 情緒乘數（僅能在 Exp_A 的 75%～125% 內調整）。"),
-                    tags$li(tags$b("綠線"), " Buy & Hold；", tags$b("灰虛線"), " SPY 基準。")
+                    tags$li(tags$b("紅線"), " 參數 × 歷史財報的 PIT 合理價（隨評價模型選擇動態估算；季間依 SGR 延展）。"),
+                    tags$li(tags$b("綠線"), " 歷史股價表現＝情緒疊加價值（市場價格路徑）。"),
+                    tags$li(tags$b("灰虛線"), " 大盤基準（SPY）。")
                   )
                 ),
                 box(
@@ -1069,6 +1069,21 @@ ui <- dashboardPage(
                     "季頻再平衡 · 依所選估值模型 PIT 重建 · Session-only。"
                   ),
                   uiOutput("bt_run_status")
+                )
+              ),
+
+              # 2b) 策略淨值比較（曝險模擬）
+              fluidRow(
+                box(
+                  title = tagList(icon("chart-area"), "策略淨值比較"),
+                  width = 12, status = "primary", solidHeader = TRUE, collapsible = TRUE, collapsed = FALSE,
+                  plotlyOutput("bt_equity_plot", height = "360px") %>% withSpinner(),
+                  tags$ul(
+                    style = "margin: 10px 0 0 0; padding-left: 18px; font-size: 12px; color: #666; line-height: 1.55;",
+                    tags$li(tags$b("橘線"), " 曝險 A（MOS／過濾門檻決定的診斷倉位 × 股價報酬）。"),
+                    tags$li(tags$b("藍線"), " 情緒疊加策略（在 Exp_A 的 75%～125% 內以 Mom／RSI 調整）。"),
+                    tags$li(tags$b("綠線"), " Buy & Hold 對照；", tags$b("灰虛線"), " SPY 基準。")
+                  )
                 )
               ),
 
@@ -1153,7 +1168,7 @@ ui <- dashboardPage(
                     tabPanel(
                       title = tagList(icon("balance-scale"), "模式 A｜合理價試算"),
                       .bt_section_intro(
-                        "淨值圖紅線 A＝所選估值模型 × 歷史財報的 PIT 合理價路徑（季間依 SGR 複利延展），與持倉多少無關。"
+                        "上方紅線＝所選估值模型 × 歷史財報的 PIT 合理價路徑（季間依 SGR 複利延展），與持倉多少無關。"
                       ),
                       fluidRow(
                         column(
@@ -1178,7 +1193,7 @@ ui <- dashboardPage(
                         column(
                           6,
                           sliderInput("bt_w_vg", "MOS／Value Gap 權重（曝險診斷）", 0, 1, 0.7, step = 0.01),
-                          .bt_hint("僅影響 Exposure／模式 B 基準倉位；不影響紅線合理價試算。")
+                          .bt_hint("僅影響下方策略淨值圖的曝險 A／情緒策略基準倉位；不影響上方紅線合理價試算。")
                         ),
                         column(
                           6,
@@ -1193,7 +1208,7 @@ ui <- dashboardPage(
                     tabPanel(
                       title = tagList(icon("bolt"), "模式 B｜情緒疊加"),
                       .bt_section_intro(
-                        "情緒只能調整權重：最終曝險夾在 Exp_A（MOS 診斷倉位）的 75%～125%，且 Exp_A=0 時 B 必須為 0。"
+                        "影響下方「策略淨值比較」藍線：情緒只能調整權重，最終曝險夾在 Exp_A 的 75%～125%，且 Exp_A=0 時必須為 0。歷史股價（情緒疊加價值）見上方綠線。"
                       ),
                       fluidRow(
                         column(6, sliderInput("bt_w_mom", "動能相對權重", 0, 1, 0.4, step = 0.01),
