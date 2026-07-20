@@ -439,7 +439,7 @@ server <- function(input, output, session) {
       c("Backtest", "EPS / NI Growth Threshold (%)", .snapshot_value(input$bt_eps_growth), "Great Filter: EPS/NI Growth >= threshold"),
       c("Backtest", "FCF CV Ceiling (%)", .snapshot_value(input$bt_fcf_cv), "Great Filter: FCF CV <= ceiling"),
       c("Backtest", "Auto Derive Params", .snapshot_value(input$bt_param_auto), "TRUE = sync thresholds/weights/model on ticker load"),
-      c("Backtest", "Valuation Model (純基本面價值)", .snapshot_value(input$bt_fv_model), "dcf / ddm / ri / pb / composite for hist FV path"),
+      c("Backtest", "評價模型 (純基本面價值)", .snapshot_value(input$bt_fv_model), "dcf / ddm / ri / pb / composite for hist FV + MOS exposure"),
       c("Backtest", "MOS / VG Weight (bt_w_vg)", .snapshot_value(input$bt_w_vg), "Exposure diagnostic blend; not FV path"),
       c("Backtest", "Momentum Weight (bt_w_mom)", .snapshot_value(input$bt_w_mom), "Sentiment overlay relative weight"),
       c("Backtest", "RSI Weight (bt_w_rsi)", .snapshot_value(input$bt_w_rsi), "Sentiment overlay relative weight"),
@@ -2549,7 +2549,7 @@ server <- function(input, output, session) {
       tags$div(tags$b("平均現金 "), .fmt_pct(e$cash_avg_a, 0)),
       tags$hr(),
       tags$div(style = "font-size:11px;color:#777;",
-               "若平均持股偏低，Strategy A 輸給 B&H 多半來自 Cash Drag。")
+               "若平均持股偏低，純基本面價值輸給 B&H 多半來自 Cash Drag（最高約 90% 持股屬刻意風控）。")
     )
   })
 
@@ -2559,12 +2559,12 @@ server <- function(input, output, session) {
     df <- res$equity_df
     df_long <- rbind(
       data.frame(Date = df$Date, Exp = df$Exp_A, Series = "純基本面價值", stringsAsFactors = FALSE),
-      data.frame(Date = df$Date, Exp = df$Exp_B, Series = "模式 B", stringsAsFactors = FALSE)
+      data.frame(Date = df$Date, Exp = df$Exp_B, Series = "情緒波動價值", stringsAsFactors = FALSE)
     )
     p <- ggplot(df_long, aes(x = Date, y = Exp, color = Series)) +
       geom_line(linewidth = 0.8) +
       scale_y_continuous(labels = scales::percent_format(accuracy = 1), limits = c(0, 1)) +
-      scale_color_manual(values = c("純基本面價值" = "#dc3545", "模式 B" = "#007bff")) +
+      scale_color_manual(values = c("純基本面價值" = "#dc3545", "情緒波動價值" = "#007bff")) +
       labs(y = "Exposure", x = NULL, color = NULL) +
       theme_minimal(base_size = 11)
     ggplotly(p, tooltip = c("x", "y", "colour")) %>%
@@ -2574,7 +2574,7 @@ server <- function(input, output, session) {
   output$bt_bh_gap <- renderUI({
     v <- bt_validation()
     if (is.null(v) || is.null(v$gap)) {
-      return(tags$p(style = "color:#888;font-size:12px;", "當 B&H 勝出時，此處拆解 Cash Drag／Early Exit／高估減碼／情緒減碼／Missed Trend。"))
+      return(tags$p(style = "color:#888;font-size:12px;", "當 B&H 勝出時，此處拆解 Cash Drag／Early Exit／高估減碼／情緒減碼／Missed Trend。牛市落後通常合理：策略刻意不滿倉。"))
     }
     g <- v$gap
     fr <- g$fractions_a
@@ -2604,27 +2604,28 @@ server <- function(input, output, session) {
     res <- bt_result()
     validate(need(!is.null(res) && !is.null(res$equity_df), "請先成功執行回測"))
     df_plot <- res$equity_df
+    eq_a_col <- if ("Trade_A" %in% names(df_plot)) df_plot$Trade_A else df_plot$Model_A
     df_long <- rbind(
-      data.frame(Date = df_plot$Date, Value = df_plot$Model_A, Series = "純基本面價值", stringsAsFactors = FALSE),
-      data.frame(Date = df_plot$Date, Value = df_plot$Model_B, Series = "模式 B (情緒疊加)", stringsAsFactors = FALSE),
+      data.frame(Date = df_plot$Date, Value = eq_a_col, Series = "純基本面價值", stringsAsFactors = FALSE),
+      data.frame(Date = df_plot$Date, Value = df_plot$Model_B, Series = "情緒波動價值", stringsAsFactors = FALSE),
       data.frame(Date = df_plot$Date, Value = df_plot$BuyHold, Series = "該股買進持有", stringsAsFactors = FALSE),
       data.frame(Date = df_plot$Date, Value = df_plot$Benchmark, Series = "大盤基準", stringsAsFactors = FALSE)
     )
     df_long$Series <- factor(
       df_long$Series,
-      levels = c("純基本面價值", "模式 B (情緒疊加)", "該股買進持有", "大盤基準")
+      levels = c("純基本面價值", "情緒波動價值", "該股買進持有", "大盤基準")
     )
     p <- ggplot(df_long, aes(x = Date, y = Value, color = Series, group = Series, linetype = Series)) +
       geom_line(linewidth = 0.85) +
       scale_color_manual(values = c(
         "純基本面價值" = "#dc3545",
-        "模式 B (情緒疊加)" = "#007bff",
+        "情緒波動價值" = "#007bff",
         "該股買進持有" = "#28a745",
         "大盤基準" = "#6c757d"
       )) +
       scale_linetype_manual(values = c(
         "純基本面價值" = "solid",
-        "模式 B (情緒疊加)" = "solid",
+        "情緒波動價值" = "solid",
         "該股買進持有" = "solid",
         "大盤基準" = "dashed"
       )) +
@@ -2721,7 +2722,7 @@ server <- function(input, output, session) {
     }
     m <- res$metrics
     best <- m$best
-    label_best <- if (identical(best, "A")) "純基本面價值" else "模式 B"
+    label_best <- if (identical(best, "A")) "純基本面價值" else "情緒波動價值"
     sharpe_show <- if (identical(best, "A")) m$sharpe_a else m$sharpe_b
     mdd_show <- if (identical(best, "A")) m$mdd_a else m$mdd_b
     cagr_show <- if (identical(best, "A")) m$cagr_a else m$cagr_b

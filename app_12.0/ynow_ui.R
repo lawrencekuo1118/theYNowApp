@@ -1033,9 +1033,10 @@ ui <- dashboardPage(
                   plotlyOutput("bt_equity_plot", height = "400px") %>% withSpinner(),
                   tags$ul(
                     style = "margin: 10px 0 0 0; padding-left: 18px; font-size: 12px; color: #666; line-height: 1.55;",
-                    tags$li(tags$b("紅線｜純基本面價值"), " 所選估值模型 × 歷史財報的合理價試算路徑（季間依 SGR 延展；Ke／WACC 用 Rolling β），與持倉／曝險無關。"),
-                    tags$li(tags$b("藍線 B"), " 曝險模擬 × 情緒乘數（僅能在 Exp_A 的 75%～125% 內調整）。"),
-                    tags$li(tags$b("綠線"), " Buy & Hold；", tags$b("灰虛線"), " SPY 基準。")
+                    tags$li(tags$b("紅線｜純基本面價值"), " MOS／Great Filter 曝險加權的交易淨值（與 Buy&Hold 同基準）。牛市常因刻意現金部位落後，屬風控設計。"),
+                    tags$li(tags$b("藍線｜情緒波動價值"), " 在紅線曝險上疊加情緒乘數（僅能在 Exp_A 的 75%～125% 內調整）。"),
+                    tags$li(tags$b("綠線"), " Buy & Hold（全程 100% 持股）；", tags$b("灰虛線"), " SPY 基準。"),
+                    tags$li("合理價路徑請看下方 Historical Fair Value Timeline，勿與淨值圖混比。")
                   )
                 ),
                 box(
@@ -1044,7 +1045,7 @@ ui <- dashboardPage(
                   class = "ynow-bt-run-panel",
                   radioButtons(
                     "bt_fv_model",
-                    "回測用估值模型",
+                    "回測用評價模型",
                     inline = FALSE,
                     choices = c(
                       "DCF（自由現金流折現）" = "dcf",
@@ -1055,7 +1056,7 @@ ui <- dashboardPage(
                     ),
                     selected = "dcf"
                   ),
-                  .bt_hint("決定「純基本面價值」紅線的合理價試算路徑；與持倉無關。"),
+                  .bt_hint("決定 MOS／訊號與 Fair Value 時間軸的評價路徑，並驅動「純基本面價值」曝險。"),
                   checkboxInput(
                     "bt_param_auto",
                     "自動同步參數（換股時依財報推導）",
@@ -1079,7 +1080,7 @@ ui <- dashboardPage(
                   ),
                   tags$div(
                     class = "ynow-bt-run-note",
-                    "季頻再平衡 · Rolling β 折現 · 依所選估值模型 PIT 重建。"
+                    "季頻再平衡 · Rolling β 折現 · 依所選評價模型 PIT 重建。"
                   ),
                   uiOutput("bt_run_status")
                 )
@@ -1101,7 +1102,7 @@ ui <- dashboardPage(
 
               fluidRow(
                 box(
-                  title = tagList(icon("percentage"), "Exposure History（純基本面價值）"),
+                  title = tagList(icon("percentage"), "Exposure History（純基本面價值／情緒波動價值）"),
                   width = 6, status = "danger", solidHeader = TRUE, collapsible = TRUE,
                   uiOutput("bt_exposure_stats"),
                   plotlyOutput("bt_exposure_plot", height = "260px") %>% withSpinner()
@@ -1139,13 +1140,13 @@ ui <- dashboardPage(
                     tabPanel(
                       title = tagList(icon("balance-scale"), "純基本面價值"),
                       .bt_section_intro(
-                        "淨值圖紅線「純基本面價值」＝執行面板所選估值模型 × 歷史財報的 PIT 合理價路徑（季間依 SGR 複利延展；折現率用 Rolling β），與持倉多少無關。"
+                        "淨值圖紅線「純基本面價值」＝依 MOS 滯後曝險 × Great Filter 的交易淨值。合理價路徑在 Fair Value 時間軸；最高持股約 90%，牛市輸給 Buy&Hold 多半是現金拖累。"
                       ),
                       fluidRow(
                         column(
                           6,
                           sliderInput("bt_w_vg", "MOS／Value Gap 權重（曝險診斷）", 0, 1, 0.7, step = 0.01),
-                          .bt_hint("僅影響 Exposure／模式 B 基準倉位；不影響紅線合理價試算。")
+                          .bt_hint("影響「純基本面價值」與「情緒波動價值」的基準倉位。")
                         ),
                         column(
                           6,
@@ -1158,9 +1159,9 @@ ui <- dashboardPage(
                       )
                     ),
                     tabPanel(
-                      title = tagList(icon("bolt"), "模式 B｜情緒疊加"),
+                      title = tagList(icon("bolt"), "情緒波動價值"),
                       .bt_section_intro(
-                        "情緒只能調整權重：最終曝險夾在 Exp_A（MOS 診斷倉位）的 75%～125%，且 Exp_A=0 時 B 必須為 0。"
+                        "情緒只能調整權重：最終曝險夾在 Exp_A（純基本面價值倉位）的 75%～125%，且 Exp_A=0 時必須空手。"
                       ),
                       fluidRow(
                         column(6, sliderInput("bt_w_mom", "動能相對權重", 0, 1, 0.4, step = 0.01),

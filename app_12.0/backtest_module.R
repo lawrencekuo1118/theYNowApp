@@ -7,12 +7,11 @@
 #   Growth / n / P/B come from CURRENT session; Ke/WACC use Rolling Beta.
 # - Multi-model composite fair value: DCF + DDM + RI + P/B, then
 #   mean of available models.
-# - Mode A (chart Model_A): session params × historical financials
-#   → PIT composite/selected fair-value path. Discount rates (Ke/WACC)
-#   use Rolling Beta vs benchmark at each rebalance (not a fixed session β).
-# - Exposure / Trade_A: MOS hysteresis + Great Filter (diagnostic;
-#   also the base weight for Strategy B).
-# - Strategy B: sentiment overlay ONLY scales Exp_A in
+# - Model_A: session params × historical financials → PIT fair-value path
+#   (HFV timeline / plateau). Discount rates use Rolling Beta at rebalance.
+# - Trade_A (純基本面價值 equity): MOS hysteresis + Great Filter exposure sim
+#   (also the base weight for 情緒波動價值).
+# - Model_B (情緒波動價值): sentiment overlay ONLY scales Exp_A in
 #   [0.75 * A, min(1, 1.25 * A)]; cannot override A == 0.
 # ==========================================
 
@@ -628,8 +627,8 @@ derive_bt_params <- function(d_is, d_bs, d_cf,
   notes <- sprintf(
     paste0(
       "v12 季頻 PIT 多模型：依本公司財報推導 淨利率≈%.1f%%、營收成長≈%.1f%%、NI成長≈%.1f%%、FCF CV≈%.1f%%。",
-      " Strategy A（純基本面、長抱）：MOS≈%.1f%% → w_vg=%.2f（越大越依 MOS 分級）。",
-      " Strategy B（情緒疊加）：動能%s、RSI≈%.0f → Mom/RSI 相對權重 %.2f / %.2f（僅微調 A 的權重，範圍 0.75~1.25×）。"
+      " 純基本面價值：MOS≈%.1f%% → w_vg=%.2f（越大越依 MOS 分級；最高約 90% 持股）。",
+      " 情緒波動價值：動能%s、RSI≈%.0f → Mom/RSI 相對權重 %.2f / %.2f（僅微調基準權重，範圍 0.75~1.25×）。"
     ),
     npm_use, rev_use, eps_use, cv_use,
     mos_n * 100, w_vg,
@@ -948,11 +947,11 @@ sentiment_multiplier <- function(mom_score, rsi_score, w_mom = 0.5, w_rsi = 0.5)
   equity_df <- data.frame(
     Date = df$Date,
     Close = df$Close,
-    # Chart Mode A: params × hist financials FV path (no position sizing).
+    # Model_A: params × hist financials FV path (HFV timeline / plateau).
     Model_A = model_a,
-    # Exposure-weighted sim kept for gap / alpha / plateau diagnostics.
+    # Trade_A: exposure-weighted sim = equity chart「純基本面價值」.
     Trade_A = equity_a,
-    Model_B = equity_b,   # Strategy B (sentiment-adjusted Exp_A)
+    Model_B = equity_b,   # 情緒波動價值 (sentiment-adjusted Exp_A)
     BuyHold = equity_bh,
     Benchmark = equity_bm,
     Exp_A = exp_a_daily,
@@ -960,9 +959,23 @@ sentiment_multiplier <- function(mom_score, rsi_score, w_mom = 0.5, w_rsi = 0.5)
     stringsAsFactors = FALSE
   )
 
-  # exposure summary
-  ea <- exp_a_daily[-1]
-  eb <- exp_b_daily[-1]
+  # Align comparison window at first quarterly decision so strategies
+  # (cash until first rebalance) do not give Buy&Hold a free head-start.
+  i0 <- rebal_idx[1L]
+  if (is.finite(i0) && i0 > 1L && i0 <= n) {
+    equity_df <- equity_df[i0:n, , drop = FALSE]
+    for (col in c("Model_A", "Trade_A", "Model_B", "BuyHold", "Benchmark")) {
+      base <- equity_df[[col]][1]
+      if (is.finite(base) && base > 0) {
+        equity_df[[col]] <- equity_df[[col]] / base
+      }
+    }
+    rownames(equity_df) <- NULL
+  }
+
+  # exposure summary (post-alignment window)
+  ea <- equity_df$Exp_A[-1]
+  eb <- equity_df$Exp_B[-1]
   exposure <- list(
     avg_a = mean(ea), max_a = max(ea), min_a = min(ea), cash_avg_a = 1 - mean(ea),
     avg_b = mean(eb), max_b = max(eb), min_b = min(eb), cash_avg_b = 1 - mean(eb)
@@ -976,13 +989,13 @@ sentiment_multiplier <- function(mom_score, rsi_score, w_mom = 0.5, w_rsi = 0.5)
     mu <- mean(rets); sdv <- stats::sd(rets)
     sharpe <- if (isTRUE(sdv > 0)) (mu / sdv) * sqrt(252) else NA_real_
     peak <- cummax(eq); dd <- eq / peak - 1; mdd <- min(dd, na.rm = TRUE)
-    yrs <- as.numeric(difftime(df$Date[length(df$Date)], df$Date[1], units = "days")) / 365.25
+    yrs <- as.numeric(difftime(equity_df$Date[length(equity_df$Date)], equity_df$Date[1], units = "days")) / 365.25
     cagr <- if (isTRUE(yrs > 0)) eq[length(eq)] ^ (1 / yrs) - 1 else NA_real_
     list(sharpe = sharpe, mdd = mdd, cagr = cagr)
   }
-  # Trading metrics: Trade_A (exposure sim) + Strategy B — not FV index.
-  pa <- perf_one(equity_a)
-  pb <- perf_one(equity_b)
+  # Trading metrics: Trade_A + Model_B — not FV index.
+  pa <- perf_one(equity_df$Trade_A)
+  pb <- perf_one(equity_df$Model_B)
 
   # signal composition stats
   sig <- valuation_df$signal

@@ -141,14 +141,14 @@ analyze_bh_gap <- function(equity_df, valuation_df) {
 
   # Chinese + English narratives (used by the UI).
   narrative_a <- sprintf(
-    "BH 累積 %.1f%% vs Strategy A %.1f%%, 缺口 %.1f%%. 現金拖累(cash_drag) %.1f%%, 過早出場(early_exit) %.1f%%, 高估減碼(overvaluation_reduction) %.1f%%, 未追隨趨勢(missed_trend) %.1f%%.",
+    "BH 累積 %.1f%% vs 純基本面價值 %.1f%%, 缺口 %.1f%%. 現金拖累(cash_drag) %.1f%%, 過早出場(early_exit) %.1f%%, 高估減碼(overvaluation_reduction) %.1f%%, 未追隨趨勢(missed_trend) %.1f%%. 牛市落後多半合理：策略最高約 90%% 持股且 Great Filter 可強制空手。",
     100 * .bv_safe_num(bh_term, 0), 100 * .bv_safe_num(a_term, 0),
     100 * shortfall_a,
     100 * cash_drag_contrib, 100 * early_contrib,
     100 * overval_contrib, 100 * missed_trend
   )
   narrative_b <- sprintf(
-    "Strategy B 累積 %.1f%%; 情緒疊加相對 A 減碼(sentiment_reduction) %.1f%% (up-day 貢獻).",
+    "情緒波動價值累積 %.1f%%; 相對純基本面價值減碼(sentiment_reduction) %.1f%% (up-day 貢獻).",
     100 * .bv_safe_num(b_term, 0), 100 * sent_contrib
   )
 
@@ -202,7 +202,7 @@ compute_alpha_dashboard <- function(equity_df, rf_annual = 0.04) {
   req <- c("Date", "Model_B", "BuyHold", "Benchmark")
   missing <- setdiff(req, colnames(equity_df))
   if (length(missing) > 0) stop("equity_df missing columns: ", paste(missing, collapse = ", "))
-  # Strategy A alpha uses Trade_A (exposure sim). Chart Model_A is FV path.
+  # 純基本面價值 alpha uses Trade_A (exposure sim). Model_A remains FV path for plateau/HFV.
   eq_a <- if ("Trade_A" %in% colnames(equity_df)) {
     equity_df$Trade_A
   } else if ("Model_A" %in% colnames(equity_df)) {
@@ -473,7 +473,7 @@ build_signal_explain <- function(row) {
     sprintf("Great Filter: %s (%s)",
             if (isTRUE(as.logical(g("filter_pass")))) "PASS" else "FAIL",
             as.character(g("filter_path"))),
-    sprintf("目標曝險 - Strategy A: %s | Strategy B: %s",
+    sprintf("目標曝險 - 純基本面價值: %s | 情緒波動價值: %s",
             fmt(g("exp_a"), 2), fmt(g("exp_b"), 2))
   )
   ex <- as.character(g("explain"))
