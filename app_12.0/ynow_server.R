@@ -2558,13 +2558,13 @@ server <- function(input, output, session) {
     validate(need(!is.null(res) && !is.null(res$equity_df), "請先回測"))
     df <- res$equity_df
     df_long <- rbind(
-      data.frame(Date = df$Date, Exp = df$Exp_A, Series = "Strategy A", stringsAsFactors = FALSE),
-      data.frame(Date = df$Date, Exp = df$Exp_B, Series = "Strategy B", stringsAsFactors = FALSE)
+      data.frame(Date = df$Date, Exp = df$Exp_A, Series = "純基本面價值", stringsAsFactors = FALSE),
+      data.frame(Date = df$Date, Exp = df$Exp_B, Series = "模式 B", stringsAsFactors = FALSE)
     )
     p <- ggplot(df_long, aes(x = Date, y = Exp, color = Series)) +
       geom_line(linewidth = 0.8) +
       scale_y_continuous(labels = scales::percent_format(accuracy = 1), limits = c(0, 1)) +
-      scale_color_manual(values = c("Strategy A" = "#dc3545", "Strategy B" = "#007bff")) +
+      scale_color_manual(values = c("純基本面價值" = "#dc3545", "模式 B" = "#007bff")) +
       labs(y = "Exposure", x = NULL, color = NULL) +
       theme_minimal(base_size = 11)
     ggplotly(p, tooltip = c("x", "y", "colour")) %>%
