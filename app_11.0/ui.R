@@ -981,7 +981,7 @@ ui <- dashboardPage(
               withMathJax(),
               h2("量化回測實驗室 (Backtest Zone)"),
               .bt_section_intro(
-                "流程：搜尋股票 → 確認參數（自動依財報推導或手動覆寫）→ 啟動回測 → 比較兩種策略淨值與績效指標。"
+                "流程：搜尋股票 → 在 DCF 設定此刻參數 → 確認回測門檻 → 啟動回測。基本面策略會用歷史財報＋此刻參數重估，再與當時市價比較以驗證模型。"
               ),
 
               fluidRow(
@@ -994,12 +994,21 @@ ui <- dashboardPage(
 
               fluidRow(
                 box(
+                  title = tagList(icon("balance-scale"), "基本面策略驗證（歷史財報 × 此刻參數）"),
+                  width = 12, status = "primary", solidHeader = TRUE, collapsible = TRUE, collapsed = FALSE,
+                  uiOutput("bt_valuation_summary"),
+                  plotlyOutput("bt_valuation_plot", height = "320px") %>% withSpinner()
+                )
+              ),
+
+              fluidRow(
+                box(
                   title = tagList(icon("chart-area"), "策略淨值比較圖"),
                   width = 8, status = "info", solidHeader = TRUE,
                   plotlyOutput("bt_equity_plot", height = "420px") %>% withSpinner(),
                   tags$ul(
                     style = "margin: 10px 0 0 0; padding-left: 18px; font-size: 12px; color: #666; line-height: 1.55;",
-                    tags$li(tags$b("紅線"), " 模式 A（純基本面／基準）：僅依財報過濾與估值偏離（MOS／VG）決定倉位。"),
+                    tags$li(tags$b("紅線"), " 模式 A（純基本面／基準）：歷史財報＋此刻 DCF 參數估價，對照當時市價決定倉位。"),
                     tags$li(tags$b("藍線"), " 模式 B（情緒增強）：以模式 A 基本面倉位為基準，再依動能／RSI 調控曝險。"),
                     tags$li(tags$b("綠線"), " 該股買進持有：同期間單純持有標的，作為對照組。"),
                     tags$li(tags$b("灰虛線"), " 大盤基準（SPY）：衡量是否跑贏市場。")
@@ -1033,7 +1042,7 @@ ui <- dashboardPage(
                     "run_bt", "啟動量化回測",
                     class = "btn-warning btn-lg btn-block"
                   ),
-                  .bt_hint("使用過去約 5 年日線、月頻再平衡；結合財報特徵產出兩種策略淨值。"),
+                  .bt_hint("約 5 年日線、月頻再平衡：以當時可得財報＋側欄／DCF 此刻參數估算策略估值，再與歷史收盤比較。"),
                   uiOutput("bt_run_status")
                 )
               ),
@@ -1094,22 +1103,22 @@ ui <- dashboardPage(
                   tabPanel(
                     title = tagList(icon("balance-scale"), "模式 A｜純基本面（基準）"),
                     .bt_section_intro(
-                      "基準策略：通過過濾後，僅依估值偏離（MOS／VG）決定倉位，不使用動能、RSI 或均線。模式 B 疊加情緒前，先以此倉位為底座。"
+                      "基準策略：通過過濾後，以「歷史財報 × 此刻 DCF 參數」估算策略估值，再與當時收盤價比較。策略估值 < 歷史市價 → 策略低估；策略估值 > 歷史市價 → 價值高估。不使用動能／RSI。"
                     ),
                     fluidRow(
                       column(
                         6,
                         sliderInput("bt_w_vg", "估值偏離 (Valuation Gap) 權重", 0, 1, 0.7, step = 0.01),
-                        bsTooltip("bt_w_vg", "內在價值高於現價（正 MOS）時，基本面倉位傾向提高。", "right"),
-                        .bt_hint("VG／MOS = (內在價值 − 現價) ÷ 內在價值。權重愈高愈重視安全邊際；剩餘權重採中性基準曝險（非技術指標）。")
+                        bsTooltip("bt_w_vg", "歷史 MOS＝(策略估值−當時市價)÷策略估值；權重愈高愈依此偏離調倉。", "right"),
+                        .bt_hint("MOS = (策略估值 − 歷史市價) ÷ 策略估值。策略低估（估值低於市價）降低曝險；估值高於市價時提高曝險。剩餘權重採中性基準曝險。")
                       ),
                       column(
                         6,
                         tags$div(
                           style = "margin-top: 28px; padding: 12px; background: #fcf8e3; border: 1px solid #f0e6b2; border-radius: 5px; font-size: 12px; color: #8a6d3b; line-height: 1.55;",
-                          tags$b(icon("exclamation-triangle"), " 價值陷阱提醒"),
+                          tags$b(icon("exclamation-triangle"), " 模型驗證說明"),
                           tags$br(),
-                          "若標的長期低估卻不漲，可能市場尚未認同基本面。可對照模式 B 的動能／RSI，觀察市場共識是否轉向。"
+                          "回測用歷史經驗驗證目前模型：固定此刻 WACC／成長率等假設，套到過去各期財報重估。若長期「策略低估」卻股價續漲，代表模型偏保守；可對照模式 B 動能。"
                         )
                       )
                     )
