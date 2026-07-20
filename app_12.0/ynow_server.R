@@ -434,10 +434,16 @@ server <- function(input, output, session) {
       c("P/B", "P/B Mid", .snapshot_value(input[["mod_pb-pb_mid"]]), "Price = BVPS × P/B"),
       c("P/B", "P/B High", .snapshot_value(input[["mod_pb-pb_high"]]), "Price = BVPS × P/B"),
       c("P/B", "約當股數校正", .snapshot_value(input[["mod_pb-adjust_share_class"]]), "例外：市值÷股價／雙重股權"),
-      c("Backtest", "Net Margin Threshold (%)", .snapshot_value(input$bt_net_margin), "Pass if Net Margin >= threshold"),
-      c("Backtest", "Revenue Growth Threshold (%)", .snapshot_value(input$bt_rev_growth), "Pass if Revenue Growth >= threshold"),
-      c("Backtest", "EPS / NI Growth Threshold (%)", .snapshot_value(input$bt_eps_growth), "Pass if EPS/NI Growth >= threshold"),
-      c("Backtest", "FCF CV Ceiling (%)", .snapshot_value(input$bt_fcf_cv), "Pass if FCF CV <= ceiling")
+      c("Backtest", "Net Margin Threshold (%)", .snapshot_value(input$bt_net_margin), "Great Filter: Net Margin >= threshold"),
+      c("Backtest", "Revenue Growth Threshold (%)", .snapshot_value(input$bt_rev_growth), "Great Filter: Revenue Growth >= threshold"),
+      c("Backtest", "EPS / NI Growth Threshold (%)", .snapshot_value(input$bt_eps_growth), "Great Filter: EPS/NI Growth >= threshold"),
+      c("Backtest", "FCF CV Ceiling (%)", .snapshot_value(input$bt_fcf_cv), "Great Filter: FCF CV <= ceiling"),
+      c("Backtest", "Auto Derive Params", .snapshot_value(input$bt_param_auto), "TRUE = sync thresholds/weights/model on ticker load"),
+      c("Backtest", "Valuation Model (純基本面價值)", .snapshot_value(input$bt_fv_model), "dcf / ddm / ri / pb / composite for hist FV path"),
+      c("Backtest", "MOS / VG Weight (bt_w_vg)", .snapshot_value(input$bt_w_vg), "Exposure diagnostic blend; not FV path"),
+      c("Backtest", "Momentum Weight (bt_w_mom)", .snapshot_value(input$bt_w_mom), "Sentiment overlay relative weight"),
+      c("Backtest", "RSI Weight (bt_w_rsi)", .snapshot_value(input$bt_w_rsi), "Sentiment overlay relative weight"),
+      c("Backtest", "Hist Discount Beta", "Rolling β (≈5Y monthly vs SPY)", "PIT Ke/WACC at each rebalance; not fixed session β")
     )
     df <- as.data.frame(do.call(rbind, rows), stringsAsFactors = FALSE)
     names(df) <- c("Section", "Parameter", "Current Value", "Formula")
@@ -2292,7 +2298,7 @@ server <- function(input, output, session) {
   observeEvent(input$bt_refresh_params, {
     tryCatch({
       refresh_bt_params(fetch_hist = TRUE)
-      showNotification("✅ 已依目前公司重算 Backtest 參數", type = "message")
+      showNotification("✅ 已依目前公司重算一次（門檻／權重）", type = "message")
     }, error = function(e) {
       showNotification(paste("參數重算失敗：", e$message), type = "error")
     })
@@ -2302,13 +2308,12 @@ server <- function(input, output, session) {
     if (isTRUE(input$bt_param_auto)) {
       tryCatch(refresh_bt_params(fetch_hist = FALSE), error = function(e) NULL)
       bt_param_notes_txt(
-        paste0(
-          "自動模式：依目前公司財報推導 Great Filter 門檻、MOS／情緒權重，",
-          "並對齊執行面板的推薦估值模型。手動改門檻或權重會自動取消勾選。"
-        )
+        "自動同步已開啟：換股／載入財報時會覆寫門檻、權重與推薦估值模型。若只要算一次，可取消勾選後按「立即依目前公司重算一次」。"
       )
     } else {
-      bt_param_notes_txt("手動模式：保留你調整過的門檻／權重／估值模型；換股或啟動回測不會覆寫。")
+      bt_param_notes_txt(
+        "自動同步已關閉：參數不會因換股被覆寫。需要時可按「立即依目前公司重算一次」單次推導。"
+      )
     }
   })
 
@@ -2600,25 +2605,25 @@ server <- function(input, output, session) {
     validate(need(!is.null(res) && !is.null(res$equity_df), "請先成功執行回測"))
     df_plot <- res$equity_df
     df_long <- rbind(
-      data.frame(Date = df_plot$Date, Value = df_plot$Model_A, Series = "模式 A (合理價試算)", stringsAsFactors = FALSE),
+      data.frame(Date = df_plot$Date, Value = df_plot$Model_A, Series = "純基本面價值", stringsAsFactors = FALSE),
       data.frame(Date = df_plot$Date, Value = df_plot$Model_B, Series = "模式 B (情緒疊加)", stringsAsFactors = FALSE),
       data.frame(Date = df_plot$Date, Value = df_plot$BuyHold, Series = "該股買進持有", stringsAsFactors = FALSE),
       data.frame(Date = df_plot$Date, Value = df_plot$Benchmark, Series = "大盤基準", stringsAsFactors = FALSE)
     )
     df_long$Series <- factor(
       df_long$Series,
-      levels = c("模式 A (合理價試算)", "模式 B (情緒疊加)", "該股買進持有", "大盤基準")
+      levels = c("純基本面價值", "模式 B (情緒疊加)", "該股買進持有", "大盤基準")
     )
     p <- ggplot(df_long, aes(x = Date, y = Value, color = Series, group = Series, linetype = Series)) +
       geom_line(linewidth = 0.85) +
       scale_color_manual(values = c(
-        "模式 A (合理價試算)" = "#dc3545",
+        "純基本面價值" = "#dc3545",
         "模式 B (情緒疊加)" = "#007bff",
         "該股買進持有" = "#28a745",
         "大盤基準" = "#6c757d"
       )) +
       scale_linetype_manual(values = c(
-        "模式 A (合理價試算)" = "solid",
+        "純基本面價值" = "solid",
         "模式 B (情緒疊加)" = "solid",
         "該股買進持有" = "solid",
         "大盤基準" = "dashed"
@@ -2716,7 +2721,7 @@ server <- function(input, output, session) {
     }
     m <- res$metrics
     best <- m$best
-    label_best <- if (identical(best, "A")) "模式 A" else "模式 B"
+    label_best <- if (identical(best, "A")) "純基本面價值" else "模式 B"
     sharpe_show <- if (identical(best, "A")) m$sharpe_a else m$sharpe_b
     mdd_show <- if (identical(best, "A")) m$mdd_a else m$mdd_b
     cagr_show <- if (identical(best, "A")) m$cagr_a else m$cagr_b

@@ -1033,7 +1033,7 @@ ui <- dashboardPage(
                   plotlyOutput("bt_equity_plot", height = "400px") %>% withSpinner(),
                   tags$ul(
                     style = "margin: 10px 0 0 0; padding-left: 18px; font-size: 12px; color: #666; line-height: 1.55;",
-                    tags$li(tags$b("紅線 A"), " 所選估值模型 × 歷史財報的合理價試算路徑（季間依 SGR 延展），與持倉／曝險無關。"),
+                    tags$li(tags$b("紅線｜純基本面價值"), " 所選估值模型 × 歷史財報的合理價試算路徑（季間依 SGR 延展；Ke／WACC 用 Rolling β），與持倉／曝險無關。"),
                     tags$li(tags$b("藍線 B"), " 曝險模擬 × 情緒乘數（僅能在 Exp_A 的 75%～125% 內調整）。"),
                     tags$li(tags$b("綠線"), " Buy & Hold；", tags$b("灰虛線"), " SPY 基準。")
                   )
@@ -1042,15 +1042,9 @@ ui <- dashboardPage(
                   title = tagList(icon("play-circle"), "執行面板"),
                   width = 4, status = "warning", solidHeader = TRUE,
                   class = "ynow-bt-run-panel",
-                  tags$ol(
-                    style = "padding-left: 18px; font-size: 12px; color: #555; margin-bottom: 12px; line-height: 1.55;",
-                    tags$li("搜尋股票並載入財報（即時抓取）"),
-                    tags$li("選擇模式 A 估值模型（可自動對齊推薦）"),
-                    tags$li("確認參數後啟動回測")
-                  ),
                   radioButtons(
                     "bt_fv_model",
-                    "模式 A 估值模型",
+                    "回測用估值模型",
                     inline = FALSE,
                     choices = c(
                       "DCF（自由現金流折現）" = "dcf",
@@ -1061,19 +1055,22 @@ ui <- dashboardPage(
                     ),
                     selected = "dcf"
                   ),
-                  .bt_hint("決定紅線 A 的合理價試算路徑；與持倉無關。"),
+                  .bt_hint("決定「純基本面價值」紅線的合理價試算路徑；與持倉無關。"),
                   checkboxInput(
                     "bt_param_auto",
-                    "自動（依目前公司財報推導）",
+                    "自動同步參數（換股時依財報推導）",
                     value = TRUE
                   ),
                   .bt_hint(
-                    "勾選：換股／重算時依財報推導 Great Filter 門檻、曝險／情緒權重，並對齊上方推薦估值模型。取消：保留你手動改過的門檻與權重，不會被覆寫。"
+                    "模式開關：勾選後，搜尋／載入新公司時會自動覆寫 Great Filter 門檻、曝險／情緒權重，並對齊上方推薦估值模型。手動改參數會自動取消勾選。"
                   ),
                   actionButton(
-                    "bt_refresh_params", "依目前公司重算參數",
+                    "bt_refresh_params", "立即依目前公司重算一次",
                     icon = icon("sync"), class = "btn-default btn-block",
                     style = "margin-bottom: 10px;"
+                  ),
+                  .bt_hint(
+                    "單次動作：立刻用目前公司財報重算門檻／權重（可在取消自動後使用，不想持續自動覆寫時按一次即可）。"
                   ),
                   actionButton(
                     "run_bt", "啟動量化回測",
@@ -1104,7 +1101,7 @@ ui <- dashboardPage(
 
               fluidRow(
                 box(
-                  title = tagList(icon("percentage"), "Exposure History（模式 A）"),
+                  title = tagList(icon("percentage"), "Exposure History（純基本面價值）"),
                   width = 6, status = "danger", solidHeader = TRUE, collapsible = TRUE,
                   uiOutput("bt_exposure_stats"),
                   plotlyOutput("bt_exposure_plot", height = "260px") %>% withSpinner()
@@ -1137,7 +1134,7 @@ ui <- dashboardPage(
                   ),
                   tags$hr(style = "margin: 16px 0;"),
                   tags$h5(tags$b("參數高原（敏感度）")),
-                  .bt_hint("微擾 WACC／SGR／年數，觀察模式 A 合理價終值指數的相對變動。"),
+                  .bt_hint("微擾 WACC／SGR／年數，觀察「純基本面價值」合理價終值指數的相對變動。"),
                   uiOutput("bt_plateau"),
                   tableOutput("bt_plateau_table")
                 )
@@ -1167,9 +1164,9 @@ ui <- dashboardPage(
                       )
                     ),
                     tabPanel(
-                      title = tagList(icon("balance-scale"), "模式 A｜合理價試算"),
+                      title = tagList(icon("balance-scale"), "純基本面價值"),
                       .bt_section_intro(
-                        "淨值圖紅線 A＝執行面板所選估值模型 × 歷史財報的 PIT 合理價路徑（季間依 SGR 複利延展），與持倉多少無關。估值模型請在上方「執行面板」選擇。"
+                        "淨值圖紅線「純基本面價值」＝執行面板所選估值模型 × 歷史財報的 PIT 合理價路徑（季間依 SGR 複利延展；折現率用 Rolling β），與持倉多少無關。"
                       ),
                       fluidRow(
                         column(
