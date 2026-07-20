@@ -2843,6 +2843,90 @@ server <- function(input, output, session) {
   # 11. 系統按鈕與報告輸出
   # ==========================================
   # DDM Reset 由 ddm_module_server 內的 input$reset_ddm 處理（ns: mod_ddm）
+
+  .bt_methodology_meta <- reactive({
+    mp <- tryCatch(bt_current_model_params(), error = function(e) NULL)
+    res <- bt_result()
+    fv_lab <- switch(
+      as.character(isolate(input$bt_fv_model) %||% "dcf"),
+      dcf = "DCF（自由現金流折現）",
+      ddm = "DDM（股利折現）",
+      ri = "RI（剩餘收益）",
+      pb = "P/B（本淨比）",
+      composite = "綜合均值",
+      as.character(isolate(input$bt_fv_model) %||% "dcf")
+    )
+    list(
+      ticker = isolate(current_ticker()) %||% "N/A",
+      bench = if (!is.null(res$bench_ticker)) res$bench_ticker else "SPY",
+      sim_years = "5",
+      fv_model = fv_lab,
+      filters = sprintf(
+        "%.1f / %.1f / %.1f / %.1f",
+        as.numeric(isolate(input$bt_net_margin) %||% NA),
+        as.numeric(isolate(input$bt_rev_growth) %||% NA),
+        as.numeric(isolate(input$bt_eps_growth) %||% NA),
+        as.numeric(isolate(input$bt_fcf_cv) %||% NA)
+      ),
+      weights = sprintf(
+        "%.2f / %.2f / %.2f",
+        as.numeric(isolate(input$bt_w_vg) %||% NA),
+        as.numeric(isolate(input$bt_w_mom) %||% NA),
+        as.numeric(isolate(input$bt_w_rsi) %||% NA)
+      ),
+      sgr_n = if (!is.null(mp)) {
+        sprintf("SGR=%.2f%% · n=%s 年", 100 * .safe_num(mp$sgr, NA_real_),
+                as.character(mp$n_years %||% "N/A"))
+      } else {
+        "（尚未載入模型參數）"
+      },
+      n_days = if (!is.null(res$n_days)) as.character(res$n_days) else "（尚未回測）"
+    )
+  })
+
+  output$bt_methodology_notes <- renderUI({
+    tags$div(
+      style = "font-size: 12.5px; line-height: 1.65; color: #333;",
+      tags$p(
+        style = "margin-top:0;",
+        "以下註解說明本頁回測的", tags$b("數據來源"), "與", tags$b("計算過程"),
+        "。淨值圖比較的是交易曝險模擬，不是合理價指數；合理價請見 Fair Value 時間軸。"
+      ),
+      tags$h5(tags$b("一、數據來源")),
+      tags$ul(
+        tags$li(tags$b("股價／基準："), "Yahoo Finance（yfinance，auto_adjust 含拆股股息）；基準預設 SPY。"),
+        tags$li(tags$b("財報："), "本次 Session 已載入之年度 IS／BS／CF（搜尋後抓取）。"),
+        tags$li(tags$b("Rf："), "^TNX 美債殖利率（驗證用）；失敗時約 4%。"),
+        tags$li(tags$b("評價假設："), "Get Started／Dashboard 的 SGR、年數等；Ke／WACC 於各季再平衡以 Rolling β 重估。")
+      ),
+      tags$h5(tags$b("二、計算過程（季頻 PIT）")),
+      tags$ol(
+        tags$li("再平衡日：僅用 fund_year ≤ 日曆年−1 的財報重建合理價 → 算 MOS。"),
+        tags$li("Great Filter 未過 → 純基本面價值／情緒波動價值皆空手（Exp=0）。"),
+        tags$li("通過則 Exp_A 依 MOS 滯後映射（最高約 90%）；Exp_B = Exp_A × 情緒乘數（夾在 75%～125%）。"),
+        tags$li("每日淨值：Buy&Hold 用滿倉報酬；兩策略用 Exp×日報酬；現金報酬視為 0；未扣交易成本。"),
+        tags$li("比較視窗自首次有效季再平衡對齊，避免暖身期空手讓 Buy&Hold 佔先。")
+      ),
+      tags$h5(tags$b("三、為何常輸給 Buy&Hold（設計說明）")),
+      tags$p(
+        style = "margin-bottom:0;",
+        "策略刻意不滿倉（風控／過濾），牛市現金拖累屬預期結果，不一定是程式錯誤。",
+        "完整逐步公式與本次參數請下載方法論檔。"
+      )
+    )
+  })
+
+  output$download_bt_methodology <- downloadHandler(
+    filename = function() {
+      tk <- tryCatch(current_ticker(), error = function(e) "NA")
+      if (is.null(tk) || !nzchar(as.character(tk))) tk <- "session"
+      paste0("YNow_Backtest_Methodology_", tk, "_", Sys.Date(), ".md")
+    },
+    content = function(file) {
+      txt <- build_bt_methodology_doc(.bt_methodology_meta())
+      writeLines(txt, file, useBytes = TRUE)
+    }
+  )
   
   observeEvent(input$reset_dcf, {
     updateNumericInput(session, "years", value = APP_DEFAULTS$years)

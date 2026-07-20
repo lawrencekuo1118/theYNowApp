@@ -1118,3 +1118,104 @@ run_company_backtest <- function(ticker,
     dcf_params_used   = model_params  # back-compat alias for v11 UI
   )
 }
+
+# ---------- Backtest methodology notes (UI + download) ----------
+
+#' Build plain-text / Markdown notes on backtest data sources & calc process.
+#' @param meta optional named list with session fields for a filled-in appendix
+build_bt_methodology_doc <- function(meta = NULL) {
+  meta <- if (is.null(meta) || !is.list(meta)) list() else meta
+  g <- function(key, default = "（執行回測後填入）") {
+    v <- meta[[key]]
+    if (is.null(v) || length(v) < 1 || (length(v) == 1 && is.na(v))) return(default)
+    as.character(v[[1]])
+  }
+
+  paste0(
+    "# The YNow App — 回測數據來源與計算過程說明\n",
+    "\n",
+    "版本：app_12.0｜產出日期：", format(Sys.Date(), "%Y-%m-%d"), "\n",
+    "\n",
+    "本文件說明 Backtest Zone「純基本面價值／情緒波動價值」回測所使用的資料來源、",
+    "時點對齊規則、曝險與淨值計算流程。結果僅存於當次 Session，不寫入資料庫。\n",
+    "\n",
+    "---\n",
+    "\n",
+    "## 1. 數據來源\n",
+    "\n",
+    "| 項目 | 來源 | 說明 |\n",
+    "|------|------|------|\n",
+    "| 標的日收盤價 | Yahoo Finance（`yfinance`，`auto_adjust=True`） | 含拆股／股息調整後 Close；失敗時後備 quantmod/Yahoo |\n",
+    "| 基準指數 | SPY（同上） | 無法取得時以標的自身代替並註記 |\n",
+    "| 年度財報 | 本次 Session 已搜尋載入之 IS／BS／CF | 來自 yfinance 財報表；欄位標準化後使用 |\n",
+    "| 無風險利率 Rf | `^TNX`（10 年期美債殖利率） | 供 Alpha／Sharpe 等驗證用；失敗時預設約 4% |\n",
+    "| 評價假設 | Get Started／Dashboard 目前 Session 參數 | SGR、年數、P/B 等；Ke／WACC 於再平衡日以 Rolling β 重估 |\n",
+    "\n",
+    "價格抓取期間：模擬視窗約最近 ", g("sim_years", "5"), " 年；",
+    "為 Rolling β 另多抓約 5 年歷史（合計常 ≥10 年）。\n",
+    "\n",
+    "## 2. Point-in-Time（避免前瞻偏差）\n",
+    "\n",
+    "1. 僅在**季末再平衡日**重建合理價與曝險。\n",
+    "2. 財報對齊規則：使用財政年度 `fund_year ≤ 回測日曆年 − 1` 的已公告年度資料",
+    "（近似「只用當時已可知資訊」）。\n",
+    "3. 折現率：各再平衡日以標的 vs SPY 約 **60 個月月報酬** 估計 Rolling β → CAPM Ke →",
+    "結合 Session 資本結構得到當期 WACC（非全樣本固定 β）。\n",
+    "4. 合理價模型：依執行面板「回測用評價模型」選擇 DCF／DDM／RI／P/B／綜合均值；",
+    "成長／預測年數等來自當下 Session。\n",
+    "\n",
+    "## 3. 序列定義（淨值圖）\n",
+    "\n",
+    "- **該股買進持有 (Buy&Hold)**：每日 `E_t = E_{t-1} × (1 + r_t)`，全程 100% 持股；現金部位為 0。\n",
+    "- **純基本面價值 (Trade_A)**：`E_t = E_{t-1} × (1 + Exp_A × r_t)`。",
+    "`Exp_A` 由 Great Filter + MOS 滯後曝險決定（最高約 90%）。\n",
+    "- **情緒波動價值 (Model_B)**：在 `Exp_A` 上乘情緒乘數（動能／RSI），",
+    "並夾在 `[0.75×Exp_A, min(1, 1.25×Exp_A)]`；`Exp_A=0` 時必須空手。\n",
+    "- **大盤基準**：SPY 全日報酬累積指數。\n",
+    "- **Historical Fair Value Timeline 的合理價路徑 (Model_A)**：PIT 合理價於再平衡日更新，",
+    "季間依 Session SGR 延展；**不是**交易淨值，請勿與 Buy&Hold 混比。\n",
+    "\n",
+    "比較視窗自**首次有效季再平衡日**對齊起點（避免策略暖身期空手讓 Buy&Hold 佔先）。\n",
+    "\n",
+    "## 4. 曝險計算過程（季頻）\n",
+    "\n",
+    "```\n",
+    "每日收盤報酬 r_t = Close_t / Close_{t-1} - 1\n",
+    "若為季再平衡日：\n",
+    "  1) PIT 重建合理價 → MOS = (FV - Price) / Price\n",
+    "  2) Great Filter（淨利率／營收成長／EPS成長／FCF CV 門檻）\n",
+    "     → 未通過則 Exp_A = Exp_B = 0\n",
+    "  3) 通過則 Exp_A = MOS 滯後映射（與 w_vg 混合；MOS≥30%→最高約 90%）\n",
+    "  4) Exp_B = clip(Exp_A × sentiment_mult, 0.75×Exp_A … 1.25×Exp_A)\n",
+    "非再平衡日：沿用上一季 Exp_A／Exp_B\n",
+    "```\n",
+    "\n",
+    "**刻意設計（非錯誤）：** 現金部位報酬視為 0；未建模交易成本／稅負／滑價。",
+    "牛市中 Buy&Hold 常因「滿倉」勝過減碼策略，屬風控取捨。\n",
+    "\n",
+    "## 5. 驗證指標（回測後）\n",
+    "\n",
+    "- **Alpha／Sharpe／MDD／Excess vs BH／Jensen α**：以 Trade_A、Model_B、BuyHold、Benchmark 計算。\n",
+    "- **MOS／FV 前瞻報酬**：依再平衡列分組，對齊日曆 1Y／3Y／5Y 前瞻報酬。\n",
+    "- **參數高原**：微擾 WACC／SGR／年數等，觀察 Model_A 終值相對變動。\n",
+    "- **為何輸給 Buy&Hold**：拆解 Cash Drag／Early Exit／高估減碼／情緒減碼等。\n",
+    "\n",
+    "## 6. 本次 Session 參數摘要\n",
+    "\n",
+    "- 標的：", g("ticker"), "\n",
+    "- 基準：", g("bench", "SPY"), "\n",
+    "- 模擬年數：", g("sim_years", "5"), "\n",
+    "- 回測用評價模型：", g("fv_model"), "\n",
+    "- Great Filter 門檻（淨利率／營收成長／EPS成長／FCF CV %）：",
+    g("filters"), "\n",
+    "- 權重 w_vg／w_mom／w_rsi：", g("weights"), "\n",
+    "- Session SGR／n_years：", g("sgr_n"), "\n",
+    "- 回測日數（對齊後）：", g("n_days"), "\n",
+    "\n",
+    "---\n",
+    "\n",
+    "**免責：** 本回測僅供研究與教育，不構成投資建議。資料依賴第三方公開來源，",
+    "可能有缺漏或延遲；PIT 規則為實務近似，非交易所級時間戳對齊。\n"
+  )
+}
+

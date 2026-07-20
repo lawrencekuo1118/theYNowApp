@@ -1199,6 +1199,26 @@ ui <- dashboardPage(
                   uiOutput("bt_plateau"),
                   tableOutput("bt_plateau_table")
                 )
+              ),
+
+              # 6) 最底層：數據來源與計算過程註解 + 下載
+              fluidRow(
+                box(
+                  title = tagList(icon("book"), "回測數據來源與計算過程（方法論註解）"),
+                  width = 12, status = "primary", solidHeader = TRUE,
+                  collapsible = TRUE, collapsed = FALSE,
+                  uiOutput("bt_methodology_notes"),
+                  tags$div(
+                    style = "margin-top: 12px;",
+                    downloadButton(
+                      "download_bt_methodology",
+                      "下載方法論說明（Markdown）",
+                      icon = icon("download"),
+                      class = "btn-primary",
+                      style = "font-weight: 600;"
+                    )
+                  )
+                )
               )
       ),
       
