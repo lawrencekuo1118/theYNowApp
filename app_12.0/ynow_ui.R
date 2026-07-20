@@ -106,7 +106,7 @@ ui <- dashboardPage(
     
     column(width = 12,
            div(style = "padding: 10px; text-align: center; margin-top: 20px;",
-               downloadButton("download_report", "下載完整分析報告", 
+               downloadButton("download_report", "下載完整分析報告 (PDF)", 
                               style = "width: 100%; font-weight: bold; background-color: #1a1a1a; color: #ffffff; border: 1px solid #000000; box-shadow: none; text-shadow: none;")
            )
     ),

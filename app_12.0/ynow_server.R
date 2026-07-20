@@ -2864,41 +2864,63 @@ server <- function(input, output, session) {
   })
   
   output$download_report <- downloadHandler(
-    filename = function() paste0("YNow_Report_", current_ticker(), "_", Sys.Date(), ".html"),
+    filename = function() {
+      tk <- tryCatch(current_ticker(), error = function(e) "NA")
+      if (is.null(tk) || !nzchar(as.character(tk))) tk <- "NA"
+      paste0("YNow_Report_", tk, "_", Sys.Date(), ".pdf")
+    },
     content = function(file) {
       tryCatch({
-        showNotification("正在生成投資意見報告，請稍候...", type = "message")
+        showNotification("正在生成 PDF 投資意見報告，請稍候...", type = "message", duration = 8)
         tempReport <- file.path(tempdir(), "report_template.Rmd")
         file.copy("report_template.Rmd", tempReport, overwrite = TRUE)
-        
-        plot_path <- NA
+
+        plot_path <- NA_character_
         if (exists("fcf_results") && !is.null(fcf_results$fcf_plot_obj())) {
           plot_path <- file.path(tempdir(), "fcf_plot_temp.png")
-          ggsave(plot_path, plot = fcf_results$fcf_plot_obj(), width = 9, height = 5.5, dpi = 300)
+          ggsave(plot_path, plot = fcf_results$fcf_plot_obj(), width = 9, height = 5.5, dpi = 200)
         }
-        
-        # --- 蒐集報告所需即時資料 ---
-        cur_price <- tryCatch(isolate(scraped_market_cap()$price), error = function(e) NA)
-        tgt_price <- isolate(stock_price_estimate_val())
-        ddm_val <- tryCatch(isolate(ddm_results$ddm_price()), error = function(e) NA)
-        pb_val <- tryCatch(isolate(pb_results$pb_price()), error = function(e) NA)
-        ev_val <- isolate(dcf_value_result())
-        
+
+        cur_price <- .report_num(tryCatch(isolate(scraped_market_cap()$price), error = function(e) NA))
+        dcf_price <- .report_num(isolate(stock_price_estimate_val()))
+        ddm_val <- .report_num(tryCatch(isolate(ddm_results$ddm_price()), error = function(e) NA))
+        pb_val <- .report_num(tryCatch(isolate(pb_results$pb_price()), error = function(e) NA))
+        ri_val <- .report_num(tryCatch(isolate(ri_results$ri_price()), error = function(e) NA))
+        ev_val <- .report_num(isolate(dcf_value_result()))
+
         ind_text_early <- isolate(corp_industry_text())
-        rating_anchor <- if (!is.na(pb_val) && grepl("Bank|Insurance|Financial|Conglomerate", ind_text_early, ignore.case = TRUE)) {
-          pb_val
-        } else if (!is.na(tgt_price)) {
-          tgt_price
-        } else {
-          pb_val
-        }
-        rating_info <- derive_investment_rating(cur_price, rating_anchor)
         val_method <- derive_valuation_method(isolate(d_cash_flow()), industry_text = ind_text_early)
-        
+        method_l <- tolower(as.character(if (is.null(val_method$method)) "" else val_method$method))
+
+        # 目標價對齊「主要評價方法」，避免誤把 P/B 標成 DCF 或交叉驗證誤選 DDM
+        rating_anchor <- {
+          if (grepl("交叉", method_l)) {
+            if (is.finite(dcf_price)) dcf_price else if (is.finite(ddm_val)) ddm_val else pb_val
+          } else if (grepl("p/?b|本淨|資產法|相對估值", method_l)) {
+            if (is.finite(pb_val)) pb_val else if (is.finite(ri_val)) ri_val else dcf_price
+          } else if (grepl("ddm|股利", method_l) && !grepl("dcf", method_l)) {
+            if (is.finite(ddm_val)) ddm_val else dcf_price
+          } else if (grepl("剩餘|剩余|\\bri\\b", method_l) && !grepl("dcf|ddm|p/?b", method_l)) {
+            if (is.finite(ri_val)) ri_val else dcf_price
+          } else if (is.finite(dcf_price)) {
+            dcf_price
+          } else if (is.finite(pb_val)) {
+            pb_val
+          } else if (is.finite(ddm_val)) {
+            ddm_val
+          } else {
+            ri_val
+          }
+        }
+
+        rating_info <- derive_investment_rating(cur_price, rating_anchor)
+
         sum_df <- isolate(summary_data())
         co_name <- isolate(attr(sum_df, "company_name"))
-        if (is.null(co_name) || is.na(co_name) || co_name == "") co_name <- isolate(current_ticker())
-        
+        if (is.null(co_name) || is.na(co_name) || !nzchar(as.character(co_name))) {
+          co_name <- isolate(current_ticker())
+        }
+
         ind_text <- isolate(corp_industry_text())
         sector_str <- "N/A"; industry_str <- "N/A"
         if (!is.null(ind_text) && grepl("\\|", ind_text)) {
@@ -2906,36 +2928,44 @@ server <- function(input, output, session) {
           sector_str <- trimws(sub("Sector:\\s*", "", parts[1]))
           if (length(parts) > 1) industry_str <- trimws(sub("Industry:\\s*", "", parts[2]))
         }
-        
+
         use_calc_wacc <- isTRUE(isolate(input$use_calculated_wacc)) && !is.null(isolate(calculated_wacc()))
         wacc_str <- if (use_calc_wacc) {
           paste0(round(isolate(calculated_wacc()) * 100, 2), "% (CAPM 估算)")
-        } else if (isolate(input$dcf_mode) == "gordon") {
+        } else if (identical(isolate(input$dcf_mode), "gordon")) {
           paste0(isolate(input$wacc_gordon), "% (手動)")
         } else {
           paste0(isolate(input$wacc_stage1), "% / ", isolate(input$wacc_stage2), "% (兩階段)")
         }
-        
+
         warn_msgs <- collect_fraud_warnings(
           isolate(d_cash_flow()), isolate(d_income_statement()), isolate(d_balance_sheet())
         )
-        
+
         highlights <- c()
-        if (!is.na(rating_info$upside_pct)) {
+        if (is.finite(rating_info$upside_pct)) {
           highlights <- c(highlights, sprintf(
-            "依 %s 估值，目標價 %s，潛在報酬 %+.1f%%，評等「%s」。",
+            "依「%s」評價，目標價 %s，潛在報酬 %+.1f%%，評等「%s」。",
             val_method$method,
-            ifelse(is.na(rating_anchor), "N/A", paste0("$", round(rating_anchor, 2))),
+            ifelse(is.finite(rating_anchor), paste0("$", round(rating_anchor, 2)), "N/A"),
             rating_info$upside_pct, rating_info$rating
           ))
         }
-        if (!is.na(ev_val)) highlights <- c(highlights, paste0("企業價值 (EV) 估算：", format_dollar_abbr(ev_val), "。"))
-        if (!is.na(ddm_val)) highlights <- c(highlights, paste0("DDM 交叉驗證合理價：$", round(ddm_val, 2), "。"))
-        if (!is.na(pb_val)) highlights <- c(highlights, paste0("P/B 基準合理價：$", round(pb_val, 2), "。"))
+        if (is.finite(dcf_price)) highlights <- c(highlights, paste0("DCF 每股合理價：$", round(dcf_price, 2), "。"))
+        if (is.finite(ev_val)) highlights <- c(highlights, paste0("DCF 企業價值 (EV)：", format_dollar_abbr(ev_val), "。"))
+        if (is.finite(ddm_val)) highlights <- c(highlights, paste0("DDM 每股合理價：$", round(ddm_val, 2), "。"))
+        if (is.finite(ri_val)) highlights <- c(highlights, paste0("RI 每股合理價：$", round(ri_val, 2), "。"))
+        if (is.finite(pb_val)) highlights <- c(highlights, paste0("P/B 每股合理價：$", round(pb_val, 2), "。"))
         highlights <- c(highlights, val_method$rationale)
-        
+
+        tmp_html <- tempfile(fileext = ".html")
         rmarkdown::render(
-          input = tempReport, output_file = file,
+          input = tempReport,
+          output_file = basename(tmp_html),
+          output_dir = dirname(tmp_html),
+          intermediates_dir = tempdir(),
+          clean = TRUE,
+          quiet = TRUE,
           params = list(
             stock_code = isolate(current_ticker()),
             company_name = co_name,
@@ -2948,8 +2978,10 @@ server <- function(input, output, session) {
             current_price = cur_price,
             target_price = rating_anchor,
             upside_pct = rating_info$upside_pct,
+            dcf_price = dcf_price,
             ddm_value = ddm_val,
             pb_value = pb_val,
+            ri_value = ri_val,
             ev_value = ev_val,
             margin_of_safety = rating_info$margin_of_safety,
             primary_method = val_method$method,
@@ -2957,7 +2989,7 @@ server <- function(input, output, session) {
             wacc = wacc_str,
             terminal_growth = paste0(isolate(input$sgr), "%"),
             forecast_years = isolate(input$years),
-            dcf_mode = isolate(input$dcf_mode),
+            dcf_mode = .report_dcf_mode_label(isolate(input$dcf_mode)),
             market_cap = extract_summary_item(sum_df, "Market Cap"),
             pe_ratio = extract_summary_item(sum_df, "PE Ratio|Trailing P/E"),
             beta = extract_summary_item(sum_df, "^Beta"),
@@ -2975,9 +3007,19 @@ server <- function(input, output, session) {
           ),
           envir = new.env(parent = globalenv())
         )
-        showNotification("✅ 投資意見報告已產出", type = "message")
+
+        render_report_pdf(tmp_html, file)
+        showNotification("✅ PDF 投資意見報告已產出", type = "message")
       }, error = function(e) {
-        showNotification(paste("報告生成失敗:", e$message), type = "error")
+        showNotification(paste("報告生成失敗:", e$message), type = "error", duration = 12)
+        # 寫入最小錯誤 PDF 避免下載 handler 空檔
+        tryCatch({
+          grDevices::pdf(file, width = 8.27, height = 11.69)
+          plot.new()
+          text(0.5, 0.6, "YNow 報告生成失敗", cex = 1.4)
+          text(0.5, 0.45, paste(strwrap(e$message, 60), collapse = "\n"), cex = 0.8)
+          grDevices::dev.off()
+        }, error = function(e2) NULL)
       })
     }
   )

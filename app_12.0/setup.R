@@ -774,6 +774,38 @@ trim_report_table <- function(df, max_rows = 18, max_cols = 7) {
   df
 }
 
+# 報告用：NULL / 空字串 → NA_real_
+.report_num <- function(x) {
+  if (is.null(x) || length(x) == 0) return(NA_real_)
+  n <- suppressWarnings(as.numeric(x[[1]]))
+  if (length(n) != 1 || !is.finite(n)) NA_real_ else n
+}
+
+# DCF 模式顯示名稱
+.report_dcf_mode_label <- function(mode) {
+  m <- if (is.null(mode) || length(mode) == 0 || is.na(mode[1])) "" else as.character(mode[1])
+  if (identical(m, "gordon")) return("明確預測期 + Gordon 終值")
+  if (identical(m, "two_stage")) return("兩階段成長")
+  if (!nzchar(m)) return("N/A")
+  m
+}
+
+# HTML → PDF（shinyapps／本機容器常用 --no-sandbox）
+render_report_pdf <- function(html_path, pdf_path) {
+  if (!requireNamespace("pagedown", quietly = TRUE)) {
+    stop("需要 pagedown 套件以產出 PDF")
+  }
+  pagedown::chrome_print(
+    input = html_path,
+    output = pdf_path,
+    wait = 2,
+    timeout = 120,
+    verbose = 0,
+    extra_args = c("--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage")
+  )
+  invisible(pdf_path)
+}
+
 # =========================================================
 # 🌟 [共用繪圖引擎] 產生具有高度解讀意義的折現互動圖表 (Using Plotly)
 # =========================================================

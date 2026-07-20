@@ -31,7 +31,7 @@ pacman::p_load(
   tidyverse, dplyr, stringr, purrr, magrittr, glue,
 
   # 2. 視覺化與報表 (Visualization & Reporting)
-  ggplot2, ggrepel, plotly, DT, rmarkdown, knitr, scales,
+  ggplot2, ggrepel, plotly, DT, rmarkdown, knitr, scales, pagedown,
 
   # 3. 網頁與 Python 整合（雲端版不依賴 chromote / Chrome）
   rvest, xml2, reticulate,
