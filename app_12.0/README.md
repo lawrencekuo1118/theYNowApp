@@ -14,6 +14,8 @@
 shiny::runApp("app_12.0")
 ```
 
+進入點為 `app.R`（唯一）。UI／Server 分別在 `ynow_ui.R`／`ynow_server.R`，勿在根目錄再放 `ui.R`／`server.R`，否則 shinyapps 可能出現「No UI defined」。
+
 ## V12 核心（不做估值倉庫）
 
 查詢時即時抓取歷史財報／股價，在 **Current Session** 動態重建各再平衡日的：

@@ -69,17 +69,18 @@ if (file.exists(python_path) && !on_shinyapps) {
 # ==========================================
 # 應用程式進入點與全域設定
 # ==========================================
-source("setup.R", encoding = "UTF-8")
-source("web_crawler.R", encoding = "UTF-8")
-source("industry_standards.R", encoding = "UTF-8")
-source("kpi_module.R", encoding = "UTF-8")
-source("investment_decision_module.R", encoding = "UTF-8")
-source("ddm_module.R", encoding = "UTF-8")
-source("fcf_projection_module.R", encoding = "UTF-8")
-source("ri_module.R", encoding = "UTF-8")
-source("pb_asset_module.R", encoding = "UTF-8")
-source("backtest_module.R", encoding = "UTF-8")
-source("backtest_validation.R", encoding = "UTF-8")
-source("default_config.R", encoding = "UTF-8")
+# local=TRUE：物件寫入「正在評估 global.R 的環境」（即 app.R 的評估環境）
+source("setup.R", local = TRUE, encoding = "UTF-8")
+source("web_crawler.R", local = TRUE, encoding = "UTF-8")
+source("industry_standards.R", local = TRUE, encoding = "UTF-8")
+source("kpi_module.R", local = TRUE, encoding = "UTF-8")
+source("investment_decision_module.R", local = TRUE, encoding = "UTF-8")
+source("ddm_module.R", local = TRUE, encoding = "UTF-8")
+source("fcf_projection_module.R", local = TRUE, encoding = "UTF-8")
+source("ri_module.R", local = TRUE, encoding = "UTF-8")
+source("pb_asset_module.R", local = TRUE, encoding = "UTF-8")
+source("backtest_module.R", local = TRUE, encoding = "UTF-8")
+source("backtest_validation.R", local = TRUE, encoding = "UTF-8")
+source("default_config.R", local = TRUE, encoding = "UTF-8")
 
 cat("✔️ 所有套件已載入，環境初始化完成。（app_12.0 — Backtest Logic Optimization）\n")
