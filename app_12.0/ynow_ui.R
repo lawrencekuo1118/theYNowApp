@@ -1082,7 +1082,7 @@ ui <- dashboardPage(
                   ),
                   tags$div(
                     class = "ynow-bt-run-note",
-                    "季頻再平衡 · 依所選估值模型 PIT 重建 · Session-only。"
+                    "季頻再平衡 · Rolling β 折現 · 依所選估值模型 PIT 重建。"
                   ),
                   uiOutput("bt_run_status")
                 )
@@ -1094,7 +1094,7 @@ ui <- dashboardPage(
                   title = tagList(icon("balance-scale"), "Historical Fair Value Timeline（核心圖）"),
                   width = 12, status = "primary", solidHeader = TRUE,
                   .bt_section_intro(
-                    "Market Price vs 動態重建 Fair Value（依所選估值模型）與 MOS。僅使用公告財年 ≤ 回測日的資料，避免 Look-ahead Bias。"
+                    "Market Price vs 動態重建 Fair Value（依所選估值模型；Ke／WACC 用各再平衡日 Rolling β）。僅使用公告財年 ≤ 回測日的資料，避免 Look-ahead Bias。"
                   ),
                   uiOutput("bt_valuation_summary"),
                   plotlyOutput("bt_hfv_timeline", height = "380px") %>% withSpinner(),

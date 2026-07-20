@@ -2130,6 +2130,7 @@ server <- function(input, output, session) {
   })
 
   # Session「此刻」模型參數（動態重建用；不落庫）
+  # 歷史 PIT 的 Ke/WACC 會在再平衡日以 Rolling β 覆寫；此處提供 Rf/Rm／資本結構與定值 fallback。
   bt_current_model_params <- reactive({
     use_calc <- isTRUE(input$use_calculated_wacc) &&
       !is.null(calculated_wacc()) && is.finite(calculated_wacc())
@@ -2164,10 +2165,56 @@ server <- function(input, output, session) {
     if (!is.finite(g_explicit)) g_explicit <- sgr
     fv_model <- as.character(input$bt_fv_model %||% "dcf")[1]
     if (!fv_model %in% c("dcf", "ddm", "ri", "pb", "composite")) fv_model <- "dcf"
+
+    rf <- suppressWarnings(as.numeric(input$capm_rf)[1]) / 100
+    if (!is.finite(rf) || rf <= 0) {
+      rf <- tryCatch(as.numeric(cached_get_risk_free_rate()) / 100, error = function(e) NA_real_)
+    }
+    if (!is.finite(rf) || rf <= 0) rf <- APP_DEFAULTS$capm_rf / 100
+    rm <- suppressWarnings(as.numeric(input$capm_rm)[1]) / 100
+    if (!is.finite(rm) || rm <= 0) rm <- APP_DEFAULTS$capm_rm / 100
+    rd <- suppressWarnings(as.numeric(input$wacc_rd)[1]) / 100
+    if (!is.finite(rd) || rd < 0) rd <- APP_DEFAULTS$wacc_rd / 100
+    tax <- suppressWarnings(as.numeric(input$wacc_tax)[1]) / 100
+    if (!is.finite(tax) || tax < 0) tax <- APP_DEFAULTS$wacc_tax / 100
+    beta_fb <- suppressWarnings(as.numeric(input$capm_beta)[1])
+    if (!is.finite(beta_fb)) beta_fb <- APP_DEFAULTS$capm_beta
+
+    # Freeze session capital structure weights for rolling-Ke → WACC mapping.
+    we <- NA_real_; wd <- NA_real_
+    tryCatch({
+      bs <- d_balance_sheet()
+      sum_df <- summary_data()
+      shares <- select_current_metric(bs, "Share Issued|Ordinary Shares Number", "stock")
+      price_val <- NA_real_
+      if (!is.null(sum_df) && is.data.frame(sum_df) && "Previous Close" %in% sum_df$Item) {
+        price_val <- parse_financial_number(sum_df$Value[sum_df$Item == "Previous Close"][1])
+      }
+      equity_mv <- if (is.finite(shares) && shares > 0 && is.finite(price_val)) {
+        shares * price_val
+      } else {
+        select_current_metric(bs, "Common Stock Equity", "stock")
+      }
+      debt <- select_current_metric(bs, "Total Debt", "stock")
+      debt <- if (is.na(debt)) 0 else debt
+      if (is.finite(equity_mv) && equity_mv > 0) {
+        tot <- equity_mv + debt
+        if (is.finite(tot) && tot > 0) {
+          we <- equity_mv / tot
+          wd <- debt / tot
+        }
+      }
+    }, error = function(e) NULL)
+
     list(
       wacc = wacc, ke = ke, sgr = sgr, g_explicit = g_explicit,
       n_years = n_years, pb_mid = pb_mid, ddm_g = ddm_g,
-      fv_model = fv_model
+      fv_model = fv_model,
+      rf = rf, rm = rm, rd = rd, tax = tax,
+      we = we, wd = wd,
+      beta_fallback = beta_fb,
+      beta_lookback_months = 60L,
+      beta_min_months = 24L
     )
   })
 
@@ -2373,7 +2420,7 @@ server <- function(input, output, session) {
           alpha = alpha_df, gap = gap, mos = mos_tab, fv = fv_edge, plateau = plateau
         ))
         bt_run_msg(sprintf(
-          "完成：%s 日 · 季頻 PIT · 較佳=%s · WACC=%.2f%% Ke=%.2f%% SGR=%.2f%%（Session-only）",
+          "完成：%s 日 · 季頻 PIT · Rolling β · 較佳=%s · Session WACC=%.2f%% Ke=%.2f%% SGR=%.2f%%",
           res$n_days, res$metrics$best,
           mp$wacc * 100, mp$ke * 100, mp$sgr * 100
         ))

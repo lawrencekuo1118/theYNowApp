@@ -3,13 +3,13 @@
 # --------------------------------------------------------------
 # Dynamic session-only PIT (point-in-time) backtest engine.
 # - No warehouse: every rebalance date reconstructs fair values
-#   from annual financials whose fiscal year <= calendar_year - 1
-#   using CURRENT session model parameters (WACC / Ke / g / n / P/B).
+#   from annual financials whose fiscal year <= calendar_year - 1.
+#   Growth / n / P/B come from CURRENT session; Ke/WACC use Rolling Beta.
 # - Multi-model composite fair value: DCF + DDM + RI + P/B, then
 #   mean of available models.
 # - Mode A (chart Model_A): session params × historical financials
-#   → PIT composite fair-value path (LOCF, normalized). Independent
-#   of position / exposure assumptions.
+#   → PIT composite/selected fair-value path. Discount rates (Ke/WACC)
+#   use Rolling Beta vs benchmark at each rebalance (not a fixed session β).
 # - Exposure / Trade_A: MOS hysteresis + Great Filter (diagnostic;
 #   also the base weight for Strategy B).
 # - Strategy B: sentiment overlay ONLY scales Exp_A in
@@ -456,6 +456,95 @@ fetch_price_history_df <- function(ticker, period = "5y") {
   }, error = function(e) rep(NA_real_, length(closes)))
 }
 
+#' Rolling beta as-of a date from daily prices (Yahoo-style 5Y monthly when possible).
+#' Uses month-end returns ending at/before as_of; falls back to weekly if months scarce.
+#' @return numeric beta or NA_real_
+estimate_rolling_beta <- function(stock_close, bench_close, dates, as_of,
+                                  lookback_months = 60L, min_obs = 24L) {
+  dates <- as.Date(dates)
+  as_of <- as.Date(as_of)[1]
+  stock_close <- as.numeric(stock_close)
+  bench_close <- as.numeric(bench_close)
+  ok <- is.finite(stock_close) & is.finite(bench_close) & !is.na(dates) & dates <= as_of
+  if (sum(ok, na.rm = TRUE) < 40L) return(NA_real_)
+  d <- data.frame(Date = dates[ok], S = stock_close[ok], M = bench_close[ok])
+  d <- d[order(d$Date), , drop = FALSE]
+
+  .beta_from_prices <- function(px, min_n) {
+    if (nrow(px) < min_n + 1L) return(NA_real_)
+    rs <- diff(px$S) / head(px$S, -1)
+    rm <- diff(px$M) / head(px$M, -1)
+    fine <- is.finite(rs) & is.finite(rm)
+    rs <- rs[fine]; rm <- rm[fine]
+    if (length(rs) < min_n) return(NA_real_)
+    v <- stats::var(rm)
+    if (!is.finite(v) || v <= 1e-12) return(NA_real_)
+    b <- stats::cov(rs, rm) / v
+    if (!is.finite(b)) return(NA_real_)
+    max(min(b, 3.5), -0.5)
+  }
+
+  # Prefer month-end series (aligns with Yahoo "5Y Monthly" beta).
+  ym <- format(d$Date, "%Y-%m")
+  mth <- d[!duplicated(ym, fromLast = TRUE), , drop = FALSE]
+  mth <- tail(mth, as.integer(lookback_months) + 1L)
+  beta <- .beta_from_prices(mth, min_obs)
+  if (is.finite(beta)) return(beta)
+
+  # Weekly fallback when history is short.
+  yw <- format(d$Date, "%Y-%W")
+  wk <- d[!duplicated(yw, fromLast = TRUE), , drop = FALSE]
+  wk <- tail(wk, max(as.integer(lookback_months) * 4L, 52L) + 1L)
+  .beta_from_prices(wk, max(min_obs, 36L))
+}
+
+#' Build point-in-time Ke/WACC from rolling beta + session CAPM structure.
+#' Falls back to session ke/wacc when beta cannot be estimated.
+pit_discount_params <- function(model_params, stock_close, bench_close, dates, as_of) {
+  mp <- model_params
+  beta_i <- estimate_rolling_beta(
+    stock_close, bench_close, dates, as_of,
+    lookback_months = as.integer(.safe_num(model_params$beta_lookback_months, 60)),
+    min_obs = as.integer(.safe_num(model_params$beta_min_months, 24))
+  )
+  if (!is.finite(beta_i)) {
+    beta_i <- .safe_num(model_params$beta_fallback, NA_real_)
+  }
+  rf <- .safe_num(model_params$rf, NA_real_)
+  rm <- .safe_num(model_params$rm, NA_real_)
+  ke0 <- .safe_num(model_params$ke, NA_real_)
+  wacc0 <- .safe_num(model_params$wacc, NA_real_)
+
+  ke_i <- ke0
+  wacc_i <- wacc0
+  if (is.finite(beta_i) && is.finite(rf) && is.finite(rm)) {
+    ke_try <- rf + beta_i * (rm - rf)
+    if (is.finite(ke_try) && ke_try > 0.01) {
+      ke_i <- ke_try
+      we <- .safe_num(model_params$we, NA_real_)
+      wd <- .safe_num(model_params$wd, NA_real_)
+      rd <- .safe_num(model_params$rd, 0.05)
+      tax <- .safe_num(model_params$tax, 0.21)
+      if (is.finite(we) && is.finite(wd) && (we + wd) > 0) {
+        wacc_try <- we * ke_i + wd * rd * (1 - tax)
+        if (is.finite(wacc_try) && wacc_try > 0.01) wacc_i <- wacc_try
+      } else if (is.finite(ke0) && ke0 > 0 && is.finite(wacc0) && wacc0 > 0) {
+        wacc_i <- wacc0 * (ke_i / ke0)
+      }
+    }
+  }
+  if (!is.finite(ke_i) || ke_i <= 0) ke_i <- ke0
+  if (!is.finite(wacc_i) || wacc_i <= 0) wacc_i <- wacc0
+  # Keep terminal g < WACC
+  sgr <- .safe_num(mp$sgr, 0.025)
+  if (is.finite(wacc_i) && is.finite(sgr) && sgr >= wacc_i) {
+    mp$sgr <- max(0, wacc_i - 0.005)
+  }
+  mp$ke <- ke_i
+  mp$wacc <- wacc_i
+  list(model_params = mp, beta = beta_i, ke = ke_i, wacc = wacc_i)
+}
+
 # ---------- parameter derivation ----------
 
 #' Derive company-specific backtest thresholds & weights.
@@ -658,7 +747,8 @@ sentiment_multiplier <- function(mom_score, rsi_score, w_mom = 0.5, w_rsi = 0.5)
 #' Given aligned daily df (Date, Close, Bench, RSI, ret20), fundamentals
 #' and params, simulate quarterly rebalance and return
 #' equity_df / valuation_df / exposure summary / explain_last.
-.run_backtest_core <- function(df, fund, params, model_params, mos_fallback = 0) {
+.run_backtest_core <- function(df, fund, params, model_params, mos_fallback = 0,
+                               beta_df = NULL) {
   thr_npm <- .safe_num(params$bt_net_margin, 5)
   thr_rev <- .safe_num(params$bt_rev_growth, 10)
   thr_eps <- .safe_num(params$bt_eps_growth, 10)
@@ -666,6 +756,12 @@ sentiment_multiplier <- function(mom_score, rsi_score, w_mom = 0.5, w_rsi = 0.5)
   w_mom <- .safe_num(params$bt_w_mom, 0.5)
   w_rsi <- .safe_num(params$bt_w_rsi, 0.5)
   w_vg  <- .safe_num(params$bt_w_vg, 0.7)
+
+  # Full history for rolling β (may be longer than the simulation window).
+  if (is.null(beta_df) || !is.data.frame(beta_df) ||
+      !all(c("Date", "Close", "Bench") %in% names(beta_df))) {
+    beta_df <- df[, c("Date", "Close", "Bench"), drop = FALSE]
+  }
 
   # Quarter-end rebalance: last available trading day per (year, quarter).
   qkey <- sprintf("%d-Q%d",
@@ -714,7 +810,17 @@ sentiment_multiplier <- function(mom_score, rsi_score, w_mom = 0.5, w_rsi = 0.5)
       rsi_score <- if (rsi >= 80) 0.15 else if (rsi >= 70) 0.4
                    else if (rsi <= 30) 0.85 else 0.55
 
-      pit <- reconstruct_fair_value_pit(fund_i, price_i, model_params)
+      # Rolling β → Ke/WACC at this rebalance (not session fixed β).
+      disc <- pit_discount_params(
+        model_params,
+        stock_close = beta_df$Close,
+        bench_close = beta_df$Bench,
+        dates = beta_df$Date,
+        as_of = df$Date[i]
+      )
+      mp_i <- disc$model_params
+
+      pit <- reconstruct_fair_value_pit(fund_i, price_i, mp_i)
       mos_i <- if (is.finite(pit$mos)) pit$mos else mos_fallback
       signal_i <- pit$signal
       if (is.finite(pit$fair_value) && pit$fair_value > 0) {
@@ -740,7 +846,7 @@ sentiment_multiplier <- function(mom_score, rsi_score, w_mom = 0.5, w_rsi = 0.5)
 
       # explainability text
       explain_txt <- sprintf(
-        "%s | 公允 %.2f (dcf %.2f / ddm %.2f / ri %.2f / pb %.2f) vs 市價 %.2f, MOS %.1f%%, score %.0f/100. 過濾:%s(%s). Exp_A=%.2f, Exp_B=%.2f (Sent x%.2f).",
+        "%s | 公允 %.2f (dcf %.2f / ddm %.2f / ri %.2f / pb %.2f) vs 市價 %.2f, MOS %.1f%%, score %.0f/100. Rollingβ=%.2f Ke=%.1f%% WACC=%.1f%%. 過濾:%s(%s). Exp_A=%.2f, Exp_B=%.2f (Sent x%.2f).",
         signal_i,
         .safe_num(pit$fair_value, NA_real_),
         .safe_num(pit$fv_dcf, NA_real_), .safe_num(pit$fv_ddm, NA_real_),
@@ -748,6 +854,9 @@ sentiment_multiplier <- function(mom_score, rsi_score, w_mom = 0.5, w_rsi = 0.5)
         .safe_num(price_i, NA_real_),
         100 * .safe_num(mos_i, NA_real_),
         .safe_num(pit$valuation_score, NA_real_),
+        .safe_num(disc$beta, NA_real_),
+        100 * .safe_num(disc$ke, NA_real_),
+        100 * .safe_num(disc$wacc, NA_real_),
         if (isTRUE(gf$pass)) "PASS" else "FAIL",
         gf$path, pos_a, pos_b, sent_mult
       )
@@ -765,6 +874,9 @@ sentiment_multiplier <- function(mom_score, rsi_score, w_mom = 0.5, w_rsi = 0.5)
         mos = mos_i,
         signal = signal_i,
         valuation_score = .safe_num(pit$valuation_score, NA_real_),
+        rolling_beta = .safe_num(disc$beta, NA_real_),
+        ke_pit = .safe_num(disc$ke, NA_real_),
+        wacc_pit = .safe_num(disc$wacc, NA_real_),
         exp_a = pos_a,
         exp_b = pos_b,
         filter_pass = isTRUE(gf$pass),
@@ -783,6 +895,7 @@ sentiment_multiplier <- function(mom_score, rsi_score, w_mom = 0.5, w_rsi = 0.5)
         fv_ri = pit$fv_ri,  fv_pb = pit$fv_pb,
         mos = mos_i, signal = signal_i,
         valuation_score = pit$valuation_score,
+        rolling_beta = disc$beta, ke_pit = disc$ke, wacc_pit = disc$wacc,
         filter_pass = isTRUE(gf$pass),
         filter_path = gf$path,
         exp_a = pos_a, exp_b = pos_b,
@@ -823,7 +936,9 @@ sentiment_multiplier <- function(mom_score, rsi_score, w_mom = 0.5, w_rsi = 0.5)
       fv_dcf = numeric(), fv_ddm = numeric(), fv_ri = numeric(), fv_pb = numeric(),
       fair_value = numeric(), strategy_fv = numeric(),
       mos = numeric(), signal = character(),
-      valuation_score = numeric(), exp_a = numeric(), exp_b = numeric(),
+      valuation_score = numeric(),
+      rolling_beta = numeric(), ke_pit = numeric(), wacc_pit = numeric(),
+      exp_a = numeric(), exp_b = numeric(),
       filter_pass = logical(), filter_path = character(),
       pos_fundamental = numeric(), explain = character(),
       stringsAsFactors = FALSE
@@ -915,7 +1030,8 @@ sentiment_multiplier <- function(mom_score, rsi_score, w_mom = 0.5, w_rsi = 0.5)
 # ---------- public API ----------
 
 #' Run one company backtest (v12).
-#' @param model_params list(wacc, ke, sgr, g_explicit, n_years, pb_mid, ddm_g).
+#' @param model_params list(wacc, ke, sgr, g_explicit, n_years, pb_mid, ddm_g,
+#'   fv_model, rf, rm, rd, tax, we, wd, beta_fallback).
 #'   `dcf_params` accepted as a legacy alias (server.R still passes it).
 run_company_backtest <- function(ticker,
                                  d_is, d_bs, d_cf,
@@ -944,8 +1060,15 @@ run_company_backtest <- function(ticker,
   if (is.null(model_params$fv_model) || !nzchar(as.character(model_params$fv_model)[1])) {
     model_params$fv_model <- "dcf"
   }
+  if (is.null(model_params$beta_lookback_months) ||
+      !is.finite(.safe_num(model_params$beta_lookback_months, NA_real_))) {
+    model_params$beta_lookback_months <- 60L
+  }
 
-  period <- paste0(as.integer(years), "y")
+  # Fetch extra history so early rebalances still have ~5Y monthly β lookback.
+  sim_years <- max(1L, as.integer(years))
+  fetch_years <- max(sim_years + 5L, 10L)
+  period <- paste0(fetch_years, "y")
   px <- fetch_price_history_df(ticker, period)
   if (is.null(px) || nrow(px) < 80) {
     stop("無法取得足夠的歷史股價（至少約 80 個交易日）")
@@ -956,11 +1079,19 @@ run_company_backtest <- function(ticker,
     names(bench) <- names(px)
     bench_ticker <- paste0(ticker, "(BH)")
   }
-  df <- .prepare_daily_df(px, bench)
+  df_full <- .prepare_daily_df(px, bench)
+  beta_df <- df_full[, c("Date", "Close", "Bench"), drop = FALSE]
+
+  # Simulation window = last `sim_years` (equity / Mode A chart).
+  cutoff <- max(df_full$Date) - as.difftime(round(sim_years * 365.25), units = "days")
+  df <- df_full[df_full$Date >= cutoff, , drop = FALSE]
+  if (nrow(df) < 80) df <- df_full
+
   fund <- build_annual_fundamentals(d_is, d_bs, d_cf)
   mos_fallback <- .safe_num(mos, 0)
 
-  core <- .run_backtest_core(df, fund, params, model_params, mos_fallback)
+  core <- .run_backtest_core(df, fund, params, model_params, mos_fallback,
+                             beta_df = beta_df)
 
   list(
     equity_df    = core$equity_df,
