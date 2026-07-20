@@ -1,11 +1,12 @@
 # The YNow App v12.0 — Backtest Logic Optimization
 
-聚焦回測可信度：Point-in-Time 動態重建歷史合理價；圖上模式 A 為參數×歷史財報試算路徑（與持倉無關），模式 B 為情緒疊加曝險模擬。
+聚焦回測可信度：Point-in-Time 動態重建歷史合理價；**淨值圖**比較兩大模式的**策略淨值**（倉位×報酬），合理價另見 Fair Value 時間軸。
 
 ## 回測設計重點
-- Strategy A（圖）：現有 App 參數假設 × 歷史財報 PIT 綜合合理價（正規化），與持倉／曝險無關
-- Exp_A／Trade_A：MOS 滯後倉位＋Great Filter（診斷用，亦為 B 的倉位基準）
-- Strategy B：情緒僅能在 Exp_A 的 75%–125% 調整
+- **純基本面價值 (Trade_A)**：MOS 滯後＋Great Filter → Exp_A → 策略淨值（淨值圖橘線）
+- **情緒波動價值 (Trade_B)**：Exp_B = Exp_A × 情緒乘數（75%–125%）→ 策略淨值（淨值圖藍線；嵌套於 A）
+- **評價模型**：算合理價／MOS（驅動 Exp_A）；**不**畫在淨值圖
+- **Model_A**：合理價指數，供參數高原；HFV Timeline 用美元合理價點
 - Historical Fair Value Timeline、MOS／FV 前瞻驗證、參數高原
 
 ## 執行
@@ -22,7 +23,7 @@ shiny::runApp("app_12.0")
 
 - DCF / DDM / RI / P/B Fair Value
 - MOS、訊號可解釋明細
-- 圖上模式 A＝參數×歷史財報合理價路徑；Exp_A／B＝曝險模擬（情緒僅能在 Exp_A 的 75%–125% 調整）
+- 兩模式策略淨值（Trade_A／Trade_B）與 Buy&Hold／SPY 比較
 
 結果不永久落庫。
 
