@@ -311,7 +311,7 @@ server <- function(input, output, session) {
 
     sidebarMenu(
       id = "sidebar_tabs",
-      mk("Get Started", "get_started", "play-circle",
+      mk(HTML("<b>Get Started</b>"), "get_started", "play-circle",
          fallback_label = "start", fallback_color = "purple"),
       mk("Dashboard", "dashboard", "chart-line"),
       # 順序對齊 Model Selector 左→右：DCF → DDM → P/B → RI

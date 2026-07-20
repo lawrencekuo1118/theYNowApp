@@ -601,7 +601,7 @@ ui <- dashboardPage(
     tabItems(
       tabItem(
         tabName = "get_started",
-        h2("Get Started"),
+        h2(tags$b("Get Started")),
         helpText("先確認適合的估值模型；下方 SGR 主要供 DCF／RI 終值使用。DDM 股利成長率可在 DDM 分頁單獨覆寫。"),
         fluidRow(
           box(
