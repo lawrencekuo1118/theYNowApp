@@ -2162,9 +2162,12 @@ server <- function(input, output, session) {
     if (!is.finite(wacc) || wacc <= 0) wacc <- APP_DEFAULTS$wacc_gordon / 100
     if (!is.finite(sgr)) sgr <- APP_DEFAULTS$sgr / 100
     if (!is.finite(g_explicit)) g_explicit <- sgr
+    fv_model <- as.character(input$bt_fv_model %||% "dcf")[1]
+    if (!fv_model %in% c("dcf", "ddm", "ri", "pb", "composite")) fv_model <- "dcf"
     list(
       wacc = wacc, ke = ke, sgr = sgr, g_explicit = g_explicit,
-      n_years = n_years, pb_mid = pb_mid, ddm_g = ddm_g
+      n_years = n_years, pb_mid = pb_mid, ddm_g = ddm_g,
+      fv_model = fv_model
     )
   })
 
@@ -2201,12 +2204,35 @@ server <- function(input, output, session) {
       industry_choice = input$industry_choice
     )
     apply_bt_params_to_ui(p)
+    # Align Mode A valuation model with Dashboard recommendation when auto.
+    if (isTRUE(input$bt_param_auto)) {
+      rec <- tryCatch(
+        recommend_valuation_models(
+          d_cash_flow(),
+          industry_text = input$industry_choice %||% "",
+          d_is = d_income_statement(),
+          d_bs = d_balance_sheet()
+        ),
+        error = function(e) NULL
+      )
+      fv_sel <- "dcf"
+      if (!is.null(rec)) {
+        tags <- tolower(as.character(rec$tags %||% character(0)))
+        sm <- as.character(rec$summary_method %||% "")[1]
+        if ("dcf" %in% tags || grepl("DCF", sm, ignore.case = TRUE)) fv_sel <- "dcf"
+        else if ("ddm" %in% tags || grepl("DDM", sm, ignore.case = TRUE)) fv_sel <- "ddm"
+        else if ("ri" %in% tags || grepl("\\bRI\\b|剩餘", sm, ignore.case = TRUE)) fv_sel <- "ri"
+        else if ("pb" %in% tags || grepl("P/B|本淨", sm, ignore.case = TRUE)) fv_sel <- "pb"
+        else if (grepl("交叉", sm)) fv_sel <- "composite"
+      }
+      updateRadioButtons(session, "bt_fv_model", selected = fv_sel)
+    }
     invisible(p)
   }
 
   observeEvent(list(current_ticker(), scraped_financials()), {
     req(current_ticker(), scraped_financials())
-    if (!identical(input$bt_param_mode, "auto")) return()
+    if (!isTRUE(input$bt_param_auto)) return()
     tryCatch(refresh_bt_params(fetch_hist = FALSE), error = function(e) {
       bt_param_notes_txt(paste("自動推導失敗：", e$message))
     })
@@ -2221,8 +2247,8 @@ server <- function(input, output, session) {
     })
   })
 
-  observeEvent(input$bt_param_mode, {
-    if (identical(input$bt_param_mode, "auto")) {
+  observeEvent(input$bt_param_auto, {
+    if (isTRUE(input$bt_param_auto)) {
       tryCatch(refresh_bt_params(fetch_hist = FALSE), error = function(e) NULL)
     } else {
       bt_param_notes_txt("手動覆寫模式：調整門檻／權重後再執行；啟動回測不會覆寫設定。")
@@ -2232,8 +2258,8 @@ server <- function(input, output, session) {
   observeEvent(list(input$bt_w_vg, input$bt_w_mom, input$bt_w_rsi,
                     input$bt_net_margin, input$bt_rev_growth, input$bt_eps_growth, input$bt_fcf_cv), {
     if (isTRUE(bt_applying_params())) return()
-    if (!identical(input$bt_param_mode, "auto")) return()
-    updateRadioButtons(session, "bt_param_mode", selected = "manual")
+    if (!isTRUE(input$bt_param_auto)) return()
+    updateCheckboxInput(session, "bt_param_auto", value = FALSE)
   }, ignoreInit = TRUE)
 
   output$bt_param_notes <- renderUI({
@@ -2282,16 +2308,21 @@ server <- function(input, output, session) {
           years = 5
         )
         incProgress(0.55, detail = "Alpha／MOS／Gap 驗證…")
-        price_df <- res$equity_df[, c("Date"), drop = FALSE]
-        # 用 valuation 對齊的收盤；若無則從 equity 合併 Close via hist
-        px <- tryCatch({
-          cached <- hist_stock_data()
-          if (!is.null(cached) && nrow(cached) > 0) cached[, c("Date", "Close"), drop = FALSE]
-          else data.frame(Date = res$valuation_df$Date, Close = res$valuation_df$hist_price)
-        }, error = function(e) {
-          data.frame(Date = res$valuation_df$Date, Close = res$valuation_df$hist_price,
+        # Prefer backtest-native daily Close (same window as equity curve).
+        px <- if (!is.null(res$equity_df$Close)) {
+          data.frame(Date = res$equity_df$Date, Close = res$equity_df$Close,
                      stringsAsFactors = FALSE)
-        })
+        } else {
+          tryCatch({
+            cached <- hist_stock_data()
+            if (!is.null(cached) && nrow(cached) > 0) cached[, c("Date", "Close"), drop = FALSE]
+            else data.frame(Date = res$valuation_df$Date, Close = res$valuation_df$hist_price,
+                            stringsAsFactors = FALSE)
+          }, error = function(e) {
+            data.frame(Date = res$valuation_df$Date, Close = res$valuation_df$hist_price,
+                       stringsAsFactors = FALSE)
+          })
+        }
         rf_ann <- tryCatch({
           r <- as.numeric(cached_get_risk_free_rate())
           if (is.finite(r) && r > 0) r / 100 else 0.04
@@ -2572,7 +2603,7 @@ server <- function(input, output, session) {
   output$bt_plateau <- renderUI({
     v <- bt_validation()
     if (is.null(v) || is.null(v$plateau)) {
-      return(tags$p(style="color:#888;font-size:12px;", "微擾 WACC／SGR／年數／VG 權重後，輸出 Stable／Moderate／Sensitive 與原因。"))
+      return(tags$p(style="color:#888;font-size:12px;", "微擾 WACC／SGR／年數後，輸出 Stable／Moderate／Sensitive 與原因。"))
     }
     p <- v$plateau
     st <- as.character(p$status)
@@ -2591,7 +2622,17 @@ server <- function(input, output, session) {
     validate(need(!is.null(v) && !is.null(v$plateau) && !is.null(v$plateau$details), "尚無敏感度明細"))
     d <- v$plateau$details
     if (!is.data.frame(d) || nrow(d) == 0) return(NULL)
-    d
+    if (all(c("model_a_end", "d_rel") %in% names(d))) {
+      data.frame(
+        scenario = d$scenario,
+        model_a_end = round(d$model_a_end, 4),
+        d_rel = ifelse(is.na(d$d_rel), NA, sprintf("%+.1f%%", 100 * d$d_rel)),
+        stringsAsFactors = FALSE,
+        check.names = FALSE
+      )
+    } else {
+      d
+    }
   }, striped = TRUE, bordered = TRUE, spacing = "s")
 
   output$perf_metrics <- renderUI({

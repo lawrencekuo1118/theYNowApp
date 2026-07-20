@@ -1033,7 +1033,7 @@ ui <- dashboardPage(
                   plotlyOutput("bt_equity_plot", height = "400px") %>% withSpinner(),
                   tags$ul(
                     style = "margin: 10px 0 0 0; padding-left: 18px; font-size: 12px; color: #666; line-height: 1.55;",
-                    tags$li(tags$b("紅線 A"), " 現有參數假設 × 歷史財報的合理價試算路徑（正規化），與持倉／曝險無關。"),
+                    tags$li(tags$b("紅線 A"), " 所選估值模型 × 歷史財報的合理價試算路徑（季間依 SGR 延展），與持倉／曝險無關。"),
                     tags$li(tags$b("藍線 B"), " 曝險模擬 × 情緒乘數（僅能在 Exp_A 的 75%～125% 內調整）。"),
                     tags$li(tags$b("綠線"), " Buy & Hold；", tags$b("灰虛線"), " SPY 基準。")
                   )
@@ -1048,16 +1048,12 @@ ui <- dashboardPage(
                     tags$li("在 DCF／WACC 設定「此刻」模型參數"),
                     tags$li("確認下方參數後啟動回測")
                   ),
-                  radioButtons(
-                    "bt_param_mode", "參數模式",
-                    inline = FALSE,
-                    choices = c(
-                      "自動（依目前公司財報推導）" = "auto",
-                      "手動覆寫（自行調整門檻與權重）" = "manual"
-                    ),
-                    selected = "auto"
+                  checkboxInput(
+                    "bt_param_auto",
+                    "自動（依目前公司財報推導）",
+                    value = TRUE
                   ),
-                  .bt_hint("自動模式會在搜尋新股票或按「重算參數」時更新門檻；手動調整後不會在啟動回測時被覆寫。"),
+                  .bt_hint("勾選時會在搜尋新股票或按「重算參數」時更新門檻；取消勾選＝手動覆寫，啟動回測不會覆寫設定。"),
                   actionButton(
                     "bt_refresh_params", "依目前公司重算參數",
                     icon = icon("sync"), class = "btn-default btn-block",
@@ -1070,7 +1066,7 @@ ui <- dashboardPage(
                   ),
                   tags$div(
                     class = "ynow-bt-run-note",
-                    "季頻再平衡 · PIT 多模型估值 · Session-only 動態重建。"
+                    "季頻再平衡 · 依所選估值模型 PIT 重建 · Session-only。"
                   ),
                   uiOutput("bt_run_status")
                 )
@@ -1082,7 +1078,7 @@ ui <- dashboardPage(
                   title = tagList(icon("balance-scale"), "Historical Fair Value Timeline（核心圖）"),
                   width = 12, status = "primary", solidHeader = TRUE,
                   .bt_section_intro(
-                    "Market Price vs 動態重建 Fair Value（DCF／DDM／RI／P/B 均值）與 MOS。僅使用公告財年 ≤ 回測日的資料，避免 Look-ahead Bias。"
+                    "Market Price vs 動態重建 Fair Value（依所選估值模型）與 MOS。僅使用公告財年 ≤ 回測日的資料，避免 Look-ahead Bias。"
                   ),
                   uiOutput("bt_valuation_summary"),
                   plotlyOutput("bt_hfv_timeline", height = "380px") %>% withSpinner(),
@@ -1104,25 +1100,28 @@ ui <- dashboardPage(
                 )
               ),
 
+              # MOS／FV／參數高原整併為單一驗證區塊（如圖）
               fluidRow(
                 box(
-                  title = tagList(icon("layer-group"), "MOS 有效性驗證"),
-                  width = 6, status = "info", solidHeader = TRUE, collapsible = TRUE, collapsed = FALSE,
-                  .bt_hint("依 MOS 分組統計 1Y／3Y／5Y 前瞻報酬：MOS 愈高是否報酬愈好？"),
-                  tableOutput("bt_mos_table")
-                ),
-                box(
-                  title = tagList(icon("flask"), "Fair Value 預測能力"),
-                  width = 6, status = "info", solidHeader = TRUE, collapsible = TRUE, collapsed = FALSE,
-                  uiOutput("bt_fv_edge"),
-                  tableOutput("bt_fv_table")
-                )
-              ),
-
-              fluidRow(
-                box(
-                  title = tagList(icon("mountain"), "參數高原（敏感度）"),
-                  width = 12, status = "primary", solidHeader = TRUE, collapsible = TRUE, collapsed = FALSE,
+                  title = tagList(icon("flask"), "回測驗證：MOS／Fair Value／參數高原"),
+                  width = 12, status = "info", solidHeader = TRUE, collapsible = TRUE, collapsed = FALSE,
+                  fluidRow(
+                    column(
+                      6,
+                      tags$h5(tags$b("MOS 有效性驗證")),
+                      .bt_hint("依 MOS 分組統計 1Y／3Y／5Y 前瞻報酬：MOS 愈高是否報酬愈好？"),
+                      tableOutput("bt_mos_table")
+                    ),
+                    column(
+                      6,
+                      tags$h5(tags$b("Fair Value 預測能力")),
+                      uiOutput("bt_fv_edge"),
+                      tableOutput("bt_fv_table")
+                    )
+                  ),
+                  tags$hr(style = "margin: 16px 0;"),
+                  tags$h5(tags$b("參數高原（敏感度）")),
+                  .bt_hint("微擾 WACC／SGR／年數，觀察模式 A 合理價終值指數的相對變動。"),
                   uiOutput("bt_plateau"),
                   tableOutput("bt_plateau_table")
                 )
@@ -1154,7 +1153,26 @@ ui <- dashboardPage(
                     tabPanel(
                       title = tagList(icon("balance-scale"), "模式 A｜合理價試算"),
                       .bt_section_intro(
-                        "淨值圖紅線 A＝目前 App 參數（WACC／成長／年數／P/B 等）套用歷史財報的 PIT 綜合合理價路徑，與持倉多少無關。下方 MOS 權重僅供「Exposure History」與模式 B 的倉位基準。"
+                        "淨值圖紅線 A＝所選估值模型 × 歷史財報的 PIT 合理價路徑（季間依 SGR 複利延展），與持倉多少無關。"
+                      ),
+                      fluidRow(
+                        column(
+                          12,
+                          radioButtons(
+                            "bt_fv_model",
+                            "模式 A 估值模型",
+                            inline = TRUE,
+                            choices = c(
+                              "DCF" = "dcf",
+                              "DDM" = "ddm",
+                              "RI" = "ri",
+                              "P/B" = "pb",
+                              "綜合均值" = "composite"
+                            ),
+                            selected = "dcf"
+                          ),
+                          .bt_hint("與 Dashboard 推薦模型對齊；自動模式下載入財報後會依推薦更新。")
+                        )
                       ),
                       fluidRow(
                         column(

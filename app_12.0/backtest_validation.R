@@ -256,10 +256,14 @@ compute_alpha_dashboard <- function(equity_df, rf_annual = 0.04) {
 .bv_forward_return <- function(price_df, from_date, horizon_days) {
   price_df <- price_df[is.finite(price_df$Close) & !is.na(price_df$Date), , drop = FALSE]
   price_df <- price_df[order(price_df$Date), , drop = FALSE]
+  if (nrow(price_df) < 2) return(NA_real_)
+  price_df$Date <- as.Date(price_df$Date)
+  from_date <- as.Date(from_date)
   idx0 <- which(price_df$Date >= from_date)[1]
   if (is.na(idx0)) return(NA_real_)
-  idx1 <- idx0 + horizon_days
-  if (idx1 > nrow(price_df)) return(NA_real_)
+  target <- from_date + as.integer(horizon_days)
+  idx1 <- which(price_df$Date >= target)[1]
+  if (is.na(idx1)) return(NA_real_)
   p0 <- price_df$Close[idx0]; p1 <- price_df$Close[idx1]
   if (!is.finite(p0) || p0 <= 0 || !is.finite(p1)) return(NA_real_)
   p1 / p0 - 1
@@ -358,16 +362,24 @@ validate_fair_value_edge <- function(valuation_df, price_df) {
 # 5) Parameter plateau (robustness) probe
 # ==========================================
 
-#' Perturb WACC / SGR / n_years / bt_w_vg and compare Sharpe_A vs baseline.
-#' Classification:
-#'   Stable   : max |dSharpe| < 0.15
-#'   Moderate : max |dSharpe| < 0.40
+#' Perturb WACC / SGR / n_years and compare Mode A FV-index terminal vs baseline.
+#' (Mode A is valuation trial — not exposure Sharpe. bt_w_vg is excluded.)
+#' Classification on max |relative change| of terminal Model_A:
+#'   Stable   : < 5%
+#'   Moderate : < 15%
 #'   Sensitive: otherwise
 run_parameter_plateau <- function(ticker, d_is, d_bs, d_cf, params, model_params,
                                   bench_ticker = "SPY", years = 5,
                                   mos = NA_real_, verbose = FALSE) {
   if (!exists("run_company_backtest", mode = "function")) {
     stop("run_company_backtest not available; source backtest_module.R first")
+  }
+  .fv_terminal <- function(res) {
+    if (is.null(res) || is.null(res$equity_df)) return(NA_real_)
+    eq <- as.numeric(res$equity_df$Model_A)
+    eq <- eq[is.finite(eq) & eq > 0]
+    if (length(eq) < 2) return(NA_real_)
+    eq[length(eq)]
   }
   baseline <- tryCatch(
     run_company_backtest(ticker, d_is, d_bs, d_cf,
@@ -378,17 +390,15 @@ run_parameter_plateau <- function(ticker, d_is, d_bs, d_cf, params, model_params
   if (is.null(baseline)) {
     return(list(status = "資料不足", reason = "無法建立基準回測", details = NULL))
   }
-  base_sh <- .bv_safe_num(baseline$metrics$sharpe_a, NA_real_)
+  base_fv <- .bv_safe_num(.fv_terminal(baseline), NA_real_)
 
   scenarios <- list(
-    list(name = "wacc +1pp",      mp = modifyList(model_params, list(wacc = .bv_safe_num(model_params$wacc, 0.09) + 0.01)),  p = params),
-    list(name = "wacc -1pp",      mp = modifyList(model_params, list(wacc = .bv_safe_num(model_params$wacc, 0.09) - 0.01)),  p = params),
-    list(name = "sgr +1pp",       mp = modifyList(model_params, list(sgr  = .bv_safe_num(model_params$sgr,  0.025) + 0.01)), p = params),
-    list(name = "sgr -1pp",       mp = modifyList(model_params, list(sgr  = .bv_safe_num(model_params$sgr,  0.025) - 0.01)), p = params),
-    list(name = "n_years +1",     mp = modifyList(model_params, list(n_years = as.integer(.bv_safe_num(model_params$n_years, 5)) + 1L)), p = params),
-    list(name = "n_years -1",     mp = modifyList(model_params, list(n_years = max(1L, as.integer(.bv_safe_num(model_params$n_years, 5)) - 1L))), p = params),
-    list(name = "bt_w_vg +0.10",  mp = model_params, p = modifyList(params, list(bt_w_vg = min(1, .bv_safe_num(params$bt_w_vg, 0.7) + 0.10)))),
-    list(name = "bt_w_vg -0.10",  mp = model_params, p = modifyList(params, list(bt_w_vg = max(0, .bv_safe_num(params$bt_w_vg, 0.7) - 0.10))))
+    list(name = "wacc +1pp",  mp = modifyList(model_params, list(wacc = .bv_safe_num(model_params$wacc, 0.09) + 0.01)), p = params),
+    list(name = "wacc -1pp",  mp = modifyList(model_params, list(wacc = .bv_safe_num(model_params$wacc, 0.09) - 0.01)), p = params),
+    list(name = "sgr +1pp",   mp = modifyList(model_params, list(sgr  = .bv_safe_num(model_params$sgr,  0.025) + 0.01)), p = params),
+    list(name = "sgr -1pp",   mp = modifyList(model_params, list(sgr  = .bv_safe_num(model_params$sgr,  0.025) - 0.01)), p = params),
+    list(name = "n_years +1", mp = modifyList(model_params, list(n_years = as.integer(.bv_safe_num(model_params$n_years, 5)) + 1L)), p = params),
+    list(name = "n_years -1", mp = modifyList(model_params, list(n_years = max(1L, as.integer(.bv_safe_num(model_params$n_years, 5)) - 1L))), p = params)
   )
 
   rows <- lapply(scenarios, function(sc) {
@@ -398,31 +408,36 @@ run_parameter_plateau <- function(ticker, d_is, d_bs, d_cf, params, model_params
                            mos = mos, bench_ticker = bench_ticker, years = years),
       error = function(e) { if (verbose) message(sc$name, ": ", e$message); NULL }
     )
-    sh <- if (is.null(res)) NA_real_ else .bv_safe_num(res$metrics$sharpe_a, NA_real_)
+    fv <- .bv_safe_num(.fv_terminal(res), NA_real_)
+    d_rel <- if (is.finite(fv) && is.finite(base_fv) && abs(base_fv) > 1e-9) {
+      (fv - base_fv) / base_fv
+    } else {
+      NA_real_
+    }
     data.frame(
       scenario = sc$name,
-      sharpe_a = sh,
-      d_sharpe = sh - base_sh,
+      model_a_end = fv,
+      d_rel = d_rel,
       stringsAsFactors = FALSE
     )
   })
   details <- do.call(rbind, rows)
 
-  d_abs <- abs(details$d_sharpe)
+  d_abs <- abs(details$d_rel)
   d_abs <- d_abs[is.finite(d_abs)]
   worst <- if (length(d_abs) == 0) NA_real_ else max(d_abs)
   status <- if (!is.finite(worst)) "資料不足"
-            else if (worst < 0.15) "穩定 (Stable)"
-            else if (worst < 0.40) "中等 (Moderate)"
+            else if (worst < 0.05) "穩定 (Stable)"
+            else if (worst < 0.15) "中等 (Moderate)"
             else "敏感 (Sensitive)"
 
-  reason <- if (nrow(details) > 0 && any(is.finite(details$d_sharpe))) {
-    ix <- which.max(abs(ifelse(is.finite(details$d_sharpe), details$d_sharpe, 0)))
-    sprintf("最大 Sharpe 變動來自「%s」(dSharpe=%+.2f, 基準=%.2f)",
-            details$scenario[ix], details$d_sharpe[ix], base_sh)
+  reason <- if (nrow(details) > 0 && any(is.finite(details$d_rel))) {
+    ix <- which.max(abs(ifelse(is.finite(details$d_rel), details$d_rel, 0)))
+    sprintf("最大 Mode A 終值變動來自「%s」(dRel=%+.1f%%, 基準終值=%.3f)",
+            details$scenario[ix], 100 * details$d_rel[ix], base_fv)
   } else "無有效擾動結果"
 
-  list(status = status, reason = reason, baseline_sharpe = base_sh, details = details)
+  list(status = status, reason = reason, baseline_model_a = base_fv, details = details)
 }
 
 # ==========================================

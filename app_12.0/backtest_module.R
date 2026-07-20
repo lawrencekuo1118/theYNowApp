@@ -31,6 +31,10 @@
 
 .coalesce <- function(a, b) if (is.null(a)) b else a
 
+`%||%` <- function(x, y) {
+  if (is.null(x) || length(x) < 1 || (length(x) == 1 && is.na(x))) y else x
+}
+
 .parse_period_year <- function(col) {
   d <- suppressWarnings(as.Date(col, format = "%m/%d/%Y"))
   if (is.na(d)) d <- suppressWarnings(as.Date(col))
@@ -261,9 +265,27 @@ reconstruct_fair_value_pit <- function(fund_row, price, model_params) {
   fv_ri  <- estimate_hist_ri(bvps, roe, ke, g_ex, n = n_yr, payout = payout)
   fv_pb  <- estimate_hist_pb(bvps, pb_mid)
 
-  cand <- c(fv_dcf, fv_ddm, fv_ri, fv_pb)
-  cand <- cand[is.finite(cand) & cand > 0]
-  fair_value <- if (length(cand) > 0) mean(cand) else NA_real_
+  # Mode A uses the user-selected valuation model (not always the blend).
+  fv_model <- tolower(as.character(model_params$fv_model %||% "composite")[1])
+  pick_one <- function(x) if (is.finite(x) && x > 0) x else NA_real_
+  fair_value <- switch(
+    fv_model,
+    "dcf" = pick_one(fv_dcf),
+    "ddm" = pick_one(fv_ddm),
+    "ri"  = pick_one(fv_ri),
+    "pb"  = pick_one(fv_pb),
+    {
+      cand <- c(fv_dcf, fv_ddm, fv_ri, fv_pb)
+      cand <- cand[is.finite(cand) & cand > 0]
+      if (length(cand) > 0) mean(cand) else NA_real_
+    }
+  )
+  # Fallback if the selected model is unavailable at this PIT date.
+  if (!is.finite(fair_value) || fair_value <= 0) {
+    cand <- c(fv_dcf, fv_ddm, fv_ri, fv_pb)
+    cand <- cand[is.finite(cand) & cand > 0]
+    fair_value <- if (length(cand) > 0) mean(cand) else NA_real_
+  }
 
   mos <- if (is.finite(fair_value) && fair_value > 0 && is.finite(price) && price > 0) {
     (fair_value - price) / fair_value
@@ -664,9 +686,14 @@ sentiment_multiplier <- function(mom_score, rsi_score, w_mom = 0.5, w_rsi = 0.5)
   equity_bm <- numeric(n); equity_bm[1] <- 1
   exp_a_daily <- numeric(n)
   exp_b_daily <- numeric(n)
-  # Mode A chart series: LOCF of PIT fair value (params × hist financials).
+  # Mode A chart: selected-model PIT fair value, grown by SGR between
+  # rebalances (avoids multi-quarter flat LOCF steps when fund year is unchanged).
   fv_daily <- rep(NA_real_, n)
-  fv_cur <- NA_real_
+  fv_anchor <- NA_real_
+  fv_anchor_date <- as.Date(NA)
+  g_carry <- .safe_num(model_params$sgr, 0.025)
+  if (!is.finite(g_carry)) g_carry <- 0.025
+  g_carry <- max(min(g_carry, 0.12), -0.05)
 
   val_rows <- list()
   explain_last <- NULL
@@ -691,7 +718,8 @@ sentiment_multiplier <- function(mom_score, rsi_score, w_mom = 0.5, w_rsi = 0.5)
       mos_i <- if (is.finite(pit$mos)) pit$mos else mos_fallback
       signal_i <- pit$signal
       if (is.finite(pit$fair_value) && pit$fair_value > 0) {
-        fv_cur <- pit$fair_value
+        fv_anchor <- pit$fair_value
+        fv_anchor_date <- df$Date[i]
       }
 
       gf <- .great_filter_pass(fund_i, thr_npm, thr_rev, thr_eps, thr_cv, fund_i$cv_fcf)
@@ -763,7 +791,13 @@ sentiment_multiplier <- function(mom_score, rsi_score, w_mom = 0.5, w_rsi = 0.5)
       )
     }
 
-    fv_daily[i] <- fv_cur
+    if (is.finite(fv_anchor) && fv_anchor > 0 && !is.na(fv_anchor_date)) {
+      dt_yrs <- as.numeric(difftime(df$Date[i], fv_anchor_date, units = "days")) / 365.25
+      if (!is.finite(dt_yrs) || dt_yrs < 0) dt_yrs <- 0
+      fv_daily[i] <- fv_anchor * (1 + g_carry)^dt_yrs
+    } else {
+      fv_daily[i] <- NA_real_
+    }
     exp_a_daily[i] <- pos_a
     exp_b_daily[i] <- pos_b
     equity_a[i]  <- equity_a[i - 1]  * (1 + pos_a * r)
@@ -798,6 +832,7 @@ sentiment_multiplier <- function(mom_score, rsi_score, w_mom = 0.5, w_rsi = 0.5)
 
   equity_df <- data.frame(
     Date = df$Date,
+    Close = df$Close,
     # Chart Mode A: params × hist financials FV path (no position sizing).
     Model_A = model_a,
     # Exposure-weighted sim kept for gap / alpha / plateau diagnostics.
@@ -905,6 +940,9 @@ run_company_backtest <- function(ticker,
   }
   if (is.null(model_params$n_years) || !is.finite(.safe_num(model_params$n_years, NA_real_))) {
     model_params$n_years <- 5
+  }
+  if (is.null(model_params$fv_model) || !nzchar(as.character(model_params$fv_model)[1])) {
+    model_params$fv_model <- "dcf"
   }
 
   period <- paste0(as.integer(years), "y")
