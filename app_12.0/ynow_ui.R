@@ -1113,34 +1113,7 @@ ui <- dashboardPage(
                 )
               ),
 
-              # MOS／FV／參數高原整併為單一驗證區塊（如圖）
-              fluidRow(
-                box(
-                  title = tagList(icon("flask"), "回測驗證：MOS／Fair Value／參數高原"),
-                  width = 12, status = "info", solidHeader = TRUE, collapsible = TRUE, collapsed = FALSE,
-                  fluidRow(
-                    column(
-                      6,
-                      tags$h5(tags$b("MOS 有效性驗證")),
-                      .bt_hint("依 MOS 分組統計 1Y／3Y／5Y 前瞻報酬：MOS 愈高是否報酬愈好？"),
-                      tableOutput("bt_mos_table")
-                    ),
-                    column(
-                      6,
-                      tags$h5(tags$b("Fair Value 預測能力")),
-                      uiOutput("bt_fv_edge"),
-                      tableOutput("bt_fv_table")
-                    )
-                  ),
-                  tags$hr(style = "margin: 16px 0;"),
-                  tags$h5(tags$b("參數高原（敏感度）")),
-                  .bt_hint("微擾 WACC／SGR／年數，觀察「純基本面價值」合理價終值指數的相對變動。"),
-                  uiOutput("bt_plateau"),
-                  tableOutput("bt_plateau_table")
-                )
-              ),
-
-              # 4) 細部參數設定置底
+              # 4) 細部參數設定
               fluidRow(column(width = 12, uiOutput("bt_param_notes"))),
 
               fluidRow(
@@ -1197,6 +1170,33 @@ ui <- dashboardPage(
                       )
                     )
                   )
+                )
+              ),
+
+              # 5) MOS／FV／參數高原驗證區塊置於頁面最下方
+              fluidRow(
+                box(
+                  title = tagList(icon("flask"), "回測驗證：MOS／Fair Value／參數高原"),
+                  width = 12, status = "info", solidHeader = TRUE, collapsible = TRUE, collapsed = FALSE,
+                  fluidRow(
+                    column(
+                      6,
+                      tags$h5(tags$b("MOS 有效性驗證")),
+                      .bt_hint("依 MOS 分組統計 1Y／3Y／5Y 前瞻報酬：MOS 愈高是否報酬愈好？"),
+                      tableOutput("bt_mos_table")
+                    ),
+                    column(
+                      6,
+                      tags$h5(tags$b("Fair Value 預測能力")),
+                      uiOutput("bt_fv_edge"),
+                      tableOutput("bt_fv_table")
+                    )
+                  ),
+                  tags$hr(style = "margin: 16px 0;"),
+                  tags$h5(tags$b("參數高原（敏感度）")),
+                  .bt_hint("微擾 WACC／SGR／年數，觀察「純基本面價值」合理價終值指數的相對變動。"),
+                  uiOutput("bt_plateau"),
+                  tableOutput("bt_plateau_table")
                 )
               )
       ),
