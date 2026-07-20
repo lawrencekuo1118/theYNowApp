@@ -334,6 +334,10 @@ ui <- dashboardPage(
           --ynow-metric-red-tint: #faf0ef;
           --ynow-metric-violet: #5c5a8a;
           --ynow-metric-violet-tint: #f3f2f8;
+          --ynow-metric-blue: #2f6f9f;
+          --ynow-metric-blue-tint: #eef5fa;
+          --ynow-metric-amber: #b7791f;
+          --ynow-metric-amber-tint: #faf6ee;
           display: grid;
           grid-template-columns: repeat(3, minmax(0, 1fr));
           gap: 14px;
@@ -368,6 +372,34 @@ ui <- dashboardPage(
         .ynow-metric-card--violet {
           border-left: 4px solid var(--ynow-metric-violet);
           background: linear-gradient(180deg, var(--ynow-metric-violet-tint) 0%, #ffffff 42%);
+        }
+        .ynow-metric-card--blue {
+          border-left: 4px solid var(--ynow-metric-blue);
+          background: linear-gradient(180deg, var(--ynow-metric-blue-tint) 0%, #ffffff 42%);
+        }
+        .ynow-metric-card--amber {
+          border-left: 4px solid var(--ynow-metric-amber);
+          background: linear-gradient(180deg, var(--ynow-metric-amber-tint) 0%, #ffffff 42%);
+        }
+        .ynow-metric-card--blue .ynow-metric-card__icon { background: var(--ynow-metric-blue); }
+        .ynow-metric-card--amber .ynow-metric-card__icon { background: var(--ynow-metric-amber); }
+        .ynow-metric-card--blue .ynow-metric-card__value { color: #1e4d6e; }
+        .ynow-metric-card--amber .ynow-metric-card__value { color: #8a5a12; }
+        /* 執行面板：避免 btn-block 蓋住下方說明文字 */
+        .ynow-bt-run-panel .btn-block { margin-left: 0; margin-right: 0; }
+        .ynow-bt-run-panel .ynow-bt-run-note {
+          clear: both;
+          display: block;
+          position: relative;
+          z-index: 1;
+          margin: 12px 0 0 0;
+          padding: 8px 10px;
+          background: #fff8e8;
+          border: 1px solid #f0e0b2;
+          border-radius: 4px;
+          font-size: 11.5px;
+          line-height: 1.45;
+          color: #6b5a2e;
         }
         .ynow-metric-card__body {
           padding: 14px 16px 12px 16px;
@@ -981,9 +1013,10 @@ ui <- dashboardPage(
               withMathJax(),
               h2("量化回測實驗室 (Backtest Zone)"),
               .bt_section_intro(
-                "流程：搜尋股票 → 在 DCF 設定此刻參數 → 確認回測門檻 → 啟動回測。基本面策略會用歷史財報＋此刻參數重估，再與當時市價比較以驗證模型。"
+                "流程：搜尋股票 → 設定 DCF 此刻參數 → 確認過濾門檻 → 啟動回測。系統以歷史財報 Point-in-Time 重建合理價，驗證策略是否創造 Alpha（結果僅存 Session）。"
               ),
 
+              # 1) 績效指標置頂（Alpha + 摘要整併）
               fluidRow(
                 box(
                   title = tagList(icon("trophy"), "回測績效指標"),
@@ -992,47 +1025,35 @@ ui <- dashboardPage(
                 )
               ),
 
+              # 2) 合理價 vs 股價 vs 大盤 + 執行面板
               fluidRow(
                 box(
-                  title = tagList(icon("balance-scale"), "基本面策略驗證（歷史財報 × 此刻參數）"),
-                  width = 12, status = "primary", solidHeader = TRUE, collapsible = TRUE, collapsed = FALSE,
-                  uiOutput("bt_valuation_summary"),
-                  plotlyOutput("bt_valuation_plot", height = "320px") %>% withSpinner()
-                )
-              ),
-
-              fluidRow(
-                box(
-                  title = tagList(icon("chart-area"), "策略淨值比較圖"),
+                  title = tagList(icon("chart-line"), "合理價 × 歷史股價 × 大盤"),
                   width = 8, status = "info", solidHeader = TRUE,
-                  plotlyOutput("bt_equity_plot", height = "420px") %>% withSpinner(),
+                  plotlyOutput("bt_value_plot", height = "400px") %>% withSpinner(),
                   tags$ul(
                     style = "margin: 10px 0 0 0; padding-left: 18px; font-size: 12px; color: #666; line-height: 1.55;",
-                    tags$li(tags$b("紅線"), " 模式 A（純基本面／基準）：歷史財報＋此刻 DCF 參數估價，對照當時市價決定倉位。"),
-                    tags$li(tags$b("藍線"), " 模式 B（情緒增強）：以模式 A 基本面倉位為基準，再依動能／RSI 調控曝險。"),
-                    tags$li(tags$b("綠線"), " 該股買進持有：同期間單純持有標的，作為對照組。"),
-                    tags$li(tags$b("灰虛線"), " 大盤基準（SPY）：衡量是否跑贏市場。")
+                    tags$li(tags$b("紅線"), " 參數 × 歷史財報的 PIT 合理價（隨評價模型選擇動態估算；季間依 SGR 延展）。"),
+                    tags$li(tags$b("綠線"), " 歷史股價表現＝情緒疊加價值（市場價格路徑）。"),
+                    tags$li(tags$b("灰虛線"), " 大盤基準（SPY）。")
                   )
                 ),
                 box(
                   title = tagList(icon("play-circle"), "執行面板"),
                   width = 4, status = "warning", solidHeader = TRUE,
+                  class = "ynow-bt-run-panel",
                   tags$ol(
-                    style = "padding-left: 18px; font-size: 12px; color: #555; margin-bottom: 12px; line-height: 1.6;",
-                    tags$li("先在側欄或主頁搜尋股票並載入財報"),
-                    tags$li("選擇參數模式並檢視下方三個設定分頁"),
-                    tags$li("按下啟動回測，等待淨值曲線與績效指標")
+                    style = "padding-left: 18px; font-size: 12px; color: #555; margin-bottom: 12px; line-height: 1.55;",
+                    tags$li("搜尋股票並載入財報（即時抓取）"),
+                    tags$li("在 DCF／WACC 設定「此刻」模型參數"),
+                    tags$li("確認下方參數後啟動回測")
                   ),
-                  radioButtons(
-                    "bt_param_mode", "參數模式",
-                    inline = FALSE,
-                    choices = c(
-                      "自動（依目前公司財報推導）" = "auto",
-                      "手動覆寫（自行調整門檻與權重）" = "manual"
-                    ),
-                    selected = "auto"
+                  checkboxInput(
+                    "bt_param_auto",
+                    "自動（依目前公司財報推導）",
+                    value = TRUE
                   ),
-                  .bt_hint("自動模式會在搜尋新股票或按「重算參數」時更新門檻；手動調整拉桿後不會在啟動回測時被覆寫。"),
+                  .bt_hint("勾選時會在搜尋新股票或按「重算參數」時更新門檻；取消勾選＝手動覆寫，啟動回測不會覆寫設定。"),
                   actionButton(
                     "bt_refresh_params", "依目前公司重算參數",
                     icon = icon("sync"), class = "btn-default btn-block",
@@ -1040,19 +1061,89 @@ ui <- dashboardPage(
                   ),
                   actionButton(
                     "run_bt", "啟動量化回測",
-                    class = "btn-warning btn-lg btn-block"
+                    class = "btn-warning btn-lg btn-block",
+                    style = "margin-bottom: 0;"
                   ),
-                  .bt_hint("約 5 年日線、月頻再平衡：以當時可得財報＋側欄／DCF 此刻參數估算策略估值，再與歷史收盤比較。"),
+                  tags$div(
+                    class = "ynow-bt-run-note",
+                    "季頻再平衡 · 依所選估值模型 PIT 重建 · Session-only。"
+                  ),
                   uiOutput("bt_run_status")
                 )
               ),
 
+              # 2b) 策略淨值比較（曝險模擬）
               fluidRow(
-                column(
-                  width = 12,
-                  uiOutput("bt_param_notes")
+                box(
+                  title = tagList(icon("chart-area"), "策略淨值比較"),
+                  width = 12, status = "primary", solidHeader = TRUE, collapsible = TRUE, collapsed = FALSE,
+                  plotlyOutput("bt_equity_plot", height = "360px") %>% withSpinner(),
+                  tags$ul(
+                    style = "margin: 10px 0 0 0; padding-left: 18px; font-size: 12px; color: #666; line-height: 1.55;",
+                    tags$li(tags$b("橘線"), " 曝險 A（MOS／過濾門檻決定的診斷倉位 × 股價報酬）。"),
+                    tags$li(tags$b("藍線"), " 情緒疊加策略（在 Exp_A 的 75%～125% 內以 Mom／RSI 調整）。"),
+                    tags$li(tags$b("綠線"), " Buy & Hold 對照；", tags$b("灰虛線"), " SPY 基準。")
+                  )
                 )
               ),
+
+              # 3) 核心驗證圖
+              fluidRow(
+                box(
+                  title = tagList(icon("balance-scale"), "Historical Fair Value Timeline（核心圖）"),
+                  width = 12, status = "primary", solidHeader = TRUE,
+                  .bt_section_intro(
+                    "Market Price vs 動態重建 Fair Value（依所選估值模型）與 MOS。僅使用公告財年 ≤ 回測日的資料，避免 Look-ahead Bias。"
+                  ),
+                  uiOutput("bt_valuation_summary"),
+                  plotlyOutput("bt_hfv_timeline", height = "380px") %>% withSpinner(),
+                  uiOutput("bt_signal_explain")
+                )
+              ),
+
+              fluidRow(
+                box(
+                  title = tagList(icon("percentage"), "Exposure History（模式 A）"),
+                  width = 6, status = "danger", solidHeader = TRUE, collapsible = TRUE,
+                  uiOutput("bt_exposure_stats"),
+                  plotlyOutput("bt_exposure_plot", height = "260px") %>% withSpinner()
+                ),
+                box(
+                  title = tagList(icon("search-dollar"), "為何輸給 Buy & Hold？"),
+                  width = 6, status = "warning", solidHeader = TRUE, collapsible = TRUE,
+                  uiOutput("bt_bh_gap")
+                )
+              ),
+
+              # MOS／FV／參數高原整併為單一驗證區塊（如圖）
+              fluidRow(
+                box(
+                  title = tagList(icon("flask"), "回測驗證：MOS／Fair Value／參數高原"),
+                  width = 12, status = "info", solidHeader = TRUE, collapsible = TRUE, collapsed = FALSE,
+                  fluidRow(
+                    column(
+                      6,
+                      tags$h5(tags$b("MOS 有效性驗證")),
+                      .bt_hint("依 MOS 分組統計 1Y／3Y／5Y 前瞻報酬：MOS 愈高是否報酬愈好？"),
+                      tableOutput("bt_mos_table")
+                    ),
+                    column(
+                      6,
+                      tags$h5(tags$b("Fair Value 預測能力")),
+                      uiOutput("bt_fv_edge"),
+                      tableOutput("bt_fv_table")
+                    )
+                  ),
+                  tags$hr(style = "margin: 16px 0;"),
+                  tags$h5(tags$b("參數高原（敏感度）")),
+                  .bt_hint("微擾 WACC／SGR／年數，觀察模式 A 合理價終值指數的相對變動。"),
+                  uiOutput("bt_plateau"),
+                  tableOutput("bt_plateau_table")
+                )
+              ),
+
+              # 4) 細部參數設定置底
+              fluidRow(column(width = 12, uiOutput("bt_param_notes"))),
 
               fluidRow(
                 tags$div(
@@ -1061,94 +1152,72 @@ ui <- dashboardPage(
                     title = tagList(icon("sliders-h"), "策略參數設定"),
                     width = 12,
                     tabPanel(
-                    title = tagList(icon("filter"), "基本面過濾"),
-                    .bt_section_intro(
-                      "大過濾器（The Great Filter）：兩種策略共用。四項門檻皆需通過，否則該再平衡日基準倉位為 0（模式 B 亦不持股）。"
-                    ),
-                    fluidRow(
-                      column(
-                        3,
-                        tipify(
-                          numericInput("bt_net_margin", "淨利率門檻 (%)", 5),
-                          "獲利能力下限。自動模式取該公司歷史淨利率約一半。", placement = "top"
-                        ),
-                        .bt_hint("淨利率 = 淨利 ÷ 營收。低於門檻代表獲利薄弱，策略傾向減碼或觀望。")
-                      ),
-                      column(
-                        3,
-                        tipify(
-                          numericInput("bt_rev_growth", "營收成長門檻 (%)", 25),
-                          "自動模式取該公司歷史營收成長約一半。", placement = "top"
-                        ),
-                        .bt_hint("年度營收變化率。用於區分高成長與成熟型公司。")
-                      ),
-                      column(
-                        3,
-                        tipify(
-                          numericInput("bt_eps_growth", "EPS／淨利成長門檻 (%)", 15),
-                          "自動模式取該公司淨利成長約一半。", placement = "top"
-                        ),
-                        .bt_hint("g = 盈餘成長率。過濾獲利停滯或衰退的標的。")
-                      ),
-                      column(
-                        3,
-                        tipify(
-                          numericInput("bt_fcf_cv", "FCF 變異係數上限 (%)", 20),
-                          "自動模式取該公司 FCF CV × 1.25。", placement = "top"
-                        ),
-                        .bt_hint("CV = 自由現金流標準差 ÷ |平均 FCF|。愈高代表現金流愈不穩定。")
+                      title = tagList(icon("filter"), "基本面過濾"),
+                      .bt_section_intro("Great Filter：季頻再平衡日四項皆過才允許持倉；否則 A／B 皆空手。"),
+                      fluidRow(
+                        column(3, tipify(numericInput("bt_net_margin", "淨利率門檻 (%)", 5),
+                                         "自動模式取該公司歷史淨利率約一半。", placement = "top")),
+                        column(3, tipify(numericInput("bt_rev_growth", "營收成長門檻 (%)", 25),
+                                         "自動模式取歷史營收成長約一半。", placement = "top")),
+                        column(3, tipify(numericInput("bt_eps_growth", "EPS／淨利成長門檻 (%)", 15),
+                                         "自動模式取淨利成長約一半。", placement = "top")),
+                        column(3, tipify(numericInput("bt_fcf_cv", "FCF 變異係數上限 (%)", 20),
+                                         "自動模式取 FCF CV × 1.25。", placement = "top"))
                       )
-                    )
-                  ),
-                  tabPanel(
-                    title = tagList(icon("balance-scale"), "模式 A｜純基本面（基準）"),
-                    .bt_section_intro(
-                      "基準策略：通過過濾後，以「歷史財報 × 此刻 DCF 參數」估算策略估值，再與當時收盤價比較。策略估值 < 歷史市價 → 策略低估；策略估值 > 歷史市價 → 價值高估。不使用動能／RSI。"
                     ),
-                    fluidRow(
-                      column(
-                        6,
-                        sliderInput("bt_w_vg", "估值偏離 (Valuation Gap) 權重", 0, 1, 0.7, step = 0.01),
-                        bsTooltip("bt_w_vg", "歷史 MOS＝(策略估值−當時市價)÷策略估值；權重愈高愈依此偏離調倉。", "right"),
-                        .bt_hint("MOS = (策略估值 − 歷史市價) ÷ 策略估值。策略低估（估值低於市價）降低曝險；估值高於市價時提高曝險。剩餘權重採中性基準曝險。")
+                    tabPanel(
+                      title = tagList(icon("balance-scale"), "模式 A｜合理價試算"),
+                      .bt_section_intro(
+                        "上方紅線＝所選估值模型 × 歷史財報的 PIT 合理價路徑（季間依 SGR 複利延展），與持倉多少無關。"
                       ),
-                      column(
-                        6,
-                        tags$div(
-                          style = "margin-top: 28px; padding: 12px; background: #fcf8e3; border: 1px solid #f0e6b2; border-radius: 5px; font-size: 12px; color: #8a6d3b; line-height: 1.55;",
-                          tags$b(icon("exclamation-triangle"), " 模型驗證說明"),
-                          tags$br(),
-                          "回測用歷史經驗驗證目前模型：固定此刻 WACC／成長率等假設，套到過去各期財報重估。若長期「策略低估」卻股價續漲，代表模型偏保守；可對照模式 B 動能。"
+                      fluidRow(
+                        column(
+                          12,
+                          radioButtons(
+                            "bt_fv_model",
+                            "模式 A 估值模型",
+                            inline = TRUE,
+                            choices = c(
+                              "DCF" = "dcf",
+                              "DDM" = "ddm",
+                              "RI" = "ri",
+                              "P/B" = "pb",
+                              "綜合均值" = "composite"
+                            ),
+                            selected = "dcf"
+                          ),
+                          .bt_hint("與 Dashboard 推薦模型對齊；自動模式下載入財報後會依推薦更新。")
+                        )
+                      ),
+                      fluidRow(
+                        column(
+                          6,
+                          sliderInput("bt_w_vg", "MOS／Value Gap 權重（曝險診斷）", 0, 1, 0.7, step = 0.01),
+                          .bt_hint("僅影響下方策略淨值圖的曝險 A／情緒策略基準倉位；不影響上方紅線合理價試算。")
+                        ),
+                        column(
+                          6,
+                          tags$div(
+                            style = "margin-top: 20px; padding: 12px; background: #fcf8e3; border: 1px solid #f0e6b2; border-radius: 5px; font-size: 12px; color: #8a6d3b; line-height: 1.55;",
+                            tags$b("滯後曝險（診斷用）"), tags$br(),
+                            "MOS≥30%→90%；≥10%→65%；≥0%→40%；≥−10%→15%；否則空手。"
+                          )
                         )
                       )
-                    )
-                  ),
-                  tabPanel(
-                    title = tagList(icon("bolt"), "模式 B｜情緒增強（疊加）"),
-                    .bt_section_intro(
-                      "在模式 A 基準倉位之上，依短期動能與 RSI 乘上情緒乘數調控曝險。過濾未通過時兩邊皆空手；不再獨立於基本面另開倉。"
                     ),
-                    fluidRow(
-                      column(
-                        6,
-                        sliderInput("bt_w_mom", "短期動能 (Momentum) 相對權重", 0, 1, 0.4, step = 0.01),
-                        bsTooltip("bt_w_mom", "與 RSI 權重相對分配情緒疊加；會正規化合計為 1。", "right"),
-                        .bt_hint("動能：約 20 日報酬。與 RSI 為相對權重（合計視為 100% 情緒訊號），與 VG 權重無關。")
+                    tabPanel(
+                      title = tagList(icon("bolt"), "模式 B｜情緒疊加"),
+                      .bt_section_intro(
+                        "影響下方「策略淨值比較」藍線：情緒只能調整權重，最終曝險夾在 Exp_A 的 75%～125%，且 Exp_A=0 時必須為 0。歷史股價（情緒疊加價值）見上方綠線。"
                       ),
-                      column(
-                        6,
-                        sliderInput("bt_w_rsi", "市場情緒 (RSI) 相對權重", 0, 1, 0.3, step = 0.01),
-                        bsTooltip("bt_w_rsi", "RSI 過高時降低情緒乘數，避免在過熱區加碼。", "right"),
-                        .bt_hint("RSI（14 日）。過熱降曝險、超賣略提高；最終倉位 = 模式 A × 情緒乘數。")
+                      fluidRow(
+                        column(6, sliderInput("bt_w_mom", "動能相對權重", 0, 1, 0.4, step = 0.01),
+                               .bt_hint("與 RSI 正規化後組成情緒分數。")),
+                        column(6, sliderInput("bt_w_rsi", "RSI 相對權重", 0, 1, 0.3, step = 0.01),
+                               .bt_hint("情緒乘數限制在 0.75～1.25。"))
                       )
-                    ),
-                    tags$div(
-                      style = "padding: 10px 12px; background: #f4f8fb; border-left: 4px solid #3c8dbc; border-radius: 4px; font-size: 12px; color: #555;",
-                      icon("info-circle"),
-                      " 架構：基本面過濾 → 模式 A（VG 基準倉）→ 模式 B（A × Mom／RSI 情緒乘數）。VG 與 Mom／RSI 不強制加總為 1。"
                     )
                   )
-                )
                 )
               )
       ),
