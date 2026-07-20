@@ -2225,7 +2225,11 @@ server <- function(input, output, session) {
         else if ("pb" %in% tags || grepl("P/B|本淨", sm, ignore.case = TRUE)) fv_sel <- "pb"
         else if (grepl("交叉", sm)) fv_sel <- "composite"
       }
+      # Guard so auto-picked model does not flip checkbox to manual
+      was_applying <- isTRUE(bt_applying_params())
+      bt_applying_params(TRUE)
       updateRadioButtons(session, "bt_fv_model", selected = fv_sel)
+      if (!was_applying) bt_applying_params(FALSE)
     }
     invisible(p)
   }
@@ -2250,10 +2254,23 @@ server <- function(input, output, session) {
   observeEvent(input$bt_param_auto, {
     if (isTRUE(input$bt_param_auto)) {
       tryCatch(refresh_bt_params(fetch_hist = FALSE), error = function(e) NULL)
+      bt_param_notes_txt(
+        paste0(
+          "自動模式：依目前公司財報推導 Great Filter 門檻、MOS／情緒權重，",
+          "並對齊執行面板的推薦估值模型。手動改門檻或權重會自動取消勾選。"
+        )
+      )
     } else {
-      bt_param_notes_txt("手動覆寫模式：調整門檻／權重後再執行；啟動回測不會覆寫設定。")
+      bt_param_notes_txt("手動模式：保留你調整過的門檻／權重／估值模型；換股或啟動回測不會覆寫。")
     }
   })
+
+  # 手動改估值模型時取消自動，避免下次換股又被推薦覆寫
+  observeEvent(input$bt_fv_model, {
+    if (isTRUE(bt_applying_params())) return()
+    if (!isTRUE(input$bt_param_auto)) return()
+    updateCheckboxInput(session, "bt_param_auto", value = FALSE)
+  }, ignoreInit = TRUE)
 
   observeEvent(list(input$bt_w_vg, input$bt_w_mom, input$bt_w_rsi,
                     input$bt_net_margin, input$bt_rev_growth, input$bt_eps_growth, input$bt_fcf_cv), {

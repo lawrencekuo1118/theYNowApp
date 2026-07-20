@@ -1045,15 +1045,31 @@ ui <- dashboardPage(
                   tags$ol(
                     style = "padding-left: 18px; font-size: 12px; color: #555; margin-bottom: 12px; line-height: 1.55;",
                     tags$li("搜尋股票並載入財報（即時抓取）"),
-                    tags$li("在 DCF／WACC 設定「此刻」模型參數"),
-                    tags$li("確認下方參數後啟動回測")
+                    tags$li("選擇模式 A 估值模型（可自動對齊推薦）"),
+                    tags$li("確認參數後啟動回測")
                   ),
+                  radioButtons(
+                    "bt_fv_model",
+                    "模式 A 估值模型",
+                    inline = FALSE,
+                    choices = c(
+                      "DCF（自由現金流折現）" = "dcf",
+                      "DDM（股利折現）" = "ddm",
+                      "RI（剩餘收益）" = "ri",
+                      "P/B（本淨比）" = "pb",
+                      "綜合均值" = "composite"
+                    ),
+                    selected = "dcf"
+                  ),
+                  .bt_hint("決定紅線 A 的合理價試算路徑；與持倉無關。"),
                   checkboxInput(
                     "bt_param_auto",
                     "自動（依目前公司財報推導）",
                     value = TRUE
                   ),
-                  .bt_hint("勾選時會在搜尋新股票或按「重算參數」時更新門檻；取消勾選＝手動覆寫，啟動回測不會覆寫設定。"),
+                  .bt_hint(
+                    "勾選：換股／重算時依財報推導 Great Filter 門檻、曝險／情緒權重，並對齊上方推薦估值模型。取消：保留你手動改過的門檻與權重，不會被覆寫。"
+                  ),
                   actionButton(
                     "bt_refresh_params", "依目前公司重算參數",
                     icon = icon("sync"), class = "btn-default btn-block",
@@ -1153,26 +1169,7 @@ ui <- dashboardPage(
                     tabPanel(
                       title = tagList(icon("balance-scale"), "模式 A｜合理價試算"),
                       .bt_section_intro(
-                        "淨值圖紅線 A＝所選估值模型 × 歷史財報的 PIT 合理價路徑（季間依 SGR 複利延展），與持倉多少無關。"
-                      ),
-                      fluidRow(
-                        column(
-                          12,
-                          radioButtons(
-                            "bt_fv_model",
-                            "模式 A 估值模型",
-                            inline = TRUE,
-                            choices = c(
-                              "DCF" = "dcf",
-                              "DDM" = "ddm",
-                              "RI" = "ri",
-                              "P/B" = "pb",
-                              "綜合均值" = "composite"
-                            ),
-                            selected = "dcf"
-                          ),
-                          .bt_hint("與 Dashboard 推薦模型對齊；自動模式下載入財報後會依推薦更新。")
-                        )
+                        "淨值圖紅線 A＝執行面板所選估值模型 × 歷史財報的 PIT 合理價路徑（季間依 SGR 複利延展），與持倉多少無關。估值模型請在上方「執行面板」選擇。"
                       ),
                       fluidRow(
                         column(
