@@ -2128,6 +2128,35 @@ server <- function(input, output, session) {
     (tgt - cur) / tgt
   })
 
+  # 回測用「此刻」DCF 參數（歷史財報 × 當前假設）
+  bt_current_dcf_params <- reactive({
+    use_calc <- isTRUE(input$use_calculated_wacc) &&
+      !is.null(calculated_wacc()) && is.finite(calculated_wacc())
+    wacc <- if (use_calc) {
+      as.numeric(calculated_wacc())
+    } else if (identical(input$dcf_mode, "two_stage")) {
+      suppressWarnings(as.numeric(input$wacc_stage1)[1]) / 100
+    } else {
+      suppressWarnings(as.numeric(input$wacc_gordon)[1]) / 100
+    }
+    sgr <- suppressWarnings(as.numeric(input$sgr)[1]) / 100
+    n_years <- suppressWarnings(as.integer(input$years)[1])
+    if (is.na(n_years) || n_years < 1L) n_years <- 5L
+    g_explicit <- if (identical(input$dcf_mode, "two_stage")) {
+      suppressWarnings(as.numeric(input$g_stage1)[1]) / 100
+    } else {
+      # Gordon：短期成長優先自訂／否則用 SGR
+      cg <- suppressWarnings(as.numeric(input$custom_g)[1])
+      if (is.finite(cg)) cg / 100 else sgr
+    }
+    if (!is.finite(wacc) || wacc <= 0) {
+      wacc <- APP_DEFAULTS$wacc_gordon / 100
+    }
+    if (!is.finite(sgr)) sgr <- APP_DEFAULTS$sgr / 100
+    if (!is.finite(g_explicit)) g_explicit <- sgr
+    list(wacc = wacc, sgr = sgr, n_years = n_years, g_explicit = g_explicit)
+  })
+
   apply_bt_params_to_ui <- function(p) {
     bt_applying_params(TRUE)
     on.exit(bt_applying_params(FALSE), add = TRUE)
@@ -2233,6 +2262,7 @@ server <- function(input, output, session) {
         bt_w_rsi = input$bt_w_rsi,
         bt_w_vg = input$bt_w_vg
       )
+      dcf_p <- bt_current_dcf_params()
       withProgress(message = paste("回測", current_ticker(), "中…"), value = 0.3, {
         res <- run_company_backtest(
           ticker = current_ticker(),
@@ -2241,20 +2271,108 @@ server <- function(input, output, session) {
           d_cf = d_cash_flow(),
           params = params,
           mos = bt_current_mos(),
+          dcf_params = dcf_p,
           bench_ticker = "SPY",
           years = 5
         )
         incProgress(0.9)
         bt_result(res)
         bt_run_msg(sprintf(
-          "完成：%s 日資料，基準=%s，較佳策略=模式 %s",
-          res$n_days, res$bench_ticker, res$metrics$best
+          "完成：%s 日資料，基準=%s，較佳策略=模式 %s；DCF 參數 WACC=%.2f%%、SGR=%.2f%%、n=%s（歷史財報×此刻假設）",
+          res$n_days, res$bench_ticker, res$metrics$best,
+          dcf_p$wacc * 100, dcf_p$sgr * 100, dcf_p$n_years
         ))
       })
     }, error = function(e) {
       bt_run_msg(paste("失敗：", e$message))
       showNotification(paste("❌ 回測失敗：", e$message), type = "error", duration = 12)
     })
+  })
+
+  output$bt_valuation_summary <- renderUI({
+    res <- bt_result()
+    if (is.null(res) || is.null(res$metrics)) {
+      return(tags$div(
+        style = "color: #888; font-size: 12.5px; line-height: 1.55; margin-bottom: 8px;",
+        icon("info-circle"),
+        " 執行回測後，此處會以歷史各期財報＋此刻 DCF 參數估算策略估值，並與當時收盤價比較：",
+        tags$b("策略估值 < 歷史市價 → 策略低估"), "；",
+        tags$b("策略估值 > 歷史市價 → 價值高估"), "。"
+      ))
+    }
+    m <- res$metrics
+    dp <- res$dcf_params_used
+    pct_u <- if (is.na(m$pct_strategy_under)) "N/A" else sprintf("%.0f%%", m$pct_strategy_under * 100)
+    pct_o <- if (is.na(m$pct_value_over)) "N/A" else sprintf("%.0f%%", m$pct_value_over * 100)
+    mos_txt <- if (is.na(m$mean_hist_mos)) "N/A" else sprintf("%.1f%%", m$mean_hist_mos * 100)
+    last_col <- if (identical(m$last_signal, "策略低估")) "#00a65a"
+    else if (identical(m$last_signal, "價值高估")) "#d9534f"
+    else "#888"
+    tags$div(
+      style = "margin-bottom: 10px;",
+      tags$p(
+        style = "font-size: 12.5px; color: #444; line-height: 1.55; margin: 0 0 8px 0;",
+        sprintf(
+          "此刻參數：WACC %.2f%% · SGR %.2f%% · 預測 %s 年 · 明示成長 %.2f%%。月頻再平衡時以當時可得財報重估。",
+          .safe_num(dp$wacc, NA) * 100, .safe_num(dp$sgr, NA) * 100,
+          dp$n_years, .safe_num(dp$g_explicit, NA) * 100
+        )
+      ),
+      tags$div(
+        style = "display:flex; flex-wrap:wrap; gap:12px;",
+        tags$div(
+          style = "flex:1; min-width:140px; padding:10px 12px; background:#f7fbf8; border-left:4px solid #00a65a; border-radius:4px;",
+          tags$div(style = "font-size:11px; color:#666;", "策略低估佔比"),
+          tags$div(style = "font-size:22px; font-weight:700; color:#00a65a;", pct_u)
+        ),
+        tags$div(
+          style = "flex:1; min-width:140px; padding:10px 12px; background:#fdf7f7; border-left:4px solid #d9534f; border-radius:4px;",
+          tags$div(style = "font-size:11px; color:#666;", "價值高估佔比"),
+          tags$div(style = "font-size:22px; font-weight:700; color:#d9534f;", pct_o)
+        ),
+        tags$div(
+          style = "flex:1; min-width:140px; padding:10px 12px; background:#f7f9fb; border-left:4px solid #3c8dbc; border-radius:4px;",
+          tags$div(style = "font-size:11px; color:#666;", "平均歷史 MOS"),
+          tags$div(style = "font-size:22px; font-weight:700; color:#3c8dbc;", mos_txt)
+        ),
+        tags$div(
+          style = paste0("flex:1; min-width:140px; padding:10px 12px; background:#fafafa; border-left:4px solid ", last_col, "; border-radius:4px;"),
+          tags$div(style = "font-size:11px; color:#666;", "最近再平衡訊號"),
+          tags$div(style = paste0("font-size:18px; font-weight:700; color:", last_col, ";"), m$last_signal)
+        )
+      )
+    )
+  })
+
+  output$bt_valuation_plot <- renderPlotly({
+    res <- bt_result()
+    validate(need(!is.null(res) && !is.null(res$valuation_df) && nrow(res$valuation_df) > 0,
+                  "請先成功執行回測以產生估值對照"))
+
+    vd <- res$valuation_df
+    vd <- vd[is.finite(vd$hist_price) | is.finite(vd$strategy_fv), , drop = FALSE]
+    validate(need(nrow(vd) > 0, "尚無有效的歷史估值對照點"))
+
+    df_long <- rbind(
+      data.frame(Date = vd$Date, Value = vd$hist_price, Series = "歷史收盤價", stringsAsFactors = FALSE),
+      data.frame(Date = vd$Date, Value = vd$strategy_fv, Series = "策略估值（歷史財報×此刻參數）",
+                 stringsAsFactors = FALSE)
+    )
+    df_long <- df_long[is.finite(df_long$Value), , drop = FALSE]
+
+    p <- ggplot(df_long, aes(x = Date, y = Value, color = Series, group = Series)) +
+      geom_line(linewidth = 0.9) +
+      geom_point(size = 1.4, alpha = 0.85) +
+      scale_color_manual(values = c(
+        "歷史收盤價" = "#6c757d",
+        "策略估值（歷史財報×此刻參數）" = "#dc3545"
+      )) +
+      scale_y_continuous(labels = label_chart_number(prefix = "$")) +
+      labs(y = "每股價格", x = "再平衡日", color = NULL) +
+      theme_minimal()
+
+    ggplotly(p, tooltip = c("x", "y", "colour")) %>%
+      layout(legend = list(orientation = "h", y = -0.25))
   })
 
   output$bt_equity_plot <- renderPlotly({

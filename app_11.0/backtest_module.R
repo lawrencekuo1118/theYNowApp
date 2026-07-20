@@ -13,11 +13,106 @@
   if (length(x) < 1 || is.na(x) || !is.finite(x)) default else x
 }
 
-#' 從財報欄位建立「財年 → 指標」表（排除 TTM）
+.parse_period_year <- function(col) {
+  d <- suppressWarnings(as.Date(col, format = "%m/%d/%Y"))
+  if (is.na(d)) d <- suppressWarnings(as.Date(col))
+  if (is.na(d)) {
+    y <- suppressWarnings(as.integer(sub(".*?(\\d{4}).*", "\\1", col)))
+    return(y)
+  }
+  as.integer(format(d, "%Y"))
+}
+
+.pick_statement_val <- function(df, patterns, col) {
+  if (is.null(df) || !is.data.frame(df) || nrow(df) == 0) return(NA_real_)
+  for (pat in patterns) {
+    idx <- grep(pat, df[[1]], ignore.case = TRUE)
+    if (length(idx) == 0) next
+    if (!(col %in% colnames(df))) return(NA_real_)
+    return(parse_financial_number(df[idx[1], col])[1])
+  }
+  NA_real_
+}
+
+#' 在財報表中找「指定財年」欄位（同名優先，否則同年／最近較舊年）
+.find_col_for_year <- function(df, year, prefer_cols = NULL) {
+  if (is.null(df) || !is.data.frame(df) || ncol(df) < 2 || is.na(year)) return(NA_character_)
+  cols <- colnames(df)[-1]
+  cols <- cols[!grepl("^ttm$", cols, ignore.case = TRUE)]
+  if (length(cols) == 0) return(NA_character_)
+  if (!is.null(prefer_cols)) {
+    hit <- prefer_cols[prefer_cols %in% cols]
+    if (length(hit) > 0) {
+      ys <- vapply(hit, .parse_period_year, integer(1))
+      exact <- hit[!is.na(ys) & ys == year]
+      if (length(exact) > 0) return(exact[1])
+    }
+  }
+  ys <- vapply(cols, .parse_period_year, integer(1))
+  exact <- cols[!is.na(ys) & ys == year]
+  if (length(exact) > 0) return(exact[1])
+  prior <- cols[!is.na(ys) & ys <= year]
+  if (length(prior) == 0) return(NA_character_)
+  prior[which.max(ys[!is.na(ys) & ys <= year])]
+}
+
+#' 以「此刻 DCF 參數」+ 歷史單期 FCF／BS 估算每股策略估值
+#' @param fcf0 歷史自由現金流（與財報同單位）
+#' @param wacc,sgr,g_explicit 小數（非百分比）
+estimate_hist_fair_value <- function(fcf0, cash, debt, shares,
+                                     wacc, sgr, n_years = 5, g_explicit = NULL) {
+  fcf0 <- .safe_num(fcf0, NA_real_)
+  shares <- .safe_num(shares, NA_real_)
+  wacc <- .safe_num(wacc, NA_real_)
+  sgr <- .safe_num(sgr, NA_real_)
+  n_years <- as.integer(.safe_num(n_years, 5))
+  if (is.null(g_explicit) || !is.finite(.safe_num(g_explicit, NA_real_))) {
+    g_explicit <- sgr
+  } else {
+    g_explicit <- .safe_num(g_explicit, sgr)
+  }
+  cash <- .safe_num(cash, 0)
+  debt <- .safe_num(debt, 0)
+
+  if (is.na(fcf0) || is.na(shares) || shares <= 1 || is.na(wacc) || wacc <= 0) {
+    return(NA_real_)
+  }
+  if (n_years < 1L) n_years <- 5L
+  if (is.na(sgr)) sgr <- max(0, wacc - 0.03)
+  if (sgr >= wacc) sgr <- max(0, wacc - 0.005)
+  if (!is.finite(g_explicit)) g_explicit <- sgr
+
+  fcfs <- fcf0 * (1 + g_explicit)^seq_len(n_years)
+  dfs <- cumprod(rep(1 + wacc, n_years))
+  pv_fcf <- sum(fcfs / dfs)
+  tv <- fcfs[n_years] * (1 + sgr) / (wacc - sgr)
+  pv_tv <- tv / dfs[n_years]
+  ev <- pv_fcf + pv_tv
+  equity <- ev + cash - debt
+  fv <- equity / shares
+  if (!is.finite(fv) || fv <= 0) return(NA_real_)
+  fv
+}
+
+#' 估值訊號：策略估值 vs 歷史市價
+#' - 策略結果 < 歷史市價 → 策略低估
+#' - 策略結果 > 歷史市價 → 價值高估
+valuation_signal_label <- function(fv, price) {
+  fv <- .safe_num(fv, NA_real_)
+  price <- .safe_num(price, NA_real_)
+  if (is.na(fv) || is.na(price) || price <= 0) return("資料不足")
+  if (fv < price) return("策略低估")
+  if (fv > price) return("價值高估")
+  "合理"
+}
+
+#' 從財報欄位建立「財年 → 指標」表（排除 TTM；含估值所需 FCF／現金／負債／股數）
 build_annual_fundamentals <- function(d_is, d_bs, d_cf) {
   empty <- data.frame(
     year = integer(0), net_margin = numeric(0), rev_growth = numeric(0),
-    eps_growth = numeric(0), fcf = numeric(0), stringsAsFactors = FALSE
+    eps_growth = numeric(0), fcf = numeric(0),
+    cash = numeric(0), debt = numeric(0), shares = numeric(0),
+    stringsAsFactors = FALSE
   )
   if (is.null(d_is) || !is.data.frame(d_is) || ncol(d_is) < 2) return(empty)
 
@@ -25,36 +120,51 @@ build_annual_fundamentals <- function(d_is, d_bs, d_cf) {
   period_cols <- period_cols[!grepl("^ttm$", period_cols, ignore.case = TRUE)]
   if (length(period_cols) == 0) return(empty)
 
-  parse_year <- function(col) {
-    d <- suppressWarnings(as.Date(col, format = "%m/%d/%Y"))
-    if (is.na(d)) d <- suppressWarnings(as.Date(col))
-    if (is.na(d)) {
-      y <- suppressWarnings(as.integer(sub(".*?(\\d{4}).*", "\\1", col)))
-      return(y)
-    }
-    as.integer(format(d, "%Y"))
-  }
-
-  years <- vapply(period_cols, parse_year, integer(1))
+  years <- vapply(period_cols, .parse_period_year, integer(1))
   ok <- !is.na(years)
   period_cols <- period_cols[ok]
   years <- years[ok]
   if (length(years) == 0) return(empty)
 
-  pick_val <- function(df, patterns, col) {
-    if (is.null(df) || !is.data.frame(df) || nrow(df) == 0) return(NA_real_)
-    for (pat in patterns) {
-      idx <- grep(pat, df[[1]], ignore.case = TRUE)
-      if (length(idx) == 0) next
-      if (!(col %in% colnames(df))) return(NA_real_)
-      return(parse_financial_number(df[idx[1], col])[1])
-    }
-    NA_real_
-  }
+  rev <- vapply(period_cols, function(c) .pick_statement_val(d_is, c("Total Revenue", "^Revenue$"), c), numeric(1))
+  ni  <- vapply(period_cols, function(c) .pick_statement_val(d_is, NET_INCOME_PATTERNS, c), numeric(1))
 
-  rev <- vapply(period_cols, function(c) pick_val(d_is, c("Total Revenue", "^Revenue$"), c), numeric(1))
-  ni  <- vapply(period_cols, function(c) pick_val(d_is, NET_INCOME_PATTERNS, c), numeric(1))
-  fcf <- vapply(period_cols, function(c) pick_val(d_cf, c("^Free Cash Flow$"), c), numeric(1))
+  fcf <- vapply(seq_along(period_cols), function(i) {
+    col <- .find_col_for_year(d_cf, years[i], prefer_cols = period_cols[i])
+    if (is.na(col)) return(NA_real_)
+    .pick_statement_val(d_cf, c("^Free Cash Flow$"), col)
+  }, numeric(1))
+
+  cash <- vapply(seq_along(period_cols), function(i) {
+    col <- .find_col_for_year(d_bs, years[i], prefer_cols = period_cols[i])
+    if (is.na(col)) return(NA_real_)
+    v <- .pick_statement_val(
+      d_bs,
+      c("Cash.*Equivalents.*Investments", "Cash And Cash Equivalents", "^Total Cash$"),
+      col
+    )
+    if (is.na(v)) 0 else v
+  }, numeric(1))
+
+  debt <- vapply(seq_along(period_cols), function(i) {
+    col <- .find_col_for_year(d_bs, years[i], prefer_cols = period_cols[i])
+    if (is.na(col)) return(NA_real_)
+    v <- .pick_statement_val(d_bs, c("^Total Debt$"), col)
+    if (!is.na(v)) return(v)
+    st <- .pick_statement_val(d_bs, c("Current Debt", "Short Term Debt"), col)
+    lt <- .pick_statement_val(d_bs, c("Long Term Debt"), col)
+    sum(c(if (is.na(st)) 0 else st, if (is.na(lt)) 0 else lt), na.rm = TRUE)
+  }, numeric(1))
+
+  shares <- vapply(seq_along(period_cols), function(i) {
+    col <- .find_col_for_year(d_bs, years[i], prefer_cols = period_cols[i])
+    if (is.na(col)) return(NA_real_)
+    .pick_statement_val(
+      d_bs,
+      c("Ordinary Shares Number", "Share Issued", "Total Shares Outstanding", "Basic Average Shares"),
+      col
+    )
+  }, numeric(1))
 
   # 成長：相對「更舊一欄」（欄位已是新→舊）
   rev_g <- rep(NA_real_, length(rev))
@@ -78,6 +188,9 @@ build_annual_fundamentals <- function(d_is, d_bs, d_cf) {
     rev_growth = rev_g,
     eps_growth = eps_g,
     fcf = fcf,
+    cash = cash,
+    debt = debt,
+    shares = shares,
     stringsAsFactors = FALSE
   )
 }
@@ -230,11 +343,13 @@ derive_bt_params <- function(d_is, d_bs, d_cf,
 }
 
 #' 2) 公司專屬回測引擎（月頻再平衡）
-#' @return list(equity_df, metrics, path_label)
+#' @param dcf_params list(wacc, sgr, n_years, g_explicit) 皆為小數；用「此刻」模型參數驗證歷史
+#' @return list(equity_df, metrics, valuation_df, ...)
 run_company_backtest <- function(ticker,
                                  d_is, d_bs, d_cf,
                                  params,
                                  mos = NA_real_,
+                                 dcf_params = NULL,
                                  bench_ticker = "SPY",
                                  years = 5) {
   period <- paste0(as.integer(years), "y")
@@ -251,7 +366,14 @@ run_company_backtest <- function(ticker,
   }
 
   fund <- build_annual_fundamentals(d_is, d_bs, d_cf)
-  mos_n <- .safe_num(mos, 0)
+  mos_fallback <- .safe_num(mos, 0)
+
+  # 此刻 DCF 參數（歷史財報 × 當前假設 → 策略估值）
+  dcf_wacc <- .safe_num(dcf_params$wacc, NA_real_)
+  dcf_sgr <- .safe_num(dcf_params$sgr, NA_real_)
+  dcf_n <- as.integer(.safe_num(dcf_params$n_years, 5))
+  dcf_g_exp <- .safe_num(dcf_params$g_explicit, dcf_sgr)
+  use_hist_fv <- is.finite(dcf_wacc) && dcf_wacc > 0 && nrow(fund) > 0
 
   thr_npm <- .safe_num(params$bt_net_margin, 5)
   thr_rev <- .safe_num(params$bt_rev_growth, 10)
@@ -282,14 +404,18 @@ run_company_backtest <- function(ticker,
 
   lookup_fund <- function(as_of_date) {
     y <- as.integer(format(as_of_date, "%Y"))
-    if (nrow(fund) == 0) {
-      return(list(pass = TRUE, path = "資料不足→寬鬆", npm = NA, rev_g = NA, eps_g = NA, cv = NA))
-    }
+    empty_row <- list(
+      pass = TRUE, path = "資料不足→寬鬆",
+      npm = NA, rev_g = NA, eps_g = NA, cv = NA,
+      fcf = NA, cash = 0, debt = 0, shares = NA, fund_year = NA
+    )
+    if (nrow(fund) == 0) return(empty_row)
     # 只用「財年 < 當前曆年」避免明顯前視；同曆年則允許 year <= y-1 優先
     cand <- fund[fund$year <= (y - 1), , drop = FALSE]
     if (nrow(cand) == 0) cand <- fund[fund$year <= y, , drop = FALSE]
     if (nrow(cand) == 0) {
-      return(list(pass = TRUE, path = "無對齊財年", npm = NA, rev_g = NA, eps_g = NA, cv = NA))
+      empty_row$path <- "無對齊財年"
+      return(empty_row)
     }
     # 取最近財年列 + 過去最多 4 年算 CV
     cand <- cand[order(-cand$year), , drop = FALSE]
@@ -323,7 +449,9 @@ run_company_backtest <- function(ticker,
     list(
       pass = isTRUE(pass_npm && pass_rev && pass_eps && pass_cv),
       path = path,
-      npm = npm, rev_g = rev_g, eps_g = eps_g, cv = cv
+      npm = npm, rev_g = rev_g, eps_g = eps_g, cv = cv,
+      fcf = row1$fcf, cash = row1$cash, debt = row1$debt,
+      shares = row1$shares, fund_year = row1$year
     )
   }
 
@@ -338,6 +466,8 @@ run_company_backtest <- function(ticker,
   equity_bh[1] <- 1
   equity_bm[1] <- 1
 
+  val_rows <- list()
+
   for (i in 2:nrow(df)) {
     r <- df$Close[i] / df$Close[i - 1] - 1
     rb <- df$Bench[i] / df$Bench[i - 1] - 1
@@ -346,14 +476,37 @@ run_company_backtest <- function(ticker,
 
     if (i %in% rebal_idx) {
       fund_i <- lookup_fund(df$Date[i])
+      price_i <- .safe_num(df$Close[i], NA_real_)
       mom_score <- .clip01((.safe_num(df$ret20[i], 0) + 0.05) / 0.15) # -5%~+10% → 約 0~1
       rsi <- .safe_num(df$RSI[i], 50)
       rsi_score <- if (rsi >= 80) 0.15 else if (rsi >= 70) 0.4 else if (rsi <= 30) 0.85 else 0.55
 
+      # ---- 歷史財報 × 此刻參數 → 策略估值，再對照當時市價 ----
+      fv_i <- NA_real_
+      if (isTRUE(use_hist_fv)) {
+        fv_i <- estimate_hist_fair_value(
+          fcf0 = fund_i$fcf,
+          cash = fund_i$cash,
+          debt = fund_i$debt,
+          shares = fund_i$shares,
+          wacc = dcf_wacc,
+          sgr = dcf_sgr,
+          n_years = dcf_n,
+          g_explicit = dcf_g_exp
+        )
+      }
+      signal_i <- valuation_signal_label(fv_i, price_i)
+      # MOS = (策略估值 − 歷史市價) / 策略估值
+      # 策略低估 (fv < price, mos < 0) → 降低曝險；策略估值 > 市價 (mos > 0) → 提高曝險
+      if (is.finite(fv_i) && is.finite(price_i) && fv_i > 0) {
+        mos_i <- (fv_i - price_i) / fv_i
+      } else {
+        mos_i <- mos_fallback
+      }
+      vg_score <- .clip01(0.5 + mos_i)
+
       # ---- 內部 pos_b＝純基本面基準（顯示為模式 A）----
-      vg_score <- .clip01(0.5 + mos_n) # MOS 高→偏多
       if (isTRUE(fund_i$pass)) {
-        # w_vg：估值權重；剩餘以中性基準曝險 0.55（非技術指標）
         pos_b <- .clip01((1 - w_vg) * 0.55 + w_vg * vg_score)
       } else {
         pos_b <- 0
@@ -366,19 +519,41 @@ run_company_backtest <- function(ticker,
       } else {
         sent_score <- 0.5
       }
-      # 情緒乘數約 0.45～1.35：偏弱減碼、偏強略加碼，但不脫離基準
       sent_mult <- 0.45 + 0.90 * sent_score
       if (isTRUE(fund_i$pass)) {
         pos_a <- .clip01(pos_b * sent_mult)
       } else {
         pos_a <- 0
       }
+
+      val_rows[[length(val_rows) + 1L]] <- data.frame(
+        Date = df$Date[i],
+        fund_year = fund_i$fund_year,
+        hist_price = price_i,
+        strategy_fv = fv_i,
+        mos = mos_i,
+        signal = signal_i,
+        filter_pass = isTRUE(fund_i$pass),
+        pos_fundamental = pos_b,
+        stringsAsFactors = FALSE
+      )
     }
 
     equity_a[i] <- equity_a[i - 1] * (1 + pos_a * r)
     equity_b[i] <- equity_b[i - 1] * (1 + pos_b * r)
     equity_bh[i] <- equity_bh[i - 1] * (1 + r)
     equity_bm[i] <- equity_bm[i - 1] * (1 + rb)
+  }
+
+  valuation_df <- if (length(val_rows) > 0) {
+    do.call(rbind, val_rows)
+  } else {
+    data.frame(
+      Date = as.Date(character()), fund_year = integer(),
+      hist_price = numeric(), strategy_fv = numeric(), mos = numeric(),
+      signal = character(), filter_pass = logical(), pos_fundamental = numeric(),
+      stringsAsFactors = FALSE
+    )
   }
 
   # Mode A（顯示）：純基本面基準 ← 內部 equity_b
@@ -411,24 +586,41 @@ run_company_backtest <- function(ticker,
 
   pa <- perf_one(equity_a) # 情緒疊加（顯示為模式 B）
   pb <- perf_one(equity_b) # 純基本面（顯示為模式 A）
-  # 參數高原：微擾成長門檻 ±20% 看 Sharpe 是否崩
   plateau <- "穩定"
   tryCatch({
-    p_hi <- params; p_hi$bt_rev_growth <- thr_rev * 1.2
-    p_lo <- params; p_lo$bt_rev_growth <- max(0, thr_rev * 0.8)
     plateau <- if (isTRUE(abs(pa$sharpe - pb$sharpe) < 1.5)) "穩定" else "敏感"
   }, error = function(e) NULL)
 
+  sig <- valuation_df$signal
+  n_sig <- sum(sig %in% c("策略低估", "價值高估", "合理"), na.rm = TRUE)
+  pct_under <- if (n_sig > 0) sum(sig == "策略低估", na.rm = TRUE) / n_sig else NA_real_
+  pct_over <- if (n_sig > 0) sum(sig == "價值高估", na.rm = TRUE) / n_sig else NA_real_
+  mean_mos <- if (nrow(valuation_df) > 0) {
+    mean(valuation_df$mos[is.finite(valuation_df$mos)], na.rm = TRUE)
+  } else {
+    NA_real_
+  }
+  last_signal <- if (nrow(valuation_df) > 0) tail(valuation_df$signal, 1) else "資料不足"
+
   list(
     equity_df = equity_df,
+    valuation_df = valuation_df,
     metrics = list(
       sharpe_a = pb$sharpe, sharpe_b = pa$sharpe,
       mdd_a = pb$mdd, mdd_b = pa$mdd,
       cagr_a = pb$cagr, cagr_b = pa$cagr,
       plateau = plateau,
-      best = if (isTRUE(.safe_num(pb$sharpe, -Inf) >= .safe_num(pa$sharpe, -Inf))) "A" else "B"
+      best = if (isTRUE(.safe_num(pb$sharpe, -Inf) >= .safe_num(pa$sharpe, -Inf))) "A" else "B",
+      pct_strategy_under = pct_under,
+      pct_value_over = pct_over,
+      mean_hist_mos = mean_mos,
+      last_signal = last_signal,
+      use_hist_fv = use_hist_fv
     ),
     bench_ticker = bench_ticker,
-    n_days = nrow(df)
+    n_days = nrow(df),
+    dcf_params_used = list(
+      wacc = dcf_wacc, sgr = dcf_sgr, n_years = dcf_n, g_explicit = dcf_g_exp
+    )
   )
 }
