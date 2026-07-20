@@ -1360,7 +1360,8 @@ server <- function(input, output, session) {
   })
   
   .auto_recalc_capm_wacc <- function(notify = FALSE, wacc_too = TRUE, rf_override = NULL) {
-    # CAPM → Re
+    # CAPM → Re（永遠更新右側估算值；僅勾選「採用估算 rₑ」時寫入左側 wacc_re）
+    apply_est_re <- isTRUE(input$use_estimated_re)
     rf <- if (!is.null(rf_override) && is.finite(as.numeric(rf_override))) {
       as.numeric(rf_override)
     } else {
@@ -1371,15 +1372,21 @@ server <- function(input, output, session) {
     if (is.finite(rf) && is.finite(beta) && is.finite(rm)) {
       r_e_est <- (rf / 100) + beta * ((rm / 100) - (rf / 100))
       estimated_re(r_e_est)
-      updateNumericInput(session, "wacc_re", value = round(r_e_est * 100, 2))
+      if (isTRUE(apply_est_re)) {
+        updateNumericInput(session, "wacc_re", value = round(r_e_est * 100, 2))
+      }
     }
 
     if (!isTRUE(wacc_too)) {
       if (isTRUE(notify) && !is.null(estimated_re())) {
-        showNotification(
-          glue::glue("📌 已估算 rₑ = {round(estimated_re() * 100, 2)}%"),
-          type = "message"
-        )
+        msg <- if (isTRUE(apply_est_re)) {
+          glue::glue("📌 已估算並套用 rₑ = {round(estimated_re() * 100, 2)}%")
+        } else {
+          glue::glue(
+            "📌 已估算 rₑ = {round(estimated_re() * 100, 2)}%（未套用；左側使用手動 rₑ）"
+          )
+        }
+        showNotification(msg, type = "message")
       }
       return(invisible(NULL))
     }
@@ -1410,10 +1417,11 @@ server <- function(input, output, session) {
     total_capital <- equity_mv + debt
     if (!is.finite(total_capital) || total_capital <= 0) return(invisible(NULL))
 
-    r_e <- if (isTRUE(input$use_estimated_re) && !is.null(estimated_re())) {
+    # 取消勾選時一律以左側手動 rₑ 計算，不用 CAPM 估算值
+    r_e <- if (isTRUE(apply_est_re) && !is.null(estimated_re())) {
       estimated_re()
-    } else if (!is.null(input$wacc_re) && is.finite(input$wacc_re)) {
-      input$wacc_re / 100
+    } else if (!is.null(input$wacc_re) && is.finite(as.numeric(input$wacc_re))) {
+      as.numeric(input$wacc_re) / 100
     } else {
       APP_DEFAULTS$wacc_re / 100
     }
@@ -1434,8 +1442,9 @@ server <- function(input, output, session) {
     }
 
     if (isTRUE(notify)) {
+      re_src <- if (isTRUE(apply_est_re)) "含 CAPM rₑ" else "含手動 rₑ"
       showNotification(
-        glue::glue("📌 已自動估算並套用 WACC {wacc_percent}%（含 CAPM rₑ）"),
+        glue::glue("📌 已計算並套用 WACC {wacc_percent}%（{re_src}）"),
         type = "message",
         duration = 5
       )
@@ -1446,6 +1455,12 @@ server <- function(input, output, session) {
   observeEvent(input$calc_wacc, {
     .auto_recalc_capm_wacc(notify = TRUE, wacc_too = TRUE)
   })
+
+  # 勾選／取消「採用估算 rₑ」：立即改用對應來源重算 WACC
+  observeEvent(input$use_estimated_re, {
+    req(scraped_financials(), summary_data())
+    .auto_recalc_capm_wacc(notify = FALSE, wacc_too = TRUE)
+  }, ignoreInit = TRUE)
 
   # 查詢新股票／財報更新後：自動帶入相關數值並重估 WACC
   observeEvent(list(scraped_financials(), summary_data()), {
@@ -1458,7 +1473,21 @@ server <- function(input, output, session) {
   }, ignoreInit = TRUE)
 
   # 產業／Beta／Rm 變更時靜默重估（避免重複通知）
+  # 未勾選採用估算 rₑ 時：仍更新右側 CAPM 估算，但不覆寫左側手動 rₑ
   observeEvent(list(input$capm_beta, input$capm_rm, input$industry_choice), {
+    req(scraped_financials(), summary_data())
+    .auto_recalc_capm_wacc(notify = FALSE, wacc_too = TRUE)
+  }, ignoreInit = TRUE)
+
+  # 手動 rₑ 變更：僅在未採用 CAPM 估算時重算（避免被 updateNumericInput 迴圈覆寫）
+  observeEvent(input$wacc_re, {
+    req(scraped_financials(), summary_data())
+    if (isTRUE(input$use_estimated_re)) return()
+    .auto_recalc_capm_wacc(notify = FALSE, wacc_too = TRUE)
+  }, ignoreInit = TRUE)
+
+  # rᵈ／稅率變更：一律重算 WACC（rₑ 來源仍受勾選控制）
+  observeEvent(list(input$wacc_rd, input$wacc_tax), {
     req(scraped_financials(), summary_data())
     .auto_recalc_capm_wacc(notify = FALSE, wacc_too = TRUE)
   }, ignoreInit = TRUE)
