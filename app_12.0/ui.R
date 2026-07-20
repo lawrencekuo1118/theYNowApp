@@ -79,7 +79,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = "The YNow App v12",
+    title = "The YNow App",
     titleWidth = 250
   ),
   
@@ -334,6 +334,10 @@ ui <- dashboardPage(
           --ynow-metric-red-tint: #faf0ef;
           --ynow-metric-violet: #5c5a8a;
           --ynow-metric-violet-tint: #f3f2f8;
+          --ynow-metric-blue: #2f6f9f;
+          --ynow-metric-blue-tint: #eef5fa;
+          --ynow-metric-amber: #b7791f;
+          --ynow-metric-amber-tint: #faf6ee;
           display: grid;
           grid-template-columns: repeat(3, minmax(0, 1fr));
           gap: 14px;
@@ -368,6 +372,34 @@ ui <- dashboardPage(
         .ynow-metric-card--violet {
           border-left: 4px solid var(--ynow-metric-violet);
           background: linear-gradient(180deg, var(--ynow-metric-violet-tint) 0%, #ffffff 42%);
+        }
+        .ynow-metric-card--blue {
+          border-left: 4px solid var(--ynow-metric-blue);
+          background: linear-gradient(180deg, var(--ynow-metric-blue-tint) 0%, #ffffff 42%);
+        }
+        .ynow-metric-card--amber {
+          border-left: 4px solid var(--ynow-metric-amber);
+          background: linear-gradient(180deg, var(--ynow-metric-amber-tint) 0%, #ffffff 42%);
+        }
+        .ynow-metric-card--blue .ynow-metric-card__icon { background: var(--ynow-metric-blue); }
+        .ynow-metric-card--amber .ynow-metric-card__icon { background: var(--ynow-metric-amber); }
+        .ynow-metric-card--blue .ynow-metric-card__value { color: #1e4d6e; }
+        .ynow-metric-card--amber .ynow-metric-card__value { color: #8a5a12; }
+        /* 執行面板：避免 btn-block 蓋住下方說明文字 */
+        .ynow-bt-run-panel .btn-block { margin-left: 0; margin-right: 0; }
+        .ynow-bt-run-panel .ynow-bt-run-note {
+          clear: both;
+          display: block;
+          position: relative;
+          z-index: 1;
+          margin: 12px 0 0 0;
+          padding: 8px 10px;
+          background: #fff8e8;
+          border: 1px solid #f0e0b2;
+          border-radius: 4px;
+          font-size: 11.5px;
+          line-height: 1.45;
+          color: #6b5a2e;
         }
         .ynow-metric-card__body {
           padding: 14px 16px 12px 16px;
@@ -979,44 +1011,72 @@ ui <- dashboardPage(
       
       tabItem(tabName = "backtest",
               withMathJax(),
-              h2("量化回測實驗室 v12（Backtest Credibility）"),
+              h2("量化回測實驗室 (Backtest Zone)"),
               .bt_section_intro(
-                "V12 核心：Point-in-Time 動態重建歷史合理價（DCF／DDM／RI／P/B），驗證策略是否創造 Alpha，並解釋為何輸給 Buy & Hold。結果僅存於目前 Session，不建立歷史估值倉庫。"
+                "流程：搜尋股票 → 設定 DCF 此刻參數 → 確認過濾門檻 → 啟動回測。系統以歷史財報 Point-in-Time 重建合理價，驗證策略是否創造 Alpha（結果僅存 Session）。"
               ),
 
+              # 1) 績效指標置頂（Alpha + 摘要整併）
               fluidRow(
+                box(
+                  title = tagList(icon("trophy"), "回測績效指標"),
+                  width = 12, status = "success", solidHeader = TRUE, collapsible = TRUE, collapsed = FALSE,
+                  uiOutput("perf_metrics")
+                )
+              ),
+
+              # 2) 淨值圖 + 執行面板
+              fluidRow(
+                box(
+                  title = tagList(icon("chart-area"), "策略淨值比較圖"),
+                  width = 8, status = "info", solidHeader = TRUE,
+                  plotlyOutput("bt_equity_plot", height = "400px") %>% withSpinner(),
+                  tags$ul(
+                    style = "margin: 10px 0 0 0; padding-left: 18px; font-size: 12px; color: #666; line-height: 1.55;",
+                    tags$li(tags$b("紅線 A"), " 純基本面（季頻、MOS 滯後倉位，偏長期持有）。"),
+                    tags$li(tags$b("藍線 B"), " A × 情緒乘數（僅能在 A 的 75%～125% 內調整，不可推翻基本面空手）。"),
+                    tags$li(tags$b("綠線"), " Buy & Hold；", tags$b("灰虛線"), " SPY 基準。")
+                  )
+                ),
                 box(
                   title = tagList(icon("play-circle"), "執行面板"),
                   width = 4, status = "warning", solidHeader = TRUE,
+                  class = "ynow-bt-run-panel",
                   tags$ol(
                     style = "padding-left: 18px; font-size: 12px; color: #555; margin-bottom: 12px; line-height: 1.55;",
                     tags$li("搜尋股票並載入財報（即時抓取）"),
                     tags$li("在 DCF／WACC 設定「此刻」模型參數"),
-                    tags$li("確認過濾門檻後啟動回測")
+                    tags$li("確認下方參數後啟動回測")
                   ),
                   radioButtons(
                     "bt_param_mode", "參數模式",
+                    inline = FALSE,
                     choices = c(
                       "自動（依目前公司財報推導）" = "auto",
-                      "手動覆寫" = "manual"
+                      "手動覆寫（自行調整門檻與權重）" = "manual"
                     ),
                     selected = "auto"
                   ),
-                  actionButton("bt_refresh_params", "依目前公司重算參數",
-                               icon = icon("sync"), class = "btn-default btn-block",
-                               style = "margin-bottom: 8px;"),
-                  actionButton("run_bt", "啟動 V12 回測驗證",
-                               class = "btn-warning btn-lg btn-block"),
-                  .bt_hint("季頻再平衡 · PIT 多模型估值 · Session-only 動態重建。"),
+                  .bt_hint("自動模式會在搜尋新股票或按「重算參數」時更新門檻；手動調整後不會在啟動回測時被覆寫。"),
+                  actionButton(
+                    "bt_refresh_params", "依目前公司重算參數",
+                    icon = icon("sync"), class = "btn-default btn-block",
+                    style = "margin-bottom: 10px;"
+                  ),
+                  actionButton(
+                    "run_bt", "啟動量化回測",
+                    class = "btn-warning btn-lg btn-block",
+                    style = "margin-bottom: 0;"
+                  ),
+                  tags$div(
+                    class = "ynow-bt-run-note",
+                    "季頻再平衡 · PIT 多模型估值 · Session-only 動態重建。"
+                  ),
                   uiOutput("bt_run_status")
-                ),
-                box(
-                  title = tagList(icon("chart-line"), "Alpha Dashboard"),
-                  width = 8, status = "success", solidHeader = TRUE,
-                  uiOutput("bt_alpha_dashboard")
                 )
               ),
 
+              # 3) 核心驗證圖
               fluidRow(
                 box(
                   title = tagList(icon("balance-scale"), "Historical Fair Value Timeline（核心圖）"),
@@ -1032,34 +1092,15 @@ ui <- dashboardPage(
 
               fluidRow(
                 box(
-                  title = tagList(icon("chart-area"), "策略淨值比較"),
-                  width = 8, status = "info", solidHeader = TRUE,
-                  plotlyOutput("bt_equity_plot", height = "400px") %>% withSpinner(),
-                  tags$ul(
-                    style = "margin: 10px 0 0 0; padding-left: 18px; font-size: 12px; color: #666; line-height: 1.55;",
-                    tags$li(tags$b("紅線 A"), " 純基本面（季頻、MOS 滯後倉位，偏長期持有）。"),
-                    tags$li(tags$b("藍線 B"), " A × 情緒乘數（僅能在 A 的 75%～125% 內調整，不可推翻基本面空手）。"),
-                    tags$li(tags$b("綠線"), " Buy & Hold；", tags$b("灰虛線"), " SPY 基準。")
-                  )
-                ),
-                box(
                   title = tagList(icon("percentage"), "Exposure History（模式 A）"),
-                  width = 4, status = "danger", solidHeader = TRUE,
+                  width = 6, status = "danger", solidHeader = TRUE, collapsible = TRUE,
                   uiOutput("bt_exposure_stats"),
                   plotlyOutput("bt_exposure_plot", height = "260px") %>% withSpinner()
-                )
-              ),
-
-              fluidRow(
+                ),
                 box(
                   title = tagList(icon("search-dollar"), "為何輸給 Buy & Hold？"),
                   width = 6, status = "warning", solidHeader = TRUE, collapsible = TRUE,
                   uiOutput("bt_bh_gap")
-                ),
-                box(
-                  title = tagList(icon("trophy"), "績效摘要"),
-                  width = 6, status = "success", solidHeader = TRUE, collapsible = TRUE,
-                  uiOutput("perf_metrics")
                 )
               ),
 
@@ -1087,6 +1128,7 @@ ui <- dashboardPage(
                 )
               ),
 
+              # 4) 細部參數設定置底
               fluidRow(column(width = 12, uiOutput("bt_param_notes"))),
 
               fluidRow(

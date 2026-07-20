@@ -328,7 +328,7 @@ server <- function(input, output, session) {
          fallback_label = "pro", fallback_color = "blue"),
       mk("Sensitivity", "sensitivity", "sliders-h",
          fallback_label = "new", fallback_color = "green"),
-      mk("Backtest v12", "backtest", "vial",
+      mk("Backtest Zone", "backtest", "vial",
          fallback_label = "Alpha", fallback_color = "orange"),
       mk("Snapshot", "snapshot", "camera"),
       mk("About", "about", "info-circle")
@@ -2345,43 +2345,6 @@ server <- function(input, output, session) {
     sprintf(paste0("%.", digits, "f"), as.numeric(x))
   }
 
-  output$bt_alpha_dashboard <- renderUI({
-    v <- bt_validation()
-    if (is.null(v) || is.null(v$alpha) || nrow(v$alpha) == 0) {
-      return(tags$div(
-        style = "color:#888;font-size:12.5px;line-height:1.55;",
-        icon("info-circle"),
-        " 執行回測後顯示 Buy & Hold／Strategy A／B 的 CAGR、Sharpe、MaxDD、Excess Return、Jensen Alpha。"
-      ))
-    }
-    df <- v$alpha
-    row_ui <- function(r) {
-      tags$tr(
-        tags$td(tags$b(r$Series)),
-        tags$td(.fmt_pct(r$CAGR)),
-        tags$td(.fmt_num(r$Sharpe)),
-        tags$td(.fmt_pct(r$MaxDD)),
-        tags$td(.fmt_pct(r$ExcessReturn)),
-        tags$td(.fmt_pct(r$JensenAlpha))
-      )
-    }
-    tags$div(
-      tags$table(
-        class = "table table-striped table-condensed",
-        style = "background:#fff;font-size:13px;margin:0;",
-        tags$thead(tags$tr(
-          tags$th("Series"), tags$th("CAGR"), tags$th("Sharpe"),
-          tags$th("Max DD"), tags$th("Excess vs BH"), tags$th("Jensen α")
-        )),
-        tags$tbody(lapply(seq_len(nrow(df)), function(i) row_ui(df[i, ])))
-      ),
-      tags$p(
-        style = "margin:8px 0 0;font-size:11px;color:#777;",
-        "核心問題：策略是否真的優於單純持有？Excess／α > 0 才代表創造價值。"
-      )
-    )
-  })
-
   output$bt_valuation_summary <- renderUI({
     res <- bt_result()
     if (is.null(res) || is.null(res$metrics)) {
@@ -2633,26 +2596,135 @@ server <- function(input, output, session) {
 
   output$perf_metrics <- renderUI({
     res <- bt_result()
+    v <- bt_validation()
     if (is.null(res) || is.null(res$metrics)) {
-      return(tags$div(
-        style = "color:#888;font-size:12.5px;",
-        "執行回測後顯示 Sharpe／MaxDD（以較佳策略為主）。"
-      ))
+      return(
+        tags$div(
+          style = "color: #888; font-size: 12.5px; line-height: 1.55;",
+          icon("chart-bar"),
+          " 執行回測後，此處會以卡片顯示 ",
+          tags$b("Sharpe"), "、", tags$b("Max DD"), "、",
+          tags$b("CAGR"), "、", tags$b("Excess vs BH"), "、",
+          tags$b("Jensen α"), " 與 ", tags$b("參數高原"), "。"
+        )
+      )
     }
     m <- res$metrics
     best <- m$best
+    label_best <- if (identical(best, "A")) "模式 A" else "模式 B"
     sharpe_show <- if (identical(best, "A")) m$sharpe_a else m$sharpe_b
     mdd_show <- if (identical(best, "A")) m$mdd_a else m$mdd_b
-    label_best <- if (identical(best, "A")) "模式 A" else "模式 B"
-    tags$div(
-      style = "font-size:13px;line-height:1.7;",
-      tags$div(tags$b("較佳策略："), label_best),
-      tags$div(tags$b("Sharpe："), .fmt_num(sharpe_show),
-               "（A ", .fmt_num(m$sharpe_a), " / B ", .fmt_num(m$sharpe_b), "）"),
-      tags$div(tags$b("Max DD："), .fmt_pct(mdd_show)),
-      tags$div(tags$b("CAGR A／B："), .fmt_pct(m$cagr_a), " / ", .fmt_pct(m$cagr_b)),
-      tags$p(style = "font-size:11px;color:#777;margin-top:8px;",
-             "詳細 Alpha 與 B&H 拆解見上方 Dashboard／Gap 面板。")
+    cagr_show <- if (identical(best, "A")) m$cagr_a else m$cagr_b
+    sharpe_a_txt <- if (is.na(m$sharpe_a)) "N/A" else sprintf("%.2f", m$sharpe_a)
+    sharpe_b_txt <- if (is.na(m$sharpe_b)) "N/A" else sprintf("%.2f", m$sharpe_b)
+
+    # Alpha 列（較佳策略優先，否則 A）
+    alpha_df <- if (!is.null(v) && !is.null(v$alpha) && is.data.frame(v$alpha)) v$alpha else NULL
+    pick_alpha <- function(series) {
+      if (is.null(alpha_df) || nrow(alpha_df) == 0) return(NULL)
+      hit <- alpha_df[alpha_df$Series == series, , drop = FALSE]
+      if (nrow(hit) == 0) NULL else hit[1, ]
+    }
+    a_row <- pick_alpha("StrategyA")
+    b_row <- pick_alpha("StrategyB")
+    bh_row <- pick_alpha("BuyHold")
+    best_row <- if (identical(best, "A")) a_row else b_row
+    excess_show <- if (!is.null(best_row)) best_row$ExcessReturn else NA_real_
+    jensen_show <- if (!is.null(best_row)) best_row$JensenAlpha else NA_real_
+    if (!is.null(best_row) && is.finite(best_row$CAGR)) cagr_show <- best_row$CAGR
+
+    plateau_val <- {
+      p <- if (!is.null(v)) v$plateau else NULL
+      if (!is.null(p) && !is.null(p$status) && nzchar(as.character(p$status)[1])) {
+        as.character(p$status)[1]
+      } else if (!is.null(m$plateau)) {
+        as.character(m$plateau)
+      } else {
+        "N/A"
+      }
+    }
+
+    .ynow_metric_card <- function(value, label, caption, icon_name, tone, tip) {
+      tipify(
+        tags$div(
+          class = paste0("ynow-metric-card ynow-metric-card--", tone),
+          tags$div(
+            class = "ynow-metric-card__body",
+            tags$div(
+              class = "ynow-metric-card__top",
+              tags$span(class = "ynow-metric-card__icon", icon(icon_name)),
+              tags$p(class = "ynow-metric-card__label", label)
+            ),
+            tags$div(class = "ynow-metric-card__value", value),
+            tags$p(class = "ynow-metric-card__caption", caption)
+          )
+        ),
+        tip,
+        placement = "bottom"
+      )
+    }
+
+    tagList(
+      tags$p(
+        style = "margin: 0 0 12px 0; font-size: 12px; color: #666;",
+        "以下以 Sharpe 較高的策略為主顯示（", label_best, "）；A＝", sharpe_a_txt,
+        "，B＝", sharpe_b_txt, "。已整併 Alpha（Excess／Jensen α）。數值僅供比較參考。"
+      ),
+      tags$div(
+        id = "bt_perf_metrics_boxes",
+        class = "ynow-metric-grid",
+        .ynow_metric_card(
+          value = if (is.na(sharpe_show)) "N/A" else sprintf("%.2f", sharpe_show),
+          label = paste0("Sharpe 比率（較佳：", label_best, "）"),
+          caption = "風險調整後報酬；>1 通常視為不錯，>2 屬優異（依市場而異）。",
+          icon_name = "chart-line",
+          tone = "green",
+          tip = "年化 Sharpe ≈ 日報酬均值 ÷ 標準差 × √252。"
+        ),
+        .ynow_metric_card(
+          value = if (is.na(mdd_show)) "N/A" else paste0(sprintf("%.1f", mdd_show * 100), "%"),
+          label = paste0("最大回撤 Max DD（", label_best, "）"),
+          caption = "歷史最大虧損幅度；愈接近 0 代表回撤愈小。",
+          icon_name = "arrow-down",
+          tone = "red",
+          tip = "淨值自歷史高點回落的最大百分比幅度。"
+        ),
+        .ynow_metric_card(
+          value = if (is.na(cagr_show)) "N/A" else paste0(sprintf("%.1f", cagr_show * 100), "%"),
+          label = paste0("CAGR（", label_best, "）"),
+          caption = sprintf(
+            "Buy&Hold CAGR＝%s。用來對照策略成長速度。",
+            if (is.null(bh_row) || is.na(bh_row$CAGR)) "N/A" else paste0(sprintf("%.1f", bh_row$CAGR * 100), "%")
+          ),
+          icon_name = "percentage",
+          tone = "blue",
+          tip = "年化複合成長率（CAGR）。"
+        ),
+        .ynow_metric_card(
+          value = if (is.na(excess_show)) "N/A" else paste0(sprintf("%+.1f", excess_show * 100), "%"),
+          label = paste0("Excess vs BH（", label_best, "）"),
+          caption = "相對 Buy & Hold 的超額報酬；>0 代表創造價值。",
+          icon_name = "balance-scale",
+          tone = "amber",
+          tip = "策略期末報酬 − Buy&Hold 期末報酬。"
+        ),
+        .ynow_metric_card(
+          value = if (is.na(jensen_show)) "N/A" else paste0(sprintf("%+.1f", jensen_show * 100), "%"),
+          label = paste0("Jensen α（", label_best, "）"),
+          caption = "相對大盤基準的風險調整超額報酬（年化）。",
+          icon_name = "rocket",
+          tone = "blue",
+          tip = "對 Benchmark 日超額報酬做 CAPM 回歸後的年化截距。"
+        ),
+        .ynow_metric_card(
+          value = plateau_val,
+          label = "參數高原",
+          caption = "微擾 WACC／SGR／年數／VG 後的穩健度；詳見下方參數高原面板。",
+          icon_name = "mountain",
+          tone = "violet",
+          tip = if (!is.null(v$plateau$reason)) as.character(v$plateau$reason)[1] else "Stable / Moderate / Sensitive"
+        )
+      )
     )
   })
 
