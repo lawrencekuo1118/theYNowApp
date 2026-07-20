@@ -2154,11 +2154,14 @@ server <- function(input, output, session) {
       ke <- suppressWarnings(as.numeric(input$wacc_re)[1]) / 100
     }
     if (!is.finite(ke) || ke <= 0) ke <- wacc
-    pb_mid <- suppressWarnings(as.numeric(input$pb_mid)[1])
+    pb_mid <- suppressWarnings(as.numeric(input[["mod_pb-pb_mid"]])[1])
     if (!is.finite(pb_mid) || pb_mid <= 0) pb_mid <- APP_DEFAULTS$pb_mid
     ddm_g <- suppressWarnings(as.numeric(input[["mod_ddm-g"]])[1])
     if (!is.finite(ddm_g)) ddm_g <- sgr * 100
     ddm_g <- ddm_g / 100
+    ri_g <- suppressWarnings(as.numeric(input[["mod_ri-ri_g"]])[1])
+    if (!is.finite(ri_g)) ri_g <- sgr * 100
+    ri_g <- ri_g / 100
     if (!is.finite(wacc) || wacc <= 0) wacc <- APP_DEFAULTS$wacc_gordon / 100
     if (!is.finite(sgr)) sgr <- APP_DEFAULTS$sgr / 100
     if (!is.finite(g_explicit)) g_explicit <- sgr
@@ -2166,7 +2169,7 @@ server <- function(input, output, session) {
     if (!fv_model %in% c("dcf", "ddm", "ri", "pb", "composite")) fv_model <- "dcf"
     list(
       wacc = wacc, ke = ke, sgr = sgr, g_explicit = g_explicit,
-      n_years = n_years, pb_mid = pb_mid, ddm_g = ddm_g,
+      n_years = n_years, pb_mid = pb_mid, ddm_g = ddm_g, ri_g = ri_g,
       fv_model = fv_model
     )
   })
@@ -2209,7 +2212,7 @@ server <- function(input, output, session) {
       rec <- tryCatch(
         recommend_valuation_models(
           d_cash_flow(),
-          industry_text = input$industry_choice %||% "",
+          industry_text = corp_industry_text() %||% "",
           d_is = d_income_statement(),
           d_bs = d_balance_sheet()
         ),
@@ -2603,7 +2606,7 @@ server <- function(input, output, session) {
   output$bt_plateau <- renderUI({
     v <- bt_validation()
     if (is.null(v) || is.null(v$plateau)) {
-      return(tags$p(style="color:#888;font-size:12px;", "微擾 WACC／SGR／年數後，輸出 Stable／Moderate／Sensitive 與原因。"))
+      return(tags$p(style="color:#888;font-size:12px;", "微擾共通參數與目前估值模型參數後，輸出 Stable／Moderate／Sensitive 與原因。"))
     }
     p <- v$plateau
     st <- as.character(p$status)
@@ -2760,7 +2763,7 @@ server <- function(input, output, session) {
         .ynow_metric_card(
           value = plateau_val,
           label = "參數高原",
-          caption = "微擾 WACC／SGR／年數／VG 後的穩健度；詳見下方參數高原面板。",
+          caption = "微擾共通參數與目前估值模型參數後的穩健度；詳見下方參數高原面板。",
           icon_name = "mountain",
           tone = "violet",
           tip = if (!is.null(v$plateau$reason)) as.character(v$plateau$reason)[1] else "Stable / Moderate / Sensitive"

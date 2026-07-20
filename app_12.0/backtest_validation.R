@@ -287,9 +287,9 @@ validate_mos_effectiveness <- function(valuation_df, price_df) {
               ifelse(vd$mos > 0.10, "10-30%", "<10%")))
   bucket <- factor(bucket, levels = c(">50%", "30-50%", "10-30%", "<10%"))
 
-  ret1 <- vapply(vd$Date, function(d) .bv_forward_return(price_df, d, 252),  numeric(1))
-  ret3 <- vapply(vd$Date, function(d) .bv_forward_return(price_df, d, 252*3), numeric(1))
-  ret5 <- vapply(vd$Date, function(d) .bv_forward_return(price_df, d, 252*5), numeric(1))
+  ret1 <- vapply(vd$Date, function(d) .bv_forward_return(price_df, d, 365L),      numeric(1))
+  ret3 <- vapply(vd$Date, function(d) .bv_forward_return(price_df, d, 365L * 3L), numeric(1))
+  ret5 <- vapply(vd$Date, function(d) .bv_forward_return(price_df, d, 365L * 5L), numeric(1))
 
   agg <- function(v) tapply(v, bucket, function(x) mean(x, na.rm = TRUE))
   n_per <- as.integer(tapply(rep(1L, nrow(vd)), bucket, sum))
@@ -325,9 +325,9 @@ validate_fair_value_edge <- function(valuation_df, price_df) {
   # mos = (FV − price) / FV：正值＝模型價高於市價（相對便宜／有安全邊際）
   under <- is.finite(vd$mos) & vd$mos > 0.1
   grp <- ifelse(under, "undervalued_mos>10%", "not_undervalued")
-  ret1 <- vapply(vd$Date, function(d) .bv_forward_return(price_df, d, 252),  numeric(1))
-  ret3 <- vapply(vd$Date, function(d) .bv_forward_return(price_df, d, 252*3), numeric(1))
-  ret5 <- vapply(vd$Date, function(d) .bv_forward_return(price_df, d, 252*5), numeric(1))
+  ret1 <- vapply(vd$Date, function(d) .bv_forward_return(price_df, d, 365L),      numeric(1))
+  ret3 <- vapply(vd$Date, function(d) .bv_forward_return(price_df, d, 365L * 3L), numeric(1))
+  ret5 <- vapply(vd$Date, function(d) .bv_forward_return(price_df, d, 365L * 5L), numeric(1))
 
   agg <- function(v, g) tapply(v, g, function(x) mean(x, na.rm = TRUE))
   grp_f <- factor(grp, levels = c("undervalued_mos>10%", "not_undervalued"))
@@ -362,9 +362,10 @@ validate_fair_value_edge <- function(valuation_df, price_df) {
 # 5) Parameter plateau (robustness) probe
 # ==========================================
 
-#' Perturb WACC / SGR / n_years and compare Mode A FV-index terminal vs baseline.
+#' Perturb common and active-model inputs, then compare terminal Mode A fair
+#' value vs baseline.
 #' (Mode A is valuation trial — not exposure Sharpe. bt_w_vg is excluded.)
-#' Classification on max |relative change| of terminal Model_A:
+#' Classification on max |relative change| of terminal fair value:
 #'   Stable   : < 5%
 #'   Moderate : < 15%
 #'   Sensitive: otherwise
@@ -375,7 +376,13 @@ run_parameter_plateau <- function(ticker, d_is, d_bs, d_cf, params, model_params
     stop("run_company_backtest not available; source backtest_module.R first")
   }
   .fv_terminal <- function(res) {
-    if (is.null(res) || is.null(res$equity_df)) return(NA_real_)
+    if (is.null(res)) return(NA_real_)
+    if (!is.null(res$valuation_df) && "fair_value" %in% names(res$valuation_df)) {
+      fv <- as.numeric(res$valuation_df$fair_value)
+      fv <- fv[is.finite(fv) & fv > 0]
+      if (length(fv) > 0) return(fv[length(fv)])
+    }
+    if (is.null(res$equity_df)) return(NA_real_)
     eq <- as.numeric(res$equity_df$Model_A)
     eq <- eq[is.finite(eq) & eq > 0]
     if (length(eq) < 2) return(NA_real_)
@@ -400,6 +407,37 @@ run_parameter_plateau <- function(ticker, d_is, d_bs, d_cf, params, model_params
     list(name = "n_years +1", mp = modifyList(model_params, list(n_years = as.integer(.bv_safe_num(model_params$n_years, 5)) + 1L)), p = params),
     list(name = "n_years -1", mp = modifyList(model_params, list(n_years = max(1L, as.integer(.bv_safe_num(model_params$n_years, 5)) - 1L))), p = params)
   )
+
+  fv_model <- tolower(as.character(model_params$fv_model)[1])
+  if (is.na(fv_model) || !nzchar(fv_model)) fv_model <- "dcf"
+  if (fv_model %in% c("pb", "composite")) {
+    pb_mid <- .bv_safe_num(model_params$pb_mid, 2.5)
+    scenarios <- c(scenarios, list(
+      list(name = "pb_mid +0.2", mp = modifyList(model_params, list(pb_mid = pb_mid + 0.2)), p = params),
+      list(name = "pb_mid -0.2", mp = modifyList(model_params, list(pb_mid = max(0.1, pb_mid - 0.2))), p = params)
+    ))
+  }
+  if (fv_model %in% c("ddm", "ri", "composite")) {
+    ke <- .bv_safe_num(model_params$ke, 0.09)
+    scenarios <- c(scenarios, list(
+      list(name = "ke +1pp", mp = modifyList(model_params, list(ke = ke + 0.01)), p = params),
+      list(name = "ke -1pp", mp = modifyList(model_params, list(ke = max(0.001, ke - 0.01))), p = params)
+    ))
+  }
+  if (fv_model %in% c("ddm", "composite")) {
+    ddm_g <- .bv_safe_num(model_params$ddm_g, 0.025)
+    scenarios <- c(scenarios, list(
+      list(name = "ddm_g +1pp", mp = modifyList(model_params, list(ddm_g = ddm_g + 0.01)), p = params),
+      list(name = "ddm_g -1pp", mp = modifyList(model_params, list(ddm_g = ddm_g - 0.01)), p = params)
+    ))
+  }
+  if (fv_model %in% c("ri", "composite")) {
+    ri_g <- .bv_safe_num(model_params$ri_g, .bv_safe_num(model_params$sgr, 0.025))
+    scenarios <- c(scenarios, list(
+      list(name = "ri_g +1pp", mp = modifyList(model_params, list(ri_g = ri_g + 0.01)), p = params),
+      list(name = "ri_g -1pp", mp = modifyList(model_params, list(ri_g = ri_g - 0.01)), p = params)
+    ))
+  }
 
   rows <- lapply(scenarios, function(sc) {
     res <- tryCatch(

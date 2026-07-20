@@ -74,7 +74,7 @@ estimate_hist_fair_value <- function(fcf0, cash, debt, shares,
   cash <- .safe_num(cash, 0)
   debt <- .safe_num(debt, 0)
 
-  if (is.na(fcf0) || is.na(shares) || shares <= 1 || is.na(wacc) || wacc <= 0) {
+  if (is.na(fcf0) || is.na(shares) || shares <= 0 || is.na(wacc) || wacc <= 0) {
     return(NA_real_)
   }
   if (n_years < 1L) n_years <- 5L
@@ -519,7 +519,7 @@ run_company_backtest <- function(ticker,
       } else {
         sent_score <- 0.5
       }
-      sent_mult <- 0.45 + 0.90 * sent_score
+      sent_mult <- 0.75 + 0.50 * sent_score
       if (isTRUE(fund_i$pass)) {
         pos_a <- .clip01(pos_b * sent_mult)
       } else {

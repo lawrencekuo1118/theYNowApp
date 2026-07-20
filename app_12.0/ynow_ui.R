@@ -1121,7 +1121,7 @@ ui <- dashboardPage(
                   ),
                   tags$hr(style = "margin: 16px 0;"),
                   tags$h5(tags$b("參數高原（敏感度）")),
-                  .bt_hint("微擾 WACC／SGR／年數，觀察模式 A 合理價終值指數的相對變動。"),
+                  .bt_hint("微擾共通參數與目前估值模型參數，觀察模式 A 合理價終值的相對變動。"),
                   uiOutput("bt_plateau"),
                   tableOutput("bt_plateau_table")
                 )

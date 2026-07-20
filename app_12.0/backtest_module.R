@@ -128,7 +128,7 @@ estimate_hist_dcf <- function(fcf0, cash, debt, shares,
   }
   cash <- .safe_num(cash, 0)
   debt <- .safe_num(debt, 0)
-  if (is.na(fcf0) || is.na(shares) || shares <= 1 || is.na(wacc) || wacc <= 0) return(NA_real_)
+  if (is.na(fcf0) || is.na(shares) || shares <= 0 || is.na(wacc) || wacc <= 0) return(NA_real_)
   if (n_years < 1L) n_years <- 5L
   if (is.na(sgr)) sgr <- max(0, wacc - 0.03)
   if (sgr >= wacc) sgr <- max(0, wacc - 0.005)
@@ -232,7 +232,8 @@ valuation_signal_label <- function(fv, price) {
 #' @param fund_row list-like with fcf, cash, debt, shares, ni, equity_book,
 #'   dividends_paid.
 #' @param price historical closing price at rebalance date.
-#' @param model_params list(wacc, ke, sgr, g_explicit, n_years, pb_mid, ddm_g).
+#' @param model_params list(wacc, ke, sgr, g_explicit, n_years, pb_mid, ddm_g,
+#'   ri_g).
 #' @return list(fv_dcf, fv_ddm, fv_ri, fv_pb, fair_value, mos, signal,
 #'   valuation_score, bvps, roe, dps, payout).
 reconstruct_fair_value_pit <- function(fund_row, price, model_params) {
@@ -244,6 +245,7 @@ reconstruct_fair_value_pit <- function(fund_row, price, model_params) {
   g_ex <- .safe_num(model_params$g_explicit, sgr)
   pb_mid <- .safe_num(model_params$pb_mid, NA_real_)
   ddm_g <- .safe_num(model_params$ddm_g, sgr)
+  ri_g <- .safe_num(model_params$ri_g, sgr)
 
   shares <- .safe_num(fund_row$shares, NA_real_)
   fcf    <- .safe_num(fund_row$fcf, NA_real_)
@@ -253,16 +255,16 @@ reconstruct_fair_value_pit <- function(fund_row, price, model_params) {
   eqbook <- .safe_num(fund_row$equity_book, NA_real_)
   divp   <- .safe_num(fund_row$dividends_paid, NA_real_)
 
-  bvps <- if (is.finite(eqbook) && is.finite(shares) && shares > 1) eqbook / shares else NA_real_
+  bvps <- if (is.finite(eqbook) && is.finite(shares) && shares > 0) eqbook / shares else NA_real_
   roe  <- if (is.finite(ni) && is.finite(eqbook) && eqbook > 0) ni / eqbook else NA_real_
-  dps  <- if (is.finite(divp) && is.finite(shares) && shares > 1) abs(divp) / shares else NA_real_
-  payout <- if (is.finite(dps) && is.finite(ni) && ni > 0 && is.finite(shares) && shares > 1) {
+  dps  <- if (is.finite(divp) && is.finite(shares) && shares > 0) abs(divp) / shares else NA_real_
+  payout <- if (is.finite(dps) && is.finite(ni) && ni > 0 && is.finite(shares) && shares > 0) {
     min(max(abs(divp) / ni, 0), 1)
   } else NA_real_
 
   fv_dcf <- estimate_hist_dcf(fcf, cash, debt, shares, wacc, sgr, n_yr, g_ex)
   fv_ddm <- if (is.finite(dps) && dps > 0) estimate_hist_ddm(dps, ke, ddm_g) else NA_real_
-  fv_ri  <- estimate_hist_ri(bvps, roe, ke, g_ex, n = n_yr, payout = payout)
+  fv_ri  <- estimate_hist_ri(bvps, roe, ke, ri_g, n = n_yr, payout = payout)
   fv_pb  <- estimate_hist_pb(bvps, pb_mid)
 
   # Mode A uses the user-selected valuation model (not always the blend).
@@ -915,7 +917,8 @@ sentiment_multiplier <- function(mom_score, rsi_score, w_mom = 0.5, w_rsi = 0.5)
 # ---------- public API ----------
 
 #' Run one company backtest (v12).
-#' @param model_params list(wacc, ke, sgr, g_explicit, n_years, pb_mid, ddm_g).
+#' @param model_params list(wacc, ke, sgr, g_explicit, n_years, pb_mid, ddm_g,
+#'   ri_g).
 #'   `dcf_params` accepted as a legacy alias (server.R still passes it).
 run_company_backtest <- function(ticker,
                                  d_is, d_bs, d_cf,
