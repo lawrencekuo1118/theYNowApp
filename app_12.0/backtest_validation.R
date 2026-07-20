@@ -302,14 +302,15 @@ validate_fair_value_edge <- function(valuation_df, price_df) {
     ))
   }
   vd <- valuation_df
-  under <- (!is.na(vd$signal) & vd$signal == "策略低估") | (is.finite(vd$mos) & vd$mos > 0.1)
-  grp <- ifelse(under, "undervalued", "overvalued")
+  # mos = (FV − price) / FV：正值＝模型價高於市價（相對便宜／有安全邊際）
+  under <- is.finite(vd$mos) & vd$mos > 0.1
+  grp <- ifelse(under, "undervalued_mos>10%", "not_undervalued")
   ret1 <- vapply(vd$Date, function(d) .bv_forward_return(price_df, d, 252),  numeric(1))
   ret3 <- vapply(vd$Date, function(d) .bv_forward_return(price_df, d, 252*3), numeric(1))
   ret5 <- vapply(vd$Date, function(d) .bv_forward_return(price_df, d, 252*5), numeric(1))
 
   agg <- function(v, g) tapply(v, g, function(x) mean(x, na.rm = TRUE))
-  grp_f <- factor(grp, levels = c("undervalued", "overvalued"))
+  grp_f <- factor(grp, levels = c("undervalued_mos>10%", "not_undervalued"))
   n_per <- as.integer(tapply(rep(1L, nrow(vd)), grp_f, sum))
 
   tab <- data.frame(
@@ -320,17 +321,17 @@ validate_fair_value_edge <- function(valuation_df, price_df) {
     ret_5y = as.numeric(agg(ret5, grp_f)),
     stringsAsFactors = FALSE
   )
-  edge_1y <- tab$ret_1y[tab$group == "undervalued"] - tab$ret_1y[tab$group == "overvalued"]
-  edge_3y <- tab$ret_3y[tab$group == "undervalued"] - tab$ret_3y[tab$group == "overvalued"]
-  edge_5y <- tab$ret_5y[tab$group == "undervalued"] - tab$ret_5y[tab$group == "overvalued"]
+  edge_1y <- tab$ret_1y[tab$group == "undervalued_mos>10%"] - tab$ret_1y[tab$group == "not_undervalued"]
+  edge_3y <- tab$ret_3y[tab$group == "undervalued_mos>10%"] - tab$ret_3y[tab$group == "not_undervalued"]
+  edge_5y <- tab$ret_5y[tab$group == "undervalued_mos>10%"] - tab$ret_5y[tab$group == "not_undervalued"]
   edge_1y <- if (length(edge_1y) == 0) NA_real_ else edge_1y
   edge_3y <- if (length(edge_3y) == 0) NA_real_ else edge_3y
   edge_5y <- if (length(edge_5y) == 0) NA_real_ else edge_5y
 
   ans <- if (is.finite(edge_1y) && edge_1y > 0) {
-    sprintf("是。低估組 forward 1Y 平均高於高估組 %.1fpp。", 100 * edge_1y)
+    sprintf("是。MOS>10%%（模型價高於市價）組 forward 1Y 平均高出 %.1fpp。", 100 * edge_1y)
   } else if (is.finite(edge_1y)) {
-    sprintf("否。低估組 1Y 未能勝出，差距 %.1fpp。", 100 * edge_1y)
+    sprintf("否。MOS>10%% 組 1Y 未能勝出，差距 %.1fpp。", 100 * edge_1y)
   } else "資料不足以判斷。"
 
   list(table = tab, answer = ans,
