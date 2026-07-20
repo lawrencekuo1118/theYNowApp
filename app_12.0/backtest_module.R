@@ -627,7 +627,7 @@ derive_bt_params <- function(d_is, d_bs, d_cf,
   notes <- sprintf(
     paste0(
       "v12 季頻 PIT 多模型：依本公司財報推導 淨利率≈%.1f%%、營收成長≈%.1f%%、NI成長≈%.1f%%、FCF CV≈%.1f%%。",
-      " 純基本面價值：MOS≈%.1f%% → w_vg=%.2f（越大越依 MOS 分級；最高約 90% 持股）。",
+      " 純基本面價值：MOS≈%.1f%% → w_vg=%.2f（越大越依 MOS 分級；最高約 90%% 持股）。",
       " 情緒波動價值：動能%s、RSI≈%.0f → Mom/RSI 相對權重 %.2f / %.2f（僅微調基準權重，範圍 0.75~1.25×）。"
     ),
     npm_use, rev_use, eps_use, cv_use,
