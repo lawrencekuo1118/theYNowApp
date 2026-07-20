@@ -1,11 +1,16 @@
 # ==========================================
-# app.R — RStudio「Run App」進入點（app_12.0）
+# app.R — Shiny / shinyapps.io 進入點（app_12.0）
 # ==========================================
-# 有 app.R 時 Shiny 不會自動再讀 ui.R／server.R，需明確 source。
-# 請在 app_12.0 目錄按 Run App，或上一層執行：shiny::runApp("app_12.0")
+# 重要：shinyapps.io 會在區域環境評估 app.R。
+# 必須用 local=TRUE（或 sys.source 到 environment()），
+# 否則 ui/server 被丟進 .GlobalEnv，會出現：
+#   Error in server(...) : could not find function "server"
 .ynow_app_dir <- normalizePath(".", mustWork = TRUE)
 setwd(.ynow_app_dir)
-source("global.R", local = FALSE, encoding = "UTF-8")
-source("ui.R", local = FALSE, encoding = "UTF-8")
-source("server.R", local = FALSE, encoding = "UTF-8")
+
+app_env <- environment()
+sys.source("global.R", envir = app_env, keep.source = TRUE)
+sys.source("ui.R", envir = app_env, keep.source = TRUE)
+sys.source("server.R", envir = app_env, keep.source = TRUE)
+
 shiny::shinyApp(ui = ui, server = server)
