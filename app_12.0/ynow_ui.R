@@ -1013,7 +1013,7 @@ ui <- dashboardPage(
               withMathJax(),
               h2("量化回測實驗室 (Backtest Zone)"),
               .bt_section_intro(
-                "流程：搜尋股票 → 設定 DCF 此刻參數 → 確認過濾門檻 → 啟動回測。系統以歷史財報 Point-in-Time 重建合理價，驗證策略是否創造 Alpha（結果僅存 Session）。"
+                "兩大回測模式＝兩套倉位規則→兩條策略淨值。評價模型只算合理價／MOS（驅動基本面倉位），不畫在淨值圖；價格 vs 合理價見下方 Fair Value 時間軸。"
               ),
 
               # 1) 績效指標置頂（Alpha + 摘要整併）
@@ -1028,15 +1028,23 @@ ui <- dashboardPage(
               # 2) 淨值圖 + 執行面板
               fluidRow(
                 box(
-                  title = tagList(icon("chart-area"), "策略淨值比較圖"),
+                  title = tagList(icon("chart-area"), "兩模式策略淨值比較"),
                   width = 8, status = "info", solidHeader = TRUE,
+                  tags$div(
+                    style = "margin: 0 0 10px 0; padding: 10px 12px; background: #f4f8fb; border-left: 4px solid #3c8dbc; font-size: 12px; color: #444; line-height: 1.55;",
+                    tags$b("關聯："),
+                    "評價模型 → 合理價／MOS → ",
+                    tags$b("純基本面價值"), " 倉位 (Exp_A) → 策略淨值；",
+                    tags$b("情緒波動價值"), " = Exp_A × 情緒乘數（±25%）→ 嵌套的另一條策略淨值。",
+                    "兩者皆與 Buy&Hold（滿倉）同基準比較。"
+                  ),
                   plotlyOutput("bt_equity_plot", height = "400px") %>% withSpinner(),
                   tags$ul(
                     style = "margin: 10px 0 0 0; padding-left: 18px; font-size: 12px; color: #666; line-height: 1.55;",
-                    tags$li(tags$b("紅線｜純基本面價值"), " MOS／Great Filter 曝險加權的交易淨值（與 Buy&Hold 同基準）。牛市常因刻意現金部位落後，屬風控設計。"),
-                    tags$li(tags$b("藍線｜情緒波動價值"), " 在紅線曝險上疊加情緒乘數（僅能在 Exp_A 的 75%～125% 內調整）。"),
-                    tags$li(tags$b("綠線"), " Buy & Hold（全程 100% 持股）；", tags$b("灰虛線"), " SPY 基準。"),
-                    tags$li("合理價路徑請看下方 Historical Fair Value Timeline，勿與淨值圖混比。")
+                    tags$li(tags$b("純基本面價值"), "（橘線）＝模式 A 策略淨值：MOS／Great Filter 倉位 × 日報酬。"),
+                    tags$li(tags$b("情緒波動價值"), "（藍線）＝模式 B 策略淨值：在 A 倉位上微調情緒，不能獨立開倉。"),
+                    tags$li(tags$b("該股買進持有"), "（綠）全程 100%；", tags$b("大盤"), "（灰虛）SPY。"),
+                    tags$li("牛市兩模式常因刻意現金落後 Buy&Hold，屬風控；合理價曲線請看下方 Timeline，勿與淨值混比。")
                   )
                 ),
                 box(
@@ -1056,7 +1064,7 @@ ui <- dashboardPage(
                     ),
                     selected = "dcf"
                   ),
-                  .bt_hint("決定 MOS／訊號與 Fair Value 時間軸的評價路徑，並驅動「純基本面價值」曝險。"),
+                  .bt_hint("算合理價／MOS（HFV 時間軸），並驅動「純基本面價值」倉位；不是淨值圖上的價格線。"),
                   checkboxInput(
                     "bt_param_auto",
                     "自動同步參數（換股時依財報推導）",
@@ -1092,7 +1100,7 @@ ui <- dashboardPage(
                   title = tagList(icon("balance-scale"), "Historical Fair Value Timeline（核心圖）"),
                   width = 12, status = "primary", solidHeader = TRUE,
                   .bt_section_intro(
-                    "Market Price vs 動態重建 Fair Value（依所選估值模型；Ke／WACC 用各再平衡日 Rolling β）。僅使用公告財年 ≤ 回測日的資料，避免 Look-ahead Bias。"
+                    "市價 vs PIT 合理價（美元）。此圖回答「估得貴不貴」；上方淨值圖回答「兩套倉位規則賺不賺錢」。Ke／WACC 用各再平衡日 Rolling β；僅用公告財年 ≤ 回測日的資料。"
                   ),
                   uiOutput("bt_valuation_summary"),
                   plotlyOutput("bt_hfv_timeline", height = "380px") %>% withSpinner(),
@@ -1102,7 +1110,7 @@ ui <- dashboardPage(
 
               fluidRow(
                 box(
-                  title = tagList(icon("percentage"), "Exposure History（純基本面價值／情緒波動價值）"),
+                  title = tagList(icon("percentage"), "兩模式倉位軌跡（Exposure）"),
                   width = 6, status = "danger", solidHeader = TRUE, collapsible = TRUE,
                   uiOutput("bt_exposure_stats"),
                   plotlyOutput("bt_exposure_plot", height = "260px") %>% withSpinner()
@@ -1140,13 +1148,13 @@ ui <- dashboardPage(
                     tabPanel(
                       title = tagList(icon("balance-scale"), "純基本面價值"),
                       .bt_section_intro(
-                        "淨值圖紅線「純基本面價值」＝依 MOS 滯後曝險 × Great Filter 的交易淨值。合理價路徑在 Fair Value 時間軸；最高持股約 90%，牛市輸給 Buy&Hold 多半是現金拖累。"
+                        "模式 A：決定 Exp_A（基本面倉位）→ 淨值圖橘線。合理價在 Fair Value 時間軸；最高持股約 90%，牛市輸給 Buy&Hold 多半是現金拖累。"
                       ),
                       fluidRow(
                         column(
                           6,
-                          sliderInput("bt_w_vg", "MOS／Value Gap 權重（曝險診斷）", 0, 1, 0.7, step = 0.01),
-                          .bt_hint("影響「純基本面價值」與「情緒波動價值」的基準倉位。")
+                          sliderInput("bt_w_vg", "MOS／Value Gap 權重（曝險）", 0, 1, 0.7, step = 0.01),
+                          .bt_hint("影響 Exp_A，並作為情緒波動價值的基準倉位。")
                         ),
                         column(
                           6,
@@ -1161,7 +1169,7 @@ ui <- dashboardPage(
                     tabPanel(
                       title = tagList(icon("bolt"), "情緒波動價值"),
                       .bt_section_intro(
-                        "情緒只能調整權重：最終曝險夾在 Exp_A（純基本面價值倉位）的 75%～125%，且 Exp_A=0 時必須空手。"
+                        "模式 B：Exp_B = Exp_A × 情緒乘數（夾在 75%～125%）→ 淨值圖藍線。嵌套於 A，Exp_A=0 時必須空手。"
                       ),
                       fluidRow(
                         column(6, sliderInput("bt_w_mom", "動能相對權重", 0, 1, 0.4, step = 0.01),
@@ -1195,7 +1203,7 @@ ui <- dashboardPage(
                   ),
                   tags$hr(style = "margin: 16px 0;"),
                   tags$h5(tags$b("參數高原（敏感度）")),
-                  .bt_hint("微擾 WACC／SGR／年數，觀察「純基本面價值」合理價終值指數的相對變動。"),
+                  .bt_hint("微擾 WACC／SGR／年數，觀察合理價指數（Model_A）終值敏感度——不是策略淨值。"),
                   uiOutput("bt_plateau"),
                   tableOutput("bt_plateau_table")
                 )

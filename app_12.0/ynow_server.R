@@ -439,7 +439,7 @@ server <- function(input, output, session) {
       c("Backtest", "EPS / NI Growth Threshold (%)", .snapshot_value(input$bt_eps_growth), "Great Filter: EPS/NI Growth >= threshold"),
       c("Backtest", "FCF CV Ceiling (%)", .snapshot_value(input$bt_fcf_cv), "Great Filter: FCF CV <= ceiling"),
       c("Backtest", "Auto Derive Params", .snapshot_value(input$bt_param_auto), "TRUE = sync thresholds/weights/model on ticker load"),
-      c("Backtest", "評價模型 (純基本面價值)", .snapshot_value(input$bt_fv_model), "dcf / ddm / ri / pb / composite for hist FV + MOS exposure"),
+      c("Backtest", "回測用評價模型", .snapshot_value(input$bt_fv_model), "Drives FV/MOS → Exp_A; not equity-chart price line"),
       c("Backtest", "MOS / VG Weight (bt_w_vg)", .snapshot_value(input$bt_w_vg), "Exposure diagnostic blend; not FV path"),
       c("Backtest", "Momentum Weight (bt_w_mom)", .snapshot_value(input$bt_w_mom), "Sentiment overlay relative weight"),
       c("Backtest", "RSI Weight (bt_w_rsi)", .snapshot_value(input$bt_w_rsi), "Sentiment overlay relative weight"),
@@ -2543,13 +2543,17 @@ server <- function(input, output, session) {
     e <- res$exposure
     tags$div(
       style = "font-size:13px;line-height:1.7;",
-      tags$div(tags$b("平均持股 "), .fmt_pct(e$avg_a, 0)),
-      tags$div(tags$b("最高持股 "), .fmt_pct(e$max_a, 0)),
-      tags$div(tags$b("最低持股 "), .fmt_pct(e$min_a, 0)),
-      tags$div(tags$b("平均現金 "), .fmt_pct(e$cash_avg_a, 0)),
+      tags$div(tags$b("基本面倉位 平均 "), .fmt_pct(e$avg_a, 0),
+               " ｜ 最高 ", .fmt_pct(e$max_a, 0),
+               " ｜ 最低 ", .fmt_pct(e$min_a, 0),
+               " ｜ 現金 ", .fmt_pct(e$cash_avg_a, 0)),
+      tags$div(tags$b("情緒倉位 平均 "), .fmt_pct(e$avg_b, 0),
+               " ｜ 最高 ", .fmt_pct(e$max_b, 0),
+               " ｜ 最低 ", .fmt_pct(e$min_b, 0),
+               " ｜ 現金 ", .fmt_pct(e$cash_avg_b, 0)),
       tags$hr(),
       tags$div(style = "font-size:11px;color:#777;",
-               "若平均持股偏低，純基本面價值輸給 B&H 多半來自 Cash Drag（最高約 90% 持股屬刻意風控）。")
+               "倉位曲線驅動上方策略淨值。平均持股偏低時，輸給 B&H 多半是 Cash Drag（最高約 90% 屬刻意風控）。")
     )
   })
 
@@ -2558,14 +2562,17 @@ server <- function(input, output, session) {
     validate(need(!is.null(res) && !is.null(res$equity_df), "請先回測"))
     df <- res$equity_df
     df_long <- rbind(
-      data.frame(Date = df$Date, Exp = df$Exp_A, Series = "純基本面價值", stringsAsFactors = FALSE),
-      data.frame(Date = df$Date, Exp = df$Exp_B, Series = "情緒波動價值", stringsAsFactors = FALSE)
+      data.frame(Date = df$Date, Exp = df$Exp_A, Series = "基本面倉位 Exp_A", stringsAsFactors = FALSE),
+      data.frame(Date = df$Date, Exp = df$Exp_B, Series = "情緒倉位 Exp_B", stringsAsFactors = FALSE)
     )
     p <- ggplot(df_long, aes(x = Date, y = Exp, color = Series)) +
       geom_line(linewidth = 0.8) +
       scale_y_continuous(labels = scales::percent_format(accuracy = 1), limits = c(0, 1)) +
-      scale_color_manual(values = c("純基本面價值" = "#dc3545", "情緒波動價值" = "#007bff")) +
-      labs(y = "Exposure", x = NULL, color = NULL) +
+      scale_color_manual(values = c(
+        "基本面倉位 Exp_A" = "#e67e22",
+        "情緒倉位 Exp_B" = "#2980b9"
+      )) +
+      labs(y = "目標持股比例", x = NULL, color = NULL) +
       theme_minimal(base_size = 11)
     ggplotly(p, tooltip = c("x", "y", "colour")) %>%
       layout(legend = list(orientation = "h", y = -0.3))
@@ -2604,10 +2611,11 @@ server <- function(input, output, session) {
     res <- bt_result()
     validate(need(!is.null(res) && !is.null(res$equity_df), "請先成功執行回測"))
     df_plot <- res$equity_df
-    eq_a_col <- if ("Trade_A" %in% names(df_plot)) df_plot$Trade_A else df_plot$Model_A
+    validate(need("Trade_A" %in% names(df_plot), "缺少純基本面價值策略淨值 (Trade_A)"))
+    eq_b <- if ("Trade_B" %in% names(df_plot)) df_plot$Trade_B else df_plot$Model_B
     df_long <- rbind(
-      data.frame(Date = df_plot$Date, Value = eq_a_col, Series = "純基本面價值", stringsAsFactors = FALSE),
-      data.frame(Date = df_plot$Date, Value = df_plot$Model_B, Series = "情緒波動價值", stringsAsFactors = FALSE),
+      data.frame(Date = df_plot$Date, Value = df_plot$Trade_A, Series = "純基本面價值", stringsAsFactors = FALSE),
+      data.frame(Date = df_plot$Date, Value = eq_b, Series = "情緒波動價值", stringsAsFactors = FALSE),
       data.frame(Date = df_plot$Date, Value = df_plot$BuyHold, Series = "該股買進持有", stringsAsFactors = FALSE),
       data.frame(Date = df_plot$Date, Value = df_plot$Benchmark, Series = "大盤基準", stringsAsFactors = FALSE)
     )
@@ -2618,8 +2626,8 @@ server <- function(input, output, session) {
     p <- ggplot(df_long, aes(x = Date, y = Value, color = Series, group = Series, linetype = Series)) +
       geom_line(linewidth = 0.85) +
       scale_color_manual(values = c(
-        "純基本面價值" = "#dc3545",
-        "情緒波動價值" = "#007bff",
+        "純基本面價值" = "#e67e22",
+        "情緒波動價值" = "#2980b9",
         "該股買進持有" = "#28a745",
         "大盤基準" = "#6c757d"
       )) +
@@ -2630,7 +2638,7 @@ server <- function(input, output, session) {
         "大盤基準" = "dashed"
       )) +
       scale_y_continuous(labels = label_chart_number()) +
-      labs(y = "累積指數（起點=1）", x = "日期", color = "序列", linetype = "序列") +
+      labs(y = "策略累積淨值（起點=1）", x = "日期", color = "序列", linetype = "序列") +
       theme_minimal()
     ggplotly(p, tooltip = c("x", "y", "colour")) %>%
       layout(legend = list(orientation = "h", y = -0.2))
@@ -2830,7 +2838,7 @@ server <- function(input, output, session) {
         .ynow_metric_card(
           value = plateau_val,
           label = "參數高原",
-          caption = "微擾 WACC／SGR／年數／VG 後的穩健度；詳見下方參數高原面板。",
+          caption = "微擾 WACC／SGR／年數後，合理價指數終值穩健度（非策略淨值）。",
           icon_name = "mountain",
           tone = "violet",
           tip = if (!is.null(v$plateau$reason)) as.character(v$plateau$reason)[1] else "Stable / Moderate / Sensitive"
@@ -2889,29 +2897,30 @@ server <- function(input, output, session) {
       style = "font-size: 12.5px; line-height: 1.65; color: #333;",
       tags$p(
         style = "margin-top:0;",
-        "以下註解說明本頁回測的", tags$b("數據來源"), "與", tags$b("計算過程"),
-        "。淨值圖比較的是交易曝險模擬，不是合理價指數；合理價請見 Fair Value 時間軸。"
+        tags$b("淨值圖 ↔ 兩模式："),
+        "評價模型算出合理價／MOS → 決定 ", tags$b("純基本面價值"), " 的倉位 Exp_A → 累積成橘線策略淨值；",
+        tags$b("情緒波動價值"), " 在 Exp_A 上乘情緒乘數得到 Exp_B → 藍線。",
+        "淨值圖只比策略績效；合理價看 Fair Value 時間軸。"
       ),
       tags$h5(tags$b("一、數據來源")),
       tags$ul(
-        tags$li(tags$b("股價／基準："), "Yahoo Finance（yfinance，auto_adjust 含拆股股息）；基準預設 SPY。"),
-        tags$li(tags$b("財報："), "本次 Session 已載入之年度 IS／BS／CF（搜尋後抓取）。"),
-        tags$li(tags$b("Rf："), "^TNX 美債殖利率（驗證用）；失敗時約 4%。"),
-        tags$li(tags$b("評價假設："), "Get Started／Dashboard 的 SGR、年數等；Ke／WACC 於各季再平衡以 Rolling β 重估。")
+        tags$li(tags$b("股價／基準："), "Yahoo Finance（yfinance，auto_adjust）；基準預設 SPY。"),
+        tags$li(tags$b("財報："), "本次 Session 已載入之年度 IS／BS／CF。"),
+        tags$li(tags$b("Rf："), "^TNX（驗證用）；失敗時約 4%。"),
+        tags$li(tags$b("評價假設："), "Session SGR／年數等；Ke／WACC 於各季再平衡以 Rolling β 重估。")
       ),
       tags$h5(tags$b("二、計算過程（季頻 PIT）")),
       tags$ol(
-        tags$li("再平衡日：僅用 fund_year ≤ 日曆年−1 的財報重建合理價 → 算 MOS。"),
-        tags$li("Great Filter 未過 → 純基本面價值／情緒波動價值皆空手（Exp=0）。"),
-        tags$li("通過則 Exp_A 依 MOS 滯後映射（最高約 90%）；Exp_B = Exp_A × 情緒乘數（夾在 75%～125%）。"),
-        tags$li("每日淨值：Buy&Hold 用滿倉報酬；兩策略用 Exp×日報酬；現金報酬視為 0；未扣交易成本。"),
-        tags$li("比較視窗自首次有效季再平衡對齊，避免暖身期空手讓 Buy&Hold 佔先。")
+        tags$li("再平衡日：fund_year ≤ 日曆年−1 重建合理價 → MOS。"),
+        tags$li("Great Filter 未過 → Exp_A = Exp_B = 0（兩模式皆空手）。"),
+        tags$li("通過則 Exp_A 依 MOS 滯後映射（最高約 90%）；Exp_B = clip(Exp_A×情緒, 75%～125%×A)。"),
+        tags$li("每日：策略淨值用 Exp×日報酬；Buy&Hold 滿倉；現金報酬=0；未扣交易成本。"),
+        tags$li("比較視窗自首次有效季再平衡對齊。")
       ),
-      tags$h5(tags$b("三、為何常輸給 Buy&Hold（設計說明）")),
+      tags$h5(tags$b("三、為何常輸給 Buy&Hold")),
       tags$p(
         style = "margin-bottom:0;",
-        "策略刻意不滿倉（風控／過濾），牛市現金拖累屬預期結果，不一定是程式錯誤。",
-        "完整逐步公式與本次參數請下載方法論檔。"
+        "兩模式刻意不滿倉；牛市現金拖累屬預期。完整公式與本次參數請下載方法論檔。"
       )
     )
   })

@@ -58,21 +58,21 @@
 #' - missed_trend: residual = shortfall - sum(components).
 analyze_bh_gap <- function(equity_df, valuation_df) {
   stopifnot(is.data.frame(equity_df))
+  # Accept Model_B or Trade_B (alias).
+  if (!("Model_B" %in% colnames(equity_df)) && ("Trade_B" %in% colnames(equity_df))) {
+    equity_df$Model_B <- equity_df$Trade_B
+  }
   req <- c("Date", "Model_B", "BuyHold", "Exp_A", "Exp_B")
   missing <- setdiff(req, colnames(equity_df))
   if (length(missing) > 0) stop("equity_df missing columns: ", paste(missing, collapse = ", "))
-  # Trade_A = exposure-weighted sim; Model_A may be FV index (not traded).
-  eq_a <- if ("Trade_A" %in% colnames(equity_df)) {
-    equity_df$Trade_A
-  } else if ("Model_A" %in% colnames(equity_df)) {
-    equity_df$Model_A
-  } else {
-    stop("equity_df missing Trade_A / Model_A")
-  }
+  # Mode A strategy NAV = Trade_A only (never FV index Model_A).
+  if (!("Trade_A" %in% colnames(equity_df))) stop("equity_df missing Trade_A")
+  eq_a <- equity_df$Trade_A
+  eq_b <- if ("Trade_B" %in% colnames(equity_df)) equity_df$Trade_B else equity_df$Model_B
 
   bh_term <- .bv_terminal_return(equity_df$BuyHold)
   a_term  <- .bv_terminal_return(eq_a)
-  b_term  <- .bv_terminal_return(equity_df$Model_B)
+  b_term  <- .bv_terminal_return(eq_b)
   shortfall_a <- .bv_safe_num(bh_term, 0) - .bv_safe_num(a_term, 0)
   shortfall_b <- .bv_safe_num(bh_term, 0) - .bv_safe_num(b_term, 0)
 
@@ -199,26 +199,25 @@ analyze_bh_gap <- function(equity_df, valuation_df) {
 #' for BH, Strategy A, Strategy B.
 compute_alpha_dashboard <- function(equity_df, rf_annual = 0.04) {
   stopifnot(is.data.frame(equity_df))
+  if (!("Model_B" %in% colnames(equity_df)) && ("Trade_B" %in% colnames(equity_df))) {
+    equity_df$Model_B <- equity_df$Trade_B
+  }
   req <- c("Date", "Model_B", "BuyHold", "Benchmark")
   missing <- setdiff(req, colnames(equity_df))
   if (length(missing) > 0) stop("equity_df missing columns: ", paste(missing, collapse = ", "))
-  # 純基本面價值 alpha uses Trade_A (exposure sim). Model_A remains FV path for plateau/HFV.
-  eq_a <- if ("Trade_A" %in% colnames(equity_df)) {
-    equity_df$Trade_A
-  } else if ("Model_A" %in% colnames(equity_df)) {
-    equity_df$Model_A
-  } else {
-    stop("equity_df missing Trade_A / Model_A")
-  }
+  # Mode A / Mode B strategy NAVs — never FV index.
+  if (!("Trade_A" %in% colnames(equity_df))) stop("equity_df missing Trade_A")
+  eq_a <- equity_df$Trade_A
+  eq_b <- if ("Trade_B" %in% colnames(equity_df)) equity_df$Trade_B else equity_df$Model_B
 
   rf_d <- (1 + .bv_safe_num(rf_annual, 0.04)) ^ (1 / 252) - 1
   perf_bh <- .bv_perf(equity_df$Date, equity_df$BuyHold, rf_d)
   perf_a  <- .bv_perf(equity_df$Date, eq_a, rf_d)
-  perf_b  <- .bv_perf(equity_df$Date, equity_df$Model_B, rf_d)
+  perf_b  <- .bv_perf(equity_df$Date, eq_b, rf_d)
 
   bh_term <- .bv_terminal_return(equity_df$BuyHold)
   a_term  <- .bv_terminal_return(eq_a)
-  b_term  <- .bv_terminal_return(equity_df$Model_B)
+  b_term  <- .bv_terminal_return(eq_b)
 
   # Jensen's alpha via CAPM on daily excess returns vs Benchmark.
   bench_ret <- .bv_daily_returns(equity_df$Benchmark) - rf_d
@@ -235,7 +234,7 @@ compute_alpha_dashboard <- function(equity_df, rf_annual = 0.04) {
   }
   alpha_bh <- jensen(equity_df$BuyHold)
   alpha_a  <- jensen(eq_a)
-  alpha_b  <- jensen(equity_df$Model_B)
+  alpha_b  <- jensen(eq_b)
 
   data.frame(
     Series = c("BuyHold", "StrategyA", "StrategyB"),

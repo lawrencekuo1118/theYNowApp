@@ -7,12 +7,11 @@
 #   Growth / n / P/B come from CURRENT session; Ke/WACC use Rolling Beta.
 # - Multi-model composite fair value: DCF + DDM + RI + P/B, then
 #   mean of available models.
-# - Model_A: session params × historical financials → PIT fair-value path
-#   (HFV timeline / plateau). Discount rates use Rolling Beta at rebalance.
-# - Trade_A (純基本面價值 equity): MOS hysteresis + Great Filter exposure sim
-#   (also the base weight for 情緒波動價值).
-# - Model_B (情緒波動價值): sentiment overlay ONLY scales Exp_A in
-#   [0.75 * A, min(1, 1.25 * A)]; cannot override A == 0.
+# - Model_A: normalized PIT fair-value INDEX (參數高原／內部用；不是淨值圖曲線).
+# - Trade_A (模式「純基本面價值」策略淨值): Exp_A × 日報酬；Exp_A 來自 MOS＋Great Filter.
+# - Trade_B / Model_B (模式「情緒波動價值」策略淨值): Exp_B × 日報酬；
+#   Exp_B = clip(Exp_A × sentiment, 0.75×A … 1.25×A)；Exp_A=0 → Exp_B=0.
+# 淨值圖只畫 Trade_A／Trade_B vs BuyHold／Benchmark；合理價看 HFV Timeline.
 # ==========================================
 
 # ---------- small helpers ----------
@@ -947,11 +946,12 @@ sentiment_multiplier <- function(mom_score, rsi_score, w_mom = 0.5, w_rsi = 0.5)
   equity_df <- data.frame(
     Date = df$Date,
     Close = df$Close,
-    # Model_A: params × hist financials FV path (HFV timeline / plateau).
+    # Model_A: FV index for plateau (NOT equity-chart Mode A).
     Model_A = model_a,
-    # Trade_A: exposure-weighted sim = equity chart「純基本面價值」.
-    Trade_A = equity_a,
-    Model_B = equity_b,   # 情緒波動價值 (sentiment-adjusted Exp_A)
+    # Two backtest modes → two strategy NAVs on the equity chart.
+    Trade_A = equity_a,   # 純基本面價值
+    Trade_B = equity_b,   # 情緒波動價值
+    Model_B = equity_b,   # back-compat alias of Trade_B
     BuyHold = equity_bh,
     Benchmark = equity_bm,
     Exp_A = exp_a_daily,
@@ -964,7 +964,7 @@ sentiment_multiplier <- function(mom_score, rsi_score, w_mom = 0.5, w_rsi = 0.5)
   i0 <- rebal_idx[1L]
   if (is.finite(i0) && i0 > 1L && i0 <= n) {
     equity_df <- equity_df[i0:n, , drop = FALSE]
-    for (col in c("Model_A", "Trade_A", "Model_B", "BuyHold", "Benchmark")) {
+    for (col in c("Model_A", "Trade_A", "Trade_B", "Model_B", "BuyHold", "Benchmark")) {
       base <- equity_df[[col]][1]
       if (is.finite(base) && base > 0) {
         equity_df[[col]] <- equity_df[[col]] / base
@@ -993,9 +993,9 @@ sentiment_multiplier <- function(mom_score, rsi_score, w_mom = 0.5, w_rsi = 0.5)
     cagr <- if (isTRUE(yrs > 0)) eq[length(eq)] ^ (1 / yrs) - 1 else NA_real_
     list(sharpe = sharpe, mdd = mdd, cagr = cagr)
   }
-  # Trading metrics: Trade_A + Model_B — not FV index.
+  # Trading metrics for the two modes — never the FV index.
   pa <- perf_one(equity_df$Trade_A)
-  pb <- perf_one(equity_df$Model_B)
+  pb <- perf_one(equity_df$Trade_B)
 
   # signal composition stats
   sig <- valuation_df$signal
@@ -1167,13 +1167,13 @@ build_bt_methodology_doc <- function(meta = NULL) {
     "## 3. 序列定義（淨值圖）\n",
     "\n",
     "- **該股買進持有 (Buy&Hold)**：每日 `E_t = E_{t-1} × (1 + r_t)`，全程 100% 持股；現金部位為 0。\n",
-    "- **純基本面價值 (Trade_A)**：`E_t = E_{t-1} × (1 + Exp_A × r_t)`。",
-    "`Exp_A` 由 Great Filter + MOS 滯後曝險決定（最高約 90%）。\n",
-    "- **情緒波動價值 (Model_B)**：在 `Exp_A` 上乘情緒乘數（動能／RSI），",
-    "並夾在 `[0.75×Exp_A, min(1, 1.25×Exp_A)]`；`Exp_A=0` 時必須空手。\n",
+    "- **純基本面價值 (Trade_A)**：策略淨值 `E_t = E_{t-1} × (1 + Exp_A × r_t)`。",
+    "`Exp_A` 由 Great Filter + MOS 滯後曝險決定（最高約 90%）。這是淨值圖上的「模式 A」。\n",
+    "- **情緒波動價值 (Trade_B)**：策略淨值，在 `Exp_A` 上乘情緒乘數（動能／RSI），",
+    "並夾在 `[0.75×Exp_A, min(1, 1.25×Exp_A)]`；`Exp_A=0` 時必須空手。這是淨值圖上的「模式 B」，嵌套於 A 而非獨立宇宙。\n",
     "- **大盤基準**：SPY 全日報酬累積指數。\n",
-    "- **Historical Fair Value Timeline 的合理價路徑 (Model_A)**：PIT 合理價於再平衡日更新，",
-    "季間依 Session SGR 延展；**不是**交易淨值，請勿與 Buy&Hold 混比。\n",
+    "- **合理價指數 (Model_A)**：僅供參數高原等診斷；**不畫在淨值圖**。",
+    "價格 vs 合理價請看 Historical Fair Value Timeline。\n",
     "\n",
     "比較視窗自**首次有效季再平衡日**對齊起點（避免策略暖身期空手讓 Buy&Hold 佔先）。\n",
     "\n",
@@ -1195,9 +1195,9 @@ build_bt_methodology_doc <- function(meta = NULL) {
     "\n",
     "## 5. 驗證指標（回測後）\n",
     "\n",
-    "- **Alpha／Sharpe／MDD／Excess vs BH／Jensen α**：以 Trade_A、Model_B、BuyHold、Benchmark 計算。\n",
+    "- **Alpha／Sharpe／MDD／Excess vs BH／Jensen α**：以 Trade_A、Trade_B、BuyHold、Benchmark 計算。\n",
     "- **MOS／FV 前瞻報酬**：依再平衡列分組，對齊日曆 1Y／3Y／5Y 前瞻報酬。\n",
-    "- **參數高原**：微擾 WACC／SGR／年數等，觀察 Model_A 終值相對變動。\n",
+    "- **參數高原**：微擾 WACC／SGR／年數等，觀察合理價指數 (Model_A) 終值相對變動（不是策略淨值）。\n",
     "- **為何輸給 Buy&Hold**：拆解 Cash Drag／Early Exit／高估減碼／情緒減碼等。\n",
     "\n",
     "## 6. 本次 Session 參數摘要\n",
