@@ -2505,31 +2505,31 @@ server <- function(input, output, session) {
     validate(need(!is.null(res) && !is.null(res$equity_df), "請先成功執行回測"))
     df_plot <- res$equity_df
     df_long <- rbind(
-      data.frame(Date = df_plot$Date, Value = df_plot$Model_A, Series = "模式 A (純基本面)", stringsAsFactors = FALSE),
+      data.frame(Date = df_plot$Date, Value = df_plot$Model_A, Series = "模式 A (合理價試算)", stringsAsFactors = FALSE),
       data.frame(Date = df_plot$Date, Value = df_plot$Model_B, Series = "模式 B (情緒疊加)", stringsAsFactors = FALSE),
       data.frame(Date = df_plot$Date, Value = df_plot$BuyHold, Series = "該股買進持有", stringsAsFactors = FALSE),
       data.frame(Date = df_plot$Date, Value = df_plot$Benchmark, Series = "大盤基準", stringsAsFactors = FALSE)
     )
     df_long$Series <- factor(
       df_long$Series,
-      levels = c("模式 A (純基本面)", "模式 B (情緒疊加)", "該股買進持有", "大盤基準")
+      levels = c("模式 A (合理價試算)", "模式 B (情緒疊加)", "該股買進持有", "大盤基準")
     )
     p <- ggplot(df_long, aes(x = Date, y = Value, color = Series, group = Series, linetype = Series)) +
       geom_line(linewidth = 0.85) +
       scale_color_manual(values = c(
-        "模式 A (純基本面)" = "#dc3545",
+        "模式 A (合理價試算)" = "#dc3545",
         "模式 B (情緒疊加)" = "#007bff",
         "該股買進持有" = "#28a745",
         "大盤基準" = "#6c757d"
       )) +
       scale_linetype_manual(values = c(
-        "模式 A (純基本面)" = "solid",
+        "模式 A (合理價試算)" = "solid",
         "模式 B (情緒疊加)" = "solid",
         "該股買進持有" = "solid",
         "大盤基準" = "dashed"
       )) +
       scale_y_continuous(labels = label_chart_number()) +
-      labs(y = "累積淨值", x = "日期", color = "策略", linetype = "策略") +
+      labs(y = "累積指數（起點=1）", x = "日期", color = "序列", linetype = "序列") +
       theme_minimal()
     ggplotly(p, tooltip = c("x", "y", "colour")) %>%
       layout(legend = list(orientation = "h", y = -0.2))

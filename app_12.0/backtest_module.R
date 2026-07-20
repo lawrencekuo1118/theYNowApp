@@ -7,9 +7,12 @@
 #   using CURRENT session model parameters (WACC / Ke / g / n / P/B).
 # - Multi-model composite fair value: DCF + DDM + RI + P/B, then
 #   mean of available models.
-# - Strategy A: fundamental, quarterly rebalance, MOS hysteresis
-#   with Great Filter gating.
-# - Strategy B: sentiment overlay ONLY scales A's weight in
+# - Mode A (chart Model_A): session params × historical financials
+#   → PIT composite fair-value path (LOCF, normalized). Independent
+#   of position / exposure assumptions.
+# - Exposure / Trade_A: MOS hysteresis + Great Filter (diagnostic;
+#   also the base weight for Strategy B).
+# - Strategy B: sentiment overlay ONLY scales Exp_A in
 #   [0.75 * A, min(1, 1.25 * A)]; cannot override A == 0.
 # ==========================================
 
@@ -655,12 +658,15 @@ sentiment_multiplier <- function(mom_score, rsi_score, w_mom = 0.5, w_rsi = 0.5)
   n <- nrow(df)
   pos_a <- 0
   pos_b <- 0
-  equity_a <- numeric(n); equity_a[1] <- 1
+  equity_a <- numeric(n); equity_a[1] <- 1   # Trade_A: exposure sim (diagnostic)
   equity_b <- numeric(n); equity_b[1] <- 1
   equity_bh <- numeric(n); equity_bh[1] <- 1
   equity_bm <- numeric(n); equity_bm[1] <- 1
   exp_a_daily <- numeric(n)
   exp_b_daily <- numeric(n)
+  # Mode A chart series: LOCF of PIT fair value (params × hist financials).
+  fv_daily <- rep(NA_real_, n)
+  fv_cur <- NA_real_
 
   val_rows <- list()
   explain_last <- NULL
@@ -684,15 +690,18 @@ sentiment_multiplier <- function(mom_score, rsi_score, w_mom = 0.5, w_rsi = 0.5)
       pit <- reconstruct_fair_value_pit(fund_i, price_i, model_params)
       mos_i <- if (is.finite(pit$mos)) pit$mos else mos_fallback
       signal_i <- pit$signal
+      if (is.finite(pit$fair_value) && pit$fair_value > 0) {
+        fv_cur <- pit$fair_value
+      }
 
       gf <- .great_filter_pass(fund_i, thr_npm, thr_rev, thr_eps, thr_cv, fund_i$cv_fcf)
 
-      # ---- Strategy A: fundamental, hysteresis * w_vg blend, gated by filter ----
+      # ---- Exposure base (diagnostic + Mode B weight); NOT chart Mode A ----
       pos_a_target <- mos_hysteresis_target(mos_i, w_vg)
       if (!isTRUE(gf$pass)) pos_a_target <- 0
       pos_a <- .clip01(pos_a_target, 0, 1)
 
-      # ---- Strategy B: sentiment overlay ONLY scales A's weight ----
+      # ---- Strategy B: sentiment overlay ONLY scales Exp_A weight ----
       sent_mult <- sentiment_multiplier(mom_score, rsi_score, w_mom, w_rsi)
       if (pos_a <= 0) {
         pos_b <- 0
@@ -754,12 +763,23 @@ sentiment_multiplier <- function(mom_score, rsi_score, w_mom = 0.5, w_rsi = 0.5)
       )
     }
 
+    fv_daily[i] <- fv_cur
     exp_a_daily[i] <- pos_a
     exp_b_daily[i] <- pos_b
     equity_a[i]  <- equity_a[i - 1]  * (1 + pos_a * r)
     equity_b[i]  <- equity_b[i - 1]  * (1 + pos_b * r)
     equity_bh[i] <- equity_bh[i - 1] * (1 + r)
     equity_bm[i] <- equity_bm[i - 1] * (1 + rb)
+  }
+
+  # Backfill FV before first rebalance; normalize Mode A to start at 1.
+  first_fv <- which(is.finite(fv_daily) & fv_daily > 0)[1]
+  if (is.finite(first_fv)) {
+    if (first_fv > 1L) fv_daily[seq_len(first_fv - 1L)] <- fv_daily[first_fv]
+    model_a <- fv_daily / fv_daily[1]
+    model_a[!is.finite(model_a)] <- NA_real_
+  } else {
+    model_a <- rep(NA_real_, n)
   }
 
   valuation_df <- if (length(val_rows) > 0) do.call(rbind, val_rows) else {
@@ -778,8 +798,11 @@ sentiment_multiplier <- function(mom_score, rsi_score, w_mom = 0.5, w_rsi = 0.5)
 
   equity_df <- data.frame(
     Date = df$Date,
-    Model_A = equity_a,   # Strategy A (fundamental, long-hold bias)
-    Model_B = equity_b,   # Strategy B (sentiment-adjusted A)
+    # Chart Mode A: params × hist financials FV path (no position sizing).
+    Model_A = model_a,
+    # Exposure-weighted sim kept for gap / alpha / plateau diagnostics.
+    Trade_A = equity_a,
+    Model_B = equity_b,   # Strategy B (sentiment-adjusted Exp_A)
     BuyHold = equity_bh,
     Benchmark = equity_bm,
     Exp_A = exp_a_daily,
@@ -807,8 +830,9 @@ sentiment_multiplier <- function(mom_score, rsi_score, w_mom = 0.5, w_rsi = 0.5)
     cagr <- if (isTRUE(yrs > 0)) eq[length(eq)] ^ (1 / yrs) - 1 else NA_real_
     list(sharpe = sharpe, mdd = mdd, cagr = cagr)
   }
-  pa <- perf_one(equity_a)  # Strategy A
-  pb <- perf_one(equity_b)  # Strategy B
+  # Trading metrics: Trade_A (exposure sim) + Strategy B — not FV index.
+  pa <- perf_one(equity_a)
+  pb <- perf_one(equity_b)
 
   # signal composition stats
   sig <- valuation_df$signal

@@ -1033,8 +1033,8 @@ ui <- dashboardPage(
                   plotlyOutput("bt_equity_plot", height = "400px") %>% withSpinner(),
                   tags$ul(
                     style = "margin: 10px 0 0 0; padding-left: 18px; font-size: 12px; color: #666; line-height: 1.55;",
-                    tags$li(tags$b("紅線 A"), " 純基本面（季頻、MOS 滯後倉位，偏長期持有）。"),
-                    tags$li(tags$b("藍線 B"), " A × 情緒乘數（僅能在 A 的 75%～125% 內調整，不可推翻基本面空手）。"),
+                    tags$li(tags$b("紅線 A"), " 現有參數假設 × 歷史財報的合理價試算路徑（正規化），與持倉／曝險無關。"),
+                    tags$li(tags$b("藍線 B"), " 曝險模擬 × 情緒乘數（僅能在 Exp_A 的 75%～125% 內調整）。"),
                     tags$li(tags$b("綠線"), " Buy & Hold；", tags$b("灰虛線"), " SPY 基準。")
                   )
                 ),
@@ -1152,21 +1152,21 @@ ui <- dashboardPage(
                       )
                     ),
                     tabPanel(
-                      title = tagList(icon("balance-scale"), "模式 A｜純基本面"),
+                      title = tagList(icon("balance-scale"), "模式 A｜合理價試算"),
                       .bt_section_intro(
-                        "PIT 重建 DCF／DDM／RI／P/B → 綜合 Fair Value → MOS 滯後倉位（偏長期）。季頻再平衡，降低過度進出。"
+                        "淨值圖紅線 A＝目前 App 參數（WACC／成長／年數／P/B 等）套用歷史財報的 PIT 綜合合理價路徑，與持倉多少無關。下方 MOS 權重僅供「Exposure History」與模式 B 的倉位基準。"
                       ),
                       fluidRow(
                         column(
                           6,
-                          sliderInput("bt_w_vg", "MOS／Value Gap 權重", 0, 1, 0.7, step = 0.01),
-                          .bt_hint("權重愈高愈依 MOS 滯後表調倉；其餘混入中性曝險 40%。")
+                          sliderInput("bt_w_vg", "MOS／Value Gap 權重（曝險診斷）", 0, 1, 0.7, step = 0.01),
+                          .bt_hint("僅影響 Exposure／模式 B 基準倉位；不影響紅線合理價試算。")
                         ),
                         column(
                           6,
                           tags$div(
                             style = "margin-top: 20px; padding: 12px; background: #fcf8e3; border: 1px solid #f0e6b2; border-radius: 5px; font-size: 12px; color: #8a6d3b; line-height: 1.55;",
-                            tags$b("滯後曝險"), tags$br(),
+                            tags$b("滯後曝險（診斷用）"), tags$br(),
                             "MOS≥30%→90%；≥10%→65%；≥0%→40%；≥−10%→15%；否則空手。"
                           )
                         )
@@ -1175,7 +1175,7 @@ ui <- dashboardPage(
                     tabPanel(
                       title = tagList(icon("bolt"), "模式 B｜情緒疊加"),
                       .bt_section_intro(
-                        "情緒只能調整權重：最終曝險夾在模式 A 的 75%～125%，且 A=0 時 B 必須為 0。"
+                        "情緒只能調整權重：最終曝險夾在 Exp_A（MOS 診斷倉位）的 75%～125%，且 Exp_A=0 時 B 必須為 0。"
                       ),
                       fluidRow(
                         column(6, sliderInput("bt_w_mom", "動能相對權重", 0, 1, 0.4, step = 0.01),
