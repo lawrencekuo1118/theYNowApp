@@ -489,7 +489,7 @@ ui <- dashboardPage(
           color: #333;
         }
 
-        /* 僅美化：情緒波動價值（寬螢幕三列；按鈕獨立列） */
+        /* 僅美化：情緒波動價值（寬螢幕四參數一列；按鈕獨立列） */
         .ynow-bt-mode-b .ynow-bt-mode-b-grid > [class*='col-'] {
           margin-bottom: 8px;
         }
@@ -512,7 +512,7 @@ ui <- dashboardPage(
           max-width: 320px;
         }
 
-        /* 僅美化：回測驗證（寬螢幕三列；操作列與表格分離） */
+        /* 僅美化：回測驗證（寬螢幕三列） */
         .ynow-bt-validate .ynow-bt-validate-col {
           margin-bottom: 12px;
         }
@@ -531,15 +531,8 @@ ui <- dashboardPage(
           margin-bottom: 0;
           font-size: 12px;
         }
-        .ynow-bt-validate .ynow-bt-validate-actions {
-          clear: both;
-          margin-top: 4px;
-          padding-top: 12px;
-          border-top: 1px solid #e5e8eb;
-        }
         @media (max-width: 991px) {
-          .ynow-bt-mode-b .ynow-bt-fit-panel .btn,
-          .ynow-bt-validate .ynow-bt-validate-actions .btn {
+          .ynow-bt-mode-b .ynow-bt-fit-panel .btn {
             max-width: none;
             width: 100%;
           }
@@ -1249,30 +1242,33 @@ ui <- dashboardPage(
                         .bt_section_intro(
                           "模式 B：對應上方折現圖的「情緒波動價值」（實際股價軌跡）。策略上 Exp_B = Exp_A × 情緒乘數；可用 Fit 參數讓模擬更貼近買進持有。"
                         ),
-                        # 寬螢幕三列：動能 / RSI / 持股上限
+                        # 寬螢幕四參數一列：動能 / RSI / 最大持股 / 最低持股
                         tags$div(
                           class = "ynow-bt-mode-b-grid",
                           fluidRow(
                             column(
-                              4,
+                              3,
                               sliderInput("bt_w_mom", "動能相對權重", 0, 1, 0.4, step = 0.01),
                               .bt_hint("與 RSI 正規化後組成情緒分數。")
                             ),
                             column(
-                              4,
+                              3,
                               sliderInput("bt_w_rsi", "RSI 相對權重", 0, 1, 0.3, step = 0.01),
                               .bt_hint("情緒乘數限制在 0.75～1.25。")
                             ),
                             column(
-                              4,
+                              3,
                               sliderInput("bt_max_exp", "最大持股上限", 0.5, 1, 0.9, step = 0.01),
-                              .bt_hint("拉到 1.00 可消除結構性少倉，利於貼近買進持有。"),
+                              .bt_hint("拉到 1.00 可消除結構性少倉，利於貼近買進持有。")
+                            ),
+                            column(
+                              3,
                               sliderInput("bt_min_exp_pass", "通過條件後最低持股", 0, 0.4, 0, step = 0.01),
                               .bt_hint("持倉條件通過且非極度高估時的地板倉位。")
                             )
                           )
                         ),
-                        # 按鈕獨立一列（不與滑桿／表格並排）
+                        # 按鈕獨立一列（不與滑桿並排）
                         tags$div(
                           class = "ynow-bt-fit-row",
                           fluidRow(
@@ -1300,67 +1296,49 @@ ui <- dashboardPage(
                 )
               ),
 
-              # 5) MOS／FV／參數高原驗證區塊（寬螢幕三列；下載鈕獨立列）
+              # 5) MOS／FV／參數高原驗證區塊（寬螢幕三列）
               fluidRow(
-                box(
-                  title = tagList(icon("flask"), "回測驗證：MOS／Fair Value／參數高原"),
-                  width = 12, status = "info", solidHeader = TRUE, collapsible = TRUE, collapsed = FALSE,
+                tags$div(
                   class = "ynow-bt-validate",
-                  fluidRow(
-                    column(
-                      4,
-                      tags$div(
-                        class = "ynow-bt-validate-col",
-                        tags$div(
-                          class = "ynow-bt-validate-panel",
-                          tags$h5(tags$b("MOS 有效性驗證")),
-                          .bt_hint("依 MOS 分組統計 1Y／3Y／5Y 前瞻報酬：MOS 愈高是否報酬愈好？"),
-                          tags$div(style = "overflow-x:auto;", tableOutput("bt_mos_table"))
-                        )
-                      )
-                    ),
-                    column(
-                      4,
-                      tags$div(
-                        class = "ynow-bt-validate-col",
-                        tags$div(
-                          class = "ynow-bt-validate-panel",
-                          tags$h5(tags$b("Fair Value 預測能力")),
-                          uiOutput("bt_fv_edge"),
-                          tags$div(style = "overflow-x:auto;", tableOutput("bt_fv_table"))
-                        )
-                      )
-                    ),
-                    column(
-                      4,
-                      tags$div(
-                        class = "ynow-bt-validate-col",
-                        tags$div(
-                          class = "ynow-bt-validate-panel",
-                          tags$h5(tags$b("參數高原（敏感度）")),
-                          .bt_hint("微擾 WACC／SGR／年數，觀察合理價指數（Model_A）終值敏感度——不是策略淨值。"),
-                          uiOutput("bt_plateau"),
-                          tags$div(style = "overflow-x:auto;", tableOutput("bt_plateau_table"))
-                        )
-                      )
-                    )
-                  ),
-                  # 操作按鈕獨立一列，不與表格並排
-                  tags$div(
-                    class = "ynow-bt-validate-actions",
+                  box(
+                    title = tagList(icon("flask"), "回測驗證：MOS／Fair Value／參數高原"),
+                    width = 12, status = "info", solidHeader = TRUE, collapsible = TRUE, collapsed = FALSE,
                     fluidRow(
                       column(
-                        12,
+                        4,
                         tags$div(
-                          style = "font-size:12px;color:#666;margin-bottom:8px;",
-                          "完整公式與本次 Session 參數可下載方法論說明（與上方驗證表分開）。"
-                        ),
-                        downloadButton(
-                          "download_bt_methodology",
-                          "下載方法論說明（Markdown）",
-                          icon = icon("download"),
-                          class = "btn-primary",
-                          style = "font-weight: 600;"
+                          class = "ynow-bt-validate-col",
+                          tags$div(
+                            class = "ynow-bt-validate-panel",
+                            tags$h5(tags$b("MOS 有效性驗證")),
+                            .bt_hint("依 MOS 分組統計 1Y／3Y／5Y 前瞻報酬：MOS 愈高是否報酬愈好？"),
+                            tags$div(style = "overflow-x:auto;", tableOutput("bt_mos_table"))
+                          )
+                        )
+                      ),
+                      column(
+                        4,
+                        tags$div(
+                          class = "ynow-bt-validate-col",
+                          tags$div(
+                            class = "ynow-bt-validate-panel",
+                            tags$h5(tags$b("Fair Value 預測能力")),
+                            uiOutput("bt_fv_edge"),
+                            tags$div(style = "overflow-x:auto;", tableOutput("bt_fv_table"))
+                          )
+                        )
+                      ),
+                      column(
+                        4,
+                        tags$div(
+                          class = "ynow-bt-validate-col",
+                          tags$div(
+                            class = "ynow-bt-validate-panel",
+                            tags$h5(tags$b("參數高原（敏感度）")),
+                            .bt_hint("微擾 WACC／SGR／年數，觀察合理價指數（Model_A）終值敏感度——不是策略淨值。"),
+                            uiOutput("bt_plateau"),
+                            tags$div(style = "overflow-x:auto;", tableOutput("bt_plateau_table"))
+                          )
                         )
                       )
                     )
@@ -1368,13 +1346,23 @@ ui <- dashboardPage(
                 )
               ),
 
-              # 6) 方法論（詳述；下載鈕已置於上方驗證區操作列）
+              # 6) 方法論
               fluidRow(
                 box(
                   title = tagList(icon("book"), "回測數據來源與計算過程（方法論註解）"),
                   width = 12, status = "primary", solidHeader = TRUE,
                   collapsible = TRUE, collapsed = FALSE,
-                  uiOutput("bt_methodology_notes")
+                  uiOutput("bt_methodology_notes"),
+                  tags$div(
+                    style = "margin-top: 12px;",
+                    downloadButton(
+                      "download_bt_methodology",
+                      "下載方法論說明（Markdown）",
+                      icon = icon("download"),
+                      class = "btn-primary",
+                      style = "font-weight: 600;"
+                    )
+                  )
                 )
               )
       ),
