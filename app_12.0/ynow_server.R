@@ -311,7 +311,7 @@ server <- function(input, output, session) {
 
     sidebarMenu(
       id = "sidebar_tabs",
-      mk("Get Started", "get_started", "play-circle",
+      mk(HTML("<b>Get Started</b>"), "get_started", "play-circle",
          fallback_label = "start", fallback_color = "purple"),
       mk("Dashboard", "dashboard", "chart-line"),
       # 順序對齊 Model Selector 左→右：DCF → DDM → P/B → RI
@@ -434,10 +434,16 @@ server <- function(input, output, session) {
       c("P/B", "P/B Mid", .snapshot_value(input[["mod_pb-pb_mid"]]), "Price = BVPS × P/B"),
       c("P/B", "P/B High", .snapshot_value(input[["mod_pb-pb_high"]]), "Price = BVPS × P/B"),
       c("P/B", "約當股數校正", .snapshot_value(input[["mod_pb-adjust_share_class"]]), "例外：市值÷股價／雙重股權"),
-      c("Backtest", "Net Margin Threshold (%)", .snapshot_value(input$bt_net_margin), "Pass if Net Margin >= threshold"),
-      c("Backtest", "Revenue Growth Threshold (%)", .snapshot_value(input$bt_rev_growth), "Pass if Revenue Growth >= threshold"),
-      c("Backtest", "EPS / NI Growth Threshold (%)", .snapshot_value(input$bt_eps_growth), "Pass if EPS/NI Growth >= threshold"),
-      c("Backtest", "FCF CV Ceiling (%)", .snapshot_value(input$bt_fcf_cv), "Pass if FCF CV <= ceiling")
+      c("Backtest", "Net Margin Threshold (%)", .snapshot_value(input$bt_net_margin), "Great Filter: Net Margin >= threshold"),
+      c("Backtest", "Revenue Growth Threshold (%)", .snapshot_value(input$bt_rev_growth), "Great Filter: Revenue Growth >= threshold"),
+      c("Backtest", "EPS / NI Growth Threshold (%)", .snapshot_value(input$bt_eps_growth), "Great Filter: EPS/NI Growth >= threshold"),
+      c("Backtest", "FCF CV Ceiling (%)", .snapshot_value(input$bt_fcf_cv), "Great Filter: FCF CV <= ceiling"),
+      c("Backtest", "Auto Derive Params", .snapshot_value(input$bt_param_auto), "TRUE = sync thresholds/weights/model on ticker load"),
+      c("Backtest", "回測用評價模型", .snapshot_value(input$bt_fv_model), "Drives FV/MOS → Exp_A; not equity-chart price line"),
+      c("Backtest", "MOS / VG Weight (bt_w_vg)", .snapshot_value(input$bt_w_vg), "Exposure diagnostic blend; not FV path"),
+      c("Backtest", "Momentum Weight (bt_w_mom)", .snapshot_value(input$bt_w_mom), "Sentiment overlay relative weight"),
+      c("Backtest", "RSI Weight (bt_w_rsi)", .snapshot_value(input$bt_w_rsi), "Sentiment overlay relative weight"),
+      c("Backtest", "Hist Discount Beta", "Rolling β (≈5Y monthly vs SPY)", "PIT Ke/WACC at each rebalance; not fixed session β")
     )
     df <- as.data.frame(do.call(rbind, rows), stringsAsFactors = FALSE)
     names(df) <- c("Section", "Parameter", "Current Value", "Formula")
@@ -2111,10 +2117,11 @@ server <- function(input, output, session) {
   })
   
   # ==========================================
-  # 🧪 Backtest Zone：公司專屬參數 + 真實回測
+  # 🧪 Backtest Zone v12：PIT 多模型重建 + Alpha／MOS 驗證
   # ==========================================
   bt_param_notes_txt <- reactiveVal("請先搜尋股票並載入財報，系統會依公司自動推導參數。")
   bt_result <- reactiveVal(NULL)
+  bt_validation <- reactiveVal(NULL)
   bt_run_msg <- reactiveVal("")
   bt_applying_params <- reactiveVal(FALSE)
 
@@ -2128,8 +2135,9 @@ server <- function(input, output, session) {
     (tgt - cur) / tgt
   })
 
-  # 回測用「此刻」DCF 參數（歷史財報 × 當前假設）
-  bt_current_dcf_params <- reactive({
+  # Session「此刻」模型參數（動態重建用；不落庫）
+  # 歷史 PIT 的 Ke/WACC 會在再平衡日以 Rolling β 覆寫；此處提供 Rf/Rm／資本結構與定值 fallback。
+  bt_current_model_params <- reactive({
     use_calc <- isTRUE(input$use_calculated_wacc) &&
       !is.null(calculated_wacc()) && is.finite(calculated_wacc())
     wacc <- if (use_calc) {
@@ -2145,16 +2153,75 @@ server <- function(input, output, session) {
     g_explicit <- if (identical(input$dcf_mode, "two_stage")) {
       suppressWarnings(as.numeric(input$g_stage1)[1]) / 100
     } else {
-      # Gordon：短期成長優先自訂／否則用 SGR
       cg <- suppressWarnings(as.numeric(input$custom_g)[1])
       if (is.finite(cg)) cg / 100 else sgr
     }
-    if (!is.finite(wacc) || wacc <= 0) {
-      wacc <- APP_DEFAULTS$wacc_gordon / 100
+    ke <- tryCatch(as.numeric(central_ke())[1], error = function(e) NA_real_)
+    if (!is.finite(ke) || ke <= 0) {
+      ke <- suppressWarnings(as.numeric(input$wacc_re)[1]) / 100
     }
+    if (!is.finite(ke) || ke <= 0) ke <- wacc
+    pb_mid <- suppressWarnings(as.numeric(input$pb_mid)[1])
+    if (!is.finite(pb_mid) || pb_mid <= 0) pb_mid <- APP_DEFAULTS$pb_mid
+    ddm_g <- suppressWarnings(as.numeric(input[["mod_ddm-g"]])[1])
+    if (!is.finite(ddm_g)) ddm_g <- sgr * 100
+    ddm_g <- ddm_g / 100
+    if (!is.finite(wacc) || wacc <= 0) wacc <- APP_DEFAULTS$wacc_gordon / 100
     if (!is.finite(sgr)) sgr <- APP_DEFAULTS$sgr / 100
     if (!is.finite(g_explicit)) g_explicit <- sgr
-    list(wacc = wacc, sgr = sgr, n_years = n_years, g_explicit = g_explicit)
+    fv_model <- as.character(input$bt_fv_model %||% "dcf")[1]
+    if (!fv_model %in% c("dcf", "ddm", "ri", "pb", "composite")) fv_model <- "dcf"
+
+    rf <- suppressWarnings(as.numeric(input$capm_rf)[1]) / 100
+    if (!is.finite(rf) || rf <= 0) {
+      rf <- tryCatch(as.numeric(cached_get_risk_free_rate()) / 100, error = function(e) NA_real_)
+    }
+    if (!is.finite(rf) || rf <= 0) rf <- APP_DEFAULTS$capm_rf / 100
+    rm <- suppressWarnings(as.numeric(input$capm_rm)[1]) / 100
+    if (!is.finite(rm) || rm <= 0) rm <- APP_DEFAULTS$capm_rm / 100
+    rd <- suppressWarnings(as.numeric(input$wacc_rd)[1]) / 100
+    if (!is.finite(rd) || rd < 0) rd <- APP_DEFAULTS$wacc_rd / 100
+    tax <- suppressWarnings(as.numeric(input$wacc_tax)[1]) / 100
+    if (!is.finite(tax) || tax < 0) tax <- APP_DEFAULTS$wacc_tax / 100
+    beta_fb <- suppressWarnings(as.numeric(input$capm_beta)[1])
+    if (!is.finite(beta_fb)) beta_fb <- APP_DEFAULTS$capm_beta
+
+    # Freeze session capital structure weights for rolling-Ke → WACC mapping.
+    we <- NA_real_; wd <- NA_real_
+    tryCatch({
+      bs <- d_balance_sheet()
+      sum_df <- summary_data()
+      shares <- select_current_metric(bs, "Share Issued|Ordinary Shares Number", "stock")
+      price_val <- NA_real_
+      if (!is.null(sum_df) && is.data.frame(sum_df) && "Previous Close" %in% sum_df$Item) {
+        price_val <- parse_financial_number(sum_df$Value[sum_df$Item == "Previous Close"][1])
+      }
+      equity_mv <- if (is.finite(shares) && shares > 0 && is.finite(price_val)) {
+        shares * price_val
+      } else {
+        select_current_metric(bs, "Common Stock Equity", "stock")
+      }
+      debt <- select_current_metric(bs, "Total Debt", "stock")
+      debt <- if (is.na(debt)) 0 else debt
+      if (is.finite(equity_mv) && equity_mv > 0) {
+        tot <- equity_mv + debt
+        if (is.finite(tot) && tot > 0) {
+          we <- equity_mv / tot
+          wd <- debt / tot
+        }
+      }
+    }, error = function(e) NULL)
+
+    list(
+      wacc = wacc, ke = ke, sgr = sgr, g_explicit = g_explicit,
+      n_years = n_years, pb_mid = pb_mid, ddm_g = ddm_g,
+      fv_model = fv_model,
+      rf = rf, rm = rm, rd = rd, tax = tax,
+      we = we, wd = wd,
+      beta_fallback = beta_fb,
+      beta_lookback_months = 60L,
+      beta_min_months = 24L
+    )
   })
 
   apply_bt_params_to_ui <- function(p) {
@@ -2174,7 +2241,6 @@ server <- function(input, output, session) {
     req(current_ticker(), d_income_statement(), d_cash_flow())
     hist_long <- NULL
     if (isTRUE(fetch_hist)) {
-      # 優先用搜尋後已快取的股價，避免再打一次網路
       cached <- tryCatch(hist_stock_data(), error = function(e) NULL)
       if (!is.null(cached) && nrow(cached) >= 30) {
         hist_long <- cached[, c("Date", "Close", "Volume"), drop = FALSE]
@@ -2191,13 +2257,39 @@ server <- function(input, output, session) {
       industry_choice = input$industry_choice
     )
     apply_bt_params_to_ui(p)
+    # Align Mode A valuation model with Dashboard recommendation when auto.
+    if (isTRUE(input$bt_param_auto)) {
+      rec <- tryCatch(
+        recommend_valuation_models(
+          d_cash_flow(),
+          industry_text = input$industry_choice %||% "",
+          d_is = d_income_statement(),
+          d_bs = d_balance_sheet()
+        ),
+        error = function(e) NULL
+      )
+      fv_sel <- "dcf"
+      if (!is.null(rec)) {
+        tags <- tolower(as.character(rec$tags %||% character(0)))
+        sm <- as.character(rec$summary_method %||% "")[1]
+        if ("dcf" %in% tags || grepl("DCF", sm, ignore.case = TRUE)) fv_sel <- "dcf"
+        else if ("ddm" %in% tags || grepl("DDM", sm, ignore.case = TRUE)) fv_sel <- "ddm"
+        else if ("ri" %in% tags || grepl("\\bRI\\b|剩餘", sm, ignore.case = TRUE)) fv_sel <- "ri"
+        else if ("pb" %in% tags || grepl("P/B|本淨", sm, ignore.case = TRUE)) fv_sel <- "pb"
+        else if (grepl("交叉", sm)) fv_sel <- "composite"
+      }
+      # Guard so auto-picked model does not flip checkbox to manual
+      was_applying <- isTRUE(bt_applying_params())
+      bt_applying_params(TRUE)
+      updateRadioButtons(session, "bt_fv_model", selected = fv_sel)
+      if (!was_applying) bt_applying_params(FALSE)
+    }
     invisible(p)
   }
 
-  # 搜尋後先用財報推導參數（不另抓股價），避免與 Overview 繪圖搶同一條 session
   observeEvent(list(current_ticker(), scraped_financials()), {
     req(current_ticker(), scraped_financials())
-    if (!identical(input$bt_param_mode, "auto")) return()
+    if (!isTRUE(input$bt_param_auto)) return()
     tryCatch(refresh_bt_params(fetch_hist = FALSE), error = function(e) {
       bt_param_notes_txt(paste("自動推導失敗：", e$message))
     })
@@ -2206,29 +2298,38 @@ server <- function(input, output, session) {
   observeEvent(input$bt_refresh_params, {
     tryCatch({
       refresh_bt_params(fetch_hist = TRUE)
-      showNotification("✅ 已依目前公司重算 Backtest 參數", type = "message")
+      showNotification("✅ 已依目前公司重算一次（門檻／權重）", type = "message")
     }, error = function(e) {
       showNotification(paste("參數重算失敗：", e$message), type = "error")
     })
   })
 
-  observeEvent(input$bt_param_mode, {
-    if (identical(input$bt_param_mode, "auto")) {
+  observeEvent(input$bt_param_auto, {
+    if (isTRUE(input$bt_param_auto)) {
       tryCatch(refresh_bt_params(fetch_hist = FALSE), error = function(e) NULL)
+      bt_param_notes_txt(
+        "自動同步已開啟：換股／載入財報時會覆寫門檻、權重與推薦估值模型。若只要算一次，可取消勾選後按「立即依目前公司重算一次」。"
+      )
     } else {
-      bt_param_notes_txt("手動覆寫模式：調整下方門檻／權重後再執行回測；啟動回測不會覆寫你的設定。")
+      bt_param_notes_txt(
+        "自動同步已關閉：參數不會因換股被覆寫。需要時可按「立即依目前公司重算一次」單次推導。"
+      )
     }
   })
 
-  # 使用者手動調參數時，若仍在自動模式則切到手動
+  # 手動改估值模型時取消自動，避免下次換股又被推薦覆寫
+  observeEvent(input$bt_fv_model, {
+    if (isTRUE(bt_applying_params())) return()
+    if (!isTRUE(input$bt_param_auto)) return()
+    updateCheckboxInput(session, "bt_param_auto", value = FALSE)
+  }, ignoreInit = TRUE)
+
   observeEvent(list(input$bt_w_vg, input$bt_w_mom, input$bt_w_rsi,
                     input$bt_net_margin, input$bt_rev_growth, input$bt_eps_growth, input$bt_fcf_cv), {
     if (isTRUE(bt_applying_params())) return()
-    if (!identical(input$bt_param_mode, "auto")) return()
-    updateRadioButtons(session, "bt_param_mode", selected = "manual")
+    if (!isTRUE(input$bt_param_auto)) return()
+    updateCheckboxInput(session, "bt_param_auto", value = FALSE)
   }, ignoreInit = TRUE)
-
-  # 自動模式：搜尋／重算／切回 auto 才覆寫 UI；啟動回測只讀目前輸入
 
   output$bt_param_notes <- renderUI({
     msg <- bt_param_notes_txt()
@@ -2247,12 +2348,12 @@ server <- function(input, output, session) {
   observeEvent(input$run_bt, {
     req(current_ticker())
     bt_result(NULL)
-    bt_run_msg("回測計算中…")
+    bt_validation(NULL)
+    bt_run_msg("V12 回測計算中（PIT 多模型重建）…")
     tryCatch({
-      if (is.null(d_income_statement()) || is.null(d_cash_flow())) {
+      if (is.null(d_income_statement()) || is.null(d_cash_flow()) || is.null(d_balance_sheet())) {
         stop("請先在 Dashboard 搜尋並載入該公司財報")
       }
-      # 啟動回測不再呼叫 refresh_bt_params，避免把手動 VG／權重拉回推導值
       params <- list(
         bt_net_margin = input$bt_net_margin,
         bt_rev_growth = input$bt_rev_growth,
@@ -2262,25 +2363,71 @@ server <- function(input, output, session) {
         bt_w_rsi = input$bt_w_rsi,
         bt_w_vg = input$bt_w_vg
       )
-      dcf_p <- bt_current_dcf_params()
-      withProgress(message = paste("回測", current_ticker(), "中…"), value = 0.3, {
+      mp <- bt_current_model_params()
+      withProgress(message = paste("V12 回測", current_ticker(), "…"), value = 0.15, {
         res <- run_company_backtest(
           ticker = current_ticker(),
           d_is = d_income_statement(),
           d_bs = d_balance_sheet(),
           d_cf = d_cash_flow(),
           params = params,
+          model_params = mp,
           mos = bt_current_mos(),
-          dcf_params = dcf_p,
           bench_ticker = "SPY",
           years = 5
         )
-        incProgress(0.9)
+        incProgress(0.55, detail = "Alpha／MOS／Gap 驗證…")
+        # Prefer backtest-native daily Close (same window as equity curve).
+        px <- if (!is.null(res$equity_df$Close)) {
+          data.frame(Date = res$equity_df$Date, Close = res$equity_df$Close,
+                     stringsAsFactors = FALSE)
+        } else {
+          tryCatch({
+            cached <- hist_stock_data()
+            if (!is.null(cached) && nrow(cached) > 0) cached[, c("Date", "Close"), drop = FALSE]
+            else data.frame(Date = res$valuation_df$Date, Close = res$valuation_df$hist_price,
+                            stringsAsFactors = FALSE)
+          }, error = function(e) {
+            data.frame(Date = res$valuation_df$Date, Close = res$valuation_df$hist_price,
+                       stringsAsFactors = FALSE)
+          })
+        }
+        rf_ann <- tryCatch({
+          r <- as.numeric(cached_get_risk_free_rate())
+          if (is.finite(r) && r > 0) r / 100 else 0.04
+        }, error = function(e) 0.04)
+
+        alpha_df <- tryCatch(compute_alpha_dashboard(res$equity_df, rf_annual = rf_ann),
+                             error = function(e) NULL)
+        gap <- tryCatch(analyze_bh_gap(res$equity_df, res$valuation_df),
+                        error = function(e) list(narrative_a = e$message))
+        mos_tab <- tryCatch(validate_mos_effectiveness(res$valuation_df, px),
+                            error = function(e) NULL)
+        fv_edge <- tryCatch(validate_fair_value_edge(res$valuation_df, px),
+                            error = function(e) NULL)
+        incProgress(0.85, detail = "參數高原…")
+        plateau <- tryCatch(
+          run_parameter_plateau(
+            ticker = current_ticker(),
+            d_is = d_income_statement(),
+            d_bs = d_balance_sheet(),
+            d_cf = d_cash_flow(),
+            params = params,
+            model_params = mp,
+            mos = bt_current_mos(),
+            bench_ticker = "SPY",
+            years = 5
+          ),
+          error = function(e) list(status = "N/A", reason = e$message, details = NULL)
+        )
         bt_result(res)
+        bt_validation(list(
+          alpha = alpha_df, gap = gap, mos = mos_tab, fv = fv_edge, plateau = plateau
+        ))
         bt_run_msg(sprintf(
-          "完成：%s 日資料，基準=%s，較佳策略=模式 %s；DCF 參數 WACC=%.2f%%、SGR=%.2f%%、n=%s（歷史財報×此刻假設）",
-          res$n_days, res$bench_ticker, res$metrics$best,
-          dcf_p$wacc * 100, dcf_p$sgr * 100, dcf_p$n_years
+          "完成：%s 日 · 季頻 PIT · Rolling β · 較佳=%s · Session WACC=%.2f%% Ke=%.2f%% SGR=%.2f%%",
+          res$n_days, res$metrics$best,
+          mp$wacc * 100, mp$ke * 100, mp$sgr * 100
         ))
       })
     }, error = function(e) {
@@ -2289,156 +2436,332 @@ server <- function(input, output, session) {
     })
   })
 
+  .fmt_pct <- function(x, digits = 1) {
+    if (is.null(x) || length(x) < 1 || is.na(x) || !is.finite(x)) return("N/A")
+    sprintf(paste0("%.", digits, "f%%"), 100 * as.numeric(x))
+  }
+  .fmt_num <- function(x, digits = 2) {
+    if (is.null(x) || length(x) < 1 || is.na(x) || !is.finite(x)) return("N/A")
+    sprintf(paste0("%.", digits, "f"), as.numeric(x))
+  }
+
   output$bt_valuation_summary <- renderUI({
     res <- bt_result()
     if (is.null(res) || is.null(res$metrics)) {
-      return(tags$div(
-        style = "color: #888; font-size: 12.5px; line-height: 1.55; margin-bottom: 8px;",
-        icon("info-circle"),
-        " 執行回測後，此處會以歷史各期財報＋此刻 DCF 參數估算策略估值，並與當時收盤價比較：",
-        tags$b("策略估值 < 歷史市價 → 策略低估"), "；",
-        tags$b("策略估值 > 歷史市價 → 價值高估"), "。"
+      return(tags$p(
+        style = "color:#888;font-size:12.5px;",
+        "PIT 重建後將顯示低估／高估佔比、平均 MOS 與最近訊號。"
       ))
     }
     m <- res$metrics
-    dp <- res$dcf_params_used
-    pct_u <- if (is.na(m$pct_strategy_under)) "N/A" else sprintf("%.0f%%", m$pct_strategy_under * 100)
-    pct_o <- if (is.na(m$pct_value_over)) "N/A" else sprintf("%.0f%%", m$pct_value_over * 100)
-    mos_txt <- if (is.na(m$mean_hist_mos)) "N/A" else sprintf("%.1f%%", m$mean_hist_mos * 100)
-    last_col <- if (identical(m$last_signal, "策略低估")) "#00a65a"
-    else if (identical(m$last_signal, "價值高估")) "#d9534f"
-    else "#888"
+    mp <- res$model_params_used
     tags$div(
-      style = "margin-bottom: 10px;",
-      tags$p(
-        style = "font-size: 12.5px; color: #444; line-height: 1.55; margin: 0 0 8px 0;",
-        sprintf(
-          "此刻參數：WACC %.2f%% · SGR %.2f%% · 預測 %s 年 · 明示成長 %.2f%%。月頻再平衡時以當時可得財報重估。",
-          .safe_num(dp$wacc, NA) * 100, .safe_num(dp$sgr, NA) * 100,
-          dp$n_years, .safe_num(dp$g_explicit, NA) * 100
-        )
-      ),
-      tags$div(
-        style = "display:flex; flex-wrap:wrap; gap:12px;",
-        tags$div(
-          style = "flex:1; min-width:140px; padding:10px 12px; background:#f7fbf8; border-left:4px solid #00a65a; border-radius:4px;",
-          tags$div(style = "font-size:11px; color:#666;", "策略低估佔比"),
-          tags$div(style = "font-size:22px; font-weight:700; color:#00a65a;", pct_u)
-        ),
-        tags$div(
-          style = "flex:1; min-width:140px; padding:10px 12px; background:#fdf7f7; border-left:4px solid #d9534f; border-radius:4px;",
-          tags$div(style = "font-size:11px; color:#666;", "價值高估佔比"),
-          tags$div(style = "font-size:22px; font-weight:700; color:#d9534f;", pct_o)
-        ),
-        tags$div(
-          style = "flex:1; min-width:140px; padding:10px 12px; background:#f7f9fb; border-left:4px solid #3c8dbc; border-radius:4px;",
-          tags$div(style = "font-size:11px; color:#666;", "平均歷史 MOS"),
-          tags$div(style = "font-size:22px; font-weight:700; color:#3c8dbc;", mos_txt)
-        ),
-        tags$div(
-          style = paste0("flex:1; min-width:140px; padding:10px 12px; background:#fafafa; border-left:4px solid ", last_col, "; border-radius:4px;"),
-          tags$div(style = "font-size:11px; color:#666;", "最近再平衡訊號"),
-          tags$div(style = paste0("font-size:18px; font-weight:700; color:", last_col, ";"), m$last_signal)
-        )
-      )
+      style = "display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px;",
+      tags$div(style = "flex:1;min-width:120px;padding:8px 10px;background:#f7fbf8;border-left:4px solid #00a65a;",
+               tags$div(style="font-size:11px;color:#666;", "策略低估佔比"),
+               tags$div(style="font-size:20px;font-weight:700;color:#00a65a;", .fmt_pct(m$pct_strategy_under, 0))),
+      tags$div(style = "flex:1;min-width:120px;padding:8px 10px;background:#fdf7f7;border-left:4px solid #d9534f;",
+               tags$div(style="font-size:11px;color:#666;", "價值高估佔比"),
+               tags$div(style="font-size:20px;font-weight:700;color:#d9534f;", .fmt_pct(m$pct_value_over, 0))),
+      tags$div(style = "flex:1;min-width:120px;padding:8px 10px;background:#f7f9fb;border-left:4px solid #3c8dbc;",
+               tags$div(style="font-size:11px;color:#666;", "平均 MOS"),
+               tags$div(style="font-size:20px;font-weight:700;color:#3c8dbc;", .fmt_pct(m$mean_hist_mos))),
+      tags$div(style = "flex:2;min-width:180px;padding:8px 10px;background:#fafafa;border-left:4px solid #555;",
+               tags$div(style="font-size:11px;color:#666;", "此刻參數（Session）"),
+               tags$div(style="font-size:12px;",
+                        sprintf("WACC %.2f%% · Ke %.2f%% · SGR %.2f%% · n=%s · PB mid %.2f",
+                                .safe_num(mp$wacc, NA) * 100, .safe_num(mp$ke, NA) * 100,
+                                .safe_num(mp$sgr, NA) * 100, mp$n_years, .safe_num(mp$pb_mid, NA))))
     )
   })
 
-  output$bt_valuation_plot <- renderPlotly({
+  output$bt_hfv_timeline <- renderPlotly({
     res <- bt_result()
     validate(need(!is.null(res) && !is.null(res$valuation_df) && nrow(res$valuation_df) > 0,
-                  "請先成功執行回測以產生估值對照"))
-
+                  "請先成功執行回測"))
     vd <- res$valuation_df
-    vd <- vd[is.finite(vd$hist_price) | is.finite(vd$strategy_fv), , drop = FALSE]
-    validate(need(nrow(vd) > 0, "尚無有效的歷史估值對照點"))
-
     df_long <- rbind(
-      data.frame(Date = vd$Date, Value = vd$hist_price, Series = "歷史收盤價", stringsAsFactors = FALSE),
-      data.frame(Date = vd$Date, Value = vd$strategy_fv, Series = "策略估值（歷史財報×此刻參數）",
-                 stringsAsFactors = FALSE)
+      data.frame(Date = vd$Date, Value = vd$hist_price, Series = "Market Price", stringsAsFactors = FALSE),
+      data.frame(Date = vd$Date, Value = vd$fair_value, Series = "Fair Value (PIT)", stringsAsFactors = FALSE),
+      data.frame(Date = vd$Date, Value = vd$fv_dcf, Series = "DCF", stringsAsFactors = FALSE),
+      data.frame(Date = vd$Date, Value = vd$fv_ddm, Series = "DDM", stringsAsFactors = FALSE),
+      data.frame(Date = vd$Date, Value = vd$fv_ri, Series = "RI", stringsAsFactors = FALSE),
+      data.frame(Date = vd$Date, Value = vd$fv_pb, Series = "P/B", stringsAsFactors = FALSE)
     )
     df_long <- df_long[is.finite(df_long$Value), , drop = FALSE]
+    mos_df <- vd[is.finite(vd$mos), c("Date", "mos"), drop = FALSE]
 
-    p <- ggplot(df_long, aes(x = Date, y = Value, color = Series, group = Series)) +
-      geom_line(linewidth = 0.9) +
-      geom_point(size = 1.4, alpha = 0.85) +
+    p1 <- ggplot(df_long, aes(x = Date, y = Value, color = Series, group = Series)) +
+      geom_line(linewidth = 0.85) +
+      geom_point(data = subset(df_long, Series %in% c("Market Price", "Fair Value (PIT)")),
+                 size = 1.5, alpha = 0.85) +
       scale_color_manual(values = c(
-        "歷史收盤價" = "#6c757d",
-        "策略估值（歷史財報×此刻參數）" = "#dc3545"
+        "Market Price" = "#2c3e50",
+        "Fair Value (PIT)" = "#dc3545",
+        "DCF" = "#e67e22", "DDM" = "#8e44ad", "RI" = "#16a085", "P/B" = "#7f8c8d"
       )) +
       scale_y_continuous(labels = label_chart_number(prefix = "$")) +
-      labs(y = "每股價格", x = "再平衡日", color = NULL) +
-      theme_minimal()
+      labs(y = "每股", x = NULL, color = NULL, title = "Price vs Reconstructed Fair Value") +
+      theme_minimal(base_size = 12)
 
+    ggplotly(p1, tooltip = c("x", "y", "colour")) %>%
+      layout(legend = list(orientation = "h", y = -0.2))
+  })
+
+  output$bt_signal_explain <- renderUI({
+    res <- bt_result()
+    if (is.null(res) || is.null(res$explain_last)) {
+      return(NULL)
+    }
+    ex <- res$explain_last
+    row <- ex
+    if (is.null(row$hist_price) && !is.null(row$price)) row$hist_price <- row$price
+    if (is.null(row$Date) && !is.null(res$valuation_df) && nrow(res$valuation_df) > 0) {
+      row$Date <- tail(res$valuation_df$Date, 1)
+      row$explain <- tail(res$valuation_df$explain, 1)
+    }
+    txt <- tryCatch(build_signal_explain(row)$text, error = function(e) NULL)
+    if (is.null(txt) || !nzchar(as.character(txt)[1])) {
+      txt <- sprintf(
+        "最近訊號：%s | MOS=%s | Score=%s | Exp A=%s | DCF=%s DDM=%s RI=%s PB=%s",
+        as.character(ex$signal), .fmt_pct(ex$mos), .fmt_num(ex$valuation_score, 0),
+        .fmt_pct(ex$exp_a, 0),
+        .fmt_num(ex$fv_dcf), .fmt_num(ex$fv_ddm), .fmt_num(ex$fv_ri), .fmt_num(ex$fv_pb)
+      )
+    }
+    tags$pre(
+      style = "margin-top:10px;padding:12px;background:#f8f9fa;border-left:4px solid #3c8dbc;font-size:12px;white-space:pre-wrap;",
+      txt
+    )
+  })
+
+  output$bt_exposure_stats <- renderUI({
+    res <- bt_result()
+    if (is.null(res) || is.null(res$exposure)) {
+      return(tags$p(style = "color:#888;font-size:12px;", "回測後顯示平均／最高／最低持股與現金比例。"))
+    }
+    e <- res$exposure
+    tags$div(
+      style = "font-size:13px;line-height:1.7;",
+      tags$div(tags$b("基本面倉位 平均 "), .fmt_pct(e$avg_a, 0),
+               " ｜ 最高 ", .fmt_pct(e$max_a, 0),
+               " ｜ 最低 ", .fmt_pct(e$min_a, 0),
+               " ｜ 現金 ", .fmt_pct(e$cash_avg_a, 0)),
+      tags$div(tags$b("情緒倉位 平均 "), .fmt_pct(e$avg_b, 0),
+               " ｜ 最高 ", .fmt_pct(e$max_b, 0),
+               " ｜ 最低 ", .fmt_pct(e$min_b, 0),
+               " ｜ 現金 ", .fmt_pct(e$cash_avg_b, 0)),
+      tags$hr(),
+      tags$div(style = "font-size:11px;color:#777;",
+               "倉位曲線驅動上方策略淨值。平均持股偏低時，輸給 B&H 多半是 Cash Drag（最高約 90% 屬刻意風控）。")
+    )
+  })
+
+  output$bt_exposure_plot <- renderPlotly({
+    res <- bt_result()
+    validate(need(!is.null(res) && !is.null(res$equity_df), "請先回測"))
+    df <- res$equity_df
+    df_long <- rbind(
+      data.frame(Date = df$Date, Exp = df$Exp_A, Series = "基本面倉位 Exp_A", stringsAsFactors = FALSE),
+      data.frame(Date = df$Date, Exp = df$Exp_B, Series = "情緒倉位 Exp_B", stringsAsFactors = FALSE)
+    )
+    p <- ggplot(df_long, aes(x = Date, y = Exp, color = Series)) +
+      geom_line(linewidth = 0.8) +
+      scale_y_continuous(labels = scales::percent_format(accuracy = 1), limits = c(0, 1)) +
+      scale_color_manual(values = c(
+        "基本面倉位 Exp_A" = "#e67e22",
+        "情緒倉位 Exp_B" = "#2980b9"
+      )) +
+      labs(y = "目標持股比例", x = NULL, color = NULL) +
+      theme_minimal(base_size = 11)
     ggplotly(p, tooltip = c("x", "y", "colour")) %>%
-      layout(legend = list(orientation = "h", y = -0.25))
+      layout(legend = list(orientation = "h", y = -0.3))
+  })
+
+  output$bt_bh_gap <- renderUI({
+    v <- bt_validation()
+    if (is.null(v) || is.null(v$gap)) {
+      return(tags$p(style = "color:#888;font-size:12px;", "當 B&H 勝出時，此處拆解 Cash Drag／Early Exit／高估減碼／情緒減碼／Missed Trend。牛市落後通常合理：策略刻意不滿倉。"))
+    }
+    g <- v$gap
+    fr <- g$fractions_a
+    mk <- function(label, key, tip) {
+      val <- if (!is.null(fr) && !is.null(fr[[key]])) fr[[key]] else NA
+      tags$div(
+        style = "margin-bottom:8px;",
+        tags$div(style = "display:flex;justify-content:space-between;font-size:12px;",
+                 tags$span(tags$b(label)), tags$span(.fmt_pct(val, 0))),
+        tags$div(style = "font-size:11px;color:#777;", tip)
+      )
+    }
+    tagList(
+      tags$p(style = "font-size:12.5px;line-height:1.55;", g$narrative_a),
+      if (!is.null(g$narrative_b)) tags$p(style = "font-size:12px;color:#555;", g$narrative_b),
+      mk("Cash Drag 現金拖累", "cash_drag", "持股不足 100% 時錯過上漲"),
+      mk("Early Exit 提早賣出", "early_exit", "降倉後市場續漲"),
+      mk("Overvaluation Reduction", "overvaluation_reduction", "因高估／負 MOS 減碼"),
+      mk("Missed Trend 錯過主升段", "missed_trend", "殘差／無法歸類部分"),
+      if (!is.null(g$sentiment_reduction_b))
+        tags$p(style = "font-size:12px;", tags$b("Sentiment Reduction (B vs A)："),
+               .fmt_pct(g$sentiment_reduction_b, 1))
+    )
   })
 
   output$bt_equity_plot <- renderPlotly({
     res <- bt_result()
     validate(need(!is.null(res) && !is.null(res$equity_df), "請先成功執行回測"))
-
     df_plot <- res$equity_df
+    validate(need("Trade_A" %in% names(df_plot), "缺少純基本面價值策略淨值 (Trade_A)"))
+    eq_b <- if ("Trade_B" %in% names(df_plot)) df_plot$Trade_B else df_plot$Model_B
     df_long <- rbind(
-      data.frame(Date = df_plot$Date, Value = df_plot$Model_A, Series = "模式 A (純基本面基準)",
-                 stringsAsFactors = FALSE),
-      data.frame(Date = df_plot$Date, Value = df_plot$Model_B, Series = "模式 B (情緒疊加)",
-                 stringsAsFactors = FALSE),
-      data.frame(Date = df_plot$Date, Value = df_plot$BuyHold, Series = "該股買進持有",
-                 stringsAsFactors = FALSE),
-      data.frame(Date = df_plot$Date, Value = df_plot$Benchmark, Series = "大盤基準",
-                 stringsAsFactors = FALSE)
+      data.frame(Date = df_plot$Date, Value = df_plot$Trade_A, Series = "純基本面價值", stringsAsFactors = FALSE),
+      data.frame(Date = df_plot$Date, Value = eq_b, Series = "情緒波動價值", stringsAsFactors = FALSE),
+      data.frame(Date = df_plot$Date, Value = df_plot$BuyHold, Series = "該股買進持有", stringsAsFactors = FALSE),
+      data.frame(Date = df_plot$Date, Value = df_plot$Benchmark, Series = "大盤基準", stringsAsFactors = FALSE)
     )
     df_long$Series <- factor(
       df_long$Series,
-      levels = c("模式 A (純基本面基準)", "模式 B (情緒疊加)", "該股買進持有", "大盤基準")
+      levels = c("純基本面價值", "情緒波動價值", "該股買進持有", "大盤基準")
     )
-
-    # 勿使用 aes(text=…)／aes(label=…)：ggplot2 不認得，會對 ggplotly 產生 Warning
     p <- ggplot(df_long, aes(x = Date, y = Value, color = Series, group = Series, linetype = Series)) +
       geom_line(linewidth = 0.85) +
       scale_color_manual(values = c(
-        "模式 A (純基本面基準)" = "#dc3545",
-        "模式 B (情緒疊加)" = "#007bff",
+        "純基本面價值" = "#e67e22",
+        "情緒波動價值" = "#2980b9",
         "該股買進持有" = "#28a745",
         "大盤基準" = "#6c757d"
       )) +
       scale_linetype_manual(values = c(
-        "模式 A (純基本面基準)" = "solid",
-        "模式 B (情緒疊加)" = "solid",
+        "純基本面價值" = "solid",
+        "情緒波動價值" = "solid",
         "該股買進持有" = "solid",
         "大盤基準" = "dashed"
       )) +
       scale_y_continuous(labels = label_chart_number()) +
-      labs(y = "累積淨值", x = "日期", color = "策略", linetype = "策略") +
+      labs(y = "策略累積淨值（起點=1）", x = "日期", color = "序列", linetype = "序列") +
       theme_minimal()
-
     ggplotly(p, tooltip = c("x", "y", "colour")) %>%
       layout(legend = list(orientation = "h", y = -0.2))
   })
 
+  output$bt_mos_table <- renderTable({
+    v <- bt_validation()
+    validate(need(!is.null(v) && !is.null(v$mos) && nrow(v$mos) > 0, "尚無 MOS 分組結果"))
+    tab <- v$mos
+    data.frame(
+      MOS分組 = tab$bucket,
+      樣本數 = tab$n,
+      `1Y報酬` = ifelse(is.na(tab$ret_1y), NA, sprintf("%.1f%%", 100 * tab$ret_1y)),
+      `3Y報酬` = ifelse(is.na(tab$ret_3y), NA, sprintf("%.1f%%", 100 * tab$ret_3y)),
+      `5Y報酬` = ifelse(is.na(tab$ret_5y), NA, sprintf("%.1f%%", 100 * tab$ret_5y)),
+      check.names = FALSE
+    )
+  }, striped = TRUE, bordered = TRUE, spacing = "s")
+
+  output$bt_fv_edge <- renderUI({
+    v <- bt_validation()
+    if (is.null(v) || is.null(v$fv)) return(tags$p(style="color:#888;font-size:12px;", "回測後回答：價格遠低於合理價時，前瞻報酬是否較高？"))
+    tags$p(style = "font-size:13px;line-height:1.55;", tags$b("結論："), v$fv$answer)
+  })
+
+  output$bt_fv_table <- renderTable({
+    v <- bt_validation()
+    validate(need(!is.null(v) && !is.null(v$fv) && !is.null(v$fv$table), "尚無 FV 驗證表"))
+    tab <- v$fv$table
+    data.frame(
+      組別 = tab$group,
+      樣本數 = tab$n,
+      `1Y` = ifelse(is.na(tab$ret_1y), NA, sprintf("%.1f%%", 100 * tab$ret_1y)),
+      `3Y` = ifelse(is.na(tab$ret_3y), NA, sprintf("%.1f%%", 100 * tab$ret_3y)),
+      `5Y` = ifelse(is.na(tab$ret_5y), NA, sprintf("%.1f%%", 100 * tab$ret_5y)),
+      check.names = FALSE
+    )
+  }, striped = TRUE, bordered = TRUE, spacing = "s")
+
+  output$bt_plateau <- renderUI({
+    v <- bt_validation()
+    if (is.null(v) || is.null(v$plateau)) {
+      return(tags$p(style="color:#888;font-size:12px;", "微擾 WACC／SGR／年數後，輸出 Stable／Moderate／Sensitive 與原因。"))
+    }
+    p <- v$plateau
+    st <- as.character(p$status)
+    col <- if (grepl("Stable|穩定", st, ignore.case = TRUE)) "#00a65a"
+    else if (grepl("Moderate|中等", st, ignore.case = TRUE)) "#f39c12"
+    else if (grepl("Sensitive|敏感", st, ignore.case = TRUE)) "#d9534f"
+    else "#777"
+    tags$div(
+      tags$span(style = paste0("font-size:22px;font-weight:700;color:", col, ";"), p$status),
+      tags$p(style = "margin-top:8px;font-size:13px;line-height:1.55;", p$reason)
+    )
+  })
+
+  output$bt_plateau_table <- renderTable({
+    v <- bt_validation()
+    validate(need(!is.null(v) && !is.null(v$plateau) && !is.null(v$plateau$details), "尚無敏感度明細"))
+    d <- v$plateau$details
+    if (!is.data.frame(d) || nrow(d) == 0) return(NULL)
+    if (all(c("model_a_end", "d_rel") %in% names(d))) {
+      data.frame(
+        scenario = d$scenario,
+        model_a_end = round(d$model_a_end, 4),
+        d_rel = ifelse(is.na(d$d_rel), NA, sprintf("%+.1f%%", 100 * d$d_rel)),
+        stringsAsFactors = FALSE,
+        check.names = FALSE
+      )
+    } else {
+      d
+    }
+  }, striped = TRUE, bordered = TRUE, spacing = "s")
+
   output$perf_metrics <- renderUI({
     res <- bt_result()
+    v <- bt_validation()
     if (is.null(res) || is.null(res$metrics)) {
       return(
         tags$div(
           style = "color: #888; font-size: 12.5px; line-height: 1.55;",
           icon("chart-bar"),
-          " 執行回測後，此處會顯示 ",
-          tags$b("Sharpe 比率"), "（風險調整後報酬）、",
-          tags$b("最大回撤"), "（歷史最大虧損幅度）與",
-          tags$b("參數高原"), "（兩策略穩定性粗評）。"
+          " 執行回測後，此處會以卡片顯示 ",
+          tags$b("Sharpe"), "、", tags$b("Max DD"), "、",
+          tags$b("CAGR"), "、", tags$b("Excess vs BH"), "、",
+          tags$b("Jensen α"), " 與 ", tags$b("參數高原"), "。"
         )
       )
     }
     m <- res$metrics
     best <- m$best
+    label_best <- if (identical(best, "A")) "純基本面價值" else "情緒波動價值"
     sharpe_show <- if (identical(best, "A")) m$sharpe_a else m$sharpe_b
     mdd_show <- if (identical(best, "A")) m$mdd_a else m$mdd_b
-    label_best <- if (identical(best, "A")) "模式 A" else "模式 B"
+    cagr_show <- if (identical(best, "A")) m$cagr_a else m$cagr_b
     sharpe_a_txt <- if (is.na(m$sharpe_a)) "N/A" else sprintf("%.2f", m$sharpe_a)
     sharpe_b_txt <- if (is.na(m$sharpe_b)) "N/A" else sprintf("%.2f", m$sharpe_b)
+
+    # Alpha 列（較佳策略優先，否則 A）
+    alpha_df <- if (!is.null(v) && !is.null(v$alpha) && is.data.frame(v$alpha)) v$alpha else NULL
+    pick_alpha <- function(series) {
+      if (is.null(alpha_df) || nrow(alpha_df) == 0) return(NULL)
+      hit <- alpha_df[alpha_df$Series == series, , drop = FALSE]
+      if (nrow(hit) == 0) NULL else hit[1, ]
+    }
+    a_row <- pick_alpha("StrategyA")
+    b_row <- pick_alpha("StrategyB")
+    bh_row <- pick_alpha("BuyHold")
+    best_row <- if (identical(best, "A")) a_row else b_row
+    excess_show <- if (!is.null(best_row)) best_row$ExcessReturn else NA_real_
+    jensen_show <- if (!is.null(best_row)) best_row$JensenAlpha else NA_real_
+    if (!is.null(best_row) && is.finite(best_row$CAGR)) cagr_show <- best_row$CAGR
+
+    plateau_val <- {
+      p <- if (!is.null(v)) v$plateau else NULL
+      if (!is.null(p) && !is.null(p$status) && nzchar(as.character(p$status)[1])) {
+        as.character(p$status)[1]
+      } else if (!is.null(m$plateau)) {
+        as.character(m$plateau)
+      } else {
+        "N/A"
+      }
+    }
 
     .ynow_metric_card <- function(value, label, caption, icon_name, tone, tip) {
       tipify(
@@ -2463,8 +2786,8 @@ server <- function(input, output, session) {
     tagList(
       tags$p(
         style = "margin: 0 0 12px 0; font-size: 12px; color: #666;",
-        "以下以 Sharpe 較高的策略為主顯示；A＝", sharpe_a_txt, "，B＝", sharpe_b_txt,
-        "。數值僅供策略比較參考，不代表未來績效。"
+        "以下以 Sharpe 較高的策略為主顯示（", label_best, "）；A＝", sharpe_a_txt,
+        "，B＝", sharpe_b_txt, "。已整併 Alpha（Excess／Jensen α）。數值僅供比較參考。"
       ),
       tags$div(
         id = "bt_perf_metrics_boxes",
@@ -2475,32 +2798,144 @@ server <- function(input, output, session) {
           caption = "風險調整後報酬；>1 通常視為不錯，>2 屬優異（依市場而異）。",
           icon_name = "chart-line",
           tone = "green",
-          tip = "年化 Sharpe ≈ 日報酬均值 ÷ 標準差 × √252。愈高代表單位風險下報酬愈佳。"
+          tip = "年化 Sharpe ≈ 日報酬均值 ÷ 標準差 × √252。"
         ),
         .ynow_metric_card(
           value = if (is.na(mdd_show)) "N/A" else paste0(sprintf("%.1f", mdd_show * 100), "%"),
           label = paste0("最大回撤 Max DD（", label_best, "）"),
-          caption = "歷史最大虧損幅度；愈接近 0 代表回撤愈小（負值愈大風險愈高）。",
+          caption = "歷史最大虧損幅度；愈接近 0 代表回撤愈小。",
           icon_name = "arrow-down",
           tone = "red",
           tip = "淨值自歷史高點回落的最大百分比幅度。"
         ),
         .ynow_metric_card(
-          value = m$plateau,
-          label = "參數高原（粗評）",
-          caption = "「高原」代表參數微調不致劇烈改變結果；「敏感」宜再檢查門檻設定。",
+          value = if (is.na(cagr_show)) "N/A" else paste0(sprintf("%.1f", cagr_show * 100), "%"),
+          label = paste0("CAGR（", label_best, "）"),
+          caption = sprintf(
+            "Buy&Hold CAGR＝%s。用來對照策略成長速度。",
+            if (is.null(bh_row) || is.na(bh_row$CAGR)) "N/A" else paste0(sprintf("%.1f", bh_row$CAGR * 100), "%")
+          ),
+          icon_name = "percentage",
+          tone = "blue",
+          tip = "年化複合成長率（CAGR）。"
+        ),
+        .ynow_metric_card(
+          value = if (is.na(excess_show)) "N/A" else paste0(sprintf("%+.1f", excess_show * 100), "%"),
+          label = paste0("Excess vs BH（", label_best, "）"),
+          caption = "相對 Buy & Hold 的超額報酬；>0 代表創造價值。",
+          icon_name = "balance-scale",
+          tone = "amber",
+          tip = "策略期末報酬 − Buy&Hold 期末報酬。"
+        ),
+        .ynow_metric_card(
+          value = if (is.na(jensen_show)) "N/A" else paste0(sprintf("%+.1f", jensen_show * 100), "%"),
+          label = paste0("Jensen α（", label_best, "）"),
+          caption = "相對大盤基準的風險調整超額報酬（年化）。",
+          icon_name = "rocket",
+          tone = "blue",
+          tip = "對 Benchmark 日超額報酬做 CAPM 回歸後的年化截距。"
+        ),
+        .ynow_metric_card(
+          value = plateau_val,
+          label = "參數高原",
+          caption = "微擾 WACC／SGR／年數後，合理價指數終值穩健度（非策略淨值）。",
           icon_name = "mountain",
           tone = "violet",
-          tip = "比較模式 A/B 的 Sharpe 差距；差距小代表策略分化不大。"
+          tip = if (!is.null(v$plateau$reason)) as.character(v$plateau$reason)[1] else "Stable / Moderate / Sensitive"
         )
       )
     )
   })
-  
+
   # ==========================================
   # 11. 系統按鈕與報告輸出
   # ==========================================
   # DDM Reset 由 ddm_module_server 內的 input$reset_ddm 處理（ns: mod_ddm）
+
+  .bt_methodology_meta <- reactive({
+    mp <- tryCatch(bt_current_model_params(), error = function(e) NULL)
+    res <- bt_result()
+    fv_lab <- switch(
+      as.character(isolate(input$bt_fv_model) %||% "dcf"),
+      dcf = "DCF（自由現金流折現）",
+      ddm = "DDM（股利折現）",
+      ri = "RI（剩餘收益）",
+      pb = "P/B（本淨比）",
+      composite = "綜合均值",
+      as.character(isolate(input$bt_fv_model) %||% "dcf")
+    )
+    list(
+      ticker = isolate(current_ticker()) %||% "N/A",
+      bench = if (!is.null(res$bench_ticker)) res$bench_ticker else "SPY",
+      sim_years = "5",
+      fv_model = fv_lab,
+      filters = sprintf(
+        "%.1f / %.1f / %.1f / %.1f",
+        as.numeric(isolate(input$bt_net_margin) %||% NA),
+        as.numeric(isolate(input$bt_rev_growth) %||% NA),
+        as.numeric(isolate(input$bt_eps_growth) %||% NA),
+        as.numeric(isolate(input$bt_fcf_cv) %||% NA)
+      ),
+      weights = sprintf(
+        "%.2f / %.2f / %.2f",
+        as.numeric(isolate(input$bt_w_vg) %||% NA),
+        as.numeric(isolate(input$bt_w_mom) %||% NA),
+        as.numeric(isolate(input$bt_w_rsi) %||% NA)
+      ),
+      sgr_n = if (!is.null(mp)) {
+        sprintf("SGR=%.2f%% · n=%s 年", 100 * .safe_num(mp$sgr, NA_real_),
+                as.character(mp$n_years %||% "N/A"))
+      } else {
+        "（尚未載入模型參數）"
+      },
+      n_days = if (!is.null(res$n_days)) as.character(res$n_days) else "（尚未回測）"
+    )
+  })
+
+  output$bt_methodology_notes <- renderUI({
+    tags$div(
+      style = "font-size: 12.5px; line-height: 1.65; color: #333;",
+      tags$p(
+        style = "margin-top:0;",
+        tags$b("淨值圖 ↔ 兩模式："),
+        "評價模型算出合理價／MOS → 決定 ", tags$b("純基本面價值"), " 的倉位 Exp_A → 累積成橘線策略淨值；",
+        tags$b("情緒波動價值"), " 在 Exp_A 上乘情緒乘數得到 Exp_B → 藍線。",
+        "淨值圖只比策略績效；合理價看 Fair Value 時間軸。"
+      ),
+      tags$h5(tags$b("一、數據來源")),
+      tags$ul(
+        tags$li(tags$b("股價／基準："), "Yahoo Finance（yfinance，auto_adjust）；基準預設 SPY。"),
+        tags$li(tags$b("財報："), "本次 Session 已載入之年度 IS／BS／CF。"),
+        tags$li(tags$b("Rf："), "^TNX（驗證用）；失敗時約 4%。"),
+        tags$li(tags$b("評價假設："), "Session SGR／年數等；Ke／WACC 於各季再平衡以 Rolling β 重估。")
+      ),
+      tags$h5(tags$b("二、計算過程（季頻 PIT）")),
+      tags$ol(
+        tags$li("再平衡日：fund_year ≤ 日曆年−1 重建合理價 → MOS。"),
+        tags$li("Great Filter 未過 → Exp_A = Exp_B = 0（兩模式皆空手）。"),
+        tags$li("通過則 Exp_A 依 MOS 滯後映射（最高約 90%）；Exp_B = clip(Exp_A×情緒, 75%～125%×A)。"),
+        tags$li("每日：策略淨值用 Exp×日報酬；Buy&Hold 滿倉；現金報酬=0；未扣交易成本。"),
+        tags$li("比較視窗自首次有效季再平衡對齊。")
+      ),
+      tags$h5(tags$b("三、為何常輸給 Buy&Hold")),
+      tags$p(
+        style = "margin-bottom:0;",
+        "兩模式刻意不滿倉；牛市現金拖累屬預期。完整公式與本次參數請下載方法論檔。"
+      )
+    )
+  })
+
+  output$download_bt_methodology <- downloadHandler(
+    filename = function() {
+      tk <- tryCatch(current_ticker(), error = function(e) "NA")
+      if (is.null(tk) || !nzchar(as.character(tk))) tk <- "session"
+      paste0("YNow_Backtest_Methodology_", tk, "_", Sys.Date(), ".md")
+    },
+    content = function(file) {
+      txt <- build_bt_methodology_doc(.bt_methodology_meta())
+      writeLines(txt, file, useBytes = TRUE)
+    }
+  )
   
   observeEvent(input$reset_dcf, {
     updateNumericInput(session, "years", value = APP_DEFAULTS$years)
@@ -2522,41 +2957,63 @@ server <- function(input, output, session) {
   })
   
   output$download_report <- downloadHandler(
-    filename = function() paste0("YNow_Report_", current_ticker(), "_", Sys.Date(), ".html"),
+    filename = function() {
+      tk <- tryCatch(current_ticker(), error = function(e) "NA")
+      if (is.null(tk) || !nzchar(as.character(tk))) tk <- "NA"
+      paste0("YNow_Report_", tk, "_", Sys.Date(), ".pdf")
+    },
     content = function(file) {
       tryCatch({
-        showNotification("正在生成投資意見報告，請稍候...", type = "message")
+        showNotification("正在生成 PDF 投資意見報告，請稍候...", type = "message", duration = 8)
         tempReport <- file.path(tempdir(), "report_template.Rmd")
         file.copy("report_template.Rmd", tempReport, overwrite = TRUE)
-        
-        plot_path <- NA
+
+        plot_path <- NA_character_
         if (exists("fcf_results") && !is.null(fcf_results$fcf_plot_obj())) {
           plot_path <- file.path(tempdir(), "fcf_plot_temp.png")
-          ggsave(plot_path, plot = fcf_results$fcf_plot_obj(), width = 9, height = 5.5, dpi = 300)
+          ggsave(plot_path, plot = fcf_results$fcf_plot_obj(), width = 9, height = 5.5, dpi = 200)
         }
-        
-        # --- 蒐集報告所需即時資料 ---
-        cur_price <- tryCatch(isolate(scraped_market_cap()$price), error = function(e) NA)
-        tgt_price <- isolate(stock_price_estimate_val())
-        ddm_val <- tryCatch(isolate(ddm_results$ddm_price()), error = function(e) NA)
-        pb_val <- tryCatch(isolate(pb_results$pb_price()), error = function(e) NA)
-        ev_val <- isolate(dcf_value_result())
-        
+
+        cur_price <- .report_num(tryCatch(isolate(scraped_market_cap()$price), error = function(e) NA))
+        dcf_price <- .report_num(isolate(stock_price_estimate_val()))
+        ddm_val <- .report_num(tryCatch(isolate(ddm_results$ddm_price()), error = function(e) NA))
+        pb_val <- .report_num(tryCatch(isolate(pb_results$pb_price()), error = function(e) NA))
+        ri_val <- .report_num(tryCatch(isolate(ri_results$ri_price()), error = function(e) NA))
+        ev_val <- .report_num(isolate(dcf_value_result()))
+
         ind_text_early <- isolate(corp_industry_text())
-        rating_anchor <- if (!is.na(pb_val) && grepl("Bank|Insurance|Financial|Conglomerate", ind_text_early, ignore.case = TRUE)) {
-          pb_val
-        } else if (!is.na(tgt_price)) {
-          tgt_price
-        } else {
-          pb_val
-        }
-        rating_info <- derive_investment_rating(cur_price, rating_anchor)
         val_method <- derive_valuation_method(isolate(d_cash_flow()), industry_text = ind_text_early)
-        
+        method_l <- tolower(as.character(if (is.null(val_method$method)) "" else val_method$method))
+
+        # 目標價對齊「主要評價方法」，避免誤把 P/B 標成 DCF 或交叉驗證誤選 DDM
+        rating_anchor <- {
+          if (grepl("交叉", method_l)) {
+            if (is.finite(dcf_price)) dcf_price else if (is.finite(ddm_val)) ddm_val else pb_val
+          } else if (grepl("p/?b|本淨|資產法|相對估值", method_l)) {
+            if (is.finite(pb_val)) pb_val else if (is.finite(ri_val)) ri_val else dcf_price
+          } else if (grepl("ddm|股利", method_l) && !grepl("dcf", method_l)) {
+            if (is.finite(ddm_val)) ddm_val else dcf_price
+          } else if (grepl("剩餘|剩余|\\bri\\b", method_l) && !grepl("dcf|ddm|p/?b", method_l)) {
+            if (is.finite(ri_val)) ri_val else dcf_price
+          } else if (is.finite(dcf_price)) {
+            dcf_price
+          } else if (is.finite(pb_val)) {
+            pb_val
+          } else if (is.finite(ddm_val)) {
+            ddm_val
+          } else {
+            ri_val
+          }
+        }
+
+        rating_info <- derive_investment_rating(cur_price, rating_anchor)
+
         sum_df <- isolate(summary_data())
         co_name <- isolate(attr(sum_df, "company_name"))
-        if (is.null(co_name) || is.na(co_name) || co_name == "") co_name <- isolate(current_ticker())
-        
+        if (is.null(co_name) || is.na(co_name) || !nzchar(as.character(co_name))) {
+          co_name <- isolate(current_ticker())
+        }
+
         ind_text <- isolate(corp_industry_text())
         sector_str <- "N/A"; industry_str <- "N/A"
         if (!is.null(ind_text) && grepl("\\|", ind_text)) {
@@ -2564,36 +3021,44 @@ server <- function(input, output, session) {
           sector_str <- trimws(sub("Sector:\\s*", "", parts[1]))
           if (length(parts) > 1) industry_str <- trimws(sub("Industry:\\s*", "", parts[2]))
         }
-        
+
         use_calc_wacc <- isTRUE(isolate(input$use_calculated_wacc)) && !is.null(isolate(calculated_wacc()))
         wacc_str <- if (use_calc_wacc) {
           paste0(round(isolate(calculated_wacc()) * 100, 2), "% (CAPM 估算)")
-        } else if (isolate(input$dcf_mode) == "gordon") {
+        } else if (identical(isolate(input$dcf_mode), "gordon")) {
           paste0(isolate(input$wacc_gordon), "% (手動)")
         } else {
           paste0(isolate(input$wacc_stage1), "% / ", isolate(input$wacc_stage2), "% (兩階段)")
         }
-        
+
         warn_msgs <- collect_fraud_warnings(
           isolate(d_cash_flow()), isolate(d_income_statement()), isolate(d_balance_sheet())
         )
-        
+
         highlights <- c()
-        if (!is.na(rating_info$upside_pct)) {
+        if (is.finite(rating_info$upside_pct)) {
           highlights <- c(highlights, sprintf(
-            "依 %s 估值，目標價 %s，潛在報酬 %+.1f%%，評等「%s」。",
+            "依「%s」評價，目標價 %s，潛在報酬 %+.1f%%，評等「%s」。",
             val_method$method,
-            ifelse(is.na(rating_anchor), "N/A", paste0("$", round(rating_anchor, 2))),
+            ifelse(is.finite(rating_anchor), paste0("$", round(rating_anchor, 2)), "N/A"),
             rating_info$upside_pct, rating_info$rating
           ))
         }
-        if (!is.na(ev_val)) highlights <- c(highlights, paste0("企業價值 (EV) 估算：", format_dollar_abbr(ev_val), "。"))
-        if (!is.na(ddm_val)) highlights <- c(highlights, paste0("DDM 交叉驗證合理價：$", round(ddm_val, 2), "。"))
-        if (!is.na(pb_val)) highlights <- c(highlights, paste0("P/B 基準合理價：$", round(pb_val, 2), "。"))
+        if (is.finite(dcf_price)) highlights <- c(highlights, paste0("DCF 每股合理價：$", round(dcf_price, 2), "。"))
+        if (is.finite(ev_val)) highlights <- c(highlights, paste0("DCF 企業價值 (EV)：", format_dollar_abbr(ev_val), "。"))
+        if (is.finite(ddm_val)) highlights <- c(highlights, paste0("DDM 每股合理價：$", round(ddm_val, 2), "。"))
+        if (is.finite(ri_val)) highlights <- c(highlights, paste0("RI 每股合理價：$", round(ri_val, 2), "。"))
+        if (is.finite(pb_val)) highlights <- c(highlights, paste0("P/B 每股合理價：$", round(pb_val, 2), "。"))
         highlights <- c(highlights, val_method$rationale)
-        
+
+        tmp_html <- tempfile(fileext = ".html")
         rmarkdown::render(
-          input = tempReport, output_file = file,
+          input = tempReport,
+          output_file = basename(tmp_html),
+          output_dir = dirname(tmp_html),
+          intermediates_dir = tempdir(),
+          clean = TRUE,
+          quiet = TRUE,
           params = list(
             stock_code = isolate(current_ticker()),
             company_name = co_name,
@@ -2606,8 +3071,10 @@ server <- function(input, output, session) {
             current_price = cur_price,
             target_price = rating_anchor,
             upside_pct = rating_info$upside_pct,
+            dcf_price = dcf_price,
             ddm_value = ddm_val,
             pb_value = pb_val,
+            ri_value = ri_val,
             ev_value = ev_val,
             margin_of_safety = rating_info$margin_of_safety,
             primary_method = val_method$method,
@@ -2615,7 +3082,7 @@ server <- function(input, output, session) {
             wacc = wacc_str,
             terminal_growth = paste0(isolate(input$sgr), "%"),
             forecast_years = isolate(input$years),
-            dcf_mode = isolate(input$dcf_mode),
+            dcf_mode = .report_dcf_mode_label(isolate(input$dcf_mode)),
             market_cap = extract_summary_item(sum_df, "Market Cap"),
             pe_ratio = extract_summary_item(sum_df, "PE Ratio|Trailing P/E"),
             beta = extract_summary_item(sum_df, "^Beta"),
@@ -2633,9 +3100,19 @@ server <- function(input, output, session) {
           ),
           envir = new.env(parent = globalenv())
         )
-        showNotification("✅ 投資意見報告已產出", type = "message")
+
+        render_report_pdf(tmp_html, file)
+        showNotification("✅ PDF 投資意見報告已產出", type = "message")
       }, error = function(e) {
-        showNotification(paste("報告生成失敗:", e$message), type = "error")
+        showNotification(paste("報告生成失敗:", e$message), type = "error", duration = 12)
+        # 寫入最小錯誤 PDF 避免下載 handler 空檔
+        tryCatch({
+          grDevices::pdf(file, width = 8.27, height = 11.69)
+          plot.new()
+          text(0.5, 0.6, "YNow 報告生成失敗", cex = 1.4)
+          text(0.5, 0.45, paste(strwrap(e$message, 60), collapse = "\n"), cex = 0.8)
+          grDevices::dev.off()
+        }, error = function(e2) NULL)
       })
     }
   )
