@@ -1292,7 +1292,7 @@ build_bt_methodology_doc <- function(meta = NULL) {
     "- 回測用評價模型：", g("fv_model"), "\n",
     "- 持倉回測條件門檻（淨利率／營收成長／EPS成長／FCF CV %）：",
     g("filters"), "\n",
-    "- 情緒波動價值 Fit：最大持股／通過後最低持股：", g("fit_exp", "0.90 / 0.00"), "\n",
+    "- 純基本面 Fit：最大持股／通過後最低持股：", g("fit_exp", "0.90 / 0.00"), "\n",
     "- 權重 w_vg／w_mom／w_rsi：", g("weights"), "\n",
     "- Session SGR／n_years：", g("sgr_n"), "\n",
     "- 回測日數（對齊後）：", g("n_days"), "\n",

@@ -2469,7 +2469,7 @@ server <- function(input, output, session) {
   output$bt_param_notes <- renderUI({
     msg <- bt_param_notes_txt()
     tags$div(
-      style = "margin: 0 0 8px 0; padding: 6px 10px; background: #f7fbf8; border-left: 3px solid #00a65a; border-radius: 3px; font-size: 12px; color: #333; line-height: 1.4; width: 100%;",
+      style = "margin: 0 0 12px 0; padding: 12px 14px; background: #f7fbf8; border-left: 4px solid #00a65a; border-radius: 4px; font-size: 13px; color: #333; line-height: 1.55; width: 100%;",
       icon("info-circle"), " ", msg
     )
   })
@@ -2477,7 +2477,7 @@ server <- function(input, output, session) {
   output$bt_run_status <- renderUI({
     msg <- bt_run_msg()
     if (!nzchar(msg)) return(NULL)
-    tags$p(style = "margin: 6px 0 0 0; color: #666; font-size: 11px; line-height: 1.35;", icon("clock"), " ", msg)
+    tags$p(style = "margin: 10px 0 0 0; color: #666; font-size: 12px; line-height: 1.45;", icon("clock"), " ", msg)
   })
 
   observeEvent(input$run_bt, {
@@ -2586,27 +2586,27 @@ server <- function(input, output, session) {
     res <- bt_result()
     if (is.null(res) || is.null(res$metrics)) {
       return(tags$p(
-        style = "color:#888;font-size:11.5px;margin:0 0 4px 0;",
-        "PIT 重建後顯示低估／高估佔比、平均 MOS。"
+        style = "color:#888;font-size:12.5px;",
+        "PIT 重建後將顯示低估／高估佔比、平均 MOS 與最近訊號。"
       ))
     }
     m <- res$metrics
     mp <- res$model_params_used
     tags$div(
-      style = "display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;",
-      tags$div(style = "flex:1;min-width:100px;padding:5px 8px;background:#f7fbf8;border-left:3px solid #00a65a;",
-               tags$div(style="font-size:10px;color:#666;", "策略低估"),
-               tags$div(style="font-size:16px;font-weight:700;color:#00a65a;line-height:1.15;", .fmt_pct(m$pct_strategy_under, 0))),
-      tags$div(style = "flex:1;min-width:100px;padding:5px 8px;background:#fdf7f7;border-left:3px solid #d9534f;",
-               tags$div(style="font-size:10px;color:#666;", "價值高估"),
-               tags$div(style="font-size:16px;font-weight:700;color:#d9534f;line-height:1.15;", .fmt_pct(m$pct_value_over, 0))),
-      tags$div(style = "flex:1;min-width:100px;padding:5px 8px;background:#f7f9fb;border-left:3px solid #3c8dbc;",
-               tags$div(style="font-size:10px;color:#666;", "平均 MOS"),
-               tags$div(style="font-size:16px;font-weight:700;color:#3c8dbc;line-height:1.15;", .fmt_pct(m$mean_hist_mos))),
-      tags$div(style = "flex:2;min-width:160px;padding:5px 8px;background:#fafafa;border-left:3px solid #555;",
-               tags$div(style="font-size:10px;color:#666;", "Session 參數"),
-               tags$div(style="font-size:11px;line-height:1.3;",
-                        sprintf("WACC %.2f%% · Ke %.2f%% · SGR %.2f%% · n=%s · PB %.2f",
+      style = "display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px;",
+      tags$div(style = "flex:1;min-width:120px;padding:8px 10px;background:#f7fbf8;border-left:4px solid #00a65a;",
+               tags$div(style="font-size:11px;color:#666;", "策略低估佔比"),
+               tags$div(style="font-size:20px;font-weight:700;color:#00a65a;", .fmt_pct(m$pct_strategy_under, 0))),
+      tags$div(style = "flex:1;min-width:120px;padding:8px 10px;background:#fdf7f7;border-left:4px solid #d9534f;",
+               tags$div(style="font-size:11px;color:#666;", "價值高估佔比"),
+               tags$div(style="font-size:20px;font-weight:700;color:#d9534f;", .fmt_pct(m$pct_value_over, 0))),
+      tags$div(style = "flex:1;min-width:120px;padding:8px 10px;background:#f7f9fb;border-left:4px solid #3c8dbc;",
+               tags$div(style="font-size:11px;color:#666;", "平均 MOS"),
+               tags$div(style="font-size:20px;font-weight:700;color:#3c8dbc;", .fmt_pct(m$mean_hist_mos))),
+      tags$div(style = "flex:2;min-width:180px;padding:8px 10px;background:#fafafa;border-left:4px solid #555;",
+               tags$div(style="font-size:11px;color:#666;", "此刻參數（Session）"),
+               tags$div(style="font-size:12px;",
+                        sprintf("WACC %.2f%% · Ke %.2f%% · SGR %.2f%% · n=%s · PB mid %.2f",
                                 .safe_num(mp$wacc, NA) * 100, .safe_num(mp$ke, NA) * 100,
                                 .safe_num(mp$sgr, NA) * 100, mp$n_years, .safe_num(mp$pb_mid, NA))))
     )
@@ -2660,15 +2660,15 @@ server <- function(input, output, session) {
     }
     plotly::layout(
       p,
-      title = list(text = "折現比較（Rolling β PIT）", font = list(size = 13)),
-      legend = list(orientation = "h", y = -0.12, font = list(size = 11)),
-      yaxis = list(title = "每股（美元）", tickprefix = "$", side = "left", titlefont = list(size = 11)),
+      title = list(text = "折現比較（Rolling β PIT）", font = list(size = 14)),
+      legend = list(orientation = "h", y = -0.18),
+      yaxis = list(title = "每股（美元）", tickprefix = "$", side = "left"),
       yaxis2 = list(
-        title = "大盤", overlaying = "y", side = "right",
-        showgrid = FALSE, tickprefix = "$", titlefont = list(size = 11)
+        title = "大盤價格", overlaying = "y", side = "right",
+        showgrid = FALSE, tickprefix = "$"
       ),
       xaxis = list(title = NULL),
-      margin = list(l = 48, r = 48, t = 32, b = 48),
+      margin = list(l = 60, r = 60, t = 40, b = 60),
       hovermode = "x unified"
     )
   })
@@ -2695,7 +2695,7 @@ server <- function(input, output, session) {
       )
     }
     tags$pre(
-      style = "margin-top:6px;padding:8px 10px;background:#f8f9fa;border-left:3px solid #3c8dbc;font-size:11px;line-height:1.35;white-space:pre-wrap;max-height:120px;overflow:auto;",
+      style = "margin-top:10px;padding:12px;background:#f8f9fa;border-left:4px solid #3c8dbc;font-size:12px;white-space:pre-wrap;",
       txt
     )
   })
@@ -2703,19 +2703,22 @@ server <- function(input, output, session) {
   output$bt_exposure_stats <- renderUI({
     res <- bt_result()
     if (is.null(res) || is.null(res$exposure)) {
-      return(tags$p(style = "color:#888;font-size:11px;margin:0 0 4px 0;", "回測後顯示平均／最高／最低持股。"))
+      return(tags$p(style = "color:#888;font-size:12px;", "回測後顯示平均／最高／最低持股與現金比例。"))
     }
     e <- res$exposure
     tags$div(
-      style = "font-size:12px;line-height:1.45;margin-bottom:4px;",
-      tags$div(tags$b("基本面 "), .fmt_pct(e$avg_a, 0),
-               " ｜高 ", .fmt_pct(e$max_a, 0),
-               " ｜低 ", .fmt_pct(e$min_a, 0),
-               " ｜現金 ", .fmt_pct(e$cash_avg_a, 0)),
-      tags$div(tags$b("情緒 "), .fmt_pct(e$avg_b, 0),
-               " ｜高 ", .fmt_pct(e$max_b, 0),
-               " ｜低 ", .fmt_pct(e$min_b, 0),
-               " ｜現金 ", .fmt_pct(e$cash_avg_b, 0))
+      style = "font-size:13px;line-height:1.7;",
+      tags$div(tags$b("基本面倉位 平均 "), .fmt_pct(e$avg_a, 0),
+               " ｜ 最高 ", .fmt_pct(e$max_a, 0),
+               " ｜ 最低 ", .fmt_pct(e$min_a, 0),
+               " ｜ 現金 ", .fmt_pct(e$cash_avg_a, 0)),
+      tags$div(tags$b("情緒倉位 平均 "), .fmt_pct(e$avg_b, 0),
+               " ｜ 最高 ", .fmt_pct(e$max_b, 0),
+               " ｜ 最低 ", .fmt_pct(e$min_b, 0),
+               " ｜ 現金 ", .fmt_pct(e$cash_avg_b, 0)),
+      tags$hr(),
+      tags$div(style = "font-size:11px;color:#777;",
+               "倉位曲線驅動上方策略淨值。平均持股偏低時，輸給 B&H 多半是 Cash Drag（最高約 90% 屬刻意風控）。")
     )
   })
 
