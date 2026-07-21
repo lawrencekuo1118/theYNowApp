@@ -874,7 +874,7 @@ evaluate_holding_filter <- function(metrics, thresholds) {
 #' and params, simulate quarterly rebalance and return
 #' equity_df / valuation_df / exposure summary / explain_last.
 .run_backtest_core <- function(df, fund, params, model_params, mos_fallback = 0,
-                               beta_df = NULL) {
+                               beta_df = NULL, fv_only = FALSE) {
   thr_npm <- .safe_num(params$bt_net_margin, 5)
   thr_rev <- .safe_num(params$bt_rev_growth, 10)
   thr_eps <- .safe_num(params$bt_eps_growth, 10)
@@ -956,42 +956,61 @@ evaluate_holding_filter <- function(metrics, thresholds) {
         fv_anchor_date <- df$Date[i]
       }
 
-      gf <- .great_filter_pass(fund_i, thr_npm, thr_rev, thr_eps, thr_cv, fund_i$cv_fcf)
-
-      # ---- Mode A exposure (Trade_A); Mode B nests on Exp_A ----
-      pos_a_target <- mos_hysteresis_target(mos_i, w_vg, max_exp = max_exp)
-      if (!isTRUE(gf$pass)) {
-        pos_a_target <- 0
-      } else if (is.finite(mos_i) && mos_i >= -0.10 && min_exp_pass > 0) {
-        pos_a_target <- max(pos_a_target, min_exp_pass)
-      }
-      pos_a <- .clip01(min(pos_a_target, max_exp), 0, 1)
-
-      # ---- Strategy B: sentiment overlay ONLY scales Exp_A weight ----
-      sent_mult <- sentiment_multiplier(mom_score, rsi_score, w_mom, w_rsi)
-      if (pos_a <= 0) {
+      if (isTRUE(fv_only)) {
+        pos_a <- 0
         pos_b <- 0
+        sent_mult <- 1
+        gf <- list(pass = NA, path = "fv_only")
+        explain_txt <- sprintf(
+          "%s | 公允 %.2f (dcf %.2f / ddm %.2f / ri %.2f / pb %.2f) vs 市價 %.2f, MOS %.1f%%, score %.0f/100. Rollingβ=%.2f Ke=%.1f%% WACC=%.1f%%.",
+          signal_i,
+          .safe_num(pit$fair_value, NA_real_),
+          .safe_num(pit$fv_dcf, NA_real_), .safe_num(pit$fv_ddm, NA_real_),
+          .safe_num(pit$fv_ri, NA_real_),  .safe_num(pit$fv_pb, NA_real_),
+          .safe_num(price_i, NA_real_),
+          100 * .safe_num(mos_i, NA_real_),
+          .safe_num(pit$valuation_score, NA_real_),
+          .safe_num(disc$beta, NA_real_),
+          100 * .safe_num(disc$ke, NA_real_),
+          100 * .safe_num(disc$wacc, NA_real_)
+        )
       } else {
-        pos_b_raw <- pos_a * sent_mult
-        pos_b <- .clip01(min(max(pos_b_raw, pos_a * 0.75), min(1, pos_a * 1.25)), 0, 1)
-      }
+        gf <- .great_filter_pass(fund_i, thr_npm, thr_rev, thr_eps, thr_cv, fund_i$cv_fcf)
 
-      # explainability text
-      explain_txt <- sprintf(
-        "%s | 公允 %.2f (dcf %.2f / ddm %.2f / ri %.2f / pb %.2f) vs 市價 %.2f, MOS %.1f%%, score %.0f/100. Rollingβ=%.2f Ke=%.1f%% WACC=%.1f%%. 過濾:%s(%s). Exp_A=%.2f, Exp_B=%.2f (Sent x%.2f).",
-        signal_i,
-        .safe_num(pit$fair_value, NA_real_),
-        .safe_num(pit$fv_dcf, NA_real_), .safe_num(pit$fv_ddm, NA_real_),
-        .safe_num(pit$fv_ri, NA_real_),  .safe_num(pit$fv_pb, NA_real_),
-        .safe_num(price_i, NA_real_),
-        100 * .safe_num(mos_i, NA_real_),
-        .safe_num(pit$valuation_score, NA_real_),
-        .safe_num(disc$beta, NA_real_),
-        100 * .safe_num(disc$ke, NA_real_),
-        100 * .safe_num(disc$wacc, NA_real_),
-        if (isTRUE(gf$pass)) "PASS" else "FAIL",
-        gf$path, pos_a, pos_b, sent_mult
-      )
+        # ---- Mode A exposure (Trade_A); Mode B nests on Exp_A ----
+        pos_a_target <- mos_hysteresis_target(mos_i, w_vg, max_exp = max_exp)
+        if (!isTRUE(gf$pass)) {
+          pos_a_target <- 0
+        } else if (is.finite(mos_i) && mos_i >= -0.10 && min_exp_pass > 0) {
+          pos_a_target <- max(pos_a_target, min_exp_pass)
+        }
+        pos_a <- .clip01(min(pos_a_target, max_exp), 0, 1)
+
+        # ---- Strategy B: sentiment overlay ONLY scales Exp_A weight ----
+        sent_mult <- sentiment_multiplier(mom_score, rsi_score, w_mom, w_rsi)
+        if (pos_a <= 0) {
+          pos_b <- 0
+        } else {
+          pos_b_raw <- pos_a * sent_mult
+          pos_b <- .clip01(min(max(pos_b_raw, pos_a * 0.75), min(1, pos_a * 1.25)), 0, 1)
+        }
+
+        explain_txt <- sprintf(
+          "%s | 公允 %.2f (dcf %.2f / ddm %.2f / ri %.2f / pb %.2f) vs 市價 %.2f, MOS %.1f%%, score %.0f/100. Rollingβ=%.2f Ke=%.1f%% WACC=%.1f%%. 過濾:%s(%s). Exp_A=%.2f, Exp_B=%.2f (Sent x%.2f).",
+          signal_i,
+          .safe_num(pit$fair_value, NA_real_),
+          .safe_num(pit$fv_dcf, NA_real_), .safe_num(pit$fv_ddm, NA_real_),
+          .safe_num(pit$fv_ri, NA_real_),  .safe_num(pit$fv_pb, NA_real_),
+          .safe_num(price_i, NA_real_),
+          100 * .safe_num(mos_i, NA_real_),
+          .safe_num(pit$valuation_score, NA_real_),
+          .safe_num(disc$beta, NA_real_),
+          100 * .safe_num(disc$ke, NA_real_),
+          100 * .safe_num(disc$wacc, NA_real_),
+          if (isTRUE(gf$pass)) "PASS" else "FAIL",
+          gf$path, pos_a, pos_b, sent_mult
+        )
+      }
 
       val_rows[[length(val_rows) + 1L]] <- data.frame(
         Date = df$Date[i],
@@ -1046,10 +1065,12 @@ evaluate_holding_filter <- function(metrics, thresholds) {
     }
     exp_a_daily[i] <- pos_a
     exp_b_daily[i] <- pos_b
-    equity_a[i]  <- equity_a[i - 1]  * (1 + pos_a * r)
-    equity_b[i]  <- equity_b[i - 1]  * (1 + pos_b * r)
-    equity_bh[i] <- equity_bh[i - 1] * (1 + r)
-    equity_bm[i] <- equity_bm[i - 1] * (1 + rb)
+    if (!isTRUE(fv_only)) {
+      equity_a[i]  <- equity_a[i - 1]  * (1 + pos_a * r)
+      equity_b[i]  <- equity_b[i - 1]  * (1 + pos_b * r)
+      equity_bh[i] <- equity_bh[i - 1] * (1 + r)
+      equity_bm[i] <- equity_bm[i - 1] * (1 + rb)
+    }
   }
 
   # Backfill FV before first rebalance; normalize Mode A to start at 1.
@@ -1099,16 +1120,44 @@ evaluate_holding_filter <- function(metrics, thresholds) {
 
   # Align comparison window at first quarterly decision so strategies
   # (cash until first rebalance) do not give Buy&Hold a free head-start.
-  i0 <- rebal_idx[1L]
-  if (is.finite(i0) && i0 > 1L && i0 <= n) {
-    equity_df <- equity_df[i0:n, , drop = FALSE]
-    for (col in c("Model_A", "Trade_A", "Trade_B", "Model_B", "BuyHold", "Benchmark")) {
-      base <- equity_df[[col]][1]
-      if (is.finite(base) && base > 0) {
-        equity_df[[col]] <- equity_df[[col]] / base
+  if (!isTRUE(fv_only)) {
+    i0 <- rebal_idx[1L]
+    if (is.finite(i0) && i0 > 1L && i0 <= n) {
+      equity_df <- equity_df[i0:n, , drop = FALSE]
+      for (col in c("Model_A", "Trade_A", "Trade_B", "Model_B", "BuyHold", "Benchmark")) {
+        base <- equity_df[[col]][1]
+        if (is.finite(base) && base > 0) {
+          equity_df[[col]] <- equity_df[[col]] / base
+        }
       }
+      rownames(equity_df) <- NULL
     }
-    rownames(equity_df) <- NULL
+  }
+
+  mkt <- .compute_market_pricing_metrics(valuation_df)
+
+  if (isTRUE(fv_only)) {
+    return(list(
+      equity_df = equity_df[, c("Date", "Close", "Bench", "FairValue"), drop = FALSE],
+      valuation_df = valuation_df,
+      exposure = NULL,
+      metrics = list(
+        sharpe_a = NA_real_, sharpe_b = NA_real_,
+        mdd_a = NA_real_, mdd_b = NA_real_,
+        cagr_a = NA_real_, cagr_b = NA_real_,
+        plateau = "待驗證",
+        best = "A",
+        pct_market_under = mkt$pct_market_under,
+        pct_market_over = mkt$pct_market_over,
+        market_pricing_bias = mkt$market_pricing_bias,
+        market_pricing_dominant_pct = mkt$market_pricing_dominant_pct,
+        pct_strategy_under = mkt$pct_strategy_under,
+        pct_value_over = mkt$pct_value_over,
+        mean_hist_mos = mkt$mean_hist_mos,
+        last_signal = mkt$last_signal
+      ),
+      explain_last = explain_last
+    ))
   }
 
   # exposure summary (post-alignment window)
@@ -1134,8 +1183,6 @@ evaluate_holding_filter <- function(metrics, thresholds) {
   # Trading metrics for the two modes — never the FV index.
   pa <- perf_one(equity_df$Trade_A)
   pb <- perf_one(equity_df$Trade_B)
-
-  mkt <- .compute_market_pricing_metrics(valuation_df)
 
   list(
     equity_df = equity_df,
@@ -1288,6 +1335,99 @@ refresh_backtest_fair_value <- function(res, fund, model_params) {
 }
 
 # ---------- public API ----------
+
+#' Lightweight price frame for the HFV discount chart (no fundamentals).
+fetch_hfv_price_frame <- function(ticker, bench_ticker = "SPY", years = 5) {
+  sim_years <- max(1L, as.integer(years))
+  fetch_years <- max(sim_years + 2L, 5L)
+  period <- paste0(fetch_years, "y")
+  px <- fetch_price_history_df(ticker, period)
+  if (is.null(px) || nrow(px) < 30) {
+    stop("無法取得足夠的歷史股價")
+  }
+  bench <- fetch_price_history_df(bench_ticker, period)
+  if (is.null(bench) || nrow(bench) < 30) {
+    bench <- px
+  }
+  df <- merge(
+    data.frame(Date = px$Date, Close = px$Close, stringsAsFactors = FALSE),
+    data.frame(Date = bench$Date, Bench = bench$Close, stringsAsFactors = FALSE),
+    by = "Date", all = FALSE
+  )
+  df <- df[order(df$Date), , drop = FALSE]
+  cutoff <- max(df$Date) - as.difftime(round(sim_years * 365.25), units = "days")
+  df <- df[df$Date >= cutoff, , drop = FALSE]
+  if (nrow(df) < 30) stop("股價與基準對齊後資料不足")
+  df[, c("Date", "Close", "Bench"), drop = FALSE]
+}
+
+#' PIT fair-value timeline only (for HFV chart refresh; no strategy simulation).
+compute_fair_value_timeline <- function(ticker,
+                                        d_is, d_bs, d_cf,
+                                        model_params = NULL,
+                                        mos = NA_real_,
+                                        bench_ticker = "SPY",
+                                        years = 5) {
+  if (is.null(model_params)) model_params <- list()
+  if (is.null(model_params$ke) || !is.finite(.safe_num(model_params$ke, NA_real_))) {
+    model_params$ke <- .safe_num(model_params$wacc, 0.09)
+  }
+  if (is.null(model_params$ddm_g) || !is.finite(.safe_num(model_params$ddm_g, NA_real_))) {
+    model_params$ddm_g <- .safe_num(model_params$sgr, 0.025)
+  }
+  if (is.null(model_params$pb_mid) || !is.finite(.safe_num(model_params$pb_mid, NA_real_))) {
+    model_params$pb_mid <- 2.5
+  }
+  if (is.null(model_params$n_years) || !is.finite(.safe_num(model_params$n_years, NA_real_))) {
+    model_params$n_years <- 5
+  }
+  if (is.null(model_params$fv_model) || !nzchar(as.character(model_params$fv_model)[1])) {
+    model_params$fv_model <- "dcf"
+  }
+  if (is.null(model_params$beta_lookback_months) ||
+      !is.finite(.safe_num(model_params$beta_lookback_months, NA_real_))) {
+    model_params$beta_lookback_months <- 60L
+  }
+
+  sim_years <- max(1L, as.integer(years))
+  fetch_years <- max(sim_years + 5L, 10L)
+  period <- paste0(fetch_years, "y")
+  px <- fetch_price_history_df(ticker, period)
+  if (is.null(px) || nrow(px) < 80) {
+    stop("無法取得足夠的歷史股價（至少約 80 個交易日）")
+  }
+  bench <- fetch_price_history_df(bench_ticker, period)
+  if (is.null(bench) || nrow(bench) < 80) {
+    bench <- px
+    bench_ticker <- paste0(ticker, "(BH)")
+  }
+  df_full <- .prepare_daily_df(px, bench)
+  beta_df <- df_full[, c("Date", "Close", "Bench"), drop = FALSE]
+  cutoff <- max(df_full$Date) - as.difftime(round(sim_years * 365.25), units = "days")
+  df <- df_full[df_full$Date >= cutoff, , drop = FALSE]
+  if (nrow(df) < 80) df <- df_full
+
+  fund <- build_annual_fundamentals(d_is, d_bs, d_cf)
+  mos_fallback <- .safe_num(mos, 0)
+  dummy_params <- list(
+    bt_net_margin = 0, bt_rev_growth = 0, bt_eps_growth = 0, bt_fcf_cv = 999,
+    bt_w_mom = 0.5, bt_w_rsi = 0.5, bt_w_vg = 0.7,
+    bt_max_exp = 0.9, bt_min_exp_pass = 0
+  )
+  core <- .run_backtest_core(
+    df, fund, dummy_params, model_params, mos_fallback,
+    beta_df = beta_df, fv_only = TRUE
+  )
+  list(
+    equity_df = core$equity_df,
+    valuation_df = core$valuation_df,
+    metrics = core$metrics,
+    explain_last = core$explain_last,
+    bench_ticker = bench_ticker,
+    n_days = nrow(df),
+    model_params_used = model_params
+  )
+}
 
 #' Run one company backtest (v12).
 #' @param model_params list(wacc, ke, sgr, g_explicit, n_years, pb_mid, ddm_g,

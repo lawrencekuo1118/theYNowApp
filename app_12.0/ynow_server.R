@@ -2247,6 +2247,21 @@ server <- function(input, output, session) {
   bt_validation <- reactiveVal(NULL)
   bt_run_msg <- reactiveVal("")
   bt_applying_params <- reactiveVal(FALSE)
+  bt_fv_visible <- reactiveVal(FALSE)
+  bt_hfv_fv <- reactiveVal(NULL)
+
+  bt_hfv_base <- reactive({
+    req(current_ticker())
+    tryCatch(
+      fetch_hfv_price_frame(current_ticker(), bench_ticker = "SPY", years = 5),
+      error = function(e) NULL
+    )
+  })
+
+  observeEvent(current_ticker(), {
+    bt_fv_visible(FALSE)
+    bt_hfv_fv(NULL)
+  }, ignoreInit = TRUE)
 
   bt_current_mos <- reactive({
     cur <- tryCatch(scraped_market_cap()$price, error = function(e) NA_real_)
@@ -2481,11 +2496,7 @@ server <- function(input, output, session) {
   })
 
   observeEvent(input$bt_refresh_fv, {
-    res <- bt_result()
-    if (is.null(res)) {
-      showNotification("請先啟動量化回測", type = "warning", duration = 5)
-      return()
-    }
+    req(current_ticker())
     tryCatch({
       if (is.null(d_income_statement()) || is.null(d_cash_flow()) || is.null(d_balance_sheet())) {
         stop("請先在 Dashboard 搜尋並載入該公司財報")
@@ -2494,8 +2505,23 @@ server <- function(input, output, session) {
       fund <- build_annual_fundamentals(
         d_income_statement(), d_balance_sheet(), d_cash_flow()
       )
-      updated <- refresh_backtest_fair_value(res, fund, mp)
-      bt_result(updated)
+      withProgress(message = "重建基本面價值…", value = 0.2, {
+        fv_res <- compute_fair_value_timeline(
+          ticker = current_ticker(),
+          d_is = d_income_statement(),
+          d_bs = d_balance_sheet(),
+          d_cf = d_cash_flow(),
+          model_params = mp,
+          mos = bt_current_mos(),
+          bench_ticker = "SPY",
+          years = 5
+        )
+        bt_hfv_fv(fv_res)
+        bt_fv_visible(TRUE)
+        if (!is.null(bt_result())) {
+          bt_result(refresh_backtest_fair_value(bt_result(), fund, mp))
+        }
+      })
       fv_label <- switch(
         mp$fv_model,
         "dcf" = "DCF", "ddm" = "DDM", "ri" = "RI", "pb" = "P/B",
@@ -2514,6 +2540,8 @@ server <- function(input, output, session) {
     req(current_ticker())
     bt_result(NULL)
     bt_validation(NULL)
+    bt_hfv_fv(NULL)
+    bt_fv_visible(FALSE)
     bt_run_msg("V12 回測計算中（PIT 多模型重建）…")
     tryCatch({
       if (is.null(d_income_statement()) || is.null(d_cash_flow()) || is.null(d_balance_sheet())) {
@@ -2591,6 +2619,8 @@ server <- function(input, output, session) {
         bt_validation(list(
           alpha = alpha_df, gap = gap, mos = mos_tab, fv = fv_edge, plateau = plateau
         ))
+        bt_hfv_fv(NULL)
+        bt_fv_visible(TRUE)
         bt_run_msg(sprintf(
           "完成：%s 日 · 季頻 PIT · Rolling β · 較佳=%s · Session WACC=%.2f%% Ke=%.2f%% SGR=%.2f%%",
           res$n_days, res$metrics$best,
@@ -2612,16 +2642,61 @@ server <- function(input, output, session) {
     sprintf(paste0("%.", digits, "f"), as.numeric(x))
   }
 
-  output$bt_valuation_summary <- renderUI({
+  .bt_hfv_chart_source <- function() {
+    base <- bt_hfv_base()
     res <- bt_result()
-    if (is.null(res) || is.null(res$metrics)) {
+    fv_only <- bt_hfv_fv()
+    show_fv <- isTRUE(bt_fv_visible())
+
+    if (!is.null(res) && !is.null(res$equity_df) && nrow(res$equity_df) > 0) {
+      ed <- res$equity_df
+      vd <- res$valuation_df
+      mp <- res$model_params_used
+    } else if (show_fv && !is.null(fv_only) && !is.null(fv_only$equity_df)) {
+      ed <- fv_only$equity_df
+      vd <- fv_only$valuation_df
+      mp <- fv_only$model_params_used
+    } else if (!is.null(base) && nrow(base) > 0) {
+      ed <- base
+      vd <- NULL
+      mp <- NULL
+    } else {
+      return(NULL)
+    }
+
+    list(
+      ed = ed,
+      vd = vd,
+      mp = mp,
+      show_fv = show_fv && "FairValue" %in% names(ed) && any(is.finite(ed$FairValue))
+    )
+  }
+
+  output$bt_valuation_summary <- renderUI({
+    src <- .bt_hfv_chart_source()
+    if (is.null(src)) {
       return(tags$p(
         style = "color:#888;font-size:12.5px;",
-        "PIT 重建後將顯示歷史市場定價傾向、市場低估率、平均 MOS 與最近訊號。"
+        "搜尋股票後將預先顯示股價與大盤；按右下角「更新」可計算基本面價值與 MOS 摘要。"
       ))
     }
-    m <- res$metrics
-    mp <- res$model_params_used
+    if (!isTRUE(src$show_fv)) {
+      return(tags$p(
+        style = "color:#888;font-size:12.5px;",
+        "已顯示情緒波動價值（實際股價）與大盤。選擇評價模型後按右下角「更新」以顯示基本面價值（紅線）與下方摘要。"
+      ))
+    }
+    m <- if (!is.null(bt_result()) && !is.null(bt_result()$metrics)) {
+      bt_result()$metrics
+    } else if (!is.null(bt_hfv_fv()) && !is.null(bt_hfv_fv()$metrics)) {
+      bt_hfv_fv()$metrics
+    } else {
+      NULL
+    }
+    mp <- src$mp
+    if (is.null(m) || is.null(mp)) {
+      return(tags$p(style = "color:#888;font-size:12.5px;", "尚無估值摘要。"))
+    }
     bias <- as.character(m$market_pricing_bias %||% "—")
     bias_col <- if (grepl("低估", bias, fixed = TRUE)) {
       "#00a65a"
@@ -2672,23 +2747,20 @@ server <- function(input, output, session) {
   })
 
   output$bt_hfv_timeline <- renderPlotly({
-    res <- bt_result()
-    validate(need(!is.null(res) && !is.null(res$equity_df) && nrow(res$equity_df) > 0,
-                  "請先成功執行回測"))
-    ed <- res$equity_df
-    has_fv <- "FairValue" %in% names(ed)
+    src <- .bt_hfv_chart_source()
+    validate(need(!is.null(src) && !is.null(src$ed) && nrow(src$ed) > 0,
+                  "請先搜尋股票以載入歷史股價"))
+    ed <- src$ed
     has_bench <- "Bench" %in% names(ed)
-    validate(need(has_fv && any(is.finite(ed$FairValue)),
-                  "尚無基本面價值序列（請重新啟動回測）"))
 
-    # Primary axis: 基本面價值 + 情緒波動價值(=實際股價)
-    # Secondary axis: 大盤基準歷史價格（單位不同）
     p <- plotly::plot_ly(ed, x = ~Date)
-    p <- plotly::add_trace(
-      p, y = ~FairValue, name = "基本面價值", type = "scatter", mode = "lines",
-      line = list(color = "#c0392b", width = 2.2),
-      hovertemplate = "基本面價值: %{y:$.2f}<extra></extra>"
-    )
+    if (isTRUE(src$show_fv)) {
+      p <- plotly::add_trace(
+        p, y = ~FairValue, name = "基本面價值", type = "scatter", mode = "lines",
+        line = list(color = "#c0392b", width = 2.2),
+        hovertemplate = "基本面價值: %{y:$.2f}<extra></extra>"
+      )
+    }
     p <- plotly::add_trace(
       p, y = ~Close, name = "情緒波動價值（實際股價）", type = "scatter", mode = "lines",
       line = list(color = "#2c3e50", width = 2),
@@ -2702,9 +2774,8 @@ server <- function(input, output, session) {
         hovertemplate = "大盤: %{y:$.2f}<extra></extra>"
       )
     }
-    # Rebalance markers from valuation_df when available
-    vd <- res$valuation_df
-    if (!is.null(vd) && nrow(vd) > 0 && any(is.finite(vd$fair_value))) {
+    vd <- src$vd
+    if (isTRUE(src$show_fv) && !is.null(vd) && nrow(vd) > 0 && any(is.finite(vd$fair_value))) {
       p <- plotly::add_trace(
         p, data = vd, x = ~Date, y = ~fair_value, name = "季再平衡 FV",
         type = "scatter", mode = "markers",
@@ -2719,7 +2790,10 @@ server <- function(input, output, session) {
     }
     plotly::layout(
       p,
-      title = list(text = "折現比較（Rolling β PIT）", font = list(size = 14)),
+      title = list(
+        text = if (isTRUE(src$show_fv)) "折現比較（Rolling β PIT）" else "折現比較（股價／大盤預覽）",
+        font = list(size = 14)
+      ),
       legend = list(orientation = "h", y = -0.18),
       yaxis = list(title = "每股（美元）", tickprefix = "$", side = "left"),
       yaxis2 = list(
@@ -2733,16 +2807,29 @@ server <- function(input, output, session) {
   })
 
   output$bt_signal_explain <- renderUI({
+    if (!isTRUE(bt_fv_visible())) return(NULL)
     res <- bt_result()
-    if (is.null(res) || is.null(res$explain_last)) {
-      return(NULL)
+    fv_only <- bt_hfv_fv()
+    ex <- if (!is.null(res) && !is.null(res$explain_last)) {
+      res$explain_last
+    } else if (!is.null(fv_only) && !is.null(fv_only$explain_last)) {
+      fv_only$explain_last
+    } else {
+      NULL
     }
-    ex <- res$explain_last
+    if (is.null(ex)) return(NULL)
+    vd <- if (!is.null(res) && !is.null(res$valuation_df)) {
+      res$valuation_df
+    } else if (!is.null(fv_only) && !is.null(fv_only$valuation_df)) {
+      fv_only$valuation_df
+    } else {
+      NULL
+    }
     row <- ex
     if (is.null(row$hist_price) && !is.null(row$price)) row$hist_price <- row$price
-    if (is.null(row$Date) && !is.null(res$valuation_df) && nrow(res$valuation_df) > 0) {
-      row$Date <- tail(res$valuation_df$Date, 1)
-      row$explain <- tail(res$valuation_df$explain, 1)
+    if (is.null(row$Date) && !is.null(vd) && nrow(vd) > 0) {
+      row$Date <- tail(vd$Date, 1)
+      row$explain <- tail(vd$explain, 1)
     }
     txt <- tryCatch(build_signal_explain(row)$text, error = function(e) NULL)
     if (is.null(txt) || !nzchar(as.character(txt)[1])) {
