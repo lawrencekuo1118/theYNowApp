@@ -226,6 +226,61 @@ valuation_signal_label <- function(fv, price) {
   "合理"
 }
 
+#' Market under/over metrics from PIT rebalance rows.
+#' Under = actual price below model fair value (price < FV).
+.compute_market_pricing_metrics <- function(valuation_df) {
+  empty <- list(
+    pct_market_under = NA_real_,
+    pct_market_over = NA_real_,
+    market_pricing_bias = "資料不足",
+    market_pricing_dominant_pct = NA_real_,
+    pct_strategy_under = NA_real_,
+    pct_value_over = NA_real_,
+    mean_hist_mos = NA_real_,
+    last_signal = "資料不足"
+  )
+  if (is.null(valuation_df) || !is.data.frame(valuation_df) || nrow(valuation_df) == 0) {
+    return(empty)
+  }
+  price <- valuation_df$hist_price
+  fv <- valuation_df$fair_value
+  valid <- is.finite(price) & is.finite(fv) & price > 0 & fv > 0
+  n_valid <- sum(valid)
+  if (n_valid == 0) return(empty)
+
+  p <- price[valid]
+  f <- fv[valid]
+  pct_under <- sum(p < f) / n_valid
+  pct_over <- sum(p > f) / n_valid
+  bias <- if (pct_under > pct_over + 0.05) {
+    "低估為主"
+  } else if (pct_over > pct_under + 0.05) {
+    "高估為主"
+  } else {
+    "大致均衡"
+  }
+  dom_pct <- if (identical(bias, "低估為主")) {
+    pct_under
+  } else if (identical(bias, "高估為主")) {
+    pct_over
+  } else {
+    NA_real_
+  }
+  mean_mos <- mean(valuation_df$mos[is.finite(valuation_df$mos)], na.rm = TRUE)
+  last_signal <- if ("signal" %in% names(valuation_df)) tail(valuation_df$signal, 1) else "資料不足"
+
+  list(
+    pct_market_under = pct_under,
+    pct_market_over = pct_over,
+    market_pricing_bias = bias,
+    market_pricing_dominant_pct = dom_pct,
+    pct_strategy_under = pct_under,
+    pct_value_over = pct_over,
+    mean_hist_mos = mean_mos,
+    last_signal = last_signal
+  )
+}
+
 #' Point-in-time fair-value reconstruction for a single fundamentals row.
 #' @param fund_row list-like with fcf, cash, debt, shares, ni, equity_book,
 #'   dividends_paid.
@@ -1080,13 +1135,7 @@ evaluate_holding_filter <- function(metrics, thresholds) {
   pa <- perf_one(equity_df$Trade_A)
   pb <- perf_one(equity_df$Trade_B)
 
-  # signal composition stats
-  sig <- valuation_df$signal
-  n_sig <- sum(sig %in% c("策略低估", "價值高估", "合理"), na.rm = TRUE)
-  pct_under <- if (n_sig > 0) sum(sig == "策略低估", na.rm = TRUE) / n_sig else NA_real_
-  pct_over  <- if (n_sig > 0) sum(sig == "價值高估", na.rm = TRUE) / n_sig else NA_real_
-  mean_mos <- if (nrow(valuation_df) > 0) mean(valuation_df$mos[is.finite(valuation_df$mos)], na.rm = TRUE) else NA_real_
-  last_signal <- if (nrow(valuation_df) > 0) tail(valuation_df$signal, 1) else "資料不足"
+  mkt <- .compute_market_pricing_metrics(valuation_df)
 
   list(
     equity_df = equity_df,
@@ -1098,12 +1147,127 @@ evaluate_holding_filter <- function(metrics, thresholds) {
       cagr_a = pa$cagr, cagr_b = pb$cagr,
       plateau = "待驗證",   # filled by run_parameter_plateau
       best = if (isTRUE(.safe_num(pa$sharpe, -Inf) >= .safe_num(pb$sharpe, -Inf))) "A" else "B",
-      pct_strategy_under = pct_under,
-      pct_value_over = pct_over,
-      mean_hist_mos = mean_mos,
-      last_signal = last_signal
+      pct_market_under = mkt$pct_market_under,
+      pct_market_over = mkt$pct_market_over,
+      market_pricing_bias = mkt$market_pricing_bias,
+      market_pricing_dominant_pct = mkt$market_pricing_dominant_pct,
+      pct_strategy_under = mkt$pct_strategy_under,
+      pct_value_over = mkt$pct_value_over,
+      mean_hist_mos = mkt$mean_hist_mos,
+      last_signal = mkt$last_signal
     ),
     explain_last = explain_last
+  )
+}
+
+#' Recompute fair-value series after valuation-model change (no strategy re-sim).
+refresh_backtest_fair_value <- function(res, fund, model_params) {
+  if (is.null(res) || is.null(res$equity_df) || is.null(res$valuation_df)) {
+    stop("尚無回測結果可更新")
+  }
+  equity_df <- res$equity_df
+  vd <- res$valuation_df
+  if (nrow(vd) == 0) stop("尚無再平衡估值紀錄")
+
+  mp_base <- model_params
+  if (is.null(mp_base)) mp_base <- res$model_params_used
+  if (is.null(mp_base)) stop("缺少模型參數")
+
+  g_carry <- .safe_num(mp_base$sgr, 0.025)
+  if (!is.finite(g_carry)) g_carry <- 0.025
+  g_carry <- max(min(g_carry, 0.12), -0.05)
+
+  n <- nrow(equity_df)
+  fv_daily <- rep(NA_real_, n)
+  rebal_idx <- match(vd$Date, equity_df$Date)
+
+  for (j in seq_len(nrow(vd))) {
+    i <- rebal_idx[j]
+    if (is.na(i)) next
+    fund_i <- .lookup_fund_at(fund, vd$Date[j])
+    price_i <- .safe_num(vd$hist_price[j], equity_df$Close[i])
+
+    mp_i <- mp_base
+    if ("wacc_pit" %in% names(vd) && is.finite(vd$wacc_pit[j])) mp_i$wacc <- vd$wacc_pit[j]
+    if ("ke_pit" %in% names(vd) && is.finite(vd$ke_pit[j])) mp_i$ke <- vd$ke_pit[j]
+
+    pit <- reconstruct_fair_value_pit(fund_i, price_i, mp_i)
+    vd$fv_dcf[j] <- .safe_num(pit$fv_dcf, NA_real_)
+    vd$fv_ddm[j] <- .safe_num(pit$fv_ddm, NA_real_)
+    vd$fv_ri[j]  <- .safe_num(pit$fv_ri, NA_real_)
+    vd$fv_pb[j]  <- .safe_num(pit$fv_pb, NA_real_)
+    vd$fair_value[j] <- .safe_num(pit$fair_value, NA_real_)
+    vd$strategy_fv[j] <- vd$fair_value[j]
+    vd$mos[j] <- pit$mos
+    vd$signal[j] <- pit$signal
+    vd$valuation_score[j] <- .safe_num(pit$valuation_score, NA_real_)
+  }
+
+  current_anchor <- NA_real_
+  current_date <- as.Date(NA)
+  rebal_set <- rebal_idx[!is.na(rebal_idx)]
+  for (i in seq_len(n)) {
+    if (i %in% rebal_set) {
+      j <- which(rebal_idx == i)[1]
+      if (is.finite(vd$fair_value[j]) && vd$fair_value[j] > 0) {
+        current_anchor <- vd$fair_value[j]
+        current_date <- equity_df$Date[i]
+      }
+    }
+    if (is.finite(current_anchor) && current_anchor > 0 && !is.na(current_date)) {
+      dt_yrs <- as.numeric(difftime(equity_df$Date[i], current_date, units = "days")) / 365.25
+      if (!is.finite(dt_yrs) || dt_yrs < 0) dt_yrs <- 0
+      fv_daily[i] <- current_anchor * (1 + g_carry)^dt_yrs
+    }
+  }
+
+  first_fv <- which(is.finite(fv_daily) & fv_daily > 0)[1]
+  if (is.finite(first_fv)) {
+    if (first_fv > 1L) fv_daily[seq_len(first_fv - 1L)] <- fv_daily[first_fv]
+    model_a <- fv_daily / fv_daily[1]
+    model_a[!is.finite(model_a)] <- NA_real_
+  } else {
+    model_a <- rep(NA_real_, n)
+  }
+
+  equity_df$FairValue <- fv_daily
+  equity_df$Model_A <- model_a
+
+  metrics <- res$metrics
+  if (is.null(metrics)) metrics <- list()
+  mkt <- .compute_market_pricing_metrics(vd)
+  metrics <- utils::modifyList(metrics, mkt)
+
+  explain_last <- res$explain_last
+  if (nrow(vd) > 0) {
+    last <- vd[nrow(vd), , drop = FALSE]
+    explain_last <- utils::modifyList(
+      if (is.list(explain_last)) explain_last else list(),
+      list(
+        fair_value = last$fair_value,
+        fv_dcf = last$fv_dcf, fv_ddm = last$fv_ddm,
+        fv_ri = last$fv_ri, fv_pb = last$fv_pb,
+        mos = last$mos, signal = last$signal,
+        valuation_score = last$valuation_score
+      )
+    )
+  }
+
+  mp_out <- mp_base
+  if (!is.null(res$model_params_used)) {
+    mp_out <- utils::modifyList(res$model_params_used, mp_base)
+  }
+
+  list(
+    equity_df = equity_df,
+    valuation_df = vd,
+    exposure = res$exposure,
+    metrics = metrics,
+    explain_last = explain_last,
+    bench_ticker = res$bench_ticker,
+    n_days = res$n_days,
+    model_params_used = mp_out,
+    dcf_params_used = mp_out
   )
 }
 

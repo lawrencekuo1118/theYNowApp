@@ -547,6 +547,53 @@ ui <- dashboardPage(
           margin-bottom: 0;
           font-size: 12px;
         }
+        .ynow-bt-plateau-table-wrap table {
+          width: 100% !important;
+          table-layout: auto !important;
+        }
+        .ynow-bt-hfv-wrap {
+          position: relative;
+        }
+        .ynow-bt-hfv-controls {
+          position: absolute;
+          right: 10px;
+          bottom: 10px;
+          z-index: 10;
+          max-width: 240px;
+          padding: 8px 10px 6px;
+          background: rgba(255, 255, 255, 0.97);
+          border: 1px solid #dde2e6;
+          border-radius: 6px;
+          box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
+          font-size: 11px;
+        }
+        .ynow-bt-hfv-controls .control-label {
+          font-size: 11px;
+          font-weight: 600;
+          margin-bottom: 2px;
+        }
+        .ynow-bt-hfv-controls .radio {
+          margin-top: 0;
+          margin-bottom: 4px;
+        }
+        .ynow-bt-hfv-controls .radio label {
+          font-size: 11px;
+          font-weight: normal;
+          line-height: 1.35;
+        }
+        .ynow-bt-hfv-controls .btn {
+          width: 100%;
+          margin-top: 2px;
+          font-size: 12px;
+          font-weight: 600;
+        }
+        @media (max-width: 767px) {
+          .ynow-bt-hfv-controls {
+            position: static;
+            max-width: none;
+            margin-top: 8px;
+          }
+        }
         @media (max-width: 991px) {
           .ynow-bt-mode-b .ynow-bt-fit-panel .btn {
             max-width: none;
@@ -1096,11 +1143,35 @@ ui <- dashboardPage(
                   title = tagList(icon("balance-scale"), "折現比較：基本面價值 vs 情緒波動價值 vs 大盤"),
                   width = 12, status = "primary", solidHeader = TRUE,
                   .bt_section_intro(
-                    "以執行面板所選評價模型，在各歷史時點用當時可得財報＋Rolling β 折現，重建「基本面價值」；「情緒波動價值」＝該股歷史實際股價；並疊加大盤基準價格（右軸）。僅用公告財年 ≤ 回測日的資料。"
+                    "以所選評價模型，在各歷史時點用當時可得財報＋Rolling β 折現，重建「基本面價值」；「情緒波動價值」＝該股歷史實際股價；並疊加大盤基準價格（右軸）。右下可切換模型並按「更新」重算基本面價值折線。"
                   ),
-                  uiOutput("bt_valuation_summary"),
-                  plotlyOutput("bt_hfv_timeline", height = "420px") %>% withSpinner(),
-                  uiOutput("bt_signal_explain")
+                  tags$div(
+                    class = "ynow-bt-hfv-wrap",
+                    uiOutput("bt_valuation_summary"),
+                    plotlyOutput("bt_hfv_timeline", height = "420px") %>% withSpinner(),
+                    tags$div(
+                      class = "ynow-bt-hfv-controls",
+                      radioButtons(
+                        "bt_fv_model",
+                        "回測用評價模型",
+                        inline = FALSE,
+                        choices = c(
+                          "DCF" = "dcf",
+                          "DDM" = "ddm",
+                          "RI" = "ri",
+                          "P/B" = "pb",
+                          "綜合均值" = "composite"
+                        ),
+                        selected = "dcf"
+                      ),
+                      actionButton(
+                        "bt_refresh_fv", "更新",
+                        icon = icon("sync"),
+                        class = "btn-primary btn-sm"
+                      )
+                    ),
+                    uiOutput("bt_signal_explain")
+                  )
                 )
               ),
 
@@ -1139,20 +1210,6 @@ ui <- dashboardPage(
                   title = tagList(icon("play-circle"), "執行面板"),
                   width = 4, status = "warning", solidHeader = TRUE,
                   class = "ynow-bt-run-panel",
-                  radioButtons(
-                    "bt_fv_model",
-                    "回測用評價模型",
-                    inline = FALSE,
-                    choices = c(
-                      "DCF（自由現金流折現）" = "dcf",
-                      "DDM（股利折現）" = "ddm",
-                      "RI（剩餘收益）" = "ri",
-                      "P/B（本淨比）" = "pb",
-                      "綜合均值" = "composite"
-                    ),
-                    selected = "dcf"
-                  ),
-                  .bt_hint("算合理價／MOS（上方折現比較圖的基本面價值），並驅動「純基本面價值」倉位；不是淨值圖上的價格線。"),
                   checkboxInput(
                     "bt_param_auto",
                     "自動同步參數（換股時依財報推導）",
@@ -1343,7 +1400,11 @@ ui <- dashboardPage(
                             tags$h5(tags$b("參數高原（敏感度）")),
                             .bt_hint("微擾 WACC／SGR／年數，觀察合理價指數（Model_A）終值敏感度——不是策略淨值。"),
                             uiOutput("bt_plateau"),
-                            tags$div(style = "overflow-x:auto;", tableOutput("bt_plateau_table"))
+                            tags$div(
+                              class = "ynow-bt-plateau-table-wrap",
+                              style = "overflow-x: auto;",
+                              tableOutput("bt_plateau_table")
+                            )
                           )
                         )
                       )

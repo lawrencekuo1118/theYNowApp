@@ -2480,6 +2480,36 @@ server <- function(input, output, session) {
     tags$p(style = "margin: 10px 0 0 0; color: #666; font-size: 12px; line-height: 1.45;", icon("clock"), " ", msg)
   })
 
+  observeEvent(input$bt_refresh_fv, {
+    res <- bt_result()
+    if (is.null(res)) {
+      showNotification("請先啟動量化回測", type = "warning", duration = 5)
+      return()
+    }
+    tryCatch({
+      if (is.null(d_income_statement()) || is.null(d_cash_flow()) || is.null(d_balance_sheet())) {
+        stop("請先在 Dashboard 搜尋並載入該公司財報")
+      }
+      mp <- bt_current_model_params()
+      fund <- build_annual_fundamentals(
+        d_income_statement(), d_balance_sheet(), d_cash_flow()
+      )
+      updated <- refresh_backtest_fair_value(res, fund, mp)
+      bt_result(updated)
+      fv_label <- switch(
+        mp$fv_model,
+        "dcf" = "DCF", "ddm" = "DDM", "ri" = "RI", "pb" = "P/B",
+        "composite" = "綜合均值", mp$fv_model
+      )
+      showNotification(
+        paste0("✅ 已更新基本面價值折線（", fv_label, "）"),
+        type = "message", duration = 4
+      )
+    }, error = function(e) {
+      showNotification(paste("❌ 更新失敗：", e$message), type = "error", duration = 8)
+    })
+  })
+
   observeEvent(input$run_bt, {
     req(current_ticker())
     bt_result(NULL)
@@ -2587,26 +2617,55 @@ server <- function(input, output, session) {
     if (is.null(res) || is.null(res$metrics)) {
       return(tags$p(
         style = "color:#888;font-size:12.5px;",
-        "PIT 重建後將顯示低估／高估佔比、平均 MOS 與最近訊號。"
+        "PIT 重建後將顯示歷史市場定價傾向、市場低估率、平均 MOS 與最近訊號。"
       ))
     }
     m <- res$metrics
     mp <- res$model_params_used
+    bias <- as.character(m$market_pricing_bias %||% "—")
+    bias_col <- if (grepl("低估", bias, fixed = TRUE)) {
+      "#00a65a"
+    } else if (grepl("高估", bias, fixed = TRUE)) {
+      "#d9534f"
+    } else {
+      "#666"
+    }
+    bias_bg <- if (grepl("低估", bias, fixed = TRUE)) {
+      "#f7fbf8"
+    } else if (grepl("高估", bias, fixed = TRUE)) {
+      "#fdf7f7"
+    } else {
+      "#fafafa"
+    }
+    bias_val <- if (!is.null(m$market_pricing_dominant_pct) &&
+                    is.finite(m$market_pricing_dominant_pct)) {
+      sprintf("%s · %s", bias, .fmt_pct(m$market_pricing_dominant_pct, 0))
+    } else {
+      bias
+    }
+    pct_under <- m$pct_market_under %||% m$pct_value_over
     tags$div(
       style = "display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px;",
+      tags$div(style = paste0("flex:1;min-width:120px;padding:8px 10px;background:", bias_bg,
+                              ";border-left:4px solid ", bias_col, ";"),
+               tags$div(style="font-size:11px;color:#666;", "歷史市場定價"),
+               tags$div(style=paste0("font-size:18px;font-weight:700;color:", bias_col, ";"), bias_val)),
       tags$div(style = "flex:1;min-width:120px;padding:8px 10px;background:#f7fbf8;border-left:4px solid #00a65a;",
-               tags$div(style="font-size:11px;color:#666;", "策略低估佔比"),
-               tags$div(style="font-size:20px;font-weight:700;color:#00a65a;", .fmt_pct(m$pct_strategy_under, 0))),
-      tags$div(style = "flex:1;min-width:120px;padding:8px 10px;background:#fdf7f7;border-left:4px solid #d9534f;",
-               tags$div(style="font-size:11px;color:#666;", "價值高估佔比"),
-               tags$div(style="font-size:20px;font-weight:700;color:#d9534f;", .fmt_pct(m$pct_value_over, 0))),
+               tags$div(style="font-size:11px;color:#666;", "市場低估率"),
+               tags$div(style="font-size:20px;font-weight:700;color:#00a65a;",
+                        .fmt_pct(pct_under, 0)),
+               tags$div(style="font-size:10px;color:#888;margin-top:2px;",
+                        "股價低於模型合理價的再平衡日佔比")),
       tags$div(style = "flex:1;min-width:120px;padding:8px 10px;background:#f7f9fb;border-left:4px solid #3c8dbc;",
                tags$div(style="font-size:11px;color:#666;", "平均 MOS"),
                tags$div(style="font-size:20px;font-weight:700;color:#3c8dbc;", .fmt_pct(m$mean_hist_mos))),
       tags$div(style = "flex:2;min-width:180px;padding:8px 10px;background:#fafafa;border-left:4px solid #555;",
                tags$div(style="font-size:11px;color:#666;", "此刻參數（Session）"),
                tags$div(style="font-size:12px;",
-                        sprintf("WACC %.2f%% · Ke %.2f%% · SGR %.2f%% · n=%s · PB mid %.2f",
+                        sprintf("模型 %s · WACC %.2f%% · Ke %.2f%% · SGR %.2f%% · n=%s · PB mid %.2f",
+                                switch(as.character(mp$fv_model %||% "dcf"),
+                                       "dcf" = "DCF", "ddm" = "DDM", "ri" = "RI",
+                                       "pb" = "P/B", "composite" = "綜合", mp$fv_model),
                                 .safe_num(mp$wacc, NA) * 100, .safe_num(mp$ke, NA) * 100,
                                 .safe_num(mp$sgr, NA) * 100, mp$n_years, .safe_num(mp$pb_mid, NA))))
     )
