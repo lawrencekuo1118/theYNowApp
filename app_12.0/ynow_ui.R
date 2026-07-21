@@ -5,13 +5,13 @@
 # Backtest Zone：欄位下方小字說明
 .bt_hint <- function(text) {
   tags$p(
-    style = "margin: -6px 0 14px 0; font-size: 11.5px; line-height: 1.45; color: #777;",
+    style = "margin: -4px 0 8px 0; font-size: 11px; line-height: 1.35; color: #888;",
     text
   )
 }
 
 .bt_section_intro <- function(text) {
-  tags$p(style = "margin: 0 0 12px 0; font-size: 12.5px; color: #555; line-height: 1.5;", text)
+  tags$p(style = "margin: 0 0 8px 0; font-size: 12px; color: #555; line-height: 1.4;", text)
 }
 
 .dcf_core_params_box <- function() {
@@ -347,8 +347,8 @@ ui <- dashboardPage(
           --ynow-metric-amber-tint: #faf6ee;
           display: grid;
           grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: 14px;
-          margin: 0 0 4px 0;
+          gap: 8px;
+          margin: 0;
         }
         @media (max-width: 992px) {
           .ynow-metric-grid { grid-template-columns: 1fr; }
@@ -356,8 +356,8 @@ ui <- dashboardPage(
         .ynow-metric-card {
           background: #ffffff;
           border: 1px solid #e6e8eb;
-          border-radius: 10px;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+          border-radius: 6px;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
           overflow: hidden;
           display: flex;
           flex-direction: column;
@@ -365,27 +365,27 @@ ui <- dashboardPage(
           transition: box-shadow 0.15s ease, border-color 0.15s ease;
         }
         .ynow-metric-card:hover {
-          box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.07);
           border-color: #d5d9de;
         }
         .ynow-metric-card--green {
-          border-left: 4px solid var(--ynow-metric-green);
+          border-left: 3px solid var(--ynow-metric-green);
           background: linear-gradient(180deg, var(--ynow-metric-green-tint) 0%, #ffffff 42%);
         }
         .ynow-metric-card--red {
-          border-left: 4px solid var(--ynow-metric-red);
+          border-left: 3px solid var(--ynow-metric-red);
           background: linear-gradient(180deg, var(--ynow-metric-red-tint) 0%, #ffffff 42%);
         }
         .ynow-metric-card--violet {
-          border-left: 4px solid var(--ynow-metric-violet);
+          border-left: 3px solid var(--ynow-metric-violet);
           background: linear-gradient(180deg, var(--ynow-metric-violet-tint) 0%, #ffffff 42%);
         }
         .ynow-metric-card--blue {
-          border-left: 4px solid var(--ynow-metric-blue);
+          border-left: 3px solid var(--ynow-metric-blue);
           background: linear-gradient(180deg, var(--ynow-metric-blue-tint) 0%, #ffffff 42%);
         }
         .ynow-metric-card--amber {
-          border-left: 4px solid var(--ynow-metric-amber);
+          border-left: 3px solid var(--ynow-metric-amber);
           background: linear-gradient(180deg, var(--ynow-metric-amber-tint) 0%, #ffffff 42%);
         }
         .ynow-metric-card--blue .ynow-metric-card__icon { background: var(--ynow-metric-blue); }
@@ -394,99 +394,163 @@ ui <- dashboardPage(
         .ynow-metric-card--amber .ynow-metric-card__value { color: #8a5a12; }
         /* 執行面板：避免 btn-block 蓋住下方說明文字 */
         .ynow-bt-run-panel .btn-block { margin-left: 0; margin-right: 0; }
+        .ynow-bt-run-panel .form-group { margin-bottom: 8px; }
+        .ynow-bt-run-panel .radio { margin-top: 2px; margin-bottom: 2px; }
         .ynow-bt-run-panel .ynow-bt-run-note {
           clear: both;
           display: block;
           position: relative;
           z-index: 1;
-          margin: 12px 0 0 0;
-          padding: 8px 10px;
+          margin: 8px 0 0 0;
+          padding: 6px 8px;
           background: #fff8e8;
           border: 1px solid #f0e0b2;
           border-radius: 4px;
-          font-size: 11.5px;
-          line-height: 1.45;
+          font-size: 11px;
+          line-height: 1.35;
           color: #6b5a2e;
         }
         .ynow-metric-card__body {
-          padding: 14px 16px 12px 16px;
+          padding: 8px 10px 8px 10px;
           display: flex;
           flex-direction: column;
-          gap: 6px;
+          gap: 3px;
         }
         .ynow-metric-card__top {
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 8px;
         }
         .ynow-metric-card__icon {
           flex: 0 0 auto;
-          width: 34px;
-          height: 34px;
-          border-radius: 8px;
+          width: 28px;
+          height: 28px;
+          border-radius: 6px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          font-size: 15px;
+          font-size: 13px;
           color: #ffffff;
         }
         .ynow-metric-card--green .ynow-metric-card__icon { background: var(--ynow-metric-green); }
         .ynow-metric-card--red .ynow-metric-card__icon { background: var(--ynow-metric-red); }
         .ynow-metric-card--violet .ynow-metric-card__icon { background: var(--ynow-metric-violet); }
         .ynow-metric-card__label {
-          font-size: 12px;
+          font-size: 11px;
           font-weight: 600;
           color: #555555;
-          line-height: 1.35;
+          line-height: 1.3;
           margin: 0;
         }
         .ynow-metric-card__value {
-          font-size: clamp(26px, 3.2vw, 34px);
+          font-size: clamp(20px, 2.4vw, 26px);
           font-weight: 800;
           font-variant-numeric: tabular-nums;
           letter-spacing: -0.02em;
-          line-height: 1.15;
-          margin: 2px 0 0 0;
+          line-height: 1.1;
+          margin: 0;
           color: #1a1a1a;
         }
         .ynow-metric-card--green .ynow-metric-card__value { color: #1f5c3a; }
         .ynow-metric-card--red .ynow-metric-card__value { color: #8e2a20; }
         .ynow-metric-card--violet .ynow-metric-card__value { color: #3f3d62; }
         .ynow-metric-card__caption {
-          margin: 2px 0 0 0;
-          font-size: 11.5px;
+          margin: 0;
+          font-size: 10.5px;
           color: #6b7280;
-          line-height: 1.45;
+          line-height: 1.35;
+        }
+
+        /* Backtest Zone：整體更緊湊 */
+        #shiny-tab-backtest > h2 {
+          font-size: 22px;
+          margin: 0 0 6px 0;
+          line-height: 1.25;
+        }
+        #shiny-tab-backtest .row {
+          margin-left: -8px;
+          margin-right: -8px;
+        }
+        #shiny-tab-backtest .row > [class*='col-'] {
+          padding-left: 8px;
+          padding-right: 8px;
+        }
+        #shiny-tab-backtest .box {
+          margin-bottom: 10px;
+        }
+        #shiny-tab-backtest .box-header {
+          padding: 8px 12px;
+        }
+        #shiny-tab-backtest .box-header .box-title {
+          font-size: 14px;
+        }
+        #shiny-tab-backtest .box-body {
+          padding: 8px 12px 10px;
+        }
+        #shiny-tab-backtest .box.box-solid > .box-header > .box-tools {
+          top: 6px;
+        }
+        .ynow-bt-callout {
+          margin: 0 0 6px 0;
+          padding: 6px 10px;
+          background: #f4f8fb;
+          border-left: 3px solid #3c8dbc;
+          font-size: 11.5px;
+          color: #444;
+          line-height: 1.4;
+        }
+        .ynow-bt-legend {
+          margin: 6px 0 0 0;
+          padding-left: 16px;
+          font-size: 11px;
+          color: #666;
+          line-height: 1.4;
+        }
+        .ynow-bt-note-box {
+          margin-top: 4px;
+          padding: 8px 10px;
+          border-radius: 4px;
+          font-size: 11.5px;
+          line-height: 1.4;
         }
 
         /* Backtest：策略參數 tabBox 輕量潤飾 */
+        .ynow-bt-params .nav-tabs-custom {
+          margin-bottom: 8px;
+        }
         .ynow-bt-params .nav-tabs-custom > .nav-tabs {
           border-bottom-color: #e5e8eb;
         }
         .ynow-bt-params .nav-tabs-custom > .nav-tabs > li > a {
-          border-radius: 6px 6px 0 0;
-          font-size: 12.5px;
+          border-radius: 4px 4px 0 0;
+          font-size: 12px;
           font-weight: 600;
+          padding: 6px 10px;
         }
         .ynow-bt-params .nav-tabs-custom > .tab-content {
           background: #fafbfc;
           border: 1px solid #e8ecef;
           border-top: 0;
-          border-radius: 0 0 8px 8px;
-          padding: 14px 16px 10px;
+          border-radius: 0 0 6px 6px;
+          padding: 8px 10px 6px;
         }
         .ynow-bt-params .form-group {
           background: #ffffff;
           border: 1px solid #e8ecef;
-          border-radius: 8px;
-          padding: 10px 12px 6px;
-          margin-bottom: 10px;
-          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+          border-radius: 6px;
+          padding: 6px 8px 2px;
+          margin-bottom: 6px;
+          box-shadow: none;
         }
         .ynow-bt-params .form-group > label {
-          font-size: 12.5px;
+          font-size: 12px;
           font-weight: 600;
           color: #333;
+          margin-bottom: 2px;
+        }
+        .ynow-bt-params .irs {
+          margin-top: 2px;
+          margin-bottom: 6px;
         }
         
         /* 針對 search_results (產業資訊) 進行黑白主題與字體縮小 */
@@ -649,6 +713,7 @@ ui <- dashboardPage(
                     "bt_kpi_filter", "回測濾鏡",
                     icon = icon("filter"),
                     class = "btn-sm",
+                    title = "點一次比對達標／未達標；再點一次取消",
                     style = "background-color: #1a5276; color: #ffffff; border: 1px solid #154360; font-size: 12px; padding: 6px 14px; border-radius: 4px; font-weight: 600;"
                   ),
                   uiOutput("bt_filter_badge")
@@ -1032,19 +1097,19 @@ ui <- dashboardPage(
               withMathJax(),
               h2("量化回測實驗室 (Backtest Zone)"),
               .bt_section_intro(
-                "先看折現比較圖（基本面價值 vs 實際股價＝情緒波動價值 vs 大盤），再看策略淨值（倉位規則賺不賺錢）。Ke／WACC 採 Rolling β。"
+                "折現比較（基本面價值 vs 實際股價＝情緒波動價值 vs 大盤）→ 策略淨值。Ke／WACC＝Rolling β。"
               ),
 
-              # 1) 折現比較圖置頂：基本面價值 vs 情緒波動價值(實際股價) vs 大盤
+              # 1) 折現比較圖置頂
               fluidRow(
                 box(
                   title = tagList(icon("balance-scale"), "折現比較：基本面價值 vs 情緒波動價值 vs 大盤"),
                   width = 12, status = "primary", solidHeader = TRUE,
                   .bt_section_intro(
-                    "以執行面板所選評價模型，在各歷史時點用當時可得財報＋Rolling β 折現，重建「基本面價值」；「情緒波動價值」＝該股歷史實際股價；並疊加大盤基準價格（右軸）。僅用公告財年 ≤ 回測日的資料。"
+                    "所選評價模型 × PIT 財報 × Rolling β → 基本面價值；情緒波動價值＝實際股價；大盤右軸。"
                   ),
                   uiOutput("bt_valuation_summary"),
-                  plotlyOutput("bt_hfv_timeline", height = "420px") %>% withSpinner(),
+                  plotlyOutput("bt_hfv_timeline", height = "320px") %>% withSpinner(),
                   uiOutput("bt_signal_explain")
                 )
               ),
@@ -1064,20 +1129,16 @@ ui <- dashboardPage(
                   title = tagList(icon("chart-area"), "兩模式策略淨值比較"),
                   width = 8, status = "info", solidHeader = TRUE,
                   tags$div(
-                    style = "margin: 0 0 10px 0; padding: 10px 12px; background: #f4f8fb; border-left: 4px solid #3c8dbc; font-size: 12px; color: #444; line-height: 1.55;",
+                    class = "ynow-bt-callout",
                     tags$b("關聯："),
-                    "上方折現比較圖的基本面價值 → MOS → ",
-                    tags$b("純基本面價值"), " 倉位 (Exp_A) → 策略淨值；",
-                    tags$b("情緒波動價值"), " 策略 = Exp_A × 情緒乘數（±25%）。",
-                    "要貼近買進持有，請到「情緒波動價值」標籤調整 Fit 參數。"
+                    "基本面價值 → MOS → Exp_A（橘）→ 策略淨值；",
+                    tags$b("情緒波動價值"), " 策略＝Exp_A×情緒（藍）。Fit BH 見「情緒波動價值」標籤。"
                   ),
-                  plotlyOutput("bt_equity_plot", height = "400px") %>% withSpinner(),
+                  plotlyOutput("bt_equity_plot", height = "320px") %>% withSpinner(),
                   tags$ul(
-                    style = "margin: 10px 0 0 0; padding-left: 18px; font-size: 12px; color: #666; line-height: 1.55;",
-                    tags$li(tags$b("純基本面價值"), "（橘線）＝模式 A 策略淨值：持倉條件＋MOS 倉位 × 日報酬。"),
-                    tags$li(tags$b("情緒波動價值"), "（藍線）＝模式 B 策略淨值；Fit 買進持有參數見下方「情緒波動價值」標籤。"),
-                    tags$li(tags$b("該股買進持有"), "（綠）全程 100%；", tags$b("大盤"), "（灰虛）SPY。"),
-                    tags$li("股價／合理價美元比較見上方折現圖，勿與淨值混比。")
+                    class = "ynow-bt-legend",
+                    tags$li(tags$b("橘／藍"), "＝模式 A／B 策略淨值；", tags$b("綠"), "＝買進持有；", tags$b("灰虛"), "＝大盤。"),
+                    tags$li("美元股價／合理價見上方折現圖，勿與淨值混比。")
                   )
                 ),
                 box(
@@ -1097,31 +1158,27 @@ ui <- dashboardPage(
                     ),
                     selected = "dcf"
                   ),
-                  .bt_hint("算合理價／MOS（上方折現比較圖的基本面價值），並驅動「純基本面價值」倉位；不是淨值圖上的價格線。"),
+                  .bt_hint("驅動上方基本面價值與 Exp_A；非淨值線。"),
                   checkboxInput(
                     "bt_param_auto",
                     "自動同步參數（換股時依財報推導）",
                     value = TRUE
                   ),
-                  .bt_hint(
-                    "模式開關：勾選後，搜尋／載入新公司時會自動覆寫持倉門檻、曝險／情緒權重，並對齊上方推薦估值模型。手動改參數會自動取消勾選。"
-                  ),
+                  .bt_hint("勾選後換股會覆寫門檻／權重／推薦模型；手動改會取消。"),
                   actionButton(
                     "bt_refresh_params", "立即依目前公司重算一次",
                     icon = icon("sync"), class = "btn-default btn-block",
-                    style = "margin-bottom: 10px;"
+                    style = "margin-bottom: 6px;"
                   ),
-                  .bt_hint(
-                    "單次動作：立刻用目前公司財報重算門檻／權重（可在取消自動後使用，不想持續自動覆寫時按一次即可）。"
-                  ),
+                  .bt_hint("單次重算門檻／權重（可在關閉自動後使用）。"),
                   actionButton(
                     "run_bt", "啟動量化回測",
                     class = "btn-warning btn-lg btn-block",
-                    style = "margin-bottom: 0;"
+                    style = "margin-bottom: 0; padding: 10px 12px; font-size: 15px;"
                   ),
                   tags$div(
                     class = "ynow-bt-run-note",
-                    "季頻再平衡 · Rolling β 折現 · 依所選評價模型 PIT 重建。"
+                    "季頻再平衡 · Rolling β · 所選模型 PIT 重建。"
                   ),
                   uiOutput("bt_run_status")
                 )
@@ -1132,7 +1189,7 @@ ui <- dashboardPage(
                   title = tagList(icon("percentage"), "兩模式倉位軌跡（Exposure）"),
                   width = 6, status = "danger", solidHeader = TRUE, collapsible = TRUE,
                   uiOutput("bt_exposure_stats"),
-                  plotlyOutput("bt_exposure_plot", height = "260px") %>% withSpinner()
+                  plotlyOutput("bt_exposure_plot", height = "200px") %>% withSpinner()
                 ),
                 box(
                   title = tagList(icon("search-dollar"), "為何輸給 Buy & Hold？"),
@@ -1152,7 +1209,7 @@ ui <- dashboardPage(
                     width = 12,
                     tabPanel(
                       title = tagList(icon("filter"), "持倉回測條件"),
-                      .bt_section_intro("季頻再平衡日四項皆過才允許持倉；否則純基本面價值／情緒波動價值皆空手。"),
+                      .bt_section_intro("季再平衡四項皆過才允許持倉；否則兩模式空手。"),
                       fluidRow(
                         column(3, tipify(numericInput("bt_net_margin", "淨利率門檻 (%)", 5),
                                          "自動模式取該公司歷史淨利率約一半。", placement = "top")),
@@ -1166,56 +1223,53 @@ ui <- dashboardPage(
                     ),
                     tabPanel(
                       title = tagList(icon("balance-scale"), "純基本面價值"),
-                      .bt_section_intro(
-                        "模式 A：Exp_A → 淨值圖橘線。依 MOS 分級決定基本面倉位；上方折現圖的「基本面價值」驅動 MOS。"
-                      ),
+                      .bt_section_intro("模式 A：Exp_A（橘線）。MOS 驅動倉位。"),
                       fluidRow(
                         column(
                           6,
                           sliderInput("bt_w_vg", "MOS／Value Gap 權重（曝險）", 0, 1, 0.7, step = 0.01),
-                          .bt_hint("越大越依 MOS 分級減碼；越小越接近固定中性倉位。")
+                          .bt_hint("越大越依 MOS 減碼。")
                         ),
                         column(
                           6,
                           tags$div(
-                            style = "margin-top: 8px; padding: 12px; background: #f4f8fb; border: 1px solid #d6e4f0; border-radius: 5px; font-size: 12px; color: #3c5a73; line-height: 1.55;",
-                            tags$b("MOS 滯後曝險（基準圖）"), tags$br(),
-                            "MOS≥30%→接近最大持股；≥10%→約 72%×上限；≥0%→約 44%×上限；≥−10%→約 17%×上限；否則空手。",
-                            "（最大／最低持股與「貼近買進持有」在「情緒波動價值」標籤。）"
+                            class = "ynow-bt-note-box",
+                            style = "background:#f4f8fb;border:1px solid #d6e4f0;color:#3c5a73;",
+                            tags$b("MOS 映射："),
+                            "≥30%→近上限；≥10%→~72%；≥0%→~44%；≥−10%→~17%；否則空手。Fit 參數在「情緒波動價值」。"
                           )
                         )
                       )
                     ),
                     tabPanel(
                       title = tagList(icon("bolt"), "情緒波動價值"),
-                      .bt_section_intro(
-                        "模式 B：對應上方折現圖的「情緒波動價值」（實際股價軌跡）。策略上 Exp_B = Exp_A × 情緒乘數；可用 Fit 參數讓模擬更貼近買進持有。"
-                      ),
+                      .bt_section_intro("模式 B：Exp_B＝Exp_A×情緒；Fit 可更貼近買進持有。"),
                       fluidRow(
                         column(
                           6,
                           sliderInput("bt_w_mom", "動能相對權重", 0, 1, 0.4, step = 0.01),
-                          .bt_hint("與 RSI 正規化後組成情緒分數。"),
+                          .bt_hint("與 RSI 組成情緒分數。"),
                           sliderInput("bt_w_rsi", "RSI 相對權重", 0, 1, 0.3, step = 0.01),
-                          .bt_hint("情緒乘數限制在 0.75～1.25。")
+                          .bt_hint("乘數 0.75～1.25。")
                         ),
                         column(
                           6,
                           sliderInput("bt_max_exp", "最大持股上限", 0.5, 1, 0.9, step = 0.01),
-                          .bt_hint("拉到 1.00 可消除結構性少倉，利於貼近買進持有。"),
+                          .bt_hint("1.00＝無結構性少倉。"),
                           sliderInput("bt_min_exp_pass", "通過條件後最低持股", 0, 0.4, 0, step = 0.01),
-                          .bt_hint("持倉條件通過且非極度高估時的地板倉位。"),
+                          .bt_hint("通過且非極度高估時的地板。"),
                           tags$div(
-                            style = "margin-top: 8px; padding: 12px; background: #fcf8e3; border: 1px solid #f0e6b2; border-radius: 5px; font-size: 12px; color: #8a6d3b; line-height: 1.55;",
+                            class = "ynow-bt-note-box",
+                            style = "background:#fcf8e3;border:1px solid #f0e6b2;color:#8a6d3b;",
                             actionButton(
                               "bt_fit_bh_preset", "貼近買進持有",
                               icon = icon("chart-line"),
-                              class = "btn-success btn-block",
+                              class = "btn-success btn-block btn-sm",
                               style = "font-weight:600;"
                             ),
                             tags$div(
-                              style = "margin-top:8px;font-size:11px;color:#666;",
-                              "一鍵：最大持股=100%、最低持股=40%、w_vg=0.35（弱化減碼）。會關閉自動同步。"
+                              style = "margin-top:4px;font-size:10.5px;color:#666;",
+                              "max=100% · min=40% · w_vg=0.35；關閉自動同步。"
                             )
                           )
                         )
@@ -1229,24 +1283,24 @@ ui <- dashboardPage(
               fluidRow(
                 box(
                   title = tagList(icon("flask"), "回測驗證：MOS／Fair Value／參數高原"),
-                  width = 12, status = "info", solidHeader = TRUE, collapsible = TRUE, collapsed = FALSE,
+                  width = 12, status = "info", solidHeader = TRUE, collapsible = TRUE, collapsed = TRUE,
                   fluidRow(
                     column(
                       6,
-                      tags$h5(tags$b("MOS 有效性驗證")),
-                      .bt_hint("依 MOS 分組統計 1Y／3Y／5Y 前瞻報酬：MOS 愈高是否報酬愈好？"),
+                      tags$h5(style = "margin:4px 0;", tags$b("MOS 有效性驗證")),
+                      .bt_hint("MOS 分組 1Y／3Y／5Y 前瞻報酬。"),
                       tableOutput("bt_mos_table")
                     ),
                     column(
                       6,
-                      tags$h5(tags$b("Fair Value 預測能力")),
+                      tags$h5(style = "margin:4px 0;", tags$b("Fair Value 預測能力")),
                       uiOutput("bt_fv_edge"),
                       tableOutput("bt_fv_table")
                     )
                   ),
-                  tags$hr(style = "margin: 16px 0;"),
-                  tags$h5(tags$b("參數高原（敏感度）")),
-                  .bt_hint("微擾 WACC／SGR／年數，觀察合理價指數（Model_A）終值敏感度——不是策略淨值。"),
+                  tags$hr(style = "margin: 8px 0;"),
+                  tags$h5(style = "margin:4px 0;", tags$b("參數高原（敏感度）")),
+                  .bt_hint("微擾 WACC／SGR／年數 → Model_A 終值敏感度（非策略淨值）。"),
                   uiOutput("bt_plateau"),
                   tableOutput("bt_plateau_table")
                 )
@@ -1257,15 +1311,15 @@ ui <- dashboardPage(
                 box(
                   title = tagList(icon("book"), "回測數據來源與計算過程（方法論註解）"),
                   width = 12, status = "primary", solidHeader = TRUE,
-                  collapsible = TRUE, collapsed = FALSE,
+                  collapsible = TRUE, collapsed = TRUE,
                   uiOutput("bt_methodology_notes"),
                   tags$div(
-                    style = "margin-top: 12px;",
+                    style = "margin-top: 8px;",
                     downloadButton(
                       "download_bt_methodology",
                       "下載方法論說明（Markdown）",
                       icon = icon("download"),
-                      class = "btn-primary",
+                      class = "btn-primary btn-sm",
                       style = "font-weight: 600;"
                     )
                   )
