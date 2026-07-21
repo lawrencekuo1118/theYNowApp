@@ -2748,20 +2748,20 @@ server <- function(input, output, session) {
       style = "display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px;",
       tags$div(style = paste0("flex:1;min-width:120px;padding:8px 10px;background:", bias_bg,
                               ";border-left:4px solid ", bias_col, ";"),
-               tags$div(style="font-size:11px;color:#666;", "歷史市場定價"),
-               tags$div(style=paste0("font-size:18px;font-weight:700;color:", bias_col, ";"), bias_val)),
+               tags$div(class = "ynow-kpi-stat-label", "歷史市場定價"),
+               tags$div(class = "ynow-kpi-stat-value", style = paste0("color:", bias_col, ";"), bias_val)),
       tags$div(style = "flex:1;min-width:120px;padding:8px 10px;background:#f7fbf8;border-left:4px solid #00a65a;",
-               tags$div(style="font-size:11px;color:#666;", "市場低估率"),
-               tags$div(style="font-size:20px;font-weight:700;color:#00a65a;",
+               tags$div(class = "ynow-kpi-stat-label", "市場低估率"),
+               tags$div(class = "ynow-kpi-stat-value", style = "color:#00a65a;",
                         .fmt_pct(pct_under, 0)),
-               tags$div(style="font-size:10px;color:#888;margin-top:2px;",
+               tags$div(class = "ynow-kpi-stat-note",
                         "股價低於模型合理價的再平衡日佔比")),
       tags$div(style = "flex:1;min-width:120px;padding:8px 10px;background:#f7f9fb;border-left:4px solid #3c8dbc;",
-               tags$div(style="font-size:11px;color:#666;", "平均 MOS"),
-               tags$div(style="font-size:20px;font-weight:700;color:#3c8dbc;", .fmt_pct(m$mean_hist_mos))),
+               tags$div(class = "ynow-kpi-stat-label", "平均 MOS"),
+               tags$div(class = "ynow-kpi-stat-value", style = "color:#3c8dbc;", .fmt_pct(m$mean_hist_mos))),
       tags$div(style = "flex:2;min-width:180px;padding:8px 10px;background:#fafafa;border-left:4px solid #555;",
-               tags$div(style="font-size:11px;color:#666;", "此刻參數（Session）"),
-               tags$div(style="font-size:12px;",
+               tags$div(class = "ynow-kpi-stat-label", "此刻參數（Session）"),
+               tags$div(class = "ynow-kpi-stat-params",
                         sprintf("模型 %s · WACC %.2f%% · Ke %.2f%% · SGR %.2f%% · n=%s · PB mid %.2f",
                                 paste(toupper(.bt_selected_fv_models()), collapse = "+"),
                                 .safe_num(mp$wacc, NA) * 100, .safe_num(mp$ke, NA) * 100,
@@ -3041,8 +3041,8 @@ server <- function(input, output, session) {
     else if (grepl("Sensitive|敏感", st, ignore.case = TRUE)) "#d9534f"
     else "#777"
     tags$div(
-      tags$span(style = paste0("font-size:22px;font-weight:700;color:", col, ";"), p$status),
-      tags$p(style = "margin-top:8px;font-size:13px;line-height:1.55;", p$reason)
+      tags$span(class = "ynow-kpi-hero-value", style = paste0("color:", col, ";"), p$status),
+      tags$p(style = "margin-top:8px;font-size:12px;line-height:1.55;", p$reason)
     )
   })
 
