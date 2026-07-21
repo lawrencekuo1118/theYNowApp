@@ -529,6 +529,9 @@ ui <- dashboardPage(
           line-height: 1.05;
           margin: 0;
           color: #1a1a1a;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
         .ynow-metric-card--green .ynow-metric-card__value { color: #1f5c3a; }
         .ynow-metric-card--red .ynow-metric-card__value { color: #8e2a20; }
