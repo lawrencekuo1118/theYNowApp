@@ -1,184 +1,383 @@
 # ==========================================
-# ri_module.R - 剩餘收益模型 (Residual Income Model)
-# 專治：金融股、重資產、負自由現金流但具備龐大帳面淨值的企業
+# ri_module.R - Residual Income Model (enhanced)
+# 金融股／重資產／負 FCFF 但帳面淨值具參考性之企業
+# ==========================================
+# Engine helpers are pure (no Shiny) so sensitivity can recompute every cell.
+# Module return contract preserved: list(ri_price = reactive(...))
 # ==========================================
 
+# ---------- pure helpers ----------
+
+.ri_clip <- function(x, lo, hi) {
+  x <- suppressWarnings(as.numeric(x)[1])
+  if (!is.finite(x)) return(NA_real_)
+  max(lo, min(hi, x))
+}
+
+#' Build ROE path (decimal) for n forecast years.
+#' @param method one of constant|linear|industry|custom
+#' @param roe_start / roe_terminal / roe_industry in decimal
+#' @param custom_vec optional numeric vector (decimal); recycled/truncated to n
+build_roe_path <- function(method = "constant",
+                           n = 5,
+                           roe_start = 0.15,
+                           roe_terminal = 0.12,
+                           roe_industry = 0.12,
+                           custom_vec = NULL) {
+  n <- max(1L, as.integer(n)[1])
+  method <- match.arg(method, c("constant", "linear", "industry", "custom"))
+  roe_start <- as.numeric(roe_start)[1]
+  if (!is.finite(roe_start)) roe_start <- 0.15
+
+  if (method == "constant") {
+    return(rep(roe_start, n))
+  }
+  if (method == "linear") {
+    rt <- as.numeric(roe_terminal)[1]
+    if (!is.finite(rt)) rt <- roe_start
+    if (n == 1L) return(roe_start)
+    return(as.numeric(seq(roe_start, rt, length.out = n)))
+  }
+  if (method == "industry") {
+    ri <- as.numeric(roe_industry)[1]
+    if (!is.finite(ri)) ri <- 0.12
+    if (n == 1L) return(roe_start)
+    return(as.numeric(seq(roe_start, ri, length.out = n)))
+  }
+  # custom
+  v <- suppressWarnings(as.numeric(custom_vec))
+  v <- v[is.finite(v)]
+  if (length(v) < 1L) v <- roe_start
+  if (length(v) < n) v <- c(v, rep(utils::tail(v, 1), n - length(v)))
+  if (length(v) > n) v <- v[seq_len(n)]
+  as.numeric(v)
+}
+
+#' Core RI valuation (per-share).
+#' @return list with status, components, forecast df, warnings
+compute_ri_valuation <- function(b0,
+                                 ke,
+                                 g,
+                                 n,
+                                 payout,
+                                 roe_path,
+                                 validate = TRUE) {
+  b0 <- suppressWarnings(as.numeric(b0)[1])
+  ke <- suppressWarnings(as.numeric(ke)[1])
+  g <- suppressWarnings(as.numeric(g)[1])
+  n <- max(1L, as.integer(n)[1])
+  payout <- suppressWarnings(as.numeric(payout)[1])
+  if (!is.finite(payout)) payout <- 0
+  payout <- max(0, min(1, payout))
+
+  warnings <- character(0)
+  if (!is.finite(b0)) {
+    return(list(status = "error", message = "B0 無效，無法計算。", warnings = warnings))
+  }
+  if (validate && b0 <= 0) {
+    warnings <- c(warnings, "Book Value (B0) ≤ 0：RI 模型可能不可靠。")
+  }
+  if (!is.finite(ke) || !is.finite(g)) {
+    return(list(status = "error", message = "Ke 或 g 無效。", warnings = warnings))
+  }
+  if (g >= ke) {
+    return(list(
+      status = "error",
+      message = "無法計算：永續成長率 g 必須嚴格小於股權成本 Ke（g ≥ Ke）。",
+      warnings = warnings
+    ))
+  }
+
+  roe_path <- as.numeric(roe_path)
+  if (length(roe_path) != n || any(!is.finite(roe_path))) {
+    return(list(status = "error", message = "ROE 路徑長度／數值無效。", warnings = warnings))
+  }
+  if (any(roe_path < ke)) {
+    warnings <- c(warnings, "部分年度 ROE < Ke：剩餘收益將為負（價值銷毀）。")
+  }
+
+  df <- data.frame(
+    Year = seq_len(n),
+    Beg_BV = numeric(n),
+    ROE = roe_path,
+    Net_Income = numeric(n),
+    Dividend = numeric(n),
+    End_BV = numeric(n),
+    RI = numeric(n),
+    PV_RI = numeric(n),
+    stringsAsFactors = FALSE
+  )
+
+  curr_bv <- b0
+  for (i in seq_len(n)) {
+    roe_i <- roe_path[i]
+    ni <- curr_bv * roe_i
+    dps <- ni * payout
+    ri <- (roe_i - ke) * curr_bv
+    pv <- ri / ((1 + ke)^i)
+    end_bv <- curr_bv + ni - dps
+
+    df$Beg_BV[i] <- curr_bv
+    df$Net_Income[i] <- ni
+    df$Dividend[i] <- dps
+    df$End_BV[i] <- end_bv
+    df$RI[i] <- ri
+    df$PV_RI[i] <- pv
+    curr_bv <- end_bv
+  }
+
+  pv_ri <- sum(df$PV_RI)
+  # Terminal: next year's RI grows at g in perpetuity, discounted n years
+  ri_next <- df$RI[n] * (1 + g)
+  tv_ri <- ri_next / (ke - g)
+  pv_terminal <- tv_ri / ((1 + ke)^n)
+  intrinsic <- b0 + pv_ri + pv_terminal
+  tv_ratio <- if (is.finite(intrinsic) && abs(intrinsic) > 1e-12) {
+    pv_terminal / intrinsic
+  } else {
+    NA_real_
+  }
+
+  list(
+    status = "success",
+    message = NULL,
+    warnings = warnings,
+    b0 = b0,
+    ke = ke,
+    g = g,
+    n = n,
+    payout = payout,
+    pv_ri = pv_ri,
+    pv_terminal = pv_terminal,
+    tv_ri_undiscounted = tv_ri,
+    intrinsic = intrinsic,
+    tv_ratio = tv_ratio,
+    df = df
+  )
+}
+
+.parse_roe_pct_vector <- function(txt) {
+  if (is.null(txt) || !nzchar(as.character(txt)[1])) return(numeric(0))
+  parts <- unlist(strsplit(as.character(txt)[1], "[,;\\s]+"))
+  suppressWarnings(as.numeric(parts)) / 100
+}
+
 # ==========================================
-# 🖥️ 前端 UI 介面 (ri_module_ui)
+# UI
 # ==========================================
 ri_module_ui <- function(id) {
   ns <- NS(id)
-  
-  tabItem(tabName = "ri_calculator",
-          tabBox(title = "RESIDUAL INCOME", width = "auto",
-                 
-                 # --- 💎 子分頁 1：RI 估值主畫面 (Overview) ---
-                 tabPanel("RI Overview", icon = icon("gem"),
-                          
-                          fluidRow(
-                            div("Residual Income = Net Income - (Equity Capital × Cost of Equity)",
-                                style = "font-size: 18px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;")
-                          ),
-                          
-                          # 🌟 補回：執行試算的大按鈕
-                          fluidRow(
-                            div(style = "text-align: center; margin-bottom: 20px;",
-                                actionButton(ns("btn_calc_ri"), "試算 RI 模型", 
-                                             style = "background-color: #27ae60; color: white; font-weight: bold; font-size: 18px; padding: 12px 30px; border-radius: 8px; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1);")
-                            )
-                          ),
-                          
-                          fluidRow(
-                            column(width = 12,
-                                   fluidRow(
-                                     uiOutput(ns("ui_ri_result"))
-                                   ),
-                                   fluidRow(
-                                     box(title = "每股帳面淨值 vs 剩餘收益 軌跡圖", width = 12, status = "info",
-                                         plotOutput(ns("plt_ri_trajectory"), height = "350px")
-                                     )
-                                   ),
-                                   fluidRow(
-                                     box(
-                                       title = "剩餘收益預測細節", width = 12, status = "primary",
-                                       div(
-                                         style = "width: 100%; overflow-x: auto;",
-                                         tags$style(HTML(paste0(
-                                           "#", ns("tbl_ri_details"),
-                                           " table { width: 100% !important; table-layout: auto; }"
-                                         ))),
-                                         tableOutput(ns("tbl_ri_details"))
-                                       )
-                                     )
-                                   )
-                            )
-                          )
-                 ),
-                 
-                 # --- ⚙️ 子分頁 2：模型參數與 B0 設定 (Settings) ---
-                 tabPanel("RI Settings", icon = icon("cogs"),
-                          
-                          # -- B0 估算區 (仿 FCFF UI 風格) --
-                          h4(tags$b("每股帳面淨值 (B0) 估算區")),
-                          fluidRow(
-                            div("B0 = 普通股股東權益 (Common Equity) ÷ 發行股數 (Shares Outstanding)",
-                                style = "font-size: 16px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F8F9F9; border-left: 4px solid #2980B9; border-radius: 4px;")
-                          ),
-                          fluidRow(
-                            column(4, 
-                                   numericInput(ns("b0"), "期初每股帳面淨值 B0 (USD)", value = NA, step = 0.5)
-                            ),
-                            column(8,
-                                   br(), # 對齊下推
-                                   actionButton(ns("btn_sync_b0"), "從最新財報自動帶入數值", 
-                                                icon = icon("sync"), 
-                                                class = "btn-sm",
-                                                style = "background-color: #2980b9; color: white; border: none; padding: 8px 15px; font-weight: bold; border-radius: 5px; margin-top: 5px;")
-                            )
-                          ),
-                          
-                          hr(style = "border-top: 1px solid #BDC3C7;"),
-                          
-                          # -- 核心參數設定區 --
-                          h4(tags$b("模型參數假設")),
-                          fluidRow(
-                            column(4, numericInput(ns("ri_years"), "預測期 (Years)", value = 5, min = 1, max = 10)),
-                            column(4, numericInput(ns("ri_ke"), "股東權益成本 (Ke, %)", value = 8.0, step = 0.1)),
-                            column(4, numericInput(ns("ri_g"), "終值永續成長率 (g, %)", value = 2.0, step = 0.1))
-                          ),
-                          # 🌟 補回：RI 必備的 ROE 與配息率參數
-                          fluidRow(
-                            column(6, numericInput(ns("ri_roe"), "預期股東權益報酬率 (ROE, %)", value = 15.0, step = 0.1)),
-                            column(6, numericInput(ns("ri_payout"), "預期現金配息率 (Payout Ratio, %)", value = 40.0, step = 1))
-                          ),
-                          fluidRow(
-                            column(12,
-                                   actionButton(ns("btn_reset_ri_params"), "回復系統預設參數", 
-                                                icon = icon("undo"), 
-                                                class = "btn-sm",
-                                                style = "background-color: #7f8c8d; color: white; border: none; margin-top: 10px;")
-                            )
-                          )
-                 )
+
+  tabItem(
+    tabName = "ri_calculator",
+    tabBox(
+      title = "RESIDUAL INCOME", width = "auto",
+
+      # ----- Overview -----
+      tabPanel(
+        "RI Overview", icon = icon("gem"),
+        fluidRow(
+          div(
+            "Residual Income = (ROE − Ke) × Beginning Book Value",
+            style = paste(
+              "font-size: 16px; font-weight: bold; color: #2C3E50; text-align: center;",
+              "margin-bottom: 12px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
+            )
           )
+        ),
+        fluidRow(
+          column(
+            12,
+            uiOutput(ns("ui_ri_warnings")),
+            uiOutput(ns("ui_ri_breakdown"))
+          )
+        ),
+        fluidRow(
+          box(
+            title = "Valuation Waterfall", width = 12, status = "success", solidHeader = TRUE,
+            plotlyOutput(ns("plt_ri_waterfall"), height = "360px") %>% withSpinner()
+          )
+        ),
+        fluidRow(
+          box(
+            title = "每股帳面淨值 vs 剩餘收益軌跡", width = 12, status = "info", solidHeader = TRUE,
+            plotOutput(ns("plt_ri_trajectory"), height = "320px")
+          )
+        ),
+        fluidRow(
+          box(
+            title = tagList(icon("table"), "Forecast Detail"),
+            width = 12, status = "primary", solidHeader = TRUE,
+            collapsible = TRUE, collapsed = FALSE,
+            div(
+              style = "width: 100%; overflow-x: auto;",
+              DT::dataTableOutput(ns("tbl_ri_details"))
+            )
+          )
+        ),
+        fluidRow(
+          box(
+            title = tagList(icon("book"), "Model Formula"),
+            width = 12, status = "warning", solidHeader = TRUE,
+            collapsible = TRUE, collapsed = TRUE,
+            uiOutput(ns("ui_ri_formula"))
+          )
+        )
+      ),
+
+      # ----- Settings -----
+      tabPanel(
+        "RI Settings", icon = icon("cogs"),
+        h4(tags$b("每股帳面淨值 (B0) 估算區")),
+        fluidRow(
+          div(
+            "B0 = 普通股股東權益 (Common Equity) ÷ 發行股數 (Shares Outstanding)",
+            style = paste(
+              "font-size: 15px; font-weight: bold; color: #2C3E50; text-align: center;",
+              "margin-bottom: 12px; padding: 10px; background-color: #F8F9F9;",
+              "border-left: 4px solid #2980B9; border-radius: 4px;"
+            )
+          )
+        ),
+        fluidRow(
+          column(4, numericInput(ns("b0"), "期初每股帳面淨值 B0 (USD)", value = NA, step = 0.5)),
+          column(
+            8, br(),
+            actionButton(
+              ns("btn_sync_b0"), "從最新財報自動帶入數值",
+              icon = icon("sync"), class = "btn-sm",
+              style = "background-color: #2980b9; color: white; border: none; padding: 8px 15px; font-weight: bold; border-radius: 5px; margin-top: 5px;"
+            )
+          )
+        ),
+        hr(style = "border-top: 1px solid #BDC3C7;"),
+        h4(tags$b("模型參數假設")),
+        fluidRow(
+          column(4, numericInput(ns("ri_years"), "預測期 (Years)", value = 5, min = 1, max = 15, step = 1)),
+          column(4, numericInput(ns("ri_ke"), "股東權益成本 (Ke, %)", value = 8.0, step = 0.1)),
+          column(4, numericInput(ns("ri_g"), "終值永續成長率 (g, %)", value = 2.0, step = 0.1))
+        ),
+        fluidRow(
+          column(6, numericInput(ns("ri_roe"), "起始／預期 ROE (%)", value = 15.0, step = 0.1)),
+          column(6, numericInput(ns("ri_payout"), "預期現金配息率 (Payout, %)", value = 40.0, step = 1))
+        ),
+        hr(style = "border-top: 1px solid #BDC3C7;"),
+        h4(tags$b("ROE Forecast Method")),
+        fluidRow(
+          column(
+            6,
+            selectInput(
+              ns("roe_method"), "ROE 預測方法",
+              choices = c(
+                "Constant ROE" = "constant",
+                "Linear Fade" = "linear",
+                "Industry Fade" = "industry",
+                "Custom Vector" = "custom"
+              ),
+              selected = "constant"
+            )
+          ),
+          column(6, uiOutput(ns("ui_roe_path_preview")))
+        ),
+        uiOutput(ns("ui_roe_method_params")),
+        fluidRow(
+          column(
+            12,
+            actionButton(
+              ns("btn_reset_ri_params"), "回復系統預設參數",
+              icon = icon("undo"), class = "btn-sm",
+              style = "background-color: #7f8c8d; color: white; border: none; margin-top: 10px;"
+            ),
+            tags$span(
+              style = "margin-left: 12px; color: #7f8c8d; font-size: 12px;",
+              "參數變更後估值會自動更新（無需另按試算）。"
+            )
+          )
+        )
+      ),
+
+      # ----- Sensitivity -----
+      tabPanel(
+        "Sensitivity Analysis", icon = icon("th"),
+        fluidRow(
+          box(
+            title = "Ke × g 估值矩陣（每股內在價值）",
+            width = 12, status = "primary", solidHeader = TRUE,
+            helpText("列＝永續成長率 g；欄＝股權成本 Ke。藍框＝目前設定。"),
+            DT::dataTableOutput(ns("tbl_ri_sensitivity"))
+          )
+        ),
+        fluidRow(
+          box(
+            title = "Interactive Heatmap",
+            width = 12, status = "info", solidHeader = TRUE,
+            plotlyOutput(ns("plt_ri_heatmap"), height = "420px") %>% withSpinner()
+          )
+        )
+      )
+    )
   )
 }
 
 # ==========================================
-# ⚙️ 後端 Server 邏輯
+# Server
 # ==========================================
-# 🔴 注意：這裡的參數移除了 scraped_shares，讓模組更獨立
 ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flow, global_re,
                              global_g = reactive(NULL)) {
   moduleServer(id, function(input, output, session) {
-    
-    # ==========================================
-    # 🔄 自動從財報同步預設值 (初次載入時)
-    # ==========================================
+    ns <- session$ns
+
+    # ----- Sync B0 / ROE / payout from statements -----
     observeEvent(d_balance_sheet(), {
       req(d_balance_sheet(), d_income_statement())
-      
       df_bs <- d_balance_sheet()
-      
-      # 🌟 1. 獨立抓取股數防呆邏輯 (不再依賴 server.R 傳入)
-      raw_shares <- select_current_metric(df_bs, "Ordinary Shares Number|Share Issued|Total Shares Outstanding", "stock")
+
+      raw_shares <- select_current_metric(
+        df_bs, "Ordinary Shares Number|Share Issued|Total Shares Outstanding", "stock"
+      )
       shares <- if (is.na(raw_shares) || raw_shares <= 0) 1 else raw_shares
-      
       equity <- select_current_metric_any(df_bs, EQUITY_PATTERNS, "stock")
-      
+
       if (!is.na(equity) && !is.na(shares) && shares > 0) {
-        bvps <- equity / shares
-        updateNumericInput(session, "b0", value = round(bvps, 2))
+        updateNumericInput(session, "b0", value = round(equity / shares, 2))
       }
-      
-      # 3. 計算歷史 ROE
+
       ni <- select_current_metric_any(d_income_statement(), NET_INCOME_PATTERNS, "flow")
-      
       if (!is.na(ni) && !is.na(equity) && equity > 0) {
         roe <- (ni / equity) * 100
-        roe_safe <- max(-50, min(roe, 50))
-        updateNumericInput(session, "ri_roe", value = round(roe_safe, 2))
+        updateNumericInput(session, "ri_roe", value = round(.ri_clip(roe, -50, 80), 2))
       }
-      
-      # 4. 計算歷史配息率
+
       div_paid_total <- abs(select_current_metric(d_cash_flow(), "Cash Dividends Paid", "flow"))
       if (!is.na(div_paid_total) && !is.na(ni) && ni > 0) {
-        payout <- (div_paid_total / ni) * 100
-        payout_safe <- max(0, min(payout, 100))
-        updateNumericInput(session, "ri_payout", value = round(payout_safe, 2))
+        payout <- .ri_clip((div_paid_total / ni) * 100, 0, 100)
+        updateNumericInput(session, "ri_payout", value = round(payout, 2))
       } else {
         updateNumericInput(session, "ri_payout", value = 0)
       }
 
-      # 5. 永續 g：若有中央同步則採用
       if (!is.null(global_g) && !is.null(global_g()) && is.finite(global_g())) {
         updateNumericInput(session, "ri_g", value = round(as.numeric(global_g()), 2))
       }
     })
-    
-    # ==========================================
-    # 🔘 按鈕邏輯：手動從財報再次同步 B0
-    # ==========================================
+
     observeEvent(input$btn_sync_b0, {
       req(d_balance_sheet())
       df_bs <- d_balance_sheet()
-      
-      # 🌟 同樣使用獨立抓取邏輯
-      raw_shares <- select_current_metric(df_bs, "Ordinary Shares Number|Share Issued|Total Shares Outstanding", "stock")
+      raw_shares <- select_current_metric(
+        df_bs, "Ordinary Shares Number|Share Issued|Total Shares Outstanding", "stock"
+      )
       shares <- if (is.na(raw_shares) || raw_shares <= 0) 1 else raw_shares
-      
       equity <- select_current_metric_any(df_bs, EQUITY_PATTERNS, "stock")
-      
       if (!is.na(equity) && !is.na(shares) && shares > 0) {
         calc_b0 <- round(equity / shares, 2)
         updateNumericInput(session, "b0", value = calc_b0)
-        showNotification(paste("✅ 已成功從資產負債表更新 B0 為 $", calc_b0), type = "message")
+        showNotification(paste0("✅ 已成功從資產負債表更新 B0 為 $", calc_b0), type = "message")
       } else {
         showNotification("⚠️ 無法從當前財報讀取完整 B0 所需欄位", type = "error")
       }
     })
-    
-    # 🔘 按鈕邏輯：重設所有 RI 參數
+
     observeEvent(input$btn_reset_ri_params, {
       updateNumericInput(session, "ri_years", value = 5)
       g_reset <- if (!is.null(global_g) && !is.null(global_g()) && is.finite(global_g())) {
@@ -187,19 +386,18 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
         2.0
       }
       updateNumericInput(session, "ri_g", value = g_reset)
-      if (!is.null(global_re())) {
+      if (!is.null(global_re()) && is.finite(global_re())) {
         updateNumericInput(session, "ri_ke", value = round(global_re() * 100, 2))
       }
+      updateSelectInput(session, "roe_method", selected = "constant")
       showNotification("🔁 已重設為系統預設參數", type = "message")
     })
-    
-    # 同步中央大腦的全域 Ke (來自 WACC/CAPM)
+
     observeEvent(global_re(), {
       req(global_re())
       updateNumericInput(session, "ri_ke", value = round(global_re() * 100, 2))
     })
 
-    # 同步中央永續成長率 g
     observeEvent(global_g(), {
       req(!is.null(global_g()), is.finite(global_g()))
       g_val <- round(as.numeric(global_g()), 2)
@@ -207,148 +405,436 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
         updateNumericInput(session, "ri_g", value = g_val)
       }
     }, ignoreInit = FALSE)
-    
-    # ==========================================
-    # 🧮 核心運算引擎 (RI Model)
-    # ==========================================
-    ri_calc <- eventReactive(input$btn_calc_ri, {
-      req(input$b0, input$ri_roe, input$ri_ke, input$ri_payout, input$ri_years, input$ri_g)
-      
-      b0 <- input$b0
-      roe <- input$ri_roe / 100
-      ke <- input$ri_ke / 100
-      payout <- input$ri_payout / 100
-      g <- input$ri_g / 100
-      n <- input$ri_years
-      
-      if (ke <= g) {
-        return(list(status = "error", message = "⚠️ 計算無效：要求股權報酬率 (Ke) 必須嚴格大於終端成長率 (g)！"))
-      }
-      
-      df <- data.frame(
-        Year = 1:n,
-        Beg_BVPS = numeric(n),
-        EPS = numeric(n),
-        DPS = numeric(n),
-        Equity_Charge = numeric(n),
-        RI = numeric(n),
-        PV_RI = numeric(n)
-      )
-      
-      curr_bv <- b0
-      discount_sum <- 0
-      
-      # 逐年推算 (Per Share 基礎)
-      for (i in 1:n) {
-        df$Beg_BVPS[i] <- curr_bv
-        df$EPS[i] <- curr_bv * roe
-        df$DPS[i] <- df$EPS[i] * payout
-        df$Equity_Charge[i] <- curr_bv * ke
-        df$RI[i] <- df$EPS[i] - df$Equity_Charge[i] 
-        df$PV_RI[i] <- df$RI[i] / ((1 + ke)^i)
-        
-        discount_sum <- discount_sum + df$PV_RI[i]
-        curr_bv <- curr_bv + df$EPS[i] - df$DPS[i] # 期末淨值 = 期初 + EPS - 股利
-      }
-      
-      # 終值 (Terminal Value) 假設最後一年的 RI 以 g 成長
-      tv_ri <- (df$RI[n] * (1 + g)) / (ke - g)
-      pv_tv_ri <- tv_ri / ((1 + ke)^n)
-      
-      # 企業內在價值 = B0 + 預測期 RI 現值加總 + 終端 RI 現值
-      intrinsic_value <- b0 + discount_sum + pv_tv_ri
-      
-      return(list(
-        status = "success", 
-        value = intrinsic_value, 
-        b0 = b0,
-        pv_ri = discount_sum,
-        pv_tv = pv_tv_ri,
-        df = df
-      ))
-    }, ignoreNULL = FALSE)
-    
-    # ==========================================
-    # 📊 UI 輸出渲染
-    # ==========================================
-    output$ui_ri_result <- renderUI({
-      res <- ri_calc()
-      if (res$status == "error") {
-        div(style = "color: #d9534f; font-weight: bold; padding: 15px; background-color: #fdf2f2; border-left: 5px solid #d9534f; border-radius: 4px;", 
-            icon("exclamation-triangle"), " ", res$message)
+
+    # Keep custom ROE vector length aligned with forecast years
+    observeEvent(list(input$ri_years, input$roe_method), {
+      req(identical(input$roe_method, "custom"))
+      n <- max(1L, as.integer(input$ri_years %||% 5))
+      cur <- .parse_roe_pct_vector(input$roe_custom_txt)
+      start <- (input$ri_roe %||% 15) / 100
+      if (length(cur) < 1L) cur <- start
+      if (length(cur) < n) cur <- c(cur, rep(utils::tail(cur, 1), n - length(cur)))
+      if (length(cur) > n) cur <- cur[seq_len(n)]
+      updateTextInput(session, "roe_custom_txt", value = paste(round(cur * 100, 1), collapse = ", "))
+    }, ignoreInit = TRUE)
+
+    output$ui_roe_method_params <- renderUI({
+      method <- input$roe_method %||% "constant"
+      n <- max(1L, as.integer(input$ri_years %||% 5))
+      start_roe <- input$ri_roe %||% 15
+
+      if (identical(method, "linear")) {
+        fluidRow(
+          column(4, numericInput(ns("roe_terminal"), "Terminal ROE (%)", value = max(5, start_roe - 8), step = 0.1)),
+          column(8, helpText("由起始 ROE 線性淡化至 Terminal ROE，年數＝預測期。"))
+        )
+      } else if (identical(method, "industry")) {
+        fluidRow(
+          column(4, numericInput(ns("roe_industry"), "Industry Average ROE (%)", value = 12, step = 0.1)),
+          column(8, helpText("由起始 ROE 線性收斂至產業平均 ROE（可手動編輯）。"))
+        )
+      } else if (identical(method, "custom")) {
+        default_vec <- paste(round(rep(start_roe, n), 1), collapse = ", ")
+        fluidRow(
+          column(
+            12,
+            textInput(
+              ns("roe_custom_txt"),
+              sprintf("Custom ROE Vector (%%, %d 年，逗號分隔)", n),
+              value = default_vec
+            ),
+            helpText("例：31, 29, 27, 25, 23 — 長度不足會沿用最後一值；過長會截斷。")
+          )
+        )
       } else {
-        # 判斷是在創造價值還是毀滅價值
-        value_creation <- res$pv_ri + res$pv_tv
-        color <- if(value_creation >= 0) "#00a65a" else "#d9534f"
-        sign_txt <- if(value_creation >= 0) "+" else ""
-        
-        div(style = "display: flex; justify-content: space-between; align-items: center; padding: 20px; background-color: #fcfcfc; border: 1px solid #ddd; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);",
-            div(style = "text-align: center;",
-                p(style = "font-size: 14px; color: #7f8c8d; margin-bottom: 5px; font-weight: bold;", "當前每股淨值 (B0)"),
-                p(style = "font-size: 24px; color: #2c3e50; font-weight: bold; margin: 0;", paste0("$", round(res$b0, 2)))
-            ),
-            div(style = "text-align: center;",
-                p(style = "font-size: 20px; color: #95a5a6; margin: 0;", "+")
-            ),
-            div(style = "text-align: center;",
-                p(style = "font-size: 14px; color: #7f8c8d; margin-bottom: 5px; font-weight: bold;", "超額利潤現值 PV(RI)"),
-                p(style = paste0("font-size: 24px; font-weight: bold; margin: 0; color: ", color, ";"), 
-                  paste0(sign_txt, "$", round(value_creation, 2)))
-            ),
-            div(style = "text-align: center;",
-                p(style = "font-size: 20px; color: #95a5a6; margin: 0;", "=")
-            ),
-            div(style = "text-align: center; background-color: #e8f8f5; padding: 15px; border-radius: 8px; border-left: 4px solid #1abc9c;",
-                p(style = "font-size: 14px; color: #16a085; margin-bottom: 5px; font-weight: bold; text-transform: uppercase;", "RI 推估每股合理價"),
-                p(style = "font-size: 32px; color: #1abc9c; font-weight: bold; margin: 0;", paste0("$", round(res$value, 2)))
+        helpText("Constant：各年 ROE 皆等於「起始／預期 ROE」。")
+      }
+    })
+
+    roe_path_pct <- reactive({
+      n <- max(1L, as.integer(input$ri_years %||% 5))
+      method <- input$roe_method %||% "constant"
+      start <- (input$ri_roe %||% 15) / 100
+      term <- (input$roe_terminal %||% (input$ri_roe %||% 15)) / 100
+      ind <- (input$roe_industry %||% 12) / 100
+      custom <- if (identical(method, "custom")) {
+        .parse_roe_pct_vector(input$roe_custom_txt)
+      } else {
+        NULL
+      }
+      build_roe_path(method, n, start, term, ind, custom) * 100
+    })
+
+    output$ui_roe_path_preview <- renderUI({
+      path <- tryCatch(roe_path_pct(), error = function(e) numeric(0))
+      if (!length(path)) return(NULL)
+      tags$div(
+        style = "margin-top: 8px; font-size: 13px; color: #34495e;",
+        tags$b("ROE path (%): "),
+        paste(sprintf("%.1f", path), collapse = " → ")
+      )
+    })
+
+    # ----- Core reactive valuation (auto-updates) -----
+    ri_calc <- reactive({
+      req(!is.null(input$b0), !is.null(input$ri_ke), !is.null(input$ri_g),
+          !is.null(input$ri_years), !is.null(input$ri_payout), !is.null(input$ri_roe))
+
+      n <- max(1L, as.integer(input$ri_years))
+      method <- input$roe_method %||% "constant"
+      path_dec <- build_roe_path(
+        method = method,
+        n = n,
+        roe_start = (input$ri_roe %||% 15) / 100,
+        roe_terminal = (input$roe_terminal %||% (input$ri_roe %||% 15)) / 100,
+        roe_industry = (input$roe_industry %||% 12) / 100,
+        custom_vec = if (identical(method, "custom")) .parse_roe_pct_vector(input$roe_custom_txt) else NULL
+      )
+
+      compute_ri_valuation(
+        b0 = input$b0,
+        ke = (input$ri_ke %||% 8) / 100,
+        g = (input$ri_g %||% 2) / 100,
+        n = n,
+        payout = (input$ri_payout %||% 0) / 100,
+        roe_path = path_dec,
+        validate = TRUE
+      )
+    })
+
+    # ----- Warnings -----
+    output$ui_ri_warnings <- renderUI({
+      res <- ri_calc()
+      tags_list <- list()
+
+      if (!is.null(res$message) && identical(res$status, "error")) {
+        tags_list <- c(tags_list, list(
+          div(
+            style = "margin-bottom:10px;padding:12px;background:#fdf2f2;border-left:5px solid #d9534f;border-radius:4px;color:#a94442;font-weight:600;",
+            icon("exclamation-triangle"), " ", res$message
+          )
+        ))
+      }
+
+      for (w in res$warnings %||% character(0)) {
+        tags_list <- c(tags_list, list(
+          div(
+            style = "margin-bottom:8px;padding:10px;background:#fff8e6;border-left:5px solid #f0ad4e;border-radius:4px;color:#8a6d3b;",
+            icon("exclamation-circle"), " ", w
+          )
+        ))
+      }
+
+      if (identical(res$status, "success") && is.finite(res$tv_ratio)) {
+        if (res$tv_ratio > 0.85) {
+          tags_list <- c(tags_list, list(
+            div(
+              style = "margin-bottom:10px;padding:12px;background:#fdf2f2;border-left:5px solid #d9534f;border-radius:4px;color:#a94442;font-weight:600;",
+              icon("fire"), " ",
+              "Terminal Value dominates the valuation. Consider lowering perpetual growth or extending forecast years."
             )
+          ))
+        } else if (res$tv_ratio > 0.70) {
+          tags_list <- c(tags_list, list(
+            div(
+              style = "margin-bottom:10px;padding:12px;background:#fff8e6;border-left:5px solid #f0ad4e;border-radius:4px;color:#8a6d3b;font-weight:600;",
+              icon("exclamation-triangle"), " ",
+              "Terminal Value contributes over 70% of total valuation. The model is highly sensitive to Ke and perpetual growth."
+            )
+          ))
+        }
+      }
+
+      if (!length(tags_list)) return(NULL)
+      do.call(tagList, tags_list)
+    })
+
+    # ----- Breakdown cards -----
+    output$ui_ri_breakdown <- renderUI({
+      res <- ri_calc()
+      if (!identical(res$status, "success")) return(NULL)
+
+      card <- function(label, value, sub = NULL, accent = "#2c3e50", bg = "#fcfcfc") {
+        div(
+          style = paste0(
+            "flex:1;min-width:140px;margin:6px;padding:14px 12px;text-align:center;",
+            "background:", bg, ";border:1px solid #e5e5e5;border-radius:8px;"
+          ),
+          p(style = "font-size:12px;color:#7f8c8d;margin:0 0 6px 0;font-weight:700;text-transform:uppercase;", label),
+          p(style = paste0("font-size:22px;font-weight:700;margin:0;color:", accent, ";"), value),
+          if (!is.null(sub)) p(style = "font-size:11px;color:#95a5a6;margin:6px 0 0 0;", sub)
         )
       }
+
+      tv_pct <- if (is.finite(res$tv_ratio)) sprintf("%.1f%%", 100 * res$tv_ratio) else "N/A"
+      tv_col <- if (is.finite(res$tv_ratio) && res$tv_ratio > 0.85) "#d9534f"
+      else if (is.finite(res$tv_ratio) && res$tv_ratio > 0.70) "#e67e22"
+      else "#8e44ad"
+
+      tagList(
+        h4(tags$b("Residual Income Breakdown"), style = "margin: 8px 0 4px 0;"),
+        div(
+          style = "display:flex;flex-wrap:wrap;justify-content:space-between;align-items:stretch;",
+          card("Book Value (B0)", paste0("$", sprintf("%.2f", res$b0))),
+          card("Forecast RI (PV)", paste0("$", sprintf("%.2f", res$pv_ri)),
+               accent = if (res$pv_ri >= 0) "#27ae60" else "#c0392b"),
+          card("Terminal Value (PV)", paste0("$", sprintf("%.2f", res$pv_terminal)),
+               accent = "#8e44ad"),
+          card("Intrinsic Value", paste0("$", sprintf("%.2f", res$intrinsic)),
+               accent = "#1abc9c", bg = "#e8f8f5"),
+          card("Terminal Contribution", tv_pct, accent = tv_col,
+               sub = "PV_Terminal / Intrinsic")
+        ),
+        p(
+          style = "font-size:12px;color:#7f8c8d;margin-top:4px;",
+          "Intrinsic Value = B0 + PV(Forecast RI) + PV(Terminal RI)"
+        )
+      )
     })
-    
+
+    # ----- Waterfall -----
+    output$plt_ri_waterfall <- renderPlotly({
+      res <- ri_calc()
+      validate(need(identical(res$status, "success"), "調整參數後顯示瀑布圖"))
+
+      # Plotly waterfall: measure relative/total
+      x <- c("Book Value (B0)", "Forecast RI", "Terminal RI", "Intrinsic Value")
+      measure <- c("absolute", "relative", "relative", "total")
+      y <- c(res$b0, res$pv_ri, res$pv_terminal, res$intrinsic)
+      text <- sprintf("$%.2f", y)
+
+      plot_ly(
+        type = "waterfall",
+        x = x,
+        measure = measure,
+        y = y,
+        text = text,
+        textposition = "outside",
+        connector = list(line = list(color = "#95a5a6")),
+        increasing = list(marker = list(color = "#27ae60")),
+        decreasing = list(marker = list(color = "#c0392b")),
+        totals = list(marker = list(color = "#1abc9c"))
+      ) %>%
+        layout(
+          title = list(text = "RI Valuation Waterfall", font = list(size = 14)),
+          yaxis = list(title = "USD / share", zeroline = TRUE),
+          xaxis = list(title = ""),
+          margin = list(t = 50, b = 80)
+        )
+    })
+
+    # ----- Trajectory (ggplot) -----
     output$plt_ri_trajectory <- renderPlot({
       res <- ri_calc()
-      req(res$status == "success")
+      req(identical(res$status, "success"))
       df <- res$df
-      
       df$Cum_PV_RI <- cumsum(df$PV_RI)
       df$Intrinsic_Path <- res$b0 + df$Cum_PV_RI
-      
+
       ggplot(df, aes(x = as.factor(Year))) +
-        geom_bar(aes(y = Intrinsic_Path, fill = "累計企業價值 (B0 + PV of RI)"), stat = "identity", alpha = 0.7) +
-        geom_hline(yintercept = res$b0, linetype = "dashed", color = "#34495e", linewidth = 1.2) +
-        geom_text(aes(x = 1.5, y = res$b0,
-                      label = paste0("期初帳面淨值 B0: ", format_dollar_abbr(res$b0))),
-                  vjust = -1, color = "#34495e", fontface = "bold") +
+        geom_bar(aes(y = Intrinsic_Path, fill = "B0 + 累計 PV(Forecast RI)"),
+                 stat = "identity", alpha = 0.7) +
+        geom_hline(yintercept = res$b0, linetype = "dashed", color = "#34495e", linewidth = 1.1) +
+        geom_hline(yintercept = res$intrinsic, linetype = "dotted", color = "#1abc9c", linewidth = 1) +
         geom_point(aes(y = Intrinsic_Path), size = 3, color = "#2980b9") +
         geom_line(aes(y = Intrinsic_Path, group = 1), color = "#2980b9", linewidth = 1) +
-        scale_fill_manual(name = "", values = c("累計企業價值 (B0 + PV of RI)" = "#aed6f1")) +
+        scale_fill_manual(name = "", values = c("B0 + 累計 PV(Forecast RI)" = "#aed6f1")) +
         scale_y_continuous(labels = label_chart_number(prefix = "$")) +
-        theme_minimal(base_size = 14) +
-        labs(x = "預測年份", y = "每股價值 (USD)") +
+        theme_minimal(base_size = 13) +
+        labs(x = "預測年份", y = "每股價值 (USD)",
+             caption = sprintf("虛線＝B0；點線＝完整內在價值（含 Terminal）$%.2f", res$intrinsic)) +
         theme(legend.position = "bottom")
     })
-    
-    output$tbl_ri_details <- renderTable({
+
+    # ----- Forecast detail DT -----
+    output$tbl_ri_details <- DT::renderDataTable({
       res <- ri_calc()
-      req(res$status == "success")
+      validate(need(identical(res$status, "success"), "尚無有效預測表"))
       df <- res$df
-      
-      out_df <- data.frame(
-        "預測年 (Year)" = df$Year,
-        "期初淨值 (Beg BV)" = sprintf("$%.2f", df$Beg_BVPS),
-        "預估 EPS" = sprintf("$%.2f", df$EPS),
-        "預估 DPS" = sprintf("$%.2f", df$DPS),
-        "股權資本成本 (Ke × BV)" = sprintf("$%.2f", df$Equity_Charge),
-        "剩餘收益 (RI)" = sprintf("$%.2f", df$RI),
-        "折現後 RI (PV)" = sprintf("$%.2f", df$PV_RI)
+      out <- data.frame(
+        Year = df$Year,
+        `Beginning BV` = round(df$Beg_BV, 4),
+        `ROE (%)` = round(df$ROE * 100, 2),
+        `Net Income` = round(df$Net_Income, 4),
+        Dividend = round(df$Dividend, 4),
+        `Ending BV` = round(df$End_BV, 4),
+        `Residual Income` = round(df$RI, 4),
+        `PV(RI)` = round(df$PV_RI, 4),
+        check.names = FALSE
       )
-      return(out_df)
-    }, align = "c", striped = TRUE, hover = TRUE, bordered = TRUE, width = "100%")
-    
-    # 傳出計算結果
+      DT::datatable(
+        out,
+        rownames = FALSE,
+        options = list(dom = "t", pageLength = 20, scrollX = TRUE),
+        class = "stripe hover compact"
+      ) %>%
+        DT::formatCurrency(
+          columns = c("Beginning BV", "Net Income", "Dividend", "Ending BV",
+                      "Residual Income", "PV(RI)"),
+          currency = "$", digits = 2
+        )
+    })
+
+    # ----- Formula panel -----
+    output$ui_ri_formula <- renderUI({
+      withMathJax(tagList(
+        tags$p(tags$b("剩餘收益 (Residual Income)")),
+        tags$p("$$RI_t = (ROE_t - K_e) \\times BV_{t-1}$$"),
+        tags$p("等價於：淨利 − 股權資金成本＝$$NI_t - K_e \\times BV_{t-1}$$"),
+        tags$hr(),
+        tags$p(tags$b("內在價值")),
+        tags$p("$$V_0 = BV_0 + \\sum_{t=1}^{N} \\frac{RI_t}{(1+K_e)^t} + \\frac{TV}{(1+K_e)^N}$$"),
+        tags$p("其中終值 $$TV = \\dfrac{RI_N (1+g)}{K_e - g}$$（永續成長剩餘收益）"),
+        tags$p(tags$b("Terminal Contribution")),
+        tags$p("$$TV\\ Ratio = \\dfrac{PV(Terminal)}{V_0}$$")
+      ))
+    })
+
+    # ----- Sensitivity matrix -----
+    .ri_sens_grid <- reactive({
+      res0 <- ri_calc()
+      validate(need(identical(res0$status, "success") || !is.null(input$b0), "需先有 B0／參數"))
+
+      g_grid <- c(0.02, 0.03, 0.04, 0.05, 0.06)
+      ke_grid <- c(0.08, 0.09, 0.10, 0.11, 0.12)
+      n <- max(1L, as.integer(input$ri_years %||% 5))
+      method <- input$roe_method %||% "constant"
+      path_dec <- build_roe_path(
+        method = method,
+        n = n,
+        roe_start = (input$ri_roe %||% 15) / 100,
+        roe_terminal = (input$roe_terminal %||% (input$ri_roe %||% 15)) / 100,
+        roe_industry = (input$roe_industry %||% 12) / 100,
+        custom_vec = if (identical(method, "custom")) .parse_roe_pct_vector(input$roe_custom_txt) else NULL
+      )
+      b0 <- input$b0 %||% NA_real_
+      payout <- (input$ri_payout %||% 0) / 100
+
+      mat_v <- matrix(NA_real_, nrow = length(g_grid), ncol = length(ke_grid),
+                      dimnames = list(
+                        paste0("g=", g_grid * 100, "%"),
+                        paste0("Ke=", ke_grid * 100, "%")
+                      ))
+      mat_tv <- mat_v
+      for (i in seq_along(g_grid)) {
+        for (j in seq_along(ke_grid)) {
+          cell <- compute_ri_valuation(
+            b0 = b0, ke = ke_grid[j], g = g_grid[i], n = n,
+            payout = payout, roe_path = path_dec, validate = FALSE
+          )
+          if (identical(cell$status, "success")) {
+            mat_v[i, j] <- cell$intrinsic
+            mat_tv[i, j] <- cell$tv_ratio
+          }
+        }
+      }
+      list(
+        value = mat_v, tv = mat_tv,
+        g_grid = g_grid, ke_grid = ke_grid,
+        cur_g = (input$ri_g %||% 2) / 100,
+        cur_ke = (input$ri_ke %||% 8) / 100
+      )
+    })
+
+    output$tbl_ri_sensitivity <- DT::renderDataTable({
+      grid <- .ri_sens_grid()
+      mat <- round(grid$value, 2)
+      df <- as.data.frame(mat, check.names = FALSE)
+      df <- cbind(`g \\ Ke` = rownames(mat), df)
+      rownames(df) <- NULL
+
+      # Highlight current Ke/g cell via JS after draw
+      cur_g_i <- which.min(abs(grid$g_grid - grid$cur_g))
+      cur_ke_j <- which.min(abs(grid$ke_grid - grid$cur_ke))
+      # DT is 0-indexed; +1 for rowname col
+      target_row <- cur_g_i - 1L
+      target_col <- cur_ke_j  # +1 offset handled in JS below (column 0 = label)
+
+      brks <- suppressWarnings(pretty(range(mat, na.rm = TRUE), n = 8))
+      if (!length(brks) || any(!is.finite(brks))) {
+        brks <- c(0, 1)
+      }
+      clrs <- grDevices::colorRampPalette(c("#f5b7b1", "#fef9e7", "#abebc6"))(length(brks) + 1)
+
+      DT::datatable(
+        df,
+        rownames = FALSE,
+        selection = "none",
+        options = list(
+          dom = "t",
+          ordering = FALSE,
+          pageLength = 10,
+          columnDefs = list(list(className = "dt-center", targets = "_all")),
+          rowCallback = htmlwidgets::JS(sprintf(
+            "function(row, data, displayNum, displayIndex) {
+               if (displayIndex === %d) {
+                 $('td', row).eq(%d).css({
+                   'outline': '3px solid #2980b9',
+                   'outline-offset': '-3px',
+                   'font-weight': '700'
+                 });
+               }
+             }",
+            target_row, cur_ke_j
+          ))
+        )
+      ) %>%
+        DT::formatStyle(
+          columns = names(df)[-1],
+          backgroundColor = DT::styleInterval(brks, clrs)
+        ) %>%
+        DT::formatCurrency(columns = names(df)[-1], currency = "$", digits = 2)
+    })
+
+    output$plt_ri_heatmap <- renderPlotly({
+      grid <- .ri_sens_grid()
+      validate(need(any(is.finite(grid$value)), "無法產生熱力圖（檢查 g < Ke）"))
+
+      # Long format for hover (Ke, g, V, TV ratio)
+      g_lab <- grid$g_grid * 100
+      ke_lab <- grid$ke_grid * 100
+      z <- grid$value
+      tv <- grid$tv
+      hover <- matrix("", nrow = nrow(z), ncol = ncol(z))
+      for (i in seq_len(nrow(z))) {
+        for (j in seq_len(ncol(z))) {
+          hover[i, j] <- sprintf(
+            "Ke: %.0f%%<br>g: %.0f%%<br>Intrinsic: $%.2f<br>TV Ratio: %s",
+            ke_lab[j], g_lab[i], z[i, j],
+            if (is.finite(tv[i, j])) sprintf("%.1f%%", 100 * tv[i, j]) else "N/A"
+          )
+        }
+      }
+
+      plot_ly(
+        x = ke_lab,
+        y = g_lab,
+        z = z,
+        type = "heatmap",
+        colorscale = list(
+          list(0, "#e74c3c"),
+          list(0.5, "#f7dc6f"),
+          list(1, "#27ae60")
+        ),
+        hoverinfo = "text",
+        text = hover,
+        colorbar = list(title = "Intrinsic")
+      ) %>%
+        layout(
+          title = list(text = "RI Intrinsic Value Heatmap", font = list(size = 14)),
+          xaxis = list(title = "Cost of Equity Ke (%)", dtick = 1),
+          yaxis = list(title = "Perpetual Growth g (%)", dtick = 1),
+          margin = list(t = 50)
+        )
+    })
+
+    # Preserve external contract
     return(list(
-      ri_price = reactive({ res <- ri_calc(); if(res$status == "success") res$value else NA })
+      ri_price = reactive({
+        res <- ri_calc()
+        if (identical(res$status, "success")) res$intrinsic else NA_real_
+      }),
+      ri_result = ri_calc
     ))
   })
 }
