@@ -136,6 +136,16 @@ ui <- dashboardPage(
         .sidebar-menu > li.menu-open > a {
           font-weight: 700 !important;
         }
+        /* 公司全稱：允許換行，避免被切掉 */
+        .ynow-corpname {
+          font-weight: bold;
+          color: #333333;
+          margin: 0;
+          line-height: 1.25;
+          white-space: normal;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
       ')),
       
       tags$style(HTML("
@@ -647,7 +657,7 @@ ui <- dashboardPage(
                actionButton("search", "Search", icon = icon("search")))
       ),
       column(width = 8,
-             h2(textOutput("txt_corpname"), style = "font-weight: bold; color: #333333; ")
+             h2(textOutput("txt_corpname"), class = "ynow-corpname")
       )
     ),
     br(),

@@ -20,13 +20,34 @@ except Exception:
     SELENIUM_AVAILABLE = False
 
 
+def _best_company_name(info, ticker=""):
+    """Prefer full legal/display name; Yahoo shortName is often truncated."""
+    if not isinstance(info, dict):
+        info = {}
+    candidates = [
+        info.get("longName"),
+        info.get("longname"),
+        info.get("displayName"),
+        info.get("shortName"),
+        info.get("shortname"),
+    ]
+    for c in candidates:
+        if c is None:
+            continue
+        s = str(c).strip()
+        if s:
+            return s
+    t = str(ticker or "").strip()
+    return t if t else "Unknown"
+
+
 def fast_get_company_info(ticker="AMZN"):
     print(f"⚡ 使用高速 API 獲取 {ticker} 公司與產業資訊...")
     try:
         stock = yf.Ticker(ticker)
         info = stock.info
 
-        comp_name = info.get("shortName", info.get("longName", ticker))
+        comp_name = _best_company_name(info, ticker)
         sector = info.get("sector", "Unknown Sector")
         industry = info.get("industry", "Unknown Industry")
 
@@ -101,7 +122,7 @@ def get_summary_quote(ticker="AMZN"):
             print(f"⚠️ fast_info fallback failed: {e2}")
             info = {}
 
-    company_name = info.get("shortName") or info.get("longName") or ticker
+    company_name = _best_company_name(info, ticker)
 
     # 若 info 幾乎為空，用 history 補 Previous Close
     if info.get("previousClose") is None:
@@ -456,7 +477,13 @@ def search_tickers(query="", max_results=12):
             sym = item.get("symbol")
             if not sym:
                 continue
-            name = item.get("shortname") or item.get("longname") or item.get("longName") or ""
+            name = (
+                item.get("longname")
+                or item.get("longName")
+                or item.get("shortname")
+                or item.get("shortName")
+                or ""
+            )
             qtype = item.get("quoteType") or item.get("typeDisp") or ""
             exch = item.get("exchDisp") or item.get("exchange") or ""
             label = f"{sym} — {name}" if name else str(sym)
