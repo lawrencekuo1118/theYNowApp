@@ -253,15 +253,15 @@ valuation_signal_label <- function(fv, price) {
   pct_under <- sum(p < f) / n_valid
   pct_over <- sum(p > f) / n_valid
   bias <- if (pct_under > pct_over + 0.05) {
-    "低估為主"
+    "價值被低估"
   } else if (pct_over > pct_under + 0.05) {
-    "高估為主"
+    "價值被高估"
   } else {
-    "大致均衡"
+    "價值大致合理"
   }
-  dom_pct <- if (identical(bias, "低估為主")) {
+  dom_pct <- if (identical(bias, "價值被低估")) {
     pct_under
-  } else if (identical(bias, "高估為主")) {
+  } else if (identical(bias, "價值被高估")) {
     pct_over
   } else {
     NA_real_
@@ -868,6 +868,73 @@ evaluate_holding_filter <- function(metrics, thresholds) {
   )
 }
 
+# ---------- FV daily carry (multi-model chart) ----------
+
+.build_fv_daily_from_rebalances <- function(dates, rebal_dates, rebal_vals, g_carry) {
+  n <- length(dates)
+  daily <- rep(NA_real_, n)
+  rebal_idx <- match(rebal_dates, dates)
+  current_anchor <- NA_real_
+  current_date <- as.Date(NA)
+  rebal_set <- rebal_idx[!is.na(rebal_idx)]
+  for (i in seq_len(n)) {
+    if (i %in% rebal_set) {
+      j <- which(rebal_idx == i)[1]
+      v <- rebal_vals[j]
+      if (is.finite(v) && v > 0) {
+        current_anchor <- v
+        current_date <- dates[i]
+      }
+    }
+    if (is.finite(current_anchor) && current_anchor > 0 && !is.na(current_date)) {
+      dt_yrs <- as.numeric(difftime(dates[i], current_date, units = "days")) / 365.25
+      if (!is.finite(dt_yrs) || dt_yrs < 0) dt_yrs <- 0
+      daily[i] <- current_anchor * (1 + g_carry)^dt_yrs
+    }
+  }
+  first_fv <- which(is.finite(daily) & daily > 0)[1]
+  if (is.finite(first_fv) && first_fv > 1L) daily[seq_len(first_fv - 1L)] <- daily[first_fv]
+  daily
+}
+
+.attach_fv_model_columns <- function(equity_df, valuation_df, g_carry, primary_model = "dcf") {
+  g_carry <- .safe_num(g_carry, 0.025)
+  if (!is.finite(g_carry)) g_carry <- 0.025
+  g_carry <- max(min(g_carry, 0.12), -0.05)
+  dates <- equity_df$Date
+
+  build_one <- function(col) {
+    if (is.null(valuation_df) || nrow(valuation_df) == 0 || !col %in% names(valuation_df)) {
+      return(rep(NA_real_, length(dates)))
+    }
+    .build_fv_daily_from_rebalances(dates, valuation_df$Date, valuation_df[[col]], g_carry)
+  }
+
+  equity_df$FV_DCF <- build_one("fv_dcf")
+  equity_df$FV_DDM <- build_one("fv_ddm")
+  equity_df$FV_RI  <- build_one("fv_ri")
+  equity_df$FV_PB  <- build_one("fv_pb")
+
+  primary_model <- tolower(as.character(primary_model %||% "dcf")[1])
+  primary_col <- switch(
+    primary_model,
+    "dcf" = "FV_DCF",
+    "ddm" = "FV_DDM",
+    "ri"  = "FV_RI",
+    "pb"  = "FV_PB",
+    "FV_DCF"
+  )
+  if (primary_col %in% names(equity_df)) {
+    equity_df$FairValue <- equity_df[[primary_col]]
+  }
+  first_fv <- which(is.finite(equity_df$FairValue) & equity_df$FairValue > 0)[1]
+  if (is.finite(first_fv)) {
+    equity_df$Model_A <- equity_df$FairValue / equity_df$FairValue[first_fv]
+    equity_df$Model_A[!is.finite(equity_df$Model_A)] <- NA_real_
+  }
+  equity_df
+}
+
 # ---------- internal daily backtest core ----------
 
 #' Given aligned daily df (Date, Close, Bench, RSI, ret20), fundamentals
@@ -1117,6 +1184,10 @@ evaluate_holding_filter <- function(metrics, thresholds) {
     Exp_B = exp_b_daily,
     stringsAsFactors = FALSE
   )
+  equity_df <- .attach_fv_model_columns(
+    equity_df, valuation_df, g_carry,
+    primary_model = model_params$fv_model %||% "dcf"
+  )
 
   # Align comparison window at first quarterly decision so strategies
   # (cash until first rebalance) do not give Buy&Hold a free head-start.
@@ -1138,7 +1209,8 @@ evaluate_holding_filter <- function(metrics, thresholds) {
 
   if (isTRUE(fv_only)) {
     return(list(
-      equity_df = equity_df[, c("Date", "Close", "Bench", "FairValue"), drop = FALSE],
+      equity_df = equity_df[, c("Date", "Close", "Bench", "FairValue",
+                                "FV_DCF", "FV_DDM", "FV_RI", "FV_PB"), drop = FALSE],
       valuation_df = valuation_df,
       exposure = NULL,
       metrics = list(
@@ -1224,8 +1296,6 @@ refresh_backtest_fair_value <- function(res, fund, model_params) {
   if (!is.finite(g_carry)) g_carry <- 0.025
   g_carry <- max(min(g_carry, 0.12), -0.05)
 
-  n <- nrow(equity_df)
-  fv_daily <- rep(NA_real_, n)
   rebal_idx <- match(vd$Date, equity_df$Date)
 
   for (j in seq_len(nrow(vd))) {
@@ -1250,35 +1320,10 @@ refresh_backtest_fair_value <- function(res, fund, model_params) {
     vd$valuation_score[j] <- .safe_num(pit$valuation_score, NA_real_)
   }
 
-  current_anchor <- NA_real_
-  current_date <- as.Date(NA)
-  rebal_set <- rebal_idx[!is.na(rebal_idx)]
-  for (i in seq_len(n)) {
-    if (i %in% rebal_set) {
-      j <- which(rebal_idx == i)[1]
-      if (is.finite(vd$fair_value[j]) && vd$fair_value[j] > 0) {
-        current_anchor <- vd$fair_value[j]
-        current_date <- equity_df$Date[i]
-      }
-    }
-    if (is.finite(current_anchor) && current_anchor > 0 && !is.na(current_date)) {
-      dt_yrs <- as.numeric(difftime(equity_df$Date[i], current_date, units = "days")) / 365.25
-      if (!is.finite(dt_yrs) || dt_yrs < 0) dt_yrs <- 0
-      fv_daily[i] <- current_anchor * (1 + g_carry)^dt_yrs
-    }
-  }
-
-  first_fv <- which(is.finite(fv_daily) & fv_daily > 0)[1]
-  if (is.finite(first_fv)) {
-    if (first_fv > 1L) fv_daily[seq_len(first_fv - 1L)] <- fv_daily[first_fv]
-    model_a <- fv_daily / fv_daily[1]
-    model_a[!is.finite(model_a)] <- NA_real_
-  } else {
-    model_a <- rep(NA_real_, n)
-  }
-
-  equity_df$FairValue <- fv_daily
-  equity_df$Model_A <- model_a
+  equity_df <- .attach_fv_model_columns(
+    equity_df, vd, g_carry,
+    primary_model = mp_base$fv_model %||% "dcf"
+  )
 
   metrics <- res$metrics
   if (is.null(metrics)) metrics <- list()

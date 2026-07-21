@@ -581,6 +581,15 @@ ui <- dashboardPage(
           font-weight: normal;
           line-height: 1.35;
         }
+        .ynow-bt-hfv-controls .checkbox {
+          margin-top: 0;
+          margin-bottom: 2px;
+        }
+        .ynow-bt-hfv-controls .checkbox label {
+          font-size: 11px;
+          font-weight: normal;
+          line-height: 1.35;
+        }
         .ynow-bt-hfv-controls .btn {
           width: 100%;
           margin-top: 2px;
@@ -1151,16 +1160,15 @@ ui <- dashboardPage(
                     plotlyOutput("bt_hfv_timeline", height = "420px") %>% withSpinner(),
                     tags$div(
                       class = "ynow-bt-hfv-controls",
-                      radioButtons(
-                        "bt_fv_model",
-                        "回測用評價模型",
+                      checkboxGroupInput(
+                        "bt_fv_models",
+                        "回測用評價模型（可複選疊圖）",
                         inline = FALSE,
                         choices = c(
                           "DCF" = "dcf",
                           "DDM" = "ddm",
                           "RI" = "ri",
-                          "P/B" = "pb",
-                          "綜合均值" = "composite"
+                          "P/B" = "pb"
                         ),
                         selected = "dcf"
                       ),

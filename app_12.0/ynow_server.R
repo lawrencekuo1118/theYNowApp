@@ -562,7 +562,7 @@ server <- function(input, output, session) {
       c("Backtest", "Max Exposure (bt_max_exp)", .snapshot_value(input$bt_max_exp), "Mode A ceiling; 1.0 can fit Buy&Hold"),
       c("Backtest", "Min Exp After Pass (bt_min_exp_pass)", .snapshot_value(input$bt_min_exp_pass), "Floor when filter passes & MOS >= -10%"),
       c("Backtest", "Auto Derive Params", .snapshot_value(input$bt_param_auto), "TRUE = sync thresholds/weights/model on ticker load"),
-      c("Backtest", "回測用評價模型", .snapshot_value(input$bt_fv_model), "Drives FV/MOS → Exp_A; not equity-chart price line"),
+      c("Backtest", "回測用評價模型", paste(.snapshot_value(input$bt_fv_models), collapse = ", "), "Multi-select FV overlay; first drives MOS/Exp_A"),
       c("Backtest", "MOS / VG Weight (bt_w_vg)", .snapshot_value(input$bt_w_vg), "Exposure diagnostic blend; not FV path"),
       c("Backtest", "Momentum Weight (bt_w_mom)", .snapshot_value(input$bt_w_mom), "Sentiment overlay relative weight"),
       c("Backtest", "RSI Weight (bt_w_rsi)", .snapshot_value(input$bt_w_rsi), "Sentiment overlay relative weight"),
@@ -2250,6 +2250,27 @@ server <- function(input, output, session) {
   bt_fv_visible <- reactiveVal(FALSE)
   bt_hfv_fv <- reactiveVal(NULL)
 
+  .bt_fv_model_specs <- function() {
+    list(
+      dcf = list(col = "FV_DCF", label = "DCF", color = "#c0392b"),
+      ddm = list(col = "FV_DDM", label = "DDM", color = "#8e44ad"),
+      ri  = list(col = "FV_RI",  label = "RI",  color = "#16a085"),
+      pb  = list(col = "FV_PB",  label = "P/B", color = "#e67e22")
+    )
+  }
+
+  .bt_selected_fv_models <- reactive({
+    sel <- input$bt_fv_models
+    if (is.null(sel) || length(sel) < 1) return("dcf")
+    ord <- c("dcf", "ddm", "ri", "pb")
+    hit <- intersect(ord, as.character(sel))
+    if (length(hit) < 1) "dcf" else hit
+  })
+
+  .bt_primary_fv_model <- reactive({
+    .bt_selected_fv_models()[1]
+  })
+
   bt_hfv_base <- reactive({
     req(current_ticker())
     tryCatch(
@@ -2307,8 +2328,8 @@ server <- function(input, output, session) {
     if (!is.finite(wacc) || wacc <= 0) wacc <- APP_DEFAULTS$wacc_gordon / 100
     if (!is.finite(sgr)) sgr <- APP_DEFAULTS$sgr / 100
     if (!is.finite(g_explicit)) g_explicit <- sgr
-    fv_model <- as.character(input$bt_fv_model %||% "dcf")[1]
-    if (!fv_model %in% c("dcf", "ddm", "ri", "pb", "composite")) fv_model <- "dcf"
+    fv_model <- .bt_primary_fv_model()
+    if (!fv_model %in% c("dcf", "ddm", "ri", "pb")) fv_model <- "dcf"
 
     rf <- suppressWarnings(as.numeric(input$capm_rf)[1]) / 100
     if (!is.finite(rf) || rf <= 0) {
@@ -2414,12 +2435,11 @@ server <- function(input, output, session) {
         else if ("ddm" %in% tags || grepl("DDM", sm, ignore.case = TRUE)) fv_sel <- "ddm"
         else if ("ri" %in% tags || grepl("\\bRI\\b|剩餘", sm, ignore.case = TRUE)) fv_sel <- "ri"
         else if ("pb" %in% tags || grepl("P/B|本淨", sm, ignore.case = TRUE)) fv_sel <- "pb"
-        else if (grepl("交叉", sm)) fv_sel <- "composite"
       }
       # Guard so auto-picked model does not flip checkbox to manual
       was_applying <- isTRUE(bt_applying_params())
       bt_applying_params(TRUE)
-      updateRadioButtons(session, "bt_fv_model", selected = fv_sel)
+      updateCheckboxGroupInput(session, "bt_fv_models", selected = fv_sel)
       if (!was_applying) bt_applying_params(FALSE)
     }
     invisible(p)
@@ -2456,7 +2476,7 @@ server <- function(input, output, session) {
   })
 
   # 手動改估值模型時取消自動，避免下次換股又被推薦覆寫
-  observeEvent(input$bt_fv_model, {
+  observeEvent(input$bt_fv_models, {
     if (isTRUE(bt_applying_params())) return()
     if (!isTRUE(input$bt_param_auto)) return()
     updateCheckboxInput(session, "bt_param_auto", value = FALSE)
@@ -2497,6 +2517,11 @@ server <- function(input, output, session) {
 
   observeEvent(input$bt_refresh_fv, {
     req(current_ticker())
+    sel <- .bt_selected_fv_models()
+    if (length(sel) < 1) {
+      showNotification("請至少選擇一個評價模型", type = "warning", duration = 4)
+      return()
+    }
     tryCatch({
       if (is.null(d_income_statement()) || is.null(d_cash_flow()) || is.null(d_balance_sheet())) {
         stop("請先在 Dashboard 搜尋並載入該公司財報")
@@ -2522,13 +2547,8 @@ server <- function(input, output, session) {
           bt_result(refresh_backtest_fair_value(bt_result(), fund, mp))
         }
       })
-      fv_label <- switch(
-        mp$fv_model,
-        "dcf" = "DCF", "ddm" = "DDM", "ri" = "RI", "pb" = "P/B",
-        "composite" = "綜合均值", mp$fv_model
-      )
       showNotification(
-        paste0("✅ 已更新基本面價值折線（", fv_label, "）"),
+        paste0("✅ 已更新基本面價值折線（", paste(toupper(sel), collapse = " + "), "）"),
         type = "message", duration = 4
       )
     }, error = function(e) {
@@ -2668,7 +2688,17 @@ server <- function(input, output, session) {
       ed = ed,
       vd = vd,
       mp = mp,
-      show_fv = show_fv && "FairValue" %in% names(ed) && any(is.finite(ed$FairValue))
+      show_fv = show_fv && any(vapply(
+        .bt_selected_fv_models(),
+        function(m) {
+          specs <- .bt_fv_model_specs()
+          sp <- specs[[m]]
+          if (is.null(sp)) return(FALSE)
+          col <- sp$col
+          col %in% names(ed) && any(is.finite(ed[[col]]))
+        },
+        logical(1)
+      ))
     )
   }
 
@@ -2712,12 +2742,7 @@ server <- function(input, output, session) {
     } else {
       "#fafafa"
     }
-    bias_val <- if (!is.null(m$market_pricing_dominant_pct) &&
-                    is.finite(m$market_pricing_dominant_pct)) {
-      sprintf("%s · %s", bias, .fmt_pct(m$market_pricing_dominant_pct, 0))
-    } else {
-      bias
-    }
+    bias_val <- bias
     pct_under <- m$pct_market_under %||% m$pct_value_over
     tags$div(
       style = "display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px;",
@@ -2738,9 +2763,7 @@ server <- function(input, output, session) {
                tags$div(style="font-size:11px;color:#666;", "此刻參數（Session）"),
                tags$div(style="font-size:12px;",
                         sprintf("模型 %s · WACC %.2f%% · Ke %.2f%% · SGR %.2f%% · n=%s · PB mid %.2f",
-                                switch(as.character(mp$fv_model %||% "dcf"),
-                                       "dcf" = "DCF", "ddm" = "DDM", "ri" = "RI",
-                                       "pb" = "P/B", "composite" = "綜合", mp$fv_model),
+                                paste(toupper(.bt_selected_fv_models()), collapse = "+"),
                                 .safe_num(mp$wacc, NA) * 100, .safe_num(mp$ke, NA) * 100,
                                 .safe_num(mp$sgr, NA) * 100, mp$n_years, .safe_num(mp$pb_mid, NA))))
     )
@@ -2755,11 +2778,18 @@ server <- function(input, output, session) {
 
     p <- plotly::plot_ly(ed, x = ~Date)
     if (isTRUE(src$show_fv)) {
-      p <- plotly::add_trace(
-        p, y = ~FairValue, name = "基本面價值", type = "scatter", mode = "lines",
-        line = list(color = "#c0392b", width = 2.2),
-        hovertemplate = "基本面價值: %{y:$.2f}<extra></extra>"
-      )
+      specs <- .bt_fv_model_specs()
+      for (m in .bt_selected_fv_models()) {
+        sp <- specs[[m]]
+        if (is.null(sp)) next
+        col <- sp$col
+        if (!col %in% names(ed) || !any(is.finite(ed[[col]]))) next
+        p <- plotly::add_trace(
+          p, y = ed[[col]], name = sp$label, type = "scatter", mode = "lines",
+          line = list(color = sp$color, width = 2),
+          hovertemplate = paste0(sp$label, ": %{y:$.2f}<extra></extra>")
+        )
+      }
     }
     p <- plotly::add_trace(
       p, y = ~Close, name = "情緒波動價值（實際股價）", type = "scatter", mode = "lines",
@@ -2775,18 +2805,28 @@ server <- function(input, output, session) {
       )
     }
     vd <- src$vd
-    if (isTRUE(src$show_fv) && !is.null(vd) && nrow(vd) > 0 && any(is.finite(vd$fair_value))) {
-      p <- plotly::add_trace(
-        p, data = vd, x = ~Date, y = ~fair_value, name = "季再平衡 FV",
-        type = "scatter", mode = "markers",
-        marker = list(color = "#e74c3c", size = 7, symbol = "diamond"),
-        hovertemplate = paste0(
-          "再平衡 %{x|%Y-%m-%d}<br>FV %{y:$.2f}",
-          if ("rolling_beta" %in% names(vd)) "<br>β %{customdata:.2f}" else "",
-          "<extra></extra>"
-        ),
-        customdata = if ("rolling_beta" %in% names(vd)) vd$rolling_beta else NULL
-      )
+    if (isTRUE(src$show_fv) && !is.null(vd) && nrow(vd) > 0 &&
+        length(.bt_selected_fv_models()) == 1L) {
+      primary <- .bt_selected_fv_models()[1]
+      marker_col <- switch(primary,
+        "dcf" = "fv_dcf", "ddm" = "fv_ddm", "ri" = "fv_ri", "pb" = "fv_pb", "fair_value")
+      if (marker_col %in% names(vd) && any(is.finite(vd[[marker_col]]))) {
+        p <- plotly::add_trace(
+          p,
+          x = vd$Date,
+          y = vd[[marker_col]],
+          name = "季再平衡 FV",
+          type = "scatter",
+          mode = "markers",
+          marker = list(color = "#e74c3c", size = 7, symbol = "diamond"),
+          hovertemplate = paste0(
+            "再平衡 %{x|%Y-%m-%d}<br>FV %{y:$.2f}",
+            if ("rolling_beta" %in% names(vd)) "<br>β %{customdata:.2f}" else "",
+            "<extra></extra>"
+          ),
+          customdata = if ("rolling_beta" %in% names(vd)) vd$rolling_beta else NULL
+        )
+      }
     }
     plotly::layout(
       p,
@@ -3166,15 +3206,11 @@ server <- function(input, output, session) {
   .bt_methodology_meta <- reactive({
     mp <- tryCatch(bt_current_model_params(), error = function(e) NULL)
     res <- bt_result()
-    fv_lab <- switch(
-      as.character(isolate(input$bt_fv_model) %||% "dcf"),
-      dcf = "DCF（自由現金流折現）",
-      ddm = "DDM（股利折現）",
-      ri = "RI（剩餘收益）",
-      pb = "P/B（本淨比）",
-      composite = "綜合均值",
-      as.character(isolate(input$bt_fv_model) %||% "dcf")
-    )
+    sel <- tryCatch(isolate(.bt_selected_fv_models()), error = function(e) "dcf")
+    fv_lab <- paste(vapply(sel, function(m) {
+      switch(m,
+        "dcf" = "DCF", "ddm" = "DDM", "ri" = "RI", "pb" = "P/B", toupper(m))
+    }, character(1)), collapse = " + ")
     list(
       ticker = isolate(current_ticker()) %||% "N/A",
       bench = if (!is.null(res$bench_ticker)) res$bench_ticker else "SPY",
