@@ -16,15 +16,16 @@
 
 .dcf_core_params_box <- function() {
   box(
-    title = tagList(icon("seedling"), "DCF 估值核心參數設定"),
+    title = tagList(icon("seedling"), "永續成長率 SGR 設定"),
     width = 12, status = "warning", solidHeader = TRUE,
+    tags$h5(tags$b("一、估計方法")),
     selectInput(
       "perpetual_g_method",
-      "估計永續成長率方法",
+      NULL,
       choices = c(
-        "總體經濟錨定法（Macroeconomic Anchoring）" = "macro",
-        "永續成長公式法（Fundamental / SGR）" = "fundamental",
-        "產業生命週期檢核法（Lifecycle Check）" = "lifecycle"
+        "總體經濟錨定（Macro）" = "macro",
+        "基本面公式（Fundamental／SGR）" = "fundamental",
+        "產業生命週期（Lifecycle）" = "lifecycle"
       ),
       selected = APP_DEFAULTS$perpetual_g_method
     ),
@@ -35,9 +36,10 @@
     ),
     conditionalPanel(
       condition = "input.perpetual_g_method == 'lifecycle'",
+      tags$h5(tags$b("二、生命週期檔位")),
       selectInput(
         "lifecycle_stage",
-        "產業生命週期檔位（可覆寫自動偵測）",
+        NULL,
         choices = c(
           "自動偵測" = "auto",
           "夕陽／高度成熟（≈1.5–2%）" = "mature_sunset",
@@ -46,30 +48,37 @@
           "一般成熟（≈2.5%）" = "mature_general"
         ),
         selected = APP_DEFAULTS$lifecycle_stage
-      )
+      ),
+      helpText("可覆寫自動偵測結果；影響終值 g 建議區間。")
     ),
+    tags$h5(tags$b("估計依據")),
     uiOutput("txt_perpetual_g_reason"),
+    tags$hr(style = "margin: 12px 0;"),
+    tags$h5(tags$b("三、終值永續成長率（SGR）")),
     numericInput(
       "sgr",
-      "DCF／RI 終值永續成長率 SGR (%)",
+      "SGR (%)",
       value = APP_DEFAULTS$sgr
     ),
-    helpText("此為 FCFF／剩餘收益終值成長率（相對 WACC）；與 DDM 股利成長率 g 分開。預設可由上方方法估計，可手動覆寫。"),
+    helpText("供 DCF／RI 終值使用（相對 WACC）；與 DDM 股利成長率分開。可由上方方法自動估計，亦可手動覆寫。"),
     conditionalPanel(
       condition = "input.dcf_mode == 'gordon'",
-      h4(tags$b("DCF：明確預測 + Gordon 終值")),
-      helpText("非單期 EV = FCF₁/(WACC−g)；為 n 年 FCFF 折現 + 終值 TV = FCFₙ(1+g)/(WACC−g)。"),
+      tags$hr(style = "margin: 12px 0;"),
+      tags$h5(tags$b("四、Gordon 折現假設（DCF）")),
+      helpText("n 年 FCFF 折現 + 終值 TV = FCFₙ(1+g)/(WACC−g)；非單期 EV = FCF₁/(WACC−g)。"),
       numericInput("wacc_gordon", "折現率 WACC (%)", value = APP_DEFAULTS$wacc_gordon, step = 0.01)
     ),
     conditionalPanel(
       condition = "input.dcf_mode == 'two_stage'",
-      h4(tags$b("PHASE I 高速成長假設")),
-      numericInput("yr_stage1", "第一階段年數", value = APP_DEFAULTS$yr_stage1),
-      numericInput("g_stage1", "第一階段成長率 g1 (%)", value = APP_DEFAULTS$g_stage1),
-      numericInput("wacc_stage1", "第一階段折現率 WACC1 (%)", value = APP_DEFAULTS$wacc_stage1, step = 0.01),
-      tags$hr(),
-      h4(tags$b("PHASE II 永續成長假設")),
-      numericInput("wacc_stage2", "第二階段折現率 WACC2 (%)", value = APP_DEFAULTS$wacc_stage2, step = 0.01)
+      tags$hr(style = "margin: 12px 0;"),
+      tags$h5(tags$b("四、兩階段成長假設（DCF）")),
+      tags$p(style = "margin: 0 0 6px 0; font-size: 12.5px; color: #555;", tags$b("第一階段｜高速成長")),
+      numericInput("yr_stage1", "年數", value = APP_DEFAULTS$yr_stage1),
+      numericInput("g_stage1", "成長率 g1 (%)", value = APP_DEFAULTS$g_stage1),
+      numericInput("wacc_stage1", "折現率 WACC1 (%)", value = APP_DEFAULTS$wacc_stage1, step = 0.01),
+      tags$p(style = "margin: 10px 0 6px 0; font-size: 12.5px; color: #555;", tags$b("第二階段｜永續成長")),
+      helpText("第二階段成長率採用上方 SGR；以下設定折現率。"),
+      numericInput("wacc_stage2", "折現率 WACC2 (%)", value = APP_DEFAULTS$wacc_stage2, step = 0.01)
     ),
     checkboxInput("use_calculated_wacc", "套用系統估算 WACC", value = APP_DEFAULTS$use_calc_wacc)
   )
