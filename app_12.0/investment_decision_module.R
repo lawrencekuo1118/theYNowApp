@@ -21,17 +21,37 @@ decision_ui <- function(id) {
       valueBoxOutput(ns("vbox_momentum"), width = 4)  # Timing Third
     ),
     
-    # 第二層：綜合決策（Model Selector 已移出 Sensitivity；推薦文案改在矩陣旁顯示）
+    # 第二層：綜合決策（Fraud 在決策建議上方、F-Score 左方）
     fluidRow(
       box(
         title = "智能決策矩陣 The Decision Funnel", width = 12, status = "primary", solidHeader = TRUE,
-        column(width = 7, 
-               h4("決策建議："),
-               uiOutput(ns("ui_recommendation"))
+        column(
+          width = 7,
+          # Fraud Warnings：決策建議上方／F-Score 左方
+          tags$div(
+            class = "ynow-fraud-banner",
+            style = "background-color: #d9534f; color: white; padding: 12px 14px; margin: 0 0 14px 0; border-radius: 4px;",
+            tags$h4(
+              icon("exclamation-triangle"), " Fraud Warnings",
+              style = "font-weight: bold; margin: 0 0 8px 0; font-size: 15px; border-bottom: 1px solid #ffcccc; padding-bottom: 8px;"
+            ),
+            tags$div(
+              style = "font-size: 13px; line-height: 1.55;",
+              textOutput("highdebttoequity"),
+              textOutput("nofreecashflow"),
+              textOutput("nooperatingcashflow"),
+              textOutput("notdoingbusiness"),
+              textOutput("notgettingcashback"),
+              textOutput("no_fraud_detected")
+            )
+          ),
+          h4("決策建議："),
+          uiOutput(ns("ui_recommendation"))
         ),
-        column(width = 5,
-               h4("F-Score 體質檢核清單"),
-               tableOutput(ns("table_checklist"))
+        column(
+          width = 5,
+          h4("F-Score 體質檢核清單"),
+          tableOutput(ns("table_checklist"))
         )
       )
     ),

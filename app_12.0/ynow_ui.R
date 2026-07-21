@@ -18,7 +18,7 @@
   box(
     title = tagList(icon("seedling"), "永續成長率 SGR 設定"),
     width = 12, status = "warning", solidHeader = TRUE,
-    tags$h5(tags$b("一、估計方法")),
+    tags$h5(tags$b("SGR 評價方法")),
     selectInput(
       "perpetual_g_method",
       NULL,
@@ -36,7 +36,7 @@
     ),
     conditionalPanel(
       condition = "input.perpetual_g_method == 'lifecycle'",
-      tags$h5(tags$b("二、生命週期檔位")),
+      tags$h5(tags$b("生命週期檔位")),
       selectInput(
         "lifecycle_stage",
         NULL,
@@ -54,7 +54,7 @@
     tags$h5(tags$b("估計依據")),
     uiOutput("txt_perpetual_g_reason"),
     tags$hr(style = "margin: 12px 0;"),
-    tags$h5(tags$b("三、終值永續成長率（SGR）")),
+    tags$h5(tags$b("終值永續成長率（SGR）")),
     numericInput(
       "sgr",
       "SGR (%)",
@@ -62,16 +62,9 @@
     ),
     helpText("供 DCF／RI 終值使用（相對 WACC）；與 DDM 股利成長率分開。可由上方方法自動估計，亦可手動覆寫。"),
     conditionalPanel(
-      condition = "input.dcf_mode == 'gordon'",
-      tags$hr(style = "margin: 12px 0;"),
-      tags$h5(tags$b("四、Gordon 折現假設（DCF）")),
-      helpText("n 年 FCFF 折現 + 終值 TV = FCFₙ(1+g)/(WACC−g)；非單期 EV = FCF₁/(WACC−g)。"),
-      numericInput("wacc_gordon", "折現率 WACC (%)", value = APP_DEFAULTS$wacc_gordon, step = 0.01)
-    ),
-    conditionalPanel(
       condition = "input.dcf_mode == 'two_stage'",
       tags$hr(style = "margin: 12px 0;"),
-      tags$h5(tags$b("四、兩階段成長假設（DCF）")),
+      tags$h5(tags$b("兩階段成長假設（DCF）")),
       tags$p(style = "margin: 0 0 6px 0; font-size: 12.5px; color: #555;", tags$b("第一階段｜高速成長")),
       numericInput("yr_stage1", "年數", value = APP_DEFAULTS$yr_stage1),
       numericInput("g_stage1", "成長率 g1 (%)", value = APP_DEFAULTS$g_stage1),
@@ -135,9 +128,13 @@ ui <- dashboardPage(
       tags$style(HTML('
         .main-header .logo { font-weight: bold; }
         #shiny-tab-get_started > h2 { font-weight: 800 !important; }
-        .sidebar-menu li a[data-value="get_started"],
-        .sidebar-menu li a[href="#shiny-tab-get_started"] {
-          font-weight: 800 !important;
+        /* 側邊欄：僅目前選取頁面粗體（勿固定加粗 Get Started） */
+        .sidebar-menu > li > a {
+          font-weight: 400 !important;
+        }
+        .sidebar-menu > li.active > a,
+        .sidebar-menu > li.menu-open > a {
+          font-weight: 700 !important;
         }
       ')),
       
@@ -821,23 +818,6 @@ ui <- dashboardPage(
                               tableOutput("stable_indicator_table")
                        )
                      ))
-              ),
-              
-              fluidRow(
-                column(width = 12,
-                       div(style = "background-color: #d9534f; color: white; padding: 15px; margin-top: 20px;",
-                           h4(icon("exclamation-triangle"), " Fraud Warnings", 
-                              style = "font-weight: bold; margin-top: 0; border-bottom: 1px solid #ffcccc; padding-bottom: 10px;"),
-                           div(style = "font-size: 15px; line-height: 1.8;",
-                               textOutput("highdebttoequity"),
-                               textOutput("nofreecashflow"),
-                               textOutput("nooperatingcashflow"),
-                               textOutput("notdoingbusiness"),
-                               textOutput("notgettingcashback"),
-                               textOutput("no_fraud_detected")
-                           )
-                       )
-                )
               )
       ),
       
@@ -929,7 +909,14 @@ ui <- dashboardPage(
                                                       "明確預測 + Gordon 終值" = "gordon",
                                                       "二階段成長法 (Two-Stage Model)" = "two_stage"
                                                     ),
-                                                    selected = APP_DEFAULTS$dcf_mode)
+                                                    selected = APP_DEFAULTS$dcf_mode),
+                                       conditionalPanel(
+                                         condition = "input.dcf_mode == 'gordon'",
+                                         numericInput(
+                                           "wacc_gordon", "折現率 WACC (%)",
+                                           value = APP_DEFAULTS$wacc_gordon, step = 0.01
+                                         )
+                                       )
                                 ),
                                 column(width = 6, numericInput("years", "預測年數 n", value = APP_DEFAULTS$years, min = 1, max = 30))
                               )
