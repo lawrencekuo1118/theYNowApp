@@ -299,7 +299,7 @@ ui <- dashboardPage(
           text-align: center !important;
         }
         .ynow-kpi-grid .small-box .inner h3 {
-          font-size: clamp(14px, 2.6vw, 23px) !important;
+          font-size: clamp(20px, 3.8vw, 32px) !important;
           font-weight: 800 !important;
           margin: 0 0 5px 0 !important;
           white-space: nowrap;
@@ -307,7 +307,7 @@ ui <- dashboardPage(
           text-overflow: ellipsis;
         }
         .ynow-kpi-grid .small-box .inner p {
-          font-size: clamp(10px, 0.75vw, 11px) !important;
+          font-size: clamp(9px, 0.7vw, 10px) !important;
           opacity: 0.9;
           font-weight: 500 !important;
           margin: 0 !important;
@@ -434,7 +434,7 @@ ui <- dashboardPage(
           margin: 0;
         }
         .ynow-metric-card__value {
-          font-size: clamp(26px, 3.2vw, 34px);
+          font-size: clamp(32px, 4.2vw, 44px);
           font-weight: 800;
           font-variant-numeric: tabular-nums;
           letter-spacing: -0.02em;
