@@ -257,6 +257,120 @@ server <- function(input, output, session) {
       showNotification("已切換回精簡版報表", type = "message")
     }
   })
+
+  # Dashboard「回測濾鏡」：目前公司 KPI vs 持倉回測條件門檻
+  bt_filter_state <- reactiveVal(NULL)
+
+  observeEvent(input$bt_kpi_filter, {
+    is_df <- tryCatch(d_income_statement(), error = function(e) NULL)
+    cf_df <- tryCatch(d_cash_flow(), error = function(e) NULL)
+    if (is.null(is_df) || is.null(cf_df)) {
+      bt_filter_state(list(status = "empty", message = "尚無財報資料，請先搜尋並載入公司。"))
+      showNotification("尚無財報，無法評估回測濾鏡。", type = "warning", duration = 6)
+      return()
+    }
+    metrics <- tryCatch(
+      compute_dashboard_filter_metrics(is_df, cf_df),
+      error = function(e) NULL
+    )
+    if (is.null(metrics)) {
+      bt_filter_state(list(status = "empty", message = "指標計算失敗。"))
+      showNotification("回測濾鏡計算失敗。", type = "error", duration = 6)
+      return()
+    }
+    thr <- list(
+      bt_net_margin = input$bt_net_margin,
+      bt_rev_growth = input$bt_rev_growth,
+      bt_eps_growth = input$bt_eps_growth,
+      bt_fcf_cv = input$bt_fcf_cv
+    )
+    ev <- evaluate_holding_filter(metrics, thr)
+    bt_filter_state(list(
+      status = if (isTRUE(ev$overall)) "pass" else "fail",
+      eval = ev,
+      metrics = metrics,
+      ticker = current_ticker() %||% ""
+    ))
+    showNotification(
+      if (isTRUE(ev$overall)) "✅ 回測濾鏡：達標（四項持倉條件皆過）"
+      else "⚠️ 回測濾鏡：未達標（至少一項未過）",
+      type = if (isTRUE(ev$overall)) "message" else "warning",
+      duration = 7
+    )
+  })
+
+  output$bt_filter_badge <- renderUI({
+    st <- bt_filter_state()
+    if (is.null(st)) {
+      return(tags$span(
+        style = "font-size:12px;color:#888;padding:4px 10px;border:1px solid #ddd;border-radius:4px;background:#f7f7f7;",
+        "尚未比對"
+      ))
+    }
+    if (identical(st$status, "empty")) {
+      return(tags$span(
+        style = "font-size:12px;font-weight:600;color:#666;padding:4px 10px;border:1px solid #ccc;border-radius:4px;background:#eee;",
+        "尚無資料"
+      ))
+    }
+    if (identical(st$status, "pass")) {
+      tags$span(
+        style = "font-size:12px;font-weight:700;color:#fff;padding:4px 12px;border-radius:4px;background:#1e8449;",
+        "達標"
+      )
+    } else {
+      tags$span(
+        style = "font-size:12px;font-weight:700;color:#fff;padding:4px 12px;border-radius:4px;background:#c0392b;",
+        "未達標"
+      )
+    }
+  })
+
+  output$bt_filter_detail <- renderUI({
+    st <- bt_filter_state()
+    if (is.null(st) || identical(st$status, "empty")) {
+      if (!is.null(st) && !is.null(st$message)) {
+        return(tags$div(
+          style = "margin:0 0 12px 0;padding:8px 12px;background:#f5f5f5;border-left:3px solid #999;font-size:12px;color:#555;",
+          st$message
+        ))
+      }
+      return(NULL)
+    }
+    rows <- st$eval$rows
+    fmt <- function(x) {
+      if (is.null(x) || length(x) < 1 || is.na(x) || !is.finite(x)) return("N/A")
+      sprintf("%.2f%%", as.numeric(x))
+    }
+    cells <- lapply(rows, function(r) {
+      ok <- isTRUE(r$pass)
+      tags$tr(
+        tags$td(r$label),
+        tags$td(fmt(r$actual)),
+        tags$td(paste0(r$op, " ", fmt(r$threshold))),
+        tags$td(
+          style = if (ok) "color:#1e8449;font-weight:600;" else "color:#c0392b;font-weight:600;",
+          if (ok) "過" else "未過"
+        )
+      )
+    })
+    tags$div(
+      style = "margin:0 0 14px 0;padding:10px 12px;background:#f8fafc;border:1px solid #dce3ea;border-radius:4px;",
+      tags$div(
+        style = "font-size:12px;color:#444;margin-bottom:6px;",
+        tags$b("回測濾鏡明細"),
+        if (nzchar(st$ticker %||% "")) paste0(" · ", st$ticker) else NULL,
+        "（對照「持倉回測條件」門檻；虧損期淨利率／NI 成長可放寬，同回測引擎）"
+      ),
+      tags$table(
+        style = "width:100%;font-size:12px;border-collapse:collapse;",
+        tags$thead(tags$tr(
+          tags$th("指標"), tags$th("實際"), tags$th("門檻"), tags$th("結果")
+        )),
+        tags$tbody(cells)
+      )
+    )
+  })
   
   d_income_statement <- reactive({
     req(scraped_financials())
@@ -434,10 +548,12 @@ server <- function(input, output, session) {
       c("P/B", "P/B Mid", .snapshot_value(input[["mod_pb-pb_mid"]]), "Price = BVPS × P/B"),
       c("P/B", "P/B High", .snapshot_value(input[["mod_pb-pb_high"]]), "Price = BVPS × P/B"),
       c("P/B", "約當股數校正", .snapshot_value(input[["mod_pb-adjust_share_class"]]), "例外：市值÷股價／雙重股權"),
-      c("Backtest", "Net Margin Threshold (%)", .snapshot_value(input$bt_net_margin), "Great Filter: Net Margin >= threshold"),
-      c("Backtest", "Revenue Growth Threshold (%)", .snapshot_value(input$bt_rev_growth), "Great Filter: Revenue Growth >= threshold"),
-      c("Backtest", "EPS / NI Growth Threshold (%)", .snapshot_value(input$bt_eps_growth), "Great Filter: EPS/NI Growth >= threshold"),
-      c("Backtest", "FCF CV Ceiling (%)", .snapshot_value(input$bt_fcf_cv), "Great Filter: FCF CV <= ceiling"),
+      c("Backtest", "Net Margin Threshold (%)", .snapshot_value(input$bt_net_margin), "持倉回測條件: Net Margin >= threshold"),
+      c("Backtest", "Revenue Growth Threshold (%)", .snapshot_value(input$bt_rev_growth), "持倉回測條件: Revenue Growth >= threshold"),
+      c("Backtest", "EPS / NI Growth Threshold (%)", .snapshot_value(input$bt_eps_growth), "持倉回測條件: EPS/NI Growth >= threshold"),
+      c("Backtest", "FCF CV Ceiling (%)", .snapshot_value(input$bt_fcf_cv), "持倉回測條件: FCF CV <= ceiling"),
+      c("Backtest", "Max Exposure (bt_max_exp)", .snapshot_value(input$bt_max_exp), "Mode A ceiling; 1.0 can fit Buy&Hold"),
+      c("Backtest", "Min Exp After Pass (bt_min_exp_pass)", .snapshot_value(input$bt_min_exp_pass), "Floor when filter passes & MOS >= -10%"),
       c("Backtest", "Auto Derive Params", .snapshot_value(input$bt_param_auto), "TRUE = sync thresholds/weights/model on ticker load"),
       c("Backtest", "回測用評價模型", .snapshot_value(input$bt_fv_model), "Drives FV/MOS → Exp_A; not equity-chart price line"),
       c("Backtest", "MOS / VG Weight (bt_w_vg)", .snapshot_value(input$bt_w_vg), "Exposure diagnostic blend; not FV path"),
@@ -2325,11 +2441,23 @@ server <- function(input, output, session) {
   }, ignoreInit = TRUE)
 
   observeEvent(list(input$bt_w_vg, input$bt_w_mom, input$bt_w_rsi,
-                    input$bt_net_margin, input$bt_rev_growth, input$bt_eps_growth, input$bt_fcf_cv), {
+                    input$bt_net_margin, input$bt_rev_growth, input$bt_eps_growth, input$bt_fcf_cv,
+                    input$bt_max_exp, input$bt_min_exp_pass), {
     if (isTRUE(bt_applying_params())) return()
     if (!isTRUE(input$bt_param_auto)) return()
     updateCheckboxInput(session, "bt_param_auto", value = FALSE)
   }, ignoreInit = TRUE)
+
+  observeEvent(input$bt_fit_bh_preset, {
+    bt_applying_params(TRUE)
+    on.exit(bt_applying_params(FALSE), add = TRUE)
+    updateCheckboxInput(session, "bt_param_auto", value = FALSE)
+    updateSliderInput(session, "bt_max_exp", value = 1)
+    updateSliderInput(session, "bt_min_exp_pass", value = 0.4)
+    updateSliderInput(session, "bt_w_vg", value = 0.35)
+    showNotification("✅ 已套用「貼近買進持有」：max=100%、min=40%、w_vg=0.35。請重新啟動回測。",
+                     type = "message", duration = 8)
+  })
 
   output$bt_param_notes <- renderUI({
     msg <- bt_param_notes_txt()
@@ -2361,7 +2489,9 @@ server <- function(input, output, session) {
         bt_fcf_cv = input$bt_fcf_cv,
         bt_w_mom = input$bt_w_mom,
         bt_w_rsi = input$bt_w_rsi,
-        bt_w_vg = input$bt_w_vg
+        bt_w_vg = input$bt_w_vg,
+        bt_max_exp = input$bt_max_exp,
+        bt_min_exp_pass = input$bt_min_exp_pass
       )
       mp <- bt_current_model_params()
       withProgress(message = paste("V12 回測", current_ticker(), "…"), value = 0.15, {
@@ -2876,6 +3006,11 @@ server <- function(input, output, session) {
         as.numeric(isolate(input$bt_eps_growth) %||% NA),
         as.numeric(isolate(input$bt_fcf_cv) %||% NA)
       ),
+      fit_exp = sprintf(
+        "%.2f / %.2f",
+        as.numeric(isolate(input$bt_max_exp) %||% 0.9),
+        as.numeric(isolate(input$bt_min_exp_pass) %||% 0)
+      ),
       weights = sprintf(
         "%.2f / %.2f / %.2f",
         as.numeric(isolate(input$bt_w_vg) %||% NA),
@@ -2912,15 +3047,15 @@ server <- function(input, output, session) {
       tags$h5(tags$b("二、計算過程（季頻 PIT）")),
       tags$ol(
         tags$li("再平衡日：fund_year ≤ 日曆年−1 重建合理價 → MOS。"),
-        tags$li("Great Filter 未過 → Exp_A = Exp_B = 0（兩模式皆空手）。"),
-        tags$li("通過則 Exp_A 依 MOS 滯後映射（最高約 90%）；Exp_B = clip(Exp_A×情緒, 75%～125%×A)。"),
+        tags$li("持倉回測條件未過 → Exp_A = Exp_B = 0（兩模式皆空手）。"),
+        tags$li("通過則 Exp_A 依 MOS 滯後映射（上限＝最大持股，可選通過後最低持股）；Exp_B = clip(Exp_A×情緒, 75%～125%×A)。"),
         tags$li("每日：策略淨值用 Exp×日報酬；Buy&Hold 滿倉；現金報酬=0；未扣交易成本。"),
         tags$li("比較視窗自首次有效季再平衡對齊。")
       ),
       tags$h5(tags$b("三、為何常輸給 Buy&Hold")),
       tags$p(
         style = "margin-bottom:0;",
-        "兩模式刻意不滿倉；牛市現金拖累屬預期。完整公式與本次參數請下載方法論檔。"
+        "預設最大持股約 90% 且條件未過會空手；可用「貼近買進持有」調高上限。完整公式請下載方法論檔。"
       )
     )
   })

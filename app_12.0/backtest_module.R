@@ -626,7 +626,7 @@ derive_bt_params <- function(d_is, d_bs, d_cf,
   notes <- sprintf(
     paste0(
       "v12 季頻 PIT 多模型：依本公司財報推導 淨利率≈%.1f%%、營收成長≈%.1f%%、NI成長≈%.1f%%、FCF CV≈%.1f%%。",
-      " 純基本面價值：MOS≈%.1f%% → w_vg=%.2f（越大越依 MOS 分級；最高約 90%% 持股）。",
+      " 純基本面價值：MOS≈%.1f%% → w_vg=%.2f（越大越依 MOS 分級；持股上限見「最大持股」滑桿，預設 90%%）。",
       " 情緒波動價值：動能%s、RSI≈%.0f → Mom/RSI 相對權重 %.2f / %.2f（僅微調基準權重，範圍 0.75~1.25×）。"
     ),
     npm_use, rev_use, eps_use, cv_use,
@@ -654,16 +654,20 @@ derive_bt_params <- function(d_is, d_bs, d_cf,
 # ---------- MOS hysteresis & sentiment mapping ----------
 
 #' MOS -> Strategy A target exposure (hysteresis map).
-mos_hysteresis_target <- function(mos, w_vg = 0.7) {
-  if (!is.finite(mos)) return(0.40)
-  base <- if (mos >= 0.30) 0.90
-          else if (mos >= 0.10) 0.65
-          else if (mos >= 0.00) 0.40
-          else if (mos >= -0.10) 0.15
+#' @param max_exp ceiling for deep-undervalued bucket (default 0.90; set 1 to fit BH)
+mos_hysteresis_target <- function(mos, w_vg = 0.7, max_exp = 0.90) {
+  max_exp <- .clip01(.safe_num(max_exp, 0.90), 0.5, 1)
+  if (!is.finite(mos)) return(min(0.40, max_exp))
+  # Scale legacy map (old max 0.90) to user max_exp.
+  base <- if (mos >= 0.30) max_exp
+          else if (mos >= 0.10) max_exp * (0.65 / 0.90)
+          else if (mos >= 0.00) max_exp * (0.40 / 0.90)
+          else if (mos >= -0.10) max_exp * (0.15 / 0.90)
           else 0.00
   w <- .clip01(w_vg, 0, 1)
-  target <- (1 - w) * 0.40 + w * base
-  .clip01(target, 0, 1)
+  flat <- min(0.40, max_exp)
+  target <- (1 - w) * flat + w * base
+  .clip01(target, 0, max_exp)
 }
 
 #' Sentiment multiplier in [0.75, 1.25] from mom/RSI features.
@@ -704,6 +708,75 @@ sentiment_multiplier <- function(mom_score, rsi_score, w_mom = 0.5, w_rsi = 0.5)
     pass = isTRUE(pass_npm && pass_rev && pass_eps && pass_cv),
     path = path
   )
+}
+
+#' Company metrics for Dashboard「回測濾鏡」(percent units, same as derive_bt_params).
+compute_dashboard_filter_metrics <- function(d_is, d_cf) {
+  npm <- {
+    net <- if (exists("select_clean_metric_row_any", mode = "function")) {
+      get_avg(select_clean_metric_row_any(
+        d_is, .get_pattern("NET_INCOME_PATTERNS", .NET_INCOME_PATTERNS), include_ttm = FALSE
+      ))
+    } else NA_real_
+    rev <- if (exists("select_clean_metric_row", mode = "function")) {
+      get_avg(select_clean_metric_row(d_is, "Total Revenue", include_ttm = FALSE))
+    } else NA_real_
+    if (!is.na(net) && !is.na(rev) && rev != 0) net / rev * 100 else NA_real_
+  }
+  rev_g <- if (exists("select_clean_metric_row", mode = "function") &&
+              exists("get_avg_growth", mode = "function")) {
+    get_avg_growth(select_clean_metric_row(d_is, "Total Revenue", include_ttm = FALSE))
+  } else NA_real_
+  eps_g <- if (exists("select_clean_metric_row_any", mode = "function") &&
+              exists("get_avg_growth", mode = "function")) {
+    get_avg_growth(select_clean_metric_row_any(
+      d_is, .get_pattern("NET_INCOME_PATTERNS", .NET_INCOME_PATTERNS), include_ttm = FALSE
+    ))
+  } else NA_real_
+  fcf_cv <- NA_real_
+  if (exists("select_clean_metric_row", mode = "function")) {
+    fcf_row <- select_clean_metric_row(d_cf, "^Free Cash Flow$", include_ttm = FALSE)
+    if (length(fcf_row) >= 2) {
+      x <- as.numeric(na.omit(fcf_row))
+      if (length(x) >= 2) {
+        m <- mean(x)
+        fcf_cv <- stats::sd(x) / max(abs(m), 1e-9) * 100
+      }
+    }
+  }
+  list(net_margin = npm, rev_growth = rev_g, eps_growth = eps_g, fcf_cv = fcf_cv)
+}
+
+#' Evaluate current-company metrics vs holding thresholds (Dashboard 回測濾鏡).
+#' Metrics / thresholds in percent units matching bt_* inputs.
+evaluate_holding_filter <- function(metrics, thresholds) {
+  npm <- .safe_num(metrics$net_margin, NA_real_)
+  rev <- .safe_num(metrics$rev_growth, NA_real_)
+  eps <- .safe_num(metrics$eps_growth, NA_real_)
+  cv  <- .safe_num(metrics$fcf_cv, NA_real_)
+  thr_npm <- .safe_num(thresholds$bt_net_margin, 5)
+  thr_rev <- .safe_num(thresholds$bt_rev_growth, 10)
+  thr_eps <- .safe_num(thresholds$bt_eps_growth, 10)
+  thr_cv  <- .safe_num(thresholds$bt_fcf_cv, 25)
+  fund_row <- list(net_margin = npm, rev_growth = rev, eps_growth = eps)
+  gf <- .great_filter_pass(fund_row, thr_npm, thr_rev, thr_eps, thr_cv, cv)
+  rows <- list(
+    list(id = "npm", label = "淨利率", actual = npm, threshold = thr_npm, op = "≥",
+         pass = is.na(npm) || npm >= thr_npm || (is.finite(npm) && npm < 0)),
+    list(id = "rev", label = "營收成長", actual = rev, threshold = thr_rev, op = "≥",
+         pass = is.na(rev) || rev >= thr_rev || (is.finite(npm) && npm < 0 && (is.na(rev) || rev >= thr_rev))),
+    list(id = "eps", label = "EPS／NI 成長", actual = eps, threshold = thr_eps, op = "≥",
+         pass = is.na(eps) || eps >= thr_eps || (is.finite(npm) && npm < 0)),
+    list(id = "cv", label = "FCF CV", actual = cv, threshold = thr_cv, op = "≤",
+         pass = is.na(cv) || cv <= thr_cv)
+  )
+  # Align with .great_filter_pass loss-loose branch exactly
+  if (is.finite(npm) && npm < 0) {
+    rows[[1]]$pass <- TRUE
+    rows[[3]]$pass <- TRUE
+    rows[[2]]$pass <- is.na(rev) || rev >= thr_rev
+  }
+  list(overall = isTRUE(gf$pass), rows = rows, path = gf$path)
 }
 
 # ---------- fundamentals lookup for a given trading date ----------
@@ -754,6 +827,8 @@ sentiment_multiplier <- function(mom_score, rsi_score, w_mom = 0.5, w_rsi = 0.5)
   w_mom <- .safe_num(params$bt_w_mom, 0.5)
   w_rsi <- .safe_num(params$bt_w_rsi, 0.5)
   w_vg  <- .safe_num(params$bt_w_vg, 0.7)
+  max_exp <- .clip01(.safe_num(params$bt_max_exp, 0.90), 0.5, 1)
+  min_exp_pass <- .clip01(.safe_num(params$bt_min_exp_pass, 0), 0, 0.4)
 
   # Full history for rolling β (may be longer than the simulation window).
   if (is.null(beta_df) || !is.data.frame(beta_df) ||
@@ -828,10 +903,14 @@ sentiment_multiplier <- function(mom_score, rsi_score, w_mom = 0.5, w_rsi = 0.5)
 
       gf <- .great_filter_pass(fund_i, thr_npm, thr_rev, thr_eps, thr_cv, fund_i$cv_fcf)
 
-      # ---- Exposure base (diagnostic + Mode B weight); NOT chart Mode A ----
-      pos_a_target <- mos_hysteresis_target(mos_i, w_vg)
-      if (!isTRUE(gf$pass)) pos_a_target <- 0
-      pos_a <- .clip01(pos_a_target, 0, 1)
+      # ---- Mode A exposure (Trade_A); Mode B nests on Exp_A ----
+      pos_a_target <- mos_hysteresis_target(mos_i, w_vg, max_exp = max_exp)
+      if (!isTRUE(gf$pass)) {
+        pos_a_target <- 0
+      } else if (is.finite(mos_i) && mos_i >= -0.10 && min_exp_pass > 0) {
+        pos_a_target <- max(pos_a_target, min_exp_pass)
+      }
+      pos_a <- .clip01(min(pos_a_target, max_exp), 0, 1)
 
       # ---- Strategy B: sentiment overlay ONLY scales Exp_A weight ----
       sent_mult <- sentiment_multiplier(mom_score, rsi_score, w_mom, w_rsi)
@@ -1168,7 +1247,7 @@ build_bt_methodology_doc <- function(meta = NULL) {
     "\n",
     "- **該股買進持有 (Buy&Hold)**：每日 `E_t = E_{t-1} × (1 + r_t)`，全程 100% 持股；現金部位為 0。\n",
     "- **純基本面價值 (Trade_A)**：策略淨值 `E_t = E_{t-1} × (1 + Exp_A × r_t)`。",
-    "`Exp_A` 由 Great Filter + MOS 滯後曝險決定（最高約 90%）。這是淨值圖上的「模式 A」。\n",
+    "`Exp_A` 由持倉回測條件 + MOS 滯後曝險決定（上限見 `bt_max_exp`，預設 90%；可調至 100%）。這是淨值圖上的「模式 A」。\n",
     "- **情緒波動價值 (Trade_B)**：策略淨值，在 `Exp_A` 上乘情緒乘數（動能／RSI），",
     "並夾在 `[0.75×Exp_A, min(1, 1.25×Exp_A)]`；`Exp_A=0` 時必須空手。這是淨值圖上的「模式 B」，嵌套於 A 而非獨立宇宙。\n",
     "- **大盤基準**：SPY 全日報酬累積指數。\n",
@@ -1183,9 +1262,10 @@ build_bt_methodology_doc <- function(meta = NULL) {
     "每日收盤報酬 r_t = Close_t / Close_{t-1} - 1\n",
     "若為季再平衡日：\n",
     "  1) PIT 重建合理價 → MOS = (FV - Price) / Price\n",
-    "  2) Great Filter（淨利率／營收成長／EPS成長／FCF CV 門檻）\n",
+    "  2) 持倉回測條件（淨利率／營收成長／EPS成長／FCF CV 門檻）\n",
     "     → 未通過則 Exp_A = Exp_B = 0\n",
-    "  3) 通過則 Exp_A = MOS 滯後映射（與 w_vg 混合；MOS≥30%→最高約 90%）\n",
+    "  3) 通過則 Exp_A = MOS 滯後映射（與 w_vg 混合；MOS≥30%→bt_max_exp；\n",
+    "     可選 bt_min_exp_pass 地板，當 MOS≥−10%）\n",
     "  4) Exp_B = clip(Exp_A × sentiment_mult, 0.75×Exp_A … 1.25×Exp_A)\n",
     "非再平衡日：沿用上一季 Exp_A／Exp_B\n",
     "```\n",
@@ -1206,8 +1286,9 @@ build_bt_methodology_doc <- function(meta = NULL) {
     "- 基準：", g("bench", "SPY"), "\n",
     "- 模擬年數：", g("sim_years", "5"), "\n",
     "- 回測用評價模型：", g("fv_model"), "\n",
-    "- Great Filter 門檻（淨利率／營收成長／EPS成長／FCF CV %）：",
+    "- 持倉回測條件門檻（淨利率／營收成長／EPS成長／FCF CV %）：",
     g("filters"), "\n",
+    "- 純基本面 Fit：最大持股／通過後最低持股：", g("fit_exp", "0.90 / 0.00"), "\n",
     "- 權重 w_vg／w_mom／w_rsi：", g("weights"), "\n",
     "- Session SGR／n_years：", g("sgr_n"), "\n",
     "- 回測日數（對齊後）：", g("n_days"), "\n",
