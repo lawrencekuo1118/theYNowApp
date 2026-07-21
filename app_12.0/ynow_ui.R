@@ -1217,7 +1217,7 @@ ui <- dashboardPage(
                   title = tagList(icon("balance-scale"), "折現比較：基本面價值 vs 情緒波動價值 vs 大盤"),
                   width = 12, status = "primary", solidHeader = TRUE,
                   .bt_section_intro(
-                    "以所選評價模型，在各歷史時點用當時可得財報＋Rolling β 折現，重建「基本面價值」；「情緒波動價值」＝該股歷史實際股價；並疊加大盤基準價格（右軸）。搜尋股票後即預覽股價／大盤；基本面價值（紅線）預設隱藏，按右下角「更新」後顯示。"
+                    "歷史各點：僅用當時可得財報＋Rolling β 設算「基本面價值」（不套用目前分頁參數）。僅折線末端最新點掛勾目前 APP 分頁設定（DCF／DDM／RI／P/B）；「情緒波動價值」＝該股歷史實際股價；並疊加大盤（右軸）。搜尋後即預覽股價／大盤；基本面價值預設隱藏，調參數後按右下角「更新」顯示。"
                   ),
                   tags$div(
                     class = "ynow-bt-hfv-wrap",

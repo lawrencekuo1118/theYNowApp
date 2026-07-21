@@ -2,6 +2,9 @@
 # backtest_module.R -- The YNow App V12.0
 # --------------------------------------------------------------
 # Dynamic session-only PIT (point-in-time) backtest engine.
+# Historical FV points: then-available fundamentals + Rolling β only.
+# Tip (latest) FV point: current APP tab assumptions via .overlay_session_tip_fv.
+# Growth carry between rebalances uses APP_DEFAULTS SGR (not live session SGR).
 # - No warehouse: every rebalance date reconstructs fair values
 #   from annual financials whose fiscal year <= calendar_year - 1.
 #   Growth / n / P/B come from CURRENT session; Ke/WACC use Rolling Beta.
@@ -163,36 +166,56 @@ estimate_hist_ddm <- function(d0, ke, g) {
   p0
 }
 
-#' Simplified Residual Income model (per share).
-#' b0 = BVPS; roe & ke small decimals; g terminal growth of RI;
-#' n = explicit forecast horizon; payout implied from dividends (fallback 0.5 retention).
-estimate_hist_ri <- function(b0, roe, ke, g, n = 5, payout = NA_real_) {
+#' Residual Income model (per share), session assumptions × PIT book value.
+#' @param b0 BVPS at the valuation date
+#' @param roe constant ROE (decimal) if `roe_path` is NULL
+#' @param ke cost of equity (decimal)
+#' @param g terminal growth of RI (decimal)
+#' @param n explicit forecast horizon
+#' @param payout dividend payout ratio (decimal)
+#' @param roe_path optional length-n ROE vector (decimal); overrides constant `roe`
+estimate_hist_ri <- function(b0, roe, ke, g, n = 5, payout = NA_real_, roe_path = NULL) {
   b0 <- .safe_num(b0, NA_real_)
-  roe <- .safe_num(roe, NA_real_)
   ke <- .safe_num(ke, NA_real_)
   g  <- .safe_num(g,  NA_real_)
   n <- as.integer(.safe_num(n, 5))
   payout <- .safe_num(payout, NA_real_)
-  if (!is.finite(b0) || b0 <= 0 || !is.finite(roe) || !is.finite(ke) || ke <= 0) return(NA_real_)
+  if (!is.finite(b0) || b0 <= 0 || !is.finite(ke) || ke <= 0) return(NA_real_)
   if (n < 1L) n <- 5L
   if (!is.finite(payout) || payout < 0) payout <- 0.5
   payout <- min(max(payout, 0), 1)
-  retention <- 1 - payout
+
+  if (!is.null(roe_path)) {
+    rp <- suppressWarnings(as.numeric(roe_path))
+    if (length(rp) >= n && all(is.finite(rp[seq_len(n)]))) {
+      rp <- rp[seq_len(n)]
+    } else {
+      rp <- NULL
+    }
+  } else {
+    rp <- NULL
+  }
+  if (is.null(rp)) {
+    roe <- .safe_num(roe, NA_real_)
+    if (!is.finite(roe)) return(NA_real_)
+    rp <- rep(roe, n)
+  }
 
   B <- numeric(n + 1)
   B[1] <- b0
   RI <- numeric(n)
-  book_g <- roe * retention
   for (t in seq_len(n)) {
-    RI[t]  <- (roe - ke) * B[t]
-    B[t + 1] <- B[t] * (1 + book_g)
+    RI[t] <- (rp[t] - ke) * B[t]
+    ni <- B[t] * rp[t]
+    B[t + 1] <- B[t] + ni * (1 - payout)
   }
   dfs <- cumprod(rep(1 + ke, n))
   pv_ri <- sum(RI / dfs)
 
   pv_tv <- 0
   if (is.finite(g) && ke > g) {
-    ri_next <- (roe - ke) * B[n + 1]
+    # Terminal uses last-year ROE for continuity with fade paths
+    ri_next <- RI[n] * (1 + g)
     tv <- ri_next / (ke - g)
     pv_tv <- tv / dfs[n]
   }
@@ -281,22 +304,37 @@ valuation_signal_label <- function(fv, price) {
   )
 }
 
+#' Fixed forward assumptions for historical PIT points (not live APP tabs).
+.hist_forward_assumptions <- function() {
+  if (exists("APP_DEFAULTS")) {
+    sgr_pct <- .safe_num(APP_DEFAULTS$sgr, 4)
+    list(
+      n_years = max(1L, as.integer(.safe_num(APP_DEFAULTS$years, 5))),
+      sgr = sgr_pct / 100,
+      g_explicit = sgr_pct / 100,
+      pb_mid = .safe_num(APP_DEFAULTS$pb_mid, 1.5)
+    )
+  } else {
+    list(n_years = 5L, sgr = 0.025, g_explicit = 0.025, pb_mid = 1.5)
+  }
+}
+
 #' Point-in-time fair-value reconstruction for a single fundamentals row.
-#' @param fund_row list-like with fcf, cash, debt, shares, ni, equity_book,
-#'   dividends_paid.
-#' @param price historical closing price at rebalance date.
-#' @param model_params list(wacc, ke, sgr, g_explicit, n_years, pb_mid, ddm_g).
-#' @return list(fv_dcf, fv_ddm, fv_ri, fv_pb, fair_value, mos, signal,
-#'   valuation_score, bvps, roe, dps, payout).
-reconstruct_fair_value_pit <- function(fund_row, price, model_params) {
+#'
+#' Historical points (`use_session_assumptions = FALSE`): then-available
+#' fundamentals + Rolling β Ke/WACC only. Forward structure uses fixed
+#' APP_DEFAULTS (not live DCF/DDM/RI/P/B tab settings).
+#'
+#' Tip / latest point (`use_session_assumptions = TRUE`): apply current APP
+#' tab parameters (years, g, RI ROE fade, DDM, P/B, …) on latest PIT inputs.
+reconstruct_fair_value_pit <- function(fund_row, price, model_params,
+                                       use_session_assumptions = NULL) {
   price <- .safe_num(price, NA_real_)
   wacc <- .safe_num(model_params$wacc, NA_real_)
   ke   <- .safe_num(model_params$ke, wacc)
-  sgr  <- .safe_num(model_params$sgr, NA_real_)
-  n_yr <- as.integer(.safe_num(model_params$n_years, 5))
-  g_ex <- .safe_num(model_params$g_explicit, sgr)
-  pb_mid <- .safe_num(model_params$pb_mid, NA_real_)
-  ddm_g <- .safe_num(model_params$ddm_g, sgr)
+  if (is.null(use_session_assumptions)) {
+    use_session_assumptions <- isTRUE(model_params$use_session_assumptions)
+  }
 
   shares <- .safe_num(fund_row$shares, NA_real_)
   fcf    <- .safe_num(fund_row$fcf, NA_real_)
@@ -307,18 +345,71 @@ reconstruct_fair_value_pit <- function(fund_row, price, model_params) {
   divp   <- .safe_num(fund_row$dividends_paid, NA_real_)
 
   bvps <- if (is.finite(eqbook) && is.finite(shares) && shares > 1) eqbook / shares else NA_real_
-  roe  <- if (is.finite(ni) && is.finite(eqbook) && eqbook > 0) ni / eqbook else NA_real_
+  roe_pit <- if (is.finite(ni) && is.finite(eqbook) && eqbook > 0) ni / eqbook else NA_real_
   dps  <- if (is.finite(divp) && is.finite(shares) && shares > 1) abs(divp) / shares else NA_real_
-  payout <- if (is.finite(dps) && is.finite(ni) && ni > 0 && is.finite(shares) && shares > 1) {
+  payout_pit <- if (is.finite(divp) && is.finite(ni) && ni > 0 && is.finite(shares) && shares > 1) {
     min(max(abs(divp) / ni, 0), 1)
   } else NA_real_
 
+  if (isTRUE(use_session_assumptions)) {
+    # Live APP tabs on tip fundamentals + (usually) tip-date discount rates
+    sgr  <- .safe_num(model_params$sgr, NA_real_)
+    n_yr <- as.integer(.safe_num(model_params$n_years, 5))
+    g_ex <- .safe_num(model_params$g_explicit, sgr)
+    pb_mid <- .safe_num(model_params$pb_mid, NA_real_)
+    ddm_g <- .safe_num(model_params$ddm_g, sgr)
+    ddm_ke <- .safe_num(model_params$ddm_ke, ke)
+    ri_years <- as.integer(.safe_num(model_params$ri_years, n_yr))
+    if (!is.finite(ri_years) || ri_years < 1L) ri_years <- max(1L, n_yr)
+    ri_g <- .safe_num(model_params$ri_g, g_ex)
+    ri_ke <- .safe_num(model_params$ri_ke, ke)
+    ri_roe_sess <- .safe_num(model_params$ri_roe, NA_real_)
+    ri_payout_sess <- .safe_num(model_params$ri_payout, NA_real_)
+    roe_use <- if (is.finite(ri_roe_sess)) ri_roe_sess else roe_pit
+    payout_use <- if (is.finite(ri_payout_sess)) ri_payout_sess else payout_pit
+    roe_path <- NULL
+    method <- tolower(as.character(model_params$roe_method %||% "constant")[1])
+    if (exists("build_roe_path", mode = "function") && !identical(method, "constant") &&
+        nzchar(method)) {
+      roe_path <- tryCatch(
+        build_roe_path(
+          method = method,
+          n = ri_years,
+          roe_start = if (is.finite(roe_use)) roe_use else 0.15,
+          roe_terminal = .safe_num(model_params$roe_terminal, roe_use),
+          roe_industry = .safe_num(model_params$roe_industry, 0.12),
+          custom_vec = model_params$roe_custom_vec
+        ),
+        error = function(e) NULL
+      )
+    }
+  } else {
+    # Historical PIT: then-available fund + Rolling β; fixed forward defaults
+    hist <- .hist_forward_assumptions()
+    sgr  <- hist$sgr
+    n_yr <- hist$n_years
+    g_ex <- hist$g_explicit
+    pb_mid <- .safe_num(
+      if (!is.null(model_params$pb_mid_hist)) model_params$pb_mid_hist else NULL,
+      hist$pb_mid
+    )
+    ddm_g <- sgr
+    ddm_ke <- ke
+    ri_years <- n_yr
+    ri_g <- g_ex
+    ri_ke <- ke
+    roe_use <- roe_pit
+    payout_use <- payout_pit
+    roe_path <- NULL
+  }
+
   fv_dcf <- estimate_hist_dcf(fcf, cash, debt, shares, wacc, sgr, n_yr, g_ex)
-  fv_ddm <- if (is.finite(dps) && dps > 0) estimate_hist_ddm(dps, ke, ddm_g) else NA_real_
-  fv_ri  <- estimate_hist_ri(bvps, roe, ke, g_ex, n = n_yr, payout = payout)
+  fv_ddm <- if (is.finite(dps) && dps > 0) estimate_hist_ddm(dps, ddm_ke, ddm_g) else NA_real_
+  fv_ri  <- estimate_hist_ri(
+    bvps, roe_use, ri_ke, ri_g, n = ri_years, payout = payout_use, roe_path = roe_path
+  )
   fv_pb  <- estimate_hist_pb(bvps, pb_mid)
 
-  # Mode A uses the user-selected valuation model (not always the blend).
   fv_model <- tolower(as.character(model_params$fv_model %||% "composite")[1])
   pick_one <- function(x) if (is.finite(x) && x > 0) x else NA_real_
   fair_value <- switch(
@@ -333,7 +424,6 @@ reconstruct_fair_value_pit <- function(fund_row, price, model_params) {
       if (length(cand) > 0) mean(cand) else NA_real_
     }
   )
-  # Fallback if the selected model is unavailable at this PIT date.
   if (!is.finite(fair_value) || fair_value <= 0) {
     cand <- c(fv_dcf, fv_ddm, fv_ri, fv_pb)
     cand <- cand[is.finite(cand) & cand > 0]
@@ -344,15 +434,73 @@ reconstruct_fair_value_pit <- function(fund_row, price, model_params) {
     (fair_value - price) / fair_value
   } else NA_real_
   signal <- valuation_signal_label(fair_value, price)
-  # Map MOS in [-0.2, +0.5] to [0, 100], clipped.
   score <- if (is.finite(mos)) .clip01((mos + 0.2) / 0.7, 0, 1) * 100 else NA_real_
 
   list(
     fv_dcf = fv_dcf, fv_ddm = fv_ddm, fv_ri = fv_ri, fv_pb = fv_pb,
     fair_value = fair_value, mos = mos, signal = signal,
     valuation_score = score,
-    bvps = bvps, roe = roe, dps = dps, payout = payout
+    bvps = bvps, roe = roe_use, dps = dps, payout = payout_use,
+    session_tip = isTRUE(use_session_assumptions)
   )
+}
+
+#' Replace the latest rebalance FV with current APP tab assumptions; rebuild daily series.
+#' Historical rebalance points stay PIT-only; daily carry uses fixed hist SGR.
+.overlay_session_tip_fv <- function(equity_df, valuation_df, fund, model_params) {
+  if (is.null(valuation_df) || !is.data.frame(valuation_df) || nrow(valuation_df) < 1) {
+    return(list(equity_df = equity_df, valuation_df = valuation_df))
+  }
+  if (is.null(model_params)) {
+    return(list(equity_df = equity_df, valuation_df = valuation_df))
+  }
+  j <- nrow(valuation_df)
+  as_of <- valuation_df$Date[j]
+  fund_i <- .lookup_fund_at(fund, as_of)
+  price_i <- .safe_num(valuation_df$hist_price[j], NA_real_)
+  if (!is.finite(price_i) && !is.null(equity_df) && "Close" %in% names(equity_df)) {
+    ii <- match(as_of, equity_df$Date)
+    if (!is.na(ii)) price_i <- .safe_num(equity_df$Close[ii], NA_real_)
+  }
+
+  mp_tip <- model_params
+  mp_tip$use_session_assumptions <- TRUE
+  # Tip-date market discount rates (Rolling β as of tip) + live APP forward tabs.
+  if ("wacc_pit" %in% names(valuation_df) && is.finite(valuation_df$wacc_pit[j])) {
+    mp_tip$wacc <- valuation_df$wacc_pit[j]
+  }
+  if ("ke_pit" %in% names(valuation_df) && is.finite(valuation_df$ke_pit[j])) {
+    mp_tip$ke <- valuation_df$ke_pit[j]
+  }
+
+  pit <- reconstruct_fair_value_pit(fund_i, price_i, mp_tip, use_session_assumptions = TRUE)
+  valuation_df$fv_dcf[j] <- .safe_num(pit$fv_dcf, NA_real_)
+  valuation_df$fv_ddm[j] <- .safe_num(pit$fv_ddm, NA_real_)
+  valuation_df$fv_ri[j]  <- .safe_num(pit$fv_ri, NA_real_)
+  valuation_df$fv_pb[j]  <- .safe_num(pit$fv_pb, NA_real_)
+  valuation_df$fair_value[j] <- .safe_num(pit$fair_value, NA_real_)
+  if ("strategy_fv" %in% names(valuation_df)) {
+    valuation_df$strategy_fv[j] <- valuation_df$fair_value[j]
+  }
+  valuation_df$mos[j] <- pit$mos
+  valuation_df$signal[j] <- pit$signal
+  valuation_df$valuation_score[j] <- .safe_num(pit$valuation_score, NA_real_)
+  if ("explain" %in% names(valuation_df)) {
+    valuation_df$explain[j] <- paste0(
+      valuation_df$explain[j] %||% "",
+      " [tip=session APP params]"
+    )
+  }
+
+  hist <- .hist_forward_assumptions()
+  g_carry <- hist$sgr
+  if (!is.null(equity_df)) {
+    equity_df <- .attach_fv_model_columns(
+      equity_df, valuation_df, g_carry,
+      primary_model = model_params$fv_model %||% "dcf"
+    )
+  }
+  list(equity_df = equity_df, valuation_df = valuation_df)
 }
 
 # ---------- expanded annual fundamentals table ----------
@@ -977,13 +1125,12 @@ evaluate_holding_filter <- function(metrics, thresholds) {
   equity_bm <- numeric(n); equity_bm[1] <- 1
   exp_a_daily <- numeric(n)
   exp_b_daily <- numeric(n)
-  # Mode A chart: selected-model PIT fair value, grown by SGR between
-  # rebalances (avoids multi-quarter flat LOCF steps when fund year is unchanged).
+  # Mode A chart: selected-model PIT fair value, grown by hist-default SGR
+  # between rebalances (session SGR only affects tip via overlay).
   fv_daily <- rep(NA_real_, n)
   fv_anchor <- NA_real_
   fv_anchor_date <- as.Date(NA)
-  g_carry <- .safe_num(model_params$sgr, 0.025)
-  if (!is.finite(g_carry)) g_carry <- 0.025
+  g_carry <- .hist_forward_assumptions()$sgr
   g_carry <- max(min(g_carry, 0.12), -0.05)
 
   val_rows <- list()
@@ -1015,7 +1162,9 @@ evaluate_holding_filter <- function(metrics, thresholds) {
       )
       mp_i <- disc$model_params
 
-      pit <- reconstruct_fair_value_pit(fund_i, price_i, mp_i)
+      pit <- reconstruct_fair_value_pit(
+        fund_i, price_i, mp_i, use_session_assumptions = FALSE
+      )
       mos_i <- if (is.finite(pit$mos)) pit$mos else mos_fallback
       signal_i <- pit$signal
       if (is.finite(pit$fair_value) && pit$fair_value > 0) {
@@ -1207,6 +1356,12 @@ evaluate_holding_filter <- function(metrics, thresholds) {
 
   mkt <- .compute_market_pricing_metrics(valuation_df)
 
+  # Latest point only: overlay live APP tab assumptions (RI/DDM/P/B/…)
+  tip <- .overlay_session_tip_fv(equity_df, valuation_df, fund, model_params)
+  equity_df <- tip$equity_df
+  valuation_df <- tip$valuation_df
+  mkt <- .compute_market_pricing_metrics(valuation_df)
+
   if (isTRUE(fv_only)) {
     return(list(
       equity_df = equity_df[, c("Date", "Close", "Bench", "FairValue",
@@ -1292,10 +1447,6 @@ refresh_backtest_fair_value <- function(res, fund, model_params) {
   if (is.null(mp_base)) mp_base <- res$model_params_used
   if (is.null(mp_base)) stop("缺少模型參數")
 
-  g_carry <- .safe_num(mp_base$sgr, 0.025)
-  if (!is.finite(g_carry)) g_carry <- 0.025
-  g_carry <- max(min(g_carry, 0.12), -0.05)
-
   rebal_idx <- match(vd$Date, equity_df$Date)
 
   for (j in seq_len(nrow(vd))) {
@@ -1308,7 +1459,9 @@ refresh_backtest_fair_value <- function(res, fund, model_params) {
     if ("wacc_pit" %in% names(vd) && is.finite(vd$wacc_pit[j])) mp_i$wacc <- vd$wacc_pit[j]
     if ("ke_pit" %in% names(vd) && is.finite(vd$ke_pit[j])) mp_i$ke <- vd$ke_pit[j]
 
-    pit <- reconstruct_fair_value_pit(fund_i, price_i, mp_i)
+    pit <- reconstruct_fair_value_pit(
+      fund_i, price_i, mp_i, use_session_assumptions = FALSE
+    )
     vd$fv_dcf[j] <- .safe_num(pit$fv_dcf, NA_real_)
     vd$fv_ddm[j] <- .safe_num(pit$fv_ddm, NA_real_)
     vd$fv_ri[j]  <- .safe_num(pit$fv_ri, NA_real_)
@@ -1320,10 +1473,10 @@ refresh_backtest_fair_value <- function(res, fund, model_params) {
     vd$valuation_score[j] <- .safe_num(pit$valuation_score, NA_real_)
   }
 
-  equity_df <- .attach_fv_model_columns(
-    equity_df, vd, g_carry,
-    primary_model = mp_base$fv_model %||% "dcf"
-  )
+  # Tip only: current APP tab params on latest rebalance
+  tip <- .overlay_session_tip_fv(equity_df, vd, fund, mp_base)
+  equity_df <- tip$equity_df
+  vd <- tip$valuation_df
 
   metrics <- res$metrics
   if (is.null(metrics)) metrics <- list()

@@ -2320,11 +2320,49 @@ server <- function(input, output, session) {
       ke <- suppressWarnings(as.numeric(input$wacc_re)[1]) / 100
     }
     if (!is.finite(ke) || ke <= 0) ke <- wacc
-    pb_mid <- suppressWarnings(as.numeric(input$pb_mid)[1])
+
+    # P/B tab (module id mod_pb)
+    pb_mid <- suppressWarnings(as.numeric(input[["mod_pb-pb_mid"]])[1])
+    if (!is.finite(pb_mid) || pb_mid <= 0) {
+      pb_mid <- suppressWarnings(as.numeric(input$pb_mid)[1])
+    }
     if (!is.finite(pb_mid) || pb_mid <= 0) pb_mid <- APP_DEFAULTS$pb_mid
+
+    # DDM tab
     ddm_g <- suppressWarnings(as.numeric(input[["mod_ddm-g"]])[1])
     if (!is.finite(ddm_g)) ddm_g <- sgr * 100
     ddm_g <- ddm_g / 100
+    ddm_ke <- suppressWarnings(as.numeric(input[["mod_ddm-ke"]])[1])
+    if (is.finite(ddm_ke) && ddm_ke > 0) {
+      ddm_ke <- ddm_ke / 100
+    } else {
+      ddm_ke <- ke
+    }
+
+    # RI / DDM / P/B tabs: applied only to HFV chart tip (latest point)
+    ri_g <- suppressWarnings(as.numeric(input[["mod_ri-ri_g"]])[1])
+    if (is.finite(ri_g)) ri_g <- ri_g / 100 else ri_g <- g_explicit
+    ri_ke <- suppressWarnings(as.numeric(input[["mod_ri-ri_ke"]])[1])
+    if (is.finite(ri_ke) && ri_ke > 0) ri_ke <- ri_ke / 100 else ri_ke <- ke
+    ri_years <- suppressWarnings(as.integer(input[["mod_ri-ri_years"]])[1])
+    if (!is.finite(ri_years) || ri_years < 1L) ri_years <- n_years
+    ri_roe <- suppressWarnings(as.numeric(input[["mod_ri-ri_roe"]])[1])
+    if (is.finite(ri_roe)) ri_roe <- ri_roe / 100 else ri_roe <- NA_real_
+    ri_payout <- suppressWarnings(as.numeric(input[["mod_ri-ri_payout"]])[1])
+    if (is.finite(ri_payout)) ri_payout <- max(0, min(1, ri_payout / 100)) else ri_payout <- NA_real_
+    roe_method <- as.character(input[["mod_ri-roe_method"]] %||% "constant")[1]
+    roe_terminal <- suppressWarnings(as.numeric(input[["mod_ri-roe_terminal"]])[1])
+    if (is.finite(roe_terminal)) roe_terminal <- roe_terminal / 100 else roe_terminal <- ri_roe
+    roe_industry <- suppressWarnings(as.numeric(input[["mod_ri-roe_industry"]])[1])
+    if (is.finite(roe_industry)) roe_industry <- roe_industry / 100 else roe_industry <- 0.12
+    roe_custom_vec <- NULL
+    if (identical(roe_method, "custom") && exists(".parse_roe_pct_vector", mode = "function")) {
+      roe_custom_vec <- tryCatch(
+        .parse_roe_pct_vector(input[["mod_ri-roe_custom_txt"]]),
+        error = function(e) NULL
+      )
+    }
+
     if (!is.finite(wacc) || wacc <= 0) wacc <- APP_DEFAULTS$wacc_gordon / 100
     if (!is.finite(sgr)) sgr <- APP_DEFAULTS$sgr / 100
     if (!is.finite(g_explicit)) g_explicit <- sgr
@@ -2373,7 +2411,11 @@ server <- function(input, output, session) {
 
     list(
       wacc = wacc, ke = ke, sgr = sgr, g_explicit = g_explicit,
-      n_years = n_years, pb_mid = pb_mid, ddm_g = ddm_g,
+      n_years = n_years, pb_mid = pb_mid, ddm_g = ddm_g, ddm_ke = ddm_ke,
+      ri_roe = ri_roe, ri_payout = ri_payout, ri_years = ri_years,
+      ri_g = ri_g, ri_ke = ri_ke,
+      roe_method = roe_method, roe_terminal = roe_terminal,
+      roe_industry = roe_industry, roe_custom_vec = roe_custom_vec,
       fv_model = fv_model,
       rf = rf, rm = rm, rd = rd, tax = tax,
       we = we, wd = wd,
@@ -2761,11 +2803,40 @@ server <- function(input, output, session) {
                tags$div(class = "ynow-kpi-stat-value", style = "color:#3c8dbc;", .fmt_pct(m$mean_hist_mos))),
       tags$div(style = "flex:2;min-width:180px;padding:8px 10px;background:#fafafa;border-left:4px solid #555;",
                tags$div(class = "ynow-kpi-stat-label", "此刻參數（Session）"),
-               tags$div(class = "ynow-kpi-stat-params",
-                        sprintf("模型 %s · WACC %.2f%% · Ke %.2f%% · SGR %.2f%% · n=%s · PB mid %.2f",
-                                paste(toupper(.bt_selected_fv_models()), collapse = "+"),
-                                .safe_num(mp$wacc, NA) * 100, .safe_num(mp$ke, NA) * 100,
-                                .safe_num(mp$sgr, NA) * 100, mp$n_years, .safe_num(mp$pb_mid, NA))))
+               tags$div(class = "ynow-kpi-stat-params", {
+                 models <- paste(toupper(.bt_selected_fv_models()), collapse = "+")
+                 base <- sprintf(
+                   "模型 %s · WACC %.2f%% · Ke %.2f%% · SGR %.2f%% · n=%s · PB mid %.2f",
+                   models,
+                   .safe_num(mp$wacc, NA) * 100, .safe_num(mp$ke, NA) * 100,
+                   .safe_num(mp$sgr, NA) * 100, mp$n_years, .safe_num(mp$pb_mid, NA)
+                 )
+                 if ("ri" %in% .bt_selected_fv_models()) {
+                   paste0(
+                     base,
+                     sprintf(
+                       " · RI[ROE %.1f%% · payout %.0f%% · n=%s · g %.2f%% · Ke %.2f%% · fade=%s]",
+                       .safe_num(mp$ri_roe, NA) * 100,
+                       .safe_num(mp$ri_payout, NA) * 100,
+                       mp$ri_years %||% mp$n_years,
+                       .safe_num(mp$ri_g, NA) * 100,
+                       .safe_num(mp$ri_ke, NA) * 100,
+                       mp$roe_method %||% "constant"
+                     )
+                   )
+                 } else if ("ddm" %in% .bt_selected_fv_models()) {
+                   paste0(
+                     base,
+                     sprintf(
+                       " · DDM[g %.2f%% · Ke %.2f%%]",
+                       .safe_num(mp$ddm_g, NA) * 100,
+                       .safe_num(mp$ddm_ke, NA) * 100
+                     )
+                   )
+                 } else {
+                   base
+                 }
+               }))
     )
   })
 
