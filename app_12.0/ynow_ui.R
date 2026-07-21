@@ -1250,42 +1250,46 @@ ui <- dashboardPage(
                           "模式 B：對應上方折現圖的「情緒波動價值」（實際股價軌跡）。策略上 Exp_B = Exp_A × 情緒乘數；可用 Fit 參數讓模擬更貼近買進持有。"
                         ),
                         # 寬螢幕三列：動能 / RSI / 持股上限
-                        fluidRow(
+                        tags$div(
                           class = "ynow-bt-mode-b-grid",
-                          column(
-                            4,
-                            sliderInput("bt_w_mom", "動能相對權重", 0, 1, 0.4, step = 0.01),
-                            .bt_hint("與 RSI 正規化後組成情緒分數。")
-                          ),
-                          column(
-                            4,
-                            sliderInput("bt_w_rsi", "RSI 相對權重", 0, 1, 0.3, step = 0.01),
-                            .bt_hint("情緒乘數限制在 0.75～1.25。")
-                          ),
-                          column(
-                            4,
-                            sliderInput("bt_max_exp", "最大持股上限", 0.5, 1, 0.9, step = 0.01),
-                            .bt_hint("拉到 1.00 可消除結構性少倉，利於貼近買進持有。"),
-                            sliderInput("bt_min_exp_pass", "通過條件後最低持股", 0, 0.4, 0, step = 0.01),
-                            .bt_hint("持倉條件通過且非極度高估時的地板倉位。")
+                          fluidRow(
+                            column(
+                              4,
+                              sliderInput("bt_w_mom", "動能相對權重", 0, 1, 0.4, step = 0.01),
+                              .bt_hint("與 RSI 正規化後組成情緒分數。")
+                            ),
+                            column(
+                              4,
+                              sliderInput("bt_w_rsi", "RSI 相對權重", 0, 1, 0.3, step = 0.01),
+                              .bt_hint("情緒乘數限制在 0.75～1.25。")
+                            ),
+                            column(
+                              4,
+                              sliderInput("bt_max_exp", "最大持股上限", 0.5, 1, 0.9, step = 0.01),
+                              .bt_hint("拉到 1.00 可消除結構性少倉，利於貼近買進持有。"),
+                              sliderInput("bt_min_exp_pass", "通過條件後最低持股", 0, 0.4, 0, step = 0.01),
+                              .bt_hint("持倉條件通過且非極度高估時的地板倉位。")
+                            )
                           )
                         ),
                         # 按鈕獨立一列（不與滑桿／表格並排）
-                        fluidRow(
+                        tags$div(
                           class = "ynow-bt-fit-row",
-                          column(
-                            12,
-                            tags$div(
-                              class = "ynow-bt-fit-panel",
-                              actionButton(
-                                "bt_fit_bh_preset", "貼近買進持有",
-                                icon = icon("chart-line"),
-                                class = "btn-success",
-                                style = "font-weight:600;"
-                              ),
+                          fluidRow(
+                            column(
+                              12,
                               tags$div(
-                                style = "margin-top:8px;font-size:11px;color:#666;",
-                                "一鍵：最大持股=100%、最低持股=40%、w_vg=0.35（弱化減碼）。會關閉自動同步。"
+                                class = "ynow-bt-fit-panel",
+                                actionButton(
+                                  "bt_fit_bh_preset", "貼近買進持有",
+                                  icon = icon("chart-line"),
+                                  class = "btn-success",
+                                  style = "font-weight:600;"
+                                ),
+                                tags$div(
+                                  style = "margin-top:8px;font-size:11px;color:#666;",
+                                  "一鍵：最大持股=100%、最低持股=40%、w_vg=0.35（弱化減碼）。會關閉自動同步。"
+                                )
                               )
                             )
                           )
@@ -1305,51 +1309,59 @@ ui <- dashboardPage(
                   fluidRow(
                     column(
                       4,
-                      class = "ynow-bt-validate-col",
                       tags$div(
-                        class = "ynow-bt-validate-panel",
-                        tags$h5(tags$b("MOS 有效性驗證")),
-                        .bt_hint("依 MOS 分組統計 1Y／3Y／5Y 前瞻報酬：MOS 愈高是否報酬愈好？"),
-                        tags$div(style = "overflow-x:auto;", tableOutput("bt_mos_table"))
+                        class = "ynow-bt-validate-col",
+                        tags$div(
+                          class = "ynow-bt-validate-panel",
+                          tags$h5(tags$b("MOS 有效性驗證")),
+                          .bt_hint("依 MOS 分組統計 1Y／3Y／5Y 前瞻報酬：MOS 愈高是否報酬愈好？"),
+                          tags$div(style = "overflow-x:auto;", tableOutput("bt_mos_table"))
+                        )
                       )
                     ),
                     column(
                       4,
-                      class = "ynow-bt-validate-col",
                       tags$div(
-                        class = "ynow-bt-validate-panel",
-                        tags$h5(tags$b("Fair Value 預測能力")),
-                        uiOutput("bt_fv_edge"),
-                        tags$div(style = "overflow-x:auto;", tableOutput("bt_fv_table"))
+                        class = "ynow-bt-validate-col",
+                        tags$div(
+                          class = "ynow-bt-validate-panel",
+                          tags$h5(tags$b("Fair Value 預測能力")),
+                          uiOutput("bt_fv_edge"),
+                          tags$div(style = "overflow-x:auto;", tableOutput("bt_fv_table"))
+                        )
                       )
                     ),
                     column(
                       4,
-                      class = "ynow-bt-validate-col",
                       tags$div(
-                        class = "ynow-bt-validate-panel",
-                        tags$h5(tags$b("參數高原（敏感度）")),
-                        .bt_hint("微擾 WACC／SGR／年數，觀察合理價指數（Model_A）終值敏感度——不是策略淨值。"),
-                        uiOutput("bt_plateau"),
-                        tags$div(style = "overflow-x:auto;", tableOutput("bt_plateau_table"))
+                        class = "ynow-bt-validate-col",
+                        tags$div(
+                          class = "ynow-bt-validate-panel",
+                          tags$h5(tags$b("參數高原（敏感度）")),
+                          .bt_hint("微擾 WACC／SGR／年數，觀察合理價指數（Model_A）終值敏感度——不是策略淨值。"),
+                          uiOutput("bt_plateau"),
+                          tags$div(style = "overflow-x:auto;", tableOutput("bt_plateau_table"))
+                        )
                       )
                     )
                   ),
                   # 操作按鈕獨立一列，不與表格並排
-                  fluidRow(
+                  tags$div(
                     class = "ynow-bt-validate-actions",
-                    column(
-                      12,
-                      tags$div(
-                        style = "font-size:12px;color:#666;margin-bottom:8px;",
-                        "完整公式與本次 Session 參數可下載方法論說明（與上方驗證表分開）。"
-                      ),
-                      downloadButton(
-                        "download_bt_methodology",
-                        "下載方法論說明（Markdown）",
-                        icon = icon("download"),
-                        class = "btn-primary",
-                        style = "font-weight: 600;"
+                    fluidRow(
+                      column(
+                        12,
+                        tags$div(
+                          style = "font-size:12px;color:#666;margin-bottom:8px;",
+                          "完整公式與本次 Session 參數可下載方法論說明（與上方驗證表分開）。"
+                        ),
+                        downloadButton(
+                          "download_bt_methodology",
+                          "下載方法論說明（Markdown）",
+                          icon = icon("download"),
+                          class = "btn-primary",
+                          style = "font-weight: 600;"
+                        )
                       )
                     )
                   )
