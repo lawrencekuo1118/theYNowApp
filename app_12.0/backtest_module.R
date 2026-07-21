@@ -942,6 +942,7 @@ evaluate_holding_filter <- function(metrics, thresholds) {
         Date = df$Date[i],
         fund_year = fund_i$fund_year,
         hist_price = price_i,
+        bench_price = .safe_num(df$Bench[i], NA_real_),
         fv_dcf = .safe_num(pit$fv_dcf, NA_real_),
         fv_ddm = .safe_num(pit$fv_ddm, NA_real_),
         fv_ri  = .safe_num(pit$fv_ri,  NA_real_),
@@ -1009,7 +1010,7 @@ evaluate_holding_filter <- function(metrics, thresholds) {
   valuation_df <- if (length(val_rows) > 0) do.call(rbind, val_rows) else {
     data.frame(
       Date = as.Date(character()), fund_year = integer(),
-      hist_price = numeric(),
+      hist_price = numeric(), bench_price = numeric(),
       fv_dcf = numeric(), fv_ddm = numeric(), fv_ri = numeric(), fv_pb = numeric(),
       fair_value = numeric(), strategy_fv = numeric(),
       mos = numeric(), signal = character(),
@@ -1025,6 +1026,9 @@ evaluate_holding_filter <- function(metrics, thresholds) {
   equity_df <- data.frame(
     Date = df$Date,
     Close = df$Close,
+    Bench = df$Bench,
+    # Daily PIT fair value (carried between rebalances) for 折現比較圖
+    FairValue = fv_daily,
     # Model_A: FV index for plateau (NOT equity-chart Mode A).
     Model_A = model_a,
     # Two backtest modes → two strategy NAVs on the equity chart.

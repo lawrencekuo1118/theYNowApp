@@ -123,7 +123,14 @@ ui <- dashboardPage(
     withMathJax(),
     
     tags$head(
-      tags$style(HTML('.main-header .logo { font-weight: bold; }')),
+      tags$style(HTML('
+        .main-header .logo { font-weight: bold; }
+        #shiny-tab-get_started > h2 { font-weight: 800 !important; }
+        .sidebar-menu li a[data-value="get_started"],
+        .sidebar-menu li a[href="#shiny-tab-get_started"] {
+          font-weight: 800 !important;
+        }
+      ')),
       
       tags$style(HTML("
         .selectize-dropdown-content {
@@ -601,7 +608,7 @@ ui <- dashboardPage(
     tabItems(
       tabItem(
         tabName = "get_started",
-        h2(tags$b("Get Started")),
+        h2(tags$span("Get Started", style = "font-weight: 800 !important; letter-spacing: 0.02em;")),
         helpText("先確認適合的估值模型；下方 SGR 主要供 DCF／RI 終值使用。DDM 股利成長率可在 DDM 分頁單獨覆寫。"),
         fluidRow(
           box(
@@ -1025,29 +1032,29 @@ ui <- dashboardPage(
               withMathJax(),
               h2("量化回測實驗室 (Backtest Zone)"),
               .bt_section_intro(
-                "評價模型 → 合理價／MOS → 兩套倉位 → 策略淨值。先看 Fair Value Timeline（估得貴不貴），再看策略淨值（倉位規則賺不賺錢）。"
+                "先看折現比較圖（基本面價值 vs 實際股價＝情緒波動價值 vs 大盤），再看策略淨值（倉位規則賺不賺錢）。Ke／WACC 採 Rolling β。"
               ),
 
-              # 1) 績效指標置頂
+              # 1) 折現比較圖置頂：基本面價值 vs 情緒波動價值(實際股價) vs 大盤
+              fluidRow(
+                box(
+                  title = tagList(icon("balance-scale"), "折現比較：基本面價值 vs 情緒波動價值 vs 大盤"),
+                  width = 12, status = "primary", solidHeader = TRUE,
+                  .bt_section_intro(
+                    "以執行面板所選評價模型，在各歷史時點用當時可得財報＋Rolling β 折現，重建「基本面價值」；「情緒波動價值」＝該股歷史實際股價；並疊加大盤基準價格（右軸）。僅用公告財年 ≤ 回測日的資料。"
+                  ),
+                  uiOutput("bt_valuation_summary"),
+                  plotlyOutput("bt_hfv_timeline", height = "420px") %>% withSpinner(),
+                  uiOutput("bt_signal_explain")
+                )
+              ),
+
+              # 2) 績效指標
               fluidRow(
                 box(
                   title = tagList(icon("trophy"), "回測績效指標"),
                   width = 12, status = "success", solidHeader = TRUE, collapsible = TRUE, collapsed = FALSE,
                   uiOutput("perf_metrics")
-                )
-              ),
-
-              # 2) Historical Fair Value Timeline（在淨值圖之上）
-              fluidRow(
-                box(
-                  title = tagList(icon("balance-scale"), "Historical Fair Value Timeline"),
-                  width = 12, status = "primary", solidHeader = TRUE,
-                  .bt_section_intro(
-                    "市價 vs PIT 合理價（美元）。回答「估得貴不貴」；下方淨值圖回答「兩套倉位規則賺不賺錢」。Ke／WACC 用各再平衡日 Rolling β；僅用公告財年 ≤ 回測日的資料。"
-                  ),
-                  uiOutput("bt_valuation_summary"),
-                  plotlyOutput("bt_hfv_timeline", height = "380px") %>% withSpinner(),
-                  uiOutput("bt_signal_explain")
                 )
               ),
 
@@ -1059,18 +1066,18 @@ ui <- dashboardPage(
                   tags$div(
                     style = "margin: 0 0 10px 0; padding: 10px 12px; background: #f4f8fb; border-left: 4px solid #3c8dbc; font-size: 12px; color: #444; line-height: 1.55;",
                     tags$b("關聯："),
-                    "評價模型 → 合理價／MOS → ",
+                    "上方折現比較圖的基本面價值 → MOS → ",
                     tags$b("純基本面價值"), " 倉位 (Exp_A) → 策略淨值；",
-                    tags$b("情緒波動價值"), " = Exp_A × 情緒乘數（±25%）→ 嵌套的另一條策略淨值。",
-                    "兩者皆與 Buy&Hold（滿倉）同基準比較。要貼近買進持有，請調「純基本面價值」的 Fit 參數。"
+                    tags$b("情緒波動價值"), " 策略 = Exp_A × 情緒乘數（±25%）。",
+                    "要貼近買進持有，請到「情緒波動價值」標籤調整 Fit 參數。"
                   ),
                   plotlyOutput("bt_equity_plot", height = "400px") %>% withSpinner(),
                   tags$ul(
                     style = "margin: 10px 0 0 0; padding-left: 18px; font-size: 12px; color: #666; line-height: 1.55;",
                     tags$li(tags$b("純基本面價值"), "（橘線）＝模式 A 策略淨值：持倉條件＋MOS 倉位 × 日報酬。"),
-                    tags$li(tags$b("情緒波動價值"), "（藍線）＝模式 B：僅在 A 倉位上微調情緒，不能獨立開倉、也不能單獨拉近 Buy&Hold。"),
+                    tags$li(tags$b("情緒波動價值"), "（藍線）＝模式 B 策略淨值；Fit 買進持有參數見下方「情緒波動價值」標籤。"),
                     tags$li(tags$b("該股買進持有"), "（綠）全程 100%；", tags$b("大盤"), "（灰虛）SPY。"),
-                    tags$li("合理價曲線見上方 Timeline，勿與淨值混比。")
+                    tags$li("股價／合理價美元比較見上方折現圖，勿與淨值混比。")
                   )
                 ),
                 box(
@@ -1090,7 +1097,7 @@ ui <- dashboardPage(
                     ),
                     selected = "dcf"
                   ),
-                  .bt_hint("算合理價／MOS（上方 Timeline），並驅動「純基本面價值」倉位；不是淨值圖上的價格線。"),
+                  .bt_hint("算合理價／MOS（上方折現比較圖的基本面價值），並驅動「純基本面價值」倉位；不是淨值圖上的價格線。"),
                   checkboxInput(
                     "bt_param_auto",
                     "自動同步參數（換股時依財報推導）",
@@ -1160,25 +1167,46 @@ ui <- dashboardPage(
                     tabPanel(
                       title = tagList(icon("balance-scale"), "純基本面價值"),
                       .bt_section_intro(
-                        "模式 A：Exp_A → 淨值圖橘線。提高「最大持股」並設定「通過後最低持股」，可逐步貼近 Buy&Hold；合理價仍在上方 Timeline。"
+                        "模式 A：Exp_A → 淨值圖橘線。依 MOS 分級決定基本面倉位；上方折現圖的「基本面價值」驅動 MOS。"
                       ),
                       fluidRow(
                         column(
                           6,
                           sliderInput("bt_w_vg", "MOS／Value Gap 權重（曝險）", 0, 1, 0.7, step = 0.01),
-                          .bt_hint("越大越依 MOS 分級減碼；調低可減少現金拖累、更接近買進持有。"),
-                          sliderInput("bt_max_exp", "最大持股上限", 0.5, 1, 0.9, step = 0.01),
-                          .bt_hint("取代舊硬上限約 90%；拉到 1.00 可消除結構性少倉。"),
-                          sliderInput("bt_min_exp_pass", "通過條件後最低持股", 0, 0.4, 0, step = 0.01),
-                          .bt_hint("持倉條件通過且非極度高估時的地板倉位。")
+                          .bt_hint("越大越依 MOS 分級減碼；越小越接近固定中性倉位。")
                         ),
                         column(
                           6,
                           tags$div(
-                            style = "margin-top: 8px; padding: 12px; background: #fcf8e3; border: 1px solid #f0e6b2; border-radius: 5px; font-size: 12px; color: #8a6d3b; line-height: 1.55;",
+                            style = "margin-top: 8px; padding: 12px; background: #f4f8fb; border: 1px solid #d6e4f0; border-radius: 5px; font-size: 12px; color: #3c5a73; line-height: 1.55;",
                             tags$b("MOS 滯後曝險（基準圖）"), tags$br(),
                             "MOS≥30%→接近最大持股；≥10%→約 72%×上限；≥0%→約 44%×上限；≥−10%→約 17%×上限；否則空手。",
-                            tags$br(), tags$br(),
+                            "（最大／最低持股與「貼近買進持有」在「情緒波動價值」標籤。）"
+                          )
+                        )
+                      )
+                    ),
+                    tabPanel(
+                      title = tagList(icon("bolt"), "情緒波動價值"),
+                      .bt_section_intro(
+                        "模式 B：對應上方折現圖的「情緒波動價值」（實際股價軌跡）。策略上 Exp_B = Exp_A × 情緒乘數；可用 Fit 參數讓模擬更貼近買進持有。"
+                      ),
+                      fluidRow(
+                        column(
+                          6,
+                          sliderInput("bt_w_mom", "動能相對權重", 0, 1, 0.4, step = 0.01),
+                          .bt_hint("與 RSI 正規化後組成情緒分數。"),
+                          sliderInput("bt_w_rsi", "RSI 相對權重", 0, 1, 0.3, step = 0.01),
+                          .bt_hint("情緒乘數限制在 0.75～1.25。")
+                        ),
+                        column(
+                          6,
+                          sliderInput("bt_max_exp", "最大持股上限", 0.5, 1, 0.9, step = 0.01),
+                          .bt_hint("拉到 1.00 可消除結構性少倉，利於貼近買進持有。"),
+                          sliderInput("bt_min_exp_pass", "通過條件後最低持股", 0, 0.4, 0, step = 0.01),
+                          .bt_hint("持倉條件通過且非極度高估時的地板倉位。"),
+                          tags$div(
+                            style = "margin-top: 8px; padding: 12px; background: #fcf8e3; border: 1px solid #f0e6b2; border-radius: 5px; font-size: 12px; color: #8a6d3b; line-height: 1.55;",
                             actionButton(
                               "bt_fit_bh_preset", "貼近買進持有",
                               icon = icon("chart-line"),
@@ -1191,18 +1219,6 @@ ui <- dashboardPage(
                             )
                           )
                         )
-                      )
-                    ),
-                    tabPanel(
-                      title = tagList(icon("bolt"), "情緒波動價值"),
-                      .bt_section_intro(
-                        "模式 B｜情緒疊加：Exp_B = Exp_A × 情緒乘數（75%～125%）。嵌套於 A，無法單獨拉近 Buy&Hold；要 FIT 買進持有請調「純基本面價值」。"
-                      ),
-                      fluidRow(
-                        column(6, sliderInput("bt_w_mom", "動能相對權重", 0, 1, 0.4, step = 0.01),
-                               .bt_hint("與 RSI 正規化後組成情緒分數。")),
-                        column(6, sliderInput("bt_w_rsi", "RSI 相對權重", 0, 1, 0.3, step = 0.01),
-                               .bt_hint("情緒乘數限制在 0.75～1.25。"))
                       )
                     )
                   )

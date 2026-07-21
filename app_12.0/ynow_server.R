@@ -262,6 +262,13 @@ server <- function(input, output, session) {
   bt_filter_state <- reactiveVal(NULL)
 
   observeEvent(input$bt_kpi_filter, {
+    # Toggle: when a filter result is showing, second click clears it
+    st0 <- bt_filter_state()
+    if (!is.null(st0)) {
+      bt_filter_state(NULL)
+      showNotification("已取消回測濾鏡。", type = "message", duration = 4)
+      return()
+    }
     is_df <- tryCatch(d_income_statement(), error = function(e) NULL)
     cf_df <- tryCatch(d_cash_flow(), error = function(e) NULL)
     if (is.null(is_df) || is.null(cf_df)) {
@@ -292,8 +299,8 @@ server <- function(input, output, session) {
       ticker = current_ticker() %||% ""
     ))
     showNotification(
-      if (isTRUE(ev$overall)) "✅ 回測濾鏡：達標（四項持倉條件皆過）"
-      else "⚠️ 回測濾鏡：未達標（至少一項未過）",
+      if (isTRUE(ev$overall)) "✅ 回測濾鏡：達標（再點一次可取消）"
+      else "⚠️ 回測濾鏡：未達標（再點一次可取消）",
       type = if (isTRUE(ev$overall)) "message" else "warning",
       duration = 7
     )
@@ -2607,35 +2614,63 @@ server <- function(input, output, session) {
 
   output$bt_hfv_timeline <- renderPlotly({
     res <- bt_result()
-    validate(need(!is.null(res) && !is.null(res$valuation_df) && nrow(res$valuation_df) > 0,
+    validate(need(!is.null(res) && !is.null(res$equity_df) && nrow(res$equity_df) > 0,
                   "請先成功執行回測"))
-    vd <- res$valuation_df
-    df_long <- rbind(
-      data.frame(Date = vd$Date, Value = vd$hist_price, Series = "Market Price", stringsAsFactors = FALSE),
-      data.frame(Date = vd$Date, Value = vd$fair_value, Series = "Fair Value (PIT)", stringsAsFactors = FALSE),
-      data.frame(Date = vd$Date, Value = vd$fv_dcf, Series = "DCF", stringsAsFactors = FALSE),
-      data.frame(Date = vd$Date, Value = vd$fv_ddm, Series = "DDM", stringsAsFactors = FALSE),
-      data.frame(Date = vd$Date, Value = vd$fv_ri, Series = "RI", stringsAsFactors = FALSE),
-      data.frame(Date = vd$Date, Value = vd$fv_pb, Series = "P/B", stringsAsFactors = FALSE)
+    ed <- res$equity_df
+    has_fv <- "FairValue" %in% names(ed)
+    has_bench <- "Bench" %in% names(ed)
+    validate(need(has_fv && any(is.finite(ed$FairValue)),
+                  "尚無基本面價值序列（請重新啟動回測）"))
+
+    # Primary axis: 基本面價值 + 情緒波動價值(=實際股價)
+    # Secondary axis: 大盤基準歷史價格（單位不同）
+    p <- plotly::plot_ly(ed, x = ~Date)
+    p <- plotly::add_trace(
+      p, y = ~FairValue, name = "基本面價值", type = "scatter", mode = "lines",
+      line = list(color = "#c0392b", width = 2.2),
+      hovertemplate = "基本面價值: %{y:$.2f}<extra></extra>"
     )
-    df_long <- df_long[is.finite(df_long$Value), , drop = FALSE]
-    mos_df <- vd[is.finite(vd$mos), c("Date", "mos"), drop = FALSE]
-
-    p1 <- ggplot(df_long, aes(x = Date, y = Value, color = Series, group = Series)) +
-      geom_line(linewidth = 0.85) +
-      geom_point(data = subset(df_long, Series %in% c("Market Price", "Fair Value (PIT)")),
-                 size = 1.5, alpha = 0.85) +
-      scale_color_manual(values = c(
-        "Market Price" = "#2c3e50",
-        "Fair Value (PIT)" = "#dc3545",
-        "DCF" = "#e67e22", "DDM" = "#8e44ad", "RI" = "#16a085", "P/B" = "#7f8c8d"
-      )) +
-      scale_y_continuous(labels = label_chart_number(prefix = "$")) +
-      labs(y = "每股", x = NULL, color = NULL, title = "Price vs Reconstructed Fair Value") +
-      theme_minimal(base_size = 12)
-
-    ggplotly(p1, tooltip = c("x", "y", "colour")) %>%
-      layout(legend = list(orientation = "h", y = -0.2))
+    p <- plotly::add_trace(
+      p, y = ~Close, name = "情緒波動價值（實際股價）", type = "scatter", mode = "lines",
+      line = list(color = "#2c3e50", width = 2),
+      hovertemplate = "情緒波動價值: %{y:$.2f}<extra></extra>"
+    )
+    if (has_bench && any(is.finite(ed$Bench))) {
+      p <- plotly::add_trace(
+        p, y = ~Bench, name = "大盤基準", type = "scatter", mode = "lines",
+        line = list(color = "#7f8c8d", width = 1.6, dash = "dot"),
+        yaxis = "y2",
+        hovertemplate = "大盤: %{y:$.2f}<extra></extra>"
+      )
+    }
+    # Rebalance markers from valuation_df when available
+    vd <- res$valuation_df
+    if (!is.null(vd) && nrow(vd) > 0 && any(is.finite(vd$fair_value))) {
+      p <- plotly::add_trace(
+        p, data = vd, x = ~Date, y = ~fair_value, name = "季再平衡 FV",
+        type = "scatter", mode = "markers",
+        marker = list(color = "#e74c3c", size = 7, symbol = "diamond"),
+        hovertemplate = paste0(
+          "再平衡 %{x|%Y-%m-%d}<br>FV %{y:$.2f}",
+          if ("rolling_beta" %in% names(vd)) "<br>β %{customdata:.2f}" else "",
+          "<extra></extra>"
+        ),
+        customdata = if ("rolling_beta" %in% names(vd)) vd$rolling_beta else NULL
+      )
+    }
+    plotly::layout(
+      p,
+      title = list(text = "折現比較（Rolling β PIT）", font = list(size = 14)),
+      legend = list(orientation = "h", y = -0.18),
+      yaxis = list(title = "每股（美元）", tickprefix = "$", side = "left"),
+      yaxis2 = list(
+        title = "大盤價格", overlaying = "y", side = "right",
+        showgrid = FALSE, tickprefix = "$"
+      ),
+      xaxis = list(title = NULL),
+      margin = list(l = 60, r = 60, t = 40, b = 60),
+      hovermode = "x unified"
+    )
   })
 
   output$bt_signal_explain <- renderUI({
@@ -3055,7 +3090,7 @@ server <- function(input, output, session) {
       tags$h5(tags$b("三、為何常輸給 Buy&Hold")),
       tags$p(
         style = "margin-bottom:0;",
-        "預設最大持股約 90% 且條件未過會空手；可用「貼近買進持有」調高上限。完整公式請下載方法論檔。"
+        "預設最大持股約 90% 且條件未過會空手；可用「情緒波動價值」標籤的「貼近買進持有」調高上限。完整公式請下載方法論檔。"
       )
     )
   })
