@@ -625,17 +625,28 @@ ui <- dashboardPage(
           bottom: 10px;
           z-index: 10;
           max-width: 240px;
-          padding: 8px 10px 6px;
+          padding: 10px 12px 8px;
           background: rgba(255, 255, 255, 0.97);
           border: 1px solid #dde2e6;
           border-radius: 6px;
           box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
           font-size: 11px;
         }
+        .ynow-bt-hfv-controls .form-group {
+          margin-bottom: 0;
+        }
         .ynow-bt-hfv-controls .control-label {
+          display: block;
           font-size: 11px;
           font-weight: 600;
-          margin-bottom: 2px;
+          margin-top: 0;
+          margin-bottom: 10px;
+          line-height: 1.4;
+          white-space: normal;
+        }
+        .ynow-bt-hfv-controls .shiny-options-group {
+          margin-top: 0;
+          clear: both;
         }
         .ynow-bt-hfv-controls .radio {
           margin-top: 0;
@@ -647,19 +658,18 @@ ui <- dashboardPage(
           line-height: 1.35;
         }
         .ynow-bt-hfv-controls .checkbox {
-          margin-top: 0;
-          margin-bottom: 2px;
+          margin-top: 4px;
+          margin-bottom: 4px;
+          min-height: 18px;
+        }
+        .ynow-bt-hfv-controls .checkbox:first-child {
+          margin-top: 2px;
         }
         .ynow-bt-hfv-controls .checkbox label {
           font-size: 11px;
           font-weight: normal;
           line-height: 1.35;
-        }
-        .ynow-bt-hfv-controls .btn {
-          width: 100%;
-          margin-top: 2px;
-          font-size: 12px;
-          font-weight: 600;
+          padding-left: 5px;
         }
         @media (max-width: 767px) {
           .ynow-bt-hfv-controls {
@@ -1217,7 +1227,7 @@ ui <- dashboardPage(
                   title = tagList(icon("balance-scale"), "折現比較：基本面價值 vs 情緒波動價值 vs 大盤"),
                   width = 12, status = "primary", solidHeader = TRUE,
                   .bt_section_intro(
-                    "以所選評價模型，在各歷史時點用當時可得財報＋Rolling β 折現，重建「基本面價值」；「情緒波動價值」＝該股歷史實際股價；並疊加大盤基準價格（右軸）。搜尋股票後即預覽股價／大盤；基本面價值（紅線）預設隱藏，按右下角「更新」後顯示。"
+                    "歷史各點：僅用當時可得財報＋Rolling β 設算「基本面價值」（不套用目前分頁參數）。僅折線末端最新點掛勾目前 APP 分頁設定（DCF／DDM／RI／P/B）；「情緒波動價值」＝該股歷史實際股價；並疊加大盤（右軸）。搜尋後即預覽股價／大盤；勾選右下角評價模型即計算並顯示基本面價值（預設不勾選）。"
                   ),
                   tags$div(
                     class = "ynow-bt-hfv-wrap",
@@ -1235,12 +1245,7 @@ ui <- dashboardPage(
                           "RI" = "ri",
                           "P/B" = "pb"
                         ),
-                        selected = "dcf"
-                      ),
-                      actionButton(
-                        "bt_refresh_fv", "更新",
-                        icon = icon("sync"),
-                        class = "btn-primary btn-sm"
+                        selected = character(0)
                       )
                     ),
                     uiOutput("bt_signal_explain")
