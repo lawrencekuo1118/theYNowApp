@@ -2259,11 +2259,16 @@ server <- function(input, output, session) {
     )
   }
 
-  .bt_selected_fv_models <- reactive({
+  .bt_raw_fv_models <- reactive({
     sel <- input$bt_fv_models
-    if (is.null(sel) || length(sel) < 1) return("dcf")
+    if (is.null(sel) || length(sel) < 1) return(character(0))
     ord <- c("dcf", "ddm", "ri", "pb")
-    hit <- intersect(ord, as.character(sel))
+    intersect(ord, as.character(sel))
+  })
+
+  .bt_selected_fv_models <- reactive({
+    hit <- .bt_raw_fv_models()
+    # Backtest / primary fallback when none checked on HFV overlay
     if (length(hit) < 1) "dcf" else hit
   })
 
@@ -2282,6 +2287,10 @@ server <- function(input, output, session) {
   observeEvent(current_ticker(), {
     bt_fv_visible(FALSE)
     bt_hfv_fv(NULL)
+    was_applying <- isTRUE(bt_applying_params())
+    bt_applying_params(TRUE)
+    updateCheckboxGroupInput(session, "bt_fv_models", selected = character(0))
+    if (!was_applying) bt_applying_params(FALSE)
   }, ignoreInit = TRUE)
 
   bt_current_mos <- reactive({
@@ -2458,32 +2467,6 @@ server <- function(input, output, session) {
       industry_choice = input$industry_choice
     )
     apply_bt_params_to_ui(p)
-    # Align Mode A valuation model with Dashboard recommendation when auto.
-    if (isTRUE(input$bt_param_auto)) {
-      rec <- tryCatch(
-        recommend_valuation_models(
-          d_cash_flow(),
-          industry_text = input$industry_choice %||% "",
-          d_is = d_income_statement(),
-          d_bs = d_balance_sheet()
-        ),
-        error = function(e) NULL
-      )
-      fv_sel <- "dcf"
-      if (!is.null(rec)) {
-        tags <- tolower(as.character(rec$tags %||% character(0)))
-        sm <- as.character(rec$summary_method %||% "")[1]
-        if ("dcf" %in% tags || grepl("DCF", sm, ignore.case = TRUE)) fv_sel <- "dcf"
-        else if ("ddm" %in% tags || grepl("DDM", sm, ignore.case = TRUE)) fv_sel <- "ddm"
-        else if ("ri" %in% tags || grepl("\\bRI\\b|剩餘", sm, ignore.case = TRUE)) fv_sel <- "ri"
-        else if ("pb" %in% tags || grepl("P/B|本淨", sm, ignore.case = TRUE)) fv_sel <- "pb"
-      }
-      # Guard so auto-picked model does not flip checkbox to manual
-      was_applying <- isTRUE(bt_applying_params())
-      bt_applying_params(TRUE)
-      updateCheckboxGroupInput(session, "bt_fv_models", selected = fv_sel)
-      if (!was_applying) bt_applying_params(FALSE)
-    }
     invisible(p)
   }
 
@@ -2517,12 +2500,51 @@ server <- function(input, output, session) {
     }
   })
 
-  # 手動改估值模型時取消自動，避免下次換股又被推薦覆寫
+  # 勾選評價模型即重建基本面價值；取消全部則隱藏折線
   observeEvent(input$bt_fv_models, {
     if (isTRUE(bt_applying_params())) return()
-    if (!isTRUE(input$bt_param_auto)) return()
-    updateCheckboxInput(session, "bt_param_auto", value = FALSE)
-  }, ignoreInit = TRUE)
+    if (isTRUE(input$bt_param_auto)) {
+      updateCheckboxInput(session, "bt_param_auto", value = FALSE)
+    }
+
+    sel <- .bt_raw_fv_models()
+    if (length(sel) < 1) {
+      bt_fv_visible(FALSE)
+      bt_hfv_fv(NULL)
+      return()
+    }
+    if (is.null(current_ticker()) || !nzchar(as.character(current_ticker())[1])) return()
+
+    tryCatch({
+      if (is.null(d_income_statement()) || is.null(d_cash_flow()) || is.null(d_balance_sheet())) {
+        stop("請先在 Dashboard 搜尋並載入該公司財報")
+      }
+      mp <- bt_current_model_params()
+      fund <- build_annual_fundamentals(
+        d_income_statement(), d_balance_sheet(), d_cash_flow()
+      )
+      withProgress(message = "重建基本面價值…", value = 0.2, {
+        fv_res <- compute_fair_value_timeline(
+          ticker = current_ticker(),
+          d_is = d_income_statement(),
+          d_bs = d_balance_sheet(),
+          d_cf = d_cash_flow(),
+          model_params = mp,
+          mos = bt_current_mos(),
+          bench_ticker = "SPY",
+          years = 5
+        )
+        bt_hfv_fv(fv_res)
+        bt_fv_visible(TRUE)
+        if (!is.null(bt_result())) {
+          bt_result(refresh_backtest_fair_value(bt_result(), fund, mp))
+        }
+      })
+    }, error = function(e) {
+      bt_fv_visible(FALSE)
+      showNotification(paste("❌ 基本面價值計算失敗：", e$message), type = "error", duration = 8)
+    })
+  }, ignoreInit = TRUE, ignoreNULL = FALSE)
 
   observeEvent(list(input$bt_w_vg, input$bt_w_mom, input$bt_w_rsi,
                     input$bt_net_margin, input$bt_rev_growth, input$bt_eps_growth, input$bt_fcf_cv,
@@ -2555,47 +2577,6 @@ server <- function(input, output, session) {
     msg <- bt_run_msg()
     if (!nzchar(msg)) return(NULL)
     tags$p(style = "margin: 10px 0 0 0; color: #666; font-size: 12px; line-height: 1.45;", icon("clock"), " ", msg)
-  })
-
-  observeEvent(input$bt_refresh_fv, {
-    req(current_ticker())
-    sel <- .bt_selected_fv_models()
-    if (length(sel) < 1) {
-      showNotification("請至少選擇一個評價模型", type = "warning", duration = 4)
-      return()
-    }
-    tryCatch({
-      if (is.null(d_income_statement()) || is.null(d_cash_flow()) || is.null(d_balance_sheet())) {
-        stop("請先在 Dashboard 搜尋並載入該公司財報")
-      }
-      mp <- bt_current_model_params()
-      fund <- build_annual_fundamentals(
-        d_income_statement(), d_balance_sheet(), d_cash_flow()
-      )
-      withProgress(message = "重建基本面價值…", value = 0.2, {
-        fv_res <- compute_fair_value_timeline(
-          ticker = current_ticker(),
-          d_is = d_income_statement(),
-          d_bs = d_balance_sheet(),
-          d_cf = d_cash_flow(),
-          model_params = mp,
-          mos = bt_current_mos(),
-          bench_ticker = "SPY",
-          years = 5
-        )
-        bt_hfv_fv(fv_res)
-        bt_fv_visible(TRUE)
-        if (!is.null(bt_result())) {
-          bt_result(refresh_backtest_fair_value(bt_result(), fund, mp))
-        }
-      })
-      showNotification(
-        paste0("✅ 已更新基本面價值折線（", paste(toupper(sel), collapse = " + "), "）"),
-        type = "message", duration = 4
-      )
-    }, error = function(e) {
-      showNotification(paste("❌ 更新失敗：", e$message), type = "error", duration = 8)
-    })
   })
 
   observeEvent(input$run_bt, {
@@ -2730,8 +2711,8 @@ server <- function(input, output, session) {
       ed = ed,
       vd = vd,
       mp = mp,
-      show_fv = show_fv && any(vapply(
-        .bt_selected_fv_models(),
+      show_fv = show_fv && length(.bt_raw_fv_models()) > 0 && any(vapply(
+        .bt_raw_fv_models(),
         function(m) {
           specs <- .bt_fv_model_specs()
           sp <- specs[[m]]
@@ -2749,13 +2730,13 @@ server <- function(input, output, session) {
     if (is.null(src)) {
       return(tags$p(
         style = "color:#888;font-size:12.5px;",
-        "搜尋股票後將預先顯示股價與大盤；按右下角「更新」可計算基本面價值與 MOS 摘要。"
+        "搜尋股票後將預先顯示股價與大盤；勾選右下角評價模型可計算基本面價值與 MOS 摘要。"
       ))
     }
     if (!isTRUE(src$show_fv)) {
       return(tags$p(
         style = "color:#888;font-size:12.5px;",
-        "已顯示情緒波動價值（實際股價）與大盤。選擇評價模型後按右下角「更新」以顯示基本面價值（紅線）與下方摘要。"
+        "已顯示情緒波動價值（實際股價）與大盤。勾選右下角評價模型以顯示基本面價值與下方摘要。"
       ))
     }
     m <- if (!is.null(bt_result()) && !is.null(bt_result()$metrics)) {
@@ -2804,14 +2785,14 @@ server <- function(input, output, session) {
       tags$div(style = "flex:2;min-width:180px;padding:8px 10px;background:#fafafa;border-left:4px solid #555;",
                tags$div(class = "ynow-kpi-stat-label", "此刻參數（Session）"),
                tags$div(class = "ynow-kpi-stat-params", {
-                 models <- paste(toupper(.bt_selected_fv_models()), collapse = "+")
+                 models <- paste(toupper(.bt_raw_fv_models()), collapse = "+")
                  base <- sprintf(
                    "模型 %s · WACC %.2f%% · Ke %.2f%% · SGR %.2f%% · n=%s · PB mid %.2f",
                    models,
                    .safe_num(mp$wacc, NA) * 100, .safe_num(mp$ke, NA) * 100,
                    .safe_num(mp$sgr, NA) * 100, mp$n_years, .safe_num(mp$pb_mid, NA)
                  )
-                 if ("ri" %in% .bt_selected_fv_models()) {
+                 if ("ri" %in% .bt_raw_fv_models()) {
                    paste0(
                      base,
                      sprintf(
@@ -2824,7 +2805,7 @@ server <- function(input, output, session) {
                        mp$roe_method %||% "constant"
                      )
                    )
-                 } else if ("ddm" %in% .bt_selected_fv_models()) {
+                 } else if ("ddm" %in% .bt_raw_fv_models()) {
                    paste0(
                      base,
                      sprintf(
@@ -2850,7 +2831,7 @@ server <- function(input, output, session) {
     p <- plotly::plot_ly(ed, x = ~Date)
     if (isTRUE(src$show_fv)) {
       specs <- .bt_fv_model_specs()
-      for (m in .bt_selected_fv_models()) {
+      for (m in .bt_raw_fv_models()) {
         sp <- specs[[m]]
         if (is.null(sp)) next
         col <- sp$col
@@ -2877,8 +2858,8 @@ server <- function(input, output, session) {
     }
     vd <- src$vd
     if (isTRUE(src$show_fv) && !is.null(vd) && nrow(vd) > 0 &&
-        length(.bt_selected_fv_models()) == 1L) {
-      primary <- .bt_selected_fv_models()[1]
+        length(.bt_raw_fv_models()) == 1L) {
+      primary <- .bt_raw_fv_models()[1]
       marker_col <- switch(primary,
         "dcf" = "fv_dcf", "ddm" = "fv_ddm", "ri" = "fv_ri", "pb" = "fv_pb", "fair_value")
       if (marker_col %in% names(vd) && any(is.finite(vd[[marker_col]]))) {
