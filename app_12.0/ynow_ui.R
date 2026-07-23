@@ -861,7 +861,12 @@ ui <- dashboardPage(
                actionButton("search", "Search", icon = icon("search")))
       ),
       column(width = 8,
-             h2(textOutput("txt_corpname"), class = "ynow-corpname")
+             h2(textOutput("txt_corpname"), class = "ynow-corpname"),
+             tags$p(
+               "industry info from Yahoo",
+               style = "font-size: 12px; color: #888; margin: 6px 0 4px 0; font-weight: bold;"
+             ),
+             verbatimTextOutput("search_results")
       )
     ),
     br(),
@@ -887,12 +892,7 @@ ui <- dashboardPage(
               choices = industry_picker_choices(),
               selected = APP_DEFAULTS$industry_choice,
               options = list(`live-search` = TRUE, `size` = 12)
-            ),
-            tags$p(
-              "industry info from Yahoo",
-              style = "font-size: 12px; color: #888; margin-bottom: 5px; font-weight: bold;"
-            ),
-            verbatimTextOutput("search_results")
+            )
           )
         ),
         fluidRow(
