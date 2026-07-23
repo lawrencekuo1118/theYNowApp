@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12310898
+bundleId=12310965
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=origin/master
-commit=f762ec10c8fc2ef3220fd24ea653b3cff04ebbe6
-short=f762ec1
-message=ui/backtest: Decision Funnel swap, BH-gap fix, Mode B NAV divergence
-captured_at=2026-07-23T17:16:39+00:00
-note=app_13.0 redeploy after Decision Funnel swap, BH-gap fix, Mode B NAV divergence. Prefer local deploy thereafter.
+commit=908ecc77643ffcabaee9296bea5a78f5358f0274
+short=908ecc7
+message=fix: revenue-based growth estimates; trim backtest validation
+captured_at=2026-07-23T17:36:26+00:00
+note=app_13.0 redeploy after revenue-based g, hide DCF WACC field, drop plateau probe. Prefer local deploy thereafter.
