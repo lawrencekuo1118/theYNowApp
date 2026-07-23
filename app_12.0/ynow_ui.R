@@ -821,7 +821,7 @@ ui <- dashboardPage(
       tabItem(
         tabName = "snapshot",
         h2("Snapshot"),
-        helpText("即時列出目前 App 參數值與公式；下載檔會註記產生日期與時間。"),
+        helpText("上方：目前 App 執行中參數；下方：系統載入時的預設參數表（APP_DEFAULTS）。兩者皆可下載 CSV。"),
         fluidRow(
           box(
             title = tagList(icon("camera"), "Current App Parameter Snapshot"),
@@ -831,6 +831,21 @@ ui <- dashboardPage(
                 downloadButton("download_snapshot", "下載 Snapshot CSV", icon = icon("download"))
             ),
             dataTableOutput("snapshot_table")
+          )
+        ),
+        fluidRow(
+          box(
+            title = tagList(icon("sliders-h"), "系統預設參數（APP_DEFAULTS）"),
+            width = 12, status = "warning", solidHeader = TRUE,
+            div(
+              style = "display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:10px; flex-wrap:wrap;",
+              tags$span(
+                style = "font-size:12.5px; color:#666; line-height:1.45;",
+                "App 啟動時寫入的預設值（含依預設產業／Rf 動態估出的項目）。與上方「目前參數」可能不同；欄位仍可在各分頁覆寫。"
+              ),
+              downloadButton("download_defaults", "下載 Defaults CSV", icon = icon("download"))
+            ),
+            dataTableOutput("defaults_table")
           )
         )
       ),
