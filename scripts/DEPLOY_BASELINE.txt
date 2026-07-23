@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12310728
+bundleId=12310898
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=origin/master
-commit=d07e5ee71acda39741f2bad6d8e4db931ba27589
-short=d07e5ee
-message=ui: Get Started layout polish and defer model recommendations
-captured_at=2026-07-23T16:41:42+00:00
-note=app_13.0 redeploy after Get Started UI polish (full-width Yahoo industry, Foundry default, deferred 推薦, two-stage/DCF layout). Prefer local deploy thereafter.
+commit=f762ec10c8fc2ef3220fd24ea653b3cff04ebbe6
+short=f762ec1
+message=ui/backtest: Decision Funnel swap, BH-gap fix, Mode B NAV divergence
+captured_at=2026-07-23T17:16:39+00:00
+note=app_13.0 redeploy after Decision Funnel swap, BH-gap fix, Mode B NAV divergence. Prefer local deploy thereafter.
