@@ -95,29 +95,25 @@ ui <- dashboardPage(
            )
     ),
     
-    # Static sidebarMenu (not sidebarMenuOutput/renderMenu): rebuilding the
-    # whole menu on badge/tab invalidation races AdminLTE's active class → flicker.
-    # 「推薦」badges live on Get Started Model Selector only.
-    sidebarMenu(
-      id = "sidebar_tabs",
-      menuItem("Get Started", tabName = "get_started", icon = icon("play-circle"),
-               badgeLabel = "start", badgeColor = "purple"),
-      menuItem("Dashboard", tabName = "dashboard", icon = icon("chart-line")),
-      menuItem("DCF-Model", tabName = "dcf_calculator", icon = icon("calculator")),
-      menuItem("DDM", tabName = "ddm_calculator", icon = icon("hand-holding-usd"),
-               badgeLabel = "new", badgeColor = "green"),
-      menuItem("P/B-Asset", tabName = "pb_calculator", icon = icon("landmark"),
-               badgeLabel = "new", badgeColor = "aqua"),
-      menuItem("RI-Model", tabName = "ri_calculator", icon = icon("gem"),
-               badgeLabel = "pro", badgeColor = "blue"),
-      menuItem("Sensitivity", tabName = "sensitivity", icon = icon("sliders-h"),
-               badgeLabel = "new", badgeColor = "green"),
-      menuItem("Backtest Zone", tabName = "backtest", icon = icon("vial"),
-               badgeLabel = "Alpha", badgeColor = "orange"),
-      menuItem("Snapshot", tabName = "snapshot", icon = icon("camera")),
-      menuItem("About", tabName = "about", icon = icon("info-circle"))
+    # Must stay inside column(width=12): bare sidebarMenu after Bootstrap
+    # floated cols collapses to width:0 / left:250 (menu invisible).
+    # 「推薦」badges are patched in-place (no renderMenu remount).
+    column(width = 12,
+           sidebarMenu(
+             id = "sidebar_tabs",
+             menuItem("Get Started", tabName = "get_started", icon = icon("play-circle")),
+             menuItem("Dashboard", tabName = "dashboard", icon = icon("chart-line")),
+             menuItem("DCF-Model", tabName = "dcf_calculator", icon = icon("calculator")),
+             menuItem("DDM", tabName = "ddm_calculator", icon = icon("hand-holding-usd")),
+             menuItem("P/B-Asset", tabName = "pb_calculator", icon = icon("landmark")),
+             menuItem("RI-Model", tabName = "ri_calculator", icon = icon("gem")),
+             menuItem("Sensitivity", tabName = "sensitivity", icon = icon("sliders-h")),
+             menuItem("Backtest Zone", tabName = "backtest", icon = icon("vial")),
+             menuItem("Snapshot", tabName = "snapshot", icon = icon("camera")),
+             menuItem("About", tabName = "about", icon = icon("info-circle"))
+           ),
+           hr()
     ),
-    hr(),
     
     column(width = 12,
            h5("Recent Search:"),
@@ -178,15 +174,50 @@ ui <- dashboardPage(
               },
               body: JSON.stringify({
                 sessionId: '8b7c54',
-                runId: 'post-static-menu',
+                runId: 'post-inplace-badges',
                 hypothesisId: hyp,
-                location: 'ynow_ui.R:sidebar_observer',
+                location: 'ynow_ui.R:sidebar_badges',
                 message: msg,
                 data: data,
                 timestamp: Date.now()
               })
             }).catch(function () {});
           }
+
+          function setRecBadge(tab, on) {
+            var a = document.querySelector('.sidebar-menu a[data-value=\"' + tab + '\"]');
+            if (!a) return;
+            var badge = a.querySelector('small.badge');
+            if (!on) {
+              if (badge) badge.remove();
+              return;
+            }
+            if (!badge) {
+              badge = document.createElement('small');
+              a.appendChild(badge);
+            }
+            badge.className = 'badge pull-right bg-red';
+            badge.textContent = '推薦';
+          }
+
+          function registerBadgeHandler() {
+            if (!window.Shiny || !Shiny.addCustomMessageHandler) {
+              setTimeout(registerBadgeHandler, 50);
+              return;
+            }
+            Shiny.addCustomMessageHandler('ynowSidebarBadges', function (map) {
+              var tabs = ['dcf_calculator', 'ddm_calculator', 'pb_calculator', 'ri_calculator'];
+              var applied = {};
+              tabs.forEach(function (t) {
+                var on = !!(map && map[t] && map[t].on);
+                setRecBadge(t, on);
+                applied[t] = on;
+              });
+              send('sidebar_badges_patched', applied, 'H8');
+            });
+          }
+          registerBadgeHandler();
+
           function arm() {
             var menu = document.querySelector('.sidebar-menu');
             if (!menu) { setTimeout(arm, 250); return; }
@@ -194,25 +225,28 @@ ui <- dashboardPage(
             var childRebuilds = 0;
             var obs = new MutationObserver(function (muts) {
               var child = muts.some(function (m) {
-                return m.type === 'childList' && (m.addedNodes.length || m.removedNodes.length);
+                if (m.type !== 'childList' || (!m.addedNodes.length && !m.removedNodes.length)) return false;
+                return Array.prototype.some.call(m.addedNodes, function (n) {
+                  return n.nodeType === 1 && n.matches && n.matches('li');
+                }) || Array.prototype.some.call(m.removedNodes, function (n) {
+                  return n.nodeType === 1 && n.matches && n.matches('li');
+                });
               });
               var len = menu.innerHTML.length;
-              if (child) childRebuilds += 1;
-              if (child || Math.abs(len - lastLen) > 80) {
+              if (child) {
+                childRebuilds += 1;
                 var a = document.querySelector('.sidebar-menu li.active > a');
-                send('sidebar_dom_mutation', {
-                  childList: child,
+                send('sidebar_li_rebuild', {
                   childRebuilds: childRebuilds,
                   len: len,
                   prevLen: lastLen,
                   active: a ? a.getAttribute('data-value') : null
-                }, 'H2');
+                }, 'H8');
               }
               lastLen = len;
             });
-            obs.observe(menu, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
-            send('sidebar_observer_armed', { len: lastLen, staticMenu: true }, 'H2');
-            window.__ynowSidebarDbg = { childRebuilds: function () { return childRebuilds; } };
+            obs.observe(menu, { childList: true, subtree: true });
+            send('sidebar_observer_armed', { len: lastLen, inPlaceBadges: true }, 'H8');
           }
           if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', arm);

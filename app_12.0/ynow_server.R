@@ -410,7 +410,7 @@ server <- function(input, output, session) {
   .agent_dbg_sidebar <- function(hypothesis_id, location, message, data = list()) {
     payload <- list(
       sessionId = "8b7c54",
-      runId = "post-static-menu",
+      runId = "post-inplace-badges",
       hypothesisId = hypothesis_id,
       location = location,
       message = message,
@@ -428,12 +428,33 @@ server <- function(input, output, session) {
       silent = TRUE
     )
   }
-  .agent_dbg_sidebar(
-    "H2", "ynow_server.R:sidebar_static",
-    "sidebar uses static UI menu; renderMenu removed",
-    list(has_sidebar_menu_output = FALSE)
-  )
   # endregion
+
+  # Dynamic 「推薦」only — patch badges in-place (no renderMenu remount → no flicker).
+  sidebar_badge_sig <- reactiveVal("||||")
+  observe({
+    rec <- model_sidebar_rec()
+    sig <- paste(
+      isTRUE(rec$dcf), isTRUE(rec$ddm), isTRUE(rec$pb), isTRUE(rec$ri),
+      sep = "|"
+    )
+    if (identical(sidebar_badge_sig(), sig)) return()
+    sidebar_badge_sig(sig)
+    payload <- list(
+      dcf_calculator = list(on = isTRUE(rec$dcf)),
+      ddm_calculator = list(on = isTRUE(rec$ddm)),
+      pb_calculator = list(on = isTRUE(rec$pb)),
+      ri_calculator = list(on = isTRUE(rec$ri))
+    )
+    session$sendCustomMessage("ynowSidebarBadges", payload)
+    # region agent log
+    .agent_dbg_sidebar(
+      "H8", "ynow_server.R:sidebar_badges",
+      "sent in-place 推薦 badge update",
+      list(sig = sig, payload = payload)
+    )
+    # endregion
+  })
 
   output$get_started_model_selector <- renderUI({
     rec <- model_sidebar_rec()
