@@ -3,8 +3,8 @@
 # 說明：統一管理 UI 與 Server 的初始數值，並動態綁定產業 KPI
 # ==========================================
 
-# 預設產業：消費電子硬體（與 demo TSM 對齊）
-DEFAULT_IND <- "tech.Hardware"
+# 預設產業：半導體｜晶圓代工（與 demo TSM 對齊）
+DEFAULT_IND <- "sc.Foundry"
 ind_kpi <- industry_standards[[DEFAULT_IND]]
 
 # ---------- 產業綁定基準（防呆）----------

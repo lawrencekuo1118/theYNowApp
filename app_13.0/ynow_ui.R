@@ -60,17 +60,36 @@
       "SGR (%)",
       value = APP_DEFAULTS$sgr
     ),
-    helpText("供 DCF／RI 終值使用（相對 WACC）；與 DDM 股利成長率分開。可由上方方法自動估計，亦可手動覆寫。"),
-    conditionalPanel(
-      condition = "input.dcf_mode == 'two_stage'",
-      tags$hr(style = "margin: 12px 0;"),
-      tags$h5(tags$b("兩階段成長假設（DCF）")),
+    helpText("供 DCF／RI 終值使用（相對 WACC）；與 DDM 股利成長率分開。可由上方方法自動估計，亦可手動覆寫。")
+  )
+}
+
+.core_params_location_box <- function() {
+  box(
+    title = tagList(icon("location-arrow"), "核心參數位置"),
+    width = 12, status = "warning", solidHeader = TRUE,
+    tags$ul(
+      style = "margin:0; padding-left:18px; line-height:1.55;",
+      tags$li("DCF／RI 終值 SGR：本頁上方「永續成長率 SGR 設定」"),
+      tags$li("兩階段成長假設：DCF-Model 分頁最下方（選 Two-Stage 時顯示）"),
+      tags$li("CapEx／ΔNWC 前瞻佔營收比：DCF → FCFF 分頁（驅動預測表）"),
+      tags$li("DDM 股利成長率：可在 DDM 分頁單獨覆寫")
+    )
+  )
+}
+
+.dcf_two_stage_params_box <- function() {
+  conditionalPanel(
+    condition = "input.dcf_mode == 'two_stage'",
+    box(
+      title = tagList(icon("layer-group"), "兩階段成長假設（DCF）"),
+      width = 12, status = "warning", solidHeader = TRUE,
       tags$p(style = "margin: 0 0 6px 0; font-size: 12.5px; color: #555;", tags$b("第一階段｜高速成長")),
       numericInput("yr_stage1", "年數", value = APP_DEFAULTS$yr_stage1),
       numericInput("g_stage1", "成長率 g1 (%)", value = APP_DEFAULTS$g_stage1),
       numericInput("wacc_stage1", "折現率 WACC1 (%)", value = APP_DEFAULTS$wacc_stage1, step = 0.01),
       tags$p(style = "margin: 10px 0 6px 0; font-size: 12.5px; color: #555;", tags$b("第二階段｜永續成長")),
-      helpText("第二階段成長率採用上方 SGR；以下設定折現率。"),
+      helpText("第二階段成長率採用 Get Started 的 SGR；以下設定折現率。"),
       numericInput("wacc_stage2", "折現率 WACC2 (%)", value = APP_DEFAULTS$wacc_stage2, step = 0.01)
     )
   )
@@ -758,8 +777,12 @@ ui <- dashboardPage(
           }
         }
         
-        /* 針對 search_results (產業資訊) 進行黑白主題與字體縮小 */
+        /* 針對 search_results (產業資訊) 進行黑白主題與字體縮小；滿寬 */
         #search_results {
+          width: 100% !important;
+          display: block !important;
+          box-sizing: border-box !important;
+          white-space: pre-wrap !important;
           background-color: #1e1e1e !important;  /* 深黑色背景 */
           color: #eeeeee !important;             /* 淺白色文字 */
           font-size: 12px !important;            /* 縮小字體 */
@@ -768,6 +791,15 @@ ui <- dashboardPage(
           border-radius: 4px !important;         /* 圓角 */
           font-weight: 500 !important;
           line-height: 1.2 !important;
+        }
+        #search_results pre {
+          width: 100% !important;
+          display: block !important;
+          margin: 0 !important;
+          white-space: pre-wrap !important;
+          background: transparent !important;
+          border: none !important;
+          color: inherit !important;
         }
       "))
     ),
@@ -857,22 +889,24 @@ ui <- dashboardPage(
     fluidRow(
       column(
         width = 4,
-        tags$div(
-          style = "display: flex; flex-direction: column; align-items: flex-start; gap: 8px;",
-          actionButton("search", "Search", icon = icon("search")),
-          tags$div(
-            style = "width: 100%; text-align: left;",
-            tags$p(
-              "industry info from Yahoo",
-              style = "font-size: 12px; color: #888; margin: 0 0 4px 0; font-weight: bold;"
-            ),
-            verbatimTextOutput("search_results")
-          )
-        )
+        actionButton("search", "Search", icon = icon("search"))
       ),
       column(
         width = 8,
         h2(textOutput("txt_corpname", inline = TRUE), class = "ynow-corpname")
+      )
+    ),
+    fluidRow(
+      column(
+        width = 12,
+        tags$div(
+          style = "width: 100%; text-align: left; margin-top: 8px;",
+          tags$p(
+            "industry info from Yahoo",
+            style = "font-size: 12px; color: #888; margin: 0 0 4px 0; font-weight: bold;"
+          ),
+          verbatimTextOutput("search_results")
+        )
       )
     ),
     br(),
@@ -910,6 +944,9 @@ ui <- dashboardPage(
         ),
         fluidRow(
           .dcf_core_params_box()
+        ),
+        fluidRow(
+          .core_params_location_box()
         )
       ),
 
@@ -1217,17 +1254,6 @@ ui <- dashboardPage(
                                 
                                 column(width = 12,
                                        plotOutput("plt_fcf_trend", height = "350px")
-                                ),
-                                
-                                box(
-                                  title = tagList(icon("location-arrow"), "核心參數位置"),
-                                  width = 12, status = "warning", solidHeader = TRUE,
-                                  tags$ul(
-                                    style = "margin:0; padding-left:18px; line-height:1.55;",
-                                    tags$li("DCF／RI 終值 SGR 與 WACC：側欄 Get Started"),
-                                    tags$li("CapEx／ΔNWC 前瞻佔營收比：本頁 FCFF 分頁（驅動預測表）"),
-                                    tags$li("DDM 股利成長率：可在 DDM 分頁單獨覆寫")
-                                  )
                                 )
                               )
                      ),
@@ -1274,6 +1300,9 @@ ui <- dashboardPage(
                                 )
                               )
                      )
+              ),
+              fluidRow(
+                .dcf_two_stage_params_box()
               )
       ),
       

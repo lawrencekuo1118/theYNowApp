@@ -1,0 +1,34 @@
+---
+description: Keep coding + OneDrive theYNow copies aligned to deployed master baseline
+alwaysApply: true
+---
+
+# Dual-workspace sync (GitHub source of truth)
+
+Latest app version: **app_13.0**
+
+Development baseline = currently deployed line on shinyapps (bundle `12308170`), aligned to:
+
+- Branch: `master`
+- Commit: `4b13019` (tag `baseline/shinyapps-12308170` when present; else see `scripts/DEPLOY_BASELINE.txt`)
+
+Edited from either:
+
+- `/Users/lawrencekuo/coding/theYNowApp` (fast local clone)
+- `/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp` (OneDrive)
+
+Before any edit session, ensure both paths match the latest GitHub tip:
+
+```bash
+/Users/lawrencekuo/coding/bin/sync-theynow-workspaces.sh
+# or: scripts/sync-workspaces.sh
+```
+
+Use `--force` only if you intentionally want to overwrite dirty local changes.
+
+After finishing edits:
+
+- From **coding** clone: `git add/commit` then `git push origin HEAD`, then run the sync script.
+- From **OneDrive**: `/Users/lawrencekuo/coding/bin/push-theynow-from-onedrive.sh "your message"` (mirror → coding → push → re-sync).
+
+Do not rely on `git push` inside the OneDrive folder; it often hangs.

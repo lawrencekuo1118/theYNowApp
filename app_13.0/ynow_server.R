@@ -17,6 +17,8 @@ server <- function(input, output, session) {
   
   # 初始值設為 NULL，避免一開啟 App 就自動執行爬蟲
   current_ticker <- reactiveVal(NULL)
+  # 首次按下 Search 前：不標示模型推薦／側邊欄「推薦」
+  user_has_searched <- reactiveVal(FALSE)
   
   # 系統核心估值變數
   estimated_g <- reactiveVal(NULL)
@@ -34,11 +36,13 @@ server <- function(input, output, session) {
   # ==========================================
   observeEvent(input$btn_search, {
     req(input$txt_search)
+    user_has_searched(TRUE)
     current_ticker(toupper(trimws(input$txt_search)))
   })
   
   observeEvent(input$search, {
     req(input$sc)
+    user_has_searched(TRUE)
     current_ticker(toupper(trimws(input$sc)))
   })
 
@@ -469,18 +473,32 @@ server <- function(input, output, session) {
   # ==========================================
   # 📌 v13.0：分類 → 主／副模型（側邊欄僅標主模型「推薦」）
   # ==========================================
+  .empty_model_rec <- function(summary_method, reason, company_type = "pending") {
+    list(
+      company_type = company_type, primary = "", secondary = NULL,
+      ddm = FALSE, dcf = FALSE, pb = FALSE, ri = FALSE, tags = character(0),
+      summary_method = summary_method, reason = reason,
+      suggest_two_stage = FALSE,
+      confidence_inputs = list(data_complete = FALSE)
+    )
+  }
+
   model_sidebar_rec <- reactive({
+    if (!isTRUE(user_has_searched())) {
+      return(.empty_model_rec(
+        "尚未搜尋",
+        "請先按下 Search 載入公司後產生推薦。"
+      ))
+    }
     cf <- tryCatch(d_cash_flow(), error = function(e) NULL)
     is <- tryCatch(d_income_statement(), error = function(e) NULL)
     bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
     ind <- corp_industry_text()
     if (is.null(cf) || !is.data.frame(cf) || nrow(cf) == 0) {
-      return(list(
-        company_type = "fallback", primary = "pb", secondary = NULL,
-        ddm = FALSE, dcf = FALSE, pb = FALSE, ri = FALSE, tags = character(0),
-        summary_method = "等待財報資料", reason = "搜尋股票並載入財報後產生推薦。",
-        suggest_two_stage = FALSE,
-        confidence_inputs = list(data_complete = FALSE)
+      return(.empty_model_rec(
+        "等待財報資料",
+        "搜尋股票並載入財報後產生推薦。",
+        company_type = "fallback"
       ))
     }
     recommend_valuation_models(
@@ -522,20 +540,23 @@ server <- function(input, output, session) {
     rec <- model_sidebar_rec()
     prim <- as.character(rec$primary %||% "")
     sec <- as.character(rec$secondary %||% "")
+    mark_roles <- nzchar(prim)
     make_card <- function(title, key, icon_name, color, formula, notes) {
-      role <- if (identical(key, prim)) {
+      role <- if (!mark_roles) {
+        NULL
+      } else if (identical(key, prim)) {
         "主模型"
       } else if (nzchar(sec) && identical(key, sec)) {
         "副模型"
       } else {
         "備選"
       }
-      active <- role != "備選"
+      active <- identical(role, "主模型")
       border_col <- if (identical(role, "主模型")) color else if (identical(role, "副模型")) "#888" else "#ddd"
       bg <- if (identical(role, "主模型")) "#fffaf2" else if (identical(role, "副模型")) "#f7f9fc" else "#fff"
       badge_bg <- if (identical(role, "主模型")) color else if (identical(role, "副模型")) "#6c757d" else "#999"
       tags$div(
-        class = paste("col-sm-3", if (identical(role, "主模型")) "ynow-model-rec-active" else ""),
+        class = paste("col-sm-3", if (isTRUE(active)) "ynow-model-rec-active" else ""),
         tags$div(
           style = paste0(
             "border:1px solid ", border_col, ";",
@@ -544,7 +565,7 @@ server <- function(input, output, session) {
           ),
           tags$div(style = paste0("font-size:22px; color:", color, ";"), icon(icon_name)),
           tags$h4(style = "margin:8px 0 4px 0; font-weight:700;", title),
-          tags$span(
+          if (!is.null(role)) tags$span(
             style = paste0(
               "display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; color:#fff; background:",
               badge_bg, ";"
@@ -564,6 +585,7 @@ server <- function(input, output, session) {
       "growth" = "高成長",
       "mature" = "成熟穩定",
       "fallback" = "資料受限",
+      "pending" = "待搜尋",
       "待分類"
     )
 
@@ -578,14 +600,19 @@ server <- function(input, output, session) {
       tags$div(
         class = "ynow-model-selector-summary",
         tags$b("公司分類："), type_lab,
-        tags$span(style = "margin:0 8px; color:#bbb;", "|"),
-        tags$b("主模型："), .model_label(prim),
-        if (nzchar(sec)) tagList(
+        if (mark_roles) tagList(
           tags$span(style = "margin:0 8px; color:#bbb;", "|"),
-          tags$b("副模型："), .model_label(sec)
+          tags$b("主模型："), .model_label(prim),
+          if (nzchar(sec)) tagList(
+            tags$span(style = "margin:0 8px; color:#bbb;", "|"),
+            tags$b("副模型："), .model_label(sec)
+          )
+        ) else tagList(
+          tags$span(style = "margin:0 8px; color:#bbb;", "|"),
+          tags$b("主模型："), "尚未標示"
         ),
         tags$br(),
-        tags$span(rec$reason %||% "搜尋股票並載入財報後產生推薦。")
+        tags$span(rec$reason %||% "請先按下 Search 載入公司後產生推薦。")
       ),
       fluidRow(
         make_card("DCF", "dcf", "calculator", "#00a65a", "EV = Σ FCFF / (1+WACC)^t + TV / (1+WACC)^n", "適合 FCF 為正且相對穩定的企業。"),
