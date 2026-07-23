@@ -23,6 +23,11 @@ decision_ui <- function(id) {
       box(
         title = "智能決策矩陣 The Decision Funnel", width = 12, status = "primary", solidHeader = TRUE,
         column(
+          width = 5,
+          h4("F-Score 體質檢核清單"),
+          tableOutput(ns("table_checklist"))
+        ),
+        column(
           width = 7,
           tags$div(
             class = "ynow-fraud-banner",
@@ -43,11 +48,6 @@ decision_ui <- function(id) {
           ),
           h4("決策建議："),
           uiOutput(ns("ui_recommendation"))
-        ),
-        column(
-          width = 5,
-          h4("F-Score 體質檢核清單"),
-          tableOutput(ns("table_checklist"))
         )
       )
     ),
