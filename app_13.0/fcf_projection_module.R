@@ -97,14 +97,14 @@ fcf_projection_module_ui <- function(id) {
            
            fluidRow(
              column(6, 
-                    selectInput("g_growth_method", "預估FCFF成長率",
+                    selectInput("g_growth_method", "預估營收成長率（驅動 FCFF 預測）",
                                 choices = c(
-                                  "基本面 (Fundamental)" = "fundamental",
-                                  "CAGR" = "cagr", 
-                                  "平均數" = "mean", 
-                                  "中位數" = "median",
-                                  "最近一年" = "last_year",
-                                  "自訂" = "custom"),
+                                  "基本面 RR×ROIC" = "fundamental",
+                                  "營收 CAGR" = "cagr",
+                                  "營收 YoY 平均" = "mean",
+                                  "營收 YoY 中位" = "median",
+                                  "營收最近一年" = "last_year",
+                                  "自訂營收成長率" = "custom"),
                                 selected = APP_DEFAULTS$g_growth_method)
              ),
              column(6, 
@@ -123,6 +123,11 @@ fcf_projection_module_ui <- function(id) {
                       )
                     )
              )
+           ),
+           helpText(
+             "預測表以「營收成長 → 利潤／再投資假設 → FCFF」展開。",
+             "歷史方法（CAGR／平均／中位／最近一年）應看營收，而非 FCF 波動；",
+             "基本面法以 RR×ROIC 近似永續成長，並套用 −5%～25% 防呆。"
            ),
            
            # 動態預測表與圖表展示區
@@ -482,12 +487,12 @@ fcf_projection_module_server <- function(
       method_label <- switch(
         method,
         "fundamental" = "基本面 (ROIC × RR)",
-        "cagr" = "CAGR",
-        "mean" = "平均成長率",
-        "median" = "中位數成長率",
-        "last_year" = "最近一年成長率",
-        "custom" = "自訂成長率",
-        "預估 FCFF 成長率"
+        "cagr" = "營收 CAGR",
+        "mean" = "營收 YoY 平均",
+        "median" = "營收 YoY 中位",
+        "last_year" = "營收最近一年",
+        "custom" = "自訂營收成長率",
+        "預估營收成長率"
       )
       res <- fcf_estimator_results()
       subtitle_html <- method_label

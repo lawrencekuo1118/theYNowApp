@@ -735,12 +735,12 @@ server <- function(input, output, session) {
       ddm_sync_central_g = c("DDM", "與中央 SGR 同步", "TRUE 時 DDM g 跟隨 SGR"),
       dcf_mode = c("DCF", "DCF 模式", "gordon / two_stage"),
       dcf_chart_mode = c("DCF", "圖表模式", "simple / with_dcf"),
-      g_growth_method = c("DCF", "FCFF 成長估計法", "fundamental / custom 等"),
-      custom_g = c("DCF", "自訂短期 g (%)", "封頂後的短中期成長"),
+      g_growth_method = c("DCF", "營收成長估計法", "fundamental / revenue CAGR 等"),
+      custom_g = c("DCF", "自訂營收成長 g (%)", "封頂後的短中期營收成長"),
       perpetual_g_method = c("永續成長", "方法", "macro / fundamental / lifecycle"),
       lifecycle_stage = c("永續成長", "生命週期", "auto 或手動階段"),
       sgr = c("永續成長", "SGR / 終值 g (%)", "DCF／RI 終值成長上限錨"),
-      wacc_gordon = c("DCF", "Gordon WACC (%)", "單階段／Gordon 路徑折現率"),
+      wacc_gordon = c("DCF", "Gordon WACC (%)", "由 WACC 分頁同步；隱藏欄位"),
       yr_stage1 = c("Two-Stage", "高速期年數", "Stage 1 years"),
       g_stage1 = c("Two-Stage", "高速期 g1 (%)", "Stage 1 growth"),
       g_stage2 = c("Two-Stage", "穩定期 g2 (%)", "通常對齊 SGR"),
@@ -1805,118 +1805,192 @@ server <- function(input, output, session) {
     }
   })
   
-  estimated_g_meta <- reactiveValues(method = NULL, fund_res = NULL)
+  estimated_g_meta <- reactiveValues(method = NULL, fund_res = NULL, source = NULL)
+  .clamp_near_term_g_pct <- function(g, lo = -5, hi = 25) {
+    g <- suppressWarnings(as.numeric(g)[1])
+    if (!is.finite(g)) return(NA_real_)
+    max(lo, min(hi, g))
+  }
+  .yoy_rates_newest_first <- function(vec, abs_cap = 1) {
+    # vec: newest → oldest. Return chronological YoY rates in (-abs_cap, abs_cap).
+    x <- suppressWarnings(as.numeric(vec))
+    x <- x[is.finite(x)]
+    if (length(x) < 2L) return(numeric(0))
+    chrono <- rev(x)
+    rates <- diff(chrono) / abs(head(chrono, -1))
+    rates <- rates[is.finite(rates)]
+    rates[rates > -abs_cap & rates < abs_cap]
+  }
+  .series_cagr_pct_newest_first <- function(vec) {
+    x <- suppressWarnings(as.numeric(vec))
+    x <- x[is.finite(x)]
+    if (length(x) < 2L) return(NA_real_)
+    chrono <- rev(x)
+    a <- head(chrono, 1); b <- tail(chrono, 1)
+    n <- length(chrono) - 1L
+    if (is.finite(a) && is.finite(b) && a > 0 && b > 0 && n > 0) {
+      return(((b / a)^(1 / n) - 1) * 100)
+    }
+    rates <- .yoy_rates_newest_first(vec, abs_cap = 1)
+    if (!length(rates)) return(NA_real_)
+    mean(rates) * 100
+  }
   observe({
     req(d_cash_flow(), d_income_statement(), d_balance_sheet(), input$g_growth_method)
     method <- input$g_growth_method
     if (is.null(method)) return()
-    
-    vec_fcf <- select_clean_metric_row(d_cash_flow(), "Free Cash Flow", include_ttm = FALSE)
-    if (all(is.na(vec_fcf))) {
-      estimated_g(NULL)
-      return()
-    }
-    
-    fcf_chrono <- rev(vec_fcf)
-    g_rate_raw <- diff(fcf_chrono) / abs(head(fcf_chrono, -1))
-    g_rate <- g_rate_raw[is.finite(g_rate_raw)]
-    g_rate <- g_rate[g_rate > -5 & g_rate < 5] 
-    
+
+    # Projection grows REVENUE then derives FCFF — historical methods must use revenue,
+    # not noisy FCF YoY (except fundamental RR×ROIC which is a sustainable-g proxy).
+    vec_rev <- tryCatch(
+      select_clean_metric_row(d_income_statement(), "Total Revenue", include_ttm = FALSE),
+      error = function(e) numeric(0)
+    )
+    vec_fcf <- tryCatch(
+      select_clean_metric_row(d_cash_flow(), "Free Cash Flow", include_ttm = FALSE),
+      error = function(e) numeric(0)
+    )
+
     fund_res <- NULL
+    source_lab <- NULL
     if (isTRUE(method == "fundamental")) {
       ebit <- select_current_metric(d_income_statement(), "Operating Income|EBIT", "flow")
-      tax_rate <- if(!is.null(input$wacc_tax)) input$wacc_tax / 100 else APP_DEFAULTS$wacc_tax
+      tax_rate <- if (!is.null(input$wacc_tax)) input$wacc_tax / 100 else APP_DEFAULTS$wacc_tax / 100
+      if (!is.finite(tax_rate)) tax_rate <- 0.21
       nopat <- ebit * (1 - tax_rate)
-      
+
       total_assets <- select_current_metric(d_balance_sheet(), "Total Assets", "stock")
       curr_liab <- select_current_metric(d_balance_sheet(), "Total Current Liabilities|Current Liabilities", "stock")
       st_debt <- select_current_metric(d_balance_sheet(), "Current Debt|Short Term Debt", "stock")
       cash_eq <- select_current_metric(d_balance_sheet(), "Cash And Cash Equivalents|Cash & Cash Equivalents", "stock")
-      
+
       st_debt <- ifelse(is.na(st_debt), 0, st_debt)
       curr_liab <- ifelse(is.na(curr_liab), 0, curr_liab)
       cash_eq <- ifelse(is.na(cash_eq), 0, cash_eq)
       total_assets <- ifelse(is.na(total_assets), 0, total_assets)
-      
+
       invested_capital <- (total_assets - cash_eq) - (curr_liab - st_debt)
-      roic <- if(!is.na(invested_capital) && invested_capital > 0) nopat / invested_capital else 0
-      
+      roic <- if (!is.na(invested_capital) && invested_capital > 0) nopat / invested_capital else 0
+
       capex <- abs(select_current_metric(d_cash_flow(), "Capital Expenditure", "flow"))
       depre <- select_current_metric(d_cash_flow(), "Depreciation", "flow")
       cf_delta_nwc <- select_current_metric(d_cash_flow(), "Change In Working Capital|Changes In Working Capital", "flow")
-      
+
       capex <- ifelse(is.na(capex), 0, capex)
       depre <- ifelse(is.na(depre), 0, depre)
       cf_delta_nwc <- ifelse(is.na(cf_delta_nwc), 0, cf_delta_nwc)
-      nwc_investment <- -cf_delta_nwc 
-      
+      nwc_investment <- -cf_delta_nwc
+
       if (!is.na(nopat) && nopat > 0) {
         reinvestment_rate <- (capex - depre + nwc_investment) / nopat
       } else {
-        reinvestment_rate <- 0 
+        reinvestment_rate <- 0
       }
-      
+      # RR outside [0,1] is usually accounting noise for a one-year snapshot
+      reinvestment_rate <- max(-0.2, min(1.2, reinvestment_rate))
+
       raw_fund_g <- reinvestment_rate * roic
-      
-      # 聽從 FCFF 模組命名空間的天花板勾選框
+
       ceiling_ns <- input[["mod_fcf-apply_g_ceiling"]]
       apply_ceiling <- if (!is.null(ceiling_ns)) isTRUE(ceiling_ns) else TRUE
-      
+
       if (apply_ceiling) {
-        final_fund_g <- max(-0.05, min(raw_fund_g, 0.25)) # 封頂 25%
+        final_fund_g <- max(-0.05, min(raw_fund_g, 0.25))
       } else {
-        final_fund_g <- max(-0.05, raw_fund_g)            # 解除封頂
+        final_fund_g <- max(-0.05, min(raw_fund_g, 0.50))
       }
-      
+
       fund_res <- list(
-        g = round(final_fund_g * 100, 2), 
-        raw_g = round(raw_fund_g * 100, 2), 
-        roic = roic, 
-        rr = reinvestment_rate, 
-        nopat = nopat, 
+        g = round(final_fund_g * 100, 2),
+        raw_g = round(raw_fund_g * 100, 2),
+        roic = roic,
+        rr = reinvestment_rate,
+        nopat = nopat,
         ic = invested_capital,
         ceiling_applied = apply_ceiling
       )
+      source_lab <- "RR×ROIC"
     }
-    
-    val <- switch(method,
-                  "fundamental" = if(!is.null(fund_res)) fund_res$g else NA,
-                  "cagr" = { 
-                    valid_fcf <- na.omit(fcf_chrono)
-                    if (length(valid_fcf) < 2 || head(valid_fcf, 1) <= 0 || tail(valid_fcf, 1) <= 0) NA else round(((tail(valid_fcf, 1) / head(valid_fcf, 1))^(1 / (length(valid_fcf) - 1)) - 1) * 100, 2)
-                  },
-                  "mean" = if(length(g_rate) > 0) round(mean(g_rate) * 100, 2) else NA,
-                  "median" = if(length(g_rate) > 0) round(median(g_rate) * 100, 2) else NA,
-                  "last_year" = if (length(vec_fcf) >= 2 && !is.na(vec_fcf[1]) && !is.na(vec_fcf[2]) && vec_fcf[2] != 0) round(((vec_fcf[1] - vec_fcf[2]) / abs(vec_fcf[2])) * 100, 2) else NA,
-                  "custom" = input$custom_g
+
+    val_raw <- switch(
+      method,
+      "fundamental" = if (!is.null(fund_res)) fund_res$g else NA_real_,
+      "cagr" = .series_cagr_pct_newest_first(vec_rev),
+      "mean" = {
+        rates <- .yoy_rates_newest_first(vec_rev, abs_cap = 1)
+        if (length(rates)) mean(rates) * 100 else NA_real_
+      },
+      "median" = {
+        rates <- .yoy_rates_newest_first(vec_rev, abs_cap = 1)
+        if (length(rates)) stats::median(rates) * 100 else NA_real_
+      },
+      "last_year" = {
+        if (length(vec_rev) >= 2L && is.finite(vec_rev[1]) && is.finite(vec_rev[2]) && vec_rev[2] != 0) {
+          ((vec_rev[1] - vec_rev[2]) / abs(vec_rev[2])) * 100
+        } else NA_real_
+      },
+      "custom" = suppressWarnings(as.numeric(input$custom_g)[1]),
+      NA_real_
     )
-    
-    if (is.null(val) || any(is.na(val))) {
+
+    # Near-term growth fed into revenue projection: clamp all non-custom methods.
+    val <- if (identical(method, "custom")) {
+      suppressWarnings(as.numeric(val_raw)[1])
+    } else {
+      .clamp_near_term_g_pct(val_raw, lo = -5, hi = 25)
+    }
+    if (is.null(source_lab)) {
+      source_lab <- switch(
+        method,
+        "cagr" = "營收 CAGR",
+        "mean" = "營收 YoY 平均",
+        "median" = "營收 YoY 中位",
+        "last_year" = "營收最近一年",
+        "custom" = "自訂",
+        method
+      )
+    }
+
+    if (is.null(val) || length(val) < 1 || is.na(val) || !is.finite(val)) {
+      # Fallback: if revenue path fails but FCF exists, try mild FCF mean (still clamped)
+      if (!identical(method, "custom") && !identical(method, "fundamental")) {
+        fcf_rates <- .yoy_rates_newest_first(vec_fcf, abs_cap = 1)
+        if (length(fcf_rates)) {
+          val <- .clamp_near_term_g_pct(mean(fcf_rates) * 100)
+          source_lab <- paste0(source_lab, "（營收不足→FCF 回退）")
+        }
+      }
+    }
+
+    if (is.null(val) || length(val) < 1 || is.na(val) || !is.finite(val)) {
       prev_g_na <- isolate(estimated_g())
       estimated_g(NULL)
+      estimated_g_meta$source <- NULL
       if (!is.null(prev_g_na)) {
-        updateSelectInput(session, "g_growth_method", label = "預估 FCFF 成長率 (缺乏數據)")
+        updateSelectInput(session, "g_growth_method", label = "預估營收成長率 (缺乏數據)")
       }
       return()
     }
-    
+
+    val <- round(as.numeric(val), 2)
     prev_g <- isolate(estimated_g())
     prev_method <- isolate(estimated_g_meta$method)
     estimated_g(val)
     estimated_g_meta$method <- method
     estimated_g_meta$fund_res <- fund_res
+    estimated_g_meta$source <- source_lab
     changed <- !identical(prev_g, val) || !identical(prev_method, method)
     if (isTRUE(changed)) {
-      updateSelectInput(session, "g_growth_method", label = paste0("預估 FCFF 成長率 ➔ ", val, " %"))
+      updateSelectInput(session, "g_growth_method",
+                        label = paste0("預估營收成長率 ➔ ", val, " %"))
     }
-    
+
     if (method != "custom" && !is.na(val) && !identical(input$dcf_mode, "two_stage")) {
       if (is.null(input$g_stage1) || is.na(as.numeric(input$g_stage1)) ||
           abs(as.numeric(input$g_stage1) - as.numeric(val)) > 1e-4) {
         updateNumericInput(session, "g_stage1", value = val)
       }
     }
-    # 觸發 FCFF 投影表依新成長率重算（必須 isolate，否則 observe 自讀自寫會無限迴圈）
     if (isTRUE(changed)) {
       run_calc_trigger(isolate(run_calc_trigger()) + 1)
     }
@@ -1947,10 +2021,12 @@ server <- function(input, output, session) {
            {ceiling_status_msg}
          </div>"
       ))
-    } else if (method == "last_year") {
+    } else if (method %in% c("cagr", "mean", "median", "last_year")) {
+      src <- estimated_g_meta$source %||% "營收"
       HTML(glue::glue(
-        "<div style='padding: 10px; border-left: 4px solid #7f8c8d; font-size: 13px; color: #7f8c8d;'>
-           💡 採用最近一年成長率：直接取用財報最新一期 vs 前一期的變化幅度。
+        "<div style='padding: 10px; border-left: 4px solid #3c8dbc; font-size: 13px; color: #555;'>
+           以<strong>營收</strong>歷史計算近中期成長（{src}），再驅動營收→FCFF 預測。
+           已套用 −5%～25% 防呆，避免把單年暴衝／暴跌寫進模型。
          </div>"
       ))
     } else {
@@ -1963,16 +2039,16 @@ server <- function(input, output, session) {
     method <- input$g_growth_method %||% "fundamental"
     method_lab <- switch(
       as.character(method),
-      "fundamental" = "基本面",
-      "cagr" = "CAGR",
-      "mean" = "平均",
-      "median" = "中位數",
-      "last_year" = "最近一年",
-      "custom" = "自訂",
+      "fundamental" = "基本面 RR×ROIC",
+      "cagr" = "營收 CAGR",
+      "mean" = "營收平均",
+      "median" = "營收中位",
+      "last_year" = "營收最近一年",
+      "custom" = "自訂營收",
       method
     )
     infoBox(
-      paste0("預估 FCFF 成長率 (", method_lab, ")"),
+      paste0("預估營收成長率 (", method_lab, ")"),
       paste0(val_g, " %"),
       icon = icon("chart-line"),
       color = "purple",
@@ -3151,24 +3227,10 @@ server <- function(input, output, session) {
                             error = function(e) NULL)
         fv_edge <- tryCatch(validate_fair_value_edge(res$valuation_df, px),
                             error = function(e) NULL)
-        incProgress(0.85, detail = "參數高原…")
-        plateau <- tryCatch(
-          run_parameter_plateau(
-            ticker = current_ticker(),
-            d_is = d_income_statement(),
-            d_bs = d_balance_sheet(),
-            d_cf = d_cash_flow(),
-            params = params,
-            model_params = mp,
-            mos = bt_current_mos(),
-            bench_ticker = "SPY",
-            years = 5
-          ),
-          error = function(e) list(status = "N/A", reason = e$message, details = NULL)
-        )
+        # 參數高原已自 UI 移除（與 Sensitivity 重疊）；略過以縮短回測時間
         bt_result(res)
         bt_validation(list(
-          alpha = alpha_df, gap = gap, mos = mos_tab, fv = fv_edge, plateau = plateau
+          alpha = alpha_df, gap = gap, mos = mos_tab, fv = fv_edge, plateau = NULL
         ))
         bt_hfv_fv(NULL)
         bt_fv_visible(TRUE)
@@ -3664,7 +3726,7 @@ server <- function(input, output, session) {
           " 執行回測後，此處會以卡片顯示 ",
           tags$b("Sharpe"), "、", tags$b("Max DD"), "、",
           tags$b("CAGR"), "、", tags$b("Excess vs BH"), "、",
-          tags$b("Jensen α"), " 與 ", tags$b("參數高原"), "。"
+          tags$b("Jensen α"), "。"
         )
       )
     }
@@ -3691,17 +3753,6 @@ server <- function(input, output, session) {
     excess_show <- if (!is.null(best_row)) best_row$ExcessReturn else NA_real_
     jensen_show <- if (!is.null(best_row)) best_row$JensenAlpha else NA_real_
     if (!is.null(best_row) && is.finite(best_row$CAGR)) cagr_show <- best_row$CAGR
-
-    plateau_val <- {
-      p <- if (!is.null(v)) v$plateau else NULL
-      if (!is.null(p) && !is.null(p$status) && nzchar(as.character(p$status)[1])) {
-        as.character(p$status)[1]
-      } else if (!is.null(m$plateau)) {
-        as.character(m$plateau)
-      } else {
-        "N/A"
-      }
-    }
 
     .ynow_metric_card <- function(value, label, caption, icon_name, tone, tip) {
       tipify(
@@ -3774,14 +3825,6 @@ server <- function(input, output, session) {
           icon_name = "rocket",
           tone = "blue",
           tip = "對 Benchmark 日超額報酬做 CAPM 回歸後的年化截距。"
-        ),
-        .ynow_metric_card(
-          value = plateau_val,
-          label = "參數高原",
-          caption = "微擾 WACC／SGR／年數後，合理價指數終值穩健度（非策略淨值）。",
-          icon_name = "mountain",
-          tone = "violet",
-          tip = if (!is.null(v$plateau$reason)) as.character(v$plateau$reason)[1] else "Stable / Moderate / Sensitive"
         )
       )
     )

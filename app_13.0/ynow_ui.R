@@ -716,14 +716,16 @@ ui <- dashboardPage(
           right: 10px;
           bottom: 10px;
           z-index: 10;
-          max-width: 300px;
-          min-width: 220px;
-          padding: 10px 12px 8px;
+          max-width: 320px;
+          min-width: 240px;
+          padding: 10px 14px 10px 18px;
           background: rgba(255, 255, 255, 0.97);
           border: 1px solid #dde2e6;
           border-radius: 6px;
           box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
           font-size: 11px;
+          box-sizing: border-box;
+          overflow: visible;
         }
         .ynow-bt-hfv-controls .form-group {
           margin-bottom: 0;
@@ -745,6 +747,7 @@ ui <- dashboardPage(
           column-gap: 14px;
           row-gap: 2px;
           align-items: start;
+          padding-left: 4px;
         }
         .ynow-bt-hfv-controls .radio {
           margin-top: 0;
@@ -759,15 +762,24 @@ ui <- dashboardPage(
           margin-top: 4px;
           margin-bottom: 4px;
           min-height: 18px;
+          padding-left: 4px;
         }
         .ynow-bt-hfv-controls .checkbox:first-child {
           margin-top: 2px;
         }
+        /* Bootstrap checkbox 以 margin-left:-20px 掛在 label 左側；勿壓低 padding-left */
         .ynow-bt-hfv-controls .checkbox label {
           font-size: 11px;
           font-weight: normal;
           line-height: 1.35;
-          padding-left: 5px;
+          padding-left: 20px;
+          display: inline-block;
+          min-height: 18px;
+        }
+        .ynow-bt-hfv-controls .checkbox input[type='checkbox'] {
+          position: absolute;
+          margin-left: -20px;
+          margin-top: 2px;
         }
         @media (max-width: 767px) {
           .ynow-bt-hfv-controls {
@@ -1195,13 +1207,15 @@ ui <- dashboardPage(
                                                       "二階段成長法 (Two-Stage Model)" = "two_stage"
                                                     ),
                                                     selected = APP_DEFAULTS$dcf_mode),
-                                       conditionalPanel(
-                                         condition = "input.dcf_mode == 'gordon'",
+                                       # WACC 改由 DCF → WACC 分頁／CAPM 同步；此處隱藏保留 input$id 供計算鏈使用
+                                       tags$div(
+                                         style = "display:none;",
                                          numericInput(
                                            "wacc_gordon", "折現率 WACC (%)",
                                            value = APP_DEFAULTS$wacc_gordon, step = 0.01
                                          )
-                                       )
+                                       ),
+                                       helpText("折現率 WACC 請至本頁「WACC」分頁設定（會自動同步至此模型）。")
                                 ),
                                 column(width = 6, numericInput("years", "預測年數 n", value = APP_DEFAULTS$years, min = 1, max = 30))
                               )
@@ -1572,28 +1586,31 @@ ui <- dashboardPage(
                 )
               ),
 
-              # 5) MOS／FV／參數高原驗證區塊（寬螢幕三列）
+              # 5) 回測驗證：保留 MOS／FV（策略訊號是否有效）；參數高原已移出（與 Sensitivity 重疊）
               fluidRow(
                 tags$div(
                   class = "ynow-bt-validate",
                   box(
-                    title = tagList(icon("flask"), "回測驗證：MOS／Fair Value／參數高原"),
-                    width = 12, status = "info", solidHeader = TRUE, collapsible = TRUE, collapsed = FALSE,
+                    title = tagList(icon("flask"), "回測驗證：MOS 與 Fair Value"),
+                    width = 12, status = "info", solidHeader = TRUE, collapsible = TRUE, collapsed = TRUE,
+                    .bt_section_intro(
+                      "用來檢查「低估是否伴隨較佳前瞻報酬」——這是回測策略能否成立的核心。參數敏感度請改看 Sensitivity 分頁（WACC×g 矩陣）。"
+                    ),
                     fluidRow(
                       column(
-                        4,
+                        6,
                         tags$div(
                           class = "ynow-bt-validate-col",
                           tags$div(
                             class = "ynow-bt-validate-panel",
-                            tags$h5(tags$b("MOS 有效性驗證")),
+                            tags$h5(tags$b("MOS 有效性")),
                             .bt_hint("依 MOS 分組統計 1Y／3Y／5Y 前瞻報酬：MOS 愈高是否報酬愈好？"),
                             tags$div(style = "overflow-x:auto;", tableOutput("bt_mos_table"))
                           )
                         )
                       ),
                       column(
-                        4,
+                        6,
                         tags$div(
                           class = "ynow-bt-validate-col",
                           tags$div(
@@ -1601,23 +1618,6 @@ ui <- dashboardPage(
                             tags$h5(tags$b("Fair Value 預測能力")),
                             uiOutput("bt_fv_edge"),
                             tags$div(style = "overflow-x:auto;", tableOutput("bt_fv_table"))
-                          )
-                        )
-                      ),
-                      column(
-                        4,
-                        tags$div(
-                          class = "ynow-bt-validate-col",
-                          tags$div(
-                            class = "ynow-bt-validate-panel",
-                            tags$h5(tags$b("參數高原（敏感度）")),
-                            .bt_hint("微擾 WACC／SGR／年數，觀察合理價指數（Model_A）終值敏感度——不是策略淨值。"),
-                            uiOutput("bt_plateau"),
-                            tags$div(
-                              class = "ynow-bt-plateau-table-wrap",
-                              style = "overflow-x: auto;",
-                              tableOutput("bt_plateau_table")
-                            )
                           )
                         )
                       )
