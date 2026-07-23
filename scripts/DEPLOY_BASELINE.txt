@@ -1,0 +1,10 @@
+source=shinyapps.io TheYNowApp
+bundleId=12297490
+appId=10907657
+url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
+aligned_git=origin/master
+commit=45389dfbbb8fda31b628cf0621d4e5df58876920
+short=45389df
+message=UI: enlarge all KPI numbers while keeping tile sizes fixed
+captured_at=2026-07-21T21:29:00+08:00
+note=shinyapps does not expose git SHA; baseline set to master tip contemporaneous with local dcf bundle 12297490.
