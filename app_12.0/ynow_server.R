@@ -961,7 +961,8 @@ server <- function(input, output, session) {
     global_re = central_ke,
     global_g = reactive({
       if (!is.null(input$sgr) && is.finite(as.numeric(input$sgr))) as.numeric(input$sgr) else APP_DEFAULTS$sgr
-    })
+    }),
+    industry_choice = reactive(input$industry_choice)
   )
   
   # ==========================================
