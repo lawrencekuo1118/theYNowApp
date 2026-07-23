@@ -95,10 +95,29 @@ ui <- dashboardPage(
            )
     ),
     
-    column(width = 12,
-           sidebarMenuOutput("sidebar_menu"),
-           hr()
+    # Static sidebarMenu (not sidebarMenuOutput/renderMenu): rebuilding the
+    # whole menu on badge/tab invalidation races AdminLTE's active class → flicker.
+    # 「推薦」badges live on Get Started Model Selector only.
+    sidebarMenu(
+      id = "sidebar_tabs",
+      menuItem("Get Started", tabName = "get_started", icon = icon("play-circle"),
+               badgeLabel = "start", badgeColor = "purple"),
+      menuItem("Dashboard", tabName = "dashboard", icon = icon("chart-line")),
+      menuItem("DCF-Model", tabName = "dcf_calculator", icon = icon("calculator")),
+      menuItem("DDM", tabName = "ddm_calculator", icon = icon("hand-holding-usd"),
+               badgeLabel = "new", badgeColor = "green"),
+      menuItem("P/B-Asset", tabName = "pb_calculator", icon = icon("landmark"),
+               badgeLabel = "new", badgeColor = "aqua"),
+      menuItem("RI-Model", tabName = "ri_calculator", icon = icon("gem"),
+               badgeLabel = "pro", badgeColor = "blue"),
+      menuItem("Sensitivity", tabName = "sensitivity", icon = icon("sliders-h"),
+               badgeLabel = "new", badgeColor = "green"),
+      menuItem("Backtest Zone", tabName = "backtest", icon = icon("vial"),
+               badgeLabel = "Alpha", badgeColor = "orange"),
+      menuItem("Snapshot", tabName = "snapshot", icon = icon("camera")),
+      menuItem("About", tabName = "about", icon = icon("info-circle"))
     ),
+    hr(),
     
     column(width = 12,
            h5("Recent Search:"),
@@ -147,6 +166,62 @@ ui <- dashboardPage(
           word-break: break-word;
         }
       ')),
+      # region agent log
+      tags$script(HTML("
+        (function () {
+          function send(msg, data, hyp) {
+            fetch('http://127.0.0.1:7828/ingest/e3a0dcdf-71e1-4bba-855e-f942118bd315', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Debug-Session-Id': '8b7c54'
+              },
+              body: JSON.stringify({
+                sessionId: '8b7c54',
+                runId: 'post-static-menu',
+                hypothesisId: hyp,
+                location: 'ynow_ui.R:sidebar_observer',
+                message: msg,
+                data: data,
+                timestamp: Date.now()
+              })
+            }).catch(function () {});
+          }
+          function arm() {
+            var menu = document.querySelector('.sidebar-menu');
+            if (!menu) { setTimeout(arm, 250); return; }
+            var lastLen = menu.innerHTML.length;
+            var childRebuilds = 0;
+            var obs = new MutationObserver(function (muts) {
+              var child = muts.some(function (m) {
+                return m.type === 'childList' && (m.addedNodes.length || m.removedNodes.length);
+              });
+              var len = menu.innerHTML.length;
+              if (child) childRebuilds += 1;
+              if (child || Math.abs(len - lastLen) > 80) {
+                var a = document.querySelector('.sidebar-menu li.active > a');
+                send('sidebar_dom_mutation', {
+                  childList: child,
+                  childRebuilds: childRebuilds,
+                  len: len,
+                  prevLen: lastLen,
+                  active: a ? a.getAttribute('data-value') : null
+                }, 'H2');
+              }
+              lastLen = len;
+            });
+            obs.observe(menu, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+            send('sidebar_observer_armed', { len: lastLen, staticMenu: true }, 'H2');
+            window.__ynowSidebarDbg = { childRebuilds: function () { return childRebuilds; } };
+          }
+          if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', arm);
+          } else {
+            arm();
+          }
+        })();
+      ")),
+      # endregion
       
       tags$style(HTML("
         .selectize-dropdown-content {

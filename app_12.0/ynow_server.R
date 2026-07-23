@@ -406,81 +406,34 @@ server <- function(input, output, session) {
     recommend_valuation_models(cf, industry_text = ind, d_is = is, d_bs = bs)
   })
 
-  # Only rebuild sidebar when recommendation badges actually change.
-  sidebar_badge_sig <- reactiveVal("||||")
-  observe({
-    rec <- model_sidebar_rec()
-    sig <- paste(
-      isTRUE(rec$dcf), isTRUE(rec$ddm), isTRUE(rec$pb), isTRUE(rec$ri),
-      paste(rec$tags %||% character(0), collapse = ","),
-      sep = "|"
+  # region agent log
+  .agent_dbg_sidebar <- function(hypothesis_id, location, message, data = list()) {
+    payload <- list(
+      sessionId = "8b7c54",
+      runId = "post-static-menu",
+      hypothesisId = hypothesis_id,
+      location = location,
+      message = message,
+      data = data,
+      timestamp = as.numeric(Sys.time()) * 1000
     )
-    if (!identical(sidebar_badge_sig(), sig)) sidebar_badge_sig(sig)
-  })
-
-  output$sidebar_menu <- renderMenu({
-    sidebar_badge_sig()
-    rec <- isolate(model_sidebar_rec())
-    # Isolate tab selection: reading input$sidebar_tabs here would rebuild the
-    # entire sidebar on every click (AdminLTE active-class race → flicker).
-    sel <- isolate({
-      if (!is.null(input$sidebar_tabs) && nzchar(input$sidebar_tabs)) {
-        input$sidebar_tabs
-      } else {
-        "get_started"
-      }
-    })
-
-    mk <- function(text, tab, ic, recommended = FALSE,
-                   fallback_label = NULL, fallback_color = NULL) {
-      b <- .sidebar_badge(recommended, fallback_label, fallback_color)
-      args <- list(
-        text = text,
-        tabName = tab,
-        icon = icon(ic),
-        selected = identical(sel, tab)
-      )
-      if (!is.null(b$label) && nzchar(b$label)) {
-        args$badgeLabel <- b$label
-        args$badgeColor <- b$color
-      }
-      do.call(menuItem, args)
-    }
-
-    sidebarMenu(
-      id = "sidebar_tabs",
-      mk("Get Started", "get_started", "play-circle",
-         fallback_label = "start", fallback_color = "purple"),
-      mk("Dashboard", "dashboard", "chart-line"),
-      # 順序對齊 Model Selector 左→右：DCF → DDM → P/B → RI
-      mk("DCF-Model", "dcf_calculator", "calculator",
-         recommended = isTRUE(rec$dcf)),
-      mk("DDM", "ddm_calculator", "hand-holding-usd",
-         recommended = isTRUE(rec$ddm),
-         fallback_label = "new", fallback_color = "green"),
-      mk("P/B-Asset", "pb_calculator", "landmark",
-         recommended = isTRUE(rec$pb),
-         fallback_label = "new", fallback_color = "aqua"),
-      mk("RI-Model", "ri_calculator", "gem",
-         recommended = isTRUE(rec$ri),
-         fallback_label = "pro", fallback_color = "blue"),
-      mk("Sensitivity", "sensitivity", "sliders-h",
-         fallback_label = "new", fallback_color = "green"),
-      mk("Backtest Zone", "backtest", "vial",
-         fallback_label = "Alpha", fallback_color = "orange"),
-      mk("Snapshot", "snapshot", "camera"),
-      mk("About", "about", "info-circle")
+    line <- tryCatch(
+      jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null", na = "null"),
+      error = function(e) '{"sessionId":"8b7c54","message":"log_fail"}'
     )
-  })
-
-  # After a badge-driven menu rebuild, re-assert the active tab so AdminLTE
-  # does not flash back to the first item.
-  observeEvent(sidebar_badge_sig(), {
-    tab <- isolate(input$sidebar_tabs)
-    if (!is.null(tab) && nzchar(as.character(tab)[1])) {
-      updateTabItems(session, "sidebar_tabs", selected = as.character(tab)[1])
-    }
-  }, ignoreInit = TRUE)
+    try(
+      cat(line, "\n",
+          file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-8b7c54.log",
+          append = TRUE),
+      silent = TRUE
+    )
+  }
+  .agent_dbg_sidebar(
+    "H2", "ynow_server.R:sidebar_static",
+    "sidebar uses static UI menu; renderMenu removed",
+    list(has_sidebar_menu_output = FALSE)
+  )
+  # endregion
 
   output$get_started_model_selector <- renderUI({
     rec <- model_sidebar_rec()
