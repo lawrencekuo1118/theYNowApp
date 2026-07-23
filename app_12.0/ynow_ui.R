@@ -206,92 +206,11 @@ ui <- dashboardPage(
         }
         
         .info-box .info-box-number {
-          font-size: clamp(22px, 3.2vw, 32px) !important;
-          font-weight: 800 !important;
-          line-height: 1.1 !important;
-        }
-        .info-box .info-box-number h3,
-        .info-box .info-box-content > h3 {
-          font-size: clamp(22px, 3.2vw, 32px) !important;
-          font-weight: 800 !important;
-          margin: 0 !important;
-          line-height: 1.1 !important;
-        }
-        .info-box .info-box-text {
-          font-size: 10px !important;
-          font-weight: 600 !important;
-          line-height: 1.25 !important;
+          font-size: 150% !important;
+          font-weight: bold;
         }
 
-        /* KPI 數字遠大於標籤；格子／卡片外框尺寸不變 */
-        .small-box {
-          min-height: unset !important;
-        }
-        .small-box .inner {
-          padding: 8px 10px !important;
-        }
-        .small-box .inner h3 {
-          font-size: clamp(20px, 3.2vw, 30px) !important;
-          font-weight: 800 !important;
-          line-height: 1.08 !important;
-          margin: 0 0 4px 0 !important;
-        }
-        .small-box .inner p {
-          font-size: 10px !important;
-          font-weight: 600 !important;
-          line-height: 1.2 !important;
-          margin: 0 !important;
-          opacity: 0.92;
-        }
-        .small-box .icon-large {
-          opacity: 0.1 !important;
-        }
-
-        .ynow-fs-label {
-          font-size: 10px;
-          font-weight: 600;
-          color: #777777;
-          line-height: 1.2;
-          margin-bottom: 3px;
-        }
-        .ynow-fs-value {
-          font-size: clamp(18px, 2.4vw, 26px);
-          font-weight: 800;
-          color: #111111;
-          font-variant-numeric: tabular-nums;
-          letter-spacing: -0.02em;
-          line-height: 1.08;
-          word-break: break-word;
-        }
-
-        .ynow-kpi-stat-label {
-          font-size: 10px !important;
-          color: #666 !important;
-          line-height: 1.25 !important;
-          margin: 0 !important;
-        }
-        .ynow-kpi-stat-value {
-          font-size: clamp(24px, 3.6vw, 34px) !important;
-          font-weight: 800 !important;
-          line-height: 1.08 !important;
-          margin: 0 !important;
-          font-variant-numeric: tabular-nums;
-        }
-        .ynow-kpi-stat-note {
-          font-size: 9px !important;
-          color: #888 !important;
-          margin-top: 2px !important;
-          line-height: 1.25 !important;
-        }
-        .ynow-kpi-stat-params {
-          font-size: 11px !important;
-          line-height: 1.4 !important;
-        }
-        .ynow-kpi-hero-value {
-          font-size: clamp(24px, 3.5vw, 32px) !important;
-          font-weight: 800 !important;
-          line-height: 1.1 !important;
-        }
+        /* Finance Summary 卡片網格 */
         .ynow-fs-wrap {
           margin-bottom: 14px;
         }
@@ -334,6 +253,52 @@ ui <- dashboardPage(
         .ynow-fs-card:hover {
           background: #ffffff;
           border-left-color: #555555;
+        }
+        .ynow-fs-label {
+          font-size: 11px;
+          font-weight: 600;
+          color: #777777;
+          line-height: 1.25;
+          margin-bottom: 4px;
+        }
+        .ynow-fs-value {
+          font-size: 15px;
+          font-weight: 700;
+          color: #111111;
+          font-variant-numeric: tabular-nums;
+          letter-spacing: -0.01em;
+          line-height: 1.2;
+          word-break: break-word;
+        }
+
+        /* Snapshot / HFV 摘要數字：維持可覆寫 class，尺寸回預設 */
+        .ynow-kpi-stat-label {
+          font-size: 11px !important;
+          color: #666 !important;
+          line-height: 1.25 !important;
+          margin: 0 !important;
+        }
+        .ynow-kpi-stat-value {
+          font-size: 18px !important;
+          font-weight: 700 !important;
+          line-height: 1.2 !important;
+          margin: 0 !important;
+          font-variant-numeric: tabular-nums;
+        }
+        .ynow-kpi-stat-note {
+          font-size: 10px !important;
+          color: #888 !important;
+          margin-top: 2px !important;
+          line-height: 1.25 !important;
+        }
+        .ynow-kpi-stat-params {
+          font-size: 12px !important;
+          line-height: 1.4 !important;
+        }
+        .ynow-kpi-hero-value {
+          font-size: 22px !important;
+          font-weight: 700 !important;
+          line-height: 1.2 !important;
         }
 
         /* KPI：φ⁻¹ 等比例縮小 + 一列五個左排 */
@@ -387,19 +352,19 @@ ui <- dashboardPage(
           text-align: center !important;
         }
         .ynow-kpi-grid .small-box .inner h3 {
-          font-size: clamp(20px, 3.4vw, 32px) !important;
+          font-size: clamp(14px, 2.6vw, 23px) !important;
           font-weight: 800 !important;
-          margin: 0 0 3px 0 !important;
+          margin: 0 0 5px 0 !important;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
         }
         .ynow-kpi-grid .small-box .inner p {
-          font-size: 10px !important;
-          opacity: 0.92;
-          font-weight: 600 !important;
+          font-size: clamp(10px, 0.75vw, 11px) !important;
+          opacity: 0.9;
+          font-weight: 500 !important;
           margin: 0 !important;
-          line-height: 1.15 !important;
+          line-height: 1.2 !important;
         }
         .ynow-kpi-grid .small-box .icon-large {
           font-size: 37px !important;
@@ -522,11 +487,11 @@ ui <- dashboardPage(
           margin: 0;
         }
         .ynow-metric-card__value {
-          font-size: clamp(32px, 4.2vw, 44px);
+          font-size: clamp(26px, 3.2vw, 34px);
           font-weight: 800;
           font-variant-numeric: tabular-nums;
-          letter-spacing: -0.03em;
-          line-height: 1.05;
+          letter-spacing: -0.02em;
+          line-height: 1.1;
           margin: 0;
           color: #1a1a1a;
         }
