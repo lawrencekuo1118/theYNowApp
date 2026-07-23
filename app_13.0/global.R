@@ -83,4 +83,4 @@ source("backtest_module.R", local = TRUE, encoding = "UTF-8")
 source("backtest_validation.R", local = TRUE, encoding = "UTF-8")
 source("default_config.R", local = TRUE, encoding = "UTF-8")
 
-cat("✔️ 所有套件已載入，環境初始化完成。（app_12.0 — Backtest Logic Optimization）\n")
+cat("✔️ 所有套件已載入，環境初始化完成。（app_13.0 — Valuation Methodology）\n")
