@@ -201,6 +201,51 @@ server <- function(input, output, session) {
   output$search_results <- renderText({ corp_industry_text() })
   output$recentsearch <- renderText({ paste(values$recentsearch, collapse = ", ") })
   output$today <- renderText({ format(Sys.Date(), "%Y/%m/%d") })
+
+  output$dashboard_selected_industry <- renderUI({
+    key <- as.character(input$industry_choice %||% "")
+    if (!nzchar(key)) {
+      return(tags$div(
+        style = "margin: 0 0 12px 0; padding: 10px 12px; background: #f7f7f7; border-left: 4px solid #999; border-radius: 4px;",
+        tags$span(style = "color:#666; font-size:13px;", "尚未選擇比較產業（請至 Get Started → Industry Standard Comparison）")
+      ))
+    }
+    lab <- industry_labels[[key]]
+    if (is.null(lab) || is.na(lab) || !nzchar(as.character(lab))) lab <- key
+    yahoo <- corp_industry_text()
+    inds <- industry_standards[[key]]
+    meta_bits <- character(0)
+    if (!is.null(inds$beta_avg) && is.finite(inds$beta_avg)) {
+      meta_bits <- c(meta_bits, paste0("β≈", round(inds$beta_avg, 2)))
+    }
+    if (!is.null(inds$rm_avg) && is.finite(inds$rm_avg)) {
+      meta_bits <- c(meta_bits, paste0("Rm≈", round(inds$rm_avg, 1), "%"))
+    }
+    if (!is.null(inds$roe) && length(inds$roe) >= 2) {
+      meta_bits <- c(meta_bits, paste0("ROE ", round(inds$roe[1], 1), "–", round(inds$roe[2], 1), "%"))
+    }
+    meta_line <- if (length(meta_bits)) paste(meta_bits, collapse = "　") else NULL
+
+    tags$div(
+      style = "margin: 0 0 12px 0; padding: 10px 14px; background: #f4f8fb; border-left: 4px solid #3c8dbc; border-radius: 4px;",
+      tags$div(
+        style = "font-size: 14px; color: #222; line-height: 1.45;",
+        tags$b("目前比較產業："),
+        tags$span(style = "font-weight: 700; color: #1a5276;", lab),
+        tags$span(style = "color:#888; font-size:12px; margin-left:8px;", paste0("(", key, ")"))
+      ),
+      if (!is.null(meta_line)) {
+        tags$div(style = "margin-top:4px; font-size:12.5px; color:#555;", meta_line)
+      },
+      if (!is.null(yahoo) && nzchar(as.character(yahoo))) {
+        tags$div(
+          style = "margin-top:4px; font-size:12px; color:#777;",
+          tags$span(style = "font-weight:600;", "Yahoo："),
+          as.character(yahoo)[1]
+        )
+      }
+    )
+  })
   
   output$ibx_stockprice <- renderInfoBox({
     df <- summary_data()

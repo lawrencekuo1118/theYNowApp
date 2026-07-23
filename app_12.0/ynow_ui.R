@@ -1007,6 +1007,8 @@ ui <- dashboardPage(
                      )
               ),
               
+              uiOutput("dashboard_selected_industry"),
+              
               tabBox(title = "PERFORMANCE",
                      width = "auto",
                      
