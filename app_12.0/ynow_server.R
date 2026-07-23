@@ -406,13 +406,30 @@ server <- function(input, output, session) {
     recommend_valuation_models(cf, industry_text = ind, d_is = is, d_bs = bs)
   })
 
-  output$sidebar_menu <- renderMenu({
+  # Only rebuild sidebar when recommendation badges actually change.
+  sidebar_badge_sig <- reactiveVal("||||")
+  observe({
     rec <- model_sidebar_rec()
-    sel <- if (!is.null(input$sidebar_tabs) && nzchar(input$sidebar_tabs)) {
-      input$sidebar_tabs
-    } else {
-      "get_started"
-    }
+    sig <- paste(
+      isTRUE(rec$dcf), isTRUE(rec$ddm), isTRUE(rec$pb), isTRUE(rec$ri),
+      paste(rec$tags %||% character(0), collapse = ","),
+      sep = "|"
+    )
+    if (!identical(sidebar_badge_sig(), sig)) sidebar_badge_sig(sig)
+  })
+
+  output$sidebar_menu <- renderMenu({
+    sidebar_badge_sig()
+    rec <- isolate(model_sidebar_rec())
+    # Isolate tab selection: reading input$sidebar_tabs here would rebuild the
+    # entire sidebar on every click (AdminLTE active-class race → flicker).
+    sel <- isolate({
+      if (!is.null(input$sidebar_tabs) && nzchar(input$sidebar_tabs)) {
+        input$sidebar_tabs
+      } else {
+        "get_started"
+      }
+    })
 
     mk <- function(text, tab, ic, recommended = FALSE,
                    fallback_label = NULL, fallback_color = NULL) {
@@ -455,6 +472,15 @@ server <- function(input, output, session) {
       mk("About", "about", "info-circle")
     )
   })
+
+  # After a badge-driven menu rebuild, re-assert the active tab so AdminLTE
+  # does not flash back to the first item.
+  observeEvent(sidebar_badge_sig(), {
+    tab <- isolate(input$sidebar_tabs)
+    if (!is.null(tab) && nzchar(as.character(tab)[1])) {
+      updateTabItems(session, "sidebar_tabs", selected = as.character(tab)[1])
+    }
+  }, ignoreInit = TRUE)
 
   output$get_started_model_selector <- renderUI({
     rec <- model_sidebar_rec()
