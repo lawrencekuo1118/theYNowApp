@@ -83,8 +83,6 @@ APP_DEFAULTS <- list(
   wacc_stage1     = default_wacc,
   wacc_stage2     = default_wacc,
 
-  use_calc_wacc   = TRUE,
-
   # --- 5. WACC / CAPM ---
   wacc_re         = default_re,
   wacc_rd         = default_rd,

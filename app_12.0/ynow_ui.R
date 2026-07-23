@@ -72,8 +72,7 @@
       tags$p(style = "margin: 10px 0 6px 0; font-size: 12.5px; color: #555;", tags$b("第二階段｜永續成長")),
       helpText("第二階段成長率採用上方 SGR；以下設定折現率。"),
       numericInput("wacc_stage2", "折現率 WACC2 (%)", value = APP_DEFAULTS$wacc_stage2, step = 0.01)
-    ),
-    checkboxInput("use_calculated_wacc", "套用系統估算 WACC", value = APP_DEFAULTS$use_calc_wacc)
+    )
   )
 }
 
@@ -879,7 +878,23 @@ ui <- dashboardPage(
       tabItem(
         tabName = "get_started",
         h2(tags$span("Get Started", style = "font-weight: 800 !important; letter-spacing: 0.02em;")),
-        helpText("先確認適合的估值模型；下方 SGR 主要供 DCF／RI 終值使用。DDM 股利成長率可在 DDM 分頁單獨覆寫。"),
+        fluidRow(
+          column(
+            width = 12,
+            pickerInput(
+              inputId = "industry_choice",
+              label = "Industry Standard Comparison",
+              choices = industry_picker_choices(),
+              selected = APP_DEFAULTS$industry_choice,
+              options = list(`live-search` = TRUE, `size` = 12)
+            ),
+            tags$p(
+              "industry info from Yahoo",
+              style = "font-size: 12px; color: #888; margin-bottom: 5px; font-weight: bold;"
+            ),
+            verbatimTextOutput("search_results")
+          )
+        ),
         fluidRow(
           box(
             title = tagList(icon("route"), "Model Selector｜估值模型推薦"),
@@ -985,17 +1000,6 @@ ui <- dashboardPage(
                               downloadButton('CF_download', "Download Cash Flow Data")
                      )
               ),
-              
-              pickerInput(
-                inputId = "industry_choice",
-                label = "Industry Standard Comparison",
-                choices = industry_picker_choices(),
-                selected = APP_DEFAULTS$industry_choice,
-                options = list(`live-search` = TRUE, `size` = 12)
-              ),
-              
-              tags$p("industry info from Yahoo", style = "font-size: 12px; color: #888; margin-bottom: 5px; font-weight: bold;"),
-              verbatimTextOutput("search_results"),
               
               tabBox(title = "PERFORMANCE",
                      width = "auto",

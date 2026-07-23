@@ -536,7 +536,7 @@ server <- function(input, output, session) {
       c("DCF - Two Stage", "g1 (%)", .snapshot_value(input$g_stage1), "FCFF_t = FCFF_(t-1) × (1+g1)"),
       c("DCF - Two Stage", "WACC1 (%)", .snapshot_value(input$wacc_stage1), "PV stage 1 = FCFF_t / (1+WACC1)^t"),
       c("DCF - Two Stage", "WACC2 (%)", .snapshot_value(input$wacc_stage2), "Terminal discount rate"),
-      c("DCF - WACC Source", "Use Calculated WACC", .snapshot_value(input$use_calculated_wacc), "TRUE uses system WACC"),
+      c("DCF - WACC", "Calculated WACC (%)", .snapshot_value(wacc_pct), "System CAPM/WACC estimate (also synced into WACC inputs)"),
       c("CAPM", "Rf (%)", .snapshot_value(input$capm_rf), "Ke = Rf + Beta × (Rm-Rf)"),
       c("CAPM", "Beta", .snapshot_value(input$capm_beta), "Systematic risk coefficient"),
       c("CAPM", "Use Industry Beta", .snapshot_value(input$use_industry_beta), "TRUE = industry avg; FALSE = Finance Summary β (manual sticky until ticker change)"),
@@ -629,7 +629,6 @@ server <- function(input, output, session) {
       g_stage2 = c("Two-Stage", "穩定期 g2 (%)", "通常對齊 SGR"),
       wacc_stage1 = c("Two-Stage", "WACC1 (%)", "Stage 1 discount"),
       wacc_stage2 = c("Two-Stage", "WACC2 (%)", "Terminal discount"),
-      use_calc_wacc = c("WACC", "使用計算 WACC", "TRUE = 系統 WACC"),
       wacc_re = c("WACC", "Re (%)", "Cost of equity"),
       wacc_rd = c("WACC", "Rd (%)", "Cost of debt"),
       wacc_tax = c("WACC", "稅率 T (%)", "After-tax debt cost"),
@@ -954,14 +953,15 @@ server <- function(input, output, session) {
   # 🌱 中央永續成長率方法（同步 DCF sgr／RI ri_g；DDM g 可選同步）
   # ==========================================
   .current_wacc_pct <- function() {
-    if (isTRUE(input$use_calculated_wacc) && !is.null(calculated_wacc()) && is.finite(calculated_wacc())) {
-      return(as.numeric(calculated_wacc()) * 100)
-    }
+    # Prefer live WACC inputs (auto-filled from CAPM/WACC calc on the DCF tab).
     if (isTRUE(input$dcf_mode == "two_stage") && !is.null(input$wacc_stage2) && is.finite(input$wacc_stage2)) {
       return(as.numeric(input$wacc_stage2))
     }
     if (!is.null(input$wacc_gordon) && is.finite(input$wacc_gordon)) {
       return(as.numeric(input$wacc_gordon))
+    }
+    if (!is.null(calculated_wacc()) && is.finite(calculated_wacc())) {
+      return(as.numeric(calculated_wacc()) * 100)
     }
     APP_DEFAULTS$wacc_gordon
   }
@@ -1041,8 +1041,7 @@ server <- function(input, output, session) {
       current_ticker(),
       calculated_wacc(),
       input$wacc_gordon,
-      input$wacc_stage2,
-      input$use_calculated_wacc
+      input$wacc_stage2
     )
   }, {
     est <- central_perpetual_g()
@@ -1759,9 +1758,7 @@ server <- function(input, output, session) {
     if (length(forecast_periods) == 0) forecast_periods <- paste0("Y", seq_len(n_years))
 
     wacc_val <- tryCatch({
-      if (isTRUE(input$use_calculated_wacc) && !is.null(calculated_wacc())) {
-        rep(as.numeric(calculated_wacc()), n_years)
-      } else if (identical(input$dcf_mode, "gordon")) {
+      if (identical(input$dcf_mode, "gordon")) {
         rep(as.numeric(input$wacc_gordon) / 100, n_years)
       } else {
         s1_yrs <- as.numeric(input$yr_stage1)
@@ -1910,11 +1907,10 @@ server <- function(input, output, session) {
     
     dcf_value <- NA
     g_terminal <- input$sgr / 100
-    use_calc_wacc <- isTRUE(input$use_calculated_wacc) && !is.null(calculated_wacc())
     
     if (input$dcf_mode == "gordon") {
       req(input$sgr, input$wacc_gordon)
-      r1 <- if(use_calc_wacc) calculated_wacc() else (input$wacc_gordon / 100)
+      r1 <- input$wacc_gordon / 100
       r2 <- r1 
       
       if (!is.na(r2) && g_terminal >= r2) { 
@@ -1926,13 +1922,8 @@ server <- function(input, output, session) {
     } else {
       req(input$g_stage1, input$sgr, input$yr_stage1, input$wacc_stage1, input$wacc_stage2)
       
-      if (use_calc_wacc) {
-        r1 <- calculated_wacc()
-        r2 <- calculated_wacc()
-      } else {
-        r1 <- input$wacc_stage1 / 100
-        r2 <- input$wacc_stage2 / 100
-      }
+      r1 <- input$wacc_stage1 / 100
+      r2 <- input$wacc_stage2 / 100
       
       if (g_terminal >= r2) { 
         showNotification("❌ 永續成長率 g2 必須小於第二階段折現率 WACC2", type = "error")
@@ -1995,8 +1986,10 @@ server <- function(input, output, session) {
       showNotification("⚠️ 警告：無法計算目標股價，未找到流通在外股數 (Shares Outstanding) 資料", type = "warning")
     }
     
-    wacc_source <- if(use_calc_wacc) "系統估算值" else "手動輸入值"
-    showNotification(glue::glue("✅ 估值更新：已成功將模組 FCFF 序列套入 DCF 運算引擎 (採用 {wacc_source} WACC)"), type = "message")
+    showNotification(
+      glue::glue("✅ 估值更新：已成功將模組 FCFF 序列套入 DCF 運算引擎 (採用目前 WACC 輸入值)"),
+      type = "message"
+    )
   })
   
   # ==========================================
@@ -2032,14 +2025,11 @@ server <- function(input, output, session) {
   
   output$vtxt_dcf_setting_details <- renderUI({
     req(input$dcf_mode, input$years)
-    use_calc <- isTRUE(input$use_calculated_wacc) && !is.null(calculated_wacc())
     
-    wacc_val <- if (use_calc) {
-      paste0(round(calculated_wacc() * 100, 2), "% (估算)")
-    } else if (isTRUE(input$dcf_mode == "gordon")) {
-      paste0(input$wacc_gordon, "% (手動)")
+    wacc_val <- if (isTRUE(input$dcf_mode == "gordon")) {
+      paste0(input$wacc_gordon, "%")
     } else {
-      paste0(input$wacc_stage1, "% / ", input$wacc_stage2, "% (手動)")
+      paste0(input$wacc_stage1, "% / ", input$wacc_stage2, "%")
     }
     
     HTML(glue::glue("<div style='padding: 15px; background: #fcfcfc; border: 1px solid #eee; font-size: 14px;'>
@@ -2120,21 +2110,12 @@ server <- function(input, output, session) {
       )
     )
 
-    use_calc <- isTRUE(input$use_calculated_wacc) &&
-      !is.null(calculated_wacc()) && is.finite(calculated_wacc())
     base_wacc_seq <- if (identical(input$dcf_mode, "gordon")) {
       rep(base_wacc / 100, n_years)
     } else {
       s1 <- as.numeric(input$yr_stage1)
-      r2_base <- if (use_calc) {
-        base_wacc / 100
-      } else if (!is.null(input$wacc_stage2) && is.finite(input$wacc_stage2)) {
-        input$wacc_stage2 / 100
-      } else {
-        base_wacc / 100
-      }
-      # 敏感度以「目前 WACC」為軸心：Stage1 也相對目前 WACC 平移
-      c(rep(base_wacc / 100, min(s1, n_years)), rep(r2_base, max(n_years - s1, 0)))
+      # 敏感度以「目前 WACC」為軸心：Stage1／Stage2 皆相對目前 WACC 平移
+      c(rep(base_wacc / 100, min(s1, n_years)), rep(base_wacc / 100, max(n_years - s1, 0)))
     }
 
     for (i in 1:5) {
@@ -2415,14 +2396,17 @@ server <- function(input, output, session) {
   # Session「此刻」模型參數（動態重建用；不落庫）
   # 歷史 PIT 的 Ke/WACC 會在再平衡日以 Rolling β 覆寫；此處提供 Rf/Rm／資本結構與定值 fallback。
   bt_current_model_params <- reactive({
-    use_calc <- isTRUE(input$use_calculated_wacc) &&
-      !is.null(calculated_wacc()) && is.finite(calculated_wacc())
-    wacc <- if (use_calc) {
-      as.numeric(calculated_wacc())
-    } else if (identical(input$dcf_mode, "two_stage")) {
+    wacc <- if (identical(input$dcf_mode, "two_stage")) {
       suppressWarnings(as.numeric(input$wacc_stage1)[1]) / 100
     } else {
       suppressWarnings(as.numeric(input$wacc_gordon)[1]) / 100
+    }
+    if (!is.finite(wacc) || wacc <= 0) {
+      wacc <- if (!is.null(calculated_wacc()) && is.finite(calculated_wacc())) {
+        as.numeric(calculated_wacc())
+      } else {
+        APP_DEFAULTS$wacc_gordon / 100
+      }
     }
     sgr <- suppressWarnings(as.numeric(input$sgr)[1]) / 100
     n_years <- suppressWarnings(as.integer(input$years)[1])
@@ -3535,11 +3519,8 @@ server <- function(input, output, session) {
           if (length(parts) > 1) industry_str <- trimws(sub("Industry:\\s*", "", parts[2]))
         }
 
-        use_calc_wacc <- isTRUE(isolate(input$use_calculated_wacc)) && !is.null(isolate(calculated_wacc()))
-        wacc_str <- if (use_calc_wacc) {
-          paste0(round(isolate(calculated_wacc()) * 100, 2), "% (CAPM 估算)")
-        } else if (identical(isolate(input$dcf_mode), "gordon")) {
-          paste0(isolate(input$wacc_gordon), "% (手動)")
+        wacc_str <- if (identical(isolate(input$dcf_mode), "gordon")) {
+          paste0(isolate(input$wacc_gordon), "%")
         } else {
           paste0(isolate(input$wacc_stage1), "% / ", isolate(input$wacc_stage2), "% (兩階段)")
         }
