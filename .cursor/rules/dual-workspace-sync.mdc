@@ -7,10 +7,10 @@ alwaysApply: true
 
 Latest app version: **app_13.0**
 
-Development baseline = currently deployed line on shinyapps (bundle `12308170`), aligned to:
+Development baseline = currently deployed line on shinyapps (bundle `12310728`), aligned to:
 
 - Branch: `master`
-- Commit: `4b13019` (tag `baseline/shinyapps-12308170` when present; else see `scripts/DEPLOY_BASELINE.txt`)
+- Commit: `d07e5ee` (tag `baseline/shinyapps-12308170` when present; else see `scripts/DEPLOY_BASELINE.txt`)
 
 Edited from either:
 

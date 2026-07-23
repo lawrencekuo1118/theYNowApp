@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12308170
+bundleId=12310728
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=origin/master
-commit=af81abf
-short=af81abf
-message=ui: swap Decision Funnel columns — F-Score left, advice right
-captured_at=2026-07-23T06:20:00+00:00
-note=app_13.0 redeploy after Decision Funnel column swap. Prefer local deploy thereafter.
+commit=d07e5ee71acda39741f2bad6d8e4db931ba27589
+short=d07e5ee
+message=ui: Get Started layout polish and defer model recommendations
+captured_at=2026-07-23T16:41:42+00:00
+note=app_13.0 redeploy after Get Started UI polish (full-width Yahoo industry, Foundry default, deferred 推薦, two-stage/DCF layout). Prefer local deploy thereafter.
