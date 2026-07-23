@@ -1,5 +1,5 @@
 # ==========================================
-# app.R — 唯一 Shiny / shinyapps.io 進入點（app_12.0）
+# app.R — 唯一 Shiny / shinyapps.io 進入點（app_13.0）
 # ==========================================
 # 重要：不可與根目錄的 ui.R／server.R 並存。
 # shiny::shinyAppDir() 若偵測到 server.R 會優先走 server.R 模式，

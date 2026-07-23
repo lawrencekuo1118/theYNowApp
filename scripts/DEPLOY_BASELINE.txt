@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12297490
+bundleId=12308134
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=origin/master
-commit=45389dfbbb8fda31b628cf0621d4e5df58876920
-short=45389df
-message=UI: enlarge all KPI numbers while keeping tile sizes fixed
-captured_at=2026-07-21T21:29:00+08:00
-note=shinyapps does not expose git SHA; baseline set to master tip contemporaneous with local dcf bundle 12297490.
+commit=70793725f00ec72c438ad56da7dc76bd89670bf9
+short=7079372
+message=feat(app_13.0): valuation methodology — classify, ranges, confidence
+captured_at=2026-07-23T06:10:00+00:00
+note=app_13.0 redeploy with full R dependency snapshot (138 pkgs). Prefer local rsconnect::deployApp("app_13.0") for future deploys.

@@ -63,7 +63,7 @@ if (file.exists(python_path) && !on_shinyapps) {
     reticulate::py_config(),
     error = function(e) message("⚠️ py_config: ", e$message)
   )
-  message("✅ 使用雲端 / 預設 Python 環境（app_12.0）")
+  message("✅ 使用雲端 / 預設 Python 環境（app_13.0）")
 }
 
 # ==========================================

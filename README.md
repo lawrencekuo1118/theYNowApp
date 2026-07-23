@@ -8,40 +8,69 @@ Taiwan stock fundamental analysis Shiny app（雲端版：yfinance，無 Chromot
 
 `/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp`
 
-- 目前版本：`app_12.0/`（v12.0 — Backtest Logic Optimization）
-- 歷史版本：`app 3.0` … `app_11.0`（本機封存；GitHub Releases 另有標籤）
+- 目前版本：`app_13.0/`（v13.0 — Valuation Methodology）
+- 歷史版本：`app 3.0` … `app_12.0`（本機封存；GitHub Releases 另有標籤）
 
-## 執行目前版本
+## 本機開發（建議）
 
-```r
-shiny::runApp("app_12.0")
+```bash
+git checkout master
+git pull origin master
 ```
 
-Requires R packages used by `app_12.0/setup.R` / `app_12.0/global.R`, and Python deps from `app_12.0/requirements.txt` (yfinance path; no Chrome required for cloud).
+```r
+shiny::runApp("app_13.0")
+```
 
-## v12.0 重點
+Requires R packages used by `app_13.0/setup.R` / `app_13.0/global.R`, and Python deps from `app_13.0/requirements.txt`（可選本機 `.ynow_venv`）。
 
-回測可信度升級（非新估值模型）：
+## 本機部署到 shinyapps.io
 
-- Point-in-Time 動態重建 DCF／DDM／RI／P/B（Session-only，無歷史估值倉庫）
-- Historical Fair Value Timeline + MOS／訊號可解釋性
-- Strategy A 季頻＋滯後曝險；Strategy B 情緒僅能在 A 的 75%–125% 調整
-- Alpha Dashboard、B&H Gap、MOS／FV 前瞻驗證、參數高原敏感度
+帳號只需設定一次（Tokens 頁）：
+
+```r
+rsconnect::setAccountInfo(name = "hopesmasher1118", token = "...", secret = "...")
+```
+
+之後在專案根目錄：
+
+```r
+rsconnect::deployApp(
+  appDir = "app_13.0",
+  appName = "TheYNowApp",
+  appId = 10907657,
+  forceUpdate = TRUE
+)
+```
+
+或：
+
+```bash
+# 可選：用環境變數餵憑證
+Rscript scripts/deploy_app_13.R
+```
+
+Live: https://hopesmasher1118.shinyapps.io/TheYNowApp/
+
+## v13.0 重點
+
+- 分類 → 主／副模型；Dashboard 以 Bear／Base／Bull 區間＋可信度呈現
+- P/B：Justified（ROE/Ke）＋產業＋歷史分位
+- 永續 g 預設 fundamental；成長股建議 two-stage；DCF／RI 股數級距一致
 
 ## Cloud notes
 
-- Live: https://hopesmasher1118.shinyapps.io/TheYNowApp/
 - Financials via **yfinance** (no Chromote / Chrome on shinyapps.io)
-- `requirements.txt` / `py_require` for cloud Python; optional local `.ynow_venv`
+- `requirements.txt` / `py_require` for cloud Python
 
-## Layout (`app_12.0/`)
+## Layout (`app_13.0/`)
 
 | File | Role |
 |------|------|
-| `ui.R` / `server.R` / `global.R` | Shiny app entry |
-| `backtest_module.R` | PIT 多模型回測引擎 |
-| `backtest_validation.R` | Alpha／Gap／MOS／高原驗證 |
-| `*_module.R` | DCF／DDM／RI／P/B／KPI 等既有模組 |
+| `app.R` / `ynow_ui.R` / `ynow_server.R` / `global.R` | Shiny 進入點 |
+| `setup.R` | 分類器、P/B derive、可信度 |
+| `investment_decision_module.R` | 區間決策看板 |
+| `*_module.R` | DCF／DDM／RI／P/B／KPI／回測 |
 
 ## Older versions
 
