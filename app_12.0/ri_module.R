@@ -14,6 +14,19 @@
   max(lo, min(hi, x))
 }
 
+#' Industry average ROE (%) from `industry_standards` band (midpoint).
+.industry_roe_pct <- function(industry_key) {
+  if (is.null(industry_key) || !nzchar(as.character(industry_key)[1])) return(NA_real_)
+  if (!exists("industry_standards", inherits = TRUE)) return(NA_real_)
+  std <- industry_standards[[as.character(industry_key)[1]]]
+  if (is.null(std) || is.null(std$roe)) return(NA_real_)
+  roe <- suppressWarnings(as.numeric(std$roe))
+  roe <- roe[is.finite(roe)]
+  if (length(roe) < 1L) return(NA_real_)
+  # Prefer explicit mid (3rd element) when present; else midpoint of band
+  if (length(roe) >= 3L) roe[3L] else mean(roe)
+}
+
 #' Build ROE path (decimal) for n forecast years.
 #' @param method one of constant|linear|industry|custom
 #' @param roe_start / roe_terminal / roe_industry in decimal
@@ -323,9 +336,25 @@ ri_module_ui <- function(id) {
 # Server
 # ==========================================
 ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flow, global_re,
-                             global_g = reactive(NULL)) {
+                             global_g = reactive(NULL),
+                             industry_choice = reactive(NULL)) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
+
+    industry_roe_pct <- reactive({
+      v <- .industry_roe_pct(industry_choice())
+      if (is.finite(v)) round(v, 2) else 12
+    })
+
+    # Keep Industry Average ROE aligned with Dashboard industry (still editable)
+    observeEvent(industry_choice(), {
+      updateNumericInput(session, "roe_industry", value = industry_roe_pct())
+    }, ignoreNULL = TRUE, ignoreInit = FALSE)
+
+    observeEvent(input$roe_method, {
+      if (!identical(input$roe_method, "industry")) return()
+      updateNumericInput(session, "roe_industry", value = industry_roe_pct())
+    }, ignoreInit = TRUE)
 
     # ----- Sync B0 / ROE / payout from statements -----
     observeEvent(d_balance_sheet(), {
@@ -390,6 +419,7 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
         updateNumericInput(session, "ri_ke", value = round(global_re() * 100, 2))
       }
       updateSelectInput(session, "roe_method", selected = "constant")
+      updateNumericInput(session, "roe_industry", value = industry_roe_pct())
       showNotification("🔁 已重設為系統預設參數", type = "message")
     })
 
@@ -429,9 +459,25 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
           column(8, helpText("由起始 ROE 線性淡化至 Terminal ROE，年數＝預測期。"))
         )
       } else if (identical(method, "industry")) {
+        ind_val <- {
+          cur <- suppressWarnings(as.numeric(isolate(input$roe_industry))[1])
+          if (is.finite(cur)) cur else industry_roe_pct()
+        }
         fluidRow(
-          column(4, numericInput(ns("roe_industry"), "Industry Average ROE (%)", value = 12, step = 0.1)),
-          column(8, helpText("由起始 ROE 線性收斂至產業平均 ROE（可手動編輯）。"))
+          column(
+            4,
+            numericInput(
+              ns("roe_industry"), "Industry Average ROE (%)",
+              value = ind_val, step = 0.1
+            )
+          ),
+          column(
+            8,
+            helpText(sprintf(
+              "預設＝目前所選產業 ROE 估計（中位 %.1f%%）；可手動覆寫。由起始 ROE 線性收斂至產業平均。",
+              industry_roe_pct()
+            ))
+          )
         )
       } else if (identical(method, "custom")) {
         default_vec <- paste(round(rep(start_roe, n), 1), collapse = ", ")

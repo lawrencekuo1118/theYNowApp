@@ -592,6 +592,114 @@ server <- function(input, output, session) {
       write.csv(df, file, row.names = FALSE, fileEncoding = "UTF-8")
     }
   )
+
+  .format_default_value <- function(x) {
+    if (is.null(x) || length(x) == 0) return(NA_character_)
+    if (length(x) == 1 && isTRUE(is.na(x))) return(NA_character_)
+    if (is.logical(x)) return(paste(as.character(x), collapse = ", "))
+    if (is.numeric(x)) {
+      return(paste(vapply(x, function(v) {
+        if (!is.finite(v)) return(NA_character_)
+        if (abs(v - round(v)) < 1e-9) as.character(as.integer(round(v))) else as.character(round(v, 4))
+      }, character(1)), collapse = ", "))
+    }
+    paste(as.character(x), collapse = ", ")
+  }
+
+  defaults_rows <- reactive({
+    # Human labels for APP_DEFAULTS keys (unlisted keys still appear by key name)
+    label_map <- list(
+      stock_code = c("基本設定", "預設股票代碼", "啟動／重置用 ticker"),
+      industry_choice = c("基本設定", "預設產業鍵", "industry_standards 鍵名"),
+      years = c("DCF", "預測年數 n", "Explicit forecast horizon"),
+      ddm_d0 = c("DDM", "D0", "通常由財報自動帶入"),
+      ddm_g = c("DDM", "股利成長 g (%)", "預設對齊中央 SGR"),
+      ddm_ke = c("DDM", "Ke (%)", "預設對齊 CAPM Re"),
+      ddm_sync_central_g = c("DDM", "與中央 SGR 同步", "TRUE 時 DDM g 跟隨 SGR"),
+      dcf_mode = c("DCF", "DCF 模式", "gordon / two_stage"),
+      dcf_chart_mode = c("DCF", "圖表模式", "simple / with_dcf"),
+      g_growth_method = c("DCF", "FCFF 成長估計法", "fundamental / custom 等"),
+      custom_g = c("DCF", "自訂短期 g (%)", "封頂後的短中期成長"),
+      perpetual_g_method = c("永續成長", "方法", "macro / fundamental / lifecycle"),
+      lifecycle_stage = c("永續成長", "生命週期", "auto 或手動階段"),
+      sgr = c("永續成長", "SGR / 終值 g (%)", "DCF／RI 終值成長上限錨"),
+      wacc_gordon = c("DCF", "Gordon WACC (%)", "單階段／Gordon 路徑折現率"),
+      yr_stage1 = c("Two-Stage", "高速期年數", "Stage 1 years"),
+      g_stage1 = c("Two-Stage", "高速期 g1 (%)", "Stage 1 growth"),
+      g_stage2 = c("Two-Stage", "穩定期 g2 (%)", "通常對齊 SGR"),
+      wacc_stage1 = c("Two-Stage", "WACC1 (%)", "Stage 1 discount"),
+      wacc_stage2 = c("Two-Stage", "WACC2 (%)", "Terminal discount"),
+      use_calc_wacc = c("WACC", "使用計算 WACC", "TRUE = 系統 WACC"),
+      wacc_re = c("WACC", "Re (%)", "Cost of equity"),
+      wacc_rd = c("WACC", "Rd (%)", "Cost of debt"),
+      wacc_tax = c("WACC", "稅率 T (%)", "After-tax debt cost"),
+      use_est_re = c("WACC", "使用 CAPM Re", "TRUE = Re 跟 CAPM"),
+      capm_rf = c("CAPM", "Rf (%)", "無風險利率（啟動時估）"),
+      capm_beta = c("CAPM", "Beta", "啟動占位；搜尋後可跟 Summary"),
+      use_industry_beta = c("CAPM", "使用產業 Beta", "FALSE = 跟 Finance Summary β"),
+      capm_rm = c("CAPM", "Rm (%)", "預期市場報酬"),
+      pb_bvps = c("P/B", "BVPS", "通常由財報帶入"),
+      pb_tbvps = c("P/B", "TBVPS", "通常由財報帶入"),
+      pb_low = c("P/B", "P/B Low", "產業帶／保守下緣"),
+      pb_mid = c("P/B", "P/B Mid", "產業帶中位"),
+      pb_high = c("P/B", "P/B High", "產業帶上緣"),
+      pb_basis = c("P/B", "Basis", "bvps / tbvps"),
+      pb_use_industry = c("P/B", "使用產業 P/B", "TRUE = 跟產業帶"),
+      pb_adjust_share_class = c("P/B", "約當股數校正", "雙重股權／市值÷股價例外")
+    )
+
+    keys <- names(APP_DEFAULTS)
+    rows <- lapply(keys, function(k) {
+      meta <- label_map[[k]]
+      if (is.null(meta)) {
+        meta <- c("其他", k, "APP_DEFAULTS 欄位")
+      }
+      c(meta[1], meta[2], k, .format_default_value(APP_DEFAULTS[[k]]), meta[3])
+    })
+
+    # Module / UI hard defaults not stored in APP_DEFAULTS
+    ind_roe_def <- {
+      v <- if (exists(".industry_roe_pct", mode = "function")) {
+        .industry_roe_pct(APP_DEFAULTS$industry_choice)
+      } else {
+        NA_real_
+      }
+      .format_default_value(if (is.finite(v)) round(v, 2) else 12)
+    }
+    extra <- list(
+      c("RI", "預測期 (Years)", "ri_years", "5", "RI 模組重設預設"),
+      c("RI", "起始／預期 ROE (%)", "ri_roe", "15", "財報載入前占位；載入後覆寫"),
+      c("RI", "配息率 Payout (%)", "ri_payout", "40", "財報載入前占位；載入後覆寫"),
+      c("RI", "ROE 預測方法", "roe_method", "constant", "constant / linear / industry / custom"),
+      c("RI", "Industry Average ROE (%)", "roe_industry", ind_roe_def,
+        "依預設產業 ROE 區間中位；可編輯"),
+      c("Backtest", "FV 模型勾選", "bt_fv_models", "(none)", "HFV 圖預設不勾選，勾選才計算")
+    )
+    rows <- c(rows, extra)
+
+    df <- as.data.frame(do.call(rbind, rows), stringsAsFactors = FALSE)
+    names(df) <- c("Section", "Parameter", "Key", "Default Value", "Note")
+    df
+  })
+
+  output$defaults_table <- renderDataTable({
+    datatable(
+      defaults_rows(),
+      rownames = FALSE,
+      options = list(pageLength = 30, scrollX = TRUE, order = list(list(0, "asc")))
+    )
+  })
+
+  output$download_defaults <- downloadHandler(
+    filename = function() {
+      paste0("YNow_defaults_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".csv")
+    },
+    content = function(file) {
+      df <- defaults_rows()
+      df$Downloaded_At <- format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z")
+      write.csv(df, file, row.names = FALSE, fileEncoding = "UTF-8")
+    }
+  )
   
   output$tbIncomeStatement <- renderDataTable({
     req(scraped_financials())
@@ -961,7 +1069,8 @@ server <- function(input, output, session) {
     global_re = central_ke,
     global_g = reactive({
       if (!is.null(input$sgr) && is.finite(as.numeric(input$sgr))) as.numeric(input$sgr) else APP_DEFAULTS$sgr
-    })
+    }),
+    industry_choice = reactive(input$industry_choice)
   )
   
   # ==========================================
