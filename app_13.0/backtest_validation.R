@@ -45,18 +45,17 @@
 # ==========================================
 
 #' Decompose why Strategy A (fundamental) trails Buy-and-Hold.
-#' Components sum (approximately) to 100% of the shortfall when BH > A.
+#' Attribution of Strategy A / B shortfall vs Buy&Hold.
 #'
-#' - cash_drag: (1 - Exp_A) exposure loss on up days that is not
-#'   otherwise attributed to overvaluation_reduction / early_exit.
-#' - early_exit: cash drag on up days that FOLLOW a recent step-down
-#'   in exposure (Exp_A_t < max(Exp_A over previous 20 sessions)).
-#' - overvaluation_reduction: cash drag on days when the last
-#'   rebalance flagged 價值高估 or MOS < 0.
+#' On up-days, decomposes under-investment drag into:
+#' - cash_drag: residual (1 - Exp_A) * r not tagged early_exit / overval
+#' - early_exit: cash drag after a recent step-down in Exp_A
+#' - overvaluation_reduction: cash drag when signal=價值高估 or MOS < 0
 #' - sentiment_reduction: (Exp_A - Exp_B) * r on up days when B < A
-#'   (measures how much Strategy B gave back vs A).
-#' - missed_trend: residual = shortfall - sum(components).
-analyze_bh_gap <- function(equity_df, valuation_df) {
+#' - missed_trend: residual = shortfall_a - sum(components)
+#'
+#' @param max_exp Strategy max exposure (for narrative; default 0.90)
+analyze_bh_gap <- function(equity_df, valuation_df, max_exp = 0.90) {
   stopifnot(is.data.frame(equity_df))
   # Accept Model_B or Trade_B (alias).
   if (!("Model_B" %in% colnames(equity_df)) && ("Trade_B" %in% colnames(equity_df))) {
@@ -70,6 +69,10 @@ analyze_bh_gap <- function(equity_df, valuation_df) {
   eq_a <- equity_df$Trade_A
   eq_b <- if ("Trade_B" %in% colnames(equity_df)) equity_df$Trade_B else equity_df$Model_B
 
+  max_exp <- .bv_safe_num(max_exp, 0.90)
+  max_exp <- max(0.5, min(1, max_exp))
+  max_exp_pct <- as.integer(round(100 * max_exp))
+
   bh_term <- .bv_terminal_return(equity_df$BuyHold)
   a_term  <- .bv_terminal_return(eq_a)
   b_term  <- .bv_terminal_return(eq_b)
@@ -82,15 +85,19 @@ analyze_bh_gap <- function(equity_df, valuation_df) {
   exp_a <- equity_df$Exp_A[-1]
   exp_b <- equity_df$Exp_B[-1]
 
-  # Rolling 20-day max exposure prior to each day.
+  # Rolling peak of Exp_A over prior 20 sessions (exclude current day).
   roll_max_prev <- rep(0, n - 1)
   win <- 20L
   for (k in seq_len(n - 1)) {
-    lo <- max(1, k - win)
-    if (lo <= k - 1) roll_max_prev[k] <- max(equity_df$Exp_A[lo:(k)], na.rm = TRUE)
-    else roll_max_prev[k] <- equity_df$Exp_A[k]
+    # k indexes Exp_A[-1] ↔ equity day (k+1); prior window = Exp_A[lo:k]
+    lo <- max(1L, k - win + 1L)
+    hi <- k  # day index k is the day before Exp_A[k+1]
+    if (hi >= lo) {
+      roll_max_prev[k] <- max(equity_df$Exp_A[lo:hi], na.rm = TRUE)
+      if (!is.finite(roll_max_prev[k])) roll_max_prev[k] <- 0
+    }
   }
-  early_exit_flag <- (exp_a < (roll_max_prev - 0.05))   # recently stepped down
+  early_exit_flag <- (exp_a < (roll_max_prev - 0.05))
 
   # Attach "current state" from valuation_df to each day (last rebalance snapshot).
   state <- data.frame(
@@ -117,7 +124,7 @@ analyze_bh_gap <- function(equity_df, valuation_df) {
   mos <- state$mos[-1]
 
   up <- bh_ret > 0
-  cash_gap <- (1 - exp_a) * bh_ret * up             # positive on up days when under-invested
+  cash_gap <- (1 - exp_a) * bh_ret * up
 
   overval_mask <- up & (
     (!is.na(sig) & sig == "價值高估") | (!is.na(mos) & mos < 0)
@@ -130,26 +137,48 @@ analyze_bh_gap <- function(equity_df, valuation_df) {
   rest_mask <- up & !overval_mask & !early_mask
   cash_drag_contrib <- sum(cash_gap[rest_mask], na.rm = TRUE)
 
-  # Strategy B specific: how much B gave back vs A on up days.
+  # Strategy B: how much B differed from A on up days (A held more).
   sent_gap <- pmax(exp_a - exp_b, 0) * bh_ret * up
   sent_contrib <- sum(sent_gap, na.rm = TRUE)
+  # And how much B held more than A (emotion chase).
+  sent_boost <- pmax(exp_b - exp_a, 0) * bh_ret * up
+  sent_boost_contrib <- sum(sent_boost, na.rm = TRUE)
 
   attributed_a <- overval_contrib + early_contrib + cash_drag_contrib
   missed_trend <- shortfall_a - attributed_a
 
-  frac <- function(x) if (abs(shortfall_a) < 1e-9) NA_real_ else x / shortfall_a
+  # Share of positive shortfall; if strategy won, fractions are N/A.
+  frac <- function(x) {
+    if (!is.finite(shortfall_a) || shortfall_a <= 1e-6) return(NA_real_)
+    x / shortfall_a
+  }
 
-  # Chinese + English narratives (used by the UI).
-  narrative_a <- sprintf(
-    "BH 累積 %.1f%% vs 純基本面價值 %.1f%%, 缺口 %.1f%%. 現金拖累(cash_drag) %.1f%%, 過早出場(early_exit) %.1f%%, 高估減碼(overvaluation_reduction) %.1f%%, 未追隨趨勢(missed_trend) %.1f%%. 牛市落後多半合理：策略最高約 90%% 持股且 Great Filter 可強制空手。",
-    100 * .bv_safe_num(bh_term, 0), 100 * .bv_safe_num(a_term, 0),
-    100 * shortfall_a,
-    100 * cash_drag_contrib, 100 * early_contrib,
-    100 * overval_contrib, 100 * missed_trend
-  )
+  avg_exp_a <- mean(exp_a, na.rm = TRUE)
+  avg_exp_b <- mean(exp_b, na.rm = TRUE)
+  cash_share_a <- 1 - .bv_safe_num(avg_exp_a, 0)
+
+  if (shortfall_a <= 0.001) {
+    narrative_a <- sprintf(
+      "純基本面價值累積 %.1f%%，Buy&Hold %.1f%% — 策略未落後（相對超額 %.1f%%）。平均持股約 %.0f%%（上限 %d%%）。下方拆解供對照，不代表落後歸因。",
+      100 * .bv_safe_num(a_term, 0), 100 * .bv_safe_num(bh_term, 0),
+      100 * (-shortfall_a),
+      100 * .bv_safe_num(avg_exp_a, 0), max_exp_pct
+    )
+  } else {
+    narrative_a <- sprintf(
+      "BH 累積 %.1f%% vs 純基本面價值 %.1f%%，缺口 %.1f%%。日報酬加總近似歸因：現金拖累 %.1fpp、過早出場 %.1fpp、高估減碼 %.1fpp、殘差 %.1fpp。平均持股 %.0f%%（上限 %d%%）；Great Filter 未過則空手，牛市滿倉的 B&H 易勝出。",
+      100 * .bv_safe_num(bh_term, 0), 100 * .bv_safe_num(a_term, 0),
+      100 * shortfall_a,
+      100 * cash_drag_contrib, 100 * early_contrib,
+      100 * overval_contrib, 100 * missed_trend,
+      100 * .bv_safe_num(avg_exp_a, 0), max_exp_pct
+    )
+  }
   narrative_b <- sprintf(
-    "情緒波動價值累積 %.1f%%; 相對純基本面價值減碼(sentiment_reduction) %.1f%% (up-day 貢獻).",
-    100 * .bv_safe_num(b_term, 0), 100 * sent_contrib
+    "情緒波動價值累積 %.1f%%（vs BH 缺口 %.1f%%）；平均持股 %.0f%%。相對純基本面：情緒減碼貢獻 %.1fpp、情緒加碼貢獻 %.1fpp（上漲日）。",
+    100 * .bv_safe_num(b_term, 0), 100 * shortfall_b,
+    100 * .bv_safe_num(avg_exp_b, 0),
+    100 * sent_contrib, 100 * sent_boost_contrib
   )
 
   list(
@@ -167,7 +196,13 @@ analyze_bh_gap <- function(equity_df, valuation_df) {
       overvaluation_reduction = frac(overval_contrib),
       missed_trend           = frac(missed_trend)
     ),
+    avg_exp_a = avg_exp_a,
+    avg_exp_b = avg_exp_b,
+    cash_share_a = cash_share_a,
+    max_exp = max_exp,
     sentiment_reduction_b = sent_contrib,
+    sentiment_boost_b = sent_boost_contrib,
+    beat_bh_a = shortfall_a <= 0.001,
     narrative_a = narrative_a,
     narrative_b = narrative_b
   )

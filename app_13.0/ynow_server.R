@@ -2479,40 +2479,6 @@ server <- function(input, output, session) {
     "DCF"
   })
 
-  output$sensitivity_model_rec <- renderUI({
-    rec <- tryCatch(model_sidebar_rec(), error = function(e) NULL)
-    matrix_model <- .sensitivity_matrix_model()
-    accent <- if (identical(matrix_model, "DDM")) "#f39c12" else "#00a65a"
-    prim_lab <- .model_label(rec$primary %||% "")
-    sec_lab <- if (!is.null(rec$secondary) && nzchar(as.character(rec$secondary))) {
-      paste0("／副：", .model_label(rec$secondary))
-    } else {
-      ""
-    }
-
-    tags$div(
-      style = paste0(
-        "background-color:#f8f9fa; border-left:5px solid ", accent,
-        "; padding:12px 14px; border-radius:5px; margin-bottom:12px;"
-      ),
-      tags$p(
-        style = "font-size:15px; margin:0 0 6px 0;",
-        tags$strong("主模型："),
-        tags$span(style = paste0("color:", accent, "; font-weight:700;"), prim_lab),
-        tags$span(style = "color:#666; font-size:13px;", sec_lab),
-        tags$span(
-          style = "margin-left:8px; font-size:12px; color:#666;",
-          paste0("（敏感度矩陣採用 ", matrix_model, "）")
-        )
-      ),
-      tags$p(
-        style = "font-size:13px; color:#555; margin:0;",
-        tags$strong("背後邏輯："),
-        as.character(rec$reason %||% "依分類結果選擇主模型，矩陣對齊可折現路徑。")
-      )
-    )
-  })
-
   .build_dcf_sensitivity_matrix <- function(base_wacc, base_g) {
     df_fcf <- fcf_results$df_fcf()
     n_years <- as.numeric(input$years)
@@ -3174,8 +3140,13 @@ server <- function(input, output, session) {
 
         alpha_df <- tryCatch(compute_alpha_dashboard(res$equity_df, rf_annual = rf_ann),
                              error = function(e) NULL)
-        gap <- tryCatch(analyze_bh_gap(res$equity_df, res$valuation_df),
-                        error = function(e) list(narrative_a = e$message))
+        gap <- tryCatch(
+          analyze_bh_gap(
+            res$equity_df, res$valuation_df,
+            max_exp = .safe_num(params$bt_max_exp, 0.90)
+          ),
+          error = function(e) list(narrative_a = e$message)
+        )
         mos_tab <- tryCatch(validate_mos_effectiveness(res$valuation_df, px),
                             error = function(e) NULL)
         fv_edge <- tryCatch(validate_fair_value_edge(res$valuation_df, px),
@@ -3521,29 +3492,58 @@ server <- function(input, output, session) {
   output$bt_bh_gap <- renderUI({
     v <- bt_validation()
     if (is.null(v) || is.null(v$gap)) {
-      return(tags$p(style = "color:#888;font-size:12px;", "當 B&H 勝出時，此處拆解 Cash Drag／Early Exit／高估減碼／情緒減碼／Missed Trend。牛市落後通常合理：策略刻意不滿倉。"))
+      return(tags$p(style = "color:#888;font-size:12px;",
+                    "回測後拆解相對 Buy&Hold 的缺口：現金拖累／過早出場／高估減碼／情緒加減碼。牛市落後常因持股上限與 Great Filter 空手。"))
     }
     g <- v$gap
     fr <- g$fractions_a
+    beat <- isTRUE(g$beat_bh_a)
     mk <- function(label, key, tip) {
       val <- if (!is.null(fr) && !is.null(fr[[key]])) fr[[key]] else NA
+      # Also show absolute pp from components when available
+      abs_pp <- if (!is.null(g$components_a) && !is.null(g$components_a[[key]])) {
+        g$components_a[[key]]
+      } else NA
       tags$div(
         style = "margin-bottom:8px;",
         tags$div(style = "display:flex;justify-content:space-between;font-size:12px;",
-                 tags$span(tags$b(label)), tags$span(.fmt_pct(val, 0))),
+                 tags$span(tags$b(label)),
+                 tags$span(
+                   if (beat || !is.finite(val)) {
+                     paste0(.fmt_pct(abs_pp, 1), "（絕對）")
+                   } else {
+                     paste0(.fmt_pct(val, 0), " of gap")
+                   }
+                 )),
         tags$div(style = "font-size:11px;color:#777;", tip)
       )
     }
     tagList(
+      if (beat) {
+        tags$div(
+          style = "margin:0 0 10px 0;padding:8px 10px;background:#eef8f1;border-left:4px solid #28a745;font-size:12px;color:#1e5c35;",
+          tags$b("結論："), "純基本面價值未輸給 Buy&Hold。"
+        )
+      } else {
+        tags$div(
+          style = "margin:0 0 10px 0;padding:8px 10px;background:#fff8e8;border-left:4px solid #f0ad4e;font-size:12px;color:#7a5b10;",
+          tags$b("結論："), "相對 Buy&Hold 落後；下列為上漲日減碼歸因（日報酬加總近似，非複利拆解）。"
+        )
+      },
       tags$p(style = "font-size:12.5px;line-height:1.55;", g$narrative_a),
       if (!is.null(g$narrative_b)) tags$p(style = "font-size:12px;color:#555;", g$narrative_b),
       mk("Cash Drag 現金拖累", "cash_drag", "持股不足 100% 時錯過上漲"),
-      mk("Early Exit 提早賣出", "early_exit", "降倉後市場續漲"),
+      mk("Early Exit 提早賣出", "early_exit", "近 20 日相對降倉後市場續漲"),
       mk("Overvaluation Reduction", "overvaluation_reduction", "因高估／負 MOS 減碼"),
-      mk("Missed Trend 錯過主升段", "missed_trend", "殘差／無法歸類部分"),
-      if (!is.null(g$sentiment_reduction_b))
-        tags$p(style = "font-size:12px;", tags$b("Sentiment Reduction (B vs A)："),
-               .fmt_pct(g$sentiment_reduction_b, 1))
+      mk("Missed Trend 殘差", "missed_trend", "缺口 − 上述三項（可為負，表示歸因重疊／近似誤差）"),
+      if (!is.null(g$sentiment_reduction_b) || !is.null(g$sentiment_boost_b))
+        tags$p(
+          style = "font-size:12px;",
+          tags$b("情緒 vs 純基本面："),
+          "減碼 ", .fmt_pct(g$sentiment_reduction_b, 1),
+          " ／加碼 ", .fmt_pct(g$sentiment_boost_b %||% 0, 1),
+          "（上漲日）"
+        )
     )
   })
 
@@ -3839,9 +3839,9 @@ server <- function(input, output, session) {
       tags$p(
         style = "margin-top:0;",
         tags$b("淨值圖 ↔ 兩模式："),
-        "評價模型算出合理價／MOS → 決定 ", tags$b("純基本面價值"), " 的倉位 Exp_A → 累積成橘線策略淨值；",
-        tags$b("情緒波動價值"), " 在 Exp_A 上乘情緒乘數得到 Exp_B → 藍線。",
-        "淨值圖只比策略績效；合理價看 Fair Value 時間軸。"
+        "評價模型算出合理價／MOS → ", tags$b("純基本面價值"), " Exp_A → 橘線；",
+        tags$b("情緒波動價值"), " 將 Exp_A 與動能／RSI 情緒目標加權混合得 Exp_B → 藍線（應可分開）。",
+        "折現圖上的「情緒波動價值」＝實際股價，語意不同。淨值圖只比策略績效。"
       ),
       tags$h5(tags$b("一、數據來源")),
       tags$ul(
@@ -3854,14 +3854,15 @@ server <- function(input, output, session) {
       tags$ol(
         tags$li("再平衡日：fund_year ≤ 日曆年−1 重建合理價 → MOS。"),
         tags$li("持倉回測條件未過 → Exp_A = Exp_B = 0（兩模式皆空手）。"),
-        tags$li("通過則 Exp_A 依 MOS 滯後映射（上限＝最大持股，可選通過後最低持股）；Exp_B = clip(Exp_A×情緒, 75%～125%×A)。"),
+        tags$li("通過則 Exp_A 依 MOS 滯後映射；Exp_B = (1−blend)×Exp_A + blend×(sentiment×max_exp)。"),
         tags$li("每日：策略淨值用 Exp×日報酬；Buy&Hold 滿倉；現金報酬=0；未扣交易成本。"),
         tags$li("比較視窗自首次有效季再平衡對齊。")
       ),
       tags$h5(tags$b("三、為何常輸給 Buy&Hold")),
       tags$p(
         style = "margin-bottom:0;",
-        "預設最大持股約 90% 且條件未過會空手；可用「情緒波動價值」標籤的「貼近買進持有」調高上限。完整公式請下載方法論檔。"
+        "持股上限（預設約 90%）與 Great Filter 空手會造成現金拖累；牛市滿倉的 B&H 易勝出。",
+        "可用「貼近買進持有」調高上限。完整公式請下載方法論檔。"
       )
     )
   })

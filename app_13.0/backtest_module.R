@@ -13,7 +13,7 @@
 # - Model_A: normalized PIT fair-value INDEX (參數高原／內部用；不是淨值圖曲線).
 # - Trade_A (模式「純基本面價值」策略淨值): Exp_A × 日報酬；Exp_A 來自 MOS＋Great Filter.
 # - Trade_B / Model_B (模式「情緒波動價值」策略淨值): Exp_B × 日報酬；
-#   Exp_B = clip(Exp_A × sentiment, 0.75×A … 1.25×A)；Exp_A=0 → Exp_B=0.
+#   Exp_B = blend(Exp_A, sentiment×max_exp)；Exp_A=0 → Exp_B=0.
 # 淨值圖只畫 Trade_A／Trade_B vs BuyHold／Benchmark；合理價看 HFV Timeline.
 # ==========================================
 
@@ -873,17 +873,39 @@ mos_hysteresis_target <- function(mos, w_vg = 0.7, max_exp = 0.90) {
   .clip01(target, 0, max_exp)
 }
 
-#' Sentiment multiplier in [0.75, 1.25] from mom/RSI features.
-sentiment_multiplier <- function(mom_score, rsi_score, w_mom = 0.5, w_rsi = 0.5) {
+#' Sentiment score in [0, 1] from mom/RSI features (higher = hotter emotion).
+sentiment_score <- function(mom_score, rsi_score, w_mom = 0.5, w_rsi = 0.5) {
   mom_score <- .clip01(.safe_num(mom_score, 0.5), 0, 1)
   rsi_score <- .clip01(.safe_num(rsi_score, 0.5), 0, 1)
   w_sum <- .safe_num(w_mom, 0.5) + .safe_num(w_rsi, 0.5)
   if (!is.finite(w_sum) || w_sum <= 1e-9) {
-    sent <- 0.5 * mom_score + 0.5 * rsi_score
-  } else {
-    sent <- (.safe_num(w_mom, 0.5) * mom_score + .safe_num(w_rsi, 0.5) * rsi_score) / w_sum
+    return(0.5 * mom_score + 0.5 * rsi_score)
   }
-  0.75 + 0.5 * .clip01(sent, 0, 1)   # -> [0.75, 1.25]
+  (.safe_num(w_mom, 0.5) * mom_score + .safe_num(w_rsi, 0.5) * rsi_score) / w_sum
+}
+
+#' Legacy multiplier in [0.75, 1.25] (kept for diagnostics / docs).
+sentiment_multiplier <- function(mom_score, rsi_score, w_mom = 0.5, w_rsi = 0.5) {
+  0.75 + 0.5 * .clip01(sentiment_score(mom_score, rsi_score, w_mom, w_rsi), 0, 1)
+}
+
+#' Mode B exposure: blend Exp_A with an emotion-driven target so NAV diverges from A.
+#' High sentiment → emotion_target near max_exp (BH-like); low → more cash than A alone.
+mode_b_exposure <- function(pos_a, mom_score, rsi_score, w_mom = 0.5, w_rsi = 0.5,
+                            max_exp = 0.90) {
+  max_exp <- .clip01(.safe_num(max_exp, 0.90), 0.5, 1)
+  pos_a <- .clip01(.safe_num(pos_a, 0), 0, 1)
+  if (pos_a <= 0) {
+    return(list(pos_b = 0, sent = 0.5, blend = 0, emotion_target = 0))
+  }
+  sent <- sentiment_score(mom_score, rsi_score, w_mom, w_rsi)
+  emotion_target <- sent * max_exp
+  # Stronger weights → more emotion in the blend (visible A/B split).
+  w_avg <- (.safe_num(w_mom, 0.5) + .safe_num(w_rsi, 0.5)) / 2
+  blend <- .clip01(0.28 + 0.40 * w_avg, 0.28, 0.60)
+  pos_b <- (1 - blend) * pos_a + blend * emotion_target
+  pos_b <- .clip01(min(pos_b, max_exp), 0, 1)
+  list(pos_b = pos_b, sent = sent, blend = blend, emotion_target = emotion_target)
 }
 
 # ---------- great filter (fundamental gate) ----------
@@ -1202,17 +1224,13 @@ evaluate_holding_filter <- function(metrics, thresholds) {
         }
         pos_a <- .clip01(min(pos_a_target, max_exp), 0, 1)
 
-        # ---- Strategy B: sentiment overlay ONLY scales Exp_A weight ----
-        sent_mult <- sentiment_multiplier(mom_score, rsi_score, w_mom, w_rsi)
-        if (pos_a <= 0) {
-          pos_b <- 0
-        } else {
-          pos_b_raw <- pos_a * sent_mult
-          pos_b <- .clip01(min(max(pos_b_raw, pos_a * 0.75), min(1, pos_a * 1.25)), 0, 1)
-        }
+        # ---- Strategy B: blend Exp_A with emotion target (diverges from A) ----
+        mb <- mode_b_exposure(pos_a, mom_score, rsi_score, w_mom, w_rsi, max_exp)
+        pos_b <- mb$pos_b
+        sent_mult <- if (pos_a > 1e-9) pos_b / pos_a else 1
 
         explain_txt <- sprintf(
-          "%s | 公允 %.2f (dcf %.2f / ddm %.2f / ri %.2f / pb %.2f) vs 市價 %.2f, MOS %.1f%%, score %.0f/100. Rollingβ=%.2f Ke=%.1f%% WACC=%.1f%%. 過濾:%s(%s). Exp_A=%.2f, Exp_B=%.2f (Sent x%.2f).",
+          "%s | 公允 %.2f (dcf %.2f / ddm %.2f / ri %.2f / pb %.2f) vs 市價 %.2f, MOS %.1f%%, score %.0f/100. Rollingβ=%.2f Ke=%.1f%% WACC=%.1f%%. 過濾:%s(%s). Exp_A=%.2f, Exp_B=%.2f (sent=%.2f blend=%.2f).",
           signal_i,
           .safe_num(pit$fair_value, NA_real_),
           .safe_num(pit$fv_dcf, NA_real_), .safe_num(pit$fv_ddm, NA_real_),
@@ -1224,7 +1242,7 @@ evaluate_holding_filter <- function(metrics, thresholds) {
           100 * .safe_num(disc$ke, NA_real_),
           100 * .safe_num(disc$wacc, NA_real_),
           if (isTRUE(gf$pass)) "PASS" else "FAIL",
-          gf$path, pos_a, pos_b, sent_mult
+          gf$path, pos_a, pos_b, mb$sent, mb$blend
         )
       }
 
@@ -1754,8 +1772,9 @@ build_bt_methodology_doc <- function(meta = NULL) {
     "- **該股買進持有 (Buy&Hold)**：每日 `E_t = E_{t-1} × (1 + r_t)`，全程 100% 持股；現金部位為 0。\n",
     "- **純基本面價值 (Trade_A)**：策略淨值 `E_t = E_{t-1} × (1 + Exp_A × r_t)`。",
     "`Exp_A` 由持倉回測條件 + MOS 滯後曝險決定（上限見 `bt_max_exp`，預設 90%；可調至 100%）。這是淨值圖上的「模式 A」。\n",
-    "- **情緒波動價值 (Trade_B)**：策略淨值，在 `Exp_A` 上乘情緒乘數（動能／RSI），",
-    "並夾在 `[0.75×Exp_A, min(1, 1.25×Exp_A)]`；`Exp_A=0` 時必須空手。這是淨值圖上的「模式 B」，嵌套於 A 而非獨立宇宙。\n",
+    "- **情緒波動價值 (Trade_B)**：策略淨值，在 `Exp_A` 上**混入**動能／RSI 情緒目標：",
+    "`Exp_B = (1−blend)×Exp_A + blend×(sentiment×max_exp)`（情緒熱→偏滿倉、冷→偏保守）；",
+    "`Exp_A=0` 時仍空手。與橘線應可分開。折現圖上的「情緒波動價值」另指**實際股價**。\n",
     "- **大盤基準**：SPY 全日報酬累積指數。\n",
     "- **合理價指數 (Model_A)**：僅供參數高原等診斷；**不畫在淨值圖**。",
     "價格 vs 合理價請看 Historical Fair Value Timeline。\n",
@@ -1772,7 +1791,7 @@ build_bt_methodology_doc <- function(meta = NULL) {
     "     → 未通過則 Exp_A = Exp_B = 0\n",
     "  3) 通過則 Exp_A = MOS 滯後映射（與 w_vg 混合；MOS≥30%→bt_max_exp；\n",
     "     可選 bt_min_exp_pass 地板，當 MOS≥−10%）\n",
-    "  4) Exp_B = clip(Exp_A × sentiment_mult, 0.75×Exp_A … 1.25×Exp_A)\n",
+    "  4) Exp_B = (1−blend)×Exp_A + blend×(sentiment×max_exp)\n",
     "非再平衡日：沿用上一季 Exp_A／Exp_B\n",
     "```\n",
     "\n",

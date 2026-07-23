@@ -29,9 +29,11 @@ decision_ui <- function(id) {
         ),
         column(
           width = 7,
+          h4("決策建議："),
+          uiOutput(ns("ui_recommendation")),
           tags$div(
             class = "ynow-fraud-banner",
-            style = "background-color: #d9534f; color: white; padding: 12px 14px; margin: 0 0 14px 0; border-radius: 4px;",
+            style = "background-color: #d9534f; color: white; padding: 12px 14px; margin: 14px 0 0 0; border-radius: 4px;",
             tags$h4(
               icon("exclamation-triangle"), " Fraud Warnings",
               style = "font-weight: bold; margin: 0 0 8px 0; font-size: 15px; border-bottom: 1px solid #ffcccc; padding-bottom: 8px;"
@@ -45,9 +47,7 @@ decision_ui <- function(id) {
               textOutput("notgettingcashback"),
               textOutput("no_fraud_detected")
             )
-          ),
-          h4("決策建議："),
-          uiOutput(ns("ui_recommendation"))
+          )
         )
       )
     ),

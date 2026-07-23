@@ -716,7 +716,8 @@ ui <- dashboardPage(
           right: 10px;
           bottom: 10px;
           z-index: 10;
-          max-width: 240px;
+          max-width: 300px;
+          min-width: 220px;
           padding: 10px 12px 8px;
           background: rgba(255, 255, 255, 0.97);
           border: 1px solid #dde2e6;
@@ -739,6 +740,11 @@ ui <- dashboardPage(
         .ynow-bt-hfv-controls .shiny-options-group {
           margin-top: 0;
           clear: both;
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          column-gap: 14px;
+          row-gap: 2px;
+          align-items: start;
         }
         .ynow-bt-hfv-controls .radio {
           margin-top: 0;
@@ -1321,7 +1327,6 @@ ui <- dashboardPage(
                        column(
                          width = 12,
                          h4("敏感度分析矩陣 (Sensitivity Analysis)"),
-                         uiOutput("sensitivity_model_rec"),
                          p(helpText("軸心採用 Get Started／Dashboard 目前的 SGR 與 WACC；觀察鄰近組合下的每股內在價值變化。CapEx／ΔNWC 前瞻比率請至 DCF → FCFF 設定。"))
                        )
                      ),
@@ -1399,17 +1404,17 @@ ui <- dashboardPage(
                   width = 8, status = "info", solidHeader = TRUE,
                   tags$div(
                     style = "margin: 0 0 10px 0; padding: 10px 12px; background: #f4f8fb; border-left: 4px solid #3c8dbc; font-size: 12px; color: #444; line-height: 1.55;",
-                    tags$b("關聯："),
-                    "上方折現比較圖的基本面價值 → MOS → ",
-                    tags$b("純基本面價值"), " 倉位 (Exp_A) → 策略淨值；",
-                    tags$b("情緒波動價值"), " 策略 = Exp_A × 情緒乘數（±25%）。",
-                    "要貼近買進持有，請到「情緒波動價值」標籤調整 Fit 參數。"
+                    tags$b("關聯與差異："),
+                    "兩者共用「持倉回測條件」閘門，但倉位路徑不同——",
+                    tags$b("純基本面價值"), " = MOS／Value Gap 映射的 Exp_A；",
+                    tags$b("情緒波動價值"), " = Exp_A 與「動能／RSI 情緒目標」加權混合（情緒熱→偏滿倉，情緒冷→偏保守），",
+                    "故淨值折線應可分開，而非重疊。上方折現圖的「情緒波動價值」則指實際股價，勿與本圖策略淨值混淆。"
                   ),
                   plotlyOutput("bt_equity_plot", height = "400px") %>% withSpinner(),
                   tags$ul(
                     style = "margin: 10px 0 0 0; padding-left: 18px; font-size: 12px; color: #666; line-height: 1.55;",
-                    tags$li(tags$b("純基本面價值"), "（橘線）＝模式 A 策略淨值：持倉條件＋MOS 倉位 × 日報酬。"),
-                    tags$li(tags$b("情緒波動價值"), "（藍線）＝模式 B 策略淨值；Fit 買進持有參數見下方「情緒波動價值」標籤。"),
+                    tags$li(tags$b("純基本面價值"), "（橘線）＝模式 A：持倉條件＋MOS 倉位 × 日報酬。"),
+                    tags$li(tags$b("情緒波動價值"), "（藍線）＝模式 B：在 Exp_A 上混入動能／RSI 情緒目標；參數見「情緒波動價值」標籤。"),
                     tags$li(tags$b("該股買進持有"), "（綠）全程 100%；", tags$b("大盤"), "（灰虛）SPY。"),
                     tags$li("股價／合理價美元比較見上方折現圖，勿與淨值混比。")
                   )
@@ -1447,21 +1452,7 @@ ui <- dashboardPage(
                 )
               ),
 
-              fluidRow(
-                box(
-                  title = tagList(icon("percentage"), "兩模式倉位軌跡（Exposure）"),
-                  width = 6, status = "danger", solidHeader = TRUE, collapsible = TRUE,
-                  uiOutput("bt_exposure_stats"),
-                  plotlyOutput("bt_exposure_plot", height = "260px") %>% withSpinner()
-                ),
-                box(
-                  title = tagList(icon("search-dollar"), "為何輸給 Buy & Hold？"),
-                  width = 6, status = "warning", solidHeader = TRUE, collapsible = TRUE,
-                  uiOutput("bt_bh_gap")
-                )
-              ),
-
-              # 4) 細部參數設定
+              # 4) 策略參數設定（置於 Exposure／B&H 歸因上方，方便先調再對照）
               fluidRow(column(width = 12, uiOutput("bt_param_notes"))),
 
               fluidRow(
@@ -1511,7 +1502,7 @@ ui <- dashboardPage(
                       tags$div(
                         class = "ynow-bt-mode-b",
                         .bt_section_intro(
-                          "模式 B：對應上方折現圖的「情緒波動價值」（實際股價軌跡）。策略上 Exp_B = Exp_A × 情緒乘數；可用 Fit 參數讓模擬更貼近買進持有。"
+                          "模式 B：在 Exp_A 上混入動能／RSI「情緒目標」（熱→偏滿倉、冷→偏保守），使藍線與橘線可分開。上方折現圖的「情緒波動價值」＝實際股價，語意不同。"
                         ),
                         # 寬螢幕四參數一列：動能 / RSI / 最大持股 / 最低持股
                         tags$div(
@@ -1520,12 +1511,12 @@ ui <- dashboardPage(
                             column(
                               3,
                               sliderInput("bt_w_mom", "動能相對權重", 0, 1, 0.4, step = 0.01),
-                              .bt_hint("與 RSI 正規化後組成情緒分數。")
+                              .bt_hint("與 RSI 組成情緒分數，再與 Exp_A 混合。")
                             ),
                             column(
                               3,
                               sliderInput("bt_w_rsi", "RSI 相對權重", 0, 1, 0.3, step = 0.01),
-                              .bt_hint("情緒乘數限制在 0.75～1.25。")
+                              .bt_hint("過熱降低情緒目標；超賣提高。")
                             ),
                             column(
                               3,
@@ -1564,6 +1555,20 @@ ui <- dashboardPage(
                       )
                     )
                   )
+                )
+              ),
+
+              fluidRow(
+                box(
+                  title = tagList(icon("percentage"), "兩模式倉位軌跡（Exposure）"),
+                  width = 6, status = "danger", solidHeader = TRUE, collapsible = TRUE,
+                  uiOutput("bt_exposure_stats"),
+                  plotlyOutput("bt_exposure_plot", height = "260px") %>% withSpinner()
+                ),
+                box(
+                  title = tagList(icon("search-dollar"), "為何輸給 Buy & Hold？"),
+                  width = 6, status = "warning", solidHeader = TRUE, collapsible = TRUE,
+                  uiOutput("bt_bh_gap")
                 )
               ),
 
@@ -1626,7 +1631,7 @@ ui <- dashboardPage(
                 box(
                   title = tagList(icon("book"), "回測數據來源與計算過程（方法論註解）"),
                   width = 12, status = "primary", solidHeader = TRUE,
-                  collapsible = TRUE, collapsed = FALSE,
+                  collapsible = TRUE, collapsed = TRUE,
                   uiOutput("bt_methodology_notes"),
                   tags$div(
                     style = "margin-top: 12px;",
