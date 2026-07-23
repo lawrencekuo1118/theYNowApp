@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12308134
+bundleId=12308170
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=origin/master
-commit=70793725f00ec72c438ad56da7dc76bd89670bf9
-short=7079372
-message=feat(app_13.0): valuation methodology — classify, ranges, confidence
-captured_at=2026-07-23T06:10:00+00:00
-note=app_13.0 redeploy with full R dependency snapshot (138 pkgs). Prefer local rsconnect::deployApp("app_13.0") for future deploys.
+commit=af81abf
+short=af81abf
+message=ui: swap Decision Funnel columns — F-Score left, advice right
+captured_at=2026-07-23T06:20:00+00:00
+note=app_13.0 redeploy after Decision Funnel column swap. Prefer local deploy thereafter.
