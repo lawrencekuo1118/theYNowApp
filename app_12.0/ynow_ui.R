@@ -855,18 +855,24 @@ ui <- dashboardPage(
       )
     ),
     fluidRow(
-      column(width = 4,
-             tags$div(
-               style = "display: flex; align-items: center; gap: 10px;",
-               actionButton("search", "Search", icon = icon("search")))
+      column(
+        width = 4,
+        tags$div(
+          style = "display: flex; flex-direction: column; align-items: flex-start; gap: 8px;",
+          actionButton("search", "Search", icon = icon("search")),
+          tags$div(
+            style = "width: 100%; text-align: left;",
+            tags$p(
+              "industry info from Yahoo",
+              style = "font-size: 12px; color: #888; margin: 0 0 4px 0; font-weight: bold;"
+            ),
+            verbatimTextOutput("search_results")
+          )
+        )
       ),
-      column(width = 8,
-             h2(textOutput("txt_corpname"), class = "ynow-corpname"),
-             tags$p(
-               "industry info from Yahoo",
-               style = "font-size: 12px; color: #888; margin: 6px 0 4px 0; font-weight: bold;"
-             ),
-             verbatimTextOutput("search_results")
+      column(
+        width = 8,
+        h2(textOutput("txt_corpname", inline = TRUE), class = "ynow-corpname")
       )
     ),
     br(),

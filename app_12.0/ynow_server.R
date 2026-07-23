@@ -13,6 +13,7 @@ server <- function(input, output, session) {
   
   values <- reactiveValues(recentsearch = c())
   corp_industry_text <- reactiveVal("等待搜尋...")
+  corp_display_name <- reactiveVal("")
   
   # 初始值設為 NULL，避免一開啟 App 就自動執行爬蟲
   current_ticker <- reactiveVal(NULL)
@@ -127,6 +128,25 @@ server <- function(input, output, session) {
         ind_info <- get_yahoo_industry(stock_code)
         if (!is.null(ind_info)) corp_industry_text(ind_info$display_text)
 
+        # Prefer full legal/display name from Summary or industry lookup (not ticker alone).
+        .pick_company_name <- function(..., ticker = "") {
+          cands <- unlist(list(...), use.names = FALSE)
+          cands <- trimws(as.character(cands))
+          cands <- cands[!is.na(cands) & nzchar(cands)]
+          if (!length(cands)) {
+            return(if (nzchar(ticker)) as.character(ticker) else "")
+          }
+          tk <- toupper(trimws(as.character(ticker)))
+          non_tk <- cands[toupper(cands) != tk]
+          pool <- if (length(non_tk)) non_tk else cands
+          pool[[which.max(nchar(pool))]]
+        }
+        corp_display_name(.pick_company_name(
+          attr(sum_df, "company_name"),
+          if (!is.null(ind_info)) ind_info$company_name else NULL,
+          ticker = stock_code
+        ))
+
         if (!(stock_code %in% values$recentsearch)) {
           values$recentsearch <- head(c(stock_code, values$recentsearch), 5)
         }
@@ -163,9 +183,18 @@ server <- function(input, output, session) {
   # 📊 1. 基本資訊與 Summary 介面輸出
   # ==========================================
   render_corpname_logic <- function() {
+    nm <- corp_display_name()
+    if (!is.null(nm) && nzchar(trimws(as.character(nm)))) {
+      return(as.character(nm)[1])
+    }
     if (is.null(summary_data())) return("")
     name <- attr(summary_data(), "company_name")
-    if (is.null(name) || is.na(name) || name == "") return(paste("Stock:", current_ticker())) else return(name)
+    if (is.null(name) || is.na(name) || !nzchar(as.character(name))) {
+      tk <- current_ticker()
+      if (!is.null(tk) && nzchar(tk)) return(paste("Stock:", tk))
+      return("")
+    }
+    as.character(name)[1]
   }
   
   output$txt_corpname <- renderText({ render_corpname_logic() })
