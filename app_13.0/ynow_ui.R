@@ -71,7 +71,7 @@
     tags$ul(
       style = "margin:0; padding-left:18px; line-height:1.55;",
       tags$li("DCF／RI 終值 SGR：本頁上方「永續成長率 SGR 設定」"),
-      tags$li("兩階段成長假設：DCF-Model 分頁最下方（選 Two-Stage 時顯示）"),
+      tags$li("兩階段成長假設：DCF-Model → Overview（選 Two-Stage 時顯示）"),
       tags$li("CapEx／ΔNWC 前瞻佔營收比：DCF → FCFF 分頁（驅動預測表）"),
       tags$li("DDM 股利成長率：可在 DDM 分頁單獨覆寫")
     )
@@ -1214,8 +1214,7 @@ ui <- dashboardPage(
                                            "wacc_gordon", "折現率 WACC (%)",
                                            value = APP_DEFAULTS$wacc_gordon, step = 0.01
                                          )
-                                       ),
-                                       helpText("折現率 WACC 請至本頁「WACC」分頁設定（會自動同步至此模型）。")
+                                       )
                                 ),
                                 column(width = 6, numericInput("years", "預測年數 n", value = APP_DEFAULTS$years, min = 1, max = 30))
                               )
@@ -1277,20 +1276,7 @@ ui <- dashboardPage(
                                 ),
                                 column(
                                   width = 12,
-                                  tags$hr(),
-                                  h4(tags$b("DCF 公式參數：每股估值貢獻與敏感度")),
-                                  helpText(
-                                    "上表為目前基準下各現金流橋接項對每股估值的貢獻；",
-                                    "下表為一次只變動一個參數（±1pp 或 ±10%）時，每股估值的變化幅度。"
-                                  ),
-                                  tags$div(
-                                    style = "overflow-x:auto; margin-bottom: 12px;",
-                                    tableOutput("dcf_param_contribution_table")
-                                  ),
-                                  tags$div(
-                                    style = "overflow-x:auto;",
-                                    tableOutput("dcf_param_sensitivity_table")
-                                  )
+                                  tags$div(style = "margin-top: 12px;", .dcf_two_stage_params_box())
                                 )
                               )
                      ),
@@ -1353,9 +1339,24 @@ ui <- dashboardPage(
                          box(
                            width = 5, status = "primary", solidHeader = TRUE,
                            title = tagList(icon("sliders-h"), "預估設定"),
-                           textInput(
+                           selectizeInput(
                              "beta_bench", "基準指數（Benchmark）",
-                             value = APP_DEFAULTS$beta_bench
+                             choices = c(
+                               "SPY (S&P 500 ETF)" = "SPY",
+                               "QQQ (Nasdaq-100 ETF)" = "QQQ",
+                               "IWM (Russell 2000 ETF)" = "IWM",
+                               "DIA (Dow Jones ETF)" = "DIA",
+                               "VTI (Total Stock Market)" = "VTI",
+                               "^GSPC (S&P 500 Index)" = "^GSPC",
+                               "^IXIC (Nasdaq Composite)" = "^IXIC",
+                               "^DJI (Dow Jones)" = "^DJI"
+                             ),
+                             selected = APP_DEFAULTS$beta_bench,
+                             options = list(
+                               create = TRUE,
+                               placeholder = "選建議項目，或直接輸入代碼…",
+                               maxItems = 1
+                             )
                            ),
                            numericInput(
                              "beta_lookback_months", "回溯月數（月報酬）",
@@ -1387,7 +1388,18 @@ ui <- dashboardPage(
                      )
               ),
               fluidRow(
-                .dcf_two_stage_params_box()
+                box(
+                  title = tagList(icon("percentage"), "DCF 公式參數：每股估值貢獻與敏感度"),
+                  width = 12, status = "info", solidHeader = TRUE, collapsible = TRUE,
+                  helpText(
+                    "一次只變動一個可設定參數（相對 ±10%），比較對每股估值的影響；",
+                    "「影響力%」= 兩側 |Δ估值%| 的平均，數值愈大代表該參數對最終估值愈敏感。"
+                  ),
+                  tags$div(
+                    style = "overflow-x:auto;",
+                    tableOutput("dcf_param_sensitivity_table")
+                  )
+                )
               )
       ),
       
