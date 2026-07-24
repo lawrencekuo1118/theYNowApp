@@ -68,8 +68,8 @@ APP_DEFAULTS <- list(
 
   # --- 3. Gordon DCF ---
   dcf_mode        = "gordon",
-  dcf_chart_mode  = "simple",           # 相容舊欄位；實際以 dcf_chart_layers 為準
-  dcf_chart_layers = c("hist", "forecast"),
+  dcf_chart_mode  = "simple",
+  cf_chart_layers = c("hist", "forecast"),  # Dashboard Cash Flow 疊圖（折現）
   g_growth_method = "fundamental",
   custom_g        = default_g,          # 自訂短期成長（已封頂）
   perpetual_g_method = "fundamental",   # v13：基本面優先（非 Macro=Rf）

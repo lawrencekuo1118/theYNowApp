@@ -1054,9 +1054,44 @@ ui <- dashboardPage(
                      
                      tabPanel("Cash Flow",
                               p("This section imports Cash Flow data from Yahoo Finance"),
-                              selectInput("cf_type", "Select Cash Flow Type",
-                                          choices = c("Operating Cash Flow", "Investing Cash Flow", "Financing Cash Flow")),
-                              plotlyOutput("cf_plot"),
+                              fluidRow(
+                                column(
+                                  width = 5,
+                                  selectInput(
+                                    "cf_type", "Select Cash Flow Type",
+                                    choices = c(
+                                      "Free Cash Flow",
+                                      "Operating Cash Flow",
+                                      "Investing Cash Flow",
+                                      "Financing Cash Flow"
+                                    ),
+                                    selected = "Free Cash Flow"
+                                  )
+                                ),
+                                column(
+                                  width = 7,
+                                  conditionalPanel(
+                                    condition = "input.cf_type == 'Free Cash Flow'",
+                                    checkboxGroupInput(
+                                      "cf_chart_layers",
+                                      "疊圖層級（可多選）",
+                                      choices = c(
+                                        "歷史 FCFF" = "hist",
+                                        "預測 FCFF" = "forecast",
+                                        "折現後價值 (DCF)" = "dcf",
+                                        "逐年折現 PV(FCFF)" = "pv_fcff"
+                                      ),
+                                      selected = APP_DEFAULTS$cf_chart_layers,
+                                      inline = TRUE
+                                    ),
+                                    helpText(
+                                      "柱狀＝現金流水準；折線＝折現後價值（使用目前 DCF／WACC／SGR）。",
+                                      "「逐年折現 PV」不含終值；「折現後價值」末年含 PV of TV。"
+                                    )
+                                  )
+                                )
+                              ),
+                              plotlyOutput("cf_plot", height = "460px") %>% withSpinner(),
                               tags$hr(),
                               dataTableOutput("tbCashFlow"),
                               downloadButton('CF_download', "Download Cash Flow Data")
@@ -1234,24 +1269,18 @@ ui <- dashboardPage(
                               ),
                               fluidRow(
                                 column(width = 12,
-                                       checkboxGroupInput(
-                                         "dcf_chart_layers",
-                                         "疊圖層級（可多選）",
+                                       radioButtons(
+                                         "dcf_chart_mode",
+                                         "圖表顯示模式",
                                          choices = c(
-                                           "歷史 FCFF" = "hist",
-                                           "預測 FCFF" = "forecast",
-                                           "折現後價值 (DCF)" = "dcf",
-                                           "逐年折現 PV(FCFF)" = "pv_fcff"
+                                           "單純模式（歷史＋預測 FCFF，無折現線）" = "simple",
+                                           "顯示折現後價值（DCF）" = "with_dcf"
                                          ),
-                                         selected = APP_DEFAULTS$dcf_chart_layers,
+                                         selected = APP_DEFAULTS$dcf_chart_mode,
                                          inline = TRUE
                                        ),
-                                       helpText(
-                                         "柱狀＝現金流水準；折線＝折現後價值。",
-                                         "「逐年折現 PV」不含終值；「折現後價值」末年含 PV of TV。"
-                                       ),
-                                       plotlyOutput("plt_dcf_trajectory", height = "460px") %>% withSpinner(),
-                                       h6(helpText("提示：啟動時已自動計算；調整 WACC／SGR／FCFF 後可再點試算更新折現疊圖。")),
+                                       plotOutput("plt_dcf_trajectory", height = "420px"),
+                                       h6(helpText("提示：圖含歷史 FCFF；切換模式可隱藏／顯示折現後 DCF 線。啟動時已自動計算，自訂參數後可再點試算。")),
                                        fluidRow(
                                          column(width = 6, actionButton("calc", "試算 DCF", class = "btn-success btn-block", style = "padding: 12px; font-weight: bold; font-size: 16px;")),
                                          column(width = 6, actionButton("reset_dcf", "回復預設", class = "btn-default btn-block", style = "padding: 12px; font-weight: bold; font-size: 16px;"))

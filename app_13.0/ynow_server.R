@@ -645,11 +645,8 @@ server <- function(input, output, session) {
       c("Model Selector", "Recommended Method", .snapshot_value(rec$summary_method), "Rule-based model ranking"),
       c("DCF", "DCF Mode", .snapshot_value(input$dcf_mode), "Gordon or Two-Stage DCF"),
       c("DCF", "Forecast Years (n)", .snapshot_value(input$years), "n"),
-      c("DCF", "Chart Layers", paste(.snapshot_value(input$dcf_chart_layers), collapse = "+"), "Overlay: hist / forecast FCFF bars + PV / DCF lines"),
-      c("DCF", "Chart Mode", {
-        ly <- input$dcf_chart_layers %||% character(0)
-        if ("dcf" %in% ly || "pv_fcff" %in% ly) "with_dcf" else "simple"
-      }, "Derived from dcf_chart_layers"),
+      c("Dashboard", "Cash Flow Chart Layers", paste(.snapshot_value(input$cf_chart_layers), collapse = "+"), "Overlay: hist / forecast FCFF bars + PV / DCF lines"),
+      c("DCF", "Chart Mode", .snapshot_value(input$dcf_chart_mode), "simple = hist+forecast FCFF; with_dcf adds discounted line"),
       c("Perpetual Growth", "Method", .snapshot_value(input$perpetual_g_method), "macro / fundamental / lifecycle"),
       c("Perpetual Growth", "Terminal g / SGR (%)", .snapshot_value(input$sgr), "DCF/RI terminal g; TV = FCF_n × (1+g) / (WACC-g)"),
       c("Perpetual Growth", "Estimated g (%)", if (!is.null(est_g)) .snapshot_value(est_g$g_pct) else NA_character_, "Selected perpetual-growth method output"),
@@ -740,8 +737,8 @@ server <- function(input, output, session) {
       ddm_ke = c("DDM", "Ke (%)", "預設對齊 CAPM Re"),
       ddm_sync_central_g = c("DDM", "與中央 SGR 同步", "TRUE 時 DDM g 跟隨 SGR"),
       dcf_mode = c("DCF", "DCF 模式", "gordon / two_stage"),
-      dcf_chart_mode = c("DCF", "圖表模式(相容)", "simple / with_dcf（由疊圖層推導）"),
-      dcf_chart_layers = c("DCF", "疊圖層級", "hist / forecast / dcf / pv_fcff"),
+      dcf_chart_mode = c("DCF", "圖表模式", "simple / with_dcf"),
+      cf_chart_layers = c("Dashboard", "Cash Flow 疊圖層級", "hist / forecast / dcf / pv_fcff"),
       g_growth_method = c("DCF", "營收成長估計法", "fundamental / revenue CAGR 等"),
       custom_g = c("DCF", "自訂營收成長 g (%)", "封頂後的短中期營收成長"),
       perpetual_g_method = c("永續成長", "方法", "macro / fundamental / lifecycle"),
@@ -993,29 +990,278 @@ server <- function(input, output, session) {
   })
   
   # ==========================================
-  # 📈 3. Cash Flow 互動圖表
+  # 📈 3. Cash Flow 互動圖表（Dashboard：FCF 可折現疊圖）
   # ==========================================
   selected_cashflow_data <- reactive({
     req(d_cash_flow())
     df <- d_cash_flow()
     keyword <- switch(input$cf_type,
+                      "Free Cash Flow" = "Free Cash Flow",
                       "Operating Cash Flow" = "Operating Cash Flow",
                       "Investing Cash Flow" = "Investing Cash Flow",
-                      "Financing Cash Flow" = "Financing Cash Flow")
-    # 先精確匹配科目名，避免命中 "Cash Flow From Continuing ..." 等長名列
+                      "Financing Cash Flow" = "Financing Cash Flow",
+                      "Free Cash Flow")
     exact <- which(tolower(trimws(df[[1]])) == tolower(keyword))
     if (length(exact) > 0) return(df[exact[1], , drop = FALSE])
     hit <- grepl(keyword, df[[1]], ignore.case = TRUE)
     if (!any(hit)) return(df[FALSE, , drop = FALSE])
     df[which(hit)[1], , drop = FALSE]
   })
-  
+
   output$cf_plot <- renderPlotly({
-    generate_safe_line_plot(
-      data = selected_cashflow_data(), 
-      ticker_name = current_ticker(), 
-      metric_name = input$cf_type
+    empty_plot <- function(msg) {
+      plotly::plotly_empty() %>%
+        plotly::layout(
+          title = list(text = msg, x = 0.5),
+          xaxis = list(visible = FALSE), yaxis = list(visible = FALSE)
+        )
+    }
+
+    # 非 FCF：沿用簡易折線
+    if (!identical(input$cf_type, "Free Cash Flow")) {
+      return(generate_safe_line_plot(
+        data = selected_cashflow_data(),
+        ticker_name = current_ticker(),
+        metric_name = input$cf_type
+      ))
+    }
+
+    req(current_ticker())
+    proj_df <- tryCatch(fcf_results$df_fcf(), error = function(e) NULL)
+    layers <- input$cf_chart_layers %||% APP_DEFAULTS$cf_chart_layers
+    if (length(layers) < 1) layers <- c("hist")
+    show_hist <- "hist" %in% layers
+    show_fcst <- "forecast" %in% layers
+    show_dcf <- "dcf" %in% layers
+    show_pv <- "pv_fcff" %in% layers
+
+    hist_df <- tryCatch({
+      cf <- d_cash_flow()
+      row_idx <- grep("^Free Cash Flow$|Free Cash Flow", cf[[1]], ignore.case = TRUE)
+      if (length(row_idx) == 0) return(NULL)
+      period_cols <- colnames(cf)[-1]
+      period_cols <- period_cols[!grepl("^ttm$", period_cols, ignore.case = TRUE)]
+      if (length(period_cols) == 0) return(NULL)
+      vals <- parse_financial_number(as.character(cf[row_idx[1], period_cols, drop = FALSE]))
+      ord <- rev(seq_along(period_cols))
+      data.frame(
+        Period = as.character(period_cols[ord]),
+        Value = as.numeric(vals[ord]),
+        stringsAsFactors = FALSE
+      )
+    }, error = function(e) NULL)
+    if (!is.null(hist_df)) {
+      hist_df <- hist_df[is.finite(hist_df$Value), , drop = FALSE]
+    }
+
+    n_years <- if (!is.null(proj_df) && is.data.frame(proj_df) && nrow(proj_df) > 0) nrow(proj_df) else 0L
+    fcff_vals <- if (n_years > 0) extract_fcff_series(proj_df) else numeric(0)
+    forecast_periods <- if (n_years > 0) {
+      as.character(proj_df$Year)
+    } else {
+      character(0)
+    }
+    if (length(forecast_periods) == 0 && n_years > 0) {
+      forecast_periods <- paste0("Y", seq_len(n_years))
+    }
+
+    # 需要預測／折現層但尚無 FCFF 表時，仍可只畫歷史
+    if ((show_fcst || show_dcf || show_pv) && n_years < 1) {
+      show_fcst <- FALSE
+      show_dcf <- FALSE
+      show_pv <- FALSE
+    }
+
+    pv_fcff_only <- numeric(0)
+    dcf_vals <- numeric(0)
+    tv_note <- ""
+    if (n_years > 0 && (show_dcf || show_pv)) {
+      wacc_val <- tryCatch({
+        if (identical(input$dcf_mode, "gordon")) {
+          rep(as.numeric(input$wacc_gordon) / 100, n_years)
+        } else {
+          s1_yrs <- as.numeric(input$yr_stage1)
+          if (!is.finite(s1_yrs)) s1_yrs <- 1
+          c(
+            rep(as.numeric(input$wacc_stage1) / 100, min(s1_yrs, n_years)),
+            rep(as.numeric(input$wacc_stage2) / 100, max(n_years - s1_yrs, 0))
+          )
+        }
+      }, error = function(e) rep(0.1, n_years))
+      discount_factors <- cumprod(1 + wacc_val)
+      pv_fcff_only <- round(fcff_vals / discount_factors, 2)
+      dcf_vals <- pv_fcff_only
+      g_terminal <- if (is.numeric(input$sgr)) input$sgr / 100 else 0.03
+      terminal_wacc <- tail(wacc_val, 1)
+      if (isTRUE(show_dcf) && is.finite(terminal_wacc) && is.finite(g_terminal) && terminal_wacc > g_terminal) {
+        last_fcf <- tail(fcff_vals, 1)
+        tv <- (last_fcf * (1 + g_terminal)) / (terminal_wacc - g_terminal)
+        pv_tv <- tv / discount_factors[n_years]
+        dcf_vals[n_years] <- round(dcf_vals[n_years] + pv_tv, 2)
+        tv_note <- paste0("末年 DCF 含終值 PV ", format_dollar_abbr(pv_tv))
+      }
+    }
+
+    x_levels <- unique(c(
+      if (!is.null(hist_df) && nrow(hist_df) > 0) hist_df$Period else character(0),
+      forecast_periods
+    ))
+    if (length(x_levels) < 1) return(empty_plot("⚠️ 無可繪製期間"))
+
+    bar_parts <- list()
+    if (isTRUE(show_hist) && !is.null(hist_df) && nrow(hist_df) > 0) {
+      tmp <- hist_df
+      tmp$Series <- "歷史 FCFF"
+      bar_parts[[length(bar_parts) + 1]] <- tmp
+    }
+    if (isTRUE(show_fcst) && n_years > 0) {
+      bar_parts[[length(bar_parts) + 1]] <- data.frame(
+        Period = forecast_periods,
+        Value = as.numeric(fcff_vals),
+        Series = "預測 FCFF",
+        stringsAsFactors = FALSE
+      )
+    }
+    line_parts <- list()
+    if (isTRUE(show_pv) && length(pv_fcff_only) > 0) {
+      line_parts[[length(line_parts) + 1]] <- data.frame(
+        Period = forecast_periods,
+        Value = as.numeric(pv_fcff_only),
+        Series = "逐年折現 PV(FCFF)",
+        stringsAsFactors = FALSE
+      )
+    }
+    if (isTRUE(show_dcf) && length(dcf_vals) > 0) {
+      line_parts[[length(line_parts) + 1]] <- data.frame(
+        Period = forecast_periods,
+        Value = as.numeric(dcf_vals),
+        Series = "折現後價值 (含 TV)",
+        stringsAsFactors = FALSE
+      )
+    }
+
+    if (length(bar_parts) < 1 && length(line_parts) < 1) {
+      return(empty_plot("請至少勾選一個疊圖層級"))
+    }
+
+    color_map <- c(
+      "歷史 FCFF" = "#2E86AB",
+      "預測 FCFF" = "#A8D5E5",
+      "逐年折現 PV(FCFF)" = "#F39C12",
+      "折現後價值 (含 TV)" = "#C0392B"
     )
+    symbol_map <- c(
+      "歷史 FCFF" = "square",
+      "預測 FCFF" = "diamond",
+      "逐年折現 PV(FCFF)" = "circle",
+      "折現後價值 (含 TV)" = "triangle-up"
+    )
+
+    n_hist <- if (!is.null(hist_df) && nrow(hist_df) > 0) nrow(hist_df) else 0L
+    shapes <- list()
+    annotations <- list()
+    if (n_hist > 0 && length(forecast_periods) > 0 && length(x_levels) > 0) {
+      x0_paper <- n_hist / length(x_levels)
+      shapes[[1]] <- list(
+        type = "rect", xref = "paper", yref = "paper",
+        x0 = x0_paper, x1 = 1, y0 = 0, y1 = 1,
+        fillcolor = "rgba(168, 213, 229, 0.10)", line = list(width = 0)
+      )
+      shapes[[2]] <- list(
+        type = "line", xref = "paper", yref = "paper",
+        x0 = x0_paper, x1 = x0_paper, y0 = 0, y1 = 1,
+        line = list(color = "#95A5A6", width = 1.5, dash = "dot")
+      )
+      annotations[[1]] <- list(
+        x = x0_paper, y = 1.02, xref = "paper", yref = "paper",
+        text = "歷史 | 預測", showarrow = FALSE, xanchor = "center",
+        font = list(size = 11, color = "#7F8C8D")
+      )
+    }
+
+    p <- plotly::plot_ly()
+    for (dfb in bar_parts) {
+      dfb$Period <- factor(as.character(dfb$Period), levels = x_levels)
+      ser <- as.character(dfb$Series[1])
+      p <- p %>% plotly::add_trace(
+        data = dfb,
+        x = ~Period, y = ~Value,
+        type = "bar",
+        name = ser,
+        marker = list(color = unname(color_map[[ser]]), line = list(width = 0)),
+        hovertemplate = paste0("<b>", ser, "</b><br>%{x}<br>$%{y:,.2f}<extra></extra>"),
+        legendgroup = ser,
+        showlegend = TRUE
+      )
+    }
+    for (dfl in line_parts) {
+      dfl$Period <- factor(as.character(dfl$Period), levels = x_levels)
+      ser <- as.character(dfl$Series[1])
+      is_tv <- identical(ser, "折現後價值 (含 TV)")
+      p <- p %>% plotly::add_trace(
+        data = dfl,
+        x = ~Period, y = ~Value,
+        type = "scatter", mode = "lines+markers",
+        name = ser,
+        line = list(
+          color = unname(color_map[[ser]]),
+          width = if (is_tv) 3 else 2.2,
+          dash = if (is_tv) "dash" else "solid"
+        ),
+        marker = list(
+          color = unname(color_map[[ser]]),
+          size = 10,
+          symbol = unname(symbol_map[[ser]]),
+          line = list(color = "#FFFFFF", width = 1.2)
+        ),
+        hovertemplate = paste0("<b>", ser, "</b><br>%{x}<br>$%{y:,.2f}<extra></extra>"),
+        legendgroup = ser,
+        showlegend = TRUE
+      )
+    }
+
+    subtitle <- if (nzchar(tv_note) && isTRUE(show_dcf)) tv_note else "柱＝現金流；線＝折現疊圖（圖例可點擊顯隱）"
+    title_main <- paste0(current_ticker(), " · Cash Flow 折現軌跡")
+
+    p %>%
+      plotly::layout(
+        barmode = "group",
+        title = list(
+          text = paste0(
+            "<b>", htmltools::htmlEscape(title_main), "</b>",
+            "<br><span style='font-size:12px;color:#8e44ad;'>",
+            htmltools::htmlEscape(subtitle), "</span>"
+          ),
+          x = 0.02
+        ),
+        xaxis = list(
+          title = "期間", tickangle = -30,
+          categoryorder = "array", categoryarray = x_levels
+        ),
+        yaxis = list(
+          title = "USD", tickprefix = "$",
+          separatethousands = TRUE, zeroline = TRUE,
+          gridcolor = "#EEF2F5"
+        ),
+        legend = list(
+          orientation = "h",
+          x = 0, y = 1.14,
+          bgcolor = "rgba(255,255,255,0.92)",
+          bordercolor = "#D5DBDB",
+          borderwidth = 1,
+          font = list(size = 12),
+          itemsizing = "constant",
+          itemwidth = 36,
+          traceorder = "normal"
+        ),
+        shapes = shapes,
+        annotations = annotations,
+        margin = list(t = 90, b = 70, l = 70, r = 24),
+        hovermode = "x unified",
+        paper_bgcolor = "#FFFFFF",
+        plot_bgcolor = "#FAFBFC"
+      ) %>%
+      plotly::config(displayModeBar = TRUE, responsive = TRUE, displaylogo = FALSE)
   })
   
   
@@ -2874,29 +3120,18 @@ server <- function(input, output, session) {
   })
   
   # ==========================================
-  # 📉 DCF Overview 圖：歷史／預測 FCFF 柱 + 折現疊線（可多選層級）
+  # 📉 DCF Overview 圖：歷史／預測 FCFF（可選折現線）— 恢復上一版 ggplot
   # ==========================================
-  output$plt_dcf_trajectory <- renderPlotly({
+  output$plt_dcf_trajectory <- renderPlot({
     req(fcf_results$df_fcf(), current_ticker())
     proj_df <- fcf_results$df_fcf()
-    empty_plot <- function(msg) {
-      plotly::plotly_empty() %>%
-        plotly::layout(
-          title = list(text = msg, x = 0.5),
-          xaxis = list(visible = FALSE), yaxis = list(visible = FALSE)
-        )
-    }
     if (is.null(proj_df) || nrow(proj_df) < 1) {
-      return(empty_plot("⚠️ 財報數據不足，無法繪圖"))
+      plot.new()
+      text(0.5, 0.5, "⚠️ 財報數據不足，無法繪圖", cex = 1.4)
+      return()
     }
 
-    layers <- input$dcf_chart_layers %||% APP_DEFAULTS$dcf_chart_layers
-    if (length(layers) < 1) layers <- c("hist", "forecast")
-    show_hist <- "hist" %in% layers
-    show_fcst <- "forecast" %in% layers
-    show_dcf <- "dcf" %in% layers
-    show_pv <- "pv_fcff" %in% layers
-
+    chart_mode <- input$dcf_chart_mode %||% "with_dcf"
     n_years <- nrow(proj_df)
     fcff_vals <- extract_fcff_series(proj_df)
 
@@ -2912,9 +3147,12 @@ server <- function(input, output, session) {
       data.frame(
         Period = as.character(period_cols[ord]),
         Value = as.numeric(vals[ord]),
+        Metric = "歷史現金流 (FCFF)",
+        Segment = "History",
         stringsAsFactors = FALSE
       )
     }, error = function(e) NULL)
+
     if (!is.null(hist_df)) {
       hist_df <- hist_df[is.finite(hist_df$Value), , drop = FALSE]
     }
@@ -2936,179 +3174,103 @@ server <- function(input, output, session) {
     }, error = function(e) rep(0.1, n_years))
 
     discount_factors <- cumprod(1 + wacc_val)
-    pv_fcff_only <- round(fcff_vals / discount_factors, 2)
-    dcf_vals <- pv_fcff_only
+    dcf_vals <- round(fcff_vals / discount_factors, 2)
+
     g_terminal <- if (is.numeric(input$sgr)) input$sgr / 100 else 0.03
     terminal_wacc <- tail(wacc_val, 1)
-    tv_note <- ""
-    if (is.finite(terminal_wacc) && is.finite(g_terminal) && terminal_wacc > g_terminal) {
+    tv_annotation <- ""
+
+    if (identical(chart_mode, "with_dcf") &&
+        is.finite(terminal_wacc) && is.finite(g_terminal) && terminal_wacc > g_terminal) {
       last_fcf <- tail(fcff_vals, 1)
       tv <- (last_fcf * (1 + g_terminal)) / (terminal_wacc - g_terminal)
       pv_tv <- tv / discount_factors[n_years]
       dcf_vals[n_years] <- round(dcf_vals[n_years] + pv_tv, 2)
-      tv_note <- paste0("末年 DCF 含終值 PV ", format_dollar_abbr(pv_tv))
+      tv_annotation <- paste0(
+        "\n( 第 ", n_years, " 年 DCF 已含永續終值 PV of TV: ",
+        format_dollar_abbr(pv_tv), " )"
+      )
+    }
+
+    forecast_fcff <- data.frame(
+      Period = forecast_periods,
+      Value = as.numeric(fcff_vals),
+      Metric = "預測現金流 (FCFF)",
+      Segment = "Forecast",
+      stringsAsFactors = FALSE
+    )
+
+    plot_parts <- list()
+    if (!is.null(hist_df) && nrow(hist_df) > 0) plot_parts <- c(plot_parts, list(hist_df))
+    plot_parts <- c(plot_parts, list(forecast_fcff))
+
+    if (identical(chart_mode, "with_dcf")) {
+      plot_parts <- c(plot_parts, list(data.frame(
+        Period = forecast_periods,
+        Value = as.numeric(dcf_vals),
+        Metric = "折現後價值 (DCF)",
+        Segment = "Forecast",
+        stringsAsFactors = FALSE
+      )))
+    }
+
+    plot_df <- do.call(rbind, plot_parts)
+    plot_df <- plot_df[is.finite(plot_df$Value), , drop = FALSE]
+    if (nrow(plot_df) == 0) {
+      plot.new()
+      text(0.5, 0.5, "⚠️ 無可繪製數值", cex = 1.4)
+      return()
     }
 
     x_levels <- unique(c(
       if (!is.null(hist_df) && nrow(hist_df) > 0) hist_df$Period else character(0),
       forecast_periods
     ))
-    if (length(x_levels) < 1) return(empty_plot("⚠️ 無可繪製期間"))
+    plot_df$Period <- factor(plot_df$Period, levels = x_levels)
+    plot_df$Metric <- factor(
+      plot_df$Metric,
+      levels = c("歷史現金流 (FCFF)", "預測現金流 (FCFF)", "折現後價值 (DCF)")
+    )
 
-    bar_parts <- list()
-    if (isTRUE(show_hist) && !is.null(hist_df) && nrow(hist_df) > 0) {
-      tmp <- hist_df
-      tmp$Series <- "歷史 FCFF"
-      bar_parts[[length(bar_parts) + 1]] <- tmp
-    }
-    if (isTRUE(show_fcst)) {
-      bar_parts[[length(bar_parts) + 1]] <- data.frame(
-        Period = forecast_periods,
-        Value = as.numeric(fcff_vals),
-        Series = "預測 FCFF",
-        stringsAsFactors = FALSE
-      )
-    }
-    line_parts <- list()
-    if (isTRUE(show_pv)) {
-      line_parts[[length(line_parts) + 1]] <- data.frame(
-        Period = forecast_periods,
-        Value = as.numeric(pv_fcff_only),
-        Series = "逐年折現 PV(FCFF)",
-        stringsAsFactors = FALSE
-      )
-    }
-    if (isTRUE(show_dcf)) {
-      line_parts[[length(line_parts) + 1]] <- data.frame(
-        Period = forecast_periods,
-        Value = as.numeric(dcf_vals),
-        Series = "折現後價值 (含 TV)",
-        stringsAsFactors = FALSE
-      )
-    }
-
-    if (length(bar_parts) < 1 && length(line_parts) < 1) {
-      return(empty_plot("請至少勾選一個疊圖層級"))
+    title_txt <- if (identical(chart_mode, "simple")) {
+      paste0(current_ticker(), " - 歷史與預測 FCFF（單純模式）")
+    } else {
+      paste0(current_ticker(), " - 歷史／預測 FCFF vs 折現後 DCF")
     }
 
     color_map <- c(
-      "歷史 FCFF" = "#2E86AB",
-      "預測 FCFF" = "#A8D5E5",
-      "逐年折現 PV(FCFF)" = "#F39C12",
-      "折現後價值 (含 TV)" = "#C0392B"
+      "歷史現金流 (FCFF)" = "#3498db",
+      "預測現金流 (FCFF)" = "#95a5a6",
+      "折現後價值 (DCF)" = "#e74c3c"
     )
-    symbol_map <- c(
-      "歷史 FCFF" = "square",
-      "預測 FCFF" = "diamond",
-      "逐年折現 PV(FCFF)" = "circle",
-      "折現後價值 (含 TV)" = "triangle-up"
+    lty_map <- c(
+      "歷史現金流 (FCFF)" = "solid",
+      "預測現金流 (FCFF)" = "solid",
+      "折現後價值 (DCF)" = "dashed"
     )
 
-    n_hist <- if (!is.null(hist_df) && nrow(hist_df) > 0) nrow(hist_df) else 0L
-    shapes <- list()
-    annotations <- list()
-    if (n_hist > 0 && length(forecast_periods) > 0 && length(x_levels) > 0) {
-      x0_paper <- n_hist / length(x_levels)
-      shapes[[1]] <- list(
-        type = "rect", xref = "paper", yref = "paper",
-        x0 = x0_paper, x1 = 1, y0 = 0, y1 = 1,
-        fillcolor = "rgba(168, 213, 229, 0.10)", line = list(width = 0)
+    ggplot(plot_df, aes(x = Period, y = Value, color = Metric, linetype = Metric, group = Metric)) +
+      geom_line(linewidth = 1.15) +
+      geom_point(size = 2.8) +
+      geom_text(
+        aes(label = format_dollar_abbr(Value)),
+        vjust = -1.2, size = 3.2, show.legend = FALSE, check_overlap = TRUE
+      ) +
+      scale_color_manual(values = color_map, drop = TRUE) +
+      scale_linetype_manual(values = lty_map, drop = TRUE) +
+      scale_y_continuous(labels = label_chart_number(prefix = "$")) +
+      theme_minimal(base_size = 14) +
+      labs(
+        title = title_txt,
+        subtitle = if (identical(chart_mode, "with_dcf")) tv_annotation else "不含折現線；僅歷史與預測 FCFF",
+        x = "期間", y = "USD (Millions)"
+      ) +
+      theme(
+        legend.position = "top",
+        axis.text.x = element_text(angle = 30, hjust = 1),
+        plot.title = element_text(face = "bold", hjust = 0.5),
+        plot.subtitle = element_text(color = "#8e44ad", face = "bold", hjust = 0.5)
       )
-      shapes[[2]] <- list(
-        type = "line", xref = "paper", yref = "paper",
-        x0 = x0_paper, x1 = x0_paper, y0 = 0, y1 = 1,
-        line = list(color = "#95A5A6", width = 1.5, dash = "dot")
-      )
-      annotations[[1]] <- list(
-        x = x0_paper, y = 1.02, xref = "paper", yref = "paper",
-        text = "歷史 | 預測", showarrow = FALSE, xanchor = "center",
-        font = list(size = 11, color = "#7F8C8D")
-      )
-    }
-
-    p <- plotly::plot_ly()
-    for (dfb in bar_parts) {
-      dfb$Period <- factor(as.character(dfb$Period), levels = x_levels)
-      ser <- as.character(dfb$Series[1])
-      p <- p %>% plotly::add_trace(
-        data = dfb,
-        x = ~Period, y = ~Value,
-        type = "bar",
-        name = ser,
-        marker = list(color = unname(color_map[[ser]]), line = list(width = 0)),
-        hovertemplate = paste0("<b>", ser, "</b><br>%{x}<br>$%{y:,.2f}<extra></extra>"),
-        legendgroup = ser,
-        showlegend = TRUE
-      )
-    }
-    for (dfl in line_parts) {
-      dfl$Period <- factor(as.character(dfl$Period), levels = x_levels)
-      ser <- as.character(dfl$Series[1])
-      is_tv <- identical(ser, "折現後價值 (含 TV)")
-      p <- p %>% plotly::add_trace(
-        data = dfl,
-        x = ~Period, y = ~Value,
-        type = "scatter", mode = "lines+markers",
-        name = ser,
-        line = list(
-          color = unname(color_map[[ser]]),
-          width = if (is_tv) 3 else 2.2,
-          dash = if (is_tv) "dash" else "solid"
-        ),
-        marker = list(
-          color = unname(color_map[[ser]]),
-          size = 10,
-          symbol = unname(symbol_map[[ser]]),
-          line = list(color = "#FFFFFF", width = 1.2)
-        ),
-        hovertemplate = paste0("<b>", ser, "</b><br>%{x}<br>$%{y:,.2f}<extra></extra>"),
-        legendgroup = ser,
-        showlegend = TRUE
-      )
-    }
-
-    subtitle <- if (nzchar(tv_note) && isTRUE(show_dcf)) tv_note else "柱＝現金流；線＝折現疊圖（圖例可點擊顯隱）"
-    title_main <- paste0(current_ticker(), " · Cash Flow 折現軌跡")
-
-    p %>%
-      plotly::layout(
-        barmode = "group",
-        title = list(
-          text = paste0(
-            "<b>", htmltools::htmlEscape(title_main), "</b>",
-            "<br><span style='font-size:12px;color:#8e44ad;'>",
-            htmltools::htmlEscape(subtitle), "</span>"
-          ),
-          x = 0.02
-        ),
-        xaxis = list(
-          title = "期間", tickangle = -30,
-          categoryorder = "array", categoryarray = x_levels
-        ),
-        yaxis = list(
-          title = "USD", tickprefix = "$",
-          separatethousands = TRUE, zeroline = TRUE,
-          gridcolor = "#EEF2F5"
-        ),
-        legend = list(
-          orientation = "h",
-          x = 0, y = 1.14,
-          bgcolor = "rgba(255,255,255,0.92)",
-          bordercolor = "#D5DBDB",
-          borderwidth = 1,
-          font = list(size = 12),
-          itemsizing = "constant",
-          itemwidth = 36,
-          traceorder = "normal"
-        ),
-        shapes = shapes,
-        annotations = annotations,
-        margin = list(t = 90, b = 70, l = 70, r = 24),
-        hovermode = "x unified",
-        paper_bgcolor = "#FFFFFF",
-        plot_bgcolor = "#FAFBFC"
-      ) %>%
-      plotly::config(displayModeBar = TRUE, responsive = TRUE, displaylogo = FALSE)
   })
   
   output$dft_fcf_plot <- renderPlot({
@@ -4668,7 +4830,8 @@ server <- function(input, output, session) {
   
   observeEvent(input$reset_dcf, {
     updateRadioButtons(session, "dcf_mode", selected = APP_DEFAULTS$dcf_mode)
-    updateCheckboxGroupInput(session, "dcf_chart_layers", selected = APP_DEFAULTS$dcf_chart_layers)
+    updateRadioButtons(session, "dcf_chart_mode", selected = APP_DEFAULTS$dcf_chart_mode)
+    updateCheckboxGroupInput(session, "cf_chart_layers", selected = APP_DEFAULTS$cf_chart_layers)
     updateNumericInput(session, "years", value = APP_DEFAULTS$years)
     updateSelectInput(session, "perpetual_g_method", selected = APP_DEFAULTS$perpetual_g_method)
     updateSelectInput(session, "lifecycle_stage", selected = APP_DEFAULTS$lifecycle_stage)
