@@ -1076,13 +1076,49 @@ server <- function(input, output, session) {
     }
 
     title_main <- paste0(current_ticker(), " · Cash Flow 三線疊圖")
+    # 圖內不放副標字樣（會與水平圖例重疊）；說明改由 UI helpText 承擔
+    legend_cfg <- list(
+      orientation = "h",
+      x = 0, y = -0.22,
+      xanchor = "left", yanchor = "top",
+      bgcolor = "rgba(255,255,255,0.92)",
+      bordercolor = "#D5DBDB", borderwidth = 1,
+      font = list(size = 12)
+    )
+    margin_cfg <- list(t = 56, b = 96, l = 70, r = 24)
+
+    # #region agent log
+    tryCatch({
+      .dbg <- list(
+        sessionId = "dcee0e",
+        runId = "post-fix",
+        hypothesisId = "H1_H4",
+        location = "ynow_server.R:cf_plot:layout",
+        message = "cf_plot: removed in-chart subtitle; legend below plot",
+        data = list(
+          n_series = length(parts),
+          series = lapply(parts, function(d) as.character(d$Series[1])),
+          title_has_br_subtitle = FALSE,
+          title_text = title_main,
+          legend_orientation = legend_cfg$orientation,
+          legend_x = legend_cfg$x,
+          legend_y = legend_cfg$y,
+          margin_t = margin_cfg$t,
+          margin_b = margin_cfg$b,
+          in_chart_subtitle_removed = TRUE
+        ),
+        timestamp = as.numeric(Sys.time()) * 1000
+      )
+      cat(jsonlite::toJSON(.dbg, auto_unbox = TRUE), "\n",
+          file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-dcee0e.log",
+          append = TRUE)
+    }, error = function(e) NULL)
+    # #endregion
+
     p %>%
       plotly::layout(
         title = list(
-          text = paste0(
-            "<b>", htmltools::htmlEscape(title_main), "</b>",
-            "<br><span style='font-size:12px;color:#7f8c8d;'>OCF／ICF／融資 FCF（可多選；點圖例顯隱）</span>"
-          ),
+          text = paste0("<b>", htmltools::htmlEscape(title_main), "</b>"),
           x = 0.02
         ),
         xaxis = list(
@@ -1094,13 +1130,8 @@ server <- function(input, output, session) {
           separatethousands = TRUE, zeroline = TRUE,
           gridcolor = "#EEF2F5"
         ),
-        legend = list(
-          orientation = "h", x = 0, y = 1.12,
-          bgcolor = "rgba(255,255,255,0.92)",
-          bordercolor = "#D5DBDB", borderwidth = 1,
-          font = list(size = 12)
-        ),
-        margin = list(t = 80, b = 70, l = 70, r = 24),
+        legend = legend_cfg,
+        margin = margin_cfg,
         hovermode = "x unified",
         paper_bgcolor = "#FFFFFF",
         plot_bgcolor = "#FAFBFC"
