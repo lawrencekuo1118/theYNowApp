@@ -1054,42 +1054,20 @@ ui <- dashboardPage(
                      
                      tabPanel("Cash Flow",
                               p("This section imports Cash Flow data from Yahoo Finance"),
-                              fluidRow(
-                                column(
-                                  width = 5,
-                                  selectInput(
-                                    "cf_type", "Select Cash Flow Type",
-                                    choices = c(
-                                      "Free Cash Flow",
-                                      "Operating Cash Flow",
-                                      "Investing Cash Flow",
-                                      "Financing Cash Flow"
-                                    ),
-                                    selected = "Free Cash Flow"
-                                  )
+                              checkboxGroupInput(
+                                "cf_flow_series",
+                                "疊圖序列（可多選）",
+                                choices = c(
+                                  "營業現金流 OCF" = "ocf",
+                                  "投資現金流 ICF" = "icf",
+                                  "融資現金流 FCF" = "fcf"
                                 ),
-                                column(
-                                  width = 7,
-                                  conditionalPanel(
-                                    condition = "input.cf_type == 'Free Cash Flow'",
-                                    checkboxGroupInput(
-                                      "cf_chart_layers",
-                                      "疊圖層級（可多選）",
-                                      choices = c(
-                                        "歷史 FCFF" = "hist",
-                                        "預測 FCFF" = "forecast",
-                                        "折現後價值 (DCF)" = "dcf",
-                                        "逐年折現 PV(FCFF)" = "pv_fcff"
-                                      ),
-                                      selected = APP_DEFAULTS$cf_chart_layers,
-                                      inline = TRUE
-                                    ),
-                                    helpText(
-                                      "柱狀＝現金流水準；折線＝折現後價值（使用目前 DCF／WACC／SGR）。",
-                                      "「逐年折現 PV」不含終值；「折現後價值」末年含 PV of TV。"
-                                    )
-                                  )
-                                )
+                                selected = APP_DEFAULTS$cf_flow_series,
+                                inline = TRUE
+                              ),
+                              helpText(
+                                "同一張圖同時顯示勾選的折線（OCF／ICF／融資 FCF）。",
+                                "此處 FCF 指 Financing Cash Flow，與自由現金流（Free Cash Flow）無關。"
                               ),
                               plotlyOutput("cf_plot", height = "460px") %>% withSpinner(),
                               tags$hr(),

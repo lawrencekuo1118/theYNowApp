@@ -69,7 +69,8 @@ APP_DEFAULTS <- list(
   # --- 3. Gordon DCF ---
   dcf_mode        = "gordon",
   dcf_chart_mode  = "simple",
-  cf_chart_layers = c("hist", "forecast"),  # Dashboard Cash Flow 疊圖（折現）
+  # Dashboard Cash Flow：營業／投資／融資三線可多選疊圖（融資 FCF ≠ 自由現金流）
+  cf_flow_series  = c("ocf", "icf", "fcf"),
   g_growth_method = "fundamental",
   custom_g        = default_g,          # 自訂短期成長（已封頂）
   perpetual_g_method = "fundamental",   # v13：基本面優先（非 Macro=Rf）
