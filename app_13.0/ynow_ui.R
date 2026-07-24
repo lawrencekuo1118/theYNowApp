@@ -1046,6 +1046,7 @@ ui <- dashboardPage(
                      
                      tabPanel("Balance Sheet",
                               p("This section imports Balance Sheets from Yahoo Finance"),
+                              plotlyOutput("bs_plot", height = "380px"),
                               tags$hr(),
                               dataTableOutput("tbBalanceSheet"),
                               downloadButton('BS_download', "Download Balance Sheet")
@@ -1233,18 +1234,24 @@ ui <- dashboardPage(
                               ),
                               fluidRow(
                                 column(width = 12,
-                                       radioButtons(
-                                         "dcf_chart_mode",
-                                         "圖表顯示模式",
+                                       checkboxGroupInput(
+                                         "dcf_chart_layers",
+                                         "疊圖層級（可多選）",
                                          choices = c(
-                                           "單純模式（歷史＋預測 FCFF，無折現線）" = "simple",
-                                           "顯示折現後價值（DCF）" = "with_dcf"
+                                           "歷史 FCFF" = "hist",
+                                           "預測 FCFF" = "forecast",
+                                           "折現後價值 (DCF)" = "dcf",
+                                           "逐年折現 PV(FCFF)" = "pv_fcff"
                                          ),
-                                         selected = APP_DEFAULTS$dcf_chart_mode,
+                                         selected = APP_DEFAULTS$dcf_chart_layers,
                                          inline = TRUE
                                        ),
-                                       plotOutput("plt_dcf_trajectory", height = "420px"),
-                                       h6(helpText("提示：圖含歷史 FCFF；切換模式可隱藏／顯示折現後 DCF 線。啟動時已自動計算，自訂參數後可再點試算。")),
+                                       helpText(
+                                         "柱狀＝現金流水準；折線＝折現後價值。",
+                                         "「逐年折現 PV」不含終值；「折現後價值」末年含 PV of TV。"
+                                       ),
+                                       plotlyOutput("plt_dcf_trajectory", height = "460px") %>% withSpinner(),
+                                       h6(helpText("提示：啟動時已自動計算；調整 WACC／SGR／FCFF 後可再點試算更新折現疊圖。")),
                                        fluidRow(
                                          column(width = 6, actionButton("calc", "試算 DCF", class = "btn-success btn-block", style = "padding: 12px; font-weight: bold; font-size: 16px;")),
                                          column(width = 6, actionButton("reset_dcf", "回復預設", class = "btn-default btn-block", style = "padding: 12px; font-weight: bold; font-size: 16px;"))
