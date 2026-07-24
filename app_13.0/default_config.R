@@ -94,6 +94,9 @@ APP_DEFAULTS <- list(
   capm_beta       = round(default_beta, 2),  # 啟動時占位；搜尋後預設改跟 Finance Summary β
   use_industry_beta = FALSE,                 # FALSE = 跟 Summary β；TRUE = 產業平均
   capm_rm         = round(default_rm, 2),
+  beta_bench      = "SPY",
+  beta_lookback_months = 60,
+  beta_min_obs    = 24,
 
   # --- 6. P/B／資產法 ---
   pb_bvps         = NA,

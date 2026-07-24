@@ -7,15 +7,12 @@ alwaysApply: true
 
 Latest app version: **app_13.0**
 
-Development baseline = currently deployed line on shinyapps (bundle `12310898`), aligned to:
-
-- Branch: `master`
-- Commit: `f762ec1` (tag `baseline/shinyapps-12308170` when present; else see `scripts/DEPLOY_BASELINE.txt`)
+Development baseline = currently deployed line on shinyapps; see `scripts/DEPLOY_BASELINE.txt` for bundle/commit.
 
 Edited from either:
 
-- `/Users/lawrencekuo/coding/theYNowApp` (fast local clone)
-- `/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp` (OneDrive)
+- `/Users/lawrencekuo/coding/theYNowApp` (fast local clone — **prefer all git operations here**)
+- `/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp` (OneDrive mirror)
 
 Before any edit session, ensure both paths match the latest GitHub tip:
 
@@ -31,4 +28,10 @@ After finishing edits:
 - From **coding** clone: `git add/commit` then `git push origin HEAD`, then run the sync script.
 - From **OneDrive**: `/Users/lawrencekuo/coding/bin/push-theynow-from-onedrive.sh "your message"` (mirror → coding → push → re-sync).
 
-Do not rely on `git push` inside the OneDrive folder; it often hangs.
+**Never run `git status` / `git diff` / `git push` inside the OneDrive folder.**  
+OneDrive’s tree is a lightweight sync stub (objects via `alternates` → coding clone). Cloud I/O often times out (`mmap failed: Operation timed out`), so those commands hang or fail. To verify OneDrive alignment, read:
+
+```bash
+cat "$ONEDRIVE/.ynow-synced-sha"
+# or: scripts/check-od-sync.sh
+```

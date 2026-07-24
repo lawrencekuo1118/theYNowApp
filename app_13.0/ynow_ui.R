@@ -1274,6 +1274,23 @@ ui <- dashboardPage(
                                 
                                 column(width = 12,
                                        plotOutput("plt_fcf_trend", height = "350px")
+                                ),
+                                column(
+                                  width = 12,
+                                  tags$hr(),
+                                  h4(tags$b("DCF 公式參數：每股估值貢獻與敏感度")),
+                                  helpText(
+                                    "上表為目前基準下各現金流橋接項對每股估值的貢獻；",
+                                    "下表為一次只變動一個參數（±1pp 或 ±10%）時，每股估值的變化幅度。"
+                                  ),
+                                  tags$div(
+                                    style = "overflow-x:auto; margin-bottom: 12px;",
+                                    tableOutput("dcf_param_contribution_table")
+                                  ),
+                                  tags$div(
+                                    style = "overflow-x:auto;",
+                                    tableOutput("dcf_param_sensitivity_table")
+                                  )
                                 )
                               )
                      ),
@@ -1313,12 +1330,60 @@ ui <- dashboardPage(
                                       tags$span(style = "font-weight: bold;", "套用產業平均值（Beta）"),
                                       value = isTRUE(APP_DEFAULTS$use_industry_beta)
                                     ),
-                                    helpText("預設跟 Dashboard → Finance Summary 的 Beta (5Y Monthly)；勾選才用產業平均；亦可直接手動輸入覆寫（換股票代碼後會重新跟 Summary 同步）。"),
+                                    helpText(
+                                      "預設跟 Dashboard → Finance Summary 的 Beta (5Y Monthly)；勾選才用產業平均。",
+                                      "進階估計（Rolling β 回歸）請至旁頁「Beta (β)」。"
+                                    ),
                                     numericInput("capm_rm", "市場報酬率 Rm (%)", value = APP_DEFAULTS$capm_rm, step = 0.01),
                                     actionButton("calc_capm", "估算 rₑ（CAPM）", class = "btn-primary"),
                                     tags$br(), htmlOutput("capm_result")
                                 )
                               )
+                     ),
+
+                     tabPanel(
+                       "Beta (β)",
+                       icon = icon("chart-line"),
+                       fluidRow(
+                         valueBoxOutput("vbx_beta_summary", width = 4),
+                         valueBoxOutput("vbx_beta_industry", width = 4),
+                         valueBoxOutput("vbx_beta_estimated", width = 4)
+                       ),
+                       fluidRow(
+                         box(
+                           width = 5, status = "primary", solidHeader = TRUE,
+                           title = tagList(icon("sliders-h"), "預估設定"),
+                           textInput(
+                             "beta_bench", "基準指數（Benchmark）",
+                             value = APP_DEFAULTS$beta_bench
+                           ),
+                           numericInput(
+                             "beta_lookback_months", "回溯月數（月報酬）",
+                             value = APP_DEFAULTS$beta_lookback_months,
+                             min = 24, max = 120, step = 1
+                           ),
+                           numericInput(
+                             "beta_min_obs", "最少觀測月數",
+                             value = APP_DEFAULTS$beta_min_obs,
+                             min = 12, max = 60, step = 1
+                           ),
+                           helpText(
+                             "β = Cov(Rᵢ, Rₘ) / Var(Rₘ)，優先用月末報酬（對齊 Yahoo 5Y Monthly）；",
+                             "樣本不足時改用週報酬。估計後可套用至 CAPM → rₑ → WACC。"
+                           ),
+                           actionButton("calc_beta_est", "估計 Rolling β", class = "btn-primary", icon = icon("calculator")),
+                           tags$span(style = "display:inline-block; width: 8px;"),
+                           actionButton("apply_beta_est", "套用至 CAPM β", class = "btn-success", icon = icon("check")),
+                           tags$br(), tags$br(),
+                           htmlOutput("beta_est_result")
+                         ),
+                         box(
+                           width = 7, status = "info", solidHeader = TRUE,
+                           title = tagList(icon("exchange-alt"), "三來源比較"),
+                           tableOutput("beta_sources_table"),
+                           plotOutput("plt_beta_scatter", height = "320px")
+                         )
+                       )
                      )
               ),
               fluidRow(

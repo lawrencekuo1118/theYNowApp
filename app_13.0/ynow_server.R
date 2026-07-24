@@ -753,6 +753,9 @@ server <- function(input, output, session) {
       capm_rf = c("CAPM", "Rf (%)", "無風險利率（啟動時估）"),
       capm_beta = c("CAPM", "Beta", "啟動占位；搜尋後可跟 Summary"),
       use_industry_beta = c("CAPM", "使用產業 Beta", "FALSE = 跟 Finance Summary β"),
+      beta_bench = c("Beta", "基準指數", "Rolling β 對齊標的，預設 SPY"),
+      beta_lookback_months = c("Beta", "回溯月數", "月末報酬視窗"),
+      beta_min_obs = c("Beta", "最少觀測", "估計所需最低月數"),
       capm_rm = c("CAPM", "Rm (%)", "預期市場報酬"),
       pb_bvps = c("P/B", "BVPS", "通常由財報帶入"),
       pb_tbvps = c("P/B", "TBVPS", "通常由財報帶入"),
@@ -1271,20 +1274,25 @@ server <- function(input, output, session) {
   # ==========================================
   # v13：Bear / Base / Bull 情境 + 主／副點 + 可信度
   # ==========================================
-  .dcf_price_at <- function(wacc_pp_delta = 0, g_pp_delta = 0, near_g_mult = 1) {
+  .dcf_valuation_bundle <- function(wacc_pp_delta = 0, g_pp_delta = 0,
+                                    near_g_mult = 1, cash_mult = 1, debt_mult = 1,
+                                    fcf_mult = 1) {
+    empty <- list(
+      ok = FALSE, price = NA_real_, shares = NA_real_,
+      pv_fcf = NA_real_, pv_tv = NA_real_, cash = NA_real_, debt = NA_real_,
+      equity = NA_real_, ev = NA_real_
+    )
     df_fcf <- tryCatch(fcf_results$df_fcf(), error = function(e) NULL)
     n_years <- suppressWarnings(as.numeric(input$years)[1])
     if (is.null(df_fcf) || !is.data.frame(df_fcf) || !is.finite(n_years) || nrow(df_fcf) != n_years) {
-      return(NA_real_)
+      return(empty)
     }
-    future_fcfs <- extract_fcff_series(df_fcf)
+    future_fcfs <- extract_fcff_series(df_fcf) * fcf_mult
     if (isTRUE(near_g_mult != 1) && length(future_fcfs) >= 2) {
-      # haircut / boost near-term path relative to last known base level
       base0 <- future_fcfs[1]
       if (is.finite(base0) && base0 != 0) {
         scaled <- future_fcfs
         for (i in seq_along(scaled)) {
-          # progressive: year i moves (near_g_mult-1)*i/n toward stress
           w <- i / length(scaled)
           scaled[i] <- base0 + (future_fcfs[i] - base0) * (1 + (near_g_mult - 1) * w)
         }
@@ -1299,12 +1307,12 @@ server <- function(input, output, session) {
     if (identical(input$dcf_mode, "gordon")) {
       r1 <- as.numeric(input$wacc_gordon) / 100 + wacc_pp_delta / 100
       r2 <- r1
-      if (!is.finite(r2) || !is.finite(g_terminal) || g_terminal >= r2) return(NA_real_)
+      if (!is.finite(r2) || !is.finite(g_terminal) || g_terminal >= r2) return(empty)
       discount_factors <- cumprod(1 + rep(r1, n_years))
     } else {
       r1 <- as.numeric(input$wacc_stage1) / 100 + wacc_pp_delta / 100
       r2 <- as.numeric(input$wacc_stage2) / 100 + wacc_pp_delta / 100
-      if (!is.finite(r2) || !is.finite(g_terminal) || g_terminal >= r2) return(NA_real_)
+      if (!is.finite(r2) || !is.finite(g_terminal) || g_terminal >= r2) return(empty)
       yr1 <- clamp_yr_stage1(n_years, input$yr_stage1, APP_DEFAULTS$yr_stage1)
       wacc_sequence <- c(rep(r1, min(yr1, n_years)), rep(r2, max(0, n_years - yr1)))
       discount_factors <- cumprod(1 + wacc_sequence)
@@ -1318,18 +1326,44 @@ server <- function(input, output, session) {
       select_current_metric(d_balance_sheet(), "Cash.*Equivalents.*Investments|Cash And Cash Equivalents|^Total Cash$", "stock"),
       error = function(e) NA_real_
     )
-    latest_cash <- if (!is.null(input$manual_cash) && !is.na(input$manual_cash)) input$manual_cash else ifelse(is.na(raw_cash), 0, raw_cash)
-    raw_total_debt <- tryCatch(select_current_metric(d_balance_sheet(), "^Total Debt$", "stock"), error = function(e) NA_real_)
-    if (is.na(raw_total_debt)) {
-      scraped_debt <- 0
+    latest_cash <- if (!is.null(input$manual_cash) && !is.na(input$manual_cash)) {
+      input$manual_cash
     } else {
-      scraped_debt <- raw_total_debt
+      ifelse(is.na(raw_cash), 0, raw_cash)
     }
-    latest_debt <- if (!is.null(input$manual_debt) && !is.na(input$manual_debt)) input$manual_debt else scraped_debt
+    latest_cash <- latest_cash * cash_mult
+    raw_total_debt <- tryCatch(select_current_metric(d_balance_sheet(), "^Total Debt$", "stock"), error = function(e) NA_real_)
+    scraped_debt <- if (is.na(raw_total_debt)) 0 else raw_total_debt
+    latest_debt <- if (!is.null(input$manual_debt) && !is.na(input$manual_debt)) {
+      input$manual_debt
+    } else {
+      scraped_debt
+    }
+    latest_debt <- latest_debt * debt_mult
     equity_value <- as.numeric(dcf_value)[1] + latest_cash - latest_debt
     shares <- .valuation_shares()$shares
-    if (!is.finite(equity_value) || !is.finite(shares) || shares <= 0) return(NA_real_)
-    equity_value / shares
+    if (!is.finite(equity_value) || !is.finite(shares) || shares <= 0) return(empty)
+    list(
+      ok = TRUE,
+      price = equity_value / shares,
+      shares = shares,
+      pv_fcf = pv_forecast,
+      pv_tv = pv_tv,
+      cash = latest_cash,
+      debt = latest_debt,
+      equity = equity_value,
+      ev = as.numeric(dcf_value)[1]
+    )
+  }
+
+  .dcf_price_at <- function(wacc_pp_delta = 0, g_pp_delta = 0, near_g_mult = 1) {
+    b <- .dcf_valuation_bundle(
+      wacc_pp_delta = wacc_pp_delta,
+      g_pp_delta = g_pp_delta,
+      near_g_mult = near_g_mult
+    )
+    if (!isTRUE(b$ok)) return(NA_real_)
+    b$price
   }
 
   .ddm_price_at <- function(ke_pp_delta = 0, g_pp_delta = 0) {
@@ -1762,6 +1796,215 @@ server <- function(input, output, session) {
                          label = HTML("Beta (β) <span style='color: #e67e22; font-size: 12px;'>[自訂數值]</span>"))
     }
   }, ignoreInit = FALSE)
+
+  # ---------- Beta (β) 分頁：Rolling 估計 vs Summary／產業 ----------
+  beta_est_result <- reactiveVal(NULL)  # list(beta, n_obs, method, rs, rm, dates, bench, lookback)
+  .beta_price_cache <- new.env(parent = emptyenv())
+
+  .fetch_beta_prices <- function(ticker, period = "5y") {
+    tk <- toupper(trimws(as.character(ticker)[1]))
+    if (!nzchar(tk)) return(NULL)
+    key <- paste0(tk, "|", period)
+    if (exists(key, envir = .beta_price_cache, inherits = FALSE)) {
+      return(get(key, envir = .beta_price_cache, inherits = FALSE))
+    }
+    df <- tryCatch(fetch_price_history_df(tk, period), error = function(e) NULL)
+    if (!is.null(df) && is.data.frame(df) && nrow(df) >= 40) {
+      assign(key, df, envir = .beta_price_cache)
+    }
+    df
+  }
+
+  .estimate_session_beta <- function() {
+    req(current_ticker())
+    bench <- toupper(trimws(as.character(input$beta_bench %||% "SPY")[1]))
+    if (!nzchar(bench)) bench <- "SPY"
+    lookback <- as.integer(suppressWarnings(as.numeric(input$beta_lookback_months)[1]))
+    if (!is.finite(lookback) || lookback < 24L) lookback <- 60L
+    min_obs <- as.integer(suppressWarnings(as.numeric(input$beta_min_obs)[1]))
+    if (!is.finite(min_obs) || min_obs < 12L) min_obs <- 24L
+
+    stk <- .fetch_beta_prices(current_ticker(), "5y")
+    mkt <- .fetch_beta_prices(bench, "5y")
+    if (is.null(stk) || is.null(mkt) || nrow(stk) < 40 || nrow(mkt) < 40) {
+      return(list(ok = FALSE, reason = "無法取得足夠的股價／基準指數歷史（需約 5 年）。"))
+    }
+    # Align by date
+    merged <- merge(
+      data.frame(Date = stk$Date, S = stk$Close),
+      data.frame(Date = mkt$Date, M = mkt$Close),
+      by = "Date", all = FALSE
+    )
+    merged <- merged[order(merged$Date), , drop = FALSE]
+    if (nrow(merged) < 40) {
+      return(list(ok = FALSE, reason = "標的與基準交易日對齊後樣本不足。"))
+    }
+    as_of <- max(merged$Date, na.rm = TRUE)
+    beta <- estimate_rolling_beta(
+      merged$S, merged$M, merged$Date, as_of,
+      lookback_months = lookback, min_obs = min_obs
+    )
+    if (!is.finite(beta)) {
+      return(list(ok = FALSE, reason = "Rolling β 估計失敗（變異過低或觀測不足）。"))
+    }
+
+    # Month-end returns for scatter (same preference as estimate_rolling_beta)
+    ym <- format(merged$Date, "%Y-%m")
+    mth <- merged[!duplicated(ym, fromLast = TRUE), , drop = FALSE]
+    mth <- utils::tail(mth, lookback + 1L)
+    method <- "月末報酬"
+    if (nrow(mth) < min_obs + 1L) {
+      yw <- format(merged$Date, "%Y-%W")
+      mth <- merged[!duplicated(yw, fromLast = TRUE), , drop = FALSE]
+      mth <- utils::tail(mth, max(lookback * 4L, 52L) + 1L)
+      method <- "週報酬（月末樣本不足）"
+    }
+    rs <- diff(mth$S) / head(mth$S, -1)
+    rm <- diff(mth$M) / head(mth$M, -1)
+    fine <- is.finite(rs) & is.finite(rm)
+    rs <- rs[fine]; rm <- rm[fine]
+    list(
+      ok = TRUE,
+      beta = round(as.numeric(beta), 3),
+      n_obs = length(rs),
+      method = method,
+      rs = rs,
+      rm = rm,
+      as_of = as_of,
+      bench = bench,
+      lookback = lookback
+    )
+  }
+
+  observeEvent(input$calc_beta_est, {
+    withProgress(message = "估計 Rolling β…", value = 0.3, {
+      res <- tryCatch(.estimate_session_beta(), error = function(e) {
+        list(ok = FALSE, reason = e$message)
+      })
+      incProgress(1)
+    })
+    beta_est_result(res)
+    if (isTRUE(res$ok)) {
+      showNotification(
+        glue::glue("✅ Rolling β = {res$beta}（{res$method}，n={res$n_obs}，基準 {res$bench}）"),
+        type = "message", duration = 6
+      )
+    } else {
+      showNotification(paste0("❌ ", res$reason %||% "估計失敗"), type = "error", duration = 8)
+    }
+  })
+
+  observeEvent(input$apply_beta_est, {
+    res <- beta_est_result()
+    if (is.null(res) || !isTRUE(res$ok) || !is.finite(res$beta)) {
+      showNotification("請先成功估計 Rolling β，再套用至 CAPM。", type = "warning")
+      return()
+    }
+    updateCheckboxInput(session, "use_industry_beta", value = FALSE)
+    capm_beta_dirty(TRUE)
+    .set_capm_beta(res$beta)
+    .auto_recalc_capm_wacc(notify = TRUE, wacc_too = TRUE)
+    showNotification(
+      glue::glue("已套用 β={res$beta} 至 CAPM，並重估 rₑ／WACC。"),
+      type = "message", duration = 5
+    )
+  })
+
+  # 搜尋新標的後清掉舊估計（避免套用他股 β）
+  observeEvent(current_ticker(), {
+    beta_est_result(NULL)
+  }, ignoreInit = TRUE)
+
+  output$vbx_beta_summary <- renderValueBox({
+    b <- .summary_beta_value()
+    valueBox(
+      if (is.finite(b)) round(b, 2) else "N/A",
+      "Finance Summary β",
+      icon = icon("file-invoice"),
+      color = "green"
+    )
+  })
+  output$vbx_beta_industry <- renderValueBox({
+    b <- .industry_beta_value()
+    valueBox(
+      if (is.finite(b)) round(b, 2) else "N/A",
+      "產業平均 β",
+      icon = icon("industry"),
+      color = "blue"
+    )
+  })
+  output$vbx_beta_estimated <- renderValueBox({
+    res <- beta_est_result()
+    valueBox(
+      if (!is.null(res) && isTRUE(res$ok)) res$beta else "—",
+      "Rolling 估計 β",
+      icon = icon("chart-line"),
+      color = "yellow"
+    )
+  })
+
+  output$beta_est_result <- renderUI({
+    res <- beta_est_result()
+    if (is.null(res)) {
+      return(tags$p(style = "color:#888;font-size:13px;", "尚未估計。搜尋標的後按「估計 Rolling β」。"))
+    }
+    if (!isTRUE(res$ok)) {
+      return(tags$p(style = "color:#c0392b;", res$reason %||% "估計失敗"))
+    }
+    rf <- suppressWarnings(as.numeric(input$capm_rf)[1])
+    rm <- suppressWarnings(as.numeric(input$capm_rm)[1])
+    ke <- if (is.finite(rf) && is.finite(rm)) rf + res$beta * (rm - rf) else NA_real_
+    HTML(glue::glue(
+      "<div style='padding:10px;border-left:4px solid #f39c12;background:#fdf6e3;font-size:13px;'>
+         <b>β = {res$beta}</b> · {res$method} · n={res$n_obs}<br/>
+         基準 {res$bench} · 回溯 {res$lookback} 月 · as-of {res$as_of}<br/>
+         若套用：Ke = Rf + β×(Rm−Rf) ≈ <b>{if (is.finite(ke)) sprintf('%.2f%%', ke) else 'N/A'}</b>
+       </div>"
+    ))
+  })
+
+  output$beta_sources_table <- renderTable({
+    res <- beta_est_result()
+    est <- if (!is.null(res) && isTRUE(res$ok)) res$beta else NA_real_
+    cur <- suppressWarnings(as.numeric(input$capm_beta)[1])
+    data.frame(
+      來源 = c("Finance Summary (Yahoo 5Y Monthly)", "產業平均", "Rolling 估計", "目前 CAPM 使用中"),
+      Beta = c(
+        { b <- .summary_beta_value(); if (is.finite(b)) sprintf("%.3f", b) else "N/A" },
+        { b <- .industry_beta_value(); if (is.finite(b)) sprintf("%.3f", b) else "N/A" },
+        if (is.finite(est)) sprintf("%.3f", est) else "尚未估計",
+        if (is.finite(cur)) sprintf("%.3f", cur) else "N/A"
+      ),
+      說明 = c(
+        "Dashboard → Finance Summary",
+        "Get Started 所選產業標準",
+        if (!is.null(res) && isTRUE(res$ok)) paste0(res$method, " vs ", res$bench) else "按左側按鈕估計",
+        if (isTRUE(input$use_industry_beta)) "產業平均模式" else "Summary／手動／Rolling 套用"
+      ),
+      stringsAsFactors = FALSE
+    )
+  }, striped = TRUE, bordered = TRUE, spacing = "s", width = "100%")
+
+  output$plt_beta_scatter <- renderPlot({
+    res <- beta_est_result()
+    if (is.null(res) || !isTRUE(res$ok) || length(res$rs) < 5) {
+      plot.new()
+      text(0.5, 0.5, "估計成功後顯示月／週報酬散佈與回歸線", cex = 1.1, col = "#888")
+      return(invisible(NULL))
+    }
+    df <- data.frame(rm = res$rm * 100, rs = res$rs * 100)
+    ggplot(df, aes(x = rm, y = rs)) +
+      geom_point(color = "#3c8dbc", alpha = 0.75, size = 2.2) +
+      geom_smooth(method = "lm", se = TRUE, color = "#e67e22", fill = "#fdebd0", size = 1) +
+      geom_hline(yintercept = 0, color = "#bbb") +
+      geom_vline(xintercept = 0, color = "#bbb") +
+      theme_minimal(base_size = 13) +
+      labs(
+        title = glue::glue("報酬回歸：β ≈ {res$beta}（{res$method}）"),
+        x = paste0(res$bench, " 報酬 (%)"),
+        y = paste0(current_ticker(), " 報酬 (%)")
+      )
+  })
   
   # 保留：切換產業時刷新 Rm／成長／P/B；Beta 僅在勾選產業平均時由上方 .sync_capm_beta 處理
   observeEvent(input$industry_choice, {
@@ -2087,6 +2330,128 @@ server <- function(input, output, session) {
         legend.position = "top"
       )
   })
+
+  # Overview：每股估值貢獻（橋接拆解）
+  output$dcf_param_contribution_table <- renderTable({
+    b <- .dcf_valuation_bundle()
+    validate(need(isTRUE(b$ok), "請先完成 FCFF 預測並設定 WACC／SGR（g < WACC）後再查看貢獻表。"))
+    sh <- b$shares
+    rows <- data.frame(
+      項目 = c(
+        "PV(明確預測期 FCFF)",
+        "PV(終值 TV)",
+        "企業價值 EV",
+        "+ 現金／約當現金",
+        "− 總負債",
+        "股權價值",
+        "每股估值"
+      ),
+      `總額` = c(b$pv_fcf, b$pv_tv, b$ev, b$cash, -b$debt, b$equity, b$price),
+      `每股` = c(
+        b$pv_fcf / sh, b$pv_tv / sh, b$ev / sh,
+        b$cash / sh, -b$debt / sh, b$equity / sh, b$price
+      ),
+      check.names = FALSE,
+      stringsAsFactors = FALSE
+    )
+    base_abs <- abs(b$price)
+    rows$`佔每股估值` <- ifelse(
+      !is.finite(base_abs) || base_abs < 1e-9,
+      NA_character_,
+      sprintf("%+.1f%%", 100 * rows$`每股` / base_abs)
+    )
+    rows$總額 <- ifelse(is.na(rows$總額), NA, format_dollar_abbr(rows$總額))
+    rows$每股 <- ifelse(is.na(rows$每股), NA, sprintf("%.2f", rows$每股))
+    rows
+  }, striped = TRUE, bordered = TRUE, spacing = "s", width = "100%")
+
+  # Overview：一次一參數敏感度
+  output$dcf_param_sensitivity_table <- renderTable({
+    base <- .dcf_valuation_bundle()
+    validate(need(isTRUE(base$ok), "基準估值尚未就緒，敏感度表暫不可用。"))
+    p0 <- base$price
+    .shock_row <- function(param, base_lab, down_lab, up_lab, b_down, b_up) {
+      pd <- if (isTRUE(b_down$ok)) b_down$price else NA_real_
+      pu <- if (isTRUE(b_up$ok)) b_up$price else NA_real_
+      data.frame(
+        參數 = param,
+        基準 = base_lab,
+        `衝擊 (−)` = down_lab,
+        `衝擊 (+)` = up_lab,
+        `每股 (−)` = if (is.finite(pd)) sprintf("%.2f", pd) else "N/A",
+        `每股 (+)` = if (is.finite(pu)) sprintf("%.2f", pu) else "N/A",
+        `Δ% (−)` = if (is.finite(pd) && is.finite(p0) && abs(p0) > 1e-9)
+          sprintf("%+.1f%%", 100 * (pd - p0) / abs(p0)) else "N/A",
+        `Δ% (+)` = if (is.finite(pu) && is.finite(p0) && abs(p0) > 1e-9)
+          sprintf("%+.1f%%", 100 * (pu - p0) / abs(p0)) else "N/A",
+        `敏感度(|Δ%|均)` = {
+          ds <- c(
+            if (is.finite(pd) && is.finite(p0) && abs(p0) > 1e-9) abs(100 * (pd - p0) / abs(p0)) else NA_real_,
+            if (is.finite(pu) && is.finite(p0) && abs(p0) > 1e-9) abs(100 * (pu - p0) / abs(p0)) else NA_real_
+          )
+          if (all(is.na(ds))) "N/A" else sprintf("%.1f%%", mean(ds, na.rm = TRUE))
+        },
+        check.names = FALSE,
+        stringsAsFactors = FALSE
+      )
+    }
+    wacc0 <- if (identical(input$dcf_mode, "gordon")) {
+      suppressWarnings(as.numeric(input$wacc_gordon)[1])
+    } else {
+      suppressWarnings(as.numeric(input$wacc_stage1)[1])
+    }
+    g0 <- suppressWarnings(as.numeric(input$sgr)[1])
+    rbind(
+      .shock_row(
+        "折現率 WACC",
+        sprintf("%.2f%%", wacc0),
+        sprintf("%.2f%% (−1pp)", wacc0 - 1),
+        sprintf("%.2f%% (+1pp)", wacc0 + 1),
+        .dcf_valuation_bundle(wacc_pp_delta = -1),
+        .dcf_valuation_bundle(wacc_pp_delta = +1)
+      ),
+      .shock_row(
+        "終值成長率 SGR (g)",
+        sprintf("%.2f%%", g0),
+        sprintf("%.2f%% (−0.5pp)", g0 - 0.5),
+        sprintf("%.2f%% (+0.5pp)", g0 + 0.5),
+        .dcf_valuation_bundle(g_pp_delta = -0.5),
+        .dcf_valuation_bundle(g_pp_delta = +0.5)
+      ),
+      .shock_row(
+        "FCFF 水準（整體 ×）",
+        "基準序列",
+        "×0.90",
+        "×1.10",
+        .dcf_valuation_bundle(fcf_mult = 0.9),
+        .dcf_valuation_bundle(fcf_mult = 1.1)
+      ),
+      .shock_row(
+        "近中期成長軌跡",
+        "基準軌跡",
+        "haircut",
+        "boost",
+        .dcf_valuation_bundle(near_g_mult = 0.85),
+        .dcf_valuation_bundle(near_g_mult = 1.15)
+      ),
+      .shock_row(
+        "現金／約當現金",
+        format_dollar_abbr(base$cash),
+        "×0.90",
+        "×1.10",
+        .dcf_valuation_bundle(cash_mult = 0.9),
+        .dcf_valuation_bundle(cash_mult = 1.1)
+      ),
+      .shock_row(
+        "總負債",
+        format_dollar_abbr(base$debt),
+        "×0.90",
+        "×1.10",
+        .dcf_valuation_bundle(debt_mult = 0.9),
+        .dcf_valuation_bundle(debt_mult = 1.1)
+      )
+    )
+  }, striped = TRUE, bordered = TRUE, spacing = "s", width = "100%")
   
   observeEvent(input$calc_capm, {
     .auto_recalc_capm_wacc(notify = TRUE, wacc_too = FALSE)
