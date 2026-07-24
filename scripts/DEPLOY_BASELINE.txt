@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12312758
+bundleId=12312862
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=origin/master
-commit=60c814276999a34fcf3f4cb01b230cc0d590c948
-short=60c8142
-message=feat(DCF): Beta tab and Overview param contribution/sensitivity
-captured_at=2026-07-24T03:02:20+00:00
-note=app_13.0 redeploy after Beta tab + Overview contribution/sensitivity. Prefer local deploy thereafter.
+commit=fa425af6cd18e81159c747f26566186695d631f1
+short=fa425af
+message=ui(DCF): swap param panels, full influence%, Gordon default
+captured_at=2026-07-24T03:20:41+00:00
+note=app_13.0 redeploy after DCF panel swap, influence% table, Gordon default. Prefer local deploy thereafter.
