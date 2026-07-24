@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12312999
+bundleId=12313421
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=origin/master
-commit=bd8e0ddb955bc61c3673ea5f1034f656243bf596
-short=bd8e0dd
-message=fix(ui): move FCFF discount overlay to Dashboard Cash Flow
-captured_at=2026-07-24T04:14:13+00:00
-note=app_13.0 redeploy after moving FCFF overlay to Dashboard CF; DCF chart restored. Prefer local deploy thereafter.
+commit=34251007888b6b316517e9e350b6ec0b8e64606e
+short=3425100
+message=fix(ui): Dashboard CF OCF/ICF/Financing multi-line overlay
+captured_at=2026-07-24T05:46:03+00:00
+note=app_13.0 redeploy after OCF/ICF/Financing multi-line CF chart. Prefer local deploy thereafter.
