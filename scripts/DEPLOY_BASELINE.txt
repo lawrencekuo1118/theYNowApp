@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12312939
+bundleId=12312999
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=origin/master
-commit=619b3a1e726f4d9c21175bdf739c8e7624b4dfaf
-short=619b3a1
-message=feat: DCF cash-flow overlay chart and Balance Sheet donut
-captured_at=2026-07-24T03:55:38+00:00
-note=app_13.0 redeploy after DCF overlay chart + BS donut. Prefer local deploy thereafter.
+commit=bd8e0ddb955bc61c3673ea5f1034f656243bf596
+short=bd8e0dd
+message=fix(ui): move FCFF discount overlay to Dashboard Cash Flow
+captured_at=2026-07-24T04:14:13+00:00
+note=app_13.0 redeploy after moving FCFF overlay to Dashboard CF; DCF chart restored. Prefer local deploy thereafter.
