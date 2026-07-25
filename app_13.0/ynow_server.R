@@ -2816,7 +2816,12 @@ server <- function(input, output, session) {
       return()
     }
     src <- as.character(input$beta_u_apply_source %||% "")[1]
-    if (!identical(src, "manual")) return()
+    if (!identical(src, "manual")) {
+      # Unlevered「手動設算」改值 → 改選手動來源（radio observer 會同步 CAPM）
+      beta_link_from_capm(FALSE)
+      updateRadioButtons(session, "beta_u_apply_source", selected = "manual")
+      return()
+    }
     # Get Started 側改手動 β → 推回 CAPM（維持連動）
     beta_capm_driver("gs")
     .apply_selected_beta_u_to_capm(silent = TRUE)
@@ -2872,7 +2877,7 @@ server <- function(input, output, session) {
   .beta_unlever_firm_result_content <- function() {
     f <- firm_unlever_reactive()
     if (!is.finite(f$bl)) {
-      return(tags$p(style = "color:#c0392b;", "尚無 β_L：請先搜尋標的，或於下方估計 Rolling β。"))
+      return(tags$p(style = "color:#c0392b;", "尚無 β_L：請先搜尋標的，或至 Rolling β 分頁估計。"))
     }
     if (!isTRUE(f$de_info$ok)) {
       return(HTML(glue::glue(

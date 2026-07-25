@@ -58,7 +58,7 @@ capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
       tags$b("Get Started"),
       "→「永續成長率 SGR 設定」下方的",
       tags$b("BETA"),
-      "小分頁（可選去槓桿 βᵤ 或未去槓桿估計值，直接寫入 CAPM β）。",
+      "小分頁（Beta Overview 選來源寫入 CAPM；Unlevered／Rolling 負責估算）。",
       "CAPM（Rf／β／Rm）在",
       tags$b("DCF-Model → WACC"),
       "；勾選「採用估算 rₑ／Ke」時由該處 CAPM 驅動。"
@@ -67,9 +67,8 @@ capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
   )
 }
 
-#' 純粹基本面 / Unlevered Beta（Get Started，置於 Rolling 上方）
-#' 流程：①選 β_L → 去槓桿 ②（可選）Bottom-Up ③選要套用的 β（去槓桿或未去槓桿）→ 直接寫入 CAPM
-beta_unlever_section_ui <- function() {
+#' Beta Overview：彙整各方法 KPI，並選擇寫入 CAPM 的來源
+beta_overview_section_ui <- function() {
   tagList(
     fluidRow(
       valueBoxOutput("vbx_beta_unlever_firm", width = 4),
@@ -77,9 +76,48 @@ beta_unlever_section_ui <- function() {
       valueBoxOutput("vbx_beta_relevered", width = 4)
     ),
     fluidRow(
+      valueBoxOutput("vbx_beta_summary", width = 4),
+      valueBoxOutput("vbx_beta_industry", width = 4),
+      valueBoxOutput("vbx_beta_estimated", width = 4)
+    ),
+    fluidRow(
+      box(
+        width = 12, status = "success", solidHeader = FALSE,
+        radioButtons(
+          "beta_u_apply_source",
+          "套用至 CAPM（選定值直接寫入，不經再槓桿）",
+          choices = c(
+            "【去槓桿 βᵤ】本公司 Unlevered" = "unlever_firm",
+            "【去槓桿 βᵤ】Bottom-Up 平均" = "bottomup",
+            "【未去槓桿 β_L】Finance Summary（Yahoo 5Y Monthly）" = "summary",
+            "【未去槓桿 β_L】Rolling 估計（需先估計）" = "rolling",
+            "【未去槓桿】產業平均 β" = "industry",
+            "手動輸入 β（直接寫入 CAPM）" = "manual"
+          ),
+          selected = APP_DEFAULTS$beta_u_apply_source,
+          inline = FALSE
+        ),
+        helpText(
+          "選定的 β 會直接寫入 DCF → WACC 的 CAPM β 並用於 rₑ。",
+          "變更來源會自動同步；選「產業平均」會勾選 CAPM 的產業平均。",
+          "「手動輸入」數值請至 Unlevered βᵤ →「手動設算Beta值」設定；在 CAPM 手動改 β 也會回寫為手動。"
+        ),
+        actionButton(
+          "apply_beta_u_selected", "立即同步所選 β 至 CAPM",
+          class = "btn-success", icon = icon("check")
+        )
+      )
+    )
+  )
+}
+
+#' Unlevered βᵤ：專注去槓桿估算（本公司 β_L→βᵤ、Bottom-Up、手動設算）
+beta_unlever_section_ui <- function() {
+  tagList(
+    fluidRow(
       box(
         width = 5, status = "warning", solidHeader = FALSE,
-        title = "① 本公司去槓桿",
+        title = "槓桿 Beta 來源與去槓桿",
         radioButtons(
           "beta_bl_source", "槓桿 Beta（β_L）來源",
           choices = c(
@@ -98,7 +136,8 @@ beta_unlever_section_ui <- function() {
       ),
       box(
         width = 7, status = "warning", solidHeader = FALSE,
-        title = "② Bottom-Up 同業平均（可選）",
+        title = "手動設算Beta值",
+        tags$h5(style = "margin-top:0;", "Bottom-Up 同業平均（可選）"),
         selectizeInput(
           "beta_peers",
           "同業／競爭對手代碼（可多選或自行輸入）",
@@ -123,56 +162,28 @@ beta_unlever_section_ui <- function() {
         tags$br(), tags$br(),
         htmlOutput("beta_bottomup_result"),
         tags$br(),
-        tableOutput("beta_bottomup_peers_table")
-      )
-    ),
-    fluidRow(
-      box(
-        width = 12, status = "warning", solidHeader = FALSE,
-        title = "③ 採用哪一個 β → 直接寫入 CAPM",
-        radioButtons(
-          "beta_u_apply_source",
-          "套用至 CAPM（選定值直接寫入，不經再槓桿）",
-          choices = c(
-            "【去槓桿 βᵤ】本公司 Unlevered" = "unlever_firm",
-            "【去槓桿 βᵤ】Bottom-Up 平均" = "bottomup",
-            "【未去槓桿 β_L】Finance Summary（Yahoo 5Y Monthly）" = "summary",
-            "【未去槓桿 β_L】Rolling 估計（需先估計）" = "rolling",
-            "【未去槓桿】產業平均 β" = "industry",
-            "手動輸入 β（直接寫入 CAPM）" = "manual"
-          ),
-          selected = APP_DEFAULTS$beta_u_apply_source,
-          inline = FALSE
-        ),
+        tableOutput("beta_bottomup_peers_table"),
+        tags$hr(),
+        tags$h5("手動輸入 β（直接寫入 CAPM）"),
         numericInput(
           "beta_u_manual",
-          "手動 β（直接寫入 CAPM）",
+          NULL,
           value = APP_DEFAULTS$beta_u_manual,
           min = 0, max = 5, step = 0.01
         ),
         helpText(
-          "選定的 β 會直接寫入 DCF → WACC 的 CAPM β 並用於 rₑ（無論去槓桿或未去槓桿，皆不再槓桿）。",
-          "變更來源或數值會自動同步；選「產業平均」會勾選 CAPM 的產業平均；選其他來源會取消勾選。",
-          "在 CAPM 手動改 β 會回寫為「手動輸入」。Rolling 亦可在 Rolling 分頁估計後由此選用。"
-        ),
-        actionButton(
-          "apply_beta_u_selected", "立即同步所選 β 至 CAPM",
-          class = "btn-success", icon = icon("check")
+          "於 Beta Overview 選「手動輸入 β」後，此值會直接寫入 CAPM；",
+          "在此修改數值時也會自動改選手動來源並同步。"
         )
       )
     )
   )
 }
 
-#' Rolling β 預估（Get Started，置於 Unlevered 下方）
+#' Rolling β 預估（Get Started）
 #' 常見設定：對 SPY／QQQ／IWM 做月末報酬迴歸；預設 5 年對齊 Yahoo。
 beta_rolling_section_ui <- function() {
   tagList(
-    fluidRow(
-      valueBoxOutput("vbx_beta_summary", width = 4),
-      valueBoxOutput("vbx_beta_industry", width = 4),
-      valueBoxOutput("vbx_beta_estimated", width = 4)
-    ),
     fluidRow(
       box(
         width = 5, status = "primary", solidHeader = TRUE,
@@ -211,7 +222,8 @@ beta_rolling_section_ui <- function() {
         ),
         helpText(
           "β = Cov(Rᵢ, Rₘ) / Var(Rₘ)，優先月末報酬（對齊 Yahoo 5Y Monthly）；",
-          "樣本不足時改用週報酬。此為未去槓桿（槓桿）β；亦可在 Unlevered 分頁③選「Rolling 估計」。"
+          "樣本不足時改用週報酬。此為未去槓桿（槓桿）β；",
+          "估計後可在此套用，或至 Beta Overview 選「Rolling 估計」同步至 CAPM。"
         ),
         actionButton("calc_beta_est", "估計 Rolling β", class = "btn-primary", icon = icon("calculator")),
         tags$span(style = "display:inline-block; width: 8px;"),
@@ -229,9 +241,11 @@ beta_rolling_section_ui <- function() {
   )
 }
 
-#' @deprecated use beta_unlever_section_ui + beta_rolling_section_ui
+#' @deprecated use beta_overview_section_ui + beta_unlever_section_ui + beta_rolling_section_ui
 beta_advanced_tab_ui <- function() {
   tagList(
+    beta_overview_section_ui(),
+    tags$hr(),
     beta_unlever_section_ui(),
     tags$hr(),
     beta_rolling_section_ui()
@@ -1192,12 +1206,20 @@ ui <- dashboardPage(
           title = "BETA",
           width = "auto",
           tabPanel(
+            "Beta Overview",
+            icon = icon("th-large"),
+            helpText(
+              "彙整 Unlevered／Rolling 各來源的 β KPI。",
+              "在下方選擇要寫入 CAPM 的來源，或按「立即同步所選 β 至 CAPM」。"
+            ),
+            beta_overview_section_ui()
+          ),
+          tabPanel(
             "Unlevered βᵤ",
             icon = icon("industry"),
             helpText(
-              "去槓桿：βᵤ = β_L / (1 + (1−T)·(D/E))，剔除財務槓桿後看營運風險。",
-              "③ 可選去槓桿 βᵤ 或未去槓桿估計值（Summary／Rolling／產業平均），直接寫入 CAPM。",
-              "「手動輸入」為列表最後一項；與 CAPM β 雙向連動。"
+              "專注去槓桿估算：βᵤ = β_L / (1 + (1−T)·(D/E))。",
+              "右側「手動設算Beta值」含 Bottom-Up 同業平均與手動輸入；寫入 CAPM 請至 Beta Overview。"
             ),
             beta_unlever_section_ui()
           ),
@@ -1206,7 +1228,7 @@ ui <- dashboardPage(
             icon = icon("chart-area"),
             helpText(
               "以常見基準（預設 SPY，亦可 QQQ／IWM）估計未去槓桿 Rolling β。",
-              "估計後可按「套用」或於 Unlevered 分頁③選「Rolling 估計」寫入 CAPM。"
+              "估計後可按「套用」，或至 Beta Overview 選「Rolling 估計」寫入 CAPM。"
             ),
             beta_rolling_section_ui()
           )
