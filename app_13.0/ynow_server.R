@@ -34,6 +34,7 @@ server <- function(input, output, session) {
   beta_capm_driver <- reactiveVal("gs")
   beta_u_manual_updating <- reactiveVal(FALSE)
   beta_link_from_capm <- reactiveVal(FALSE)
+  beta_apply_choices_updating <- reactiveVal(FALSE)
   
   # ==========================================
   # 🚀 雙按鈕監聽：確保左右兩個搜尋框獨立運作，互不覆寫
@@ -2744,6 +2745,57 @@ server <- function(input, output, session) {
   }
   observeEvent(input$apply_beta_u_selected, { .apply_selected_beta_u_to_capm(silent = FALSE) })
 
+  # Beta Overview：選項旁動態顯示各來源當前 β
+  .fmt_beta_choice_val <- function(v, digits = 2) {
+    v <- suppressWarnings(as.numeric(v)[1])
+    if (is.finite(v)) sprintf("%.*f", digits, v) else "n/a"
+  }
+  .beta_apply_source_choices <- function() {
+    f <- tryCatch(firm_unlever_reactive(), error = function(e) list(beta_u = NA_real_))
+    bu <- tryCatch(beta_bottomup_result(), error = function(e) NULL)
+    bu_v <- if (!is.null(bu) && isTRUE(bu$ok)) bu$beta_u_avg else NA_real_
+    sum_b <- tryCatch(.summary_beta_value(), error = function(e) NA_real_)
+    roll <- tryCatch(beta_est_result(), error = function(e) NULL)
+    roll_v <- if (!is.null(roll) && isTRUE(roll$ok)) roll$beta else NA_real_
+    ind_b <- tryCatch(.industry_beta_value(), error = function(e) NA_real_)
+    man_b <- suppressWarnings(as.numeric(input$beta_u_manual)[1])
+    setNames(
+      c("unlever_firm", "bottomup", "summary", "rolling", "industry", "manual"),
+      c(
+        paste0("【去槓桿 βᵤ】本公司 Unlevered ", .fmt_beta_choice_val(f$beta_u)),
+        paste0("【去槓桿 βᵤ】Bottom-Up 平均 ", .fmt_beta_choice_val(bu_v)),
+        paste0("【未去槓桿 β_L】Finance Summary（Yahoo 5Y Monthly） ", .fmt_beta_choice_val(sum_b)),
+        paste0("【未去槓桿 β_L】Rolling 估計（需先估計） ", .fmt_beta_choice_val(roll_v)),
+        paste0("【未去槓桿】產業平均 β ", .fmt_beta_choice_val(ind_b)),
+        paste0("手動輸入 β（直接寫入 CAPM） ", .fmt_beta_choice_val(man_b))
+      )
+    )
+  }
+  beta_apply_choice_labels <- reactiveVal(NULL)
+  observe({
+    firm_unlever_reactive()
+    beta_bottomup_result()
+    summary_data()
+    beta_est_result()
+    input$industry_choice
+    input$beta_u_manual
+    choices <- .beta_apply_source_choices()
+    labels <- names(choices)
+    if (identical(labels, isolate(beta_apply_choice_labels()))) return()
+    beta_apply_choice_labels(labels)
+    sel <- isolate(as.character(input$beta_u_apply_source %||% APP_DEFAULTS$beta_u_apply_source)[1])
+    if (!sel %in% unname(choices)) sel <- APP_DEFAULTS$beta_u_apply_source
+    beta_apply_choices_updating(TRUE)
+    updateRadioButtons(
+      session, "beta_u_apply_source",
+      choices = choices,
+      selected = sel
+    )
+    session$onFlushed(function() {
+      beta_apply_choices_updating(FALSE)
+    }, once = TRUE)
+  })
+
   # Get Started → CAPM 自動同步
   .maybe_sync_gs_beta_to_capm <- function() {
     src <- as.character(input$beta_u_apply_source %||% "unlever_firm")[1]
@@ -2785,6 +2837,10 @@ server <- function(input, output, session) {
   }, ignoreInit = FALSE)
 
   observeEvent(input$beta_u_apply_source, {
+    if (isTRUE(beta_apply_choices_updating())) {
+      beta_apply_choices_updating(FALSE)
+      return()
+    }
     if (isTRUE(beta_link_from_capm())) {
       beta_link_from_capm(FALSE)
       return()

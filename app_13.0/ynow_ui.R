@@ -71,9 +71,8 @@ capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
 beta_overview_section_ui <- function() {
   tagList(
     fluidRow(
-      valueBoxOutput("vbx_beta_unlever_firm", width = 4),
-      valueBoxOutput("vbx_beta_unlever_bottomup", width = 4),
-      valueBoxOutput("vbx_beta_relevered", width = 4)
+      valueBoxOutput("vbx_beta_unlever_firm", width = 6),
+      valueBoxOutput("vbx_beta_unlever_bottomup", width = 6)
     ),
     fluidRow(
       valueBoxOutput("vbx_beta_summary", width = 4),
@@ -83,28 +82,41 @@ beta_overview_section_ui <- function() {
     fluidRow(
       box(
         width = 12, status = "success", solidHeader = FALSE,
-        radioButtons(
-          "beta_u_apply_source",
-          "套用至 CAPM（選定值直接寫入，不經再槓桿）",
-          choices = c(
-            "【去槓桿 βᵤ】本公司 Unlevered" = "unlever_firm",
-            "【去槓桿 βᵤ】Bottom-Up 平均" = "bottomup",
-            "【未去槓桿 β_L】Finance Summary（Yahoo 5Y Monthly）" = "summary",
-            "【未去槓桿 β_L】Rolling 估計（需先估計）" = "rolling",
-            "【未去槓桿】產業平均 β" = "industry",
-            "手動輸入 β（直接寫入 CAPM）" = "manual"
+        tags$p(
+          style = "font-weight:600; margin:0 0 10px 0;",
+          "套用至 CAPM（選定值直接寫入，不經再槓桿）"
+        ),
+        fluidRow(
+          column(
+            width = 7,
+            radioButtons(
+              "beta_u_apply_source",
+              label = NULL,
+              choices = c(
+                "【去槓桿 βᵤ】本公司 Unlevered n/a" = "unlever_firm",
+                "【去槓桿 βᵤ】Bottom-Up 平均 n/a" = "bottomup",
+                "【未去槓桿 β_L】Finance Summary（Yahoo 5Y Monthly） n/a" = "summary",
+                "【未去槓桿 β_L】Rolling 估計（需先估計） n/a" = "rolling",
+                "【未去槓桿】產業平均 β n/a" = "industry",
+                "手動輸入 β（直接寫入 CAPM） n/a" = "manual"
+              ),
+              selected = APP_DEFAULTS$beta_u_apply_source,
+              inline = FALSE
+            ),
+            helpText(
+              "選定的 β 會直接寫入 DCF → WACC 的 CAPM β 並用於 rₑ。",
+              "變更來源會自動同步；選「產業平均」會勾選 CAPM 的產業平均。",
+              "「手動輸入」數值請至 Unlevered βᵤ 分頁設定；在 CAPM 手動改 β 也會回寫為手動。"
+            ),
+            actionButton(
+              "apply_beta_u_selected", "立即同步所選 β 至 CAPM",
+              class = "btn-success", icon = icon("check")
+            )
           ),
-          selected = APP_DEFAULTS$beta_u_apply_source,
-          inline = FALSE
-        ),
-        helpText(
-          "選定的 β 會直接寫入 DCF → WACC 的 CAPM β 並用於 rₑ。",
-          "變更來源會自動同步；選「產業平均」會勾選 CAPM 的產業平均。",
-          "「手動輸入」數值請至 Unlevered βᵤ →「手動設算Beta值」設定；在 CAPM 手動改 β 也會回寫為手動。"
-        ),
-        actionButton(
-          "apply_beta_u_selected", "立即同步所選 β 至 CAPM",
-          class = "btn-success", icon = icon("check")
+          column(
+            width = 5,
+            valueBoxOutput("vbx_beta_relevered", width = 12)
+          )
         )
       )
     )
@@ -117,7 +129,6 @@ beta_unlever_section_ui <- function() {
     fluidRow(
       box(
         width = 5, status = "warning", solidHeader = FALSE,
-        title = "槓桿 Beta 來源與去槓桿",
         radioButtons(
           "beta_bl_source", "槓桿 Beta（β_L）來源",
           choices = c(
@@ -136,7 +147,6 @@ beta_unlever_section_ui <- function() {
       ),
       box(
         width = 7, status = "warning", solidHeader = FALSE,
-        title = "手動設算Beta值",
         tags$h5(style = "margin-top:0;", "Bottom-Up 同業平均（可選）"),
         selectizeInput(
           "beta_peers",
@@ -1219,7 +1229,7 @@ ui <- dashboardPage(
             icon = icon("industry"),
             helpText(
               "專注去槓桿估算：βᵤ = β_L / (1 + (1−T)·(D/E))。",
-              "右側「手動設算Beta值」含 Bottom-Up 同業平均與手動輸入；寫入 CAPM 請至 Beta Overview。"
+              "右側含 Bottom-Up 同業平均與手動輸入；寫入 CAPM 請至 Beta Overview。"
             ),
             beta_unlever_section_ui()
           ),
