@@ -664,11 +664,11 @@ server <- function(input, output, session) {
       c("DCF - WACC", "Calculated WACC (%)", .snapshot_value(wacc_pct), "System CAPM/WACC estimate (also synced into WACC inputs)"),
       c("CAPM", "Rf (%)", .snapshot_value(input$capm_rf), "Ke = Rf + Beta × (Rm-Rf)"),
       c("CAPM", "Beta", .snapshot_value(input$capm_beta), "Systematic risk coefficient"),
-      c("CAPM", "Use Industry Beta", .snapshot_value(input$use_industry_beta), "TRUE = industry avg; FALSE = Finance Summary β (manual sticky until ticker change)"),
+      c("CAPM", "Use Industry Beta", .snapshot_value(input$use_industry_beta), "TRUE = industry avg; aligns with Get Started β source = industry"),
       c("CAPM", "Rm (%)", .snapshot_value(input$capm_rm), "Expected market return"),
       c("Beta", "Unlever β_L source", .snapshot_value(input$beta_bl_source), "summary / rolling / auto"),
-      c("Beta", "βᵤ apply source", .snapshot_value(input$beta_u_apply_source), "unlever_firm / bottomup / manual"),
-      c("Beta", "Manual Unlevered βᵤ", .snapshot_value(input$beta_u_manual), "Manual β_u when apply source = manual"),
+      c("Beta", "β apply source", .snapshot_value(input$beta_u_apply_source), "unlever_firm / bottomup / summary / rolling / industry / manual"),
+      c("Beta", "Manual β", .snapshot_value(input$beta_u_manual), "Manual β when apply source = manual"),
       c("Beta", "Bottom-up peers", .snapshot_value(paste(input$beta_peers, collapse = ",")), "Peer tickers for industry unlevered β"),
       c("WACC", "Calculated WACC (%)", .snapshot_value(wacc_pct), "WACC = E/(E+D)×Re + D/(E+D)×Rd×(1-T)"),
       c("WACC", "Re (%)", .snapshot_value(input$wacc_re), "Cost of equity"),
@@ -765,13 +765,13 @@ server <- function(input, output, session) {
       use_est_re = c("WACC", "使用 CAPM Re", "TRUE = Re 跟 CAPM"),
       capm_rf = c("CAPM", "Rf (%)", "無風險利率（啟動時估）"),
       capm_beta = c("CAPM", "Beta", "啟動占位；搜尋後可跟 Summary"),
-      use_industry_beta = c("CAPM", "使用產業 Beta", "FALSE = 跟 Finance Summary β"),
+      use_industry_beta = c("CAPM", "使用產業 Beta", "TRUE = 產業平均；與 Get Started 來源 industry 對齊"),
       beta_bench = c("Beta", "基準指數", "Rolling β 對齊標的，預設 SPY（亦可 QQQ／IWM 或自訂）"),
       beta_lookback_months = c("Beta", "回溯月數", "常見 36／60／84；預設 60 對齊 Yahoo 5Y"),
       beta_min_obs = c("Beta", "最少觀測", "估計所需最低月數（內部預設）"),
       beta_bl_source = c("Beta", "Unlever β_L 來源", "summary / rolling / auto"),
-      beta_u_apply_source = c("Beta", "套用 βᵤ 來源", "unlever_firm / bottomup / manual"),
-      beta_u_manual = c("Beta", "手動 Unlevered βᵤ", "數值"),
+      beta_u_apply_source = c("Beta", "套用 β 來源", "unlever_firm / bottomup / summary / rolling / industry / manual"),
+      beta_u_manual = c("Beta", "手動 β", "數值（直接寫入 CAPM）"),
       beta_peers = c("Beta", "Bottom-up 同業", "逗號分隔代碼；UI 多選"),
       capm_rm = c("CAPM", "Rm (%)", "預期市場報酬"),
       pb_bvps = c("P/B", "BVPS", "通常由財報帶入"),
@@ -2037,7 +2037,7 @@ server <- function(input, output, session) {
     invisible(NULL)
   }
 
-  # CAPM 手動改 β → 回寫 Get Started「手動 βᵤ」（Unlevered 路徑直接等同，不再反向去槓桿）
+  # CAPM 手動改 β → 回寫 Get Started「手動 β」（直接等同，不再反向去槓桿）
   observeEvent(input$capm_beta, {
     if (isTRUE(capm_beta_updating())) {
       capm_beta_updating(FALSE)
@@ -2061,14 +2061,29 @@ server <- function(input, output, session) {
     .set_beta_u_manual(beta_val)
   }, ignoreInit = TRUE)
 
-  # 勾選產業平均／換產業
+  # 勾選產業平均／換產業：與 Get Started「產業平均」來源對齊
   observeEvent(list(input$use_industry_beta, input$industry_choice), {
     if (isTRUE(input$use_industry_beta)) {
+      src <- as.character(input$beta_u_apply_source %||% "")[1]
+      if (!identical(src, "industry")) {
+        beta_link_from_capm(TRUE)
+        updateRadioButtons(session, "beta_u_apply_source", selected = "industry")
+      }
       .sync_capm_beta_industry()
-    } else if (identical(beta_capm_driver(), "industry")) {
-      # 取消產業平均 → 交回 Get Started 連動（延後一拍，等 maybe_sync 已定義後由 summary／unlever 觸發亦可）
-      beta_capm_driver("gs")
-      capm_beta_dirty(FALSE)
+    } else {
+      # 僅當使用者在 CAPM 取消勾選、且選擇器仍為 industry 時，改回 Unlevered
+      # （若已改選 Summary／Rolling 等而連帶取消勾選，勿搶改 radio）
+      src <- as.character(input$beta_u_apply_source %||% "")[1]
+      if (identical(src, "industry")) {
+        beta_link_from_capm(TRUE)
+        updateRadioButtons(session, "beta_u_apply_source", selected = "unlever_firm")
+        beta_capm_driver("gs")
+        capm_beta_dirty(FALSE)
+        f <- tryCatch(firm_unlever_reactive(), error = function(e) list(beta_u = NA_real_))
+        if (is.finite(f$beta_u)) {
+          .set_capm_beta(f$beta_u)
+        }
+      }
     }
   }, ignoreInit = TRUE)
 
@@ -2079,20 +2094,23 @@ server <- function(input, output, session) {
     src <- as.character(input$beta_u_apply_source %||% "unlever_firm")[1]
     gs_tag <- switch(
       src,
-      "bottomup" = "Get Started｜Bottom-Up",
-      "manual" = "Get Started｜手動 βᵤ",
-      "Get Started｜本公司 Unlevered"
+      "bottomup" = "Get Started｜Bottom-Up βᵤ",
+      "manual" = "Get Started｜手動 β",
+      "summary" = "Get Started｜Finance Summary",
+      "rolling" = "Get Started｜Rolling",
+      "industry" = "Get Started｜產業平均",
+      "Get Started｜本公司 Unlevered βᵤ"
     )
     if (identical(drv, "industry") && isTRUE(input$use_industry_beta) &&
         is.finite(ind_b) && abs(beta - ind_b) < 1e-4) {
       HTML("Beta (β) <span style='color: #2980b9; font-size: 12px;'>[產業平均]</span>")
-    } else if (identical(drv, "rolling")) {
+    } else if (identical(drv, "rolling") || identical(src, "rolling") && identical(drv, "gs")) {
       HTML("Beta (β) <span style='color: #f39c12; font-size: 12px;'>[Get Started｜Rolling]</span>")
     } else if (identical(drv, "manual")) {
       HTML("Beta (β) <span style='color: #e67e22; font-size: 12px;'>[手動｜已回寫 Get Started]</span>")
     } else if (identical(drv, "gs")) {
       HTML(sprintf(
-        "Beta (β) <span style='color: #27ae60; font-size: 12px;'>[%s｜直接套用 βᵤ]</span>",
+        "Beta (β) <span style='color: #27ae60; font-size: 12px;'>[%s｜直接套用]</span>",
         gs_tag
       ))
     } else {
@@ -2312,6 +2330,10 @@ server <- function(input, output, session) {
         glue::glue("✅ Rolling β = {res$beta}（{res$method}，n={res$n_obs}，基準 {res$bench}）"),
         type = "message", duration = 6
       )
+      # 若統一選擇器已選 Rolling，估計就緒後自動寫入 CAPM
+      if (identical(as.character(input$beta_u_apply_source %||% "")[1], "rolling")) {
+        .apply_selected_beta_u_to_capm(silent = TRUE)
+      }
     } else {
       showNotification(paste0("❌ ", res$reason %||% "估計失敗"), type = "error", duration = 8)
     }
@@ -2325,6 +2347,11 @@ server <- function(input, output, session) {
       }
       return(invisible(FALSE))
     }
+    # 與統一選擇器對齊：選 Rolling（避免 radio observer 重複套用）
+    if (!identical(as.character(input$beta_u_apply_source %||% "")[1], "rolling")) {
+      beta_link_from_capm(TRUE)
+      updateRadioButtons(session, "beta_u_apply_source", selected = "rolling")
+    }
     updateCheckboxInput(session, "use_industry_beta", value = FALSE)
     beta_capm_driver("rolling")
     capm_beta_dirty(TRUE)
@@ -2332,7 +2359,7 @@ server <- function(input, output, session) {
     .auto_recalc_capm_wacc(notify = !isTRUE(silent), wacc_too = TRUE)
     if (!isTRUE(silent)) {
       showNotification(
-        glue::glue("已套用 β={res$beta} 至 CAPM，並重估 rₑ／WACC。"),
+        glue::glue("已套用 Rolling β={res$beta} 至 CAPM，並重估 rₑ／WACC。"),
         type = "message", duration = 5
       )
     }
@@ -2416,15 +2443,23 @@ server <- function(input, output, session) {
         "Get Started 所選產業標準",
         if (!is.null(res) && isTRUE(res$ok)) paste0(res$method, " vs ", res$bench) else "按左側按鈕估計",
         if (isTRUE(input$use_industry_beta)) {
-          "產業平均模式（暫停 Get Started 自動寫入）"
+          "產業平均模式（Get Started 來源 = industry）"
         } else {
           drv <- as.character(beta_capm_driver() %||% "gs")[1]
+          src <- as.character(input$beta_u_apply_source %||% "")[1]
           switch(
             drv,
             "rolling" = "連動｜Rolling",
-            "manual" = "連動｜CAPM 手動→βᵤ",
+            "manual" = "連動｜CAPM 手動",
             "industry" = "產業平均",
-            "連動｜Get Started Unlevered"
+            switch(
+              src,
+              "summary" = "連動｜Finance Summary",
+              "bottomup" = "連動｜Bottom-Up βᵤ",
+              "manual" = "連動｜手動 β",
+              "rolling" = "連動｜Rolling",
+              "連動｜Get Started Unlevered βᵤ"
+            )
           )
         }
       ),
@@ -2699,42 +2734,61 @@ server <- function(input, output, session) {
 
   .compute_selected_beta_u <- function() {
     src <- as.character(input$beta_u_apply_source %||% "unlever_firm")[1]
-
-    if (identical(src, "rolling")) {
-      return(list(ok = FALSE, reason = "rolling_use_rolling_tab"))
+    # 回傳選定要直接寫入 CAPM 的 β（去槓桿或未去槓桿皆可；不經再槓桿）
+    .ok <- function(beta, label, kind = "direct") {
+      list(
+        ok = TRUE,
+        beta = round(as.numeric(beta), 3),
+        beta_u = round(as.numeric(beta), 3), # 相容舊欄位名
+        label = label,
+        kind = kind,
+        src = src
+      )
     }
 
-    beta_u <- NA_real_
-    label <- src
     if (identical(src, "unlever_firm")) {
       f <- firm_unlever_reactive()
-      beta_u <- f$beta_u
-      label <- "本公司 Unlevered βᵤ"
-      if (!is.finite(beta_u)) {
-        return(list(ok = FALSE, reason = "no_firm_beta_u"))
+      if (!is.finite(f$beta_u)) {
+        return(list(ok = FALSE, reason = "no_firm_beta_u", src = src))
       }
-    } else if (identical(src, "bottomup")) {
+      return(.ok(f$beta_u, "本公司 Unlevered βᵤ", "unlever"))
+    }
+    if (identical(src, "bottomup")) {
       res <- beta_bottomup_result()
       if (is.null(res) || !isTRUE(res$ok) || !is.finite(res$beta_u_avg)) {
-        return(list(ok = FALSE, reason = "no_bottomup"))
+        return(list(ok = FALSE, reason = "no_bottomup", src = src))
       }
-      beta_u <- res$beta_u_avg
-      label <- "Bottom-Up 平均 βᵤ"
-    } else if (identical(src, "manual")) {
-      beta_u <- suppressWarnings(as.numeric(input$beta_u_manual)[1])
-      label <- "手動 Unlevered βᵤ"
-      if (!is.finite(beta_u) || beta_u < 0) {
-        return(list(ok = FALSE, reason = "no_manual"))
-      }
-    } else {
-      return(list(ok = FALSE, reason = "unknown_source"))
+      return(.ok(res$beta_u_avg, "Bottom-Up 平均 βᵤ", "unlever"))
     }
-
-    list(
-      ok = TRUE,
-      beta_u = round(as.numeric(beta_u), 3),
-      label = label
-    )
+    if (identical(src, "summary")) {
+      b <- .summary_beta_value()
+      if (!is.finite(b)) {
+        return(list(ok = FALSE, reason = "no_summary", src = src))
+      }
+      return(.ok(b, "Finance Summary β", "levered"))
+    }
+    if (identical(src, "rolling")) {
+      res <- beta_est_result()
+      if (is.null(res) || !isTRUE(res$ok) || !is.finite(res$beta)) {
+        return(list(ok = FALSE, reason = "no_rolling", src = src))
+      }
+      return(.ok(res$beta, "Rolling 估計 β", "levered"))
+    }
+    if (identical(src, "industry")) {
+      b <- .industry_beta_value()
+      if (!is.finite(b)) {
+        return(list(ok = FALSE, reason = "no_industry", src = src))
+      }
+      return(.ok(b, "產業平均 β", "levered"))
+    }
+    if (identical(src, "manual")) {
+      b <- suppressWarnings(as.numeric(input$beta_u_manual)[1])
+      if (!is.finite(b) || b < 0) {
+        return(list(ok = FALSE, reason = "no_manual", src = src))
+      }
+      return(.ok(b, "手動 β", "manual"))
+    }
+    list(ok = FALSE, reason = "unknown_source", src = src)
   }
 
   .apply_selected_beta_u_to_capm <- function(silent = FALSE) {
@@ -2743,26 +2797,44 @@ server <- function(input, output, session) {
       if (!isTRUE(silent)) {
         msg <- switch(
           got$reason %||% "",
-          "rolling_use_rolling_tab" = "請改至「Rolling β」分頁按「套用至 CAPM β」。",
           "no_firm_beta_u" = "尚無本公司 Unlevered βᵤ（需 β_L 與 D/E 才能去槓桿）。",
           "no_bottomup" = "請先成功計算 Bottom-Up βᵤ。",
-          "no_manual" = "請先在「手動 Unlevered βᵤ」輸入有效數值。",
+          "no_summary" = "尚無 Finance Summary β（請先搜尋標的）。",
+          "no_rolling" = "請先於「Rolling β」分頁成功估計後再選用。",
+          "no_industry" = "尚無產業平均 β（請先選擇產業）。",
+          "no_manual" = "請先在「手動 β」輸入有效數值。",
           "未知的 β 來源或尚未就緒。"
         )
         showNotification(msg, type = "warning", duration = 7)
       }
+      # Rolling／尚未就緒：靜默時不覆寫 CAPM
       return(invisible(FALSE))
     }
 
-    updateCheckboxInput(session, "use_industry_beta", value = FALSE)
-    beta_capm_driver("gs")
-    capm_beta_dirty(TRUE)
-    # 直接套用 βᵤ，不再槓桿為 β_L
-    .set_capm_beta(got$beta_u)
+    src <- got$src %||% as.character(input$beta_u_apply_source %||% "")[1]
+    beta_val <- got$beta %||% got$beta_u
+
+    if (identical(src, "industry")) {
+      if (!isTRUE(input$use_industry_beta)) {
+        updateCheckboxInput(session, "use_industry_beta", value = TRUE)
+      }
+      beta_capm_driver("industry")
+      capm_beta_dirty(FALSE)
+    } else if (identical(src, "rolling")) {
+      updateCheckboxInput(session, "use_industry_beta", value = FALSE)
+      beta_capm_driver("rolling")
+      capm_beta_dirty(TRUE)
+    } else {
+      updateCheckboxInput(session, "use_industry_beta", value = FALSE)
+      beta_capm_driver("gs")
+      capm_beta_dirty(TRUE)
+    }
+
+    .set_capm_beta(beta_val)
     .auto_recalc_capm_wacc(notify = !isTRUE(silent), wacc_too = TRUE)
     if (!isTRUE(silent)) {
       showNotification(
-        glue::glue("已直接套用 {got$label}={got$beta_u} 至 CAPM β（不經再槓桿）。"),
+        glue::glue("已直接套用 {got$label}={beta_val} 至 CAPM β。"),
         type = "message", duration = 7
       )
     }
@@ -2770,17 +2842,29 @@ server <- function(input, output, session) {
   }
   observeEvent(input$apply_beta_u_selected, { .apply_selected_beta_u_to_capm(silent = FALSE) })
 
-  # Get Started → CAPM 自動同步（產業平均／Rolling 驅動時不搶寫）
+  # Get Started → CAPM 自動同步
   .maybe_sync_gs_beta_to_capm <- function() {
+    src <- as.character(input$beta_u_apply_source %||% "unlever_firm")[1]
+
+    if (identical(src, "industry")) {
+      if (!isTRUE(input$use_industry_beta)) {
+        updateCheckboxInput(session, "use_industry_beta", value = TRUE)
+      } else {
+        .sync_capm_beta_industry()
+      }
+      return(invisible(TRUE))
+    }
+
     if (isTRUE(input$use_industry_beta)) return(invisible(FALSE))
+
     drv <- as.character(beta_capm_driver() %||% "gs")[1]
-    if (identical(drv, "rolling")) return(invisible(FALSE))
+    # Rolling 驅動時：僅當選擇器也是 rolling 才允許同步（估計更新）
+    if (identical(drv, "rolling") && !identical(src, "rolling")) return(invisible(FALSE))
     if (identical(drv, "industry")) return(invisible(FALSE))
-    # manual：僅在套用來源仍為 manual 時，由 GS 側 βᵤ 推回 CAPM
+    # manual：僅在套用來源仍為 manual 時，由 GS 側推回 CAPM
     if (identical(drv, "manual")) {
-      src <- as.character(input$beta_u_apply_source %||% "")[1]
       if (!identical(src, "manual")) return(invisible(FALSE))
-    } else {
+    } else if (!identical(src, "rolling")) {
       beta_capm_driver("gs")
     }
     .apply_selected_beta_u_to_capm(silent = TRUE)
@@ -2791,7 +2875,8 @@ server <- function(input, output, session) {
     input$wacc_tax,
     firm_unlever_reactive(),
     beta_bottomup_result(),
-    summary_data()
+    summary_data(),
+    beta_est_result()
   ), {
     if (identical(as.character(beta_capm_driver() %||% "gs")[1], "manual")) return()
     .maybe_sync_gs_beta_to_capm()
@@ -2802,10 +2887,18 @@ server <- function(input, output, session) {
       beta_link_from_capm(FALSE)
       return()
     }
-    if (isTRUE(input$use_industry_beta)) {
-      updateCheckboxInput(session, "use_industry_beta", value = FALSE)
+    src <- as.character(input$beta_u_apply_source %||% "")[1]
+    # 先對齊產業勾選與 driver（Rolling 尚未估計時不覆寫 CAPM 數值）
+    if (identical(src, "industry")) {
+      if (!isTRUE(input$use_industry_beta)) {
+        updateCheckboxInput(session, "use_industry_beta", value = TRUE)
+      }
+    } else {
+      if (isTRUE(input$use_industry_beta)) {
+        updateCheckboxInput(session, "use_industry_beta", value = FALSE)
+      }
+      beta_capm_driver(if (identical(src, "rolling")) "rolling" else "gs")
     }
-    beta_capm_driver("gs")
     .apply_selected_beta_u_to_capm(silent = TRUE)
   }, ignoreInit = TRUE)
 
@@ -2822,17 +2915,16 @@ server <- function(input, output, session) {
     }
     src <- as.character(input$beta_u_apply_source %||% "")[1]
     if (!identical(src, "manual")) return()
-    if (isTRUE(input$use_industry_beta)) {
-      updateCheckboxInput(session, "use_industry_beta", value = FALSE)
-    }
-    # Get Started 側改手動 βᵤ → 推回 CAPM（維持連動）
+    # Get Started 側改手動 β → 推回 CAPM（維持連動）
     beta_capm_driver("gs")
     .apply_selected_beta_u_to_capm(silent = TRUE)
   }, ignoreInit = TRUE)
 
-  # 取消產業平均後，立刻用 Get Started 路徑回填 CAPM
+  # 取消產業平均後：若選擇器已非 industry（例如改選 Summary），用 Get Started 路徑回填
   observeEvent(input$use_industry_beta, {
     if (isTRUE(input$use_industry_beta)) return()
+    src <- as.character(input$beta_u_apply_source %||% "")[1]
+    if (identical(src, "industry")) return() # 交由上方 observer 改 radio + 套用 Unlevered
     beta_capm_driver("gs")
     .maybe_sync_gs_beta_to_capm()
   }, ignoreInit = TRUE)
@@ -2865,9 +2957,10 @@ server <- function(input, output, session) {
 
   .vbx_beta_relevered_content <- function() {
     got <- tryCatch(.compute_selected_beta_u(), error = function(e) list(ok = FALSE))
+    val <- if (isTRUE(got$ok)) (got$beta %||% got$beta_u) else NA_real_
     valueBox(
-      if (isTRUE(got$ok) && is.finite(got$beta_u)) got$beta_u else "—",
-      "將直接套用至 CAPM 的 βᵤ",
+      if (is.finite(val)) val else "—",
+      "將直接套用至 CAPM 的 β",
       icon = icon("share-square"),
       color = "aqua"
     )

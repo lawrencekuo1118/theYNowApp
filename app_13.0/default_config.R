@@ -102,9 +102,9 @@ APP_DEFAULTS <- list(
   # Unlevered：β_L 來源（summary｜rolling｜auto）；勿再用 capm（與 CAPM 輸出循環）
   beta_bl_source  = "summary",               # summary | rolling | auto
   beta_peers      = "",
-  # 套用至 CAPM：直接寫入所選 βᵤ（不經再槓桿）；Rolling 槓桿 β 在 Rolling 分頁套用
-  beta_u_apply_source = "unlever_firm",      # unlever_firm | bottomup | manual
-  beta_u_manual   = NA,                      # 手動 Unlevered βᵤ（套用選項最後一項）
+  # 套用至 CAPM：直接寫入所選 β（不經再槓桿）— 去槓桿 βᵤ 或未去槓桿 β_L／估計值
+  beta_u_apply_source = "unlever_firm",      # unlever_firm | bottomup | summary | rolling | industry | manual
+  beta_u_manual   = NA,                      # 手動 β（套用選項最後一項；直接寫入 CAPM）
 
   # --- 6. P/B／資產法 ---
   pb_bvps         = NA,
