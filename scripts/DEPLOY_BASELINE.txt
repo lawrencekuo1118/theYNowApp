@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12318488
+bundleId=12318541
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=origin/master
-commit=c61b50eccef5a524f05f4bb311b78535a845cea4
-short=c61b50e
-message=Consolidate CAPM/Rolling/Unlevered beta under Get Started; swap sidebar to Dashboard first.
-captured_at=2026-07-25T08:34:17+00:00
-note=app_13.0 redeploy after consolidating CAPM/Rolling/Unlevered beta under Get Started and swapping sidebar to Dashboard first. Prefer local deploy thereafter.
+commit=953ee4e0dd4bd7381c9c3e5cb1268820db6224c1
+short=953ee4e
+message=Restore CAPM on DCF WACC; put Unlevered above Rolling with manual βᵤ.
+captured_at=2026-07-25T08:59:49+00:00
+note=app_13.0 redeploy after CAPM back on WACC; Unlevered above Rolling with manual βᵤ on Get Started. Prefer local deploy thereafter.
