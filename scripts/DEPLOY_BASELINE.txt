@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12316388
+bundleId=12318148
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=origin/master
-commit=2c825ec0958b1b39a65e1c59deeaf1680de79e7d
-short=2c825ec
-message=fix(ui): remove Cash Flow in-chart subtitle to stop legend overlap
-captured_at=2026-07-24T18:48:02+00:00
-note=app_13.0 redeploy after CF chart legend/subtitle overlap fix. Prefer local deploy thereafter.
+commit=077521b4c6fe347944c649a38b653cfe6c647d8a
+short=077521b
+message=remove CF overlay series checkboxes; always show OCF/ICF/FCF lines
+captured_at=2026-07-25T05:57:21+00:00
+note=app_13.0 redeploy after removing CF overlay series checkboxes; chart always shows OCF/ICF/Financing FCF. Prefer local deploy thereafter.
