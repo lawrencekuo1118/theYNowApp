@@ -318,6 +318,24 @@ beta_advanced_tab_ui <- function() {
   )
 }
 
+#' Shared bottom block: per-share param contribution / ±10% sensitivity (DCF-style).
+.model_param_sensitivity_box <- function(title, table_id) {
+  fluidRow(
+    box(
+      title = tagList(icon("percentage"), title),
+      width = 12, status = "info", solidHeader = TRUE, collapsible = TRUE,
+      helpText(
+        "一次只變動一個可設定參數（相對 ±10%），比較對每股估值的影響；",
+        "「影響力%」= 兩側 |Δ估值%| 的平均，數值愈大代表該參數對最終估值愈敏感。"
+      ),
+      tags$div(
+        style = "overflow-x:auto;",
+        tableOutput(table_id)
+      )
+    )
+  )
+}
+
 ui <- dashboardPage(
   skin = "black",
   
@@ -350,8 +368,12 @@ ui <- dashboardPage(
              menuItem("RI-Model", tabName = "ri_calculator", icon = icon("gem")),
              menuItem("Sensitivity", tabName = "sensitivity", icon = icon("sliders-h")),
              menuItem("Backtest Zone", tabName = "backtest", icon = icon("vial")),
-             menuItem("Snapshot", tabName = "snapshot", icon = icon("camera")),
-             menuItem("About", tabName = "about", icon = icon("info-circle"))
+             menuItem("About", tabName = "about", icon = icon("info-circle")),
+             # 隱藏選項：供底部低調捷徑切換 tab（勿刪）
+             tags$li(
+               class = "ynow-snapshot-hidden",
+               menuItem("Snapshot", tabName = "snapshot", icon = icon("camera"))
+             )
            ),
            hr()
     ),
@@ -374,6 +396,18 @@ ui <- dashboardPage(
                tags$b("Data Source:"), tags$br(),
                "This application integrates real-time financial data via web parsing and API resources, applying comprehensive models for valuation."
            )
+    ),
+
+    # Snapshot：側邊欄底部低調捷徑
+    tags$div(
+      class = "ynow-sidebar-snapshot-foot",
+      tags$a(
+        href = "#",
+        class = "ynow-sidebar-snapshot-link",
+        onclick = "$('.ynow-snapshot-hidden a').first().click(); return false;",
+        icon("camera", class = "fa-fw"),
+        tags$span(" Snapshot")
+      )
     )
   ),
   
@@ -391,6 +425,38 @@ ui <- dashboardPage(
         .sidebar-menu > li.active > a,
         .sidebar-menu > li.menu-open > a {
           font-weight: 700 !important;
+        }
+        /* Snapshot：側邊欄底部低調捷徑 */
+        .ynow-snapshot-hidden { display: none !important; }
+        .ynow-sidebar-snapshot-foot {
+          position: absolute;
+          left: 8px;
+          bottom: 8px;
+          right: 8px;
+          z-index: 2;
+          text-align: left;
+          pointer-events: none;
+        }
+        .ynow-sidebar-snapshot-link {
+          pointer-events: auto;
+          display: inline-block;
+          font-size: 11px !important;
+          font-weight: 400 !important;
+          color: rgba(255,255,255,0.45) !important;
+          text-decoration: none !important;
+          padding: 2px 6px;
+          border-radius: 3px;
+          opacity: 0.75;
+          line-height: 1.2;
+        }
+        .ynow-sidebar-snapshot-link:hover {
+          color: rgba(255,255,255,0.8) !important;
+          opacity: 1;
+          background: rgba(255,255,255,0.06);
+        }
+        .main-sidebar {
+          position: relative;
+          padding-bottom: 36px !important;
         }
         /* 公司全稱：允許換行，避免被切掉 */
         .ynow-corpname {
@@ -1454,6 +1520,10 @@ ui <- dashboardPage(
                          )
                        )
                      )
+              ),
+              .model_param_sensitivity_box(
+                "DDM 公式參數：每股估值貢獻與敏感度",
+                "mod_ddm-param_sensitivity_table"
               )
       ),
       
@@ -1587,19 +1657,9 @@ ui <- dashboardPage(
                        fluidRow(column(width = 12, .beta_moved_to_get_started_box()))
                      )
               ),
-              fluidRow(
-                box(
-                  title = tagList(icon("percentage"), "DCF 公式參數：每股估值貢獻與敏感度"),
-                  width = 12, status = "info", solidHeader = TRUE, collapsible = TRUE,
-                  helpText(
-                    "一次只變動一個可設定參數（相對 ±10%），比較對每股估值的影響；",
-                    "「影響力%」= 兩側 |Δ估值%| 的平均，數值愈大代表該參數對最終估值愈敏感。"
-                  ),
-                  tags$div(
-                    style = "overflow-x:auto;",
-                    tableOutput("dcf_param_sensitivity_table")
-                  )
-                )
+              .model_param_sensitivity_box(
+                "DCF 公式參數：每股估值貢獻與敏感度",
+                "dcf_param_sensitivity_table"
               )
       ),
       

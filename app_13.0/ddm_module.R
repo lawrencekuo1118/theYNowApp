@@ -109,6 +109,48 @@ ddm_module_server <- function(id, ddm_g = reactive(NULL), ddm_ke = reactive(NULL
         )
       }
     })
+
+    # Gordon DDM：P0 = D0(1+g)/(Ke−g)；依目前輸入即時敏感度（不強制先按試算）
+    .ddm_price_at <- function(d0, g_pct, ke_pct) {
+      d0 <- suppressWarnings(as.numeric(d0)[1])
+      g <- suppressWarnings(as.numeric(g_pct)[1]) / 100
+      ke <- suppressWarnings(as.numeric(ke_pct)[1]) / 100
+      if (!is.finite(d0) || !is.finite(g) || !is.finite(ke) || ke <= g) return(NA_real_)
+      d0 * (1 + g) / (ke - g)
+    }
+    output$param_sensitivity_table <- renderTable({
+      d0 <- suppressWarnings(as.numeric(input$d0)[1])
+      g0 <- suppressWarnings(as.numeric(input$g)[1])
+      ke0 <- suppressWarnings(as.numeric(input$ke)[1])
+      p0 <- .ddm_price_at(d0, g0, ke0)
+      validate(need(is.finite(p0), "基準估值尚未就緒：請確認 D0、g、Ke（且 Ke > g）。"))
+      .rel <- function(x, sign = -1) {
+        x <- suppressWarnings(as.numeric(x)[1])
+        if (!is.finite(x) || abs(x) < 1e-12) return(NA_real_)
+        x * (1 + sign * 0.10)
+      }
+      rows <- list(
+        .param_sensitivity_infl_row(
+          "今年股利 D0", d0, "$", p0,
+          .ddm_price_at(.rel(d0, -1), g0, ke0),
+          .ddm_price_at(.rel(d0, +1), g0, ke0),
+          "P0 ∝ D0"
+        ),
+        .param_sensitivity_infl_row(
+          "股利成長率 g", g0, "%", p0,
+          .ddm_price_at(d0, .rel(g0, -1), ke0),
+          .ddm_price_at(d0, .rel(g0, +1), ke0),
+          "Gordon：影響 D1 與 (Ke−g)"
+        ),
+        .param_sensitivity_infl_row(
+          "要求報酬率 Ke", ke0, "%", p0,
+          .ddm_price_at(d0, g0, .rel(ke0, -1)),
+          .ddm_price_at(d0, g0, .rel(ke0, +1)),
+          "折現率；須維持 Ke > g"
+        )
+      )
+      do.call(rbind, rows)
+    }, striped = TRUE, hover = TRUE, bordered = TRUE, spacing = "s", width = "100%")
     
     # ==========================================
     # D0 Settings

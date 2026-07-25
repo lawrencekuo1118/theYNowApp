@@ -328,6 +328,10 @@ ri_module_ui <- function(id) {
           )
         )
       )
+    ),
+    .model_param_sensitivity_box(
+      "RI 公式參數：每股估值貢獻與敏感度",
+      ns("param_sensitivity_table")
     )
   )
 }
@@ -888,6 +892,64 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
           margin = list(t = 50)
         )
     })
+
+    # 頁底：公式參數 ±10% 敏感度（仿 DCF）
+    output$param_sensitivity_table <- renderTable({
+      res0 <- ri_calc()
+      validate(need(identical(res0$status, "success") && is.finite(res0$intrinsic),
+                    "基準估值尚未就緒：請確認 B0、Ke、g（且 Ke > g）與 ROE 路徑。"))
+      p0 <- res0$intrinsic
+      .rel <- function(x, sign = -1) {
+        x <- suppressWarnings(as.numeric(x)[1])
+        if (!is.finite(x) || abs(x) < 1e-12) return(NA_real_)
+        x * (1 + sign * 0.10)
+      }
+      .price_at <- function(b0 = input$b0, ke_pct = input$ri_ke, g_pct = input$ri_g,
+                            n = input$ri_years, payout_pct = input$ri_payout,
+                            roe_pct = input$ri_roe) {
+        n <- max(1L, as.integer(n)[1])
+        method <- input$roe_method %||% "constant"
+        path_dec <- build_roe_path(
+          method = method,
+          n = n,
+          roe_start = (roe_pct %||% 15) / 100,
+          roe_terminal = (input$roe_terminal %||% (roe_pct %||% 15)) / 100,
+          roe_industry = (input$roe_industry %||% 12) / 100,
+          custom_vec = if (identical(method, "custom")) .parse_roe_pct_vector(input$roe_custom_txt) else NULL
+        )
+        cell <- compute_ri_valuation(
+          b0 = b0,
+          ke = (ke_pct %||% 8) / 100,
+          g = (g_pct %||% 2) / 100,
+          n = n,
+          payout = (payout_pct %||% 0) / 100,
+          roe_path = path_dec,
+          validate = FALSE
+        )
+        if (identical(cell$status, "success")) cell$intrinsic else NA_real_
+      }
+      b0 <- suppressWarnings(as.numeric(input$b0)[1])
+      ke0 <- suppressWarnings(as.numeric(input$ri_ke)[1])
+      g0 <- suppressWarnings(as.numeric(input$ri_g)[1])
+      n0 <- suppressWarnings(as.numeric(input$ri_years)[1])
+      pay0 <- suppressWarnings(as.numeric(input$ri_payout)[1])
+      roe0 <- suppressWarnings(as.numeric(input$ri_roe)[1])
+      rows <- list(
+        .param_sensitivity_infl_row("期初帳面 B0", b0, "$", p0,
+                                    .price_at(b0 = .rel(b0, -1)), .price_at(b0 = .rel(b0, +1)), "每股帳面淨值"),
+        .param_sensitivity_infl_row("股權成本 Ke", ke0, "%", p0,
+                                    .price_at(ke_pct = .rel(ke0, -1)), .price_at(ke_pct = .rel(ke0, +1)), "折現率"),
+        .param_sensitivity_infl_row("終值成長率 g", g0, "%", p0,
+                                    .price_at(g_pct = .rel(g0, -1)), .price_at(g_pct = .rel(g0, +1)), "須維持 g < Ke"),
+        .param_sensitivity_infl_row("起始 ROE", roe0, "%", p0,
+                                    .price_at(roe_pct = .rel(roe0, -1)), .price_at(roe_pct = .rel(roe0, +1)), "剩餘收益驅動"),
+        .param_sensitivity_infl_row("配息率 Payout", pay0, "%", p0,
+                                    .price_at(payout_pct = .rel(pay0, -1)), .price_at(payout_pct = .rel(pay0, +1)), "影響 BV 複利"),
+        .param_sensitivity_infl_row("預測年數 n", n0, "n", p0,
+                                    .price_at(n = max(1, round(.rel(n0, -1)))), .price_at(n = max(1, round(.rel(n0, +1)))), "明確預測期長度")
+      )
+      do.call(rbind, rows)
+    }, striped = TRUE, hover = TRUE, bordered = TRUE, spacing = "s", width = "100%")
 
     # Preserve external contract
     return(list(

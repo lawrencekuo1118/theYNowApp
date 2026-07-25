@@ -368,6 +368,28 @@ safe_num <- function(x) {
   return(x)
 }
 
+#' Build one row for ±10% param sensitivity tables (DCF / DDM / RI / P/B).
+.param_sensitivity_infl_row <- function(param, base_val, unit, p0, p_down, p_up, note = "") {
+  d_dn <- if (is.finite(p_down) && is.finite(p0) && abs(p0) > 1e-9) 100 * (p_down - p0) / abs(p0) else NA_real_
+  d_up <- if (is.finite(p_up) && is.finite(p0) && abs(p0) > 1e-9) 100 * (p_up - p0) / abs(p0) else NA_real_
+  infl <- mean(c(abs(d_dn), abs(d_up)), na.rm = TRUE)
+  if (!is.finite(infl)) infl <- NA_real_
+  data.frame(
+    參數 = param,
+    基準值 = if (identical(unit, "%")) sprintf("%.2f%%", base_val) else
+      if (identical(unit, "$")) {
+        if (exists("format_dollar_abbr", mode = "function")) format_dollar_abbr(base_val) else sprintf("%.2f", base_val)
+      } else if (identical(unit, "x")) sprintf("%.2f", base_val) else as.character(base_val),
+    衝擊 = "±10%",
+    `估值Δ% (−10%)` = if (is.finite(d_dn)) sprintf("%+.1f%%", d_dn) else "N/A",
+    `估值Δ% (+10%)` = if (is.finite(d_up)) sprintf("%+.1f%%", d_up) else "N/A",
+    `影響力%` = if (is.finite(infl)) sprintf("%.1f%%", infl) else "N/A",
+    說明 = note,
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
+}
+
 # 從預測表統一取出 FCFF 序列（相容舊欄位名 FCF）
 extract_fcff_series <- function(df) {
   if (is.null(df) || nrow(df) == 0) return(numeric(0))

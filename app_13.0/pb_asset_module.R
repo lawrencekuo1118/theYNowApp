@@ -114,6 +114,10 @@ pb_asset_module_ui <- function(id) {
                                 "※ Buffett／Berkshire 實務常以 Book Value 為錨；目標 P/B 請依產業與利率環境調整，勿固定單一倍數。")
                           )
                  )
+          ),
+          .model_param_sensitivity_box(
+            "P/B 公式參數：每股估值貢獻與敏感度",
+            ns("param_sensitivity_table")
           )
   )
 }
@@ -510,6 +514,38 @@ pb_asset_module_server <- function(id,
         basis_val = basis_val
       )
     })
+
+    output$param_sensitivity_table <- renderTable({
+      live <- pb_live_band()
+      validate(need(!is.null(live) && is.finite(live$mid),
+                    "基準估值尚未就緒：請先提供 BVPS／TBVPS 與目標 P/B。"))
+      p0 <- live$mid
+      .rel <- function(x, sign = -1) {
+        x <- suppressWarnings(as.numeric(x)[1])
+        if (!is.finite(x) || abs(x) < 1e-12) return(NA_real_)
+        x * (1 + sign * 0.10)
+      }
+      basis0 <- live$basis_val
+      mid0 <- safe_num(input$pb_mid)
+      .fair <- function(basis = basis0, mid = mid0) {
+        if (!is.finite(basis) || basis <= 0 || !is.finite(mid) || mid <= 0) return(NA_real_)
+        basis * mid
+      }
+      rows <- list(
+        .param_sensitivity_infl_row(
+          if (identical(input$basis, "tbvps")) "TBVPS" else "BVPS",
+          basis0, "$", p0,
+          .fair(basis = .rel(basis0, -1)), .fair(basis = .rel(basis0, +1)),
+          "估值基礎 × 基準 P/B"
+        ),
+        .param_sensitivity_infl_row(
+          "基準目標 P/B", mid0, "x", p0,
+          .fair(mid = .rel(mid0, -1)), .fair(mid = .rel(mid0, +1)),
+          "基準合理價 = 基礎 × mid"
+        )
+      )
+      do.call(rbind, rows)
+    }, striped = TRUE, hover = TRUE, bordered = TRUE, spacing = "s", width = "100%")
 
     return(list(
       pb_price = reactive({
