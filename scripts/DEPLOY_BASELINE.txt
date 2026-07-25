@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12318361
+bundleId=12318488
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=origin/master
-commit=59fe807edd904cd5e5d19931d8b39a3e113b698b
-short=59fe807
-message=Add unlevered/bottom-up beta on DCF and mirror CAPM beta settings on DDM.
-captured_at=2026-07-25T07:37:08+00:00
-note=app_13.0 redeploy after unlevered/bottom-up beta on DCF and CAPM beta settings mirrored on DDM. Prefer local deploy thereafter.
+commit=c61b50eccef5a524f05f4bb311b78535a845cea4
+short=c61b50e
+message=Consolidate CAPM/Rolling/Unlevered beta under Get Started; swap sidebar to Dashboard first.
+captured_at=2026-07-25T08:34:17+00:00
+note=app_13.0 redeploy after consolidating CAPM/Rolling/Unlevered beta under Get Started and swapping sidebar to Dashboard first. Prefer local deploy thereafter.
