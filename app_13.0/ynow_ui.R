@@ -14,6 +14,42 @@
   tags$p(style = "margin: 0 0 12px 0; font-size: 12.5px; color: #555; line-height: 1.5;", text)
 }
 
+#' Shared CAPM / Beta settings block (DCF WACC & DDM).
+#' @param id_prefix "" → canonical IDs (capm_rf…); "ddm_" → DDM mirror synced in server
+#' @param calc_id actionButton id
+#' @param result_id htmlOutput id for CAPM result text
+#' @param advanced_hint helpText pointing to DCF Beta tab (Rolling / Unlevered)
+capm_beta_settings_ui <- function(id_prefix = "",
+                                  title = "CAPM 估算 rₑ",
+                                  calc_id = "calc_capm",
+                                  result_id = "capm_result",
+                                  advanced_hint = TRUE) {
+  pfx <- function(x) if (!nzchar(id_prefix)) x else paste0(id_prefix, x)
+  hints <- list(
+    "預設跟 Dashboard → Finance Summary 的 Beta (5Y Monthly)；勾選才用產業平均。"
+  )
+  if (isTRUE(advanced_hint)) {
+    hints <- c(
+      hints,
+      "進階估計（Rolling β／Unlevered β）請至 DCF-Model →「Beta (β)」。"
+    )
+  }
+  box(
+    h4(title),
+    numericInput(pfx("capm_rf"), "無風險利率 Rf (%)", value = APP_DEFAULTS$capm_rf, step = 0.01),
+    numericInput(pfx("capm_beta"), "Beta (β)", value = APP_DEFAULTS$capm_beta, step = 0.01),
+    checkboxInput(
+      pfx("use_industry_beta"),
+      tags$span(style = "font-weight: bold;", "套用產業平均值（Beta）"),
+      value = isTRUE(APP_DEFAULTS$use_industry_beta)
+    ),
+    do.call(helpText, hints),
+    numericInput(pfx("capm_rm"), "市場報酬率 Rm (%)", value = APP_DEFAULTS$capm_rm, step = 0.01),
+    actionButton(calc_id, "估算 rₑ（CAPM）", class = "btn-primary"),
+    tags$br(), htmlOutput(result_id)
+  )
+}
+
 .dcf_core_params_box <- function() {
   box(
     title = tagList(icon("seedling"), "永續成長率 SGR 設定"),
@@ -1141,7 +1177,13 @@ ui <- dashboardPage(
                                        ),
                                        helpText("勾選時跟隨中央 SGR；取消勾選後可單獨覆寫股利成長率（不必等於 FCFF 終值 g）。"),
                                        numericInput("mod_ddm-ke", "要求報酬率 (Ke) %", value = APP_DEFAULTS$ddm_ke),
-                                       helpText("股利屬股權現金流，以 Ke（CAPM）折現；DCF 的 FCFF 則以 WACC 折現。"),
+                                       helpText("股利屬股權現金流，以 Ke（CAPM）折現；DCF 的 FCFF 則以 WACC 折現。Ke 與下方「Beta (β)」分頁／DCF→WACC 的 CAPM 共用。"),
+                                       checkboxInput(
+                                         "ddm_use_estimated_re",
+                                         "採用估算 Ke（來自 CAPM β）",
+                                         value = isTRUE(APP_DEFAULTS$use_est_re)
+                                       ),
+                                       helpText("與 DCF→WACC「採用估算 rₑ」同步；勾選時 Ke 跟隨 CAPM。"),
                                        tags$div(style = "margin-top: 15px; margin-bottom: 15px;",
                                                 actionButton("mod_ddm-btn_calc_ddm", "試算 DDM 合理股價", class = "btn-primary", icon = icon("calculator")),
                                                 HTML("&nbsp;&nbsp;"), 
@@ -1188,6 +1230,46 @@ ui <- dashboardPage(
                                     htmlOutput("mod_ddm-txt_d0_avg_res")
                                 )
                               )
+                     ),
+
+                     # --- 分頁 3：與 DCF 相同的 CAPM / Beta 設定（共用 Ke）---
+                     tabPanel(
+                       "Beta (β)",
+                       icon = icon("chart-line"),
+                       fluidRow(
+                         column(
+                           width = 12,
+                           div(
+                             "Ke = Rf + β × (Rm − Rf)。此處與 DCF → WACC 的 CAPM 設定同步；變更後會更新 DDM 的 Ke 與 DCF 的 rₑ／WACC。",
+                             style = "font-size: 14px; font-weight: bold; color: #2C3E50; margin-bottom: 12px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
+                           )
+                         )
+                       ),
+                       fluidRow(
+                         column(
+                           width = 6,
+                           capm_beta_settings_ui(
+                             id_prefix = "ddm_",
+                             title = "CAPM 估算 Ke（與 DCF 共用）",
+                             calc_id = "ddm_calc_capm",
+                             result_id = "ddm_capm_result",
+                             advanced_hint = TRUE
+                           )
+                         ),
+                         column(
+                           width = 6,
+                           box(
+                             title = tagList(icon("info-circle"), "目前折現率"),
+                             width = NULL, status = "info", solidHeader = TRUE,
+                             htmlOutput("ddm_beta_ke_status"),
+                             helpText(
+                               "Rolling β、Unlevered β、Bottom-up 產業平均請至",
+                               tags$b("DCF-Model → Beta (β)"),
+                               "估計後「套用至 CAPM」，此處會自動同步。"
+                             )
+                           )
+                         )
+                       )
                      )
               )
       ),
@@ -1307,21 +1389,11 @@ ui <- dashboardPage(
                                     actionButton("calc_wacc", "計算 WACC", class = "btn-primary"),
                                     tags$br(), htmlOutput("wacc_result")
                                 ),
-                                box(h4("CAPM 估算 rₑ"),
-                                    numericInput("capm_rf", "無風險利率 Rf (%)", value = APP_DEFAULTS$capm_rf, step = 0.01),
-                                    numericInput("capm_beta", "Beta (β)", value = APP_DEFAULTS$capm_beta, step = 0.01),
-                                    checkboxInput(
-                                      "use_industry_beta",
-                                      tags$span(style = "font-weight: bold;", "套用產業平均值（Beta）"),
-                                      value = isTRUE(APP_DEFAULTS$use_industry_beta)
-                                    ),
-                                    helpText(
-                                      "預設跟 Dashboard → Finance Summary 的 Beta (5Y Monthly)；勾選才用產業平均。",
-                                      "進階估計（Rolling β 回歸）請至旁頁「Beta (β)」。"
-                                    ),
-                                    numericInput("capm_rm", "市場報酬率 Rm (%)", value = APP_DEFAULTS$capm_rm, step = 0.01),
-                                    actionButton("calc_capm", "估算 rₑ（CAPM）", class = "btn-primary"),
-                                    tags$br(), htmlOutput("capm_result")
+                                capm_beta_settings_ui(
+                                  title = "CAPM 估算 rₑ",
+                                  calc_id = "calc_capm",
+                                  result_id = "capm_result",
+                                  advanced_hint = TRUE
                                 )
                               )
                      ),
@@ -1382,6 +1454,77 @@ ui <- dashboardPage(
                            title = tagList(icon("exchange-alt"), "三來源比較"),
                            tableOutput("beta_sources_table"),
                            plotOutput("plt_beta_scatter", height = "320px")
+                         )
+                       ),
+                       fluidRow(
+                         box(
+                           width = 12, status = "warning", solidHeader = TRUE,
+                           title = tagList(icon("industry"), "純粹基本面 / Unlevered Beta"),
+                           helpText(
+                             "去槓桿：βᵤ = β_L / (1 + (1−T)·(D/E))，剔除財務槓桿後看營運風險。",
+                             "Bottom-up：同業各自去槓桿後平均，降低單一股票交易噪音。"
+                           ),
+                           fluidRow(
+                             valueBoxOutput("vbx_beta_unlever_firm", width = 4),
+                             valueBoxOutput("vbx_beta_unlever_bottomup", width = 4),
+                             valueBoxOutput("vbx_beta_relevered", width = 4)
+                           ),
+                           fluidRow(
+                             box(
+                               width = 5, status = "warning", solidHeader = FALSE,
+                               title = "本公司去槓桿",
+                               radioButtons(
+                                 "beta_bl_source", "槓桿 Beta（β_L）來源",
+                                 choices = c(
+                                   "自動（Rolling → Summary → CAPM）" = "auto",
+                                   "Finance Summary" = "summary",
+                                   "Rolling 估計" = "rolling",
+                                   "目前 CAPM β" = "capm"
+                                 ),
+                                 selected = APP_DEFAULTS$beta_bl_source,
+                                 inline = FALSE
+                               ),
+                               helpText(
+                                 "T 使用 WACC 分頁「所得稅率 T (%)」；",
+                                 "D/E = Total Debt ÷ 股權市值（與 WACC 一致）。"
+                               ),
+                               htmlOutput("beta_unlever_firm_result")
+                             ),
+                             box(
+                               width = 7, status = "warning", solidHeader = FALSE,
+                               title = "Bottom-Up 產業平均 Unlevered Beta",
+                               selectizeInput(
+                                 "beta_peers",
+                                 "同業／競爭對手代碼（可多選或自行輸入）",
+                                 choices = NULL,
+                                 selected = NULL,
+                                 multiple = TRUE,
+                                 options = list(
+                                   create = TRUE,
+                                   placeholder = "例如 INTC, AMD, AVGO …",
+                                   plugins = list("remove_button"),
+                                   maxItems = 15
+                                 )
+                               ),
+                               helpText(
+                                 "各同業以 Yahoo β_L 與該股 D/E 去槓桿；稅率 T 共用 WACC 分頁設定。",
+                                 "未填同業時，改以 Get Started 產業基準 β 與產業負債比估算參考值。"
+                               ),
+                               actionButton(
+                                 "calc_beta_bottomup", "計算 Bottom-Up βᵤ",
+                                 class = "btn-primary", icon = icon("calculator")
+                               ),
+                               tags$span(style = "display:inline-block; width: 8px;"),
+                               actionButton(
+                                 "apply_beta_bottomup", "套用 Bottom-Up 再槓桿 β 至 CAPM",
+                                 class = "btn-success", icon = icon("check")
+                               ),
+                               tags$br(), tags$br(),
+                               htmlOutput("beta_bottomup_result"),
+                               tags$br(),
+                               tableOutput("beta_bottomup_peers_table")
+                             )
+                           )
                          )
                        )
                      )

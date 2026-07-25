@@ -225,6 +225,98 @@ def get_risk_free_rate_yf():
     raise RuntimeError("无法取得 ^TNX")
 
 
+def _safe_float(v):
+    if v is None:
+        return None
+    try:
+        if pd.isna(v):
+            return None
+    except Exception:
+        pass
+    try:
+        return float(v)
+    except Exception:
+        return None
+
+
+def get_beta_unlever_inputs(ticker="AAPL"):
+    """
+    Lightweight Yahoo fields for unlevered / bottom-up beta.
+    Returns plain scalars for reticulate (no nested frames).
+
+    D/E preference: totalDebt / marketCap (market); else Yahoo debtToEquity.
+    Yahoo debtToEquity is usually Equity*100 style (e.g. 54.2 → 0.542).
+    """
+    tk = str(ticker or "").strip().upper()
+    out = {
+        "ticker": tk,
+        "ok": False,
+        "beta": None,
+        "market_cap": None,
+        "total_debt": None,
+        "de_ratio": None,
+        "de_source": "",
+        "name": tk,
+        "error": "",
+    }
+    if not tk:
+        out["error"] = "empty ticker"
+        return out
+    print(f"📐 beta unlever inputs: {tk}")
+    try:
+        stock = yf.Ticker(tk)
+        info = {}
+        try:
+            info = stock.info or {}
+        except Exception as e:
+            out["error"] = f"info failed: {e}"
+            info = {}
+        out["name"] = _best_company_name(info, tk)
+        beta = _safe_float(info.get("beta"))
+        mcap = _safe_float(info.get("marketCap"))
+        debt = _safe_float(info.get("totalDebt"))
+        de_raw = _safe_float(info.get("debtToEquity"))
+        out["beta"] = beta
+        out["market_cap"] = mcap
+        out["total_debt"] = debt
+
+        de = None
+        de_src = ""
+        if mcap is not None and mcap > 0 and debt is not None and debt >= 0:
+            de = debt / mcap
+            de_src = "market_D/E"
+        elif de_raw is not None and de_raw >= 0:
+            # Yahoo often stores Debt/Equity × 100
+            de = (de_raw / 100.0) if de_raw > 5.0 else de_raw
+            de_src = "yahoo_debtToEquity"
+        out["de_ratio"] = de
+        out["de_source"] = de_src
+        out["ok"] = beta is not None and de is not None
+        if beta is None:
+            out["error"] = out["error"] or "missing beta"
+        elif de is None:
+            out["error"] = out["error"] or "missing D/E"
+    except Exception as e:
+        out["error"] = str(e)
+    return out
+
+
+def get_beta_unlever_inputs_batch(tickers):
+    """Batch wrapper; tickers may be list/tuple from reticulate."""
+    if tickers is None:
+        return []
+    try:
+        seq = list(tickers)
+    except Exception:
+        seq = [tickers]
+    cleaned = []
+    for t in seq:
+        s = str(t or "").strip().upper()
+        if s and s not in cleaned:
+            cleaned.append(s)
+    return [get_beta_unlever_inputs(t) for t in cleaned]
+
+
 def _stmt_to_payload(df):
     """Convert yfinance statement to plain dict for reticulate (columns + rows)."""
     empty = {"columns": ["Breakdown"], "data": []}

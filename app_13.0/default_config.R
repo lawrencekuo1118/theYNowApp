@@ -99,6 +99,9 @@ APP_DEFAULTS <- list(
   beta_bench      = "SPY",
   beta_lookback_months = 60,
   beta_min_obs    = 24,
+  # Unlevered / bottom-up：β_L 來源；同業代碼（逗號／空白分隔，可於 UI 選填）
+  beta_bl_source  = "auto",                  # auto | summary | rolling | capm
+  beta_peers      = "",
 
   # --- 6. P/B／資產法 ---
   pb_bvps         = NA,

@@ -239,3 +239,31 @@ search_ticker_choices <- function(query, max_results = 12L) {
   extra <- local_hits[!(unname(local_hits) %in% unname(out))]
   c(out, extra)
 }
+
+#' Yahoo β / D/E inputs for unlevered & bottom-up industry beta
+fetch_beta_unlever_inputs <- function(ticker) {
+  tk <- toupper(trimws(as.character(ticker %||% "")[1]))
+  if (!nzchar(tk)) return(NULL)
+  if (!exists("get_beta_unlever_inputs", mode = "function")) {
+    message("⚠️ get_beta_unlever_inputs 未載入")
+    return(NULL)
+  }
+  tryCatch(get_beta_unlever_inputs(tk), error = function(e) {
+    message("⚠️ fetch_beta_unlever_inputs(", tk, "): ", e$message)
+    NULL
+  })
+}
+
+#' Batch peer fetch (list of dicts from Python)
+fetch_beta_unlever_inputs_batch <- function(tickers) {
+  tks <- unique(toupper(trimws(as.character(tickers %||% character(0)))))
+  tks <- tks[nzchar(tks)]
+  if (length(tks) == 0) return(list())
+  if (!exists("get_beta_unlever_inputs_batch", mode = "function")) {
+    return(lapply(tks, fetch_beta_unlever_inputs))
+  }
+  tryCatch(get_beta_unlever_inputs_batch(tks), error = function(e) {
+    message("⚠️ fetch_beta_unlever_inputs_batch: ", e$message)
+    lapply(tks, fetch_beta_unlever_inputs)
+  })
+}
