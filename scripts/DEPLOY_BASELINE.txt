@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12319052
+bundleId=12319166
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=origin/master
-commit=80c063f3b34525540c4b20b18a64ade3b713f363
-short=80c063f
-message=fix(beta): apply selected βᵤ to CAPM without relevering
-captured_at=2026-07-25T12:42:27+00:00
-note=app_13.0 redeploy after apply selected βᵤ to CAPM without relevering. Prefer local deploy thereafter.
+commit=4c1b0a6
+short=4c1b0a6
+message=chore(debug): remove temporary agent instrumentation from app_13.0
+captured_at=2026-07-25T14:12:00+00:00
+note=app_13.0 clean redeploy after glue/startup fixes; debug instrumentation removed.
