@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12318541
+bundleId=12318581
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=origin/master
-commit=953ee4e0dd4bd7381c9c3e5cb1268820db6224c1
-short=953ee4e
-message=Restore CAPM on DCF WACC; put Unlevered above Rolling with manual βᵤ.
-captured_at=2026-07-25T08:59:49+00:00
-note=app_13.0 redeploy after CAPM back on WACC; Unlevered above Rolling with manual βᵤ on Get Started. Prefer local deploy thereafter.
+commit=6ed9c9f92a1071e4cc7d9e5330073828874ce85b
+short=6ed9c9f
+message=ui: consolidate Get Started Beta into BETA tabBox (Unlevered | Rolling)
+captured_at=2026-07-25T09:12:41+00:00
+note=app_13.0 redeploy after consolidating Get Started Unlevered/Rolling into BETA tabBox. Prefer local deploy thereafter.
