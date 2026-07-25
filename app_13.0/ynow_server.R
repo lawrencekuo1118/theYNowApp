@@ -2142,10 +2142,10 @@ server <- function(input, output, session) {
         capm_on_dcf_wacc = TRUE,
         get_started_sections = c(
           "永續成長率 SGR 設定",
-          "純粹基本面 / Unlevered Beta",
-          "Beta 進階預估（Rolling）"
+          "BETA tabBox (Unlevered βᵤ | Rolling β)"
         ),
         unlever_above_rolling = TRUE,
+        beta_as_tabbox = TRUE,
         beta_u_apply_default = "unlever_firm",
         has_beta_u_manual = TRUE,
         rolling_in_get_started = TRUE,

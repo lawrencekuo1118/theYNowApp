@@ -28,7 +28,7 @@ capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
   if (isTRUE(advanced_hint)) {
     hints <- c(
       hints,
-      "進階：Get Started 先「Unlevered βᵤ」（預設／可手動），再「Rolling」；套用後寫入此處 CAPM β → rₑ／Ke。"
+      "進階：Get Started → BETA 小分頁（Unlevered βᵤ｜Rolling β）；套用後寫入此處 CAPM β → rₑ／Ke。"
     )
   }
   box(
@@ -53,10 +53,12 @@ capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
     title = tagList(icon("info-circle"), "Beta 進階預估"),
     width = 12, status = "info", solidHeader = TRUE,
     helpText(
-      "Rolling β／Unlevered／Bottom-up 在",
+      "β 預估在",
       tags$b("Get Started"),
-      "→「永續成長率 SGR 設定」正下方（先 Unlevered，後 Rolling）。",
-      "預設採用 Unlevered βᵤ（可手動輸入）。CAPM（Rf／β／Rm）在",
+      "→「永續成長率 SGR 設定」下方的",
+      tags$b("BETA"),
+      "小分頁（Unlevered βᵤ｜Rolling β；預設 Unlevered／可手動）。",
+      "CAPM（Rf／β／Rm）在",
       tags$b("DCF-Model → WACC"),
       "；勾選「採用估算 rₑ／Ke」時由該處 CAPM 驅動。"
     ),
@@ -290,8 +292,7 @@ beta_advanced_tab_ui <- function() {
     tags$ul(
       style = "margin:0; padding-left:18px; line-height:1.55;",
       tags$li("DCF／RI 終值 SGR：本頁上方「永續成長率 SGR 設定」"),
-      tags$li("Unlevered βᵤ（預設）／手動 βᵤ：本頁「純粹基本面 / Unlevered Beta」"),
-      tags$li("Rolling β：本頁「Beta 進階預估（Rolling）」"),
+      tags$li("β 預估：本頁 BETA 小分頁（Unlevered βᵤ｜Rolling β；預設 Unlevered／可手動）"),
       tags$li("CAPM（Rf／β／Rm）：DCF-Model → WACC"),
       tags$li("兩階段成長假設：DCF-Model → Overview（選 Two-Stage 時顯示）"),
       tags$li("CapEx／ΔNWC 前瞻佔營收比：DCF → FCFF 分頁（驅動預測表）"),
@@ -1185,24 +1186,22 @@ ui <- dashboardPage(
         fluidRow(
           .dcf_core_params_box()
         ),
-        fluidRow(
-          box(
-            title = tagList(icon("industry"), "純粹基本面 / Unlevered Beta"),
-            width = 12, status = "warning", solidHeader = TRUE, collapsible = TRUE,
-            collapsed = FALSE,
+        tabBox(
+          title = "BETA",
+          width = "auto",
+          tabPanel(
+            "Unlevered βᵤ",
+            icon = icon("industry"),
             helpText(
               "去槓桿：βᵤ = β_L / (1 + (1−T)·(D/E))，剔除財務槓桿後看營運風險。",
               "Bottom-up：同業各自去槓桿後平均，降低單一股票交易噪音。",
               "預設採用本公司 Unlevered βᵤ；亦可手動輸入。"
             ),
             beta_unlever_section_ui()
-          )
-        ),
-        fluidRow(
-          box(
-            title = tagList(icon("chart-area"), "Beta 進階預估（Rolling）"),
-            width = 12, status = "warning", solidHeader = TRUE, collapsible = TRUE,
-            collapsed = FALSE,
+          ),
+          tabPanel(
+            "Rolling β",
+            icon = icon("chart-area"),
             beta_rolling_section_ui()
           )
         ),
