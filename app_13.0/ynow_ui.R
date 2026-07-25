@@ -23,12 +23,13 @@ capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
                                   result_id = "capm_result",
                                   advanced_hint = TRUE) {
   hints <- list(
-    "預設跟 Dashboard → Finance Summary 的 Beta (5Y Monthly)；勾選才用產業平均。"
+    "Beta (β) 與 Get Started → BETA 雙向連動：左側進階設定變更會寫入此處；此處手動改 β 會回寫為「手動 βᵤ」。",
+    "勾選「套用產業平均值」時暫以產業 β 為準（暫停 Get Started 自動寫入）。"
   )
   if (isTRUE(advanced_hint)) {
     hints <- c(
       hints,
-      "進階：Get Started → BETA 小分頁（Unlevered βᵤ｜Rolling β）；套用後寫入此處 CAPM β → rₑ／Ke。"
+      "進階來源：Get Started → Unlevered βᵤ（去槓桿／再槓桿）或 Rolling β（槓桿）。"
     )
   }
   box(
@@ -57,7 +58,7 @@ capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
       tags$b("Get Started"),
       "→「永續成長率 SGR 設定」下方的",
       tags$b("BETA"),
-      "小分頁（Unlevered βᵤ｜Rolling β；預設本公司去槓桿／可手動）。",
+      "小分頁（Unlevered βᵤ｜Rolling β；與 CAPM β 雙向連動）。",
       "CAPM（Rf／β／Rm）在",
       tags$b("DCF-Model → WACC"),
       "；勾選「採用估算 rₑ／Ke」時由該處 CAPM 驅動。"
@@ -148,12 +149,12 @@ beta_unlever_section_ui <- function() {
           min = 0, max = 5, step = 0.01
         ),
         helpText(
-          "預設本公司 Unlevered βᵤ。選「手動輸入」時填入上方數值；",
-          "套用時以目前 D/E、T 再槓桿為 β_L，寫入 DCF → WACC 的 CAPM β。",
-          "若要用 Rolling 槓桿 β，請至「Rolling β」分頁套用。"
+          "預設本公司 Unlevered βᵤ；變更來源或數值會自動同步至 DCF → WACC 的 CAPM β。",
+          "在 CAPM 手動改 β 時，會回寫為下方「手動輸入 βᵤ」並維持連動。",
+          "若要用 Rolling 槓桿 β，請至「Rolling β」分頁套用（會暫時以 Rolling 為驅動）。"
         ),
         actionButton(
-          "apply_beta_u_selected", "套用所選 βᵤ 至 CAPM",
+          "apply_beta_u_selected", "立即同步所選 βᵤ 至 CAPM",
           class = "btn-success", icon = icon("check")
         )
       )
@@ -292,7 +293,7 @@ beta_advanced_tab_ui <- function() {
     tags$ul(
       style = "margin:0; padding-left:18px; line-height:1.55;",
       tags$li("DCF／RI 終值 SGR：本頁上方「永續成長率 SGR 設定」"),
-      tags$li("β 預估：本頁 BETA 小分頁（①去槓桿／Bottom-Up → ②Rolling；手動為套用最後選項）"),
+      tags$li("β 預估：本頁 BETA 小分頁（與 DCF → WACC 的 CAPM β 雙向連動）"),
       tags$li("CAPM（Rf／β／Rm）：DCF-Model → WACC"),
       tags$li("兩階段成長假設：DCF-Model → Overview（選 Two-Stage 時顯示）"),
       tags$li("CapEx／ΔNWC 前瞻佔營收比：DCF → FCFF 分頁（驅動預測表）"),
@@ -1256,7 +1257,7 @@ ui <- dashboardPage(
             icon = icon("industry"),
             helpText(
               "去槓桿：βᵤ = β_L / (1 + (1−T)·(D/E))，剔除財務槓桿後看營運風險。",
-              "流程：①選 β_L 來源去槓桿 → ②（可選）Bottom-Up 同業平均 → ③選 βᵤ 再槓桿寫入 CAPM。",
+              "與 CAPM β 雙向連動：變更會自動同步；在 CAPM 手動改 β 會回寫為「手動 βᵤ」。",
               "「手動輸入」為套用選項最後一項；Rolling 槓桿 β 請用右側 Rolling 分頁。"
             ),
             beta_unlever_section_ui()
@@ -1265,8 +1266,8 @@ ui <- dashboardPage(
             "Rolling β",
             icon = icon("chart-area"),
             helpText(
-              "以常見基準（預設 SPY，亦可 QQQ／IWM）估計槓桿 Rolling β，並在此分頁直接套用至 CAPM。",
-              "若要用於去槓桿，請回 Unlevered 將 β_L 來源設為 Rolling 或自動。"
+              "以常見基準（預設 SPY，亦可 QQQ／IWM）估計槓桿 Rolling β；套用後與 CAPM β 連動（暫以 Rolling 為驅動）。",
+              "若要改回 Unlevered 路徑，請於 Unlevered 分頁重選套用來源。"
             ),
             beta_rolling_section_ui()
           )
