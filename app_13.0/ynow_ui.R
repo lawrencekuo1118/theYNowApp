@@ -29,7 +29,7 @@ capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
   if (isTRUE(advanced_hint)) {
     hints <- c(
       hints,
-      "進階來源：Get Started → Unlevered βᵤ（去槓桿／再槓桿）或 Rolling β（槓桿）。"
+      "進階來源：Get Started → Unlevered βᵤ（直接套用 βᵤ）或 Rolling β（槓桿 β）。"
     )
   }
   box(
@@ -68,7 +68,7 @@ capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
 }
 
 #' 純粹基本面 / Unlevered Beta（Get Started，置於 Rolling 上方）
-#' 流程：①選 β_L → 去槓桿 ②（可選）Bottom-Up ③選要套用的 βᵤ → 再槓桿寫入 CAPM
+#' 流程：①選 β_L → 去槓桿 ②（可選）Bottom-Up ③選要套用的 βᵤ → 直接寫入 CAPM（不經再槓桿）
 #' Rolling 槓桿 β 僅在「Rolling β」分頁套用，避免與此處重疊。
 beta_unlever_section_ui <- function() {
   tagList(
@@ -130,10 +130,10 @@ beta_unlever_section_ui <- function() {
     fluidRow(
       box(
         width = 12, status = "warning", solidHeader = FALSE,
-        title = "③ 採用哪一個 βᵤ → 再槓桿寫入 CAPM",
+        title = "③ 採用哪一個 βᵤ → 直接寫入 CAPM",
         radioButtons(
           "beta_u_apply_source",
-          "套用至 CAPM（再槓桿為 β_L）",
+          "套用至 CAPM（直接使用 βᵤ，不經再槓桿）",
           choices = c(
             "本公司 Unlevered βᵤ" = "unlever_firm",
             "Bottom-Up 平均 βᵤ" = "bottomup",
@@ -149,9 +149,9 @@ beta_unlever_section_ui <- function() {
           min = 0, max = 5, step = 0.01
         ),
         helpText(
-          "預設本公司 Unlevered βᵤ；變更來源或數值會自動同步至 DCF → WACC 的 CAPM β。",
-          "在 CAPM 手動改 β 時，會回寫為下方「手動輸入 βᵤ」並維持連動。",
-          "若要用 Rolling 槓桿 β，請至「Rolling β」分頁套用（會暫時以 Rolling 為驅動）。"
+          "選定的 βᵤ 會直接寫入 DCF → WACC 的 CAPM β 並用於 rₑ 計算（不再槓桿為 β_L）。",
+          "變更來源或數值會自動同步；在 CAPM 手動改 β 會回寫為「手動輸入 βᵤ」。",
+          "若要用 Rolling 槓桿 β，請至「Rolling β」分頁套用。"
         ),
         actionButton(
           "apply_beta_u_selected", "立即同步所選 βᵤ 至 CAPM",
@@ -1257,7 +1257,7 @@ ui <- dashboardPage(
             icon = icon("industry"),
             helpText(
               "去槓桿：βᵤ = β_L / (1 + (1−T)·(D/E))，剔除財務槓桿後看營運風險。",
-              "與 CAPM β 雙向連動：變更會自動同步；在 CAPM 手動改 β 會回寫為「手動 βᵤ」。",
+              "選定的 βᵤ 直接寫入 CAPM 計算（不經再槓桿）；與 CAPM β 雙向連動。",
               "「手動輸入」為套用選項最後一項；Rolling 槓桿 β 請用右側 Rolling 分頁。"
             ),
             beta_unlever_section_ui()

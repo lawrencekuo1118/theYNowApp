@@ -2037,7 +2037,7 @@ server <- function(input, output, session) {
     invisible(NULL)
   }
 
-  # CAPM 手動改 β → 回寫 Get Started「手動 βᵤ」
+  # CAPM 手動改 β → 回寫 Get Started「手動 βᵤ」（Unlevered 路徑直接等同，不再反向去槓桿）
   observeEvent(input$capm_beta, {
     if (isTRUE(capm_beta_updating())) {
       capm_beta_updating(FALSE)
@@ -2046,8 +2046,8 @@ server <- function(input, output, session) {
     # 產業平均勾選時的數值變更視為產業驅動，不回寫手動
     if (isTRUE(input$use_industry_beta)) return()
 
-    beta_l <- suppressWarnings(as.numeric(input$capm_beta)[1])
-    if (!is.finite(beta_l)) return()
+    beta_val <- suppressWarnings(as.numeric(input$capm_beta)[1])
+    if (!is.finite(beta_val)) return()
 
     beta_capm_driver("manual")
     capm_beta_dirty(TRUE)
@@ -2056,18 +2056,9 @@ server <- function(input, output, session) {
 
     if (!identical(as.character(input$beta_u_apply_source %||% "")[1], "manual")) {
       updateRadioButtons(session, "beta_u_apply_source", selected = "manual")
-    } else {
-      # 已是 manual：無需等 radio observer，可直接清「來源切換」部分
     }
 
-    tax <- tryCatch(.session_tax_decimal(), error = function(e) NA_real_)
-    de_info <- tryCatch(.firm_market_de(), error = function(e) list(ok = FALSE))
-    beta_u <- if (isTRUE(de_info$ok) && is.finite(tax)) {
-      .unlever_beta(beta_l, tax, de_info$de)
-    } else {
-      beta_l
-    }
-    if (is.finite(beta_u)) .set_beta_u_manual(beta_u)
+    .set_beta_u_manual(beta_val)
   }, ignoreInit = TRUE)
 
   # 勾選產業平均／換產業
@@ -2085,7 +2076,6 @@ server <- function(input, output, session) {
   .capm_beta_label_html <- function(beta) {
     drv <- as.character(beta_capm_driver() %||% "gs")[1]
     ind_b <- .industry_beta_value()
-    fs_b <- .summary_beta_value()
     src <- as.character(input$beta_u_apply_source %||% "unlever_firm")[1]
     gs_tag <- switch(
       src,
@@ -2101,18 +2091,10 @@ server <- function(input, output, session) {
     } else if (identical(drv, "manual")) {
       HTML("Beta (β) <span style='color: #e67e22; font-size: 12px;'>[手動｜已回寫 Get Started]</span>")
     } else if (identical(drv, "gs")) {
-      # 與 Summary 數值相同時標註（常見：Summary β_L 去槓桿後再槓桿）
-      if (identical(src, "unlever_firm") && is.finite(fs_b) && abs(beta - fs_b) < 1e-2) {
-        HTML(sprintf(
-          "Beta (β) <span style='color: #27ae60; font-size: 12px;'>[%s ≈ Summary]</span>",
-          gs_tag
-        ))
-      } else {
-        HTML(sprintf(
-          "Beta (β) <span style='color: #27ae60; font-size: 12px;'>[%s]</span>",
-          gs_tag
-        ))
-      }
+      HTML(sprintf(
+        "Beta (β) <span style='color: #27ae60; font-size: 12px;'>[%s｜直接套用 βᵤ]</span>",
+        gs_tag
+      ))
     } else {
       HTML("Beta (β) <span style='color: #e67e22; font-size: 12px;'>[自訂數值]</span>")
     }
@@ -2715,10 +2697,8 @@ server <- function(input, output, session) {
   }
   observeEvent(input$calc_beta_bottomup, { .run_beta_bottomup("get_started") })
 
-  .compute_selected_beta_l <- function() {
+  .compute_selected_beta_u <- function() {
     src <- as.character(input$beta_u_apply_source %||% "unlever_firm")[1]
-    tax <- .session_tax_decimal()
-    de_info <- .firm_market_de()
 
     if (identical(src, "rolling")) {
       return(list(ok = FALSE, reason = "rolling_use_rolling_tab"))
@@ -2750,34 +2730,23 @@ server <- function(input, output, session) {
       return(list(ok = FALSE, reason = "unknown_source"))
     }
 
-    if (!isTRUE(de_info$ok)) {
-      return(list(ok = FALSE, reason = "no_de", beta_u = beta_u, label = label))
-    }
-    beta_l <- .relever_beta(beta_u, tax, de_info$de)
-    if (!is.finite(beta_l)) {
-      return(list(ok = FALSE, reason = "relever_fail", beta_u = beta_u, label = label))
-    }
     list(
       ok = TRUE,
-      beta_u = beta_u,
-      beta_l = round(beta_l, 3),
-      label = label,
-      de = de_info$de
+      beta_u = round(as.numeric(beta_u), 3),
+      label = label
     )
   }
 
   .apply_selected_beta_u_to_capm <- function(silent = FALSE) {
-    got <- .compute_selected_beta_l()
+    got <- .compute_selected_beta_u()
     if (!isTRUE(got$ok)) {
       if (!isTRUE(silent)) {
         msg <- switch(
           got$reason %||% "",
           "rolling_use_rolling_tab" = "請改至「Rolling β」分頁按「套用至 CAPM β」。",
-          "no_firm_beta_u" = "尚無本公司 Unlevered βᵤ（需 β_L 與 D/E）。",
+          "no_firm_beta_u" = "尚無本公司 Unlevered βᵤ（需 β_L 與 D/E 才能去槓桿）。",
           "no_bottomup" = "請先成功計算 Bottom-Up βᵤ。",
           "no_manual" = "請先在「手動 Unlevered βᵤ」輸入有效數值。",
-          "no_de" = "無法再槓桿：缺 Total Debt 或股權市值（D/E）。",
-          "relever_fail" = "再槓桿計算失敗。",
           "未知的 β 來源或尚未就緒。"
         )
         showNotification(msg, type = "warning", duration = 7)
@@ -2788,13 +2757,12 @@ server <- function(input, output, session) {
     updateCheckboxInput(session, "use_industry_beta", value = FALSE)
     beta_capm_driver("gs")
     capm_beta_dirty(TRUE)
-    .set_capm_beta(got$beta_l)
+    # 直接套用 βᵤ，不再槓桿為 β_L
+    .set_capm_beta(got$beta_u)
     .auto_recalc_capm_wacc(notify = !isTRUE(silent), wacc_too = TRUE)
     if (!isTRUE(silent)) {
       showNotification(
-        glue::glue(
-          "已套用 {got$label}={round(got$beta_u, 3)} → 再槓桿 β_L={got$beta_l} 至 CAPM（D/E={round(got$de, 3)}）。"
-        ),
+        glue::glue("已直接套用 {got$label}={got$beta_u} 至 CAPM β（不經再槓桿）。"),
         type = "message", duration = 7
       )
     }
@@ -2896,15 +2864,11 @@ server <- function(input, output, session) {
   output$vbx_beta_unlever_bottomup <- renderValueBox({ .vbx_beta_unlever_bottomup_content() })
 
   .vbx_beta_relevered_content <- function() {
-    res <- beta_bottomup_result()
+    got <- tryCatch(.compute_selected_beta_u(), error = function(e) list(ok = FALSE))
     valueBox(
-      if (!is.null(res) && isTRUE(res$ok) && is.finite(res$beta_l_relevered)) {
-        res$beta_l_relevered
-      } else {
-        "—"
-      },
-      "再槓桿 β（本公司 D/E）",
-      icon = icon("redo"),
+      if (isTRUE(got$ok) && is.finite(got$beta_u)) got$beta_u else "—",
+      "將直接套用至 CAPM 的 βᵤ",
+      icon = icon("share-square"),
       color = "aqua"
     )
   }
@@ -2946,11 +2910,11 @@ server <- function(input, output, session) {
     HTML(glue::glue(
       "<div style='padding:10px;border-left:4px solid #27ae60;background:#eafaf1;font-size:13px;'>
          <b>{res$label}</b> · T = {sprintf('%.1f%%', res$tax * 100)}<br/>
-         平均 βᵤ = <b>{res$beta_u_avg}</b>
+         平均 βᵤ = <b>{res$beta_u_avg}</b>（套用至 CAPM 時直接使用此值，不經再槓桿）
          {if (is.finite(res$beta_l_relevered))
-            paste0(' → 以本公司 D/E 再槓桿 β_L = <b>', res$beta_l_relevered, '</b>')
+            paste0('<br/><span style=\"color:#666;\">參考：若以本公司 D/E 再槓桿 β_L ≈ <b>', res$beta_l_relevered, '</b></span>')
           else
-            '（本公司缺 D/E，無法再槓桿）'}
+            ''}
        </div>"
     ))
   }
