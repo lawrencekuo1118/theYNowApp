@@ -465,31 +465,8 @@ ui <- dashboardPage(
           word-break: break-word;
         }
       ')),
-      #region agent log
-      tags$script(HTML("(function(){function dbg(h,m,d){fetch('http://127.0.0.1:7828/ingest/e3a0dcdf-71e1-4bba-855e-f942118bd315',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dcee0e'},body:JSON.stringify({sessionId:'dcee0e',runId:'snapshot-layout-post',hypothesisId:h,location:'ynow_ui.R:snapshot_sidebar_dbg',message:m,data:d||{},timestamp:Date.now()})}).catch(function(){})}function box(el){if(!el)return null;var r=el.getBoundingClientRect(),cs=window.getComputedStyle(el);return{tag:el.tagName,className:String(el.className||'').slice(0,120),parentClass:el.parentElement?String(el.parentElement.className||'').slice(0,120):null,display:cs.display,position:cs.position,top:Math.round(r.top),bottom:Math.round(r.bottom),nestedLi:!!(el.querySelector&&el.querySelector(':scope > li'))}}function measure(){var foot=document.querySelector('.ynow-sidebar-snapshot-foot'),hidden=document.querySelectorAll('.ynow-snapshot-hidden'),menuSnap=[].slice.call(document.querySelectorAll('.sidebar-menu a[data-value=\\'snapshot\\']')),mainSb=document.querySelector('.main-sidebar'),fb=box(foot),mb=box(mainSb);dbg('H1_H3','snapshot_menu_visibility',{nHiddenWrappers:hidden.length,hidden:[].map.call(hidden,box),nMenuSnapshotAnchors:menuSnap.length,menuSnapVisible:menuSnap.map(function(a){var li=a.closest('li'),cs=li?window.getComputedStyle(li):null;return{text:(a.textContent||'').trim().slice(0,40),liDisplay:cs?cs.display:null,liHasHiddenClass:!!(li&&li.classList.contains('ynow-snapshot-hidden')),parentHasHiddenClass:!!(li&&li.parentElement&&li.parentElement.classList.contains('ynow-snapshot-hidden')),top:Math.round(a.getBoundingClientRect().top)}})});dbg('H2_H4','snapshot_foot_position',{foot:fb,mainSidebar:mb,footParentIsMainSidebar:!!(foot&&foot.parentElement&&foot.parentElement.classList.contains('main-sidebar')),nearTop:fb&&mb?(fb.top-mb.top)<80:null,nearBottom:fb&&mb?(mb.bottom-fb.bottom)<80:null})}if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',function(){setTimeout(measure,400)})}else{setTimeout(measure,400)}if(window.jQuery){$(document).on('shiny:sessioninitialized',function(){setTimeout(measure,600)})}})();")),
-      #endregion
-      # region agent log
       tags$script(HTML("
         (function () {
-          function send(msg, data, hyp) {
-            fetch('http://127.0.0.1:7828/ingest/e3a0dcdf-71e1-4bba-855e-f942118bd315', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'X-Debug-Session-Id': '8b7c54'
-              },
-              body: JSON.stringify({
-                sessionId: '8b7c54',
-                runId: 'post-inplace-badges',
-                hypothesisId: hyp,
-                location: 'ynow_ui.R:sidebar_badges',
-                message: msg,
-                data: data,
-                timestamp: Date.now()
-              })
-            }).catch(function () {});
-          }
-
           function setRecBadge(tab, on) {
             var a = document.querySelector('.sidebar-menu a[data-value=\"' + tab + '\"]');
             if (!a) return;
@@ -513,55 +490,15 @@ ui <- dashboardPage(
             }
             Shiny.addCustomMessageHandler('ynowSidebarBadges', function (map) {
               var tabs = ['dcf_calculator', 'ddm_calculator', 'pb_calculator', 'ri_calculator'];
-              var applied = {};
               tabs.forEach(function (t) {
                 var on = !!(map && map[t] && map[t].on);
                 setRecBadge(t, on);
-                applied[t] = on;
               });
-              send('sidebar_badges_patched', applied, 'H8');
             });
           }
           registerBadgeHandler();
-
-          function arm() {
-            var menu = document.querySelector('.sidebar-menu');
-            if (!menu) { setTimeout(arm, 250); return; }
-            var lastLen = menu.innerHTML.length;
-            var childRebuilds = 0;
-            var obs = new MutationObserver(function (muts) {
-              var child = muts.some(function (m) {
-                if (m.type !== 'childList' || (!m.addedNodes.length && !m.removedNodes.length)) return false;
-                return Array.prototype.some.call(m.addedNodes, function (n) {
-                  return n.nodeType === 1 && n.matches && n.matches('li');
-                }) || Array.prototype.some.call(m.removedNodes, function (n) {
-                  return n.nodeType === 1 && n.matches && n.matches('li');
-                });
-              });
-              var len = menu.innerHTML.length;
-              if (child) {
-                childRebuilds += 1;
-                var a = document.querySelector('.sidebar-menu li.active > a');
-                send('sidebar_li_rebuild', {
-                  childRebuilds: childRebuilds,
-                  len: len,
-                  prevLen: lastLen,
-                  active: a ? a.getAttribute('data-value') : null
-                }, 'H8');
-              }
-              lastLen = len;
-            });
-            obs.observe(menu, { childList: true, subtree: true });
-            send('sidebar_observer_armed', { len: lastLen, inPlaceBadges: true }, 'H8');
-          }
-          if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', arm);
-          } else {
-            arm();
-          }
         })();
       ")),
-      # endregion
       
       tags$style(HTML("
         .selectize-dropdown-content {

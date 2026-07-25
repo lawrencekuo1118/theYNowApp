@@ -11,30 +11,6 @@ on_shinyapps <- nzchar(Sys.getenv("SHINY_SERVER_VERSION")) ||
   grepl("shinyapps", Sys.getenv("R_CONFIG_ACTIVE"), ignore.case = TRUE) ||
   identical(Sys.getenv("FORCE_SHINYAPPS_PYTHON"), "1")
 
-# #region agent log
-.ynow_dbg <- function(hypothesisId, location, message, data = list()) {
-  tryCatch({
-    payload <- list(
-      sessionId = "d3f3d7",
-      runId = Sys.getenv("YNOW_DEBUG_RUN", "pre-fix"),
-      hypothesisId = hypothesisId,
-      location = location,
-      message = message,
-      data = data,
-      timestamp = as.numeric(Sys.time()) * 1000
-    )
-    line <- jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null")
-    log_path <- "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-d3f3d7.log"
-    cat(line, "\n", file = log_path, append = TRUE)
-  }, error = function(e) invisible(NULL))
-}
-.ynow_dbg("C", "global.R:python_branch", "python env detection", list(
-  on_shinyapps = on_shinyapps,
-  has_venv = file.exists(python_path),
-  skip_py = identical(Sys.getenv("YNOW_DEBUG_SKIP_PY"), "1")
-))
-# #endregion
-
 if (file.exists(python_path) && !on_shinyapps) {
   Sys.setenv(RETICULATE_PYTHON = python_path)
 } else {
@@ -79,9 +55,6 @@ if (file.exists(python_path) && !on_shinyapps) {
   reticulate::use_virtualenv(env_dir, required = TRUE)
   message("✅ 已透過替身捷徑連結至 Python 虛擬環境: ", python_path)
 } else if (identical(Sys.getenv("YNOW_DEBUG_SKIP_PY"), "1")) {
-  # #region agent log
-  .ynow_dbg("C", "global.R:skip_py", "skipped py_require for local debug boot")
-  # #endregion
   message("⏭️ YNOW_DEBUG_SKIP_PY=1：略過 py_require（本機除錯）")
 } else {
   tryCatch(

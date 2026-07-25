@@ -3,21 +3,6 @@
 # ==========================================
 
 server <- function(input, output, session) {
-  # #region agent log
-  tryCatch({
-    payload <- list(
-      sessionId = "d3f3d7",
-      runId = Sys.getenv("YNOW_DEBUG_RUN", "pre-fix"),
-      hypothesisId = "A",
-      location = "ynow_server.R:server_entry",
-      message = "server() entered",
-      data = list(tick = as.numeric(Sys.time())),
-      timestamp = as.numeric(Sys.time()) * 1000
-    )
-    cat(jsonlite::toJSON(payload, auto_unbox = TRUE), "\n",
-        file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-d3f3d7.log", append = TRUE)
-  }, error = function(e) invisible(NULL))
-  # #endregion
   
   # ==========================================
   # 🗄️ 全域資料容器 (儲存爬蟲結果與跨模組變數)
@@ -1113,30 +1098,6 @@ server <- function(input, output, session) {
     )
     margin_cfg <- list(t = 56, b = 96, l = 70, r = 24)
 
-    # #region agent log
-    tryCatch({
-      .dbg <- list(
-        sessionId = "dcee0e",
-        runId = "cf-text-check",
-        hypothesisId = "H_cf_helper_text",
-        location = "ynow_server.R:cf_plot:layout",
-        message = "cf_plot: verify helper subtitle strings absent",
-        data = list(
-          n_series = length(parts),
-          title_text = title_main,
-          has_dian_tuli = grepl("點圖例顯隱", title_main, fixed = TRUE),
-          has_tongyizhang = grepl("同一張圖同時顯示", title_main, fixed = TRUE),
-          has_financing_disclaimer = grepl("與自由現金流", title_main, fixed = TRUE),
-          in_chart_subtitle_removed = TRUE
-        ),
-        timestamp = as.numeric(Sys.time()) * 1000
-      )
-      cat(jsonlite::toJSON(.dbg, auto_unbox = TRUE), "\n",
-          file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-dcee0e.log",
-          append = TRUE)
-    }, error = function(e) NULL)
-    # #endregion
-
     p %>%
       plotly::layout(
         title = list(
@@ -2191,57 +2152,6 @@ server <- function(input, output, session) {
     ))
   })
 
-  #region agent log
-  .agent_dbg_log <- function(hypothesis_id, location, message, data = list(), run_id = "post-fix") {
-    tryCatch({
-      payload <- list(
-        sessionId = "dcee0e",
-        runId = run_id,
-        hypothesisId = hypothesis_id,
-        location = location,
-        message = message,
-        data = data,
-        timestamp = as.numeric(Sys.time()) * 1000
-      )
-      line <- jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null")
-      cat(line, "\n",
-          file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-dcee0e.log",
-          append = TRUE)
-    }, error = function(e) invisible(NULL))
-  }
-  observeEvent(TRUE, {
-    .agent_dbg_log(
-      "H_capm_back_wacc", "ynow_server.R:get_started_layout",
-      "capm_on_wacc_advanced_on_get_started",
-      list(
-        capm_in_get_started = FALSE,
-        capm_on_dcf_wacc = TRUE,
-        get_started_sections = c(
-          "永續成長率 SGR 設定",
-          "BETA tabBox (Unlevered βᵤ | Rolling β)"
-        ),
-        unlever_above_rolling = TRUE,
-        beta_as_tabbox = TRUE,
-        beta_u_apply_default = "unlever_firm",
-        has_beta_u_manual = TRUE,
-        rolling_in_get_started = TRUE,
-        unlever_in_get_started = TRUE,
-        dcf_beta_tab_pointer_only = TRUE,
-        ddm_beta_tab_pointer_only = TRUE,
-        shared_builder = "beta_unlever_section_ui + beta_rolling_section_ui",
-        canonical_ids = c(
-          "capm_rf", "capm_beta", "use_industry_beta", "capm_rm", "calc_capm",
-          "beta_u_apply_source", "beta_u_manual", "apply_beta_u_selected",
-          "beta_bench", "beta_lookback_months", "beta_min_obs",
-          "calc_beta_est", "apply_beta_est", "beta_bl_source", "beta_peers",
-          "calc_beta_bottomup"
-        )
-      ),
-      run_id = "capm-back-wacc"
-    )
-  }, once = TRUE)
-  #endregion
-
   # ---------- Get Started：Rolling／Unlevered Beta 預估 ----------
   beta_est_result <- reactiveVal(NULL)  # list(beta, n_obs, method, rs, rm, dates, bench, lookback)
   .beta_price_cache <- new.env(parent = emptyenv())
@@ -2322,18 +2232,6 @@ server <- function(input, output, session) {
   }
 
   observeEvent(input$calc_beta_est, {
-    #region agent log
-    .agent_dbg_log(
-      "H2", "ynow_server.R:calc_beta_est",
-      "rolling_calc_clicked",
-      list(
-        source = "get_started",
-        has_rolling_ui = TRUE,
-        bench = as.character(input$beta_bench %||% "")[1],
-        id_prefix = ""
-      )
-    )
-    #endregion
     withProgress(message = "估計 Rolling β…", value = 0.3, {
       res <- tryCatch(.estimate_session_beta(), error = function(e) {
         list(ok = FALSE, reason = e$message)
@@ -2634,18 +2532,6 @@ server <- function(input, output, session) {
   }, once = TRUE)
 
   .run_beta_bottomup <- function(source_tag = "get_started") {
-    #region agent log
-    .agent_dbg_log(
-      "H1", "ynow_server.R:calc_beta_bottomup",
-      "bottomup_calc_clicked",
-      list(
-        source = source_tag,
-        has_unlever_ui = TRUE,
-        n_peers = length(input$beta_peers %||% character(0)),
-        id_prefix = ""
-      )
-    )
-    #endregion
     tax <- .session_tax_decimal()
     peers <- unique(toupper(trimws(as.character(input$beta_peers %||% character(0)))))
     peers <- peers[nzchar(peers)]
@@ -2894,46 +2780,8 @@ server <- function(input, output, session) {
     summary_data(),
     beta_est_result()
   ), {
-    # #region agent log
-    tryCatch({
-      payload <- list(
-        sessionId = "d3f3d7",
-        runId = Sys.getenv("YNOW_DEBUG_RUN", "pre-fix"),
-        hypothesisId = "E",
-        location = "ynow_server.R:auto_sync_observer",
-        message = "beta auto-sync observer fired",
-        data = list(
-          src = as.character(input$beta_u_apply_source %||% NA_character_)[1],
-          drv = as.character(beta_capm_driver() %||% NA_character_)[1],
-          industry = isTRUE(input$use_industry_beta)
-        ),
-        timestamp = as.numeric(Sys.time()) * 1000
-      )
-      cat(jsonlite::toJSON(payload, auto_unbox = TRUE), "\n",
-          file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-d3f3d7.log", append = TRUE)
-    }, error = function(e) invisible(NULL))
-    # #endregion
-    tryCatch({
-      if (identical(as.character(beta_capm_driver() %||% "gs")[1], "manual")) return()
-      .maybe_sync_gs_beta_to_capm()
-    }, error = function(e) {
-      # #region agent log
-      tryCatch({
-        payload <- list(
-          sessionId = "d3f3d7",
-          runId = Sys.getenv("YNOW_DEBUG_RUN", "pre-fix"),
-          hypothesisId = "E",
-          location = "ynow_server.R:auto_sync_error",
-          message = "beta auto-sync threw",
-          data = list(error = conditionMessage(e)),
-          timestamp = as.numeric(Sys.time()) * 1000
-        )
-        cat(jsonlite::toJSON(payload, auto_unbox = TRUE), "\n",
-            file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-d3f3d7.log", append = TRUE)
-      }, error = function(e2) invisible(NULL))
-      # #endregion
-      warning("beta auto-sync error: ", conditionMessage(e))
-    })
+    if (identical(as.character(beta_capm_driver() %||% "gs")[1], "manual")) return()
+    .maybe_sync_gs_beta_to_capm()
   }, ignoreInit = FALSE)
 
   observeEvent(input$beta_u_apply_source, {
@@ -3063,24 +2911,6 @@ server <- function(input, output, session) {
     } else {
       ""
     }
-    # #region agent log
-    tryCatch({
-      payload <- list(
-        sessionId = "d3f3d7",
-        runId = Sys.getenv("YNOW_DEBUG_RUN", "pre-fix"),
-        hypothesisId = "F",
-        location = "ynow_server.R:beta_bottomup_result_content",
-        message = "bottomup result html built",
-        data = list(
-          has_relever = is.finite(res$beta_l_relevered),
-          beta_u = res$beta_u_avg
-        ),
-        timestamp = as.numeric(Sys.time()) * 1000
-      )
-      cat(jsonlite::toJSON(payload, auto_unbox = TRUE), "\n",
-          file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-d3f3d7.log", append = TRUE)
-    }, error = function(e) invisible(NULL))
-    # #endregion
     HTML(glue::glue(
       "<div style='padding:10px;border-left:4px solid #27ae60;background:#eafaf1;font-size:13px;'>
          <b>{res$label}</b> · T = {sprintf('%.1f%%', res$tax * 100)}<br/>
