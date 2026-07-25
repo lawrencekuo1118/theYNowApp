@@ -368,12 +368,8 @@ ui <- dashboardPage(
              menuItem("RI-Model", tabName = "ri_calculator", icon = icon("gem")),
              menuItem("Sensitivity", tabName = "sensitivity", icon = icon("sliders-h")),
              menuItem("Backtest Zone", tabName = "backtest", icon = icon("vial")),
-             menuItem("About", tabName = "about", icon = icon("info-circle")),
-             # 隱藏選項：供底部低調捷徑切換 tab（勿刪）
-             tags$li(
-               class = "ynow-snapshot-hidden",
-               menuItem("Snapshot", tabName = "snapshot", icon = icon("camera"))
-             )
+             menuItem("About", tabName = "about", icon = icon("info-circle"))
+             # Snapshot 不放主選單（避免巢狀 li 被瀏覽器抬出隱藏）；改由底部捷徑切換
            ),
            hr()
     ),
@@ -398,13 +394,16 @@ ui <- dashboardPage(
            )
     ),
 
-    # Snapshot：側邊欄底部低調捷徑
-    tags$div(
+    # Snapshot：側邊欄內容流最底部低調捷徑（勿用 absolute，會跑到搜尋框）
+    column(
+      width = 12,
       class = "ynow-sidebar-snapshot-foot",
       tags$a(
-        href = "#",
+        href = "#shiny-tab-snapshot",
+        `data-toggle` = "tab",
+        `data-value` = "snapshot",
         class = "ynow-sidebar-snapshot-link",
-        onclick = "$('.ynow-snapshot-hidden a').first().click(); return false;",
+        onclick = "Shiny.setInputValue('sidebar_tabs', 'snapshot', {priority: 'event'}); return false;",
         icon("camera", class = "fa-fw"),
         tags$span(" Snapshot")
       )
@@ -426,38 +425,32 @@ ui <- dashboardPage(
         .sidebar-menu > li.menu-open > a {
           font-weight: 700 !important;
         }
-        /* Snapshot：側邊欄底部低調捷徑 */
-        .ynow-snapshot-hidden { display: none !important; }
+        /* Snapshot：側邊欄內容底部低調捷徑（正常文件流，避免 absolute 跑位） */
         .ynow-sidebar-snapshot-foot {
-          position: absolute;
-          left: 8px;
-          bottom: 8px;
-          right: 8px;
-          z-index: 2;
-          text-align: left;
-          pointer-events: none;
+          margin-top: 8px !important;
+          margin-bottom: 10px !important;
+          padding: 0 10px !important;
+          text-align: left !important;
         }
         .ynow-sidebar-snapshot-link {
-          pointer-events: auto;
           display: inline-block;
           font-size: 11px !important;
           font-weight: 400 !important;
           color: rgba(255,255,255,0.45) !important;
           text-decoration: none !important;
-          padding: 2px 6px;
+          padding: 2px 4px;
           border-radius: 3px;
           opacity: 0.75;
           line-height: 1.2;
         }
         .ynow-sidebar-snapshot-link:hover {
-          color: rgba(255,255,255,0.8) !important;
+          color: rgba(255,255,255,0.85) !important;
           opacity: 1;
           background: rgba(255,255,255,0.06);
         }
-        .main-sidebar {
-          position: relative;
-          padding-bottom: 36px !important;
-        }
+        /* 主選單不應再出現 Snapshot */
+        .sidebar-menu a[data-value="snapshot"] { display: none !important; }
+        .sidebar-menu li:has(> a[data-value="snapshot"]) { display: none !important; }
         /* 公司全稱：允許換行，避免被切掉 */
         .ynow-corpname {
           font-weight: bold;
@@ -469,6 +462,9 @@ ui <- dashboardPage(
           word-break: break-word;
         }
       ')),
+      #region agent log
+      tags$script(HTML("(function(){function dbg(h,m,d){fetch('http://127.0.0.1:7828/ingest/e3a0dcdf-71e1-4bba-855e-f942118bd315',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dcee0e'},body:JSON.stringify({sessionId:'dcee0e',runId:'snapshot-layout-post',hypothesisId:h,location:'ynow_ui.R:snapshot_sidebar_dbg',message:m,data:d||{},timestamp:Date.now()})}).catch(function(){})}function box(el){if(!el)return null;var r=el.getBoundingClientRect(),cs=window.getComputedStyle(el);return{tag:el.tagName,className:String(el.className||'').slice(0,120),parentClass:el.parentElement?String(el.parentElement.className||'').slice(0,120):null,display:cs.display,position:cs.position,top:Math.round(r.top),bottom:Math.round(r.bottom),nestedLi:!!(el.querySelector&&el.querySelector(':scope > li'))}}function measure(){var foot=document.querySelector('.ynow-sidebar-snapshot-foot'),hidden=document.querySelectorAll('.ynow-snapshot-hidden'),menuSnap=[].slice.call(document.querySelectorAll('.sidebar-menu a[data-value=\\'snapshot\\']')),mainSb=document.querySelector('.main-sidebar'),fb=box(foot),mb=box(mainSb);dbg('H1_H3','snapshot_menu_visibility',{nHiddenWrappers:hidden.length,hidden:[].map.call(hidden,box),nMenuSnapshotAnchors:menuSnap.length,menuSnapVisible:menuSnap.map(function(a){var li=a.closest('li'),cs=li?window.getComputedStyle(li):null;return{text:(a.textContent||'').trim().slice(0,40),liDisplay:cs?cs.display:null,liHasHiddenClass:!!(li&&li.classList.contains('ynow-snapshot-hidden')),parentHasHiddenClass:!!(li&&li.parentElement&&li.parentElement.classList.contains('ynow-snapshot-hidden')),top:Math.round(a.getBoundingClientRect().top)}})});dbg('H2_H4','snapshot_foot_position',{foot:fb,mainSidebar:mb,footParentIsMainSidebar:!!(foot&&foot.parentElement&&foot.parentElement.classList.contains('main-sidebar')),nearTop:fb&&mb?(fb.top-mb.top)<80:null,nearBottom:fb&&mb?(mb.bottom-fb.bottom)<80:null})}if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',function(){setTimeout(measure,400)})}else{setTimeout(measure,400)}if(window.jQuery){$(document).on('shiny:sessioninitialized',function(){setTimeout(measure,600)})}})();")),
+      #endregion
       # region agent log
       tags$script(HTML("
         (function () {
