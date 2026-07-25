@@ -1054,21 +1054,6 @@ ui <- dashboardPage(
                      
                      tabPanel("Cash Flow",
                               p("This section imports Cash Flow data from Yahoo Finance"),
-                              checkboxGroupInput(
-                                "cf_flow_series",
-                                "疊圖序列（可多選）",
-                                choices = c(
-                                  "營業現金流 OCF" = "ocf",
-                                  "投資現金流 ICF" = "icf",
-                                  "融資現金流 FCF" = "fcf"
-                                ),
-                                selected = APP_DEFAULTS$cf_flow_series,
-                                inline = TRUE
-                              ),
-                              helpText(
-                                "同一張圖同時顯示勾選的折線（OCF／ICF／融資 FCF）。",
-                                "此處 FCF 指 Financing Cash Flow，與自由現金流（Free Cash Flow）無關。"
-                              ),
                               plotlyOutput("cf_plot", height = "460px") %>% withSpinner(),
                               tags$hr(),
                               dataTableOutput("tbCashFlow"),

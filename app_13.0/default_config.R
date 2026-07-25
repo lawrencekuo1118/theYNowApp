@@ -69,7 +69,7 @@ APP_DEFAULTS <- list(
   # --- 3. Gordon DCF ---
   dcf_mode        = "gordon",
   dcf_chart_mode  = "simple",
-  # Dashboard Cash Flow：營業／投資／融資三線可多選疊圖（融資 FCF ≠ 自由現金流）
+  # Dashboard Cash Flow：固定顯示營業／投資／融資三線疊圖（融資 FCF ≠ 自由現金流）
   cf_flow_series  = c("ocf", "icf", "fcf"),
   g_growth_method = "fundamental",
   custom_g        = default_g,          # 自訂短期成長（已封頂）

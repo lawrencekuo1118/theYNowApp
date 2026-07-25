@@ -645,7 +645,7 @@ server <- function(input, output, session) {
       c("Model Selector", "Recommended Method", .snapshot_value(rec$summary_method), "Rule-based model ranking"),
       c("DCF", "DCF Mode", .snapshot_value(input$dcf_mode), "Gordon or Two-Stage DCF"),
       c("DCF", "Forecast Years (n)", .snapshot_value(input$years), "n"),
-      c("Dashboard", "Cash Flow Series", paste(.snapshot_value(input$cf_flow_series), collapse = "+"), "Multi-select OCF / ICF / Financing FCF line overlay"),
+      c("Dashboard", "Cash Flow Series", paste(APP_DEFAULTS$cf_flow_series, collapse = "+"), "Always show OCF / ICF / Financing FCF line overlay"),
       c("DCF", "Chart Mode", .snapshot_value(input$dcf_chart_mode), "simple = hist+forecast FCFF; with_dcf adds discounted line"),
       c("Perpetual Growth", "Method", .snapshot_value(input$perpetual_g_method), "macro / fundamental / lifecycle"),
       c("Perpetual Growth", "Terminal g / SGR (%)", .snapshot_value(input$sgr), "DCF/RI terminal g; TV = FCF_n × (1+g) / (WACC-g)"),
@@ -1024,10 +1024,8 @@ server <- function(input, output, session) {
     }
 
     req(d_cash_flow(), current_ticker())
-    series_sel <- input$cf_flow_series %||% APP_DEFAULTS$cf_flow_series
-    if (length(series_sel) < 1) {
-      return(empty_plot("請至少勾選一條現金流序列（OCF／ICF／融資 FCF）"))
-    }
+    # Always show all three series (OCF / ICF / Financing FCF); no UI multi-select
+    series_sel <- APP_DEFAULTS$cf_flow_series %||% c("ocf", "icf", "fcf")
 
     spec <- list(
       ocf = list(key = "Operating Cash Flow", label = "營業現金流 OCF", color = "#2E86AB", symbol = "circle"),
@@ -1050,7 +1048,7 @@ server <- function(input, output, session) {
     }
 
     if (length(parts) < 1) {
-      return(empty_plot("⚠️ 找不到勾選序列的現金流資料"))
+      return(empty_plot("⚠️ 找不到現金流資料（OCF／ICF／融資 FCF）"))
     }
     if (length(x_levels) < 1) return(empty_plot("⚠️ 無可繪製期間"))
 
@@ -1076,7 +1074,7 @@ server <- function(input, output, session) {
     }
 
     title_main <- paste0(current_ticker(), " · Cash Flow 三線疊圖")
-    # 圖內不放副標字樣（會與水平圖例重疊）；說明改由 UI helpText 承擔
+    # 圖內不放副標字樣（會與水平圖例重疊）
     legend_cfg <- list(
       orientation = "h",
       x = 0, y = -0.22,
@@ -4706,7 +4704,6 @@ server <- function(input, output, session) {
   observeEvent(input$reset_dcf, {
     updateRadioButtons(session, "dcf_mode", selected = APP_DEFAULTS$dcf_mode)
     updateRadioButtons(session, "dcf_chart_mode", selected = APP_DEFAULTS$dcf_chart_mode)
-    updateCheckboxGroupInput(session, "cf_flow_series", selected = APP_DEFAULTS$cf_flow_series)
     updateNumericInput(session, "years", value = APP_DEFAULTS$years)
     updateSelectInput(session, "perpetual_g_method", selected = APP_DEFAULTS$perpetual_g_method)
     updateSelectInput(session, "lifecycle_stage", selected = APP_DEFAULTS$lifecycle_stage)
