@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12319596
+bundleId=12319648
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=origin/master
-commit=f07adea
-short=f07adea
-message=feat(beta): show live β beside CAPM source options
-captured_at=2026-07-25T16:47:38+00:00
-note=app_13.0 redeploy after live β labels + selected-β KPI beside apply menu.
+commit=c839204
+short=c839204
+message=feat(fcff): reorder growth controls and show 25% ceiling only when needed
+captured_at=2026-07-25T17:08:55+00:00
+note=app_13.0 redeploy after FCFF growth UI reorder and conditional 25% ceiling.
