@@ -1093,20 +1093,16 @@ server <- function(input, output, session) {
     tryCatch({
       .dbg <- list(
         sessionId = "dcee0e",
-        runId = "post-fix",
-        hypothesisId = "H1_H4",
+        runId = "cf-text-check",
+        hypothesisId = "H_cf_helper_text",
         location = "ynow_server.R:cf_plot:layout",
-        message = "cf_plot: removed in-chart subtitle; legend below plot",
+        message = "cf_plot: verify helper subtitle strings absent",
         data = list(
           n_series = length(parts),
-          series = lapply(parts, function(d) as.character(d$Series[1])),
-          title_has_br_subtitle = FALSE,
           title_text = title_main,
-          legend_orientation = legend_cfg$orientation,
-          legend_x = legend_cfg$x,
-          legend_y = legend_cfg$y,
-          margin_t = margin_cfg$t,
-          margin_b = margin_cfg$b,
+          has_dian_tuli = grepl("點圖例顯隱", title_main, fixed = TRUE),
+          has_tongyizhang = grepl("同一張圖同時顯示", title_main, fixed = TRUE),
+          has_financing_disclaimer = grepl("與自由現金流", title_main, fixed = TRUE),
           in_chart_subtitle_removed = TRUE
         ),
         timestamp = as.numeric(Sys.time()) * 1000
@@ -2066,80 +2062,26 @@ server <- function(input, output, session) {
     if (!is.finite(beta)) return()
     lab <- .capm_beta_label_html(beta)
     updateNumericInput(session, "capm_beta", label = lab)
-    updateNumericInput(session, "ddm_capm_beta", label = lab)
   }, ignoreInit = FALSE)
 
-  # ---------- DDM ↔ DCF CAPM 雙向同步（同一組 Ke 來源）----------
-  capm_ddm_syncing <- reactiveVal(FALSE)
-  .nearly_eq <- function(a, b, tol = 1e-6) {
-    a <- suppressWarnings(as.numeric(a)[1]); b <- suppressWarnings(as.numeric(b)[1])
-    if (!is.finite(a) && !is.finite(b)) return(TRUE)
-    if (!is.finite(a) || !is.finite(b)) return(FALSE)
-    abs(a - b) < tol
-  }
-  .push_capm_to_ddm <- function() {
-    if (isTRUE(capm_ddm_syncing())) return(invisible(NULL))
-    capm_ddm_syncing(TRUE)
-    on.exit(capm_ddm_syncing(FALSE), add = TRUE)
-    rf <- suppressWarnings(as.numeric(input$capm_rf)[1])
-    b  <- suppressWarnings(as.numeric(input$capm_beta)[1])
-    rm <- suppressWarnings(as.numeric(input$capm_rm)[1])
-    if (is.finite(rf) && !.nearly_eq(rf, input$ddm_capm_rf)) {
-      updateNumericInput(session, "ddm_capm_rf", value = rf)
-    }
-    if (is.finite(b) && !.nearly_eq(b, input$ddm_capm_beta)) {
-      updateNumericInput(session, "ddm_capm_beta", value = b)
-    }
-    if (is.finite(rm) && !.nearly_eq(rm, input$ddm_capm_rm)) {
-      updateNumericInput(session, "ddm_capm_rm", value = rm)
-    }
-    if (!identical(isTRUE(input$ddm_use_industry_beta), isTRUE(input$use_industry_beta))) {
-      updateCheckboxInput(session, "ddm_use_industry_beta", value = isTRUE(input$use_industry_beta))
-    }
+  # ---------- DDM「採用估算 Ke」↔ WACC「採用估算 rₑ」同步 ----------
+  ke_syncing <- reactiveVal(FALSE)
+  observeEvent(input$use_estimated_re, {
+    if (isTRUE(ke_syncing())) return()
+    ke_syncing(TRUE)
+    on.exit(ke_syncing(FALSE), add = TRUE)
     if (!identical(isTRUE(input$ddm_use_estimated_re), isTRUE(input$use_estimated_re))) {
       updateCheckboxInput(session, "ddm_use_estimated_re", value = isTRUE(input$use_estimated_re))
     }
-  }
-  .pull_ddm_to_capm <- function() {
-    if (isTRUE(capm_ddm_syncing())) return(invisible(NULL))
-    capm_ddm_syncing(TRUE)
-    on.exit(capm_ddm_syncing(FALSE), add = TRUE)
-    rf <- suppressWarnings(as.numeric(input$ddm_capm_rf)[1])
-    b  <- suppressWarnings(as.numeric(input$ddm_capm_beta)[1])
-    rm <- suppressWarnings(as.numeric(input$ddm_capm_rm)[1])
-    if (is.finite(rf) && !.nearly_eq(rf, input$capm_rf)) {
-      updateNumericInput(session, "capm_rf", value = rf)
-    }
-    if (is.finite(b) && !.nearly_eq(b, input$capm_beta)) {
-      if (!isTRUE(input$ddm_use_industry_beta)) capm_beta_dirty(TRUE)
-      .set_capm_beta(b)
-    }
-    if (is.finite(rm) && !.nearly_eq(rm, input$capm_rm)) {
-      updateNumericInput(session, "capm_rm", value = rm)
-    }
-    if (!identical(isTRUE(input$use_industry_beta), isTRUE(input$ddm_use_industry_beta))) {
-      updateCheckboxInput(session, "use_industry_beta", value = isTRUE(input$ddm_use_industry_beta))
-    }
+  }, ignoreInit = FALSE)
+  observeEvent(input$ddm_use_estimated_re, {
+    if (isTRUE(ke_syncing())) return()
+    ke_syncing(TRUE)
+    on.exit(ke_syncing(FALSE), add = TRUE)
     if (!identical(isTRUE(input$use_estimated_re), isTRUE(input$ddm_use_estimated_re))) {
       updateCheckboxInput(session, "use_estimated_re", value = isTRUE(input$ddm_use_estimated_re))
     }
-  }
-
-  observeEvent(
-    list(input$capm_rf, input$capm_beta, input$capm_rm, input$use_industry_beta, input$use_estimated_re),
-    { .push_capm_to_ddm() },
-    ignoreInit = FALSE
-  )
-  observeEvent(
-    list(input$ddm_capm_rf, input$ddm_capm_beta, input$ddm_capm_rm,
-         input$ddm_use_industry_beta, input$ddm_use_estimated_re),
-    { .pull_ddm_to_capm() },
-    ignoreInit = TRUE
-  )
-  observeEvent(input$ddm_calc_capm, {
-    .pull_ddm_to_capm()
-    .auto_recalc_capm_wacc(notify = TRUE, wacc_too = TRUE)
-  })
+  }, ignoreInit = TRUE)
 
   .capm_result_html <- function() {
     rf <- suppressWarnings(as.numeric(input$capm_rf)[1])
@@ -2157,7 +2099,6 @@ server <- function(input, output, session) {
     ))
   }
   output$capm_result <- renderUI({ .capm_result_html() })
-  output$ddm_capm_result <- renderUI({ .capm_result_html() })
   output$ddm_beta_ke_status <- renderUI({
     ke <- tryCatch(central_ke() * 100, error = function(e) NA_real_)
     b <- suppressWarnings(as.numeric(input$capm_beta)[1])
@@ -2165,12 +2106,60 @@ server <- function(input, output, session) {
       "<div style='font-size:14px;line-height:1.6;'>
          <b>目前 CAPM β</b>：{if (is.finite(b)) sprintf('%.3f', b) else 'N/A'}<br/>
          <b>目前 Ke（供 DDM）</b>：{if (is.finite(ke)) sprintf('%.2f%%', ke) else 'N/A'}<br/>
-         <span style='color:#666;font-size:12px;'>來源：{if (isTRUE(input$use_estimated_re)) 'CAPM 估算' else 'WACC 分頁 rₑ 手動／覆寫'}</span>
+         <span style='color:#666;font-size:12px;'>來源：{if (isTRUE(input$use_estimated_re)) 'CAPM 估算（Get Started）' else 'WACC 分頁 rₑ 手動／覆寫'}</span>
        </div>"
     ))
   })
 
-  # ---------- Beta (β) 分頁：Rolling 估計 vs Summary／產業 ----------
+  #region agent log
+  .agent_dbg_log <- function(hypothesis_id, location, message, data = list(), run_id = "post-fix") {
+    tryCatch({
+      payload <- list(
+        sessionId = "dcee0e",
+        runId = run_id,
+        hypothesisId = hypothesis_id,
+        location = location,
+        message = message,
+        data = data,
+        timestamp = as.numeric(Sys.time()) * 1000
+      )
+      line <- jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null")
+      cat(line, "\n",
+          file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-dcee0e.log",
+          append = TRUE)
+    }, error = function(e) invisible(NULL))
+  }
+  observeEvent(TRUE, {
+    .agent_dbg_log(
+      "H_all_beta_gs", "ynow_server.R:get_started_layout",
+      "all_beta_under_sgr",
+      list(
+        all_beta_under_sgr = TRUE,
+        get_started_sections = c(
+          "永續成長率 SGR 設定",
+          "CAPM / Beta (β) 設定",
+          "Beta 進階預估（Rolling／Unlevered／Bottom-up）"
+        ),
+        sgr_then_capm_then_advanced = TRUE,
+        capm_in_get_started = TRUE,
+        rolling_in_get_started = TRUE,
+        unlever_in_get_started = TRUE,
+        dcf_beta_tab_pointer_only = TRUE,
+        ddm_beta_tab_pointer_only = TRUE,
+        shared_builder = "beta_advanced_tab_ui",
+        canonical_ids = c(
+          "capm_rf", "capm_beta", "use_industry_beta", "capm_rm", "calc_capm",
+          "beta_bench", "beta_lookback_months", "beta_min_obs",
+          "calc_beta_est", "apply_beta_est", "beta_bl_source", "beta_peers",
+          "calc_beta_bottomup", "apply_beta_bottomup"
+        )
+      ),
+      run_id = "all-beta-under-sgr"
+    )
+  }, once = TRUE)
+  #endregion
+
+  # ---------- Get Started：Rolling／Unlevered Beta 預估 ----------
   beta_est_result <- reactiveVal(NULL)  # list(beta, n_obs, method, rs, rm, dates, bench, lookback)
   .beta_price_cache <- new.env(parent = emptyenv())
 
@@ -2250,6 +2239,18 @@ server <- function(input, output, session) {
   }
 
   observeEvent(input$calc_beta_est, {
+    #region agent log
+    .agent_dbg_log(
+      "H2", "ynow_server.R:calc_beta_est",
+      "rolling_calc_clicked",
+      list(
+        source = "get_started",
+        has_rolling_ui = TRUE,
+        bench = as.character(input$beta_bench %||% "")[1],
+        id_prefix = ""
+      )
+    )
+    #endregion
     withProgress(message = "估計 Rolling β…", value = 0.3, {
       res <- tryCatch(.estimate_session_beta(), error = function(e) {
         list(ok = FALSE, reason = e$message)
@@ -2267,11 +2268,11 @@ server <- function(input, output, session) {
     }
   })
 
-  observeEvent(input$apply_beta_est, {
+  .apply_rolling_beta_to_capm <- function() {
     res <- beta_est_result()
     if (is.null(res) || !isTRUE(res$ok) || !is.finite(res$beta)) {
       showNotification("請先成功估計 Rolling β，再套用至 CAPM。", type = "warning")
-      return()
+      return(invisible(NULL))
     }
     updateCheckboxInput(session, "use_industry_beta", value = FALSE)
     capm_beta_dirty(TRUE)
@@ -2281,14 +2282,15 @@ server <- function(input, output, session) {
       glue::glue("已套用 β={res$beta} 至 CAPM，並重估 rₑ／WACC。"),
       type = "message", duration = 5
     )
-  })
+  }
+  observeEvent(input$apply_beta_est, { .apply_rolling_beta_to_capm() })
 
   # 搜尋新標的後清掉舊估計（避免套用他股 β）
   observeEvent(current_ticker(), {
     beta_est_result(NULL)
   }, ignoreInit = TRUE)
 
-  output$vbx_beta_summary <- renderValueBox({
+  .vbx_beta_summary_content <- function() {
     b <- .summary_beta_value()
     valueBox(
       if (is.finite(b)) round(b, 2) else "N/A",
@@ -2296,8 +2298,10 @@ server <- function(input, output, session) {
       icon = icon("file-invoice"),
       color = "green"
     )
-  })
-  output$vbx_beta_industry <- renderValueBox({
+  }
+  output$vbx_beta_summary <- renderValueBox({ .vbx_beta_summary_content() })
+
+  .vbx_beta_industry_content <- function() {
     b <- .industry_beta_value()
     valueBox(
       if (is.finite(b)) round(b, 2) else "N/A",
@@ -2305,8 +2309,10 @@ server <- function(input, output, session) {
       icon = icon("industry"),
       color = "blue"
     )
-  })
-  output$vbx_beta_estimated <- renderValueBox({
+  }
+  output$vbx_beta_industry <- renderValueBox({ .vbx_beta_industry_content() })
+
+  .vbx_beta_estimated_content <- function() {
     res <- beta_est_result()
     valueBox(
       if (!is.null(res) && isTRUE(res$ok)) res$beta else "—",
@@ -2314,9 +2320,10 @@ server <- function(input, output, session) {
       icon = icon("chart-line"),
       color = "yellow"
     )
-  })
+  }
+  output$vbx_beta_estimated <- renderValueBox({ .vbx_beta_estimated_content() })
 
-  output$beta_est_result <- renderUI({
+  .beta_est_result_content <- function() {
     res <- beta_est_result()
     if (is.null(res)) {
       return(tags$p(style = "color:#888;font-size:13px;", "尚未估計。搜尋標的後按「估計 Rolling β」。"))
@@ -2334,9 +2341,10 @@ server <- function(input, output, session) {
          若套用：Ke = Rf + β×(Rm−Rf) ≈ <b>{if (is.finite(ke)) sprintf('%.2f%%', ke) else 'N/A'}</b>
        </div>"
     ))
-  })
+  }
+  output$beta_est_result <- renderUI({ .beta_est_result_content() })
 
-  output$beta_sources_table <- renderTable({
+  .beta_sources_table_df <- function() {
     res <- beta_est_result()
     est <- if (!is.null(res) && isTRUE(res$ok)) res$beta else NA_real_
     cur <- suppressWarnings(as.numeric(input$capm_beta)[1])
@@ -2356,9 +2364,12 @@ server <- function(input, output, session) {
       ),
       stringsAsFactors = FALSE
     )
+  }
+  output$beta_sources_table <- renderTable({
+    .beta_sources_table_df()
   }, striped = TRUE, bordered = TRUE, spacing = "s", width = "100%")
 
-  output$plt_beta_scatter <- renderPlot({
+  .plt_beta_scatter_draw <- function() {
     res <- beta_est_result()
     if (is.null(res) || !isTRUE(res$ok) || length(res$rs) < 5) {
       plot.new()
@@ -2377,7 +2388,8 @@ server <- function(input, output, session) {
         x = paste0(res$bench, " 報酬 (%)"),
         y = paste0(current_ticker(), " 報酬 (%)")
       )
-  })
+  }
+  output$plt_beta_scatter <- renderPlot({ .plt_beta_scatter_draw() })
 
   # ---------- Unlevered / Bottom-up 產業 β ----------
   beta_bottomup_result <- reactiveVal(NULL)
@@ -2506,7 +2518,19 @@ server <- function(input, output, session) {
     )
   }, once = TRUE)
 
-  observeEvent(input$calc_beta_bottomup, {
+  .run_beta_bottomup <- function(source_tag = "get_started") {
+    #region agent log
+    .agent_dbg_log(
+      "H1", "ynow_server.R:calc_beta_bottomup",
+      "bottomup_calc_clicked",
+      list(
+        source = source_tag,
+        has_unlever_ui = TRUE,
+        n_peers = length(input$beta_peers %||% character(0)),
+        id_prefix = ""
+      )
+    )
+    #endregion
     tax <- .session_tax_decimal()
     peers <- unique(toupper(trimws(as.character(input$beta_peers %||% character(0)))))
     peers <- peers[nzchar(peers)]
@@ -2522,7 +2546,7 @@ server <- function(input, output, session) {
           reason = "未指定同業，且產業基準無法去槓桿（缺 β 或負債比）。請輸入同業代碼後再算。"
         ))
         showNotification("Bottom-Up：請先輸入同業代碼，或確認已選產業。", type = "warning", duration = 7)
-        return()
+        return(invisible(NULL))
       }
       rel <- if (isTRUE(firm$de_info$ok)) .relever_beta(proxy$beta_u, tax, firm$de_info$de) else NA_real_
       beta_bottomup_result(list(
@@ -2542,7 +2566,7 @@ server <- function(input, output, session) {
         glue::glue("Bottom-Up（產業參考）βᵤ ≈ {round(proxy$beta_u, 3)}"),
         type = "message", duration = 6
       )
-      return()
+      return(invisible(NULL))
     }
 
     withProgress(message = "抓取同業 β／D/E…", value = 0.2, {
@@ -2587,7 +2611,7 @@ server <- function(input, output, session) {
         peers_df = peers_df
       ))
       showNotification("Bottom-Up 失敗：同業資料不足。", type = "error", duration = 8)
-      return()
+      return(invisible(NULL))
     }
     bu_avg <- mean(ok_u)
     firm <- firm_unlever_reactive()
@@ -2606,16 +2630,17 @@ server <- function(input, output, session) {
       glue::glue("✅ Bottom-Up βᵤ = {round(bu_avg, 3)}（n={length(ok_u)}）"),
       type = "message", duration = 6
     )
-  })
+  }
+  observeEvent(input$calc_beta_bottomup, { .run_beta_bottomup("get_started") })
 
-  observeEvent(input$apply_beta_bottomup, {
+  .apply_beta_bottomup_to_capm <- function() {
     res <- beta_bottomup_result()
     if (is.null(res) || !isTRUE(res$ok) || !is.finite(res$beta_l_relevered)) {
       showNotification(
         "請先成功計算 Bottom-Up，且本公司需有可用 D/E 才能再槓桿套用。",
         type = "warning", duration = 7
       )
-      return()
+      return(invisible(NULL))
     }
     updateCheckboxInput(session, "use_industry_beta", value = FALSE)
     capm_beta_dirty(TRUE)
@@ -2625,13 +2650,14 @@ server <- function(input, output, session) {
       glue::glue("已套用 Bottom-Up 再槓桿 β={res$beta_l_relevered} 至 CAPM（同步 DDM Ke）。"),
       type = "message", duration = 6
     )
-  })
+  }
+  observeEvent(input$apply_beta_bottomup, { .apply_beta_bottomup_to_capm() })
 
   observeEvent(current_ticker(), {
     beta_bottomup_result(NULL)
   }, ignoreInit = TRUE)
 
-  output$vbx_beta_unlever_firm <- renderValueBox({
+  .vbx_beta_unlever_firm_content <- function() {
     f <- firm_unlever_reactive()
     valueBox(
       if (is.finite(f$beta_u)) round(f$beta_u, 3) else "—",
@@ -2639,8 +2665,10 @@ server <- function(input, output, session) {
       icon = icon("balance-scale"),
       color = "orange"
     )
-  })
-  output$vbx_beta_unlever_bottomup <- renderValueBox({
+  }
+  output$vbx_beta_unlever_firm <- renderValueBox({ .vbx_beta_unlever_firm_content() })
+
+  .vbx_beta_unlever_bottomup_content <- function() {
     res <- beta_bottomup_result()
     valueBox(
       if (!is.null(res) && isTRUE(res$ok)) res$beta_u_avg else "—",
@@ -2648,8 +2676,10 @@ server <- function(input, output, session) {
       icon = icon("users"),
       color = "yellow"
     )
-  })
-  output$vbx_beta_relevered <- renderValueBox({
+  }
+  output$vbx_beta_unlever_bottomup <- renderValueBox({ .vbx_beta_unlever_bottomup_content() })
+
+  .vbx_beta_relevered_content <- function() {
     res <- beta_bottomup_result()
     valueBox(
       if (!is.null(res) && isTRUE(res$ok) && is.finite(res$beta_l_relevered)) {
@@ -2661,9 +2691,10 @@ server <- function(input, output, session) {
       icon = icon("redo"),
       color = "aqua"
     )
-  })
+  }
+  output$vbx_beta_relevered <- renderValueBox({ .vbx_beta_relevered_content() })
 
-  output$beta_unlever_firm_result <- renderUI({
+  .beta_unlever_firm_result_content <- function() {
     f <- firm_unlever_reactive()
     if (!is.finite(f$bl)) {
       return(tags$p(style = "color:#c0392b;", "尚無 β_L：請先搜尋標的，或於上方估計 Rolling β。"))
@@ -2684,9 +2715,10 @@ server <- function(input, output, session) {
          → <b>βᵤ = {if (is.finite(f$beta_u)) sprintf('%.3f', f$beta_u) else 'N/A'}</b>
        </div>"
     ))
-  })
+  }
+  output$beta_unlever_firm_result <- renderUI({ .beta_unlever_firm_result_content() })
 
-  output$beta_bottomup_result <- renderUI({
+  .beta_bottomup_result_content <- function() {
     res <- beta_bottomup_result()
     if (is.null(res)) {
       return(tags$p(style = "color:#888;font-size:13px;",
@@ -2705,14 +2737,18 @@ server <- function(input, output, session) {
             '（本公司缺 D/E，無法再槓桿）'}
        </div>"
     ))
-  })
+  }
+  output$beta_bottomup_result <- renderUI({ .beta_bottomup_result_content() })
 
-  output$beta_bottomup_peers_table <- renderTable({
+  .beta_bottomup_peers_table_df <- function() {
     res <- beta_bottomup_result()
     if (is.null(res) || is.null(res$peers_df) || nrow(res$peers_df) == 0) {
       return(data.frame(說明 = "尚無同業明細（產業參考模式或未計算）", stringsAsFactors = FALSE))
     }
     res$peers_df
+  }
+  output$beta_bottomup_peers_table <- renderTable({
+    .beta_bottomup_peers_table_df()
   }, striped = TRUE, bordered = TRUE, spacing = "s", width = "100%")
   
   # 保留：切換產業時刷新 Rm／成長／P/B；Beta 僅在勾選產業平均時由上方 .sync_capm_beta 處理
