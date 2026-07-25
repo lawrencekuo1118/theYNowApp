@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12319188
+bundleId=12319596
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=origin/master
-commit=c07e993
-short=c07e993
-message=feat(beta): add Beta Overview tab and reorganize Unlevered UI
-captured_at=2026-07-25T14:19:53+00:00
-note=app_13.0 redeploy after Beta Overview / 手動設算Beta值 UI reorg.
+commit=f07adea
+short=f07adea
+message=feat(beta): show live β beside CAPM source options
+captured_at=2026-07-25T16:47:38+00:00
+note=app_13.0 redeploy after live β labels + selected-β KPI beside apply menu.
