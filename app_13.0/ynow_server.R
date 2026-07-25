@@ -661,8 +661,8 @@ server <- function(input, output, session) {
       c("CAPM", "Beta", .snapshot_value(input$capm_beta), "Systematic risk coefficient"),
       c("CAPM", "Use Industry Beta", .snapshot_value(input$use_industry_beta), "TRUE = industry avg; FALSE = Finance Summary β (manual sticky until ticker change)"),
       c("CAPM", "Rm (%)", .snapshot_value(input$capm_rm), "Expected market return"),
-      c("Beta", "Unlever β_L source", .snapshot_value(input$beta_bl_source), "auto / summary / rolling / capm"),
-      c("Beta", "βᵤ apply source", .snapshot_value(input$beta_u_apply_source), "unlever_firm / bottomup / manual / rolling"),
+      c("Beta", "Unlever β_L source", .snapshot_value(input$beta_bl_source), "summary / rolling / auto"),
+      c("Beta", "βᵤ apply source", .snapshot_value(input$beta_u_apply_source), "unlever_firm / bottomup / manual"),
       c("Beta", "Manual Unlevered βᵤ", .snapshot_value(input$beta_u_manual), "Manual β_u when apply source = manual"),
       c("Beta", "Bottom-up peers", .snapshot_value(paste(input$beta_peers, collapse = ",")), "Peer tickers for industry unlevered β"),
       c("WACC", "Calculated WACC (%)", .snapshot_value(wacc_pct), "WACC = E/(E+D)×Re + D/(E+D)×Rd×(1-T)"),
@@ -761,11 +761,11 @@ server <- function(input, output, session) {
       capm_rf = c("CAPM", "Rf (%)", "無風險利率（啟動時估）"),
       capm_beta = c("CAPM", "Beta", "啟動占位；搜尋後可跟 Summary"),
       use_industry_beta = c("CAPM", "使用產業 Beta", "FALSE = 跟 Finance Summary β"),
-      beta_bench = c("Beta", "基準指數", "Rolling β 對齊標的，預設 SPY"),
-      beta_lookback_months = c("Beta", "回溯月數", "月末報酬視窗"),
-      beta_min_obs = c("Beta", "最少觀測", "估計所需最低月數"),
-      beta_bl_source = c("Beta", "Unlever β_L 來源", "auto / summary / rolling / capm"),
-      beta_u_apply_source = c("Beta", "套用 βᵤ 來源", "unlever_firm / bottomup / manual / rolling"),
+      beta_bench = c("Beta", "基準指數", "Rolling β 對齊標的，預設 SPY（亦可 QQQ／IWM 或自訂）"),
+      beta_lookback_months = c("Beta", "回溯月數", "常見 36／60／84；預設 60 對齊 Yahoo 5Y"),
+      beta_min_obs = c("Beta", "最少觀測", "估計所需最低月數（內部預設）"),
+      beta_bl_source = c("Beta", "Unlever β_L 來源", "summary / rolling / auto"),
+      beta_u_apply_source = c("Beta", "套用 βᵤ 來源", "unlever_firm / bottomup / manual"),
       beta_u_manual = c("Beta", "手動 Unlevered βᵤ", "數值"),
       beta_peers = c("Beta", "Bottom-up 同業", "逗號分隔代碼；UI 多選"),
       capm_rm = c("CAPM", "Rm (%)", "預期市場報酬"),
@@ -2158,7 +2158,7 @@ server <- function(input, output, session) {
           "beta_u_apply_source", "beta_u_manual", "apply_beta_u_selected",
           "beta_bench", "beta_lookback_months", "beta_min_obs",
           "calc_beta_est", "apply_beta_est", "beta_bl_source", "beta_peers",
-          "calc_beta_bottomup", "apply_beta_bottomup"
+          "calc_beta_bottomup"
         )
       ),
       run_id = "capm-back-wacc"
@@ -2446,7 +2446,9 @@ server <- function(input, output, session) {
     list(ok = TRUE, d = d, e = e, de = d / e, source = "market_D/E")
   }
   .resolve_beta_l <- function() {
-    src <- as.character(input$beta_bl_source %||% "auto")[1]
+    src <- as.character(input$beta_bl_source %||% "summary")[1]
+    # 舊版殘值：capm 易與 CAPM 輸出循環，改走 Summary
+    if (identical(src, "capm")) src <- "summary"
     pick <- function(which) {
       if (identical(which, "rolling")) {
         res <- beta_est_result()
@@ -2460,15 +2462,11 @@ server <- function(input, output, session) {
         if (is.finite(b)) return(list(beta = b, label = "Finance Summary"))
         return(NULL)
       }
-      if (identical(which, "capm")) {
-        b <- suppressWarnings(as.numeric(input$capm_beta)[1])
-        if (is.finite(b)) return(list(beta = b, label = "目前 CAPM β"))
-        return(NULL)
-      }
       NULL
     }
     if (identical(src, "auto")) {
-      for (w in c("rolling", "summary", "capm")) {
+      # 常見優先：Summary 隨手可得；Rolling 僅在已估計時使用
+      for (w in c("summary", "rolling")) {
         got <- pick(w)
         if (!is.null(got)) return(got)
       }
@@ -2640,44 +2638,16 @@ server <- function(input, output, session) {
   }
   observeEvent(input$calc_beta_bottomup, { .run_beta_bottomup("get_started") })
 
-  .apply_beta_bottomup_to_capm <- function() {
-    res <- beta_bottomup_result()
-    if (is.null(res) || !isTRUE(res$ok) || !is.finite(res$beta_l_relevered)) {
-      showNotification(
-        "請先成功計算 Bottom-Up，且本公司需有可用 D/E 才能再槓桿套用。",
-        type = "warning", duration = 7
-      )
-      return(invisible(NULL))
-    }
-    updateCheckboxInput(session, "use_industry_beta", value = FALSE)
-    capm_beta_dirty(TRUE)
-    .set_capm_beta(res$beta_l_relevered)
-    .auto_recalc_capm_wacc(notify = TRUE, wacc_too = TRUE)
-    showNotification(
-      glue::glue("已套用 Bottom-Up 再槓桿 β={res$beta_l_relevered} 至 CAPM（同步 DDM Ke）。"),
-      type = "message", duration = 6
-    )
-  }
-  observeEvent(input$apply_beta_bottomup, { .apply_beta_bottomup_to_capm() })
-
   .apply_selected_beta_u_to_capm <- function() {
     src <- as.character(input$beta_u_apply_source %||% "unlever_firm")[1]
     tax <- .session_tax_decimal()
     de_info <- .firm_market_de()
 
+    # Rolling 槓桿 β 僅在 Rolling 分頁套用（避免與 Unlevered 路徑重疊）
     if (identical(src, "rolling")) {
-      res <- beta_est_result()
-      if (is.null(res) || !isTRUE(res$ok) || !is.finite(res$beta)) {
-        showNotification("請先成功估計 Rolling β。", type = "warning", duration = 6)
-        return(invisible(NULL))
-      }
-      updateCheckboxInput(session, "use_industry_beta", value = FALSE)
-      capm_beta_dirty(TRUE)
-      .set_capm_beta(res$beta)
-      .auto_recalc_capm_wacc(notify = TRUE, wacc_too = TRUE)
       showNotification(
-        glue::glue("已套用 Rolling β={res$beta} 至 CAPM。"),
-        type = "message", duration = 5
+        "請改至「Rolling β」分頁按「套用至 CAPM β」。Unlevered 分頁僅處理去槓桿／再槓桿路徑。",
+        type = "warning", duration = 7
       )
       return(invisible(NULL))
     }

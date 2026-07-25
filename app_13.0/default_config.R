@@ -97,14 +97,14 @@ APP_DEFAULTS <- list(
   use_industry_beta = FALSE,                 # FALSE = 跟 Summary β；TRUE = 產業平均
   capm_rm         = round(default_rm, 2),
   beta_bench      = "SPY",
-  beta_lookback_months = 60,
+  beta_lookback_months = 60,                 # 36 | 60 | 84（常見 3Y／5Y／7Y）
   beta_min_obs    = 24,
-  # Unlevered / bottom-up：β_L 來源；同業代碼（逗號／空白分隔，可於 UI 選填）
-  beta_bl_source  = "auto",                  # auto | summary | rolling | capm
+  # Unlevered：β_L 來源（summary｜rolling｜auto）；勿再用 capm（與 CAPM 輸出循環）
+  beta_bl_source  = "summary",               # summary | rolling | auto
   beta_peers      = "",
-  # 套用至 CAPM 時預設採用本公司 Unlevered βᵤ；可改 Bottom-up／手動／Rolling
-  beta_u_apply_source = "unlever_firm",      # unlever_firm | bottomup | manual | rolling
-  beta_u_manual   = NA,                      # 手動 Unlevered βᵤ
+  # 套用至 CAPM：僅 Unlevered 路徑；Rolling 槓桿 β 在 Rolling 分頁套用
+  beta_u_apply_source = "unlever_firm",      # unlever_firm | bottomup | manual
+  beta_u_manual   = NA,                      # 手動 Unlevered βᵤ（套用選項最後一項）
 
   # --- 6. P/B／資產法 ---
   pb_bvps         = NA,
