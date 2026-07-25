@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12318581
+bundleId=12318611
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=origin/master
-commit=6ed9c9f92a1071e4cc7d9e5330073828874ce85b
-short=6ed9c9f
-message=ui: consolidate Get Started Beta into BETA tabBox (Unlevered | Rolling)
-captured_at=2026-07-25T09:12:41+00:00
-note=app_13.0 redeploy after consolidating Get Started Unlevered/Rolling into BETA tabBox. Prefer local deploy thereafter.
+commit=90e49347b12ba589673c83fde17f90037bf1a8eb
+short=90e4934
+message=Add param sensitivity blocks to DDM/RI/P/B; tuck Snapshot in sidebar foot.
+captured_at=2026-07-25T09:27:00+00:00
+note=app_13.0 redeploy after DDM/RI/P/B param sensitivity + sidebar Snapshot foot. Prefer local deploy thereafter.
