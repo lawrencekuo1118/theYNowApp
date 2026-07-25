@@ -3054,14 +3054,38 @@ server <- function(input, output, session) {
     if (!isTRUE(res$ok)) {
       return(tags$p(style = "color:#c0392b;", res$reason %||% "計算失敗"))
     }
+    # glue 不支援多行 if/else 區塊；先組字串再嵌入
+    relever_note <- if (is.finite(res$beta_l_relevered)) {
+      paste0(
+        '<br/><span style="color:#666;">參考：若以本公司 D/E 再槓桿 β_L ≈ <b>',
+        res$beta_l_relevered, "</b></span>"
+      )
+    } else {
+      ""
+    }
+    # #region agent log
+    tryCatch({
+      payload <- list(
+        sessionId = "d3f3d7",
+        runId = Sys.getenv("YNOW_DEBUG_RUN", "pre-fix"),
+        hypothesisId = "F",
+        location = "ynow_server.R:beta_bottomup_result_content",
+        message = "bottomup result html built",
+        data = list(
+          has_relever = is.finite(res$beta_l_relevered),
+          beta_u = res$beta_u_avg
+        ),
+        timestamp = as.numeric(Sys.time()) * 1000
+      )
+      cat(jsonlite::toJSON(payload, auto_unbox = TRUE), "\n",
+          file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-d3f3d7.log", append = TRUE)
+    }, error = function(e) invisible(NULL))
+    # #endregion
     HTML(glue::glue(
       "<div style='padding:10px;border-left:4px solid #27ae60;background:#eafaf1;font-size:13px;'>
          <b>{res$label}</b> · T = {sprintf('%.1f%%', res$tax * 100)}<br/>
          平均 βᵤ = <b>{res$beta_u_avg}</b>（套用至 CAPM 時直接使用此值，不經再槓桿）
-         {if (is.finite(res$beta_l_relevered))
-            paste0('<br/><span style=\"color:#666;\">參考：若以本公司 D/E 再槓桿 β_L ≈ <b>', res$beta_l_relevered, '</b></span>')
-          else
-            ''}
+         {relever_note}
        </div>"
     ))
   }
