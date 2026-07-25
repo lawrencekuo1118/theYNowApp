@@ -14,16 +14,108 @@ library(cachem)
 # ==========================================
 my_cache <- cachem::cache_mem(max_size = 50 * 1024^2, max_age = 3600)
 
-if (!py_available(initialize = TRUE)) {
-  reticulate::py_config()
+# #region agent log
+tryCatch({
+  payload <- list(
+    sessionId = "d3f3d7",
+    runId = Sys.getenv("YNOW_DEBUG_RUN", "pre-fix"),
+    hypothesisId = "C",
+    location = "web_crawler.R:before_py_boot",
+    message = "python boot start (avoid initialize=TRUE at source)",
+    data = list(
+      skip_py = identical(Sys.getenv("YNOW_DEBUG_SKIP_PY"), "1"),
+      shiny_server = nzchar(Sys.getenv("SHINY_SERVER_VERSION"))
+    ),
+    timestamp = as.numeric(Sys.time()) * 1000
+  )
+  cat(jsonlite::toJSON(payload, auto_unbox = TRUE), "\n",
+      file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-d3f3d7.log", append = TRUE)
+}, error = function(e) invisible(NULL))
+# #endregion
+
+# 勿在 source 時呼叫 py_available(initialize=TRUE)：可能直接 abort worker → shinyapps 500。
+.py_scraper_ready <- FALSE
+.ensure_python_scraper <- function() {
+  if (isTRUE(.py_scraper_ready) && exists("scrape_all_financials", mode = "function")) {
+    return(TRUE)
+  }
+  if (identical(Sys.getenv("YNOW_DEBUG_SKIP_PY"), "1")) return(FALSE)
+  ok <- FALSE
+  tryCatch({
+    ok <- isTRUE(reticulate::py_available(initialize = FALSE))
+    if (!ok) {
+      suppressMessages(reticulate::py_config())
+      ok <- isTRUE(reticulate::py_available(initialize = FALSE))
+    }
+    if (ok) {
+      reticulate::source_python("deep_scraper.py")
+      .py_scraper_ready <<- TRUE
+    }
+  }, error = function(e) {
+    # #region agent log
+    tryCatch({
+      payload <- list(
+        sessionId = "d3f3d7",
+        runId = Sys.getenv("YNOW_DEBUG_RUN", "pre-fix"),
+        hypothesisId = "C",
+        location = "web_crawler.R:ensure_python_scraper_error",
+        message = "lazy python scraper init failed",
+        data = list(error = conditionMessage(e)),
+        timestamp = as.numeric(Sys.time()) * 1000
+      )
+      cat(jsonlite::toJSON(payload, auto_unbox = TRUE), "\n",
+          file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-d3f3d7.log", append = TRUE)
+    }, error = function(e2) invisible(NULL))
+    # #endregion
+    message("⚠️ Python 爬蟲延遲載入失敗: ", e$message)
+    ok <<- FALSE
+  })
+  isTRUE(ok) && exists("scrape_all_financials", mode = "function")
 }
 
 tryCatch({
-  reticulate::source_python("deep_scraper.py")
-  message("✅ Python 深度爬蟲腳本載入成功！")
+  if (!identical(Sys.getenv("YNOW_DEBUG_SKIP_PY"), "1") &&
+      isTRUE(reticulate::py_available(initialize = FALSE))) {
+    reticulate::source_python("deep_scraper.py")
+    .py_scraper_ready <- TRUE
+    message("✅ Python 深度爬蟲腳本載入成功！")
+  } else {
+    message("ℹ️ Python 爬蟲改為延遲載入（避免啟動期 initialize 導致 500）")
+  }
 }, error = function(e) {
+  # #region agent log
+  tryCatch({
+    payload <- list(
+      sessionId = "d3f3d7",
+      runId = Sys.getenv("YNOW_DEBUG_RUN", "pre-fix"),
+      hypothesisId = "C",
+      location = "web_crawler.R:source_python_error",
+      message = "optional startup source_python failed",
+      data = list(error = conditionMessage(e)),
+      timestamp = as.numeric(Sys.time()) * 1000
+    )
+    cat(jsonlite::toJSON(payload, auto_unbox = TRUE), "\n",
+        file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-d3f3d7.log", append = TRUE)
+  }, error = function(e2) invisible(NULL))
+  # #endregion
   message("⚠️ Python 腳本載入失敗: ", e$message)
 })
+
+# #region agent log
+tryCatch({
+  payload <- list(
+    sessionId = "d3f3d7",
+    runId = Sys.getenv("YNOW_DEBUG_RUN", "pre-fix"),
+    hypothesisId = "C",
+    location = "web_crawler.R:after_py_boot",
+    message = "web_crawler python boot finished",
+    data = list(ready = isTRUE(.py_scraper_ready)),
+    timestamp = as.numeric(Sys.time()) * 1000
+  )
+  cat(jsonlite::toJSON(payload, auto_unbox = TRUE), "\n",
+      file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-d3f3d7.log", append = TRUE)
+}, error = function(e) invisible(NULL))
+# #endregion
 
 .empty_summary <- function(stock_code, company_name = NULL) {
   df <- data.frame(
@@ -42,7 +134,7 @@ tryCatch({
 cached_scrape_financials <- memoise::memoise(
   function(stock_code) {
     message(paste("🚀 正在啟動 Python 財報抓取:", stock_code))
-    if (!exists("scrape_all_financials", mode = "function")) {
+    if (!isTRUE(.ensure_python_scraper())) {
       stop("scrape_all_financials 未載入（Python / reticulate 失敗）")
     }
     normalize_all_financials(scrape_all_financials(stock_code))

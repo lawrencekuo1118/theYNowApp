@@ -3,6 +3,21 @@
 # ==========================================
 
 server <- function(input, output, session) {
+  # #region agent log
+  tryCatch({
+    payload <- list(
+      sessionId = "d3f3d7",
+      runId = Sys.getenv("YNOW_DEBUG_RUN", "pre-fix"),
+      hypothesisId = "A",
+      location = "ynow_server.R:server_entry",
+      message = "server() entered",
+      data = list(tick = as.numeric(Sys.time())),
+      timestamp = as.numeric(Sys.time()) * 1000
+    )
+    cat(jsonlite::toJSON(payload, auto_unbox = TRUE), "\n",
+        file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-d3f3d7.log", append = TRUE)
+  }, error = function(e) invisible(NULL))
+  # #endregion
   
   # ==========================================
   # 🗄️ 全域資料容器 (儲存爬蟲結果與跨模組變數)
@@ -2104,7 +2119,8 @@ server <- function(input, output, session) {
     if (identical(drv, "industry") && isTRUE(input$use_industry_beta) &&
         is.finite(ind_b) && abs(beta - ind_b) < 1e-4) {
       HTML("Beta (β) <span style='color: #2980b9; font-size: 12px;'>[產業平均]</span>")
-    } else if (identical(drv, "rolling") || identical(src, "rolling") && identical(drv, "gs")) {
+    } else if (identical(drv, "rolling") ||
+               (identical(src, "rolling") && identical(drv, "gs"))) {
       HTML("Beta (β) <span style='color: #f39c12; font-size: 12px;'>[Get Started｜Rolling]</span>")
     } else if (identical(drv, "manual")) {
       HTML("Beta (β) <span style='color: #e67e22; font-size: 12px;'>[手動｜已回寫 Get Started]</span>")
@@ -2122,8 +2138,8 @@ server <- function(input, output, session) {
     input$capm_beta, input$industry_choice, input$use_industry_beta,
     input$beta_u_apply_source, summary_data(), beta_capm_driver()
   ), {
-    beta <- suppressWarnings(as.numeric(input$capm_beta))
-    if (!is.finite(beta)) return()
+    beta <- suppressWarnings(as.numeric(input$capm_beta)[1])
+    if (length(beta) < 1L || !is.finite(beta)) return()
     lab <- .capm_beta_label_html(beta)
     updateNumericInput(session, "capm_beta", label = lab)
   }, ignoreInit = FALSE)
@@ -2878,8 +2894,46 @@ server <- function(input, output, session) {
     summary_data(),
     beta_est_result()
   ), {
-    if (identical(as.character(beta_capm_driver() %||% "gs")[1], "manual")) return()
-    .maybe_sync_gs_beta_to_capm()
+    # #region agent log
+    tryCatch({
+      payload <- list(
+        sessionId = "d3f3d7",
+        runId = Sys.getenv("YNOW_DEBUG_RUN", "pre-fix"),
+        hypothesisId = "E",
+        location = "ynow_server.R:auto_sync_observer",
+        message = "beta auto-sync observer fired",
+        data = list(
+          src = as.character(input$beta_u_apply_source %||% NA_character_)[1],
+          drv = as.character(beta_capm_driver() %||% NA_character_)[1],
+          industry = isTRUE(input$use_industry_beta)
+        ),
+        timestamp = as.numeric(Sys.time()) * 1000
+      )
+      cat(jsonlite::toJSON(payload, auto_unbox = TRUE), "\n",
+          file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-d3f3d7.log", append = TRUE)
+    }, error = function(e) invisible(NULL))
+    # #endregion
+    tryCatch({
+      if (identical(as.character(beta_capm_driver() %||% "gs")[1], "manual")) return()
+      .maybe_sync_gs_beta_to_capm()
+    }, error = function(e) {
+      # #region agent log
+      tryCatch({
+        payload <- list(
+          sessionId = "d3f3d7",
+          runId = Sys.getenv("YNOW_DEBUG_RUN", "pre-fix"),
+          hypothesisId = "E",
+          location = "ynow_server.R:auto_sync_error",
+          message = "beta auto-sync threw",
+          data = list(error = conditionMessage(e)),
+          timestamp = as.numeric(Sys.time()) * 1000
+        )
+        cat(jsonlite::toJSON(payload, auto_unbox = TRUE), "\n",
+            file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-d3f3d7.log", append = TRUE)
+      }, error = function(e2) invisible(NULL))
+      # #endregion
+      warning("beta auto-sync error: ", conditionMessage(e))
+    })
   }, ignoreInit = FALSE)
 
   observeEvent(input$beta_u_apply_source, {
@@ -3935,7 +3989,7 @@ server <- function(input, output, session) {
     dcf_value <- NA
     g_terminal <- input$sgr / 100
     
-    if (input$dcf_mode == "gordon") {
+    if (isTRUE(identical(input$dcf_mode, "gordon"))) {
       req(input$sgr, input$wacc_gordon)
       r1 <- input$wacc_gordon / 100
       r2 <- r1 
