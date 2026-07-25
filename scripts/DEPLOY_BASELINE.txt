@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12318611
+bundleId=12318657
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=origin/master
-commit=90e49347b12ba589673c83fde17f90037bf1a8eb
-short=90e4934
-message=Add param sensitivity blocks to DDM/RI/P/B; tuck Snapshot in sidebar foot.
-captured_at=2026-07-25T09:27:00+00:00
-note=app_13.0 redeploy after DDM/RI/P/B param sensitivity + sidebar Snapshot foot. Prefer local deploy thereafter.
+commit=9fb91240865dbddef0b37711f673cab758dcf790
+short=9fb9124
+message=fix(ui): keep Snapshot as sidebar foot link; remove nested menu item
+captured_at=2026-07-25T09:48:56+00:00
+note=app_13.0 redeploy after Snapshot sidebar foot fix. Prefer local deploy thereafter.
