@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12318657
+bundleId=12318710
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=origin/master
-commit=9fb91240865dbddef0b37711f673cab758dcf790
-short=9fb9124
-message=fix(ui): keep Snapshot as sidebar foot link; remove nested menu item
-captured_at=2026-07-25T09:48:56+00:00
-note=app_13.0 redeploy after Snapshot sidebar foot fix. Prefer local deploy thereafter.
+commit=54052f5b3ac03a78f75fda23f7911afabfbca62a
+short=54052f5
+message=refactor(ui): streamline Get Started Beta settings
+captured_at=2026-07-25T10:11:06+00:00
+note=app_13.0 redeploy after Get Started Beta settings streamline. Prefer local deploy thereafter.
