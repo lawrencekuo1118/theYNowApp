@@ -22,6 +22,7 @@ server <- function(input, output, session) {
   
   # 系統核心估值變數
   estimated_g <- reactiveVal(NULL)
+  estimated_g_raw <- reactiveVal(NULL)  # 封頂前原始預估營收成長率 (%)
   estimated_re <- reactiveVal(NULL)
   calculated_wacc <- reactiveVal(NULL)
   dcf_value_result <- reactiveVal(NULL)
@@ -1248,7 +1249,7 @@ server <- function(input, output, session) {
   # ==========================================
   # 呼叫 FCFF 模組
   # ==========================================
-  fcf_results <- fcf_projection_module_server(
+    fcf_results <- fcf_projection_module_server(
     id = "mod_fcf", 
     d_balance_sheet = d_balance_sheet,
     d_income_statement = d_income_statement, 
@@ -1262,7 +1263,8 @@ server <- function(input, output, session) {
     input_manual_fcf = reactive(input$manual_fcf),
     calc_trigger = run_calc_trigger,
     global_est_g = estimated_g,
-    global_g_method = reactive(input$g_growth_method)
+    global_g_method = reactive(input$g_growth_method),
+    global_raw_g = estimated_g_raw
   )
   
   observeEvent({
@@ -3035,7 +3037,7 @@ server <- function(input, output, session) {
     }
   })
   
-  estimated_g_meta <- reactiveValues(method = NULL, fund_res = NULL, source = NULL)
+  estimated_g_meta <- reactiveValues(method = NULL, fund_res = NULL, source = NULL, raw_g = NULL)
   .clamp_near_term_g_pct <- function(g, lo = -5, hi = 25) {
     g <- suppressWarnings(as.numeric(g)[1])
     if (!is.finite(g)) return(NA_real_)
@@ -3163,11 +3165,32 @@ server <- function(input, output, session) {
       NA_real_
     )
 
-    # Near-term growth fed into revenue projection: clamp all non-custom methods.
+    # 封頂前原始成長率：供 UI 決定是否顯示 25% 防呆
+    raw_g_pct <- if (identical(method, "fundamental") && !is.null(fund_res)) {
+      fund_res$raw_g
+    } else {
+      suppressWarnings(as.numeric(val_raw)[1])
+    }
+    estimated_g_meta$raw_g <- raw_g_pct
+    estimated_g_raw(if (is.finite(raw_g_pct)) raw_g_pct else NULL)
+
+    # Near-term growth fed into revenue projection.
+    # raw > 25% 且防呆勾選（或尚未渲染）時封頂 25%；解除防呆時放寬（非自訂上限 50%）。
+    needs_ceiling_ui <- is.finite(raw_g_pct) && raw_g_pct > 25
+    ceil_ns <- input[["mod_fcf-apply_g_ceiling"]]
+    ceil_on <- if (needs_ceiling_ui) {
+      if (is.null(ceil_ns)) TRUE else isTRUE(ceil_ns)
+    } else {
+      TRUE
+    }
     val <- if (identical(method, "custom")) {
+      raw <- suppressWarnings(as.numeric(val_raw)[1])
+      if (needs_ceiling_ui && isTRUE(ceil_on)) min(raw, 25) else raw
+    } else if (identical(method, "fundamental")) {
       suppressWarnings(as.numeric(val_raw)[1])
     } else {
-      .clamp_near_term_g_pct(val_raw, lo = -5, hi = 25)
+      hi <- if (needs_ceiling_ui && !isTRUE(ceil_on)) 50 else 25
+      .clamp_near_term_g_pct(val_raw, lo = -5, hi = hi)
     }
     if (is.null(source_lab)) {
       source_lab <- switch(
@@ -3186,7 +3209,17 @@ server <- function(input, output, session) {
       if (!identical(method, "custom") && !identical(method, "fundamental")) {
         fcf_rates <- .yoy_rates_newest_first(vec_fcf, abs_cap = 1)
         if (length(fcf_rates)) {
-          val <- .clamp_near_term_g_pct(mean(fcf_rates) * 100)
+          fb_raw <- mean(fcf_rates) * 100
+          raw_g_pct <- fb_raw
+          estimated_g_meta$raw_g <- raw_g_pct
+          estimated_g_raw(if (is.finite(raw_g_pct)) raw_g_pct else NULL)
+          needs_ceiling_ui <- is.finite(fb_raw) && fb_raw > 25
+          ceil_ns <- input[["mod_fcf-apply_g_ceiling"]]
+          ceil_on <- if (needs_ceiling_ui) {
+            if (is.null(ceil_ns)) TRUE else isTRUE(ceil_ns)
+          } else TRUE
+          hi <- if (needs_ceiling_ui && !isTRUE(ceil_on)) 50 else 25
+          val <- .clamp_near_term_g_pct(fb_raw, lo = -5, hi = hi)
           source_lab <- paste0(source_lab, "（營收不足→FCF 回退）")
         }
       }
@@ -3195,7 +3228,9 @@ server <- function(input, output, session) {
     if (is.null(val) || length(val) < 1 || is.na(val) || !is.finite(val)) {
       prev_g_na <- isolate(estimated_g())
       estimated_g(NULL)
+      estimated_g_raw(NULL)
       estimated_g_meta$source <- NULL
+      estimated_g_meta$raw_g <- NULL
       if (!is.null(prev_g_na)) {
         updateSelectInput(session, "g_growth_method", label = "預估營收成長率 (缺乏數據)")
       }

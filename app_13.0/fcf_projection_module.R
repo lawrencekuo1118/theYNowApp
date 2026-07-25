@@ -21,21 +21,86 @@ fcf_projection_module_ui <- function(id) {
            fluidRow(
              div("FCFF = NOPAT + D&A - ΔNWC - CapEx",
                  style = "font-size: 18px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;")
-           ),   
-           br(),
+           ),
+
+           # 公式橫幅正下方：預估營收成長率；同列右側為 25% 防呆（僅 raw g > 25% 時顯示）
+           fluidRow(
+             column(
+               width = 7,
+               selectInput(
+                 "g_growth_method", "預估營收成長率（驅動 FCFF 預測）",
+                 choices = c(
+                   "基本面 RR×ROIC" = "fundamental",
+                   "營收 CAGR" = "cagr",
+                   "營收 YoY 平均" = "mean",
+                   "營收 YoY 中位" = "median",
+                   "營收最近一年" = "last_year",
+                   "自訂營收成長率" = "custom"
+                 ),
+                 selected = APP_DEFAULTS$g_growth_method
+               ),
+               conditionalPanel(
+                 condition = "input.g_growth_method == 'custom'",
+                 numericInput("custom_g", "自訂營收成長率 (%)", value = APP_DEFAULTS$custom_g)
+               ),
+               conditionalPanel(
+                 condition = "input.g_growth_method != 'custom'",
+                 tags$div(
+                   style = "margin-top: 4px; padding-left: 2px;",
+                   uiOutput(ns("g_result_display"))
+                 )
+               )
+             ),
+             column(
+               width = 5,
+               tags$div(
+                 style = "margin-top: 25px;",
+                 conditionalPanel(
+                   condition = "output.show_g_ceiling == true",
+                   ns = ns,
+                   checkboxInput(
+                     ns("apply_g_ceiling"),
+                     tags$span(
+                       style = "color: #d35400; font-weight: bold;",
+                       "啟用 25% 成長率天花板防呆 (建議)"
+                     ),
+                     value = TRUE
+                   )
+                 )
+               )
+             )
+           ),
+           helpText(
+             "預測表以「營收成長 → 利潤／再投資假設 → FCFF」展開。",
+             "歷史方法（CAGR／平均／中位／最近一年）應看營收，而非 FCF 波動；",
+             "基本面法以 RR×ROIC 近似永續成長，並套用 −5%～25% 防呆。"
+           ),
+
+           # 成長率選單正下方、六個輸入格正上方：參數拆解說明
+           div(
+             style = "background-color: #f9f9f9; padding: 15px; border-left: 4px solid #00a65a; margin: 12px 0 16px 0;",
+             h4(tags$b("自由現金流 (FCF) 參數拆解")),
+             p("您可以點擊「同步按鈕」帶入最新財報，或手動微調參數來模擬不同的營運情境，藉此還原 FCF 與基本面永續成長率 (g) 的計算過程。"),
+             p(
+               style = "font-size: 13px; color: #7f8c8d; margin-top: 5px; margin-bottom: 0px;",
+               "※ 符號說明：NI (稅後淨利), D&A (折舊與攤銷), ΔNWC (營運資金變動), CapEx (資本支出)"
+             )
+           ),
            
            fluidRow(
-             column(12,
-                    actionButton(ns("btn_sync_fcf_params"), "從最新財報自動帶入數值", 
-                                 icon = icon("sync"), 
-                                 class = "btn-sm",
-                                 style = "background-color: #222222; color: #ffffff; border: 1px solid #555555; font-size: 12px; padding: 4px 12px; border-radius: 4px;")
+             column(
+               12,
+               actionButton(
+                 ns("btn_sync_fcf_params"), "從最新財報自動帶入數值",
+                 icon = icon("sync"),
+                 class = "btn-sm",
+                 style = "background-color: #222222; color: #ffffff; border: 1px solid #555555; font-size: 12px; padding: 4px 12px; border-radius: 4px;"
+               )
              )
            ),
            br(),
            
            fluidRow(
-             # 營收輸入框
              column(4, numericInput(ns("fcf_revenue"), "當期營收 (Revenue)", value = 100)),
              column(4, numericInput(ns("fcf_nopat"), "稅後營業利潤 (NOPAT)", value = 0)),
              column(4, numericInput(ns("fcf_depreciation"), "折舊與攤銷 (D&A) [+]", value = 0))
@@ -74,61 +139,11 @@ fcf_projection_module_ui <- function(id) {
              )
            ),
            
-           # g_growth_method 在模組外為全域 ID（無 ns）
-           conditionalPanel(
-             condition = "input.g_growth_method == 'fundamental'",
-             checkboxInput(ns("apply_g_ceiling"), 
-                           tags$span(style = "color: #d35400; font-weight: bold;", "啟用 25% 成長率天花板防呆 (建議)"), 
-                           value = TRUE)
+           actionButton(
+             ns("btn_apply_g_to_dcf"), "將此成長率 (g) 套用至 FCFF 模型",
+             icon = icon("check"), class = "btn-success"
            ),
-           br(),
-           
-           actionButton(ns("btn_apply_g_to_dcf"), "將此成長率 (g) 套用至 FCFF 模型", 
-                        icon = icon("check"), class = "btn-success"),
-           
-           div(style = "background-color: #f9f9f9; padding: 15px; border-left: 4px solid #00a65a; margin-bottom: 20px;",
-               h4(tags$b("自由現金流 (FCF) 參數拆解")),
-               p("您可以點擊「同步按鈕」帶入最新財報，或手動微調參數來模擬不同的營運情境，藉此還原 FCF 與基本面永續成長率 (g) 的計算過程。"),
-               
-               # 縮寫對照表 (使用灰色小字，不搶視覺焦點)
-               p(style = "font-size: 13px; color: #7f8c8d; margin-top: 5px; margin-bottom: 0px;", 
-                 "※ 符號說明：NI (稅後淨利), D&A (折舊與攤銷), ΔNWC (營運資金變動), CapEx (資本支出)")
-           ),
-           
-           fluidRow(
-             column(6, 
-                    selectInput("g_growth_method", "預估營收成長率（驅動 FCFF 預測）",
-                                choices = c(
-                                  "基本面 RR×ROIC" = "fundamental",
-                                  "營收 CAGR" = "cagr",
-                                  "營收 YoY 平均" = "mean",
-                                  "營收 YoY 中位" = "median",
-                                  "營收最近一年" = "last_year",
-                                  "自訂營收成長率" = "custom"),
-                                selected = APP_DEFAULTS$g_growth_method)
-             ),
-             column(6, 
-                    # 當選擇「自訂(custom)」時，顯示數字輸入框
-                    conditionalPanel(
-                      condition = "input.g_growth_method == 'custom'",
-                      numericInput("custom_g", "自訂營收成長率 (%)", value = APP_DEFAULTS$custom_g)
-                    ),
-                    
-                    # 當選擇「非自訂」的其他方法時，顯示系統計算出的數值
-                    conditionalPanel(
-                      condition = "input.g_growth_method != 'custom'",
-                      # 加上 margin-top 讓文字與左側的下拉選單高度對齊
-                      tags$div(style = "margin-top: 25px; padding-left: 10px;", 
-                               uiOutput("g_result_display")
-                      )
-                    )
-             )
-           ),
-           helpText(
-             "預測表以「營收成長 → 利潤／再投資假設 → FCFF」展開。",
-             "歷史方法（CAGR／平均／中位／最近一年）應看營收，而非 FCF 波動；",
-             "基本面法以 RR×ROIC 近似永續成長，並套用 −5%～25% 防呆。"
-           ),
+           br(), br(),
            
            # 動態預測表與圖表展示區
            uiOutput(ns("title_dynamic_years")),
@@ -136,12 +151,13 @@ fcf_projection_module_ui <- function(id) {
            # 即時缺值警告橫幅的顯示區塊
            uiOutput(ns("alert_missing_values")),
            
-           # 🌟 修正後的 UI 表格區塊
            fluidRow(
-             column(12, 
-                    div(style = "overflow-x: auto; background-color: white; padding: 15px; border-radius: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);",
-                        DT::dataTableOutput(ns("tbl_fcf_projection"))
-                    )
+             column(
+               12,
+               div(
+                 style = "overflow-x: auto; background-color: white; padding: 15px; border-radius: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);",
+                 DT::dataTableOutput(ns("tbl_fcf_projection"))
+               )
              )
            )
   )
@@ -166,11 +182,29 @@ fcf_projection_module_server <- function(
     input_nwc_rate   = reactive(NA),
     input_manual_fcf = reactive(NULL),
     global_est_g     = reactive(NULL),
-    global_g_method  = reactive(NULL)
+    global_g_method  = reactive(NULL),
+    global_raw_g     = reactive(NULL)
 ) {
   
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
+
+    # 僅當實際預估成長率（封頂前）> 25% 時顯示防呆勾選；剛出現時預設勾選
+    g_ceiling_was_visible <- reactiveVal(FALSE)
+    show_g_ceiling_flag <- reactive({
+      raw <- suppressWarnings(as.numeric(global_raw_g())[1])
+      is.finite(raw) && raw > 25
+    })
+    output$show_g_ceiling <- reactive({ show_g_ceiling_flag() })
+    outputOptions(output, "show_g_ceiling", suspendWhenHidden = FALSE)
+    observe({
+      show <- isTRUE(show_g_ceiling_flag())
+      was <- isolate(g_ceiling_was_visible())
+      if (show && !isTRUE(was)) {
+        updateCheckboxInput(session, "apply_g_ceiling", value = TRUE)
+      }
+      g_ceiling_was_visible(show)
+    })
     
     # 🧮 輔助：歷史參數萃取
     extract_dcf_parameters <- function(df_is, df_cf, df_bs) {
