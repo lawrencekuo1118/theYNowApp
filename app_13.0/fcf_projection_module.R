@@ -139,12 +139,6 @@ fcf_projection_module_ui <- function(id) {
              )
            ),
            
-           actionButton(
-             ns("btn_apply_g_to_dcf"), "將此成長率 (g) 套用至 FCFF 模型",
-             icon = icon("check"), class = "btn-success"
-           ),
-           br(), br(),
-           
            # 動態預測表與圖表展示區
            uiOutput(ns("title_dynamic_years")),
            
@@ -578,11 +572,6 @@ fcf_projection_module_server <- function(
         ),
         fallback_msg = "系統已自動將缺失項目視為 0 代入計算（總投入資本預設為 1）。請確認是否需要手動補齊數值。"
       )
-    })
-    
-    # 捕捉按鈕事件，並傳送回 server.R
-    applied_g_val <- eventReactive(input$btn_apply_g_to_dcf, {
-      fcf_estimator_results()$g
     })
     
     # 1. 渲染圖表 (對應 UI 的 mod_fcf-fcf_plot)
