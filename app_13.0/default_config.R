@@ -102,6 +102,9 @@ APP_DEFAULTS <- list(
   # Unlevered / bottom-up：β_L 來源；同業代碼（逗號／空白分隔，可於 UI 選填）
   beta_bl_source  = "auto",                  # auto | summary | rolling | capm
   beta_peers      = "",
+  # 套用至 CAPM 時預設採用本公司 Unlevered βᵤ；可改 Bottom-up／手動／Rolling
+  beta_u_apply_source = "unlever_firm",      # unlever_firm | bottomup | manual | rolling
+  beta_u_manual   = NA,                      # 手動 Unlevered βᵤ
 
   # --- 6. P/B／資產法 ---
   pb_bvps         = NA,

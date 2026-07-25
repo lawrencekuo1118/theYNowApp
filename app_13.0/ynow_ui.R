@@ -14,27 +14,25 @@
   tags$p(style = "margin: 0 0 12px 0; font-size: 12.5px; color: #555; line-height: 1.5;", text)
 }
 
-#' Shared CAPM / Beta settings block (canonical IDs on Get Started).
+#' Shared CAPM / Beta settings block (canonical IDs on DCF → WACC).
 #' @param calc_id actionButton id
 #' @param result_id htmlOutput id for CAPM result text
-#' @param advanced_hint helpText about Rolling / Unlevered on the same Get Started page
-#' @param gs_style TRUE → Get Started box styling (width 12, solidHeader, warning)
+#' @param advanced_hint helpText pointing to Get Started Rolling / Unlevered
 capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
                                   calc_id = "calc_capm",
                                   result_id = "capm_result",
-                                  advanced_hint = TRUE,
-                                  gs_style = FALSE) {
+                                  advanced_hint = TRUE) {
   hints <- list(
     "預設跟 Dashboard → Finance Summary 的 Beta (5Y Monthly)；勾選才用產業平均。"
   )
   if (isTRUE(advanced_hint)) {
     hints <- c(
       hints,
-      "下方同頁可做 Rolling β／Unlevered／Bottom-up；套用後寫入此處 CAPM β → rₑ／Ke。"
+      "進階：Get Started 先「Unlevered βᵤ」（預設／可手動），再「Rolling」；套用後寫入此處 CAPM β → rₑ／Ke。"
     )
   }
-  body <- tagList(
-    if (!isTRUE(gs_style)) h4(title),
+  box(
+    h4(title),
     numericInput("capm_rf", "無風險利率 Rf (%)", value = APP_DEFAULTS$capm_rf, step = 0.01),
     numericInput("capm_beta", "Beta (β)", value = APP_DEFAULTS$capm_beta, step = 0.01),
     checkboxInput(
@@ -47,34 +45,126 @@ capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
     actionButton(calc_id, "估算 rₑ（CAPM）", class = "btn-primary"),
     tags$br(), htmlOutput(result_id)
   )
-  if (isTRUE(gs_style)) {
-    box(
-      title = tagList(icon("chart-line"), title),
-      width = 12, status = "warning", solidHeader = TRUE,
-      body
-    )
-  } else {
-    box(body)
-  }
 }
 
-#' Pointer box when Beta controls live only on Get Started.
+#' Pointer box when advanced Beta controls live on Get Started (CAPM is on WACC).
 .beta_moved_to_get_started_box <- function(extra = NULL) {
   box(
-    title = tagList(icon("info-circle"), "Beta 預估設定"),
+    title = tagList(icon("info-circle"), "Beta 進階預估"),
     width = 12, status = "info", solidHeader = TRUE,
     helpText(
-      "CAPM／Rolling β／Unlevered／Bottom-up 已整併至",
+      "Rolling β／Unlevered／Bottom-up 在",
       tags$b("Get Started"),
-      "→「永續成長率 SGR 設定」正下方（單一來源）。",
-      "勾選「採用估算 rₑ／Ke」時仍由該處 CAPM 驅動。"
+      "→「永續成長率 SGR 設定」正下方（先 Unlevered，後 Rolling）。",
+      "預設採用 Unlevered βᵤ（可手動輸入）。CAPM（Rf／β／Rm）在",
+      tags$b("DCF-Model → WACC"),
+      "；勾選「採用估算 rₑ／Ke」時由該處 CAPM 驅動。"
     ),
     extra
   )
 }
 
-#' Rolling β + Unlevered / Bottom-up (canonical IDs; mounted on Get Started).
-beta_advanced_tab_ui <- function() {
+#' 純粹基本面 / Unlevered Beta（Get Started，置於 Rolling 上方）
+beta_unlever_section_ui <- function() {
+  tagList(
+    fluidRow(
+      valueBoxOutput("vbx_beta_unlever_firm", width = 4),
+      valueBoxOutput("vbx_beta_unlever_bottomup", width = 4),
+      valueBoxOutput("vbx_beta_relevered", width = 4)
+    ),
+    fluidRow(
+      box(
+        width = 5, status = "warning", solidHeader = FALSE,
+        title = "本公司去槓桿",
+        radioButtons(
+          "beta_bl_source", "槓桿 Beta（β_L）來源",
+          choices = c(
+            "自動（Rolling → Summary → CAPM）" = "auto",
+            "Finance Summary" = "summary",
+            "Rolling 估計" = "rolling",
+            "目前 CAPM β" = "capm"
+          ),
+          selected = APP_DEFAULTS$beta_bl_source,
+          inline = FALSE
+        ),
+        helpText(
+          "T 使用 WACC 分頁「所得稅率 T (%)」；",
+          "D/E = Total Debt ÷ 股權市值（與 WACC 一致）。"
+        ),
+        htmlOutput("beta_unlever_firm_result")
+      ),
+      box(
+        width = 7, status = "warning", solidHeader = FALSE,
+        title = "Bottom-Up 產業平均 Unlevered Beta",
+        selectizeInput(
+          "beta_peers",
+          "同業／競爭對手代碼（可多選或自行輸入）",
+          choices = NULL,
+          selected = NULL,
+          multiple = TRUE,
+          options = list(
+            create = TRUE,
+            placeholder = "例如 INTC, AMD, AVGO …",
+            plugins = list("remove_button"),
+            maxItems = 15
+          )
+        ),
+        helpText(
+          "各同業以 Yahoo β_L 與該股 D/E 去槓桿；稅率 T 共用 WACC 分頁設定。",
+          "未填同業時，改以本頁產業基準 β 與產業負債比估算參考值。"
+        ),
+        actionButton(
+          "calc_beta_bottomup", "計算 Bottom-Up βᵤ",
+          class = "btn-primary", icon = icon("calculator")
+        ),
+        tags$br(), tags$br(),
+        htmlOutput("beta_bottomup_result"),
+        tags$br(),
+        tableOutput("beta_bottomup_peers_table")
+      )
+    ),
+    fluidRow(
+      box(
+        width = 12, status = "warning", solidHeader = FALSE,
+        title = "採用哪一個 βᵤ → 再槓桿寫入 CAPM",
+        radioButtons(
+          "beta_u_apply_source",
+          "預設採用（套用至 CAPM）",
+          choices = c(
+            "Unlevered βᵤ（本公司去槓桿）" = "unlever_firm",
+            "Bottom-Up 平均 βᵤ" = "bottomup",
+            "手動輸入 βᵤ" = "manual",
+            "Rolling β（槓桿，不經去槓桿）" = "rolling"
+          ),
+          selected = APP_DEFAULTS$beta_u_apply_source,
+          inline = FALSE
+        ),
+        numericInput(
+          "beta_u_manual",
+          "手動 Unlevered βᵤ",
+          value = APP_DEFAULTS$beta_u_manual,
+          min = 0, max = 5, step = 0.01
+        ),
+        helpText(
+          "預設為本公司 Unlevered βᵤ。選「手動」時填入上方數值；套用時會以目前 D/E、T 再槓桿為 β_L 後寫入 DCF → WACC 的 CAPM β",
+          "（Rolling 選項則直接套用槓桿 β）。"
+        ),
+        actionButton(
+          "apply_beta_u_selected", "套用所選 β 至 CAPM",
+          class = "btn-success", icon = icon("check")
+        ),
+        tags$span(style = "display:inline-block; width: 8px;"),
+        actionButton(
+          "apply_beta_bottomup", "套用 Bottom-Up 再槓桿 β 至 CAPM",
+          class = "btn-default", icon = icon("check")
+        )
+      )
+    )
+  )
+}
+
+#' Rolling β 預估（Get Started，置於 Unlevered 下方）
+beta_rolling_section_ui <- function() {
   tagList(
     fluidRow(
       valueBoxOutput("vbx_beta_summary", width = 4),
@@ -116,7 +206,7 @@ beta_advanced_tab_ui <- function() {
         ),
         helpText(
           "β = Cov(Rᵢ, Rₘ) / Var(Rₘ)，優先用月末報酬（對齊 Yahoo 5Y Monthly）；",
-          "樣本不足時改用週報酬。估計後可套用至上方 CAPM → rₑ → WACC／DDM Ke。"
+          "樣本不足時改用週報酬。估計後可套用至 DCF → WACC 的 CAPM → rₑ／DDM Ke。"
         ),
         actionButton("calc_beta_est", "估計 Rolling β", class = "btn-primary", icon = icon("calculator")),
         tags$span(style = "display:inline-block; width: 8px;"),
@@ -130,78 +220,16 @@ beta_advanced_tab_ui <- function() {
         tableOutput("beta_sources_table"),
         plotOutput("plt_beta_scatter", height = "320px")
       )
-    ),
-    fluidRow(
-      box(
-        width = 12, status = "warning", solidHeader = TRUE,
-        title = tagList(icon("industry"), "純粹基本面 / Unlevered Beta"),
-        helpText(
-          "去槓桿：βᵤ = β_L / (1 + (1−T)·(D/E))，剔除財務槓桿後看營運風險。",
-          "Bottom-up：同業各自去槓桿後平均，降低單一股票交易噪音。"
-        ),
-        fluidRow(
-          valueBoxOutput("vbx_beta_unlever_firm", width = 4),
-          valueBoxOutput("vbx_beta_unlever_bottomup", width = 4),
-          valueBoxOutput("vbx_beta_relevered", width = 4)
-        ),
-        fluidRow(
-          box(
-            width = 5, status = "warning", solidHeader = FALSE,
-            title = "本公司去槓桿",
-            radioButtons(
-              "beta_bl_source", "槓桿 Beta（β_L）來源",
-              choices = c(
-                "自動（Rolling → Summary → CAPM）" = "auto",
-                "Finance Summary" = "summary",
-                "Rolling 估計" = "rolling",
-                "目前 CAPM β" = "capm"
-              ),
-              selected = APP_DEFAULTS$beta_bl_source,
-              inline = FALSE
-            ),
-            helpText(
-              "T 使用 WACC 分頁「所得稅率 T (%)」；",
-              "D/E = Total Debt ÷ 股權市值（與 WACC 一致）。"
-            ),
-            htmlOutput("beta_unlever_firm_result")
-          ),
-          box(
-            width = 7, status = "warning", solidHeader = FALSE,
-            title = "Bottom-Up 產業平均 Unlevered Beta",
-            selectizeInput(
-              "beta_peers",
-              "同業／競爭對手代碼（可多選或自行輸入）",
-              choices = NULL,
-              selected = NULL,
-              multiple = TRUE,
-              options = list(
-                create = TRUE,
-                placeholder = "例如 INTC, AMD, AVGO …",
-                plugins = list("remove_button"),
-                maxItems = 15
-              )
-            ),
-            helpText(
-              "各同業以 Yahoo β_L 與該股 D/E 去槓桿；稅率 T 共用 WACC 分頁設定。",
-              "未填同業時，改以本頁產業基準 β 與產業負債比估算參考值。"
-            ),
-            actionButton(
-              "calc_beta_bottomup", "計算 Bottom-Up βᵤ",
-              class = "btn-primary", icon = icon("calculator")
-            ),
-            tags$span(style = "display:inline-block; width: 8px;"),
-            actionButton(
-              "apply_beta_bottomup", "套用 Bottom-Up 再槓桿 β 至 CAPM",
-              class = "btn-success", icon = icon("check")
-            ),
-            tags$br(), tags$br(),
-            htmlOutput("beta_bottomup_result"),
-            tags$br(),
-            tableOutput("beta_bottomup_peers_table")
-          )
-        )
-      )
     )
+  )
+}
+
+#' @deprecated use beta_unlever_section_ui + beta_rolling_section_ui
+beta_advanced_tab_ui <- function() {
+  tagList(
+    beta_unlever_section_ui(),
+    tags$hr(),
+    beta_rolling_section_ui()
   )
 }
 
@@ -262,7 +290,9 @@ beta_advanced_tab_ui <- function() {
     tags$ul(
       style = "margin:0; padding-left:18px; line-height:1.55;",
       tags$li("DCF／RI 終值 SGR：本頁上方「永續成長率 SGR 設定」"),
-      tags$li("CAPM／Rolling／Unlevered β：本頁「永續成長率 SGR 設定」正下方（整併區塊）"),
+      tags$li("Unlevered βᵤ（預設）／手動 βᵤ：本頁「純粹基本面 / Unlevered Beta」"),
+      tags$li("Rolling β：本頁「Beta 進階預估（Rolling）」"),
+      tags$li("CAPM（Rf／β／Rm）：DCF-Model → WACC"),
       tags$li("兩階段成長假設：DCF-Model → Overview（選 Two-Stage 時顯示）"),
       tags$li("CapEx／ΔNWC 前瞻佔營收比：DCF → FCFF 分頁（驅動預測表）"),
       tags$li("DDM 股利成長率：可在 DDM 分頁單獨覆寫")
@@ -1156,20 +1186,24 @@ ui <- dashboardPage(
           .dcf_core_params_box()
         ),
         fluidRow(
-          capm_beta_settings_ui(
-            title = "CAPM / Beta (β) 設定",
-            calc_id = "calc_capm",
-            result_id = "capm_result",
-            advanced_hint = TRUE,
-            gs_style = TRUE
+          box(
+            title = tagList(icon("industry"), "純粹基本面 / Unlevered Beta"),
+            width = 12, status = "warning", solidHeader = TRUE, collapsible = TRUE,
+            collapsed = FALSE,
+            helpText(
+              "去槓桿：βᵤ = β_L / (1 + (1−T)·(D/E))，剔除財務槓桿後看營運風險。",
+              "Bottom-up：同業各自去槓桿後平均，降低單一股票交易噪音。",
+              "預設採用本公司 Unlevered βᵤ；亦可手動輸入。"
+            ),
+            beta_unlever_section_ui()
           )
         ),
         fluidRow(
           box(
-            title = tagList(icon("chart-area"), "Beta 進階預估（Rolling／Unlevered）"),
+            title = tagList(icon("chart-area"), "Beta 進階預估（Rolling）"),
             width = 12, status = "warning", solidHeader = TRUE, collapsible = TRUE,
             collapsed = FALSE,
-            beta_advanced_tab_ui()
+            beta_rolling_section_ui()
           )
         ),
         fluidRow(
@@ -1350,7 +1384,7 @@ ui <- dashboardPage(
                                        ),
                                        helpText("勾選時跟隨中央 SGR；取消勾選後可單獨覆寫股利成長率（不必等於 FCFF 終值 g）。"),
                                        numericInput("mod_ddm-ke", "要求報酬率 (Ke) %", value = APP_DEFAULTS$ddm_ke),
-                                       helpText("股利屬股權現金流，以 Ke（CAPM）折現；DCF 的 FCFF 則以 WACC 折現。Ke 與 Get Started（SGR 下方）CAPM／β 預估共用。"),
+                                       helpText("股利屬股權現金流，以 Ke（CAPM）折現；DCF 的 FCFF 則以 WACC 折現。Ke 與 DCF → WACC 的 CAPM 共用；Rolling／Unlevered 在 Get Started。"),
                                        checkboxInput(
                                          "ddm_use_estimated_re",
                                          "採用估算 Ke（來自 CAPM β）",
@@ -1415,7 +1449,7 @@ ui <- dashboardPage(
                            .beta_moved_to_get_started_box(
                              tagList(
                                htmlOutput("ddm_beta_ke_status"),
-                               helpText("DDM Overview 的「採用估算 Ke」仍跟隨 Get Started CAPM。")
+                               helpText("DDM Overview 的「採用估算 Ke」仍跟隨 DCF → WACC 的 CAPM。")
                              )
                            )
                          )
@@ -1539,15 +1573,11 @@ ui <- dashboardPage(
                                     actionButton("calc_wacc", "計算 WACC", class = "btn-primary"),
                                     tags$br(), htmlOutput("wacc_result")
                                 ),
-                                box(
-                                  title = tagList(icon("info-circle"), "CAPM / Beta"),
-                                  status = "info", solidHeader = TRUE,
-                                  helpText(
-                                    "CAPM／Rolling／Unlevered／Bottom-up 已整併至",
-                                    tags$b("Get Started"),
-                                    "→「永續成長率 SGR 設定」正下方（單一來源）。",
-                                    "勾選「採用估算 rₑ」時，rₑ 仍由該處 CAPM 驅動。"
-                                  )
+                                capm_beta_settings_ui(
+                                  title = "CAPM 估算 rₑ",
+                                  calc_id = "calc_capm",
+                                  result_id = "capm_result",
+                                  advanced_hint = TRUE
                                 )
                               )
                      ),
