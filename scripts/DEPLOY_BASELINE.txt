@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12322010
+bundleId=12322066
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=origin/master
-commit=d562444
-short=d562444
-message=Add TWD/USD session currency consistency and header toggle.
-captured_at=2026-07-26T12:32:50+00:00
-note=app_13.0 redeploy after TWD/USD session currency toggle and FX-normalized valuation displays.
+commit=792644b
+short=792644b
+message=Fix currency toggle and default session to USD.
+captured_at=2026-07-26T12:55:52+00:00
+note=app_13.0 redeploy after USD default + radioGroupButtons currency toggle fix.
