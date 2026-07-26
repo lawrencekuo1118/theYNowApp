@@ -44,6 +44,9 @@ params:
   kpi_df: NA
   fcf_plot_path: NA
   warnings: NA
+  fscore_total: NA
+  fscore_quality: NA
+  fscore_checklist: NA
   investment_highlights: NA
   summary_df: NA
   income_df: NA
@@ -58,6 +61,11 @@ if (!requireNamespace("htmltools", quietly = TRUE)) {
   htmlEscape <- function(x) gsub("&", "&amp;", gsub("<", "&lt;", gsub(">", "&gt;", as.character(x), fixed = TRUE), fixed = TRUE), fixed = TRUE)
 } else {
   htmlEscape <- htmltools::htmlEscape
+}
+
+# Emit raw HTML that pandoc must not treat as Markdown (avoids 4-space code fences)
+emit_html <- function(...) {
+  knitr::raw_html(paste0(..., collapse = ""))
 }
 
 fmt_price <- function(x) {
@@ -104,7 +112,16 @@ html, body {
   margin: 0;
   padding: 0;
 }
-h1 { font-size: 18pt; margin: 0 0 8px 0; border: none; }
+/* Major markdown # headings start on a new page; header title inside .report-header does not */
+h1 {
+  font-size: 18pt; margin: 0 0 8px 0; border: none;
+  page-break-before: always; break-before: page;
+  page-break-after: avoid;
+}
+.report-header h1 {
+  page-break-before: avoid; break-before: avoid;
+  font-size: 18pt; margin: 0 0 8px 0;
+}
 h2 { font-size: 13pt; color: #0f3460; border-bottom: 1.5px solid #0f3460;
      padding-bottom: 4px; margin: 18px 0 10px 0; page-break-after: avoid; }
 h3 { font-size: 11.5pt; color: #16213e; margin: 14px 0 8px 0; page-break-after: avoid; }
@@ -132,13 +149,15 @@ p, li { orphans: 3; widows: 3; }
 }
 .ynow-table td { padding: 5px 8px; border: 1px solid #dee2e6; }
 .ynow-table tr:nth-child(even) td { background: #f7f9fc; }
-.highlight-box, .risk-box-warn, .risk-box-ok {
+.highlight-box, .risk-box-warn, .risk-box-ok, .fscore-box {
   padding: 10px 12px; border-radius: 0 4px 4px 0; margin: 8px 0 12px 0;
   page-break-inside: avoid;
 }
 .highlight-box { background: #f0f7ff; border-left: 4px solid #0f3460; }
 .risk-box-warn { background: #fff5f5; border-left: 4px solid #dc3545; }
 .risk-box-ok { background: #f0fdf4; border-left: 4px solid #198754; }
+.fscore-box { background: #f8fafc; border-left: 4px solid #0f3460; }
+.fscore-score { font-size: 16pt; font-weight: 800; color: #0f3460; }
 .section-lead { color: #495057; font-size: 9.5pt; margin: 0 0 8px 0; }
 .disclaimer {
   font-size: 8pt; color: #6c757d; border-top: 1px solid #dee2e6;
@@ -148,29 +167,33 @@ img { max-width: 100%; height: auto; }
 ```
 
 ```{r report-header, results='asis'}
-cat(sprintf("
-<div class='report-header'>
-  <div class='meta'>%s | %s (%s) | 產業：%s / %s</div>
-  <h1>%s — 投資意見報告</h1>
-  <div style='margin-top:10px;'>
-    <span class='rating-badge' style='background:%s;'>%s</span>
-    <span style='font-size:9.5pt; opacity:0.9;'>%s · 主要方法：%s</span>
-  </div>
-  <table class='price-table'>
-    <tr>
-      <td><div class='label'>目標價 (依主要方法)</div><div class='value'>%s</div></td>
-      <td><div class='label'>現價 (Current)</div><div class='value'>%s</div></td>
-      <td><div class='label'>潛在報酬 (Upside)</div><div class='value'>%s</div></td>
-      <td><div class='label'>安全邊際 (MoS)</div><div class='value'>%s</div></td>
-    </tr>
-  </table>
+# Keep HTML unindented so Markdown never treats lines as fenced code blocks;
+# also wrap with raw_html so pandoc leaves tags intact.
+emit_html(sprintf(
+"<div class='report-header'>
+<div class='meta'>%s | %s (%s) | 產業：%s / %s</div>
+<h1>%s — 投資意見報告</h1>
+<div style='margin-top:10px;'>
+<span class='rating-badge' style='background:%s;'>%s</span>
+<span style='font-size:9.5pt; opacity:0.9;'>%s · 主要方法：%s</span>
+</div>
+<table class='price-table'>
+<tr>
+<td><div class='label'>目標價 (依主要方法)</div><div class='value'>%s</div></td>
+<td><div class='label'>現價 (Current)</div><div class='value'>%s</div></td>
+<td><div class='label'>潛在報酬 (Upside)</div><div class='value'>%s</div></td>
+<td><div class='label'>安全邊際 (MoS)</div><div class='value'>%s</div></td>
+</tr>
+</table>
 </div>",
-  safe_chr(params$report_date),
-  safe_chr(params$stock_code), safe_chr(params$company_name),
-  safe_chr(params$sector), safe_chr(params$industry),
-  safe_chr(params$company_name),
-  safe_chr(params$rating_color, "#6c757d"), safe_chr(params$rating, "待評估"),
-  safe_chr(params$rating_en, "NR"), safe_chr(params$primary_method),
+  htmlEscape(safe_chr(params$report_date)),
+  htmlEscape(safe_chr(params$stock_code)), htmlEscape(safe_chr(params$company_name)),
+  htmlEscape(safe_chr(params$sector)), htmlEscape(safe_chr(params$industry)),
+  htmlEscape(safe_chr(params$company_name)),
+  htmlEscape(safe_chr(params$rating_color, "#6c757d")),
+  htmlEscape(safe_chr(params$rating, "待評估")),
+  htmlEscape(safe_chr(params$rating_en, "NR")),
+  htmlEscape(safe_chr(params$primary_method)),
   fmt_price(params$target_price),
   fmt_price(params$current_price),
   fmt_pct(params$upside_pct),
@@ -180,7 +203,7 @@ cat(sprintf("
 
 # 投資摘要
 
-<p class="section-lead">本報告整合多模型評價（DCF／DDM／RI／P/B）、關鍵財務指標與風險警訊，供研究參考。目標價取自主模型 Base；並附 Bear／Bull 區間與可信度。</p>
+<p class="section-lead">本報告整合多模型評價（DCF／DDM／RI／P/B）、F-Score 體質檢核、關鍵財務指標與 Fraud Warnings，供研究參考。目標價取自主模型 Base；並附 Bear／Bull 區間與可信度。</p>
 
 ## 關鍵數據一覽
 
@@ -201,9 +224,11 @@ conf_txt <- {
   if (!nzchar(lv) || identical(lv, "N/A")) "N/A"
   else if (is.finite(sc)) paste0(lv, "（", sc, "）") else lv
 }
+fs_n <- suppressWarnings(as.numeric(params$fscore_total)[1])
+fs_txt <- if (is.finite(fs_n)) paste0(as.integer(fs_n), " / 9") else "N/A"
 snap <- data.frame(
   項目 = c("股票代碼", "公司名稱", "市值", "本益比 (P/E)", "Beta", "股息殖利率",
-           "企業價值 EV (DCF)", "DCF 每股合理價", "DDM 每股合理價",
+           "F-Score 體質", "企業價值 EV (DCF)", "DCF 每股合理價", "DDM 每股合理價",
            "RI 每股合理價", "P/B 每股合理價",
            "主模型區間 (Bear/Base/Bull)", "副模型檢核", "估值可信度",
            "主要評價方法", "報告日期"),
@@ -211,6 +236,7 @@ snap <- data.frame(
     safe_chr(params$stock_code), safe_chr(params$company_name),
     safe_chr(params$market_cap), safe_chr(params$pe_ratio),
     safe_chr(params$beta), safe_chr(params$dividend_yield),
+    fs_txt,
     fmt_ev(params$ev_value),
     fmt_price(params$dcf_price), fmt_price(params$ddm_value),
     fmt_price(params$ri_value), fmt_price(params$pb_value),
@@ -226,22 +252,23 @@ kable_safe(snap)
 
 ```{r highlights, results='asis'}
 hl <- params$investment_highlights
-cat("<div class='highlight-box'><ul style='margin:0; padding-left:18px;'>")
+parts <- c("<div class='highlight-box'><ul style='margin:0; padding-left:18px;'>")
 if (!is.null(hl) && length(hl) > 0 && !all(is.na(hl))) {
   for (item in hl) {
     item <- trimws(as.character(item))
-    if (nzchar(item)) cat(sprintf("<li style='margin-bottom:4px;'>%s</li>", htmlEscape(item)))
+    if (nzchar(item)) parts <- c(parts, sprintf("<li style='margin-bottom:4px;'>%s</li>", htmlEscape(item)))
   }
 } else {
-  cat(sprintf("<li>依 %s 估算，目標價 %s，較現價 %s 具 %s 空間。</li>",
+  parts <- c(parts, sprintf("<li>依 %s 估算，目標價 %s，較現價 %s 具 %s 空間。</li>",
       htmlEscape(safe_chr(params$primary_method)),
       fmt_price(params$target_price),
       fmt_price(params$current_price),
       fmt_pct(params$upside_pct)))
-  cat(sprintf("<li>評價方法說明：%s</li>",
+  parts <- c(parts, sprintf("<li>評價方法說明：%s</li>",
       htmlEscape(safe_chr(params$method_rationale, "尚無說明"))))
 }
-cat("</ul></div>")
+parts <- c(parts, "</ul></div>")
+emit_html(parts)
 ```
 
 # 評價分析與投資建議
@@ -296,8 +323,8 @@ assump <- data.frame(
   stringsAsFactors = FALSE, check.names = FALSE
 )
 kable_safe(assump)
-cat(sprintf("<p class='section-lead'>%s</p>",
-            htmlEscape(safe_chr(params$method_rationale, ""))))
+emit_html(sprintf("<p class='section-lead'>%s</p>",
+                  htmlEscape(safe_chr(params$method_rationale, ""))))
 ```
 
 # 營運與財務分析
@@ -308,7 +335,7 @@ cat(sprintf("<p class='section-lead'>%s</p>",
 if (!is.null(params$kpi_df) && is.data.frame(params$kpi_df) && nrow(params$kpi_df) > 0) {
   kable_safe(params$kpi_df)
 } else {
-  cat("<p class='section-lead'>尚無足夠財報資料計算 KPI。請先搜尋股票並載入財報。</p>")
+  emit_html("<p class='section-lead'>尚無足夠財報資料計算 KPI。請先搜尋股票並載入財報。</p>")
 }
 ```
 
@@ -322,13 +349,37 @@ if (!is.null(params$fcf_plot_path) && !is.na(params$fcf_plot_path) &&
     file.exists(as.character(params$fcf_plot_path))) {
   knitr::include_graphics(as.character(params$fcf_plot_path))
 } else {
-  cat("<p class='section-lead'><em>尚無 FCF 預測圖。請於 DCF 分頁完成試算後再下載報告。</em></p>")
+  emit_html("<p class='section-lead'><em>尚無 FCF 預測圖。請於 DCF 分頁完成試算後再下載報告。</em></p>")
 }
 ```
 
 # 風險評估
 
-## 財務體質與異常警訊
+## F-Score 體質檢核
+
+```{r fscore, results='asis'}
+fs_n <- suppressWarnings(as.numeric(params$fscore_total)[1])
+fq <- suppressWarnings(as.numeric(params$fscore_quality)[1])
+if (is.finite(fs_n)) {
+  grade <- if (fs_n >= 7) "偏強" else if (fs_n >= 4) "中等" else "偏弱"
+  q_txt <- if (is.finite(fq) && fq == 1) "盈餘品質通過（OCF > 淨利）" else "盈餘品質未達標（OCF 未高於淨利）"
+  emit_html(sprintf(
+"<div class='fscore-box'>
+<div class='fscore-score'>F-Score：%d / 9（%s）</div>
+<p class='section-lead' style='margin-top:6px; margin-bottom:0;'>%s。與 App 決策看板同一套 Piotroski 檢核邏輯。</p>
+</div>",
+    as.integer(fs_n), htmlEscape(grade), htmlEscape(q_txt)
+  ))
+} else {
+  emit_html("<div class='fscore-box'><p class='section-lead' style='margin:0;'>尚無足夠財報資料計算 F-Score。</p></div>")
+}
+cl <- params$fscore_checklist
+if (!is.null(cl) && is.data.frame(cl) && nrow(cl) > 0) {
+  kable_safe(cl)
+}
+```
+
+## Fraud Warnings（財務舞弊／體質警訊）
 
 ```{r risks, results='asis'}
 warn_raw <- params$warnings
@@ -339,11 +390,12 @@ if (!is.null(warn_raw) && length(warn_raw) > 0 && !all(is.na(warn_raw))) {
   warn_items <- warn_items[nzchar(warn_items)]
 }
 if (length(warn_items) > 0) {
-  cat("<div class='risk-box-warn'><strong>檢測到以下風險因子：</strong><ul style='margin-top:6px;'>")
-  for (w in warn_items) cat(sprintf("<li>%s</li>", htmlEscape(w)))
-  cat("</ul></div>")
+  parts <- c("<div class='risk-box-warn'><strong>檢測到以下 Fraud Warnings：</strong><ul style='margin-top:6px;'>")
+  for (w in warn_items) parts <- c(parts, sprintf("<li>%s</li>", htmlEscape(w)))
+  parts <- c(parts, "</ul></div>")
+  emit_html(parts)
 } else {
-  cat("<div class='risk-box-ok'><strong>財務健康：</strong>系統未偵測到明顯財務舞弊或重大體質警訊（仍請自行查核）。</div>")
+  emit_html("<div class='risk-box-ok'><strong>Fraud Warnings：</strong>系統未偵測到明顯財務舞弊或重大體質警訊（仍請自行查核）。</div>")
 }
 ```
 
@@ -364,7 +416,7 @@ if (length(warn_items) > 0) {
 if (!is.null(params$summary_df) && is.data.frame(params$summary_df) && nrow(params$summary_df) > 0) {
   kable_safe(params$summary_df)
 } else {
-  cat("<p class='section-lead'>尚無 Summary 資料。</p>")
+  emit_html("<p class='section-lead'>尚無 Summary 資料。</p>")
 }
 ```
 
@@ -374,7 +426,7 @@ if (!is.null(params$summary_df) && is.data.frame(params$summary_df) && nrow(para
 if (!is.null(params$income_df) && is.data.frame(params$income_df) && nrow(params$income_df) > 0) {
   kable_safe(params$income_df)
 } else {
-  cat("<p class='section-lead'>尚無損益表資料。</p>")
+  emit_html("<p class='section-lead'>尚無損益表資料。</p>")
 }
 ```
 
@@ -384,7 +436,7 @@ if (!is.null(params$income_df) && is.data.frame(params$income_df) && nrow(params
 if (!is.null(params$cashflow_df) && is.data.frame(params$cashflow_df) && nrow(params$cashflow_df) > 0) {
   kable_safe(params$cashflow_df)
 } else {
-  cat("<p class='section-lead'>尚無現金流量表資料。</p>")
+  emit_html("<p class='section-lead'>尚無現金流量表資料。</p>")
 }
 ```
 
@@ -394,7 +446,7 @@ if (!is.null(params$cashflow_df) && is.data.frame(params$cashflow_df) && nrow(pa
 if (!is.null(params$balance_df) && is.data.frame(params$balance_df) && nrow(params$balance_df) > 0) {
   kable_safe(params$balance_df)
 } else {
-  cat("<p class='section-lead'>尚無資產負債表資料。</p>")
+  emit_html("<p class='section-lead'>尚無資產負債表資料。</p>")
 }
 ```
 
@@ -404,6 +456,6 @@ if (!is.null(params$balance_df) && is.data.frame(params$balance_df) && nrow(para
 
 本報告由 The YNow App 自動產出，僅供研究與教育參考，**不構成任何投資建議或要約**。評等、目標價與財務預測係基於使用者輸入假設與公開財報，未經獨立審計。投資人應自行判斷並承擔風險。過去績效不代表未來表現。
 
-*報告產出時間：`r safe_chr(params$report_date)`* | *系統版本：The YNow App 12.0*
+*報告產出時間：`r safe_chr(params$report_date)`* | *系統版本：The YNow App 13.0*
 
 </div>

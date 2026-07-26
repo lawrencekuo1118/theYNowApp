@@ -443,6 +443,76 @@ collect_fraud_warnings <- function(d_cf, d_is, d_bs) {
   msgs
 }
 
+# Piotroski F-Score（與決策看板 checklist 一致；供 PDF 報告）
+compute_report_f_score <- function(d_is, d_bs, d_cf) {
+  empty <- list(
+    total = NA_real_,
+    quality_flag = NA_real_,
+    checklist = data.frame(
+      `檢驗維度` = character(0),
+      `得分` = character(0),
+      check.names = FALSE,
+      stringsAsFactors = FALSE
+    )
+  )
+  if (is.null(d_is) || is.null(d_bs) || is.null(d_cf) ||
+      !is.data.frame(d_is) || !is.data.frame(d_bs) || !is.data.frame(d_cf) ||
+      nrow(d_is) == 0 || nrow(d_bs) == 0 || nrow(d_cf) == 0) {
+    return(empty)
+  }
+  get_row2 <- function(df, label) {
+    res <- select_clean_metric_row(df, label, include_ttm = FALSE)
+    if (length(res) < 2) return(c(NA_real_, NA_real_))
+    suppressWarnings(as.numeric(res[1:2]))
+  }
+  tryCatch({
+    net_inc  <- get_row2(d_is, "Net Income Common Stockholders|Net Income$")
+    revenue  <- get_row2(d_is, "Total Revenue")
+    gp       <- get_row2(d_is, "Gross Profit")
+    assets   <- get_row2(d_bs, "Total Assets")
+    lt_debt  <- get_row2(d_bs, "Long Term Debt|Total Non Current Liabilities")
+    cur_ast  <- get_row2(d_bs, "Total Current Assets")
+    cur_liab <- get_row2(d_bs, "Total Current Liabilities")
+    shares   <- get_row2(d_bs, "Ordinary Shares Number")
+    ocf      <- get_row2(d_cf, "Operating Cash Flow")
+
+    p1 <- ifelse(!is.na(net_inc[1]) && !is.na(assets[1]) && assets[1] != 0 && (net_inc[1] / assets[1]) > 0, 1, 0)
+    p2 <- ifelse(!is.na(ocf[1]) && ocf[1] > 0, 1, 0)
+    p3 <- ifelse(all(!is.na(net_inc[1:2]), !is.na(assets[1:2])) &&
+                   assets[1] != 0 && assets[2] != 0 &&
+                   (net_inc[1] / assets[1]) > (net_inc[2] / assets[2]), 1, 0)
+    p4 <- ifelse(!is.na(ocf[1]) && !is.na(net_inc[1]) && ocf[1] > net_inc[1], 1, 0)
+    p5 <- ifelse(all(!is.na(lt_debt[1:2]), !is.na(assets[1:2])) &&
+                   assets[1] != 0 && assets[2] != 0 &&
+                   (lt_debt[1] / assets[1]) <= (lt_debt[2] / assets[2]), 1, 0)
+    p6 <- ifelse(all(!is.na(cur_ast[1:2]), !is.na(cur_liab[1:2])) &&
+                   cur_liab[1] != 0 && cur_liab[2] != 0 &&
+                   (cur_ast[1] / cur_liab[1]) > (cur_ast[2] / cur_liab[2]), 1, 0)
+    p7 <- ifelse(!is.na(shares[1]) && !is.na(shares[2]) && shares[1] <= (shares[2] * 1.02), 1, 0)
+    p8 <- ifelse(all(!is.na(gp[1:2]), !is.na(revenue[1:2])) &&
+                   revenue[1] != 0 && revenue[2] != 0 &&
+                   (gp[1] / revenue[1]) > (gp[2] / revenue[2]), 1, 0)
+    p9 <- ifelse(all(!is.na(revenue[1:2]), !is.na(assets[1:2])) &&
+                   assets[1] != 0 && assets[2] != 0 &&
+                   (revenue[1] / assets[1]) > (revenue[2] / assets[2]), 1, 0)
+    scores <- c(p1, p2, p3, p4, p5, p6, p7, p8, p9)
+    list(
+      total = sum(scores),
+      quality_flag = p4,
+      checklist = data.frame(
+        `檢驗維度` = c(
+          "獲利性 (ROA > 0)", "獲利性 (OCF > 0)", "獲利性 (ROA 成長)", "獲利性 (盈餘品質)",
+          "安全性 (槓桿下降)", "安全性 (流動比提升)", "安全性 (未大幅增資)",
+          "效率 (毛利率提升)", "效率 (資產週轉率提升)"
+        ),
+        `得分` = ifelse(scores == 1, "通過", "未達標"),
+        check.names = FALSE,
+        stringsAsFactors = FALSE
+      )
+    )
+  }, error = function(e) empty)
+}
+
 # 建立 KPI 摘要表（對應研究報告「關鍵財務指標」區塊）
 build_report_kpi_df <- function(d_is, d_bs, d_cf) {
   pct <- function(x) if (is.na(x)) "N/A" else paste0(sprintf("%.1f", x), "%")

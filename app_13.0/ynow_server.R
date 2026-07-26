@@ -5566,6 +5566,9 @@ server <- function(input, output, session) {
         warn_msgs <- collect_fraud_warnings(
           isolate(d_cash_flow()), isolate(d_income_statement()), isolate(d_balance_sheet())
         )
+        fscore_info <- compute_report_f_score(
+          isolate(d_income_statement()), isolate(d_balance_sheet()), isolate(d_cash_flow())
+        )
 
         highlights <- c()
         if (is.finite(rating_info$upside_pct)) {
@@ -5645,6 +5648,9 @@ server <- function(input, output, session) {
             ),
             fcf_plot_path = plot_path,
             warnings = if (length(warn_msgs) > 0) paste(warn_msgs, collapse = "\n") else "",
+            fscore_total = fscore_info$total,
+            fscore_quality = fscore_info$quality_flag,
+            fscore_checklist = fscore_info$checklist,
             investment_highlights = highlights,
             summary_df = sum_df,
             income_df = trim_report_table(isolate(d_income_statement())),
