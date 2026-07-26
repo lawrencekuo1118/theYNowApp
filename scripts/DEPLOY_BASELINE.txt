@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12321201
+bundleId=12321840
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=origin/master
-commit=c0086c0
-short=c0086c0
-message=feat(report): add F-Score/Fraud to PDF, page breaks, fix badge HTML
-captured_at=2026-07-26T06:21:32+00:00
-note=app_13.0 redeploy after PDF report F-Score/Fraud, page-break, and rating-badge HTML fixes.
+commit=dafc850
+short=dafc850
+message=fix(quality): compare OCF to operating earnings, not raw NI
+captured_at=2026-07-26T11:24:54+00:00
+note=app_13.0 redeploy after OCF vs operating earnings (strip unrealized investment G/L).
