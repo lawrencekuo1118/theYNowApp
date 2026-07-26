@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12319680
+bundleId=12321201
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=origin/master
-commit=2444105
-short=2444105
-message=refactor(fcff): remove unused apply-g-to-model button
-captured_at=2026-07-25T17:24:21+00:00
-note=app_13.0 redeploy after removing dead apply-g button.
+commit=c0086c0
+short=c0086c0
+message=feat(report): add F-Score/Fraud to PDF, page breaks, fix badge HTML
+captured_at=2026-07-26T06:21:32+00:00
+note=app_13.0 redeploy after PDF report F-Score/Fraud, page-break, and rating-badge HTML fixes.
