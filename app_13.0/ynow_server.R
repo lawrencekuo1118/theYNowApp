@@ -1764,15 +1764,21 @@ server <- function(input, output, session) {
     rec <- model_sidebar_rec()
     band <- tryCatch(primary_valuation_band(), error = function(e) NULL)
     sec_pt <- tryCatch(secondary_valuation_point(), error = function(e) NA_real_)
-    # F-Score light proxy: OCF > NI quality if available
+    # F-Score light proxy: OCF vs 營運利潤（扣除投資證券未實現損益）
     f_score <- tryCatch({
       ni <- select_current_metric_any(d_income_statement(), NET_INCOME_PATTERNS, "flow")
+      unreal <- tryCatch(
+        select_current_metric_any(d_income_statement(), UNREALIZED_INVESTMENT_GL_PATTERNS, "flow"),
+        error = function(e) NA_real_
+      )
+      if (!is.finite(unreal)) unreal <- 0
+      op_earn <- if (is.finite(ni)) ni - unreal else NA_real_
       ocf <- select_current_metric(d_cash_flow(), "Operating Cash Flow", "flow")
       assets <- select_current_metric(d_balance_sheet(), "Total Assets", "stock")
       s <- 0
       if (is.finite(ni) && is.finite(assets) && assets > 0 && ni / assets > 0) s <- s + 1
       if (is.finite(ocf) && ocf > 0) s <- s + 1
-      if (is.finite(ocf) && is.finite(ni) && ocf > ni) s <- s + 1
+      if (is.finite(ocf) && is.finite(op_earn) && ocf > op_earn) s <- s + 1
       # scale 0–3 → approximate 0–9 for scorer thresholds
       s * 3
     }, error = function(e) NA_real_)
@@ -1821,15 +1827,27 @@ server <- function(input, output, session) {
   
   output$notdoingbusiness <- renderText({
     ocf <- get_avg(select_clean_metric_row(d_cash_flow(), "Operating Cash Flow", include_ttm = FALSE))
-    net <- get_avg(select_clean_metric_row_any(d_income_statement(), NET_INCOME_PATTERNS, include_ttm = FALSE))
-    fraud_warnings$biz <- if (is.na(ocf) || is.na(net)) "" else if (ocf < net) "⚠️ 營業現金流低於淨利，帳面賺錢但現金未實現" else ""
+    op_earn <- get_operating_earnings_avg(d_income_statement(), include_ttm = FALSE)
+    fraud_warnings$biz <- if (is.na(ocf) || is.na(op_earn)) {
+      ""
+    } else if (ocf < op_earn) {
+      "⚠️ 營業現金流低於營運利潤（淨利扣除投資證券未實現損益），帳面賺錢但現金未實現"
+    } else {
+      ""
+    }
     fraud_warnings$biz
   })
   
   output$notgettingcashback <- renderText({
     ocf <- get_avg(select_clean_metric_row(d_cash_flow(), "Operating Cash Flow", include_ttm = FALSE))
-    net <- get_avg(select_clean_metric_row_any(d_income_statement(), NET_INCOME_PATTERNS, include_ttm = FALSE))
-    fraud_warnings$cashback <- if (is.na(ocf) || is.na(net)) "" else if (net > 0 && ocf < 0) "⚠️ 淨利為正但現金流為負，獲利品質存疑" else ""
+    op_earn <- get_operating_earnings_avg(d_income_statement(), include_ttm = FALSE)
+    fraud_warnings$cashback <- if (is.na(ocf) || is.na(op_earn)) {
+      ""
+    } else if (op_earn > 0 && ocf < 0) {
+      "⚠️ 營運利潤為正但營業現金流為負，獲利品質存疑"
+    } else {
+      ""
+    }
     fraud_warnings$cashback
   })
   

@@ -362,7 +362,7 @@ fs_n <- suppressWarnings(as.numeric(params$fscore_total)[1])
 fq <- suppressWarnings(as.numeric(params$fscore_quality)[1])
 if (is.finite(fs_n)) {
   grade <- if (fs_n >= 7) "偏強" else if (fs_n >= 4) "中等" else "偏弱"
-  q_txt <- if (is.finite(fq) && fq == 1) "盈餘品質通過（OCF > 淨利）" else "盈餘品質未達標（OCF 未高於淨利）"
+  q_txt <- if (is.finite(fq) && fq == 1) "盈餘品質通過（OCF > 營運利潤）" else "盈餘品質未達標（OCF 未高於營運利潤）"
   emit_html(sprintf(
 "<div class='fscore-box'>
 <div class='fscore-score'>F-Score：%d / 9（%s）</div>

@@ -203,6 +203,44 @@ OPEX_PATTERNS <- c(
   "^Operating Expenses$"
 )
 
+# 投資證券未實現損益（用於 OCF vs 營運利潤之現金轉換品質檢查）
+UNREALIZED_INVESTMENT_GL_PATTERNS <- c(
+  "Unrealized Gain.?Loss On Investment Securities",
+  "Net Unrealized Gain.?Loss On Investment Securities",
+  "Unrealized Gains?/Losses? On Investment Securities",
+  "Unrealized Gain/Loss [Oo]n Investment Securities"
+)
+
+#' NI − Unrealized G/L on Investment Securities（缺科目時視為 0）
+#' @return numeric vector aligned to NI periods
+operating_earnings_from_ni <- function(ni, unrealized) {
+  ni <- suppressWarnings(as.numeric(ni))
+  if (length(ni) == 0L) return(ni)
+  u <- suppressWarnings(as.numeric(unrealized))
+  if (length(u) == 0L || (length(u) == 1L && is.na(u))) {
+    u <- rep(0, length(ni))
+  } else if (length(u) < length(ni)) {
+    u <- c(u, rep(NA_real_, length(ni) - length(u)))
+  } else if (length(u) > length(ni)) {
+    u <- u[seq_along(ni)]
+  }
+  u[!is.finite(u)] <- 0
+  ifelse(is.finite(ni), ni - u, NA_real_)
+}
+
+#' 從損益表取營運利潤列（現金品質檢查用）
+get_operating_earnings_row <- function(d_is, include_ttm = FALSE) {
+  ni <- select_clean_metric_row_any(d_is, NET_INCOME_PATTERNS, include_ttm = include_ttm)
+  unreal <- select_clean_metric_row_any(
+    d_is, UNREALIZED_INVESTMENT_GL_PATTERNS, include_ttm = include_ttm
+  )
+  operating_earnings_from_ni(ni, unreal)
+}
+
+get_operating_earnings_avg <- function(d_is, include_ttm = FALSE) {
+  get_avg(get_operating_earnings_row(d_is, include_ttm = include_ttm))
+}
+
 #' 解析適配「目前報價股」的流通股數（處理 BRK-B 等雙重股權）
 #' 財報 Ordinary Shares 常為 A 級股數，若直接去除 B 股股價會使 BVPS 失準約 1500 倍。
 #' @return list(shares, method, note)
@@ -430,14 +468,19 @@ collect_fraud_warnings <- function(d_cf, d_is, d_bs) {
   msgs <- character(0)
   fcf <- get_avg(select_clean_metric_row(d_cf, "Free Cash Flow", include_ttm = FALSE))
   ocf <- get_avg(select_clean_metric_row(d_cf, "Operating Cash Flow", include_ttm = FALSE))
-  net <- get_avg(select_clean_metric_row_any(d_is, NET_INCOME_PATTERNS, include_ttm = FALSE))
+  # 與 OCF 比對時用營運利潤（淨利 − 投資證券未實現損益），避免會計波動誤判
+  op_earn <- get_operating_earnings_avg(d_is, include_ttm = FALSE)
   debt <- get_avg(select_clean_metric_row(d_bs, "Total Debt", include_ttm = FALSE))
   equity <- get_avg(select_clean_metric_row_any(d_bs, EQUITY_PATTERNS, include_ttm = FALSE))
   
   if (!is.na(fcf) && fcf < 0) msgs <- c(msgs, "自由現金流為負，可能面臨營運或資本支出壓力")
   if (!is.na(ocf) && ocf < 0) msgs <- c(msgs, "營業現金流為負，核心業務現金創造能力不足")
-  if (!is.na(ocf) && !is.na(net) && ocf < net) msgs <- c(msgs, "營業現金流低於淨利，獲利現金轉換率偏低")
-  if (!is.na(net) && !is.na(ocf) && net > 0 && ocf < 0) msgs <- c(msgs, "帳面獲利為正但現金流為負，盈餘品質存疑")
+  if (!is.na(ocf) && !is.na(op_earn) && ocf < op_earn) {
+    msgs <- c(msgs, "營業現金流低於營運利潤（淨利扣除投資證券未實現損益），獲利現金轉換率偏低")
+  }
+  if (!is.na(op_earn) && !is.na(ocf) && op_earn > 0 && ocf < 0) {
+    msgs <- c(msgs, "營運利潤為正但營業現金流為負，獲利品質存疑")
+  }
   ratio <- if (!is.na(debt) && !is.na(equity) && equity != 0) debt / equity else NA
   if (!is.na(ratio) && ratio > 2) msgs <- c(msgs, "負債權益比偏高，財務槓桿風險需留意")
   msgs
@@ -475,13 +518,23 @@ compute_report_f_score <- function(d_is, d_bs, d_cf) {
     cur_liab <- get_row2(d_bs, "Total Current Liabilities")
     shares   <- get_row2(d_bs, "Ordinary Shares Number")
     ocf      <- get_row2(d_cf, "Operating Cash Flow")
+    oe_row   <- get_operating_earnings_row(d_is, include_ttm = FALSE)
+    op_earn  <- {
+      v <- suppressWarnings(as.numeric(oe_row))
+      if (length(v) < 1L || all(is.na(v))) {
+        c(NA_real_, NA_real_)
+      } else {
+        c(v[1], if (length(v) >= 2L) v[2] else NA_real_)
+      }
+    }
 
     p1 <- ifelse(!is.na(net_inc[1]) && !is.na(assets[1]) && assets[1] != 0 && (net_inc[1] / assets[1]) > 0, 1, 0)
     p2 <- ifelse(!is.na(ocf[1]) && ocf[1] > 0, 1, 0)
     p3 <- ifelse(all(!is.na(net_inc[1:2]), !is.na(assets[1:2])) &&
                    assets[1] != 0 && assets[2] != 0 &&
                    (net_inc[1] / assets[1]) > (net_inc[2] / assets[2]), 1, 0)
-    p4 <- ifelse(!is.na(ocf[1]) && !is.na(net_inc[1]) && ocf[1] > net_inc[1], 1, 0)
+    # 盈餘品質：OCF > 營運利潤（淨利 − 投資證券未實現損益）
+    p4 <- ifelse(!is.na(ocf[1]) && !is.na(op_earn[1]) && ocf[1] > op_earn[1], 1, 0)
     p5 <- ifelse(all(!is.na(lt_debt[1:2]), !is.na(assets[1:2])) &&
                    assets[1] != 0 && assets[2] != 0 &&
                    (lt_debt[1] / assets[1]) <= (lt_debt[2] / assets[2]), 1, 0)
@@ -501,7 +554,8 @@ compute_report_f_score <- function(d_is, d_bs, d_cf) {
       quality_flag = p4,
       checklist = data.frame(
         `檢驗維度` = c(
-          "獲利性 (ROA > 0)", "獲利性 (OCF > 0)", "獲利性 (ROA 成長)", "獲利性 (盈餘品質)",
+          "獲利性 (ROA > 0)", "獲利性 (OCF > 0)", "獲利性 (ROA 成長)",
+          "獲利性 (盈餘品質：OCF > 營運利潤)",
           "安全性 (槓桿下降)", "安全性 (流動比提升)", "安全性 (未大幅增資)",
           "效率 (毛利率提升)", "效率 (資產週轉率提升)"
         ),

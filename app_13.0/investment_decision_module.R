@@ -91,39 +91,15 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
 
     f_score_eval <- reactive({
       req(d_is(), d_bs(), d_cf())
-      net_inc  <- get_row_safe(d_is(), "Net Income Common Stockholders|Net Income$")
-      revenue  <- get_row_safe(d_is(), "Total Revenue")
-      gp       <- get_row_safe(d_is(), "Gross Profit")
-      assets   <- get_row_safe(d_bs(), "Total Assets")
-      lt_debt  <- get_row_safe(d_bs(), "Long Term Debt|Total Non Current Liabilities")
-      cur_ast  <- get_row_safe(d_bs(), "Total Current Assets")
-      cur_liab <- get_row_safe(d_bs(), "Total Current Liabilities")
-      shares   <- get_row_safe(d_bs(), "Ordinary Shares Number")
-      ocf      <- get_row_safe(d_cf(), "Operating Cash Flow")
-
-      tryCatch({
-        p1 <- ifelse(!is.na(net_inc[1]) && !is.na(assets[1]) && (net_inc[1] / assets[1]) > 0, 1, 0)
-        p2 <- ifelse(!is.na(ocf[1]) && ocf[1] > 0, 1, 0)
-        p3 <- ifelse(all(!is.na(net_inc[1:2]), !is.na(assets[1:2])) && (net_inc[1] / assets[1]) > (net_inc[2] / assets[2]), 1, 0)
-        p4 <- ifelse(!is.na(ocf[1]) && !is.na(net_inc[1]) && ocf[1] > net_inc[1], 1, 0)
-        p5 <- ifelse(all(!is.na(lt_debt[1:2]), !is.na(assets[1:2])) && (lt_debt[1] / assets[1]) <= (lt_debt[2] / assets[2]), 1, 0)
-        p6 <- ifelse(all(!is.na(cur_ast[1:2]), !is.na(cur_liab[1:2])) && (cur_ast[1] / cur_liab[1]) > (cur_ast[2] / cur_liab[2]), 1, 0)
-        p7 <- ifelse(!is.na(shares[1]) && !is.na(shares[2]) && shares[1] <= (shares[2] * 1.02), 1, 0)
-        p8 <- ifelse(all(!is.na(gp[1:2]), !is.na(revenue[1:2])) && (gp[1] / revenue[1]) > (gp[2] / revenue[2]), 1, 0)
-        p9 <- ifelse(all(!is.na(revenue[1:2]), !is.na(assets[1:2])) && (revenue[1] / assets[1]) > (revenue[2] / assets[2]), 1, 0)
-        total <- sum(p1, p2, p3, p4, p5, p6, p7, p8, p9)
-        list(
-          total = total,
-          quality_flag = p4,
-          checklist = data.frame(
-            `檢驗維度` = c("獲利性 (ROA > 0)", "獲利性 (OCF > 0)", "獲利性 (ROA 成長)", "獲利性 (盈餘品質)",
-                       "安全性 (槓桿下降)", "安全性 (流動比提升)", "安全性 (未大幅增資)",
-                       "效率 (毛利率提升)", "效率 (資產週轉率提升)"),
-            `得分` = c(p1, p2, p3, p4, p5, p6, p7, p8, p9),
-            check.names = FALSE
-          )
-        )
-      }, error = function(e) list(total = 0, quality_flag = 0, checklist = data.frame()))
+      res <- compute_report_f_score(d_is(), d_bs(), d_cf())
+      # UI 表格仍以 1/0 轉成 ✅/❌
+      if (is.data.frame(res$checklist) && nrow(res$checklist) > 0 &&
+          is.character(res$checklist$`得分`)) {
+        res$checklist$`得分` <- ifelse(res$checklist$`得分` == "通過", 1, 0)
+      }
+      if (!is.finite(res$total)) res$total <- 0
+      if (!is.finite(res$quality_flag)) res$quality_flag <- 0
+      res
     })
 
     primary_values <- reactive({
