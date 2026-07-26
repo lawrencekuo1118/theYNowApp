@@ -555,7 +555,7 @@ fcf_projection_module_server <- function(
                     ),
                     rownames = FALSE,
                     class = 'cell-border stripe hover') %>%
-        DT::formatCurrency(columns = 2:7, currency = "$", digits = 2) %>%
+        DT::formatCurrency(columns = 2:7, currency = dt_currency_symbol(), digits = 2) %>%
         DT::formatStyle('企業自由現金流 (FCFF)', backgroundColor = '#e8f4f8', fontWeight = 'bold')
     })
     

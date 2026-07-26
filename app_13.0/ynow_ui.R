@@ -368,7 +368,32 @@ ui <- dashboardPage(
   
   dashboardHeader(
     title = "The YNow App v13",
-    titleWidth = 250
+    titleWidth = 250,
+    tags$li(
+      class = "dropdown ynow-ccy-header",
+      style = "height: 50px; display: flex; align-items: center; padding: 0 14px; list-style: none;",
+      tags$div(
+        style = "display: flex; flex-direction: column; align-items: flex-end; gap: 2px; line-height: 1.15;",
+        tags$div(
+          style = "display: flex; align-items: center; gap: 6px;",
+          actionButton(
+            "btn_ccy_usd", "USD",
+            class = "btn btn-xs ynow-ccy-btn",
+            style = "min-width: 42px; font-weight: 700; padding: 2px 8px;"
+          ),
+          tags$span(style = "color: rgba(255,255,255,0.55); font-size: 11px;", "|"),
+          actionButton(
+            "btn_ccy_twd", "TWD",
+            class = "btn btn-xs ynow-ccy-btn",
+            style = "min-width: 42px; font-weight: 700; padding: 2px 8px;"
+          )
+        ),
+        tags$div(
+          style = "font-size: 10px; color: rgba(255,255,255,0.72); white-space: nowrap; max-width: 280px; overflow: hidden; text-overflow: ellipsis;",
+          textOutput("hdr_ccy_status", inline = TRUE)
+        )
+      )
+    )
   ),
   
   dashboardSidebar(
@@ -438,6 +463,7 @@ ui <- dashboardPage(
   ),
   
   dashboardBody(
+    shinyjs::useShinyjs(),
     withMathJax(),
     
     tags$head(
@@ -487,6 +513,17 @@ ui <- dashboardPage(
           white-space: normal;
           overflow-wrap: anywhere;
           word-break: break-word;
+        }
+        /* Header USD|TWD toggle */
+        .ynow-ccy-header .ynow-ccy-btn {
+          background: rgba(255,255,255,0.12) !important;
+          border: 1px solid rgba(255,255,255,0.35) !important;
+          color: #fff !important;
+        }
+        .ynow-ccy-header .ynow-ccy-btn.ynow-ccy-active {
+          background: #fff !important;
+          color: #222 !important;
+          border-color: #fff !important;
         }
       ')),
       tags$script(HTML("
@@ -1676,7 +1713,7 @@ ui <- dashboardPage(
               withMathJax(),
               h2("量化回測實驗室 (Backtest Zone)"),
               .bt_section_intro(
-                "先看折現比較圖（基本面價值 vs 實際股價＝情緒波動價值 vs 大盤），再看策略淨值（倉位規則賺不賺錢）。Ke／WACC 採 Rolling β。"
+                "先看折現比較圖（基本面價值 vs 實際股價＝情緒波動價值 vs 大盤），再看策略淨值（倉位規則賺不賺錢）。Ke／WACC 採 Rolling β。歷史股價序列維持 Yahoo 報價幣別（不做歷史 FX 換算）；上方 header 的 USD⇄TWD 主要套用估值／財報金額。"
               ),
 
               # 1) 折現比較圖置頂：基本面價值 vs 情緒波動價值(實際股價) vs 大盤

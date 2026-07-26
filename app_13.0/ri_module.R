@@ -253,7 +253,7 @@ ri_module_ui <- function(id) {
           )
         ),
         fluidRow(
-          column(4, numericInput(ns("b0"), "期初每股帳面淨值 B0 (USD)", value = NA, step = 0.5)),
+          column(4, numericInput(ns("b0"), "期初每股帳面淨值 B0", value = NA, step = 0.5)),
           column(
             8, br(),
             actionButton(
@@ -640,12 +640,12 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
         h4(tags$b("Residual Income Breakdown"), style = "margin: 8px 0 4px 0;"),
         div(
           style = "display:flex;flex-wrap:wrap;justify-content:space-between;align-items:stretch;",
-          card("Book Value (B0)", paste0("$", sprintf("%.2f", res$b0))),
-          card("Forecast RI (PV)", paste0("$", sprintf("%.2f", res$pv_ri)),
+          card("Book Value (B0)", paste0(money_prefix(), sprintf("%.2f", res$b0))),
+          card("Forecast RI (PV)", paste0(money_prefix(), sprintf("%.2f", res$pv_ri)),
                accent = if (res$pv_ri >= 0) "#27ae60" else "#c0392b"),
-          card("Terminal Value (PV)", paste0("$", sprintf("%.2f", res$pv_terminal)),
+          card("Terminal Value (PV)", paste0(money_prefix(), sprintf("%.2f", res$pv_terminal)),
                accent = "#8e44ad"),
-          card("Intrinsic Value", paste0("$", sprintf("%.2f", res$intrinsic)),
+          card("Intrinsic Value", paste0(money_prefix(), sprintf("%.2f", res$intrinsic)),
                accent = "#1abc9c", bg = "#e8f8f5"),
           card("Terminal Contribution", tv_pct, accent = tv_col,
                sub = "PV_Terminal / Intrinsic")
@@ -682,7 +682,7 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
       ) %>%
         layout(
           title = list(text = "RI Valuation Waterfall", font = list(size = 14)),
-          yaxis = list(title = "USD / share", zeroline = TRUE),
+          yaxis = list(title = paste0(money_label(), " / share"), zeroline = TRUE),
           xaxis = list(title = ""),
           margin = list(t = 50, b = 80)
         )
@@ -704,10 +704,10 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
         geom_point(aes(y = Intrinsic_Path), size = 3, color = "#2980b9") +
         geom_line(aes(y = Intrinsic_Path, group = 1), color = "#2980b9", linewidth = 1) +
         scale_fill_manual(name = "", values = c("B0 + 累計 PV(Forecast RI)" = "#aed6f1")) +
-        scale_y_continuous(labels = label_chart_number(prefix = "$")) +
+        scale_y_continuous(labels = label_chart_number(prefix = money_prefix())) +
         theme_minimal(base_size = 13) +
-        labs(x = "預測年份", y = "每股價值 (USD)",
-             caption = sprintf("虛線＝B0；點線＝完整內在價值（含 Terminal）$%.2f", res$intrinsic)) +
+        labs(x = "預測年份", y = paste0("每股價值 (", money_label(), ")"),
+             caption = sprintf("虛線＝B0；點線＝完整內在價值（含 Terminal）%s%.2f", money_prefix(), res$intrinsic)) +
         theme(legend.position = "bottom")
     })
 
@@ -736,7 +736,7 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
         DT::formatCurrency(
           columns = c("Beginning BV", "Net Income", "Dividend", "Ending BV",
                       "Residual Income", "PV(RI)"),
-          currency = "$", digits = 2
+          currency = dt_currency_symbol(), digits = 2
         )
     })
 
@@ -848,7 +848,7 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
           columns = names(df)[-1],
           backgroundColor = DT::styleInterval(brks, clrs)
         ) %>%
-        DT::formatCurrency(columns = names(df)[-1], currency = "$", digits = 2)
+        DT::formatCurrency(columns = names(df)[-1], currency = dt_currency_symbol(), digits = 2)
     })
 
     output$plt_ri_heatmap <- renderPlotly({
@@ -935,7 +935,7 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
       pay0 <- suppressWarnings(as.numeric(input$ri_payout)[1])
       roe0 <- suppressWarnings(as.numeric(input$ri_roe)[1])
       rows <- list(
-        .param_sensitivity_infl_row("期初帳面 B0", b0, "$", p0,
+        .param_sensitivity_infl_row("期初帳面 B0", b0, money_prefix(), p0,
                                     .price_at(b0 = .rel(b0, -1)), .price_at(b0 = .rel(b0, +1)), "每股帳面淨值"),
         .param_sensitivity_infl_row("股權成本 Ke", ke0, "%", p0,
                                     .price_at(ke_pct = .rel(ke0, -1)), .price_at(ke_pct = .rel(ke0, +1)), "折現率"),

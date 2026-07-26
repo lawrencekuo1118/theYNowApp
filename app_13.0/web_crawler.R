@@ -63,6 +63,9 @@ tryCatch({
   } else {
     as.character(company_name)
   }
+  q_ccy <- if (grepl("\\.(TW|TWO)$", stock_code, ignore.case = TRUE)) "TWD" else "USD"
+  attr(df, "currency") <- q_ccy
+  attr(df, "financialCurrency") <- q_ccy
   df
 }
 
@@ -145,13 +148,44 @@ get_summary_data <- function(stock_code) {
       cname <- stock_code
     }
     attr(tbl, "company_name") <- as.character(cname)[1]
-    message("✅ Summary OK rows=", nrow(tbl), " name=", attr(tbl, "company_name"))
+    q_ccy <- tryCatch(as.character(res$currency %||% "")[1], error = function(e) "")
+    f_ccy <- tryCatch(as.character(res$financialCurrency %||% "")[1], error = function(e) "")
+    if (!nzchar(q_ccy) || identical(q_ccy, "NA")) {
+      q_ccy <- if (grepl("\\.(TW|TWO)$", stock_code, ignore.case = TRUE)) "TWD" else "USD"
+    }
+    if (!nzchar(f_ccy) || identical(f_ccy, "NA")) f_ccy <- q_ccy
+    attr(tbl, "currency") <- toupper(q_ccy)
+    attr(tbl, "financialCurrency") <- toupper(f_ccy)
+    message(
+      "✅ Summary OK rows=", nrow(tbl),
+      " name=", attr(tbl, "company_name"),
+      " ccy=", attr(tbl, "currency"), "/", attr(tbl, "financialCurrency")
+    )
     tbl
   }, error = function(e) {
     message("⚠️ Summary yfinance 失敗: ", e$message)
     .empty_summary(stock_code)
   })
 }
+
+# ==========================================
+# 💱 USD/TWD 即期匯率
+# ==========================================
+get_usd_twd_fx <- function() {
+  tryCatch({
+    if (!.ensure_python_scraper() || !exists("get_usd_twd_rate", mode = "function")) {
+      return(32)
+    }
+    px <- suppressWarnings(as.numeric(get_usd_twd_rate())[1])
+    if (is.finite(px) && px > 0) return(px)
+    32
+  }, error = function(e) {
+    message("⚠️ get_usd_twd_fx: ", e$message)
+    32
+  })
+}
+
+cached_get_usd_twd_fx <- memoise::memoise(get_usd_twd_fx, cache = my_cache)
 
 # ==========================================
 # 🇺🇸 4. 無風險利率 Rf（僅 yfinance）

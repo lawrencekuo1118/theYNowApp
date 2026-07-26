@@ -124,6 +124,25 @@ def get_summary_quote(ticker="AMZN"):
 
     company_name = _best_company_name(info, ticker)
 
+    # Quote vs reporting currency (ADR often differs)
+    def _ccy(key, default=""):
+        v = info.get(key)
+        if v is None:
+            return default
+        s = str(v).strip().upper()
+        return s if s else default
+
+    quote_ccy = _ccy("currency", "")
+    fin_ccy = _ccy("financialCurrency", "") or quote_ccy
+    if not quote_ccy and ticker.upper().endswith((".TW", ".TWO")):
+        quote_ccy = "TWD"
+    if not fin_ccy and ticker.upper().endswith((".TW", ".TWO")):
+        fin_ccy = "TWD"
+    if not quote_ccy:
+        quote_ccy = "USD"
+    if not fin_ccy:
+        fin_ccy = quote_ccy
+
     # 若 info 幾乎為空，用 history 補 Previous Close
     if info.get("previousClose") is None:
         try:
@@ -170,12 +189,40 @@ def get_summary_quote(ticker="AMZN"):
     # (nested pandas DataFrame inside dict often becomes empty in R).
     items = [r[0] for r in rows]
     values = [r[1] for r in rows]
-    print(f"✅ summary rows={len(items)} name={company_name}")
+    print(f"✅ summary rows={len(items)} name={company_name} ccy={quote_ccy}/{fin_ccy}")
     return {
         "company_name": str(company_name),
+        "currency": str(quote_ccy),
+        "financialCurrency": str(fin_ccy),
         "Item": items,
         "Value": values,
     }
+
+
+def get_usd_twd_rate():
+    """USD→TWD spot via yfinance (TWD=X = TWD per 1 USD)."""
+    print("💱 yfinance FX TWD=X")
+    for sym in ("TWD=X", "USDTWD=X"):
+        try:
+            t = yf.Ticker(sym)
+            hist = t.history(period="5d")
+            if hist is not None and not hist.empty:
+                px = float(hist["Close"].dropna().iloc[-1])
+                if px > 0:
+                    print(f"✅ FX {sym} = {px}")
+                    return px
+            info = t.info or {}
+            for key in ("regularMarketPrice", "previousClose", "open"):
+                v = info.get(key)
+                if v is not None:
+                    px = float(v)
+                    if px > 0:
+                        print(f"✅ FX {sym} info.{key} = {px}")
+                        return px
+        except Exception as e:
+            print(f"⚠️ FX {sym}: {e}")
+    print("⚠️ FX fallback 32.0")
+    return 32.0
 
 
 def get_price_history(ticker="AMZN", period="5y"):

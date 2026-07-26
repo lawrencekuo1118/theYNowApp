@@ -19,6 +19,13 @@ server <- function(input, output, session) {
   current_ticker <- reactiveVal(NULL)
   # 首次按下 Search 前：不標示模型推薦／側邊欄「推薦」
   user_has_searched <- reactiveVal(FALSE)
+
+  # Session 幣別：原生 quote/statement → 單一顯示／估值幣別
+  quote_currency <- reactiveVal("USD")
+  statement_currency <- reactiveVal("USD")
+  session_currency <- reactiveVal("USD")
+  fx_usd_twd <- reactiveVal(32)
+  fx_fetched_at <- reactiveVal(NULL)
   
   # 系統核心估值變數
   estimated_g <- reactiveVal(NULL)
@@ -136,6 +143,22 @@ server <- function(input, output, session) {
         sum_df <- get_summary_data(stock_code)
         summary_data(sum_df)
 
+        q_ccy <- normalize_ccy(attr(sum_df, "currency") %||% "")
+        f_ccy <- normalize_ccy(attr(sum_df, "financialCurrency") %||% "")
+        if (is.na(q_ccy)) {
+          q_ccy <- if (grepl("\\.(TW|TWO)$", stock_code, ignore.case = TRUE)) "TWD" else "USD"
+        }
+        if (is.na(f_ccy)) f_ccy <- q_ccy
+        quote_currency(q_ccy)
+        statement_currency(f_ccy)
+        sess <- default_session_currency(q_ccy, f_ccy, stock_code)
+        session_currency(sess)
+        fx_now <- tryCatch(cached_get_usd_twd_fx(), error = function(e) 32)
+        if (!is.finite(fx_now) || fx_now <= 0) fx_now <- 32
+        fx_usd_twd(fx_now)
+        fx_fetched_at(Sys.time())
+        set_ynow_currency_context(sess, fx_now, q_ccy, f_ccy)
+
         ind_info <- get_yahoo_industry(stock_code)
         if (!is.null(ind_info)) corp_industry_text(ind_info$display_text)
 
@@ -188,6 +211,54 @@ server <- function(input, output, session) {
         )
       })
     })
+  })
+
+  # ==========================================
+  # 💱 Session 幣別切換（USD ⇄ TWD）
+  # ==========================================
+  .refresh_fx_if_stale <- function(max_age_sec = 3600) {
+    ts <- fx_fetched_at()
+    stale <- is.null(ts) || !inherits(ts, "POSIXt") ||
+      (as.numeric(difftime(Sys.time(), ts, units = "secs")) > max_age_sec)
+    if (!stale) return(invisible(fx_usd_twd()))
+    fx_now <- tryCatch(cached_get_usd_twd_fx(), error = function(e) fx_usd_twd() %||% 32)
+    if (!is.finite(fx_now) || fx_now <= 0) fx_now <- 32
+    fx_usd_twd(fx_now)
+    fx_fetched_at(Sys.time())
+    fx_now
+  }
+
+  .apply_session_currency <- function(new_ccy) {
+    sc <- normalize_ccy(new_ccy)
+    if (is.na(sc) || !(sc %in% c("USD", "TWD"))) return()
+    fx_now <- .refresh_fx_if_stale()
+    session_currency(sc)
+    set_ynow_currency_context(
+      sc, fx_now, quote_currency(), statement_currency()
+    )
+  }
+
+  observeEvent(input$btn_ccy_usd, {
+    .apply_session_currency("USD")
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$btn_ccy_twd, {
+    .apply_session_currency("TWD")
+  }, ignoreInit = TRUE)
+
+  observe({
+    sc <- session_currency()
+    shinyjs::toggleClass("btn_ccy_usd", "ynow-ccy-active", identical(sc, "USD"))
+    shinyjs::toggleClass("btn_ccy_twd", "ynow-ccy-active", identical(sc, "TWD"))
+  })
+
+  output$hdr_ccy_status <- renderText({
+    q <- quote_currency() %||% "?"
+    f <- statement_currency() %||% "?"
+    sc <- session_currency() %||% "?"
+    fx <- fx_usd_twd() %||% 32
+    paste0("報價 ", q, " · 財報 ", f, " · 顯示 ", sc,
+           " · 1 USD = ", round(as.numeric(fx), 2), " TWD")
   })
   
   # ==========================================
@@ -260,24 +331,43 @@ server <- function(input, output, session) {
   
   output$ibx_stockprice <- renderInfoBox({
     df <- summary_data()
-    val <- if(!is.null(df) && "Previous Close" %in% df$Item) df$Value[df$Item == "Previous Close"] else "N/A"
+    session_currency(); fx_usd_twd(); quote_currency()
+    val <- if (!is.null(df) && "Previous Close" %in% df$Item) {
+      convert_summary_value_display(
+        "Previous Close", df$Value[df$Item == "Previous Close"][1],
+        quote_currency(), session_currency(), fx_usd_twd()
+      )
+    } else "N/A"
     infoBox("Previous Close", val, icon = icon("chart-line"), color = "purple")
   })
   
   output$ibx_marketcap <- renderInfoBox({
     df <- summary_data()
-    val <- if(!is.null(df) && "Market Cap (intraday)" %in% df$Item) df$Value[df$Item == "Market Cap (intraday)"] else "N/A"
+    session_currency(); fx_usd_twd(); quote_currency()
+    val <- if (!is.null(df) && "Market Cap (intraday)" %in% df$Item) {
+      convert_summary_value_display(
+        "Market Cap (intraday)", df$Value[df$Item == "Market Cap (intraday)"][1],
+        quote_currency(), session_currency(), fx_usd_twd()
+      )
+    } else "N/A"
     infoBox("Market Cap", val, icon = icon("globe"), color = "blue")
   })
   
   output$ibx_EPS <- renderInfoBox({
     df <- summary_data()
-    val <- if(!is.null(df) && "EPS (TTM)" %in% df$Item) df$Value[df$Item == "EPS (TTM)"] else "N/A"
+    session_currency(); fx_usd_twd(); quote_currency()
+    val <- if (!is.null(df) && "EPS (TTM)" %in% df$Item) {
+      convert_summary_value_display(
+        "EPS (TTM)", df$Value[df$Item == "EPS (TTM)"][1],
+        quote_currency(), session_currency(), fx_usd_twd()
+      )
+    } else "N/A"
     infoBox("EPS (TTM)", val, icon = icon("dollar-sign"), color = "green")
   })
   
   output$fs_summary_ui <- renderUI({
     req(summary_data())
+    session_currency(); fx_usd_twd(); quote_currency()
     df <- summary_data()
     if (is.null(df) || nrow(df) < 1) {
       return(tags$p("No finance summary available.", style = "color:#888;"))
@@ -313,13 +403,25 @@ server <- function(input, output, session) {
         tags$div(
           class = "ynow-fs-grid",
           lapply(seq_len(nrow(rows)), function(i) {
-            mk_card(rows$Item[i], rows$Value[i])
+            disp <- convert_summary_value_display(
+              rows$Item[i], rows$Value[i],
+              quote_currency(), session_currency(), fx_usd_twd()
+            )
+            mk_card(rows$Item[i], disp)
           })
         )
       )
     })
 
-    tags$div(class = "ynow-fs-wrap", sections)
+    tags$div(
+      class = "ynow-fs-wrap",
+      tags$p(
+        style = "margin:0 0 8px 0; font-size:11px; color:#888;",
+        paste0("金額已換算為 session 幣別：", money_label(session_currency()),
+               "（報價 ", quote_currency(), " → 顯示 ", session_currency(), "）")
+      ),
+      sections
+    )
   })
 
   # 保留表格輸出供下載／相容（不在 UI 顯示）
@@ -466,15 +568,21 @@ server <- function(input, output, session) {
   
   d_income_statement <- reactive({
     req(scraped_financials())
-    reorder_financial_columns(scraped_financials()[["Income Statement"]]$expanded)
+    session_currency(); fx_usd_twd()
+    df <- reorder_financial_columns(scraped_financials()[["Income Statement"]]$expanded)
+    scale_financial_df_money(df, statement_currency(), session_currency(), fx_usd_twd())
   })
   d_balance_sheet <- reactive({
     req(scraped_financials())
-    reorder_financial_columns(scraped_financials()[["Balance Sheet"]]$expanded)
+    session_currency(); fx_usd_twd()
+    df <- reorder_financial_columns(scraped_financials()[["Balance Sheet"]]$expanded)
+    scale_financial_df_money(df, statement_currency(), session_currency(), fx_usd_twd())
   })
   d_cash_flow <- reactive({
     req(scraped_financials())
-    reorder_financial_columns(scraped_financials()[["Cash Flow"]]$expanded)
+    session_currency(); fx_usd_twd()
+    df <- reorder_financial_columns(scraped_financials()[["Cash Flow"]]$expanded)
+    scale_financial_df_money(df, statement_currency(), session_currency(), fx_usd_twd())
   })
 
   # ==========================================
@@ -841,22 +949,31 @@ server <- function(input, output, session) {
   
   output$tbIncomeStatement <- renderDataTable({
     req(scraped_financials())
+    session_currency(); fx_usd_twd()
     df <- if (is_expanded()) scraped_financials()[["Income Statement"]]$expanded else scraped_financials()[["Income Statement"]]$collapsed
-    df <- reorder_financial_columns(df)
+    df <- scale_financial_df_money(
+      reorder_financial_columns(df), statement_currency(), session_currency(), fx_usd_twd()
+    )
     datatable(trim_financial_table(df, "Tax Effect of Unusual Items"), options = list(pageLength = 20, scrollX = TRUE))
   })
   
   output$tbBalanceSheet <- renderDataTable({
     req(scraped_financials())
+    session_currency(); fx_usd_twd()
     df <- if (is_expanded()) scraped_financials()[["Balance Sheet"]]$expanded else scraped_financials()[["Balance Sheet"]]$collapsed
-    df <- reorder_financial_columns(df)
+    df <- scale_financial_df_money(
+      reorder_financial_columns(df), statement_currency(), session_currency(), fx_usd_twd()
+    )
     datatable(trim_financial_table(df, "Treasury Shares Number"), options = list(pageLength = 20, scrollX = TRUE))
   })
   
   output$tbCashFlow <- renderDataTable({
     req(scraped_financials())
+    session_currency(); fx_usd_twd()
     df <- if (is_expanded()) scraped_financials()[["Cash Flow"]]$expanded else scraped_financials()[["Cash Flow"]]$collapsed
-    df <- reorder_financial_columns(df)
+    df <- scale_financial_df_money(
+      reorder_financial_columns(df), statement_currency(), session_currency(), fx_usd_twd()
+    )
     datatable(trim_financial_table(df, "Free Cash Flow"), options = list(pageLength = 20, scrollX = TRUE))
   })
   
@@ -1030,6 +1147,7 @@ server <- function(input, output, session) {
   }
 
   output$cf_plot <- renderPlotly({
+    session_currency(); fx_usd_twd()
     empty_plot <- function(msg) {
       plotly::plotly_empty() %>%
         plotly::layout(
@@ -1111,7 +1229,7 @@ server <- function(input, output, session) {
           categoryorder = "array", categoryarray = x_levels
         ),
         yaxis = list(
-          title = "USD", tickprefix = "$",
+          title = money_label(), tickprefix = money_prefix(),
           separatethousands = TRUE, zeroline = TRUE,
           gridcolor = "#EEF2F5"
         ),
@@ -1895,22 +2013,27 @@ server <- function(input, output, session) {
     return(ifelse(is.na(val), 0, val))
   })
   
-  # --- 優化後的股數與市值計算 ---
+  # --- 優化後的股數與市值計算（報價 → session；ADR 與財報同單位）---
   scraped_market_cap <- reactive({
     req(d_balance_sheet(), summary_data())
-    
+    session_currency(); fx_usd_twd(); quote_currency()
+
     # 1. 抓取股數：擴充匹配名稱
     raw_shares <- select_current_metric(d_balance_sheet(), "Ordinary Shares Number|Share Issued|Total Shares Outstanding", "stock")
     shares <- as.numeric(raw_shares)
-    if (is.na(shares) || shares <= 0) shares <- 1 
-    
-    # 2. 解析股價：處理字串格式
+    if (is.na(shares) || shares <= 0) shares <- 1
+
+    # 2. 解析股價（報價幣別）→ session
     df_sum <- summary_data()
     price_row <- df_sum[grep("Previous Close|Market Price", df_sum$Item), ]
-    price_val <- if(nrow(price_row) > 0) parse_financial_number(price_row$Value[1]) else NA
-    
-    if (is.na(price_val)) return(list(e_val = NA, shares = shares, price = NA))
-    
+    price_native <- if (nrow(price_row) > 0) parse_financial_number(price_row$Value[1]) else NA
+
+    if (is.na(price_native)) return(list(e_val = NA, shares = shares, price = NA))
+
+    price_val <- money_to_session(
+      price_native, quote_currency(), session_currency(), fx_usd_twd()
+    )
+
     return(list(
       e_val = shares * price_val,
       shares = shares,
@@ -3350,6 +3473,7 @@ server <- function(input, output, session) {
   })
   
   output$plt_fcf_trend <- renderPlot({
+    session_currency()
     req(fcf_results$df_fcf()) 
     df <- fcf_results$df_fcf() 
     
@@ -3361,9 +3485,9 @@ server <- function(input, output, session) {
       scale_color_manual(name = "", values = c("企業自由現金流 (FCFF)" = "#3c8dbc")) +
       geom_text(aes(y = FCFF, label = format_dollar_abbr(FCFF)),
                 vjust = ifelse(df$FCFF >= 0, -0.5, 1.5), size = 4, fontface = "bold") +
-      scale_y_continuous(labels = label_chart_number(prefix = "$")) +
+      scale_y_continuous(labels = label_chart_number(prefix = money_prefix())) +
       theme_minimal() +
-      labs(title = "FCFF 與 營業利潤 成長軌跡", x = "預測年份", y = "金額 (百萬)") +
+      labs(title = "FCFF 與 營業利潤 成長軌跡", x = "預測年份", y = paste0("金額 (", money_label(), ")")) +
       theme(
         plot.title = element_text(face = "bold", size = 16),
         axis.text = element_text(size = 12),
@@ -3770,6 +3894,7 @@ server <- function(input, output, session) {
   # 📉 DCF Overview 圖：歷史／預測 FCFF（可選折現線）— 恢復上一版 ggplot
   # ==========================================
   output$plt_dcf_trajectory <- renderPlot({
+    session_currency()
     req(fcf_results$df_fcf(), current_ticker())
     proj_df <- fcf_results$df_fcf()
     if (is.null(proj_df) || nrow(proj_df) < 1) {
@@ -3905,12 +4030,12 @@ server <- function(input, output, session) {
       ) +
       scale_color_manual(values = color_map, drop = TRUE) +
       scale_linetype_manual(values = lty_map, drop = TRUE) +
-      scale_y_continuous(labels = label_chart_number(prefix = "$")) +
+      scale_y_continuous(labels = label_chart_number(prefix = money_prefix())) +
       theme_minimal(base_size = 14) +
       labs(
         title = title_txt,
         subtitle = if (identical(chart_mode, "with_dcf")) tv_annotation else "不含折現線；僅歷史與預測 FCFF",
-        x = "期間", y = "USD (Millions)"
+        x = "期間", y = paste0(money_label(), " (Millions)")
       ) +
       theme(
         legend.position = "top",
@@ -3921,6 +4046,7 @@ server <- function(input, output, session) {
   })
   
   output$dft_fcf_plot <- renderPlot({
+    session_currency()
     df <- fcf_results$df_fcf()
     if (is.null(df) || nrow(df) == 0) { plot.new(); text(0.5, 0.5, "⏳ 等待財報資料匯入...", cex = 1.4); return() }
     fcff_vals <- extract_fcff_series(df)
@@ -3932,9 +4058,9 @@ server <- function(input, output, session) {
       geom_line(linewidth = 1.2, color = "steelblue") + 
       geom_point(aes(color = FCFF < 0), size = 3) +
       scale_color_manual(values = c("TRUE" = "red", "FALSE" = "steelblue"), guide = "none") +
-      scale_y_continuous(labels = label_chart_number(prefix = "$")) +
+      scale_y_continuous(labels = label_chart_number(prefix = money_prefix())) +
       theme_minimal(base_size = 14) +
-      labs(title = "FCFF 預測即時預覽", x = "預測期", y = "FCFF (USD)") + theme(legend.position = "top")
+      labs(title = "FCFF 預測即時預覽", x = "預測期", y = paste0("FCFF (", money_label(), ")")) + theme(legend.position = "top")
   })
   
   # ==========================================
@@ -4062,14 +4188,14 @@ server <- function(input, output, session) {
     msg <- glue::glue("企業總價值 (EV)：${round(ev_val, 2)}")
     
     if (length(stock_val) > 0 && !is.na(stock_val)) {
-      msg <- glue::glue("{msg}\n 最終每股合理價：${round(stock_val, 2)}")
+      msg <- glue::glue("{msg}\n 最終每股合理價：{money_prefix()}{round(stock_val, 2)}")
     }
     return(msg)
   })
   
   output$ibx_stock_value_dcf <- renderInfoBox({ 
     infoBox("每股估值（DCF）", 
-            if(is.null(stock_price_estimate_val())) "N/A" else paste0("$", round(stock_price_estimate_val(), 2)), 
+            if(is.null(stock_price_estimate_val())) "N/A" else paste0(money_prefix(), round(stock_price_estimate_val(), 2)), 
             icon = icon("money-bill-wave"), color = "maroon", fill = TRUE) 
   })
   
@@ -5010,10 +5136,13 @@ server <- function(input, output, session) {
         font = list(size = 14)
       ),
       legend = list(orientation = "h", y = -0.18),
-      yaxis = list(title = "每股（美元）", tickprefix = "$", side = "left"),
+      yaxis = list(
+        title = paste0("每股（", money_label(quote_currency()), " · 報價幣，未換算）"),
+        tickprefix = money_prefix(quote_currency()), side = "left"
+      ),
       yaxis2 = list(
         title = "大盤價格", overlaying = "y", side = "right",
-        showgrid = FALSE, tickprefix = "$"
+        showgrid = FALSE, tickprefix = money_prefix(quote_currency())
       ),
       xaxis = list(title = NULL),
       margin = list(l = 60, r = 60, t = 40, b = 60),
@@ -5589,34 +5718,35 @@ server <- function(input, output, session) {
         )
 
         highlights <- c()
+        px <- money_prefix()
         if (is.finite(rating_info$upside_pct)) {
           highlights <- c(highlights, sprintf(
             "依主模型「%s」Base 評價，目標價 %s，潛在報酬 %+.1f%%，評等「%s」。",
             val_method$method,
-            ifelse(is.finite(rating_anchor), paste0("$", round(rating_anchor, 2)), "N/A"),
+            ifelse(is.finite(rating_anchor), paste0(px, round(rating_anchor, 2)), "N/A"),
             rating_info$upside_pct, rating_info$rating
           ))
         }
         if (!is.null(band) && is.finite(band$bear) && is.finite(band$bull)) {
           highlights <- c(highlights, sprintf(
-            "主模型區間 Bear/Base/Bull：$%.2f / $%.2f / $%.2f。",
-            band$bear, band$base, band$bull
+            "主模型區間 Bear/Base/Bull：%s%.2f / %s%.2f / %s%.2f。",
+            px, band$bear, px, band$base, px, band$bull
           ))
         }
         if (is.finite(sec_pt) && !is.null(rec_full$secondary)) {
           highlights <- c(highlights, sprintf(
-            "副模型（%s）檢核點：$%.2f。",
-            .model_label(rec_full$secondary), sec_pt
+            "副模型（%s）檢核點：%s%.2f。",
+            .model_label(rec_full$secondary), px, sec_pt
           ))
         }
         if (is.list(conf) && !is.null(conf$level)) {
           highlights <- c(highlights, sprintf("估值可信度：%s（%s）。", conf$level, conf$score %||% "—"))
         }
-        if (is.finite(dcf_price)) highlights <- c(highlights, paste0("DCF 每股合理價：$", round(dcf_price, 2), "。"))
+        if (is.finite(dcf_price)) highlights <- c(highlights, paste0("DCF 每股合理價：", px, round(dcf_price, 2), "。"))
         if (is.finite(ev_val)) highlights <- c(highlights, paste0("DCF 企業價值 (EV)：", format_dollar_abbr(ev_val), "。"))
-        if (is.finite(ddm_val)) highlights <- c(highlights, paste0("DDM 每股合理價：$", round(ddm_val, 2), "。"))
-        if (is.finite(ri_val)) highlights <- c(highlights, paste0("RI 每股合理價：$", round(ri_val, 2), "。"))
-        if (is.finite(pb_val)) highlights <- c(highlights, paste0("P/B 每股合理價：$", round(pb_val, 2), "。"))
+        if (is.finite(ddm_val)) highlights <- c(highlights, paste0("DDM 每股合理價：", px, round(ddm_val, 2), "。"))
+        if (is.finite(ri_val)) highlights <- c(highlights, paste0("RI 每股合理價：", px, round(ri_val, 2), "。"))
+        if (is.finite(pb_val)) highlights <- c(highlights, paste0("P/B 每股合理價：", px, round(pb_val, 2), "。"))
         highlights <- c(highlights, val_method$rationale)
 
         tmp_html <- tempfile(fileext = ".html")
@@ -5670,7 +5800,20 @@ server <- function(input, output, session) {
             fscore_quality = fscore_info$quality_flag,
             fscore_checklist = fscore_info$checklist,
             investment_highlights = highlights,
-            summary_df = sum_df,
+            session_currency = isolate(session_currency()),
+            fx_usd_twd = isolate(fx_usd_twd()),
+            summary_df = {
+              sd <- sum_df
+              if (!is.null(sd) && is.data.frame(sd) && nrow(sd) > 0) {
+                sd$Value <- vapply(seq_len(nrow(sd)), function(i) {
+                  convert_summary_value_display(
+                    sd$Item[i], sd$Value[i],
+                    isolate(quote_currency()), isolate(session_currency()), isolate(fx_usd_twd())
+                  )
+                }, character(1))
+              }
+              sd
+            },
             income_df = trim_report_table(isolate(d_income_statement())),
             balance_df = trim_report_table(isolate(d_balance_sheet())),
             cashflow_df = trim_report_table(isolate(d_cash_flow()))

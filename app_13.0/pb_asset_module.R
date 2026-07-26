@@ -66,8 +66,8 @@ pb_asset_module_ui <- function(id) {
                           ),
                           uiOutput(ns("txt_shares_resolve_note")),
                           fluidRow(
-                            column(4, numericInput(ns("bvps"), "每股帳面淨值 BVPS (USD)", value = APP_DEFAULTS$pb_bvps, step = 0.1, min = 0)),
-                            column(4, numericInput(ns("tbvps"), "有形每股淨值 TBVPS (USD)", value = APP_DEFAULTS$pb_tbvps, step = 0.1, min = 0)),
+                            column(4, numericInput(ns("bvps"), "每股帳面淨值 BVPS", value = APP_DEFAULTS$pb_bvps, step = 0.1, min = 0)),
+                            column(4, numericInput(ns("tbvps"), "有形每股淨值 TBVPS", value = APP_DEFAULTS$pb_tbvps, step = 0.1, min = 0)),
                             column(4,
                                    br(),
                                    actionButton(ns("btn_sync_bv"), "從最新財報自動帶入",
@@ -402,7 +402,7 @@ pb_asset_module_server <- function(id,
                    icon("exclamation-triangle"), " ", res$message))
       }
       
-      mkt_txt <- if (!is.na(res$market_price)) paste0("$", round(res$market_price, 2)) else "N/A"
+      mkt_txt <- if (!is.na(res$market_price)) paste0(money_prefix(), round(res$market_price, 2)) else "N/A"
       mkt_pb_txt <- if (!is.na(res$market_pb)) sprintf("%.2f×", res$market_pb) else "N/A"
       upside <- if (!is.na(res$market_price) && res$market_price > 0) {
         (res$fair_mid - res$market_price) / res$market_price * 100
@@ -413,12 +413,12 @@ pb_asset_module_server <- function(id,
       div(style = "display: flex; justify-content: space-between; align-items: stretch; gap: 10px; padding: 20px; background-color: #fcfcfc; border: 1px solid #ddd; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); flex-wrap: wrap;",
           div(style = "text-align: center; flex: 1; min-width: 120px;",
               p(style = "font-size: 13px; color: #7f8c8d; margin-bottom: 5px; font-weight: bold;", "估值基礎"),
-              p(style = "font-size: 22px; color: #2c3e50; font-weight: bold; margin: 0;", paste0("$", round(res$basis_val, 2))),
+              p(style = "font-size: 22px; color: #2c3e50; font-weight: bold; margin: 0;", paste0(money_prefix(), round(res$basis_val, 2))),
               p(style = "font-size: 12px; color: #95a5a6;", if (identical(res$basis, "tbvps")) "TBVPS" else "BVPS")
           ),
           div(style = "text-align: center; flex: 1; min-width: 120px;",
               p(style = "font-size: 13px; color: #7f8c8d; margin-bottom: 5px; font-weight: bold;", "基準目標價"),
-              p(style = "font-size: 28px; color: #2980b9; font-weight: bold; margin: 0;", paste0("$", round(res$fair_mid, 2))),
+              p(style = "font-size: 28px; color: #2980b9; font-weight: bold; margin: 0;", paste0(money_prefix(), round(res$fair_mid, 2))),
               p(style = "font-size: 12px; color: #95a5a6;", sprintf("@ %.2f× P/B", res$pb_mid))
           ),
           div(style = "text-align: center; flex: 1; min-width: 120px;",
@@ -436,7 +436,7 @@ pb_asset_module_server <- function(id,
     output$vbx_bvps <- renderValueBox({
       val <- input$bvps
       valueBox(
-        if (is.null(val) || is.na(val)) "N/A" else paste0("$", round(val, 2)),
+        if (is.null(val) || is.na(val)) "N/A" else paste0(money_prefix(), round(val, 2)),
         "每股帳面淨值 BVPS", icon = icon("book"), color = "aqua"
       )
     })
@@ -444,7 +444,7 @@ pb_asset_module_server <- function(id,
     output$vbx_tbvps <- renderValueBox({
       val <- input$tbvps
       valueBox(
-        if (is.null(val) || is.na(val)) "N/A" else paste0("$", round(val, 2)),
+        if (is.null(val) || is.na(val)) "N/A" else paste0(money_prefix(), round(val, 2)),
         "有形每股淨值 TBVPS", icon = icon("cube"), color = "light-blue"
       )
     })
@@ -485,9 +485,9 @@ pb_asset_module_server <- function(id,
         geom_col(width = 0.55, alpha = 0.85) +
         geom_text(aes(label = format_dollar_abbr(Price)), vjust = -0.4, fontface = "bold", size = 4.2) +
         scale_fill_manual(values = c("保守" = "#7f8c8d", "基準" = "#2980b9", "樂觀" = "#27ae60")) +
-        scale_y_continuous(labels = label_chart_number(prefix = "$")) +
+        scale_y_continuous(labels = label_chart_number(prefix = money_prefix())) +
         theme_minimal(base_size = 14) +
-        labs(title = "P/B 合理價區間", x = NULL, y = "每股合理價 (USD)") +
+        labs(title = "P/B 合理價區間", x = NULL, y = paste0("每股合理價 (", money_label(), ")")) +
         theme(legend.position = "none", plot.title = element_text(face = "bold")) +
         expand_limits(y = max(df$Price, na.rm = TRUE) * 1.15)
       
@@ -534,7 +534,7 @@ pb_asset_module_server <- function(id,
       rows <- list(
         .param_sensitivity_infl_row(
           if (identical(input$basis, "tbvps")) "TBVPS" else "BVPS",
-          basis0, "$", p0,
+          basis0, money_prefix(), p0,
           .fair(basis = .rel(basis0, -1)), .fair(basis = .rel(basis0, +1)),
           "估值基礎 × 基準 P/B"
         ),

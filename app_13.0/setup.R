@@ -46,9 +46,147 @@ label_chart_number <- function(prefix = "") {
   function(x) format_chart_number(x, prefix = prefix, na_str = "")
 }
 
-# 金額縮寫（valueBox／圖表標籤共用）
+# ==========================================
+# 💱 Session 幣別（USD / TWD）— 估值與金額顯示共用
+# ==========================================
+.ynow_ccy_ctx <- new.env(parent = emptyenv())
+.ynow_ccy_ctx$session_currency <- "USD"
+.ynow_ccy_ctx$fx_usd_twd <- 32
+.ynow_ccy_ctx$quote_currency <- "USD"
+.ynow_ccy_ctx$statement_currency <- "USD"
+
+normalize_ccy <- function(x) {
+  s <- toupper(trimws(as.character(x %||% "")[1]))
+  if (!nzchar(s) || identical(s, "NA")) return(NA_character_)
+  if (s %in% c("USD", "USDT", "US$")) return("USD")
+  if (s %in% c("TWD", "NTD", "NT$", "NT")) return("TWD")
+  s
+}
+
+default_session_currency <- function(quote_ccy, stmt_ccy, ticker = "") {
+  stmt <- normalize_ccy(stmt_ccy)
+  quote <- normalize_ccy(quote_ccy)
+  if (!is.na(stmt) && stmt %in% c("USD", "TWD")) return(stmt)
+  if (!is.na(quote) && quote %in% c("USD", "TWD")) return(quote)
+  tk <- toupper(trimws(as.character(ticker %||% "")[1]))
+  if (grepl("\\.(TW|TWO)$", tk)) return("TWD")
+  "USD"
+}
+
+set_ynow_currency_context <- function(session_ccy = NULL, fx_usd_twd = NULL,
+                                      quote_ccy = NULL, statement_ccy = NULL) {
+  if (!is.null(session_ccy)) {
+    sc <- normalize_ccy(session_ccy)
+    if (!is.na(sc)) .ynow_ccy_ctx$session_currency <- sc
+  }
+  if (!is.null(fx_usd_twd)) {
+    fx <- suppressWarnings(as.numeric(fx_usd_twd)[1])
+    if (is.finite(fx) && fx > 0) .ynow_ccy_ctx$fx_usd_twd <- fx
+  }
+  if (!is.null(quote_ccy)) {
+    qc <- normalize_ccy(quote_ccy)
+    if (!is.na(qc)) .ynow_ccy_ctx$quote_currency <- qc
+  }
+  if (!is.null(statement_ccy)) {
+    fc <- normalize_ccy(statement_ccy)
+    if (!is.na(fc)) .ynow_ccy_ctx$statement_currency <- fc
+  }
+  invisible(NULL)
+}
+
+money_prefix <- function(ccy = NULL) {
+  sc <- normalize_ccy(ccy %||% .ynow_ccy_ctx$session_currency)
+  if (identical(sc, "TWD")) "NT$" else "$"
+}
+
+money_label <- function(ccy = NULL) {
+  sc <- normalize_ccy(ccy %||% .ynow_ccy_ctx$session_currency)
+  if (identical(sc, "TWD")) "TWD" else "USD"
+}
+
+dt_currency_symbol <- function(ccy = NULL) {
+  money_prefix(ccy)
+}
+
+# USD↔TWD only (v1). Same currency → 1; unknown → 1 with warning-free fallback.
+fx_factor <- function(from_ccy, to_ccy, usd_twd = NULL) {
+  fr <- normalize_ccy(from_ccy)
+  to <- normalize_ccy(to_ccy)
+  if (is.na(fr) || is.na(to) || identical(fr, to)) return(1)
+  fx <- suppressWarnings(as.numeric(usd_twd %||% .ynow_ccy_ctx$fx_usd_twd)[1])
+  if (!is.finite(fx) || fx <= 0) fx <- 32
+  if (identical(fr, "USD") && identical(to, "TWD")) return(fx)
+  if (identical(fr, "TWD") && identical(to, "USD")) return(1 / fx)
+  1
+}
+
+money_to_session <- function(x, from_ccy, session_ccy = NULL, usd_twd = NULL) {
+  nums <- suppressWarnings(as.numeric(x))
+  mult <- fx_factor(from_ccy, session_ccy %||% .ynow_ccy_ctx$session_currency, usd_twd)
+  nums * mult
+}
+
+# Scale all period columns of a Yahoo financial statement DF into session currency.
+scale_financial_df_money <- function(df, from_ccy, session_ccy = NULL, usd_twd = NULL) {
+  if (is.null(df) || !is.data.frame(df) || ncol(df) < 2) return(df)
+  mult <- fx_factor(from_ccy, session_ccy %||% .ynow_ccy_ctx$session_currency, usd_twd)
+  if (!is.finite(mult) || abs(mult - 1) < 1e-15) return(df)
+  out <- df
+  for (j in seq.int(2L, ncol(out))) {
+    raw <- as.character(out[[j]])
+    nums <- parse_financial_number(raw)
+    scaled <- nums * mult
+    out[[j]] <- ifelse(
+      is.na(scaled),
+      raw,
+      format(scaled, scientific = FALSE, trim = TRUE, digits = 15)
+    )
+  }
+  out
+}
+
+# Convert a Yahoo summary Value cell (quote ccy → session) for money-like items.
+convert_summary_value_display <- function(item, value, from_ccy, session_ccy = NULL, usd_twd = NULL) {
+  it <- as.character(item %||% "")[1]
+  raw <- as.character(value %||% "")[1]
+  if (!nzchar(raw) || identical(raw, "N/A")) return(raw)
+  money_exact <- c(
+    "Previous Close", "Open", "Bid", "Ask", "Market Cap (intraday)",
+    "EPS (TTM)", "Dividend", "Target Est"
+  )
+  if (it %in% money_exact) {
+    n <- parse_financial_number(raw)[1]
+    if (!is.finite(n)) return(raw)
+    conv <- money_to_session(n, from_ccy, session_ccy, usd_twd)
+    if (it == "Market Cap (intraday)") return(format_money_abbr(conv, session_ccy))
+    return(format(conv, scientific = FALSE, trim = TRUE, digits = 6))
+  }
+  if (it %in% c("Day's Range", "52 Week Range") && grepl(" - ", raw, fixed = TRUE)) {
+    parts <- strsplit(raw, " - ", fixed = TRUE)[[1]]
+    if (length(parts) >= 2) {
+      a <- parse_financial_number(parts[1])[1]
+      b <- parse_financial_number(parts[2])[1]
+      if (is.finite(a) && is.finite(b)) {
+        a2 <- money_to_session(a, from_ccy, session_ccy, usd_twd)
+        b2 <- money_to_session(b, from_ccy, session_ccy, usd_twd)
+        return(paste0(
+          format(a2, scientific = FALSE, trim = TRUE, digits = 6),
+          " - ",
+          format(b2, scientific = FALSE, trim = TRUE, digits = 6)
+        ))
+      }
+    }
+  }
+  raw
+}
+
+# 金額縮寫（valueBox／圖表標籤共用）；prefix 隨 session 幣別
+format_money_abbr <- function(x, ccy = NULL) {
+  format_chart_number(x, prefix = money_prefix(ccy))
+}
+
 format_dollar_abbr <- function(x) {
-  format_chart_number(x, prefix = "$")
+  format_money_abbr(x, .ynow_ccy_ctx$session_currency)
 }
 
 # 解析含英文單位後綴的財報數字 (e.g. 122.15B, -3.2M, 450K, 1.2T)
@@ -1305,7 +1443,7 @@ generate_safe_line_plot <- function(data, ticker_name, metric_name) {
     geom_point(aes(color = is_neg), size = 2.5, na.rm = TRUE) +
     scale_color_manual(values = c("FALSE" = "#2c3e50", "TRUE" = "#e74c3c"), guide = "none") +
     scale_y_continuous(
-      labels = label_chart_number(prefix = "$"),
+      labels = label_chart_number(prefix = money_prefix()),
       expand = expansion(mult = c(0.1, 0.15))
     ) +
     theme_bw() +

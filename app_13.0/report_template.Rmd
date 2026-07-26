@@ -52,6 +52,8 @@ params:
   income_df: NA
   balance_df: NA
   cashflow_df: NA
+  session_currency: "USD"
+  fx_usd_twd: 32
 ---
 
 ```{r setup, include=FALSE}
@@ -68,10 +70,17 @@ emit_html <- function(...) {
   knitr::raw_html(paste0(..., collapse = ""))
 }
 
+.ccy <- toupper(trimws(as.character(
+  if (is.null(params$session_currency) || length(params$session_currency) < 1 ||
+      is.na(params$session_currency[[1]])) "USD" else params$session_currency[[1]]
+)))
+if (!.ccy %in% c("USD", "TWD")) .ccy <- "USD"
+.money_px <- if (identical(.ccy, "TWD")) "NT$" else "$"
+
 fmt_price <- function(x) {
   n <- suppressWarnings(as.numeric(x))
   if (length(n) != 1 || is.na(n) || !is.finite(n)) return("N/A")
-  paste0("$", format(round(n, 2), nsmall = 2, big.mark = ","))
+  paste0(.money_px, format(round(n, 2), nsmall = 2, big.mark = ","))
 }
 
 fmt_pct <- function(x, signed = TRUE) {
@@ -84,9 +93,9 @@ fmt_pct <- function(x, signed = TRUE) {
 fmt_ev <- function(x) {
   n <- suppressWarnings(as.numeric(x))
   if (length(n) != 1 || is.na(n) || !is.finite(n)) return("N/A")
-  if (abs(n) >= 1e9) paste0("$", round(n / 1e9, 2), "B")
-  else if (abs(n) >= 1e6) paste0("$", round(n / 1e6, 2), "M")
-  else paste0("$", format(round(n, 0), big.mark = ","))
+  if (abs(n) >= 1e9) paste0(.money_px, round(n / 1e9, 2), "B")
+  else if (abs(n) >= 1e6) paste0(.money_px, round(n / 1e6, 2), "M")
+  else paste0(.money_px, format(round(n, 0), big.mark = ","))
 }
 
 safe_chr <- function(x, default = "N/A") {

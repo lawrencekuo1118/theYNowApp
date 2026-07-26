@@ -104,8 +104,8 @@ ddm_module_server <- function(id, ddm_g = reactive(NULL), ddm_ke = reactive(NULL
       } else {
         div(style = "font-size: 32px; font-weight: bold; color: #2C3E50; text-align: center; padding: 20px; background-color: #ECF0F1; border-radius: 10px;",
             p(style = "font-size: 16px; color: #7F8C8D; margin-bottom: 5px;", "DDM 推估每股合理價"),
-            paste0("$", res$value),
-            p(style = "font-size: 14px; color: #95A5A6; margin-top: 10px;", paste0("預估明年股利 (D1): $", res$d1))
+            paste0(money_prefix(), res$value),
+            p(style = "font-size: 14px; color: #95A5A6; margin-top: 10px;", paste0("預估明年股利 (D1): ", money_prefix(), res$d1))
         )
       }
     })
@@ -131,7 +131,7 @@ ddm_module_server <- function(id, ddm_g = reactive(NULL), ddm_ke = reactive(NULL
       }
       rows <- list(
         .param_sensitivity_infl_row(
-          "今年股利 D0", d0, "$", p0,
+          "今年股利 D0", d0, money_prefix(), p0,
           .ddm_price_at(.rel(d0, -1), g0, ke0),
           .ddm_price_at(.rel(d0, +1), g0, ke0),
           "P0 ∝ D0"
@@ -156,7 +156,7 @@ ddm_module_server <- function(id, ddm_g = reactive(NULL), ddm_ke = reactive(NULL
     # D0 Settings
     # ==========================================
     output$ibx_d0_scraped <- renderInfoBox({
-      val <- if(is.na(scraped_d0()) || is.null(scraped_d0())) "N/A" else paste0("$", scraped_d0())
+      val <- if(is.na(scraped_d0()) || is.null(scraped_d0())) "N/A" else paste0(money_prefix(), scraped_d0())
       infoBox("財報最新股利 (D0)", val, icon = icon("money-bill-wave"), color = "blue", fill = TRUE)
     })
     
@@ -201,7 +201,7 @@ ddm_module_server <- function(id, ddm_g = reactive(NULL), ddm_ke = reactive(NULL
       new_d0 <- input$est_eps * (input$est_payout / 100)
       
       updateNumericInput(session, "d0", value = round(new_d0, 2))
-      output$txt_d0_payout_res <- renderUI({ HTML(glue::glue("<div style='color: #00a65a; font-weight: bold;'>已成功將 D0 更新為 ${round(new_d0, 2)}</div>")) })
+      output$txt_d0_payout_res <- renderUI({ HTML(glue::glue("<div style='color: #00a65a; font-weight: bold;'>已成功將 D0 更新為 {money_prefix()}{round(new_d0, 2)}</div>")) })
       showNotification("D0 已依目標配息率更新，請回 Overview 重新試算", type = "message")
     })
     
@@ -220,7 +220,7 @@ ddm_module_server <- function(id, ddm_g = reactive(NULL), ddm_ke = reactive(NULL
         showNotification("無法計算平均 D0：股數資料不足", type = "error")
         return()
       }
-      ui_text <- paste0("$", round(new_d0, 2))
+      ui_text <- paste0(money_prefix(), round(new_d0, 2))
       
       updateNumericInput(session, "d0", value = round(new_d0, 2))
       output$txt_d0_avg_res <- renderUI({ HTML(glue::glue("<div style='color: #00a65a; font-weight: bold;'>已成功將 D0 更新為 {ui_text}</div>")) })
