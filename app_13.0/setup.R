@@ -63,13 +63,8 @@ normalize_ccy <- function(x) {
   s
 }
 
+# Session display currency defaults to USD; quote/statement metadata still drive FX conversion.
 default_session_currency <- function(quote_ccy, stmt_ccy, ticker = "") {
-  stmt <- normalize_ccy(stmt_ccy)
-  quote <- normalize_ccy(quote_ccy)
-  if (!is.na(stmt) && stmt %in% c("USD", "TWD")) return(stmt)
-  if (!is.na(quote) && quote %in% c("USD", "TWD")) return(quote)
-  tk <- toupper(trimws(as.character(ticker %||% "")[1]))
-  if (grepl("\\.(TW|TWO)$", tk)) return("TWD")
   "USD"
 }
 

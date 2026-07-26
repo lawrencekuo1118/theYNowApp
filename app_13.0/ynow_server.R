@@ -158,6 +158,9 @@ server <- function(input, output, session) {
         fx_usd_twd(fx_now)
         fx_fetched_at(Sys.time())
         set_ynow_currency_context(sess, fx_now, q_ccy, f_ccy)
+        shinyWidgets::updateRadioGroupButtons(
+          session, "session_ccy_pick", selected = sess
+        )
 
         ind_info <- get_yahoo_industry(stock_code)
         if (!is.null(ind_info)) corp_industry_text(ind_info$display_text)
@@ -231,26 +234,24 @@ server <- function(input, output, session) {
   .apply_session_currency <- function(new_ccy) {
     sc <- normalize_ccy(new_ccy)
     if (is.na(sc) || !(sc %in% c("USD", "TWD"))) return()
-    fx_now <- .refresh_fx_if_stale()
+    if (identical(sc, session_currency())) {
+      set_ynow_currency_context(
+        sc, fx_usd_twd(), quote_currency(), statement_currency()
+      )
+      return()
+    }
+    fx_now <- tryCatch(.refresh_fx_if_stale(), error = function(e) fx_usd_twd() %||% 32)
+    if (!is.finite(fx_now) || fx_now <= 0) fx_now <- 32
     session_currency(sc)
     set_ynow_currency_context(
       sc, fx_now, quote_currency(), statement_currency()
     )
   }
 
-  observeEvent(input$btn_ccy_usd, {
-    .apply_session_currency("USD")
+  observeEvent(input$session_ccy_pick, {
+    pick <- as.character(input$session_ccy_pick %||% "")[1]
+    .apply_session_currency(pick)
   }, ignoreInit = TRUE)
-
-  observeEvent(input$btn_ccy_twd, {
-    .apply_session_currency("TWD")
-  }, ignoreInit = TRUE)
-
-  observe({
-    sc <- session_currency()
-    shinyjs::toggleClass("btn_ccy_usd", "ynow-ccy-active", identical(sc, "USD"))
-    shinyjs::toggleClass("btn_ccy_twd", "ynow-ccy-active", identical(sc, "TWD"))
-  })
 
   output$hdr_ccy_status <- renderText({
     q <- quote_currency() %||% "?"

@@ -374,22 +374,17 @@ ui <- dashboardPage(
       style = "height: 50px; display: flex; align-items: center; padding: 0 14px; list-style: none;",
       tags$div(
         style = "display: flex; flex-direction: column; align-items: flex-end; gap: 2px; line-height: 1.15;",
-        tags$div(
-          style = "display: flex; align-items: center; gap: 6px;",
-          actionButton(
-            "btn_ccy_usd", "USD",
-            class = "btn btn-xs ynow-ccy-btn",
-            style = "min-width: 42px; font-weight: 700; padding: 2px 8px;"
-          ),
-          tags$span(style = "color: rgba(255,255,255,0.55); font-size: 11px;", "|"),
-          actionButton(
-            "btn_ccy_twd", "TWD",
-            class = "btn btn-xs ynow-ccy-btn",
-            style = "min-width: 42px; font-weight: 700; padding: 2px 8px;"
-          )
+        shinyWidgets::radioGroupButtons(
+          inputId = "session_ccy_pick",
+          label = NULL,
+          choices = c("USD", "TWD"),
+          selected = "USD",
+          status = "default",
+          size = "xs",
+          individual = TRUE
         ),
         tags$div(
-          style = "font-size: 10px; color: rgba(255,255,255,0.72); white-space: nowrap; max-width: 280px; overflow: hidden; text-overflow: ellipsis;",
+          style = "font-size: 10px; color: rgba(255,255,255,0.72); white-space: nowrap; max-width: 320px; overflow: hidden; text-overflow: ellipsis;",
           textOutput("hdr_ccy_status", inline = TRUE)
         )
       )
@@ -514,17 +509,23 @@ ui <- dashboardPage(
           overflow-wrap: anywhere;
           word-break: break-word;
         }
-        /* Header USD|TWD toggle */
-        .ynow-ccy-header .ynow-ccy-btn {
+        /* Header USD|TWD toggle (radioGroupButtons) */
+        .ynow-ccy-header .btn-group-xs > .btn,
+        .ynow-ccy-header .btn-xs {
           background: rgba(255,255,255,0.12) !important;
           border: 1px solid rgba(255,255,255,0.35) !important;
           color: #fff !important;
+          font-weight: 700 !important;
+          min-width: 42px;
         }
-        .ynow-ccy-header .ynow-ccy-btn.ynow-ccy-active {
+        .ynow-ccy-header .btn-group-xs > .btn.active,
+        .ynow-ccy-header .btn-xs.active {
           background: #fff !important;
           color: #222 !important;
           border-color: #fff !important;
+          box-shadow: none !important;
         }
+        .ynow-ccy-header .radiobtn { margin: 0 !important; }
       ')),
       tags$script(HTML("
         (function () {
