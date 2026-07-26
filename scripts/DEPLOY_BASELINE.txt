@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12321840
+bundleId=12322010
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=origin/master
-commit=dafc850
-short=dafc850
-message=fix(quality): compare OCF to operating earnings, not raw NI
-captured_at=2026-07-26T11:24:54+00:00
-note=app_13.0 redeploy after OCF vs operating earnings (strip unrealized investment G/L).
+commit=d562444
+short=d562444
+message=Add TWD/USD session currency consistency and header toggle.
+captured_at=2026-07-26T12:32:50+00:00
+note=app_13.0 redeploy after TWD/USD session currency toggle and FX-normalized valuation displays.
