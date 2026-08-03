@@ -1287,19 +1287,14 @@ ui <- dashboardPage(
         .ynow-about-feat > li > b {
           color: #1a1a1a;
         }
-        /* About 後續區塊：與「關於 The YNow App」同左緣（Bootstrap col padding） */
-        #shiny-tab-about .ynow-about-section {
-          padding-left: 15px;
-          padding-right: 15px;
-        }
-        #shiny-tab-about .ynow-about-section-title {
-          margin-top: 0;
-          margin-left: 0;
-          padding-left: 0;
-        }
+        /* About 後續區塊：標題／內文與「關於 The YNow App」同左緣 */
+        #shiny-tab-about .ynow-about-section-title,
         #shiny-tab-about .ynow-about-section-lead {
           margin-left: 0;
           padding-left: 0;
+        }
+        #shiny-tab-about .ynow-about-section-title {
+          margin-top: 0;
         }
         #shiny-tab-about .ynow-about-section > ul {
           margin-left: 0;
@@ -2410,9 +2405,7 @@ ui <- dashboardPage(
                 )
               ),
               
-              fluidRow(
-                .valuation_methodology_section_ui(collapsible = FALSE, collapsed = FALSE)
-              )
+              .valuation_methodology_section_ui(collapsible = FALSE, collapsed = FALSE)
       )
     )
   )
