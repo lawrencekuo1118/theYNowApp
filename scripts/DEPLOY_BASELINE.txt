@@ -2,9 +2,9 @@ source=shinyapps.io TheYNowApp
 bundleId=12322066
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=origin/master
+aligned_git=792644b
 commit=792644b
 short=792644b
 message=Fix currency toggle and default session to USD.
 captured_at=2026-07-26T12:55:52+00:00
-note=app_13.0 redeploy after USD default + radioGroupButtons currency toggle fix.
+note=app_13.0 redeploy after USD default + radioGroupButtons currency toggle fix. Canonical app baseline = this deploy (not Git tip). origin/master may include later chore-only commits that only refresh this file.

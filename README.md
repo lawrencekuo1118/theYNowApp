@@ -9,6 +9,7 @@ Taiwan stock fundamental analysis Shiny app（雲端版：yfinance，無 Chromot
 `/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp`
 
 - 目前版本：`app_13.0/`（v13.0 — Valuation Methodology）
+- **開發／比對基準以目前 shinyapps 部署為準**（見 `scripts/DEPLOY_BASELINE.txt`），不是單純看 Git tip
 - 歷史版本：`app 3.0` … `app_12.0`（本機封存；GitHub Releases 另有標籤）
 
 ## 本機開發（建議）
