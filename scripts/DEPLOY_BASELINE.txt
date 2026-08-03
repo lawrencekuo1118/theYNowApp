@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12358929
+bundleId=12358966
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=bbeb629
-commit=bbeb629
-short=bbeb629
-message=Add bilingual About intro with side-by-side ZH/EN layout.
-captured_at=2026-08-03T16:24:00+00:00
-note=app_13.0 redeploy: About page bilingual ZH|EN product summary (side-by-side).
+aligned_git=25044a9
+commit=25044a9
+short=25044a9
+message=Remove outer box from About Valuation Methodology section.
+captured_at=2026-08-03T16:34:00+00:00
+note=app_13.0 redeploy: About Valuation Methodology without outer shinydashboard box.
