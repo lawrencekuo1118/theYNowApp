@@ -2015,6 +2015,45 @@ server <- function(input, output, session) {
     
     return(ifelse(is.na(val), 0, val))
   })
+
+  # --- 負債成本 rᵈ (%)：利息費用／總負債（無全域預設）---
+  scraped_rd_pct <- reactive({
+    req(d_income_statement(), d_balance_sheet())
+    interest <- tryCatch(
+      abs(as.numeric(select_current_metric_any(
+        d_income_statement(), INTEREST_EXPENSE_PATTERNS, "flow"
+      ))[1]),
+      error = function(e) NA_real_
+    )
+    if (!is.finite(interest) || interest <= 0) {
+      cf <- tryCatch(d_cash_flow(), error = function(e) NULL)
+      if (!is.null(cf) && is.data.frame(cf) && nrow(cf) > 0) {
+        interest <- tryCatch(
+          abs(as.numeric(select_current_metric_any(
+            cf, INTEREST_PAID_PATTERNS, "flow"
+          ))[1]),
+          error = function(e) NA_real_
+        )
+      }
+    }
+    debt <- tryCatch(as.numeric(scraped_debt())[1], error = function(e) NA_real_)
+    if (!is.finite(interest) || interest <= 0 || !is.finite(debt) || debt <= 0) {
+      return(NA_real_)
+    }
+    rd <- 100 * interest / debt
+    max(0, min(rd, 40))
+  })
+
+  observeEvent(
+    list(d_income_statement(), d_balance_sheet(), d_cash_flow(), scraped_debt()),
+    {
+      rd <- tryCatch(scraped_rd_pct(), error = function(e) NA_real_)
+      if (is.finite(rd)) {
+        updateNumericInput(session, "wacc_rd", value = round(rd, 2))
+      }
+    },
+    ignoreInit = FALSE
+  )
   
   # --- 優化後的股數與市值計算（報價 → session；ADR 與財報同單位）---
   scraped_market_cap <- reactive({
@@ -4125,7 +4164,12 @@ server <- function(input, output, session) {
     } else {
       APP_DEFAULTS$wacc_re / 100
     }
-    r_d <- if (!is.null(input$wacc_rd) && is.finite(input$wacc_rd)) input$wacc_rd / 100 else APP_DEFAULTS$wacc_rd / 100
+    r_d <- suppressWarnings(as.numeric(input$wacc_rd)[1]) / 100
+    if (!is.finite(r_d) || r_d < 0) {
+      # 無負債時 rᵈ 不影響；有負債則等財報覆寫後再算
+      if (isTRUE(debt > 0)) return(invisible(NULL))
+      r_d <- 0
+    }
     tax <- if (!is.null(input$wacc_tax) && is.finite(input$wacc_tax)) input$wacc_tax / 100 else APP_DEFAULTS$wacc_tax / 100
 
     wacc <- (equity_mv / total_capital) * r_e + (debt / total_capital) * r_d * (1 - tax)
@@ -4179,9 +4223,9 @@ server <- function(input, output, session) {
   })
   
   output$ibx_rd <- renderInfoBox({
-    val_rd <- input$wacc_rd
-    if (is.null(val_rd)) val_rd <- APP_DEFAULTS$wacc_rd
-    infoBox("負債成本 (rᵈ)", h3(paste0(round(val_rd, 2), " %")), icon = icon("university"), color = "lime", fill = TRUE)
+    val_rd <- suppressWarnings(as.numeric(input$wacc_rd)[1])
+    disp <- if (is.finite(val_rd)) paste0(round(val_rd, 2), " %") else "N/A"
+    infoBox("負債成本 (rᵈ)", h3(disp), icon = icon("university"), color = "lime", fill = TRUE)
   })
   
   # ==========================================
@@ -4938,7 +4982,7 @@ server <- function(input, output, session) {
     rm <- suppressWarnings(as.numeric(input$capm_rm)[1]) / 100
     if (!is.finite(rm) || rm <= 0) rm <- APP_DEFAULTS$capm_rm / 100
     rd <- suppressWarnings(as.numeric(input$wacc_rd)[1]) / 100
-    if (!is.finite(rd) || rd < 0) rd <- APP_DEFAULTS$wacc_rd / 100
+    if (!is.finite(rd) || rd < 0) rd <- NA_real_
     tax <- suppressWarnings(as.numeric(input$wacc_tax)[1]) / 100
     if (!is.finite(tax) || tax < 0) tax <- APP_DEFAULTS$wacc_tax / 100
     beta_fb <- suppressWarnings(as.numeric(input$capm_beta)[1])
