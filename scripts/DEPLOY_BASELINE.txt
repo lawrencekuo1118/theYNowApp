@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12358844
+bundleId=12358929
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=c07d67b
-commit=c07d67b
-short=c07d67b
-message=Remove default rd; scrape interest/debt into WACC; restore About methodology.
-captured_at=2026-08-03T16:06:20+00:00
-note=app_13.0 redeploy after PR#21 merge on master: no default_rd; Interest/Total Debt → wacc_rd; Valuation Methodology back on About.
+aligned_git=bbeb629
+commit=bbeb629
+short=bbeb629
+message=Add bilingual About intro with side-by-side ZH/EN layout.
+captured_at=2026-08-03T16:24:00+00:00
+note=app_13.0 redeploy: About page bilingual ZH|EN product summary (side-by-side).
