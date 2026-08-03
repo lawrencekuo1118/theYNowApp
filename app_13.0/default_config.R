@@ -93,7 +93,7 @@ APP_DEFAULTS <- list(
   use_est_re      = TRUE,
 
   capm_rf         = default_rf,
-  capm_beta       = round(default_beta, 2),  # 啟動占位；估值路徑就緒後改寫入再槓桿 βe
+  capm_beta       = round(default_beta, 2),  # 啟動占位；估值路徑就緒後改寫入 Bottom-Up βᵤ
   use_industry_beta = FALSE,                 # TRUE = 產業平均 β_L
   capm_rm         = round(default_rm, 2),
   beta_bench      = "SPY",
@@ -105,12 +105,12 @@ APP_DEFAULTS <- list(
   beta_bl_source  = "summary",
   beta_peers      = "",
   beta_bottomup_agg = "mean",                # mean | median
-  # 再槓桿 D/E：current = 本公司市值 D/E；manual = beta_target_de
+  # 舊版再槓桿設定已移除（隱藏相容）；不再提供目標 D/E UI
   beta_relever_de_mode = "current",
   beta_target_de  = NA,
-  # 套用至 CAPM（去情緒）：bottomup | industry | manual
+  # 套用至 CAPM（去情緒）：bottomup(βᵤ) | industry | manual
   beta_u_apply_source = "bottomup",
-  beta_u_manual   = NA,                      # 手動 βe（直接寫入 CAPM）
+  beta_u_manual   = NA,                      # 手動 β（直接寫入 CAPM）
 
   # --- 6. P/B／資產法 ---
   pb_bvps         = NA,

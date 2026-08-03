@@ -29,7 +29,7 @@ capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
   if (isTRUE(advanced_hint)) {
     hints <- c(
       hints,
-      "估值排除市場情緒：不用 Rolling／Yahoo Summary／個股股價 β；以 Bottom-Up βᵤ→βe 為主。"
+      "估值排除市場情緒：不用 Rolling／Yahoo Summary／個股股價 β；以 Bottom-Up 平均 βᵤ 為主。"
     )
   }
   box(
@@ -77,8 +77,8 @@ beta_overview_section_ui <- function() {
         tags$p(
           style = "margin:0 0 8px 0;font-size:13px;line-height:1.55;",
           "CAPM／Ke／WACC 只接受去情緒來源：",
-          tags$b("Bottom-Up 平均 βᵤ → 再槓桿 βe"),
-          "（主估計）、產業結構 β（備援）、或手動 βe。",
+          tags$b("Bottom-Up 平均 βᵤ"),
+          "（主估計）、產業結構 β（備援）、或手動 β。",
           tags$b("Rolling／Yahoo Summary／本公司股價 β 不可寫入 CAPM"),
           "，僅作交叉檢驗或監控參考。"
         ),
@@ -117,9 +117,9 @@ beta_overview_section_ui <- function() {
               "beta_u_apply_source",
               label = NULL,
               choices = c(
-                "【主估計】Bottom-Up βᵤ → 再槓桿 βe n/a" = "bottomup",
+                "【主估計】Bottom-Up 平均 βᵤ n/a" = "bottomup",
                 "【結構備援】產業平均 β n/a" = "industry",
-                "手動輸入 βe（直接寫入 CAPM） n/a" = "manual"
+                "手動輸入 β（直接寫入 CAPM） n/a" = "manual"
               ),
               selected = APP_DEFAULTS$beta_u_apply_source,
               inline = FALSE
@@ -135,19 +135,23 @@ beta_overview_section_ui <- function() {
               )
             ),
             helpText(
-              "Bottom-Up：可比公司去槓桿→平均／中位→依目標 D/E 再槓桿，降低單一公司股價情緒噪音。",
+              "Bottom-Up：可比公司股權 β → 去槓桿 → 平均／中位數 βᵤ，降低單一公司股價情緒噪音。",
               "產業平均：結構性備援，非個股短窗敏感度。",
               "Rolling／Summary KPI 僅供對照，不會出現在可套用選項中。"
             ),
             actionButton(
               "apply_beta_u_selected", "立即同步所選 β 至 CAPM",
               class = "btn-success", icon = icon("check")
-            )
+            ),
+            tags$br(), tags$br(),
+            uiOutput("beta_crosscheck_panel")
           ),
           column(
             width = 5,
-            valueBoxOutput("vbx_beta_relevered", width = 12),
-            uiOutput("beta_crosscheck_panel")
+            tags$p(
+              style = "font-size:12.5px;color:#666;margin-top:0;",
+              "選定來源的 β 會直接寫入 DCF → WACC 的 CAPM。"
+            )
           )
         )
       )
@@ -155,7 +159,7 @@ beta_overview_section_ui <- function() {
   )
 }
 
-#' Unlevered βᵤ：專注去槓桿估算（本公司 β_L→βᵤ、Bottom-Up、再槓桿、手動設算）
+#' Unlevered βᵤ：專注去槓桿估算（本公司 β_L→βᵤ、Bottom-Up、手動設算）
 beta_unlever_section_ui <- function() {
   tagList(
     fluidRow(
@@ -173,31 +177,20 @@ beta_unlever_section_ui <- function() {
             ),
             selected = APP_DEFAULTS$beta_bl_source,
             inline = FALSE
-          )
+          ),
+          # 隱藏保留：舊版再槓桿設定已移除，僅維持 input ID 相容
+          radioButtons(
+            "beta_relever_de_mode", NULL,
+            choices = c("current" = "current"),
+            selected = "current"
+          ),
+          numericInput("beta_target_de", NULL, value = NA, min = 0, max = 10, step = 0.01)
         ),
         helpText(
           "個股股價 β／Rolling 易受市場情緒污染，故不提供套用至 CAPM。",
           "此區只展示去槓桿結果供對照；估值請用右側 Bottom-Up。",
           "T 取自 WACC；D/E = Total Debt ÷ 股權市值。"
         ),
-        tags$hr(),
-        radioButtons(
-          "beta_relever_de_mode",
-          "再槓桿目標資本結構（D/E）",
-          choices = c(
-            "本公司目前市值 D/E" = "current",
-            "手動目標 D/E" = "manual"
-          ),
-          selected = APP_DEFAULTS$beta_relever_de_mode,
-          inline = FALSE
-        ),
-        numericInput(
-          "beta_target_de",
-          "目標 D/E（Debt ÷ Equity）",
-          value = APP_DEFAULTS$beta_target_de,
-          min = 0, max = 10, step = 0.01
-        ),
-        helpText("Bottom-Up βᵤ 套用至 CAPM 前，會依此目標 D/E 再槓桿成 βe。"),
         htmlOutput("beta_unlever_firm_result")
       ),
       box(
@@ -224,7 +217,7 @@ beta_unlever_section_ui <- function() {
           inline = TRUE
         ),
         helpText(
-          "流程：可比公司股權 β → 去槓桿 → 平均／中位數 βᵤ → 依目標資本結構再槓桿。",
+          "流程：可比公司股權 β → 去槓桿 → 平均／中位數 βᵤ。",
           "未填同業時，改以產業基準 β 與產業負債比作參考值（資料不足備援）。"
         ),
         actionButton(
@@ -236,7 +229,7 @@ beta_unlever_section_ui <- function() {
         tags$br(),
         tableOutput("beta_bottomup_peers_table"),
         tags$hr(),
-        tags$h5("手動輸入 βe（直接寫入 CAPM）"),
+        tags$h5("手動輸入 β（直接寫入 CAPM）"),
         numericInput(
           "beta_u_manual",
           NULL,
@@ -244,7 +237,7 @@ beta_unlever_section_ui <- function() {
           min = 0, max = 5, step = 0.01
         ),
         helpText(
-          "於 Beta Overview 選「手動輸入 βe」後，此值會直接寫入 CAPM；",
+          "於 Beta Overview 選「手動輸入 β」後，此值會直接寫入 CAPM；",
           "在此修改數值時也會自動改選手動來源並同步。"
         )
       )
@@ -1338,7 +1331,7 @@ ui <- dashboardPage(
             icon = icon("chart-area"),
             helpText(
               "市場敏感度交叉檢驗（含情緒／事件噪音）。",
-              "已移除套用至 CAPM；若與 Bottom-Up βe 差距過大，請檢查同業、資本結構、事件與流動性。"
+              "已移除套用至 CAPM；若與 Bottom-Up βᵤ 差距過大，請檢查同業、資本結構、事件與流動性。"
             ),
             beta_rolling_section_ui()
           )

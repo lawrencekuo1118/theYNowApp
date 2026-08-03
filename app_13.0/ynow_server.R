@@ -780,9 +780,7 @@ server <- function(input, output, session) {
       c("Beta", "Purpose", .snapshot_value(input$beta_purpose), "valuation only (sentiment paths excluded)"),
       c("Beta", "Unlever β_L source", .snapshot_value(input$beta_bl_source), "reference only; not applied to CAPM"),
       c("Beta", "Bottom-Up agg", .snapshot_value(input$beta_bottomup_agg), "mean / median"),
-      c("Beta", "Relever D/E mode", .snapshot_value(input$beta_relever_de_mode), "current / manual"),
-      c("Beta", "Target D/E", .snapshot_value(input$beta_target_de), "used when relever mode = manual"),
-      c("Beta", "β apply source", .snapshot_value(input$beta_u_apply_source), "bottomup / industry / manual (rolling/summary/firm blocked)"),
+      c("Beta", "β apply source", .snapshot_value(input$beta_u_apply_source), "bottomup(βᵤ) / industry / manual (rolling/summary/firm blocked)"),
       c("Beta", "Manual β", .snapshot_value(input$beta_u_manual), "Manual β when apply source = manual"),
       c("Beta", "Bottom-up peers", .snapshot_value(paste(input$beta_peers, collapse = ",")), "Peer tickers for industry unlevered β"),
       c("WACC", "Calculated WACC (%)", .snapshot_value(wacc_pct), "WACC = E/(E+D)×Re + D/(E+D)×Rd×(1-T)"),
@@ -2224,8 +2222,8 @@ server <- function(input, output, session) {
     src <- as.character(input$beta_u_apply_source %||% "unlever_firm")[1]
     gs_tag <- switch(
       src,
-      "bottomup" = "Get Started｜Bottom-Up→βe",
-      "manual" = "Get Started｜手動 βe",
+      "bottomup" = "Get Started｜Bottom-Up βᵤ",
+      "manual" = "Get Started｜手動 β",
       "industry" = "Get Started｜產業平均",
       "Get Started｜去情緒 β"
     )
@@ -2521,8 +2519,8 @@ server <- function(input, output, session) {
             "industry" = "產業平均",
             switch(
               src,
-              "bottomup" = "連動｜Bottom-Up→βe（去情緒）",
-              "manual" = "連動｜手動 βe",
+              "bottomup" = "連動｜Bottom-Up βᵤ（去情緒）",
+              "manual" = "連動｜手動 β",
               "industry" = "連動｜產業平均（結構備援）",
               "已排除情緒路徑｜請改 Bottom-Up"
             )
@@ -2802,7 +2800,7 @@ server <- function(input, output, session) {
       peers_df = peers_df
     ))
     showNotification(
-      glue::glue("✅ Bottom-Up βᵤ = {round(bu_avg, 3)} → 再槓桿 βe = {if (is.finite(rel)) round(rel, 3) else 'n/a'}（n={length(ok_u)}）"),
+      glue::glue("✅ Bottom-Up βᵤ = {round(bu_avg, 3)}（n={length(ok_u)}）"),
       type = "message", duration = 6
     )
   }
@@ -2811,9 +2809,9 @@ server <- function(input, output, session) {
   .compute_selected_beta_u <- function() {
     src <- as.character(input$beta_u_apply_source %||% APP_DEFAULTS$beta_u_apply_source)[1]
     # 僅允許去情緒來源寫入 CAPM：
-    # - bottomup：同業 βᵤ → 目標 D/E 再槓桿 βe
+    # - bottomup：同業平均／中位 βᵤ（不再槓桿）
     # - industry：產業結構 β
-    # - manual：使用者手動 βe
+    # - manual：使用者手動 β
     # rolling / summary / unlever_firm 一律拒絕（市場情緒／個股股價敏感度）
     if (src %in% c("rolling", "summary", "unlever_firm")) {
       return(list(ok = FALSE, reason = "sentiment_blocked", src = src))
@@ -2839,15 +2837,11 @@ server <- function(input, output, session) {
       if (is.null(res) || !isTRUE(res$ok) || !is.finite(res$beta_u_avg)) {
         return(list(ok = FALSE, reason = "no_bottomup", src = src))
       }
-      if (!is.finite(res$beta_l_relevered)) {
-        return(list(ok = FALSE, reason = "no_relever_de", src = src))
-      }
       return(.ok(
-        res$beta_l_relevered,
-        "Bottom-Up βᵤ→再槓桿 βe",
-        "relevered",
-        beta_u = res$beta_u_avg,
-        de = res$target_de %||% NA_real_
+        res$beta_u_avg,
+        "Bottom-Up 平均 βᵤ",
+        "unlever",
+        beta_u = res$beta_u_avg
       ))
     }
     if (identical(src, "industry")) {
@@ -2862,7 +2856,7 @@ server <- function(input, output, session) {
       if (!is.finite(b) || b < 0) {
         return(list(ok = FALSE, reason = "no_manual", src = src))
       }
-      return(.ok(b, "手動 βe", "manual"))
+      return(.ok(b, "手動 β", "manual"))
     }
     list(ok = FALSE, reason = "unknown_source", src = src)
   }
@@ -2875,9 +2869,8 @@ server <- function(input, output, session) {
           got$reason %||% "",
           "sentiment_blocked" = "已排除情緒路徑：Rolling／Summary／本公司股價 β 不可寫入 CAPM。請改用 Bottom-Up。",
           "no_bottomup" = "請先成功計算 Bottom-Up βᵤ（建議先填同業）。",
-          "no_relever_de" = "無法再槓桿：請確認本公司市值 D/E，或於 Unlevered 分頁設定目標 D/E。",
           "no_industry" = "尚無產業平均 β（請先選擇產業）。",
-          "no_manual" = "請先在「手動 βe」輸入有效數值。",
+          "no_manual" = "請先在「手動 β」輸入有效數值。",
           "未知的 β 來源或尚未就緒。"
         )
         showNotification(msg, type = "warning", duration = 7)
@@ -2924,15 +2917,15 @@ server <- function(input, output, session) {
   }
   .beta_apply_source_choices <- function() {
     bu <- tryCatch(beta_bottomup_result(), error = function(e) NULL)
-    bu_v <- if (!is.null(bu) && isTRUE(bu$ok)) bu$beta_l_relevered else NA_real_
+    bu_v <- if (!is.null(bu) && isTRUE(bu$ok)) bu$beta_u_avg else NA_real_
     ind_b <- tryCatch(.industry_beta_value(), error = function(e) NA_real_)
     man_b <- suppressWarnings(as.numeric(input$beta_u_manual)[1])
     setNames(
       c("bottomup", "industry", "manual"),
       c(
-        paste0("【主估計】Bottom-Up βᵤ→βe ", .fmt_beta_choice_val(bu_v)),
+        paste0("【主估計】Bottom-Up 平均 βᵤ ", .fmt_beta_choice_val(bu_v)),
         paste0("【結構備援】產業平均 β ", .fmt_beta_choice_val(ind_b)),
-        paste0("手動輸入 βe（直接寫入 CAPM） ", .fmt_beta_choice_val(man_b))
+        paste0("手動輸入 β（直接寫入 CAPM） ", .fmt_beta_choice_val(man_b))
       )
     )
   }
@@ -3016,8 +3009,6 @@ server <- function(input, output, session) {
   observeEvent(list(
     input$beta_bl_source,
     input$wacc_tax,
-    input$beta_relever_de_mode,
-    input$beta_target_de,
     input$beta_bottomup_agg,
     firm_unlever_reactive(),
     beta_bottomup_result(),
@@ -3120,22 +3111,7 @@ server <- function(input, output, session) {
   }
   output$vbx_beta_unlever_bottomup <- renderValueBox({ .vbx_beta_unlever_bottomup_content() })
 
-  .vbx_beta_relevered_content <- function() {
-    got <- tryCatch(.compute_selected_beta_u(), error = function(e) list(ok = FALSE))
-    val <- if (isTRUE(got$ok)) (got$beta %||% got$beta_u) else NA_real_
-    sub <- if (isTRUE(got$ok) && identical(got$kind, "relevered")) {
-      "將寫入 CAPM 的 βe（已再槓桿）"
-    } else {
-      "將寫入 CAPM 的 β"
-    }
-    valueBox(
-      if (is.finite(val)) val else "—",
-      sub,
-      icon = icon("share-square"),
-      color = "aqua"
-    )
-  }
-  output$vbx_beta_relevered <- renderValueBox({ .vbx_beta_relevered_content() })
+  # vbx_beta_relevered 已移除（不再提供再槓桿 βe 設定／展示）
 
   .beta_unlever_firm_result_content <- function() {
     f <- firm_unlever_reactive()
@@ -3150,14 +3126,12 @@ server <- function(input, output, session) {
          </div>"
       )))
     }
-    tgt_de <- if (isTRUE(f$target_de$ok)) sprintf('%.3f', f$target_de$de) else 'n/a'
     HTML(glue::glue(
       "<div style='padding:10px;border-left:4px solid #e67e22;background:#fef5e7;font-size:13px;'>
-         <b>βᵤ = β_L / (1+(1−T)·D/E)</b> → <b>βe = βᵤ × (1+(1−T)·D/E<sub>目標</sub>)</b><br/>
+         <b>βᵤ = β_L / (1+(1−T)·D/E)</b>（僅參考，不寫入 CAPM）<br/>
          β_L = {round(f$bl, 3)}（{f$bl_label}）· T = {sprintf('%.1f%%', f$tax * 100)} ·
-         目前 D/E = {sprintf('%.3f', f$de_info$de)} · 目標 D/E = {tgt_de}<br/>
+         D/E = {sprintf('%.3f', f$de_info$de)}<br/>
          → <b>βᵤ = {if (is.finite(f$beta_u)) sprintf('%.3f', f$beta_u) else 'N/A'}</b>
-         → <b>βe = {if (is.finite(f$relevered)) sprintf('%.3f', f$relevered) else 'N/A'}</b>
        </div>"
     ))
   }
@@ -3173,19 +3147,10 @@ server <- function(input, output, session) {
       return(tags$p(style = "color:#c0392b;", res$reason %||% "計算失敗"))
     }
     # glue 不支援多行 if/else 區塊；先組字串再嵌入
-    relever_note <- if (is.finite(res$beta_l_relevered)) {
-      paste0(
-        '<br/>依目標 D/E 再槓桿 βe ≈ <b>',
-        res$beta_l_relevered, "</b>（此值寫入 CAPM）"
-      )
-    } else {
-      '<br/><span style="color:#c0392b;">尚無法再槓桿（缺目標 D/E）</span>'
-    }
     HTML(glue::glue(
       "<div style='padding:10px;border-left:4px solid #27ae60;background:#eafaf1;font-size:13px;'>
          <b>{res$label}</b> · T = {sprintf('%.1f%%', res$tax * 100)}<br/>
-         βᵤ = <b>{res$beta_u_avg}</b>（營運資產風險）
-         {relever_note}
+         βᵤ = <b>{res$beta_u_avg}</b>（套用至 CAPM 時直接使用此值）
        </div>"
     ))
   }
@@ -3214,7 +3179,7 @@ server <- function(input, output, session) {
     purpose <- "valuation"
     bu <- tryCatch(beta_bottomup_result(), error = function(e) NULL)
     has_peers <- .beta_has_peers()
-    bu_ready <- !is.null(bu) && isTRUE(bu$ok) && is.finite(bu$beta_l_relevered)
+    bu_ready <- !is.null(bu) && isTRUE(bu$ok) && is.finite(bu$beta_u_avg)
     ind_b <- tryCatch(.industry_beta_value(), error = function(e) NA_real_)
 
     if (has_peers || bu_ready) {
@@ -3223,8 +3188,8 @@ server <- function(input, output, session) {
           purpose = purpose,
           source = "bottomup",
           ready = TRUE,
-          title = "去情緒主估計：Bottom-Up 平均 βᵤ → 再槓桿 βe",
-          rationale = "以同業去槓桿平均降低單一公司股價情緒噪音，再依目標資本結構 re-lever 成 βe 供 CAPM／Ke／WACC。",
+          title = "去情緒主估計：Bottom-Up 平均 βᵤ",
+          rationale = "以同業去槓桿平均／中位 βᵤ 降低單一公司股價情緒噪音，直接供 CAPM／Ke／WACC。",
           next_steps = "可按下方按鈕套用。Rolling／Summary 僅供交叉檢驗，不會寫入 CAPM。"
         ))
       }
@@ -3274,7 +3239,7 @@ server <- function(input, output, session) {
         style = "margin-top:6px;color:#555;",
         tags$span("決策節點："),
         if (identical(rec$source, "bottomup")) {
-          "內在價值 → Bottom-Up βᵤ → re-lever βe（排除 Rolling／Summary）"
+          "內在價值 → Bottom-Up 平均 βᵤ（排除 Rolling／Summary）"
         } else if (identical(rec$source, "industry")) {
           "內在價值 → 無同業 → 產業結構 β（排除個股情緒 β）"
         } else {
@@ -3331,12 +3296,12 @@ server <- function(input, output, session) {
   output$beta_crosscheck_panel <- renderUI({
     bu <- tryCatch(beta_bottomup_result(), error = function(e) NULL)
     roll <- tryCatch(beta_est_result(), error = function(e) NULL)
-    be <- if (!is.null(bu) && isTRUE(bu$ok)) suppressWarnings(as.numeric(bu$beta_l_relevered)[1]) else NA_real_
+    be <- if (!is.null(bu) && isTRUE(bu$ok)) suppressWarnings(as.numeric(bu$beta_u_avg)[1]) else NA_real_
     rb <- if (!is.null(roll) && isTRUE(roll$ok)) suppressWarnings(as.numeric(roll$beta)[1]) else NA_real_
     if (!is.finite(be) || !is.finite(rb)) {
       return(tags$p(
         style = "margin-top:10px;font-size:12px;color:#777;",
-        "交叉檢驗：需 Bottom-Up βe 與 Rolling β；後者只對照、不寫入 CAPM。"
+        "交叉檢驗：需 Bottom-Up βᵤ 與 Rolling β；後者只對照、不寫入 CAPM。"
       ))
     }
     gap <- abs(be - rb)
@@ -3351,7 +3316,7 @@ server <- function(input, output, session) {
       tags$b("估值交叉檢驗"),
       tags$br(),
       HTML(glue::glue(
-        "Bottom-Up βe = <b>{sprintf('%.3f', be)}</b> · Rolling β = <b>{sprintf('%.3f', rb)}</b> · |Δ| = <b>{sprintf('%.3f', gap)}</b>"
+        "Bottom-Up βᵤ = <b>{sprintf('%.3f', be)}</b> · Rolling β = <b>{sprintf('%.3f', rb)}</b> · |Δ| = <b>{sprintf('%.3f', gap)}</b>"
       )),
       tags$br(),
       if (warn) {
@@ -3360,7 +3325,7 @@ server <- function(input, output, session) {
           "差距偏大：請回頭檢查可比公司是否選錯、資本結構是否異常、期間是否含重大事件、股價流動性是否不足。"
         )
       } else {
-        tags$span(style = "color:#1a5276;", "差距可控；CAPM 仍只用 Bottom-Up βe，Rolling 僅輔助驗證、不寫入。")
+        tags$span(style = "color:#1a5276;", "差距可控；CAPM 仍只用 Bottom-Up βᵤ，Rolling 僅輔助驗證、不寫入。")
       }
     )
   })
