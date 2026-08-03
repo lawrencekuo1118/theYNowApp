@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12359118
+bundleId=12359262
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=7cc13d3
-commit=7cc13d34493ada158a94793dfd04443c7bb2130b
-short=7cc13d3
-message=Move manual βe under Hamada; remove RI-Model Model Formula block.
-captured_at=2026-08-03T17:05:13Z
-note=app_13.0 redeploy: manual βe under Hamada unlever section; RI-Model Model Formula box removed.
+aligned_git=5f7542a
+commit=5f7542a18bbbcdf305a90343a77c9a7e4ed40916
+short=5f7542a
+message=Move DCF sensitivity matrix above param box; align About titles.
+captured_at=2026-08-03T17:33:28Z
+note=app_13.0 redeploy: DCF sensitivity matrix above param box; About titles left-aligned; Valuation Methodology book icon removed.
