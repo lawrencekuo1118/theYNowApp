@@ -117,6 +117,7 @@ beta_overview_section_ui <- function() {
               "beta_u_apply_source",
               label = NULL,
               choices = c(
+                "本公司 βᵤ n/a" = "unlever_firm",
                 "Bottom-Up (βᵤ→βe) n/a" = "bottomup",
                 "產業平均 β n/a" = "industry",
                 "手動定義 βe n/a" = "manual"
@@ -135,9 +136,9 @@ beta_overview_section_ui <- function() {
               )
             ),
             helpText(
-              "Bottom-Up：可比公司股權 β → 去槓桿 → 平均／中位數 βᵤ，降低單一公司股價情緒噪音。",
-              "產業平均：結構性備援，非個股短窗敏感度。",
-              "Rolling／Summary KPI 僅供對照，不會出現在可套用選項中。"
+              "本公司 βᵤ：Hamada 去槓桿 βᵤ = β_L / (1+(1−T)·D/E)；β_L 預設 Yahoo 5Y Monthly。",
+              "Bottom-Up：可比公司股權 β → 去槓桿 → 平均／中位數 βᵤ。",
+              "產業平均：結構性備援。Rolling／Summary 槓桿 β 僅供對照，不寫入 CAPM。"
             ),
             actionButton(
               "apply_beta_u_selected", "立即同步所選 β 至 CAPM",
@@ -165,7 +166,7 @@ beta_unlever_section_ui <- function() {
     fluidRow(
       box(
         width = 5, status = "warning", solidHeader = FALSE,
-        tags$h5(style = "margin-top:0;", "本公司 βᵤ（對照用）"),
+        tags$h5(style = "margin-top:0;", "本公司 βᵤ（Hamada）"),
         tags$div(
           style = "display:none;",
           radioButtons(
@@ -187,9 +188,9 @@ beta_unlever_section_ui <- function() {
           numericInput("beta_target_de", NULL, value = NA, min = 0, max = 10, step = 0.01)
         ),
         helpText(
-          "個股股價 β 易受市場情緒影響，故只供對照、不進入 CAPM。",
-          "估值請用右側 Bottom-Up。",
-          "T 取自 WACC；D/E = Total Debt ÷ 股權市值。"
+          "Hamada（假設債務 β≈0）：βᵤ = β_L / (1+(1−T)·D/E)。",
+          "β_L 預設 Yahoo Finance Summary「Beta (5Y Monthly)」；T 取自 WACC；D/E = Total Debt ÷ 股權市值。",
+          "可於 Beta Overview「套用至 CAPM」選第一項寫入；槓桿 β_L 本身仍不直接寫入 CAPM。"
         ),
         htmlOutput("beta_unlever_firm_result")
       ),
