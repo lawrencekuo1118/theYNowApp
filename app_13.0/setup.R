@@ -320,6 +320,19 @@ NET_INCOME_PATTERNS <- c(
   "Net Income Common Stockholders",
   "^Net Income$"
 )
+# 利息費用（損益／現金流別名；勿用 | 併成單一 grep）
+INTEREST_EXPENSE_PATTERNS <- c(
+  "^Interest Expense$",
+  "Interest Expense Non Operating",
+  "Net Interest Expense",
+  "Interest Expense"
+)
+INTEREST_PAID_PATTERNS <- c(
+  "^Interest Paid$",
+  "Cash Interest Paid",
+  "Interest Paid"
+)
+
 EQUITY_PATTERNS <- c(
   "Common Stock Equity",
   "Stockholders Equity",

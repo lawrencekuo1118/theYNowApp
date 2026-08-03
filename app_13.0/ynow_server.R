@@ -777,10 +777,10 @@ server <- function(input, output, session) {
       c("CAPM", "Beta", .snapshot_value(input$capm_beta), "Systematic risk coefficient"),
       c("CAPM", "Use Industry Beta", .snapshot_value(input$use_industry_beta), "TRUE = industry avg; aligns with Get Started β source = industry"),
       c("CAPM", "Rm (%)", .snapshot_value(input$capm_rm), "Expected market return"),
-      c("Beta", "Purpose", .snapshot_value(input$beta_purpose), "valuation only (sentiment paths excluded)"),
-      c("Beta", "Unlever β_L source", .snapshot_value(input$beta_bl_source), "feeds firm βᵤ (Hamada); levered β_L not applied to CAPM"),
+      c("Beta", "Purpose", .snapshot_value(input$beta_purpose), "valuation; Rolling blocked from CAPM"),
+      c("Beta", "Unlever β_L source", .snapshot_value(input$beta_bl_source), "feeds 去槓桿化 βᵤ (Hamada)"),
       c("Beta", "Bottom-Up agg", .snapshot_value(input$beta_bottomup_agg), "mean / median"),
-      c("Beta", "β apply source", .snapshot_value(input$beta_u_apply_source), "unlever_firm / bottomup(βᵤ) / industry / manual (rolling/summary levered blocked)"),
+      c("Beta", "β apply source", .snapshot_value(input$beta_u_apply_source), "summary / industry / bottomup / unlever_firm / manual (rolling blocked)"),
       c("Beta", "Manual β", .snapshot_value(input$beta_u_manual), "Manual β when apply source = manual"),
       c("Beta", "Bottom-up peers", .snapshot_value(paste(input$beta_peers, collapse = ",")), "Peer tickers for industry unlevered β"),
       c("WACC", "Calculated WACC (%)", .snapshot_value(wacc_pct), "WACC = E/(E+D)×Re + D/(E+D)×Rd×(1-T)"),
@@ -883,7 +883,7 @@ server <- function(input, output, session) {
       beta_lookback_months = c("Beta", "回溯月數", "常見 36／60／84；預設 60 對齊 Yahoo 5Y"),
       beta_min_obs = c("Beta", "最少觀測", "估計所需最低月數（內部預設）"),
       beta_bl_source = c("Beta", "Unlever β_L 來源", "summary / rolling / auto"),
-      beta_u_apply_source = c("Beta", "套用 β 來源", "unlever_firm / bottomup / industry / manual (rolling/summary levered blocked)"),
+      beta_u_apply_source = c("Beta", "套用 β 來源", "summary / industry / bottomup / unlever_firm / manual (rolling blocked)"),
       beta_u_manual = c("Beta", "手動 β", "數值（直接寫入 CAPM）"),
       beta_peers = c("Beta", "Bottom-up 同業", "逗號分隔代碼；UI 多選"),
       capm_rm = c("CAPM", "Rm (%)", "預期市場報酬"),
@@ -2015,6 +2015,45 @@ server <- function(input, output, session) {
     
     return(ifelse(is.na(val), 0, val))
   })
+
+  # --- 負債成本 rᵈ (%)：利息費用／總負債（無全域預設）---
+  scraped_rd_pct <- reactive({
+    req(d_income_statement(), d_balance_sheet())
+    interest <- tryCatch(
+      abs(as.numeric(select_current_metric_any(
+        d_income_statement(), INTEREST_EXPENSE_PATTERNS, "flow"
+      ))[1]),
+      error = function(e) NA_real_
+    )
+    if (!is.finite(interest) || interest <= 0) {
+      cf <- tryCatch(d_cash_flow(), error = function(e) NULL)
+      if (!is.null(cf) && is.data.frame(cf) && nrow(cf) > 0) {
+        interest <- tryCatch(
+          abs(as.numeric(select_current_metric_any(
+            cf, INTEREST_PAID_PATTERNS, "flow"
+          ))[1]),
+          error = function(e) NA_real_
+        )
+      }
+    }
+    debt <- tryCatch(as.numeric(scraped_debt())[1], error = function(e) NA_real_)
+    if (!is.finite(interest) || interest <= 0 || !is.finite(debt) || debt <= 0) {
+      return(NA_real_)
+    }
+    rd <- 100 * interest / debt
+    max(0, min(rd, 40))
+  })
+
+  observeEvent(
+    list(d_income_statement(), d_balance_sheet(), d_cash_flow(), scraped_debt()),
+    {
+      rd <- tryCatch(scraped_rd_pct(), error = function(e) NA_real_)
+      if (is.finite(rd)) {
+        updateNumericInput(session, "wacc_rd", value = round(rd, 2))
+      }
+    },
+    ignoreInit = FALSE
+  )
   
   # --- 優化後的股數與市值計算（報價 → session；ADR 與財報同單位）---
   scraped_market_cap <- reactive({
@@ -2200,10 +2239,10 @@ server <- function(input, output, session) {
       if (identical(src, "industry")) {
         beta_link_from_capm(TRUE)
         rec <- tryCatch(.beta_decision_recommend(), error = function(e) NULL)
-        sel <- if (!is.null(rec) && (rec$source %||% "") %in% c("unlever_firm", "bottomup", "industry", "manual")) {
+        sel <- if (!is.null(rec) && (rec$source %||% "") %in% c("summary", "industry", "bottomup", "unlever_firm", "manual")) {
           rec$source
         } else {
-          "bottomup"
+          "summary"
         }
         updateRadioButtons(session, "beta_u_apply_source", selected = sel)
         beta_capm_driver("gs")
@@ -2219,26 +2258,26 @@ server <- function(input, output, session) {
   .capm_beta_label_html <- function(beta) {
     drv <- as.character(beta_capm_driver() %||% "gs")[1]
     ind_b <- .industry_beta_value()
-    src <- as.character(input$beta_u_apply_source %||% "unlever_firm")[1]
+    src <- as.character(input$beta_u_apply_source %||% "summary")[1]
     gs_tag <- switch(
       src,
-      "unlever_firm" = "Get Started｜本公司 βᵤ",
+      "summary" = "Get Started｜Summary β",
+      "industry" = "Get Started｜產業預設 β",
       "bottomup" = "Get Started｜Bottom-Up βᵤ",
+      "unlever_firm" = "Get Started｜去槓桿化 βᵤ",
       "manual" = "Get Started｜手動 β",
-      "industry" = "Get Started｜產業平均",
-      "Get Started｜去情緒 β"
+      "Get Started｜β"
     )
     if (identical(drv, "industry") && isTRUE(input$use_industry_beta) &&
         is.finite(ind_b) && abs(beta - ind_b) < 1e-4) {
-      HTML("Beta (β) <span style='color: #2980b9; font-size: 12px;'>[產業平均｜去情緒備援]</span>")
-    } else if (identical(drv, "rolling") || identical(src, "rolling") ||
-               identical(src, "summary")) {
-      HTML("Beta (β) <span style='color: #c0392b; font-size: 12px;'>[情緒路徑已排除｜請改去情緒來源]</span>")
+      HTML("Beta (β) <span style='color: #2980b9; font-size: 12px;'>[產業預設 β]</span>")
+    } else if (identical(drv, "rolling") || identical(src, "rolling")) {
+      HTML("Beta (β) <span style='color: #c0392b; font-size: 12px;'>[Rolling 已排除｜請改其他來源]</span>")
     } else if (identical(drv, "manual")) {
       HTML("Beta (β) <span style='color: #e67e22; font-size: 12px;'>[手動｜已回寫 Get Started]</span>")
     } else if (identical(drv, "gs")) {
       HTML(sprintf(
-        "Beta (β) <span style='color: #27ae60; font-size: 12px;'>[%s｜去情緒]</span>",
+        "Beta (β) <span style='color: #27ae60; font-size: 12px;'>[%s]</span>",
         gs_tag
       ))
     } else {
@@ -2441,7 +2480,7 @@ server <- function(input, output, session) {
     b <- .summary_beta_value()
     valueBox(
       if (is.finite(b)) round(b, 2) else "N/A",
-      "Summary β（對照用）",
+      "Summary β",
       icon = icon("file-invoice"),
       color = "green"
     )
@@ -2458,7 +2497,7 @@ server <- function(input, output, session) {
     }
     valueBox(
       if (is.finite(b)) round(b, 2) else "N/A",
-      paste0("產業平均 β（", ind_lab, "）"),
+      paste0("產業預設 β（", ind_lab, "）"),
       icon = icon("industry"),
       color = "blue"
     )
@@ -2526,11 +2565,12 @@ server <- function(input, output, session) {
             "industry" = "產業平均",
             switch(
               src,
-              "unlever_firm" = "連動｜本公司 βᵤ（Hamada）",
-              "bottomup" = "連動｜Bottom-Up βᵤ（去情緒）",
+              "summary" = "連動｜Summary β",
+              "industry" = "連動｜產業預設 β",
+              "bottomup" = "連動｜自選公司平均 Bottom-Up",
+              "unlever_firm" = "連動｜去槓桿化 βᵤ",
               "manual" = "連動｜手動 β",
-              "industry" = "連動｜產業平均（結構備援）",
-              "已排除情緒路徑｜請改去情緒來源"
+              "請選擇 CAPM β 來源"
             )
           )
         }
@@ -2816,13 +2856,14 @@ server <- function(input, output, session) {
 
   .compute_selected_beta_u <- function() {
     src <- as.character(input$beta_u_apply_source %||% APP_DEFAULTS$beta_u_apply_source)[1]
-    # 僅允許去情緒來源寫入 CAPM：
-    # - unlever_firm：本公司 Hamada βᵤ（β_L 去槓桿後）
-    # - bottomup：同業平均／中位 βᵤ（不再槓桿）
-    # - industry：產業結構 β
+    # 允許寫入 CAPM：
+    # - summary：Yahoo Summary β（預設）
+    # - industry：產業預設 β
+    # - bottomup：自選公司平均 Bottom-Up βᵤ
+    # - unlever_firm：去槓桿化 Hamada βᵤ
     # - manual：使用者手動 β
-    # rolling / summary 槓桿 β 一律拒絕（市場情緒／個股短窗敏感度）
-    if (src %in% c("rolling", "summary")) {
+    # rolling 一律拒絕（短窗估計僅對照）
+    if (identical(src, "rolling")) {
       return(list(ok = FALSE, reason = "sentiment_blocked", src = src))
     }
     .ok <- function(beta, label, kind = "direct", beta_u = NA_real_, de = NA_real_) {
@@ -2841,19 +2882,19 @@ server <- function(input, output, session) {
       )
     }
 
-    if (identical(src, "unlever_firm")) {
-      f <- tryCatch(firm_unlever_reactive(), error = function(e) NULL)
-      bu <- if (!is.null(f)) suppressWarnings(as.numeric(f$beta_u)[1]) else NA_real_
-      if (!is.finite(bu)) {
-        return(list(ok = FALSE, reason = "no_firm_unlever", src = src))
+    if (identical(src, "summary")) {
+      b <- .summary_beta_value()
+      if (!is.finite(b)) {
+        return(list(ok = FALSE, reason = "no_summary", src = src))
       }
-      return(.ok(
-        bu,
-        "本公司 βᵤ（Hamada）",
-        "unlever",
-        beta_u = bu,
-        de = if (!is.null(f$de_info)) f$de_info$de else NA_real_
-      ))
+      return(.ok(b, "Summary β", "levered"))
+    }
+    if (identical(src, "industry")) {
+      b <- .industry_beta_value()
+      if (!is.finite(b)) {
+        return(list(ok = FALSE, reason = "no_industry", src = src))
+      }
+      return(.ok(b, "產業預設 β", "levered"))
     }
     if (identical(src, "bottomup")) {
       res <- beta_bottomup_result()
@@ -2862,17 +2903,24 @@ server <- function(input, output, session) {
       }
       return(.ok(
         res$beta_u_avg,
-        "Bottom-Up 平均 βᵤ",
+        "自選公司平均 Bottom-Up βᵤ",
         "unlever",
         beta_u = res$beta_u_avg
       ))
     }
-    if (identical(src, "industry")) {
-      b <- .industry_beta_value()
-      if (!is.finite(b)) {
-        return(list(ok = FALSE, reason = "no_industry", src = src))
+    if (identical(src, "unlever_firm")) {
+      f <- tryCatch(firm_unlever_reactive(), error = function(e) NULL)
+      bu <- if (!is.null(f)) suppressWarnings(as.numeric(f$beta_u)[1]) else NA_real_
+      if (!is.finite(bu)) {
+        return(list(ok = FALSE, reason = "no_firm_unlever", src = src))
       }
-      return(.ok(b, "產業平均 β（結構備援）", "levered"))
+      return(.ok(
+        bu,
+        "去槓桿化 βᵤ（Hamada）",
+        "unlever",
+        beta_u = bu,
+        de = if (!is.null(f$de_info)) f$de_info$de else NA_real_
+      ))
     }
     if (identical(src, "manual")) {
       b <- suppressWarnings(as.numeric(input$beta_u_manual)[1])
@@ -2890,10 +2938,11 @@ server <- function(input, output, session) {
       if (!isTRUE(silent)) {
         msg <- switch(
           got$reason %||% "",
-          "sentiment_blocked" = "已排除情緒路徑：Rolling／Summary 槓桿 β 不可寫入 CAPM。請改用本公司 βᵤ／Bottom-Up／產業。",
-          "no_firm_unlever" = "本公司 βᵤ 尚未就緒（需 β_L 與市值 D/E）。請先搜尋標的。",
-          "no_bottomup" = "請先成功計算 Bottom-Up βᵤ（建議先填同業）。",
-          "no_industry" = "尚無產業平均 β（請先選擇產業）。",
+          "sentiment_blocked" = "Rolling 估計不可寫入 CAPM。請改用 Summary／產業預設／Bottom-Up／去槓桿化 βᵤ。",
+          "no_summary" = "尚無 Summary β（請先搜尋標的並載入 Finance Summary）。",
+          "no_firm_unlever" = "去槓桿化 βᵤ 尚未就緒（需 β_L 與市值 D/E）。請先搜尋標的。",
+          "no_bottomup" = "請先成功計算自選公司平均 Bottom-Up βᵤ（建議先填同業）。",
+          "no_industry" = "尚無產業預設 β（請先選擇產業）。",
           "no_manual" = "請先在「手動 β」輸入有效數值。",
           "未知的 β 來源或尚未就緒。"
         )
@@ -2940,6 +2989,7 @@ server <- function(input, output, session) {
     if (is.finite(v)) sprintf("%.*f", digits, v) else "n/a"
   }
   .beta_apply_source_choices <- function() {
+    sum_v <- tryCatch(.summary_beta_value(), error = function(e) NA_real_)
     firm <- tryCatch(firm_unlever_reactive(), error = function(e) NULL)
     firm_v <- if (!is.null(firm)) suppressWarnings(as.numeric(firm$beta_u)[1]) else NA_real_
     bu <- tryCatch(beta_bottomup_result(), error = function(e) NULL)
@@ -2953,15 +3003,16 @@ server <- function(input, output, session) {
       "未選產業"
     }
     ind_choice_lab <- paste0(
-      "產業平均 β ", .fmt_beta_choice_val(ind_b),
+      "產業預設 β ", .fmt_beta_choice_val(ind_b),
       "（", ind_lab, "）"
     )
     setNames(
-      c("unlever_firm", "bottomup", "industry", "manual"),
+      c("summary", "industry", "bottomup", "unlever_firm", "manual"),
       c(
-        paste0("本公司 βᵤ ", .fmt_beta_choice_val(firm_v)),
-        paste0("Bottom-Up (βᵤ→βe) ", .fmt_beta_choice_val(bu_v)),
+        paste0("Summary β ", .fmt_beta_choice_val(sum_v)),
         ind_choice_lab,
+        paste0("自選公司平均 Bottom-Up (βᵤ→βe) ", .fmt_beta_choice_val(bu_v)),
+        paste0("去槓桿化 βᵤ ", .fmt_beta_choice_val(firm_v)),
         paste0("手動定義 βe ", .fmt_beta_choice_val(man_b))
       )
     )
@@ -3017,11 +3068,11 @@ server <- function(input, output, session) {
       beta_capm_driver("gs")
     }
 
-    # 舊值／誤選情緒來源時，強制改回去情緒建議
-    if (src %in% c("rolling", "summary")) {
+    # 舊值／誤選 Rolling 時，強制改回可用建議
+    if (identical(src, "rolling")) {
       rec <- tryCatch(.beta_decision_recommend(), error = function(e) NULL)
-      rec_src <- if (!is.null(rec)) as.character(rec$source %||% "bottomup")[1] else "bottomup"
-      if (!rec_src %in% c("unlever_firm", "bottomup", "industry", "manual")) rec_src <- "bottomup"
+      rec_src <- if (!is.null(rec)) as.character(rec$source %||% "summary")[1] else "summary"
+      if (!rec_src %in% c("summary", "industry", "bottomup", "unlever_firm", "manual")) rec_src <- "summary"
       if (!identical(rec_src, src)) {
         updateRadioButtons(session, "beta_u_apply_source", selected = rec_src)
         return(invisible(TRUE))
@@ -3034,7 +3085,7 @@ server <- function(input, output, session) {
       rec <- tryCatch(.beta_decision_recommend(), error = function(e) NULL)
       if (!is.null(rec) && isTRUE(rec$ready)) {
         rec_src <- as.character(rec$source %||% "")[1]
-        if (rec_src %in% c("unlever_firm", "bottomup", "industry", "manual") && !identical(rec_src, src)) {
+        if (rec_src %in% c("summary", "industry", "bottomup", "unlever_firm", "manual") && !identical(rec_src, src)) {
           updateRadioButtons(session, "beta_u_apply_source", selected = rec_src)
           return(invisible(TRUE))
         }
@@ -3075,12 +3126,12 @@ server <- function(input, output, session) {
       if (isTRUE(input$use_industry_beta)) {
         updateCheckboxInput(session, "use_industry_beta", value = FALSE)
       }
-      if (src %in% c("rolling", "summary")) {
+      if (identical(src, "rolling")) {
         rec <- tryCatch(.beta_decision_recommend(), error = function(e) NULL)
-        fix <- if (!is.null(rec) && (rec$source %||% "") %in% c("unlever_firm", "bottomup", "industry", "manual")) {
+        fix <- if (!is.null(rec) && (rec$source %||% "") %in% c("summary", "industry", "bottomup", "unlever_firm", "manual")) {
           rec$source
         } else {
-          "bottomup"
+          "summary"
         }
         updateRadioButtons(session, "beta_u_apply_source", selected = fix)
         return()
@@ -3130,7 +3181,7 @@ server <- function(input, output, session) {
     f <- firm_unlever_reactive()
     valueBox(
       if (is.finite(f$beta_u)) round(f$beta_u, 3) else "—",
-      "本公司 βᵤ（Hamada）",
+      "去槓桿化 βᵤ（Hamada）",
       icon = icon("balance-scale"),
       color = "orange"
     )
@@ -3141,7 +3192,7 @@ server <- function(input, output, session) {
     res <- beta_bottomup_result()
     valueBox(
       if (!is.null(res) && isTRUE(res$ok)) res$beta_u_avg else "—",
-      "Bottom-Up 平均 βᵤ",
+      "自選公司平均 Bottom-Up βᵤ",
       icon = icon("users"),
       color = "yellow"
     )
@@ -3165,7 +3216,7 @@ server <- function(input, output, session) {
     }
     HTML(glue::glue(
       "<div style='padding:10px;border-left:4px solid #e67e22;background:#fef5e7;font-size:13px;'>
-         <b>βᵤ = β_L / (1+(1−T)·D/E)</b>（Hamada；可選為 CAPM 第一項）<br/>
+         <b>βᵤ = β_L / (1+(1−T)·D/E)</b>（Hamada；可選為 CAPM「去槓桿化 βᵤ」）<br/>
          β_L = {round(f$bl, 3)}（{f$bl_label}）· T = {sprintf('%.1f%%', f$tax * 100)} ·
          D/E = {sprintf('%.3f', f$de_info$de)}<br/>
          → <b>βᵤ = {if (is.finite(f$beta_u)) sprintf('%.3f', f$beta_u) else 'N/A'}</b>
@@ -3212,8 +3263,9 @@ server <- function(input, output, session) {
     length(setdiff(peers, tk)) > 0
   }
   .beta_decision_recommend <- function() {
-    # 固定內在價值路徑：禁止把 Rolling／Summary 槓桿 β 寫入 CAPM
+    # 預設建議 Summary β；Rolling 不可寫入 CAPM
     purpose <- "valuation"
+    sum_b <- tryCatch(.summary_beta_value(), error = function(e) NA_real_)
     bu <- tryCatch(beta_bottomup_result(), error = function(e) NULL)
     has_peers <- .beta_has_peers()
     bu_ready <- !is.null(bu) && isTRUE(bu$ok) && is.finite(bu$beta_u_avg)
@@ -3221,36 +3273,14 @@ server <- function(input, output, session) {
     firm_ready <- !is.null(firm) && is.finite(suppressWarnings(as.numeric(firm$beta_u)[1]))
     ind_b <- tryCatch(.industry_beta_value(), error = function(e) NA_real_)
 
-    if (has_peers || bu_ready) {
-      if (bu_ready) {
-        return(list(
-          purpose = purpose,
-          source = "bottomup",
-          ready = TRUE,
-          title = "去情緒主估計：Bottom-Up 平均 βᵤ",
-          rationale = "以同業去槓桿平均／中位 βᵤ 降低單一公司股價情緒噪音，直接供 CAPM／Ke／WACC。",
-          next_steps = "可按下方按鈕套用。Rolling／Summary 槓桿 β 只供對照，不會寫入 CAPM。"
-        ))
-      }
+    if (is.finite(sum_b)) {
       return(list(
         purpose = purpose,
-        source = "bottomup",
-        ready = FALSE,
-        title = "去情緒主估計：Bottom-Up（請先計算）",
-        rationale = "已指定同業，但尚未算出 Bottom-Up βᵤ。",
-        next_steps = "請至 Unlevered βᵤ 分頁按「計算 Bottom-Up βᵤ」。"
-      ))
-    }
-
-    # 無同業：優先本公司 Hamada βᵤ，其次產業結構 β
-    if (firm_ready) {
-      return(list(
-        purpose = purpose,
-        source = "unlever_firm",
+        source = "summary",
         ready = TRUE,
-        title = "去情緒備援：本公司 βᵤ（Hamada）",
-        rationale = "尚無同業 Bottom-Up 時，以本公司 β_L 經 Hamada 去槓桿得到 βᵤ 供 CAPM；不用 Rolling／Summary 槓桿 β。",
-        next_steps = "建議補上同業後改回 Bottom-Up 主估計。"
+        title = "預設來源：Summary β",
+        rationale = "採用 Yahoo Finance Summary「Beta (5Y Monthly)」作為 CAPM 預設 β。",
+        next_steps = "可改選產業預設、自選公司平均 Bottom-Up、去槓桿化 βᵤ 或手動定義。"
       ))
     }
 
@@ -3259,9 +3289,41 @@ server <- function(input, output, session) {
         purpose = purpose,
         source = "industry",
         ready = TRUE,
-        title = "結構備援：產業平均 β",
-        rationale = "本公司 βᵤ 與同業 Bottom-Up 皆未就緒時，改用產業結構 β；不用個股 Rolling／Summary。",
-        next_steps = "建議補齊標的財報／同業後改用本公司 βᵤ 或 Bottom-Up。"
+        title = "備援：產業預設 β",
+        rationale = "尚無 Summary β 時，改用所選產業結構 β。",
+        next_steps = "請先搜尋標的載入 Summary，或改用 Bottom-Up／去槓桿化 βᵤ。"
+      ))
+    }
+
+    if (has_peers || bu_ready) {
+      if (bu_ready) {
+        return(list(
+          purpose = purpose,
+          source = "bottomup",
+          ready = TRUE,
+          title = "備援：自選公司平均 Bottom-Up βᵤ",
+          rationale = "以同業去槓桿平均／中位 βᵤ 供 CAPM／Ke／WACC。",
+          next_steps = "可按下方按鈕套用。Rolling 估計只供對照，不會寫入 CAPM。"
+        ))
+      }
+      return(list(
+        purpose = purpose,
+        source = "bottomup",
+        ready = FALSE,
+        title = "備援：Bottom-Up（請先計算）",
+        rationale = "已指定同業，但尚未算出 Bottom-Up βᵤ。",
+        next_steps = "請至 Unlevered βᵤ 分頁按「計算 Bottom-Up βᵤ」。"
+      ))
+    }
+
+    if (firm_ready) {
+      return(list(
+        purpose = purpose,
+        source = "unlever_firm",
+        ready = TRUE,
+        title = "備援：去槓桿化 βᵤ（Hamada）",
+        rationale = "以本公司 β_L 經 Hamada 去槓桿得到 βᵤ 供 CAPM。",
+        next_steps = "建議補齊 Summary／產業後改回預設來源。"
       ))
     }
 
@@ -3269,9 +3331,9 @@ server <- function(input, output, session) {
       purpose = purpose,
       source = "manual",
       ready = FALSE,
-      title = "待輸入：手動 βe 或補齊同業／產業",
-      rationale = "本公司 βᵤ、Bottom-Up 與產業備援皆未就緒；請勿改用 Rolling／Summary 槓桿 β。",
-      next_steps = "請選擇產業、填同業計算 Bottom-Up，或於 Unlevered 分頁手動輸入 βe。"
+      title = "待輸入：手動 βe 或補齊 Summary／產業",
+      rationale = "Summary、產業預設、Bottom-Up 與去槓桿化 βᵤ 皆未就緒。",
+      next_steps = "請搜尋標的、選擇產業、填同業計算 Bottom-Up，或手動輸入 βe。"
     ))
   }
 
@@ -3289,14 +3351,16 @@ server <- function(input, output, session) {
       tags$div(
         style = "margin-top:6px;color:#555;",
         tags$span("決策節點："),
-        if (identical(rec$source, "bottomup")) {
-          "內在價值 → Bottom-Up 平均 βᵤ（排除 Rolling／Summary 槓桿 β）"
-        } else if (identical(rec$source, "unlever_firm")) {
-          "內在價值 → 無同業 → 本公司 βᵤ（Hamada）"
+        if (identical(rec$source, "summary")) {
+          "內在價值 → Summary β（預設）"
         } else if (identical(rec$source, "industry")) {
-          "內在價值 → 無同業／本公司 βᵤ 未就緒 → 產業結構 β"
+          "內在價值 → 產業預設 β"
+        } else if (identical(rec$source, "bottomup")) {
+          "內在價值 → 自選公司平均 Bottom-Up βᵤ"
+        } else if (identical(rec$source, "unlever_firm")) {
+          "內在價值 → 去槓桿化 βᵤ（Hamada）"
         } else {
-          "內在價值 → 待本公司 βᵤ／Bottom-Up／產業／手動（禁用情緒路徑）"
+          "內在價值 → 待 Summary／產業／Bottom-Up／手動（Rolling 禁用）"
         }
       ),
       tags$div(style = "margin-top:6px;", tags$i(rec$next_steps))
@@ -3316,18 +3380,9 @@ server <- function(input, output, session) {
       updateRadioButtons(session, "beta_u_apply_source", selected = "bottomup")
       return()
     }
-    if (src %in% c("rolling", "summary")) {
-      showNotification("已排除情緒路徑，改建議本公司 βᵤ／Bottom-Up／產業來源。", type = "warning", duration = 7)
-      src <- if (.beta_has_peers()) {
-        "bottomup"
-      } else {
-        firm <- tryCatch(firm_unlever_reactive(), error = function(e) NULL)
-        if (!is.null(firm) && is.finite(suppressWarnings(as.numeric(firm$beta_u)[1]))) {
-          "unlever_firm"
-        } else {
-          "industry"
-        }
-      }
+    if (identical(src, "rolling")) {
+      showNotification("Rolling 估計不可寫入 CAPM，改建議 Summary／產業／Bottom-Up／去槓桿化來源。", type = "warning", duration = 7)
+      src <- "summary"
     }
     cur <- as.character(input$beta_u_apply_source %||% "")[1]
     if (!identical(cur, src)) {
@@ -3344,13 +3399,13 @@ server <- function(input, output, session) {
 
   # 用途固定為估值／去情緒；不再提供監控→Rolling 寫入 CAPM 的切換
   observeEvent(input$beta_purpose, {
-    # hidden fixed input; keep CAPM on de-sentiment recommendation
+    # hidden fixed input; keep CAPM on recommended source
     if (identical(as.character(beta_capm_driver() %||% "gs")[1], "manual")) return()
     rec <- .beta_decision_recommend()
     src <- as.character(rec$source %||% "")[1]
-    if (!nzchar(src) || src %in% c("rolling", "summary")) return()
+    if (!nzchar(src) || identical(src, "rolling")) return()
     cur <- as.character(input$beta_u_apply_source %||% "")[1]
-    if (!identical(cur, src) && src %in% c("unlever_firm", "bottomup", "industry", "manual")) {
+    if (!identical(cur, src) && src %in% c("summary", "industry", "bottomup", "unlever_firm", "manual")) {
       updateRadioButtons(session, "beta_u_apply_source", selected = src)
     }
   }, ignoreInit = TRUE)
@@ -4109,7 +4164,12 @@ server <- function(input, output, session) {
     } else {
       APP_DEFAULTS$wacc_re / 100
     }
-    r_d <- if (!is.null(input$wacc_rd) && is.finite(input$wacc_rd)) input$wacc_rd / 100 else APP_DEFAULTS$wacc_rd / 100
+    r_d <- suppressWarnings(as.numeric(input$wacc_rd)[1]) / 100
+    if (!is.finite(r_d) || r_d < 0) {
+      # 無負債時 rᵈ 不影響；有負債則等財報覆寫後再算
+      if (isTRUE(debt > 0)) return(invisible(NULL))
+      r_d <- 0
+    }
     tax <- if (!is.null(input$wacc_tax) && is.finite(input$wacc_tax)) input$wacc_tax / 100 else APP_DEFAULTS$wacc_tax / 100
 
     wacc <- (equity_mv / total_capital) * r_e + (debt / total_capital) * r_d * (1 - tax)
@@ -4163,9 +4223,9 @@ server <- function(input, output, session) {
   })
   
   output$ibx_rd <- renderInfoBox({
-    val_rd <- input$wacc_rd
-    if (is.null(val_rd)) val_rd <- APP_DEFAULTS$wacc_rd
-    infoBox("負債成本 (rᵈ)", h3(paste0(round(val_rd, 2), " %")), icon = icon("university"), color = "lime", fill = TRUE)
+    val_rd <- suppressWarnings(as.numeric(input$wacc_rd)[1])
+    disp <- if (is.finite(val_rd)) paste0(round(val_rd, 2), " %") else "N/A"
+    infoBox("負債成本 (rᵈ)", h3(disp), icon = icon("university"), color = "lime", fill = TRUE)
   })
   
   # ==========================================
@@ -4922,7 +4982,7 @@ server <- function(input, output, session) {
     rm <- suppressWarnings(as.numeric(input$capm_rm)[1]) / 100
     if (!is.finite(rm) || rm <= 0) rm <- APP_DEFAULTS$capm_rm / 100
     rd <- suppressWarnings(as.numeric(input$wacc_rd)[1]) / 100
-    if (!is.finite(rd) || rd < 0) rd <- APP_DEFAULTS$wacc_rd / 100
+    if (!is.finite(rd) || rd < 0) rd <- NA_real_
     tax <- suppressWarnings(as.numeric(input$wacc_tax)[1]) / 100
     if (!is.finite(tax) || tax < 0) tax <- APP_DEFAULTS$wacc_tax / 100
     beta_fb <- suppressWarnings(as.numeric(input$capm_beta)[1])

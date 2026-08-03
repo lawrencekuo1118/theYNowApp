@@ -23,13 +23,13 @@ capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
                                   result_id = "capm_result",
                                   advanced_hint = TRUE) {
   hints <- list(
-    "Beta (β) 與 Get Started → BETA 雙向連動：僅去情緒來源（Bottom-Up／產業／手動）可寫入 CAPM。",
-    "勾選「套用產業平均值」等同於 Get Started 選「產業平均」；取消勾選會改回 Bottom-Up。"
+    "Beta (β) 與 Get Started → BETA 雙向連動：選定來源（預設 Summary β）會寫入此處；此處手動改 β 會回寫為「手動輸入」。",
+    "勾選「套用產業平均值」等同於 Get Started 選「產業預設 β」；取消勾選會改回 Summary β。"
   )
   if (isTRUE(advanced_hint)) {
     hints <- c(
       hints,
-      "估值排除市場情緒：不用 Rolling／Yahoo Summary／個股股價 β；以 Bottom-Up 平均 βᵤ 為主。"
+      "Rolling 估計僅供對照，不寫入 CAPM；可改選產業預設、Bottom-Up、去槓桿化 βᵤ 或手動。"
     )
   }
   box(
@@ -95,12 +95,12 @@ beta_overview_section_ui <- function() {
       )
     ),
     fluidRow(
-      valueBoxOutput("vbx_beta_unlever_bottomup", width = 6),
+      valueBoxOutput("vbx_beta_summary", width = 6),
       valueBoxOutput("vbx_beta_industry", width = 6)
     ),
     fluidRow(
+      valueBoxOutput("vbx_beta_unlever_bottomup", width = 4),
       valueBoxOutput("vbx_beta_unlever_firm", width = 4),
-      valueBoxOutput("vbx_beta_summary", width = 4),
       valueBoxOutput("vbx_beta_estimated", width = 4)
     ),
     fluidRow(
@@ -108,7 +108,7 @@ beta_overview_section_ui <- function() {
         width = 12, status = "success", solidHeader = FALSE,
         tags$p(
           style = "font-weight:600; margin:0 0 10px 0;",
-          "套用至 CAPM（僅去情緒路徑）"
+          "套用至 CAPM"
         ),
         fluidRow(
           column(
@@ -117,9 +117,10 @@ beta_overview_section_ui <- function() {
               "beta_u_apply_source",
               label = NULL,
               choices = c(
-                "本公司 βᵤ n/a" = "unlever_firm",
-                "Bottom-Up (βᵤ→βe) n/a" = "bottomup",
-                "產業平均 β n/a" = "industry",
+                "Summary β n/a" = "summary",
+                "產業預設 β n/a" = "industry",
+                "自選公司平均 Bottom-Up (βᵤ→βe) n/a" = "bottomup",
+                "去槓桿化 βᵤ n/a" = "unlever_firm",
                 "手動定義 βe n/a" = "manual"
               ),
               selected = APP_DEFAULTS$beta_u_apply_source,
@@ -136,9 +137,11 @@ beta_overview_section_ui <- function() {
               )
             ),
             helpText(
-              "本公司 βᵤ：Hamada 去槓桿 βᵤ = β_L / (1+(1−T)·D/E)；β_L 預設 Yahoo 5Y Monthly。",
-              "Bottom-Up：可比公司股權 β → 去槓桿 → 平均／中位數 βᵤ。",
-              "產業平均：結構性備援。Rolling／Summary 槓桿 β 僅供對照，不寫入 CAPM。"
+              "Summary β：Yahoo Finance Summary「Beta (5Y Monthly)」，預設寫入 CAPM。",
+              "產業預設：所選產業結構 β。",
+              "自選公司平均 Bottom-Up：可比公司去槓桿平均／中位 βᵤ。",
+              "去槓桿化 βᵤ：Hamada βᵤ = β_L / (1+(1−T)·D/E)。",
+              "Rolling 估計僅供對照，不寫入 CAPM。"
             ),
             actionButton(
               "apply_beta_u_selected", "立即同步所選 β 至 CAPM",
@@ -166,7 +169,7 @@ beta_unlever_section_ui <- function() {
     fluidRow(
       box(
         width = 5, status = "warning", solidHeader = FALSE,
-        tags$h5(style = "margin-top:0;", "本公司 βᵤ（Hamada）"),
+        tags$h5(style = "margin-top:0;", "去槓桿化 βᵤ（Hamada）"),
         tags$div(
           style = "display:none;",
           radioButtons(
@@ -315,6 +318,172 @@ beta_advanced_tab_ui <- function() {
     beta_unlever_section_ui(),
     tags$hr(),
     beta_rolling_section_ui()
+  )
+}
+
+#' Valuation methodology guide (Decision Matrix + DCF/DDM/RI/P/B tabs)
+.valuation_methodology_section_ui <- function(collapsible = TRUE, collapsed = FALSE) {
+  box(
+    title = tagList(icon("book"), "Valuation Methodology｜評價方法論"),
+    width = 12, status = "info", solidHeader = TRUE,
+    collapsible = isTRUE(collapsible), collapsed = isTRUE(collapsed),
+    withMathJax(),
+    p("在進行企業估值時，選擇正確的模型與計算數字一樣重要。本系統支援四大評價邏輯：DCF、DDM、RI、P/B，以下說明適用場景與核心公式。"),
+
+tabBox(title = "模型選擇決策指南", width = 12, side = "left",
+       
+       # Tab 1: 方法論比較矩陣 (表格)
+       tabPanel("Decision Matrix", icon = icon("table"),
+                tags$div(style = "overflow-x: auto; margin-bottom: 18px;",
+                         HTML("<table class='table table-striped table-hover table-bordered' style='background-color: white;'>
+                                 <thead style='background-color: #2C3E50; color: white;'>
+                                   <tr>
+                                     <th>對照項目</th>
+                                     <th>DDM（股利 Gordon）</th>
+                                     <th>DCF（明確預測 + Gordon 終值）</th>
+                                     <th>RI（剩餘收益）</th>
+                                     <th>P/B（本淨比）</th>
+                                   </tr>
+                                 </thead>
+                                 <tbody>
+                                   <tr>
+                                     <td><b>現金流／錨定</b></td>
+                                     <td>每股股利 D（股權請求權）</td>
+                                     <td>企業自由現金流 FCFF</td>
+                                     <td>帳面淨值 + 超額盈餘</td>
+                                     <td>每股帳面淨值 BVPS／TBVPS</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>折現率／倍數</b></td>
+                                     <td>Ke（CAPM 股權成本）</td>
+                                     <td>WACC（加權平均資本成本）</td>
+                                     <td>Ke（CAPM 股權成本）</td>
+                                     <td>目標 P/B 倍數（Justified／產業／歷史）</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>成長率 g</b></td>
+                                     <td>股利永續成長率（可與中央 SGR 同步或覆寫）</td>
+                                     <td>FCFF 終值成長率 SGR（相對 WACC）</td>
+                                     <td>剩餘收益終值成長率（相對 Ke）</td>
+                                     <td>不直接使用 g；倍數反映成長與 ROE</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>核心公式含義</b></td>
+                                     <td>整段估值：P₀ = D₁ / (Ke − g)</td>
+                                     <td>明確預測 + 終值：EV = Σ PV(FCFF) + PV(TV)</td>
+                                     <td>V₀ = B₀ + Σ PV(RI) + PV(TV_RI)</td>
+                                     <td>P = BVPS × 目標 P/B</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>輸出</b></td>
+                                     <td>直接為每股合理價</td>
+                                     <td>先得 EV，再加減淨現金／負債後 ÷ 股數</td>
+                                     <td>直接為每股內在價值</td>
+                                     <td>Bear／Base／Bull 三檔合理價區間</td>
+                                   </tr>
+                                 </tbody>
+                               </table>")
+                ),
+                tags$div(style = "overflow-x: auto;",
+                         HTML("<table class='table table-striped table-hover table-bordered' style='background-color: white;'>
+                                 <thead style='background-color: #2C3E50; color: white;'>
+                                   <tr>
+                                     <th>考慮維度</th>
+                                     <th>股利折現模型 (DDM)</th>
+                                     <th>自由現金流 (DCF / FCFF)</th>
+                                     <th>剩餘收益模型 (RI)</th>
+                                     <th>本淨比 (P/B)</th>
+                                   </tr>
+                                 </thead>
+                                 <tbody>
+                                   <tr>
+                                     <td><b>主要資料來源</b></td>
+                                     <td>現金流量表（現金股利支付）</td>
+                                     <td>現金流量表（營運與資本支出）</td>
+                                     <td>損益表與資產負債表（淨利與權益）</td>
+                                     <td>資產負債表（權益／有形淨值）</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>投資者身分 / 觀點</b></td>
+                                     <td>少數股東（無決策與控制權）</td>
+                                     <td>控股股東 / 併購者（有決策權）</td>
+                                     <td>皆可（尤其適用於負 FCF）</td>
+                                     <td>金融／保險／控股；資產為定價錨</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>企業發展階段</b></td>
+                                     <td>成熟期、穩健期（如公用事業）</td>
+                                     <td>成長期、擴張期（如科技股）</td>
+                                     <td>各階段皆可，尤其是資產密集型</td>
+                                     <td>銀行、保險、控股／綜合企業</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>對配息政策依賴度</b></td>
+                                     <td><span class='label label-danger'>極高</span></td>
+                                     <td><span class='label label-success'>低</span></td>
+                                     <td><span class='label label-success'>極低</span></td>
+                                     <td><span class='label label-success'>低</span></td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>典型限制</b></td>
+                                     <td>不配息／配息波動大時失效</td>
+                                     <td>FCF 長期為負或高度循環時難估</td>
+                                     <td>帳面淨值失真／ROE 不可持續時偏誤</td>
+                                     <td>無形資產主導或帳面嚴重扭曲時失準</td>
+                                   </tr>
+                                 </tbody>
+                               </table>")
+                )
+       ),
+       
+       # Tab: DDM 模型解說
+       tabPanel("Dividend Discount Model (DDM)", icon = icon("hand-holding-usd"),
+                h4(tags$b("股利折現模型（股利 Gordon）")),
+                p("DDM 將普通股價值視為未來現金股利的現值。現金流是股利、折現率是 Ke，與以 FCFF／WACC 為核心的 DCF 屬不同層級。"),
+                tags$ul(
+                  tags$li(tags$b("$$P_0 = \\frac{D_1}{K_e - g} = \\frac{D_0 \\times (1 + g)}{K_e - g}$$"))
+                ),
+                p("股利成長率 g 可與中央終值 SGR 同步，亦可在 DDM 分頁單獨覆寫。基本面法可參考 $$g = ROE \\times Retention\\ Ratio$$，但不宜與 FCFF 終值 g 強制畫上等號。")
+       ),
+       
+       # Tab: DCF 模型解說
+       tabPanel("Discounted Cash Flow (DCF)", icon = icon("money-bill-wave"),
+                h4(tags$b("自由現金流折現模型 (FCFF)")),
+                p("DCF 關注企業造血能力：將未來 FCFF 以 WACC 折現得到企業價值，再橋接至股權價值與每股價格。本 app 的「Gordon」模式為明確預測期加上 Gordon 終值，而非單期 EV = FCF₁/(WACC−g)。"),
+                tags$ul(
+                  tags$li(tags$b("$$FCFF = Net Income + D\\&A - \\Delta NWC - CapEx$$")),
+                  tags$li(tags$b("$$Enterprise\\ Value = \\sum \\frac{FCFF_t}{(1+WACC)^t} + \\frac{Terminal\\ Value}{(1+WACC)^n}$$")),
+                  tags$li(tags$b("$$Terminal\\ Value = \\frac{FCFF_n \\times (1 + g)}{WACC - g}$$"))
+                ),
+                p("兩階段模式則在高速成長期後，將終值成長率收斂至 SGR；約束條件為 g < WACC（不是 Ke）。")
+       ),
+
+       # Tab: RI 模型解說
+       tabPanel("Residual Income (RI)", icon = icon("gem"),
+                h4(tags$b("剩餘收益模型 (Residual Income)")),
+                p("RI 以帳面淨值為起點，將「超過股權成本的盈餘」折現加總。適合 FCF 為負、但淨值與 ROE 具參考性的企業；折現率使用 Ke（與 DDM 同屬股權層級）。"),
+                tags$ul(
+                  tags$li(tags$b("$$RI_t = (ROE_t - K_e) \\times B_{t-1}$$")),
+                  tags$li(tags$b("$$B_t = B_{t-1} + NI_t \\times (1 - Payout)$$")),
+                  tags$li(tags$b("$$V_0 = B_0 + \\sum_{t=1}^{n} \\frac{RI_t}{(1+K_e)^t} + \\frac{TV_{RI}}{(1+K_e)^n}$$")),
+                  tags$li(tags$b("$$TV_{RI} = \\frac{RI_n \\times (1 + g)}{K_e - g}$$"))
+                ),
+                p("本 app 可設定固定 ROE、線性淡化或產業 ROE；終值成長 g 須滿足 g < Ke。當 ROE < Ke 時，剩餘收益為負，代表價值銷毀。")
+       ),
+
+       # Tab: P/B 模型解說
+       tabPanel("Price-to-Book (P/B)", icon = icon("landmark"),
+                h4(tags$b("本淨比／資產估值法 (P/B)")),
+                p("以每股帳面淨值（或有形淨值）乘上目標本淨比，得到合理價區間。適用銀行、保險、控股等「資產為錨、折現模型前提常不成立」的情境。"),
+                tags$ul(
+                  tags$li(tags$b("$$BVPS = \\frac{Common\\ Equity}{Shares}$$")),
+                  tags$li(tags$b("$$TBVPS = \\frac{Common\\ Equity - Goodwill - Intangibles}{Shares}$$")),
+                  tags$li(tags$b("$$P = BVPS\\ (or\\ TBVPS) \\times Target\\ P/B$$")),
+                  tags$li(tags$b("Justified\\ P/B \\approx \\frac{ROE - g}{K_e - g}"))
+                ),
+                p("目標倍數可綜合 Justified（ROE／Ke）、產業中位與歷史中位，輸出 Bear／Base／Bull 三檔。雙重股權等「報價股 ≠ 財報股數口徑」時，可例外啟用約當股數校正。")
+       )
+),
   )
 }
 
@@ -1303,6 +1472,12 @@ ui <- dashboardPage(
           )
         ),
         fluidRow(
+          column(
+            width = 12,
+            uiOutput("main_decision-ui_valuation_compare")
+          )
+        ),
+        fluidRow(
           .dcf_core_params_box()
         ),
         tabBox(
@@ -2077,118 +2252,7 @@ ui <- dashboardPage(
               ),
               
               fluidRow(
-                column(width = 12,
-                       h3(tags$b("Valuation Methodology (評價方法論)")),
-                       
-                       p("在進行企業估值時，選擇正確的模型與計算數字一樣重要。以下是本系統支援的三大評價邏輯與其適用場景："),
-                       
-                       tabBox(title = "模型選擇決策指南", width = 12, side = "left",
-                              
-                              # Tab 1: 方法論比較矩陣 (表格)
-                              tabPanel("Decision Matrix", icon = icon("table"),
-                                       tags$div(style = "overflow-x: auto; margin-bottom: 18px;",
-                                                HTML("<table class='table table-striped table-hover table-bordered' style='background-color: white;'>
-                                                        <thead style='background-color: #2C3E50; color: white;'>
-                                                          <tr>
-                                                            <th>對照項目</th>
-                                                            <th>DDM（股利 Gordon）</th>
-                                                            <th>DCF（明確預測 + Gordon 終值）</th>
-                                                          </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                          <tr>
-                                                            <td><b>現金流</b></td>
-                                                            <td>每股股利 D（股權請求權）</td>
-                                                            <td>企業自由現金流 FCFF（全體資金提供者）</td>
-                                                          </tr>
-                                                          <tr>
-                                                            <td><b>折現率</b></td>
-                                                            <td>Ke（CAPM 股權成本）</td>
-                                                            <td>WACC（加權平均資本成本）</td>
-                                                          </tr>
-                                                          <tr>
-                                                            <td><b>成長率 g</b></td>
-                                                            <td>股利永續成長率（可與中央 SGR 同步或覆寫）</td>
-                                                            <td>FCFF 終值成長率 SGR（相對 WACC）</td>
-                                                          </tr>
-                                                          <tr>
-                                                            <td><b>「Gordon」含義</b></td>
-                                                            <td>整段估值：P₀ = D₁ / (Ke − g)</td>
-                                                            <td>僅終值：TV = FCFₙ(1+g)/(WACC−g)；另加 n 年明確預測折現</td>
-                                                          </tr>
-                                                          <tr>
-                                                            <td><b>輸出</b></td>
-                                                            <td>直接為每股合理價</td>
-                                                            <td>先得企業價值 EV，再加減淨現金／負債後 ÷ 股數</td>
-                                                          </tr>
-                                                        </tbody>
-                                                      </table>")
-                                       ),
-                                       tags$div(style = "overflow-x: auto;",
-                                                HTML("<table class='table table-striped table-hover table-bordered' style='background-color: white;'>
-                                                        <thead style='background-color: #2C3E50; color: white;'>
-                                                          <tr>
-                                                            <th>考慮維度</th>
-                                                            <th>股利折現模型 (DDM)</th>
-                                                            <th>自由現金流 (FCFF / FCFE)</th>
-                                                            <th>剩餘收益模型 (RI)</th>
-                                                          </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                          <tr>
-                                                            <td><b>主要資料來源</b></td>
-                                                            <td>現金流量表（現金股利支付）</td>
-                                                            <td>現金流量表（營運與資本支出）</td>
-                                                            <td>損益表與資產負債表（淨利與權益）</td>
-                                                          </tr>
-                                                          <tr>
-                                                            <td><b>投資者身分 / 觀點</b></td>
-                                                            <td>少數股東（無決策與控制權）</td>
-                                                            <td>控股股東 / 併購者（有決策權）</td>
-                                                            <td>皆可（尤其適用於負 FCF）</td>
-                                                          </tr>
-                                                          <tr>
-                                                            <td><b>企業發展階段</b></td>
-                                                            <td>成熟期、穩健期（如公用事業）</td>
-                                                            <td>成長期、擴張期（如科技股）</td>
-                                                            <td>各階段皆可，尤其是資產密集型</td>
-                                                          </tr>
-                                                          <tr>
-                                                            <td><b>對配息政策依賴度</b></td>
-                                                            <td><span class='label label-danger'>極高</span></td>
-                                                            <td><span class='label label-success'>低</span></td>
-                                                            <td><span class='label label-success'>極低</span></td>
-                                                          </tr>
-                                                        </tbody>
-                                                      </table>")
-                                       )
-                              ),
-                              
-                              # Tab 3: DDM 模型解說
-                              tabPanel("Dividend Discount Model (DDM)", icon = icon("hand-holding-usd"),
-                                       h4(tags$b("股利折現模型（股利 Gordon）")),
-                                       p("DDM 將普通股價值視為未來現金股利的現值。現金流是股利、折現率是 Ke，與以 FCFF／WACC 為核心的 DCF 屬不同層級。"),
-                                       tags$ul(
-                                         tags$li(tags$b("$$P_0 = \\frac{D_1}{K_e - g} = \\frac{D_0 \\times (1 + g)}{K_e - g}$$"))
-                                       ),
-                                       p("股利成長率 g 可與中央終值 SGR 同步，亦可在 DDM 分頁單獨覆寫。基本面法可參考 $$g = ROE \\times Retention\\ Ratio$$，但不宜與 FCFF 終值 g 強制畫上等號。")
-                              ),
-                              
-                              # Tab 2: DCF 模型解說
-                              tabPanel("Discounted Cash Flow (DCF)", icon = icon("money-bill-wave"),
-                                       h4(tags$b("自由現金流折現模型 (FCFF)")),
-                                       p("DCF 關注企業造血能力：將未來 FCFF 以 WACC 折現得到企業價值，再橋接至股權價值與每股價格。本 app 的「Gordon」模式為明確預測期加上 Gordon 終值，而非單期 EV = FCF₁/(WACC−g)。"),
-                                       tags$ul(
-                                         tags$li(tags$b("$$FCFF = Net Income + D\\&A - \\Delta NWC - CapEx$$")),
-                                         tags$li(tags$b("$$Enterprise\\ Value = \\sum \\frac{FCFF_t}{(1+WACC)^t} + \\frac{Terminal\\ Value}{(1+WACC)^n}$$")),
-                                         tags$li(tags$b("$$Terminal\\ Value = \\frac{FCFF_n \\times (1 + g)}{WACC - g}$$"))
-                                       ),
-                                       p("兩階段模式則在高速成長期後，將終值成長率收斂至 SGR；約束條件為 g < WACC（不是 Ke）。")
-                              )
-                       ),
-                       
-                       uiOutput("main_decision-ui_valuation_compare")
-                )
+                .valuation_methodology_section_ui(collapsible = FALSE, collapsed = FALSE)
               )
       )
     )

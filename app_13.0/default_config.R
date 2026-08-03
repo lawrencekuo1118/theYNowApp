@@ -29,14 +29,13 @@ if (is.na(default_rm) || default_rm < default_rf + 3) {
 # Ke = Rf + Beta × (Rm − Rf)
 default_re <- round(default_rf + default_beta * (default_rm - default_rf), 2)
 
-# 債務成本 ≈ Rf + 信用利差（投資級約 1.0%~2.0%）
-default_rd <- round(default_rf + 1.5, 2)
+# 債務成本 rᵈ：不設全域預設；載入財報後以利息費用／總負債覆寫（見 ynow_server）
 
-# 粗估 WACC（權益／負債權重）；稅率採美國企業稅常見 21%
+# 粗估 WACC 啟動占位（僅 Ke）；有負債後由實際 rᵈ 重算
 default_tax <- 21
 we <- max(0.05, min(0.95, 1 - default_debt))
 wd <- 1 - we
-default_wacc <- round(we * default_re + wd * default_rd * (1 - default_tax / 100), 2)
+default_wacc <- round(default_re, 2)
 
 # 永續成長率 SGR：預設採 Macro（直接套用 Rf）；仍須明顯低於 WACC
 default_sgr <- round(as.numeric(default_rf), 2)
@@ -87,7 +86,7 @@ APP_DEFAULTS <- list(
 
   # --- 5. WACC / CAPM ---
   wacc_re         = default_re,
-  wacc_rd         = default_rd,
+  wacc_rd         = NA_real_,           # 由財報利息／負債覆寫；無預設
   wacc_tax        = default_tax,
 
   use_est_re      = TRUE,
@@ -99,17 +98,17 @@ APP_DEFAULTS <- list(
   beta_bench      = "SPY",
   beta_lookback_months = 60,                 # Rolling 僅對照用（不寫入 CAPM）
   beta_min_obs    = 24,
-  # 估值固定排除市場情緒路徑；Rolling／Summary 槓桿 β 不得寫入 CAPM
+  # Rolling 估計不得寫入 CAPM；Summary β 可為預設套用來源
   beta_purpose    = "valuation",
-  # 本公司 βᵤ = Hamada(β_L,T,D/E)；β_L 預設 Summary，可經套用選項寫入 CAPM
+  # 去槓桿化 βᵤ = Hamada(β_L,T,D/E)；β_L 預設 Summary
   beta_bl_source  = "summary",
   beta_peers      = "",
   beta_bottomup_agg = "mean",                # mean | median
   # 舊版再槓桿設定已移除（隱藏相容）；不再提供目標 D/E UI
   beta_relever_de_mode = "current",
   beta_target_de  = NA,
-  # 套用至 CAPM（去情緒）：unlever_firm | bottomup(βᵤ) | industry | manual
-  beta_u_apply_source = "bottomup",
+  # 套用至 CAPM：summary | industry | bottomup | unlever_firm | manual
+  beta_u_apply_source = "summary",
   beta_u_manual   = NA,                      # 手動 β（直接寫入 CAPM）
 
   # --- 6. P/B／資產法 ---

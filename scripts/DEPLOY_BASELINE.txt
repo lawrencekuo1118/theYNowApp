@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12357220
+bundleId=12358366
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=219b0a6
-commit=219b0a6
-short=219b0a6
-message=Remove Get Started page h2 title; keep sidebar label.
-captured_at=2026-08-03T09:21:48+00:00
-note=app_13.0 on PR#19 line (from 12356883): CAPM firm βᵤ first option + removed get_started h2; sidebar Get Started kept.
+aligned_git=0b5e389
+commit=0b5e389
+short=0b5e389
+message=Place main/sub-model valuation band under Get Started Model Selector.
+captured_at=2026-08-03T14:24:33+00:00
+note=app_13.0: CAPM Summary-first sources; valueBoxes reordered; Bear/Base/Bull under Model Selector above SGR; methodology collapsed guide.
