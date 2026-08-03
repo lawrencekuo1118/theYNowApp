@@ -2923,9 +2923,9 @@ server <- function(input, output, session) {
     setNames(
       c("bottomup", "industry", "manual"),
       c(
-        paste0("【主估計】Bottom-Up 平均 βᵤ ", .fmt_beta_choice_val(bu_v)),
-        paste0("【結構備援】產業平均 β ", .fmt_beta_choice_val(ind_b)),
-        paste0("手動輸入 β（直接寫入 CAPM） ", .fmt_beta_choice_val(man_b))
+        paste0("Bottom-Up (βᵤ→βe) ", .fmt_beta_choice_val(bu_v)),
+        paste0("產業平均 β ", .fmt_beta_choice_val(ind_b)),
+        paste0("手動定義 βe ", .fmt_beta_choice_val(man_b))
       )
     )
   }

@@ -117,9 +117,9 @@ beta_overview_section_ui <- function() {
               "beta_u_apply_source",
               label = NULL,
               choices = c(
-                "【主估計】Bottom-Up 平均 βᵤ n/a" = "bottomup",
-                "【結構備援】產業平均 β n/a" = "industry",
-                "手動輸入 β（直接寫入 CAPM） n/a" = "manual"
+                "Bottom-Up (βᵤ→βe) n/a" = "bottomup",
+                "產業平均 β n/a" = "industry",
+                "手動定義 βe n/a" = "manual"
               ),
               selected = APP_DEFAULTS$beta_u_apply_source,
               inline = FALSE
@@ -229,7 +229,7 @@ beta_unlever_section_ui <- function() {
         tags$br(),
         tableOutput("beta_bottomup_peers_table"),
         tags$hr(),
-        tags$h5("手動輸入 β（直接寫入 CAPM）"),
+        tags$h5("手動定義 βe"),
         numericInput(
           "beta_u_manual",
           NULL,
@@ -237,7 +237,7 @@ beta_unlever_section_ui <- function() {
           min = 0, max = 5, step = 0.01
         ),
         helpText(
-          "於 Beta Overview 選「手動輸入 β」後，此值會直接寫入 CAPM；",
+          "於 Beta Overview 選「手動定義 βe」後，此值會直接寫入 CAPM；",
           "在此修改數值時也會自動改選手動來源並同步。"
         )
       )
