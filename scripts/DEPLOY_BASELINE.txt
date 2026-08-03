@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12359310
+bundleId=12359339
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=ca6816d
-commit=ca6816d6da2243176a6ec4a9cbcd14f4f24d5aa9
-short=ca6816d
-message=Refine About section title alignment; unwrap Methodology from outer fluidRow.
-captured_at=2026-08-03T17:43:22Z
-note=app_13.0 redeploy: DCF sensitivity matrix above formula params; About Fraud/Methodology titles left-aligned; Methodology book icon removed; About CSS/fluidRow refine.
+aligned_git=9401895
+commit=9401895747ac103cc5ba6ffa009069360397bd48
+short=9401895
+message=ui(decision): deepen Chinese zone advice copy for clearer analyst tone.
+captured_at=2026-08-03T17:49:36Z
+note=app_13.0 redeploy: deepen decision-matrix Chinese zone advice (left-latent + sibling zones).
