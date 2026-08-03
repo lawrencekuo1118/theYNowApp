@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12358966
+bundleId=12359070
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=25044a9
-commit=25044a9
-short=25044a9
-message=Remove outer box from About Valuation Methodology section.
-captured_at=2026-08-03T16:34:00+00:00
-note=app_13.0 redeploy: About Valuation Methodology without outer shinydashboard box.
+aligned_git=18178a4
+commit=18178a4
+short=18178a4
+message=Remove Rolling β source comparison table; rename window compare header.
+captured_at=2026-08-03T16:55:16+00:00
+note=app_13.0 redeploy: Rolling β UI without source/Beta/說明 comparison table; window compare header shortened.
