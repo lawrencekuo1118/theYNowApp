@@ -50,8 +50,7 @@ decision_ui <- function(id) {
           )
         )
       )
-    ),
-    uiOutput(ns("ui_valuation_compare"))
+    )
   )
 }
 

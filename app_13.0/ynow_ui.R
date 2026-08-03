@@ -1472,7 +1472,13 @@ ui <- dashboardPage(
           )
         ),
         fluidRow(
-          .valuation_methodology_section_ui(collapsible = TRUE, collapsed = FALSE)
+          column(
+            width = 12,
+            uiOutput("main_decision-ui_valuation_compare")
+          )
+        ),
+        fluidRow(
+          .valuation_methodology_section_ui(collapsible = TRUE, collapsed = TRUE)
         ),
         fluidRow(
           .dcf_core_params_box()
@@ -2251,11 +2257,9 @@ ui <- dashboardPage(
               fluidRow(
                 column(width = 12,
                        h3(tags$b("Valuation Methodology (評價方法論)")),
-                       p("四大評價邏輯（DCF／DDM／RI／P/B）的決策矩陣與公式說明已移至 ",
+                       p("主／副模型估值區間（Bear／Base／Bull）與評價方法論已移至 ",
                          tags$b("Get Started"),
-                         " → 「Model Selector｜估值模型推薦」下方的 ",
-                         tags$b("Valuation Methodology｜評價方法論"),
-                         " 區塊。"),
+                         "：位於「Model Selector｜估值模型推薦」下方、「永續成長率 SGR 設定」上方。"),
                        tags$hr()
                 )
               )
