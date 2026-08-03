@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12359262
+bundleId=12359285
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=5f7542a
-commit=5f7542a18bbbcdf305a90343a77c9a7e4ed40916
-short=5f7542a
-message=Move DCF sensitivity matrix above param box; align About titles.
-captured_at=2026-08-03T17:33:28Z
-note=app_13.0 redeploy: DCF sensitivity matrix above param box; About titles left-aligned; Valuation Methodology book icon removed.
+aligned_git=ca6816d
+commit=ca6816d6da2243176a6ec4a9cbcd14f4f24d5aa9
+short=ca6816d
+message=Refine About section title alignment; unwrap Methodology from outer fluidRow.
+captured_at=2026-08-03T17:38:16Z
+note=app_13.0 redeploy: sensitivity matrix above DCF params; About titles aligned (incl. refine); methodology icon removed. Also includes 5f7542a.
