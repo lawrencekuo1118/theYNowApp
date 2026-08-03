@@ -35,6 +35,7 @@ capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
   box(
     h4(title),
     numericInput("capm_rf", "無風險利率 Rf (%)", value = APP_DEFAULTS$capm_rf, step = 0.01),
+    numericInput("capm_rm", "市場報酬率 Rm (%)", value = APP_DEFAULTS$capm_rm, step = 0.01),
     numericInput("capm_beta", "Beta (β)", value = APP_DEFAULTS$capm_beta, step = 0.01),
     checkboxInput(
       "use_industry_beta",
@@ -42,7 +43,6 @@ capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
       value = isTRUE(APP_DEFAULTS$use_industry_beta)
     ),
     do.call(helpText, as.list(hints)),
-    numericInput("capm_rm", "市場報酬率 Rm (%)", value = APP_DEFAULTS$capm_rm, step = 0.01),
     actionButton(calc_id, "估算 rₑ（CAPM）", class = "btn-primary"),
     tags$br(), htmlOutput(result_id)
   )
