@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12357991
+bundleId=12358366
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=25726a1
-commit=25726a1
-short=25726a1
-message=Reorder CAPM β sources with Summary β as default first.
-captured_at=2026-08-03T13:09:06+00:00
-note=app_13.0: CAPM apply order Summary → 產業預設 → Bottom-Up → 去槓桿化 βᵤ → 手動; default=summary; Rolling blocked.
+aligned_git=0b5e389
+commit=0b5e389
+short=0b5e389
+message=Place main/sub-model valuation band under Get Started Model Selector.
+captured_at=2026-08-03T14:24:33+00:00
+note=app_13.0: CAPM Summary-first sources; valueBoxes reordered; Bear/Base/Bull under Model Selector above SGR; methodology collapsed guide.
