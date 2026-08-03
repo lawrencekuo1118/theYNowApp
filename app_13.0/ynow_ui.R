@@ -1227,7 +1227,6 @@ ui <- dashboardPage(
     tabItems(
       tabItem(
         tabName = "get_started",
-        h2(tags$span("Get Started", style = "font-weight: 800 !important; letter-spacing: 0.02em;")),
         fluidRow(
           column(
             width = 12,
