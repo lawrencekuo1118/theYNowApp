@@ -328,9 +328,7 @@ beta_advanced_tab_ui <- function() {
     width = 12, status = "info", solidHeader = TRUE,
     collapsible = isTRUE(collapsible), collapsed = isTRUE(collapsed),
     withMathJax(),
-h3(tags$b("Valuation Methodology (評價方法論)")),
-
-p("在進行企業估值時，選擇正確的模型與計算數字一樣重要。本系統支援四大評價邏輯：DCF、DDM、RI、P/B，以下說明適用場景與核心公式。"),
+    p("在進行企業估值時，選擇正確的模型與計算數字一樣重要。本系統支援四大評價邏輯：DCF、DDM、RI、P/B，以下說明適用場景與核心公式。"),
 
 tabBox(title = "模型選擇決策指南", width = 12, side = "left",
        
