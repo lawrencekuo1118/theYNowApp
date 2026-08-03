@@ -1288,7 +1288,7 @@ ui <- dashboardPage(
             width = 12,
             pickerInput(
               inputId = "industry_choice",
-              label = "Industry Standard Comparison",
+              label = "Industry Standard",
               choices = industry_picker_choices(),
               selected = APP_DEFAULTS$industry_choice,
               options = list(`live-search` = TRUE, `size` = 12)

@@ -290,7 +290,7 @@ server <- function(input, output, session) {
     if (!nzchar(key)) {
       return(tags$div(
         style = "margin: 0 0 12px 0; padding: 10px 12px; background: #f7f7f7; border-left: 4px solid #999; border-radius: 4px;",
-        tags$span(style = "color:#666; font-size:13px;", "尚未選擇比較產業（請至 Get Started → Industry Standard Comparison）")
+        tags$span(style = "color:#666; font-size:13px;", "尚未選擇比較產業（請至 Get Started → Industry Standard）")
       ))
     }
     lab <- industry_labels[[key]]
@@ -2449,9 +2449,15 @@ server <- function(input, output, session) {
 
   .vbx_beta_industry_content <- function() {
     b <- .industry_beta_value()
+    ind_key <- as.character(input$industry_choice %||% "")[1]
+    ind_lab <- if (nzchar(ind_key)) {
+      as.character(industry_labels[[ind_key]] %||% ind_key)[1]
+    } else {
+      "未選產業"
+    }
     valueBox(
       if (is.finite(b)) round(b, 2) else "N/A",
-      "產業平均 β",
+      paste0("產業平均 β（", ind_lab, "）"),
       icon = icon("industry"),
       color = "blue"
     )
@@ -2920,11 +2926,21 @@ server <- function(input, output, session) {
     bu_v <- if (!is.null(bu) && isTRUE(bu$ok)) bu$beta_u_avg else NA_real_
     ind_b <- tryCatch(.industry_beta_value(), error = function(e) NA_real_)
     man_b <- suppressWarnings(as.numeric(input$beta_u_manual)[1])
+    ind_key <- as.character(input$industry_choice %||% "")[1]
+    ind_lab <- if (nzchar(ind_key)) {
+      as.character(industry_labels[[ind_key]] %||% ind_key)[1]
+    } else {
+      "未選產業"
+    }
+    ind_choice_lab <- paste0(
+      "產業平均 β ", .fmt_beta_choice_val(ind_b),
+      "（", ind_lab, "）"
+    )
     setNames(
       c("bottomup", "industry", "manual"),
       c(
         paste0("Bottom-Up (βᵤ→βe) ", .fmt_beta_choice_val(bu_v)),
-        paste0("產業平均 β ", .fmt_beta_choice_val(ind_b)),
+        ind_choice_lab,
         paste0("手動定義 βe ", .fmt_beta_choice_val(man_b))
       )
     )
@@ -3299,10 +3315,7 @@ server <- function(input, output, session) {
     be <- if (!is.null(bu) && isTRUE(bu$ok)) suppressWarnings(as.numeric(bu$beta_u_avg)[1]) else NA_real_
     rb <- if (!is.null(roll) && isTRUE(roll$ok)) suppressWarnings(as.numeric(roll$beta)[1]) else NA_real_
     if (!is.finite(be) || !is.finite(rb)) {
-      return(tags$p(
-        style = "margin-top:10px;font-size:12px;color:#777;",
-        "交叉檢驗：需 Bottom-Up βᵤ 與 Rolling β；後者只對照、不寫入 CAPM。"
-      ))
+      return(NULL)
     }
     gap <- abs(be - rb)
     warn <- gap > 0.35
