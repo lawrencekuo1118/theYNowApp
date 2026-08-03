@@ -97,19 +97,18 @@ APP_DEFAULTS <- list(
   use_industry_beta = FALSE,                 # TRUE = 產業平均 β_L
   capm_rm         = round(default_rm, 2),
   beta_bench      = "SPY",
-  beta_lookback_months = 60,                 # 12 | 24 | 60（風險監控 1Y／2Y／5Y）
+  beta_lookback_months = 60,                 # Rolling 僅交叉檢驗用（不寫入 CAPM）
   beta_min_obs    = 24,
-  # 決策樹用途：valuation（DCF／WACC）｜monitoring（近期敏感度）
+  # 估值固定排除市場情緒路徑；Rolling／Summary／個股股價 β 不得寫入 CAPM
   beta_purpose    = "valuation",
-  # Unlevered：β_L 來源（summary｜rolling｜auto）；勿再用 capm（與 CAPM 輸出循環）
-  beta_bl_source  = "auto",                  # auto：Summary → Rolling（估值備援）
+  # 本公司 βᵤ 僅供參考展示；β_L 來源不再驅動 CAPM
+  beta_bl_source  = "summary",
   beta_peers      = "",
   beta_bottomup_agg = "mean",                # mean | median
   # 再槓桿 D/E：current = 本公司市值 D/E；manual = beta_target_de
   beta_relever_de_mode = "current",
   beta_target_de  = NA,
-  # 套用至 CAPM：估值路徑寫入再槓桿 βe；監控路徑寫入 Rolling／Summary β_L
-  # bottomup | unlever_firm | summary | rolling | industry | manual
+  # 套用至 CAPM（去情緒）：bottomup | industry | manual
   beta_u_apply_source = "bottomup",
   beta_u_manual   = NA,                      # 手動 βe（直接寫入 CAPM）
 

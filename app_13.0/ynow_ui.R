@@ -23,13 +23,13 @@ capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
                                   result_id = "capm_result",
                                   advanced_hint = TRUE) {
   hints <- list(
-    "Beta (β) 與 Get Started → BETA 雙向連動：估值路徑寫入再槓桿後的股權 βe；此處手動改 β 會回寫為「手動輸入」。",
-    "勾選「套用產業平均值」等同於 Get Started 選「產業平均」；取消勾選會改回其他來源。"
+    "Beta (β) 與 Get Started → BETA 雙向連動：僅去情緒來源（Bottom-Up／產業／手動）可寫入 CAPM。",
+    "勾選「套用產業平均值」等同於 Get Started 選「產業平均」；取消勾選會改回 Bottom-Up。"
   )
   if (isTRUE(advanced_hint)) {
     hints <- c(
       hints,
-      "估值建議：Bottom-Up 平均 βᵤ → 依目標 D/E 再槓桿成 βe；風險監控則優先 Rolling β。"
+      "估值排除市場情緒：不用 Rolling／Yahoo Summary／個股股價 β；以 Bottom-Up βᵤ→βe 為主。"
     )
   }
   box(
@@ -67,54 +67,40 @@ capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
   )
 }
 
-#' Beta Overview：決策樹建議 + 各方法 KPI，並選擇寫入 CAPM 的來源
+#' Beta Overview：去情緒估值 β（Bottom-Up）+ Rolling 僅交叉檢驗
 beta_overview_section_ui <- function() {
   tagList(
     fluidRow(
       box(
         width = 12, status = "primary", solidHeader = TRUE,
-        title = tagList(icon("project-diagram"), "β 估計選用決策樹"),
-        fluidRow(
-          column(
-            width = 4,
-            radioButtons(
-              "beta_purpose",
-              "1. 先判斷用途",
-              choices = c(
-                "估值／DCF／WACC／跨公司比較" = "valuation",
-                "風險監控／近期市場敏感度" = "monitoring"
-              ),
-              selected = APP_DEFAULTS$beta_purpose,
-              inline = FALSE
-            ),
-            helpText(
-              "估值：優先 Bottom-Up 平均 βᵤ，再依目標資本結構 re-lever 成 βe。",
-              "監控：優先 Rolling β，並比較 1Y／2Y／5Y 窗口。"
-            )
-          ),
-          column(
-            width = 8,
-            uiOutput("beta_decision_tree_panel"),
-            tags$div(
-              style = "margin-top:8px;",
-              actionButton(
-                "apply_beta_decision_tree",
-                "依決策樹套用建議來源至 CAPM",
-                class = "btn-primary",
-                icon = icon("magic")
-              )
-            )
+        title = tagList(icon("shield-alt"), "排除市場情緒的 β 估計（內在價值）"),
+        tags$p(
+          style = "margin:0 0 8px 0;font-size:13px;line-height:1.55;",
+          "CAPM／Ke／WACC 只接受去情緒來源：",
+          tags$b("Bottom-Up 平均 βᵤ → 再槓桿 βe"),
+          "（主估計）、產業結構 β（備援）、或手動 βe。",
+          tags$b("Rolling／Yahoo Summary／本公司股價 β 不可寫入 CAPM"),
+          "，僅作交叉檢驗或監控參考。"
+        ),
+        uiOutput("beta_decision_tree_panel"),
+        tags$div(
+          style = "margin-top:8px;",
+          actionButton(
+            "apply_beta_decision_tree",
+            "套用去情緒建議來源至 CAPM",
+            class = "btn-primary",
+            icon = icon("magic")
           )
         )
       )
     ),
     fluidRow(
-      valueBoxOutput("vbx_beta_unlever_firm", width = 6),
-      valueBoxOutput("vbx_beta_unlever_bottomup", width = 6)
+      valueBoxOutput("vbx_beta_unlever_bottomup", width = 6),
+      valueBoxOutput("vbx_beta_industry", width = 6)
     ),
     fluidRow(
+      valueBoxOutput("vbx_beta_unlever_firm", width = 4),
       valueBoxOutput("vbx_beta_summary", width = 4),
-      valueBoxOutput("vbx_beta_industry", width = 4),
       valueBoxOutput("vbx_beta_estimated", width = 4)
     ),
     fluidRow(
@@ -122,7 +108,7 @@ beta_overview_section_ui <- function() {
         width = 12, status = "success", solidHeader = FALSE,
         tags$p(
           style = "font-weight:600; margin:0 0 10px 0;",
-          "套用至 CAPM（估值路徑：βᵤ → 再槓桿 βe；監控路徑：Rolling／Summary β_L）"
+          "套用至 CAPM（僅去情緒路徑）"
         ),
         fluidRow(
           column(
@@ -131,20 +117,27 @@ beta_overview_section_ui <- function() {
               "beta_u_apply_source",
               label = NULL,
               choices = c(
-                "【估值主估計】Bottom-Up βᵤ → 再槓桿 βe n/a" = "bottomup",
-                "【估值備援】本公司 βᵤ → 再槓桿 βe n/a" = "unlever_firm",
-                "【β_L】Finance Summary（Yahoo 5Y Monthly） n/a" = "summary",
-                "【監控／交叉檢驗】Rolling 估計 β_L n/a" = "rolling",
-                "【β_L】產業平均 β n/a" = "industry",
+                "【主估計】Bottom-Up βᵤ → 再槓桿 βe n/a" = "bottomup",
+                "【結構備援】產業平均 β n/a" = "industry",
                 "手動輸入 βe（直接寫入 CAPM） n/a" = "manual"
               ),
               selected = APP_DEFAULTS$beta_u_apply_source,
               inline = FALSE
             ),
+            # 保留隱藏欄位，避免舊 session / server 讀取時缺 ID
+            tags$div(
+              style = "display:none;",
+              radioButtons(
+                "beta_purpose",
+                NULL,
+                choices = c("valuation" = "valuation"),
+                selected = "valuation"
+              )
+            ),
             helpText(
-              "Bottom-Up／本公司 Unlevered：先取 βᵤ，再依下方目標 D/E 槓桿化為 βe 後寫入 CAPM。",
-              "Rolling／Summary／產業平均：以股權 β_L 直接寫入（適合監控或資料不足備援）。",
-              "變更來源會自動同步；「手動輸入」數值請至 Unlevered βᵤ 分頁設定。"
+              "Bottom-Up：可比公司去槓桿→平均／中位→依目標 D/E 再槓桿，降低單一公司股價情緒噪音。",
+              "產業平均：結構性備援，非個股短窗敏感度。",
+              "Rolling／Summary KPI 僅供對照，不會出現在可套用選項中。"
             ),
             actionButton(
               "apply_beta_u_selected", "立即同步所選 β 至 CAPM",
@@ -168,19 +161,24 @@ beta_unlever_section_ui <- function() {
     fluidRow(
       box(
         width = 5, status = "warning", solidHeader = FALSE,
-        radioButtons(
-          "beta_bl_source", "槓桿 Beta（β_L）來源",
-          choices = c(
-            "自動（Summary → Rolling）" = "auto",
-            "Finance Summary（Yahoo 5Y Monthly）" = "summary",
-            "Rolling 估計（需先於 Rolling 分頁估計）" = "rolling"
-          ),
-          selected = APP_DEFAULTS$beta_bl_source,
-          inline = FALSE
+        tags$h5(style = "margin-top:0;", "本公司 βᵤ（僅參考，不寫入 CAPM）"),
+        tags$div(
+          style = "display:none;",
+          radioButtons(
+            "beta_bl_source", "槓桿 Beta（β_L）來源",
+            choices = c(
+              "Finance Summary（Yahoo 5Y Monthly）" = "summary",
+              "Rolling 估計（需先於 Rolling 分頁估計）" = "rolling",
+              "自動（Summary → Rolling）" = "auto"
+            ),
+            selected = APP_DEFAULTS$beta_bl_source,
+            inline = FALSE
+          )
         ),
         helpText(
-          "估值備援路徑：自身歷史 β_L → 去槓桿成 βᵤ → 再依目標 D/E 槓桿化 βe。",
-          "T 取自 WACC「所得稅率 T (%)」；預設 D/E = Total Debt ÷ 股權市值。"
+          "個股股價 β／Rolling 易受市場情緒污染，故不提供套用至 CAPM。",
+          "此區只展示去槓桿結果供對照；估值請用右側 Bottom-Up。",
+          "T 取自 WACC；D/E = Total Debt ÷ 股權市值。"
         ),
         tags$hr(),
         radioButtons(
@@ -199,7 +197,7 @@ beta_unlever_section_ui <- function() {
           value = APP_DEFAULTS$beta_target_de,
           min = 0, max = 10, step = 0.01
         ),
-        helpText("Bottom-Up／本公司 βᵤ 套用至 CAPM 前，會依此 D/E 再槓桿成 βe。"),
+        helpText("Bottom-Up βᵤ 套用至 CAPM 前，會依此目標 D/E 再槓桿成 βe。"),
         htmlOutput("beta_unlever_firm_result")
       ),
       box(
@@ -261,7 +259,7 @@ beta_rolling_section_ui <- function() {
     fluidRow(
       box(
         width = 5, status = "primary", solidHeader = TRUE,
-        title = tagList(icon("sliders-h"), "預估設定（風險監控）"),
+        title = tagList(icon("sliders-h"), "預估設定（交叉檢驗，不寫入 CAPM）"),
         selectizeInput(
           "beta_bench", "基準指數（Benchmark）",
           choices = c(
@@ -277,7 +275,7 @@ beta_rolling_section_ui <- function() {
           )
         ),
         selectInput(
-          "beta_lookback_months", "主窗口（寫入／套用）",
+          "beta_lookback_months", "主窗口（交叉檢驗，不寫入 CAPM）",
           choices = c(
             "1 年（12 個月）" = 12,
             "2 年（24 個月）" = 24,
@@ -295,13 +293,11 @@ beta_rolling_section_ui <- function() {
           )
         ),
         helpText(
-          "適合監控近期市場風險變化與當前定價敏感度；不宜單獨作為估值唯一依據。",
-          "β = Cov(Rᵢ, Rₘ) / Var(Rₘ)，優先月末報酬；樣本不足時改用週報酬。",
-          "估計時一併比較 1Y／2Y／5Y；估值交叉檢驗請回 Beta Overview。"
+          "Rolling β 反映股價對市場的近期敏感度，含市場情緒／事件噪音。",
+          "此分頁只供交叉檢驗，已移除「套用至 CAPM」以避免污染內在價值折現率。",
+          "β = Cov(Rᵢ, Rₘ) / Var(Rₘ)；估計時一併比較 1Y／2Y／5Y。"
         ),
-        actionButton("calc_beta_est", "估計 Rolling β", class = "btn-primary", icon = icon("calculator")),
-        tags$span(style = "display:inline-block; width: 8px;"),
-        actionButton("apply_beta_est", "套用至 CAPM β（選 Rolling）", class = "btn-success", icon = icon("check")),
+        actionButton("calc_beta_est", "估計 Rolling β（僅檢驗）", class = "btn-primary", icon = icon("calculator")),
         tags$br(), tags$br(),
         htmlOutput("beta_est_result")
       ),
@@ -1323,8 +1319,8 @@ ui <- dashboardPage(
             "Beta Overview",
             icon = icon("th-large"),
             helpText(
-              "依用途決策樹建議主估計：估值→Bottom-Up βᵤ→再槓桿 βe；監控→Rolling β。",
-              "βᵤ 是連接槓桿風險與營運風險的中介；CAPM／Ke 使用股權 βe。"
+              "內在價值路徑：只把 Bottom-Up／產業／手動 β 寫入 CAPM。",
+              "Rolling／Summary／個股股價 β 已排除，避免市場情緒污染折現率。"
             ),
             beta_overview_section_ui()
           ),
@@ -1333,7 +1329,7 @@ ui <- dashboardPage(
             icon = icon("industry"),
             helpText(
               "βᵤ = β_L / (1 + (1−T)·(D/E)) 代表營運資產風險。",
-              "估值實務：可比公司去槓桿→平均／中位→依目標 D/E 再槓桿；寫入 CAPM 請至 Beta Overview。"
+              "估值請用 Bottom-Up；本公司股價 β 去槓桿結果僅供參考，不寫入 CAPM。"
             ),
             beta_unlever_section_ui()
           ),
@@ -1341,8 +1337,8 @@ ui <- dashboardPage(
             "Rolling β",
             icon = icon("chart-area"),
             helpText(
-              "風險監控主估計：比較 1Y／2Y／5Y Rolling β_L。",
-              "估值時僅作交叉檢驗；若與 Bottom-Up 再槓桿 βe 差距過大，請檢查同業、資本結構、事件與流動性。"
+              "市場敏感度交叉檢驗（含情緒／事件噪音）。",
+              "已移除套用至 CAPM；若與 Bottom-Up βe 差距過大，請檢查同業、資本結構、事件與流動性。"
             ),
             beta_rolling_section_ui()
           )
