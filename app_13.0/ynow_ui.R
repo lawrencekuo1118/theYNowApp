@@ -378,10 +378,9 @@ beta_rolling_section_ui <- function() {
       ),
       box(
         width = 7, status = "info", solidHeader = TRUE,
-        title = tagList(icon("exchange-alt"), "窗口比較（與估值 β 對照）"),
+        title = tagList(icon("exchange-alt"), "窗口比較"),
         tableOutput("beta_window_table"),
         tags$hr(),
-        tableOutput("beta_sources_table"),
         plotOutput("plt_beta_scatter", height = "280px")
       )
     )

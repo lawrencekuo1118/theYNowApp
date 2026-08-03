@@ -2537,51 +2537,6 @@ server <- function(input, output, session) {
   }
   output$beta_est_result <- renderUI({ .beta_est_result_content() })
 
-  .beta_sources_table_df <- function() {
-    res <- beta_est_result()
-    est <- if (!is.null(res) && isTRUE(res$ok)) res$beta else NA_real_
-    cur <- suppressWarnings(as.numeric(input$capm_beta)[1])
-    data.frame(
-      來源 = c("Finance Summary (Yahoo 5Y Monthly)", "產業平均", "Rolling 估計", "目前 CAPM 使用中"),
-      Beta = c(
-        { b <- .summary_beta_value(); if (is.finite(b)) sprintf("%.3f", b) else "N/A" },
-        { b <- .industry_beta_value(); if (is.finite(b)) sprintf("%.3f", b) else "N/A" },
-        if (is.finite(est)) sprintf("%.3f", est) else "尚未估計",
-        if (is.finite(cur)) sprintf("%.3f", cur) else "N/A"
-      ),
-      說明 = c(
-        "Dashboard → Finance Summary",
-        "Get Started 所選產業標準",
-        if (!is.null(res) && isTRUE(res$ok)) paste0(res$method, " vs ", res$bench) else "按左側按鈕估計",
-        if (isTRUE(input$use_industry_beta)) {
-          "產業平均模式（Get Started 來源 = industry）"
-        } else {
-          drv <- as.character(beta_capm_driver() %||% "gs")[1]
-          src <- as.character(input$beta_u_apply_source %||% "")[1]
-          switch(
-            drv,
-            "rolling" = "連動｜Rolling",
-            "manual" = "連動｜CAPM 手動",
-            "industry" = "產業平均",
-            switch(
-              src,
-              "summary" = "連動｜Summary β",
-              "industry" = "連動｜產業預設 β",
-              "bottomup" = "連動｜自選公司平均 Bottom-Up",
-              "unlever_firm" = "連動｜去槓桿化 βᵤ",
-              "manual" = "連動｜手動 β",
-              "請選擇 CAPM β 來源"
-            )
-          )
-        }
-      ),
-      stringsAsFactors = FALSE
-    )
-  }
-  output$beta_sources_table <- renderTable({
-    .beta_sources_table_df()
-  }, striped = TRUE, bordered = TRUE, spacing = "s", width = "100%")
-
   .plt_beta_scatter_draw <- function() {
     res <- beta_est_result()
     if (is.null(res) || !isTRUE(res$ok) || length(res$rs) < 5) {
