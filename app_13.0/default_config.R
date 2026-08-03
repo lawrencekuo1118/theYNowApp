@@ -99,17 +99,17 @@ APP_DEFAULTS <- list(
   beta_bench      = "SPY",
   beta_lookback_months = 60,                 # Rolling 僅對照用（不寫入 CAPM）
   beta_min_obs    = 24,
-  # 估值固定排除市場情緒路徑；Rolling／Summary 槓桿 β 不得寫入 CAPM
+  # Rolling 估計不得寫入 CAPM；Summary β 可為預設套用來源
   beta_purpose    = "valuation",
-  # 本公司 βᵤ = Hamada(β_L,T,D/E)；β_L 預設 Summary，可經套用選項寫入 CAPM
+  # 去槓桿化 βᵤ = Hamada(β_L,T,D/E)；β_L 預設 Summary
   beta_bl_source  = "summary",
   beta_peers      = "",
   beta_bottomup_agg = "mean",                # mean | median
   # 舊版再槓桿設定已移除（隱藏相容）；不再提供目標 D/E UI
   beta_relever_de_mode = "current",
   beta_target_de  = NA,
-  # 套用至 CAPM（去情緒）：unlever_firm | bottomup(βᵤ) | industry | manual
-  beta_u_apply_source = "bottomup",
+  # 套用至 CAPM：summary | industry | bottomup | unlever_firm | manual
+  beta_u_apply_source = "summary",
   beta_u_manual   = NA,                      # 手動 β（直接寫入 CAPM）
 
   # --- 6. P/B／資產法 ---

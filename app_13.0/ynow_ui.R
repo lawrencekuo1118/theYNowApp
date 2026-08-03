@@ -23,13 +23,13 @@ capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
                                   result_id = "capm_result",
                                   advanced_hint = TRUE) {
   hints <- list(
-    "Beta (β) 與 Get Started → BETA 雙向連動：僅去情緒來源（Bottom-Up／產業／手動）可寫入 CAPM。",
-    "勾選「套用產業平均值」等同於 Get Started 選「產業平均」；取消勾選會改回 Bottom-Up。"
+    "Beta (β) 與 Get Started → BETA 雙向連動：選定來源（預設 Summary β）會寫入此處；此處手動改 β 會回寫為「手動輸入」。",
+    "勾選「套用產業平均值」等同於 Get Started 選「產業預設 β」；取消勾選會改回 Summary β。"
   )
   if (isTRUE(advanced_hint)) {
     hints <- c(
       hints,
-      "估值排除市場情緒：不用 Rolling／Yahoo Summary／個股股價 β；以 Bottom-Up 平均 βᵤ 為主。"
+      "Rolling 估計僅供對照，不寫入 CAPM；可改選產業預設、Bottom-Up、去槓桿化 βᵤ 或手動。"
     )
   }
   box(
@@ -108,7 +108,7 @@ beta_overview_section_ui <- function() {
         width = 12, status = "success", solidHeader = FALSE,
         tags$p(
           style = "font-weight:600; margin:0 0 10px 0;",
-          "套用至 CAPM（僅去情緒路徑）"
+          "套用至 CAPM"
         ),
         fluidRow(
           column(
@@ -117,9 +117,10 @@ beta_overview_section_ui <- function() {
               "beta_u_apply_source",
               label = NULL,
               choices = c(
-                "本公司 βᵤ n/a" = "unlever_firm",
-                "Bottom-Up (βᵤ→βe) n/a" = "bottomup",
-                "產業平均 β n/a" = "industry",
+                "Summary β n/a" = "summary",
+                "產業預設 β n/a" = "industry",
+                "自選公司平均 Bottom-Up (βᵤ→βe) n/a" = "bottomup",
+                "去槓桿化 βᵤ n/a" = "unlever_firm",
                 "手動定義 βe n/a" = "manual"
               ),
               selected = APP_DEFAULTS$beta_u_apply_source,
@@ -136,9 +137,11 @@ beta_overview_section_ui <- function() {
               )
             ),
             helpText(
-              "本公司 βᵤ：Hamada 去槓桿 βᵤ = β_L / (1+(1−T)·D/E)；β_L 預設 Yahoo 5Y Monthly。",
-              "Bottom-Up：可比公司股權 β → 去槓桿 → 平均／中位數 βᵤ。",
-              "產業平均：結構性備援。Rolling／Summary 槓桿 β 僅供對照，不寫入 CAPM。"
+              "Summary β：Yahoo Finance Summary「Beta (5Y Monthly)」，預設寫入 CAPM。",
+              "產業預設：所選產業結構 β。",
+              "自選公司平均 Bottom-Up：可比公司去槓桿平均／中位 βᵤ。",
+              "去槓桿化 βᵤ：Hamada βᵤ = β_L / (1+(1−T)·D/E)。",
+              "Rolling 估計僅供對照，不寫入 CAPM。"
             ),
             actionButton(
               "apply_beta_u_selected", "立即同步所選 β 至 CAPM",
@@ -166,7 +169,7 @@ beta_unlever_section_ui <- function() {
     fluidRow(
       box(
         width = 5, status = "warning", solidHeader = FALSE,
-        tags$h5(style = "margin-top:0;", "本公司 βᵤ（Hamada）"),
+        tags$h5(style = "margin-top:0;", "去槓桿化 βᵤ（Hamada）"),
         tags$div(
           style = "display:none;",
           radioButtons(
