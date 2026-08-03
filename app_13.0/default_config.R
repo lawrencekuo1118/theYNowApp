@@ -93,18 +93,25 @@ APP_DEFAULTS <- list(
   use_est_re      = TRUE,
 
   capm_rf         = default_rf,
-  capm_beta       = round(default_beta, 2),  # 啟動時占位；搜尋後預設改跟 Finance Summary β
-  use_industry_beta = FALSE,                 # FALSE = 跟 Summary β；TRUE = 產業平均
+  capm_beta       = round(default_beta, 2),  # 啟動占位；估值路徑就緒後改寫入再槓桿 βe
+  use_industry_beta = FALSE,                 # TRUE = 產業平均 β_L
   capm_rm         = round(default_rm, 2),
   beta_bench      = "SPY",
-  beta_lookback_months = 60,                 # 36 | 60 | 84（常見 3Y／5Y／7Y）
+  beta_lookback_months = 60,                 # 12 | 24 | 60（風險監控 1Y／2Y／5Y）
   beta_min_obs    = 24,
+  # 決策樹用途：valuation（DCF／WACC）｜monitoring（近期敏感度）
+  beta_purpose    = "valuation",
   # Unlevered：β_L 來源（summary｜rolling｜auto）；勿再用 capm（與 CAPM 輸出循環）
-  beta_bl_source  = "summary",               # summary | rolling | auto
+  beta_bl_source  = "auto",                  # auto：Summary → Rolling（估值備援）
   beta_peers      = "",
-  # 套用至 CAPM：直接寫入所選 β（不經再槓桿）— 去槓桿 βᵤ 或未去槓桿 β_L／估計值
-  beta_u_apply_source = "unlever_firm",      # unlever_firm | bottomup | summary | rolling | industry | manual
-  beta_u_manual   = NA,                      # 手動 β（套用選項最後一項；直接寫入 CAPM）
+  beta_bottomup_agg = "mean",                # mean | median
+  # 再槓桿 D/E：current = 本公司市值 D/E；manual = beta_target_de
+  beta_relever_de_mode = "current",
+  beta_target_de  = NA,
+  # 套用至 CAPM：估值路徑寫入再槓桿 βe；監控路徑寫入 Rolling／Summary β_L
+  # bottomup | unlever_firm | summary | rolling | industry | manual
+  beta_u_apply_source = "bottomup",
+  beta_u_manual   = NA,                      # 手動 βe（直接寫入 CAPM）
 
   # --- 6. P/B／資產法 ---
   pb_bvps         = NA,
