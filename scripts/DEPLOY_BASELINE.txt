@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12358366
+bundleId=12358844
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=0b5e389
-commit=0b5e389
-short=0b5e389
-message=Place main/sub-model valuation band under Get Started Model Selector.
-captured_at=2026-08-03T14:24:33+00:00
-note=app_13.0: CAPM Summary-first sources; valueBoxes reordered; Bear/Base/Bull under Model Selector above SGR; methodology collapsed guide.
+aligned_git=c07d67b
+commit=c07d67b
+short=c07d67b
+message=Remove default rd; scrape interest/debt into WACC; restore About methodology.
+captured_at=2026-08-03T16:06:20+00:00
+note=app_13.0 redeploy after PR#21 merge on master: no default_rd; Interest/Total Debt → wacc_rd; Valuation Methodology back on About.
