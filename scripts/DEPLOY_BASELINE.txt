@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12322066
+bundleId=12356260
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=origin/master
-commit=792644b
-short=792644b
-message=Fix currency toggle and default session to USD.
-captured_at=2026-07-26T12:55:52+00:00
-note=app_13.0 redeploy after USD default + radioGroupButtons currency toggle fix.
+aligned_git=8151bed
+commit=8151bed
+short=8151bed
+message=Reflect beta decision-tree logic in BETA dashboard.
+captured_at=2026-08-03T03:30:19+00:00
+note=app_13.0 redeploy after BETA decision-tree (valuation Bottom-Up→re-lever βe; monitoring Rolling 1Y/2Y/5Y). Canonical app baseline = this deploy.
