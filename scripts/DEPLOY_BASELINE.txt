@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12357220
+bundleId=12357991
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=219b0a6
-commit=219b0a6
-short=219b0a6
-message=Remove Get Started page h2 title; keep sidebar label.
-captured_at=2026-08-03T09:21:48+00:00
-note=app_13.0 on PR#19 line (from 12356883): CAPM firm βᵤ first option + removed get_started h2; sidebar Get Started kept.
+aligned_git=25726a1
+commit=25726a1
+short=25726a1
+message=Reorder CAPM β sources with Summary β as default first.
+captured_at=2026-08-03T13:09:06+00:00
+note=app_13.0: CAPM apply order Summary → 產業預設 → Bottom-Up → 去槓桿化 βᵤ → 手動; default=summary; Rolling blocked.
