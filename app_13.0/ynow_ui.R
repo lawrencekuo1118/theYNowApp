@@ -95,12 +95,12 @@ beta_overview_section_ui <- function() {
       )
     ),
     fluidRow(
-      valueBoxOutput("vbx_beta_unlever_bottomup", width = 6),
+      valueBoxOutput("vbx_beta_summary", width = 6),
       valueBoxOutput("vbx_beta_industry", width = 6)
     ),
     fluidRow(
+      valueBoxOutput("vbx_beta_unlever_bottomup", width = 4),
       valueBoxOutput("vbx_beta_unlever_firm", width = 4),
-      valueBoxOutput("vbx_beta_summary", width = 4),
       valueBoxOutput("vbx_beta_estimated", width = 4)
     ),
     fluidRow(

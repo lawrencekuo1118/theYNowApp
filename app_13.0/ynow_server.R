@@ -2458,7 +2458,7 @@ server <- function(input, output, session) {
     }
     valueBox(
       if (is.finite(b)) round(b, 2) else "N/A",
-      paste0("產業平均 β（", ind_lab, "）"),
+      paste0("產業預設 β（", ind_lab, "）"),
       icon = icon("industry"),
       color = "blue"
     )
@@ -3153,7 +3153,7 @@ server <- function(input, output, session) {
     res <- beta_bottomup_result()
     valueBox(
       if (!is.null(res) && isTRUE(res$ok)) res$beta_u_avg else "—",
-      "Bottom-Up 平均 βᵤ",
+      "自選公司平均 Bottom-Up βᵤ",
       icon = icon("users"),
       color = "yellow"
     )
