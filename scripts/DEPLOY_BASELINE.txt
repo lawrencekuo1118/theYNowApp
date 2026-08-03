@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12359285
+bundleId=12359310
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=ca6816d
-commit=ca6816d6da2243176a6ec4a9cbcd14f4f24d5aa9
-short=ca6816d
-message=Refine About section title alignment; unwrap Methodology from outer fluidRow.
-captured_at=2026-08-03T17:38:16Z
-note=app_13.0 redeploy: sensitivity matrix above DCF params; About titles aligned (incl. refine); methodology icon removed. Also includes 5f7542a.
+aligned_git=8283068
+commit=8283068683bb535933f658d25d36653ac1627369
+short=8283068
+message=chore: record shinyapps baseline bundle 12359285
+captured_at=2026-08-03T17:43:02Z
+note=app_13.0 redeploy: DCF sensitivity matrix above formula params; About Fraud/Methodology titles left-aligned; Methodology book icon removed; About CSS/fluidRow refine.
