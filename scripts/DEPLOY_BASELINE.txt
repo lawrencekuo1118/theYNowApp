@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12359339
+bundleId=12359379
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=9401895
-commit=9401895747ac103cc5ba6ffa009069360397bd48
-short=9401895
-message=ui(decision): deepen Chinese zone advice copy for clearer analyst tone.
-captured_at=2026-08-03T17:49:36Z
-note=app_13.0 redeploy: deepen decision-matrix Chinese zone advice (left-latent + sibling zones).
+aligned_git=76d5c86
+commit=76d5c86c3bb4fb3541d27b8b938748cad16bb665
+short=76d5c86
+message=ui: move Financial Fraud Red Flags under Decision Funnel.
+captured_at=2026-08-03T17:57:44Z
+note=app_13.0 redeploy: move Financial Fraud Red Flags section under Decision Funnel (Sensitivity).
