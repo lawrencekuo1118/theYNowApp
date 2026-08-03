@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12322066
+bundleId=12357156
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=origin/master
-commit=792644b
-short=792644b
-message=Fix currency toggle and default session to USD.
-captured_at=2026-07-26T12:55:52+00:00
-note=app_13.0 redeploy after USD default + radioGroupButtons currency toggle fix.
+aligned_git=a1fa1f8
+commit=a1fa1f8
+short=a1fa1f8
+message=Remove Get Started page h2 title; keep sidebar label.
+captured_at=2026-08-03T09:05:00+00:00
+note=app_13.0: removed get_started tab h2 heading; sidebar menuItem unchanged.
