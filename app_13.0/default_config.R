@@ -93,18 +93,24 @@ APP_DEFAULTS <- list(
   use_est_re      = TRUE,
 
   capm_rf         = default_rf,
-  capm_beta       = round(default_beta, 2),  # 啟動時占位；搜尋後預設改跟 Finance Summary β
-  use_industry_beta = FALSE,                 # FALSE = 跟 Summary β；TRUE = 產業平均
+  capm_beta       = round(default_beta, 2),  # 啟動占位；估值路徑就緒後改寫入 Bottom-Up βᵤ
+  use_industry_beta = FALSE,                 # TRUE = 產業平均 β_L
   capm_rm         = round(default_rm, 2),
   beta_bench      = "SPY",
-  beta_lookback_months = 60,                 # 36 | 60 | 84（常見 3Y／5Y／7Y）
+  beta_lookback_months = 60,                 # Rolling 僅對照用（不寫入 CAPM）
   beta_min_obs    = 24,
-  # Unlevered：β_L 來源（summary｜rolling｜auto）；勿再用 capm（與 CAPM 輸出循環）
-  beta_bl_source  = "summary",               # summary | rolling | auto
+  # 估值固定排除市場情緒路徑；Rolling／Summary 槓桿 β 不得寫入 CAPM
+  beta_purpose    = "valuation",
+  # 本公司 βᵤ = Hamada(β_L,T,D/E)；β_L 預設 Summary，可經套用選項寫入 CAPM
+  beta_bl_source  = "summary",
   beta_peers      = "",
-  # 套用至 CAPM：直接寫入所選 β（不經再槓桿）— 去槓桿 βᵤ 或未去槓桿 β_L／估計值
-  beta_u_apply_source = "unlever_firm",      # unlever_firm | bottomup | summary | rolling | industry | manual
-  beta_u_manual   = NA,                      # 手動 β（套用選項最後一項；直接寫入 CAPM）
+  beta_bottomup_agg = "mean",                # mean | median
+  # 舊版再槓桿設定已移除（隱藏相容）；不再提供目標 D/E UI
+  beta_relever_de_mode = "current",
+  beta_target_de  = NA,
+  # 套用至 CAPM（去情緒）：unlever_firm | bottomup(βᵤ) | industry | manual
+  beta_u_apply_source = "bottomup",
+  beta_u_manual   = NA,                      # 手動 β（直接寫入 CAPM）
 
   # --- 6. P/B／資產法 ---
   pb_bvps         = NA,
