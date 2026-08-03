@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12359070
+bundleId=12359118
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=18178a4
-commit=18178a4
-short=18178a4
-message=Remove Rolling β source comparison table; rename window compare header.
-captured_at=2026-08-03T16:55:16+00:00
-note=app_13.0 redeploy: Rolling β UI without source/Beta/說明 comparison table; window compare header shortened.
+aligned_git=7cc13d3
+commit=7cc13d34493ada158a94793dfd04443c7bb2130b
+short=7cc13d3
+message=Move manual βe under Hamada; remove RI-Model Model Formula block.
+captured_at=2026-08-03T17:05:13Z
+note=app_13.0 redeploy: manual βe under Hamada unlever section; RI-Model Model Formula box removed.
