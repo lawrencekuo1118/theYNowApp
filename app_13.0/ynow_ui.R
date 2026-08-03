@@ -400,11 +400,11 @@ beta_advanced_tab_ui <- function() {
 }
 
 #' Valuation methodology guide (Decision Matrix + DCF/DDM/RI/P/B tabs)
+#' Outer shinydashboard box removed — heading + tabBox sit directly on About.
 .valuation_methodology_section_ui <- function(collapsible = TRUE, collapsed = FALSE) {
-  box(
-    title = tagList(icon("book"), "Valuation Methodology｜評價方法論"),
-    width = 12, status = "info", solidHeader = TRUE,
-    collapsible = isTRUE(collapsible), collapsed = isTRUE(collapsed),
+  # collapsible/collapsed kept for call-site compatibility (no outer box to collapse)
+  tagList(
+    h3(tags$b(tagList(icon("book"), " Valuation Methodology｜評價方法論"))),
     withMathJax(),
     p("在進行企業估值時，選擇正確的模型與計算數字一樣重要。本系統支援四大評價邏輯：DCF、DDM、RI、P/B，以下說明適用場景與核心公式。"),
 
@@ -561,7 +561,7 @@ tabBox(title = "模型選擇決策指南", width = 12, side = "left",
                 ),
                 p("目標倍數可綜合 Justified（ROE／Ke）、產業中位與歷史中位，輸出 Bear／Base／Bull 三檔。雙重股權等「報價股 ≠ 財報股數口徑」時，可例外啟用約當股數校正。")
        )
-),
+    )
   )
 }
 
