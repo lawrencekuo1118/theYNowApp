@@ -2384,27 +2384,6 @@ ui <- dashboardPage(
       tabItem(tabName = "about",
               .about_bilingual_intro_ui(),
               tags$hr(style = "margin: 8px 0 20px 0; border-color: #e5e8eb;"),
-              
-              fluidRow(
-                column(
-                  width = 12,
-                  class = "ynow-about-section",
-                  h3(class = "ynow-about-section-title", tags$b("Financial Fraud Red Flags (財務舞弊警訊)")),
-                  p(
-                    class = "ynow-about-section-lead",
-                    "本系統內建五項核心排雷機制，透過交叉比對現金流與獲利品質，自動偵測潛在的地雷股："
-                  ),
-                  tags$ul(
-                    tags$li(tags$b("無自由現金流 (No FCF)："), "長期 FCF 為負，代表企業無法靠自身營運創造現金，需依賴外部融資。"),
-                    tags$li(tags$b("無營業現金流 (No OCF)："), "OCF 為負是極度危險的訊號，代表核心本業正在失血。"),
-                    tags$li(tags$b("獲利未實現 (OCF < Net Income)："), "俗稱「紙上富貴」，損益表雖然賺錢，但現金沒有實際流入公司，可能存在應收帳款作帳疑慮。"),
-                    tags$li(tags$b("虛假獲利 (Net Income > 0 but OCF < 0)："), "最經典的舞弊特徵，強烈暗示獲利品質不佳。"),
-                    tags$li(tags$b("高財務槓桿 (Debt/Equity > 2)："), "負債比過高，在升息循環或景氣下行時面臨極大的流動性風險。")
-                  ),
-                  tags$hr()
-                )
-              ),
-              
               .valuation_methodology_section_ui(collapsible = FALSE, collapsed = FALSE)
       )
     )
