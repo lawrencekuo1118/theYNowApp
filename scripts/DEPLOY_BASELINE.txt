@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12356735
+bundleId=12356764
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=0ff72b6
-commit=0ff72b6
-short=0ff72b6
-message=Remove re-lever βe settings and apply Bottom-Up βᵤ directly.
-captured_at=2026-08-03T07:01:16+00:00
-note=app_13.0: removed re-lever βe settings; CAPM uses Bottom-Up βᵤ / industry / manual; Rm above Beta.
+aligned_git=ba4588a
+commit=ba4588a
+short=ba4588a
+message=Tweak CAPM beta source radio labels.
+captured_at=2026-08-03T07:06:07+00:00
+note=app_13.0: beta apply labels Bottom-Up (βᵤ→βe) / 產業平均 β / 手動定義 βe.
