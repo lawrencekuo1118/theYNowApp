@@ -400,14 +400,24 @@ beta_advanced_tab_ui <- function() {
 
 #' Valuation methodology guide (Decision Matrix + DCF/DDM/RI/P/B tabs)
 #' Outer shinydashboard box removed — heading + tabBox sit directly on About.
+#' Title/lead use column(12); tabBox keeps width=12 (shinydashboard always emits col-sm-N).
 .valuation_methodology_section_ui <- function(collapsible = TRUE, collapsed = FALSE) {
   # collapsible/collapsed kept for call-site compatibility (no outer box to collapse)
   tagList(
-    h3(tags$b(tagList(icon("book"), " Valuation Methodology｜評價方法論"))),
-    withMathJax(),
-    p("在進行企業估值時，選擇正確的模型與計算數字一樣重要。本系統支援四大評價邏輯：DCF、DDM、RI、P/B，以下說明適用場景與核心公式。"),
-
-tabBox(title = "模型選擇決策指南", width = 12, side = "left",
+    fluidRow(
+      column(
+        width = 12,
+        class = "ynow-about-section",
+        h3(class = "ynow-about-section-title", tags$b("Valuation Methodology｜評價方法論")),
+        withMathJax(),
+        p(
+          class = "ynow-about-section-lead",
+          "在進行企業估值時，選擇正確的模型與計算數字一樣重要。本系統支援四大評價邏輯：DCF、DDM、RI、P/B，以下說明適用場景與核心公式。"
+        )
+      )
+    ),
+    fluidRow(
+      tabBox(title = "模型選擇決策指南", width = 12, side = "left",
        
        # Tab 1: 方法論比較矩陣 (表格)
        tabPanel("Decision Matrix", icon = icon("table"),
@@ -560,6 +570,7 @@ tabBox(title = "模型選擇決策指南", width = 12, side = "left",
                 ),
                 p("目標倍數可綜合 Justified（ROE／Ke）、產業中位與歷史中位，輸出 Bear／Base／Bull 三檔。雙重股權等「報價股 ≠ 財報股數口徑」時，可例外啟用約當股數校正。")
        )
+      )
     )
   )
 }
@@ -1275,6 +1286,23 @@ ui <- dashboardPage(
         }
         .ynow-about-feat > li > b {
           color: #1a1a1a;
+        }
+        /* About 後續區塊：與「關於 The YNow App」同左緣（Bootstrap col padding） */
+        #shiny-tab-about .ynow-about-section {
+          padding-left: 15px;
+          padding-right: 15px;
+        }
+        #shiny-tab-about .ynow-about-section-title {
+          margin-top: 0;
+          margin-left: 0;
+          padding-left: 0;
+        }
+        #shiny-tab-about .ynow-about-section-lead {
+          margin-left: 0;
+          padding-left: 0;
+        }
+        #shiny-tab-about .ynow-about-section > ul {
+          margin-left: 0;
         }
 
         /* Backtest：策略參數 tabBox 輕量潤飾 */
@@ -2030,22 +2058,6 @@ ui <- dashboardPage(
                        fluidRow(column(width = 12, .beta_moved_to_get_started_box()))
                      )
               ),
-              .model_param_sensitivity_box(
-                "DCF 公式參數：每股估值貢獻與敏感度",
-                "dcf_param_sensitivity_table"
-              )
-      ),
-      
-      # 🌟 呼叫 RI 模型分頁介面
-      ri_module_ui("mod_ri"),
-      
-      # 🌟 呼叫 P/B／資產估值分頁介面
-      pb_asset_module_ui("mod_pb"),
-      
-      tabItem(tabName = "sensitivity",
-              
-              decision_ui("main_decision"),
-              
               tabBox(title = "SENSITIVITY", width = "auto",
                      fluidRow(
                        column(
@@ -2070,7 +2082,21 @@ ui <- dashboardPage(
                          uiOutput("sensitivity_analysis_panel")
                        )
                      )
+              ),
+              .model_param_sensitivity_box(
+                "DCF 公式參數：每股估值貢獻與敏感度",
+                "dcf_param_sensitivity_table"
               )
+      ),
+      
+      # 🌟 呼叫 RI 模型分頁介面
+      ri_module_ui("mod_ri"),
+      
+      # 🌟 呼叫 P/B／資產估值分頁介面
+      pb_asset_module_ui("mod_pb"),
+      
+      tabItem(tabName = "sensitivity",
+              decision_ui("main_decision")
       ),
       
       tabItem(tabName = "backtest",
@@ -2365,17 +2391,22 @@ ui <- dashboardPage(
               tags$hr(style = "margin: 8px 0 20px 0; border-color: #e5e8eb;"),
               
               fluidRow(
-                column(width = 12,
-                       h3(tags$b("Financial Fraud Red Flags (財務舞弊警訊)")),
-                       p("本系統內建五項核心排雷機制，透過交叉比對現金流與獲利品質，自動偵測潛在的地雷股："),
-                       tags$ul(
-                         tags$li(tags$b("無自由現金流 (No FCF)："), "長期 FCF 為負，代表企業無法靠自身營運創造現金，需依賴外部融資。"),
-                         tags$li(tags$b("無營業現金流 (No OCF)："), "OCF 為負是極度危險的訊號，代表核心本業正在失血。"),
-                         tags$li(tags$b("獲利未實現 (OCF < Net Income)："), "俗稱「紙上富貴」，損益表雖然賺錢，但現金沒有實際流入公司，可能存在應收帳款作帳疑慮。"),
-                         tags$li(tags$b("虛假獲利 (Net Income > 0 but OCF < 0)："), "最經典的舞弊特徵，強烈暗示獲利品質不佳。"),
-                         tags$li(tags$b("高財務槓桿 (Debt/Equity > 2)："), "負債比過高，在升息循環或景氣下行時面臨極大的流動性風險。")
-                       ),
-                       tags$hr()
+                column(
+                  width = 12,
+                  class = "ynow-about-section",
+                  h3(class = "ynow-about-section-title", tags$b("Financial Fraud Red Flags (財務舞弊警訊)")),
+                  p(
+                    class = "ynow-about-section-lead",
+                    "本系統內建五項核心排雷機制，透過交叉比對現金流與獲利品質，自動偵測潛在的地雷股："
+                  ),
+                  tags$ul(
+                    tags$li(tags$b("無自由現金流 (No FCF)："), "長期 FCF 為負，代表企業無法靠自身營運創造現金，需依賴外部融資。"),
+                    tags$li(tags$b("無營業現金流 (No OCF)："), "OCF 為負是極度危險的訊號，代表核心本業正在失血。"),
+                    tags$li(tags$b("獲利未實現 (OCF < Net Income)："), "俗稱「紙上富貴」，損益表雖然賺錢，但現金沒有實際流入公司，可能存在應收帳款作帳疑慮。"),
+                    tags$li(tags$b("虛假獲利 (Net Income > 0 but OCF < 0)："), "最經典的舞弊特徵，強烈暗示獲利品質不佳。"),
+                    tags$li(tags$b("高財務槓桿 (Debt/Equity > 2)："), "負債比過高，在升息循環或景氣下行時面臨極大的流動性風險。")
+                  ),
+                  tags$hr()
                 )
               ),
               
