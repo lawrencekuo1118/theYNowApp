@@ -227,14 +227,6 @@ ri_module_ui <- function(id) {
               DT::dataTableOutput(ns("tbl_ri_details"))
             )
           )
-        ),
-        fluidRow(
-          box(
-            title = tagList(icon("book"), "Model Formula"),
-            width = 12, status = "warning", solidHeader = TRUE,
-            collapsible = TRUE, collapsed = TRUE,
-            uiOutput(ns("ui_ri_formula"))
-          )
         )
       ),
 
@@ -738,21 +730,6 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
                       "Residual Income", "PV(RI)"),
           currency = dt_currency_symbol(), digits = 2
         )
-    })
-
-    # ----- Formula panel -----
-    output$ui_ri_formula <- renderUI({
-      withMathJax(tagList(
-        tags$p(tags$b("剩餘收益 (Residual Income)")),
-        tags$p("$$RI_t = (ROE_t - K_e) \\times BV_{t-1}$$"),
-        tags$p("等價於：淨利 − 股權資金成本＝$$NI_t - K_e \\times BV_{t-1}$$"),
-        tags$hr(),
-        tags$p(tags$b("內在價值")),
-        tags$p("$$V_0 = BV_0 + \\sum_{t=1}^{N} \\frac{RI_t}{(1+K_e)^t} + \\frac{TV}{(1+K_e)^N}$$"),
-        tags$p("其中終值 $$TV = \\dfrac{RI_N (1+g)}{K_e - g}$$（永續成長剩餘收益）"),
-        tags$p(tags$b("Terminal Contribution")),
-        tags$p("$$TV\\ Ratio = \\dfrac{PV(Terminal)}{V_0}$$")
-      ))
     })
 
     # ----- Sensitivity matrix -----

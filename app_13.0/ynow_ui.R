@@ -273,7 +273,19 @@ beta_unlever_section_ui <- function() {
           "β_L 預設 Yahoo Finance Summary「Beta (5Y Monthly)」；T 取自 WACC；D/E = Total Debt ÷ 股權市值。",
           "可於 Beta Overview「套用至 CAPM」選第一項寫入；槓桿 β_L 本身仍不直接寫入 CAPM。"
         ),
-        htmlOutput("beta_unlever_firm_result")
+        htmlOutput("beta_unlever_firm_result"),
+        tags$hr(),
+        tags$h5("手動定義 βe"),
+        numericInput(
+          "beta_u_manual",
+          NULL,
+          value = APP_DEFAULTS$beta_u_manual,
+          min = 0, max = 5, step = 0.01
+        ),
+        helpText(
+          "於 Beta Overview 選「手動定義 βe」後，此值會直接寫入 CAPM；",
+          "在此修改數值時也會自動改選手動來源並同步。"
+        )
       ),
       box(
         width = 7, status = "warning", solidHeader = FALSE,
@@ -309,19 +321,7 @@ beta_unlever_section_ui <- function() {
         tags$br(), tags$br(),
         htmlOutput("beta_bottomup_result"),
         tags$br(),
-        tableOutput("beta_bottomup_peers_table"),
-        tags$hr(),
-        tags$h5("手動定義 βe"),
-        numericInput(
-          "beta_u_manual",
-          NULL,
-          value = APP_DEFAULTS$beta_u_manual,
-          min = 0, max = 5, step = 0.01
-        ),
-        helpText(
-          "於 Beta Overview 選「手動定義 βe」後，此值會直接寫入 CAPM；",
-          "在此修改數值時也會自動改選手動來源並同步。"
-        )
+        tableOutput("beta_bottomup_peers_table")
       )
     )
   )
