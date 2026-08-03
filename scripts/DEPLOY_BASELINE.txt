@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12356354
+bundleId=12356735
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=51a7668
-commit=51a7668
-short=51a7668
-message=Exclude market-sentiment beta paths from CAPM settings.
-captured_at=2026-08-03T04:24:13+00:00
-note=app_13.0 redeploy (retry): CAPM only Bottom-Up/industry/manual; Rolling/Summary/firm price beta blocked.
+aligned_git=0ff72b6
+commit=0ff72b6
+short=0ff72b6
+message=Remove re-lever βe settings and apply Bottom-Up βᵤ directly.
+captured_at=2026-08-03T07:01:16+00:00
+note=app_13.0: removed re-lever βe settings; CAPM uses Bottom-Up βᵤ / industry / manual; Rm above Beta.
