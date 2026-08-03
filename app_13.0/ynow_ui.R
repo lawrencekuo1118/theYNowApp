@@ -14,6 +14,84 @@
   tags$p(style = "margin: 0 0 12px 0; font-size: 12.5px; color: #555; line-height: 1.5;", text)
 }
 
+#' About 分頁：中英左右對照專案簡介
+.about_bilingual_intro_ui <- function() {
+  zh_features <- tags$ul(
+    class = "ynow-about-feat",
+    tags$li(
+      tags$b("自動化數據與防雷機制："),
+      "即時抓取三大報表，並內建「財務舞弊警訊 (Red Flags)」，透過交叉比對現金流與獲利品質，自動偵測潛在的地雷股與價值陷阱。"
+    ),
+    tags$li(
+      tags$b("四大估值引擎："),
+      "內建自由現金流 (DCF/FCFF)、股利折現 (DDM)、資產本淨比 (P/B) 與剩餘收益 (RI) 模型，系統能根據產業屬性與企業生命週期，動態推薦最適合的評價路徑。"
+    ),
+    tags$li(
+      tags$b("智能決策與量化回測："),
+      "結合 Piotroski F-Score 財務體質檢核、安全邊際 (MOS) 區間，以及具備「機構級風控思維」的 Point-in-Time (PIT) 回測引擎，提供貼近實戰的策略驗證。"
+    ),
+    tags$li(
+      tags$b("一鍵投資報告："),
+      "自動彙整估值圖表、KPI 與分析結果，產出可下載的專業 PDF 投資意見報告。"
+    )
+  )
+  en_features <- tags$ul(
+    class = "ynow-about-feat",
+    tags$li(
+      tags$b("Automated Data & Fraud Detection: "),
+      "Instantly fetches core financial statements and utilizes built-in \"Financial Fraud Red Flags\" to automatically detect potential value traps by cross-verifying cash flows and earnings quality."
+    ),
+    tags$li(
+      tags$b("Four Valuation Engines: "),
+      "Features Discounted Cash Flow (DCF/FCFF), Dividend Discount Model (DDM), Price-to-Book Asset Valuation (P/B), and Residual Income (RI) models. The system dynamically recommends the most suitable valuation path based on sector attributes and industry lifecycles."
+    ),
+    tags$li(
+      tags$b("Smart Decision Matrix & Backtesting: "),
+      "Combines the Piotroski F-Score for financial health checks, Margin of Safety (MOS) bands, and an institutional-grade Point-in-Time (PIT) backtesting engine to offer robust, real-world strategy validation."
+    ),
+    tags$li(
+      tags$b("One-Click Investment Reports: "),
+      "Automatically compiles valuation charts, KPIs, and analysis results into professional, downloadable PDF investment opinion reports."
+    )
+  )
+
+  fluidRow(
+    class = "ynow-about-bilingual",
+    column(
+      width = 6,
+      class = "ynow-about-col ynow-about-col--zh",
+      tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
+      tags$p(
+        class = "ynow-about-lead",
+        "The YNow App (v13.0) 是一套專為專業投資者與分析師打造的「全方位量化財務與估值決策系統」。本系統整合了即時財報抓取、多維度估值模型與動態回測引擎，將繁雜的市場數據轉化為直觀、科學的投資決策。"
+      ),
+      tags$p(
+        class = "ynow-about-method",
+        "我們的核心方法論為：",
+        tags$b("「先分類，再選模型；先推導，再校正；先給區間，再給單點。」")
+      ),
+      tags$h4(class = "ynow-about-feat-h", tags$b("核心功能亮點：")),
+      zh_features
+    ),
+    column(
+      width = 6,
+      class = "ynow-about-col ynow-about-col--en",
+      tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
+      tags$p(
+        class = "ynow-about-lead",
+        "The YNow App (v13.0) is a comprehensive quantitative financial analysis and valuation decision system designed for professional investors and analysts. It seamlessly integrates real-time financial data parsing, multi-dimensional valuation models, and a dynamic backtesting engine to transform complex market data into actionable, scientific investment insights."
+      ),
+      tags$p(
+        class = "ynow-about-method",
+        "Our core methodology is: ",
+        tags$b("\"Classify before selecting models; derive before calibrating; provide valuation ranges before absolute price targets.\"")
+      ),
+      tags$h4(class = "ynow-about-feat-h", tags$b("Core Features:")),
+      en_features
+    )
+  )
+}
+
 #' Shared CAPM / Beta settings block (canonical IDs on DCF → WACC).
 #' @param calc_id actionButton id
 #' @param result_id htmlOutput id for CAPM result text
@@ -1144,6 +1222,62 @@ ui <- dashboardPage(
           line-height: 1.35;
         }
 
+        /* About：中英左右對照簡介 */
+        .ynow-about-bilingual {
+          margin: 0 0 8px 0;
+        }
+        .ynow-about-col {
+          padding-bottom: 8px;
+        }
+        .ynow-about-col--zh {
+          border-right: 1px solid #e5e8eb;
+        }
+        @media (max-width: 991px) {
+          .ynow-about-col--zh {
+            border-right: none;
+            border-bottom: 1px solid #e5e8eb;
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+          }
+        }
+        .ynow-about-title {
+          margin: 0 0 12px 0;
+          font-size: 22px;
+          line-height: 1.3;
+          color: #1a1a1a;
+        }
+        .ynow-about-lead,
+        .ynow-about-method {
+          font-size: 13.5px;
+          line-height: 1.65;
+          color: #333;
+          margin: 0 0 12px 0;
+        }
+        .ynow-about-method {
+          padding: 10px 12px;
+          background: #f7fbff;
+          border-left: 4px solid #3c8dbc;
+          border-radius: 0 4px 4px 0;
+        }
+        .ynow-about-feat-h {
+          margin: 16px 0 8px 0;
+          font-size: 15px;
+          color: #222;
+        }
+        .ynow-about-feat {
+          margin: 0;
+          padding-left: 18px;
+          font-size: 13px;
+          line-height: 1.6;
+          color: #444;
+        }
+        .ynow-about-feat > li {
+          margin-bottom: 10px;
+        }
+        .ynow-about-feat > li > b {
+          color: #1a1a1a;
+        }
+
         /* Backtest：策略參數 tabBox 輕量潤飾 */
         .ynow-bt-params .nav-tabs-custom > .nav-tabs {
           border-bottom-color: #e5e8eb;
@@ -2228,13 +2362,8 @@ ui <- dashboardPage(
       # ℹ️ About 分頁 (系統介紹與評價方法論)
       # ==========================================
       tabItem(tabName = "about",
-              fluidRow(
-                column(width = 12,
-                       h2(tags$b("About The YNow App")),
-                       p("The YNow App v13.0 以「先分類，再選模型；先推導，再校正；先給區間，再給單點」為方法論，整合自動化資料抓取、主／副估值模型（DCF／DDM／P/B／RI）與決策區間看板。"),
-                       tags$hr()
-                )
-              ),
+              .about_bilingual_intro_ui(),
+              tags$hr(style = "margin: 8px 0 20px 0; border-color: #e5e8eb;"),
               
               fluidRow(
                 column(width = 12,
