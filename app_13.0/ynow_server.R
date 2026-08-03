@@ -2413,7 +2413,7 @@ server <- function(input, output, session) {
         glue::glue("✅ Rolling β = {res$beta}（{res$method}，n={res$n_obs}，基準 {res$bench}）"),
         type = "message", duration = 6
       )
-      # Rolling 僅交叉檢驗：估計後不寫入 CAPM
+      # Rolling 僅對照：估計後不寫入 CAPM
     } else {
       showNotification(paste0("❌ ", res$reason %||% "估計失敗"), type = "error", duration = 8)
     }
@@ -2423,7 +2423,7 @@ server <- function(input, output, session) {
     # 已排除：Rolling β 含市場情緒／短窗噪音，不得寫入 CAPM／Ke／WACC
     if (!isTRUE(silent)) {
       showNotification(
-        "已排除情緒路徑：Rolling β 僅供交叉檢驗，不能套用至 CAPM。請改用 Bottom-Up βᵤ→βe。",
+        "Rolling β 只供對照，不能寫入 CAPM。請改用 Bottom-Up (βᵤ→βe)。",
         type = "warning", duration = 8
       )
     }
@@ -2440,7 +2440,7 @@ server <- function(input, output, session) {
     b <- .summary_beta_value()
     valueBox(
       if (is.finite(b)) round(b, 2) else "N/A",
-      "Summary β（參考｜不寫入）",
+      "Summary β（對照用）",
       icon = icon("file-invoice"),
       color = "green"
     )
@@ -2468,7 +2468,7 @@ server <- function(input, output, session) {
     res <- beta_est_result()
     valueBox(
       if (!is.null(res) && isTRUE(res$ok)) res$beta else "—",
-      "Rolling β（檢驗｜不寫入）",
+      "Rolling β（對照用）",
       icon = icon("chart-line"),
       color = "yellow"
     )
@@ -2490,8 +2490,8 @@ server <- function(input, output, session) {
       "<div style='padding:10px;border-left:4px solid #f39c12;background:#fdf6e3;font-size:13px;'>
          <b>β = {res$beta}</b> · {res$method} · n={res$n_obs}<br/>
          基準 {res$bench} · 回溯 {res$lookback} 月 · as-of {res$as_of}<br/>
-         <span style='color:#922b21;'>僅交叉檢驗，不寫入 CAPM。</span>
-         對照 Ke（若誤用）≈ <b>{if (is.finite(ke)) sprintf('%.2f%%', ke) else 'N/A'}</b>
+         <span style='color:#666;'>僅供與估值 β 對照，不會寫入 CAPM／Ke。</span>
+         （若誤用）Ke ≈ <b>{if (is.finite(ke)) sprintf('%.2f%%', ke) else 'N/A'}</b>
        </div>"
     ))
   }
@@ -3109,7 +3109,7 @@ server <- function(input, output, session) {
     f <- firm_unlever_reactive()
     valueBox(
       if (is.finite(f$beta_u)) round(f$beta_u, 3) else "—",
-      "本公司 βᵤ（參考｜不寫入）",
+      "本公司 βᵤ（對照用）",
       icon = icon("balance-scale"),
       color = "orange"
     )
@@ -3144,7 +3144,7 @@ server <- function(input, output, session) {
     }
     HTML(glue::glue(
       "<div style='padding:10px;border-left:4px solid #e67e22;background:#fef5e7;font-size:13px;'>
-         <b>βᵤ = β_L / (1+(1−T)·D/E)</b>（僅參考，不寫入 CAPM）<br/>
+         <b>βᵤ = β_L / (1+(1−T)·D/E)</b>（對照用，不寫入 CAPM）<br/>
          β_L = {round(f$bl, 3)}（{f$bl_label}）· T = {sprintf('%.1f%%', f$tax * 100)} ·
          D/E = {sprintf('%.3f', f$de_info$de)}<br/>
          → <b>βᵤ = {if (is.finite(f$beta_u)) sprintf('%.3f', f$beta_u) else 'N/A'}</b>
@@ -3206,7 +3206,7 @@ server <- function(input, output, session) {
           ready = TRUE,
           title = "去情緒主估計：Bottom-Up 平均 βᵤ",
           rationale = "以同業去槓桿平均／中位 βᵤ 降低單一公司股價情緒噪音，直接供 CAPM／Ke／WACC。",
-          next_steps = "可按下方按鈕套用。Rolling／Summary 僅供交叉檢驗，不會寫入 CAPM。"
+          next_steps = "可按下方按鈕套用。Rolling／Summary 只供對照，不會寫入 CAPM。"
         ))
       }
       return(list(
@@ -3326,7 +3326,7 @@ server <- function(input, output, session) {
         ";background:", if (warn) "#fdedec" else "#eaf2f8",
         ";font-size:12.5px;line-height:1.5;"
       ),
-      tags$b("估值交叉檢驗"),
+      tags$b("與估值 β 對照"),
       tags$br(),
       HTML(glue::glue(
         "Bottom-Up βᵤ = <b>{sprintf('%.3f', be)}</b> · Rolling β = <b>{sprintf('%.3f', rb)}</b> · |Δ| = <b>{sprintf('%.3f', gap)}</b>"
@@ -3338,7 +3338,7 @@ server <- function(input, output, session) {
           "差距偏大：請回頭檢查可比公司是否選錯、資本結構是否異常、期間是否含重大事件、股價流動性是否不足。"
         )
       } else {
-        tags$span(style = "color:#1a5276;", "差距可控；CAPM 仍只用 Bottom-Up βᵤ，Rolling 僅輔助驗證、不寫入。")
+        tags$span(style = "color:#1a5276;", "差距可控；CAPM 仍用 Bottom-Up βᵤ，Rolling 只作對照。")
       }
     )
   })

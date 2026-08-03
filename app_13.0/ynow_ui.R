@@ -67,7 +67,7 @@ capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
   )
 }
 
-#' Beta Overview：去情緒估值 β（Bottom-Up）+ Rolling 僅交叉檢驗
+#' Beta Overview：去情緒估值 β（Bottom-Up）+ Rolling 僅對照
 beta_overview_section_ui <- function() {
   tagList(
     fluidRow(
@@ -79,8 +79,8 @@ beta_overview_section_ui <- function() {
           "CAPM／Ke／WACC 只接受去情緒來源：",
           tags$b("Bottom-Up 平均 βᵤ"),
           "（主估計）、產業結構 β（備援）、或手動 β。",
-          tags$b("Rolling／Yahoo Summary／本公司股價 β 不可寫入 CAPM"),
-          "，僅作交叉檢驗或監控參考。"
+          tags$b("Rolling／Yahoo Summary／本公司股價 β"),
+          "只作交叉檢驗（對照用，不進入 Ke／WACC）。"
         ),
         uiOutput("beta_decision_tree_panel"),
         tags$div(
@@ -165,7 +165,7 @@ beta_unlever_section_ui <- function() {
     fluidRow(
       box(
         width = 5, status = "warning", solidHeader = FALSE,
-        tags$h5(style = "margin-top:0;", "本公司 βᵤ（僅參考，不寫入 CAPM）"),
+        tags$h5(style = "margin-top:0;", "本公司 βᵤ（對照用）"),
         tags$div(
           style = "display:none;",
           radioButtons(
@@ -187,8 +187,8 @@ beta_unlever_section_ui <- function() {
           numericInput("beta_target_de", NULL, value = NA, min = 0, max = 10, step = 0.01)
         ),
         helpText(
-          "個股股價 β／Rolling 易受市場情緒污染，故不提供套用至 CAPM。",
-          "此區只展示去槓桿結果供對照；估值請用右側 Bottom-Up。",
+          "個股股價 β 易受市場情緒影響，故只供對照、不進入 CAPM。",
+          "估值請用右側 Bottom-Up。",
           "T 取自 WACC；D/E = Total Debt ÷ 股權市值。"
         ),
         htmlOutput("beta_unlever_firm_result")
@@ -246,13 +246,13 @@ beta_unlever_section_ui <- function() {
 }
 
 #' Rolling β 預估（Get Started）
-#' 風險監控主估計：對 SPY／QQQ／IWM 做月末報酬迴歸；並比較 1Y／2Y／5Y。
+#' 僅交叉檢驗：對照估值用 β，不寫入 CAPM。
 beta_rolling_section_ui <- function() {
   tagList(
     fluidRow(
       box(
         width = 5, status = "primary", solidHeader = TRUE,
-        title = tagList(icon("sliders-h"), "預估設定（交叉檢驗，不寫入 CAPM）"),
+        title = tagList(icon("sliders-h"), "預估設定（僅交叉檢驗）"),
         selectizeInput(
           "beta_bench", "基準指數（Benchmark）",
           choices = c(
@@ -268,7 +268,7 @@ beta_rolling_section_ui <- function() {
           )
         ),
         selectInput(
-          "beta_lookback_months", "主窗口（交叉檢驗，不寫入 CAPM）",
+          "beta_lookback_months", "主窗口（對照用）",
           choices = c(
             "1 年（12 個月）" = 12,
             "2 年（24 個月）" = 24,
@@ -286,17 +286,17 @@ beta_rolling_section_ui <- function() {
           )
         ),
         helpText(
-          "Rolling β 反映股價對市場的近期敏感度，含市場情緒／事件噪音。",
-          "此分頁只供交叉檢驗，已移除「套用至 CAPM」以避免污染內在價值折現率。",
-          "β = Cov(Rᵢ, Rₘ) / Var(Rₘ)；估計時一併比較 1Y／2Y／5Y。"
+          "Rolling β 看的是股價對大盤的近期敏感度，容易夾帶市場情緒。",
+          "這裡只拿來和估值 β 對照，不會寫入 CAPM／Ke／WACC。",
+          "β = Cov(Rᵢ, Rₘ) / Var(Rₘ)；可同時看 1Y／2Y／5Y。"
         ),
-        actionButton("calc_beta_est", "估計 Rolling β（僅檢驗）", class = "btn-primary", icon = icon("calculator")),
+        actionButton("calc_beta_est", "估計 Rolling β（對照用）", class = "btn-primary", icon = icon("calculator")),
         tags$br(), tags$br(),
         htmlOutput("beta_est_result")
       ),
       box(
         width = 7, status = "info", solidHeader = TRUE,
-        title = tagList(icon("exchange-alt"), "窗口比較 × 估值交叉檢驗"),
+        title = tagList(icon("exchange-alt"), "窗口比較（與估值 β 對照）"),
         tableOutput("beta_window_table"),
         tags$hr(),
         tableOutput("beta_sources_table"),
@@ -1322,7 +1322,7 @@ ui <- dashboardPage(
             icon = icon("industry"),
             helpText(
               "βᵤ = β_L / (1 + (1−T)·(D/E)) 代表營運資產風險。",
-              "估值請用 Bottom-Up；本公司股價 β 去槓桿結果僅供參考，不寫入 CAPM。"
+              "估值請用 Bottom-Up；本公司股價 β 去槓桿結果只供對照。"
             ),
             beta_unlever_section_ui()
           ),
@@ -1330,8 +1330,8 @@ ui <- dashboardPage(
             "Rolling β",
             icon = icon("chart-area"),
             helpText(
-              "市場敏感度交叉檢驗（含情緒／事件噪音）。",
-              "已移除套用至 CAPM；若與 Bottom-Up βᵤ 差距過大，請檢查同業、資本結構、事件與流動性。"
+              "用 Rolling β 對照估值結果（含情緒／事件噪音）。",
+              "不會寫入 CAPM；若與 Bottom-Up βᵤ 差距過大，請檢查同業、資本結構、事件與流動性。"
             ),
             beta_rolling_section_ui()
           )

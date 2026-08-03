@@ -97,7 +97,7 @@ APP_DEFAULTS <- list(
   use_industry_beta = FALSE,                 # TRUE = 產業平均 β_L
   capm_rm         = round(default_rm, 2),
   beta_bench      = "SPY",
-  beta_lookback_months = 60,                 # Rolling 僅交叉檢驗用（不寫入 CAPM）
+  beta_lookback_months = 60,                 # Rolling 僅對照用（不寫入 CAPM）
   beta_min_obs    = 24,
   # 估值固定排除市場情緒路徑；Rolling／Summary／個股股價 β 不得寫入 CAPM
   beta_purpose    = "valuation",
