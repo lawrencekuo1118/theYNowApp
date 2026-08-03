@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12356764
+bundleId=12356883
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=ba4588a
-commit=ba4588a
-short=ba4588a
-message=Tweak CAPM beta source radio labels.
-captured_at=2026-08-03T07:06:07+00:00
-note=app_13.0: beta apply labels Bottom-Up (βᵤ→βe) / 產業平均 β / 手動定義 βe.
+aligned_git=54c9e4e
+commit=54c9e4e
+short=54c9e4e
+message=Allow firm Hamada βᵤ as first CAPM apply source.
+captured_at=2026-08-03T07:36:59+00:00
+note=app_13.0: CAPM apply options 本公司 βᵤ (Hamada) / Bottom-Up / 產業平均 / 手動; Rolling/Summary levered still blocked.
