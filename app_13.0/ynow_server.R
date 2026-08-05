@@ -787,6 +787,8 @@ server <- function(input, output, session) {
       c("WACC", "Re (%)", .snapshot_value(input$wacc_re), "Cost of equity"),
       c("WACC", "Use CAPM Re", .snapshot_value(input$use_estimated_re), "TRUE uses CAPM-estimated Re"),
       c("WACC", "Rd (%)", .snapshot_value(input$wacc_rd), "Cost of debt"),
+      c("WACC", "Rd min (%)", .snapshot_value(input$wacc_rd_min), "Clamp floor for scraped Rd"),
+      c("WACC", "Rd max (%)", .snapshot_value(input$wacc_rd_max), "Clamp ceiling for scraped Rd"),
       c("WACC", "Tax Rate T (%)", .snapshot_value(input$wacc_tax), "After-tax debt cost = Rd×(1-T)"),
       c("DDM", "D0", .snapshot_value(input[["mod_ddm-d0"]]), "P0 = D1 / (Ke-g); D1 = D0×(1+g)"),
       c("DDM", "g (%)", .snapshot_value(input[["mod_ddm-g"]]), "Dividend growth; optional sync with central SGR"),
@@ -874,6 +876,8 @@ server <- function(input, output, session) {
       wacc_stage2 = c("Two-Stage", "WACC2 (%)", "Terminal discount"),
       wacc_re = c("WACC", "Re (%)", "Cost of equity"),
       wacc_rd = c("WACC", "Rd (%)", "Cost of debt"),
+      wacc_rd_min = c("WACC", "Rd 下限 (%)", "財報推估 rᵈ 夾限下限"),
+      wacc_rd_max = c("WACC", "Rd 上限 (%)", "財報推估 rᵈ 夾限上限"),
       wacc_tax = c("WACC", "稅率 T (%)", "After-tax debt cost"),
       use_est_re = c("WACC", "使用 CAPM Re", "TRUE = Re 跟 CAPM"),
       capm_rf = c("CAPM", "Rf (%)", "無風險利率（啟動時估）"),
@@ -2016,7 +2020,18 @@ server <- function(input, output, session) {
     return(ifelse(is.na(val), 0, val))
   })
 
-  # --- 負債成本 rᵈ (%)：利息費用／總負債（無全域預設）---
+  # --- 負債成本 rᵈ (%)：利息費用／總負債（無全域預設）；上下限由 UI 參數決定 ---
+  .rd_clamp_bounds <- function() {
+    lo <- suppressWarnings(as.numeric(input$wacc_rd_min)[1])
+    hi <- suppressWarnings(as.numeric(input$wacc_rd_max)[1])
+    if (!is.finite(lo)) lo <- APP_DEFAULTS$wacc_rd_min %||% 0
+    if (!is.finite(hi)) hi <- APP_DEFAULTS$wacc_rd_max %||% 40
+    if (hi < lo) {
+      tmp <- lo; lo <- hi; hi <- tmp
+    }
+    c(lo = lo, hi = hi)
+  }
+
   scraped_rd_pct <- reactive({
     req(d_income_statement(), d_balance_sheet())
     interest <- tryCatch(
@@ -2041,11 +2056,15 @@ server <- function(input, output, session) {
       return(NA_real_)
     }
     rd <- 100 * interest / debt
-    max(0, min(rd, 40))
+    b <- .rd_clamp_bounds()
+    max(b[["lo"]], min(rd, b[["hi"]]))
   })
 
   observeEvent(
-    list(d_income_statement(), d_balance_sheet(), d_cash_flow(), scraped_debt()),
+    list(
+      d_income_statement(), d_balance_sheet(), d_cash_flow(), scraped_debt(),
+      input$wacc_rd_min, input$wacc_rd_max
+    ),
     {
       rd <- tryCatch(scraped_rd_pct(), error = function(e) NA_real_)
       if (is.finite(rd)) {

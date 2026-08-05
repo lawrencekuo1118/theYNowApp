@@ -87,6 +87,8 @@ APP_DEFAULTS <- list(
   # --- 5. WACC / CAPM ---
   wacc_re         = default_re,
   wacc_rd         = NA_real_,           # 由財報利息／負債覆寫；無預設
+  wacc_rd_min     = 0,                  # 財報推估 rᵈ 下限（可調）
+  wacc_rd_max     = 40,                 # 財報推估 rᵈ 上限（可調）
   wacc_tax        = default_tax,
 
   use_est_re      = TRUE,
