@@ -2035,10 +2035,10 @@ ui <- dashboardPage(
                                     checkboxInput("use_estimated_re", "採用估算 rₑ（來自CAPM）", value = APP_DEFAULTS$use_est_re),
                                     numericInput("wacc_rd", "負債成本 rᵈ (%)", value = APP_DEFAULTS$wacc_rd, min = 0, step = 0.01),
                                     fluidRow(
-                                      column(6, numericInput("wacc_rd_min", "rᵈ 下限 (%)", value = APP_DEFAULTS$wacc_rd_min, min = 0, step = 0.1)),
-                                      column(6, numericInput("wacc_rd_max", "rᵈ 上限 (%)", value = APP_DEFAULTS$wacc_rd_max, min = 0, step = 0.1))
+                                      column(6, numericInput("wacc_rd_min", "估算 rᵈ 下限 (%)", value = APP_DEFAULTS$wacc_rd_min, min = 0, step = 0.1)),
+                                      column(6, numericInput("wacc_rd_max", "估算 rᵈ 上限 (%)", value = APP_DEFAULTS$wacc_rd_max, min = 0, step = 0.1))
                                     ),
-                                    helpText("財報推估＝利息費用／總負債；結果會夾在下限～上限內（可自行調整）。"),
+                                    helpText("無現成 rᵈ 時欄位空白；財報抓取後以利息費用／總負債設算，並夾在下限～上限內。"),
                                     numericInput("wacc_tax", "所得稅率 T (%)", value = APP_DEFAULTS$wacc_tax, min = 0, max = 100, step = 0.01),
                                     actionButton("calc_wacc", "計算 WACC", class = "btn-primary"),
                                     tags$br(), htmlOutput("wacc_result")
