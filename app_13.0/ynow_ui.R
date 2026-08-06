@@ -188,54 +188,38 @@ beta_overview_section_ui <- function() {
           style = "font-weight:600; margin:0 0 10px 0;",
           "套用至 CAPM"
         ),
-        fluidRow(
-          column(
-            width = 7,
-            radioButtons(
-              "beta_u_apply_source",
-              label = NULL,
-              choices = c(
-                "Summary β n/a" = "summary",
-                "產業預設 β n/a" = "industry",
-                "自選公司平均 Bottom-Up (βᵤ→βe) n/a" = "bottomup",
-                "去槓桿化 βᵤ n/a" = "unlever_firm",
-                "手動定義 βe n/a" = "manual"
-              ),
-              selected = APP_DEFAULTS$beta_u_apply_source,
-              inline = FALSE
-            ),
-            # 保留隱藏欄位，避免舊 session / server 讀取時缺 ID
-            tags$div(
-              style = "display:none;",
-              radioButtons(
-                "beta_purpose",
-                NULL,
-                choices = c("valuation" = "valuation"),
-                selected = "valuation"
-              )
-            ),
-            helpText(
-              "Summary β：Yahoo Finance Summary「Beta (5Y Monthly)」，預設寫入 CAPM。",
-              "產業預設：所選產業結構 β。",
-              "自選公司平均 Bottom-Up：可比公司去槓桿平均／中位 βᵤ。",
-              "去槓桿化 βᵤ：Hamada βᵤ = β_L / (1+(1−T)·D/E)。",
-              "Rolling 估計僅供對照，不寫入 CAPM。"
-            ),
-            actionButton(
-              "apply_beta_u_selected", "立即同步所選 β 至 CAPM",
-              class = "btn-success", icon = icon("check")
-            ),
-            tags$br(), tags$br(),
-            uiOutput("beta_crosscheck_panel")
+        # choiceNames／choiceValues 由 server 動態覆寫（數字粗體 + 各選項旁說明）
+        radioButtons(
+          "beta_u_apply_source",
+          label = NULL,
+          choiceNames = list(
+            HTML("Summary β <b>n/a</b> <span style='color:#666;font-size:12px;'>— Yahoo Finance Summary「Beta (5Y Monthly)」，預設寫入 CAPM。</span>"),
+            HTML("產業預設 β <b>n/a</b> <span style='color:#666;font-size:12px;'>— 所選產業結構 β。</span>"),
+            HTML("自選公司平均 Bottom-Up (βᵤ→βe) <b>n/a</b> <span style='color:#666;font-size:12px;'>— 可比公司去槓桿平均／中位 βᵤ。</span>"),
+            HTML("去槓桿化 βᵤ <b>n/a</b> <span style='color:#666;font-size:12px;'>— Hamada βᵤ = β_L / (1+(1−T)·D/E)。</span>"),
+            HTML("手動定義 βe <b>n/a</b>")
           ),
-          column(
-            width = 5,
-            tags$p(
-              style = "font-size:12.5px;color:#666;margin-top:0;",
-              "選定來源的 β 會直接寫入 DCF → WACC 的 CAPM。"
-            )
+          choiceValues = list("summary", "industry", "bottomup", "unlever_firm", "manual"),
+          selected = APP_DEFAULTS$beta_u_apply_source,
+          inline = FALSE
+        ),
+        # 保留隱藏欄位，避免舊 session / server 讀取時缺 ID
+        tags$div(
+          style = "display:none;",
+          radioButtons(
+            "beta_purpose",
+            NULL,
+            choices = c("valuation" = "valuation"),
+            selected = "valuation"
           )
-        )
+        ),
+        helpText("Rolling 估計僅供對照，不寫入 CAPM（故不列於上列選項）。"),
+        actionButton(
+          "apply_beta_u_selected", "立即同步所選 β 至 CAPM",
+          class = "btn-success", icon = icon("check")
+        ),
+        tags$br(), tags$br(),
+        uiOutput("beta_crosscheck_panel")
       )
     )
   )
@@ -2109,7 +2093,7 @@ ui <- dashboardPage(
               # 1) 折現比較圖置頂：基本面價值 vs 情緒波動價值(實際股價) vs 大盤
               fluidRow(
                 box(
-                  title = tagList(icon("balance-scale"), "折現比較：基本面價值 vs 情緒波動價值 vs 大盤"),
+                  title = tagList(icon("balance-scale"), "折現價值比較"),
                   width = 12, status = "primary", solidHeader = TRUE,
                   .bt_section_intro(
                     "歷史各點：僅用當時可得財報＋Rolling β 設算「基本面價值」（不套用目前分頁參數）。僅折線末端最新點掛勾目前 APP 分頁設定（DCF／DDM／RI／P/B）；「情緒波動價值」＝該股歷史實際股價；並疊加大盤（右軸）。搜尋後即預覽股價／大盤；勾選右下角評價模型即計算並顯示基本面價值（預設不勾選）。"

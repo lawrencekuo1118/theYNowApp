@@ -2957,12 +2957,24 @@ server <- function(input, output, session) {
   }
   observeEvent(input$apply_beta_u_selected, { .apply_selected_beta_u_to_capm(silent = FALSE) })
 
-  # Beta Overview：選項旁動態顯示各來源當前 β
+  # Beta Overview：選項旁動態顯示各來源當前 β（數字粗體）+ 分項說明
   .fmt_beta_choice_val <- function(v, digits = 2) {
     v <- suppressWarnings(as.numeric(v)[1])
-    if (is.finite(v)) sprintf("%.*f", digits, v) else "n/a"
+    if (is.finite(v)) sprintf("<b>%.*f</b>", digits, v) else "<b>n/a</b>"
   }
-  .beta_apply_source_choices <- function() {
+  .beta_apply_opt_label <- function(title, val_html, help_txt = NULL) {
+    help_html <- if (!is.null(help_txt) && nzchar(help_txt)) {
+      paste0(
+        " <span style='color:#666;font-size:12px;'>— ",
+        htmltools::htmlEscape(help_txt),
+        "</span>"
+      )
+    } else {
+      ""
+    }
+    HTML(paste0(htmltools::htmlEscape(title), " ", val_html, help_html))
+  }
+  .beta_apply_source_choice_ui <- function() {
     sum_v <- tryCatch(.summary_beta_value(), error = function(e) NA_real_)
     firm <- tryCatch(firm_unlever_reactive(), error = function(e) NULL)
     firm_v <- if (!is.null(firm)) suppressWarnings(as.numeric(firm$beta_u)[1]) else NA_real_
@@ -2976,19 +2988,43 @@ server <- function(input, output, session) {
     } else {
       "未選產業"
     }
-    ind_choice_lab <- paste0(
-      "產業預設 β ", .fmt_beta_choice_val(ind_b),
-      "（", ind_lab, "）"
-    )
-    setNames(
-      c("summary", "industry", "bottomup", "unlever_firm", "manual"),
-      c(
-        paste0("Summary β ", .fmt_beta_choice_val(sum_v)),
-        ind_choice_lab,
-        paste0("自選公司平均 Bottom-Up (βᵤ→βe) ", .fmt_beta_choice_val(bu_v)),
-        paste0("去槓桿化 βᵤ ", .fmt_beta_choice_val(firm_v)),
-        paste0("手動定義 βe ", .fmt_beta_choice_val(man_b))
+    values <- c("summary", "industry", "bottomup", "unlever_firm", "manual")
+    names_ui <- list(
+      .beta_apply_opt_label(
+        "Summary β", .fmt_beta_choice_val(sum_v),
+        "Yahoo Finance Summary「Beta (5Y Monthly)」，預設寫入 CAPM。"
+      ),
+      .beta_apply_opt_label(
+        paste0("產業預設 β（", ind_lab, "）"), .fmt_beta_choice_val(ind_b),
+        "所選產業結構 β。"
+      ),
+      .beta_apply_opt_label(
+        "自選公司平均 Bottom-Up (βᵤ→βe)", .fmt_beta_choice_val(bu_v),
+        "可比公司去槓桿平均／中位 βᵤ。"
+      ),
+      .beta_apply_opt_label(
+        "去槓桿化 βᵤ", .fmt_beta_choice_val(firm_v),
+        "Hamada βᵤ = β_L / (1+(1−T)·D/E)。"
+      ),
+      .beta_apply_opt_label(
+        "手動定義 βe", .fmt_beta_choice_val(man_b)
       )
+    )
+    label_key <- paste(
+      c(
+        .fmt_beta_choice_val(sum_v),
+        paste0(.fmt_beta_choice_val(ind_b), "|", ind_lab),
+        .fmt_beta_choice_val(bu_v),
+        .fmt_beta_choice_val(firm_v),
+        .fmt_beta_choice_val(man_b)
+      ),
+      collapse = "||"
+    )
+    list(
+      choiceNames = names_ui,
+      choiceValues = as.list(values),
+      values = values,
+      label_key = label_key
     )
   }
   beta_apply_choice_labels <- reactiveVal(NULL)
@@ -2999,16 +3035,16 @@ server <- function(input, output, session) {
     beta_est_result()
     input$industry_choice
     input$beta_u_manual
-    choices <- .beta_apply_source_choices()
-    labels <- names(choices)
-    if (identical(labels, isolate(beta_apply_choice_labels()))) return()
-    beta_apply_choice_labels(labels)
+    ui_ch <- .beta_apply_source_choice_ui()
+    if (identical(ui_ch$label_key, isolate(beta_apply_choice_labels()))) return()
+    beta_apply_choice_labels(ui_ch$label_key)
     sel <- isolate(as.character(input$beta_u_apply_source %||% APP_DEFAULTS$beta_u_apply_source)[1])
-    if (!sel %in% unname(choices)) sel <- APP_DEFAULTS$beta_u_apply_source
+    if (!sel %in% ui_ch$values) sel <- APP_DEFAULTS$beta_u_apply_source
     beta_apply_choices_updating(TRUE)
     updateRadioButtons(
       session, "beta_u_apply_source",
-      choices = choices,
+      choiceNames = ui_ch$choiceNames,
+      choiceValues = ui_ch$choiceValues,
       selected = sel
     )
     session$onFlushed(function() {
