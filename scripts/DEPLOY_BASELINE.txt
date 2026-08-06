@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12369969
+bundleId=12375490
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=61dce51
-commit=61dce513aa75b2220f01531ca7da6fd777fb81c5
-short=61dce51
-message=ui(wacc): clarify estimated rᵈ clamp min/max labels and help.
-captured_at=2026-08-05T15:48:16Z
-note=app_13.0 redeploy: configurable rᵈ clamp (dbe9594) + estimated rᵈ clamp label/help polish.
+aligned_git=4355b95
+commit=4355b9557ba1e72251b4565698716e599d791b5d
+short=4355b95
+message=Polish Beta Overview CAPM apply UI and rename discount compare box.
+captured_at=2026-08-06T17:25:34Z
+note=app_13.0 redeploy: CAPM apply help beside options, bold beta values, rename box to 折現價值比較.
