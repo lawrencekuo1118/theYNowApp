@@ -5941,22 +5941,42 @@ server <- function(input, output, session) {
     if (length(idx) == 0) {
       return(div(style = "color:#888;", "此財報未偵測到「重要」附註；取消勾選可顯示全部。"))
     }
+    summaries <- res$summaries
     tagList(
       lapply(idx, function(i) {
         title <- res$short_names[i]
         if (isTRUE(imp[i])) title <- paste0("⭐ ", title)
-        tags$details(
-          style = "margin-bottom:10px; border:1px solid #e3e3e3; border-radius:4px; padding:8px;",
-          open = if (isTRUE(imp[i]) && i == idx[1]) "open" else NULL,
-          tags$summary(
-            style = "cursor:pointer; font-weight:bold;",
+        bullets <- tryCatch(as.character(unlist(summaries[[i]])), error = function(e) character(0))
+        bullets <- bullets[nzchar(trimws(bullets))]
+        summary_ui <- if (length(bullets) > 0) {
+          tags$div(
+            style = "margin:6px 0 8px 0; background:#f7fbff; border-left:4px solid #3c8dbc; padding:8px 10px; border-radius:3px;",
+            tags$b("重點摘要"),
+            tags$ul(
+              style = "margin:6px 0 0 0; padding-left:20px;",
+              lapply(bullets, function(b) tags$li(style = "margin-bottom:4px;", b))
+            )
+          )
+        } else if (isTRUE(imp[i])) {
+          tags$div(style = "color:#999; margin:6px 0;", "（此附註未擷取到可摘要的重點句）")
+        } else NULL
+        tags$div(
+          style = "margin-bottom:12px; border:1px solid #e3e3e3; border-radius:4px; padding:10px;",
+          tags$div(
+            style = "font-weight:bold; font-size:15px;",
             title,
             tags$span(style = "color:#999; font-weight:normal; margin-left:6px;",
                       paste0("(", res$char_counts[i], " 字元)"))
           ),
-          div(
-            style = "margin-top:8px; max-height:340px; overflow-y:auto; white-space:pre-wrap; font-size:13px; line-height:1.5;",
-            res$full_texts[i]
+          summary_ui,
+          tags$details(
+            style = "margin-top:4px;",
+            open = if (isTRUE(imp[i]) && i == idx[1]) "open" else NULL,
+            tags$summary(style = "cursor:pointer; color:#3c8dbc;", "展開附註全文"),
+            div(
+              style = "margin-top:8px; max-height:340px; overflow-y:auto; white-space:pre-wrap; font-size:13px; line-height:1.5;",
+              res$full_texts[i]
+            )
           )
         )
       })

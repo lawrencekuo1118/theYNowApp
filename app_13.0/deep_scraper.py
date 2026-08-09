@@ -681,6 +681,10 @@ _SEC_BANNER = _re.compile(
     _re.IGNORECASE,
 )
 
+# Marks the start of the per-note XBRL element metadata footer appended to each
+# R#.htm rendering ("X - References ... X - Definition ... No definition ...").
+_SEC_XBRL_FOOTER = _re.compile(r"\s*X\s*-\s*(?:References|Definition)\b")
+
 
 def _sec_session():
     """curl_cffi session with a SEC-compliant User-Agent (browser impersonation
@@ -714,7 +718,11 @@ def _sec_clean_note_text(raw):
     from bs4 import BeautifulSoup
     text = BeautifulSoup(raw, "lxml").get_text(" ", strip=True)
     text = _re.sub(r"\s+", " ", text)
-    return _SEC_BANNER.sub("", text).strip()
+    text = _SEC_BANNER.sub("", text).strip()
+    m = _SEC_XBRL_FOOTER.search(text)
+    if m:
+        text = text[:m.start()].strip()
+    return text
 
 
 def _sec_is_important(short_name):
@@ -724,12 +732,94 @@ def _sec_is_important(short_name):
     return any(k in s for k in _SEC_IMPORTANT_KEYWORDS)
 
 
+# Salient-sentence keywords for the lightweight extractive summary.
+_SEC_SUMMARY_KEYWORDS = (
+    "recogn", "increase", "decrease", "obligation", "maturit",
+    "effective tax rate", "valuation allowance", "repurchas", "dividend",
+    "lease", "guarantee", "litigation", "contingenc", "impair", "goodwill",
+    "amortiz", "depreciat", "deferred", "unrecognized", "commitment",
+    "interest rate", "fair value", "hedge", "derivative", "segment",
+    "revenue", "operating", "allowance", "provision", "settlement",
+    "restructuring", "outstanding", "expense", "benefit", "liabilit",
+)
+
+_SEC_ABBR = _re.compile(
+    r"\b(U\.S|Inc|Corp|Ltd|No|vs|approx|Sept|Oct|Nov|Dec|Jan|Feb|Mar|Apr|Jun|Jul|Aug|e\.g|i\.e)\.",
+    _re.IGNORECASE,
+)
+
+
+def _sec_split_sentences(text):
+    t = _SEC_ABBR.sub(lambda m: m.group(0).replace(".", "<DOT>"), text or "")
+    parts = _re.split(r"(?<=[.;])\s+(?=[A-Z(“\"])", t)
+    out = []
+    for p in parts:
+        s = p.replace("<DOT>", ".").strip()
+        if s:
+            out.append(s)
+    return out
+
+
+def _sec_summarize(text, max_bullets=4, max_len=280):
+    """Rule-based extractive summary: pick the most information-dense sentences
+    (dollar amounts, percentages, years, financial keywords). No external API,
+    so it runs unchanged on shinyapps.io."""
+    if not text:
+        return []
+    sentences = _sec_split_sentences(text)
+    scored = []
+    for pos, s in enumerate(sentences):
+        words = s.split()
+        if len(words) < 7 or len(s) < 45 or len(s) > 360:
+            continue
+        low = s.lower()
+        if "[abstract]" in low or "months ended" in low or s.endswith(":"):
+            continue
+        score = 0.0
+        if "$" in s:
+            score += 2.0
+        if "%" in s:
+            score += 2.0
+        if _re.search(r"\b(19|20)\d{2}\b", s):
+            score += 1.0
+        kw = sum(1 for k in _SEC_SUMMARY_KEYWORDS if k in low)
+        score += min(kw, 3)
+        if score <= 0:
+            continue
+        scored.append((score, pos, s))
+    if not scored:
+        # Fallback: first couple of reasonably long, non-boilerplate sentences.
+        fallback = [
+            s for s in sentences
+            if len(s.split()) >= 8
+            and "[abstract]" not in s.lower()
+            and "months ended" not in s.lower()
+            and len(s) <= 360
+        ][:2]
+        return [(s[:max_len] + ("…" if len(s) > max_len else "")) for s in fallback]
+
+    scored.sort(key=lambda x: (-x[0], x[1]))
+    picked = []
+    seen = set()
+    for _, pos, s in scored:
+        key = s[:60].lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        picked.append((pos, s))
+        if len(picked) >= max_bullets:
+            break
+    picked.sort(key=lambda x: x[0])
+    return [(s[:max_len] + ("…" if len(s) > max_len else "")) for _, s in picked]
+
+
 def _sec_empty_result(error=""):
     return {
         "ok": False, "error": str(error), "company": "", "form": "",
         "filing_date": "", "report_date": "", "accession": "",
         "primary_doc_url": "", "short_names": [], "urls": [],
         "important": [], "char_counts": [], "excerpts": [], "full_texts": [],
+        "summaries": [],
     }
 
 
@@ -808,12 +898,15 @@ def sec_report_notes(ticker="AAPL", form="10-K", max_chars=1500):
                 text = _sec_clean_note_text(_sec_get(session, url))
             except Exception as e:  # noqa: BLE001
                 text = f"(failed to fetch note: {e})"
+            important = bool(_sec_is_important(short_name))
             result["short_names"].append(str(short_name))
             result["urls"].append(url)
-            result["important"].append(bool(_sec_is_important(short_name)))
+            result["important"].append(important)
             result["char_counts"].append(len(text))
             result["excerpts"].append(text[:max_chars])
             result["full_texts"].append(text)
+            # Only summarize important notes (keeps it fast and relevant).
+            result["summaries"].append(_sec_summarize(text) if important else [])
             time.sleep(0.12)  # polite to SEC (well under 10 req/s)
 
         if not result["short_names"]:
