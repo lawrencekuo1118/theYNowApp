@@ -415,6 +415,7 @@ ui <- dashboardPage(
              menuItem("RI-Model", tabName = "ri_calculator", icon = icon("gem")),
              menuItem("Sensitivity", tabName = "sensitivity", icon = icon("sliders-h")),
              menuItem("Backtest Zone", tabName = "backtest", icon = icon("vial")),
+             menuItem("實驗區 (Lab)", tabName = "lab_notes", icon = icon("flask")),
              menuItem("About", tabName = "about", icon = icon("info-circle"))
              # Snapshot 不放主選單（避免巢狀 li 被瀏覽器抬出隱藏）；改由底部捷徑切換
            ),
@@ -1994,6 +1995,71 @@ ui <- dashboardPage(
               )
       ),
       
+      # ==========================================
+      # 🧪 實驗區 (Lab)：SEC EDGAR 財報附註（美股）
+      # ==========================================
+      tabItem(
+        tabName = "lab_notes",
+        fluidRow(
+          column(
+            width = 12,
+            h2(tags$b("🧪 實驗區 — 財報附註擷取 (SEC EDGAR)")),
+            p("實驗性功能：直接從美國 SEC EDGAR 擷取指定美股的",
+              tags$b("最新財報（10-K / 10-Q）"),
+              "並抽出「財務報表附註 (Notes)」，自動標記與估值最相關的重要附註。",
+              tags$br(),
+              tags$span(
+                style = "color:#888;",
+                "資料來源：SEC EDGAR。僅支援美股（含 ADR，如 TSM）；台股附註不在此來源。"
+              )
+            ),
+            tags$hr()
+          )
+        ),
+        fluidRow(
+          column(
+            width = 4,
+            box(
+              width = 12, status = "primary", solidHeader = TRUE,
+              title = "查詢條件",
+              textInput("lab_sec_ticker", "美股代碼 (US Ticker)", value = "AAPL"),
+              radioButtons(
+                "lab_sec_form", "財報類型 (Form)",
+                choices = c("年報 10-K" = "10-K", "季報 10-Q" = "10-Q"),
+                selected = "10-K", inline = TRUE
+              ),
+              checkboxInput(
+                "lab_sec_important_only", "只顯示重要附註", value = TRUE
+              ),
+              actionButton(
+                "lab_sec_fetch", "抓取財報附註",
+                class = "btn-success btn-block",
+                icon = icon("download"),
+                style = "font-weight:bold;"
+              ),
+              tags$p(
+                style = "margin-top:10px; color:#888; font-size:12px;",
+                "提示：擷取需向 SEC 逐條抓取附註，約需數秒。"
+              )
+            ),
+            uiOutput("lab_sec_meta")
+          ),
+          column(
+            width = 8,
+            box(
+              width = 12, status = "info", solidHeader = TRUE,
+              title = "附註索引 (Notes Index)",
+              uiOutput("lab_sec_index")
+            ),
+            box(
+              width = 12, status = "info", solidHeader = TRUE,
+              title = "附註內容 (Notes)",
+              uiOutput("lab_sec_notes")
+            )
+          )
+        )
+      ),
+
       # ==========================================
       # ℹ️ About 分頁 (系統介紹與評價方法論)
       # ==========================================
