@@ -1,20 +1,25 @@
 ---
-description: Keep coding + OneDrive theYNow copies aligned to deployed master baseline
+description: Keep coding + OneDrive theYNow copies aligned to deployed shinyapps baseline
 alwaysApply: true
 ---
 
-# Dual-workspace sync (GitHub source of truth)
+# Dual-workspace sync (deployed shinyapps is source of truth)
 
-Latest app version: **app_13.0**
+Latest app version: **app_14.0**
 
-Development baseline = currently deployed line on shinyapps; see `scripts/DEPLOY_BASELINE.txt` for bundle/commit.
+**App / development baseline = currently deployed line on shinyapps.io**, not whatever happens to be at Git tip.  
+Authoritative record: `scripts/DEPLOY_BASELINE.txt` (bundleId, deploy commit, URL).
+
+- Treat that deploy commit’s `app_14.0/` tree as the canonical app.
+- GitHub `origin/master` may be one or more commits ahead for chore/docs (e.g. updating `DEPLOY_BASELINE.txt`); that does **not** change the app baseline unless a new shinyapps deploy is recorded.
+- Do not treat Cursor Cloud workspace tip, unreleased local edits, or OneDrive drift as newer “truth” for the live app.
 
 Edited from either:
 
 - `/Users/lawrencekuo/coding/theYNowApp` (fast local clone — **prefer all git operations here**)
 - `/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp` (OneDrive mirror)
 
-Before any edit session, ensure both paths match the latest GitHub tip:
+Before any edit session, ensure both paths match the **deploy baseline** (prefer the commit in `DEPLOY_BASELINE.txt`; Git tip is OK only when its `app_14.0/` tree matches that baseline):
 
 ```bash
 /Users/lawrencekuo/coding/bin/sync-theynow-workspaces.sh
@@ -27,6 +32,7 @@ After finishing edits:
 
 - From **coding** clone: `git add/commit` then `git push origin HEAD`, then run the sync script.
 - From **OneDrive**: `/Users/lawrencekuo/coding/bin/push-theynow-from-onedrive.sh "your message"` (mirror → coding → push → re-sync).
+- After a shinyapps deploy: update `scripts/DEPLOY_BASELINE.txt` so the recorded commit/bundle stays the baseline.
 
 **Never run `git status` / `git diff` / `git push` inside the OneDrive folder.**  
 OneDrive’s tree is a lightweight sync stub (objects via `alternates` → coding clone). Cloud I/O often times out (`mmap failed: Operation timed out`), so those commands hang or fail. To verify OneDrive alignment, read:

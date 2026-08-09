@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12375490
+bundleId=12386756
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=4355b95
-commit=4355b9557ba1e72251b4565698716e599d791b5d
-short=4355b95
-message=Polish Beta Overview CAPM apply UI and rename discount compare box.
-captured_at=2026-08-06T17:25:34Z
-note=app_13.0 redeploy: CAPM apply help beside options, bold beta values, rename box to 折現價值比較.
+aligned_git=pending-app14-deploy
+commit=pending
+short=pending
+message=pending app_14.0 deploy after master merge
+captured_at=2026-08-09T16:44:46Z
+note=Canonical app line is app_14.0. Live bundle 12386756 is prior WIP on app_13 tree; refresh via Rscript scripts/deploy_app_14.R.
