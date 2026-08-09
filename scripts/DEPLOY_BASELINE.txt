@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12386795
+bundleId=12386872
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=d962ac9
-commit=d962ac9321446065111459e2f8497c2b98759a51
-short=d962ac9
-message=ui(lab): default-collapse note full text details.
-captured_at=2026-08-09T16:59:00Z
-note=app_14.0: Lab note full text defaults to collapsed (<details> without open).
+aligned_git=1a1669d
+commit=1a1669def2fe4f145ad0f5c3c574d53622cf5172
+short=1a1669d
+message=feat(lab): keyword filter for SEC notes title/summary/body.
+captured_at=2026-08-09T17:27:50Z
+note=app_14.0: Lab keyword search (title/summary/body) + collapsed note details.
