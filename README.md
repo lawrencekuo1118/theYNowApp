@@ -8,9 +8,9 @@ Taiwan stock fundamental analysis Shiny app（雲端版：yfinance，無 Chromot
 
 `/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp`
 
-- 目前版本：`app_13.0/`（v13.0 — Valuation Methodology）
+- 目前版本：`app_14.0/`（v14.0 — Valuation Methodology + SEC Lab）
 - **開發／比對基準以目前 shinyapps 部署為準**（見 `scripts/DEPLOY_BASELINE.txt`），不是單純看 Git tip
-- 歷史版本：`app 3.0` … `app_12.0`（本機封存；GitHub Releases 另有標籤）
+- 歷史版本：`app 3.0` … `app_13.0`（本機封存；GitHub Releases 另有標籤）
 
 ## 本機開發（建議）
 
@@ -20,10 +20,10 @@ git pull origin master
 ```
 
 ```r
-shiny::runApp("app_13.0")
+shiny::runApp("app_14.0")
 ```
 
-Requires R packages used by `app_13.0/setup.R` / `app_13.0/global.R`, and Python deps from `app_13.0/requirements.txt`（可選本機 `.ynow_venv`）。
+Requires R packages used by `app_14.0/setup.R` / `app_14.0/global.R`, and Python deps from `app_14.0/requirements.txt`（可選本機 `.ynow_venv`）。
 
 ## 本機部署到 shinyapps.io
 
@@ -37,7 +37,7 @@ rsconnect::setAccountInfo(name = "hopesmasher1118", token = "...", secret = "...
 
 ```r
 rsconnect::deployApp(
-  appDir = "app_13.0",
+  appDir = "app_14.0",
   appName = "TheYNowApp",
   appId = 10907657,
   forceUpdate = TRUE
@@ -48,29 +48,29 @@ rsconnect::deployApp(
 
 ```bash
 # 可選：用環境變數餵憑證
-Rscript scripts/deploy_app_13.R
+Rscript scripts/deploy_app_14.R
 ```
 
 Live: https://hopesmasher1118.shinyapps.io/TheYNowApp/
 
-## v13.0 重點
+## v14.0 重點
 
-- 分類 → 主／副模型；Dashboard 以 Bear／Base／Bull 區間＋可信度呈現
-- P/B：Justified（ROE/Ke）＋產業＋歷史分位
-- 永續 g 預設 fundamental；成長股建議 two-stage；DCF／RI 股數級距一致
+- 延續 v13 方法論（分類 → 主／副模型；Bear／Base／Bull 區間＋可信度）
+- **實驗區 Lab**（Snapshot 旁 `testing env.`）：SEC EDGAR 年報 10-K／20-F、季報 10-Q、重大訊息 8-K／6-K
 
 ## Cloud notes
 
 - Financials via **yfinance** (no Chromote / Chrome on shinyapps.io)
 - `requirements.txt` / `py_require` for cloud Python
 
-## Layout (`app_13.0/`)
+## Layout (`app_14.0/`)
 
 | File | Role |
 |------|------|
 | `app.R` / `ynow_ui.R` / `ynow_server.R` / `global.R` | Shiny 進入點 |
 | `setup.R` | 分類器、P/B derive、可信度 |
 | `investment_decision_module.R` | 區間決策看板 |
+| `deep_scraper.py` / `web_crawler.R` | SEC Lab、資料抓取 |
 | `*_module.R` | DCF／DDM／RI／P/B／KPI／回測 |
 
 ## Older versions

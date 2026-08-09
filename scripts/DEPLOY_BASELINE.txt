@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12386572
+bundleId=12386756
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=4b94ced
-commit=4b94ced5be958d0cc9571db6f614c7a9b2c31260
-short=4b94ced
-message=Lab tab: use main page Ticker / Stock Code (no separate input)
-captured_at=2026-08-09T15:23:03Z
-note=app_13.0 redeploy from PR #24 (cursor/sec-notes-lab-tab-3ddf): Lab tab SEC EDGAR notes + summaries + ticker from main search.
+aligned_git=pending-app14-merge
+commit=pending
+short=pending
+message=pending app_14.0 merge/deploy
+captured_at=2026-08-09T16:44:21Z
+note=Live still from prior app_13.0 WIP redeploy (bundle 12386756). Canonical line becomes app_14.0 after merge+deploy_app_14.R.

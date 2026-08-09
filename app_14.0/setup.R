@@ -320,19 +320,6 @@ NET_INCOME_PATTERNS <- c(
   "Net Income Common Stockholders",
   "^Net Income$"
 )
-# 利息費用（損益／現金流別名；勿用 | 併成單一 grep）
-INTEREST_EXPENSE_PATTERNS <- c(
-  "^Interest Expense$",
-  "Interest Expense Non Operating",
-  "Net Interest Expense",
-  "Interest Expense"
-)
-INTEREST_PAID_PATTERNS <- c(
-  "^Interest Paid$",
-  "Cash Interest Paid",
-  "Interest Paid"
-)
-
 EQUITY_PATTERNS <- c(
   "Common Stock Equity",
   "Stockholders Equity",
@@ -892,7 +879,7 @@ recommend_valuation_models <- function(d_cf, industry_text = "", d_is = NULL, d_
     return(.pack(
       "holding_asset", "pb", sec,
       "P/B（控股／綜合；NAV／SOTP 待 13.1）",
-      "控股／綜合企業經濟本質偏淨資產組合；13.0 暫以有來源的 P/B 為主、RI 交叉驗證（完整 SOTP／NAV 留待後續）。"
+      "控股／綜合企業經濟本質偏淨資產組合；14.0 暫以有來源的 P/B 為主、RI 交叉驗證（完整 SOTP／NAV 留待後續）。"
     ))
   }
 
