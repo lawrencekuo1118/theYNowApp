@@ -5985,7 +5985,7 @@ server <- function(input, output, session) {
           summary_ui,
           tags$details(
             style = "margin-top:4px;",
-            open = if (isTRUE(imp[i]) && i == idx[1]) "open" else NULL,
+            # Default collapsed; user expands per note.
             tags$summary(style = "cursor:pointer; color:#3c8dbc;", "展開附註全文"),
             div(
               style = "margin-top:8px; max-height:340px; overflow-y:auto; white-space:pre-wrap; font-size:13px; line-height:1.5;",
