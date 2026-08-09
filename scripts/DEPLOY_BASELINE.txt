@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12322066
+bundleId=12386572
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=792644b
-commit=792644b
-short=792644b
-message=Fix currency toggle and default session to USD.
-captured_at=2026-07-26T12:55:52+00:00
-note=app_13.0 redeploy after USD default + radioGroupButtons currency toggle fix. Canonical app baseline = this deploy (not Git tip). origin/master may include later chore-only commits that only refresh this file.
+aligned_git=4b94ced
+commit=4b94ced5be958d0cc9571db6f614c7a9b2c31260
+short=4b94ced
+message=Lab tab: use main page Ticker / Stock Code (no separate input)
+captured_at=2026-08-09T15:23:03Z
+note=app_13.0 redeploy from PR #24 (cursor/sec-notes-lab-tab-3ddf): Lab tab SEC EDGAR notes + summaries + ticker from main search.
