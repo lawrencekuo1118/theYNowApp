@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12386756
+bundleId=12386780
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=pending-app14-deploy
-commit=pending
-short=pending
-message=pending app_14.0 deploy after master merge
-captured_at=2026-08-09T16:44:46Z
-note=Canonical app line is app_14.0. Live bundle 12386756 is prior WIP on app_13 tree; refresh via Rscript scripts/deploy_app_14.R.
+aligned_git=aba972a
+commit=aba972a67ded095d25910e19b4cb9e818e2567a8
+short=aba972a
+message=Merge branch 'cursor/sec-notes-lab-tab-3ddf': app_14.0 SEC Lab release.
+captured_at=2026-08-09T16:49:10Z
+note=app_14.0 canonical line: SEC Lab (10-K/20-F, 10-Q, 8-K/6-K), testing env. shortcut; app_13.0 retained as prior snapshot.
