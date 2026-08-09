@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12386780
+bundleId=12386795
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=aba972a
-commit=aba972a67ded095d25910e19b4cb9e818e2567a8
-short=aba972a
-message=Merge branch 'cursor/sec-notes-lab-tab-3ddf': app_14.0 SEC Lab release.
-captured_at=2026-08-09T16:49:10Z
-note=app_14.0 canonical line: SEC Lab (10-K/20-F, 10-Q, 8-K/6-K), testing env. shortcut; app_13.0 retained as prior snapshot.
+aligned_git=d962ac9
+commit=d962ac9321446065111459e2f8497c2b98759a51
+short=d962ac9
+message=ui(lab): default-collapse note full text details.
+captured_at=2026-08-09T16:59:00Z
+note=app_14.0: Lab note full text defaults to collapsed (<details> without open).
