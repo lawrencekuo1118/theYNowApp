@@ -2053,6 +2053,15 @@ ui <- dashboardPage(
               checkboxInput(
                 "lab_sec_important_only", "只顯示重要附註", value = TRUE
               ),
+              textInput(
+                "lab_sec_keyword", "關鍵字搜尋",
+                value = "",
+                placeholder = "例如 revenue、lease、tax…"
+              ),
+              tags$span(
+                style = "color:#888; font-size:12px; display:block; margin:-6px 0 10px 0;",
+                "比對附註標題、重點摘要與全文（不區分大小寫）；空白＝顯示全部。"
+              ),
               actionButton(
                 "lab_sec_fetch", "抓取財報附註",
                 class = "btn-success btn-block",

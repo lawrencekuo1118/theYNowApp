@@ -5892,6 +5892,37 @@ server <- function(input, output, session) {
     }
   })
 
+  # Filter note indices by important-only + keyword (title / summary / full text).
+  lab_sec_filtered_idx <- reactive({
+    res <- lab_sec_result()
+    if (is.null(res) || !isTRUE(res$ok) || length(res$short_names) == 0) {
+      return(integer(0))
+    }
+    n <- length(res$short_names)
+    idx <- seq_len(n)
+    imp <- as.logical(res$important)
+    if (length(imp) != n) imp <- rep(FALSE, n)
+    if (isTRUE(input$lab_sec_important_only)) {
+      idx <- idx[imp]
+    }
+    kw <- tolower(trimws(as.character(input$lab_sec_keyword %||% "")[1]))
+    if (!nzchar(kw) || length(idx) == 0) return(idx)
+
+    summaries <- res$summaries
+    keep <- vapply(idx, function(i) {
+      title <- tolower(as.character(res$short_names[i] %||% ""))
+      body <- tolower(as.character(res$full_texts[i] %||% ""))
+      excerpt <- tolower(as.character(res$excerpts[i] %||% ""))
+      bullets <- tryCatch(
+        tolower(paste(as.character(unlist(summaries[[i]])), collapse = " ")),
+        error = function(e) ""
+      )
+      hay <- paste(title, excerpt, body, bullets, sep = "\n")
+      grepl(kw, hay, fixed = TRUE)
+    }, logical(1))
+    idx[keep]
+  })
+
   output$lab_sec_meta <- renderUI({
     res <- lab_sec_result()
     if (is.null(res)) {
@@ -5905,6 +5936,13 @@ server <- function(input, output, session) {
     }
     n_total <- length(res$short_names)
     n_imp <- sum(as.logical(res$important))
+    n_shown <- length(lab_sec_filtered_idx())
+    kw <- trimws(as.character(input$lab_sec_keyword %||% "")[1])
+    shown_label <- if (nzchar(kw) || isTRUE(input$lab_sec_important_only)) {
+      paste0(n_total, "（重要 ", n_imp, "；目前顯示 ", n_shown, "）")
+    } else {
+      paste0(n_total, "（重要 ", n_imp, "）")
+    }
     box(
       width = 12, status = "success", solidHeader = TRUE, title = "財報資訊",
       tags$table(
@@ -5914,8 +5952,7 @@ server <- function(input, output, session) {
         tags$tr(tags$td(tags$b("申報日")), tags$td(res$filing_date)),
         tags$tr(tags$td(tags$b("財報期間")), tags$td(res$report_date)),
         tags$tr(tags$td(tags$b("Accession")), tags$td(res$accession)),
-        tags$tr(tags$td(tags$b("附註數")),
-                tags$td(paste0(n_total, "（重要 ", n_imp, "）")))
+        tags$tr(tags$td(tags$b("附註數")), tags$td(shown_label))
       ),
       tags$a(href = res$primary_doc_url, target = "_blank",
              icon("external-link-alt"), " 於 SEC EDGAR 開啟原始財報")
@@ -5927,9 +5964,13 @@ server <- function(input, output, session) {
     if (is.null(res) || !isTRUE(res$ok) || length(res$short_names) == 0) {
       return(div(style = "color:#888;", "（無資料）"))
     }
+    idx <- lab_sec_filtered_idx()
+    if (length(idx) == 0) {
+      return(div(style = "color:#888;", "沒有符合關鍵字／篩選條件的附註。"))
+    }
     imp <- as.logical(res$important)
     tags$ol(
-      lapply(seq_along(res$short_names), function(i) {
+      lapply(idx, function(i) {
         badge <- if (isTRUE(imp[i])) {
           tags$span(class = "label label-danger", style = "margin-left:6px;", "重要")
         } else NULL
@@ -5949,14 +5990,26 @@ server <- function(input, output, session) {
       return(div(style = "color:#888;", "（無資料）"))
     }
     imp <- as.logical(res$important)
-    only_imp <- isTRUE(input$lab_sec_important_only)
-    idx <- seq_along(res$short_names)
-    if (only_imp) idx <- idx[imp]
+    idx <- lab_sec_filtered_idx()
     if (length(idx) == 0) {
+      kw <- trimws(as.character(input$lab_sec_keyword %||% "")[1])
+      if (nzchar(kw)) {
+        return(div(style = "color:#888;", "沒有符合關鍵字的附註；試試其他字詞或清空搜尋。"))
+      }
       return(div(style = "color:#888;", "此財報未偵測到「重要」附註；取消勾選可顯示全部。"))
     }
     summaries <- res$summaries
+    kw <- tolower(trimws(as.character(input$lab_sec_keyword %||% "")[1]))
     tagList(
+      if (nzchar(kw)) {
+        tags$div(
+          style = "margin-bottom:10px; color:#555;",
+          tags$span(class = "label label-info", style = "margin-right:6px;", "關鍵字"),
+          tags$code(kw),
+          tags$span(style = "margin-left:8px; color:#888;",
+                    paste0("顯示 ", length(idx), " 則"))
+        )
+      } else NULL,
       lapply(idx, function(i) {
         title <- res$short_names[i]
         if (isTRUE(imp[i])) title <- paste0("⭐ ", title)
