@@ -2034,7 +2034,13 @@ ui <- dashboardPage(
             box(
               width = 12, status = "primary", solidHeader = TRUE,
               title = "查詢條件",
-              textInput("lab_sec_ticker", "美股代碼 (US Ticker)", value = "AAPL"),
+              tags$div(
+                style = "margin-bottom:10px;",
+                tags$label("美股代碼 (US Ticker)", class = "control-label"),
+                uiOutput("lab_sec_ticker_display"),
+                tags$span(style = "color:#888; font-size:12px;",
+                          "沿用主頁「Ticker / Stock Code」；於主頁搜尋即同步更新。")
+              ),
               radioButtons(
                 "lab_sec_form", "財報類型 (Form)",
                 choices = c("年報 10-K" = "10-K", "季報 10-Q" = "10-Q"),

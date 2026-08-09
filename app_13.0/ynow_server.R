@@ -5848,22 +5848,31 @@ server <- function(input, output, session) {
     showNotification("已開啟實驗區 (Lab) — 測試按鈕", type = "message", duration = 3)
   }, ignoreInit = TRUE)
 
-  # 切到實驗區時，若主搜尋已有代碼則預帶入（不覆寫使用者手動輸入）
-  observeEvent(input$sidebar_tabs, {
-    if (identical(input$sidebar_tabs, "lab_notes")) {
-      tk <- current_ticker()
-      if (!is.null(tk) && nzchar(tk) &&
-          identical(trimws(input$lab_sec_ticker %||% ""), "AAPL")) {
-        updateTextInput(session, "lab_sec_ticker", value = tk)
-      }
+  # 實驗區沿用主頁 Ticker / Stock Code：優先用已搜尋的代碼，否則用主頁輸入框
+  lab_ticker <- reactive({
+    tk <- current_ticker()
+    if (is.null(tk) || !nzchar(trimws(as.character(tk)))) {
+      tk <- input$sc
     }
-  }, ignoreInit = TRUE)
+    toupper(trimws(as.character(tk %||% "")))
+  })
+
+  output$lab_sec_ticker_display <- renderUI({
+    tk <- lab_ticker()
+    if (!nzchar(tk)) {
+      return(tags$div(
+        class = "alert alert-warning", style = "padding:6px 10px; margin:4px 0;",
+        "尚未設定主頁代碼，請至主頁輸入 Ticker / Stock Code。"
+      ))
+    }
+    tags$div(style = "font-size:20px; font-weight:bold; padding:2px 0;", tk)
+  })
 
   observeEvent(input$lab_sec_fetch, {
-    tk <- toupper(trimws(input$lab_sec_ticker %||% ""))
+    tk <- lab_ticker()
     form <- input$lab_sec_form %||% "10-K"
     if (!nzchar(tk)) {
-      showNotification("請輸入美股代碼", type = "warning")
+      showNotification("主頁尚未設定 Ticker / Stock Code", type = "warning")
       return()
     }
     res <- withProgress(
@@ -5886,7 +5895,7 @@ server <- function(input, output, session) {
   output$lab_sec_meta <- renderUI({
     res <- lab_sec_result()
     if (is.null(res)) {
-      return(div(style = "color:#888;", "尚未查詢。輸入美股代碼後按「抓取財報附註」。"))
+      return(div(style = "color:#888;", "尚未查詢。按「抓取財報附註」以擷取主頁代碼的最新財報附註。"))
     }
     if (!isTRUE(res$ok)) {
       return(div(
