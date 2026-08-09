@@ -5843,6 +5843,11 @@ server <- function(input, output, session) {
   # ==========================================
   lab_sec_result <- reactiveVal(NULL)
 
+  # 側邊欄「測試」按鈕：切到實驗區並給予回饋
+  observeEvent(input$sidebar_test_click, {
+    showNotification("已開啟實驗區 (Lab) — 測試按鈕", type = "message", duration = 3)
+  }, ignoreInit = TRUE)
+
   # 切到實驗區時，若主搜尋已有代碼則預帶入（不覆寫使用者手動輸入）
   observeEvent(input$sidebar_tabs, {
     if (identical(input$sidebar_tabs, "lab_notes")) {

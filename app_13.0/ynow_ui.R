@@ -454,6 +454,17 @@ ui <- dashboardPage(
         onclick = "Shiny.setInputValue('sidebar_tabs', 'snapshot', {priority: 'event'}); return false;",
         icon("camera", class = "fa-fw"),
         tags$span(" Snapshot")
+      ),
+      # 測試按鈕：Snapshot 旁的捷徑，開啟實驗區 (Lab)
+      tags$a(
+        id = "ynow_sidebar_test_btn",
+        href = "#shiny-tab-lab_notes",
+        `data-toggle` = "tab",
+        `data-value` = "lab_notes",
+        class = "ynow-sidebar-snapshot-link ynow-sidebar-test-link",
+        onclick = "Shiny.setInputValue('sidebar_tabs', 'lab_notes', {priority: 'event'}); Shiny.setInputValue('sidebar_test_click', (window.__ynowTestClicks=(window.__ynowTestClicks||0)+1), {priority: 'event'}); return false;",
+        icon("flask", class = "fa-fw"),
+        tags$span(" 測試")
       )
     )
   ),
@@ -497,6 +508,7 @@ ui <- dashboardPage(
           opacity: 1;
           background: rgba(255,255,255,0.06);
         }
+        .ynow-sidebar-test-link { margin-left: 8px; }
         /* 主選單不應再出現 Snapshot */
         .sidebar-menu a[data-value="snapshot"] { display: none !important; }
         .sidebar-menu li:has(> a[data-value="snapshot"]) { display: none !important; }
