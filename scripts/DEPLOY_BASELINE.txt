@@ -1,10 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12390194
+bundleId=12390281
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=4c1b0a6
-commit=4c1b0a6
-short=4c1b0a6
-message=chore(debug): remove temporary agent instrumentation from app_13.0
+aligned_git=f27cd7e
+commit=f27cd7e
+short=f27cd7e
+message=Remove default rd; scrape interest/debt into WACC; restore About methodology.
 captured_at=2026-08-10T13:35:00+00:00
-note=Deployed on request the app_13.0 version whose BETA section shows β valueBoxes (bold numbers) and places "手動輸入 β（直接寫入 CAPM）" (box ③) directly below "槓桿 Beta（β_L）來源" (box ①). This is the clean form of feat 44e9079 ("let users pick levered or unlevered β for CAPM"). NOTE: this is an OLDER app line than the prior baseline 792644b — it predates later fixes (e.g. USD default / currency toggle 792644b) and does NOT include the experimental SEC-notes Lab (PR #24). Earlier in this session bundle 12390123 (commit 97cb35c, pre-experimental baseline) was deployed, then superseded by this bundle 12390194.
+source_branch=cursor/capm-beta-source-order-9e9d
+note=Deployed on request the BETA "source-option reorder" version (tip of branch cursor/capm-beta-source-order-9e9d). CAPM apply-source order = Summary β → 產業預設 β → 自選公司平均 Bottom-Up (βᵤ→βe) → 去槓桿化 βᵤ → 手動定義 βe, with β valueBoxes (bold numbers). Does NOT include the experimental SEC-notes Lab (PR #24). Session deploy history: 12390123 (97cb35c pre-experimental) → 12390194 (4c1b0a6 beta-layout) → 12390281 (f27cd7e beta-source-reorder, CURRENT LIVE).
