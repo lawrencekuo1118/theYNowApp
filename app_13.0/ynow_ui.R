@@ -712,7 +712,7 @@ ui <- dashboardPage(
              menuItem("RI-Model", tabName = "ri_calculator", icon = icon("gem")),
              menuItem("Sensitivity", tabName = "sensitivity", icon = icon("sliders-h")),
              menuItem("Backtest Zone", tabName = "backtest", icon = icon("vial")),
-             menuItem("實驗區 (Lab)", tabName = "lab_notes", icon = icon("flask")),
+             # 實驗區 (Lab) 不放主選單；改由底部 Snapshot 旁「測試 / testing env.」捷徑開啟
              menuItem("About", tabName = "about", icon = icon("info-circle"))
              # Snapshot 不放主選單（避免巢狀 li 被瀏覽器抬出隱藏）；改由底部捷徑切換
            ),
