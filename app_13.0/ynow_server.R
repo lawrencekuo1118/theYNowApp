@@ -6184,4 +6184,163 @@ server <- function(input, output, session) {
       })
     }
   )
+
+  # ==========================================
+  # 🧪 實驗區 (Lab)：SEC EDGAR 財報附註
+  # ==========================================
+  lab_sec_result <- reactiveVal(NULL)
+
+  # 側邊欄「測試」按鈕：切到實驗區並給予回饋
+  observeEvent(input$sidebar_test_click, {
+    showNotification("已開啟實驗區 (Lab) — 測試按鈕", type = "message", duration = 3)
+  }, ignoreInit = TRUE)
+
+  # 實驗區沿用主頁 Ticker / Stock Code：優先用已搜尋的代碼，否則用主頁輸入框
+  lab_ticker <- reactive({
+    tk <- current_ticker()
+    if (is.null(tk) || !nzchar(trimws(as.character(tk)))) {
+      tk <- input$sc
+    }
+    toupper(trimws(as.character(tk %||% "")))
+  })
+
+  output$lab_sec_ticker_display <- renderUI({
+    tk <- lab_ticker()
+    if (!nzchar(tk)) {
+      return(tags$div(
+        class = "alert alert-warning", style = "padding:6px 10px; margin:4px 0;",
+        "尚未設定主頁代碼，請至主頁輸入 Ticker / Stock Code。"
+      ))
+    }
+    tags$div(style = "font-size:20px; font-weight:bold; padding:2px 0;", tk)
+  })
+
+  observeEvent(input$lab_sec_fetch, {
+    tk <- lab_ticker()
+    form <- input$lab_sec_form %||% "10-K"
+    if (!nzchar(tk)) {
+      showNotification("主頁尚未設定 Ticker / Stock Code", type = "warning")
+      return()
+    }
+    res <- withProgress(
+      message = paste0("正在向 SEC 擷取 ", tk, " ", form, " 財報附註..."),
+      value = 0.3, {
+        out <- cached_fetch_sec_report_notes(tk, form)
+        incProgress(0.6)
+        out
+      }
+    )
+    lab_sec_result(res)
+    if (!isTRUE(res$ok)) {
+      showNotification(
+        paste0("擷取失敗：", res$error %||% "未知錯誤"),
+        type = "error", duration = 10
+      )
+    }
+  })
+
+  output$lab_sec_meta <- renderUI({
+    res <- lab_sec_result()
+    if (is.null(res)) {
+      return(div(style = "color:#888;", "尚未查詢。按「抓取財報附註」以擷取主頁代碼的最新財報附註。"))
+    }
+    if (!isTRUE(res$ok)) {
+      return(div(
+        class = "alert alert-danger",
+        tags$b("擷取失敗："), res$error %||% "未知錯誤"
+      ))
+    }
+    n_total <- length(res$short_names)
+    n_imp <- sum(as.logical(res$important))
+    box(
+      width = 12, status = "success", solidHeader = TRUE, title = "財報資訊",
+      tags$table(
+        class = "table table-condensed",
+        tags$tr(tags$td(tags$b("公司")), tags$td(res$company)),
+        tags$tr(tags$td(tags$b("財報類型")), tags$td(res$form)),
+        tags$tr(tags$td(tags$b("申報日")), tags$td(res$filing_date)),
+        tags$tr(tags$td(tags$b("財報期間")), tags$td(res$report_date)),
+        tags$tr(tags$td(tags$b("Accession")), tags$td(res$accession)),
+        tags$tr(tags$td(tags$b("附註數")),
+                tags$td(paste0(n_total, "（重要 ", n_imp, "）")))
+      ),
+      tags$a(href = res$primary_doc_url, target = "_blank",
+             icon("external-link-alt"), " 於 SEC EDGAR 開啟原始財報")
+    )
+  })
+
+  output$lab_sec_index <- renderUI({
+    res <- lab_sec_result()
+    if (is.null(res) || !isTRUE(res$ok) || length(res$short_names) == 0) {
+      return(div(style = "color:#888;", "（無資料）"))
+    }
+    imp <- as.logical(res$important)
+    tags$ol(
+      lapply(seq_along(res$short_names), function(i) {
+        badge <- if (isTRUE(imp[i])) {
+          tags$span(class = "label label-danger", style = "margin-left:6px;", "重要")
+        } else NULL
+        tags$li(
+          tags$a(href = res$urls[i], target = "_blank", res$short_names[i]),
+          badge,
+          tags$span(style = "color:#999; margin-left:6px;",
+                    paste0("(", res$char_counts[i], " 字元)"))
+        )
+      })
+    )
+  })
+
+  output$lab_sec_notes <- renderUI({
+    res <- lab_sec_result()
+    if (is.null(res) || !isTRUE(res$ok) || length(res$short_names) == 0) {
+      return(div(style = "color:#888;", "（無資料）"))
+    }
+    imp <- as.logical(res$important)
+    only_imp <- isTRUE(input$lab_sec_important_only)
+    idx <- seq_along(res$short_names)
+    if (only_imp) idx <- idx[imp]
+    if (length(idx) == 0) {
+      return(div(style = "color:#888;", "此財報未偵測到「重要」附註；取消勾選可顯示全部。"))
+    }
+    summaries <- res$summaries
+    tagList(
+      lapply(idx, function(i) {
+        title <- res$short_names[i]
+        if (isTRUE(imp[i])) title <- paste0("⭐ ", title)
+        bullets <- tryCatch(as.character(unlist(summaries[[i]])), error = function(e) character(0))
+        bullets <- bullets[nzchar(trimws(bullets))]
+        summary_ui <- if (length(bullets) > 0) {
+          tags$div(
+            style = "margin:6px 0 8px 0; background:#f7fbff; border-left:4px solid #3c8dbc; padding:8px 10px; border-radius:3px;",
+            tags$b("重點摘要"),
+            tags$ul(
+              style = "margin:6px 0 0 0; padding-left:20px;",
+              lapply(bullets, function(b) tags$li(style = "margin-bottom:4px;", b))
+            )
+          )
+        } else if (isTRUE(imp[i])) {
+          tags$div(style = "color:#999; margin:6px 0;", "（此附註未擷取到可摘要的重點句）")
+        } else NULL
+        tags$div(
+          style = "margin-bottom:12px; border:1px solid #e3e3e3; border-radius:4px; padding:10px;",
+          tags$div(
+            style = "font-weight:bold; font-size:15px;",
+            title,
+            tags$span(style = "color:#999; font-weight:normal; margin-left:6px;",
+                      paste0("(", res$char_counts[i], " 字元)"))
+          ),
+          summary_ui,
+          tags$details(
+            style = "margin-top:4px;",
+            open = if (isTRUE(imp[i]) && i == idx[1]) "open" else NULL,
+            tags$summary(style = "cursor:pointer; color:#3c8dbc;", "展開附註全文"),
+            div(
+              style = "margin-top:8px; max-height:340px; overflow-y:auto; white-space:pre-wrap; font-size:13px; line-height:1.5;",
+              res$full_texts[i]
+            )
+          )
+        )
+      })
+    )
+  })
 }

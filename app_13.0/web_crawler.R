@@ -328,3 +328,44 @@ fetch_beta_unlever_inputs_batch <- function(tickers) {
     lapply(tks, fetch_beta_unlever_inputs)
   })
 }
+
+# ==========================================
+# 🧪 實驗區：SEC EDGAR 財報附註（僅美股）
+# ==========================================
+#' 抓取美股最新 10-K／10-Q 的重要財報附註（notes）。
+#' 回傳 list：ok/error/company/form/filing_date/report_date/accession/
+#' primary_doc_url 與平行向量 short_names/urls/important/char_counts/
+#' excerpts/full_texts。
+fetch_sec_report_notes <- function(ticker, form = "10-K", max_chars = 1500L) {
+  tk <- toupper(trimws(as.character(ticker %||% "")[1]))
+  form <- toupper(trimws(as.character(form %||% "10-K")[1]))
+  if (!form %in% c("10-K", "10-Q")) form <- "10-K"
+  empty <- list(
+    ok = FALSE, error = "", company = tk, form = form,
+    filing_date = "", report_date = "", accession = "", primary_doc_url = "",
+    short_names = character(0), urls = character(0), important = logical(0),
+    char_counts = integer(0), excerpts = character(0), full_texts = character(0),
+    summaries = list()
+  )
+  if (!nzchar(tk)) {
+    empty$error <- "請輸入美股代碼"
+    return(empty)
+  }
+  if (!isTRUE(.ensure_python_scraper()) || !exists("sec_report_notes", mode = "function")) {
+    empty$error <- "sec_report_notes 未載入（Python / reticulate 失敗）"
+    return(empty)
+  }
+  tryCatch({
+    res <- sec_report_notes(tk, form, as.integer(max_chars))
+    if (is.null(res)) return(empty)
+    res
+  }, error = function(e) {
+    message("⚠️ fetch_sec_report_notes(", tk, " ", form, "): ", e$message)
+    empty$error <- e$message
+    empty
+  })
+}
+
+cached_fetch_sec_report_notes <- memoise::memoise(
+  fetch_sec_report_notes, cache = my_cache
+)
