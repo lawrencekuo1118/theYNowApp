@@ -712,6 +712,7 @@ ui <- dashboardPage(
              menuItem("RI-Model", tabName = "ri_calculator", icon = icon("gem")),
              menuItem("Sensitivity", tabName = "sensitivity", icon = icon("sliders-h")),
              menuItem("Backtest Zone", tabName = "backtest", icon = icon("vial")),
+             # 實驗區 (Lab) 不放主選單；改由底部 Snapshot 旁「測試 / testing env.」捷徑開啟
              menuItem("About", tabName = "about", icon = icon("info-circle"))
              # Snapshot 不放主選單（避免巢狀 li 被瀏覽器抬出隱藏）；改由底部捷徑切換
            ),
@@ -750,6 +751,17 @@ ui <- dashboardPage(
         onclick = "Shiny.setInputValue('sidebar_tabs', 'snapshot', {priority: 'event'}); return false;",
         icon("camera", class = "fa-fw"),
         tags$span(" Snapshot")
+      ),
+      # 測試按鈕：Snapshot 旁的捷徑，開啟實驗區 (Lab)
+      tags$a(
+        id = "ynow_sidebar_test_btn",
+        href = "#shiny-tab-lab_notes",
+        `data-toggle` = "tab",
+        `data-value` = "lab_notes",
+        class = "ynow-sidebar-snapshot-link ynow-sidebar-test-link",
+        onclick = "Shiny.setInputValue('sidebar_tabs', 'lab_notes', {priority: 'event'}); Shiny.setInputValue('sidebar_test_click', (window.__ynowTestClicks=(window.__ynowTestClicks||0)+1), {priority: 'event'}); return false;",
+        icon("flask", class = "fa-fw"),
+        tags$span(" 測試")
       )
     )
   ),
@@ -793,6 +805,7 @@ ui <- dashboardPage(
           opacity: 1;
           background: rgba(255,255,255,0.06);
         }
+        .ynow-sidebar-test-link { margin-left: 8px; }
         /* 主選單不應再出現 Snapshot */
         .sidebar-menu a[data-value="snapshot"] { display: none !important; }
         .sidebar-menu li:has(> a[data-value="snapshot"]) { display: none !important; }
@@ -2367,6 +2380,90 @@ ui <- dashboardPage(
               )
       ),
       
+      # ==========================================
+      # 🧪 實驗區 (Lab)：SEC EDGAR 財報附註（美股）
+      # ==========================================
+      tabItem(
+        tabName = "lab_notes",
+        fluidRow(
+          column(
+            width = 12,
+            h2(tags$b("🧪 實驗區 — 財報附註擷取 (SEC EDGAR)")),
+            p("實驗性功能：直接從美國 SEC EDGAR 擷取指定美股的",
+              tags$b("最新年報（10-K／20-F／40-F）、季報（10-Q）或重大訊息（8-K／6-K）"),
+              "：年報／季報抽出「財務報表附註 (Notes)」；重大訊息則盡力萃取最新一則正文。",
+              tags$br(),
+              tags$span(
+                style = "color:#888;",
+                "資料來源：SEC EDGAR。僅支援美股（含 ADR／外國發行人：年報 20-F、重大訊息 6-K）；台股不在此來源。"
+              )
+            ),
+            tags$hr()
+          )
+        ),
+        fluidRow(
+          column(
+            width = 4,
+            box(
+              width = 12, status = "primary", solidHeader = TRUE,
+              title = "查詢條件",
+              tags$div(
+                style = "margin-bottom:10px;",
+                tags$label("美股代碼 (US Ticker)", class = "control-label"),
+                uiOutput("lab_sec_ticker_display"),
+                tags$span(style = "color:#888; font-size:12px;",
+                          "沿用主頁「Ticker / Stock Code」；於主頁搜尋即同步更新。")
+              ),
+              radioButtons(
+                "lab_sec_form", "財報類型 (Form)",
+                choices = c(
+                  "年報 10-K / 20-F" = "10-K",
+                  "季報 10-Q" = "10-Q",
+                  "重大訊息 8-K / 6-K" = "8-K"
+                ),
+                selected = "10-K", inline = TRUE
+              ),
+              checkboxInput(
+                "lab_sec_important_only", "只顯示重要附註", value = TRUE
+              ),
+              textInput(
+                "lab_sec_keyword", "關鍵字搜尋",
+                value = "",
+                placeholder = "例如 revenue、lease、tax…"
+              ),
+              tags$span(
+                style = "color:#888; font-size:12px; display:block; margin:-6px 0 10px 0;",
+                "比對附註標題、重點摘要與全文（不區分大小寫）；空白＝顯示全部。"
+              ),
+              actionButton(
+                "lab_sec_fetch", "抓取財報附註",
+                class = "btn-success btn-block",
+                icon = icon("download"),
+                style = "font-weight:bold;"
+              ),
+              tags$p(
+                style = "margin-top:10px; color:#888; font-size:12px;",
+                "提示：擷取需向 SEC 逐條抓取附註，約需數秒。"
+              )
+            ),
+            uiOutput("lab_sec_meta")
+          ),
+          column(
+            width = 8,
+            box(
+              width = 12, status = "info", solidHeader = TRUE,
+              title = "附註索引 (Notes Index)",
+              uiOutput("lab_sec_index")
+            ),
+            box(
+              width = 12, status = "info", solidHeader = TRUE,
+              title = "附註內容 (Notes)",
+              uiOutput("lab_sec_notes")
+            )
+          )
+        )
+      ),
+
       # ==========================================
       # ℹ️ About 分頁 (系統介紹與評價方法論)
       # ==========================================

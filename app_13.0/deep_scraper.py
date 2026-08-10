@@ -647,3 +647,360 @@ def search_tickers(query="", max_results=12):
         print(f"⚠️ search_tickers failed ({q}): {e}")
         return []
     return out
+
+
+# ==========================================================================
+# 🧪 Experimental: SEC EDGAR financial-report notes (US filings only)
+# --------------------------------------------------------------------------
+# yfinance does not expose statement footnotes, so the notes are pulled from
+# SEC EDGAR: ticker -> CIK -> latest annual/interim/material filing ->
+# FilingSummary.xml (Notes) or primaryDocument body for 8-K/6-K.
+# Domestic: 10-K / 10-Q / 8-K; foreign private issuers (ADR etc.): 20-F / 40-F / 6-K.
+# ==========================================================================
+import os as _os
+import re as _re
+
+_SEC_TICKERS_URL = "https://www.sec.gov/files/company_tickers.json"
+_SEC_SUBMISSIONS_URL = "https://data.sec.gov/submissions/CIK{cik}.json"
+_SEC_ARCHIVES = "https://www.sec.gov/Archives/edgar/data/{cik}/{accn}"
+_SEC_UA = _os.environ.get(
+    "SEC_EDGAR_UA", "theYNowApp research (set SEC_EDGAR_UA=you@example.com)"
+)
+
+_SEC_IMPORTANT_KEYWORDS = (
+    "accounting policies", "basis of presentation", "revenue", "segment",
+    "geographic", "income tax", "debt", "borrow", "lease", "commitment",
+    "contingenc", "financial instrument", "fair value", "derivative",
+    "goodwill", "intangible", "share-based", "stock-based", "pension",
+    "retirement", "business combination", "acquisition", "per share",
+    "related party", "restructuring", "property, plant",
+)
+_SEC_NON_FINANCIAL_HINTS = ("insider trading", "cybersecurity")
+
+_SEC_BANNER = _re.compile(
+    r"^\s*(?:XML\s+\d+\s+)?[Rr]\d+\.htm\s+IDEA:\s*XBRL DOCUMENT\s+v?[\d.]+\s*",
+    _re.IGNORECASE,
+)
+
+# Marks the start of the per-note XBRL element metadata footer appended to each
+# R#.htm rendering ("X - References ... X - Definition ... No definition ...").
+_SEC_XBRL_FOOTER = _re.compile(r"\s*X\s*-\s*(?:References|Definition)\b")
+
+
+def _sec_session():
+    """curl_cffi session with a SEC-compliant User-Agent (browser impersonation
+    also avoids datacenter-IP blocks). Falls back to requests."""
+    try:
+        from curl_cffi import requests as creq
+        return creq.Session(headers={"User-Agent": _SEC_UA}, impersonate="chrome")
+    except Exception:
+        import requests
+        s = requests.Session()
+        s.headers.update({"User-Agent": _SEC_UA})
+        return s
+
+
+def _sec_get(session, url, is_json=False, tries=3):
+    import time
+    last = None
+    for attempt in range(tries):
+        try:
+            r = session.get(url, timeout=30)
+            if r.status_code == 200:
+                return r.json() if is_json else r.text
+            last = f"HTTP {r.status_code}"
+        except Exception as e:  # noqa: BLE001
+            last = str(e)
+        time.sleep(0.5 * (attempt + 1))
+    raise RuntimeError(f"GET failed ({last}): {url}")
+
+
+def _sec_clean_note_text(raw):
+    from bs4 import BeautifulSoup
+    try:
+        soup = BeautifulSoup(raw, "lxml")
+    except Exception:
+        soup = BeautifulSoup(raw, "html.parser")
+    text = soup.get_text(" ", strip=True)
+    text = _re.sub(r"\s+", " ", text)
+    text = _SEC_BANNER.sub("", text).strip()
+    m = _SEC_XBRL_FOOTER.search(text)
+    if m:
+        text = text[:m.start()].strip()
+    return text
+
+
+def _sec_is_important(short_name):
+    s = (short_name or "").lower()
+    if any(h in s for h in _SEC_NON_FINANCIAL_HINTS):
+        return False
+    return any(k in s for k in _SEC_IMPORTANT_KEYWORDS)
+
+
+# Salient-sentence keywords for the lightweight extractive summary.
+_SEC_SUMMARY_KEYWORDS = (
+    "recogn", "increase", "decrease", "obligation", "maturit",
+    "effective tax rate", "valuation allowance", "repurchas", "dividend",
+    "lease", "guarantee", "litigation", "contingenc", "impair", "goodwill",
+    "amortiz", "depreciat", "deferred", "unrecognized", "commitment",
+    "interest rate", "fair value", "hedge", "derivative", "segment",
+    "revenue", "operating", "allowance", "provision", "settlement",
+    "restructuring", "outstanding", "expense", "benefit", "liabilit",
+)
+
+_SEC_ABBR = _re.compile(
+    r"\b(U\.S|Inc|Corp|Ltd|No|vs|approx|Sept|Oct|Nov|Dec|Jan|Feb|Mar|Apr|Jun|Jul|Aug|e\.g|i\.e)\.",
+    _re.IGNORECASE,
+)
+
+
+def _sec_split_sentences(text):
+    t = _SEC_ABBR.sub(lambda m: m.group(0).replace(".", "<DOT>"), text or "")
+    parts = _re.split(r"(?<=[.;])\s+(?=[A-Z(“\"])", t)
+    out = []
+    for p in parts:
+        s = p.replace("<DOT>", ".").strip()
+        if s:
+            out.append(s)
+    return out
+
+
+def _sec_summarize(text, max_bullets=4, max_len=280):
+    """Rule-based extractive summary: pick the most information-dense sentences
+    (dollar amounts, percentages, years, financial keywords). No external API,
+    so it runs unchanged on shinyapps.io."""
+    if not text:
+        return []
+    sentences = _sec_split_sentences(text)
+    scored = []
+    for pos, s in enumerate(sentences):
+        words = s.split()
+        if len(words) < 7 or len(s) < 45 or len(s) > 360:
+            continue
+        low = s.lower()
+        if "[abstract]" in low or "months ended" in low or s.endswith(":"):
+            continue
+        score = 0.0
+        if "$" in s:
+            score += 2.0
+        if "%" in s:
+            score += 2.0
+        if _re.search(r"\b(19|20)\d{2}\b", s):
+            score += 1.0
+        kw = sum(1 for k in _SEC_SUMMARY_KEYWORDS if k in low)
+        score += min(kw, 3)
+        if score <= 0:
+            continue
+        scored.append((score, pos, s))
+    if not scored:
+        # Fallback: first couple of reasonably long, non-boilerplate sentences.
+        fallback = [
+            s for s in sentences
+            if len(s.split()) >= 8
+            and "[abstract]" not in s.lower()
+            and "months ended" not in s.lower()
+            and len(s) <= 360
+        ][:2]
+        return [(s[:max_len] + ("…" if len(s) > max_len else "")) for s in fallback]
+
+    scored.sort(key=lambda x: (-x[0], x[1]))
+    picked = []
+    seen = set()
+    for _, pos, s in scored:
+        key = s[:60].lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        picked.append((pos, s))
+        if len(picked) >= max_bullets:
+            break
+    picked.sort(key=lambda x: x[0])
+    return [(s[:max_len] + ("…" if len(s) > max_len else "")) for _, s in picked]
+
+
+def _sec_empty_result(error=""):
+    return {
+        "ok": False, "error": str(error), "company": "", "form": "",
+        "filing_date": "", "report_date": "", "accession": "",
+        "primary_doc_url": "", "short_names": [], "urls": [],
+        "important": [], "char_counts": [], "excerpts": [], "full_texts": [],
+        "summaries": [],
+    }
+
+
+# Preferred form candidates: domestic first, then foreign (UI label order).
+# 年報 10-K → 20-F/40-F; 重大訊息 8-K → 6-K.
+_SEC_FORM_CANDIDATES = {
+    "10-K": ("10-K", "20-F", "40-F"),
+    "20-F": ("20-F", "10-K", "40-F"),
+    "40-F": ("40-F", "20-F", "10-K"),
+    "10-Q": ("10-Q",),
+    "8-K": ("8-K", "8-K/A", "6-K", "6-K/A"),
+    "6-K": ("6-K", "6-K/A", "8-K", "8-K/A"),
+}
+
+_SEC_MATERIAL_FORMS = frozenset({"8-K", "8-K/A", "6-K", "6-K/A"})
+
+
+def _sec_is_material_form(form):
+    return str(form or "") in _SEC_MATERIAL_FORMS
+
+
+def _sec_append_text_item(result, short_name, url, text, max_chars, important=True):
+    """Append one parallel-list row (used by notes and 8-K/6-K body extract)."""
+    text = text or ""
+    result["short_names"].append(str(short_name))
+    result["urls"].append(url)
+    result["important"].append(bool(important))
+    result["char_counts"].append(len(text))
+    result["excerpts"].append(text[:max_chars])
+    result["full_texts"].append(text)
+    result["summaries"].append(_sec_summarize(text) if important else [])
+
+
+def _sec_extract_notes_from_summary(session, folder, result, max_chars):
+    """Fill result lists from FilingSummary.xml Notes; returns True if any note found."""
+    import time
+    from bs4 import BeautifulSoup
+    try:
+        xml = _sec_get(session, f"{folder}/FilingSummary.xml")
+    except Exception:
+        return False
+    try:
+        soup = BeautifulSoup(xml, "lxml-xml")
+    except Exception:
+        soup = BeautifulSoup(xml, "html.parser")
+
+    def _find(el, name):
+        if el is None:
+            return None
+        return el.find(name) or el.find(name.lower())
+
+    reports = soup.find_all("Report") or soup.find_all("report")
+    found = False
+    for rep in reports:
+        cat = _find(rep, "MenuCategory")
+        if not cat or (cat.text or "").strip().lower() != "notes":
+            continue
+        htmf = _find(rep, "HtmlFileName")
+        if not htmf or not htmf.text:
+            continue
+        short = _find(rep, "ShortName")
+        short_name = short.text if short else ""
+        url = f"{folder}/{htmf.text}"
+        try:
+            text = _sec_clean_note_text(_sec_get(session, url))
+        except Exception as e:  # noqa: BLE001
+            text = f"(failed to fetch note: {e})"
+        _sec_append_text_item(
+            result, short_name, url, text, max_chars,
+            important=bool(_sec_is_important(short_name)),
+        )
+        found = True
+        time.sleep(0.12)
+    return found
+
+
+def _sec_extract_primary_body(session, folder, primary_doc, form, filing_date, result, max_chars):
+    """Fallback for 8-K/6-K: clean primary document HTML into one important item."""
+    url = f"{folder}/{primary_doc}"
+    try:
+        raw = _sec_get(session, url)
+        text = _sec_clean_note_text(raw)
+    except Exception as e:  # noqa: BLE001
+        text = f"(failed to fetch primary document: {e})"
+    label = f"Form {form}"
+    if filing_date:
+        label = f"{label} ({filing_date})"
+    _sec_append_text_item(result, label, url, text, max_chars, important=True)
+    return bool(text) and not text.startswith("(failed to fetch")
+
+
+def sec_report_notes(ticker="AAPL", form="10-K", max_chars=1500):
+    """Fetch a US stock's latest annual (10-K/20-F/40-F), interim (10-Q), or
+    material disclosures (8-K/6-K) from SEC EDGAR. Annual/interim extract Notes;
+    material filings fall back to primary-document body text.
+    Returns a dict of parallel lists that reticulate converts cleanly to R."""
+    tk = str(ticker or "").strip().upper()
+    form = str(form or "10-K").strip().upper()
+    try:
+        max_chars = int(max_chars)
+    except Exception:
+        max_chars = 1500
+    if not tk:
+        return _sec_empty_result("empty ticker")
+    if form not in _SEC_FORM_CANDIDATES:
+        form = "10-K"
+    candidates = _SEC_FORM_CANDIDATES[form]
+    requested_form = form
+
+    print(f"📄 SEC EDGAR notes: {tk} {form} (try {', '.join(candidates)})")
+    try:
+        session = _sec_session()
+
+        # 1. ticker -> CIK
+        tickers = _sec_get(session, _SEC_TICKERS_URL, is_json=True)
+        cik = None
+        company = tk
+        for row in tickers.values():
+            if str(row.get("ticker", "")).upper() == tk:
+                cik = str(row["cik_str"]).zfill(10)
+                company = row.get("title", tk)
+                break
+        if cik is None:
+            return _sec_empty_result(f"ticker '{tk}' not found on SEC EDGAR (US filers only)")
+
+        # 2. CIK -> latest filing among form candidates (keeps filing-date order)
+        sub = _sec_get(session, _SEC_SUBMISSIONS_URL.format(cik=cik), is_json=True)
+        recent = sub["filings"]["recent"]
+        forms = recent["form"]
+        has_10q = any(f == "10-Q" or str(f).startswith("10-Q") for f in forms)
+        has_20f = any(f == "20-F" or str(f).startswith("20-F") for f in forms)
+        has_6k = any(f == "6-K" or str(f).startswith("6-K") for f in forms)
+        idx = None
+        matched_form = None
+        for i, f in enumerate(forms):
+            if f in candidates:
+                idx = i
+                matched_form = f
+                break
+        if idx is None:
+            if requested_form == "10-Q" and (has_20f or has_6k) and not has_10q:
+                return _sec_empty_result(
+                    f"no 10-Q filing found for {tk} "
+                    f"(foreign issuer — use 年報 10-K/20-F or 重大訊息 8-K/6-K)"
+                )
+            return _sec_empty_result(f"no {requested_form} filing found for {tk}")
+        form = matched_form  # report the actual form used (e.g. 20-F for TSM)
+        accession = recent["accessionNumber"][idx]
+        filing_date = recent["filingDate"][idx]
+        report_date = recent.get("reportDate", [""] * len(forms))[idx]
+        primary_doc = recent["primaryDocument"][idx]
+        company = sub.get("name", company)
+        folder = _SEC_ARCHIVES.format(cik=int(cik), accn=accession.replace("-", ""))
+
+        # 3. filing -> Notes (annual/interim) or primary body (8-K/6-K fallback)
+        result = _sec_empty_result("")
+        result.update({
+            "ok": True, "company": str(company), "form": form,
+            "filing_date": str(filing_date), "report_date": str(report_date),
+            "accession": str(accession),
+            "primary_doc_url": f"{folder}/{primary_doc}",
+        })
+        has_notes = _sec_extract_notes_from_summary(session, folder, result, max_chars)
+        if not has_notes:
+            if _sec_is_material_form(form):
+                ok_body = _sec_extract_primary_body(
+                    session, folder, primary_doc, form, filing_date, result, max_chars
+                )
+                if not ok_body and not result["short_names"]:
+                    result["ok"] = False
+                    result["error"] = f"failed to extract body from {form} primary document"
+            else:
+                result["ok"] = False
+                result["error"] = "no Notes section found in FilingSummary.xml"
+        print(f"✅ SEC notes: {tk} {form} rows={len(result['short_names'])}")
+        return result
+    except Exception as e:  # noqa: BLE001
+        print(f"⚠️ sec_report_notes failed ({tk} {form}): {e}")
+        return _sec_empty_result(str(e))
