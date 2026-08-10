@@ -642,15 +642,15 @@ beta_advanced_tab_ui <- function() {
   )
 }
 
-#' Shared bottom block: per-share param contribution / ±10% sensitivity (DCF-style).
+#' Shared bottom block: per-share param contribution / relative ±1% elasticity.
 .model_param_sensitivity_box <- function(title, table_id) {
   fluidRow(
     box(
       title = tagList(icon("percentage"), title),
       width = 12, status = "info", solidHeader = TRUE, collapsible = TRUE,
       helpText(
-        "一次只變動一個可設定參數（相對 ±10%），比較對每股估值的影響；",
-        "「影響力%」= 兩側 |Δ估值%| 的平均，數值愈大代表該參數對最終估值愈敏感。"
+        "一次只變動一個可設定參數（相對 ±1%），衡量每股估值的邊際彈性；",
+        "「估值Δ%」≈ 該參數變動 1% 時每股價值的變動幅度；「｜ε｜」= 兩側 |Δ估值%| 平均（愈大愈敏感）。"
       ),
       tags$div(
         style = "overflow-x:auto;",

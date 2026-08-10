@@ -552,7 +552,17 @@ safe_num <- function(x) {
   return(x)
 }
 
-#' Build one row for ±10% param sensitivity tables (DCF / DDM / RI / P/B).
+# Relative ±1% shock for per-share param elasticity tables (DCF / DDM / RI / P/B).
+PARAM_SENSITIVITY_SHOCK <- 0.01
+
+.param_rel_shock <- function(x, sign = -1, shock = PARAM_SENSITIVITY_SHOCK) {
+  x <- suppressWarnings(as.numeric(x)[1])
+  if (!is.finite(x) || abs(x) < 1e-12) return(NA_real_)
+  x * (1 + sign * shock)
+}
+
+#' Build one row for relative ±1% elasticity tables (DCF / DDM / RI / P/B).
+#' Shock is multiplicative on the parameter; Δ估值% ≈ elasticity ε when shock = 1%.
 .param_sensitivity_infl_row <- function(param, base_val, unit, p0, p_down, p_up, note = "") {
   d_dn <- if (is.finite(p_down) && is.finite(p0) && abs(p0) > 1e-9) 100 * (p_down - p0) / abs(p0) else NA_real_
   d_up <- if (is.finite(p_up) && is.finite(p0) && abs(p0) > 1e-9) 100 * (p_up - p0) / abs(p0) else NA_real_
@@ -564,10 +574,10 @@ safe_num <- function(x) {
       if (identical(unit, "$")) {
         if (exists("format_dollar_abbr", mode = "function")) format_dollar_abbr(base_val) else sprintf("%.2f", base_val)
       } else if (identical(unit, "x")) sprintf("%.2f", base_val) else as.character(base_val),
-    衝擊 = "±10%",
-    `估值Δ% (−10%)` = if (is.finite(d_dn)) sprintf("%+.1f%%", d_dn) else "N/A",
-    `估值Δ% (+10%)` = if (is.finite(d_up)) sprintf("%+.1f%%", d_up) else "N/A",
-    `影響力%` = if (is.finite(infl)) sprintf("%.1f%%", infl) else "N/A",
+    衝擊 = "±1%（相對）",
+    `估值Δ% (−1%)` = if (is.finite(d_dn)) sprintf("%+.2f%%", d_dn) else "N/A",
+    `估值Δ% (+1%)` = if (is.finite(d_up)) sprintf("%+.2f%%", d_up) else "N/A",
+    `｜ε｜` = if (is.finite(infl)) sprintf("%.2f", infl) else "N/A",
     說明 = note,
     check.names = FALSE,
     stringsAsFactors = FALSE

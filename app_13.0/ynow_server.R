@@ -3838,21 +3838,30 @@ server <- function(input, output, session) {
       )
   })
 
-  # DCF 頁底部：所有可設定參數對每股估值的影響力%（相對 ±10%）
+  # DCF 頁底部：可設定參數對每股估值的邊際彈性（相對 ±1%）
   output$dcf_param_sensitivity_table <- renderTable({
     base <- .dcf_valuation_bundle()
     validate(need(isTRUE(base$ok), "基準估值尚未就緒：請先完成 FCFF 預測並確保 g < WACC。"))
     p0 <- base$price
-    shock_pct <- 0.10
+    shock_pct <- if (exists("PARAM_SENSITIVITY_SHOCK", inherits = TRUE)) PARAM_SENSITIVITY_SHOCK else 0.01
+    m_dn <- 1 - shock_pct
+    m_up <- 1 + shock_pct
 
     .rel <- function(x, sign = -1) {
-      x <- suppressWarnings(as.numeric(x)[1])
-      if (!is.finite(x) || abs(x) < 1e-12) return(NA_real_)
-      x * (1 + sign * shock_pct)
+      if (exists(".param_rel_shock", mode = "function")) {
+        .param_rel_shock(x, sign = sign, shock = shock_pct)
+      } else {
+        x <- suppressWarnings(as.numeric(x)[1])
+        if (!is.finite(x) || abs(x) < 1e-12) return(NA_real_)
+        x * (1 + sign * shock_pct)
+      }
     }
     .infl_row <- function(param, base_val, unit, b_down, b_up, note = "") {
       pd <- if (isTRUE(b_down$ok)) b_down$price else NA_real_
       pu <- if (isTRUE(b_up$ok)) b_up$price else NA_real_
+      if (exists(".param_sensitivity_infl_row", mode = "function")) {
+        return(.param_sensitivity_infl_row(param, base_val, unit, p0, pd, pu, note))
+      }
       d_dn <- if (is.finite(pd) && is.finite(p0) && abs(p0) > 1e-9) 100 * (pd - p0) / abs(p0) else NA_real_
       d_up <- if (is.finite(pu) && is.finite(p0) && abs(p0) > 1e-9) 100 * (pu - p0) / abs(p0) else NA_real_
       infl <- mean(c(abs(d_dn), abs(d_up)), na.rm = TRUE)
@@ -3862,10 +3871,10 @@ server <- function(input, output, session) {
         基準值 = if (identical(unit, "%")) sprintf("%.2f%%", base_val) else
           if (identical(unit, "$")) format_dollar_abbr(base_val) else
             if (identical(unit, "x")) sprintf("%.2f", base_val) else as.character(base_val),
-        衝擊 = "±10%",
-        `估值Δ% (−10%)` = if (is.finite(d_dn)) sprintf("%+.1f%%", d_dn) else "N/A",
-        `估值Δ% (+10%)` = if (is.finite(d_up)) sprintf("%+.1f%%", d_up) else "N/A",
-        `影響力%` = if (is.finite(infl)) sprintf("%.1f%%", infl) else "N/A",
+        衝擊 = "±1%（相對）",
+        `估值Δ% (−1%)` = if (is.finite(d_dn)) sprintf("%+.2f%%", d_dn) else "N/A",
+        `估值Δ% (+1%)` = if (is.finite(d_up)) sprintf("%+.2f%%", d_up) else "N/A",
+        `｜ε｜` = if (is.finite(infl)) sprintf("%.2f", infl) else "N/A",
         說明 = note,
         check.names = FALSE,
         stringsAsFactors = FALSE
@@ -3913,8 +3922,8 @@ server <- function(input, output, session) {
     if (is.finite(n0) && n0 >= 1) {
       rows[[length(rows) + 1]] <- .infl_row(
         "預測年數 n", n0, "n",
-        .dcf_valuation_bundle(years_override = max(1, round(n0 * 0.9))),
-        .dcf_valuation_bundle(years_override = max(1, round(n0 * 1.1))),
+        .dcf_valuation_bundle(years_override = max(1, round(n0 * m_dn))),
+        .dcf_valuation_bundle(years_override = max(1, round(n0 * m_up))),
         "截斷／延展 FCFF 序列"
       )
     }
@@ -3922,11 +3931,11 @@ server <- function(input, output, session) {
     g_near <- suppressWarnings(as.numeric(estimated_g())[1])
     if (!is.finite(g_near)) g_near <- suppressWarnings(as.numeric(input$custom_g)[1])
     if (is.finite(g_near)) {
-      # 近中期成長：以軌跡倍率近似 ±10% 成長衝擊
+      # 近中期成長：以軌跡倍率近似相對 ±1% 成長衝擊
       rows[[length(rows) + 1]] <- .infl_row(
         "近中期營收成長率", g_near, "%",
-        .dcf_valuation_bundle(near_g_mult = 0.9),
-        .dcf_valuation_bundle(near_g_mult = 1.1),
+        .dcf_valuation_bundle(near_g_mult = m_dn),
+        .dcf_valuation_bundle(near_g_mult = m_up),
         "透過 FCFF 軌跡倍率近似"
       )
     }
@@ -3975,16 +3984,16 @@ server <- function(input, output, session) {
       if (is.finite(g1)) {
         rows[[length(rows) + 1]] <- .infl_row(
           "高速成長率 g1", g1, "%",
-          .dcf_valuation_bundle(near_g_mult = 0.9),
-          .dcf_valuation_bundle(near_g_mult = 1.1),
+          .dcf_valuation_bundle(near_g_mult = m_dn),
+          .dcf_valuation_bundle(near_g_mult = m_up),
           "以 FCFF 軌跡近似 g1 衝擊"
         )
       }
       if (is.finite(yr1) && is.finite(n0)) {
         rows[[length(rows) + 1]] <- .infl_row(
           "第一階段年數", yr1, "n",
-          .dcf_valuation_bundle(yr_stage1_override = max(1, round(yr1 * 0.9))),
-          .dcf_valuation_bundle(yr_stage1_override = max(1, min(n0 - 1, round(yr1 * 1.1)))),
+          .dcf_valuation_bundle(yr_stage1_override = max(1, round(yr1 * m_dn))),
+          .dcf_valuation_bundle(yr_stage1_override = max(1, min(n0 - 1, round(yr1 * m_up)))),
           "兩階段分界"
         )
       }
@@ -3992,8 +4001,8 @@ server <- function(input, output, session) {
 
     rows[[length(rows) + 1]] <- .infl_row(
       "FCFF 水準（整體）", 1, "x",
-      .dcf_valuation_bundle(fcf_mult = 0.9),
-      .dcf_valuation_bundle(fcf_mult = 1.1),
+      .dcf_valuation_bundle(fcf_mult = m_dn),
+      .dcf_valuation_bundle(fcf_mult = m_up),
       "涵蓋營收／NOPAT／再投資設定的綜合效果"
     )
 
@@ -4004,16 +4013,16 @@ server <- function(input, output, session) {
       # CapEx 上升通常降低 FCFF：以反向 fcf 衝擊近似
       rows[[length(rows) + 1]] <- .infl_row(
         "CapEx / Revenue", capex_r, "%",
-        .dcf_valuation_bundle(fcf_mult = 1.1),
-        .dcf_valuation_bundle(fcf_mult = 0.9),
+        .dcf_valuation_bundle(fcf_mult = m_up),
+        .dcf_valuation_bundle(fcf_mult = m_dn),
         "近似：CapEx↑ → FCFF↓"
       )
     }
     if (is.finite(nwc_r)) {
       rows[[length(rows) + 1]] <- .infl_row(
         "ΔNWC / ΔRevenue", nwc_r, "%",
-        .dcf_valuation_bundle(fcf_mult = 1.1),
-        .dcf_valuation_bundle(fcf_mult = 0.9),
+        .dcf_valuation_bundle(fcf_mult = m_up),
+        .dcf_valuation_bundle(fcf_mult = m_dn),
         "近似：ΔNWC↑ → FCFF↓"
       )
     }
@@ -4021,16 +4030,16 @@ server <- function(input, output, session) {
     if (is.finite(base$cash) && abs(base$cash) > 1) {
       rows[[length(rows) + 1]] <- .infl_row(
         "現金／約當現金", base$cash, "$",
-        .dcf_valuation_bundle(cash_mult = 0.9),
-        .dcf_valuation_bundle(cash_mult = 1.1),
+        .dcf_valuation_bundle(cash_mult = m_dn),
+        .dcf_valuation_bundle(cash_mult = m_up),
         "EV → Equity 橋接"
       )
     }
     if (is.finite(base$debt) && abs(base$debt) > 1) {
       rows[[length(rows) + 1]] <- .infl_row(
         "總負債", base$debt, "$",
-        .dcf_valuation_bundle(debt_mult = 0.9),
-        .dcf_valuation_bundle(debt_mult = 1.1),
+        .dcf_valuation_bundle(debt_mult = m_dn),
+        .dcf_valuation_bundle(debt_mult = m_up),
         "EV → Equity 橋接"
       )
     }
@@ -4105,8 +4114,8 @@ server <- function(input, output, session) {
     }
 
     out <- do.call(rbind, rows)
-    # 依影響力% 由高到低排序
-    infl_num <- suppressWarnings(as.numeric(gsub("%", "", out$`影響力%`)))
+    # 依｜ε｜由高到低排序
+    infl_num <- suppressWarnings(as.numeric(out$`｜ε｜`))
     out <- out[order(-infl_num, na.last = TRUE), , drop = FALSE]
     rownames(out) <- NULL
     out

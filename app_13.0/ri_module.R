@@ -870,17 +870,13 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
         )
     })
 
-    # 頁底：公式參數 ±10% 敏感度（仿 DCF）
+    # 頁底：公式參數相對 ±1% 邊際彈性（仿 DCF）
     output$param_sensitivity_table <- renderTable({
       res0 <- ri_calc()
       validate(need(identical(res0$status, "success") && is.finite(res0$intrinsic),
                     "基準估值尚未就緒：請確認 B0、Ke、g（且 Ke > g）與 ROE 路徑。"))
       p0 <- res0$intrinsic
-      .rel <- function(x, sign = -1) {
-        x <- suppressWarnings(as.numeric(x)[1])
-        if (!is.finite(x) || abs(x) < 1e-12) return(NA_real_)
-        x * (1 + sign * 0.10)
-      }
+      .rel <- function(x, sign = -1) .param_rel_shock(x, sign = sign)
       .price_at <- function(b0 = input$b0, ke_pct = input$ri_ke, g_pct = input$ri_g,
                             n = input$ri_years, payout_pct = input$ri_payout,
                             roe_pct = input$ri_roe) {

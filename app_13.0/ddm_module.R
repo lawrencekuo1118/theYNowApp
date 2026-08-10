@@ -124,11 +124,7 @@ ddm_module_server <- function(id, ddm_g = reactive(NULL), ddm_ke = reactive(NULL
       ke0 <- suppressWarnings(as.numeric(input$ke)[1])
       p0 <- .ddm_price_at(d0, g0, ke0)
       validate(need(is.finite(p0), "基準估值尚未就緒：請確認 D0、g、Ke（且 Ke > g）。"))
-      .rel <- function(x, sign = -1) {
-        x <- suppressWarnings(as.numeric(x)[1])
-        if (!is.finite(x) || abs(x) < 1e-12) return(NA_real_)
-        x * (1 + sign * 0.10)
-      }
+      .rel <- function(x, sign = -1) .param_rel_shock(x, sign = sign)
       rows <- list(
         .param_sensitivity_infl_row(
           "今年股利 D0", d0, money_prefix(), p0,
