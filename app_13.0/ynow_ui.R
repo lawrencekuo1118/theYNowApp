@@ -2390,12 +2390,12 @@ ui <- dashboardPage(
             width = 12,
             h2(tags$b("🧪 實驗區 — 財報附註擷取 (SEC EDGAR)")),
             p("實驗性功能：直接從美國 SEC EDGAR 擷取指定美股的",
-              tags$b("最新財報（10-K / 10-Q）"),
-              "並抽出「財務報表附註 (Notes)」，自動標記與估值最相關的重要附註。",
+              tags$b("最新年報（10-K／20-F／40-F）、季報（10-Q）或重大訊息（8-K／6-K）"),
+              "：年報／季報抽出「財務報表附註 (Notes)」；重大訊息則盡力萃取最新一則正文。",
               tags$br(),
               tags$span(
                 style = "color:#888;",
-                "資料來源：SEC EDGAR。僅支援美股（含 ADR，如 TSM）；台股附註不在此來源。"
+                "資料來源：SEC EDGAR。僅支援美股（含 ADR／外國發行人：年報 20-F、重大訊息 6-K）；台股不在此來源。"
               )
             ),
             tags$hr()
@@ -2416,11 +2416,24 @@ ui <- dashboardPage(
               ),
               radioButtons(
                 "lab_sec_form", "財報類型 (Form)",
-                choices = c("年報 10-K" = "10-K", "季報 10-Q" = "10-Q"),
+                choices = c(
+                  "年報 10-K / 20-F" = "10-K",
+                  "季報 10-Q" = "10-Q",
+                  "重大訊息 8-K / 6-K" = "8-K"
+                ),
                 selected = "10-K", inline = TRUE
               ),
               checkboxInput(
                 "lab_sec_important_only", "只顯示重要附註", value = TRUE
+              ),
+              textInput(
+                "lab_sec_keyword", "關鍵字搜尋",
+                value = "",
+                placeholder = "例如 revenue、lease、tax…"
+              ),
+              tags$span(
+                style = "color:#888; font-size:12px; display:block; margin:-6px 0 10px 0;",
+                "比對附註標題、重點摘要與全文（不區分大小寫）；空白＝顯示全部。"
               ),
               actionButton(
                 "lab_sec_fetch", "抓取財報附註",

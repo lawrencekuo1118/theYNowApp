@@ -330,16 +330,18 @@ fetch_beta_unlever_inputs_batch <- function(tickers) {
 }
 
 # ==========================================
-# 🧪 實驗區：SEC EDGAR 財報附註（僅美股）
+# 🧪 實驗區：SEC EDGAR 財報附註／重大訊息（僅美股）
 # ==========================================
-#' 抓取美股最新 10-K／10-Q 的重要財報附註（notes）。
+#' 抓取美股最新年報（10-K／20-F／40-F）、季報（10-Q）或重大訊息（8-K／6-K）。
+#' 年報請求會自動 fallback 到外國發行人的 20-F／40-F；
+#' 重大訊息請求（form=8-K）會自動 fallback 到 6-K。
 #' 回傳 list：ok/error/company/form/filing_date/report_date/accession/
 #' primary_doc_url 與平行向量 short_names/urls/important/char_counts/
 #' excerpts/full_texts。
 fetch_sec_report_notes <- function(ticker, form = "10-K", max_chars = 1500L) {
   tk <- toupper(trimws(as.character(ticker %||% "")[1]))
   form <- toupper(trimws(as.character(form %||% "10-K")[1]))
-  if (!form %in% c("10-K", "10-Q")) form <- "10-K"
+  if (!form %in% c("10-K", "10-Q", "20-F", "40-F", "8-K", "6-K")) form <- "10-K"
   empty <- list(
     ok = FALSE, error = "", company = tk, form = form,
     filing_date = "", report_date = "", accession = "", primary_doc_url = "",

@@ -653,8 +653,9 @@ def search_tickers(query="", max_results=12):
 # 🧪 Experimental: SEC EDGAR financial-report notes (US filings only)
 # --------------------------------------------------------------------------
 # yfinance does not expose statement footnotes, so the notes are pulled from
-# SEC EDGAR: ticker -> CIK -> latest 10-K/10-Q -> FilingSummary.xml (Notes) ->
-# each note's R#.htm. Returns reticulate-friendly parallel lists.
+# SEC EDGAR: ticker -> CIK -> latest annual/interim/material filing ->
+# FilingSummary.xml (Notes) or primaryDocument body for 8-K/6-K.
+# Domestic: 10-K / 10-Q / 8-K; foreign private issuers (ADR etc.): 20-F / 40-F / 6-K.
 # ==========================================================================
 import os as _os
 import re as _re
@@ -716,7 +717,11 @@ def _sec_get(session, url, is_json=False, tries=3):
 
 def _sec_clean_note_text(raw):
     from bs4 import BeautifulSoup
-    text = BeautifulSoup(raw, "lxml").get_text(" ", strip=True)
+    try:
+        soup = BeautifulSoup(raw, "lxml")
+    except Exception:
+        soup = BeautifulSoup(raw, "html.parser")
+    text = soup.get_text(" ", strip=True)
     text = _re.sub(r"\s+", " ", text)
     text = _SEC_BANNER.sub("", text).strip()
     m = _SEC_XBRL_FOOTER.search(text)
@@ -823,11 +828,99 @@ def _sec_empty_result(error=""):
     }
 
 
-def sec_report_notes(ticker="AAPL", form="10-K", max_chars=1500):
-    """Fetch a US stock's latest 10-K/10-Q from SEC EDGAR and extract the
-    important notes to the financial statements. Returns a dict of parallel
-    lists that reticulate converts cleanly to R vectors."""
+# Preferred form candidates: domestic first, then foreign (UI label order).
+# 年報 10-K → 20-F/40-F; 重大訊息 8-K → 6-K.
+_SEC_FORM_CANDIDATES = {
+    "10-K": ("10-K", "20-F", "40-F"),
+    "20-F": ("20-F", "10-K", "40-F"),
+    "40-F": ("40-F", "20-F", "10-K"),
+    "10-Q": ("10-Q",),
+    "8-K": ("8-K", "8-K/A", "6-K", "6-K/A"),
+    "6-K": ("6-K", "6-K/A", "8-K", "8-K/A"),
+}
+
+_SEC_MATERIAL_FORMS = frozenset({"8-K", "8-K/A", "6-K", "6-K/A"})
+
+
+def _sec_is_material_form(form):
+    return str(form or "") in _SEC_MATERIAL_FORMS
+
+
+def _sec_append_text_item(result, short_name, url, text, max_chars, important=True):
+    """Append one parallel-list row (used by notes and 8-K/6-K body extract)."""
+    text = text or ""
+    result["short_names"].append(str(short_name))
+    result["urls"].append(url)
+    result["important"].append(bool(important))
+    result["char_counts"].append(len(text))
+    result["excerpts"].append(text[:max_chars])
+    result["full_texts"].append(text)
+    result["summaries"].append(_sec_summarize(text) if important else [])
+
+
+def _sec_extract_notes_from_summary(session, folder, result, max_chars):
+    """Fill result lists from FilingSummary.xml Notes; returns True if any note found."""
     import time
+    from bs4 import BeautifulSoup
+    try:
+        xml = _sec_get(session, f"{folder}/FilingSummary.xml")
+    except Exception:
+        return False
+    try:
+        soup = BeautifulSoup(xml, "lxml-xml")
+    except Exception:
+        soup = BeautifulSoup(xml, "html.parser")
+
+    def _find(el, name):
+        if el is None:
+            return None
+        return el.find(name) or el.find(name.lower())
+
+    reports = soup.find_all("Report") or soup.find_all("report")
+    found = False
+    for rep in reports:
+        cat = _find(rep, "MenuCategory")
+        if not cat or (cat.text or "").strip().lower() != "notes":
+            continue
+        htmf = _find(rep, "HtmlFileName")
+        if not htmf or not htmf.text:
+            continue
+        short = _find(rep, "ShortName")
+        short_name = short.text if short else ""
+        url = f"{folder}/{htmf.text}"
+        try:
+            text = _sec_clean_note_text(_sec_get(session, url))
+        except Exception as e:  # noqa: BLE001
+            text = f"(failed to fetch note: {e})"
+        _sec_append_text_item(
+            result, short_name, url, text, max_chars,
+            important=bool(_sec_is_important(short_name)),
+        )
+        found = True
+        time.sleep(0.12)
+    return found
+
+
+def _sec_extract_primary_body(session, folder, primary_doc, form, filing_date, result, max_chars):
+    """Fallback for 8-K/6-K: clean primary document HTML into one important item."""
+    url = f"{folder}/{primary_doc}"
+    try:
+        raw = _sec_get(session, url)
+        text = _sec_clean_note_text(raw)
+    except Exception as e:  # noqa: BLE001
+        text = f"(failed to fetch primary document: {e})"
+    label = f"Form {form}"
+    if filing_date:
+        label = f"{label} ({filing_date})"
+    _sec_append_text_item(result, label, url, text, max_chars, important=True)
+    return bool(text) and not text.startswith("(failed to fetch")
+
+
+def sec_report_notes(ticker="AAPL", form="10-K", max_chars=1500):
+    """Fetch a US stock's latest annual (10-K/20-F/40-F), interim (10-Q), or
+    material disclosures (8-K/6-K) from SEC EDGAR. Annual/interim extract Notes;
+    material filings fall back to primary-document body text.
+    Returns a dict of parallel lists that reticulate converts cleanly to R."""
     tk = str(ticker or "").strip().upper()
     form = str(form or "10-K").strip().upper()
     try:
@@ -836,10 +929,12 @@ def sec_report_notes(ticker="AAPL", form="10-K", max_chars=1500):
         max_chars = 1500
     if not tk:
         return _sec_empty_result("empty ticker")
-    if form not in ("10-K", "10-Q"):
+    if form not in _SEC_FORM_CANDIDATES:
         form = "10-K"
+    candidates = _SEC_FORM_CANDIDATES[form]
+    requested_form = form
 
-    print(f"📄 SEC EDGAR notes: {tk} {form}")
+    print(f"📄 SEC EDGAR notes: {tk} {form} (try {', '.join(candidates)})")
     try:
         session = _sec_session()
 
@@ -855,17 +950,28 @@ def sec_report_notes(ticker="AAPL", form="10-K", max_chars=1500):
         if cik is None:
             return _sec_empty_result(f"ticker '{tk}' not found on SEC EDGAR (US filers only)")
 
-        # 2. CIK -> latest filing of requested form
+        # 2. CIK -> latest filing among form candidates (keeps filing-date order)
         sub = _sec_get(session, _SEC_SUBMISSIONS_URL.format(cik=cik), is_json=True)
         recent = sub["filings"]["recent"]
         forms = recent["form"]
+        has_10q = any(f == "10-Q" or str(f).startswith("10-Q") for f in forms)
+        has_20f = any(f == "20-F" or str(f).startswith("20-F") for f in forms)
+        has_6k = any(f == "6-K" or str(f).startswith("6-K") for f in forms)
         idx = None
+        matched_form = None
         for i, f in enumerate(forms):
-            if f == form:
+            if f in candidates:
                 idx = i
+                matched_form = f
                 break
         if idx is None:
-            return _sec_empty_result(f"no {form} filing found for {tk}")
+            if requested_form == "10-Q" and (has_20f or has_6k) and not has_10q:
+                return _sec_empty_result(
+                    f"no 10-Q filing found for {tk} "
+                    f"(foreign issuer — use 年報 10-K/20-F or 重大訊息 8-K/6-K)"
+                )
+            return _sec_empty_result(f"no {requested_form} filing found for {tk}")
+        form = matched_form  # report the actual form used (e.g. 20-F for TSM)
         accession = recent["accessionNumber"][idx]
         filing_date = recent["filingDate"][idx]
         report_date = recent.get("reportDate", [""] * len(forms))[idx]
@@ -873,10 +979,7 @@ def sec_report_notes(ticker="AAPL", form="10-K", max_chars=1500):
         company = sub.get("name", company)
         folder = _SEC_ARCHIVES.format(cik=int(cik), accn=accession.replace("-", ""))
 
-        # 3. filing -> notes via FilingSummary.xml
-        from bs4 import BeautifulSoup
-        xml = _sec_get(session, f"{folder}/FilingSummary.xml")
-        soup = BeautifulSoup(xml, "lxml-xml")
+        # 3. filing -> Notes (annual/interim) or primary body (8-K/6-K fallback)
         result = _sec_empty_result("")
         result.update({
             "ok": True, "company": str(company), "form": form,
@@ -884,34 +987,18 @@ def sec_report_notes(ticker="AAPL", form="10-K", max_chars=1500):
             "accession": str(accession),
             "primary_doc_url": f"{folder}/{primary_doc}",
         })
-        for rep in soup.find_all("Report"):
-            cat = rep.find("MenuCategory")
-            if not cat or cat.text != "Notes":
-                continue
-            htmf = rep.find("HtmlFileName")
-            if not htmf or not htmf.text:
-                continue
-            short = rep.find("ShortName")
-            short_name = short.text if short else ""
-            url = f"{folder}/{htmf.text}"
-            try:
-                text = _sec_clean_note_text(_sec_get(session, url))
-            except Exception as e:  # noqa: BLE001
-                text = f"(failed to fetch note: {e})"
-            important = bool(_sec_is_important(short_name))
-            result["short_names"].append(str(short_name))
-            result["urls"].append(url)
-            result["important"].append(important)
-            result["char_counts"].append(len(text))
-            result["excerpts"].append(text[:max_chars])
-            result["full_texts"].append(text)
-            # Only summarize important notes (keeps it fast and relevant).
-            result["summaries"].append(_sec_summarize(text) if important else [])
-            time.sleep(0.12)  # polite to SEC (well under 10 req/s)
-
-        if not result["short_names"]:
-            result["ok"] = False
-            result["error"] = "no Notes section found in FilingSummary.xml"
+        has_notes = _sec_extract_notes_from_summary(session, folder, result, max_chars)
+        if not has_notes:
+            if _sec_is_material_form(form):
+                ok_body = _sec_extract_primary_body(
+                    session, folder, primary_doc, form, filing_date, result, max_chars
+                )
+                if not ok_body and not result["short_names"]:
+                    result["ok"] = False
+                    result["error"] = f"failed to extract body from {form} primary document"
+            else:
+                result["ok"] = False
+                result["error"] = "no Notes section found in FilingSummary.xml"
         print(f"✅ SEC notes: {tk} {form} rows={len(result['short_names'])}")
         return result
     except Exception as e:  # noqa: BLE001
