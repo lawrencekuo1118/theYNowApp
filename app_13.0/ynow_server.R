@@ -4113,11 +4113,7 @@ server <- function(input, output, session) {
     }
 
     out <- do.call(rbind, rows)
-    # 依｜ε｜由高到低排序
-    infl_num <- suppressWarnings(as.numeric(out$`｜ε｜`))
-    out <- out[order(-infl_num, na.last = TRUE), , drop = FALSE]
-    rownames(out) <- NULL
-    out
+    .param_sensitivity_sort_by_abs_eps(out)
   }, striped = TRUE, bordered = TRUE, spacing = "s", width = "100%")
   
   observeEvent(input$calc_capm, {

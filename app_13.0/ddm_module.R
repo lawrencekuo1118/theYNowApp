@@ -145,7 +145,7 @@ ddm_module_server <- function(id, ddm_g = reactive(NULL), ddm_ke = reactive(NULL
           "折現率；須維持 Ke > g"
         )
       )
-      do.call(rbind, rows)
+      .param_sensitivity_sort_by_abs_eps(do.call(rbind, rows))
     }, striped = TRUE, hover = TRUE, bordered = TRUE, spacing = "s", width = "100%")
     
     # ==========================================

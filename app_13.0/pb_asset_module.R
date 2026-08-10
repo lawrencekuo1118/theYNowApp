@@ -540,7 +540,7 @@ pb_asset_module_server <- function(id,
           "基準合理價 = 基礎 × mid"
         )
       )
-      do.call(rbind, rows)
+      .param_sensitivity_sort_by_abs_eps(do.call(rbind, rows))
     }, striped = TRUE, hover = TRUE, bordered = TRUE, spacing = "s", width = "100%")
 
     return(list(

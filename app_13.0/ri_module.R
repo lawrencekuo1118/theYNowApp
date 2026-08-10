@@ -921,7 +921,7 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
         .param_sensitivity_infl_row("預測年數 n", n0, "n", p0,
                                     .price_at(n = max(1, round(.rel(n0, -1)))), .price_at(n = max(1, round(.rel(n0, +1)))), "明確預測期長度")
       )
-      do.call(rbind, rows)
+      .param_sensitivity_sort_by_abs_eps(do.call(rbind, rows))
     }, striped = TRUE, hover = TRUE, bordered = TRUE, spacing = "s", width = "100%")
 
     # Preserve external contract

@@ -583,6 +583,16 @@ PARAM_SENSITIVITY_SHOCK <- 0.01
   )
 }
 
+#' Sort elasticity table rows by |ε| descending.
+.param_sensitivity_sort_by_abs_eps <- function(out) {
+  if (is.null(out) || !is.data.frame(out) || nrow(out) == 0) return(out)
+  if (!("｜ε｜" %in% names(out))) return(out)
+  infl_num <- suppressWarnings(as.numeric(out$`｜ε｜`))
+  out <- out[order(-infl_num, na.last = TRUE), , drop = FALSE]
+  rownames(out) <- NULL
+  out
+}
+
 # 從預測表統一取出 FCFF 序列（相容舊欄位名 FCF）
 extract_fcff_series <- function(df) {
   if (is.null(df) || nrow(df) == 0) return(numeric(0))
