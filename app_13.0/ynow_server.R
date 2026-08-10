@@ -3871,7 +3871,6 @@ server <- function(input, output, session) {
         基準值 = if (identical(unit, "%")) sprintf("%.2f%%", base_val) else
           if (identical(unit, "$")) format_dollar_abbr(base_val) else
             if (identical(unit, "x")) sprintf("%.2f", base_val) else as.character(base_val),
-        衝擊 = "±1%（相對）",
         `估值Δ% (−1%)` = if (is.finite(d_dn)) sprintf("%+.2f%%", d_dn) else "N/A",
         `估值Δ% (+1%)` = if (is.finite(d_up)) sprintf("%+.2f%%", d_up) else "N/A",
         `｜ε｜` = if (is.finite(infl)) sprintf("%.2f", infl) else "N/A",
