@@ -37,7 +37,7 @@ we <- max(0.05, min(0.95, 1 - default_debt))
 wd <- 1 - we
 default_wacc <- round(default_re, 2)
 
-# 永續成長率 SGR：預設採 Macro（直接套用 Rf）；仍須明顯低於 WACC
+# 永續成長率 SGR：啟動值錨在 Rf，執行基本面／生命週期法後由 central_perpetual_g 覆寫；須明顯低於 WACC
 default_sgr <- round(as.numeric(default_rf), 2)
 if (is.na(default_sgr) || default_sgr <= 0) default_sgr <- 4.0
 default_sgr <- min(default_sgr, max(0.5, default_wacc - 2))
@@ -113,7 +113,13 @@ APP_DEFAULTS <- list(
   beta_u_apply_source = "summary",
   beta_u_manual   = NA,                      # 手動 β（直接寫入 CAPM）
 
-  # --- 6. P/B／資產法 ---
+  # --- 6. Residual Income ---
+  ri_years        = 5,
+  ri_roe          = 15,                      # 財報載入前占位；載入後覆寫
+  ri_payout       = 40,                      # 財報載入前占位；載入後覆寫
+  roe_method      = "constant",              # constant / linear / industry / custom
+
+  # --- 7. P/B／資產法 ---
   pb_bvps         = NA,
   pb_tbvps        = NA,
   pb_low          = round(pb_lo, 2),

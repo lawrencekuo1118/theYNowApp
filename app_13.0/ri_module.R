@@ -258,13 +258,13 @@ ri_module_ui <- function(id) {
         hr(style = "border-top: 1px solid #BDC3C7;"),
         h4(tags$b("模型參數假設")),
         fluidRow(
-          column(4, numericInput(ns("ri_years"), "預測期 (Years)", value = 5, min = 1, max = 15, step = 1)),
-          column(4, numericInput(ns("ri_ke"), "股東權益成本 (Ke, %)", value = 8.0, step = 0.1)),
-          column(4, numericInput(ns("ri_g"), "終值永續成長率 (g, %)", value = 2.0, step = 0.1))
+          column(4, numericInput(ns("ri_years"), "預測期 (Years)", value = APP_DEFAULTS$ri_years %||% 5, min = 1, max = 15, step = 1)),
+          column(4, numericInput(ns("ri_ke"), "股東權益成本 (Ke, %)", value = APP_DEFAULTS$ddm_ke %||% 8.0, step = 0.1)),
+          column(4, numericInput(ns("ri_g"), "終值永續成長率 (g, %)", value = APP_DEFAULTS$sgr %||% 2.0, step = 0.1))
         ),
         fluidRow(
-          column(6, numericInput(ns("ri_roe"), "起始／預期 ROE (%)", value = 15.0, step = 0.1)),
-          column(6, numericInput(ns("ri_payout"), "預期現金配息率 (Payout, %)", value = 40.0, step = 1))
+          column(6, numericInput(ns("ri_roe"), "起始／預期 ROE (%)", value = APP_DEFAULTS$ri_roe %||% 15.0, step = 0.1)),
+          column(6, numericInput(ns("ri_payout"), "預期現金配息率 (Payout, %)", value = APP_DEFAULTS$ri_payout %||% 40.0, step = 1))
         ),
         hr(style = "border-top: 1px solid #BDC3C7;"),
         h4(tags$b("ROE Forecast Method")),
@@ -279,7 +279,7 @@ ri_module_ui <- function(id) {
                 "Industry Fade" = "industry",
                 "Custom Vector" = "custom"
               ),
-              selected = "constant"
+              selected = APP_DEFAULTS$roe_method %||% "constant"
             )
           ),
           column(6, uiOutput(ns("ui_roe_path_preview")))
@@ -419,17 +419,21 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
     })
 
     observeEvent(input$btn_reset_ri_params, {
-      updateNumericInput(session, "ri_years", value = 5)
+      updateNumericInput(session, "ri_years", value = APP_DEFAULTS$ri_years %||% 5)
       g_reset <- if (!is.null(global_g) && !is.null(global_g()) && is.finite(global_g())) {
         round(as.numeric(global_g()), 2)
       } else {
-        2.0
+        APP_DEFAULTS$sgr %||% 2.0
       }
       updateNumericInput(session, "ri_g", value = g_reset)
       if (!is.null(global_re()) && is.finite(global_re())) {
         updateNumericInput(session, "ri_ke", value = round(global_re() * 100, 2))
+      } else if (is.finite(APP_DEFAULTS$ddm_ke)) {
+        updateNumericInput(session, "ri_ke", value = APP_DEFAULTS$ddm_ke)
       }
-      updateSelectInput(session, "roe_method", selected = "constant")
+      updateNumericInput(session, "ri_roe", value = APP_DEFAULTS$ri_roe %||% 15)
+      updateNumericInput(session, "ri_payout", value = APP_DEFAULTS$ri_payout %||% 40)
+      updateSelectInput(session, "roe_method", selected = APP_DEFAULTS$roe_method %||% "constant")
       updateNumericInput(session, "roe_industry", value = industry_roe_pct())
       showNotification("🔁 已重設為系統預設參數", type = "message")
     })
