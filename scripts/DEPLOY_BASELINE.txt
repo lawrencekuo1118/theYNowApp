@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12390123
+bundleId=12390194
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=97cb35c
-commit=97cb35c
-short=97cb35c
-message=Clarify that shinyapps deploy is the app baseline.
-captured_at=2026-08-10T12:48:02+00:00
-note=Re-deploy of the pre-experimental app_13.0 baseline (no 實驗區/Lab). App tree is unchanged from 792644b; 97cb35c only adds chore/docs on top. Canonical app baseline = this deploy (not Git tip). The experimental SEC-notes Lab feature (PR #24) is intentionally NOT included in this bundle.
+aligned_git=4c1b0a6
+commit=4c1b0a6
+short=4c1b0a6
+message=chore(debug): remove temporary agent instrumentation from app_13.0
+captured_at=2026-08-10T13:35:00+00:00
+note=Deployed on request the app_13.0 version whose BETA section shows β valueBoxes (bold numbers) and places "手動輸入 β（直接寫入 CAPM）" (box ③) directly below "槓桿 Beta（β_L）來源" (box ①). This is the clean form of feat 44e9079 ("let users pick levered or unlevered β for CAPM"). NOTE: this is an OLDER app line than the prior baseline 792644b — it predates later fixes (e.g. USD default / currency toggle 792644b) and does NOT include the experimental SEC-notes Lab (PR #24). Earlier in this session bundle 12390123 (commit 97cb35c, pre-experimental baseline) was deployed, then superseded by this bundle 12390194.
