@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12322066
+bundleId=12390123
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=792644b
-commit=792644b
-short=792644b
-message=Fix currency toggle and default session to USD.
-captured_at=2026-07-26T12:55:52+00:00
-note=app_13.0 redeploy after USD default + radioGroupButtons currency toggle fix. Canonical app baseline = this deploy (not Git tip). origin/master may include later chore-only commits that only refresh this file.
+aligned_git=97cb35c
+commit=97cb35c
+short=97cb35c
+message=Clarify that shinyapps deploy is the app baseline.
+captured_at=2026-08-10T12:48:02+00:00
+note=Re-deploy of the pre-experimental app_13.0 baseline (no 實驗區/Lab). App tree is unchanged from 792644b; 97cb35c only adds chore/docs on top. Canonical app baseline = this deploy (not Git tip). The experimental SEC-notes Lab feature (PR #24) is intentionally NOT included in this bundle.
