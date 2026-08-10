@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12391240
+bundleId=12391277
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=636dc6d
-commit=636dc6da55485460eee8988995eaaff523aa4762
-short=636dc6d
-message=Switch param sensitivity tables from ±10% shocks to relative ±1% elasticity.
-captured_at=2026-08-10T16:52:59Z
-note=app_13.0 redeploy: DCF/DDM/RI/P/B per-share param sensitivity uses relative ±1% elasticity (|ε|).
+aligned_git=ac69de0
+commit=ac69de08bc7452cbf6fe7154ed5168dd4315fb94
+short=ac69de0
+message=Remove redundant 衝擊 column from param elasticity tables.
+captured_at=2026-08-10T17:02:45Z
+note=app_13.0 redeploy: drop 衝擊 column from DCF/DDM/RI/P/B elasticity tables.
