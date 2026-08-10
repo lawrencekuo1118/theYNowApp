@@ -1,11 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12390933
+bundleId=12391240
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=95c5555
-commit=95c5555
-short=95c5555
-message=Lab: remove 實驗區 from main sidebar menu (keep 測試 shortcut only)
-captured_at=2026-08-10T15:49:00+00:00
-source_branch=master
-note=Current live app_13.0 = master beta-UI (4355b95 line) + testing env Lab (SEC EDGAR notes + 重大訊息 8-K/6-K + 關鍵字搜尋), Lab opened via the Snapshot-adjacent 測試 shortcut (no 實驗區 main-menu item). Merged to master from cursor/testing-env-8k-keyword-3ddf (commit 95c5555; bundle 12390933). Canonical app baseline = this deploy.
+aligned_git=636dc6d
+commit=636dc6da55485460eee8988995eaaff523aa4762
+short=636dc6d
+message=Switch param sensitivity tables from ±10% shocks to relative ±1% elasticity.
+captured_at=2026-08-10T16:52:59Z
+note=app_13.0 redeploy: DCF/DDM/RI/P/B per-share param sensitivity uses relative ±1% elasticity (|ε|).
