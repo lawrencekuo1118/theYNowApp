@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12390281
+bundleId=12390460
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=f27cd7e
-commit=f27cd7e
-short=f27cd7e
-message=Remove default rd; scrape interest/debt into WACC; restore About methodology.
-captured_at=2026-08-10T13:35:00+00:00
-source_branch=cursor/capm-beta-source-order-9e9d
-note=Deployed on request the BETA "source-option reorder" version (tip of branch cursor/capm-beta-source-order-9e9d). CAPM apply-source order = Summary β → 產業預設 β → 自選公司平均 Bottom-Up (βᵤ→βe) → 去槓桿化 βᵤ → 手動定義 βe, with β valueBoxes (bold numbers). Does NOT include the experimental SEC-notes Lab (PR #24). Session deploy history: 12390123 (97cb35c pre-experimental) → 12390194 (4c1b0a6 beta-layout) → 12390281 (f27cd7e beta-source-reorder, CURRENT LIVE).
+aligned_git=7cc13d3
+commit=7cc13d3
+short=7cc13d3
+message=Move manual βe under Hamada; remove RI-Model Model Formula block.
+captured_at=2026-08-10T14:05:00+00:00
+source_branch=origin/master
+note=Deployed on request the version where the manual β input ("手動定義 βe") was moved to the LEFT box (under 去槓桿化 βᵤ / Hamada, beside 槓桿 Beta（β_L）來源). This is the next master step after the WACC change f27cd7e. Keeps the reordered CAPM β source options and β valueBoxes. Does NOT include the experimental SEC-notes Lab (PR #24). Session deploy history: 12390123 (97cb35c pre-experimental) → 12390194 (4c1b0a6 beta-layout) → 12390281 (f27cd7e beta-source-reorder+WACC) → 12390460 (7cc13d3 manual β moved left, CURRENT LIVE).
