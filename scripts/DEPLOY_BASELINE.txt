@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12391277
+bundleId=12391363
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=ac69de0
-commit=ac69de08bc7452cbf6fe7154ed5168dd4315fb94
-short=ac69de0
-message=Remove redundant 衝擊 column from param elasticity tables.
-captured_at=2026-08-10T17:02:45Z
-note=app_13.0 redeploy: drop 衝擊 column from DCF/DDM/RI/P/B elasticity tables.
+aligned_git=6330f8c
+commit=6330f8c73831a974669b1723d36ed34e4149fa22
+short=6330f8c
+message=Sort all per-share param elasticity tables by |ε| descending.
+captured_at=2026-08-10T17:18:31Z
+note=app_13.0 redeploy: DCF/DDM/RI/P/B elasticity tables sorted by |ε| descending.
