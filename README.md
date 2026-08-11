@@ -56,7 +56,8 @@ Live: https://hopesmasher1118.shinyapps.io/TheYNowApp/
 ## v14.0 重點
 
 - 延續 v13 方法論（分類 → 主／副模型；Bear／Base／Bull 區間＋可信度）
-- **Dashboard 財報附註 (SEC EDGAR)**（Cash Flow 旁頁籤；側邊欄捷徑）：年報 10-K／20-F、季報 10-Q、重大訊息 8-K／6-K
+- **Dashboard 財報附註 (SEC EDGAR)**（Cash Flow 旁頁籤）：年報 10-K／20-F、季報 10-Q、重大訊息 8-K／6-K
+- **實驗區 Lab**（Snapshot 旁「測試」）：新功能規劃／實驗空間
 
 ## Cloud notes
 

@@ -688,6 +688,7 @@ ui <- dashboardPage(
              menuItem("RI-Model", tabName = "ri_calculator", icon = icon("gem")),
              menuItem("Sensitivity", tabName = "sensitivity", icon = icon("sliders-h")),
              menuItem("Backtest Zone", tabName = "backtest", icon = icon("vial")),
+             # 實驗區 (Lab) 不放主選單；改由底部 Snapshot 旁「測試 / testing env.」捷徑開啟
              menuItem("About", tabName = "about", icon = icon("info-circle"))
              # Snapshot 不放主選單（避免巢狀 li 被瀏覽器抬出隱藏）；改由底部捷徑切換
            ),
@@ -727,16 +728,16 @@ ui <- dashboardPage(
         icon("camera", class = "fa-fw"),
         tags$span(" Snapshot")
       ),
-      # 捷徑：開啟 Dashboard → 財報附註 (SEC EDGAR)
+      # 測試按鈕：Snapshot 旁的捷徑，開啟實驗區 (Lab) — 規劃新功能用
       tags$a(
         id = "ynow_sidebar_test_btn",
-        href = "#shiny-tab-dashboard",
+        href = "#shiny-tab-lab_notes",
         `data-toggle` = "tab",
-        `data-value` = "dashboard",
+        `data-value` = "lab_notes",
         class = "ynow-sidebar-snapshot-link ynow-sidebar-test-link",
-        onclick = "Shiny.setInputValue('sidebar_tabs', 'dashboard', {priority: 'event'}); Shiny.setInputValue('sidebar_test_click', (window.__ynowTestClicks=(window.__ynowTestClicks||0)+1), {priority: 'event'}); return false;",
-        icon("file-alt", class = "fa-fw"),
-        tags$span(" 財報附註")
+        onclick = "Shiny.setInputValue('sidebar_tabs', 'lab_notes', {priority: 'event'}); Shiny.setInputValue('sidebar_test_click', (window.__ynowTestClicks=(window.__ynowTestClicks||0)+1), {priority: 'event'}); return false;",
+        icon("flask", class = "fa-fw"),
+        tags$span(" 測試")
       ),
       # 意見區：收集使用者回饋，系統性開 GitHub Issue
       tags$a(
@@ -2451,6 +2452,49 @@ ui <- dashboardPage(
               )
       ),
       
+      # ==========================================
+      # 🧪 實驗區 (Lab)：規劃／測試新功能
+      # ==========================================
+      tabItem(
+        tabName = "lab_notes",
+        fluidRow(
+          column(
+            width = 12,
+            h2(tags$b("🧪 實驗區 — testing env.")),
+            p(
+              "此處保留為",
+              tags$b("新功能規劃與實驗"),
+              "用空間（側邊欄底部「測試」開啟）。",
+              tags$br(),
+              tags$span(
+                style = "color:#888;",
+                "SEC 財報附註擷取已移至 Dashboard → FINANCIAL REPORT →「財報附註 (SEC)」。"
+              )
+            ),
+            tags$hr()
+          )
+        ),
+        fluidRow(
+          column(
+            width = 12,
+            box(
+              width = 12, status = "warning", solidHeader = TRUE,
+              title = tagList(icon("lightbulb"), "規劃中"),
+              tags$p(
+                style = "margin-bottom:8px;",
+                "目前尚無公開實驗功能。後續候選構想可先落在此頁再升格到正式分頁。"
+              ),
+              tags$ul(
+                style = "color:#555; margin-bottom:0;",
+                tags$li("產業別 × 評價方法分組／績優股清單"),
+                tags$li("成熟股 P/E · EV 引擎（規劃中 14.1+）"),
+                tags$li("其他尚未定案的實驗性工具")
+              )
+            )
+          )
+        )
+      ),
+
       # ==========================================
       # 💬 意見區：使用者回饋 → GitHub Issues
       # ==========================================

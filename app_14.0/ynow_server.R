@@ -6218,14 +6218,9 @@ server <- function(input, output, session) {
   # ==========================================
   lab_sec_result <- reactiveVal(NULL)
 
-  # 側邊欄「財報附註」捷徑：切到 Dashboard 並選取 FINANCIAL REPORT → 財報附註 (SEC)
+  # 側邊欄「測試」：開啟實驗區 (Lab)，供新功能規劃／實驗
   observeEvent(input$sidebar_test_click, {
-    updateTabItems(session, "sidebar_tabs", "dashboard")
-    # tabItem 先切換後，再延遲選取 FINANCIAL REPORT 子頁籤，避免尚未就緒
-    shinyjs::delay(150, {
-      updateTabsetPanel(session, "dashboard_fin_report", selected = "sec_notes")
-    })
-    showNotification("已開啟 Dashboard — 財報附註 (SEC EDGAR)", type = "message", duration = 3)
+    showNotification("已開啟實驗區 (Lab) — testing env.", type = "message", duration = 3)
   }, ignoreInit = TRUE)
 
   # 沿用主頁 Ticker / Stock Code：優先用已搜尋的代碼，否則用主頁輸入框
