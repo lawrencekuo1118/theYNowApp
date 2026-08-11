@@ -1092,6 +1092,48 @@ ui <- dashboardPage(
           color: #333;
           margin: 12px 0 6px 0;
         }
+        /* Annotation 頁籤 */
+        .ynow-ann-legend {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+          margin: 0 0 14px 0;
+        }
+        .ynow-ann-chip {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 12px;
+          border-radius: 6px;
+          background: #fafafa;
+          border: 1px solid #e5e5e5;
+          font-size: 13px;
+          color: #333;
+          min-width: 168px;
+        }
+        .ynow-ann-swatch {
+          width: 14px;
+          height: 14px;
+          border-radius: 50%;
+          flex: 0 0 14px;
+          box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08);
+        }
+        .ynow-ann-note {
+          margin: 0 0 16px 0;
+          padding: 10px 12px;
+          background: #f7f9fb;
+          border-left: 4px solid #3c8dbc;
+          border-radius: 4px;
+          font-size: 12.5px;
+          color: #555;
+          line-height: 1.5;
+        }
+        .ynow-ann-h {
+          margin: 18px 0 8px 0;
+          font-size: 14px;
+          font-weight: 700;
+          color: #1a5276;
+        }
 
         /* Backtest：績效指標卡片（軟色調 + 左側色條，避免實心色塊） */
         .ynow-metric-grid {
@@ -1873,20 +1915,61 @@ ui <- dashboardPage(
                        )
                      )),
                      
-                     tabPanel("Annotation", fluidRow(
-                       column(width = 12,
-                              div(style = "margin-bottom: 20px; padding: 12px; background: #fdfdfd; border: 1px dashed #ccc; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 13px;",
-                                  span(style = "font-weight: bold; margin-right: 15px;", "同業比較圖例:"),
-                                  span(icon("circle", style = "color: #0073b7;"), " 高於標準 (Better) ", style = "margin-right: 15px;"),
-                                  span(icon("circle", style = "color: #00a65a;"), " 符合標準 (Standard) ", style = "margin-right: 15px;"),
-                                  span(icon("circle", style = "color: #dd4b39;"), " 低於標準 (Worse) ", style = "margin-right: 15px;"),
-                                  span(icon("circle", style = "color: #333;"), " 無資料 / 錯誤")
-                              )
-                       ),
-                       column(width = 12,
-                              tableOutput("stable_indicator_table")
+                     tabPanel(
+                       "Annotation",
+                       fluidRow(
+                         column(
+                           width = 12,
+                           tags$p(
+                             class = "ynow-ann-note",
+                             tags$b("用途："),
+                             "解讀上方 KPI 色碼如何對照「Get Started → Industry Standard」產業區間。",
+                             "數值採年報序列（排除 TTM）的多年平均或年均 YoY，以利跨期／同業比較。"
+                           ),
+                           tags$div(
+                             class = "ynow-ann-legend",
+                             tags$div(
+                               class = "ynow-ann-chip",
+                               tags$span(class = "ynow-ann-swatch", style = "background:#3c8dbc;"),
+                               tags$span(tags$b("藍"), " · 優於區間 (Better)")
+                             ),
+                             tags$div(
+                               class = "ynow-ann-chip",
+                               tags$span(class = "ynow-ann-swatch", style = "background:#222;"),
+                               tags$span(tags$b("黑"), " · 符合區間 (In band)")
+                             ),
+                             tags$div(
+                               class = "ynow-ann-chip",
+                               tags$span(class = "ynow-ann-swatch", style = "background:#dd4b39;"),
+                               tags$span(tags$b("紅"), " · 劣於區間 (Worse)")
+                             ),
+                             tags$div(
+                               class = "ynow-ann-chip",
+                               tags$span(class = "ynow-ann-swatch",
+                                         style = "background:#fff; border:1px solid #999;"),
+                               tags$span(tags$b("無色碼"), " · 未設產業區間／N/A")
+                             )
+                           ),
+                           tags$p(
+                             style = "margin:-4px 0 12px 0; font-size:12px; color:#777; line-height:1.45;",
+                             "規則對齊 ", tags$code("get_box_color"), "：",
+                             "多數指標「越高越好」；",
+                             tags$b("營運費用比、財務槓桿"), " 為「越低越好」（反向著色）。",
+                             "落在產業 ", tags$code("[下限, 上限]"), " 內→黑；越出有利側→藍；不利側→紅。"
+                           ),
+                           uiOutput("annotation_industry_bands"),
+                           tags$h4("KPI 計算與產業區間", class = "ynow-ann-h"),
+                           DT::dataTableOutput("annotation_kpi_guide"),
+                           tags$h4("指標群組解讀穩定度", class = "ynow-ann-h"),
+                           tableOutput("annotation_stability_table"),
+                           tags$p(
+                             style = "margin-top:10px; font-size:12px; color:#888;",
+                             "提示：資產周轉率、OCF／淨利目前固定黑底（無同業區間）；",
+                             "現金品質另可對照決策漏斗／F-Score 的盈餘品質檢核。"
+                           )
+                         )
                        )
-                     ))
+                     )
               )
       ),
       
@@ -2476,34 +2559,83 @@ ui <- dashboardPage(
             width = 12,
             box(
               width = 12, status = "primary", solidHeader = TRUE,
-              title = tagList(icon("layer-group"), "美股：產業別 × 建議評價方法 × 績優候選"),
+              title = tagList(icon("layer-group"), "美股績優篩選：規模 × 產業 × 評價模型"),
               tags$p(
                 style = "margin-bottom:10px;",
-                "依 App 產業鍵將美股歸組，並標註",
-                tags$b("產業預設評價方法"),
-                "（對齊 ", tags$code("recommend_valuation_models"), " 的產業層規則）。",
-                "候選為 curated 藍籌／presets；按下方按鈕後以",
-                tags$b(" F-Score＋盈餘品質 "),
-                "篩「績優股」（門檻：F-Score ≥ 7 且 OCF＞營運利潤）。"
+                tags$b("績優原則："),
+                "在可評估池中，選",
+                tags$b("股價相對模型合理價、於預測期間 n 年內隱含年化漲幅最大者"),
+                "。流程：① 複選規模／產業／評價模型 → ② ",
+                tags$b("F-Score ≥ 7 且盈餘品質通過"), " 作品質門檻 → ③ 以建議主模型估合理價 vs 現價，",
+                "用 n＝",
+                as.integer(APP_DEFAULTS$years %||% 5L)[1],
+                " 年換算年化漲幅並排序。",
+                tags$br(),
+                tags$span(
+                  style = "color:#888; font-size:12px;",
+                  "實驗區為簡化估值（對齊 DCF／DDM／P/B／RI 類型，非完整側欄估值引擎）。"
+                )
               ),
               fluidRow(
                 column(
-                  width = 3,
-                  selectInput(
-                    "lab_im_method", "篩選建議主方法",
+                  width = 4,
+                  shinyWidgets::pickerInput(
+                    "lab_im_sizes", "公司規模（複選）",
+                    choices = LAB_SIZE_LABELS,
+                    selected = names(LAB_SIZE_LABELS),
+                    multiple = TRUE,
+                    options = shinyWidgets::pickerOptions(
+                      actionsBox = TRUE,
+                      selectedTextFormat = "count > 2",
+                      noneSelectedText = "全部規模",
+                      liveSearch = FALSE
+                    )
+                  )
+                ),
+                column(
+                  width = 4,
+                  shinyWidgets::pickerInput(
+                    "lab_im_industries", "產業別（複選）",
+                    choices = industry_picker_choices(),
+                    selected = names(industry_picker_choices()),
+                    multiple = TRUE,
+                    options = shinyWidgets::pickerOptions(
+                      actionsBox = TRUE,
+                      liveSearch = TRUE,
+                      selectedTextFormat = "count > 2",
+                      noneSelectedText = "全部產業",
+                      size = 10
+                    )
+                  )
+                ),
+                column(
+                  width = 4,
+                  shinyWidgets::pickerInput(
+                    "lab_im_methods", "適用評價模型（複選）",
                     choices = c(
-                      "全部" = "all",
                       "DCF" = "dcf",
                       "DDM" = "ddm",
                       "P/B" = "pb",
                       "RI" = "ri"
                     ),
-                    selected = "all"
+                    selected = c("dcf", "ddm", "pb", "ri"),
+                    multiple = TRUE,
+                    options = shinyWidgets::pickerOptions(
+                      actionsBox = TRUE,
+                      selectedTextFormat = "count > 2",
+                      noneSelectedText = "全部模型"
+                    )
                   )
-                ),
+                )
+              ),
+              fluidRow(
                 column(
                   width = 3,
-                  checkboxInput("lab_im_quality_only", "只顯示 F-Score 績優股", value = FALSE)
+                  checkboxInput(
+                    "lab_im_quality_only",
+                    "明細只顯示門檻通過者",
+                    value = TRUE
+                  )
                 ),
                 column(
                   width = 3,
@@ -2513,12 +2645,12 @@ ui <- dashboardPage(
                   )
                 ),
                 column(
-                  width = 3,
+                  width = 6,
                   tags$div(
                     style = "margin-top:25px;",
                     actionButton(
-                      "lab_im_run_fscore", "以 F-Score 評估績優",
-                      icon = icon("flask"),
+                      "lab_im_run_fscore", "評估績優：門檻＋年化估值漲幅",
+                      icon = icon("chart-line"),
                       class = "btn-success",
                       style = "font-weight:700; width:100%;"
                     )
@@ -2527,12 +2659,20 @@ ui <- dashboardPage(
               ),
               tags$p(
                 style = "color:#888; font-size:12px; margin-top:-6px;",
-                "提示：評估會呼叫 Yahoo／yfinance（已 memoise）；首次較慢。僅美股候選（已排除台股／ETF）。"
+                "提示：規模＝Yahoo 市值；評估抓 Summary＋財報（memoise）。",
+                "排行榜＝門檻通過後依年化估值漲幅由高到低。"
               ),
               tags$h4("依建議方法分組摘要", style = "margin-top:8px;"),
               tableOutput("lab_im_summary"),
               tags$hr(),
-              tags$h4("明細（產業 × 方法 × 候選）"),
+              tags$h4(
+                tagList(icon("trophy"), " 績優排行榜（年化估值漲幅 Top）"),
+                style = "margin-top:8px;"
+              ),
+              uiOutput("lab_im_leader_note"),
+              tableOutput("lab_im_leaderboard"),
+              tags$hr(),
+              tags$h4("明細（按年化估值漲幅排序）"),
               DT::dataTableOutput("lab_im_table") %>% shinycssloaders::withSpinner()
             )
           )

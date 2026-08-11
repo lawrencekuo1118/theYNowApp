@@ -2014,15 +2014,84 @@ server <- function(input, output, session) {
     } else ""
   })
   
-  output$stable_indicator_table <- renderTable({
-    data.frame(
-      指標名稱 = c("毛利率", "OPEX Ratio", "ROA / ROE", "存貨週轉 / 應收週轉", "Equity Multiplier", "自由現金流比"),
-      穩定性 = c("★★★★☆", "★★★★☆", "★★★★☆", "★★★☆☆", "★★★☆☆", "★★★★★"),
-      說明 = c("技術/品牌優勢的象徵", "管理與營運效率穩定性", "去波動化後能長期觀察企業效率", "營運效率的直接反映", "財務體質穩定，不易劇變", "最能看出企業真實價值創造力"),
-      stringsAsFactors = FALSE
+  output$annotation_industry_bands <- renderUI({
+    key <- as.character(input$industry_choice %||% "")[1]
+    if (!nzchar(key) || !(key %in% names(industry_standards))) {
+      return(tags$div(
+        class = "ynow-ann-note",
+        style = "border-left-color:#999;",
+        "尚未選擇產業標準。請至 Get Started → Industry Standard 後，此處會顯示該產業的 KPI 區間。"
+      ))
+    }
+    lab <- industry_labels[[key]]
+    if (is.null(lab) || is.na(lab) || !nzchar(as.character(lab))) lab <- key
+    inds <- industry_standards[[key]]
+    band_items <- list(
+      c("毛利率", "gross_profit_margin", "%"),
+      c("淨利率", "net_profit_margin", "%"),
+      c("營運費用比", "opex_ratio", "%"),
+      c("營收成長", "rev_growth", "%"),
+      c("ROA", "roa", "%"),
+      c("ROE", "roe", "%"),
+      c("財務槓桿", "eqt_multiplier", "x")
     )
-  }, striped = TRUE, hover = TRUE, spacing = "m", width = "100%")
-  
+    chips <- lapply(band_items, function(b) {
+      txt <- annotation_format_band(key, b[[2]], unit = b[[3]])
+      tags$div(
+        class = "ynow-ann-chip",
+        style = "min-width:200px; flex-direction:column; align-items:flex-start; gap:2px;",
+        tags$span(style = "font-size:11px; color:#888;", b[[1]]),
+        tags$span(style = "font-weight:700; color:#1a5276;", txt)
+      )
+    })
+    meta <- character(0)
+    if (!is.null(inds$beta_avg) && is.finite(inds$beta_avg)) {
+      meta <- c(meta, paste0("β≈", round(inds$beta_avg, 2)))
+    }
+    if (!is.null(inds$rm_avg) && is.finite(inds$rm_avg)) {
+      meta <- c(meta, paste0("Rm≈", round(inds$rm_avg, 1), "%"))
+    }
+    if (!is.null(inds$debt_ratio_avg) && is.finite(inds$debt_ratio_avg)) {
+      meta <- c(meta, paste0("Debt≈", round(100 * inds$debt_ratio_avg, 1), "%"))
+    }
+    if (!is.null(inds$pb_band) && length(inds$pb_band) >= 2) {
+      pb <- inds$pb_band
+      mid <- if (length(pb) >= 3) pb[3] else mean(pb[1:2])
+      meta <- c(meta, sprintf("P/B %.1f–%.1f (mid %.1f)", pb[1], pb[2], mid))
+    }
+    tagList(
+      tags$h4("目前產業標準快覽", class = "ynow-ann-h"),
+      tags$div(
+        style = "margin-bottom:8px; font-size:13px;",
+        tags$b(lab),
+        tags$span(style = "color:#888; margin-left:8px; font-size:12px;", paste0("(", key, ")")),
+        if (length(meta)) {
+          tags$span(style = "margin-left:12px; color:#555; font-size:12px;", paste(meta, collapse = " · "))
+        }
+      ),
+      tags$div(class = "ynow-ann-legend", chips)
+    )
+  })
+
+  output$annotation_kpi_guide <- DT::renderDataTable({
+    key <- as.character(input$industry_choice %||% "")[1]
+    df <- annotation_kpi_guide_df(key)
+    DT::datatable(
+      df,
+      rownames = FALSE,
+      options = list(
+        pageLength = 15,
+        dom = "t",
+        scrollX = TRUE,
+        ordering = FALSE
+      )
+    )
+  })
+
+  output$annotation_stability_table <- renderTable({
+    annotation_stability_df()
+  }, striped = TRUE, hover = TRUE, bordered = TRUE, spacing = "m", width = "100%")
+
   # ==========================================
   # 🧮 7. CAPM, WACC 與 DCF 估值計算
   # ==========================================
@@ -6224,7 +6293,7 @@ server <- function(input, output, session) {
   }, ignoreInit = TRUE)
 
   # ------------------------------------------
-  # Lab：產業 × 建議評價方法 × F-Score 績優股
+  # Lab：規模×產業×模型複選；F-Score 門檻後依年化估值漲幅排序
   # ------------------------------------------
   lab_im_catalog <- reactive({
     tryCatch(lab_build_industry_method_catalog(), error = function(e) {
@@ -6234,34 +6303,52 @@ server <- function(input, output, session) {
   })
   lab_im_scores <- reactiveVal(NULL)
 
+  lab_im_pool <- reactive({
+    catlg <- lab_im_catalog()
+    req(is.data.frame(catlg), nrow(catlg) > 0)
+    lab_merge_catalog_scores(
+      catlg,
+      scores = lab_im_scores(),
+      method_filter = input$lab_im_methods,
+      industry_filter = input$lab_im_industries,
+      size_filter = input$lab_im_sizes,
+      quality_only = FALSE
+    )
+  })
+
   observeEvent(input$lab_im_run_fscore, {
     catlg <- lab_im_catalog()
     req(is.data.frame(catlg), nrow(catlg) > 0)
-    method <- as.character(input$lab_im_method %||% "all")[1]
-    pool <- catlg
-    if (!identical(method, "all")) {
-      pool <- pool[pool$primary == method | pool$secondary == method, , drop = FALSE]
-    }
-    tickers <- unique(stats::na.omit(as.character(pool$ticker)))
-    tickers <- tickers[nzchar(tickers)]
-    if (length(tickers) == 0L) {
+    # 評估池：先套產業／模型複選（規模需市值，評估後再濾）
+    pool <- lab_merge_catalog_scores(
+      catlg,
+      scores = NULL,
+      method_filter = input$lab_im_methods,
+      industry_filter = input$lab_im_industries,
+      size_filter = character(0),
+      quality_only = FALSE
+    )
+    pool <- pool[!is.na(pool$ticker) & nzchar(as.character(pool$ticker)), , drop = FALSE]
+    if (nrow(pool) == 0L) {
       showNotification("目前篩選下沒有可評估的美股候選。", type = "warning")
       return()
     }
     max_n <- suppressWarnings(as.integer(input$lab_im_max_n %||% 25L)[1])
     if (!is.finite(max_n) || max_n < 1L) max_n <- 25L
     max_n <- min(40L, max(5L, max_n))
-    if (length(tickers) > max_n) {
+    n_unique <- length(unique(pool$ticker))
+    if (n_unique > max_n) {
       showNotification(
-        paste0("候選 ", length(tickers), " 檔，本次先評估前 ", max_n, " 檔。"),
+        paste0("候選 ", n_unique, " 檔，本次先評估前 ", max_n, " 檔。"),
         type = "message", duration = 5
       )
     }
+    n_yrs <- lab_model_horizon_years()
     scores <- withProgress(
-      message = "F-Score 評估美股候選中…",
+      message = paste0("評估中（F-Score 門檻＋", n_yrs, " 年年化估值漲幅）…"),
       value = 0, {
         lab_screen_tickers_fscore(
-          tickers,
+          pool[, c("ticker", "industry_key", "primary"), drop = FALSE],
           max_n = max_n,
           progress_cb = function(i, n, tk) {
             incProgress(1 / max(n, 1), detail = paste0(tk, " (", i, "/", n, ")"))
@@ -6271,18 +6358,92 @@ server <- function(input, output, session) {
     )
     lab_im_scores(scores)
     n_q <- sum(scores$is_quality %in% TRUE, na.rm = TRUE)
-    showNotification(
-      paste0("評估完成：", nrow(scores), " 檔；績優（F≥7 且盈餘品質通過）", n_q, " 檔。"),
-      type = "message", duration = 8
+    best <- NA_real_
+    if (n_q > 0) {
+      best <- suppressWarnings(max(scores$upside_cagr_pct[scores$is_quality %in% TRUE], na.rm = TRUE))
+      if (!is.finite(best)) best <- NA_real_
+    }
+    top_tk <- NA_character_
+    if (is.finite(best)) {
+      hit <- which(scores$is_quality %in% TRUE &
+                     is.finite(scores$upside_cagr_pct) &
+                     abs(scores$upside_cagr_pct - best) < 1e-9)
+      if (length(hit) > 0) top_tk <- scores$ticker[hit[1]]
+    }
+    msg <- paste0(
+      "完成 ", nrow(scores), " 檔；門檻通過 ", n_q, " 檔",
+      if (is.finite(best) && nzchar(top_tk %||% "")) {
+        sprintf("；績優首選 %s（%d 年年化估值漲幅 %+.1f%%）", top_tk, n_yrs, best)
+      } else {
+        ""
+      },
+      "。"
     )
+    showNotification(msg, type = "message", duration = 10)
   })
 
   output$lab_im_summary <- renderTable({
     catlg <- lab_im_catalog()
     req(is.data.frame(catlg), nrow(catlg) > 0)
-    sm <- lab_method_group_summary(catlg)
+    filtered <- lab_merge_catalog_scores(
+      catlg,
+      scores = NULL,
+      method_filter = input$lab_im_methods,
+      industry_filter = input$lab_im_industries,
+      size_filter = character(0),
+      quality_only = FALSE
+    )
+    sm <- lab_method_group_summary(filtered)
+    if (is.null(sm) || nrow(sm) == 0) {
+      return(data.frame(訊息 = "目前複選下無產業／候選"))
+    }
     sm[, c("建議評價方法", "產業數", "候選檔數"), drop = FALSE]
   }, striped = TRUE, bordered = TRUE, hover = TRUE, width = "100%")
+
+  lab_im_merged <- reactive({
+    catlg <- lab_im_catalog()
+    req(is.data.frame(catlg), nrow(catlg) > 0)
+    lab_merge_catalog_scores(
+      catlg,
+      scores = lab_im_scores(),
+      method_filter = input$lab_im_methods,
+      industry_filter = input$lab_im_industries,
+      size_filter = input$lab_im_sizes,
+      quality_only = FALSE
+    )
+  })
+
+  output$lab_im_leader_note <- renderUI({
+    scores <- lab_im_scores()
+    n <- lab_model_horizon_years()
+    if (is.null(scores) || !is.data.frame(scores) || nrow(scores) == 0) {
+      return(tags$p(
+        style = "color:#888; font-size:12.5px;",
+        "尚未評估。按下上方按鈕後，將列出「F-Score 門檻通過」且",
+        sprintf(" n=%d 年年化估值漲幅最高 ", n),
+        "的代碼（即績優選股結果）。"
+      ))
+    }
+    tags$p(
+      style = "color:#555; font-size:12.5px;",
+      sprintf(
+        "排序鍵＝模型合理價相對現價，於 %d 年預測期換算之年化漲幅；僅列門檻通過者（一代碼一列）。",
+        n
+      )
+    )
+  })
+
+  output$lab_im_leaderboard <- renderTable({
+    merged <- tryCatch(lab_im_merged(), error = function(e) NULL)
+    if (is.null(merged) || nrow(merged) == 0 || is.null(lab_im_scores())) {
+      return(data.frame(訊息 = "（尚無績優排行）"))
+    }
+    lb <- lab_quality_leaderboard(merged, top_n = 10L)
+    if (nrow(lb) == 0) {
+      return(data.frame(訊息 = "目前篩選下無「門檻通過且能量到漲幅」的標的"))
+    }
+    lb
+  }, striped = TRUE, bordered = TRUE, hover = TRUE, spacing = "m", width = "100%")
 
   output$lab_im_table <- DT::renderDataTable({
     catlg <- lab_im_catalog()
@@ -6290,35 +6451,51 @@ server <- function(input, output, session) {
     merged <- lab_merge_catalog_scores(
       catlg,
       scores = lab_im_scores(),
-      method_filter = as.character(input$lab_im_method %||% "all")[1],
+      method_filter = input$lab_im_methods,
+      industry_filter = input$lab_im_industries,
+      size_filter = input$lab_im_sizes,
       quality_only = isTRUE(input$lab_im_quality_only)
     )
     if (nrow(merged) == 0) {
       return(DT::datatable(
-        data.frame(訊息 = "沒有符合篩選的列；可取消「只顯示績優」或先執行 F-Score 評估。"),
+        data.frame(
+          訊息 = "沒有符合篩選的列。可放寬規模／產業／模型，取消「明細只顯示門檻通過者」，或先執行評估。"
+        ),
         rownames = FALSE, options = list(dom = "t")
       ))
     }
+    size_lab <- unname(LAB_SIZE_LABELS[merged$size_band])
+    size_lab[is.na(size_lab)] <- "（未評估）"
     show_df <- data.frame(
+      年化估值漲幅 = ifelse(
+        is.na(merged$upside_cagr_pct), "（未評估）",
+        sprintf("%+.1f%%", merged$upside_cagr_pct)
+      ),
+      總潛在漲幅 = ifelse(
+        is.na(merged$upside_total_pct), "",
+        sprintf("%+.1f%%", merged$upside_total_pct)
+      ),
+      預測年數n = ifelse(is.na(merged$n_years), lab_model_horizon_years(), merged$n_years),
+      規模 = size_lab,
       建議方法 = merged$primary_label,
+      實際估值方法 = ifelse(
+        is.na(merged$method_used) | !nzchar(as.character(merged$method_used)),
+        "", toupper(as.character(merged$method_used))
+      ),
       產業 = merged$industry_label,
       代碼 = merged$ticker,
-      兩階段DCF = ifelse(merged$suggest_two_stage %in% TRUE, "是", ""),
-      產業理由 = merged$rationale,
+      現價 = ifelse(is.na(merged$price), "", signif(merged$price, 4)),
+      合理價 = ifelse(is.na(merged$fv), "", signif(merged$fv, 4)),
       `F-Score` = merged$f_score,
       盈餘品質 = ifelse(
         is.na(merged$quality_flag), "",
         ifelse(merged$quality_flag == 1, "通過", "未過")
       ),
-      績優 = ifelse(
+      門檻 = ifelse(
         is.na(merged$is_quality), "（未評估）",
-        ifelse(merged$is_quality %in% TRUE, "✓ 績優", "—")
+        ifelse(merged$is_quality %in% TRUE, "✓ 通過", "—")
       ),
-      個股即時主方法 = ifelse(
-        is.na(merged$primary_live) | !nzchar(as.character(merged$primary_live)),
-        "",
-        toupper(as.character(merged$primary_live))
-      ),
+      估值說明 = ifelse(is.na(merged$fv_note), "", merged$fv_note),
       stringsAsFactors = FALSE,
       check.names = FALSE
     )
@@ -6329,7 +6506,7 @@ server <- function(input, output, session) {
       options = list(
         pageLength = 20,
         scrollX = TRUE,
-        order = list(list(0, "asc"), list(1, "asc"))
+        order = list(list(0, "desc"))
       )
     )
   })

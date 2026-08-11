@@ -360,3 +360,100 @@ get_box_color <- function(industry_choice, metric_name, val) {
     if (val < std[1]) return("red") else return("blue")
   }
 }
+
+#' 格式化產業標準區間（單位依 metric）
+annotation_format_band <- function(industry_key, metric_name, unit = "%") {
+  key <- as.character(industry_key %||% "")[1]
+  if (!nzchar(key) || !(key %in% names(industry_standards))) return("—")
+  std <- industry_standards[[key]][[metric_name]]
+  if (is.null(std) || length(std) < 2) return("—（本產業無此區間）")
+  lo <- suppressWarnings(as.numeric(std[1])[1])
+  hi <- suppressWarnings(as.numeric(std[2])[1])
+  if (!is.finite(lo) || !is.finite(hi)) return("—")
+  if (identical(unit, "x")) {
+    sprintf("%.2f – %.2f×", lo, hi)
+  } else {
+    sprintf("%.1f – %.1f%%", lo, hi)
+  }
+}
+
+#' Annotation：Dashboard KPI 解讀表（可帶入目前產業區間）
+annotation_kpi_guide_df <- function(industry_key = NULL) {
+  key <- as.character(industry_key %||% "")[1]
+  rows <- list(
+    list("毛利率", "Gross Profit / Revenue", "越高越好", "gross_profit_margin", "%",
+         "技術／品牌定價力；著色對照產業毛利率區間"),
+    list("淨利率", "Net Income / Revenue", "越高越好", "net_profit_margin", "%",
+         "獲利兌現能力；注意業外與一次性項目"),
+    list("營運費用比", "Operating Expense / Revenue", "越低越好", "opex_ratio", "%",
+         "管銷效率；低於區間下限＝藍（更好）"),
+    list("營收成長率", "年均 YoY(Total Revenue)", "越高越好", "rev_growth", "%",
+         "成長動能；年報序列排除 TTM"),
+    list("毛利成長率", "年均 YoY(Gross Profit)", "越高越好", "rev_growth", "%",
+         "與營收成長共用產業「成長」區間著色"),
+    list("財務槓桿", "Total Assets / Equity", "適中／偏低較穩", "eqt_multiplier", "x",
+         "權益乘數；高於區間＝紅（槓桿偏高）"),
+    list("營運現金成長", "年均 YoY(Operating CF)", "越高越好", "rev_growth", "%",
+         "現金動能；共用成長區間著色"),
+    list("投資現金成長", "年均 YoY(Investing CF)", "視策略", "rev_growth", "%",
+         "負值常見（擴產／投資流出）；著色仍對成長區間，需搭配商業邏輯解讀"),
+    list("融資現金成長", "年均 YoY(Financing CF)", "視資本結構", "rev_growth", "%",
+         "借款／配息／回購會造成正負波動"),
+    list("ROA", "Net Income / Assets", "越高越好", "roa", "%",
+         "資產運用效率"),
+    list("ROE", "Net Income / Equity", "越高越好", "roe", "%",
+         "股東報酬；過高需檢查是否槓桿推升"),
+    list("資產周轉率", "Revenue / Assets", "越高越好（無區間）", NA_character_, "x",
+         "目前不套產業著色（固定黑），僅供交叉閱讀"),
+    list("OCF／淨利", "Operating CF / Net Income", "≥1 較佳（無區間）", NA_character_, "x",
+         "盈餘品質；與 F-Score「OCF＞營運利潤」相互參照，不套產業色")
+  )
+  do.call(rbind, lapply(rows, function(r) {
+    band <- if (!is.na(r[[4]]) && nzchar(key)) {
+      annotation_format_band(key, r[[4]], unit = r[[5]])
+    } else {
+      "—"
+    }
+    data.frame(
+      指標 = r[[1]],
+      計算 = r[[2]],
+      解讀方向 = r[[3]],
+      產業標準區間 = band,
+      說明 = r[[6]],
+      stringsAsFactors = FALSE,
+      check.names = FALSE
+    )
+  }))
+}
+
+#' Annotation：指標「可讀性／穩定性」參考（對齊實際 Dashboard KPI）
+annotation_stability_df <- function() {
+  data.frame(
+    指標群組 = c(
+      "獲利結構", "費用效率", "成長動能", "槓桿體質",
+      "現金品質", "交叉報酬", "週轉效率"
+    ),
+    `代表 KPI` = c(
+      "毛利率、淨利率",
+      "營運費用比",
+      "營收／毛利／OCF 成長",
+      "財務槓桿（權益乘數）",
+      "OCF／淨利、F-Score 盈餘品質",
+      "ROA、ROE",
+      "資產周轉率"
+    ),
+    解讀穩定度 = c("高", "高", "中", "中高", "高", "中高", "中"),
+    使用提示 = c(
+      "產業區間可比性高，適合同業色碼判斷",
+      "越低越好；著色方向與獲利類相反",
+      "波動大；需看多期而非單年",
+      "金融／REIT 等產業基準不同，勿跨產業硬比",
+      "價值陷阱預警關鍵；優於單一淨利",
+      "ROE 受槓桿影響，宜與 ROA 並讀",
+      "目前無同業色碼，作輔助觀察"
+    ),
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+}
+
