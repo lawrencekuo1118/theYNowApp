@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12391437
+bundleId=12395524
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=c70f63f
-commit=c70f63facd15e499f81902a7210e53cef032011d
-short=c70f63f
-message=Refresh Snapshot catalog and APP_DEFAULTS coverage.
-captured_at=2026-08-11T13:33:43Z
-note=app_13.0 redeploy: Snapshot/APP_DEFAULTS catalog refresh (RI defaults + expanded live snapshot).
+aligned_git=12bd560
+commit=12bd5606011590a886dec039b56b9ce9bb4ab4a6
+short=12bd560
+message=Remove Beta Overview anti-sentiment decision tree box.
+captured_at=2026-08-11T13:52:08Z
+note=app_13.0 redeploy: remove 「排除市場情緒的 β 估計（內在價值）」 block from Beta Overview.
