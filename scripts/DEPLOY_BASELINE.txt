@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12396135
+bundleId=12396175
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=160ffd6
-commit=160ffd68f4c6da9f29d40e3ff96fa35ca6331bd3
-short=160ffd6
-message=chore: record shinyapps baseline bundle 12396100 (app_14.0)
-captured_at=2026-08-11T15:48:38Z
+aligned_git=acb2e4c
+commit=acb2e4c181a01b88d3716c4ae7e1979fdd7cb662
+short=acb2e4c
+message=Add Lab industry×method groups with F-Score quality screen for US stocks.
+captured_at=2026-08-11T15:58:11Z
 source_branch=master
 note=Canonical live line is app_14.0. Deploy via scripts/deploy_app_14.R; Feedback needs YNOW_FEEDBACK_GITHUB_TOKEN in app_14.0/.Renviron (gitignored; redeploy bundles it — no shinyapps Vars UI).
