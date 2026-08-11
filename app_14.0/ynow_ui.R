@@ -2462,13 +2462,10 @@ ui <- dashboardPage(
             width = 12,
             h2(tags$b("🧪 實驗區 — testing env.")),
             p(
-              "此處保留為",
-              tags$b("新功能規劃與實驗"),
-              "用空間（側邊欄底部「測試」開啟）。",
-              tags$br(),
+              "實驗功能先行在此驗證。",
               tags$span(
                 style = "color:#888;",
-                "SEC 財報附註擷取已移至 Dashboard → FINANCIAL REPORT →「財報附註 (SEC)」。"
+                "SEC 財報附註已移至 Dashboard → FINANCIAL REPORT →「財報附註 (SEC)」。"
               )
             ),
             tags$hr()
@@ -2478,15 +2475,76 @@ ui <- dashboardPage(
           column(
             width = 12,
             box(
-              width = 12, status = "warning", solidHeader = TRUE,
-              title = tagList(icon("lightbulb"), "規劃中"),
+              width = 12, status = "primary", solidHeader = TRUE,
+              title = tagList(icon("layer-group"), "美股：產業別 × 建議評價方法 × 績優候選"),
               tags$p(
-                style = "margin-bottom:8px;",
-                "目前尚無公開實驗功能。後續候選構想可先落在此頁再升格到正式分頁。"
+                style = "margin-bottom:10px;",
+                "依 App 產業鍵將美股歸組，並標註",
+                tags$b("產業預設評價方法"),
+                "（對齊 ", tags$code("recommend_valuation_models"), " 的產業層規則）。",
+                "候選為 curated 藍籌／presets；按下方按鈕後以",
+                tags$b(" F-Score＋盈餘品質 "),
+                "篩「績優股」（門檻：F-Score ≥ 7 且 OCF＞營運利潤）。"
               ),
+              fluidRow(
+                column(
+                  width = 3,
+                  selectInput(
+                    "lab_im_method", "篩選建議主方法",
+                    choices = c(
+                      "全部" = "all",
+                      "DCF" = "dcf",
+                      "DDM" = "ddm",
+                      "P/B" = "pb",
+                      "RI" = "ri"
+                    ),
+                    selected = "all"
+                  )
+                ),
+                column(
+                  width = 3,
+                  checkboxInput("lab_im_quality_only", "只顯示 F-Score 績優股", value = FALSE)
+                ),
+                column(
+                  width = 3,
+                  numericInput(
+                    "lab_im_max_n", "本次最多評估檔數",
+                    value = 25, min = 5, max = 40, step = 5
+                  )
+                ),
+                column(
+                  width = 3,
+                  tags$div(
+                    style = "margin-top:25px;",
+                    actionButton(
+                      "lab_im_run_fscore", "以 F-Score 評估績優",
+                      icon = icon("flask"),
+                      class = "btn-success",
+                      style = "font-weight:700; width:100%;"
+                    )
+                  )
+                )
+              ),
+              tags$p(
+                style = "color:#888; font-size:12px; margin-top:-6px;",
+                "提示：評估會呼叫 Yahoo／yfinance（已 memoise）；首次較慢。僅美股候選（已排除台股／ETF）。"
+              ),
+              tags$h4("依建議方法分組摘要", style = "margin-top:8px;"),
+              tableOutput("lab_im_summary"),
+              tags$hr(),
+              tags$h4("明細（產業 × 方法 × 候選）"),
+              DT::dataTableOutput("lab_im_table") %>% shinycssloaders::withSpinner()
+            )
+          )
+        ),
+        fluidRow(
+          column(
+            width = 12,
+            box(
+              width = 12, status = "warning", solidHeader = TRUE, collapsible = TRUE, collapsed = TRUE,
+              title = tagList(icon("lightbulb"), "其他規劃中"),
               tags$ul(
                 style = "color:#555; margin-bottom:0;",
-                tags$li("產業別 × 評價方法分組／績優股清單"),
                 tags$li("成熟股 P/E · EV 引擎（規劃中 14.1+）"),
                 tags$li("其他尚未定案的實驗性工具")
               )

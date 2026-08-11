@@ -6223,6 +6223,117 @@ server <- function(input, output, session) {
     showNotification("已開啟實驗區 (Lab) — testing env.", type = "message", duration = 3)
   }, ignoreInit = TRUE)
 
+  # ------------------------------------------
+  # Lab：產業 × 建議評價方法 × F-Score 績優股
+  # ------------------------------------------
+  lab_im_catalog <- reactive({
+    tryCatch(lab_build_industry_method_catalog(), error = function(e) {
+      showNotification(paste("產業目錄載入失敗:", e$message), type = "error")
+      data.frame()
+    })
+  })
+  lab_im_scores <- reactiveVal(NULL)
+
+  observeEvent(input$lab_im_run_fscore, {
+    catlg <- lab_im_catalog()
+    req(is.data.frame(catlg), nrow(catlg) > 0)
+    method <- as.character(input$lab_im_method %||% "all")[1]
+    pool <- catlg
+    if (!identical(method, "all")) {
+      pool <- pool[pool$primary == method | pool$secondary == method, , drop = FALSE]
+    }
+    tickers <- unique(stats::na.omit(as.character(pool$ticker)))
+    tickers <- tickers[nzchar(tickers)]
+    if (length(tickers) == 0L) {
+      showNotification("目前篩選下沒有可評估的美股候選。", type = "warning")
+      return()
+    }
+    max_n <- suppressWarnings(as.integer(input$lab_im_max_n %||% 25L)[1])
+    if (!is.finite(max_n) || max_n < 1L) max_n <- 25L
+    max_n <- min(40L, max(5L, max_n))
+    if (length(tickers) > max_n) {
+      showNotification(
+        paste0("候選 ", length(tickers), " 檔，本次先評估前 ", max_n, " 檔。"),
+        type = "message", duration = 5
+      )
+    }
+    scores <- withProgress(
+      message = "F-Score 評估美股候選中…",
+      value = 0, {
+        lab_screen_tickers_fscore(
+          tickers,
+          max_n = max_n,
+          progress_cb = function(i, n, tk) {
+            incProgress(1 / max(n, 1), detail = paste0(tk, " (", i, "/", n, ")"))
+          }
+        )
+      }
+    )
+    lab_im_scores(scores)
+    n_q <- sum(scores$is_quality %in% TRUE, na.rm = TRUE)
+    showNotification(
+      paste0("評估完成：", nrow(scores), " 檔；績優（F≥7 且盈餘品質通過）", n_q, " 檔。"),
+      type = "message", duration = 8
+    )
+  })
+
+  output$lab_im_summary <- renderTable({
+    catlg <- lab_im_catalog()
+    req(is.data.frame(catlg), nrow(catlg) > 0)
+    sm <- lab_method_group_summary(catlg)
+    sm[, c("建議評價方法", "產業數", "候選檔數"), drop = FALSE]
+  }, striped = TRUE, bordered = TRUE, hover = TRUE, width = "100%")
+
+  output$lab_im_table <- DT::renderDataTable({
+    catlg <- lab_im_catalog()
+    req(is.data.frame(catlg), nrow(catlg) > 0)
+    merged <- lab_merge_catalog_scores(
+      catlg,
+      scores = lab_im_scores(),
+      method_filter = as.character(input$lab_im_method %||% "all")[1],
+      quality_only = isTRUE(input$lab_im_quality_only)
+    )
+    if (nrow(merged) == 0) {
+      return(DT::datatable(
+        data.frame(訊息 = "沒有符合篩選的列；可取消「只顯示績優」或先執行 F-Score 評估。"),
+        rownames = FALSE, options = list(dom = "t")
+      ))
+    }
+    show_df <- data.frame(
+      建議方法 = merged$primary_label,
+      產業 = merged$industry_label,
+      代碼 = merged$ticker,
+      兩階段DCF = ifelse(merged$suggest_two_stage %in% TRUE, "是", ""),
+      產業理由 = merged$rationale,
+      `F-Score` = merged$f_score,
+      盈餘品質 = ifelse(
+        is.na(merged$quality_flag), "",
+        ifelse(merged$quality_flag == 1, "通過", "未過")
+      ),
+      績優 = ifelse(
+        is.na(merged$is_quality), "（未評估）",
+        ifelse(merged$is_quality %in% TRUE, "✓ 績優", "—")
+      ),
+      個股即時主方法 = ifelse(
+        is.na(merged$primary_live) | !nzchar(as.character(merged$primary_live)),
+        "",
+        toupper(as.character(merged$primary_live))
+      ),
+      stringsAsFactors = FALSE,
+      check.names = FALSE
+    )
+    DT::datatable(
+      show_df,
+      rownames = FALSE,
+      filter = "top",
+      options = list(
+        pageLength = 20,
+        scrollX = TRUE,
+        order = list(list(0, "asc"), list(1, "asc"))
+      )
+    )
+  })
+
   # 沿用主頁 Ticker / Stock Code：優先用已搜尋的代碼，否則用主頁輸入框
   lab_ticker <- reactive({
     tk <- current_ticker()

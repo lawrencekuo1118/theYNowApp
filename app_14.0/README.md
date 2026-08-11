@@ -6,7 +6,7 @@
 
 - **以 app_13.0 最新線晋升**：參數彈性、Snapshot／APP_DEFAULTS、Beta UI、WACC rᵈ 等後續優化自此以 14 版為準
 - **Dashboard 財報附註 (SEC EDGAR)**：年報 10-K／20-F、季報 10-Q、重大訊息 8-K／6-K 附註／正文擷取（Cash Flow 旁頁籤）
-- **實驗區 Lab（testing env.）**：側邊欄「測試」捷徑；預留新功能規劃／實驗空間
+- **實驗區 Lab（testing env.）**：美股依產業 × 建議評價方法分組；curated 候選＋F-Score／盈餘品質篩績優股
 - **分類 → 主／副模型**：依經濟本質（金融／成長／成熟／控股資產）只保留一個主模型，副模型交叉驗證
 - **P/B 有來源**：Justified（ROE vs Ke）＋產業區間＋歷史分位，不再只靠人工拍板倍數
 - **Bear / Base / Bull + 可信度**：主模型輸出區間與 低／中／高 可信度，Dashboard 以區間語言呈現
