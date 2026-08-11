@@ -27,3 +27,14 @@ shiny::runApp("app_14.0")
 ## 方法論一句話
 
 > 先分類，再選模型；先推導，再校正；先給區間，再給單點；先做基本面估值，技術分析只作交易輔助。
+
+## 意見區（Feedback → GitHub Issues）
+
+側邊欄底部 Snapshot／測試旁的 **意見區** 可收集使用者回饋，送出後會建立 GitHub Issue（標籤 `feedback`）。
+
+請設定環境變數：
+
+- `YNOW_FEEDBACK_GITHUB_TOKEN`：具 `issues:write` 的 GitHub PAT（必填才能送出）
+- `YNOW_FEEDBACK_GITHUB_REPO`：選填，預設 `lawrencekuo1118/theYNowApp`
+
+shinyapps.io 請在應用程式 Settings → Vars 設定上述變數。

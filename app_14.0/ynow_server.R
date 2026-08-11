@@ -6424,4 +6424,132 @@ server <- function(input, output, session) {
       })
     )
   })
+
+  # ==========================================
+  # 💬 意見區：表單 → GitHub Issues
+  # ==========================================
+  observeEvent(input$sidebar_feedback_click, {
+    showNotification("已開啟意見區 — 歡迎回報問題或優化建議", type = "message", duration = 3)
+  }, ignoreInit = TRUE)
+
+  output$feedback_status <- renderUI({
+    tok <- .ynow_feedback_github_token()
+    repo <- .ynow_feedback_github_repo()
+    if (!nzchar(tok)) {
+      return(tags$div(
+        class = "alert alert-warning", style = "margin-top:12px;",
+        tags$b("尚未設定 token："),
+        "請設定環境變數 ", tags$code("YNOW_FEEDBACK_GITHUB_TOKEN"),
+        " 後重新部署／重啟 app，才能送出 Issue。"
+      ))
+    }
+    tags$div(
+      style = "margin-top:12px; color:#666; font-size:12px;",
+      "目標 repo：", tags$code(repo),
+      " · token 已偵測"
+    )
+  })
+
+  observeEvent(input$feedback_submit, {
+    cat <- as.character(input$feedback_category %||% "other")[1]
+    title_raw <- trimws(as.character(input$feedback_title %||% "")[1])
+    body_raw <- trimws(as.character(input$feedback_body %||% "")[1])
+    contact <- trimws(as.character(input$feedback_contact %||% "")[1])
+    if (!nzchar(title_raw)) {
+      showNotification("請填寫標題。", type = "warning")
+      return()
+    }
+    if (!nzchar(body_raw) || nchar(body_raw) < 8) {
+      showNotification("請再補充說明內容（至少約 8 字）。", type = "warning")
+      return()
+    }
+    cat_label <- switch(
+      cat,
+      enhancement = "優化建議",
+      bug = "問題回報",
+      ux = "使用體驗",
+      "其他"
+    )
+    type_label <- switch(
+      cat,
+      enhancement = "feedback-enhancement",
+      bug = "feedback-bug",
+      ux = "feedback-ux",
+      "feedback-other"
+    )
+    issue_title <- paste0("[Feedback/", cat_label, "] ", title_raw)
+    if (nchar(issue_title) > 240) issue_title <- paste0(substr(issue_title, 1, 237), "...")
+
+    ctx_lines <- c(
+      "## 使用者回饋",
+      "",
+      paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
+      paste0("- **App：** The YNow App v14.0"),
+      paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
+    )
+    if (isTRUE(input$feedback_include_context)) {
+      tk <- tryCatch(current_ticker(), error = function(e) NULL)
+      if (is.null(tk) || !nzchar(trimws(as.character(tk)))) {
+        tk <- input$sc
+      }
+      ind <- tryCatch(as.character(input$industry_choice %||% "")[1], error = function(e) "")
+      ctx_lines <- c(
+        ctx_lines,
+        paste0("- **Ticker：** ", ifelse(nzchar(trimws(as.character(tk %||% ""))), as.character(tk), "(未設定)")),
+        paste0("- **產業鍵：** ", ifelse(nzchar(ind), ind, "(未設定)"))
+      )
+    }
+    if (nzchar(contact)) {
+      ctx_lines <- c(ctx_lines, paste0("- **聯絡方式（選填）：** ", contact))
+    }
+    issue_body <- paste(
+      c(
+        ctx_lines,
+        "",
+        "## 內容",
+        "",
+        body_raw,
+        "",
+        "---",
+        "_Submitted via The YNow App 「意見區」 form._"
+      ),
+      collapse = "\n"
+    )
+
+    res <- withProgress(message = "正在建立 GitHub Issue…", value = 0.4, {
+      .ynow_create_feedback_issue(
+        title = issue_title,
+        body = issue_body,
+        labels = c("feedback", type_label)
+      )
+    })
+
+    if (isTRUE(res$ok)) {
+      link <- res$html_url
+      num <- res$number
+      showNotification(
+        paste0("已建立 Issue", if (is.finite(num)) paste0(" #", num) else "", "。"),
+        type = "message", duration = 6
+      )
+      output$feedback_status <- renderUI({
+        tags$div(
+          class = "alert alert-success", style = "margin-top:12px;",
+          tags$b("送出成功。"),
+          if (nzchar(as.character(link %||% ""))) {
+            tagList(" 請至 ", tags$a(href = link, target = "_blank", rel = "noopener noreferrer", link), " 追蹤。")
+          }
+        )
+      })
+      updateTextInput(session, "feedback_title", value = "")
+      updateTextAreaInput(session, "feedback_body", value = "")
+    } else {
+      showNotification(paste0("送出失敗：", res$message %||% "unknown"), type = "error", duration = 10)
+      output$feedback_status <- renderUI({
+        tags$div(
+          class = "alert alert-danger", style = "margin-top:12px;",
+          tags$b("送出失敗："), as.character(res$message %||% "unknown")
+        )
+      })
+    }
+  })
 }

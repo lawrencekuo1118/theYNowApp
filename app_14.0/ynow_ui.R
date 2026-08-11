@@ -738,6 +738,17 @@ ui <- dashboardPage(
         onclick = "Shiny.setInputValue('sidebar_tabs', 'lab_notes', {priority: 'event'}); Shiny.setInputValue('sidebar_test_click', (window.__ynowTestClicks=(window.__ynowTestClicks||0)+1), {priority: 'event'}); return false;",
         icon("flask", class = "fa-fw"),
         tags$span(" 測試")
+      ),
+      # 意見區：收集使用者回饋，系統性開 GitHub Issue
+      tags$a(
+        id = "ynow_sidebar_feedback_btn",
+        href = "#shiny-tab-feedback",
+        `data-toggle` = "tab",
+        `data-value` = "feedback",
+        class = "ynow-sidebar-snapshot-link ynow-sidebar-feedback-link",
+        onclick = "Shiny.setInputValue('sidebar_tabs', 'feedback', {priority: 'event'}); Shiny.setInputValue('sidebar_feedback_click', (window.__ynowFeedbackClicks=(window.__ynowFeedbackClicks||0)+1), {priority: 'event'}); return false;",
+        icon("comment-dots", class = "fa-fw"),
+        tags$span(" 意見區")
       )
     )
   ),
@@ -782,9 +793,12 @@ ui <- dashboardPage(
           background: rgba(255,255,255,0.06);
         }
         .ynow-sidebar-test-link { margin-left: 8px; }
+        .ynow-sidebar-feedback-link { margin-left: 8px; }
         /* 主選單不應再出現 Snapshot */
         .sidebar-menu a[data-value="snapshot"] { display: none !important; }
         .sidebar-menu li:has(> a[data-value="snapshot"]) { display: none !important; }
+        .sidebar-menu a[data-value="feedback"] { display: none !important; }
+        .sidebar-menu li:has(> a[data-value="feedback"]) { display: none !important; }
         /* 公司全稱：允許換行，避免被切掉 */
         .ynow-corpname {
           font-weight: bold;
@@ -2435,6 +2449,107 @@ ui <- dashboardPage(
               width = 12, status = "info", solidHeader = TRUE,
               title = "附註內容 (Notes)",
               uiOutput("lab_sec_notes")
+            )
+          )
+        )
+      ),
+
+      # ==========================================
+      # 💬 意見區：使用者回饋 → GitHub Issues
+      # ==========================================
+      tabItem(
+        tabName = "feedback",
+        fluidRow(
+          column(
+            width = 12,
+            h2(tags$b("意見區 — 使用者回饋與優化建議")),
+            p(
+              "歡迎回報問題、使用體驗或功能建議。送出後會以",
+              tags$b("GitHub Issue"),
+              "系統性收集（標籤 ",
+              tags$code("feedback"),
+              "），方便追蹤與排入後續優化。"
+            ),
+            tags$p(
+              style = "color:#888;font-size:13px;",
+              "需在執行環境設定環境變數 ",
+              tags$code("YNOW_FEEDBACK_GITHUB_TOKEN"),
+              "（具 ",
+              tags$code("issues:write"),
+              " 權限的 fine-grained 或 classic PAT）。可選 ",
+              tags$code("YNOW_FEEDBACK_GITHUB_REPO"),
+              "（預設 ",
+              tags$code("lawrencekuo1118/theYNowApp"),
+              "）。"
+            ),
+            tags$hr()
+          )
+        ),
+        fluidRow(
+          column(
+            width = 7,
+            box(
+              width = 12, status = "primary", solidHeader = TRUE,
+              title = tagList(icon("edit"), "回饋表單"),
+              selectInput(
+                "feedback_category", "類別",
+                choices = c(
+                  "優化建議" = "enhancement",
+                  "問題回報" = "bug",
+                  "使用體驗" = "ux",
+                  "其他" = "other"
+                ),
+                selected = "enhancement"
+              ),
+              textInput(
+                "feedback_title", "標題",
+                value = "",
+                placeholder = "簡短描述（必填）"
+              ),
+              textAreaInput(
+                "feedback_body", "內容說明",
+                value = "",
+                rows = 8,
+                placeholder = "請描述現象、重現步驟、期望行為，或優化想法…"
+              ),
+              textInput(
+                "feedback_contact", "聯絡方式（選填）",
+                value = "",
+                placeholder = "Email 或其他，不會公開顯示於 Issue 標題"
+              ),
+              checkboxInput(
+                "feedback_include_context",
+                "附上目前 Session 脈絡（Ticker／產業／App 版本）",
+                value = TRUE
+              ),
+              actionButton(
+                "feedback_submit", "送出至 GitHub Issues",
+                class = "btn-success",
+                icon = icon("paper-plane")
+              ),
+              uiOutput("feedback_status")
+            )
+          ),
+          column(
+            width = 5,
+            box(
+              width = 12, status = "info", solidHeader = TRUE,
+              title = "如何追蹤",
+              tags$ul(
+                tags$li("送出成功後會顯示 Issue 編號與連結。"),
+                tags$li(
+                  "亦可至 repo Issues 篩選標籤 ",
+                  tags$code("feedback"),
+                  "：",
+                  tags$a(
+                    href = "https://github.com/lawrencekuo1118/theYNowApp/issues?q=is%3Aissue+label%3Afeedback",
+                    target = "_blank",
+                    rel = "noopener noreferrer",
+                    "查看已收集意見"
+                  )
+                ),
+                tags$li("請勿在表單貼上密碼、token 或其他機密資訊。")
+              )
             )
           )
         )
