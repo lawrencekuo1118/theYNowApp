@@ -145,33 +145,9 @@ capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
   )
 }
 
-#' Beta Overview：去情緒估值 β（Bottom-Up）+ Rolling 僅對照
+#' Beta Overview：來源寫入 CAPM + Rolling 僅對照
 beta_overview_section_ui <- function() {
   tagList(
-    fluidRow(
-      box(
-        width = 12, status = "primary", solidHeader = TRUE,
-        title = tagList(icon("shield-alt"), "排除市場情緒的 β 估計（內在價值）"),
-        tags$p(
-          style = "margin:0 0 8px 0;font-size:13px;line-height:1.55;",
-          "CAPM／Ke／WACC 只接受去情緒來源：",
-          tags$b("Bottom-Up 平均 βᵤ"),
-          "（主估計）、產業結構 β（備援）、或手動 β。",
-          tags$b("Rolling／Yahoo Summary／本公司股價 β"),
-          "只作交叉檢驗（對照用，不進入 Ke／WACC）。"
-        ),
-        uiOutput("beta_decision_tree_panel"),
-        tags$div(
-          style = "margin-top:8px;",
-          actionButton(
-            "apply_beta_decision_tree",
-            "套用去情緒建議來源至 CAPM",
-            class = "btn-primary",
-            icon = icon("magic")
-          )
-        )
-      )
-    ),
     fluidRow(
       valueBoxOutput("vbx_beta_summary", width = 6),
       valueBoxOutput("vbx_beta_industry", width = 6)
