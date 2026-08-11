@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12395805
+bundleId=12395901
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=a05deaa
-commit=a05deaab80060cffcbb3d76eb7245e5bb40980e5
-short=a05deaa
-message=Add Feedback tab that opens GitHub Issues via API.
-captured_at=2026-08-11T14:48:40Z
+aligned_git=f0cd57c
+commit=f0cd57ca515b266ccd9ed994e7e2482f129e2394
+short=f0cd57c
+message=docs: correct feedback token setup for shinyapps (.Renviron)
+captured_at=2026-08-11T15:07:39Z
 source_branch=master
 note=Canonical live line is app_14.0. Deploy via scripts/deploy_app_14.R; Feedback needs YNOW_FEEDBACK_GITHUB_TOKEN in app_14.0/.Renviron (gitignored; redeploy bundles it — no shinyapps Vars UI).
