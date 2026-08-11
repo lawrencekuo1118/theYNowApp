@@ -320,6 +320,19 @@ NET_INCOME_PATTERNS <- c(
   "Net Income Common Stockholders",
   "^Net Income$"
 )
+# 利息費用（損益／現金流別名；勿用 | 併成單一 grep）
+INTEREST_EXPENSE_PATTERNS <- c(
+  "^Interest Expense$",
+  "Interest Expense Non Operating",
+  "Net Interest Expense",
+  "Interest Expense"
+)
+INTEREST_PAID_PATTERNS <- c(
+  "^Interest Paid$",
+  "Cash Interest Paid",
+  "Interest Paid"
+)
+
 EQUITY_PATTERNS <- c(
   "Common Stock Equity",
   "Stockholders Equity",
@@ -539,7 +552,17 @@ safe_num <- function(x) {
   return(x)
 }
 
-#' Build one row for ±10% param sensitivity tables (DCF / DDM / RI / P/B).
+# Relative ±1% shock for per-share param elasticity tables (DCF / DDM / RI / P/B).
+PARAM_SENSITIVITY_SHOCK <- 0.01
+
+.param_rel_shock <- function(x, sign = -1, shock = PARAM_SENSITIVITY_SHOCK) {
+  x <- suppressWarnings(as.numeric(x)[1])
+  if (!is.finite(x) || abs(x) < 1e-12) return(NA_real_)
+  x * (1 + sign * shock)
+}
+
+#' Build one row for relative ±1% elasticity tables (DCF / DDM / RI / P/B).
+#' Shock is multiplicative on the parameter; Δ估值% ≈ elasticity ε when shock = 1%.
 .param_sensitivity_infl_row <- function(param, base_val, unit, p0, p_down, p_up, note = "") {
   d_dn <- if (is.finite(p_down) && is.finite(p0) && abs(p0) > 1e-9) 100 * (p_down - p0) / abs(p0) else NA_real_
   d_up <- if (is.finite(p_up) && is.finite(p0) && abs(p0) > 1e-9) 100 * (p_up - p0) / abs(p0) else NA_real_
@@ -551,14 +574,23 @@ safe_num <- function(x) {
       if (identical(unit, "$")) {
         if (exists("format_dollar_abbr", mode = "function")) format_dollar_abbr(base_val) else sprintf("%.2f", base_val)
       } else if (identical(unit, "x")) sprintf("%.2f", base_val) else as.character(base_val),
-    衝擊 = "±10%",
-    `估值Δ% (−10%)` = if (is.finite(d_dn)) sprintf("%+.1f%%", d_dn) else "N/A",
-    `估值Δ% (+10%)` = if (is.finite(d_up)) sprintf("%+.1f%%", d_up) else "N/A",
-    `影響力%` = if (is.finite(infl)) sprintf("%.1f%%", infl) else "N/A",
+    `估值Δ% (−1%)` = if (is.finite(d_dn)) sprintf("%+.2f%%", d_dn) else "N/A",
+    `估值Δ% (+1%)` = if (is.finite(d_up)) sprintf("%+.2f%%", d_up) else "N/A",
+    `｜ε｜` = if (is.finite(infl)) sprintf("%.2f", infl) else "N/A",
     說明 = note,
     check.names = FALSE,
     stringsAsFactors = FALSE
   )
+}
+
+#' Sort elasticity table rows by |ε| descending.
+.param_sensitivity_sort_by_abs_eps <- function(out) {
+  if (is.null(out) || !is.data.frame(out) || nrow(out) == 0) return(out)
+  if (!("｜ε｜" %in% names(out))) return(out)
+  infl_num <- suppressWarnings(as.numeric(out$`｜ε｜`))
+  out <- out[order(-infl_num, na.last = TRUE), , drop = FALSE]
+  rownames(out) <- NULL
+  out
 }
 
 # 從預測表統一取出 FCFF 序列（相容舊欄位名 FCF）
@@ -879,7 +911,7 @@ recommend_valuation_models <- function(d_cf, industry_text = "", d_is = NULL, d_
     return(.pack(
       "holding_asset", "pb", sec,
       "P/B（控股／綜合；NAV／SOTP 待 13.1）",
-      "控股／綜合企業經濟本質偏淨資產組合；14.0 暫以有來源的 P/B 為主、RI 交叉驗證（完整 SOTP／NAV 留待後續）。"
+      "控股／綜合企業經濟本質偏淨資產組合；13.0 暫以有來源的 P/B 為主、RI 交叉驗證（完整 SOTP／NAV 留待後續）。"
     ))
   }
 

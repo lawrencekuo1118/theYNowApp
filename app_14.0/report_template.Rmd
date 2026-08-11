@@ -465,6 +465,6 @@ if (!is.null(params$balance_df) && is.data.frame(params$balance_df) && nrow(para
 
 本報告由 The YNow App 自動產出，僅供研究與教育參考，**不構成任何投資建議或要約**。評等、目標價與財務預測係基於使用者輸入假設與公開財報，未經獨立審計。投資人應自行判斷並承擔風險。過去績效不代表未來表現。
 
-*報告產出時間：`r safe_chr(params$report_date)`* | *系統版本：The YNow App 14.0*
+*報告產出時間：`r safe_chr(params$report_date)`* | *系統版本：The YNow App 13.0*
 
 </div>

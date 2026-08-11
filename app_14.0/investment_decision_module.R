@@ -51,7 +51,25 @@ decision_ui <- function(id) {
         )
       )
     ),
-    uiOutput(ns("ui_valuation_compare"))
+    fluidRow(
+      column(
+        width = 12,
+        class = "ynow-about-section",
+        style = "padding: 0 15px 8px 15px;",
+        h3(class = "ynow-about-section-title", tags$b("Financial Fraud Red Flags (財務舞弊警訊)")),
+        p(
+          class = "ynow-about-section-lead",
+          "本系統內建五項核心排雷機制，透過交叉比對現金流與獲利品質，自動偵測潛在的地雷股："
+        ),
+        tags$ul(
+          tags$li(tags$b("無自由現金流 (No FCF)："), "長期 FCF 為負，代表企業無法靠自身營運創造現金，需依賴外部融資。"),
+          tags$li(tags$b("無營業現金流 (No OCF)："), "OCF 為負是極度危險的訊號，代表核心本業正在失血。"),
+          tags$li(tags$b("獲利未實現 (OCF < Net Income)："), "俗稱「紙上富貴」，損益表雖然賺錢，但現金沒有實際流入公司，可能存在應收帳款作帳疑慮。"),
+          tags$li(tags$b("虛假獲利 (Net Income > 0 but OCF < 0)："), "最經典的舞弊特徵，強烈暗示獲利品質不佳。"),
+          tags$li(tags$b("高財務槓桿 (Debt/Equity > 2)："), "負債比過高，在升息循環或景氣下行時面臨極大的流動性風險。")
+        )
+      )
+    )
   )
 }
 
@@ -150,26 +168,26 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       mom <- mom_status()
       if (f_score < 4 || f_quality == 0) {
         return(list(class = "alert-danger", icon = "skull-crossbones", title = "價值陷阱警訊",
-                    text = "財務質量偏弱或經營現金流無法支撐淨利。就算估值再低，也不建議貿然摸底。"))
+                    text = "財務質量偏弱，或經營現金流難以支撐帳面獲利。即便估值看似便宜，亦不宜貿然摸底。"))
       }
       if (!is.na(mos) && mos < 0) {
         if (mom$triggered) {
           return(list(class = "alert-warning", icon = "fire", title = "動能強勁但估值偏高",
-                      text = "右側趨勢良好，但價格已超過主模型基準內在價值。若持有可續抱，空手者不建議此時追高。"))
+                      text = "右側趨勢仍佳，惟市價已高於主模型基準內在價值。若已持有可續抱；空手者不宜此時追高。"))
         }
         return(list(class = "alert-warning", icon = "hourglass-half", title = "估值偏高且動能轉弱",
-                    text = "好公司但目前價格高於基準合理價，且趨勢尚未轉強，建議耐心等待拉回。"))
+                    text = "體質通過檢核，但市價已高於基準合理價，且趨勢尚未轉強。建議耐心等待拉回再評估。"))
       }
       if (!is.na(mos) && mos >= 0.2) {
         if (mom$triggered) {
-          return(list(class = "alert-success", icon = "rocket", title = "強烈建議：戴維斯雙擊點",
-                      text = "低估、高質量、且技術面動能已開啟！勝率極高的絕佳擊球點。"))
+          return(list(class = "alert-success", icon = "rocket", title = "戴維斯雙擊區",
+                      text = "估值具安全邊際、體質佳，且技術動能已確認。可分批布局，惟仍應控制部位與風險。"))
         }
         return(list(class = "alert-info", icon = "anchor", title = "左側潛伏區塊",
-                    text = "具備極高投資價值，但市場資金尚未關注。可分批建倉，等待趨勢反轉。"))
+                    text = "基本面價值突出，惟市場資金尚未顯著關注。可分批布局，待趨勢轉折後再考慮加碼。"))
       }
       list(class = "alert-secondary", icon = "balance-scale", title = "觀望中立",
-           text = "市價處於主模型合理區間附近，體質穩健，可依資產配置決定是否介入。")
+           text = "市價約在主模型合理區間附近，體質穩健。可依資產配置彈性決定是否介入。")
     })
 
     output$vbox_fscore <- renderValueBox({

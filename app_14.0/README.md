@@ -4,6 +4,7 @@
 
 ## v14.0 重點
 
+- **以 app_13.0 最新線晋升**：參數彈性、Snapshot／APP_DEFAULTS、Beta UI、WACC rᵈ 等後續優化自此以 14 版為準
 - **實驗區 Lab（testing env.）**：SEC EDGAR 年報 10-K／20-F、季報 10-Q、重大訊息 8-K／6-K 附註／正文擷取
 - **分類 → 主／副模型**：依經濟本質（金融／成長／成熟／控股資產）只保留一個主模型，副模型交叉驗證
 - **P/B 有來源**：Justified（ROE vs Ke）＋產業區間＋歷史分位，不再只靠人工拍板倍數
@@ -20,6 +21,8 @@ shiny::runApp("app_14.0")
 ```
 
 進入點為 `app.R`（唯一）。UI／Server 分別在 `ynow_ui.R`／`ynow_server.R`。
+
+線上部署：`Rscript scripts/deploy_app_14.R`
 
 ## 方法論一句話
 

@@ -227,14 +227,6 @@ ri_module_ui <- function(id) {
               DT::dataTableOutput(ns("tbl_ri_details"))
             )
           )
-        ),
-        fluidRow(
-          box(
-            title = tagList(icon("book"), "Model Formula"),
-            width = 12, status = "warning", solidHeader = TRUE,
-            collapsible = TRUE, collapsed = TRUE,
-            uiOutput(ns("ui_ri_formula"))
-          )
         )
       ),
 
@@ -266,13 +258,13 @@ ri_module_ui <- function(id) {
         hr(style = "border-top: 1px solid #BDC3C7;"),
         h4(tags$b("模型參數假設")),
         fluidRow(
-          column(4, numericInput(ns("ri_years"), "預測期 (Years)", value = 5, min = 1, max = 15, step = 1)),
-          column(4, numericInput(ns("ri_ke"), "股東權益成本 (Ke, %)", value = 8.0, step = 0.1)),
-          column(4, numericInput(ns("ri_g"), "終值永續成長率 (g, %)", value = 2.0, step = 0.1))
+          column(4, numericInput(ns("ri_years"), "預測期 (Years)", value = APP_DEFAULTS$ri_years %||% 5, min = 1, max = 15, step = 1)),
+          column(4, numericInput(ns("ri_ke"), "股東權益成本 (Ke, %)", value = APP_DEFAULTS$ddm_ke %||% 8.0, step = 0.1)),
+          column(4, numericInput(ns("ri_g"), "終值永續成長率 (g, %)", value = APP_DEFAULTS$sgr %||% 2.0, step = 0.1))
         ),
         fluidRow(
-          column(6, numericInput(ns("ri_roe"), "起始／預期 ROE (%)", value = 15.0, step = 0.1)),
-          column(6, numericInput(ns("ri_payout"), "預期現金配息率 (Payout, %)", value = 40.0, step = 1))
+          column(6, numericInput(ns("ri_roe"), "起始／預期 ROE (%)", value = APP_DEFAULTS$ri_roe %||% 15.0, step = 0.1)),
+          column(6, numericInput(ns("ri_payout"), "預期現金配息率 (Payout, %)", value = APP_DEFAULTS$ri_payout %||% 40.0, step = 1))
         ),
         hr(style = "border-top: 1px solid #BDC3C7;"),
         h4(tags$b("ROE Forecast Method")),
@@ -287,7 +279,7 @@ ri_module_ui <- function(id) {
                 "Industry Fade" = "industry",
                 "Custom Vector" = "custom"
               ),
-              selected = "constant"
+              selected = APP_DEFAULTS$roe_method %||% "constant"
             )
           ),
           column(6, uiOutput(ns("ui_roe_path_preview")))
@@ -427,17 +419,21 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
     })
 
     observeEvent(input$btn_reset_ri_params, {
-      updateNumericInput(session, "ri_years", value = 5)
+      updateNumericInput(session, "ri_years", value = APP_DEFAULTS$ri_years %||% 5)
       g_reset <- if (!is.null(global_g) && !is.null(global_g()) && is.finite(global_g())) {
         round(as.numeric(global_g()), 2)
       } else {
-        2.0
+        APP_DEFAULTS$sgr %||% 2.0
       }
       updateNumericInput(session, "ri_g", value = g_reset)
       if (!is.null(global_re()) && is.finite(global_re())) {
         updateNumericInput(session, "ri_ke", value = round(global_re() * 100, 2))
+      } else if (is.finite(APP_DEFAULTS$ddm_ke)) {
+        updateNumericInput(session, "ri_ke", value = APP_DEFAULTS$ddm_ke)
       }
-      updateSelectInput(session, "roe_method", selected = "constant")
+      updateNumericInput(session, "ri_roe", value = APP_DEFAULTS$ri_roe %||% 15)
+      updateNumericInput(session, "ri_payout", value = APP_DEFAULTS$ri_payout %||% 40)
+      updateSelectInput(session, "roe_method", selected = APP_DEFAULTS$roe_method %||% "constant")
       updateNumericInput(session, "roe_industry", value = industry_roe_pct())
       showNotification("🔁 已重設為系統預設參數", type = "message")
     })
@@ -740,21 +736,6 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
         )
     })
 
-    # ----- Formula panel -----
-    output$ui_ri_formula <- renderUI({
-      withMathJax(tagList(
-        tags$p(tags$b("剩餘收益 (Residual Income)")),
-        tags$p("$$RI_t = (ROE_t - K_e) \\times BV_{t-1}$$"),
-        tags$p("等價於：淨利 − 股權資金成本＝$$NI_t - K_e \\times BV_{t-1}$$"),
-        tags$hr(),
-        tags$p(tags$b("內在價值")),
-        tags$p("$$V_0 = BV_0 + \\sum_{t=1}^{N} \\frac{RI_t}{(1+K_e)^t} + \\frac{TV}{(1+K_e)^N}$$"),
-        tags$p("其中終值 $$TV = \\dfrac{RI_N (1+g)}{K_e - g}$$（永續成長剩餘收益）"),
-        tags$p(tags$b("Terminal Contribution")),
-        tags$p("$$TV\\ Ratio = \\dfrac{PV(Terminal)}{V_0}$$")
-      ))
-    })
-
     # ----- Sensitivity matrix -----
     .ri_sens_grid <- reactive({
       res0 <- ri_calc()
@@ -893,17 +874,13 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
         )
     })
 
-    # 頁底：公式參數 ±10% 敏感度（仿 DCF）
+    # 頁底：公式參數相對 ±1% 邊際彈性（仿 DCF）
     output$param_sensitivity_table <- renderTable({
       res0 <- ri_calc()
       validate(need(identical(res0$status, "success") && is.finite(res0$intrinsic),
                     "基準估值尚未就緒：請確認 B0、Ke、g（且 Ke > g）與 ROE 路徑。"))
       p0 <- res0$intrinsic
-      .rel <- function(x, sign = -1) {
-        x <- suppressWarnings(as.numeric(x)[1])
-        if (!is.finite(x) || abs(x) < 1e-12) return(NA_real_)
-        x * (1 + sign * 0.10)
-      }
+      .rel <- function(x, sign = -1) .param_rel_shock(x, sign = sign)
       .price_at <- function(b0 = input$b0, ke_pct = input$ri_ke, g_pct = input$ri_g,
                             n = input$ri_years, payout_pct = input$ri_payout,
                             roe_pct = input$ri_roe) {
@@ -948,7 +925,7 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
         .param_sensitivity_infl_row("預測年數 n", n0, "n", p0,
                                     .price_at(n = max(1, round(.rel(n0, -1)))), .price_at(n = max(1, round(.rel(n0, +1)))), "明確預測期長度")
       )
-      do.call(rbind, rows)
+      .param_sensitivity_sort_by_abs_eps(do.call(rbind, rows))
     }, striped = TRUE, hover = TRUE, bordered = TRUE, spacing = "s", width = "100%")
 
     # Preserve external contract

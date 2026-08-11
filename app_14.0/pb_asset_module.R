@@ -520,11 +520,7 @@ pb_asset_module_server <- function(id,
       validate(need(!is.null(live) && is.finite(live$mid),
                     "基準估值尚未就緒：請先提供 BVPS／TBVPS 與目標 P/B。"))
       p0 <- live$mid
-      .rel <- function(x, sign = -1) {
-        x <- suppressWarnings(as.numeric(x)[1])
-        if (!is.finite(x) || abs(x) < 1e-12) return(NA_real_)
-        x * (1 + sign * 0.10)
-      }
+      .rel <- function(x, sign = -1) .param_rel_shock(x, sign = sign)
       basis0 <- live$basis_val
       mid0 <- safe_num(input$pb_mid)
       .fair <- function(basis = basis0, mid = mid0) {
@@ -544,7 +540,7 @@ pb_asset_module_server <- function(id,
           "基準合理價 = 基礎 × mid"
         )
       )
-      do.call(rbind, rows)
+      .param_sensitivity_sort_by_abs_eps(do.call(rbind, rows))
     }, striped = TRUE, hover = TRUE, bordered = TRUE, spacing = "s", width = "100%")
 
     return(list(

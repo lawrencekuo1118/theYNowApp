@@ -29,16 +29,15 @@ if (is.na(default_rm) || default_rm < default_rf + 3) {
 # Ke = Rf + Beta × (Rm − Rf)
 default_re <- round(default_rf + default_beta * (default_rm - default_rf), 2)
 
-# 債務成本 ≈ Rf + 信用利差（投資級約 1.0%~2.0%）
-default_rd <- round(default_rf + 1.5, 2)
+# 債務成本 rᵈ：不設全域預設；載入財報後以利息費用／總負債覆寫（見 ynow_server）
 
-# 粗估 WACC（權益／負債權重）；稅率採美國企業稅常見 21%
+# 粗估 WACC 啟動占位（僅 Ke）；有負債後由實際 rᵈ 重算
 default_tax <- 21
 we <- max(0.05, min(0.95, 1 - default_debt))
 wd <- 1 - we
-default_wacc <- round(we * default_re + wd * default_rd * (1 - default_tax / 100), 2)
+default_wacc <- round(default_re, 2)
 
-# 永續成長率 SGR：預設採 Macro（直接套用 Rf）；仍須明顯低於 WACC
+# 永續成長率 SGR：啟動值錨在 Rf，執行基本面／生命週期法後由 central_perpetual_g 覆寫；須明顯低於 WACC
 default_sgr <- round(as.numeric(default_rf), 2)
 if (is.na(default_sgr) || default_sgr <= 0) default_sgr <- 4.0
 default_sgr <- min(default_sgr, max(0.5, default_wacc - 2))
@@ -87,26 +86,40 @@ APP_DEFAULTS <- list(
 
   # --- 5. WACC / CAPM ---
   wacc_re         = default_re,
-  wacc_rd         = default_rd,
+  wacc_rd         = NA_real_,           # 由財報利息／負債覆寫；無預設
+  wacc_rd_min     = 0,                  # 財報推估 rᵈ 下限（可調）
+  wacc_rd_max     = 40,                 # 財報推估 rᵈ 上限（可調）
   wacc_tax        = default_tax,
 
   use_est_re      = TRUE,
 
   capm_rf         = default_rf,
-  capm_beta       = round(default_beta, 2),  # 啟動時占位；搜尋後預設改跟 Finance Summary β
-  use_industry_beta = FALSE,                 # FALSE = 跟 Summary β；TRUE = 產業平均
+  capm_beta       = round(default_beta, 2),  # 啟動占位；估值路徑就緒後改寫入 Bottom-Up βᵤ
+  use_industry_beta = FALSE,                 # TRUE = 產業平均 β_L
   capm_rm         = round(default_rm, 2),
   beta_bench      = "SPY",
-  beta_lookback_months = 60,                 # 36 | 60 | 84（常見 3Y／5Y／7Y）
+  beta_lookback_months = 60,                 # Rolling 僅對照用（不寫入 CAPM）
   beta_min_obs    = 24,
-  # Unlevered：β_L 來源（summary｜rolling｜auto）；勿再用 capm（與 CAPM 輸出循環）
-  beta_bl_source  = "summary",               # summary | rolling | auto
+  # Rolling 估計不得寫入 CAPM；Summary β 可為預設套用來源
+  beta_purpose    = "valuation",
+  # 去槓桿化 βᵤ = Hamada(β_L,T,D/E)；β_L 預設 Summary
+  beta_bl_source  = "summary",
   beta_peers      = "",
-  # 套用至 CAPM：直接寫入所選 β（不經再槓桿）— 去槓桿 βᵤ 或未去槓桿 β_L／估計值
-  beta_u_apply_source = "unlever_firm",      # unlever_firm | bottomup | summary | rolling | industry | manual
-  beta_u_manual   = NA,                      # 手動 β（套用選項最後一項；直接寫入 CAPM）
+  beta_bottomup_agg = "mean",                # mean | median
+  # 舊版再槓桿設定已移除（隱藏相容）；不再提供目標 D/E UI
+  beta_relever_de_mode = "current",
+  beta_target_de  = NA,
+  # 套用至 CAPM：summary | industry | bottomup | unlever_firm | manual
+  beta_u_apply_source = "summary",
+  beta_u_manual   = NA,                      # 手動 β（直接寫入 CAPM）
 
-  # --- 6. P/B／資產法 ---
+  # --- 6. Residual Income ---
+  ri_years        = 5,
+  ri_roe          = 15,                      # 財報載入前占位；載入後覆寫
+  ri_payout       = 40,                      # 財報載入前占位；載入後覆寫
+  roe_method      = "constant",              # constant / linear / industry / custom
+
+  # --- 7. P/B／資產法 ---
   pb_bvps         = NA,
   pb_tbvps        = NA,
   pb_low          = round(pb_lo, 2),
