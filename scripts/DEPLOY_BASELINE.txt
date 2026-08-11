@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12395961
+bundleId=12396054
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=ebbab6a
-commit=ebbab6af82ecb0a94afff60e46c7fd8fd2f16f26
-short=ebbab6a
-message=chore: record shinyapps baseline bundle 12395901 (app_14.0)
-captured_at=2026-08-11T15:11:51Z
+aligned_git=319a0a0
+commit=319a0a067fff377d86969e9c5743e34e4636ba98
+short=319a0a0
+message=Move SEC filing notes from Lab into Dashboard next to Cash Flow.
+captured_at=2026-08-11T15:36:07Z
 source_branch=master
 note=Canonical live line is app_14.0. Deploy via scripts/deploy_app_14.R; Feedback needs YNOW_FEEDBACK_GITHUB_TOKEN in app_14.0/.Renviron (gitignored; redeploy bundles it — no shinyapps Vars UI).
