@@ -8,4 +8,4 @@ short=a05deaa
 message=Add Feedback tab that opens GitHub Issues via API.
 captured_at=2026-08-11T14:48:40Z
 source_branch=master
-note=Canonical live line is app_14.0. Deploy via scripts/deploy_app_14.R; Feedback tab needs YNOW_FEEDBACK_GITHUB_TOKEN on shinyapps Vars.
+note=Canonical live line is app_14.0. Deploy via scripts/deploy_app_14.R; Feedback needs YNOW_FEEDBACK_GITHUB_TOKEN in app_14.0/.Renviron (gitignored; redeploy bundles it — no shinyapps Vars UI).

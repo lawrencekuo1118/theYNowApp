@@ -37,4 +37,4 @@ shiny::runApp("app_14.0")
 - `YNOW_FEEDBACK_GITHUB_TOKEN`：具 `issues:write` 的 GitHub PAT（必填才能送出）
 - `YNOW_FEEDBACK_GITHUB_REPO`：選填，預設 `lawrencekuo1118/theYNowApp`
 
-shinyapps.io 請在應用程式 Settings → Vars 設定上述變數。
+**shinyapps.io 注意：** 沒有 Settings → Vars／secrets UI，也無法用 rsconnect `envVars` 注入環境變數。請把上述變數寫入 `app_14.0/.Renviron`（此檔須在 `.gitignore` 中，**永不提交**），再以 `Rscript scripts/deploy_app_14.R` 重新部署；token 會跟著 bundle 上線。
