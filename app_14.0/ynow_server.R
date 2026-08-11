@@ -6214,16 +6214,21 @@ server <- function(input, output, session) {
   )
 
   # ==========================================
-  # 🧪 實驗區 (Lab)：SEC EDGAR 財報附註
+  # Dashboard：財報附註擷取 (SEC EDGAR)
   # ==========================================
   lab_sec_result <- reactiveVal(NULL)
 
-  # 側邊欄「testing env.」按鈕：切到實驗區並給予回饋
+  # 側邊欄「財報附註」捷徑：切到 Dashboard 並選取 FINANCIAL REPORT → 財報附註 (SEC)
   observeEvent(input$sidebar_test_click, {
-    showNotification("已開啟實驗區 (Lab) — testing env.", type = "message", duration = 3)
+    updateTabItems(session, "sidebar_tabs", "dashboard")
+    # tabItem 先切換後，再延遲選取 FINANCIAL REPORT 子頁籤，避免尚未就緒
+    shinyjs::delay(150, {
+      updateTabsetPanel(session, "dashboard_fin_report", selected = "sec_notes")
+    })
+    showNotification("已開啟 Dashboard — 財報附註 (SEC EDGAR)", type = "message", duration = 3)
   }, ignoreInit = TRUE)
 
-  # 實驗區沿用主頁 Ticker / Stock Code：優先用已搜尋的代碼，否則用主頁輸入框
+  # 沿用主頁 Ticker / Stock Code：優先用已搜尋的代碼，否則用主頁輸入框
   lab_ticker <- reactive({
     tk <- current_ticker()
     if (is.null(tk) || !nzchar(trimws(as.character(tk)))) {
