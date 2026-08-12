@@ -1955,9 +1955,9 @@ ui <- dashboardPage(
                              "規則對齊 ", tags$code("get_box_color"), "：",
                              "多數指標「越高越好」；",
                              tags$b("營運費用比、財務槓桿"), " 為「越低越好」（反向著色）。",
-                             "落在產業 ", tags$code("[下限, 上限]"), " 內→黑；越出有利側→藍；不利側→紅。"
+                             "落在產業 ", tags$code("[下限, 上限]"), " 內→黑；越出有利側→藍；不利側→紅。",
+                             " 產業標準快覽見上方 PERFORMANCE 區塊外的摘要列。"
                            ),
-                           uiOutput("annotation_industry_bands"),
                            tags$h4("KPI 計算與產業區間", class = "ynow-ann-h"),
                            DT::dataTableOutput("annotation_kpi_guide"),
                            tags$h4("指標群組解讀穩定度", class = "ynow-ann-h"),

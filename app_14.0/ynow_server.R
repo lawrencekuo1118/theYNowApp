@@ -286,47 +286,11 @@ server <- function(input, output, session) {
   output$today <- renderText({ format(Sys.Date(), "%Y/%m/%d") })
 
   output$dashboard_selected_industry <- renderUI({
-    key <- as.character(input$industry_choice %||% "")
-    if (!nzchar(key)) {
-      return(tags$div(
-        style = "margin: 0 0 12px 0; padding: 10px 12px; background: #f7f7f7; border-left: 4px solid #999; border-radius: 4px;",
-        tags$span(style = "color:#666; font-size:13px;", "尚未選擇比較產業（請至 Get Started → Industry Standard）")
-      ))
-    }
-    lab <- industry_labels[[key]]
-    if (is.null(lab) || is.na(lab) || !nzchar(as.character(lab))) lab <- key
-    yahoo <- corp_industry_text()
-    inds <- industry_standards[[key]]
-    meta_bits <- character(0)
-    if (!is.null(inds$beta_avg) && is.finite(inds$beta_avg)) {
-      meta_bits <- c(meta_bits, paste0("β≈", round(inds$beta_avg, 2)))
-    }
-    if (!is.null(inds$rm_avg) && is.finite(inds$rm_avg)) {
-      meta_bits <- c(meta_bits, paste0("Rm≈", round(inds$rm_avg, 1), "%"))
-    }
-    if (!is.null(inds$roe) && length(inds$roe) >= 2) {
-      meta_bits <- c(meta_bits, paste0("ROE ", round(inds$roe[1], 1), "–", round(inds$roe[2], 1), "%"))
-    }
-    meta_line <- if (length(meta_bits)) paste(meta_bits, collapse = "　") else NULL
-
-    tags$div(
-      style = "margin: 0 0 12px 0; padding: 10px 14px; background: #f4f8fb; border-left: 4px solid #3c8dbc; border-radius: 4px;",
-      tags$div(
-        style = "font-size: 14px; color: #222; line-height: 1.45;",
-        tags$b("目前比較產業："),
-        tags$span(style = "font-weight: 700; color: #1a5276;", lab),
-        tags$span(style = "color:#888; font-size:12px; margin-left:8px;", paste0("(", key, ")"))
-      ),
-      if (!is.null(meta_line)) {
-        tags$div(style = "margin-top:4px; font-size:12.5px; color:#555;", meta_line)
-      },
-      if (!is.null(yahoo) && nzchar(as.character(yahoo))) {
-        tags$div(
-          style = "margin-top:4px; font-size:12px; color:#777;",
-          tags$span(style = "font-weight:600;", "Yahoo："),
-          as.character(yahoo)[1]
-        )
-      }
+    industry_standard_snapshot_ui(
+      industry_key = input$industry_choice,
+      yahoo_text = corp_industry_text(),
+      show_chips = TRUE,
+      show_title = TRUE
     )
   })
   
@@ -2014,64 +1978,8 @@ server <- function(input, output, session) {
     } else ""
   })
   
-  output$annotation_industry_bands <- renderUI({
-    key <- as.character(input$industry_choice %||% "")[1]
-    if (!nzchar(key) || !(key %in% names(industry_standards))) {
-      return(tags$div(
-        class = "ynow-ann-note",
-        style = "border-left-color:#999;",
-        "尚未選擇產業標準。請至 Get Started → Industry Standard 後，此處會顯示該產業的 KPI 區間。"
-      ))
-    }
-    lab <- industry_labels[[key]]
-    if (is.null(lab) || is.na(lab) || !nzchar(as.character(lab))) lab <- key
-    inds <- industry_standards[[key]]
-    band_items <- list(
-      c("毛利率", "gross_profit_margin", "%"),
-      c("淨利率", "net_profit_margin", "%"),
-      c("營運費用比", "opex_ratio", "%"),
-      c("營收成長", "rev_growth", "%"),
-      c("ROA", "roa", "%"),
-      c("ROE", "roe", "%"),
-      c("財務槓桿", "eqt_multiplier", "x")
-    )
-    chips <- lapply(band_items, function(b) {
-      txt <- annotation_format_band(key, b[[2]], unit = b[[3]])
-      tags$div(
-        class = "ynow-ann-chip",
-        style = "min-width:200px; flex-direction:column; align-items:flex-start; gap:2px;",
-        tags$span(style = "font-size:11px; color:#888;", b[[1]]),
-        tags$span(style = "font-weight:700; color:#1a5276;", txt)
-      )
-    })
-    meta <- character(0)
-    if (!is.null(inds$beta_avg) && is.finite(inds$beta_avg)) {
-      meta <- c(meta, paste0("β≈", round(inds$beta_avg, 2)))
-    }
-    if (!is.null(inds$rm_avg) && is.finite(inds$rm_avg)) {
-      meta <- c(meta, paste0("Rm≈", round(inds$rm_avg, 1), "%"))
-    }
-    if (!is.null(inds$debt_ratio_avg) && is.finite(inds$debt_ratio_avg)) {
-      meta <- c(meta, paste0("Debt≈", round(100 * inds$debt_ratio_avg, 1), "%"))
-    }
-    if (!is.null(inds$pb_band) && length(inds$pb_band) >= 2) {
-      pb <- inds$pb_band
-      mid <- if (length(pb) >= 3) pb[3] else mean(pb[1:2])
-      meta <- c(meta, sprintf("P/B %.1f–%.1f (mid %.1f)", pb[1], pb[2], mid))
-    }
-    tagList(
-      tags$h4("目前產業標準快覽", class = "ynow-ann-h"),
-      tags$div(
-        style = "margin-bottom:8px; font-size:13px;",
-        tags$b(lab),
-        tags$span(style = "color:#888; margin-left:8px; font-size:12px;", paste0("(", key, ")")),
-        if (length(meta)) {
-          tags$span(style = "margin-left:12px; color:#555; font-size:12px;", paste(meta, collapse = " · "))
-        }
-      ),
-      tags$div(class = "ynow-ann-legend", chips)
-    )
-  })
+  # Annotation 產業快覽已併入 dashboard_selected_industry；此處保留空輸出以免舊引用
+  output$annotation_industry_bands <- renderUI({ NULL })
 
   output$annotation_kpi_guide <- DT::renderDataTable({
     key <- as.character(input$industry_choice %||% "")[1]

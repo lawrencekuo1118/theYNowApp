@@ -457,3 +457,96 @@ annotation_stability_df <- function() {
   )
 }
 
+#' 目前產業標準快覽 UI（Dashboard／Annotation 共用）
+#' @param industry_key 產業鍵（如 sc.Foundry）
+#' @param yahoo_text 可選 Yahoo Sector/Industry 字串
+#' @param show_chips 是否顯示 KPI 區間 chips
+#' @param show_title 是否顯示「目前產業標準快覽」標題
+#' @param empty_message 未選產業時提示
+industry_standard_snapshot_ui <- function(industry_key,
+                                          yahoo_text = NULL,
+                                          show_chips = TRUE,
+                                          show_title = TRUE,
+                                          empty_message = "尚未選擇比較產業（請至 Get Started → Industry Standard）") {
+  key <- as.character(industry_key %||% "")[1]
+  if (!nzchar(key) || !(key %in% names(industry_standards))) {
+    return(tags$div(
+      style = "margin: 0 0 12px 0; padding: 10px 12px; background: #f7f7f7; border-left: 4px solid #999; border-radius: 4px;",
+      tags$span(style = "color:#666; font-size:13px;", empty_message)
+    ))
+  }
+  lab <- industry_labels[[key]]
+  if (is.null(lab) || is.na(lab) || !nzchar(as.character(lab))) lab <- key
+  inds <- industry_standards[[key]]
+
+  meta <- character(0)
+  if (!is.null(inds$beta_avg) && is.finite(inds$beta_avg)) {
+    meta <- c(meta, paste0("β≈", round(inds$beta_avg, 2)))
+  }
+  if (!is.null(inds$rm_avg) && is.finite(inds$rm_avg)) {
+    meta <- c(meta, paste0("Rm≈", round(inds$rm_avg, 1), "%"))
+  }
+  if (!is.null(inds$debt_ratio_avg) && is.finite(inds$debt_ratio_avg)) {
+    meta <- c(meta, paste0("Debt≈", round(100 * inds$debt_ratio_avg, 1), "%"))
+  }
+  if (!is.null(inds$pb_band) && length(inds$pb_band) >= 2) {
+    pb <- inds$pb_band
+    mid <- if (length(pb) >= 3) pb[3] else mean(pb[1:2])
+    meta <- c(meta, sprintf("P/B %.1f–%.1f (mid %.1f)", pb[1], pb[2], mid))
+  }
+
+  chips <- NULL
+  if (isTRUE(show_chips)) {
+    band_items <- list(
+      c("毛利率", "gross_profit_margin", "%"),
+      c("淨利率", "net_profit_margin", "%"),
+      c("營運費用比", "opex_ratio", "%"),
+      c("營收成長", "rev_growth", "%"),
+      c("ROA", "roa", "%"),
+      c("ROE", "roe", "%"),
+      c("財務槓桿", "eqt_multiplier", "x")
+    )
+    chips <- lapply(band_items, function(b) {
+      txt <- annotation_format_band(key, b[[2]], unit = b[[3]])
+      tags$div(
+        class = "ynow-ann-chip",
+        style = "min-width:160px; flex-direction:column; align-items:flex-start; gap:2px;",
+        tags$span(style = "font-size:11px; color:#888;", b[[1]]),
+        tags$span(style = "font-weight:700; color:#1a5276;", txt)
+      )
+    })
+  }
+
+  yahoo <- trimws(as.character(yahoo_text %||% "")[1])
+  tags$div(
+    style = "margin: 0 0 12px 0; padding: 12px 14px; background: #f4f8fb; border-left: 4px solid #3c8dbc; border-radius: 4px;",
+    if (isTRUE(show_title)) {
+      tags$div(
+        style = "font-size: 13px; font-weight: 700; color: #1a5276; margin-bottom: 6px;",
+        "目前產業標準快覽"
+      )
+    },
+    tags$div(
+      style = "font-size: 13px; color: #222; line-height: 1.45;",
+      tags$b(lab),
+      tags$span(style = "color:#888; font-size:12px; margin-left:6px;", paste0("(", key, ")")),
+      if (length(meta)) {
+        tags$span(
+          style = "margin-left:10px; color:#555; font-size:12px;",
+          paste(meta, collapse = " · ")
+        )
+      }
+    ),
+    if (nzchar(yahoo)) {
+      tags$div(
+        style = "margin-top:4px; font-size:12px; color:#777;",
+        tags$span(style = "font-weight:600;", "Yahoo："),
+        yahoo
+      )
+    },
+    if (!is.null(chips)) {
+      tags$div(class = "ynow-ann-legend", style = "margin-top:10px; margin-bottom:0;", chips)
+    }
+  )
+}
+
