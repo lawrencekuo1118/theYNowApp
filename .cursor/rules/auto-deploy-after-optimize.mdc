@@ -1,0 +1,33 @@
+---
+description: After finishing app optimizations, auto commit / push / shinyapps deploy / baseline
+alwaysApply: true
+---
+
+# Auto deploy after optimization
+
+When an **app optimization / feature fix / UI–logic improvement** for the live line (`app_14.0/`) is **finished and verified** in this session, do **not** wait for the user to say「部署」or「推送」.
+
+Immediately run the full ship sequence from the **coding clone** (`/Users/lawrencekuo/coding/theYNowApp`):
+
+1. **Commit** only the relevant app changes (message: why, 1–2 sentences).  
+   - This repo’s Git may reject `git commit --trailer`; if so use `write-tree` → `commit-tree` → `update-ref`.
+2. **`git push origin HEAD`**
+3. **Deploy:** `Rscript scripts/deploy_app_14.R`  
+   - Confirm live bundle via rsconnect (`status=running`, new `bundleId`).  
+   - If local client dies (disk) but upload succeeded, poll until the new bundle is active before recording baseline.
+4. **Baseline:** update `scripts/DEPLOY_BASELINE.txt` (bundleId, aligned_git/commit/short, message, `captured_at`), commit as `chore: record shinyapps baseline bundle <id> (app_14.0)`, push.
+5. Briefly report: app commit, baseline commit, bundleId, live URL.
+
+## Applies when
+
+- User asked for an optimization/fix/enhancement and the work on `app_14.0/` is done.
+- Explicit「部署／推送」is **not** required once the optimization is complete.
+
+## Does **not** apply (ask or skip ship)
+
+- Exploratory Q&A, plans, or incomplete / broken work
+- Docs-only / chore-only with no app behavior change (unless user asks)
+- User says not to deploy, or only wants a local/WIP commit
+- Secrets, `.Renviron`, or unrelated paths outside the agreed ship set
+
+Prefer coding-clone git ops; do not run git inside the OneDrive mirror. OneDrive sync is best-effort and may hang—do not block ship on it.
