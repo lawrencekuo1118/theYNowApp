@@ -1156,6 +1156,26 @@ ui <- dashboardPage(
           gap: 6px;
           white-space: nowrap;
         }
+        .ynow-lab-im-group.ynow-lab-im-sizes {
+          align-items: flex-start;
+          white-space: normal;
+        }
+        .ynow-lab-im-group.ynow-lab-im-sizes > .ynow-lab-im-k {
+          margin-top: 4px;
+        }
+        .ynow-lab-im-sizes .shiny-options-group {
+          display: grid;
+          grid-template-columns: auto auto;
+          column-gap: 12px;
+          row-gap: 2px;
+          align-items: center;
+        }
+        .ynow-lab-im-sizes .checkbox-inline {
+          margin-left: 0 !important;
+          margin-right: 0 !important;
+          padding-left: 20px;
+          white-space: nowrap;
+        }
         .ynow-lab-im-k {
           font-size: 11px;
           font-weight: 700;
@@ -1164,9 +1184,10 @@ ui <- dashboardPage(
         }
         .ynow-lab-im-sep {
           width: 1px;
-          height: 26px;
+          height: 40px;
           background: #dde3ea;
           flex: 0 0 1px;
+          align-self: center;
         }
         .ynow-lab-im-bar .form-group {
           margin: 0 !important;
@@ -2645,7 +2666,7 @@ ui <- dashboardPage(
               tags$div(
                 class = "ynow-lab-im-bar",
                 tags$div(
-                  class = "ynow-lab-im-group",
+                  class = "ynow-lab-im-group ynow-lab-im-sizes",
                   tags$span(class = "ynow-lab-im-k", "規模"),
                   checkboxGroupInput(
                     "lab_im_sizes", NULL,
