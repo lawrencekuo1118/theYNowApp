@@ -1119,6 +1119,92 @@ ui <- dashboardPage(
           color: #1a5276;
         }
 
+        /* Lab：美股績優篩選工具列（單列、同類並排） */
+        .ynow-lab-im-note {
+          margin: 0 0 10px 0;
+          padding: 8px 10px;
+          background: #f7f9fb;
+          border-left: 3px solid #3c8dbc;
+          border-radius: 4px;
+          font-size: 12.5px;
+          color: #445;
+          line-height: 1.45;
+          white-space: nowrap;
+          overflow-x: auto;
+        }
+        .ynow-lab-im-note .ynow-lab-im-muted {
+          color: #888;
+          font-size: 11.5px;
+          margin-left: 8px;
+        }
+        .ynow-lab-im-bar {
+          display: flex;
+          flex-wrap: nowrap;
+          align-items: center;
+          gap: 10px 14px;
+          overflow-x: auto;
+          padding: 10px 12px;
+          margin: 0 0 8px 0;
+          background: #fafbfc;
+          border: 1px solid #e5e9ef;
+          border-radius: 6px;
+        }
+        .ynow-lab-im-group {
+          display: inline-flex;
+          align-items: center;
+          flex: 0 0 auto;
+          gap: 6px;
+          white-space: nowrap;
+        }
+        .ynow-lab-im-k {
+          font-size: 11px;
+          font-weight: 700;
+          color: #5a6a7a;
+          letter-spacing: 0.02em;
+        }
+        .ynow-lab-im-sep {
+          width: 1px;
+          height: 26px;
+          background: #dde3ea;
+          flex: 0 0 1px;
+        }
+        .ynow-lab-im-bar .form-group {
+          margin: 0 !important;
+        }
+        .ynow-lab-im-bar .shiny-input-container {
+          margin-bottom: 0 !important;
+          width: auto !important;
+        }
+        .ynow-lab-im-bar .checkbox-inline,
+        .ynow-lab-im-bar .checkbox {
+          margin-top: 0 !important;
+          margin-bottom: 0 !important;
+          padding-top: 0;
+        }
+        .ynow-lab-im-bar .checkbox-inline + .checkbox-inline {
+          margin-left: 8px;
+        }
+        .ynow-lab-im-bar .bootstrap-select {
+          width: 200px !important;
+        }
+        .ynow-lab-im-bar input[type="number"] {
+          height: 30px;
+          padding: 4px 8px;
+          width: 64px;
+        }
+        .ynow-lab-im-bar .btn {
+          white-space: nowrap;
+          padding: 6px 14px;
+          font-weight: 700;
+        }
+        .ynow-lab-im-hint {
+          margin: 0 0 12px 0;
+          font-size: 11.5px;
+          color: #888;
+          white-space: nowrap;
+          overflow-x: auto;
+        }
+
         /* Backtest：績效指標卡片（軟色調 + 左側色條，避免實心色塊） */
         .ynow-metric-grid {
           --ynow-metric-green: #2d8a57;
@@ -2541,44 +2627,43 @@ ui <- dashboardPage(
             box(
               width = 12, status = "primary", solidHeader = TRUE,
               title = tagList(icon("layer-group"), "美股績優篩選：規模 × 產業 × 評價模型"),
-              tags$p(
-                style = "margin-bottom:10px;",
-                tags$b("績優原則："),
-                "在可評估池中，選",
-                tags$b("股價相對模型合理價、於預測期間 n 年內隱含年化漲幅最大者"),
-                "。流程：① 複選規模／產業／評價模型 → ② ",
-                tags$b("F-Score ≥ 7 且盈餘品質通過"), " 作品質門檻 → ③ 以建議主模型估合理價 vs 現價，",
-                "用 n＝",
+              tags$div(
+                class = "ynow-lab-im-note",
+                title = paste0(
+                  "流程：複選規模／產業／模型 → F-Score≥7 且盈餘品質通過 → ",
+                  "建議主模型合理價 vs 現價，以 n 年換算年化漲幅排序（簡化估值）。"
+                ),
+                tags$b("績優："),
+                "可評估池中，選股價相對模型合理價、於 n＝",
                 as.integer(APP_DEFAULTS$years %||% 5L)[1],
-                " 年換算年化漲幅並排序。",
-                tags$br(),
+                " 年隱含年化漲幅最大者",
                 tags$span(
-                  style = "color:#888; font-size:12px;",
-                  "實驗區為簡化估值（對齊 DCF／DDM／P/B／RI 類型，非完整側欄估值引擎）。"
+                  class = "ynow-lab-im-muted",
+                  "｜門檻 F-Score≥7＋盈餘品質｜簡化 DCF／DDM／P/B／RI"
                 )
               ),
-              fluidRow(
-                column(
-                  width = 4,
-                  tags$label("公司規模（勾選）", class = "control-label"),
+              tags$div(
+                class = "ynow-lab-im-bar",
+                tags$div(
+                  class = "ynow-lab-im-group",
+                  tags$span(class = "ynow-lab-im-k", "規模"),
                   checkboxGroupInput(
                     "lab_im_sizes", NULL,
                     choices = lab_size_picker_choices(),
                     selected = names(LAB_SIZE_LABELS),
                     inline = TRUE
-                  ),
-                  tags$span(
-                    style = "color:#888; font-size:11px;",
-                    "全不勾＝不過濾規模；評估後才有市值分級。"
                   )
                 ),
-                column(
-                  width = 4,
+                tags$div(class = "ynow-lab-im-sep"),
+                tags$div(
+                  class = "ynow-lab-im-group",
+                  tags$span(class = "ynow-lab-im-k", "產業"),
                   shinyWidgets::pickerInput(
-                    "lab_im_industries", "產業別（複選）",
+                    "lab_im_industries", NULL,
                     choices = industry_picker_choices(),
                     selected = unname(industry_picker_choices()),
                     multiple = TRUE,
+                    width = "200px",
                     options = shinyWidgets::pickerOptions(
                       actionsBox = TRUE,
                       liveSearch = TRUE,
@@ -2588,9 +2673,10 @@ ui <- dashboardPage(
                     )
                   )
                 ),
-                column(
-                  width = 4,
-                  tags$label("適用評價模型（勾選）", class = "control-label"),
+                tags$div(class = "ynow-lab-im-sep"),
+                tags$div(
+                  class = "ynow-lab-im-group",
+                  tags$span(class = "ynow-lab-im-k", "模型"),
                   checkboxGroupInput(
                     "lab_im_methods", NULL,
                     choices = c(
@@ -2601,46 +2687,36 @@ ui <- dashboardPage(
                     ),
                     selected = c("dcf", "ddm", "pb", "ri"),
                     inline = TRUE
-                  ),
+                  )
+                ),
+                tags$div(class = "ynow-lab-im-sep"),
+                tags$div(
+                  class = "ynow-lab-im-group",
                   tags$span(
-                    style = "color:#888; font-size:11px;",
-                    "全不勾＝不過濾模型（主／副方法皆可比對）。"
-                  )
-                )
-              ),
-              fluidRow(
-                column(
-                  width = 3,
-                  checkboxInput(
-                    "lab_im_quality_only",
-                    "明細只顯示門檻通過者",
-                    value = TRUE
-                  )
-                ),
-                column(
-                  width = 3,
-                  numericInput(
-                    "lab_im_max_n", "本次最多評估檔數",
-                    value = 25, min = 5, max = 40, step = 5
-                  )
-                ),
-                column(
-                  width = 6,
-                  tags$div(
-                    style = "margin-top:25px;",
-                    actionButton(
-                      "lab_im_run_fscore", "評估績優：門檻＋年化估值漲幅",
-                      icon = icon("chart-line"),
-                      class = "btn-success",
-                      style = "font-weight:700; width:100%;"
+                    title = "明細表只列 F-Score 門檻通過者",
+                    checkboxInput(
+                      "lab_im_quality_only",
+                      "只看通過",
+                      value = TRUE
                     )
+                  ),
+                  tags$span(class = "ynow-lab-im-k", "最多"),
+                  numericInput(
+                    "lab_im_max_n", NULL,
+                    value = 25, min = 5, max = 40, step = 5,
+                    width = "64px"
+                  ),
+                  actionButton(
+                    "lab_im_run_fscore", "評估績優",
+                    icon = icon("chart-line"),
+                    class = "btn-success",
+                    title = "門檻（F-Score≥7＋盈餘品質）＋年化估值漲幅排序"
                   )
                 )
               ),
               tags$p(
-                style = "color:#888; font-size:12px; margin-top:-6px;",
-                "提示：規模＝Yahoo 市值；評估抓 Summary＋財報（memoise）。",
-                "排行榜＝門檻通過後依年化估值漲幅由高到低。"
+                class = "ynow-lab-im-hint",
+                "全不勾規模／模型＝不過濾　·　規模＝Yahoo 市值（評估後分級）　·　排行＝門檻後年化估值漲幅由高到低"
               ),
               tags$h4("依建議方法分組摘要", style = "margin-top:8px;"),
               tableOutput("lab_im_summary"),
