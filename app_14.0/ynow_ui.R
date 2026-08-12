@@ -1120,8 +1120,17 @@ ui <- dashboardPage(
         }
 
         /* Lab：美股績優篩選工具列（單列、同類並排） */
-        .ynow-lab-im-note {
+        .ynow-lab-im-note-row {
+          display: flex;
+          flex-wrap: nowrap;
+          align-items: center;
+          gap: 12px;
           margin: 0 0 10px 0;
+        }
+        .ynow-lab-im-note {
+          flex: 1 1 auto;
+          min-width: 0;
+          margin: 0;
           padding: 8px 10px;
           background: #f7f9fb;
           border-left: 3px solid #3c8dbc;
@@ -1137,17 +1146,28 @@ ui <- dashboardPage(
           font-size: 11.5px;
           margin-left: 8px;
         }
+        .ynow-lab-im-note-row > .btn {
+          flex: 0 0 auto;
+          white-space: nowrap;
+          padding: 6px 14px;
+          font-weight: 700;
+        }
         .ynow-lab-im-bar {
           display: flex;
           flex-wrap: nowrap;
           align-items: center;
           gap: 10px 14px;
           overflow-x: auto;
+          overflow-y: visible;
           padding: 10px 12px;
           margin: 0 0 8px 0;
           background: #fafbfc;
           border: 1px solid #e5e9ef;
           border-radius: 6px;
+        }
+        /* bootstrap-select menu is appended to body (container='body'); keep bar scrollable */
+        .ynow-lab-im-bar .dropdown-menu {
+          z-index: 2000;
         }
         .ynow-lab-im-group {
           display: inline-flex;
@@ -2649,18 +2669,27 @@ ui <- dashboardPage(
               width = 12, status = "primary", solidHeader = TRUE,
               title = tagList(icon("layer-group"), "美股績優篩選：規模 × 產業 × 評價模型"),
               tags$div(
-                class = "ynow-lab-im-note",
-                title = paste0(
-                  "流程：複選規模／產業／模型 → F-Score≥7 且盈餘品質通過 → ",
-                  "建議主模型合理價 vs 現價，以 n 年換算年化漲幅排序（簡化估值）。"
+                class = "ynow-lab-im-note-row",
+                tags$div(
+                  class = "ynow-lab-im-note",
+                  title = paste0(
+                    "流程：複選規模／產業／模型 → F-Score≥7 且盈餘品質通過 → ",
+                    "建議主模型合理價 vs 現價，以 n 年換算年化漲幅排序（簡化估值）。"
+                  ),
+                  tags$b("績優："),
+                  "可評估池中，選股價相對模型合理價、於 n＝",
+                  as.integer(APP_DEFAULTS$years %||% 5L)[1],
+                  " 年隱含年化漲幅最大者",
+                  tags$span(
+                    class = "ynow-lab-im-muted",
+                    "｜門檻 F-Score≥7＋盈餘品質｜簡化 DCF／DDM／P/B／RI"
+                  )
                 ),
-                tags$b("績優："),
-                "可評估池中，選股價相對模型合理價、於 n＝",
-                as.integer(APP_DEFAULTS$years %||% 5L)[1],
-                " 年隱含年化漲幅最大者",
-                tags$span(
-                  class = "ynow-lab-im-muted",
-                  "｜門檻 F-Score≥7＋盈餘品質｜簡化 DCF／DDM／P/B／RI"
+                actionButton(
+                  "lab_im_run_fscore", "評估績優",
+                  icon = icon("chart-line"),
+                  class = "btn-success",
+                  title = "門檻（F-Score≥7＋盈餘品質）＋年化估值漲幅排序"
                 )
               ),
               tags$div(
@@ -2690,7 +2719,9 @@ ui <- dashboardPage(
                       liveSearch = TRUE,
                       selectedTextFormat = "count > 2",
                       noneSelectedText = "全部產業",
-                      size = 10
+                      size = 10,
+                      container = "body",
+                      dropupAuto = TRUE
                     )
                   )
                 ),
@@ -2726,12 +2757,6 @@ ui <- dashboardPage(
                     "lab_im_max_n", NULL,
                     value = 25, min = 5, max = 40, step = 5,
                     width = "64px"
-                  ),
-                  actionButton(
-                    "lab_im_run_fscore", "評估績優",
-                    icon = icon("chart-line"),
-                    class = "btn-success",
-                    title = "門檻（F-Score≥7＋盈餘品質）＋年化估值漲幅排序"
                   )
                 )
               ),
