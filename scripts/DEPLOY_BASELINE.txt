@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12401303
+bundleId=12401352
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=5b635cc
-commit=5b635cc260900fb670cf1bbad1928a9adcd2dc68
-short=5b635cc
-message=Remove Get Started 「核心參數位置」 navigation box.
-captured_at=2026-08-12T16:35:44Z
+aligned_git=2bec913
+commit=2bec9130e36edd943d55b9fd91ff2344af8299a6
+short=2bec913
+message=Compact Lab quality-screen filters into a single toolbar row.
+captured_at=2026-08-12T16:46:27Z
 source_branch=master
 note=Canonical live line is app_14.0. Deploy via scripts/deploy_app_14.R; Feedback needs YNOW_FEEDBACK_GITHUB_TOKEN in app_14.0/.Renviron (gitignored; redeploy bundles it — no shinyapps Vars UI).
