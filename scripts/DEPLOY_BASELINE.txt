@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12401554
+bundleId=12401581
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=d7ae8bf
-commit=d7ae8bf9bda9ecfc7b7bb598b1a5503271df96d0
-short=d7ae8bf
-message=Polish Lab toolbar: pin evaluate button beside note; fix industry dropdown clipping.
-captured_at=2026-08-12T17:39:42Z
+aligned_git=ac6ab51
+commit=ac6ab51cc2e8f88d7aaa8c6e0082715e86b8e774
+short=ac6ab51
+message=chore: record shinyapps baseline bundle 12401554 (app_14.0)
+captured_at=2026-08-12T17:44:16Z
 source_branch=master
 note=Canonical live line is app_14.0. Deploy via scripts/deploy_app_14.R; Feedback needs YNOW_FEEDBACK_GITHUB_TOKEN in app_14.0/.Renviron (gitignored; redeploy bundles it — no shinyapps Vars UI).
