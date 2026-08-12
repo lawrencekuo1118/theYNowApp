@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12401095
+bundleId=12401195
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=756981c
-commit=756981c94dff14ba498120a6d12afe76ad4dfd2f
-short=756981c
-message=Fix Lab size-filter picker mismatch; use checkboxes for size and model.
-captured_at=2026-08-12T15:49:05Z
+aligned_git=0308ec1
+commit=0308ec12f13478c88ac4ea9884ab8b40e765d07d
+short=0308ec1
+message=Promote industry standard snapshot to Dashboard banner.
+captured_at=2026-08-12T16:08:34Z
 source_branch=master
 note=Canonical live line is app_14.0. Deploy via scripts/deploy_app_14.R; Feedback needs YNOW_FEEDBACK_GITHUB_TOKEN in app_14.0/.Renviron (gitignored; redeploy bundles it — no shinyapps Vars UI).
