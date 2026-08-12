@@ -585,22 +585,6 @@ beta_advanced_tab_ui <- function() {
   )
 }
 
-.core_params_location_box <- function() {
-  box(
-    title = tagList(icon("location-arrow"), "核心參數位置"),
-    width = 12, status = "warning", solidHeader = TRUE,
-    tags$ul(
-      style = "margin:0; padding-left:18px; line-height:1.55;",
-      tags$li("DCF／RI 終值 SGR：本頁上方「永續成長率 SGR 設定」"),
-      tags$li("β 預估：本頁 BETA 小分頁（與 DCF → WACC 的 CAPM β 雙向連動）"),
-      tags$li("CAPM（Rf／β／Rm）：DCF-Model → WACC"),
-      tags$li("兩階段成長假設：DCF-Model → Overview（選 Two-Stage 時顯示）"),
-      tags$li("CapEx／ΔNWC 前瞻佔營收比：DCF → FCFF 分頁（驅動預測表）"),
-      tags$li("DDM 股利成長率：可在 DDM 分頁單獨覆寫")
-    )
-  )
-}
-
 .dcf_two_stage_params_box <- function() {
   conditionalPanel(
     condition = "input.dcf_mode == 'two_stage'",
@@ -1695,9 +1679,6 @@ ui <- dashboardPage(
             ),
             beta_rolling_section_ui()
           )
-        ),
-        fluidRow(
-          .core_params_location_box()
         )
       ),
 
