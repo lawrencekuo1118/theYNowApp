@@ -1187,7 +1187,7 @@ ui <- dashboardPage(
         .ynow-lab-im-bar .bootstrap-select {
           width: 200px !important;
         }
-        .ynow-lab-im-bar input[type="number"] {
+        .ynow-lab-im-bar input[type='number'] {
           height: 30px;
           padding: 4px 8px;
           width: 64px;
