@@ -339,7 +339,7 @@ industry_standards <- list(
   )
 )
 
-# 🎨 KPI 顏色判定
+# 🎨 KPI 顏色判定（只取區間前兩碼 low/high；與 industry_standards 一致）
 get_box_color <- function(industry_choice, metric_name, val) {
   if (is.null(industry_choice) || length(industry_choice) == 0 || industry_choice == "") return("black")
   if (is.null(metric_name) || length(metric_name) == 0) return("black")
@@ -347,34 +347,92 @@ get_box_color <- function(industry_choice, metric_name, val) {
   if (!(industry_choice %in% names(industry_standards))) return("black")
 
   std <- industry_standards[[industry_choice]][[metric_name]]
-  if (is.null(std) || length(std) != 2) return("black")
+  if (is.null(std) || length(std) < 2) return("black")
+  lo <- suppressWarnings(as.numeric(std[1])[1])
+  hi <- suppressWarnings(as.numeric(std[2])[1])
+  if (!is.finite(lo) || !is.finite(hi)) return("black")
 
   # 費用／槓桿類：越高通常越差 → 反向著色
   lower_is_better <- metric_name %in% c("opex_ratio", "eqt_multiplier")
 
-  if (val >= std[1] && val <= std[2]) {
+  if (val >= lo && val <= hi) {
     return("black")
   } else if (isTRUE(lower_is_better)) {
-    if (val < std[1]) return("blue") else return("red")
+    if (val < lo) return("blue") else return("red")
   } else {
-    if (val < std[1]) return("red") else return("blue")
+    if (val < lo) return("red") else return("blue")
   }
 }
 
-#' 格式化產業標準區間（單位依 metric）
-annotation_format_band <- function(industry_key, metric_name, unit = "%") {
+#' 產業標準欄位 → 顯示標籤／單位（單一來源，供快覽／Annotation／色碼共用）
+INDUSTRY_METRIC_META <- list(
+  gross_profit_margin = list(label = "毛利率", unit = "%"),
+  net_profit_margin   = list(label = "淨利率", unit = "%"),
+  opex_ratio          = list(label = "營運費用比", unit = "%"),
+  rev_growth          = list(label = "營收成長", unit = "%"),
+  roa                 = list(label = "ROA", unit = "%"),
+  roe                 = list(label = "ROE", unit = "%"),
+  eqt_multiplier      = list(label = "財務槓桿", unit = "x")
+)
+
+#' 格式化單一數值：整數保留整數寫法，對齊 industry_standards.R 字面量
+industry_format_number <- function(x, digits = 2) {
+  x <- suppressWarnings(as.numeric(x)[1])
+  if (!is.finite(x)) return(NA_character_)
+  if (abs(x - round(x)) < 1e-9) {
+    return(format(as.integer(round(x)), scientific = FALSE, trim = TRUE))
+  }
+  format(round(x, digits), nsmall = 1, scientific = FALSE, trim = TRUE)
+}
+
+#' 格式化產業標準區間（直接讀 industry_standards[[key]][[metric]]）
+annotation_format_band <- function(industry_key, metric_name, unit = NULL) {
   key <- as.character(industry_key %||% "")[1]
+  metric_name <- as.character(metric_name %||% "")[1]
   if (!nzchar(key) || !(key %in% names(industry_standards))) return("—")
+  if (!nzchar(metric_name)) return("—")
   std <- industry_standards[[key]][[metric_name]]
   if (is.null(std) || length(std) < 2) return("—（本產業無此區間）")
   lo <- suppressWarnings(as.numeric(std[1])[1])
   hi <- suppressWarnings(as.numeric(std[2])[1])
   if (!is.finite(lo) || !is.finite(hi)) return("—")
-  if (identical(unit, "x")) {
-    sprintf("%.2f – %.2f×", lo, hi)
-  } else {
-    sprintf("%.1f – %.1f%%", lo, hi)
+  if (is.null(unit) || !nzchar(as.character(unit)[1])) {
+    meta_u <- INDUSTRY_METRIC_META[[metric_name]]
+    unit <- if (!is.null(meta_u) && !is.null(meta_u$unit)) meta_u$unit else "%"
   }
+  lo_s <- industry_format_number(lo)
+  hi_s <- industry_format_number(hi)
+  if (identical(as.character(unit)[1], "x")) {
+    paste0(lo_s, "–", hi_s, "×")
+  } else {
+    paste0(lo_s, "–", hi_s, "%")
+  }
+}
+
+#' 該產業在 industry_standards 中實際定義的 KPI 區間表
+industry_standard_bands_df <- function(industry_key) {
+  key <- as.character(industry_key %||% "")[1]
+  if (!nzchar(key) || !(key %in% names(industry_standards))) {
+    return(data.frame(
+      metric = character(0), label = character(0),
+      band = character(0), unit = character(0),
+      stringsAsFactors = FALSE
+    ))
+  }
+  inds <- industry_standards[[key]]
+  metrics <- intersect(names(INDUSTRY_METRIC_META), names(inds))
+  # 固定顯示順序，但只輸出「有定義」的欄位
+  metrics <- names(INDUSTRY_METRIC_META)[names(INDUSTRY_METRIC_META) %in% metrics]
+  do.call(rbind, lapply(metrics, function(m) {
+    meta <- INDUSTRY_METRIC_META[[m]]
+    data.frame(
+      metric = m,
+      label = meta$label,
+      band = annotation_format_band(key, m, unit = meta$unit),
+      unit = meta$unit,
+      stringsAsFactors = FALSE
+    )
+  }))
 }
 
 #' Annotation：Dashboard KPI 解讀表（可帶入目前產業區間）
@@ -458,9 +516,10 @@ annotation_stability_df <- function() {
 }
 
 #' 目前產業標準快覽 UI（Dashboard／Annotation 共用）
+#' 數值一律即時讀自 industry_standards[[key]]，不另硬編碼區間。
 #' @param industry_key 產業鍵（如 sc.Foundry）
 #' @param yahoo_text 可選 Yahoo Sector/Industry 字串
-#' @param show_chips 是否顯示 KPI 區間 chips
+#' @param show_chips 是否顯示該產業「已定義」的 KPI 區間 chips
 #' @param show_title 是否顯示「目前產業標準快覽」標題
 #' @param empty_message 未選產業時提示
 industry_standard_snapshot_ui <- function(industry_key,
@@ -480,41 +539,42 @@ industry_standard_snapshot_ui <- function(industry_key,
   inds <- industry_standards[[key]]
 
   meta <- character(0)
-  if (!is.null(inds$beta_avg) && is.finite(inds$beta_avg)) {
-    meta <- c(meta, paste0("β≈", round(inds$beta_avg, 2)))
+  if (!is.null(inds$beta_avg) && is.finite(suppressWarnings(as.numeric(inds$beta_avg)[1]))) {
+    beta <- suppressWarnings(as.numeric(inds$beta_avg)[1])
+    meta <- c(meta, paste0("β≈", industry_format_number(beta, digits = 2)))
   }
-  if (!is.null(inds$rm_avg) && is.finite(inds$rm_avg)) {
-    meta <- c(meta, paste0("Rm≈", round(inds$rm_avg, 1), "%"))
+  if (!is.null(inds$rm_avg) && is.finite(suppressWarnings(as.numeric(inds$rm_avg)[1]))) {
+    rm <- suppressWarnings(as.numeric(inds$rm_avg)[1])
+    meta <- c(meta, paste0("Rm≈", industry_format_number(rm, digits = 1), "%"))
   }
-  if (!is.null(inds$debt_ratio_avg) && is.finite(inds$debt_ratio_avg)) {
-    meta <- c(meta, paste0("Debt≈", round(100 * inds$debt_ratio_avg, 1), "%"))
+  if (!is.null(inds$debt_ratio_avg) && is.finite(suppressWarnings(as.numeric(inds$debt_ratio_avg)[1]))) {
+    debt_pct <- 100 * suppressWarnings(as.numeric(inds$debt_ratio_avg)[1])
+    meta <- c(meta, paste0("Debt≈", industry_format_number(debt_pct, digits = 1), "%"))
   }
   if (!is.null(inds$pb_band) && length(inds$pb_band) >= 2) {
-    pb <- inds$pb_band
-    mid <- if (length(pb) >= 3) pb[3] else mean(pb[1:2])
-    meta <- c(meta, sprintf("P/B %.1f–%.1f (mid %.1f)", pb[1], pb[2], mid))
+    pb <- suppressWarnings(as.numeric(inds$pb_band))
+    mid <- if (length(pb) >= 3 && is.finite(pb[3])) pb[3] else mean(pb[1:2])
+    meta <- c(meta, sprintf(
+      "P/B %s–%s (mid %s)",
+      industry_format_number(pb[1], digits = 2),
+      industry_format_number(pb[2], digits = 2),
+      industry_format_number(mid, digits = 2)
+    ))
   }
 
   chips <- NULL
   if (isTRUE(show_chips)) {
-    band_items <- list(
-      c("毛利率", "gross_profit_margin", "%"),
-      c("淨利率", "net_profit_margin", "%"),
-      c("營運費用比", "opex_ratio", "%"),
-      c("營收成長", "rev_growth", "%"),
-      c("ROA", "roa", "%"),
-      c("ROE", "roe", "%"),
-      c("財務槓桿", "eqt_multiplier", "x")
-    )
-    chips <- lapply(band_items, function(b) {
-      txt <- annotation_format_band(key, b[[2]], unit = b[[3]])
-      tags$div(
-        class = "ynow-ann-chip",
-        style = "min-width:160px; flex-direction:column; align-items:flex-start; gap:2px;",
-        tags$span(style = "font-size:11px; color:#888;", b[[1]]),
-        tags$span(style = "font-weight:700; color:#1a5276;", txt)
-      )
-    })
+    bands <- industry_standard_bands_df(key)
+    if (nrow(bands) > 0) {
+      chips <- lapply(seq_len(nrow(bands)), function(i) {
+        tags$div(
+          class = "ynow-ann-chip",
+          style = "min-width:160px; flex-direction:column; align-items:flex-start; gap:2px;",
+          tags$span(style = "font-size:11px; color:#888;", bands$label[[i]]),
+          tags$span(style = "font-weight:700; color:#1a5276;", bands$band[[i]])
+        )
+      })
+    }
   }
 
   yahoo <- trimws(as.character(yahoo_text %||% "")[1])
