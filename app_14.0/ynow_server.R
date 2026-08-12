@@ -6434,13 +6434,35 @@ server <- function(input, output, session) {
   })
 
   output$lab_im_leaderboard <- renderTable({
+    scores <- lab_im_scores()
+    if (is.null(scores) || !is.data.frame(scores) || nrow(scores) == 0) {
+      return(data.frame(訊息 = "（尚無績優排行 — 請先按「評估績優」）"))
+    }
     merged <- tryCatch(lab_im_merged(), error = function(e) NULL)
-    if (is.null(merged) || nrow(merged) == 0 || is.null(lab_im_scores())) {
-      return(data.frame(訊息 = "（尚無績優排行）"))
+    if (is.null(merged) || nrow(merged) == 0) {
+      # 區分：複選（尤其規模）把評估結果濾光 vs 尚未合併
+      n_scored <- nrow(scores)
+      n_pass <- sum(scores$is_quality %in% TRUE, na.rm = TRUE)
+      return(data.frame(
+        訊息 = paste0(
+          "評估有 ", n_scored, " 檔（門檻通過 ", n_pass, "），",
+          "但目前複選條件下明細為空。",
+          "常見原因：規模篩選與市值分級對不上，或產業／模型過窄。",
+          "請放寬「公司規模」後再看排行榜。"
+        )
+      ))
     }
     lb <- lab_quality_leaderboard(merged, top_n = 10L)
     if (nrow(lb) == 0) {
-      return(data.frame(訊息 = "目前篩選下無「門檻通過且能量到漲幅」的標的"))
+      n_pass <- sum(merged$is_quality %in% TRUE, na.rm = TRUE)
+      n_up <- sum(merged$is_quality %in% TRUE & is.finite(merged$upside_cagr_pct), na.rm = TRUE)
+      return(data.frame(
+        訊息 = paste0(
+          "目前篩選下有 ", nrow(merged), " 列、門檻通過 ", n_pass,
+          "、能量到年化漲幅 ", n_up,
+          "。若為 0：放寬 F-Score 門檻池或檢查估值是否算出合理價。"
+        )
+      ))
     }
     lb
   }, striped = TRUE, bordered = TRUE, hover = TRUE, spacing = "m", width = "100%")

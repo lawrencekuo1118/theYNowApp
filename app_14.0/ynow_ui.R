@@ -2579,17 +2579,16 @@ ui <- dashboardPage(
               fluidRow(
                 column(
                   width = 4,
-                  shinyWidgets::pickerInput(
-                    "lab_im_sizes", "公司規模（複選）",
-                    choices = LAB_SIZE_LABELS,
+                  tags$label("公司規模（勾選）", class = "control-label"),
+                  checkboxGroupInput(
+                    "lab_im_sizes", NULL,
+                    choices = lab_size_picker_choices(),
                     selected = names(LAB_SIZE_LABELS),
-                    multiple = TRUE,
-                    options = shinyWidgets::pickerOptions(
-                      actionsBox = TRUE,
-                      selectedTextFormat = "count > 2",
-                      noneSelectedText = "全部規模",
-                      liveSearch = FALSE
-                    )
+                    inline = TRUE
+                  ),
+                  tags$span(
+                    style = "color:#888; font-size:11px;",
+                    "全不勾＝不過濾規模；評估後才有市值分級。"
                   )
                 ),
                 column(
@@ -2597,7 +2596,7 @@ ui <- dashboardPage(
                   shinyWidgets::pickerInput(
                     "lab_im_industries", "產業別（複選）",
                     choices = industry_picker_choices(),
-                    selected = names(industry_picker_choices()),
+                    selected = unname(industry_picker_choices()),
                     multiple = TRUE,
                     options = shinyWidgets::pickerOptions(
                       actionsBox = TRUE,
@@ -2610,8 +2609,9 @@ ui <- dashboardPage(
                 ),
                 column(
                   width = 4,
-                  shinyWidgets::pickerInput(
-                    "lab_im_methods", "適用評價模型（複選）",
+                  tags$label("適用評價模型（勾選）", class = "control-label"),
+                  checkboxGroupInput(
+                    "lab_im_methods", NULL,
                     choices = c(
                       "DCF" = "dcf",
                       "DDM" = "ddm",
@@ -2619,12 +2619,11 @@ ui <- dashboardPage(
                       "RI" = "ri"
                     ),
                     selected = c("dcf", "ddm", "pb", "ri"),
-                    multiple = TRUE,
-                    options = shinyWidgets::pickerOptions(
-                      actionsBox = TRUE,
-                      selectedTextFormat = "count > 2",
-                      noneSelectedText = "全部模型"
-                    )
+                    inline = TRUE
+                  ),
+                  tags$span(
+                    style = "color:#888; font-size:11px;",
+                    "全不勾＝不過濾模型（主／副方法皆可比對）。"
                   )
                 )
               ),

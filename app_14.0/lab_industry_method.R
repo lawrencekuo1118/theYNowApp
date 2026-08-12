@@ -80,6 +80,29 @@ lab_normalize_multi_filter <- function(x) {
   v
 }
 
+#' 規模複選 → size_band keys（相容誤傳中文標籤）
+lab_normalize_size_filter <- function(x) {
+  v <- lab_normalize_multi_filter(x)
+  if (length(v) == 0L) return(character(0))
+  # 已是 key
+  keys <- names(LAB_SIZE_LABELS)
+  labels <- unname(LAB_SIZE_LABELS)
+  out <- character(0)
+  for (item in v) {
+    if (item %in% keys) {
+      out <- c(out, item)
+    } else if (item %in% labels) {
+      out <- c(out, keys[match(item, labels)])
+    }
+  }
+  unique(out[!is.na(out) & nzchar(out)])
+}
+
+#' picker 用：顯示中文、回傳 large/mid/small
+lab_size_picker_choices <- function() {
+  stats::setNames(names(LAB_SIZE_LABELS), unname(LAB_SIZE_LABELS))
+}
+
 #' 產業 CAPM Ke（%）
 lab_industry_ke_pct <- function(industry_key) {
   ind <- tryCatch(industry_standards[[as.character(industry_key)[1]]], error = function(e) NULL)
@@ -650,7 +673,7 @@ lab_merge_catalog_scores <- function(catalog, scores = NULL,
   if (length(indf) > 0) {
     df <- df[df$industry_key %in% indf, , drop = FALSE]
   }
-  sf <- lab_normalize_multi_filter(size_filter)
+  sf <- lab_normalize_size_filter(size_filter)
   if (length(sf) > 0) {
     df <- df[!is.na(df$size_band) & df$size_band %in% sf, , drop = FALSE]
   }
