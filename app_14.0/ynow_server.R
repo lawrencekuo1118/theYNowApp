@@ -6405,7 +6405,6 @@ server <- function(input, output, session) {
         is.na(merged$upside_total_pct), "",
         sprintf("%+.1f%%", merged$upside_total_pct)
       ),
-      預測年數n = ifelse(is.na(merged$n_years), lab_model_horizon_years(), merged$n_years),
       規模 = size_lab,
       建議方法 = merged$primary_label,
       實際估值方法 = ifelse(

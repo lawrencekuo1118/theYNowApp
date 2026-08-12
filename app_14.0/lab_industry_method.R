@@ -692,7 +692,7 @@ lab_quality_leaderboard <- function(merged_df, top_n = 10L) {
   if (is.null(merged_df) || !is.data.frame(merged_df) || nrow(merged_df) == 0) {
     return(data.frame(
       排名 = integer(0), 代碼 = character(0), 年化估值漲幅 = character(0),
-      總潛在漲幅 = character(0), 預測年數 = integer(0),
+      總潛在漲幅 = character(0),
       估值方法 = character(0), `F-Score` = numeric(0),
       規模 = character(0), 產業 = character(0),
       stringsAsFactors = FALSE, check.names = FALSE
@@ -705,7 +705,7 @@ lab_quality_leaderboard <- function(merged_df, top_n = 10L) {
   if (nrow(df) == 0) {
     return(data.frame(
       排名 = integer(0), 代碼 = character(0), 年化估值漲幅 = character(0),
-      總潛在漲幅 = character(0), 預測年數 = integer(0),
+      總潛在漲幅 = character(0),
       估值方法 = character(0), `F-Score` = numeric(0),
       規模 = character(0), 產業 = character(0),
       stringsAsFactors = FALSE, check.names = FALSE
@@ -731,7 +731,6 @@ lab_quality_leaderboard <- function(merged_df, top_n = 10L) {
     總潛在漲幅 = ifelse(
       is.na(df$upside_total_pct), "—", sprintf("%+.1f%%", df$upside_total_pct)
     ),
-    預測年數 = ifelse(is.na(df$n_years), lab_model_horizon_years(), df$n_years),
     估值方法 = meth,
     `F-Score` = df$f_score,
     規模 = size_lab,
