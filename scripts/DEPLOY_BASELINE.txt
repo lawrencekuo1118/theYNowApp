@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12401242
+bundleId=12401303
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=602cd43
-commit=602cd43367c6a94c475307e33e7c007783d6c467
-short=602cd43
-message=Align industry snapshot bands with industry_standards.R.
-captured_at=2026-08-12T16:21:44Z
+aligned_git=5b635cc
+commit=5b635cc260900fb670cf1bbad1928a9adcd2dc68
+short=5b635cc
+message=Remove Get Started 「核心參數位置」 navigation box.
+captured_at=2026-08-12T16:35:44Z
 source_branch=master
 note=Canonical live line is app_14.0. Deploy via scripts/deploy_app_14.R; Feedback needs YNOW_FEEDBACK_GITHUB_TOKEN in app_14.0/.Renviron (gitignored; redeploy bundles it — no shinyapps Vars UI).
