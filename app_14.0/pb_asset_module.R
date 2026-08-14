@@ -516,30 +516,33 @@ pb_asset_module_server <- function(id,
     })
 
     output$param_sensitivity_table <- renderTable({
-      live <- pb_live_band()
-      validate(need(!is.null(live) && is.finite(live$mid),
-                    "基準估值尚未就緒：請先提供 BVPS／TBVPS 與目標 P/B。"))
-      p0 <- live$mid
-      .rel <- function(x, sign = -1) .param_rel_shock(x, sign = sign)
-      basis0 <- live$basis_val
+      shock_pct <- if (exists("PARAM_SENSITIVITY_SHOCK", inherits = TRUE)) PARAM_SENSITIVITY_SHOCK else 0.01
+      basis0 <- if (identical(input$basis, "tbvps")) safe_num(input$tbvps) else safe_num(input$bvps)
       mid0 <- safe_num(input$pb_mid)
-      .fair <- function(basis = basis0, mid = mid0) {
-        if (!is.finite(basis) || basis <= 0 || !is.finite(mid) || mid <= 0) return(NA_real_)
-        basis * mid
-      }
+      .p <- function(basis_u = 1, pb = mid0) .pb_formula_p(basis = basis_u, pb = pb)
+      v0 <- .p()
+      validate(need(
+        is.finite(v0),
+        "基準公式尚未就緒：請先提供目標 P/B（BVPS／TBVPS 僅影響顯示基準值）。"
+      ))
+      .rel <- function(x, sign = -1) .param_rel_shock(x, sign = sign, shock = shock_pct)
+      basis_show <- if (is.finite(basis0) && basis0 > 0) basis0 else 1
+      basis_unit <- if (is.finite(basis0) && basis0 > 0) money_prefix() else "x"
       rows <- list(
         .param_sensitivity_infl_row(
           if (identical(input$basis, "tbvps")) "TBVPS" else "BVPS",
-          basis0, money_prefix(), p0,
-          .fair(basis = .rel(basis0, -1)), .fair(basis = .rel(basis0, +1)),
-          "P ∝ BVPS／TBVPS ⇒ |ε|=1（公式，與個股無關）"
-        ),
-        .param_sensitivity_infl_row(
-          "基準目標 P/B", mid0, "x", p0,
-          .fair(mid = .rel(mid0, -1)), .fair(mid = .rel(mid0, +1)),
-          "P ∝ 目標 P/B ⇒ |ε|=1（公式，與個股無關）"
+          basis_show, basis_unit, v0,
+          .p(basis_u = 1 - shock_pct), .p(basis_u = 1 + shock_pct),
+          "P ∝ BVPS／TBVPS ⇒ |ε|=1（公式；與帳面金額／股價無關）"
         )
       )
+      if (.param_sensitivity_rel_ok(mid0) && mid0 > 0) {
+        rows[[length(rows) + 1]] <- .param_sensitivity_infl_row(
+          "基準目標 P/B", mid0, "x", v0,
+          .p(pb = .rel(mid0, -1)), .p(pb = .rel(mid0, +1)),
+          "P ∝ 目標 P/B ⇒ |ε|=1（公式；與個股無關）"
+        )
+      }
       .param_sensitivity_sort_by_abs_eps(do.call(rbind, rows))
     }, striped = TRUE, hover = TRUE, bordered = TRUE, spacing = "s", width = "100%")
 

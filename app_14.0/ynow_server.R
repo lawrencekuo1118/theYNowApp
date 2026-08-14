@@ -6343,7 +6343,11 @@ server <- function(input, output, session) {
         )
       ))
     }
-    lb <- lab_quality_leaderboard(merged, top_n = 10L)
+    lb <- lab_quality_leaderboard(
+      merged,
+      top_n = 10L,
+      eq_only = isTRUE(input$lab_im_eq_only)
+    )
     if (nrow(lb) == 0) {
       n_pass <- sum(merged$is_quality %in% TRUE, na.rm = TRUE)
       n_up <- sum(merged$is_quality %in% TRUE & is.finite(merged$upside_cagr_pct), na.rm = TRUE)

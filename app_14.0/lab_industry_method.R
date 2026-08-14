@@ -713,7 +713,10 @@ lab_merge_catalog_scores <- function(catalog, scores = NULL,
                                      industry_filter = character(0),
                                      size_filter = character(0),
                                      eq_only = FALSE,
-                                     gate_only = FALSE) {
+                                     gate_only = FALSE,
+                                     quality_only = FALSE) {
+  # quality_only：舊「只看通過」別名，等同門檻（F-Score≥7 且盈餘品質通過）
+  if (isTRUE(quality_only)) gate_only <- TRUE
   df <- catalog
   score_cols_na <- function(d) {
     d$ok <- NA
@@ -768,7 +771,8 @@ lab_merge_catalog_scores <- function(catalog, scores = NULL,
 }
 
 #' 績優排行榜：門檻通過且有年化漲幅，一代碼一列，依 CAGR 降序
-lab_quality_leaderboard <- function(merged_df, top_n = 10L) {
+#' @param eq_only 若 TRUE，再只保留盈餘品質通過者（門檻本身已含此條件）
+lab_quality_leaderboard <- function(merged_df, top_n = 10L, eq_only = FALSE) {
   if (is.null(merged_df) || !is.data.frame(merged_df) || nrow(merged_df) == 0) {
     return(data.frame(
       排名 = integer(0), 代碼 = character(0), 年化估值漲幅 = character(0),
@@ -779,6 +783,9 @@ lab_quality_leaderboard <- function(merged_df, top_n = 10L) {
     ))
   }
   df <- merged_df
+  if (isTRUE(eq_only) && "quality_flag" %in% names(df)) {
+    df <- df[!is.na(df$quality_flag) & df$quality_flag %in% 1, , drop = FALSE]
+  }
   keep <- !is.na(df$is_quality) & df$is_quality %in% TRUE &
     is.finite(df$upside_cagr_pct)
   df <- df[keep, , drop = FALSE]

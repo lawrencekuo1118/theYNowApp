@@ -110,41 +110,44 @@ ddm_module_server <- function(id, ddm_g = reactive(NULL), ddm_ke = reactive(NULL
       }
     })
 
-    # Gordon DDM：P0 = D0(1+g)/(Ke−g)；依目前輸入即時敏感度（不強制先按試算）
-    .ddm_price_at <- function(d0, g_pct, ke_pct) {
-      d0 <- suppressWarnings(as.numeric(d0)[1])
-      g <- suppressWarnings(as.numeric(g_pct)[1]) / 100
-      ke <- suppressWarnings(as.numeric(ke_pct)[1]) / 100
-      if (!is.finite(d0) || !is.finite(g) || !is.finite(ke) || ke <= g) return(NA_real_)
-      d0 * (1 + g) / (ke - g)
-    }
+    # Gordon DDM：單位 D0 公式 P0 = D0(1+g)/(Ke−g)；|ε| 與股利金額／股價無關
     output$param_sensitivity_table <- renderTable({
+      shock_pct <- if (exists("PARAM_SENSITIVITY_SHOCK", inherits = TRUE)) PARAM_SENSITIVITY_SHOCK else 0.01
       d0 <- suppressWarnings(as.numeric(input$d0)[1])
       g0 <- suppressWarnings(as.numeric(input$g)[1])
       ke0 <- suppressWarnings(as.numeric(input$ke)[1])
-      p0 <- .ddm_price_at(d0, g0, ke0)
-      validate(need(is.finite(p0), "基準估值尚未就緒：請確認 D0、g、Ke（且 Ke > g）。"))
-      .rel <- function(x, sign = -1) .param_rel_shock(x, sign = sign)
+      .p <- function(d0u = 1, g_pct = g0, ke_pct = ke0) {
+        .ddm_formula_p0(d0 = d0u, g = g_pct / 100, ke = ke_pct / 100)
+      }
+      v0 <- .p()
+      validate(need(is.finite(v0), "基準公式尚未就緒：請確認 g、Ke（且 Ke > g）。"))
+      .rel <- function(x, sign = -1) .param_rel_shock(x, sign = sign, shock = shock_pct)
+      d0_show <- if (is.finite(d0)) d0 else 1
+      d0_unit <- if (is.finite(d0)) money_prefix() else "x"
       rows <- list(
         .param_sensitivity_infl_row(
-          "今年股利 D0", d0, money_prefix(), p0,
-          .ddm_price_at(.rel(d0, -1), g0, ke0),
-          .ddm_price_at(.rel(d0, +1), g0, ke0),
-          "P0 ∝ D0 ⇒ |ε|=1（與股利金額／股價無關）"
-        ),
-        .param_sensitivity_infl_row(
-          "股利成長率 g", g0, "%", p0,
-          .ddm_price_at(d0, .rel(g0, -1), ke0),
-          .ddm_price_at(d0, .rel(g0, +1), ke0),
-          "ε = g/(1+g)+g/(Ke−g)（取決於 Ke、g）"
-        ),
-        .param_sensitivity_infl_row(
-          "要求報酬率 Ke", ke0, "%", p0,
-          .ddm_price_at(d0, g0, .rel(ke0, -1)),
-          .ddm_price_at(d0, g0, .rel(ke0, +1)),
-          "ε = −Ke/(Ke−g)（取決於 Ke、g）"
+          "今年股利 D0", d0_show, d0_unit, v0,
+          .p(d0u = 1 - shock_pct),
+          .p(d0u = 1 + shock_pct),
+          "P0 ∝ D0 ⇒ |ε|=1（公式；與股利金額／股價無關）"
         )
       )
+      if (.param_sensitivity_rel_ok(g0)) {
+        rows[[length(rows) + 1]] <- .param_sensitivity_infl_row(
+          "股利成長率 g", g0, "%", v0,
+          .p(g_pct = .rel(g0, -1)),
+          .p(g_pct = .rel(g0, +1)),
+          "ε = g/(1+g)+g/(Ke−g)（取決於 Ke、g）"
+        )
+      }
+      if (.param_sensitivity_rel_ok(ke0)) {
+        rows[[length(rows) + 1]] <- .param_sensitivity_infl_row(
+          "要求報酬率 Ke", ke0, "%", v0,
+          .p(ke_pct = .rel(ke0, -1)),
+          .p(ke_pct = .rel(ke0, +1)),
+          "ε = −Ke/(Ke−g)（取決於 Ke、g）"
+        )
+      }
       .param_sensitivity_sort_by_abs_eps(do.call(rbind, rows))
     }, striped = TRUE, hover = TRUE, bordered = TRUE, spacing = "s", width = "100%")
     

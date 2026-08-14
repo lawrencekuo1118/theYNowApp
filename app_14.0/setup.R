@@ -603,6 +603,12 @@ PARAM_SENSITIVITY_SHOCK <- 0.01
   .param_sensitivity_infl_row(param, base_val, unit, v0, p_dn, p_up, note)
 }
 
+#' True when a parameter can take a relative ±1% shock (skip ~0 like DCF g).
+.param_sensitivity_rel_ok <- function(x) {
+  x <- suppressWarnings(as.numeric(x)[1])
+  is.finite(x) && abs(x) > 1e-8
+}
+
 #' Canonical DCF enterprise value from formula parameters only (unit starting FCFF).
 #' F_t = F0 × product of explicit-period growth; TV = F_n(1+g)/(r2−g).
 #' Independent of ticker cash, debt, shares, market price, and FCFF dollar level.
@@ -652,6 +658,26 @@ PARAM_SENSITIVITY_SHOCK <- 0.01
   pv <- sum(f / disc)
   tv <- f[n] * (1 + g_term) / (r2 - g_term)
   pv + tv / disc[n]
+}
+
+#' Canonical Gordon DDM price from formula parameters only (unit D0).
+#' P0 = D0(1+g)/(Ke−g). Independent of ticker price, shares, and dividend dollars.
+#' Rates are decimals (e.g. 0.08 not 8).
+.ddm_formula_p0 <- function(d0 = 1, g, ke) {
+  d0 <- suppressWarnings(as.numeric(d0)[1])
+  g <- suppressWarnings(as.numeric(g)[1])
+  ke <- suppressWarnings(as.numeric(ke)[1])
+  if (!is.finite(d0) || !is.finite(g) || !is.finite(ke) || ke <= g) return(NA_real_)
+  d0 * (1 + g) / (ke - g)
+}
+
+#' Canonical P/B fair price from formula parameters only (unit book).
+#' P = basis × target P/B. Independent of ticker market price and share count.
+.pb_formula_p <- function(basis = 1, pb) {
+  basis <- suppressWarnings(as.numeric(basis)[1])
+  pb <- suppressWarnings(as.numeric(pb)[1])
+  if (!is.finite(basis) || basis <= 0 || !is.finite(pb) || pb <= 0) return(NA_real_)
+  basis * pb
 }
 
 #' Sort elasticity table rows by |ε| descending.

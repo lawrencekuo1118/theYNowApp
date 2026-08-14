@@ -169,6 +169,16 @@ compute_ri_valuation <- function(b0,
   )
 }
 
+#' Canonical RI value from formula parameters only (unit B0).
+#' Independent of ticker price, shares, and book-value dollars. Rates are decimals.
+.ri_formula_v <- function(b0 = 1, ke, g, n, payout, roe_path) {
+  cell <- compute_ri_valuation(
+    b0 = b0, ke = ke, g = g, n = n, payout = payout,
+    roe_path = roe_path, validate = FALSE
+  )
+  if (identical(cell$status, "success")) cell$intrinsic else NA_real_
+}
+
 .parse_roe_pct_vector <- function(txt) {
   if (is.null(txt) || !nzchar(as.character(txt)[1])) return(numeric(0))
   parts <- unlist(strsplit(as.character(txt)[1], "[,;\\s]+"))
@@ -874,68 +884,111 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
         )
     })
 
-    # 頁底：公式參數相對 ±1% 邊際彈性（仿 DCF）
+    # 頁底：單位 B0 公式參數相對 ±1% 邊際彈性（與 DCF 相同 |ε| 定義）
     output$param_sensitivity_table <- renderTable({
-      res0 <- ri_calc()
-      validate(need(identical(res0$status, "success") && is.finite(res0$intrinsic),
-                    "基準估值尚未就緒：請確認 B0、Ke、g（且 Ke > g）與 ROE 路徑。"))
-      p0 <- res0$intrinsic
-      .rel <- function(x, sign = -1) .param_rel_shock(x, sign = sign)
-      .price_at <- function(b0 = input$b0, ke_pct = input$ri_ke, g_pct = input$ri_g,
-                            n = input$ri_years, payout_pct = input$ri_payout,
-                            roe_pct = input$ri_roe) {
-        n <- max(1L, as.integer(n)[1])
-        method <- input$roe_method %||% "constant"
-        path_dec <- build_roe_path(
-          method = method,
-          n = n,
-          roe_start = (roe_pct %||% 15) / 100,
-          roe_terminal = (input$roe_terminal %||% (roe_pct %||% 15)) / 100,
-          roe_industry = (input$roe_industry %||% 12) / 100,
-          custom_vec = if (identical(method, "custom")) .parse_roe_pct_vector(input$roe_custom_txt) else NULL
-        )
-        cell <- compute_ri_valuation(
-          b0 = b0,
-          ke = (ke_pct %||% 8) / 100,
-          g = (g_pct %||% 2) / 100,
-          n = n,
-          payout = (payout_pct %||% 0) / 100,
-          roe_path = path_dec,
-          validate = FALSE
-        )
-        if (identical(cell$status, "success")) cell$intrinsic else NA_real_
-      }
+      shock_pct <- if (exists("PARAM_SENSITIVITY_SHOCK", inherits = TRUE)) PARAM_SENSITIVITY_SHOCK else 0.01
       b0 <- suppressWarnings(as.numeric(input$b0)[1])
       ke0 <- suppressWarnings(as.numeric(input$ri_ke)[1])
       g0 <- suppressWarnings(as.numeric(input$ri_g)[1])
       n0 <- suppressWarnings(as.numeric(input$ri_years)[1])
       pay0 <- suppressWarnings(as.numeric(input$ri_payout)[1])
       roe0 <- suppressWarnings(as.numeric(input$ri_roe)[1])
-      n0_i <- max(1L, as.integer(round(n0)))
+      term0 <- suppressWarnings(as.numeric(input$roe_terminal)[1])
+      ind0 <- suppressWarnings(as.numeric(input$roe_industry)[1])
+      n0_i <- max(1L, as.integer(round(if (is.finite(n0)) n0 else 5)))
+      method <- input$roe_method %||% "constant"
+      custom_vec <- if (identical(method, "custom")) .parse_roe_pct_vector(input$roe_custom_txt) else NULL
+
+      .path <- function(n = n0_i, roe_pct = roe0, term_pct = term0, ind_pct = ind0) {
+        build_roe_path(
+          method = method,
+          n = n,
+          roe_start = (if (is.finite(roe_pct)) roe_pct else 15) / 100,
+          roe_terminal = (if (is.finite(term_pct)) term_pct else if (is.finite(roe_pct)) roe_pct else 15) / 100,
+          roe_industry = (if (is.finite(ind_pct)) ind_pct else 12) / 100,
+          custom_vec = custom_vec
+        )
+      }
+      .v <- function(b0u = 1, ke_pct = ke0, g_pct = g0, n = n0_i,
+                     payout_pct = pay0, path = NULL) {
+        if (is.null(path)) path <- .path(n = n)
+        .ri_formula_v(
+          b0 = b0u,
+          ke = ke_pct / 100,
+          g = g_pct / 100,
+          n = n,
+          payout = (if (is.finite(payout_pct)) payout_pct else 0) / 100,
+          roe_path = path
+        )
+      }
+      v0 <- .v()
+      validate(need(
+        is.finite(v0),
+        "基準公式尚未就緒：請確認 Ke、g（且 Ke > g）與 ROE 路徑。"
+      ))
+      .rel <- function(x, sign = -1) .param_rel_shock(x, sign = sign, shock = shock_pct)
+      b0_show <- if (is.finite(b0)) b0 else 1
+      b0_unit <- if (is.finite(b0)) money_prefix() else "x"
       n_dn <- if (n0_i > 1L) n0_i - 1L else n0_i
       n_up <- n0_i + 1L
+
       rows <- list(
-        .param_sensitivity_infl_row("期初帳面 B0", b0, money_prefix(), p0,
-                                    .price_at(b0 = .rel(b0, -1)), .price_at(b0 = .rel(b0, +1)),
-                                    "V ∝ B0 ⇒ |ε|=1（與股價無關）"),
-        .param_sensitivity_infl_row("股權成本 Ke", ke0, "%", p0,
-                                    .price_at(ke_pct = .rel(ke0, -1)), .price_at(ke_pct = .rel(ke0, +1)),
-                                    "公式：折現率（取決於 Ke、g、n、ROE、配息）"),
-        .param_sensitivity_infl_row("終值成長率 g", g0, "%", p0,
-                                    .price_at(g_pct = .rel(g0, -1)), .price_at(g_pct = .rel(g0, +1)),
-                                    "公式：須維持 g < Ke（與 B0 金額無關）"),
-        .param_sensitivity_infl_row("起始 ROE", roe0, "%", p0,
-                                    .price_at(roe_pct = .rel(roe0, -1)), .price_at(roe_pct = .rel(roe0, +1)),
-                                    "公式：剩餘收益驅動"),
-        .param_sensitivity_infl_row("配息率 Payout", pay0, "%", p0,
-                                    .price_at(payout_pct = .rel(pay0, -1)), .price_at(payout_pct = .rel(pay0, +1)),
-                                    "公式：影響 BV 複利"),
-        .param_sensitivity_infl_row_xy(
-          "預測年數 n", n0_i, "n", p0,
-          .price_at(n = n_dn), .price_at(n = n_up),
-          n0_i, n_dn, n_up,
-          "公式：明確預測期長度"
+        .param_sensitivity_infl_row(
+          "期初帳面 B0", b0_show, b0_unit, v0,
+          .v(b0u = 1 - shock_pct), .v(b0u = 1 + shock_pct),
+          "V ∝ B0 ⇒ |ε|=1（公式；與帳面金額／股價無關）"
         )
+      )
+      if (.param_sensitivity_rel_ok(ke0)) {
+        rows[[length(rows) + 1]] <- .param_sensitivity_infl_row(
+          "股權成本 Ke", ke0, "%", v0,
+          .v(ke_pct = .rel(ke0, -1)), .v(ke_pct = .rel(ke0, +1)),
+          "公式：折現率（取決於 Ke、g、n、ROE、配息）"
+        )
+      }
+      if (.param_sensitivity_rel_ok(g0)) {
+        rows[[length(rows) + 1]] <- .param_sensitivity_infl_row(
+          "終值成長率 g", g0, "%", v0,
+          .v(g_pct = .rel(g0, -1)), .v(g_pct = .rel(g0, +1)),
+          "Gordon 終值：ε 取決於 Ke 與 g（與 B0 金額無關）"
+        )
+      }
+      if (!identical(method, "custom") && .param_sensitivity_rel_ok(roe0)) {
+        rows[[length(rows) + 1]] <- .param_sensitivity_infl_row(
+          "起始 ROE", roe0, "%", v0,
+          .v(path = .path(roe_pct = .rel(roe0, -1))),
+          .v(path = .path(roe_pct = .rel(roe0, +1))),
+          "公式：剩餘收益驅動"
+        )
+      }
+      if (identical(method, "linear") && .param_sensitivity_rel_ok(term0)) {
+        rows[[length(rows) + 1]] <- .param_sensitivity_infl_row(
+          "終端 ROE", term0, "%", v0,
+          .v(path = .path(term_pct = .rel(term0, -1))),
+          .v(path = .path(term_pct = .rel(term0, +1))),
+          "公式：線性 ROE 路徑終點"
+        )
+      }
+      if (identical(method, "industry") && .param_sensitivity_rel_ok(ind0)) {
+        rows[[length(rows) + 1]] <- .param_sensitivity_infl_row(
+          "產業 ROE", ind0, "%", v0,
+          .v(path = .path(ind_pct = .rel(ind0, -1))),
+          .v(path = .path(ind_pct = .rel(ind0, +1))),
+          "公式：產業收斂 ROE 路徑終點"
+        )
+      }
+      if (.param_sensitivity_rel_ok(pay0)) {
+        rows[[length(rows) + 1]] <- .param_sensitivity_infl_row(
+          "配息率 Payout", pay0, "%", v0,
+          .v(payout_pct = .rel(pay0, -1)), .v(payout_pct = .rel(pay0, +1)),
+          "公式：影響 BV 複利"
+        )
+      }
+      rows[[length(rows) + 1]] <- .param_sensitivity_infl_row_xy(
+        "預測年數 n", n0_i, "n", v0,
+        .v(n = n_dn), .v(n = n_up),
+        n0_i, n_dn, n_up,
+        "公式：明確預測期長度（±1 年換算成 1% 等價）"
       )
       .param_sensitivity_sort_by_abs_eps(do.call(rbind, rows))
     }, striped = TRUE, hover = TRUE, bordered = TRUE, spacing = "s", width = "100%")
