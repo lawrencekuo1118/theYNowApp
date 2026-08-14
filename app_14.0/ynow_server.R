@@ -6389,14 +6389,21 @@ server <- function(input, output, session) {
     if (nrow(merged) == 0) {
       return(DT::datatable(
         data.frame(
-          訊息 = "沒有符合篩選的列。可放寬規模／產業／模型，取消「明細只顯示門檻通過者」，或先執行評估。"
+          訊息 = "沒有符合篩選的列。可放寬規模／產業／模型，取消「只看通過」，或先執行評估。"
         ),
         rownames = FALSE, options = list(dom = "t")
       ))
     }
     size_lab <- unname(LAB_SIZE_LABELS[merged$size_band])
     size_lab[is.na(size_lab)] <- "（未評估）"
+    yahoo_nm <- if ("company_name" %in% names(merged)) merged$company_name else NA_character_
     show_df <- data.frame(
+      代碼 = merged$ticker,
+      公司全稱 = vapply(
+        seq_len(nrow(merged)),
+        function(i) lab_company_display_name(merged$ticker[[i]], yahoo_nm[[i]]),
+        character(1)
+      ),
       年化估值漲幅 = ifelse(
         is.na(merged$upside_cagr_pct), "（未評估）",
         sprintf("%+.1f%%", merged$upside_cagr_pct)
@@ -6406,25 +6413,16 @@ server <- function(input, output, session) {
         sprintf("%+.1f%%", merged$upside_total_pct)
       ),
       規模 = size_lab,
-      建議方法 = merged$primary_label,
       實際估值方法 = ifelse(
         is.na(merged$method_used) | !nzchar(as.character(merged$method_used)),
         "", toupper(as.character(merged$method_used))
       ),
       產業 = merged$industry_label,
-      代碼 = merged$ticker,
       現價 = ifelse(is.na(merged$price), "", signif(merged$price, 4)),
       合理價 = ifelse(is.na(merged$fv), "", signif(merged$fv, 4)),
-      `F-Score` = merged$f_score,
-      盈餘品質 = ifelse(
-        is.na(merged$quality_flag), "",
-        ifelse(merged$quality_flag == 1, "通過", "未過")
-      ),
-      門檻 = ifelse(
-        is.na(merged$is_quality), "（未評估）",
-        ifelse(merged$is_quality %in% TRUE, "✓ 通過", "—")
-      ),
-      估值說明 = ifelse(is.na(merged$fv_note), "", merged$fv_note),
+      `F-Score` = lab_html_fscore_pill(merged$f_score),
+      盈餘品質 = lab_html_eq_pill(merged$quality_flag),
+      門檻 = lab_html_gate_pill(merged$is_quality),
       stringsAsFactors = FALSE,
       check.names = FALSE
     )
@@ -6432,12 +6430,25 @@ server <- function(input, output, session) {
       show_df,
       rownames = FALSE,
       filter = "top",
+      escape = FALSE,
       options = list(
         pageLength = 20,
         scrollX = TRUE,
-        order = list(list(0, "desc"))
+        order = list(list(2, "desc"))
       )
-    )
+    ) %>%
+      DT::formatStyle(
+        "F-Score",
+        backgroundColor = "#f3f6fb"
+      ) %>%
+      DT::formatStyle(
+        "盈餘品質",
+        backgroundColor = "#f4faf6"
+      ) %>%
+      DT::formatStyle(
+        "門檻",
+        backgroundColor = "#fffaf0"
+      )
   })
 
   # 沿用主頁 Ticker / Stock Code：優先用已搜尋的代碼，否則用主頁輸入框

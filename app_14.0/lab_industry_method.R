@@ -20,6 +20,74 @@ LAB_SIZE_LABELS <- c(
   small = "小型（＜10B）"
 )
 
+# 目錄代碼 → 公司全稱（評估前即可顯示；Yahoo 名稱可覆寫）
+LAB_TICKER_NAMES <- c(
+  AVGO = "Broadcom Inc.", AMD = "Advanced Micro Devices, Inc.",
+  QCOM = "QUALCOMM Incorporated", NVDA = "NVIDIA Corporation",
+  TSM = "Taiwan Semiconductor Manufacturing Company Limited",
+  AMKR = "Amkor Technology, Inc.", MU = "Micron Technology, Inc.",
+  AMAT = "Applied Materials, Inc.", LRCX = "Lam Research Corporation",
+  KLAC = "KLA Corporation", ASML = "ASML Holding N.V.",
+  MSFT = "Microsoft Corporation", ORCL = "Oracle Corporation",
+  ADBE = "Adobe Inc.", CRM = "Salesforce, Inc.",
+  NOW = "ServiceNow, Inc.", SNOW = "Snowflake Inc.",
+  GOOGL = "Alphabet Inc.", META = "Meta Platforms, Inc.",
+  AMZN = "Amazon.com, Inc.", AAPL = "Apple Inc.",
+  TXN = "Texas Instruments Incorporated", ADI = "Analog Devices, Inc.",
+  JPM = "JPMorgan Chase & Co.", BAC = "Bank of America Corporation",
+  WFC = "Wells Fargo & Company", GS = "The Goldman Sachs Group, Inc.",
+  MS = "Morgan Stanley", PGR = "The Progressive Corporation",
+  CB = "Chubb Limited", AIG = "American International Group, Inc.",
+  BLK = "BlackRock, Inc.", BX = "Blackstone Inc.",
+  V = "Visa Inc.", MA = "Mastercard Incorporated",
+  SQ = "Block, Inc.", `BRK-B` = "Berkshire Hathaway Inc.",
+  SHOP = "Shopify Inc.", COST = "Costco Wholesale Corporation",
+  WMT = "Walmart Inc.", HD = "The Home Depot, Inc.",
+  PEP = "PepsiCo, Inc.", KO = "The Coca-Cola Company",
+  PG = "The Procter & Gamble Company", CL = "Colgate-Palmolive Company",
+  EL = "The Estée Lauder Companies Inc.", LULU = "lululemon athletica inc.",
+  TPR = "Tapestry, Inc.", NKE = "NIKE, Inc.",
+  SBUX = "Starbucks Corporation", GM = "General Motors Company",
+  F = "Ford Motor Company", TSLA = "Tesla, Inc.",
+  APTV = "Aptiv PLC", BWA = "BorgWarner Inc.",
+  RIVN = "Rivian Automotive, Inc.", LCID = "Lucid Group, Inc.",
+  UNH = "UnitedHealth Group Incorporated", CI = "The Cigna Group",
+  LLY = "Eli Lilly and Company", JNJ = "Johnson & Johnson",
+  MRK = "Merck & Co., Inc.", PFE = "Pfizer Inc.",
+  ABT = "Abbott Laboratories", MDT = "Medtronic plc",
+  ISRG = "Intuitive Surgical, Inc.", VRTX = "Vertex Pharmaceuticals Incorporated",
+  REGN = "Regeneron Pharmaceuticals, Inc.", AMGN = "Amgen Inc.",
+  CAT = "Caterpillar Inc.", DE = "Deere & Company",
+  RTX = "RTX Corporation", LMT = "Lockheed Martin Corporation",
+  BA = "The Boeing Company", VMC = "Vulcan Materials Company",
+  MLM = "Martin Marietta Materials, Inc.", LIN = "Linde plc",
+  APD = "Air Products and Chemicals, Inc.", FCX = "Freeport-McMoRan Inc.",
+  NEM = "Newmont Corporation", XOM = "Exxon Mobil Corporation",
+  CVX = "Chevron Corporation", NEE = "NextEra Energy, Inc.",
+  DUK = "Duke Energy Corporation", ENPH = "Enphase Energy, Inc.",
+  FSLR = "First Solar, Inc.", VZ = "Verizon Communications Inc.",
+  T = "AT&T Inc.", UNP = "Union Pacific Corporation",
+  UPS = "United Parcel Service, Inc.", FDX = "FedEx Corporation",
+  DAL = "Delta Air Lines, Inc.", UAL = "United Airlines Holdings, Inc.",
+  PLD = "Prologis, Inc.", AMT = "American Tower Corporation",
+  O = "Realty Income Corporation", DIS = "The Walt Disney Company",
+  NFLX = "Netflix, Inc.", RBLX = "Roblox Corporation",
+  EA = "Electronic Arts Inc.", MAR = "Marriott International, Inc.",
+  BKNG = "Booking Holdings Inc.", ABNB = "Airbnb, Inc."
+)
+
+#' 公司全稱：Yahoo 名稱優先，否則目錄對照
+lab_company_display_name <- function(ticker, yahoo_name = NULL) {
+  tk <- toupper(gsub("\\.", "-", trimws(as.character(ticker %||% "")[1])))
+  yn <- trimws(as.character(yahoo_name %||% "")[1])
+  if (is.na(yn)) yn <- ""
+  if (nzchar(yn) && !identical(toupper(yn), tk)) return(yn)
+  nm <- unname(LAB_TICKER_NAMES[tk])
+  if (!is.na(nm) && nzchar(nm)) return(as.character(nm)[1])
+  if (nzchar(yn)) return(yn)
+  "—"
+}
+
 #' 依市值（USD）分級；無法判定則 NA
 lab_classify_market_cap <- function(mcap_usd) {
   x <- suppressWarnings(as.numeric(mcap_usd)[1])
@@ -48,10 +116,10 @@ lab_annualized_upside_pct <- function(fv, price, n_years = NULL) {
   ((fv / px)^(1 / n) - 1) * 100
 }
 
-#' 自 Yahoo Summary 取市值與現價
+#' 自 Yahoo Summary 取市值、現價與公司全稱
 lab_fetch_summary_metrics <- function(ticker) {
   tk <- toupper(trimws(as.character(ticker)[1]))
-  out <- list(market_cap = NA_real_, price = NA_real_)
+  out <- list(market_cap = NA_real_, price = NA_real_, company_name = NA_character_)
   if (!nzchar(tk)) return(out)
   sum_df <- tryCatch(get_summary_data(tk), error = function(e) NULL)
   if (is.null(sum_df) || !is.data.frame(sum_df) || nrow(sum_df) == 0) {
@@ -65,6 +133,9 @@ lab_fetch_summary_metrics <- function(ticker) {
   if (length(idx_p) > 0) {
     out$price <- parse_financial_number(sum_df$Value[idx_p[1]])[1]
   }
+  cname <- tryCatch(attr(sum_df, "company_name"), error = function(e) NULL)
+  cname <- trimws(as.character(cname %||% "")[1])
+  if (nzchar(cname)) out$company_name <- cname
   out
 }
 
@@ -475,6 +546,7 @@ lab_evaluate_ticker_fscore <- function(ticker, industry_key = NULL, method = NUL
     n_years = n_yrs,
     fv_note = NA_character_,
     company_type = NA_character_,
+    company_name = NA_character_,
     primary_live = NA_character_,
     method_used = as.character(method %||% NA_character_)[1],
     is_quality_upside = FALSE,
@@ -486,10 +558,11 @@ lab_evaluate_ticker_fscore <- function(ticker, industry_key = NULL, method = NUL
   }
 
   sm <- tryCatch(lab_fetch_summary_metrics(tk), error = function(e) {
-    list(market_cap = NA_real_, price = NA_real_)
+    list(market_cap = NA_real_, price = NA_real_, company_name = NA_character_)
   })
   out$market_cap <- suppressWarnings(as.numeric(sm$market_cap)[1])
   out$price <- suppressWarnings(as.numeric(sm$price)[1])
+  out$company_name <- lab_company_display_name(tk, sm$company_name)
   out$size_band <- lab_classify_market_cap(out$market_cap)
 
   res <- tryCatch(cached_scrape_financials(tk), error = function(e) e)
@@ -612,6 +685,7 @@ lab_screen_tickers_fscore <- function(tickers, progress_cb = NULL, max_n = 40L,
       method_used = ev$method_used %||% NA_character_,
       primary_live = ev$primary_live %||% NA_character_,
       company_type = ev$company_type %||% NA_character_,
+      company_name = ev$company_name %||% NA_character_,
       error = ev$error %||% NA_character_,
       stringsAsFactors = FALSE
     )
@@ -625,6 +699,7 @@ lab_screen_tickers_fscore <- function(tickers, progress_cb = NULL, max_n = 40L,
     upside_total_pct = numeric(0), upside_cagr_pct = numeric(0),
     n_years = integer(0), fv_note = character(0), method_used = character(0),
     primary_live = character(0), company_type = character(0),
+    company_name = character(0),
     error = character(0),
     stringsAsFactors = FALSE
   )
@@ -656,6 +731,7 @@ lab_merge_catalog_scores <- function(catalog, scores = NULL,
     d$method_used <- NA_character_
     d$primary_live <- NA_character_
     d$company_type <- NA_character_
+    d$company_name <- NA_character_
     d$error <- NA_character_
     d
   }
@@ -762,4 +838,39 @@ lab_method_group_summary <- function(catalog) {
       stringsAsFactors = FALSE
     )
   }))
+}
+
+#' 明細表：F-Score／盈餘品質／門檻 分開著色
+lab_html_fscore_pill <- function(x) {
+  v <- suppressWarnings(as.numeric(x))
+  ifelse(
+    is.na(v),
+    '<span class="ynow-lab-pill ynow-lab-pill-muted">—</span>',
+    sprintf('<span class="ynow-lab-pill ynow-lab-pill-fs">%s</span>', as.integer(round(v)))
+  )
+}
+
+lab_html_eq_pill <- function(quality_flag) {
+  qf <- suppressWarnings(as.numeric(quality_flag))
+  ifelse(
+    is.na(qf),
+    '<span class="ynow-lab-pill ynow-lab-pill-muted">未評</span>',
+    ifelse(
+      qf == 1,
+      '<span class="ynow-lab-pill ynow-lab-pill-eq-ok">盈餘通過</span>',
+      '<span class="ynow-lab-pill ynow-lab-pill-eq-no">盈餘未過</span>'
+    )
+  )
+}
+
+lab_html_gate_pill <- function(is_quality) {
+  ifelse(
+    is.na(is_quality),
+    '<span class="ynow-lab-pill ynow-lab-pill-muted">未評估</span>',
+    ifelse(
+      is_quality %in% TRUE,
+      '<span class="ynow-lab-pill ynow-lab-pill-gate-ok">門檻通過</span>',
+      '<span class="ynow-lab-pill ynow-lab-pill-gate-no">未達門檻</span>'
+    )
+  )
 }

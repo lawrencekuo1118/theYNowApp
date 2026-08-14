@@ -1245,6 +1245,59 @@ ui <- dashboardPage(
           white-space: nowrap;
           overflow-x: auto;
         }
+        .ynow-lab-im-quality {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 2px;
+          white-space: normal;
+          max-width: 210px;
+        }
+        .ynow-lab-im-quality-hint {
+          font-size: 10.5px;
+          color: #888;
+          line-height: 1.35;
+          white-space: normal;
+        }
+        .ynow-lab-pill {
+          display: inline-block;
+          padding: 2px 8px;
+          border-radius: 10px;
+          font-size: 11.5px;
+          font-weight: 700;
+          line-height: 1.4;
+          white-space: nowrap;
+        }
+        .ynow-lab-pill-fs {
+          background: #e8eef6;
+          color: #1a3a5c;
+          border: 1px solid #b7c9de;
+        }
+        .ynow-lab-pill-eq-ok {
+          background: #e7f6ee;
+          color: #1b6b3a;
+          border: 1px solid #9fd4b3;
+        }
+        .ynow-lab-pill-eq-no {
+          background: #fdecea;
+          color: #a94442;
+          border: 1px solid #f0b8b4;
+        }
+        .ynow-lab-pill-gate-ok {
+          background: #fff4d6;
+          color: #8a5a00;
+          border: 1px solid #e6c36a;
+        }
+        .ynow-lab-pill-gate-no {
+          background: #f4f4f4;
+          color: #666;
+          border: 1px solid #d0d0d0;
+        }
+        .ynow-lab-pill-muted {
+          background: #f7f7f7;
+          color: #999;
+          border: 1px solid #e5e5e5;
+          font-weight: 600;
+        }
 
         /* Backtest：績效指標卡片（軟色調 + 左側色條，避免實心色塊） */
         .ynow-metric-grid {
@@ -2743,15 +2796,20 @@ ui <- dashboardPage(
                 ),
                 tags$div(class = "ynow-lab-im-sep"),
                 tags$div(
-                  class = "ynow-lab-im-group",
-                  tags$span(
-                    title = "明細表只列 F-Score 門檻通過者",
-                    checkboxInput(
-                      "lab_im_quality_only",
-                      "只看通過",
-                      value = TRUE
-                    )
+                  class = "ynow-lab-im-group ynow-lab-im-quality",
+                  checkboxInput(
+                    "lab_im_quality_only",
+                    "只看通過",
+                    value = FALSE
                   ),
+                  tags$span(
+                    class = "ynow-lab-im-quality-hint",
+                    "勾選後明細只列 F-Score≥7 且盈餘品質通過者；預設顯示全部已評估。"
+                  )
+                ),
+                tags$div(class = "ynow-lab-im-sep"),
+                tags$div(
+                  class = "ynow-lab-im-group",
                   tags$span(class = "ynow-lab-im-k", "最多"),
                   numericInput(
                     "lab_im_max_n", NULL,
