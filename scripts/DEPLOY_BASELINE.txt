@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12411492
+bundleId=12411529
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=c1c513c
 commit=c1c513cd5c4ae8900ee26d728f3159e69c0b2adf
 short=c1c513c
 message=Compute |ε| from the valuation formula at session parameters so the same WACC/g/n ranking is not changed by ticker cash, debt, shares, or price.
-captured_at=2026-08-14T17:34:37Z
+captured_at=2026-08-14T17:47:28Z
 source_branch=master
 note=Canonical live line is app_14.0. Deploy via scripts/deploy_app_14.R; Feedback needs YNOW_FEEDBACK_GITHUB_TOKEN in app_14.0/.Renviron (gitignored; redeploy bundles it — no shinyapps Vars UI). Includes Lab toolbar polish d7ae8bf.
