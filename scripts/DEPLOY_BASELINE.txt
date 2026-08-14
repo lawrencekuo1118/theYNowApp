@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12401662
+bundleId=12411455
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=e094ee4
-commit=e094ee4723b3cf747d5892d277fa601f71131537
-short=e094ee4
-message=Hide Lab forecast-years column from leaderboard and detail tables.
-captured_at=2026-08-12T17:59:49Z
+aligned_git=d2b3e15
+commit=d2b3e1590ec00b2a3880b0cb6e4a764479dbad23
+short=d2b3e15
+message=Clarify Lab detail table: ticker first, company name, distinct quality columns.
+captured_at=2026-08-14T17:25:19Z
 source_branch=master
 note=Canonical live line is app_14.0. Deploy via scripts/deploy_app_14.R; Feedback needs YNOW_FEEDBACK_GITHUB_TOKEN in app_14.0/.Renviron (gitignored; redeploy bundles it — no shinyapps Vars UI). Includes Lab toolbar polish d7ae8bf.
