@@ -1246,12 +1246,18 @@ ui <- dashboardPage(
           white-space: nowrap;
           overflow-x: auto;
         }
+        .ynow-lab-im-quality-pair {
+          display: inline-flex;
+          align-items: flex-start;
+          gap: 12px;
+          flex: 0 0 auto;
+        }
         .ynow-lab-im-quality {
           flex-direction: column;
           align-items: flex-start;
           gap: 2px;
           white-space: normal;
-          max-width: 210px;
+          max-width: 168px;
         }
         .ynow-lab-im-quality-hint {
           font-size: 10.5px;
@@ -2797,15 +2803,30 @@ ui <- dashboardPage(
                 ),
                 tags$div(class = "ynow-lab-im-sep"),
                 tags$div(
-                  class = "ynow-lab-im-group ynow-lab-im-quality",
-                  checkboxInput(
-                    "lab_im_quality_only",
-                    "只看通過",
-                    value = FALSE
+                  class = "ynow-lab-im-quality-pair",
+                  tags$div(
+                    class = "ynow-lab-im-group ynow-lab-im-quality",
+                    checkboxInput(
+                      "lab_im_eq_only",
+                      "盈餘品質",
+                      value = FALSE
+                    ),
+                    tags$span(
+                      class = "ynow-lab-im-quality-hint",
+                      "勾選後只列盈餘品質通過者；預設不過濾。"
+                    )
                   ),
-                  tags$span(
-                    class = "ynow-lab-im-quality-hint",
-                    "勾選後明細只列 F-Score≥7 且盈餘品質通過者；預設顯示全部已評估。"
+                  tags$div(
+                    class = "ynow-lab-im-group ynow-lab-im-quality",
+                    checkboxInput(
+                      "lab_im_gate_only",
+                      "門檻",
+                      value = FALSE
+                    ),
+                    tags$span(
+                      class = "ynow-lab-im-quality-hint",
+                      "勾選後只列 F-Score≥7 且盈餘品質通過者；預設顯示全部。"
+                    )
                   )
                 ),
                 tags$div(class = "ynow-lab-im-sep"),
@@ -2821,7 +2842,7 @@ ui <- dashboardPage(
               ),
               tags$p(
                 class = "ynow-lab-im-hint",
-                "全不勾規模／模型＝不過濾　·　規模＝Yahoo 市值（評估後分級）　·　排行＝門檻後年化估值漲幅由高到低"
+                "全不勾規模／模型＝不過濾　·　規模＝Yahoo 市值（評估後分級）　·　盈餘品質／門檻＝勾選才過濾　·　排行＝門檻後年化估值漲幅由高到低"
               ),
               tags$h4("依建議方法分組摘要", style = "margin-top:8px;"),
               tableOutput("lab_im_summary"),

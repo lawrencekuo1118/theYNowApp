@@ -6199,7 +6199,8 @@ server <- function(input, output, session) {
       method_filter = input$lab_im_methods,
       industry_filter = input$lab_im_industries,
       size_filter = input$lab_im_sizes,
-      quality_only = FALSE
+      eq_only = FALSE,
+      gate_only = FALSE
     )
   })
 
@@ -6213,7 +6214,8 @@ server <- function(input, output, session) {
       method_filter = input$lab_im_methods,
       industry_filter = input$lab_im_industries,
       size_filter = character(0),
-      quality_only = FALSE
+      eq_only = FALSE,
+      gate_only = FALSE
     )
     pool <- pool[!is.na(pool$ticker) & nzchar(as.character(pool$ticker)), , drop = FALSE]
     if (nrow(pool) == 0L) {
@@ -6278,7 +6280,8 @@ server <- function(input, output, session) {
       method_filter = input$lab_im_methods,
       industry_filter = input$lab_im_industries,
       size_filter = character(0),
-      quality_only = FALSE
+      eq_only = FALSE,
+      gate_only = FALSE
     )
     sm <- lab_method_group_summary(filtered)
     if (is.null(sm) || nrow(sm) == 0) {
@@ -6296,7 +6299,8 @@ server <- function(input, output, session) {
       method_filter = input$lab_im_methods,
       industry_filter = input$lab_im_industries,
       size_filter = input$lab_im_sizes,
-      quality_only = FALSE
+      eq_only = FALSE,
+      gate_only = FALSE
     )
   })
 
@@ -6363,12 +6367,13 @@ server <- function(input, output, session) {
       method_filter = input$lab_im_methods,
       industry_filter = input$lab_im_industries,
       size_filter = input$lab_im_sizes,
-      quality_only = isTRUE(input$lab_im_quality_only)
+      eq_only = isTRUE(input$lab_im_eq_only),
+      gate_only = isTRUE(input$lab_im_gate_only)
     )
     if (nrow(merged) == 0) {
       return(DT::datatable(
         data.frame(
-          訊息 = "沒有符合篩選的列。可放寬規模／產業／模型，取消「只看通過」，或先執行評估。"
+          訊息 = "沒有符合篩選的列。可放寬規模／產業／模型，取消「盈餘品質」／「門檻」過濾，或先執行評估。"
         ),
         rownames = FALSE, options = list(dom = "t")
       ))
@@ -6400,8 +6405,6 @@ server <- function(input, output, session) {
       現價 = ifelse(is.na(merged$price), "", signif(merged$price, 4)),
       合理價 = ifelse(is.na(merged$fv), "", signif(merged$fv, 4)),
       `F-Score` = lab_html_fscore_pill(merged$f_score),
-      盈餘品質 = lab_html_eq_pill(merged$quality_flag),
-      門檻 = lab_html_gate_pill(merged$is_quality),
       stringsAsFactors = FALSE,
       check.names = FALSE
     )
@@ -6418,15 +6421,8 @@ server <- function(input, output, session) {
     ) %>%
       DT::formatStyle(
         "F-Score",
-        backgroundColor = "#f3f6fb"
-      ) %>%
-      DT::formatStyle(
-        "盈餘品質",
-        backgroundColor = "#f4faf6"
-      ) %>%
-      DT::formatStyle(
-        "門檻",
-        backgroundColor = "#fffaf0"
+        backgroundColor = "#f3f6fb",
+        fontWeight = "700"
       )
   })
 

@@ -712,7 +712,8 @@ lab_merge_catalog_scores <- function(catalog, scores = NULL,
                                      method_filter = character(0),
                                      industry_filter = character(0),
                                      size_filter = character(0),
-                                     quality_only = FALSE) {
+                                     eq_only = FALSE,
+                                     gate_only = FALSE) {
   df <- catalog
   score_cols_na <- function(d) {
     d$ok <- NA
@@ -753,8 +754,11 @@ lab_merge_catalog_scores <- function(catalog, scores = NULL,
   if (length(sf) > 0) {
     df <- df[!is.na(df$size_band) & df$size_band %in% sf, , drop = FALSE]
   }
-  if (isTRUE(quality_only)) {
-    # 績優顯示池：F-Score 門檻通過（再以年化漲幅決選排序）
+  if (isTRUE(eq_only)) {
+    df <- df[!is.na(df$quality_flag) & df$quality_flag %in% 1, , drop = FALSE]
+  }
+  if (isTRUE(gate_only)) {
+    # 績優顯示池：F-Score≥7 且盈餘品質通過（再以年化漲幅決選排序）
     df <- df[!is.na(df$is_quality) & df$is_quality %in% TRUE, , drop = FALSE]
   }
   # 年化估值漲幅由大到小（NA 置後）— 即「未來期間漲幅最大者」優先
@@ -840,37 +844,12 @@ lab_method_group_summary <- function(catalog) {
   }))
 }
 
-#' 明細表：F-Score／盈餘品質／門檻 分開著色
+#' 明細表：F-Score 著色膠囊（盈餘品質／門檻改由工具列勾選過濾）
 lab_html_fscore_pill <- function(x) {
   v <- suppressWarnings(as.numeric(x))
   ifelse(
     is.na(v),
     '<span class="ynow-lab-pill ynow-lab-pill-muted">—</span>',
     sprintf('<span class="ynow-lab-pill ynow-lab-pill-fs">%s</span>', as.integer(round(v)))
-  )
-}
-
-lab_html_eq_pill <- function(quality_flag) {
-  qf <- suppressWarnings(as.numeric(quality_flag))
-  ifelse(
-    is.na(qf),
-    '<span class="ynow-lab-pill ynow-lab-pill-muted">未評</span>',
-    ifelse(
-      qf == 1,
-      '<span class="ynow-lab-pill ynow-lab-pill-eq-ok">盈餘通過</span>',
-      '<span class="ynow-lab-pill ynow-lab-pill-eq-no">盈餘未過</span>'
-    )
-  )
-}
-
-lab_html_gate_pill <- function(is_quality) {
-  ifelse(
-    is.na(is_quality),
-    '<span class="ynow-lab-pill ynow-lab-pill-muted">未評估</span>',
-    ifelse(
-      is_quality %in% TRUE,
-      '<span class="ynow-lab-pill ynow-lab-pill-gate-ok">門檻通過</span>',
-      '<span class="ynow-lab-pill ynow-lab-pill-gate-no">未達門檻</span>'
-    )
   )
 }
