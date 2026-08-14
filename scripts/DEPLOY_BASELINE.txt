@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12411625
+bundleId=12411647
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=733b44c
-commit=733b44ce9b7e64f6212ea5fac560977f329752ae
-short=733b44c
-message=Replace Lab's single 「只看通過」filter with separate 盈餘品質 and 門檻 checkboxes, and drop those columns from the detail table so filtering lives in the toolbar.
-captured_at=2026-08-14T18:07:30Z
+aligned_git=526d244
+commit=526d244aed8d0399239fa0ddfb24fbdecb7030c8
+short=526d244
+message=Apply Lab 盈餘品質 filter to the leaderboard and keep quality_only as a hidden 門檻 alias so the toolbar checkboxes, not table columns, own the gates.
+captured_at=2026-08-14T18:12:09Z
 source_branch=master
-note=Canonical live line is app_14.0. Deploy via scripts/deploy_app_14.R; Feedback needs YNOW_FEEDBACK_GITHUB_TOKEN in app_14.0/.Renviron (gitignored; redeploy bundles it — no shinyapps Vars UI). Live status=running. Git tip may be ahead of this bundle.
+note=Canonical live line is app_14.0. Deploy via scripts/deploy_app_14.R; Feedback needs YNOW_FEEDBACK_GITHUB_TOKEN in app_14.0/.Renviron (gitignored; redeploy bundles it — no shinyapps Vars UI). Live status=running, image=ready. Bundle 12411647 superseded 12411625 (Lab-only) after HEAD 526d244 also aligned DDM/RI/P/B |ε| with DCF.
