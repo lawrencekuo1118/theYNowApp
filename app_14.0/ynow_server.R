@@ -913,7 +913,7 @@ server <- function(input, output, session) {
         "依預設產業 ROE 區間中位；可編輯（非 APP_DEFAULTS 鍵）"),
       c("彈性表", "參數相對衝擊", "PARAM_SENSITIVITY_SHOCK",
         if (exists("PARAM_SENSITIVITY_SHOCK", inherits = TRUE)) as.character(PARAM_SENSITIVITY_SHOCK) else "0.01",
-        "setup.R：每股參數彈性相對 ±1%"),
+        "setup.R：公式參數彈性相對 ±1%（與個股價格無關）"),
       c("Backtest", "FV 模型勾選", "bt_fv_models", "(none)", "HFV 圖預設不勾選，勾選才計算")
     )
     rows <- c(rows, extra)
@@ -3839,212 +3839,99 @@ server <- function(input, output, session) {
       )
   })
 
-  # DCF 頁底部：可設定參數對每股估值的邊際彈性（相對 ±1%）
+  # DCF 頁底部：公式參數對 EV 的邊際彈性（相對 ±1%；與個股價格／股數／現金負債無關）
   output$dcf_param_sensitivity_table <- renderTable({
-    base <- .dcf_valuation_bundle()
-    validate(need(isTRUE(base$ok), "基準估值尚未就緒：請先完成 FCFF 預測並確保 g < WACC。"))
-    p0 <- base$price
     shock_pct <- if (exists("PARAM_SENSITIVITY_SHOCK", inherits = TRUE)) PARAM_SENSITIVITY_SHOCK else 0.01
-    m_dn <- 1 - shock_pct
-    m_up <- 1 + shock_pct
+    gordon <- identical(input$dcf_mode, "gordon") || is.null(input$dcf_mode)
 
-    .rel <- function(x, sign = -1) {
-      if (exists(".param_rel_shock", mode = "function")) {
-        .param_rel_shock(x, sign = sign, shock = shock_pct)
-      } else {
-        x <- suppressWarnings(as.numeric(x)[1])
-        if (!is.finite(x) || abs(x) < 1e-12) return(NA_real_)
-        x * (1 + sign * shock_pct)
-      }
-    }
-    .infl_row <- function(param, base_val, unit, b_down, b_up, note = "") {
-      pd <- if (isTRUE(b_down$ok)) b_down$price else NA_real_
-      pu <- if (isTRUE(b_up$ok)) b_up$price else NA_real_
-      if (exists(".param_sensitivity_infl_row", mode = "function")) {
-        return(.param_sensitivity_infl_row(param, base_val, unit, p0, pd, pu, note))
-      }
-      d_dn <- if (is.finite(pd) && is.finite(p0) && abs(p0) > 1e-9) 100 * (pd - p0) / abs(p0) else NA_real_
-      d_up <- if (is.finite(pu) && is.finite(p0) && abs(p0) > 1e-9) 100 * (pu - p0) / abs(p0) else NA_real_
-      infl <- mean(c(abs(d_dn), abs(d_up)), na.rm = TRUE)
-      if (!is.finite(infl)) infl <- NA_real_
-      data.frame(
-        參數 = param,
-        基準值 = if (identical(unit, "%")) sprintf("%.2f%%", base_val) else
-          if (identical(unit, "$")) format_dollar_abbr(base_val) else
-            if (identical(unit, "x")) sprintf("%.2f", base_val) else as.character(base_val),
-        `估值Δ% (−1%)` = if (is.finite(d_dn)) sprintf("%+.2f%%", d_dn) else "N/A",
-        `估值Δ% (+1%)` = if (is.finite(d_up)) sprintf("%+.2f%%", d_up) else "N/A",
-        `｜ε｜` = if (is.finite(infl)) sprintf("%.2f", infl) else "N/A",
-        說明 = note,
-        check.names = FALSE,
-        stringsAsFactors = FALSE
-      )
-    }
-
-    # 資本結構權重（供 CAPM／Rd／Tax → WACC 衝擊）
-    .wacc_from_components <- function(rf_pct = NULL, beta = NULL, rm_pct = NULL,
-                                      re_pct = NULL, rd_pct = NULL, tax_pct = NULL) {
-      rf <- if (!is.null(rf_pct)) rf_pct else suppressWarnings(as.numeric(input$capm_rf)[1])
-      b <- if (!is.null(beta)) beta else suppressWarnings(as.numeric(input$capm_beta)[1])
-      rm <- if (!is.null(rm_pct)) rm_pct else suppressWarnings(as.numeric(input$capm_rm)[1])
-      rd <- if (!is.null(rd_pct)) rd_pct else suppressWarnings(as.numeric(input$wacc_rd)[1])
-      tax <- if (!is.null(tax_pct)) tax_pct else suppressWarnings(as.numeric(input$wacc_tax)[1])
-      re <- if (!is.null(re_pct)) {
-        re_pct
-      } else if (isTRUE(input$use_estimated_re) && is.finite(rf) && is.finite(b) && is.finite(rm)) {
-        rf + b * (rm - rf)
-      } else {
-        suppressWarnings(as.numeric(input$wacc_re)[1])
-      }
-      eq <- tryCatch({
-        sh <- .valuation_shares()$shares
-        px <- tryCatch(scraped_market_cap()$price, error = function(e) NA_real_)
-        if (is.finite(sh) && is.finite(px)) sh * px else NA_real_
-      }, error = function(e) NA_real_)
-      debt <- base$debt
-      if (!is.finite(eq) || eq <= 0) {
-        # fallback：用目前 WACC 輸入
-        return(if (identical(input$dcf_mode, "gordon")) {
-          suppressWarnings(as.numeric(input$wacc_gordon)[1])
-        } else {
-          suppressWarnings(as.numeric(input$wacc_stage1)[1])
-        })
-      }
-      if (!is.finite(debt) || debt < 0) debt <- 0
-      tot <- eq + debt
-      if (!is.finite(tot) || tot <= 0) return(NA_real_)
-      if (!is.finite(re) || !is.finite(rd) || !is.finite(tax)) return(NA_real_)
-      (eq / tot) * re + (debt / tot) * rd * (1 - tax / 100)
-    }
-
-    rows <- list()
     n0 <- suppressWarnings(as.numeric(input$years)[1])
-    if (is.finite(n0) && n0 >= 1) {
-      rows[[length(rows) + 1]] <- .infl_row(
-        "預測年數 n", n0, "n",
-        .dcf_valuation_bundle(years_override = max(1, round(n0 * m_dn))),
-        .dcf_valuation_bundle(years_override = max(1, round(n0 * m_up))),
-        "截斷／延展 FCFF 序列"
-      )
-    }
+    if (!is.finite(n0) || n0 < 1) n0 <- APP_DEFAULTS$years
+    n0 <- max(1L, as.integer(round(n0)))
 
-    g_near <- suppressWarnings(as.numeric(estimated_g())[1])
-    if (!is.finite(g_near)) g_near <- suppressWarnings(as.numeric(input$custom_g)[1])
-    if (is.finite(g_near)) {
-      # 近中期成長：以軌跡倍率近似相對 ±1% 成長衝擊
-      rows[[length(rows) + 1]] <- .infl_row(
-        "近中期營收成長率", g_near, "%",
-        .dcf_valuation_bundle(near_g_mult = m_dn),
-        .dcf_valuation_bundle(near_g_mult = m_up),
-        "透過 FCFF 軌跡倍率近似"
-      )
-    }
+    gt_pct <- suppressWarnings(as.numeric(input$sgr)[1])
+    if (!is.finite(gt_pct)) gt_pct <- APP_DEFAULTS$sgr
+    gt0 <- gt_pct / 100
 
-    g0 <- suppressWarnings(as.numeric(input$sgr)[1])
-    if (is.finite(g0)) {
-      rows[[length(rows) + 1]] <- .infl_row(
-        "終值成長率 SGR (g)", g0, "%",
-        .dcf_valuation_bundle(g_pp_delta = .rel(g0, -1) - g0),
-        .dcf_valuation_bundle(g_pp_delta = .rel(g0, +1) - g0),
-        "Gordon／終值 TV"
-      )
-    }
+    g_near_pct <- suppressWarnings(as.numeric(estimated_g())[1])
+    if (!is.finite(g_near_pct)) g_near_pct <- suppressWarnings(as.numeric(input$custom_g)[1])
+    if (!is.finite(g_near_pct)) g_near_pct <- 0
+    gn0 <- g_near_pct / 100
 
-    if (identical(input$dcf_mode, "gordon")) {
-      w0 <- suppressWarnings(as.numeric(input$wacc_gordon)[1])
-      if (is.finite(w0)) {
-        rows[[length(rows) + 1]] <- .infl_row(
-          "折現率 WACC", w0, "%",
-          .dcf_valuation_bundle(wacc_pp_delta = .rel(w0, -1) - w0),
-          .dcf_valuation_bundle(wacc_pp_delta = .rel(w0, +1) - w0),
-          "明確預測 + Gordon"
-        )
-      }
+    if (gordon) {
+      w_pct <- suppressWarnings(as.numeric(input$wacc_gordon)[1])
+      if (!is.finite(w_pct)) w_pct <- APP_DEFAULTS$wacc_gordon
+      r1_0 <- w_pct / 100
+      r2_0 <- r1_0
+      g1_pct <- g_near_pct
+      g2_pct <- g_near_pct
+      yr1_0 <- NA_integer_
     } else {
-      w1 <- suppressWarnings(as.numeric(input$wacc_stage1)[1])
-      w2 <- suppressWarnings(as.numeric(input$wacc_stage2)[1])
-      g1 <- suppressWarnings(as.numeric(input$g_stage1)[1])
-      yr1 <- suppressWarnings(as.numeric(input$yr_stage1)[1])
-      if (is.finite(w1)) {
-        rows[[length(rows) + 1]] <- .infl_row(
-          "折現率 WACC1", w1, "%",
-          .dcf_valuation_bundle(wacc1_pp_delta = .rel(w1, -1) - w1),
-          .dcf_valuation_bundle(wacc1_pp_delta = .rel(w1, +1) - w1),
-          "兩階段｜高速期"
-        )
-      }
-      if (is.finite(w2)) {
-        rows[[length(rows) + 1]] <- .infl_row(
-          "折現率 WACC2", w2, "%",
-          .dcf_valuation_bundle(wacc2_pp_delta = .rel(w2, -1) - w2),
-          .dcf_valuation_bundle(wacc2_pp_delta = .rel(w2, +1) - w2),
-          "兩階段｜終值折現"
-        )
-      }
-      if (is.finite(g1)) {
-        rows[[length(rows) + 1]] <- .infl_row(
-          "高速成長率 g1", g1, "%",
-          .dcf_valuation_bundle(near_g_mult = m_dn),
-          .dcf_valuation_bundle(near_g_mult = m_up),
-          "以 FCFF 軌跡近似 g1 衝擊"
-        )
-      }
-      if (is.finite(yr1) && is.finite(n0)) {
-        rows[[length(rows) + 1]] <- .infl_row(
-          "第一階段年數", yr1, "n",
-          .dcf_valuation_bundle(yr_stage1_override = max(1, round(yr1 * m_dn))),
-          .dcf_valuation_bundle(yr_stage1_override = max(1, min(n0 - 1, round(yr1 * m_up)))),
-          "兩階段分界"
+      w1_pct <- suppressWarnings(as.numeric(input$wacc_stage1)[1])
+      w2_pct <- suppressWarnings(as.numeric(input$wacc_stage2)[1])
+      if (!is.finite(w1_pct)) w1_pct <- APP_DEFAULTS$wacc_stage1
+      if (!is.finite(w2_pct)) w2_pct <- APP_DEFAULTS$wacc_stage2
+      r1_0 <- w1_pct / 100
+      r2_0 <- w2_pct / 100
+      g1_pct <- suppressWarnings(as.numeric(input$g_stage1)[1])
+      if (!is.finite(g1_pct)) g1_pct <- g_near_pct
+      g2_pct <- suppressWarnings(as.numeric(input$g_stage2)[1])
+      if (!is.finite(g2_pct)) g2_pct <- gt_pct
+      yr1_0 <- suppressWarnings(as.numeric(input$yr_stage1)[1])
+      yr1_0 <- clamp_yr_stage1(n0, yr1_0, APP_DEFAULTS$yr_stage1)
+    }
+    gn_stage <- if (gordon) gn0 else g1_pct / 100
+    g2_0 <- if (gordon) gn0 else g2_pct / 100
+
+    .ev <- function(n = n0, r1 = r1_0, r2 = r2_0, g_term = gt0,
+                    g_near = gn_stage, yr1 = yr1_0, g2 = g2_0, f0 = 1) {
+      if (gordon) {
+        .dcf_formula_ev(n = n, r1 = r1, g_term = g_term, g_near = g_near, f0 = f0)
+      } else {
+        .dcf_formula_ev(
+          n = n, r1 = r1, r2 = r2, g_term = g_term, g_near = g_near,
+          yr_stage1 = yr1, g_stage2 = g2, f0 = f0
         )
       }
     }
+    v0 <- .ev()
+    validate(need(
+      is.finite(v0),
+      "基準公式尚未就緒：請確認終值 g < WACC 與預測年數。"
+    ))
 
-    rows[[length(rows) + 1]] <- .infl_row(
-      "FCFF 水準（整體）", 1, "x",
-      .dcf_valuation_bundle(fcf_mult = m_dn),
-      .dcf_valuation_bundle(fcf_mult = m_up),
-      "涵蓋營收／NOPAT／再投資設定的綜合效果"
-    )
-
-    # FCFF 分頁前瞻比率（若有填）
-    capex_r <- suppressWarnings(as.numeric(input[["mod_fcf-proj_capex_rate"]])[1])
-    nwc_r <- suppressWarnings(as.numeric(input[["mod_fcf-proj_nwc_rate"]])[1])
-    if (is.finite(capex_r)) {
-      # CapEx 上升通常降低 FCFF：以反向 fcf 衝擊近似
-      rows[[length(rows) + 1]] <- .infl_row(
-        "CapEx / Revenue", capex_r, "%",
-        .dcf_valuation_bundle(fcf_mult = m_up),
-        .dcf_valuation_bundle(fcf_mult = m_dn),
-        "近似：CapEx↑ → FCFF↓"
-      )
+    .rel <- function(x, sign = -1) .param_rel_shock(x, sign = sign, shock = shock_pct)
+    .row <- function(param, base_val, unit, v_dn, v_up, note = "") {
+      .param_sensitivity_infl_row(param, base_val, unit, v0, v_dn, v_up, note)
     }
-    if (is.finite(nwc_r)) {
-      rows[[length(rows) + 1]] <- .infl_row(
-        "ΔNWC / ΔRevenue", nwc_r, "%",
-        .dcf_valuation_bundle(fcf_mult = m_up),
-        .dcf_valuation_bundle(fcf_mult = m_dn),
-        "近似：ΔNWC↑ → FCFF↓"
+    .row_xy <- function(param, base_val, unit, v_dn, v_up, x0, x_dn, x_up, note = "") {
+      .param_sensitivity_infl_row_xy(
+        param, base_val, unit, v0, v_dn, v_up, x0, x_dn, x_up, note, shock = shock_pct
       )
     }
 
-    if (is.finite(base$cash) && abs(base$cash) > 1) {
-      rows[[length(rows) + 1]] <- .infl_row(
-        "現金／約當現金", base$cash, "$",
-        .dcf_valuation_bundle(cash_mult = m_dn),
-        .dcf_valuation_bundle(cash_mult = m_up),
-        "EV → Equity 橋接"
-      )
-    }
-    if (is.finite(base$debt) && abs(base$debt) > 1) {
-      rows[[length(rows) + 1]] <- .infl_row(
-        "總負債", base$debt, "$",
-        .dcf_valuation_bundle(debt_mult = m_dn),
-        .dcf_valuation_bundle(debt_mult = m_up),
-        "EV → Equity 橋接"
-      )
+    # Snapshot WACC weights once (capital-structure formula inputs). Do not re-read
+    # live price inside each shock — |ε| of WACC/g/n must not chase the quote.
+    we <- NA_real_
+    wd <- NA_real_
+    tryCatch({
+      sh <- .valuation_shares()$shares
+      px <- tryCatch(scraped_market_cap()$price, error = function(e) NA_real_)
+      eq <- if (is.finite(sh) && is.finite(px) && sh > 0 && px > 0) sh * px else NA_real_
+      debt <- tryCatch(select_current_metric(d_balance_sheet(), "^Total Debt$", "stock"), error = function(e) NA_real_)
+      if (!is.finite(debt) || debt < 0) debt <- 0
+      if (is.finite(eq) && eq > 0) {
+        tot <- eq + debt
+        if (is.finite(tot) && tot > 0) {
+          we <- eq / tot
+          wd <- debt / tot
+        }
+      }
+    }, error = function(e) NULL)
+    if (!is.finite(we) || !is.finite(wd)) {
+      we <- 1
+      wd <- 0
     }
 
-    # CAPM／WACC 組成
     rf0 <- suppressWarnings(as.numeric(input$capm_rf)[1])
     beta0 <- suppressWarnings(as.numeric(input$capm_beta)[1])
     rm0 <- suppressWarnings(as.numeric(input$capm_rm)[1])
@@ -4052,71 +3939,163 @@ server <- function(input, output, session) {
     tax0 <- suppressWarnings(as.numeric(input$wacc_tax)[1])
     re0 <- suppressWarnings(as.numeric(input$wacc_re)[1])
 
+    .wacc_pct <- function(rf_pct = rf0, beta = beta0, rm_pct = rm0,
+                          re_pct = NULL, rd_pct = rd0, tax_pct = tax0) {
+      re <- if (!is.null(re_pct) && is.finite(re_pct)) {
+        re_pct
+      } else if (isTRUE(input$use_estimated_re) && is.finite(rf_pct) && is.finite(beta) && is.finite(rm_pct)) {
+        rf_pct + beta * (rm_pct - rf_pct)
+      } else {
+        re0
+      }
+      if (!is.finite(re)) return(NA_real_)
+      rd <- if (is.finite(rd_pct)) rd_pct else 0
+      tax <- if (is.finite(tax_pct)) tax_pct else 0
+      we * re + wd * rd * (1 - tax / 100)
+    }
+    .ev_wacc_pct <- function(w_pct) {
+      if (!is.finite(w_pct)) return(NA_real_)
+      r <- w_pct / 100
+      if (gordon) .ev(r1 = r, r2 = r) else .ev(r1 = r, r2 = r)
+    }
+
+    rows <- list()
+    n_dn <- if (n0 > 1L) n0 - 1L else n0
+    n_up <- n0 + 1L
+    rows[[length(rows) + 1]] <- .row_xy(
+      "預測年數 n", n0, "n",
+      .ev(n = n_dn), .ev(n = n_up), n0, n_dn, n_up,
+      "公式：明確預測期長度（與 FCFF 金額無關）"
+    )
+
+    if (gordon && is.finite(g_near_pct) && abs(g_near_pct) > 1e-8) {
+      rows[[length(rows) + 1]] <- .row(
+        "近中期營收成長率", g_near_pct, "%",
+        .ev(g_near = .rel(g_near_pct, -1) / 100),
+        .ev(g_near = .rel(g_near_pct, +1) / 100),
+        "公式：單位 FCFF 路徑的明確期成長"
+      )
+    }
+
+    if (is.finite(gt_pct) && abs(gt_pct) > 1e-8) {
+      rows[[length(rows) + 1]] <- .row(
+        "終值成長率 SGR (g)", gt_pct, "%",
+        .ev(g_term = .rel(gt_pct, -1) / 100),
+        .ev(g_term = .rel(gt_pct, +1) / 100),
+        "Gordon 終值：ε 取決於 WACC 與 g"
+      )
+    }
+
+    if (gordon) {
+      w0 <- r1_0 * 100
+      rows[[length(rows) + 1]] <- .row(
+        "折現率 WACC", w0, "%",
+        .ev(r1 = .rel(w0, -1) / 100, r2 = .rel(w0, -1) / 100),
+        .ev(r1 = .rel(w0, +1) / 100, r2 = .rel(w0, +1) / 100),
+        "公式：明確預測 + Gordon（與股價／淨現金無關）"
+      )
+    } else {
+      w1 <- r1_0 * 100
+      w2 <- r2_0 * 100
+      rows[[length(rows) + 1]] <- .row(
+        "折現率 WACC1", w1, "%",
+        .ev(r1 = .rel(w1, -1) / 100),
+        .ev(r1 = .rel(w1, +1) / 100),
+        "兩階段｜高速期折現"
+      )
+      rows[[length(rows) + 1]] <- .row(
+        "折現率 WACC2", w2, "%",
+        .ev(r2 = .rel(w2, -1) / 100),
+        .ev(r2 = .rel(w2, +1) / 100),
+        "兩階段｜終值折現"
+      )
+      if (is.finite(g1_pct) && abs(g1_pct) > 1e-8) {
+        rows[[length(rows) + 1]] <- .row(
+          "高速成長率 g1", g1_pct, "%",
+          .ev(g_near = .rel(g1_pct, -1) / 100),
+          .ev(g_near = .rel(g1_pct, +1) / 100),
+          "公式：第一階段 FCFF 路徑成長"
+        )
+      }
+      if (is.finite(g2_pct) && abs(g2_pct) > 1e-8) {
+        rows[[length(rows) + 1]] <- .row(
+          "第二階段成長率 g2", g2_pct, "%",
+          .ev(g2 = .rel(g2_pct, -1) / 100),
+          .ev(g2 = .rel(g2_pct, +1) / 100),
+          "公式：第二階段 FCFF 路徑成長"
+        )
+      }
+      y_dn <- max(1L, yr1_0 - 1L)
+      y_up <- min(n0 - 1L, yr1_0 + 1L)
+      if (is.finite(yr1_0) && n0 > 2L && y_up > y_dn) {
+        rows[[length(rows) + 1]] <- .row_xy(
+          "第一階段年數", yr1_0, "n",
+          .ev(yr1 = y_dn), .ev(yr1 = y_up), yr1_0, y_dn, y_up,
+          "兩階段分界（公式年數，非個股）"
+        )
+      }
+    }
+
+    rows[[length(rows) + 1]] <- .row(
+      "FCFF 水準（整體）", 1, "x",
+      .ev(f0 = 1 - shock_pct),
+      .ev(f0 = 1 + shock_pct),
+      "EV ∝ FCFF ⇒ |ε|=1（公式；與金額無關）"
+    )
+
     if (is.finite(rf0)) {
-      w_dn <- .wacc_from_components(rf_pct = .rel(rf0, -1))
-      w_up <- .wacc_from_components(rf_pct = .rel(rf0, +1))
-      rows[[length(rows) + 1]] <- .infl_row(
+      rows[[length(rows) + 1]] <- .row(
         "無風險利率 Rf", rf0, "%",
-        .dcf_valuation_bundle(wacc_override_pct = w_dn),
-        .dcf_valuation_bundle(wacc_override_pct = w_up),
-        "經 CAPM → WACC"
+        .ev_wacc_pct(.wacc_pct(rf_pct = .rel(rf0, -1))),
+        .ev_wacc_pct(.wacc_pct(rf_pct = .rel(rf0, +1))),
+        "WACC 公式：CAPM → rₑ（權重為本次資本結構）"
       )
     }
     if (is.finite(beta0)) {
-      w_dn <- .wacc_from_components(beta = .rel(beta0, -1))
-      w_up <- .wacc_from_components(beta = .rel(beta0, +1))
-      rows[[length(rows) + 1]] <- .infl_row(
+      rows[[length(rows) + 1]] <- .row(
         "Beta (β)", beta0, "x",
-        .dcf_valuation_bundle(wacc_override_pct = w_dn),
-        .dcf_valuation_bundle(wacc_override_pct = w_up),
-        "經 CAPM → WACC"
+        .ev_wacc_pct(.wacc_pct(beta = .rel(beta0, -1))),
+        .ev_wacc_pct(.wacc_pct(beta = .rel(beta0, +1))),
+        "WACC 公式：CAPM → rₑ（權重為本次資本結構）"
       )
     }
     if (is.finite(rm0)) {
-      w_dn <- .wacc_from_components(rm_pct = .rel(rm0, -1))
-      w_up <- .wacc_from_components(rm_pct = .rel(rm0, +1))
-      rows[[length(rows) + 1]] <- .infl_row(
+      rows[[length(rows) + 1]] <- .row(
         "市場報酬率 Rm", rm0, "%",
-        .dcf_valuation_bundle(wacc_override_pct = w_dn),
-        .dcf_valuation_bundle(wacc_override_pct = w_up),
-        "經 CAPM → WACC"
+        .ev_wacc_pct(.wacc_pct(rm_pct = .rel(rm0, -1))),
+        .ev_wacc_pct(.wacc_pct(rm_pct = .rel(rm0, +1))),
+        "WACC 公式：CAPM → rₑ（權重為本次資本結構）"
       )
     }
     if (is.finite(re0) && !isTRUE(input$use_estimated_re)) {
-      w_dn <- .wacc_from_components(re_pct = .rel(re0, -1))
-      w_up <- .wacc_from_components(re_pct = .rel(re0, +1))
-      rows[[length(rows) + 1]] <- .infl_row(
+      rows[[length(rows) + 1]] <- .row(
         "股權成本 rₑ", re0, "%",
-        .dcf_valuation_bundle(wacc_override_pct = w_dn),
-        .dcf_valuation_bundle(wacc_override_pct = w_up),
-        "手動 rₑ（未勾選 CAPM）"
+        .ev_wacc_pct(.wacc_pct(re_pct = .rel(re0, -1))),
+        .ev_wacc_pct(.wacc_pct(re_pct = .rel(re0, +1))),
+        "WACC 公式：手動 rₑ（未勾選 CAPM）"
       )
     }
-    if (is.finite(rd0)) {
-      w_dn <- .wacc_from_components(rd_pct = .rel(rd0, -1))
-      w_up <- .wacc_from_components(rd_pct = .rel(rd0, +1))
-      rows[[length(rows) + 1]] <- .infl_row(
+    if (is.finite(rd0) && wd > 1e-8) {
+      rows[[length(rows) + 1]] <- .row(
         "負債成本 rᵈ", rd0, "%",
-        .dcf_valuation_bundle(wacc_override_pct = w_dn),
-        .dcf_valuation_bundle(wacc_override_pct = w_up),
-        "經 WACC 權重"
+        .ev_wacc_pct(.wacc_pct(rd_pct = .rel(rd0, -1))),
+        .ev_wacc_pct(.wacc_pct(rd_pct = .rel(rd0, +1))),
+        "WACC 公式：wₑrₑ + wᵈrᵈ(1−T)"
       )
     }
-    if (is.finite(tax0)) {
-      w_dn <- .wacc_from_components(tax_pct = .rel(tax0, -1))
-      w_up <- .wacc_from_components(tax_pct = .rel(tax0, +1))
-      rows[[length(rows) + 1]] <- .infl_row(
+    if (is.finite(tax0) && wd > 1e-8) {
+      rows[[length(rows) + 1]] <- .row(
         "所得稅率 T", tax0, "%",
-        .dcf_valuation_bundle(wacc_override_pct = w_dn),
-        .dcf_valuation_bundle(wacc_override_pct = w_up),
-        "稅盾：Rd×(1−T)"
+        .ev_wacc_pct(.wacc_pct(tax_pct = .rel(tax0, -1))),
+        .ev_wacc_pct(.wacc_pct(tax_pct = .rel(tax0, +1))),
+        "WACC 公式：稅盾 Rd×(1−T)"
       )
     }
 
     out <- do.call(rbind, rows)
     .param_sensitivity_sort_by_abs_eps(out)
   }, striped = TRUE, bordered = TRUE, spacing = "s", width = "100%")
-  
+
   observeEvent(input$calc_capm, {
     .auto_recalc_capm_wacc(notify = TRUE, wacc_too = FALSE)
   })

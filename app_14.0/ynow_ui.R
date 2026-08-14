@@ -602,15 +602,16 @@ beta_advanced_tab_ui <- function() {
   )
 }
 
-#' Shared bottom block: per-share param contribution / relative ±1% elasticity.
+#' Shared bottom block: formula-param contribution / relative ±1% elasticity.
 .model_param_sensitivity_box <- function(title, table_id) {
   fluidRow(
     box(
       title = tagList(icon("percentage"), title),
       width = 12, status = "info", solidHeader = TRUE, collapsible = TRUE,
       helpText(
-        "一次只變動一個可設定參數（相對 ±1%），衡量每股估值的邊際彈性；",
-        "「估值Δ%」≈ 該參數變動 1% 時每股價值的變動幅度；「｜ε｜」= 兩側 |Δ估值%| 平均（愈大愈敏感）。"
+        "「｜ε｜」由估值公式在目前模型參數（WACC／Ke、g、n、配息等）上評估，與個股價格、股數、現金／負債規模無關；",
+        "兩檔股票只要公式參數相同，｜ε｜與排序即相同。g 與折現率的彈性本身取決於 (r−g)，故改參數才會改｜ε｜。",
+        "一次只變動一個參數（相對 ±1%）；「估值Δ%」≈ 該參數變動 1% 時公式價值的變動幅度；「｜ε｜」= 兩側 |Δ估值%| 平均。"
       ),
       tags$div(
         style = "overflow-x:auto;",

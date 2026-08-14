@@ -130,19 +130,19 @@ ddm_module_server <- function(id, ddm_g = reactive(NULL), ddm_ke = reactive(NULL
           "今年股利 D0", d0, money_prefix(), p0,
           .ddm_price_at(.rel(d0, -1), g0, ke0),
           .ddm_price_at(.rel(d0, +1), g0, ke0),
-          "P0 ∝ D0"
+          "P0 ∝ D0 ⇒ |ε|=1（與股利金額／股價無關）"
         ),
         .param_sensitivity_infl_row(
           "股利成長率 g", g0, "%", p0,
           .ddm_price_at(d0, .rel(g0, -1), ke0),
           .ddm_price_at(d0, .rel(g0, +1), ke0),
-          "Gordon：影響 D1 與 (Ke−g)"
+          "ε = g/(1+g)+g/(Ke−g)（取決於 Ke、g）"
         ),
         .param_sensitivity_infl_row(
           "要求報酬率 Ke", ke0, "%", p0,
           .ddm_price_at(d0, g0, .rel(ke0, -1)),
           .ddm_price_at(d0, g0, .rel(ke0, +1)),
-          "折現率；須維持 Ke > g"
+          "ε = −Ke/(Ke−g)（取決於 Ke、g）"
         )
       )
       .param_sensitivity_sort_by_abs_eps(do.call(rbind, rows))

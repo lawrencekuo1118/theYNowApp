@@ -552,7 +552,8 @@ safe_num <- function(x) {
   return(x)
 }
 
-# Relative ±1% shock for per-share param elasticity tables (DCF / DDM / RI / P/B).
+# Relative ±1% shock for formula-param elasticity tables (DCF / DDM / RI / P/B).
+# |ε| is d ln V / d ln x at the current MODEL PARAMETERS, not ticker price/shares.
 PARAM_SENSITIVITY_SHOCK <- 0.01
 
 .param_rel_shock <- function(x, sign = -1, shock = PARAM_SENSITIVITY_SHOCK) {
@@ -581,6 +582,76 @@ PARAM_SENSITIVITY_SHOCK <- 0.01
     check.names = FALSE,
     stringsAsFactors = FALSE
   )
+}
+
+#' Elasticity row when the feasible shock on x is not exactly ±1% (e.g. integer n).
+#' Converts (ΔV/V)/(Δx/x) into the same ±1% display units as `.param_sensitivity_infl_row`.
+.param_sensitivity_infl_row_xy <- function(param, base_val, unit, v0, v_dn, v_up,
+                                           x0, x_dn, x_up, note = "",
+                                           shock = PARAM_SENSITIVITY_SHOCK) {
+  .el <- function(v1, x1) {
+    if (!all(is.finite(c(v0, v1, x0, x1))) || abs(v0) <= 1e-9) return(NA_real_)
+    if (!is.finite(x0) || abs(x0) < 1e-12 || abs(x1 - x0) < 1e-12) return(NA_real_)
+    ((v1 - v0) / abs(v0)) / ((x1 - x0) / x0)
+  }
+  e_dn <- .el(v_dn, x_dn)
+  e_up <- .el(v_up, x_up)
+  d_dn <- if (is.finite(e_dn)) 100 * e_dn * (-shock) else NA_real_
+  d_up <- if (is.finite(e_up)) 100 * e_up * shock else NA_real_
+  p_dn <- if (is.finite(d_dn) && is.finite(v0)) v0 * (1 + d_dn / 100) else NA_real_
+  p_up <- if (is.finite(d_up) && is.finite(v0)) v0 * (1 + d_up / 100) else NA_real_
+  .param_sensitivity_infl_row(param, base_val, unit, v0, p_dn, p_up, note)
+}
+
+#' Canonical DCF enterprise value from formula parameters only (unit starting FCFF).
+#' F_t = F0 × product of explicit-period growth; TV = F_n(1+g)/(r2−g).
+#' Independent of ticker cash, debt, shares, market price, and FCFF dollar level.
+#' Rates are decimals (e.g. 0.08 not 8).
+.dcf_formula_ev <- function(n, r1, g_term, g_near = 0, r2 = NULL,
+                            yr_stage1 = NULL, g_stage2 = NULL, f0 = 1) {
+  n <- suppressWarnings(as.integer(round(as.numeric(n)[1])))
+  if (!is.finite(n) || n < 1L) return(NA_real_)
+  r1 <- suppressWarnings(as.numeric(r1)[1])
+  r2 <- if (is.null(r2)) r1 else suppressWarnings(as.numeric(r2)[1])
+  g_term <- suppressWarnings(as.numeric(g_term)[1])
+  g_near <- suppressWarnings(as.numeric(g_near)[1])
+  f0 <- suppressWarnings(as.numeric(f0)[1])
+  if (!is.finite(g_near)) g_near <- 0
+  if (!is.finite(r1) || !is.finite(r2) || !is.finite(g_term) || !is.finite(f0)) return(NA_real_)
+  if (r1 <= -0.999 || r2 <= -0.999 || g_term >= r2) return(NA_real_)
+
+  two_stage <- !is.null(yr_stage1) && is.finite(as.numeric(yr_stage1)[1]) && n > 1L
+  if (two_stage) {
+    y1 <- max(1L, min(n, as.integer(round(as.numeric(yr_stage1)[1]))))
+    rs <- c(rep(r1, min(y1, n)), rep(r2, max(0L, n - y1)))
+    g2 <- if (!is.null(g_stage2) && is.finite(as.numeric(g_stage2)[1])) {
+      as.numeric(g_stage2)[1]
+    } else {
+      g_near
+    }
+    gs <- c(rep(g_near, max(0L, y1 - 1L)), rep(g2, max(0L, n - y1)))
+    if (length(gs) < n - 1L) {
+      pad <- if (length(gs) == 0L) g_near else gs[length(gs)]
+      gs <- c(gs, rep(pad, n - 1L - length(gs)))
+    }
+    gs <- gs[seq_len(max(0L, n - 1L))]
+  } else {
+    rs <- rep(r1, n)
+    gs <- rep(g_near, max(0L, n - 1L))
+  }
+
+  f <- numeric(n)
+  f[1] <- f0
+  if (n >= 2L && length(gs) >= 1L) {
+    for (t in seq_len(n - 1L)) {
+      f[t + 1L] <- f[t] * (1 + gs[t])
+    }
+  }
+  disc <- cumprod(1 + rs)
+  if (any(!is.finite(disc)) || any(abs(disc) < 1e-15)) return(NA_real_)
+  pv <- sum(f / disc)
+  tv <- f[n] * (1 + g_term) / (r2 - g_term)
+  pv + tv / disc[n]
 }
 
 #' Sort elasticity table rows by |ε| descending.

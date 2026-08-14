@@ -532,12 +532,12 @@ pb_asset_module_server <- function(id,
           if (identical(input$basis, "tbvps")) "TBVPS" else "BVPS",
           basis0, money_prefix(), p0,
           .fair(basis = .rel(basis0, -1)), .fair(basis = .rel(basis0, +1)),
-          "估值基礎 × 基準 P/B"
+          "P ∝ BVPS／TBVPS ⇒ |ε|=1（公式，與個股無關）"
         ),
         .param_sensitivity_infl_row(
           "基準目標 P/B", mid0, "x", p0,
           .fair(mid = .rel(mid0, -1)), .fair(mid = .rel(mid0, +1)),
-          "基準合理價 = 基礎 × mid"
+          "P ∝ 目標 P/B ⇒ |ε|=1（公式，與個股無關）"
         )
       )
       .param_sensitivity_sort_by_abs_eps(do.call(rbind, rows))

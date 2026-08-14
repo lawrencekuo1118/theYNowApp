@@ -911,19 +911,31 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
       n0 <- suppressWarnings(as.numeric(input$ri_years)[1])
       pay0 <- suppressWarnings(as.numeric(input$ri_payout)[1])
       roe0 <- suppressWarnings(as.numeric(input$ri_roe)[1])
+      n0_i <- max(1L, as.integer(round(n0)))
+      n_dn <- if (n0_i > 1L) n0_i - 1L else n0_i
+      n_up <- n0_i + 1L
       rows <- list(
         .param_sensitivity_infl_row("期初帳面 B0", b0, money_prefix(), p0,
-                                    .price_at(b0 = .rel(b0, -1)), .price_at(b0 = .rel(b0, +1)), "每股帳面淨值"),
+                                    .price_at(b0 = .rel(b0, -1)), .price_at(b0 = .rel(b0, +1)),
+                                    "V ∝ B0 ⇒ |ε|=1（與股價無關）"),
         .param_sensitivity_infl_row("股權成本 Ke", ke0, "%", p0,
-                                    .price_at(ke_pct = .rel(ke0, -1)), .price_at(ke_pct = .rel(ke0, +1)), "折現率"),
+                                    .price_at(ke_pct = .rel(ke0, -1)), .price_at(ke_pct = .rel(ke0, +1)),
+                                    "公式：折現率（取決於 Ke、g、n、ROE、配息）"),
         .param_sensitivity_infl_row("終值成長率 g", g0, "%", p0,
-                                    .price_at(g_pct = .rel(g0, -1)), .price_at(g_pct = .rel(g0, +1)), "須維持 g < Ke"),
+                                    .price_at(g_pct = .rel(g0, -1)), .price_at(g_pct = .rel(g0, +1)),
+                                    "公式：須維持 g < Ke（與 B0 金額無關）"),
         .param_sensitivity_infl_row("起始 ROE", roe0, "%", p0,
-                                    .price_at(roe_pct = .rel(roe0, -1)), .price_at(roe_pct = .rel(roe0, +1)), "剩餘收益驅動"),
+                                    .price_at(roe_pct = .rel(roe0, -1)), .price_at(roe_pct = .rel(roe0, +1)),
+                                    "公式：剩餘收益驅動"),
         .param_sensitivity_infl_row("配息率 Payout", pay0, "%", p0,
-                                    .price_at(payout_pct = .rel(pay0, -1)), .price_at(payout_pct = .rel(pay0, +1)), "影響 BV 複利"),
-        .param_sensitivity_infl_row("預測年數 n", n0, "n", p0,
-                                    .price_at(n = max(1, round(.rel(n0, -1)))), .price_at(n = max(1, round(.rel(n0, +1)))), "明確預測期長度")
+                                    .price_at(payout_pct = .rel(pay0, -1)), .price_at(payout_pct = .rel(pay0, +1)),
+                                    "公式：影響 BV 複利"),
+        .param_sensitivity_infl_row_xy(
+          "預測年數 n", n0_i, "n", p0,
+          .price_at(n = n_dn), .price_at(n = n_up),
+          n0_i, n_dn, n_up,
+          "公式：明確預測期長度"
+        )
       )
       .param_sensitivity_sort_by_abs_eps(do.call(rbind, rows))
     }, striped = TRUE, hover = TRUE, bordered = TRUE, spacing = "s", width = "100%")
