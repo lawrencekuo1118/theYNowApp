@@ -1181,11 +1181,40 @@ ui <- dashboardPage(
           font-size: 11.5px;
           margin-left: 8px;
         }
-        .ynow-lab-im-note-row > .btn {
+        .ynow-lab-im-note-row > .btn,
+        .ynow-lab-im-note-row .ynow-lab-im-actions .btn {
           flex: 0 0 auto;
           white-space: nowrap;
           padding: 6px 14px;
           font-weight: 700;
+        }
+        .ynow-lab-im-actions {
+          display: flex;
+          flex: 0 0 auto;
+          flex-wrap: nowrap;
+          align-items: center;
+          gap: 8px;
+        }
+        .ynow-lab-im-universe-row {
+          display: flex;
+          flex-wrap: nowrap;
+          align-items: center;
+          gap: 10px;
+          margin: 0 0 8px 0;
+          font-size: 12px;
+          color: #556;
+        }
+        .ynow-lab-im-universe-row .ynow-lab-im-universe-meta {
+          flex: 1 1 auto;
+          min-width: 0;
+          white-space: nowrap;
+          overflow-x: auto;
+        }
+        .ynow-lab-im-universe-row .btn {
+          flex: 0 0 auto;
+          white-space: nowrap;
+          padding: 3px 10px;
+          font-size: 12px;
         }
         .ynow-lab-im-bar {
           display: flex;
@@ -1212,24 +1241,29 @@ ui <- dashboardPage(
           white-space: nowrap;
         }
         .ynow-lab-im-group.ynow-lab-im-sizes {
-          align-items: flex-start;
-          white-space: normal;
+          align-items: center;
+          white-space: nowrap;
+          flex: 0 0 auto;
         }
         .ynow-lab-im-group.ynow-lab-im-sizes > .ynow-lab-im-k {
-          margin-top: 4px;
+          margin-top: 0;
         }
         .ynow-lab-im-sizes .shiny-options-group {
-          display: grid;
-          grid-template-columns: auto auto;
-          column-gap: 12px;
-          row-gap: 2px;
+          display: inline-flex;
+          flex-wrap: nowrap;
+          flex-direction: row;
           align-items: center;
+          column-gap: 8px;
+          row-gap: 0;
+          white-space: nowrap;
         }
         .ynow-lab-im-sizes .checkbox-inline {
+          display: inline-block;
           margin-left: 0 !important;
           margin-right: 0 !important;
-          padding-left: 20px;
+          padding-left: 18px;
           white-space: nowrap;
+          font-size: 12px;
         }
         .ynow-lab-im-k {
           font-size: 11px;
@@ -2785,6 +2819,7 @@ ui <- dashboardPage(
                 tags$div(
                   class = "ynow-lab-im-note",
                   title = paste0(
+                    "宇宙＝S&P 500（可更新），不是全美股。評估仍只算前 N 檔。",
                     "流程：複選規模／產業／模型 → F-Score≥7 且盈餘品質通過 → ",
                     "建議主模型合理價 vs 現價，以 n 年換算年化漲幅排序（簡化估值）。"
                   ),
@@ -2794,14 +2829,33 @@ ui <- dashboardPage(
                   " 年隱含年化漲幅最大者",
                   tags$span(
                     class = "ynow-lab-im-muted",
-                    "｜門檻 F-Score≥7＋盈餘品質｜簡化 DCF／DDM／P/B／RI"
+                    "｜宇宙＝S&P 500（可更新），不是全美股；評估仍只算前 N 檔｜門檻 F-Score≥7＋盈餘品質｜簡化 DCF／DDM／P/B／RI"
                   )
                 ),
+                tags$div(
+                  class = "ynow-lab-im-actions",
+                  actionButton(
+                    "lab_im_run_fscore", "評估績優",
+                    icon = icon("chart-line"),
+                    class = "btn-success",
+                    title = "門檻（F-Score≥7＋盈餘品質）＋年化估值漲幅排序"
+                  ),
+                  downloadButton(
+                    "lab_im_download_report", "下載本頁報告",
+                    icon = icon("download"),
+                    class = "btn btn-default",
+                    title = "下載目前篩選、摘要與明細（不必重新評估）"
+                  )
+                )
+              ),
+              tags$div(
+                class = "ynow-lab-im-universe-row",
+                uiOutput("lab_im_universe_meta"),
                 actionButton(
-                  "lab_im_run_fscore", "評估績優",
-                  icon = icon("chart-line"),
-                  class = "btn-success",
-                  title = "門檻（F-Score≥7＋盈餘品質）＋年化估值漲幅排序"
+                  "lab_im_refresh_universe", "更新名單",
+                  icon = icon("sync"),
+                  class = "btn-default btn-sm",
+                  title = "自 Wikipedia／備援來源重抓 S&P 500 成分；失敗則沿用快取"
                 )
               ),
               tags$div(
@@ -2822,8 +2876,8 @@ ui <- dashboardPage(
                   tags$span(class = "ynow-lab-im-k", "產業"),
                   shinyWidgets::pickerInput(
                     "lab_im_industries", NULL,
-                    choices = industry_picker_choices(),
-                    selected = unname(industry_picker_choices()),
+                    choices = lab_industry_picker_choices(),
+                    selected = unname(lab_industry_picker_choices()),
                     multiple = TRUE,
                     width = "200px",
                     options = shinyWidgets::pickerOptions(
@@ -2896,7 +2950,7 @@ ui <- dashboardPage(
               ),
               tags$p(
                 class = "ynow-lab-im-hint",
-                "全不勾規模／模型＝不過濾　·　規模＝Yahoo 市值（評估後分級）　·　盈餘品質／門檻＝勾選才過濾　·　排行＝門檻後年化估值漲幅由高到低"
+                "宇宙＝S&P 500（可更新），不是全美股　·　評估仍只算前 N 檔　·　全不勾規模／模型＝不過濾　·　規模＝Yahoo 市值（未評估視同通過）　·　盈餘品質／門檻＝勾選才過濾　·　排行＝門檻後年化估值漲幅由高到低"
               ),
               tags$h4("依建議方法分組摘要", style = "margin-top:8px;"),
               tableOutput("lab_im_summary"),

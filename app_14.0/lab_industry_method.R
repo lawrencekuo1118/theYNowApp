@@ -1,8 +1,10 @@
 # ==========================================
 # lab_industry_method.R — 實驗區：產業 × 評價方法 × 美股績優候選
 #
+# 宇宙＝S&P 500（可更新，見 lab_sp500_universe.R），不是全美股。
 # 績優原則：在 F-Score＋盈餘品質過門檻後，選「模型合理價相對現價」、
 # 並依 App 預設預測年數 n（APP_DEFAULTS$years）換算年化漲幅最大者。
+# 評估仍只算前 N 檔（lab_im_max_n）。
 # 產業建議方法對齊 recommend_valuation_models 的產業層規則（簡化估值）。
 # ==========================================
 
@@ -76,12 +78,15 @@ LAB_TICKER_NAMES <- c(
   BKNG = "Booking Holdings Inc.", ABNB = "Airbnb, Inc."
 )
 
-#' 公司全稱：Yahoo 名稱優先，否則目錄對照
+#' 公司全稱：Yahoo 名稱優先，否則 S&P 宇宙／目錄對照
 lab_company_display_name <- function(ticker, yahoo_name = NULL) {
   tk <- toupper(gsub("\\.", "-", trimws(as.character(ticker %||% "")[1])))
   yn <- trimws(as.character(yahoo_name %||% "")[1])
   if (is.na(yn)) yn <- ""
   if (nzchar(yn) && !identical(toupper(yn), tk)) return(yn)
+  sp <- tryCatch(lab_sp500_company_name(tk), error = function(e) NA_character_)
+  sp <- trimws(as.character(sp %||% "")[1])
+  if (nzchar(sp) && !identical(sp, "NA")) return(sp)
   nm <- unname(LAB_TICKER_NAMES[tk])
   if (!is.na(nm) && nzchar(nm)) return(as.character(nm)[1])
   if (nzchar(yn)) return(yn)
@@ -173,6 +178,9 @@ lab_normalize_size_filter <- function(x) {
 lab_size_picker_choices <- function() {
   stats::setNames(names(LAB_SIZE_LABELS), unname(LAB_SIZE_LABELS))
 }
+
+# S&P 500 宇宙（可更新快取）；須在候選目錄／名稱查詢之前載入
+source("lab_sp500_universe.R", local = TRUE, encoding = "UTF-8")
 
 #' 產業 CAPM Ke（%）
 lab_industry_ke_pct <- function(industry_key) {
@@ -412,7 +420,25 @@ lab_industry_method_defaults <- function() {
       )
     )
   }
-  df$industry_label <- as.character(industry_labels[df$industry_key])
+  if (exists("LAB_UNMAPPED_KEY", inherits = TRUE) &&
+      !LAB_UNMAPPED_KEY %in% df$industry_key) {
+    df <- rbind(
+      df,
+      data.frame(
+        industry_key = LAB_UNMAPPED_KEY,
+        primary = "dcf",
+        secondary = "pb",
+        suggest_two_stage = FALSE,
+        rationale = "GICS 未對應 App 產業 → 預設 DCF",
+        stringsAsFactors = FALSE
+      )
+    )
+  }
+  df$industry_label <- ifelse(
+    exists("LAB_UNMAPPED_KEY", inherits = TRUE) & df$industry_key == LAB_UNMAPPED_KEY,
+    LAB_UNMAPPED_LABEL,
+    as.character(industry_labels[df$industry_key])
+  )
   df$primary_label <- as.character(LAB_METHOD_LABELS[df$primary])
   df$secondary_label <- ifelse(
     is.na(df$secondary) | !nzchar(df$secondary),
@@ -422,57 +448,22 @@ lab_industry_method_defaults <- function() {
   df[order(df$primary, df$industry_label), , drop = FALSE]
 }
 
-#' 各產業美股績優候選（人工 curated；含 App presets 美股＋常見藍籌）
+#' 各產業美股績優候選（S&P 500 宇宙；一檔對一產業，不重抓財報）
 #' @return named list: industry_key → character vector of US tickers
 lab_us_quality_candidates <- function() {
-  list(
-    "sc.IC_Design" = c("AVGO", "AMD", "QCOM", "NVDA"),
-    "sc.Foundry" = c("TSM"),
-    "sc.Packaging" = c("AMKR"),
-    "sc.Memory" = c("MU"),
-    "sc.Equipment" = c("AMAT", "LRCX", "KLAC", "ASML"),
-    "tech.Software" = c("MSFT", "ORCL", "ADBE"),
-    "saas.SaaS_Cloud" = c("MSFT", "CRM", "NOW", "SNOW"),
-    "tech.Internet_Platform" = c("GOOGL", "META", "AMZN"),
-    "tech.Hardware" = c("AAPL"),
-    "ec.Hardware" = c("TXN", "ADI"),
-    "fn.Banking" = c("JPM", "BAC", "WFC"),
-    "fn.Investment_Banking" = c("GS", "MS"),
-    "fn.Insurance" = c("PGR", "CB", "AIG"),
-    "fn.Asset_Management" = c("BLK", "BX"),
-    "fn.Fintech" = c("V", "MA", "SQ"),
-    "fn.Conglomerate_Holding" = c("BRK-B"),
-    "ecr.Ecommerce_Retail" = c("AMZN", "SHOP"),
-    "retail.Brick_Mortar" = c("COST", "WMT", "HD"),
-    "fmcg.Food_Beverages" = c("PEP", "KO", "COST"),
-    "fmcg.Household_Personal" = c("PG", "CL"),
-    "fmcg.Health_Beauty" = c("EL", "PG"),
-    "lxg.Luxury_Fashion" = c("LULU", "TPR"),
-    "cons.Discretionary" = c("NKE", "SBUX"),
-    "auto.Vehicle_Manufacturing" = c("GM", "F"),
-    "auto.Automotive_EV" = c("TSLA"),
-    "auto.Parts_Suppliers" = c("APTV", "BWA"),
-    "auto.EV_Startups" = c("RIVN", "LCID"),
-    "hc.Healthcare_Services" = c("UNH", "CI"),
-    "hc.Pharma" = c("LLY", "JNJ", "MRK", "PFE"),
-    "hc.Medtech" = c("ABT", "MDT", "ISRG"),
-    "hc.Biotech" = c("VRTX", "REGN", "AMGN"),
-    "ind.Machinery" = c("CAT", "DE"),
-    "ind.Aerospace_Defense" = c("RTX", "LMT", "BA"),
-    "ind.Construction" = c("VMC", "MLM"),
-    "mat.Chemicals" = c("LIN", "APD"),
-    "mat.Metals_Mining" = c("FCX", "NEM"),
-    "en.Energy_OilGas" = c("XOM", "CVX"),
-    "en.Utilities" = c("NEE", "DUK"),
-    "en.Renewables" = c("ENPH", "FSLR"),
-    "tel.Telecom" = c("VZ", "T"),
-    "tr.Logistics_Shipping" = c("UNP", "UPS", "FDX"),
-    "tr.Airlines" = c("DAL", "UAL"),
-    "re.REIT" = c("PLD", "AMT", "O"),
-    "media.Entertainment" = c("DIS", "NFLX"),
-    "media.Gaming" = c("RBLX", "EA"),
-    "hosp.Hotels_Travel" = c("MAR", "BKNG", "ABNB")
-  )
+  u <- tryCatch(lab_get_sp500_universe(FALSE), error = function(e) NULL)
+  if (is.null(u) || !is.data.frame(u) || nrow(u) == 0L) return(list())
+  tks <- as.character(u$ticker)
+  keys <- as.character(u$industry_key)
+  keep <- nzchar(tks) & !is.na(tks) & nzchar(keys) & !is.na(keys)
+  tks <- tks[keep]
+  keys <- keys[keep]
+  drop <- grepl("\\.TW$|\\.TWO$|-TW$|-TWO$", tks, ignore.case = TRUE) |
+    tks %in% c("SPY", "QQQ", "DIA", "IWM")
+  tks <- tks[!drop]
+  keys <- keys[!drop]
+  if (!length(tks)) return(list())
+  split(tks, keys)
 }
 
 #' 展開為一列一檔的產業×方法×候選表
@@ -755,7 +746,8 @@ lab_merge_catalog_scores <- function(catalog, scores = NULL,
   }
   sf <- lab_normalize_size_filter(size_filter)
   if (length(sf) > 0) {
-    df <- df[!is.na(df$size_band) & df$size_band %in% sf, , drop = FALSE]
+    # 未知規模（尚未評估）視為通過，評估後再依市值分級
+    df <- df[is.na(df$size_band) | df$size_band %in% sf, , drop = FALSE]
   }
   if (isTRUE(eq_only)) {
     df <- df[!is.na(df$quality_flag) & df$quality_flag %in% 1, , drop = FALSE]
@@ -859,4 +851,75 @@ lab_html_fscore_pill <- function(x) {
     '<span class="ynow-lab-pill ynow-lab-pill-muted">—</span>',
     sprintf('<span class="ynow-lab-pill ynow-lab-pill-fs">%s</span>', as.integer(round(v)))
   )
+}
+
+lab_df_to_csv_text <- function(df) {
+  if (is.null(df) || !is.data.frame(df) || nrow(df) == 0L) return("(無資料)\n")
+  tf <- tempfile(fileext = ".csv")
+  on.exit(unlink(tf), add = TRUE)
+  utils::write.csv(df, tf, row.names = FALSE, fileEncoding = "UTF-8")
+  paste(readLines(tf, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+}
+
+lab_lab_report_use_zip <- function() {
+  nzchar(Sys.which("zip"))
+}
+
+#' 本頁報告：markdown 表頭 + 摘要／排行／明細 CSV（zip；無 zip 則單一 .md）
+lab_write_lab_page_report <- function(dest, header_lines,
+                                      summary_df = NULL,
+                                      leaderboard_df = NULL,
+                                      detail_df = NULL,
+                                      as_zip = NULL) {
+  if (is.null(as_zip)) as_zip <- lab_lab_report_use_zip()
+  hdr <- as.character(header_lines %||% character(0))
+  if (isTRUE(as_zip)) {
+    td <- tempfile("ynow_lab_report_")
+    dir.create(td, recursive = TRUE)
+    on.exit(unlink(td, recursive = TRUE), add = TRUE)
+    writeLines(hdr, file.path(td, "00_header.md"), useBytes = TRUE)
+    utils::write.csv(
+      if (is.null(summary_df)) data.frame(訊息 = "無摘要") else summary_df,
+      file.path(td, "01_summary.csv"), row.names = FALSE, fileEncoding = "UTF-8"
+    )
+    utils::write.csv(
+      if (is.null(leaderboard_df)) data.frame(訊息 = "尚未評估") else leaderboard_df,
+      file.path(td, "02_leaderboard.csv"), row.names = FALSE, fileEncoding = "UTF-8"
+    )
+    utils::write.csv(
+      if (is.null(detail_df)) data.frame(訊息 = "無明細") else detail_df,
+      file.path(td, "03_detail.csv"), row.names = FALSE, fileEncoding = "UTF-8"
+    )
+    files <- list.files(td)
+    if (file.exists(dest)) unlink(dest)
+    owd <- getwd()
+    setwd(td)
+    on.exit(setwd(owd), add = TRUE)
+    zip_ok <- tryCatch({
+      utils::zip(dest, files = files, flags = "-r9Xq")
+      file.exists(dest) && isTRUE(file.info(dest)$size > 20)
+    }, error = function(e) FALSE)
+    if (isTRUE(zip_ok)) return(invisible(dest))
+  }
+  body <- c(
+    hdr,
+    "",
+    "## 摘要（候選檔數）",
+    "```csv",
+    lab_df_to_csv_text(summary_df),
+    "```",
+    "",
+    "## 績優排行榜",
+    "```csv",
+    lab_df_to_csv_text(leaderboard_df),
+    "```",
+    "",
+    "## 明細",
+    "```csv",
+    lab_df_to_csv_text(detail_df),
+    "```",
+    ""
+  )
+  writeLines(body, dest, useBytes = TRUE)
+  invisible(dest)
 }

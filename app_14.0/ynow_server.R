@@ -6277,13 +6277,65 @@ server <- function(input, output, session) {
   # ------------------------------------------
   # Lab：規模×產業×模型複選；F-Score 門檻後依年化估值漲幅排序
   # ------------------------------------------
+  lab_im_catalog_nonce <- reactiveVal(0L)
   lab_im_catalog <- reactive({
+    lab_im_catalog_nonce()
     tryCatch(lab_build_industry_method_catalog(), error = function(e) {
       showNotification(paste("產業目錄載入失敗:", e$message), type = "error")
       data.frame()
     })
   })
   lab_im_scores <- reactiveVal(NULL)
+
+  output$lab_im_universe_meta <- renderUI({
+    lab_im_catalog_nonce()
+    meta <- tryCatch(lab_sp500_universe_meta(), error = function(e) NULL)
+    n <- if (is.null(meta)) 0L else as.integer(meta$n %||% 0L)
+    fetched <- if (is.null(meta)) "—" else lab_format_fetched_at(meta$fetched_at)
+    n_un <- if (is.null(meta)) 0L else as.integer(meta$n_unmapped %||% 0L)
+    src <- if (is.null(meta) || !nzchar(as.character(meta$source %||% ""))) "" else
+      as.character(meta$source)[1]
+    tags$div(
+      class = "ynow-lab-im-universe-meta",
+      tags$b(sprintf("S&P 500 · %d 檔", n)),
+      tags$span(sprintf(" · 更新於 %s", fetched)),
+      if (n_un > 0L) tags$span(sprintf(" · 未對應產業 %d 檔", n_un)) else NULL,
+      if (nzchar(src)) tags$span(
+        class = "ynow-lab-im-muted",
+        sprintf(" · 來源 %s", src)
+      ) else NULL
+    )
+  })
+
+  observeEvent(input$lab_im_refresh_universe, {
+    fetched <- withProgress(
+      message = "更新 S&P 500 名單…",
+      value = 0.4, {
+        out <- tryCatch(lab_refresh_sp500_universe(), error = function(e) NULL)
+        incProgress(0.5)
+        out
+      }
+    )
+    if (is.data.frame(fetched) && nrow(fetched) > 0) {
+      lab_im_catalog_nonce(isolate(lab_im_catalog_nonce()) + 1L)
+      showNotification(
+        sprintf("已更新 S&P 500：%d 檔。", length(unique(fetched$ticker))),
+        type = "message", duration = 6
+      )
+    } else {
+      showNotification("更新失敗，沿用上次快取／內建快照。", type = "warning", duration = 8)
+    }
+  })
+
+  # 首屏用快取；畫完後若名單超過約 7 天才嘗試網路更新（失敗不擋）
+  session$onFlushed(function() {
+    stale <- tryCatch(lab_sp500_is_stale(), error = function(e) FALSE)
+    if (!isTRUE(stale)) return()
+    fetched <- tryCatch(lab_refresh_sp500_universe(), error = function(e) NULL)
+    if (is.data.frame(fetched) && nrow(fetched) > 0) {
+      lab_im_catalog_nonce(isolate(lab_im_catalog_nonce()) + 1L)
+    }
+  }, once = TRUE)
 
   lab_im_pool <- reactive({
     catlg <- lab_im_catalog()
@@ -6524,6 +6576,164 @@ server <- function(input, output, session) {
         fontWeight = "700"
       )
   })
+
+  lab_im_detail_export_df <- function() {
+    catlg <- tryCatch(lab_im_catalog(), error = function(e) NULL)
+    if (is.null(catlg) || !is.data.frame(catlg) || nrow(catlg) == 0) {
+      return(data.frame(訊息 = "無目錄"))
+    }
+    merged <- lab_merge_catalog_scores(
+      catlg,
+      scores = lab_im_scores(),
+      method_filter = isolate(input$lab_im_methods),
+      industry_filter = isolate(input$lab_im_industries),
+      size_filter = isolate(input$lab_im_sizes),
+      eq_only = isTRUE(isolate(input$lab_im_eq_only)),
+      gate_only = isTRUE(isolate(input$lab_im_gate_only))
+    )
+    if (nrow(merged) == 0) {
+      return(data.frame(訊息 = "目前篩選下無明細列"))
+    }
+    size_lab <- unname(LAB_SIZE_LABELS[merged$size_band])
+    size_lab[is.na(size_lab)] <- "（未評估）"
+    yahoo_nm <- if ("company_name" %in% names(merged)) merged$company_name else NA_character_
+    data.frame(
+      代碼 = merged$ticker,
+      公司全稱 = vapply(
+        seq_len(nrow(merged)),
+        function(i) lab_company_display_name(merged$ticker[[i]], yahoo_nm[[i]]),
+        character(1)
+      ),
+      年化估值漲幅 = ifelse(
+        is.na(merged$upside_cagr_pct), "（未評估）",
+        sprintf("%+.1f%%", merged$upside_cagr_pct)
+      ),
+      總潛在漲幅 = ifelse(
+        is.na(merged$upside_total_pct), "",
+        sprintf("%+.1f%%", merged$upside_total_pct)
+      ),
+      規模 = size_lab,
+      實際估值方法 = ifelse(
+        is.na(merged$method_used) | !nzchar(as.character(merged$method_used)),
+        "", toupper(as.character(merged$method_used))
+      ),
+      產業 = merged$industry_label,
+      現價 = ifelse(is.na(merged$price), "", signif(merged$price, 4)),
+      合理價 = ifelse(is.na(merged$fv), "", signif(merged$fv, 4)),
+      `F-Score` = ifelse(is.na(merged$f_score), "", as.character(as.integer(round(merged$f_score)))),
+      stringsAsFactors = FALSE,
+      check.names = FALSE
+    )
+  }
+
+  output$lab_im_download_report <- downloadHandler(
+    filename = function() {
+      ts <- format(Sys.time(), "%Y%m%d_%H%M%S")
+      if (isTRUE(lab_lab_report_use_zip())) {
+        paste0("YNow_Lab_SP500_", ts, ".zip")
+      } else {
+        paste0("YNow_Lab_SP500_", ts, ".md")
+      }
+    },
+    content = function(file) {
+      meta <- tryCatch(lab_sp500_universe_meta(), error = function(e) NULL)
+      n_uni <- if (is.null(meta)) 0L else as.integer(meta$n %||% 0L)
+      fetched <- if (is.null(meta)) "—" else lab_format_fetched_at(meta$fetched_at)
+      src <- if (is.null(meta)) "" else as.character(meta$source %||% "")[1]
+      n_un <- if (is.null(meta)) 0L else as.integer(meta$n_unmapped %||% 0L)
+      size_sel <- lab_normalize_size_filter(isolate(input$lab_im_sizes))
+      size_txt <- if (!length(size_sel)) {
+        "不過濾"
+      } else {
+        paste(unname(LAB_SIZE_LABELS[size_sel]), collapse = "、")
+      }
+      all_ind <- unname(lab_industry_picker_choices())
+      ind_sel <- lab_normalize_multi_filter(isolate(input$lab_im_industries))
+      ind_txt <- if (!length(ind_sel) || (length(all_ind) > 0 && setequal(ind_sel, all_ind))) {
+        sprintf("全部產業（%d）", length(all_ind))
+      } else {
+        labs <- vapply(ind_sel, function(k) {
+          if (identical(k, LAB_UNMAPPED_KEY)) LAB_UNMAPPED_LABEL else
+            as.character(industry_labels[k] %||% k)[1]
+        }, character(1))
+        paste(labs, collapse = "、")
+      }
+      meth_sel <- lab_normalize_multi_filter(isolate(input$lab_im_methods))
+      meth_txt <- if (!length(meth_sel)) {
+        "不過濾"
+      } else {
+        paste(unname(LAB_METHOD_LABELS[meth_sel]), collapse = "、")
+      }
+      eq_on <- isTRUE(isolate(input$lab_im_eq_only))
+      gate_on <- isTRUE(isolate(input$lab_im_gate_only))
+      max_n <- suppressWarnings(as.integer(isolate(input$lab_im_max_n) %||% 25L)[1])
+      scores <- lab_im_scores()
+      evaluated <- is.data.frame(scores) && nrow(scores) > 0
+      catlg <- tryCatch(lab_im_catalog(), error = function(e) NULL)
+      filtered <- if (is.data.frame(catlg) && nrow(catlg) > 0) {
+        lab_merge_catalog_scores(
+          catlg, scores = NULL,
+          method_filter = isolate(input$lab_im_methods),
+          industry_filter = isolate(input$lab_im_industries),
+          size_filter = character(0),
+          eq_only = FALSE, gate_only = FALSE
+        )
+      } else {
+        data.frame()
+      }
+      sm <- tryCatch(lab_method_group_summary(filtered), error = function(e) NULL)
+      if (!is.null(sm) && nrow(sm) > 0 && "method_key" %in% names(sm)) {
+        sm <- sm[, c("建議評價方法", "產業數", "候選檔數"), drop = FALSE]
+      }
+      lb <- NULL
+      if (isTRUE(evaluated)) {
+        merged_lb <- tryCatch(lab_im_merged(), error = function(e) NULL)
+        if (is.data.frame(merged_lb) && nrow(merged_lb) > 0) {
+          lb <- lab_quality_leaderboard(merged_lb, top_n = 10L, eq_only = eq_on)
+        }
+        if (is.null(lb) || !nrow(lb)) {
+          lb <- data.frame(訊息 = "尚無符合門檻的排行（或目前篩選為空）")
+        }
+      } else {
+        lb <- data.frame(訊息 = "尚未評估")
+      }
+      detail <- lab_im_detail_export_df()
+      tks <- if (is.data.frame(detail) && "代碼" %in% names(detail)) {
+        unique(as.character(detail$代碼))
+      } else {
+        character(0)
+      }
+      tks <- tks[nzchar(tks)]
+      hdr <- c(
+        "# YNow Lab 美股績優篩選 — 本頁報告",
+        "",
+        sprintf("- 匯出時間：%s", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z")),
+        sprintf("- 宇宙：S&P 500 · %d 檔 · 更新於 %s%s",
+                n_uni, fetched,
+                if (nzchar(src)) paste0(" · 來源 ", src) else ""),
+        sprintf("- 未對應產業：%d 檔", n_un),
+        sprintf("- 規模：%s", size_txt),
+        sprintf("- 產業：%s", ind_txt),
+        sprintf("- 模型：%s", meth_txt),
+        sprintf("- 盈餘品質過濾：%s", if (eq_on) "開" else "關"),
+        sprintf("- 門檻過濾：%s", if (gate_on) "開" else "關"),
+        sprintf("- 評估上限 lab_im_max_n：%s", if (is.finite(max_n)) max_n else 25L),
+        sprintf("- 評估狀態：%s", if (evaluated) sprintf("已評估 %d 檔", nrow(scores)) else "尚未評估"),
+        sprintf("- 本頁代碼數：%d", length(tks)),
+        sprintf("- 本頁代碼：%s", if (length(tks)) paste(tks, collapse = ", ") else "（無）"),
+        "",
+        "宇宙＝S&P 500（可更新），不是全美股；評估仍只算前 N 檔。"
+      )
+      lab_write_lab_page_report(
+        dest = file,
+        header_lines = hdr,
+        summary_df = sm,
+        leaderboard_df = lb,
+        detail_df = detail
+      )
+    },
+    contentType = if (isTRUE(lab_lab_report_use_zip())) "application/zip" else "text/markdown; charset=utf-8"
+  )
 
   # 沿用主頁 Ticker / Stock Code：優先用已搜尋的代碼，否則用主頁輸入框
   lab_ticker <- reactive({
