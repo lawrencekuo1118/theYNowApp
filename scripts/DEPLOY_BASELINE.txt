@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12415384
+bundleId=12415426
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=ba8bdf7
-commit=ba8bdf734aa6bf67ac72990f04ca5ac9d00f6f01
-short=ba8bdf7
-message=Default WACC β to follow Get Started (Summary β), and move Lab 盈餘品質／門檻 onto their own toolbar row.
-captured_at=2026-08-15T18:06:08Z
+aligned_git=bf13e5a
+commit=bf13e5afd1f4d6b477084fe9b1201a08a2505bd6
+short=bf13e5a
+message=Replace Lab's curated ~103 tickers with an updatable S&P 500 universe, add 下載本頁報告 beside 評估績優, and keep the three size checkboxes on one row.
+captured_at=2026-08-15T18:22:16Z
 source_branch=master
-note=Canonical live line is app_14.0. Deploy via scripts/deploy_app_14.R; Feedback needs YNOW_FEEDBACK_GITHUB_TOKEN in app_14.0/.Renviron (gitignored; redeploy bundles it — no shinyapps Vars UI). Live status=running. Bundle 12415384 superseded 12415281; WACC checkbox renamed 與Get Started 同步 (id sync_gs_beta, default checked) so CAPM β follows Get Started apply source (default Summary β) with lockstep annotation; Lab 盈餘品質／門檻 moved to their own row, still side-by-side.
+note=Canonical live line is app_14.0. Deploy via scripts/deploy_app_14.R; Feedback needs YNOW_FEEDBACK_GITHUB_TOKEN in app_14.0/.Renviron (gitignored; redeploy bundles it — no shinyapps Vars UI). Live status=running. Bundle 12415426 superseded 12415384; Lab universe is Wikipedia S&P 500 (N=503, cache app_14.0/data/sp500_universe.csv) with GICS→App industry map (0 unmapped); 下載本頁報告 (lab_im_download_report, zip of md+csv); size checkboxes one row; unknown cap included until evaluated. WACC 與Get Started 同步 (ba8bdf7) unchanged.
