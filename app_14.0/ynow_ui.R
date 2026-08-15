@@ -92,6 +92,34 @@
   )
 }
 
+#' KPI 色碼圖例：藍／黑／紅／無色碼（Dashboard：產業快覽下方、PERFORMANCE 上方）
+.kpi_band_color_legend_ui <- function() {
+  tags$div(
+    class = "ynow-ann-legend",
+    tags$div(
+      class = "ynow-ann-chip",
+      tags$span(class = "ynow-ann-swatch", style = "background:#3c8dbc;"),
+      tags$span(tags$b("藍"), " · 優於區間 (Better)")
+    ),
+    tags$div(
+      class = "ynow-ann-chip",
+      tags$span(class = "ynow-ann-swatch", style = "background:#222;"),
+      tags$span(tags$b("黑"), " · 符合區間 (In band)")
+    ),
+    tags$div(
+      class = "ynow-ann-chip",
+      tags$span(class = "ynow-ann-swatch", style = "background:#dd4b39;"),
+      tags$span(tags$b("紅"), " · 劣於區間 (Worse)")
+    ),
+    tags$div(
+      class = "ynow-ann-chip",
+      tags$span(class = "ynow-ann-swatch",
+                style = "background:#fff; border:1px solid #999;"),
+      tags$span(tags$b("無色碼"), " · 未設產業區間／N/A")
+    )
+  )
+}
+
 #' Shared CAPM / Beta settings block (canonical IDs on DCF → WACC).
 #' @param calc_id actionButton id
 #' @param result_id htmlOutput id for CAPM result text
@@ -126,17 +154,21 @@ capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
   )
 }
 
-#' Pointer box when advanced Beta controls live on Get Started (CAPM is on WACC).
+#' Pointer when advanced Beta controls live on Get Started (CAPM is on WACC).
+#' Outer shinydashboard box removed — heading + help text sit on the tab.
 .beta_moved_to_get_started_box <- function(extra = NULL) {
-  box(
-    title = tagList(icon("info-circle"), "Beta 進階預估"),
-    width = 12, status = "info", solidHeader = TRUE,
+  tagList(
+    h4(
+      style = "margin-top: 0;",
+      icon("info-circle"),
+      " Beta 進階預估"
+    ),
     helpText(
       "β 預估在",
       tags$b("Get Started"),
       "→「永續成長率 SGR 設定」下方的",
       tags$b("BETA"),
-      "小分頁（Beta Overview 選來源寫入 CAPM；Unlevered／Rolling 負責估算）。",
+      "小分頁（Beta Overview 選來源寫入 CAPM；同業去槓桿／Rolling 負責估算）。",
       "CAPM（Rf／β／Rm）在",
       tags$b("DCF-Model → WACC"),
       "；勾選「採用估算 rₑ／Ke」時由該處 CAPM 驅動。"
@@ -176,7 +208,7 @@ beta_overview_section_ui <- function() {
             HTML("手動定義 βe <b>n/a</b>")
           ),
           choiceValues = list("summary", "industry", "bottomup", "unlever_firm", "manual"),
-          selected = APP_DEFAULTS$beta_u_apply_source,
+          selected = "summary",
           inline = FALSE
         ),
         # 保留隱藏欄位，避免舊 session / server 讀取時缺 ID
@@ -201,52 +233,10 @@ beta_overview_section_ui <- function() {
   )
 }
 
-#' Unlevered βᵤ：專注去槓桿估算（本公司 β_L→βᵤ、Bottom-Up、手動設算）
+#' 同業去槓桿：Bottom-Up 同業平均（左）＋本公司 Hamada／手動 βe（右）
 beta_unlever_section_ui <- function() {
   tagList(
     fluidRow(
-      box(
-        width = 5, status = "warning", solidHeader = FALSE,
-        tags$h5(style = "margin-top:0;", "去槓桿化 βᵤ（Hamada）"),
-        tags$div(
-          style = "display:none;",
-          radioButtons(
-            "beta_bl_source", "槓桿 Beta（β_L）來源",
-            choices = c(
-              "Finance Summary（Yahoo 5Y Monthly）" = "summary",
-              "Rolling 估計（需先於 Rolling 分頁估計）" = "rolling",
-              "自動（Summary → Rolling）" = "auto"
-            ),
-            selected = APP_DEFAULTS$beta_bl_source,
-            inline = FALSE
-          ),
-          # 隱藏保留：舊版再槓桿設定已移除，僅維持 input ID 相容
-          radioButtons(
-            "beta_relever_de_mode", NULL,
-            choices = c("current" = "current"),
-            selected = "current"
-          ),
-          numericInput("beta_target_de", NULL, value = NA, min = 0, max = 10, step = 0.01)
-        ),
-        helpText(
-          "Hamada（假設債務 β≈0）：βᵤ = β_L / (1+(1−T)·D/E)。",
-          "β_L 預設 Yahoo Finance Summary「Beta (5Y Monthly)」；T 取自 WACC；D/E = Total Debt ÷ 股權市值。",
-          "可於 Beta Overview「套用至 CAPM」選第一項寫入；槓桿 β_L 本身仍不直接寫入 CAPM。"
-        ),
-        htmlOutput("beta_unlever_firm_result"),
-        tags$hr(),
-        tags$h5("手動定義 βe"),
-        numericInput(
-          "beta_u_manual",
-          NULL,
-          value = APP_DEFAULTS$beta_u_manual,
-          min = 0, max = 5, step = 0.01
-        ),
-        helpText(
-          "於 Beta Overview 選「手動定義 βe」後，此值會直接寫入 CAPM；",
-          "在此修改數值時也會自動改選手動來源並同步。"
-        )
-      ),
       box(
         width = 7, status = "warning", solidHeader = FALSE,
         tags$h5(style = "margin-top:0;", "Bottom-Up 同業平均（估值主估計）"),
@@ -282,6 +272,48 @@ beta_unlever_section_ui <- function() {
         htmlOutput("beta_bottomup_result"),
         tags$br(),
         tableOutput("beta_bottomup_peers_table")
+      ),
+      box(
+        width = 5, status = "warning", solidHeader = FALSE,
+        tags$h5(style = "margin-top:0;", "去槓桿化 βᵤ（Hamada）"),
+        tags$div(
+          style = "display:none;",
+          radioButtons(
+            "beta_bl_source", "槓桿 Beta（β_L）來源",
+            choices = c(
+              "Finance Summary（Yahoo 5Y Monthly）" = "summary",
+              "Rolling 估計（需先於 Rolling 分頁估計）" = "rolling",
+              "自動（Summary → Rolling）" = "auto"
+            ),
+            selected = APP_DEFAULTS$beta_bl_source,
+            inline = FALSE
+          ),
+          # 隱藏保留：舊版再槓桿設定已移除，僅維持 input ID 相容
+          radioButtons(
+            "beta_relever_de_mode", NULL,
+            choices = c("current" = "current"),
+            selected = "current"
+          ),
+          numericInput("beta_target_de", NULL, value = NA, min = 0, max = 10, step = 0.01)
+        ),
+        helpText(
+          "Hamada（假設債務 β≈0）：βᵤ = β_L / (1+(1−T)·D/E)。",
+          "β_L 預設 Yahoo Finance Summary「Beta (5Y Monthly)」；T 取自 WACC；D/E = Total Debt ÷ 股權市值。",
+          "可於 Beta Overview「套用至 CAPM」選「去槓桿化 βᵤ」寫入；槓桿 β_L 本身仍不直接寫入 CAPM。"
+        ),
+        htmlOutput("beta_unlever_firm_result"),
+        tags$hr(),
+        tags$h5("手動定義 βe"),
+        numericInput(
+          "beta_u_manual",
+          NULL,
+          value = APP_DEFAULTS$beta_u_manual,
+          min = 0, max = 5, step = 0.01
+        ),
+        helpText(
+          "於 Beta Overview 選「手動定義 βe」後，此值會直接寫入 CAPM；",
+          "在此修改數值時也會自動改選手動來源並同步。"
+        )
       )
     )
   )
@@ -1845,17 +1877,17 @@ ui <- dashboardPage(
             "Beta Overview",
             icon = icon("th-large"),
             helpText(
-              "內在價值路徑：只把 Bottom-Up／產業／手動 β 寫入 CAPM。",
-              "Rolling／Summary／個股股價 β 已排除，避免市場情緒污染折現率。"
+              "內在價值路徑：預設把 Summary β 寫入 CAPM；可改選產業／Bottom-Up／去槓桿化／手動。",
+              "Rolling 估計僅供對照，不寫入 CAPM。"
             ),
             beta_overview_section_ui()
           ),
           tabPanel(
-            "Unlevered βᵤ",
-            icon = icon("industry"),
+            "同業去槓桿",
+            icon = icon("users"),
             helpText(
-              "βᵤ = β_L / (1 + (1−T)·(D/E)) 代表營運資產風險。",
-              "估值請用 Bottom-Up；本公司股價 β 去槓桿結果只供對照。"
+              "左側先填同業、去槓桿後平均（Bottom-Up）。右側為本公司 Hamada 去槓桿與手動 βe。",
+              "寫入 CAPM 請到 Beta Overview「套用至 CAPM」。"
             ),
             beta_unlever_section_ui()
           ),
@@ -2047,6 +2079,7 @@ ui <- dashboardPage(
               ),
               
               uiOutput("dashboard_selected_industry"),
+              .kpi_band_color_legend_ui(),
               
               tabBox(title = "PERFORMANCE",
                      width = "auto",
@@ -2096,37 +2129,13 @@ ui <- dashboardPage(
                              "解讀上方 KPI 色碼如何對照「Get Started → Industry Standard」產業區間。",
                              "數值採年報序列（排除 TTM）的多年平均或年均 YoY，以利跨期／同業比較。"
                            ),
-                           tags$div(
-                             class = "ynow-ann-legend",
-                             tags$div(
-                               class = "ynow-ann-chip",
-                               tags$span(class = "ynow-ann-swatch", style = "background:#3c8dbc;"),
-                               tags$span(tags$b("藍"), " · 優於區間 (Better)")
-                             ),
-                             tags$div(
-                               class = "ynow-ann-chip",
-                               tags$span(class = "ynow-ann-swatch", style = "background:#222;"),
-                               tags$span(tags$b("黑"), " · 符合區間 (In band)")
-                             ),
-                             tags$div(
-                               class = "ynow-ann-chip",
-                               tags$span(class = "ynow-ann-swatch", style = "background:#dd4b39;"),
-                               tags$span(tags$b("紅"), " · 劣於區間 (Worse)")
-                             ),
-                             tags$div(
-                               class = "ynow-ann-chip",
-                               tags$span(class = "ynow-ann-swatch",
-                                         style = "background:#fff; border:1px solid #999;"),
-                               tags$span(tags$b("無色碼"), " · 未設產業區間／N/A")
-                             )
-                           ),
                            tags$p(
                              style = "margin:-4px 0 12px 0; font-size:12px; color:#777; line-height:1.45;",
                              "規則對齊 ", tags$code("get_box_color"), "：",
                              "多數指標「越高越好」；",
                              tags$b("營運費用比、財務槓桿"), " 為「越低越好」（反向著色）。",
                              "落在產業 ", tags$code("[下限, 上限]"), " 內→黑；越出有利側→藍；不利側→紅。",
-                             " 產業標準快覽見上方 PERFORMANCE 區塊外的摘要列。"
+                             " 色碼圖例與產業標準快覽見上方 PERFORMANCE 區塊外。"
                            ),
                            tags$h4("KPI 計算與產業區間", class = "ynow-ann-h"),
                            DT::dataTableOutput("annotation_kpi_guide"),
@@ -2167,7 +2176,7 @@ ui <- dashboardPage(
                                        ),
                                        helpText("勾選時跟隨中央 SGR；取消勾選後可單獨覆寫股利成長率（不必等於 FCFF 終值 g）。"),
                                        numericInput("mod_ddm-ke", "要求報酬率 (Ke) %", value = APP_DEFAULTS$ddm_ke),
-                                       helpText("股利屬股權現金流，以 Ke（CAPM）折現；DCF 的 FCFF 則以 WACC 折現。Ke 與 DCF → WACC 的 CAPM 共用；Rolling／Unlevered 在 Get Started。"),
+                                       helpText("股利屬股權現金流，以 Ke（CAPM）折現；DCF 的 FCFF 則以 WACC 折現。Ke 與 DCF → WACC 的 CAPM 共用；Rolling／同業去槓桿 在 Get Started。"),
                                        checkboxInput(
                                          "ddm_use_estimated_re",
                                          "採用估算 Ke（來自 CAPM β）",

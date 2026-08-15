@@ -2253,18 +2253,12 @@ server <- function(input, output, session) {
       }
       .sync_capm_beta_industry()
     } else {
-      # 僅當使用者在 CAPM 取消勾選、且選擇器仍為 industry 時，改回 Unlevered
+      # 僅當使用者在 CAPM 取消勾選、且選擇器仍為 industry 時，改回 Summary β
       # （若已改選 Summary／Rolling 等而連帶取消勾選，勿搶改 radio）
       src <- as.character(input$beta_u_apply_source %||% "")[1]
       if (identical(src, "industry")) {
         beta_link_from_capm(TRUE)
-        rec <- tryCatch(.beta_decision_recommend(), error = function(e) NULL)
-        sel <- if (!is.null(rec) && (rec$source %||% "") %in% c("summary", "industry", "bottomup", "unlever_firm", "manual")) {
-          rec$source
-        } else {
-          "summary"
-        }
-        updateRadioButtons(session, "beta_u_apply_source", selected = sel)
+        updateRadioButtons(session, "beta_u_apply_source", selected = "summary")
         beta_capm_driver("gs")
         capm_beta_dirty(FALSE)
         # 占位：產業結構 β（避免寫回個股情緒 β）
@@ -3079,29 +3073,14 @@ server <- function(input, output, session) {
       beta_capm_driver("gs")
     }
 
-    # 舊值／誤選 Rolling 時，強制改回可用建議
+    # 舊值／誤選 Rolling 時，改回預設 Summary β（不寫入 CAPM）
     if (identical(src, "rolling")) {
-      rec <- tryCatch(.beta_decision_recommend(), error = function(e) NULL)
-      rec_src <- if (!is.null(rec)) as.character(rec$source %||% "summary")[1] else "summary"
-      if (!rec_src %in% c("summary", "industry", "bottomup", "unlever_firm", "manual")) rec_src <- "summary"
-      if (!identical(rec_src, src)) {
-        updateRadioButtons(session, "beta_u_apply_source", selected = rec_src)
-        return(invisible(TRUE))
-      }
+      updateRadioButtons(session, "beta_u_apply_source", selected = "summary")
+      return(invisible(TRUE))
     }
 
     ok <- .apply_selected_beta_u_to_capm(silent = TRUE)
-    # 選定來源尚未就緒時，依決策樹改對齊「已就緒」建議（不打斷手動）
-    if (!isTRUE(ok) && !identical(drv, "manual")) {
-      rec <- tryCatch(.beta_decision_recommend(), error = function(e) NULL)
-      if (!is.null(rec) && isTRUE(rec$ready)) {
-        rec_src <- as.character(rec$source %||% "")[1]
-        if (rec_src %in% c("summary", "industry", "bottomup", "unlever_firm", "manual") && !identical(rec_src, src)) {
-          updateRadioButtons(session, "beta_u_apply_source", selected = rec_src)
-          return(invisible(TRUE))
-        }
-      }
-    }
+    # 選定來源尚未就緒時維持原選（預設 Summary β），不要自動跳到產業／Bottom-Up
     invisible(isTRUE(ok))
   }
 
@@ -3138,13 +3117,7 @@ server <- function(input, output, session) {
         updateCheckboxInput(session, "use_industry_beta", value = FALSE)
       }
       if (identical(src, "rolling")) {
-        rec <- tryCatch(.beta_decision_recommend(), error = function(e) NULL)
-        fix <- if (!is.null(rec) && (rec$source %||% "") %in% c("summary", "industry", "bottomup", "unlever_firm", "manual")) {
-          rec$source
-        } else {
-          "summary"
-        }
-        updateRadioButtons(session, "beta_u_apply_source", selected = fix)
+        updateRadioButtons(session, "beta_u_apply_source", selected = "summary")
         return()
       }
       beta_capm_driver("gs")
@@ -3323,7 +3296,7 @@ server <- function(input, output, session) {
         ready = FALSE,
         title = "備援：Bottom-Up（請先計算）",
         rationale = "已指定同業，但尚未算出 Bottom-Up βᵤ。",
-        next_steps = "請至 Unlevered βᵤ 分頁按「計算 Bottom-Up βᵤ」。"
+        next_steps = "請至「同業去槓桿」分頁按「計算 Bottom-Up βᵤ」。"
       ))
     }
 
