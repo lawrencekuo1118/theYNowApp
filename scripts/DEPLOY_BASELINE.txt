@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12411671
+bundleId=12413731
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=526d244
-commit=526d244aed8d0399239fa0ddfb24fbdecb7030c8
-short=526d244
-message=Apply Lab 盈餘品質 filter to the leaderboard and keep quality_only as a hidden 門檻 alias so the toolbar checkboxes, not table columns, own the gates.
-captured_at=2026-08-14T18:16:44Z
+aligned_git=7ac45da
+commit=7ac45da80421c4d2b2d84953ba3108027b42182b
+short=7ac45da
+message=Use then-year ^TNX Rf, session ERP for Rm, and that day's market-value We/Wd on historical backtest points instead of the current Session capital-market snapshot.
+captured_at=2026-08-15T07:16:42Z
 source_branch=master
-note=Canonical live line is app_14.0. Deploy via scripts/deploy_app_14.R; Feedback needs YNOW_FEEDBACK_GITHUB_TOKEN in app_14.0/.Renviron (gitignored; redeploy bundles it — no shinyapps Vars UI). Live status=running. Bundle 12411671 superseded 12411647; Lab toolbar 盈餘品質／門檻 filters (default off), those columns removed from the detail table.
+note=Canonical live line is app_14.0. Deploy via scripts/deploy_app_14.R; Feedback needs YNOW_FEEDBACK_GITHUB_TOKEN in app_14.0/.Renviron (gitignored; redeploy bundles it — no shinyapps Vars UI). Live status=running. Bundle 12413731 superseded 12411671; historical backtest points use as-of ^TNX Rf, Rm=Rf+session ERP, and that day's market-value We/Wd.
