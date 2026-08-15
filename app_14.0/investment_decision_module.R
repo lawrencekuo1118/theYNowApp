@@ -16,7 +16,7 @@ decision_ui <- function(id) {
   tagList(
     fluidRow(
       valueBoxOutput(ns("vbox_fscore"), width = 4),
-      valueBoxOutput(ns("vbox_mos"), width = 4),
+      uiOutput(ns("vbox_mos")),
       valueBoxOutput(ns("vbox_momentum"), width = 4)
     ),
     fluidRow(
@@ -183,7 +183,7 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
           return(list(class = "alert-success", icon = "rocket", title = "戴維斯雙擊區",
                       text = "估值具安全邊際、體質佳，且技術動能已確認。可分批布局，惟仍應控制部位與風險。"))
         }
-        return(list(class = "alert-info", icon = "anchor", title = "左側潛伏區塊",
+        return(list(class = "alert-info", icon = "anchor", title = "價值突出、等待趨勢",
                     text = "基本面價值突出，惟市場資金尚未顯著關注。可分批布局，待趨勢轉折後再考慮加碼。"))
       }
       list(class = "alert-secondary", icon = "balance-scale", title = "觀望中立",
@@ -196,17 +196,22 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       valueBox(paste0(score, " / 9"), "體質過濾 (F-Score)", icon = icon("gem"), color = color)
     })
 
-    output$vbox_mos <- renderValueBox({
+    output$vbox_mos <- renderUI({
       val <- tryCatch(mos_calc(), error = function(e) NA_real_)
+      if (length(val) != 1L || is.null(val) || is.na(val) || !is.finite(val)) {
+        return(NULL)
+      }
       conf <- tryCatch(confidence(), error = function(e) NULL)
       conf_lab <- if (is.list(conf) && !is.null(conf$level)) paste0("｜可信度", conf$level) else ""
-      if (length(val) != 1 || is.null(val) || is.na(val) || !is.finite(val)) {
-        valueBox("N/A", paste0("安全邊際 (vs Base)", conf_lab), icon = icon("shield-halved"), color = "black")
-      } else {
-        v_pct <- round(as.numeric(val) * 100, 1)
-        color <- if (v_pct >= 20) "green" else if (v_pct >= 0) "yellow" else "red"
-        valueBox(paste0(v_pct, "%"), paste0("安全邊際 (vs Base)", conf_lab), icon = icon("shield-halved"), color = color)
-      }
+      v_pct <- round(as.numeric(val) * 100, 1)
+      color <- if (v_pct >= 20) "green" else if (v_pct >= 0) "yellow" else "red"
+      valueBox(
+        paste0(v_pct, "%"),
+        paste0("安全邊際 (vs Base)", conf_lab),
+        icon = icon("shield-halved"),
+        color = color,
+        width = 4
+      )
     })
 
     output$vbox_momentum <- renderValueBox({
