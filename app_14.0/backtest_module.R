@@ -3,19 +3,20 @@
 # --------------------------------------------------------------
 # Dynamic session-only PIT (point-in-time) backtest engine.
 # Historical FV points: then-available fundamentals + Rolling β + as-of ^TNX Rf
-#   + session ERP for Rm + that day's market-value We/Wd. Rd/tax stay session.
-# Tip (latest) FV point: current APP tab assumptions via .overlay_session_tip_fv.
+#   + trailing realized SPY/benchmark Rm (no look-ahead) + that day's We/Wd.
+#   Rd/tax stay session. Strategy FV = mean of currently checked models.
+# Tip (latest) FV point: current APP tab assumptions + session Rm via overlay.
 # Growth carry between rebalances uses APP_DEFAULTS SGR (not live session SGR).
 # - No warehouse: every rebalance date reconstructs fair values
 #   from annual financials whose fiscal year <= calendar_year - 1.
 #   Growth / n / P/B on historical points use APP_DEFAULTS; Ke/WACC are PIT.
-# - Multi-model composite fair value: DCF + DDM + RI + P/B, then
-#   mean of available models.
+# - Strategy fair_value: mean of checked, finite DCF/DDM/RI/P/B (not a hidden primary).
 # - Model_A: normalized PIT fair-value INDEX (參數高原／內部用；不是淨值圖曲線).
-# - Trade_A (模式「純基本面價值」策略淨值): Exp_A × 日報酬；Exp_A 來自 MOS＋Great Filter.
-# - Trade_B / Model_B (模式「情緒波動價值」策略淨值): Exp_B × 日報酬；
+# - Trade_A (基本面策略淨值): Exp_A × 日報酬；Exp_A 來自 MOS＋Great Filter.
+# - Trade_B / Model_B (情緒策略淨值): Exp_B × 日報酬；
 #   Exp_B = blend(Exp_A, sentiment×max_exp)；Exp_A=0 → Exp_B=0.
-# 淨值圖只畫 Trade_A／Trade_B vs BuyHold／Benchmark；合理價看 HFV Timeline.
+# 淨值圖只畫 Trade_A／Trade_B vs BuyHold／Benchmark（財富指數，起始＝1）；
+# 合理價 vs 實際股價看折現比較圖.
 # ==========================================
 
 # ---------- small helpers ----------
@@ -320,12 +321,39 @@ valuation_signal_label <- function(fv, price) {
   }
 }
 
+#' Checked valuation models for strategy FV (mean of finite hits).
+#' Accepts `fv_models` (vector) or `fv_model` (string / vector / "composite").
+.normalize_fv_models <- function(model_params) {
+  known <- c("dcf", "ddm", "ri", "pb")
+  raw <- NULL
+  if (is.list(model_params)) {
+    if (!is.null(model_params$fv_models) && length(model_params$fv_models) > 0) {
+      raw <- model_params$fv_models
+    } else {
+      raw <- model_params$fv_model
+    }
+  } else {
+    raw <- model_params
+  }
+  x <- tolower(trimws(as.character(raw %||% character(0))))
+  x <- x[nzchar(x)]
+  x <- unlist(strsplit(x, "[,+/|]+"), use.names = FALSE)
+  x <- trimws(x)
+  x <- x[nzchar(x)]
+  if (any(x %in% c("composite", "mean", "avg", "all", "average"))) {
+    return(known)
+  }
+  hit <- unique(intersect(known, x))
+  if (length(hit) < 1) known[1] else hit
+}
+
 #' Point-in-time fair-value reconstruction for a single fundamentals row.
 #'
 #' Historical points (`use_session_assumptions = FALSE`): then-available
-#' fundamentals + Rolling β, as-of ^TNX Rf, Rm = Rf + session ERP, and
-#' market-value We/Wd from that day's price × PIT shares and PIT debt.
+#' fundamentals + Rolling β, as-of ^TNX Rf, trailing realized benchmark Rm,
+#' and market-value We/Wd from that day's price × PIT shares and PIT debt.
 #' Forward structure uses fixed APP_DEFAULTS (not live DCF/DDM/RI/P/B tabs).
+#' Strategy `fair_value` is the mean of checked models that are finite.
 #'
 #' Tip / latest point (`use_session_assumptions = TRUE`): apply current APP
 #' tab parameters (years, g, RI ROE fade, DDM, P/B, …) on latest PIT inputs.
@@ -412,25 +440,15 @@ reconstruct_fair_value_pit <- function(fund_row, price, model_params,
   )
   fv_pb  <- estimate_hist_pb(bvps, pb_mid)
 
-  fv_model <- tolower(as.character(model_params$fv_model %||% "composite")[1])
   pick_one <- function(x) if (is.finite(x) && x > 0) x else NA_real_
-  fair_value <- switch(
-    fv_model,
-    "dcf" = pick_one(fv_dcf),
-    "ddm" = pick_one(fv_ddm),
-    "ri"  = pick_one(fv_ri),
-    "pb"  = pick_one(fv_pb),
-    {
-      cand <- c(fv_dcf, fv_ddm, fv_ri, fv_pb)
-      cand <- cand[is.finite(cand) & cand > 0]
-      if (length(cand) > 0) mean(cand) else NA_real_
-    }
+  named <- c(
+    dcf = pick_one(fv_dcf), ddm = pick_one(fv_ddm),
+    ri = pick_one(fv_ri), pb = pick_one(fv_pb)
   )
-  if (!is.finite(fair_value) || fair_value <= 0) {
-    cand <- c(fv_dcf, fv_ddm, fv_ri, fv_pb)
-    cand <- cand[is.finite(cand) & cand > 0]
-    fair_value <- if (length(cand) > 0) mean(cand) else NA_real_
-  }
+  models <- .normalize_fv_models(model_params)
+  cand <- unname(named[models])
+  cand <- cand[is.finite(cand) & cand > 0]
+  fair_value <- if (length(cand) > 0) mean(cand) else NA_real_
 
   mos <- if (is.finite(fair_value) && fair_value > 0 && is.finite(price) && price > 0) {
     (fair_value - price) / fair_value
@@ -467,12 +485,47 @@ reconstruct_fair_value_pit <- function(fund_row, price, model_params,
 
   mp_tip <- model_params
   mp_tip$use_session_assumptions <- TRUE
-  # Tip-date market discount rates (Rolling β as of tip) + live APP forward tabs.
-  if ("wacc_pit" %in% names(valuation_df) && is.finite(valuation_df$wacc_pit[j])) {
-    mp_tip$wacc <- valuation_df$wacc_pit[j]
+  # Tip = 「現在」: session expected Rm with tip-date Rf / β / We/Wd.
+  # Historical rebalance rows keep trailing realized Rm_t.
+  rm_sess <- .safe_num(model_params$rm, NA_real_)
+  rf_tip <- if ("rf_pit" %in% names(valuation_df)) .safe_num(valuation_df$rf_pit[j], NA_real_) else NA_real_
+  beta_tip <- if ("rolling_beta" %in% names(valuation_df)) {
+    .safe_num(valuation_df$rolling_beta[j], NA_real_)
+  } else NA_real_
+  we_tip <- if ("we_pit" %in% names(valuation_df)) .safe_num(valuation_df$we_pit[j], NA_real_) else NA_real_
+  wd_tip <- if ("wd_pit" %in% names(valuation_df)) .safe_num(valuation_df$wd_pit[j], NA_real_) else NA_real_
+  used_session_rm <- FALSE
+  if (is.finite(rm_sess) && is.finite(rf_tip) && is.finite(beta_tip)) {
+    ke_try <- rf_tip + beta_tip * (rm_sess - rf_tip)
+    clip_ke <- FALSE
+    if (is.finite(ke_try) && ke_try <= 0) {
+      ke_try <- 0.01
+      clip_ke <- TRUE
+    }
+    if (is.finite(ke_try) && ke_try > 0) {
+      mp_tip$ke <- ke_try
+      rd <- .safe_num(model_params$rd, 0.05)
+      tax <- .safe_num(model_params$tax, 0.21)
+      if (is.finite(we_tip) && is.finite(wd_tip) && (we_tip + wd_tip) > 0) {
+        wacc_try <- we_tip * ke_try + wd_tip * rd * (1 - tax)
+        if (is.finite(wacc_try) && wacc_try <= 0) wacc_try <- 0.01
+        if (is.finite(wacc_try) && wacc_try > 0) mp_tip$wacc <- wacc_try
+      }
+      used_session_rm <- TRUE
+      if (isTRUE(clip_ke) && is.null(mp_tip$sgr)) mp_tip$sgr <- .safe_num(model_params$sgr, 0.025)
+    }
   }
-  if ("ke_pit" %in% names(valuation_df) && is.finite(valuation_df$ke_pit[j])) {
-    mp_tip$ke <- valuation_df$ke_pit[j]
+  if (!isTRUE(used_session_rm)) {
+    if ("wacc_pit" %in% names(valuation_df) && is.finite(valuation_df$wacc_pit[j])) {
+      mp_tip$wacc <- valuation_df$wacc_pit[j]
+    }
+    if ("ke_pit" %in% names(valuation_df) && is.finite(valuation_df$ke_pit[j])) {
+      mp_tip$ke <- valuation_df$ke_pit[j]
+    }
+  }
+  sgr_tip <- .safe_num(mp_tip$sgr, NA_real_)
+  if (is.finite(mp_tip$wacc) && is.finite(sgr_tip) && sgr_tip >= mp_tip$wacc) {
+    mp_tip$sgr <- max(0, mp_tip$wacc - 0.005)
   }
 
   pit <- reconstruct_fair_value_pit(fund_i, price_i, mp_tip, use_session_assumptions = TRUE)
@@ -487,10 +540,16 @@ reconstruct_fair_value_pit <- function(fund_row, price, model_params,
   valuation_df$mos[j] <- pit$mos
   valuation_df$signal[j] <- pit$signal
   valuation_df$valuation_score[j] <- .safe_num(pit$valuation_score, NA_real_)
+  if (isTRUE(used_session_rm)) {
+    if ("rm_pit" %in% names(valuation_df)) valuation_df$rm_pit[j] <- rm_sess
+    if ("ke_pit" %in% names(valuation_df)) valuation_df$ke_pit[j] <- .safe_num(mp_tip$ke, NA_real_)
+    if ("wacc_pit" %in% names(valuation_df)) valuation_df$wacc_pit[j] <- .safe_num(mp_tip$wacc, NA_real_)
+    if ("rm_window" %in% names(valuation_df)) valuation_df$rm_window[j] <- "session"
+  }
   if ("explain" %in% names(valuation_df)) {
     valuation_df$explain[j] <- paste0(
       valuation_df$explain[j] %||% "",
-      " [tip=session APP params]"
+      if (isTRUE(used_session_rm)) " [tip=session APP params + session Rm]" else " [tip=session APP params]"
     )
   }
 
@@ -499,7 +558,7 @@ reconstruct_fair_value_pit <- function(fund_row, price, model_params,
   if (!is.null(equity_df)) {
     equity_df <- .attach_fv_model_columns(
       equity_df, valuation_df, g_carry,
-      primary_model = model_params$fv_model %||% "dcf"
+      fv_models = .normalize_fv_models(model_params)
     )
   }
   list(equity_df = equity_df, valuation_df = valuation_df)
@@ -746,16 +805,82 @@ fetch_tnx_history_df <- function(period = "10y") {
   fetch_price_history_df("^TNX", period)
 }
 
+#' Trailing realized annualized total return of the benchmark, no look-ahead.
+#' Prefer ~12 months ending on/before as_of; else longest window ≥ ~6m;
+#' else ~5y; else session fallback.
+.trailing_realized_rm <- function(bench_close, dates, as_of, fallback = NA_real_) {
+  as_of <- as.Date(as_of)[1]
+  dates <- as.Date(dates)
+  px <- suppressWarnings(as.numeric(bench_close))
+  ok <- !is.na(dates) & dates <= as_of & is.finite(px) & px > 0
+  if (!any(ok)) return(list(rm = fallback, window = "session"))
+  d <- dates[ok]
+  p <- px[ok]
+  i_end <- length(d)
+  if (i_end < 2L) return(list(rm = fallback, window = "session"))
+  p_end <- p[i_end]
+  d_end <- d[i_end]
+
+  ann <- function(i_start) {
+    if (!is.finite(i_start) || i_start < 1 || i_start >= i_end) return(NA_real_)
+    p0 <- p[i_start]
+    d0 <- d[i_start]
+    if (!is.finite(p0) || p0 <= 0) return(NA_real_)
+    dt <- as.numeric(difftime(d_end, d0, units = "days"))
+    if (!is.finite(dt) || dt < 1) return(NA_real_)
+    (p_end / p0)^(365.25 / dt) - 1
+  }
+  idx_on_or_before <- function(target) {
+    hit <- which(d <= as.Date(target))
+    if (length(hit) < 1) return(NA_integer_)
+    as.integer(max(hit))
+  }
+
+  i12 <- idx_on_or_before(d_end - 365)
+  if (is.finite(i12)) {
+    dt12 <- as.numeric(difftime(d_end, d[i12], units = "days"))
+    if (is.finite(dt12) && dt12 >= 300 && dt12 <= 430) {
+      r12 <- ann(i12)
+      if (is.finite(r12)) return(list(rm = r12, window = "12m"))
+    }
+  }
+
+  dt_all <- as.numeric(difftime(d_end, d, units = "days"))
+  i6 <- which(is.finite(dt_all) & dt_all >= 180)
+  if (length(i6) > 0) {
+    i_long <- min(i6)
+    r_long <- ann(i_long)
+    if (is.finite(r_long)) {
+      yrs <- round(dt_all[i_long] / 365.25, 1)
+      return(list(rm = r_long, window = sprintf("longest≥6m (~%.1fy)", yrs)))
+    }
+  }
+
+  i5 <- idx_on_or_before(d_end - round(5 * 365.25))
+  if (is.finite(i5)) {
+    dt5 <- as.numeric(difftime(d_end, d[i5], units = "days"))
+    if (is.finite(dt5) && dt5 >= 4 * 365) {
+      r5 <- ann(i5)
+      if (is.finite(r5)) return(list(rm = r5, window = "5y"))
+    }
+  }
+
+  list(rm = fallback, window = "session")
+}
+
 #' Build point-in-time Ke/WACC from rolling beta + then-known Rf / capital structure.
 #'
 #' Rf_t = ^TNX close on/before as_of (fallback: session Rf).
-#' Rm_t = Rf_t + ERP, where ERP is the session/industry premium (Rm−Rf), not a
-#'   realized market return (CAPM needs expected premium, not trailing SPY).
+#' Rm_t = trailing realized annualized total return of the backtest benchmark
+#'   (default SPY, Yahoo auto_adjust Close) ending on/before as_of. Prefer 12m;
+#'   else longest ≥ ~6m; else 5y; else session Rm. Negative (Rm−Rf) is kept;
+#'   Ke/WACC are only floored if DCF would break (Ke≤0 or g≥WACC).
 #' We/Wd from PIT shares × that day's price and then-available Total Debt.
 #' Rd and tax stay session (no historical credit-spread / statutory-tax series).
 #' Falls back to session ke/wacc when beta cannot be estimated.
 pit_discount_params <- function(model_params, stock_close, bench_close, dates, as_of,
-                                tnx_df = NULL, fund_row = NULL, price = NA_real_) {
+                                tnx_df = NULL, fund_row = NULL, price = NA_real_,
+                                realized_rm = TRUE) {
   mp <- model_params
   beta_i <- estimate_rolling_beta(
     stock_close, bench_close, dates, as_of,
@@ -769,10 +894,18 @@ pit_discount_params <- function(model_params, stock_close, bench_close, dates, a
   rm_sess <- .safe_num(model_params$rm, NA_real_)
   rf <- .tnx_close_to_rf(.lookup_close_asof(tnx_df, as_of))
   if (!is.finite(rf)) rf <- rf_sess
-  erp <- if (is.finite(rm_sess) && is.finite(rf_sess)) rm_sess - rf_sess else NA_real_
-  if (!is.finite(erp) || erp < 0.02) erp <- 0.05
-  erp <- max(0.025, min(erp, 0.12))
-  rm <- if (is.finite(rf)) rf + erp else rm_sess
+  rm_window <- "session"
+  if (isTRUE(realized_rm)) {
+    rm_hit <- .trailing_realized_rm(bench_close, dates, as_of, fallback = rm_sess)
+    rm <- rm_hit$rm
+    rm_window <- rm_hit$window %||% "session"
+  } else {
+    rm <- rm_sess
+  }
+  if (!is.finite(rm)) {
+    rm <- rm_sess
+    rm_window <- "session"
+  }
   ke0 <- .safe_num(model_params$ke, NA_real_)
   wacc0 <- .safe_num(model_params$wacc, NA_real_)
 
@@ -786,32 +919,51 @@ pit_discount_params <- function(model_params, stock_close, bench_close, dates, a
 
   ke_i <- ke0
   wacc_i <- wacc0
+  clip_note <- ""
   if (is.finite(beta_i) && is.finite(rf) && is.finite(rm)) {
     ke_try <- rf + beta_i * (rm - rf)
-    if (is.finite(ke_try) && ke_try > 0.01) {
-      ke_i <- ke_try
+    if (is.finite(ke_try)) {
+      if (ke_try <= 0) {
+        ke_i <- 0.01
+        clip_note <- paste0(clip_note, "Ke clipped to 1% (CAPM Ke≤0). ")
+      } else {
+        ke_i <- ke_try
+      }
       rd <- .safe_num(model_params$rd, 0.05)
       tax <- .safe_num(model_params$tax, 0.21)
       if (is.finite(we) && is.finite(wd) && (we + wd) > 0) {
         wacc_try <- we * ke_i + wd * rd * (1 - tax)
-        if (is.finite(wacc_try) && wacc_try > 0.01) wacc_i <- wacc_try
-      } else if (is.finite(ke0) && ke0 > 0 && is.finite(wacc0) && wacc0 > 0) {
+        if (is.finite(wacc_try)) {
+          if (wacc_try <= 0) {
+            wacc_i <- 0.01
+            clip_note <- paste0(clip_note, "WACC clipped to 1% (WACC≤0). ")
+          } else {
+            wacc_i <- wacc_try
+          }
+        }
+      } else if (is.finite(ke0) && ke0 > 0 && is.finite(wacc0) && wacc0 > 0 && is.finite(ke_i) && ke_i > 0) {
         wacc_i <- wacc0 * (ke_i / ke0)
+        if (is.finite(wacc_i) && wacc_i <= 0) {
+          wacc_i <- 0.01
+          clip_note <- paste0(clip_note, "WACC clipped to 1% (WACC≤0). ")
+        }
       }
     }
   }
   if (!is.finite(ke_i) || ke_i <= 0) ke_i <- ke0
   if (!is.finite(wacc_i) || wacc_i <= 0) wacc_i <- wacc0
-  # Keep terminal g < WACC
+  # Keep terminal g < WACC (DCF TV denominator)
   sgr <- .safe_num(mp$sgr, 0.025)
   if (is.finite(wacc_i) && is.finite(sgr) && sgr >= wacc_i) {
     mp$sgr <- max(0, wacc_i - 0.005)
+    clip_note <- paste0(clip_note, "g clipped to WACC−0.5% (g≥WACC). ")
   }
   mp$ke <- ke_i
   mp$wacc <- wacc_i
   list(
     model_params = mp, beta = beta_i, ke = ke_i, wacc = wacc_i,
-    rf = rf, rm = rm, we = we, wd = wd
+    rf = rf, rm = rm, we = we, wd = wd,
+    rm_window = rm_window, clip_note = trimws(clip_note)
   )
 }
 
@@ -898,8 +1050,8 @@ derive_bt_params <- function(d_is, d_bs, d_cf,
   notes <- sprintf(
     paste0(
       "v12 季頻 PIT 多模型：依本公司財報推導 淨利率≈%.1f%%、營收成長≈%.1f%%、NI成長≈%.1f%%、FCF CV≈%.1f%%。",
-      " 純基本面價值：MOS≈%.1f%% → w_vg=%.2f（越大越依 MOS 分級；持股上限見「最大持股」滑桿，預設 90%%）。",
-      " 情緒波動價值：動能%s、RSI≈%.0f → Mom/RSI 相對權重 %.2f / %.2f（僅微調基準權重，範圍 0.75~1.25×）。"
+      " 基本面策略：MOS≈%.1f%% → w_vg=%.2f（越大越依 MOS 分級；持股上限見「最大持股」滑桿，預設 90%%）。",
+      " 情緒策略：動能%s、RSI≈%.0f → Mom/RSI 相對權重 %.2f / %.2f（僅微調基準權重，範圍 0.75~1.25×）。"
     ),
     npm_use, rev_use, eps_use, cv_use,
     mos_n * 100, w_vg,
@@ -1136,7 +1288,8 @@ evaluate_holding_filter <- function(metrics, thresholds) {
   daily
 }
 
-.attach_fv_model_columns <- function(equity_df, valuation_df, g_carry, primary_model = "dcf") {
+.attach_fv_model_columns <- function(equity_df, valuation_df, g_carry,
+                                     primary_model = "dcf", fv_models = NULL) {
   g_carry <- .safe_num(g_carry, 0.025)
   if (!is.finite(g_carry)) g_carry <- 0.025
   g_carry <- max(min(g_carry, 0.12), -0.05)
@@ -1154,17 +1307,24 @@ evaluate_holding_filter <- function(metrics, thresholds) {
   equity_df$FV_RI  <- build_one("fv_ri")
   equity_df$FV_PB  <- build_one("fv_pb")
 
-  primary_model <- tolower(as.character(primary_model %||% "dcf")[1])
-  primary_col <- switch(
-    primary_model,
-    "dcf" = "FV_DCF",
-    "ddm" = "FV_DDM",
-    "ri"  = "FV_RI",
-    "pb"  = "FV_PB",
-    "FV_DCF"
-  )
-  if (primary_col %in% names(equity_df)) {
-    equity_df$FairValue <- equity_df[[primary_col]]
+  # Strategy series = mean of checked models stored as fair_value at rebalances.
+  if (!is.null(valuation_df) && "fair_value" %in% names(valuation_df)) {
+    equity_df$FairValue <- build_one("fair_value")
+  } else {
+    models <- .normalize_fv_models(list(
+      fv_models = fv_models, fv_model = primary_model %||% fv_models
+    ))
+    colmap <- c(dcf = "FV_DCF", ddm = "FV_DDM", ri = "FV_RI", pb = "FV_PB")
+    cols <- unname(colmap[models])
+    cols <- cols[cols %in% names(equity_df)]
+    if (length(cols) == 1L) {
+      equity_df$FairValue <- equity_df[[cols]]
+    } else if (length(cols) > 1L) {
+      mat <- as.matrix(equity_df[, cols, drop = FALSE])
+      mat[!is.finite(mat) | mat <= 0] <- NA_real_
+      equity_df$FairValue <- as.numeric(rowMeans(mat, na.rm = TRUE))
+      equity_df$FairValue[!is.finite(equity_df$FairValue)] <- NA_real_
+    }
   }
   first_fv <- which(is.finite(equity_df$FairValue) & equity_df$FairValue > 0)[1]
   if (is.finite(first_fv)) {
@@ -1216,7 +1376,7 @@ evaluate_holding_filter <- function(metrics, thresholds) {
   equity_bm <- numeric(n); equity_bm[1] <- 1
   exp_a_daily <- numeric(n)
   exp_b_daily <- numeric(n)
-  # Mode A chart: selected-model PIT fair value, grown by hist-default SGR
+  # Strategy NAV: mean of checked models' PIT fair value, grown by hist-default SGR
   # between rebalances (session SGR only affects tip via overlay).
   fv_daily <- rep(NA_real_, n)
   fv_anchor <- NA_real_
@@ -1272,7 +1432,7 @@ evaluate_holding_filter <- function(metrics, thresholds) {
         sent_mult <- 1
         gf <- list(pass = NA, path = "fv_only")
         explain_txt <- sprintf(
-          "%s | 公允 %.2f (dcf %.2f / ddm %.2f / ri %.2f / pb %.2f) vs 市價 %.2f, MOS %.1f%%, score %.0f/100. Rollingβ=%.2f Rf=%.1f%% Rm=%.1f%% Ke=%.1f%% WACC=%.1f%% We=%.0f%%.",
+          "%s | 策略公允(勾選平均) %.2f (dcf %.2f / ddm %.2f / ri %.2f / pb %.2f) vs 市價 %.2f, MOS %.1f%%, score %.0f/100. Rollingβ=%.2f Rf=%.1f%% Rm=%.1f%%(%s) Ke=%.1f%% WACC=%.1f%% We=%.0f%%.%s",
           signal_i,
           .safe_num(pit$fair_value, NA_real_),
           .safe_num(pit$fv_dcf, NA_real_), .safe_num(pit$fv_ddm, NA_real_),
@@ -1283,9 +1443,14 @@ evaluate_holding_filter <- function(metrics, thresholds) {
           .safe_num(disc$beta, NA_real_),
           100 * .safe_num(disc$rf, NA_real_),
           100 * .safe_num(disc$rm, NA_real_),
+          as.character(disc$rm_window %||% "session")[1],
           100 * .safe_num(disc$ke, NA_real_),
           100 * .safe_num(disc$wacc, NA_real_),
-          100 * .safe_num(disc$we, NA_real_)
+          100 * .safe_num(disc$we, NA_real_),
+          {
+            clip_s <- as.character(disc$clip_note %||% "")[1]
+            if (nzchar(clip_s)) paste0(" ", clip_s) else ""
+          }
         )
       } else {
         gf <- .great_filter_pass(fund_i, thr_npm, thr_rev, thr_eps, thr_cv, fund_i$cv_fcf)
@@ -1305,7 +1470,7 @@ evaluate_holding_filter <- function(metrics, thresholds) {
         sent_mult <- if (pos_a > 1e-9) pos_b / pos_a else 1
 
         explain_txt <- sprintf(
-          "%s | 公允 %.2f (dcf %.2f / ddm %.2f / ri %.2f / pb %.2f) vs 市價 %.2f, MOS %.1f%%, score %.0f/100. Rollingβ=%.2f Rf=%.1f%% Rm=%.1f%% Ke=%.1f%% WACC=%.1f%% We=%.0f%%. 過濾:%s(%s). Exp_A=%.2f, Exp_B=%.2f (sent=%.2f blend=%.2f).",
+          "%s | 策略公允(勾選平均) %.2f (dcf %.2f / ddm %.2f / ri %.2f / pb %.2f) vs 市價 %.2f, MOS %.1f%%, score %.0f/100. Rollingβ=%.2f Rf=%.1f%% Rm=%.1f%%(%s) Ke=%.1f%% WACC=%.1f%% We=%.0f%%.%s 過濾:%s(%s). Exp_A=%.2f, Exp_B=%.2f (sent=%.2f blend=%.2f).",
           signal_i,
           .safe_num(pit$fair_value, NA_real_),
           .safe_num(pit$fv_dcf, NA_real_), .safe_num(pit$fv_ddm, NA_real_),
@@ -1316,9 +1481,14 @@ evaluate_holding_filter <- function(metrics, thresholds) {
           .safe_num(disc$beta, NA_real_),
           100 * .safe_num(disc$rf, NA_real_),
           100 * .safe_num(disc$rm, NA_real_),
+          as.character(disc$rm_window %||% "session")[1],
           100 * .safe_num(disc$ke, NA_real_),
           100 * .safe_num(disc$wacc, NA_real_),
           100 * .safe_num(disc$we, NA_real_),
+          {
+            clip_s <- as.character(disc$clip_note %||% "")[1]
+            if (nzchar(clip_s)) paste0(" ", clip_s) else ""
+          },
           if (isTRUE(gf$pass)) "PASS" else "FAIL",
           gf$path, pos_a, pos_b, mb$sent, mb$blend
         )
@@ -1343,6 +1513,7 @@ evaluate_holding_filter <- function(metrics, thresholds) {
         wacc_pit = .safe_num(disc$wacc, NA_real_),
         rf_pit = .safe_num(disc$rf, NA_real_),
         rm_pit = .safe_num(disc$rm, NA_real_),
+        rm_window = as.character(disc$rm_window %||% "session")[1],
         we_pit = .safe_num(disc$we, NA_real_),
         wd_pit = .safe_num(disc$wd, NA_real_),
         exp_a = pos_a,
@@ -1364,7 +1535,8 @@ evaluate_holding_filter <- function(metrics, thresholds) {
         mos = mos_i, signal = signal_i,
         valuation_score = pit$valuation_score,
         rolling_beta = disc$beta, ke_pit = disc$ke, wacc_pit = disc$wacc,
-        rf_pit = disc$rf, rm_pit = disc$rm, we_pit = disc$we, wd_pit = disc$wd,
+        rf_pit = disc$rf, rm_pit = disc$rm, rm_window = disc$rm_window,
+        we_pit = disc$we, wd_pit = disc$wd,
         filter_pass = isTRUE(gf$pass),
         filter_path = gf$path,
         exp_a = pos_a, exp_b = pos_b,
@@ -1409,7 +1581,8 @@ evaluate_holding_filter <- function(metrics, thresholds) {
       mos = numeric(), signal = character(),
       valuation_score = numeric(),
       rolling_beta = numeric(), ke_pit = numeric(), wacc_pit = numeric(),
-      rf_pit = numeric(), rm_pit = numeric(), we_pit = numeric(), wd_pit = numeric(),
+      rf_pit = numeric(), rm_pit = numeric(), rm_window = character(),
+      we_pit = numeric(), wd_pit = numeric(),
       exp_a = numeric(), exp_b = numeric(),
       filter_pass = logical(), filter_path = character(),
       pos_fundamental = numeric(), explain = character(),
@@ -1426,8 +1599,8 @@ evaluate_holding_filter <- function(metrics, thresholds) {
     # Model_A: FV index for plateau (NOT equity-chart Mode A).
     Model_A = model_a,
     # Two backtest modes → two strategy NAVs on the equity chart.
-    Trade_A = equity_a,   # 純基本面價值
-    Trade_B = equity_b,   # 情緒波動價值
+    Trade_A = equity_a,   # 基本面策略淨值
+    Trade_B = equity_b,   # 情緒策略淨值
     Model_B = equity_b,   # back-compat alias of Trade_B
     BuyHold = equity_bh,
     Benchmark = equity_bm,
@@ -1437,7 +1610,7 @@ evaluate_holding_filter <- function(metrics, thresholds) {
   )
   equity_df <- .attach_fv_model_columns(
     equity_df, valuation_df, g_carry,
-    primary_model = model_params$fv_model %||% "dcf"
+    fv_models = .normalize_fv_models(model_params)
   )
 
   # Align comparison window at first quarterly decision so strategies
@@ -1681,8 +1854,10 @@ compute_fair_value_timeline <- function(ticker,
   if (is.null(model_params$n_years) || !is.finite(.safe_num(model_params$n_years, NA_real_))) {
     model_params$n_years <- 5
   }
-  if (is.null(model_params$fv_model) || !nzchar(as.character(model_params$fv_model)[1])) {
+  if ((is.null(model_params$fv_model) || !nzchar(as.character(model_params$fv_model)[1])) &&
+      (is.null(model_params$fv_models) || length(model_params$fv_models) < 1)) {
     model_params$fv_model <- "dcf"
+    model_params$fv_models <- "dcf"
   }
   if (is.null(model_params$beta_lookback_months) ||
       !is.finite(.safe_num(model_params$beta_lookback_months, NA_real_))) {
@@ -1757,8 +1932,10 @@ run_company_backtest <- function(ticker,
   if (is.null(model_params$n_years) || !is.finite(.safe_num(model_params$n_years, NA_real_))) {
     model_params$n_years <- 5
   }
-  if (is.null(model_params$fv_model) || !nzchar(as.character(model_params$fv_model)[1])) {
+  if ((is.null(model_params$fv_model) || !nzchar(as.character(model_params$fv_model)[1])) &&
+      (is.null(model_params$fv_models) || length(model_params$fv_models) < 1)) {
     model_params$fv_model <- "dcf"
+    model_params$fv_models <- "dcf"
   }
   if (is.null(model_params$beta_lookback_months) ||
       !is.finite(.safe_num(model_params$beta_lookback_months, NA_real_))) {
@@ -1824,8 +2001,8 @@ build_bt_methodology_doc <- function(meta = NULL) {
     "\n",
     "版本：app_12.0｜產出日期：", format(Sys.Date(), "%Y-%m-%d"), "\n",
     "\n",
-    "本文件說明 Backtest Zone「純基本面價值／情緒波動價值」回測所使用的資料來源、",
-    "時點對齊規則、曝險與淨值計算流程。結果僅存於當次 Session，不寫入資料庫。\n",
+    "本文件說明 Backtest Zone 折現比較圖（合理價 vs 實際股價）與策略淨值圖（累積財富，起始＝1）",
+    "所用的資料來源、時點對齊規則、曝險與淨值計算流程。結果僅存於當次 Session，不寫入資料庫。\n",
     "\n",
     "---\n",
     "\n",
@@ -1837,7 +2014,7 @@ build_bt_methodology_doc <- function(meta = NULL) {
     "| 基準指數 | SPY（同上） | 無法取得時以標的自身代替並註記 |\n",
     "| 年度財報 | 本次 Session 已搜尋載入之 IS／BS／CF | 來自 yfinance 財報表；欄位標準化後使用 |\n",
     "| 無風險利率 Rf | 再平衡日 `^TNX` 當時收盤 | 歷史點用 as-of 殖利率；抓不到才退回 Session／約 4% |\n",
-    "| 股權預期報酬 Rm | Rf_t ＋ Session 風險溢酬 (Rm−Rf) | 溢酬用產業／CAPM 假設（預期值），不拿 SPY 已實現報酬 |\n",
+    "| 股權市場報酬 Rm | 再平衡日止、基準（預設 SPY）已實現年化總報酬 | 優先近 12 個月；不足則最長 ≥約 6 個月；再不足用約 5 年；仍缺才退 Session Rm。無前瞻。負溢酬仍採用 |\n",
     "| 資本結構 We／Wd | 再平衡日 股數×收盤 與當時 Total Debt | 市值權重；Rd／稅率仍用 Session |\n",
     "| 評價假設 | Get Started／Dashboard 目前 Session 參數 | SGR、年數、P/B 等僅用於折線末端；歷史點成長用 APP_DEFAULTS |\n",
     "\n",
@@ -1850,22 +2027,26 @@ build_bt_methodology_doc <- function(meta = NULL) {
     "2. 財報對齊規則：使用財政年度 `fund_year ≤ 回測日曆年 − 1` 的已公告年度資料",
     "（近似「只用當時已可知資訊」）。\n",
     "3. 折現率：各再平衡日以標的 vs SPY 約 **60 個月月報酬** 估計 Rolling β；",
-    "Rf 取該日（或之前最近）`^TNX`；Rm = Rf + Session 股權風險溢酬；",
-    "We／Wd 用當時股價×股數與當時負債。Rd／稅率仍為 Session。\n",
-    "4. 合理價模型：依執行面板「回測用評價模型」選擇 DCF／DDM／RI／P/B／綜合均值；",
+    "Rf 取該日（或之前最近）`^TNX`；Rm 為截至該日的基準已實現年化總報酬（優先 12 個月，無前瞻）；",
+    "We／Wd 用當時股價×股數與當時負債。Rd／稅率仍為 Session。",
+    "若 CAPM 得到 Ke≤0 或 g≥WACC，僅為 DCF 可算而將 Ke／WACC 下限設為 1%，或把 g 壓到 WACC−0.5%；負的 (Rm−Rf) 仍照資料採用。\n",
+    "4. 合理價：各模型（DCF／DDM／RI／P/B）照常計算；**策略公允／MOS／Exp_A 用目前勾選且有限值模型的算術平均**（只勾一個＝該模型）。",
     "歷史點成長／預測年數用 APP_DEFAULTS；僅折線末端套用目前分頁。\n",
     "\n",
-    "## 3. 序列定義（淨值圖）\n",
+    "## 3. 序列定義\n",
     "\n",
-    "- **該股買進持有 (Buy&Hold)**：每日 `E_t = E_{t-1} × (1 + r_t)`，全程 100% 持股；現金部位為 0。\n",
-    "- **純基本面價值 (Trade_A)**：策略淨值 `E_t = E_{t-1} × (1 + Exp_A × r_t)`。",
-    "`Exp_A` 由持倉回測條件 + MOS 滯後曝險決定（上限見 `bt_max_exp`，預設 90%；可調至 100%）。這是淨值圖上的「模式 A」。\n",
-    "- **情緒波動價值 (Trade_B)**：策略淨值，在 `Exp_A` 上**混入**動能／RSI 情緒目標：",
-    "`Exp_B = (1−blend)×Exp_A + blend×(sentiment×max_exp)`（情緒熱→偏滿倉、冷→偏保守）；",
-    "`Exp_A=0` 時仍空手。與橘線應可分開。折現圖上的「情緒波動價值」另指**實際股價**。\n",
-    "- **大盤基準**：SPY 全日報酬累積指數。\n",
-    "- **合理價指數 (Model_A)**：僅供參數高原等診斷；**不畫在淨值圖**。",
-    "價格 vs 合理價請看 Historical Fair Value Timeline。\n",
+    "折現比較圖（每股，合理價 vs 實際股價）：\n",
+    "- **實際股價**：Yahoo 調整後收盤。\n",
+    "- **DCF／DDM／RI／P/B**：各模型 PIT 合理價（可疊圖）。\n",
+    "- **大盤**：基準價格（右軸）。\n",
+    "\n",
+    "策略淨值圖（財富指數，起始＝1；不是每股價格）：\n",
+    "- **該股買進持有**：每日 `E_t = E_{t-1} × (1 + r_t)`，全程 100%；現金報酬＝0。\n",
+    "- **基本面策略淨值 (Trade_A)**：`E_t = E_{t-1} × (1 + Exp_A × r_t)`。",
+    "`Exp_A` 由持倉條件 + MOS 滯後曝險決定（上限 `bt_max_exp`）。\n",
+    "- **情緒策略淨值 (Trade_B)**：在 Exp_A 上混入動能／RSI：",
+    "`Exp_B = (1−blend)×Exp_A + blend×(sentiment×max_exp)`；`Exp_A=0` 時仍空手。\n",
+    "- **大盤基準**：SPY 全日報酬累積指數（同樣從 1 起算）。\n",
     "\n",
     "比較視窗自**首次有效季再平衡日**對齊起點（避免策略暖身期空手讓 Buy&Hold 佔先）。\n",
     "\n",
@@ -1874,7 +2055,7 @@ build_bt_methodology_doc <- function(meta = NULL) {
     "```\n",
     "每日收盤報酬 r_t = Close_t / Close_{t-1} - 1\n",
     "若為季再平衡日：\n",
-    "  1) PIT 重建合理價 → MOS = (FV - Price) / Price\n",
+    "  1) PIT 重建各模型合理價 → 策略 FV＝勾選且有限值者之平均 → MOS = (FV - Price) / FV\n",
     "  2) 持倉回測條件（淨利率／營收成長／EPS成長／FCF CV 門檻）\n",
     "     → 未通過則 Exp_A = Exp_B = 0\n",
     "  3) 通過則 Exp_A = MOS 滯後映射（與 w_vg 混合；MOS≥30%→bt_max_exp；\n",
@@ -1883,25 +2064,26 @@ build_bt_methodology_doc <- function(meta = NULL) {
     "非再平衡日：沿用上一季 Exp_A／Exp_B\n",
     "```\n",
     "\n",
-    "**刻意設計（非錯誤）：** 現金部位報酬視為 0；未建模交易成本／稅負／滑價。",
-    "牛市中 Buy&Hold 常因「滿倉」勝過減碼策略，屬風控取捨。\n",
+    "**刻意設計（非錯誤）：** 現金部位報酬視為 0；未建模交易成本／稅負／滑價。\n",
+    "\n",
     "\n",
     "## 5. 驗證指標（回測後）\n",
     "\n",
     "- **Alpha／Sharpe／MDD／Excess vs BH／Jensen α**：以 Trade_A、Trade_B、BuyHold、Benchmark 計算。\n",
     "- **MOS／FV 前瞻報酬**：依再平衡列分組，對齊日曆 1Y／3Y／5Y 前瞻報酬（策略訊號是否有效的核心驗證）。\n",
     "- **參數敏感度**：請改看 DCF Sensitivity（WACC×g 矩陣）；回測不再另跑參數高原（與 Sensitivity 重疊且耗時）。\n",
-    "- **為何輸給 Buy&Hold**：拆解 Cash Drag／Early Exit／高估減碼／情緒減碼等。\n",
+    "- **相對 Buy&Hold**：僅在 B&H **上漲日** 把 `(1−Exp_A)×r` 加總，拆成現金拖累／提前出場／高估減碼；",
+    "這是加總近似，**不等於**複利終值落差。殘差＝終值落差 − 該加總。結論須對應該次回測數字，不作「牛市必輸」套話。\n",
     "\n",
     "## 6. 本次 Session 參數摘要\n",
     "\n",
     "- 標的：", g("ticker"), "\n",
     "- 基準：", g("bench", "SPY"), "\n",
     "- 模擬年數：", g("sim_years", "5"), "\n",
-    "- 回測用評價模型：", g("fv_model"), "\n",
+    "- 回測用評價模型（策略＝勾選平均）：", g("fv_model"), "\n",
     "- 持倉回測條件門檻（淨利率／營收成長／EPS成長／FCF CV %）：",
     g("filters"), "\n",
-    "- 純基本面 Fit：最大持股／通過後最低持股：", g("fit_exp", "0.90 / 0.00"), "\n",
+    "- 基本面策略 Fit：最大持股／通過後最低持股：", g("fit_exp", "0.90 / 0.00"), "\n",
     "- 權重 w_vg／w_mom／w_rsi：", g("weights"), "\n",
     "- Session SGR／n_years：", g("sgr_n"), "\n",
     "- 回測日數（對齊後）：", g("n_days"), "\n",

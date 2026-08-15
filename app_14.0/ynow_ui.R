@@ -1532,7 +1532,7 @@ ui <- dashboardPage(
           color: #333;
         }
 
-        /* 僅美化：情緒波動價值（寬螢幕四參數一列；按鈕獨立列） */
+        /* 僅美化：情緒策略參數（寬螢幕四參數一列；按鈕獨立列） */
         .ynow-bt-mode-b .ynow-bt-mode-b-grid > [class*='col-'] {
           margin-bottom: 8px;
         }
@@ -2425,16 +2425,16 @@ ui <- dashboardPage(
               withMathJax(),
               h2("量化回測實驗室 (Backtest Zone)"),
               .bt_section_intro(
-                "先看折現比較圖（基本面價值 vs 實際股價＝情緒波動價值 vs 大盤），再看策略淨值（倉位規則賺不賺錢）。歷史點 Ke／WACC 用當年 ^TNX Rf、當日市值 We／Wd 與 Rolling β。歷史股價序列維持 Yahoo 報價幣別（不做歷史 FX 換算）；上方 header 的 USD⇄TWD 主要套用估值／財報金額。"
+                "先看折現比較圖（合理價 vs 實際股價 vs 大盤），再看策略淨值（倉位×日報酬的累積財富，起始＝1）。歷史點 Ke／WACC 用當年 ^TNX Rf、截至再平衡日的基準已實現 Rm、當日市值 We／Wd 與 Rolling β。歷史股價序列維持 Yahoo 報價幣別（不做歷史 FX 換算）；上方 header 的 USD⇄TWD 主要套用估值／財報金額。"
               ),
 
-              # 1) 折現比較圖置頂：基本面價值 vs 情緒波動價值(實際股價) vs 大盤
+              # 1) 折現比較圖置頂：合理價 vs 實際股價 vs 大盤
               fluidRow(
                 box(
-                  title = tagList(icon("balance-scale"), "折現價值比較"),
+                  title = tagList(icon("balance-scale"), "折現比較（合理價 vs 實際股價）"),
                   width = 12, status = "primary", solidHeader = TRUE,
                   .bt_section_intro(
-                    "歷史各點：僅用當時可得財報＋當時 ^TNX Rf＋Rolling β，以及當日市值資本結構，設算「基本面價值」（成長／n 不套用目前分頁參數）。僅折線末端最新點掛勾目前 APP 分頁設定（DCF／DDM／RI／P/B）；「情緒波動價值」＝該股歷史實際股價；並疊加大盤（右軸）。搜尋後即預覽股價／大盤；勾選右下角評價模型即計算並顯示基本面價值（預設不勾選）。"
+                    "歷史各點：僅用當時可得財報＋當時 ^TNX Rf＋截至該日的基準（SPY）已實現年化總報酬＋Rolling β，以及當日市值資本結構，設算各模型合理價（成長／n 不套用目前分頁參數）。僅折線末端最新點掛勾目前 APP 分頁與 Session Rm。實際股價＝該股歷史收盤；並疊加大盤（右軸）。搜尋後即預覽股價／大盤；勾選右下角評價模型即計算合理價（預設不勾選）。策略倉位／MOS 用勾選模型的平均，不是隱藏的主模型。"
                   ),
                   tags$div(
                     class = "ynow-bt-hfv-wrap",
@@ -2444,7 +2444,7 @@ ui <- dashboardPage(
                       class = "ynow-bt-hfv-controls",
                       checkboxGroupInput(
                         "bt_fv_models",
-                        "回測用評價模型（可複選疊圖）",
+                        "回測用評價模型（可複選疊圖；策略 MOS／倉位＝勾選平均）",
                         inline = FALSE,
                         choices = c(
                           "DCF" = "dcf",
@@ -2472,23 +2472,23 @@ ui <- dashboardPage(
               # 3) 淨值圖 + 執行面板
               fluidRow(
                 box(
-                  title = tagList(icon("chart-area"), "兩模式策略淨值比較"),
+                  title = tagList(icon("chart-area"), "策略淨值（累積財富，起始＝1）"),
                   width = 8, status = "info", solidHeader = TRUE,
                   tags$div(
                     style = "margin: 0 0 10px 0; padding: 10px 12px; background: #f4f8fb; border-left: 4px solid #3c8dbc; font-size: 12px; color: #444; line-height: 1.55;",
-                    tags$b("關聯與差異："),
-                    "兩者共用「持倉回測條件」閘門，但倉位路徑不同——",
-                    tags$b("純基本面價值"), " = MOS／Value Gap 映射的 Exp_A；",
-                    tags$b("情緒波動價值"), " = Exp_A 與「動能／RSI 情緒目標」加權混合（情緒熱→偏滿倉，情緒冷→偏保守），",
-                    "故淨值折線應可分開，而非重疊。上方折現圖的「情緒波動價值」則指實際股價，勿與本圖策略淨值混淆。"
+                    tags$b("這是財富指數，不是每股價格。"),
+                    "兩者共用持倉條件閘門，倉位路徑不同——",
+                    tags$b("基本面策略淨值"), "＝Exp_A×日報酬累積；",
+                    tags$b("情緒策略淨值"), "＝Exp_B×日報酬累積（Exp_A 混入動能／RSI）。",
+                    "折現圖上的實際股價與本圖無對應關係。"
                   ),
                   plotlyOutput("bt_equity_plot", height = "400px") %>% withSpinner(),
                   tags$ul(
                     style = "margin: 10px 0 0 0; padding-left: 18px; font-size: 12px; color: #666; line-height: 1.55;",
-                    tags$li(tags$b("純基本面價值"), "（橘線）＝模式 A：持倉條件＋MOS 倉位 × 日報酬。"),
-                    tags$li(tags$b("情緒波動價值"), "（藍線）＝模式 B：在 Exp_A 上混入動能／RSI 情緒目標；參數見「情緒波動價值」標籤。"),
-                    tags$li(tags$b("該股買進持有"), "（綠）全程 100%；", tags$b("大盤"), "（灰虛）SPY。"),
-                    tags$li("股價／合理價美元比較見上方折現圖，勿與淨值混比。")
+                    tags$li(tags$b("基本面策略淨值"), "（橘線）＝持倉條件＋MOS 倉位 × 日報酬，從 1 起算。"),
+                    tags$li(tags$b("情緒策略淨值"), "（藍線）＝在 Exp_A 上混入動能／RSI；參數見「情緒策略」標籤。"),
+                    tags$li(tags$b("該股買進持有"), "（綠）全程 100% 的財富指數；", tags$b("大盤"), "（灰虛）SPY 財富指數。"),
+                    tags$li("每股合理價 vs 實際股價見上方折現圖，勿與本圖混比。")
                   )
                 ),
                 box(
@@ -2518,7 +2518,7 @@ ui <- dashboardPage(
                   ),
                   tags$div(
                     class = "ynow-bt-run-note",
-                    "季頻再平衡 · 當年 Rf／市值結構 · Rolling β 折現 · 依所選評價模型 PIT 重建。"
+                    "季頻再平衡 · 當年 Rf／已實現 Rm／市值結構 · Rolling β · 勾選模型平均 PIT。"
                   ),
                   uiOutput("bt_run_status")
                 )
@@ -2535,7 +2535,7 @@ ui <- dashboardPage(
                     width = 12,
                     tabPanel(
                       title = tagList(icon("filter"), "持倉回測條件"),
-                      .bt_section_intro("季頻再平衡日四項皆過才允許持倉；否則純基本面價值／情緒波動價值皆空手。"),
+                      .bt_section_intro("季頻再平衡日四項皆過才允許持倉；否則基本面策略／情緒策略皆空手。"),
                       fluidRow(
                         column(3, tipify(numericInput("bt_net_margin", "淨利率門檻 (%)", 5),
                                          "自動模式取該公司歷史淨利率約一半。", placement = "top")),
@@ -2548,9 +2548,9 @@ ui <- dashboardPage(
                       )
                     ),
                     tabPanel(
-                      title = tagList(icon("balance-scale"), "純基本面價值"),
+                      title = tagList(icon("balance-scale"), "基本面策略"),
                       .bt_section_intro(
-                        "模式 A：Exp_A → 淨值圖橘線。依 MOS 分級決定基本面倉位；上方折現圖的「基本面價值」驅動 MOS。"
+                        "模式 A：Exp_A → 淨值圖橘線。依 MOS 分級決定倉位；MOS 來自折現圖勾選模型的平均合理價。"
                       ),
                       fluidRow(
                         column(
@@ -2564,17 +2564,17 @@ ui <- dashboardPage(
                             style = "margin-top: 8px; padding: 12px; background: #f4f8fb; border: 1px solid #d6e4f0; border-radius: 5px; font-size: 12px; color: #3c5a73; line-height: 1.55;",
                             tags$b("MOS 滯後曝險（基準圖）"), tags$br(),
                             "MOS≥30%→接近最大持股；≥10%→約 72%×上限；≥0%→約 44%×上限；≥−10%→約 17%×上限；否則空手。",
-                            "（最大／最低持股與「貼近買進持有」在「情緒波動價值」標籤。）"
+                            "（最大／最低持股與「貼近買進持有」在「情緒策略」標籤。）"
                           )
                         )
                       )
                     ),
                     tabPanel(
-                      title = tagList(icon("bolt"), "情緒波動價值"),
+                      title = tagList(icon("bolt"), "情緒策略"),
                       tags$div(
                         class = "ynow-bt-mode-b",
                         .bt_section_intro(
-                          "模式 B：在 Exp_A 上混入動能／RSI「情緒目標」（熱→偏滿倉、冷→偏保守），使藍線與橘線可分開。上方折現圖的「情緒波動價值」＝實際股價，語意不同。"
+                          "模式 B：在 Exp_A 上混入動能／RSI（熱→偏滿倉、冷→偏保守），藍線為情緒策略淨值（從 1 起算）。與折現圖的實際股價無關。"
                         ),
                         # 寬螢幕四參數一列：動能 / RSI / 最大持股 / 最低持股
                         tags$div(
@@ -2638,7 +2638,7 @@ ui <- dashboardPage(
                   plotlyOutput("bt_exposure_plot", height = "260px") %>% withSpinner()
                 ),
                 box(
-                  title = tagList(icon("search-dollar"), "為何輸給 Buy & Hold？"),
+                  title = tagList(icon("search-dollar"), "相對 Buy & Hold"),
                   width = 6, status = "warning", solidHeader = TRUE, collapsible = TRUE,
                   uiOutput("bt_bh_gap")
                 )

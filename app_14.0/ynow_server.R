@@ -787,7 +787,7 @@ server <- function(input, output, session) {
       c("Backtest", "Max Exposure (bt_max_exp)", .snapshot_value(input$bt_max_exp), "Mode A ceiling; 1.0 can fit Buy&Hold"),
       c("Backtest", "Min Exp After Pass (bt_min_exp_pass)", .snapshot_value(input$bt_min_exp_pass), "Floor when filter passes & MOS >= -10%"),
       c("Backtest", "Auto Derive Params", .snapshot_value(input$bt_param_auto), "TRUE = sync thresholds/weights/model on ticker load"),
-      c("Backtest", "回測用評價模型", paste(.snapshot_value(input$bt_fv_models), collapse = ", "), "Multi-select FV overlay; first drives MOS/Exp_A"),
+      c("Backtest", "回測用評價模型", paste(.snapshot_value(input$bt_fv_models), collapse = ", "), "Multi-select FV overlay; mean of checked drives MOS/Exp_A"),
       c("Backtest", "MOS / VG Weight (bt_w_vg)", .snapshot_value(input$bt_w_vg), "Exposure diagnostic blend; not FV path"),
       c("Backtest", "Momentum Weight (bt_w_mom)", .snapshot_value(input$bt_w_mom), "Sentiment overlay relative weight"),
       c("Backtest", "RSI Weight (bt_w_rsi)", .snapshot_value(input$bt_w_rsi), "Sentiment overlay relative weight"),
@@ -4855,12 +4855,8 @@ server <- function(input, output, session) {
 
   .bt_selected_fv_models <- reactive({
     hit <- .bt_raw_fv_models()
-    # Backtest / primary fallback when none checked on HFV overlay
+    # Strategy / MOS fallback when none checked on HFV overlay: average of one = DCF
     if (length(hit) < 1) "dcf" else hit
-  })
-
-  .bt_primary_fv_model <- reactive({
-    .bt_selected_fv_models()[1]
   })
 
   bt_hfv_base <- reactive({
@@ -4891,8 +4887,8 @@ server <- function(input, output, session) {
   })
 
   # Session「此刻」模型參數（動態重建用；不落庫）
-  # 歷史 PIT 的 Ke/WACC 會在再平衡日以 Rolling β＋當年 ^TNX Rf＋當日市值 We/Wd 覆寫；
-  # 此處 Rf/Rm／We/Wd 僅作抓不到 TNX／負債時的 fallback，以及 ERP = Rm−Rf。
+  # 歷史 PIT 的 Ke/WACC 會在再平衡日以 Rolling β＋當年 ^TNX Rf＋截至該日基準已實現 Rm＋當日市值 We/Wd 覆寫；
+  # 此處 Rf/Rm／We/Wd 僅作抓不到 TNX／負債／基準報酬時的 fallback。 Session Rm 用於折線末端。
   bt_current_model_params <- reactive({
     wacc <- if (identical(input$dcf_mode, "two_stage")) {
       suppressWarnings(as.numeric(input$wacc_stage1)[1]) / 100
@@ -4966,8 +4962,9 @@ server <- function(input, output, session) {
     if (!is.finite(wacc) || wacc <= 0) wacc <- APP_DEFAULTS$wacc_gordon / 100
     if (!is.finite(sgr)) sgr <- APP_DEFAULTS$sgr / 100
     if (!is.finite(g_explicit)) g_explicit <- sgr
-    fv_model <- .bt_primary_fv_model()
-    if (!fv_model %in% c("dcf", "ddm", "ri", "pb")) fv_model <- "dcf"
+    fv_models <- .bt_selected_fv_models()
+    fv_models <- fv_models[fv_models %in% c("dcf", "ddm", "ri", "pb")]
+    if (length(fv_models) < 1) fv_models <- "dcf"
 
     rf <- suppressWarnings(as.numeric(input$capm_rf)[1]) / 100
     if (!is.finite(rf) || rf <= 0) {
@@ -5016,7 +5013,8 @@ server <- function(input, output, session) {
       ri_g = ri_g, ri_ke = ri_ke,
       roe_method = roe_method, roe_terminal = roe_terminal,
       roe_industry = roe_industry, roe_custom_vec = roe_custom_vec,
-      fv_model = fv_model,
+      fv_model = fv_models,
+      fv_models = fv_models,
       rf = rf, rm = rm, rd = rd, tax = tax,
       we = we, wd = wd,
       beta_fallback = beta_fb,
@@ -5312,13 +5310,13 @@ server <- function(input, output, session) {
     if (is.null(src)) {
       return(tags$p(
         style = "color:#888;font-size:12.5px;",
-        "搜尋股票後將預先顯示股價與大盤；勾選右下角評價模型可計算基本面價值與 MOS 摘要。"
+        "搜尋股票後將預先顯示股價與大盤；勾選右下角評價模型可計算合理價與 MOS 摘要（策略用勾選平均）。"
       ))
     }
     if (!isTRUE(src$show_fv)) {
       return(tags$p(
         style = "color:#888;font-size:12.5px;",
-        "已顯示情緒波動價值（實際股價）與大盤。勾選右下角評價模型以顯示基本面價值與下方摘要。"
+        "已顯示實際股價與大盤。勾選右下角評價模型以顯示合理價與下方摘要（策略 MOS＝勾選平均）。"
       ))
     }
     m <- if (!is.null(bt_result()) && !is.null(bt_result()$metrics)) {
@@ -5426,13 +5424,13 @@ server <- function(input, output, session) {
       }
     }
     p <- plotly::add_trace(
-      p, y = ~Close, name = "情緒波動價值（實際股價）", type = "scatter", mode = "lines",
+      p, y = ~Close, name = "實際股價", type = "scatter", mode = "lines",
       line = list(color = "#2c3e50", width = 2),
-      hovertemplate = "情緒波動價值: %{y:$.2f}<extra></extra>"
+      hovertemplate = "實際股價: %{y:$.2f}<extra></extra>"
     )
     if (has_bench && any(is.finite(ed$Bench))) {
       p <- plotly::add_trace(
-        p, y = ~Bench, name = "大盤基準", type = "scatter", mode = "lines",
+        p, y = ~Bench, name = "大盤", type = "scatter", mode = "lines",
         line = list(color = "#7f8c8d", width = 1.6, dash = "dot"),
         yaxis = "y2",
         hovertemplate = "大盤: %{y:$.2f}<extra></extra>"
@@ -5459,13 +5457,16 @@ server <- function(input, output, session) {
             if ("rf_pit" %in% names(vd)) "<br>Rf %{customdata[1]:.1f}%" else "",
             if ("rm_pit" %in% names(vd)) "<br>Rm %{customdata[2]:.1f}%" else "",
             if ("we_pit" %in% names(vd)) "<br>We %{customdata[3]:.0f}%" else "",
+            if ("rm_window" %in% names(vd)) "<br>Rm窗 %{customdata[4]}" else "",
             "<extra></extra>"
           ),
-          customdata = cbind(
-            if ("rolling_beta" %in% names(vd)) vd$rolling_beta else NA_real_,
-            if ("rf_pit" %in% names(vd)) 100 * vd$rf_pit else NA_real_,
-            if ("rm_pit" %in% names(vd)) 100 * vd$rm_pit else NA_real_,
-            if ("we_pit" %in% names(vd)) 100 * vd$we_pit else NA_real_
+          customdata = data.frame(
+            beta = if ("rolling_beta" %in% names(vd)) vd$rolling_beta else NA_real_,
+            rf = if ("rf_pit" %in% names(vd)) 100 * vd$rf_pit else NA_real_,
+            rm = if ("rm_pit" %in% names(vd)) 100 * vd$rm_pit else NA_real_,
+            we = if ("we_pit" %in% names(vd)) 100 * vd$we_pit else NA_real_,
+            win = if ("rm_window" %in% names(vd)) as.character(vd$rm_window) else "",
+            stringsAsFactors = FALSE
           )
         )
       }
@@ -5473,7 +5474,7 @@ server <- function(input, output, session) {
     plotly::layout(
       p,
       title = list(
-        text = if (isTRUE(src$show_fv)) "折現比較（當年 Rf／市值結構 · Rolling β PIT）" else "折現比較（股價／大盤預覽）",
+        text = if (isTRUE(src$show_fv)) "折現比較（合理價 vs 實際股價）" else "折現比較（實際股價 vs 大盤）",
         font = list(size = 14)
       ),
       legend = list(orientation = "h", y = -0.18),
@@ -5549,7 +5550,7 @@ server <- function(input, output, session) {
                " ｜ 現金 ", .fmt_pct(e$cash_avg_b, 0)),
       tags$hr(),
       tags$div(style = "font-size:11px;color:#777;",
-               "倉位曲線驅動上方策略淨值。平均持股偏低時，輸給 B&H 多半是 Cash Drag（最高約 90% 屬刻意風控）。")
+               "倉位曲線驅動上方策略淨值（財富指數）。平均持股偏低時，終值常低於滿倉 B&H（現金報酬＝0）。")
     )
   })
 
@@ -5576,59 +5577,135 @@ server <- function(input, output, session) {
 
   output$bt_bh_gap <- renderUI({
     v <- bt_validation()
-    if (is.null(v) || is.null(v$gap)) {
-      return(tags$p(style = "color:#888;font-size:12px;",
-                    "回測後拆解相對 Buy&Hold 的缺口：現金拖累／過早出場／高估減碼／情緒加減碼。牛市落後常因持股上限與 Great Filter 空手。"))
+    if (is.null(v) || is.null(v$gap) || is.null(v$gap$terminal)) {
+      return(tags$p(
+        style = "color:#888;font-size:12px;",
+        "回測後，本頁用本次數字拆相對 Buy&Hold：上漲日 (1−Exp_A)×r 加總（非複利），並列終值落差。"
+      ))
     }
     g <- v$gap
-    fr <- g$fractions_a
-    beat <- isTRUE(g$beat_bh_a)
-    mk <- function(label, key, tip) {
-      val <- if (!is.null(fr) && !is.null(fr[[key]])) fr[[key]] else NA
-      # Also show absolute pp from components when available
-      abs_pp <- if (!is.null(g$components_a) && !is.null(g$components_a[[key]])) {
-        g$components_a[[key]]
-      } else NA
-      tags$div(
-        style = "margin-bottom:8px;",
-        tags$div(style = "display:flex;justify-content:space-between;font-size:12px;",
-                 tags$span(tags$b(label)),
-                 tags$span(
-                   if (beat || !is.finite(val)) {
-                     paste0(.fmt_pct(abs_pp, 1), "（絕對）")
-                   } else {
-                     paste0(.fmt_pct(val, 0), " of gap")
-                   }
-                 )),
-        tags$div(style = "font-size:11px;color:#777;", tip)
+    if (!is.null(g$narrative_a) && is.null(g$terminal) &&
+        (is.null(g$components_a))) {
+      return(tags$p(style = "color:#c0392b;font-size:12px;", g$narrative_a))
+    }
+    fmt_pp <- function(x, digits = 1) {
+      x <- suppressWarnings(as.numeric(x)[1])
+      if (!is.finite(x)) return("—")
+      sprintf("%+.*f pp", digits, 100 * x)
+    }
+    fmt_pct0 <- function(x) {
+      x <- suppressWarnings(as.numeric(x)[1])
+      if (!is.finite(x)) return("—")
+      sprintf("%.0f%%", 100 * x)
+    }
+    fmt_term <- function(x) {
+      x <- suppressWarnings(as.numeric(x)[1])
+      if (!is.finite(x)) return("—")
+      sprintf("%+.1f%%", 100 * x)
+    }
+    outcome <- as.character(g$outcome %||% if (isTRUE(g$beat_bh_a)) "ahead" else "behind")[1]
+    headline <- as.character(g$headline %||% "相對 Buy & Hold")[1]
+    tone_bg <- if (identical(outcome, "ahead") || identical(outcome, "flat")) "#eef8f1" else "#fff8e8"
+    tone_bd <- if (identical(outcome, "ahead") || identical(outcome, "flat")) "#28a745" else "#f0ad4e"
+    tone_fg <- if (identical(outcome, "ahead") || identical(outcome, "flat")) "#1e5c35" else "#7a5b10"
+    ca <- g$components_a %||% list()
+    n_fail <- as.integer(.safe_num(g$n_filter_fail, 0))
+    n_rebal <- as.integer(.safe_num(g$n_rebal, 0))
+    facts <- tags$div(
+      style = "display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px 0;font-size:11.5px;color:#444;",
+      tags$span(tags$b("最大持股 "), fmt_pct0(g$max_exp)),
+      tags$span("·"),
+      tags$span(tags$b("平均 Exp_A "), fmt_pct0(g$avg_exp_a)),
+      tags$span("·"),
+      tags$span(tags$b("空手日 "), sprintf("%s／%s（%s）",
+        as.character(g$n_zero_a %||% "—"),
+        as.character(g$n_days %||% "—"),
+        fmt_pct0(g$pct_zero_a))),
+      tags$span("·"),
+      tags$span(tags$b("Filter 未過 "), sprintf("%s／%s 次再平衡",
+        as.character(n_fail), as.character(n_rebal))),
+      tags$span("·"),
+      tags$span(tags$b("現金報酬＝0")),
+      tags$span("·"),
+      tags$span(tags$b("上漲日 "), sprintf("%s／%s",
+        as.character(g$n_up_days %||% "—"),
+        as.character(g$n_days %||% "—")))
+    )
+    tbl <- tags$table(
+      style = "width:100%;font-size:12px;border-collapse:collapse;margin:0 0 10px 0;",
+      tags$thead(tags$tr(
+        tags$th(style = "text-align:left;padding:4px 6px;border-bottom:1px solid #ddd;", "分項"),
+        tags$th(style = "text-align:right;padding:4px 6px;border-bottom:1px solid #ddd;", "數值")
+      )),
+      tags$tbody(
+        tags$tr(
+          tags$td(style = "padding:4px 6px;", "基本面策略終值"),
+          tags$td(style = "padding:4px 6px;text-align:right;", fmt_term(g$terminal$a))
+        ),
+        tags$tr(
+          tags$td(style = "padding:4px 6px;", "Buy&Hold 終值"),
+          tags$td(style = "padding:4px 6px;text-align:right;", fmt_term(g$terminal$bh))
+        ),
+        tags$tr(
+          tags$td(style = "padding:4px 6px;", "終值落差（複利，B&H − 基本面）"),
+          tags$td(style = "padding:4px 6px;text-align:right;", fmt_pp(g$terminal$shortfall_a))
+        ),
+        tags$tr(
+          tags$td(style = "padding:4px 6px;", "上漲日 (1−Exp_A)×r 加總"),
+          tags$td(style = "padding:4px 6px;text-align:right;", fmt_pp(ca$additive_up))
+        ),
+        tags$tr(
+          tags$td(style = "padding:4px 6px;padding-left:14px;", "　現金拖累（未歸入下兩項）"),
+          tags$td(style = "padding:4px 6px;text-align:right;", fmt_pp(ca$cash_drag))
+        ),
+        tags$tr(
+          tags$td(style = "padding:4px 6px;padding-left:14px;", "　提前出場"),
+          tags$td(style = "padding:4px 6px;text-align:right;", fmt_pp(ca$early_exit))
+        ),
+        tags$tr(
+          tags$td(style = "padding:4px 6px;padding-left:14px;", "　高估減碼"),
+          tags$td(style = "padding:4px 6px;text-align:right;", fmt_pp(ca$overvaluation_reduction))
+        ),
+        tags$tr(
+          tags$td(style = "padding:4px 6px;", "殘差＝終值落差 − 上漲日加總（非恆等）"),
+          tags$td(style = "padding:4px 6px;text-align:right;", fmt_pp(ca$missed_trend))
+        ),
+        tags$tr(
+          tags$td(style = "padding:4px 6px;", "情緒策略終值"),
+          tags$td(style = "padding:4px 6px;text-align:right;", fmt_term(g$terminal$b))
+        ),
+        tags$tr(
+          tags$td(style = "padding:4px 6px;", "情緒減碼 vs 基本面（上漲日 (Exp_A−Exp_B)×r）"),
+          tags$td(style = "padding:4px 6px;text-align:right;", fmt_pp(g$sentiment_reduction_b))
+        ),
+        tags$tr(
+          tags$td(style = "padding:4px 6px;", "情緒加碼 vs 基本面（上漲日）"),
+          tags$td(style = "padding:4px 6px;text-align:right;", fmt_pp(g$sentiment_boost_b))
+        )
       )
+    )
+    bullets <- g$bullets
+    if (is.null(bullets) || length(bullets) < 1) {
+      bullets <- g$narrative_a
     }
     tagList(
-      if (beat) {
-        tags$div(
-          style = "margin:0 0 10px 0;padding:8px 10px;background:#eef8f1;border-left:4px solid #28a745;font-size:12px;color:#1e5c35;",
-          tags$b("結論："), "純基本面價值未輸給 Buy&Hold。"
-        )
-      } else {
-        tags$div(
-          style = "margin:0 0 10px 0;padding:8px 10px;background:#fff8e8;border-left:4px solid #f0ad4e;font-size:12px;color:#7a5b10;",
-          tags$b("結論："), "相對 Buy&Hold 落後；下列為上漲日減碼歸因（日報酬加總近似，非複利拆解）。"
-        )
-      },
-      tags$p(style = "font-size:12.5px;line-height:1.55;", g$narrative_a),
-      if (!is.null(g$narrative_b)) tags$p(style = "font-size:12px;color:#555;", g$narrative_b),
-      mk("Cash Drag 現金拖累", "cash_drag", "持股不足 100% 時錯過上漲"),
-      mk("Early Exit 提早賣出", "early_exit", "近 20 日相對降倉後市場續漲"),
-      mk("Overvaluation Reduction", "overvaluation_reduction", "因高估／負 MOS 減碼"),
-      mk("Missed Trend 殘差", "missed_trend", "缺口 − 上述三項（可為負，表示歸因重疊／近似誤差）"),
-      if (!is.null(g$sentiment_reduction_b) || !is.null(g$sentiment_boost_b))
-        tags$p(
-          style = "font-size:12px;",
-          tags$b("情緒 vs 純基本面："),
-          "減碼 ", .fmt_pct(g$sentiment_reduction_b, 1),
-          " ／加碼 ", .fmt_pct(g$sentiment_boost_b %||% 0, 1),
-          "（上漲日）"
-        )
+      tags$div(
+        style = paste0(
+          "margin:0 0 10px 0;padding:8px 10px;background:", tone_bg,
+          ";border-left:4px solid ", tone_bd, ";font-size:13px;color:", tone_fg, ";"
+        ),
+        tags$b(headline)
+      ),
+      facts,
+      tbl,
+      tags$ul(
+        style = "margin:0;padding-left:18px;font-size:12px;line-height:1.55;color:#333;",
+        lapply(bullets, function(b) tags$li(b))
+      ),
+      tags$p(
+        style = "margin:8px 0 0 0;font-size:11px;color:#777;",
+        "分項只加總 B&H 上漲日的 (1−Exp_A)×r，不是複利拆解；殘差用來對照終值落差。"
+      )
     )
   })
 
@@ -5636,34 +5713,37 @@ server <- function(input, output, session) {
     res <- bt_result()
     validate(need(!is.null(res) && !is.null(res$equity_df), "請先成功執行回測"))
     df_plot <- res$equity_df
-    validate(need("Trade_A" %in% names(df_plot), "缺少純基本面價值策略淨值 (Trade_A)"))
+    validate(need("Trade_A" %in% names(df_plot), "缺少基本面策略淨值 (Trade_A)"))
     eq_b <- if ("Trade_B" %in% names(df_plot)) df_plot$Trade_B else df_plot$Model_B
     df_long <- rbind(
-      data.frame(Date = df_plot$Date, Value = df_plot$Trade_A, Series = "純基本面價值", stringsAsFactors = FALSE),
-      data.frame(Date = df_plot$Date, Value = eq_b, Series = "情緒波動價值", stringsAsFactors = FALSE),
+      data.frame(Date = df_plot$Date, Value = df_plot$Trade_A, Series = "基本面策略淨值", stringsAsFactors = FALSE),
+      data.frame(Date = df_plot$Date, Value = eq_b, Series = "情緒策略淨值", stringsAsFactors = FALSE),
       data.frame(Date = df_plot$Date, Value = df_plot$BuyHold, Series = "該股買進持有", stringsAsFactors = FALSE),
       data.frame(Date = df_plot$Date, Value = df_plot$Benchmark, Series = "大盤基準", stringsAsFactors = FALSE)
     )
     df_long$Series <- factor(
       df_long$Series,
-      levels = c("純基本面價值", "情緒波動價值", "該股買進持有", "大盤基準")
+      levels = c("基本面策略淨值", "情緒策略淨值", "該股買進持有", "大盤基準")
     )
     p <- ggplot(df_long, aes(x = Date, y = Value, color = Series, group = Series, linetype = Series)) +
       geom_line(linewidth = 0.85) +
       scale_color_manual(values = c(
-        "純基本面價值" = "#e67e22",
-        "情緒波動價值" = "#2980b9",
+        "基本面策略淨值" = "#e67e22",
+        "情緒策略淨值" = "#2980b9",
         "該股買進持有" = "#28a745",
         "大盤基準" = "#6c757d"
       )) +
       scale_linetype_manual(values = c(
-        "純基本面價值" = "solid",
-        "情緒波動價值" = "solid",
+        "基本面策略淨值" = "solid",
+        "情緒策略淨值" = "solid",
         "該股買進持有" = "solid",
         "大盤基準" = "dashed"
       )) +
       scale_y_continuous(labels = label_chart_number()) +
-      labs(y = "策略累積淨值（起點=1）", x = "日期", color = "序列", linetype = "序列") +
+      labs(
+        title = "策略淨值（累積財富，起始＝1）",
+        y = "累積財富（起始＝1）", x = "日期", color = "序列", linetype = "序列"
+      ) +
       theme_minimal()
     ggplotly(p, tooltip = c("x", "y", "colour")) %>%
       layout(legend = list(orientation = "h", y = -0.2))
@@ -5755,7 +5835,7 @@ server <- function(input, output, session) {
     }
     m <- res$metrics
     best <- m$best
-    label_best <- if (identical(best, "A")) "純基本面價值" else "情緒波動價值"
+    label_best <- if (identical(best, "A")) "基本面策略淨值" else "情緒策略淨值"
     sharpe_show <- if (identical(best, "A")) m$sharpe_a else m$sharpe_b
     mdd_show <- if (identical(best, "A")) m$mdd_a else m$mdd_b
     cagr_show <- if (identical(best, "A")) m$cagr_a else m$cagr_b
@@ -5904,33 +5984,34 @@ server <- function(input, output, session) {
       style = "font-size: 12.5px; line-height: 1.65; color: #333;",
       tags$p(
         style = "margin-top:0;",
-        tags$b("淨值圖 ↔ 兩模式："),
-        "評價模型算出合理價／MOS → ", tags$b("純基本面價值"), " Exp_A → 橘線；",
-        tags$b("情緒波動價值"), " 將 Exp_A 與動能／RSI 情緒目標加權混合得 Exp_B → 藍線（應可分開）。",
-        "折現圖上的「情緒波動價值」＝實際股價，語意不同。淨值圖只比策略績效。"
+        tags$b("折現圖 vs 淨值圖："),
+        "折現圖是每股合理價 vs 實際股價；策略 MOS／倉位用勾選模型的平均。",
+        "淨值圖是倉位×日報酬的累積財富（起始＝1）——",
+        tags$b("基本面策略淨值"), "＝Exp_A；",
+        tags$b("情緒策略淨值"), "＝Exp_B（Exp_A 混入動能／RSI）。兩圖標籤不可互換。"
       ),
       tags$h5(tags$b("一、數據來源")),
       tags$ul(
         tags$li(tags$b("股價／基準："), "Yahoo Finance（yfinance，auto_adjust）；基準預設 SPY。"),
         tags$li(tags$b("財報："), "本次 Session 已載入之年度 IS／BS／CF。"),
         tags$li(tags$b("Rf（歷史點）："), "再平衡日 ^TNX 當時收盤；抓不到才用 Session／約 4%。"),
-        tags$li(tags$b("Rm（歷史點）："), "Rf_t ＋ Session 股權風險溢酬（產業／CAPM 的 Rm−Rf），不是當年 SPY 已實現報酬。"),
+        tags$li(tags$b("Rm（歷史點）："), "截至再平衡日的基準（預設 SPY）已實現年化總報酬（優先近 12 個月，無前瞻）；不是 Session 預期溢酬。末端才用 Session Rm。"),
         tags$li(tags$b("We／Wd（歷史點）："), "再平衡日 股數×收盤 與當時 Total Debt。Rd／稅率仍用 Session。"),
         tags$li(tags$b("評價假設："), "歷史點成長／n 用 APP_DEFAULTS；Ke／WACC 於各季以 Rolling β＋上述當年 Rf／結構重估。末端才掛目前分頁。")
       ),
       tags$h5(tags$b("二、計算過程（季頻 PIT）")),
       tags$ol(
-        tags$li("再平衡日：fund_year ≤ 日曆年−1 重建合理價 → MOS。"),
+        tags$li("再平衡日：fund_year ≤ 日曆年−1 重建各模型合理價；策略 FV＝勾選且有限值者之平均 → MOS＝(FV−Price)/FV。"),
         tags$li("持倉回測條件未過 → Exp_A = Exp_B = 0（兩模式皆空手）。"),
         tags$li("通過則 Exp_A 依 MOS 滯後映射；Exp_B = (1−blend)×Exp_A + blend×(sentiment×max_exp)。"),
         tags$li("每日：策略淨值用 Exp×日報酬；Buy&Hold 滿倉；現金報酬=0；未扣交易成本。"),
         tags$li("比較視窗自首次有效季再平衡對齊。")
       ),
-      tags$h5(tags$b("三、為何常輸給 Buy&Hold")),
+      tags$h5(tags$b("三、相對 Buy & Hold")),
       tags$p(
         style = "margin-bottom:0;",
-        "持股上限（預設約 90%）與 Great Filter 空手會造成現金拖累；牛市滿倉的 B&H 易勝出。",
-        "可用「貼近買進持有」調高上限。完整公式請下載方法論檔。"
+        "上漲日把 (1−Exp_A)×r 加總，拆成現金拖累／提前出場／高估減碼；加總 ≠ 複利終值落差（殘差＝終值差−加總）。",
+        "結論以該次回測頁上的平均倉位、空手日、Filter 未過次數為準，不作「牛市必輸」套話。完整公式請下載方法論檔。"
       )
     )
   })
