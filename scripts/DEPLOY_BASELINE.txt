@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12415426
+bundleId=12415479
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=bf13e5a
-commit=bf13e5afd1f4d6b477084fe9b1201a08a2505bd6
-short=bf13e5a
-message=Replace Lab's curated ~103 tickers with an updatable S&P 500 universe, add 下載本頁報告 beside 評估績優, and keep the three size checkboxes on one row.
-captured_at=2026-08-15T18:22:16Z
+aligned_git=1a3437d
+commit=1a3437d72ae4578514f4f765edcb29390dc27282
+short=1a3437d
+message=Unify Lab 「最多」N with the detail table and leaderboard, swap 產業 ahead of 規模, and show 公司全稱 on the 績優 board.
+captured_at=2026-08-15T18:49:53Z
 source_branch=master
-note=Canonical live line is app_14.0. Deploy via scripts/deploy_app_14.R; Feedback needs YNOW_FEEDBACK_GITHUB_TOKEN in app_14.0/.Renviron (gitignored; redeploy bundles it — no shinyapps Vars UI). Live status=running. Bundle 12415426 superseded 12415384; Lab universe is Wikipedia S&P 500 (N=503, cache app_14.0/data/sp500_universe.csv) with GICS→App industry map (0 unmapped); 下載本頁報告 (lab_im_download_report, zip of md+csv); size checkboxes one row; unknown cap included until evaluated. WACC 與Get Started 同步 (ba8bdf7) unchanged.
+note=Canonical live line is app_14.0. Deploy via scripts/deploy_app_14.R; Feedback needs YNOW_FEEDBACK_GITHUB_TOKEN in app_14.0/.Renviron (gitignored; redeploy bundles it — no shinyapps Vars UI). Live status=running. Bundle 12415479 superseded 12415426; Lab 最多 N＝evaluate＝明細 (market-cap desc, hard cap 40); 排行榜＝same set CAGR Top 10 with 公司全稱 (no 規模); 產業/規模 swapped; 績優 blurb trimmed. S&P 500 universe (bf13e5a) and WACC 與Get Started 同步 (ba8bdf7) unchanged.
