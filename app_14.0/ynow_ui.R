@@ -2434,7 +2434,7 @@ ui <- dashboardPage(
                   title = tagList(icon("balance-scale"), "折現比較（合理價 vs 實際股價）"),
                   width = 12, status = "primary", solidHeader = TRUE,
                   .bt_section_intro(
-                    "歷史各點：僅用當時可得財報＋當時 ^TNX Rf＋截至該日的基準（SPY）已實現年化總報酬＋Rolling β，以及當日市值資本結構，設算各模型合理價（成長／n 不套用目前分頁參數）。僅折線末端最新點掛勾目前 APP 分頁與 Session Rm。實際股價＝該股歷史收盤；並疊加大盤（右軸）。搜尋後即預覽股價／大盤；勾選右下角評價模型即計算合理價（預設不勾選）。策略倉位／MOS 用勾選模型的平均，不是隱藏的主模型。"
+                    "歷史各點：僅用當時可得財報＋當時 ^TNX Rf＋截至該日的基準（SPY）已實現年化總報酬＋Rolling β，以及當日市值資本結構，設算各模型合理價（成長／n 不套用目前分頁參數）。僅折線末端最新點掛勾目前 APP 分頁與 Session Rm。實際股價＝該股歷史收盤；大盤可用「顯示大盤」開關（右軸）。搜尋後即預覽股價；勾選右下角評價模型即計算合理價（預設不勾選）。策略倉位／MOS 用勾選模型的平均，不是隱藏的主模型。"
                   ),
                   tags$div(
                     class = "ynow-bt-hfv-wrap",
@@ -2442,6 +2442,7 @@ ui <- dashboardPage(
                     plotlyOutput("bt_hfv_timeline", height = "420px") %>% withSpinner(),
                     tags$div(
                       class = "ynow-bt-hfv-controls",
+                      checkboxInput("bt_hfv_show_bench", "顯示大盤", value = TRUE),
                       checkboxGroupInput(
                         "bt_fv_models",
                         "回測用評價模型（可複選疊圖；策略 MOS／倉位＝勾選平均）",
@@ -2454,8 +2455,7 @@ ui <- dashboardPage(
                         ),
                         selected = character(0)
                       )
-                    ),
-                    uiOutput("bt_signal_explain")
+                    )
                   )
                 )
               ),
@@ -2481,6 +2481,29 @@ ui <- dashboardPage(
                     tags$b("基本面策略淨值"), "＝Exp_A×日報酬累積；",
                     tags$b("情緒策略淨值"), "＝Exp_B×日報酬累積（Exp_A 混入動能／RSI）。",
                     "折現圖上的實際股價與本圖無對應關係。"
+                  ),
+                  radioButtons(
+                    "bt_nav_window",
+                    "累積區間（各序列在區間起點重設為 1）",
+                    inline = TRUE,
+                    choices = c(
+                      "全部" = "all",
+                      "近1年" = "1y",
+                      "近3年" = "3y",
+                      "近5年" = "5y",
+                      "自訂" = "custom"
+                    ),
+                    selected = "all"
+                  ),
+                  conditionalPanel(
+                    condition = "input.bt_nav_window == 'custom'",
+                    dateRangeInput(
+                      "bt_nav_custom",
+                      NULL,
+                      start = Sys.Date() - 365,
+                      end = Sys.Date(),
+                      language = "zh-TW"
+                    )
                   ),
                   plotlyOutput("bt_equity_plot", height = "400px") %>% withSpinner(),
                   tags$ul(

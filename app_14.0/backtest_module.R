@@ -1334,6 +1334,79 @@ evaluate_holding_filter <- function(metrics, thresholds) {
   equity_df
 }
 
+#' Slice NAV series to [from, to] and rebase each to 1 at first finite positive point.
+#' Exposure / Close / FairValue columns are left unchanged (not wealth indices).
+slice_rebase_nav <- function(equity_df, from = NULL, to = NULL) {
+  if (is.null(equity_df) || !is.data.frame(equity_df) || nrow(equity_df) < 1) {
+    return(equity_df)
+  }
+  out <- equity_df
+  dts <- as.Date(out$Date)
+  if (!is.null(from) && length(from) >= 1 && !is.na(as.Date(from)[1])) {
+    out <- out[dts >= as.Date(from)[1], , drop = FALSE]
+    dts <- as.Date(out$Date)
+  }
+  if (!is.null(to) && length(to) >= 1 && !is.na(as.Date(to)[1])) {
+    out <- out[dts <= as.Date(to)[1], , drop = FALSE]
+  }
+  if (nrow(out) < 1) return(out)
+  nav_cols <- intersect(
+    c("Trade_A", "Trade_B", "Model_B", "BuyHold", "Benchmark", "Model_A"),
+    names(out)
+  )
+  for (col in nav_cols) {
+    x <- suppressWarnings(as.numeric(out[[col]]))
+    i0 <- which(is.finite(x) & x > 0)[1]
+    if (!is.finite(i0)) {
+      out[[col]] <- NA_real_
+    } else {
+      out[[col]] <- x / x[i0]
+      out[[col]][!is.finite(out[[col]])] <- NA_real_
+    }
+  }
+  if ("Trade_B" %in% names(out) && "Model_B" %in% names(out)) {
+    out$Model_B <- out$Trade_B
+  }
+  rownames(out) <- NULL
+  out
+}
+
+#' Sharpe / MDD / CAGR for windowed NAV series (Trade_A / Trade_B).
+nav_perf_metrics <- function(equity_df) {
+  empty <- list(
+    sharpe_a = NA_real_, sharpe_b = NA_real_,
+    mdd_a = NA_real_, mdd_b = NA_real_,
+    cagr_a = NA_real_, cagr_b = NA_real_,
+    best = "A"
+  )
+  if (is.null(equity_df) || !is.data.frame(equity_df) || nrow(equity_df) < 3) return(empty)
+  if (!("Trade_A" %in% names(equity_df))) return(empty)
+  eq_b <- if ("Trade_B" %in% names(equity_df)) equity_df$Trade_B else equity_df$Model_B
+  dts <- as.Date(equity_df$Date)
+  perf_one <- function(eq) {
+    eq <- suppressWarnings(as.numeric(eq))
+    rets <- diff(eq) / head(eq, -1)
+    rets <- rets[is.finite(rets)]
+    if (length(rets) < 20) return(list(sharpe = NA_real_, mdd = NA_real_, cagr = NA_real_))
+    mu <- mean(rets); sdv <- stats::sd(rets)
+    sharpe <- if (isTRUE(sdv > 0)) (mu / sdv) * sqrt(252) else NA_real_
+    peak <- cummax(eq); dd <- eq / peak - 1
+    mdd <- suppressWarnings(min(dd, na.rm = TRUE))
+    if (!is.finite(mdd)) mdd <- NA_real_
+    yrs <- as.numeric(difftime(dts[length(dts)], dts[1], units = "days")) / 365.25
+    last <- eq[length(eq)]
+    cagr <- if (isTRUE(yrs > 0) && is.finite(last) && last > 0) last^(1 / yrs) - 1 else NA_real_
+    list(sharpe = sharpe, mdd = mdd, cagr = cagr)
+  }
+  pa <- perf_one(equity_df$Trade_A)
+  pb <- perf_one(eq_b)
+  empty$sharpe_a <- pa$sharpe; empty$sharpe_b <- pb$sharpe
+  empty$mdd_a <- pa$mdd; empty$mdd_b <- pb$mdd
+  empty$cagr_a <- pa$cagr; empty$cagr_b <- pb$cagr
+  empty$best <- if (isTRUE(.safe_num(pa$sharpe, -Inf) >= .safe_num(pb$sharpe, -Inf))) "A" else "B"
+  empty
+}
+
 # ---------- internal daily backtest core ----------
 
 #' Given aligned daily df (Date, Close, Bench, RSI, ret20), fundamentals

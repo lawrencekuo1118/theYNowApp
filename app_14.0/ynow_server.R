@@ -5265,6 +5265,66 @@ server <- function(input, output, session) {
     sprintf(paste0("%.", digits, "f"), as.numeric(x))
   }
 
+  .bt_nav_window_bounds <- function(dates) {
+    dates <- as.Date(dates)
+    dates <- dates[!is.na(dates)]
+    if (length(dates) < 1) {
+      return(list(from = as.Date(NA), to = as.Date(NA), label = "全部", mode = "all"))
+    }
+    dmin <- min(dates)
+    dmax <- max(dates)
+    from <- dmin
+    to <- dmax
+    mode <- as.character(input$bt_nav_window %||% "all")[1]
+    label <- "全部"
+    if (identical(mode, "1y")) {
+      from <- dmax - as.difftime(round(365.25), units = "days")
+      label <- "近1年"
+    } else if (identical(mode, "3y")) {
+      from <- dmax - as.difftime(round(3 * 365.25), units = "days")
+      label <- "近3年"
+    } else if (identical(mode, "5y")) {
+      from <- dmax - as.difftime(round(5 * 365.25), units = "days")
+      label <- "近5年"
+    } else if (identical(mode, "custom")) {
+      rng <- input$bt_nav_custom
+      if (!is.null(rng) && length(rng) >= 2 && !is.na(rng[[1]]) && !is.na(rng[[2]])) {
+        from <- as.Date(rng[[1]])
+        to <- as.Date(rng[[2]])
+        if (from > to) {
+          tmp <- from; from <- to; to <- tmp
+        }
+        label <- sprintf("自訂 %s～%s", format(from, "%Y-%m-%d"), format(to, "%Y-%m-%d"))
+      } else {
+        label <- "自訂（未選日期，用全部）"
+      }
+    }
+    if (is.finite(from) && from < dmin) from <- dmin
+    if (is.finite(to) && to > dmax) to <- dmax
+    list(from = from, to = to, label = label, mode = mode)
+  }
+
+  observeEvent(bt_result(), {
+    res <- bt_result()
+    if (is.null(res) || is.null(res$equity_df) || nrow(res$equity_df) < 1) return()
+    dts <- as.Date(res$equity_df$Date)
+    dts <- dts[!is.na(dts)]
+    if (length(dts) < 1) return()
+    updateDateRangeInput(session, "bt_nav_custom", start = min(dts), end = max(dts))
+  }, ignoreNULL = TRUE)
+
+  bt_nav_view <- reactive({
+    res <- bt_result()
+    if (is.null(res) || is.null(res$equity_df) || nrow(res$equity_df) < 1) return(NULL)
+    b <- .bt_nav_window_bounds(res$equity_df$Date)
+    eq <- slice_rebase_nav(res$equity_df, b$from, b$to)
+    vd <- res$valuation_df
+    if (!is.null(vd) && is.data.frame(vd) && nrow(vd) > 0) {
+      vd <- vd[as.Date(vd$Date) >= b$from & as.Date(vd$Date) <= b$to, , drop = FALSE]
+    }
+    list(equity_df = eq, valuation_df = vd, bounds = b, label = b$label)
+  })
+
   .bt_hfv_chart_source <- function() {
     base <- bt_hfv_base()
     res <- bt_result()
@@ -5408,7 +5468,7 @@ server <- function(input, output, session) {
     ed <- src$ed
     has_bench <- "Bench" %in% names(ed)
 
-    p <- plotly::plot_ly(ed, x = ~Date)
+    p <- plotly::plot_ly()
     if (isTRUE(src$show_fv)) {
       specs <- .bt_fv_model_specs()
       for (m in .bt_raw_fv_models()) {
@@ -5417,32 +5477,58 @@ server <- function(input, output, session) {
         col <- sp$col
         if (!col %in% names(ed) || !any(is.finite(ed[[col]]))) next
         p <- plotly::add_trace(
-          p, y = ed[[col]], name = sp$label, type = "scatter", mode = "lines",
+          p, x = ed$Date, y = ed[[col]], name = sp$label,
+          type = "scatter", mode = "lines", inherit = FALSE,
           line = list(color = sp$color, width = 2),
           hovertemplate = paste0(sp$label, ": %{y:$.2f}<extra></extra>")
         )
       }
     }
     p <- plotly::add_trace(
-      p, y = ~Close, name = "實際股價", type = "scatter", mode = "lines",
+      p, x = ed$Date, y = ed$Close, name = "實際股價",
+      type = "scatter", mode = "lines", inherit = FALSE,
       line = list(color = "#2c3e50", width = 2),
       hovertemplate = "實際股價: %{y:$.2f}<extra></extra>"
     )
-    if (has_bench && any(is.finite(ed$Bench))) {
+    show_bench <- !isFALSE(input$bt_hfv_show_bench) && has_bench && any(is.finite(ed$Bench))
+    if (show_bench) {
       p <- plotly::add_trace(
-        p, y = ~Bench, name = "大盤", type = "scatter", mode = "lines",
+        p, x = ed$Date, y = ed$Bench, name = "大盤",
+        type = "scatter", mode = "lines", inherit = FALSE,
         line = list(color = "#7f8c8d", width = 1.6, dash = "dot"),
         yaxis = "y2",
         hovertemplate = "大盤: %{y:$.2f}<extra></extra>"
       )
     }
     vd <- src$vd
-    if (isTRUE(src$show_fv) && !is.null(vd) && nrow(vd) > 0 &&
-        length(.bt_raw_fv_models()) == 1L) {
-      primary <- .bt_raw_fv_models()[1]
-      marker_col <- switch(primary,
-        "dcf" = "fv_dcf", "ddm" = "fv_ddm", "ri" = "fv_ri", "pb" = "fv_pb", "fair_value")
+    if (isTRUE(src$show_fv) && !is.null(vd) && nrow(vd) > 0) {
+      models <- .bt_raw_fv_models()
+      marker_col <- if (length(models) == 1L) {
+        switch(models[1],
+          "dcf" = "fv_dcf", "ddm" = "fv_ddm", "ri" = "fv_ri", "pb" = "fv_pb",
+          "fair_value")
+      } else {
+        "fair_value"
+      }
       if (marker_col %in% names(vd) && any(is.finite(vd[[marker_col]]))) {
+        fmt_h <- function(x, digits = 1, pct = FALSE) {
+          x <- suppressWarnings(as.numeric(x))
+          out <- ifelse(is.finite(x),
+                        if (pct) sprintf(paste0("%.", digits, "f%%"), 100 * x)
+                        else sprintf(paste0("%.", digits, "f"), x),
+                        "N/A")
+          out
+        }
+        win <- if ("rm_window" %in% names(vd)) as.character(vd$rm_window) else rep("—", nrow(vd))
+        win[!nzchar(win) | is.na(win)] <- "—"
+        ht <- paste0(
+          "再平衡 ", format(as.Date(vd$Date), "%Y-%m-%d"),
+          "<br>FV ", fmt_h(vd[[marker_col]], 2),
+          if ("rolling_beta" %in% names(vd)) paste0("<br>β ", fmt_h(vd$rolling_beta, 2)) else "",
+          if ("rf_pit" %in% names(vd)) paste0("<br>Rf ", fmt_h(vd$rf_pit, 1, pct = TRUE)) else "",
+          if ("rm_pit" %in% names(vd)) paste0("<br>Rm ", fmt_h(vd$rm_pit, 1, pct = TRUE), " (", win, ")") else "",
+          if ("we_pit" %in% names(vd)) paste0("<br>We ", fmt_h(vd$we_pit, 0, pct = TRUE)) else ""
+        )
         p <- plotly::add_trace(
           p,
           x = vd$Date,
@@ -5450,86 +5536,49 @@ server <- function(input, output, session) {
           name = "季再平衡 FV",
           type = "scatter",
           mode = "markers",
+          inherit = FALSE,
           marker = list(color = "#e74c3c", size = 7, symbol = "diamond"),
-          hovertemplate = paste0(
-            "再平衡 %{x|%Y-%m-%d}<br>FV %{y:$.2f}",
-            if ("rolling_beta" %in% names(vd)) "<br>β %{customdata[0]:.2f}" else "",
-            if ("rf_pit" %in% names(vd)) "<br>Rf %{customdata[1]:.1f}%" else "",
-            if ("rm_pit" %in% names(vd)) "<br>Rm %{customdata[2]:.1f}%" else "",
-            if ("we_pit" %in% names(vd)) "<br>We %{customdata[3]:.0f}%" else "",
-            if ("rm_window" %in% names(vd)) "<br>Rm窗 %{customdata[4]}" else "",
-            "<extra></extra>"
-          ),
-          customdata = data.frame(
-            beta = if ("rolling_beta" %in% names(vd)) vd$rolling_beta else NA_real_,
-            rf = if ("rf_pit" %in% names(vd)) 100 * vd$rf_pit else NA_real_,
-            rm = if ("rm_pit" %in% names(vd)) 100 * vd$rm_pit else NA_real_,
-            we = if ("we_pit" %in% names(vd)) 100 * vd$we_pit else NA_real_,
-            win = if ("rm_window" %in% names(vd)) as.character(vd$rm_window) else "",
-            stringsAsFactors = FALSE
-          )
+          text = ht,
+          hovertemplate = "%{text}<extra></extra>"
         )
       }
     }
-    plotly::layout(
-      p,
-      title = list(
-        text = if (isTRUE(src$show_fv)) "折現比較（合理價 vs 實際股價）" else "折現比較（實際股價 vs 大盤）",
-        font = list(size = 14)
-      ),
-      legend = list(orientation = "h", y = -0.18),
-      yaxis = list(
-        title = paste0("每股（", money_label(quote_currency()), " · 報價幣，未換算）"),
-        tickprefix = money_prefix(quote_currency()), side = "left"
-      ),
-      yaxis2 = list(
-        title = "大盤價格", overlaying = "y", side = "right",
-        showgrid = FALSE, tickprefix = money_prefix(quote_currency())
-      ),
-      xaxis = list(title = NULL),
-      margin = list(l = 60, r = 60, t = 40, b = 60),
-      hovermode = "x unified"
+    title_txt <- if (isTRUE(src$show_fv)) {
+      "折現比較（合理價 vs 實際股價）"
+    } else if (show_bench) {
+      "折現比較（實際股價 vs 大盤）"
+    } else {
+      "折現比較（實際股價）"
+    }
+    y1 <- list(
+      title = paste0("每股（", money_label(quote_currency()), " · 報價幣，未換算）"),
+      tickprefix = money_prefix(quote_currency()), side = "left"
     )
-  })
-
-  output$bt_signal_explain <- renderUI({
-    if (!isTRUE(bt_fv_visible())) return(NULL)
-    res <- bt_result()
-    fv_only <- bt_hfv_fv()
-    ex <- if (!is.null(res) && !is.null(res$explain_last)) {
-      res$explain_last
-    } else if (!is.null(fv_only) && !is.null(fv_only$explain_last)) {
-      fv_only$explain_last
+    if (show_bench) {
+      plotly::layout(
+        p,
+        title = list(text = title_txt, font = list(size = 14)),
+        legend = list(orientation = "h", y = -0.18),
+        yaxis = y1,
+        yaxis2 = list(
+          title = "大盤價格", overlaying = "y", side = "right",
+          showgrid = FALSE, tickprefix = money_prefix(quote_currency())
+        ),
+        xaxis = list(title = NULL),
+        margin = list(l = 60, r = 60, t = 40, b = 60),
+        hovermode = "x unified"
+      )
     } else {
-      NULL
-    }
-    if (is.null(ex)) return(NULL)
-    vd <- if (!is.null(res) && !is.null(res$valuation_df)) {
-      res$valuation_df
-    } else if (!is.null(fv_only) && !is.null(fv_only$valuation_df)) {
-      fv_only$valuation_df
-    } else {
-      NULL
-    }
-    row <- ex
-    if (is.null(row$hist_price) && !is.null(row$price)) row$hist_price <- row$price
-    if (is.null(row$Date) && !is.null(vd) && nrow(vd) > 0) {
-      row$Date <- tail(vd$Date, 1)
-      row$explain <- tail(vd$explain, 1)
-    }
-    txt <- tryCatch(build_signal_explain(row)$text, error = function(e) NULL)
-    if (is.null(txt) || !nzchar(as.character(txt)[1])) {
-      txt <- sprintf(
-        "最近訊號：%s | MOS=%s | Score=%s | Exp A=%s | DCF=%s DDM=%s RI=%s PB=%s",
-        as.character(ex$signal), .fmt_pct(ex$mos), .fmt_num(ex$valuation_score, 0),
-        .fmt_pct(ex$exp_a, 0),
-        .fmt_num(ex$fv_dcf), .fmt_num(ex$fv_ddm), .fmt_num(ex$fv_ri), .fmt_num(ex$fv_pb)
+      plotly::layout(
+        p,
+        title = list(text = title_txt, font = list(size = 14)),
+        legend = list(orientation = "h", y = -0.18),
+        yaxis = y1,
+        xaxis = list(title = NULL),
+        margin = list(l = 60, r = 40, t = 40, b = 60),
+        hovermode = "x unified"
       )
     }
-    tags$pre(
-      style = "margin-top:10px;padding:12px;background:#f8f9fa;border-left:4px solid #3c8dbc;font-size:12px;white-space:pre-wrap;",
-      txt
-    )
   })
 
   output$bt_exposure_stats <- renderUI({
@@ -5576,14 +5625,27 @@ server <- function(input, output, session) {
   })
 
   output$bt_bh_gap <- renderUI({
-    v <- bt_validation()
-    if (is.null(v) || is.null(v$gap) || is.null(v$gap$terminal)) {
-      return(tags$p(
-        style = "color:#888;font-size:12px;",
-        "回測後，本頁用本次數字拆相對 Buy&Hold：上漲日 (1−Exp_A)×r 加總（非複利），並列終值落差。"
-      ))
+    view <- bt_nav_view()
+    g <- NULL
+    if (!is.null(view) && !is.null(view$equity_df) && nrow(view$equity_df) > 2) {
+      g <- tryCatch(
+        analyze_bh_gap(
+          view$equity_df, view$valuation_df,
+          max_exp = .safe_num(input$bt_max_exp, 0.90)
+        ),
+        error = function(e) NULL
+      )
     }
-    g <- v$gap
+    if (is.null(g)) {
+      v <- bt_validation()
+      if (is.null(v) || is.null(v$gap) || is.null(v$gap$terminal)) {
+        return(tags$p(
+          style = "color:#888;font-size:12px;",
+          "回測後，本頁用本次數字拆相對 Buy&Hold：上漲日 (1−Exp_A)×r 加總（非複利），並列終值落差。"
+        ))
+      }
+      g <- v$gap
+    }
     if (!is.null(g$narrative_a) && is.null(g$terminal) &&
         (is.null(g$components_a))) {
       return(tags$p(style = "color:#c0392b;font-size:12px;", g$narrative_a))
@@ -5613,6 +5675,8 @@ server <- function(input, output, session) {
     n_rebal <- as.integer(.safe_num(g$n_rebal, 0))
     facts <- tags$div(
       style = "display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px 0;font-size:11.5px;color:#444;",
+      tags$span(tags$b("累積區間 "), as.character((bt_nav_view()$label %||% "全部")[1])),
+      tags$span("·"),
       tags$span(tags$b("最大持股 "), fmt_pct0(g$max_exp)),
       tags$span("·"),
       tags$span(tags$b("平均 Exp_A "), fmt_pct0(g$avg_exp_a)),
@@ -5710,9 +5774,10 @@ server <- function(input, output, session) {
   })
 
   output$bt_equity_plot <- renderPlotly({
-    res <- bt_result()
-    validate(need(!is.null(res) && !is.null(res$equity_df), "請先成功執行回測"))
-    df_plot <- res$equity_df
+    view <- bt_nav_view()
+    validate(need(!is.null(view) && !is.null(view$equity_df), "請先成功執行回測"))
+    df_plot <- view$equity_df
+    validate(need(nrow(df_plot) > 1, "此累積區間沒有足夠的交易日"))
     validate(need("Trade_A" %in% names(df_plot), "缺少基本面策略淨值 (Trade_A)"))
     eq_b <- if ("Trade_B" %in% names(df_plot)) df_plot$Trade_B else df_plot$Model_B
     df_long <- rbind(
@@ -5725,6 +5790,7 @@ server <- function(input, output, session) {
       df_long$Series,
       levels = c("基本面策略淨值", "情緒策略淨值", "該股買進持有", "大盤基準")
     )
+    win_lab <- view$label %||% "全部"
     p <- ggplot(df_long, aes(x = Date, y = Value, color = Series, group = Series, linetype = Series)) +
       geom_line(linewidth = 0.85) +
       scale_color_manual(values = c(
@@ -5741,8 +5807,8 @@ server <- function(input, output, session) {
       )) +
       scale_y_continuous(labels = label_chart_number()) +
       labs(
-        title = "策略淨值（累積財富，起始＝1）",
-        y = "累積財富（起始＝1）", x = "日期", color = "序列", linetype = "序列"
+        title = paste0("策略淨值（累積財富，起始＝1 · ", win_lab, "）"),
+        y = "累積財富（區間起點＝1）", x = "日期", color = "序列", linetype = "序列"
       ) +
       theme_minimal()
     ggplotly(p, tooltip = c("x", "y", "colour")) %>%
@@ -5820,7 +5886,7 @@ server <- function(input, output, session) {
 
   output$perf_metrics <- renderUI({
     res <- bt_result()
-    v <- bt_validation()
+    view <- tryCatch(bt_nav_view(), error = function(e) NULL)
     if (is.null(res) || is.null(res$metrics)) {
       return(
         tags$div(
@@ -5833,7 +5899,10 @@ server <- function(input, output, session) {
         )
       )
     }
-    m <- res$metrics
+    win_lab <- if (!is.null(view) && !is.null(view$label)) view$label else "全部"
+    eq_win <- if (!is.null(view) && !is.null(view$equity_df)) view$equity_df else res$equity_df
+    m <- nav_perf_metrics(eq_win)
+    m$market_pricing_bias <- res$metrics$market_pricing_bias
     best <- m$best
     label_best <- if (identical(best, "A")) "基本面策略淨值" else "情緒策略淨值"
     sharpe_show <- if (identical(best, "A")) m$sharpe_a else m$sharpe_b
@@ -5842,8 +5911,12 @@ server <- function(input, output, session) {
     sharpe_a_txt <- if (is.na(m$sharpe_a)) "N/A" else sprintf("%.2f", m$sharpe_a)
     sharpe_b_txt <- if (is.na(m$sharpe_b)) "N/A" else sprintf("%.2f", m$sharpe_b)
 
-    # Alpha 列（較佳策略優先，否則 A）
-    alpha_df <- if (!is.null(v) && !is.null(v$alpha) && is.data.frame(v$alpha)) v$alpha else NULL
+    rf_ann <- tryCatch({
+      r <- as.numeric(cached_get_risk_free_rate())
+      if (is.finite(r) && r > 0) r / 100 else 0.04
+    }, error = function(e) 0.04)
+    alpha_df <- tryCatch(compute_alpha_dashboard(eq_win, rf_annual = rf_ann),
+                         error = function(e) NULL)
     pick_alpha <- function(series) {
       if (is.null(alpha_df) || nrow(alpha_df) == 0) return(NULL)
       hit <- alpha_df[alpha_df$Series == series, , drop = FALSE]
@@ -5880,8 +5953,8 @@ server <- function(input, output, session) {
     tagList(
       tags$p(
         style = "margin: 0 0 12px 0; font-size: 12px; color: #666;",
-        "以下以 Sharpe 較高的策略為主顯示（", label_best, "）；A＝", sharpe_a_txt,
-        "，B＝", sharpe_b_txt, "。已整併 Alpha（Excess／Jensen α）。數值僅供比較參考。"
+        "以下對應淨值圖累積區間「", win_lab, "」。以 Sharpe 較高的策略為主顯示（", label_best, "）；A＝", sharpe_a_txt,
+        "，B＝", sharpe_b_txt, "。已整併 Alpha（Excess／Jensen α）。"
       ),
       tags$div(
         id = "bt_perf_metrics_boxes",
