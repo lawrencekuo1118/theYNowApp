@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12415479
+bundleId=12415521
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=1a3437d
-commit=1a3437d72ae4578514f4f765edcb29390dc27282
-short=1a3437d
-message=Unify Lab 「最多」N with the detail table and leaderboard, swap 產業 ahead of 規模, and show 公司全稱 on the 績優 board.
-captured_at=2026-08-15T18:49:53Z
+aligned_git=ff7b112
+commit=ff7b112f15f2e3af297ab8a7295a55fe081fa715
+short=ff7b112
+message=Add a red 財務舞弊警訊 count box, put Fraud Warnings above the help copy, and drop the 決策建議 heading.
+captured_at=2026-08-15T19:06:51Z
 source_branch=master
-note=Canonical live line is app_14.0. Deploy via scripts/deploy_app_14.R; Feedback needs YNOW_FEEDBACK_GITHUB_TOKEN in app_14.0/.Renviron (gitignored; redeploy bundles it — no shinyapps Vars UI). Live status=running. Bundle 12415479 superseded 12415426; Lab 最多 N＝evaluate＝明細 (market-cap desc, hard cap 40); 排行榜＝same set CAGR Top 10 with 公司全稱 (no 規模); 產業/規模 swapped; 績優 blurb trimmed. S&P 500 universe (bf13e5a) and WACC 與Get Started 同步 (ba8bdf7) unchanged.
+note=Canonical live line is app_14.0. Deploy via scripts/deploy_app_14.R; Feedback needs YNOW_FEEDBACK_GITHUB_TOKEN in app_14.0/.Renviron (gitignored; redeploy bundles it — no shinyapps Vars UI). Live status=running. Bundle 12415521 superseded 12415479; includes Lab 最多=明細/排行榜 公司全稱/產業規模對調 (1a3437d), hide empty MOS vs Base + 價值突出、等待趨勢 (c63843b), red vbox_fraud + Fraud Warnings above help copy + drop 決策建議 (ff7b112). S&P 500 universe (bf13e5a) and WACC 與Get Started 同步 (ba8bdf7) unchanged.
