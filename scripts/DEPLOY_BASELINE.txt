@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12413766
+bundleId=12415203
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=65c47f7
-commit=65c47f795d20da05954d5681d9fb34b93ffaf593
-short=65c47f7
-message=Make backtest strategy FV the mean of checked models, use trailing realized SPY Rm on historical points, and split 折現 vs 淨值 chart names.
-captured_at=2026-08-15T07:32:13Z
+aligned_git=a395389
+commit=a395389cda80e5e16f3c53337a2f99bac36d90dc
+short=a395389
+message=Fix the 折現比較 plot crash, drop the unrelated signal dump, add a NAV accumulation window, and let users hide the 大盤 overlay on that price chart.
+captured_at=2026-08-15T16:52:45Z
 source_branch=master
-note=Canonical live line is app_14.0. Deploy via scripts/deploy_app_14.R; Feedback needs YNOW_FEEDBACK_GITHUB_TOKEN in app_14.0/.Renviron (gitignored; redeploy bundles it — no shinyapps Vars UI). Live status=running. Bundle 12413766 superseded 12413731; strategy FV=mean of checked models; historical Rm=trailing realized SPY/benchmark (12m then ≥6m then 5y); 折現圖 vs 策略淨值 distinct names; B&H panel cites this-run additive up-day (1−Exp)×r.
+note=Canonical live line is app_14.0. Deploy via scripts/deploy_app_14.R; Feedback needs YNOW_FEEDBACK_GITHUB_TOKEN in app_14.0/.Renviron (gitignored; redeploy bundles it — no shinyapps Vars UI). Live status=running. Bundle 12415203 superseded 12413766; 折現圖 plotly customdata crash fixed; signal explain removed; NAV window 全部/1y/3y/5y/custom; 顯示大盤 checkbox.
