@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12413731
+bundleId=12413766
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=7ac45da
-commit=7ac45da80421c4d2b2d84953ba3108027b42182b
-short=7ac45da
-message=Use then-year ^TNX Rf, session ERP for Rm, and that day's market-value We/Wd on historical backtest points instead of the current Session capital-market snapshot.
-captured_at=2026-08-15T07:16:42Z
+aligned_git=65c47f7
+commit=65c47f795d20da05954d5681d9fb34b93ffaf593
+short=65c47f7
+message=Make backtest strategy FV the mean of checked models, use trailing realized SPY Rm on historical points, and split 折現 vs 淨值 chart names.
+captured_at=2026-08-15T07:32:13Z
 source_branch=master
-note=Canonical live line is app_14.0. Deploy via scripts/deploy_app_14.R; Feedback needs YNOW_FEEDBACK_GITHUB_TOKEN in app_14.0/.Renviron (gitignored; redeploy bundles it — no shinyapps Vars UI). Live status=running. Bundle 12413731 superseded 12411671; historical backtest points use as-of ^TNX Rf, Rm=Rf+session ERP, and that day's market-value We/Wd.
+note=Canonical live line is app_14.0. Deploy via scripts/deploy_app_14.R; Feedback needs YNOW_FEEDBACK_GITHUB_TOKEN in app_14.0/.Renviron (gitignored; redeploy bundles it — no shinyapps Vars UI). Live status=running. Bundle 12413766 superseded 12413731; strategy FV=mean of checked models; historical Rm=trailing realized SPY/benchmark (12m then ≥6m then 5y); 折現圖 vs 策略淨值 distinct names; B&H panel cites this-run additive up-day (1−Exp)×r.
