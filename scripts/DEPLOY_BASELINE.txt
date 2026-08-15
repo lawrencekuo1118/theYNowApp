@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12415281
+bundleId=12415384
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=aa86021
-commit=aa86021e36aa4f9d5faad57d39be1e3227ddce68
-short=aa86021
-message=Make Get Started Beta easier to scan: drop the 進階預估 card, keep Summary β as the CAPM default, and rename Unlevered to 同業去槓桿 with Bottom-Up on the left. Move the KPI color legend from Annotation to sit between the industry snapshot and PERFORMANCE.
-captured_at=2026-08-15T17:22:16Z
+aligned_git=ba8bdf7
+commit=ba8bdf734aa6bf67ac72990f04ca5ac9d00f6f01
+short=ba8bdf7
+message=Default WACC β to follow Get Started (Summary β), and move Lab 盈餘品質／門檻 onto their own toolbar row.
+captured_at=2026-08-15T18:06:08Z
 source_branch=master
-note=Canonical live line is app_14.0. Deploy via scripts/deploy_app_14.R; Feedback needs YNOW_FEEDBACK_GITHUB_TOKEN in app_14.0/.Renviron (gitignored; redeploy bundles it — no shinyapps Vars UI). Live status=running. Bundle 12415281 superseded 12415203; Beta 進階預估 unboxed; 套用至 CAPM default Summary β; Unlevered βᵤ renamed 同業去槓桿 with columns swapped; KPI color legend moved from Annotation to below 產業標準快覽 / above PERFORMANCE.
+note=Canonical live line is app_14.0. Deploy via scripts/deploy_app_14.R; Feedback needs YNOW_FEEDBACK_GITHUB_TOKEN in app_14.0/.Renviron (gitignored; redeploy bundles it — no shinyapps Vars UI). Live status=running. Bundle 12415384 superseded 12415281; WACC checkbox renamed 與Get Started 同步 (id sync_gs_beta, default checked) so CAPM β follows Get Started apply source (default Summary β) with lockstep annotation; Lab 盈餘品質／門檻 moved to their own row, still side-by-side.
