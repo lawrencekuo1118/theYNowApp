@@ -35,10 +35,11 @@ server <- function(input, output, session) {
   dcf_value_result <- reactiveVal(NULL)
   stock_price_estimate_val <- reactiveVal(NULL)
 
-  # CAPM Beta：與 Get Started BETA 雙向連動
-  # driver: gs（Unlevered 路徑）| rolling | industry | manual（CAPM 手動改）
+  # CAPM Beta：WACC「與Get Started 同步」（預設開）時跟隨 Get Started 套用來源
+  # driver: gs（Get Started 選定來源）| rolling | industry | manual（WACC 獨立）
   capm_beta_dirty <- reactiveVal(FALSE)
   capm_beta_updating <- reactiveVal(FALSE)
+  sync_gs_beta_updating <- reactiveVal(FALSE)
   beta_capm_driver <- reactiveVal("gs")
   beta_u_manual_updating <- reactiveVal(FALSE)
   beta_link_from_capm <- reactiveVal(FALSE)
@@ -744,7 +745,7 @@ server <- function(input, output, session) {
       c("DCF - WACC", "Calculated WACC (%)", .snapshot_value(wacc_pct), "System CAPM/WACC estimate (also synced into WACC inputs)"),
       c("CAPM", "Rf (%)", .snapshot_value(input$capm_rf), "Ke = Rf + Beta × (Rm-Rf)"),
       c("CAPM", "Beta", .snapshot_value(input$capm_beta), "Systematic risk coefficient"),
-      c("CAPM", "Use Industry Beta", .snapshot_value(input$use_industry_beta), "TRUE = industry avg; aligns with Get Started β source = industry"),
+      c("CAPM", "Sync Get Started β", .snapshot_value(input$sync_gs_beta), "TRUE = WACC β follows Get Started 套用至 CAPM source"),
       c("CAPM", "Rm (%)", .snapshot_value(input$capm_rm), "Expected market return"),
       c("Beta", "Purpose", .snapshot_value(input$beta_purpose), "valuation; Rolling blocked from CAPM"),
       c("Beta", "Unlever β_L source", .snapshot_value(input$beta_bl_source), "feeds 去槓桿化 βᵤ (Hamada)"),
@@ -863,7 +864,7 @@ server <- function(input, output, session) {
       use_est_re = c("WACC", "使用 CAPM Re", "UI: use_estimated_re；TRUE = Re 跟 CAPM"),
       capm_rf = c("CAPM", "Rf (%)", "無風險利率（啟動時估）"),
       capm_beta = c("CAPM", "Beta", "啟動占位；估值路徑就緒後改寫入選定來源"),
-      use_industry_beta = c("CAPM", "使用產業 Beta", "TRUE = 產業平均；與 Get Started 來源 industry 對齊"),
+      sync_gs_beta = c("CAPM", "與 Get Started 同步", "TRUE = WACC/CAPM β 跟隨 Get Started 套用來源（預設 Summary β）"),
       beta_bench = c("Beta", "基準指數", "Rolling β 對照標的，預設 SPY（不寫入 CAPM）"),
       beta_lookback_months = c("Beta", "回溯月數", "常見 36／60／84；預設 60 對齊 Yahoo 5Y"),
       beta_min_obs = c("Beta", "最少觀測", "Rolling 估計最低月數"),
@@ -2207,71 +2208,56 @@ server <- function(input, output, session) {
     invisible(TRUE)
   }
 
-  # 產業平均模式：CAPM 跟產業；否則由 Get Started driver 主導（不再另開 Summary→CAPM 旁路）
+  # 產業來源就緒且「與Get Started 同步」時，把產業 β 寫入 CAPM
   .sync_capm_beta_industry <- function() {
-    if (!isTRUE(input$use_industry_beta)) return(invisible(NULL))
+    if (!isTRUE(input$sync_gs_beta)) return(invisible(NULL))
+    src <- as.character(input$beta_u_apply_source %||% "")[1]
+    if (!identical(src, "industry")) return(invisible(NULL))
     b <- .industry_beta_value()
     if (is.finite(b)) {
-      beta_capm_driver("industry")
+      beta_capm_driver("gs")
       capm_beta_dirty(FALSE)
       .set_capm_beta(b)
     }
     invisible(NULL)
   }
 
-  # CAPM 手動改 β → 回寫 Get Started「手動 β」（直接等同，不再反向去槓桿）
+  .set_sync_gs_beta <- function(val) {
+    val <- isTRUE(val)
+    if (identical(isTRUE(input$sync_gs_beta), val)) return(invisible(FALSE))
+    sync_gs_beta_updating(TRUE)
+    updateCheckboxInput(session, "sync_gs_beta", value = val)
+    invisible(TRUE)
+  }
+
+  # CAPM 手動改 β → 取消「與Get Started 同步」，WACC 獨立；不改寫 Get Started 來源
   observeEvent(input$capm_beta, {
     if (isTRUE(capm_beta_updating())) {
       capm_beta_updating(FALSE)
       return()
     }
-    # 產業平均勾選時的數值變更視為產業驅動，不回寫手動
-    if (isTRUE(input$use_industry_beta)) return()
 
     beta_val <- suppressWarnings(as.numeric(input$capm_beta)[1])
     if (!is.finite(beta_val)) return()
 
+    if (isTRUE(input$sync_gs_beta)) {
+      .set_sync_gs_beta(FALSE)
+    }
     beta_capm_driver("manual")
     capm_beta_dirty(TRUE)
-    # 旗標由 beta_u_apply_source／beta_u_manual observer 消費後清除（update* 非同步）
-    beta_link_from_capm(TRUE)
-
-    if (!identical(as.character(input$beta_u_apply_source %||% "")[1], "manual")) {
-      updateRadioButtons(session, "beta_u_apply_source", selected = "manual")
-    }
-
-    .set_beta_u_manual(beta_val)
   }, ignoreInit = TRUE)
 
-  # 勾選產業平均／換產業：與 Get Started「產業平均」來源對齊
-  observeEvent(list(input$use_industry_beta, input$industry_choice), {
-    if (isTRUE(input$use_industry_beta)) {
-      src <- as.character(input$beta_u_apply_source %||% "")[1]
-      if (!identical(src, "industry")) {
-        beta_link_from_capm(TRUE)
-        updateRadioButtons(session, "beta_u_apply_source", selected = "industry")
-      }
+  # 換產業：僅在同步開啟且 Get Started 來源為產業預設時更新 CAPM β
+  observeEvent(input$industry_choice, {
+    if (!isTRUE(input$sync_gs_beta)) return()
+    src <- as.character(input$beta_u_apply_source %||% "")[1]
+    if (identical(src, "industry")) {
       .sync_capm_beta_industry()
-    } else {
-      # 僅當使用者在 CAPM 取消勾選、且選擇器仍為 industry 時，改回 Summary β
-      # （若已改選 Summary／Rolling 等而連帶取消勾選，勿搶改 radio）
-      src <- as.character(input$beta_u_apply_source %||% "")[1]
-      if (identical(src, "industry")) {
-        beta_link_from_capm(TRUE)
-        updateRadioButtons(session, "beta_u_apply_source", selected = "summary")
-        beta_capm_driver("gs")
-        capm_beta_dirty(FALSE)
-        # 占位：產業結構 β（避免寫回個股情緒 β）
-        b <- .industry_beta_value()
-        if (is.finite(b)) .set_capm_beta(b)
-      }
     }
   }, ignoreInit = TRUE)
 
-  # 智慧標籤：連動來源
+  # 智慧標籤：與 Get Started 來源鎖步（或 WACC 獨立）
   .capm_beta_label_html <- function(beta) {
-    drv <- as.character(beta_capm_driver() %||% "gs")[1]
-    ind_b <- .industry_beta_value()
     src <- as.character(input$beta_u_apply_source %||% "summary")[1]
     gs_tag <- switch(
       src,
@@ -2282,25 +2268,20 @@ server <- function(input, output, session) {
       "manual" = "Get Started｜手動 β",
       "Get Started｜β"
     )
-    if (identical(drv, "industry") && isTRUE(input$use_industry_beta) &&
-        is.finite(ind_b) && abs(beta - ind_b) < 1e-4) {
-      HTML("Beta (β) <span style='color: #2980b9; font-size: 12px;'>[產業預設 β]</span>")
-    } else if (identical(drv, "rolling") || identical(src, "rolling")) {
+    if (identical(src, "rolling")) {
       HTML("Beta (β) <span style='color: #c0392b; font-size: 12px;'>[Rolling 已排除｜請改其他來源]</span>")
-    } else if (identical(drv, "manual")) {
-      HTML("Beta (β) <span style='color: #e67e22; font-size: 12px;'>[手動｜已回寫 Get Started]</span>")
-    } else if (identical(drv, "gs")) {
+    } else if (isTRUE(input$sync_gs_beta)) {
       HTML(sprintf(
         "Beta (β) <span style='color: #27ae60; font-size: 12px;'>[%s]</span>",
         gs_tag
       ))
     } else {
-      HTML("Beta (β) <span style='color: #e67e22; font-size: 12px;'>[自訂數值]</span>")
+      HTML("Beta (β) <span style='color: #e67e22; font-size: 12px;'>[WACC 獨立]</span>")
     }
   }
 
   observeEvent(list(
-    input$capm_beta, input$industry_choice, input$use_industry_beta,
+    input$capm_beta, input$industry_choice, input$sync_gs_beta,
     input$beta_u_apply_source, summary_data(), beta_capm_driver()
   ), {
     beta <- suppressWarnings(as.numeric(input$capm_beta)[1])
@@ -2901,7 +2882,10 @@ server <- function(input, output, session) {
     list(ok = FALSE, reason = "unknown_source", src = src)
   }
 
-  .apply_selected_beta_u_to_capm <- function(silent = FALSE) {
+  .apply_selected_beta_u_to_capm <- function(silent = FALSE, force = FALSE) {
+    if (!isTRUE(force) && !isTRUE(input$sync_gs_beta)) {
+      return(invisible(FALSE))
+    }
     got <- .compute_selected_beta_u()
     if (!isTRUE(got$ok)) {
       if (!isTRUE(silent)) {
@@ -2921,25 +2905,14 @@ server <- function(input, output, session) {
       return(invisible(FALSE))
     }
 
-    src <- got$src %||% as.character(input$beta_u_apply_source %||% "")[1]
     beta_val <- got$beta %||% got$beta_u
 
-    if (identical(src, "industry")) {
-      if (!isTRUE(input$use_industry_beta)) {
-        updateCheckboxInput(session, "use_industry_beta", value = TRUE)
-      }
-      beta_capm_driver("industry")
-      capm_beta_dirty(FALSE)
-    } else if (identical(src, "rolling")) {
-      updateCheckboxInput(session, "use_industry_beta", value = FALSE)
-      beta_capm_driver("rolling")
-      capm_beta_dirty(TRUE)
-    } else {
-      updateCheckboxInput(session, "use_industry_beta", value = FALSE)
-      beta_capm_driver("gs")
-      capm_beta_dirty(TRUE)
+    if (isTRUE(force)) {
+      .set_sync_gs_beta(TRUE)
     }
 
+    beta_capm_driver("gs")
+    capm_beta_dirty(FALSE)
     .set_capm_beta(beta_val)
     .auto_recalc_capm_wacc(notify = !isTRUE(silent), wacc_too = TRUE)
     if (!isTRUE(silent)) {
@@ -2950,7 +2923,7 @@ server <- function(input, output, session) {
     }
     invisible(TRUE)
   }
-  observeEvent(input$apply_beta_u_selected, { .apply_selected_beta_u_to_capm(silent = FALSE) })
+  observeEvent(input$apply_beta_u_selected, { .apply_selected_beta_u_to_capm(silent = FALSE, force = TRUE) })
 
   # Beta Overview：選項旁動態顯示各來源當前 β（數字粗體）+ 分項說明
   .fmt_beta_choice_val <- function(v, digits = 2) {
@@ -3047,31 +3020,16 @@ server <- function(input, output, session) {
     }, once = TRUE)
   })
 
-  # Get Started → CAPM 自動同步
+  # Get Started → CAPM 自動同步（僅在「與Get Started 同步」勾選時）
   .maybe_sync_gs_beta_to_capm <- function() {
+    if (!isTRUE(input$sync_gs_beta)) return(invisible(FALSE))
     src <- as.character(input$beta_u_apply_source %||% APP_DEFAULTS$beta_u_apply_source)[1]
-
-    if (identical(src, "industry")) {
-      if (!isTRUE(input$use_industry_beta)) {
-        updateCheckboxInput(session, "use_industry_beta", value = TRUE)
-      } else {
-        .sync_capm_beta_industry()
-      }
-      return(invisible(TRUE))
-    }
-
-    if (isTRUE(input$use_industry_beta)) return(invisible(FALSE))
 
     drv <- as.character(beta_capm_driver() %||% "gs")[1]
     # Rolling 驅動時：僅當選擇器也是 rolling 才允許同步（估計更新）
     if (identical(drv, "rolling") && !identical(src, "rolling")) return(invisible(FALSE))
-    if (identical(drv, "industry")) return(invisible(FALSE))
-    # manual：僅在套用來源仍為 manual 時，由 GS 側推回 CAPM
-    if (identical(drv, "manual")) {
-      if (!identical(src, "manual")) return(invisible(FALSE))
-    } else if (!identical(src, "rolling")) {
-      beta_capm_driver("gs")
-    }
+    # WACC 獨立（手動改 CAPM β）時不自動覆寫
+    if (identical(drv, "manual")) return(invisible(FALSE))
 
     # 舊值／誤選 Rolling 時，改回預設 Summary β（不寫入 CAPM）
     if (identical(src, "rolling")) {
@@ -3079,6 +3037,7 @@ server <- function(input, output, session) {
       return(invisible(TRUE))
     }
 
+    beta_capm_driver("gs")
     ok <- .apply_selected_beta_u_to_capm(silent = TRUE)
     # 選定來源尚未就緒時維持原選（預設 Summary β），不要自動跳到產業／Bottom-Up
     invisible(isTRUE(ok))
@@ -3107,21 +3066,12 @@ server <- function(input, output, session) {
       return()
     }
     src <- as.character(input$beta_u_apply_source %||% "")[1]
-    # 先對齊產業勾選與 driver（Rolling 尚未估計時不覆寫 CAPM 數值）
-    if (identical(src, "industry")) {
-      if (!isTRUE(input$use_industry_beta)) {
-        updateCheckboxInput(session, "use_industry_beta", value = TRUE)
-      }
-    } else {
-      if (isTRUE(input$use_industry_beta)) {
-        updateCheckboxInput(session, "use_industry_beta", value = FALSE)
-      }
-      if (identical(src, "rolling")) {
-        updateRadioButtons(session, "beta_u_apply_source", selected = "summary")
-        return()
-      }
-      beta_capm_driver("gs")
+    if (identical(src, "rolling")) {
+      updateRadioButtons(session, "beta_u_apply_source", selected = "summary")
+      return()
     }
+    if (!isTRUE(input$sync_gs_beta)) return()
+    beta_capm_driver("gs")
     .apply_selected_beta_u_to_capm(silent = TRUE)
   }, ignoreInit = TRUE)
 
@@ -3148,13 +3098,20 @@ server <- function(input, output, session) {
     .apply_selected_beta_u_to_capm(silent = TRUE)
   }, ignoreInit = TRUE)
 
-  # 取消產業平均後：若選擇器已非 industry（例如改選 Summary），用 Get Started 路徑回填
-  observeEvent(input$use_industry_beta, {
-    if (isTRUE(input$use_industry_beta)) return()
-    src <- as.character(input$beta_u_apply_source %||% "")[1]
-    if (identical(src, "industry")) return() # 交由上方 observer 改 radio + 套用 Unlevered
-    beta_capm_driver("gs")
-    .maybe_sync_gs_beta_to_capm()
+  # 「與Get Started 同步」：勾選則帶入目前 Get Started β；取消則 WACC 獨立
+  observeEvent(input$sync_gs_beta, {
+    if (isTRUE(sync_gs_beta_updating())) {
+      sync_gs_beta_updating(FALSE)
+      return()
+    }
+    if (isTRUE(input$sync_gs_beta)) {
+      beta_capm_driver("gs")
+      capm_beta_dirty(FALSE)
+      .maybe_sync_gs_beta_to_capm()
+    } else {
+      beta_capm_driver("manual")
+      capm_beta_dirty(TRUE)
+    }
   }, ignoreInit = TRUE)
 
   observeEvent(current_ticker(), {
@@ -3373,7 +3330,7 @@ server <- function(input, output, session) {
       updateRadioButtons(session, "beta_u_apply_source", selected = src)
       # radio observer 會同步 CAPM
     } else {
-      .apply_selected_beta_u_to_capm(silent = FALSE)
+      .apply_selected_beta_u_to_capm(silent = FALSE, force = TRUE)
     }
     showNotification(
       glue::glue("已依決策樹選擇「{rec$title}」。"),
@@ -3453,7 +3410,7 @@ server <- function(input, output, session) {
     )
   }, striped = TRUE, bordered = TRUE, spacing = "s", width = "100%")
 
-  # 保留：切換產業時刷新 Rm／成長／P/B；Beta 產業平均由上方 .sync_capm_beta_industry 處理
+  # 保留：切換產業時刷新 Rm／成長／P/B；Beta 僅在 Get Started 來源為產業且同步開啟時由上方處理
   observeEvent(input$industry_choice, {
     req(input$industry_choice)
     inds <- industry_standards[[input$industry_choice]]

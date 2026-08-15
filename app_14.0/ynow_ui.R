@@ -129,8 +129,8 @@ capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
                                   result_id = "capm_result",
                                   advanced_hint = TRUE) {
   hints <- list(
-    "Beta (β) 與 Get Started → BETA 雙向連動：選定來源（預設 Summary β）會寫入此處；此處手動改 β 會回寫為「手動輸入」。",
-    "勾選「套用產業平均值」等同於 Get Started 選「產業預設 β」；取消勾選會改回 Summary β。"
+    "勾選「與Get Started 同步」（預設）時，此處 β 跟隨 Get Started「套用至 CAPM」來源（預設 Summary β）；標籤會顯示目前來源。",
+    "取消勾選後可在 WACC 獨立設定 β，不會改寫 Get Started 來源；再勾選則重新帶入目前 Get Started β。"
   )
   if (isTRUE(advanced_hint)) {
     hints <- c(
@@ -144,9 +144,9 @@ capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
     numericInput("capm_rm", "市場報酬率 Rm (%)", value = APP_DEFAULTS$capm_rm, step = 0.01),
     numericInput("capm_beta", "Beta (β)", value = APP_DEFAULTS$capm_beta, step = 0.01),
     checkboxInput(
-      "use_industry_beta",
-      tags$span(style = "font-weight: bold;", "套用產業平均值（Beta）"),
-      value = isTRUE(APP_DEFAULTS$use_industry_beta)
+      "sync_gs_beta",
+      tags$span(style = "font-weight: bold;", "與Get Started 同步"),
+      value = isTRUE(APP_DEFAULTS$sync_gs_beta)
     ),
     do.call(helpText, as.list(hints)),
     actionButton(calc_id, "估算 rₑ（CAPM）", class = "btn-primary"),
@@ -1280,10 +1280,28 @@ ui <- dashboardPage(
           white-space: nowrap;
           overflow-x: auto;
         }
+        .ynow-lab-im-quality-row {
+          display: flex;
+          flex-wrap: nowrap;
+          align-items: flex-start;
+          gap: 16px;
+          padding: 0 12px 10px 12px;
+          margin: 0 0 8px 0;
+          background: #fafbfc;
+          border: 1px solid #e5e9ef;
+          border-top: 0;
+          border-radius: 0 0 6px 6px;
+        }
+        .ynow-lab-im-bar.ynow-lab-im-bar-with-quality {
+          margin-bottom: 0;
+          border-bottom-left-radius: 0;
+          border-bottom-right-radius: 0;
+        }
         .ynow-lab-im-quality-pair {
           display: inline-flex;
+          flex-direction: row;
           align-items: flex-start;
-          gap: 12px;
+          gap: 16px;
           flex: 0 0 auto;
         }
         .ynow-lab-im-quality {
@@ -1291,7 +1309,7 @@ ui <- dashboardPage(
           align-items: flex-start;
           gap: 2px;
           white-space: normal;
-          max-width: 168px;
+          max-width: 220px;
         }
         .ynow-lab-im-quality-hint {
           font-size: 10.5px;
@@ -2787,7 +2805,7 @@ ui <- dashboardPage(
                 )
               ),
               tags$div(
-                class = "ynow-lab-im-bar",
+                class = "ynow-lab-im-bar ynow-lab-im-bar-with-quality",
                 tags$div(
                   class = "ynow-lab-im-group ynow-lab-im-sizes",
                   tags$span(class = "ynow-lab-im-k", "規模"),
@@ -2837,6 +2855,18 @@ ui <- dashboardPage(
                 ),
                 tags$div(class = "ynow-lab-im-sep"),
                 tags$div(
+                  class = "ynow-lab-im-group",
+                  tags$span(class = "ynow-lab-im-k", "最多"),
+                  numericInput(
+                    "lab_im_max_n", NULL,
+                    value = 25, min = 5, max = 40, step = 5,
+                    width = "64px"
+                  )
+                )
+              ),
+              tags$div(
+                class = "ynow-lab-im-quality-row",
+                tags$div(
                   class = "ynow-lab-im-quality-pair",
                   tags$div(
                     class = "ynow-lab-im-group ynow-lab-im-quality",
@@ -2861,16 +2891,6 @@ ui <- dashboardPage(
                       class = "ynow-lab-im-quality-hint",
                       "勾選後只列 F-Score≥7 且盈餘品質通過者；預設顯示全部。"
                     )
-                  )
-                ),
-                tags$div(class = "ynow-lab-im-sep"),
-                tags$div(
-                  class = "ynow-lab-im-group",
-                  tags$span(class = "ynow-lab-im-k", "最多"),
-                  numericInput(
-                    "lab_im_max_n", NULL,
-                    value = 25, min = 5, max = 40, step = 5,
-                    width = "64px"
                   )
                 )
               ),
