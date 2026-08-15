@@ -15,9 +15,10 @@ decision_ui <- function(id) {
   ns <- NS(id)
   tagList(
     fluidRow(
-      valueBoxOutput(ns("vbox_fscore"), width = 4),
+      valueBoxOutput(ns("vbox_fscore"), width = 3),
       uiOutput(ns("vbox_mos")),
-      valueBoxOutput(ns("vbox_momentum"), width = 4)
+      valueBoxOutput(ns("vbox_momentum"), width = 3),
+      uiOutput(ns("vbox_fraud"))
     ),
     fluidRow(
       box(
@@ -29,44 +30,45 @@ decision_ui <- function(id) {
         ),
         column(
           width = 7,
-          h4("決策建議："),
-          uiOutput(ns("ui_recommendation")),
-          tags$div(
-            class = "ynow-fraud-banner",
-            style = "background-color: #d9534f; color: white; padding: 12px 14px; margin: 14px 0 0 0; border-radius: 4px;",
-            tags$h4(
-              icon("exclamation-triangle"), " Fraud Warnings",
-              style = "font-weight: bold; margin: 0 0 8px 0; font-size: 15px; border-bottom: 1px solid #ffcccc; padding-bottom: 8px;"
-            ),
-            tags$div(
-              style = "font-size: 13px; line-height: 1.55;",
-              textOutput("highdebttoequity"),
-              textOutput("nofreecashflow"),
-              textOutput("nooperatingcashflow"),
-              textOutput("notdoingbusiness"),
-              textOutput("notgettingcashback"),
-              textOutput("no_fraud_detected")
-            )
-          )
+          uiOutput(ns("ui_recommendation"))
         )
       )
     ),
     fluidRow(
       column(
         width = 12,
-        class = "ynow-about-section",
         style = "padding: 0 15px 8px 15px;",
-        h3(class = "ynow-about-section-title", tags$b("Financial Fraud Red Flags (財務舞弊警訊)")),
-        p(
-          class = "ynow-about-section-lead",
-          "本系統內建五項核心排雷機制，透過交叉比對現金流與獲利品質，自動偵測潛在的地雷股："
+        tags$div(
+          class = "ynow-fraud-banner",
+          style = "background-color: #d9534f; color: white; padding: 12px 14px; margin: 0 0 14px 0; border-radius: 4px;",
+          tags$h4(
+            icon("exclamation-triangle"), " Fraud Warnings",
+            style = "font-weight: bold; margin: 0 0 8px 0; font-size: 15px; border-bottom: 1px solid #ffcccc; padding-bottom: 8px;"
+          ),
+          tags$div(
+            style = "font-size: 13px; line-height: 1.55;",
+            textOutput("highdebttoequity"),
+            textOutput("nofreecashflow"),
+            textOutput("nooperatingcashflow"),
+            textOutput("notdoingbusiness"),
+            textOutput("notgettingcashback"),
+            textOutput("no_fraud_detected")
+          )
         ),
-        tags$ul(
-          tags$li(tags$b("無自由現金流 (No FCF)："), "長期 FCF 為負，代表企業無法靠自身營運創造現金，需依賴外部融資。"),
-          tags$li(tags$b("無營業現金流 (No OCF)："), "OCF 為負是極度危險的訊號，代表核心本業正在失血。"),
-          tags$li(tags$b("獲利未實現 (OCF < Net Income)："), "俗稱「紙上富貴」，損益表雖然賺錢，但現金沒有實際流入公司，可能存在應收帳款作帳疑慮。"),
-          tags$li(tags$b("虛假獲利 (Net Income > 0 but OCF < 0)："), "最經典的舞弊特徵，強烈暗示獲利品質不佳。"),
-          tags$li(tags$b("高財務槓桿 (Debt/Equity > 2)："), "負債比過高，在升息循環或景氣下行時面臨極大的流動性風險。")
+        tags$div(
+          class = "ynow-about-section",
+          h3(class = "ynow-about-section-title", tags$b("Financial Fraud Red Flags (財務舞弊警訊)")),
+          p(
+            class = "ynow-about-section-lead",
+            "本系統內建五項核心排雷機制，透過交叉比對現金流與獲利品質，自動偵測潛在的地雷股："
+          ),
+          tags$ul(
+            tags$li(tags$b("無自由現金流 (No FCF)："), "長期 FCF 為負，代表企業無法靠自身營運創造現金，需依賴外部融資。"),
+            tags$li(tags$b("無營業現金流 (No OCF)："), "OCF 為負是極度危險的訊號，代表核心本業正在失血。"),
+            tags$li(tags$b("獲利未實現 (OCF < Net Income)："), "俗稱「紙上富貴」，損益表雖然賺錢，但現金沒有實際流入公司，可能存在應收帳款作帳疑慮。"),
+            tags$li(tags$b("虛假獲利 (Net Income > 0 but OCF < 0)："), "最經典的舞弊特徵，強烈暗示獲利品質不佳。"),
+            tags$li(tags$b("高財務槓桿 (Debt/Equity > 2)："), "負債比過高，在升息循環或景氣下行時面臨極大的流動性風險。")
+          )
         )
       )
     )
@@ -210,7 +212,34 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
         paste0("安全邊際 (vs Base)", conf_lab),
         icon = icon("shield-halved"),
         color = color,
-        width = 4
+        width = 3
+      )
+    })
+
+    fraud_flag_n <- reactive({
+      is_df <- tryCatch(d_is(), error = function(e) NULL)
+      bs_df <- tryCatch(d_bs(), error = function(e) NULL)
+      cf_df <- tryCatch(d_cf(), error = function(e) NULL)
+      if (is.null(is_df) || is.null(bs_df) || is.null(cf_df) ||
+          !is.data.frame(is_df) || !is.data.frame(bs_df) || !is.data.frame(cf_df) ||
+          nrow(is_df) == 0L || nrow(bs_df) == 0L || nrow(cf_df) == 0L) {
+        return(NA_integer_)
+      }
+      msgs <- tryCatch(collect_fraud_warnings(cf_df, is_df, bs_df), error = function(e) NULL)
+      if (is.null(msgs)) return(NA_integer_)
+      as.integer(length(msgs))
+    })
+
+    output$vbox_fraud <- renderUI({
+      n <- tryCatch(fraud_flag_n(), error = function(e) NA_integer_)
+      if (length(n) != 1L || is.null(n) || is.na(n) || !is.finite(n)) return(NULL)
+      n <- as.integer(n)
+      valueBox(
+        paste0(n, " 項"),
+        "財務舞弊警訊",
+        icon = icon("exclamation-triangle"),
+        color = "red",
+        width = 3
       )
     })
 
