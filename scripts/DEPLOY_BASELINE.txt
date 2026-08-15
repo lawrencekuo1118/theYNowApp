@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12415203
+bundleId=12415281
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=a395389
-commit=a395389cda80e5e16f3c53337a2f99bac36d90dc
-short=a395389
-message=Fix the 折現比較 plot crash, drop the unrelated signal dump, add a NAV accumulation window, and let users hide the 大盤 overlay on that price chart.
-captured_at=2026-08-15T16:52:45Z
+aligned_git=aa86021
+commit=aa86021e36aa4f9d5faad57d39be1e3227ddce68
+short=aa86021
+message=Make Get Started Beta easier to scan: drop the 進階預估 card, keep Summary β as the CAPM default, and rename Unlevered to 同業去槓桿 with Bottom-Up on the left. Move the KPI color legend from Annotation to sit between the industry snapshot and PERFORMANCE.
+captured_at=2026-08-15T17:22:16Z
 source_branch=master
-note=Canonical live line is app_14.0. Deploy via scripts/deploy_app_14.R; Feedback needs YNOW_FEEDBACK_GITHUB_TOKEN in app_14.0/.Renviron (gitignored; redeploy bundles it — no shinyapps Vars UI). Live status=running. Bundle 12415203 superseded 12413766; 折現圖 plotly customdata crash fixed; signal explain removed; NAV window 全部/1y/3y/5y/custom; 顯示大盤 checkbox.
+note=Canonical live line is app_14.0. Deploy via scripts/deploy_app_14.R; Feedback needs YNOW_FEEDBACK_GITHUB_TOKEN in app_14.0/.Renviron (gitignored; redeploy bundles it — no shinyapps Vars UI). Live status=running. Bundle 12415281 superseded 12415203; Beta 進階預估 unboxed; 套用至 CAPM default Summary β; Unlevered βᵤ renamed 同業去槓桿 with columns swapped; KPI color legend moved from Annotation to below 產業標準快覽 / above PERFORMANCE.
