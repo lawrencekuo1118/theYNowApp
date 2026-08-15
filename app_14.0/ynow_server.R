@@ -6354,7 +6354,7 @@ server <- function(input, output, session) {
   observeEvent(input$lab_im_run_fscore, {
     catlg <- lab_im_catalog()
     req(is.data.frame(catlg), nrow(catlg) > 0)
-    # 評估池：先套產業／模型複選（規模需市值，評估後再濾）
+    # 評估池：產業／模型複選；規模在取到市值後再濾，再依市值取最多 N 檔
     pool <- lab_merge_catalog_scores(
       catlg,
       scores = NULL,
@@ -6364,34 +6364,52 @@ server <- function(input, output, session) {
       eq_only = FALSE,
       gate_only = FALSE
     )
-    pool <- pool[!is.na(pool$ticker) & nzchar(as.character(pool$ticker)), , drop = FALSE]
-    if (nrow(pool) == 0L) {
+    pool <- lab_dedupe_eval_pool(pool)
+    if (is.null(pool) || nrow(pool) == 0L) {
       showNotification("目前篩選下沒有可評估的美股候選。", type = "warning")
       return()
     }
-    max_n <- suppressWarnings(as.integer(input$lab_im_max_n %||% 25L)[1])
-    if (!is.finite(max_n) || max_n < 1L) max_n <- 25L
-    max_n <- min(40L, max(5L, max_n))
-    n_unique <- length(unique(pool$ticker))
-    if (n_unique > max_n) {
-      showNotification(
-        paste0("候選 ", n_unique, " 檔，本次先評估前 ", max_n, " 檔。"),
-        type = "message", duration = 5
-      )
-    }
+    max_n <- lab_clamp_im_max_n(input$lab_im_max_n)
+    sf <- lab_normalize_size_filter(input$lab_im_sizes)
+    size_restricts <- length(sf) > 0L && !isTRUE(setequal(sf, names(LAB_SIZE_LABELS)))
     n_yrs <- lab_model_horizon_years()
     scores <- withProgress(
       message = paste0("評估中（F-Score 門檻＋", n_yrs, " 年年化估值漲幅）…"),
       value = 0, {
+        n_raw <- nrow(pool)
+        if (n_raw > max_n || size_restricts) {
+          incProgress(0.08, detail = "取 Yahoo 市值（排序／規模）…")
+          pool <- lab_attach_market_caps(pool)
+        }
+        pool <- lab_rank_and_cap_eval_pool(
+          pool, max_n = max_n, size_filter = input$lab_im_sizes
+        )
+        n_filtered <- as.integer(attr(pool, "n_filtered") %||% nrow(pool))
+        used_mcap <- isTRUE(attr(pool, "used_market_cap"))
+        if (nrow(pool) == 0L) {
+          showNotification("規模×產業×模型篩選後沒有可評估的美股候選。", type = "warning")
+          return(NULL)
+        }
+        if (n_filtered > max_n) {
+          how <- if (used_mcap) "依市值由大到小" else "市值暫不可用，改依代碼"
+          showNotification(
+            paste0("篩選後 ", n_filtered, " 檔，", how, "評估 ", nrow(pool), " 檔。"),
+            type = "message", duration = 6
+          )
+        }
+        cols <- intersect(c("ticker", "industry_key", "primary"), names(pool))
         lab_screen_tickers_fscore(
-          pool[, c("ticker", "industry_key", "primary"), drop = FALSE],
+          pool[, cols, drop = FALSE],
           max_n = max_n,
           progress_cb = function(i, n, tk) {
-            incProgress(1 / max(n, 1), detail = paste0(tk, " (", i, "/", n, ")"))
+            incProgress(0.92 / max(n, 1), detail = paste0(tk, " (", i, "/", n, ")"))
           }
         )
       }
     )
+    if (is.null(scores) || !is.data.frame(scores) || nrow(scores) == 0L) {
+      return()
+    }
     lab_im_scores(scores)
     n_q <- sum(scores$is_quality %in% TRUE, na.rm = TRUE)
     best <- NA_real_
@@ -6447,26 +6465,31 @@ server <- function(input, output, session) {
       industry_filter = input$lab_im_industries,
       size_filter = input$lab_im_sizes,
       eq_only = FALSE,
-      gate_only = FALSE
+      gate_only = FALSE,
+      evaluated_only = TRUE
     )
   })
 
   output$lab_im_leader_note <- renderUI({
     scores <- lab_im_scores()
     n <- lab_model_horizon_years()
-    if (is.null(scores) || !is.data.frame(scores) || nrow(scores) == 0) {
+    max_n <- lab_clamp_im_max_n(input$lab_im_max_n)
+    n_eval <- if (is.data.frame(scores) && nrow(scores) > 0) nrow(scores) else 0L
+    if (n_eval == 0L) {
       return(tags$p(
         style = "color:#888; font-size:12.5px;",
-        "尚未評估。按下上方按鈕後，將列出「F-Score 門檻通過」且",
+        "尚未評估。按下上方按鈕後，將評估最多 ",
+        tags$b(as.character(max_n)),
+        " 檔（明細列數相同），並列出其中門檻通過且",
         sprintf(" n=%d 年年化估值漲幅最高 ", n),
-        "的代碼（即績優選股結果）。"
+        "的 Top 10（與明細同一批、同一排序鍵）。"
       ))
     }
     tags$p(
       style = "color:#555; font-size:12.5px;",
       sprintf(
-        "排序鍵＝模型合理價相對現價，於 %d 年預測期換算之年化漲幅；僅列門檻通過者（一代碼一列）。",
-        n
+        "本次已評估 %d 檔（＝明細列數，盈餘品質／門檻未勾選時）。排序鍵＝模型合理價相對現價，於 %d 年預測期換算之年化漲幅；排行榜僅列門檻通過者的 Top %d（一代碼一列，不另抽樣）。",
+        n_eval, n, as.integer(min(10L, n_eval))
       )
     )
   })
@@ -6519,18 +6542,23 @@ server <- function(input, output, session) {
       industry_filter = input$lab_im_industries,
       size_filter = input$lab_im_sizes,
       eq_only = isTRUE(input$lab_im_eq_only),
-      gate_only = isTRUE(input$lab_im_gate_only)
+      gate_only = isTRUE(input$lab_im_gate_only),
+      evaluated_only = TRUE
     )
     if (nrow(merged) == 0) {
+      scores <- lab_im_scores()
+      msg <- if (is.null(scores) || !is.data.frame(scores) || nrow(scores) == 0) {
+        "尚未評估。請按「評估績優」；明細列數將等於「最多」N（篩選後不足 N 則全列）。"
+      } else {
+        "沒有符合篩選的已評估列。可放寬規模／產業／模型，取消「盈餘品質」／「門檻」過濾，或重新評估。"
+      }
       return(DT::datatable(
-        data.frame(
-          訊息 = "沒有符合篩選的列。可放寬規模／產業／模型，取消「盈餘品質」／「門檻」過濾，或先執行評估。"
-        ),
+        data.frame(訊息 = msg),
         rownames = FALSE, options = list(dom = "t")
       ))
     }
     size_lab <- unname(LAB_SIZE_LABELS[merged$size_band])
-    size_lab[is.na(size_lab)] <- "（未評估）"
+    size_lab[is.na(size_lab)] <- "—"
     yahoo_nm <- if ("company_name" %in% names(merged)) merged$company_name else NA_character_
     show_df <- data.frame(
       代碼 = merged$ticker,
@@ -6540,7 +6568,7 @@ server <- function(input, output, session) {
         character(1)
       ),
       年化估值漲幅 = ifelse(
-        is.na(merged$upside_cagr_pct), "（未評估）",
+        is.na(merged$upside_cagr_pct), "—",
         sprintf("%+.1f%%", merged$upside_cagr_pct)
       ),
       總潛在漲幅 = ifelse(
@@ -6567,7 +6595,7 @@ server <- function(input, output, session) {
       options = list(
         pageLength = 20,
         scrollX = TRUE,
-        order = list(list(2, "desc"))
+        order = list()
       )
     ) %>%
       DT::formatStyle(
@@ -6589,13 +6617,14 @@ server <- function(input, output, session) {
       industry_filter = isolate(input$lab_im_industries),
       size_filter = isolate(input$lab_im_sizes),
       eq_only = isTRUE(isolate(input$lab_im_eq_only)),
-      gate_only = isTRUE(isolate(input$lab_im_gate_only))
+      gate_only = isTRUE(isolate(input$lab_im_gate_only)),
+      evaluated_only = TRUE
     )
     if (nrow(merged) == 0) {
-      return(data.frame(訊息 = "目前篩選下無明細列"))
+      return(data.frame(訊息 = "目前篩選下無已評估明細列（請先按「評估績優」）"))
     }
     size_lab <- unname(LAB_SIZE_LABELS[merged$size_band])
-    size_lab[is.na(size_lab)] <- "（未評估）"
+    size_lab[is.na(size_lab)] <- "—"
     yahoo_nm <- if ("company_name" %in% names(merged)) merged$company_name else NA_character_
     data.frame(
       代碼 = merged$ticker,
@@ -6605,7 +6634,7 @@ server <- function(input, output, session) {
         character(1)
       ),
       年化估值漲幅 = ifelse(
-        is.na(merged$upside_cagr_pct), "（未評估）",
+        is.na(merged$upside_cagr_pct), "—",
         sprintf("%+.1f%%", merged$upside_cagr_pct)
       ),
       總潛在漲幅 = ifelse(
@@ -6666,7 +6695,7 @@ server <- function(input, output, session) {
       }
       eq_on <- isTRUE(isolate(input$lab_im_eq_only))
       gate_on <- isTRUE(isolate(input$lab_im_gate_only))
-      max_n <- suppressWarnings(as.integer(isolate(input$lab_im_max_n) %||% 25L)[1])
+      max_n <- lab_clamp_im_max_n(isolate(input$lab_im_max_n))
       scores <- lab_im_scores()
       evaluated <- is.data.frame(scores) && nrow(scores) > 0
       catlg <- tryCatch(lab_im_catalog(), error = function(e) NULL)
@@ -6717,12 +6746,12 @@ server <- function(input, output, session) {
         sprintf("- 模型：%s", meth_txt),
         sprintf("- 盈餘品質過濾：%s", if (eq_on) "開" else "關"),
         sprintf("- 門檻過濾：%s", if (gate_on) "開" else "關"),
-        sprintf("- 評估上限 lab_im_max_n：%s", if (is.finite(max_n)) max_n else 25L),
+        sprintf("- 評估上限 lab_im_max_n：%s（＝評估檔數／明細列數；硬上限 40）", max_n),
         sprintf("- 評估狀態：%s", if (evaluated) sprintf("已評估 %d 檔", nrow(scores)) else "尚未評估"),
         sprintf("- 本頁代碼數：%d", length(tks)),
         sprintf("- 本頁代碼：%s", if (length(tks)) paste(tks, collapse = ", ") else "（無）"),
         "",
-        "宇宙＝S&P 500（可更新），不是全美股；評估仍只算前 N 檔。"
+        "宇宙＝S&P 500（可更新），不是全美股。候選多於 N 時依市值由大到小取 N 檔評估；明細＝該 N 檔（年化估值漲幅排序）；排行榜＝同一批中門檻通過者的 Top 10。"
       )
       lab_write_lab_page_report(
         dest = file,

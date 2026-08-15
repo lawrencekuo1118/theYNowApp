@@ -2818,19 +2818,10 @@ ui <- dashboardPage(
                 class = "ynow-lab-im-note-row",
                 tags$div(
                   class = "ynow-lab-im-note",
-                  title = paste0(
-                    "宇宙＝S&P 500（可更新），不是全美股。評估仍只算前 N 檔。",
-                    "流程：複選規模／產業／模型 → F-Score≥7 且盈餘品質通過 → ",
-                    "建議主模型合理價 vs 現價，以 n 年換算年化漲幅排序（簡化估值）。"
-                  ),
                   tags$b("績優："),
                   "可評估池中，選股價相對模型合理價、於 n＝",
                   as.integer(APP_DEFAULTS$years %||% 5L)[1],
-                  " 年隱含年化漲幅最大者",
-                  tags$span(
-                    class = "ynow-lab-im-muted",
-                    "｜宇宙＝S&P 500（可更新），不是全美股；評估仍只算前 N 檔｜門檻 F-Score≥7＋盈餘品質｜簡化 DCF／DDM／P/B／RI"
-                  )
+                  " 年隱含年化漲幅最大者"
                 ),
                 tags$div(
                   class = "ynow-lab-im-actions",
@@ -2861,17 +2852,6 @@ ui <- dashboardPage(
               tags$div(
                 class = "ynow-lab-im-bar ynow-lab-im-bar-with-quality",
                 tags$div(
-                  class = "ynow-lab-im-group ynow-lab-im-sizes",
-                  tags$span(class = "ynow-lab-im-k", "規模"),
-                  checkboxGroupInput(
-                    "lab_im_sizes", NULL,
-                    choices = lab_size_picker_choices(),
-                    selected = names(LAB_SIZE_LABELS),
-                    inline = TRUE
-                  )
-                ),
-                tags$div(class = "ynow-lab-im-sep"),
-                tags$div(
                   class = "ynow-lab-im-group",
                   tags$span(class = "ynow-lab-im-k", "產業"),
                   shinyWidgets::pickerInput(
@@ -2889,6 +2869,17 @@ ui <- dashboardPage(
                       container = "body",
                       dropupAuto = TRUE
                     )
+                  )
+                ),
+                tags$div(class = "ynow-lab-im-sep"),
+                tags$div(
+                  class = "ynow-lab-im-group ynow-lab-im-sizes",
+                  tags$span(class = "ynow-lab-im-k", "規模"),
+                  checkboxGroupInput(
+                    "lab_im_sizes", NULL,
+                    choices = lab_size_picker_choices(),
+                    selected = names(LAB_SIZE_LABELS),
+                    inline = TRUE
                   )
                 ),
                 tags$div(class = "ynow-lab-im-sep"),
@@ -2950,7 +2941,7 @@ ui <- dashboardPage(
               ),
               tags$p(
                 class = "ynow-lab-im-hint",
-                "宇宙＝S&P 500（可更新），不是全美股　·　評估仍只算前 N 檔　·　全不勾規模／模型＝不過濾　·　規模＝Yahoo 市值（未評估視同通過）　·　盈餘品質／門檻＝勾選才過濾　·　排行＝門檻後年化估值漲幅由高到低"
+                "最多 N＝本次評估檔數＝明細列數（篩選後不足 N 則全列；硬上限 40）　·　候選多於 N 時依市值由大到小　·　排行榜＝同一批中門檻通過者的年化漲幅 Top 10　·　全不勾規模／模型＝不過濾　·　盈餘品質／門檻＝勾選才過濾明細"
               ),
               tags$h4("依建議方法分組摘要", style = "margin-top:8px;"),
               tableOutput("lab_im_summary"),

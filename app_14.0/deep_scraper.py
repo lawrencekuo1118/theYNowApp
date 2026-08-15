@@ -199,6 +199,78 @@ def get_summary_quote(ticker="AMZN"):
     }
 
 
+def get_market_caps_batch(tickers):
+    """Yahoo market cap (USD) for many tickers. Returns {SYMBOL: float|None}.
+
+    Used by Lab to rank the evaluate pool by size before the Yahoo F-Score/FV
+    pass (so 「最多 N」 is the largest-cap names, not ticker/industry order).
+    """
+    cleaned = []
+    seen = set()
+    for raw in tickers or []:
+        t = str(raw or "").strip().upper().replace("/", "-")
+        if not t or t in seen:
+            continue
+        seen.add(t)
+        cleaned.append(t)
+    out = {t: None for t in cleaned}
+    if not cleaned:
+        return out
+
+    def _apply_quotes(quotes):
+        n_ok = 0
+        for q in quotes or []:
+            if not isinstance(q, dict):
+                continue
+            sym = str(q.get("symbol") or "").strip().upper()
+            cap = q.get("marketCap")
+            if not sym:
+                continue
+            try:
+                cap_f = float(cap) if cap is not None else None
+            except (TypeError, ValueError):
+                cap_f = None
+            if cap_f is None or cap_f <= 0:
+                continue
+            for key in (sym, sym.replace(".", "-"), sym.replace("-", ".")):
+                if key in out and out[key] is None:
+                    out[key] = cap_f
+            if sym not in out:
+                out[sym] = cap_f
+            n_ok += 1
+        return n_ok
+
+    chunk_size = 40
+    got_any = False
+    try:
+        from yfinance.data import YfData
+
+        yd = YfData()
+        url = "https://query2.finance.yahoo.com/v7/finance/quote"
+        for i in range(0, len(cleaned), chunk_size):
+            chunk = cleaned[i : i + chunk_size]
+            try:
+                raw = yd.get(url, params={"symbols": ",".join(chunk)})
+                if hasattr(raw, "json") and not isinstance(raw, dict):
+                    raw = raw.json()
+                quotes = []
+                if isinstance(raw, dict):
+                    quotes = (raw.get("quoteResponse") or {}).get("result") or []
+                if _apply_quotes(quotes):
+                    got_any = True
+            except Exception as e:  # noqa: BLE001
+                print(f"⚠️ market cap quote chunk failed: {e}")
+    except Exception as e:  # noqa: BLE001
+        print(f"⚠️ YfData quote batch unavailable: {e}")
+
+    n_ok = sum(1 for v in out.values() if v is not None)
+    if got_any and n_ok:
+        print(f"✅ market caps {n_ok}/{len(cleaned)}")
+    else:
+        print("⚠️ market cap batch empty; Lab will fall back to ticker order")
+    return out
+
+
 def get_usd_twd_rate():
     """USD→TWD spot via yfinance (TWD=X = TWD per 1 USD)."""
     print("💱 yfinance FX TWD=X")

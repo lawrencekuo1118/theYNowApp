@@ -4,7 +4,9 @@
 # 宇宙＝S&P 500（可更新，見 lab_sp500_universe.R），不是全美股。
 # 績優原則：在 F-Score＋盈餘品質過門檻後，選「模型合理價相對現價」、
 # 並依 App 預設預測年數 n（APP_DEFAULTS$years）換算年化漲幅最大者。
-# 評估仍只算前 N 檔（lab_im_max_n）。
+# 「最多 N」（lab_im_max_n，硬上限 40）＝本次 Yahoo 評估檔數＝明細列數
+# （盈餘品質／門檻勾選時明細可少於 N）。候選多於 N 時依市值由大到小取 N。
+# 排行榜＝同一批評估結果、同一年化漲幅排序的 Top 10（須過門檻）。
 # 產業建議方法對齊 recommend_valuation_models 的產業層規則（簡化估值）。
 # ==========================================
 
@@ -147,6 +149,118 @@ lab_fetch_summary_metrics <- function(ticker) {
 #' 相容舊呼叫
 lab_fetch_market_cap_usd <- function(ticker) {
   lab_fetch_summary_metrics(ticker)$market_cap
+}
+
+#' 「最多」：預設 25，UI／邏輯夾在 5–40
+lab_clamp_im_max_n <- function(x, default = 25L, lo = 5L, hi = 40L) {
+  n <- suppressWarnings(as.integer(x %||% default)[1])
+  if (!is.finite(n) || n < 1L) n <- as.integer(default)
+  as.integer(min(as.integer(hi)[1], max(as.integer(lo)[1], n)))
+}
+
+lab_dedupe_eval_pool <- function(pool) {
+  if (is.null(pool) || !is.data.frame(pool) || nrow(pool) == 0L) {
+    return(pool)
+  }
+  keep <- !is.na(pool$ticker) & nzchar(as.character(pool$ticker))
+  pool <- pool[keep, , drop = FALSE]
+  if (nrow(pool) == 0L) return(pool)
+  pool$ticker <- toupper(trimws(as.character(pool$ticker)))
+  pool[!duplicated(pool$ticker), , drop = FALSE]
+}
+
+.lab_mcap_cache <- new.env(parent = emptyenv())
+
+#' 批次 Yahoo 市值（USD）；失敗則全 NA（呼叫端改依代碼排序）
+lab_fetch_market_caps_usd <- function(tickers) {
+  tks <- unique(toupper(trimws(as.character(tickers))))
+  tks <- tks[nzchar(tks) & !is.na(tks)]
+  out <- stats::setNames(rep(NA_real_, length(tks)), tks)
+  if (!length(tks)) return(out)
+  need <- character(0)
+  for (tk in tks) {
+    if (exists(tk, envir = .lab_mcap_cache, inherits = FALSE)) {
+      out[[tk]] <- suppressWarnings(as.numeric(get(tk, envir = .lab_mcap_cache, inherits = FALSE))[1])
+    } else {
+      need <- c(need, tk)
+    }
+  }
+  if (!length(need)) return(out)
+  fetched <- NULL
+  if (exists(".ensure_python_scraper", mode = "function") &&
+      isTRUE(.ensure_python_scraper()) &&
+      exists("get_market_caps_batch", mode = "function")) {
+    fetched <- tryCatch(get_market_caps_batch(need), error = function(e) NULL)
+  }
+  if (!is.null(fetched) && (is.list(fetched) || is.numeric(fetched))) {
+    nms <- toupper(trimws(as.character(names(fetched))))
+    vals <- suppressWarnings(as.numeric(unlist(fetched, use.names = FALSE)))
+    if (length(nms) == length(vals) && length(nms) > 0) {
+      for (i in seq_along(nms)) {
+        key <- gsub("/", "-", nms[[i]])
+        v <- vals[[i]]
+        if (!nzchar(key)) next
+        if (is.finite(v) && v > 0) {
+          out[[key]] <- v
+          assign(key, v, envir = .lab_mcap_cache)
+          # 對齊 BRK.B / BRK-B
+          alt <- gsub("\\.", "-", key)
+          if (!identical(alt, key) && alt %in% names(out) && !is.finite(out[[alt]])) {
+            out[[alt]] <- v
+            assign(alt, v, envir = .lab_mcap_cache)
+          }
+        }
+      }
+    }
+  }
+  out
+}
+
+#' 掛上市值與規模，供評估前篩選／市值排序
+lab_attach_market_caps <- function(pool) {
+  pool <- lab_dedupe_eval_pool(pool)
+  if (is.null(pool) || nrow(pool) == 0L) return(pool)
+  caps <- lab_fetch_market_caps_usd(pool$ticker)
+  pool$market_cap <- unname(caps[pool$ticker])
+  pool$size_band <- vapply(
+    pool$market_cap,
+    function(x) {
+      b <- lab_classify_market_cap(x)
+      if (is.null(b) || !nzchar(as.character(b)[1])) NA_character_ else as.character(b)[1]
+    },
+    character(1)
+  )
+  pool
+}
+
+#' 規模過濾後依市值降序取最多 max_n 檔（無市值置後，再依代碼）
+lab_rank_and_cap_eval_pool <- function(pool, max_n = 25L, size_filter = character(0)) {
+  pool <- lab_dedupe_eval_pool(pool)
+  if (is.null(pool) || !is.data.frame(pool)) {
+    empty <- data.frame(ticker = character(0), stringsAsFactors = FALSE)
+    attr(empty, "n_filtered") <- 0L
+    attr(empty, "max_n") <- lab_clamp_im_max_n(max_n)
+    attr(empty, "used_market_cap") <- FALSE
+    return(empty)
+  }
+  if (!"market_cap" %in% names(pool)) pool$market_cap <- NA_real_
+  if (!"size_band" %in% names(pool)) pool$size_band <- NA_character_
+  sf <- lab_normalize_size_filter(size_filter)
+  if (length(sf) > 0L) {
+    pool <- pool[is.na(pool$size_band) | pool$size_band %in% sf, , drop = FALSE]
+  }
+  max_n <- lab_clamp_im_max_n(max_n)
+  n_filtered <- nrow(pool)
+  mcap <- suppressWarnings(as.numeric(pool$market_cap))
+  missing <- is.na(mcap) | !is.finite(mcap) | mcap <= 0
+  used <- isTRUE(sum(!missing) > 0L)
+  o <- order(missing, -ifelse(missing, 0, mcap), pool$ticker, na.last = TRUE)
+  pool <- pool[o, , drop = FALSE]
+  if (n_filtered > max_n) pool <- utils::head(pool, max_n)
+  attr(pool, "n_filtered") <- as.integer(n_filtered)
+  attr(pool, "max_n") <- max_n
+  attr(pool, "used_market_cap") <- used
+  pool
 }
 
 #' 正規化複選篩選：NULL／空／含 "all" → character(0) 表示不過濾
@@ -623,6 +737,7 @@ lab_evaluate_ticker_fscore <- function(ticker, industry_key = NULL, method = NUL
 }
 
 #' 批次評估；tickers_df 可含 ticker / industry_key / primary 欄
+#' 呼叫端應已用 lab_rank_and_cap_eval_pool 取好 N 檔；此處 head(max_n) 僅作硬上限。
 lab_screen_tickers_fscore <- function(tickers, progress_cb = NULL, max_n = 40L,
                                       industry_keys = NULL, methods = NULL) {
   # 接受字元向量或 data.frame
@@ -699,13 +814,15 @@ lab_screen_tickers_fscore <- function(tickers, progress_cb = NULL, max_n = 40L,
 }
 
 #' 合併目錄與評估結果，複選篩選後依年化估值漲幅排序
+#' @param evaluated_only TRUE：只保留已評估代碼（明細／排行榜與「最多 N」對齊）
 lab_merge_catalog_scores <- function(catalog, scores = NULL,
                                      method_filter = character(0),
                                      industry_filter = character(0),
                                      size_filter = character(0),
                                      eq_only = FALSE,
                                      gate_only = FALSE,
-                                     quality_only = FALSE) {
+                                     quality_only = FALSE,
+                                     evaluated_only = FALSE) {
   # quality_only：舊「只看通過」別名，等同門檻（F-Score≥7 且盈餘品質通過）
   if (isTRUE(quality_only)) gate_only <- TRUE
   df <- catalog
@@ -730,7 +847,16 @@ lab_merge_catalog_scores <- function(catalog, scores = NULL,
     d$error <- NA_character_
     d
   }
-  if (!is.null(scores) && is.data.frame(scores) && nrow(scores) > 0) {
+  has_scores <- !is.null(scores) && is.data.frame(scores) && nrow(scores) > 0
+  if (isTRUE(evaluated_only)) {
+    if (!has_scores) {
+      df <- score_cols_na(df)
+      return(df[0, , drop = FALSE])
+    }
+    df <- merge(df, scores, by = "ticker", all.x = FALSE, all.y = FALSE, sort = FALSE)
+    df <- df[!is.na(df$ticker) & nzchar(as.character(df$ticker)), , drop = FALSE]
+    df <- df[!duplicated(df$ticker), , drop = FALSE]
+  } else if (has_scores) {
     df <- merge(df, scores, by = "ticker", all.x = TRUE, sort = FALSE)
   } else {
     df <- score_cols_na(df)
@@ -756,23 +882,28 @@ lab_merge_catalog_scores <- function(catalog, scores = NULL,
     # 績優顯示池：F-Score≥7 且盈餘品質通過（再以年化漲幅決選排序）
     df <- df[!is.na(df$is_quality) & df$is_quality %in% TRUE, , drop = FALSE]
   }
+  if (nrow(df) == 0L) return(df)
   # 年化估值漲幅由大到小（NA 置後）— 即「未來期間漲幅最大者」優先
-  o <- order(is.na(df$upside_cagr_pct), -df$upside_cagr_pct, df$industry_label, df$ticker,
+  ind_lab <- if ("industry_label" %in% names(df)) df$industry_label else rep("", nrow(df))
+  o <- order(is.na(df$upside_cagr_pct), -df$upside_cagr_pct, ind_lab, df$ticker,
              na.last = TRUE)
   df[o, , drop = FALSE]
 }
 
-#' 績優排行榜：門檻通過且有年化漲幅，一代碼一列，依 CAGR 降序
+#' 績優排行榜：同一評估／明細集合中，門檻通過且有年化漲幅，依 CAGR 降序取 Top-K
+#' （只截斷顯示，不另抽樣；輸入應已是本次評估的 N 檔。）
 #' @param eq_only 若 TRUE，再只保留盈餘品質通過者（門檻本身已含此條件）
 lab_quality_leaderboard <- function(merged_df, top_n = 10L, eq_only = FALSE) {
+  empty <- data.frame(
+    排名 = integer(0), 代碼 = character(0), 公司全稱 = character(0),
+    年化估值漲幅 = character(0),
+    總潛在漲幅 = character(0),
+    估值方法 = character(0), `F-Score` = numeric(0),
+    產業 = character(0),
+    stringsAsFactors = FALSE, check.names = FALSE
+  )
   if (is.null(merged_df) || !is.data.frame(merged_df) || nrow(merged_df) == 0) {
-    return(data.frame(
-      排名 = integer(0), 代碼 = character(0), 年化估值漲幅 = character(0),
-      總潛在漲幅 = character(0),
-      估值方法 = character(0), `F-Score` = numeric(0),
-      規模 = character(0), 產業 = character(0),
-      stringsAsFactors = FALSE, check.names = FALSE
-    ))
+    return(empty)
   }
   df <- merged_df
   if (isTRUE(eq_only) && "quality_flag" %in% names(df)) {
@@ -781,38 +912,33 @@ lab_quality_leaderboard <- function(merged_df, top_n = 10L, eq_only = FALSE) {
   keep <- !is.na(df$is_quality) & df$is_quality %in% TRUE &
     is.finite(df$upside_cagr_pct)
   df <- df[keep, , drop = FALSE]
-  if (nrow(df) == 0) {
-    return(data.frame(
-      排名 = integer(0), 代碼 = character(0), 年化估值漲幅 = character(0),
-      總潛在漲幅 = character(0),
-      估值方法 = character(0), `F-Score` = numeric(0),
-      規模 = character(0), 產業 = character(0),
-      stringsAsFactors = FALSE, check.names = FALSE
-    ))
-  }
+  if (nrow(df) == 0) return(empty)
   # 同一代碼保留年化漲幅最高的一列
   df <- df[order(-df$upside_cagr_pct, df$ticker), , drop = FALSE]
   df <- df[!duplicated(df$ticker), , drop = FALSE]
   top_n <- max(1L, as.integer(top_n)[1])
   df <- head(df, top_n)
-  size_lab <- unname(LAB_SIZE_LABELS[df$size_band])
-  size_lab[is.na(size_lab)] <- "—"
   meth <- as.character(df$method_used)
   prim <- as.character(df$primary)
   miss <- is.na(meth) | !nzchar(meth)
   meth[miss] <- prim[miss]
   meth <- toupper(meth)
   meth[is.na(meth) | !nzchar(meth)] <- "—"
+  yahoo_nm <- if ("company_name" %in% names(df)) df$company_name else NA_character_
+  names_out <- vapply(seq_len(nrow(df)), function(i) {
+    nm <- lab_company_display_name(df$ticker[[i]], yahoo_nm[[i]])
+    if (!nzchar(nm) || identical(nm, "—")) as.character(df$ticker[[i]]) else nm
+  }, character(1))
   data.frame(
     排名 = seq_len(nrow(df)),
     代碼 = df$ticker,
+    公司全稱 = names_out,
     年化估值漲幅 = sprintf("%+.1f%%", df$upside_cagr_pct),
     總潛在漲幅 = ifelse(
       is.na(df$upside_total_pct), "—", sprintf("%+.1f%%", df$upside_total_pct)
     ),
     估值方法 = meth,
     `F-Score` = df$f_score,
-    規模 = size_lab,
     產業 = df$industry_label,
     stringsAsFactors = FALSE,
     check.names = FALSE
