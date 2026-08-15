@@ -2425,7 +2425,7 @@ ui <- dashboardPage(
               withMathJax(),
               h2("量化回測實驗室 (Backtest Zone)"),
               .bt_section_intro(
-                "先看折現比較圖（基本面價值 vs 實際股價＝情緒波動價值 vs 大盤），再看策略淨值（倉位規則賺不賺錢）。Ke／WACC 採 Rolling β。歷史股價序列維持 Yahoo 報價幣別（不做歷史 FX 換算）；上方 header 的 USD⇄TWD 主要套用估值／財報金額。"
+                "先看折現比較圖（基本面價值 vs 實際股價＝情緒波動價值 vs 大盤），再看策略淨值（倉位規則賺不賺錢）。歷史點 Ke／WACC 用當年 ^TNX Rf、當日市值 We／Wd 與 Rolling β。歷史股價序列維持 Yahoo 報價幣別（不做歷史 FX 換算）；上方 header 的 USD⇄TWD 主要套用估值／財報金額。"
               ),
 
               # 1) 折現比較圖置頂：基本面價值 vs 情緒波動價值(實際股價) vs 大盤
@@ -2434,7 +2434,7 @@ ui <- dashboardPage(
                   title = tagList(icon("balance-scale"), "折現價值比較"),
                   width = 12, status = "primary", solidHeader = TRUE,
                   .bt_section_intro(
-                    "歷史各點：僅用當時可得財報＋Rolling β 設算「基本面價值」（不套用目前分頁參數）。僅折線末端最新點掛勾目前 APP 分頁設定（DCF／DDM／RI／P/B）；「情緒波動價值」＝該股歷史實際股價；並疊加大盤（右軸）。搜尋後即預覽股價／大盤；勾選右下角評價模型即計算並顯示基本面價值（預設不勾選）。"
+                    "歷史各點：僅用當時可得財報＋當時 ^TNX Rf＋Rolling β，以及當日市值資本結構，設算「基本面價值」（成長／n 不套用目前分頁參數）。僅折線末端最新點掛勾目前 APP 分頁設定（DCF／DDM／RI／P/B）；「情緒波動價值」＝該股歷史實際股價；並疊加大盤（右軸）。搜尋後即預覽股價／大盤；勾選右下角評價模型即計算並顯示基本面價值（預設不勾選）。"
                   ),
                   tags$div(
                     class = "ynow-bt-hfv-wrap",
@@ -2518,7 +2518,7 @@ ui <- dashboardPage(
                   ),
                   tags$div(
                     class = "ynow-bt-run-note",
-                    "季頻再平衡 · Rolling β 折現 · 依所選評價模型 PIT 重建。"
+                    "季頻再平衡 · 當年 Rf／市值結構 · Rolling β 折現 · 依所選評價模型 PIT 重建。"
                   ),
                   uiOutput("bt_run_status")
                 )

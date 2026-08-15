@@ -4891,7 +4891,8 @@ server <- function(input, output, session) {
   })
 
   # Session「此刻」模型參數（動態重建用；不落庫）
-  # 歷史 PIT 的 Ke/WACC 會在再平衡日以 Rolling β 覆寫；此處提供 Rf/Rm／資本結構與定值 fallback。
+  # 歷史 PIT 的 Ke/WACC 會在再平衡日以 Rolling β＋當年 ^TNX Rf＋當日市值 We/Wd 覆寫；
+  # 此處 Rf/Rm／We/Wd 僅作抓不到 TNX／負債時的 fallback，以及 ERP = Rm−Rf。
   bt_current_model_params <- reactive({
     wacc <- if (identical(input$dcf_mode, "two_stage")) {
       suppressWarnings(as.numeric(input$wacc_stage1)[1]) / 100
@@ -4982,7 +4983,7 @@ server <- function(input, output, session) {
     beta_fb <- suppressWarnings(as.numeric(input$capm_beta)[1])
     if (!is.finite(beta_fb)) beta_fb <- APP_DEFAULTS$capm_beta
 
-    # Freeze session capital structure weights for rolling-Ke → WACC mapping.
+    # Session We/Wd: fallback if a rebalance cannot form PIT market-value weights.
     we <- NA_real_; wd <- NA_real_
     tryCatch({
       bs <- d_balance_sheet()
@@ -5454,17 +5455,25 @@ server <- function(input, output, session) {
           marker = list(color = "#e74c3c", size = 7, symbol = "diamond"),
           hovertemplate = paste0(
             "再平衡 %{x|%Y-%m-%d}<br>FV %{y:$.2f}",
-            if ("rolling_beta" %in% names(vd)) "<br>β %{customdata:.2f}" else "",
+            if ("rolling_beta" %in% names(vd)) "<br>β %{customdata[0]:.2f}" else "",
+            if ("rf_pit" %in% names(vd)) "<br>Rf %{customdata[1]:.1f}%" else "",
+            if ("rm_pit" %in% names(vd)) "<br>Rm %{customdata[2]:.1f}%" else "",
+            if ("we_pit" %in% names(vd)) "<br>We %{customdata[3]:.0f}%" else "",
             "<extra></extra>"
           ),
-          customdata = if ("rolling_beta" %in% names(vd)) vd$rolling_beta else NULL
+          customdata = cbind(
+            if ("rolling_beta" %in% names(vd)) vd$rolling_beta else NA_real_,
+            if ("rf_pit" %in% names(vd)) 100 * vd$rf_pit else NA_real_,
+            if ("rm_pit" %in% names(vd)) 100 * vd$rm_pit else NA_real_,
+            if ("we_pit" %in% names(vd)) 100 * vd$we_pit else NA_real_
+          )
         )
       }
     }
     plotly::layout(
       p,
       title = list(
-        text = if (isTRUE(src$show_fv)) "折現比較（Rolling β PIT）" else "折現比較（股價／大盤預覽）",
+        text = if (isTRUE(src$show_fv)) "折現比較（當年 Rf／市值結構 · Rolling β PIT）" else "折現比較（股價／大盤預覽）",
         font = list(size = 14)
       ),
       legend = list(orientation = "h", y = -0.18),
@@ -5904,8 +5913,10 @@ server <- function(input, output, session) {
       tags$ul(
         tags$li(tags$b("股價／基準："), "Yahoo Finance（yfinance，auto_adjust）；基準預設 SPY。"),
         tags$li(tags$b("財報："), "本次 Session 已載入之年度 IS／BS／CF。"),
-        tags$li(tags$b("Rf："), "^TNX（驗證用）；失敗時約 4%。"),
-        tags$li(tags$b("評價假設："), "Session SGR／年數等；Ke／WACC 於各季再平衡以 Rolling β 重估。")
+        tags$li(tags$b("Rf（歷史點）："), "再平衡日 ^TNX 當時收盤；抓不到才用 Session／約 4%。"),
+        tags$li(tags$b("Rm（歷史點）："), "Rf_t ＋ Session 股權風險溢酬（產業／CAPM 的 Rm−Rf），不是當年 SPY 已實現報酬。"),
+        tags$li(tags$b("We／Wd（歷史點）："), "再平衡日 股數×收盤 與當時 Total Debt。Rd／稅率仍用 Session。"),
+        tags$li(tags$b("評價假設："), "歷史點成長／n 用 APP_DEFAULTS；Ke／WACC 於各季以 Rolling β＋上述當年 Rf／結構重估。末端才掛目前分頁。")
       ),
       tags$h5(tags$b("二、計算過程（季頻 PIT）")),
       tags$ol(

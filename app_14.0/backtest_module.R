@@ -2,12 +2,13 @@
 # backtest_module.R -- The YNow App V12.0
 # --------------------------------------------------------------
 # Dynamic session-only PIT (point-in-time) backtest engine.
-# Historical FV points: then-available fundamentals + Rolling β only.
+# Historical FV points: then-available fundamentals + Rolling β + as-of ^TNX Rf
+#   + session ERP for Rm + that day's market-value We/Wd. Rd/tax stay session.
 # Tip (latest) FV point: current APP tab assumptions via .overlay_session_tip_fv.
 # Growth carry between rebalances uses APP_DEFAULTS SGR (not live session SGR).
 # - No warehouse: every rebalance date reconstructs fair values
 #   from annual financials whose fiscal year <= calendar_year - 1.
-#   Growth / n / P/B come from CURRENT session; Ke/WACC use Rolling Beta.
+#   Growth / n / P/B on historical points use APP_DEFAULTS; Ke/WACC are PIT.
 # - Multi-model composite fair value: DCF + DDM + RI + P/B, then
 #   mean of available models.
 # - Model_A: normalized PIT fair-value INDEX (參數高原／內部用；不是淨值圖曲線).
@@ -322,8 +323,9 @@ valuation_signal_label <- function(fv, price) {
 #' Point-in-time fair-value reconstruction for a single fundamentals row.
 #'
 #' Historical points (`use_session_assumptions = FALSE`): then-available
-#' fundamentals + Rolling β Ke/WACC only. Forward structure uses fixed
-#' APP_DEFAULTS (not live DCF/DDM/RI/P/B tab settings).
+#' fundamentals + Rolling β, as-of ^TNX Rf, Rm = Rf + session ERP, and
+#' market-value We/Wd from that day's price × PIT shares and PIT debt.
+#' Forward structure uses fixed APP_DEFAULTS (not live DCF/DDM/RI/P/B tabs).
 #'
 #' Tip / latest point (`use_session_assumptions = TRUE`): apply current APP
 #' tab parameters (years, g, RI ROE fade, DDM, P/B, …) on latest PIT inputs.
@@ -699,9 +701,61 @@ estimate_rolling_beta <- function(stock_close, bench_close, dates, as_of,
   .beta_from_prices(wk, max(min_obs, 36L))
 }
 
-#' Build point-in-time Ke/WACC from rolling beta + session CAPM structure.
+#' Last finite Close on or before as_of (for ^TNX / other daily series).
+.lookup_close_asof <- function(hist_df, as_of) {
+  if (is.null(hist_df) || !is.data.frame(hist_df) || nrow(hist_df) < 1) return(NA_real_)
+  if (!all(c("Date", "Close") %in% names(hist_df))) return(NA_real_)
+  as_of <- as.Date(as_of)[1]
+  ok <- !is.na(hist_df$Date) & hist_df$Date <= as_of & is.finite(hist_df$Close)
+  if (!any(ok)) return(NA_real_)
+  idx <- max(which(ok))
+  suppressWarnings(as.numeric(hist_df$Close[idx])[1])
+}
+
+#' ^TNX quote → decimal Rf. yfinance is usually percent (e.g. 4.25); old quotes can be 42.5.
+.tnx_close_to_rf <- function(tnx_close) {
+  x <- suppressWarnings(as.numeric(tnx_close)[1])
+  if (!is.finite(x) || x <= 0) return(NA_real_)
+  if (x > 25) x <- x / 10
+  rf <- x / 100
+  if (!is.finite(rf) || rf <= 0 || rf > 0.25) return(NA_real_)
+  rf
+}
+
+#' Market-value capital structure at a rebalance: E = shares × price, D = PIT Total Debt.
+.pit_capital_weights <- function(fund_row, price) {
+  shares <- .safe_num(fund_row$shares, NA_real_)
+  price <- .safe_num(price, NA_real_)
+  debt <- .safe_num(fund_row$debt, 0)
+  if (!is.finite(debt) || debt < 0) debt <- 0
+  eq_mv <- if (is.finite(shares) && shares > 1 && is.finite(price) && price > 0) {
+    shares * price
+  } else {
+    .safe_num(fund_row$equity_book, NA_real_)
+  }
+  if (!is.finite(eq_mv) || eq_mv <= 0) {
+    return(list(we = NA_real_, wd = NA_real_))
+  }
+  tot <- eq_mv + debt
+  if (!is.finite(tot) || tot <= 0) return(list(we = NA_real_, wd = NA_real_))
+  list(we = eq_mv / tot, wd = debt / tot)
+}
+
+#' Fetch 10Y Treasury yield history (^TNX) for PIT Rf. Same helper as equity prices.
+fetch_tnx_history_df <- function(period = "10y") {
+  fetch_price_history_df("^TNX", period)
+}
+
+#' Build point-in-time Ke/WACC from rolling beta + then-known Rf / capital structure.
+#'
+#' Rf_t = ^TNX close on/before as_of (fallback: session Rf).
+#' Rm_t = Rf_t + ERP, where ERP is the session/industry premium (Rm−Rf), not a
+#'   realized market return (CAPM needs expected premium, not trailing SPY).
+#' We/Wd from PIT shares × that day's price and then-available Total Debt.
+#' Rd and tax stay session (no historical credit-spread / statutory-tax series).
 #' Falls back to session ke/wacc when beta cannot be estimated.
-pit_discount_params <- function(model_params, stock_close, bench_close, dates, as_of) {
+pit_discount_params <- function(model_params, stock_close, bench_close, dates, as_of,
+                                tnx_df = NULL, fund_row = NULL, price = NA_real_) {
   mp <- model_params
   beta_i <- estimate_rolling_beta(
     stock_close, bench_close, dates, as_of,
@@ -711,10 +765,24 @@ pit_discount_params <- function(model_params, stock_close, bench_close, dates, a
   if (!is.finite(beta_i)) {
     beta_i <- .safe_num(model_params$beta_fallback, NA_real_)
   }
-  rf <- .safe_num(model_params$rf, NA_real_)
-  rm <- .safe_num(model_params$rm, NA_real_)
+  rf_sess <- .safe_num(model_params$rf, NA_real_)
+  rm_sess <- .safe_num(model_params$rm, NA_real_)
+  rf <- .tnx_close_to_rf(.lookup_close_asof(tnx_df, as_of))
+  if (!is.finite(rf)) rf <- rf_sess
+  erp <- if (is.finite(rm_sess) && is.finite(rf_sess)) rm_sess - rf_sess else NA_real_
+  if (!is.finite(erp) || erp < 0.02) erp <- 0.05
+  erp <- max(0.025, min(erp, 0.12))
+  rm <- if (is.finite(rf)) rf + erp else rm_sess
   ke0 <- .safe_num(model_params$ke, NA_real_)
   wacc0 <- .safe_num(model_params$wacc, NA_real_)
+
+  wt <- .pit_capital_weights(fund_row, price)
+  we <- wt$we
+  wd <- wt$wd
+  if (!is.finite(we) || !is.finite(wd)) {
+    we <- .safe_num(model_params$we, NA_real_)
+    wd <- .safe_num(model_params$wd, NA_real_)
+  }
 
   ke_i <- ke0
   wacc_i <- wacc0
@@ -722,8 +790,6 @@ pit_discount_params <- function(model_params, stock_close, bench_close, dates, a
     ke_try <- rf + beta_i * (rm - rf)
     if (is.finite(ke_try) && ke_try > 0.01) {
       ke_i <- ke_try
-      we <- .safe_num(model_params$we, NA_real_)
-      wd <- .safe_num(model_params$wd, NA_real_)
       rd <- .safe_num(model_params$rd, 0.05)
       tax <- .safe_num(model_params$tax, 0.21)
       if (is.finite(we) && is.finite(wd) && (we + wd) > 0) {
@@ -743,7 +809,10 @@ pit_discount_params <- function(model_params, stock_close, bench_close, dates, a
   }
   mp$ke <- ke_i
   mp$wacc <- wacc_i
-  list(model_params = mp, beta = beta_i, ke = ke_i, wacc = wacc_i)
+  list(
+    model_params = mp, beta = beta_i, ke = ke_i, wacc = wacc_i,
+    rf = rf, rm = rm, we = we, wd = wd
+  )
 }
 
 # ---------- parameter derivation ----------
@@ -1111,7 +1180,7 @@ evaluate_holding_filter <- function(metrics, thresholds) {
 #' and params, simulate quarterly rebalance and return
 #' equity_df / valuation_df / exposure summary / explain_last.
 .run_backtest_core <- function(df, fund, params, model_params, mos_fallback = 0,
-                               beta_df = NULL, fv_only = FALSE) {
+                               beta_df = NULL, fv_only = FALSE, tnx_df = NULL) {
   thr_npm <- .safe_num(params$bt_net_margin, 5)
   thr_rev <- .safe_num(params$bt_rev_growth, 10)
   thr_eps <- .safe_num(params$bt_eps_growth, 10)
@@ -1180,7 +1249,10 @@ evaluate_holding_filter <- function(metrics, thresholds) {
         stock_close = beta_df$Close,
         bench_close = beta_df$Bench,
         dates = beta_df$Date,
-        as_of = df$Date[i]
+        as_of = df$Date[i],
+        tnx_df = tnx_df,
+        fund_row = fund_i,
+        price = price_i
       )
       mp_i <- disc$model_params
 
@@ -1200,7 +1272,7 @@ evaluate_holding_filter <- function(metrics, thresholds) {
         sent_mult <- 1
         gf <- list(pass = NA, path = "fv_only")
         explain_txt <- sprintf(
-          "%s | 公允 %.2f (dcf %.2f / ddm %.2f / ri %.2f / pb %.2f) vs 市價 %.2f, MOS %.1f%%, score %.0f/100. Rollingβ=%.2f Ke=%.1f%% WACC=%.1f%%.",
+          "%s | 公允 %.2f (dcf %.2f / ddm %.2f / ri %.2f / pb %.2f) vs 市價 %.2f, MOS %.1f%%, score %.0f/100. Rollingβ=%.2f Rf=%.1f%% Rm=%.1f%% Ke=%.1f%% WACC=%.1f%% We=%.0f%%.",
           signal_i,
           .safe_num(pit$fair_value, NA_real_),
           .safe_num(pit$fv_dcf, NA_real_), .safe_num(pit$fv_ddm, NA_real_),
@@ -1209,8 +1281,11 @@ evaluate_holding_filter <- function(metrics, thresholds) {
           100 * .safe_num(mos_i, NA_real_),
           .safe_num(pit$valuation_score, NA_real_),
           .safe_num(disc$beta, NA_real_),
+          100 * .safe_num(disc$rf, NA_real_),
+          100 * .safe_num(disc$rm, NA_real_),
           100 * .safe_num(disc$ke, NA_real_),
-          100 * .safe_num(disc$wacc, NA_real_)
+          100 * .safe_num(disc$wacc, NA_real_),
+          100 * .safe_num(disc$we, NA_real_)
         )
       } else {
         gf <- .great_filter_pass(fund_i, thr_npm, thr_rev, thr_eps, thr_cv, fund_i$cv_fcf)
@@ -1230,7 +1305,7 @@ evaluate_holding_filter <- function(metrics, thresholds) {
         sent_mult <- if (pos_a > 1e-9) pos_b / pos_a else 1
 
         explain_txt <- sprintf(
-          "%s | 公允 %.2f (dcf %.2f / ddm %.2f / ri %.2f / pb %.2f) vs 市價 %.2f, MOS %.1f%%, score %.0f/100. Rollingβ=%.2f Ke=%.1f%% WACC=%.1f%%. 過濾:%s(%s). Exp_A=%.2f, Exp_B=%.2f (sent=%.2f blend=%.2f).",
+          "%s | 公允 %.2f (dcf %.2f / ddm %.2f / ri %.2f / pb %.2f) vs 市價 %.2f, MOS %.1f%%, score %.0f/100. Rollingβ=%.2f Rf=%.1f%% Rm=%.1f%% Ke=%.1f%% WACC=%.1f%% We=%.0f%%. 過濾:%s(%s). Exp_A=%.2f, Exp_B=%.2f (sent=%.2f blend=%.2f).",
           signal_i,
           .safe_num(pit$fair_value, NA_real_),
           .safe_num(pit$fv_dcf, NA_real_), .safe_num(pit$fv_ddm, NA_real_),
@@ -1239,8 +1314,11 @@ evaluate_holding_filter <- function(metrics, thresholds) {
           100 * .safe_num(mos_i, NA_real_),
           .safe_num(pit$valuation_score, NA_real_),
           .safe_num(disc$beta, NA_real_),
+          100 * .safe_num(disc$rf, NA_real_),
+          100 * .safe_num(disc$rm, NA_real_),
           100 * .safe_num(disc$ke, NA_real_),
           100 * .safe_num(disc$wacc, NA_real_),
+          100 * .safe_num(disc$we, NA_real_),
           if (isTRUE(gf$pass)) "PASS" else "FAIL",
           gf$path, pos_a, pos_b, mb$sent, mb$blend
         )
@@ -1263,6 +1341,10 @@ evaluate_holding_filter <- function(metrics, thresholds) {
         rolling_beta = .safe_num(disc$beta, NA_real_),
         ke_pit = .safe_num(disc$ke, NA_real_),
         wacc_pit = .safe_num(disc$wacc, NA_real_),
+        rf_pit = .safe_num(disc$rf, NA_real_),
+        rm_pit = .safe_num(disc$rm, NA_real_),
+        we_pit = .safe_num(disc$we, NA_real_),
+        wd_pit = .safe_num(disc$wd, NA_real_),
         exp_a = pos_a,
         exp_b = pos_b,
         filter_pass = isTRUE(gf$pass),
@@ -1282,6 +1364,7 @@ evaluate_holding_filter <- function(metrics, thresholds) {
         mos = mos_i, signal = signal_i,
         valuation_score = pit$valuation_score,
         rolling_beta = disc$beta, ke_pit = disc$ke, wacc_pit = disc$wacc,
+        rf_pit = disc$rf, rm_pit = disc$rm, we_pit = disc$we, wd_pit = disc$wd,
         filter_pass = isTRUE(gf$pass),
         filter_path = gf$path,
         exp_a = pos_a, exp_b = pos_b,
@@ -1326,6 +1409,7 @@ evaluate_holding_filter <- function(metrics, thresholds) {
       mos = numeric(), signal = character(),
       valuation_score = numeric(),
       rolling_beta = numeric(), ke_pit = numeric(), wacc_pit = numeric(),
+      rf_pit = numeric(), rm_pit = numeric(), we_pit = numeric(), wd_pit = numeric(),
       exp_a = numeric(), exp_b = numeric(),
       filter_pass = logical(), filter_path = character(),
       pos_fundamental = numeric(), explain = character(),
@@ -1632,7 +1716,7 @@ compute_fair_value_timeline <- function(ticker,
   )
   core <- .run_backtest_core(
     df, fund, dummy_params, model_params, mos_fallback,
-    beta_df = beta_df, fv_only = TRUE
+    beta_df = beta_df, fv_only = TRUE, tnx_df = fetch_tnx_history_df(period)
   )
   list(
     equity_df = core$equity_df,
@@ -1705,9 +1789,10 @@ run_company_backtest <- function(ticker,
 
   fund <- build_annual_fundamentals(d_is, d_bs, d_cf)
   mos_fallback <- .safe_num(mos, 0)
+  tnx_df <- fetch_tnx_history_df(period)
 
   core <- .run_backtest_core(df, fund, params, model_params, mos_fallback,
-                             beta_df = beta_df)
+                             beta_df = beta_df, tnx_df = tnx_df)
 
   list(
     equity_df    = core$equity_df,
@@ -1751,8 +1836,10 @@ build_bt_methodology_doc <- function(meta = NULL) {
     "| 標的日收盤價 | Yahoo Finance（`yfinance`，`auto_adjust=True`） | 含拆股／股息調整後 Close；失敗時後備 quantmod/Yahoo |\n",
     "| 基準指數 | SPY（同上） | 無法取得時以標的自身代替並註記 |\n",
     "| 年度財報 | 本次 Session 已搜尋載入之 IS／BS／CF | 來自 yfinance 財報表；欄位標準化後使用 |\n",
-    "| 無風險利率 Rf | `^TNX`（10 年期美債殖利率） | 供 Alpha／Sharpe 等驗證用；失敗時預設約 4% |\n",
-    "| 評價假設 | Get Started／Dashboard 目前 Session 參數 | SGR、年數、P/B 等；Ke／WACC 於再平衡日以 Rolling β 重估 |\n",
+    "| 無風險利率 Rf | 再平衡日 `^TNX` 當時收盤 | 歷史點用 as-of 殖利率；抓不到才退回 Session／約 4% |\n",
+    "| 股權預期報酬 Rm | Rf_t ＋ Session 風險溢酬 (Rm−Rf) | 溢酬用產業／CAPM 假設（預期值），不拿 SPY 已實現報酬 |\n",
+    "| 資本結構 We／Wd | 再平衡日 股數×收盤 與當時 Total Debt | 市值權重；Rd／稅率仍用 Session |\n",
+    "| 評價假設 | Get Started／Dashboard 目前 Session 參數 | SGR、年數、P/B 等僅用於折線末端；歷史點成長用 APP_DEFAULTS |\n",
     "\n",
     "價格抓取期間：模擬視窗約最近 ", g("sim_years", "5"), " 年；",
     "為 Rolling β 另多抓約 5 年歷史（合計常 ≥10 年）。\n",
@@ -1762,10 +1849,11 @@ build_bt_methodology_doc <- function(meta = NULL) {
     "1. 僅在**季末再平衡日**重建合理價與曝險。\n",
     "2. 財報對齊規則：使用財政年度 `fund_year ≤ 回測日曆年 − 1` 的已公告年度資料",
     "（近似「只用當時已可知資訊」）。\n",
-    "3. 折現率：各再平衡日以標的 vs SPY 約 **60 個月月報酬** 估計 Rolling β → CAPM Ke →",
-    "結合 Session 資本結構得到當期 WACC（非全樣本固定 β）。\n",
+    "3. 折現率：各再平衡日以標的 vs SPY 約 **60 個月月報酬** 估計 Rolling β；",
+    "Rf 取該日（或之前最近）`^TNX`；Rm = Rf + Session 股權風險溢酬；",
+    "We／Wd 用當時股價×股數與當時負債。Rd／稅率仍為 Session。\n",
     "4. 合理價模型：依執行面板「回測用評價模型」選擇 DCF／DDM／RI／P/B／綜合均值；",
-    "成長／預測年數等來自當下 Session。\n",
+    "歷史點成長／預測年數用 APP_DEFAULTS；僅折線末端套用目前分頁。\n",
     "\n",
     "## 3. 序列定義（淨值圖）\n",
     "\n",
