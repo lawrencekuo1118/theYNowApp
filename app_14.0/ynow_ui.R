@@ -549,7 +549,7 @@ beta_advanced_tab_ui <- function() {
                   tags$li(tags$b("$$P = BVPS\\ (or\\ TBVPS) \\times Target\\ P/B$$")),
                   tags$li(tags$b("Justified\\ P/B \\approx \\frac{ROE - g}{K_e - g}"))
                 ),
-                p("目標倍數可綜合 Justified（ROE／Ke）、產業中位與歷史中位，輸出 Bear／Base／Bull 三檔。雙重股權／ADR 等「報價股 ≠ 財報股數口徑」時，搜尋會自動約當股數（市值÷股價），亦可手動開關校正。")
+                p("目標倍數可綜合 Justified（ROE／Ke）、產業中位與歷史中位，輸出 Bear／Base／Bull 三檔。雙重股權／ADR 等「報價股 ≠ 財報股數口徑」時，與其他評價路徑相同，一律自動約當股數（市值÷股價）。")
        )
       )
     )
@@ -2480,9 +2480,6 @@ ui <- dashboardPage(
                 box(
                   title = tagList(icon("balance-scale"), "折現比較（合理價 vs 實際股價）"),
                   width = 12, status = "primary", solidHeader = TRUE,
-                  .bt_section_intro(
-                    "歷史各點：僅用當時可得財報＋當時 ^TNX Rf＋截至該日的基準（SPY）已實現年化總報酬＋Rolling β，以及當日市值資本結構，設算各模型合理價（成長／n 不套用目前分頁參數）。僅折線末端最新點掛勾目前 APP 分頁與 Session Rm。實際股價＝該股歷史收盤；大盤可用「顯示大盤」開關（右軸）。搜尋後即預覽股價；勾選右下角評價模型即計算合理價（預設不勾選）。策略倉位／MOS 用勾選模型的平均，不是隱藏的主模型。ADR／雙重股權時，股數會依目前市值÷股價對齊報價股口徑後再算合理價。"
-                  ),
                   tags$div(
                     class = "ynow-bt-hfv-wrap",
                     uiOutput("bt_valuation_summary"),
@@ -2763,17 +2760,7 @@ ui <- dashboardPage(
                   title = tagList(icon("book"), "回測數據來源與計算過程（方法論註解）"),
                   width = 12, status = "primary", solidHeader = TRUE,
                   collapsible = TRUE, collapsed = TRUE,
-                  uiOutput("bt_methodology_notes"),
-                  tags$div(
-                    style = "margin-top: 12px;",
-                    downloadButton(
-                      "download_bt_methodology",
-                      "下載方法論說明（Markdown）",
-                      icon = icon("download"),
-                      class = "btn-primary",
-                      style = "font-weight: 600;"
-                    )
-                  )
+                  uiOutput("bt_methodology_notes")
                 )
               )
       ),

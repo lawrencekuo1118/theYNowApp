@@ -207,7 +207,6 @@ server <- function(input, output, session) {
             quote_currency = q_ccy, financial_currency = f_ccy
           )
           if (shares_auto_adjust_method(sh_res$method)) {
-            updateCheckboxInput(session, "mod_pb-adjust_share_class", value = TRUE)
             msg <- sh_res$note
             if (is.null(msg) || !nzchar(msg)) {
               msg <- sprintf(
@@ -802,7 +801,6 @@ server <- function(input, output, session) {
       c("P/B", "P/B Low", .snapshot_value(input[["mod_pb-pb_low"]]), "Price = BVPS × P/B"),
       c("P/B", "P/B Mid", .snapshot_value(input[["mod_pb-pb_mid"]]), "Price = BVPS × P/B"),
       c("P/B", "P/B High", .snapshot_value(input[["mod_pb-pb_high"]]), "Price = BVPS × P/B"),
-      c("P/B", "約當股數校正", .snapshot_value(input[["mod_pb-adjust_share_class"]]), "例外：市值÷股價／雙重股權"),
       c("Backtest", "Net Margin Threshold (%)", .snapshot_value(input$bt_net_margin), "持倉回測條件: Net Margin >= threshold"),
       c("Backtest", "Revenue Growth Threshold (%)", .snapshot_value(input$bt_rev_growth), "持倉回測條件: Revenue Growth >= threshold"),
       c("Backtest", "EPS / NI Growth Threshold (%)", .snapshot_value(input$bt_eps_growth), "持倉回測條件: EPS/NI Growth >= threshold"),
@@ -909,8 +907,7 @@ server <- function(input, output, session) {
       pb_mid = c("P/B", "P/B Mid", "產業帶中位"),
       pb_high = c("P/B", "P/B High", "產業帶上緣"),
       pb_basis = c("P/B", "Basis", "bvps / tbvps"),
-      pb_use_industry = c("P/B", "使用產業 P/B", "TRUE = 跟產業帶"),
-      pb_adjust_share_class = c("P/B", "約當股數校正", "雙重股權／市值÷股價例外")
+      pb_use_industry = c("P/B", "使用產業 P/B", "TRUE = 跟產業帶")
     )
 
     keys <- names(APP_DEFAULTS)
@@ -1578,8 +1575,7 @@ server <- function(input, output, session) {
     }),
     current_ticker = current_ticker,
     quote_currency = quote_currency,
-    financial_currency = statement_currency,
-    adjust_share_class = reactive(isTRUE(input[["mod_pb-adjust_share_class"]]))
+    financial_currency = statement_currency
   )
   
   # ==========================================
@@ -1625,10 +1621,8 @@ server <- function(input, output, session) {
       error = function(e) list(shares = NA_real_, method = "none", note = NULL, shares_bs = NA_real_)
     )
     raw_shares <- suppressWarnings(as.numeric(sh$shares_bs)[1])
-    # ADR／雙重股權：自動套用約當股數；使用者勾選時亦強制用解析結果
-    apply_adj <- isTRUE(input[["mod_pb-adjust_share_class"]]) ||
-      shares_auto_adjust_method(sh$method)
-    if (isTRUE(apply_adj) && is.finite(sh$shares) && sh$shares > 0) {
+    # ADR／雙重股權：一律自動套用約當股數（與 P/B／RI／回測一致）
+    if (shares_auto_adjust_method(sh$method) && is.finite(sh$shares) && sh$shares > 0) {
       return(list(shares = sh$shares, note = sh$note, method = sh$method))
     }
     if (is.finite(raw_shares) && raw_shares > 0) {
@@ -6081,14 +6075,24 @@ server <- function(input, output, session) {
         tags$b("基本面策略淨值"), "＝Exp_A；",
         tags$b("情緒策略淨值"), "＝Exp_B（Exp_A 混入動能／RSI）。兩圖標籤不可互換。"
       ),
+      tags$h5(tags$b("〇、折現比較圖（合理價 vs 實際股價）")),
+      tags$p(
+        "歷史各點：僅用當時可得財報＋當時 ^TNX Rf＋截至該日的基準（SPY）已實現年化總報酬＋Rolling β，以及當日市值資本結構，設算各模型合理價（成長／n 不套用目前分頁參數）。",
+        "僅折線末端最新點掛勾目前 APP 分頁與 Session Rm。",
+        "實際股價＝該股歷史收盤；大盤可用「顯示大盤」開關（右軸）。",
+        "搜尋後即預覽股價；勾選右下角評價模型即計算合理價（預設不勾選）。",
+        "策略倉位／MOS 用勾選模型的平均，不是隱藏的主模型。",
+        "ADR／雙重股權時，股數會依目前市值÷股價對齊報價股口徑後再算合理價。"
+      ),
       tags$h5(tags$b("一、數據來源")),
       tags$ul(
         tags$li(tags$b("股價／基準："), "Yahoo Finance（yfinance，auto_adjust）；基準預設 SPY。"),
         tags$li(tags$b("財報："), "本次 Session 已載入之年度 IS／BS／CF。"),
         tags$li(tags$b("Rf（歷史點）："), "再平衡日 ^TNX 當時收盤；抓不到才用 Session／約 4%。"),
         tags$li(tags$b("Rm（歷史點）："), "截至再平衡日的基準（預設 SPY）已實現年化總報酬（優先近 12 個月，無前瞻）；不是 Session 預期溢酬。末端才用 Session Rm。"),
-        tags$li(tags$b("We／Wd（歷史點）："), "再平衡日 股數×收盤 與當時 Total Debt。Rd／稅率仍用 Session。"),
-        tags$li(tags$b("評價假設："), "歷史點成長／n 用 APP_DEFAULTS；Ke／WACC 於各季以 Rolling β＋上述當年 Rf／結構重估。末端才掛目前分頁。")
+        tags$li(tags$b("We／Wd（歷史點）："), "再平衡日 股數×收盤 與當時 Total Debt。Rd／稅率仍用 Session。若偵測 ADR／雙重股權，股數先對齊報價股。"),
+        tags$li(tags$b("評價假設："), "歷史點成長／n 用 APP_DEFAULTS；Ke／WACC 於各季以 Rolling β＋上述當年 Rf／結構重估。末端才掛目前分頁。"),
+        tags$li(tags$b("股數級距（ADR）："), "Session Summary 市值÷股價 vs 最新財報流通股；倍率固定套用各財年，使合理價／股與 Yahoo ADR 收盤同一口徑。")
       ),
       tags$h5(tags$b("二、計算過程（季頻 PIT）")),
       tags$ol(
@@ -6102,22 +6106,10 @@ server <- function(input, output, session) {
       tags$p(
         style = "margin-bottom:0;",
         "上漲日把 (1−Exp_A)×r 加總，拆成現金拖累／提前出場／高估減碼；加總 ≠ 複利終值落差（殘差＝終值差−加總）。",
-        "結論以該次回測頁上的平均倉位、空手日、Filter 未過次數為準，不作「牛市必輸」套話。完整公式請下載方法論檔。"
+        "結論以該次回測頁上的平均倉位、空手日、Filter 未過次數為準，不作「牛市必輸」套話。"
       )
     )
   })
-
-  output$download_bt_methodology <- downloadHandler(
-    filename = function() {
-      tk <- tryCatch(current_ticker(), error = function(e) "NA")
-      if (is.null(tk) || !nzchar(as.character(tk))) tk <- "session"
-      paste0("YNow_Backtest_Methodology_", tk, "_", Sys.Date(), ".md")
-    },
-    content = function(file) {
-      txt <- build_bt_methodology_doc(.bt_methodology_meta())
-      writeLines(txt, file, useBytes = TRUE)
-    }
-  )
   
   observeEvent(input$reset_dcf, {
     updateRadioButtons(session, "dcf_mode", selected = APP_DEFAULTS$dcf_mode)
