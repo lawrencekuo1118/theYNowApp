@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12417242
+bundleId=12418637
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=867124e
-commit=867124ef9feb2fe42946ce801090cf9775b711cd
-short=867124e
-message=Merge branch 'cursor/bt-adr-share-align-f4a6': Align backtest fair-value shares for ADR.
-captured_at=2026-08-16T08:15:32Z
+aligned_git=52801ca
+commit=52801cad6574226ebbb12995e53e0599300618e3
+short=52801ca
+message=Load bundled .Renviron at app startup so the feedback GitHub token is visible on shinyapps.io.
+captured_at=2026-08-16T17:36:36Z
 source_branch=master
-note=Canonical live line is app_14.0. Redeploy master (page-level Backtest intro already removed; includes CAPM hint removal + ADR FV align). Bundle 12417242 supersedes 12417150.
+note=Canonical live line is app_14.0. Redeploy so bundled gitignored .Renviron is loaded via readRenviron() (feedback GitHub token). Bundle 12418637 supersedes 12417242. Live status=running.
