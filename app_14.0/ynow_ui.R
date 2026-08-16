@@ -2768,6 +2768,9 @@ ui <- dashboardPage(
                 )
               ),
 
+              # 5b) 趨勢動能：自 Sensitivity 決策看板移至此（MOS／FV 驗證正下方）
+              decision_momentum_panel_ui("main_decision"),
+
               # 6) 方法論
               fluidRow(
                 box(

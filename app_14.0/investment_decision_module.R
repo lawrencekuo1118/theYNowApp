@@ -15,9 +15,8 @@ decision_ui <- function(id) {
   ns <- NS(id)
   tagList(
     fluidRow(
-      valueBoxOutput(ns("vbox_fscore"), width = 3),
+      valueBoxOutput(ns("vbox_fscore"), width = 4),
       uiOutput(ns("vbox_mos")),
-      valueBoxOutput(ns("vbox_momentum"), width = 3),
       uiOutput(ns("vbox_fraud"))
     ),
     fluidRow(
@@ -70,6 +69,53 @@ decision_ui <- function(id) {
             tags$li(tags$b("高財務槓桿 (Debt/Equity > 2)："), "負債比過高，在升息循環或景氣下行時面臨極大的流動性風險。")
           )
         )
+      )
+    )
+  )
+}
+
+#' 趨勢動能說明＋狀態（置於回測驗證 MOS／FV 正下方；與 decision_server 同 id）
+decision_momentum_panel_ui <- function(id) {
+  ns <- NS(id)
+  fluidRow(
+    box(
+      title = tagList(icon("chart-line"), "趨勢動能（交易輔助）"),
+      width = 12, status = "success", solidHeader = TRUE,
+      collapsible = TRUE, collapsed = FALSE,
+      tags$p(
+        style = "margin: 0 0 12px 0; font-size: 12.5px; color: #555; line-height: 1.5;",
+        "技術面 Timing 輔助，不決定合理價。決策漏斗以 F-Score／安全邊際為主；此處僅回答「短中期趨勢是否轉多」，供布局節奏參考。"
+      ),
+      fluidRow(
+        valueBoxOutput(ns("vbox_momentum"), width = 4),
+        column(
+          width = 8,
+          uiOutput(ns("ui_momentum_detail"))
+        )
+      ),
+      tags$hr(style = "margin: 8px 0 12px 0; border-top: 1px solid #dfe6e9;"),
+      tags$h5(tags$b("判斷邏輯與條件")),
+      tags$ul(
+        style = "font-size: 13px; line-height: 1.55; color: #333; margin-bottom: 10px;",
+        tags$li(
+          tags$b("Cond1："),
+          "最新收盤價 > SMA(20) 且 > SMA(60)"
+        ),
+        tags$li(
+          tags$b("Cond2："),
+          "SMA(20) > SMA(60)（短均在長均之上）"
+        ),
+        tags$li(
+          tags$b("多頭確認："),
+          "Cond1 與 Cond2 同時成立；否則為「盤整/偏空」。"
+        )
+      ),
+      tags$h5(tags$b("資料來源")),
+      tags$ul(
+        style = "font-size: 13px; line-height: 1.55; color: #333; margin-bottom: 6px;",
+        tags$li("日收盤價：Yahoo Finance（優先 yfinance；失敗時 quantmod／Yahoo）。"),
+        tags$li("先抓約 1 年歷史，決策使用近約 180 個交易日；均線以 R 套件 TTR::SMA 計算。"),
+        tags$li("與回測「情緒策略」的動能／RSI 疊加不同：此處僅雙均線確認，供 Sensitivity 決策漏斗 Timing。")
       )
     )
   )
@@ -159,7 +205,17 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       cond2 <- ma20 > ma60
       list(
         triggered = (isTRUE(cond1) && isTRUE(cond2)),
-        dist_to_ma20 = if (is.na(ma20) || is.na(curr_p)) NA else (curr_p - ma20) / ma20
+        cond1 = isTRUE(cond1),
+        cond2 = isTRUE(cond2),
+        price = if (length(curr_p) == 1 && is.finite(curr_p)) as.numeric(curr_p) else NA_real_,
+        ma20 = if (length(ma20) == 1 && is.finite(ma20)) as.numeric(ma20) else NA_real_,
+        ma60 = if (length(ma60) == 1 && is.finite(ma60)) as.numeric(ma60) else NA_real_,
+        dist_to_ma20 = if (is.na(ma20) || is.na(curr_p) || !is.finite(ma20) || !is.finite(curr_p) || ma20 == 0) {
+          NA_real_
+        } else {
+          (curr_p - ma20) / ma20
+        },
+        n_obs = length(prices)
       )
     })
 
@@ -175,7 +231,7 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       if (!is.na(mos) && mos < 0) {
         if (mom$triggered) {
           return(list(class = "alert-warning", icon = "fire", title = "動能強勁但估值偏高",
-                      text = "右側趨勢仍佳，惟市價已高於主模型基準內在價值。若已持有可續抱；空手者不宜此時追高。"))
+                      text = "趨勢動能仍佳，惟市價已高於主模型基準內在價值。若已持有可續抱；空手者不宜此時追高。"))
         }
         return(list(class = "alert-warning", icon = "hourglass-half", title = "估值偏高且動能轉弱",
                     text = "體質通過檢核，但市價已高於基準合理價，且趨勢尚未轉強。建議耐心等待拉回再評估。"))
@@ -212,7 +268,7 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
         paste0("安全邊際 (vs Base)", conf_lab),
         icon = icon("shield-halved"),
         color = color,
-        width = 3
+        width = 4
       )
     })
 
@@ -239,15 +295,54 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
         "財務舞弊警訊",
         icon = icon("exclamation-triangle"),
         color = "red",
-        width = 3
+        width = 4
       )
     })
 
     output$vbox_momentum <- renderValueBox({
-      status <- mom_status()
-      color <- if (isTRUE(status$triggered)) "green" else "navy"
-      txt <- if (isTRUE(status$triggered)) "多頭確認" else "盤整/偏空"
+      status <- tryCatch(mom_status(), error = function(e) NULL)
+      triggered <- is.list(status) && isTRUE(status$triggered)
+      color <- if (triggered) "green" else "navy"
+      txt <- if (triggered) "多頭確認" else "盤整/偏空"
       valueBox(txt, "趨勢動能（交易輔助）", icon = icon("chart-line"), color = color)
+    })
+
+    output$ui_momentum_detail <- renderUI({
+      status <- tryCatch(mom_status(), error = function(e) NULL)
+      if (is.null(status) || !is.list(status)) {
+        return(tags$p(
+          style = "color:#888; font-size:13px; margin-top:8px;",
+          "搜尋股票並載入約 180 日收盤價後，將顯示均線與條件狀態。"
+        ))
+      }
+      fmt_px <- function(x) {
+        if (!is.finite(x)) return("—")
+        sprintf("%.2f", x)
+      }
+      fmt_pct <- function(x) {
+        if (!is.finite(x)) return("—")
+        sprintf("%+.1f%%", x * 100)
+      }
+      mark <- function(ok) if (isTRUE(ok)) "✅" else "❌"
+      tags$div(
+        style = "font-size: 13px; line-height: 1.6; color: #333; padding-top: 4px;",
+        tags$p(
+          style = "margin: 0 0 8px 0;",
+          tags$b("即時讀數："),
+          sprintf(
+            "收盤 %s｜SMA20 %s｜SMA60 %s｜相對 SMA20 %s（n≈%s）",
+            fmt_px(status$price), fmt_px(status$ma20), fmt_px(status$ma60),
+            fmt_pct(status$dist_to_ma20),
+            if (is.finite(status$n_obs)) as.integer(status$n_obs) else "—"
+          )
+        ),
+        tags$p(
+          style = "margin: 0;",
+          sprintf("%s Cond1（價 > 雙均）　%s Cond2（SMA20 > SMA60）　→　",
+                  mark(status$cond1), mark(status$cond2)),
+          tags$b(if (isTRUE(status$triggered)) "多頭確認" else "盤整/偏空")
+        )
+      )
     })
 
     output$ui_recommendation <- renderUI({
