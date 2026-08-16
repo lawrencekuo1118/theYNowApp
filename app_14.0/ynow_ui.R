@@ -549,7 +549,7 @@ beta_advanced_tab_ui <- function() {
                   tags$li(tags$b("$$P = BVPS\\ (or\\ TBVPS) \\times Target\\ P/B$$")),
                   tags$li(tags$b("Justified\\ P/B \\approx \\frac{ROE - g}{K_e - g}"))
                 ),
-                p("目標倍數可綜合 Justified（ROE／Ke）、產業中位與歷史中位，輸出 Bear／Base／Bull 三檔。雙重股權／ADR 等「報價股 ≠ 財報股數口徑」時，搜尋會自動約當股數（市值÷股價），亦可手動開關校正。")
+                p("目標倍數可綜合 Justified（ROE／Ke）、產業中位與歷史中位，輸出 Bear／Base／Bull 三檔。雙重股權／ADR 等「報價股 ≠ 財報股數口徑」時，與其他評價路徑相同，一律自動約當股數（市值÷股價）。")
        )
       )
     )
