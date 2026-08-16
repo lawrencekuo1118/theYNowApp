@@ -2485,9 +2485,6 @@ ui <- dashboardPage(
       tabItem(tabName = "backtest",
               withMathJax(),
               h2("量化回測實驗室 (Backtest Zone)"),
-              .bt_section_intro(
-                "先看折現比較圖（合理價 vs 實際股價 vs 大盤），再看策略淨值（倉位×日報酬的累積財富，起始＝1）。歷史點 Ke／WACC 用當年 ^TNX Rf、截至再平衡日的基準已實現 Rm、當日市值 We／Wd 與 Rolling β。歷史股價序列維持 Yahoo 報價幣別（不做歷史 FX 換算）；上方 header 的 USD⇄TWD 主要套用估值／財報金額。"
-              ),
 
               # 1) 折現比較圖置頂：合理價 vs 實際股價 vs 大盤
               fluidRow(
