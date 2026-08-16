@@ -2217,7 +2217,6 @@ ui <- dashboardPage(
                                        ),
                                        helpText("勾選時跟隨中央 SGR；取消勾選後可單獨覆寫股利成長率（不必等於 FCFF 終值 g）。"),
                                        numericInput("mod_ddm-ke", "要求報酬率 (Ke) %", value = APP_DEFAULTS$ddm_ke),
-                                       helpText("股利屬股權現金流，以 Ke（CAPM）折現；DCF 的 FCFF 則以 WACC 折現。Ke 與 DCF → WACC 的 CAPM 共用；Rolling／同業去槓桿 在 Get Started。"),
                                        checkboxInput(
                                          "ddm_use_estimated_re",
                                          "採用估算 Ke（來自 CAPM β）",
