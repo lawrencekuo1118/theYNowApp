@@ -5018,7 +5018,13 @@ server <- function(input, output, session) {
       we = we, wd = wd,
       beta_fallback = beta_fb,
       beta_lookback_months = 60L,
-      beta_min_months = 24L
+      beta_min_months = 24L,
+      # ADR／雙重股權：折現比較股數對齊報價股（市值÷股價倍率套用各財年）
+      summary_df = tryCatch(summary_data(), error = function(e) NULL),
+      quote_currency = tryCatch(quote_currency(), error = function(e) NULL),
+      financial_currency = tryCatch(statement_currency(), error = function(e) NULL),
+      quote_price = tryCatch(extract_quote_price_mcap(summary_data())$price, error = function(e) NA_real_),
+      market_cap = tryCatch(extract_quote_price_mcap(summary_data())$market_cap, error = function(e) NA_real_)
     )
   })
 
@@ -5108,8 +5114,9 @@ server <- function(input, output, session) {
         stop("請先在 Dashboard 搜尋並載入該公司財報")
       }
       mp <- bt_current_model_params()
-      fund <- build_annual_fundamentals(
-        d_income_statement(), d_balance_sheet(), d_cash_flow()
+      fund <- build_annual_fundamentals_for_quote(
+        d_income_statement(), d_balance_sheet(), d_cash_flow(),
+        ticker = current_ticker(), model_params = mp
       )
       withProgress(message = "重建基本面價值…", value = 0.2, {
         fv_res <- compute_fair_value_timeline(
@@ -5126,6 +5133,18 @@ server <- function(input, output, session) {
         bt_fv_visible(TRUE)
         if (!is.null(bt_result())) {
           bt_result(refresh_backtest_fair_value(bt_result(), fund, mp))
+        }
+        sa <- attr(fund, "share_align")
+        if (is.list(sa) && shares_auto_adjust_method(sa$method) &&
+            is.finite(sa$scale) && abs(sa$scale - 1) > 0.05) {
+          showNotification(
+            sprintf(
+              "折現比較股數已對齊報價股（×%.3g；%s）",
+              sa$scale, sa$method
+            ),
+            type = "message",
+            duration = 6
+          )
         }
       })
     }, error = function(e) {

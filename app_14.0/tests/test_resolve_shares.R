@@ -62,6 +62,27 @@ check("extract mcap", abs(qm$market_cap - 1.5e9) < 1)
 check("auto_adjust helper", isTRUE(shares_auto_adjust_method("market_cap_per_price")))
 check("auto_adjust neg", !isTRUE(shares_auto_adjust_method("balance_sheet")))
 
+# Fundamentals table: scale all years for ADR
+fund <- data.frame(
+  year = c(2025L, 2024L),
+  shares = c(25e9, 24e9),
+  stringsAsFactors = FALSE
+)
+sum_adr <- data.frame(
+  Item = c("Previous Close", "Market Cap (intraday)"),
+  Value = c("400", "2000B"),
+  stringsAsFactors = FALSE
+)
+attr(sum_adr, "currency") <- "USD"
+attr(sum_adr, "financialCurrency") <- "TWD"
+fund_q <- align_fundamentals_shares_to_quote(
+  fund, sum_adr, "TSM", "USD", "TWD"
+)
+sa <- attr(fund_q, "share_align")
+check("fund ADR method", identical(sa$method, "market_cap_per_price"))
+check("fund ADR scale", is.finite(sa$scale) && abs(sa$scale - 0.2) < 1e-9)
+check("fund ADR shares", abs(fund_q$shares[1] - 5e9) < 1)
+
 if (fail > 0L) {
   cat("\n", fail, " failure(s)\n", sep = "")
   quit(status = 1)
