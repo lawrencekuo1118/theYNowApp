@@ -44,7 +44,7 @@ pb_asset_module_ui <- function(id) {
                  tabPanel("P/B Settings", icon = icon("cogs"),
                           h4(tags$b("每股帳面淨值 (BVPS) 與資產基礎")),
                           fluidRow(
-                            div("標準公式：BVPS = Common Equity ÷ 財報流通股數；TBVPS 另扣除商譽／無形資產。雙重股權（如 BRK-B）等「報價股 ≠ 財報股數口徑」時，可選擇下方例外校正。",
+                            div("標準公式：BVPS = Common Equity ÷ 流通股數；TBVPS 另扣除商譽／無形資產。雙重股權／ADR 等「報價股 ≠ 財報股數口徑」時，搜尋會自動用市值÷股價約當；亦可手動勾選。",
                                 style = "font-size: 14px; font-weight: bold; color: #2C3E50; text-align: left; margin-bottom: 10px; padding: 10px; background-color: #F8F9F9; border-left: 4px solid #2980B9; border-radius: 4px;")
                           ),
                           fluidRow(
@@ -54,13 +54,13 @@ pb_asset_module_ui <- function(id) {
                                 ns("adjust_share_class"),
                                 tags$span(
                                   style = "font-weight: bold;",
-                                  "套用約當股數校正（例外補償：市值÷股價或 BRK-B×1500）"
+                                  "套用約當股數校正（市值÷股價或 BRK-B×1500；ADR 搜尋時自動開啟）"
                                 ),
                                 value = isTRUE(APP_DEFAULTS$pb_adjust_share_class)
                               ),
                               tags$p(
                                 style = "margin: -8px 0 12px 0; font-size: 12px; color: #666; line-height: 1.45;",
-                                "非標準自動估值步驟。僅在財報股數與目前報價股級距明顯不符時勾選；勾選後請按「從最新財報自動帶入」或等待自動同步。"
+                                "報價股與財報股數級距不符時會自動套用；取消勾選可強制改回財報股數。"
                               )
                             )
                           ),
@@ -130,7 +130,10 @@ pb_asset_module_server <- function(id,
                                    d_income_statement = reactive(NULL),
                                    current_price = reactive(NA),
                                    market_cap = reactive(NA),
+                                   quote_price = reactive(NA),
                                    current_ticker = reactive(""),
+                                   quote_currency = reactive(NA),
+                                   financial_currency = reactive(NA),
                                    industry_choice = reactive(NULL),
                                    industry_text = reactive(""),
                                    central_ke = reactive(NA),
@@ -215,7 +218,7 @@ pb_asset_module_server <- function(id,
       )
     })
     
-    # --- 財報同步 BVPS / TBVPS（標準：財報股數；例外校正需使用者勾選）---
+    # --- 財報同步 BVPS / TBVPS（ADR／雙重股權：搜尋時自動約當；亦可手動勾選）---
     sync_book_values <- function() {
       req(d_balance_sheet())
       df_bs <- d_balance_sheet()
@@ -227,11 +230,23 @@ pb_asset_module_server <- function(id,
         SHARE_PATTERNS,
         "stock"
       )
-      px <- suppressWarnings(as.numeric(current_price())[1])
+      px_quote <- suppressWarnings(as.numeric(quote_price())[1])
+      if (!is.finite(px_quote) || px_quote <= 0) {
+        px_quote <- suppressWarnings(as.numeric(current_price())[1])
+      }
       mcap <- suppressWarnings(as.numeric(market_cap())[1])
       tk <- tryCatch(current_ticker(), error = function(e) "")
-      sh_adj <- resolve_shares_for_price(shares_bs, price = px, market_cap = mcap, ticker = tk)
+      sh_adj <- resolve_shares_for_price(
+        shares_bs,
+        price = px_quote,
+        market_cap = mcap,
+        ticker = tk,
+        quote_currency = tryCatch(quote_currency(), error = function(e) NULL),
+        financial_currency = tryCatch(financial_currency(), error = function(e) NULL)
+      )
 
+      auto_adj <- shares_auto_adjust_method(sh_adj$method)
+      # 搜尋時會自動勾選；取消勾選 → 強制財報股數（P/B BVPS）
       apply_adj <- isTRUE(input$adjust_share_class)
       if (apply_adj) {
         shares <- sh_adj$shares
@@ -243,7 +258,16 @@ pb_asset_module_server <- function(id,
         } else {
           shares <- sh_adj$shares
         }
-        if (!is.null(sh_adj$note) && nzchar(sh_adj$note) &&
+        if (isTRUE(auto_adj) && !is.null(sh_adj$note) && nzchar(sh_adj$note) &&
+            is.finite(shares_bs) && shares_bs > 0 &&
+            is.finite(sh_adj$shares) &&
+            abs(sh_adj$shares / shares_bs - 1) > 0.05) {
+          shares_resolve_note(paste0(
+            "偵測到股數級距／ADR 可能不符（目前使用財報股數）。",
+            "若要約當報價股，請勾選「套用約當股數校正」或重新搜尋以自動開啟。",
+            " 建議原因：", sh_adj$note
+          ))
+        } else if (!is.null(sh_adj$note) && nzchar(sh_adj$note) &&
             !identical(sh_adj$method, "balance_sheet") &&
             is.finite(shares_bs) && shares_bs > 0 &&
             is.finite(sh_adj$shares) &&
@@ -292,7 +316,7 @@ pb_asset_module_server <- function(id,
     
     observeEvent(
       list(
-        d_balance_sheet(), current_price(), market_cap(), current_ticker(),
+        d_balance_sheet(), current_price(), quote_price(), market_cap(), current_ticker(),
         input$adjust_share_class
       ),
       {

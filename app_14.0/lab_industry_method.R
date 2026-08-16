@@ -330,6 +330,18 @@ lab_estimate_fv_per_share <- function(method, industry_key, d_is, d_bs, d_cf,
     error = function(e) NA_real_
   )
   shares <- suppressWarnings(as.numeric(shares)[1])
+  sh_res <- tryCatch(
+    resolve_shares_for_price(
+      shares,
+      price = price,
+      market_cap = market_cap,
+      ticker = ""
+    ),
+    error = function(e) NULL
+  )
+  if (!is.null(sh_res) && is.finite(sh_res$shares) && sh_res$shares > 0) {
+    shares <- sh_res$shares
+  }
   if (!is.finite(shares) || shares <= 0) {
     px <- suppressWarnings(as.numeric(price)[1])
     mc <- suppressWarnings(as.numeric(market_cap)[1])

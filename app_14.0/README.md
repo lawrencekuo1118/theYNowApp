@@ -11,7 +11,7 @@
 - **P/B 有來源**：Justified（ROE vs Ke）＋產業區間＋歷史分位，不再只靠人工拍板倍數
 - **Bear / Base / Bull + 可信度**：主模型輸出區間與 低／中／高 可信度，Dashboard 以區間語言呈現
 - **基本面優先預設**：永續 g 預設 fundamental；成長股自動建議 two-stage DCF
-- **股數級距一致**：DCF／RI 與 P/B 共用 share-class 解析（如 BRK-B）
+- **股數級距一致**：DCF／RI／WACC／DDM 與 P/B 共用 share-class 解析（BRK-B、ADR）；搜尋時若財報股數與市值÷股價差超過門檻，自動改用報價股約當股數
 
 SOTP／NAV 與成熟股 P/E·EV 引擎留待 14.1+。
 
