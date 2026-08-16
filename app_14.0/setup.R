@@ -837,6 +837,109 @@ PARAM_SENSITIVITY_SHOCK <- 0.01
   pv + tv / disc[n]
 }
 
+#' Unit-revenue FCFF path matching `fcf_projection_module` (base Rev = 1).
+#' Year-1 revenue grows from 1; FCFF_t = Rev_t × (NOPAT+D&A−CapEx margins) − ΔRev_t × NWC margin.
+#' Independent of dollar scale. Growth rates and margins are decimals.
+.dcf_unit_fcff_path <- function(n, g_near = 0, g_stage2 = NULL, yr_stage1 = NULL,
+                                nopat_m = 0, depre_m = 0, capex_m = 0, nwc_m = 0,
+                                two_stage = FALSE) {
+  n <- suppressWarnings(as.integer(round(as.numeric(n)[1])))
+  if (!is.finite(n) || n < 1L) return(numeric(0))
+  g_near <- suppressWarnings(as.numeric(g_near)[1])
+  if (!is.finite(g_near)) g_near <- 0
+  g2 <- if (!is.null(g_stage2) && is.finite(as.numeric(g_stage2)[1])) {
+    as.numeric(g_stage2)[1]
+  } else {
+    g_near
+  }
+  nopat_m <- suppressWarnings(as.numeric(nopat_m)[1]); if (!is.finite(nopat_m)) nopat_m <- 0
+  depre_m <- suppressWarnings(as.numeric(depre_m)[1]); if (!is.finite(depre_m)) depre_m <- 0
+  capex_m <- suppressWarnings(as.numeric(capex_m)[1]); if (!is.finite(capex_m)) capex_m <- 0
+  nwc_m <- suppressWarnings(as.numeric(nwc_m)[1]); if (!is.finite(nwc_m)) nwc_m <- 0
+  if (isTRUE(two_stage) && !is.null(yr_stage1) && is.finite(as.numeric(yr_stage1)[1]) && n > 1L) {
+    y1 <- max(1L, min(n, as.integer(round(as.numeric(yr_stage1)[1]))))
+    g_path <- ifelse(seq_len(n) <= y1, g_near, g2)
+  } else {
+    g_path <- rep(g_near, n)
+  }
+  rev <- numeric(n)
+  fcff <- numeric(n)
+  base_rev <- 1
+  for (i in seq_len(n)) {
+    prev <- if (i == 1L) base_rev else rev[i - 1L]
+    rev[i] <- prev * (1 + g_path[i])
+    fcff[i] <- rev[i] * (nopat_m + depre_m - capex_m) - (rev[i] - prev) * nwc_m
+  }
+  fcff
+}
+
+#' Discount an explicit FCFF path with the same WACC / Gordon TV as `.dcf_formula_ev`.
+.dcf_formula_ev_from_fcff <- function(fcff, r1, g_term, r2 = NULL, yr_stage1 = NULL) {
+  fcff <- suppressWarnings(as.numeric(fcff))
+  n <- length(fcff)
+  if (n < 1L || any(!is.finite(fcff))) return(NA_real_)
+  r1 <- suppressWarnings(as.numeric(r1)[1])
+  r2 <- if (is.null(r2)) r1 else suppressWarnings(as.numeric(r2)[1])
+  g_term <- suppressWarnings(as.numeric(g_term)[1])
+  if (!is.finite(r1) || !is.finite(r2) || !is.finite(g_term)) return(NA_real_)
+  if (r1 <= -0.999 || r2 <= -0.999 || g_term >= r2) return(NA_real_)
+  two_stage <- !is.null(yr_stage1) && is.finite(as.numeric(yr_stage1)[1]) && n > 1L
+  if (two_stage) {
+    y1 <- max(1L, min(n, as.integer(round(as.numeric(yr_stage1)[1]))))
+    rs <- c(rep(r1, min(y1, n)), rep(r2, max(0L, n - y1)))
+  } else {
+    rs <- rep(r1, n)
+  }
+  disc <- cumprod(1 + rs)
+  if (any(!is.finite(disc)) || any(abs(disc) < 1e-15)) return(NA_real_)
+  pv <- sum(fcff / disc)
+  tv <- fcff[n] * (1 + g_term) / (r2 - g_term)
+  pv + tv / disc[n]
+}
+
+#' CAPM cost of equity in percent: Ke = Rf + β(Rm − Rf).
+.capm_ke_pct <- function(rf_pct, beta, rm_pct) {
+  rf_pct <- suppressWarnings(as.numeric(rf_pct)[1])
+  beta <- suppressWarnings(as.numeric(beta)[1])
+  rm_pct <- suppressWarnings(as.numeric(rm_pct)[1])
+  if (!is.finite(rf_pct) || !is.finite(beta) || !is.finite(rm_pct)) return(NA_real_)
+  rf_pct + beta * (rm_pct - rf_pct)
+}
+
+#' Elasticity rows for CAPM inputs that feed Ke (DDM / RI). `p_at_ke_pct(ke_pct)` returns value.
+.param_sensitivity_capm_ke_rows <- function(v0, p_at_ke_pct, rf0, beta0, rm0,
+                                            shock = PARAM_SENSITIVITY_SHOCK) {
+  rows <- list()
+  .rel <- function(x, sign = -1) .param_rel_shock(x, sign = sign, shock = shock)
+  .ke <- function(rf = rf0, beta = beta0, rm = rm0) .capm_ke_pct(rf, beta, rm)
+  if (!is.finite(.ke()) || !is.finite(v0)) return(rows)
+  if (.param_sensitivity_rel_ok(rf0)) {
+    rows[[length(rows) + 1]] <- .param_sensitivity_infl_row(
+      "無風險利率 Rf", rf0, "%", v0,
+      p_at_ke_pct(.ke(rf = .rel(rf0, -1))),
+      p_at_ke_pct(.ke(rf = .rel(rf0, +1))),
+      "CAPM：Ke = Rf + β(Rm−Rf)"
+    )
+  }
+  if (.param_sensitivity_rel_ok(beta0)) {
+    rows[[length(rows) + 1]] <- .param_sensitivity_infl_row(
+      "Beta (β)", beta0, "x", v0,
+      p_at_ke_pct(.ke(beta = .rel(beta0, -1))),
+      p_at_ke_pct(.ke(beta = .rel(beta0, +1))),
+      "CAPM：Ke = Rf + β(Rm−Rf)"
+    )
+  }
+  if (.param_sensitivity_rel_ok(rm0)) {
+    rows[[length(rows) + 1]] <- .param_sensitivity_infl_row(
+      "市場報酬率 Rm", rm0, "%", v0,
+      p_at_ke_pct(.ke(rm = .rel(rm0, -1))),
+      p_at_ke_pct(.ke(rm = .rel(rm0, +1))),
+      "CAPM：Ke = Rf + β(Rm−Rf)"
+    )
+  }
+  rows
+}
+
 #' Canonical Gordon DDM price from formula parameters only (unit D0).
 #' P0 = D0(1+g)/(Ke−g). Independent of ticker price, shares, and dividend dollars.
 #' Rates are decimals (e.g. 0.08 not 8).

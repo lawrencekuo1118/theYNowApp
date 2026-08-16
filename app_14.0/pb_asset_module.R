@@ -138,7 +138,11 @@ pb_asset_module_server <- function(id,
                                    industry_text = reactive(""),
                                    central_ke = reactive(NA),
                                    central_g_pct = reactive(NA),
-                                   hist_prices = reactive(NULL)) {
+                                   hist_prices = reactive(NULL),
+                                   capm_rf = reactive(NA),
+                                   capm_beta = reactive(NA),
+                                   capm_rm = reactive(NA),
+                                   use_estimated_re = reactive(FALSE)) {
   moduleServer(id, function(input, output, session) {
     
     # --- 從產業標準推估本淨比區間（若未定義則回傳 NULL）---
@@ -565,6 +569,78 @@ pb_asset_module_server <- function(id,
           "基準目標 P/B", mid0, "x", v0,
           .p(pb = .rel(mid0, -1)), .p(pb = .rel(mid0, +1)),
           "P ∝ 目標 P/B ⇒ |ε|=1（公式；與個股無關）"
+        )
+      }
+      roe0 <- tryCatch(current_roe_pct(), error = function(e) NA_real_)
+      ke0 <- suppressWarnings(as.numeric(central_ke())[1]) * 100
+      g0 <- suppressWarnings(as.numeric(central_g_pct())[1])
+      ind_band <- if (isTRUE(input$use_industry_pb)) {
+        tryCatch(industry_pb_band(), error = function(e) NULL)
+      } else {
+        NULL
+      }
+      hist0 <- tryCatch(hist_pb_series(), error = function(e) NULL)
+      tgt0 <- tryCatch(
+        derive_pb_targets(
+          roe_pct = roe0, ke_pct = ke0, g_pct = g0,
+          industry_band = ind_band, hist_pb = hist0
+        ),
+        error = function(e) NULL
+      )
+      just0 <- if (!is.null(tgt0)) suppressWarnings(as.numeric(tgt0$justified)[1]) else NA_real_
+      .p_tgt <- function(roe = roe0, ke = ke0, g = g0, band = ind_band) {
+        d <- derive_pb_targets(
+          roe_pct = roe, ke_pct = ke, g_pct = g,
+          industry_band = band, hist_pb = hist0
+        )
+        mid <- suppressWarnings(as.numeric(d$mid)[1])
+        .pb_formula_p(basis = 1, pb = mid)
+      }
+      if (is.finite(just0)) {
+        if (.param_sensitivity_rel_ok(roe0)) {
+          rows[[length(rows) + 1]] <- .param_sensitivity_infl_row(
+            "Justified ROE", roe0, "%", v0,
+            .p_tgt(roe = .rel(roe0, -1)), .p_tgt(roe = .rel(roe0, +1)),
+            "目標 P/B：(ROE−g)/(Ke−g) 再與產業／歷史合成"
+          )
+        }
+        if (.param_sensitivity_rel_ok(ke0)) {
+          rows[[length(rows) + 1]] <- .param_sensitivity_infl_row(
+            "股權成本 Ke", ke0, "%", v0,
+            .p_tgt(ke = .rel(ke0, -1)), .p_tgt(ke = .rel(ke0, +1)),
+            "Justified P/B 分母 Ke−g（合成後目標）"
+          )
+        }
+        if (.param_sensitivity_rel_ok(g0)) {
+          rows[[length(rows) + 1]] <- .param_sensitivity_infl_row(
+            "永續成長率 g", g0, "%", v0,
+            .p_tgt(g = .rel(g0, -1)), .p_tgt(g = .rel(g0, +1)),
+            "Justified P/B：(ROE−g)/(Ke−g)"
+          )
+        }
+        if (isTRUE(use_estimated_re())) {
+          rf0 <- suppressWarnings(as.numeric(capm_rf())[1])
+          beta0 <- suppressWarnings(as.numeric(capm_beta())[1])
+          rm0 <- suppressWarnings(as.numeric(capm_rm())[1])
+          capm_rows <- .param_sensitivity_capm_ke_rows(
+            v0, function(ke_pct) .p_tgt(ke = ke_pct),
+            rf0, beta0, rm0, shock = shock_pct
+          )
+          if (length(capm_rows)) rows <- c(rows, capm_rows)
+        }
+      }
+      ind_mid <- if (is.list(ind_band)) suppressWarnings(as.numeric(ind_band$mid)[1]) else NA_real_
+      if (isTRUE(input$use_industry_pb) && .param_sensitivity_rel_ok(ind_mid) && ind_mid > 0) {
+        .band_at <- function(mid) {
+          b <- ind_band
+          b$mid <- mid
+          b
+        }
+        rows[[length(rows) + 1]] <- .param_sensitivity_infl_row(
+          "產業 P/B 先驗", ind_mid, "x", v0,
+          .p_tgt(band = .band_at(.rel(ind_mid, -1))),
+          .p_tgt(band = .band_at(.rel(ind_mid, +1))),
+          "derive_pb_targets 產業權重來源"
         )
       }
       .param_sensitivity_sort_by_abs_eps(do.call(rbind, rows))

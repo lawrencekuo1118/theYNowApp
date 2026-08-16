@@ -10,7 +10,11 @@ ddm_module_server <- function(id, ddm_g = reactive(NULL), ddm_ke = reactive(NULL
                               d_income_statement = reactive(NULL),
                               current_ticker = reactive(""),
                               quote_currency = reactive(NA),
-                              financial_currency = reactive(NA)) {
+                              financial_currency = reactive(NA),
+                              capm_rf = reactive(NA),
+                              capm_beta = reactive(NA),
+                              capm_rm = reactive(NA),
+                              use_estimated_re = reactive(FALSE)) {
   
   moduleServer(id, function(input, output, session) {
     
@@ -165,6 +169,16 @@ ddm_module_server <- function(id, ddm_g = reactive(NULL), ddm_ke = reactive(NULL
           .p(ke_pct = .rel(ke0, +1)),
           "ε = −Ke/(Ke−g)（取決於 Ke、g）"
         )
+      }
+      if (isTRUE(use_estimated_re())) {
+        rf0 <- suppressWarnings(as.numeric(capm_rf())[1])
+        beta0 <- suppressWarnings(as.numeric(capm_beta())[1])
+        rm0 <- suppressWarnings(as.numeric(capm_rm())[1])
+        capm_rows <- .param_sensitivity_capm_ke_rows(
+          v0, function(ke_pct) .p(ke_pct = ke_pct),
+          rf0, beta0, rm0, shock = shock_pct
+        )
+        if (length(capm_rows)) rows <- c(rows, capm_rows)
       }
       .param_sensitivity_sort_by_abs_eps(do.call(rbind, rows))
     }, striped = TRUE, hover = TRUE, bordered = TRUE, spacing = "s", width = "100%")

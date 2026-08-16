@@ -630,7 +630,7 @@ beta_advanced_tab_ui <- function() {
       title = tagList(icon("percentage"), title),
       width = 12, status = "info", solidHeader = TRUE, collapsible = TRUE,
       helpText(
-        "「｜ε｜」由估值公式在目前模型參數（WACC／Ke、g、n、配息等）上評估，與個股價格、股數、現金／負債規模無關；",
+        "「｜ε｜」由估值公式在目前模型參數（WACC／Ke、g、n、We／Wd、配息、FCF 佔比等）上評估，與個股價格、股數、現金／負債規模無關；",
         "兩檔股票只要公式參數相同，｜ε｜與排序即相同。g 與折現率的彈性本身取決於 (r−g)，故改參數才會改｜ε｜。",
         "一次只變動一個參數（相對 ±1%）；整數年數 n 以 ±1 年換算成 1% 等價彈性。",
         "「估值Δ%」≈ 該參數變動 1% 時公式價值的變動幅度；「｜ε｜」= 兩側 |Δ估值%| 平均。",

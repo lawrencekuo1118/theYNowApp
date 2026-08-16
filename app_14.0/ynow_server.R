@@ -1395,7 +1395,11 @@ server <- function(input, output, session) {
     d_income_statement = d_income_statement,
     current_ticker = current_ticker,
     quote_currency = quote_currency,
-    financial_currency = statement_currency
+    financial_currency = statement_currency,
+    capm_rf = reactive(suppressWarnings(as.numeric(input$capm_rf)[1])),
+    capm_beta = reactive(suppressWarnings(as.numeric(input$capm_beta)[1])),
+    capm_rm = reactive(suppressWarnings(as.numeric(input$capm_rm)[1])),
+    use_estimated_re = reactive(isTRUE(input$use_estimated_re))
   )
   
   # ==========================================
@@ -1579,7 +1583,11 @@ server <- function(input, output, session) {
     current_ticker = current_ticker,
     quote_currency = quote_currency,
     financial_currency = statement_currency,
-    adjust_share_class = reactive(isTRUE(input[["mod_pb-adjust_share_class"]]))
+    adjust_share_class = reactive(isTRUE(input[["mod_pb-adjust_share_class"]])),
+    capm_rf = reactive(suppressWarnings(as.numeric(input$capm_rf)[1])),
+    capm_beta = reactive(suppressWarnings(as.numeric(input$capm_beta)[1])),
+    capm_rm = reactive(suppressWarnings(as.numeric(input$capm_rm)[1])),
+    use_estimated_re = reactive(isTRUE(input$use_estimated_re))
   )
   
   # ==========================================
@@ -1607,7 +1615,11 @@ server <- function(input, output, session) {
     central_g_pct = reactive({
       if (!is.null(input$sgr) && is.finite(as.numeric(input$sgr))) as.numeric(input$sgr) else APP_DEFAULTS$sgr
     }),
-    hist_prices = hist_stock_data
+    hist_prices = hist_stock_data,
+    capm_rf = reactive(suppressWarnings(as.numeric(input$capm_rf)[1])),
+    capm_beta = reactive(suppressWarnings(as.numeric(input$capm_beta)[1])),
+    capm_rm = reactive(suppressWarnings(as.numeric(input$capm_rm)[1])),
+    use_estimated_re = reactive(isTRUE(input$use_estimated_re))
   )
 
   # ==========================================
@@ -3924,7 +3936,8 @@ server <- function(input, output, session) {
     re0 <- suppressWarnings(as.numeric(input$wacc_re)[1])
 
     .wacc_pct <- function(rf_pct = rf0, beta = beta0, rm_pct = rm0,
-                          re_pct = NULL, rd_pct = rd0, tax_pct = tax0) {
+                          re_pct = NULL, rd_pct = rd0, tax_pct = tax0,
+                          we_w = we, wd_w = wd) {
       re <- if (!is.null(re_pct) && is.finite(re_pct)) {
         re_pct
       } else if (isTRUE(input$use_estimated_re) && is.finite(rf_pct) && is.finite(beta) && is.finite(rm_pct)) {
@@ -3935,7 +3948,10 @@ server <- function(input, output, session) {
       if (!is.finite(re)) return(NA_real_)
       rd <- if (is.finite(rd_pct)) rd_pct else 0
       tax <- if (is.finite(tax_pct)) tax_pct else 0
-      we * re + wd * rd * (1 - tax / 100)
+      we_w <- suppressWarnings(as.numeric(we_w)[1])
+      wd_w <- suppressWarnings(as.numeric(wd_w)[1])
+      if (!is.finite(we_w) || !is.finite(wd_w)) return(NA_real_)
+      we_w * re + wd_w * rd * (1 - tax / 100)
     }
     .ev_wacc_pct <- function(w_pct) {
       if (!is.finite(w_pct)) return(NA_real_)
@@ -4027,7 +4043,76 @@ server <- function(input, output, session) {
       "EV ∝ FCFF ⇒ |ε|=1（公式；與金額無關）"
     )
 
-    if (is.finite(rf0)) {
+    rev0 <- suppressWarnings(as.numeric(input[["mod_fcf-fcf_revenue"]])[1])
+    nopat0 <- suppressWarnings(as.numeric(input[["mod_fcf-fcf_nopat"]])[1])
+    depre0 <- suppressWarnings(as.numeric(input[["mod_fcf-fcf_depreciation"]])[1])
+    capex0 <- suppressWarnings(as.numeric(input[["mod_fcf-fcf_capex"]])[1])
+    nwc0 <- suppressWarnings(as.numeric(input[["mod_fcf-fcf_delta_nwc"]])[1])
+    capex_pct_in <- suppressWarnings(as.numeric(input[["mod_fcf-proj_capex_rate"]])[1])
+    nwc_pct_in <- suppressWarnings(as.numeric(input[["mod_fcf-proj_nwc_rate"]])[1])
+    if (is.finite(rev0) && abs(rev0) > 1e-12) {
+      nopat_m0 <- if (is.finite(nopat0)) nopat0 / rev0 else 0
+      depre_m0 <- if (is.finite(depre0)) depre0 / rev0 else 0
+      capex_m0 <- if (is.finite(capex_pct_in)) capex_pct_in / 100 else if (is.finite(capex0)) capex0 / rev0 else 0
+      nwc_m0 <- if (is.finite(nwc_pct_in)) nwc_pct_in / 100 else if (is.finite(nwc0)) nwc0 / rev0 else 0
+      .fcff <- function(nm = nopat_m0, dm = depre_m0, cm = capex_m0, nwm = nwc_m0) {
+        .dcf_unit_fcff_path(
+          n = n0, g_near = gn_stage, g_stage2 = g2_0, yr_stage1 = yr1_0,
+          nopat_m = nm, depre_m = dm, capex_m = cm, nwc_m = nwm,
+          two_stage = !gordon
+        )
+      }
+      .ev_fcff <- function(...) {
+        if (gordon) {
+          .dcf_formula_ev_from_fcff(.fcff(...), r1 = r1_0, g_term = gt0)
+        } else {
+          .dcf_formula_ev_from_fcff(
+            .fcff(...), r1 = r1_0, r2 = r2_0, g_term = gt0, yr_stage1 = yr1_0
+          )
+        }
+      }
+      v_fcff0 <- .ev_fcff()
+      if (is.finite(v_fcff0) && abs(v_fcff0) > 1e-9) {
+        .row_fcff <- function(param, base_val, unit, v_dn, v_up, note = "") {
+          .param_sensitivity_infl_row(param, base_val, unit, v_fcff0, v_dn, v_up, note)
+        }
+        if (.param_sensitivity_rel_ok(nopat_m0)) {
+          rows[[length(rows) + 1]] <- .row_fcff(
+            "NOPAT／營收", nopat_m0 * 100, "%",
+            .ev_fcff(nm = .rel(nopat_m0, -1)),
+            .ev_fcff(nm = .rel(nopat_m0, +1)),
+            "FCFF 路徑：單位營收 × NOPAT 佔比"
+          )
+        }
+        if (.param_sensitivity_rel_ok(depre_m0)) {
+          rows[[length(rows) + 1]] <- .row_fcff(
+            "D&A／營收", depre_m0 * 100, "%",
+            .ev_fcff(dm = .rel(depre_m0, -1)),
+            .ev_fcff(dm = .rel(depre_m0, +1)),
+            "FCFF 路徑：單位營收 × D&A 佔比"
+          )
+        }
+        if (.param_sensitivity_rel_ok(capex_m0)) {
+          rows[[length(rows) + 1]] <- .row_fcff(
+            "CapEx／營收", capex_m0 * 100, "%",
+            .ev_fcff(cm = .rel(capex_m0, -1)),
+            .ev_fcff(cm = .rel(capex_m0, +1)),
+            "FCFF 路徑：前瞻 CapEx 佔營收比"
+          )
+        }
+        if (.param_sensitivity_rel_ok(nwc_m0)) {
+          rows[[length(rows) + 1]] <- .row_fcff(
+            "ΔNWC／Δ營收", nwc_m0 * 100, "%",
+            .ev_fcff(nwm = .rel(nwc_m0, -1)),
+            .ev_fcff(nwm = .rel(nwc_m0, +1)),
+            "FCFF 路徑：前瞻 ΔNWC／ΔRevenue"
+          )
+        }
+      }
+    }
+
+    use_capm <- isTRUE(input$use_estimated_re)
+    if (use_capm && is.finite(rf0)) {
       rows[[length(rows) + 1]] <- .row(
         "無風險利率 Rf", rf0, "%",
         .ev_wacc_pct(.wacc_pct(rf_pct = .rel(rf0, -1))),
@@ -4035,7 +4120,7 @@ server <- function(input, output, session) {
         "WACC 公式：CAPM → rₑ（權重為本次資本結構）"
       )
     }
-    if (is.finite(beta0)) {
+    if (use_capm && is.finite(beta0)) {
       rows[[length(rows) + 1]] <- .row(
         "Beta (β)", beta0, "x",
         .ev_wacc_pct(.wacc_pct(beta = .rel(beta0, -1))),
@@ -4043,7 +4128,7 @@ server <- function(input, output, session) {
         "WACC 公式：CAPM → rₑ（權重為本次資本結構）"
       )
     }
-    if (is.finite(rm0)) {
+    if (use_capm && is.finite(rm0)) {
       rows[[length(rows) + 1]] <- .row(
         "市場報酬率 Rm", rm0, "%",
         .ev_wacc_pct(.wacc_pct(rm_pct = .rel(rm0, -1))),
@@ -4051,12 +4136,33 @@ server <- function(input, output, session) {
         "WACC 公式：CAPM → rₑ（權重為本次資本結構）"
       )
     }
-    if (is.finite(re0) && !isTRUE(input$use_estimated_re)) {
+    if (is.finite(re0) && !use_capm) {
       rows[[length(rows) + 1]] <- .row(
         "股權成本 rₑ", re0, "%",
         .ev_wacc_pct(.wacc_pct(re_pct = .rel(re0, -1))),
         .ev_wacc_pct(.wacc_pct(re_pct = .rel(re0, +1))),
         "WACC 公式：手動 rₑ（未勾選 CAPM）"
+      )
+    }
+    .w_ok <- function(w) is.finite(w) && w >= 0 && w <= 1
+    if (.param_sensitivity_rel_ok(we) && wd > 1e-8) {
+      we_dn <- .rel(we, -1)
+      we_up <- .rel(we, +1)
+      rows[[length(rows) + 1]] <- .row(
+        "股權權重 We", we * 100, "%",
+        if (.w_ok(we_dn)) .ev_wacc_pct(.wacc_pct(we_w = we_dn, wd_w = 1 - we_dn)) else NA_real_,
+        if (.w_ok(we_up)) .ev_wacc_pct(.wacc_pct(we_w = we_up, wd_w = 1 - we_up)) else NA_real_,
+        "WACC 公式：We + Wd = 1（相對衝擊後補齊 Wd）"
+      )
+    }
+    if (.param_sensitivity_rel_ok(wd) && wd > 1e-8) {
+      wd_dn <- .rel(wd, -1)
+      wd_up <- .rel(wd, +1)
+      rows[[length(rows) + 1]] <- .row(
+        "負債權重 Wd", wd * 100, "%",
+        if (.w_ok(wd_dn)) .ev_wacc_pct(.wacc_pct(we_w = 1 - wd_dn, wd_w = wd_dn)) else NA_real_,
+        if (.w_ok(wd_up)) .ev_wacc_pct(.wacc_pct(we_w = 1 - wd_up, wd_w = wd_up)) else NA_real_,
+        "WACC 公式：We + Wd = 1（相對衝擊後補齊 We）"
       )
     }
     if (is.finite(rd0) && wd > 1e-8) {

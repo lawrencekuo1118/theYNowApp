@@ -350,7 +350,11 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
                              current_ticker = reactive(""),
                              quote_currency = reactive(NA),
                              financial_currency = reactive(NA),
-                             adjust_share_class = reactive(FALSE)) {
+                             adjust_share_class = reactive(FALSE),
+                             capm_rf = reactive(NA),
+                             capm_beta = reactive(NA),
+                             capm_rm = reactive(NA),
+                             use_estimated_re = reactive(FALSE)) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -994,6 +998,25 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
           .v(payout_pct = .rel(pay0, -1)), .v(payout_pct = .rel(pay0, +1)),
           "公式：影響 BV 複利"
         )
+      }
+      if (identical(method, "custom") && length(custom_vec) >= 1L &&
+          any(vapply(custom_vec, .param_sensitivity_rel_ok, logical(1)))) {
+        rows[[length(rows) + 1]] <- .param_sensitivity_infl_row(
+          "自訂 ROE 路徑", "整體", "", v0,
+          .v(path = custom_vec * (1 - shock_pct)),
+          .v(path = custom_vec * (1 + shock_pct)),
+          "公式：整條自訂 ROE 路徑相對 ±1%"
+        )
+      }
+      if (isTRUE(use_estimated_re())) {
+        rf0 <- suppressWarnings(as.numeric(capm_rf())[1])
+        beta0 <- suppressWarnings(as.numeric(capm_beta())[1])
+        rm0 <- suppressWarnings(as.numeric(capm_rm())[1])
+        capm_rows <- .param_sensitivity_capm_ke_rows(
+          v0, function(ke_pct) .v(ke_pct = ke_pct),
+          rf0, beta0, rm0, shock = shock_pct
+        )
+        if (length(capm_rows)) rows <- c(rows, capm_rows)
       }
       rows[[length(rows) + 1]] <- .param_sensitivity_infl_row_xy(
         "預測年數 n", n0_i, "n", v0,
