@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12418651
+bundleId=12418700
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=ee8cbb7
-commit=ee8cbb759d8904674477d149fabd92904de1168d
-short=ee8cbb7
-message=Remove DDM Overview Ke discount-rate helpText so the calculator is not cluttered by CAPM/WACC commentary.
-captured_at=2026-08-16T17:41:01Z
+aligned_git=597c23b
+commit=597c23b181a0fa522aa282f1a69e3ea1c4132769
+short=597c23b
+message=Cover every live formula input in the per-share contribution/sensitivity tables.
+captured_at=2026-08-16T18:05:12Z
 source_branch=master
-note=Canonical live line is app_14.0. Redeploy master after removing DDM Overview Ke/WACC helpText (stacked on bundled .Renviron load). Bundle 12418651 supersedes 12418637. Live status=running.
+note=Canonical live line is app_14.0. Redeploy master after sensitivity-param coverage (stacked on 155cc58 HFV methodology-notes merge). Bundle 12418700 supersedes 12418651. Live status=running.
