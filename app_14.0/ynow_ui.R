@@ -123,21 +123,11 @@
 #' Shared CAPM / Beta settings block (canonical IDs on DCF → WACC).
 #' @param calc_id actionButton id
 #' @param result_id htmlOutput id for CAPM result text
-#' @param advanced_hint helpText pointing to Get Started Rolling / Unlevered
+#' @param advanced_hint unused (kept for call-site compatibility)
 capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
                                   calc_id = "calc_capm",
                                   result_id = "capm_result",
                                   advanced_hint = TRUE) {
-  hints <- list(
-    "勾選「與Get Started 同步」（預設）時，此處 β 跟隨 Get Started「套用至 CAPM」來源（預設 Summary β）；標籤會顯示目前來源。",
-    "取消勾選後可在 WACC 獨立設定 β，不會改寫 Get Started 來源；再勾選則重新帶入目前 Get Started β。"
-  )
-  if (isTRUE(advanced_hint)) {
-    hints <- c(
-      hints,
-      "Rolling 估計僅供對照，不寫入 CAPM；可改選產業預設、Bottom-Up、去槓桿化 βᵤ 或手動。"
-    )
-  }
   box(
     h4(title),
     numericInput("capm_rf", "無風險利率 Rf (%)", value = APP_DEFAULTS$capm_rf, step = 0.01),
@@ -148,7 +138,6 @@ capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
       tags$span(style = "font-weight: bold;", "與Get Started 同步"),
       value = isTRUE(APP_DEFAULTS$sync_gs_beta)
     ),
-    do.call(helpText, as.list(hints)),
     actionButton(calc_id, "估算 rₑ（CAPM）", class = "btn-primary"),
     tags$br(), htmlOutput(result_id)
   )
@@ -2485,9 +2474,6 @@ ui <- dashboardPage(
       tabItem(tabName = "backtest",
               withMathJax(),
               h2("量化回測實驗室 (Backtest Zone)"),
-              .bt_section_intro(
-                "先看折現比較圖（合理價 vs 實際股價 vs 大盤），再看策略淨值（倉位×日報酬的累積財富，起始＝1）。歷史點 Ke／WACC 用當年 ^TNX Rf、截至再平衡日的基準已實現 Rm、當日市值 We／Wd 與 Rolling β。歷史股價序列維持 Yahoo 報價幣別（不做歷史 FX 換算）；上方 header 的 USD⇄TWD 主要套用估值／財報金額。"
-              ),
 
               # 1) 折現比較圖置頂：合理價 vs 實際股價 vs 大盤
               fluidRow(
