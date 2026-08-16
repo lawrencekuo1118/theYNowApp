@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12415521
+bundleId=12416876
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=ff7b112
-commit=ff7b112f15f2e3af297ab8a7295a55fe081fa715
-short=ff7b112
-message=Add a red 財務舞弊警訊 count box, put Fraud Warnings above the help copy, and drop the 決策建議 heading.
-captured_at=2026-08-15T19:06:51Z
-source_branch=master
-note=Canonical live line is app_14.0. Deploy via scripts/deploy_app_14.R; Feedback needs YNOW_FEEDBACK_GITHUB_TOKEN in app_14.0/.Renviron (gitignored; redeploy bundles it — no shinyapps Vars UI). Live status=running. Bundle 12415521 superseded 12415479; includes Lab 最多=明細/排行榜 公司全稱/產業規模對調 (1a3437d), hide empty MOS vs Base + 價值突出、等待趨勢 (c63843b), red vbox_fraud + Fraud Warnings above help copy + drop 決策建議 (ff7b112). S&P 500 universe (bf13e5a) and WACC 與Get Started 同步 (ba8bdf7) unchanged.
+aligned_git=ff86e5d
+commit=ff86e5d6794d98ac7c2e68c142b708869d0ee00f
+short=ff86e5d
+message=Fix ADR valuation share basis with auto convert on search.
+captured_at=2026-08-16T05:39:12Z
+source_branch=cursor/adr-share-auto-convert-f4a6
+note=Canonical live line is app_14.0. ADR/share-class auto convert on search (market cap÷price; thresholds 1.5× / ADR FX 1.25×). Bundle 12416876 supersedes 12415521. Deploy via scripts/deploy_app_14.R; Feedback needs YNOW_FEEDBACK_GITHUB_TOKEN in app_14.0/.Renviron.
