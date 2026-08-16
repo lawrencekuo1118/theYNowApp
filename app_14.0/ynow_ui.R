@@ -123,21 +123,11 @@
 #' Shared CAPM / Beta settings block (canonical IDs on DCF → WACC).
 #' @param calc_id actionButton id
 #' @param result_id htmlOutput id for CAPM result text
-#' @param advanced_hint helpText pointing to Get Started Rolling / Unlevered
+#' @param advanced_hint unused (kept for call-site compatibility)
 capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
                                   calc_id = "calc_capm",
                                   result_id = "capm_result",
                                   advanced_hint = TRUE) {
-  hints <- list(
-    "勾選「與Get Started 同步」（預設）時，此處 β 跟隨 Get Started「套用至 CAPM」來源（預設 Summary β）；標籤會顯示目前來源。",
-    "取消勾選後可在 WACC 獨立設定 β，不會改寫 Get Started 來源；再勾選則重新帶入目前 Get Started β。"
-  )
-  if (isTRUE(advanced_hint)) {
-    hints <- c(
-      hints,
-      "Rolling 估計僅供對照，不寫入 CAPM；可改選產業預設、Bottom-Up、去槓桿化 βᵤ 或手動。"
-    )
-  }
   box(
     h4(title),
     numericInput("capm_rf", "無風險利率 Rf (%)", value = APP_DEFAULTS$capm_rf, step = 0.01),
@@ -148,7 +138,6 @@ capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
       tags$span(style = "font-weight: bold;", "與Get Started 同步"),
       value = isTRUE(APP_DEFAULTS$sync_gs_beta)
     ),
-    do.call(helpText, as.list(hints)),
     actionButton(calc_id, "估算 rₑ（CAPM）", class = "btn-primary"),
     tags$br(), htmlOutput(result_id)
   )
