@@ -6029,47 +6029,6 @@ server <- function(input, output, session) {
   # ==========================================
   # DDM Reset 由 ddm_module_server 內的 input$reset_ddm 處理（ns: mod_ddm）
 
-  .bt_methodology_meta <- reactive({
-    mp <- tryCatch(bt_current_model_params(), error = function(e) NULL)
-    res <- bt_result()
-    sel <- tryCatch(isolate(.bt_selected_fv_models()), error = function(e) "dcf")
-    fv_lab <- paste(vapply(sel, function(m) {
-      switch(m,
-        "dcf" = "DCF", "ddm" = "DDM", "ri" = "RI", "pb" = "P/B", toupper(m))
-    }, character(1)), collapse = " + ")
-    list(
-      ticker = isolate(current_ticker()) %||% "N/A",
-      bench = if (!is.null(res$bench_ticker)) res$bench_ticker else "SPY",
-      sim_years = "5",
-      fv_model = fv_lab,
-      filters = sprintf(
-        "%.1f / %.1f / %.1f / %.1f",
-        as.numeric(isolate(input$bt_net_margin) %||% NA),
-        as.numeric(isolate(input$bt_rev_growth) %||% NA),
-        as.numeric(isolate(input$bt_eps_growth) %||% NA),
-        as.numeric(isolate(input$bt_fcf_cv) %||% NA)
-      ),
-      fit_exp = sprintf(
-        "%.2f / %.2f",
-        as.numeric(isolate(input$bt_max_exp) %||% 0.9),
-        as.numeric(isolate(input$bt_min_exp_pass) %||% 0)
-      ),
-      weights = sprintf(
-        "%.2f / %.2f / %.2f",
-        as.numeric(isolate(input$bt_w_vg) %||% NA),
-        as.numeric(isolate(input$bt_w_mom) %||% NA),
-        as.numeric(isolate(input$bt_w_rsi) %||% NA)
-      ),
-      sgr_n = if (!is.null(mp)) {
-        sprintf("SGR=%.2f%% · n=%s 年", 100 * .safe_num(mp$sgr, NA_real_),
-                as.character(mp$n_years %||% "N/A"))
-      } else {
-        "（尚未載入模型參數）"
-      },
-      n_days = if (!is.null(res$n_days)) as.character(res$n_days) else "（尚未回測）"
-    )
-  })
-
   output$bt_methodology_notes <- renderUI({
     tags$div(
       style = "font-size: 12.5px; line-height: 1.65; color: #333;",
@@ -6081,16 +6040,39 @@ server <- function(input, output, session) {
         tags$b("基本面策略淨值"), "＝Exp_A；",
         tags$b("情緒策略淨值"), "＝Exp_B（Exp_A 混入動能／RSI）。兩圖標籤不可互換。"
       ),
-      tags$h5(tags$b("一、數據來源")),
+      tags$h5(tags$b("一、折現比較圖（合理價 vs 實際股價）")),
+      tags$ul(
+        tags$li(tags$b("實際股價："), "該股歷史收盤（Yahoo 調整後）。搜尋後即預覽股價，不必先勾模型。"),
+        tags$li(tags$b("大盤："), "右下角「顯示大盤」開關疊加基準（預設 SPY，右軸）；與合理價無關。"),
+        tags$li(tags$b("合理價："), "勾選右下角評價模型後才計算並疊圖（預設不勾選）。"),
+        tags$li(tags$b("策略 MOS／倉位："), "用目前勾選且有限值模型的算術平均，不是隱藏的主模型。只勾一個＝該模型。"),
+        tags$li(
+          tags$b("歷史各點 vs 末端："),
+          "歷史點僅用當時可得財報、當時 ^TNX Rf、截至該日的基準已實現年化總報酬（Rm）、Rolling β、當日市值資本結構；成長／n 用 APP_DEFAULTS，不套用目前分頁。",
+          "僅折線末端最新點掛勾目前 APP 分頁與 Session Rm。"
+        ),
+        tags$li(
+          tags$b("ADR／雙重股權："),
+          "股數依目前市值÷股價對齊報價股口徑後再算合理價（倍率固定套用各財年）。"
+        )
+      ),
+      tags$h5(tags$b("二、數據來源")),
       tags$ul(
         tags$li(tags$b("股價／基準："), "Yahoo Finance（yfinance，auto_adjust）；基準預設 SPY。"),
-        tags$li(tags$b("財報："), "本次 Session 已載入之年度 IS／BS／CF。"),
+        tags$li(tags$b("財報（PIT）："), "本次 Session 已載入之年度 IS／BS／CF；再平衡日只用 fund_year ≤ 日曆年−1。"),
         tags$li(tags$b("Rf（歷史點）："), "再平衡日 ^TNX 當時收盤；抓不到才用 Session／約 4%。"),
-        tags$li(tags$b("Rm（歷史點）："), "截至再平衡日的基準（預設 SPY）已實現年化總報酬（優先近 12 個月，無前瞻）；不是 Session 預期溢酬。末端才用 Session Rm。"),
+        tags$li(
+          tags$b("Rm（歷史點）："),
+          "截至再平衡日的基準（預設 SPY）已實現年化總報酬（優先近 12 個月，無前瞻）；不是 Session 預期溢酬。末端才用 Session Rm。"
+        ),
+        tags$li(tags$b("Rolling β："), "各再平衡日以標的 vs SPY 約 60 個月月報酬估計。"),
         tags$li(tags$b("We／Wd（歷史點）："), "再平衡日 股數×收盤 與當時 Total Debt。Rd／稅率仍用 Session。"),
-        tags$li(tags$b("評價假設："), "歷史點成長／n 用 APP_DEFAULTS；Ke／WACC 於各季以 Rolling β＋上述當年 Rf／結構重估。末端才掛目前分頁。")
+        tags$li(
+          tags$b("評價假設："),
+          "歷史點成長／n 用 APP_DEFAULTS；Ke／WACC 於各季以 Rolling β＋上述當年 Rf／結構重估。末端才掛目前分頁與 Session Rm。"
+        )
       ),
-      tags$h5(tags$b("二、計算過程（季頻 PIT）")),
+      tags$h5(tags$b("三、計算過程（季頻 PIT）")),
       tags$ol(
         tags$li("再平衡日：fund_year ≤ 日曆年−1 重建各模型合理價；策略 FV＝勾選且有限值者之平均 → MOS＝(FV−Price)/FV。"),
         tags$li("持倉回測條件未過 → Exp_A = Exp_B = 0（兩模式皆空手）。"),
@@ -6098,26 +6080,14 @@ server <- function(input, output, session) {
         tags$li("每日：策略淨值用 Exp×日報酬；Buy&Hold 滿倉；現金報酬=0；未扣交易成本。"),
         tags$li("比較視窗自首次有效季再平衡對齊。")
       ),
-      tags$h5(tags$b("三、相對 Buy & Hold")),
+      tags$h5(tags$b("四、相對 Buy & Hold")),
       tags$p(
         style = "margin-bottom:0;",
         "上漲日把 (1−Exp_A)×r 加總，拆成現金拖累／提前出場／高估減碼；加總 ≠ 複利終值落差（殘差＝終值差−加總）。",
-        "結論以該次回測頁上的平均倉位、空手日、Filter 未過次數為準，不作「牛市必輸」套話。完整公式請下載方法論檔。"
+        "結論以該次回測頁上的平均倉位、空手日、Filter 未過次數為準，不作「牛市必輸」套話。"
       )
     )
   })
-
-  output$download_bt_methodology <- downloadHandler(
-    filename = function() {
-      tk <- tryCatch(current_ticker(), error = function(e) "NA")
-      if (is.null(tk) || !nzchar(as.character(tk))) tk <- "session"
-      paste0("YNow_Backtest_Methodology_", tk, "_", Sys.Date(), ".md")
-    },
-    content = function(file) {
-      txt <- build_bt_methodology_doc(.bt_methodology_meta())
-      writeLines(txt, file, useBytes = TRUE)
-    }
-  )
   
   observeEvent(input$reset_dcf, {
     updateRadioButtons(session, "dcf_mode", selected = APP_DEFAULTS$dcf_mode)
