@@ -346,7 +346,10 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
                              industry_choice = reactive(NULL),
                              current_price = reactive(NA),
                              market_cap = reactive(NA),
+                             quote_price = reactive(NA),
                              current_ticker = reactive(""),
+                             quote_currency = reactive(NA),
+                             financial_currency = reactive(NA),
                              adjust_share_class = reactive(FALSE)) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
@@ -360,13 +363,21 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
       raw_shares <- select_current_metric(
         df_bs, "Ordinary Shares Number|Share Issued|Total Shares Outstanding", "stock"
       )
-      px <- suppressWarnings(as.numeric(current_price())[1])
+      px <- suppressWarnings(as.numeric(quote_price())[1])
+      if (!is.finite(px) || px <= 0) {
+        px <- suppressWarnings(as.numeric(current_price())[1])
+      }
       mcap <- suppressWarnings(as.numeric(market_cap())[1])
       tk <- tryCatch(current_ticker(), error = function(e) "")
-      sh <- resolve_shares_for_price(raw_shares, price = px, market_cap = mcap, ticker = tk)
-      apply_adj <- isTRUE(adjust_share_class()) ||
-        identical(sh$method, "brk_b_x1500") ||
-        identical(sh$method, "market_cap_per_price")
+      sh <- resolve_shares_for_price(
+        raw_shares,
+        price = px,
+        market_cap = mcap,
+        ticker = tk,
+        quote_currency = tryCatch(quote_currency(), error = function(e) NULL),
+        financial_currency = tryCatch(financial_currency(), error = function(e) NULL)
+      )
+      apply_adj <- isTRUE(adjust_share_class()) || shares_auto_adjust_method(sh$method)
       if (isTRUE(apply_adj) && is.finite(sh$shares) && sh$shares > 0) return(sh$shares)
       if (is.finite(raw_shares) && raw_shares > 0) return(raw_shares)
       if (is.finite(sh$shares) && sh$shares > 0) return(sh$shares)
@@ -384,7 +395,7 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
     }, ignoreInit = TRUE)
 
     # ----- Sync B0 / ROE / payout from statements -----
-    observeEvent(list(d_balance_sheet(), current_price(), market_cap(), current_ticker(), adjust_share_class()), {
+    observeEvent(list(d_balance_sheet(), current_price(), quote_price(), market_cap(), current_ticker(), adjust_share_class()), {
       req(d_balance_sheet(), d_income_statement())
       df_bs <- d_balance_sheet()
 

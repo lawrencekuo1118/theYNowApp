@@ -7,10 +7,28 @@ ddm_module_server <- function(id, ddm_g = reactive(NULL), ddm_ke = reactive(NULL
                               summary_df = reactive(NULL), 
                               d_cash_flow = reactive(NULL), 
                               d_balance_sheet = reactive(NULL),
-                              d_income_statement = reactive(NULL)) {
+                              d_income_statement = reactive(NULL),
+                              current_ticker = reactive(""),
+                              quote_currency = reactive(NA),
+                              financial_currency = reactive(NA)) {
   
   moduleServer(id, function(input, output, session) {
     
+    .ddm_quote_shares <- function() {
+      sh <- tryCatch(
+        resolve_valuation_shares(
+          d_balance_sheet(),
+          summary_df(),
+          ticker = tryCatch(current_ticker(), error = function(e) ""),
+          quote_currency = tryCatch(quote_currency(), error = function(e) NULL),
+          financial_currency = tryCatch(financial_currency(), error = function(e) NULL)
+        ),
+        error = function(e) NULL
+      )
+      if (!is.null(sh) && is.finite(sh$shares) && sh$shares > 0) return(sh$shares)
+      select_current_metric_any(d_balance_sheet(), SHARE_PATTERNS, "stock")
+    }
+
     # ==========================================
     # 接收主畫面傳來的變數
     # ==========================================
@@ -43,9 +61,9 @@ ddm_module_server <- function(id, ddm_g = reactive(NULL), ddm_ke = reactive(NULL
     sync_ddm_to_financials <- function() {
       req(d_cash_flow(), d_balance_sheet())
       
-      # --- 1. 動態 D0 = 最近一期總發放股利 / 流通股數（偏好序別名）---
+      # --- 1. 動態 D0 = 最近一期總發放股利 / 報價股約當股數 ---
       div_paid_total <- abs(select_current_metric(d_cash_flow(), "Cash Dividends Paid", "flow"))
-      shares_issued <- select_current_metric_any(d_balance_sheet(), SHARE_PATTERNS, "stock")
+      shares_issued <- .ddm_quote_shares()
       
       if (!is.na(div_paid_total) && !is.na(shares_issued) && shares_issued > 0) {
         dynamic_d0 <- div_paid_total / shares_issued
@@ -208,7 +226,7 @@ ddm_module_server <- function(id, ddm_g = reactive(NULL), ddm_ke = reactive(NULL
       req(d_cash_flow(), d_balance_sheet(), input$cycle_years)
       
       div_paid_seq <- select_clean_metric_row(d_cash_flow(), "Cash Dividends Paid", include_ttm = FALSE)
-      shares <- select_current_metric_any(d_balance_sheet(), SHARE_PATTERNS, "stock")
+      shares <- .ddm_quote_shares()
       
       n_years <- min(input$cycle_years, length(div_paid_seq))
       valid_divs <- abs(na.omit(div_paid_seq[1:n_years]))

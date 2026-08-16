@@ -387,17 +387,54 @@ get_operating_earnings_avg <- function(d_is, include_ttm = FALSE) {
   get_avg(get_operating_earnings_row(d_is, include_ttm = include_ttm))
 }
 
-#' 解析適配「目前報價股」的流通股數（處理 BRK-B 等雙重股權）
-#' 財報 Ordinary Shares 常為 A 級股數，若直接去除 B 股股價會使 BVPS 失準約 1500 倍。
-#' @return list(shares, method, note)
+# 財報股數 vs 報價約當股數：超過此倍率視為不同股權級距（含常見 ADR 2–10×）
+SHARE_UNIT_MISMATCH_RATIO <- 1.5
+# 報價幣 ≠ 財報幣（典型 ADR）時用較敏感門檻
+SHARE_UNIT_MISMATCH_RATIO_ADR <- 1.25
+
+#' 自 Summary 取「報價幣」股價與市值（二者同幣，供約當股數 = 市值÷股價）
+#' @return list(price, market_cap) — 皆為報價幣數值；缺則 NA
+extract_quote_price_mcap <- function(summary_df) {
+  price <- NA_real_
+  market_cap <- NA_real_
+  if (is.null(summary_df) || !is.data.frame(summary_df) || nrow(summary_df) < 1) {
+    return(list(price = price, market_cap = market_cap))
+  }
+  if (!("Item" %in% names(summary_df)) || !("Value" %in% names(summary_df))) {
+    return(list(price = price, market_cap = market_cap))
+  }
+  px_row <- summary_df[grep("Previous Close|Market Price", summary_df$Item, ignore.case = TRUE), , drop = FALSE]
+  if (nrow(px_row) >= 1) {
+    price <- parse_financial_number(px_row$Value[1])[1]
+  }
+  mc_row <- summary_df[summary_df$Item == "Market Cap (intraday)", , drop = FALSE]
+  if (nrow(mc_row) < 1) {
+    mc_row <- summary_df[grep("^Market Cap", summary_df$Item, ignore.case = TRUE), , drop = FALSE]
+  }
+  if (nrow(mc_row) >= 1) {
+    market_cap <- parse_financial_number(mc_row$Value[1])[1]
+  }
+  list(price = price, market_cap = market_cap)
+}
+
+#' 解析適配「目前報價股」的流通股數（雙重股權／ADR 級距）
+#' 財報 Ordinary Shares 常為當地普通股；ADR 報價股數 = 市值÷ADR 價。
+#' price 與 market_cap 必須同一幣別（請用 extract_quote_price_mcap）。
+#' @return list(shares, method, note, ratio)
 resolve_shares_for_price <- function(shares_bs,
                                      price = NA_real_,
                                      market_cap = NA_real_,
-                                     ticker = "") {
+                                     ticker = "",
+                                     quote_currency = NULL,
+                                     financial_currency = NULL) {
   shares_bs <- suppressWarnings(as.numeric(shares_bs)[1])
   price <- suppressWarnings(as.numeric(price)[1])
   market_cap <- suppressWarnings(as.numeric(market_cap)[1])
   ticker <- toupper(gsub("\\.", "-", trimws(as.character(ticker %||% "")[1])))
+  q_ccy <- tryCatch(normalize_ccy(quote_currency), error = function(e) NA_character_)
+  f_ccy <- tryCatch(normalize_ccy(financial_currency), error = function(e) NA_character_)
+  adr_fx <- is.character(q_ccy) && is.character(f_ccy) &&
+    !is.na(q_ccy) && !is.na(f_ccy) && !identical(q_ccy, f_ccy)
 
   shares_implied <- if (is.finite(market_cap) && is.finite(price) && price > 0) {
     market_cap / price
@@ -411,37 +448,99 @@ resolve_shares_for_price <- function(shares_bs,
       return(list(
         shares = shares_implied,
         method = "market_cap_per_price",
-        note = "BRK-B 雙重股權：財報股數偏 A 級，已改用 市值÷股價 作為 B 級約當股數"
+        note = "BRK-B 雙重股權：財報股數偏 A 級，已改用 市值÷股價 作為 B 級約當股數",
+        ratio = shares_implied / shares_bs
       ))
     }
     return(list(
       shares = shares_bs * 1500,
       method = "brk_b_x1500",
-      note = "BRK-B：以 Class A 股數 × 1500 換算 B 級約當股數"
+      note = "BRK-B：以 Class A 股數 × 1500 換算 B 級約當股數",
+      ratio = 1500
     ))
   }
 
   if (is.finite(shares_implied) && is.finite(shares_bs) && shares_bs > 0) {
     ratio <- shares_implied / shares_bs
-    if (is.finite(ratio) && (ratio > 50 || ratio < (1 / 50))) {
+    thr <- if (isTRUE(adr_fx)) SHARE_UNIT_MISMATCH_RATIO_ADR else SHARE_UNIT_MISMATCH_RATIO
+    if (is.finite(ratio) && (ratio > thr || ratio < (1 / thr))) {
+      kind <- if (isTRUE(adr_fx)) {
+        "ADR／報價股與財報普通股級距不符"
+      } else {
+        "股數單位／股權級距與報價不符"
+      }
       return(list(
         shares = shares_implied,
         method = "market_cap_per_price",
         note = sprintf(
-          "股數單位／股權級距與報價不符（約當／財報 ≈ %.0fx），已改用 市值÷股價",
-          ratio
-        )
+          "%s（約當／財報 ≈ %.2fx），搜尋時已自動改用 市值÷股價",
+          kind, ratio
+        ),
+        ratio = ratio
       ))
     }
   }
 
   if (is.finite(shares_bs) && shares_bs > 0) {
-    return(list(shares = shares_bs, method = "balance_sheet", note = NULL))
+    return(list(
+      shares = shares_bs, method = "balance_sheet", note = NULL,
+      ratio = if (is.finite(shares_implied) && shares_bs > 0) shares_implied / shares_bs else NA_real_
+    ))
   }
   if (is.finite(shares_implied) && shares_implied > 0) {
-    return(list(shares = shares_implied, method = "market_cap_per_price", note = NULL))
+    return(list(
+      shares = shares_implied, method = "market_cap_per_price", note = NULL,
+      ratio = NA_real_
+    ))
   }
-  list(shares = NA_real_, method = "none", note = NULL)
+  list(shares = NA_real_, method = "none", note = NULL, ratio = NA_real_)
+}
+
+#' 自財報 + Summary 一次解析評價用股數（搜尋／DCF／WACC／DDM 共用）
+#' @return list(shares, method, note, ratio, shares_bs, price, market_cap)
+resolve_valuation_shares <- function(d_bs,
+                                     summary_df,
+                                     ticker = "",
+                                     quote_currency = NULL,
+                                     financial_currency = NULL) {
+  shares_bs <- tryCatch(
+    select_current_metric_any(d_bs, SHARE_PATTERNS, "stock"),
+    error = function(e) NA_real_
+  )
+  if (!is.finite(shares_bs) || shares_bs <= 0) {
+    shares_bs <- tryCatch(
+      select_current_metric(
+        d_bs,
+        "Ordinary Shares Number|Share Issued|Total Shares Outstanding|Basic Average Shares",
+        "stock"
+      ),
+      error = function(e) NA_real_
+    )
+  }
+  qm <- extract_quote_price_mcap(summary_df)
+  if (is.null(quote_currency) && !is.null(summary_df)) {
+    quote_currency <- attr(summary_df, "currency")
+  }
+  if (is.null(financial_currency) && !is.null(summary_df)) {
+    financial_currency <- attr(summary_df, "financialCurrency")
+  }
+  sh <- resolve_shares_for_price(
+    shares_bs,
+    price = qm$price,
+    market_cap = qm$market_cap,
+    ticker = ticker,
+    quote_currency = quote_currency,
+    financial_currency = financial_currency
+  )
+  sh$shares_bs <- shares_bs
+  sh$price <- qm$price
+  sh$market_cap <- qm$market_cap
+  sh
+}
+
+#' 是否應自動套用約當股數（ADR／雙重股權等）
+shares_auto_adjust_method <- function(method) {
+  identical(method, "market_cap_per_price") || identical(method, "brk_b_x1500")
 }
 
 #' 報價端 Book Value 是否與目前股價同一股權級距（排除 BRK-B 誤用 A 級 BV）

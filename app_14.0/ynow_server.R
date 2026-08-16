@@ -197,6 +197,28 @@ server <- function(input, output, session) {
         is_expanded(FALSE)
         updateActionButton(session, "btn_expand_all", label = "Expand All", icon = icon("expand"))
 
+        # 搜尋後：ADR／股數級距自動約當（市值÷報價股價）
+        tryCatch({
+          bs_df <- reorder_financial_columns(
+            coerce_financial_df(res[["Balance Sheet"]]$expanded)
+          )
+          sh_res <- resolve_valuation_shares(
+            bs_df, sum_df, ticker = stock_code,
+            quote_currency = q_ccy, financial_currency = f_ccy
+          )
+          if (shares_auto_adjust_method(sh_res$method)) {
+            updateCheckboxInput(session, "mod_pb-adjust_share_class", value = TRUE)
+            msg <- sh_res$note
+            if (is.null(msg) || !nzchar(msg)) {
+              msg <- sprintf(
+                "已自動換算報價股約當股數（方法：%s）",
+                sh_res$method
+              )
+            }
+            showNotification(msg, type = "message", duration = 8)
+          }
+        }, error = function(e) NULL)
+
         # 先更新即時 Rf，其餘 CAPM／WACC 在財報 reactive 就緒後自動估算
         tryCatch({
           rf_now <- cached_get_risk_free_rate()
@@ -1334,12 +1356,25 @@ server <- function(input, output, session) {
     ddm_ke = reactive({ central_ke() * 100 }),  # 🌟 連動！
     
     scraped_d0 = reactive({
-      # 優先：財報推算每股股利；其次：Summary 股利欄
+      # 優先：財報推算每股股利（報價股約當股數）；其次：Summary 股利欄
       cf <- d_cash_flow()
       bs <- d_balance_sheet()
       if (is.data.frame(cf) && nrow(cf) > 0 && is.data.frame(bs) && nrow(bs) > 0) {
         div_paid <- select_current_metric(cf, "Cash Dividends Paid", "flow")
-        shares <- select_current_metric_any(bs, SHARE_PATTERNS, "stock")
+        sh <- tryCatch(
+          resolve_valuation_shares(
+            bs, summary_data(),
+            ticker = current_ticker() %||% "",
+            quote_currency = quote_currency(),
+            financial_currency = statement_currency()
+          ),
+          error = function(e) NULL
+        )
+        shares <- if (!is.null(sh) && is.finite(sh$shares) && sh$shares > 0) {
+          sh$shares
+        } else {
+          select_current_metric_any(bs, SHARE_PATTERNS, "stock")
+        }
         if (!is.na(div_paid) && !is.na(shares) && shares > 0) {
           return(round(abs(div_paid) / shares, 2))
         }
@@ -1357,7 +1392,10 @@ server <- function(input, output, session) {
     summary_df = summary_data,
     d_cash_flow = d_cash_flow, 
     d_balance_sheet = d_balance_sheet,
-    d_income_statement = d_income_statement
+    d_income_statement = d_income_statement,
+    current_ticker = current_ticker,
+    quote_currency = quote_currency,
+    financial_currency = statement_currency
   )
   
   # ==========================================
@@ -1533,13 +1571,14 @@ server <- function(input, output, session) {
       tryCatch(scraped_market_cap()$price, error = function(e) NA_real_)
     }),
     market_cap = reactive({
-      df <- tryCatch(summary_data(), error = function(e) NULL)
-      if (is.null(df) || !is.data.frame(df) || nrow(df) < 1) return(NA_real_)
-      row <- df[df$Item == "Market Cap (intraday)", , drop = FALSE]
-      if (nrow(row) < 1) return(NA_real_)
-      parse_financial_number(row$Value[1])[1]
+      extract_quote_price_mcap(summary_data())$market_cap
+    }),
+    quote_price = reactive({
+      extract_quote_price_mcap(summary_data())$price
     }),
     current_ticker = current_ticker,
+    quote_currency = quote_currency,
+    financial_currency = statement_currency,
     adjust_share_class = reactive(isTRUE(input[["mod_pb-adjust_share_class"]]))
   )
   
@@ -1554,13 +1593,14 @@ server <- function(input, output, session) {
       tryCatch(scraped_market_cap()$price, error = function(e) NA_real_)
     }),
     market_cap = reactive({
-      df <- tryCatch(summary_data(), error = function(e) NULL)
-      if (is.null(df) || !is.data.frame(df) || nrow(df) < 1) return(NA_real_)
-      row <- df[df$Item == "Market Cap (intraday)", , drop = FALSE]
-      if (nrow(row) < 1) return(NA_real_)
-      parse_financial_number(row$Value[1])[1]
+      extract_quote_price_mcap(summary_data())$market_cap
+    }),
+    quote_price = reactive({
+      extract_quote_price_mcap(summary_data())$price
     }),
     current_ticker = current_ticker,
+    quote_currency = quote_currency,
+    financial_currency = statement_currency,
     industry_choice = reactive(input$industry_choice),
     industry_text = corp_industry_text,
     central_ke = central_ke,
@@ -1574,35 +1614,31 @@ server <- function(input, output, session) {
   # v13：股數級距（DCF／RI／敏感度共用）
   # ==========================================
   .valuation_shares <- reactive({
-    raw_shares <- tryCatch(
-      select_current_metric(
+    sh <- tryCatch(
+      resolve_valuation_shares(
         d_balance_sheet(),
-        "Ordinary Shares Number|Share Issued|Total Shares Outstanding|Basic Average Shares",
-        "stock"
+        summary_data(),
+        ticker = current_ticker() %||% "",
+        quote_currency = quote_currency(),
+        financial_currency = statement_currency()
       ),
-      error = function(e) NA_real_
+      error = function(e) list(shares = NA_real_, method = "none", note = NULL, shares_bs = NA_real_)
     )
-    px <- tryCatch(scraped_market_cap()$price, error = function(e) NA_real_)
-    mcap <- tryCatch({
-      df <- summary_data()
-      if (is.null(df) || !is.data.frame(df)) return(NA_real_)
-      row <- df[df$Item == "Market Cap (intraday)", , drop = FALSE]
-      if (nrow(row) < 1) return(NA_real_)
-      parse_financial_number(row$Value[1])[1]
-    }, error = function(e) NA_real_)
-    tk <- tryCatch(current_ticker(), error = function(e) "")
-    sh <- resolve_shares_for_price(raw_shares, price = px, market_cap = mcap, ticker = tk)
+    raw_shares <- suppressWarnings(as.numeric(sh$shares_bs)[1])
+    # ADR／雙重股權：自動套用約當股數；使用者勾選時亦強制用解析結果
     apply_adj <- isTRUE(input[["mod_pb-adjust_share_class"]]) ||
-      identical(sh$method, "brk_b_x1500") ||
-      identical(sh$method, "market_cap_per_price")
+      shares_auto_adjust_method(sh$method)
     if (isTRUE(apply_adj) && is.finite(sh$shares) && sh$shares > 0) {
       return(list(shares = sh$shares, note = sh$note, method = sh$method))
     }
     if (is.finite(raw_shares) && raw_shares > 0) {
       return(list(shares = raw_shares, note = NULL, method = "balance_sheet"))
     }
-    list(shares = if (is.finite(sh$shares) && sh$shares > 0) sh$shares else 1,
-         note = sh$note, method = sh$method %||% "fallback")
+    list(
+      shares = if (is.finite(sh$shares) && sh$shares > 0) sh$shares else 1,
+      note = sh$note,
+      method = sh$method %||% "fallback"
+    )
   })
 
   # ==========================================
@@ -2076,32 +2112,50 @@ server <- function(input, output, session) {
     ignoreInit = FALSE
   )
   
-  # --- 優化後的股數與市值計算（報價 → session；ADR 與財報同單位）---
+  # --- 股數與市值（報價 → session；ADR 自動約當股數 = 市值÷股價）---
   scraped_market_cap <- reactive({
     req(d_balance_sheet(), summary_data())
     session_currency(); fx_usd_twd(); quote_currency()
 
-    # 1. 抓取股數：擴充匹配名稱
-    raw_shares <- select_current_metric(d_balance_sheet(), "Ordinary Shares Number|Share Issued|Total Shares Outstanding", "stock")
-    shares <- as.numeric(raw_shares)
-    if (is.na(shares) || shares <= 0) shares <- 1
-
-    # 2. 解析股價（報價幣別）→ session
     df_sum <- summary_data()
-    price_row <- df_sum[grep("Previous Close|Market Price", df_sum$Item), ]
-    price_native <- if (nrow(price_row) > 0) parse_financial_number(price_row$Value[1]) else NA
+    sh <- resolve_valuation_shares(
+      d_balance_sheet(), df_sum,
+      ticker = current_ticker() %||% "",
+      quote_currency = quote_currency(),
+      financial_currency = statement_currency()
+    )
+    shares <- suppressWarnings(as.numeric(sh$shares)[1])
+    if (!is.finite(shares) || shares <= 0) shares <- 1
 
-    if (is.na(price_native)) return(list(e_val = NA, shares = shares, price = NA))
+    price_native <- suppressWarnings(as.numeric(sh$price)[1])
+    if (!is.finite(price_native)) {
+      price_row <- df_sum[grep("Previous Close|Market Price", df_sum$Item), ]
+      price_native <- if (nrow(price_row) > 0) parse_financial_number(price_row$Value[1]) else NA
+    }
+    if (is.na(price_native) || !is.finite(price_native)) {
+      return(list(e_val = NA, shares = shares, price = NA, share_method = sh$method, share_note = sh$note))
+    }
 
     price_val <- money_to_session(
       price_native, quote_currency(), session_currency(), fx_usd_twd()
     )
 
-    return(list(
-      e_val = shares * price_val,
+    # 優先用 Summary 市值（已是報價股口徑），再換算 session；否則約當股數×價
+    e_native <- suppressWarnings(as.numeric(sh$market_cap)[1])
+    if (!is.finite(e_native) || e_native <= 0) {
+      e_native <- shares * price_native
+    }
+    e_val <- money_to_session(
+      e_native, quote_currency(), session_currency(), fx_usd_twd()
+    )
+
+    list(
+      e_val = e_val,
       shares = shares,
-      price = price_val
-    ))
+      price = price_val,
+      share_method = sh$method,
+      share_note = sh$note
+    )
   })
   
   # --- 優化後的稅率計算 ---
@@ -4055,21 +4109,30 @@ server <- function(input, output, session) {
       return(invisible(NULL))
     }
 
-    # WACC（需財報／股價）
+    # WACC（需財報／股價）；股權市值用報價口徑（ADR 自動約當）
     bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
     sum_df <- tryCatch(summary_data(), error = function(e) NULL)
     if (is.null(bs) || !is.data.frame(bs) || nrow(bs) == 0) return(invisible(NULL))
 
-    shares <- select_current_metric(bs, "Share Issued|Ordinary Shares Number", "stock")
-    if (is.na(shares) || shares == 0) {
+    sh <- tryCatch(
+      resolve_valuation_shares(
+        bs, sum_df,
+        ticker = current_ticker() %||% "",
+        quote_currency = quote_currency(),
+        financial_currency = statement_currency()
+      ),
+      error = function(e) NULL
+    )
+    shares <- if (!is.null(sh)) suppressWarnings(as.numeric(sh$shares)[1]) else NA_real_
+    if (!is.finite(shares) || shares <= 0) {
       return(invisible(NULL))
     }
 
-    price_val <- NA_real_
-    if (!is.null(sum_df) && is.data.frame(sum_df) && "Previous Close" %in% sum_df$Item) {
-      price_val <- parse_financial_number(sum_df$Value[sum_df$Item == "Previous Close"][1])
-    }
-    equity_mv <- if (!is.na(price_val) && shares > 0) {
+    price_val <- if (!is.null(sh)) suppressWarnings(as.numeric(sh$price)[1]) else NA_real_
+    mcap_val <- if (!is.null(sh)) suppressWarnings(as.numeric(sh$market_cap)[1]) else NA_real_
+    equity_mv <- if (is.finite(mcap_val) && mcap_val > 0) {
+      mcap_val
+    } else if (is.finite(price_val) && price_val > 0) {
       shares * price_val
     } else {
       select_current_metric(bs, "Common Stock Equity", "stock")
@@ -4915,12 +4978,18 @@ server <- function(input, output, session) {
     tryCatch({
       bs <- d_balance_sheet()
       sum_df <- summary_data()
-      shares <- select_current_metric(bs, "Share Issued|Ordinary Shares Number", "stock")
-      price_val <- NA_real_
-      if (!is.null(sum_df) && is.data.frame(sum_df) && "Previous Close" %in% sum_df$Item) {
-        price_val <- parse_financial_number(sum_df$Value[sum_df$Item == "Previous Close"][1])
-      }
-      equity_mv <- if (is.finite(shares) && shares > 0 && is.finite(price_val)) {
+      sh <- resolve_valuation_shares(
+        bs, sum_df,
+        ticker = current_ticker() %||% "",
+        quote_currency = quote_currency(),
+        financial_currency = statement_currency()
+      )
+      shares <- suppressWarnings(as.numeric(sh$shares)[1])
+      price_val <- suppressWarnings(as.numeric(sh$price)[1])
+      mcap_val <- suppressWarnings(as.numeric(sh$market_cap)[1])
+      equity_mv <- if (is.finite(mcap_val) && mcap_val > 0) {
+        mcap_val
+      } else if (is.finite(shares) && shares > 0 && is.finite(price_val)) {
         shares * price_val
       } else {
         select_current_metric(bs, "Common Stock Equity", "stock")
