@@ -13,6 +13,13 @@
 .ynow_app_dir <- normalizePath(".", mustWork = TRUE)
 setwd(.ynow_app_dir)
 
+# R only auto-reads ~/.Renviron (RStudio also loads a project file locally).
+# shinyapps.io needs an explicit load so bundled app_14.0/.Renviron is visible.
+.ynow_renviron <- file.path(.ynow_app_dir, ".Renviron")
+if (file.exists(.ynow_renviron)) {
+  readRenviron(.ynow_renviron)
+}
+
 source("global.R", local = TRUE, encoding = "UTF-8")
 source("ynow_ui.R", local = TRUE, encoding = "UTF-8")
 source("ynow_server.R", local = TRUE, encoding = "UTF-8")
