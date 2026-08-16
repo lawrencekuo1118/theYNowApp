@@ -669,6 +669,27 @@ build_annual_fundamentals <- function(d_is, d_bs, d_cf) {
   )
 }
 
+#' Build annual fund + scale shares to quote units when ADR / dual-class detected.
+#' model_params may carry summary_df, quote_currency, financial_currency.
+build_annual_fundamentals_for_quote <- function(d_is, d_bs, d_cf,
+                                               ticker = "",
+                                               model_params = NULL) {
+  fund <- build_annual_fundamentals(d_is, d_bs, d_cf)
+  if (!exists("align_fundamentals_shares_to_quote", mode = "function")) {
+    return(fund)
+  }
+  mp <- if (is.null(model_params)) list() else model_params
+  align_fundamentals_shares_to_quote(
+    fund,
+    summary_df = mp$summary_df,
+    ticker = ticker,
+    quote_currency = mp$quote_currency,
+    financial_currency = mp$financial_currency,
+    price = .safe_num(mp$quote_price, NA_real_),
+    market_cap = .safe_num(mp$market_cap, NA_real_)
+  )
+}
+
 # ---------- price fetching ----------
 
 fetch_price_history_df <- function(ticker, period = "5y") {
@@ -1955,7 +1976,9 @@ compute_fair_value_timeline <- function(ticker,
   df <- df_full[df_full$Date >= cutoff, , drop = FALSE]
   if (nrow(df) < 80) df <- df_full
 
-  fund <- build_annual_fundamentals(d_is, d_bs, d_cf)
+  fund <- build_annual_fundamentals_for_quote(
+    d_is, d_bs, d_cf, ticker = ticker, model_params = model_params
+  )
   mos_fallback <- .safe_num(mos, 0)
   dummy_params <- list(
     bt_net_margin = 0, bt_rev_growth = 0, bt_eps_growth = 0, bt_fcf_cv = 999,
@@ -1973,7 +1996,9 @@ compute_fair_value_timeline <- function(ticker,
     explain_last = core$explain_last,
     bench_ticker = bench_ticker,
     n_days = nrow(df),
-    model_params_used = model_params
+    model_params_used = model_params,
+    fund = fund,
+    share_align = attr(fund, "share_align")
   )
 }
 
@@ -2037,7 +2062,9 @@ run_company_backtest <- function(ticker,
   df <- df_full[df_full$Date >= cutoff, , drop = FALSE]
   if (nrow(df) < 80) df <- df_full
 
-  fund <- build_annual_fundamentals(d_is, d_bs, d_cf)
+  fund <- build_annual_fundamentals_for_quote(
+    d_is, d_bs, d_cf, ticker = ticker, model_params = model_params
+  )
   mos_fallback <- .safe_num(mos, 0)
   tnx_df <- fetch_tnx_history_df(period)
 
@@ -2053,7 +2080,9 @@ run_company_backtest <- function(ticker,
     bench_ticker = bench_ticker,
     n_days       = nrow(df),
     model_params_used = model_params,
-    dcf_params_used   = model_params  # back-compat alias for v11 UI
+    dcf_params_used   = model_params,  # back-compat alias for v11 UI
+    fund = fund,
+    share_align = attr(fund, "share_align")
   )
 }
 
@@ -2088,8 +2117,9 @@ build_bt_methodology_doc <- function(meta = NULL) {
     "| 年度財報 | 本次 Session 已搜尋載入之 IS／BS／CF | 來自 yfinance 財報表；欄位標準化後使用 |\n",
     "| 無風險利率 Rf | 再平衡日 `^TNX` 當時收盤 | 歷史點用 as-of 殖利率；抓不到才退回 Session／約 4% |\n",
     "| 股權市場報酬 Rm | 再平衡日止、基準（預設 SPY）已實現年化總報酬 | 優先近 12 個月；不足則最長 ≥約 6 個月；再不足用約 5 年；仍缺才退 Session Rm。無前瞻。負溢酬仍採用 |\n",
-    "| 資本結構 We／Wd | 再平衡日 股數×收盤 與當時 Total Debt | 市值權重；Rd／稅率仍用 Session |\n",
+    "| 資本結構 We／Wd | 再平衡日 股數×收盤 與當時 Total Debt | 市值權重；Rd／稅率仍用 Session。若偵測 ADR／雙重股權，股數先對齊報價股（見下） |\n",
     "| 評價假設 | Get Started／Dashboard 目前 Session 參數 | SGR、年數、P/B 等僅用於折線末端；歷史點成長用 APP_DEFAULTS |\n",
+    "| 股數級距（ADR） | Session Summary 市值÷股價 vs 最新財報流通股 | 倍率固定套用各財年股數，使合理價／股與 Yahoo ADR 收盤同一口徑；BRK-B 另依規則 ×1500 或市值÷價 |\n",
     "\n",
     "價格抓取期間：模擬視窗約最近 ", g("sim_years", "5"), " 年；",
     "為 Rolling β 另多抓約 5 年歷史（合計常 ≥10 年）。\n",
@@ -2101,16 +2131,18 @@ build_bt_methodology_doc <- function(meta = NULL) {
     "（近似「只用當時已可知資訊」）。\n",
     "3. 折現率：各再平衡日以標的 vs SPY 約 **60 個月月報酬** 估計 Rolling β；",
     "Rf 取該日（或之前最近）`^TNX`；Rm 為截至該日的基準已實現年化總報酬（優先 12 個月，無前瞻）；",
-    "We／Wd 用當時股價×股數與當時負債。Rd／稅率仍為 Session。",
+    "We／Wd 用當時股價×（已對齊報價股之）股數與當時負債。Rd／稅率仍為 Session。",
     "若 CAPM 得到 Ke≤0 或 g≥WACC，僅為 DCF 可算而將 Ke／WACC 下限設為 1%，或把 g 壓到 WACC−0.5%；負的 (Rm−Rf) 仍照資料採用。\n",
     "4. 合理價：各模型（DCF／DDM／RI／P/B）照常計算；**策略公允／MOS／Exp_A 用目前勾選且有限值模型的算術平均**（只勾一個＝該模型）。",
     "歷史點成長／預測年數用 APP_DEFAULTS；僅折線末端套用目前分頁。\n",
+    "5. **ADR／雙重股權**：折現比較與回測 PIT 股數與 App 搜尋估值共用 `resolve_shares_for_price`；",
+    "以目前 Session 市值÷報價得約當股數後，對所有財年流通股乘上同一倍率（假設 ADR ratio 在視窗內大致穩定）。\n",
     "\n",
     "## 3. 序列定義\n",
     "\n",
     "折現比較圖（每股，合理價 vs 實際股價）：\n",
-    "- **實際股價**：Yahoo 調整後收盤。\n",
-    "- **DCF／DDM／RI／P/B**：各模型 PIT 合理價（可疊圖）。\n",
+    "- **實際股價**：Yahoo 調整後收盤（報價股／ADR 口徑）。\n",
+    "- **DCF／DDM／RI／P/B**：各模型 PIT 合理價（可疊圖；每股已對齊報價股）。\n",
     "- **大盤**：基準價格（右軸）。\n",
     "\n",
     "策略淨值圖（財富指數，起始＝1；不是每股價格）：\n",

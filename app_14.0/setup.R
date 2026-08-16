@@ -543,6 +543,84 @@ shares_auto_adjust_method <- function(method) {
   identical(method, "market_cap_per_price") || identical(method, "brk_b_x1500")
 }
 
+#' 將年度 fundamentals 的股數對齊「報價股」口徑（折現比較／回測 PIT）
+#'
+#' 以最新財年財報股數 vs Summary 市值÷股價（或 BRK-B 規則）得固定倍率，
+#' 套用到所有財年股數，使 DCF／DDM／BVPS／We 與 ADR 收盤價同一級距。
+#' @return fund data.frame；attr(fund, "share_align") = list(method, scale, note, ...)
+align_fundamentals_shares_to_quote <- function(fund,
+                                              summary_df = NULL,
+                                              ticker = "",
+                                              quote_currency = NULL,
+                                              financial_currency = NULL,
+                                              price = NA_real_,
+                                              market_cap = NA_real_) {
+  empty_align <- function(method = "none", scale = 1, note = NULL, ...) {
+    list(method = method, scale = scale, note = note, ...)
+  }
+  if (is.null(fund) || !is.data.frame(fund) || nrow(fund) < 1L ||
+      !("shares" %in% names(fund))) {
+    return(fund)
+  }
+  years <- suppressWarnings(as.integer(fund$year))
+  ord <- order(years, decreasing = TRUE, na.last = TRUE)
+  latest_bs <- suppressWarnings(as.numeric(fund$shares[ord[1]])[1])
+
+  qm <- tryCatch(
+    extract_quote_price_mcap(summary_df),
+    error = function(e) list(price = NA_real_, market_cap = NA_real_)
+  )
+  px <- suppressWarnings(as.numeric(price)[1])
+  mc <- suppressWarnings(as.numeric(market_cap)[1])
+  if (!is.finite(px) || px <= 0) px <- qm$price
+  if (!is.finite(mc) || mc <= 0) mc <- qm$market_cap
+  if (is.null(quote_currency) && !is.null(summary_df)) {
+    quote_currency <- attr(summary_df, "currency")
+  }
+  if (is.null(financial_currency) && !is.null(summary_df)) {
+    financial_currency <- attr(summary_df, "financialCurrency")
+  }
+
+  sh <- resolve_shares_for_price(
+    latest_bs,
+    price = px,
+    market_cap = mc,
+    ticker = ticker,
+    quote_currency = quote_currency,
+    financial_currency = financial_currency
+  )
+
+  if (!shares_auto_adjust_method(sh$method) ||
+      !is.finite(sh$shares) || sh$shares <= 0 ||
+      !is.finite(latest_bs) || latest_bs <= 0) {
+    attr(fund, "share_align") <- empty_align(
+      method = sh$method %||% "balance_sheet",
+      scale = 1,
+      note = NULL,
+      shares_bs_latest = latest_bs,
+      shares_quote = if (is.finite(sh$shares)) sh$shares else latest_bs
+    )
+    return(fund)
+  }
+
+  scale <- sh$shares / latest_bs
+  if (!is.finite(scale) || scale <= 0) {
+    attr(fund, "share_align") <- empty_align(method = "none", scale = 1)
+    return(fund)
+  }
+
+  out <- fund
+  out$shares <- suppressWarnings(as.numeric(out$shares)) * scale
+  attr(out, "share_align") <- empty_align(
+    method = sh$method,
+    scale = scale,
+    note = sh$note,
+    shares_bs_latest = latest_bs,
+    shares_quote = sh$shares
+  )
+  out
+}
+
 #' 報價端 Book Value 是否與目前股價同一股權級距（排除 BRK-B 誤用 A 級 BV）
 quote_book_value_is_plausible <- function(book_value, price) {
   book_value <- suppressWarnings(as.numeric(book_value)[1])
