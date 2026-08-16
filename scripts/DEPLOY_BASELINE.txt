@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12418637
+bundleId=12418651
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=52801ca
-commit=52801cad6574226ebbb12995e53e0599300618e3
-short=52801ca
-message=Load bundled .Renviron at app startup so the feedback GitHub token is visible on shinyapps.io.
-captured_at=2026-08-16T17:36:36Z
+aligned_git=ee8cbb7
+commit=ee8cbb759d8904674477d149fabd92904de1168d
+short=ee8cbb7
+message=Remove DDM Overview Ke discount-rate helpText so the calculator is not cluttered by CAPM/WACC commentary.
+captured_at=2026-08-16T17:41:01Z
 source_branch=master
-note=Canonical live line is app_14.0. Redeploy so bundled gitignored .Renviron is loaded via readRenviron() (feedback GitHub token). Bundle 12418637 supersedes 12417242. Live status=running.
+note=Canonical live line is app_14.0. Redeploy master after removing DDM Overview Ke/WACC helpText (stacked on bundled .Renviron load). Bundle 12418651 supersedes 12418637. Live status=running.
