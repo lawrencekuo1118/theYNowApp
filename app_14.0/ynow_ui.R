@@ -628,6 +628,46 @@ beta_advanced_tab_ui <- function() {
   )
 }
 
+.ddm_two_stage_params_box <- function() {
+  conditionalPanel(
+    condition = "input['mod_ddm-ddm_mode'] == 'two_stage'",
+    box(
+      title = tagList(icon("layer-group"), "兩階段成長假設（DDM）"),
+      width = 12, status = "warning", solidHeader = TRUE,
+      tags$p(style = "margin: 0 0 6px 0; font-size: 12.5px; color: #555;", tags$b("第一階段｜高速成長")),
+      numericInput(
+        "mod_ddm-yr_stage1", "年數 n1",
+        value = APP_DEFAULTS$ddm_yr_stage1, min = 1, max = 30, step = 1
+      ),
+      numericInput(
+        "mod_ddm-g_stage1", "成長率 g1 (%)",
+        value = APP_DEFAULTS$ddm_g_stage1, step = 0.1
+      ),
+      tags$p(style = "margin: 10px 0 6px 0; font-size: 12.5px; color: #555;", tags$b("第二階段｜永續成長")),
+      helpText("第二階段股利成長率採用 Overview 的永續 g（可與 Get Started SGR 同步）；折現率採用 Ke 分頁。終值約束：g2 < Ke。")
+    )
+  )
+}
+
+.ddm_formula_banner <- function() {
+  tagList(
+    conditionalPanel(
+      condition = "input['mod_ddm-ddm_mode'] != 'two_stage'",
+      div(
+        "P₀ = D₁ / (Ke − g)　｜　D₁ = D₀ × (1 + g)",
+        style = "font-size: 18px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
+      )
+    ),
+    conditionalPanel(
+      condition = "input['mod_ddm-ddm_mode'] == 'two_stage'",
+      div(
+        "P₀ = Σ Dₜ / (1+Ke)ᵗ + TV / (1+Ke)ⁿ¹　｜　TV = Dₙ₁ × (1+g₂) / (Ke − g₂)",
+        style = "font-size: 16px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
+      )
+    )
+  )
+}
+
 #' Shared bottom block: formula-param contribution / relative ±1% elasticity.
 .model_param_sensitivity_box <- function(title, table_id) {
   fluidRow(
@@ -2209,106 +2249,176 @@ ui <- dashboardPage(
       ),
       
       # ==========================================
-      # DDM 頁面設計 (升級雙分頁版)
+      # DDM：版面節奏對齊 DCF（模式列 → Overview → 參數 → 敏感度）
       # ==========================================
       tabItem(tabName = "ddm_calculator",
-              tabBox(title = "DIVIDEND DISCOUNT", width = "auto",
-                     
-                     # --- 分頁 1：DDM 估值主畫面 ---
-                     tabPanel("DDM Overview", icon = icon("calculator"),
+              tabBox(width = "auto",
+                     tabPanel("",
                               fluidRow(
-                                column(width = 6,
-                                       # 🌟 關鍵修復：統一加上 mod_ddm- 前綴
-                                       numericInput("mod_ddm-d0", "今年發放股利 (D0)", value = APP_DEFAULTS$ddm_d0),
-                                       numericInput(
-                                         "mod_ddm-g",
-                                         "股利永續成長率 g (%)",
-                                         value = APP_DEFAULTS$ddm_g
-                                       ),
-                                       checkboxInput(
-                                         "mod_ddm-sync_g",
-                                         "與中央永續成長率（Get Started SGR）同步",
-                                         value = isTRUE(APP_DEFAULTS$ddm_sync_central_g)
-                                       ),
-                                       helpText("勾選時跟隨中央 SGR；取消勾選後可單獨覆寫股利成長率（不必等於 FCFF 終值 g）。"),
-                                       numericInput("mod_ddm-ke", "要求報酬率 (Ke) %", value = APP_DEFAULTS$ddm_ke),
-                                       radioButtons(
-                                         "mod_ddm-ddm_mode",
-                                         "股利折現結構",
-                                         choices = list(
-                                           "Gordon 單段" = "gordon",
-                                           "二階段成長" = "two_stage"
-                                         ),
-                                         selected = APP_DEFAULTS$ddm_mode,
-                                         inline = TRUE
-                                       ),
-                                       conditionalPanel(
-                                         condition = "input['mod_ddm-ddm_mode'] == 'two_stage'",
-                                         numericInput(
-                                           "mod_ddm-g_stage1", "高速期股利成長 g1 (%)",
-                                           value = APP_DEFAULTS$ddm_g_stage1, step = 0.1
-                                         ),
-                                         numericInput(
-                                           "mod_ddm-yr_stage1", "高速期年數 n1",
-                                           value = APP_DEFAULTS$ddm_yr_stage1, min = 1, max = 30, step = 1
-                                         ),
-                                         helpText("二階段：前 n1 年以 g1 成長，之後以下方永續 g（可與 SGR 同步）做 Gordon 終值。終值約束：g2 < Ke。")
-                                       ),
-                                       checkboxInput(
-                                         "ddm_use_estimated_re",
-                                         "採用估算 Ke（來自 CAPM β）",
-                                         value = isTRUE(APP_DEFAULTS$use_est_re)
-                                       ),
-                                       helpText("與 DCF→WACC「採用估算 rₑ」同步；勾選時 Ke 跟隨 CAPM。"),
-                                       tags$div(style = "margin-top: 15px; margin-bottom: 15px;",
-                                                actionButton("mod_ddm-btn_calc_ddm", "試算 DDM 合理股價", class = "btn-primary", icon = icon("calculator")),
-                                                HTML("&nbsp;&nbsp;"), 
-                                                actionButton("mod_ddm-reset_ddm", "回復預設", class = "btn-warning", icon = icon("refresh"))
-                                       )
+                                column(
+                                  width = 6,
+                                  radioButtons(
+                                    "mod_ddm-ddm_mode",
+                                    "選擇 DDM 估值模型：",
+                                    choices = list(
+                                      "Gordon 永續成長" = "gordon",
+                                      "二階段成長法 (Two-Stage Model)" = "two_stage"
+                                    ),
+                                    selected = APP_DEFAULTS$ddm_mode
+                                  ),
+                                  helpText("Gordon：單一永續 g。二階段：前 n₁ 年以 g₁ 成長，之後以永續 g 做 Gordon 終值（約束 g₂ < Ke）。")
                                 ),
-                                column(width = 6,
-                                       # 🌟 關鍵修復：對接後端的 ui_ddm_result
-                                       uiOutput("mod_ddm-ui_ddm_result")      
+                                column(
+                                  width = 6,
+                                  numericInput(
+                                    "mod_ddm-d0",
+                                    "今年發放股利 (D0)",
+                                    value = APP_DEFAULTS$ddm_d0
+                                  ),
+                                  helpText("D0 可由財報自動帶入，或至 D0 Settings 以配息率／歷史平均覆寫。")
                                 )
                               )
-                     ),
-                     
-                     # --- 分頁 2：D0 進階參數設定 ---
-                     tabPanel("D0 Settings", icon = icon("cogs"),
-                              fluidRow(
-                                infoBoxOutput("mod_ddm-ibx_d0_scraped", width = 4),
-                                infoBoxOutput("mod_ddm-ibx_d0_eps", width = 4),
-                                infoBoxOutput("mod_ddm-ibx_d0_payout", width = 4)
-                              ),
-                              
-                              fluidRow(
-                                column(width = 12,
-                                       div("實務上常需對 D0 進行平滑化或還原本業配息，避免單一年度特別股利或景氣循環造成估值失真。",
-                                           style = "font-size: 15px; font-weight: bold; color: #2C3E50; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;")
-                                ),
-                                
-                                box(h4(tags$b("方法 1：目標配息率推算法")),
-                                    p(helpText("適用於宣告改變股利政策，或未來獲利將發生重大變化的公司")),
-                                    div("公式：預估 EPS × 目標配息率",
-                                        style = "font-size: 18px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"),
-                                    numericInput("mod_ddm-est_eps", "預估/最新 EPS (元)", value = NA, step = 0.01),
-                                    numericInput("mod_ddm-est_payout", "目標配息率 Payout Ratio (%)", value = NA, min = 0, max = 100, step = 0.01),
-                                    actionButton("mod_ddm-calc_d0_payout", "計算並套用 D0", class = "btn-primary"),
-                                    tags$br(),
-                                    htmlOutput("mod_ddm-txt_d0_payout_res")
-                                ),
-                                
-                                box(h4(tags$b("方法 2：景氣循環平滑法")),
-                                    p(helpText("適用於航運、原物料等景氣循環股。系統將自動從現金流量表抓取歷史配息來平均。")),
-                                    numericInput("mod_ddm-cycle_years", "抓取過去幾年平均？", value = 5, min = 1, max = 10, step = 0.01),
-                                    actionButton("mod_ddm-calc_d0_average", "計算並套用平均 D0", class = "btn-primary"),
-                                    tags$br(),
-                                    htmlOutput("mod_ddm-txt_d0_avg_res")
-                                )
-                              )
-                     ),
+                     )
+              ),
 
-                     # --- 分頁 3：指向 Get Started 的 Beta 單一來源 ---
+              tabBox(title = "DIVIDEND DISCOUNT", width = "auto",
+                     tabPanel(
+                       "DDM Overview",
+                       icon = icon("calculator"),
+                       fluidRow(
+                         column(
+                           width = 12,
+                           fluidRow(
+                             infoBoxOutput("mod_ddm-ibx_ddm_price", width = 6),
+                             infoBoxOutput("mod_ddm-ibx_ddm_d1", width = 6)
+                           )
+                         )
+                       ),
+                       fluidRow(
+                         column(
+                           width = 12,
+                           .ddm_formula_banner(),
+                           uiOutput("mod_ddm-ui_ddm_result"),
+                           h6(helpText("提示：D0 在上方模式列；g／二階段在下方 Overview；Ke 在 Ke 分頁。自訂參數後請再點試算。")),
+                           fluidRow(
+                             column(
+                               width = 6,
+                               actionButton(
+                                 "mod_ddm-btn_calc_ddm", "試算 DDM",
+                                 class = "btn-success btn-block",
+                                 style = "padding: 12px; font-weight: bold; font-size: 16px;",
+                                 icon = icon("calculator")
+                               )
+                             ),
+                             column(
+                               width = 6,
+                               actionButton(
+                                 "mod_ddm-reset_ddm", "回復預設",
+                                 class = "btn-default btn-block",
+                                 style = "padding: 12px; font-weight: bold; font-size: 16px;",
+                                 icon = icon("refresh")
+                               )
+                             )
+                           ),
+                           tags$div(style = "margin-top: 10px;", htmlOutput("mod_ddm-vtxt_ddm_setting_details"))
+                         )
+                       )
+                     ),
+                     tabPanel(
+                       "DDM Calculation Details",
+                       fluidRow(
+                         infoBoxOutput("mod_ddm-ibx_d0_scraped", width = 4),
+                         infoBoxOutput("mod_ddm-ibx_d0_eps", width = 4),
+                         infoBoxOutput("mod_ddm-ibx_d0_payout", width = 4)
+                       ),
+                       fluidRow(
+                         column(
+                           width = 12,
+                           div(
+                             "實務上常需對 D0 進行平滑化或還原本業配息，避免單一年度特別股利或景氣循環造成估值失真。請至 D0 Settings 覆寫。",
+                             style = "font-size: 15px; font-weight: bold; color: #2C3E50; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
+                           )
+                         )
+                       )
+                     )
+              ),
+
+              tabBox(width = "auto",
+                     tabPanel(
+                       "Overview",
+                       fluidRow(
+                         column(
+                           width = 12,
+                           numericInput(
+                             "mod_ddm-g",
+                             "股利永續成長率 g (%)",
+                             value = APP_DEFAULTS$ddm_g
+                           ),
+                           checkboxInput(
+                             "mod_ddm-sync_g",
+                             "與中央永續成長率（Get Started SGR）同步",
+                             value = isTRUE(APP_DEFAULTS$ddm_sync_central_g)
+                           ),
+                           helpText("勾選時跟隨中央 SGR；取消勾選後可單獨覆寫股利成長率（不必等於 FCFF 終值 g）。二階段時此值即 g₂。"),
+                           tags$div(style = "margin-top: 12px;", .ddm_two_stage_params_box())
+                         )
+                       )
+                     ),
+                     tabPanel(
+                       "D0 Settings",
+                       icon = icon("cogs"),
+                       fluidRow(
+                         column(
+                           width = 12,
+                           div(
+                             "D0 = 現金股利（或 EPS × 配息率）",
+                             style = "font-size: 18px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
+                           )
+                         ),
+                         box(
+                           h4(tags$b("方法 1：目標配息率推算法")),
+                           p(helpText("適用於宣告改變股利政策，或未來獲利將發生重大變化的公司")),
+                           div(
+                             "公式：預估 EPS × 目標配息率",
+                             style = "font-size: 18px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
+                           ),
+                           numericInput("mod_ddm-est_eps", "預估/最新 EPS (元)", value = NA, step = 0.01),
+                           numericInput("mod_ddm-est_payout", "目標配息率 Payout Ratio (%)", value = NA, min = 0, max = 100, step = 0.01),
+                           actionButton("mod_ddm-calc_d0_payout", "計算並套用 D0", class = "btn-primary"),
+                           tags$br(),
+                           htmlOutput("mod_ddm-txt_d0_payout_res")
+                         ),
+                         box(
+                           h4(tags$b("方法 2：景氣循環平滑法")),
+                           p(helpText("適用於航運、原物料等景氣循環股。系統將自動從現金流量表抓取歷史配息來平均。")),
+                           numericInput("mod_ddm-cycle_years", "抓取過去幾年平均？", value = 5, min = 1, max = 10, step = 0.01),
+                           actionButton("mod_ddm-calc_d0_average", "計算並套用平均 D0", class = "btn-primary"),
+                           tags$br(),
+                           htmlOutput("mod_ddm-txt_d0_avg_res")
+                         )
+                       )
+                     ),
+                     tabPanel(
+                       "Ke",
+                       icon = icon("balance-scale"),
+                       fluidRow(
+                         div(
+                           "Ke = Rf + β × (Rm − Rf)",
+                           style = "font-size: 18px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
+                         ),
+                         box(
+                           h4("股權成本 Ke"),
+                           numericInput("mod_ddm-ke", "要求報酬率 (Ke) %", value = APP_DEFAULTS$ddm_ke),
+                           checkboxInput(
+                             "ddm_use_estimated_re",
+                             "採用估算 Ke（來自 CAPM β）",
+                             value = isTRUE(APP_DEFAULTS$use_est_re)
+                           ),
+                           helpText("與 DCF→WACC「採用估算 rₑ」同步；勾選時 Ke 跟隨 CAPM。CAPM 輸入在 DCF-Model → WACC。"),
+                           htmlOutput("ddm_beta_ke_status")
+                         )
+                       )
+                     ),
                      tabPanel(
                        "Beta (β)",
                        icon = icon("chart-line"),
@@ -2317,11 +2427,36 @@ ui <- dashboardPage(
                            width = 12,
                            .beta_moved_to_get_started_box(
                              tagList(
-                               htmlOutput("ddm_beta_ke_status"),
-                               helpText("DDM Overview 的「採用估算 Ke」仍跟隨 DCF → WACC 的 CAPM。")
+                               helpText("DDM → Ke 的「採用估算 Ke」仍跟隨 DCF → WACC 的 CAPM。")
                              )
                            )
                          )
+                       )
+                     )
+              ),
+
+              tabBox(title = "SENSITIVITY", width = "auto",
+                     fluidRow(
+                       column(
+                         width = 12,
+                         h4("敏感度分析矩陣 (Sensitivity Analysis)"),
+                         p(helpText("軸心採用目前 DDM 的 Ke 與股利永續 g；觀察鄰近組合下的每股內在價值變化。D0／二階段設定請至上方各分頁。"))
+                       )
+                     ),
+                     fluidRow(
+                       column(
+                         width = 12,
+                         div(
+                           style = "width: 100%; overflow-x: auto;",
+                           tags$style(HTML("#ddm_sensitivity_table table { width: 100% !important; table-layout: fixed; }")),
+                           tableOutput("ddm_sensitivity_table")
+                         )
+                       )
+                     ),
+                     fluidRow(
+                       column(
+                         width = 12,
+                         uiOutput("ddm_sensitivity_analysis_panel")
                        )
                      )
               ),

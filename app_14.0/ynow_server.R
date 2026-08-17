@@ -5035,6 +5035,72 @@ server <- function(input, output, session) {
     )
   })
 
+  output$ddm_sensitivity_table <- renderTable({
+    ke <- suppressWarnings(as.numeric(input[["mod_ddm-ke"]])[1])
+    g <- suppressWarnings(as.numeric(input[["mod_ddm-g"]])[1])
+    if (!is.finite(ke)) ke <- APP_DEFAULTS$ddm_ke
+    if (!is.finite(g)) g <- APP_DEFAULTS$ddm_g
+    built <- .build_ddm_sensitivity_matrix(ke, g)
+    req(!is.null(built), !is.null(built$matrix))
+    sens_matrix <- built$matrix
+    out_df <- cbind(Rate = rownames(sens_matrix), as.data.frame(sens_matrix, check.names = FALSE))
+    names(out_df)[1] <- "Ke_Rate"
+    out_df
+  }, digits = 2, striped = TRUE, hover = TRUE, bordered = TRUE, align = "c",
+     width = "100%", na = "無效 (折現率≤g)")
+
+  output$ddm_sensitivity_analysis_panel <- renderUI({
+    ke <- suppressWarnings(as.numeric(input[["mod_ddm-ke"]])[1])
+    g <- suppressWarnings(as.numeric(input[["mod_ddm-g"]])[1])
+    if (!is.finite(ke)) ke <- APP_DEFAULTS$ddm_ke
+    if (!is.finite(g)) g <- APP_DEFAULTS$ddm_g
+    built <- tryCatch(.build_ddm_sensitivity_matrix(ke, g), error = function(e) NULL)
+    if (is.null(built) || is.null(built$matrix)) {
+      return(tags$div(
+        style = "background:#fff8f0; border:1px solid #f0ad4e; border-radius:6px; padding:12px; font-size:13px; color:#666;",
+        "請先確認 D0 > 0 且 Ke > g 後，即可顯示敏感度解讀。"
+      ))
+    }
+
+    center_val <- built$center
+    curr_price <- tryCatch({
+      p <- scraped_market_cap()$price
+      if (!is.null(p) && is.finite(as.numeric(p))) as.numeric(p) else NA_real_
+    }, error = function(e) NA_real_)
+
+    fmt <- function(x) {
+      if (is.null(x) || length(x) < 1 || !is.finite(as.numeric(x)[1])) return("N/A")
+      sprintf("%.2f", as.numeric(x)[1])
+    }
+
+    vs_price <- if (is.finite(center_val) && is.finite(curr_price) && curr_price > 0) {
+      pct <- (center_val - curr_price) / curr_price * 100
+      sprintf("中心格內在價值 %s，相對現價 %s 約 %+.1f%%。", fmt(center_val), fmt(curr_price), pct)
+    } else if (is.finite(center_val)) {
+      sprintf("中心格內在價值約 %s；現價資料不足，暫無法比較。", fmt(center_val))
+    } else {
+      "中心格組合無效（Ke 需大於 g），請調降股利成長率或提高 Ke。"
+    }
+
+    vs_fair <- "矩陣中心格即目前 Ke／股利 g 下的公式價值（不必先按試算）。"
+
+    tags$div(
+      style = "background:#f7fbff; border-left:4px solid #3c8dbc; border-radius:6px; padding:14px; font-size:13px; line-height:1.55; color:#333; margin-top:12px;",
+      tags$h5(style = "margin-top:0; color:#3c8dbc; font-weight:700;", icon("lightbulb"), " 簡要分析"),
+      tags$p(
+        tags$b("目前軸心："),
+        sprintf("Ke = %s%%，股利 g = %s%%", fmt(ke), fmt(g))
+      ),
+      tags$p(tags$b("矩陣解讀："), vs_price),
+      tags$p(vs_fair),
+      tags$p(
+        style = "margin-bottom:0; color:#555;",
+        tags$b("適用提醒："),
+        "本矩陣適用 DDM 絕對估值；觀察 Ke 與股利永續 g 鄰近組合對每股內在價值的敏感度。"
+      )
+    )
+  })
+
   # ==========================================
   # 🛡️ 10. 數據缺漏檢查 UI 
   # ==========================================

@@ -137,21 +137,59 @@ ddm_module_server <- function(id, ddm_g = reactive(NULL), ddm_ke = reactive(NULL
       return(list(status = "success", value = round(p0, 2), d1 = round(d1, 2), mode = "gordon"))
     })
     
+    .ddm_calc_snapshot <- function() {
+      clicked <- suppressWarnings(as.integer(input$btn_calc_ddm)[1])
+      if (!is.finite(clicked) || clicked < 1L) return(NULL)
+      tryCatch(ddm_calc(), error = function(e) NULL)
+    }
+
     output$ui_ddm_result <- renderUI({
-      res <- ddm_calc()
-      if (res$status == "error") {
-        div(style = "color: #d9534f; font-weight: bold; padding: 10px; background-color: #fdf2f2; border-left: 4px solid #d9534f;", res$message)
+      res <- .ddm_calc_snapshot()
+      if (is.null(res) || !identical(res$status, "error")) return(NULL)
+      div(style = "color: #d9534f; font-weight: bold; padding: 10px; background-color: #fdf2f2; border-left: 4px solid #d9534f; margin-bottom: 10px;", res$message)
+    })
+
+    output$ibx_ddm_price <- renderInfoBox({
+      res <- .ddm_calc_snapshot()
+      val <- if (is.null(res) || !identical(res$status, "success")) {
+        "N/A"
       } else {
-        div(style = "font-size: 32px; font-weight: bold; color: #2C3E50; text-align: center; padding: 20px; background-color: #ECF0F1; border-radius: 10px;",
-            p(style = "font-size: 16px; color: #7F8C8D; margin-bottom: 5px;", "DDM 推估每股合理價"),
-            paste0(money_prefix(), res$value),
-            p(style = "font-size: 14px; color: #95A5A6; margin-top: 10px;",
-              paste0(
-                if (identical(res$mode, "two_stage")) "二階段明年股利 (D1): " else "預估明年股利 (D1): ",
-                money_prefix(), res$d1
-              ))
-        )
+        paste0(money_prefix(), res$value)
       }
+      infoBox("每股估值（DDM）", val, icon = icon("hand-holding-usd"), color = "yellow", fill = TRUE)
+    })
+
+    output$ibx_ddm_d1 <- renderInfoBox({
+      res <- .ddm_calc_snapshot()
+      title <- if (!is.null(res) && identical(res$mode, "two_stage")) "明年股利 D1（二階段）" else "預估明年股利 (D1)"
+      val <- if (is.null(res) || !identical(res$status, "success")) {
+        "N/A"
+      } else {
+        paste0(money_prefix(), res$d1)
+      }
+      infoBox(title, val, icon = icon("money-bill-wave"), color = "aqua", fill = TRUE)
+    })
+
+    output$vtxt_ddm_setting_details <- renderUI({
+      mode <- as.character(input$ddm_mode %||% "gordon")[1]
+      d0 <- suppressWarnings(as.numeric(input$d0)[1])
+      g <- suppressWarnings(as.numeric(input$g)[1])
+      ke <- suppressWarnings(as.numeric(input$ke)[1])
+      mode_lab <- if (identical(mode, "two_stage")) "two_stage" else "gordon"
+      extra <- ""
+      if (identical(mode, "two_stage")) {
+        g1 <- suppressWarnings(as.numeric(input$g_stage1)[1])
+        n1 <- suppressWarnings(as.integer(input$yr_stage1)[1])
+        extra <- glue::glue("<b>高速期：</b> {if (is.finite(n1)) n1 else '—'} 年 ／ g1 = {if (is.finite(g1)) paste0(g1, '%') else '—'} <br/>")
+      }
+      d0_txt <- if (is.finite(d0)) paste0(money_prefix(), round(d0, 2)) else "—"
+      g_txt <- if (is.finite(g)) paste0(g, "%") else "—"
+      ke_txt <- if (is.finite(ke)) paste0(ke, "%") else "—"
+      HTML(glue::glue("<div style='padding: 15px; background: #fcfcfc; border: 1px solid #eee; font-size: 14px;'>
+                  <b>評價模式：</b> {mode_lab} <br/>
+                  <b>今年股利 D0：</b> {d0_txt} <br/>
+                  {extra}<b>永續股利成長 g：</b> {g_txt} <br/>
+                  <b>折現率 Ke：</b> {ke_txt}</div>"))
     })
 
     # DDM：Gordon 或二階段；單位 D0
