@@ -45,7 +45,7 @@ pb_asset_module_ui <- function(id) {
                  tabPanel("P/B Settings", icon = icon("cogs"),
                           h4(tags$b("每股帳面淨值 (BVPS) 與資產基礎")),
                           fluidRow(
-                            div("標準公式：BVPS = Common Equity ÷ 流通股數；TBVPS 另扣除商譽／無形資產。控股 NAV＝權益 − 折價×已辨識投資科目。雙重股權／ADR 等「報價股 ≠ 財報股數口徑」時，與 DCF／RI／回測相同，一律以市值÷股價自動約當報價股。",
+                            div("標準公式：BVPS = Common Equity ÷ 流通股數；TBVPS 另扣除商譽／無形資產。控股 NAV＝權益 − 折價×已辨識投資科目。雙重股權／ADR 等「報價股數 ≠ 財報股數」時，與 DCF／RI／回測相同，一律以市值÷股價自動約當報價股。",
                                 style = "font-size: 14px; font-weight: bold; color: #2C3E50; text-align: left; margin-bottom: 10px; padding: 10px; background-color: #F8F9F9; border-left: 4px solid #2980B9; border-radius: 4px;")
                           ),
                           uiOutput(ns("txt_shares_resolve_note")),

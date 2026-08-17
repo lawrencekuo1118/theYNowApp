@@ -543,7 +543,7 @@ shares_auto_adjust_method <- function(method) {
   identical(method, "market_cap_per_price") || identical(method, "brk_b_x1500")
 }
 
-#' 將年度 fundamentals 的股數對齊「報價股」口徑（折現比較／回測 PIT）
+#' 將年度 fundamentals 的股數對齊報價股數（折現比較／回測 PIT）
 #'
 #' 以最新財年財報股數 vs Summary 市值÷股價（或 BRK-B 規則）得固定倍率，
 #' 套用到所有財年股數，使 DCF／DDM／BVPS／We 與 ADR 收盤價同一級距。

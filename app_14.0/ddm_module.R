@@ -34,15 +34,34 @@ ddm_module_server <- function(id, ddm_g = reactive(NULL), ddm_ke = reactive(NULL
     }
 
     # ==========================================
-    # 接收主畫面傳來的變數
+    # D0 = 現金股利（現金流量表）÷ 股數；若無則 0（新搜尋覆寫，可再手動改）
     # ==========================================
-    observeEvent(scraped_d0(), {
-      val <- scraped_d0()
-      if (is.numeric(val) && length(val) == 1 && !is.na(val) && val >= 0) {
-        updateNumericInput(session, "d0", value = val)
+    .resolve_auto_d0 <- function() {
+      d0 <- NA_real_
+      cf <- tryCatch(d_cash_flow(), error = function(e) NULL)
+      bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
+      if (is.data.frame(cf) && nrow(cf) > 0 && is.data.frame(bs) && nrow(bs) > 0) {
+        div_paid_total <- abs(select_current_metric(cf, "Cash Dividends Paid", "flow"))
+        shares_issued <- .ddm_quote_shares()
+        if (is.finite(div_paid_total) && is.finite(shares_issued) && shares_issued > 0) {
+          d0 <- div_paid_total / shares_issued
+        }
       }
-    })
-    
+      if (!is.finite(d0) || d0 < 0) {
+        fallback_d0 <- tryCatch(scraped_d0(), error = function(e) NA_real_)
+        if (is.numeric(fallback_d0) && length(fallback_d0) == 1 &&
+            is.finite(fallback_d0) && fallback_d0 >= 0) {
+          d0 <- fallback_d0
+        }
+      }
+      if (!is.finite(d0) || d0 < 0) d0 <- 0
+      round(as.numeric(d0)[1], 2)
+    }
+
+    .apply_auto_d0 <- function() {
+      updateNumericInput(session, "d0", value = .resolve_auto_d0())
+    }
+
     # 僅在「與中央 SGR 同步」時覆寫股利成長率 g
     observeEvent(list(ddm_g(), input$sync_g), {
       if (!isTRUE(input$sync_g)) return()
@@ -63,24 +82,7 @@ ddm_module_server <- function(id, ddm_g = reactive(NULL), ddm_ke = reactive(NULL
     # 從當前財報動態計算 D0；g／Ke 依中央設定
     # ==========================================
     sync_ddm_to_financials <- function() {
-      req(d_cash_flow(), d_balance_sheet())
-      
-      # --- 1. 動態 D0 = 最近一期總發放股利 / 報價股約當股數 ---
-      div_paid_total <- abs(select_current_metric(d_cash_flow(), "Cash Dividends Paid", "flow"))
-      shares_issued <- .ddm_quote_shares()
-      
-      if (!is.na(div_paid_total) && !is.na(shares_issued) && shares_issued > 0) {
-        dynamic_d0 <- div_paid_total / shares_issued
-        updateNumericInput(session, "d0", value = round(dynamic_d0, 2))
-      } else {
-        fallback_d0 <- scraped_d0()
-        if (is.numeric(fallback_d0) && length(fallback_d0) == 1 && !is.na(fallback_d0)) {
-          updateNumericInput(session, "d0", value = fallback_d0)
-        } else {
-          updateNumericInput(session, "d0", value = 0)
-          showNotification("系統偵測到該公司未發放股利，D0 自動設為 0", type = "warning", duration = 5)
-        }
-      }
+      .apply_auto_d0()
       
       # --- 2. 股利 g：僅同步模式才套用中央值 ---
       if (isTRUE(input$sync_g) &&
@@ -91,10 +93,15 @@ ddm_module_server <- function(id, ddm_g = reactive(NULL), ddm_ke = reactive(NULL
       # --- 3. 同步折現率 (ke) ---
       if (!is.null(ddm_ke())) updateNumericInput(session, "ke", value = ddm_ke())
     }
-    
+
+    # 新搜尋先清成 0，避免留下上一檔的 D0；財報載入後再覆寫
+    observeEvent(current_ticker(), {
+      updateNumericInput(session, "d0", value = 0)
+    }, ignoreNULL = TRUE)
+
     observeEvent(d_cash_flow(), {
       sync_ddm_to_financials()
-    })
+    }, ignoreNULL = TRUE)
     
     observeEvent(input$reset_ddm, {
       updateCheckboxInput(session, "sync_g", value = TRUE)
@@ -107,10 +114,13 @@ ddm_module_server <- function(id, ddm_g = reactive(NULL), ddm_ke = reactive(NULL
     
     # DDM 核心：Gordon 或二階段
     ddm_calc <- eventReactive(input$btn_calc_ddm, {
-      req(input$d0, input$g, input$ke)
-      d0 <- input$d0
-      g_dec <- input$g / 100
-      ke_dec <- input$ke / 100
+      d0 <- suppressWarnings(as.numeric(input$d0)[1])
+      g_in <- suppressWarnings(as.numeric(input$g)[1])
+      ke_in <- suppressWarnings(as.numeric(input$ke)[1])
+      if (!is.finite(d0) || d0 < 0) d0 <- 0
+      req(is.finite(g_in), is.finite(ke_in))
+      g_dec <- g_in / 100
+      ke_dec <- ke_in / 100
       mode <- as.character(input$ddm_mode %||% "gordon")[1]
 
       if (identical(mode, "two_stage")) {
@@ -267,7 +277,10 @@ ddm_module_server <- function(id, ddm_g = reactive(NULL), ddm_ke = reactive(NULL
     # D0 Settings
     # ==========================================
     output$ibx_d0_scraped <- renderInfoBox({
-      val <- if(is.na(scraped_d0()) || is.null(scraped_d0())) "N/A" else paste0(money_prefix(), scraped_d0())
+      d0_sc <- tryCatch(scraped_d0(), error = function(e) 0)
+      d0_sc <- suppressWarnings(as.numeric(d0_sc)[1])
+      if (!is.finite(d0_sc) || d0_sc < 0) d0_sc <- 0
+      val <- paste0(money_prefix(), round(d0_sc, 2))
       infoBox("財報最新股利 (D0)", val, icon = icon("money-bill-wave"), color = "blue", fill = TRUE)
     })
     

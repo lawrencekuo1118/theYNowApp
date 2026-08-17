@@ -60,7 +60,7 @@ APP_DEFAULTS <- list(
   years           = 5,
 
   # --- 2. DDM ---
-  ddm_d0          = NA,                 # 由財報／Summary 自動帶入
+  ddm_d0          = 0,                  # 由財報自動帶入；無法計算則顯示 0
   ddm_g           = default_sgr,        # 股利 g；預設對齊中央 SGR，可覆寫
   ddm_ke          = default_re,
   ddm_sync_central_g = TRUE,            # 與 Get Started SGR 同步

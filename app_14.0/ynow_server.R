@@ -864,7 +864,7 @@ server <- function(input, output, session) {
       stock_code = c("基本設定", "預設股票代碼", "啟動／重置用 ticker"),
       industry_choice = c("基本設定", "預設產業鍵", "industry_standards 鍵名"),
       years = c("DCF", "預測年數 n", "Explicit forecast horizon"),
-      ddm_d0 = c("DDM", "D0", "通常由財報自動帶入"),
+      ddm_d0 = c("DDM", "D0", "由財報自動帶入；若無則 0"),
       ddm_g = c("DDM", "股利成長 g (%)", "預設對齊中央 SGR"),
       ddm_ke = c("DDM", "Ke (%)", "預設對齊 CAPM Re"),
       ddm_sync_central_g = c("DDM", "與中央 SGR 同步", "TRUE 時 DDM g 跟隨 SGR"),
@@ -872,7 +872,7 @@ server <- function(input, output, session) {
       ddm_g_stage1 = c("DDM", "高速期 g1 (%)", "二階段前段股利成長"),
       ddm_yr_stage1 = c("DDM", "高速期年數 n1", "二階段前段年數"),
       dcf_mode = c("DCF", "DCF 模式", "gordon / two_stage"),
-      dcf_claim = c("DCF", "現金流口徑", "fcff / fcfe"),
+      dcf_claim = c("DCF", "採用現金流", "fcff / fcfe"),
       dcf_chart_mode = c("DCF", "圖表模式", "simple / with_dcf"),
       cf_flow_series = c("Dashboard", "Cash Flow 疊圖序列", "ocf / icf / fcf(融資)"),
       g_growth_method = c("DCF", "營收成長估計法", "fundamental / revenue CAGR 等"),
@@ -1099,7 +1099,7 @@ server <- function(input, output, session) {
       Color = colors[keep],
       stringsAsFactors = FALSE
     )
-    # 佔總資產比例（會計恆等式口徑）
+    # 佔總資產比例（會計恆等式）
     plot_df$Pct <- plot_df$Value / assets * 100
     plot_df$Hover <- paste0(
       "<b>", plot_df$Category, "</b><br>",
@@ -1388,13 +1388,14 @@ server <- function(input, output, session) {
         }
       }
       df <- summary_data()
-      if (is.null(df)) return(NA)
-      div_row <- df[grepl("Dividend", df$Item, ignore.case = TRUE), ]
-      if (nrow(div_row) > 0) {
-        suppressWarnings(as.numeric(stringr::str_extract(div_row$Value[1], "^[0-9.]+")))
-      } else {
-        NA
+      if (!is.null(df)) {
+        div_row <- df[grepl("Dividend", df$Item, ignore.case = TRUE), ]
+        if (nrow(div_row) > 0) {
+          fallback <- suppressWarnings(as.numeric(stringr::str_extract(div_row$Value[1], "^[0-9.]+")))
+          if (is.finite(fallback) && fallback >= 0) return(round(fallback, 2))
+        }
       }
+      0
     }),
     
     summary_df = summary_data,
@@ -2201,7 +2202,7 @@ server <- function(input, output, session) {
       price_native, quote_currency(), session_currency(), fx_usd_twd()
     )
 
-    # 優先用 Summary 市值（已是報價股口徑），再換算 session；否則約當股數×價
+    # 優先用 Summary 市值（已是報價股數），再換算 session；否則約當股數×價
     e_native <- suppressWarnings(as.numeric(sh$market_cap)[1])
     if (!is.finite(e_native) || e_native <= 0) {
       e_native <- shares * price_native
@@ -4264,7 +4265,7 @@ server <- function(input, output, session) {
       return(invisible(NULL))
     }
 
-    # WACC（需財報／股價）；股權市值用報價口徑（ADR 自動約當）
+    # WACC（需財報／股價）；股權市值用報價股數（ADR 自動約當）
     bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
     sum_df <- tryCatch(summary_data(), error = function(e) NULL)
     if (is.null(bs) || !is.data.frame(bs) || nrow(bs) == 0) return(invisible(NULL))
@@ -4735,7 +4736,7 @@ server <- function(input, output, session) {
       disc_txt <- paste0(ke_pct, "%")
       HTML(glue::glue("<div style='padding: 15px; background: #fcfcfc; border: 1px solid #eee; font-size: 14px;'>
                   <b>評價模式：</b> {input$dcf_mode} <br/>
-                  <b>現金流口徑：</b> FCFE（Ke，直接股權） <br/>
+                  <b>採用現金流：</b> FCFE（Ke，直接股權） <br/>
                   <b>預測年數：</b> {input$years} 年 <br/>
                   <b>折現率 Ke：</b> {disc_txt}</div>"))
     } else {
@@ -4746,7 +4747,7 @@ server <- function(input, output, session) {
       }
       HTML(glue::glue("<div style='padding: 15px; background: #fcfcfc; border: 1px solid #eee; font-size: 14px;'>
                   <b>評價模式：</b> {input$dcf_mode} <br/>
-                  <b>現金流口徑：</b> FCFF（WACC，再橋接股權） <br/>
+                  <b>採用現金流：</b> FCFF（WACC，再橋接股權） <br/>
                   <b>預測年數：</b> {input$years} 年 <br/>
                   <b>折現率 WACC：</b> {wacc_val}</div>"))
     }
@@ -6407,7 +6408,7 @@ server <- function(input, output, session) {
         ),
         tags$li(
           tags$b("ADR／雙重股權："),
-          "股數依目前市值÷股價對齊報價股口徑後再算合理價（倍率固定套用各財年）。"
+          "股數依目前市值÷股價對齊報價股數後再算合理價（倍率固定套用各財年）。"
         )
       ),
       tags$h5(tags$b("二、數據來源")),

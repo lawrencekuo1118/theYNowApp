@@ -554,7 +554,7 @@ beta_advanced_tab_ui <- function() {
                   tags$li(tags$b("$$NAVPS = NAV / Shares;\\quad P = NAVPS \\times Target\\ P/B$$")),
                   tags$li(tags$b("Justified\\ P/B \\approx \\frac{ROE - g}{K_e - g}"))
                 ),
-                p("NAV 為帳面 SOTP：折價只套用在已辨識的投資科目，不是分部市值加總。無獨立投資科目時 NAV＝帳面權益。目標倍數可綜合 Justified（ROE／Ke）、產業中位與歷史中位，輸出 Bear／Base／Bull 三檔。雙重股權／ADR 等「報價股 ≠ 財報股數口徑」時，與 DCF／RI／回測相同，一律自動約當股數（市值÷股價）。")
+                p("NAV 為帳面 SOTP：折價只套用在已辨識的投資科目，不是分部市值加總。無獨立投資科目時 NAV＝帳面權益。目標倍數可綜合 Justified（ROE／Ke）、產業中位與歷史中位，輸出 Bear／Base／Bull 三檔。雙重股權／ADR 等「報價股數 ≠ 財報股數」時，與 DCF／RI／回測相同，一律自動約當股數（市值÷股價）。")
        )
       )
     )
@@ -2275,7 +2275,7 @@ ui <- dashboardPage(
                                     "今年發放股利 (D0)",
                                     value = APP_DEFAULTS$ddm_d0
                                   ),
-                                  helpText("D0 可由財報自動帶入，或至 D0 Settings 以配息率／歷史平均覆寫。")
+                                  helpText("由財報自動帶入：現金股利（現金流量表）÷ 股數；若無則顯示 0。可手動覆寫，或至 D0 Settings 以配息率／歷史平均覆寫。")
                                 )
                               )
                      )
@@ -2371,7 +2371,7 @@ ui <- dashboardPage(
                          column(
                            width = 12,
                            div(
-                             "D0 = 現金股利（或 EPS × 配息率）",
+                             "D0 = 現金股利（現金流量表）÷ 股數（或 EPS × 配息率）",
                              style = "font-size: 18px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
                            )
                          ),
@@ -2482,7 +2482,7 @@ ui <- dashboardPage(
                                                     selected = APP_DEFAULTS$dcf_mode),
                                        radioButtons(
                                          "dcf_claim",
-                                         "現金流口徑",
+                                         "採用現金流",
                                          choices = list(
                                            "FCFF（WACC，再橋接股權）" = "fcff",
                                            "FCFE（Ke，直接股權）" = "fcfe"
