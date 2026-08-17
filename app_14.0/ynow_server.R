@@ -432,7 +432,7 @@ server <- function(input, output, session) {
     }
   })
 
-  # Dashboard「回測濾鏡」：目前公司 KPI vs 持倉回測條件門檻
+  # 「測試」回測濾鏡：目前公司 KPI vs 持倉回測條件門檻
   bt_filter_state <- reactiveVal(NULL)
 
   observeEvent(input$bt_kpi_filter, {
@@ -7320,7 +7320,7 @@ server <- function(input, output, session) {
       }
       tks <- tks[nzchar(tks)]
       hdr <- c(
-        "# YNow Lab 美股績優篩選 — 本頁報告",
+        "# Blue Chip 美股績優篩選 — 本頁報告",
         "",
         sprintf("- 匯出時間：%s", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z")),
         sprintf("- 宇宙：S&P 500 · %d 檔 · 更新於 %s%s",
