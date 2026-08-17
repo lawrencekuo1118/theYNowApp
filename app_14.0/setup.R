@@ -1211,27 +1211,21 @@ clamp_yr_stage1 <- function(n_years, yr_stage1, default_yr = 3L) {
 # 📄 投資意見報告書輔助函數（券商研究報告格式）
 # =========================================================
 
-# 蒐集財務舞弊 / 體質警訊
-collect_fraud_warnings <- function(d_cf, d_is, d_bs) {
-  msgs <- character(0)
-  fcf <- get_avg(select_clean_metric_row(d_cf, "Free Cash Flow", include_ttm = FALSE))
-  ocf <- get_avg(select_clean_metric_row(d_cf, "Operating Cash Flow", include_ttm = FALSE))
-  # 與 OCF 比對時用營運利潤（淨利 − 投資證券未實現損益），避免會計波動誤判
-  op_earn <- get_operating_earnings_avg(d_is, include_ttm = FALSE)
-  debt <- get_avg(select_clean_metric_row(d_bs, "Total Debt", include_ttm = FALSE))
-  equity <- get_avg(select_clean_metric_row_any(d_bs, EQUITY_PATTERNS, include_ttm = FALSE))
-  
-  if (!is.na(fcf) && fcf < 0) msgs <- c(msgs, "自由現金流為負，可能面臨營運或資本支出壓力")
-  if (!is.na(ocf) && ocf < 0) msgs <- c(msgs, "營業現金流為負，核心業務現金創造能力不足")
-  if (!is.na(ocf) && !is.na(op_earn) && ocf < op_earn) {
-    msgs <- c(msgs, "營業現金流低於營業利益（淨利扣除投資證券未實現損益），獲利現金轉換率偏低")
+# 蒐集財務舞弊 / 體質警訊（與 YNOW 分頁 Schilit 自動判讀同一套；只列「警示」）
+collect_fraud_warnings <- function(d_cf, d_is, d_bs, industry_key = NULL) {
+  if (!exists("evaluate_shenanigans", mode = "function")) {
+    return(character(0))
   }
-  if (!is.na(op_earn) && !is.na(ocf) && op_earn > 0 && ocf < 0) {
-    msgs <- c(msgs, "營業利益為正但營業現金流為負，獲利品質存疑")
+  ev <- tryCatch(
+    evaluate_shenanigans(d_is, d_bs, d_cf, industry_key = industry_key),
+    error = function(e) NULL
+  )
+  if (is.null(ev) || !isTRUE(ev$ok) || is.null(ev$items) || nrow(ev$items) < 1L) {
+    return(character(0))
   }
-  ratio <- if (!is.na(debt) && !is.na(equity) && equity != 0) debt / equity else NA
-  if (!is.na(ratio) && ratio > 2) msgs <- c(msgs, "負債權益比偏高，財務槓桿風險需留意")
-  msgs
+  al <- ev$items[ev$items$status == "警示", , drop = FALSE]
+  if (nrow(al) < 1L) return(character(0))
+  paste0(al$code, " ", al$name, "：", al$reason)
 }
 
 # Piotroski F-Score（與決策看板 checklist 一致；供 PDF 報告）

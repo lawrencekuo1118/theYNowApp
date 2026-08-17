@@ -1459,6 +1459,49 @@ ui <- dashboardPage(
           font-weight: 600;
         }
 
+        /* YNOW：Schilit 自動判讀 */
+        .ynow-shen-wrap { margin: 0 0 16px 0; }
+        .ynow-shen-core {
+          margin: 0 0 10px 0; padding: 10px 12px;
+          background: #f7f9fb; border-left: 4px solid #1a5276;
+          font-size: 13px; color: #333; line-height: 1.55;
+        }
+        .ynow-shen-count { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px 0; }
+        .ynow-shen-st {
+          display: inline-block; font-size: 11.5px; font-weight: 700;
+          padding: 2px 8px; border-radius: 4px;
+        }
+        .ynow-shen-alert { background: #c0392b; color: #fff; }
+        .ynow-shen-watch { background: #f4e6c8; color: #7a4e00; }
+        .ynow-shen-pass { background: #e8f6ee; color: #1e7a45; }
+        .ynow-shen-na { background: #eee; color: #666; }
+        .ynow-shen-strip {
+          background: #fdf2f0; border: 1px solid #f0c9c4; border-radius: 6px;
+          padding: 10px 12px; margin: 0 0 14px 0;
+        }
+        .ynow-shen-strip h4 { margin: 0 0 8px 0; font-size: 15px; color: #922b21; }
+        .ynow-shen-cat { margin: 0 0 12px 0; }
+        .ynow-shen-cat h5 { margin: 0 0 8px 0; font-size: 14px; color: #1a5276; }
+        .ynow-shen-card {
+          border: 1px solid #e4e8ec; border-radius: 6px;
+          padding: 8px 10px; margin: 0 0 8px 0; background: #fff;
+        }
+        .ynow-shen-card.ynow-shen-alert { border-left: 4px solid #c0392b; }
+        .ynow-shen-card.ynow-shen-watch { border-left: 4px solid #d4a017; }
+        .ynow-shen-card.ynow-shen-pass { border-left: 4px solid #27ae60; }
+        .ynow-shen-card.ynow-shen-na { border-left: 4px solid #bbb; }
+        .ynow-shen-card-h {
+          display: flex; justify-content: space-between; align-items: center;
+          gap: 8px; margin-bottom: 4px;
+        }
+        .ynow-shen-code { font-weight: 700; font-size: 13px; color: #222; }
+        .ynow-shen-why { margin: 0 0 4px 0; font-size: 12.5px; color: #444; line-height: 1.45; }
+        .ynow-shen-metrics { margin: 0; font-size: 12px; color: #555; line-height: 1.4; }
+        .ynow-shen-sep { color: #bbb; padding: 0 4px; }
+        .ynow-shen-ok { font-size: 13px; color: #1e7a45; margin: 0 0 8px 0; }
+        .ynow-shen-fold { margin: 8px 0 0 0; font-size: 12.5px; color: #666; }
+        .ynow-shen-fold summary { cursor: pointer; font-weight: 600; }
+
         /* Backtest：績效指標卡片（軟色調 + 左側色條，避免實心色塊） */
         .ynow-metric-grid {
           --ynow-metric-green: #2d8a57;

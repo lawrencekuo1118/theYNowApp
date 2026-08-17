@@ -1328,7 +1328,8 @@ server <- function(input, output, session) {
     model_rec = reactive({ model_sidebar_rec() }),
     primary_band = reactive({ primary_valuation_band() }),
     secondary_point = reactive({ secondary_valuation_point() }),
-    confidence = reactive({ valuation_confidence() })
+    confidence = reactive({ valuation_confidence() }),
+    industry_key = reactive(input$industry_choice)
   )
 
   kpi_module_server("kpi", d_income_statement, d_balance_sheet, d_cash_flow, reactive(input$industry_choice))
@@ -2113,63 +2114,8 @@ server <- function(input, output, session) {
     )
   })
   
-  # ==========================================
-  # 🚨 6. 詐欺風險警示 (Fraud Risk Warnings)
-  # ==========================================
-  fraud_warnings <- reactiveValues(fcf = "", ocf = "", biz = "", cashback = "", debt = "")
-  
-  output$nofreecashflow <- renderText({
-    fcf <- get_avg(select_clean_metric_row(d_cash_flow(), "Free Cash Flow", include_ttm = FALSE))
-    fraud_warnings$fcf <- if (is.na(fcf)) "" else if (fcf < 0) "⚠️ 自由現金流為負數，可能營運困難或大量資本支出" else ""
-    fraud_warnings$fcf
-  })
-  
-  output$nooperatingcashflow <- renderText({
-    ocf <- get_avg(select_clean_metric_row(d_cash_flow(), "Operating Cash Flow", include_ttm = FALSE))
-    fraud_warnings$ocf <- if (is.na(ocf)) "" else if (ocf < 0) "⚠️ 營業現金流為負數，代表核心業務沒有產生現金" else ""
-    fraud_warnings$ocf
-  })
-  
-  output$notdoingbusiness <- renderText({
-    ocf <- get_avg(select_clean_metric_row(d_cash_flow(), "Operating Cash Flow", include_ttm = FALSE))
-    op_earn <- get_operating_earnings_avg(d_income_statement(), include_ttm = FALSE)
-    fraud_warnings$biz <- if (is.na(ocf) || is.na(op_earn)) {
-      ""
-    } else if (ocf < op_earn) {
-      "⚠️ 營業現金流低於營業利益（淨利扣除投資證券未實現損益），帳面賺錢但現金未實現"
-    } else {
-      ""
-    }
-    fraud_warnings$biz
-  })
-  
-  output$notgettingcashback <- renderText({
-    ocf <- get_avg(select_clean_metric_row(d_cash_flow(), "Operating Cash Flow", include_ttm = FALSE))
-    op_earn <- get_operating_earnings_avg(d_income_statement(), include_ttm = FALSE)
-    fraud_warnings$cashback <- if (is.na(ocf) || is.na(op_earn)) {
-      ""
-    } else if (op_earn > 0 && ocf < 0) {
-      "⚠️ 營業利益為正但營業現金流為負，獲利品質存疑"
-    } else {
-      ""
-    }
-    fraud_warnings$cashback
-  })
-  
-  output$highdebttoequity <- renderText({
-    total_liabilities <- get_avg(select_clean_metric_row(d_balance_sheet(), "Total Debt", include_ttm = FALSE))
-    total_equity <- get_avg(select_clean_metric_row_any(d_balance_sheet(), EQUITY_PATTERNS, include_ttm = FALSE))
-    ratio <- if (is.na(total_liabilities) || is.na(total_equity) || total_equity == 0) NA else total_liabilities / total_equity
-    fraud_warnings$debt <- if (is.na(ratio)) "" else if (ratio > 2) "⚠️ 負債對權益比率過高，財務槓桿風險大" else ""
-    fraud_warnings$debt
-  })
-  
-  output$no_fraud_detected <- renderText({
-    if (all(fraud_warnings$fcf == "", fraud_warnings$ocf == "", fraud_warnings$biz == "", fraud_warnings$cashback == "", fraud_warnings$debt == "")) {
-      "Currently no fraud risks detected."
-    } else ""
-  })
-  
+  # 詐欺警示已併入 YNOW 分頁 Schilit 自動判讀（decision_server$shenanigans_panel）
+
   # Annotation 產業快覽已併入 dashboard_selected_industry；此處保留空輸出以免舊引用
   output$annotation_industry_bands <- renderUI({ NULL })
 
@@ -6724,7 +6670,8 @@ server <- function(input, output, session) {
         }
 
         warn_msgs <- collect_fraud_warnings(
-          isolate(d_cash_flow()), isolate(d_income_statement()), isolate(d_balance_sheet())
+          isolate(d_cash_flow()), isolate(d_income_statement()), isolate(d_balance_sheet()),
+          industry_key = isolate(input$industry_choice)
         )
         fscore_info <- compute_report_f_score(
           isolate(d_income_statement()), isolate(d_balance_sheet()), isolate(d_cash_flow())

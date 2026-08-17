@@ -37,38 +37,7 @@ decision_ui <- function(id) {
       column(
         width = 12,
         style = "padding: 0 15px 8px 15px;",
-        tags$div(
-          class = "ynow-fraud-banner",
-          style = "background-color: #d9534f; color: white; padding: 12px 14px; margin: 0 0 14px 0; border-radius: 4px;",
-          tags$h4(
-            icon("exclamation-triangle"), " Fraud Warnings",
-            style = "font-weight: bold; margin: 0 0 8px 0; font-size: 15px; border-bottom: 1px solid #ffcccc; padding-bottom: 8px;"
-          ),
-          tags$div(
-            style = "font-size: 13px; line-height: 1.55;",
-            textOutput("highdebttoequity"),
-            textOutput("nofreecashflow"),
-            textOutput("nooperatingcashflow"),
-            textOutput("notdoingbusiness"),
-            textOutput("notgettingcashback"),
-            textOutput("no_fraud_detected")
-          )
-        ),
-        tags$div(
-          class = "ynow-about-section",
-          h3(class = "ynow-about-section-title", tags$b("Financial Fraud Red Flags (財務舞弊警訊)")),
-          p(
-            class = "ynow-about-section-lead",
-            "本系統內建五項核心排雷機制，透過交叉比對現金流與獲利品質，自動偵測潛在的地雷股："
-          ),
-          tags$ul(
-            tags$li(tags$b("無自由現金流 (No FCF)："), "長期 FCF 為負，代表企業無法靠自身營運創造現金，需依賴外部融資。"),
-            tags$li(tags$b("無營業現金流 (No OCF)："), "OCF 為負是極度危險的訊號，代表核心本業正在失血。"),
-            tags$li(tags$b("獲利未實現 (OCF < Net Income)："), "俗稱「紙上富貴」，損益表雖然賺錢，但現金沒有實際流入公司，可能存在應收帳款作帳疑慮。"),
-            tags$li(tags$b("虛假獲利 (Net Income > 0 but OCF < 0)："), "最經典的舞弊特徵，強烈暗示獲利品質不佳。"),
-            tags$li(tags$b("高財務槓桿 (Debt/Equity > 2)："), "負債比過高，在升息循環或景氣下行時面臨極大的流動性風險。")
-          )
-        )
+        uiOutput(ns("shenanigans_panel"))
       )
     )
   )
@@ -115,7 +84,7 @@ decision_momentum_panel_ui <- function(id) {
         style = "font-size: 13px; line-height: 1.55; color: #333; margin-bottom: 6px;",
         tags$li("日收盤價：Yahoo Finance（優先 yfinance；失敗時 quantmod／Yahoo）。"),
         tags$li("先抓約 1 年歷史，決策使用近約 180 個交易日；均線以 R 套件 TTR::SMA 計算。"),
-        tags$li("與回測「情緒策略」的動能／RSI 疊加不同：此處僅雙均線確認，供 Sensitivity 決策漏斗 Timing。")
+        tags$li("與回測「情緒策略」的動能／RSI 疊加不同：此處僅雙均線確認，供 YNOW 決策漏斗 Timing。")
       )
     )
   )
@@ -141,7 +110,8 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
                             model_rec = reactive(NULL),
                             primary_band = reactive(NULL),
                             secondary_point = reactive(NA),
-                            confidence = reactive(NULL)) {
+                            confidence = reactive(NULL),
+                            industry_key = reactive(NULL)) {
   moduleServer(id, function(input, output, session) {
 
     get_row_safe <- function(df, label) {
@@ -272,18 +242,21 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       )
     })
 
-    fraud_flag_n <- reactive({
+    shen_eval <- reactive({
       is_df <- tryCatch(d_is(), error = function(e) NULL)
       bs_df <- tryCatch(d_bs(), error = function(e) NULL)
       cf_df <- tryCatch(d_cf(), error = function(e) NULL)
-      if (is.null(is_df) || is.null(bs_df) || is.null(cf_df) ||
-          !is.data.frame(is_df) || !is.data.frame(bs_df) || !is.data.frame(cf_df) ||
-          nrow(is_df) == 0L || nrow(bs_df) == 0L || nrow(cf_df) == 0L) {
-        return(NA_integer_)
-      }
-      msgs <- tryCatch(collect_fraud_warnings(cf_df, is_df, bs_df), error = function(e) NULL)
-      if (is.null(msgs)) return(NA_integer_)
-      as.integer(length(msgs))
+      key <- tryCatch(industry_key(), error = function(e) NULL)
+      tryCatch(
+        evaluate_shenanigans(is_df, bs_df, cf_df, industry_key = key),
+        error = function(e) .empty_shenanigans(ok = FALSE, message = "自動判讀略過。")
+      )
+    })
+
+    fraud_flag_n <- reactive({
+      ev <- tryCatch(shen_eval(), error = function(e) NULL)
+      if (is.null(ev) || !isTRUE(ev$ok)) return(NA_integer_)
+      as.integer(ev$n_alert)
     })
 
     output$vbox_fraud <- renderUI({
@@ -294,9 +267,14 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
         paste0(n, " 項"),
         "財務舞弊警訊",
         icon = icon("exclamation-triangle"),
-        color = "red",
+        color = if (n > 0L) "red" else "green",
         width = 4
       )
+    })
+
+    output$shenanigans_panel <- renderUI({
+      ev <- tryCatch(shen_eval(), error = function(e) NULL)
+      shenanigans_results_ui(ev)
     })
 
     output$vbox_momentum <- renderValueBox({
