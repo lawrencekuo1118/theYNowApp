@@ -75,13 +75,6 @@ pb_asset_module_ui <- function(id) {
                             column(12, tableOutput(ns("tbl_nav_breakdown")))
                           ),
                           hr(style = "border-top: 1px solid #BDC3C7;"),
-                          h4(tags$b("目標本淨比假設")),
-                          fluidRow(
-                            column(4, numericInput(ns("pb_low"),  "保守 P/B (×)", value = APP_DEFAULTS$pb_low,  step = 0.05, min = 0.1)),
-                            column(4, numericInput(ns("pb_mid"),  "基準 P/B (×)", value = APP_DEFAULTS$pb_mid,  step = 0.05, min = 0.1)),
-                            column(4, numericInput(ns("pb_high"), "樂觀 P/B (×)", value = APP_DEFAULTS$pb_high, step = 0.05, min = 0.1))
-                          ),
-                          uiOutput(ns("ui_pb_source_note")),
                           fluidRow(
                             column(6,
                                    selectInput(ns("basis"), "估值基礎",
@@ -90,7 +83,20 @@ pb_asset_module_ui <- function(id) {
                                                            "控股 NAVPS" = "navps"),
                                                selected = APP_DEFAULTS$pb_basis)
                             ),
-                            column(6,
+                            column(6, helpText("合理價＝選定基礎 × 目標本淨比。倍數請至右側「目標本淨比」分頁設定。"))
+                          )
+                 ),
+
+                 tabPanel("目標本淨比", icon = icon("bullseye"),
+                          h4(tags$b("目標本淨比假設")),
+                          fluidRow(
+                            column(4, numericInput(ns("pb_low"),  "保守 P/B (×)", value = APP_DEFAULTS$pb_low,  step = 0.05, min = 0.1)),
+                            column(4, numericInput(ns("pb_mid"),  "基準 P/B (×)", value = APP_DEFAULTS$pb_mid,  step = 0.05, min = 0.1)),
+                            column(4, numericInput(ns("pb_high"), "樂觀 P/B (×)", value = APP_DEFAULTS$pb_high, step = 0.05, min = 0.1))
+                          ),
+                          uiOutput(ns("ui_pb_source_note")),
+                          fluidRow(
+                            column(12,
                                    checkboxInput(ns("use_industry_pb"),
                                                  tags$span(style = "font-weight: bold;", "納入產業本淨比先驗（與 Justified／歷史合成）"),
                                                  value = APP_DEFAULTS$pb_use_industry)
@@ -102,13 +108,6 @@ pb_asset_module_ui <- function(id) {
                                                 icon = icon("undo"), class = "btn-sm",
                                                 style = "background-color: #7f8c8d; color: white; border: none; margin-top: 10px;")
                             )
-                          ),
-                          br(),
-                          div(style = "background-color: #f9f9f9; padding: 15px; border-left: 4px solid #2980b9;",
-                              h4(tags$b("使用情境")),
-                              p("適用於銀行、保險、控股／綜合企業：折現模型（DCF／DDM）前提常不成立時，以淨資產與合理本淨比定價。控股可改用 NAVPS（帳面 SOTP＋控股折價）。"),
-                              p(style = "font-size: 13px; color: #7f8c8d; margin-bottom: 0;",
-                                "※ Buffett／Berkshire 實務常以 Book Value 為錨；目標 P/B 請依產業與利率環境調整，勿固定單一倍數。")
                           )
                  )
           ),
@@ -449,7 +448,7 @@ pb_asset_module_server <- function(id,
     output$ui_pb_result <- renderUI({
       if (is.null(input$btn_calc_pb) || input$btn_calc_pb == 0) {
         return(div(style = "color: #7f8c8d; padding: 15px; text-align: center;",
-                   "請確認 Settings 中的 BVPS／TBVPS／NAVPS 與目標 P/B，然後按下「試算 P/B 合理價」。"))
+                   "請確認 P/B Settings 的 BVPS／TBVPS／NAVPS，以及「目標本淨比」分頁的倍數，然後按下「試算 P/B 合理價」。"))
       }
       res <- pb_calc()
       if (res$status == "error") {
