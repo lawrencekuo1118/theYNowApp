@@ -21,7 +21,7 @@ decision_ui <- function(id) {
     ),
     fluidRow(
       box(
-        title = "智能決策矩陣 The Decision Funnel", width = 12, status = "primary", solidHeader = TRUE,
+        title = "智慧決策矩陣 The Decision Funnel", width = 12, status = "primary", solidHeader = TRUE,
         column(
           width = 5,
           h4("F-Score 體質檢核清單"),
@@ -226,7 +226,7 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       mom <- mom_status()
       if (f_score < 4 || f_quality == 0) {
         return(list(class = "alert-danger", icon = "skull-crossbones", title = "價值陷阱警訊",
-                    text = "財務質量偏弱，或經營現金流難以支撐帳面獲利。即便估值看似便宜，亦不宜貿然摸底。"))
+                    text = "財務品質偏弱，或營業現金流難以支撐帳面獲利。即便估值看似便宜，亦不宜貿然抄底。"))
       }
       if (!is.na(mos) && mos < 0) {
         if (mom$triggered) {

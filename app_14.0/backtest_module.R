@@ -1581,7 +1581,7 @@ nav_perf_metrics <- function(equity_df) {
         sent_mult <- 1
         gf <- list(pass = NA, path = "fv_only")
         explain_txt <- sprintf(
-          "%s | 策略公允(勾選平均) %.2f (dcf %.2f / ddm %.2f / ri %.2f / pb %.2f) vs 市價 %.2f, MOS %.1f%%, score %.0f/100. Rollingβ=%.2f Rf=%.1f%% Rm=%.1f%%(%s) Ke=%.1f%% WACC=%.1f%% We=%.0f%%.%s",
+          "%s | 策略合理價(勾選平均) %.2f (dcf %.2f / ddm %.2f / ri %.2f / pb %.2f) vs 市價 %.2f, MOS %.1f%%, score %.0f/100. Rollingβ=%.2f Rf=%.1f%% Rm=%.1f%%(%s) Ke=%.1f%% WACC=%.1f%% We=%.0f%%.%s",
           signal_i,
           .safe_num(pit$fair_value, NA_real_),
           .safe_num(pit$fv_dcf, NA_real_), .safe_num(pit$fv_ddm, NA_real_),
@@ -1619,7 +1619,7 @@ nav_perf_metrics <- function(equity_df) {
         sent_mult <- if (pos_a > 1e-9) pos_b / pos_a else 1
 
         explain_txt <- sprintf(
-          "%s | 策略公允(勾選平均) %.2f (dcf %.2f / ddm %.2f / ri %.2f / pb %.2f) vs 市價 %.2f, MOS %.1f%%, score %.0f/100. Rollingβ=%.2f Rf=%.1f%% Rm=%.1f%%(%s) Ke=%.1f%% WACC=%.1f%% We=%.0f%%.%s 過濾:%s(%s). Exp_A=%.2f, Exp_B=%.2f (sent=%.2f blend=%.2f).",
+          "%s | 策略合理價(勾選平均) %.2f (dcf %.2f / ddm %.2f / ri %.2f / pb %.2f) vs 市價 %.2f, MOS %.1f%%, score %.0f/100. Rollingβ=%.2f Rf=%.1f%% Rm=%.1f%%(%s) Ke=%.1f%% WACC=%.1f%% We=%.0f%%.%s 過濾:%s(%s). Exp_A=%.2f, Exp_B=%.2f (sent=%.2f blend=%.2f).",
           signal_i,
           .safe_num(pit$fair_value, NA_real_),
           .safe_num(pit$fv_dcf, NA_real_), .safe_num(pit$fv_ddm, NA_real_),

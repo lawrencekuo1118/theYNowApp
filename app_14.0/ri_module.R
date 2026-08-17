@@ -106,7 +106,7 @@ compute_ri_valuation <- function(b0,
     return(list(status = "error", message = "ROE 路徑長度／數值無效。", warnings = warnings))
   }
   if (any(roe_path < ke)) {
-    warnings <- c(warnings, "部分年度 ROE < Ke：剩餘收益將為負（價值銷毀）。")
+    warnings <- c(warnings, "部分年度 ROE < Ke：剩餘收益將為負（價值減損）。")
   }
 
   df <- data.frame(
@@ -246,7 +246,7 @@ ri_module_ui <- function(id) {
         h4(tags$b("每股帳面淨值 (B0) 估算區")),
         fluidRow(
           div(
-            "B0 = 普通股股東權益 (Common Equity) ÷ 發行股數 (Shares Outstanding)",
+            "B0 = 普通股股東權益 (Common Equity) ÷ 流通在外股數 (Shares Outstanding)",
             style = paste(
               "font-size: 15px; font-weight: bold; color: #2C3E50; text-align: center;",
               "margin-bottom: 12px; padding: 10px; background-color: #F8F9F9;",
@@ -439,7 +439,7 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
         updateNumericInput(session, "b0", value = calc_b0)
         showNotification(paste0("✅ 已成功從資產負債表更新 B0 為 $", calc_b0), type = "message")
       } else {
-        showNotification("⚠️ 無法從當前財報讀取完整 B0 所需欄位", type = "error")
+        showNotification("⚠️ 無法從目前財報讀取完整 B0 所需欄位", type = "error")
       }
     })
 

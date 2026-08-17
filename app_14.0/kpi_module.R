@@ -87,7 +87,7 @@ kpi_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_fl
       color <- get_box_color(industry_choice(), "rev_growth", val)
       valueBox(
         value = if (!is.na(val)) paste0(sprintf("%.2f", val), "%") else "N/A",
-        subtitle = "營運現金成長率 Operating CF Growth",
+        subtitle = "營業現金成長率 Operating CF Growth",
         color = color,
         icon = icon("chart-line"))
     })
@@ -109,7 +109,7 @@ kpi_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_fl
       color <- get_box_color(industry_choice(), "rev_growth", val)
       valueBox(
         value = if (!is.na(val)) paste0(sprintf("%.2f", val), "%") else "N/A",
-        subtitle = "融資現金成長率 Financing CF Growth",
+        subtitle = "籌資現金成長率 Financing CF Growth",
         color = color,
         icon = icon("chart-line"))
     })
@@ -148,7 +148,7 @@ kpi_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_fl
       ratio <- if (!is.na(rev) && !is.na(asset) && asset != 0) rev / asset else NA_real_
       valueBox(
         value = if (!is.na(ratio)) sprintf("%.2f", ratio) else "N/A",
-        subtitle = "資產周轉率 Asset Turnover",
+        subtitle = "資產週轉率 Asset Turnover",
         color = "black",
         icon = icon("chart-line"))
     })

@@ -451,20 +451,20 @@ annotation_kpi_guide_df <- function(industry_key = NULL) {
          "與營收成長共用產業「成長」區間著色"),
     list("財務槓桿", "Total Assets / Equity", "適中／偏低較穩", "eqt_multiplier", "x",
          "權益乘數；高於區間＝紅（槓桿偏高）"),
-    list("營運現金成長", "年均 YoY(Operating CF)", "越高越好", "rev_growth", "%",
+    list("營業現金成長", "年均 YoY(Operating CF)", "越高越好", "rev_growth", "%",
          "現金動能；共用成長區間著色"),
     list("投資現金成長", "年均 YoY(Investing CF)", "視策略", "rev_growth", "%",
          "負值常見（擴產／投資流出）；著色仍對成長區間，需搭配商業邏輯解讀"),
-    list("融資現金成長", "年均 YoY(Financing CF)", "視資本結構", "rev_growth", "%",
-         "借款／配息／回購會造成正負波動"),
+    list("籌資現金成長", "年均 YoY(Financing CF)", "視資本結構", "rev_growth", "%",
+         "借款／配息／庫藏股買回會造成正負波動"),
     list("ROA", "Net Income / Assets", "越高越好", "roa", "%",
          "資產運用效率"),
     list("ROE", "Net Income / Equity", "越高越好", "roe", "%",
          "股東報酬；過高需檢查是否槓桿推升"),
-    list("資產周轉率", "Revenue / Assets", "越高越好（無區間）", NA_character_, "x",
+    list("資產週轉率", "Revenue / Assets", "越高越好（無區間）", NA_character_, "x",
          "目前不套產業著色（固定黑），僅供交叉閱讀"),
     list("OCF／淨利", "Operating CF / Net Income", "≥1 較佳（無區間）", NA_character_, "x",
-         "盈餘品質；與 F-Score「OCF＞營運利潤」相互參照，不套產業色")
+         "盈餘品質；與 F-Score「OCF＞營業利益」相互參照，不套產業色")
   )
   do.call(rbind, lapply(rows, function(r) {
     band <- if (!is.na(r[[4]]) && nzchar(key)) {
@@ -498,7 +498,7 @@ annotation_stability_df <- function() {
       "財務槓桿（權益乘數）",
       "OCF／淨利、F-Score 盈餘品質",
       "ROA、ROE",
-      "資產周轉率"
+      "資產週轉率"
     ),
     解讀穩定度 = c("高", "高", "中", "中高", "高", "中高", "中"),
     使用提示 = c(

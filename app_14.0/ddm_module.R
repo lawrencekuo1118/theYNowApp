@@ -298,7 +298,7 @@ ddm_module_server <- function(id, ddm_g = reactive(NULL), ddm_ke = reactive(NULL
       
       payout <- if(!is.na(d0) && !is.na(eps_val) && eps_val > 0) round((d0 / eps_val) * 100, 2) else NA
       val <- if(is.na(payout)) "N/A" else paste0(payout, "%")
-      infoBox("當前配息率", val, icon = icon("percent"), color = "purple", fill = TRUE)
+      infoBox("目前配息率", val, icon = icon("percent"), color = "purple", fill = TRUE)
     })
     
     observeEvent(summary_df(), {

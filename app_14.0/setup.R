@@ -702,7 +702,7 @@ get_avg_growth <- function(x) {
 # ==========================================
 # 🚨 數據缺失警示 UI 共用函數
 # ==========================================
-ui_missing_data_alert <- function(check_list, fallback_msg = "系統已自動將上述項目視為 0 代入計算。請確認是否需要手動補齊數值以確保預測精準度。") {
+ui_missing_data_alert <- function(check_list, fallback_msg = "系統已自動將上述項目視為 0 代入計算。請確認是否需要手動補齊數值以確保預測精確度。") {
   
   # 找出 NA, NULL 或空字串的項目
   missing_items <- names(check_list)[sapply(check_list, function(x) {
@@ -713,7 +713,7 @@ ui_missing_data_alert <- function(check_list, fallback_msg = "系統已自動將
     shiny::div(
       style = "color: #a94442; background-color: #f2dede; border: 1px solid #ebccd1; padding: 15px; border-radius: 4px; margin-bottom: 20px;",
       shiny::icon("exclamation-triangle"), 
-      shiny::tags$b(" 偵測到數據缺失："), 
+      shiny::tags$b(" 偵測到資料缺漏："), 
       shiny::tags$span(style = "color: #c7254e; font-weight: bold;", paste(missing_items, collapse = "、 ")),
       shiny::br(),
       shiny::span(style = "font-size: 13px;", fallback_msg)
@@ -1192,10 +1192,10 @@ collect_fraud_warnings <- function(d_cf, d_is, d_bs) {
   if (!is.na(fcf) && fcf < 0) msgs <- c(msgs, "自由現金流為負，可能面臨營運或資本支出壓力")
   if (!is.na(ocf) && ocf < 0) msgs <- c(msgs, "營業現金流為負，核心業務現金創造能力不足")
   if (!is.na(ocf) && !is.na(op_earn) && ocf < op_earn) {
-    msgs <- c(msgs, "營業現金流低於營運利潤（淨利扣除投資證券未實現損益），獲利現金轉換率偏低")
+    msgs <- c(msgs, "營業現金流低於營業利益（淨利扣除投資證券未實現損益），獲利現金轉換率偏低")
   }
   if (!is.na(op_earn) && !is.na(ocf) && op_earn > 0 && ocf < 0) {
-    msgs <- c(msgs, "營運利潤為正但營業現金流為負，獲利品質存疑")
+    msgs <- c(msgs, "營業利益為正但營業現金流為負，獲利品質存疑")
   }
   ratio <- if (!is.na(debt) && !is.na(equity) && equity != 0) debt / equity else NA
   if (!is.na(ratio) && ratio > 2) msgs <- c(msgs, "負債權益比偏高，財務槓桿風險需留意")
@@ -1271,7 +1271,7 @@ compute_report_f_score <- function(d_is, d_bs, d_cf) {
       checklist = data.frame(
         `檢驗維度` = c(
           "獲利性 (ROA > 0)", "獲利性 (OCF > 0)", "獲利性 (ROA 成長)",
-          "獲利性 (盈餘品質：OCF > 營運利潤)",
+          "獲利性 (盈餘品質：OCF > 營業利益)",
           "安全性 (槓桿下降)", "安全性 (流動比提升)", "安全性 (未大幅增資)",
           "效率 (毛利率提升)", "效率 (資產週轉率提升)"
         ),

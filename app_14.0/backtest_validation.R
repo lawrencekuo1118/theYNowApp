@@ -554,7 +554,7 @@ build_signal_explain <- function(row) {
   lines <- c(
     sprintf("再平衡日: %s (財年 %s)",
             as.character(g("Date")), as.character(g("fund_year"))),
-    sprintf("市價: %s | 策略公允（勾選平均）: %s",
+    sprintf("市價: %s | 策略合理價（勾選平均）: %s",
             fmt(g("hist_price")), fmt(g("fair_value"))),
     sprintf("分項模型 - DCF: %s | DDM: %s | RI: %s | P/B: %s",
             fmt(g("fv_dcf")), fmt(g("fv_ddm")),

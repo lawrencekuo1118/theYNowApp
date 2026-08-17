@@ -214,7 +214,7 @@ emit_html(sprintf(
 
 <p class="section-lead">本報告整合多模型評價（DCF／DDM／RI／P/B）、F-Score 體質檢核、關鍵財務指標與 Fraud Warnings，供研究參考。目標價取自主模型 Base；並附 Bear／Bull 區間與可信度。</p>
 
-## 關鍵數據一覽
+## 關鍵資料一覽
 
 ```{r snapshot, results='asis'}
 range_txt <- {
@@ -236,7 +236,7 @@ conf_txt <- {
 fs_n <- suppressWarnings(as.numeric(params$fscore_total)[1])
 fs_txt <- if (is.finite(fs_n)) paste0(as.integer(fs_n), " / 9") else "N/A"
 snap <- data.frame(
-  項目 = c("股票代碼", "公司名稱", "市值", "本益比 (P/E)", "Beta", "股息殖利率",
+  項目 = c("股票代號", "公司名稱", "市值", "本益比 (P/E)", "Beta", "股息殖利率",
            "F-Score 體質", "企業價值 EV (DCF)", "DCF 每股合理價", "DDM 每股合理價",
            "RI 每股合理價", "P/B 每股合理價",
            "主模型區間 (Bear/Base/Bull)", "副模型檢核", "估值可信度",
@@ -371,7 +371,7 @@ fs_n <- suppressWarnings(as.numeric(params$fscore_total)[1])
 fq <- suppressWarnings(as.numeric(params$fscore_quality)[1])
 if (is.finite(fs_n)) {
   grade <- if (fs_n >= 7) "偏強" else if (fs_n >= 4) "中等" else "偏弱"
-  q_txt <- if (is.finite(fq) && fq == 1) "盈餘品質通過（OCF > 營運利潤）" else "盈餘品質未達標（OCF 未高於營運利潤）"
+  q_txt <- if (is.finite(fq) && fq == 1) "盈餘品質通過（OCF > 營業利益）" else "盈餘品質未達標（OCF 未高於營業利益）"
   emit_html(sprintf(
 "<div class='fscore-box'>
 <div class='fscore-score'>F-Score：%d / 9（%s）</div>

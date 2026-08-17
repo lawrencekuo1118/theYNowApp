@@ -98,7 +98,7 @@ pb_asset_module_ui <- function(id) {
                           fluidRow(
                             column(12,
                                    checkboxInput(ns("use_industry_pb"),
-                                                 tags$span(style = "font-weight: bold;", "納入產業本淨比先驗（與 Justified／歷史合成）"),
+                                                 tags$span(style = "font-weight: bold;", "納入產業本淨比（與 Justified／歷史一併計算）"),
                                                  value = APP_DEFAULTS$pb_use_industry)
                             )
                           ),
@@ -671,7 +671,7 @@ pb_asset_module_server <- function(id,
           b
         }
         rows[[length(rows) + 1]] <- .param_sensitivity_infl_row(
-          "產業 P/B 先驗", ind_mid, "x", v0,
+          "產業本淨比", ind_mid, "x", v0,
           .p_tgt(band = .band_at(.rel(ind_mid, -1))),
           .p_tgt(band = .band_at(.rel(ind_mid, +1))),
           "derive_pb_targets 產業權重來源"

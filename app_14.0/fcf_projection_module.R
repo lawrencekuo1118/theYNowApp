@@ -75,10 +75,10 @@ fcf_projection_module_ui <- function(id) {
            div(
              style = "background-color: #f9f9f9; padding: 15px; border-left: 4px solid #00a65a; margin: 12px 0 16px 0;",
              h4(tags$b("自由現金流 (FCF) 參數拆解")),
-             p("您可以點擊「同步按鈕」帶入最新財報，或手動微調參數來模擬不同的營運情境，藉此還原 FCF 與基本面永續成長率 (g) 的計算過程。"),
+             p("您可以點選「同步按鈕」帶入最新財報，或手動微調參數來模擬不同的營運情境，藉此還原 FCF 與基本面永續成長率 (g) 的計算過程。"),
              p(
                style = "font-size: 13px; color: #7f8c8d; margin-top: 5px; margin-bottom: 0px;",
-               "※ 符號說明：NOPAT (稅後營業利潤), D&A (折舊與攤銷), ΔNWC (營運資金變動), CapEx (資本支出)"
+               "※ 符號說明：NOPAT (稅後營業利益), D&A (折舊與攤銷), ΔNWC (營運資金變動), CapEx (資本支出)"
              )
            ),
            
@@ -97,7 +97,7 @@ fcf_projection_module_ui <- function(id) {
            
            fluidRow(
              column(4, numericInput(ns("fcf_revenue"), "當期營收 (Revenue)", value = 100)),
-             column(4, numericInput(ns("fcf_nopat"), "稅後營業利潤 (NOPAT)", value = 0)),
+             column(4, numericInput(ns("fcf_nopat"), "稅後營業利益 (NOPAT)", value = 0)),
              column(4, numericInput(ns("fcf_depreciation"), "折舊與攤銷 (D&A) [+]", value = 0))
            ),
            fluidRow(
@@ -607,7 +607,7 @@ fcf_projection_module_server <- function(
           FCFE = comp$FCFE
         )
         colnames(out) <- c(
-          "預測期", "預估營收", "稅後營業利潤 (NOPAT)", "折舊攤銷 (D&A)",
+          "預測期", "預估營收", "稅後營業利益 (NOPAT)", "折舊攤銷 (D&A)",
           "資本支出 (CapEx)", "營運資金變動 (ΔNWC)",
           "稅後利息", "淨舉債", "股權自由現金流 (FCFE)"
         )
@@ -616,7 +616,7 @@ fcf_projection_module_server <- function(
       } else {
         out <- df
         colnames(out) <- c(
-          "預測期", "預估營收", "稅後營業利潤 (NOPAT)", "折舊攤銷 (D&A)",
+          "預測期", "預估營收", "稅後營業利益 (NOPAT)", "折舊攤銷 (D&A)",
           "資本支出 (CapEx)", "營運資金變動 (ΔNWC)", "企業自由現金流 (FCFF)"
         )
         highlight <- "企業自由現金流 (FCFF)"
@@ -641,13 +641,13 @@ fcf_projection_module_server <- function(
       ui_missing_data_alert(
         check_list = list(
           "當期營收" = input$fcf_revenue,
-          "稅後營業利潤" = input$fcf_nopat,
+          "稅後營業利益" = input$fcf_nopat,
           "折舊與攤銷" = input$fcf_depreciation,
           "資本支出" = input$fcf_capex,
           "營運資金變動" = input$fcf_delta_nwc,
           "總投入資本" = input$fcf_invested_capital
         ),
-        fallback_msg = "系統已自動將缺失項目視為 0 代入計算（總投入資本預設為 1）。請確認是否需要手動補齊數值。"
+        fallback_msg = "系統已自動將缺漏項目視為 0 代入計算（總投入資本預設為 1）。請確認是否需要手動補齊數值。"
       )
     })
     

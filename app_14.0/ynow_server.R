@@ -138,7 +138,7 @@ server <- function(input, output, session) {
     beta_capm_driver("gs")
     stock_code <- current_ticker()
     
-    withProgress(message = paste('🚀 正在獲取', stock_code, '的最新數據...'), value = 0, {
+    withProgress(message = paste('🚀 正在取得', stock_code, '的最新資料...'), value = 0, {
       tryCatch({
         incProgress(0.2, detail = "正在讀取 Summary（yfinance）...")
         sum_df <- get_summary_data(stock_code)
@@ -226,11 +226,11 @@ server <- function(input, output, session) {
           }
         }, error = function(e) NULL)
 
-        incProgress(0.9, detail = "數據同步完成！✅")
+        incProgress(0.9, detail = "資料同步完成！✅")
 
       }, error = function(e) {
         showNotification(
-          paste("❌ 獲取資料失敗，請確認代碼。錯誤:", e$message),
+          paste("❌ 取得資料失敗，請確認代號。錯誤:", e$message),
           type = "error",
           duration = 12
         )
@@ -861,7 +861,7 @@ server <- function(input, output, session) {
   defaults_rows <- reactive({
     # Human labels for APP_DEFAULTS keys (unlisted keys still appear by key name)
     label_map <- list(
-      stock_code = c("基本設定", "預設股票代碼", "啟動／重置用 ticker"),
+      stock_code = c("基本設定", "預設股票代號", "啟動／重置用 ticker"),
       industry_choice = c("基本設定", "預設產業鍵", "industry_standards 鍵名"),
       years = c("DCF", "預測年數 n", "Explicit forecast horizon"),
       ddm_d0 = c("DDM", "D0", "由財報自動帶入；若無則 0"),
@@ -893,7 +893,7 @@ server <- function(input, output, session) {
       wacc_tax = c("WACC", "稅率 T (%)", "After-tax debt cost"),
       use_est_re = c("WACC", "使用 CAPM Re", "UI: use_estimated_re；TRUE = Re 跟 CAPM"),
       capm_rf = c("CAPM", "Rf (%)", "無風險利率（啟動時估）"),
-      capm_beta = c("CAPM", "Beta", "啟動占位；估值路徑就緒後改寫入選定來源"),
+      capm_beta = c("CAPM", "Beta", "啟動暫定值；估值路徑就緒後改寫入選定來源"),
       sync_gs_beta = c("CAPM", "與 Get Started 同步", "TRUE = WACC/CAPM β 跟隨 Get Started 套用來源（預設 Summary β）"),
       beta_bench = c("Beta", "基準指數", "Rolling β 對照標的，預設 SPY（不寫入 CAPM）"),
       beta_lookback_months = c("Beta", "回溯月數", "常見 36／60／84；預設 60 對齊 Yahoo 5Y"),
@@ -903,13 +903,13 @@ server <- function(input, output, session) {
       beta_bottomup_agg = c("Beta", "Bottom-Up 聚合", "mean / median"),
       beta_u_apply_source = c("Beta", "套用 β 來源", "summary / industry / bottomup / unlever_firm / manual (rolling blocked)"),
       beta_u_manual = c("Beta", "手動 β", "數值（直接寫入 CAPM）"),
-      beta_peers = c("Beta", "Bottom-up 同業", "逗號分隔代碼；UI 多選"),
+      beta_peers = c("Beta", "Bottom-up 同業", "逗號分隔代號；UI 多選"),
       beta_relever_de_mode = c("Beta（舊版相容）", "再槓桿 D/E 模式", "隱藏相容；UI 已移除"),
       beta_target_de = c("Beta（舊版相容）", "目標 D/E", "隱藏相容；UI 已移除"),
       capm_rm = c("CAPM", "Rm (%)", "預期市場報酬"),
       ri_years = c("RI", "預測期 (Years)", "RI 模組預設年數"),
-      ri_roe = c("RI", "起始／預期 ROE (%)", "財報載入前占位；載入後覆寫"),
-      ri_payout = c("RI", "配息率 Payout (%)", "財報載入前占位；載入後覆寫"),
+      ri_roe = c("RI", "起始／預期 ROE (%)", "財報載入前暫定值；載入後覆寫"),
+      ri_payout = c("RI", "配息率 Payout (%)", "財報載入前暫定值；載入後覆寫"),
       roe_method = c("RI", "ROE 預測方法", "constant / linear / industry / custom"),
       pb_bvps = c("P/B", "BVPS", "通常由財報帶入"),
       pb_tbvps = c("P/B", "TBVPS", "通常由財報帶入"),
@@ -1189,7 +1189,7 @@ server <- function(input, output, session) {
     spec <- list(
       ocf = list(key = "Operating Cash Flow", label = "營業現金流 OCF", color = "#2E86AB", symbol = "circle"),
       icf = list(key = "Investing Cash Flow", label = "投資現金流 ICF", color = "#E67E22", symbol = "diamond"),
-      fcf = list(key = "Financing Cash Flow", label = "融資現金流 FCF", color = "#8E44AD", symbol = "square")
+      fcf = list(key = "Financing Cash Flow", label = "籌資現金流 FCF", color = "#8E44AD", symbol = "square")
     )
 
     cf <- d_cash_flow()
@@ -2137,7 +2137,7 @@ server <- function(input, output, session) {
     fraud_warnings$biz <- if (is.na(ocf) || is.na(op_earn)) {
       ""
     } else if (ocf < op_earn) {
-      "⚠️ 營業現金流低於營運利潤（淨利扣除投資證券未實現損益），帳面賺錢但現金未實現"
+      "⚠️ 營業現金流低於營業利益（淨利扣除投資證券未實現損益），帳面賺錢但現金未實現"
     } else {
       ""
     }
@@ -2150,7 +2150,7 @@ server <- function(input, output, session) {
     fraud_warnings$cashback <- if (is.na(ocf) || is.na(op_earn)) {
       ""
     } else if (op_earn > 0 && ocf < 0) {
-      "⚠️ 營運利潤為正但營業現金流為負，獲利品質存疑"
+      "⚠️ 營業利益為正但營業現金流為負，獲利品質存疑"
     } else {
       ""
     }
@@ -2919,9 +2919,9 @@ server <- function(input, output, session) {
       if (is.null(proxy) || !isTRUE(proxy$ok)) {
         beta_bottomup_result(list(
           ok = FALSE,
-          reason = "未指定同業，且產業基準無法去槓桿（缺 β 或負債比）。請輸入同業代碼後再算。"
+          reason = "未指定同業，且產業基準無法去槓桿（缺 β 或負債比）。請輸入同業代號後再算。"
         ))
-        showNotification("Bottom-Up：請先輸入同業代碼，或確認已選產業。", type = "warning", duration = 7)
+        showNotification("Bottom-Up：請先輸入同業代號，或確認已選產業。", type = "warning", duration = 7)
         return(invisible(NULL))
       }
       tgt <- .target_relever_de()
@@ -2936,7 +2936,7 @@ server <- function(input, output, session) {
         n_peers = 0L,
         label = proxy$label,
         peers_df = data.frame(
-          代碼 = character(0), β_L = numeric(0), D_E = numeric(0), β_u = numeric(0),
+          代號 = character(0), β_L = numeric(0), D_E = numeric(0), β_u = numeric(0),
           狀態 = character(0), stringsAsFactors = FALSE
         )
       ))
@@ -2956,7 +2956,7 @@ server <- function(input, output, session) {
       x <- raw[[i]]
       if (is.null(x)) {
         return(data.frame(
-          代碼 = peers[i], β_L = NA_real_, D_E = NA_real_, β_u = NA_real_,
+          代號 = peers[i], β_L = NA_real_, D_E = NA_real_, β_u = NA_real_,
           狀態 = "抓取失敗", stringsAsFactors = FALSE
         ))
       }
@@ -2969,7 +2969,7 @@ server <- function(input, output, session) {
       err <- as.character(x[["error"]] %||% "")
       st <- if (is.finite(bu)) "OK" else if (nzchar(err)) err else "缺 β 或 D/E"
       data.frame(
-        代碼 = tk_i,
+        代號 = tk_i,
         β_L = if (is.finite(bl)) round(bl, 3) else NA_real_,
         D_E = if (is.finite(de)) round(de, 3) else NA_real_,
         β_u = if (is.finite(bu)) round(bu, 3) else NA_real_,
@@ -2978,7 +2978,7 @@ server <- function(input, output, session) {
       )
     })
     peers_df <- if (length(rows) > 0) do.call(rbind, rows) else {
-      data.frame(代碼 = character(0), β_L = numeric(0), D_E = numeric(0),
+      data.frame(代號 = character(0), β_L = numeric(0), D_E = numeric(0),
                  β_u = numeric(0), 狀態 = character(0), stringsAsFactors = FALSE)
     }
     ok_u <- peers_df$β_u[is.finite(peers_df$β_u)]
@@ -3599,7 +3599,7 @@ server <- function(input, output, session) {
     res <- beta_est_result()
     if (is.null(res) || !isTRUE(res$ok)) {
       return(data.frame(
-        窗口 = c("1Y (12m)", "2Y (24m)", "5Y (60m)"),
+        期間 = c("1Y (12m)", "2Y (24m)", "5Y (60m)"),
         Rollingβ = c("尚未估計", "尚未估計", "尚未估計"),
         用途提示 = c("近期敏感度", "中期變化", "對齊 Yahoo／長期"),
         stringsAsFactors = FALSE
@@ -3611,9 +3611,9 @@ server <- function(input, output, session) {
       if (is.finite(v)) sprintf("%.3f", v) else "n/a"
     }
     main_lb <- as.integer(res$lookback %||% NA_integer_)
-    mark <- function(m) if (is.finite(main_lb) && identical(as.integer(m), main_lb)) "← 主窗口" else ""
+    mark <- function(m) if (is.finite(main_lb) && identical(as.integer(m), main_lb)) "← 主期間" else ""
     data.frame(
-      窗口 = c("1Y (12m)", "2Y (24m)", "5Y (60m)"),
+      期間 = c("1Y (12m)", "2Y (24m)", "5Y (60m)"),
       Rollingβ = c(fmt("12m"), fmt("24m"), fmt("60m")),
       備註 = c(mark(12L), mark(24L), mark(60L)),
       stringsAsFactors = FALSE
@@ -3864,7 +3864,7 @@ server <- function(input, output, session) {
       estimated_g_meta$source <- NULL
       estimated_g_meta$raw_g <- NULL
       if (!is.null(prev_g_na)) {
-        updateSelectInput(session, "g_growth_method", label = "預估營收成長率 (缺乏數據)")
+        updateSelectInput(session, "g_growth_method", label = "預估營收成長率 (資料不足)")
       }
       return()
     }
@@ -3979,8 +3979,8 @@ server <- function(input, output, session) {
     df$cf_metric <- cf_lab
     
     ggplot(df, aes(x = Year)) +
-      geom_col(aes(y = NOPAT, fill = "預估稅後營業利潤 (NOPAT)"), width = 0.6, alpha = 0.8) +
-      scale_fill_manual(name = "", values = c("預估稅後營業利潤 (NOPAT)" = "#00a65a")) +
+      geom_col(aes(y = NOPAT, fill = "預估稅後營業利益 (NOPAT)"), width = 0.6, alpha = 0.8) +
+      scale_fill_manual(name = "", values = c("預估稅後營業利益 (NOPAT)" = "#00a65a")) +
       geom_line(aes(y = CF, group = 1, color = cf_metric), size = 1.5) +
       geom_point(aes(y = CF, color = cf_metric), size = 3) +
       scale_color_manual(name = "", values = setNames("#3c8dbc", cf_lab)) +
@@ -3988,7 +3988,7 @@ server <- function(input, output, session) {
                 vjust = ifelse(df$CF >= 0, -0.5, 1.5), size = 4, fontface = "bold") +
       scale_y_continuous(labels = label_chart_number(prefix = money_prefix())) +
       theme_minimal() +
-      labs(title = paste0(tag, " 與 營業利潤 成長軌跡"), x = "預測年份", y = paste0("金額 (", money_label(), ")")) +
+      labs(title = paste0(tag, " 與 營業利益 成長軌跡"), x = "預測年份", y = paste0("金額 (", money_label(), ")")) +
       theme(
         plot.title = element_text(face = "bold", size = 16),
         axis.text = element_text(size = 12),
@@ -4516,7 +4516,7 @@ server <- function(input, output, session) {
     proj_df <- fcf_results$df_fcf()
     if (is.null(proj_df) || nrow(proj_df) < 1) {
       plot.new()
-      text(0.5, 0.5, "⚠️ 財報數據不足，無法繪圖", cex = 1.4)
+      text(0.5, 0.5, "⚠️ 財報資料不足，無法繪圖", cex = 1.4)
       return()
     }
 
@@ -5157,11 +5157,11 @@ server <- function(input, output, session) {
     }
 
     vs_fair <- if (is.finite(center_val) && is.finite(as.numeric(fair_val)[1])) {
-      sprintf("與目前 %s 公允價 %s 對照：差異約 %s。",
+      sprintf("與目前 %s 合理價 %s 對照：差異約 %s。",
               st$model, fmt(fair_val),
               sprintf("%+.2f", center_val - as.numeric(fair_val)[1]))
     } else {
-      paste0("公允價尚未就緒；矩陣以目前 ", st$disc_label, "／SGR 為軸心展開。")
+      paste0("合理價尚未就緒；矩陣以目前 ", st$disc_label, "／SGR 為軸心展開。")
     }
 
     tags$div(
@@ -5274,7 +5274,7 @@ server <- function(input, output, session) {
     )
     
     if (!is.null(alert_box)) {
-      box(title = "核心評價數據缺失提醒", status = "danger", width = 12, solidHeader = TRUE,
+      box(title = "核心評價資料缺漏提醒", status = "danger", width = 12, solidHeader = TRUE,
           alert_box, 
           fluidRow(
             if(is.na(scraped_fcf)) column(4, numericInput("manual_fcf", "手動 FCF:", value = NA)) else NULL,
@@ -6102,17 +6102,17 @@ server <- function(input, output, session) {
     e <- res$exposure
     tags$div(
       style = "font-size:13px;line-height:1.7;",
-      tags$div(tags$b("基本面倉位 平均 "), .fmt_pct(e$avg_a, 0),
+      tags$div(tags$b("基本面部位 平均 "), .fmt_pct(e$avg_a, 0),
                " ｜ 最高 ", .fmt_pct(e$max_a, 0),
                " ｜ 最低 ", .fmt_pct(e$min_a, 0),
                " ｜ 現金 ", .fmt_pct(e$cash_avg_a, 0)),
-      tags$div(tags$b("情緒倉位 平均 "), .fmt_pct(e$avg_b, 0),
+      tags$div(tags$b("情緒部位 平均 "), .fmt_pct(e$avg_b, 0),
                " ｜ 最高 ", .fmt_pct(e$max_b, 0),
                " ｜ 最低 ", .fmt_pct(e$min_b, 0),
                " ｜ 現金 ", .fmt_pct(e$cash_avg_b, 0)),
       tags$hr(),
       tags$div(style = "font-size:11px;color:#777;",
-               "倉位曲線驅動上方策略淨值（財富指數）。平均持股偏低時，終值常低於滿倉 B&H（現金報酬＝0）。")
+               "部位曲線驅動上方策略淨值（財富指數）。平均持股偏低時，終值常低於滿持股 B&H（現金報酬＝0）。")
     )
   })
 
@@ -6121,15 +6121,15 @@ server <- function(input, output, session) {
     validate(need(!is.null(res) && !is.null(res$equity_df), "請先回測"))
     df <- res$equity_df
     df_long <- rbind(
-      data.frame(Date = df$Date, Exp = df$Exp_A, Series = "基本面倉位 Exp_A", stringsAsFactors = FALSE),
-      data.frame(Date = df$Date, Exp = df$Exp_B, Series = "情緒倉位 Exp_B", stringsAsFactors = FALSE)
+      data.frame(Date = df$Date, Exp = df$Exp_A, Series = "基本面部位 Exp_A", stringsAsFactors = FALSE),
+      data.frame(Date = df$Date, Exp = df$Exp_B, Series = "情緒部位 Exp_B", stringsAsFactors = FALSE)
     )
     p <- ggplot(df_long, aes(x = Date, y = Exp, color = Series)) +
       geom_line(linewidth = 0.8) +
       scale_y_continuous(labels = scales::percent_format(accuracy = 1), limits = c(0, 1)) +
       scale_color_manual(values = c(
-        "基本面倉位 Exp_A" = "#e67e22",
-        "情緒倉位 Exp_B" = "#2980b9"
+        "基本面部位 Exp_A" = "#e67e22",
+        "情緒部位 Exp_B" = "#2980b9"
       )) +
       labs(y = "目標持股比例", x = NULL, color = NULL) +
       theme_minimal(base_size = 11)
@@ -6530,8 +6530,8 @@ server <- function(input, output, session) {
       tags$p(
         style = "margin-top:0;",
         tags$b("折現圖 vs 淨值圖："),
-        "折現圖是每股合理價 vs 實際股價；策略 MOS／倉位用勾選模型的平均。",
-        "淨值圖是倉位×日報酬的累積財富（起始＝1）——",
+        "折現圖是每股合理價 vs 實際股價；策略 MOS／部位用勾選模型的平均。",
+        "淨值圖是部位×日報酬的累積財富（起始＝1）——",
         tags$b("基本面策略淨值"), "＝Exp_A；",
         tags$b("情緒策略淨值"), "＝Exp_B（Exp_A 混入動能／RSI）。兩圖標籤不可互換。"
       ),
@@ -6546,7 +6546,7 @@ server <- function(input, output, session) {
           "，單一 WACC＋Gordon 終值；不是 DCF 分頁的「營收×NOPAT／CapEx／ΔNWC 邊際」預測表，也不走二階段 WACC。",
           "DDM／RI／P/B 結構與 Live 相同。僅折線末端最新點才掛目前 APP 分頁（含 FCFE／二階段 DDM）與 Session Rm。"
         ),
-        tags$li(tags$b("策略 MOS／倉位："), "用目前勾選且有限值模型的算術平均，不是隱藏的主模型。只勾一個＝該模型。"),
+        tags$li(tags$b("策略 MOS／部位："), "用目前勾選且有限值模型的算術平均，不是隱藏的主模型。只勾一個＝該模型。"),
         tags$li(
           tags$b("歷史各點 vs 末端："),
           "歷史點僅用當時可得財報、當時 ^TNX Rf、截至該日的基準已實現年化總報酬（Rm）、Rolling β、當日市值資本結構；成長／n 用 APP_DEFAULTS，不套用目前分頁。",
@@ -6557,7 +6557,7 @@ server <- function(input, output, session) {
           "股數依目前市值÷股價對齊報價股數後再算合理價（倍率固定套用各財年）。"
         )
       ),
-      tags$h5(tags$b("二、數據來源")),
+      tags$h5(tags$b("二、資料來源")),
       tags$ul(
         tags$li(tags$b("股價／基準："), "Yahoo Finance（yfinance，auto_adjust）；基準預設 SPY。"),
         tags$li(tags$b("財報（PIT）："), "本次 Session 已載入之年度 IS／BS／CF；再平衡日只用 fund_year ≤ 日曆年−1。"),
@@ -6578,14 +6578,14 @@ server <- function(input, output, session) {
         tags$li("再平衡日：fund_year ≤ 日曆年−1 重建各模型合理價；策略 FV＝勾選且有限值者之平均 → MOS＝(FV−Price)/FV。"),
         tags$li("持倉回測條件未過 → Exp_A = Exp_B = 0（兩模式皆空手）。"),
         tags$li("通過則 Exp_A 依 MOS 滯後映射；Exp_B = (1−blend)×Exp_A + blend×(sentiment×max_exp)。"),
-        tags$li("每日：策略淨值用 Exp×日報酬；Buy&Hold 滿倉；現金報酬=0；未扣交易成本。"),
+        tags$li("每日：策略淨值用 Exp×日報酬；Buy&Hold 滿持股；現金報酬=0；未扣交易成本。"),
         tags$li("比較視窗自首次有效季再平衡對齊。")
       ),
       tags$h5(tags$b("四、相對 Buy & Hold")),
       tags$p(
         style = "margin-bottom:0;",
         "上漲日把 (1−Exp_A)×r 加總，拆成現金拖累／提前出場／高估減碼；加總 ≠ 複利終值落差（殘差＝終值差−加總）。",
-        "結論以該次回測頁上的平均倉位、空手日、Filter 未過次數為準，不作「牛市必輸」套話。"
+        "結論以該次回測頁上的平均部位、空手日、Filter 未過次數為準，不作「牛市必輸」套話。"
       )
     )
   })
@@ -6620,7 +6620,7 @@ server <- function(input, output, session) {
     },
     content = function(file) {
       tryCatch({
-        showNotification("正在生成 PDF 投資意見報告，請稍候...", type = "message", duration = 8)
+        showNotification("正在產出 PDF 投資意見報告，請稍候...", type = "message", duration = 8)
         tempReport <- file.path(tempdir(), "report_template.Rmd")
         file.copy("report_template.Rmd", tempReport, overwrite = TRUE)
 
@@ -6811,12 +6811,12 @@ server <- function(input, output, session) {
         render_report_pdf(tmp_html, file)
         showNotification("✅ PDF 投資意見報告已產出", type = "message")
       }, error = function(e) {
-        showNotification(paste("報告生成失敗:", e$message), type = "error", duration = 12)
+        showNotification(paste("報告產出失敗:", e$message), type = "error", duration = 12)
         # 寫入最小錯誤 PDF 避免下載 handler 空檔
         tryCatch({
           grDevices::pdf(file, width = 8.27, height = 11.69)
           plot.new()
-          text(0.5, 0.6, "YNow 報告生成失敗", cex = 1.4)
+          text(0.5, 0.6, "YNow 報告產出失敗", cex = 1.4)
           text(0.5, 0.45, paste(strwrap(e$message, 60), collapse = "\n"), cex = 0.8)
           grDevices::dev.off()
         }, error = function(e2) NULL)
@@ -6951,7 +6951,7 @@ server <- function(input, output, session) {
           return(NULL)
         }
         if (n_filtered > max_n) {
-          how <- if (used_mcap) "依市值由大到小" else "市值暫不可用，改依代碼"
+          how <- if (used_mcap) "依市值由大到小" else "市值暫不可用，改依代號"
           showNotification(
             paste0("篩選後 ", n_filtered, " 檔，", how, "評估 ", nrow(pool), " 檔。"),
             type = "message", duration = 6
@@ -7048,7 +7048,7 @@ server <- function(input, output, session) {
     tags$p(
       style = "color:#555; font-size:12.5px;",
       sprintf(
-        "本次已評估 %d 檔（＝明細列數，盈餘品質／門檻未勾選時）。排序鍵＝模型合理價相對現價，於 %d 年預測期換算之年化漲幅；排行榜僅列門檻通過者的 Top %d（一代碼一列，不另抽樣）。",
+        "本次已評估 %d 檔（＝明細列數，盈餘品質／門檻未勾選時）。排序鍵＝模型合理價相對現價，於 %d 年預測期換算之年化漲幅；排行榜僅列門檻通過者的 Top %d（一代號一列，不另抽樣）。",
         n_eval, n, as.integer(min(10L, n_eval))
       )
     )
@@ -7121,8 +7121,8 @@ server <- function(input, output, session) {
     size_lab[is.na(size_lab)] <- "—"
     yahoo_nm <- if ("company_name" %in% names(merged)) merged$company_name else NA_character_
     show_df <- data.frame(
-      代碼 = merged$ticker,
-      公司全稱 = vapply(
+      代號 = merged$ticker,
+      公司名稱 = vapply(
         seq_len(nrow(merged)),
         function(i) lab_company_display_name(merged$ticker[[i]], yahoo_nm[[i]]),
         character(1)
@@ -7187,8 +7187,8 @@ server <- function(input, output, session) {
     size_lab[is.na(size_lab)] <- "—"
     yahoo_nm <- if ("company_name" %in% names(merged)) merged$company_name else NA_character_
     data.frame(
-      代碼 = merged$ticker,
-      公司全稱 = vapply(
+      代號 = merged$ticker,
+      公司名稱 = vapply(
         seq_len(nrow(merged)),
         function(i) lab_company_display_name(merged$ticker[[i]], yahoo_nm[[i]]),
         character(1)
@@ -7287,8 +7287,8 @@ server <- function(input, output, session) {
         lb <- data.frame(訊息 = "尚未評估")
       }
       detail <- lab_im_detail_export_df()
-      tks <- if (is.data.frame(detail) && "代碼" %in% names(detail)) {
-        unique(as.character(detail$代碼))
+      tks <- if (is.data.frame(detail) && "代號" %in% names(detail)) {
+        unique(as.character(detail$代號))
       } else {
         character(0)
       }
@@ -7308,8 +7308,8 @@ server <- function(input, output, session) {
         sprintf("- 門檻過濾：%s", if (gate_on) "開" else "關"),
         sprintf("- 評估上限 lab_im_max_n：%s（＝評估檔數／明細列數；硬上限 40）", max_n),
         sprintf("- 評估狀態：%s", if (evaluated) sprintf("已評估 %d 檔", nrow(scores)) else "尚未評估"),
-        sprintf("- 本頁代碼數：%d", length(tks)),
-        sprintf("- 本頁代碼：%s", if (length(tks)) paste(tks, collapse = ", ") else "（無）"),
+        sprintf("- 本頁代號數：%d", length(tks)),
+        sprintf("- 本頁代號：%s", if (length(tks)) paste(tks, collapse = ", ") else "（無）"),
         "",
         "宇宙＝S&P 500（可更新），不是全美股。候選多於 N 時依市值由大到小取 N 檔評估；明細＝該 N 檔（年化估值漲幅排序）；排行榜＝同一批中門檻通過者的 Top 10。"
       )
@@ -7338,7 +7338,7 @@ server <- function(input, output, session) {
     if (!nzchar(tk)) {
       return(tags$div(
         class = "alert alert-warning", style = "padding:6px 10px; margin:4px 0;",
-        "尚未設定主頁代碼，請至主頁輸入 Ticker / Stock Code。"
+        "尚未設定主頁代號，請至主頁輸入 Ticker / Stock Code。"
       ))
     }
     tags$div(style = "font-size:20px; font-weight:bold; padding:2px 0;", tk)
@@ -7402,7 +7402,7 @@ server <- function(input, output, session) {
   output$lab_sec_meta <- renderUI({
     res <- lab_sec_result()
     if (is.null(res)) {
-      return(div(style = "color:#888;", "尚未查詢。按「抓取財報附註」以擷取主頁代碼的最新財報附註。"))
+      return(div(style = "color:#888;", "尚未查詢。按「抓取財報附註」以擷取主頁代號的最新財報附註。"))
     }
     if (!isTRUE(res$ok)) {
       return(div(

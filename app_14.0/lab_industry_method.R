@@ -670,7 +670,7 @@ lab_evaluate_ticker_fscore <- function(ticker, industry_key = NULL, method = NUL
     error = NULL
   )
   if (!nzchar(tk)) {
-    out$error <- "空代碼"
+    out$error <- "空代號"
     return(out)
   }
 
@@ -907,7 +907,7 @@ lab_merge_catalog_scores <- function(catalog, scores = NULL,
 #' @param eq_only 若 TRUE，再只保留盈餘品質通過者（門檻本身已含此條件）
 lab_quality_leaderboard <- function(merged_df, top_n = 10L, eq_only = FALSE) {
   empty <- data.frame(
-    排名 = integer(0), 代碼 = character(0), 公司全稱 = character(0),
+    排名 = integer(0), 代號 = character(0), 公司名稱 = character(0),
     年化估值漲幅 = character(0),
     總潛在漲幅 = character(0),
     估值方法 = character(0), `F-Score` = numeric(0),
@@ -943,8 +943,8 @@ lab_quality_leaderboard <- function(merged_df, top_n = 10L, eq_only = FALSE) {
   }, character(1))
   data.frame(
     排名 = seq_len(nrow(df)),
-    代碼 = df$ticker,
-    公司全稱 = names_out,
+    代號 = df$ticker,
+    公司名稱 = names_out,
     年化估值漲幅 = sprintf("%+.1f%%", df$upside_cagr_pct),
     總潛在漲幅 = ifelse(
       is.na(df$upside_total_pct), "—", sprintf("%+.1f%%", df$upside_total_pct)

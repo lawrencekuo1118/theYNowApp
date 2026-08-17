@@ -350,7 +350,7 @@ fetch_sec_report_notes <- function(ticker, form = "10-K", max_chars = 1500L) {
     summaries = list()
   )
   if (!nzchar(tk)) {
-    empty$error <- "請輸入美股代碼"
+    empty$error <- "請輸入美股代號"
     return(empty)
   }
   if (!isTRUE(.ensure_python_scraper()) || !exists("sec_report_notes", mode = "function")) {

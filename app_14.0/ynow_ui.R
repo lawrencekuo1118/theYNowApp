@@ -19,7 +19,7 @@
   zh_features <- tags$ul(
     class = "ynow-about-feat",
     tags$li(
-      tags$b("自動化數據與防雷機制："),
+      tags$b("自動化資料與防雷機制："),
       "即時抓取三大報表，並內建「財務舞弊警訊 (Red Flags)」，透過交叉比對現金流與獲利品質，自動偵測潛在的地雷股與價值陷阱。"
     ),
     tags$li(
@@ -27,7 +27,7 @@
       "內建自由現金流 (DCF：FCFF／WACC 或 FCFE／Ke)、股利折現 (DDM：Gordon 或二階段)、資產本淨比 (P/B＋NAV) 與剩餘收益 (RI) 模型，系統能根據產業屬性與企業生命週期，動態推薦最適合的評價路徑。"
     ),
     tags$li(
-      tags$b("智能決策與量化回測："),
+      tags$b("智慧決策與量化回測："),
       "結合 Piotroski F-Score 財務體質檢核、安全邊際 (MOS) 區間，以及具備「機構級風控思維」的 Point-in-Time (PIT) 回測引擎，提供貼近實戰的策略驗證。"
     ),
     tags$li(
@@ -63,7 +63,7 @@
       tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
       tags$p(
         class = "ynow-about-lead",
-        "The YNow App (v14.0) 是一套專為專業投資者與分析師打造的「全方位量化財務與估值決策系統」。本系統整合了即時財報抓取、多維度估值模型與動態回測引擎，將繁雜的市場數據轉化為直觀、科學的投資決策。"
+        "The YNow App (v14.0) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合了即時財報抓取、多維度估值模型與動態回測引擎，將繁雜的市場資料轉化為直覺、科學的投資決策。"
       ),
       tags$p(
         class = "ynow-about-method",
@@ -231,7 +231,7 @@ beta_unlever_section_ui <- function() {
         tags$h5(style = "margin-top:0;", "Bottom-Up 同業平均（估值主估計）"),
         selectizeInput(
           "beta_peers",
-          "同業／競爭對手代碼（可多選或自行輸入）",
+          "同業／競爭對手代號（可多選或自行輸入）",
           choices = NULL,
           selected = NULL,
           multiple = TRUE,
@@ -326,12 +326,12 @@ beta_rolling_section_ui <- function() {
           selected = APP_DEFAULTS$beta_bench,
           options = list(
             create = TRUE,
-            placeholder = "選常見指數，或自行輸入代碼…",
+            placeholder = "選常見指數，或自行輸入代號…",
             maxItems = 1
           )
         ),
         selectInput(
-          "beta_lookback_months", "主窗口（對照用）",
+          "beta_lookback_months", "回溯期間（對照用）",
           choices = c(
             "1 年（12 個月）" = 12,
             "2 年（24 個月）" = 24,
@@ -359,7 +359,7 @@ beta_rolling_section_ui <- function() {
       ),
       box(
         width = 7, status = "info", solidHeader = TRUE,
-        title = tagList(icon("exchange-alt"), "窗口比較"),
+        title = tagList(icon("exchange-alt"), "期間比較"),
         tableOutput("beta_window_table"),
         tags$hr(),
         plotOutput("plt_beta_scatter", height = "280px")
@@ -472,8 +472,8 @@ beta_advanced_tab_ui <- function() {
                                      <td>資產負債表（權益／有形淨值／投資科目）</td>
                                    </tr>
                                    <tr>
-                                     <td><b>投資者身分 / 觀點</b></td>
-                                     <td>少數股東（無決策與控制權）</td>
+                                     <td><b>投資人身分 / 觀點</b></td>
+                                     <td>小股東（無決策與控制權）</td>
                                      <td>控股股東 / 併購者（有決策權）</td>
                                      <td>皆可（尤其適用於負 FCF）</td>
                                      <td>金融／保險／控股；資產為定價錨</td>
@@ -540,7 +540,7 @@ beta_advanced_tab_ui <- function() {
                   tags$li(tags$b("$$V_0 = B_0 + \\sum_{t=1}^{n} \\frac{RI_t}{(1+K_e)^t} + \\frac{TV_{RI}}{(1+K_e)^n}$$")),
                   tags$li(tags$b("$$TV_{RI} = \\frac{RI_n \\times (1 + g)}{K_e - g}$$"))
                 ),
-                p("本 app 可設定固定 ROE、線性淡化或產業 ROE；終值成長 g 須滿足 g < Ke。當 ROE < Ke 時，剩餘收益為負，代表價值銷毀。")
+                p("本 app 可設定固定 ROE、線性淡化或產業 ROE；終值成長 g 須滿足 g < Ke。當 ROE < Ke 時，剩餘收益為負，代表價值減損。")
        ),
 
        # Tab: P/B 模型解說
@@ -2154,7 +2154,7 @@ ui <- dashboardPage(
                              title = "查詢條件",
                              tags$div(
                                style = "margin-bottom:10px;",
-                               tags$label("美股代碼 (US Ticker)", class = "control-label"),
+                               tags$label("美股代號 (US Ticker)", class = "control-label"),
                                uiOutput("lab_sec_ticker_display"),
                                tags$span(
                                  style = "color:#888; font-size:12px;",
@@ -2277,7 +2277,7 @@ ui <- dashboardPage(
                            tableOutput("annotation_stability_table"),
                            tags$p(
                              style = "margin-top:10px; font-size:12px; color:#888;",
-                             "提示：資產周轉率、OCF／淨利目前固定黑底（無同業區間）；",
+                             "提示：資產週轉率、OCF／淨利目前固定黑底（無同業區間）；",
                              "現金品質另可對照決策漏斗／F-Score 的盈餘品質檢核。"
                            )
                          )
@@ -2712,7 +2712,7 @@ ui <- dashboardPage(
                         class = "ynow-bt-hfv-models",
                         checkboxGroupInput(
                           "bt_fv_models",
-                          "回測用評價模型（可複選疊圖；策略 MOS／倉位＝勾選平均）",
+                          "回測用評價模型（可複選疊圖；策略 MOS／部位＝勾選平均）",
                           inline = TRUE,
                           choices = c(
                             "DCF" = "dcf",
@@ -2746,7 +2746,7 @@ ui <- dashboardPage(
                   tags$div(
                     style = "margin: 0 0 10px 0; padding: 10px 12px; background: #f4f8fb; border-left: 4px solid #3c8dbc; font-size: 12px; color: #444; line-height: 1.55;",
                     tags$b("這是財富指數，不是每股價格。"),
-                    "兩者共用持倉條件閘門，倉位路徑不同——",
+                    "兩者共用持倉條件閘門，部位路徑不同——",
                     tags$b("基本面策略淨值"), "＝Exp_A×日報酬累積；",
                     tags$b("情緒策略淨值"), "＝Exp_B×日報酬累積（Exp_A 混入動能／RSI）。",
                     "折現圖上的實際股價與本圖無對應關係。"
@@ -2777,7 +2777,7 @@ ui <- dashboardPage(
                   plotlyOutput("bt_equity_plot", height = "400px") %>% withSpinner(),
                   tags$ul(
                     style = "margin: 10px 0 0 0; padding-left: 18px; font-size: 12px; color: #666; line-height: 1.55;",
-                    tags$li(tags$b("基本面策略淨值"), "（橘線）＝持倉條件＋MOS 倉位 × 日報酬，從 1 起算。"),
+                    tags$li(tags$b("基本面策略淨值"), "（橘線）＝持倉條件＋MOS 部位 × 日報酬，從 1 起算。"),
                     tags$li(tags$b("情緒策略淨值"), "（藍線）＝在 Exp_A 上混入動能／RSI；參數見「情緒策略」標籤。"),
                     tags$li(tags$b("該股買進持有"), "（綠）全程 100% 的財富指數；", tags$b("大盤"), "（灰虛）SPY 財富指數。"),
                     tags$li("每股合理價 vs 實際股價見上方折現圖，勿與本圖混比。")
@@ -2842,13 +2842,13 @@ ui <- dashboardPage(
                     tabPanel(
                       title = tagList(icon("balance-scale"), "基本面策略"),
                       .bt_section_intro(
-                        "模式 A：Exp_A → 淨值圖橘線。依 MOS 分級決定倉位；MOS 來自折現圖勾選模型的平均合理價。"
+                        "模式 A：Exp_A → 淨值圖橘線。依 MOS 分級決定部位；MOS 來自折現圖勾選模型的平均合理價。"
                       ),
                       fluidRow(
                         column(
                           6,
                           sliderInput("bt_w_vg", "MOS／Value Gap 權重（曝險）", 0, 1, 0.7, step = 0.01),
-                          .bt_hint("越大越依 MOS 分級減碼；越小越接近固定中性倉位。")
+                          .bt_hint("越大越依 MOS 分級減碼；越小越接近固定中性部位。")
                         ),
                         column(
                           6,
@@ -2866,7 +2866,7 @@ ui <- dashboardPage(
                       tags$div(
                         class = "ynow-bt-mode-b",
                         .bt_section_intro(
-                          "模式 B：在 Exp_A 上混入動能／RSI（熱→偏滿倉、冷→偏保守），藍線為情緒策略淨值（從 1 起算）。與折現圖的實際股價無關。"
+                          "模式 B：在 Exp_A 上混入動能／RSI（熱→偏滿持股、冷→偏保守），藍線為情緒策略淨值（從 1 起算）。與折現圖的實際股價無關。"
                         ),
                         # 寬螢幕四參數一列：動能 / RSI / 最大持股 / 最低持股
                         tags$div(
@@ -2890,7 +2890,7 @@ ui <- dashboardPage(
                             column(
                               3,
                               sliderInput("bt_min_exp_pass", "通過條件後最低持股", 0, 0.4, 0, step = 0.01),
-                              .bt_hint("持倉條件通過且非極度高估時的地板倉位。")
+                              .bt_hint("持倉條件通過且非極度高估時的地板部位。")
                             )
                           )
                         ),
@@ -2924,7 +2924,7 @@ ui <- dashboardPage(
 
               fluidRow(
                 box(
-                  title = tagList(icon("percentage"), "兩模式倉位軌跡（Exposure）"),
+                  title = tagList(icon("percentage"), "兩模式部位軌跡（Exposure）"),
                   width = 6, status = "danger", solidHeader = TRUE, collapsible = TRUE,
                   uiOutput("bt_exposure_stats"),
                   plotlyOutput("bt_exposure_plot", height = "260px") %>% withSpinner()
@@ -2982,7 +2982,7 @@ ui <- dashboardPage(
               # 6) 方法論
               fluidRow(
                 box(
-                  title = tagList(icon("book"), "回測數據來源與計算過程（方法論註解）"),
+                  title = tagList(icon("book"), "回測資料來源與計算過程（方法論註解）"),
                   width = 12, status = "primary", solidHeader = TRUE,
                   collapsible = TRUE, collapsed = TRUE,
                   uiOutput("bt_methodology_notes")
