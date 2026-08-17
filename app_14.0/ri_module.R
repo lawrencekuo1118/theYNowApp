@@ -350,7 +350,6 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
                              current_ticker = reactive(""),
                              quote_currency = reactive(NA),
                              financial_currency = reactive(NA),
-                             adjust_share_class = reactive(FALSE),
                              capm_rf = reactive(NA),
                              capm_beta = reactive(NA),
                              capm_rm = reactive(NA),
@@ -381,8 +380,9 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
         quote_currency = tryCatch(quote_currency(), error = function(e) NULL),
         financial_currency = tryCatch(financial_currency(), error = function(e) NULL)
       )
-      apply_adj <- isTRUE(adjust_share_class()) || shares_auto_adjust_method(sh$method)
-      if (isTRUE(apply_adj) && is.finite(sh$shares) && sh$shares > 0) return(sh$shares)
+      if (shares_auto_adjust_method(sh$method) && is.finite(sh$shares) && sh$shares > 0) {
+        return(sh$shares)
+      }
       if (is.finite(raw_shares) && raw_shares > 0) return(raw_shares)
       if (is.finite(sh$shares) && sh$shares > 0) return(sh$shares)
       1
@@ -399,7 +399,7 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
     }, ignoreInit = TRUE)
 
     # ----- Sync B0 / ROE / payout from statements -----
-    observeEvent(list(d_balance_sheet(), current_price(), quote_price(), market_cap(), current_ticker(), adjust_share_class()), {
+    observeEvent(list(d_balance_sheet(), current_price(), quote_price(), market_cap(), current_ticker()), {
       req(d_balance_sheet(), d_income_statement())
       df_bs <- d_balance_sheet()
 

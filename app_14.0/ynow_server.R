@@ -207,7 +207,6 @@ server <- function(input, output, session) {
             quote_currency = q_ccy, financial_currency = f_ccy
           )
           if (shares_auto_adjust_method(sh_res$method)) {
-            updateCheckboxInput(session, "mod_pb-adjust_share_class", value = TRUE)
             msg <- sh_res$note
             if (is.null(msg) || !nzchar(msg)) {
               msg <- sprintf(
@@ -802,7 +801,6 @@ server <- function(input, output, session) {
       c("P/B", "P/B Low", .snapshot_value(input[["mod_pb-pb_low"]]), "Price = BVPS × P/B"),
       c("P/B", "P/B Mid", .snapshot_value(input[["mod_pb-pb_mid"]]), "Price = BVPS × P/B"),
       c("P/B", "P/B High", .snapshot_value(input[["mod_pb-pb_high"]]), "Price = BVPS × P/B"),
-      c("P/B", "約當股數校正", .snapshot_value(input[["mod_pb-adjust_share_class"]]), "例外：市值÷股價／雙重股權"),
       c("Backtest", "Net Margin Threshold (%)", .snapshot_value(input$bt_net_margin), "持倉回測條件: Net Margin >= threshold"),
       c("Backtest", "Revenue Growth Threshold (%)", .snapshot_value(input$bt_rev_growth), "持倉回測條件: Revenue Growth >= threshold"),
       c("Backtest", "EPS / NI Growth Threshold (%)", .snapshot_value(input$bt_eps_growth), "持倉回測條件: EPS/NI Growth >= threshold"),
@@ -909,8 +907,7 @@ server <- function(input, output, session) {
       pb_mid = c("P/B", "P/B Mid", "產業帶中位"),
       pb_high = c("P/B", "P/B High", "產業帶上緣"),
       pb_basis = c("P/B", "Basis", "bvps / tbvps"),
-      pb_use_industry = c("P/B", "使用產業 P/B", "TRUE = 跟產業帶"),
-      pb_adjust_share_class = c("P/B", "約當股數校正", "雙重股權／市值÷股價例外")
+      pb_use_industry = c("P/B", "使用產業 P/B", "TRUE = 跟產業帶")
     )
 
     keys <- names(APP_DEFAULTS)
@@ -1583,7 +1580,6 @@ server <- function(input, output, session) {
     current_ticker = current_ticker,
     quote_currency = quote_currency,
     financial_currency = statement_currency,
-    adjust_share_class = reactive(isTRUE(input[["mod_pb-adjust_share_class"]])),
     capm_rf = reactive(suppressWarnings(as.numeric(input$capm_rf)[1])),
     capm_beta = reactive(suppressWarnings(as.numeric(input$capm_beta)[1])),
     capm_rm = reactive(suppressWarnings(as.numeric(input$capm_rm)[1])),
@@ -1637,10 +1633,8 @@ server <- function(input, output, session) {
       error = function(e) list(shares = NA_real_, method = "none", note = NULL, shares_bs = NA_real_)
     )
     raw_shares <- suppressWarnings(as.numeric(sh$shares_bs)[1])
-    # ADR／雙重股權：自動套用約當股數；使用者勾選時亦強制用解析結果
-    apply_adj <- isTRUE(input[["mod_pb-adjust_share_class"]]) ||
-      shares_auto_adjust_method(sh$method)
-    if (isTRUE(apply_adj) && is.finite(sh$shares) && sh$shares > 0) {
+    # ADR／雙重股權：一律自動套用約當股數（與 P/B／RI／回測一致）
+    if (shares_auto_adjust_method(sh$method) && is.finite(sh$shares) && sh$shares > 0) {
       return(list(shares = sh$shares, note = sh$note, method = sh$method))
     }
     if (is.finite(raw_shares) && raw_shares > 0) {
@@ -6151,6 +6145,12 @@ server <- function(input, output, session) {
         tags$li(tags$b("實際股價："), "該股歷史收盤（Yahoo 調整後）。搜尋後即預覽股價，不必先勾模型。"),
         tags$li(tags$b("大盤："), "右下角「顯示大盤」開關疊加基準（預設 SPY，右軸）；與合理價無關。"),
         tags$li(tags$b("合理價："), "勾選右下角評價模型後才計算並疊圖（預設不勾選）。"),
+        tags$li(
+          tags$b("PIT DCF（簡化，非 Live 營收表）："),
+          "歷史點 DCF 以當時 FCF0 幾何延展 ", tags$code("FCFF_t = FCF0×(1+g)^t"),
+          "，單一 WACC＋Gordon 終值；不是 DCF 分頁的「營收×NOPAT／CapEx／ΔNWC 邊際」預測表，也不走二階段 WACC。",
+          "DDM／RI／P/B 結構與 Live 相同。僅折線末端最新點才掛目前 APP 分頁與 Session Rm。"
+        ),
         tags$li(tags$b("策略 MOS／倉位："), "用目前勾選且有限值模型的算術平均，不是隱藏的主模型。只勾一個＝該模型。"),
         tags$li(
           tags$b("歷史各點 vs 末端："),

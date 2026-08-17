@@ -519,11 +519,11 @@ beta_advanced_tab_ui <- function() {
                 h4(tags$b("自由現金流折現模型 (FCFF)")),
                 p("DCF 關注企業造血能力：將未來 FCFF 以 WACC 折現得到企業價值，再橋接至股權價值與每股價格。本 app 的「Gordon」模式為明確預測期加上 Gordon 終值，而非單期 EV = FCF₁/(WACC−g)。"),
                 tags$ul(
-                  tags$li(tags$b("$$FCFF = Net Income + D\\&A - \\Delta NWC - CapEx$$")),
+                  tags$li(tags$b("$$FCFF = NOPAT + D\\&A - \\Delta NWC - CapEx$$")),
                   tags$li(tags$b("$$Enterprise\\ Value = \\sum \\frac{FCFF_t}{(1+WACC)^t} + \\frac{Terminal\\ Value}{(1+WACC)^n}$$")),
                   tags$li(tags$b("$$Terminal\\ Value = \\frac{FCFF_n \\times (1 + g)}{WACC - g}$$"))
                 ),
-                p("兩階段模式則在高速成長期後，將終值成長率收斂至 SGR；約束條件為 g < WACC（不是 Ke）。")
+                p("Live 預測表以 NOPAT（EBIT×(1−T)）為錨，不是淨利 NI；與 FCFF 分頁橫幅一致。兩階段模式則在高速成長期後，將終值成長率收斂至 SGR；約束條件為 g < WACC（不是 Ke）。")
        ),
 
        # Tab: RI 模型解說
@@ -549,7 +549,7 @@ beta_advanced_tab_ui <- function() {
                   tags$li(tags$b("$$P = BVPS\\ (or\\ TBVPS) \\times Target\\ P/B$$")),
                   tags$li(tags$b("Justified\\ P/B \\approx \\frac{ROE - g}{K_e - g}"))
                 ),
-                p("目標倍數可綜合 Justified（ROE／Ke）、產業中位與歷史中位，輸出 Bear／Base／Bull 三檔。雙重股權／ADR 等「報價股 ≠ 財報股數口徑」時，搜尋會自動約當股數（市值÷股價），亦可手動開關校正。")
+                p("目標倍數可綜合 Justified（ROE／Ke）、產業中位與歷史中位，輸出 Bear／Base／Bull 三檔。雙重股權／ADR 等「報價股 ≠ 財報股數口徑」時，與 DCF／RI／回測相同，一律自動約當股數（市值÷股價）。")
        )
       )
     )

@@ -83,7 +83,7 @@ fcf_projection_module_ui <- function(id) {
              p("您可以點擊「同步按鈕」帶入最新財報，或手動微調參數來模擬不同的營運情境，藉此還原 FCF 與基本面永續成長率 (g) 的計算過程。"),
              p(
                style = "font-size: 13px; color: #7f8c8d; margin-top: 5px; margin-bottom: 0px;",
-               "※ 符號說明：NI (稅後淨利), D&A (折舊與攤銷), ΔNWC (營運資金變動), CapEx (資本支出)"
+               "※ 符號說明：NOPAT (稅後營業利潤), D&A (折舊與攤銷), ΔNWC (營運資金變動), CapEx (資本支出)"
              )
            ),
            

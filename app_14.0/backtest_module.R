@@ -115,8 +115,9 @@
 
 # ---------- multi-model fair-value helpers ----------
 
-#' Historical / PIT DCF (Gordon multi-year FCFF).
-#' Uses fcf0 and current session WACC / SGR / n_years / g_explicit.
+#' Historical / PIT DCF (simplified Gordon multi-year FCFF).
+#' Geometric path FCFF_t = fcf0 × (1+g_explicit)^t, single WACC + Gordon TV.
+#' This is NOT the live DCF revenue×NOPAT/CapEx/ΔNWC table and has no two-stage WACC.
 estimate_hist_dcf <- function(fcf0, cash, debt, shares,
                               wacc, sgr, n_years = 5, g_explicit = NULL) {
   fcf0 <- .safe_num(fcf0, NA_real_)

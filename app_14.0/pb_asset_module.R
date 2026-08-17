@@ -44,25 +44,8 @@ pb_asset_module_ui <- function(id) {
                  tabPanel("P/B Settings", icon = icon("cogs"),
                           h4(tags$b("每股帳面淨值 (BVPS) 與資產基礎")),
                           fluidRow(
-                            div("標準公式：BVPS = Common Equity ÷ 流通股數；TBVPS 另扣除商譽／無形資產。雙重股權／ADR 等「報價股 ≠ 財報股數口徑」時，搜尋會自動用市值÷股價約當；亦可手動勾選。",
+                            div("標準公式：BVPS = Common Equity ÷ 流通股數；TBVPS 另扣除商譽／無形資產。雙重股權／ADR 等「報價股 ≠ 財報股數口徑」時，與 DCF／RI／回測相同，一律以市值÷股價自動約當報價股。",
                                 style = "font-size: 14px; font-weight: bold; color: #2C3E50; text-align: left; margin-bottom: 10px; padding: 10px; background-color: #F8F9F9; border-left: 4px solid #2980B9; border-radius: 4px;")
-                          ),
-                          fluidRow(
-                            column(
-                              12,
-                              checkboxInput(
-                                ns("adjust_share_class"),
-                                tags$span(
-                                  style = "font-weight: bold;",
-                                  "套用約當股數校正（市值÷股價或 BRK-B×1500；ADR 搜尋時自動開啟）"
-                                ),
-                                value = isTRUE(APP_DEFAULTS$pb_adjust_share_class)
-                              ),
-                              tags$p(
-                                style = "margin: -8px 0 12px 0; font-size: 12px; color: #666; line-height: 1.45;",
-                                "報價股與財報股數級距不符時會自動套用；取消勾選可強制改回財報股數。"
-                              )
-                            )
                           ),
                           uiOutput(ns("txt_shares_resolve_note")),
                           fluidRow(
@@ -222,7 +205,7 @@ pb_asset_module_server <- function(id,
       )
     })
     
-    # --- 財報同步 BVPS / TBVPS（ADR／雙重股權：搜尋時自動約當；亦可手動勾選）---
+    # --- 財報同步 BVPS / TBVPS（ADR／雙重股權：一律自動約當報價股）---
     sync_book_values <- function() {
       req(d_balance_sheet())
       df_bs <- d_balance_sheet()
@@ -250,40 +233,16 @@ pb_asset_module_server <- function(id,
       )
 
       auto_adj <- shares_auto_adjust_method(sh_adj$method)
-      # 搜尋時會自動勾選；取消勾選 → 強制財報股數（P/B BVPS）
-      apply_adj <- isTRUE(input$adjust_share_class)
-      if (apply_adj) {
+      if (isTRUE(auto_adj) && is.finite(sh_adj$shares) && sh_adj$shares > 0) {
         shares <- sh_adj$shares
         shares_resolve_note(sh_adj$note)
       } else {
-        # 標準路徑：只用財報股數；若偵測到可校正情況，提示使用者自行勾選
         if (is.finite(shares_bs) && shares_bs > 0) {
           shares <- shares_bs
         } else {
           shares <- sh_adj$shares
         }
-        if (isTRUE(auto_adj) && !is.null(sh_adj$note) && nzchar(sh_adj$note) &&
-            is.finite(shares_bs) && shares_bs > 0 &&
-            is.finite(sh_adj$shares) &&
-            abs(sh_adj$shares / shares_bs - 1) > 0.05) {
-          shares_resolve_note(paste0(
-            "偵測到股數級距／ADR 可能不符（目前使用財報股數）。",
-            "若要約當報價股，請勾選「套用約當股數校正」或重新搜尋以自動開啟。",
-            " 建議原因：", sh_adj$note
-          ))
-        } else if (!is.null(sh_adj$note) && nzchar(sh_adj$note) &&
-            !identical(sh_adj$method, "balance_sheet") &&
-            is.finite(shares_bs) && shares_bs > 0 &&
-            is.finite(sh_adj$shares) &&
-            abs(sh_adj$shares / shares_bs - 1) > 0.05) {
-          shares_resolve_note(paste0(
-            "偵測到股數級距／雙重股權可能不符（未套用校正）。",
-            "若要補償，請勾選「套用約當股數校正」後再同步。",
-            " 建議原因：", sh_adj$note
-          ))
-        } else {
-          shares_resolve_note(NULL)
-        }
+        shares_resolve_note(NULL)
       }
       
       # TBVPS 扣除：優先 Goodwill + Other Intangible Assets；
@@ -310,7 +269,7 @@ pb_asset_module_server <- function(id,
         tbvps <- max(equity - intang_deduct, 0) / shares
         updateNumericInput(session, "bvps", value = round(bvps, 2))
         updateNumericInput(session, "tbvps", value = round(tbvps, 2))
-        if (apply_adj && !is.null(sh_adj$note) && nzchar(sh_adj$note)) {
+        if (isTRUE(auto_adj) && !is.null(sh_adj$note) && nzchar(sh_adj$note)) {
           showNotification(sh_adj$note, type = "message", duration = 8)
         }
       } else {
@@ -320,8 +279,7 @@ pb_asset_module_server <- function(id,
     
     observeEvent(
       list(
-        d_balance_sheet(), current_price(), quote_price(), market_cap(), current_ticker(),
-        input$adjust_share_class
+        d_balance_sheet(), current_price(), quote_price(), market_cap(), current_ticker()
       ),
       {
         sync_book_values()
@@ -337,15 +295,12 @@ pb_asset_module_server <- function(id,
     output$txt_shares_resolve_note <- renderUI({
       note <- shares_resolve_note()
       if (is.null(note) || !nzchar(note)) return(NULL)
-      applied <- isTRUE(input$adjust_share_class)
       tags$p(
         style = paste0(
-          "font-size: 12px; margin: 0 0 10px 0; padding: 8px 10px; border-left: 3px solid ",
-          if (applied) "#e67e22" else "#7f8c8d",
-          "; background: ", if (applied) "#fff8e6" else "#f4f4f4",
-          "; color: ", if (applied) "#b85c00" else "#555", ";"
+          "font-size: 12px; margin: 0 0 10px 0; padding: 8px 10px; border-left: 3px solid #e67e22;",
+          " background: #fff8e6; color: #b85c00;"
         ),
-        if (applied) paste0("已套用例外校正：", note) else note
+        paste0("已自動對齊報價股：", note)
       )
     })
     
@@ -374,7 +329,6 @@ pb_asset_module_server <- function(id,
       }
       updateSelectInput(session, "basis", selected = APP_DEFAULTS$pb_basis)
       updateCheckboxInput(session, "use_industry_pb", value = APP_DEFAULTS$pb_use_industry)
-      updateCheckboxInput(session, "adjust_share_class", value = isTRUE(APP_DEFAULTS$pb_adjust_share_class))
       sync_book_values()
       showNotification("P/B 參數已依 Justified／產業／歷史重估", type = "message")
     })
