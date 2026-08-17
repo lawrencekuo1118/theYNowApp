@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12422588
+bundleId=12422614
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=b5334aa
 commit=b5334aa1b3476d965ef775a19183a3aec7beeaba
 short=b5334aa
 message=Use the last FCFE/FCFF forecast value in the projection sync banner when series length is padded.
-captured_at=2026-08-17T15:53:44Z
+captured_at=2026-08-17T15:58:03Z
 source_branch=master
-note=Canonical live line is app_14.0. 預測年數 n is pinned under EPS (TTM) on DCF/DDM/P/B/RI. FCFE projection labels follow the cash-flow claim. Bundle 12422588 supersedes 12422554.
+note=Canonical live line is app_14.0. DCF page FCFF labels/series follow dcf_claim (FCFE/Ke vs FCFF/WACC). Bundle 12422614 supersedes 12422588.
