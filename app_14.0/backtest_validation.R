@@ -47,7 +47,7 @@
 #' Decompose Strategy A vs Buy&Hold using up-day additive (1−Exp_A)×r.
 #'
 #' On B&H up-days only, `cash_gap = (1 - Exp_A) * r` is partitioned into:
-#' - overvaluation_reduction: signal 價值高估 or MOS < 0
+#' - overvaluation_reduction: signal 偏貴（P>FV） or MOS < 0
 #' - early_exit: Exp_A stepped down vs prior 20-session peak (and not overval)
 #' - cash_drag: remaining up-day underinvestment (includes structural max_exp<1
 #'   and untagged zeros)
@@ -131,7 +131,7 @@ analyze_bh_gap <- function(equity_df, valuation_df, max_exp = 0.90) {
   cash_gap <- (1 - exp_a) * bh_ret * up
 
   overval_mask <- up & (
-    (!is.na(sig) & sig == "價值高估") | (!is.na(mos) & mos < 0)
+    (!is.na(sig) & sig == "偏貴（P>FV）") | (!is.na(mos) & mos < 0)
   )
   overval_contrib <- sum(cash_gap[overval_mask], na.rm = TRUE)
 
@@ -406,8 +406,8 @@ validate_mos_effectiveness <- function(valuation_df, price_df) {
 # 4) Fair-value edge (undervalued vs overvalued)
 # ==========================================
 
-#' Compare forward returns for CHEAP (fair_value edge) vs EXPENSIVE rebalances.
-#' Undervalued: signal == "策略低估" OR mos > 0.1.
+#' Compare forward returns for CHEAP (MOS > 10%) vs other rebalances.
+#' Cheap bucket is MOS only: mos = (FV − price) / FV > 0.1 (model above market).
 validate_fair_value_edge <- function(valuation_df, price_df) {
   if (is.null(valuation_df) || nrow(valuation_df) == 0) {
     return(list(

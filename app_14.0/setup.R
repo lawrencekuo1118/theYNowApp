@@ -951,6 +951,110 @@ PARAM_SENSITIVITY_SHOCK <- 0.01
   d0 * (1 + g) / (ke - g)
 }
 
+#' Two-stage DDM: high-growth g1 for n years, then Gordon at g2.
+#' D_t = D0(1+g1)^t for t=1..n; TV = D_n(1+g2)/(Ke−g2); P0 = Σ PV(D_t) + PV(TV).
+.ddm_formula_two_stage <- function(d0 = 1, g1, n, g2, ke) {
+  d0 <- suppressWarnings(as.numeric(d0)[1])
+  g1 <- suppressWarnings(as.numeric(g1)[1])
+  g2 <- suppressWarnings(as.numeric(g2)[1])
+  ke <- suppressWarnings(as.numeric(ke)[1])
+  n <- suppressWarnings(as.integer(round(as.numeric(n)[1])))
+  if (!is.finite(d0) || !is.finite(g1) || !is.finite(g2) || !is.finite(ke)) return(NA_real_)
+  if (!is.finite(n) || n < 1L) return(.ddm_formula_p0(d0 = d0, g = g2, ke = ke))
+  if (ke <= g2) return(NA_real_)
+  dts <- d0 * (1 + g1)^seq_len(n)
+  dfs <- (1 + ke)^seq_len(n)
+  pv_div <- sum(dts / dfs)
+  tv <- dts[n] * (1 + g2) / (ke - g2)
+  pv_div + tv / dfs[n]
+}
+
+#' Convert FCFF path to FCFE: FCFE_t = FCFF_t − Interest(1−T) + Net borrowing_t.
+#' Net borrowing grows starting debt with g_path (constant-leverage approximation).
+fcff_to_fcfe <- function(fcff, interest_after_tax = 0, debt0 = 0, g_path = 0) {
+  fcff <- suppressWarnings(as.numeric(fcff))
+  n <- length(fcff)
+  if (n < 1L) return(numeric(0))
+  iat <- suppressWarnings(as.numeric(interest_after_tax)[1])
+  if (!is.finite(iat)) iat <- 0
+  debt <- suppressWarnings(as.numeric(debt0)[1])
+  if (!is.finite(debt) || debt < 0) debt <- 0
+  gp <- suppressWarnings(as.numeric(g_path))
+  if (length(gp) == 1L) gp <- rep(gp, n)
+  if (length(gp) < n) gp <- c(gp, rep(tail(gp, 1), n - length(gp)))
+  gp[!is.finite(gp)] <- 0
+  out <- numeric(n)
+  for (i in seq_len(n)) {
+    nb <- gp[i] * debt
+    cf <- fcff[i]
+    out[i] <- if (is.finite(cf)) cf - iat + nb else NA_real_
+    debt <- debt + nb
+  }
+  out
+}
+
+#' Holding / conglomerate NAV from a balance sheet (book SOTP).
+#' NAV = Equity − holdco_discount × identified investments.
+#' If no investment lines, NAV = common equity (same as book).
+extract_nav_components <- function(df_bs, holdco_discount = 0) {
+  empty <- list(
+    cash = NA_real_, investments = NA_real_, equity = NA_real_,
+    nav = NA_real_, discount = 0, note = "無資產負債表"
+  )
+  if (is.null(df_bs) || !is.data.frame(df_bs) || nrow(df_bs) == 0) return(empty)
+  disc <- suppressWarnings(as.numeric(holdco_discount)[1])
+  if (!is.finite(disc)) disc <- 0
+  disc <- max(0, min(0.5, disc))
+  cash <- tryCatch(
+    select_current_metric_any(
+      df_bs,
+      c(
+        "Cash Cash Equivalents And Short Term Investments",
+        "Cash And Cash Equivalents",
+        "^Total Cash$"
+      ),
+      "stock"
+    ),
+    error = function(e) NA_real_
+  )
+  inv <- tryCatch(
+    select_current_metric_any(
+      df_bs,
+      c(
+        "Investmentin Financial Assets",
+        "Investments And Advances",
+        "Long Term Investments",
+        "Available For Sale Securities",
+        "Equity Method Investments"
+      ),
+      "stock"
+    ),
+    error = function(e) NA_real_
+  )
+  equity <- tryCatch(
+    select_current_metric_any(df_bs, EQUITY_PATTERNS, "stock"),
+    error = function(e) NA_real_
+  )
+  if (!is.finite(inv) || inv < 0) inv <- 0
+  if (!is.finite(cash)) cash <- NA_real_
+  if (!is.finite(equity) || equity <= 0) {
+    return(list(
+      cash = cash, investments = inv, equity = equity,
+      nav = NA_real_, discount = disc,
+      note = "無法取得股東權益，NAV 未計算"
+    ))
+  }
+  nav <- equity - disc * inv
+  note <- if (inv > 0 && disc > 0) {
+    sprintf("NAV＝權益 − %.0f%%×投資科目（控股折價）", disc * 100)
+  } else if (inv > 0) {
+    "已辨識投資科目；折價=0 時 NAV＝帳面權益"
+  } else {
+    "無獨立投資科目，NAV＝帳面淨值"
+  }
+  list(cash = cash, investments = inv, equity = equity, nav = nav, discount = disc, note = note)
+}
+
 #' Canonical P/B fair price from formula parameters only (unit book).
 #' P = basis × target P/B. Independent of ticker market price and share count.
 .pb_formula_p <- function(basis = 1, pb) {
@@ -1282,13 +1386,13 @@ recommend_valuation_models <- function(d_cf, industry_text = "", d_is = NULL, d_
     )
   }
 
-  # 1) Holding / conglomerate — P/B interim (+ RI); SOTP deferred to 13.1
+  # 1) Holding / conglomerate — P/B + NAV build-up (+ RI)
   if (isTRUE(is_holding)) {
     sec <- if (isTRUE(is.finite(roe) && roe > 0)) "ri" else NULL
     return(.pack(
       "holding_asset", "pb", sec,
-      "P/B（控股／綜合；NAV／SOTP 待 13.1）",
-      "控股／綜合企業經濟本質偏淨資產組合；13.0 暫以有來源的 P/B 為主、RI 交叉驗證（完整 SOTP／NAV 留待後續）。"
+      "P/B＋NAV 拆解（控股／綜合）",
+      "控股／綜合企業以淨資產為錨：主模型 P/B，並用現金／投資科目做 NAV 拆解（可設控股折價）；ROE>0 時以 RI 交叉驗證。"
     ))
   }
 

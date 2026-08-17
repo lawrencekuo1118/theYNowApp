@@ -12,8 +12,11 @@
 - **Bear / Base / Bull + 可信度**：主模型輸出區間與 低／中／高 可信度，Dashboard 以區間語言呈現
 - **基本面優先預設**：永續 g 預設 fundamental；成長股自動建議 two-stage DCF
 - **股數級距一致**：DCF／RI／WACC／DDM 與 P/B 共用 share-class 解析（BRK-B、ADR）；搜尋時若財報股數與市值÷股價差超過門檻，自動改用報價股約當股數
+- **FCFE**：DCF 可切換為股權現金流（Ke 折現；FCFE＝FCFF−稅後利息＋淨舉債），不必再做 EV→股權橋接
+- **二階段 DDM**：高速期 g1 後收斂至永續 g2
+- **控股 NAV**：P/B 提供現金／投資科目拆解；NAV＝權益 − 控股折價×投資
 
-SOTP／NAV 與成熟股 P/E·EV 引擎留待 14.1+。
+Mature-stock P/E·EV 引擎仍非本版範圍。
 
 ## 執行
 

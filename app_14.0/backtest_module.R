@@ -119,7 +119,8 @@
 #' Geometric path FCFF_t = fcf0 × (1+g_explicit)^t, single WACC + Gordon TV.
 #' This is NOT the live DCF revenue×NOPAT/CapEx/ΔNWC table and has no two-stage WACC.
 estimate_hist_dcf <- function(fcf0, cash, debt, shares,
-                              wacc, sgr, n_years = 5, g_explicit = NULL) {
+                              wacc, sgr, n_years = 5, g_explicit = NULL,
+                              claim = "fcff", ke = NULL, rd = 0, tax = 0.21) {
   fcf0 <- .safe_num(fcf0, NA_real_)
   shares <- .safe_num(shares, NA_real_)
   wacc <- .safe_num(wacc, NA_real_)
@@ -132,13 +133,36 @@ estimate_hist_dcf <- function(fcf0, cash, debt, shares,
   }
   cash <- .safe_num(cash, 0)
   debt <- .safe_num(debt, 0)
-  if (is.na(fcf0) || is.na(shares) || shares <= 1 || is.na(wacc) || wacc <= 0) return(NA_real_)
+  if (is.na(fcf0) || is.na(shares) || shares <= 1) return(NA_real_)
   if (n_years < 1L) n_years <- 5L
+  if (!is.finite(g_explicit)) g_explicit <- sgr
+  fcfs <- fcf0 * (1 + g_explicit) ^ seq_len(n_years)
+
+  if (identical(as.character(claim)[1], "fcfe")) {
+    ke <- .safe_num(ke, wacc)
+    rd <- .safe_num(rd, 0)
+    tax <- .safe_num(tax, 0.21)
+    if (!is.finite(ke) || ke <= 0) return(NA_real_)
+    if (is.na(sgr)) sgr <- max(0, ke - 0.03)
+    if (sgr >= ke) sgr <- max(0, ke - 0.005)
+    iat <- max(0, debt) * max(0, rd) * (1 - max(0, min(tax, 0.5)))
+    cfs <- if (exists("fcff_to_fcfe", mode = "function")) {
+      fcff_to_fcfe(fcfs, interest_after_tax = iat, debt0 = debt, g_path = g_explicit)
+    } else {
+      fcfs - iat
+    }
+    if (any(!is.finite(cfs))) return(NA_real_)
+    dfs <- cumprod(rep(1 + ke, n_years))
+    pv <- sum(cfs / dfs)
+    tv <- cfs[n_years] * (1 + sgr) / (ke - sgr)
+    fv <- (pv + tv / dfs[n_years]) / shares
+    if (!is.finite(fv) || fv <= 0) return(NA_real_)
+    return(fv)
+  }
+
+  if (is.na(wacc) || wacc <= 0) return(NA_real_)
   if (is.na(sgr)) sgr <- max(0, wacc - 0.03)
   if (sgr >= wacc) sgr <- max(0, wacc - 0.005)
-  if (!is.finite(g_explicit)) g_explicit <- sgr
-
-  fcfs <- fcf0 * (1 + g_explicit) ^ seq_len(n_years)
   dfs <- cumprod(rep(1 + wacc, n_years))
   pv_fcf <- sum(fcfs / dfs)
   tv <- fcfs[n_years] * (1 + sgr) / (wacc - sgr)
@@ -156,15 +180,21 @@ estimate_hist_fair_value <- function(fcf0, cash, debt, shares,
   estimate_hist_dcf(fcf0, cash, debt, shares, wacc, sgr, n_years, g_explicit)
 }
 
-#' Gordon DDM: P0 = D0 * (1 + g) / (Ke - g).
-#' d0 is DIVIDEND-PER-SHARE (already normalized by shares).
-estimate_hist_ddm <- function(d0, ke, g) {
+#' Historical / PIT DDM (Gordon or two-stage).
+#' d0 is DIVIDEND-PER-SHARE. Two-stage uses g_explicit for n years then sgr.
+estimate_hist_ddm <- function(d0, ke, g, n = 1L, g_explicit = NULL) {
   d0 <- .safe_num(d0, NA_real_)
   ke <- .safe_num(ke, NA_real_)
   g  <- .safe_num(g,  NA_real_)
   if (!is.finite(d0) || d0 <= 0 || !is.finite(ke) || !is.finite(g)) return(NA_real_)
-  if (ke <= g) return(NA_real_)
-  p0 <- d0 * (1 + g) / (ke - g)
+  n <- as.integer(.safe_num(n, 1))
+  g1 <- .safe_num(g_explicit, g)
+  if (is.finite(g1) && is.finite(n) && n >= 2L && abs(g1 - g) > 1e-12) {
+    p0 <- .ddm_formula_two_stage(d0 = d0, g1 = g1, n = n, g2 = g, ke = ke)
+  } else {
+    if (ke <= g) return(NA_real_)
+    p0 <- d0 * (1 + g) / (ke - g)
+  }
   if (!is.finite(p0) || p0 <= 0) return(NA_real_)
   p0
 }
@@ -237,19 +267,20 @@ estimate_hist_pb <- function(bvps, pb_mid) {
   v
 }
 
-#' Signal label. Convention (per v11 hist-fv PR):
-#'   fair_value < price -> "策略低估" (strategy says price is CHEAP,
-#'                                       i.e. FV under the market -> lower conviction)
-#'   fair_value > price -> "價值高估" (FV over price -> undervalued)
-#' NOTE: This is the labelling convention shipped in v11 and the app UI
-#'   relies on it. Do NOT flip.
+#' Signal label: price vs model fair value (plain Chinese, no inverted jargon).
+#'   FV > price  → 便宜（P<FV）  undervalued / MOS > 0
+#'   FV < price  → 偏貴（P>FV）  overvalued / MOS < 0
+VALUATION_SIGNAL_CHEAP <- "便宜（P<FV）"
+VALUATION_SIGNAL_EXPENSIVE <- "偏貴（P>FV）"
+VALUATION_SIGNAL_FAIR <- "合理"
+
 valuation_signal_label <- function(fv, price) {
   fv <- .safe_num(fv, NA_real_)
   price <- .safe_num(price, NA_real_)
   if (is.na(fv) || is.na(price) || price <= 0) return("資料不足")
-  if (fv < price) return("策略低估")
-  if (fv > price) return("價值高估")
-  "合理"
+  if (fv < price) return(VALUATION_SIGNAL_EXPENSIVE)
+  if (fv > price) return(VALUATION_SIGNAL_CHEAP)
+  VALUATION_SIGNAL_FAIR
 }
 
 #' Market under/over metrics from PIT rebalance rows.
@@ -434,8 +465,31 @@ reconstruct_fair_value_pit <- function(fund_row, price, model_params,
     roe_path <- NULL
   }
 
-  fv_dcf <- estimate_hist_dcf(fcf, cash, debt, shares, wacc, sgr, n_yr, g_ex)
-  fv_ddm <- if (is.finite(dps) && dps > 0) estimate_hist_ddm(dps, ddm_ke, ddm_g) else NA_real_
+  fv_dcf <- estimate_hist_dcf(
+    fcf, cash, debt, shares, wacc, sgr, n_yr, g_ex,
+    claim = if (isTRUE(use_session_assumptions)) {
+      as.character(model_params$dcf_claim %||% "fcff")[1]
+    } else {
+      "fcff"
+    },
+    ke = ke,
+    rd = .safe_num(model_params$rd, 0),
+    tax = .safe_num(model_params$tax, 0.21)
+  )
+  fv_ddm <- if (is.finite(dps) && dps > 0) {
+    if (isTRUE(use_session_assumptions) &&
+        identical(as.character(model_params$ddm_mode %||% "gordon")[1], "two_stage")) {
+      estimate_hist_ddm(
+        dps, ddm_ke, ddm_g,
+        n = .safe_num(model_params$ddm_yr_stage1, n_yr),
+        g_explicit = .safe_num(model_params$ddm_g_stage1, g_ex)
+      )
+    } else {
+      estimate_hist_ddm(dps, ddm_ke, ddm_g)
+    }
+  } else {
+    NA_real_
+  }
   fv_ri  <- estimate_hist_ri(
     bvps, roe_use, ri_ke, ri_g, n = ri_years, payout = payout_use, roe_path = roe_path
   )

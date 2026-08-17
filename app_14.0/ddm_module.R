@@ -98,25 +98,43 @@ ddm_module_server <- function(id, ddm_g = reactive(NULL), ddm_ke = reactive(NULL
     
     observeEvent(input$reset_ddm, {
       updateCheckboxInput(session, "sync_g", value = TRUE)
+      updateRadioButtons(session, "ddm_mode", selected = APP_DEFAULTS$ddm_mode)
+      updateNumericInput(session, "g_stage1", value = APP_DEFAULTS$ddm_g_stage1)
+      updateNumericInput(session, "yr_stage1", value = APP_DEFAULTS$ddm_yr_stage1)
       sync_ddm_to_financials()
       showNotification("DDM 模型參數已依據最新財報與中央設定回復", type = "message")
     })
     
-    # ==========================================
-    # DDM 核心：P0 = D1 / (Ke - g), D1 = D0(1+g)
-    # ==========================================
+    # DDM 核心：Gordon 或二階段
     ddm_calc <- eventReactive(input$btn_calc_ddm, {
       req(input$d0, input$g, input$ke)
-      d0 <- input$d0; g_dec <- input$g / 100; ke_dec <- input$ke / 100
-      
+      d0 <- input$d0
+      g_dec <- input$g / 100
+      ke_dec <- input$ke / 100
+      mode <- as.character(input$ddm_mode %||% "gordon")[1]
+
+      if (identical(mode, "two_stage")) {
+        g1 <- suppressWarnings(as.numeric(input$g_stage1)[1]) / 100
+        n1 <- suppressWarnings(as.integer(input$yr_stage1)[1])
+        if (!is.finite(g1)) g1 <- g_dec
+        if (!is.finite(n1) || n1 < 1L) n1 <- 5L
+        if (ke_dec <= g_dec) {
+          return(list(status = "error", message = "計算無效：Ke 必須嚴格大於永續股利成長率 g2！"))
+        }
+        p0 <- .ddm_formula_two_stage(d0 = d0, g1 = g1, n = n1, g2 = g_dec, ke = ke_dec)
+        d1 <- d0 * (1 + g1)
+        if (!is.finite(p0)) {
+          return(list(status = "error", message = "二階段 DDM 無法計算，請檢查 g1／g2／Ke／年數。"))
+        }
+        return(list(status = "success", value = round(p0, 2), d1 = round(d1, 2), mode = "two_stage"))
+      }
+
       if (ke_dec <= g_dec) {
         return(list(status = "error", message = "計算無效：要求報酬率 (Ke) 必須嚴格大於股利成長率 g！"))
       }
-      
       d1 <- d0 * (1 + g_dec)
       p0 <- d1 / (ke_dec - g_dec)
-      
-      return(list(status = "success", value = round(p0, 2), d1 = round(d1, 2)))
+      return(list(status = "success", value = round(p0, 2), d1 = round(d1, 2), mode = "gordon"))
     })
     
     output$ui_ddm_result <- renderUI({
@@ -127,19 +145,34 @@ ddm_module_server <- function(id, ddm_g = reactive(NULL), ddm_ke = reactive(NULL
         div(style = "font-size: 32px; font-weight: bold; color: #2C3E50; text-align: center; padding: 20px; background-color: #ECF0F1; border-radius: 10px;",
             p(style = "font-size: 16px; color: #7F8C8D; margin-bottom: 5px;", "DDM 推估每股合理價"),
             paste0(money_prefix(), res$value),
-            p(style = "font-size: 14px; color: #95A5A6; margin-top: 10px;", paste0("預估明年股利 (D1): ", money_prefix(), res$d1))
+            p(style = "font-size: 14px; color: #95A5A6; margin-top: 10px;",
+              paste0(
+                if (identical(res$mode, "two_stage")) "二階段明年股利 (D1): " else "預估明年股利 (D1): ",
+                money_prefix(), res$d1
+              ))
         )
       }
     })
 
-    # Gordon DDM：單位 D0 公式 P0 = D0(1+g)/(Ke−g)；|ε| 與股利金額／股價無關
+    # DDM：Gordon 或二階段；單位 D0
     output$param_sensitivity_table <- renderTable({
       shock_pct <- if (exists("PARAM_SENSITIVITY_SHOCK", inherits = TRUE)) PARAM_SENSITIVITY_SHOCK else 0.01
       d0 <- suppressWarnings(as.numeric(input$d0)[1])
       g0 <- suppressWarnings(as.numeric(input$g)[1])
       ke0 <- suppressWarnings(as.numeric(input$ke)[1])
-      .p <- function(d0u = 1, g_pct = g0, ke_pct = ke0) {
-        .ddm_formula_p0(d0 = d0u, g = g_pct / 100, ke = ke_pct / 100)
+      mode <- as.character(input$ddm_mode %||% "gordon")[1]
+      g1_0 <- suppressWarnings(as.numeric(input$g_stage1)[1])
+      n1_0 <- suppressWarnings(as.numeric(input$yr_stage1)[1])
+      if (!is.finite(g1_0)) g1_0 <- g0
+      if (!is.finite(n1_0) || n1_0 < 1) n1_0 <- 5
+      .p <- function(d0u = 1, g_pct = g0, ke_pct = ke0, g1_pct = g1_0, n1 = n1_0) {
+        if (identical(mode, "two_stage")) {
+          .ddm_formula_two_stage(
+            d0 = d0u, g1 = g1_pct / 100, n = n1, g2 = g_pct / 100, ke = ke_pct / 100
+          )
+        } else {
+          .ddm_formula_p0(d0 = d0u, g = g_pct / 100, ke = ke_pct / 100)
+        }
       }
       v0 <- .p()
       validate(need(is.finite(v0), "基準公式尚未就緒：請確認 g、Ke（且 Ke > g）。"))
@@ -154,12 +187,21 @@ ddm_module_server <- function(id, ddm_g = reactive(NULL), ddm_ke = reactive(NULL
           "P0 ∝ D0 ⇒ |ε|=1（公式；與股利金額／股價無關）"
         )
       )
+      if (identical(mode, "two_stage") && .param_sensitivity_rel_ok(g1_0)) {
+        rows[[length(rows) + 1]] <- .param_sensitivity_infl_row(
+          "高速期成長 g1", g1_0, "%", v0,
+          .p(g1_pct = .rel(g1_0, -1)),
+          .p(g1_pct = .rel(g1_0, +1)),
+          "二階段：前 n1 年股利成長"
+        )
+      }
+      g_label <- if (identical(mode, "two_stage")) "永續股利成長 g2" else "股利成長率 g"
       if (.param_sensitivity_rel_ok(g0)) {
         rows[[length(rows) + 1]] <- .param_sensitivity_infl_row(
-          "股利成長率 g", g0, "%", v0,
+          g_label, g0, "%", v0,
           .p(g_pct = .rel(g0, -1)),
           .p(g_pct = .rel(g0, +1)),
-          "ε = g/(1+g)+g/(Ke−g)（取決於 Ke、g）"
+          if (identical(mode, "two_stage")) "終值 Gordon：g2 < Ke" else "ε = g/(1+g)+g/(Ke−g)（取決於 Ke、g）"
         )
       }
       if (.param_sensitivity_rel_ok(ke0)) {

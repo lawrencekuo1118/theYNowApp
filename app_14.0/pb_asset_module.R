@@ -15,13 +15,14 @@ pb_asset_module_ui <- function(id) {
                  
                  tabPanel("P/B Overview", icon = icon("landmark"),
                           fluidRow(
-                            column(4, valueBoxOutput(ns("vbx_bvps"), width = 12)),
-                            column(4, valueBoxOutput(ns("vbx_tbvps"), width = 12)),
-                            column(4, valueBoxOutput(ns("vbx_mkt_pb"), width = 12))
+                            column(3, valueBoxOutput(ns("vbx_bvps"), width = 12)),
+                            column(3, valueBoxOutput(ns("vbx_tbvps"), width = 12)),
+                            column(3, valueBoxOutput(ns("vbx_navps"), width = 12)),
+                            column(3, valueBoxOutput(ns("vbx_mkt_pb"), width = 12))
                           ),
                           fluidRow(
-                            div("Fair Price = Book Value per Share (BVPS) × Target P/B Multiple",
-                                style = "font-size: 18px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;")
+                            div("Fair Price = (BVPS / TBVPS / NAVPS) × Target P/B　｜　NAV = Equity − holdco discount × investments",
+                                style = "font-size: 16px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;")
                           ),
                           fluidRow(
                             div(style = "text-align: center; margin-bottom: 20px;",
@@ -44,7 +45,7 @@ pb_asset_module_ui <- function(id) {
                  tabPanel("P/B Settings", icon = icon("cogs"),
                           h4(tags$b("每股帳面淨值 (BVPS) 與資產基礎")),
                           fluidRow(
-                            div("標準公式：BVPS = Common Equity ÷ 流通股數；TBVPS 另扣除商譽／無形資產。雙重股權／ADR 等「報價股 ≠ 財報股數口徑」時，與 DCF／RI／回測相同，一律以市值÷股價自動約當報價股。",
+                            div("標準公式：BVPS = Common Equity ÷ 流通股數；TBVPS 另扣除商譽／無形資產。控股 NAV＝權益 − 折價×已辨識投資科目。雙重股權／ADR 等「報價股 ≠ 財報股數口徑」時，與 DCF／RI／回測相同，一律以市值÷股價自動約當報價股。",
                                 style = "font-size: 14px; font-weight: bold; color: #2C3E50; text-align: left; margin-bottom: 10px; padding: 10px; background-color: #F8F9F9; border-left: 4px solid #2980B9; border-radius: 4px;")
                           ),
                           uiOutput(ns("txt_shares_resolve_note")),
@@ -61,6 +62,18 @@ pb_asset_module_ui <- function(id) {
                           fluidRow(
                             column(12, uiOutput(ns("alert_missing_bv")))
                           ),
+                          fluidRow(
+                            column(4, numericInput(ns("navps"), "每股淨資產 NAVPS", value = NA, step = 0.1, min = 0)),
+                            column(4, numericInput(
+                              ns("holdco_discount"), "控股折價 (%)",
+                              value = APP_DEFAULTS$pb_holdco_discount * 100,
+                              min = 0, max = 50, step = 1
+                            )),
+                            column(4, helpText("NAV＝股東權益 − 折價×已辨識投資科目。無投資科目時 NAV＝帳面權益。折價 0–50%。"))
+                          ),
+                          fluidRow(
+                            column(12, tableOutput(ns("tbl_nav_breakdown")))
+                          ),
                           hr(style = "border-top: 1px solid #BDC3C7;"),
                           h4(tags$b("目標本淨比假設")),
                           fluidRow(
@@ -73,7 +86,8 @@ pb_asset_module_ui <- function(id) {
                             column(6,
                                    selectInput(ns("basis"), "估值基礎",
                                                choices = c("帳面淨值 BVPS" = "bvps",
-                                                           "有形淨值 TBVPS" = "tbvps"),
+                                                           "有形淨值 TBVPS" = "tbvps",
+                                                           "控股 NAVPS" = "navps"),
                                                selected = APP_DEFAULTS$pb_basis)
                             ),
                             column(6,
@@ -92,7 +106,7 @@ pb_asset_module_ui <- function(id) {
                           br(),
                           div(style = "background-color: #f9f9f9; padding: 15px; border-left: 4px solid #2980b9;",
                               h4(tags$b("使用情境")),
-                              p("適用於銀行、保險、控股／綜合企業：折現模型（DCF／DDM）前提常不成立時，以淨資產與合理本淨比定價。"),
+                              p("適用於銀行、保險、控股／綜合企業：折現模型（DCF／DDM）前提常不成立時，以淨資產與合理本淨比定價。控股可改用 NAVPS（帳面 SOTP＋控股折價）。"),
                               p(style = "font-size: 13px; color: #7f8c8d; margin-bottom: 0;",
                                 "※ Buffett／Berkshire 實務常以 Book Value 為錨；目標 P/B 請依產業與利率環境調整，勿固定單一倍數。")
                           )
@@ -128,6 +142,30 @@ pb_asset_module_server <- function(id,
                                    use_estimated_re = reactive(FALSE)) {
   moduleServer(id, function(input, output, session) {
     
+    nav_shares <- reactiveVal(NA_real_)
+    nav_components <- reactiveVal(NULL)
+
+    .pb_basis_val <- function() {
+      basis <- as.character(input$basis %||% "bvps")[1]
+      if (identical(basis, "tbvps")) return(safe_num(input$tbvps))
+      if (identical(basis, "navps")) return(safe_num(input$navps))
+      safe_num(input$bvps)
+    }
+    .pb_basis_label <- function(basis = NULL) {
+      b <- as.character((basis %||% input$basis) %||% "bvps")[1]
+      switch(b, tbvps = "TBVPS", navps = "NAVPS", "BVPS")
+    }
+
+    sync_navps <- function(df_bs, shares) {
+      disc_pct <- suppressWarnings(as.numeric(input$holdco_discount)[1])
+      if (!is.finite(disc_pct)) disc_pct <- APP_DEFAULTS$pb_holdco_discount * 100
+      navc <- extract_nav_components(df_bs, holdco_discount = disc_pct / 100)
+      nav_components(navc)
+      if (is.finite(navc$nav) && is.finite(shares) && shares > 0) {
+        updateNumericInput(session, "navps", value = round(navc$nav / shares, 2))
+      }
+    }
+
     # --- 從產業標準推估本淨比區間（若未定義則回傳 NULL）---
     industry_pb_band <- reactive({
       ind <- industry_choice()
@@ -269,6 +307,8 @@ pb_asset_module_server <- function(id,
         tbvps <- max(equity - intang_deduct, 0) / shares
         updateNumericInput(session, "bvps", value = round(bvps, 2))
         updateNumericInput(session, "tbvps", value = round(tbvps, 2))
+        nav_shares(shares)
+        sync_navps(df_bs, shares)
         if (isTRUE(auto_adj) && !is.null(sh_adj$note) && nzchar(sh_adj$note)) {
           showNotification(sh_adj$note, type = "message", duration = 8)
         }
@@ -289,8 +329,15 @@ pb_asset_module_server <- function(id,
     
     observeEvent(input$btn_sync_bv, {
       sync_book_values()
-      showNotification("已自財報同步 BVPS／TBVPS", type = "message")
+      showNotification("已自財報同步 BVPS／TBVPS／NAVPS", type = "message")
     })
+
+    observeEvent(input$holdco_discount, {
+      df_bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
+      sh <- suppressWarnings(as.numeric(nav_shares())[1])
+      if (is.null(df_bs) || !is.finite(sh) || sh <= 0) return()
+      sync_navps(df_bs, sh)
+    }, ignoreInit = TRUE)
     
     output$txt_shares_resolve_note <- renderUI({
       note <- shares_resolve_note()
@@ -329,22 +376,48 @@ pb_asset_module_server <- function(id,
       }
       updateSelectInput(session, "basis", selected = APP_DEFAULTS$pb_basis)
       updateCheckboxInput(session, "use_industry_pb", value = APP_DEFAULTS$pb_use_industry)
+      updateNumericInput(session, "holdco_discount", value = APP_DEFAULTS$pb_holdco_discount * 100)
       sync_book_values()
       showNotification("P/B 參數已依 Justified／產業／歷史重估", type = "message")
     })
     
     output$alert_missing_bv <- renderUI({
       ui_missing_data_alert(
-        check_list = list("BVPS" = input$bvps, "TBVPS" = input$tbvps),
+        check_list = list("BVPS" = input$bvps, "TBVPS" = input$tbvps, "NAVPS" = input$navps),
         fallback_msg = "請先載入財報或手動輸入每股淨值，否則無法計算合理價。"
       )
     })
+
+    output$tbl_nav_breakdown <- renderTable({
+      navc <- nav_components()
+      if (is.null(navc) || !is.finite(navc$equity)) {
+        return(data.frame(科目 = "NAV 拆解", 金額 = "載入財報後顯示", check.names = FALSE))
+      }
+      sh <- suppressWarnings(as.numeric(nav_shares())[1])
+      navps <- if (is.finite(navc$nav) && is.finite(sh) && sh > 0) navc$nav / sh else NA_real_
+      fmt <- function(x) {
+        if (!is.finite(x)) return("N/A")
+        format(round(x, 0), big.mark = ",", scientific = FALSE)
+      }
+      data.frame(
+        科目 = c("股東權益", "已辨識投資", "控股折價", "NAV", "NAVPS", "說明"),
+        金額 = c(
+          fmt(navc$equity),
+          fmt(navc$investments),
+          sprintf("%.0f%%", 100 * (navc$discount %||% 0)),
+          fmt(navc$nav),
+          if (is.finite(navps)) sprintf("%.2f", navps) else "N/A",
+          as.character(navc$note %||% "")
+        ),
+        check.names = FALSE
+      )
+    }, striped = TRUE, hover = TRUE, bordered = TRUE, width = "100%")
     
     # --- 核心計算 ---
     pb_calc <- eventReactive(input$btn_calc_pb, {
-      basis_val <- if (identical(input$basis, "tbvps")) safe_num(input$tbvps) else safe_num(input$bvps)
+      basis_val <- .pb_basis_val()
       if (is.na(basis_val) || basis_val <= 0) {
-        return(list(status = "error", message = "計算無效：請先提供有效的 BVPS／TBVPS（須 > 0）。"))
+        return(list(status = "error", message = "計算無效：請先提供有效的 BVPS／TBVPS／NAVPS（須 > 0）。"))
       }
       lo <- safe_num(input$pb_low)
       mid <- safe_num(input$pb_mid)
@@ -376,7 +449,7 @@ pb_asset_module_server <- function(id,
     output$ui_pb_result <- renderUI({
       if (is.null(input$btn_calc_pb) || input$btn_calc_pb == 0) {
         return(div(style = "color: #7f8c8d; padding: 15px; text-align: center;",
-                   "請確認 Settings 中的 BVPS 與目標 P/B，然後按下「試算 P/B 合理價」。"))
+                   "請確認 Settings 中的 BVPS／TBVPS／NAVPS 與目標 P/B，然後按下「試算 P/B 合理價」。"))
       }
       res <- pb_calc()
       if (res$status == "error") {
@@ -396,7 +469,7 @@ pb_asset_module_server <- function(id,
           div(style = "text-align: center; flex: 1; min-width: 120px;",
               p(style = "font-size: 13px; color: #7f8c8d; margin-bottom: 5px; font-weight: bold;", "估值基礎"),
               p(style = "font-size: 22px; color: #2c3e50; font-weight: bold; margin: 0;", paste0(money_prefix(), round(res$basis_val, 2))),
-              p(style = "font-size: 12px; color: #95a5a6;", if (identical(res$basis, "tbvps")) "TBVPS" else "BVPS")
+              p(style = "font-size: 12px; color: #95a5a6;", .pb_basis_label(res$basis))
           ),
           div(style = "text-align: center; flex: 1; min-width: 120px;",
               p(style = "font-size: 13px; color: #7f8c8d; margin-bottom: 5px; font-weight: bold;", "基準目標價"),
@@ -431,13 +504,21 @@ pb_asset_module_server <- function(id,
       )
     })
     
+    output$vbx_navps <- renderValueBox({
+      val <- input$navps
+      valueBox(
+        if (is.null(val) || is.na(val)) "N/A" else paste0(money_prefix(), round(val, 2)),
+        "每股淨資產 NAVPS", icon = icon("sitemap"), color = "olive"
+      )
+    })
+    
     output$vbx_mkt_pb <- renderValueBox({
-      basis_val <- if (identical(input$basis, "tbvps")) safe_num(input$tbvps) else safe_num(input$bvps)
+      basis_val <- .pb_basis_val()
       px <- suppressWarnings(as.numeric(current_price()))
       mkt_pb <- if (length(px) == 1 && !is.na(px) && !is.na(basis_val) && basis_val > 0) px / basis_val else NA
       valueBox(
         if (is.na(mkt_pb)) "N/A" else sprintf("%.2f×", mkt_pb),
-        "目前市價本淨比", icon = icon("chart-bar"), color = "navy"
+        paste0("目前市價／", .pb_basis_label()), icon = icon("chart-bar"), color = "navy"
       )
     })
     
@@ -484,7 +565,7 @@ pb_asset_module_server <- function(id,
     
     # Live band from current inputs (Dashboard / confidence); button still gates Overview UI
     pb_live_band <- reactive({
-      basis_val <- if (identical(input$basis, "tbvps")) safe_num(input$tbvps) else safe_num(input$bvps)
+      basis_val <- .pb_basis_val()
       lo <- safe_num(input$pb_low)
       mid <- safe_num(input$pb_mid)
       hi <- safe_num(input$pb_high)
@@ -499,23 +580,23 @@ pb_asset_module_server <- function(id,
 
     output$param_sensitivity_table <- renderTable({
       shock_pct <- if (exists("PARAM_SENSITIVITY_SHOCK", inherits = TRUE)) PARAM_SENSITIVITY_SHOCK else 0.01
-      basis0 <- if (identical(input$basis, "tbvps")) safe_num(input$tbvps) else safe_num(input$bvps)
+      basis0 <- .pb_basis_val()
       mid0 <- safe_num(input$pb_mid)
       .p <- function(basis_u = 1, pb = mid0) .pb_formula_p(basis = basis_u, pb = pb)
       v0 <- .p()
       validate(need(
         is.finite(v0),
-        "基準公式尚未就緒：請先提供目標 P/B（BVPS／TBVPS 僅影響顯示基準值）。"
+        "基準公式尚未就緒：請先提供目標 P/B（BVPS／TBVPS／NAVPS 僅影響顯示基準值）。"
       ))
       .rel <- function(x, sign = -1) .param_rel_shock(x, sign = sign, shock = shock_pct)
       basis_show <- if (is.finite(basis0) && basis0 > 0) basis0 else 1
       basis_unit <- if (is.finite(basis0) && basis0 > 0) money_prefix() else "x"
       rows <- list(
         .param_sensitivity_infl_row(
-          if (identical(input$basis, "tbvps")) "TBVPS" else "BVPS",
+          .pb_basis_label(),
           basis_show, basis_unit, v0,
           .p(basis_u = 1 - shock_pct), .p(basis_u = 1 + shock_pct),
-          "P ∝ BVPS／TBVPS ⇒ |ε|=1（公式；與帳面金額／股價無關）"
+          "P ∝ 選定基礎 ⇒ |ε|=1（公式；與帳面金額／股價無關）"
         )
       )
       if (.param_sensitivity_rel_ok(mid0) && mid0 > 0) {

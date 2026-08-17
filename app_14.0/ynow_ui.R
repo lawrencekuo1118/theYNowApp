@@ -24,7 +24,7 @@
     ),
     tags$li(
       tags$b("四大估值引擎："),
-      "內建自由現金流 (DCF/FCFF)、股利折現 (DDM)、資產本淨比 (P/B) 與剩餘收益 (RI) 模型，系統能根據產業屬性與企業生命週期，動態推薦最適合的評價路徑。"
+      "內建自由現金流 (DCF：FCFF／WACC 或 FCFE／Ke)、股利折現 (DDM：Gordon 或二階段)、資產本淨比 (P/B＋NAV) 與剩餘收益 (RI) 模型，系統能根據產業屬性與企業生命週期，動態推薦最適合的評價路徑。"
     ),
     tags$li(
       tags$b("智能決策與量化回測："),
@@ -43,7 +43,7 @@
     ),
     tags$li(
       tags$b("Four Valuation Engines: "),
-      "Features Discounted Cash Flow (DCF/FCFF), Dividend Discount Model (DDM), Price-to-Book Asset Valuation (P/B), and Residual Income (RI) models. The system dynamically recommends the most suitable valuation path based on sector attributes and industry lifecycles."
+      "Features Discounted Cash Flow (DCF: FCFF/WACC or FCFE/Ke), Dividend Discount Model (DDM: Gordon or two-stage), Price-to-Book with holding NAV, and Residual Income (RI) models. The system dynamically recommends the most suitable valuation path based on sector attributes and industry lifecycles."
     ),
     tags$li(
       tags$b("Smart Decision Matrix & Backtesting: "),
@@ -407,8 +407,8 @@ beta_advanced_tab_ui <- function() {
                                  <thead style='background-color: #2C3E50; color: white;'>
                                    <tr>
                                      <th>對照項目</th>
-                                     <th>DDM（股利 Gordon）</th>
-                                     <th>DCF（明確預測 + Gordon 終值）</th>
+                                     <th>DDM（Gordon／二階段）</th>
+                                     <th>DCF（FCFF 或 FCFE）</th>
                                      <th>RI（剩餘收益）</th>
                                      <th>P/B（本淨比）</th>
                                    </tr>
@@ -417,35 +417,35 @@ beta_advanced_tab_ui <- function() {
                                    <tr>
                                      <td><b>現金流／錨定</b></td>
                                      <td>每股股利 D（股權請求權）</td>
-                                     <td>企業自由現金流 FCFF</td>
+                                     <td>FCFF（企業）或 FCFE（股權）</td>
                                      <td>帳面淨值 + 超額盈餘</td>
-                                     <td>每股帳面淨值 BVPS／TBVPS</td>
+                                     <td>BVPS／TBVPS／控股 NAVPS</td>
                                    </tr>
                                    <tr>
                                      <td><b>折現率／倍數</b></td>
                                      <td>Ke（CAPM 股權成本）</td>
-                                     <td>WACC（加權平均資本成本）</td>
+                                     <td>FCFF：WACC；FCFE：Ke</td>
                                      <td>Ke（CAPM 股權成本）</td>
                                      <td>目標 P/B 倍數（Justified／產業／歷史）</td>
                                    </tr>
                                    <tr>
                                      <td><b>成長率 g</b></td>
-                                     <td>股利永續成長率（可與中央 SGR 同步或覆寫）</td>
-                                     <td>FCFF 終值成長率 SGR（相對 WACC）</td>
+                                     <td>股利永續 g；二階段另有高速期 g1</td>
+                                     <td>終值成長率 SGR（FCFF 相對 WACC；FCFE 相對 Ke）</td>
                                      <td>剩餘收益終值成長率（相對 Ke）</td>
                                      <td>不直接使用 g；倍數反映成長與 ROE</td>
                                    </tr>
                                    <tr>
                                      <td><b>核心公式含義</b></td>
-                                     <td>整段估值：P₀ = D₁ / (Ke − g)</td>
-                                     <td>明確預測 + 終值：EV = Σ PV(FCFF) + PV(TV)</td>
+                                     <td>Gordon：P₀ = D₁/(Ke−g)；二階段：Σ PV(D_t)+PV(TV)</td>
+                                     <td>FCFF：EV＝Σ PV(FCFF)+PV(TV)；FCFE：Equity＝Σ PV(FCFE)+PV(TV)</td>
                                      <td>V₀ = B₀ + Σ PV(RI) + PV(TV_RI)</td>
-                                     <td>P = BVPS × 目標 P/B</td>
+                                     <td>P = (BVPS／TBVPS／NAVPS) × 目標 P/B</td>
                                    </tr>
                                    <tr>
                                      <td><b>輸出</b></td>
                                      <td>直接為每股合理價</td>
-                                     <td>先得 EV，再加減淨現金／負債後 ÷ 股數</td>
+                                     <td>FCFF 先得 EV 再加減淨現金／負債；FCFE 直接為股權價值</td>
                                      <td>直接為每股內在價值</td>
                                      <td>Bear／Base／Bull 三檔合理價區間</td>
                                    </tr>
@@ -458,7 +458,7 @@ beta_advanced_tab_ui <- function() {
                                    <tr>
                                      <th>考慮維度</th>
                                      <th>股利折現模型 (DDM)</th>
-                                     <th>自由現金流 (DCF / FCFF)</th>
+                                     <th>自由現金流 (DCF)</th>
                                      <th>剩餘收益模型 (RI)</th>
                                      <th>本淨比 (P/B)</th>
                                    </tr>
@@ -469,7 +469,7 @@ beta_advanced_tab_ui <- function() {
                                      <td>現金流量表（現金股利支付）</td>
                                      <td>現金流量表（營運與資本支出）</td>
                                      <td>損益表與資產負債表（淨利與權益）</td>
-                                     <td>資產負債表（權益／有形淨值）</td>
+                                     <td>資產負債表（權益／有形淨值／投資科目）</td>
                                    </tr>
                                    <tr>
                                      <td><b>投資者身分 / 觀點</b></td>
@@ -506,24 +506,28 @@ beta_advanced_tab_ui <- function() {
        
        # Tab: DDM 模型解說
        tabPanel("Dividend Discount Model (DDM)", icon = icon("hand-holding-usd"),
-                h4(tags$b("股利折現模型（股利 Gordon）")),
+                h4(tags$b("股利折現模型（Gordon 或二階段）")),
                 p("DDM 將普通股價值視為未來現金股利的現值。現金流是股利、折現率是 Ke，與以 FCFF／WACC 為核心的 DCF 屬不同層級。"),
                 tags$ul(
-                  tags$li(tags$b("$$P_0 = \\frac{D_1}{K_e - g} = \\frac{D_0 \\times (1 + g)}{K_e - g}$$"))
+                  tags$li(tags$b("Gordon："), tags$b("$$P_0 = \\frac{D_1}{K_e - g} = \\frac{D_0 \\times (1 + g)}{K_e - g}$$")),
+                  tags$li(tags$b("二階段："), "前 n₁ 年股利以 g₁ 成長，之後以永續 g₂ 做 Gordon 終值。約束：g₂ < Ke。"),
+                  tags$li(tags$b("$$D_t = D_0(1+g_1)^t,\\quad TV = \\frac{D_{n_1}(1+g_2)}{K_e-g_2},\\quad P_0 = \\sum_{t=1}^{n_1}\\frac{D_t}{(1+K_e)^t} + \\frac{TV}{(1+K_e)^{n_1}}$$"))
                 ),
-                p("股利成長率 g 可與中央終值 SGR 同步，亦可在 DDM 分頁單獨覆寫。基本面法可參考 $$g = ROE \\times Retention\\ Ratio$$，但不宜與 FCFF 終值 g 強制畫上等號。")
+                p("股利成長率 g（二階段的 g₂）可與中央終值 SGR 同步，亦可在 DDM 分頁單獨覆寫。基本面法可參考 $$g = ROE \\times Retention\\ Ratio$$，但不宜與 FCFF 終值 g 強制畫上等號。")
        ),
        
        # Tab: DCF 模型解說
        tabPanel("Discounted Cash Flow (DCF)", icon = icon("money-bill-wave"),
-                h4(tags$b("自由現金流折現模型 (FCFF)")),
-                p("DCF 關注企業造血能力：將未來 FCFF 以 WACC 折現得到企業價值，再橋接至股權價值與每股價格。本 app 的「Gordon」模式為明確預測期加上 Gordon 終值，而非單期 EV = FCF₁/(WACC−g)。"),
+                h4(tags$b("自由現金流折現模型 (FCFF／FCFE)")),
+                p("DCF 關注企業造血能力。預設以 FCFF 用 WACC 折現得到企業價值，再橋接至股權價值。亦可切換 FCFE：將 FCFF 轉成股權現金流後以 Ke 折現，不再加減淨現金／負債。本 app 的「Gordon」模式為明確預測期加上 Gordon 終值，而非單期 EV = FCF₁/(WACC−g)。"),
                 tags$ul(
                   tags$li(tags$b("$$FCFF = NOPAT + D\\&A - \\Delta NWC - CapEx$$")),
-                  tags$li(tags$b("$$Enterprise\\ Value = \\sum \\frac{FCFF_t}{(1+WACC)^t} + \\frac{Terminal\\ Value}{(1+WACC)^n}$$")),
-                  tags$li(tags$b("$$Terminal\\ Value = \\frac{FCFF_n \\times (1 + g)}{WACC - g}$$"))
+                  tags$li(tags$b("$$FCFE = FCFF - Interest\\times(1-T) + Net\\ Borrowing$$")),
+                  tags$li(tags$b("FCFF："), tags$b("$$Enterprise\\ Value = \\sum \\frac{FCFF_t}{(1+WACC)^t} + \\frac{TV}{(1+WACC)^n}$$")),
+                  tags$li(tags$b("FCFE："), tags$b("$$Equity = \\sum \\frac{FCFE_t}{(1+K_e)^t} + \\frac{TV}{(1+K_e)^n}$$")),
+                  tags$li(tags$b("$$Terminal\\ Value = \\frac{CF_n \\times (1 + g)}{r - g}$$"))
                 ),
-                p("Live 預測表以 NOPAT（EBIT×(1−T)）為錨，不是淨利 NI；與 FCFF 分頁橫幅一致。兩階段模式則在高速成長期後，將終值成長率收斂至 SGR；約束條件為 g < WACC（不是 Ke）。")
+                p("Live 預測表以 NOPAT（EBIT×(1−T)）為錨，不是淨利 NI。FCFE 的淨舉債採固定槓桿近似：各年淨舉債＝g×期初負債。兩階段模式在高速成長期後將終值成長率收斂至 SGR；FCFF 約束 g < WACC，FCFE 約束 g < Ke。")
        ),
 
        # Tab: RI 模型解說
@@ -542,14 +546,15 @@ beta_advanced_tab_ui <- function() {
        # Tab: P/B 模型解說
        tabPanel("Price-to-Book (P/B)", icon = icon("landmark"),
                 h4(tags$b("本淨比／資產估值法 (P/B)")),
-                p("以每股帳面淨值（或有形淨值）乘上目標本淨比，得到合理價區間。適用銀行、保險、控股等「資產為錨、折現模型前提常不成立」的情境。"),
+                p("以每股帳面淨值、有形淨值或控股 NAV 乘上目標本淨比，得到合理價區間。適用銀行、保險、控股等「資產為錨、折現模型前提常不成立」的情境。"),
                 tags$ul(
                   tags$li(tags$b("$$BVPS = \\frac{Common\\ Equity}{Shares}$$")),
                   tags$li(tags$b("$$TBVPS = \\frac{Common\\ Equity - Goodwill - Intangibles}{Shares}$$")),
-                  tags$li(tags$b("$$P = BVPS\\ (or\\ TBVPS) \\times Target\\ P/B$$")),
+                  tags$li(tags$b("$$NAV = Equity - Holdco\\ Discount \\times Identified\\ Investments$$")),
+                  tags$li(tags$b("$$NAVPS = NAV / Shares;\\quad P = NAVPS \\times Target\\ P/B$$")),
                   tags$li(tags$b("Justified\\ P/B \\approx \\frac{ROE - g}{K_e - g}"))
                 ),
-                p("目標倍數可綜合 Justified（ROE／Ke）、產業中位與歷史中位，輸出 Bear／Base／Bull 三檔。雙重股權／ADR 等「報價股 ≠ 財報股數口徑」時，與 DCF／RI／回測相同，一律自動約當股數（市值÷股價）。")
+                p("NAV 為帳面 SOTP：折價只套用在已辨識的投資科目，不是分部市值加總。無獨立投資科目時 NAV＝帳面權益。目標倍數可綜合 Justified（ROE／Ke）、產業中位與歷史中位，輸出 Bear／Base／Bull 三檔。雙重股權／ADR 等「報價股 ≠ 財報股數口徑」時，與 DCF／RI／回測相同，一律自動約當股數（市值÷股價）。")
        )
       )
     )
@@ -2227,6 +2232,28 @@ ui <- dashboardPage(
                                        ),
                                        helpText("勾選時跟隨中央 SGR；取消勾選後可單獨覆寫股利成長率（不必等於 FCFF 終值 g）。"),
                                        numericInput("mod_ddm-ke", "要求報酬率 (Ke) %", value = APP_DEFAULTS$ddm_ke),
+                                       radioButtons(
+                                         "mod_ddm-ddm_mode",
+                                         "股利折現結構",
+                                         choices = list(
+                                           "Gordon 單段" = "gordon",
+                                           "二階段成長" = "two_stage"
+                                         ),
+                                         selected = APP_DEFAULTS$ddm_mode,
+                                         inline = TRUE
+                                       ),
+                                       conditionalPanel(
+                                         condition = "input['mod_ddm-ddm_mode'] == 'two_stage'",
+                                         numericInput(
+                                           "mod_ddm-g_stage1", "高速期股利成長 g1 (%)",
+                                           value = APP_DEFAULTS$ddm_g_stage1, step = 0.1
+                                         ),
+                                         numericInput(
+                                           "mod_ddm-yr_stage1", "高速期年數 n1",
+                                           value = APP_DEFAULTS$ddm_yr_stage1, min = 1, max = 30, step = 1
+                                         ),
+                                         helpText("二階段：前 n1 年以 g1 成長，之後以下方永續 g（可與 SGR 同步）做 Gordon 終值。終值約束：g2 < Ke。")
+                                       ),
                                        checkboxInput(
                                          "ddm_use_estimated_re",
                                          "採用估算 Ke（來自 CAPM β）",
@@ -2318,6 +2345,17 @@ ui <- dashboardPage(
                                                       "二階段成長法 (Two-Stage Model)" = "two_stage"
                                                     ),
                                                     selected = APP_DEFAULTS$dcf_mode),
+                                       radioButtons(
+                                         "dcf_claim",
+                                         "現金流口徑",
+                                         choices = list(
+                                           "FCFF（WACC，再橋接股權）" = "fcff",
+                                           "FCFE（Ke，直接股權）" = "fcfe"
+                                         ),
+                                         selected = APP_DEFAULTS$dcf_claim,
+                                         inline = TRUE
+                                       ),
+                                       helpText("FCFE = FCFF − 稅後利息 + 淨舉債（負債隨 g 成長）；以 Ke 折現，不再減負債。"),
                                        # WACC 改由 DCF → WACC 分頁／CAPM 同步；此處隱藏保留 input$id 供計算鏈使用
                                        tags$div(
                                          style = "display:none;",

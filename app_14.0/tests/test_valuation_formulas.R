@@ -29,8 +29,53 @@ approx_eq <- function(a, b, tol = 1e-8) {
 p_ddm <- .ddm_formula_p0(d0 = 1, g = 0.05, ke = 0.10)
 check("DDM Gordon", approx_eq(p_ddm, 1.05 / 0.05))
 
+# Two-stage DDM with g1 = g2 equals Gordon for any n
+p_ts_eq <- .ddm_formula_two_stage(d0 = 1, g1 = 0.05, n = 5, g2 = 0.05, ke = 0.10)
+check("DDM two-stage g1=g2 equals Gordon", approx_eq(p_ts_eq, p_ddm, 1e-10))
+
+# Two-stage closed form: n=2, g1=8%, g2=4%, Ke=10%
+d0 <- 1; g1 <- 0.08; n1 <- 2L; g2 <- 0.04; ke <- 0.10
+d1 <- d0 * (1 + g1)
+d2 <- d0 * (1 + g1)^2
+tv <- d2 * (1 + g2) / (ke - g2)
+p_ts_closed <- d1 / (1 + ke) + (d2 + tv) / (1 + ke)^2
+p_ts <- .ddm_formula_two_stage(d0 = d0, g1 = g1, n = n1, g2 = g2, ke = ke)
+check("DDM two-stage n=2 closed form", approx_eq(p_ts, p_ts_closed, 1e-10))
+
 # P/B: P = BVPS × target
 check("P/B linear", approx_eq(.pb_formula_p(basis = 12, pb = 1.5), 18))
+
+# FCFE conversion: FCFE = FCFF − Int(1−T) + g×debt (debt then compounds)
+fcfe_path <- fcff_to_fcfe(c(100, 110), interest_after_tax = 10, debt0 = 200, g_path = 0.05)
+check("FCFE y1", approx_eq(fcfe_path[1], 100 - 10 + 0.05 * 200))
+check("FCFE y2", approx_eq(fcfe_path[2], 110 - 10 + 0.05 * 210))
+
+# Holding NAV = Equity − discount × investments
+df_nav <- data.frame(
+  Metric = c("Common Stock Equity", "Long Term Investments", "Cash And Cash Equivalents"),
+  `12/31/2024` = c(1000, 400, 50),
+  check.names = FALSE,
+  stringsAsFactors = FALSE
+)
+nav_disc <- extract_nav_components(df_nav, holdco_discount = 0.20)
+check("NAV discounted", approx_eq(nav_disc$nav, 1000 - 0.20 * 400))
+nav_zero <- extract_nav_components(df_nav, holdco_discount = 0)
+check("NAV discount=0 equals equity", approx_eq(nav_zero$nav, 1000))
+df_book <- data.frame(
+  Metric = "Common Stock Equity",
+  `12/31/2024` = 800,
+  check.names = FALSE,
+  stringsAsFactors = FALSE
+)
+nav_book <- extract_nav_components(df_book, holdco_discount = 0.20)
+check("NAV no investments equals equity", approx_eq(nav_book$nav, 800))
+nav_clamp <- extract_nav_components(df_nav, holdco_discount = 0.90)
+check("NAV discount clamped to 50%", approx_eq(nav_clamp$discount, 0.5) && approx_eq(nav_clamp$nav, 1000 - 0.5 * 400))
+
+# Signal labels: P vs FV, no inverted jargon
+check("signal cheap P<FV", identical(valuation_signal_label(10, 8), VALUATION_SIGNAL_CHEAP))
+check("signal expensive P>FV", identical(valuation_signal_label(8, 10), VALUATION_SIGNAL_EXPENSIVE))
+check("signal fair", identical(valuation_signal_label(10, 10), VALUATION_SIGNAL_FAIR))
 
 # Live DCF Gordon n=1: EV = F1/(1+r) + F1(1+g)/((r−g)(1+r))
 r <- 0.10; g <- 0.03; f0 <- 1
@@ -70,6 +115,20 @@ fv <- estimate_hist_dcf(
 fcf1 <- 100 * 1.05
 ev_hist <- fcf1 / 1.10 + (fcf1 * 1.03 / (0.10 - 0.03)) / 1.10
 check("PIT DCF geometric", approx_eq(fv, ev_hist / 10, 1e-8))
+
+# PIT FCFE: discount at Ke, no EV→equity cash−debt bridge
+fv_fcfe <- estimate_hist_dcf(
+  fcf0 = 100, cash = 999, debt = 50, shares = 10,
+  wacc = 0.08, sgr = 0.03, n_years = 1, g_explicit = 0.05,
+  claim = "fcfe", ke = 0.10, rd = 0.05, tax = 0.21
+)
+fcf1 <- 100 * 1.05
+iat <- 50 * 0.05 * (1 - 0.21)
+nb <- 0.05 * 50
+fcfe1 <- fcf1 - iat + nb
+ev_fcfe <- fcfe1 / 1.10 + (fcfe1 * 1.03 / (0.10 - 0.03)) / 1.10
+check("PIT FCFE no cash-debt bridge", approx_eq(fv_fcfe, ev_fcfe / 10, 1e-8))
+check("PIT FCFE ignores cash add-back", !approx_eq(fv_fcfe, (ev_fcfe + 999 - 50) / 10, 1e-6))
 
 if (fail > 0L) {
   cat(fail, " formula check(s) failed.\n", sep = "")

@@ -64,9 +64,13 @@ APP_DEFAULTS <- list(
   ddm_g           = default_sgr,        # 股利 g；預設對齊中央 SGR，可覆寫
   ddm_ke          = default_re,
   ddm_sync_central_g = TRUE,            # 與 Get Started SGR 同步
+  ddm_mode        = "gordon",           # gordon | two_stage
+  ddm_g_stage1    = default_g,          # 二階段高速期股利成長
+  ddm_yr_stage1   = 5,                  # 二階段高速期年數
 
   # --- 3. Gordon DCF ---
   dcf_mode        = "gordon",
+  dcf_claim       = "fcff",             # fcff (WACC+EV 橋接) | fcfe (Ke 直接股權)
   dcf_chart_mode  = "simple",
   # Dashboard Cash Flow：固定顯示營業／投資／融資三線疊圖（融資 FCF ≠ 自由現金流）
   cf_flow_series  = c("ocf", "icf", "fcf"),
@@ -126,5 +130,6 @@ APP_DEFAULTS <- list(
   pb_mid          = round(pb_mid, 2),
   pb_high         = round(pb_hi, 2),
   pb_basis        = "bvps",
-  pb_use_industry = TRUE
+  pb_use_industry = TRUE,
+  pb_holdco_discount = 0                 # 控股折價套用在已辨識投資科目（0–50%）
 )
