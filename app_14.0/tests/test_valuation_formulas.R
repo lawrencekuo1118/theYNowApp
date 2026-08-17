@@ -49,6 +49,18 @@ check("P/B linear", approx_eq(.pb_formula_p(basis = 12, pb = 1.5), 18))
 fcfe_path <- fcff_to_fcfe(c(100, 110), interest_after_tax = 10, debt0 = 200, g_path = 0.05)
 check("FCFE y1", approx_eq(fcfe_path[1], 100 - 10 + 0.05 * 200))
 check("FCFE y2", approx_eq(fcfe_path[2], 110 - 10 + 0.05 * 210))
+comp <- fcff_to_fcfe_components(c(100, 110), interest_after_tax = 10, debt0 = 200, g_path = 0.05)
+check("FCFE components match path", approx_eq(comp$FCFE[1], fcfe_path[1]) && approx_eq(comp$FCFE[2], fcfe_path[2]))
+check("dcf_cf_tag fcff", identical(dcf_cf_tag("fcff"), "FCFF") && identical(dcf_disc_tag("fcff"), "WACC"))
+check("dcf_cf_tag fcfe", identical(dcf_cf_tag("fcfe"), "FCFE") && identical(dcf_disc_tag("fcfe"), "Ke"))
+check("extract_dcf_claim_series fcff", {
+  df <- data.frame(FCFF = c(100, 110))
+  all(extract_dcf_claim_series(df, "fcff") == c(100, 110))
+})
+check("extract_dcf_claim_series fcfe", {
+  df <- data.frame(FCFF = c(100, 110))
+  approx_eq(extract_dcf_claim_series(df, "fcfe", 10, 200, 0.05)[1], fcfe_path[1])
+})
 
 # Holding NAV = Equity − discount × investments
 df_nav <- data.frame(
