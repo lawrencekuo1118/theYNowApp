@@ -684,16 +684,22 @@ beta_advanced_tab_ui <- function() {
     box(
       title = tagList(icon("percentage"), title),
       width = 12, status = "info", solidHeader = TRUE, collapsible = TRUE,
-      helpText(
-        "「｜ε｜」由估值公式在目前模型參數（WACC／Ke、g、n、We／Wd、配息、FCF 佔比等）上評估，與個股價格、股數、現金／負債規模無關；",
-        "兩檔股票只要公式參數相同，｜ε｜與排序即相同。g 與折現率的彈性本身取決於 (r−g)，故改參數才會改｜ε｜。",
-        "一次只變動一個參數（相對 ±1%）；整數年數 n 以 ±1 年換算成 1% 等價彈性。",
-        "「估值Δ%」≈ 該參數變動 1% 時公式價值的變動幅度；「｜ε｜」= 兩側 |Δ估值%| 平均。",
-        "水準參數（FCFF／FCFE／D0／B0／BVPS／目標 P/B）在公式為線性時｜ε｜≈1。"
-      ),
       tags$div(
         style = "overflow-x:auto;",
         tableOutput(table_id)
+      ),
+      tags$div(
+        class = "help-block",
+        style = "margin:12px 0 0 0; font-size:12px; line-height:1.55; color:#737373;",
+        tags$p(style = "margin:0 0 4px 0; font-weight:600; color:#555;", "註解"),
+        tags$ul(
+          style = "margin:0; padding-left:1.25em;",
+          tags$li("「｜ε｜」由估值公式在目前模型參數（WACC／Ke、g、n、We／Wd、配息、FCF 佔比等）上評估，與個股價格、股數、現金／負債規模無關；兩檔股票只要公式參數相同，｜ε｜與排序即相同。"),
+          tags$li("g 與折現率的彈性本身取決於 (r−g)，故改參數才會改｜ε｜。"),
+          tags$li("一次只變動一個參數（相對 ±1%）；整數年數 n 以 ±1 年換算成 1% 等價彈性。"),
+          tags$li("「估值Δ%」≈ 該參數變動 1% 時公式價值的變動幅度；「｜ε｜」= 兩側 |Δ估值%| 平均。"),
+          tags$li("水準參數（FCFF／FCFE／D0／B0／BVPS／目標 P/B）在公式為線性時｜ε｜≈1。")
+        )
       )
     )
   )
@@ -2511,32 +2517,36 @@ ui <- dashboardPage(
               tabBox(width = "auto",
                      tabPanel("", 
                               fluidRow(
-                                column(width = 12,
-                                       radioButtons("dcf_mode", "選擇 DCF 估值模型：",
-                                                    choices = list(
-                                                      "明確預測 + Gordon 終值" = "gordon",
-                                                      "二階段成長法 (Two-Stage Model)" = "two_stage"
-                                                    ),
-                                                    selected = APP_DEFAULTS$dcf_mode),
-                                       radioButtons(
-                                         "dcf_claim",
-                                         "採用現金流",
-                                         choices = list(
-                                           "FCFF（WACC，再橋接股權）" = "fcff",
-                                           "FCFE（Ke，直接股權）" = "fcfe"
-                                         ),
-                                         selected = APP_DEFAULTS$dcf_claim,
-                                         inline = TRUE
-                                       ),
-                                       helpText("FCFE = FCFF − 稅後利息 + 淨舉債（負債隨 g 成長）；以 Ke 折現，不再減負債。"),
-                                       # WACC 改由 DCF → WACC 分頁／CAPM 同步；此處隱藏保留 input$id 供計算鏈使用
-                                       tags$div(
-                                         style = "display:none;",
-                                         numericInput(
-                                           "wacc_gordon", "折現率 WACC (%)",
-                                           value = APP_DEFAULTS$wacc_gordon, step = 0.01
-                                         )
-                                       )
+                                column(
+                                  width = 6,
+                                  radioButtons("dcf_mode", "選擇 DCF 估值模型：",
+                                               choices = list(
+                                                 "明確預測 + Gordon 終值" = "gordon",
+                                                 "二階段成長法 (Two-Stage Model)" = "two_stage"
+                                               ),
+                                               selected = APP_DEFAULTS$dcf_mode)
+                                ),
+                                column(
+                                  width = 6,
+                                  radioButtons(
+                                    "dcf_claim",
+                                    "採用現金流",
+                                    choices = list(
+                                      "FCFF（WACC，再橋接股權）" = "fcff",
+                                      "FCFE（Ke，直接股權）" = "fcfe"
+                                    ),
+                                    selected = APP_DEFAULTS$dcf_claim,
+                                    inline = TRUE
+                                  ),
+                                  helpText("FCFE = FCFF − 稅後利息 + 淨舉債（負債隨 g 成長）；以 Ke 折現，不再減負債。")
+                                )
+                              ),
+                              # WACC 改由 DCF → WACC 分頁／CAPM 同步；此處隱藏保留 input$id 供計算鏈使用
+                              tags$div(
+                                style = "display:none;",
+                                numericInput(
+                                  "wacc_gordon", "折現率 WACC (%)",
+                                  value = APP_DEFAULTS$wacc_gordon, step = 0.01
                                 )
                               )
                      )
@@ -2559,7 +2569,7 @@ ui <- dashboardPage(
                                          "圖表顯示模式",
                                          choices = c(
                                            "單純模式（歷史＋預測 FCFF，無折現線）" = "simple",
-                                           "顯示折現後價值（DCF）" = "with_dcf"
+                                           "顯示各年折現現金流（PV，不含終值）" = "with_dcf"
                                          ),
                                          selected = APP_DEFAULTS$dcf_chart_mode,
                                          inline = TRUE

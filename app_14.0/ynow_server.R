@@ -1503,7 +1503,7 @@ server <- function(input, output, session) {
       session, "dcf_chart_mode",
       choices = c(
         setNames("simple", sprintf("單純模式（歷史＋預測 %s，無折現線）", tag)),
-        "顯示折現後價值（DCF）" = "with_dcf"
+        "顯示各年折現現金流（PV，不含終值）" = "with_dcf"
       ),
       selected = sel
     )
@@ -1516,18 +1516,17 @@ server <- function(input, output, session) {
   output$dcf_chart_help <- renderUI({
     tag <- dcf_cf_tag(input$dcf_claim %||% "fcff")
     helpText(sprintf(
-      "提示：圖含歷史現金流與預測 %s；切換模式可隱藏／顯示折現後 DCF 線。啟動時已自動計算，自訂參數後可再點試算。",
-      tag
+      "提示：圖含歷史現金流與預測 %s；折現線為各年現金流以 %s 折現的現值（不含永續終值）。終值現值見圖下註，不會疊進最後一年以免壓扁軸距。",
+      tag, dcf_disc_tag(input$dcf_claim %||% "fcff")
     ))
   })
 
   output$dcf_sens_help <- renderUI({
     claim <- input$dcf_claim %||% "fcff"
     disc <- dcf_disc_tag(claim)
-    tag <- dcf_cf_tag(claim)
     p(helpText(sprintf(
-      "軸心採用 Get Started／Dashboard 目前的 SGR 與 %s；觀察鄰近組合下的每股內在價值變化。CapEx／ΔNWC 前瞻比率請至 DCF → %s 設定。",
-      disc, tag
+      "軸心採用 Get Started／Dashboard 目前的 SGR 與 %s；觀察鄰近組合下的每股內在價值變化。",
+      disc
     )))
   })
 
@@ -4525,7 +4524,9 @@ server <- function(input, output, session) {
     claim <- input$dcf_claim %||% "fcff"
     hist_lab <- dcf_hist_cf_label(claim)
     fcst_lab <- dcf_fcst_cf_label(claim)
+    pv_lab <- dcf_yearly_pv_label(claim)
     tag <- dcf_cf_tag(claim)
+    disc_tag <- dcf_disc_tag(claim)
     br <- .dcf_fcfe_bridge()
     cf_vals <- extract_dcf_claim_series(
       proj_df, claim,
@@ -4563,34 +4564,43 @@ server <- function(input, output, session) {
         if (!is.finite(ke) || ke <= 0) ke <- 0.1
         rep(ke, n_years)
       } else if (identical(input$dcf_mode, "gordon")) {
-        rep(as.numeric(input$wacc_gordon) / 100, n_years)
+        r <- suppressWarnings(as.numeric(input$wacc_gordon)[1]) / 100
+        if (!is.finite(r) || r <= -0.999) r <- 0.1
+        rep(r, n_years)
       } else {
-        s1_yrs <- as.numeric(input$yr_stage1)
-        if (!is.finite(s1_yrs)) s1_yrs <- 1
-        c(
-          rep(as.numeric(input$wacc_stage1) / 100, min(s1_yrs, n_years)),
-          rep(as.numeric(input$wacc_stage2) / 100, max(n_years - s1_yrs, 0))
-        )
+        s1_yrs <- clamp_yr_stage1(n_years, input$yr_stage1, APP_DEFAULTS$yr_stage1)
+        r1 <- suppressWarnings(as.numeric(input$wacc_stage1)[1]) / 100
+        r2 <- suppressWarnings(as.numeric(input$wacc_stage2)[1]) / 100
+        if (!is.finite(r1) || r1 <= -0.999) r1 <- 0.1
+        if (!is.finite(r2) || r2 <= -0.999) r2 <- r1
+        c(rep(r1, min(s1_yrs, n_years)), rep(r2, max(n_years - s1_yrs, 0)))
       }
     }, error = function(e) rep(0.1, n_years))
 
+    # Red series = PV of that year's cash flow only. Do not add PV(TV) to year n
+    # (that used to spike the last point to enterprise-value scale and flatten history).
+    dcf_vals <- dcf_yearly_cf_pv(cf_vals, wacc_val)
     discount_factors <- cumprod(1 + wacc_val)
-    dcf_vals <- round(cf_vals / discount_factors, 2)
 
     g_terminal <- if (is.numeric(input$sgr)) input$sgr / 100 else 0.03
-    terminal_wacc <- tail(wacc_val, 1)
+    tv_pack <- dcf_gordon_tv_pv(
+      tail(cf_vals, 1), g_terminal, tail(wacc_val, 1),
+      if (length(discount_factors) >= 1L) discount_factors[n_years] else NA_real_
+    )
     tv_annotation <- ""
-
-    if (identical(chart_mode, "with_dcf") &&
-        is.finite(terminal_wacc) && is.finite(g_terminal) && terminal_wacc > g_terminal) {
-      last_fcf <- tail(cf_vals, 1)
-      tv <- (last_fcf * (1 + g_terminal)) / (terminal_wacc - g_terminal)
-      pv_tv <- tv / discount_factors[n_years]
-      dcf_vals[n_years] <- round(dcf_vals[n_years] + pv_tv, 2)
-      tv_annotation <- paste0(
-        "\n( 第 ", n_years, " 年 DCF 已含永續終值 PV of TV: ",
-        format_dollar_abbr(pv_tv), " )"
-      )
+    if (identical(chart_mode, "with_dcf")) {
+      if (is.finite(tv_pack$pv_tv)) {
+        tv_annotation <- paste0(
+          "紅線＝各年 ", tag, " 以 ", disc_tag, " 折現之現值（不含終值）。",
+          "永續終值現值 PV of TV: ", format_dollar_abbr(tv_pack$pv_tv),
+          "（未疊入第 ", n_years, " 年，以免壓扁走勢）"
+        )
+      } else {
+        tv_annotation <- paste0(
+          "紅線＝各年 ", tag, " 以 ", disc_tag, " 折現之現值（不含終值）。",
+          "終值未計（需 ", disc_tag, " > g）"
+        )
+      }
     }
 
     forecast_cf <- data.frame(
@@ -4609,7 +4619,7 @@ server <- function(input, output, session) {
       plot_parts <- c(plot_parts, list(data.frame(
         Period = forecast_periods,
         Value = as.numeric(dcf_vals),
-        Metric = "折現後價值 (DCF)",
+        Metric = pv_lab,
         Segment = "Forecast",
         stringsAsFactors = FALSE
       )))
@@ -4630,45 +4640,61 @@ server <- function(input, output, session) {
     plot_df$Period <- factor(plot_df$Period, levels = x_levels)
     plot_df$Metric <- factor(
       plot_df$Metric,
-      levels = c(hist_lab, fcst_lab, "折現後價值 (DCF)")
+      levels = c(hist_lab, fcst_lab, pv_lab)
     )
 
     title_txt <- if (identical(chart_mode, "simple")) {
       paste0(current_ticker(), " - 歷史與預測 ", tag, "（單純模式）")
     } else {
-      paste0(current_ticker(), " - 歷史／預測 ", tag, " vs 折現後 DCF")
+      paste0(current_ticker(), " - 歷史／預測 ", tag, " vs 各年折現現值")
     }
 
     color_map <- setNames(
       c("#3498db", "#95a5a6", "#e74c3c"),
-      c(hist_lab, fcst_lab, "折現後價值 (DCF)")
+      c(hist_lab, fcst_lab, pv_lab)
     )
     lty_map <- setNames(
       c("solid", "solid", "dashed"),
-      c(hist_lab, fcst_lab, "折現後價值 (DCF)")
+      c(hist_lab, fcst_lab, pv_lab)
     )
 
-    ggplot(plot_df, aes(x = Period, y = Value, color = Metric, linetype = Metric, group = Metric)) +
+    label_cf <- plot_df[as.character(plot_df$Metric) != pv_lab, , drop = FALSE]
+    label_pv <- plot_df[as.character(plot_df$Metric) == pv_lab, , drop = FALSE]
+    y_pad <- max(abs(plot_df$Value), na.rm = TRUE)
+    if (!is.finite(y_pad) || y_pad <= 0) y_pad <- 1
+
+    p <- ggplot(plot_df, aes(x = Period, y = Value, color = Metric, linetype = Metric, group = Metric)) +
       geom_line(linewidth = 1.15) +
       geom_point(size = 2.8) +
       geom_text(
+        data = label_cf,
         aes(label = format_dollar_abbr(Value)),
-        vjust = -1.2, size = 3.2, show.legend = FALSE, check_overlap = TRUE
-      ) +
+        vjust = -1.15, size = 3.2, show.legend = FALSE
+      )
+    if (nrow(label_pv) > 0) {
+      p <- p + geom_text(
+        data = label_pv,
+        aes(label = format_dollar_abbr(Value)),
+        vjust = 1.7, size = 3.2, show.legend = FALSE
+      )
+    }
+    p +
       scale_color_manual(values = color_map, drop = TRUE) +
       scale_linetype_manual(values = lty_map, drop = TRUE) +
       scale_y_continuous(labels = label_chart_number(prefix = money_prefix())) +
+      expand_limits(y = c(min(plot_df$Value, na.rm = TRUE) - 0.08 * y_pad,
+                          max(plot_df$Value, na.rm = TRUE) + 0.12 * y_pad)) +
       theme_minimal(base_size = 14) +
       labs(
         title = title_txt,
         subtitle = if (identical(chart_mode, "with_dcf")) tv_annotation else paste0("不含折現線；僅歷史與預測 ", tag),
-        x = "期間", y = paste0(money_label(), " (Millions)")
+        x = "期間", y = paste0("金額 (", money_label(), ")")
       ) +
       theme(
         legend.position = "top",
         axis.text.x = element_text(angle = 30, hjust = 1),
         plot.title = element_text(face = "bold", hjust = 0.5),
-        plot.subtitle = element_text(color = "#8e44ad", face = "bold", hjust = 0.5)
+        plot.subtitle = element_text(color = "#8e44ad", face = "bold", hjust = 0.5, size = 11)
       )
   })
   
@@ -4946,13 +4972,13 @@ server <- function(input, output, session) {
     wacc_range <- seq(base_wacc + 2, base_wacc - 2, length.out = 5)
     g_range <- seq(base_g - 1, base_g + 1, length.out = 5)
     claim <- as.character(input$dcf_claim %||% "fcff")[1]
-    rate_lab <- if (identical(claim, "fcfe")) "Ke " else "WACC "
+    rate_lab <- if (identical(claim, "fcfe")) "Ke " else "Rate "
 
     sens_matrix <- matrix(
       NA, nrow = 5, ncol = 5,
       dimnames = list(
         paste0(rate_lab, round(wacc_range, 1), "%"),
-        paste0("g ", round(g_range, 1), "%")
+        paste0("g (SGR) ", round(g_range, 1), "%")
       )
     )
 
@@ -5018,7 +5044,7 @@ server <- function(input, output, session) {
       NA, nrow = 5, ncol = 5,
       dimnames = list(
         paste0("Ke ", round(ke_range, 1), "%"),
-        paste0("g ", round(g_range, 1), "%")
+        paste0("g (SGR) ", round(g_range, 1), "%")
       )
     )
     for (i in 1:5) {
@@ -5115,7 +5141,7 @@ server <- function(input, output, session) {
     req(!is.null(st$built), !is.null(st$built$matrix))
     sens_matrix <- st$built$matrix
     out_df <- cbind(Rate = rownames(sens_matrix), as.data.frame(sens_matrix, check.names = FALSE))
-    names(out_df)[1] <- paste0(st$disc_label %||% "WACC", "_Rate")
+    names(out_df)[1] <- if (identical(st$disc_label, "Ke")) "Ke (%)" else "Rate (%)"
     out_df
   }, digits = 2, striped = TRUE, hover = TRUE, bordered = TRUE, align = "c",
      width = "100%", na = "無效 (折現率≤g)")

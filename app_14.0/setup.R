@@ -897,6 +897,34 @@ PARAM_SENSITIVITY_SHOCK <- 0.01
   pv + tv / disc[n]
 }
 
+#' Present value of each explicit-period cash flow (no terminal value mixed in).
+#' `rates` are decimals (WACC or Ke); length 1 is recycled. Invalid rates fall back to 10%.
+dcf_yearly_cf_pv <- function(cf, rates) {
+  cf <- suppressWarnings(as.numeric(cf))
+  n <- length(cf)
+  if (n < 1L) return(numeric(0))
+  rates <- suppressWarnings(as.numeric(rates))
+  if (length(rates) < 1L) rates <- 0.1
+  if (length(rates) == 1L) rates <- rep(rates, n)
+  if (length(rates) < n) rates <- c(rates, rep(tail(rates, 1), n - length(rates)))
+  rates <- rates[seq_len(n)]
+  rates[!is.finite(rates) | rates <= -0.999] <- 0.1
+  cf / cumprod(1 + rates)
+}
+
+#' Gordon terminal value at year n and its t=0 present value (kept off the yearly PV series).
+dcf_gordon_tv_pv <- function(last_cf, g, r, discount_factor_n) {
+  last_cf <- suppressWarnings(as.numeric(last_cf)[1])
+  g <- suppressWarnings(as.numeric(g)[1])
+  r <- suppressWarnings(as.numeric(r)[1])
+  df_n <- suppressWarnings(as.numeric(discount_factor_n)[1])
+  empty <- list(tv = NA_real_, pv_tv = NA_real_)
+  if (!is.finite(last_cf) || !is.finite(g) || !is.finite(r) || !is.finite(df_n)) return(empty)
+  if (r <= g || abs(df_n) < 1e-15) return(empty)
+  tv <- last_cf * (1 + g) / (r - g)
+  list(tv = tv, pv_tv = tv / df_n)
+}
+
 #' CAPM cost of equity in percent: Ke = Rf + β(Rm − Rf).
 .capm_ke_pct <- function(rf_pct, beta, rm_pct) {
   rf_pct <- suppressWarnings(as.numeric(rf_pct)[1])
@@ -1004,6 +1032,10 @@ dcf_hist_cf_label <- function(claim) {
 
 dcf_fcst_cf_label <- function(claim) {
   sprintf("預測現金流 (%s)", dcf_cf_tag(claim))
+}
+
+dcf_yearly_pv_label <- function(claim) {
+  sprintf("各年折現現金流 (PV／%s)", dcf_disc_tag(claim))
 }
 
 #' Convert FCFF path to FCFE with conversion components.

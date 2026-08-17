@@ -53,6 +53,10 @@ comp <- fcff_to_fcfe_components(c(100, 110), interest_after_tax = 10, debt0 = 20
 check("FCFE components match path", approx_eq(comp$FCFE[1], fcfe_path[1]) && approx_eq(comp$FCFE[2], fcfe_path[2]))
 check("dcf_cf_tag fcff", identical(dcf_cf_tag("fcff"), "FCFF") && identical(dcf_disc_tag("fcff"), "WACC"))
 check("dcf_cf_tag fcfe", identical(dcf_cf_tag("fcfe"), "FCFE") && identical(dcf_disc_tag("fcfe"), "Ke"))
+check("dcf_yearly_pv_label", {
+  grepl("WACC", dcf_yearly_pv_label("fcff"), fixed = TRUE) &&
+    grepl("Ke", dcf_yearly_pv_label("fcfe"), fixed = TRUE)
+})
 check("extract_dcf_claim_series fcff", {
   df <- data.frame(FCFF = c(100, 110))
   all(extract_dcf_claim_series(df, "fcff") == c(100, 110))
@@ -108,6 +112,23 @@ ev_path <- .dcf_formula_ev_from_fcff(fcff1, r1 = 0.10, g_term = 0.03)
 tv <- fcff1[1] * 1.03 / (0.10 - 0.03)
 ev_path_closed <- fcff1[1] / 1.10 + tv / 1.10
 check("DCF from NOPAT FCFF", approx_eq(ev_path, ev_path_closed, 1e-10))
+
+# Overview chart: yearly PV must stay below undiscounted CF and must not include TV
+cf_chart <- c(100, 110, 121, 133.1, 146.41)
+r_chart <- 0.10
+pv_chart <- dcf_yearly_cf_pv(cf_chart, r_chart)
+check("yearly PV y1 = CF/(1+r)", approx_eq(pv_chart[1], cf_chart[1] / 1.10))
+check("yearly PV y5 = CF/(1+r)^5", approx_eq(pv_chart[5], cf_chart[5] / 1.10^5))
+check("yearly PV sits below forecast", all(pv_chart < cf_chart))
+tv_chart <- dcf_gordon_tv_pv(cf_chart[5], 0.03, r_chart, 1.10^5)
+tv_closed <- cf_chart[5] * 1.03 / (0.10 - 0.03)
+check("PV(TV) separate from yearly", approx_eq(tv_chart$tv, tv_closed) &&
+        approx_eq(tv_chart$pv_tv, tv_closed / 1.10^5))
+check("year-5 PV is not CF5+PV(TV)", abs(pv_chart[5] - (pv_chart[5] + tv_chart$pv_tv)) > 1)
+pv_ts <- dcf_yearly_cf_pv(c(100, 110), c(0.12, 0.08))
+check("two-stage yearly PV", approx_eq(pv_ts[1], 100 / 1.12) &&
+        approx_eq(pv_ts[2], 110 / (1.12 * 1.08)))
+check("TV blocked when r<=g", !is.finite(dcf_gordon_tv_pv(100, 0.10, 0.10, 1.1)$pv_tv))
 
 # RI: V0 = B0 + PV(RI) + PV(TV)
 cell <- compute_ri_valuation(
