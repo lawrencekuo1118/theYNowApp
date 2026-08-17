@@ -676,7 +676,7 @@ fcf_projection_module_server <- function(
            <b>{tag} 預測資料已同步！</b><br/>
            -------------------------<br/>
            第 1 年預測現金流: <b>${round(cfs[1], 2)}</b><br/>
-           第 {nrow(df)} 年預測現金流: <b>${round(cfs[nrow(df)], 2)}</b><br/>
+           第 {nrow(df)} 年預測現金流: <b>${round(tail(cfs, 1), 2)}</b><br/>
          </div>"
       ))
     })
