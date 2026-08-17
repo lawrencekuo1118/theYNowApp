@@ -1655,71 +1655,81 @@ ui <- dashboardPage(
           position: relative;
         }
         .ynow-bt-hfv-controls {
-          position: absolute;
-          right: 10px;
-          bottom: 10px;
-          z-index: 10;
-          max-width: 320px;
-          min-width: 240px;
-          padding: 10px 14px 10px 18px;
-          background: rgba(255, 255, 255, 0.97);
-          border: 1px solid #dde2e6;
+          position: static;
+          display: flex;
+          flex-wrap: wrap;
+          align-items: flex-end;
+          gap: 8px 28px;
+          width: 100%;
+          max-width: none;
+          min-width: 0;
+          margin: 0 0 12px 0;
+          padding: 8px 12px 10px 12px;
+          background: #f7f9fb;
+          border: 1px solid #e4eaef;
           border-radius: 6px;
-          box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
-          font-size: 11px;
+          box-shadow: none;
+          font-size: 12px;
           box-sizing: border-box;
           overflow: visible;
+        }
+        .ynow-bt-hfv-bench {
+          flex: 0 0 auto;
+          padding-bottom: 2px;
+        }
+        .ynow-bt-hfv-models {
+          flex: 1 1 280px;
+          min-width: 0;
         }
         .ynow-bt-hfv-controls .form-group {
           margin-bottom: 0;
         }
         .ynow-bt-hfv-controls .control-label {
           display: block;
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 600;
           margin-top: 0;
-          margin-bottom: 10px;
+          margin-bottom: 6px;
           line-height: 1.4;
           white-space: normal;
         }
         .ynow-bt-hfv-controls .shiny-options-group {
           margin-top: 0;
-          clear: both;
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          column-gap: 14px;
-          row-gap: 2px;
-          align-items: start;
-          padding-left: 4px;
+          clear: none;
+          display: flex;
+          flex-wrap: wrap;
+          column-gap: 18px;
+          row-gap: 4px;
+          align-items: center;
+          padding-left: 0;
         }
         .ynow-bt-hfv-controls .radio {
           margin-top: 0;
           margin-bottom: 4px;
         }
         .ynow-bt-hfv-controls .radio label {
-          font-size: 11px;
+          font-size: 12px;
           font-weight: normal;
           line-height: 1.35;
         }
-        .ynow-bt-hfv-controls .checkbox {
-          margin-top: 4px;
-          margin-bottom: 4px;
+        .ynow-bt-hfv-controls .checkbox,
+        .ynow-bt-hfv-controls .checkbox-inline {
+          margin-top: 0;
+          margin-bottom: 0;
           min-height: 18px;
-          padding-left: 4px;
+          padding-left: 0;
         }
-        .ynow-bt-hfv-controls .checkbox:first-child {
-          margin-top: 2px;
-        }
-        /* Bootstrap checkbox 以 margin-left:-20px 掛在 label 左側；勿壓低 padding-left */
-        .ynow-bt-hfv-controls .checkbox label {
-          font-size: 11px;
+        .ynow-bt-hfv-controls .checkbox label,
+        .ynow-bt-hfv-controls .checkbox-inline {
+          font-size: 12px;
           font-weight: normal;
           line-height: 1.35;
           padding-left: 20px;
           display: inline-block;
           min-height: 18px;
         }
-        .ynow-bt-hfv-controls .checkbox input[type='checkbox'] {
+        .ynow-bt-hfv-controls .checkbox input[type='checkbox'],
+        .ynow-bt-hfv-controls .checkbox-inline input[type='checkbox'] {
           position: absolute;
           margin-left: -20px;
           margin-top: 2px;
@@ -1728,7 +1738,7 @@ ui <- dashboardPage(
           .ynow-bt-hfv-controls {
             position: static;
             max-width: none;
-            margin-top: 8px;
+            margin-top: 0;
           }
         }
         @media (max-width: 991px) {
@@ -2482,23 +2492,29 @@ ui <- dashboardPage(
                   tags$div(
                     class = "ynow-bt-hfv-wrap",
                     uiOutput("bt_valuation_summary"),
-                    plotlyOutput("bt_hfv_timeline", height = "420px") %>% withSpinner(),
                     tags$div(
                       class = "ynow-bt-hfv-controls",
-                      checkboxInput("bt_hfv_show_bench", "顯示大盤", value = TRUE),
-                      checkboxGroupInput(
-                        "bt_fv_models",
-                        "回測用評價模型（可複選疊圖；策略 MOS／倉位＝勾選平均）",
-                        inline = FALSE,
-                        choices = c(
-                          "DCF" = "dcf",
-                          "DDM" = "ddm",
-                          "RI" = "ri",
-                          "P/B" = "pb"
-                        ),
-                        selected = character(0)
+                      tags$div(
+                        class = "ynow-bt-hfv-bench",
+                        checkboxInput("bt_hfv_show_bench", "顯示大盤", value = TRUE)
+                      ),
+                      tags$div(
+                        class = "ynow-bt-hfv-models",
+                        checkboxGroupInput(
+                          "bt_fv_models",
+                          "回測用評價模型（可複選疊圖；策略 MOS／倉位＝勾選平均）",
+                          inline = TRUE,
+                          choices = c(
+                            "DCF" = "dcf",
+                            "DDM" = "ddm",
+                            "RI" = "ri",
+                            "P/B" = "pb"
+                          ),
+                          selected = character(0)
+                        )
                       )
-                    )
+                    ),
+                    plotlyOutput("bt_hfv_timeline", height = "420px") %>% withSpinner()
                   )
                 )
               ),

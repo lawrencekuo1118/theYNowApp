@@ -5488,13 +5488,13 @@ server <- function(input, output, session) {
     if (is.null(src)) {
       return(tags$p(
         style = "color:#888;font-size:12.5px;",
-        "搜尋股票後將預先顯示股價與大盤；勾選右下角評價模型可計算合理價與 MOS 摘要（策略用勾選平均）。"
+        "搜尋股票後將預先顯示股價與大盤；勾選圖上方評價模型可計算合理價與 MOS 摘要（策略用勾選平均）。"
       ))
     }
     if (!isTRUE(src$show_fv)) {
       return(tags$p(
         style = "color:#888;font-size:12.5px;",
-        "已顯示實際股價與大盤。勾選右下角評價模型以顯示合理價與下方摘要（策略 MOS＝勾選平均）。"
+        "已顯示實際股價與大盤。勾選圖上方評價模型以顯示合理價與下方摘要（策略 MOS＝勾選平均）。"
       ))
     }
     m <- if (!is.null(bt_result()) && !is.null(bt_result()$metrics)) {
@@ -6143,8 +6143,8 @@ server <- function(input, output, session) {
       tags$h5(tags$b("一、折現比較圖（合理價 vs 實際股價）")),
       tags$ul(
         tags$li(tags$b("實際股價："), "該股歷史收盤（Yahoo 調整後）。搜尋後即預覽股價，不必先勾模型。"),
-        tags$li(tags$b("大盤："), "右下角「顯示大盤」開關疊加基準（預設 SPY，右軸）；與合理價無關。"),
-        tags$li(tags$b("合理價："), "勾選右下角評價模型後才計算並疊圖（預設不勾選）。"),
+        tags$li(tags$b("大盤："), "圖上方「顯示大盤」開關疊加基準（預設 SPY，右軸）；與合理價無關。"),
+        tags$li(tags$b("合理價："), "勾選圖上方評價模型後才計算並疊圖（預設不勾選）。"),
         tags$li(
           tags$b("PIT DCF（簡化，非 Live 營收表）："),
           "歷史點 DCF 以當時 FCF0 幾何延展 ", tags$code("FCFF_t = FCF0×(1+g)^t"),
