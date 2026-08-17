@@ -620,10 +620,20 @@ beta_advanced_tab_ui <- function() {
       tags$p(style = "margin: 0 0 6px 0; font-size: 12.5px; color: #555;", tags$b("第一階段｜高速成長")),
       numericInput("yr_stage1", "年數", value = APP_DEFAULTS$yr_stage1),
       numericInput("g_stage1", "成長率 g1 (%)", value = APP_DEFAULTS$g_stage1),
-      numericInput("wacc_stage1", "折現率 WACC1 (%)", value = APP_DEFAULTS$wacc_stage1, step = 0.01),
+      conditionalPanel(
+        condition = "input.dcf_claim != 'fcfe'",
+        numericInput("wacc_stage1", "折現率 WACC1 (%)", value = APP_DEFAULTS$wacc_stage1, step = 0.01)
+      ),
       tags$p(style = "margin: 10px 0 6px 0; font-size: 12.5px; color: #555;", tags$b("第二階段｜永續成長")),
       helpText("第二階段成長率採用 Get Started 的 SGR；以下設定折現率。"),
-      numericInput("wacc_stage2", "折現率 WACC2 (%)", value = APP_DEFAULTS$wacc_stage2, step = 0.01)
+      conditionalPanel(
+        condition = "input.dcf_claim != 'fcfe'",
+        numericInput("wacc_stage2", "折現率 WACC2 (%)", value = APP_DEFAULTS$wacc_stage2, step = 0.01)
+      ),
+      conditionalPanel(
+        condition = "input.dcf_claim == 'fcfe'",
+        helpText("FCFE 模式以 Ke（WACC 分頁之 rₑ／CAPM）折現，不再分 WACC1／WACC2。兩階段成長率仍適用；終值約束 g < Ke。")
+      )
     )
   )
 }
@@ -679,7 +689,7 @@ beta_advanced_tab_ui <- function() {
         "兩檔股票只要公式參數相同，｜ε｜與排序即相同。g 與折現率的彈性本身取決於 (r−g)，故改參數才會改｜ε｜。",
         "一次只變動一個參數（相對 ±1%）；整數年數 n 以 ±1 年換算成 1% 等價彈性。",
         "「估值Δ%」≈ 該參數變動 1% 時公式價值的變動幅度；「｜ε｜」= 兩側 |Δ估值%| 平均。",
-        "水準參數（FCFF／D0／B0／BVPS／目標 P/B）在公式為線性時｜ε｜≈1。"
+        "水準參數（FCFF／FCFE／D0／B0／BVPS／目標 P/B）在公式為線性時｜ε｜≈1。"
       ),
       tags$div(
         style = "overflow-x:auto;",
@@ -879,6 +889,18 @@ ui <- dashboardPage(
           box-shadow: none !important;
         }
         .ynow-ccy-header .radiobtn { margin: 0 !important; }
+        /* 預測年數 n：固定在 EPS (TTM) 數字框正下方（右欄） */
+        #ibx_EPS { margin-bottom: 8px; }
+        .ynow-header-years {
+          padding: 0 10px 8px 10px;
+          margin-top: 0;
+        }
+        .ynow-header-years .form-group { margin-bottom: 0; }
+        .ynow-header-years label.control-label {
+          font-size: 13px;
+          font-weight: 700;
+          color: #333;
+        }
       ')),
       tags$script(HTML("
         (function () {
@@ -1928,9 +1950,25 @@ ui <- dashboardPage(
     br(),
     
     fluidRow(
-      infoBoxOutput("ibx_stockprice"),
-      infoBoxOutput("ibx_marketcap"),
-      infoBoxOutput("ibx_EPS")
+      infoBoxOutput("ibx_stockprice", width = 4),
+      infoBoxOutput("ibx_marketcap", width = 4),
+      column(
+        width = 4,
+        infoBoxOutput("ibx_EPS", width = NULL),
+        conditionalPanel(
+          condition = paste(
+            "input.sidebar_tabs == 'dcf_calculator' ||",
+            "input.sidebar_tabs == 'ddm_calculator' ||",
+            "input.sidebar_tabs == 'pb_calculator' ||",
+            "input.sidebar_tabs == 'ri_calculator'"
+          ),
+          class = "ynow-header-years",
+          numericInput(
+            "years", "預測年數 n",
+            value = APP_DEFAULTS$years, min = 1, max = 30
+          )
+        )
+      )
     ),
     
     # 插入智能估值顧問的 UI 輸出點（由 decision 模組提供）
@@ -2473,7 +2511,7 @@ ui <- dashboardPage(
               tabBox(width = "auto",
                      tabPanel("", 
                               fluidRow(
-                                column(width = 6,
+                                column(width = 12,
                                        radioButtons("dcf_mode", "選擇 DCF 估值模型：",
                                                     choices = list(
                                                       "明確預測 + Gordon 終值" = "gordon",
@@ -2499,8 +2537,7 @@ ui <- dashboardPage(
                                            value = APP_DEFAULTS$wacc_gordon, step = 0.01
                                          )
                                        )
-                                ),
-                                column(width = 6, numericInput("years", "預測年數 n", value = APP_DEFAULTS$years, min = 1, max = 30))
+                                )
                               )
                      )
               ),
@@ -2528,7 +2565,7 @@ ui <- dashboardPage(
                                          inline = TRUE
                                        ),
                                        plotOutput("plt_dcf_trajectory", height = "420px"),
-                                       h6(helpText("提示：圖含歷史 FCFF；切換模式可隱藏／顯示折現後 DCF 線。啟動時已自動計算，自訂參數後可再點試算。")),
+                                       h6(uiOutput("dcf_chart_help")),
                                        fluidRow(
                                          column(width = 6, actionButton("calc", "試算 DCF", class = "btn-success btn-block", style = "padding: 12px; font-weight: bold; font-size: 16px;")),
                                          column(width = 6, actionButton("reset_dcf", "回復預設", class = "btn-default btn-block", style = "padding: 12px; font-weight: bold; font-size: 16px;"))
@@ -2570,6 +2607,7 @@ ui <- dashboardPage(
                      
                      tabPanel("WACC",
                               icon = icon("balance-scale"),
+                              uiOutput("dcf_wacc_fcfe_note"),
                               fluidRow(
                                 valueBoxOutput("vbx_equity_val", width = 4), # 股權市值 (E)
                                 valueBoxOutput("vbx_debt_val", width = 4),   # 總負債 (D)
@@ -2582,8 +2620,7 @@ ui <- dashboardPage(
                               ),
                               
                               fluidRow(
-                                div("WACC = E / (E + D) × rₑ + D / (E + D) × rᵈ × (1 - T)",
-                                    style = "font-size: 18px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"),
+                                uiOutput("dcf_disc_formula_banner"),
                                 box(h4("WACC 估算"),
                                     numericInput("wacc_re", "股權成本 rₑ (%)", value = APP_DEFAULTS$wacc_re, min = 0, step = 0.01),
                                     checkboxInput("use_estimated_re", "採用估算 rₑ（來自CAPM）", value = APP_DEFAULTS$use_est_re),
@@ -2617,7 +2654,7 @@ ui <- dashboardPage(
                        column(
                          width = 12,
                          h4("敏感度分析矩陣 (Sensitivity Analysis)"),
-                         p(helpText("軸心採用 Get Started／Dashboard 目前的 SGR 與 WACC；觀察鄰近組合下的每股內在價值變化。CapEx／ΔNWC 前瞻比率請至 DCF → FCFF 設定。"))
+                         uiOutput("dcf_sens_help")
                        )
                      ),
                      fluidRow(

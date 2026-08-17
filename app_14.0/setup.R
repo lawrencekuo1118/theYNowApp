@@ -969,12 +969,55 @@ PARAM_SENSITIVITY_SHOCK <- 0.01
   pv_div + tv / dfs[n]
 }
 
-#' Convert FCFF path to FCFE: FCFE_t = FCFF_t − Interest(1−T) + Net borrowing_t.
+#' True when DCF cash-flow claim is FCFE (Ke, equity) rather than FCFF (WACC, EV).
+dcf_claim_is_fcfe <- function(claim) {
+  identical(as.character(claim %||% "fcff")[1], "fcfe")
+}
+
+#' Short cash-flow tag for DCF page labels: "FCFF" or "FCFE".
+dcf_cf_tag <- function(claim) {
+  if (dcf_claim_is_fcfe(claim)) "FCFE" else "FCFF"
+}
+
+#' Discount-rate tag for DCF page labels: "WACC" or "Ke".
+dcf_disc_tag <- function(claim) {
+  if (dcf_claim_is_fcfe(claim)) "Ke" else "WACC"
+}
+
+#' Full Chinese cash-flow label on the DCF page.
+dcf_cf_full_zh <- function(claim) {
+  if (dcf_claim_is_fcfe(claim)) "股權自由現金流 (FCFE)" else "企業自由現金流 (FCFF)"
+}
+
+#' Projection-tab formula banner (FCFF identity, or FCFE conversion + FCFF identity).
+dcf_formula_banner_txt <- function(claim) {
+  if (dcf_claim_is_fcfe(claim)) {
+    "FCFE = FCFF − Interest×(1−T) + Net Borrowing　｜　FCFF = NOPAT + D&A − ΔNWC − CapEx"
+  } else {
+    "FCFF = NOPAT + D&A - ΔNWC - CapEx"
+  }
+}
+
+dcf_hist_cf_label <- function(claim) {
+  if (dcf_claim_is_fcfe(claim)) "歷史現金流 (FCF)" else "歷史現金流 (FCFF)"
+}
+
+dcf_fcst_cf_label <- function(claim) {
+  sprintf("預測現金流 (%s)", dcf_cf_tag(claim))
+}
+
+#' Convert FCFF path to FCFE with conversion components.
+#' FCFE_t = FCFF_t − Interest(1−T) + Net borrowing_t.
 #' Net borrowing grows starting debt with g_path (constant-leverage approximation).
-fcff_to_fcfe <- function(fcff, interest_after_tax = 0, debt0 = 0, g_path = 0) {
+fcff_to_fcfe_components <- function(fcff, interest_after_tax = 0, debt0 = 0, g_path = 0) {
   fcff <- suppressWarnings(as.numeric(fcff))
   n <- length(fcff)
-  if (n < 1L) return(numeric(0))
+  empty <- data.frame(
+    FCFF = numeric(0), InterestAfterTax = numeric(0),
+    NetBorrowing = numeric(0), BeginningDebt = numeric(0), FCFE = numeric(0),
+    stringsAsFactors = FALSE
+  )
+  if (n < 1L) return(empty)
   iat <- suppressWarnings(as.numeric(interest_after_tax)[1])
   if (!is.finite(iat)) iat <- 0
   debt <- suppressWarnings(as.numeric(debt0)[1])
@@ -983,14 +1026,31 @@ fcff_to_fcfe <- function(fcff, interest_after_tax = 0, debt0 = 0, g_path = 0) {
   if (length(gp) == 1L) gp <- rep(gp, n)
   if (length(gp) < n) gp <- c(gp, rep(tail(gp, 1), n - length(gp)))
   gp[!is.finite(gp)] <- 0
+  nb <- numeric(n)
+  beg <- numeric(n)
   out <- numeric(n)
   for (i in seq_len(n)) {
-    nb <- gp[i] * debt
+    beg[i] <- debt
+    nb[i] <- gp[i] * debt
     cf <- fcff[i]
-    out[i] <- if (is.finite(cf)) cf - iat + nb else NA_real_
-    debt <- debt + nb
+    out[i] <- if (is.finite(cf)) cf - iat + nb[i] else NA_real_
+    debt <- debt + nb[i]
   }
-  out
+  data.frame(
+    FCFF = fcff,
+    InterestAfterTax = rep(iat, n),
+    NetBorrowing = nb,
+    BeginningDebt = beg,
+    FCFE = out,
+    stringsAsFactors = FALSE
+  )
+}
+
+#' Convert FCFF path to FCFE: FCFE_t = FCFF_t − Interest(1−T) + Net borrowing_t.
+fcff_to_fcfe <- function(fcff, interest_after_tax = 0, debt0 = 0, g_path = 0) {
+  fcff_to_fcfe_components(
+    fcff, interest_after_tax = interest_after_tax, debt0 = debt0, g_path = g_path
+  )$FCFE
 }
 
 #' Holding / conglomerate NAV from a balance sheet (book SOTP).
@@ -1080,6 +1140,16 @@ extract_fcff_series <- function(df) {
   if ("FCFF" %in% colnames(df)) return(as.numeric(df$FCFF))
   if ("FCF" %in% colnames(df)) return(as.numeric(df$FCF))
   rep(NA_real_, nrow(df))
+}
+
+# 依現金流口徑取出展示／折現序列：FCFF 原樣；FCFE 走既有 fcff_to_fcfe
+extract_dcf_claim_series <- function(df, claim = "fcff",
+                                     interest_after_tax = 0, debt0 = 0, g_path = 0) {
+  fcff <- extract_fcff_series(df)
+  if (!dcf_claim_is_fcfe(claim)) return(fcff)
+  fcff_to_fcfe(
+    fcff, interest_after_tax = interest_after_tax, debt0 = debt0, g_path = g_path
+  )
 }
 
 # 依 DCF 模式決定各預測年的營收成長率 (%)

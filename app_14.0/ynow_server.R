@@ -1412,7 +1412,36 @@ server <- function(input, output, session) {
   )
   
   # ==========================================
-  # 呼叫 FCFF 模組
+  # FCFE 轉換參數（與 .dcf_valuation_bundle 同一套：稅後利息＋g×負債）
+  # ==========================================
+  .dcf_fcfe_bridge <- reactive({
+    raw_total_debt <- tryCatch(
+      select_current_metric(d_balance_sheet(), "^Total Debt$", "stock"),
+      error = function(e) NA_real_
+    )
+    scraped_debt <- if (is.na(raw_total_debt)) 0 else raw_total_debt
+    latest_debt <- if (!is.null(input$manual_debt) && !is.na(input$manual_debt)) {
+      input$manual_debt
+    } else {
+      scraped_debt
+    }
+    if (!is.finite(latest_debt) || latest_debt < 0) latest_debt <- 0
+    rd <- suppressWarnings(as.numeric(input$wacc_rd)[1]) / 100
+    if (!is.finite(rd) || rd < 0) rd <- 0
+    tax <- suppressWarnings(as.numeric(input$wacc_tax)[1]) / 100
+    if (!is.finite(tax)) tax <- APP_DEFAULTS$wacc_tax / 100
+    iat <- max(0, latest_debt) * rd * (1 - max(0, min(tax, 0.5)))
+    g_terminal <- if (!is.null(input$sgr) && is.finite(as.numeric(input$sgr))) {
+      as.numeric(input$sgr) / 100
+    } else {
+      APP_DEFAULTS$sgr / 100
+    }
+    ke <- tryCatch(as.numeric(central_ke())[1], error = function(e) NA_real_)
+    list(debt = latest_debt, iat = iat, g = g_terminal, ke = ke, rd = rd, tax = tax)
+  })
+
+  # ==========================================
+  # 呼叫 FCFF／FCFE 預測模組
   # ==========================================
     fcf_results <- fcf_projection_module_server(
     id = "mod_fcf", 
@@ -1429,7 +1458,11 @@ server <- function(input, output, session) {
     calc_trigger = run_calc_trigger,
     global_est_g = estimated_g,
     global_g_method = reactive(input$g_growth_method),
-    global_raw_g = estimated_g_raw
+    global_raw_g = estimated_g_raw,
+    dcf_claim = reactive(input$dcf_claim %||% "fcff"),
+    fcfe_interest_after_tax = reactive(.dcf_fcfe_bridge()$iat),
+    fcfe_debt0 = reactive(.dcf_fcfe_bridge()$debt),
+    fcfe_g = reactive(.dcf_fcfe_bridge()$g)
   )
   
   observeEvent({
@@ -1458,6 +1491,67 @@ server <- function(input, output, session) {
       safe_val <- max(0, curr_wacc2 - 2) 
       updateNumericInput(session, "sgr", value = safe_val)
       showNotification(paste("⚠️ 終端成長率不得高於折現率，已修正為", safe_val, "%"), type = "warning")
+    }
+  })
+
+  observeEvent(input$dcf_claim, {
+    claim <- input$dcf_claim %||% "fcff"
+    tag <- dcf_cf_tag(claim)
+    sel <- isolate(input$dcf_chart_mode)
+    if (is.null(sel) || !sel %in% c("simple", "with_dcf")) sel <- APP_DEFAULTS$dcf_chart_mode
+    updateRadioButtons(
+      session, "dcf_chart_mode",
+      choices = c(
+        setNames("simple", sprintf("單純模式（歷史＋預測 %s，無折現線）", tag)),
+        "顯示折現後價值（DCF）" = "with_dcf"
+      ),
+      selected = sel
+    )
+    updateSelectInput(
+      session, "g_growth_method",
+      label = sprintf("預估營收成長率（驅動 %s 預測）", tag)
+    )
+  }, ignoreInit = FALSE)
+
+  output$dcf_chart_help <- renderUI({
+    tag <- dcf_cf_tag(input$dcf_claim %||% "fcff")
+    helpText(sprintf(
+      "提示：圖含歷史現金流與預測 %s；切換模式可隱藏／顯示折現後 DCF 線。啟動時已自動計算，自訂參數後可再點試算。",
+      tag
+    ))
+  })
+
+  output$dcf_sens_help <- renderUI({
+    claim <- input$dcf_claim %||% "fcff"
+    disc <- dcf_disc_tag(claim)
+    tag <- dcf_cf_tag(claim)
+    p(helpText(sprintf(
+      "軸心採用 Get Started／Dashboard 目前的 SGR 與 %s；觀察鄰近組合下的每股內在價值變化。CapEx／ΔNWC 前瞻比率請至 DCF → %s 設定。",
+      disc, tag
+    )))
+  })
+
+  output$dcf_wacc_fcfe_note <- renderUI({
+    if (!dcf_claim_is_fcfe(input$dcf_claim)) return(NULL)
+    tags$div(
+      style = "background:#eef7fb; border-left:4px solid #3c8dbc; padding:10px 12px; margin-bottom:12px; font-size:13px;",
+      tags$b("FCFE 模式："),
+      "本頁折現率為 Ke（下方 rₑ／CAPM）。WACC 僅供對照；FCFE＝FCFF−稅後利息＋淨舉債，轉換仍使用 rᵈ 與稅率。"
+    )
+  })
+
+  output$dcf_disc_formula_banner <- renderUI({
+    banner_style <- "font-size: 18px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
+    if (dcf_claim_is_fcfe(input$dcf_claim)) {
+      tagList(
+        div("Ke = Rf + β × (Rm − Rf)", style = banner_style),
+        div(
+          "WACC = E / (E + D) × rₑ + D / (E + D) × rᵈ × (1 - T)　（對照；FCFE 轉換仍用 rᵈ、T）",
+          style = "font-size: 14px; color: #555; text-align: center; margin-bottom: 15px;"
+        )
+      )
+    } else {
+      div("WACC = E / (E + D) × rₑ + D / (E + D) × rᵈ × (1 - T)", style = banner_style)
     }
   })
 
@@ -3561,9 +3655,16 @@ server <- function(input, output, session) {
       cat("尚未匯入財報資料，或正在等待計算...")
     } else {
       fcff_vals <- extract_fcff_series(df)
-      cat("✅ FCFF 預測資料已同步！\n-------------------------\n")
-      cat("第 1 年預測現金流:", if (length(fcff_vals) > 0) round(fcff_vals[1], 2) else "N/A", "\n")
-      cat("第", nrow(df), "年預測現金流:", if (length(fcff_vals) > 0) round(tail(fcff_vals, 1), 2) else "N/A", "\n")
+      tag <- dcf_cf_tag(input$dcf_claim %||% "fcff")
+      cfs <- extract_dcf_claim_series(
+        df, input$dcf_claim %||% "fcff",
+        interest_after_tax = .dcf_fcfe_bridge()$iat,
+        debt0 = .dcf_fcfe_bridge()$debt,
+        g_path = .dcf_fcfe_bridge()$g
+      )
+      cat("✅ ", tag, " 預測資料已同步！\n-------------------------\n", sep = "")
+      cat("第 1 年預測現金流:", if (length(cfs) > 0) round(cfs[1], 2) else "N/A", "\n")
+      cat("第", nrow(df), "年預測現金流:", if (length(cfs) > 0) round(tail(cfs, 1), 2) else "N/A", "\n")
       cat("DCF 模式:", input$dcf_mode, "\n")
     }
   })
@@ -3819,9 +3920,10 @@ server <- function(input, output, session) {
       ))
     } else if (method %in% c("cagr", "mean", "median", "last_year")) {
       src <- estimated_g_meta$source %||% "營收"
+      cf_tag <- dcf_cf_tag(input$dcf_claim %||% "fcff")
       HTML(glue::glue(
         "<div style='padding: 10px; border-left: 4px solid #3c8dbc; font-size: 13px; color: #555;'>
-           以<strong>營收</strong>歷史計算近中期成長（{src}），再驅動營收→FCFF 預測。
+           以<strong>營收</strong>歷史計算近中期成長（{src}），再驅動營收→{cf_tag} 預測。
            已套用 −5%～25% 防呆，避免把單年暴衝／暴跌寫進模型。
          </div>"
       ))
@@ -3865,19 +3967,28 @@ server <- function(input, output, session) {
   output$plt_fcf_trend <- renderPlot({
     session_currency()
     req(fcf_results$df_fcf()) 
-    df <- fcf_results$df_fcf() 
+    df <- fcf_results$df_fcf()
+    claim <- input$dcf_claim %||% "fcff"
+    cf_lab <- dcf_cf_full_zh(claim)
+    tag <- dcf_cf_tag(claim)
+    br <- .dcf_fcfe_bridge()
+    df$CF <- extract_dcf_claim_series(
+      df, claim,
+      interest_after_tax = br$iat, debt0 = br$debt, g_path = br$g
+    )
+    df$cf_metric <- cf_lab
     
     ggplot(df, aes(x = Year)) +
       geom_col(aes(y = NOPAT, fill = "預估稅後營業利潤 (NOPAT)"), width = 0.6, alpha = 0.8) +
       scale_fill_manual(name = "", values = c("預估稅後營業利潤 (NOPAT)" = "#00a65a")) +
-      geom_line(aes(y = FCFF, group = 1, color = "企業自由現金流 (FCFF)"), size = 1.5) +
-      geom_point(aes(y = FCFF, color = "企業自由現金流 (FCFF)"), size = 3) +
-      scale_color_manual(name = "", values = c("企業自由現金流 (FCFF)" = "#3c8dbc")) +
-      geom_text(aes(y = FCFF, label = format_dollar_abbr(FCFF)),
-                vjust = ifelse(df$FCFF >= 0, -0.5, 1.5), size = 4, fontface = "bold") +
+      geom_line(aes(y = CF, group = 1, color = cf_metric), size = 1.5) +
+      geom_point(aes(y = CF, color = cf_metric), size = 3) +
+      scale_color_manual(name = "", values = setNames("#3c8dbc", cf_lab)) +
+      geom_text(aes(y = CF, label = format_dollar_abbr(CF)),
+                vjust = ifelse(df$CF >= 0, -0.5, 1.5), size = 4, fontface = "bold") +
       scale_y_continuous(labels = label_chart_number(prefix = money_prefix())) +
       theme_minimal() +
-      labs(title = "FCFF 與 營業利潤 成長軌跡", x = "預測年份", y = paste0("金額 (", money_label(), ")")) +
+      labs(title = paste0(tag, " 與 營業利潤 成長軌跡"), x = "預測年份", y = paste0("金額 (", money_label(), ")")) +
       theme(
         plot.title = element_text(face = "bold", size = 16),
         axis.text = element_text(size = 12),
@@ -3928,6 +4039,17 @@ server <- function(input, output, session) {
     gn_stage <- if (gordon) gn0 else g1_pct / 100
     g2_0 <- if (gordon) gn0 else g2_pct / 100
 
+    claim <- as.character(input$dcf_claim %||% "fcff")[1]
+    claim_fcfe <- dcf_claim_is_fcfe(claim)
+    cf_lab <- dcf_cf_tag(claim)
+    disc_lab <- dcf_disc_tag(claim)
+    if (claim_fcfe) {
+      ke <- tryCatch(as.numeric(central_ke())[1], error = function(e) NA_real_)
+      if (!is.finite(ke) || ke <= 0) ke <- r1_0
+      r1_0 <- ke
+      r2_0 <- ke
+    }
+
     .ev <- function(n = n0, r1 = r1_0, r2 = r2_0, g_term = gt0,
                     g_near = gn_stage, yr1 = yr1_0, g2 = g2_0, f0 = 1) {
       if (gordon) {
@@ -3942,7 +4064,7 @@ server <- function(input, output, session) {
     v0 <- .ev()
     validate(need(
       is.finite(v0),
-      "基準公式尚未就緒：請確認終值 g < WACC 與預測年數。"
+      sprintf("基準公式尚未就緒：請確認終值 g < %s 與預測年數。", disc_lab)
     ))
 
     .rel <- function(x, sign = -1) .param_rel_shock(x, sign = sign, shock = shock_pct)
@@ -4006,7 +4128,17 @@ server <- function(input, output, session) {
     .ev_wacc_pct <- function(w_pct) {
       if (!is.finite(w_pct)) return(NA_real_)
       r <- w_pct / 100
-      if (gordon) .ev(r1 = r, r2 = r) else .ev(r1 = r, r2 = r)
+      .ev(r1 = r, r2 = r)
+    }
+    .ke_pct <- function(rf_pct = rf0, beta = beta0, rm_pct = rm0, re_pct = NULL) {
+      if (!is.null(re_pct) && is.finite(re_pct)) return(re_pct)
+      if (isTRUE(input$use_estimated_re) && is.finite(rf_pct) && is.finite(beta) && is.finite(rm_pct)) {
+        return(rf_pct + beta * (rm_pct - rf_pct))
+      }
+      re0
+    }
+    .shock_disc <- function(...) {
+      if (claim_fcfe) .ev_wacc_pct(.ke_pct(...)) else .ev_wacc_pct(.wacc_pct(...))
     }
 
     rows <- list()
@@ -4023,7 +4155,7 @@ server <- function(input, output, session) {
         "近中期營收成長率", g_near_pct, "%",
         .ev(g_near = .rel(g_near_pct, -1) / 100),
         .ev(g_near = .rel(g_near_pct, +1) / 100),
-        "公式：單位 FCFF 路徑的明確期成長"
+        sprintf("公式：單位 %s 路徑的明確期成長", cf_lab)
       )
     }
 
@@ -4032,19 +4164,20 @@ server <- function(input, output, session) {
         "終值成長率 SGR (g)", gt_pct, "%",
         .ev(g_term = .rel(gt_pct, -1) / 100),
         .ev(g_term = .rel(gt_pct, +1) / 100),
-        "Gordon 終值：ε 取決於 WACC 與 g"
+        sprintf("Gordon 終值：ε 取決於 %s 與 g", disc_lab)
       )
     }
 
-    if (gordon) {
+    if (gordon || claim_fcfe) {
       w0 <- r1_0 * 100
       rows[[length(rows) + 1]] <- .row(
-        "折現率 WACC", w0, "%",
+        paste0("折現率 ", disc_lab), w0, "%",
         .ev(r1 = .rel(w0, -1) / 100, r2 = .rel(w0, -1) / 100),
         .ev(r1 = .rel(w0, +1) / 100, r2 = .rel(w0, +1) / 100),
-        "公式：明確預測 + Gordon（與股價／淨現金無關）"
+        if (claim_fcfe) "公式：FCFE 以 Ke 折現（與股價／淨現金無關）" else "公式：明確預測 + Gordon（與股價／淨現金無關）"
       )
-    } else {
+    }
+    if (!gordon && !claim_fcfe) {
       w1 <- r1_0 * 100
       w2 <- r2_0 * 100
       rows[[length(rows) + 1]] <- .row(
@@ -4059,12 +4192,14 @@ server <- function(input, output, session) {
         .ev(r2 = .rel(w2, +1) / 100),
         "兩階段｜終值折現"
       )
+    }
+    if (!gordon) {
       if (is.finite(g1_pct) && abs(g1_pct) > 1e-8) {
         rows[[length(rows) + 1]] <- .row(
           "高速成長率 g1", g1_pct, "%",
           .ev(g_near = .rel(g1_pct, -1) / 100),
           .ev(g_near = .rel(g1_pct, +1) / 100),
-          "公式：第一階段 FCFF 路徑成長"
+          sprintf("公式：第一階段 %s 路徑成長", cf_lab)
         )
       }
       if (is.finite(g2_pct) && abs(g2_pct) > 1e-8) {
@@ -4072,7 +4207,7 @@ server <- function(input, output, session) {
           "第二階段成長率 g2", g2_pct, "%",
           .ev(g2 = .rel(g2_pct, -1) / 100),
           .ev(g2 = .rel(g2_pct, +1) / 100),
-          "公式：第二階段 FCFF 路徑成長"
+          sprintf("公式：第二階段 %s 路徑成長", cf_lab)
         )
       }
       y_dn <- max(1L, yr1_0 - 1L)
@@ -4087,10 +4222,10 @@ server <- function(input, output, session) {
     }
 
     rows[[length(rows) + 1]] <- .row(
-      "FCFF 水準（整體）", 1, "x",
+      sprintf("%s 水準（整體）", cf_lab), 1, "x",
       .ev(f0 = 1 - shock_pct),
       .ev(f0 = 1 + shock_pct),
-      "EV ∝ FCFF ⇒ |ε|=1（公式；與金額無關）"
+      if (claim_fcfe) "Equity ∝ FCFE ⇒ |ε|=1（公式；與金額無關）" else "EV ∝ FCFF ⇒ |ε|=1（公式；與金額無關）"
     )
 
     rev0 <- suppressWarnings(as.numeric(input[["mod_fcf-fcf_revenue"]])[1])
@@ -4131,7 +4266,7 @@ server <- function(input, output, session) {
             "NOPAT／營收", nopat_m0 * 100, "%",
             .ev_fcff(nm = .rel(nopat_m0, -1)),
             .ev_fcff(nm = .rel(nopat_m0, +1)),
-            "FCFF 路徑：單位營收 × NOPAT 佔比"
+            sprintf("%s 路徑：單位營收 × NOPAT 佔比", cf_lab)
           )
         }
         if (.param_sensitivity_rel_ok(depre_m0)) {
@@ -4139,7 +4274,7 @@ server <- function(input, output, session) {
             "D&A／營收", depre_m0 * 100, "%",
             .ev_fcff(dm = .rel(depre_m0, -1)),
             .ev_fcff(dm = .rel(depre_m0, +1)),
-            "FCFF 路徑：單位營收 × D&A 佔比"
+            sprintf("%s 路徑：單位營收 × D&A 佔比", cf_lab)
           )
         }
         if (.param_sensitivity_rel_ok(capex_m0)) {
@@ -4147,7 +4282,7 @@ server <- function(input, output, session) {
             "CapEx／營收", capex_m0 * 100, "%",
             .ev_fcff(cm = .rel(capex_m0, -1)),
             .ev_fcff(cm = .rel(capex_m0, +1)),
-            "FCFF 路徑：前瞻 CapEx 佔營收比"
+            sprintf("%s 路徑：前瞻 CapEx 佔營收比", cf_lab)
           )
         }
         if (.param_sensitivity_rel_ok(nwc_m0)) {
@@ -4155,47 +4290,48 @@ server <- function(input, output, session) {
             "ΔNWC／Δ營收", nwc_m0 * 100, "%",
             .ev_fcff(nwm = .rel(nwc_m0, -1)),
             .ev_fcff(nwm = .rel(nwc_m0, +1)),
-            "FCFF 路徑：前瞻 ΔNWC／ΔRevenue"
+            sprintf("%s 路徑：前瞻 ΔNWC／ΔRevenue", cf_lab)
           )
         }
       }
     }
 
     use_capm <- isTRUE(input$use_estimated_re)
+    capm_note <- if (claim_fcfe) "Ke 公式：CAPM → rₑ" else "WACC 公式：CAPM → rₑ（權重為本次資本結構）"
     if (use_capm && is.finite(rf0)) {
       rows[[length(rows) + 1]] <- .row(
         "無風險利率 Rf", rf0, "%",
-        .ev_wacc_pct(.wacc_pct(rf_pct = .rel(rf0, -1))),
-        .ev_wacc_pct(.wacc_pct(rf_pct = .rel(rf0, +1))),
-        "WACC 公式：CAPM → rₑ（權重為本次資本結構）"
+        .shock_disc(rf_pct = .rel(rf0, -1)),
+        .shock_disc(rf_pct = .rel(rf0, +1)),
+        capm_note
       )
     }
     if (use_capm && is.finite(beta0)) {
       rows[[length(rows) + 1]] <- .row(
         "Beta (β)", beta0, "x",
-        .ev_wacc_pct(.wacc_pct(beta = .rel(beta0, -1))),
-        .ev_wacc_pct(.wacc_pct(beta = .rel(beta0, +1))),
-        "WACC 公式：CAPM → rₑ（權重為本次資本結構）"
+        .shock_disc(beta = .rel(beta0, -1)),
+        .shock_disc(beta = .rel(beta0, +1)),
+        capm_note
       )
     }
     if (use_capm && is.finite(rm0)) {
       rows[[length(rows) + 1]] <- .row(
         "市場報酬率 Rm", rm0, "%",
-        .ev_wacc_pct(.wacc_pct(rm_pct = .rel(rm0, -1))),
-        .ev_wacc_pct(.wacc_pct(rm_pct = .rel(rm0, +1))),
-        "WACC 公式：CAPM → rₑ（權重為本次資本結構）"
+        .shock_disc(rm_pct = .rel(rm0, -1)),
+        .shock_disc(rm_pct = .rel(rm0, +1)),
+        capm_note
       )
     }
     if (is.finite(re0) && !use_capm) {
       rows[[length(rows) + 1]] <- .row(
         "股權成本 rₑ", re0, "%",
-        .ev_wacc_pct(.wacc_pct(re_pct = .rel(re0, -1))),
-        .ev_wacc_pct(.wacc_pct(re_pct = .rel(re0, +1))),
-        "WACC 公式：手動 rₑ（未勾選 CAPM）"
+        .shock_disc(re_pct = .rel(re0, -1)),
+        .shock_disc(re_pct = .rel(re0, +1)),
+        if (claim_fcfe) "Ke 公式：手動 rₑ（未勾選 CAPM）" else "WACC 公式：手動 rₑ（未勾選 CAPM）"
       )
     }
     .w_ok <- function(w) is.finite(w) && w >= 0 && w <= 1
-    if (.param_sensitivity_rel_ok(we) && wd > 1e-8) {
+    if (!claim_fcfe && .param_sensitivity_rel_ok(we) && wd > 1e-8) {
       we_dn <- .rel(we, -1)
       we_up <- .rel(we, +1)
       rows[[length(rows) + 1]] <- .row(
@@ -4205,7 +4341,7 @@ server <- function(input, output, session) {
         "WACC 公式：We + Wd = 1（相對衝擊後補齊 Wd）"
       )
     }
-    if (.param_sensitivity_rel_ok(wd) && wd > 1e-8) {
+    if (!claim_fcfe && .param_sensitivity_rel_ok(wd) && wd > 1e-8) {
       wd_dn <- .rel(wd, -1)
       wd_up <- .rel(wd, +1)
       rows[[length(rows) + 1]] <- .row(
@@ -4215,7 +4351,7 @@ server <- function(input, output, session) {
         "WACC 公式：We + Wd = 1（相對衝擊後補齊 We）"
       )
     }
-    if (is.finite(rd0) && wd > 1e-8) {
+    if (!claim_fcfe && is.finite(rd0) && wd > 1e-8) {
       rows[[length(rows) + 1]] <- .row(
         "負債成本 rᵈ", rd0, "%",
         .ev_wacc_pct(.wacc_pct(rd_pct = .rel(rd0, -1))),
@@ -4223,7 +4359,7 @@ server <- function(input, output, session) {
         "WACC 公式：wₑrₑ + wᵈrᵈ(1−T)"
       )
     }
-    if (is.finite(tax0) && wd > 1e-8) {
+    if (!claim_fcfe && is.finite(tax0) && wd > 1e-8) {
       rows[[length(rows) + 1]] <- .row(
         "所得稅率 T", tax0, "%",
         .ev_wacc_pct(.wacc_pct(tax_pct = .rel(tax0, -1))),
@@ -4386,7 +4522,15 @@ server <- function(input, output, session) {
 
     chart_mode <- input$dcf_chart_mode %||% "with_dcf"
     n_years <- nrow(proj_df)
-    fcff_vals <- extract_fcff_series(proj_df)
+    claim <- input$dcf_claim %||% "fcff"
+    hist_lab <- dcf_hist_cf_label(claim)
+    fcst_lab <- dcf_fcst_cf_label(claim)
+    tag <- dcf_cf_tag(claim)
+    br <- .dcf_fcfe_bridge()
+    cf_vals <- extract_dcf_claim_series(
+      proj_df, claim,
+      interest_after_tax = br$iat, debt0 = br$debt, g_path = br$g
+    )
 
     hist_df <- tryCatch({
       cf <- d_cash_flow()
@@ -4400,7 +4544,7 @@ server <- function(input, output, session) {
       data.frame(
         Period = as.character(period_cols[ord]),
         Value = as.numeric(vals[ord]),
-        Metric = "歷史現金流 (FCFF)",
+        Metric = hist_lab,
         Segment = "History",
         stringsAsFactors = FALSE
       )
@@ -4414,7 +4558,11 @@ server <- function(input, output, session) {
     if (length(forecast_periods) == 0) forecast_periods <- paste0("Y", seq_len(n_years))
 
     wacc_val <- tryCatch({
-      if (identical(input$dcf_mode, "gordon")) {
+      if (dcf_claim_is_fcfe(claim)) {
+        ke <- suppressWarnings(as.numeric(br$ke)[1])
+        if (!is.finite(ke) || ke <= 0) ke <- 0.1
+        rep(ke, n_years)
+      } else if (identical(input$dcf_mode, "gordon")) {
         rep(as.numeric(input$wacc_gordon) / 100, n_years)
       } else {
         s1_yrs <- as.numeric(input$yr_stage1)
@@ -4427,7 +4575,7 @@ server <- function(input, output, session) {
     }, error = function(e) rep(0.1, n_years))
 
     discount_factors <- cumprod(1 + wacc_val)
-    dcf_vals <- round(fcff_vals / discount_factors, 2)
+    dcf_vals <- round(cf_vals / discount_factors, 2)
 
     g_terminal <- if (is.numeric(input$sgr)) input$sgr / 100 else 0.03
     terminal_wacc <- tail(wacc_val, 1)
@@ -4435,7 +4583,7 @@ server <- function(input, output, session) {
 
     if (identical(chart_mode, "with_dcf") &&
         is.finite(terminal_wacc) && is.finite(g_terminal) && terminal_wacc > g_terminal) {
-      last_fcf <- tail(fcff_vals, 1)
+      last_fcf <- tail(cf_vals, 1)
       tv <- (last_fcf * (1 + g_terminal)) / (terminal_wacc - g_terminal)
       pv_tv <- tv / discount_factors[n_years]
       dcf_vals[n_years] <- round(dcf_vals[n_years] + pv_tv, 2)
@@ -4445,17 +4593,17 @@ server <- function(input, output, session) {
       )
     }
 
-    forecast_fcff <- data.frame(
+    forecast_cf <- data.frame(
       Period = forecast_periods,
-      Value = as.numeric(fcff_vals),
-      Metric = "預測現金流 (FCFF)",
+      Value = as.numeric(cf_vals),
+      Metric = fcst_lab,
       Segment = "Forecast",
       stringsAsFactors = FALSE
     )
 
     plot_parts <- list()
     if (!is.null(hist_df) && nrow(hist_df) > 0) plot_parts <- c(plot_parts, list(hist_df))
-    plot_parts <- c(plot_parts, list(forecast_fcff))
+    plot_parts <- c(plot_parts, list(forecast_cf))
 
     if (identical(chart_mode, "with_dcf")) {
       plot_parts <- c(plot_parts, list(data.frame(
@@ -4482,24 +4630,22 @@ server <- function(input, output, session) {
     plot_df$Period <- factor(plot_df$Period, levels = x_levels)
     plot_df$Metric <- factor(
       plot_df$Metric,
-      levels = c("歷史現金流 (FCFF)", "預測現金流 (FCFF)", "折現後價值 (DCF)")
+      levels = c(hist_lab, fcst_lab, "折現後價值 (DCF)")
     )
 
     title_txt <- if (identical(chart_mode, "simple")) {
-      paste0(current_ticker(), " - 歷史與預測 FCFF（單純模式）")
+      paste0(current_ticker(), " - 歷史與預測 ", tag, "（單純模式）")
     } else {
-      paste0(current_ticker(), " - 歷史／預測 FCFF vs 折現後 DCF")
+      paste0(current_ticker(), " - 歷史／預測 ", tag, " vs 折現後 DCF")
     }
 
-    color_map <- c(
-      "歷史現金流 (FCFF)" = "#3498db",
-      "預測現金流 (FCFF)" = "#95a5a6",
-      "折現後價值 (DCF)" = "#e74c3c"
+    color_map <- setNames(
+      c("#3498db", "#95a5a6", "#e74c3c"),
+      c(hist_lab, fcst_lab, "折現後價值 (DCF)")
     )
-    lty_map <- c(
-      "歷史現金流 (FCFF)" = "solid",
-      "預測現金流 (FCFF)" = "solid",
-      "折現後價值 (DCF)" = "dashed"
+    lty_map <- setNames(
+      c("solid", "solid", "dashed"),
+      c(hist_lab, fcst_lab, "折現後價值 (DCF)")
     )
 
     ggplot(plot_df, aes(x = Period, y = Value, color = Metric, linetype = Metric, group = Metric)) +
@@ -4515,7 +4661,7 @@ server <- function(input, output, session) {
       theme_minimal(base_size = 14) +
       labs(
         title = title_txt,
-        subtitle = if (identical(chart_mode, "with_dcf")) tv_annotation else "不含折現線；僅歷史與預測 FCFF",
+        subtitle = if (identical(chart_mode, "with_dcf")) tv_annotation else paste0("不含折現線；僅歷史與預測 ", tag),
         x = "期間", y = paste0(money_label(), " (Millions)")
       ) +
       theme(

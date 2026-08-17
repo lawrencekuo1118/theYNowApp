@@ -9,7 +9,7 @@ fcf_projection_module_ui <- function(id) {
   # 建立 Namespace 函數
   ns <- NS(id) 
   
-  tabPanel("FCFF", 
+  tabPanel(title = span(textOutput(ns("fcf_tab_title"), inline = TRUE)),
            icon = icon("seedling"),
            
            fluidRow(
@@ -19,8 +19,7 @@ fcf_projection_module_ui <- function(id) {
            ),
            
            fluidRow(
-             div("FCFF = NOPAT + D&A - ΔNWC - CapEx",
-                 style = "font-size: 18px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;")
+             uiOutput(ns("fcf_formula_banner"))
            ),
 
            # 公式橫幅正下方：預估營收成長率；同列右側為 25% 防呆（僅 raw g > 25% 時顯示）
@@ -70,11 +69,7 @@ fcf_projection_module_ui <- function(id) {
                )
              )
            ),
-           helpText(
-             "預測表以「營收成長 → 利潤／再投資假設 → FCFF」展開。",
-             "歷史方法（CAGR／平均／中位／最近一年）應看營收，而非 FCF 波動；",
-             "基本面法以 RR×ROIC 近似永續成長，並套用 −5%～25% 防呆。"
-           ),
+           uiOutput(ns("fcf_help_growth")),
 
            # 成長率選單正下方、六個輸入格正上方：參數拆解說明
            div(
@@ -116,10 +111,7 @@ fcf_projection_module_ui <- function(id) {
              box(
                title = tagList(icon("percent"), "預測假設：CapEx／ΔNWC 佔營收比"),
                width = 12, status = "danger", solidHeader = TRUE,
-               p(
-                 style = "font-size:13px; color:#555; margin-top:0;",
-                 "此處比率驅動下方多期 FCFF 預測表。留白時以當期 CapEx、ΔNWC 絕對金額／營收推算；可手動覆寫以模擬更高／更低再投資。"
-               ),
+               uiOutput(ns("fcf_help_proj_rates")),
                fluidRow(
                  column(
                    width = 6,
@@ -177,11 +169,48 @@ fcf_projection_module_server <- function(
     input_manual_fcf = reactive(NULL),
     global_est_g     = reactive(NULL),
     global_g_method  = reactive(NULL),
-    global_raw_g     = reactive(NULL)
+    global_raw_g     = reactive(NULL),
+    dcf_claim        = reactive("fcff"),
+    fcfe_interest_after_tax = reactive(0),
+    fcfe_debt0       = reactive(0),
+    fcfe_g           = reactive(0)
 ) {
   
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
+
+    claim_val <- reactive(as.character(dcf_claim() %||% "fcff")[1])
+    claim_fcfe <- reactive(dcf_claim_is_fcfe(claim_val()))
+    cf_tag <- reactive(dcf_cf_tag(claim_val()))
+    cf_full <- reactive(dcf_cf_full_zh(claim_val()))
+
+    output$fcf_tab_title <- renderText({ cf_tag() })
+    outputOptions(output, "fcf_tab_title", suspendWhenHidden = FALSE)
+
+    output$fcf_formula_banner <- renderUI({
+      div(
+        dcf_formula_banner_txt(claim_val()),
+        style = "font-size: 18px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
+      )
+    })
+
+    output$fcf_help_growth <- renderUI({
+      helpText(
+        sprintf("預測表以「營收成長 → 利潤／再投資假設 → %s」展開。", cf_tag()),
+        "歷史方法（CAGR／平均／中位／最近一年）應看營收，而非 FCF 波動；",
+        "基本面法以 RR×ROIC 近似永續成長，並套用 −5%～25% 防呆。"
+      )
+    })
+
+    output$fcf_help_proj_rates <- renderUI({
+      tags$p(
+        style = "font-size:13px; color:#555; margin-top:0;",
+        sprintf(
+          "此處比率驅動下方多期 %s 預測表。留白時以當期 CapEx、ΔNWC 絕對金額／營收推算；可手動覆寫以模擬更高／更低再投資。",
+          cf_tag()
+        )
+      )
+    })
 
     # 僅當實際預估成長率（封頂前）> 25% 時顯示防呆勾選；剛出現時預設勾選
     g_ceiling_was_visible <- reactiveVal(FALSE)
@@ -259,7 +288,7 @@ fcf_projection_module_server <- function(
       )
     }
     
-    # 產生 DCF / 報告用趨勢圖（與 proj_table_data 同一套 FCFF）
+    # 產生 DCF / 報告用趨勢圖（與 proj_table_data 同一套現金流；FCFE 走既有轉換）
     fcf_plot_obj <- reactive({
       df_proj <- proj_table_data()
       if (is.null(df_proj) || nrow(df_proj) < 1) return(NULL)
@@ -269,6 +298,7 @@ fcf_projection_module_server <- function(
         latest_fcf <- input_manual_fcf()
       }
       current_year <- as.numeric(format(Sys.Date(), "%Y"))
+      tag <- cf_tag()
       
       hist_df <- data.frame(
         Year = current_year,
@@ -276,9 +306,15 @@ fcf_projection_module_server <- function(
         Type = "Actual (最新財報)",
         stringsAsFactors = FALSE
       )
+      proj_cf <- extract_dcf_claim_series(
+        df_proj, claim_val(),
+        interest_after_tax = fcfe_interest_after_tax(),
+        debt0 = fcfe_debt0(),
+        g_path = fcfe_g()
+      )
       proj_df <- data.frame(
         Year = (current_year + 1):(current_year + nrow(df_proj)),
-        FCF = as.numeric(df_proj$FCFF),
+        FCF = as.numeric(proj_cf),
         Type = "Projected (預測期)",
         stringsAsFactors = FALSE
       )
@@ -296,7 +332,10 @@ fcf_projection_module_server <- function(
         scale_fill_brewer(palette = "Set1") +
         scale_y_continuous(labels = label_chart_number(prefix = "$")) +
         theme_minimal(base_size = 14) +
-        labs(title = "歷史與預測自由現金流 (FCFF) 走勢圖", x = "年份", y = "自由現金流 (FCFF)") +
+        labs(
+          title = sprintf("歷史與預測自由現金流 (%s) 走勢圖", tag),
+          x = "年份", y = sprintf("自由現金流 (%s)", tag)
+        ) +
         theme(legend.position = "top", legend.title = element_blank(), plot.title = element_text(face = "bold", size = 16)) +
         expand_limits(y = max(df_plot$FCF, na.rm = TRUE) * 1.2)
     })
@@ -505,8 +544,18 @@ fcf_projection_module_server <- function(
     
     output$vbx_est_fcf <- renderValueBox({
       res <- fcf_estimator_results()
-      color <- if (res$fcf > 0) "green" else "red"
-      valueBox(format_dollar_abbr(res$fcf), "企業自由現金流 (FCFF)", icon = icon("piggy-bank"), color = color)
+      disp <- res$fcf
+      if (isTRUE(claim_fcfe())) {
+        g <- suppressWarnings(as.numeric(fcfe_g())[1])
+        if (!is.finite(g)) g <- 0
+        iat <- suppressWarnings(as.numeric(fcfe_interest_after_tax())[1])
+        if (!is.finite(iat)) iat <- 0
+        debt <- suppressWarnings(as.numeric(fcfe_debt0())[1])
+        if (!is.finite(debt) || debt < 0) debt <- 0
+        disp <- res$fcf - iat + g * debt
+      }
+      color <- if (is.finite(disp) && disp > 0) "green" else "red"
+      valueBox(format_dollar_abbr(disp), cf_full(), icon = icon("piggy-bank"), color = color)
     })
     
     output$vbx_est_g_fund <- renderValueBox({
@@ -539,14 +588,42 @@ fcf_projection_module_server <- function(
     })
     
     output$title_dynamic_years <- renderUI({
-      h4(tags$b(paste0("未來 ", input_years(), " 年自由現金流 (營收佔比推算)")))
+      h4(tags$b(paste0("未來 ", input_years(), " 年", cf_full(), "（營收佔比推算）")))
     })
     
     output$tbl_fcf_projection <- DT::renderDataTable({
       df <- proj_table_data()
-      colnames(df) <- c("預測期", "預估營收", "稅後營業利潤 (NOPAT)", "折舊攤銷 (D&A)", "資本支出 (CapEx)", "營運資金變動 (ΔNWC)", "企業自由現金流 (FCFF)")
+      if (isTRUE(claim_fcfe())) {
+        comp <- fcff_to_fcfe_components(
+          df$FCFF,
+          interest_after_tax = fcfe_interest_after_tax(),
+          debt0 = fcfe_debt0(),
+          g_path = fcfe_g()
+        )
+        out <- cbind(
+          df[, c("Year", "Revenue", "NOPAT", "Depreciation", "CapEx", "Delta_NWC"), drop = FALSE],
+          InterestAfterTax = comp$InterestAfterTax,
+          NetBorrowing = comp$NetBorrowing,
+          FCFE = comp$FCFE
+        )
+        colnames(out) <- c(
+          "預測期", "預估營收", "稅後營業利潤 (NOPAT)", "折舊攤銷 (D&A)",
+          "資本支出 (CapEx)", "營運資金變動 (ΔNWC)",
+          "稅後利息", "淨舉債", "股權自由現金流 (FCFE)"
+        )
+        highlight <- "股權自由現金流 (FCFE)"
+        curr_cols <- 2:9
+      } else {
+        out <- df
+        colnames(out) <- c(
+          "預測期", "預估營收", "稅後營業利潤 (NOPAT)", "折舊攤銷 (D&A)",
+          "資本支出 (CapEx)", "營運資金變動 (ΔNWC)", "企業自由現金流 (FCFF)"
+        )
+        highlight <- "企業自由現金流 (FCFF)"
+        curr_cols <- 2:7
+      }
       
-      DT::datatable(df, 
+      DT::datatable(out, 
                     options = list(
                       dom = 't', 
                       ordering = FALSE,
@@ -555,8 +632,8 @@ fcf_projection_module_server <- function(
                     ),
                     rownames = FALSE,
                     class = 'cell-border stripe hover') %>%
-        DT::formatCurrency(columns = 2:7, currency = dt_currency_symbol(), digits = 2) %>%
-        DT::formatStyle('企業自由現金流 (FCFF)', backgroundColor = '#e8f4f8', fontWeight = 'bold')
+        DT::formatCurrency(columns = curr_cols, currency = dt_currency_symbol(), digits = 2) %>%
+        DT::formatStyle(highlight, backgroundColor = '#e8f4f8', fontWeight = 'bold')
     })
     
     # 🌟 動態偵測缺失值
@@ -586,13 +663,20 @@ fcf_projection_module_server <- function(
       if (is.null(df)) {
         return(HTML("<div style='color: gray; font-size: 14px;'>⏳ 尚未匯入財報資料，或正在等待計算...</div>"))
       }
+      cfs <- extract_dcf_claim_series(
+        df, claim_val(),
+        interest_after_tax = fcfe_interest_after_tax(),
+        debt0 = fcfe_debt0(),
+        g_path = fcfe_g()
+      )
+      tag <- cf_tag()
       
       HTML(glue::glue(
         "<div style='background-color: #f9f9f9; padding: 15px; border-left: 4px solid #00a65a; margin-top: 10px;'>
-           <b>FCF 預測資料已同步！</b><br/>
+           <b>{tag} 預測資料已同步！</b><br/>
            -------------------------<br/>
-           第 1 年預測現金流: <b>${round(df$FCFF[1], 2)}</b><br/>
-           第 {nrow(df)} 年預測現金流: <b>${round(df$FCFF[nrow(df)], 2)}</b><br/>
+           第 1 年預測現金流: <b>${round(cfs[1], 2)}</b><br/>
+           第 {nrow(df)} 年預測現金流: <b>${round(cfs[nrow(df)], 2)}</b><br/>
          </div>"
       ))
     })
