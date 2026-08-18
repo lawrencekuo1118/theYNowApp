@@ -212,7 +212,7 @@ emit_html(sprintf(
 
 # 投資摘要
 
-<p class="section-lead">本報告整合多模型評價（DCF／DDM／RI／P/B）、F-Score 體質檢核、關鍵財務指標與 Fraud Warnings，供研究參考。目標價取自主模型 Base；並附 Bear／Bull 區間與可信度。</p>
+<p class="section-lead">本報告整合多模型評價（DCF／DDM／RI／P/B）、F-Score 體質檢核、關鍵財務指標與財報警訊，供研究參考。目標價取自主模型 Base；並附 Bear／Bull 區間與可信度。</p>
 
 ## 關鍵資料一覽
 
@@ -388,7 +388,7 @@ if (!is.null(cl) && is.data.frame(cl) && nrow(cl) > 0) {
 }
 ```
 
-## Fraud Warnings（財務舞弊／體質警訊）
+## 財報警訊
 
 ```{r risks, results='asis'}
 warn_raw <- params$warnings
@@ -399,12 +399,12 @@ if (!is.null(warn_raw) && length(warn_raw) > 0 && !all(is.na(warn_raw))) {
   warn_items <- warn_items[nzchar(warn_items)]
 }
 if (length(warn_items) > 0) {
-  parts <- c("<div class='risk-box-warn'><strong>檢測到以下 Fraud Warnings：</strong><ul style='margin-top:6px;'>")
+  parts <- c("<div class='risk-box-warn'><strong>檢測到以下財報警訊：</strong><ul style='margin-top:6px;'>")
   for (w in warn_items) parts <- c(parts, sprintf("<li>%s</li>", htmlEscape(w)))
   parts <- c(parts, "</ul></div>")
   emit_html(parts)
 } else {
-  emit_html("<div class='risk-box-ok'><strong>Fraud Warnings：</strong>系統未偵測到明顯財務舞弊或重大體質警訊（仍請自行查核）。</div>")
+  emit_html("<div class='risk-box-ok'><strong>財報警訊：</strong>系統未偵測到明顯警示（仍請自行查核附註與新聞）。</div>")
 }
 ```
 

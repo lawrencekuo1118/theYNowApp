@@ -1211,7 +1211,7 @@ clamp_yr_stage1 <- function(n_years, yr_stage1, default_yr = 3L) {
 # 📄 投資意見報告書輔助函數（券商研究報告格式）
 # =========================================================
 
-# 蒐集財務舞弊 / 體質警訊（與 YNOW 分頁 Schilit 自動判讀同一套；只列「警示」）
+# 蒐集財報警訊／體質警訊（與 YNOW 分頁 Schilit 自動判讀同一套；只列「警示」）
 collect_fraud_warnings <- function(d_cf, d_is, d_bs, industry_key = NULL) {
   if (!exists("evaluate_shenanigans", mode = "function")) {
     return(character(0))

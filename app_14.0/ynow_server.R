@@ -2114,7 +2114,7 @@ server <- function(input, output, session) {
     )
   })
   
-  # 詐欺警示已併入 YNOW 分頁 Schilit 自動判讀（decision_server$shenanigans_panel）
+  # 財報警訊已併入 YNOW 分頁 Schilit 自動判讀（decision_server$shenanigans_panel）
 
   # Annotation 產業快覽已併入 dashboard_selected_industry；此處保留空輸出以免舊引用
   output$annotation_industry_bands <- renderUI({ NULL })

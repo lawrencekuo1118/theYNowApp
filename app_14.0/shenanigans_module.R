@@ -5,7 +5,7 @@
 #
 # 門檻（相對規則，避免魔術常數堆疊）：
 #   AR／存貨「明顯快於營收」：YoY 差距 ≥ 15 pp；觀察 ≥ 8 pp
-#   DSO／DIO／DPO 惡化：≥ 10 天警示、≥ 5 天觀察
+#   收款／存貨／付款天數惡化：≥ 10 天警示、≥ 5 天觀察
 #   毛利率下滑：≥ 1.5 pp 警示（搭配存貨）、單獨 ≥ 3 pp 觀察
 #   淨利 vs OCF：連續 ≥ 3 年淨利 > OCF 為警示；2 年觀察
 #   營業利益為正但 OCF 為負：直接警示（舊 Fraud Warning）
@@ -222,13 +222,13 @@ SHENANIGAN_THRESHOLDS <- list(
   list(lo = lo, hi = hi)
 }
 
-# ----- 跨手法 -----
+# ----- 三表共通警訊（不是第 16 招；損益／資產負債／現金流對起來的味道） -----
 .sh_eval_x1 <- function(ctx, th) {
   ni <- ctx$ni
   ocf <- ctx$ocf
   oe <- ctx$op_earn
   if (length(ni) < 1L || length(ocf) < 1L) {
-    return(.sh_na_item("X1", "跨手法", "淨利長期高於營業現金流", "損益或現金流缺淨利／營業現金流。"))
+    return(.sh_na_item("X1", "三表共通警訊", "淨利長期高於營業現金流", "損益或現金流缺淨利／營業現金流。"))
   }
   n <- min(length(ni), length(ocf), 5L)
   hit <- is.finite(ni[seq_len(n)]) & is.finite(ocf[seq_len(n)]) & (ni[seq_len(n)] > ocf[seq_len(n)])
@@ -252,12 +252,12 @@ SHENANIGAN_THRESHOLDS <- list(
     st <- "通過"
     why <- "近年營業現金流大致能跟上帳面獲利。"
   }
-  .sh_item("X1", "跨手法", "淨利長期高於營業現金流", st, why, val, thr)
+  .sh_item("X1", "三表共通警訊", "淨利長期高於營業現金流", st, why, val, thr)
 }
 
 .sh_eval_x2 <- function(ctx, th) {
   if (length(ctx$ar) < 2L || length(ctx$rev) < 2L) {
-    return(.sh_na_item("X2", "跨手法", "應收增速高於營收、DSO 拉長", "資產負債表無應收帳款，或年期不足。"))
+    return(.sh_na_item("X2", "三表共通警訊", "應收成長快過營收、收款天數變長", "資產負債表無應收帳款，或年期不足。"))
   }
   ar_g <- .sh_yoy(ctx$ar)
   rev_g <- .sh_yoy(ctx$rev)
@@ -265,10 +265,10 @@ SHENANIGAN_THRESHOLDS <- list(
   dso0 <- .sh_days(ctx$ar[1], ctx$rev[1])
   dso1 <- .sh_days(ctx$ar[2], ctx$rev[2])
   dso_d <- if (.sh_finite(dso0) && .sh_finite(dso1)) dso0 - dso1 else NA_real_
-  val <- sprintf("應收 YoY %s vs 營收 YoY %s（差 %s）；DSO %s→%s 天",
+  val <- sprintf("應收 YoY %s vs 營收 YoY %s（差 %s）；收款天數 %s→%s 天",
                  .sh_pct_txt(ar_g), .sh_pct_txt(rev_g), .sh_pp_txt(gap),
                  .sh_num_txt(dso1, 0), .sh_num_txt(dso0, 0))
-  thr <- sprintf("警示：應收快於營收 ≥%d pp 且 DSO +≥%d 天", th$ar_vs_rev_alert_pp, th$dso_alert_days)
+  thr <- sprintf("警示：應收快於營收 ≥%d pp 且收款天數 +≥%d 天", th$ar_vs_rev_alert_pp, th$dso_alert_days)
   if (.sh_finite(gap) && gap >= th$ar_vs_rev_alert_pp && .sh_finite(dso_d) && dso_d >= th$dso_alert_days) {
     st <- "警示"; why <- "應收成長明顯快於營收，收款天數也拉長，出貨品質或提前認列風險上升。"
   } else if ((.sh_finite(gap) && gap >= th$ar_vs_rev_watch_pp) ||
@@ -277,12 +277,12 @@ SHENANIGAN_THRESHOLDS <- list(
   } else {
     st <- "通過"; why <- "應收與營收步調大致一致，收款天數未明顯惡化。"
   }
-  .sh_item("X2", "跨手法", "應收增速高於營收、DSO 拉長", st, why, val, thr)
+  .sh_item("X2", "三表共通警訊", "應收成長快過營收、收款天數變長", st, why, val, thr)
 }
 
 .sh_eval_x3 <- function(ctx, th) {
   if (length(ctx$inv) < 2L || length(ctx$rev) < 2L) {
-    return(.sh_na_item("X3", "跨手法", "存貨增速高於營收且毛利下滑", "無存貨科目（金融／軟體常見）或年期不足。"))
+    return(.sh_na_item("X3", "三表共通警訊", "存貨增速高於營收且毛利下滑", "無存貨科目（金融／軟體常見）或年期不足。"))
   }
   inv_g <- .sh_yoy(ctx$inv)
   rev_g <- .sh_yoy(ctx$rev)
@@ -309,13 +309,13 @@ SHENANIGAN_THRESHOLDS <- list(
   } else {
     st <- "通過"; why <- "存貨與營收步調尚可，毛利率未明顯惡化。"
   }
-  .sh_item("X3", "跨手法", "存貨增速高於營收且毛利下滑", st, why, val, thr)
+  .sh_item("X3", "三表共通警訊", "存貨增速高於營收且毛利下滑", st, why, val, thr)
 }
 
 .sh_eval_x4 <- function(ctx, th) {
   # 年報無法驗證「季底出貨」；只評一次性收益與反覆非常項目。
   if (length(ctx$rev) < 1L) {
-    return(.sh_na_item("X4", "跨手法", "一次性收益／反覆非常項目", "損益表缺營收。"))
+    return(.sh_na_item("X4", "三表共通警訊", "一次性收益／反覆非常項目", "損益表缺營收。"))
   }
   oi <- ctx$other_inc
   ni <- ctx$ni
@@ -333,7 +333,7 @@ SHENANIGAN_THRESHOLDS <- list(
   has_oi <- length(oi) >= 1L && any(is.finite(oi))
   if (!has_oi && n_imp < 1L) {
     return(.sh_item(
-      "X4", "跨手法", "一次性收益／反覆非常項目", "資料不足",
+      "X4", "三表共通警訊", "一次性收益／反覆非常項目", "資料不足",
       "年報無其他收益／處分利益／減損列，也無法用年報驗證季底出貨。",
       "季底出貨：資料不足", "不捏造附註"
     ))
@@ -357,7 +357,7 @@ SHENANIGAN_THRESHOLDS <- list(
   } else {
     st <- "通過"; why <- "未看到一次性收益暴衝或年年非常費用。季底出貨仍無法用年報驗證。"
   }
-  .sh_item("X4", "跨手法", "一次性收益／反覆非常項目", st, why, val, thr)
+  .sh_item("X4", "三表共通警訊", "一次性收益／反覆非常項目", st, why, val, thr)
 }
 
 .sh_eval_x5 <- function(ctx, th) {
@@ -368,8 +368,8 @@ SHENANIGAN_THRESHOLDS <- list(
   has_acq <- length(acq) >= 1L && any(is.finite(acq) & acq != 0)
   if (!has_gw && !has_acq) {
     return(.sh_na_item(
-      "X5", "跨手法", "大量併購／關聯交易／更換 CFO",
-      "無商譽或收購現金流可評併購；關聯交易與 CFO／會計師更換資料不足。"
+      "X5", "三表共通警訊", "大量購併／關係人交易／更換財務長",
+      "無商譽或收購現金流可評購併；關係人交易與財務長／會計師更換資料不足。"
     ))
   }
   gw_g <- .sh_yoy(gw)
@@ -386,31 +386,31 @@ SHENANIGAN_THRESHOLDS <- list(
   val <- sprintf("商譽／資產 %s→%s（差 %s）；商譽相對期初資產 %s",
                  .sh_pct_txt(gw_ast1), .sh_pct_txt(gw_ast0), .sh_pp_txt(gw_ast_pp),
                  .sh_pct_txt(vs_beg))
-  thr <- sprintf("警示：商譽／資產 +≥%d pp 或商譽增額 ≥ 期初資產 %.0f%%；CFO／關聯交易仍資料不足",
+  thr <- sprintf("警示：商譽／資產 +≥%d pp 或商譽增額 ≥ 期初資產 %.0f%%；財務長／關係人交易仍資料不足",
                  th$gw_asset_pp, th$gw_vs_beg_assets * 100)
   if ((.sh_finite(gw_ast_pp) && gw_ast_pp >= th$gw_asset_pp) ||
       (.sh_finite(vs_beg) && vs_beg >= th$gw_vs_beg_assets)) {
-    st <- "警示"; why <- "商譽或收購規模跳升。關聯交易與更換 CFO／會計師仍資料不足，未當作警示依據。"
+    st <- "警示"; why <- "商譽或收購規模跳升。關係人交易與更換財務長／會計師仍資料不足，未當作警示依據。"
   } else if (.sh_finite(gw_g) && gw_g >= 0.10) {
-    st <- "觀察"; why <- "商譽有增加，規模尚未達警示。關聯交易／CFO 資料不足。"
+    st <- "觀察"; why <- "商譽有增加，規模尚未達警示。關係人交易／財務長資料不足。"
   } else {
-    st <- "通過"; why <- "商譽未大幅擴張。關聯交易與 CFO／會計師更換仍資料不足。"
+    st <- "通過"; why <- "商譽未大幅擴張。關係人交易與財務長／會計師更換仍資料不足。"
   }
-  .sh_item("X5", "跨手法", "大量併購／關聯交易／更換 CFO", st, why, val, thr)
+  .sh_item("X5", "三表共通警訊", "大量購併／關係人交易／更換財務長", st, why, val, thr)
 }
 
 .sh_eval_x6 <- function(ctx, th) {
   # Yahoo 年報幾乎沒有非 GAAP 欄位；現金品質改由 X1／#11 承擔。
   .sh_na_item(
-    "X6", "跨手法", "大力推非 GAAP 且定義常改",
-    "財報序列沒有穩定的非 GAAP 欄位，不臆測調整後獲利。現金與 GAAP 落差見 X1、手法 11。"
+    "X6", "三表共通警訊", "常講調整後獲利、口徑卻常改",
+    "年報序列沒有穩定的「調整後獲利」欄位，不臆測。現金與帳面獲利落差見 X1、第 11 項。"
   )
 }
 
 # ----- 15 手法 -----
 .sh_eval_01 <- function(ctx, th) {
   if (length(ctx$rev) < 2L || length(ctx$ocf) < 2L) {
-    return(.sh_na_item("1", "操弄盈餘", "提前認列營收", "營收或營業現金流年期不足。"))
+    return(.sh_na_item("1", "盈餘操縱", "提前認列營收", "營收或營業現金流年期不足。"))
   }
   rev_g <- .sh_yoy(ctx$rev)
   ocf_g <- .sh_yoy(ctx$ocf)
@@ -433,13 +433,13 @@ SHENANIGAN_THRESHOLDS <- list(
   } else {
     st <- "通過"; why <- "未同時出現營收暴衝、應收惡化與現金落後。"
   }
-  .sh_item("1", "操弄盈餘", "提前認列營收", st, why, val, thr)
+  .sh_item("1", "盈餘操縱", "提前認列營收", st, why, val, thr)
 }
 
 .sh_eval_02 <- function(ctx, th, industry_key) {
   gm <- .sh_gm(ctx, 1L)
   if (!.sh_finite(gm) || length(ctx$rev) < 1L) {
-    return(.sh_na_item("2", "操弄盈餘", "認列假營收", "缺毛利或營收，無法比對獲利結構。"))
+    return(.sh_na_item("2", "盈餘操縱", "虛增營收", "缺毛利或營收，無法比對獲利結構。"))
   }
   band <- .sh_ind_gm(industry_key)
   gm_pct <- gm * 100
@@ -462,12 +462,12 @@ SHENANIGAN_THRESHOLDS <- list(
   } else {
     st <- "通過"; why <- "毛利率未遠離產業或自身歷史。員工數資料不足，未用來判假營收。"
   }
-  .sh_item("2", "操弄盈餘", "認列假營收", st, why, val, thr)
+  .sh_item("2", "盈餘操縱", "虛增營收", st, why, val, thr)
 }
 
 .sh_eval_03 <- function(ctx, th) {
   if (length(ctx$ni) < 2L || length(ctx$opinc) < 2L) {
-    return(.sh_na_item("3", "操弄盈餘", "一次性活動增加收入", "缺營業利益或淨利年期。"))
+    return(.sh_na_item("3", "盈餘操縱", "靠一次性項目灌營收", "缺營業利益或淨利年期。"))
   }
   ni_g <- .sh_yoy(ctx$ni)
   op_g <- .sh_yoy(ctx$opinc)
@@ -487,13 +487,13 @@ SHENANIGAN_THRESHOLDS <- list(
   } else {
     st <- "通過"; why <- "淨利與營業利益步調未明顯分叉。"
   }
-  .sh_item("3", "操弄盈餘", "一次性活動增加收入", st, why, val, thr)
+  .sh_item("3", "盈餘操縱", "靠一次性項目灌營收", st, why, val, thr)
 }
 
 .sh_eval_04 <- function(ctx, th) {
   intang <- ctx$intang
   if (length(intang) < 2L && length(ctx$ppe) < 2L) {
-    return(.sh_na_item("4", "操弄盈餘", "把當期費用移到後期", "無無形資產或不動產設備可看資本化。"))
+    return(.sh_na_item("4", "盈餘操縱", "把當期費用移到後期", "無無形資產或不動產設備可看資本化。"))
   }
   int_g <- .sh_yoy(intang)
   rev_g <- .sh_yoy(ctx$rev)
@@ -524,12 +524,12 @@ SHENANIGAN_THRESHOLDS <- list(
   } else {
     st <- "通過"; why <- "未看到無形資產暴衝或折舊率明顯下滑。"
   }
-  .sh_item("4", "操弄盈餘", "把當期費用移到後期", st, why, val, thr)
+  .sh_item("4", "盈餘操縱", "把當期費用移到後期", st, why, val, thr)
 }
 
 .sh_eval_05 <- function(ctx, th) {
   if (length(ctx$opex) < 2L || length(ctx$rev) < 2L) {
-    return(.sh_na_item("5", "操弄盈餘", "隱藏費用或損失", "缺營業費用或營收年期。"))
+    return(.sh_na_item("5", "盈餘操縱", "隱藏費用或損失", "缺營業費用或營收年期。"))
   }
   ox0 <- .sh_ratio(ctx$opex[1], ctx$rev[1])
   ox1 <- .sh_ratio(ctx$opex[2], ctx$rev[2])
@@ -546,7 +546,7 @@ SHENANIGAN_THRESHOLDS <- list(
   } else {
     st <- "通過"; why <- "費用率未在業務平穩時突然下降。"
   }
-  .sh_item("5", "操弄盈餘", "隱藏費用或損失", st, why, val, thr)
+  .sh_item("5", "盈餘操縱", "隱藏費用或損失", st, why, val, thr)
 }
 
 .sh_eval_06 <- function(ctx, th) {
@@ -565,7 +565,7 @@ SHENANIGAN_THRESHOLDS <- list(
   }
   smooth2 <- length(ni_m) >= 4L && (max(ni_m) - min(ni_m)) < 0.015
   if (length(def) < 2L && !isTRUE(smooth2)) {
-    return(.sh_na_item("6", "操弄盈餘", "把當期收益移到後期", "無遞延收入，獲利年期也不足以看平滑。"))
+    return(.sh_na_item("6", "盈餘操縱", "把當期收益移到後期", "無遞延收入，獲利年期也不足以看平滑。"))
   }
   val <- sprintf("遞延收入 YoY %s vs 營收 YoY %s（差 %s）；淨利率區間 %s",
                  .sh_pct_txt(def_g), .sh_pct_txt(rev_g), .sh_pp_txt(gap),
@@ -574,19 +574,19 @@ SHENANIGAN_THRESHOLDS <- list(
   if (.sh_finite(gap) && gap >= th$defrev_vs_rev_pp) {
     st <- "警示"; why <- "預收／遞延收入異常增加，可能把收益往後挪或提前收現。"
   } else if (isTRUE(smooth2) && length(rev) >= 4L) {
-    st <- "觀察"; why <- "獲利異常平滑，需對照準備金與遞延項目（未必是操弄）。"
+    st <- "觀察"; why <- "獲利異常平滑，需對照準備金與遞延項目（未必是作帳）。"
   } else if (length(def) < 2L) {
     st <- "資料不足"; why <- "無遞延收入序列。"
   } else {
     st <- "通過"; why <- "遞延收入未異常快於營收，獲利也沒有過度平滑。"
   }
-  .sh_item("6", "操弄盈餘", "把當期收益移到後期", st, why, val, thr)
+  .sh_item("6", "盈餘操縱", "把當期收益移到後期", st, why, val, thr)
 }
 
 .sh_eval_07 <- function(ctx, th) {
   imp <- ctx$impair
   if (length(imp) < 2L || length(ctx$rev) < 2L) {
-    return(.sh_na_item("7", "操弄盈餘", "把未來費用移到當期（大洗澡）", "無減損／非常項目或年期不足。"))
+    return(.sh_na_item("7", "盈餘操縱", "把未來費用移到當期（大洗澡）", "無減損／非常項目或年期不足。"))
   }
   # Newest is year t; look at prior year t-1 bath then t rebound.
   bath_prior <- .sh_finite(imp[2]) && .sh_finite(ctx$rev[2]) && ctx$rev[2] != 0 &&
@@ -610,12 +610,12 @@ SHENANIGAN_THRESHOLDS <- list(
   } else {
     st <- "通過"; why <- "沒有「先大減損、再突然變好看」的組合。"
   }
-  .sh_item("7", "操弄盈餘", "把未來費用移到當期（大洗澡）", st, why, val, thr)
+  .sh_item("7", "盈餘操縱", "把未來費用移到當期（大洗澡）", st, why, val, thr)
 }
 
 .sh_eval_08 <- function(ctx, th) {
   if (length(ctx$ocf) < 2L) {
-    return(.sh_na_item("8", "現金流舞弊", "融資現金流入移到營業活動", "營業現金流年期不足。"))
+    return(.sh_na_item("8", "現金流作假", "把融資當成營業現金", "營業現金流年期不足。"))
   }
   ocf_g <- .sh_yoy(ctx$ocf)
   ar_g <- .sh_yoy(ctx$ar)
@@ -636,12 +636,12 @@ SHENANIGAN_THRESHOLDS <- list(
   } else {
     st <- "通過"; why <- "未出現 OCF 暴增搭配應收驟降或隔期反轉。"
   }
-  .sh_item("8", "現金流舞弊", "融資現金流入移到營業活動", st, why, val, thr)
+  .sh_item("8", "現金流作假", "把融資當成營業現金", st, why, val, thr)
 }
 
 .sh_eval_09 <- function(ctx, th) {
   if (length(ctx$ocf) < 1L || length(ctx$fcf) < 1L) {
-    return(.sh_na_item("9", "現金流舞弊", "營運現金流出移到其他活動", "缺營業現金流或自由現金流。"))
+    return(.sh_na_item("9", "現金流作假", "把營業現金流出藏到別項", "缺營業現金流或自由現金流。"))
   }
   ocf <- ctx$ocf[1]
   fcf <- ctx$fcf[1]
@@ -653,7 +653,7 @@ SHENANIGAN_THRESHOLDS <- list(
                  .sh_num_txt(ocf, 0), .sh_num_txt(fcf, 0), .sh_num_txt(cap_vs_dep, 2, "×"))
   thr <- "警示：營業現金為負；觀察：OCF 為正但 FCF 為負且資本支出成長遠快於營收"
   if (.sh_finite(ocf) && ocf < 0) {
-    st <- "警示"; why <- "核心營業現金流為負，本業在失血（舊有舞弊檢核一併納入）。"
+    st <- "警示"; why <- "核心營業現金流為負，本業在失血（舊有現金／槓桿檢核一併納入）。"
   } else if (.sh_finite(ocf) && ocf > 0 && .sh_finite(fcf) && fcf < 0 &&
              .sh_finite(cap_g) && .sh_finite(rev_g) && (cap_g - rev_g) >= 0.25) {
     st <- "觀察"; why <- "帳上營業現金看起來不錯，自由現金流卻很差，投資流出偏像日常開銷或過度資本化。"
@@ -662,12 +662,12 @@ SHENANIGAN_THRESHOLDS <- list(
   } else {
     st <- "通過"; why <- "營業現金與自由現金流未出現「帳上很好、口袋很差」的組合。"
   }
-  .sh_item("9", "現金流舞弊", "營運現金流出移到其他活動", st, why, val, thr)
+  .sh_item("9", "現金流作假", "把營業現金流出藏到別項", st, why, val, thr)
 }
 
 .sh_eval_10 <- function(ctx, th) {
   if (length(ctx$ocf) < 2L) {
-    return(.sh_na_item("10", "現金流舞弊", "不可持續活動增加營運現金流", "營業現金流年期不足。"))
+    return(.sh_na_item("10", "現金流作假", "用不持久的方式灌營業現金", "營業現金流年期不足。"))
   }
   cogs <- if (length(ctx$cogs)) ctx$cogs else ctx$rev
   dpo0 <- .sh_days(ctx$ap[1], cogs[1])
@@ -694,14 +694,14 @@ SHENANIGAN_THRESHOLDS <- list(
   } else {
     st <- "通過"; why <- "未看到靠拖款、預收或去庫存把營業現金推高。"
   }
-  .sh_item("10", "現金流舞弊", "不可持續活動增加營運現金流", st, why, val, thr)
+  .sh_item("10", "現金流作假", "用不持久的方式灌營業現金", st, why, val, thr)
 }
 
 .sh_eval_11 <- function(ctx, th) {
   ni <- ctx$ni
   ocf <- ctx$ocf
   if (length(ni) < 1L || length(ocf) < 1L || !.sh_finite(ni[1]) || !.sh_finite(ocf[1])) {
-    return(.sh_na_item("11", "關鍵指標舞弊", "誤導性指標誇大業績", "缺淨利或營業現金流。"))
+    return(.sh_na_item("11", "關鍵數字灌水", "用關鍵數字誇大業績", "缺淨利或營業現金流。"))
   }
   conv <- if (ni[1] > 0) ocf[1] / ni[1] else NA_real_
   val <- sprintf("OCF／淨利 %s（非 GAAP 欄位：資料不足）", .sh_num_txt(conv, 2, "×"))
@@ -715,7 +715,7 @@ SHENANIGAN_THRESHOLDS <- list(
   } else {
     st <- "通過"; why <- "非 GAAP 資料不足；GAAP 淨利與營業現金流落差尚可。"
   }
-  .sh_item("11", "關鍵指標舞弊", "誤導性指標誇大業績", st, why, val, thr)
+  .sh_item("11", "關鍵數字灌水", "用關鍵數字誇大業績", st, why, val, thr)
 }
 
 .sh_eval_12 <- function(ctx, th) {
@@ -726,7 +726,7 @@ SHENANIGAN_THRESHOLDS <- list(
   wc_ast1 <- .sh_ratio(wc1, if (length(ctx$assets) >= 2L) ctx$assets[2] else NA_real_)
   wc_pp <- .sh_pp(wc_ast0, wc_ast1)
   if (!.sh_finite(de) && !.sh_finite(wc_pp)) {
-    return(.sh_na_item("12", "關鍵指標舞弊", "扭曲資產負債表指標", "缺負債／權益或營運資金。"))
+    return(.sh_na_item("12", "關鍵數字灌水", "美化資產負債表數字", "缺負債／權益或營運資金。"))
   }
   val <- sprintf("負債／權益 %s；營運資金／資產差 %s", .sh_num_txt(de, 2, "×"), .sh_pp_txt(wc_pp))
   thr <- sprintf("警示：負債／權益 >%.1f 或營運資金／資產年變 ≥%d pp", th$de_alert, th$wc_asset_pp)
@@ -739,7 +739,7 @@ SHENANIGAN_THRESHOLDS <- list(
   } else {
     st <- "通過"; why <- "槓桿與營運資金佔比沒有異常跳變。"
   }
-  .sh_item("12", "關鍵指標舞弊", "扭曲資產負債表指標", st, why, val, thr)
+  .sh_item("12", "關鍵數字灌水", "美化資產負債表數字", st, why, val, thr)
 }
 
 .sh_eval_13 <- function(ctx, th) {
@@ -751,7 +751,7 @@ SHENANIGAN_THRESHOLDS <- list(
   rev_g <- .sh_yoy(ctx$rev)
   ni_g <- .sh_yoy(ctx$ni)
   if (length(ctx$gw) < 2L) {
-    return(.sh_na_item("13", "併購會計舞弊", "人為增加營收與盈餘", "無商譽年期，無法判斷併購灌水。"))
+    return(.sh_na_item("13", "購併作帳", "購併後灌營收與獲利", "無商譽年期，無法判斷併購灌水。"))
   }
   val <- sprintf("商譽／資產差 %s；營收 YoY %s；淨利 YoY %s",
                  .sh_pp_txt(gw_ast_pp), .sh_pct_txt(rev_g), .sh_pct_txt(ni_g))
@@ -765,12 +765,12 @@ SHENANIGAN_THRESHOLDS <- list(
   } else {
     st <- "通過"; why <- "沒有「商譽大增、銷售停滯、獲利突好」的組合。"
   }
-  .sh_item("13", "併購會計舞弊", "人為增加營收與盈餘", st, why, val, thr)
+  .sh_item("13", "購併作帳", "購併後灌營收與獲利", st, why, val, thr)
 }
 
 .sh_eval_14 <- function(ctx, th) {
   if (length(ctx$ocf) < 2L || length(ctx$gw) < 2L) {
-    return(.sh_na_item("14", "併購會計舞弊", "虛報現金流", "缺營業現金流或商譽年期。"))
+    return(.sh_na_item("14", "購併作帳", "購併後灌現金流", "缺營業現金流或商譽年期。"))
   }
   ocf_g <- .sh_yoy(ctx$ocf)
   vs_beg <- if (length(ctx$assets) >= 2L && .sh_finite(ctx$assets[2]) && ctx$assets[2] > 0) {
@@ -787,12 +787,12 @@ SHENANIGAN_THRESHOLDS <- list(
   } else {
     st <- "通過"; why <- "營業現金流未隨商譽同步暴衝。"
   }
-  .sh_item("14", "併購會計舞弊", "虛報現金流", st, why, val, thr)
+  .sh_item("14", "購併作帳", "購併後灌現金流", st, why, val, thr)
 }
 
 .sh_eval_15 <- function(ctx, th) {
   if (length(ctx$assets) < 2L || length(ctx$rev) < 2L) {
-    return(.sh_na_item("15", "併購會計舞弊", "操縱關鍵指標（併購）", "資產或營收年期不足。"))
+    return(.sh_na_item("15", "購併作帳", "購併後美化週轉等指標", "資產或營收年期不足。"))
   }
   ast_g <- .sh_yoy(ctx$assets)
   at0 <- .sh_ratio(ctx$rev[1], ctx$assets[1])
@@ -816,10 +816,10 @@ SHENANIGAN_THRESHOLDS <- list(
   } else {
     st <- "通過"; why <- "未出現「資產變大、週轉變差、幾乎全是商譽」。"
   }
-  .sh_item("15", "併購會計舞弊", "操縱關鍵指標（併購）", st, why, val, thr)
+  .sh_item("15", "購併作帳", "購併後美化週轉等指標", st, why, val, thr)
 }
 
-#' Schilit 15 + 跨手法 + 舊 Fraud Warning 合併評估
+#' Schilit 15 招 + 三表共通警訊 + 舊 Fraud Warning 合併評估
 evaluate_shenanigans <- function(d_is, d_bs, d_cf, industry_key = NULL) {
   if (is.null(d_is) || is.null(d_bs) || is.null(d_cf) ||
       !is.data.frame(d_is) || !is.data.frame(d_bs) || !is.data.frame(d_cf) ||
@@ -856,7 +856,7 @@ evaluate_shenanigans <- function(d_is, d_bs, d_cf, industry_key = NULL) {
       .sh_eval_15(ctx, th)
     )
   }, error = function(e) {
-    .sh_item("ERR", "跨手法", "自動判讀", "資料不足",
+    .sh_item("ERR", "三表共通警訊", "自動判讀", "資料不足",
              paste0("計算失敗：", e$message), "—", "—")
   })
   n_alert <- as.integer(sum(items$status == "警示", na.rm = TRUE))
@@ -909,7 +909,7 @@ evaluate_shenanigans <- function(d_is, d_bs, d_cf, industry_key = NULL) {
   )
 }
 
-#' YNOW 分頁：四大類 + 跨手法紅旗（警示／觀察展開；資料不足摺疊）
+#' YNOW 分頁：四大類 + 三表共通警訊（警示／觀察展開；資料不足摺疊）
 shenanigans_results_ui <- function(ev) {
   if (is.null(ev) || !isTRUE(ev$ok)) {
     return(tags$div(
@@ -921,18 +921,18 @@ shenanigans_results_ui <- function(ev) {
   show <- items[items$status %in% c("警示", "觀察"), , drop = FALSE]
   pass <- items[items$status == "通過", , drop = FALSE]
   nas <- items[items$status == "資料不足", , drop = FALSE]
-  xflag <- show[show$category == "跨手法", , drop = FALSE]
+  xflag <- show[show$category == "三表共通警訊", , drop = FALSE]
   cats <- list(
-    "一、操弄盈餘" = show[show$category == "操弄盈餘", , drop = FALSE],
-    "二、現金流舞弊" = show[show$category == "現金流舞弊", , drop = FALSE],
-    "三、關鍵指標舞弊" = show[show$category == "關鍵指標舞弊", , drop = FALSE],
-    "四、併購會計舞弊" = show[show$category == "併購會計舞弊", , drop = FALSE]
+    "一、盈餘操縱" = show[show$category == "盈餘操縱", , drop = FALSE],
+    "二、現金流作假" = show[show$category == "現金流作假", , drop = FALSE],
+    "三、關鍵數字灌水" = show[show$category == "關鍵數字灌水", , drop = FALSE],
+    "四、購併作帳" = show[show$category == "購併作帳", , drop = FALSE]
   )
   tags$div(
     class = "ynow-shen-wrap",
     tags$p(
       class = "ynow-shen-core",
-      "會計問題通常在遮掩本業惡化（銷售放緩、毛利變薄、現金變差）。同時看損益、資產負債、現金流、附註精神、非 GAAP。"
+      "會計把戲多半在遮本業變差（賣不動、毛利變薄、現金變差）。先對過損益、資產負債、現金流；附註與「調整後獲利」年報常常看不到。"
     ),
     tags$p(
       class = "ynow-shen-count",
@@ -942,9 +942,14 @@ shenanigans_results_ui <- function(ev) {
     ),
     tags$div(
       class = "ynow-shen-strip",
-      tags$h4(icon("exclamation-triangle"), " 跨手法紅旗"),
+      tags$h4(icon("exclamation-triangle"), " 三表共通警訊"),
+      tags$p(
+        class = "ynow-shen-ok",
+        style = "margin: 0 0 8px 0;",
+        "這不是某一招的名字，是損益／資產負債／現金流對起來有沒有味道。"
+      ),
       if (nrow(xflag) < 1L) {
-        tags$p(class = "ynow-shen-ok", "跨手法目前無警示或觀察。")
+        tags$p(class = "ynow-shen-ok", "三表對起來目前沒有警示或觀察。")
       } else {
         lapply(seq_len(nrow(xflag)), function(i) .sh_item_card(xflag[i, ]))
       }

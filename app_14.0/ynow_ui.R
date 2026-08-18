@@ -20,7 +20,7 @@
     class = "ynow-about-feat",
     tags$li(
       tags$b("自動化資料與防雷機制："),
-      "即時抓取三大報表，並內建「財務舞弊警訊 (Red Flags)」，透過交叉比對現金流與獲利品質，自動偵測潛在的地雷股與價值陷阱。"
+        "即時抓取三大報表，並內建「財報警訊」（三表對照），交叉比對現金流與獲利品質，自動偵測潛在地雷股與價值陷阱。"
     ),
     tags$li(
       tags$b("四大估值引擎："),
@@ -39,7 +39,7 @@
     class = "ynow-about-feat",
     tags$li(
       tags$b("Automated Data & Fraud Detection: "),
-      "Instantly fetches core financial statements and utilizes built-in \"Financial Fraud Red Flags\" to automatically detect potential value traps by cross-verifying cash flows and earnings quality."
+      "Instantly fetches the three financial statements and flags earnings-quality issues by cross-checking cash flow against reported profits, to catch potential value traps."
     ),
     tags$li(
       tags$b("Four Valuation Engines: "),

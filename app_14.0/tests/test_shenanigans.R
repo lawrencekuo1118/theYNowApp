@@ -72,6 +72,10 @@ check("healthy ok flag", isTRUE(ev_ok$ok))
 check("healthy 21 items", nrow(ev_ok$items) == 21L)
 x1_ok <- ev_ok$items[ev_ok$items$code == "X1", ]
 check("healthy X1 not alert", !identical(x1_ok$status[1], "警示"))
+check("X1 category 三表共通警訊", identical(x1_ok$category[1], "三表共通警訊"))
+x2_ok <- ev_ok$items[ev_ok$items$code == "X2", ]
+check("X2 title uses 收款天數", grepl("收款天數", x2_ok$name[1], fixed = TRUE))
+check("X2 title has no DSO", !grepl("DSO", x2_ok$name[1], fixed = TRUE))
 x6 <- ev_ok$items[ev_ok$items$code == "X6", ]
 check("X6 insufficient without non-GAAP", identical(x6$status[1], "資料不足"))
 

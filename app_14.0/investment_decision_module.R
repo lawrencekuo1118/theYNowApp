@@ -265,7 +265,7 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       n <- as.integer(n)
       valueBox(
         paste0(n, " 項"),
-        "財務舞弊警訊",
+        "財報警訊",
         icon = icon("exclamation-triangle"),
         color = if (n > 0L) "red" else "green",
         width = 4
