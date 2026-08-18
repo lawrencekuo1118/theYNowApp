@@ -931,10 +931,6 @@ shenanigans_results_ui <- function(ev) {
   tags$div(
     class = "ynow-shen-wrap",
     tags$p(
-      class = "ynow-shen-core",
-      "會計把戲多半在遮本業變差（賣不動、毛利變薄、現金變差）。先對過損益、資產負債、現金流；附註與「調整後獲利」年報常常看不到。"
-    ),
-    tags$p(
       class = "ynow-shen-count",
       tags$span(class = "ynow-shen-st ynow-shen-alert", paste0("警示 ", ev$n_alert, " 項")),
       tags$span(class = "ynow-shen-st ynow-shen-watch", paste0("觀察 ", ev$n_watch, " 項")),
@@ -943,23 +939,13 @@ shenanigans_results_ui <- function(ev) {
     tags$div(
       class = "ynow-shen-strip",
       tags$h4(icon("exclamation-triangle"), " 三表共通警訊"),
-      tags$p(
-        class = "ynow-shen-ok",
-        style = "margin: 0 0 8px 0;",
-        "這不是某一招的名字，是損益／資產負債／現金流對起來有沒有味道。"
-      ),
       if (nrow(xflag) < 1L) {
-        tags$p(class = "ynow-shen-ok", "三表對起來目前沒有警示或觀察。")
+        tags$p(class = "ynow-shen-ok", "目前沒有警示或觀察。")
       } else {
         lapply(seq_len(nrow(xflag)), function(i) .sh_item_card(xflag[i, ]))
       }
     ),
     lapply(names(cats), function(nm) .sh_cat_block(cats[[nm]], nm)),
-    if (nrow(show) < 1L) {
-      tags$p(class = "ynow-shen-ok", "目前沒有警示或觀察。舊有五項現金／槓桿檢核已併入上表。")
-    } else {
-      NULL
-    },
     if (nrow(pass) > 0L) {
       tags$details(
         class = "ynow-shen-fold",
@@ -972,7 +958,7 @@ shenanigans_results_ui <- function(ev) {
     if (nrow(nas) > 0L) {
       tags$details(
         class = "ynow-shen-fold",
-        tags$summary(sprintf("資料不足 %d 項（無欄位就不示警）", nrow(nas))),
+        tags$summary(sprintf("資料不足 %d 項", nrow(nas))),
         lapply(seq_len(nrow(nas)), function(i) .sh_item_card(nas[i, ]))
       )
     } else {

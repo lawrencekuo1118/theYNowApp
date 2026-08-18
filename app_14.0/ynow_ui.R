@@ -1461,11 +1461,6 @@ ui <- dashboardPage(
 
         /* YNOW：Schilit 自動判讀 */
         .ynow-shen-wrap { margin: 0 0 16px 0; }
-        .ynow-shen-core {
-          margin: 0 0 10px 0; padding: 10px 12px;
-          background: #f7f9fb; border-left: 4px solid #1a5276;
-          font-size: 13px; color: #333; line-height: 1.55;
-        }
         .ynow-shen-count { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px 0; }
         .ynow-shen-st {
           display: inline-block; font-size: 11.5px; font-weight: 700;

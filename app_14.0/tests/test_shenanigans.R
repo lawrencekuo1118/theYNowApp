@@ -118,6 +118,13 @@ ev_noar <- evaluate_shenanigans(is_noar, bs_noar, cf_ok)
 x2 <- ev_noar$items[ev_noar$items$code == "X2", ]
 check("missing AR is 資料不足", identical(x2$status[1], "資料不足"))
 
+suppressPackageStartupMessages(library(shiny))
+ui_ok <- as.character(shenanigans_results_ui(ev_ok))
+check("UI has no 某一招 explainer", !grepl("這不是某一招", ui_ok, fixed = TRUE))
+check("UI has no 會計把戲 intro", !grepl("會計把戲", ui_ok, fixed = TRUE))
+check("UI has no 舊有五項 aside", !grepl("舊有五項", ui_ok, fixed = TRUE))
+check("UI still has 三表共通警訊 heading", grepl("三表共通警訊", ui_ok, fixed = TRUE))
+
 if (fail > 0L) {
   cat("FAILED ", fail, " checks\n", sep = "")
   quit(status = 1)
