@@ -1221,61 +1221,19 @@ ui <- dashboardPage(
           color: #1a5276;
         }
 
-        /* Lab：美股績優篩選工具列（單列、同類並排） */
-        .ynow-lab-im-note-row {
-          display: flex;
-          flex-wrap: nowrap;
-          align-items: center;
-          gap: 12px;
-          margin: 0 0 10px 0;
-        }
-        .ynow-lab-im-note {
-          flex: 1 1 auto;
-          min-width: 0;
-          margin: 0;
-          padding: 8px 10px;
-          background: #f7f9fb;
-          border-left: 3px solid #3c8dbc;
-          border-radius: 4px;
-          font-size: 12.5px;
-          color: #445;
-          line-height: 1.45;
-          white-space: nowrap;
-          overflow-x: auto;
-        }
-        .ynow-lab-im-note .ynow-lab-im-muted {
-          color: #888;
-          font-size: 11.5px;
-          margin-left: 8px;
-        }
-        .ynow-lab-im-note-row > .btn,
-        .ynow-lab-im-note-row .ynow-lab-im-actions .btn {
-          flex: 0 0 auto;
-          white-space: nowrap;
-          padding: 6px 14px;
-          font-weight: 700;
-        }
-        .ynow-lab-im-actions {
-          display: flex;
-          flex: 0 0 auto;
-          flex-wrap: nowrap;
-          align-items: center;
-          gap: 8px;
-        }
+        /* Blue Chip：美股績優篩選（對齊 Dashboard FINANCIAL REPORT：tabBox + 查詢條件／內容 box） */
         .ynow-lab-im-universe-row {
           display: flex;
-          flex-wrap: nowrap;
+          flex-wrap: wrap;
           align-items: center;
           gap: 10px;
-          margin: 0 0 8px 0;
-          font-size: 12px;
+          margin: 0 0 14px 0;
+          font-size: 12.5px;
           color: #556;
         }
         .ynow-lab-im-universe-row .ynow-lab-im-universe-meta {
           flex: 1 1 auto;
           min-width: 0;
-          white-space: nowrap;
-          overflow-x: auto;
         }
         .ynow-lab-im-universe-row .btn {
           flex: 0 0 auto;
@@ -1283,44 +1241,28 @@ ui <- dashboardPage(
           padding: 3px 10px;
           font-size: 12px;
         }
-        .ynow-lab-im-bar {
+        .ynow-lab-im-muted {
+          color: #888;
+          font-size: 11.5px;
+        }
+        .ynow-lab-im-actions {
           display: flex;
-          flex-wrap: nowrap;
+          flex-wrap: wrap;
           align-items: center;
-          gap: 10px 14px;
-          overflow-x: auto;
-          overflow-y: visible;
-          padding: 10px 12px;
-          margin: 0 0 8px 0;
-          background: #fafbfc;
-          border: 1px solid #e5e9ef;
-          border-radius: 6px;
+          gap: 8px;
+          margin-top: 4px;
         }
-        /* bootstrap-select menu is appended to body (container='body'); keep bar scrollable */
-        .ynow-lab-im-bar .dropdown-menu {
-          z-index: 2000;
-        }
-        .ynow-lab-im-group {
-          display: inline-flex;
-          align-items: center;
-          flex: 0 0 auto;
-          gap: 6px;
+        .ynow-lab-im-actions .btn {
           white-space: nowrap;
-        }
-        .ynow-lab-im-group.ynow-lab-im-sizes {
-          align-items: center;
-          white-space: nowrap;
-          flex: 0 0 auto;
-        }
-        .ynow-lab-im-group.ynow-lab-im-sizes > .ynow-lab-im-k {
-          margin-top: 0;
+          padding: 6px 14px;
+          font-weight: 700;
         }
         .ynow-lab-im-sizes .shiny-options-group {
           display: inline-flex;
           flex-wrap: nowrap;
           flex-direction: row;
           align-items: center;
-          column-gap: 8px;
+          column-gap: 12px;
           row-gap: 0;
           white-space: nowrap;
         }
@@ -1330,93 +1272,35 @@ ui <- dashboardPage(
           margin-right: 0 !important;
           padding-left: 18px;
           white-space: nowrap;
-          font-size: 12px;
+          font-size: 13px;
         }
-        .ynow-lab-im-k {
-          font-size: 11px;
-          font-weight: 700;
-          color: #5a6a7a;
-          letter-spacing: 0.02em;
+        .ynow-lab-im-methods .shiny-options-group {
+          display: inline-flex;
+          flex-wrap: wrap;
+          flex-direction: row;
+          align-items: center;
+          column-gap: 12px;
         }
-        .ynow-lab-im-sep {
-          width: 1px;
-          height: 40px;
-          background: #dde3ea;
-          flex: 0 0 1px;
-          align-self: center;
-        }
-        .ynow-lab-im-bar .form-group {
-          margin: 0 !important;
-        }
-        .ynow-lab-im-bar .shiny-input-container {
-          margin-bottom: 0 !important;
-          width: auto !important;
-        }
-        .ynow-lab-im-bar .checkbox-inline,
-        .ynow-lab-im-bar .checkbox {
-          margin-top: 0 !important;
-          margin-bottom: 0 !important;
-          padding-top: 0;
-        }
-        .ynow-lab-im-bar .checkbox-inline + .checkbox-inline {
-          margin-left: 8px;
-        }
-        .ynow-lab-im-bar .bootstrap-select {
-          width: 200px !important;
-        }
-        .ynow-lab-im-bar input[type='number'] {
-          height: 30px;
-          padding: 4px 8px;
-          width: 64px;
-        }
-        .ynow-lab-im-bar .btn {
-          white-space: nowrap;
-          padding: 6px 14px;
-          font-weight: 700;
+        .ynow-lab-im-methods .checkbox-inline {
+          margin-left: 0 !important;
+          margin-right: 0 !important;
+          padding-left: 18px;
         }
         .ynow-lab-im-hint {
           margin: 0 0 12px 0;
-          font-size: 11.5px;
+          font-size: 12px;
           color: #888;
-          white-space: nowrap;
-          overflow-x: auto;
+          line-height: 1.45;
         }
-        .ynow-lab-im-quality-row {
-          display: flex;
-          flex-wrap: nowrap;
-          align-items: flex-start;
-          gap: 16px;
-          padding: 0 12px 10px 12px;
-          margin: 0 0 8px 0;
-          background: #fafbfc;
-          border: 1px solid #e5e9ef;
-          border-top: 0;
-          border-radius: 0 0 6px 6px;
-        }
-        .ynow-lab-im-bar.ynow-lab-im-bar-with-quality {
-          margin-bottom: 0;
-          border-bottom-left-radius: 0;
-          border-bottom-right-radius: 0;
-        }
-        .ynow-lab-im-quality-pair {
-          display: inline-flex;
-          flex-direction: row;
-          align-items: flex-start;
-          gap: 16px;
-          flex: 0 0 auto;
-        }
-        .ynow-lab-im-quality {
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 2px;
-          white-space: normal;
-          max-width: 220px;
+        .ynow-lab-im-quality .form-group {
+          margin-bottom: 4px;
         }
         .ynow-lab-im-quality-hint {
-          font-size: 10.5px;
+          font-size: 12px;
           color: #888;
           line-height: 1.35;
-          white-space: normal;
+          display: block;
+          margin: -2px 0 0 0;
         }
         .ynow-lab-pill {
           display: inline-block;
@@ -2732,32 +2616,143 @@ ui <- dashboardPage(
               decision_ui("main_decision")
       ),
 
-      # Blue Chip：美股績優篩選（自實驗區移出）
+      # Blue Chip：美股績優篩選（版面節奏對齊 Dashboard FINANCIAL REPORT）
       tabItem(
         tabName = "bluechip",
-        fluidRow(
-          column(
-            width = 12,
-            h2(tags$b("Blue Chip"), tags$span(
-              style = "font-size:18px; font-weight:500; color:#555;",
-              " — 美股績優篩選"
-            ))
-          )
-        ),
-        fluidRow(
-          column(
-            width = 12,
-            box(
-              width = 12, status = "primary", solidHeader = TRUE,
-              title = tagList(icon("layer-group"), "美股績優篩選：規模 × 產業 × 評價模型"),
-              tags$div(
-                class = "ynow-lab-im-note-row",
+        tabBox(
+          title = "美股績優篩選：規模 × 產業 × 評價模型",
+          id = "bluechip_im_report",
+          width = "auto",
+
+          tabPanel(
+            title = "篩選條件",
+            value = "im_filters",
+            icon = icon("sliders-h"),
+            p(
+              "自 Wikipedia 的 S&P 500 成分名單篩選美股績優候選：先套用規模 × 產業 × 評價模型，",
+              "再以 F-Score 門檻（≥7 且盈餘品質通過）過濾，最後依 App 預設 n＝",
+              as.integer(APP_DEFAULTS$years %||% 5L)[1],
+              " 年隱含年化估值漲幅排序。",
+              tags$br(),
+              tags$span(
+                style = "color:#888;",
+                "績優＝可評估池中，股價相對模型合理價、於該預測期年化漲幅最大者。資料來源：Wikipedia S&P 500（可更新；失敗則沿用快取）。"
+              )
+            ),
+            tags$hr(),
+            fluidRow(
+              box(
+                width = 12, status = "primary", solidHeader = TRUE,
+                title = "查詢條件",
                 tags$div(
-                  class = "ynow-lab-im-note",
-                  tags$b("績優："),
-                  "可評估池中，選股價相對模型合理價、於 n＝",
-                  as.integer(APP_DEFAULTS$years %||% 5L)[1],
-                  " 年隱含年化漲幅最大者"
+                  class = "ynow-lab-im-universe-row",
+                  uiOutput("lab_im_universe_meta"),
+                  actionButton(
+                    "lab_im_refresh_universe", "更新名單",
+                    icon = icon("sync"),
+                    class = "btn-default btn-sm",
+                    title = "自 Wikipedia／備援來源重抓 S&P 500 成分；失敗則沿用快取"
+                  )
+                ),
+                fluidRow(
+                  column(
+                    width = 6,
+                    shinyWidgets::pickerInput(
+                      "lab_im_industries", "產業",
+                      choices = lab_industry_picker_choices(),
+                      selected = unname(lab_industry_picker_choices()),
+                      multiple = TRUE,
+                      width = "100%",
+                      options = shinyWidgets::pickerOptions(
+                        actionsBox = TRUE,
+                        liveSearch = TRUE,
+                        selectedTextFormat = "count > 2",
+                        noneSelectedText = "全部產業",
+                        size = 10,
+                        container = "body",
+                        dropupAuto = TRUE
+                      )
+                    )
+                  ),
+                  column(
+                    width = 6,
+                    tags$div(
+                      class = "ynow-lab-im-sizes",
+                      checkboxGroupInput(
+                        "lab_im_sizes", "規模",
+                        choices = lab_size_picker_choices(),
+                        selected = names(LAB_SIZE_LABELS),
+                        inline = TRUE
+                      )
+                    )
+                  )
+                ),
+                fluidRow(
+                  column(
+                    width = 6,
+                    tags$div(
+                      class = "ynow-lab-im-methods",
+                      checkboxGroupInput(
+                        "lab_im_methods", "模型",
+                        choices = c(
+                          "DCF" = "dcf",
+                          "DDM" = "ddm",
+                          "P/B" = "pb",
+                          "RI" = "ri"
+                        ),
+                        selected = c("dcf", "ddm", "pb", "ri"),
+                        inline = TRUE
+                      )
+                    )
+                  ),
+                  column(
+                    width = 6,
+                    numericInput(
+                      "lab_im_max_n", "最多 N（評估檔數／明細列數）",
+                      value = 25, min = 5, max = 40, step = 5,
+                      width = "160px"
+                    ),
+                    tags$span(
+                      style = "color:#888; font-size:12px; display:block; margin:-6px 0 10px 0;",
+                      "篩選後不足 N 則全列；硬上限 40。候選多於 N 時依市值由大到小。"
+                    )
+                  )
+                ),
+                fluidRow(
+                  column(
+                    width = 6,
+                    tags$div(
+                      class = "ynow-lab-im-quality",
+                      checkboxInput(
+                        "lab_im_eq_only",
+                        "盈餘品質",
+                        value = FALSE
+                      ),
+                      tags$span(
+                        class = "ynow-lab-im-quality-hint",
+                        "勾選後只列盈餘品質通過者；預設不過濾。"
+                      )
+                    )
+                  ),
+                  column(
+                    width = 6,
+                    tags$div(
+                      class = "ynow-lab-im-quality",
+                      checkboxInput(
+                        "lab_im_gate_only",
+                        "門檻",
+                        value = FALSE
+                      ),
+                      tags$span(
+                        class = "ynow-lab-im-quality-hint",
+                        "勾選後只列 F-Score≥7 且盈餘品質通過者；預設顯示全部。"
+                      )
+                    )
+                  )
+                ),
+                tags$p(
+                  class = "ynow-lab-im-hint",
+                  "全不勾規模／模型＝不過濾　·　盈餘品質／門檻＝勾選才過濾明細　·　排行榜＝同一批中門檻通過者的年化漲幅 Top 10"
                 ),
                 tags$div(
                   class = "ynow-lab-im-actions",
@@ -2773,124 +2768,73 @@ ui <- dashboardPage(
                     class = "btn btn-default",
                     title = "下載目前篩選、摘要與明細（不必重新評估）"
                   )
-                )
-              ),
-              tags$div(
-                class = "ynow-lab-im-universe-row",
-                uiOutput("lab_im_universe_meta"),
-                actionButton(
-                  "lab_im_refresh_universe", "更新名單",
-                  icon = icon("sync"),
-                  class = "btn-default btn-sm",
-                  title = "自 Wikipedia／備援來源重抓 S&P 500 成分；失敗則沿用快取"
-                )
-              ),
-              tags$div(
-                class = "ynow-lab-im-bar ynow-lab-im-bar-with-quality",
-                tags$div(
-                  class = "ynow-lab-im-group",
-                  tags$span(class = "ynow-lab-im-k", "產業"),
-                  shinyWidgets::pickerInput(
-                    "lab_im_industries", NULL,
-                    choices = lab_industry_picker_choices(),
-                    selected = unname(lab_industry_picker_choices()),
-                    multiple = TRUE,
-                    width = "200px",
-                    options = shinyWidgets::pickerOptions(
-                      actionsBox = TRUE,
-                      liveSearch = TRUE,
-                      selectedTextFormat = "count > 2",
-                      noneSelectedText = "全部產業",
-                      size = 10,
-                      container = "body",
-                      dropupAuto = TRUE
-                    )
-                  )
                 ),
-                tags$div(class = "ynow-lab-im-sep"),
-                tags$div(
-                  class = "ynow-lab-im-group ynow-lab-im-sizes",
-                  tags$span(class = "ynow-lab-im-k", "規模"),
-                  checkboxGroupInput(
-                    "lab_im_sizes", NULL,
-                    choices = lab_size_picker_choices(),
-                    selected = names(LAB_SIZE_LABELS),
-                    inline = TRUE
-                  )
-                ),
-                tags$div(class = "ynow-lab-im-sep"),
-                tags$div(
-                  class = "ynow-lab-im-group",
-                  tags$span(class = "ynow-lab-im-k", "模型"),
-                  checkboxGroupInput(
-                    "lab_im_methods", NULL,
-                    choices = c(
-                      "DCF" = "dcf",
-                      "DDM" = "ddm",
-                      "P/B" = "pb",
-                      "RI" = "ri"
-                    ),
-                    selected = c("dcf", "ddm", "pb", "ri"),
-                    inline = TRUE
-                  )
-                ),
-                tags$div(class = "ynow-lab-im-sep"),
-                tags$div(
-                  class = "ynow-lab-im-group",
-                  tags$span(class = "ynow-lab-im-k", "最多"),
-                  numericInput(
-                    "lab_im_max_n", NULL,
-                    value = 25, min = 5, max = 40, step = 5,
-                    width = "64px"
-                  )
+                tags$p(
+                  style = "margin-top:10px; color:#888; font-size:12px;",
+                  "提示：評估需逐檔抓 Yahoo 財報與估值，檔數愈多愈久。"
                 )
-              ),
-              tags$div(
-                class = "ynow-lab-im-quality-row",
-                tags$div(
-                  class = "ynow-lab-im-quality-pair",
-                  tags$div(
-                    class = "ynow-lab-im-group ynow-lab-im-quality",
-                    checkboxInput(
-                      "lab_im_eq_only",
-                      "盈餘品質",
-                      value = FALSE
-                    ),
-                    tags$span(
-                      class = "ynow-lab-im-quality-hint",
-                      "勾選後只列盈餘品質通過者；預設不過濾。"
-                    )
-                  ),
-                  tags$div(
-                    class = "ynow-lab-im-group ynow-lab-im-quality",
-                    checkboxInput(
-                      "lab_im_gate_only",
-                      "門檻",
-                      value = FALSE
-                    ),
-                    tags$span(
-                      class = "ynow-lab-im-quality-hint",
-                      "勾選後只列 F-Score≥7 且盈餘品質通過者；預設顯示全部。"
-                    )
-                  )
-                )
-              ),
-              tags$p(
-                class = "ynow-lab-im-hint",
-                "最多 N＝本次評估檔數＝明細列數（篩選後不足 N 則全列；硬上限 40）　·　候選多於 N 時依市值由大到小　·　排行榜＝同一批中門檻通過者的年化漲幅 Top 10　·　全不勾規模／模型＝不過濾　·　盈餘品質／門檻＝勾選才過濾明細"
-              ),
-              tags$h4("依建議方法分組摘要", style = "margin-top:8px;"),
-              tableOutput("lab_im_summary"),
-              tags$hr(),
-              tags$h4(
-                tagList(icon("trophy"), " 績優排行榜（年化估值漲幅 Top）"),
-                style = "margin-top:8px;"
-              ),
-              uiOutput("lab_im_leader_note"),
-              tableOutput("lab_im_leaderboard"),
-              tags$hr(),
-              tags$h4("明細（按年化估值漲幅排序）"),
-              DT::dataTableOutput("lab_im_table") %>% shinycssloaders::withSpinner()
+              )
+            )
+          ),
+
+          tabPanel(
+            title = "分組摘要",
+            value = "im_summary",
+            icon = icon("table"),
+            p(
+              "依產業建議評價方法，統計目前複選下的產業數與候選檔數。",
+              tags$span(style = "color:#888;", "尚未套用規模過濾與 Yahoo 評估。")
+            ),
+            tags$hr(),
+            fluidRow(
+              box(
+                width = 12, status = "info", solidHeader = TRUE,
+                title = "依建議方法分組摘要",
+                tableOutput("lab_im_summary")
+              )
+            )
+          ),
+
+          tabPanel(
+            title = "績優排行榜",
+            value = "im_leaderboard",
+            icon = icon("trophy"),
+            p(
+              "同一批評估結果中，門檻通過者依 n 年年化估值漲幅排序的 Top 10。",
+              tags$span(
+                style = "color:#888;",
+                "一代號一列；排行榜不顯示規模。請先於「篩選條件」按「評估績優」。"
+              )
+            ),
+            tags$hr(),
+            fluidRow(
+              box(
+                width = 12, status = "info", solidHeader = TRUE,
+                title = tagList(icon("trophy"), " 績優排行榜（年化估值漲幅 Top）"),
+                uiOutput("lab_im_leader_note"),
+                tableOutput("lab_im_leaderboard")
+              )
+            )
+          ),
+
+          tabPanel(
+            title = "明細",
+            value = "im_detail",
+            icon = icon("list"),
+            p(
+              "本次已評估檔的明細（按年化估值漲幅排序）。",
+              tags$span(
+                style = "color:#888;",
+                "最多 N＝明細列數（盈餘品質／門檻勾選時可少於 N）。欄位順序：代號、公司名稱。"
+              )
+            ),
+            tags$hr(),
+            fluidRow(
+              box(
+                width = 12, status = "info", solidHeader = TRUE,
+                title = "明細（按年化估值漲幅排序）",
+                DT::dataTableOutput("lab_im_table") %>% shinycssloaders::withSpinner()
+              )
             )
           )
         )

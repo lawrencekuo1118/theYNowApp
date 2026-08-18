@@ -6944,6 +6944,7 @@ server <- function(input, output, session) {
       return()
     }
     lab_im_scores(scores)
+    updateTabsetPanel(session, "bluechip_im_report", selected = "im_leaderboard")
     n_q <- sum(scores$is_quality %in% TRUE, na.rm = TRUE)
     best <- NA_real_
     if (n_q > 0) {
@@ -7011,7 +7012,7 @@ server <- function(input, output, session) {
     if (n_eval == 0L) {
       return(tags$p(
         style = "color:#888; font-size:12.5px;",
-        "尚未評估。按下上方按鈕後，將評估最多 ",
+        "尚未評估。請先於「篩選條件」按「評估績優」；將評估最多 ",
         tags$b(as.character(max_n)),
         " 檔（明細列數相同），並列出其中門檻通過且",
         sprintf(" n=%d 年年化估值漲幅最高 ", n),
