@@ -2641,17 +2641,8 @@ ui <- dashboardPage(
             ),
             tags$hr(),
             fluidRow(
-              box(
-                width = 12, status = "info", solidHeader = TRUE,
-                title = tagList(icon("trophy"), " 績優排行榜（年化估值漲幅 Top）"),
-                p(
-                  style = "margin: 0 0 10px 0; font-size: 12.5px; color: #555;",
-                  "同一批評估結果中，門檻通過者依 n 年年化估值漲幅排序的 Top 10。",
-                  tags$span(
-                    style = "color:#888;",
-                    "一代號一列；排行榜不顯示規模。"
-                  )
-                ),
+              column(
+                width = 12,
                 uiOutput("lab_im_leader_note"),
                 tableOutput("lab_im_leaderboard")
               )
