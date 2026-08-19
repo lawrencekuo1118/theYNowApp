@@ -4,8 +4,8 @@
 # 宇宙＝S&P 500（可更新，見 lab_sp500_universe.R），不是全美股。
 # 績優原則：在 F-Score＋盈餘品質過門檻後，選「模型合理價相對現價」、
 # 並依 App 預設預測年數 n（APP_DEFAULTS$years）換算年化漲幅最大者。
-# 「最多 N」（lab_im_max_n，硬上限 40）＝本次 Yahoo 評估檔數＝明細列數
-# （盈餘品質／門檻勾選時明細可少於 N）。候選多於 N 時依市值由大到小取 N。
+# 「最多 N」（lab_im_max_n；預設「全部」）＝本次 Yahoo 評估檔數＝明細列數
+# （盈餘品質／門檻勾選時明細可少於 N）。選 N 且候選多於 N 時依市值由大到小取 N。
 # 排行榜＝同一批評估結果、同一年化漲幅排序的 Top 10（須過門檻）。
 # 產業建議方法對齊 recommend_valuation_models 的產業層規則（簡化估值）。
 # ==========================================
@@ -151,11 +151,37 @@ lab_fetch_market_cap_usd <- function(ticker) {
   lab_fetch_summary_metrics(ticker)$market_cap
 }
 
-#' 「最多」：預設 25，UI／邏輯夾在 5–40
-lab_clamp_im_max_n <- function(x, default = 25L, lo = 5L, hi = 40L) {
-  n <- suppressWarnings(as.integer(x %||% default)[1])
-  if (!is.finite(n) || n < 1L) n <- as.integer(default)
-  as.integer(min(as.integer(hi)[1], max(as.integer(lo)[1], n)))
+#' 「最多 N」：預設全部；字串 "all"／"全部" 或 NA → 不設上限
+lab_parse_im_max_n <- function(x, default_all = TRUE) {
+  if (is.null(x) || !length(x)) {
+    return(list(n = Inf, label = "全部", unlimited = TRUE))
+  }
+  s <- trimws(as.character(x)[1])
+  if (!nzchar(s) || identical(s, "all") || identical(s, "全部")) {
+    return(list(n = Inf, label = "全部", unlimited = TRUE))
+  }
+  n <- suppressWarnings(as.integer(s)[1])
+  if (!is.finite(n) || n < 1L) {
+    if (isTRUE(default_all)) {
+      return(list(n = Inf, label = "全部", unlimited = TRUE))
+    }
+    n <- 25L
+  }
+  list(n = as.integer(n), label = as.character(n), unlimited = FALSE)
+}
+
+lab_im_max_n_label <- function(x) {
+  lab_parse_im_max_n(x)$label
+}
+
+#' 相容舊呼叫：回傳整數上限，或 Inf 表示全部
+lab_clamp_im_max_n <- function(x, default = Inf, lo = 1L, hi = NULL) {
+  parsed <- lab_parse_im_max_n(x, default_all = identical(default, Inf))
+  n <- parsed$n
+  if (!is.finite(n)) return(Inf)
+  n <- max(as.integer(lo)[1], n)
+  if (!is.null(hi) && is.finite(hi)) n <- min(as.integer(hi)[1], n)
+  as.integer(n)
 }
 
 lab_dedupe_eval_pool <- function(pool) {
@@ -256,7 +282,7 @@ lab_rank_and_cap_eval_pool <- function(pool, max_n = 25L, size_filter = characte
   used <- isTRUE(sum(!missing) > 0L)
   o <- order(missing, -ifelse(missing, 0, mcap), pool$ticker, na.last = TRUE)
   pool <- pool[o, , drop = FALSE]
-  if (n_filtered > max_n) pool <- utils::head(pool, max_n)
+  if (n_filtered > max_n && is.finite(max_n)) pool <- utils::head(pool, max_n)
   attr(pool, "n_filtered") <- as.integer(n_filtered)
   attr(pool, "max_n") <- max_n
   attr(pool, "used_market_cap") <- used
@@ -749,8 +775,8 @@ lab_evaluate_ticker_fscore <- function(ticker, industry_key = NULL, method = NUL
 }
 
 #' 批次評估；tickers_df 可含 ticker / industry_key / primary 欄
-#' 呼叫端應已用 lab_rank_and_cap_eval_pool 取好 N 檔；此處 head(max_n) 僅作硬上限。
-lab_screen_tickers_fscore <- function(tickers, progress_cb = NULL, max_n = 40L,
+#' 呼叫端應已用 lab_rank_and_cap_eval_pool 取好評估池；max_n=Inf 時不再截斷。
+lab_screen_tickers_fscore <- function(tickers, progress_cb = NULL, max_n = Inf,
                                       industry_keys = NULL, methods = NULL) {
   # 接受字元向量或 data.frame
   if (is.data.frame(tickers)) {
@@ -773,7 +799,7 @@ lab_screen_tickers_fscore <- function(tickers, progress_cb = NULL, max_n = 40L,
   ord <- !duplicated(tks)
   tks <- tks[ord]; ind_keys <- ind_keys[ord]; meths <- meths[ord]
 
-  if (length(tks) > as.integer(max_n)) {
+  if (is.finite(max_n) && length(tks) > as.integer(max_n)) {
     tks <- head(tks, as.integer(max_n))
     ind_keys <- head(ind_keys, as.integer(max_n))
     meths <- head(meths, as.integer(max_n))

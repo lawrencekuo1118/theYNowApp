@@ -2707,14 +2707,21 @@ ui <- dashboardPage(
                   ),
                   column(
                     width = 6,
-                    numericInput(
+                    selectInput(
                       "lab_im_max_n", "最多 N（評估檔數／明細列數）",
-                      value = 25, min = 5, max = 40, step = 5,
-                      width = "160px"
+                      choices = c(
+                        "全部" = "all",
+                        "10 檔" = "10",
+                        "25 檔" = "25",
+                        "50 檔" = "50",
+                        "100 檔" = "100"
+                      ),
+                      selected = "all",
+                      width = "100%"
                     ),
                     tags$span(
                       style = "color:#888; font-size:12px; display:block; margin:-6px 0 10px 0;",
-                      "篩選後不足 N 則全列；硬上限 40。候選多於 N 時依市值由大到小。"
+                      "預設全部評估。選 N 時：篩選後不足 N 則全列；候選多於 N 時依市值由大到小。"
                     )
                   )
                 ),
@@ -2825,7 +2832,7 @@ ui <- dashboardPage(
               "本次已評估檔的明細（按年化估值漲幅排序）。",
               tags$span(
                 style = "color:#888;",
-                "最多 N＝明細列數（盈餘品質／門檻勾選時可少於 N）。欄位順序：代號、公司名稱。"
+                "預設評估全部候選；選 N 時 N＝明細列數（盈餘品質／門檻勾選時可少於 N）。欄位順序：代號、公司名稱。"
               )
             ),
             tags$hr(),
