@@ -2642,6 +2642,22 @@ ui <- dashboardPage(
             tags$hr(),
             fluidRow(
               box(
+                width = 12, status = "info", solidHeader = TRUE,
+                title = tagList(icon("trophy"), " 績優排行榜（年化估值漲幅 Top）"),
+                p(
+                  style = "margin: 0 0 10px 0; font-size: 12.5px; color: #555;",
+                  "同一批評估結果中，門檻通過者依 n 年年化估值漲幅排序的 Top 10。",
+                  tags$span(
+                    style = "color:#888;",
+                    "一代號一列；排行榜不顯示規模。"
+                  )
+                ),
+                uiOutput("lab_im_leader_note"),
+                tableOutput("lab_im_leaderboard")
+              )
+            ),
+            fluidRow(
+              box(
                 width = 12, status = "primary", solidHeader = TRUE,
                 title = "查詢條件",
                 tags$div(
@@ -2798,28 +2814,6 @@ ui <- dashboardPage(
                 width = 12, status = "info", solidHeader = TRUE,
                 title = "依建議方法分組摘要",
                 tableOutput("lab_im_summary")
-              )
-            )
-          ),
-
-          tabPanel(
-            title = "績優排行榜",
-            value = "im_leaderboard",
-            icon = icon("trophy"),
-            p(
-              "同一批評估結果中，門檻通過者依 n 年年化估值漲幅排序的 Top 10。",
-              tags$span(
-                style = "color:#888;",
-                "一代號一列；排行榜不顯示規模。請先於「篩選條件」按「評估績優」。"
-              )
-            ),
-            tags$hr(),
-            fluidRow(
-              box(
-                width = 12, status = "info", solidHeader = TRUE,
-                title = tagList(icon("trophy"), " 績優排行榜（年化估值漲幅 Top）"),
-                uiOutput("lab_im_leader_note"),
-                tableOutput("lab_im_leaderboard")
               )
             )
           ),
