@@ -2,11 +2,11 @@
 # lab_industry_method.R — 實驗區：產業 × 評價方法 × 美股績優候選
 #
 # 宇宙＝S&P 500（可更新，見 lab_sp500_universe.R），不是全美股。
-# 績優原則：在 F-Score＋盈餘品質過門檻後，選「模型合理價相對現價」、
+# 績優原則：在 Piotroski 高門檻（F-Score≥7；不含盈餘品質）後，選「模型合理價相對現價」、
 # 並依 App 預設預測年數 n（APP_DEFAULTS$years）換算年化漲幅最大者。
 # 「最多 N」（lab_im_max_n；預設「全部」）＝本次 Yahoo 評估檔數＝明細列數
-# （盈餘品質／門檻勾選時明細可少於 N）。選 N 且候選多於 N 時依市值由大到小取 N。
-# 排行榜＝同一批評估結果、同一年化漲幅排序的 Top 10（須過門檻）。
+# （盈餘品質／Piotroski 高門檻各自勾選時明細可少於 N）。選 N 且候選多於 N 時依市值由大到小取 N。
+# 排行榜＝同一批評估結果、同一年化漲幅排序的 Top 10（須 F-Score≥7）。
 # 產業建議方法對齊 recommend_valuation_models 的產業層規則（簡化估值）。
 # ==========================================
 
@@ -663,7 +663,13 @@ lab_build_industry_method_catalog <- function() {
   do.call(rbind, rows)
 }
 
-#' 是否通過 F-Score 品質門檻（績優候選前置條件，非最終排序鍵）
+#' 是否通過 Piotroski 高門檻（F-Score≥7；不含盈餘品質）
+lab_is_piotroski_high <- function(f_score, min_score = 7L) {
+  fs <- suppressWarnings(as.numeric(f_score)[1])
+  isTRUE(is.finite(fs) && fs >= as.numeric(min_score))
+}
+
+#' 是否通過舊版綜合品質門檻（F-Score≥7 且盈餘品質通過；保留供相容）
 lab_is_quality_stock <- function(f_score, quality_flag, min_score = 7L) {
   fs <- suppressWarnings(as.numeric(f_score)[1])
   qf <- suppressWarnings(as.numeric(quality_flag)[1])
@@ -861,7 +867,7 @@ lab_merge_catalog_scores <- function(catalog, scores = NULL,
                                      gate_only = FALSE,
                                      quality_only = FALSE,
                                      evaluated_only = FALSE) {
-  # quality_only：舊「只看通過」別名，等同門檻（F-Score≥7 且盈餘品質通過）
+  # quality_only：舊「只看通過」別名 → Piotroski 高門檻（F-Score≥7；不含盈餘品質）
   if (isTRUE(quality_only)) gate_only <- TRUE
   df <- catalog
   score_cols_na <- function(d) {
@@ -917,8 +923,9 @@ lab_merge_catalog_scores <- function(catalog, scores = NULL,
     df <- df[!is.na(df$quality_flag) & df$quality_flag %in% 1, , drop = FALSE]
   }
   if (isTRUE(gate_only)) {
-    # 績優顯示池：F-Score≥7 且盈餘品質通過（再以年化漲幅決選排序）
-    df <- df[!is.na(df$is_quality) & df$is_quality %in% TRUE, , drop = FALSE]
+    # Piotroski 高門檻：僅 F-Score≥7（與盈餘品質無關）
+    fs <- suppressWarnings(as.numeric(df$f_score))
+    df <- df[is.finite(fs) & fs >= 7, , drop = FALSE]
   }
   if (nrow(df) == 0L) return(df)
   # 年化估值漲幅由大到小（NA 置後）— 即「未來期間漲幅最大者」優先
@@ -928,9 +935,9 @@ lab_merge_catalog_scores <- function(catalog, scores = NULL,
   df[o, , drop = FALSE]
 }
 
-#' 績優排行榜：同一評估／明細集合中，門檻通過且有年化漲幅，依 CAGR 降序取 Top-K
+#' 績優排行榜：同一評估／明細集合中，Piotroski 高門檻（F-Score≥7）且有年化漲幅，依 CAGR 降序取 Top-K
 #' （只截斷顯示，不另抽樣；輸入應已是本次評估的 N 檔。）
-#' @param eq_only 若 TRUE，再只保留盈餘品質通過者（門檻本身已含此條件）
+#' @param eq_only 若 TRUE，再只保留盈餘品質通過者（與 Piotroski 高門檻獨立）
 lab_quality_leaderboard <- function(merged_df, top_n = 10L, eq_only = FALSE) {
   empty <- data.frame(
     排名 = integer(0), 代號 = character(0), 公司名稱 = character(0),
@@ -947,8 +954,8 @@ lab_quality_leaderboard <- function(merged_df, top_n = 10L, eq_only = FALSE) {
   if (isTRUE(eq_only) && "quality_flag" %in% names(df)) {
     df <- df[!is.na(df$quality_flag) & df$quality_flag %in% 1, , drop = FALSE]
   }
-  keep <- !is.na(df$is_quality) & df$is_quality %in% TRUE &
-    is.finite(df$upside_cagr_pct)
+  fs <- suppressWarnings(as.numeric(df$f_score))
+  keep <- is.finite(fs) & fs >= 7 & is.finite(df$upside_cagr_pct)
   df <- df[keep, , drop = FALSE]
   if (nrow(df) == 0) return(empty)
   # 同一代碼保留年化漲幅最高的一列
@@ -1007,7 +1014,7 @@ lab_method_group_summary <- function(catalog) {
   }))
 }
 
-#' 明細表：F-Score 著色膠囊（盈餘品質／門檻改由工具列勾選過濾）
+#' 明細表：F-Score 著色膠囊（盈餘品質／Piotroski 高門檻改由工具列勾選過濾）
 lab_html_fscore_pill <- function(x) {
   v <- suppressWarnings(as.numeric(x))
   ifelse(

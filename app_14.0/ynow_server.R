@@ -6808,7 +6808,7 @@ server <- function(input, output, session) {
   }, ignoreInit = TRUE)
 
   # ------------------------------------------
-  # Lab：規模×產業×模型複選；F-Score 門檻後依年化估值漲幅排序
+  # Lab：規模×產業×模型複選；Piotroski 高門檻（F-Score≥7）後依年化估值漲幅排序
   # ------------------------------------------
   lab_im_catalog_nonce <- reactiveVal(0L)
   lab_im_catalog <- reactive({
@@ -6907,7 +6907,7 @@ server <- function(input, output, session) {
     size_restricts <- length(sf) > 0L && !isTRUE(setequal(sf, names(LAB_SIZE_LABELS)))
     n_yrs <- lab_model_horizon_years()
     scores <- withProgress(
-      message = paste0("評估中（F-Score 門檻＋", n_yrs, " 年年化估值漲幅）…"),
+      message = paste0("評估中（Piotroski 高門檻＋", n_yrs, " 年年化估值漲幅）…"),
       value = 0, {
         n_raw <- nrow(pool)
         if ((is.finite(max_n) && n_raw > max_n) || size_restricts) {
@@ -6944,21 +6944,23 @@ server <- function(input, output, session) {
       return()
     }
     lab_im_scores(scores)
-    n_q <- sum(scores$is_quality %in% TRUE, na.rm = TRUE)
+    fs_pass <- suppressWarnings(as.numeric(scores$f_score))
+    pass_idx <- which(is.finite(fs_pass) & fs_pass >= 7)
+    n_q <- length(pass_idx)
     best <- NA_real_
     if (n_q > 0) {
-      best <- suppressWarnings(max(scores$upside_cagr_pct[scores$is_quality %in% TRUE], na.rm = TRUE))
+      best <- suppressWarnings(max(scores$upside_cagr_pct[pass_idx], na.rm = TRUE))
       if (!is.finite(best)) best <- NA_real_
     }
     top_tk <- NA_character_
     if (is.finite(best)) {
-      hit <- which(scores$is_quality %in% TRUE &
+      hit <- which(is.finite(fs_pass) & fs_pass >= 7 &
                      is.finite(scores$upside_cagr_pct) &
                      abs(scores$upside_cagr_pct - best) < 1e-9)
       if (length(hit) > 0) top_tk <- scores$ticker[hit[1]]
     }
     msg <- paste0(
-      "完成 ", nrow(scores), " 檔；門檻通過 ", n_q, " 檔",
+      "完成 ", nrow(scores), " 檔；Piotroski 高門檻通過 ", n_q, " 檔",
       if (is.finite(best) && nzchar(top_tk %||% "")) {
         sprintf("；績優首選 %s（%d 年年化估值漲幅 %+.1f%%）", top_tk, n_yrs, best)
       } else {
@@ -7017,7 +7019,7 @@ server <- function(input, output, session) {
       }
       return(tags$p(
         style = "color:#888; font-size:12.5px;",
-        "尚未評估。請按下方「評估績優」；", cap_txt, "，並列出其中門檻通過且",
+        "尚未評估。請按下方「評估績優」；", cap_txt, "，並列出其中 F-Score≥7 且",
         sprintf(" n=%d 年年化估值漲幅最高 ", n),
         "的 Top 10（與明細同一批、同一排序鍵）。"
       ))
@@ -7025,7 +7027,7 @@ server <- function(input, output, session) {
     tags$p(
       style = "color:#555; font-size:12.5px;",
       sprintf(
-        "本次已評估 %d 檔（＝明細列數，盈餘品質／門檻未勾選時）。排序鍵＝模型合理價相對現價，於 %d 年預測期換算之年化漲幅；排行榜僅列門檻通過者的 Top %d（一代號一列，不另抽樣）。",
+        "本次已評估 %d 檔（＝明細列數，盈餘品質／Piotroski 高門檻未勾選時）。排序鍵＝模型合理價相對現價，於 %d 年預測期換算之年化漲幅；排行榜僅列 F-Score≥7 者的 Top %d（一代號一列，不另抽樣）。",
         n_eval, n, as.integer(min(10L, n_eval))
       )
     )
@@ -7040,10 +7042,11 @@ server <- function(input, output, session) {
     if (is.null(merged) || nrow(merged) == 0) {
       # 區分：複選（尤其規模）把評估結果濾光 vs 尚未合併
       n_scored <- nrow(scores)
-      n_pass <- sum(scores$is_quality %in% TRUE, na.rm = TRUE)
+      n_pass <- sum(is.finite(suppressWarnings(as.numeric(scores$f_score))) &
+                      suppressWarnings(as.numeric(scores$f_score)) >= 7, na.rm = TRUE)
       return(data.frame(
         訊息 = paste0(
-          "評估有 ", n_scored, " 檔（門檻通過 ", n_pass, "），",
+          "評估有 ", n_scored, " 檔（F-Score≥7 通過 ", n_pass, "），",
           "但目前複選條件下明細為空。",
           "常見原因：規模篩選與市值分級對不上，或產業／模型過窄。",
           "請放寬「公司規模」後再看排行榜。"
@@ -7056,13 +7059,14 @@ server <- function(input, output, session) {
       eq_only = isTRUE(input$lab_im_eq_only)
     )
     if (nrow(lb) == 0) {
-      n_pass <- sum(merged$is_quality %in% TRUE, na.rm = TRUE)
-      n_up <- sum(merged$is_quality %in% TRUE & is.finite(merged$upside_cagr_pct), na.rm = TRUE)
+      fs_m <- suppressWarnings(as.numeric(merged$f_score))
+      n_pass <- sum(is.finite(fs_m) & fs_m >= 7, na.rm = TRUE)
+      n_up <- sum(is.finite(fs_m) & fs_m >= 7 & is.finite(merged$upside_cagr_pct), na.rm = TRUE)
       return(data.frame(
         訊息 = paste0(
-          "目前篩選下有 ", nrow(merged), " 列、門檻通過 ", n_pass,
+          "目前篩選下有 ", nrow(merged), " 列、F-Score≥7 通過 ", n_pass,
           "、能量到年化漲幅 ", n_up,
-          "。若為 0：放寬 F-Score 門檻池或檢查估值是否算出合理價。"
+          "。若為 0：放寬 Piotroski 高門檻池或檢查估值是否算出合理價。"
         )
       ))
     }
@@ -7087,7 +7091,7 @@ server <- function(input, output, session) {
       msg <- if (is.null(scores) || !is.data.frame(scores) || nrow(scores) == 0) {
         "尚未評估。請按「評估績優」；明細列數將等於「最多」N（篩選後不足 N 則全列）。"
       } else {
-        "沒有符合篩選的已評估列。可放寬規模／產業／模型，取消「盈餘品質」／「門檻」過濾，或重新評估。"
+        "沒有符合篩選的已評估列。可放寬規模／產業／模型，取消「盈餘品質」／「Piotroski 高門檻」過濾，或重新評估。"
       }
       return(DT::datatable(
         data.frame(訊息 = msg),
@@ -7259,7 +7263,7 @@ server <- function(input, output, session) {
           lb <- lab_quality_leaderboard(merged_lb, top_n = 10L, eq_only = eq_on)
         }
         if (is.null(lb) || !nrow(lb)) {
-          lb <- data.frame(訊息 = "尚無符合門檻的排行（或目前篩選為空）")
+          lb <- data.frame(訊息 = "尚無符合 F-Score≥7 的排行（或目前篩選為空）")
         }
       } else {
         lb <- data.frame(訊息 = "尚未評估")
@@ -7283,16 +7287,16 @@ server <- function(input, output, session) {
         sprintf("- 產業：%s", ind_txt),
         sprintf("- 模型：%s", meth_txt),
         sprintf("- 盈餘品質過濾：%s", if (eq_on) "開" else "關"),
-        sprintf("- 門檻過濾：%s", if (gate_on) "開" else "關"),
+        sprintf("- Piotroski 高門檻過濾（F-Score≥7）：%s", if (gate_on) "開" else "關"),
         sprintf("- 評估上限 lab_im_max_n：%s（＝評估檔數／明細列數）", max_n_label),
         sprintf("- 評估狀態：%s", if (evaluated) sprintf("已評估 %d 檔", nrow(scores)) else "尚未評估"),
         sprintf("- 本頁代號數：%d", length(tks)),
         sprintf("- 本頁代號：%s", if (length(tks)) paste(tks, collapse = ", ") else "（無）"),
         "",
         if (is.finite(max_n)) {
-          "宇宙＝S&P 500（可更新），不是全美股。候選多於 N 時依市值由大到小取 N 檔評估；明細＝該批（年化估值漲幅排序）；排行榜＝同一批中門檻通過者的 Top 10。"
+          "宇宙＝S&P 500（可更新），不是全美股。候選多於 N 時依市值由大到小取 N 檔評估；明細＝該批（年化估值漲幅排序）；排行榜＝同一批中 F-Score≥7 者的 Top 10。"
         } else {
-          "宇宙＝S&P 500（可更新），不是全美股。預設評估篩選後全部候選；明細＝該批（年化估值漲幅排序）；排行榜＝同一批中門檻通過者的 Top 10。"
+          "宇宙＝S&P 500（可更新），不是全美股。預設評估篩選後全部候選；明細＝該批（年化估值漲幅排序）；排行榜＝同一批中 F-Score≥7 者的 Top 10。"
         }
       )
       lab_write_lab_page_report(

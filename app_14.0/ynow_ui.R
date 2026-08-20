@@ -2742,7 +2742,7 @@ ui <- dashboardPage(
             icon = icon("sliders-h"),
             p(
               "自 Wikipedia 的 S&P 500 成分名單篩選美股績優候選：先套用規模 × 產業 × 評價模型，",
-              "再以 F-Score 門檻（≥7 且盈餘品質通過）過濾，最後依 App 預設 n＝",
+              "再以 Piotroski 高門檻（F-Score≥7；與盈餘品質無關）過濾，最後依 App 預設 n＝",
               as.integer(APP_DEFAULTS$years %||% 5L)[1],
               " 年隱含年化估值漲幅排序。",
               tags$br(),
@@ -2866,19 +2866,19 @@ ui <- dashboardPage(
                       class = "ynow-lab-im-quality",
                       checkboxInput(
                         "lab_im_gate_only",
-                        "門檻",
+                        "Piotroski 高門檻",
                         value = FALSE
                       ),
                       tags$span(
                         class = "ynow-lab-im-quality-hint",
-                        "勾選後只列 F-Score≥7 且盈餘品質通過者；預設顯示全部。"
+                        "勾選後只列 F-Score≥7 者（不看盈餘品質）；預設顯示全部。"
                       )
                     )
                   )
                 ),
                 tags$p(
                   class = "ynow-lab-im-hint",
-                  "全不勾規模／模型＝不過濾　·　盈餘品質／門檻＝勾選才過濾明細　·　排行榜＝同一批中門檻通過者的年化漲幅 Top 10"
+                  "全不勾規模／模型＝不過濾　·　盈餘品質／Piotroski 高門檻＝各自勾選才過濾明細　·　排行榜＝同一批中 F-Score≥7 者的年化漲幅 Top 10"
                 ),
                 tags$div(
                   class = "ynow-lab-im-method-summary",
@@ -2900,7 +2900,7 @@ ui <- dashboardPage(
                     "lab_im_run_fscore", "評估績優",
                     icon = icon("chart-line"),
                     class = "btn-success",
-                    title = "門檻（F-Score≥7＋盈餘品質）＋年化估值漲幅排序"
+                    title = "Piotroski 高門檻（F-Score≥7）＋年化估值漲幅排序"
                   ),
                   downloadButton(
                     "lab_im_download_report", "下載本頁報告",
@@ -2925,7 +2925,7 @@ ui <- dashboardPage(
               "本次已評估檔的明細（按年化估值漲幅排序）。",
               tags$span(
                 style = "color:#888;",
-                "預設評估全部候選；選 N 時 N＝明細列數（盈餘品質／門檻勾選時可少於 N）。欄位順序：代號、公司名稱。"
+                "預設評估全部候選；選 N 時 N＝明細列數（盈餘品質／Piotroski 高門檻勾選時可少於 N）。欄位順序：代號、公司名稱。"
               )
             ),
             tags$hr(),
