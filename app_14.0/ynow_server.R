@@ -6887,7 +6887,7 @@ server <- function(input, output, session) {
   observeEvent(input$lab_im_run_fscore, {
     catlg <- lab_im_catalog()
     req(is.data.frame(catlg), nrow(catlg) > 0)
-    # 評估池：產業／模型複選；規模在取到市值後再濾，再依市值取最多 N 檔
+    # 評估池：產業／模型複選；規模在取到市值後再濾，再依市值取 N 檔
     pool <- lab_merge_catalog_scores(
       catlg,
       scores = NULL,
@@ -6902,7 +6902,7 @@ server <- function(input, output, session) {
       showNotification("目前篩選下沒有可評估的美股候選。", type = "warning")
       return()
     }
-    max_n <- lab_clamp_im_max_n(input$lab_im_max_n)
+    max_n <- lab_resolve_im_max_n(input$lab_im_max_n, input$lab_im_max_n_custom)
     sf <- lab_normalize_size_filter(input$lab_im_sizes)
     size_restricts <- length(sf) > 0L && !isTRUE(setequal(sf, names(LAB_SIZE_LABELS)))
     n_yrs <- lab_model_horizon_years()
@@ -7008,8 +7008,8 @@ server <- function(input, output, session) {
   output$lab_im_leader_note <- renderUI({
     scores <- lab_im_scores()
     n <- lab_model_horizon_years()
-    max_n <- lab_clamp_im_max_n(input$lab_im_max_n)
-    max_n_label <- lab_im_max_n_label(input$lab_im_max_n)
+    max_n <- lab_resolve_im_max_n(input$lab_im_max_n, input$lab_im_max_n_custom)
+    max_n_label <- lab_resolve_im_max_n_label(input$lab_im_max_n, input$lab_im_max_n_custom)
     n_eval <- if (is.data.frame(scores) && nrow(scores) > 0) nrow(scores) else 0L
     if (n_eval == 0L) {
       cap_txt <- if (is.finite(max_n)) {
@@ -7089,7 +7089,7 @@ server <- function(input, output, session) {
     if (nrow(merged) == 0) {
       scores <- lab_im_scores()
       msg <- if (is.null(scores) || !is.data.frame(scores) || nrow(scores) == 0) {
-        "尚未評估。請按「評估績優」；明細列數將等於「最多」N（篩選後不足 N 則全列）。"
+        "尚未評估。請按「評估績優」；明細列數將等於評估檔數 N（篩選後不足 N 則全列）。"
       } else {
         "沒有符合篩選的已評估列。可放寬規模／產業／模型，取消「盈餘品質」／「Piotroski 高門檻」過濾，或重新評估。"
       }
@@ -7236,8 +7236,8 @@ server <- function(input, output, session) {
       }
       eq_on <- isTRUE(isolate(input$lab_im_eq_only))
       gate_on <- isTRUE(isolate(input$lab_im_gate_only))
-      max_n <- lab_clamp_im_max_n(isolate(input$lab_im_max_n))
-      max_n_label <- lab_im_max_n_label(isolate(input$lab_im_max_n))
+      max_n <- lab_resolve_im_max_n(isolate(input$lab_im_max_n), isolate(input$lab_im_max_n_custom))
+      max_n_label <- lab_resolve_im_max_n_label(isolate(input$lab_im_max_n), isolate(input$lab_im_max_n_custom))
       scores <- lab_im_scores()
       evaluated <- is.data.frame(scores) && nrow(scores) > 0
       catlg <- tryCatch(lab_im_catalog(), error = function(e) NULL)
@@ -7288,7 +7288,7 @@ server <- function(input, output, session) {
         sprintf("- 模型：%s", meth_txt),
         sprintf("- 盈餘品質過濾：%s", if (eq_on) "開" else "關"),
         sprintf("- Piotroski 高門檻過濾（F-Score≥7）：%s", if (gate_on) "開" else "關"),
-        sprintf("- 評估上限 lab_im_max_n：%s（＝評估檔數／明細列數）", max_n_label),
+        sprintf("- 評估檔數（明細列數）lab_im_max_n：%s", max_n_label),
         sprintf("- 評估狀態：%s", if (evaluated) sprintf("已評估 %d 檔", nrow(scores)) else "尚未評估"),
         sprintf("- 本頁代號數：%d", length(tks)),
         sprintf("- 本頁代號：%s", if (length(tks)) paste(tks, collapse = ", ") else "（無）"),

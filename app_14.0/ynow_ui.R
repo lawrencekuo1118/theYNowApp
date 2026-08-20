@@ -2827,20 +2827,34 @@ ui <- dashboardPage(
                   column(
                     width = 6,
                     selectInput(
-                      "lab_im_max_n", "最多 N（評估檔數／明細列數）",
+                      "lab_im_max_n", "評估檔數（明細列數）",
                       choices = c(
-                        "全部" = "all",
-                        "10 檔" = "10",
                         "25 檔" = "25",
                         "50 檔" = "50",
-                        "100 檔" = "100"
+                        "100 檔" = "100",
+                        "200 檔" = "200",
+                        "500 檔" = "500",
+                        "全部" = "all",
+                        "自訂…" = "custom"
                       ),
-                      selected = "all",
+                      selected = "100",
                       width = "100%"
+                    ),
+                    conditionalPanel(
+                      condition = "input.lab_im_max_n == 'custom'",
+                      numericInput(
+                        "lab_im_max_n_custom",
+                        "自訂檔數",
+                        value = 100,
+                        min = 1,
+                        max = 500,
+                        step = 1,
+                        width = "100%"
+                      )
                     ),
                     tags$span(
                       style = "color:#888; font-size:12px; display:block; margin:-6px 0 10px 0;",
-                      "預設全部評估。選 N 時：篩選後不足 N 則全列；候選多於 N 時依市值由大到小。"
+                      "預設 100 檔。篩選後不足 N 則全列；候選多於 N 時依市值由大到小。可選「全部」或「自訂…」。"
                     )
                   )
                 ),
@@ -2925,7 +2939,7 @@ ui <- dashboardPage(
               "本次已評估檔的明細（按年化估值漲幅排序）。",
               tags$span(
                 style = "color:#888;",
-                "預設評估全部候選；選 N 時 N＝明細列數（盈餘品質／Piotroski 高門檻勾選時可少於 N）。欄位順序：代號、公司名稱。"
+                "預設評估 100 檔；N＝明細列數（盈餘品質／Piotroski 高門檻勾選時可少於 N）。欄位順序：代號、公司名稱。"
               )
             ),
             tags$hr(),

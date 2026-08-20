@@ -28,14 +28,27 @@ check("all -> unlimited", isTRUE(all_p$unlimited) && is.infinite(all_p$n))
 check("all label 全部", identical(all_p$label, "全部"))
 
 null_p <- lab_parse_im_max_n(NULL)
-check("NULL defaults to 全部", isTRUE(null_p$unlimited))
+check("NULL defaults to 100", identical(null_p$n, 100L) && !null_p$unlimited)
 
 n25 <- lab_parse_im_max_n("25")
 check("25 parsed", identical(n25$n, 25L) && !n25$unlimited)
 
 check("clamp all is Inf", is.infinite(lab_clamp_im_max_n("all")))
 check("clamp 25 is 25", identical(lab_clamp_im_max_n("25"), 25L))
-check("clamp 999 no hard cap", identical(lab_clamp_im_max_n("999"), 999L))
+check("clamp 999 capped at hi", identical(lab_clamp_im_max_n("999", hi = 500L), 500L))
+
+check(
+  "resolve custom uses numeric",
+  identical(lab_resolve_im_max_n("custom", 42), 42L)
+)
+check(
+  "resolve preset 100",
+  identical(lab_resolve_im_max_n("100", NULL), 100L)
+)
+check(
+  "resolve custom label",
+  identical(lab_resolve_im_max_n_label("custom", 42), "42")
+)
 
 pool <- data.frame(
   ticker = c("AAA", "BBB", "CCC", "DDD"),

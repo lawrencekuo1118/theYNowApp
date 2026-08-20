@@ -4,7 +4,7 @@
 # 宇宙＝S&P 500（可更新，見 lab_sp500_universe.R），不是全美股。
 # 績優原則：在 Piotroski 高門檻（F-Score≥7；不含盈餘品質）後，選「模型合理價相對現價」、
 # 並依 App 預設預測年數 n（APP_DEFAULTS$years）換算年化漲幅最大者。
-# 「最多 N」（lab_im_max_n；預設「全部」）＝本次 Yahoo 評估檔數＝明細列數
+# 「評估檔數（明細列數）」（lab_im_max_n；預設 100）＝本次 Yahoo 評估檔數＝明細列數
 # （盈餘品質／Piotroski 高門檻各自勾選時明細可少於 N）。選 N 且候選多於 N 時依市值由大到小取 N。
 # 排行榜＝同一批評估結果、同一年化漲幅排序的 Top 10（須 F-Score≥7）。
 # 產業建議方法對齊 recommend_valuation_models 的產業層規則（簡化估值）。
@@ -151,21 +151,22 @@ lab_fetch_market_cap_usd <- function(ticker) {
   lab_fetch_summary_metrics(ticker)$market_cap
 }
 
-#' 「最多 N」：預設全部；字串 "all"／"全部" 或 NA → 不設上限
-lab_parse_im_max_n <- function(x, default_all = TRUE) {
-  if (is.null(x) || !length(x)) {
-    return(list(n = Inf, label = "全部", unlimited = TRUE))
+#' 評估檔數（明細列數）："all"／"全部" → 不設上限；空／自訂未填 → 預設 100
+lab_parse_im_max_n <- function(x, default_n = 100L) {
+  default_n <- max(1L, as.integer(default_n)[1])
+  if (is.null(x) || !length(x) || (length(x) == 1L && is.na(x))) {
+    return(list(n = default_n, label = as.character(default_n), unlimited = FALSE))
   }
   s <- trimws(as.character(x)[1])
-  if (!nzchar(s) || identical(s, "all") || identical(s, "全部")) {
+  if (!nzchar(s) || identical(s, "custom") || identical(s, "自訂")) {
+    return(list(n = default_n, label = as.character(default_n), unlimited = FALSE))
+  }
+  if (identical(s, "all") || identical(s, "全部")) {
     return(list(n = Inf, label = "全部", unlimited = TRUE))
   }
   n <- suppressWarnings(as.integer(s)[1])
   if (!is.finite(n) || n < 1L) {
-    if (isTRUE(default_all)) {
-      return(list(n = Inf, label = "全部", unlimited = TRUE))
-    }
-    n <- 25L
+    return(list(n = default_n, label = as.character(default_n), unlimited = FALSE))
   }
   list(n = as.integer(n), label = as.character(n), unlimited = FALSE)
 }
@@ -175,13 +176,32 @@ lab_im_max_n_label <- function(x) {
 }
 
 #' 相容舊呼叫：回傳整數上限，或 Inf 表示全部
-lab_clamp_im_max_n <- function(x, default = Inf, lo = 1L, hi = NULL) {
-  parsed <- lab_parse_im_max_n(x, default_all = identical(default, Inf))
+lab_clamp_im_max_n <- function(x, default = 100L, lo = 1L, hi = NULL) {
+  def_n <- if (is.finite(default)) as.integer(default)[1] else 100L
+  parsed <- lab_parse_im_max_n(x, default_n = def_n)
   n <- parsed$n
   if (!is.finite(n)) return(Inf)
   n <- max(as.integer(lo)[1], n)
   if (!is.null(hi) && is.finite(hi)) n <- min(as.integer(hi)[1], n)
   as.integer(n)
+}
+
+#' Resolve select + optional custom numeric into clampable max_n
+lab_resolve_im_max_n <- function(sel, custom = NULL, lo = 1L, hi = 500L) {
+  s <- if (is.null(sel) || !length(sel)) "" else trimws(as.character(sel)[1])
+  if (identical(s, "custom") || identical(s, "自訂")) {
+    return(lab_clamp_im_max_n(custom, default = 100L, lo = lo, hi = hi))
+  }
+  lab_clamp_im_max_n(sel, default = 100L, lo = lo, hi = hi)
+}
+
+lab_resolve_im_max_n_label <- function(sel, custom = NULL) {
+  s <- if (is.null(sel) || !length(sel)) "" else trimws(as.character(sel)[1])
+  if (identical(s, "custom") || identical(s, "自訂")) {
+    n <- lab_resolve_im_max_n(sel, custom)
+    return(if (is.finite(n)) as.character(n) else "全部")
+  }
+  lab_im_max_n_label(sel)
 }
 
 lab_dedupe_eval_pool <- function(pool) {
