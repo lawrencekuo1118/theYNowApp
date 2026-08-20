@@ -756,11 +756,7 @@ ui <- dashboardPage(
              menuItem("P/B-Asset", tabName = "pb_calculator", icon = icon("landmark")),
              menuItem("RI-Model", tabName = "ri_calculator", icon = icon("gem")),
              menuItem("YNOW", tabName = "sensitivity", icon = icon("sliders-h")),
-             menuItem(
-               span("Blue Chip", tags$small(" 美股績優", style = "opacity:0.72; font-weight:400;")),
-               tabName = "bluechip",
-               icon = icon("star")
-             ),
+             menuItem("Blue Chip", tabName = "bluechip", icon = icon("star")),
              menuItem("Backtest Zone", tabName = "backtest", icon = icon("vial")),
              # 實驗區 (Lab) 不放主選單；改由底部 Snapshot 旁「測試 / testing env.」捷徑開啟
              menuItem("About", tabName = "about", icon = icon("info-circle"))
