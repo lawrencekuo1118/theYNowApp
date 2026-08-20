@@ -11,7 +11,7 @@ kpi_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_fl
       rev <- get_avg(select_clean_metric_row(d_income_statement(), "Total Revenue", include_ttm = FALSE))
       margin <- if (!is.na(gp) && !is.na(rev) && rev != 0) gp / rev * 100 else NA_real_
       color <- get_box_color(industry_choice(), "gross_profit_margin", margin)
-      valueBox(
+      kpi_band_value_box(
         value = if (!is.na(margin)) paste0(sprintf("%.2f", margin), "%") else "N/A",
         subtitle = "毛利率 Gross Profit Margin",
         color = color,
@@ -24,7 +24,7 @@ kpi_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_fl
       rev <- get_avg(select_clean_metric_row(d_income_statement(), "Total Revenue", include_ttm = FALSE))
       margin <- if (!is.na(net) && !is.na(rev) && rev != 0) net / rev * 100 else NA_real_
       color <- get_box_color(industry_choice(), "net_profit_margin", margin)
-      valueBox(
+      kpi_band_value_box(
         value = if (!is.na(margin)) paste0(sprintf("%.2f", margin), "%") else "N/A",
         subtitle = "淨利率 Net Profit Margin",
         color = color,
@@ -35,7 +35,7 @@ kpi_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_fl
     output$vbx_gross_profit_growth <- renderValueBox({
       val <- get_avg_growth(select_clean_metric_row(d_income_statement(), "Gross Profit", include_ttm = FALSE))
       color <- get_box_color(industry_choice(), "rev_growth", val)
-      valueBox(
+      kpi_band_value_box(
         value = if (!is.na(val)) paste0(sprintf("%.2f", val), "%") else "N/A",
         subtitle = "毛利成長率 Gross Profit Growth",
         color = color,
@@ -46,7 +46,7 @@ kpi_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_fl
     output$vbx_rev_growth <- renderValueBox({
       val <- get_avg_growth(select_clean_metric_row(d_income_statement(), "Total Revenue", include_ttm = FALSE))
       color <- get_box_color(industry_choice(), "rev_growth", val)
-      valueBox(
+      kpi_band_value_box(
         value = if (!is.na(val)) paste0(sprintf("%.2f", val), "%") else "N/A",
         subtitle = "營收成長率 Revenue Growth",
         color = color,
@@ -59,7 +59,7 @@ kpi_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_fl
       rev <- get_avg(select_clean_metric_row(d_income_statement(), "Total Revenue", include_ttm = FALSE))
       ratio <- if (!is.na(op_exp) && !is.na(rev) && rev != 0) op_exp / rev * 100 else NA_real_
       color <- get_box_color(industry_choice(), "opex_ratio", ratio)
-      valueBox(
+      kpi_band_value_box(
         value = if (!is.na(ratio)) paste0(sprintf("%.2f", ratio), "%") else "N/A",
         subtitle = "營運費用比 OPEX Ratio",
         color = color,
@@ -73,7 +73,7 @@ kpi_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_fl
       avg_equity <- get_avg(select_clean_metric_row_any(d_balance_sheet(), EQUITY_PATTERNS, include_ttm = FALSE))
       avg_ratio <- if (!is.na(avg_asset) && !is.na(avg_equity) && avg_equity != 0) avg_asset / avg_equity else NA_real_
       color <- get_box_color(industry_choice(), "eqt_multiplier", avg_ratio)
-      valueBox(
+      kpi_band_value_box(
         value = if (!is.na(avg_ratio)) sprintf("%.2f", avg_ratio) else "N/A",
         subtitle = "財務槓桿比率 Financial Leverage",
         color = color,
@@ -85,7 +85,7 @@ kpi_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_fl
     output$vbx_op_cash_flow_growth <- renderValueBox({
       val <- get_avg_growth(select_clean_metric_row(d_cash_flow(), "Operating Cash Flow", include_ttm = FALSE))
       color <- get_box_color(industry_choice(), "rev_growth", val)
-      valueBox(
+      kpi_band_value_box(
         value = if (!is.na(val)) paste0(sprintf("%.2f", val), "%") else "N/A",
         subtitle = "營業現金成長率 Operating CF Growth",
         color = color,
@@ -96,7 +96,7 @@ kpi_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_fl
     output$vbx_inv_cash_flow_growth <- renderValueBox({
       val <- get_avg_growth(select_clean_metric_row(d_cash_flow(), "Investing Cash Flow", include_ttm = FALSE))
       color <- get_box_color(industry_choice(), "rev_growth", val)
-      valueBox(
+      kpi_band_value_box(
         value = if (!is.na(val)) paste0(sprintf("%.2f", val), "%") else "N/A",
         subtitle = "投資現金成長率 Investing CF Growth",
         color = color,
@@ -107,7 +107,7 @@ kpi_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_fl
     output$vbx_fin_cash_flow_growth <- renderValueBox({
       val <- get_avg_growth(select_clean_metric_row(d_cash_flow(), "Financing Cash Flow", include_ttm = FALSE))
       color <- get_box_color(industry_choice(), "rev_growth", val)
-      valueBox(
+      kpi_band_value_box(
         value = if (!is.na(val)) paste0(sprintf("%.2f", val), "%") else "N/A",
         subtitle = "籌資現金成長率 Financing CF Growth",
         color = color,
@@ -121,7 +121,7 @@ kpi_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_fl
       asset <- get_avg(select_clean_metric_row(d_balance_sheet(), "Total Assets", include_ttm = FALSE))
       ratio <- if (!is.na(net) && !is.na(asset) && asset != 0) net / asset * 100 else NA_real_
       color <- get_box_color(industry_choice(), "roa", ratio)
-      valueBox(
+      kpi_band_value_box(
         value = if (!is.na(ratio)) paste0(sprintf("%.2f", ratio), "%") else "N/A",
         subtitle = "資產報酬率 ROA",
         color = color,
@@ -134,7 +134,7 @@ kpi_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_fl
       equity <- get_avg(select_clean_metric_row_any(d_balance_sheet(), EQUITY_PATTERNS, include_ttm = FALSE))
       ratio <- if (!is.na(net) && !is.na(equity) && equity != 0) net / equity * 100 else NA_real_
       color <- get_box_color(industry_choice(), "roe", ratio)
-      valueBox(
+      kpi_band_value_box(
         value = if (!is.na(ratio)) paste0(sprintf("%.2f", ratio), "%") else "N/A",
         subtitle = "股東權益報酬率 ROE",
         color = color,

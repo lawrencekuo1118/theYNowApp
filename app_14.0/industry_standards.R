@@ -340,29 +340,44 @@ industry_standards <- list(
 )
 
 # 🎨 KPI 顏色判定（只取區間前兩碼 low/high；與 industry_standards 一致）
+# 回傳 AdminLTE color，或缺區間／N/A 時回傳 "none"（無色；由 kpi_band_value_box 渲染）
 get_box_color <- function(industry_choice, metric_name, val) {
-  # Numeric KPI tiles: never black/white. In-band=green; worse/alert=red; better=blue; missing=aqua.
-  if (is.null(industry_choice) || length(industry_choice) == 0 || industry_choice == "") return("aqua")
-  if (is.null(metric_name) || length(metric_name) == 0) return("aqua")
-  if (is.na(val) || is.null(val)) return("aqua")
-  if (!(industry_choice %in% names(industry_standards))) return("aqua")
+  # In-band=black; worse/alert=red; better=blue; missing/no band=none (colorless).
+  if (is.null(industry_choice) || length(industry_choice) == 0 || industry_choice == "") return("none")
+  if (is.null(metric_name) || length(metric_name) == 0) return("none")
+  if (is.na(val) || is.null(val)) return("none")
+  if (!(industry_choice %in% names(industry_standards))) return("none")
 
   std <- industry_standards[[industry_choice]][[metric_name]]
-  if (is.null(std) || length(std) < 2) return("aqua")
+  if (is.null(std) || length(std) < 2) return("none")
   lo <- suppressWarnings(as.numeric(std[1])[1])
   hi <- suppressWarnings(as.numeric(std[2])[1])
-  if (!is.finite(lo) || !is.finite(hi)) return("aqua")
+  if (!is.finite(lo) || !is.finite(hi)) return("none")
 
   # 費用／槓桿類：越高通常越差 → 反向著色
   lower_is_better <- metric_name %in% c("opex_ratio", "eqt_multiplier")
 
   if (val >= lo && val <= hi) {
-    return("green")
+    return("black")
   } else if (isTRUE(lower_is_better)) {
     if (val < lo) return("blue") else return("red")
   } else {
     if (val < lo) return("red") else return("blue")
   }
+}
+
+#' KPI valueBox：支援 get_box_color 的 "none"（無色／中性底，非 aqua）
+kpi_band_value_box <- function(value, subtitle, color, icon = NULL, width = 4) {
+  color <- as.character(color %||% "none")[1]
+  if (!nzchar(color) || is.na(color) || identical(color, "none")) {
+    box_content <- div(
+      class = "small-box ynow-kpi-na",
+      div(class = "inner", h3(value), p(subtitle)),
+      if (!is.null(icon)) div(class = "icon-large", icon)
+    )
+    return(div(class = if (!is.null(width)) paste0("col-sm-", width), box_content))
+  }
+  valueBox(value = value, subtitle = subtitle, icon = icon, color = color, width = width)
 }
 
 #' 產業標準欄位 → 顯示標籤／單位（單一來源，供快覽／Annotation／色碼共用）
