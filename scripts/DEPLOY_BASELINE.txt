@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12440531
+bundleId=12440618
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=e81ed05
-commit=e81ed05345405d42d5fe27acff77cd626da43d3d
-short=e81ed05
-message=Restore colorful numeric value/info boxes; keep alert red.
-captured_at=2026-08-20T17:22:00Z
+aligned_git=f01ecb0
+commit=f01ecb0626649054298e9cfbdf444fcd63a157bc
+short=f01ecb0
+message=Polish Blue Chip UI: BLUE CHIP title, filter layout, and copy cleanup.
+captured_at=2026-08-20T17:42:35Z
 source_branch=master
-note=Canonical live line is app_14.0. Blue Chip ship: B&W chrome; 優股排行榜; drop 分組摘要 + 建議評價方法 above run buttons; Piotroski 高門檻 F-Score≥7 independent of EQ; 評估檔數（明細列數） default 100 + 自訂. Bundle 12440531 supersedes 12440511.
+note=Canonical live line is app_14.0. KPI in-band=black / N/A=無色 (5631b80); Blue Chip: BLUE CHIP title, 評估檔數 above 規模, drop filter hint + 建議評價方法 heading + 績優 Wikipedia intro. Bundle 12440618 supersedes 12440531.
