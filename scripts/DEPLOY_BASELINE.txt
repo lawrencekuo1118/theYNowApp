@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12440511
+bundleId=12440531
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=e81ed05
 commit=e81ed05345405d42d5fe27acff77cd626da43d3d
 short=e81ed05
 message=Restore colorful numeric value/info boxes; keep alert red.
-captured_at=2026-08-20T17:20:38Z
+captured_at=2026-08-20T17:22:00Z
 source_branch=master
-note=Canonical live line is app_14.0. Blue Chip: B&W chrome; numeric boxes colorful (alert red); 優股排行榜; Piotroski≥7 independent of EQ; 評估檔數 default 100+自訂; sidebar Blue Chip. Bundle 12440511 supersedes 12434393.
+note=Canonical live line is app_14.0. Blue Chip ship: B&W chrome; 優股排行榜; drop 分組摘要 + 建議評價方法 above run buttons; Piotroski 高門檻 F-Score≥7 independent of EQ; 評估檔數（明細列數） default 100 + 自訂. Bundle 12440531 supersedes 12440511.
