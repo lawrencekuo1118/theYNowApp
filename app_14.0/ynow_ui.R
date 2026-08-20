@@ -2731,7 +2731,7 @@ ui <- dashboardPage(
       tabItem(
         tabName = "bluechip",
         tabBox(
-          title = "美股績優篩選：規模 × 產業 × 評價模型",
+          title = "BLUE CHIP",
           id = "bluechip_im_report",
           width = "auto",
 
@@ -2743,12 +2743,7 @@ ui <- dashboardPage(
               "自 Wikipedia 的 S&P 500 成分名單篩選美股績優候選：先套用規模 × 產業 × 評價模型，",
               "再以 Piotroski 高門檻（F-Score≥7；與盈餘品質無關）過濾，最後依 App 預設 n＝",
               as.integer(APP_DEFAULTS$years %||% 5L)[1],
-              " 年隱含年化估值漲幅排序。",
-              tags$br(),
-              tags$span(
-                style = "color:#888;",
-                "績優＝可評估池中，股價相對模型合理價、於該預測期年化漲幅最大者。資料來源：Wikipedia S&P 500（可更新；失敗則沿用快取）。"
-              )
+              " 年隱含年化估值漲幅排序。"
             ),
             tags$hr(),
             fluidRow(
@@ -2794,37 +2789,6 @@ ui <- dashboardPage(
                   ),
                   column(
                     width = 6,
-                    tags$div(
-                      class = "ynow-lab-im-sizes",
-                      checkboxGroupInput(
-                        "lab_im_sizes", "規模",
-                        choices = lab_size_picker_choices(),
-                        selected = names(LAB_SIZE_LABELS),
-                        inline = TRUE
-                      )
-                    )
-                  )
-                ),
-                fluidRow(
-                  column(
-                    width = 6,
-                    tags$div(
-                      class = "ynow-lab-im-methods",
-                      checkboxGroupInput(
-                        "lab_im_methods", "模型",
-                        choices = c(
-                          "DCF" = "dcf",
-                          "DDM" = "ddm",
-                          "P/B" = "pb",
-                          "RI" = "ri"
-                        ),
-                        selected = c("dcf", "ddm", "pb", "ri"),
-                        inline = TRUE
-                      )
-                    )
-                  ),
-                  column(
-                    width = 6,
                     selectInput(
                       "lab_im_max_n", "評估檔數（明細列數）",
                       choices = c(
@@ -2854,6 +2818,37 @@ ui <- dashboardPage(
                     tags$span(
                       style = "color:#888; font-size:12px; display:block; margin:-6px 0 10px 0;",
                       "預設 100 檔。篩選後不足 N 則全列；候選多於 N 時依市值由大到小。可選「全部」或「自訂…」。"
+                    )
+                  )
+                ),
+                fluidRow(
+                  column(
+                    width = 6,
+                    tags$div(
+                      class = "ynow-lab-im-methods",
+                      checkboxGroupInput(
+                        "lab_im_methods", "模型",
+                        choices = c(
+                          "DCF" = "dcf",
+                          "DDM" = "ddm",
+                          "P/B" = "pb",
+                          "RI" = "ri"
+                        ),
+                        selected = c("dcf", "ddm", "pb", "ri"),
+                        inline = TRUE
+                      )
+                    )
+                  ),
+                  column(
+                    width = 6,
+                    tags$div(
+                      class = "ynow-lab-im-sizes",
+                      checkboxGroupInput(
+                        "lab_im_sizes", "規模",
+                        choices = lab_size_picker_choices(),
+                        selected = names(LAB_SIZE_LABELS),
+                        inline = TRUE
+                      )
                     )
                   )
                 ),
@@ -2892,12 +2887,8 @@ ui <- dashboardPage(
                 tags$div(
                   class = "ynow-lab-im-method-summary",
                   style = "margin: 0 0 12px 0;",
-                  tags$div(
-                    style = "font-size: 13px; font-weight: 700; color: #222; margin: 0 0 6px 0;",
-                    "建議評價方法"
-                  ),
                   tags$p(
-                    style = "margin: 0 0 8px 0; font-size: 12px; color: #888; line-height: 1.45;",
+                    style = "margin: 6px 0 8px 0; font-size: 12px; color: #888; line-height: 1.45;",
                     "依產業建議評價方法，統計目前複選下的產業數與候選檔數。",
                     tags$span("尚未套用規模過濾與 Yahoo 評估。")
                   ),
