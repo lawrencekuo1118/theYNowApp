@@ -203,7 +203,7 @@ def get_market_caps_batch(tickers):
     """Yahoo market cap (USD) for many tickers. Returns {SYMBOL: float|None}.
 
     Used by Lab to rank the evaluate pool by size before the Yahoo F-Score/FV
-    pass (so 「最多 N」 is the largest-cap names, not ticker/industry order).
+    pass (so 評估檔數 N is the largest-cap names, not ticker/industry order).
     """
     cleaned = []
     seen = set()

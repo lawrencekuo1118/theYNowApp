@@ -878,7 +878,7 @@ lab_screen_tickers_fscore <- function(tickers, progress_cb = NULL, max_n = Inf,
 }
 
 #' 合併目錄與評估結果，複選篩選後依年化估值漲幅排序
-#' @param evaluated_only TRUE：只保留已評估代碼（明細／排行榜與「最多 N」對齊）
+#' @param evaluated_only TRUE：只保留已評估代碼（明細／排行榜與評估檔數 N 對齊）
 lab_merge_catalog_scores <- function(catalog, scores = NULL,
                                      method_filter = character(0),
                                      industry_filter = character(0),
