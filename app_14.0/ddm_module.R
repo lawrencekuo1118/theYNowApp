@@ -177,7 +177,7 @@ ddm_module_server <- function(id, ddm_g = reactive(NULL), ddm_ke = reactive(NULL
       } else {
         paste0(money_prefix(), res$d1)
       }
-      infoBox(title, val, icon = icon("money-bill-wave"), color = "black", fill = TRUE)
+      infoBox(title, val, icon = icon("money-bill-wave"), color = "aqua", fill = TRUE)
     })
 
     output$vtxt_ddm_setting_details <- renderUI({
@@ -281,7 +281,7 @@ ddm_module_server <- function(id, ddm_g = reactive(NULL), ddm_ke = reactive(NULL
       d0_sc <- suppressWarnings(as.numeric(d0_sc)[1])
       if (!is.finite(d0_sc) || d0_sc < 0) d0_sc <- 0
       val <- paste0(money_prefix(), round(d0_sc, 2))
-      infoBox("財報最新股利 (D0)", val, icon = icon("money-bill-wave"), color = "black", fill = TRUE)
+      infoBox("財報最新股利 (D0)", val, icon = icon("money-bill-wave"), color = "aqua", fill = TRUE)
     })
     
     output$ibx_d0_eps <- renderInfoBox({

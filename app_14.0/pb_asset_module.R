@@ -491,7 +491,7 @@ pb_asset_module_server <- function(id,
       val <- input$bvps
       valueBox(
         if (is.null(val) || is.na(val)) "N/A" else paste0(money_prefix(), round(val, 2)),
-        "每股帳面淨值 BVPS", icon = icon("book"), color = "black"
+        "每股帳面淨值 BVPS", icon = icon("book"), color = "aqua"
       )
     })
     
@@ -499,7 +499,7 @@ pb_asset_module_server <- function(id,
       val <- input$tbvps
       valueBox(
         if (is.null(val) || is.na(val)) "N/A" else paste0(money_prefix(), round(val, 2)),
-        "有形每股淨值 TBVPS", icon = icon("cube"), color = "black"
+        "有形每股淨值 TBVPS", icon = icon("cube"), color = "light-blue"
       )
     })
     
@@ -517,7 +517,7 @@ pb_asset_module_server <- function(id,
       mkt_pb <- if (length(px) == 1 && !is.na(px) && !is.na(basis_val) && basis_val > 0) px / basis_val else NA
       valueBox(
         if (is.na(mkt_pb)) "N/A" else sprintf("%.2f×", mkt_pb),
-        paste0("目前市價／", .pb_basis_label()), icon = icon("chart-bar"), color = "black"
+        paste0("目前市價／", .pb_basis_label()), icon = icon("chart-bar"), color = "maroon"
       )
     })
     

@@ -280,7 +280,7 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
     output$vbox_momentum <- renderValueBox({
       status <- tryCatch(mom_status(), error = function(e) NULL)
       triggered <- is.list(status) && isTRUE(status$triggered)
-      color <- if (triggered) "green" else "black"
+      color <- if (triggered) "green" else "teal"
       txt <- if (triggered) "多頭確認" else "盤整/偏空"
       valueBox(txt, "趨勢動能（交易輔助）", icon = icon("chart-line"), color = color)
     })

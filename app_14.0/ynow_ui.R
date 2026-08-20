@@ -92,7 +92,7 @@
   )
 }
 
-#' KPI 色碼圖例：藍／黑／紅／無色碼（Dashboard：產業快覽下方、PERFORMANCE 上方）
+#' KPI 色碼圖例：藍／綠／紅／水色（Dashboard：產業快覽下方、PERFORMANCE 上方）
 .kpi_band_color_legend_ui <- function() {
   tags$div(
     class = "ynow-ann-legend",
@@ -103,19 +103,18 @@
     ),
     tags$div(
       class = "ynow-ann-chip",
-      tags$span(class = "ynow-ann-swatch", style = "background:#222;"),
-      tags$span(tags$b("黑"), " · 符合區間 (In band)")
+      tags$span(class = "ynow-ann-swatch", style = "background:#00a65a;"),
+      tags$span(tags$b("綠"), " · 符合區間 (In band)")
     ),
     tags$div(
       class = "ynow-ann-chip",
       tags$span(class = "ynow-ann-swatch", style = "background:#dd4b39;"),
-      tags$span(tags$b("紅"), " · 劣於區間 (Worse)")
+      tags$span(tags$b("紅"), " · 劣於區間／警示 (Worse)")
     ),
     tags$div(
       class = "ynow-ann-chip",
-      tags$span(class = "ynow-ann-swatch",
-                style = "background:#fff; border:1px solid #999;"),
-      tags$span(tags$b("無色碼"), " · 未設產業區間／N/A")
+      tags$span(class = "ynow-ann-swatch", style = "background:#00c0ef;"),
+      tags$span(tags$b("水"), " · 未設產業區間／N/A")
     )
   )
 }
@@ -2298,7 +2297,7 @@ ui <- dashboardPage(
                              "規則對齊 ", tags$code("get_box_color"), "：",
                              "多數指標「越高越好」；",
                              tags$b("營運費用比、財務槓桿"), " 為「越低越好」（反向著色）。",
-                             "落在產業 ", tags$code("[下限, 上限]"), " 內→黑；越出有利側→藍；不利側→紅。",
+                             "落在產業 ", tags$code("[下限, 上限]"), " 內→綠；越出有利側→藍；不利側→紅（警示）。",
                              " 色碼圖例與產業標準快覽見上方 PERFORMANCE 區塊外。"
                            ),
                            tags$h4("KPI 計算與產業區間", class = "ynow-ann-h"),
@@ -2307,7 +2306,7 @@ ui <- dashboardPage(
                            tableOutput("annotation_stability_table"),
                            tags$p(
                              style = "margin-top:10px; font-size:12px; color:#888;",
-                             "提示：資產週轉率、OCF／淨利目前固定黑底（無同業區間）；",
+                             "提示：資產週轉率、OCF／淨利無同業區間時用固定水色／紫色（非黑白）；",
                              "現金品質另可對照決策漏斗／F-Score 的盈餘品質檢核。"
                            )
                          )

@@ -149,7 +149,7 @@ kpi_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_fl
       valueBox(
         value = if (!is.na(ratio)) sprintf("%.2f", ratio) else "N/A",
         subtitle = "資產週轉率 Asset Turnover",
-        color = "black",
+        color = "teal",
         icon = icon("chart-line"))
     })
     
@@ -161,7 +161,7 @@ kpi_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_fl
       valueBox(
         value = if (!is.na(ratio)) sprintf("%.2f", ratio) else "N/A",
         subtitle = "現金流與淨利比 OCF / Net Income",
-        color = "black",
+        color = "purple",
         icon = icon("chart-line"))
     })
   })

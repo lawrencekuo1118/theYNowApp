@@ -337,7 +337,7 @@ server <- function(input, output, session) {
         quote_currency(), session_currency(), fx_usd_twd()
       )
     } else "N/A"
-    infoBox("Market Cap", val, icon = icon("globe"), color = "black")
+    infoBox("Market Cap", val, icon = icon("globe"), color = "aqua")
   })
   
   output$ibx_EPS <- renderInfoBox({
@@ -2283,7 +2283,7 @@ server <- function(input, output, session) {
       value = format_dollar_abbr(mkt_data$e_val),
       subtitle = "股權市值 (Market Equity - E)",
       icon = icon("coins"),
-      color = "black"
+      color = "aqua"
     )
   })
   
@@ -2649,7 +2649,7 @@ server <- function(input, output, session) {
       if (is.finite(b)) round(b, 2) else "N/A",
       paste0("產業預設 β（", ind_lab, "）"),
       icon = icon("industry"),
-      color = "black"
+      color = "aqua"
     )
   }
   output$vbx_beta_industry <- renderValueBox({ .vbx_beta_industry_content() })
@@ -3290,7 +3290,7 @@ server <- function(input, output, session) {
       if (!is.null(res) && isTRUE(res$ok)) res$beta_u_avg else "—",
       "自選公司平均 Bottom-Up βᵤ",
       icon = icon("users"),
-      color = "yellow"
+      color = "teal"
     )
   }
   output$vbx_beta_unlever_bottomup <- renderValueBox({ .vbx_beta_unlever_bottomup_content() })
@@ -3906,7 +3906,7 @@ server <- function(input, output, session) {
   
   output$ibx_wacc <- renderInfoBox({ 
     val_wacc <- if (!is.null(calculated_wacc())) round(calculated_wacc() * 100, 2) else APP_DEFAULTS$wacc_gordon
-    infoBox("WACC", h3(paste0(val_wacc, " %")), icon = icon("percent"), color = "black", fill = TRUE) 
+    infoBox("WACC", h3(paste0(val_wacc, " %")), icon = icon("percent"), color = "aqua", fill = TRUE) 
   })
   
   output$plt_fcf_trend <- renderPlot({
