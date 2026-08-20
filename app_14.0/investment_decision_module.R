@@ -280,7 +280,7 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
     output$vbox_momentum <- renderValueBox({
       status <- tryCatch(mom_status(), error = function(e) NULL)
       triggered <- is.list(status) && isTRUE(status$triggered)
-      color <- if (triggered) "green" else "navy"
+      color <- if (triggered) "green" else "black"
       txt <- if (triggered) "多頭確認" else "盤整/偏空"
       valueBox(txt, "趨勢動能（交易輔助）", icon = icon("chart-line"), color = color)
     })
@@ -407,8 +407,8 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
 
       HTML(paste0(
         "<div style='background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; border-top: 3px solid ", status_color, ";'>",
-        "<div style='background: #3c8dbc15; border-left: 5px solid #3c8dbc; padding: 12px; border-radius: 4px; margin-bottom: 16px;'>",
-        "<h5 style='color: #3c8dbc; margin-top: 0; font-weight: bold;'>", htmltools::htmlEscape(rec_title), "</h5>",
+        "<div style='background: #1a1a1a15; border-left: 5px solid #222222; padding: 12px; border-radius: 4px; margin-bottom: 16px;'>",
+        "<h5 style='color: #222222; margin-top: 0; font-weight: bold;'>", htmltools::htmlEscape(rec_title), "</h5>",
         "<p style='margin-bottom: 6px; font-size: 13px; color: #555;'>", htmltools::htmlEscape(rec_desc), "</p>",
         "<p style='margin: 0; font-size: 12.5px; color: #333;'><b>", htmltools::htmlEscape(conf_txt), "</b></p>",
         "</div>",
@@ -416,9 +416,9 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
         "<div style='flex:1; min-width:120px; padding:10px; background:#fdf2f2; border-radius:6px;'>",
         "<div style='font-size:12px; color:#888;'>Bear</div>",
         "<div style='font-size:20px; font-weight:700; color:#c0392b;'>", fmt(bear), "</div></div>",
-        "<div style='flex:1; min-width:120px; padding:10px; background:#eaf2f8; border-radius:6px;'>",
+        "<div style='flex:1; min-width:120px; padding:10px; background:#f5f5f5; border-radius:6px;'>",
         "<div style='font-size:12px; color:#888;'>Base</div>",
-        "<div style='font-size:22px; font-weight:700; color:#2980b9;'>", fmt(base), "</div>",
+        "<div style='font-size:22px; font-weight:700; color:#1a1a1a;'>", fmt(base), "</div>",
         "<div style='font-size:12px; color:#555;'>潛在報酬 ", upside_txt, "</div></div>",
         "<div style='flex:1; min-width:120px; padding:10px; background:#eafaf1; border-radius:6px;'>",
         "<div style='font-size:12px; color:#888;'>Bull</div>",
@@ -436,7 +436,7 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
         "%; height: 10px; background: #aed6f1; border-radius: 5px; opacity: ", band_opacity, ";'></div>",
         "<div style='position: absolute; top: 0; left: ", pos_base_css, "%; transform: translateX(-50%); opacity: ", base_opacity, ";'>",
         "<div style='font-size: 11px; color: #7f8c8d;'>Base</div>",
-        "<div style='width: 3px; height: 35px; background: #2980b9; margin: 0 auto;'></div></div>",
+        "<div style='width: 3px; height: 35px; background: #1a1a1a; margin: 0 auto;'></div></div>",
         "<div style='position: absolute; top: -10px; left: ", pos_curr, "%; transform: translateX(-50%); z-index: 10;'>",
         "<div style='font-size: 12px; color: white; background: #2c3e50; padding: 2px 6px; border-radius: 4px;'>目前市價</div>",
         "<div style='width: 12px; height: 12px; background: #2c3e50; border: 2px solid white; border-radius: 50%; margin: 2px auto;'></div>",

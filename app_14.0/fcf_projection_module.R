@@ -357,7 +357,7 @@ fcf_projection_module_server <- function(
         return(HTML("<div style='color: gray; font-size: 13px; margin-bottom: 5px;'>系統歷史推算值：等待財報資料匯入...</div>"))
       }
       val <- round(params$capex_rate * 100, 2)
-      HTML(paste0("<div style='color: #3c8dbc; font-size: 14px; margin-bottom: 5px;'>系統歷史推算值：<b>", val, " %</b></div>"))
+      HTML(paste0("<div style='color: #222222; font-size: 14px; margin-bottom: 5px;'>系統歷史推算值：<b>", val, " %</b></div>"))
     })
 
     output$txt_hist_nwc <- renderUI({
@@ -366,7 +366,7 @@ fcf_projection_module_server <- function(
         return(HTML("<div style='color: gray; font-size: 13px; margin-bottom: 5px;'>系統歷史推算值：等待財報資料匯入...</div>"))
       }
       val <- round(params$nwc_rate * 100, 2)
-      HTML(paste0("<div style='color: #3c8dbc; font-size: 14px; margin-bottom: 5px;'>系統歷史推算值：<b>", val, " %</b></div>"))
+      HTML(paste0("<div style='color: #222222; font-size: 14px; margin-bottom: 5px;'>系統歷史推算值：<b>", val, " %</b></div>"))
     })
     
     # ==========================================

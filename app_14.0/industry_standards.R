@@ -571,7 +571,7 @@ industry_standard_snapshot_ui <- function(industry_key,
           class = "ynow-ann-chip",
           style = "min-width:160px; flex-direction:column; align-items:flex-start; gap:2px;",
           tags$span(style = "font-size:11px; color:#888;", bands$label[[i]]),
-          tags$span(style = "font-weight:700; color:#1a5276;", bands$band[[i]])
+          tags$span(style = "font-weight:700; color:#222222;", bands$band[[i]])
         )
       })
     }
@@ -579,10 +579,10 @@ industry_standard_snapshot_ui <- function(industry_key,
 
   yahoo <- trimws(as.character(yahoo_text %||% "")[1])
   tags$div(
-    style = "margin: 0 0 12px 0; padding: 12px 14px; background: #f4f8fb; border-left: 4px solid #3c8dbc; border-radius: 4px;",
+    style = "margin: 0 0 12px 0; padding: 12px 14px; background: #f5f5f5; border-left: 4px solid #222222; border-radius: 4px;",
     if (isTRUE(show_title)) {
       tags$div(
-        style = "font-size: 13px; font-weight: 700; color: #1a5276; margin-bottom: 6px;",
+        style = "font-size: 13px; font-weight: 700; color: #222222; margin-bottom: 6px;",
         "目前產業標準快覽"
       )
     },

@@ -834,6 +834,118 @@ ui <- dashboardPage(
     tags$head(
       tags$style(HTML('
         .main-header .logo { font-weight: bold; }
+
+        /* YNOW monochrome chrome: black/white (keep KPI bg-blue / Schilit red-green) */
+        :root {
+          --ynow-ink: #1a1a1a;
+          --ynow-ink-soft: #333333;
+          --ynow-line: #d0d0d0;
+          --ynow-wash: #f5f5f5;
+        }
+        .content-wrapper, .right-side { background-color: #f7f7f7; }
+        .skin-black .main-header .navbar,
+        .skin-black .main-header .logo,
+        .skin-black .main-header .logo:hover {
+          background-color: var(--ynow-ink) !important;
+        }
+        .skin-black .main-header .navbar .sidebar-toggle:hover {
+          background-color: #000 !important;
+        }
+        .skin-black .wrapper,
+        .skin-black .main-sidebar,
+        .skin-black .left-side {
+          background-color: var(--ynow-ink) !important;
+        }
+        .skin-black .sidebar-menu > li:hover > a,
+        .skin-black .sidebar-menu > li.active > a {
+          background: #000 !important;
+          border-left-color: #fff !important;
+        }
+        .box.box-primary { border-top-color: var(--ynow-ink) !important; }
+        .box.box-solid.box-primary > .box-header {
+          color: #fff !important;
+          background: var(--ynow-ink) !important;
+          background-color: var(--ynow-ink) !important;
+        }
+        .box.box-solid.box-primary {
+          border: 1px solid var(--ynow-ink) !important;
+        }
+        .box.box-solid.box-primary > .box-header a,
+        .box.box-solid.box-primary > .box-header .btn {
+          color: #fff !important;
+        }
+        .box.box-info { border-top-color: var(--ynow-ink-soft) !important; }
+        .box.box-solid.box-info > .box-header {
+          color: #fff !important;
+          background: var(--ynow-ink-soft) !important;
+          background-color: var(--ynow-ink-soft) !important;
+        }
+        .box.box-solid.box-info {
+          border: 1px solid var(--ynow-ink-soft) !important;
+        }
+        .box.box-solid.box-info > .box-header a,
+        .box.box-solid.box-info > .box-header .btn {
+          color: #fff !important;
+        }
+        .btn-primary {
+          background-color: var(--ynow-ink) !important;
+          border-color: #000 !important;
+          color: #fff !important;
+        }
+        .btn-primary:hover,
+        .btn-primary:focus,
+        .btn-primary:active,
+        .btn-primary.active,
+        .open > .dropdown-toggle.btn-primary {
+          background-color: #000 !important;
+          border-color: #000 !important;
+          color: #fff !important;
+        }
+        .btn-info {
+          background-color: var(--ynow-ink-soft) !important;
+          border-color: #222 !important;
+          color: #fff !important;
+        }
+        .btn-info:hover,
+        .btn-info:focus,
+        .btn-info:active,
+        .btn-info.active {
+          background-color: #111 !important;
+          border-color: #000 !important;
+          color: #fff !important;
+        }
+        .nav-tabs-custom > .nav-tabs > li.active {
+          border-top-color: var(--ynow-ink) !important;
+        }
+        .nav-tabs-custom > .nav-tabs > li.active > a,
+        .nav-tabs-custom > .nav-tabs > li.active:hover > a {
+          border-top-color: transparent;
+          color: var(--ynow-ink) !important;
+        }
+        .nav-pills > li.active > a,
+        .nav-pills > li.active > a:hover,
+        .nav-pills > li.active > a:focus {
+          background-color: var(--ynow-ink) !important;
+        }
+        .pagination > .active > a,
+        .pagination > .active > span,
+        .pagination > .active > a:hover,
+        .pagination > .active > span:hover {
+          background-color: var(--ynow-ink) !important;
+          border-color: var(--ynow-ink) !important;
+        }
+        a { color: var(--ynow-ink-soft); }
+        a:hover, a:focus { color: #000; }
+        .label-primary, .badge-primary {
+          background-color: var(--ynow-ink) !important;
+        }
+        .progress-bar-primary {
+          background-color: var(--ynow-ink) !important;
+        }
+        .text-primary { color: var(--ynow-ink) !important; }
+        .bg-primary { background-color: var(--ynow-ink) !important; }
+        /* Do not remap .bg-blue — KPI band 「優於區間」uses AdminLTE blue */
+
         #shiny-tab-get_started > h2 { font-weight: 800 !important; }
         /* 側邊欄：僅目前選取頁面粗體（勿固定加粗 Get Started） */
         .sidebar-menu > li > a {
@@ -1207,8 +1319,8 @@ ui <- dashboardPage(
         .ynow-ann-note {
           margin: 0 0 16px 0;
           padding: 10px 12px;
-          background: #f7f9fb;
-          border-left: 4px solid #3c8dbc;
+          background: #f5f5f5;
+          border-left: 4px solid #222222;
           border-radius: 4px;
           font-size: 12.5px;
           color: #555;
@@ -1218,7 +1330,7 @@ ui <- dashboardPage(
           margin: 18px 0 8px 0;
           font-size: 14px;
           font-weight: 700;
-          color: #1a5276;
+          color: #222222;
         }
 
         /* Blue Chip：美股績優篩選（對齊 Dashboard FINANCIAL REPORT：tabBox + 查詢條件／內容 box） */
@@ -1312,9 +1424,9 @@ ui <- dashboardPage(
           white-space: nowrap;
         }
         .ynow-lab-pill-fs {
-          background: #e8eef6;
-          color: #1a3a5c;
-          border: 1px solid #b7c9de;
+          background: #f0f0f0;
+          color: #222222;
+          border: 1px solid #c8c8c8;
         }
         .ynow-lab-pill-eq-ok {
           background: #e7f6ee;
@@ -1360,7 +1472,7 @@ ui <- dashboardPage(
         }
         .ynow-shen-strip h4 { margin: 0 0 8px 0; font-size: 15px; color: #922b21; }
         .ynow-shen-cat { margin: 0 0 12px 0; }
-        .ynow-shen-cat h5 { margin: 0 0 8px 0; font-size: 14px; color: #1a5276; }
+        .ynow-shen-cat h5 { margin: 0 0 8px 0; font-size: 14px; color: #222222; }
         .ynow-shen-card {
           border: 1px solid #e4e8ec; border-radius: 6px;
           padding: 8px 10px; margin: 0 0 8px 0; background: #fff;
@@ -1389,8 +1501,8 @@ ui <- dashboardPage(
           --ynow-metric-red-tint: #faf0ef;
           --ynow-metric-violet: #5c5a8a;
           --ynow-metric-violet-tint: #f3f2f8;
-          --ynow-metric-blue: #2f6f9f;
-          --ynow-metric-blue-tint: #eef5fa;
+          --ynow-metric-blue: #333333;
+          --ynow-metric-blue-tint: #f2f2f2;
           --ynow-metric-amber: #b7791f;
           --ynow-metric-amber-tint: #faf6ee;
           display: grid;
@@ -1438,7 +1550,7 @@ ui <- dashboardPage(
         }
         .ynow-metric-card--blue .ynow-metric-card__icon { background: var(--ynow-metric-blue); }
         .ynow-metric-card--amber .ynow-metric-card__icon { background: var(--ynow-metric-amber); }
-        .ynow-metric-card--blue .ynow-metric-card__value { color: #1e4d6e; }
+        .ynow-metric-card--blue .ynow-metric-card__value { color: #1a1a1a; }
         .ynow-metric-card--amber .ynow-metric-card__value { color: #8a5a12; }
         /* 執行面板：避免 btn-block 蓋住下方說明文字 */
         .ynow-bt-run-panel .btn-block { margin-left: 0; margin-right: 0; }
@@ -1540,8 +1652,8 @@ ui <- dashboardPage(
         }
         .ynow-about-method {
           padding: 10px 12px;
-          background: #f7fbff;
-          border-left: 4px solid #3c8dbc;
+          background: #f5f5f5;
+          border-left: 4px solid #222222;
           border-radius: 0 4px 4px 0;
         }
         .ynow-about-feat-h {
@@ -1665,7 +1777,7 @@ ui <- dashboardPage(
           min-width: 0;
           margin: 0 0 12px 0;
           padding: 8px 12px 10px 12px;
-          background: #f7f9fb;
+          background: #f5f5f5;
           border: 1px solid #e4eaef;
           border-radius: 6px;
           box-shadow: none;
@@ -2625,7 +2737,7 @@ ui <- dashboardPage(
           width = "auto",
 
           tabPanel(
-            title = "篩選條件",
+            title = "優股排行榜",
             value = "im_filters",
             icon = icon("sliders-h"),
             p(
@@ -2769,6 +2881,20 @@ ui <- dashboardPage(
                   "全不勾規模／模型＝不過濾　·　盈餘品質／門檻＝勾選才過濾明細　·　排行榜＝同一批中門檻通過者的年化漲幅 Top 10"
                 ),
                 tags$div(
+                  class = "ynow-lab-im-method-summary",
+                  style = "margin: 0 0 12px 0;",
+                  tags$div(
+                    style = "font-size: 13px; font-weight: 700; color: #222; margin: 0 0 6px 0;",
+                    "建議評價方法"
+                  ),
+                  tags$p(
+                    style = "margin: 0 0 8px 0; font-size: 12px; color: #888; line-height: 1.45;",
+                    "依產業建議評價方法，統計目前複選下的產業數與候選檔數。",
+                    tags$span("尚未套用規模過濾與 Yahoo 評估。")
+                  ),
+                  tableOutput("lab_im_summary")
+                ),
+                tags$div(
                   class = "ynow-lab-im-actions",
                   actionButton(
                     "lab_im_run_fscore", "評估績優",
@@ -2787,24 +2913,6 @@ ui <- dashboardPage(
                   style = "margin-top:10px; color:#888; font-size:12px;",
                   "提示：評估需逐檔抓 Yahoo 財報與估值，檔數愈多愈久。"
                 )
-              )
-            )
-          ),
-
-          tabPanel(
-            title = "分組摘要",
-            value = "im_summary",
-            icon = icon("table"),
-            p(
-              "依產業建議評價方法，統計目前複選下的產業數與候選檔數。",
-              tags$span(style = "color:#888;", "尚未套用規模過濾與 Yahoo 評估。")
-            ),
-            tags$hr(),
-            fluidRow(
-              box(
-                width = 12, status = "info", solidHeader = TRUE,
-                title = "依建議方法分組摘要",
-                tableOutput("lab_im_summary")
               )
             )
           ),
@@ -2886,7 +2994,7 @@ ui <- dashboardPage(
                   title = tagList(icon("chart-area"), "策略淨值（累積財富，起始＝1）"),
                   width = 8, status = "info", solidHeader = TRUE,
                   tags$div(
-                    style = "margin: 0 0 10px 0; padding: 10px 12px; background: #f4f8fb; border-left: 4px solid #3c8dbc; font-size: 12px; color: #444; line-height: 1.55;",
+                    style = "margin: 0 0 10px 0; padding: 10px 12px; background: #f5f5f5; border-left: 4px solid #222222; font-size: 12px; color: #444; line-height: 1.55;",
                     tags$b("這是財富指數，不是每股價格。"),
                     "兩者共用持倉條件閘門，部位路徑不同——",
                     tags$b("基本面策略淨值"), "＝Exp_A×日報酬累積；",
@@ -2986,7 +3094,7 @@ ui <- dashboardPage(
                         column(
                           6,
                           tags$div(
-                            style = "margin-top: 8px; padding: 12px; background: #f4f8fb; border: 1px solid #d6e4f0; border-radius: 5px; font-size: 12px; color: #3c5a73; line-height: 1.55;",
+                            style = "margin-top: 8px; padding: 12px; background: #f5f5f5; border: 1px solid #d0d0d0; border-radius: 5px; font-size: 12px; color: #444444; line-height: 1.55;",
                             tags$b("MOS 滯後曝險（基準圖）"), tags$br(),
                             "MOS≥30%→接近最大持股；≥10%→約 72%×上限；≥0%→約 44%×上限；≥−10%→約 17%×上限；否則空手。",
                             "（最大／最低持股與「貼近買進持有」在「情緒策略」標籤。）"
@@ -3171,7 +3279,7 @@ ui <- dashboardPage(
                   "bt_kpi_filter", "比對目前公司",
                   icon = icon("filter"),
                   class = "btn-sm",
-                  style = "background-color: #1a5276; color: #ffffff; border: 1px solid #154360; font-size: 12px; padding: 6px 14px; border-radius: 4px; font-weight: 600;"
+                  style = "background-color: #222222; color: #ffffff; border: 1px solid #111111; font-size: 12px; padding: 6px 14px; border-radius: 4px; font-weight: 600;"
                 ),
                 uiOutput("bt_filter_badge")
               ),

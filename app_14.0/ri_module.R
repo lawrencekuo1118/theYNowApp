@@ -250,7 +250,7 @@ ri_module_ui <- function(id) {
             style = paste(
               "font-size: 15px; font-weight: bold; color: #2C3E50; text-align: center;",
               "margin-bottom: 12px; padding: 10px; background-color: #F8F9F9;",
-              "border-left: 4px solid #2980B9; border-radius: 4px;"
+              "border-left: 4px solid #1a1a1a; border-radius: 4px;"
             )
           )
         ),
@@ -261,7 +261,7 @@ ri_module_ui <- function(id) {
             actionButton(
               ns("btn_sync_b0"), "從最新財報自動帶入數值",
               icon = icon("sync"), class = "btn-sm",
-              style = "background-color: #2980b9; color: white; border: none; padding: 8px 15px; font-weight: bold; border-radius: 5px; margin-top: 5px;"
+              style = "background-color: #1a1a1a; color: white; border: none; padding: 8px 15px; font-weight: bold; border-radius: 5px; margin-top: 5px;"
             )
           )
         ),

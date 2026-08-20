@@ -27,7 +27,7 @@ pb_asset_module_ui <- function(id) {
                           fluidRow(
                             div(style = "text-align: center; margin-bottom: 20px;",
                                 actionButton(ns("btn_calc_pb"), "試算 P/B 合理價",
-                                             style = "background-color: #2980b9; color: white; font-weight: bold; font-size: 18px; padding: 12px 30px; border-radius: 8px; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1);")
+                                             style = "background-color: #1a1a1a; color: white; font-weight: bold; font-size: 18px; padding: 12px 30px; border-radius: 8px; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1);")
                             )
                           ),
                           fluidRow(
@@ -46,7 +46,7 @@ pb_asset_module_ui <- function(id) {
                           h4(tags$b("每股帳面淨值 (BVPS) 與資產基礎")),
                           fluidRow(
                             div("標準公式：BVPS = Common Equity ÷ 流通股數；TBVPS 另扣除商譽／無形資產。控股 NAV＝權益 − 折價×已辨識投資科目。雙重股權／ADR 等「報價股數 ≠ 財報股數」時，與 DCF／RI／回測相同，一律以市值÷股價自動約當報價股。",
-                                style = "font-size: 14px; font-weight: bold; color: #2C3E50; text-align: left; margin-bottom: 10px; padding: 10px; background-color: #F8F9F9; border-left: 4px solid #2980B9; border-radius: 4px;")
+                                style = "font-size: 14px; font-weight: bold; color: #2C3E50; text-align: left; margin-bottom: 10px; padding: 10px; background-color: #F8F9F9; border-left: 4px solid #1a1a1a; border-radius: 4px;")
                           ),
                           uiOutput(ns("txt_shares_resolve_note")),
                           fluidRow(
@@ -56,7 +56,7 @@ pb_asset_module_ui <- function(id) {
                                    br(),
                                    actionButton(ns("btn_sync_bv"), "從最新財報自動帶入",
                                                 icon = icon("sync"), class = "btn-sm",
-                                                style = "background-color: #2980b9; color: white; border: none; padding: 8px 15px; font-weight: bold; border-radius: 5px; margin-top: 5px;")
+                                                style = "background-color: #1a1a1a; color: white; border: none; padding: 8px 15px; font-weight: bold; border-radius: 5px; margin-top: 5px;")
                             )
                           ),
                           fluidRow(
@@ -472,7 +472,7 @@ pb_asset_module_server <- function(id,
           ),
           div(style = "text-align: center; flex: 1; min-width: 120px;",
               p(style = "font-size: 13px; color: #7f8c8d; margin-bottom: 5px; font-weight: bold;", "基準目標價"),
-              p(style = "font-size: 28px; color: #2980b9; font-weight: bold; margin: 0;", paste0(money_prefix(), round(res$fair_mid, 2))),
+              p(style = "font-size: 28px; color: #1a1a1a; font-weight: bold; margin: 0;", paste0(money_prefix(), round(res$fair_mid, 2))),
               p(style = "font-size: 12px; color: #95a5a6;", sprintf("@ %.2f× P/B", res$pb_mid))
           ),
           div(style = "text-align: center; flex: 1; min-width: 120px;",
@@ -480,7 +480,7 @@ pb_asset_module_server <- function(id,
               p(style = "font-size: 22px; color: #2c3e50; font-weight: bold; margin: 0;", mkt_txt),
               p(style = "font-size: 12px; color: #95a5a6;", mkt_pb_txt)
           ),
-          div(style = "text-align: center; flex: 1; min-width: 140px; background-color: #eaf2f8; padding: 12px; border-radius: 8px; border-left: 4px solid #2980b9;",
+          div(style = "text-align: center; flex: 1; min-width: 140px; background-color: #f5f5f5; padding: 12px; border-radius: 8px; border-left: 4px solid #1a1a1a;",
               p(style = "font-size: 13px; color: #2471a3; margin-bottom: 5px; font-weight: bold;", "相對基準潛在報酬"),
               p(style = paste0("font-size: 28px; font-weight: bold; margin: 0; color: ", upside_color, ";"), upside_txt)
           )
@@ -491,7 +491,7 @@ pb_asset_module_server <- function(id,
       val <- input$bvps
       valueBox(
         if (is.null(val) || is.na(val)) "N/A" else paste0(money_prefix(), round(val, 2)),
-        "每股帳面淨值 BVPS", icon = icon("book"), color = "aqua"
+        "每股帳面淨值 BVPS", icon = icon("book"), color = "black"
       )
     })
     
@@ -499,7 +499,7 @@ pb_asset_module_server <- function(id,
       val <- input$tbvps
       valueBox(
         if (is.null(val) || is.na(val)) "N/A" else paste0(money_prefix(), round(val, 2)),
-        "有形每股淨值 TBVPS", icon = icon("cube"), color = "light-blue"
+        "有形每股淨值 TBVPS", icon = icon("cube"), color = "black"
       )
     })
     
@@ -517,7 +517,7 @@ pb_asset_module_server <- function(id,
       mkt_pb <- if (length(px) == 1 && !is.na(px) && !is.na(basis_val) && basis_val > 0) px / basis_val else NA
       valueBox(
         if (is.na(mkt_pb)) "N/A" else sprintf("%.2f×", mkt_pb),
-        paste0("目前市價／", .pb_basis_label()), icon = icon("chart-bar"), color = "navy"
+        paste0("目前市價／", .pb_basis_label()), icon = icon("chart-bar"), color = "black"
       )
     })
     

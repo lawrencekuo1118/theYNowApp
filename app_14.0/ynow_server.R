@@ -337,7 +337,7 @@ server <- function(input, output, session) {
         quote_currency(), session_currency(), fx_usd_twd()
       )
     } else "N/A"
-    infoBox("Market Cap", val, icon = icon("globe"), color = "blue")
+    infoBox("Market Cap", val, icon = icon("globe"), color = "black")
   })
   
   output$ibx_EPS <- renderInfoBox({
@@ -697,8 +697,8 @@ server <- function(input, output, session) {
       tags$style(HTML("
         .ynow-model-rec-active { transform: translateY(-2px); }
         .ynow-model-selector-summary {
-          margin-bottom: 14px; padding: 10px 12px; border-left: 4px solid #3c8dbc;
-          background: #f7fbff; color: #333; font-size: 13px; line-height: 1.5;
+          margin-bottom: 14px; padding: 10px 12px; border-left: 4px solid #222222;
+          background: #f5f5f5; color: #333; font-size: 13px; line-height: 1.5;
         }
       ")),
       tags$div(
@@ -1534,7 +1534,7 @@ server <- function(input, output, session) {
   output$dcf_wacc_fcfe_note <- renderUI({
     if (!dcf_claim_is_fcfe(input$dcf_claim)) return(NULL)
     tags$div(
-      style = "background:#eef7fb; border-left:4px solid #3c8dbc; padding:10px 12px; margin-bottom:12px; font-size:13px;",
+      style = "background:#f5f5f5; border-left:4px solid #222222; padding:10px 12px; margin-bottom:12px; font-size:13px;",
       tags$b("FCFE 模式："),
       "本頁折現率為 Ke（下方 rₑ／CAPM）。WACC 僅供對照；FCFE＝FCFF−稅後利息＋淨舉債，轉換仍使用 rᵈ 與稅率。"
     )
@@ -2283,7 +2283,7 @@ server <- function(input, output, session) {
       value = format_dollar_abbr(mkt_data$e_val),
       subtitle = "股權市值 (Market Equity - E)",
       icon = icon("coins"),
-      color = "blue"
+      color = "black"
     )
   })
   
@@ -2317,7 +2317,7 @@ server <- function(input, output, session) {
     
     if (!is.null(input$capm_rm) && abs(as.numeric(input$capm_rm) - default_rm) < 1e-4) {
       updateNumericInput(session, "capm_rm", 
-                         label = HTML("Rm <span style='color: #2980b9; font-size: 12px;'>[套用產業平均值]</span>"))
+                         label = HTML("Rm <span style='color: #1a1a1a; font-size: 12px;'>[套用產業平均值]</span>"))
     } else {
       updateNumericInput(session, "capm_rm", 
                          label = HTML("Rm <span style='color: #e67e22; font-size: 12px;'>[自訂數值]</span>"))
@@ -2473,7 +2473,7 @@ server <- function(input, output, session) {
       return(tags$p(style = "color:#888;font-size:13px;", "請輸入 Rf、β、Rm 後按估算。"))
     }
     HTML(glue::glue(
-      "<div style='padding:8px;border-left:4px solid #3c8dbc;background:#eaf2f8;font-size:13px;'>
+      "<div style='padding:8px;border-left:4px solid #222222;background:#f5f5f5;font-size:13px;'>
          Ke = Rf + β×(Rm−Rf) = <b>{sprintf('%.2f%%', re)}</b><br/>
          （亦同步至 DDM Ke／WACC rₑ）
        </div>"
@@ -2649,7 +2649,7 @@ server <- function(input, output, session) {
       if (is.finite(b)) round(b, 2) else "N/A",
       paste0("產業預設 β（", ind_lab, "）"),
       icon = icon("industry"),
-      color = "blue"
+      color = "black"
     )
   }
   output$vbx_beta_industry <- renderValueBox({ .vbx_beta_industry_content() })
@@ -3519,8 +3519,8 @@ server <- function(input, output, session) {
     tags$div(
       style = paste0(
         "margin-top:10px;padding:10px;border-left:4px solid ",
-        if (warn) "#c0392b" else "#2980b9",
-        ";background:", if (warn) "#fdedec" else "#eaf2f8",
+        if (warn) "#c0392b" else "#1a1a1a",
+        ";background:", if (warn) "#fdedec" else "#f5f5f5",
         ";font-size:12.5px;line-height:1.5;"
       ),
       tags$b("與估值 β 對照"),
@@ -3535,7 +3535,7 @@ server <- function(input, output, session) {
           "差距偏大：請回頭檢查可比公司是否選錯、資本結構是否異常、期間是否含重大事件、股價流動性是否不足。"
         )
       } else {
-        tags$span(style = "color:#1a5276;", "差距可控；CAPM 仍用 Bottom-Up βᵤ，Rolling 只作對照。")
+        tags$span(style = "color:#222222;", "差距可控；CAPM 仍用 Bottom-Up βᵤ，Rolling 只作對照。")
       }
     )
   })
@@ -3857,7 +3857,7 @@ server <- function(input, output, session) {
         "<div style='padding: 12px; background-color: #fdfaf6; border-left: 4px solid #d35400; font-size: 13px;'>
            <b>學理推估 (Fundamental) 拆解：</b><br/>
            <span style='color: #555;'>公式：投資報酬率 (ROIC) × 再投資率 (RR)</span><br/>
-           <span style='color: #2980b9; font-weight: bold;'>
+           <span style='color: #1a1a1a; font-weight: bold;'>
              {round(fund_res$roic * 100, 2)} % × {round(fund_res$rr * 100, 2)} % = {fund_res$raw_g} %
            </span><br/>
            {ceiling_status_msg}
@@ -3867,7 +3867,7 @@ server <- function(input, output, session) {
       src <- estimated_g_meta$source %||% "營收"
       cf_tag <- dcf_cf_tag(input$dcf_claim %||% "fcff")
       HTML(glue::glue(
-        "<div style='padding: 10px; border-left: 4px solid #3c8dbc; font-size: 13px; color: #555;'>
+        "<div style='padding: 10px; border-left: 4px solid #222222; font-size: 13px; color: #555;'>
            以<strong>營收</strong>歷史計算近中期成長（{src}），再驅動營收→{cf_tag} 預測。
            已套用 −5%～25% 防呆，避免把單年暴衝／暴跌寫進模型。
          </div>"
@@ -3906,7 +3906,7 @@ server <- function(input, output, session) {
   
   output$ibx_wacc <- renderInfoBox({ 
     val_wacc <- if (!is.null(calculated_wacc())) round(calculated_wacc() * 100, 2) else APP_DEFAULTS$wacc_gordon
-    infoBox("WACC", h3(paste0(val_wacc, " %")), icon = icon("percent"), color = "aqua", fill = TRUE) 
+    infoBox("WACC", h3(paste0(val_wacc, " %")), icon = icon("percent"), color = "black", fill = TRUE) 
   })
   
   output$plt_fcf_trend <- renderPlot({
@@ -5137,8 +5137,8 @@ server <- function(input, output, session) {
     }
 
     tags$div(
-      style = "background:#f7fbff; border-left:4px solid #3c8dbc; border-radius:6px; padding:14px; font-size:13px; line-height:1.55; color:#333; margin-top:12px;",
-      tags$h5(style = "margin-top:0; color:#3c8dbc; font-weight:700;", icon("lightbulb"), " 簡要分析"),
+      style = "background:#f5f5f5; border-left:4px solid #222222; border-radius:6px; padding:14px; font-size:13px; line-height:1.55; color:#333; margin-top:12px;",
+      tags$h5(style = "margin-top:0; color:#222222; font-weight:700;", icon("lightbulb"), " 簡要分析"),
       tags$p(
         tags$b("目前軸心："),
         sprintf("%s = %s%%，SGR (g) = %s%%（與 Get Started／Dashboard 同步）",
@@ -5204,8 +5204,8 @@ server <- function(input, output, session) {
     vs_fair <- "矩陣中心格即目前 Ke／股利 g 下的公式價值（不必先按試算）。"
 
     tags$div(
-      style = "background:#f7fbff; border-left:4px solid #3c8dbc; border-radius:6px; padding:14px; font-size:13px; line-height:1.55; color:#333; margin-top:12px;",
-      tags$h5(style = "margin-top:0; color:#3c8dbc; font-weight:700;", icon("lightbulb"), " 簡要分析"),
+      style = "background:#f5f5f5; border-left:4px solid #222222; border-radius:6px; padding:14px; font-size:13px; line-height:1.55; color:#333; margin-top:12px;",
+      tags$h5(style = "margin-top:0; color:#222222; font-weight:700;", icon("lightbulb"), " 簡要分析"),
       tags$p(
         tags$b("目前軸心："),
         sprintf("Ke = %s%%，股利 g = %s%%", fmt(ke), fmt(g))
@@ -5900,9 +5900,9 @@ server <- function(input, output, session) {
                tags$div(class = "ynow-kpi-stat-value", style = paste0("color:", sig_col, ";"), last_sig),
                tags$div(class = "ynow-kpi-stat-note",
                         "便宜（P<FV）＝市價低於模型；偏貴（P>FV）＝市價高於模型")),
-      tags$div(style = "flex:1;min-width:120px;padding:8px 10px;background:#f7f9fb;border-left:4px solid #3c8dbc;",
+      tags$div(style = "flex:1;min-width:120px;padding:8px 10px;background:#f5f5f5;border-left:4px solid #222222;",
                tags$div(class = "ynow-kpi-stat-label", "平均 MOS"),
-               tags$div(class = "ynow-kpi-stat-value", style = "color:#3c8dbc;", .fmt_pct(m$mean_hist_mos))),
+               tags$div(class = "ynow-kpi-stat-value", style = "color:#222222;", .fmt_pct(m$mean_hist_mos))),
       tags$div(style = "flex:2;min-width:180px;padding:8px 10px;background:#fafafa;border-left:4px solid #555;",
                tags$div(class = "ynow-kpi-stat-label", "此刻參數（Session）"),
                tags$div(class = "ynow-kpi-stat-params", {
@@ -7475,7 +7475,7 @@ server <- function(input, output, session) {
         bullets <- bullets[nzchar(trimws(bullets))]
         summary_ui <- if (length(bullets) > 0) {
           tags$div(
-            style = "margin:6px 0 8px 0; background:#f7fbff; border-left:4px solid #3c8dbc; padding:8px 10px; border-radius:3px;",
+            style = "margin:6px 0 8px 0; background:#f5f5f5; border-left:4px solid #222222; padding:8px 10px; border-radius:3px;",
             tags$b("重點摘要"),
             tags$ul(
               style = "margin:6px 0 0 0; padding-left:20px;",
@@ -7497,7 +7497,7 @@ server <- function(input, output, session) {
           tags$details(
             style = "margin-top:4px;",
             # Default collapsed; user expands per note.
-            tags$summary(style = "cursor:pointer; color:#3c8dbc;", "展開附註全文"),
+            tags$summary(style = "cursor:pointer; color:#222222;", "展開附註全文"),
             div(
               style = "margin-top:8px; max-height:340px; overflow-y:auto; white-space:pre-wrap; font-size:13px; line-height:1.5;",
               res$full_texts[i]
