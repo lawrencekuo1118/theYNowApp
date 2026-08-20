@@ -1,4 +1,5 @@
 source=shinyapps.io TheYNowApp
+<<<<<<< HEAD
 bundleId=12431304
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
@@ -9,3 +10,15 @@ message=Rename the sidebar item to Blue Chip.
 captured_at=2026-08-19T05:21:07Z
 source_branch=cursor/bluechip-sidebar-label-f4a6
 note=Canonical live line is app_14.0. Sidebar menu is Blue Chip only (no 美股績優 subtitle). Bundle 12431304 supersedes 12428332.
+=======
+bundleId=12434393
+appId=10907657
+url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
+aligned_git=a9e6925
+commit=a9e69252559b16480585ef031620844dd5ee1b02
+short=a9e6925
+message=Drop the Blue Chip leaderboard card; keep only the note and table.
+captured_at=2026-08-19T17:03:33Z
+source_branch=cursor/bluechip-max-n-all-f4a6
+note=Canonical live line is app_14.0. Blue Chip: max N default 全部, leaderboard note+table on filters tab. Bundle 12434393 supersedes 12431439.
+>>>>>>> origin/master

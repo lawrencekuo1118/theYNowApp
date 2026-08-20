@@ -2637,6 +2637,13 @@ ui <- dashboardPage(
             ),
             tags$hr(),
             fluidRow(
+              column(
+                width = 12,
+                uiOutput("lab_im_leader_note"),
+                tableOutput("lab_im_leaderboard")
+              )
+            ),
+            fluidRow(
               box(
                 width = 12, status = "primary", solidHeader = TRUE,
                 title = "查詢條件",
@@ -2703,14 +2710,21 @@ ui <- dashboardPage(
                   ),
                   column(
                     width = 6,
-                    numericInput(
+                    selectInput(
                       "lab_im_max_n", "最多 N（評估檔數／明細列數）",
-                      value = 25, min = 5, max = 40, step = 5,
-                      width = "160px"
+                      choices = c(
+                        "全部" = "all",
+                        "10 檔" = "10",
+                        "25 檔" = "25",
+                        "50 檔" = "50",
+                        "100 檔" = "100"
+                      ),
+                      selected = "all",
+                      width = "100%"
                     ),
                     tags$span(
                       style = "color:#888; font-size:12px; display:block; margin:-6px 0 10px 0;",
-                      "篩選後不足 N 則全列；硬上限 40。候選多於 N 時依市值由大到小。"
+                      "預設全部評估。選 N 時：篩選後不足 N 則全列；候選多於 N 時依市值由大到小。"
                     )
                   )
                 ),
@@ -2792,28 +2806,6 @@ ui <- dashboardPage(
           ),
 
           tabPanel(
-            title = "績優排行榜",
-            value = "im_leaderboard",
-            icon = icon("trophy"),
-            p(
-              "同一批評估結果中，門檻通過者依 n 年年化估值漲幅排序的 Top 10。",
-              tags$span(
-                style = "color:#888;",
-                "一代號一列；排行榜不顯示規模。請先於「篩選條件」按「評估績優」。"
-              )
-            ),
-            tags$hr(),
-            fluidRow(
-              box(
-                width = 12, status = "info", solidHeader = TRUE,
-                title = tagList(icon("trophy"), " 績優排行榜（年化估值漲幅 Top）"),
-                uiOutput("lab_im_leader_note"),
-                tableOutput("lab_im_leaderboard")
-              )
-            )
-          ),
-
-          tabPanel(
             title = "明細",
             value = "im_detail",
             icon = icon("list"),
@@ -2821,7 +2813,7 @@ ui <- dashboardPage(
               "本次已評估檔的明細（按年化估值漲幅排序）。",
               tags$span(
                 style = "color:#888;",
-                "最多 N＝明細列數（盈餘品質／門檻勾選時可少於 N）。欄位順序：代號、公司名稱。"
+                "預設評估全部候選；選 N 時 N＝明細列數（盈餘品質／門檻勾選時可少於 N）。欄位順序：代號、公司名稱。"
               )
             ),
             tags$hr(),
