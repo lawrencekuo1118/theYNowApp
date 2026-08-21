@@ -92,7 +92,7 @@
   )
 }
 
-#' KPI 色碼圖例：藍／黑／紅／無色（Dashboard：產業快覽下方、PERFORMANCE 上方）
+#' KPI 色碼圖例：藍／黑／紅／白（Dashboard：產業快覽下方、PERFORMANCE 上方）
 .kpi_band_color_legend_ui <- function() {
   tags$div(
     class = "ynow-ann-legend",
