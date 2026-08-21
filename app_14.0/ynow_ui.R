@@ -92,7 +92,7 @@
   )
 }
 
-#' KPI 色碼圖例：藍／黑／紅／無色（Dashboard：產業快覽下方、PERFORMANCE 上方）
+#' KPI 色碼圖例：藍／黑／紅／白（Dashboard：產業快覽下方、PERFORMANCE 上方）
 .kpi_band_color_legend_ui <- function() {
   tags$div(
     class = "ynow-ann-legend",
@@ -115,7 +115,7 @@
       class = "ynow-ann-chip",
       tags$span(class = "ynow-ann-swatch",
                 style = "background:#fff; border:1px solid #999;"),
-      tags$span(tags$b("無色"), " · 未設產業區間／N/A")
+      tags$span(tags$b("白"), " · 未設產業區間／N/A")
     )
   )
 }
@@ -1255,9 +1255,9 @@ ui <- dashboardPage(
           margin-bottom: 9px !important;
           box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
         }
-        /* N/A / 未設產業區間：無色（中性底，非 aqua） */
+        /* N/A / 未設產業區間：白（KPI 僅黑白紅藍） */
         .ynow-kpi-grid .small-box.ynow-kpi-na {
-          background-color: #f4f4f4 !important;
+          background-color: #fff !important;
           color: #444 !important;
           border: 1px solid #ddd;
         }
@@ -2301,8 +2301,8 @@ ui <- dashboardPage(
                              "規則對齊 ", tags$code("get_box_color"), "：",
                              "多數指標「越高越好」；",
                              tags$b("營運費用比、財務槓桿"), " 為「越低越好」（反向著色）。",
-                             "落在產業 ", tags$code("[下限, 上限]"), " 內→黑；越出有利側→藍；不利側→紅（警示）；未設區間／N/A→無色。",
-                             " 色碼圖例與產業標準快覽見上方 PERFORMANCE 區塊外。"
+                             "落在產業 ", tags$code("[下限, 上限]"), " 內→黑；越出有利側→藍；不利側→紅（警示）；未設區間／N/A→白。",
+                             " KPI 數字框僅用黑／白／紅／藍。色碼圖例與產業標準快覽見上方 PERFORMANCE 區塊外。"
                            ),
                            tags$h4("KPI 計算與產業區間", class = "ynow-ann-h"),
                            DT::dataTableOutput("annotation_kpi_guide"),
@@ -2310,7 +2310,7 @@ ui <- dashboardPage(
                            tableOutput("annotation_stability_table"),
                            tags$p(
                              style = "margin-top:10px; font-size:12px; color:#888;",
-                             "提示：資產週轉率、OCF／淨利無同業區間時固定 teal／紫色（非產業色碼）；",
+                             "提示：資產週轉率、OCF／淨利無同業區間時固定為白；",
                              "現金品質另可對照決策漏斗／F-Score 的盈餘品質檢核。"
                            )
                          )
@@ -2346,7 +2346,7 @@ ui <- dashboardPage(
                                     "今年發放股利 (D0)",
                                     value = APP_DEFAULTS$ddm_d0
                                   ),
-                                  helpText("由財報自動帶入：現金股利（現金流量表）÷ 股數；若無則顯示 0。可手動覆寫，或至 D0 Settings 以配息率／歷史平均覆寫。")
+                                  helpText("由財報自動帶入：現金股利（現金流量表）÷ 股數；若無則顯示 0。可手動覆寫，或至 D0 以配息率／歷史平均覆寫。")
                                 )
                               )
                      )
@@ -2406,7 +2406,7 @@ ui <- dashboardPage(
                          column(
                            width = 12,
                            div(
-                             "實務上常需對 D0 進行平滑化或還原本業配息，避免單一年度特別股利或景氣循環造成估值失真。請至 D0 Settings 覆寫。",
+                             "實務上常需對 D0 進行平滑化或還原本業配息，避免單一年度特別股利或景氣循環造成估值失真。請至 D0 覆寫。",
                              style = "font-size: 15px; font-weight: bold; color: #2C3E50; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
                            )
                          )
@@ -2436,7 +2436,7 @@ ui <- dashboardPage(
                        )
                      ),
                      tabPanel(
-                       "D0 Settings",
+                       "D0",
                        icon = icon("cogs"),
                        fluidRow(
                          column(

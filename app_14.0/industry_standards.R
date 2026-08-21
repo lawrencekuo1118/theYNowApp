@@ -340,9 +340,9 @@ industry_standards <- list(
 )
 
 # 🎨 KPI 顏色判定（只取區間前兩碼 low/high；與 industry_standards 一致）
-# 回傳 AdminLTE color，或缺區間／N/A 時回傳 "none"（無色；由 kpi_band_value_box 渲染）
+# 回傳 AdminLTE color：black／red／blue，或缺區間／N/A 時回傳 "none"（白；由 kpi_band_value_box 渲染）
 get_box_color <- function(industry_choice, metric_name, val) {
-  # In-band=black; worse/alert=red; better=blue; missing/no band=none (colorless).
+  # In-band=black; worse/alert=red; better=blue; missing/no band=none (white).
   if (is.null(industry_choice) || length(industry_choice) == 0 || industry_choice == "") return("none")
   if (is.null(metric_name) || length(metric_name) == 0) return("none")
   if (is.na(val) || is.null(val)) return("none")
@@ -366,10 +366,12 @@ get_box_color <- function(industry_choice, metric_name, val) {
   }
 }
 
-#' KPI valueBox：支援 get_box_color 的 "none"（無色／中性底，非 aqua）
+#' KPI valueBox：僅允許黑／白／紅／藍（AdminLTE: black, red, blue；白＝none）
 kpi_band_value_box <- function(value, subtitle, color, icon = NULL, width = 4) {
   color <- as.character(color %||% "none")[1]
-  if (!nzchar(color) || is.na(color) || identical(color, "none")) {
+  allowed <- c("black", "red", "blue", "none", "white")
+  if (!nzchar(color) || is.na(color) || !(color %in% allowed)) color <- "none"
+  if (identical(color, "none") || identical(color, "white")) {
     box_content <- div(
       class = "small-box ynow-kpi-na",
       div(class = "inner", h3(value), p(subtitle)),

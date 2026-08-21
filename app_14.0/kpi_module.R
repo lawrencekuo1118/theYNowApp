@@ -141,27 +141,27 @@ kpi_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_fl
         icon = icon("chart-line"))
     })
     
-    # 資產周轉率 = Total Revenue / Total Assets
+    # 資產周轉率 = Total Revenue / Total Assets（無產業區間 → 白／無色）
     output$vbx_asset_turnover <- renderValueBox({
       rev <- get_avg(select_clean_metric_row(d_income_statement(), "Total Revenue", include_ttm = FALSE))
       asset <- get_avg(select_clean_metric_row(d_balance_sheet(), "Total Assets", include_ttm = FALSE))
       ratio <- if (!is.na(rev) && !is.na(asset) && asset != 0) rev / asset else NA_real_
-      valueBox(
+      kpi_band_value_box(
         value = if (!is.na(ratio)) sprintf("%.2f", ratio) else "N/A",
         subtitle = "資產週轉率 Asset Turnover",
-        color = "teal",
+        color = "none",
         icon = icon("chart-line"))
     })
     
-    # 現金流與淨利比 = Operating Cash Flow / Net Income
+    # 現金流與淨利比 = Operating Cash Flow / Net Income（無產業區間 → 白／無色）
     output$vbx_ocf_net_income <- renderValueBox({
       ocf <- get_avg(select_clean_metric_row(d_cash_flow(), "Operating Cash Flow", include_ttm = FALSE))
       net <- get_avg(select_clean_metric_row_any(d_income_statement(), NET_INCOME_PATTERNS, include_ttm = FALSE))
       ratio <- if (!is.na(ocf) && !is.na(net) && net != 0) ocf / net else NA_real_
-      valueBox(
+      kpi_band_value_box(
         value = if (!is.na(ratio)) sprintf("%.2f", ratio) else "N/A",
         subtitle = "現金流與淨利比 OCF / Net Income",
-        color = "purple",
+        color = "none",
         icon = icon("chart-line"))
     })
   })
