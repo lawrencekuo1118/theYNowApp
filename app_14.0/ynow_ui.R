@@ -2736,7 +2736,7 @@ ui <- dashboardPage(
           width = "auto",
 
           tabPanel(
-            title = "優股排行榜",
+            title = "篩選條件",
             value = "im_filters",
             icon = icon("sliders-h"),
             p(
@@ -2789,6 +2789,37 @@ ui <- dashboardPage(
                   ),
                   column(
                     width = 6,
+                    tags$div(
+                      class = "ynow-lab-im-sizes",
+                      checkboxGroupInput(
+                        "lab_im_sizes", "規模",
+                        choices = lab_size_picker_choices(),
+                        selected = names(LAB_SIZE_LABELS),
+                        inline = TRUE
+                      )
+                    )
+                  )
+                ),
+                fluidRow(
+                  column(
+                    width = 6,
+                    tags$div(
+                      class = "ynow-lab-im-methods",
+                      checkboxGroupInput(
+                        "lab_im_methods", "模型",
+                        choices = c(
+                          "DCF" = "dcf",
+                          "DDM" = "ddm",
+                          "P/B" = "pb",
+                          "RI" = "ri"
+                        ),
+                        selected = c("dcf", "ddm", "pb", "ri"),
+                        inline = TRUE
+                      )
+                    )
+                  ),
+                  column(
+                    width = 6,
                     selectInput(
                       "lab_im_max_n", "評估檔數（明細列數）",
                       choices = c(
@@ -2825,37 +2856,6 @@ ui <- dashboardPage(
                   column(
                     width = 6,
                     tags$div(
-                      class = "ynow-lab-im-methods",
-                      checkboxGroupInput(
-                        "lab_im_methods", "模型",
-                        choices = c(
-                          "DCF" = "dcf",
-                          "DDM" = "ddm",
-                          "P/B" = "pb",
-                          "RI" = "ri"
-                        ),
-                        selected = c("dcf", "ddm", "pb", "ri"),
-                        inline = TRUE
-                      )
-                    )
-                  ),
-                  column(
-                    width = 6,
-                    tags$div(
-                      class = "ynow-lab-im-sizes",
-                      checkboxGroupInput(
-                        "lab_im_sizes", "規模",
-                        choices = lab_size_picker_choices(),
-                        selected = names(LAB_SIZE_LABELS),
-                        inline = TRUE
-                      )
-                    )
-                  )
-                ),
-                fluidRow(
-                  column(
-                    width = 6,
-                    tags$div(
                       class = "ynow-lab-im-quality",
                       checkboxInput(
                         "lab_im_eq_only",
@@ -2885,16 +2885,6 @@ ui <- dashboardPage(
                   )
                 ),
                 tags$div(
-                  class = "ynow-lab-im-method-summary",
-                  style = "margin: 0 0 12px 0;",
-                  tags$p(
-                    style = "margin: 6px 0 8px 0; font-size: 12px; color: #888; line-height: 1.45;",
-                    "依產業建議評價方法，統計目前複選下的產業數與候選檔數。",
-                    tags$span("尚未套用規模過濾與 Yahoo 評估。")
-                  ),
-                  tableOutput("lab_im_summary")
-                ),
-                tags$div(
                   class = "ynow-lab-im-actions",
                   actionButton(
                     "lab_im_run_fscore", "評估績優",
@@ -2913,6 +2903,24 @@ ui <- dashboardPage(
                   style = "margin-top:10px; color:#888; font-size:12px;",
                   "提示：評估需逐檔抓 Yahoo 財報與估值，檔數愈多愈久。"
                 )
+              )
+            )
+          ),
+
+          tabPanel(
+            title = "分組摘要",
+            value = "im_summary",
+            icon = icon("table"),
+            p(
+              "依產業建議評價方法，統計目前複選下的產業數與候選檔數。",
+              tags$span(style = "color:#888;", "尚未套用規模過濾與 Yahoo 評估。")
+            ),
+            tags$hr(),
+            fluidRow(
+              box(
+                width = 12, status = "info", solidHeader = TRUE,
+                title = "依建議方法分組摘要",
+                tableOutput("lab_im_summary")
               )
             )
           ),
