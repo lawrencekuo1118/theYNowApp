@@ -2909,11 +2909,7 @@ ui <- dashboardPage(
             value = "im_detail",
             icon = icon("list"),
             p(
-              "本次已評估檔的明細（按年化估值漲幅排序）。",
-              tags$span(
-                style = "color:#888;",
-                "預設評估 100 檔；N＝明細列數（盈餘品質／Piotroski 高門檻勾選時可少於 N）。欄位順序：代號、公司名稱。"
-              )
+              "本次已評估檔的明細（按年化估值漲幅排序）。"
             ),
             tags$hr(),
             fluidRow(
