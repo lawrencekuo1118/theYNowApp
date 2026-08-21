@@ -2785,10 +2785,7 @@ ui <- dashboardPage(
                         container = "body",
                         dropupAuto = TRUE
                       )
-                    )
-                  ),
-                  column(
-                    width = 6,
+                    ),
                     tags$div(
                       class = "ynow-lab-im-sizes",
                       checkboxGroupInput(
@@ -2797,12 +2794,7 @@ ui <- dashboardPage(
                         selected = names(LAB_SIZE_LABELS),
                         inline = TRUE
                       )
-                    )
-                  )
-                ),
-                fluidRow(
-                  column(
-                    width = 6,
+                    ),
                     tags$div(
                       class = "ynow-lab-im-methods",
                       checkboxGroupInput(
