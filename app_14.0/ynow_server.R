@@ -977,9 +977,9 @@ server <- function(input, output, session) {
     req(scraped_financials())
     session_currency(); fx_usd_twd()
     df <- if (is_expanded()) scraped_financials()[["Income Statement"]]$expanded else scraped_financials()[["Income Statement"]]$collapsed
-    df <- scale_financial_df_money(
+    df <- format_financial_df_display(scale_financial_df_money(
       reorder_financial_columns(df), statement_currency(), session_currency(), fx_usd_twd()
-    )
+    ))
     datatable(trim_financial_table(df, "Tax Effect of Unusual Items"), options = list(pageLength = 20, scrollX = TRUE))
   })
   
@@ -987,9 +987,9 @@ server <- function(input, output, session) {
     req(scraped_financials())
     session_currency(); fx_usd_twd()
     df <- if (is_expanded()) scraped_financials()[["Balance Sheet"]]$expanded else scraped_financials()[["Balance Sheet"]]$collapsed
-    df <- scale_financial_df_money(
+    df <- format_financial_df_display(scale_financial_df_money(
       reorder_financial_columns(df), statement_currency(), session_currency(), fx_usd_twd()
-    )
+    ))
     datatable(trim_financial_table(df, "Treasury Shares Number"), options = list(pageLength = 20, scrollX = TRUE))
   })
   
@@ -997,9 +997,9 @@ server <- function(input, output, session) {
     req(scraped_financials())
     session_currency(); fx_usd_twd()
     df <- if (is_expanded()) scraped_financials()[["Cash Flow"]]$expanded else scraped_financials()[["Cash Flow"]]$collapsed
-    df <- scale_financial_df_money(
+    df <- format_financial_df_display(scale_financial_df_money(
       reorder_financial_columns(df), statement_currency(), session_currency(), fx_usd_twd()
-    )
+    ))
     datatable(trim_financial_table(df, "Free Cash Flow"), options = list(pageLength = 20, scrollX = TRUE))
   })
   

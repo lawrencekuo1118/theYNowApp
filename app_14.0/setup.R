@@ -121,7 +121,23 @@ money_to_session <- function(x, from_ccy, session_ccy = NULL, usd_twd = NULL) {
   nums * mult
 }
 
+# Dashboard 財報顯示：一律四捨五入到小數點第二位（金額／比率等數字欄）
+format_financial_display_number <- function(x, digits = 2) {
+  nums <- suppressWarnings(as.numeric(x))
+  out <- character(length(nums))
+  for (i in seq_along(nums)) {
+    v <- nums[[i]]
+    if (length(v) != 1L || is.na(v) || !is.finite(v)) {
+      out[[i]] <- NA_character_
+      next
+    }
+    out[[i]] <- format(round(v, digits), nsmall = digits, scientific = FALSE, trim = TRUE)
+  }
+  out
+}
+
 # Scale all period columns of a Yahoo financial statement DF into session currency.
+# Keeps full numeric precision for downstream KPI／估值；顯示四捨五入見 format_financial_df_display。
 scale_financial_df_money <- function(df, from_ccy, session_ccy = NULL, usd_twd = NULL) {
   if (is.null(df) || !is.data.frame(df) || ncol(df) < 2) return(df)
   mult <- fx_factor(from_ccy, session_ccy %||% .ynow_ccy_ctx$session_currency, usd_twd)
@@ -140,6 +156,19 @@ scale_financial_df_money <- function(df, from_ccy, session_ccy = NULL, usd_twd =
   out
 }
 
+# Dashboard 三大報表表格顯示用：期間欄數字四捨五入到 digits 位
+format_financial_df_display <- function(df, digits = 2) {
+  if (is.null(df) || !is.data.frame(df) || ncol(df) < 2) return(df)
+  out <- df
+  for (j in seq.int(2L, ncol(out))) {
+    raw <- as.character(out[[j]])
+    nums <- parse_financial_number(raw)
+    formatted <- format_financial_display_number(nums, digits = digits)
+    out[[j]] <- ifelse(is.na(formatted), raw, formatted)
+  }
+  out
+}
+
 # Convert a Yahoo summary Value cell (quote ccy → session) for money-like items.
 convert_summary_value_display <- function(item, value, from_ccy, session_ccy = NULL, usd_twd = NULL) {
   it <- as.character(item %||% "")[1]
@@ -154,7 +183,7 @@ convert_summary_value_display <- function(item, value, from_ccy, session_ccy = N
     if (!is.finite(n)) return(raw)
     conv <- money_to_session(n, from_ccy, session_ccy, usd_twd)
     if (it == "Market Cap (intraday)") return(format_money_abbr(conv, session_ccy))
-    return(format(conv, scientific = FALSE, trim = TRUE, digits = 6))
+    return(format_financial_display_number(conv, digits = 2)[1])
   }
   if (it %in% c("Day's Range", "52 Week Range") && grepl(" - ", raw, fixed = TRUE)) {
     parts <- strsplit(raw, " - ", fixed = TRUE)[[1]]
@@ -165,12 +194,24 @@ convert_summary_value_display <- function(item, value, from_ccy, session_ccy = N
         a2 <- money_to_session(a, from_ccy, session_ccy, usd_twd)
         b2 <- money_to_session(b, from_ccy, session_ccy, usd_twd)
         return(paste0(
-          format(a2, scientific = FALSE, trim = TRUE, digits = 6),
+          format_financial_display_number(a2, digits = 2)[1],
           " - ",
-          format(b2, scientific = FALSE, trim = TRUE, digits = 6)
+          format_financial_display_number(b2, digits = 2)[1]
         ))
       }
     }
+  }
+  # Yield 等百分比：保留 %，數字四捨五入到小數第二位
+  if (grepl("%\\s*$", raw)) {
+    n_pct <- parse_financial_number(sub("%\\s*$", "", raw))[1]
+    if (is.finite(n_pct)) {
+      return(paste0(format_financial_display_number(n_pct, digits = 2)[1], "%"))
+    }
+  }
+  # PE / Beta / Volume 等純數字：同樣顯示到小數第二位
+  n_plain <- parse_financial_number(raw)[1]
+  if (is.finite(n_plain) && !grepl("[A-Za-z%]", gsub("[,\\$]", "", raw))) {
+    return(format_financial_display_number(n_plain, digits = 2)[1])
   }
   raw
 }
