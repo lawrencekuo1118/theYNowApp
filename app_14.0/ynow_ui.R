@@ -2877,6 +2877,11 @@ ui <- dashboardPage(
                   )
                 ),
                 tags$div(
+                  class = "ynow-lab-im-method-summary",
+                  style = "margin: 0 0 12px 0;",
+                  tableOutput("lab_im_summary")
+                ),
+                tags$div(
                   class = "ynow-lab-im-actions",
                   actionButton(
                     "lab_im_run_fscore", "評估績優",
@@ -2895,24 +2900,6 @@ ui <- dashboardPage(
                   style = "margin-top:10px; color:#888; font-size:12px;",
                   "提示：評估需逐檔抓 Yahoo 財報與估值，檔數愈多愈久。"
                 )
-              )
-            )
-          ),
-
-          tabPanel(
-            title = "分組摘要",
-            value = "im_summary",
-            icon = icon("table"),
-            p(
-              "依產業建議評價方法，統計目前複選下的產業數與候選檔數。",
-              tags$span(style = "color:#888;", "尚未套用規模過濾與 Yahoo 評估。")
-            ),
-            tags$hr(),
-            fluidRow(
-              box(
-                width = 12, status = "info", solidHeader = TRUE,
-                title = "依建議方法分組摘要",
-                tableOutput("lab_im_summary")
               )
             )
           ),
