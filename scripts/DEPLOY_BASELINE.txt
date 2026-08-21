@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12442937
+bundleId=12442976
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=ffa5427
 commit=ffa54275f4970833509d0c3437ef90a014d76c54
 short=ffa5427
 message=Default Blue Chip 盈餘品質 and Piotroski high-gate filters to on.
-captured_at=2026-08-21T06:19:27Z
+captured_at=2026-08-21T06:29:39Z
 source_branch=cursor/bluechip-restore-layout-f4a6
-note=Canonical live line is app_14.0. Blue Chip: 盈餘品質 and Piotroski 高門檻 default checked. Bundle 12442937 supersedes 12442827.
+note=Canonical live line is app_14.0. Redeploy of Blue Chip layout + default quality/Piotroski on. Bundle 12442976 supersedes 12442937.
