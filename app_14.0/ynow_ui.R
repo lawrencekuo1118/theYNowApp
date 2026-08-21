@@ -2852,11 +2852,11 @@ ui <- dashboardPage(
                       checkboxInput(
                         "lab_im_eq_only",
                         "盈餘品質",
-                        value = FALSE
+                        value = TRUE
                       ),
                       tags$span(
                         class = "ynow-lab-im-quality-hint",
-                        "勾選後只列盈餘品質通過者；預設不過濾。"
+                        "預設勾選：只列盈餘品質通過者；取消勾選則不過濾。"
                       )
                     )
                   ),
@@ -2867,11 +2867,11 @@ ui <- dashboardPage(
                       checkboxInput(
                         "lab_im_gate_only",
                         "Piotroski 高門檻",
-                        value = FALSE
+                        value = TRUE
                       ),
                       tags$span(
                         class = "ynow-lab-im-quality-hint",
-                        "勾選後只列 F-Score≥7 者（不看盈餘品質）；預設顯示全部。"
+                        "預設勾選：只列 F-Score≥7 者（不看盈餘品質）；取消勾選則顯示全部。"
                       )
                     )
                   )
