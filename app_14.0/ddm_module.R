@@ -274,7 +274,7 @@ ddm_module_server <- function(id, ddm_g = reactive(NULL), ddm_ke = reactive(NULL
     }, striped = TRUE, hover = TRUE, bordered = TRUE, spacing = "s", width = "100%")
     
     # ==========================================
-    # D0 Settings
+    # D0
     # ==========================================
     output$ibx_d0_scraped <- renderInfoBox({
       d0_sc <- tryCatch(scraped_d0(), error = function(e) 0)

@@ -2346,7 +2346,7 @@ ui <- dashboardPage(
                                     "今年發放股利 (D0)",
                                     value = APP_DEFAULTS$ddm_d0
                                   ),
-                                  helpText("由財報自動帶入：現金股利（現金流量表）÷ 股數；若無則顯示 0。可手動覆寫，或至 D0 Settings 以配息率／歷史平均覆寫。")
+                                  helpText("由財報自動帶入：現金股利（現金流量表）÷ 股數；若無則顯示 0。可手動覆寫，或至 D0 以配息率／歷史平均覆寫。")
                                 )
                               )
                      )
@@ -2406,7 +2406,7 @@ ui <- dashboardPage(
                          column(
                            width = 12,
                            div(
-                             "實務上常需對 D0 進行平滑化或還原本業配息，避免單一年度特別股利或景氣循環造成估值失真。請至 D0 Settings 覆寫。",
+                             "實務上常需對 D0 進行平滑化或還原本業配息，避免單一年度特別股利或景氣循環造成估值失真。請至 D0 覆寫。",
                              style = "font-size: 15px; font-weight: bold; color: #2C3E50; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
                            )
                          )
@@ -2436,7 +2436,7 @@ ui <- dashboardPage(
                        )
                      ),
                      tabPanel(
-                       "D0 Settings",
+                       "D0",
                        icon = icon("cogs"),
                        fluidRow(
                          column(
