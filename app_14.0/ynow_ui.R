@@ -115,7 +115,7 @@
       class = "ynow-ann-chip",
       tags$span(class = "ynow-ann-swatch",
                 style = "background:#fff; border:1px solid #999;"),
-      tags$span(tags$b("無色"), " · 未設產業區間／N/A")
+      tags$span(tags$b("白"), " · 未設產業區間／N/A")
     )
   )
 }
@@ -1255,9 +1255,9 @@ ui <- dashboardPage(
           margin-bottom: 9px !important;
           box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
         }
-        /* N/A / 未設產業區間：無色（中性底，非 aqua） */
+        /* N/A / 未設產業區間：白（KPI 僅黑白紅藍） */
         .ynow-kpi-grid .small-box.ynow-kpi-na {
-          background-color: #f4f4f4 !important;
+          background-color: #fff !important;
           color: #444 !important;
           border: 1px solid #ddd;
         }
@@ -2301,8 +2301,8 @@ ui <- dashboardPage(
                              "規則對齊 ", tags$code("get_box_color"), "：",
                              "多數指標「越高越好」；",
                              tags$b("營運費用比、財務槓桿"), " 為「越低越好」（反向著色）。",
-                             "落在產業 ", tags$code("[下限, 上限]"), " 內→黑；越出有利側→藍；不利側→紅（警示）；未設區間／N/A→無色。",
-                             " 色碼圖例與產業標準快覽見上方 PERFORMANCE 區塊外。"
+                             "落在產業 ", tags$code("[下限, 上限]"), " 內→黑；越出有利側→藍；不利側→紅（警示）；未設區間／N/A→白。",
+                             " KPI 數字框僅用黑／白／紅／藍。色碼圖例與產業標準快覽見上方 PERFORMANCE 區塊外。"
                            ),
                            tags$h4("KPI 計算與產業區間", class = "ynow-ann-h"),
                            DT::dataTableOutput("annotation_kpi_guide"),
@@ -2310,7 +2310,7 @@ ui <- dashboardPage(
                            tableOutput("annotation_stability_table"),
                            tags$p(
                              style = "margin-top:10px; font-size:12px; color:#888;",
-                             "提示：資產週轉率、OCF／淨利無同業區間時固定 teal／紫色（非產業色碼）；",
+                             "提示：資產週轉率、OCF／淨利無同業區間時固定為白；",
                              "現金品質另可對照決策漏斗／F-Score 的盈餘品質檢核。"
                            )
                          )
