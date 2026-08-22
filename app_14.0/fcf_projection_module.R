@@ -147,7 +147,7 @@ fcf_projection_module_ui <- function(id) {
                      style = "font-size: 12px; color: #7f8c8d; margin-top: 0;",
                      "預設 1.35／3 年為工程啟發式（非學術標準）：",
                      "若最新 CapEx/Rev 高於「前期均值 × 倍數」，投影改採最近 N 年 CapEx/Rev 平均；",
-                     "否則用最新年。倍數與年數請依產業／周期自行調整。"
+                     "否則用最新年。倍數與年數請依產業／週期自行調整。"
                    ),
                    uiOutput(ns("txt_capex_spike_status")),
                    h6(helpText("註：CapEx/Revenue 空白＝依上列規則或當期金額推算（並顯示歷史參考值）。"))
