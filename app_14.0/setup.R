@@ -1986,7 +1986,7 @@ recommend_perpetual_g_method <- function(rf_pct = NA_real_,
       label = label_of("lifecycle"),
       reason = paste0(
         "Fundamental／SGR≈", round(fund_sgr, 2), "% 接近或高於 WACC（",
-        round(wacc_pct, 2), "%）；建議改用 Lifecycle 或 Macro，勿依賴被 WACC−2 硬壓後的數字。"
+        round(wacc_pct, 2), "%）；建議改用 Lifecycle 或 Macro，Fundamental SGR 作為終值 g 易使 TV 失控。"
       ),
       fund_sgr_pct = fund_sgr,
       auto_lifecycle = auto_stage
@@ -2082,13 +2082,11 @@ estimate_perpetual_g <- function(method = "macro",
     reason <- paste0("Macroeconomic Anchoring：直接套用美國 10 年期公債殖利率 Rf=", g_pct, "%。")
   }
 
-  # 安全閥：g 必須嚴格小於 WACC（數值保護；不改方法選擇）
   if (is.finite(wacc_pct) && is.finite(g_pct) && g_pct >= wacc_pct) {
-    safe_g <- max(0.5, round(wacc_pct - 2, 2))
     reason <- paste0(
-      reason, " ⚠ g≥WACC，已壓至 ", safe_g, "%（WACC−2）。"
+      reason, " ⚠ g≥WACC（", round(g_pct, 2), "% ≥ ", round(wacc_pct, 2),
+      "%），Gordon 終值分母≤0，DCF/RI 將無法計算。"
     )
-    g_pct <- safe_g
   }
 
   rec <- recommend_perpetual_g_method(

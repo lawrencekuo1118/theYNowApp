@@ -1472,29 +1472,6 @@ server <- function(input, output, session) {
     run_calc_trigger(run_calc_trigger() + 1)
   }, ignoreInit = TRUE)
   
-  observeEvent(input$dcf_mode, {
-    req(input$dcf_mode)
-    if (isTRUE(input$dcf_mode == "gordon")) {
-      current_wacc <- if(!is.na(input$wacc_gordon)) input$wacc_gordon else 10
-      if (!is.na(input$sgr) && input$sgr >= current_wacc) {
-        safe_sgr <- max(0, current_wacc - 2)
-        updateNumericInput(session, "sgr", value = safe_sgr)
-        showNotification("Gordon 模型需滿足 g < WACC，已自動調整 SGR", type = "warning")
-      }
-    }
-  })
-  
-  observeEvent(input$sgr, {
-    req(input$dcf_mode == "two_stage", input$wacc_stage2)
-    curr_sgr <- as.numeric(input$sgr)
-    curr_wacc2 <- as.numeric(input$wacc_stage2)
-    if (!is.na(curr_sgr) && !is.na(curr_wacc2) && curr_sgr >= curr_wacc2) {
-      safe_val <- max(0, curr_wacc2 - 2) 
-      updateNumericInput(session, "sgr", value = safe_val)
-      showNotification(paste("⚠️ 終端成長率不得高於折現率，已修正為", safe_val, "%"), type = "warning")
-    }
-  })
-
   observeEvent(input$dcf_claim, {
     claim <- input$dcf_claim %||% "fcff"
     tag <- dcf_cf_tag(claim)

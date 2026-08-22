@@ -37,10 +37,9 @@ we <- max(0.05, min(0.95, 1 - default_debt))
 wd <- 1 - we
 default_wacc <- round(default_re, 2)
 
-# 永續成長率 SGR：啟動值錨在 Rf，執行基本面／生命週期法後由 central_perpetual_g 覆寫；須明顯低於 WACC
+# 永續成長率 SGR：啟動值錨在 Rf，執行基本面／生命週期法後由 central_perpetual_g 覆寫
 default_sgr <- round(as.numeric(default_rf), 2)
 if (is.na(default_sgr) || default_sgr <= 0) default_sgr <- 4.0
-default_sgr <- min(default_sgr, max(0.5, default_wacc - 2))
 
 # P/B 預設：優先產業 pb_band，否則用保守通用區間
 if (!is.null(ind_kpi$pb_band) && length(ind_kpi$pb_band) >= 2) {

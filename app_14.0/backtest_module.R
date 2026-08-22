@@ -144,7 +144,7 @@ estimate_hist_dcf <- function(fcf0, cash, debt, shares,
     tax <- .safe_num(tax, 0.21)
     if (!is.finite(ke) || ke <= 0) return(NA_real_)
     if (is.na(sgr)) sgr <- max(0, ke - 0.03)
-    if (sgr >= ke) sgr <- max(0, ke - 0.005)
+    if (sgr >= ke) return(NA_real_)
     iat <- max(0, debt) * max(0, rd) * (1 - max(0, min(tax, 0.5)))
     cfs <- if (exists("fcff_to_fcfe", mode = "function")) {
       fcff_to_fcfe(fcfs, interest_after_tax = iat, debt0 = debt, g_path = g_explicit)
@@ -162,7 +162,7 @@ estimate_hist_dcf <- function(fcf0, cash, debt, shares,
 
   if (is.na(wacc) || wacc <= 0) return(NA_real_)
   if (is.na(sgr)) sgr <- max(0, wacc - 0.03)
-  if (sgr >= wacc) sgr <- max(0, wacc - 0.005)
+  if (sgr >= wacc) return(NA_real_)
   dfs <- cumprod(rep(1 + wacc, n_years))
   pv_fcf <- sum(fcfs / dfs)
   tv <- fcfs[n_years] * (1 + sgr) / (wacc - sgr)
@@ -578,11 +578,6 @@ reconstruct_fair_value_pit <- function(fund_row, price, model_params,
       mp_tip$ke <- valuation_df$ke_pit[j]
     }
   }
-  sgr_tip <- .safe_num(mp_tip$sgr, NA_real_)
-  if (is.finite(mp_tip$wacc) && is.finite(sgr_tip) && sgr_tip >= mp_tip$wacc) {
-    mp_tip$sgr <- max(0, mp_tip$wacc - 0.005)
-  }
-
   pit <- reconstruct_fair_value_pit(fund_i, price_i, mp_tip, use_session_assumptions = TRUE)
   valuation_df$fv_dcf[j] <- .safe_num(pit$fv_dcf, NA_real_)
   valuation_df$fv_ddm[j] <- .safe_num(pit$fv_ddm, NA_real_)
@@ -950,7 +945,7 @@ fetch_tnx_history_df <- function(period = "10y") {
 #' Rm_t = trailing realized annualized total return of the backtest benchmark
 #'   (default SPY, Yahoo auto_adjust Close) ending on/before as_of. Prefer 12m;
 #'   else longest ≥ ~6m; else 5y; else session Rm. Negative (Rm−Rf) is kept;
-#'   Ke/WACC are only floored if DCF would break (Ke≤0 or g≥WACC).
+#'   Ke/WACC are only floored if DCF would break (Ke≤0). g≥WACC leaves DCF/RI as NA.
 #' We/Wd from PIT shares × that day's price and then-available Total Debt.
 #' Rd and tax stay session (no historical credit-spread / statutory-tax series).
 #' Falls back to session ke/wacc when beta cannot be estimated.
@@ -1028,12 +1023,6 @@ pit_discount_params <- function(model_params, stock_close, bench_close, dates, a
   }
   if (!is.finite(ke_i) || ke_i <= 0) ke_i <- ke0
   if (!is.finite(wacc_i) || wacc_i <= 0) wacc_i <- wacc0
-  # Keep terminal g < WACC (DCF TV denominator)
-  sgr <- .safe_num(mp$sgr, 0.025)
-  if (is.finite(wacc_i) && is.finite(sgr) && sgr >= wacc_i) {
-    mp$sgr <- max(0, wacc_i - 0.005)
-    clip_note <- paste0(clip_note, "g clipped to WACC−0.5% (g≥WACC). ")
-  }
   mp$ke <- ke_i
   mp$wacc <- wacc_i
   list(

@@ -62,9 +62,11 @@ est <- estimate_perpetual_g(
   ticker = "AMZN",
   wacc_pct = 9.0
 )
-# fundamental keeps Retention×ROE; WACC−2 clamp if g≥WACC (previous behavior)
+# fundamental keeps Retention×ROE; no WACC−2 clamp (g may exceed WACC)
 check("AMZN fundamental SGR not forced to 2.75", !approx_eq(est$g_pct, 2.75, tol = 1e-9))
-check("AMZN fundamental SGR clamped below WACC", is.finite(est$g_pct) && est$g_pct < 9)
+check("AMZN fundamental SGR preserved (raw Retention×ROE)", approx_eq(est$g_pct, raw, tol = 0.05))
+check("AMZN g may exceed WACC without clamp", is.finite(est$g_pct) && est$g_pct >= 9)
+check("reason warns g≥WACC", grepl("g≥WACC", est$reason, fixed = TRUE))
 check("reason stays Fundamental／SGR", grepl("Fundamental／SGR", est$reason, fixed = TRUE))
 check("AMZN recommends lifecycle method", identical(est$recommended_method, "lifecycle"))
 check("recommend reason mentions Lifecycle", grepl("Lifecycle", est$recommend_reason, fixed = TRUE))
@@ -84,7 +86,7 @@ est2 <- estimate_perpetual_g(
   industry_text = "Packaged Foods",
   wacc_pct = 9.0
 )
-check("non-tech keeps high SGR then WACC clamp", is.finite(est2$g_pct) && est2$g_pct < 9)
+check("non-tech keeps high SGR without WACC clamp", is.finite(est2$g_pct) && est2$g_pct >= 9)
 # ROE high vs WACC → method suggestion may be lifecycle, but g algorithm unchanged
 check("non-tech g still from fundamental path", grepl("Fundamental／SGR", est2$reason, fixed = TRUE))
 
