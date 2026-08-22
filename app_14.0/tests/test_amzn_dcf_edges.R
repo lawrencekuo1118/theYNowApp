@@ -62,10 +62,12 @@ est <- estimate_perpetual_g(
   ticker = "AMZN",
   wacc_pct = 9.0
 )
-check("AMZN fundamental SGR → 2.75", approx_eq(est$g_pct, 2.75, tol = 1e-9))
-check("reason mentions mature_tech", grepl("mature_tech", est$reason, fixed = TRUE))
+# fundamental keeps Retention×ROE; WACC−2 clamp if g≥WACC (previous behavior)
+check("AMZN fundamental SGR not forced to 2.75", !approx_eq(est$g_pct, 2.75, tol = 1e-9))
+check("AMZN fundamental SGR clamped below WACC", is.finite(est$g_pct) && est$g_pct < 9)
+check("reason stays Fundamental／SGR", grepl("Fundamental／SGR", est$reason, fixed = TRUE))
 
-# Non-tech high ROE keeps fundamental (no forced 2.75)
+# Non-tech high ROE also uses fundamental then WACC clamp
 est2 <- estimate_perpetual_g(
   method = "fundamental",
   rf_pct = 4.7,

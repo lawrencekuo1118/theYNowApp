@@ -1949,15 +1949,6 @@ estimate_perpetual_g <- function(method = "macro",
         "Fundamental／SGR：g = Retention Ratio × ROE = ", g_pct,
         "%。應用限制：僅適合成熟、財務結構穩定企業。"
       )
-      # 成熟科技：ROE×留存常遠高於合理終值 g（AMZN 等）；改用 lifecycle 檔
-      if (identical(auto_stage, "mature_tech") && is.finite(g_pct) && g_pct > 6) {
-        raw_sgr <- g_pct
-        g_pct <- 2.75
-        reason <- paste0(
-          "Fundamental／SGR 原為 Retention×ROE=", raw_sgr,
-          "%，不適合成熟科技終值；已改用 lifecycle mature_tech g=", g_pct, "%。"
-        )
-      }
     }
   } else if (identical(method, "lifecycle")) {
     if (identical(stage, "mature_sunset")) {
