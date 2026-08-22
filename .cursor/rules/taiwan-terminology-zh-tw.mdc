@@ -1,0 +1,44 @@
+---
+description: User-facing and UI language — formal English finance terms + Taiwan zh-TW only
+alwaysApply: true
+---
+
+# Taiwan terminology & English finance terms
+
+## Rule
+
+In replies to the user and in any **UI / help text / notifications** you add or edit:
+
+- Use **formal English** for standard valuation terms: WACC, FCFF, FCFE, CapEx, Terminal Value, SGR, Two-Stage DCF, Gordon model, MOS, etc.
+- Use **Taiwan Traditional Chinese** for the rest (繁體、台灣用語).
+- **Strictly avoid** Mainland Chinese, Hong Kong-only wording, and Simplified Chinese.
+
+## Quick swap list
+
+| Do not use | Use instead |
+|------------|-------------|
+| 默认 | 預設 |
+| 参数 | 參數 |
+| 数据 | 資料 |
+| 用户 | 使用者 |
+| 勾选 | 勾選 |
+| 周期 | 週期 |
+| 阈值 | 閾值 |
+| 软件 | 軟體 |
+| 网络 | 網路 |
+| 信息 | 資訊 |
+| 程序 / 代码 | 程式 / 程式碼 |
+| 门限 | 閾值 |
+| 质量 | 品質 |
+| 账户 | 帳戶 |
+| 报表 | 報表 |
+
+## Valuation copy (theYNowApp)
+
+- **永續成長率 g** / **終值 g** — not vague「成長率」 alone when meaning terminal.
+- **暴衝平滑** / **暴衝倍數閾值** — CapEx spike rule; defaults (e.g. 1.35×, 3-year average) are **工程啟發式**, not academic standards; keep user-adjustable where exposed.
+- Do **not** add ticker-specific formula branches; industry suggestions only via `industry_standards.R` / recommendation helpers.
+
+## Reference
+
+Full agent notes: `AGENTS.md`.
