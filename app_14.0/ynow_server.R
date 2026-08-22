@@ -1472,29 +1472,6 @@ server <- function(input, output, session) {
     run_calc_trigger(run_calc_trigger() + 1)
   }, ignoreInit = TRUE)
   
-  observeEvent(input$dcf_mode, {
-    req(input$dcf_mode)
-    if (isTRUE(input$dcf_mode == "gordon")) {
-      current_wacc <- if(!is.na(input$wacc_gordon)) input$wacc_gordon else 10
-      if (!is.na(input$sgr) && input$sgr >= current_wacc) {
-        safe_sgr <- max(0, current_wacc - 2)
-        updateNumericInput(session, "sgr", value = safe_sgr)
-        showNotification("Gordon 模型需滿足 g < WACC，已自動調整 SGR", type = "warning")
-      }
-    }
-  })
-  
-  observeEvent(input$sgr, {
-    req(input$dcf_mode == "two_stage", input$wacc_stage2)
-    curr_sgr <- as.numeric(input$sgr)
-    curr_wacc2 <- as.numeric(input$wacc_stage2)
-    if (!is.na(curr_sgr) && !is.na(curr_wacc2) && curr_sgr >= curr_wacc2) {
-      safe_val <- max(0, curr_wacc2 - 2) 
-      updateNumericInput(session, "sgr", value = safe_val)
-      showNotification(paste("⚠️ 終端成長率不得高於折現率，已修正為", safe_val, "%"), type = "warning")
-    }
-  })
-
   observeEvent(input$dcf_claim, {
     claim <- input$dcf_claim %||% "fcff"
     tag <- dcf_cf_tag(claim)
@@ -1601,6 +1578,53 @@ server <- function(input, output, session) {
     tags$div(
       style = "background:#f8f9fa; border-left:4px solid #e67e22; padding:8px 12px; margin-bottom:12px; font-size:13px; color:#333;",
       tags$b("目前 g 估計："), est$reason %||% ""
+    )
+  })
+
+  output$txt_perpetual_g_method_suggest <- renderUI({
+    est <- central_perpetual_g()
+    cur <- as.character(input$perpetual_g_method %||% APP_DEFAULTS$perpetual_g_method)[1]
+    rec <- as.character(est$recommended_method %||% "")[1]
+    if (!nzchar(rec)) return(NULL)
+    same <- identical(cur, rec)
+    tone_bd <- if (same) "#27ae60" else "#2980b9"
+    tone_bg <- if (same) "#eafaf1" else "#ebf5fb"
+    tags$div(
+      style = paste0(
+        "background:", tone_bg, "; border-left:4px solid ", tone_bd,
+        "; padding:8px 12px; margin:8px 0 10px 0; font-size:13px; color:#333; line-height:1.5;"
+      ),
+      tags$div(
+        tags$b(if (same) "估計法建議：已採用建議方法 — " else "估計法建議："),
+        est$recommend_label %||% rec
+      ),
+      tags$div(style = "margin-top:4px; color:#555;", est$recommend_reason %||% ""),
+      if (!same) {
+        tags$div(
+          style = "margin-top:8px;",
+          actionButton(
+            "btn_apply_sgr_method_suggest",
+            paste0("套用建議：", est$recommend_label %||% rec),
+            class = "btn-sm btn-primary",
+            icon = icon("magic")
+          )
+        )
+      }
+    )
+  })
+
+  observeEvent(input$btn_apply_sgr_method_suggest, {
+    est <- tryCatch(central_perpetual_g(), error = function(e) NULL)
+    rec <- as.character(est$recommended_method %||% "")[1]
+    if (!nzchar(rec)) return()
+    updateSelectInput(session, "perpetual_g_method", selected = rec)
+    # Lifecycle 建議時，檔位跟自動偵測對齊，方便一次套用
+    if (identical(rec, "lifecycle") && nzchar(as.character(est$auto_lifecycle %||% "")[1])) {
+      updateSelectInput(session, "lifecycle_stage", selected = "auto")
+    }
+    showNotification(
+      paste0("已切換 SGR 估計法為「", est$recommend_label %||% rec, "」（未改寫演算法，僅換方法）。"),
+      type = "message", duration = 5, id = "ynow_apply_sgr_method"
     )
   })
 

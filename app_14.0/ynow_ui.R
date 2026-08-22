@@ -581,6 +581,7 @@ beta_advanced_tab_ui <- function() {
       "Fundamental：Retention×ROE（僅適合成熟穩健企業）。",
       "Lifecycle：依產業成熟度反推 g，可手動覆寫自動分類。"
     ),
+    uiOutput("txt_perpetual_g_method_suggest"),
     conditionalPanel(
       condition = "input.perpetual_g_method == 'lifecycle'",
       tags$h5(tags$b("生命週期檔位")),
