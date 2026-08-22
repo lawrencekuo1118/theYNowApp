@@ -66,6 +66,13 @@ est <- estimate_perpetual_g(
 check("AMZN fundamental SGR not forced to 2.75", !approx_eq(est$g_pct, 2.75, tol = 1e-9))
 check("AMZN fundamental SGR clamped below WACC", is.finite(est$g_pct) && est$g_pct < 9)
 check("reason stays Fundamental／SGR", grepl("Fundamental／SGR", est$reason, fixed = TRUE))
+check("AMZN recommends lifecycle method", identical(est$recommended_method, "lifecycle"))
+check("recommend reason mentions Lifecycle", grepl("Lifecycle", est$recommend_reason, fixed = TRUE))
+
+rec_only <- recommend_perpetual_g_method(
+  rf_pct = 4.7, d_is = d_is, d_bs = d_bs, ticker = "AMZN", wacc_pct = 9.0
+)
+check("recommend_perpetual_g_method AMZN→lifecycle", identical(rec_only$method, "lifecycle"))
 
 # Non-tech high ROE also uses fundamental then WACC clamp
 est2 <- estimate_perpetual_g(
@@ -78,6 +85,8 @@ est2 <- estimate_perpetual_g(
   wacc_pct = 9.0
 )
 check("non-tech keeps high SGR then WACC clamp", is.finite(est2$g_pct) && est2$g_pct < 9)
+# ROE high vs WACC → method suggestion may be lifecycle, but g algorithm unchanged
+check("non-tech g still from fundamental path", grepl("Fundamental／SGR", est2$reason, fixed = TRUE))
 
 # CapEx spike → hist avg of prior years; latest > 1.35× prior
 latest <- 131.8 / 716.9

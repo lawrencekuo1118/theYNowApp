@@ -1902,8 +1902,113 @@ calc_fundamental_sgr_pct <- function(d_is, d_bs, d_cf) {
   round(roe * retention * 100, 2)
 }
 
+#' 建議永續成長率估計法（不改寫演算法數值；僅推薦 macro／fundamental／lifecycle）
+#' @return list(method, label, reason, fund_sgr_pct, auto_lifecycle)
+recommend_perpetual_g_method <- function(rf_pct = NA_real_,
+                                         d_is = NULL,
+                                         d_bs = NULL,
+                                         d_cf = NULL,
+                                         industry_text = "",
+                                         ticker = "",
+                                         wacc_pct = NA_real_,
+                                         rev_cagr = NA_real_) {
+  rf_pct <- suppressWarnings(as.numeric(rf_pct)[1])
+  wacc_pct <- suppressWarnings(as.numeric(wacc_pct)[1])
+  if (is.na(rev_cagr) || !is.finite(rev_cagr)) {
+    rev_cagr <- tryCatch({
+      get_avg_growth(select_clean_metric_row(d_is, "Total Revenue", include_ttm = FALSE))
+    }, error = function(e) NA_real_)
+  }
+  auto_stage <- classify_lifecycle_stage(industry_text, ticker, rev_cagr)
+  fund_sgr <- calc_fundamental_sgr_pct(d_is, d_bs, d_cf)
+
+  label_of <- function(m) {
+    switch(
+      as.character(m)[1],
+      "macro" = "總體經濟錨定（Macro）",
+      "fundamental" = "基本面公式（Fundamental／SGR）",
+      "lifecycle" = "產業生命週期（Lifecycle）",
+      as.character(m)[1]
+    )
+  }
+
+  # 無法算 Retention×ROE → Macro
+  if (!is.finite(fund_sgr)) {
+    return(list(
+      method = "macro",
+      label = label_of("macro"),
+      reason = "財報不足以計算 Retention×ROE，建議改用 Macro（錨定 Rf）。",
+      fund_sgr_pct = NA_real_,
+      auto_lifecycle = auto_stage
+    ))
+  }
+
+  # 成熟科技／高速成長：Fundamental SGR（≈ROE）常偏高，終值宜用 Lifecycle
+  if (identical(auto_stage, "mature_tech") && is.finite(fund_sgr) && fund_sgr > 6) {
+    return(list(
+      method = "lifecycle",
+      label = label_of("lifecycle"),
+      reason = paste0(
+        "目前 Fundamental／SGR≈", round(fund_sgr, 2),
+        "%（Retention×ROE），對成熟科技終值偏高；建議改用 Lifecycle（成熟科技約 2.5–3%）。演算法本身未改寫。"
+      ),
+      fund_sgr_pct = fund_sgr,
+      auto_lifecycle = auto_stage
+    ))
+  }
+  if (identical(auto_stage, "growth_to_mature")) {
+    return(list(
+      method = "lifecycle",
+      label = label_of("lifecycle"),
+      reason = paste0(
+        "營收仍偏高成長（自動分類 growth_to_mature）",
+        if (is.finite(rev_cagr)) paste0("，營收 CAGR≈", round(rev_cagr, 1), "%") else "",
+        "；終值建議 Lifecycle（≈2.5%），並可考慮 Two-Stage。演算法本身未改寫。"
+      ),
+      fund_sgr_pct = fund_sgr,
+      auto_lifecycle = auto_stage
+    ))
+  }
+  if (identical(auto_stage, "mature_sunset")) {
+    return(list(
+      method = "lifecycle",
+      label = label_of("lifecycle"),
+      reason = "金融／公用等高度成熟產業，終值建議 Lifecycle（夕陽檔≈1.5–2%）。演算法本身未改寫。",
+      fund_sgr_pct = fund_sgr,
+      auto_lifecycle = auto_stage
+    ))
+  }
+
+  # Fundamental SGR 已逼近／超過 WACC → 建議 Lifecycle 或 Macro，避免終值失控
+  if (is.finite(wacc_pct) && is.finite(fund_sgr) && fund_sgr >= (wacc_pct - 1)) {
+    return(list(
+      method = "lifecycle",
+      label = label_of("lifecycle"),
+      reason = paste0(
+        "Fundamental／SGR≈", round(fund_sgr, 2), "% 接近或高於 WACC（",
+        round(wacc_pct, 2), "%）；建議改用 Lifecycle 或 Macro，勿依賴被 WACC−2 硬壓後的數字。"
+      ),
+      fund_sgr_pct = fund_sgr,
+      auto_lifecycle = auto_stage
+    ))
+  }
+
+  # 一般成熟、SGR 合理 → Fundamental
+  list(
+    method = "fundamental",
+    label = label_of("fundamental"),
+    reason = paste0(
+      "財報可算 Retention×ROE≈", round(fund_sgr, 2),
+      "%，且生命週期非科技巨頭／高速成長；建議維持 Fundamental／SGR。"
+    ),
+    fund_sgr_pct = fund_sgr,
+    auto_lifecycle = auto_stage
+  )
+}
+
 #' 估計永續成長率（%）並附說明；必要時建議 two-stage
-#' @return list(g_pct, reason, lifecycle_stage, suggest_two_stage, g_stage1_pct, auto_lifecycle)
+#' @return list(g_pct, reason, lifecycle_stage, suggest_two_stage, g_stage1_pct, auto_lifecycle,
+#'   recommended_method, recommend_label, recommend_reason)
 estimate_perpetual_g <- function(method = "macro",
                                  rf_pct = NA_real_,
                                  d_is = NULL,
@@ -1977,7 +2082,7 @@ estimate_perpetual_g <- function(method = "macro",
     reason <- paste0("Macroeconomic Anchoring：直接套用美國 10 年期公債殖利率 Rf=", g_pct, "%。")
   }
 
-  # 安全閥：g 必須嚴格小於 WACC
+  # 安全閥：g 必須嚴格小於 WACC（數值保護；不改方法選擇）
   if (is.finite(wacc_pct) && is.finite(g_pct) && g_pct >= wacc_pct) {
     safe_g <- max(0.5, round(wacc_pct - 2, 2))
     reason <- paste0(
@@ -1986,13 +2091,27 @@ estimate_perpetual_g <- function(method = "macro",
     g_pct <- safe_g
   }
 
+  rec <- recommend_perpetual_g_method(
+    rf_pct = rf_pct,
+    d_is = d_is,
+    d_bs = d_bs,
+    d_cf = d_cf,
+    industry_text = industry_text,
+    ticker = ticker,
+    wacc_pct = wacc_pct,
+    rev_cagr = rev_cagr
+  )
+
   list(
     g_pct = g_pct,
     reason = reason,
     lifecycle_stage = stage,
     auto_lifecycle = auto_stage,
     suggest_two_stage = isTRUE(suggest_two_stage),
-    g_stage1_pct = g_stage1_pct
+    g_stage1_pct = g_stage1_pct,
+    recommended_method = rec$method,
+    recommend_label = rec$label,
+    recommend_reason = rec$reason
   )
 }
 

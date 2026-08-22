@@ -1604,6 +1604,53 @@ server <- function(input, output, session) {
     )
   })
 
+  output$txt_perpetual_g_method_suggest <- renderUI({
+    est <- central_perpetual_g()
+    cur <- as.character(input$perpetual_g_method %||% APP_DEFAULTS$perpetual_g_method)[1]
+    rec <- as.character(est$recommended_method %||% "")[1]
+    if (!nzchar(rec)) return(NULL)
+    same <- identical(cur, rec)
+    tone_bd <- if (same) "#27ae60" else "#2980b9"
+    tone_bg <- if (same) "#eafaf1" else "#ebf5fb"
+    tags$div(
+      style = paste0(
+        "background:", tone_bg, "; border-left:4px solid ", tone_bd,
+        "; padding:8px 12px; margin:8px 0 10px 0; font-size:13px; color:#333; line-height:1.5;"
+      ),
+      tags$div(
+        tags$b(if (same) "估計法建議：已採用建議方法 — " else "估計法建議："),
+        est$recommend_label %||% rec
+      ),
+      tags$div(style = "margin-top:4px; color:#555;", est$recommend_reason %||% ""),
+      if (!same) {
+        tags$div(
+          style = "margin-top:8px;",
+          actionButton(
+            "btn_apply_sgr_method_suggest",
+            paste0("套用建議：", est$recommend_label %||% rec),
+            class = "btn-sm btn-primary",
+            icon = icon("magic")
+          )
+        )
+      }
+    )
+  })
+
+  observeEvent(input$btn_apply_sgr_method_suggest, {
+    est <- tryCatch(central_perpetual_g(), error = function(e) NULL)
+    rec <- as.character(est$recommended_method %||% "")[1]
+    if (!nzchar(rec)) return()
+    updateSelectInput(session, "perpetual_g_method", selected = rec)
+    # Lifecycle 建議時，檔位跟自動偵測對齊，方便一次套用
+    if (identical(rec, "lifecycle") && nzchar(as.character(est$auto_lifecycle %||% "")[1])) {
+      updateSelectInput(session, "lifecycle_stage", selected = "auto")
+    }
+    showNotification(
+      paste0("已切換 SGR 估計法為「", est$recommend_label %||% rec, "」（未改寫演算法，僅換方法）。"),
+      type = "message", duration = 5, id = "ynow_apply_sgr_method"
+    )
+  })
+
   .push_perpetual_g <- function(est, notify_two_stage = TRUE) {
     if (is.null(est) || !is.finite(est$g_pct)) return(invisible(NULL))
     g_val <- round(as.numeric(est$g_pct), 2)
