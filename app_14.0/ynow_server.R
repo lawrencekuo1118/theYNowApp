@@ -3682,8 +3682,8 @@ server <- function(input, output, session) {
       roic <- if (!is.na(invested_capital) && invested_capital > 0) nopat / invested_capital else 0
 
       capex <- abs(select_current_metric(d_cash_flow(), "Capital Expenditure", "flow"))
-      depre <- select_current_metric(d_cash_flow(), "Depreciation", "flow")
-      cf_delta_nwc <- select_current_metric(d_cash_flow(), "Change In Working Capital|Changes In Working Capital", "flow")
+      depre <- select_current_metric_any(d_cash_flow(), DA_PATTERNS, "flow")
+      cf_delta_nwc <- select_current_metric_any(d_cash_flow(), NWC_CHANGE_PATTERNS, "flow")
 
       capex <- ifelse(is.na(capex), 0, capex)
       depre <- ifelse(is.na(depre), 0, depre)
