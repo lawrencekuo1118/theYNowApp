@@ -368,6 +368,21 @@ INTEREST_EXPENSE_PATTERNS <- c(
   "Net Interest Expense",
   "Interest Expense"
 )
+# D&A：寬科目優先（AMZN 等同時有 Depreciation 與 Depreciation And Amortization）
+DA_PATTERNS <- c(
+  "^Depreciation And Amortization$",
+  "^Depreciation & Amortization$",
+  "^Depreciation Amortization Depletion$",
+  "^Depreciation, Amortization & Other$",
+  "^Depreciation$"
+)
+# 營運資金變動（Yahoo HTML / yfinance 大小寫與複數差異）
+NWC_CHANGE_PATTERNS <- c(
+  "^Change In Working Capital$",
+  "^Changes In Working Capital$",
+  "Change In Working Capital",
+  "Changes In Working Capital"
+)
 INTEREST_PAID_PATTERNS <- c(
   "^Interest Paid$",
   "Cash Interest Paid",
@@ -689,6 +704,31 @@ select_current_metric_any <- function(df, metric_names, type = c("flow", "stock"
   vals <- select_clean_metric_row_any(df, metric_names, include_ttm = include_ttm)
   if (length(vals) == 0 || all(is.na(vals))) return(NA_real_)
   vals[1]
+}
+
+#' Mean of (num/den) over the first `n` paired observations (newest-first series).
+#' Used for DCF projection margins so a single CapEx spike year (e.g. AMZN) does not dominate.
+avg_ratio_newest <- function(num, den, n = 3L) {
+  num <- suppressWarnings(as.numeric(num))
+  den <- suppressWarnings(as.numeric(den))
+  m <- min(length(num), length(den), as.integer(n))
+  if (m < 1L) return(NA_real_)
+  ratios <- num[seq_len(m)] / den[seq_len(m)]
+  ratios <- ratios[is.finite(ratios) & is.finite(den[seq_len(m)]) & den[seq_len(m)] != 0]
+  if (length(ratios) < 1L) return(NA_real_)
+  mean(ratios)
+}
+
+#' True when newest ratio is an outlier vs the prior window (excludes newest from baseline).
+ratio_spike_vs_prior <- function(num, den, prior_n = 2L, mult = 1.35) {
+  num <- suppressWarnings(as.numeric(num))
+  den <- suppressWarnings(as.numeric(den))
+  if (length(num) < 2L || length(den) < 2L) return(FALSE)
+  latest <- num[1] / den[1]
+  if (!is.finite(latest) || !is.finite(den[1]) || den[1] == 0) return(FALSE)
+  prior <- avg_ratio_newest(num[-1], den[-1], n = prior_n)
+  if (!is.finite(prior) || prior <= 0) return(FALSE)
+  isTRUE(latest > mult * prior)
 }
 
 # 裁切財務表格至指定科目（含該列）
@@ -1909,6 +1949,15 @@ estimate_perpetual_g <- function(method = "macro",
         "Fundamental／SGR：g = Retention Ratio × ROE = ", g_pct,
         "%。應用限制：僅適合成熟、財務結構穩定企業。"
       )
+      # 成熟科技：ROE×留存常遠高於合理終值 g（AMZN 等）；改用 lifecycle 檔
+      if (identical(auto_stage, "mature_tech") && is.finite(g_pct) && g_pct > 6) {
+        raw_sgr <- g_pct
+        g_pct <- 2.75
+        reason <- paste0(
+          "Fundamental／SGR 原為 Retention×ROE=", raw_sgr,
+          "%，不適合成熟科技終值；已改用 lifecycle mature_tech g=", g_pct, "%。"
+        )
+      }
     }
   } else if (identical(method, "lifecycle")) {
     if (identical(stage, "mature_sunset")) {

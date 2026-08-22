@@ -238,8 +238,8 @@ fcf_projection_module_server <- function(
       capex <- select_clean_metric_row(df_cf, "Capital Expenditure", include_ttm = FALSE)
       if (all(is.na(capex))) capex <- select_clean_metric_row(df_cf, "Capital Expenditures", include_ttm = FALSE)
       
-      depre <- select_clean_metric_row(df_cf, "Depreciation", include_ttm = FALSE)
-      depre_val <- if(is.na(depre[1])) 0 else depre[1]
+      depre <- select_clean_metric_row_any(df_cf, DA_PATTERNS, include_ttm = FALSE)
+      depre_val <- if (length(depre) < 1 || is.na(depre[1])) 0 else depre[1]
       
       curr_assets <- select_clean_metric_row(df_bs, "Current Assets", include_ttm = FALSE)
       cash        <- select_clean_metric_row(df_bs, "Cash And Cash Equivalents", include_ttm = FALSE)
@@ -378,14 +378,20 @@ fcf_projection_module_server <- function(
       rev  <- select_current_metric(d_income_statement(), "Total Revenue", "flow")
       ebit <- select_current_metric(d_income_statement(), "Operating Income", "flow")
       tax_exp <- select_current_metric(d_income_statement(), "Income Tax Expense", "flow")
+      if (is.na(tax_exp)) {
+        tax_exp <- select_current_metric(d_income_statement(), "Tax Provision", "flow")
+      }
       pre_tax <- select_current_metric(d_income_statement(), "Pretax Income", "flow")
       
       tax_rate <- if (!is.na(pre_tax) && pre_tax > 0 && !is.na(tax_exp)) max(0, min(tax_exp / pre_tax, 0.5)) else 0.21
       nopat <- if (!is.na(ebit)) ebit * (1 - tax_rate) else select_current_metric(d_income_statement(), "Net Income", "flow")
       
-      dep  <- select_current_metric(d_cash_flow(), "Depreciation", "flow")
-      raw_nwc <- select_current_metric(d_cash_flow(), "Change in Working Capital", "flow")
+      dep  <- select_current_metric_any(d_cash_flow(), DA_PATTERNS, "flow")
+      raw_nwc <- select_current_metric_any(d_cash_flow(), NWC_CHANGE_PATTERNS, "flow")
       cap  <- abs(select_current_metric(d_cash_flow(), "Capital Expenditure", "flow"))
+      if (is.na(cap) || !is.finite(cap)) {
+        cap <- abs(select_current_metric(d_cash_flow(), "Capital Expenditures", "flow"))
+      }
       
       asst <- select_current_metric(d_balance_sheet(), "Total Assets", "stock")
       liab <- select_current_metric(d_balance_sheet(), "Current Liabilities", "stock")
@@ -397,6 +403,30 @@ fcf_projection_module_server <- function(
       updateNumericInput(session, "fcf_delta_nwc", value = if(!is.na(raw_nwc)) -raw_nwc else 0)
       updateNumericInput(session, "fcf_capex", value = cap)
       updateNumericInput(session, "fcf_invested_capital", value = asst - (liab - ifelse(is.na(debt), 0, debt)))
+
+      # CapEx／D&A 佔營收：預設寫入 3 年均值（單年 CapEx 暴衝時避免投影永遠負 FCFF）
+      rev_hist <- select_clean_metric_row(d_income_statement(), "Total Revenue", include_ttm = FALSE)
+      cap_hist <- select_clean_metric_row(d_cash_flow(), "Capital Expenditure", include_ttm = FALSE)
+      if (all(is.na(cap_hist))) {
+        cap_hist <- select_clean_metric_row(d_cash_flow(), "Capital Expenditures", include_ttm = FALSE)
+      }
+      dep_hist <- select_clean_metric_row_any(d_cash_flow(), DA_PATTERNS, include_ttm = FALSE)
+      avg_cap_m <- avg_ratio_newest(abs(cap_hist), rev_hist, n = 3L)
+      avg_dep_m <- avg_ratio_newest(dep_hist, rev_hist, n = 3L)
+      # 最新年 CapEx／Rev 明顯高於「前期」均值 → 強制用 3 年均值寫入前瞻覆寫欄
+      if (is.finite(avg_cap_m) && avg_cap_m > 0) {
+        use_avg <- ratio_spike_vs_prior(abs(cap_hist), rev_hist, prior_n = 2L, mult = 1.35)
+        if (isTRUE(use_avg) || !is.finite(suppressWarnings(as.numeric(input$proj_capex_rate)[1]))) {
+          updateNumericInput(session, "proj_capex_rate", value = round(100 * avg_cap_m, 2))
+        }
+      }
+      # D&A 無獨立覆寫欄；以 3 年均值重寫 fcf_depreciation 當最新年明顯偏低於均值（窄 Depreciation）
+      if (is.finite(avg_dep_m) && is.finite(rev) && rev > 0 && is.finite(dep)) {
+        latest_dep_m <- dep / rev
+        if (is.finite(latest_dep_m) && latest_dep_m < 0.75 * avg_dep_m) {
+          updateNumericInput(session, "fcf_depreciation", value = avg_dep_m * rev)
+        }
+      }
     }
     
     # 🚀 1. 全自動連動：只要主程式抓到新財報，模擬沙盒直接自動更新！
@@ -485,16 +515,47 @@ fcf_projection_module_server <- function(
       nopat_margin     <- if(base_rev == 0) 0 else base_nopat / base_rev
       depre_margin     <- if(base_rev == 0) 0 else base_depre / base_rev
 
-      # 前瞻比率優先：模組內手動覆寫 → 否則當期絕對金額／營收
+      # 前瞻比率優先：模組內手動覆寫 → 3 年均值（抗單年 CapEx 暴衝）→ 當期絕對金額／營收
       user_capex_pct <- suppressWarnings(as.numeric(input$proj_capex_rate)[1])
       user_nwc_pct   <- suppressWarnings(as.numeric(input$proj_nwc_rate)[1])
-      capex_margin <- if (is.finite(user_capex_pct)) {
-        user_capex_pct / 100
+      hist_cap_m <- NA_real_
+      hist_dep_m <- NA_real_
+      tryCatch({
+        rev_h <- select_clean_metric_row(d_income_statement(), "Total Revenue", include_ttm = FALSE)
+        cap_h <- select_clean_metric_row(d_cash_flow(), "Capital Expenditure", include_ttm = FALSE)
+        if (all(is.na(cap_h))) {
+          cap_h <- select_clean_metric_row(d_cash_flow(), "Capital Expenditures", include_ttm = FALSE)
+        }
+        dep_h <- select_clean_metric_row_any(d_cash_flow(), DA_PATTERNS, include_ttm = FALSE)
+        hist_cap_m <- avg_ratio_newest(abs(cap_h), rev_h, n = 3L)
+        hist_dep_m <- avg_ratio_newest(dep_h, rev_h, n = 3L)
+      }, error = function(e) NULL)
+
+      latest_cap_m <- if (base_rev == 0) NA_real_ else base_capex / base_rev
+      spike <- FALSE
+      tryCatch({
+        spike <- ratio_spike_vs_prior(abs(cap_h), rev_h, prior_n = 2L, mult = 1.35)
+      }, error = function(e) NULL)
+      if (is.finite(user_capex_pct)) {
+        capex_margin <- user_capex_pct / 100
+      } else if (isTRUE(spike) && is.finite(hist_cap_m)) {
+        capex_margin <- hist_cap_m
+      } else if (is.finite(hist_cap_m) && (!is.finite(latest_cap_m) || latest_cap_m <= 0)) {
+        capex_margin <- hist_cap_m
       } else if (base_rev == 0) {
-        0
+        capex_margin <- 0
       } else {
-        base_capex / base_rev
+        capex_margin <- latest_cap_m
       }
+
+      # D&A：若當期窄科目明顯偏低於 3 年均值，投影用均值
+      if (is.finite(hist_dep_m) && base_rev > 0) {
+        latest_dep_m <- base_depre / base_rev
+        if (!is.finite(latest_dep_m) || latest_dep_m < 0.75 * hist_dep_m) {
+          depre_margin <- hist_dep_m
+        }
+      }
+
       delta_nwc_margin <- if (is.finite(user_nwc_pct)) {
         user_nwc_pct / 100
       } else if (base_rev == 0) {

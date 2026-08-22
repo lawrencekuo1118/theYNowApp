@@ -22,14 +22,16 @@ decision_ui <- function(id) {
     fluidRow(
       box(
         title = "智慧決策矩陣 The Decision Funnel", width = 12, status = "primary", solidHeader = TRUE,
+        # 建議結論（如「估值偏高且動能轉弱」）在上；F-Score 清單在下
         column(
-          width = 5,
-          h4("F-Score 體質檢核清單"),
-          tableOutput(ns("table_checklist"))
+          width = 12,
+          uiOutput(ns("ui_recommendation"))
         ),
         column(
-          width = 7,
-          uiOutput(ns("ui_recommendation"))
+          width = 12,
+          style = "margin-top: 12px;",
+          h4("F-Score 體質檢核清單"),
+          tableOutput(ns("table_checklist"))
         )
       )
     ),
