@@ -118,7 +118,39 @@ fcf_projection_module_ui <- function(id) {
                    h4(tags$b("CapEx 預估資本支出佔營收比")),
                    numericInput(ns("proj_capex_rate"), "CapEx / Revenue (%):", value = NA, step = 0.01),
                    uiOutput(ns("txt_hist_capex")),
-                   h6(helpText("註：空白＝套用當期金額推算（並顯示歷史淨 CapEx 參考值）。"))
+                   checkboxInput(
+                     ns("apply_capex_spike_smooth"),
+                     "啟用 CapEx 暴衝平滑（最新年異常高時改採 N 年均值）",
+                     value = isTRUE(APP_DEFAULTS$apply_capex_spike_smooth)
+                   ),
+                   fluidRow(
+                     column(
+                       6,
+                       numericInput(
+                         ns("capex_spike_mult"),
+                         "暴衝倍數閾值（最新 CapEx/Rev ÷ 前期均值）",
+                         value = APP_DEFAULTS$capex_spike_mult,
+                         min = 1.05, max = 3, step = 0.05
+                       )
+                     ),
+                     column(
+                       6,
+                       numericInput(
+                         ns("capex_spike_avg_years"),
+                         "觸發時均值年數（CapEx/Rev）",
+                         value = APP_DEFAULTS$capex_spike_avg_years,
+                         min = 2, max = 10, step = 1
+                       )
+                     )
+                   ),
+                   tags$p(
+                     style = "font-size: 12px; color: #7f8c8d; margin-top: 0;",
+                     "預設 1.35／3 年為工程啟發式（非學術標準）：",
+                     "若最新 CapEx/Rev 高於「前期均值 × 倍數」，投影改採最近 N 年 CapEx/Rev 平均；",
+                     "否則用最新年。倍數與年數請依產業／週期自行調整。"
+                   ),
+                   uiOutput(ns("txt_capex_spike_status")),
+                   h6(helpText("註：CapEx/Revenue 空白＝依上列規則或當期金額推算（並顯示歷史參考值）。"))
                  ),
                  column(
                    width = 6,
@@ -206,9 +238,58 @@ fcf_projection_module_server <- function(
       tags$p(
         style = "font-size:13px; color:#555; margin-top:0;",
         sprintf(
-          "此處比率驅動下方多期 %s 預測表。留白時以當期 CapEx、ΔNWC 絕對金額／營收推算；可手動覆寫以模擬更高／更低再投資。",
+          "此處比率驅動下方多期 %s 預測表。CapEx 暴衝平滑（預設 1.35×／3 年）可關閉或調整；",
           cf_tag()
-        )
+        ),
+        "留白時依暴衝規則或當期 CapEx／ΔNWC 推算；可手動覆寫 CapEx/Revenue (%)。"
+      )
+    })
+
+    .capex_spike_settings <- reactive({
+      enabled <- if (!is.null(input$apply_capex_spike_smooth)) {
+        isTRUE(input$apply_capex_spike_smooth)
+      } else {
+        isTRUE(APP_DEFAULTS$apply_capex_spike_smooth)
+      }
+      mult <- suppressWarnings(as.numeric(input$capex_spike_mult)[1])
+      if (!is.finite(mult) || mult <= 1) {
+        mult <- as.numeric(APP_DEFAULTS$capex_spike_mult)
+      }
+      avg_n <- suppressWarnings(as.integer(input$capex_spike_avg_years)[1])
+      if (!is.finite(avg_n) || avg_n < 2L) {
+        avg_n <- as.integer(APP_DEFAULTS$capex_spike_avg_years)
+      }
+      prior_n <- suppressWarnings(as.integer(APP_DEFAULTS$capex_spike_prior_years)[1])
+      if (!is.finite(prior_n) || prior_n < 1L) prior_n <- 2L
+      prior_n <- min(prior_n, avg_n - 1L)
+      list(enabled = enabled, mult = mult, avg_n = avg_n, prior_n = prior_n)
+    })
+
+    .capex_spike_diag <- function(cap_hist, rev_hist, settings) {
+      cap_hist <- suppressWarnings(as.numeric(cap_hist))
+      rev_hist <- suppressWarnings(as.numeric(rev_hist))
+      if (length(cap_hist) < 1L || length(rev_hist) < 1L) {
+        return(list(ok = FALSE))
+      }
+      latest_m <- abs(cap_hist[1]) / rev_hist[1]
+      if (!is.finite(latest_m) || !is.finite(rev_hist[1]) || rev_hist[1] == 0) {
+        return(list(ok = FALSE))
+      }
+      prior <- avg_ratio_newest(abs(cap_hist[-1]), rev_hist[-1], n = settings$prior_n)
+      avg_m <- avg_ratio_newest(abs(cap_hist), rev_hist, n = settings$avg_n)
+      spike <- isTRUE(settings$enabled) && ratio_spike_vs_prior(
+        abs(cap_hist), rev_hist,
+        prior_n = settings$prior_n,
+        mult = settings$mult
+      )
+      list(
+        ok = TRUE,
+        latest_pct = latest_m * 100,
+        prior_pct = if (is.finite(prior)) prior * 100 else NA_real_,
+        avg_pct = if (is.finite(avg_m)) avg_m * 100 else NA_real_,
+        spike = spike,
+        use_avg = isTRUE(spike) && is.finite(avg_m),
+        margin = if (isTRUE(spike) && is.finite(avg_m)) avg_m else latest_m
       )
     })
 
@@ -360,6 +441,53 @@ fcf_projection_module_server <- function(
       HTML(paste0("<div style='color: #222222; font-size: 14px; margin-bottom: 5px;'>系統歷史推算值：<b>", val, " %</b></div>"))
     })
 
+    output$txt_capex_spike_status <- renderUI({
+      df_cf <- tryCatch(d_cash_flow(), error = function(e) NULL)
+      df_is <- tryCatch(d_income_statement(), error = function(e) NULL)
+      if (is.null(df_cf) || is.null(df_is) || nrow(df_cf) < 1 || nrow(df_is) < 1) {
+        return(HTML("<div style='color: gray; font-size: 12px; margin-top: 6px;'>CapEx 暴衝判定：等待財報...</div>"))
+      }
+      cap_hist <- select_clean_metric_row(df_cf, "Capital Expenditure", include_ttm = FALSE)
+      if (all(is.na(cap_hist))) {
+        cap_hist <- select_clean_metric_row(df_cf, "Capital Expenditures", include_ttm = FALSE)
+      }
+      rev_hist <- select_clean_metric_row(df_is, "Total Revenue", include_ttm = FALSE)
+      settings <- .capex_spike_settings()
+      diag <- .capex_spike_diag(abs(cap_hist), rev_hist, settings)
+      if (!isTRUE(diag$ok)) {
+        return(HTML("<div style='color: gray; font-size: 12px; margin-top: 6px;'>CapEx 暴衝判定：資料不足</div>"))
+      }
+      if (!isTRUE(settings$enabled)) {
+        return(HTML(paste0(
+          "<div style='font-size: 12px; color: #555; margin-top: 6px; padding: 8px; background: #f9f9f9; border-left: 3px solid #ccc;'>",
+          "暴衝平滑已關閉；投影 CapEx/Rev 以手動欄位或<strong>最新年 ",
+          round(diag$latest_pct, 2), "%</strong> 為準。</div>"
+        )))
+      }
+      thr <- settings$mult
+      msg <- paste0(
+        "最新 CapEx/Rev <b>", round(diag$latest_pct, 2), "%</b>；",
+        "前期（", settings$prior_n, " 年）均值 <b>",
+        if (is.finite(diag$prior_pct)) round(diag$prior_pct, 2) else "—", "%</b>；",
+        "閾值 ", thr, "× → ",
+        if (isTRUE(diag$spike)) {
+          paste0(
+            "<span style='color:#d35400;'>判定暴衝</span>；投影採 ",
+            settings$avg_n, " 年均值 <b>", round(diag$avg_pct, 2), "%</b>"
+          )
+        } else {
+          paste0(
+            "<span style='color:#27ae60;'>未達暴衝</span>；投影用最新年 ",
+            round(diag$latest_pct, 2), "%"
+          )
+        }
+      )
+      HTML(paste0(
+        "<div style='font-size: 12px; color: #555; margin-top: 6px; padding: 8px; background: #f9f9f9; border-left: 3px solid #222;'>",
+        "<b>CapEx 暴衝判定：</b> ", msg, "</div>"
+      ))
+    })
+
     output$txt_hist_nwc <- renderUI({
       params <- hist_params()
       if (is.null(params) || is.na(params$nwc_rate)) {
@@ -411,12 +539,12 @@ fcf_projection_module_server <- function(
         cap_hist <- select_clean_metric_row(d_cash_flow(), "Capital Expenditures", include_ttm = FALSE)
       }
       dep_hist <- select_clean_metric_row_any(d_cash_flow(), DA_PATTERNS, include_ttm = FALSE)
-      avg_cap_m <- avg_ratio_newest(abs(cap_hist), rev_hist, n = 3L)
+      spike_cfg <- .capex_spike_settings()
+      avg_cap_m <- avg_ratio_newest(abs(cap_hist), rev_hist, n = spike_cfg$avg_n)
       avg_dep_m <- avg_ratio_newest(dep_hist, rev_hist, n = 3L)
-      # 最新年 CapEx／Rev 明顯高於「前期」均值 → 強制用 3 年均值寫入前瞻覆寫欄
+      diag <- .capex_spike_diag(abs(cap_hist), rev_hist, spike_cfg)
       if (is.finite(avg_cap_m) && avg_cap_m > 0) {
-        use_avg <- ratio_spike_vs_prior(abs(cap_hist), rev_hist, prior_n = 2L, mult = 1.35)
-        if (isTRUE(use_avg) || !is.finite(suppressWarnings(as.numeric(input$proj_capex_rate)[1]))) {
+        if (isTRUE(diag$use_avg) || !is.finite(suppressWarnings(as.numeric(input$proj_capex_rate)[1]))) {
           updateNumericInput(session, "proj_capex_rate", value = round(100 * avg_cap_m, 2))
         }
       }
@@ -527,23 +655,31 @@ fcf_projection_module_server <- function(
           cap_h <- select_clean_metric_row(d_cash_flow(), "Capital Expenditures", include_ttm = FALSE)
         }
         dep_h <- select_clean_metric_row_any(d_cash_flow(), DA_PATTERNS, include_ttm = FALSE)
-        hist_cap_m <- avg_ratio_newest(abs(cap_h), rev_h, n = 3L)
+        spike_cfg <- .capex_spike_settings()
+        hist_cap_m <- avg_ratio_newest(abs(cap_h), rev_h, n = spike_cfg$avg_n)
         hist_dep_m <- avg_ratio_newest(dep_h, rev_h, n = 3L)
       }, error = function(e) NULL)
 
       latest_cap_m <- if (base_rev == 0) NA_real_ else base_capex / base_rev
-      spike <- FALSE
-      tryCatch({
-        spike <- ratio_spike_vs_prior(abs(cap_h), rev_h, prior_n = 2L, mult = 1.35)
-      }, error = function(e) NULL)
+      spike_cfg <- .capex_spike_settings()
+      diag <- tryCatch(
+        .capex_spike_diag(
+          abs(select_clean_metric_row(d_cash_flow(), "Capital Expenditure", include_ttm = FALSE)),
+          select_clean_metric_row(d_income_statement(), "Total Revenue", include_ttm = FALSE),
+          spike_cfg
+        ),
+        error = function(e) list(spike = FALSE, margin = latest_cap_m)
+      )
       if (is.finite(user_capex_pct)) {
         capex_margin <- user_capex_pct / 100
-      } else if (isTRUE(spike) && is.finite(hist_cap_m)) {
+      } else if (isTRUE(diag$use_avg) && is.finite(hist_cap_m)) {
         capex_margin <- hist_cap_m
       } else if (is.finite(hist_cap_m) && (!is.finite(latest_cap_m) || latest_cap_m <= 0)) {
         capex_margin <- hist_cap_m
       } else if (base_rev == 0) {
         capex_margin <- 0
+      } else if (is.finite(diag$margin)) {
+        capex_margin <- diag$margin
       } else {
         capex_margin <- latest_cap_m
       }

@@ -707,7 +707,9 @@ select_current_metric_any <- function(df, metric_names, type = c("flow", "stock"
 }
 
 #' Mean of (num/den) over the first `n` paired observations (newest-first series).
-#' Used for DCF projection margins so a single CapEx spike year (e.g. AMZN) does not dominate.
+#' Used for DCF projection margins when CapEx/Rev spikes vs recent history.
+#' Default `n = 3` is a common smoothing window (not a regulatory standard);
+#' override via FCF tab inputs `capex_spike_avg_years` / APP_DEFAULTS.
 avg_ratio_newest <- function(num, den, n = 3L) {
   num <- suppressWarnings(as.numeric(num))
   den <- suppressWarnings(as.numeric(den))
@@ -720,6 +722,8 @@ avg_ratio_newest <- function(num, den, n = 3L) {
 }
 
 #' True when newest ratio is an outlier vs the prior window (excludes newest from baseline).
+#' Default `mult = 1.35` is a heuristic (~35% above recent norm); not econometrically calibrated.
+#' User may change via FCF tab `capex_spike_mult` / APP_DEFAULTS.
 ratio_spike_vs_prior <- function(num, den, prior_n = 2L, mult = 1.35) {
   num <- suppressWarnings(as.numeric(num))
   den <- suppressWarnings(as.numeric(den))
