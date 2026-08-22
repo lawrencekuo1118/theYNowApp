@@ -130,5 +130,12 @@ APP_DEFAULTS <- list(
   pb_high         = round(pb_hi, 2),
   pb_basis        = "bvps",
   pb_use_industry = TRUE,
-  pb_holdco_discount = 0                 # 控股折價套用在已辨識投資科目（0–50%）
+  pb_holdco_discount = 0,                # 控股折價套用在已辨識投資科目（0–50%）
+
+  # --- 8. FCF 投影：CapEx 暴衝平滑（使用者可於 FCF 分頁覆寫）---
+  # 預設為工程啟發式，非學術或監管標準；見 FCF 分頁說明。
+  apply_capex_spike_smooth = TRUE,       # 是否啟用「暴衝 → N 年均值」
+  capex_spike_mult = 1.35,              # 最新 CapEx/Rev > mult × 前期均值 → 暴衝
+  capex_spike_avg_years = 3L,           # 暴衝時投影採最近 N 年 CapEx/Rev 均值
+  capex_spike_prior_years = 2L          # 暴衝判定：前期均值窗口（不含最新年）
 )
