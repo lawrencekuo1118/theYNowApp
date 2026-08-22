@@ -291,7 +291,7 @@ fcf_projection_module_server <- function(
         use_avg = isTRUE(spike) && is.finite(avg_m),
         margin = if (isTRUE(spike) && is.finite(avg_m)) avg_m else latest_m
       )
-    })
+    }
 
     # 僅當實際預估成長率（封頂前）> 25% 時顯示防呆勾選；剛出現時預設勾選
     g_ceiling_was_visible <- reactiveVal(FALSE)
