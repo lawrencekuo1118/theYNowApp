@@ -1298,7 +1298,7 @@ server <- function(input, output, session) {
         stringsAsFactors = FALSE
       )
     }, error = function(e) {
-      warning("無法取得歷史股價: ", e$message)
+      .ynow_log("無法取得歷史股價: ", e$message)
       NULL
     })
     if (!is.null(df_final)) assign(tk, df_final, envir = .hist_price_cache)
@@ -3651,30 +3651,6 @@ server <- function(input, output, session) {
         updateNumericInput(session, "mod_pb-pb_mid",  value = round(mid, 2))
         updateNumericInput(session, "mod_pb-pb_high", value = round(hi, 2))
       }
-    }
-  })
-  
-  output$txt_display_years <- renderUI({
-    HTML(paste0("<b>目前預測年數：<span style='color:red; font-size:16px;'>", input$years, "</span> 年</b>"))
-  })
-  
-  output$txt_fcf_sync_status <- renderPrint({
-    df <- fcf_results$df_fcf()
-    if (is.null(df)) {
-      cat("尚未匯入財報資料，或正在等待計算...")
-    } else {
-      fcff_vals <- extract_fcff_series(df)
-      tag <- dcf_cf_tag(input$dcf_claim %||% "fcff")
-      cfs <- extract_dcf_claim_series(
-        df, input$dcf_claim %||% "fcff",
-        interest_after_tax = .dcf_fcfe_bridge()$iat,
-        debt0 = .dcf_fcfe_bridge()$debt,
-        g_path = .dcf_fcfe_bridge()$g
-      )
-      cat("✅ ", tag, " 預測資料已同步！\n-------------------------\n", sep = "")
-      cat("第 1 年預測現金流:", if (length(cfs) > 0) round(cfs[1], 2) else "N/A", "\n")
-      cat("第", nrow(df), "年預測現金流:", if (length(cfs) > 0) round(tail(cfs, 1), 2) else "N/A", "\n")
-      cat("DCF 模式:", input$dcf_mode, "\n")
     }
   })
   

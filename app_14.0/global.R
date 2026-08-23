@@ -53,25 +53,24 @@ py_pkgs <- c(
 )
 if (file.exists(python_path) && !on_shinyapps) {
   reticulate::use_virtualenv(env_dir, required = TRUE)
-  message("✅ 已透過替身捷徑連結至 Python 虛擬環境: ", python_path)
 } else if (identical(Sys.getenv("YNOW_DEBUG_SKIP_PY"), "1")) {
-  message("⏭️ YNOW_DEBUG_SKIP_PY=1：略過 py_require（本機除錯）")
+  # skip Python init (local parse / unit tests)
 } else {
   tryCatch(
     reticulate::py_require(py_pkgs),
-    error = function(e) message("⚠️ py_require: ", e$message)
+    error = function(e) NULL
   )
   tryCatch(
     reticulate::py_config(),
-    error = function(e) message("⚠️ py_config: ", e$message)
+    error = function(e) NULL
   )
-  message("✅ 使用雲端 / 預設 Python 環境（app_14.0）")
 }
 
 # ==========================================
 # 應用程式進入點與全域設定
 # ==========================================
 # local=TRUE：物件寫入「正在評估 global.R 的環境」（即 app.R 的評估環境）
+source("debug_helpers.R", local = TRUE, encoding = "UTF-8")
 source("setup.R", local = TRUE, encoding = "UTF-8")
 source("web_crawler.R", local = TRUE, encoding = "UTF-8")
 source("industry_standards.R", local = TRUE, encoding = "UTF-8")
@@ -86,5 +85,4 @@ source("backtest_module.R", local = TRUE, encoding = "UTF-8")
 source("backtest_validation.R", local = TRUE, encoding = "UTF-8")
 source("default_config.R", local = TRUE, encoding = "UTF-8")
 source("lab_industry_method.R", local = TRUE, encoding = "UTF-8")
-
-cat("✔️ 所有套件已載入，環境初始化完成。（app_14.0 — Valuation Methodology）\n")
+# debug_lab.R is not sourced here; set YNOW_DEBUG=1 and source it locally if needed.

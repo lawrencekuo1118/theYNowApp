@@ -19,6 +19,10 @@
 # 合理價 vs 實際股價看折現比較圖.
 # ==========================================
 
+if (!exists(".ynow_log", mode = "function")) {
+  .ynow_log <- function(...) invisible(NULL)
+}
+
 # ---------- small helpers ----------
 
 .clip01 <- function(x, lo = 0, hi = 1) {
@@ -753,7 +757,7 @@ fetch_price_history_df <- function(ticker, period = "5y") {
       stringsAsFactors = FALSE
     )
   }, error = function(e) {
-    message("yfinance history failed (", ticker, "): ", e$message)
+    .ynow_log("yfinance history failed (", ticker, "): ", e$message)
     NULL
   })
 

@@ -2,8 +2,16 @@
 app_11.0 — cloud-compatible financials.
 Prefer yfinance API (works on shinyapps.io). Selenium is optional fallback for local only.
 """
+import os
 import pandas as pd
 import yfinance as yf
+
+
+def _dbg(*args, **kwargs):
+    """Console traces only when YNOW_DEBUG=1 (inherited from R / the shell)."""
+    if os.environ.get("YNOW_DEBUG", "").strip() in ("1", "true", "TRUE", "yes", "on"):
+        print(*args, **kwargs)
+
 
 # Selenium is optional (usually unavailable on shinyapps.io)
 try:
@@ -42,7 +50,7 @@ def _best_company_name(info, ticker=""):
 
 
 def fast_get_company_info(ticker="AMZN"):
-    print(f"⚡ 使用高速 API 獲取 {ticker} 公司與產業資訊...")
+    _dbg(f"⚡ 使用高速 API 獲取 {ticker} 公司與產業資訊...")
     try:
         stock = yf.Ticker(ticker)
         info = stock.info
@@ -57,7 +65,7 @@ def fast_get_company_info(ticker="AMZN"):
             "industry": industry,
         }
     except Exception as e:
-        print(f"⚠️ 獲取公司資訊失敗: {e}")
+        _dbg(f"⚠️ 獲取公司資訊失敗: {e}")
         return {
             "company_name": ticker,
             "sector": "N/A",
@@ -90,13 +98,13 @@ def _fmt_num(v, digits=2):
 
 def get_summary_quote(ticker="AMZN"):
     """Cloud-safe Yahoo summary metrics via yfinance (no Chromote/Chrome)."""
-    print(f"📊 yfinance summary quote: {ticker}")
+    _dbg(f"📊 yfinance summary quote: {ticker}")
     stock = yf.Ticker(ticker)
     info = {}
     try:
         info = stock.info or {}
     except Exception as e:
-        print(f"⚠️ stock.info failed: {e}; trying fast_info/history fallback")
+        _dbg(f"⚠️ stock.info failed: {e}; trying fast_info/history fallback")
         try:
             fi = getattr(stock, "fast_info", None)
             if fi is not None:
@@ -119,7 +127,7 @@ def get_summary_quote(ticker="AMZN"):
                     "marketCap": _get("market_cap") or _get("marketCap"),
                 }
         except Exception as e2:
-            print(f"⚠️ fast_info fallback failed: {e2}")
+            _dbg(f"⚠️ fast_info fallback failed: {e2}")
             info = {}
 
     company_name = _best_company_name(info, ticker)
@@ -158,7 +166,7 @@ def get_summary_quote(ticker="AMZN"):
                 if info.get("dayHigh") is None:
                     info["dayHigh"] = float(hist["High"].dropna().iloc[-1])
         except Exception as e:
-            print(f"⚠️ history fallback: {e}")
+            _dbg(f"⚠️ history fallback: {e}")
 
     day_low = info.get("dayLow")
     day_high = info.get("dayHigh")
@@ -189,7 +197,7 @@ def get_summary_quote(ticker="AMZN"):
     # (nested pandas DataFrame inside dict often becomes empty in R).
     items = [r[0] for r in rows]
     values = [r[1] for r in rows]
-    print(f"✅ summary rows={len(items)} name={company_name} ccy={quote_ccy}/{fin_ccy}")
+    _dbg(f"✅ summary rows={len(items)} name={company_name} ccy={quote_ccy}/{fin_ccy}")
     return {
         "company_name": str(company_name),
         "currency": str(quote_ccy),
@@ -259,21 +267,21 @@ def get_market_caps_batch(tickers):
                 if _apply_quotes(quotes):
                     got_any = True
             except Exception as e:  # noqa: BLE001
-                print(f"⚠️ market cap quote chunk failed: {e}")
+                _dbg(f"⚠️ market cap quote chunk failed: {e}")
     except Exception as e:  # noqa: BLE001
-        print(f"⚠️ YfData quote batch unavailable: {e}")
+        _dbg(f"⚠️ YfData quote batch unavailable: {e}")
 
     n_ok = sum(1 for v in out.values() if v is not None)
     if got_any and n_ok:
-        print(f"✅ market caps {n_ok}/{len(cleaned)}")
+        _dbg(f"✅ market caps {n_ok}/{len(cleaned)}")
     else:
-        print("⚠️ market cap batch empty; Lab will fall back to ticker order")
+        _dbg("⚠️ market cap batch empty; Lab will fall back to ticker order")
     return out
 
 
 def get_usd_twd_rate():
     """USD→TWD spot via yfinance (TWD=X = TWD per 1 USD)."""
-    print("💱 yfinance FX TWD=X")
+    _dbg("💱 yfinance FX TWD=X")
     for sym in ("TWD=X", "USDTWD=X"):
         try:
             t = yf.Ticker(sym)
@@ -281,7 +289,7 @@ def get_usd_twd_rate():
             if hist is not None and not hist.empty:
                 px = float(hist["Close"].dropna().iloc[-1])
                 if px > 0:
-                    print(f"✅ FX {sym} = {px}")
+                    _dbg(f"✅ FX {sym} = {px}")
                     return px
             info = t.info or {}
             for key in ("regularMarketPrice", "previousClose", "open"):
@@ -289,17 +297,17 @@ def get_usd_twd_rate():
                 if v is not None:
                     px = float(v)
                     if px > 0:
-                        print(f"✅ FX {sym} info.{key} = {px}")
+                        _dbg(f"✅ FX {sym} info.{key} = {px}")
                         return px
         except Exception as e:
-            print(f"⚠️ FX {sym}: {e}")
-    print("⚠️ FX fallback 32.0")
+            _dbg(f"⚠️ FX {sym}: {e}")
+    _dbg("⚠️ FX fallback 32.0")
     return 32.0
 
 
 def get_price_history(ticker="AMZN", period="5y"):
     """Daily OHLCV for backtests — plain lists for reticulate."""
-    print(f"📈 yfinance price history: {ticker} period={period}")
+    _dbg(f"📈 yfinance price history: {ticker} period={period}")
     stock = yf.Ticker(ticker)
     hist = stock.history(period=period, auto_adjust=True)
     if hist is None or hist.empty:
@@ -324,7 +332,7 @@ def get_price_history(ticker="AMZN", period="5y"):
 
 def get_risk_free_rate_yf():
     """10Y Treasury yield (^TNX) via yfinance — no Chromote."""
-    print("📊 yfinance Rf ^TNX")
+    _dbg("📊 yfinance Rf ^TNX")
     tnx = yf.Ticker("^TNX")
     # prefer fast_info / history last close
     try:
@@ -332,7 +340,7 @@ def get_risk_free_rate_yf():
         if hist is not None and not hist.empty:
             return float(hist["Close"].dropna().iloc[-1])
     except Exception as e:
-        print(f"history fail: {e}")
+        _dbg(f"history fail: {e}")
     info = tnx.info or {}
     for key in ("regularMarketPrice", "previousClose", "open"):
         v = info.get(key)
@@ -381,7 +389,7 @@ def get_beta_unlever_inputs(ticker="AAPL"):
     if not tk:
         out["error"] = "empty ticker"
         return out
-    print(f"📐 beta unlever inputs: {tk}")
+    _dbg(f"📐 beta unlever inputs: {tk}")
     try:
         stock = yf.Ticker(tk)
         info = {}
@@ -483,7 +491,7 @@ def _stmt_to_payload(df):
 
 def scrape_all_financials_yf(ticker="AMZN"):
     """Cloud-safe financials via Yahoo Finance API (no Chrome)."""
-    print(f"📊 使用 yfinance 獲取 {ticker} 財報（app_11.0）...")
+    _dbg(f"📊 使用 yfinance 獲取 {ticker} 財報（app_11.0）...")
     stock = yf.Ticker(ticker)
 
     def pick(*names):
@@ -505,7 +513,7 @@ def scrape_all_financials_yf(ticker="AMZN"):
     income_p = _stmt_to_payload(income)
     balance_p = _stmt_to_payload(balance)
     cash_p = _stmt_to_payload(cash)
-    print(
+    _dbg(
         f"✅ financials income_rows={len(income_p['data'])} "
         f"bs_rows={len(balance_p['data'])} cf_rows={len(cash_p['data'])}"
     )
@@ -544,7 +552,7 @@ def scrape_all_financials_selenium(ticker="AMZN"):
 
     try:
         for name, url in pages.items():
-            print(f"🌐 正在處理 {name}: {url}")
+            _dbg(f"🌐 正在處理 {name}: {url}")
             driver.get(url)
             wait = WebDriverWait(driver, 15)
 
@@ -584,7 +592,7 @@ def scrape_all_financials_selenium(ticker="AMZN"):
                     df.columns = headers
                 return df
 
-            print(f"📄 抓取 {name} (未展開版本)...")
+            _dbg(f"📄 抓取 {name} (未展開版本)...")
             df_collapsed = extract_table()
 
             try:
@@ -598,7 +606,7 @@ def scrape_all_financials_selenium(ticker="AMZN"):
                     )
                 )
                 driver.execute_script("arguments[0].click();", expand_btn)
-                print("✅ 已成功點擊 Expand All")
+                _dbg("✅ 已成功點擊 Expand All")
                 wait.until(
                     EC.presence_of_element_located(
                         (
@@ -608,9 +616,9 @@ def scrape_all_financials_selenium(ticker="AMZN"):
                     )
                 )
             except Exception:
-                print("⚠️ 找不到 Expand All 按鈕或已是展開狀態")
+                _dbg("⚠️ 找不到 Expand All 按鈕或已是展開狀態")
 
-            print(f"📄 抓取 {name} (已展開版本)...")
+            _dbg(f"📄 抓取 {name} (已展開版本)...")
             df_expanded = extract_table()
 
             all_results[name] = {
@@ -619,7 +627,7 @@ def scrape_all_financials_selenium(ticker="AMZN"):
             }
 
     except Exception as e:
-        print(f"❌ 爬蟲發生錯誤: {e}")
+        _dbg(f"❌ 爬蟲發生錯誤: {e}")
         raise
     finally:
         driver.quit()
@@ -642,9 +650,9 @@ def scrape_all_financials(ticker="AMZN"):
         has_data = any(_has_rows(result[k]["expanded"]) for k in result)
         if has_data:
             return result
-        print("⚠️ yfinance 回傳空表，改試 Selenium（若可用）...")
+        _dbg("⚠️ yfinance 回傳空表，改試 Selenium（若可用）...")
     except Exception as e:
-        print(f"⚠️ yfinance 失敗: {e}")
+        _dbg(f"⚠️ yfinance 失敗: {e}")
 
     if SELENIUM_AVAILABLE:
         try:
@@ -658,7 +666,7 @@ def scrape_all_financials(ticker="AMZN"):
                 }
             return out
         except Exception as e:
-            print(f"⚠️ Selenium 失敗: {e}")
+            _dbg(f"⚠️ Selenium 失敗: {e}")
 
     return {
         "Income Statement": {"collapsed": empty_payload, "expanded": empty_payload},
@@ -716,7 +724,7 @@ def search_tickers(query="", max_results=12):
                 other.append(row)
         out = (preferred + other)[:max_results]
     except Exception as e:
-        print(f"⚠️ search_tickers failed ({q}): {e}")
+        _dbg(f"⚠️ search_tickers failed ({q}): {e}")
         return []
     return out
 
@@ -1006,7 +1014,7 @@ def sec_report_notes(ticker="AAPL", form="10-K", max_chars=1500):
     candidates = _SEC_FORM_CANDIDATES[form]
     requested_form = form
 
-    print(f"📄 SEC EDGAR notes: {tk} {form} (try {', '.join(candidates)})")
+    _dbg(f"📄 SEC EDGAR notes: {tk} {form} (try {', '.join(candidates)})")
     try:
         session = _sec_session()
 
@@ -1071,8 +1079,8 @@ def sec_report_notes(ticker="AAPL", form="10-K", max_chars=1500):
             else:
                 result["ok"] = False
                 result["error"] = "no Notes section found in FilingSummary.xml"
-        print(f"✅ SEC notes: {tk} {form} rows={len(result['short_names'])}")
+        _dbg(f"✅ SEC notes: {tk} {form} rows={len(result['short_names'])}")
         return result
     except Exception as e:  # noqa: BLE001
-        print(f"⚠️ sec_report_notes failed ({tk} {form}): {e}")
+        _dbg(f"⚠️ sec_report_notes failed ({tk} {form}): {e}")
         return _sec_empty_result(str(e))

@@ -9,6 +9,10 @@ library(reticulate)
 library(memoise)
 library(cachem)
 
+if (!exists(".ynow_log", mode = "function")) {
+  .ynow_log <- function(...) invisible(NULL)
+}
+
 # ==========================================
 # 🚀 1. 記憶體快取與 Python 爬蟲初始化
 # ==========================================
@@ -33,7 +37,7 @@ my_cache <- cachem::cache_mem(max_size = 50 * 1024^2, max_age = 3600)
       .py_scraper_ready <<- TRUE
     }
   }, error = function(e) {
-    message("⚠️ Python 爬蟲延遲載入失敗: ", e$message)
+    .ynow_log("⚠️ Python 爬蟲延遲載入失敗: ", e$message)
     ok <<- FALSE
   })
   isTRUE(ok) && exists("scrape_all_financials", mode = "function")
@@ -44,12 +48,12 @@ tryCatch({
       isTRUE(reticulate::py_available(initialize = FALSE))) {
     reticulate::source_python("deep_scraper.py")
     .py_scraper_ready <- TRUE
-    message("✅ Python 深度爬蟲腳本載入成功！")
+    .ynow_log("✅ Python 深度爬蟲腳本載入成功！")
   } else {
-    message("ℹ️ Python 爬蟲改為延遲載入（避免啟動期 initialize 導致 500）")
+    .ynow_log("ℹ️ Python 爬蟲改為延遲載入（避免啟動期 initialize 導致 500）")
   }
 }, error = function(e) {
-  message("⚠️ Python 腳本載入失敗: ", e$message)
+  .ynow_log("⚠️ Python 腳本載入失敗: ", e$message)
 })
 
 .empty_summary <- function(stock_code, company_name = NULL) {
@@ -71,7 +75,7 @@ tryCatch({
 
 cached_scrape_financials <- memoise::memoise(
   function(stock_code) {
-    message(paste("🚀 正在啟動 Python 財報抓取:", stock_code))
+    .ynow_log(paste("🚀 正在啟動 Python 財報抓取:", stock_code))
     if (!isTRUE(.ensure_python_scraper())) {
       stop("scrape_all_financials 未載入（Python / reticulate 失敗）")
     }
@@ -86,7 +90,7 @@ tryCatch(memoise::forget(cached_scrape_financials), error = function(e) NULL)
 # 🏭 2. 公司／產業資訊
 # ==========================================
 get_yahoo_industry <- function(stock_code) {
-  message(paste("🔍 正在透過 yfinance 抓取公司與產業資訊:", stock_code))
+  .ynow_log(paste("🔍 正在透過 yfinance 抓取公司與產業資訊:", stock_code))
 
   result <- tryCatch({
     info <- fast_get_company_info(stock_code)
@@ -101,7 +105,7 @@ get_yahoo_industry <- function(stock_code) {
       display_text = display_text
     )
   }, error = function(e) {
-    message("⚠️ 產業資訊抓取失敗: ", e$message)
+    .ynow_log("⚠️ 產業資訊抓取失敗: ", e$message)
     list(
       company_name = stock_code,
       sector = "N/A",
@@ -117,7 +121,7 @@ get_yahoo_industry <- function(stock_code) {
 # 🌐 3. Summary（僅 yfinance，shinyapps 無 Chrome）
 # ==========================================
 get_summary_data <- function(stock_code) {
-  message(paste("🌐 正在讀取 Summary (yfinance):", stock_code))
+  .ynow_log(paste("🌐 正在讀取 Summary (yfinance):", stock_code))
 
   tryCatch({
     if (!exists("get_summary_quote", mode = "function")) {
@@ -156,14 +160,14 @@ get_summary_data <- function(stock_code) {
     if (!nzchar(f_ccy) || identical(f_ccy, "NA")) f_ccy <- q_ccy
     attr(tbl, "currency") <- toupper(q_ccy)
     attr(tbl, "financialCurrency") <- toupper(f_ccy)
-    message(
+    .ynow_log(
       "✅ Summary OK rows=", nrow(tbl),
       " name=", attr(tbl, "company_name"),
       " ccy=", attr(tbl, "currency"), "/", attr(tbl, "financialCurrency")
     )
     tbl
   }, error = function(e) {
-    message("⚠️ Summary yfinance 失敗: ", e$message)
+    .ynow_log("⚠️ Summary yfinance 失敗: ", e$message)
     .empty_summary(stock_code)
   })
 }
@@ -180,7 +184,7 @@ get_usd_twd_fx <- function() {
     if (is.finite(px) && px > 0) return(px)
     32
   }, error = function(e) {
-    message("⚠️ get_usd_twd_fx: ", e$message)
+    .ynow_log("⚠️ get_usd_twd_fx: ", e$message)
     32
   })
 }
@@ -191,7 +195,7 @@ cached_get_usd_twd_fx <- memoise::memoise(get_usd_twd_fx, cache = my_cache)
 # 🇺🇸 4. 無風險利率 Rf（僅 yfinance）
 # ==========================================
 get_risk_free_rate <- function() {
-  message("🔍 正在抓取美國 10 年期公債殖利率 (^TNX) via yfinance...")
+  .ynow_log("🔍 正在抓取美國 10 年期公債殖利率 (^TNX) via yfinance...")
 
   tryCatch({
     if (!exists("get_risk_free_rate_yf", mode = "function")) {
@@ -199,10 +203,10 @@ get_risk_free_rate <- function() {
     }
     rf <- as.numeric(get_risk_free_rate_yf())
     if (is.na(rf) || rf <= 0) stop("invalid rf")
-    message(paste("✅ yfinance Rf:", rf, "%"))
+    .ynow_log(paste("✅ yfinance Rf:", rf, "%"))
     rf
   }, error = function(e) {
-    message("⚠️ Rf 抓取失敗，套用預設值 4.0%。原因: ", e$message)
+    .ynow_log("⚠️ Rf 抓取失敗，套用預設值 4.0%。原因: ", e$message)
     4.0
   })
 }
@@ -255,7 +259,7 @@ search_ticker_choices <- function(query, max_results = 12L) {
     }
     search_tickers(query, as.integer(max_results))
   }, error = function(e) {
-    message("⚠️ search_tickers: ", e$message)
+    .ynow_log("⚠️ search_tickers: ", e$message)
     NULL
   })
 
@@ -306,11 +310,11 @@ fetch_beta_unlever_inputs <- function(ticker) {
   tk <- toupper(trimws(as.character(ticker %||% "")[1]))
   if (!nzchar(tk)) return(NULL)
   if (!exists("get_beta_unlever_inputs", mode = "function")) {
-    message("⚠️ get_beta_unlever_inputs 未載入")
+    .ynow_log("⚠️ get_beta_unlever_inputs 未載入")
     return(NULL)
   }
   tryCatch(get_beta_unlever_inputs(tk), error = function(e) {
-    message("⚠️ fetch_beta_unlever_inputs(", tk, "): ", e$message)
+    .ynow_log("⚠️ fetch_beta_unlever_inputs(", tk, "): ", e$message)
     NULL
   })
 }
@@ -324,7 +328,7 @@ fetch_beta_unlever_inputs_batch <- function(tickers) {
     return(lapply(tks, fetch_beta_unlever_inputs))
   }
   tryCatch(get_beta_unlever_inputs_batch(tks), error = function(e) {
-    message("⚠️ fetch_beta_unlever_inputs_batch: ", e$message)
+    .ynow_log("⚠️ fetch_beta_unlever_inputs_batch: ", e$message)
     lapply(tks, fetch_beta_unlever_inputs)
   })
 }
@@ -362,7 +366,7 @@ fetch_sec_report_notes <- function(ticker, form = "10-K", max_chars = 1500L) {
     if (is.null(res)) return(empty)
     res
   }, error = function(e) {
-    message("⚠️ fetch_sec_report_notes(", tk, " ", form, "): ", e$message)
+    .ynow_log("⚠️ fetch_sec_report_notes(", tk, " ", form, "): ", e$message)
     empty$error <- e$message
     empty
   })
