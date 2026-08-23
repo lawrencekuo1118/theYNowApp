@@ -163,6 +163,24 @@ ev_fcfe <- fcfe1 / 1.10 + (fcfe1 * 1.03 / (0.10 - 0.03)) / 1.10
 check("PIT FCFE no cash-debt bridge", approx_eq(fv_fcfe, ev_fcfe / 10, 1e-8))
 check("PIT FCFE ignores cash add-back", !approx_eq(fv_fcfe, (ev_fcfe + 999 - 50) / 10, 1e-6))
 
+mk_bs_de <- function(debt, equity) {
+  data.frame(
+    Item = c("Total Debt", "Stockholders Equity"),
+    Y1 = c(debt[1], equity[1]),
+    Y2 = c(debt[2], equity[2]),
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+}
+r_neg <- recommend_dcf_claim(mk_bs_de(c(20, 22), c(80, 78)), fcff = 10, fcfe = -2)
+check("claim suggest FCFF when FCFE negative", identical(r_neg$prefer, "fcff") && !isTRUE(r_neg$fcfe_ok))
+r_hi <- recommend_dcf_claim(mk_bs_de(c(70, 68), c(30, 32)), fcff = 10, fcfe = 4)
+check("claim suggest FCFF when high leverage", identical(r_hi$prefer, "fcff") && !isTRUE(r_hi$fcfe_ok))
+r_swing <- recommend_dcf_claim(mk_bs_de(c(10, 55), c(90, 45)), fcff = 10, fcfe = 5)
+check("claim suggest FCFF when leverage swings", identical(r_swing$prefer, "fcff") && !isTRUE(r_swing$fcfe_ok))
+r_ok <- recommend_dcf_claim(mk_bs_de(c(25, 27), c(75, 73)), fcff = 10, fcfe = 6)
+check("claim FCFE ok when leverage stable", isTRUE(r_ok$fcfe_ok) && identical(r_ok$prefer, "fcff"))
+
 if (fail > 0L) {
   cat(fail, " formula check(s) failed.\n", sep = "")
   quit(status = 1L)

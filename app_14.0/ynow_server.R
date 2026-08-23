@@ -1491,6 +1491,46 @@ server <- function(input, output, session) {
     )
   }, ignoreInit = FALSE)
 
+  output$dcf_claim_suggest <- renderUI({
+    fcf_hist <- tryCatch(
+      select_clean_metric_row(d_cash_flow(), "Free Cash Flow", include_ttm = FALSE),
+      error = function(e) NULL
+    )
+    fcf_hist <- suppressWarnings(as.numeric(fcf_hist))
+    last_fcff <- NA_real_
+    if (length(fcf_hist)) {
+      hit <- which(is.finite(fcf_hist))
+      if (length(hit)) last_fcff <- fcf_hist[hit[1]]
+    }
+    br <- .dcf_fcfe_bridge()
+    last_fcfe <- tryCatch(
+      fcff_to_fcfe(last_fcff, interest_after_tax = br$iat, debt0 = br$debt, g_path = 0)[1],
+      error = function(e) NA_real_
+    )
+    rec <- recommend_dcf_claim(
+      d_bs = d_balance_sheet(),
+      fcff = last_fcff,
+      fcfe = last_fcfe
+    )
+    cur <- as.character(input$dcf_claim %||% "fcff")[1]
+    if (isTRUE(rec$fcfe_ok)) {
+      head <- "建議：負債比相對穩定，FCFF 與 FCFE 皆可用（預設仍為 FCFF；不自動切換）。"
+    } else {
+      head <- "建議採用 FCFF／WACC（不自動切換）。"
+    }
+    if (identical(cur, "fcfe") && !isTRUE(rec$fcfe_ok)) {
+      head <- paste0(head, " 目前選 FCFE：請確認淨舉債假設與 Ke 配對。")
+    }
+    tags$div(
+      style = "margin: 4px 0 0 0; padding: 8px 10px; background: #f5f5f5; border-left: 4px solid #222; font-size: 12px; color: #444; line-height: 1.5;",
+      tags$b(head),
+      tags$ul(
+        style = "margin: 6px 0 0 18px; padding: 0;",
+        lapply(rec$reasons, function(x) tags$li(x))
+      )
+    )
+  })
+
   output$dcf_chart_help <- renderUI({
     tag <- dcf_cf_tag(input$dcf_claim %||% "fcff")
     helpText(sprintf(

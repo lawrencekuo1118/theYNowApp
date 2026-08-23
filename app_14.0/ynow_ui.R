@@ -2555,7 +2555,8 @@ ui <- dashboardPage(
                                     selected = APP_DEFAULTS$dcf_claim,
                                     inline = TRUE
                                   ),
-                                  helpText("FCFE = FCFF − 稅後利息 + 淨舉債（負債隨 g 成長）；以 Ke 折現，不再減負債。")
+                                  helpText("FCFE = FCFF − 稅後利息 + 淨舉債（負債隨 g 成長）；以 Ke 折現，不再減負債。"),
+                                  uiOutput("dcf_claim_suggest")
                                 )
                               ),
                               # WACC 改由 DCF → WACC 分頁／CAPM 同步；此處隱藏保留 input$id 供計算鏈使用

@@ -1154,6 +1154,80 @@ fcff_to_fcfe <- function(fcff, interest_after_tax = 0, debt0 = 0, g_path = 0) {
   )$FCFE
 }
 
+#' Historical D/(D+E) from a balance sheet (TTM 欄略過).
+.dcf_claim_debt_ratios <- function(d_bs) {
+  if (is.null(d_bs) || !is.data.frame(d_bs) || nrow(d_bs) < 1L) {
+    return(numeric(0))
+  }
+  debt <- tryCatch(
+    select_clean_metric_row(d_bs, "^Total Debt$", include_ttm = FALSE),
+    error = function(e) NULL
+  )
+  eq <- tryCatch(
+    select_clean_metric_row_any(d_bs, EQUITY_PATTERNS, include_ttm = FALSE),
+    error = function(e) NULL
+  )
+  debt <- suppressWarnings(as.numeric(debt))
+  eq <- suppressWarnings(as.numeric(eq))
+  n <- min(length(debt), length(eq))
+  if (n < 1L) return(numeric(0))
+  debt <- debt[seq_len(n)]
+  eq <- eq[seq_len(n)]
+  den <- debt + eq
+  out <- debt / den
+  out[!(is.finite(debt) & is.finite(eq) & is.finite(den) & den > 0)] <- NA_real_
+  out[is.finite(out)]
+}
+
+#' Damodaran／CFA 對齊：建議 FCFF 或 FCFE（不改預設；僅提示）.
+#' 偏好 FCFF：槓桿高或變動大、FCFE&lt;0 且 FCFF&gt;0。
+#' 負債比穩定且 FCFE&gt;0：FCFE 適用（仍不自動切換）.
+recommend_dcf_claim <- function(d_bs = NULL,
+                                fcff = NA_real_,
+                                fcfe = NA_real_,
+                                high_lev = 0.50,
+                                lev_range_unstable = 0.15,
+                                lev_range_stable = 0.10) {
+  fcff <- suppressWarnings(as.numeric(fcff)[1])
+  fcfe <- suppressWarnings(as.numeric(fcfe)[1])
+  dr <- .dcf_claim_debt_ratios(d_bs)
+  lev_now <- if (length(dr)) dr[1] else NA_real_
+  lev_span <- if (length(dr) >= 2L) diff(range(dr)) else NA_real_
+  reasons <- character(0)
+  prefer <- "fcff"
+  fcfe_ok <- FALSE
+
+  if (is.finite(fcff) && fcff > 0 && is.finite(fcfe) && fcfe < 0) {
+    prefer <- "fcff"
+    reasons <- c(reasons, "FCFE 為負而 FCFF 為正（高槓桿／償債後現金不足時不宜硬用 FCFE）")
+  }
+  if (is.finite(lev_now) && lev_now >= high_lev) {
+    prefer <- "fcff"
+    reasons <- c(reasons, sprintf("目前負債比偏高（D/(D+E)≈%.0f%%）", 100 * lev_now))
+  }
+  if (is.finite(lev_span) && lev_span >= lev_range_unstable) {
+    prefer <- "fcff"
+    reasons <- c(reasons, sprintf("負債比變動大（全距約 %.0f 個百分點），不必逐年預測淨舉債", 100 * lev_span))
+  }
+  if (identical(prefer, "fcff") && !length(reasons)) {
+    reasons <- c("實務與 CFA 調查以 FCFF／WACC 為預設；與折扣率配對即可")
+  }
+  if (is.finite(lev_span) && lev_span < lev_range_stable && length(dr) >= 2L &&
+      is.finite(fcfe) && fcfe > 0 && !(is.finite(lev_now) && lev_now >= high_lev)) {
+    fcfe_ok <- TRUE
+    reasons <- c(reasons, "負債比相對穩定且 FCFE 為正，固定槓桿近似下可用 FCFE／Ke")
+  }
+  list(
+    prefer = prefer,
+    fcfe_ok = isTRUE(fcfe_ok),
+    lev_now = lev_now,
+    lev_span = lev_span,
+    fcff = fcff,
+    fcfe = fcfe,
+    reasons = unique(reasons)
+  )
+}
+
 #' Holding / conglomerate NAV from a balance sheet (book SOTP).
 #' NAV = Equity − holdco_discount × identified investments.
 #' If no investment lines, NAV = common equity (same as book).
