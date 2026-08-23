@@ -146,11 +146,6 @@ lab_fetch_summary_metrics <- function(ticker) {
   out
 }
 
-#' 相容舊呼叫
-lab_fetch_market_cap_usd <- function(ticker) {
-  lab_fetch_summary_metrics(ticker)$market_cap
-}
-
 #' 評估檔數（明細列數）："all"／"全部" → 不設上限；空／自訂未填 → 預設 100
 lab_parse_im_max_n <- function(x, default_n = 100L) {
   default_n <- max(1L, as.integer(default_n)[1])
@@ -681,12 +676,6 @@ lab_build_industry_method_catalog <- function() {
     }
   }
   do.call(rbind, rows)
-}
-
-#' 是否通過 Piotroski 高門檻（F-Score≥7；不含盈餘品質）
-lab_is_piotroski_high <- function(f_score, min_score = 7L) {
-  fs <- suppressWarnings(as.numeric(f_score)[1])
-  isTRUE(is.finite(fs) && fs >= as.numeric(min_score))
 }
 
 #' 是否通過舊版綜合品質門檻（F-Score≥7 且盈餘品質通過；保留供相容）

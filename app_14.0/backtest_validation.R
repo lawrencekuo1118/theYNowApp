@@ -20,12 +20,6 @@
   if (length(x) < 1 || is.na(x) || !is.finite(x)) default else x
 }
 
-.bv_clip <- function(x, lo, hi) {
-  x <- as.numeric(x)
-  x[!is.finite(x)] <- (lo + hi) / 2
-  pmin(pmax(x, lo), hi)
-}
-
 .bv_terminal_return <- function(eq) {
   eq <- as.numeric(eq)
   eq <- eq[is.finite(eq)]

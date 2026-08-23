@@ -32,8 +32,6 @@
   if (length(x) < 1 || is.na(x) || !is.finite(x)) default else x
 }
 
-.coalesce <- function(a, b) if (is.null(a)) b else a
-
 `%||%` <- function(x, y) {
   if (is.null(x) || length(x) < 1 || (length(x) == 1 && is.na(x))) y else x
 }
@@ -172,12 +170,6 @@ estimate_hist_dcf <- function(fcf0, cash, debt, shares,
   fv <- equity / shares
   if (!is.finite(fv) || fv <= 0) return(NA_real_)
   fv
-}
-
-# Back-compat alias (kept from v11 API surface).
-estimate_hist_fair_value <- function(fcf0, cash, debt, shares,
-                                     wacc, sgr, n_years = 5, g_explicit = NULL) {
-  estimate_hist_dcf(fcf0, cash, debt, shares, wacc, sgr, n_years, g_explicit)
 }
 
 #' Historical / PIT DDM (Gordon or two-stage).
@@ -1168,11 +1160,6 @@ sentiment_score <- function(mom_score, rsi_score, w_mom = 0.5, w_rsi = 0.5) {
     return(0.5 * mom_score + 0.5 * rsi_score)
   }
   (.safe_num(w_mom, 0.5) * mom_score + .safe_num(w_rsi, 0.5) * rsi_score) / w_sum
-}
-
-#' Legacy multiplier in [0.75, 1.25] (kept for diagnostics / docs).
-sentiment_multiplier <- function(mom_score, rsi_score, w_mom = 0.5, w_rsi = 0.5) {
-  0.75 + 0.5 * .clip01(sentiment_score(mom_score, rsi_score, w_mom, w_rsi), 0, 1)
 }
 
 #' Mode B exposure: blend Exp_A with an emotion-driven target so NAV diverges from A.

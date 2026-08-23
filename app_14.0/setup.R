@@ -439,10 +439,6 @@ get_operating_earnings_row <- function(d_is, include_ttm = FALSE) {
   operating_earnings_from_ni(ni, unreal)
 }
 
-get_operating_earnings_avg <- function(d_is, include_ttm = FALSE) {
-  get_avg(get_operating_earnings_row(d_is, include_ttm = include_ttm))
-}
-
 # 財報股數 vs 報價約當股數：超過此倍率視為不同股權級距（含常見 ADR 2–10×）
 SHARE_UNIT_MISMATCH_RATIO <- 1.5
 # 報價幣 ≠ 財報幣（典型 ADR）時用較敏感門檻
@@ -675,18 +671,6 @@ align_fundamentals_shares_to_quote <- function(fund,
     shares_quote = sh$shares
   )
   out
-}
-
-#' 報價端 Book Value 是否與目前股價同一股權級距（排除 BRK-B 誤用 A 級 BV）
-quote_book_value_is_plausible <- function(book_value, price) {
-  book_value <- suppressWarnings(as.numeric(book_value)[1])
-  price <- suppressWarnings(as.numeric(price)[1])
-  if (!is.finite(book_value) || !is.finite(price) || book_value <= 0 || price <= 0) {
-    return(FALSE)
-  }
-  # 隱含 P/B = price/book 落在合理區間才採用
-  pb <- price / book_value
-  is.finite(pb) && pb >= 0.3 && pb <= 8
 }
 
 # 取得當期單一數值：流量科目優先 TTM，存量科目用最新財年
@@ -2115,17 +2099,6 @@ estimate_perpetual_g <- function(method = "macro",
     recommend_label = rec$label,
     recommend_reason = rec$reason
   )
-}
-
-#' 側邊欄 menuItem 徽章：推薦優先，否則保留原狀態標
-.sidebar_badge <- function(recommended, fallback_label = NULL, fallback_color = NULL) {
-  if (isTRUE(recommended)) {
-    return(list(label = "推薦", color = "red"))
-  }
-  if (!is.null(fallback_label) && nzchar(fallback_label)) {
-    return(list(label = fallback_label, color = fallback_color %||% "green"))
-  }
-  list(label = NULL, color = NULL)
 }
 
 # `%||%` 若環境尚無

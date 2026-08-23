@@ -368,17 +368,6 @@ beta_rolling_section_ui <- function() {
   )
 }
 
-#' @deprecated use beta_overview_section_ui + beta_unlever_section_ui + beta_rolling_section_ui
-beta_advanced_tab_ui <- function() {
-  tagList(
-    beta_overview_section_ui(),
-    tags$hr(),
-    beta_unlever_section_ui(),
-    tags$hr(),
-    beta_rolling_section_ui()
-  )
-}
-
 #' Valuation methodology guide (Decision Matrix + DCF/DDM/RI/P/B tabs)
 #' Outer shinydashboard box removed — heading + tabBox sit directly on About.
 #' Title/lead use column(12); tabBox keeps width=12 (shinydashboard always emits col-sm-N).

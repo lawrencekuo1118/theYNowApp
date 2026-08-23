@@ -93,19 +93,7 @@ decision_momentum_panel_ui <- function(id) {
 }
 
 # -------------------------------------------
-# 2. Pure helpers
-# -------------------------------------------
-safe_cagr <- function(row_data) {
-  vals <- na.omit(parse_financial_number(row_data))
-  if (length(vals) < 2) return(NA)
-  newest <- vals[1]
-  oldest <- vals[length(vals)]
-  if (oldest <= 0 || newest <= 0) return(NA)
-  (newest / oldest)^(1 / (length(vals) - 1)) - 1
-}
-
-# -------------------------------------------
-# 3. Server：主模型區間 + 副模型檢核 + 可信度
+# 2. Server：主模型區間 + 副模型檢核 + 可信度
 # -------------------------------------------
 decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_val_ddm, current_price, hist_price_data, industry_text,
                             intrinsic_val_pb = reactive(NA),
