@@ -580,9 +580,6 @@ reconstruct_fair_value_pit <- function(fund_row, price, model_params,
   valuation_df$fv_ri[j]  <- .safe_num(pit$fv_ri, NA_real_)
   valuation_df$fv_pb[j]  <- .safe_num(pit$fv_pb, NA_real_)
   valuation_df$fair_value[j] <- .safe_num(pit$fair_value, NA_real_)
-  if ("strategy_fv" %in% names(valuation_df)) {
-    valuation_df$strategy_fv[j] <- valuation_df$fair_value[j]
-  }
   valuation_df$mos[j] <- pit$mos
   valuation_df$signal[j] <- pit$signal
   valuation_df$valuation_score[j] <- .safe_num(pit$valuation_score, NA_real_)
@@ -591,12 +588,6 @@ reconstruct_fair_value_pit <- function(fund_row, price, model_params,
     if ("ke_pit" %in% names(valuation_df)) valuation_df$ke_pit[j] <- .safe_num(mp_tip$ke, NA_real_)
     if ("wacc_pit" %in% names(valuation_df)) valuation_df$wacc_pit[j] <- .safe_num(mp_tip$wacc, NA_real_)
     if ("rm_window" %in% names(valuation_df)) valuation_df$rm_window[j] <- "session"
-  }
-  if ("explain" %in% names(valuation_df)) {
-    valuation_df$explain[j] <- paste0(
-      valuation_df$explain[j] %||% "",
-      if (isTRUE(used_session_rm)) " [tip=session APP params + session Rm]" else " [tip=session APP params]"
-    )
   }
 
   hist <- .hist_forward_assumptions()
@@ -986,13 +977,11 @@ pit_discount_params <- function(model_params, stock_close, bench_close, dates, a
 
   ke_i <- ke0
   wacc_i <- wacc0
-  clip_note <- ""
   if (is.finite(beta_i) && is.finite(rf) && is.finite(rm)) {
     ke_try <- rf + beta_i * (rm - rf)
     if (is.finite(ke_try)) {
       if (ke_try <= 0) {
         ke_i <- 0.01
-        clip_note <- paste0(clip_note, "Ke clipped to 1% (CAPM Ke≤0). ")
       } else {
         ke_i <- ke_try
       }
@@ -1003,7 +992,6 @@ pit_discount_params <- function(model_params, stock_close, bench_close, dates, a
         if (is.finite(wacc_try)) {
           if (wacc_try <= 0) {
             wacc_i <- 0.01
-            clip_note <- paste0(clip_note, "WACC clipped to 1% (WACC≤0). ")
           } else {
             wacc_i <- wacc_try
           }
@@ -1012,7 +1000,6 @@ pit_discount_params <- function(model_params, stock_close, bench_close, dates, a
         wacc_i <- wacc0 * (ke_i / ke0)
         if (is.finite(wacc_i) && wacc_i <= 0) {
           wacc_i <- 0.01
-          clip_note <- paste0(clip_note, "WACC clipped to 1% (WACC≤0). ")
         }
       }
     }
@@ -1024,7 +1011,7 @@ pit_discount_params <- function(model_params, stock_close, bench_close, dates, a
   list(
     model_params = mp, beta = beta_i, ke = ke_i, wacc = wacc_i,
     rf = rf, rm = rm, we = we, wd = wd,
-    rm_window = rm_window, clip_note = trimws(clip_note)
+    rm_window = rm_window
   )
 }
 
@@ -1467,7 +1454,7 @@ nav_perf_metrics <- function(equity_df) {
 
 #' Given aligned daily df (Date, Close, Bench, RSI, ret20), fundamentals
 #' and params, simulate quarterly rebalance and return
-#' equity_df / valuation_df / exposure summary / explain_last.
+#' equity_df / valuation_df / exposure summary.
 .run_backtest_core <- function(df, fund, params, model_params, mos_fallback = 0,
                                beta_df = NULL, fv_only = FALSE, tnx_df = NULL) {
   thr_npm <- .safe_num(params$bt_net_margin, 5)
@@ -1514,7 +1501,6 @@ nav_perf_metrics <- function(equity_df) {
   g_carry <- max(min(g_carry, 0.12), -0.05)
 
   val_rows <- list()
-  explain_last <- NULL
 
   for (i in 2:n) {
     r  <- df$Close[i] / df$Close[i - 1] - 1
@@ -1558,29 +1544,7 @@ nav_perf_metrics <- function(equity_df) {
       if (isTRUE(fv_only)) {
         pos_a <- 0
         pos_b <- 0
-        sent_mult <- 1
         gf <- list(pass = NA, path = "fv_only")
-        explain_txt <- sprintf(
-          "%s | 策略合理價(勾選平均) %.2f (dcf %.2f / ddm %.2f / ri %.2f / pb %.2f) vs 市價 %.2f, MOS %.1f%%, score %.0f/100. Rollingβ=%.2f Rf=%.1f%% Rm=%.1f%%(%s) Ke=%.1f%% WACC=%.1f%% We=%.0f%%.%s",
-          signal_i,
-          .safe_num(pit$fair_value, NA_real_),
-          .safe_num(pit$fv_dcf, NA_real_), .safe_num(pit$fv_ddm, NA_real_),
-          .safe_num(pit$fv_ri, NA_real_),  .safe_num(pit$fv_pb, NA_real_),
-          .safe_num(price_i, NA_real_),
-          100 * .safe_num(mos_i, NA_real_),
-          .safe_num(pit$valuation_score, NA_real_),
-          .safe_num(disc$beta, NA_real_),
-          100 * .safe_num(disc$rf, NA_real_),
-          100 * .safe_num(disc$rm, NA_real_),
-          as.character(disc$rm_window %||% "session")[1],
-          100 * .safe_num(disc$ke, NA_real_),
-          100 * .safe_num(disc$wacc, NA_real_),
-          100 * .safe_num(disc$we, NA_real_),
-          {
-            clip_s <- as.character(disc$clip_note %||% "")[1]
-            if (nzchar(clip_s)) paste0(" ", clip_s) else ""
-          }
-        )
       } else {
         gf <- .great_filter_pass(fund_i, thr_npm, thr_rev, thr_eps, thr_cv, fund_i$cv_fcf)
 
@@ -1596,31 +1560,6 @@ nav_perf_metrics <- function(equity_df) {
         # ---- Strategy B: blend Exp_A with emotion target (diverges from A) ----
         mb <- mode_b_exposure(pos_a, mom_score, rsi_score, w_mom, w_rsi, max_exp)
         pos_b <- mb$pos_b
-        sent_mult <- if (pos_a > 1e-9) pos_b / pos_a else 1
-
-        explain_txt <- sprintf(
-          "%s | 策略合理價(勾選平均) %.2f (dcf %.2f / ddm %.2f / ri %.2f / pb %.2f) vs 市價 %.2f, MOS %.1f%%, score %.0f/100. Rollingβ=%.2f Rf=%.1f%% Rm=%.1f%%(%s) Ke=%.1f%% WACC=%.1f%% We=%.0f%%.%s 過濾:%s(%s). Exp_A=%.2f, Exp_B=%.2f (sent=%.2f blend=%.2f).",
-          signal_i,
-          .safe_num(pit$fair_value, NA_real_),
-          .safe_num(pit$fv_dcf, NA_real_), .safe_num(pit$fv_ddm, NA_real_),
-          .safe_num(pit$fv_ri, NA_real_),  .safe_num(pit$fv_pb, NA_real_),
-          .safe_num(price_i, NA_real_),
-          100 * .safe_num(mos_i, NA_real_),
-          .safe_num(pit$valuation_score, NA_real_),
-          .safe_num(disc$beta, NA_real_),
-          100 * .safe_num(disc$rf, NA_real_),
-          100 * .safe_num(disc$rm, NA_real_),
-          as.character(disc$rm_window %||% "session")[1],
-          100 * .safe_num(disc$ke, NA_real_),
-          100 * .safe_num(disc$wacc, NA_real_),
-          100 * .safe_num(disc$we, NA_real_),
-          {
-            clip_s <- as.character(disc$clip_note %||% "")[1]
-            if (nzchar(clip_s)) paste0(" ", clip_s) else ""
-          },
-          if (isTRUE(gf$pass)) "PASS" else "FAIL",
-          gf$path, pos_a, pos_b, mb$sent, mb$blend
-        )
       }
 
       val_rows[[length(val_rows) + 1L]] <- data.frame(
@@ -1633,7 +1572,6 @@ nav_perf_metrics <- function(equity_df) {
         fv_ri  = .safe_num(pit$fv_ri,  NA_real_),
         fv_pb  = .safe_num(pit$fv_pb,  NA_real_),
         fair_value = .safe_num(pit$fair_value, NA_real_),
-        strategy_fv = .safe_num(pit$fair_value, NA_real_),  # back-compat alias
         mos = mos_i,
         signal = signal_i,
         valuation_score = .safe_num(pit$valuation_score, NA_real_),
@@ -1649,28 +1587,7 @@ nav_perf_metrics <- function(equity_df) {
         exp_b = pos_b,
         filter_pass = isTRUE(gf$pass),
         filter_path = gf$path,
-        pos_fundamental = pos_a,  # back-compat alias
-        explain = explain_txt,
         stringsAsFactors = FALSE
-      )
-
-      explain_last <- list(
-        Date = df$Date[i],
-        fund_year = fund_i$fund_year,
-        price = price_i,
-        fair_value = pit$fair_value,
-        fv_dcf = pit$fv_dcf, fv_ddm = pit$fv_ddm,
-        fv_ri = pit$fv_ri,  fv_pb = pit$fv_pb,
-        mos = mos_i, signal = signal_i,
-        valuation_score = pit$valuation_score,
-        rolling_beta = disc$beta, ke_pit = disc$ke, wacc_pit = disc$wacc,
-        rf_pit = disc$rf, rm_pit = disc$rm, rm_window = disc$rm_window,
-        we_pit = disc$we, wd_pit = disc$wd,
-        filter_pass = isTRUE(gf$pass),
-        filter_path = gf$path,
-        exp_a = pos_a, exp_b = pos_b,
-        sentiment_mult = sent_mult,
-        bvps = pit$bvps, roe = pit$roe, dps = pit$dps, payout = pit$payout
       )
     }
 
@@ -1706,7 +1623,7 @@ nav_perf_metrics <- function(equity_df) {
       Date = as.Date(character()), fund_year = integer(),
       hist_price = numeric(), bench_price = numeric(),
       fv_dcf = numeric(), fv_ddm = numeric(), fv_ri = numeric(), fv_pb = numeric(),
-      fair_value = numeric(), strategy_fv = numeric(),
+      fair_value = numeric(),
       mos = numeric(), signal = character(),
       valuation_score = numeric(),
       rolling_beta = numeric(), ke_pit = numeric(), wacc_pit = numeric(),
@@ -1714,7 +1631,6 @@ nav_perf_metrics <- function(equity_df) {
       we_pit = numeric(), wd_pit = numeric(),
       exp_a = numeric(), exp_b = numeric(),
       filter_pass = logical(), filter_path = character(),
-      pos_fundamental = numeric(), explain = character(),
       stringsAsFactors = FALSE
     )
   }
@@ -1785,8 +1701,7 @@ nav_perf_metrics <- function(equity_df) {
         pct_value_over = mkt$pct_value_over,
         mean_hist_mos = mkt$mean_hist_mos,
         last_signal = mkt$last_signal
-      ),
-      explain_last = explain_last
+      )
     ))
   }
 
@@ -1831,8 +1746,7 @@ nav_perf_metrics <- function(equity_df) {
       pct_value_over = mkt$pct_value_over,
       mean_hist_mos = mkt$mean_hist_mos,
       last_signal = mkt$last_signal
-    ),
-    explain_last = explain_last
+    )
   )
 }
 
@@ -1869,7 +1783,6 @@ refresh_backtest_fair_value <- function(res, fund, model_params) {
     vd$fv_ri[j]  <- .safe_num(pit$fv_ri, NA_real_)
     vd$fv_pb[j]  <- .safe_num(pit$fv_pb, NA_real_)
     vd$fair_value[j] <- .safe_num(pit$fair_value, NA_real_)
-    vd$strategy_fv[j] <- vd$fair_value[j]
     vd$mos[j] <- pit$mos
     vd$signal[j] <- pit$signal
     vd$valuation_score[j] <- .safe_num(pit$valuation_score, NA_real_)
@@ -1885,21 +1798,6 @@ refresh_backtest_fair_value <- function(res, fund, model_params) {
   mkt <- .compute_market_pricing_metrics(vd)
   metrics <- utils::modifyList(metrics, mkt)
 
-  explain_last <- res$explain_last
-  if (nrow(vd) > 0) {
-    last <- vd[nrow(vd), , drop = FALSE]
-    explain_last <- utils::modifyList(
-      if (is.list(explain_last)) explain_last else list(),
-      list(
-        fair_value = last$fair_value,
-        fv_dcf = last$fv_dcf, fv_ddm = last$fv_ddm,
-        fv_ri = last$fv_ri, fv_pb = last$fv_pb,
-        mos = last$mos, signal = last$signal,
-        valuation_score = last$valuation_score
-      )
-    )
-  }
-
   mp_out <- mp_base
   if (!is.null(res$model_params_used)) {
     mp_out <- utils::modifyList(res$model_params_used, mp_base)
@@ -1910,11 +1808,9 @@ refresh_backtest_fair_value <- function(res, fund, model_params) {
     valuation_df = vd,
     exposure = res$exposure,
     metrics = metrics,
-    explain_last = explain_last,
     bench_ticker = res$bench_ticker,
     n_days = res$n_days,
-    model_params_used = mp_out,
-    dcf_params_used = mp_out
+    model_params_used = mp_out
   )
 }
 
@@ -2026,7 +1922,6 @@ compute_fair_value_timeline <- function(ticker,
     equity_df = core$equity_df,
     valuation_df = core$valuation_df,
     metrics = core$metrics,
-    explain_last = core$explain_last,
     bench_ticker = bench_ticker,
     n_days = nrow(df),
     model_params_used = model_params,
@@ -2109,11 +2004,9 @@ run_company_backtest <- function(ticker,
     valuation_df = core$valuation_df,
     exposure     = core$exposure,
     metrics      = core$metrics,
-    explain_last = core$explain_last,
     bench_ticker = bench_ticker,
     n_days       = nrow(df),
     model_params_used = model_params,
-    dcf_params_used   = model_params,  # back-compat alias for v11 UI
     fund = fund,
     share_align = attr(fund, "share_align")
   )
