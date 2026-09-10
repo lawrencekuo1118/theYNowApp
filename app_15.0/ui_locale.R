@@ -40,8 +40,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     snapshot_link = " Snapshot",
     test_link = " Testing",
     feedback_link = " Feedback",
-    market_hint = "Market",
-    highlight_hint = "Highlights matches on this page"
+    market_hint = "Market"
   ),
   `zh-TW` = list(
     search_placeholder = "搜尋本頁關鍵字…",
@@ -66,8 +65,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     snapshot_link = " 快照",
     test_link = " 測試",
     feedback_link = " 意見區",
-    market_hint = "市場",
-    highlight_hint = "標註目前頁面內的關鍵字"
+    market_hint = "市場"
   )
 )
 

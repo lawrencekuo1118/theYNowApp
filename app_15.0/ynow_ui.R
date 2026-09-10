@@ -743,32 +743,28 @@ ui <- dashboardPage(
     column(width = 12,
            tags$div(
              class = "ynow-page-search-wrap",
-             sidebarSearchForm(
-               textId = "txt_search",
-               buttonId = "btn_search",
-               label = "Search page…"
-             ),
              tags$div(
-               id = "ynow_page_search_toolbar",
-               class = "ynow-page-search-toolbar",
-               tags$span(id = "ynow_hl_count", class = "ynow-hl-count", ""),
-               tags$button(
-                 id = "ynow_hl_prev", type = "button", class = "btn btn-xs btn-default",
-                 title = "Previous match", "▲"
+               class = "ynow-page-search-row",
+               tags$div(
+                 class = "ynow-page-search-nav",
+                 tags$button(
+                   id = "ynow_hl_prev", type = "button", class = "btn btn-default ynow-hl-nav-btn",
+                   title = "Previous match", "▲"
+                 ),
+                 tags$button(
+                   id = "ynow_hl_next", type = "button", class = "btn btn-default ynow-hl-nav-btn",
+                   title = "Next match", "▼"
+                 )
                ),
-               tags$button(
-                 id = "ynow_hl_next", type = "button", class = "btn btn-xs btn-default",
-                 title = "Next match", "▼"
+               tags$div(
+                 class = "ynow-page-search-field",
+                 sidebarSearchForm(
+                   textId = "txt_search",
+                   buttonId = "btn_search",
+                   label = "Search page…"
+                 )
                ),
-               tags$button(
-                 id = "ynow_hl_clear", type = "button", class = "btn btn-xs btn-default",
-                 title = "Clear highlights", "✕"
-               )
-             ),
-             tags$div(
-               id = "ynow_page_search_hint",
-               class = "ynow-page-search-hint",
-               "Highlights matches on this page"
+               tags$span(id = "ynow_hl_count", class = "ynow-hl-count", "")
              )
            ),
            column(width = 12, textOutput("today"),
@@ -1173,8 +1169,6 @@ ui <- dashboardPage(
             if (inp && s.search_placeholder) inp.setAttribute('placeholder', s.search_placeholder);
             var recent = document.getElementById('ynow_recent_search_label');
             if (recent && s.recent_search) recent.textContent = s.recent_search;
-            var hint = document.getElementById('ynow_page_search_hint');
-            if (hint && s.highlight_hint) hint.textContent = s.highlight_hint;
             var scLab = document.querySelector('label[for=\"sc\"]');
             if (scLab && s.ticker_label) scLab.textContent = s.ticker_label;
             var dsTitle = document.getElementById('ynow_data_source_title');
@@ -1358,11 +1352,6 @@ ui <- dashboardPage(
             $(document).on('click', '#ynow_hl_prev', function () {
               if (hlState.marks.length) focusMark(hlState.idx - 1);
             });
-            $(document).on('click', '#ynow_hl_clear', function () {
-              clearHighlights();
-              var inp = document.getElementById('txt_search');
-              if (inp) inp.value = '';
-            });
             /* Clear highlights when switching sidebar tabs */
             $(document).on('shown.bs.tab', 'a[data-toggle=\"tab\"]', function () {
               if (hlState.q) runPageSearch(hlState.q);
@@ -1386,33 +1375,62 @@ ui <- dashboardPage(
           background: #ff9800;
           outline: 1px solid #e65100;
         }
-        .ynow-page-search-toolbar {
+        .ynow-page-search-wrap {
+          margin: 10px 0 6px 0;
+        }
+        .ynow-page-search-row {
           display: flex;
           align-items: center;
           gap: 4px;
-          padding: 4px 0 2px 0;
-          flex-wrap: wrap;
+          width: 100%;
         }
-        .ynow-page-search-toolbar .btn {
-          padding: 1px 6px;
-          line-height: 1.3;
+        .ynow-page-search-nav {
+          display: flex;
+          flex-direction: row;
+          align-items: center;
+          gap: 2px;
+          flex-shrink: 0;
+        }
+        .ynow-hl-nav-btn {
+          padding: 0 3px;
+          min-width: 16px;
+          height: 18px;
+          font-size: 9px;
+          line-height: 1;
           background: #333;
           color: #eee;
           border-color: #555;
+          border-radius: 2px;
         }
-        .ynow-hl-count {
-          font-size: 11px;
-          color: #bbb;
-          min-width: 2.5em;
+        .ynow-hl-nav-btn:hover,
+        .ynow-hl-nav-btn:focus {
+          background: #444;
+          color: #fff;
+          border-color: #666;
         }
-        .ynow-page-search-hint {
-          font-size: 10px;
-          color: rgba(255,255,255,0.55);
-          margin: 0 0 6px 0;
-          line-height: 1.3;
+        .ynow-page-search-field {
+          flex: 1 1 auto;
+          min-width: 0;
         }
         .ynow-page-search-wrap .sidebar-form {
-          margin: 10px 0 0 0;
+          margin: 0;
+        }
+        .ynow-page-search-wrap .sidebar-form .form-control {
+          margin: 0 !important;
+          height: 28px;
+          padding: 4px 8px;
+          font-size: 12px;
+        }
+        .ynow-page-search-wrap .sidebar-form .btn {
+          height: 28px;
+          padding: 4px 10px;
+        }
+        .ynow-hl-count {
+          font-size: 10px;
+          color: #bbb;
+          min-width: 1.8em;
+          flex-shrink: 0;
+          line-height: 1;
         }
       ")),
       
