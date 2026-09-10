@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12535190
+bundleId=12535651
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=df441da
-commit=df441da
-short=df441da
-message=Ship app_15.0 dual-market US/TW toggle with Yahoo fetch and TWSE Blue Chip universe.
-captured_at=2026-09-10T13:38:18Z
+aligned_git=3d8eac7
+commit=3d8eac7
+short=3d8eac7
+message=Remove unused Blue Chip/backtest helpers and stale app_14 deploy docs.
+captured_at=2026-09-10T15:15:00Z
 source_branch=master
-note=Canonical live line is app_15.0. Dual-market US/TW header toggle, TWSE/TPEx Blue Chip universe, detail rows = eval N. Bundle 12535190 supersedes 12535112.
+note=Canonical live line is app_15.0. Dead-code sweep: drop zero-ref helpers (get_row_safe, .fmt_num, .set_beta_u_manual, dcf_params alias). Bundle 12535651 supersedes 12535190.
