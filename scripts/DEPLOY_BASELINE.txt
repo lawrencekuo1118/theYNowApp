@@ -5,7 +5,7 @@ url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=da0e41b
 commit=da0e41b
 short=da0e41b
-message=Fix homepage Search error: escape ticker suggest regex with perl=TRUE.
-captured_at=2026-09-10T17:23:38Z
+message=Show TW company names as stacked Chinese over right-aligned English.
+captured_at=2026-09-10T17:25:30Z
 source_branch=master
-note=Canonical live line is app_15.0. Includes sidebar page-search chrome cleanup (prev/next left of input; no hint/clear) from 1e13a6d. Live bundle 12536216 per rsconnect DCF after subsequent deploys.
+note=Canonical live line is app_15.0. TW market shows company full name as Chinese over English (English right-aligned under Chinese block via .ynow-corpname-stack); US stays single-line. Includes ticker-suggest perl=TRUE regex fix. Bundle 12536216.
