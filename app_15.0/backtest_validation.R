@@ -9,7 +9,6 @@
 #   compute_alpha_dashboard(equity_df, rf_annual = 0.04)
 #   validate_mos_effectiveness(valuation_df, price_df)
 #   validate_fair_value_edge(valuation_df, price_df)
-# Plateau / signal-explain: debug_lab.R (not sourced at runtime)
 # ==========================================
 
 # ---------- small helpers (local, avoid clashing with module) ----------
@@ -447,5 +446,3 @@ validate_fair_value_edge <- function(valuation_df, price_df) {
   list(table = tab, answer = ans,
        edge_1y = edge_1y, edge_3y = edge_3y, edge_5y = edge_5y)
 }
-
-# Parameter plateau probe: run_parameter_plateau() in debug_lab.R (not sourced at runtime).

@@ -53,7 +53,6 @@ server <- function(input, output, session) {
   capm_beta_updating <- reactiveVal(FALSE)
   sync_gs_beta_updating <- reactiveVal(FALSE)
   beta_capm_driver <- reactiveVal("gs")
-  beta_u_manual_updating <- reactiveVal(FALSE)
   beta_link_from_capm <- reactiveVal(FALSE)
   beta_apply_choices_updating <- reactiveVal(FALSE)
 
@@ -2565,17 +2564,6 @@ server <- function(input, output, session) {
     invisible(TRUE)
   }
 
-  .set_beta_u_manual <- function(val) {
-    val <- suppressWarnings(as.numeric(val))
-    if (!is.finite(val) || val < 0) return(invisible(FALSE))
-    val <- round(val, 3)
-    cur <- suppressWarnings(as.numeric(input$beta_u_manual)[1])
-    if (is.finite(cur) && abs(cur - val) < 1e-4) return(invisible(FALSE))
-    beta_u_manual_updating(TRUE)
-    updateNumericInput(session, "beta_u_manual", value = val)
-    invisible(TRUE)
-  }
-
   # 產業來源就緒且「與Get Started 同步」時，把產業 β 寫入 CAPM
   .sync_capm_beta_industry <- function() {
     if (!isTRUE(input$sync_gs_beta)) return(invisible(NULL))
@@ -3444,12 +3432,6 @@ server <- function(input, output, session) {
   }, ignoreInit = TRUE)
 
   observeEvent(input$beta_u_manual, {
-    if (isTRUE(beta_u_manual_updating())) {
-      beta_u_manual_updating(FALSE)
-      # CAPM→GS 回寫完成；若 radio 未變動則在此清 from_capm
-      if (isTRUE(beta_link_from_capm())) beta_link_from_capm(FALSE)
-      return()
-    }
     if (isTRUE(beta_link_from_capm())) {
       beta_link_from_capm(FALSE)
       return()
@@ -5927,10 +5909,6 @@ server <- function(input, output, session) {
   .fmt_pct <- function(x, digits = 1) {
     if (is.null(x) || length(x) < 1 || is.na(x) || !is.finite(x)) return("N/A")
     sprintf(paste0("%.", digits, "f%%"), 100 * as.numeric(x))
-  }
-  .fmt_num <- function(x, digits = 2) {
-    if (is.null(x) || length(x) < 1 || is.na(x) || !is.finite(x)) return("N/A")
-    sprintf(paste0("%.", digits, "f"), as.numeric(x))
   }
 
   .bt_nav_window_bounds <- function(dates) {

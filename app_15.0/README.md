@@ -23,12 +23,12 @@ Mature-stock P/E·EV 引擎仍非本版範圍。
 ## 執行
 
 ```r
-shiny::runApp("app_14.0")
+shiny::runApp("app_15.0")
 ```
 
 進入點為 `app.R`（唯一）。UI／Server 分別在 `ynow_ui.R`／`ynow_server.R`。
 
-線上部署：`Rscript scripts/deploy_app_14.R`
+線上部署：`Rscript scripts/deploy_app_15.R`
 
 ## 方法論一句話
 
@@ -43,4 +43,4 @@ shiny::runApp("app_14.0")
 - `YNOW_FEEDBACK_GITHUB_TOKEN`：具 `issues:write` 的 GitHub PAT（必填才能送出）
 - `YNOW_FEEDBACK_GITHUB_REPO`：選填，預設 `lawrencekuo1118/theYNowApp`
 
-**shinyapps.io 注意：** 沒有 Settings → Vars／secrets UI，也無法用 rsconnect `envVars` 注入環境變數。請把上述變數寫入 `app_14.0/.Renviron`（此檔須在 `.gitignore` 中，**永不提交**），再以 `Rscript scripts/deploy_app_14.R` 重新部署；token 會跟著 bundle 上線。
+**shinyapps.io 注意：** 沒有 Settings → Vars／secrets UI，也無法用 rsconnect `envVars` 注入環境變數。請把上述變數寫入 `app_15.0/.Renviron`（此檔須在 `.gitignore` 中，**永不提交**），再以 `Rscript scripts/deploy_app_15.R` 重新部署；token 會跟著 bundle 上線。

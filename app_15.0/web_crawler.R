@@ -1,13 +1,6 @@
 # ==========================================
-# web_crawler.R - 資料抓取（app_11.0 雲端版：純 yfinance，不用 Chromote）
+# web_crawler.R - 資料抓取（純 yfinance；套件由 global.R 載入）
 # ==========================================
-
-library(rvest)
-library(magrittr)
-library(purrr)
-library(reticulate)
-library(memoise)
-library(cachem)
 
 if (!exists(".ynow_log", mode = "function")) {
   .ynow_log <- function(...) invisible(NULL)

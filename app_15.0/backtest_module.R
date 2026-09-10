@@ -1933,16 +1933,13 @@ compute_fair_value_timeline <- function(ticker,
 #' Run one company backtest (v12).
 #' @param model_params list(wacc, ke, sgr, g_explicit, n_years, pb_mid, ddm_g,
 #'   fv_model, rf, rm, rd, tax, we, wd, beta_fallback).
-#'   `dcf_params` accepted as a legacy alias (server.R still passes it).
 run_company_backtest <- function(ticker,
                                  d_is, d_bs, d_cf,
                                  params,
                                  model_params = NULL,
                                  mos = NA_real_,
-                                 dcf_params = NULL,
                                  bench_ticker = "SPY",
                                  years = 5) {
-  if (is.null(model_params)) model_params <- dcf_params
   if (is.null(model_params)) model_params <- list()
 
   # Fill sensible defaults for optional model params.

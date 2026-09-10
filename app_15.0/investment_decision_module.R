@@ -104,12 +104,6 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
                             industry_key = reactive(NULL)) {
   moduleServer(id, function(input, output, session) {
 
-    get_row_safe <- function(df, label) {
-      res <- select_clean_metric_row(df, label, include_ttm = FALSE)
-      if (length(res) < 2) return(c(NA, NA))
-      as.numeric(res[1:2])
-    }
-
     .pick_num <- function(x) {
       x <- suppressWarnings(as.numeric(x)[1])
       if (length(x) != 1 || is.null(x) || is.na(x) || !is.finite(x) || x == 0) NA_real_ else x
