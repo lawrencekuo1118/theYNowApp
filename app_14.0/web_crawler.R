@@ -68,8 +68,10 @@ tryCatch({
     as.character(company_name)
   }
   q_ccy <- if (grepl("\\.(TW|TWO)$", stock_code, ignore.case = TRUE)) "TWD" else "USD"
+  # Unknown reporting currency → NA (do not copy quote; ADR must not assume USD=USD).
+  f_ccy <- if (grepl("\\.(TW|TWO)$", stock_code, ignore.case = TRUE)) "TWD" else NA_character_
   attr(df, "currency") <- q_ccy
-  attr(df, "financialCurrency") <- q_ccy
+  attr(df, "financialCurrency") <- f_ccy
   df
 }
 
@@ -157,9 +159,16 @@ get_summary_data <- function(stock_code) {
     if (!nzchar(q_ccy) || identical(q_ccy, "NA")) {
       q_ccy <- if (grepl("\\.(TW|TWO)$", stock_code, ignore.case = TRUE)) "TWD" else "USD"
     }
-    if (!nzchar(f_ccy) || identical(f_ccy, "NA")) f_ccy <- q_ccy
+    # Missing financialCurrency: keep NA for non-.TW (refuse silent quote copy).
+    if (!nzchar(f_ccy) || identical(f_ccy, "NA")) {
+      f_ccy <- if (grepl("\\.(TW|TWO)$", stock_code, ignore.case = TRUE)) "TWD" else NA_character_
+    }
     attr(tbl, "currency") <- toupper(q_ccy)
-    attr(tbl, "financialCurrency") <- toupper(f_ccy)
+    attr(tbl, "financialCurrency") <- if (is.na(f_ccy) || !nzchar(f_ccy)) {
+      NA_character_
+    } else {
+      toupper(f_ccy)
+    }
     .ynow_log(
       "✅ Summary OK rows=", nrow(tbl),
       " name=", attr(tbl, "company_name"),
@@ -178,14 +187,14 @@ get_summary_data <- function(stock_code) {
 get_usd_twd_fx <- function() {
   tryCatch({
     if (!.ensure_python_scraper() || !exists("get_usd_twd_rate", mode = "function")) {
-      return(32)
+      return(NA_real_)
     }
     px <- suppressWarnings(as.numeric(get_usd_twd_rate())[1])
     if (is.finite(px) && px > 0) return(px)
-    32
+    NA_real_
   }, error = function(e) {
     .ynow_log("⚠️ get_usd_twd_fx: ", e$message)
-    32
+    NA_real_
   })
 }
 

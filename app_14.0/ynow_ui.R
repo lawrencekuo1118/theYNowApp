@@ -1171,26 +1171,36 @@ ui <- dashboardPage(
           .content .row > [class*='col-sm-3']:has(.info-box),
           .content .row > [class*='col-sm-4']:has(.info-box),
           .content .row > [class*='col-sm-6']:has(.info-box) {
-            width: 100%;
-            float: none;
+            width: 33.333%;
+            float: left;
           }
           .content-wrapper .small-box .inner {
-            padding-right: 12px;
+            padding-right: 8px;
+            padding-left: 8px;
           }
           .content-wrapper .small-box .icon {
             display: none;
+          }
+          .content-wrapper .small-box .inner h3,
+          .content-wrapper .small-box .inner h3 * {
+            font-size: clamp(11px, 3.2vw, 16px) !important;
           }
           .content-wrapper .info-box {
             min-height: 0;
           }
           .content-wrapper .info-box .info-box-icon {
-            width: 64px;
-            height: 64px;
-            font-size: 28px;
-            line-height: 64px;
+            width: 36px;
+            height: 36px;
+            font-size: 16px;
+            line-height: 36px;
           }
           .content-wrapper .info-box .info-box-content {
-            margin-left: 64px;
+            margin-left: 36px;
+            padding: 4px 6px 4px 8px;
+          }
+          .content-wrapper .info-box .info-box-number,
+          .content-wrapper .info-box .info-box-number h3 {
+            font-size: clamp(11px, 3vw, 15px) !important;
           }
         }
 
@@ -1314,11 +1324,14 @@ ui <- dashboardPage(
             flex-basis: 33.333%;
           }
         }
-        @media (max-width: 576px) {
+        @media (max-width: 767px) {
           .ynow-kpi-grid > * {
-            width: 100% !important;
-            max-width: 100% !important;
-            flex-basis: 100%;
+            width: 33.333% !important;
+            max-width: 33.333% !important;
+            flex-basis: 33.333%;
+          }
+          .ynow-kpi-grid .small-box .inner h3 {
+            font-size: clamp(11px, 3.2vw, 16px) !important;
           }
         }
         .ynow-kpi-grid .small-box {
@@ -1590,8 +1603,13 @@ ui <- dashboardPage(
         @media (max-width: 992px) {
           .ynow-metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         }
-        @media (max-width: 576px) {
-          .ynow-metric-grid { grid-template-columns: 1fr; }
+        @media (max-width: 767px) {
+          .ynow-metric-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+          .ynow-metric-card__body { padding: 8px 8px 8px 8px; gap: 4px; }
+          .ynow-metric-card__icon { width: 22px; height: 22px; font-size: 11px; border-radius: 5px; }
+          .ynow-metric-card__value { font-size: clamp(11px, 3.4vw, 16px); }
+          .ynow-metric-card__label { font-size: 9px; }
+          .ynow-metric-card__caption { font-size: 8px; }
         }
         .ynow-metric-card {
           background: #ffffff;

@@ -372,20 +372,29 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
       }
       mcap <- suppressWarnings(as.numeric(market_cap())[1])
       tk <- tryCatch(current_ticker(), error = function(e) "")
+      q_ccy <- tryCatch(quote_currency(), error = function(e) NULL)
+      f_ccy <- tryCatch(financial_currency(), error = function(e) NULL)
       sh <- resolve_shares_for_price(
         raw_shares,
         price = px,
         market_cap = mcap,
         ticker = tk,
-        quote_currency = tryCatch(quote_currency(), error = function(e) NULL),
-        financial_currency = tryCatch(financial_currency(), error = function(e) NULL)
+        quote_currency = q_ccy,
+        financial_currency = f_ccy
       )
       if (shares_auto_adjust_method(sh$method) && is.finite(sh$shares) && sh$shares > 0) {
-        return(sh$shares)
+        return(list(shares = sh$shares, method = sh$method))
       }
-      if (is.finite(raw_shares) && raw_shares > 0) return(raw_shares)
-      if (is.finite(sh$shares) && sh$shares > 0) return(sh$shares)
-      1
+      if (statement_quote_units_differ(f_ccy, q_ccy)) {
+        return(list(shares = NA_real_, method = "none"))
+      }
+      if (is.finite(raw_shares) && raw_shares > 0) {
+        return(list(shares = raw_shares, method = "balance_sheet"))
+      }
+      if (is.finite(sh$shares) && sh$shares > 0) {
+        return(list(shares = sh$shares, method = sh$method %||% "none"))
+      }
+      list(shares = NA_real_, method = "none")
     }
 
     # Keep Industry Average ROE aligned with Dashboard industry (still editable)
@@ -403,11 +412,23 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
       req(d_balance_sheet(), d_income_statement())
       df_bs <- d_balance_sheet()
 
-      shares <- .ri_resolve_shares(df_bs)
+      sh_ri <- .ri_resolve_shares(df_bs)
+      shares <- sh_ri$shares
       equity <- select_current_metric_any(df_bs, EQUITY_PATTERNS, "stock")
+      q_ccy <- tryCatch(quote_currency(), error = function(e) NA_character_)
+      f_ccy <- tryCatch(financial_currency(), error = function(e) NA_character_)
 
-      if (!is.na(equity) && !is.na(shares) && shares > 0) {
-        updateNumericInput(session, "b0", value = round(equity / shares, 2))
+      if (!is.na(equity) && is.finite(shares) && shares > 0) {
+        # Scaled BS is already in session/quote units when money_scaled; else convert.
+        eq_ccy <- equity_money_ccy(df_bs, session_ccy = q_ccy, statement_ccy = f_ccy)
+        b0 <- per_share_in_quote(
+          equity, shares,
+          equity_ccy = eq_ccy,
+          to_ccy = q_ccy,
+          share_method = sh_ri$method,
+          statement_ccy = f_ccy
+        )
+        if (is.finite(b0)) updateNumericInput(session, "b0", value = round(b0, 2))
       }
 
       ni <- select_current_metric_any(d_income_statement(), NET_INCOME_PATTERNS, "flow")
@@ -432,12 +453,26 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
     observeEvent(input$btn_sync_b0, {
       req(d_balance_sheet())
       df_bs <- d_balance_sheet()
-      shares <- .ri_resolve_shares(df_bs)
+      sh_ri <- .ri_resolve_shares(df_bs)
+      shares <- sh_ri$shares
       equity <- select_current_metric_any(df_bs, EQUITY_PATTERNS, "stock")
-      if (!is.na(equity) && !is.na(shares) && shares > 0) {
-        calc_b0 <- round(equity / shares, 2)
-        updateNumericInput(session, "b0", value = calc_b0)
-        showNotification(paste0("✅ 已成功從資產負債表更新 B0 為 $", calc_b0), type = "message")
+      q_ccy <- tryCatch(quote_currency(), error = function(e) NA_character_)
+      f_ccy <- tryCatch(financial_currency(), error = function(e) NA_character_)
+      if (!is.na(equity) && is.finite(shares) && shares > 0) {
+        eq_ccy <- equity_money_ccy(df_bs, session_ccy = q_ccy, statement_ccy = f_ccy)
+        calc_b0 <- per_share_in_quote(
+          equity, shares,
+          equity_ccy = eq_ccy,
+          to_ccy = q_ccy,
+          share_method = sh_ri$method,
+          statement_ccy = f_ccy
+        )
+        if (is.finite(calc_b0)) {
+          updateNumericInput(session, "b0", value = round(calc_b0, 2))
+          showNotification(paste0("✅ 已成功從資產負債表更新 B0 為 $", round(calc_b0, 2)), type = "message")
+        } else {
+          showNotification("⚠️ 無法對齊匯率／ADR 股數，B0 未更新", type = "error")
+        }
       } else {
         showNotification("⚠️ 無法從目前財報讀取完整 B0 所需欄位", type = "error")
       }

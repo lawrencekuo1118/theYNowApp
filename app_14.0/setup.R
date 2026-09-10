@@ -51,7 +51,7 @@ label_chart_number <- function(prefix = "") {
 # ==========================================
 .ynow_ccy_ctx <- new.env(parent = emptyenv())
 .ynow_ccy_ctx$session_currency <- "USD"
-.ynow_ccy_ctx$fx_usd_twd <- 32
+.ynow_ccy_ctx$fx_usd_twd <- NA_real_
 .ynow_ccy_ctx$quote_currency <- "USD"
 .ynow_ccy_ctx$statement_currency <- "USD"
 
@@ -103,16 +103,85 @@ dt_currency_symbol <- function(ccy = NULL) {
   money_prefix(ccy)
 }
 
-# USD↔TWD only (v1). Same currency → 1; unknown → 1 with warning-free fallback.
+# USD↔TWD only (v1). Same currency → 1; unknown or missing live FX → NA (refuse).
 fx_factor <- function(from_ccy, to_ccy, usd_twd = NULL) {
   fr <- normalize_ccy(from_ccy)
   to <- normalize_ccy(to_ccy)
-  if (is.na(fr) || is.na(to) || identical(fr, to)) return(1)
+  if (is.na(fr) && is.na(to)) return(1)
+  if (is.na(fr) || is.na(to)) return(NA_real_)
+  if (identical(fr, to)) return(1)
   fx <- suppressWarnings(as.numeric(usd_twd %||% .ynow_ccy_ctx$fx_usd_twd)[1])
-  if (!is.finite(fx) || fx <= 0) fx <- 32
+  if (!is.finite(fx) || fx <= 0) return(NA_real_)
   if (identical(fr, "USD") && identical(to, "TWD")) return(fx)
   if (identical(fr, "TWD") && identical(to, "USD")) return(1 / fx)
   1
+}
+
+statement_quote_units_differ <- function(statement_ccy, quote_ccy) {
+  st <- normalize_ccy(statement_ccy)
+  q <- normalize_ccy(quote_ccy)
+  if (is.na(st) || is.na(q)) return(TRUE)
+  !identical(st, q)
+}
+
+#' Per-share in `to_ccy` from an equity total.
+#' Damodaran: cash flows, discount rate, and price in the same currency.
+#' CFA / 20-F: divide by shares of the quoted security (ADR), not local common.
+#' Apply FX only when statement unit ≠ quote unit. If FX is missing or ADR
+#' shares are not aligned, return NA — never label TWD/common as USD/ADR.
+#' Equivalent TSM 20-F check: NT$ per common × 5 / FX == Equity_TWD / FX / ADR.
+per_share_in_quote <- function(equity,
+                               shares,
+                               equity_ccy,
+                               to_ccy,
+                               usd_twd = NULL,
+                               share_method = NULL,
+                               statement_ccy = equity_ccy,
+                               shares_aligned = NULL) {
+  eq <- suppressWarnings(as.numeric(equity)[1])
+  sh <- suppressWarnings(as.numeric(shares)[1])
+  need_align <- statement_quote_units_differ(statement_ccy, to_ccy)
+  aligned <- if (!is.null(shares_aligned)) {
+    isTRUE(shares_aligned)
+  } else {
+    shares_auto_adjust_method(share_method)
+  }
+  if (isTRUE(need_align) && !isTRUE(aligned)) return(NA_real_)
+  if (!is.finite(eq) || !is.finite(sh) || sh <= 0) return(NA_real_)
+  fx <- fx_factor(equity_ccy, to_ccy, usd_twd)
+  if (!is.finite(fx)) return(NA_real_)
+  eq * fx / sh
+}
+
+#' Reporting currency for scaled statement DF (money_ccy attr), else session/statement.
+equity_money_ccy <- function(df, session_ccy = NULL, statement_ccy = NULL) {
+  tagged <- tryCatch(normalize_ccy(attr(df, "money_ccy")), error = function(e) NA_character_)
+  if (!is.na(tagged)) return(tagged)
+  if (isTRUE(attr(df, "money_scaled"))) {
+    sc <- normalize_ccy(session_ccy)
+    if (!is.na(sc)) return(sc)
+  }
+  st <- normalize_ccy(statement_ccy)
+  if (!is.na(st)) return(st)
+  NA_character_
+}
+
+#' IAS 12: use enacted / user T as a decimal ratio. No 35% or 50% engineering caps.
+ias12_tax_ratio <- function(tax, from_pct = FALSE) {
+  t <- suppressWarnings(as.numeric(tax)[1])
+  if (!is.finite(t)) return(NA_real_)
+  if (isTRUE(from_pct)) t <- t / 100
+  t
+}
+
+after_tax_interest <- function(debt, rd, tax) {
+  debt <- suppressWarnings(as.numeric(debt)[1])
+  rd <- suppressWarnings(as.numeric(rd)[1])
+  tax <- ias12_tax_ratio(tax)
+  if (!is.finite(debt) || debt < 0) debt <- 0
+  if (!is.finite(rd) || rd < 0) rd <- 0
+  if (!is.finite(tax)) return(NA_real_)
+  max(0, debt) * rd * (1 - tax)
 }
 
 money_to_session <- function(x, from_ccy, session_ccy = NULL, usd_twd = NULL) {
@@ -139,9 +208,23 @@ format_financial_display_number <- function(x, digits = 2) {
 # Scale all period columns of a Yahoo financial statement DF into session currency.
 # Keeps full numeric precision for downstream KPI／估值；顯示四捨五入見 format_financial_df_display。
 scale_financial_df_money <- function(df, from_ccy, session_ccy = NULL, usd_twd = NULL) {
-  if (is.null(df) || !is.data.frame(df) || ncol(df) < 2) return(df)
-  mult <- fx_factor(from_ccy, session_ccy %||% .ynow_ccy_ctx$session_currency, usd_twd)
-  if (!is.finite(mult) || abs(mult - 1) < 1e-15) return(df)
+  .tag_money <- function(x, scaled, ccy) {
+    attr(x, "money_scaled") <- isTRUE(scaled)
+    attr(x, "money_ccy") <- normalize_ccy(ccy)
+    x
+  }
+  sess <- normalize_ccy(session_ccy %||% .ynow_ccy_ctx$session_currency)
+  fr <- normalize_ccy(from_ccy)
+  if (is.null(df) || !is.data.frame(df) || ncol(df) < 2) {
+    return(.tag_money(df, FALSE, fr))
+  }
+  mult <- fx_factor(from_ccy, sess, usd_twd)
+  if (!is.finite(mult)) {
+    return(.tag_money(df, FALSE, fr))
+  }
+  if (abs(mult - 1) < 1e-15) {
+    return(.tag_money(df, TRUE, if (is.na(sess)) fr else sess))
+  }
   out <- df
   for (j in seq.int(2L, ncol(out))) {
     raw <- as.character(out[[j]])
@@ -153,7 +236,7 @@ scale_financial_df_money <- function(df, from_ccy, session_ccy = NULL, usd_twd =
       format(scaled, scientific = FALSE, trim = TRUE, digits = 15)
     )
   }
-  out
+  .tag_money(out, TRUE, sess)
 }
 
 # Dashboard 三大報表表格顯示用：期間欄數字四捨五入到 digits 位
@@ -324,7 +407,14 @@ normalize_financial_statement <- function(stmt) {
 
 normalize_all_financials <- function(res) {
   if (is.null(res)) return(res)
-  lapply(res, normalize_financial_statement)
+  meta <- res[["_meta"]]
+  stmts <- if ("_meta" %in% names(res)) res[names(res) != "_meta"] else res
+  out <- lapply(stmts, normalize_financial_statement)
+  if (is.list(meta)) {
+    attr(out, "currency") <- meta$currency %||% meta$quote_currency
+    attr(out, "financialCurrency") <- meta$financialCurrency %||% meta$financial_currency
+  }
+  out
 }
 
 # 從財報 DataFrame 中抽出特定科目的數值陣列
@@ -1484,7 +1574,7 @@ build_report_kpi_df <- function(d_is, d_bs, d_cf) {
   )
 }
 
-# 投資評等（對應券商 Buy / Hold / Reduce 慣例）
+# 報告用：只列 MOS／價差，不作券商 Buy／Reduce 門檻（非 Graham／CFA 約束）
 derive_investment_rating <- function(current_price, target_price) {
   cur <- suppressWarnings(as.numeric(current_price))
   tgt <- suppressWarnings(as.numeric(target_price))
@@ -1496,13 +1586,13 @@ derive_investment_rating <- function(current_price, target_price) {
   }
   upside <- (tgt - cur) / cur * 100
   mos <- (tgt - cur) / tgt * 100
-  if (upside >= 15) {
-    list(rating = "買進", rating_en = "Buy", rating_color = "#198754", upside_pct = upside, margin_of_safety = mos)
-  } else if (upside <= -10) {
-    list(rating = "減持", rating_en = "Reduce", rating_color = "#dc3545", upside_pct = upside, margin_of_safety = mos)
-  } else {
-    list(rating = "持有", rating_en = "Hold", rating_color = "#fd7e14", upside_pct = upside, margin_of_safety = mos)
-  }
+  list(
+    rating = "未評等（僅列 MOS／價差）",
+    rating_en = "NR",
+    rating_color = "#6c757d",
+    upside_pct = upside,
+    margin_of_safety = mos
+  )
 }
 
 # 推薦估值方法（v13：分類 → 主／副模型）
@@ -1900,16 +1990,11 @@ if (!exists("%||%", mode = "function")) {
   `%||%` <- function(x, y) if (is.null(x) || (length(x) == 1 && is.na(x))) y else x
 }
 
-MATURE_TECH_TICKERS <- c(
-  "AAPL", "MSFT", "GOOGL", "GOOG", "AMZN", "META", "NVDA", "TSLA",
-  "AVGO", "ORCL", "CRM", "ADBE", "INTC", "AMD", "QCOM", "TXN", "TSM"
-)
-
-#' 依產業／營收成長自動分類生命週期檔位
+#' 依產業／營收成長自動分類生命週期檔位（不含個股白名單）
 #' @return one of mature_sunset | mature_tech | growth_to_mature | mature_general
 classify_lifecycle_stage <- function(industry_text = "", ticker = "", rev_cagr = NA_real_) {
   txt <- paste(industry_text %||% "", collapse = " ")
-  tk <- toupper(trimws(as.character(ticker %||% "")[1]))
+  # ticker kept for call-site compatibility; lifecycle is industry / CAGR / manual only.
 
   if (grepl(
     "Bank|Insurance|Utility|Utilities|Financial|Conglomerate|fn\\.|Insurance Brokers|Gas Utilities|Electric Utilities",
@@ -1918,9 +2003,6 @@ classify_lifecycle_stage <- function(industry_text = "", ticker = "", rev_cagr =
     return("mature_sunset")
   }
 
-  if (nzchar(tk) && tk %in% MATURE_TECH_TICKERS) {
-    return("mature_tech")
-  }
   if (grepl(
     "Software|Internet|Semiconductors|Semiconductor|Consumer Electronics|Information Technology| technolo",
     txt, ignore.case = TRUE

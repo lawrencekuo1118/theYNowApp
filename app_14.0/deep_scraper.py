@@ -301,8 +301,8 @@ def get_usd_twd_rate():
                         return px
         except Exception as e:
             _dbg(f"⚠️ FX {sym}: {e}")
-    _dbg("⚠️ FX fallback 32.0")
-    return 32.0
+    _dbg("⚠️ FX unavailable (refuse silent fallback)")
+    return None
 
 
 def get_price_history(ticker="AMZN", period="5y"):
@@ -513,9 +513,36 @@ def scrape_all_financials_yf(ticker="AMZN"):
     income_p = _stmt_to_payload(income)
     balance_p = _stmt_to_payload(balance)
     cash_p = _stmt_to_payload(cash)
+
+    # Quote vs reporting currency (ADR often differs) — prefer live info, never invent USD.
+    info = {}
+    try:
+        info = stock.info or {}
+    except Exception:
+        info = {}
+
+    def _ccy_info(key):
+        v = info.get(key) if isinstance(info, dict) else None
+        if v is None:
+            return ""
+        s = str(v).strip().upper()
+        return s if s else ""
+
+    quote_ccy = _ccy_info("currency")
+    fin_ccy = _ccy_info("financialCurrency")
+    tk_u = str(ticker or "").strip().upper()
+    if not quote_ccy and tk_u.endswith((".TW", ".TWO")):
+        quote_ccy = "TWD"
+    if not fin_ccy and tk_u.endswith((".TW", ".TWO")):
+        fin_ccy = "TWD"
+    if not quote_ccy:
+        quote_ccy = "USD"
+    # Leave fin_ccy empty when unknown — R must not assume quote == statement.
+
     _dbg(
         f"✅ financials income_rows={len(income_p['data'])} "
-        f"bs_rows={len(balance_p['data'])} cf_rows={len(cash_p['data'])}"
+        f"bs_rows={len(balance_p['data'])} cf_rows={len(cash_p['data'])} "
+        f"ccy={quote_ccy}/{fin_ccy or 'NA'}"
     )
 
     # UI expects collapsed/expanded; API provides one granularity → reuse payload
@@ -523,6 +550,12 @@ def scrape_all_financials_yf(ticker="AMZN"):
         "Income Statement": {"collapsed": income_p, "expanded": income_p},
         "Balance Sheet": {"collapsed": balance_p, "expanded": balance_p},
         "Cash Flow": {"collapsed": cash_p, "expanded": cash_p},
+        "_meta": {
+            "currency": quote_ccy,
+            "financialCurrency": fin_ccy,
+            "quote_currency": quote_ccy,
+            "financial_currency": fin_ccy,
+        },
     }
 
 

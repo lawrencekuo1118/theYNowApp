@@ -155,13 +155,23 @@ pb_asset_module_server <- function(id,
       switch(b, tbvps = "TBVPS", navps = "NAVPS", "BVPS")
     }
 
-    sync_navps <- function(df_bs, shares) {
+    sync_navps <- function(df_bs, shares, share_method = "balance_sheet") {
       disc_pct <- suppressWarnings(as.numeric(input$holdco_discount)[1])
       if (!is.finite(disc_pct)) disc_pct <- APP_DEFAULTS$pb_holdco_discount * 100
       navc <- extract_nav_components(df_bs, holdco_discount = disc_pct / 100)
       nav_components(navc)
       if (is.finite(navc$nav) && is.finite(shares) && shares > 0) {
-        updateNumericInput(session, "navps", value = round(navc$nav / shares, 2))
+        q_ccy <- tryCatch(quote_currency(), error = function(e) NA_character_)
+        f_ccy <- tryCatch(financial_currency(), error = function(e) NA_character_)
+        eq_ccy <- equity_money_ccy(df_bs, session_ccy = q_ccy, statement_ccy = f_ccy)
+        navps <- per_share_in_quote(
+          navc$nav, shares,
+          equity_ccy = eq_ccy,
+          to_ccy = q_ccy,
+          share_method = share_method,
+          statement_ccy = f_ccy
+        )
+        if (is.finite(navps)) updateNumericInput(session, "navps", value = round(navps, 2))
       }
     }
 
@@ -270,9 +280,14 @@ pb_asset_module_server <- function(id,
       )
 
       auto_adj <- shares_auto_adjust_method(sh_adj$method)
+      q_ccy0 <- tryCatch(quote_currency(), error = function(e) NA_character_)
+      f_ccy0 <- tryCatch(financial_currency(), error = function(e) NA_character_)
       if (isTRUE(auto_adj) && is.finite(sh_adj$shares) && sh_adj$shares > 0) {
         shares <- sh_adj$shares
         shares_resolve_note(sh_adj$note)
+      } else if (statement_quote_units_differ(f_ccy0, q_ccy0)) {
+        shares <- NA_real_
+        shares_resolve_note("報價幣≠財報幣且無法約當 ADR 股數，不顯示每股淨值")
       } else {
         if (is.finite(shares_bs) && shares_bs > 0) {
           shares <- shares_bs
@@ -302,14 +317,33 @@ pb_asset_module_server <- function(id,
       }
       
       if (!is.na(equity) && !is.na(shares) && shares > 0) {
-        bvps <- equity / shares
-        tbvps <- max(equity - intang_deduct, 0) / shares
-        updateNumericInput(session, "bvps", value = round(bvps, 2))
-        updateNumericInput(session, "tbvps", value = round(tbvps, 2))
-        nav_shares(shares)
-        sync_navps(df_bs, shares)
-        if (isTRUE(auto_adj) && !is.null(sh_adj$note) && nzchar(sh_adj$note)) {
-          showNotification(sh_adj$note, type = "message", duration = 8)
+        q_ccy <- tryCatch(quote_currency(), error = function(e) NA_character_)
+        f_ccy <- tryCatch(financial_currency(), error = function(e) NA_character_)
+        eq_ccy <- equity_money_ccy(df_bs, session_ccy = q_ccy, statement_ccy = f_ccy)
+        bvps <- per_share_in_quote(
+          equity, shares,
+          equity_ccy = eq_ccy,
+          to_ccy = q_ccy,
+          share_method = sh_adj$method,
+          statement_ccy = f_ccy
+        )
+        tbvps <- per_share_in_quote(
+          max(equity - intang_deduct, 0), shares,
+          equity_ccy = eq_ccy,
+          to_ccy = q_ccy,
+          share_method = sh_adj$method,
+          statement_ccy = f_ccy
+        )
+        if (is.finite(bvps)) {
+          updateNumericInput(session, "bvps", value = round(bvps, 2))
+          if (is.finite(tbvps)) updateNumericInput(session, "tbvps", value = round(tbvps, 2))
+          nav_shares(shares)
+          sync_navps(df_bs, shares, share_method = sh_adj$method %||% "balance_sheet")
+          if (isTRUE(auto_adj) && !is.null(sh_adj$note) && nzchar(sh_adj$note)) {
+            showNotification(sh_adj$note, type = "message", duration = 8)
+          }
+        } else {
+          showNotification("無法從財報推算 BVPS（匯率／ADR 股數未對齊）", type = "warning", duration = 6)
         }
       } else {
         showNotification("無法從財報推算 BVPS，請手動輸入淨值與股數相關科目", type = "warning", duration = 6)
@@ -335,7 +369,12 @@ pb_asset_module_server <- function(id,
       df_bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
       sh <- suppressWarnings(as.numeric(nav_shares())[1])
       if (is.null(df_bs) || !is.finite(sh) || sh <= 0) return()
-      sync_navps(df_bs, sh)
+      meth <- if (!is.null(shares_resolve_note()) && nzchar(shares_resolve_note() %||% "")) {
+        "market_cap_per_price"
+      } else {
+        "balance_sheet"
+      }
+      sync_navps(df_bs, sh, share_method = meth)
     }, ignoreInit = TRUE)
     
     output$txt_shares_resolve_note <- renderUI({

@@ -24,7 +24,7 @@ server <- function(input, output, session) {
   quote_currency <- reactiveVal("USD")
   statement_currency <- reactiveVal("USD")
   session_currency <- reactiveVal("USD")
-  fx_usd_twd <- reactiveVal(32)
+  fx_usd_twd <- reactiveVal(NA_real_)
   fx_fetched_at <- reactiveVal(NULL)
   
   # 系統核心估值變數
@@ -149,16 +149,27 @@ server <- function(input, output, session) {
         if (is.na(q_ccy)) {
           q_ccy <- if (grepl("\\.(TW|TWO)$", stock_code, ignore.case = TRUE)) "TWD" else "USD"
         }
-        if (is.na(f_ccy)) f_ccy <- q_ccy
+        # Missing reporting ccy: keep NA (do not copy quote — avoids TWD-as-USD for ADR).
+        if (is.na(f_ccy) && grepl("\\.(TW|TWO)$", stock_code, ignore.case = TRUE)) {
+          f_ccy <- "TWD"
+        }
         quote_currency(q_ccy)
         statement_currency(f_ccy)
         sess <- default_session_currency(q_ccy, f_ccy, stock_code)
         session_currency(sess)
-        fx_now <- tryCatch(cached_get_usd_twd_fx(), error = function(e) 32)
-        if (!is.finite(fx_now) || fx_now <= 0) fx_now <- 32
+        fx_now <- tryCatch(cached_get_usd_twd_fx(), error = function(e) NA_real_)
+        if (!is.finite(fx_now) || fx_now <= 0) fx_now <- NA_real_
         fx_usd_twd(fx_now)
         fx_fetched_at(Sys.time())
         set_ynow_currency_context(sess, fx_now, q_ccy, f_ccy)
+        if (!identical(q_ccy, f_ccy) || !identical(sess, q_ccy)) {
+          if (!is.finite(fx_now) || fx_now <= 0) {
+            showNotification(
+              "無法取得即期 USD/TWD 匯率，已拒絕換匯（金額維持原幣或不顯示）。請稍後再試。",
+              type = "warning", duration = 10
+            )
+          }
+        }
         shinyWidgets::updateRadioGroupButtons(
           session, "session_ccy_pick", selected = sess
         )
@@ -193,6 +204,20 @@ server <- function(input, output, session) {
         res <- cached_scrape_financials(stock_code)
         res <- normalize_all_financials(res)
         scraped_financials(res)
+        # Prefer statement currency from financials _meta when Summary omitted it.
+        meta_fc <- normalize_ccy(attr(res, "financialCurrency") %||% "")
+        meta_qc <- normalize_ccy(attr(res, "currency") %||% "")
+        if (!is.na(meta_fc) && (is.na(statement_currency()) || identical(statement_currency(), quote_currency()))) {
+          if (!identical(meta_fc, quote_currency()) || is.na(statement_currency())) {
+            statement_currency(meta_fc)
+            set_ynow_currency_context(
+              session_currency(), fx_usd_twd(), quote_currency(), meta_fc
+            )
+          }
+        }
+        if (!is.na(meta_qc) && is.na(quote_currency())) {
+          quote_currency(meta_qc)
+        }
 
         is_expanded(FALSE)
         updateActionButton(session, "btn_expand_all", label = "Expand All", icon = icon("expand"))
@@ -246,8 +271,11 @@ server <- function(input, output, session) {
     stale <- is.null(ts) || !inherits(ts, "POSIXt") ||
       (as.numeric(difftime(Sys.time(), ts, units = "secs")) > max_age_sec)
     if (!stale) return(invisible(fx_usd_twd()))
-    fx_now <- tryCatch(cached_get_usd_twd_fx(), error = function(e) fx_usd_twd() %||% 32)
-    if (!is.finite(fx_now) || fx_now <= 0) fx_now <- 32
+    fx_now <- tryCatch(cached_get_usd_twd_fx(), error = function(e) NA_real_)
+    if (!is.finite(fx_now) || fx_now <= 0) {
+      showNotification("無法取得即期 USD/TWD 匯率，已拒絕換匯。", type = "warning", duration = 8)
+      return(invisible(fx_usd_twd()))
+    }
     fx_usd_twd(fx_now)
     fx_fetched_at(Sys.time())
     fx_now
@@ -262,8 +290,13 @@ server <- function(input, output, session) {
       )
       return()
     }
-    fx_now <- tryCatch(.refresh_fx_if_stale(), error = function(e) fx_usd_twd() %||% 32)
-    if (!is.finite(fx_now) || fx_now <= 0) fx_now <- 32
+    fx_now <- tryCatch(.refresh_fx_if_stale(), error = function(e) fx_usd_twd())
+    if (!is.finite(fx_now) || fx_now <= 0) {
+      q <- quote_currency(); f <- statement_currency()
+      if (!identical(sc, q) || !identical(sc, f) || !identical(q, f)) {
+        showNotification("無法取得即期匯率，已拒絕 USD↔TWD 換匯。", type = "warning", duration = 8)
+      }
+    }
     session_currency(sc)
     set_ynow_currency_context(
       sc, fx_now, quote_currency(), statement_currency()
@@ -279,9 +312,13 @@ server <- function(input, output, session) {
     q <- quote_currency() %||% "?"
     f <- statement_currency() %||% "?"
     sc <- session_currency() %||% "?"
-    fx <- fx_usd_twd() %||% 32
-    paste0("報價 ", q, " · 財報 ", f, " · 顯示 ", sc,
-           " · 1 USD = ", round(as.numeric(fx), 2), " TWD")
+    fx <- fx_usd_twd()
+    fx_txt <- if (is.finite(fx) && fx > 0) {
+      paste0("1 USD = ", round(as.numeric(fx), 2), " TWD")
+    } else {
+      "匯率未取得（已拒絕換匯）"
+    }
+    paste0("報價 ", q, " · 財報 ", f, " · 顯示 ", sc, " · ", fx_txt)
   })
   
   # ==========================================
@@ -1431,7 +1468,7 @@ server <- function(input, output, session) {
     if (!is.finite(rd) || rd < 0) rd <- 0
     tax <- suppressWarnings(as.numeric(input$wacc_tax)[1]) / 100
     if (!is.finite(tax)) tax <- APP_DEFAULTS$wacc_tax / 100
-    iat <- max(0, latest_debt) * rd * (1 - max(0, min(tax, 0.5)))
+    iat <- after_tax_interest(latest_debt, rd, tax)
     g_terminal <- if (!is.null(input$sgr) && is.finite(as.numeric(input$sgr))) {
       as.numeric(input$sgr) / 100
     } else {
@@ -1807,15 +1844,41 @@ server <- function(input, output, session) {
     if (shares_auto_adjust_method(sh$method) && is.finite(sh$shares) && sh$shares > 0) {
       return(list(shares = sh$shares, note = sh$note, method = sh$method))
     }
+    # Statement ≠ quote and not ADR-aligned: refuse common-share fallback (never label as ADR).
+    if (statement_quote_units_differ(statement_currency(), quote_currency())) {
+      return(list(
+        shares = NA_real_,
+        note = sh$note %||% "報價幣≠財報幣且無法約當 ADR 股數，不顯示每股",
+        method = "none"
+      ))
+    }
     if (is.finite(raw_shares) && raw_shares > 0) {
       return(list(shares = raw_shares, note = NULL, method = "balance_sheet"))
     }
     list(
-      shares = if (is.finite(sh$shares) && sh$shares > 0) sh$shares else 1,
-      note = sh$note,
-      method = sh$method %||% "fallback"
+      shares = if (is.finite(sh$shares) && sh$shares > 0) sh$shares else NA_real_,
+      note = sh$note %||% "缺少流通在外股數，不顯示每股",
+      method = sh$method %||% "none"
     )
   })
+
+  .dcf_per_share <- function(equity_value, sh = NULL) {
+    if (is.null(sh)) sh <- tryCatch(.valuation_shares(), error = function(e) NULL)
+    if (is.null(sh)) return(NA_real_)
+    eq_ccy <- tryCatch(
+      equity_money_ccy(d_balance_sheet(), session_currency(), statement_currency()),
+      error = function(e) normalize_ccy(session_currency())
+    )
+    per_share_in_quote(
+      equity_value,
+      sh$shares,
+      equity_ccy = eq_ccy,
+      to_ccy = quote_currency(),
+      usd_twd = fx_usd_twd(),
+      share_method = sh$method,
+      statement_ccy = statement_currency()
+    )
+  }
 
   # ==========================================
   # v13：Bear / Base / Bull 情境 + 主／副點 + 可信度
@@ -1944,7 +2007,7 @@ server <- function(input, output, session) {
       if (!is.finite(rd) || rd < 0) rd <- 0
       tax <- suppressWarnings(as.numeric(input$wacc_tax)[1]) / 100
       if (!is.finite(tax)) tax <- APP_DEFAULTS$wacc_tax / 100
-      iat <- max(0, latest_debt) * rd * (1 - max(0, min(tax, 0.5)))
+      iat <- after_tax_interest(latest_debt, rd, tax)
       fcfe <- fcff_to_fcfe(future_fcfs, interest_after_tax = iat, debt0 = latest_debt, g_path = g_terminal)
       ke_dfs <- cumprod(rep(1 + ke, n_years))
       if (length(ke_dfs) != length(fcfe)) return(empty)
@@ -1957,11 +2020,14 @@ server <- function(input, output, session) {
     } else {
       equity_value <- as.numeric(dcf_value)[1] + latest_cash - latest_debt
     }
-    shares <- .valuation_shares()$shares
+    shares_info <- tryCatch(.valuation_shares(), error = function(e) NULL)
+    shares <- if (!is.null(shares_info)) suppressWarnings(as.numeric(shares_info$shares)[1]) else NA_real_
     if (!is.finite(equity_value) || !is.finite(shares) || shares <= 0) return(empty)
+    px <- .dcf_per_share(equity_value, shares_info)
+    if (!is.finite(px)) return(empty)
     list(
       ok = TRUE,
-      price = equity_value / shares,
+      price = px,
       shares = shares,
       pv_fcf = pv_forecast,
       pv_tv = pv_tv,
@@ -2290,7 +2356,7 @@ server <- function(input, output, session) {
       financial_currency = statement_currency()
     )
     shares <- suppressWarnings(as.numeric(sh$shares)[1])
-    if (!is.finite(shares) || shares <= 0) shares <- 1
+    if (!is.finite(shares) || shares <= 0) shares <- NA_real_
 
     price_native <- suppressWarnings(as.numeric(sh$price)[1])
     if (!is.finite(price_native)) {
@@ -2333,11 +2399,9 @@ server <- function(input, output, session) {
     
     # 邏輯優化：處理負稅率或極端值
     if (is.na(tax_exp) || is.na(pre_tax_inc) || pre_tax_inc <= 0) {
-      return(21) # 預設法定稅率 (如美國 21%)
-    } else {
-      t_rate <- (tax_exp / pre_tax_inc) * 100
-      return(max(0, min(t_rate, 35))) # 限制在合理區間 0~35%
+      return(NA_real_)
     }
+    (tax_exp / pre_tax_inc) * 100
   })
   
   # --- 1. 渲染股權市值 (E) ---
@@ -2366,8 +2430,8 @@ server <- function(input, output, session) {
   output$vbx_tax_rate <- renderValueBox({
     t_rate <- scraped_tax_rate()
     valueBox(
-      value = paste0(round(t_rate, 2), "%"),
-      subtitle = "有效稅率 (Effective Tax Rate - T)",
+      value = if (is.finite(t_rate)) paste0(round(t_rate, 2), "%") else "N/A",
+      subtitle = "有效稅率 (Effective Tax Rate - T；WACC 用使用者／enacted T)",
       icon = icon("percent"),
       color = "purple"
     )
@@ -2797,8 +2861,8 @@ server <- function(input, output, session) {
     if (!is.finite(t)) {
       t <- tryCatch(scraped_tax_rate(), error = function(e) APP_DEFAULTS$wacc_tax)
     }
-    if (!is.finite(t)) t <- 21
-    max(0, min(t / 100, 0.5))
+    if (!is.finite(t)) t <- APP_DEFAULTS$wacc_tax
+    ias12_tax_ratio(t, from_pct = TRUE)
   }
   .firm_market_de <- function() {
     d <- tryCatch(suppressWarnings(as.numeric(scraped_debt())[1]), error = function(e) NA_real_)
@@ -4081,8 +4145,8 @@ server <- function(input, output, session) {
       }
     }, error = function(e) NULL)
     if (!is.finite(we) || !is.finite(wd)) {
-      we <- 1
-      wd <- 0
+      we <- NA_real_
+      wd <- NA_real_
     }
 
     rf0 <- suppressWarnings(as.numeric(input$capm_rf)[1])
@@ -4789,8 +4853,12 @@ server <- function(input, output, session) {
     raw_shares <- select_current_metric(d_balance_sheet(), "Ordinary Shares Number|Share Issued|Total Shares Outstanding|Basic Average Shares", "stock")
     share_outstanding <- tryCatch({
       sh <- .valuation_shares()
-      if (is.finite(sh$shares) && sh$shares > 0) sh$shares else ifelse(is.na(raw_shares) || raw_shares <= 0, 1, raw_shares)
-    }, error = function(e) ifelse(is.na(raw_shares) || raw_shares <= 0, 1, raw_shares))
+      if (is.finite(sh$shares) && sh$shares > 0) sh$shares else {
+        if (is.na(raw_shares) || raw_shares <= 0) NA_real_ else raw_shares
+      }
+    }, error = function(e) {
+      if (is.na(raw_shares) || raw_shares <= 0) NA_real_ else raw_shares
+    })
 
     claim <- as.character(input$dcf_claim %||% "fcff")[1]
     if (identical(claim, "fcfe")) {
@@ -4808,7 +4876,7 @@ server <- function(input, output, session) {
       if (!is.finite(rd) || rd < 0) rd <- 0
       tax <- suppressWarnings(as.numeric(input$wacc_tax)[1]) / 100
       if (!is.finite(tax)) tax <- APP_DEFAULTS$wacc_tax / 100
-      iat <- max(0, latest_debt) * rd * (1 - max(0, min(tax, 0.5)))
+      iat <- after_tax_interest(latest_debt, rd, tax)
       fcfe <- fcff_to_fcfe(future_fcfs, interest_after_tax = iat, debt0 = latest_debt, g_path = g_terminal)
       ke_dfs <- cumprod(rep(1 + ke, n))
       pv_forecast <- sum(fcfe / ke_dfs)
@@ -4823,17 +4891,21 @@ server <- function(input, output, session) {
       equity_value <- as.numeric(dcf_value)[1] + latest_cash - latest_debt
     }
     
-    # 計算每股目標價並防呆
-    if (!is.na(equity_value) && share_outstanding > 1) {
-      stock_price_estimate_val(equity_value / share_outstanding)
-      sh_note <- tryCatch(.valuation_shares()$note, error = function(e) NULL)
+    # 計算每股目標價並防呆（報價幣；拒絕 TWD／普通股標成 USD／ADR）
+    sh_info <- tryCatch(.valuation_shares(), error = function(e) NULL)
+    px <- if (!is.null(sh_info)) .dcf_per_share(equity_value, sh_info) else NA_real_
+    if (is.finite(px)) {
+      stock_price_estimate_val(px)
+      sh_note <- sh_info$note
       if (!is.null(sh_note) && nzchar(sh_note)) {
         showNotification(paste0("DCF 股數：", sh_note), type = "message", duration = 6)
       }
     } else {
       stock_price_estimate_val(NULL)
-      # 如果股數回傳 1 (代表剛剛抓不到被我們設為預設值 1)，則跳出明確警告
-      showNotification("⚠️ 警告：無法計算目標股價，未找到流通在外股數 (Shares Outstanding) 資料", type = "warning")
+      showNotification(
+        "無法計算每股合理價：缺少匯率／ADR 約當股數，或財報幣與報價幣未對齊。",
+        type = "warning"
+      )
     }
     
     showNotification(
@@ -4944,16 +5016,16 @@ server <- function(input, output, session) {
 
     shares <- tryCatch({
       sh <- .valuation_shares()
-      if (is.finite(sh$shares) && sh$shares > 0) sh$shares else 1
+      if (is.finite(sh$shares) && sh$shares > 0) sh$shares else NA_real_
     }, error = function(e) {
       s <- select_current_metric(
         d_balance_sheet(),
         "Ordinary Shares Number|Share Issued|Total Shares Outstanding",
         "stock"
       )
-      if (is.na(s) || s <= 0) 1 else s
+      if (is.na(s) || s <= 0) NA_real_ else s
     })
-    if (is.na(shares) || shares <= 0) shares <- 1
+    if (is.na(shares) || shares <= 0) return(NULL)
 
     wacc_range <- seq(base_wacc + 2, base_wacc - 2, length.out = 5)
     g_range <- seq(base_g - 1, base_g + 1, length.out = 5)
@@ -4990,7 +5062,7 @@ server <- function(input, output, session) {
             if (!is.finite(rd) || rd < 0) rd <- 0
             tax <- suppressWarnings(as.numeric(input$wacc_tax)[1]) / 100
             if (!is.finite(tax)) tax <- APP_DEFAULTS$wacc_tax / 100
-            iat <- max(0, total_debt) * rd * (1 - max(0, min(tax, 0.5)))
+            iat <- after_tax_interest(total_debt, rd, tax)
             cfs <- fcff_to_fcfe(future_fcfs, interest_after_tax = iat, debt0 = total_debt, g_path = g_val)
             if (any(!is.finite(cfs))) next
             dfs <- cumprod(rep(1 + w_val, n_years))
@@ -5006,7 +5078,10 @@ server <- function(input, output, session) {
             equity_val <- ev + latest_cash - total_debt
           }
           if (!is.na(shares) && shares > 0) {
-            sens_matrix[i, j] <- equity_val / shares
+            sens_matrix[i, j] <- .dcf_per_share(
+              equity_val,
+              list(shares = shares, method = tryCatch(.valuation_shares()$method, error = function(e) "none"))
+            )
           }
         }
       }
@@ -5472,7 +5547,7 @@ server <- function(input, output, session) {
       } else if (is.finite(shares) && shares > 0 && is.finite(price_val)) {
         shares * price_val
       } else {
-        select_current_metric(bs, "Common Stock Equity", "stock")
+        NA_real_
       }
       debt <- select_current_metric(bs, "Total Debt", "stock")
       debt <- if (is.na(debt)) 0 else debt

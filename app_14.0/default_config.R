@@ -31,10 +31,11 @@ default_re <- round(default_rf + default_beta * (default_rm - default_rf), 2)
 
 # 債務成本 rᵈ：不設全域預設；載入財報後以利息費用／總負債覆寫（見 ynow_server）
 
-# 粗估 WACC 啟動占位（僅 Ke）；有負債後由實際 rᵈ 重算
+# 粗估 WACC 啟動占位（僅 Ke）；權重只用市值，缺市值則 N/A（不夾 5–95%）
 default_tax <- 21
-we <- max(0.05, min(0.95, 1 - default_debt))
-wd <- 1 - we
+we <- 1 - default_debt
+if (!is.finite(we)) we <- NA_real_
+wd <- if (is.finite(we)) 1 - we else NA_real_
 default_wacc <- round(default_re, 2)
 
 # 永續成長率 SGR：啟動值錨在 Rf，執行基本面／生命週期法後由 central_perpetual_g 覆寫
