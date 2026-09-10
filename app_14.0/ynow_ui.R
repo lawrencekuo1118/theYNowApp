@@ -123,11 +123,9 @@
 #' Shared CAPM / Beta settings block (canonical IDs on DCF → WACC).
 #' @param calc_id actionButton id
 #' @param result_id htmlOutput id for CAPM result text
-#' @param advanced_hint unused (kept for call-site compatibility)
 capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
                                   calc_id = "calc_capm",
-                                  result_id = "capm_result",
-                                  advanced_hint = TRUE) {
+                                  result_id = "capm_result") {
   box(
     h4(title),
     numericInput("capm_rf", "無風險利率 Rf (%)", value = APP_DEFAULTS$capm_rf, step = 0.01),
@@ -1843,10 +1841,6 @@ ui <- dashboardPage(
           margin-bottom: 0;
           font-size: 12px;
         }
-        .ynow-bt-plateau-table-wrap table {
-          width: 100% !important;
-          table-layout: auto !important;
-        }
         .ynow-bt-hfv-wrap {
           position: relative;
         }
@@ -2760,8 +2754,7 @@ ui <- dashboardPage(
                                 capm_beta_settings_ui(
                                   title = "CAPM 估算 rₑ",
                                   calc_id = "calc_capm",
-                                  result_id = "capm_result",
-                                  advanced_hint = TRUE
+                                  result_id = "capm_result"
                                 )
                               )
                      ),

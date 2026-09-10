@@ -5748,7 +5748,7 @@ server <- function(input, output, session) {
         # 參數高原已自 UI 移除（與 Sensitivity 重疊）；略過以縮短回測時間
         bt_result(res)
         bt_validation(list(
-          alpha = alpha_df, gap = gap, mos = mos_tab, fv = fv_edge, plateau = NULL
+          alpha = alpha_df, gap = gap, mos = mos_tab, fv = fv_edge
         ))
         bt_hfv_fv(NULL)
         bt_fv_visible(TRUE)
@@ -6372,41 +6372,6 @@ server <- function(input, output, session) {
       `5Y` = ifelse(is.na(tab$ret_5y), NA, sprintf("%.1f%%", 100 * tab$ret_5y)),
       check.names = FALSE
     )
-  }, striped = TRUE, bordered = TRUE, spacing = "s")
-
-  output$bt_plateau <- renderUI({
-    v <- bt_validation()
-    if (is.null(v) || is.null(v$plateau)) {
-      return(tags$p(style="color:#888;font-size:12px;", "微擾 WACC／SGR／年數後，輸出 Stable／Moderate／Sensitive 與原因。"))
-    }
-    p <- v$plateau
-    st <- as.character(p$status)
-    col <- if (grepl("Stable|穩定", st, ignore.case = TRUE)) "#00a65a"
-    else if (grepl("Moderate|中等", st, ignore.case = TRUE)) "#f39c12"
-    else if (grepl("Sensitive|敏感", st, ignore.case = TRUE)) "#d9534f"
-    else "#777"
-    tags$div(
-      tags$span(class = "ynow-kpi-hero-value", style = paste0("color:", col, ";"), p$status),
-      tags$p(style = "margin-top:8px;font-size:12px;line-height:1.55;", p$reason)
-    )
-  })
-
-  output$bt_plateau_table <- renderTable({
-    v <- bt_validation()
-    validate(need(!is.null(v) && !is.null(v$plateau) && !is.null(v$plateau$details), "尚無敏感度明細"))
-    d <- v$plateau$details
-    if (!is.data.frame(d) || nrow(d) == 0) return(NULL)
-    if (all(c("model_a_end", "d_rel") %in% names(d))) {
-      data.frame(
-        scenario = d$scenario,
-        model_a_end = round(d$model_a_end, 4),
-        d_rel = ifelse(is.na(d$d_rel), NA, sprintf("%+.1f%%", 100 * d$d_rel)),
-        stringsAsFactors = FALSE,
-        check.names = FALSE
-      )
-    } else {
-      d
-    }
   }, striped = TRUE, bordered = TRUE, spacing = "s")
 
   output$perf_metrics <- renderUI({
