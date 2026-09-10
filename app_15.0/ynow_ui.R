@@ -741,7 +741,36 @@ ui <- dashboardPage(
     width = 250,
     collapsed = FALSE,
     column(width = 12,
-           sidebarSearchForm(textId = "txt_search", buttonId = "btn_search", label = "Search..."),
+           tags$div(
+             class = "ynow-page-search-wrap",
+             sidebarSearchForm(
+               textId = "txt_search",
+               buttonId = "btn_search",
+               label = "Search page…"
+             ),
+             tags$div(
+               id = "ynow_page_search_toolbar",
+               class = "ynow-page-search-toolbar",
+               tags$span(id = "ynow_hl_count", class = "ynow-hl-count", ""),
+               tags$button(
+                 id = "ynow_hl_prev", type = "button", class = "btn btn-xs btn-default",
+                 title = "Previous match", "▲"
+               ),
+               tags$button(
+                 id = "ynow_hl_next", type = "button", class = "btn btn-xs btn-default",
+                 title = "Next match", "▼"
+               ),
+               tags$button(
+                 id = "ynow_hl_clear", type = "button", class = "btn btn-xs btn-default",
+                 title = "Clear highlights", "✕"
+               )
+             ),
+             tags$div(
+               id = "ynow_page_search_hint",
+               class = "ynow-page-search-hint",
+               "Highlights matches on this page"
+             )
+           ),
            column(width = 12, textOutput("today"),
                   hr()
            )
@@ -770,22 +799,27 @@ ui <- dashboardPage(
     ),
     
     column(width = 12,
-           h5("Recent Search:"),
+           h5(id = "ynow_recent_search_label", "Recent Search:"),
            textOutput("recentsearch"),
            hr()
     ),
     
     column(width = 12,
            div(style = "padding: 10px; text-align: center; margin-top: 20px;",
-               downloadButton("download_report", "下載完整分析報告 (PDF)", 
+               downloadButton("download_report", "Download full analysis report (PDF)",
                               style = "width: 100%; font-weight: bold; background-color: #1a1a1a; color: #ffffff; border: 1px solid #000000; box-shadow: none; text-shadow: none;")
            )
     ),
     
     column(width = 12,
-           div(style = "padding: 15px; border-radius: 5px; border-left: 4px",
-               tags$b("Data Source:"), tags$br(),
+           div(
+             id = "ynow_data_source_block",
+             style = "padding: 15px; border-radius: 5px; border-left: 4px",
+             tags$b(id = "ynow_data_source_title", "Data Source:"), tags$br(),
+             tags$span(
+               id = "ynow_data_source_body",
                "This application integrates real-time financial data via web parsing and API resources, applying comprehensive models for valuation."
+             )
            )
     ),
 
@@ -800,7 +834,7 @@ ui <- dashboardPage(
         class = "ynow-sidebar-snapshot-link",
         onclick = "Shiny.setInputValue('sidebar_tabs', 'snapshot', {priority: 'event'}); return false;",
         icon("camera", class = "fa-fw"),
-        tags$span(" Snapshot")
+        tags$span(id = "ynow_snapshot_link_label", " Snapshot")
       ),
       # 測試按鈕：Snapshot 旁的捷徑，開啟實驗區 (Lab) — 規劃新功能用
       tags$a(
@@ -811,7 +845,7 @@ ui <- dashboardPage(
         class = "ynow-sidebar-snapshot-link ynow-sidebar-test-link",
         onclick = "Shiny.setInputValue('sidebar_tabs', 'lab_notes', {priority: 'event'}); Shiny.setInputValue('sidebar_test_click', (window.__ynowTestClicks=(window.__ynowTestClicks||0)+1), {priority: 'event'}); return false;",
         icon("flask", class = "fa-fw"),
-        tags$span(" 測試")
+        tags$span(id = "ynow_test_link_label", " 測試")
       ),
       # 意見區：收集使用者回饋，系統性開 GitHub Issue
       tags$a(
@@ -822,7 +856,7 @@ ui <- dashboardPage(
         class = "ynow-sidebar-snapshot-link ynow-sidebar-feedback-link",
         onclick = "Shiny.setInputValue('sidebar_tabs', 'feedback', {priority: 'event'}); Shiny.setInputValue('sidebar_feedback_click', (window.__ynowFeedbackClicks=(window.__ynowFeedbackClicks||0)+1), {priority: 'event'}); return false;",
         icon("comment-dots", class = "fa-fw"),
-        tags$span(" 意見區")
+        tags$span(id = "ynow_feedback_link_label", " 意見區")
       )
     )
   ),
@@ -1057,7 +1091,281 @@ ui <- dashboardPage(
             });
           }
           registerBadgeHandler();
+
+          /* ---- UI locale (en / zh-TW) in-place chrome labels ---- */
+          function setMenuLabel(tab, label) {
+            var a = document.querySelector('.sidebar-menu a[data-value=\"' + tab + '\"]');
+            if (!a || !label) return;
+            var icon = a.querySelector('i');
+            var badge = a.querySelector('small.badge');
+            var iconClone = icon ? icon.cloneNode(true) : null;
+            var badgeClone = badge ? badge.cloneNode(true) : null;
+            a.innerHTML = '';
+            if (iconClone) a.appendChild(iconClone);
+            a.appendChild(document.createTextNode(' ' + label + ' '));
+            if (badgeClone) a.appendChild(badgeClone);
+          }
+
+          function applyUiLocale(payload) {
+            var s = (payload && payload.strings) || {};
+            var menu = {
+              dashboard: s.menu_dashboard,
+              get_started: s.menu_get_started,
+              dcf_calculator: s.menu_dcf,
+              ddm_calculator: s.menu_ddm,
+              pb_calculator: s.menu_pb,
+              ri_calculator: s.menu_ri,
+              sensitivity: s.menu_ynow,
+              bluechip: s.menu_bluechip,
+              backtest: s.menu_backtest,
+              about: s.menu_about
+            };
+            Object.keys(menu).forEach(function (k) {
+              if (menu[k]) setMenuLabel(k, menu[k]);
+            });
+            var inp = document.getElementById('txt_search');
+            if (inp && s.search_placeholder) inp.setAttribute('placeholder', s.search_placeholder);
+            var recent = document.getElementById('ynow_recent_search_label');
+            if (recent && s.recent_search) recent.textContent = s.recent_search;
+            var hint = document.getElementById('ynow_page_search_hint');
+            if (hint && s.highlight_hint) hint.textContent = s.highlight_hint;
+            var scLab = document.querySelector('label[for=\"sc\"]');
+            if (scLab && s.ticker_label) scLab.textContent = s.ticker_label;
+            var dsTitle = document.getElementById('ynow_data_source_title');
+            if (dsTitle && s.data_source_title) dsTitle.textContent = s.data_source_title;
+            var dsBody = document.getElementById('ynow_data_source_body');
+            if (dsBody && s.data_source_body) dsBody.textContent = s.data_source_body;
+            var dl = document.getElementById('download_report');
+            if (dl && s.download_report) {
+              var spans = dl.querySelectorAll('span, .shiny-download-link');
+              /* downloadButton text is in the button itself after icon */
+              var icon = dl.querySelector('i');
+              var iconHtml = icon ? icon.outerHTML + ' ' : '';
+              dl.innerHTML = iconHtml + s.download_report;
+            }
+            var snap = document.getElementById('ynow_snapshot_link_label');
+            if (snap && s.snapshot_link) snap.textContent = s.snapshot_link;
+            var testL = document.getElementById('ynow_test_link_label');
+            if (testL && s.test_link) testL.textContent = s.test_link;
+            var fb = document.getElementById('ynow_feedback_link_label');
+            if (fb && s.feedback_link) fb.textContent = s.feedback_link;
+            document.documentElement.setAttribute('lang', (payload && payload.locale) || 'en');
+          }
+
+          function registerLocaleHandler() {
+            if (!window.Shiny || !Shiny.addCustomMessageHandler) {
+              setTimeout(registerLocaleHandler, 50);
+              return;
+            }
+            Shiny.addCustomMessageHandler('ynowUiLocale', applyUiLocale);
+          }
+          registerLocaleHandler();
+
+          /* ---- Sidebar page keyword highlighter (NOT ticker load) ---- */
+          var hlState = { marks: [], idx: -1, q: '' };
+
+          function escapeRegExp(s) {
+            return String(s).replace(/[.*+?^${}()|[\\]\\\\]/g, function (ch) {
+              return '\\\\' + ch;
+            });
+          }
+
+          function clearHighlights() {
+            var marks = document.querySelectorAll('mark.ynow-page-hl');
+            marks.forEach(function (m) {
+              var parent = m.parentNode;
+              if (!parent) return;
+              parent.replaceChild(document.createTextNode(m.textContent), m);
+              parent.normalize();
+            });
+            hlState.marks = [];
+            hlState.idx = -1;
+            var cnt = document.getElementById('ynow_hl_count');
+            if (cnt) cnt.textContent = '';
+          }
+
+          function activeContentRoot() {
+            var active = document.querySelector('.content-wrapper .tab-pane.active');
+            return active || document.querySelector('.content-wrapper') || document.body;
+          }
+
+          function walkHighlight(root, re) {
+            var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+              acceptNode: function (node) {
+                if (!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+                var p = node.parentElement;
+                if (!p) return NodeFilter.FILTER_REJECT;
+                var tag = (p.tagName || '').toLowerCase();
+                if (tag === 'script' || tag === 'style' || tag === 'textarea' || tag === 'input') {
+                  return NodeFilter.FILTER_REJECT;
+                }
+                if (p.closest('mark.ynow-page-hl')) return NodeFilter.FILTER_REJECT;
+                if (p.closest('.main-sidebar, .main-header, #sc_ticker_suggest')) {
+                  return NodeFilter.FILTER_REJECT;
+                }
+                return NodeFilter.FILTER_ACCEPT;
+              }
+            });
+            var nodes = [];
+            while (walker.nextNode()) nodes.push(walker.currentNode);
+            nodes.forEach(function (textNode) {
+              var text = textNode.nodeValue;
+              if (!re.test(text)) return;
+              re.lastIndex = 0;
+              var frag = document.createDocumentFragment();
+              var last = 0;
+              var m;
+              while ((m = re.exec(text)) !== null) {
+                if (m.index > last) {
+                  frag.appendChild(document.createTextNode(text.slice(last, m.index)));
+                }
+                var mark = document.createElement('mark');
+                mark.className = 'ynow-page-hl';
+                mark.textContent = m[0];
+                frag.appendChild(mark);
+                last = m.index + m[0].length;
+                if (!re.global) break;
+              }
+              if (last < text.length) {
+                frag.appendChild(document.createTextNode(text.slice(last)));
+              }
+              textNode.parentNode.replaceChild(frag, textNode);
+            });
+          }
+
+          function refreshMarkList() {
+            hlState.marks = Array.prototype.slice.call(
+              document.querySelectorAll('mark.ynow-page-hl')
+            );
+            var cnt = document.getElementById('ynow_hl_count');
+            if (cnt) {
+              cnt.textContent = hlState.marks.length
+                ? (Math.max(hlState.idx, 0) + 1) + '/' + hlState.marks.length
+                : (hlState.q ? '0' : '');
+            }
+          }
+
+          function focusMark(i) {
+            if (!hlState.marks.length) return;
+            hlState.marks.forEach(function (m) { m.classList.remove('ynow-page-hl-active'); });
+            hlState.idx = ((i % hlState.marks.length) + hlState.marks.length) % hlState.marks.length;
+            var m = hlState.marks[hlState.idx];
+            m.classList.add('ynow-page-hl-active');
+            try { m.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {
+              m.scrollIntoView(true);
+            }
+            refreshMarkList();
+          }
+
+          function runPageSearch(q) {
+            clearHighlights();
+            q = (q || '').trim();
+            hlState.q = q;
+            if (!q) {
+              refreshMarkList();
+              return;
+            }
+            var re;
+            try {
+              re = new RegExp(escapeRegExp(q), 'gi');
+            } catch (e) {
+              return;
+            }
+            walkHighlight(activeContentRoot(), re);
+            refreshMarkList();
+            if (hlState.marks.length) focusMark(0);
+          }
+
+          function bindPageSearch() {
+            var form = document.querySelector('.sidebar-form');
+            if (form) {
+              form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var inp = document.getElementById('txt_search');
+                runPageSearch(inp ? inp.value : '');
+                return false;
+              }, true);
+            }
+            $(document).on('click', '#btn_search', function (e) {
+              e.preventDefault();
+              e.stopPropagation();
+              var inp = document.getElementById('txt_search');
+              runPageSearch(inp ? inp.value : '');
+              return false;
+            });
+            $(document).on('keydown', '#txt_search', function (e) {
+              if (e.key === 'Enter' || e.keyCode === 13) {
+                e.preventDefault();
+                runPageSearch(this.value || '');
+              } else if (e.key === 'Escape' || e.keyCode === 27) {
+                clearHighlights();
+                this.value = '';
+              }
+            });
+            $(document).on('click', '#ynow_hl_next', function () {
+              if (hlState.marks.length) focusMark(hlState.idx + 1);
+              else runPageSearch((document.getElementById('txt_search') || {}).value || '');
+            });
+            $(document).on('click', '#ynow_hl_prev', function () {
+              if (hlState.marks.length) focusMark(hlState.idx - 1);
+            });
+            $(document).on('click', '#ynow_hl_clear', function () {
+              clearHighlights();
+              var inp = document.getElementById('txt_search');
+              if (inp) inp.value = '';
+            });
+            /* Clear highlights when switching sidebar tabs */
+            $(document).on('shown.bs.tab', 'a[data-toggle=\"tab\"]', function () {
+              if (hlState.q) runPageSearch(hlState.q);
+            });
+          }
+          if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', bindPageSearch);
+          } else {
+            bindPageSearch();
+          }
         })();
+      ")),
+      tags$style(HTML("
+        mark.ynow-page-hl {
+          background: #ffe566;
+          color: inherit;
+          padding: 0 1px;
+          border-radius: 2px;
+        }
+        mark.ynow-page-hl-active {
+          background: #ff9800;
+          outline: 1px solid #e65100;
+        }
+        .ynow-page-search-toolbar {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          padding: 4px 0 2px 0;
+          flex-wrap: wrap;
+        }
+        .ynow-page-search-toolbar .btn {
+          padding: 1px 6px;
+          line-height: 1.3;
+          background: #333;
+          color: #eee;
+          border-color: #555;
+        }
+        .ynow-hl-count {
+          font-size: 11px;
+          color: #bbb;
+          min-width: 2.5em;
+        }
+        .ynow-page-search-hint {
+          font-size: 10px;
+          color: rgba(255,255,255,0.55);
+          margin: 0 0 6px 0;
+          line-height: 1.3;
+        }
+        .ynow-page-search-wrap .sidebar-form {
+          margin: 10px 0 0 0;
+        }
       ")),
       
       tags$style(HTML("

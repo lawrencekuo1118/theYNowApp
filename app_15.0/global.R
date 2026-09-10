@@ -73,6 +73,7 @@ if (file.exists(python_path) && !on_shinyapps) {
 source("debug_helpers.R", local = TRUE, encoding = "UTF-8")
 source("setup.R", local = TRUE, encoding = "UTF-8")
 source("market_profile.R", local = TRUE, encoding = "UTF-8")
+source("ui_locale.R", local = TRUE, encoding = "UTF-8")
 source("web_crawler.R", local = TRUE, encoding = "UTF-8")
 source("industry_standards.R", local = TRUE, encoding = "UTF-8")
 source("kpi_module.R", local = TRUE, encoding = "UTF-8")

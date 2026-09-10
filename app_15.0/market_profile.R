@@ -45,22 +45,23 @@ market_profile <- function(mode = get_market_mode()) {
         "先套用規模 × 產業 × 評價模型，再以 Piotroski 高門檻與年化估值漲幅排序。"
       ),
       universe_label = "上市櫃",
+      # 顯示標籤用不含 .TW 的代號；值仍為 Yahoo fetch symbol
       ticker_presets = c(
-        "2330.TW — 台積電" = "2330.TW",
-        "2317.TW — 鴻海" = "2317.TW",
-        "2454.TW — 聯發科" = "2454.TW",
-        "2308.TW — 台達電" = "2308.TW",
-        "2382.TW — 廣達" = "2382.TW",
-        "2303.TW — 聯電" = "2303.TW",
-        "2881.TW — 富邦金" = "2881.TW",
-        "2882.TW — 國泰金" = "2882.TW",
-        "2891.TW — 中信金" = "2891.TW",
-        "2886.TW — 兆豐金" = "2886.TW",
-        "2412.TW — 中華電" = "2412.TW",
-        "1301.TW — 台塑" = "1301.TW",
-        "1303.TW — 南亞" = "1303.TW",
-        "2002.TW — 中鋼" = "2002.TW",
-        "0050.TW — 元大台灣50" = "0050.TW"
+        "2330 — 台積電" = "2330.TW",
+        "2317 — 鴻海" = "2317.TW",
+        "2454 — 聯發科" = "2454.TW",
+        "2308 — 台達電" = "2308.TW",
+        "2382 — 廣達" = "2382.TW",
+        "2303 — 聯電" = "2303.TW",
+        "2881 — 富邦金" = "2881.TW",
+        "2882 — 國泰金" = "2882.TW",
+        "2891 — 中信金" = "2891.TW",
+        "2886 — 兆豐金" = "2886.TW",
+        "2412 — 中華電" = "2412.TW",
+        "1301 — 台塑" = "1301.TW",
+        "1303 — 南亞" = "1303.TW",
+        "2002 — 中鋼" = "2002.TW",
+        "0050 — 元大台灣50" = "0050.TW"
       )
     )
   } else {
@@ -169,4 +170,147 @@ tw_yahoo_alt_ticker <- function(sym) {
 
 is_tw_yahoo_ticker <- function(sym) {
   grepl("\\.(TW|TWO)$", as.character(sym %||% "")[1], ignore.case = TRUE)
+}
+
+#' 內部／Yahoo 抓取用代號（= normalize）
+fetch_ticker_for_market <- function(sym, mode = get_market_mode()) {
+  normalize_ticker_for_market(sym, mode)
+}
+
+#' UI 顯示用代號：台股模式剝除 .(TW|TWO)；美股維持原樣
+display_ticker_for_market <- function(sym, mode = get_market_mode()) {
+  mode <- normalize_market_mode(mode)
+  raw <- trimws(as.character(sym %||% "")[1])
+  if (!nzchar(raw) || identical(toupper(raw), "NA")) return("")
+  raw <- sub("\\s+[—\\-–].*$", "", raw)
+  raw <- trimws(raw)
+  if (!identical(mode, "TW")) {
+    return(toupper(gsub("\\s+", "", raw)))
+  }
+  u <- gsub("\\s+", "", raw)
+  if (grepl("^\\^", u)) return(toupper(u))
+  sub("\\.(TW|TWO)$", "", u, ignore.case = TRUE)
+}
+
+#' 向量版顯示代號
+display_tickers_for_market <- function(syms, mode = get_market_mode()) {
+  mode <- normalize_market_mode(mode)
+  vapply(
+    as.character(syms %||% character(0)),
+    function(s) display_ticker_for_market(s, mode),
+    character(1),
+    USE.NAMES = FALSE
+  )
+}
+
+#' 查詢是否含中日韓漢字（CJK）
+query_has_cjk <- function(q) {
+  grepl("[\u4e00-\u9fff]", as.character(q %||% "")[1])
+}
+
+#' 字元子序列：query 的每個字依序出現在 text（台積 ⊂ 台灣積體…）
+.cjk_chars_in_order <- function(query, text) {
+  q <- as.character(query %||% "")[1]
+  t <- as.character(text %||% "")[1]
+  if (!nzchar(q) || !nzchar(t)) return(FALSE)
+  qchars <- strsplit(q, "", fixed = TRUE)[[1]]
+  pos <- 0L
+  for (ch in qchars) {
+    rest <- substr(t, pos + 1L, nchar(t))
+    idx <- regexpr(ch, rest, fixed = TRUE)[1]
+    if (is.na(idx) || idx < 1L) return(FALSE)
+    pos <- pos + as.integer(idx)
+  }
+  TRUE
+}
+
+#' 台股常見簡稱 → Yahoo fetch symbol（補強宇宙全名匹配）
+tw_short_name_aliases <- function() {
+  c(
+    "台積" = "2330.TW", "台積電" = "2330.TW", "TSMC" = "2330.TW",
+    "鴻海" = "2317.TW", "富士康" = "2317.TW",
+    "聯發科" = "2454.TW", "聯發" = "2454.TW",
+    "台達電" = "2308.TW", "台達" = "2308.TW",
+    "廣達" = "2382.TW",
+    "聯電" = "2303.TW",
+    "富邦金" = "2881.TW", "國泰金" = "2882.TW",
+    "中信金" = "2891.TW", "兆豐金" = "2886.TW",
+    "中華電" = "2412.TW",
+    "台塑" = "1301.TW", "南亞" = "1303.TW", "中鋼" = "2002.TW",
+    "元大台灣50" = "0050.TW", "台灣50" = "0050.TW"
+  )
+}
+
+#' 自上市櫃宇宙／簡稱別名搜尋（CJK／公司名 fallback）
+#' @return named character：names = 「代號 — 名稱」, values = Yahoo fetch symbol
+search_tw_universe_by_name <- function(query, max_results = 12L) {
+  q <- trimws(as.character(query %||% "")[1])
+  if (!nzchar(q)) return(character(0))
+  max_results <- max(1L, as.integer(max_results)[1])
+
+  hits <- character(0)
+  labs <- character(0)
+  add_hit <- function(sym, lab) {
+    sym <- as.character(sym)[1]
+    if (!nzchar(sym) || sym %in% hits) return()
+    hits <<- c(hits, sym)
+    labs <<- c(labs, lab)
+  }
+
+  # 1) 簡稱別名（台積／鴻海…）
+  aliases <- tw_short_name_aliases()
+  q_up <- toupper(q)
+  for (i in seq_along(aliases)) {
+    an <- names(aliases)[[i]]
+    if (grepl(q, an, fixed = TRUE) || grepl(an, q, fixed = TRUE) ||
+        identical(toupper(an), q_up)) {
+      sym <- aliases[[i]]
+      disp <- display_ticker_for_market(sym, "TW")
+      add_hit(sym, paste0(disp, " — ", an))
+    }
+  }
+
+  # 2) 宇宙全名／代號
+  u <- tryCatch({
+    if (exists("lab_get_tw_universe", mode = "function")) {
+      lab_get_tw_universe(FALSE)
+    } else if (exists("lab_read_tw_cache", mode = "function")) {
+      lab_read_tw_cache()
+    } else {
+      NULL
+    }
+  }, error = function(e) NULL)
+
+  if (!is.null(u) && is.data.frame(u) && nrow(u) > 0L &&
+      all(c("ticker", "name") %in% names(u))) {
+    tks <- as.character(u$ticker)
+    nms <- as.character(u$name)
+    bare <- sub("\\.(TW|TWO)$", "", tks, ignore.case = TRUE)
+    q_u <- toupper(gsub("\\s+", "", q))
+    score <- rep(0L, length(tks))
+    for (i in seq_along(tks)) {
+      nm <- nms[[i]]
+      if (identical(toupper(bare[[i]]), q_u) || identical(toupper(tks[[i]]), q_u)) {
+        score[[i]] <- 100L
+      } else if (nzchar(nm) && grepl(q, nm, fixed = TRUE)) {
+        score[[i]] <- 80L
+      } else if (nzchar(nm) && query_has_cjk(q) && .cjk_chars_in_order(q, nm)) {
+        score[[i]] <- 40L
+      } else if (grepl(q_u, toupper(bare[[i]]), fixed = TRUE)) {
+        score[[i]] <- 60L
+      }
+    }
+    ord <- order(-score, bare, na.last = TRUE)
+    for (i in ord) {
+      if (score[[i]] <= 0L) next
+      if (length(hits) >= max_results) break
+      disp <- display_ticker_for_market(tks[[i]], "TW")
+      short_nm <- sub("股份有限公司$", "", nms[[i]])
+      short_nm <- sub("有限公司$", "", short_nm)
+      add_hit(tks[[i]], paste0(disp, " — ", short_nm))
+    }
+  }
+
+  if (!length(hits)) return(character(0))
+  stats::setNames(hits, labs)
 }

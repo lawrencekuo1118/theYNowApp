@@ -62,25 +62,34 @@ server <- function(input, output, session) {
   lab_im_scores <- reactiveVal(NULL)
   
   # ==========================================
-  # 🚀 雙按鈕監聽：確保左右兩個搜尋框獨立運作，互不覆寫
+  # 🚀 股票代號：僅主區 Ticker / Stock Code（sc + Search）
+  # 側邊欄 txt_search／btn_search 改為「本頁關鍵字螢光筆」，不觸發抓取
   # ==========================================
-  observeEvent(input$btn_search, {
-    req(input$txt_search)
-    user_has_searched(TRUE)
-    tk <- normalize_ticker_for_market(input$txt_search, market_mode())
-    current_ticker(tk)
-  })
-  
   observeEvent(input$search, {
     req(input$sc)
     user_has_searched(TRUE)
     tk <- normalize_ticker_for_market(input$sc, market_mode())
+    req(!is.na(tk), nzchar(tk))
     current_ticker(tk)
+    disp <- display_ticker_for_market(tk, market_mode())
+    tryCatch(updateTextInput(session, "sc", value = disp), error = function(e) NULL)
   })
 
   # ==========================================
-  # 市場一鍵切換（美股｜台股）
+  # 市場一鍵切換（美股｜台股）＋ UI locale
   # ==========================================
+  ui_locale <- reactiveVal("en")
+
+  .push_ui_locale <- function(locale) {
+    loc <- normalize_ui_locale(locale)
+    ui_locale(loc)
+    payload <- list(
+      locale = loc,
+      strings = ui_locale_payload(loc)
+    )
+    session$sendCustomMessage("ynowUiLocale", payload)
+  }
+
   observeEvent(input$market_mode_pick, {
     mode <- normalize_market_mode(input$market_mode_pick)
     prev <- market_mode()
@@ -88,6 +97,9 @@ server <- function(input, output, session) {
     market_mode(mode)
     set_market_mode(mode)
     prof <- market_profile(mode)
+
+    # TW → zh-TW；US → en
+    .push_ui_locale(locale_for_market(mode))
 
     # 顯示幣別與預設稅／基準／搜尋建議
     session_currency(prof$session_currency)
@@ -117,11 +129,11 @@ server <- function(input, output, session) {
       updateNumericInput(session, "capm_rf", value = round(as.numeric(rf_new), 2))
     }
 
-    # 切換預設標的並重抓
+    # 切換預設標的並重抓（輸入框顯示乾淨代號）
     user_has_searched(TRUE)
     current_ticker(prof$default_ticker)
-    updateTextInput(session, "txt_search", value = prof$default_ticker)
-    tryCatch(updateTextInput(session, "sc", value = prof$default_ticker), error = function(e) NULL)
+    disp <- display_ticker_for_market(prof$default_ticker, mode)
+    tryCatch(updateTextInput(session, "sc", value = disp), error = function(e) NULL)
 
     # SEC 頁籤：僅美股
     if (isTRUE(prof$show_sec_lab)) {
@@ -137,18 +149,23 @@ server <- function(input, output, session) {
     }
 
     showNotification(
-      paste0("已切換至", prof$label_zh, "模式（預設 ", prof$default_ticker, "；Rf：", prof$rf_label_zh, "）"),
+      paste0(
+        "已切換至", prof$label_zh, "模式（預設 ", disp,
+        "；Rf：", prof$rf_label_zh, "；介面 ",
+        if (identical(mode, "TW")) "繁體中文" else "English", "）"
+      ),
       type = "message", duration = 6
     )
   }, ignoreInit = TRUE)
 
   # ==========================================
-  # 🔎 主搜尋框預選清單（黑字；側邊欄維持原 UI）
+  # 🔎 主搜尋框預選清單（Ticker／Stock Code；非側邊欄）
   # ==========================================
 
   output$sc_ticker_suggest_ui <- renderUI({
     ch <- sc_datalist_choices()
-    if (is.null(ch) || length(ch) == 0) ch <- ticker_presets_for_market(market_mode())
+    mode <- market_mode()
+    if (is.null(ch) || length(ch) == 0) ch <- ticker_presets_for_market(mode)
     labs <- names(ch)
     if (is.null(labs)) labs <- unname(ch)
     labs[!nzchar(labs)] <- unname(ch)[!nzchar(labs)]
@@ -157,15 +174,25 @@ server <- function(input, output, session) {
       id = "sc_ticker_suggest",
       role = "listbox",
       lapply(seq_len(n), function(i) {
-        sym <- as.character(unname(ch)[[i]])
+        fetch_sym <- as.character(unname(ch)[[i]])
+        disp_sym <- display_ticker_for_market(fetch_sym, mode)
         lab <- as.character(labs[[i]])
-        extra <- sub(paste0("^", sym, "(\\s|[—\\-–])+"), "", lab, perl = TRUE)
+        # 剝除標籤開頭代號，留下公司名
+        extra <- lab
+        for (pat in unique(c(fetch_sym, disp_sym))) {
+          if (!nzchar(pat)) next
+          esc <- gsub("([.|()\\[\\]{}+*?^$\\\\])", "\\\\\\1", pat)
+          extra <- sub(paste0("^", esc, "(\\s|[—\\-–])+"), "", extra, perl = TRUE)
+        }
+        extra <- sub("\\.(TW|TWO)\\s*[—\\-–]\\s*", "", extra, ignore.case = TRUE, perl = TRUE)
+        extra <- trimws(extra)
         tags$button(
           type = "button",
           class = "ynow-suggest-item",
-          `data-symbol` = sym,
-          tags$span(class = "ynow-suggest-sym", sym),
-          if (nzchar(trimws(extra)) && !identical(trimws(extra), sym)) {
+          `data-symbol` = disp_sym,
+          tags$span(class = "ynow-suggest-sym", disp_sym),
+          if (nzchar(extra) && !identical(toupper(extra), toupper(disp_sym)) &&
+              !identical(toupper(extra), toupper(fetch_sym))) {
             tags$span(class = "ynow-suggest-lab", extra)
           }
         )
@@ -175,6 +202,7 @@ server <- function(input, output, session) {
 
   session$onFlushed(function() {
     sc_datalist_choices(TICKER_PRESETS)
+    .push_ui_locale(locale_for_market(isolate(market_mode())))
   }, once = TRUE)
 
   ticker_typeahead_q <- shiny::debounce(
@@ -184,20 +212,22 @@ server <- function(input, output, session) {
 
   observeEvent(ticker_typeahead_q(), {
     q <- trimws(as.character(ticker_typeahead_q() %||% ""))
+    mode <- market_mode()
     if (!nzchar(q)) {
-      base <- ticker_presets_for_market(market_mode())
+      base <- ticker_presets_for_market(mode)
       recent <- values$recentsearch
       if (length(recent)) {
         recent <- unique(toupper(trimws(recent)))
-        recent_named <- stats::setNames(recent, recent)
+        recent_labs <- display_tickers_for_market(recent, mode)
+        recent_named <- stats::setNames(recent, recent_labs)
         base <- c(recent_named, base[!(unname(base) %in% recent)])
       }
       sc_datalist_choices(base)
       return()
     }
     hits <- tryCatch(
-      search_ticker_choices(q, market = market_mode()),
-      error = function(e) ticker_presets_for_market(market_mode())
+      search_ticker_choices(q, market = mode),
+      error = function(e) ticker_presets_for_market(mode)
     )
     sc_datalist_choices(hits)
   }, ignoreInit = TRUE)
@@ -205,10 +235,12 @@ server <- function(input, output, session) {
   observeEvent(current_ticker(), {
     tk <- current_ticker()
     req(nzchar(tk))
+    mode <- market_mode()
     base <- sc_datalist_choices()
-    if (is.null(base)) base <- ticker_presets_for_market(market_mode())
+    if (is.null(base)) base <- ticker_presets_for_market(mode)
     if (!(tk %in% unname(base))) {
-      sc_datalist_choices(c(stats::setNames(tk, tk), base))
+      disp <- display_ticker_for_market(tk, mode)
+      sc_datalist_choices(c(stats::setNames(tk, disp), base))
     }
   }, ignoreInit = TRUE)
   
@@ -236,7 +268,9 @@ server <- function(input, output, session) {
       .tw_two_fallback_tried_for(NA_character_)
     }
     
-    withProgress(message = paste('🚀 正在取得', stock_code, '的最新資料...'), value = 0, {
+    withProgress(message = paste(
+      '🚀 正在取得', display_ticker_for_market(stock_code, market_mode()), '的最新資料...'
+    ), value = 0, {
       tryCatch({
         incProgress(0.2, detail = "正在讀取 Summary（yfinance）...")
         sum_df <- tryCatch(get_summary_data(stock_code), error = function(e) e)
@@ -248,13 +282,16 @@ server <- function(input, output, session) {
           alt <- tw_yahoo_alt_ticker(stock_code)
           if (!is.na(alt) && nzchar(alt) && !identical(toupper(alt), toupper(stock_code))) {
             .tw_two_fallback_tried_for(toupper(stock_code))
+            alt_disp <- display_ticker_for_market(alt, "TW")
             showNotification(
-              paste0(stock_code, " 無資料，改試上櫃代號 ", alt, "…"),
+              paste0(
+                display_ticker_for_market(stock_code, "TW"),
+                " 無資料，改試上櫃代號 ", alt_disp, "…"
+              ),
               type = "message", duration = 5
             )
             current_ticker(alt)
-            tryCatch(updateTextInput(session, "txt_search", value = alt), error = function(e) NULL)
-            tryCatch(updateTextInput(session, "sc", value = alt), error = function(e) NULL)
+            tryCatch(updateTextInput(session, "sc", value = alt_disp), error = function(e) NULL)
             return()
           }
         }
@@ -319,6 +356,14 @@ server <- function(input, output, session) {
         if (!(stock_code %in% values$recentsearch)) {
           values$recentsearch <- head(c(stock_code, values$recentsearch), 5)
         }
+        # 成功載入後：輸入框維持顯示乾淨代號
+        tryCatch(
+          updateTextInput(
+            session, "sc",
+            value = display_ticker_for_market(stock_code, market_mode())
+          ),
+          error = function(e) NULL
+        )
 
         incProgress(0.5, detail = "正在抓取財報明細（yfinance）...")
         res <- cached_scrape_financials(stock_code)
@@ -453,7 +498,9 @@ server <- function(input, output, session) {
     name <- attr(summary_data(), "company_name")
     if (is.null(name) || is.na(name) || !nzchar(as.character(name))) {
       tk <- current_ticker()
-      if (!is.null(tk) && nzchar(tk)) return(paste("Stock:", tk))
+      if (!is.null(tk) && nzchar(tk)) {
+        return(paste("Stock:", display_ticker_for_market(tk, market_mode())))
+      }
       return("")
     }
     as.character(name)[1]
@@ -461,7 +508,9 @@ server <- function(input, output, session) {
   
   output$txt_corpname <- renderText({ render_corpname_logic() })
   output$search_results <- renderText({ corp_industry_text() })
-  output$recentsearch <- renderText({ paste(values$recentsearch, collapse = ", ") })
+  output$recentsearch <- renderText({
+    paste(display_tickers_for_market(values$recentsearch, market_mode()), collapse = ", ")
+  })
   output$today <- renderText({ format(Sys.Date(), "%Y/%m/%d") })
 
   output$dashboard_selected_industry <- renderUI({
@@ -892,7 +941,10 @@ server <- function(input, output, session) {
   }
 
   snapshot_rows <- reactive({
-    ticker <- current_ticker() %||% APP_DEFAULTS$stock_code
+    ticker <- display_ticker_for_market(
+      current_ticker() %||% APP_DEFAULTS$stock_code,
+      market_mode()
+    )
     ts <- format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z")
     rec <- tryCatch(model_sidebar_rec(), error = function(e) NULL)
     wacc_pct <- if (!is.null(calculated_wacc())) round(calculated_wacc() * 100, 2) else NA_real_
@@ -4150,6 +4202,13 @@ server <- function(input, output, session) {
 
   # DCF 頁底部：公式參數對 EV 的邊際彈性（相對 ±1%；與個股價格／股數／現金負債無關）
   output$dcf_param_sensitivity_table <- renderTable({
+    # #region agent log
+    .ynow_agent_dbg("A", "ynow_server.R:dcf_param_sensitivity_table", "enter", list(
+      dcf_mode = as.character(input$dcf_mode %||% NA)[1],
+      wacc_tax = suppressWarnings(as.numeric(input$wacc_tax)[1])
+    ))
+    # #endregion
+    tryCatch({
     shock_pct <- if (exists("PARAM_SENSITIVITY_SHOCK", inherits = TRUE)) PARAM_SENSITIVITY_SHOCK else 0.01
     gordon <- identical(input$dcf_mode, "gordon") || is.null(input$dcf_mode)
 
@@ -4521,7 +4580,23 @@ server <- function(input, output, session) {
     }
 
     out <- do.call(rbind, rows)
-    .param_sensitivity_sort_by_abs_eps(out)
+    out <- .param_sensitivity_sort_by_abs_eps(out)
+    # #region agent log
+    .ynow_agent_dbg("A", "ynow_server.R:dcf_param_sensitivity_table", "success", list(
+      nrow = if (is.data.frame(out)) nrow(out) else NA_integer_,
+      we = we, wd = wd,
+      tax0 = tax0, rd0 = rd0
+    ))
+    # #endregion
+    out
+    }, error = function(e) {
+      # #region agent log
+      .ynow_agent_dbg("A", "ynow_server.R:dcf_param_sensitivity_table", "error", list(
+        err = conditionMessage(e)
+      ))
+      # #endregion
+      stop(e)
+    })
   }, striped = TRUE, bordered = TRUE, spacing = "s", width = "100%")
 
   observeEvent(input$calc_capm, {
@@ -6831,7 +6906,9 @@ server <- function(input, output, session) {
         sum_df <- isolate(summary_data())
         co_name <- isolate(attr(sum_df, "company_name"))
         if (is.null(co_name) || is.na(co_name) || !nzchar(as.character(co_name))) {
-          co_name <- isolate(current_ticker())
+          co_name <- display_ticker_for_market(
+            isolate(current_ticker()), isolate(market_mode())
+          )
         }
 
         ind_text <- isolate(corp_industry_text())
@@ -6897,7 +6974,9 @@ server <- function(input, output, session) {
           clean = TRUE,
           quiet = TRUE,
           params = list(
-            stock_code = isolate(current_ticker()),
+            stock_code = display_ticker_for_market(
+              isolate(current_ticker()), isolate(market_mode())
+            ),
             company_name = co_name,
             sector = sector_str,
             industry = industry_str,
@@ -7314,7 +7393,7 @@ server <- function(input, output, session) {
     size_lab[is.na(size_lab)] <- "—"
     yahoo_nm <- if ("company_name" %in% names(merged)) merged$company_name else NA_character_
     show_df <- data.frame(
-      代號 = merged$ticker,
+      代號 = display_tickers_for_market(merged$ticker, market_mode()),
       公司名稱 = vapply(
         seq_len(nrow(merged)),
         function(i) lab_company_display_name(merged$ticker[[i]], yahoo_nm[[i]]),
@@ -7380,7 +7459,7 @@ server <- function(input, output, session) {
     size_lab[is.na(size_lab)] <- "—"
     yahoo_nm <- if ("company_name" %in% names(merged)) merged$company_name else NA_character_
     data.frame(
-      代號 = merged$ticker,
+      代號 = display_tickers_for_market(merged$ticker, market_mode()),
       公司名稱 = vapply(
         seq_len(nrow(merged)),
         function(i) lab_company_display_name(merged$ticker[[i]], yahoo_nm[[i]]),
@@ -7539,7 +7618,10 @@ server <- function(input, output, session) {
         "尚未設定主頁代號，請至主頁輸入 Ticker / Stock Code。"
       ))
     }
-    tags$div(style = "font-size:20px; font-weight:bold; padding:2px 0;", tk)
+    tags$div(
+      style = "font-size:20px; font-weight:bold; padding:2px 0;",
+      display_ticker_for_market(tk, market_mode())
+    )
   })
 
   observeEvent(input$lab_sec_fetch, {

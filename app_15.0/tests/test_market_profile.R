@@ -23,6 +23,7 @@ if (!file.exists(file.path(root, "market_profile.R"))) {
 `%||%` <- function(x, y) if (is.null(x) || (length(x) == 1 && is.na(x))) y else x
 
 source(file.path(root, "market_profile.R"), local = TRUE, encoding = "UTF-8")
+source(file.path(root, "ui_locale.R"), local = TRUE, encoding = "UTF-8")
 
 check("US normalize AAPL", identical(normalize_ticker_for_market("aapl", "US"), "AAPL"))
 check("TW normalize 2330", identical(normalize_ticker_for_market("2330", "TW"), "2330.TW"))
@@ -39,6 +40,32 @@ check("TW hides SEC", isFALSE(market_profile("TW")$show_sec_lab))
 check("US shows SEC", isTRUE(market_profile("US")$show_sec_lab))
 check("TW bench 0050", identical(market_profile("TW")$beta_bench, "0050.TW"))
 
+# Display vs fetch
+check("TW display strips .TW", identical(display_ticker_for_market("2330.TW", "TW"), "2330"))
+check("TW display strips .TWO", identical(display_ticker_for_market("3105.TWO", "TW"), "3105"))
+check("TW display bare stays", identical(display_ticker_for_market("2330", "TW"), "2330"))
+check("US display AAPL", identical(display_ticker_for_market("AAPL", "US"), "AAPL"))
+check("US display keeps TSM", identical(display_ticker_for_market("TSM", "US"), "TSM"))
+check(
+  "fetch == normalize",
+  identical(fetch_ticker_for_market("2330", "TW"), normalize_ticker_for_market("2330", "TW"))
+)
+
+# Locale
+check("TW locale zh-TW", identical(locale_for_market("TW"), "zh-TW"))
+check("US locale en", identical(locale_for_market("US"), "en"))
+check("ui_str zh ticker", grepl("代號", ui_str("ticker_label", "zh-TW")))
+check("ui_str en ticker", grepl("Ticker", ui_str("ticker_label", "en")))
+check("no simplified 默认", !grepl("默认", ui_str("data_source_body", "zh-TW")))
+
+# CJK alias / universe name search
+check("query_has_cjk", isTRUE(query_has_cjk("台積")))
+check("query_no_cjk digits", isFALSE(query_has_cjk("2330")))
+alias_hits <- search_tw_universe_by_name("台積", max_results = 5L)
+check("CJK 台積 hits 2330", "2330.TW" %in% unname(alias_hits))
+honghai <- search_tw_universe_by_name("鴻海", max_results = 5L)
+check("CJK 鴻海 hits 2317", "2317.TW" %in% unname(honghai))
+
 # Universe cache（若存在）：上櫃純數字應解析為 .TWO
 cache_path <- file.path(root, "data", "tw_universe.csv")
 if (file.exists(cache_path)) {
@@ -50,6 +77,11 @@ if (file.exists(cache_path)) {
   check(
     "TW listed bare 2330 stays .TW",
     identical(normalize_ticker_for_market("2330", "TW"), "2330.TW")
+  )
+  uni_hits <- search_tw_universe_by_name("台灣積體", max_results = 8L)
+  check(
+    "universe CJK 台灣積體 → 2330",
+    "2330.TW" %in% unname(uni_hits)
   )
 } else {
   cat("SKIP: tw_universe.csv not present for OTC resolve checks\n")

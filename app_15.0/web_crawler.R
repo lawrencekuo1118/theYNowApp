@@ -267,19 +267,19 @@ TICKER_PRESETS_US <- c(
 )
 
 TICKER_PRESETS_TW <- c(
-  "2330.TW — 台積電" = "2330.TW",
-  "2317.TW — 鴻海" = "2317.TW",
-  "2454.TW — 聯發科" = "2454.TW",
-  "2308.TW — 台達電" = "2308.TW",
-  "2382.TW — 廣達" = "2382.TW",
-  "2303.TW — 聯電" = "2303.TW",
-  "2881.TW — 富邦金" = "2881.TW",
-  "2882.TW — 國泰金" = "2882.TW",
-  "2891.TW — 中信金" = "2891.TW",
-  "2412.TW — 中華電" = "2412.TW",
-  "1301.TW — 台塑" = "1301.TW",
-  "2002.TW — 中鋼" = "2002.TW",
-  "0050.TW — 元大台灣50" = "0050.TW"
+  "2330 — 台積電" = "2330.TW",
+  "2317 — 鴻海" = "2317.TW",
+  "2454 — 聯發科" = "2454.TW",
+  "2308 — 台達電" = "2308.TW",
+  "2382 — 廣達" = "2382.TW",
+  "2303 — 聯電" = "2303.TW",
+  "2881 — 富邦金" = "2881.TW",
+  "2882 — 國泰金" = "2882.TW",
+  "2891 — 中信金" = "2891.TW",
+  "2412 — 中華電" = "2412.TW",
+  "1301 — 台塑" = "1301.TW",
+  "2002 — 中鋼" = "2002.TW",
+  "0050 — 元大台灣50" = "0050.TW"
 )
 
 # 向後相容：合併預設（搜尋仍可用）
@@ -296,7 +296,28 @@ ticker_presets_for_market <- function(mode = NULL) {
   if (identical(mode, "TW")) TICKER_PRESETS_TW else TICKER_PRESETS_US
 }
 
-#' Yahoo／yfinance typeahead → named character vector (label = symbol)
+#' 建議列標籤：TW 顯示乾淨代號；US 維持原 label
+.format_suggest_label <- function(sym, lab, mode) {
+  sym <- as.character(sym %||% "")[1]
+  lab <- trimws(as.character(lab %||% "")[1])
+  if (identical(mode, "TW") && exists("display_ticker_for_market", mode = "function")) {
+    disp <- display_ticker_for_market(sym, "TW")
+    # 剝除 label 開頭的 Yahoo 後綴代號
+    extra <- lab
+    extra <- sub(paste0("^", gsub("([.|()\\[\\]{}+*?^$\\\\])", "\\\\\\1", sym), "(\\s|[—\\-–])+"), "", extra, perl = TRUE)
+    extra <- sub(paste0("^", gsub("([.|()\\[\\]{}+*?^$\\\\])", "\\\\\\1", disp), "(\\s|[—\\-–])+"), "", extra, perl = TRUE)
+    extra <- sub("\\.(TW|TWO)\\s*[—\\-–]\\s*", "", extra, ignore.case = TRUE, perl = TRUE)
+    extra <- trimws(extra)
+    if (nzchar(extra) && !identical(toupper(extra), toupper(sym)) &&
+        !identical(toupper(extra), toupper(disp))) {
+      return(paste0(disp, " — ", extra))
+    }
+    return(disp)
+  }
+  if (nzchar(lab)) lab else sym
+}
+
+#' Yahoo／yfinance typeahead → named character vector (label = display, value = fetch symbol)
 search_ticker_choices <- function(query, max_results = 12L, market = NULL) {
   mode <- if (!is.null(market)) {
     if (exists("normalize_market_mode", mode = "function")) normalize_market_mode(market) else "US"
@@ -309,11 +330,13 @@ search_ticker_choices <- function(query, max_results = 12L, market = NULL) {
   query <- trimws(as.character(query %||% ""))
   if (!nzchar(query)) return(presets)
 
+  max_results <- max(1L, as.integer(max_results)[1])
   py_hits <- tryCatch({
     if (!exists("search_tickers", mode = "function")) {
-      return(NULL)
+      NULL
+    } else {
+      search_tickers(query, as.integer(max_results))
     }
-    search_tickers(query, as.integer(max_results))
   }, error = function(e) {
     .ynow_log("⚠️ search_tickers: ", e$message)
     NULL
@@ -321,7 +344,6 @@ search_ticker_choices <- function(query, max_results = 12L, market = NULL) {
 
   out <- character(0)
   if (!is.null(py_hits) && length(py_hits) > 0) {
-    # reticulate may return list of named lists or data.frame-like
     if (is.data.frame(py_hits)) {
       syms <- as.character(py_hits$symbol)
       labs <- as.character(py_hits$label)
@@ -344,7 +366,6 @@ search_ticker_choices <- function(query, max_results = 12L, market = NULL) {
     if (identical(mode, "TW")) {
       keep <- grepl("\\.(TW|TWO)$", syms, ignore.case = TRUE) |
         grepl("TAI|TWO|Taiwan|TWSE|TPEx|OTC", exch, ignore.case = TRUE)
-      # bare numeric codes → universe／預設 .TW（勿當成美股）
       bare <- grepl("^[0-9]{4,6}[A-Z]?$", syms) & !keep
       if (any(bare)) {
         syms[bare] <- vapply(syms[bare], function(s) {
@@ -356,7 +377,6 @@ search_ticker_choices <- function(query, max_results = 12L, market = NULL) {
         }, character(1))
         keep[bare] <- TRUE
       }
-      # 已帶後綴者再正規化一次（去空白／大小寫）
       if (exists("normalize_ticker_for_market", mode = "function")) {
         tw_idx <- grepl("\\.(TW|TWO)$", syms, ignore.case = TRUE)
         if (any(tw_idx)) {
@@ -371,32 +391,73 @@ search_ticker_choices <- function(query, max_results = 12L, market = NULL) {
       syms <- syms[!drop]; labs <- labs[!drop]
     }
     if (length(syms)) {
-      labs[!nzchar(labs)] <- syms[!nzchar(labs)]
+      labs <- vapply(seq_along(syms), function(i) {
+        .format_suggest_label(syms[[i]], labs[[i]], mode)
+      }, character(1))
       out <- stats::setNames(syms, labs)
       out <- out[!duplicated(out)]
     }
   }
 
-  # Local preset filter (ticker or company label) as fallback / supplement
+  # Local preset filter (ticker or company label)
   q_up <- toupper(query)
   preset_keep <- grepl(q_up, toupper(presets), fixed = TRUE) |
-    grepl(q_up, toupper(names(presets)), fixed = TRUE)
+    grepl(q_up, toupper(names(presets)), fixed = TRUE) |
+    (identical(mode, "TW") && grepl(query, names(presets), fixed = TRUE))
   local_hits <- presets[preset_keep]
 
-  if (length(out) == 0) {
-    if (length(local_hits) > 0) return(local_hits)
-    # Still allow exact typed symbol as a choice（依市場正規化）
+  # TW：CJK／公司名 → 上市櫃宇宙 fallback（Yahoo typeahead 常對中文弱）
+  cjk_hits <- character(0)
+  if (identical(mode, "TW") && exists("search_tw_universe_by_name", mode = "function")) {
+    cjk_hits <- tryCatch(
+      search_tw_universe_by_name(query, max_results = max_results),
+      error = function(e) character(0)
+    )
+  }
+
+  merge_named <- function(...) {
+    parts <- list(...)
+    acc <- character(0)
+    for (p in parts) {
+      if (is.null(p) || !length(p)) next
+      extra <- p[!(unname(p) %in% unname(acc))]
+      acc <- c(acc, extra)
+    }
+    if (length(acc) > max_results) acc <- acc[seq_len(max_results)]
+    acc
+  }
+
+  # Prefer: CJK/universe（中文輸入）→ Yahoo → presets
+  if (identical(mode, "TW") && exists("query_has_cjk", mode = "function") &&
+      isTRUE(query_has_cjk(query))) {
+    merged <- merge_named(cjk_hits, out, local_hits)
+  } else {
+    merged <- merge_named(out, cjk_hits, local_hits)
+  }
+
+  if (!length(merged)) {
     q_norm <- if (exists("normalize_ticker_for_market", mode = "function")) {
       normalize_ticker_for_market(query, mode)
     } else {
       toupper(query)
     }
-    return(stats::setNames(q_norm, q_norm))
+    if (is.na(q_norm) || !nzchar(q_norm)) return(character(0))
+    lab <- if (exists("display_ticker_for_market", mode = "function")) {
+      display_ticker_for_market(q_norm, mode)
+    } else {
+      q_norm
+    }
+    return(stats::setNames(q_norm, lab))
   }
 
-  # Merge: Yahoo first, then presets not already present
-  extra <- local_hits[!(unname(local_hits) %in% unname(out))]
-  c(out, extra)
+  # 再整理 TW 標籤為乾淨代號
+  if (identical(mode, "TW")) {
+    labs2 <- vapply(seq_along(merged), function(i) {
+      .format_suggest_label(unname(merged)[[i]], names(merged)[[i]], mode)
+    }, character(1))
+    merged <- stats::setNames(unname(merged), labs2)
+  }
+  merged
 }
 
 #' Yahoo β / D/E inputs for unlevered & bottom-up industry beta

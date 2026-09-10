@@ -1018,7 +1018,11 @@ lab_quality_leaderboard <- function(merged_df, top_n = 10L, eq_only = FALSE) {
   }, character(1))
   data.frame(
     排名 = seq_len(nrow(df)),
-    代號 = df$ticker,
+    代號 = if (exists("display_tickers_for_market", mode = "function")) {
+      display_tickers_for_market(df$ticker, tryCatch(get_market_mode(), error = function(e) "US"))
+    } else {
+      df$ticker
+    },
     公司名稱 = names_out,
     年化估值漲幅 = sprintf("%+.1f%%", df$upside_cagr_pct),
     總潛在漲幅 = ifelse(
