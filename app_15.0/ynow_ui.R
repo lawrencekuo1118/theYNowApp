@@ -885,6 +885,52 @@ ui <- dashboardPage(
         .skin-black .main-header .navbar .sidebar-toggle:hover {
           background-color: #000 !important;
         }
+
+        /* 台股：dashboardHeader 改以中華民國國旗填滿；美股維持全黑 */
+        body.ynow-market-tw .main-header {
+          position: relative;
+          background-color: transparent !important;
+        }
+        body.ynow-market-tw .main-header::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          z-index: 0;
+          pointer-events: none;
+          background-image: url("roc_flag.svg");
+          background-size: cover;
+          background-position: center center;
+          background-repeat: no-repeat;
+        }
+        body.ynow-market-tw .main-header::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+          z-index: 0;
+          pointer-events: none;
+          background: rgba(0, 0, 0, 0.42);
+        }
+        body.ynow-market-tw .main-header > .logo,
+        body.ynow-market-tw .main-header > .navbar {
+          position: relative;
+          z-index: 1;
+        }
+        body.ynow-market-tw .skin-black .main-header .navbar,
+        body.ynow-market-tw .skin-black .main-header .logo,
+        body.ynow-market-tw .skin-black .main-header .logo:hover {
+          background-color: transparent !important;
+          background-image: none !important;
+        }
+        body.ynow-market-tw .skin-black .main-header .navbar .sidebar-toggle:hover {
+          background-color: rgba(0, 0, 0, 0.35) !important;
+        }
+        body.ynow-market-tw .main-header .logo,
+        body.ynow-market-tw .main-header .navbar .nav > li > a,
+        body.ynow-market-tw .ynow-market-header,
+        body.ynow-market-tw .ynow-ccy-header {
+          color: #fff !important;
+          text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+        }
         .skin-black .wrapper,
         .skin-black .main-sidebar,
         .skin-black .left-side {
@@ -1150,6 +1196,8 @@ ui <- dashboardPage(
             var fb = document.getElementById('ynow_feedback_link_label');
             if (fb && s.feedback_link) fb.textContent = s.feedback_link;
             document.documentElement.setAttribute('lang', (payload && payload.locale) || 'en');
+            var mkt = (payload && payload.market) ? String(payload.market) : 'US';
+            document.body.classList.toggle('ynow-market-tw', mkt === 'TW');
           }
 
           function registerLocaleHandler() {

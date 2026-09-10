@@ -83,8 +83,13 @@ server <- function(input, output, session) {
   .push_ui_locale <- function(locale) {
     loc <- normalize_ui_locale(locale)
     ui_locale(loc)
+    mode <- tryCatch(
+      normalize_market_mode(isolate(market_mode())),
+      error = function(e) get_market_mode()
+    )
     payload <- list(
       locale = loc,
+      market = mode,
       strings = ui_locale_payload(loc)
     )
     session$sendCustomMessage("ynowUiLocale", payload)
@@ -4542,7 +4547,8 @@ server <- function(input, output, session) {
       )
     }
     .w_ok <- function(w) is.finite(w) && w >= 0 && w <= 1
-    if (!claim_fcfe && .param_sensitivity_rel_ok(we) && wd > 1e-8) {
+    .wd_debt_ok <- isTRUE(is.finite(wd) && wd > 1e-8)
+    if (!claim_fcfe && .param_sensitivity_rel_ok(we) && .wd_debt_ok) {
       we_dn <- .rel(we, -1)
       we_up <- .rel(we, +1)
       rows[[length(rows) + 1]] <- .row(
@@ -4552,7 +4558,7 @@ server <- function(input, output, session) {
         "WACC 公式：We + Wd = 1（相對衝擊後補齊 Wd）"
       )
     }
-    if (!claim_fcfe && .param_sensitivity_rel_ok(wd) && wd > 1e-8) {
+    if (!claim_fcfe && .param_sensitivity_rel_ok(wd) && .wd_debt_ok) {
       wd_dn <- .rel(wd, -1)
       wd_up <- .rel(wd, +1)
       rows[[length(rows) + 1]] <- .row(
@@ -4562,7 +4568,7 @@ server <- function(input, output, session) {
         "WACC 公式：We + Wd = 1（相對衝擊後補齊 We）"
       )
     }
-    if (!claim_fcfe && is.finite(rd0) && wd > 1e-8) {
+    if (!claim_fcfe && is.finite(rd0) && .wd_debt_ok) {
       rows[[length(rows) + 1]] <- .row(
         "負債成本 rᵈ", rd0, "%",
         .ev_wacc_pct(.wacc_pct(rd_pct = .rel(rd0, -1))),
@@ -4570,7 +4576,7 @@ server <- function(input, output, session) {
         "WACC 公式：wₑrₑ + wᵈrᵈ(1−T)"
       )
     }
-    if (!claim_fcfe && is.finite(tax0) && wd > 1e-8) {
+    if (!claim_fcfe && is.finite(tax0) && .wd_debt_ok) {
       rows[[length(rows) + 1]] <- .row(
         "所得稅率 T", tax0, "%",
         .ev_wacc_pct(.wacc_pct(tax_pct = .rel(tax0, -1))),
