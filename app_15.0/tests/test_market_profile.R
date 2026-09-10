@@ -61,6 +61,30 @@ check("no simplified 默认", !grepl("默认", ui_str("data_source_body", "zh-TW
 # CJK alias / universe name search
 check("query_has_cjk", isTRUE(query_has_cjk("台積")))
 check("query_no_cjk digits", isFALSE(query_has_cjk("2330")))
+
+# 台股雙語全稱：中文／英文拆分與 fallback
+parts_both <- split_corp_names_zh_en(
+  "Taiwan Semiconductor Manufacturing Company Limited",
+  "台灣積體電路製造股份有限公司",
+  ticker = "2330.TW",
+  prefer_zh = "台灣積體電路製造股份有限公司"
+)
+check("split zh+en has zh", identical(parts_both$zh, "台灣積體電路製造股份有限公司"))
+check(
+  "split zh+en has en",
+  identical(parts_both$en, "Taiwan Semiconductor Manufacturing Company Limited")
+)
+parts_zh_only <- split_corp_names_zh_en(
+  "台灣積體電路製造股份有限公司",
+  ticker = "2330.TW"
+)
+check("split zh-only no empty en line", identical(parts_zh_only$en, "") && nzchar(parts_zh_only$zh))
+parts_en_only <- split_corp_names_zh_en(
+  "Taiwan Semiconductor Manufacturing Company Limited",
+  ticker = "2330.TW"
+)
+check("split en-only no empty zh", identical(parts_en_only$zh, "") && nzchar(parts_en_only$en))
+
 alias_hits <- search_tw_universe_by_name("台積", max_results = 5L)
 check("CJK 台積 hits 2330", "2330.TW" %in% unname(alias_hits))
 honghai <- search_tw_universe_by_name("鴻海", max_results = 5L)
@@ -82,6 +106,11 @@ if (file.exists(cache_path)) {
   check(
     "universe CJK 台灣積體 → 2330",
     "2330.TW" %in% unname(uni_hits)
+  )
+  zh2330 <- lookup_tw_universe_company_name("2330.TW")
+  check(
+    "lookup 2330 Chinese name",
+    nzchar(zh2330) && grepl("積體", zh2330, fixed = TRUE)
   )
 } else {
   cat("SKIP: tw_universe.csv not present for OTC resolve checks\n")

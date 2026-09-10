@@ -1061,7 +1061,7 @@ ui <- dashboardPage(
         .sidebar-menu li:has(> a[data-value="snapshot"]) { display: none !important; }
         .sidebar-menu a[data-value="feedback"] { display: none !important; }
         .sidebar-menu li:has(> a[data-value="feedback"]) { display: none !important; }
-        /* 公司全稱：允許換行，避免被切掉 */
+        /* 公司全稱：允許換行，避免被切掉；台股中英雙語直向堆疊 */
         .ynow-corpname {
           font-weight: bold;
           color: #333333;
@@ -1070,6 +1070,30 @@ ui <- dashboardPage(
           white-space: normal;
           overflow-wrap: anywhere;
           word-break: break-word;
+        }
+        .ynow-corpname .ynow-corpname-stack {
+          display: inline-flex;
+          flex-direction: column;
+          align-items: stretch;
+          width: fit-content;
+          max-width: 100%;
+        }
+        .ynow-corpname .ynow-corpname-zh {
+          display: block;
+          text-align: left;
+        }
+        .ynow-corpname .ynow-corpname-en {
+          display: block;
+          text-align: right;
+          align-self: stretch;
+          font-size: 0.82em;
+          font-weight: 600;
+          color: #555555;
+          margin-top: 2px;
+          line-height: 1.2;
+        }
+        .ynow-corpname .ynow-corpname-single {
+          display: inline;
         }
         /* Header USD|TWD toggle (radioGroupButtons) */
         .ynow-ccy-header .btn-group-xs > .btn,
@@ -2462,7 +2486,7 @@ ui <- dashboardPage(
       ),
       column(
         width = 8,
-        h2(textOutput("txt_corpname", inline = TRUE), class = "ynow-corpname")
+        h2(uiOutput("txt_corpname", inline = TRUE), class = "ynow-corpname")
       )
     ),
     fluidRow(

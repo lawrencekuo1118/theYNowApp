@@ -259,6 +259,33 @@ lab_tw_universe_meta <- function() {
   )
 }
 
+#' 自上市櫃宇宙查公司中文全稱（依 Yahoo 代號，如 2330.TW／6488.TWO）
+lookup_tw_universe_company_name <- function(ticker) {
+  tk <- toupper(trimws(as.character(ticker %||% "")[1]))
+  if (!nzchar(tk)) return("")
+  u <- tryCatch(lab_get_tw_universe(FALSE), error = function(e) NULL)
+  if (is.null(u) || !is.data.frame(u) || nrow(u) < 1L ||
+      !all(c("ticker", "name") %in% names(u))) {
+    return("")
+  }
+  tks <- toupper(as.character(u$ticker))
+  hit <- which(tks == tk)
+  if (!length(hit)) {
+    bare <- sub("\\.(TW|TWO)$", "", tk, ignore.case = TRUE)
+    bases <- sub("\\.(TW|TWO)$", "", tks, ignore.case = TRUE)
+    hit <- which(bases == bare)
+    # 優先上市 .TW
+    if (length(hit) > 1L) {
+      tw <- hit[grepl("\\.TW$", tks[hit])]
+      if (length(tw)) hit <- tw
+    }
+  }
+  if (!length(hit)) return("")
+  nm <- trimws(as.character(u$name[[hit[[1]]]]))
+  if (!nzchar(nm) || identical(nm, "NA") || identical(toupper(nm), tk)) return("")
+  nm
+}
+
 #' 台股績優候選：industry_key → tickers
 lab_tw_quality_candidates <- function() {
   u <- tryCatch(lab_get_tw_universe(FALSE), error = function(e) NULL)

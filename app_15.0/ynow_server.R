@@ -14,6 +14,8 @@ server <- function(input, output, session) {
   values <- reactiveValues(recentsearch = c())
   corp_industry_text <- reactiveVal("等待搜尋...")
   corp_display_name <- reactiveVal("")
+  # 台股雙語：英文全稱（中文在 corp_display_name）；美股維持空字串
+  corp_display_name_en <- reactiveVal("")
   
   # 初始值設為 NULL，避免一開啟 App 就自動執行爬蟲
   current_ticker <- reactiveVal(NULL)
@@ -352,11 +354,35 @@ server <- function(input, output, session) {
           pool <- if (length(non_tk)) non_tk else cands
           pool[[which.max(nchar(pool))]]
         }
-        corp_display_name(.pick_company_name(
-          attr(sum_df, "company_name"),
-          if (!is.null(ind_info)) ind_info$company_name else NULL,
-          ticker = stock_code
-        ))
+        yahoo_cname <- attr(sum_df, "company_name")
+        ind_cname <- if (!is.null(ind_info)) ind_info$company_name else NULL
+        if (identical(market_mode(), "TW")) {
+          uni_zh <- tryCatch(
+            lookup_tw_universe_company_name(stock_code),
+            error = function(e) ""
+          )
+          parts <- split_corp_names_zh_en(
+            yahoo_cname, ind_cname, uni_zh,
+            ticker = stock_code,
+            prefer_zh = uni_zh
+          )
+          if (nzchar(parts$zh) && nzchar(parts$en)) {
+            corp_display_name(parts$zh)
+            corp_display_name_en(parts$en)
+          } else if (nzchar(parts$zh)) {
+            corp_display_name(parts$zh)
+            corp_display_name_en("")
+          } else if (nzchar(parts$en)) {
+            corp_display_name(parts$en)
+            corp_display_name_en("")
+          } else {
+            corp_display_name(.pick_company_name(yahoo_cname, ind_cname, ticker = stock_code))
+            corp_display_name_en("")
+          }
+        } else {
+          corp_display_name(.pick_company_name(yahoo_cname, ind_cname, ticker = stock_code))
+          corp_display_name_en("")
+        }
 
         if (!(stock_code %in% values$recentsearch)) {
           values$recentsearch <- head(c(stock_code, values$recentsearch), 5)
@@ -494,24 +520,45 @@ server <- function(input, output, session) {
   # ==========================================
   # 📊 1. 基本資訊與 Summary 介面輸出
   # ==========================================
-  render_corpname_logic <- function() {
-    nm <- corp_display_name()
-    if (!is.null(nm) && nzchar(trimws(as.character(nm)))) {
-      return(as.character(nm)[1])
-    }
-    if (is.null(summary_data())) return("")
-    name <- attr(summary_data(), "company_name")
-    if (is.null(name) || is.na(name) || !nzchar(as.character(name))) {
-      tk <- current_ticker()
-      if (!is.null(tk) && nzchar(tk)) {
-        return(paste("Stock:", display_ticker_for_market(tk, market_mode())))
+  render_corpname_ui <- function() {
+    mode <- tryCatch(
+      normalize_market_mode(market_mode()),
+      error = function(e) "US"
+    )
+    nm <- trimws(as.character(corp_display_name() %||% "")[1])
+    en <- trimws(as.character(corp_display_name_en() %||% "")[1])
+    if (!nzchar(nm)) {
+      if (!is.null(summary_data())) {
+        name <- attr(summary_data(), "company_name")
+        if (!is.null(name) && !is.na(name) && nzchar(as.character(name)[1])) {
+          nm <- as.character(name)[1]
+        }
       }
-      return("")
+      if (!nzchar(nm)) {
+        tk <- current_ticker()
+        if (!is.null(tk) && nzchar(tk)) {
+          nm <- paste("Stock:", display_ticker_for_market(tk, mode))
+        }
+      }
     }
-    as.character(name)[1]
+    if (!nzchar(nm) && !nzchar(en)) return(NULL)
+
+    # 台股：中文上、英文下；英文靠右對齊上方中文區塊
+    if (identical(mode, "TW") && nzchar(nm) && nzchar(en) &&
+        isTRUE(query_has_cjk(nm)) && !isTRUE(query_has_cjk(en))) {
+      return(tags$span(
+        class = "ynow-corpname-stack",
+        tags$span(class = "ynow-corpname-zh", htmltools::htmlEscape(nm)),
+        tags$span(class = "ynow-corpname-en", htmltools::htmlEscape(en))
+      ))
+    }
+    tags$span(
+      class = "ynow-corpname-single",
+      htmltools::htmlEscape(if (nzchar(nm)) nm else en)
+    )
   }
-  
-  output$txt_corpname <- renderText({ render_corpname_logic() })
+
+  output$txt_corpname <- renderUI({ render_corpname_ui() })
   output$search_results <- renderText({ corp_industry_text() })
   output$recentsearch <- renderText({
     paste(display_tickers_for_market(values$recentsearch, market_mode()), collapse = ", ")

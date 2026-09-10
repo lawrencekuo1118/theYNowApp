@@ -208,6 +208,43 @@ query_has_cjk <- function(q) {
   grepl("[\u4e00-\u9fff]", as.character(q %||% "")[1])
 }
 
+#' 清理公司名稱候選（去空白／NA／代號本身）
+.clean_company_name_cands <- function(cands, ticker = "") {
+  cands <- unlist(cands, use.names = FALSE)
+  cands <- trimws(as.character(cands))
+  cands <- cands[!is.na(cands) & nzchar(cands)]
+  tk <- toupper(trimws(as.character(ticker %||% "")[1]))
+  if (nzchar(tk)) {
+    cands <- cands[toupper(cands) != tk]
+    bare <- sub("\\.(TW|TWO)$", "", tk, ignore.case = TRUE)
+    if (nzchar(bare)) cands <- cands[toupper(cands) != bare]
+  }
+  unique(cands)
+}
+
+#' 自候選拆出中文／英文公司全稱（台股首頁雙語顯示用）
+#' @return list(zh=, en=)；僅有一種語言時另一欄為 ""
+split_corp_names_zh_en <- function(..., ticker = "", prefer_zh = NULL) {
+  cands <- .clean_company_name_cands(list(...), ticker = ticker)
+  pref <- trimws(as.character(prefer_zh %||% "")[1])
+  if (nzchar(pref) && isTRUE(query_has_cjk(pref))) {
+    cands <- unique(c(pref, cands))
+  }
+  if (!length(cands)) return(list(zh = "", en = ""))
+  is_zh <- vapply(cands, query_has_cjk, logical(1))
+  zh_pool <- cands[is_zh]
+  en_pool <- cands[!is_zh]
+  pick_longest <- function(pool) {
+    if (!length(pool)) return("")
+    as.character(pool[[which.max(nchar(pool))]])
+  }
+  zh <- if (nzchar(pref) && isTRUE(query_has_cjk(pref))) pref else pick_longest(zh_pool)
+  en <- pick_longest(en_pool)
+  # 避免中英相同字串重複兩行
+  if (nzchar(zh) && nzchar(en) && identical(zh, en)) en <- ""
+  list(zh = zh, en = en)
+}
+
 #' 字元子序列：query 的每個字依序出現在 text（台積 ⊂ 台灣積體…）
 .cjk_chars_in_order <- function(query, text) {
   q <- as.character(query %||% "")[1]
