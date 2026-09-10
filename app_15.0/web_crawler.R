@@ -344,11 +344,26 @@ search_ticker_choices <- function(query, max_results = 12L, market = NULL) {
     if (identical(mode, "TW")) {
       keep <- grepl("\\.(TW|TWO)$", syms, ignore.case = TRUE) |
         grepl("TAI|TWO|Taiwan|TWSE|TPEx|OTC", exch, ignore.case = TRUE)
-      # bare 4-digit codes from search often need .TW
-      bare <- grepl("^[0-9]{4}$", syms) & !keep
+      # bare numeric codes → universe／預設 .TW（勿當成美股）
+      bare <- grepl("^[0-9]{4,6}[A-Z]?$", syms) & !keep
       if (any(bare)) {
-        syms[bare] <- paste0(syms[bare], ".TW")
+        syms[bare] <- vapply(syms[bare], function(s) {
+          if (exists("normalize_ticker_for_market", mode = "function")) {
+            normalize_ticker_for_market(s, "TW")
+          } else {
+            paste0(s, ".TW")
+          }
+        }, character(1))
         keep[bare] <- TRUE
+      }
+      # 已帶後綴者再正規化一次（去空白／大小寫）
+      if (exists("normalize_ticker_for_market", mode = "function")) {
+        tw_idx <- grepl("\\.(TW|TWO)$", syms, ignore.case = TRUE)
+        if (any(tw_idx)) {
+          syms[tw_idx] <- vapply(syms[tw_idx], function(s) {
+            normalize_ticker_for_market(s, "TW")
+          }, character(1))
+        }
       }
       syms <- syms[keep]; labs <- labs[keep]
     } else {

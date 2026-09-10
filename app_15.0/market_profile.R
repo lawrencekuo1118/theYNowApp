@@ -106,24 +106,65 @@ market_profile <- function(mode = get_market_mode()) {
   }
 }
 
+#' 自上市櫃宇宙解析純數字代號 → Yahoo 後綴（優先 .TW／TWSE）
+#' 無宇宙或未命中時回傳 NULL（呼叫端預設 .TW）。
+resolve_tw_bare_code <- function(code) {
+  code <- toupper(gsub("\\s+", "", as.character(code %||% "")[1]))
+  if (!nzchar(code) || !grepl("^[0-9]{4,6}[A-Z]?$", code)) return(NULL)
+  u <- tryCatch({
+    if (exists("lab_get_tw_universe", mode = "function")) {
+      lab_get_tw_universe(FALSE)
+    } else if (exists("lab_read_tw_cache", mode = "function")) {
+      lab_read_tw_cache()
+    } else {
+      NULL
+    }
+  }, error = function(e) NULL)
+  if (is.null(u) || !is.data.frame(u) || nrow(u) < 1L) return(NULL)
+  tks <- toupper(as.character(u$ticker))
+  bases <- sub("\\.(TW|TWO)$", "", tks, ignore.case = TRUE)
+  hits <- tks[bases == code]
+  if (!length(hits)) return(NULL)
+  tw <- hits[grepl("\\.TW$", hits)]
+  if (length(tw)) return(tw[[1]])
+  hits[[1]]
+}
+
 #' 依市場正規化使用者輸入代號
+#' TW：使用者只需輸入純數字（如 2330）；自動補 .TW。
+#' 優先查上市櫃宇宙；僅上櫃者給 .TWO。已含 .TW／.TWO 會去空白並正規化大小寫。
 normalize_ticker_for_market <- function(sym, mode = get_market_mode()) {
   mode <- normalize_market_mode(mode)
   raw <- trimws(as.character(sym %||% "")[1])
   if (!nzchar(raw) || identical(toupper(raw), "NA")) return(NA_character_)
   # strip common labels "2330.TW — 台積電"
-  raw <- sub("\\s+[—\\-].*$", "", raw)
+  raw <- sub("\\s+[—\\-–].*$", "", raw)
   raw <- trimws(raw)
   if (identical(mode, "TW")) {
-    u <- toupper(raw)
+    if (grepl("^\\^", raw)) return(toupper(gsub("\\s+", "", raw)))
+    # collapse spaces so "2330 .TW" / " 2330 " still work
+    u <- toupper(gsub("\\s+", "", raw))
+    # peel accidental suffix, then re-resolve (universe may prefer .TWO)
+    bare <- sub("\\.(TW|TWO)$", "", u)
+    if (grepl("^[0-9]{4,6}[A-Z]?$", bare)) {
+      hit <- tryCatch(resolve_tw_bare_code(bare), error = function(e) NULL)
+      if (!is.null(hit) && nzchar(hit)) return(hit)
+      # keep explicit .TWO if user typed it and universe miss; else prefer .TW
+      if (grepl("\\.TWO$", u)) return(paste0(bare, ".TWO"))
+      return(paste0(bare, ".TW"))
+    }
     if (grepl("\\.(TW|TWO)$", u)) return(u)
-    if (grepl("^\\^", raw)) return(toupper(raw))
-    # bare digits → assume TWSE listing; TPEx often same numeric with .TWO in Yahoo
-    if (grepl("^[0-9]{4}[A-Z]?$", u)) return(paste0(u, ".TW"))
     return(u)
   }
   # US：保留 Yahoo 慣例（BRK.B → BRK-B 由上游處理）
-  gsub("\\.", "-", toupper(raw))
+  gsub("\\.", "-", toupper(gsub("\\s+", "", raw)))
+}
+
+#' TW：.TW 抓取失敗時改試 .TWO（上櫃 Yahoo 後綴）
+tw_yahoo_alt_ticker <- function(sym) {
+  u <- toupper(trimws(as.character(sym %||% "")[1]))
+  if (!grepl("\\.TW$", u)) return(NA_character_)
+  sub("\\.TW$", ".TWO", u)
 }
 
 is_tw_yahoo_ticker <- function(sym) {

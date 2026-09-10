@@ -215,17 +215,53 @@ server <- function(input, output, session) {
   # ==========================================
   # 🌐 核心爬蟲：只要中央大腦的代碼改變，就自動執行完整抓取
   # ==========================================
+  # TW：.TW 抓取失敗時一次性改試 .TWO，避免 observe 無限迴圈
+  .tw_two_fallback_tried_for <- reactiveVal(NA_character_)
+
   observeEvent(current_ticker(), {
     req(current_ticker())
     # 換股票：回到 Get Started 連動，讓新 Summary／Unlever 路徑可自動帶入 CAPM
     capm_beta_dirty(FALSE)
     beta_capm_driver("gs")
     stock_code <- current_ticker()
+    tried_for <- .tw_two_fallback_tried_for()
+    alt_of_tried <- if (!is.na(tried_for) && nzchar(tried_for)) {
+      tw_yahoo_alt_ticker(tried_for)
+    } else {
+      NA_character_
+    }
+    is_fallback_retry <- !is.na(alt_of_tried) &&
+      identical(toupper(stock_code), toupper(alt_of_tried))
+    if (!is_fallback_retry) {
+      .tw_two_fallback_tried_for(NA_character_)
+    }
     
     withProgress(message = paste('🚀 正在取得', stock_code, '的最新資料...'), value = 0, {
       tryCatch({
         incProgress(0.2, detail = "正在讀取 Summary（yfinance）...")
-        sum_df <- get_summary_data(stock_code)
+        sum_df <- tryCatch(get_summary_data(stock_code), error = function(e) e)
+        # TWSE 後綴無資料／失敗 → 試上櫃 .TWO（僅一次）
+        if ((inherits(sum_df, "error") || !is.data.frame(sum_df) || nrow(sum_df) < 1L) &&
+            identical(market_mode(), "TW") &&
+            grepl("\\.TW$", stock_code, ignore.case = TRUE) &&
+            is.na(.tw_two_fallback_tried_for())) {
+          alt <- tw_yahoo_alt_ticker(stock_code)
+          if (!is.na(alt) && nzchar(alt) && !identical(toupper(alt), toupper(stock_code))) {
+            .tw_two_fallback_tried_for(toupper(stock_code))
+            showNotification(
+              paste0(stock_code, " 無資料，改試上櫃代號 ", alt, "…"),
+              type = "message", duration = 5
+            )
+            current_ticker(alt)
+            tryCatch(updateTextInput(session, "txt_search", value = alt), error = function(e) NULL)
+            tryCatch(updateTextInput(session, "sc", value = alt), error = function(e) NULL)
+            return()
+          }
+        }
+        if (inherits(sum_df, "error")) stop(sum_df$message)
+        if (!is.data.frame(sum_df) || nrow(sum_df) < 1L) {
+          stop("yfinance 回傳空的 summary 表")
+        }
         summary_data(sum_df)
 
         q_ccy <- normalize_ccy(attr(sum_df, "currency") %||% "")
@@ -7492,7 +7528,7 @@ server <- function(input, output, session) {
     if (is.null(tk) || !nzchar(trimws(as.character(tk)))) {
       tk <- input$sc
     }
-    toupper(trimws(as.character(tk %||% "")))
+    normalize_ticker_for_market(tk, market_mode())
   })
 
   output$lab_sec_ticker_display <- renderUI({

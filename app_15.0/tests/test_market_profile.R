@@ -27,12 +27,33 @@ source(file.path(root, "market_profile.R"), local = TRUE, encoding = "UTF-8")
 check("US normalize AAPL", identical(normalize_ticker_for_market("aapl", "US"), "AAPL"))
 check("TW normalize 2330", identical(normalize_ticker_for_market("2330", "TW"), "2330.TW"))
 check("TW keep 2330.TW", identical(normalize_ticker_for_market("2330.TW", "TW"), "2330.TW"))
+check("TW spaced bare", identical(normalize_ticker_for_market("  2330  ", "TW"), "2330.TW"))
+check("TW spaced suffix", identical(normalize_ticker_for_market("2330 .TW", "TW"), "2330.TW"))
+check("TW lowercase suffix", identical(normalize_ticker_for_market("2330.tw", "TW"), "2330.TW"))
+check("TW label strip", identical(normalize_ticker_for_market("2330.TW — 台積電", "TW"), "2330.TW"))
+check("TW alt helper", identical(tw_yahoo_alt_ticker("3105.TW"), "3105.TWO"))
 check("TW profile tax 20", identical(as.integer(market_profile("TW")$wacc_tax), 20L))
 check("US profile tax 21", identical(as.integer(market_profile("US")$wacc_tax), 21L))
 check("TW default ticker", identical(market_profile("TW")$default_ticker, "2330.TW"))
 check("TW hides SEC", isFALSE(market_profile("TW")$show_sec_lab))
 check("US shows SEC", isTRUE(market_profile("US")$show_sec_lab))
 check("TW bench 0050", identical(market_profile("TW")$beta_bench, "0050.TW"))
+
+# Universe cache（若存在）：上櫃純數字應解析為 .TWO
+cache_path <- file.path(root, "data", "tw_universe.csv")
+if (file.exists(cache_path)) {
+  source(file.path(root, "lab_tw_universe.R"), local = TRUE, encoding = "UTF-8")
+  check(
+    "TW OTC bare 3105 → .TWO",
+    identical(normalize_ticker_for_market("3105", "TW"), "3105.TWO")
+  )
+  check(
+    "TW listed bare 2330 stays .TW",
+    identical(normalize_ticker_for_market("2330", "TW"), "2330.TW")
+  )
+} else {
+  cat("SKIP: tw_universe.csv not present for OTC resolve checks\n")
+}
 
 # Minimal merge: detail path must keep all evaluated rows even if eq/gate would filter
 source(file.path(root, "lab_industry_method.R"), local = TRUE, encoding = "UTF-8")
