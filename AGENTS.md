@@ -29,13 +29,13 @@ When unsure: use the **English term** + brief Taiwan Chinese gloss on first ment
 
 ### App copy conventions
 
-- Live app line: **`app_14.0/`** (see `scripts/DEPLOY_BASELINE.txt` for deployed baseline).
+- Live app line: **`app_15.0/`** (see `scripts/DEPLOY_BASELINE.txt` for deployed baseline).
 - Prefer existing labels in `ynow_ui.R` / module UI before inventing new terms.
 - CapEx spike smoothing UI: **暴衝倍數閾值**、**均值年數**、**週期**（勿用「周期」）。
 
 ## Testing
 
-- Run targeted tests under `app_14.0/tests/` when changing valuation or FCF logic.
+- Run targeted tests under `app_15.0/tests/` when changing valuation or FCF logic.
 - Non-trivial UI changes: manual/browser verification when the environment supports it.
 
 ## Git & deploy

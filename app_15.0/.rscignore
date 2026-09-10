@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.Rhistory
+.RData
+.DS_Store
+debug_lab.R
