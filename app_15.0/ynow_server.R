@@ -65,7 +65,6 @@ server <- function(input, output, session) {
   
   # ==========================================
   # 🚀 股票代號：僅主區 Ticker / Stock Code（sc + Search）
-  # 側邊欄 txt_search／btn_search 改為「本頁關鍵字螢光筆」，不觸發抓取
   # ==========================================
   observeEvent(input$search, {
     req(input$sc)

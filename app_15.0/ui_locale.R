@@ -18,7 +18,6 @@ locale_for_market <- function(mode = get_market_mode()) {
 
 .UI_STRINGS <- list(
   en = list(
-    search_placeholder = "Search page…",
     recent_search = "Recent Search:",
     menu_dashboard = "Dashboard",
     menu_get_started = "Get Started",
@@ -43,7 +42,6 @@ locale_for_market <- function(mode = get_market_mode()) {
     market_hint = "Market"
   ),
   `zh-TW` = list(
-    search_placeholder = "搜尋本頁關鍵字…",
     recent_search = "最近搜尋：",
     menu_dashboard = "總覽 Dashboard",
     menu_get_started = "開始設定",
