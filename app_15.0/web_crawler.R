@@ -304,8 +304,10 @@ ticker_presets_for_market <- function(mode = NULL) {
     disp <- display_ticker_for_market(sym, "TW")
     # 剝除 label 開頭的 Yahoo 後綴代號
     extra <- lab
-    extra <- sub(paste0("^", gsub("([.|()\\[\\]{}+*?^$\\\\])", "\\\\\\1", sym), "(\\s|[—\\-–])+"), "", extra, perl = TRUE)
-    extra <- sub(paste0("^", gsub("([.|()\\[\\]{}+*?^$\\\\])", "\\\\\\1", disp), "(\\s|[—\\-–])+"), "", extra, perl = TRUE)
+    esc_sym <- gsub("([.\\^$|()\\[\\]{}*+?\\\\])", "\\\\\\1", sym, perl = TRUE)
+    esc_disp <- gsub("([.\\^$|()\\[\\]{}*+?\\\\])", "\\\\\\1", disp, perl = TRUE)
+    extra <- sub(paste0("^", esc_sym, "(\\s|[—\\-–])+"), "", extra, perl = TRUE)
+    extra <- sub(paste0("^", esc_disp, "(\\s|[—\\-–])+"), "", extra, perl = TRUE)
     extra <- sub("\\.(TW|TWO)\\s*[—\\-–]\\s*", "", extra, ignore.case = TRUE, perl = TRUE)
     extra <- trimws(extra)
     if (nzchar(extra) && !identical(toupper(extra), toupper(sym)) &&

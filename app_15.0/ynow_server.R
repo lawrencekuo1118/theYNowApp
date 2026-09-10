@@ -188,7 +188,8 @@ server <- function(input, output, session) {
         extra <- lab
         for (pat in unique(c(fetch_sym, disp_sym))) {
           if (!nzchar(pat)) next
-          esc <- gsub("([.|()\\[\\]{}+*?^$\\\\])", "\\\\\\1", pat)
+          # perl=TRUE：TRE 字元類不可含裸 {}，否則首頁 suggest UI 整段失敗
+          esc <- gsub("([.\\^$|()\\[\\]{}*+?\\\\])", "\\\\\\1", pat, perl = TRUE)
           extra <- sub(paste0("^", esc, "(\\s|[—\\-–])+"), "", extra, perl = TRUE)
         }
         extra <- sub("\\.(TW|TWO)\\s*[—\\-–]\\s*", "", extra, ignore.case = TRUE, perl = TRUE)
@@ -4254,13 +4255,6 @@ server <- function(input, output, session) {
 
   # DCF 頁底部：公式參數對 EV 的邊際彈性（相對 ±1%；與個股價格／股數／現金負債無關）
   output$dcf_param_sensitivity_table <- renderTable({
-    # #region agent log
-    .ynow_agent_dbg("A", "ynow_server.R:dcf_param_sensitivity_table", "enter", list(
-      dcf_mode = as.character(input$dcf_mode %||% NA)[1],
-      wacc_tax = suppressWarnings(as.numeric(input$wacc_tax)[1])
-    ))
-    # #endregion
-    tryCatch({
     shock_pct <- if (exists("PARAM_SENSITIVITY_SHOCK", inherits = TRUE)) PARAM_SENSITIVITY_SHOCK else 0.01
     gordon <- identical(input$dcf_mode, "gordon") || is.null(input$dcf_mode)
 
@@ -4634,22 +4628,7 @@ server <- function(input, output, session) {
 
     out <- do.call(rbind, rows)
     out <- .param_sensitivity_sort_by_abs_eps(out)
-    # #region agent log
-    .ynow_agent_dbg("A", "ynow_server.R:dcf_param_sensitivity_table", "success", list(
-      nrow = if (is.data.frame(out)) nrow(out) else NA_integer_,
-      we = we, wd = wd,
-      tax0 = tax0, rd0 = rd0
-    ))
-    # #endregion
     out
-    }, error = function(e) {
-      # #region agent log
-      .ynow_agent_dbg("A", "ynow_server.R:dcf_param_sensitivity_table", "error", list(
-        err = conditionMessage(e)
-      ))
-      # #endregion
-      stop(e)
-    })
   }, striped = TRUE, bordered = TRUE, spacing = "s", width = "100%")
 
   observeEvent(input$calc_capm, {
