@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12535711
+bundleId=12535735
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=fdd8ce4
 commit=fdd8ce4
 short=fdd8ce4
 message=Fix TW ticker UX so bare codes like 2330 resolve without typing .TW.
-captured_at=2026-09-10T15:29:04Z
+captured_at=2026-09-10T15:33:00Z
 source_branch=master
-note=Canonical live line is app_15.0. TW bare-ticker normalize (2330→2330.TW), universe .TWO for OTC, Yahoo .TWO fallback. Bundle 12535711 supersedes 12535687.
+note=Canonical live line is app_15.0. Redeploy after 409 lock cleared; includes dead-code cleanup 3d8eac7 + TW bare/.TWO resolve. Bundle 12535735 supersedes 12535711.
