@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12536175
+bundleId=12536216
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=9ed404a
-commit=9ed404a
-short=9ed404a
-message=Show TW company names as stacked Chinese over right-aligned English.
-captured_at=2026-09-10T17:15:13Z
+aligned_git=da0e41b
+commit=da0e41b
+short=da0e41b
+message=Fix homepage Search error: escape ticker suggest regex with perl=TRUE.
+captured_at=2026-09-10T17:23:38Z
 source_branch=master
-note=Canonical live line is app_15.0. Sidebar page-search chrome: compact prev/next left of input; removed highlight hint label and clear (X) button. Bundle 12536175.
+note=Canonical live line is app_15.0. Includes sidebar page-search chrome cleanup (prev/next left of input; no hint/clear) from 1e13a6d. Live bundle 12536216 per rsconnect DCF after subsequent deploys.
