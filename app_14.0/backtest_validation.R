@@ -448,4 +448,4 @@ validate_fair_value_edge <- function(valuation_df, price_df) {
        edge_1y = edge_1y, edge_3y = edge_3y, edge_5y = edge_5y)
 }
 
-# Parameter plateau / signal-explain probes live in debug_lab.R (not sourced at runtime).
+# Parameter plateau probe: run_parameter_plateau() in debug_lab.R (not sourced at runtime).

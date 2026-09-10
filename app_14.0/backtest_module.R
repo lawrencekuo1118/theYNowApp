@@ -1776,7 +1776,6 @@ nav_perf_metrics <- function(equity_df) {
         sharpe_a = NA_real_, sharpe_b = NA_real_,
         mdd_a = NA_real_, mdd_b = NA_real_,
         cagr_a = NA_real_, cagr_b = NA_real_,
-        plateau = "待驗證",
         best = "A",
         pct_market_under = mkt$pct_market_under,
         pct_market_over = mkt$pct_market_over,
@@ -1823,7 +1822,6 @@ nav_perf_metrics <- function(equity_df) {
       sharpe_a = pa$sharpe, sharpe_b = pb$sharpe,
       mdd_a = pa$mdd, mdd_b = pb$mdd,
       cagr_a = pa$cagr, cagr_b = pb$cagr,
-      plateau = "待驗證",   # filled by run_parameter_plateau
       best = if (isTRUE(.safe_num(pa$sharpe, -Inf) >= .safe_num(pb$sharpe, -Inf))) "A" else "B",
       pct_market_under = mkt$pct_market_under,
       pct_market_over = mkt$pct_market_over,
