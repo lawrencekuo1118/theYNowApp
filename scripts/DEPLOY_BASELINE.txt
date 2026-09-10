@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12535112
+bundleId=12535190
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=0e62ab2
-commit=0e62ab2
-short=0e62ab2
-message=Remove orphaned backtest explain_last chain after signal-explain UI removal.
-captured_at=2026-09-10T13:22:21Z
+aligned_git=df441da
+commit=df441da
+short=df441da
+message=Ship app_15.0 dual-market US/TW toggle with Yahoo fetch and TWSE Blue Chip universe.
+captured_at=2026-09-10T13:38:18Z
 source_branch=master
-note=Canonical live line is app_14.0. Dead-code wave: remove unused explain_last/explain text and back-compat aliases. Bundle 12535112 supersedes 12535061.
+note=Canonical live line is app_15.0. Dual-market US/TW header toggle, TWSE/TPEx Blue Chip universe, detail rows = eval N. Bundle 12535190 supersedes 12535112.
