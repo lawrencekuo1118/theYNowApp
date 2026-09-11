@@ -861,12 +861,15 @@ ui <- dashboardPage(
           50% { background-position: 100% 50%; }
         }
 
-        /* 標題「The YNow App v15」：閃閃發光的金色箔面（黑底／台股國旗底皆可讀） */
+        /* 標題「The YNow App v15」：閃閃發光的金色箔面
+           不可對同一元素套 filter + background-clip:text（Chromium 會整段消失） */
         .main-header .logo,
         .main-header .logo:hover {
           position: relative;
           z-index: 1;
           font-weight: bold;
+          /* fallback：不支援 clip 時仍可見亮金 */
+          color: #FFD700 !important;
           background-color: transparent !important;
           background-image: var(--ynow-gold-gradient) !important;
           background-size: 220% 100%;
@@ -874,10 +877,20 @@ ui <- dashboardPage(
           -webkit-background-clip: text;
           background-clip: text;
           -webkit-text-fill-color: transparent;
-          color: transparent !important;
           animation: ynow-gold-shine 2.6s ease-in-out infinite;
-          /* drop-shadow 在 clip text 下仍可讀；避免土黃 flat fill */
-          filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.75));
+          filter: none !important;
+        }
+        @supports not ((-webkit-background-clip: text) or (background-clip: text)) {
+          .main-header .logo,
+          .main-header .logo:hover {
+            -webkit-text-fill-color: #FFD700;
+            color: #FFD700 !important;
+            background-image: none !important;
+            text-shadow:
+              0 0 6px rgba(255, 230, 120, 0.85),
+              0 0 14px rgba(255, 200, 40, 0.45),
+              0 1px 2px rgba(0, 0, 0, 0.85);
+          }
         }
         /* 美股：logo 區塊黑底改由 ::before，以免蓋掉文字漸層 */
         .skin-black .main-header .logo::before {
@@ -943,7 +956,8 @@ ui <- dashboardPage(
         }
         body.ynow-market-tw .main-header .logo,
         body.ynow-market-tw .main-header .logo:hover {
-          filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.9));
+          /* 勿用 filter，以免金色 clip 文字消失 */
+          filter: none !important;
         }
         body.ynow-market-tw .main-header .navbar .nav > li > a,
         body.ynow-market-tw .ynow-market-header,
