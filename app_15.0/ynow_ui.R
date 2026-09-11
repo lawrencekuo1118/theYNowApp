@@ -837,7 +837,13 @@ ui <- dashboardPage(
     
     tags$head(
       tags$style(HTML('
-        .main-header .logo { font-weight: bold; }
+        /* 標題「The YNow App v15」：金色字樣（黑底／台股國旗底皆可讀） */
+        .main-header .logo,
+        .main-header .logo:hover {
+          font-weight: bold;
+          color: var(--ynow-gold) !important;
+          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
+        }
 
         /* YNOW monochrome chrome: black/white (keep KPI bg-blue / Schilit red-green) */
         :root {
@@ -845,6 +851,7 @@ ui <- dashboardPage(
           --ynow-ink-soft: #333333;
           --ynow-line: #d0d0d0;
           --ynow-wash: #f5f5f5;
+          --ynow-gold: #D4AF37;
         }
         .content-wrapper, .right-side { background-color: #f7f7f7; }
         .skin-black .main-header .navbar,
@@ -895,6 +902,10 @@ ui <- dashboardPage(
           background-color: rgba(0, 0, 0, 0.35) !important;
         }
         body.ynow-market-tw .main-header .logo,
+        body.ynow-market-tw .main-header .logo:hover {
+          color: var(--ynow-gold) !important;
+          text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+        }
         body.ynow-market-tw .main-header .navbar .nav > li > a,
         body.ynow-market-tw .ynow-market-header,
         body.ynow-market-tw .ynow-ccy-header {
