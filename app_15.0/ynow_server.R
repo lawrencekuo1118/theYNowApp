@@ -107,6 +107,14 @@ server <- function(input, output, session) {
     # TW → zh-TW；US → en
     .push_ui_locale(locale_for_market(mode))
 
+    # 損益表圖表選單：台股顯示台灣中文標籤（值仍為英文，供比對）
+    tryCatch({
+      ch <- is_metric_choices_for_locale(mode)
+      sel <- isolate(input$is_type)
+      if (is.null(sel) || !sel %in% unname(ch)) sel <- unname(ch)[1]
+      updateSelectInput(session, "is_type", choices = ch, selected = sel)
+    }, error = function(e) NULL)
+
     # 顯示幣別與預設稅／基準／搜尋建議
     session_currency(prof$session_currency)
     shinyWidgets::updateRadioGroupButtons(
@@ -612,7 +620,7 @@ server <- function(input, output, session) {
   
   output$fs_summary_ui <- renderUI({
     req(summary_data())
-    session_currency(); fx_usd_twd(); quote_currency()
+    session_currency(); fx_usd_twd(); quote_currency(); market_mode(); ui_locale()
     df <- summary_data()
     if (is.null(df) || nrow(df) < 1) {
       return(tags$p("No finance summary available.", style = "color:#888;"))
@@ -629,6 +637,7 @@ server <- function(input, output, session) {
     leftover <- setdiff(as.character(df$Item), known)
     if (length(leftover) > 0) groups$Other <- leftover
 
+    use_zh_fs <- should_localize_fs_zh_tw(mode = market_mode(), locale = ui_locale())
     mk_card <- function(item, value) {
       tags$div(
         class = "ynow-fs-card",
@@ -644,7 +653,10 @@ server <- function(input, output, session) {
       if (nrow(rows) < 1) return(NULL)
       tags$div(
         class = "ynow-fs-section",
-        tags$div(class = "ynow-fs-section-title", gname),
+        tags$div(
+          class = "ynow-fs-section-title",
+          localize_summary_section_zh_tw(gname, enabled = use_zh_fs)
+        ),
         tags$div(
           class = "ynow-fs-grid",
           lapply(seq_len(nrow(rows)), function(i) {
@@ -652,7 +664,10 @@ server <- function(input, output, session) {
               rows$Item[i], rows$Value[i],
               quote_currency(), session_currency(), fx_usd_twd()
             )
-            mk_card(rows$Item[i], disp)
+            mk_card(
+              localize_summary_item_zh_tw(rows$Item[i], enabled = use_zh_fs),
+              disp
+            )
           })
         )
       )
@@ -1236,31 +1251,44 @@ server <- function(input, output, session) {
   
   output$tbIncomeStatement <- renderDataTable({
     req(scraped_financials())
-    session_currency(); fx_usd_twd()
+    session_currency(); fx_usd_twd(); market_mode(); ui_locale()
     df <- if (is_expanded()) scraped_financials()[["Income Statement"]]$expanded else scraped_financials()[["Income Statement"]]$collapsed
     df <- format_financial_df_display(scale_financial_df_money(
       reorder_financial_columns(df), statement_currency(), session_currency(), fx_usd_twd()
     ))
+    # 顯示層：台股／zh-TW 科目翻台灣正體；底層英文資料不變
+    df <- localize_financial_df_zh_tw(
+      df,
+      enabled = should_localize_fs_zh_tw(mode = market_mode(), locale = ui_locale())
+    )
     datatable(trim_financial_table(df, "Tax Effect of Unusual Items"), options = list(pageLength = 20, scrollX = TRUE))
   })
   
   output$tbBalanceSheet <- renderDataTable({
     req(scraped_financials())
-    session_currency(); fx_usd_twd()
+    session_currency(); fx_usd_twd(); market_mode(); ui_locale()
     df <- if (is_expanded()) scraped_financials()[["Balance Sheet"]]$expanded else scraped_financials()[["Balance Sheet"]]$collapsed
     df <- format_financial_df_display(scale_financial_df_money(
       reorder_financial_columns(df), statement_currency(), session_currency(), fx_usd_twd()
     ))
+    df <- localize_financial_df_zh_tw(
+      df,
+      enabled = should_localize_fs_zh_tw(mode = market_mode(), locale = ui_locale())
+    )
     datatable(trim_financial_table(df, "Treasury Shares Number"), options = list(pageLength = 20, scrollX = TRUE))
   })
   
   output$tbCashFlow <- renderDataTable({
     req(scraped_financials())
-    session_currency(); fx_usd_twd()
+    session_currency(); fx_usd_twd(); market_mode(); ui_locale()
     df <- if (is_expanded()) scraped_financials()[["Cash Flow"]]$expanded else scraped_financials()[["Cash Flow"]]$collapsed
     df <- format_financial_df_display(scale_financial_df_money(
       reorder_financial_columns(df), statement_currency(), session_currency(), fx_usd_twd()
     ))
+    df <- localize_financial_df_zh_tw(
+      df,
+      enabled = should_localize_fs_zh_tw(mode = market_mode(), locale = ui_locale())
+    )
     datatable(trim_financial_table(df, "Free Cash Flow"), options = list(pageLength = 20, scrollX = TRUE))
   })
   
