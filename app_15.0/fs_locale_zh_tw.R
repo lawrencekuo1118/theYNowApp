@@ -395,7 +395,7 @@ localize_financial_df_zh_tw <- function(df, enabled = TRUE) {
     k <- as.character(cn[i])
     if (k %in% names(.FS_COL_ZH_TW)) {
       cn[i] <- unname(.FS_COL_ZH_TW[[k]])
-    } else if (identical(i, 1L) && !grepl("[\\u4e00-\\u9fff]", k, perl = TRUE)) {
+    } else if (identical(i, 1L) && !grepl("[\u4e00-\u9fff]", k)) {
       # 常見第一欄別名
       if (grepl("breakdown|item|metric|account|line", k, ignore.case = TRUE)) {
         cn[i] <- "科目"
