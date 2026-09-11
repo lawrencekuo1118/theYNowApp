@@ -9,8 +9,10 @@ fcf_projection_module_ui <- function(id) {
   # 建立 Namespace 函數
   ns <- NS(id) 
   
-  tabPanel(title = span(textOutput(ns("fcf_tab_title"), inline = TRUE)),
-           icon = icon("seedling"),
+  tabPanel(
+    title = span(textOutput(ns("fcf_tab_title"), inline = TRUE)),
+    value = "fcf_projection",
+    icon = icon("seedling"),
            
            fluidRow(
              column(4, valueBoxOutput(ns("vbx_est_ocf"), width = 12)),

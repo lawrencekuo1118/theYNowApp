@@ -87,7 +87,7 @@ pb_asset_module_ui <- function(id) {
                           )
                  ),
 
-                 tabPanel("目標本淨比", icon = icon("bullseye"),
+                 tabPanel("目標本淨比", value = "target_pb", icon = icon("bullseye"),
                           h4(tags$b("目標本淨比假設")),
                           fluidRow(
                             column(4, numericInput(ns("pb_low"),  "保守 P/B (×)", value = APP_DEFAULTS$pb_low,  step = 0.05, min = 0.1)),

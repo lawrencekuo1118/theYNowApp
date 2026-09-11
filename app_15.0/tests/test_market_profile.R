@@ -57,6 +57,21 @@ check("US locale en", identical(locale_for_market("US"), "en"))
 check("ui_str zh ticker", grepl("代號", ui_str("ticker_label", "zh-TW")))
 check("ui_str en ticker", grepl("Ticker", ui_str("ticker_label", "en")))
 check("no simplified 默认", !grepl("默认", ui_str("data_source_body", "zh-TW")))
+check("tab income zh", identical(ui_str("tab_income_statement", "zh-TW"), "損益表"))
+check("tab income en", identical(ui_str("tab_income_statement", "en"), "Income Statement"))
+check("tab wacc kept EN", identical(ui_str("tab_wacc", "zh-TW"), "WACC"))
+check("box fin report zh", identical(ui_str("box_financial_report", "zh-TW"), "財務報表"))
+check("tab map has Finance Summary", identical(ui_tab_label_map("zh-TW")[["Finance Summary"]], "財務摘要"))
+check("tab map sec_notes", identical(ui_tab_label_map("zh-TW")[["sec_notes"]], "財報附註 (SEC)"))
+check("no simplified in tab map", !any(grepl("数据|默认|用户", unlist(ui_tab_label_map("zh-TW")))))
+box_specs <- ui_box_header_specs("zh-TW")
+check("box specs non-empty", length(box_specs) >= 5L)
+check(
+  "box specs rematch EN header",
+  any(vapply(box_specs, function(sp) {
+    "FINANCIAL REPORT" %in% sp$match && identical(sp$label, "財務報表")
+  }, logical(1)))
+)
 
 # CJK alias / universe name search
 check("query_has_cjk", isTRUE(query_has_cjk("台積")))

@@ -91,7 +91,9 @@ server <- function(input, output, session) {
     payload <- list(
       locale = loc,
       market = mode,
-      strings = ui_locale_payload(loc)
+      strings = ui_locale_payload(loc),
+      tabs = ui_tab_label_map(loc),
+      boxes = ui_box_header_specs(loc)
     )
     session$sendCustomMessage("ynowUiLocale", payload)
   }
@@ -424,7 +426,11 @@ server <- function(input, output, session) {
         }
 
         is_expanded(FALSE)
-        updateActionButton(session, "btn_expand_all", label = "Expand All", icon = icon("expand"))
+        updateActionButton(
+          session, "btn_expand_all",
+          label = ui_str("btn_expand_all", isolate(ui_locale())),
+          icon = icon("expand")
+        )
 
         # 搜尋後：ADR／股數級距自動約當（市值÷報價股價）
         tryCatch({
@@ -696,11 +702,20 @@ server <- function(input, output, session) {
   observeEvent(input$btn_expand_all, {
     new_state <- !is_expanded()
     is_expanded(new_state)
+    loc <- isolate(ui_locale())
     if (new_state) {
-      updateActionButton(session, "btn_expand_all", label = "Compress (切換回基本版)", icon = icon("compress"))
+      updateActionButton(
+        session, "btn_expand_all",
+        label = ui_str("btn_compress_all", loc),
+        icon = icon("compress")
+      )
       showNotification("✅ 已切換至深度展開明細！", type = "message")
     } else {
-      updateActionButton(session, "btn_expand_all", label = "Expand All", icon = icon("expand"))
+      updateActionButton(
+        session, "btn_expand_all",
+        label = ui_str("btn_expand_all", loc),
+        icon = icon("expand")
+      )
       showNotification("已切換回精簡版報表", type = "message")
     }
   })

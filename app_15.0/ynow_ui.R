@@ -381,7 +381,7 @@ beta_rolling_section_ui <- function() {
       )
     ),
     fluidRow(
-      tabBox(title = "模型選擇決策指南", width = 12, side = "left",
+      tabBox(title = "Model Selection Guide", width = 12, side = "left",
        
        # Tab 1: 方法論比較矩陣 (表格)
        tabPanel("Decision Matrix", icon = icon("table"),
@@ -1196,6 +1196,54 @@ ui <- dashboardPage(
             if (badgeClone) a.appendChild(badgeClone);
           }
 
+          function setNavLinkLabel(a, label) {
+            if (!a || !label) return;
+            /* 勿覆寫含 Shiny 動態輸出的頁籤（如 FCFF／FCFE） */
+            if (a.querySelector('.shiny-text-output, .shiny-html-output, .shiny-bound-output')) return;
+            var icon = a.querySelector('i');
+            var iconClone = icon ? icon.cloneNode(true) : null;
+            a.innerHTML = '';
+            if (iconClone) {
+              a.appendChild(iconClone);
+              a.appendChild(document.createTextNode(' '));
+            }
+            a.appendChild(document.createTextNode(label));
+          }
+
+          function applyTabLabels(tabMap) {
+            if (!tabMap) return;
+            document.querySelectorAll('.nav-tabs a[data-value], .navbar-nav a[data-value]').forEach(function (a) {
+              var dv = a.getAttribute('data-value');
+              if (dv && tabMap[dv]) setNavLinkLabel(a, tabMap[dv]);
+            });
+          }
+
+          function applyBoxHeaders(specs) {
+            if (!specs || !specs.length) return;
+            document.querySelectorAll('.nav-tabs-custom > .nav-tabs > li.header').forEach(function (li) {
+              var text = (li.textContent || '').replace(/\\s+/g, ' ').trim();
+              for (var i = 0; i < specs.length; i++) {
+                var sp = specs[i] || {};
+                var aliases = sp.match || [];
+                var hit = false;
+                for (var j = 0; j < aliases.length; j++) {
+                  var al = String(aliases[j] || '').replace(/\\s+/g, ' ').trim();
+                  if (al && (text === al || text.indexOf(al) >= 0)) { hit = true; break; }
+                }
+                if (!hit || !sp.label) continue;
+                var icon = li.querySelector('i');
+                var iconClone = icon ? icon.cloneNode(true) : null;
+                li.innerHTML = '';
+                if (iconClone) {
+                  li.appendChild(iconClone);
+                  li.appendChild(document.createTextNode(' '));
+                }
+                li.appendChild(document.createTextNode(sp.label));
+                break;
+              }
+            });
+          }
+
           function applyUiLocale(payload) {
             var s = (payload && payload.strings) || {};
             var menu = {
@@ -1213,10 +1261,14 @@ ui <- dashboardPage(
             Object.keys(menu).forEach(function (k) {
               if (menu[k]) setMenuLabel(k, menu[k]);
             });
+            applyTabLabels((payload && payload.tabs) || {});
+            applyBoxHeaders((payload && payload.boxes) || []);
             var recent = document.getElementById('ynow_recent_search_label');
             if (recent && s.recent_search) recent.textContent = s.recent_search;
             var scLab = document.querySelector('label[for=\"sc\"]');
             if (scLab && s.ticker_label) scLab.textContent = s.ticker_label;
+            var indLab = document.querySelector('label[for=\"industry_choice\"]');
+            if (indLab && s.industry_standard) indLab.textContent = s.industry_standard;
             var dsTitle = document.getElementById('ynow_data_source_title');
             if (dsTitle && s.data_source_title) dsTitle.textContent = s.data_source_title;
             var dsBody = document.getElementById('ynow_data_source_body');
@@ -1235,6 +1287,14 @@ ui <- dashboardPage(
             if (testL && s.test_link) testL.textContent = s.test_link;
             var fb = document.getElementById('ynow_feedback_link_label');
             if (fb && s.feedback_link) fb.textContent = s.feedback_link;
+            var expandBtn = document.getElementById('btn_expand_all');
+            if (expandBtn && s.btn_expand_all && s.btn_compress_all) {
+              var expTxt = (expandBtn.textContent || '');
+              var isCompress = /Compress|壓縮/.test(expTxt);
+              var expIcon = expandBtn.querySelector('i');
+              var expIconHtml = expIcon ? expIcon.outerHTML + ' ' : '';
+              expandBtn.innerHTML = expIconHtml + (isCompress ? s.btn_compress_all : s.btn_expand_all);
+            }
             document.documentElement.setAttribute('lang', (payload && payload.locale) || 'en');
             var mkt = (payload && payload.market) ? String(payload.market) : 'US';
             document.body.classList.toggle('ynow-market-tw', mkt === 'TW');
@@ -2366,6 +2426,7 @@ ui <- dashboardPage(
           ),
           tabPanel(
             "同業去槓桿",
+            value = "peer_unlever",
             icon = icon("users"),
             helpText(
               "左側先填同業、去槓桿後平均（Bottom-Up）。右側為本公司 Hamada 去槓桿與手動 βe。",
@@ -3361,10 +3422,11 @@ ui <- dashboardPage(
                 tags$div(
                   class = "ynow-bt-params",
                   tabBox(
-                    title = tagList(icon("sliders-h"), "策略參數設定"),
+                    title = tagList(icon("sliders-h"), "Strategy Parameters"),
                     width = 12,
                     tabPanel(
                       title = tagList(icon("balance-scale"), "基本面策略"),
+                      value = "bt_fundamental",
                       .bt_section_intro(
                         "模式 A：Exp_A → 淨值圖橘線。依 MOS 分級決定部位；MOS 來自折現圖勾選模型的平均合理價。"
                       ),
@@ -3387,6 +3449,7 @@ ui <- dashboardPage(
                     ),
                     tabPanel(
                       title = tagList(icon("bolt"), "情緒策略"),
+                      value = "bt_sentiment",
                       tags$div(
                         class = "ynow-bt-mode-b",
                         .bt_section_intro(
