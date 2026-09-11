@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12540602
+bundleId=12541147
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=8781d3e
 commit=8781d3e
 short=8781d3e
 message=feat(app_15.0): show TW financial statement amounts in thousands (仟元)
-captured_at=2026-09-11T13:18:44Z
+captured_at=2026-09-11T15:29:35Z
 source_branch=cursor/tw-fs-thousands-f4a6
-note=Canonical live line is app_15.0. TW-mode IS/BS/CF display amounts in 仟元 (÷1000, display-only; EPS/shares/tax rate excluded). Bundle 12540602 supersedes 12538545. Master merge b467993.
+note=Canonical live line is app_15.0. Redeploy of TW FS 仟元 display (master b467993 / 9cd6386). Bundle 12541147 supersedes 12538545 (prior baseline 12540602 never became active due to stuck shinyapps image-build queue).
