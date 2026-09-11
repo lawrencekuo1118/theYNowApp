@@ -837,26 +837,60 @@ ui <- dashboardPage(
     
     tags$head(
       tags$style(HTML('
-        /* 標題「The YNow App v15」：金色字樣（黑底／台股國旗底皆可讀） */
-        .main-header .logo,
-        .main-header .logo:hover {
-          font-weight: bold;
-          color: var(--ynow-gold) !important;
-          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
-        }
-
         /* YNOW monochrome chrome: black/white (keep KPI bg-blue / Schilit red-green) */
         :root {
           --ynow-ink: #1a1a1a;
           --ynow-ink-soft: #333333;
           --ynow-line: #d0d0d0;
           --ynow-wash: #f5f5f5;
-          --ynow-gold: #D4AF37;
+          /* 亮面金屬金（非土黃／ochre）；fallback 給不支援 clip 的環境） */
+          --ynow-gold: #F5C518;
+          --ynow-gold-gradient: linear-gradient(
+            105deg,
+            #FFF6C8 0%,
+            #FFE566 18%,
+            #F5C518 36%,
+            #C9A227 50%,
+            #FFE566 68%,
+            #FFF8D0 100%
+          );
         }
+
+        @keyframes ynow-gold-shine {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+
+        /* 標題「The YNow App v15」：閃閃發光的金色箔面（黑底／台股國旗底皆可讀） */
+        .main-header .logo,
+        .main-header .logo:hover {
+          position: relative;
+          z-index: 1;
+          font-weight: bold;
+          background-color: transparent !important;
+          background-image: var(--ynow-gold-gradient) !important;
+          background-size: 220% 100%;
+          background-repeat: no-repeat;
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+          color: transparent !important;
+          animation: ynow-gold-shine 2.6s ease-in-out infinite;
+          /* drop-shadow 在 clip text 下仍可讀；避免土黃 flat fill */
+          filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.75));
+        }
+        /* 美股：logo 區塊黑底改由 ::before，以免蓋掉文字漸層 */
+        .skin-black .main-header .logo::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          z-index: -1;
+          pointer-events: none;
+          background-color: var(--ynow-ink);
+        }
+
         .content-wrapper, .right-side { background-color: #f7f7f7; }
-        .skin-black .main-header .navbar,
-        .skin-black .main-header .logo,
-        .skin-black .main-header .logo:hover {
+        .skin-black .main-header .navbar {
           background-color: var(--ynow-ink) !important;
         }
         .skin-black .main-header .navbar .sidebar-toggle:hover {
@@ -892,19 +926,24 @@ ui <- dashboardPage(
           position: relative;
           z-index: 1;
         }
-        body.ynow-market-tw .skin-black .main-header .navbar,
+        body.ynow-market-tw .skin-black .main-header .navbar {
+          background-color: transparent !important;
+          background-image: none !important;
+        }
+        /* 台股 logo：保留金色漸層；僅拿掉黑底 ::before，讓國旗透出 */
         body.ynow-market-tw .skin-black .main-header .logo,
         body.ynow-market-tw .skin-black .main-header .logo:hover {
           background-color: transparent !important;
-          background-image: none !important;
+        }
+        body.ynow-market-tw .skin-black .main-header .logo::before {
+          display: none;
         }
         body.ynow-market-tw .skin-black .main-header .navbar .sidebar-toggle:hover {
           background-color: rgba(0, 0, 0, 0.35) !important;
         }
         body.ynow-market-tw .main-header .logo,
         body.ynow-market-tw .main-header .logo:hover {
-          color: var(--ynow-gold) !important;
-          text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+          filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.9));
         }
         body.ynow-market-tw .main-header .navbar .nav > li > a,
         body.ynow-market-tw .ynow-market-header,
