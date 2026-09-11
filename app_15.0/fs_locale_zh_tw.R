@@ -279,6 +279,74 @@
   x
 }
 
+#' 是否對台股財報「顯示」套用仟元單位
+should_scale_fs_thousands <- function(mode = NULL) {
+  if (!is.null(mode) && identical(normalize_market_mode(mode), "TW")) return(TRUE)
+  if (exists("get_market_mode", mode = "function") &&
+      identical(normalize_market_mode(get_market_mode()), "TW")) {
+    return(TRUE)
+  }
+  FALSE
+}
+
+# 非「金額仟元」列：每股盈餘、股數、稅率等維持原單位
+.FS_SKIP_THOUSANDS_RE <- paste0(
+  "(EPS|Earnings Per Share|Average Shares|Share Issued|Shares Number|",
+  "Treasury Shares|Tax Rate|Tax Rate For Calcs)"
+)
+
+#' 該科目列是否應除以 1,000（仟元顯示）
+fs_row_scale_to_thousands <- function(label) {
+  lab <- as.character(label %||% "")[1]
+  if (!nzchar(lab)) return(FALSE)
+  # 已是中文科目標籤時，仍以常見關鍵字判斷
+  if (grepl("每股盈餘|加權平均股數|已發行股數|庫藏股數|計算用稅率|稅率", lab)) {
+    return(FALSE)
+  }
+  !grepl(.FS_SKIP_THOUSANDS_RE, lab, ignore.case = TRUE, perl = TRUE)
+}
+
+#' 顯示層：台股財報金額改為仟元（÷1000）；不改估值用底層資料
+#' @param divisor 預設 1000
+scale_financial_df_thousands_display <- function(df, enabled = TRUE, divisor = 1000) {
+  if (!isTRUE(enabled) || is.null(df) || !is.data.frame(df) || ncol(df) < 2L || nrow(df) < 1L) {
+    return(df)
+  }
+  div <- suppressWarnings(as.numeric(divisor)[1])
+  if (!is.finite(div) || div == 0) div <- 1000
+  out <- df
+  labels <- as.character(out[[1]])
+  scale_row <- vapply(labels, fs_row_scale_to_thousands, logical(1), USE.NAMES = FALSE)
+  for (j in seq.int(2L, ncol(out))) {
+    raw <- as.character(out[[j]])
+    nums <- if (exists("parse_financial_number", mode = "function")) {
+      parse_financial_number(raw)
+    } else {
+      suppressWarnings(as.numeric(gsub(",", "", raw, fixed = TRUE)))
+    }
+    scaled <- ifelse(scale_row & is.finite(nums), nums / div, nums)
+    out[[j]] <- ifelse(
+      is.na(scaled) | !is.finite(scaled),
+      raw,
+      format(scaled, scientific = FALSE, trim = TRUE, digits = 15)
+    )
+  }
+  attr(out, "fs_display_unit") <- "thousands"
+  out
+}
+
+#' 台股財報表單位說明（顯示用）
+fs_thousands_unit_caption <- function(session_ccy = NULL, enabled = TRUE) {
+  if (!isTRUE(enabled)) return(NULL)
+  ccy <- tryCatch(normalize_ccy(session_ccy), error = function(e) NA_character_)
+  unit <- if (identical(ccy, "USD")) {
+    "美元仟元"
+  } else {
+    "新台幣仟元"
+  }
+  paste0("金額單位：", unit, "（每股盈餘、股數、稅率等除外）")
+}
+
 #' 單一科目標籤 → 台灣正體（無對照則保留原文）
 localize_fs_label_zh_tw <- function(label) {
   raw <- as.character(label %||% "")[1]

@@ -1249,47 +1249,56 @@ server <- function(input, output, session) {
     }
   )
   
+  # 顯示層管線：FX →（台股）仟元 → 小數二位 → zh-TW 科目
+  .prep_fs_statement_display <- function(df) {
+    use_thou <- should_scale_fs_thousands(mode = market_mode())
+    use_zh <- should_localize_fs_zh_tw(mode = market_mode(), locale = ui_locale())
+    out <- scale_financial_df_money(
+      reorder_financial_columns(df), statement_currency(), session_currency(), fx_usd_twd()
+    )
+    out <- scale_financial_df_thousands_display(out, enabled = use_thou)
+    out <- format_financial_df_display(out)
+    out <- localize_financial_df_zh_tw(out, enabled = use_zh)
+    list(
+      df = out,
+      caption = fs_thousands_unit_caption(session_currency(), enabled = use_thou)
+    )
+  }
+
   output$tbIncomeStatement <- renderDataTable({
     req(scraped_financials())
     session_currency(); fx_usd_twd(); market_mode(); ui_locale()
-    df <- if (is_expanded()) scraped_financials()[["Income Statement"]]$expanded else scraped_financials()[["Income Statement"]]$collapsed
-    df <- format_financial_df_display(scale_financial_df_money(
-      reorder_financial_columns(df), statement_currency(), session_currency(), fx_usd_twd()
-    ))
-    # 顯示層：台股／zh-TW 科目翻台灣正體；底層英文資料不變
-    df <- localize_financial_df_zh_tw(
-      df,
-      enabled = should_localize_fs_zh_tw(mode = market_mode(), locale = ui_locale())
+    raw <- if (is_expanded()) scraped_financials()[["Income Statement"]]$expanded else scraped_financials()[["Income Statement"]]$collapsed
+    prep <- .prep_fs_statement_display(raw)
+    datatable(
+      trim_financial_table(prep$df, "Tax Effect of Unusual Items"),
+      caption = if (!is.null(prep$caption)) htmltools::tags$caption(style = "caption-side: top; text-align: left; color: #555;", prep$caption) else NULL,
+      options = list(pageLength = 20, scrollX = TRUE)
     )
-    datatable(trim_financial_table(df, "Tax Effect of Unusual Items"), options = list(pageLength = 20, scrollX = TRUE))
   })
   
   output$tbBalanceSheet <- renderDataTable({
     req(scraped_financials())
     session_currency(); fx_usd_twd(); market_mode(); ui_locale()
-    df <- if (is_expanded()) scraped_financials()[["Balance Sheet"]]$expanded else scraped_financials()[["Balance Sheet"]]$collapsed
-    df <- format_financial_df_display(scale_financial_df_money(
-      reorder_financial_columns(df), statement_currency(), session_currency(), fx_usd_twd()
-    ))
-    df <- localize_financial_df_zh_tw(
-      df,
-      enabled = should_localize_fs_zh_tw(mode = market_mode(), locale = ui_locale())
+    raw <- if (is_expanded()) scraped_financials()[["Balance Sheet"]]$expanded else scraped_financials()[["Balance Sheet"]]$collapsed
+    prep <- .prep_fs_statement_display(raw)
+    datatable(
+      trim_financial_table(prep$df, "Treasury Shares Number"),
+      caption = if (!is.null(prep$caption)) htmltools::tags$caption(style = "caption-side: top; text-align: left; color: #555;", prep$caption) else NULL,
+      options = list(pageLength = 20, scrollX = TRUE)
     )
-    datatable(trim_financial_table(df, "Treasury Shares Number"), options = list(pageLength = 20, scrollX = TRUE))
   })
   
   output$tbCashFlow <- renderDataTable({
     req(scraped_financials())
     session_currency(); fx_usd_twd(); market_mode(); ui_locale()
-    df <- if (is_expanded()) scraped_financials()[["Cash Flow"]]$expanded else scraped_financials()[["Cash Flow"]]$collapsed
-    df <- format_financial_df_display(scale_financial_df_money(
-      reorder_financial_columns(df), statement_currency(), session_currency(), fx_usd_twd()
-    ))
-    df <- localize_financial_df_zh_tw(
-      df,
-      enabled = should_localize_fs_zh_tw(mode = market_mode(), locale = ui_locale())
+    raw <- if (is_expanded()) scraped_financials()[["Cash Flow"]]$expanded else scraped_financials()[["Cash Flow"]]$collapsed
+    prep <- .prep_fs_statement_display(raw)
+    datatable(
+      trim_financial_table(prep$df, "Free Cash Flow"),
+      caption = if (!is.null(prep$caption)) htmltools::tags$caption(style = "caption-side: top; text-align: left; color: #555;", prep$caption) else NULL,
+      options = list(pageLength = 20, scrollX = TRUE)
     )
-    datatable(trim_financial_table(df, "Free Cash Flow"), options = list(pageLength = 20, scrollX = TRUE))
   })
   
   output$IS_download <- downloadHandler(

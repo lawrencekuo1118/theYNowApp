@@ -75,6 +75,42 @@ check(
   identical(localize_summary_section_zh_tw("Price", TRUE), "股價")
 )
 
+check("TW mode enables thousands scaling", {
+  isTRUE(should_scale_fs_thousands("TW")) &&
+    isTRUE(should_scale_fs_thousands("TAIWAN")) &&
+    isFALSE(should_scale_fs_thousands("US"))
+})
+check("EPS and share rows skip thousands", {
+  isFALSE(fs_row_scale_to_thousands("Basic EPS")) &&
+    isFALSE(fs_row_scale_to_thousands("Diluted EPS")) &&
+    isFALSE(fs_row_scale_to_thousands("Share Issued")) &&
+    isFALSE(fs_row_scale_to_thousands("Tax Rate For Calcs")) &&
+    isFALSE(fs_row_scale_to_thousands("基本每股盈餘")) &&
+    isTRUE(fs_row_scale_to_thousands("Total Revenue")) &&
+    isTRUE(fs_row_scale_to_thousands("營業收入"))
+})
+
+check("scale_financial_df_thousands_display ÷1000", {
+  df_t <- data.frame(
+    Metric = c("Total Revenue", "Basic EPS", "Share Issued"),
+    `2024` = c(1000000, 12.5, 5000),
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
+  out <- scale_financial_df_thousands_display(df_t, enabled = TRUE, divisor = 1000)
+  same <- scale_financial_df_thousands_display(df_t, enabled = FALSE)
+  isTRUE(all.equal(as.numeric(out[["2024"]][1]), 1000)) &&
+    isTRUE(all.equal(as.numeric(out[["2024"]][2]), 12.5)) &&
+    isTRUE(all.equal(as.numeric(out[["2024"]][3]), 5000)) &&
+    identical(same[["2024"]], df_t[["2024"]])
+})
+
+check("thousands unit caption", {
+  cap <- fs_thousands_unit_caption("TWD", TRUE)
+  is.character(cap) && grepl("仟元", cap) && grepl("新台幣", cap) &&
+    is.null(fs_thousands_unit_caption("USD", FALSE))
+})
+
 if (fail > 0L) {
   cat("FAILED:", fail, "\n")
   quit(status = 1)
