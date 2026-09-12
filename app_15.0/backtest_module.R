@@ -156,9 +156,12 @@ if (!exists(".ynow_log", mode = "function")) {
 #' when margins are finite; else geometric FCF0 Gordon (Yahoo Free Cash Flow).
 estimate_hist_dcf <- function(fcf0, cash, debt, shares,
                               wacc, sgr, n_years = 5, g_explicit = NULL,
-                              claim = "fcff", ke = NULL, rd = 0, tax = 0.21,
+                              claim = "fcff", ke = NULL, rd = 0, tax = NULL,
                               revenue = NULL, nopat_m = NULL, depre_m = NULL,
                               capex_m = NULL, nwc_m = NULL) {
+  if (is.null(tax) || !is.finite(.safe_num(tax, NA_real_))) {
+    tax <- .default_statutory_tax_ratio()
+  }
   shares <- .safe_num(shares, NA_real_)
   wacc <- .safe_num(wacc, NA_real_)
   sgr <- .safe_num(sgr, NA_real_)
@@ -216,7 +219,7 @@ estimate_hist_dcf <- function(fcf0, cash, debt, shares,
   if (identical(as.character(claim)[1], "fcfe")) {
     ke <- .safe_num(ke, wacc)
     rd <- .safe_num(rd, 0)
-    tax <- .safe_num(tax, 0.21)
+    tax <- .safe_num(tax, .default_statutory_tax_ratio())
     if (!is.finite(ke) || ke <= 0) return(NA_real_)
     if (is.na(sgr)) sgr <- max(0, ke - 0.03)
     if (sgr >= ke) return(NA_real_)
@@ -461,14 +464,15 @@ valuation_signal_label <- function(fv, price) {
 }
 
 #' PIT effective tax from Tax Provision / Pretax Income; else fallback.
-.hist_pit_tax <- function(fund_row, fallback = 0.21) {
+.hist_pit_tax <- function(fund_row, fallback = NULL) {
   tax_e <- .safe_num(fund_row$tax_expense, NA_real_)
   pretax <- .safe_num(fund_row$pretax_income, NA_real_)
   if (is.finite(tax_e) && is.finite(pretax) && abs(pretax) > 1e-6) {
     t <- tax_e / pretax
     if (is.finite(t) && t >= 0 && t <= 0.55) return(t)
   }
-  .safe_num(fallback, 0.21)
+  fb <- if (is.null(fallback)) .default_statutory_tax_ratio() else fallback
+  .safe_num(fb, .default_statutory_tax_ratio())
 }
 
 #' Justified P/B = (ROE − g) / (Ke − g) using decimal inputs.
@@ -605,10 +609,11 @@ reconstruct_fair_value_pit <- function(fund_row, price, model_params,
   } else {
     .hist_pit_rd(fund_row, fallback = .safe_num(model_params$rd, 0.05))
   }
+  tax_fb <- .safe_num(model_params$tax, .default_statutory_tax_ratio())
   tax_use <- if (isTRUE(use_session_assumptions)) {
-    .safe_num(model_params$tax, 0.21)
+    tax_fb
   } else {
-    .hist_pit_tax(fund_row, fallback = .safe_num(model_params$tax, 0.21))
+    .hist_pit_tax(fund_row, fallback = tax_fb)
   }
 
   fv_dcf <- estimate_hist_dcf(
@@ -717,7 +722,7 @@ reconstruct_fair_value_pit <- function(fund_row, price, model_params,
     if (is.finite(ke_try) && ke_try > 0) {
       mp_tip$ke <- ke_try
       rd <- .safe_num(model_params$rd, 0.05)
-      tax <- .safe_num(model_params$tax, 0.21)
+      tax <- .safe_num(model_params$tax, .default_statutory_tax_ratio())
       if (is.finite(we_tip) && is.finite(wd_tip) && (we_tip + wd_tip) > 0) {
         wacc_try <- we_tip * ke_try + wd_tip * rd * (1 - tax)
         if (is.finite(wacc_try) && wacc_try <= 0) wacc_try <- 0.01
@@ -1098,6 +1103,48 @@ fetch_tnx_history_df <- function(period = "10y") {
   fetch_price_history_df("^TNX", period)
 }
 
+#' PIT Rf series by market (Damodaran: Rf currency must match cash-flow currency).
+#' US: ^TNX history. TW: NULL — Yahoo 無穩定台債指數；PIT 點改用 session Rf
+#' （`market_profile` 文件化 fallback，見 `get_risk_free_rate`）。
+fetch_pit_rf_history_df <- function(period = "10y", market = NULL) {
+  mode <- if (!is.null(market)) {
+    if (exists("normalize_market_mode", mode = "function")) {
+      normalize_market_mode(market)
+    } else {
+      toupper(as.character(market)[1])
+    }
+  } else if (exists("get_market_mode", mode = "function")) {
+    get_market_mode()
+  } else {
+    "US"
+  }
+  if (identical(mode, "TW")) return(NULL)
+  fetch_tnx_history_df(period)
+}
+
+#' Statutory corporate tax ratio (decimal) for hist/session fallbacks.
+#' TW enacted 20%；US federal statutory 21%（非有效稅率）。
+.default_statutory_tax_ratio <- function(market = NULL) {
+  mode <- if (!is.null(market)) {
+    if (exists("normalize_market_mode", mode = "function")) {
+      normalize_market_mode(market)
+    } else {
+      toupper(as.character(market)[1])
+    }
+  } else if (exists("get_market_mode", mode = "function")) {
+    get_market_mode()
+  } else {
+    "US"
+  }
+  if (exists("market_profile", mode = "function")) {
+    p <- suppressWarnings(as.numeric(market_profile(mode)$wacc_tax)[1])
+    if (is.finite(p) && p > 0) {
+      return(if (p > 1) p / 100 else p)
+    }
+  }
+  if (identical(mode, "TW")) 0.20 else 0.21
+}
+
 #' Trailing realized annualized total return of the benchmark, no look-ahead.
 #' Prefer ~12 months ending on/before as_of; else longest window ≥ ~6m;
 #' else ~5y; else session fallback.
@@ -1163,14 +1210,15 @@ fetch_tnx_history_df <- function(period = "10y") {
 
 #' Build point-in-time Ke/WACC from rolling beta + then-known Rf / capital structure.
 #'
-#' Rf_t = ^TNX close on/before as_of (fallback: session Rf).
+#' Rf_t (US) = ^TNX close on/before as_of (fallback: session Rf).
+#' Rf_t (TW) = session Rf only（無穩定 Yahoo 台債序列；勿套用 ^TNX 於 TWD 現金流）。
 #' Rm_t = trailing realized annualized total return of the backtest benchmark
-#'   (default SPY, Yahoo auto_adjust Close) ending on/before as_of. Prefer 12m;
+#'   (US default SPY; TW mode passes 0050.TW) ending on/before as_of. Prefer 12m;
 #'   else longest ≥ ~6m; else 5y; else session Rm. Negative (Rm−Rf) is kept;
 #'   Ke/WACC are only floored if DCF would break (Ke≤0). g≥WACC leaves DCF/RI as NA.
 #' We/Wd from PIT shares × that day's price and then-available Total Debt.
 #' Rd/tax prefer Interest/Debt and Tax/Pretax from the fund row when available;
-#' else session defaults.
+#' else session defaults（稅率缺漏時用市場法定稅，非一律 21%）。
 #' Falls back to session ke/wacc when beta cannot be estimated.
 pit_discount_params <- function(model_params, stock_close, bench_close, dates, as_of,
                                 tnx_df = NULL, fund_row = NULL, price = NA_real_,
@@ -1186,6 +1234,7 @@ pit_discount_params <- function(model_params, stock_close, bench_close, dates, a
   }
   rf_sess <- .safe_num(model_params$rf, NA_real_)
   rm_sess <- .safe_num(model_params$rm, NA_real_)
+  tax_fb <- .safe_num(model_params$tax, .default_statutory_tax_ratio())
   rf <- .tnx_close_to_rf(.lookup_close_asof(tnx_df, as_of))
   if (!is.finite(rf)) rf <- rf_sess
   rm_window <- "session"
@@ -1222,7 +1271,7 @@ pit_discount_params <- function(model_params, stock_close, bench_close, dates, a
         ke_i <- ke_try
       }
       rd <- .hist_pit_rd(fund_row, fallback = .safe_num(model_params$rd, 0.05))
-      tax <- .hist_pit_tax(fund_row, fallback = .safe_num(model_params$tax, 0.21))
+      tax <- .hist_pit_tax(fund_row, fallback = tax_fb)
       if (is.finite(we) && is.finite(wd) && (we + wd) > 0) {
         wacc_try <- we * ke_i + wd * rd * (1 - tax)
         if (is.finite(wacc_try)) {
@@ -2209,7 +2258,7 @@ compute_fair_value_timeline <- function(ticker,
   )
   core <- .run_backtest_core(
     df, fund, dummy_params, model_params, mos_fallback,
-    beta_df = beta_df, fv_only = TRUE, tnx_df = fetch_tnx_history_df(period)
+    beta_df = beta_df, fv_only = TRUE, tnx_df = fetch_pit_rf_history_df(period)
   )
   list(
     equity_df = core$equity_df,
@@ -2284,7 +2333,7 @@ run_company_backtest <- function(ticker,
     d_is, d_bs, d_cf, ticker = ticker, model_params = model_params
   )
   mos_fallback <- .safe_num(mos, 0)
-  tnx_df <- fetch_tnx_history_df(period)
+  tnx_df <- fetch_pit_rf_history_df(period)
 
   core <- .run_backtest_core(df, fund, params, model_params, mos_fallback,
                              beta_df = beta_df, tnx_df = tnx_df)

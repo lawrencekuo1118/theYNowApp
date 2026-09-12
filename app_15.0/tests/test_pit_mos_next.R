@@ -22,6 +22,39 @@ check <- function(label, cond) {
 inv <- pit_param_inventory_table()
 check("inventory has rows", is.data.frame(inv) && nrow(inv) >= 10)
 check("inventory has 狀態 col", "狀態" %in% names(inv))
+rf_live <- inv$Live來源[inv$參數 == "Rf"][1]
+check("inventory Rf notes TW session", grepl("TW", rf_live, fixed = TRUE))
+
+# --- TW market Rf / statutory tax (no network) ---
+mp_path <- file.path(app_dir, "market_profile.R")
+if (file.exists(mp_path)) {
+  source(mp_path, local = FALSE, encoding = "UTF-8")
+  check("TW statutory tax 20%", approx_eq(.default_statutory_tax_ratio("TW"), 0.20))
+  check("US statutory tax 21%", approx_eq(.default_statutory_tax_ratio("US"), 0.21))
+  check("TW pit Rf history is NULL", is.null(fetch_pit_rf_history_df("5y", market = "TW")))
+  # pit_discount_params: NULL tnx_df → session Rf (do not invent US TNX)
+  dates <- as.Date(c("2024-01-02", "2024-02-01", "2024-03-01", "2024-04-01",
+                     "2024-05-01", "2024-06-03", "2024-07-01", "2024-08-01",
+                     "2024-09-02", "2024-10-01", "2024-11-01", "2024-12-02",
+                     "2025-01-02", "2025-02-03", "2025-03-03", "2025-04-01",
+                     "2025-05-01", "2025-06-02", "2025-07-01", "2025-08-01",
+                     "2025-09-01", "2025-10-01", "2025-11-03", "2025-12-01",
+                     "2026-01-02", "2026-02-02", "2026-03-02", "2026-04-01",
+                     "2026-05-01", "2026-06-01", "2026-07-01", "2026-08-03",
+                     "2026-09-01"))
+  n <- length(dates)
+  stock <- 100 * (1.01 ^ seq_len(n))
+  bench <- 100 * (1.008 ^ seq_len(n))
+  disc <- pit_discount_params(
+    list(rf = 0.018, rm = 0.08, ke = 0.09, wacc = 0.08, tax = 0.20, beta_fallback = 1.0,
+         beta_lookback_months = 12, beta_min_months = 6),
+    stock, bench, dates, as_of = dates[n],
+    tnx_df = NULL, fund_row = NULL, price = stock[n], realized_rm = FALSE
+  )
+  check("TW NULL tnx uses session Rf", approx_eq(disc$rf, 0.018, 1e-9))
+} else {
+  message("SKIP: market_profile.R missing for TW Rf/tax checks")
+}
 
 # --- hist helpers ---
 fund <- list(

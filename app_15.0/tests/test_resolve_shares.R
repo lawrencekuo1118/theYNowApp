@@ -24,6 +24,23 @@ check <- function(label, cond) {
 r <- resolve_shares_for_price(1e10, price = 100, market_cap = 1e12, ticker = "AAPL")
 check("AAPL balance_sheet", identical(r$method, "balance_sheet") && abs(r$shares - 1e10) < 1)
 
+# TW local listing (2330.TW): quote=TWD, financial=TWD, ratio≈1 → must NOT ADR-scale
+r <- resolve_shares_for_price(
+  25.9e9, price = 1000, market_cap = 25.9e12, ticker = "2330.TW",
+  quote_currency = "TWD", financial_currency = "TWD"
+)
+check(
+  "2330.TW local no ADR",
+  identical(r$method, "balance_sheet") && abs(r$shares - 25.9e9) < 1
+)
+
+# TW local with mild Yahoo noise (ratio within 1.5) still keeps BS shares
+r <- resolve_shares_for_price(
+  25.9e9, price = 1000, market_cap = 30e12, ticker = "2330.TW",
+  quote_currency = "TWD", financial_currency = "TWD"
+)
+check("2330.TW mild mcap noise", identical(r$method, "balance_sheet"))
+
 # ADR 5:1 (TSM-like): implied/bs = 0.2 → market_cap_per_price
 r <- resolve_shares_for_price(
   25e9, price = 400, market_cap = 2e12, ticker = "TSM",
