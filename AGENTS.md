@@ -42,4 +42,6 @@ When unsure: use the **English term** + brief Taiwan Chinese gloss on first ment
 
 See `.cursor/rules/auto-deploy-after-optimize.mdc` and `.cursor/rules/dual-workspace-sync.mdc` for ship workflow and workspace sync.
 
+**Auto deploy：** 每次在活動線 `app_15.0/` **完成開發並驗證後**，一律自動 commit → push → `Rscript scripts/deploy_app_15.R` → 更新 `DEPLOY_BASELINE.txt`，無需等候使用者再說「部署／推送」。僅文件／規則／未完成 WIP 或使用者明確要求不部署時略過。
+
 **Version bump：** 每次 merge／ship 將 UI／header 等顯示版號 **+0.01**（如 `v15.01`、`v15.02`）；目錄可維持 `app_15.0/`，僅在使用者要求整階 **+1** 時才改名。詳見 `.cursor/rules/version-bump-on-merge.mdc`。
