@@ -1,0 +1,39 @@
+---
+description: On each merge/ship, bump displayed app version by +0.01 (until user switches to +1)
+alwaysApply: true
+---
+
+# Version bump on merge / ship
+
+## Default scheme (until user says otherwise)
+
+Every time code is **merged to master** or **shipped** (commit + push + deploy of the live line), increment the **display version** by **+0.01** (patch-style).
+
+Examples: `v15` → `v15.01` → `v15.02` → …
+
+Later, if the user asks to switch to whole-step bumps, use **+1** instead (e.g. `v15` → `v16`, or `v15.02` → `v16`).
+
+## What “version in code” means
+
+Update these when bumping (keep them consistent):
+
+| Surface | Examples |
+|---------|----------|
+| UI / header | `dashboardHeader` title (`The YNow App v15…`), About 文案, 意見區 / report strings that show app version |
+| Docs in app tree | README / comments that state the current display version |
+| Deploy notes | `scripts/DEPLOY_BASELINE.txt` note (and similar) may mention the display version |
+| Deploy scripts | Keep targeting the live folder; rename scripts only on a full +1 cut if needed |
+
+Do **not** invent a second version number; one display version for the live line.
+
+## Folder vs display version
+
+- **Live directory** may stay `app_15.0/` while display shows `v15.01`, `v15.02`, …
+- **Directory rename** (e.g. `app_15.0/` → `app_16.0/`) only when the user requests a full **+1** version cut.
+- If header/UI and folder naming disagree: **UI/header/version strings bump +0.01 each merge**; **folder stays** until that +1 cut.
+
+## When to bump
+
+- Yes: merge to master, auto-deploy after optimization, explicit「部署／推送」of app changes.
+- No: docs/rules-only, exploratory WIP, or commits the user says not to ship.
+- This rule records policy only; do not bump “just because” the rule file was edited.
