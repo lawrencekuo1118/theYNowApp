@@ -6081,10 +6081,23 @@ server <- function(input, output, session) {
                             error = function(e) NULL)
         fv_edge <- tryCatch(validate_fair_value_edge(res$valuation_df, px),
                             error = function(e) NULL)
+        mos_next <- tryCatch(summarize_mos_next_period_stats(res$valuation_df),
+                             error = function(e) NULL)
+        tip_mos <- tryCatch({
+          vd <- res$valuation_df
+          if (!is.null(vd) && nrow(vd) > 0 && "mos" %in% names(vd)) {
+            as.numeric(vd$mos[nrow(vd)])
+          } else NA_real_
+        }, error = function(e) NA_real_)
+        mos_outlook <- tryCatch(
+          lookup_mos_bucket_outlook(tip_mos, mos_next),
+          error = function(e) NULL
+        )
         # 參數高原已自 UI 移除（與 Sensitivity 重疊）；略過以縮短回測時間
         bt_result(res)
         bt_validation(list(
-          alpha = alpha_df, gap = gap, mos = mos_tab, fv = fv_edge
+          alpha = alpha_df, gap = gap, mos = mos_tab, fv = fv_edge,
+          mos_next = mos_next, mos_outlook = mos_outlook
         ))
         bt_hfv_fv(NULL)
         bt_fv_visible(TRUE)
@@ -6686,6 +6699,101 @@ server <- function(input, output, session) {
     )
   }, striped = TRUE, bordered = TRUE, spacing = "s")
 
+  output$bt_param_inventory <- renderTable({
+    if (exists("pit_param_inventory_table", mode = "function")) {
+      pit_param_inventory_table()
+    } else {
+      data.frame(訊息 = "參數盤點表未載入", stringsAsFactors = FALSE)
+    }
+  }, striped = TRUE, bordered = TRUE, spacing = "s")
+
+  output$bt_mos_next_table <- renderTable({
+    v <- bt_validation()
+    validate(need(!is.null(v) && !is.null(v$mos_next) && is.data.frame(v$mos_next), "請先啟動量化回測"))
+    df <- v$mos_next
+    data.frame(
+      分桶 = df$bucket,
+      n = df$n,
+      上漲次數 = df$n_up,
+      下跌次數 = df$n_down,
+      上漲機率 = ifelse(is.finite(df$p_up), sprintf("%.0f%%", 100 * df$p_up), "—"),
+      下跌機率 = ifelse(is.finite(df$p_down), sprintf("%.0f%%", 100 * df$p_down), "—"),
+      平均報酬 = ifelse(is.finite(df$mean_ret), sprintf("%+.1f%%", 100 * df$mean_ret), "—"),
+      中位報酬 = ifelse(is.finite(df$median_ret), sprintf("%+.1f%%", 100 * df$median_ret), "—"),
+      上漲均幅 = ifelse(is.finite(df$mean_up), sprintf("%+.1f%%", 100 * df$mean_up), "—"),
+      下跌均幅 = ifelse(is.finite(df$mean_down), sprintf("%+.1f%%", 100 * df$mean_down), "—"),
+      stringsAsFactors = FALSE,
+      check.names = FALSE
+    )
+  }, striped = TRUE, bordered = TRUE, spacing = "s")
+
+  output$bt_mos_outlook_card <- renderUI({
+    v <- bt_validation()
+    if (is.null(v) || is.null(v$mos_outlook)) {
+      return(tags$div(
+        style = "margin:0 0 12px 0;padding:12px;background:#f7f7f7;border-left:4px solid #999;font-size:13px;",
+        "啟動回測後，將以此刻 tip MOS 對應歷史同桶的下期漲跌機率。"
+      ))
+    }
+    o <- v$mos_outlook
+    mos_txt <- if (is.finite(o$mos_now)) sprintf("%.1f%%", 100 * o$mos_now) else "—"
+    p_up_txt <- if (is.finite(o$p_up)) sprintf("%.0f%%", 100 * o$p_up) else "—"
+    p_dn_txt <- if (is.finite(o$p_down)) sprintf("%.0f%%", 100 * o$p_down) else "—"
+    mean_txt <- if (is.finite(o$mean_ret)) sprintf("%+.1f%%", 100 * o$mean_ret) else "—"
+    med_txt <- if (is.finite(o$median_ret)) sprintf("%+.1f%%", 100 * o$median_ret) else "—"
+    border <- if (isTRUE(o$small_sample)) "#f39c12" else "#00a65a"
+    tags$div(
+      style = paste0(
+        "margin:0 0 14px 0;padding:14px 16px;background:#fffdf5;",
+        "border-left:4px solid ", border, ";border-radius:4px;font-size:13px;line-height:1.6;"
+      ),
+      tags$div(
+        tags$b("此刻下期展望"),
+        if (isTRUE(o$small_sample)) tags$span(style = "color:#c27d0e;margin-left:8px;", "（小樣本）")
+      ),
+      tags$ul(
+        style = "margin:8px 0 0 0;padding-left:18px;",
+        tags$li(sprintf("此刻 MOS＝%s → 分桶：%s", mos_txt, o$bucket %||% "—")),
+        tags$li(sprintf("歷史同桶下期上漲機率 %s、下跌機率 %s", p_up_txt, p_dn_txt)),
+        tags$li(sprintf("同桶下期平均報酬 %s（中位 %s）", mean_txt, med_txt)),
+        tags$li(o$note %||% "")
+      )
+    )
+  })
+
+  output$bt_mos_next_scatter <- renderPlotly({
+    res <- bt_result()
+    empty <- plotly::plotly_empty() %>%
+      plotly::layout(annotations = list(list(
+        text = "請先啟動量化回測", showarrow = FALSE, font = list(size = 14, color = "#888")
+      )))
+    if (is.null(res) || is.null(res$valuation_df) || nrow(res$valuation_df) < 2) return(empty)
+    vd <- res$valuation_df
+    vd <- vd[order(vd$Date), , drop = FALSE]
+    if (!all(c("mos", "hist_price") %in% names(vd))) return(empty)
+    n <- nrow(vd)
+    next_ret <- rep(NA_real_, n)
+    next_ret[seq_len(n - 1)] <- vd$hist_price[seq_len(n - 1) + 1] / vd$hist_price[seq_len(n - 1)] - 1
+    ok <- is.finite(vd$mos) & is.finite(next_ret)
+    if (!any(ok)) return(empty)
+    plot_df <- data.frame(
+      MOS = 100 * vd$mos[ok],
+      NextRet = 100 * next_ret[ok],
+      Date = vd$Date[ok]
+    )
+    plotly::plot_ly(
+      plot_df, x = ~MOS, y = ~NextRet, type = "scatter", mode = "markers",
+      text = ~paste0(Date, "<br>MOS ", round(MOS, 1), "% → 下期 ", round(NextRet, 1), "%"),
+      hoverinfo = "text",
+      marker = list(size = 9, color = "#3c8dbc", opacity = 0.75)
+    ) %>%
+      plotly::layout(
+        xaxis = list(title = "MOS (%)"),
+        yaxis = list(title = "下期報酬 (%)"),
+        margin = list(l = 50, r = 20, t = 20, b = 40)
+      )
+  })
+
   output$bt_fv_edge <- renderUI({
     v <- bt_validation()
     if (is.null(v) || is.null(v$fv)) return(tags$p(style="color:#888;font-size:12px;", "回測後回答：價格遠低於合理價時，前瞻報酬是否較高？"))
@@ -6858,12 +6966,17 @@ server <- function(input, output, session) {
         tags$li(tags$b("策略 MOS／部位："), "用目前勾選且有限值模型的算術平均，不是隱藏的主模型。只勾一個＝該模型。"),
         tags$li(
           tags$b("歷史各點 vs 末端："),
-          "歷史點僅用當時可得財報、當時 ^TNX Rf、截至該日的基準已實現年化總報酬（Rm）、Rolling β、當日市值資本結構；成長／n 用 APP_DEFAULTS，不套用目前分頁。",
-          "僅折線末端最新點掛勾目前 APP 分頁與 Session Rm。"
+          "歷史點用當時可得財報、^TNX Rf、截至該日基準已實現 Rm、Rolling β、當日 We/Wd；",
+          "g 由截至該年營收／NI／FCF 成長推估（clamp＜折現率）；Rd／稅率優先 Interest/Debt、Tax/Pretax；",
+          "P/B 用 Justified (ROE−g)/(Ke−g)。僅折線末端最新點掛勾目前 APP 分頁與 Session Rm。"
         ),
         tags$li(
           tags$b("ADR／雙重股權："),
           "股數依目前市值÷股價對齊報價股數後再算合理價（倍率固定套用各財年）。"
+        ),
+        tags$li(
+          tags$b("MOS 下期機率："),
+          "以該股季頻再平衡 MOS 分桶，統計下一再平衡真實報酬之漲跌次數／條件機率；小樣本（n＜5）標示僅供參考。"
         )
       ),
       tags$h5(tags$b("二、資料來源")),
@@ -6876,10 +6989,11 @@ server <- function(input, output, session) {
           "截至再平衡日的基準（預設 SPY）已實現年化總報酬（優先近 12 個月，無前瞻）；不是 Session 預期溢酬。末端才用 Session Rm。"
         ),
         tags$li(tags$b("Rolling β："), "各再平衡日以標的 vs SPY 約 60 個月月報酬估計。"),
-        tags$li(tags$b("We／Wd（歷史點）："), "再平衡日 股數×收盤 與當時 Total Debt。Rd／稅率仍用 Session。"),
+        tags$li(tags$b("We／Wd（歷史點）："), "再平衡日 股數×收盤 與當時 Total Debt。"),
+        tags$li(tags$b("Rd／Tax（歷史點）："), "有 Interest／Debt、Tax／Pretax 則用當時值，否則 Session。"),
         tags$li(
           tags$b("評價假設："),
-          "歷史點成長／n 用 APP_DEFAULTS；Ke／WACC 於各季以 Rolling β＋上述當年 Rf／結構重估。末端才掛目前分頁與 Session Rm。"
+          "歷史點 g／P/B 由當時財報推估；Ke／WACC 於各季以 Rolling β＋當年 Rf／結構重估。末端才掛目前分頁與 Session Rm。"
         )
       ),
       tags$h5(tags$b("三、計算過程（季頻 PIT）")),

@@ -9,6 +9,9 @@
 #   compute_alpha_dashboard(equity_df, rf_annual = 0.04)
 #   validate_mos_effectiveness(valuation_df, price_df)
 #   validate_fair_value_edge(valuation_df, price_df)
+#   summarize_mos_next_period_stats(valuation_df)
+#   lookup_mos_bucket_outlook(mos_now, stats_df)
+#   pit_param_inventory_table()
 # ==========================================
 
 # ---------- small helpers (local, avoid clashing with module) ----------
@@ -446,3 +449,199 @@ validate_fair_value_edge <- function(valuation_df, price_df) {
   list(table = tab, answer = ans,
        edge_1y = edge_1y, edge_3y = edge_3y, edge_5y = edge_5y)
 }
+
+# ==========================================
+# 5) MOS bucket → next-rebalance return stats / tip outlook
+# ==========================================
+
+.MOS_BUCKET_LEVELS <- c(
+  "偏貴 MOS<-10%",
+  "偏貴 MOS[-10%,0)",
+  "近公允 MOS[0,10%)",
+  "便宜 MOS[10%,30%)",
+  "便宜 MOS[30%,50%)",
+  "便宜 MOS≥50%"
+)
+
+.mos_bucket_label <- function(mos) {
+  mos <- suppressWarnings(as.numeric(mos))
+  out <- rep(NA_character_, length(mos))
+  ok <- is.finite(mos)
+  if (!any(ok)) return(out)
+  m <- mos[ok]
+  lab <- ifelse(m < -0.10, "偏貴 MOS<-10%",
+         ifelse(m < 0, "偏貴 MOS[-10%,0)",
+         ifelse(m < 0.10, "近公允 MOS[0,10%)",
+         ifelse(m < 0.30, "便宜 MOS[10%,30%)",
+         ifelse(m < 0.50, "便宜 MOS[30%,50%)", "便宜 MOS≥50%")))))
+  out[ok] <- lab
+  out
+}
+
+#' Empirical next-rebalance return stats by MOS bucket (ticker-local history).
+#'
+#' For each rebalance t with finite MOS and price, R_{t→t+1} = P_{t+1}/P_t − 1.
+#' @return data.frame with bucket counts, up/down probs, mean/median magnitudes
+summarize_mos_next_period_stats <- function(valuation_df) {
+  empty <- data.frame(
+    bucket = .MOS_BUCKET_LEVELS,
+    n = 0L,
+    n_up = 0L,
+    n_down = 0L,
+    n_flat = 0L,
+    p_up = NA_real_,
+    p_down = NA_real_,
+    mean_ret = NA_real_,
+    median_ret = NA_real_,
+    mean_up = NA_real_,
+    mean_down = NA_real_,
+    stringsAsFactors = FALSE
+  )
+  if (is.null(valuation_df) || !is.data.frame(valuation_df) || nrow(valuation_df) < 2) {
+    return(empty)
+  }
+  need <- c("Date", "hist_price", "mos")
+  if (!all(need %in% names(valuation_df))) return(empty)
+  vd <- valuation_df[order(valuation_df$Date), , drop = FALSE]
+  vd <- vd[is.finite(vd$mos) & is.finite(vd$hist_price) & vd$hist_price > 0, , drop = FALSE]
+  if (nrow(vd) < 2) return(empty)
+
+  n <- nrow(vd)
+  next_ret <- rep(NA_real_, n)
+  next_ret[seq_len(n - 1)] <- vd$hist_price[seq_len(n - 1) + 1] / vd$hist_price[seq_len(n - 1)] - 1
+  # last row has no next period
+  use <- is.finite(next_ret)
+  if (!any(use)) return(empty)
+
+  bucket <- factor(.mos_bucket_label(vd$mos[use]), levels = .MOS_BUCKET_LEVELS)
+  r <- next_ret[use]
+
+  agg_one <- function(idx) {
+    x <- r[idx]
+    x <- x[is.finite(x)]
+    n_x <- length(x)
+    if (n_x < 1) {
+      return(list(n = 0L, n_up = 0L, n_down = 0L, n_flat = 0L,
+                  p_up = NA_real_, p_down = NA_real_,
+                  mean_ret = NA_real_, median_ret = NA_real_,
+                  mean_up = NA_real_, mean_down = NA_real_))
+    }
+    n_up <- sum(x > 0)
+    n_down <- sum(x < 0)
+    n_flat <- sum(x == 0)
+    list(
+      n = as.integer(n_x),
+      n_up = as.integer(n_up),
+      n_down = as.integer(n_down),
+      n_flat = as.integer(n_flat),
+      p_up = n_up / n_x,
+      p_down = n_down / n_x,
+      mean_ret = mean(x),
+      median_ret = stats::median(x),
+      mean_up = if (n_up > 0) mean(x[x > 0]) else NA_real_,
+      mean_down = if (n_down > 0) mean(x[x < 0]) else NA_real_
+    )
+  }
+
+  rows <- lapply(seq_along(.MOS_BUCKET_LEVELS), function(i) {
+    lev <- .MOS_BUCKET_LEVELS[[i]]
+    idx <- which(as.character(bucket) == lev)
+    s <- agg_one(idx)
+    data.frame(
+      bucket = lev,
+      n = s$n, n_up = s$n_up, n_down = s$n_down, n_flat = s$n_flat,
+      p_up = s$p_up, p_down = s$p_down,
+      mean_ret = s$mean_ret, median_ret = s$median_ret,
+      mean_up = s$mean_up, mean_down = s$mean_down,
+      stringsAsFactors = FALSE
+    )
+  })
+  do.call(rbind, rows)
+}
+
+#' Map current MOS into historical bucket outlook.
+lookup_mos_bucket_outlook <- function(mos_now, stats_df) {
+  mos_now <- .bv_safe_num(mos_now, NA_real_)
+  empty <- list(
+    mos_now = mos_now,
+    bucket = NA_character_,
+    n = 0L,
+    p_up = NA_real_,
+    p_down = NA_real_,
+    mean_ret = NA_real_,
+    median_ret = NA_real_,
+    mean_up = NA_real_,
+    mean_down = NA_real_,
+    small_sample = TRUE,
+    note = "資料不足"
+  )
+  if (!is.finite(mos_now) || is.null(stats_df) || !is.data.frame(stats_df) || nrow(stats_df) < 1) {
+    return(empty)
+  }
+  b <- .mos_bucket_label(mos_now)[1]
+  hit <- stats_df[as.character(stats_df$bucket) == b, , drop = FALSE]
+  if (nrow(hit) < 1) return(empty)
+  n <- as.integer(hit$n[1])
+  small <- !is.finite(n) || n < 5L
+  note <- if (small) {
+    sprintf("樣本 n=%d＜5，僅供參考（Yahoo 年報深度有限）。", max(0L, n))
+  } else {
+    sprintf("樣本 n=%d（該股自身季頻再平衡歷史）。", n)
+  }
+  list(
+    mos_now = mos_now,
+    bucket = b,
+    n = n,
+    p_up = .bv_safe_num(hit$p_up[1], NA_real_),
+    p_down = .bv_safe_num(hit$p_down[1], NA_real_),
+    mean_ret = .bv_safe_num(hit$mean_ret[1], NA_real_),
+    median_ret = .bv_safe_num(hit$median_ret[1], NA_real_),
+    mean_up = .bv_safe_num(hit$mean_up[1], NA_real_),
+    mean_down = .bv_safe_num(hit$mean_down[1], NA_real_),
+    small_sample = small,
+    note = note
+  )
+}
+
+#' Static Live vs Hist parameter inventory for Backtest UI (US-first).
+pit_param_inventory_table <- function() {
+  data.frame(
+    模型 = c(
+      "共用", "共用", "共用", "共用", "共用", "共用", "共用",
+      "DCF", "DCF", "DCF", "DCF", "DCF",
+      "DDM", "DDM",
+      "RI", "RI", "RI",
+      "P/B", "P/B"
+    ),
+    參數 = c(
+      "Price", "IS/BS/CF 年欄", "Rf", "β", "Rm", "We/Wd", "Shares",
+      "FCF0", "g / SGR", "WACC / Ke", "Rd / Tax", "NOPAT·CapEx·ΔNWC 全表",
+      "DPS", "g / Ke",
+      "BVPS", "ROE / payout", "g / Ke",
+      "BVPS", "Target P/B"
+    ),
+    Live來源 = c(
+      "Yahoo quote", "Yahoo scrape", "yfinance ^TNX", "Summary／產業／手動", "產業 rm_avg／UI", "市值結構", "BS＋報價對齊",
+      "FCF 預測表", "永續 g 方法／UI", "CAPM→WACC", "Interest/Debt；稅率 UI", "fcf_projection_module",
+      "CF 股利÷股數", "中央 Ke／SGR",
+      "Equity÷股數", "NI/Equity；UI fade", "中央 g／Ke",
+      "Equity÷股數", "Justified＋產業＋歷史"
+    ),
+    Hist_PIT來源 = c(
+      "fetch_price_history_df", "build_annual_fundamentals", "fetch_tnx_history_df", "estimate_rolling_beta", "trailing realized SPY", "當日價×PIT shares/debt", "年欄股數（ADR 倍率固定）",
+      "CF Free Cash Flow 列", "截至該年營收／NI／FCF 成長（clamp＜r）", "Rolling β＋Rf＋Rm＋PIT We/Wd", "Interest/Debt；Tax/Pretax（缺則 session）", "不重建（簡化幾何 FCF）",
+      "dividends_paid÷shares", "PIT Ke；g 同上",
+      "equity_book÷shares", "當期 ROE／payout", "PIT Ke；g 同上",
+      "equity_book÷shares", "Justified (ROE−g)/(Ke−g)"
+    ),
+    狀態 = c(
+      "PIT", "PIT（約 4 FY）", "PIT", "PIT", "PIT（非 Damodaran ERP）", "PIT", "Partial",
+      "PIT", "PIT（推估）", "PIT", "PIT（有資料時）", "缺失／簡化",
+      "PIT", "PIT",
+      "PIT", "PIT", "PIT",
+      "PIT", "PIT（Justified）"
+    ),
+    stringsAsFactors = FALSE
+  )
+}
+

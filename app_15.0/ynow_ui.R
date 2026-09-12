@@ -3302,6 +3302,24 @@ ui <- dashboardPage(
               withMathJax(),
               h2("量化回測實驗室 (Backtest Zone)"),
 
+              # 0) 參數盤點（Live vs Hist PIT）
+              fluidRow(
+                box(
+                  title = tagList(icon("table"), "美股估值復盤參數盤點（Live vs Hist PIT）"),
+                  width = 12, status = "primary", solidHeader = TRUE,
+                  collapsible = TRUE, collapsed = TRUE,
+                  tags$p(
+                    style = "font-size:12.5px;color:#444;line-height:1.55;",
+                    "歷史點理論估值使用當時可得資料重建；",
+                    tags$b("hist DCF 為簡化 Gordon 幾何路徑"),
+                    "（FCF0×(1+g)^t），",
+                    tags$b("不是"),
+                    " Live DCF 分頁的營收→NOPAT／CapEx／ΔNWC 預測表。"
+                  ),
+                  tags$div(style = "overflow-x:auto;", tableOutput("bt_param_inventory"))
+                )
+              ),
+
               # 1) 折現比較圖置頂：合理價 vs 實際股價 vs 大盤
               fluidRow(
                 box(
@@ -3333,6 +3351,36 @@ ui <- dashboardPage(
                       )
                     ),
                     plotlyOutput("bt_hfv_timeline", height = "420px") %>% withSpinner()
+                  )
+                )
+              ),
+
+              # 1b) MOS 條件下期漲跌機率
+              fluidRow(
+                box(
+                  title = tagList(icon("chart-bar"), "MOS 條件下期漲跌（該股歷史）"),
+                  width = 12, status = "warning", solidHeader = TRUE,
+                  collapsible = TRUE, collapsed = FALSE,
+                  tags$p(
+                    style = "font-size:12.5px;color:#444;line-height:1.55;",
+                    "以再平衡日 MOS＝(FV−Price)/FV 分桶，統計",
+                    tags$b("下期（下一再平衡）"),
+                    "真實股價報酬的漲跌次數、機率與幅度；並將",
+                    tags$b("此刻 tip MOS"),
+                    "對應至同桶條件機率。僅該 ticker 自身歷史，非全市場。"
+                  ),
+                  uiOutput("bt_mos_outlook_card"),
+                  fluidRow(
+                    column(
+                      7,
+                      tags$h5(tags$b("分桶統計表")),
+                      tags$div(style = "overflow-x:auto;", tableOutput("bt_mos_next_table"))
+                    ),
+                    column(
+                      5,
+                      tags$h5(tags$b("MOS vs 下期報酬")),
+                      plotlyOutput("bt_mos_next_scatter", height = "280px") %>% withSpinner()
+                    )
                   )
                 )
               ),
