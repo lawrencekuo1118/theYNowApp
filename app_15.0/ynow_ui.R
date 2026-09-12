@@ -3355,31 +3355,54 @@ ui <- dashboardPage(
                 )
               ),
 
-              # 1b) MOS 條件下期漲跌機率
+              # 1b) 下期市價相對當期 FV：趨近／遠離
               fluidRow(
                 box(
-                  title = tagList(icon("chart-bar"), "MOS 條件下期漲跌（該股歷史）"),
+                  title = tagList(icon("compress-arrows-alt"), "下期市價相對當期理論估值（趨近／遠離）"),
                   width = 12, status = "warning", solidHeader = TRUE,
                   collapsible = TRUE, collapsed = FALSE,
                   tags$p(
                     style = "font-size:12.5px;color:#444;line-height:1.55;",
-                    "以再平衡日 MOS＝(FV−Price)/FV 分桶，統計",
-                    tags$b("下期（下一再平衡）"),
-                    "真實股價報酬的漲跌次數、機率與幅度；並將",
-                    tags$b("此刻 tip MOS"),
-                    "對應至同桶條件機率。僅該 ticker 自身歷史，非全市場。"
+                    "每一再平衡日 t：以當期理論估值 ", tags$code("FV_t"), " 為錨，",
+                    "比較 ", tags$code("|P_t − FV_t|"), " 與 ", tags$code("|P_{t+1} − FV_t|"), "。",
+                    tags$b("趨近"), "＝下期真實股價更靠近當期估值；",
+                    tags$b("遠離"), "＝更遠。",
+                    "不使用報酬／期望報酬；僅計次數與發生頻率。期間可篩選。"
                   ),
-                  uiOutput("bt_mos_outlook_card"),
+                  radioButtons(
+                    "bt_fv_conv_window",
+                    "統計期間（依再平衡日 Date_t）",
+                    inline = TRUE,
+                    choices = c(
+                      "全部" = "all",
+                      "近1年" = "1y",
+                      "近3年" = "3y",
+                      "近5年" = "5y",
+                      "自訂" = "custom"
+                    ),
+                    selected = "all"
+                  ),
+                  conditionalPanel(
+                    condition = "input.bt_fv_conv_window == 'custom'",
+                    dateRangeInput(
+                      "bt_fv_conv_custom",
+                      NULL,
+                      start = Sys.Date() - 365 * 3,
+                      end = Sys.Date(),
+                      language = "zh-TW"
+                    )
+                  ),
+                  uiOutput("bt_fv_conv_summary"),
                   fluidRow(
                     column(
                       7,
-                      tags$h5(tags$b("分桶統計表")),
-                      tags$div(style = "overflow-x:auto;", tableOutput("bt_mos_next_table"))
+                      tags$h5(tags$b("逐期明細")),
+                      tags$div(style = "overflow-x:auto;", tableOutput("bt_fv_conv_table"))
                     ),
                     column(
                       5,
-                      tags$h5(tags$b("MOS vs 下期報酬")),
-                      plotlyOutput("bt_mos_next_scatter", height = "280px") %>% withSpinner()
+                      tags$h5(tags$b("距離變化（負＝趨近）")),
+                      plotlyOutput("bt_fv_conv_plot", height = "280px") %>% withSpinner()
                     )
                   )
                 )

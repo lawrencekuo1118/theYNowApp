@@ -11,6 +11,8 @@
 #   validate_fair_value_edge(valuation_df, price_df)
 #   summarize_mos_next_period_stats(valuation_df)
 #   lookup_mos_bucket_outlook(mos_now, stats_df)
+#   build_fv_convergence_pairs(valuation_df)
+#   summarize_fv_convergence(valuation_df, from = NULL, to = NULL)
 #   pit_param_inventory_table()
 # ==========================================
 
@@ -598,6 +600,122 @@ lookup_mos_bucket_outlook <- function(mos_now, stats_df) {
     median_ret = .bv_safe_num(hit$median_ret[1], NA_real_),
     mean_up = .bv_safe_num(hit$mean_up[1], NA_real_),
     mean_down = .bv_safe_num(hit$mean_down[1], NA_real_),
+    small_sample = small,
+    note = note
+  )
+}
+
+# ==========================================
+# 6) Price vs FV_t: next-period converge / diverge (no return framing)
+# ==========================================
+
+#' Pair each rebalance t with next price; compare distance to FV_t.
+#'
+#' d_t = |P_t − FV_t|, d_{t+1} = |P_{t+1} − FV_t| (anchor = this period's FV).
+#' outcome: 趨近 if d_{t+1} < d_t; 遠離 if d_{t+1} > d_t; 持平 if equal.
+build_fv_convergence_pairs <- function(valuation_df) {
+  empty <- data.frame(
+    Date = as.Date(character()),
+    Date_next = as.Date(character()),
+    price = numeric(),
+    price_next = numeric(),
+    fair_value = numeric(),
+    dist = numeric(),
+    dist_next = numeric(),
+    delta_dist = numeric(),
+    outcome = character(),
+    stringsAsFactors = FALSE
+  )
+  if (is.null(valuation_df) || !is.data.frame(valuation_df) || nrow(valuation_df) < 2) {
+    return(empty)
+  }
+  need <- c("Date", "hist_price", "fair_value")
+  if (!all(need %in% names(valuation_df))) return(empty)
+  vd <- valuation_df[order(valuation_df$Date), , drop = FALSE]
+  ok <- is.finite(vd$hist_price) & vd$hist_price > 0 &
+    is.finite(vd$fair_value) & vd$fair_value > 0
+  vd <- vd[ok, , drop = FALSE]
+  if (nrow(vd) < 2) return(empty)
+
+  n <- nrow(vd)
+  price <- vd$hist_price
+  fv <- vd$fair_value
+  price_next <- c(price[-1], NA_real_)
+  date_next <- c(vd$Date[-1], as.Date(NA))
+  dist <- abs(price - fv)
+  dist_next <- abs(price_next - fv)
+  delta <- dist_next - dist
+  outcome <- ifelse(!is.finite(delta), NA_character_,
+             ifelse(delta < 0, "趨近",
+             ifelse(delta > 0, "遠離", "持平")))
+  use <- is.finite(price_next) & !is.na(outcome)
+  data.frame(
+    Date = vd$Date[use],
+    Date_next = date_next[use],
+    price = price[use],
+    price_next = price_next[use],
+    fair_value = fv[use],
+    dist = dist[use],
+    dist_next = dist_next[use],
+    delta_dist = delta[use],
+    outcome = outcome[use],
+    stringsAsFactors = FALSE
+  )
+}
+
+#' Aggregate converge/diverge counts and frequencies in an optional date window.
+#'
+#' @param from,to Date bounds on the **rebalance date** (Date_t); NULL = all pairs
+summarize_fv_convergence <- function(valuation_df, from = NULL, to = NULL) {
+  pairs <- build_fv_convergence_pairs(valuation_df)
+  empty <- list(
+    pairs = pairs,
+    n = 0L,
+    n_toward = 0L,
+    n_away = 0L,
+    n_flat = 0L,
+    p_toward = NA_real_,
+    p_away = NA_real_,
+    p_flat = NA_real_,
+    from = from,
+    to = to,
+    small_sample = TRUE,
+    note = "資料不足"
+  )
+  if (nrow(pairs) < 1) return(empty)
+
+  from <- if (is.null(from) || length(from) < 1 || is.na(from[1])) NULL else as.Date(from)[1]
+  to <- if (is.null(to) || length(to) < 1 || is.na(to[1])) NULL else as.Date(to)[1]
+  keep <- rep(TRUE, nrow(pairs))
+  if (!is.null(from)) keep <- keep & pairs$Date >= from
+  if (!is.null(to)) keep <- keep & pairs$Date <= to
+  pp <- pairs[keep, , drop = FALSE]
+  n <- nrow(pp)
+  if (n < 1) {
+    empty$pairs <- pp
+    empty$note <- "選定期間內無再平衡配對"
+    return(empty)
+  }
+  n_toward <- sum(pp$outcome == "趨近", na.rm = TRUE)
+  n_away <- sum(pp$outcome == "遠離", na.rm = TRUE)
+  n_flat <- sum(pp$outcome == "持平", na.rm = TRUE)
+  small <- n < 5L
+  note <- if (small) {
+    sprintf("樣本 n=%d＜5，僅供參考（Yahoo 年報深度有限）。", n)
+  } else {
+    sprintf("樣本 n=%d（選定期間內再平衡→下期市價 vs 當期 FV）。", n)
+  }
+  list(
+    pairs = pp,
+    n = as.integer(n),
+    n_toward = as.integer(n_toward),
+    n_away = as.integer(n_away),
+    n_flat = as.integer(n_flat),
+    p_toward = n_toward / n,
+    p_away = n_away / n,
+    p_flat = n_flat / n,
+    from = from,
+    to = to,
     small_sample = small,
     note = note
   )

@@ -54,7 +54,7 @@ check("hist tax from pretax", approx_eq(pit$tax_used, 0.20, 1e-8))
 check("hist pb justified", is.finite(pit$pb_mid_used) && pit$pb_mid_used > 0)
 check("hist fv finite", is.finite(pit$fair_value) && pit$fair_value > 0)
 
-# --- MOS next-period stats ---
+# --- MOS next-period stats (legacy helper still available) ---
 vd <- data.frame(
   Date = as.Date(c("2020-03-31", "2020-06-30", "2020-09-30", "2020-12-31",
                    "2021-03-31", "2021-06-30")),
@@ -65,8 +65,6 @@ vd <- data.frame(
 )
 stats <- summarize_mos_next_period_stats(vd)
 check("stats rows", nrow(stats) == length(.MOS_BUCKET_LEVELS))
-# From MOS=0.40 (便宜 30-50%): next ret = 110/100-1 = +0.10 (up)
-# From MOS=0.35: 105/110-1 < 0 (down)
 b30 <- stats[stats$bucket == "便宜 MOS[30%,50%)", , drop = FALSE]
 check("bucket 30-50 has n>=1", b30$n[1] >= 1L)
 check("p_up in [0,1] or NA", is.na(b30$p_up[1]) || (b30$p_up[1] >= 0 && b30$p_up[1] <= 1))
@@ -75,8 +73,25 @@ out <- lookup_mos_bucket_outlook(0.42, stats)
 check("outlook bucket", identical(out$bucket, "便宜 MOS[30%,50%)"))
 check("outlook has note", is.character(out$note) && nzchar(out$note))
 
-# tip MOS negative bucket
 out2 <- lookup_mos_bucket_outlook(-0.15, stats)
 check("outlook expensive bucket", identical(out2$bucket, "偏貴 MOS<-10%"))
+
+# --- FV converge / diverge (anchor = FV_t) ---
+# t0: P=100, FV=140, dist=40; P1=110 → dist=30 → 趨近
+# t1: P=110, FV=150, dist=40; P2=105 → dist=45 → 遠離
+pairs <- build_fv_convergence_pairs(vd)
+check("pairs n=5", nrow(pairs) == 5L)
+check("first toward", identical(pairs$outcome[1], "趨近"))
+check("second away", identical(pairs$outcome[2], "遠離"))
+
+sum_all <- summarize_fv_convergence(vd)
+check("sum n=5", sum_all$n == 5L)
+check("toward+away+flat = n", sum_all$n_toward + sum_all$n_away + sum_all$n_flat == sum_all$n)
+check("p_toward in [0,1]", is.finite(sum_all$p_toward) && sum_all$p_toward >= 0 && sum_all$p_toward <= 1)
+
+sum_win <- summarize_fv_convergence(
+  vd, from = as.Date("2020-06-01"), to = as.Date("2020-12-31")
+)
+check("window filters", sum_win$n >= 1L && sum_win$n < sum_all$n)
 
 message("ALL PASS")

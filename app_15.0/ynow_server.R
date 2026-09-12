@@ -6081,23 +6081,10 @@ server <- function(input, output, session) {
                             error = function(e) NULL)
         fv_edge <- tryCatch(validate_fair_value_edge(res$valuation_df, px),
                             error = function(e) NULL)
-        mos_next <- tryCatch(summarize_mos_next_period_stats(res$valuation_df),
-                             error = function(e) NULL)
-        tip_mos <- tryCatch({
-          vd <- res$valuation_df
-          if (!is.null(vd) && nrow(vd) > 0 && "mos" %in% names(vd)) {
-            as.numeric(vd$mos[nrow(vd)])
-          } else NA_real_
-        }, error = function(e) NA_real_)
-        mos_outlook <- tryCatch(
-          lookup_mos_bucket_outlook(tip_mos, mos_next),
-          error = function(e) NULL
-        )
         # 參數高原已自 UI 移除（與 Sensitivity 重疊）；略過以縮短回測時間
         bt_result(res)
         bt_validation(list(
-          alpha = alpha_df, gap = gap, mos = mos_tab, fv = fv_edge,
-          mos_next = mos_next, mos_outlook = mos_outlook
+          alpha = alpha_df, gap = gap, mos = mos_tab, fv = fv_edge
         ))
         bt_hfv_fv(NULL)
         bt_fv_visible(TRUE)
@@ -6707,90 +6694,117 @@ server <- function(input, output, session) {
     }
   }, striped = TRUE, bordered = TRUE, spacing = "s")
 
-  output$bt_mos_next_table <- renderTable({
-    v <- bt_validation()
-    validate(need(!is.null(v) && !is.null(v$mos_next) && is.data.frame(v$mos_next), "請先啟動量化回測"))
-    df <- v$mos_next
-    data.frame(
-      分桶 = df$bucket,
-      n = df$n,
-      上漲次數 = df$n_up,
-      下跌次數 = df$n_down,
-      上漲機率 = ifelse(is.finite(df$p_up), sprintf("%.0f%%", 100 * df$p_up), "—"),
-      下跌機率 = ifelse(is.finite(df$p_down), sprintf("%.0f%%", 100 * df$p_down), "—"),
-      平均報酬 = ifelse(is.finite(df$mean_ret), sprintf("%+.1f%%", 100 * df$mean_ret), "—"),
-      中位報酬 = ifelse(is.finite(df$median_ret), sprintf("%+.1f%%", 100 * df$median_ret), "—"),
-      上漲均幅 = ifelse(is.finite(df$mean_up), sprintf("%+.1f%%", 100 * df$mean_up), "—"),
-      下跌均幅 = ifelse(is.finite(df$mean_down), sprintf("%+.1f%%", 100 * df$mean_down), "—"),
-      stringsAsFactors = FALSE,
-      check.names = FALSE
-    )
-  }, striped = TRUE, bordered = TRUE, spacing = "s")
+  .bt_fv_conv_bounds <- reactive({
+    win <- as.character(input$bt_fv_conv_window %||% "all")[1]
+    today <- Sys.Date()
+    if (identical(win, "1y")) return(list(from = today - 365, to = today))
+    if (identical(win, "3y")) return(list(from = today - 365 * 3, to = today))
+    if (identical(win, "5y")) return(list(from = today - 365 * 5, to = today))
+    if (identical(win, "custom")) {
+      dr <- input$bt_fv_conv_custom
+      if (is.null(dr) || length(dr) < 2) return(list(from = NULL, to = NULL))
+      return(list(from = as.Date(dr[1]), to = as.Date(dr[2])))
+    }
+    list(from = NULL, to = NULL)
+  })
 
-  output$bt_mos_outlook_card <- renderUI({
-    v <- bt_validation()
-    if (is.null(v) || is.null(v$mos_outlook)) {
+  bt_fv_conv <- reactive({
+    res <- bt_result()
+    if (is.null(res) || is.null(res$valuation_df)) return(NULL)
+    b <- .bt_fv_conv_bounds()
+    tryCatch(
+      summarize_fv_convergence(res$valuation_df, from = b$from, to = b$to),
+      error = function(e) NULL
+    )
+  })
+
+  output$bt_fv_conv_summary <- renderUI({
+    s <- bt_fv_conv()
+    if (is.null(s)) {
       return(tags$div(
         style = "margin:0 0 12px 0;padding:12px;background:#f7f7f7;border-left:4px solid #999;font-size:13px;",
-        "啟動回測後，將以此刻 tip MOS 對應歷史同桶的下期漲跌機率。"
+        "啟動回測後，將統計選定期間內「下期市價相對當期 FV」趨近／遠離次數與頻率。"
       ))
     }
-    o <- v$mos_outlook
-    mos_txt <- if (is.finite(o$mos_now)) sprintf("%.1f%%", 100 * o$mos_now) else "—"
-    p_up_txt <- if (is.finite(o$p_up)) sprintf("%.0f%%", 100 * o$p_up) else "—"
-    p_dn_txt <- if (is.finite(o$p_down)) sprintf("%.0f%%", 100 * o$p_down) else "—"
-    mean_txt <- if (is.finite(o$mean_ret)) sprintf("%+.1f%%", 100 * o$mean_ret) else "—"
-    med_txt <- if (is.finite(o$median_ret)) sprintf("%+.1f%%", 100 * o$median_ret) else "—"
-    border <- if (isTRUE(o$small_sample)) "#f39c12" else "#00a65a"
+    p_t <- if (is.finite(s$p_toward)) sprintf("%.0f%%", 100 * s$p_toward) else "—"
+    p_a <- if (is.finite(s$p_away)) sprintf("%.0f%%", 100 * s$p_away) else "—"
+    p_f <- if (is.finite(s$p_flat)) sprintf("%.0f%%", 100 * s$p_flat) else "—"
+    border <- if (isTRUE(s$small_sample)) "#f39c12" else "#00a65a"
+    period_txt <- {
+      if (!is.null(s$from) || !is.null(s$to)) {
+        paste0(
+          "期間：",
+          if (is.null(s$from)) "…" else format(s$from, "%Y-%m-%d"),
+          " ～ ",
+          if (is.null(s$to)) "…" else format(s$to, "%Y-%m-%d")
+        )
+      } else "期間：全部再平衡配對"
+    }
     tags$div(
       style = paste0(
         "margin:0 0 14px 0;padding:14px 16px;background:#fffdf5;",
         "border-left:4px solid ", border, ";border-radius:4px;font-size:13px;line-height:1.6;"
       ),
       tags$div(
-        tags$b("此刻下期展望"),
-        if (isTRUE(o$small_sample)) tags$span(style = "color:#c27d0e;margin-left:8px;", "（小樣本）")
+        tags$b("綜合發生頻率"),
+        if (isTRUE(s$small_sample)) tags$span(style = "color:#c27d0e;margin-left:8px;", "（小樣本）")
       ),
+      tags$p(style = "margin:6px 0 0 0;color:#666;", period_txt),
       tags$ul(
         style = "margin:8px 0 0 0;padding-left:18px;",
-        tags$li(sprintf("此刻 MOS＝%s → 分桶：%s", mos_txt, o$bucket %||% "—")),
-        tags$li(sprintf("歷史同桶下期上漲機率 %s、下跌機率 %s", p_up_txt, p_dn_txt)),
-        tags$li(sprintf("同桶下期平均報酬 %s（中位 %s）", mean_txt, med_txt)),
-        tags$li(o$note %||% "")
+        tags$li(sprintf("配對數 n＝%d", s$n %||% 0L)),
+        tags$li(sprintf("趨近 %d 次（%s）· 遠離 %d 次（%s）· 持平 %d 次（%s）",
+                        s$n_toward %||% 0L, p_t,
+                        s$n_away %||% 0L, p_a,
+                        s$n_flat %||% 0L, p_f)),
+        tags$li(s$note %||% "")
       )
     )
   })
 
-  output$bt_mos_next_scatter <- renderPlotly({
-    res <- bt_result()
+  output$bt_fv_conv_table <- renderTable({
+    s <- bt_fv_conv()
+    validate(need(!is.null(s) && !is.null(s$pairs) && nrow(s$pairs) > 0, "選定期間內無配對資料"))
+    pp <- s$pairs
+    data.frame(
+      再平衡日 = format(pp$Date, "%Y-%m-%d"),
+      下期日 = format(pp$Date_next, "%Y-%m-%d"),
+      當期股價 = round(pp$price, 2),
+      當期FV = round(pp$fair_value, 2),
+      下期股價 = round(pp$price_next, 2),
+      當期距離 = round(pp$dist, 2),
+      下期距離 = round(pp$dist_next, 2),
+      結果 = pp$outcome,
+      stringsAsFactors = FALSE,
+      check.names = FALSE
+    )
+  }, striped = TRUE, bordered = TRUE, spacing = "s")
+
+  output$bt_fv_conv_plot <- renderPlotly({
+    s <- bt_fv_conv()
     empty <- plotly::plotly_empty() %>%
       plotly::layout(annotations = list(list(
         text = "請先啟動量化回測", showarrow = FALSE, font = list(size = 14, color = "#888")
       )))
-    if (is.null(res) || is.null(res$valuation_df) || nrow(res$valuation_df) < 2) return(empty)
-    vd <- res$valuation_df
-    vd <- vd[order(vd$Date), , drop = FALSE]
-    if (!all(c("mos", "hist_price") %in% names(vd))) return(empty)
-    n <- nrow(vd)
-    next_ret <- rep(NA_real_, n)
-    next_ret[seq_len(n - 1)] <- vd$hist_price[seq_len(n - 1) + 1] / vd$hist_price[seq_len(n - 1)] - 1
-    ok <- is.finite(vd$mos) & is.finite(next_ret)
-    if (!any(ok)) return(empty)
-    plot_df <- data.frame(
-      MOS = 100 * vd$mos[ok],
-      NextRet = 100 * next_ret[ok],
-      Date = vd$Date[ok]
-    )
+    if (is.null(s) || is.null(s$pairs) || nrow(s$pairs) < 1) return(empty)
+    pp <- s$pairs
+    cols <- ifelse(pp$outcome == "趨近", "#00a65a",
+            ifelse(pp$outcome == "遠離", "#dd4b39", "#999"))
     plotly::plot_ly(
-      plot_df, x = ~MOS, y = ~NextRet, type = "scatter", mode = "markers",
-      text = ~paste0(Date, "<br>MOS ", round(MOS, 1), "% → 下期 ", round(NextRet, 1), "%"),
+      pp, x = ~Date, y = ~delta_dist, type = "bar",
+      text = ~paste0(Date, " → ", Date_next, "<br>", outcome,
+                     "<br>Δ距離 ", round(delta_dist, 2)),
       hoverinfo = "text",
-      marker = list(size = 9, color = "#3c8dbc", opacity = 0.75)
+      marker = list(color = cols)
     ) %>%
       plotly::layout(
-        xaxis = list(title = "MOS (%)"),
-        yaxis = list(title = "下期報酬 (%)"),
-        margin = list(l = 50, r = 20, t = 20, b = 40)
+        xaxis = list(title = "再平衡日"),
+        yaxis = list(title = "Δ距離 = |P下一期−FV| − |P−FV|"),
+        margin = list(l = 50, r = 20, t = 20, b = 40),
+        shapes = list(list(
+          type = "line", x0 = min(pp$Date), x1 = max(pp$Date), y0 = 0, y1 = 0,
+          line = list(dash = "dot", color = "#aaa")
+        ))
       )
   })
 
@@ -6975,8 +6989,8 @@ server <- function(input, output, session) {
           "股數依目前市值÷股價對齊報價股數後再算合理價（倍率固定套用各財年）。"
         ),
         tags$li(
-          tags$b("MOS 下期機率："),
-          "以該股季頻再平衡 MOS 分桶，統計下一再平衡真實報酬之漲跌次數／條件機率；小樣本（n＜5）標示僅供參考。"
+          tags$b("趨近／遠離驗證："),
+          "以當期 FV_t 為錨，比較 |P_t−FV_t| 與 |P_{t+1}−FV_t|；統計選定期間內趨近／遠離次數與頻率（非報酬期望）。"
         )
       ),
       tags$h5(tags$b("二、資料來源")),
