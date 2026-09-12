@@ -3355,18 +3355,17 @@ ui <- dashboardPage(
                 )
               ),
 
-              # 1b) 下期市價相對當期 FV：趨近／遠離
+              # 1b) 下期市價相對當期 FV：之上／之下（選項2）
               fluidRow(
                 box(
-                  title = tagList(icon("compress-arrows-alt"), "下期市價相對當期理論估值（趨近／遠離）"),
+                  title = tagList(icon("exchange-alt"), "下期市價相對當期理論估值（之上／之下）"),
                   width = 12, status = "warning", solidHeader = TRUE,
                   collapsible = TRUE, collapsed = FALSE,
                   tags$p(
                     style = "font-size:12.5px;color:#444;line-height:1.55;",
-                    "每一再平衡日 t：以當期理論估值 ", tags$code("FV_t"), " 為錨，",
-                    "比較 ", tags$code("|P_t − FV_t|"), " 與 ", tags$code("|P_{t+1} − FV_t|"), "。",
-                    tags$b("趨近"), "＝下期真實股價更靠近當期估值；",
-                    tags$b("遠離"), "＝更遠。",
+                    "每一再平衡日 t：取當期理論估值 ", tags$code("FV_t"),
+                    "，看下期真實股價 ", tags$code("P_{t+1}"), " 是在估值",
+                    tags$b("之上"), "、", tags$b("之下"), "或持平。",
                     "不使用報酬／期望報酬；僅計次數與發生頻率。期間可篩選。"
                   ),
                   radioButtons(
@@ -3401,7 +3400,7 @@ ui <- dashboardPage(
                     ),
                     column(
                       5,
-                      tags$h5(tags$b("距離變化（負＝趨近）")),
+                      tags$h5(tags$b("P下一期 − FV（正＝之上）")),
                       plotlyOutput("bt_fv_conv_plot", height = "280px") %>% withSpinner()
                     )
                   )

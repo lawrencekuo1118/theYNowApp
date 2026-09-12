@@ -76,18 +76,21 @@ check("outlook has note", is.character(out$note) && nzchar(out$note))
 out2 <- lookup_mos_bucket_outlook(-0.15, stats)
 check("outlook expensive bucket", identical(out2$bucket, "偏貴 MOS<-10%"))
 
-# --- FV converge / diverge (anchor = FV_t) ---
-# t0: P=100, FV=140, dist=40; P1=110 → dist=30 → 趨近
-# t1: P=110, FV=150, dist=40; P2=105 → dist=45 → 遠離
+# --- FV: P_{t+1} vs FV_t (選項2) + optional distance ---
 pairs <- build_fv_convergence_pairs(vd)
 check("pairs n=5", nrow(pairs) == 5L)
 check("first toward", identical(pairs$outcome[1], "趨近"))
 check("second away", identical(pairs$outcome[2], "遠離"))
+# t0: FV=140, P1=110 → 之下
+check("first below FV", identical(pairs$vs_fv[1], "之下"))
+# t2: FV=100, P3=120 → 之上
+check("third above FV", identical(pairs$vs_fv[3], "之上"))
 
 sum_all <- summarize_fv_convergence(vd)
 check("sum n=5", sum_all$n == 5L)
-check("toward+away+flat = n", sum_all$n_toward + sum_all$n_away + sum_all$n_flat == sum_all$n)
-check("p_toward in [0,1]", is.finite(sum_all$p_toward) && sum_all$p_toward >= 0 && sum_all$p_toward <= 1)
+check("above+below+flat = n",
+      sum_all$n_above + sum_all$n_below + sum_all$n_flat_vs == sum_all$n)
+check("p_below in [0,1]", is.finite(sum_all$p_below) && sum_all$p_below >= 0 && sum_all$p_below <= 1)
 
 sum_win <- summarize_fv_convergence(
   vd, from = as.Date("2020-06-01"), to = as.Date("2020-12-31")

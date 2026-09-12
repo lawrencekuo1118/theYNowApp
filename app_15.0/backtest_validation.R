@@ -609,10 +609,10 @@ lookup_mos_bucket_outlook <- function(mos_now, stats_df) {
 # 6) Price vs FV_t: next-period converge / diverge (no return framing)
 # ==========================================
 
-#' Pair each rebalance t with next price; compare distance to FV_t.
+#' Pair each rebalance t with next price vs this period's FV_t.
 #'
-#' d_t = |P_t − FV_t|, d_{t+1} = |P_{t+1} − FV_t| (anchor = this period's FV).
-#' outcome: 趨近 if d_{t+1} < d_t; 遠離 if d_{t+1} > d_t; 持平 if equal.
+#' Primary outcome (選項2): P_{t+1} 相對 FV_t → 之上／之下／持平.
+#' Secondary: distance change |P−FV_t| → 趨近／遠離／持平.
 build_fv_convergence_pairs <- function(valuation_df) {
   empty <- data.frame(
     Date = as.Date(character()),
@@ -624,6 +624,7 @@ build_fv_convergence_pairs <- function(valuation_df) {
     dist_next = numeric(),
     delta_dist = numeric(),
     outcome = character(),
+    vs_fv = character(),
     stringsAsFactors = FALSE
   )
   if (is.null(valuation_df) || !is.data.frame(valuation_df) || nrow(valuation_df) < 2) {
@@ -648,7 +649,10 @@ build_fv_convergence_pairs <- function(valuation_df) {
   outcome <- ifelse(!is.finite(delta), NA_character_,
              ifelse(delta < 0, "趨近",
              ifelse(delta > 0, "遠離", "持平")))
-  use <- is.finite(price_next) & !is.na(outcome)
+  vs_fv <- ifelse(!is.finite(price_next), NA_character_,
+           ifelse(price_next > fv, "之上",
+           ifelse(price_next < fv, "之下", "持平")))
+  use <- is.finite(price_next) & !is.na(vs_fv)
   data.frame(
     Date = vd$Date[use],
     Date_next = date_next[use],
@@ -659,11 +663,12 @@ build_fv_convergence_pairs <- function(valuation_df) {
     dist_next = dist_next[use],
     delta_dist = delta[use],
     outcome = outcome[use],
+    vs_fv = vs_fv[use],
     stringsAsFactors = FALSE
   )
 }
 
-#' Aggregate converge/diverge counts and frequencies in an optional date window.
+#' Aggregate P_{t+1} vs FV_t (之上／之下) counts in an optional date window.
 #'
 #' @param from,to Date bounds on the **rebalance date** (Date_t); NULL = all pairs
 summarize_fv_convergence <- function(valuation_df, from = NULL, to = NULL) {
@@ -671,6 +676,12 @@ summarize_fv_convergence <- function(valuation_df, from = NULL, to = NULL) {
   empty <- list(
     pairs = pairs,
     n = 0L,
+    n_above = 0L,
+    n_below = 0L,
+    n_flat_vs = 0L,
+    p_above = NA_real_,
+    p_below = NA_real_,
+    p_flat_vs = NA_real_,
     n_toward = 0L,
     n_away = 0L,
     n_flat = 0L,
@@ -696,6 +707,9 @@ summarize_fv_convergence <- function(valuation_df, from = NULL, to = NULL) {
     empty$note <- "選定期間內無再平衡配對"
     return(empty)
   }
+  n_above <- sum(pp$vs_fv == "之上", na.rm = TRUE)
+  n_below <- sum(pp$vs_fv == "之下", na.rm = TRUE)
+  n_flat_vs <- sum(pp$vs_fv == "持平", na.rm = TRUE)
   n_toward <- sum(pp$outcome == "趨近", na.rm = TRUE)
   n_away <- sum(pp$outcome == "遠離", na.rm = TRUE)
   n_flat <- sum(pp$outcome == "持平", na.rm = TRUE)
@@ -703,11 +717,17 @@ summarize_fv_convergence <- function(valuation_df, from = NULL, to = NULL) {
   note <- if (small) {
     sprintf("樣本 n=%d＜5，僅供參考（Yahoo 年報深度有限）。", n)
   } else {
-    sprintf("樣本 n=%d（選定期間內再平衡→下期市價 vs 當期 FV）。", n)
+    sprintf("樣本 n=%d（選定期間：下期市價 P 相對當期理論估值 FV）。", n)
   }
   list(
     pairs = pp,
     n = as.integer(n),
+    n_above = as.integer(n_above),
+    n_below = as.integer(n_below),
+    n_flat_vs = as.integer(n_flat_vs),
+    p_above = n_above / n,
+    p_below = n_below / n,
+    p_flat_vs = n_flat_vs / n,
     n_toward = as.integer(n_toward),
     n_away = as.integer(n_away),
     n_flat = as.integer(n_flat),

@@ -6723,12 +6723,12 @@ server <- function(input, output, session) {
     if (is.null(s)) {
       return(tags$div(
         style = "margin:0 0 12px 0;padding:12px;background:#f7f7f7;border-left:4px solid #999;font-size:13px;",
-        "啟動回測後，將統計選定期間內「下期市價相對當期 FV」趨近／遠離次數與頻率。"
+        "啟動回測後，將統計選定期間內「下期市價相對當期 FV」之上／之下次數與頻率。"
       ))
     }
-    p_t <- if (is.finite(s$p_toward)) sprintf("%.0f%%", 100 * s$p_toward) else "—"
-    p_a <- if (is.finite(s$p_away)) sprintf("%.0f%%", 100 * s$p_away) else "—"
-    p_f <- if (is.finite(s$p_flat)) sprintf("%.0f%%", 100 * s$p_flat) else "—"
+    p_ab <- if (is.finite(s$p_above)) sprintf("%.0f%%", 100 * s$p_above) else "—"
+    p_be <- if (is.finite(s$p_below)) sprintf("%.0f%%", 100 * s$p_below) else "—"
+    p_fl <- if (is.finite(s$p_flat_vs)) sprintf("%.0f%%", 100 * s$p_flat_vs) else "—"
     border <- if (isTRUE(s$small_sample)) "#f39c12" else "#00a65a"
     period_txt <- {
       if (!is.null(s$from) || !is.null(s$to)) {
@@ -6746,17 +6746,17 @@ server <- function(input, output, session) {
         "border-left:4px solid ", border, ";border-radius:4px;font-size:13px;line-height:1.6;"
       ),
       tags$div(
-        tags$b("綜合發生頻率"),
+        tags$b("綜合發生頻率（P下一期 vs FV）"),
         if (isTRUE(s$small_sample)) tags$span(style = "color:#c27d0e;margin-left:8px;", "（小樣本）")
       ),
       tags$p(style = "margin:6px 0 0 0;color:#666;", period_txt),
       tags$ul(
         style = "margin:8px 0 0 0;padding-left:18px;",
         tags$li(sprintf("配對數 n＝%d", s$n %||% 0L)),
-        tags$li(sprintf("趨近 %d 次（%s）· 遠離 %d 次（%s）· 持平 %d 次（%s）",
-                        s$n_toward %||% 0L, p_t,
-                        s$n_away %||% 0L, p_a,
-                        s$n_flat %||% 0L, p_f)),
+        tags$li(sprintf("之上 %d 次（%s）· 之下 %d 次（%s）· 持平 %d 次（%s）",
+                        s$n_above %||% 0L, p_ab,
+                        s$n_below %||% 0L, p_be,
+                        s$n_flat_vs %||% 0L, p_fl)),
         tags$li(s$note %||% "")
       )
     )
@@ -6772,9 +6772,8 @@ server <- function(input, output, session) {
       當期股價 = round(pp$price, 2),
       當期FV = round(pp$fair_value, 2),
       下期股價 = round(pp$price_next, 2),
-      當期距離 = round(pp$dist, 2),
-      下期距離 = round(pp$dist_next, 2),
-      結果 = pp$outcome,
+      `P下一期−FV` = round(pp$price_next - pp$fair_value, 2),
+      相對FV = pp$vs_fv,
       stringsAsFactors = FALSE,
       check.names = FALSE
     )
@@ -6788,18 +6787,20 @@ server <- function(input, output, session) {
       )))
     if (is.null(s) || is.null(s$pairs) || nrow(s$pairs) < 1) return(empty)
     pp <- s$pairs
-    cols <- ifelse(pp$outcome == "趨近", "#00a65a",
-            ifelse(pp$outcome == "遠離", "#dd4b39", "#999"))
+    pp$gap <- pp$price_next - pp$fair_value
+    cols <- ifelse(pp$vs_fv == "之上", "#00a65a",
+            ifelse(pp$vs_fv == "之下", "#dd4b39", "#999"))
     plotly::plot_ly(
-      pp, x = ~Date, y = ~delta_dist, type = "bar",
-      text = ~paste0(Date, " → ", Date_next, "<br>", outcome,
-                     "<br>Δ距離 ", round(delta_dist, 2)),
+      pp, x = ~Date, y = ~gap, type = "bar",
+      text = ~paste0(Date, " → ", Date_next, "<br>", vs_fv,
+                     "<br>P下一期 ", round(price_next, 2),
+                     " · FV ", round(fair_value, 2)),
       hoverinfo = "text",
       marker = list(color = cols)
     ) %>%
       plotly::layout(
         xaxis = list(title = "再平衡日"),
-        yaxis = list(title = "Δ距離 = |P下一期−FV| − |P−FV|"),
+        yaxis = list(title = "P下一期 − FV（正＝之上）"),
         margin = list(l = 50, r = 20, t = 20, b = 40),
         shapes = list(list(
           type = "line", x0 = min(pp$Date), x1 = max(pp$Date), y0 = 0, y1 = 0,
@@ -6989,8 +6990,8 @@ server <- function(input, output, session) {
           "股數依目前市值÷股價對齊報價股數後再算合理價（倍率固定套用各財年）。"
         ),
         tags$li(
-          tags$b("趨近／遠離驗證："),
-          "以當期 FV_t 為錨，比較 |P_t−FV_t| 與 |P_{t+1}−FV_t|；統計選定期間內趨近／遠離次數與頻率（非報酬期望）。"
+          tags$b("P下一期 vs FV："),
+          "以當期 FV_t 為錨，統計選定期間內 P_{t+1} 落在估值之上／之下／持平的次數與頻率（非報酬期望）。"
         )
       ),
       tags$h5(tags$b("二、資料來源")),
