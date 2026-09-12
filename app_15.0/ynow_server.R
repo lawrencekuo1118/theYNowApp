@@ -4370,7 +4370,7 @@ server <- function(input, output, session) {
       }
     }
     v0 <- .ev()
-    validate(need(
+    shiny::validate(shiny::need(
       is.finite(v0),
       sprintf("基準公式尚未就緒：請確認終值 g < %s 與預測年數。", disc_lab)
     ))
@@ -5669,9 +5669,10 @@ server <- function(input, output, session) {
   })
 
   bt_hfv_base <- reactive({
-    req(current_ticker())
+    tk <- current_ticker()
+    if (is.null(tk) || !nzchar(as.character(tk)[1])) return(NULL)
     tryCatch(
-      fetch_hfv_price_frame(current_ticker(), bench_ticker = active_bench_ticker(), years = 5),
+      fetch_hfv_price_frame(tk, bench_ticker = active_bench_ticker(), years = 5),
       error = function(e) NULL
     )
   })
@@ -5679,6 +5680,9 @@ server <- function(input, output, session) {
   observeEvent(current_ticker(), {
     bt_fv_visible(FALSE)
     bt_hfv_fv(NULL)
+    bt_result(NULL)
+    bt_validation(NULL)
+    bt_run_msg("")
     was_applying <- isTRUE(bt_applying_params())
     bt_applying_params(TRUE)
     updateCheckboxGroupInput(session, "bt_fv_models", selected = character(0))
@@ -6319,123 +6323,142 @@ server <- function(input, output, session) {
   })
 
   output$bt_hfv_timeline <- renderPlotly({
-    src <- .bt_hfv_chart_source()
-    validate(need(!is.null(src) && !is.null(src$ed) && nrow(src$ed) > 0,
-                  "請先搜尋股票以載入歷史股價"))
-    ed <- src$ed
-    has_bench <- "Bench" %in% names(ed)
+    .hfv_empty <- function(msg) {
+      plotly::plotly_empty() %>%
+        plotly::layout(annotations = list(list(
+          text = as.character(msg)[1],
+          showarrow = FALSE,
+          font = list(size = 14, color = "#888")
+        )))
+    }
+    tryCatch({
+      src <- .bt_hfv_chart_source()
+      if (is.null(src) || is.null(src$ed) || !is.data.frame(src$ed) || nrow(src$ed) < 1) {
+        return(.hfv_empty("請先搜尋股票以載入歷史股價"))
+      }
+      ed <- src$ed
+      if (!("Date" %in% names(ed)) || !("Close" %in% names(ed))) {
+        return(.hfv_empty("歷史股價欄位不足，請重新搜尋"))
+      }
+      has_bench <- "Bench" %in% names(ed)
 
-    p <- plotly::plot_ly()
-    if (isTRUE(src$show_fv)) {
-      specs <- .bt_fv_model_specs()
-      for (m in .bt_raw_fv_models()) {
-        sp <- specs[[m]]
-        if (is.null(sp)) next
-        col <- sp$col
-        if (!col %in% names(ed) || !any(is.finite(ed[[col]]))) next
-        p <- plotly::add_trace(
-          p, x = ed$Date, y = ed[[col]], name = sp$label,
-          type = "scatter", mode = "lines", inherit = FALSE,
-          line = list(color = sp$color, width = 2),
-          hovertemplate = paste0(sp$label, ": %{y:$.2f}<extra></extra>")
-        )
-      }
-    }
-    p <- plotly::add_trace(
-      p, x = ed$Date, y = ed$Close, name = "實際股價",
-      type = "scatter", mode = "lines", inherit = FALSE,
-      line = list(color = "#2c3e50", width = 2),
-      hovertemplate = "實際股價: %{y:$.2f}<extra></extra>"
-    )
-    show_bench <- !isFALSE(input$bt_hfv_show_bench) && has_bench && any(is.finite(ed$Bench))
-    if (show_bench) {
-      p <- plotly::add_trace(
-        p, x = ed$Date, y = ed$Bench, name = "大盤",
-        type = "scatter", mode = "lines", inherit = FALSE,
-        line = list(color = "#7f8c8d", width = 1.6, dash = "dot"),
-        yaxis = "y2",
-        hovertemplate = "大盤: %{y:$.2f}<extra></extra>"
-      )
-    }
-    vd <- src$vd
-    if (isTRUE(src$show_fv) && !is.null(vd) && nrow(vd) > 0) {
-      models <- .bt_raw_fv_models()
-      marker_col <- if (length(models) == 1L) {
-        switch(models[1],
-          "dcf" = "fv_dcf", "ddm" = "fv_ddm", "ri" = "fv_ri", "pb" = "fv_pb",
-          "fair_value")
-      } else {
-        "fair_value"
-      }
-      if (marker_col %in% names(vd) && any(is.finite(vd[[marker_col]]))) {
-        fmt_h <- function(x, digits = 1, pct = FALSE) {
-          x <- suppressWarnings(as.numeric(x))
-          out <- ifelse(is.finite(x),
-                        if (pct) sprintf(paste0("%.", digits, "f%%"), 100 * x)
-                        else sprintf(paste0("%.", digits, "f"), x),
-                        "N/A")
-          out
+      p <- plotly::plot_ly()
+      if (isTRUE(src$show_fv)) {
+        specs <- .bt_fv_model_specs()
+        for (m in .bt_raw_fv_models()) {
+          sp <- specs[[m]]
+          if (is.null(sp)) next
+          col <- sp$col
+          if (!col %in% names(ed) || !any(is.finite(ed[[col]]))) next
+          p <- plotly::add_trace(
+            p, x = ed$Date, y = ed[[col]], name = sp$label,
+            type = "scatter", mode = "lines", inherit = FALSE,
+            line = list(color = sp$color, width = 2),
+            hovertemplate = paste0(sp$label, ": %{y:$.2f}<extra></extra>")
+          )
         }
-        win <- if ("rm_window" %in% names(vd)) as.character(vd$rm_window) else rep("—", nrow(vd))
-        win[!nzchar(win) | is.na(win)] <- "—"
-        ht <- paste0(
-          "再平衡 ", format(as.Date(vd$Date), "%Y-%m-%d"),
-          "<br>FV ", fmt_h(vd[[marker_col]], 2),
-          if ("rolling_beta" %in% names(vd)) paste0("<br>β ", fmt_h(vd$rolling_beta, 2)) else "",
-          if ("rf_pit" %in% names(vd)) paste0("<br>Rf ", fmt_h(vd$rf_pit, 1, pct = TRUE)) else "",
-          if ("rm_pit" %in% names(vd)) paste0("<br>Rm ", fmt_h(vd$rm_pit, 1, pct = TRUE), " (", win, ")") else "",
-          if ("we_pit" %in% names(vd)) paste0("<br>We ", fmt_h(vd$we_pit, 0, pct = TRUE)) else ""
-        )
+      }
+      p <- plotly::add_trace(
+        p, x = ed$Date, y = ed$Close, name = "實際股價",
+        type = "scatter", mode = "lines", inherit = FALSE,
+        line = list(color = "#2c3e50", width = 2),
+        hovertemplate = "實際股價: %{y:$.2f}<extra></extra>"
+      )
+      show_bench <- !isFALSE(input$bt_hfv_show_bench) && has_bench && any(is.finite(ed$Bench))
+      if (show_bench) {
         p <- plotly::add_trace(
-          p,
-          x = vd$Date,
-          y = vd[[marker_col]],
-          name = "季再平衡 FV",
-          type = "scatter",
-          mode = "markers",
-          inherit = FALSE,
-          marker = list(color = "#e74c3c", size = 7, symbol = "diamond"),
-          text = ht,
-          hovertemplate = "%{text}<extra></extra>"
+          p, x = ed$Date, y = ed$Bench, name = "大盤",
+          type = "scatter", mode = "lines", inherit = FALSE,
+          line = list(color = "#7f8c8d", width = 1.6, dash = "dot"),
+          yaxis = "y2",
+          hovertemplate = "大盤: %{y:$.2f}<extra></extra>"
         )
       }
-    }
-    title_txt <- if (isTRUE(src$show_fv)) {
-      "折現比較（合理價 vs 實際股價）"
-    } else if (show_bench) {
-      "折現比較（實際股價 vs 大盤）"
-    } else {
-      "折現比較（實際股價）"
-    }
-    y1 <- list(
-      title = paste0("每股（", money_label(quote_currency()), " · 報價幣，未換算）"),
-      tickprefix = money_prefix(quote_currency()), side = "left"
-    )
-    if (show_bench) {
-      plotly::layout(
-        p,
-        title = list(text = title_txt, font = list(size = 14)),
-        legend = list(orientation = "h", y = -0.18),
-        yaxis = y1,
-        yaxis2 = list(
-          title = "大盤價格", overlaying = "y", side = "right",
-          showgrid = FALSE, tickprefix = money_prefix(quote_currency())
-        ),
-        xaxis = list(title = NULL),
-        margin = list(l = 60, r = 60, t = 40, b = 60),
-        hovermode = "x unified"
+      vd <- src$vd
+      if (isTRUE(src$show_fv) && !is.null(vd) && is.data.frame(vd) && nrow(vd) > 0) {
+        models <- .bt_raw_fv_models()
+        marker_col <- if (length(models) == 1L) {
+          switch(models[1],
+            "dcf" = "fv_dcf", "ddm" = "fv_ddm", "ri" = "fv_ri", "pb" = "fv_pb",
+            "fair_value")
+        } else {
+          "fair_value"
+        }
+        if (marker_col %in% names(vd) && any(is.finite(vd[[marker_col]]))) {
+          fmt_h <- function(x, digits = 1, pct = FALSE) {
+            x <- suppressWarnings(as.numeric(x))
+            out <- ifelse(is.finite(x),
+                          if (pct) sprintf(paste0("%.", digits, "f%%"), 100 * x)
+                          else sprintf(paste0("%.", digits, "f"), x),
+                          "N/A")
+            as.character(out)
+          }
+          n_vd <- nrow(vd)
+          win <- if ("rm_window" %in% names(vd)) as.character(vd$rm_window) else rep("—", n_vd)
+          if (length(win) != n_vd) win <- rep(as.character(win[1] %||% "—"), n_vd)
+          win[!nzchar(win) | is.na(win)] <- "—"
+          ht <- paste0(
+            "再平衡 ", format(as.Date(vd$Date), "%Y-%m-%d"),
+            "<br>FV ", fmt_h(vd[[marker_col]], 2),
+            if ("rolling_beta" %in% names(vd)) paste0("<br>β ", fmt_h(vd$rolling_beta, 2)) else "",
+            if ("rf_pit" %in% names(vd)) paste0("<br>Rf ", fmt_h(vd$rf_pit, 1, pct = TRUE)) else "",
+            if ("rm_pit" %in% names(vd)) paste0("<br>Rm ", fmt_h(vd$rm_pit, 1, pct = TRUE), " (", win, ")") else "",
+            if ("we_pit" %in% names(vd)) paste0("<br>We ", fmt_h(vd$we_pit, 0, pct = TRUE)) else ""
+          )
+          p <- plotly::add_trace(
+            p,
+            x = vd$Date,
+            y = vd[[marker_col]],
+            name = "季再平衡 FV",
+            type = "scatter",
+            mode = "markers",
+            inherit = FALSE,
+            marker = list(color = "#e74c3c", size = 7, symbol = "diamond"),
+            text = ht,
+            hovertemplate = "%{text}<extra></extra>"
+          )
+        }
+      }
+      title_txt <- if (isTRUE(src$show_fv)) {
+        "折現比較（合理價 vs 實際股價）"
+      } else if (show_bench) {
+        "折現比較（實際股價 vs 大盤）"
+      } else {
+        "折現比較（實際股價）"
+      }
+      qc <- tryCatch(quote_currency(), error = function(e) "USD")
+      y1 <- list(
+        title = paste0("每股（", money_label(qc), " · 報價幣，未換算）"),
+        tickprefix = money_prefix(qc), side = "left"
       )
-    } else {
-      plotly::layout(
-        p,
-        title = list(text = title_txt, font = list(size = 14)),
-        legend = list(orientation = "h", y = -0.18),
-        yaxis = y1,
-        xaxis = list(title = NULL),
-        margin = list(l = 60, r = 40, t = 40, b = 60),
-        hovermode = "x unified"
-      )
-    }
+      if (show_bench) {
+        plotly::layout(
+          p,
+          title = list(text = title_txt, font = list(size = 14)),
+          legend = list(orientation = "h", y = -0.18),
+          yaxis = y1,
+          yaxis2 = list(
+            title = "大盤價格", overlaying = "y", side = "right",
+            showgrid = FALSE, tickprefix = money_prefix(qc)
+          ),
+          xaxis = list(title = NULL),
+          margin = list(l = 60, r = 60, t = 40, b = 60),
+          hovermode = "x unified"
+        )
+      } else {
+        plotly::layout(
+          p,
+          title = list(text = title_txt, font = list(size = 14)),
+          legend = list(orientation = "h", y = -0.18),
+          yaxis = y1,
+          xaxis = list(title = NULL),
+          margin = list(l = 60, r = 40, t = 40, b = 60),
+          hovermode = "x unified"
+        )
+      }
+    }, error = function(e) {
+      .hfv_empty(paste0("折現比較暫無法繪製：", conditionMessage(e)))
+    })
   })
 
   output$bt_exposure_stats <- renderUI({
@@ -6462,7 +6485,7 @@ server <- function(input, output, session) {
 
   output$bt_exposure_plot <- renderPlotly({
     res <- bt_result()
-    validate(need(!is.null(res) && !is.null(res$equity_df), "請先回測"))
+    shiny::validate(shiny::need(!is.null(res) && !is.null(res$equity_df), "請先回測"))
     df <- res$equity_df
     df_long <- rbind(
       data.frame(Date = df$Date, Exp = df$Exp_A, Series = "基本面部位 Exp_A", stringsAsFactors = FALSE),
@@ -6632,10 +6655,10 @@ server <- function(input, output, session) {
 
   output$bt_equity_plot <- renderPlotly({
     view <- bt_nav_view()
-    validate(need(!is.null(view) && !is.null(view$equity_df), "請先成功執行回測"))
+    shiny::validate(shiny::need(!is.null(view) && !is.null(view$equity_df), "請先成功執行回測"))
     df_plot <- view$equity_df
-    validate(need(nrow(df_plot) > 1, "此累積區間沒有足夠的交易日"))
-    validate(need("Trade_A" %in% names(df_plot), "缺少基本面策略淨值 (Trade_A)"))
+    shiny::validate(shiny::need(nrow(df_plot) > 1, "此累積區間沒有足夠的交易日"))
+    shiny::validate(shiny::need("Trade_A" %in% names(df_plot), "缺少基本面策略淨值 (Trade_A)"))
     eq_b <- if ("Trade_B" %in% names(df_plot)) df_plot$Trade_B else df_plot$Model_B
     df_long <- rbind(
       data.frame(Date = df_plot$Date, Value = df_plot$Trade_A, Series = "基本面策略淨值", stringsAsFactors = FALSE),
@@ -6674,7 +6697,7 @@ server <- function(input, output, session) {
 
   output$bt_mos_table <- renderTable({
     v <- bt_validation()
-    validate(need(!is.null(v) && !is.null(v$mos) && nrow(v$mos) > 0, "尚無 MOS 分組結果"))
+    shiny::validate(shiny::need(!is.null(v) && !is.null(v$mos) && nrow(v$mos) > 0, "尚無 MOS 分組結果"))
     tab <- v$mos
     data.frame(
       MOS分組 = tab$bucket,
@@ -6787,7 +6810,7 @@ server <- function(input, output, session) {
 
   output$bt_fv_conv_table <- renderTable({
     s <- bt_fv_conv()
-    validate(need(!is.null(s) && !is.null(s$pairs) && nrow(s$pairs) > 0, "選定期間內無配對資料"))
+    shiny::validate(shiny::need(!is.null(s) && !is.null(s$pairs) && nrow(s$pairs) > 0, "選定期間內無配對資料"))
     pp <- s$pairs
     gapv <- if ("gap_next" %in% names(pp)) pp$gap_next else (pp$price_next - pp$fair_value) / pp$fair_value
     data.frame(
@@ -6844,7 +6867,7 @@ server <- function(input, output, session) {
 
   output$bt_fv_table <- renderTable({
     v <- bt_validation()
-    validate(need(!is.null(v) && !is.null(v$fv) && !is.null(v$fv$table), "尚無 FV 驗證表"))
+    shiny::validate(shiny::need(!is.null(v) && !is.null(v$fv) && !is.null(v$fv$table), "尚無 FV 驗證表"))
     tab <- v$fv$table
     data.frame(
       組別 = tab$group,

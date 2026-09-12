@@ -43,6 +43,10 @@ pacman::p_load(
   memoise, cachem, TTR
 )
 
+# jsonlite masks shiny::validate after p_load order; restore Shiny's for need()/render*
+validate <- shiny::validate
+need <- shiny::need
+
 # ==========================================
 # 🐍 綁定 Python
 # ==========================================

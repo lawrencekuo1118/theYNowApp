@@ -693,7 +693,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = "The YNow App v15.01",
+    title = HTML('<span class="ynow-app-title">The YNow App v15.02</span>'),
     titleWidth = 250,
     tags$li(
       class = "dropdown ynow-market-header",
@@ -861,14 +861,22 @@ ui <- dashboardPage(
           50% { background-position: 100% 50%; }
         }
 
-        /* 標題「The YNow App v15」：閃閃發光的金色箔面
-           不可對同一元素套 filter + background-clip:text（Chromium 會整段消失） */
+        /* 標題金色箔面：漸層＋clip 只套在內層 .ynow-app-title，
+           勿對 .logo 容器同時用 filter + background-clip:text（Chromium 會整段消失），
+           也避免 AdminLTE .logo 的 background 縮寫蓋掉漸層。 */
         .main-header .logo,
         .main-header .logo:hover {
           position: relative;
           z-index: 1;
           font-weight: bold;
-          /* fallback：不支援 clip 時仍可見亮金 */
+          color: #FFD700 !important;
+          background-color: var(--ynow-ink) !important;
+          background-image: none !important;
+          filter: none !important;
+        }
+        .main-header .logo .ynow-app-title {
+          display: inline-block;
+          font-weight: bold;
           color: #FFD700 !important;
           background-color: transparent !important;
           background-image: var(--ynow-gold-gradient) !important;
@@ -881,9 +889,8 @@ ui <- dashboardPage(
           filter: none !important;
         }
         @supports not ((-webkit-background-clip: text) or (background-clip: text)) {
-          .main-header .logo,
-          .main-header .logo:hover {
-            -webkit-text-fill-color: #FFD700;
+          .main-header .logo .ynow-app-title {
+            -webkit-text-fill-color: #FFD700 !important;
             color: #FFD700 !important;
             background-image: none !important;
             text-shadow:
@@ -892,7 +899,7 @@ ui <- dashboardPage(
               0 1px 2px rgba(0, 0, 0, 0.85);
           }
         }
-        /* 美股：logo 區塊黑底改由 ::before，以免蓋掉文字漸層 */
+        /* 美股：logo 區塊黑底（容器層，不影響內層文字漸層） */
         .skin-black .main-header .logo::before {
           content: "";
           position: absolute;
@@ -943,10 +950,11 @@ ui <- dashboardPage(
           background-color: transparent !important;
           background-image: none !important;
         }
-        /* 台股 logo：保留金色漸層；僅拿掉黑底 ::before，讓國旗透出 */
+        /* 台股 logo：容器透明讓國旗透出；金色仍在內層 .ynow-app-title */
         body.ynow-market-tw .skin-black .main-header .logo,
         body.ynow-market-tw .skin-black .main-header .logo:hover {
           background-color: transparent !important;
+          background-image: none !important;
         }
         body.ynow-market-tw .skin-black .main-header .logo::before {
           display: none;
@@ -956,8 +964,11 @@ ui <- dashboardPage(
         }
         body.ynow-market-tw .main-header .logo,
         body.ynow-market-tw .main-header .logo:hover {
-          /* 勿用 filter，以免金色 clip 文字消失 */
           filter: none !important;
+        }
+        body.ynow-market-tw .main-header .logo .ynow-app-title {
+          filter: none !important;
+          text-shadow: 0 1px 3px rgba(0, 0, 0, 0.65);
         }
         body.ynow-market-tw .main-header .navbar .nav > li > a,
         body.ynow-market-tw .ynow-market-header,
@@ -3302,24 +3313,6 @@ ui <- dashboardPage(
               withMathJax(),
               h2("量化回測實驗室 (Backtest Zone)"),
 
-              # 0) 參數盤點（Live vs Hist PIT）
-              fluidRow(
-                box(
-                  title = tagList(icon("table"), "美股估值復盤參數盤點（Live vs Hist PIT）"),
-                  width = 12, status = "primary", solidHeader = TRUE,
-                  collapsible = TRUE, collapsed = TRUE,
-                  tags$p(
-                    style = "font-size:12.5px;color:#444;line-height:1.55;",
-                    "歷史點理論估值使用當時可得資料重建；",
-                    tags$b("hist DCF 為簡化 Gordon 幾何路徑"),
-                    "（FCF0×(1+g)^t），",
-                    tags$b("不是"),
-                    " Live DCF 分頁的營收→NOPAT／CapEx／ΔNWC 預測表。"
-                  ),
-                  tags$div(style = "overflow-x:auto;", tableOutput("bt_param_inventory"))
-                )
-              ),
-
               # 1) 折現比較圖置頂：合理價 vs 實際股價 vs 大盤
               fluidRow(
                 box(
@@ -3675,6 +3668,24 @@ ui <- dashboardPage(
                   width = 12, status = "primary", solidHeader = TRUE,
                   collapsible = TRUE, collapsed = TRUE,
                   uiOutput("bt_methodology_notes")
+                )
+              ),
+
+              # 7) 參數盤點（Live vs Hist PIT）— 置於本頁最下方
+              fluidRow(
+                box(
+                  title = tagList(icon("table"), "美股估值復盤參數盤點（Live vs Hist PIT）"),
+                  width = 12, status = "primary", solidHeader = TRUE,
+                  collapsible = TRUE, collapsed = TRUE,
+                  tags$p(
+                    style = "font-size:12.5px;color:#444;line-height:1.55;",
+                    "歷史點理論估值使用當時可得資料重建；",
+                    tags$b("hist DCF 優先 NOPAT／D&A／CapEx／ΔNWC 邊際路徑"),
+                    "，否則退回 Gordon 幾何 ", tags$code("FCF0×(1+g)^t"), "；",
+                    tags$b("不是"),
+                    " Live DCF 分頁的營收→NOPAT／CapEx／ΔNWC 預測表。"
+                  ),
+                  tags$div(style = "overflow-x:auto;", tableOutput("bt_param_inventory"))
                 )
               )
       ),
