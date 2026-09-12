@@ -7,10 +7,14 @@
 #   Rd/tax stay session. Strategy FV = mean of currently checked models.
 # Tip (latest) FV point: current APP tab assumptions + session Rm via overlay.
 # Growth carry between rebalances uses APP_DEFAULTS SGR (not live session SGR).
-# - No warehouse: every rebalance date reconstructs fair values
-#   from annual financials whose fiscal year <= calendar_year - 1.
+# - No warehouse: every rebalance date reconstructs fair values from annuals
+#   that pass (1) fiscal year <= calendar_year - 1 and (2) period_end + filing
+#   lag (default 90d) <= as_of — mitigates “FY not yet filed” look-ahead.
+#   Yahoo restatements remain; true as-filed SEC EDGAR is still Phase 2+.
 # Growth / Rd / tax / P/B on historical points use then-known fund fields
 #   (fallback APP_DEFAULTS / session); Ke/WACC are PIT.
+# Hist DCF prefers NOPAT/D&A/CapEx/ΔNWC margin path when annual rows exist;
+#   else falls back to geometric Free Cash Flow Gordon.
 # - Strategy fair_value: mean of checked, finite DCF/DDM/RI/P/B (not a hidden primary).
 # - Model_A: normalized PIT fair-value INDEX (參數高原／內部用；不是淨值圖曲線).
 # - Trade_A (基本面策略淨值): Exp_A × 日報酬；Exp_A 來自 MOS＋Great Filter.
@@ -41,15 +45,28 @@ if (!exists(".ynow_log", mode = "function")) {
   if (is.null(x) || length(x) < 1 || (length(x) == 1 && is.na(x))) y else x
 }
 
-.parse_period_year <- function(col) {
+.parse_period_end <- function(col) {
   d <- suppressWarnings(as.Date(col, format = "%m/%d/%Y"))
   if (is.na(d)) d <- suppressWarnings(as.Date(col))
   if (is.na(d)) {
-    y <- suppressWarnings(as.integer(sub(".*?(\\d{4}).*", "\\1", col)))
+    y <- suppressWarnings(as.integer(sub(".*?(\\d{4}).*", "\\1", as.character(col))))
+    if (is.finite(y)) return(as.Date(sprintf("%d-12-31", y)))
+    return(as.Date(NA))
+  }
+  d
+}
+
+.parse_period_year <- function(col) {
+  d <- .parse_period_end(col)
+  if (is.na(d)) {
+    y <- suppressWarnings(as.integer(sub(".*?(\\d{4}).*", "\\1", as.character(col))))
     return(y)
   }
   as.integer(format(d, "%Y"))
 }
+
+# US annual filing availability lag after fiscal period end (calendar days).
+.BT_FILING_LAG_DAYS <- 90L
 
 .pick_statement_val <- function(df, patterns, col) {
   if (is.null(df) || !is.data.frame(df) || nrow(df) == 0) return(NA_real_)
@@ -134,13 +151,14 @@ if (!exists(".ynow_log", mode = "function")) {
 
 # ---------- multi-model fair-value helpers ----------
 
-#' Historical / PIT DCF (simplified Gordon multi-year FCFF).
-#' Geometric path FCFF_t = fcf0 × (1+g_explicit)^t, single WACC + Gordon TV.
-#' This is NOT the live DCF revenue×NOPAT/CapEx/ΔNWC table and has no two-stage WACC.
+#' Historical / PIT DCF.
+#' Prefer Live-aligned unit FCFF path (NOPAT+D&A−CapEx−ΔNWC margins × revenue)
+#' when margins are finite; else geometric FCF0 Gordon (Yahoo Free Cash Flow).
 estimate_hist_dcf <- function(fcf0, cash, debt, shares,
                               wacc, sgr, n_years = 5, g_explicit = NULL,
-                              claim = "fcff", ke = NULL, rd = 0, tax = 0.21) {
-  fcf0 <- .safe_num(fcf0, NA_real_)
+                              claim = "fcff", ke = NULL, rd = 0, tax = 0.21,
+                              revenue = NULL, nopat_m = NULL, depre_m = NULL,
+                              capex_m = NULL, nwc_m = NULL) {
   shares <- .safe_num(shares, NA_real_)
   wacc <- .safe_num(wacc, NA_real_)
   sgr <- .safe_num(sgr, NA_real_)
@@ -152,9 +170,47 @@ estimate_hist_dcf <- function(fcf0, cash, debt, shares,
   }
   cash <- .safe_num(cash, 0)
   debt <- .safe_num(debt, 0)
-  if (is.na(fcf0) || is.na(shares) || shares <= 1) return(NA_real_)
+  if (is.na(shares) || shares <= 1) return(NA_real_)
   if (n_years < 1L) n_years <- 5L
   if (!is.finite(g_explicit)) g_explicit <- sgr
+
+  # --- Margin path (closer to Dashboard FCFF table) ---
+  rev0 <- .safe_num(revenue, NA_real_)
+  nm <- .safe_num(nopat_m, NA_real_)
+  dm <- .safe_num(depre_m, 0)
+  cm <- .safe_num(capex_m, 0)
+  wm <- .safe_num(nwc_m, 0)
+  use_margins <- is.finite(rev0) && rev0 > 0 && is.finite(nm) &&
+    exists(".dcf_unit_fcff_path", mode = "function") &&
+    exists(".dcf_formula_ev_from_fcff", mode = "function")
+
+  if (isTRUE(use_margins) && !identical(as.character(claim)[1], "fcfe")) {
+    if (is.na(wacc) || wacc <= 0) return(NA_real_)
+    if (is.na(sgr)) sgr <- max(0, wacc - 0.03)
+    if (sgr >= wacc) return(NA_real_)
+    unit <- tryCatch(
+      .dcf_unit_fcff_path(
+        n_years, g_near = g_explicit, nopat_m = nm, depre_m = dm,
+        capex_m = cm, nwc_m = wm, two_stage = FALSE
+      ),
+      error = function(e) numeric(0)
+    )
+    if (length(unit) == n_years && all(is.finite(unit))) {
+      fcffs <- unit * rev0
+      ev <- tryCatch(
+        .dcf_formula_ev_from_fcff(fcffs, r1 = wacc, g_term = sgr),
+        error = function(e) NA_real_
+      )
+      if (is.finite(ev)) {
+        fv <- (ev + cash - debt) / shares
+        if (is.finite(fv) && fv > 0) return(fv)
+      }
+    }
+  }
+
+  # --- Fallback: geometric Free Cash Flow ---
+  fcf0 <- .safe_num(fcf0, NA_real_)
+  if (is.na(fcf0)) return(NA_real_)
   fcfs <- fcf0 * (1 + g_explicit) ^ seq_len(n_years)
 
   if (identical(as.character(claim)[1], "fcfe")) {
@@ -564,7 +620,12 @@ reconstruct_fair_value_pit <- function(fund_row, price, model_params,
     },
     ke = ke,
     rd = rd_use,
-    tax = tax_use
+    tax = tax_use,
+    revenue = .safe_num(fund_row$revenue, NA_real_),
+    nopat_m = .safe_num(fund_row$nopat_m, NA_real_),
+    depre_m = .safe_num(fund_row$depre_m, NA_real_),
+    capex_m = .safe_num(fund_row$capex_m, NA_real_),
+    nwc_m = .safe_num(fund_row$nwc_m, 0)
   )
   fv_ddm <- if (is.finite(dps) && dps > 0) {
     if (isTRUE(use_session_assumptions) &&
@@ -706,11 +767,15 @@ reconstruct_fair_value_pit <- function(fund_row, price, model_params,
 build_annual_fundamentals <- function(d_is, d_bs, d_cf) {
   empty <- data.frame(
     year = integer(0),
+    period_end = as.Date(character()),
     net_margin = numeric(0), rev_growth = numeric(0), eps_growth = numeric(0),
     fcf_growth = numeric(0),
-    fcf = numeric(0), cash = numeric(0), debt = numeric(0), shares = numeric(0),
+    revenue = numeric(0), fcf = numeric(0), cash = numeric(0), debt = numeric(0),
+    shares = numeric(0),
     dividends_paid = numeric(0), equity_book = numeric(0), ni = numeric(0),
     interest_expense = numeric(0), tax_expense = numeric(0), pretax_income = numeric(0),
+    da = numeric(0), capex = numeric(0), delta_nwc = numeric(0),
+    nopat_m = numeric(0), depre_m = numeric(0), capex_m = numeric(0), nwc_m = numeric(0),
     stringsAsFactors = FALSE
   )
   if (is.null(d_is) || !is.data.frame(d_is) || ncol(d_is) < 2) return(empty)
@@ -720,15 +785,26 @@ build_annual_fundamentals <- function(d_is, d_bs, d_cf) {
   if (length(period_cols) == 0) return(empty)
 
   years <- vapply(period_cols, .parse_period_year, integer(1))
+  period_ends <- as.Date(vapply(period_cols, function(c) {
+    as.character(.parse_period_end(c))
+  }, character(1)))
   ok <- !is.na(years)
   period_cols <- period_cols[ok]
   years <- years[ok]
+  period_ends <- period_ends[ok]
   if (length(years) == 0) return(empty)
 
   ni_pat <- .get_pattern("NET_INCOME_PATTERNS", .NET_INCOME_PATTERNS)
   eq_pat <- .get_pattern("EQUITY_PATTERNS",     .EQUITY_PATTERNS)
   sh_pat <- .get_pattern("SHARE_PATTERNS",      .SHARE_PATTERNS)
   int_pat <- .get_pattern("INTEREST_EXPENSE_PATTERNS", .INTEREST_PATTERNS)
+  da_pat <- if (exists("DA_PATTERNS")) DA_PATTERNS else c(
+    "^Depreciation And Amortization$", "^Depreciation$"
+  )
+  capex_pat <- c("^Capital Expenditure$", "^Capital Expenditures$", "Capital Expenditure")
+  nwc_pat <- if (exists("NWC_CHANGE_PATTERNS")) NWC_CHANGE_PATTERNS else c(
+    "^Change In Working Capital$", "Change In Working Capital"
+  )
 
   rev <- vapply(period_cols, function(c) .pick_statement_val(d_is, c("Total Revenue", "^Revenue$"), c), numeric(1))
   ni  <- vapply(period_cols, function(c) .pick_statement_val(d_is, ni_pat, c), numeric(1))
@@ -740,6 +816,28 @@ build_annual_fundamentals <- function(d_is, d_bs, d_cf) {
     col <- .find_col_for_year(d_cf, years[i], prefer_cols = period_cols[i])
     if (is.na(col)) return(NA_real_)
     .pick_statement_val(d_cf, c("^Free Cash Flow$"), col)
+  }, numeric(1))
+
+  da <- vapply(seq_along(period_cols), function(i) {
+    col <- .find_col_for_year(d_cf, years[i], prefer_cols = period_cols[i])
+    if (is.na(col)) col <- .find_col_for_year(d_is, years[i], prefer_cols = period_cols[i])
+    if (is.na(col)) return(NA_real_)
+    v <- .pick_statement_val(d_cf, da_pat, col)
+    if (is.na(v)) v <- .pick_statement_val(d_is, da_pat, col)
+    if (is.finite(v)) abs(v) else NA_real_
+  }, numeric(1))
+
+  capex <- vapply(seq_along(period_cols), function(i) {
+    col <- .find_col_for_year(d_cf, years[i], prefer_cols = period_cols[i])
+    if (is.na(col)) return(NA_real_)
+    v <- .pick_statement_val(d_cf, capex_pat, col)
+    if (is.finite(v)) abs(v) else NA_real_
+  }, numeric(1))
+
+  delta_nwc <- vapply(seq_along(period_cols), function(i) {
+    col <- .find_col_for_year(d_cf, years[i], prefer_cols = period_cols[i])
+    if (is.na(col)) return(NA_real_)
+    .pick_statement_val(d_cf, nwc_pat, col)
   }, numeric(1))
 
   divp <- vapply(seq_along(period_cols), function(i) {
@@ -799,13 +897,29 @@ build_annual_fundamentals <- function(d_is, d_bs, d_cf) {
   }
 
   npm <- ifelse(!is.na(ni) & !is.na(rev) & abs(rev) > 0, ni / rev * 100, NA_real_)
+  nopat_m <- ifelse(is.finite(rev) & abs(rev) > 0 & is.finite(ni), ni / rev, NA_real_)
+  depre_m <- ifelse(is.finite(rev) & abs(rev) > 0 & is.finite(da), da / abs(rev), NA_real_)
+  capex_m <- ifelse(is.finite(rev) & abs(rev) > 0 & is.finite(capex), capex / abs(rev), NA_real_)
+  # ΔNWC / ΔRevenue when prior revenue available (Yahoo change is often signed cash-flow style)
+  nwc_m <- rep(NA_real_, length(rev))
+  if (length(rev) >= 2) {
+    for (i in seq_len(length(rev) - 1)) {
+      drev <- rev[i] - rev[i + 1]
+      if (is.finite(delta_nwc[i]) && is.finite(drev) && abs(drev) > 0) {
+        nwc_m[i] <- delta_nwc[i] / drev
+      }
+    }
+  }
+  nwc_m[!is.finite(nwc_m)] <- 0
 
   data.frame(
     year = years,
+    period_end = period_ends,
     net_margin = npm,
     rev_growth = rev_g,
     eps_growth = eps_g,
     fcf_growth = fcf_g,
+    revenue = rev,
     fcf = fcf,
     cash = cash,
     debt = debt,
@@ -816,6 +930,13 @@ build_annual_fundamentals <- function(d_is, d_bs, d_cf) {
     interest_expense = interest,
     tax_expense = tax_e,
     pretax_income = pretax,
+    da = da,
+    capex = capex,
+    delta_nwc = delta_nwc,
+    nopat_m = nopat_m,
+    depre_m = depre_m,
+    capex_m = capex_m,
+    nwc_m = nwc_m,
     stringsAsFactors = FALSE
   )
 }
@@ -1387,28 +1508,46 @@ evaluate_holding_filter <- function(metrics, thresholds) {
 
 # ---------- fundamentals lookup for a given trading date ----------
 
-.lookup_fund_at <- function(fund, as_of_date) {
+.lookup_fund_at <- function(fund, as_of_date, filing_lag_days = .BT_FILING_LAG_DAYS) {
   y <- as.integer(format(as_of_date, "%Y"))
+  as_of_date <- as.Date(as_of_date)[1]
+  lag_d <- as.integer(.safe_num(filing_lag_days, .BT_FILING_LAG_DAYS))
+  if (!is.finite(lag_d) || lag_d < 0L) lag_d <- 90L
   empty_row <- list(
     fund_year = NA_integer_,
+    period_end = as.Date(NA),
     net_margin = NA_real_, rev_growth = NA_real_, eps_growth = NA_real_,
     fcf_growth = NA_real_, g_pit = NA_real_,
-    fcf = NA_real_, cash = 0, debt = 0, shares = NA_real_,
+    revenue = NA_real_, fcf = NA_real_, cash = 0, debt = 0, shares = NA_real_,
     dividends_paid = NA_real_, equity_book = NA_real_, ni = NA_real_,
     interest_expense = NA_real_, tax_expense = NA_real_, pretax_income = NA_real_,
-    cv_fcf = NA_real_
+    nopat_m = NA_real_, depre_m = NA_real_, capex_m = NA_real_, nwc_m = NA_real_,
+    cv_fcf = NA_real_,
+    available_by = as.Date(NA),
+    restated_note = "Yahoo annuals may be restated (look-ahead vs as-filed)."
   )
   if (is.null(fund) || nrow(fund) == 0) return(empty_row)
+
+  # Floor: fiscal year already ended in a prior calendar year
   cand <- fund[fund$year <= (y - 1), , drop = FALSE]
   if (nrow(cand) == 0) cand <- fund[fund$year <= y, , drop = FALSE]
   if (nrow(cand) == 0) return(empty_row)
+
+  # Filing lag: period_end + lag must be on/before as_of (when period_end known)
+  if ("period_end" %in% names(cand)) {
+    pe <- as.Date(cand$period_end)
+    avail <- pe + lag_d
+    ok_lag <- is.na(pe) | (!is.na(avail) & avail <= as_of_date)
+    cand2 <- cand[ok_lag, , drop = FALSE]
+    if (nrow(cand2) > 0) cand <- cand2
+  }
+
   cand <- cand[order(-cand$year), , drop = FALSE]
   row1 <- cand[1, ]
   fcf_hist <- as.numeric(na.omit(cand$fcf[seq_len(min(4, nrow(cand)))]))
   cv <- if (length(fcf_hist) >= 2) {
     stats::sd(fcf_hist) / max(abs(mean(fcf_hist)), 1e-9) * 100
   } else NA_real_
-  # Trailing growth available as-of this fund year (no look-ahead past row1)
   hist_upto <- cand[cand$year <= row1$year, , drop = FALSE]
   g_parts <- c(
     as.numeric(hist_upto$rev_growth),
@@ -1419,13 +1558,16 @@ evaluate_holding_filter <- function(metrics, thresholds) {
   g_pit <- if (length(g_parts) >= 1) {
     mean(tail(g_parts, 6L), na.rm = TRUE) / 100
   } else NA_real_
+  pe1 <- if ("period_end" %in% names(row1)) as.Date(row1$period_end)[1] else as.Date(NA)
   list(
     fund_year = row1$year,
+    period_end = pe1,
     net_margin = row1$net_margin,
     rev_growth = row1$rev_growth,
     eps_growth = row1$eps_growth,
     fcf_growth = if ("fcf_growth" %in% names(row1)) row1$fcf_growth else NA_real_,
     g_pit = g_pit,
+    revenue = if ("revenue" %in% names(row1)) row1$revenue else NA_real_,
     fcf = row1$fcf, cash = row1$cash, debt = row1$debt, shares = row1$shares,
     dividends_paid = row1$dividends_paid,
     equity_book = row1$equity_book,
@@ -1433,7 +1575,13 @@ evaluate_holding_filter <- function(metrics, thresholds) {
     interest_expense = if ("interest_expense" %in% names(row1)) row1$interest_expense else NA_real_,
     tax_expense = if ("tax_expense" %in% names(row1)) row1$tax_expense else NA_real_,
     pretax_income = if ("pretax_income" %in% names(row1)) row1$pretax_income else NA_real_,
-    cv_fcf = cv
+    nopat_m = if ("nopat_m" %in% names(row1)) row1$nopat_m else NA_real_,
+    depre_m = if ("depre_m" %in% names(row1)) row1$depre_m else NA_real_,
+    capex_m = if ("capex_m" %in% names(row1)) row1$capex_m else NA_real_,
+    nwc_m = if ("nwc_m" %in% names(row1)) row1$nwc_m else NA_real_,
+    cv_fcf = cv,
+    available_by = if (is.na(pe1)) as.Date(NA) else pe1 + lag_d,
+    restated_note = "Yahoo annuals may be restated (look-ahead vs as-filed)."
   )
 }
 

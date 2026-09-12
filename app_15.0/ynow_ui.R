@@ -693,7 +693,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = "The YNow App v15",
+    title = "The YNow App v15.01",
     titleWidth = 250,
     tags$li(
       class = "dropdown ynow-market-header",
@@ -3355,22 +3355,29 @@ ui <- dashboardPage(
                 )
               ),
 
-              # 1b) 下期市價相對當期 FV：之上／之下（選項2）
+              # 1b) 歷史基本面驗證：理論估值 vs 實際市值（漲跌機率／幅度）
               fluidRow(
                 box(
-                  title = tagList(icon("exchange-alt"), "下期市價相對當期理論估值（之上／之下）"),
+                  title = tagList(icon("balance-scale"), "歷史基本面驗證：理論估值 vs 實際市值（漲跌機率／幅度）"),
                   width = 12, status = "warning", solidHeader = TRUE,
                   collapsible = TRUE, collapsed = FALSE,
                   tags$p(
                     style = "font-size:12.5px;color:#444;line-height:1.55;",
-                    "每一再平衡日 t：取當期理論估值 ", tags$code("FV_t"),
-                    "，看下期真實股價 ", tags$code("P_{t+1}"), " 是在估值",
-                    tags$b("之上"), "、", tags$b("之下"), "或持平。",
-                    "不使用報酬／期望報酬；僅計次數與發生頻率。期間可篩選。"
+                    tags$b("這不是交易策略回測。"),
+                    "以當時可得基本面重建理論估值 ", tags$code("FV_t"),
+                    "，再用後續實際市價 ", tags$code("P_{t+1}"),
+                    " 驗證：估算落在估值", tags$b("之上／之下"),
+                    "的頻率，以及幅度 ", tags$code("(P_{t+1}−FV_t)/FV_t"),
+                    "。策略淨值／MOS 部位請看下方「策略淨值」區塊。"
+                  ),
+                  tags$p(
+                    style = "font-size:11.5px;color:#888;line-height:1.45;margin-top:-4px;",
+                    "資料注意：Yahoo 年報可能為重編；PIT 以財報期末＋約 90 日申報滯後過濾。",
+                    "真・as-filed SEC EDGAR 仍待後續階段。"
                   ),
                   radioButtons(
                     "bt_fv_conv_window",
-                    "統計期間（依再平衡日 Date_t）",
+                    "統計期間（依估值日 Date_t）",
                     inline = TRUE,
                     choices = c(
                       "全部" = "all",
@@ -3391,6 +3398,17 @@ ui <- dashboardPage(
                       language = "zh-TW"
                     )
                   ),
+                  radioButtons(
+                    "bt_fv_oos_mode",
+                    "驗證口徑",
+                    inline = TRUE,
+                    choices = c(
+                      "已實現下期（預設）" = "realized",
+                      "擴張窗樣本外命中" = "expanding",
+                      "含未到期下期（樣本內）" = "insample"
+                    ),
+                    selected = "realized"
+                  ),
                   uiOutput("bt_fv_conv_summary"),
                   fluidRow(
                     column(
@@ -3400,7 +3418,7 @@ ui <- dashboardPage(
                     ),
                     column(
                       5,
-                      tags$h5(tags$b("P下一期 − FV（正＝之上）")),
+                      tags$h5(tags$b("幅度 (P下一期 − FV) / FV")),
                       plotlyOutput("bt_fv_conv_plot", height = "280px") %>% withSpinner()
                     )
                   )

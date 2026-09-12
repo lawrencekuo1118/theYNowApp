@@ -9,10 +9,9 @@
 #   compute_alpha_dashboard(equity_df, rf_annual = 0.04)
 #   validate_mos_effectiveness(valuation_df, price_df)
 #   validate_fair_value_edge(valuation_df, price_df)
-#   summarize_mos_next_period_stats(valuation_df)
-#   lookup_mos_bucket_outlook(mos_now, stats_df)
-#   build_fv_convergence_pairs(valuation_df)
-#   summarize_fv_convergence(valuation_df, from = NULL, to = NULL)
+#   summarize_fv_market_validation(valuation_df, from, to, as_of, oos_mode)
+#   build_fv_convergence_pairs(valuation_df)  # alias retained
+#   summarize_fv_convergence(...)            # alias → summarize_fv_market_validation
 #   pit_param_inventory_table()
 # ==========================================
 
@@ -609,9 +608,11 @@ lookup_mos_bucket_outlook <- function(mos_now, stats_df) {
 # 6) Price vs FV_t: next-period converge / diverge (no return framing)
 # ==========================================
 
-#' Pair each rebalance t with next price vs this period's FV_t.
+#' Pair each valuation date t with next realized market price vs theoretical FV_t.
 #'
-#' Primary outcome (選項2): P_{t+1} 相對 FV_t → 之上／之下／持平.
+#' This is **historical fundamental vs market validation**, not a trading backtest.
+#' Primary: P_{t+1} vs FV_t → 之上／之下／持平.
+#' Magnitude: gap_next = (P_{t+1} − FV_t) / FV_t.
 #' Secondary: distance change |P−FV_t| → 趨近／遠離／持平.
 build_fv_convergence_pairs <- function(valuation_df) {
   empty <- data.frame(
@@ -623,6 +624,7 @@ build_fv_convergence_pairs <- function(valuation_df) {
     dist = numeric(),
     dist_next = numeric(),
     delta_dist = numeric(),
+    gap_next = numeric(),
     outcome = character(),
     vs_fv = character(),
     stringsAsFactors = FALSE
@@ -646,6 +648,7 @@ build_fv_convergence_pairs <- function(valuation_df) {
   dist <- abs(price - fv)
   dist_next <- abs(price_next - fv)
   delta <- dist_next - dist
+  gap_next <- (price_next - fv) / fv
   outcome <- ifelse(!is.finite(delta), NA_character_,
              ifelse(delta < 0, "趨近",
              ifelse(delta > 0, "遠離", "持平")))
@@ -662,16 +665,23 @@ build_fv_convergence_pairs <- function(valuation_df) {
     dist = dist[use],
     dist_next = dist_next[use],
     delta_dist = delta[use],
+    gap_next = gap_next[use],
     outcome = outcome[use],
     vs_fv = vs_fv[use],
     stringsAsFactors = FALSE
   )
 }
 
-#' Aggregate P_{t+1} vs FV_t (之上／之下) counts in an optional date window.
+#' Aggregate historical FV vs market validation: frequencies + magnitude + OOS.
 #'
-#' @param from,to Date bounds on the **rebalance date** (Date_t); NULL = all pairs
-summarize_fv_convergence <- function(valuation_df, from = NULL, to = NULL) {
+#' @param from,to Date bounds on valuation date Date_t
+#' @param as_of Only count pairs with Date_next <= as_of when oos_mode uses realized filter
+#' @param oos_mode "realized" (default) = Date_next <= as_of;
+#'   "insample" = no Date_next filter; "expanding" = also report expanding-window hit rate
+summarize_fv_market_validation <- function(valuation_df, from = NULL, to = NULL,
+                                           as_of = Sys.Date(),
+                                           oos_mode = c("realized", "insample", "expanding")) {
+  oos_mode <- match.arg(oos_mode)
   pairs <- build_fv_convergence_pairs(valuation_df)
   empty <- list(
     pairs = pairs,
@@ -688,23 +698,40 @@ summarize_fv_convergence <- function(valuation_df, from = NULL, to = NULL) {
     p_toward = NA_real_,
     p_away = NA_real_,
     p_flat = NA_real_,
+    mean_gap = NA_real_,
+    median_gap = NA_real_,
+    mean_gap_above = NA_real_,
+    median_gap_above = NA_real_,
+    mean_gap_below = NA_real_,
+    median_gap_below = NA_real_,
+    mean_abs_gap = NA_real_,
+    median_abs_gap = NA_real_,
+    oos_n = 0L,
+    oos_hit_rate = NA_real_,
+    oos_mode = oos_mode,
     from = from,
     to = to,
+    as_of = as_of,
     small_sample = TRUE,
-    note = "資料不足"
+    note = "資料不足",
+    frame = "歷史基本面驗證（理論估值 vs 實際市值），非策略回測"
   )
   if (nrow(pairs) < 1) return(empty)
 
   from <- if (is.null(from) || length(from) < 1 || is.na(from[1])) NULL else as.Date(from)[1]
   to <- if (is.null(to) || length(to) < 1 || is.na(to[1])) NULL else as.Date(to)[1]
+  as_of <- if (is.null(as_of) || length(as_of) < 1 || is.na(as_of[1])) Sys.Date() else as.Date(as_of)[1]
   keep <- rep(TRUE, nrow(pairs))
   if (!is.null(from)) keep <- keep & pairs$Date >= from
   if (!is.null(to)) keep <- keep & pairs$Date <= to
+  if (oos_mode %in% c("realized", "expanding")) {
+    keep <- keep & !is.na(pairs$Date_next) & pairs$Date_next <= as_of
+  }
   pp <- pairs[keep, , drop = FALSE]
   n <- nrow(pp)
   if (n < 1) {
     empty$pairs <- pp
-    empty$note <- "選定期間內無再平衡配對"
+    empty$note <- "選定期間內無已實現下期配對"
     return(empty)
   }
   n_above <- sum(pp$vs_fv == "之上", na.rm = TRUE)
@@ -713,11 +740,36 @@ summarize_fv_convergence <- function(valuation_df, from = NULL, to = NULL) {
   n_toward <- sum(pp$outcome == "趨近", na.rm = TRUE)
   n_away <- sum(pp$outcome == "遠離", na.rm = TRUE)
   n_flat <- sum(pp$outcome == "持平", na.rm = TRUE)
+  gaps <- as.numeric(pp$gap_next)
+  gaps_ok <- gaps[is.finite(gaps)]
+  above_g <- gaps[pp$vs_fv == "之上" & is.finite(gaps)]
+  below_g <- gaps[pp$vs_fv == "之下" & is.finite(gaps)]
+
+  # Expanding-window OOS: at each i, prior pairs with Date_next < Date_i predict majority side
+  oos_hit_rate <- NA_real_
+  oos_n <- 0L
+  if (identical(oos_mode, "expanding") && n >= 3L) {
+    hits <- logical(0)
+    for (i in seq_len(n)) {
+      prior <- pp[pp$Date_next < pp$Date[i], , drop = FALSE]
+      if (nrow(prior) < 2L) next
+      p_ab <- mean(prior$vs_fv == "之上", na.rm = TRUE)
+      pred <- if (is.finite(p_ab) && p_ab > 0.5) "之上" else if (is.finite(p_ab) && p_ab < 0.5) "之下" else NA_character_
+      if (is.na(pred)) next
+      hits <- c(hits, identical(pp$vs_fv[i], pred))
+    }
+    oos_n <- length(hits)
+    if (oos_n > 0L) oos_hit_rate <- mean(hits)
+  }
+
   small <- n < 5L
   note <- if (small) {
-    sprintf("樣本 n=%d＜5，僅供參考（Yahoo 年報深度有限）。", n)
+    sprintf("樣本 n=%d＜5，僅供參考（Yahoo 年報深度有限；重編財報仍有 look-ahead 風險）。", n)
   } else {
-    sprintf("樣本 n=%d（選定期間：下期市價 P 相對當期理論估值 FV）。", n)
+    sprintf(
+      "樣本 n=%d：以過去基本面推估之 FV 對照實際市值，估算下期之上／之下頻率與幅度（非交易策略回測）。",
+      n
+    )
   }
   list(
     pairs = pp,
@@ -734,10 +786,33 @@ summarize_fv_convergence <- function(valuation_df, from = NULL, to = NULL) {
     p_toward = n_toward / n,
     p_away = n_away / n,
     p_flat = n_flat / n,
+    mean_gap = if (length(gaps_ok)) mean(gaps_ok) else NA_real_,
+    median_gap = if (length(gaps_ok)) stats::median(gaps_ok) else NA_real_,
+    mean_gap_above = if (length(above_g)) mean(above_g) else NA_real_,
+    median_gap_above = if (length(above_g)) stats::median(above_g) else NA_real_,
+    mean_gap_below = if (length(below_g)) mean(below_g) else NA_real_,
+    median_gap_below = if (length(below_g)) stats::median(below_g) else NA_real_,
+    mean_abs_gap = if (length(gaps_ok)) mean(abs(gaps_ok)) else NA_real_,
+    median_abs_gap = if (length(gaps_ok)) stats::median(abs(gaps_ok)) else NA_real_,
+    oos_n = as.integer(oos_n),
+    oos_hit_rate = oos_hit_rate,
+    oos_mode = oos_mode,
     from = from,
     to = to,
+    as_of = as_of,
     small_sample = small,
-    note = note
+    note = note,
+    frame = "歷史基本面驗證（理論估值 vs 實際市值），非策略回測"
+  )
+}
+
+#' @rdname summarize_fv_market_validation
+#' @export
+summarize_fv_convergence <- function(valuation_df, from = NULL, to = NULL,
+                                     as_of = Sys.Date(),
+                                     oos_mode = c("realized", "insample", "expanding")) {
+  summarize_fv_market_validation(
+    valuation_df, from = from, to = to, as_of = as_of, oos_mode = oos_mode
   )
 }
 
@@ -767,14 +842,14 @@ pit_param_inventory_table <- function() {
     ),
     Hist_PIT來源 = c(
       "fetch_price_history_df", "build_annual_fundamentals", "fetch_tnx_history_df", "estimate_rolling_beta", "trailing realized SPY", "當日價×PIT shares/debt", "年欄股數（ADR 倍率固定）",
-      "CF Free Cash Flow 列", "截至該年營收／NI／FCF 成長（clamp＜r）", "Rolling β＋Rf＋Rm＋PIT We/Wd", "Interest/Debt；Tax/Pretax（缺則 session）", "不重建（簡化幾何 FCF）",
+      "CF Free Cash Flow 列；優先 NOPAT/D&A/CapEx/ΔNWC 邊際×營收", "截至該年營收／NI／FCF 成長（clamp＜r）", "Rolling β＋Rf＋Rm＋PIT We/Wd", "Interest/Debt；Tax/Pretax（缺則 session）", "有邊際則 .dcf_unit_fcff_path；否則幾何 FCF",
       "dividends_paid÷shares", "PIT Ke；g 同上",
       "equity_book÷shares", "當期 ROE／payout", "PIT Ke；g 同上",
       "equity_book÷shares", "Justified (ROE−g)/(Ke−g)"
     ),
     狀態 = c(
-      "PIT", "PIT（約 4 FY）", "PIT", "PIT", "PIT（非 Damodaran ERP）", "PIT", "Partial",
-      "PIT", "PIT（推估）", "PIT", "PIT（有資料時）", "缺失／簡化",
+      "PIT", "PIT（約 4 FY；period_end+90d）", "PIT", "PIT", "PIT（非 Damodaran ERP）", "PIT", "Partial",
+      "PIT", "PIT（推估）", "PIT", "PIT（有資料時）", "PIT 邊際近似／Fallback",
       "PIT", "PIT",
       "PIT", "PIT", "PIT",
       "PIT", "PIT（Justified）"

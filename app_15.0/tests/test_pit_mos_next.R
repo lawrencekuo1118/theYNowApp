@@ -76,25 +76,33 @@ check("outlook has note", is.character(out$note) && nzchar(out$note))
 out2 <- lookup_mos_bucket_outlook(-0.15, stats)
 check("outlook expensive bucket", identical(out2$bucket, "偏貴 MOS<-10%"))
 
-# --- FV: P_{t+1} vs FV_t (選項2) + optional distance ---
+# --- FV market validation: P_{t+1} vs FV_t + magnitude + OOS ---
 pairs <- build_fv_convergence_pairs(vd)
 check("pairs n=5", nrow(pairs) == 5L)
 check("first toward", identical(pairs$outcome[1], "趨近"))
 check("second away", identical(pairs$outcome[2], "遠離"))
-# t0: FV=140, P1=110 → 之下
 check("first below FV", identical(pairs$vs_fv[1], "之下"))
-# t2: FV=100, P3=120 → 之上
 check("third above FV", identical(pairs$vs_fv[3], "之上"))
+check("gap_next present", "gap_next" %in% names(pairs) && is.finite(pairs$gap_next[1]))
 
-sum_all <- summarize_fv_convergence(vd)
+sum_all <- summarize_fv_market_validation(vd, oos_mode = "insample")
 check("sum n=5", sum_all$n == 5L)
 check("above+below+flat = n",
       sum_all$n_above + sum_all$n_below + sum_all$n_flat_vs == sum_all$n)
-check("p_below in [0,1]", is.finite(sum_all$p_below) && sum_all$p_below >= 0 && sum_all$p_below <= 1)
+check("median_gap finite", is.finite(sum_all$median_gap))
+check("frame note", grepl("非策略回測", sum_all$frame))
 
-sum_win <- summarize_fv_convergence(
-  vd, from = as.Date("2020-06-01"), to = as.Date("2020-12-31")
+sum_win <- summarize_fv_market_validation(
+  vd, from = as.Date("2020-06-01"), to = as.Date("2020-12-31"), oos_mode = "insample"
 )
 check("window filters", sum_win$n >= 1L && sum_win$n < sum_all$n)
+
+sum_real <- summarize_fv_market_validation(
+  vd, as_of = as.Date("2020-09-01"), oos_mode = "realized"
+)
+check("realized as_of filters", sum_real$n < sum_all$n)
+
+sum_exp <- summarize_fv_market_validation(vd, oos_mode = "expanding")
+check("expanding runs", is.character(sum_exp$oos_mode))
 
 message("ALL PASS")

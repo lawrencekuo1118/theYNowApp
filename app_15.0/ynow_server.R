@@ -6712,9 +6712,22 @@ server <- function(input, output, session) {
     res <- bt_result()
     if (is.null(res) || is.null(res$valuation_df)) return(NULL)
     b <- .bt_fv_conv_bounds()
+    mode <- as.character(input$bt_fv_oos_mode %||% "realized")[1]
+    if (!mode %in% c("realized", "insample", "expanding")) mode <- "realized"
     tryCatch(
-      summarize_fv_convergence(res$valuation_df, from = b$from, to = b$to),
-      error = function(e) NULL
+      summarize_fv_market_validation(
+        res$valuation_df, from = b$from, to = b$to,
+        as_of = Sys.Date(), oos_mode = mode
+      ),
+      error = function(e) {
+        tryCatch(
+          summarize_fv_convergence(
+            res$valuation_df, from = b$from, to = b$to,
+            as_of = Sys.Date(), oos_mode = mode
+          ),
+          error = function(e2) NULL
+        )
+      }
     )
   })
 
@@ -6723,12 +6736,11 @@ server <- function(input, output, session) {
     if (is.null(s)) {
       return(tags$div(
         style = "margin:0 0 12px 0;padding:12px;background:#f7f7f7;border-left:4px solid #999;font-size:13px;",
-        "啟動回測後，將統計選定期間內「下期市價相對當期 FV」之上／之下次數與頻率。"
+        "載入標的並完成估值後，將以歷史基本面推估之 FV 對照實際市值，估算下期之上／之下機率與幅度（非策略回測）。"
       ))
     }
-    p_ab <- if (is.finite(s$p_above)) sprintf("%.0f%%", 100 * s$p_above) else "—"
-    p_be <- if (is.finite(s$p_below)) sprintf("%.0f%%", 100 * s$p_below) else "—"
-    p_fl <- if (is.finite(s$p_flat_vs)) sprintf("%.0f%%", 100 * s$p_flat_vs) else "—"
+    pct <- function(x) if (is.finite(x)) sprintf("%.0f%%", 100 * x) else "—"
+    gap_pct <- function(x) if (is.finite(x)) sprintf("%+.1f%%", 100 * x) else "—"
     border <- if (isTRUE(s$small_sample)) "#f39c12" else "#00a65a"
     period_txt <- {
       if (!is.null(s$from) || !is.null(s$to)) {
@@ -6738,7 +6750,7 @@ server <- function(input, output, session) {
           " ～ ",
           if (is.null(s$to)) "…" else format(s$to, "%Y-%m-%d")
         )
-      } else "期間：全部再平衡配對"
+      } else "期間：全部估值日配對"
     }
     tags$div(
       style = paste0(
@@ -6746,17 +6758,28 @@ server <- function(input, output, session) {
         "border-left:4px solid ", border, ";border-radius:4px;font-size:13px;line-height:1.6;"
       ),
       tags$div(
-        tags$b("綜合發生頻率（P下一期 vs FV）"),
+        tags$b("歷史基本面驗證摘要（理論估值 vs 實際市值）"),
         if (isTRUE(s$small_sample)) tags$span(style = "color:#c27d0e;margin-left:8px;", "（小樣本）")
       ),
       tags$p(style = "margin:6px 0 0 0;color:#666;", period_txt),
+      tags$p(style = "margin:4px 0 0 0;color:#888;font-size:12px;", s$frame %||% ""),
       tags$ul(
         style = "margin:8px 0 0 0;padding-left:18px;",
         tags$li(sprintf("配對數 n＝%d", s$n %||% 0L)),
-        tags$li(sprintf("之上 %d 次（%s）· 之下 %d 次（%s）· 持平 %d 次（%s）",
-                        s$n_above %||% 0L, p_ab,
-                        s$n_below %||% 0L, p_be,
-                        s$n_flat_vs %||% 0L, p_fl)),
+        tags$li(sprintf("之上機率 %s（%d）· 之下 %s（%d）· 持平 %s（%d）",
+                        pct(s$p_above), s$n_above %||% 0L,
+                        pct(s$p_below), s$n_below %||% 0L,
+                        pct(s$p_flat_vs), s$n_flat_vs %||% 0L)),
+        tags$li(sprintf(
+          "幅度 (P−FV)/FV：全體中位 %s、平均 %s；之上中位 %s；之下中位 %s；|幅度|中位 %s",
+          gap_pct(s$median_gap), gap_pct(s$mean_gap),
+          gap_pct(s$median_gap_above), gap_pct(s$median_gap_below),
+          gap_pct(s$median_abs_gap)
+        )),
+        if (identical(s$oos_mode, "expanding") && is.finite(s$oos_hit_rate)) {
+          tags$li(sprintf("擴張窗樣本外命中率 %s（n＝%d；以先前已實現配對多數方向預測下一期）",
+                          pct(s$oos_hit_rate), s$oos_n %||% 0L))
+        } else NULL,
         tags$li(s$note %||% "")
       )
     )
@@ -6766,13 +6789,14 @@ server <- function(input, output, session) {
     s <- bt_fv_conv()
     validate(need(!is.null(s) && !is.null(s$pairs) && nrow(s$pairs) > 0, "選定期間內無配對資料"))
     pp <- s$pairs
+    gapv <- if ("gap_next" %in% names(pp)) pp$gap_next else (pp$price_next - pp$fair_value) / pp$fair_value
     data.frame(
-      再平衡日 = format(pp$Date, "%Y-%m-%d"),
+      估值日 = format(pp$Date, "%Y-%m-%d"),
       下期日 = format(pp$Date_next, "%Y-%m-%d"),
-      當期股價 = round(pp$price, 2),
-      當期FV = round(pp$fair_value, 2),
-      下期股價 = round(pp$price_next, 2),
-      `P下一期−FV` = round(pp$price_next - pp$fair_value, 2),
+      當期市價 = round(pp$price, 2),
+      理論FV = round(pp$fair_value, 2),
+      下期市價 = round(pp$price_next, 2),
+      `幅度(P−FV)/FV` = paste0(sprintf("%+.1f", 100 * gapv), "%"),
       相對FV = pp$vs_fv,
       stringsAsFactors = FALSE,
       check.names = FALSE
@@ -6783,24 +6807,27 @@ server <- function(input, output, session) {
     s <- bt_fv_conv()
     empty <- plotly::plotly_empty() %>%
       plotly::layout(annotations = list(list(
-        text = "請先啟動量化回測", showarrow = FALSE, font = list(size = 14, color = "#888")
+        text = "請先載入標的並完成估值驗證", showarrow = FALSE, font = list(size = 14, color = "#888")
       )))
     if (is.null(s) || is.null(s$pairs) || nrow(s$pairs) < 1) return(empty)
     pp <- s$pairs
-    pp$gap <- pp$price_next - pp$fair_value
+    pp$gap_pct <- if ("gap_next" %in% names(pp)) {
+      pp$gap_next
+    } else {
+      (pp$price_next - pp$fair_value) / pp$fair_value
+    }
     cols <- ifelse(pp$vs_fv == "之上", "#00a65a",
             ifelse(pp$vs_fv == "之下", "#dd4b39", "#999"))
     plotly::plot_ly(
-      pp, x = ~Date, y = ~gap, type = "bar",
+      pp, x = ~Date, y = ~gap_pct, type = "bar",
       text = ~paste0(Date, " → ", Date_next, "<br>", vs_fv,
-                     "<br>P下一期 ", round(price_next, 2),
-                     " · FV ", round(fair_value, 2)),
+                     "<br>幅度 ", sprintf("%+.1f%%", 100 * gap_pct)),
       hoverinfo = "text",
       marker = list(color = cols)
     ) %>%
       plotly::layout(
-        xaxis = list(title = "再平衡日"),
-        yaxis = list(title = "P下一期 − FV（正＝之上）"),
+        xaxis = list(title = "估值日"),
+        yaxis = list(title = "(P下一期 − FV) / FV", tickformat = ".0%"),
         margin = list(l = 50, r = 20, t = 20, b = 40),
         shapes = list(list(
           type = "line", x0 = min(pp$Date), x1 = max(pp$Date), y0 = 0, y1 = 0,
@@ -6973,12 +7000,18 @@ server <- function(input, output, session) {
         tags$li(tags$b("大盤："), "圖上方「顯示大盤」開關疊加基準（預設 SPY，右軸）；與合理價無關。"),
         tags$li(tags$b("合理價："), "勾選圖上方評價模型後才計算並疊圖（預設不勾選）。"),
         tags$li(
-          tags$b("PIT DCF（簡化，非 Live 營收表）："),
-          "歷史點 DCF 以當時 FCF0 幾何延展 ", tags$code("FCFF_t = FCF0×(1+g)^t"),
-          "，單一 WACC＋Gordon 終值；不是 DCF 分頁的「營收×NOPAT／CapEx／ΔNWC 邊際」預測表，也不走二階段 WACC。",
-          "DDM／RI／P/B 結構與 Live 相同。僅折線末端最新點才掛目前 APP 分頁（含 FCFE／二階段 DDM）與 Session Rm。"
+          tags$b("PIT DCF（優先邊際路徑）："),
+          "歷史點若有營收與 NOPAT/D&A/CapEx/ΔNWC 邊際，走與 Live 相同的 unit FCFF 路徑再折現；",
+          "否則退回 ", tags$code("FCFF_t = FCF0×(1+g)^t"), "＋Gordon。",
+          "財報可用條件：財報年 ≤ 日曆年−1，且 period_end＋約 90 日 ≤ 估值日（Yahoo 重編風險仍在）。",
+          "僅折線末端最新點才掛目前 APP 分頁（含 FCFE／二階段 DDM）與 Session Rm。"
         ),
         tags$li(tags$b("策略 MOS／部位："), "用目前勾選且有限值模型的算術平均，不是隱藏的主模型。只勾一個＝該模型。"),
+        tags$li(
+          tags$b("歷史基本面驗證（非策略回測）："),
+          "以當期理論估值 FV_t 對照下期實際市價 P_{t+1}，估算之上／之下機率與幅度 (P−FV)/FV；",
+          "預設只計已實現下期，可選擴張窗樣本外命中率。策略淨值／Exp 是另一套交易回測。"
+        ),
         tags$li(
           tags$b("歷史各點 vs 末端："),
           "歷史點用當時可得財報、^TNX Rf、截至該日基準已實現 Rm、Rolling β、當日 We/Wd；",
@@ -6990,14 +7023,18 @@ server <- function(input, output, session) {
           "股數依目前市值÷股價對齊報價股數後再算合理價（倍率固定套用各財年）。"
         ),
         tags$li(
-          tags$b("P下一期 vs FV："),
-          "以當期 FV_t 為錨，統計選定期間內 P_{t+1} 落在估值之上／之下／持平的次數與頻率（非報酬期望）。"
+          tags$b("歷史基本面驗證區塊："),
+          "同上：機率＋幅度；與下方「策略淨值」交易回測分開閱讀。"
         )
       ),
       tags$h5(tags$b("二、資料來源")),
       tags$ul(
         tags$li(tags$b("股價／基準："), "Yahoo Finance（yfinance，auto_adjust）；基準預設 SPY。"),
-        tags$li(tags$b("財報（PIT）："), "本次 Session 已載入之年度 IS／BS／CF；再平衡日只用 fund_year ≤ 日曆年−1。"),
+        tags$li(
+          tags$b("財報（PIT 近似）："),
+          "本次 Session 已載入之年度 IS／BS／CF；估值日只用 fund_year ≤ 日曆年−1，",
+          "且 period_end＋約 90 日 ≤ 估值日。Yahoo 可能為重編，非 as-filed SEC。"
+        ),
         tags$li(tags$b("Rf（歷史點）："), "再平衡日 ^TNX 當時收盤；抓不到才用 Session／約 4%。"),
         tags$li(
           tags$b("Rm（歷史點）："),
