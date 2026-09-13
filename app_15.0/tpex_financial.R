@@ -10,27 +10,42 @@
 YNOW_TPEX_FINANCIAL_SUMMARY_URL <-
   "https://www.tpex.org.tw/zh-tw/mainboard/listed/financial/summary.html"
 
+# Persistent env for reticulate exports. source_python() defaults to
+# envir=parent.frame(); calling it from inside .ensure_* would bind wrappers
+# into a throwaway evaluation frame and they vanish on return →
+# "could not find function scrape_tpex_financials_fallback" (blank OTC/ESB FS).
+.tpex_fs_env <- environment()
 .tpex_fs_py_ready <- FALSE
 
+.tpex_fs_fn_ready <- function() {
+  exists(
+    "scrape_tpex_financials_fallback",
+    envir = .tpex_fs_env,
+    inherits = FALSE,
+    mode = "function"
+  )
+}
+
 .ensure_tpex_financial_py <- function() {
-  if (isTRUE(.tpex_fs_py_ready) &&
-      exists("scrape_tpex_financials_fallback", mode = "function")) {
+  if (isTRUE(.tpex_fs_py_ready) && isTRUE(.tpex_fs_fn_ready())) {
     return(TRUE)
   }
   if (identical(Sys.getenv("YNOW_DEBUG_SKIP_PY"), "1")) return(FALSE)
   ok <- FALSE
   tryCatch({
-    if (!isTRUE(.ensure_python_scraper())) {
-      # deep_scraper may be unavailable; still try reticulate + this module
-      if (!isTRUE(reticulate::py_available(initialize = FALSE))) {
-        suppressMessages(reticulate::py_config())
-      }
+    if (exists(".ensure_python_scraper", mode = "function")) {
+      # Prefer shared Python init; ignore failure and still load this module.
+      tryCatch(.ensure_python_scraper(), error = function(e) FALSE)
+    }
+    if (!isTRUE(reticulate::py_available(initialize = FALSE))) {
+      suppressMessages(reticulate::py_config())
     }
     py_file <- "tpex_financial_summary.py"
     if (!file.exists(py_file)) {
       return(FALSE)
     }
-    reticulate::source_python(py_file)
+    # MUST bind into .tpex_fs_env (this sourced module), not parent.frame().
+    reticulate::source_python(py_file, envir = .tpex_fs_env)
     .tpex_fs_py_ready <<- TRUE
     ok <- TRUE
   }, error = function(e) {
@@ -39,7 +54,7 @@ YNOW_TPEX_FINANCIAL_SUMMARY_URL <-
     }
     ok <<- FALSE
   })
-  isTRUE(ok) && exists("scrape_tpex_financials_fallback", mode = "function")
+  isTRUE(ok) && isTRUE(.tpex_fs_fn_ready())
 }
 
 #' 是否應嘗試櫃買季報摘要 fallback（.TWO 且 Yahoo 三表皆空）

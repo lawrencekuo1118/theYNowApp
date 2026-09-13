@@ -186,20 +186,37 @@ def _xls_url(board: str, year: int, quarter: int) -> str:
 
 def download_tpex_xls(board: str, year: int, quarter: int, timeout: float = 60.0) -> bytes:
     url = _xls_url(board, year, quarter)
-    key = f"xls_{board.upper()[0]}_{year}Q{quarter}"
+    # Cache key by file prefix (O/U), not board[0] — "ESB"[0]=="E" collided with OTC.
+    prefix = "O" if str(board).upper() in ("O", "OTC", "TPEX", "MAINBOARD", "上櫃") or str(
+        board
+    ).upper().startswith(("O", "MAIN")) else "U"
+    key = f"xls_{prefix}_{year}Q{quarter}"
     cached = _cache_get(key)
     if cached and len(cached) > 1000:
-        return cached
+        head = cached[:200].lstrip().lower()
+        if head.startswith(b"<!doctype") or head.startswith(b"<html"):
+            pass  # fall through to re-download
+        else:
+            return cached
     sess = _session()
     r = sess.get(url, timeout=timeout)
     if r.status_code != 200 or len(r.content) < 1000:
         raise RuntimeError(f"TPEx XLS 下載失敗 ({r.status_code}): {url}")
-    # Reject HTML error pages
+    # Reject HTML error pages (index may list a quarter before the file is published)
     head = r.content[:200].lstrip().lower()
     if head.startswith(b"<!doctype") or head.startswith(b"<html"):
         raise RuntimeError(f"TPEx XLS 回傳 HTML（檔案可能尚未上架）: {url}")
     _cache_set(key, r.content)
     return r.content
+
+
+def tpex_xls_available(board: str, year: int, quarter: int, timeout: float = 15.0) -> bool:
+    """True if the bulk XLS is a real OLE compound file (not 404 HTML)."""
+    try:
+        raw = download_tpex_xls(board, year, quarter, timeout=timeout)
+        return isinstance(raw, (bytes, bytearray)) and len(raw) > 1000
+    except Exception:
+        return False
 
 
 def _is_company_code(v) -> bool:
@@ -255,9 +272,14 @@ def parse_tpex_xls_bytes(raw: bytes, board: str, year: int, quarter: int) -> Lis
 
 
 def _discover_available(board: str, years: Sequence[int], timeout: float) -> List[Tuple[int, int]]:
-    """Prefer index API; fall back to probing Q4→Q1."""
+    """Prefer index API; verify each XLS exists; fall back to probing Q4→Q1."""
     found: List[Tuple[int, int]] = []
-    prefix = "O" if board.upper().startswith(("O", "T", "上")) or board in ("OTC", "TPEX") else "U"
+    # Prefer explicit board names; avoid startswith("T") matching unrelated labels.
+    bu = str(board or "").upper()
+    if bu in ("O", "OTC", "TPEX", "TWO_OTC", "MAINBOARD") or board == "上櫃" or bu.startswith("O"):
+        prefix = "O"
+    else:
+        prefix = "U"
     title_key = "上櫃" if prefix == "O" else "興櫃"
     for y in years:
         try:
@@ -274,7 +296,11 @@ def _discover_available(board: str, years: Sequence[int], timeout: float) -> Lis
                         yy, qq = int(m.group(1)), int(m.group(2))
                         if "null" in path.lower():
                             continue
-                        found.append((yy, qq))
+                        # Index often lists the next quarter before the file is published (404 HTML).
+                        if tpex_xls_available(prefix, yy, qq, timeout=min(timeout, 20.0)):
+                            found.append((yy, qq))
+                        else:
+                            _dbg("index lists missing xls", prefix, yy, qq)
         except Exception as e:
             _dbg("index year fail", y, e)
     # unique, newest first
@@ -285,11 +311,8 @@ def _discover_available(board: str, years: Sequence[int], timeout: float) -> Lis
     probed = []
     for y in years:
         for q in (4, 3, 2, 1):
-            try:
-                download_tpex_xls(prefix, y, q, timeout=timeout)
+            if tpex_xls_available(prefix, y, q, timeout=min(timeout, 20.0)):
                 probed.append((y, q))
-            except Exception:
-                continue
     return sorted(set(probed), key=lambda t: (t[0], t[1]), reverse=True)
 
 

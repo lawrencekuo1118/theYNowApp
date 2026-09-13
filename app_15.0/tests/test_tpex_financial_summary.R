@@ -96,12 +96,28 @@ py_ok <- FALSE
 tryCatch({
   if (!requireNamespace("reticulate", quietly = TRUE)) stop("no reticulate")
   reticulate::py_run_string("import xlrd, requests")
-  reticulate::source_python("tpex_financial_summary.py")
+  # Bind into module env (same fix as production .ensure_tpex_financial_py)
+  reticulate::source_python("tpex_financial_summary.py", envir = .tpex_fs_env)
   py_ok <- TRUE
 }, error = function(e) {
   cat("NOTE: reticulate/python skip:", conditionMessage(e), "\n")
   cat("      Run: python3 -c 'from tpex_financial_summary import *' from app_15.0/\n")
 })
+
+# Regression: delayed ensure must leave scrape_* callable AFTER ensure returns
+# (reticulate source_python defaults to parent.frame() — temp frame bug).
+if (isTRUE(py_ok)) {
+  .tpex_fs_py_ready <<- FALSE
+  check(
+    "ensure_tpex binds scrape fn into module env",
+    isTRUE(.ensure_tpex_financial_py()) &&
+      exists("scrape_tpex_financials_fallback", envir = .tpex_fs_env, inherits = FALSE)
+  )
+  check(
+    "scrape callable after ensure returns",
+    isTRUE(exists("scrape_tpex_financials_fallback", mode = "function"))
+  )
+}
 
 if (isTRUE(py_ok)) {
   fixture <- jsonlite::fromJSON("tests/data/tpex_financial_summary_fixture.json", simplifyVector = FALSE)

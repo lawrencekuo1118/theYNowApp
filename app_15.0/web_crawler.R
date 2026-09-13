@@ -12,9 +12,20 @@ if (!exists(".ynow_log", mode = "function")) {
 my_cache <- cachem::cache_mem(max_size = 50 * 1024^2, max_age = 3600)
 
 # 勿在 source 時呼叫 py_available(initialize=TRUE)：可能直接 abort worker → shinyapps 500。
+# Persist reticulate exports here: source_python() defaults to envir=parent.frame();
+# delayed load from inside .ensure_* must bind into this module env, not a temp frame.
+.py_scraper_env <- environment()
 .py_scraper_ready <- FALSE
+.py_scraper_fn_ready <- function() {
+  exists(
+    "scrape_all_financials",
+    envir = .py_scraper_env,
+    inherits = FALSE,
+    mode = "function"
+  )
+}
 .ensure_python_scraper <- function() {
-  if (isTRUE(.py_scraper_ready) && exists("scrape_all_financials", mode = "function")) {
+  if (isTRUE(.py_scraper_ready) && isTRUE(.py_scraper_fn_ready())) {
     return(TRUE)
   }
   if (identical(Sys.getenv("YNOW_DEBUG_SKIP_PY"), "1")) return(FALSE)
@@ -26,20 +37,20 @@ my_cache <- cachem::cache_mem(max_size = 50 * 1024^2, max_age = 3600)
       ok <- isTRUE(reticulate::py_available(initialize = FALSE))
     }
     if (ok) {
-      reticulate::source_python("deep_scraper.py")
+      reticulate::source_python("deep_scraper.py", envir = .py_scraper_env)
       .py_scraper_ready <<- TRUE
     }
   }, error = function(e) {
     .ynow_log("⚠️ Python 爬蟲延遲載入失敗: ", e$message)
     ok <<- FALSE
   })
-  isTRUE(ok) && exists("scrape_all_financials", mode = "function")
+  isTRUE(ok) && isTRUE(.py_scraper_fn_ready())
 }
 
 tryCatch({
   if (!identical(Sys.getenv("YNOW_DEBUG_SKIP_PY"), "1") &&
       isTRUE(reticulate::py_available(initialize = FALSE))) {
-    reticulate::source_python("deep_scraper.py")
+    reticulate::source_python("deep_scraper.py", envir = .py_scraper_env)
     .py_scraper_ready <- TRUE
     .ynow_log("✅ Python 深度爬蟲腳本載入成功！")
   } else {
