@@ -694,7 +694,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v15.09</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v15.10</span>'),
     titleWidth = 250,
     tags$li(
       class = "dropdown ynow-market-header",
@@ -3363,7 +3363,7 @@ ui <- dashboardPage(
                         class = "ynow-bt-hfv-models",
                         checkboxGroupInput(
                           "bt_fv_models",
-                          "回測用評價模型（可複選疊圖；策略 MOS／部位＝勾選平均）",
+                          "回測用評價模型（可複選疊圖；策略 MOS／部位＝勾選且有限值者之平均；未勾＝不套用模型）",
                           inline = TRUE,
                           choices = c(
                             "DCF" = "dcf",
@@ -3390,6 +3390,7 @@ ui <- dashboardPage(
                     style = "font-size:12.5px;color:#444;line-height:1.55;",
                     tags$b("這不是交易策略回測。"),
                     "以當時可得基本面重建理論估值 ", tags$code("FV_t"),
+                    "（＝折現圖勾選且有限值模型平均；未勾選＝無策略 FV，不暗設 DCF）",
                     "，再用後續實際市價 ", tags$code("P_{t+1}"),
                     " 驗證：估算落在估值", tags$b("之上／之下"),
                     "的頻率，以及幅度 ", tags$code("(P_{t+1}−FV_t)/FV_t"),
@@ -3398,7 +3399,8 @@ ui <- dashboardPage(
                   tags$p(
                     style = "font-size:11.5px;color:#888;line-height:1.45;margin-top:-4px;",
                     "資料注意：Yahoo 年報可能為重編；PIT 以財報期末＋約 90 日申報滯後過濾。",
-                    "真・as-filed SEC EDGAR 仍待後續階段。"
+                    "真・as-filed SEC EDGAR 仍待後續階段。",
+                    "若歷史點套用系統預設／Session，摘要會顯示預設／fallback 提醒與對應分頁。"
                   ),
                   radioButtons(
                     "bt_fv_conv_window",

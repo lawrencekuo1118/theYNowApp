@@ -627,6 +627,7 @@ build_fv_convergence_pairs <- function(valuation_df) {
     gap_next = numeric(),
     outcome = character(),
     vs_fv = character(),
+    fallback_keys = character(),
     stringsAsFactors = FALSE
   )
   if (is.null(valuation_df) || !is.data.frame(valuation_df) || nrow(valuation_df) < 2) {
@@ -655,6 +656,11 @@ build_fv_convergence_pairs <- function(valuation_df) {
   vs_fv <- ifelse(!is.finite(price_next), NA_character_,
            ifelse(price_next > fv, "之上",
            ifelse(price_next < fv, "之下", "持平")))
+  fb <- if ("fallback_keys" %in% names(vd)) {
+    as.character(vd$fallback_keys)
+  } else {
+    rep("", n)
+  }
   use <- is.finite(price_next) & !is.na(vs_fv)
   data.frame(
     Date = vd$Date[use],
@@ -668,7 +674,90 @@ build_fv_convergence_pairs <- function(valuation_df) {
     gap_next = gap_next[use],
     outcome = outcome[use],
     vs_fv = vs_fv[use],
+    fallback_keys = fb[use],
     stringsAsFactors = FALSE
+  )
+}
+
+#' Aggregate which hist params used 預設／fallback across valuation rows.
+summarize_hist_param_fallbacks <- function(valuation_df) {
+  guide <- if (exists(".hist_param_guide", mode = "function")) {
+    .hist_param_guide()
+  } else {
+    data.frame(
+      key = character(), label = character(), tab = character(),
+      stringsAsFactors = FALSE
+    )
+  }
+  empty <- list(
+    any_fallback = FALSE,
+    items = data.frame(
+      key = character(), label = character(), tab = character(),
+      src = character(), src_label = character(), n_rows = integer(),
+      stringsAsFactors = FALSE
+    ),
+    note = "尚無估值列可檢查預設／fallback。"
+  )
+  if (is.null(valuation_df) || !is.data.frame(valuation_df) || nrow(valuation_df) < 1) {
+    return(empty)
+  }
+  vd <- valuation_df
+  if ("session_tip" %in% names(vd)) {
+    is_tip <- vapply(seq_len(nrow(vd)), function(i) isTRUE(vd$session_tip[i]), logical(1))
+    hist_vd <- vd[!is_tip, , drop = FALSE]
+    if (nrow(hist_vd) < 1L) hist_vd <- vd
+  } else {
+    hist_vd <- vd
+  }
+  src_cols <- c(
+    g = "src_g", n_years = "src_n_years", rd = "src_rd", tax = "src_tax",
+    pb_mid = "src_pb_mid", rf = "src_rf", rm = "src_rm", beta = "src_beta"
+  )
+  items <- list()
+  for (i in seq_len(nrow(guide))) {
+    k <- guide$key[i]
+    col <- src_cols[[k]]
+    if (is.null(col) || !col %in% names(hist_vd)) next
+    srcs <- as.character(hist_vd[[col]])
+    fb_mask <- if (exists(".hist_is_fallback_src", mode = "function")) {
+      .hist_is_fallback_src(srcs)
+    } else {
+      srcs %in% c("app_defaults", "session", "statutory", "hard_default")
+    }
+    if (!any(fb_mask, na.rm = TRUE)) next
+    fb_srcs <- srcs[fb_mask & !is.na(srcs) & nzchar(srcs)]
+    # Dominant fallback source among flagged rows
+    tab <- sort(table(fb_srcs), decreasing = TRUE)
+    src_dom <- if (length(tab) > 0) names(tab)[1] else "app_defaults"
+    src_lab <- if (exists(".hist_src_label_zh", mode = "function")) {
+      .hist_src_label_zh(src_dom)
+    } else {
+      src_dom
+    }
+    items[[length(items) + 1L]] <- data.frame(
+      key = k,
+      label = guide$label[i],
+      tab = guide$tab[i],
+      src = src_dom,
+      src_label = src_lab,
+      n_rows = as.integer(sum(fb_mask, na.rm = TRUE)),
+      stringsAsFactors = FALSE
+    )
+  }
+  if (length(items) < 1L) {
+    empty$note <- "歷史點參數皆來自當時財報／Justified／市場序列（本視窗未偵測到系統預設／Session fallback）。"
+    empty$any_fallback <- FALSE
+    return(empty)
+  }
+  out <- do.call(rbind, items)
+  rownames(out) <- NULL
+  list(
+    any_fallback = TRUE,
+    items = out,
+    note = paste0(
+      "原則：公式應依據您已於對應分頁確認的參數。",
+      "下列參數在部分或全部歷史估值點套用了預設／fallback（非該再平衡日確認值），請至對應分頁設定後重新估值。"
+    )
   )
 }
 
@@ -714,9 +803,27 @@ summarize_fv_market_validation <- function(valuation_df, from = NULL, to = NULL,
     as_of = as_of,
     small_sample = TRUE,
     note = "資料不足",
-    frame = "歷史基本面驗證（理論估值 vs 實際市值），非策略回測"
+    frame = "歷史基本面驗證（理論估值 vs 實際市值），非策略回測",
+    fallbacks = summarize_hist_param_fallbacks(valuation_df),
+    no_strategy_fv = FALSE
   )
-  if (nrow(pairs) < 1) return(empty)
+  # 未勾選模型 → valuation 無有限 fair_value → 無配對
+  n_fv <- if (!is.null(valuation_df) && is.data.frame(valuation_df) &&
+             "fair_value" %in% names(valuation_df)) {
+    sum(is.finite(valuation_df$fair_value) & valuation_df$fair_value > 0, na.rm = TRUE)
+  } else {
+    0L
+  }
+  if (nrow(pairs) < 1) {
+    if (n_fv < 1L) {
+      empty$no_strategy_fv <- TRUE
+      empty$note <- paste0(
+        "目前無策略理論 FV（折現圖未勾選任何評價模型，或勾選模型無有限值）。",
+        "請於折現比較圖勾選 DCF／DDM／RI／P/B 後再驗證；未勾選時不暗設 DCF。"
+      )
+    }
+    return(empty)
+  }
 
   from <- if (is.null(from) || length(from) < 1 || is.na(from[1])) NULL else as.Date(from)[1]
   to <- if (is.null(to) || length(to) < 1 || is.na(to[1])) NULL else as.Date(to)[1]
@@ -802,7 +909,9 @@ summarize_fv_market_validation <- function(valuation_df, from = NULL, to = NULL,
     as_of = as_of,
     small_sample = small,
     note = note,
-    frame = "歷史基本面驗證（理論估值 vs 實際市值），非策略回測"
+    frame = "歷史基本面驗證（理論估值 vs 實際市值），非策略回測",
+    fallbacks = summarize_hist_param_fallbacks(valuation_df),
+    no_strategy_fv = FALSE
   )
 }
 

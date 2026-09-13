@@ -86,6 +86,45 @@ check("hist rd from interest", approx_eq(pit$rd_used, 0.04, 1e-8))
 check("hist tax from pretax", approx_eq(pit$tax_used, 0.20, 1e-8))
 check("hist pb justified", is.finite(pit$pb_mid_used) && pit$pb_mid_used > 0)
 check("hist fv finite", is.finite(pit$fair_value) && pit$fair_value > 0)
+check("hist src_g pit", identical(pit$src_g, "pit"))
+check("hist src_rd pit", identical(pit$src_rd, "pit"))
+check("hist src_tax pit", identical(pit$src_tax, "pit"))
+check("hist src_pb justified", identical(pit$src_pb_mid, "justified"))
+check("hist src_n_years app_defaults", identical(pit$src_n_years, "app_defaults"))
+check("hist n_years in fallback_keys", grepl("n_years", pit$fallback_keys, fixed = TRUE))
+
+# --- empty model selection: no DCF fallback ---
+check("normalize empty → character(0)", length(.normalize_fv_models(list())) == 0L)
+check("normalize NULL fv_models → character(0)",
+      length(.normalize_fv_models(list(fv_models = character(0)))) == 0L)
+mp_none <- list(wacc = 0.09, ke = 0.10, rd = 0.99, tax = 0.99, fv_models = character(0))
+pit_none <- reconstruct_fair_value_pit(fund_row, price = 8, mp_none, use_session_assumptions = FALSE)
+check("no models → fair_value NA", !is.finite(pit_none$fair_value))
+check("no models → mos NA", !is.finite(pit_none$mos))
+check("no models still has fv_dcf", is.finite(pit_none$fv_dcf))
+
+# growth/rd/tax fallback sources when PIT fields missing
+fund_miss <- list(
+  shares = 100, fcf = 200, cash = 50, debt = 0,
+  ni = 150, equity_book = 1000, dividends_paid = 0,
+  rev_growth = NA_real_, eps_growth = NA_real_, fcf_growth = NA_real_,
+  g_pit = NA_real_, interest_expense = NA_real_,
+  tax_expense = NA_real_, pretax_income = NA_real_
+)
+mp_fb <- list(wacc = 0.09, ke = 0.10, rd = 0.06, tax = 0.25, fv_models = "dcf")
+pit_fb <- reconstruct_fair_value_pit(fund_miss, price = 8, mp_fb, use_session_assumptions = FALSE)
+check("fallback src_g app_defaults", identical(pit_fb$src_g, "app_defaults"))
+check("fallback src_rd session", identical(pit_fb$src_rd, "session"))
+check("fallback src_tax session", identical(pit_fb$src_tax, "session"))
+fb_sum <- summarize_hist_param_fallbacks(data.frame(
+  src_g = pit_fb$src_g, src_n_years = pit_fb$src_n_years,
+  src_rd = pit_fb$src_rd, src_tax = pit_fb$src_tax,
+  src_pb_mid = pit_fb$src_pb_mid, src_rf = "tnx", src_rm = "realized",
+  src_beta = "rolling", session_tip = FALSE,
+  stringsAsFactors = FALSE
+))
+check("fallback summary any", isTRUE(fb_sum$any_fallback))
+check("fallback summary has g", "g" %in% fb_sum$items$key)
 
 # --- MOS next-period stats (legacy helper still available) ---
 vd <- data.frame(

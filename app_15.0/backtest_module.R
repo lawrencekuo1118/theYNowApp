@@ -15,7 +15,7 @@
 #   (fallback APP_DEFAULTS / session); Ke/WACC are PIT.
 # Hist DCF prefers NOPAT/D&A/CapEx/ΔNWC margin path when annual rows exist;
 #   else falls back to geometric Free Cash Flow Gordon.
-# - Strategy fair_value: mean of checked, finite DCF/DDM/RI/P/B (not a hidden primary).
+# - Strategy fair_value: mean of checked, finite DCF/DDM/RI/P/B（未勾＝NA，不暗設 DCF）.
 # - Model_A: normalized PIT fair-value INDEX (參數高原／內部用；不是淨值圖曲線).
 # - Trade_A (基本面策略淨值): Exp_A × 日報酬；Exp_A 來自 MOS＋Great Filter.
 # - Trade_B / Model_B (情緒策略淨值): Exp_B × 日報酬；
@@ -487,8 +487,138 @@ valuation_signal_label <- function(fv, price) {
   .safe_num(fallback, 1.5)
 }
 
+# Sources that mean「非使用者於該再平衡日確認」→ UI 應提醒至對應分頁設定。
+.HIST_FALLBACK_SOURCES <- c("app_defaults", "session", "statutory", "hard_default")
+
+.hist_is_fallback_src <- function(src) {
+  as.character(src %||% "") %in% .HIST_FALLBACK_SOURCES
+}
+
+#' Human labels + which APP tab to confirm each hist assumption.
+.hist_param_guide <- function() {
+  data.frame(
+    key = c("g", "n_years", "rd", "tax", "pb_mid", "rf", "rm", "beta"),
+    label = c(
+      "永續成長率 g",
+      "預測年數 n",
+      "負債成本 Rd",
+      "所得稅率 T",
+      "Justified P/B／基準 P/B",
+      "無風險利率 Rf",
+      "市場報酬率 Rm",
+      "Beta (β)"
+    ),
+    tab = c(
+      "DCF／成長參數（永續 g）",
+      "DCF（預測年數）",
+      "WACC",
+      "WACC（所得稅率）",
+      "P/B",
+      "CAPM",
+      "CAPM",
+      "CAPM"
+    ),
+    stringsAsFactors = FALSE
+  )
+}
+
+.hist_src_label_zh <- function(src) {
+  switch(
+    as.character(src %||% "")[1],
+    pit = "當時財報（PIT）",
+    justified = "Justified 公式",
+    rolling = "Rolling β",
+    realized = "基準已實現報酬",
+    tnx = "^TNX 當時收盤",
+    app_defaults = "系統預設（APP_DEFAULTS）",
+    session = "Session／分頁值（非該再平衡日確認）",
+    statutory = "市場法定稅率預設",
+    hard_default = "程式硬編碼 fallback",
+    session_tip = "目前分頁（末端）",
+    as.character(src %||% "—")[1]
+  )
+}
+
+.hist_growth_source <- function(fund_row) {
+  g_pit <- .safe_num(fund_row$g_pit, NA_real_)
+  if (is.finite(g_pit)) return("pit")
+  parts <- c(
+    .safe_num(fund_row$rev_growth, NA_real_),
+    .safe_num(fund_row$eps_growth, NA_real_),
+    .safe_num(fund_row$fcf_growth, NA_real_)
+  )
+  parts <- parts[is.finite(parts)]
+  if (length(parts) >= 1L) return("pit")
+  "app_defaults"
+}
+
+.hist_rd_source <- function(fund_row, model_params = NULL) {
+  interest <- .safe_num(fund_row$interest_expense, NA_real_)
+  debt <- .safe_num(fund_row$debt, NA_real_)
+  if (is.finite(interest) && is.finite(debt) && debt > 1e-6) {
+    rd <- abs(interest) / debt
+    if (is.finite(rd) && rd > 0 && rd < 0.35) return("pit")
+  }
+  rd_sess <- .safe_num(
+    if (!is.null(model_params)) model_params$rd else NULL,
+    NA_real_
+  )
+  if (is.finite(rd_sess)) return("session")
+  "hard_default"
+}
+
+.hist_tax_source <- function(fund_row, model_params = NULL) {
+  tax_e <- .safe_num(fund_row$tax_expense, NA_real_)
+  pretax <- .safe_num(fund_row$pretax_income, NA_real_)
+  if (is.finite(tax_e) && is.finite(pretax) && abs(pretax) > 1e-6) {
+    t <- tax_e / pretax
+    if (is.finite(t) && t >= 0 && t <= 0.55) return("pit")
+  }
+  tax_sess <- .safe_num(
+    if (!is.null(model_params)) model_params$tax else NULL,
+    NA_real_
+  )
+  if (is.finite(tax_sess)) return("session")
+  "statutory"
+}
+
+.hist_pb_source <- function(roe, ke, g, model_params = NULL) {
+  roe <- .safe_num(roe, NA_real_)
+  ke <- .safe_num(ke, NA_real_)
+  g <- .safe_num(g, NA_real_)
+  if (is.finite(roe) && is.finite(ke) && is.finite(g) && ke > g) {
+    pb <- (roe - g) / (ke - g)
+    if (is.finite(pb) && pb > 0) return("justified")
+  }
+  if (!is.null(model_params) &&
+      is.finite(.safe_num(model_params$pb_mid_hist, NA_real_))) {
+    return("session")
+  }
+  "app_defaults"
+}
+
+#' Compact "g;tax;…" of params that used 預設／fallback on this row.
+.hist_fallback_keys_csv <- function(src_g = NA_character_, src_n_years = NA_character_,
+                                    src_rd = NA_character_, src_tax = NA_character_,
+                                    src_pb_mid = NA_character_, src_rf = NA_character_,
+                                    src_rm = NA_character_, src_beta = NA_character_) {
+  vals <- c(
+    g = as.character(src_g %||% "")[1],
+    n_years = as.character(src_n_years %||% "")[1],
+    rd = as.character(src_rd %||% "")[1],
+    tax = as.character(src_tax %||% "")[1],
+    pb_mid = as.character(src_pb_mid %||% "")[1],
+    rf = as.character(src_rf %||% "")[1],
+    rm = as.character(src_rm %||% "")[1],
+    beta = as.character(src_beta %||% "")[1]
+  )
+  hit <- names(vals)[.hist_is_fallback_src(vals)]
+  if (length(hit) < 1L) "" else paste(hit, collapse = ";")
+}
+
 #' Checked valuation models for strategy FV (mean of finite hits).
 #' Accepts `fv_models` (vector) or `fv_model` (string / vector / "composite").
+#' Empty selection → character(0)（不暗設 DCF）；策略 fair_value／MOS 為 NA。
 .normalize_fv_models <- function(model_params) {
   known <- c("dcf", "ddm", "ri", "pb")
   raw <- NULL
@@ -506,11 +636,11 @@ valuation_signal_label <- function(fv, price) {
   x <- unlist(strsplit(x, "[,+/|]+"), use.names = FALSE)
   x <- trimws(x)
   x <- x[nzchar(x)]
+  if (length(x) < 1L) return(character(0))
   if (any(x %in% c("composite", "mean", "avg", "all", "average"))) {
     return(known)
   }
-  hit <- unique(intersect(known, x))
-  if (length(hit) < 1) known[1] else hit
+  unique(intersect(known, x))
 }
 
 #' Point-in-time fair-value reconstruction for a single fundamentals row.
@@ -520,7 +650,8 @@ valuation_signal_label <- function(fv, price) {
 #' and market-value We/Wd from that day's price × PIT shares and PIT debt.
 #' Forward g / Rd / tax / Justified P/B derived from then-known fund fields
 #' (fallback to APP_DEFAULTS / session when missing).
-#' Strategy `fair_value` is the mean of checked models that are finite.
+#' Strategy `fair_value` is the mean of checked models that are finite
+#' （未勾選任何模型 → fair_value／MOS 為 NA，不暗設 DCF）.
 #'
 #' Tip / latest point (`use_session_assumptions = TRUE`): apply current APP
 #' tab parameters (years, g, RI ROE fade, DDM, P/B, …) on latest PIT inputs.
@@ -547,6 +678,10 @@ reconstruct_fair_value_pit <- function(fund_row, price, model_params,
   payout_pit <- if (is.finite(divp) && is.finite(ni) && ni > 0 && is.finite(shares) && shares > 1) {
     min(max(abs(divp) / ni, 0), 1)
   } else NA_real_
+
+  src_rf <- as.character(model_params$src_rf %||% NA_character_)[1]
+  src_rm <- as.character(model_params$src_rm %||% NA_character_)[1]
+  src_beta <- as.character(model_params$src_beta %||% NA_character_)[1]
 
   if (isTRUE(use_session_assumptions)) {
     # Live APP tabs on tip fundamentals + (usually) tip-date discount rates
@@ -580,14 +715,26 @@ reconstruct_fair_value_pit <- function(fund_row, price, model_params,
         error = function(e) NULL
       )
     }
+    src_g <- "session"
+    src_n_years <- "session"
+    src_rd <- "session"
+    src_tax <- "session"
+    src_pb_mid <- "session"
+    if (!nzchar(src_rf) || is.na(src_rf)) src_rf <- "session"
+    if (!nzchar(src_rm) || is.na(src_rm)) src_rm <- "session"
+    if (!nzchar(src_beta) || is.na(src_beta)) src_beta <- "session"
   } else {
     # Historical PIT: then-available fund + Rolling β; g/Rd/tax/P/B from then-known data
     hist <- .hist_forward_assumptions()
     n_yr <- hist$n_years
+    src_g <- .hist_growth_source(fund_row)
     g_raw <- .hist_pit_growth_decimal(fund_row, fallback = hist$g_explicit)
     disc_r <- if (is.finite(wacc) && wacc > 0) wacc else ke
     g_ex <- .hist_clamp_g_below_r(g_raw, disc_r)
-    if (!is.finite(g_ex)) g_ex <- .hist_clamp_g_below_r(hist$g_explicit, disc_r)
+    if (!is.finite(g_ex)) {
+      g_ex <- .hist_clamp_g_below_r(hist$g_explicit, disc_r)
+      src_g <- "app_defaults"
+    }
     sgr <- g_ex
     roe_use <- roe_pit
     payout_use <- payout_pit
@@ -600,8 +747,15 @@ reconstruct_fair_value_pit <- function(fund_row, price, model_params,
       if (!is.null(model_params$pb_mid_hist)) model_params$pb_mid_hist else NULL,
       hist$pb_mid
     )
+    src_pb_mid <- .hist_pb_source(roe_use, ke, g_ex, model_params)
     pb_mid <- .hist_justified_pb(roe_use, ke, g_ex, fallback = pb_fallback)
     roe_path <- NULL
+    src_n_years <- "app_defaults"
+    src_rd <- .hist_rd_source(fund_row, model_params)
+    src_tax <- .hist_tax_source(fund_row, model_params)
+    if (!nzchar(src_rf) || is.na(src_rf)) src_rf <- NA_character_
+    if (!nzchar(src_rm) || is.na(src_rm)) src_rm <- NA_character_
+    if (!nzchar(src_beta) || is.na(src_beta)) src_beta <- NA_character_
   }
 
   rd_use <- if (isTRUE(use_session_assumptions)) {
@@ -657,7 +811,7 @@ reconstruct_fair_value_pit <- function(fund_row, price, model_params,
     ri = pick_one(fv_ri), pb = pick_one(fv_pb)
   )
   models <- .normalize_fv_models(model_params)
-  cand <- unname(named[models])
+  cand <- if (length(models) < 1L) numeric(0) else unname(named[models])
   cand <- cand[is.finite(cand) & cand > 0]
   fair_value <- if (length(cand) > 0) mean(cand) else NA_real_
 
@@ -666,6 +820,12 @@ reconstruct_fair_value_pit <- function(fund_row, price, model_params,
   } else NA_real_
   signal <- valuation_signal_label(fair_value, price)
   score <- if (is.finite(mos)) .clip01((mos + 0.2) / 0.7, 0, 1) * 100 else NA_real_
+
+  fallback_keys <- .hist_fallback_keys_csv(
+    src_g = src_g, src_n_years = src_n_years,
+    src_rd = src_rd, src_tax = src_tax, src_pb_mid = src_pb_mid,
+    src_rf = src_rf, src_rm = src_rm, src_beta = src_beta
+  )
 
   list(
     fv_dcf = fv_dcf, fv_ddm = fv_ddm, fv_ri = fv_ri, fv_pb = fv_pb,
@@ -678,7 +838,16 @@ reconstruct_fair_value_pit <- function(fund_row, price, model_params,
     tax_used = .safe_num(tax_use, NA_real_),
     pb_mid_used = .safe_num(pb_mid, NA_real_),
     n_years_used = as.integer(n_yr),
-    session_tip = isTRUE(use_session_assumptions)
+    session_tip = isTRUE(use_session_assumptions),
+    src_g = as.character(src_g)[1],
+    src_n_years = as.character(src_n_years)[1],
+    src_rd = as.character(src_rd)[1],
+    src_tax = as.character(src_tax)[1],
+    src_pb_mid = as.character(src_pb_mid)[1],
+    src_rf = as.character(src_rf)[1],
+    src_rm = as.character(src_rm)[1],
+    src_beta = as.character(src_beta)[1],
+    fallback_keys = as.character(fallback_keys)[1]
   )
 }
 
@@ -749,6 +918,28 @@ reconstruct_fair_value_pit <- function(fund_row, price, model_params,
   valuation_df$mos[j] <- pit$mos
   valuation_df$signal[j] <- pit$signal
   valuation_df$valuation_score[j] <- .safe_num(pit$valuation_score, NA_real_)
+  if ("g_used" %in% names(valuation_df)) valuation_df$g_used[j] <- .safe_num(pit$g_used, NA_real_)
+  if ("rd_used" %in% names(valuation_df)) valuation_df$rd_used[j] <- .safe_num(pit$rd_used, NA_real_)
+  if ("tax_used" %in% names(valuation_df)) valuation_df$tax_used[j] <- .safe_num(pit$tax_used, NA_real_)
+  if ("pb_mid_used" %in% names(valuation_df)) valuation_df$pb_mid_used[j] <- .safe_num(pit$pb_mid_used, NA_real_)
+  if ("n_years_used" %in% names(valuation_df)) {
+    valuation_df$n_years_used[j] <- as.integer(.safe_num(pit$n_years_used, NA_integer_))
+  }
+  .set_src <- function(col, val) {
+    if (col %in% names(valuation_df)) valuation_df[[col]][j] <<- as.character(val %||% NA_character_)[1]
+  }
+  .set_src("src_g", pit$src_g)
+  .set_src("src_n_years", pit$src_n_years)
+  .set_src("src_rd", pit$src_rd)
+  .set_src("src_tax", pit$src_tax)
+  .set_src("src_pb_mid", pit$src_pb_mid)
+  .set_src("src_rf", pit$src_rf)
+  .set_src("src_rm", if (isTRUE(used_session_rm)) "session" else pit$src_rm)
+  .set_src("src_beta", pit$src_beta)
+  if ("fallback_keys" %in% names(valuation_df)) {
+    valuation_df$fallback_keys[j] <- as.character(pit$fallback_keys %||% "")[1]
+  }
+  if ("session_tip" %in% names(valuation_df)) valuation_df$session_tip[j] <- TRUE
   if (isTRUE(used_session_rm)) {
     if ("rm_pit" %in% names(valuation_df)) valuation_df$rm_pit[j] <- rm_sess
     if ("ke_pit" %in% names(valuation_df)) valuation_df$ke_pit[j] <- .safe_num(mp_tip$ke, NA_real_)
@@ -1224,6 +1415,7 @@ pit_discount_params <- function(model_params, stock_close, bench_close, dates, a
                                 tnx_df = NULL, fund_row = NULL, price = NA_real_,
                                 realized_rm = TRUE) {
   mp <- model_params
+  beta_src <- "rolling"
   beta_i <- estimate_rolling_beta(
     stock_close, bench_close, dates, as_of,
     lookback_months = as.integer(.safe_num(model_params$beta_lookback_months, 60)),
@@ -1231,12 +1423,14 @@ pit_discount_params <- function(model_params, stock_close, bench_close, dates, a
   )
   if (!is.finite(beta_i)) {
     beta_i <- .safe_num(model_params$beta_fallback, NA_real_)
+    beta_src <- "session"
   }
   rf_sess <- .safe_num(model_params$rf, NA_real_)
   rm_sess <- .safe_num(model_params$rm, NA_real_)
   tax_fb <- .safe_num(model_params$tax, .default_statutory_tax_ratio())
-  rf <- .tnx_close_to_rf(.lookup_close_asof(tnx_df, as_of))
-  if (!is.finite(rf)) rf <- rf_sess
+  rf_tnx <- .tnx_close_to_rf(.lookup_close_asof(tnx_df, as_of))
+  rf_src <- if (is.finite(rf_tnx)) "tnx" else "session"
+  rf <- if (is.finite(rf_tnx)) rf_tnx else rf_sess
   rm_window <- "session"
   if (isTRUE(realized_rm)) {
     rm_hit <- .trailing_realized_rm(bench_close, dates, as_of, fallback = rm_sess)
@@ -1249,6 +1443,7 @@ pit_discount_params <- function(model_params, stock_close, bench_close, dates, a
     rm <- rm_sess
     rm_window <- "session"
   }
+  rm_src <- if (identical(as.character(rm_window)[1], "session")) "session" else "realized"
   ke0 <- .safe_num(model_params$ke, NA_real_)
   wacc0 <- .safe_num(model_params$wacc, NA_real_)
 
@@ -1295,10 +1490,14 @@ pit_discount_params <- function(model_params, stock_close, bench_close, dates, a
   if (!is.finite(wacc_i) || wacc_i <= 0) wacc_i <- wacc0
   mp$ke <- ke_i
   mp$wacc <- wacc_i
+  mp$src_rf <- rf_src
+  mp$src_rm <- rm_src
+  mp$src_beta <- beta_src
   list(
     model_params = mp, beta = beta_i, ke = ke_i, wacc = wacc_i,
     rf = rf, rm = rm, we = we, wd = wd,
-    rm_window = rm_window
+    rm_window = rm_window,
+    src_rf = rf_src, src_rm = rm_src, src_beta = beta_src
   )
 }
 
@@ -1683,6 +1882,7 @@ evaluate_holding_filter <- function(metrics, thresholds) {
   equity_df$FV_PB  <- build_one("fv_pb")
 
   # Strategy series = mean of checked models stored as fair_value at rebalances.
+  # 未勾選任何模型 → FairValue 全 NA（不暗設 DCF）。
   if (!is.null(valuation_df) && "fair_value" %in% names(valuation_df)) {
     equity_df$FairValue <- build_one("fair_value")
   } else {
@@ -1692,9 +1892,11 @@ evaluate_holding_filter <- function(metrics, thresholds) {
     colmap <- c(dcf = "FV_DCF", ddm = "FV_DDM", ri = "FV_RI", pb = "FV_PB")
     cols <- unname(colmap[models])
     cols <- cols[cols %in% names(equity_df)]
-    if (length(cols) == 1L) {
+    if (length(cols) < 1L) {
+      equity_df$FairValue <- rep(NA_real_, length(dates))
+    } else if (length(cols) == 1L) {
       equity_df$FairValue <- equity_df[[cols]]
-    } else if (length(cols) > 1L) {
+    } else {
       mat <- as.matrix(equity_df[, cols, drop = FALSE])
       mat[!is.finite(mat) | mat <= 0] <- NA_real_
       equity_df$FairValue <- as.numeric(rowMeans(mat, na.rm = TRUE))
@@ -1866,8 +2068,17 @@ nav_perf_metrics <- function(equity_df) {
       pit <- reconstruct_fair_value_pit(
         fund_i, price_i, mp_i, use_session_assumptions = FALSE
       )
-      mos_i <- if (is.finite(pit$mos)) pit$mos else mos_fallback
-      signal_i <- pit$signal
+      models_sel <- .normalize_fv_models(mp_i)
+      no_fv_models <- length(models_sel) < 1L
+      # 未勾選模型：策略 MOS 不套用 session mos_fallback，也不暗設 DCF
+      mos_i <- if (isTRUE(no_fv_models)) {
+        NA_real_
+      } else if (is.finite(pit$mos)) {
+        pit$mos
+      } else {
+        mos_fallback
+      }
+      signal_i <- if (isTRUE(no_fv_models)) NA_character_ else pit$signal
       if (is.finite(pit$fair_value) && pit$fair_value > 0) {
         fv_anchor <- pit$fair_value
         fv_anchor_date <- df$Date[i]
@@ -1881,6 +2092,10 @@ nav_perf_metrics <- function(equity_df) {
         pos_a <- 0
         pos_b <- 0
         gf <- list(pass = NA, path = "fv_only")
+      } else if (isTRUE(no_fv_models)) {
+        pos_a <- 0
+        pos_b <- 0
+        gf <- list(pass = FALSE, path = "no_fv_models")
       } else {
         gf <- .great_filter_pass(fund_i, thr_npm, thr_rev, thr_eps, thr_cv, fund_i$cv_fcf)
 
@@ -1923,6 +2138,17 @@ nav_perf_metrics <- function(equity_df) {
         rd_used = .safe_num(pit$rd_used, NA_real_),
         tax_used = .safe_num(pit$tax_used, NA_real_),
         pb_mid_used = .safe_num(pit$pb_mid_used, NA_real_),
+        n_years_used = as.integer(.safe_num(pit$n_years_used, NA_integer_)),
+        src_g = as.character(pit$src_g %||% NA_character_)[1],
+        src_n_years = as.character(pit$src_n_years %||% NA_character_)[1],
+        src_rd = as.character(pit$src_rd %||% NA_character_)[1],
+        src_tax = as.character(pit$src_tax %||% NA_character_)[1],
+        src_pb_mid = as.character(pit$src_pb_mid %||% NA_character_)[1],
+        src_rf = as.character(pit$src_rf %||% disc$src_rf %||% NA_character_)[1],
+        src_rm = as.character(pit$src_rm %||% disc$src_rm %||% NA_character_)[1],
+        src_beta = as.character(pit$src_beta %||% disc$src_beta %||% NA_character_)[1],
+        fallback_keys = as.character(pit$fallback_keys %||% "")[1],
+        session_tip = FALSE,
         exp_a = pos_a,
         exp_b = pos_b,
         filter_pass = isTRUE(gf$pass),
@@ -1970,7 +2196,11 @@ nav_perf_metrics <- function(equity_df) {
       rf_pit = numeric(), rm_pit = numeric(), rm_window = character(),
       we_pit = numeric(), wd_pit = numeric(),
       g_used = numeric(), rd_used = numeric(), tax_used = numeric(),
-      pb_mid_used = numeric(),
+      pb_mid_used = numeric(), n_years_used = integer(),
+      src_g = character(), src_n_years = character(),
+      src_rd = character(), src_tax = character(), src_pb_mid = character(),
+      src_rf = character(), src_rm = character(), src_beta = character(),
+      fallback_keys = character(), session_tip = logical(),
       exp_a = numeric(), exp_b = numeric(),
       filter_pass = logical(), filter_path = character(),
       stringsAsFactors = FALSE
@@ -2128,6 +2358,18 @@ refresh_backtest_fair_value <- function(res, fund, model_params) {
     vd$mos[j] <- pit$mos
     vd$signal[j] <- pit$signal
     vd$valuation_score[j] <- .safe_num(pit$valuation_score, NA_real_)
+    if ("g_used" %in% names(vd)) vd$g_used[j] <- .safe_num(pit$g_used, NA_real_)
+    if ("rd_used" %in% names(vd)) vd$rd_used[j] <- .safe_num(pit$rd_used, NA_real_)
+    if ("tax_used" %in% names(vd)) vd$tax_used[j] <- .safe_num(pit$tax_used, NA_real_)
+    if ("pb_mid_used" %in% names(vd)) vd$pb_mid_used[j] <- .safe_num(pit$pb_mid_used, NA_real_)
+    if ("n_years_used" %in% names(vd)) {
+      vd$n_years_used[j] <- as.integer(.safe_num(pit$n_years_used, NA_integer_))
+    }
+    for (sc in c("src_g", "src_n_years", "src_rd", "src_tax", "src_pb_mid",
+                 "src_rf", "src_rm", "src_beta", "fallback_keys")) {
+      if (sc %in% names(vd)) vd[[sc]][j] <- as.character(pit[[sc]] %||% NA_character_)[1]
+    }
+    if ("session_tip" %in% names(vd)) vd$session_tip[j] <- FALSE
   }
 
   # Tip only: current APP tab params on latest rebalance
@@ -2219,11 +2461,7 @@ compute_fair_value_timeline <- function(ticker,
   if (is.null(model_params$n_years) || !is.finite(.safe_num(model_params$n_years, NA_real_))) {
     model_params$n_years <- 5
   }
-  if ((is.null(model_params$fv_model) || !nzchar(as.character(model_params$fv_model)[1])) &&
-      (is.null(model_params$fv_models) || length(model_params$fv_models) < 1)) {
-    model_params$fv_model <- "dcf"
-    model_params$fv_models <- "dcf"
-  }
+  # 未勾選模型：保持空白，不暗設 DCF（策略 FV／MOS = NA）
   if (is.null(model_params$beta_lookback_months) ||
       !is.finite(.safe_num(model_params$beta_lookback_months, NA_real_))) {
     model_params$beta_lookback_months <- 60L
@@ -2297,11 +2535,7 @@ run_company_backtest <- function(ticker,
   if (is.null(model_params$n_years) || !is.finite(.safe_num(model_params$n_years, NA_real_))) {
     model_params$n_years <- 5
   }
-  if ((is.null(model_params$fv_model) || !nzchar(as.character(model_params$fv_model)[1])) &&
-      (is.null(model_params$fv_models) || length(model_params$fv_models) < 1)) {
-    model_params$fv_model <- "dcf"
-    model_params$fv_models <- "dcf"
-  }
+  # 未勾選模型：保持空白，不暗設 DCF（策略 FV／MOS = NA）
   if (is.null(model_params$beta_lookback_months) ||
       !is.finite(.safe_num(model_params$beta_lookback_months, NA_real_))) {
     model_params$beta_lookback_months <- 60L

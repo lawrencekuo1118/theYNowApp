@@ -5884,9 +5884,8 @@ server <- function(input, output, session) {
   })
 
   .bt_selected_fv_models <- reactive({
-    hit <- .bt_raw_fv_models()
-    # Strategy / MOS fallback when none checked on HFV overlay: average of one = DCF
-    if (length(hit) < 1) "dcf" else hit
+    # 未勾選 → character(0)；策略 FV／MOS 不暗設 DCF
+    .bt_raw_fv_models()
   })
 
   bt_hfv_base <- reactive({
@@ -5998,7 +5997,7 @@ server <- function(input, output, session) {
     if (!is.finite(g_explicit)) g_explicit <- sgr
     fv_models <- .bt_selected_fv_models()
     fv_models <- fv_models[fv_models %in% c("dcf", "ddm", "ri", "pb")]
-    if (length(fv_models) < 1) fv_models <- "dcf"
+    # 未勾選：保持空向量，策略 fair_value／MOS = NA（不暗設 DCF）
 
     rf <- suppressWarnings(as.numeric(input$capm_rf)[1]) / 100
     if (!is.finite(rf) || rf <= 0) {
@@ -6435,13 +6434,13 @@ server <- function(input, output, session) {
     if (is.null(src)) {
       return(tags$p(
         style = "color:#888;font-size:12.5px;",
-        "搜尋股票後將預先顯示股價與大盤；勾選圖上方評價模型可計算合理價與 MOS 摘要（策略用勾選平均）。"
+        "搜尋股票後將預先顯示股價與大盤；勾選圖上方評價模型可計算合理價與 MOS 摘要（策略用勾選平均；未勾＝不套用模型）。"
       ))
     }
     if (!isTRUE(src$show_fv)) {
       return(tags$p(
         style = "color:#888;font-size:12.5px;",
-        "已顯示實際股價與大盤。勾選圖上方評價模型以顯示合理價與下方摘要（策略 MOS＝勾選平均）。"
+        "已顯示實際股價與大盤。勾選圖上方評價模型以顯示合理價與下方摘要（策略 MOS＝勾選平均；未勾＝不套用模型）。"
       ))
     }
     m <- if (!is.null(bt_result()) && !is.null(bt_result()$metrics)) {
@@ -6985,7 +6984,7 @@ server <- function(input, output, session) {
     }
     pct <- function(x) if (is.finite(x)) sprintf("%.0f%%", 100 * x) else "—"
     gap_pct <- function(x) if (is.finite(x)) sprintf("%+.1f%%", 100 * x) else "—"
-    border <- if (isTRUE(s$small_sample)) "#f39c12" else "#00a65a"
+    border <- if (isTRUE(s$small_sample) || isTRUE(s$no_strategy_fv)) "#f39c12" else "#00a65a"
     period_txt <- {
       if (!is.null(s$from) || !is.null(s$to)) {
         paste0(
@@ -6996,6 +6995,27 @@ server <- function(input, output, session) {
         )
       } else "期間：全部估值日配對"
     }
+    fb <- s$fallbacks
+    fb_ui <- NULL
+    if (!is.null(fb) && isTRUE(fb$any_fallback) && !is.null(fb$items) && nrow(fb$items) > 0) {
+      fb_ui <- tags$div(
+        style = "margin:10px 0 0 0;padding:10px 12px;background:#fff8e8;border:1px solid #f0d78c;border-radius:4px;font-size:12.5px;line-height:1.55;",
+        tags$div(tags$b("預設／fallback 提醒")),
+        tags$p(style = "margin:4px 0 6px 0;color:#666;", fb$note %||% ""),
+        tags$ul(
+          style = "margin:0;padding-left:18px;",
+          lapply(seq_len(nrow(fb$items)), function(i) {
+            row <- fb$items[i, , drop = FALSE]
+            tags$li(sprintf(
+              "%s — %s（約 %d 個估值點）→ 請至「%s」設定／確認",
+              row$label[1], row$src_label[1], row$n_rows[1], row$tab[1]
+            ))
+          })
+        )
+      )
+    } else if (!is.null(fb) && !isTRUE(fb$any_fallback) && nzchar(fb$note %||% "")) {
+      fb_ui <- tags$p(style = "margin:8px 0 0 0;color:#666;font-size:12px;", fb$note)
+    }
     tags$div(
       style = paste0(
         "margin:0 0 14px 0;padding:14px 16px;background:#fffdf5;",
@@ -7003,7 +7023,8 @@ server <- function(input, output, session) {
       ),
       tags$div(
         tags$b("歷史基本面驗證摘要（理論估值 vs 實際市值）"),
-        if (isTRUE(s$small_sample)) tags$span(style = "color:#c27d0e;margin-left:8px;", "（小樣本）")
+        if (isTRUE(s$small_sample)) tags$span(style = "color:#c27d0e;margin-left:8px;", "（小樣本）"),
+        if (isTRUE(s$no_strategy_fv)) tags$span(style = "color:#c27d0e;margin-left:8px;", "（無策略 FV）")
       ),
       tags$p(style = "margin:6px 0 0 0;color:#666;", period_txt),
       tags$p(style = "margin:4px 0 0 0;color:#888;font-size:12px;", s$frame %||% ""),
@@ -7025,15 +7046,28 @@ server <- function(input, output, session) {
                           pct(s$oos_hit_rate), s$oos_n %||% 0L))
         } else NULL,
         tags$li(s$note %||% "")
-      )
+      ),
+      fb_ui
     )
   })
 
   output$bt_fv_conv_table <- renderTable({
     s <- bt_fv_conv()
-    shiny::validate(shiny::need(!is.null(s) && !is.null(s$pairs) && nrow(s$pairs) > 0, "選定期間內無配對資料"))
+    shiny::validate(shiny::need(
+      !is.null(s) && !is.null(s$pairs) && nrow(s$pairs) > 0,
+      if (isTRUE(s$no_strategy_fv)) {
+        "無策略理論 FV：請先於折現比較圖勾選評價模型（未勾選時不暗設 DCF）"
+      } else {
+        "選定期間內無配對資料"
+      }
+    ))
     pp <- s$pairs
     gapv <- if ("gap_next" %in% names(pp)) pp$gap_next else (pp$price_next - pp$fair_value) / pp$fair_value
+    fb_lab <- if ("fallback_keys" %in% names(pp)) {
+      ifelse(is.na(pp$fallback_keys) | !nzchar(pp$fallback_keys), "—", pp$fallback_keys)
+    } else {
+      rep("—", nrow(pp))
+    }
     data.frame(
       估值日 = format(pp$Date, "%Y-%m-%d"),
       下期日 = format(pp$Date_next, "%Y-%m-%d"),
@@ -7042,6 +7076,7 @@ server <- function(input, output, session) {
       下期市價 = round(pp$price_next, 2),
       `幅度(P−FV)/FV` = paste0(sprintf("%+.1f", 100 * gapv), "%"),
       相對FV = pp$vs_fv,
+      `預設／fallback` = fb_lab,
       stringsAsFactors = FALSE,
       check.names = FALSE
     )
@@ -7250,17 +7285,19 @@ server <- function(input, output, session) {
           "財報可用條件：財報年 ≤ 日曆年−1，且 period_end＋約 90 日 ≤ 估值日（Yahoo 重編風險仍在）。",
           "僅折線末端最新點才掛目前 APP 分頁（含 FCFE／二階段 DDM）與 Session Rm。"
         ),
-        tags$li(tags$b("策略 MOS／部位："), "用目前勾選且有限值模型的算術平均，不是隱藏的主模型。只勾一個＝該模型。"),
+        tags$li(tags$b("策略 MOS／部位："), "用目前勾選且有限值模型的算術平均，不是隱藏的主模型。只勾一個＝該模型。未勾選任何模型＝不套用策略 FV／MOS（不暗設 DCF）。"),
         tags$li(
           tags$b("歷史基本面驗證（非策略回測）："),
-          "以當期理論估值 FV_t 對照下期實際市價 P_{t+1}，估算之上／之下機率與幅度 (P−FV)/FV；",
-          "預設只計已實現下期，可選擴張窗樣本外命中率。策略淨值／Exp 是另一套交易回測。"
+          "以當期策略理論估值 FV_t（＝勾選且有限值模型平均；未勾＝無 FV）對照下期實際市價 P_{t+1}，",
+          "估算之上／之下機率與幅度 (P−FV)/FV；預設只計已實現下期，可選擴張窗樣本外命中率。",
+          "若歷史點套用 APP_DEFAULTS／Session／法定稅率，摘要會列出預設／fallback 與對應分頁。"
         ),
         tags$li(
           tags$b("歷史各點 vs 末端："),
           "歷史點用當時可得財報、^TNX Rf、截至該日基準已實現 Rm、Rolling β、當日 We/Wd；",
-          "g 由截至該年營收／NI／FCF 成長推估（clamp＜折現率）；Rd／稅率優先 Interest/Debt、Tax/Pretax；",
-          "P/B 用 Justified (ROE−g)/(Ke−g)。僅折線末端最新點掛勾目前 APP 分頁與 Session Rm。"
+          "g 由截至該年營收／NI／FCF 成長推估（缺則 APP_DEFAULTS SGR；clamp＜折現率）；",
+          "預測年數 n 於歷史點固定 APP_DEFAULTS$years；Rd／稅率優先 Interest/Debt、Tax/Pretax；",
+          "P/B 用 Justified (ROE−g)/(Ke−g)（缺則 APP_DEFAULTS pb_mid）。僅折線末端最新點掛勾目前 APP 分頁與 Session Rm。"
         ),
         tags$li(
           tags$b("ADR／雙重股權："),
@@ -7294,7 +7331,7 @@ server <- function(input, output, session) {
       ),
       tags$h5(tags$b("三、計算過程（季頻 PIT）")),
       tags$ol(
-        tags$li("再平衡日：fund_year ≤ 日曆年−1 重建各模型合理價；策略 FV＝勾選且有限值者之平均 → MOS＝(FV−Price)/FV。"),
+        tags$li("再平衡日：fund_year ≤ 日曆年−1 重建各模型合理價；策略 FV＝勾選且有限值者之平均（未勾＝NA） → MOS＝(FV−Price)/FV。"),
         tags$li("持倉回測條件未過 → Exp_A = Exp_B = 0（兩模式皆空手）。"),
         tags$li("通過則 Exp_A 依 MOS 滯後映射；Exp_B = (1−blend)×Exp_A + blend×(sentiment×max_exp)。"),
         tags$li("每日：策略淨值用 Exp×日報酬；Buy&Hold 滿持股；現金報酬=0；未扣交易成本。"),
@@ -7553,9 +7590,9 @@ server <- function(input, output, session) {
   # ==========================================
   lab_sec_result <- reactiveVal(NULL)
 
-  # 側邊欄「測試」：開啟實驗區 (Lab)，供新功能規劃／實驗
+  # 側邊欄「測試」：開啟 Testing（含量化回測報表）
   observeEvent(input$sidebar_test_click, {
-    showNotification("已開啟實驗區 (Lab) — testing env.", type = "message", duration = 3)
+    showNotification("已開啟測試（含量化回測報表）", type = "message", duration = 3)
   }, ignoreInit = TRUE)
 
   # ------------------------------------------
