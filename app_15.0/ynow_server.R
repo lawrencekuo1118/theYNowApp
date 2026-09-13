@@ -5866,6 +5866,103 @@ server <- function(input, output, session) {
   bt_applying_params <- reactiveVal(FALSE)
   bt_fv_visible <- reactiveVal(FALSE)
   bt_hfv_fv <- reactiveVal(NULL)
+  bt_freq_applying <- reactiveVal(FALSE)
+
+  .bt_normalize_rebal_freq <- function(x, default = "quarterly") {
+    if (exists(".normalize_rebal_freq", mode = "function")) {
+      return(.normalize_rebal_freq(x, default = default))
+    }
+    x <- tolower(trimws(as.character(x %||% default)[1]))
+    if (x %in% c("monthly", "每月")) return("monthly")
+    if (x %in% c("yearly", "每年")) return("yearly")
+    "quarterly"
+  }
+
+  .bt_rebal_freq_label <- function(freq) {
+    if (exists(".rebal_freq_label_zh", mode = "function")) {
+      return(.rebal_freq_label_zh(freq))
+    }
+    switch(.bt_normalize_rebal_freq(freq),
+      monthly = "每月", yearly = "每年", "每季")
+  }
+
+  .bt_selected_rebal_freq <- reactive({
+    .bt_normalize_rebal_freq(input$bt_fv_analysis_freq %||% "quarterly")
+  })
+
+  .bt_price_dates_for_freq <- reactive({
+    dates <- NULL
+    base <- tryCatch(bt_hfv_base(), error = function(e) NULL)
+    if (!is.null(base) && is.data.frame(base) && "Date" %in% names(base)) {
+      dates <- base$Date
+    }
+    if ((is.null(dates) || length(dates) < 40L)) {
+      cached <- tryCatch(hist_stock_data(), error = function(e) NULL)
+      if (!is.null(cached) && is.data.frame(cached) && "Date" %in% names(cached)) {
+        dates <- cached$Date
+      }
+    }
+    res <- bt_result()
+    if ((is.null(dates) || length(dates) < 40L) && !is.null(res) &&
+        !is.null(res$equity_df) && "Date" %in% names(res$equity_df)) {
+      dates <- res$equity_df$Date
+    }
+    dates
+  })
+
+  .bt_supported_analysis_freqs <- reactive({
+    px_dates <- .bt_price_dates_for_freq()
+    vd_dates <- NULL
+    res <- bt_result()
+    if (!is.null(res) && !is.null(res$valuation_df) && "Date" %in% names(res$valuation_df)) {
+      vd_dates <- res$valuation_df$Date
+    } else {
+      fv <- bt_hfv_fv()
+      if (!is.null(fv) && !is.null(fv$valuation_df) && "Date" %in% names(fv$valuation_df)) {
+        vd_dates <- fv$valuation_df$Date
+      }
+    }
+    if (exists("supported_analysis_freqs", mode = "function")) {
+      supported_analysis_freqs(price_dates = px_dates, valuation_dates = vd_dates)
+    } else if (exists("detect_supported_rebal_freqs", mode = "function") &&
+               !is.null(px_dates) && length(px_dates) > 0) {
+      detect_supported_rebal_freqs(px_dates)
+    } else {
+      "quarterly"
+    }
+  })
+
+  output$bt_fv_analysis_freq_ui <- renderUI({
+    freqs <- .bt_supported_analysis_freqs()
+    choices <- c()
+    if ("monthly" %in% freqs) choices <- c(choices, "每月" = "monthly")
+    if ("quarterly" %in% freqs) choices <- c(choices, "每季" = "quarterly")
+    if ("yearly" %in% freqs) choices <- c(choices, "每年" = "yearly")
+    if (length(choices) < 1L) {
+      return(tags$p(
+        style = "font-size:12px;color:#888;margin:4px 0 8px 0;",
+        "股價歷史不足，尚無可用分析頻率（需較完整之月／季／年序列）。"
+      ))
+    }
+    cur <- isolate(input$bt_fv_analysis_freq)
+    if (is.null(cur) || !(as.character(cur)[1] %in% unname(choices))) {
+      cur <- if ("quarterly" %in% unname(choices)) "quarterly" else unname(choices)[[1]]
+    }
+    tagList(
+      radioButtons(
+        "bt_fv_analysis_freq",
+        "分析頻率（估值日 Date_t）",
+        inline = TRUE,
+        choices = choices,
+        selected = cur
+      ),
+      tags$p(
+        style = "font-size:11.5px;color:#888;margin:-4px 0 8px 0;line-height:1.45;",
+        "僅顯示資料可支持之頻率：有完整每月序列才顯示「每月」；僅有季頻則只顯示「每季」。",
+        "切換頻率會以該頻率重建 Date_t／FV（每月＝月頻再平衡）。美股／台股相同。"
+      )
+    )
+  })
 
   .bt_fv_model_specs <- function() {
     list(
@@ -6177,7 +6274,8 @@ server <- function(input, output, session) {
           model_params = mp,
           mos = bt_current_mos(),
           bench_ticker = active_bench_ticker(),
-          years = 5
+          years = 5,
+          rebal_freq = .bt_selected_rebal_freq()
         )
         bt_hfv_fv(fv_res)
         bt_fv_visible(TRUE)
@@ -6202,6 +6300,55 @@ server <- function(input, output, session) {
       showNotification(paste("❌ 基本面價值計算失敗：", e$message), type = "error", duration = 8)
     })
   }, ignoreInit = TRUE, ignoreNULL = FALSE)
+
+  # 分析頻率變更：以該頻率重建 Date_t／FV；策略回測需重跑（再平衡日會變）
+  observeEvent(input$bt_fv_analysis_freq, {
+    if (isTRUE(bt_freq_applying())) return()
+    if (isTRUE(bt_applying_params())) return()
+    freq <- .bt_selected_rebal_freq()
+    # Invalidate strategy result if its rebalance calendar no longer matches.
+    res <- bt_result()
+    if (!is.null(res)) {
+      res_freq <- .bt_normalize_rebal_freq(res$rebal_freq %||% "quarterly")
+      if (!identical(res_freq, freq)) {
+        bt_result(NULL)
+        bt_validation(NULL)
+        bt_run_msg(sprintf(
+          "已切換為%s分析頻率；策略淨值需重新「執行回測」（Date_t 再平衡日已變更）。",
+          .bt_rebal_freq_label(freq)
+        ))
+      }
+    }
+    sel <- .bt_raw_fv_models()
+    if (length(sel) < 1L) {
+      bt_hfv_fv(NULL)
+      return()
+    }
+    if (is.null(current_ticker()) || !nzchar(as.character(current_ticker())[1])) return()
+    if (is.null(d_income_statement()) || is.null(d_cash_flow()) || is.null(d_balance_sheet())) {
+      return()
+    }
+    tryCatch({
+      mp <- bt_current_model_params()
+      withProgress(message = sprintf("以%s頻率重建基本面價值…", .bt_rebal_freq_label(freq)), value = 0.2, {
+        fv_res <- compute_fair_value_timeline(
+          ticker = current_ticker(),
+          d_is = d_income_statement(),
+          d_bs = d_balance_sheet(),
+          d_cf = d_cash_flow(),
+          model_params = mp,
+          mos = bt_current_mos(),
+          bench_ticker = active_bench_ticker(),
+          years = 5,
+          rebal_freq = freq
+        )
+        bt_hfv_fv(fv_res)
+        bt_fv_visible(TRUE)
+      })
+    }, error = function(e) {
+      showNotification(paste("❌ 依分析頻率重建失敗：", e$message), type = "error", duration = 8)
+    })
+  }, ignoreInit = TRUE)
 
   observeEvent(list(input$bt_w_vg, input$bt_w_mom, input$bt_w_rsi,
                     input$bt_net_margin, input$bt_rev_growth, input$bt_eps_growth, input$bt_fcf_cv,
@@ -6256,7 +6403,8 @@ server <- function(input, output, session) {
         bt_w_rsi = input$bt_w_rsi,
         bt_w_vg = input$bt_w_vg,
         bt_max_exp = input$bt_max_exp,
-        bt_min_exp_pass = input$bt_min_exp_pass
+        bt_min_exp_pass = input$bt_min_exp_pass,
+        bt_rebal_freq = .bt_selected_rebal_freq()
       )
       mp <- bt_current_model_params()
       withProgress(message = paste("V12 回測", current_ticker(), "…"), value = 0.15, {
@@ -6313,8 +6461,9 @@ server <- function(input, output, session) {
         bt_hfv_fv(NULL)
         bt_fv_visible(TRUE)
         bt_run_msg(sprintf(
-          "完成：%s 日 · 季頻 PIT · Rolling β · 較佳=%s · Session WACC=%.2f%% Ke=%.2f%% SGR=%.2f%%",
-          res$n_days, res$metrics$best,
+          "完成：%s 日 · %s PIT · Rolling β · 較佳=%s · Session WACC=%.2f%% Ke=%.2f%% SGR=%.2f%%",
+          res$n_days, .bt_rebal_freq_label(res$rebal_freq %||% params$bt_rebal_freq),
+          res$metrics$best,
           mp$wacc * 100, mp$ke * 100, mp$sgr * 100
         ))
       })
@@ -6952,20 +7101,35 @@ server <- function(input, output, session) {
   })
 
   bt_fv_conv <- reactive({
+    freq <- .bt_selected_rebal_freq()
     res <- bt_result()
-    if (is.null(res) || is.null(res$valuation_df)) return(NULL)
+    fv_only <- bt_hfv_fv()
+    vd <- NULL
+    if (!is.null(res) && !is.null(res$valuation_df)) {
+      res_freq <- .bt_normalize_rebal_freq(res$rebal_freq %||% NA_character_, default = NA_character_)
+      if (is.na(res_freq) || identical(res_freq, freq)) {
+        vd <- res$valuation_df
+      }
+    }
+    if (is.null(vd) && !is.null(fv_only) && !is.null(fv_only$valuation_df)) {
+      fv_freq <- .bt_normalize_rebal_freq(fv_only$rebal_freq %||% NA_character_, default = NA_character_)
+      if (is.na(fv_freq) || identical(fv_freq, freq)) {
+        vd <- fv_only$valuation_df
+      }
+    }
+    if (is.null(vd)) return(NULL)
     b <- .bt_fv_conv_bounds()
     mode <- as.character(input$bt_fv_oos_mode %||% "realized")[1]
     if (!mode %in% c("realized", "insample", "expanding")) mode <- "realized"
     tryCatch(
       summarize_fv_market_validation(
-        res$valuation_df, from = b$from, to = b$to,
+        vd, from = b$from, to = b$to,
         as_of = Sys.Date(), oos_mode = mode
       ),
       error = function(e) {
         tryCatch(
           summarize_fv_convergence(
-            res$valuation_df, from = b$from, to = b$to,
+            vd, from = b$from, to = b$to,
             as_of = Sys.Date(), oos_mode = mode
           ),
           error = function(e2) NULL
@@ -7329,7 +7493,7 @@ server <- function(input, output, session) {
           "歷史點 g／P/B 由當時財報推估；Ke／WACC 於各季以 Rolling β＋當年 Rf／結構重估。末端才掛目前分頁與 Session Rm。"
         )
       ),
-      tags$h5(tags$b("三、計算過程（季頻 PIT）")),
+      tags$h5(tags$b("三、計算過程（依分析頻率 PIT）")),
       tags$ol(
         tags$li("再平衡日：fund_year ≤ 日曆年−1 重建各模型合理價；策略 FV＝勾選且有限值者之平均（未勾＝NA） → MOS＝(FV−Price)/FV。"),
         tags$li("持倉回測條件未過 → Exp_A = Exp_B = 0（兩模式皆空手）。"),

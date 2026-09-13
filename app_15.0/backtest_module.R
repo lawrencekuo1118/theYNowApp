@@ -1984,11 +1984,152 @@ nav_perf_metrics <- function(equity_df) {
   empty
 }
 
+# ---------- rebalance calendar (Date_t frequency) ----------
+
+#' Normalize rebalance / analysis frequency keys.
+.normalize_rebal_freq <- function(x, default = "quarterly") {
+  x <- tolower(trimws(as.character(x %||% default)[1]))
+  if (!nzchar(x)) return(default)
+  if (x %in% c("monthly", "month", "m", "mo", "每月", "月")) return("monthly")
+  if (x %in% c("yearly", "annual", "annually", "year", "y", "yr", "每年", "年")) {
+    return("yearly")
+  }
+  if (x %in% c("quarterly", "quarter", "q", "每季", "季")) return("quarterly")
+  default
+}
+
+.rebal_freq_label_zh <- function(freq) {
+  switch(.normalize_rebal_freq(freq),
+    monthly = "每月",
+    yearly = "每年",
+    "每季"
+  )
+}
+
+.rebal_min_points <- function(freq) {
+  switch(.normalize_rebal_freq(freq),
+    monthly = 12L,
+    yearly = 3L,
+    4L
+  )
+}
+
+#' Period keys for month / quarter / year buckets (US & TW share same calendar logic).
+.rebal_period_keys <- function(dates, freq = "quarterly") {
+  dates <- as.Date(dates)
+  freq <- .normalize_rebal_freq(freq)
+  if (identical(freq, "monthly")) {
+    return(format(dates, "%Y-%m"))
+  }
+  if (identical(freq, "yearly")) {
+    return(format(dates, "%Y"))
+  }
+  sprintf(
+    "%d-Q%d",
+    as.integer(format(dates, "%Y")),
+    ((as.integer(format(dates, "%m")) - 1L) %/% 3L) + 1L
+  )
+}
+
+#' Last trading-day index per period that also has RSI / ret20 (rebalance-ready).
+.rebal_indices_for_freq <- function(df, freq = "quarterly") {
+  if (is.null(df) || !is.data.frame(df) || nrow(df) < 1L || !"Date" %in% names(df)) {
+    return(integer(0))
+  }
+  freq <- .normalize_rebal_freq(freq)
+  keys <- .rebal_period_keys(df$Date, freq)
+  ends <- !duplicated(keys, fromLast = TRUE)
+  rsi_ok <- if ("RSI" %in% names(df)) !is.na(df$RSI) else TRUE
+  ret_ok <- if ("ret20" %in% names(df)) !is.na(df$ret20) else TRUE
+  which(ends & rsi_ok & ret_ok)
+}
+
+#' Which analysis frequencies daily price history can honestly support.
+#' Monthly only if a near-complete monthly series exists (≥12 months, ≥80% coverage).
+#' Same calendar logic for US and TW.
+detect_supported_rebal_freqs <- function(dates,
+                                         min_monthly = 12L,
+                                         min_quarterly = 4L,
+                                         min_yearly = 3L,
+                                         min_coverage = 0.80) {
+  dates <- as.Date(dates)
+  dates <- sort(unique(dates[!is.na(dates)]))
+  if (length(dates) < 40L) return(character(0))
+  span_days <- as.numeric(diff(range(dates)))
+  if (!is.finite(span_days) || span_days < 60) return(character(0))
+
+  coverage_ok <- function(freq, min_n) {
+    keys <- unique(.rebal_period_keys(dates, freq))
+    n <- length(keys)
+    if (n < as.integer(min_n)) return(FALSE)
+    expected <- switch(
+      .normalize_rebal_freq(freq),
+      monthly = max(as.integer(min_n), as.integer(round(span_days / 30.4375))),
+      yearly = max(as.integer(min_n), as.integer(round(span_days / 365.25))),
+      max(as.integer(min_n), as.integer(round(span_days / 91.3125)))
+    )
+    (n / expected) >= as.numeric(min_coverage)
+  }
+
+  out <- character(0)
+  if (coverage_ok("monthly", min_monthly)) out <- c(out, "monthly")
+  if (coverage_ok("quarterly", min_quarterly)) out <- c(out, "quarterly")
+  if (coverage_ok("yearly", min_yearly)) out <- c(out, "yearly")
+  out
+}
+
+#' Infer realized Date_t spacing from valuation / rebalance dates.
+infer_rebal_freq_from_dates <- function(dates) {
+  dates <- sort(unique(as.Date(dates[!is.na(as.Date(dates))])))
+  if (length(dates) < 2L) return(NA_character_)
+  med <- stats::median(as.numeric(diff(dates)), na.rm = TRUE)
+  if (!is.finite(med)) return(NA_character_)
+  if (med <= 45) return("monthly")
+  if (med <= 140) return("quarterly")
+  "yearly"
+}
+
+#' Frequencies the UI may offer: engine-capable from prices ∪ realized valuation_df spacing.
+#' Never advertise 每月 unless monthly Date_t can be (or already were) produced.
+supported_analysis_freqs <- function(price_dates = NULL, valuation_dates = NULL) {
+  from_px <- if (!is.null(price_dates) && length(price_dates) > 0) {
+    detect_supported_rebal_freqs(price_dates)
+  } else {
+    character(0)
+  }
+  from_vd <- character(0)
+  if (!is.null(valuation_dates) && length(valuation_dates) > 0) {
+    inferred <- infer_rebal_freq_from_dates(valuation_dates)
+    if (identical(inferred, "monthly")) {
+      # Realized monthly series → also allow coarser analysis freqs if enough points
+      n <- length(unique(as.Date(valuation_dates[!is.na(as.Date(valuation_dates))])))
+      from_vd <- c("monthly")
+      if (n >= 4L) from_vd <- c(from_vd, "quarterly")
+      if (n >= 3L) from_vd <- c(from_vd, "yearly")
+    } else if (identical(inferred, "quarterly")) {
+      n <- length(unique(as.Date(valuation_dates[!is.na(as.Date(valuation_dates))])))
+      from_vd <- c("quarterly")
+      if (n >= 3L) from_vd <- c(from_vd, "yearly")
+      # Do NOT add monthly from quarterly-only valuation_df
+    } else if (identical(inferred, "yearly")) {
+      from_vd <- "yearly"
+    }
+  }
+  # Prefer engine capability (price history) so 每月 can appear before a monthly run.
+  # If only valuation_df exists and is quarterly, monthly stays hidden.
+  if (length(from_px) > 0) {
+    unique(c(from_px, from_vd))
+  } else {
+    unique(from_vd)
+  }
+}
+
 # ---------- internal daily backtest core ----------
 
 #' Given aligned daily df (Date, Close, Bench, RSI, ret20), fundamentals
-#' and params, simulate quarterly rebalance and return
+#' and params, simulate period-end rebalance and return
 #' equity_df / valuation_df / exposure summary.
+#' @param params may include bt_rebal_freq = monthly|quarterly|yearly (default quarterly).
 .run_backtest_core <- function(df, fund, params, model_params, mos_fallback = 0,
                                beta_df = NULL, fv_only = FALSE, tnx_df = NULL) {
   thr_npm <- .safe_num(params$bt_net_margin, 5)
@@ -2000,6 +2141,8 @@ nav_perf_metrics <- function(equity_df) {
   w_vg  <- .safe_num(params$bt_w_vg, 0.7)
   max_exp <- .clip01(.safe_num(params$bt_max_exp, 0.90), 0.5, 1)
   min_exp_pass <- .clip01(.safe_num(params$bt_min_exp_pass, 0), 0, 0.4)
+  rebal_freq <- .normalize_rebal_freq(params$bt_rebal_freq %||% "quarterly")
+  min_rebal <- .rebal_min_points(rebal_freq)
 
   # Full history for rolling β (may be longer than the simulation window).
   if (is.null(beta_df) || !is.data.frame(beta_df) ||
@@ -2007,14 +2150,13 @@ nav_perf_metrics <- function(equity_df) {
     beta_df <- df[, c("Date", "Close", "Bench"), drop = FALSE]
   }
 
-  # Quarter-end rebalance: last available trading day per (year, quarter).
-  qkey <- sprintf("%d-Q%d",
-                  as.integer(format(df$Date, "%Y")),
-                  ((as.integer(format(df$Date, "%m")) - 1) %/% 3) + 1)
-  quarter_ends <- !duplicated(qkey, fromLast = TRUE)
-  rebal_idx <- which(quarter_ends & !is.na(df$RSI) & !is.na(df$ret20))
-  if (length(rebal_idx) < 4) {
-    stop("可再平衡季數不足（需要較長股價歷史）")
+  # Period-end rebalance: last available trading day per month / quarter / year.
+  rebal_idx <- .rebal_indices_for_freq(df, rebal_freq)
+  if (length(rebal_idx) < min_rebal) {
+    stop(sprintf(
+      "可再平衡%s數不足（需要較長股價歷史；目前 %d，至少 %d）",
+      .rebal_freq_label_zh(rebal_freq), length(rebal_idx), min_rebal
+    ))
   }
 
   n <- nrow(df)
@@ -2230,7 +2372,7 @@ nav_perf_metrics <- function(equity_df) {
     fv_models = .normalize_fv_models(model_params)
   )
 
-  # Align comparison window at first quarterly decision so strategies
+  # Align comparison window at first rebalance decision so strategies
   # (cash until first rebalance) do not give Buy&Hold a free head-start.
   if (!isTRUE(fv_only)) {
     i0 <- rebal_idx[1L]
@@ -2259,6 +2401,7 @@ nav_perf_metrics <- function(equity_df) {
       equity_df = equity_df[, c("Date", "Close", "Bench", "FairValue",
                                 "FV_DCF", "FV_DDM", "FV_RI", "FV_PB"), drop = FALSE],
       valuation_df = valuation_df,
+      rebal_freq = rebal_freq,
       exposure = NULL,
       metrics = list(
         sharpe_a = NA_real_, sharpe_b = NA_real_,
@@ -2304,6 +2447,7 @@ nav_perf_metrics <- function(equity_df) {
   list(
     equity_df = equity_df,
     valuation_df = valuation_df,
+    rebal_freq = rebal_freq,
     exposure = exposure,
     metrics = list(
       sharpe_a = pa$sharpe, sharpe_b = pb$sharpe,
@@ -2447,7 +2591,8 @@ compute_fair_value_timeline <- function(ticker,
                                         model_params = NULL,
                                         mos = NA_real_,
                                         bench_ticker = "SPY",
-                                        years = 5) {
+                                        years = 5,
+                                        rebal_freq = "quarterly") {
   if (is.null(model_params)) model_params <- list()
   if (is.null(model_params$ke) || !is.finite(.safe_num(model_params$ke, NA_real_))) {
     model_params$ke <- .safe_num(model_params$wacc, 0.09)
@@ -2489,10 +2634,12 @@ compute_fair_value_timeline <- function(ticker,
     d_is, d_bs, d_cf, ticker = ticker, model_params = model_params
   )
   mos_fallback <- .safe_num(mos, 0)
+  rebal_freq <- .normalize_rebal_freq(rebal_freq)
   dummy_params <- list(
     bt_net_margin = 0, bt_rev_growth = 0, bt_eps_growth = 0, bt_fcf_cv = 999,
     bt_w_mom = 0.5, bt_w_rsi = 0.5, bt_w_vg = 0.7,
-    bt_max_exp = 0.9, bt_min_exp_pass = 0
+    bt_max_exp = 0.9, bt_min_exp_pass = 0,
+    bt_rebal_freq = rebal_freq
   )
   core <- .run_backtest_core(
     df, fund, dummy_params, model_params, mos_fallback,
@@ -2501,6 +2648,7 @@ compute_fair_value_timeline <- function(ticker,
   list(
     equity_df = core$equity_df,
     valuation_df = core$valuation_df,
+    rebal_freq = core$rebal_freq %||% rebal_freq,
     metrics = core$metrics,
     bench_ticker = bench_ticker,
     n_days = nrow(df),
@@ -2568,6 +2716,8 @@ run_company_backtest <- function(ticker,
   )
   mos_fallback <- .safe_num(mos, 0)
   tnx_df <- fetch_pit_rf_history_df(period)
+  if (is.null(params) || !is.list(params)) params <- list()
+  params$bt_rebal_freq <- .normalize_rebal_freq(params$bt_rebal_freq %||% "quarterly")
 
   core <- .run_backtest_core(df, fund, params, model_params, mos_fallback,
                              beta_df = beta_df, tnx_df = tnx_df)
@@ -2575,6 +2725,7 @@ run_company_backtest <- function(ticker,
   list(
     equity_df    = core$equity_df,
     valuation_df = core$valuation_df,
+    rebal_freq   = core$rebal_freq %||% .normalize_rebal_freq(params$bt_rebal_freq %||% "quarterly"),
     exposure     = core$exposure,
     metrics      = core$metrics,
     bench_ticker = bench_ticker,

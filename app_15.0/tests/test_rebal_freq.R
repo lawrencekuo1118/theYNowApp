@@ -1,0 +1,17 @@
+app_dir <- if (file.exists("../rebal_freq.R")) normalizePath("..") else if (file.exists("app_15.0/rebal_freq.R")) file.path(getwd(), "app_15.0") else stop("no rebal_freq.R")
+source(file.path(app_dir, "rebal_freq.R"), local = FALSE)
+check <- function(label, cond) { if (!isTRUE(cond)) stop(sprintf("FAIL: %s", label)); message("OK: ", label) }
+d_daily <- seq(as.Date("2019-01-02"), as.Date("2024-12-31"), by = "1 day")
+d_daily <- d_daily[as.integer(format(d_daily, "%u")) <= 5L]
+freqs_full <- detect_supported_rebal_freqs(d_daily)
+check("daily monthly", "monthly" %in% freqs_full)
+check("daily quarterly", "quarterly" %in% freqs_full)
+q_ends <- as.Date(c("2019-03-29","2019-06-28","2019-09-30","2019-12-31","2020-03-31","2020-06-30","2020-09-30","2020-12-31","2021-03-31","2021-06-30","2021-09-30","2021-12-31","2022-03-31","2022-06-30","2022-09-30","2022-12-30","2023-03-31","2023-06-30","2023-09-29","2023-12-29"))
+freqs_q <- detect_supported_rebal_freqs(q_ends)
+check("q hide monthly", !"monthly" %in% freqs_q)
+check("q show quarterly", "quarterly" %in% freqs_q)
+ui_q <- supported_analysis_freqs(NULL, q_ends)
+check("vd-only hide monthly", !"monthly" %in% ui_q)
+check("px offers monthly", "monthly" %in% supported_analysis_freqs(d_daily, q_ends))
+check("norm 每月", identical(.normalize_rebal_freq("每月"), "monthly"))
+message("All rebal-freq checks passed.")

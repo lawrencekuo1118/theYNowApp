@@ -694,7 +694,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v15.12</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v15.13</span>'),
     titleWidth = 250,
     tags$li(
       class = "dropdown ynow-market-header",
@@ -3397,7 +3397,7 @@ ui <- dashboardPage(
               width = 12, status = "warning", solidHeader = TRUE,
               title = tagList(icon("filter"), "要不要持股：持倉回測條件"),
               .bt_section_intro(
-                "季頻再平衡日四項皆過才允許持倉；否則本頁基本面／情緒策略皆空手（Exp_A＝Exp_B＝0）。門檻仍供回測引擎與「回測濾鏡」共用。"
+                "再平衡日（依所選分析頻率：每月／每季／每年）四項皆過才允許持倉；否則本頁基本面／情緒策略皆空手（Exp_A＝Exp_B＝0）。門檻仍供回測引擎與「回測濾鏡」共用。"
               ),
               fluidRow(
                 column(3, tipify(numericInput("bt_net_margin", "淨利率門檻 (%)", 5),
@@ -3516,6 +3516,7 @@ ui <- dashboardPage(
               ),
               selected = "all"
             ),
+            uiOutput("bt_fv_analysis_freq_ui"),
             conditionalPanel(
               condition = "input.bt_fv_conv_window == 'custom'",
               dateRangeInput(
@@ -3629,7 +3630,7 @@ ui <- dashboardPage(
             ),
             tags$div(
               class = "ynow-bt-run-note",
-              "執行回測請按上方標題列右側「執行回測」。季頻再平衡 · 當年 Rf／已實現 Rm／市值結構 · Rolling β · 勾選模型平均 PIT。"
+              "執行回測請按上方標題列右側「執行回測」。依分析頻率再平衡 · 當年 Rf／已實現 Rm／市值結構 · Rolling β · 勾選模型平均 PIT。"
             ),
             uiOutput("bt_run_status")
           )

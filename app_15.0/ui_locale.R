@@ -43,6 +43,13 @@ locale_for_market <- function(mode = get_market_mode()) {
     btn_expand_all = "Expand All",
     btn_compress_all = "Compress (switch to summary)",
     btn_run_bt = "Run Backtest",
+    bt_analysis_freq = "Analysis frequency (valuation date Date_t)",
+    bt_freq_monthly = "Monthly",
+    bt_freq_quarterly = "Quarterly",
+    bt_freq_yearly = "Yearly",
+    bt_freq_hint = "Only frequencies supported by available data are shown. Monthly appears only when a full monthly series exists (or can be produced). US and TW use the same rule.",
+    bt_freq_insufficient = "Price history is too short for analysis-frequency options.",
+
     # --- tabBox headers ---
     box_financial_report = "FINANCIAL REPORT",
     box_performance = "PERFORMANCE",
@@ -118,6 +125,13 @@ locale_for_market <- function(mode = get_market_mode()) {
     btn_expand_all = "全部展開",
     btn_compress_all = "壓縮（切換回精簡版）",
     btn_run_bt = "執行回測",
+    bt_analysis_freq = "分析頻率（估值日 Date_t）",
+    bt_freq_monthly = "每月",
+    bt_freq_quarterly = "每季",
+    bt_freq_yearly = "每年",
+    bt_freq_hint = "僅顯示資料可支持之頻率：有完整每月序列才顯示「每月」；僅有季頻則只顯示「每季」。美股／台股相同。",
+    bt_freq_insufficient = "股價歷史不足，尚無可用分析頻率。",
+
     # --- tabBox headers ---
     box_financial_report = "財務報表",
     box_performance = "績效指標",
