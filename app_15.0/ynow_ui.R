@@ -694,7 +694,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v15.10</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v15.11</span>'),
     titleWidth = 250,
     tags$li(
       class = "dropdown ynow-market-header",
@@ -761,8 +761,7 @@ ui <- dashboardPage(
              menuItem("RI-Model", tabName = "ri_calculator", icon = icon("gem")),
              menuItem("YNOW", tabName = "sensitivity", icon = icon("sliders-h")),
              menuItem("Blue Chip", tabName = "bluechip", icon = icon("star")),
-             menuItem("Backtest Zone", tabName = "backtest", icon = icon("vial")),
-             # 實驗區 (Lab) 不放主選單；改由底部 Snapshot 旁「測試 / testing env.」捷徑開啟
+             # Backtest Zone 已併入底部「測試」；實驗區不放主選單
              menuItem("About", tabName = "about", icon = icon("info-circle"))
              # Snapshot 不放主選單（避免巢狀 li 被瀏覽器抬出隱藏）；改由底部捷徑切換
            ),
@@ -808,7 +807,7 @@ ui <- dashboardPage(
         icon("camera", class = "fa-fw"),
         tags$span(id = "ynow_snapshot_link_label", " Snapshot")
       ),
-      # 測試按鈕：Snapshot 旁的捷徑，開啟實驗區 (Lab) — 規劃新功能用
+      # 測試按鈕：Snapshot 旁的捷徑，開啟 Testing（含量化回測報表）
       tags$a(
         id = "ynow_sidebar_test_btn",
         href = "#shiny-tab-lab_notes",
@@ -1305,7 +1304,6 @@ ui <- dashboardPage(
               ri_calculator: s.menu_ri,
               sensitivity: s.menu_ynow,
               bluechip: s.menu_bluechip,
-              backtest: s.menu_backtest,
               about: s.menu_about
             };
             Object.keys(menu).forEach(function (k) {
@@ -3341,400 +3339,41 @@ ui <- dashboardPage(
         )
       ),
       
-      tabItem(tabName = "backtest",
-              withMathJax(),
-              h2("量化回測實驗室 (Backtest Zone)"),
-
-              # 1) 折現比較圖置頂：合理價 vs 實際股價 vs 大盤
-              fluidRow(
-                box(
-                  title = tagList(icon("balance-scale"), "折現比較（合理價 vs 實際股價）"),
-                  width = 12, status = "primary", solidHeader = TRUE,
-                  tags$div(
-                    class = "ynow-bt-hfv-wrap",
-                    uiOutput("bt_valuation_summary"),
-                    tags$div(
-                      class = "ynow-bt-hfv-controls",
-                      tags$div(
-                        class = "ynow-bt-hfv-bench",
-                        checkboxInput("bt_hfv_show_bench", "顯示大盤", value = TRUE)
-                      ),
-                      tags$div(
-                        class = "ynow-bt-hfv-models",
-                        checkboxGroupInput(
-                          "bt_fv_models",
-                          "回測用評價模型（可複選疊圖；策略 MOS／部位＝勾選且有限值者之平均；未勾＝不套用模型）",
-                          inline = TRUE,
-                          choices = c(
-                            "DCF" = "dcf",
-                            "DDM" = "ddm",
-                            "RI" = "ri",
-                            "P/B" = "pb"
-                          ),
-                          selected = character(0)
-                        )
-                      )
-                    ),
-                    plotlyOutput("bt_hfv_timeline", height = "420px") %>% withSpinner()
-                  )
-                )
-              ),
-
-              # 1b) 歷史基本面驗證：理論估值 vs 實際市值（漲跌機率／幅度）
-              fluidRow(
-                box(
-                  title = tagList(icon("balance-scale"), "歷史基本面驗證：理論估值 vs 實際市值（漲跌機率／幅度）"),
-                  width = 12, status = "warning", solidHeader = TRUE,
-                  collapsible = TRUE, collapsed = FALSE,
-                  tags$p(
-                    style = "font-size:12.5px;color:#444;line-height:1.55;",
-                    tags$b("這不是交易策略回測。"),
-                    "以當時可得基本面重建理論估值 ", tags$code("FV_t"),
-                    "（＝折現圖勾選且有限值模型平均；未勾選＝無策略 FV，不暗設 DCF）",
-                    "，再用後續實際市價 ", tags$code("P_{t+1}"),
-                    " 驗證：估算落在估值", tags$b("之上／之下"),
-                    "的頻率，以及幅度 ", tags$code("(P_{t+1}−FV_t)/FV_t"),
-                    "。策略淨值／MOS 部位請看下方「策略淨值」區塊。"
-                  ),
-                  tags$p(
-                    style = "font-size:11.5px;color:#888;line-height:1.45;margin-top:-4px;",
-                    "資料注意：Yahoo 年報可能為重編；PIT 以財報期末＋約 90 日申報滯後過濾。",
-                    "真・as-filed SEC EDGAR 仍待後續階段。",
-                    "若歷史點套用系統預設／Session，摘要會顯示預設／fallback 提醒與對應分頁。"
-                  ),
-                  radioButtons(
-                    "bt_fv_conv_window",
-                    "統計期間（依估值日 Date_t）",
-                    inline = TRUE,
-                    choices = c(
-                      "全部" = "all",
-                      "近1年" = "1y",
-                      "近3年" = "3y",
-                      "近5年" = "5y",
-                      "自訂" = "custom"
-                    ),
-                    selected = "all"
-                  ),
-                  conditionalPanel(
-                    condition = "input.bt_fv_conv_window == 'custom'",
-                    dateRangeInput(
-                      "bt_fv_conv_custom",
-                      NULL,
-                      start = Sys.Date() - 365 * 3,
-                      end = Sys.Date(),
-                      language = "zh-TW"
-                    )
-                  ),
-                  radioButtons(
-                    "bt_fv_oos_mode",
-                    "驗證口徑",
-                    inline = TRUE,
-                    choices = c(
-                      "已實現下期（預設）" = "realized",
-                      "擴張窗樣本外命中" = "expanding",
-                      "含未到期下期（樣本內）" = "insample"
-                    ),
-                    selected = "realized"
-                  ),
-                  uiOutput("bt_fv_conv_summary"),
-                  fluidRow(
-                    column(
-                      7,
-                      tags$h5(tags$b("逐期明細")),
-                      tags$div(style = "overflow-x:auto;", tableOutput("bt_fv_conv_table"))
-                    ),
-                    column(
-                      5,
-                      tags$h5(tags$b("幅度 (P下一期 − FV) / FV")),
-                      plotlyOutput("bt_fv_conv_plot", height = "280px") %>% withSpinner()
-                    )
-                  )
-                )
-              ),
-
-              # 2) 績效指標
-              fluidRow(
-                box(
-                  title = tagList(icon("trophy"), "回測績效指標"),
-                  width = 12, status = "success", solidHeader = TRUE, collapsible = TRUE, collapsed = FALSE,
-                  uiOutput("perf_metrics")
-                )
-              ),
-
-              # 3) 淨值圖 + 執行面板
-              fluidRow(
-                box(
-                  title = tagList(icon("chart-area"), "策略淨值（累積財富，起始＝1）"),
-                  width = 8, status = "info", solidHeader = TRUE,
-                  tags$div(
-                    style = "margin: 0 0 10px 0; padding: 10px 12px; background: #f5f5f5; border-left: 4px solid #222222; font-size: 12px; color: #444; line-height: 1.55;",
-                    tags$b("這是財富指數，不是每股價格。"),
-                    "兩者共用持倉條件閘門，部位路徑不同——",
-                    tags$b("基本面策略淨值"), "＝Exp_A×日報酬累積；",
-                    tags$b("情緒策略淨值"), "＝Exp_B×日報酬累積（Exp_A 混入動能／RSI）。",
-                    "折現圖上的實際股價與本圖無對應關係。"
-                  ),
-                  radioButtons(
-                    "bt_nav_window",
-                    "累積區間（各序列在區間起點重設為 1）",
-                    inline = TRUE,
-                    choices = c(
-                      "全部" = "all",
-                      "近1年" = "1y",
-                      "近3年" = "3y",
-                      "近5年" = "5y",
-                      "自訂" = "custom"
-                    ),
-                    selected = "all"
-                  ),
-                  conditionalPanel(
-                    condition = "input.bt_nav_window == 'custom'",
-                    dateRangeInput(
-                      "bt_nav_custom",
-                      NULL,
-                      start = Sys.Date() - 365,
-                      end = Sys.Date(),
-                      language = "zh-TW"
-                    )
-                  ),
-                  plotlyOutput("bt_equity_plot", height = "400px") %>% withSpinner(),
-                  tags$ul(
-                    style = "margin: 10px 0 0 0; padding-left: 18px; font-size: 12px; color: #666; line-height: 1.55;",
-                    tags$li(tags$b("基本面策略淨值"), "（橘線）＝持倉條件＋MOS 部位 × 日報酬，從 1 起算。"),
-                    tags$li(tags$b("情緒策略淨值"), "（藍線）＝在 Exp_A 上混入動能／RSI；參數見「情緒策略」標籤。"),
-                    tags$li(tags$b("該股買進持有"), "（綠）全程 100% 的財富指數；", tags$b("大盤"), "（灰虛）依市場模式為 SPY 或 0050.TW 財富指數。"),
-                    tags$li("每股合理價 vs 實際股價見上方折現圖，勿與本圖混比。")
-                  )
-                ),
-                box(
-                  title = tagList(icon("play-circle"), "執行面板"),
-                  width = 4, status = "warning", solidHeader = TRUE,
-                  class = "ynow-bt-run-panel",
-                  checkboxInput(
-                    "bt_param_auto",
-                    "自動同步參數（換股時依財報推導）",
-                    value = TRUE
-                  ),
-                  .bt_hint(
-                    "模式開關：勾選後，搜尋／載入新公司時會自動覆寫持倉門檻、曝險／情緒權重，並對齊上方推薦估值模型。手動改參數會自動取消勾選。"
-                  ),
-                  actionButton(
-                    "bt_refresh_params", "立即依目前公司重算一次",
-                    icon = icon("sync"), class = "btn-default btn-block",
-                    style = "margin-bottom: 10px;"
-                  ),
-                  .bt_hint(
-                    "單次動作：立刻用目前公司財報重算門檻／權重（可在取消自動後使用，不想持續自動覆寫時按一次即可）。"
-                  ),
-                  actionButton(
-                    "run_bt", "啟動量化回測",
-                    class = "btn-warning btn-lg btn-block",
-                    style = "margin-bottom: 0;"
-                  ),
-                  tags$div(
-                    class = "ynow-bt-run-note",
-                    "季頻再平衡 · 當年 Rf／已實現 Rm／市值結構 · Rolling β · 勾選模型平均 PIT。"
-                  ),
-                  uiOutput("bt_run_status")
-                )
-              ),
-
-              # 4) 策略參數設定（持倉閘門已移至「測試」；此處只留部位／情緒）
-              fluidRow(column(width = 12, uiOutput("bt_param_notes"))),
-              tags$p(
-                style = "margin: 0 15px 8px 15px; font-size: 12.5px; color: #555;",
-                tags$b("要不要持股"),
-                "（淨利率／營收成長／EPS 成長／FCF 波動，未過則 Exp_A＝0）已移至側邊「測試」。本頁只調部位與情緒權重。"
-              ),
-
-              fluidRow(
-                tags$div(
-                  class = "ynow-bt-params",
-                  tabBox(
-                    title = tagList(icon("sliders-h"), "Strategy Parameters"),
-                    width = 12,
-                    tabPanel(
-                      title = tagList(icon("balance-scale"), "基本面策略"),
-                      value = "bt_fundamental",
-                      .bt_section_intro(
-                        "模式 A：Exp_A → 淨值圖橘線。依 MOS 分級決定部位；MOS 來自折現圖勾選模型的平均合理價。"
-                      ),
-                      fluidRow(
-                        column(
-                          6,
-                          sliderInput("bt_w_vg", "MOS／Value Gap 權重（曝險）", 0, 1, 0.7, step = 0.01),
-                          .bt_hint("越大越依 MOS 分級減碼；越小越接近固定中性部位。")
-                        ),
-                        column(
-                          6,
-                          tags$div(
-                            style = "margin-top: 8px; padding: 12px; background: #f5f5f5; border: 1px solid #d0d0d0; border-radius: 5px; font-size: 12px; color: #444444; line-height: 1.55;",
-                            tags$b("MOS 滯後曝險（基準圖）"), tags$br(),
-                            "MOS≥30%→接近最大持股；≥10%→約 72%×上限；≥0%→約 44%×上限；≥−10%→約 17%×上限；否則空手。",
-                            "（最大／最低持股與「貼近買進持有」在「情緒策略」標籤。）"
-                          )
-                        )
-                      )
-                    ),
-                    tabPanel(
-                      title = tagList(icon("bolt"), "情緒策略"),
-                      value = "bt_sentiment",
-                      tags$div(
-                        class = "ynow-bt-mode-b",
-                        .bt_section_intro(
-                          "模式 B：在 Exp_A 上混入動能／RSI（熱→偏滿持股、冷→偏保守），藍線為情緒策略淨值（從 1 起算）。與折現圖的實際股價無關。"
-                        ),
-                        # 寬螢幕四參數一列：動能 / RSI / 最大持股 / 最低持股
-                        tags$div(
-                          class = "ynow-bt-mode-b-grid",
-                          fluidRow(
-                            column(
-                              3,
-                              sliderInput("bt_w_mom", "動能相對權重", 0, 1, 0.4, step = 0.01),
-                              .bt_hint("與 RSI 組成情緒分數，再與 Exp_A 混合。")
-                            ),
-                            column(
-                              3,
-                              sliderInput("bt_w_rsi", "RSI 相對權重", 0, 1, 0.3, step = 0.01),
-                              .bt_hint("過熱降低情緒目標；超賣提高。")
-                            ),
-                            column(
-                              3,
-                              sliderInput("bt_max_exp", "最大持股上限", 0.5, 1, 0.9, step = 0.01),
-                              .bt_hint("拉到 1.00 可消除結構性少倉，利於貼近買進持有。")
-                            ),
-                            column(
-                              3,
-                              sliderInput("bt_min_exp_pass", "通過條件後最低持股", 0, 0.4, 0, step = 0.01),
-                              .bt_hint("持倉條件通過且非極度高估時的地板部位。")
-                            )
-                          )
-                        ),
-                        # 按鈕獨立一列（不與滑桿並排）
-                        tags$div(
-                          class = "ynow-bt-fit-row",
-                          fluidRow(
-                            column(
-                              12,
-                              tags$div(
-                                class = "ynow-bt-fit-panel",
-                                actionButton(
-                                  "bt_fit_bh_preset", "貼近買進持有",
-                                  icon = icon("chart-line"),
-                                  class = "btn-success",
-                                  style = "font-weight:600;"
-                                ),
-                                tags$div(
-                                  style = "margin-top:8px;font-size:11px;color:#666;",
-                                  "一鍵：最大持股=100%、最低持股=40%、w_vg=0.35（弱化減碼）。會關閉自動同步。"
-                                )
-                              )
-                            )
-                          )
-                        )
-                      )
-                    )
-                  )
-                )
-              ),
-
-              fluidRow(
-                box(
-                  title = tagList(icon("percentage"), "兩模式部位軌跡（Exposure）"),
-                  width = 6, status = "danger", solidHeader = TRUE, collapsible = TRUE,
-                  uiOutput("bt_exposure_stats"),
-                  plotlyOutput("bt_exposure_plot", height = "260px") %>% withSpinner()
-                ),
-                box(
-                  title = tagList(icon("search-dollar"), "相對 Buy & Hold"),
-                  width = 6, status = "warning", solidHeader = TRUE, collapsible = TRUE,
-                  uiOutput("bt_bh_gap")
-                )
-              ),
-
-              # 5) 回測驗證：保留 MOS／FV（策略訊號是否有效）；參數高原已移出（與 Sensitivity 重疊）
-              fluidRow(
-                tags$div(
-                  class = "ynow-bt-validate",
-                  box(
-                    title = tagList(icon("flask"), "回測驗證：MOS 與 Fair Value"),
-                    width = 12, status = "info", solidHeader = TRUE, collapsible = TRUE, collapsed = TRUE,
-                    .bt_section_intro(
-                      "用來檢查「低估是否伴隨較佳前瞻報酬」——這是回測策略能否成立的核心。參數敏感度請改看 YNOW 分頁（WACC×g 矩陣）。"
-                    ),
-                    fluidRow(
-                      column(
-                        6,
-                        tags$div(
-                          class = "ynow-bt-validate-col",
-                          tags$div(
-                            class = "ynow-bt-validate-panel",
-                            tags$h5(tags$b("MOS 有效性")),
-                            .bt_hint("依 MOS 分組統計 1Y／3Y／5Y 前瞻報酬：MOS 愈高是否報酬愈好？"),
-                            tags$div(style = "overflow-x:auto;", tableOutput("bt_mos_table"))
-                          )
-                        )
-                      ),
-                      column(
-                        6,
-                        tags$div(
-                          class = "ynow-bt-validate-col",
-                          tags$div(
-                            class = "ynow-bt-validate-panel",
-                            tags$h5(tags$b("Fair Value 預測能力")),
-                            uiOutput("bt_fv_edge"),
-                            tags$div(style = "overflow-x:auto;", tableOutput("bt_fv_table"))
-                          )
-                        )
-                      )
-                    )
-                  )
-                )
-              ),
-
-              # 5b) 趨勢動能：自 Sensitivity 決策看板移至此（MOS／FV 驗證正下方）
-              decision_momentum_panel_ui("main_decision"),
-
-              # 6) 方法論
-              fluidRow(
-                box(
-                  title = tagList(icon("book"), "回測資料來源與計算過程（方法論註解）"),
-                  width = 12, status = "primary", solidHeader = TRUE,
-                  collapsible = TRUE, collapsed = TRUE,
-                  uiOutput("bt_methodology_notes")
-                )
-              ),
-
-              # 7) 參數盤點（Live vs Hist PIT）— 置於本頁最下方
-              fluidRow(
-                box(
-                  title = tagList(icon("table"), "美股估值復盤參數盤點（Live vs Hist PIT）"),
-                  width = 12, status = "primary", solidHeader = TRUE,
-                  collapsible = TRUE, collapsed = TRUE,
-                  tags$p(
-                    style = "font-size:12.5px;color:#444;line-height:1.55;",
-                    "歷史點理論估值使用當時可得資料重建；",
-                    tags$b("hist DCF 優先 NOPAT／D&A／CapEx／ΔNWC 邊際路徑"),
-                    "，否則退回 Gordon 幾何 ", tags$code("FCF0×(1+g)^t"), "；",
-                    tags$b("不是"),
-                    " Live DCF 分頁的營收→NOPAT／CapEx／ΔNWC 預測表。"
-                  ),
-                  tags$div(style = "overflow-x:auto;", tableOutput("bt_param_inventory"))
-                )
+      tabItem(
+        tabName = "backtest",
+        fluidRow(
+          column(
+            width = 12,
+            tags$div(
+              style = "margin: 24px 8px; padding: 16px 18px; background: #f5f5f5; border-left: 4px solid #222; font-size: 14px; line-height: 1.6;",
+              tags$b("量化回測實驗室已搬至「測試」。"),
+              "請由側邊欄底部 Snapshot 旁的「測試」開啟；本分頁僅保留導引，避免重複介面。",
+              tags$br(),
+              tags$a(
+                href = "#shiny-tab-lab_notes",
+                `data-toggle` = "tab",
+                `data-value` = "lab_notes",
+                style = "font-weight:600;",
+                onclick = "Shiny.setInputValue('sidebar_tabs', 'lab_notes', {priority: 'event'}); return false;",
+                "前往測試（含回測報表） →"
               )
+            )
+          )
+        )
       ),
-      
+
       # ==========================================
       # 🧪 實驗區 (Lab)：規劃／測試新功能
       # ==========================================
       tabItem(
         tabName = "lab_notes",
+        withMathJax(),
         fluidRow(
           column(
             width = 12,
-            h2(tags$b("🧪 實驗區 — testing env.")),
+            h2(tags$b("測試 — Testing（含量化回測）")),
             p(
-              "要不要持股（持倉閘門）在此調整；美股績優篩選已移至側邊 ",
+              "回測相關報表與執行面板已併入本頁；持倉閘門（要不要持股）亦在此。美股績優篩選請至側邊 ",
               tags$b("Blue Chip"),
               "。",
               tags$span(
@@ -3752,7 +3391,7 @@ ui <- dashboardPage(
               width = 12, status = "warning", solidHeader = TRUE,
               title = tagList(icon("filter"), "要不要持股：持倉回測條件"),
               .bt_section_intro(
-                "季頻再平衡日四項皆過才允許持倉；否則 Backtest Zone 基本面／情緒策略皆空手（Exp_A＝Exp_B＝0）。門檻仍供回測引擎與下方「回測濾鏡」共用。"
+                "季頻再平衡日四項皆過才允許持倉；否則本頁基本面／情緒策略皆空手（Exp_A＝Exp_B＝0）。門檻仍供回測引擎與「回測濾鏡」共用。"
               ),
               fluidRow(
                 column(3, tipify(numericInput("bt_net_margin", "淨利率門檻 (%)", 5),
@@ -3784,6 +3423,388 @@ ui <- dashboardPage(
             )
           )
         ),
+
+        tags$hr(),
+        h3(tags$b("量化回測實驗室")),
+
+        # 1) 折現比較圖置頂：合理價 vs 實際股價 vs 大盤
+        fluidRow(
+          box(
+            title = tagList(icon("balance-scale"), "折現比較（合理價 vs 實際股價）"),
+            width = 12, status = "primary", solidHeader = TRUE,
+            tags$div(
+              class = "ynow-bt-hfv-wrap",
+              uiOutput("bt_valuation_summary"),
+              tags$div(
+                class = "ynow-bt-hfv-controls",
+                tags$div(
+                  class = "ynow-bt-hfv-bench",
+                  checkboxInput("bt_hfv_show_bench", "顯示大盤", value = TRUE)
+                ),
+                tags$div(
+                  class = "ynow-bt-hfv-models",
+                  checkboxGroupInput(
+                    "bt_fv_models",
+                    "回測用評價模型（可複選疊圖；策略 MOS／部位＝勾選且有限值者之平均；未勾＝不套用模型）",
+                    inline = TRUE,
+                    choices = c(
+                      "DCF" = "dcf",
+                      "DDM" = "ddm",
+                      "RI" = "ri",
+                      "P/B" = "pb"
+                    ),
+                    selected = character(0)
+                  )
+                )
+              ),
+              plotlyOutput("bt_hfv_timeline", height = "420px") %>% withSpinner()
+            )
+          )
+        ),
+
+        # 1b) 歷史基本面驗證：理論估值 vs 實際市值（漲跌機率／幅度）
+        fluidRow(
+          box(
+            title = tagList(icon("balance-scale"), "歷史基本面驗證：理論估值 vs 實際市值（漲跌機率／幅度）"),
+            width = 12, status = "warning", solidHeader = TRUE,
+            collapsible = TRUE, collapsed = FALSE,
+            tags$p(
+              style = "font-size:12.5px;color:#444;line-height:1.55;",
+              tags$b("這不是交易策略回測。"),
+              "以當時可得基本面重建理論估值 ", tags$code("FV_t"),
+              "（＝折現圖勾選且有限值模型平均；未勾選＝無策略 FV，不暗設 DCF）",
+              "，再用後續實際市價 ", tags$code("P_{t+1}"),
+              " 驗證：估算落在估值", tags$b("之上／之下"),
+              "的頻率，以及幅度 ", tags$code("(P_{t+1}−FV_t)/FV_t"),
+              "。策略淨值／MOS 部位請看下方「策略淨值」區塊。"
+            ),
+            tags$p(
+              style = "font-size:11.5px;color:#888;line-height:1.45;margin-top:-4px;",
+              "資料注意：Yahoo 年報可能為重編；PIT 以財報期末＋約 90 日申報滯後過濾。",
+              "真・as-filed SEC EDGAR 仍待後續階段。",
+              "若歷史點套用系統預設／Session，摘要會顯示預設／fallback 提醒與對應分頁。"
+            ),
+            radioButtons(
+              "bt_fv_conv_window",
+              "統計期間（依估值日 Date_t）",
+              inline = TRUE,
+              choices = c(
+                "全部" = "all",
+                "近1年" = "1y",
+                "近3年" = "3y",
+                "近5年" = "5y",
+                "自訂" = "custom"
+              ),
+              selected = "all"
+            ),
+            conditionalPanel(
+              condition = "input.bt_fv_conv_window == 'custom'",
+              dateRangeInput(
+                "bt_fv_conv_custom",
+                NULL,
+                start = Sys.Date() - 365 * 3,
+                end = Sys.Date(),
+                language = "zh-TW"
+              )
+            ),
+            radioButtons(
+              "bt_fv_oos_mode",
+              "驗證口徑",
+              inline = TRUE,
+              choices = c(
+                "已實現下期（預設）" = "realized",
+                "擴張窗樣本外命中" = "expanding",
+                "含未到期下期（樣本內）" = "insample"
+              ),
+              selected = "realized"
+            ),
+            uiOutput("bt_fv_conv_summary"),
+            fluidRow(
+              column(
+                7,
+                tags$h5(tags$b("逐期明細")),
+                tags$div(style = "overflow-x:auto;", tableOutput("bt_fv_conv_table"))
+              ),
+              column(
+                5,
+                tags$h5(tags$b("幅度 (P下一期 − FV) / FV")),
+                plotlyOutput("bt_fv_conv_plot", height = "280px") %>% withSpinner()
+              )
+            )
+          )
+        ),
+
+        # 2) 績效指標
+        fluidRow(
+          box(
+            title = tagList(icon("trophy"), "回測績效指標"),
+            width = 12, status = "success", solidHeader = TRUE, collapsible = TRUE, collapsed = FALSE,
+            uiOutput("perf_metrics")
+          )
+        ),
+
+        # 3) 淨值圖 + 執行面板
+        fluidRow(
+          box(
+            title = tagList(icon("chart-area"), "策略淨值（累積財富，起始＝1）"),
+            width = 8, status = "info", solidHeader = TRUE,
+            tags$div(
+              style = "margin: 0 0 10px 0; padding: 10px 12px; background: #f5f5f5; border-left: 4px solid #222222; font-size: 12px; color: #444; line-height: 1.55;",
+              tags$b("這是財富指數，不是每股價格。"),
+              "兩者共用持倉條件閘門，部位路徑不同——",
+              tags$b("基本面策略淨值"), "＝Exp_A×日報酬累積；",
+              tags$b("情緒策略淨值"), "＝Exp_B×日報酬累積（Exp_A 混入動能／RSI）。",
+              "折現圖上的實際股價與本圖無對應關係。"
+            ),
+            radioButtons(
+              "bt_nav_window",
+              "累積區間（各序列在區間起點重設為 1）",
+              inline = TRUE,
+              choices = c(
+                "全部" = "all",
+                "近1年" = "1y",
+                "近3年" = "3y",
+                "近5年" = "5y",
+                "自訂" = "custom"
+              ),
+              selected = "all"
+            ),
+            conditionalPanel(
+              condition = "input.bt_nav_window == 'custom'",
+              dateRangeInput(
+                "bt_nav_custom",
+                NULL,
+                start = Sys.Date() - 365,
+                end = Sys.Date(),
+                language = "zh-TW"
+              )
+            ),
+            plotlyOutput("bt_equity_plot", height = "400px") %>% withSpinner(),
+            tags$ul(
+              style = "margin: 10px 0 0 0; padding-left: 18px; font-size: 12px; color: #666; line-height: 1.55;",
+              tags$li(tags$b("基本面策略淨值"), "（橘線）＝持倉條件＋MOS 部位 × 日報酬，從 1 起算。"),
+              tags$li(tags$b("情緒策略淨值"), "（藍線）＝在 Exp_A 上混入動能／RSI；參數見「情緒策略」標籤。"),
+              tags$li(tags$b("該股買進持有"), "（綠）全程 100% 的財富指數；", tags$b("大盤"), "（灰虛）依市場模式為 SPY 或 0050.TW 財富指數。"),
+              tags$li("每股合理價 vs 實際股價見上方折現圖，勿與本圖混比。")
+            )
+          ),
+          box(
+            title = tagList(icon("play-circle"), "執行面板"),
+            width = 4, status = "warning", solidHeader = TRUE,
+            class = "ynow-bt-run-panel",
+            checkboxInput(
+              "bt_param_auto",
+              "自動同步參數（換股時依財報推導）",
+              value = TRUE
+            ),
+            .bt_hint(
+              "模式開關：勾選後，搜尋／載入新公司時會自動覆寫持倉門檻、曝險／情緒權重，並對齊上方推薦估值模型。手動改參數會自動取消勾選。"
+            ),
+            actionButton(
+              "bt_refresh_params", "立即依目前公司重算一次",
+              icon = icon("sync"), class = "btn-default btn-block",
+              style = "margin-bottom: 10px;"
+            ),
+            .bt_hint(
+              "單次動作：立刻用目前公司財報重算門檻／權重（可在取消自動後使用，不想持續自動覆寫時按一次即可）。"
+            ),
+            actionButton(
+              "run_bt", "啟動量化回測",
+              class = "btn-warning btn-lg btn-block",
+              style = "margin-bottom: 0;"
+            ),
+            tags$div(
+              class = "ynow-bt-run-note",
+              "季頻再平衡 · 當年 Rf／已實現 Rm／市值結構 · Rolling β · 勾選模型平均 PIT。"
+            ),
+            uiOutput("bt_run_status")
+          )
+        ),
+
+        # 4) 策略參數設定（持倉閘門見本頁上方「要不要持股」；此處只留部位／情緒）
+        fluidRow(column(width = 12, uiOutput("bt_param_notes"))),
+        tags$p(
+          style = "margin: 0 15px 8px 15px; font-size: 12.5px; color: #555;",
+          tags$b("要不要持股"),
+          "（淨利率／營收成長／EPS 成長／FCF 波動，未過則 Exp_A＝0）見本頁上方持倉回測條件。此處只調部位與情緒權重。"
+        ),
+
+        fluidRow(
+          tags$div(
+            class = "ynow-bt-params",
+            tabBox(
+              title = tagList(icon("sliders-h"), "Strategy Parameters"),
+              width = 12,
+              tabPanel(
+                title = tagList(icon("balance-scale"), "基本面策略"),
+                value = "bt_fundamental",
+                .bt_section_intro(
+                  "模式 A：Exp_A → 淨值圖橘線。依 MOS 分級決定部位；MOS 來自折現圖勾選模型的平均合理價。"
+                ),
+                fluidRow(
+                  column(
+                    6,
+                    sliderInput("bt_w_vg", "MOS／Value Gap 權重（曝險）", 0, 1, 0.7, step = 0.01),
+                    .bt_hint("越大越依 MOS 分級減碼；越小越接近固定中性部位。")
+                  ),
+                  column(
+                    6,
+                    tags$div(
+                      style = "margin-top: 8px; padding: 12px; background: #f5f5f5; border: 1px solid #d0d0d0; border-radius: 5px; font-size: 12px; color: #444444; line-height: 1.55;",
+                      tags$b("MOS 滯後曝險（基準圖）"), tags$br(),
+                      "MOS≥30%→接近最大持股；≥10%→約 72%×上限；≥0%→約 44%×上限；≥−10%→約 17%×上限；否則空手。",
+                      "（最大／最低持股與「貼近買進持有」在「情緒策略」標籤。）"
+                    )
+                  )
+                )
+              ),
+              tabPanel(
+                title = tagList(icon("bolt"), "情緒策略"),
+                value = "bt_sentiment",
+                tags$div(
+                  class = "ynow-bt-mode-b",
+                  .bt_section_intro(
+                    "模式 B：在 Exp_A 上混入動能／RSI（熱→偏滿持股、冷→偏保守），藍線為情緒策略淨值（從 1 起算）。與折現圖的實際股價無關。"
+                  ),
+                  # 寬螢幕四參數一列：動能 / RSI / 最大持股 / 最低持股
+                  tags$div(
+                    class = "ynow-bt-mode-b-grid",
+                    fluidRow(
+                      column(
+                        3,
+                        sliderInput("bt_w_mom", "動能相對權重", 0, 1, 0.4, step = 0.01),
+                        .bt_hint("與 RSI 組成情緒分數，再與 Exp_A 混合。")
+                      ),
+                      column(
+                        3,
+                        sliderInput("bt_w_rsi", "RSI 相對權重", 0, 1, 0.3, step = 0.01),
+                        .bt_hint("過熱降低情緒目標；超賣提高。")
+                      ),
+                      column(
+                        3,
+                        sliderInput("bt_max_exp", "最大持股上限", 0.5, 1, 0.9, step = 0.01),
+                        .bt_hint("拉到 1.00 可消除結構性少倉，利於貼近買進持有。")
+                      ),
+                      column(
+                        3,
+                        sliderInput("bt_min_exp_pass", "通過條件後最低持股", 0, 0.4, 0, step = 0.01),
+                        .bt_hint("持倉條件通過且非極度高估時的地板部位。")
+                      )
+                    )
+                  ),
+                  # 按鈕獨立一列（不與滑桿並排）
+                  tags$div(
+                    class = "ynow-bt-fit-row",
+                    fluidRow(
+                      column(
+                        12,
+                        tags$div(
+                          class = "ynow-bt-fit-panel",
+                          actionButton(
+                            "bt_fit_bh_preset", "貼近買進持有",
+                            icon = icon("chart-line"),
+                            class = "btn-success",
+                            style = "font-weight:600;"
+                          ),
+                          tags$div(
+                            style = "margin-top:8px;font-size:11px;color:#666;",
+                            "一鍵：最大持股=100%、最低持股=40%、w_vg=0.35（弱化減碼）。會關閉自動同步。"
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        ),
+
+        fluidRow(
+          box(
+            title = tagList(icon("percentage"), "兩模式部位軌跡（Exposure）"),
+            width = 6, status = "danger", solidHeader = TRUE, collapsible = TRUE,
+            uiOutput("bt_exposure_stats"),
+            plotlyOutput("bt_exposure_plot", height = "260px") %>% withSpinner()
+          ),
+          box(
+            title = tagList(icon("search-dollar"), "相對 Buy & Hold"),
+            width = 6, status = "warning", solidHeader = TRUE, collapsible = TRUE,
+            uiOutput("bt_bh_gap")
+          )
+        ),
+
+        # 5) 回測驗證：保留 MOS／FV（策略訊號是否有效）；參數高原已移出（與 Sensitivity 重疊）
+        fluidRow(
+          tags$div(
+            class = "ynow-bt-validate",
+            box(
+              title = tagList(icon("flask"), "回測驗證：MOS 與 Fair Value"),
+              width = 12, status = "info", solidHeader = TRUE, collapsible = TRUE, collapsed = TRUE,
+              .bt_section_intro(
+                "用來檢查「低估是否伴隨較佳前瞻報酬」——這是回測策略能否成立的核心。參數敏感度請改看 YNOW 分頁（WACC×g 矩陣）。"
+              ),
+              fluidRow(
+                column(
+                  6,
+                  tags$div(
+                    class = "ynow-bt-validate-col",
+                    tags$div(
+                      class = "ynow-bt-validate-panel",
+                      tags$h5(tags$b("MOS 有效性")),
+                      .bt_hint("依 MOS 分組統計 1Y／3Y／5Y 前瞻報酬：MOS 愈高是否報酬愈好？"),
+                      tags$div(style = "overflow-x:auto;", tableOutput("bt_mos_table"))
+                    )
+                  )
+                ),
+                column(
+                  6,
+                  tags$div(
+                    class = "ynow-bt-validate-col",
+                    tags$div(
+                      class = "ynow-bt-validate-panel",
+                      tags$h5(tags$b("Fair Value 預測能力")),
+                      uiOutput("bt_fv_edge"),
+                      tags$div(style = "overflow-x:auto;", tableOutput("bt_fv_table"))
+                    )
+                  )
+                )
+              )
+            )
+          )
+        ),
+
+        # 5b) 趨勢動能：自 Sensitivity 決策看板移至此（MOS／FV 驗證正下方）
+        decision_momentum_panel_ui("main_decision"),
+
+        # 6) 方法論
+        fluidRow(
+          box(
+            title = tagList(icon("book"), "回測資料來源與計算過程（方法論註解）"),
+            width = 12, status = "primary", solidHeader = TRUE,
+            collapsible = TRUE, collapsed = TRUE,
+            uiOutput("bt_methodology_notes")
+          )
+        ),
+
+        # 7) 參數盤點（Live vs Hist PIT）— 置於本頁最下方
+        fluidRow(
+          box(
+            title = tagList(icon("table"), "美股估值復盤參數盤點（Live vs Hist PIT）"),
+            width = 12, status = "primary", solidHeader = TRUE,
+            collapsible = TRUE, collapsed = TRUE,
+            tags$p(
+              style = "font-size:12.5px;color:#444;line-height:1.55;",
+              "歷史點理論估值使用當時可得資料重建；",
+              tags$b("hist DCF 優先 NOPAT／D&A／CapEx／ΔNWC 邊際路徑"),
+              "，否則退回 Gordon 幾何 ", tags$code("FCF0×(1+g)^t"), "；",
+              tags$b("不是"),
+              " Live DCF 分頁的營收→NOPAT／CapEx／ΔNWC 預測表。"
+            ),
+            tags$div(style = "overflow-x:auto;", tableOutput("bt_param_inventory"))
+          )
+        ),
+
         fluidRow(
           column(
             width = 12,
