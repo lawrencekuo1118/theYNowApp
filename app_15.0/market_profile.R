@@ -41,10 +41,11 @@ market_profile <- function(mode = get_market_mode()) {
       show_sec_lab = FALSE,
       bluechip_title = "BLUE CHIP（台股績優）",
       bluechip_blurb = paste0(
-        "自臺灣證券交易所／櫃買中心 OpenAPI 上市櫃名單篩選台股績優候選：",
-        "先套用規模 × 產業 × 評價模型，再以 Piotroski 高門檻與年化估值漲幅排序。"
+        "自臺灣證券交易所／櫃買中心公開名單篩選台股績優候選（僅上市＋上櫃；不含興櫃，因流動性與 Yahoo 資料覆蓋較不穩）：",
+        "先套用規模 × 產業 × 評價模型，再以 Piotroski 高門檻與年化估值漲幅排序。",
+        "主搜尋可查上市／上櫃／興櫃（純數字代號或中文名稱）。"
       ),
-      universe_label = "上市櫃",
+      universe_label = "上市／上櫃／興櫃",
       # 顯示標籤用不含 .TW 的代號；值仍為 Yahoo fetch symbol
       ticker_presets = c(
         "2330 — 台積電" = "2330.TW",
@@ -107,7 +108,7 @@ market_profile <- function(mode = get_market_mode()) {
   }
 }
 
-#' 自上市櫃宇宙解析純數字代號 → Yahoo 後綴（優先 .TW／TWSE）
+#' 自上市／上櫃／興櫃宇宙解析純數字代號 → Yahoo 後綴（優先 .TW／TWSE，其次上櫃，再興櫃）
 #' 無宇宙或未命中時回傳 NULL（呼叫端預設 .TW）。
 resolve_tw_bare_code <- function(code) {
   code <- toupper(gsub("\\s+", "", as.character(code %||% "")[1]))
@@ -124,16 +125,22 @@ resolve_tw_bare_code <- function(code) {
   if (is.null(u) || !is.data.frame(u) || nrow(u) < 1L) return(NULL)
   tks <- toupper(as.character(u$ticker))
   bases <- sub("\\.(TW|TWO)$", "", tks, ignore.case = TRUE)
-  hits <- tks[bases == code]
-  if (!length(hits)) return(NULL)
-  tw <- hits[grepl("\\.TW$", hits)]
-  if (length(tw)) return(tw[[1]])
-  hits[[1]]
+  idx <- which(bases == code)
+  if (!length(idx)) return(NULL)
+  if ("exchange" %in% names(u) && exists("lab_tw_exchange_rank", mode = "function")) {
+    ranks <- vapply(as.character(u$exchange[idx]), lab_tw_exchange_rank, integer(1))
+    idx <- idx[order(ranks)]
+  } else {
+    # 無 exchange 欄時：.TW 優先於 .TWO
+    tw_first <- grepl("\\.TW$", tks[idx])
+    idx <- c(idx[tw_first], idx[!tw_first])
+  }
+  tks[[idx[[1]]]]
 }
 
 #' 依市場正規化使用者輸入代號
 #' TW：使用者只需輸入純數字（如 2330）；自動補 .TW。
-#' 優先查上市櫃宇宙；僅上櫃者給 .TWO。已含 .TW／.TWO 會去空白並正規化大小寫。
+#' 優先查宇宙：上市→.TW；僅上櫃／興櫃→.TWO。已含 .TW／.TWO 會去空白並正規化大小寫。
 normalize_ticker_for_market <- function(sym, mode = get_market_mode()) {
   mode <- normalize_market_mode(mode)
   raw <- trimws(as.character(sym %||% "")[1])
@@ -278,7 +285,7 @@ tw_short_name_aliases <- function() {
   )
 }
 
-#' 自上市櫃宇宙／簡稱別名搜尋（CJK／公司名 fallback）
+#' 自上市／上櫃／興櫃宇宙／簡稱別名搜尋（CJK／公司名 fallback）
 #' @return named character：names = 「代號 — 名稱」, values = Yahoo fetch symbol
 search_tw_universe_by_name <- function(query, max_results = 12L) {
   q <- trimws(as.character(query %||% "")[1])
@@ -344,7 +351,17 @@ search_tw_universe_by_name <- function(query, max_results = 12L) {
       disp <- display_ticker_for_market(tks[[i]], "TW")
       short_nm <- sub("股份有限公司$", "", nms[[i]])
       short_nm <- sub("有限公司$", "", short_nm)
-      add_hit(tks[[i]], paste0(disp, " — ", short_nm))
+      board_tag <- ""
+      if ("exchange" %in% names(u)) {
+        ex_i <- toupper(as.character(u$exchange[[i]])[1])
+        if (ex_i %in% c("ESB", "EMERGING", "TPEX_ESB")) {
+          board_tag <- "（興櫃）"
+        } else if (ex_i %in% c("TPEX", "TWO", "OTC", "ROTC") &&
+                   grepl("\\.TWO$", tks[[i]], ignore.case = TRUE)) {
+          board_tag <- "（上櫃）"
+        }
+      }
+      add_hit(tks[[i]], paste0(disp, " — ", short_nm, board_tag))
     }
   }
 

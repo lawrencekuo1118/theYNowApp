@@ -408,7 +408,7 @@ search_ticker_choices <- function(query, max_results = 12L, market = NULL) {
     (identical(mode, "TW") && grepl(query, names(presets), fixed = TRUE))
   local_hits <- presets[preset_keep]
 
-  # TW：CJK／公司名 → 上市櫃宇宙 fallback（Yahoo typeahead 常對中文弱）
+  # TW：CJK／公司名 → 上市／上櫃／興櫃宇宙 fallback（Yahoo typeahead 常對中文弱）
   cjk_hits <- character(0)
   if (identical(mode, "TW") && exists("search_tw_universe_by_name", mode = "function")) {
     cjk_hits <- tryCatch(

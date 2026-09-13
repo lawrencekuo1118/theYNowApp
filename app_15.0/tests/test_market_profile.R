@@ -105,7 +105,7 @@ check("CJK 台積 hits 2330", "2330.TW" %in% unname(alias_hits))
 honghai <- search_tw_universe_by_name("鴻海", max_results = 5L)
 check("CJK 鴻海 hits 2317", "2317.TW" %in% unname(honghai))
 
-# Universe cache（若存在）：上櫃純數字應解析為 .TWO
+# Universe cache（若存在）：上櫃／興櫃純數字應解析為 .TWO
 cache_path <- file.path(root, "data", "tw_universe.csv")
 if (file.exists(cache_path)) {
   source(file.path(root, "lab_tw_universe.R"), local = TRUE, encoding = "UTF-8")
@@ -127,11 +127,56 @@ if (file.exists(cache_path)) {
     "lookup 2330 Chinese name",
     nzchar(zh2330) && grepl("積體", zh2330, fixed = TRUE)
   )
+  u <- lab_get_tw_universe(FALSE)
+  has_otc <- any(toupper(as.character(u$exchange)) %in% c("TPEX", "TWO", "OTC"))
+  check("universe has 上櫃 (TPEX)", isTRUE(has_otc))
+  has_esb <- any(toupper(as.character(u$exchange)) %in% c("ESB", "EMERGING", "TPEX_ESB"))
+  # 興櫃列可能尚未寫入舊快取；有則驗證解析與搜尋
+  if (isTRUE(has_esb)) {
+    esb_rows <- u[toupper(as.character(u$exchange)) %in% c("ESB", "EMERGING", "TPEX_ESB"), , drop = FALSE]
+    sample_tk <- as.character(esb_rows$ticker[[1]])
+    sample_bare <- sub("\\.(TW|TWO)$", "", sample_tk, ignore.case = TRUE)
+    check(
+      "TW ESB bare → .TWO",
+      identical(normalize_ticker_for_market(sample_bare, "TW"), paste0(sample_bare, ".TWO"))
+    )
+    # 已知樣本：富味鄉 1260（興櫃）；若在宇宙中則驗證
+    if (any(grepl("^1260\\.TWO$", as.character(u$ticker), ignore.case = TRUE))) {
+      check(
+        "TW ESB 1260 → .TWO",
+        identical(normalize_ticker_for_market("1260", "TW"), "1260.TWO")
+      )
+      hits1260 <- search_tw_universe_by_name("1260", max_results = 5L)
+      check("search bare 1260 resolves", "1260.TWO" %in% unname(hits1260))
+      hits_name <- search_tw_universe_by_name("富味鄉", max_results = 5L)
+      check("CJK 富味鄉 hits 1260", "1260.TWO" %in% unname(hits_name))
+    }
+    qc <- lab_tw_quality_candidates()
+    qc_tks <- unique(unlist(qc, use.names = FALSE))
+    check(
+      "Blue Chip candidates exclude ESB",
+      !any(toupper(as.character(u$exchange[match(qc_tks, u$ticker)])) %in%
+             c("ESB", "EMERGING", "TPEX_ESB"))
+    )
+  } else {
+    cat("NOTE: tw_universe.csv has no ESB rows yet — refresh to include 興櫃\n")
+  }
+  # 測試 fixture（若存在）可補強離線興櫃列
+  fixture <- file.path(root, "tests", "data", "tw_universe.csv")
+  if (file.exists(fixture)) {
+    fx <- utils::read.csv(fixture, stringsAsFactors = FALSE, fileEncoding = "UTF-8")
+    if (any(toupper(as.character(fx$exchange)) %in% c("ESB", "EMERGING"))) {
+      check("fixture contains ESB sample", TRUE)
+    }
+  }
 } else {
-  cat("SKIP: tw_universe.csv not present for OTC resolve checks\n")
+  cat("SKIP: tw_universe.csv not present for OTC/ESB resolve checks\n")
 }
 
 # Minimal merge: detail path must keep all evaluated rows even if eq/gate would filter
+old_wd <- getwd()
+on.exit(setwd(old_wd), add = TRUE)
+setwd(root)
 source(file.path(root, "lab_industry_method.R"), local = TRUE, encoding = "UTF-8")
 
 catlg <- data.frame(

@@ -693,7 +693,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v15.03</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v15.04</span>'),
     titleWidth = 250,
     tags$li(
       class = "dropdown ynow-market-header",
@@ -3150,7 +3150,7 @@ ui <- dashboardPage(
                     "lab_im_refresh_universe", "更新名單",
                     icon = icon("sync"),
                     class = "btn-default btn-sm",
-                    title = "重新抓取目前市場的成分／上市櫃名單"
+                    title = "重新抓取目前市場的成分／上市／上櫃／興櫃名單"
                   )
                 ),
                 fluidRow(

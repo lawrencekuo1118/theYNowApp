@@ -1,7 +1,7 @@
 # ==========================================
 # lab_industry_method.R — 實驗區：產業 × 評價方法 × 績優候選
 #
-# 宇宙依市場模式：美股＝S&P 500（lab_sp500_universe.R）；台股＝上市櫃（lab_tw_universe.R）。
+# 宇宙依市場模式：美股＝S&P 500（lab_sp500_universe.R）；台股＝上市／上櫃／興櫃（lab_tw_universe.R；績優候選不含興櫃）。
 # 績優原則：在 Piotroski 高門檻（F-Score≥7；不含盈餘品質）後，選「模型合理價相對現價」、
 # 並依 App 預設預測年數 n（APP_DEFAULTS$years）換算年化漲幅最大者。
 # 「評估檔數（明細列數）」（lab_im_max_n；預設 100）＝本次 Yahoo 評估檔數＝明細列數。
@@ -634,7 +634,7 @@ lab_us_quality_candidates <- function() {
   split(tks, keys)
 }
 
-#' 依市場模式回傳績優候選（美股 S&P／台股上市櫃）
+#' 依市場模式回傳績優候選（美股 S&P／台股上市＋上櫃；不含興櫃）
 lab_quality_candidates_for_market <- function(mode = get_market_mode()) {
   mode <- if (exists("normalize_market_mode", mode = "function")) {
     normalize_market_mode(mode)

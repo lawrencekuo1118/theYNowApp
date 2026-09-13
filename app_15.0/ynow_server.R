@@ -7365,7 +7365,16 @@ server <- function(input, output, session) {
     mode <- market_mode()
     if (identical(mode, "TW")) {
       meta <- tryCatch(lab_tw_universe_meta(), error = function(e) NULL)
-      label <- "上市櫃"
+      n_twse <- if (is.null(meta)) 0L else as.integer(meta$n_twse %||% 0L)
+      n_tpex <- if (is.null(meta)) 0L else as.integer(meta$n_tpex %||% 0L)
+      n_esb <- if (is.null(meta)) 0L else as.integer(meta$n_esb %||% 0L)
+      label <- sprintf("上市／上櫃／興櫃（搜尋全納；績優僅上市＋上櫃 %d＋%d）", n_twse, n_tpex)
+      if (n_esb > 0L) {
+        label <- sprintf(
+          "上市 %d／上櫃 %d／興櫃 %d（搜尋全納；Blue Chip 不含興櫃）",
+          n_twse, n_tpex, n_esb
+        )
+      }
     } else {
       meta <- tryCatch(lab_sp500_universe_meta(), error = function(e) NULL)
       label <- "S&P 500"
@@ -7389,7 +7398,7 @@ server <- function(input, output, session) {
 
   observeEvent(input$lab_im_refresh_universe, {
     mode <- market_mode()
-    msg <- if (identical(mode, "TW")) "更新台股上市櫃名單…" else "更新 S&P 500 名單…"
+    msg <- if (identical(mode, "TW")) "更新台股上市／上櫃／興櫃名單…" else "更新 S&P 500 名單…"
     fetched <- withProgress(
       message = msg,
       value = 0.4, {
@@ -7857,9 +7866,9 @@ server <- function(input, output, session) {
         sprintf("- 本頁代號：%s", if (length(tks)) paste(tks, collapse = ", ") else "（無）"),
         "",
         if (is.finite(max_n)) {
-          "宇宙依市場模式（美股 S&P 500／台股上市櫃）。候選多於 N 時依市值由大到小取 N 檔評估；明細＝該批（＝評估檔數 N）；排行榜＝同一批中 F-Score≥7 者的 Top 10。"
+          "宇宙依市場模式（美股 S&P 500／台股上市＋上櫃；搜尋另含興櫃但不納入績優）。候選多於 N 時依市值由大到小取 N 檔評估；明細＝該批（＝評估檔數 N）；排行榜＝同一批中 F-Score≥7 者的 Top 10。"
         } else {
-          "宇宙依市場模式（美股 S&P 500／台股上市櫃）。本次選「全部」：評估篩選後全部候選；明細＝該批（＝評估檔數）；排行榜＝同一批中 F-Score≥7 者的 Top 10。"
+          "宇宙依市場模式（美股 S&P 500／台股上市＋上櫃；搜尋另含興櫃但不納入績優）。本次選「全部」：評估篩選後全部候選；明細＝該批（＝評估檔數）；排行榜＝同一批中 F-Score≥7 者的 Top 10。"
         }
       )
       lab_write_lab_page_report(
