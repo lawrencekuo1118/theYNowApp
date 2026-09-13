@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12548630
+bundleId=12548642
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=8d94103
-commit=8d94103
-short=8d94103
-message=feat(app_15.0): hist FV default reminders + no silent DCF when models unchecked (v15.10)
-captured_at=2026-09-13T14:18:35Z
+aligned_git=01630e1
+commit=01630e1
+short=01630e1
+message=chore: record shinyapps baseline bundle 12548630 (app_15.0)
+captured_at=2026-09-13T14:23:55Z
 source_branch=master
-display_version=v15.10
-note=Canonical live line is app_15.0. Bundle 12548630 ships hist-validation default/fallback reminders (g/n/Rd/tax/P/B/Rf/Rm/β → tabs) and removes silent DCF when no FV models checked (strategy FV/MOS=NA). Supersedes 12548573 / v15.09.
+display_version=v15.11
+note=Canonical live line is app_15.0. Bundle 12548642 moves Backtest Zone reports into Testing (lab_notes); sidebar Backtest entry removed with redirect stub. Includes v15.10 hist FV reminders + no silent DCF. Supersedes 12548573 / v15.09.
