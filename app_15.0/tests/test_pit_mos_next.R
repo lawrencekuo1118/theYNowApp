@@ -122,30 +122,30 @@ fb_sum <- summarize_hist_param_fallbacks(data.frame(
   src_pb_mid = pit_fb$src_pb_mid, src_rf = "tnx", src_rm = "realized",
   src_beta = "rolling", session_tip = FALSE,
   stringsAsFactors = FALSE
-), fv_models = "dcf")
+))
 check("fallback summary any", isTRUE(fb_sum$any_fallback))
 check("fallback summary has g", "g" %in% fb_sum$items$key)
-
-fb_no_dcf <- summarize_hist_param_fallbacks(data.frame(
+check("fallback summary has n_years", "n_years" %in% fb_sum$items$key)
+check("fallback note is model-neutral",
+      !grepl("請至|DCF／|DCF（", fb_sum$note, perl = TRUE))
+check("fallback scopes are not DCF panels",
+      !any(grepl("DCF／|DCF（|請至", fb_sum$items$scope %||% "", perl = TRUE)))
+guide_g <- .hist_param_guide("zh-TW")
+check("guide g scope neutral",
+      grepl("共用系統預設", guide_g$scope[guide_g$key == "g"][1], fixed = TRUE) &&
+        !grepl("DCF", guide_g$scope[guide_g$key == "g"][1], fixed = TRUE))
+guide_en <- .hist_param_guide("en")
+check("guide en g label", identical(guide_en$label[guide_en$key == "g"][1], "Terminal growth g"))
+fb_en <- summarize_hist_param_fallbacks(data.frame(
   src_g = "app_defaults", src_n_years = "app_defaults",
   src_rd = "session", src_tax = "session",
   src_pb_mid = "justified", src_rf = "tnx", src_rm = "realized",
   src_beta = "rolling", session_tip = FALSE,
   stringsAsFactors = FALSE
-), fv_models = c("ddm", "ri"))
-check("no DCF → hide g hint", !"g" %in% fb_no_dcf$items$key)
-check("no DCF → hide n_years hint", !"n_years" %in% fb_no_dcf$items$key)
-check("no DCF → still show rd/tax", all(c("rd", "tax") %in% fb_no_dcf$items$key))
-
-fb_empty_models <- summarize_hist_param_fallbacks(data.frame(
-  src_g = "app_defaults", src_n_years = "app_defaults",
-  src_rd = "session", src_tax = "session",
-  src_pb_mid = "justified", src_rf = "tnx", src_rm = "realized",
-  src_beta = "rolling", session_tip = FALSE,
-  stringsAsFactors = FALSE
-), fv_models = character(0))
-check("empty models → hide DCF-only hints",
-      !any(c("g", "n_years") %in% fb_empty_models$items$key))
+), locale = "en")
+check("en fallback note mentions APP_DEFAULTS",
+      grepl("APP_DEFAULTS", fb_en$note, fixed = TRUE) &&
+        !grepl("DCF panel|go to|please open", fb_en$note, ignore.case = TRUE))
 
 # --- MOS next-period stats (legacy helper still available) ---
 vd <- data.frame(

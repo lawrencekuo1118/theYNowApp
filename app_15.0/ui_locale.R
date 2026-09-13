@@ -65,6 +65,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     box_hfv_discount = "FV vs Market Price",
     box_hfv_validation = "Historical Fundamental Validation: Theoretical FV vs Actual Market (odds & magnitude)",
     box_hfv_param_inventory = "US Valuation Replay Inventory (Live vs Hist PIT)",
+    hfv_fb_title = "Default / fallback notice",
+    hfv_fb_item_fmt = "%s — %s (~%d valuation points)",
 
     # --- tabBox headers ---
     box_financial_report = "FINANCIAL REPORT",
@@ -163,6 +165,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     box_hfv_discount = "折現比較（合理價 vs 實際股價）",
     box_hfv_validation = "歷史基本面驗證：理論估值 vs 實際市值（漲跌機率／幅度）",
     box_hfv_param_inventory = "美股估值復盤參數盤點（Live vs Hist PIT）",
+    hfv_fb_title = "預設／fallback 提醒",
+    hfv_fb_item_fmt = "%s — %s（約 %d 個估值點）",
 
     # --- tabBox headers ---
     box_financial_report = "財務報表",

@@ -7125,14 +7125,14 @@ server <- function(input, output, session) {
       summarize_fv_market_validation(
         vd, from = b$from, to = b$to,
         as_of = Sys.Date(), oos_mode = mode,
-        fv_models = input$bt_fv_models
+        locale = isolate(ui_locale())
       ),
       error = function(e) {
         tryCatch(
           summarize_fv_convergence(
             vd, from = b$from, to = b$to,
             as_of = Sys.Date(), oos_mode = mode,
-            fv_models = input$bt_fv_models
+            locale = isolate(ui_locale())
           ),
           error = function(e2) NULL
         )
@@ -7163,18 +7163,21 @@ server <- function(input, output, session) {
     }
     fb <- s$fallbacks
     fb_ui <- NULL
+    loc <- tryCatch(isolate(ui_locale()), error = function(e) "zh-TW")
     if (!is.null(fb) && isTRUE(fb$any_fallback) && !is.null(fb$items) && nrow(fb$items) > 0) {
+      item_fmt <- ui_str("hfv_fb_item_fmt", loc)
       fb_ui <- tags$div(
         style = "margin:10px 0 0 0;padding:10px 12px;background:#fff8e8;border:1px solid #f0d78c;border-radius:4px;font-size:12.5px;line-height:1.55;",
-        tags$div(tags$b("預設／fallback 提醒")),
+        tags$div(tags$b(ui_str("hfv_fb_title", loc))),
         tags$p(style = "margin:4px 0 6px 0;color:#666;", fb$note %||% ""),
         tags$ul(
           style = "margin:0;padding-left:18px;",
           lapply(seq_len(nrow(fb$items)), function(i) {
             row <- fb$items[i, , drop = FALSE]
+            # Model-neutral: label + source + count only — no 「請至某模型分頁」CTA
             tags$li(sprintf(
-              "%s — %s（約 %d 個估值點）→ 請至「%s」設定／確認",
-              row$label[1], row$src_label[1], row$n_rows[1], row$tab[1]
+              item_fmt,
+              row$label[1], row$src_label[1], as.integer(row$n_rows[1])
             ))
           })
         )

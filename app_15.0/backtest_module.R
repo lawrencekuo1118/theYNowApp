@@ -494,9 +494,41 @@ valuation_signal_label <- function(fv, price) {
   as.character(src %||% "") %in% .HIST_FALLBACK_SOURCES
 }
 
-#' Human labels + which APP tab to confirm each hist assumption.
-#' Keys `g` / `n_years` are DCF-oriented（摘要僅在勾選 DCF 時提示對應分頁）.
-.hist_param_guide <- function() {
+#' Human labels for hist assumption diagnostics（model-neutral；不導向特定模型分頁）.
+.hist_param_guide <- function(locale = "zh-TW") {
+  loc <- if (exists("normalize_ui_locale", mode = "function")) {
+    normalize_ui_locale(locale)
+  } else {
+    loc0 <- tolower(trimws(as.character(locale %||% "zh-TW")[1]))
+    if (loc0 %in% c("en", "en-us", "english")) "en" else "zh-TW"
+  }
+  if (identical(loc, "en")) {
+    return(data.frame(
+      key = c("g", "n_years", "rd", "tax", "pb_mid", "rf", "rm", "beta"),
+      label = c(
+        "Terminal growth g",
+        "Forecast years n",
+        "Cost of debt Rd",
+        "Tax rate T",
+        "Justified P/B / baseline P/B",
+        "Risk-free rate Rf",
+        "Market return Rm",
+        "Beta (β)"
+      ),
+      # Informational scope only — not a deep-link to a model settings panel
+      scope = c(
+        "shared app default (terminal g / SGR)",
+        "shared app default (forecast years n)",
+        "shared app default (Rd)",
+        "shared app default (tax rate T)",
+        "shared app default (P/B)",
+        "shared app default (Rf)",
+        "shared app default (Rm)",
+        "shared app default (Beta)"
+      ),
+      stringsAsFactors = FALSE
+    ))
+  }
   data.frame(
     key = c("g", "n_years", "rd", "tax", "pb_mid", "rf", "rm", "beta"),
     label = c(
@@ -509,23 +541,50 @@ valuation_signal_label <- function(fv, price) {
       "市場報酬率 Rm",
       "Beta (β)"
     ),
-    tab = c(
-      "DCF／成長參數（永續 g）",
-      "DCF（預測年數）",
-      "WACC",
-      "WACC（所得稅率）",
-      "P/B",
-      "CAPM",
-      "CAPM",
-      "CAPM"
+    scope = c(
+      "共用系統預設（終值 g／SGR）",
+      "共用系統預設（預測年數 n）",
+      "共用系統預設（負債成本 Rd）",
+      "共用系統預設（所得稅率 T）",
+      "共用系統預設（P/B）",
+      "共用系統預設（Rf）",
+      "共用系統預設（Rm）",
+      "共用系統預設（Beta）"
     ),
     stringsAsFactors = FALSE
   )
 }
 
 .hist_src_label_zh <- function(src) {
+  .hist_src_label(src, "zh-TW")
+}
+
+.hist_src_label <- function(src, locale = "zh-TW") {
+  loc <- if (exists("normalize_ui_locale", mode = "function")) {
+    normalize_ui_locale(locale)
+  } else {
+    loc0 <- tolower(trimws(as.character(locale %||% "zh-TW")[1]))
+    if (loc0 %in% c("en", "en-us", "english")) "en" else "zh-TW"
+  }
+  key <- as.character(src %||% "")[1]
+  if (identical(loc, "en")) {
+    return(switch(
+      key,
+      pit = "Then-available fundamentals (PIT)",
+      justified = "Justified formula",
+      rolling = "Rolling β",
+      realized = "Benchmark realized return",
+      tnx = "^TNX close at the time",
+      app_defaults = "System default (APP_DEFAULTS)",
+      session = "Session / panel value (not confirmed on that rebalance day)",
+      statutory = "Statutory tax-rate default",
+      hard_default = "Hard-coded program fallback",
+      session_tip = "Current panel (tip)",
+      if (nzchar(key)) key else "—"
+    ))
+  }
   switch(
-    as.character(src %||% "")[1],
+    key,
     pit = "當時財報（PIT）",
     justified = "Justified 公式",
     rolling = "Rolling β",
@@ -536,7 +595,7 @@ valuation_signal_label <- function(fv, price) {
     statutory = "市場法定稅率預設",
     hard_default = "程式硬編碼 fallback",
     session_tip = "目前分頁（末端）",
-    as.character(src %||% "—")[1]
+    if (nzchar(key)) key else "—"
   )
 }
 

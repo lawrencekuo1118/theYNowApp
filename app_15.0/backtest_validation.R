@@ -681,27 +681,42 @@ build_fv_convergence_pairs <- function(valuation_df) {
 
 #' Aggregate which hist params used 預設／fallback across valuation rows.
 #'
-#' @param fv_models Selected valuation models for this run (e.g. input$bt_fv_models).
-#'   When provided and `"dcf"` is not among them, DCF-only hints（永續 g、預測年數 n）
-#'   are omitted so the UI does not push users to DCF tabs without choosing DCF.
-#'   When `NULL` (legacy callers / tests), all keys are eligible.
-summarize_hist_param_fallbacks <- function(valuation_df, fv_models = NULL) {
+#' Messaging is **model-neutral**: report that shared system defaults / fallbacks
+#' were used; do **not** steer users to a specific model settings panel (e.g. DCF).
+#'
+#' @param locale `"en"` or `"zh-TW"` for label／note wording
+summarize_hist_param_fallbacks <- function(valuation_df, locale = "zh-TW") {
+  loc <- if (exists("normalize_ui_locale", mode = "function")) {
+    normalize_ui_locale(locale)
+  } else {
+    loc0 <- tolower(trimws(as.character(locale %||% "zh-TW")[1]))
+    if (loc0 %in% c("en", "en-us", "english")) "en" else "zh-TW"
+  }
   guide <- if (exists(".hist_param_guide", mode = "function")) {
-    .hist_param_guide()
+    .hist_param_guide(loc)
   } else {
     data.frame(
-      key = character(), label = character(), tab = character(),
+      key = character(), label = character(), scope = character(),
       stringsAsFactors = FALSE
     )
+  }
+  # Backward compat if an older guide still exposes `tab`
+  if (!("scope" %in% names(guide)) && ("tab" %in% names(guide))) {
+    guide$scope <- guide$tab
+  }
+  empty_note <- if (identical(loc, "en")) {
+    "No valuation rows available to check defaults / fallbacks."
+  } else {
+    "尚無估值列可檢查預設／fallback。"
   }
   empty <- list(
     any_fallback = FALSE,
     items = data.frame(
-      key = character(), label = character(), tab = character(),
+      key = character(), label = character(), scope = character(),
       src = character(), src_label = character(), n_rows = integer(),
       stringsAsFactors = FALSE
     ),
-    note = "尚無估值列可檢查預設／fallback。"
+    note = empty_note
   )
   if (is.null(valuation_df) || !is.data.frame(valuation_df) || nrow(valuation_df) < 1) {
     return(empty)
@@ -714,16 +729,6 @@ summarize_hist_param_fallbacks <- function(valuation_df, fv_models = NULL) {
   } else {
     hist_vd <- vd
   }
-  # DCF-only params: hide when caller supplies an explicit model set without DCF
-  dcf_only_keys <- c("g", "n_years")
-  models_known <- !is.null(fv_models)
-  models_norm <- if (models_known) {
-    unique(tolower(trimws(as.character(fv_models))))
-  } else {
-    character(0)
-  }
-  models_norm <- models_norm[nzchar(models_norm) & !is.na(models_norm)]
-  dcf_on <- isTRUE("dcf" %in% models_norm)
   src_cols <- c(
     g = "src_g", n_years = "src_n_years", rd = "src_rd", tax = "src_tax",
     pb_mid = "src_pb_mid", rf = "src_rf", rm = "src_rm", beta = "src_beta"
@@ -731,7 +736,6 @@ summarize_hist_param_fallbacks <- function(valuation_df, fv_models = NULL) {
   items <- list()
   for (i in seq_len(nrow(guide))) {
     k <- guide$key[i]
-    if (models_known && k %in% dcf_only_keys && !dcf_on) next
     col <- src_cols[[k]]
     if (is.null(col) || !col %in% names(hist_vd)) next
     srcs <- as.character(hist_vd[[col]])
@@ -745,7 +749,9 @@ summarize_hist_param_fallbacks <- function(valuation_df, fv_models = NULL) {
     # Dominant fallback source among flagged rows
     tab <- sort(table(fb_srcs), decreasing = TRUE)
     src_dom <- if (length(tab) > 0) names(tab)[1] else "app_defaults"
-    src_lab <- if (exists(".hist_src_label_zh", mode = "function")) {
+    src_lab <- if (exists(".hist_src_label", mode = "function")) {
+      .hist_src_label(src_dom, loc)
+    } else if (exists(".hist_src_label_zh", mode = "function")) {
       .hist_src_label_zh(src_dom)
     } else {
       src_dom
@@ -753,7 +759,7 @@ summarize_hist_param_fallbacks <- function(valuation_df, fv_models = NULL) {
     items[[length(items) + 1L]] <- data.frame(
       key = k,
       label = guide$label[i],
-      tab = guide$tab[i],
+      scope = guide$scope[i],
       src = src_dom,
       src_label = src_lab,
       n_rows = as.integer(sum(fb_mask, na.rm = TRUE)),
@@ -761,7 +767,11 @@ summarize_hist_param_fallbacks <- function(valuation_df, fv_models = NULL) {
     )
   }
   if (length(items) < 1L) {
-    empty$note <- "歷史點參數皆來自當時財報／Justified／市場序列（本視窗未偵測到系統預設／Session fallback）。"
+    empty$note <- if (identical(loc, "en")) {
+      "Hist-point parameters came from then-available fundamentals / Justified / market series (no system default / Session fallback detected in this window)."
+    } else {
+      "歷史點參數皆來自當時財報／Justified／市場序列（本視窗未偵測到系統預設／Session fallback）。"
+    }
     empty$any_fallback <- FALSE
     return(empty)
   }
@@ -770,10 +780,20 @@ summarize_hist_param_fallbacks <- function(valuation_df, fv_models = NULL) {
   list(
     any_fallback = TRUE,
     items = out,
-    note = paste0(
-      "原則：公式應依據您已於對應分頁確認的參數。",
-      "下列參數在部分或全部歷史估值點套用了預設／fallback（非該再平衡日確認值），請至對應分頁設定後重新估值。"
-    )
+    note = if (identical(loc, "en")) {
+      paste0(
+        "Principle: hist points prefer then-available data. ",
+        "The parameters below used shared system defaults / fallbacks ",
+        "(e.g. APP_DEFAULTS)—not confirmed rebalance-day values. ",
+        "This notice is model-neutral and does not require opening a specific valuation-model panel."
+      )
+    } else {
+      paste0(
+        "原則：歷史點應優先使用當時可得資料。",
+        "下列參數在部分或全部估值點改用系統／共用預設或 fallback（例如 APP_DEFAULTS），",
+        "而非該再平衡日的確認值。此提醒為模型中性說明，並非要求開啟特定估值模型分頁。"
+      )
+    }
   )
 }
 
@@ -786,7 +806,7 @@ summarize_hist_param_fallbacks <- function(valuation_df, fv_models = NULL) {
 summarize_fv_market_validation <- function(valuation_df, from = NULL, to = NULL,
                                            as_of = Sys.Date(),
                                            oos_mode = c("realized", "insample", "expanding"),
-                                           fv_models = NULL) {
+                                           locale = "zh-TW") {
   oos_mode <- match.arg(oos_mode)
   pairs <- build_fv_convergence_pairs(valuation_df)
   empty <- list(
@@ -821,7 +841,7 @@ summarize_fv_market_validation <- function(valuation_df, from = NULL, to = NULL,
     small_sample = TRUE,
     note = "資料不足",
     frame = "歷史基本面驗證（理論估值 vs 實際市值），非策略回測",
-    fallbacks = summarize_hist_param_fallbacks(valuation_df, fv_models = fv_models),
+    fallbacks = summarize_hist_param_fallbacks(valuation_df, locale = locale),
     no_strategy_fv = FALSE
   )
   # 未勾選模型 → valuation 無有限 fair_value → 無配對
@@ -927,7 +947,7 @@ summarize_fv_market_validation <- function(valuation_df, from = NULL, to = NULL,
     small_sample = small,
     note = note,
     frame = "歷史基本面驗證（理論估值 vs 實際市值），非策略回測",
-    fallbacks = summarize_hist_param_fallbacks(valuation_df, fv_models = fv_models),
+    fallbacks = summarize_hist_param_fallbacks(valuation_df, locale = locale),
     no_strategy_fv = FALSE
   )
 }
@@ -937,10 +957,10 @@ summarize_fv_market_validation <- function(valuation_df, from = NULL, to = NULL,
 summarize_fv_convergence <- function(valuation_df, from = NULL, to = NULL,
                                      as_of = Sys.Date(),
                                      oos_mode = c("realized", "insample", "expanding"),
-                                     fv_models = NULL) {
+                                     locale = "zh-TW") {
   summarize_fv_market_validation(
     valuation_df, from = from, to = to, as_of = as_of, oos_mode = oos_mode,
-    fv_models = fv_models
+    locale = locale
   )
 }
 
