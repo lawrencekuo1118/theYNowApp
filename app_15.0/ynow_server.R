@@ -9,6 +9,9 @@ server <- function(input, output, session) {
   # ==========================================
   summary_data <- reactiveVal(NULL)
   scraped_financials <- reactiveVal(NULL)
+  # 載入後資料缺口：IS／BS／CF 全空；興櫃短註
+  fs_all_empty <- reactiveVal(FALSE)
+  tw_is_esb <- reactiveVal(FALSE)
   is_expanded <- reactiveVal(FALSE) 
   
   values <- reactiveValues(recentsearch = c())
@@ -170,7 +173,7 @@ server <- function(input, output, session) {
         "；Rf：", prof$rf_label_zh, "；介面 ",
         if (identical(mode, "TW")) "繁體中文" else "English", "）"
       ),
-      type = "message", duration = 6
+      type = "message", duration = 8
     )
   }, ignoreInit = TRUE)
 
@@ -289,6 +292,17 @@ server <- function(input, output, session) {
       '🚀 正在取得', display_ticker_for_market(stock_code, market_mode()), '的最新資料...'
     ), value = 0, {
       tryCatch({
+        # 換檔先清缺口旗標，避免殘留舊標的提示
+        fs_all_empty(FALSE)
+        tw_is_esb(FALSE)
+
+        # 興櫃：宇宙板別（ESB）；可估但 Summary β／Blue Chip 有限制
+        if (identical(market_mode(), "TW") &&
+            exists("is_tw_esb_ticker", mode = "function") &&
+            isTRUE(is_tw_esb_ticker(stock_code))) {
+          tw_is_esb(TRUE)
+        }
+
         incProgress(0.2, detail = "正在讀取 Summary（yfinance）...")
         sum_df <- tryCatch(get_summary_data(stock_code), error = function(e) e)
         # TWSE 後綴無資料／失敗 → 試上櫃 .TWO（僅一次）
@@ -410,6 +424,30 @@ server <- function(input, output, session) {
         res <- cached_scrape_financials(stock_code)
         res <- normalize_all_financials(res)
         scraped_financials(res)
+
+        # P0／P2：IS／BS／CF 全空 → 明確提示（勿以為算完）；導向 MOPS／櫃買
+        empty_fs <- exists("financials_is_bs_cf_all_empty", mode = "function") &&
+          isTRUE(financials_is_bs_cf_all_empty(res))
+        fs_all_empty(empty_fs)
+        if (isTRUE(empty_fs)) {
+          showNotification(
+            paste0(
+              "Yahoo 尚無年報（IS／BS／CF 皆空），基本面模型不可用。",
+              "完整財報請至公開資訊觀測站（MOPS）／櫃買中心查詢。"
+            ),
+            type = "warning", duration = 12, id = "ynow_fs_empty_gap"
+          )
+        }
+        if (isTRUE(tw_is_esb())) {
+          showNotification(
+            paste0(
+              "興櫃（ESB）：可估，但 Yahoo Summary β 常缺；Blue Chip 不納興櫃。",
+              "建議改用產業／手動／Rolling β（工程啟發式）。"
+            ),
+            type = "message", duration = 10, id = "ynow_esb_board_note"
+          )
+        }
+
         # Prefer statement currency from financials _meta when Summary omitted it.
         meta_fc <- normalize_ccy(attr(res, "financialCurrency") %||% "")
         meta_qc <- normalize_ccy(attr(res, "currency") %||% "")
@@ -464,6 +502,8 @@ server <- function(input, output, session) {
         incProgress(0.9, detail = "資料同步完成！✅")
 
       }, error = function(e) {
+        fs_all_empty(FALSE)
+        # 興櫃旗標若已偵測仍保留短註（Summary 失敗也可能是興櫃）
         showNotification(
           paste("❌ 取得資料失敗，請確認代號。錯誤:", e$message),
           type = "error",
@@ -574,6 +614,77 @@ server <- function(input, output, session) {
 
   output$txt_corpname <- renderUI({ render_corpname_ui() })
   output$search_results <- renderText({ corp_industry_text() })
+
+  # P0／P1a／P2：公司標題下方資料缺口／興櫃短註 banner
+  output$ynow_data_gap_banner <- renderUI({
+    empty_fs <- isTRUE(fs_all_empty())
+    esb <- isTRUE(tw_is_esb())
+    if (!empty_fs && !esb) return(NULL)
+
+    blocks <- list()
+    if (empty_fs) {
+      mops_url <- if (exists("YNOW_MOPS_HOME_URL", inherits = TRUE)) {
+        YNOW_MOPS_HOME_URL
+      } else {
+        "https://mops.twse.com.tw/"
+      }
+      tpex_url <- if (exists("YNOW_TPEX_HOME_URL", inherits = TRUE)) {
+        YNOW_TPEX_HOME_URL
+      } else {
+        "https://www.tpex.org.tw/"
+      }
+      blocks[[length(blocks) + 1L]] <- tags$div(
+        class = "ynow-data-gap-empty-fs",
+        style = paste0(
+          "margin: 6px 0 8px 0; padding: 10px 12px; border-left: 4px solid #c0392b;",
+          " background: #fdf2f2; color: #5a1a1a; font-size: 13px; line-height: 1.55;"
+        ),
+        tags$b("Yahoo 尚無年報，基本面模型不可用。"),
+        " IS／BS／CF 皆空（常見於新上櫃／新掛牌）；請勿將空結果視為已完成估值。",
+        tags$br(),
+        "完整財報請至",
+        tags$a(href = mops_url, target = "_blank", rel = "noopener noreferrer",
+               "公開資訊觀測站（MOPS）"),
+        "／",
+        tags$a(href = tpex_url, target = "_blank", rel = "noopener noreferrer",
+               "櫃買中心"),
+        "查詢。"
+      )
+    }
+    if (esb) {
+      blocks[[length(blocks) + 1L]] <- tags$div(
+        class = "ynow-data-gap-esb",
+        style = paste0(
+          "margin: 0 0 8px 0; padding: 8px 12px; border-left: 4px solid #f39c12;",
+          " background: #fff8ef; color: #5a3a10; font-size: 12.5px; line-height: 1.5;"
+        ),
+        tags$b("興櫃（ESB）："),
+        "可估，但 Yahoo Summary β 常缺；Blue Chip 僅上市＋上櫃、不納興櫃。",
+        "建議改用產業／手動／Rolling β（標明為工程啟發式）。"
+      )
+    }
+    do.call(tagList, blocks)
+  })
+
+  output$capm_rf_source_note <- renderUI({
+    prof <- tryCatch(active_market_profile(), error = function(e) NULL)
+    note <- if (!is.null(prof)) as.character(prof$data_source_note_zh %||% "")[1] else ""
+    if (!nzchar(note)) {
+      note <- as.character(prof$rf_label_zh %||% "")[1]
+    }
+    if (!nzchar(note)) return(NULL)
+    helpText(style = "margin-top:-6px; margin-bottom:8px; font-size:12px;", note)
+  })
+
+  output$wacc_tax_source_note <- renderUI({
+    mode <- tryCatch(normalize_market_mode(market_mode()), error = function(e) "US")
+    if (!identical(mode, "TW")) return(NULL)
+    helpText(
+      style = "margin-top:-6px; margin-bottom:8px; font-size:12px;",
+      "台股市場預設法定 T＝20%（可覆寫）；估值主源 Yahoo。"
+    )
+  })
+
   output$recentsearch <- renderText({
     paste(display_tickers_for_market(values$recentsearch, market_mode()), collapse = ", ")
   })
@@ -878,6 +989,16 @@ server <- function(input, output, session) {
       return(.empty_model_rec(
         "尚未搜尋",
         "請先按下 Search 載入公司後產生推薦。"
+      ))
+    }
+    if (isTRUE(fs_all_empty())) {
+      return(.empty_model_rec(
+        "Yahoo 尚無年報",
+        paste0(
+          "IS／BS／CF 皆空，基本面模型不可用；",
+          "請至公開資訊觀測站（MOPS）／櫃買查詢完整財報，勿將空結果視為已估值。"
+        ),
+        company_type = "fallback"
       ))
     }
     cf <- tryCatch(d_cash_flow(), error = function(e) NULL)

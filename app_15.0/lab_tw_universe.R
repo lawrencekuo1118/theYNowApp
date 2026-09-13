@@ -498,14 +498,14 @@ lab_tw_universe_meta <- function() {
   )
 }
 
-#' 自上市／上櫃／興櫃宇宙查公司中文全稱（依 Yahoo 代號，如 2330.TW／6488.TWO）
-lookup_tw_universe_company_name <- function(ticker) {
+#' 自上市／上櫃／興櫃宇宙解析命中列索引（優先上市 → 上櫃 → 興櫃）
+.lookup_tw_universe_row <- function(ticker) {
   tk <- toupper(trimws(as.character(ticker %||% "")[1]))
-  if (!nzchar(tk)) return("")
+  if (!nzchar(tk)) return(list(u = NULL, idx = integer(0), ticker = tk))
   u <- tryCatch(lab_get_tw_universe(FALSE), error = function(e) NULL)
   if (is.null(u) || !is.data.frame(u) || nrow(u) < 1L ||
-      !all(c("ticker", "name") %in% names(u))) {
-    return("")
+      !"ticker" %in% names(u)) {
+    return(list(u = NULL, idx = integer(0), ticker = tk))
   }
   tks <- toupper(as.character(u$ticker))
   hit <- which(tks == tk)
@@ -524,10 +524,36 @@ lookup_tw_universe_company_name <- function(ticker) {
       }
     }
   }
-  if (!length(hit)) return("")
-  nm <- trimws(as.character(u$name[[hit[[1]]]]))
-  if (!nzchar(nm) || identical(nm, "NA") || identical(toupper(nm), tk)) return("")
+  list(u = u, idx = hit, ticker = tk)
+}
+
+#' 自上市／上櫃／興櫃宇宙查公司中文全稱（依 Yahoo 代號，如 2330.TW／6488.TWO）
+lookup_tw_universe_company_name <- function(ticker) {
+  hit <- .lookup_tw_universe_row(ticker)
+  if (is.null(hit$u) || !length(hit$idx) || !"name" %in% names(hit$u)) return("")
+  nm <- trimws(as.character(hit$u$name[[hit$idx[[1]]]]))
+  if (!nzchar(nm) || identical(nm, "NA") || identical(toupper(nm), hit$ticker)) return("")
   nm
+}
+
+#' 宇宙板別（TWSE／TPEX／ESB…）；未命中回傳 ""
+lookup_tw_universe_exchange <- function(ticker) {
+  hit <- .lookup_tw_universe_row(ticker)
+  if (is.null(hit$u) || !length(hit$idx) || !"exchange" %in% names(hit$u)) return("")
+  ex <- toupper(trimws(as.character(hit$u$exchange[[hit$idx[[1]]]])[1]))
+  if (!nzchar(ex) || identical(ex, "NA")) return("")
+  ex
+}
+
+#' 是否為興櫃（ESB）板別字串
+is_tw_esb_exchange <- function(exchange) {
+  toupper(trimws(as.character(exchange %||% "")[1])) %in%
+    c("ESB", "EMERGING", "TPEX_ESB")
+}
+
+#' 依 Yahoo 代號判斷是否興櫃（查 tw_universe）
+is_tw_esb_ticker <- function(ticker) {
+  is_tw_esb_exchange(lookup_tw_universe_exchange(ticker))
 }
 
 #' 台股績優候選：industry_key → tickers（僅上市＋上櫃；不含興櫃）

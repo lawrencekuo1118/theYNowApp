@@ -420,6 +420,33 @@ normalize_all_financials <- function(res) {
   out
 }
 
+#' 單張財報是否可視為空（無科目列或無期間欄）
+financial_df_is_empty <- function(df) {
+  df <- coerce_financial_df(df)
+  is.null(df) || !is.data.frame(df) || nrow(df) < 1L || ncol(df) < 2L
+}
+
+#' scraped_financials 結構：IS／BS／CF 是否皆空
+#' （新上櫃／興櫃常見：Yahoo Summary 有價，但年報三表尚未上線）
+financials_is_bs_cf_all_empty <- function(res) {
+  if (is.null(res)) return(TRUE)
+  .stmt_empty <- function(key) {
+    stmt <- tryCatch(res[[key]], error = function(e) NULL)
+    if (is.null(stmt)) return(TRUE)
+    exp <- stmt$expanded
+    if (is.null(exp)) exp <- stmt$collapsed
+    financial_df_is_empty(coerce_financial_df(exp))
+  }
+  .stmt_empty("Income Statement") &&
+    .stmt_empty("Balance Sheet") &&
+    .stmt_empty("Cash Flow")
+}
+
+# Phase 下一包（刻意不做半套）：MOPS／櫃買 OpenAPI 年報欄位穩定 ingest。
+# 目前僅在空財報 banner 導向官方查詢；勿接 FinMind 全解析或 fragile HTML parser。
+YNOW_MOPS_HOME_URL <- "https://mops.twse.com.tw/"
+YNOW_TPEX_HOME_URL <- "https://www.tpex.org.tw/"
+
 # 從財報 DataFrame 中抽出特定科目的數值陣列
 # 欄位順序須為 TTM | 最新財年 → 最舊財年；[1] = 當期（含 TTM 時為 TTM）
 select_clean_metric_row <- function(df, metric_name, include_ttm = TRUE) {

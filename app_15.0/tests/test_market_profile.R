@@ -35,6 +35,15 @@ check("TW label strip", identical(normalize_ticker_for_market("2330.TW — 台�
 check("TW alt helper", identical(tw_yahoo_alt_ticker("3105.TW"), "3105.TWO"))
 check("TW profile tax 20", identical(as.integer(market_profile("TW")$wacc_tax), 20L))
 check("US profile tax 21", identical(as.integer(market_profile("US")$wacc_tax), 21L))
+check(
+  "TW rf_label notes Rf fallback + T",
+  grepl("1\\.8", market_profile("TW")$rf_label_zh) &&
+    grepl("20%", market_profile("TW")$rf_label_zh, fixed = TRUE)
+)
+check(
+  "TW data_source_note mentions Yahoo",
+  grepl("Yahoo", market_profile("TW")$data_source_note_zh %||% "", fixed = TRUE)
+)
 check("TW default ticker", identical(market_profile("TW")$default_ticker, "2330.TW"))
 check("TW hides SEC", isFALSE(market_profile("TW")$show_sec_lab))
 check("US shows SEC", isTRUE(market_profile("US")$show_sec_lab))
@@ -194,6 +203,14 @@ if (file.exists(cache_path)) {
       !any(toupper(as.character(u$exchange[match(qc_tks, u$ticker)])) %in%
              c("ESB", "EMERGING", "TPEX_ESB"))
     )
+    check(
+      "is_tw_esb_ticker true for sample ESB",
+      isTRUE(is_tw_esb_ticker(sample_tk))
+    )
+    check(
+      "is_tw_esb_exchange helper",
+      isTRUE(is_tw_esb_exchange("ESB")) && isFALSE(is_tw_esb_exchange("TWSE"))
+    )
   } else {
     cat("NOTE: tw_universe.csv has no ESB rows yet — refresh to include 興櫃\n")
   }
@@ -208,6 +225,64 @@ if (file.exists(cache_path)) {
 } else {
   cat("SKIP: tw_universe.csv not present for OTC/ESB resolve checks\n")
 }
+
+# P0 helper：IS／BS／CF 全空偵測（不需網路）
+empty_stmt <- list(
+  collapsed = data.frame(Breakdown = character(0), stringsAsFactors = FALSE),
+  expanded = data.frame(Breakdown = character(0), stringsAsFactors = FALSE)
+)
+# Minimal coerce / empty helpers (mirror setup.R; avoid full setup.R side effects)
+coerce_financial_df <- function(df) {
+  if (is.null(df)) return(NULL)
+  if (is.data.frame(df)) return(df)
+  if (is.list(df) && !is.null(df$columns) && !is.null(df$data)) {
+    cols <- as.character(unlist(df$columns, use.names = FALSE))
+    rows <- df$data
+    if (is.null(rows) || length(rows) == 0) {
+      out <- as.data.frame(matrix(nrow = 0, ncol = length(cols)), stringsAsFactors = FALSE)
+      names(out) <- cols
+      return(out)
+    }
+  }
+  tryCatch(as.data.frame(df, stringsAsFactors = FALSE), error = function(e) NULL)
+}
+financial_df_is_empty <- function(df) {
+  df <- coerce_financial_df(df)
+  is.null(df) || !is.data.frame(df) || nrow(df) < 1L || ncol(df) < 2L
+}
+financials_is_bs_cf_all_empty <- function(res) {
+  if (is.null(res)) return(TRUE)
+  .stmt_empty <- function(key) {
+    stmt <- tryCatch(res[[key]], error = function(e) NULL)
+    if (is.null(stmt)) return(TRUE)
+    exp <- stmt$expanded
+    if (is.null(exp)) exp <- stmt$collapsed
+    financial_df_is_empty(coerce_financial_df(exp))
+  }
+  .stmt_empty("Income Statement") &&
+    .stmt_empty("Balance Sheet") &&
+    .stmt_empty("Cash Flow")
+}
+check(
+  "empty IS/BS/CF detected",
+  isTRUE(financials_is_bs_cf_all_empty(list(
+    `Income Statement` = empty_stmt,
+    `Balance Sheet` = empty_stmt,
+    `Cash Flow` = empty_stmt
+  )))
+)
+nonempty <- list(
+  collapsed = data.frame(Breakdown = "Revenue", `12/31/2024` = "1", check.names = FALSE),
+  expanded = data.frame(Breakdown = "Revenue", `12/31/2024` = "1", check.names = FALSE)
+)
+check(
+  "non-empty CF means not all-empty",
+  isFALSE(financials_is_bs_cf_all_empty(list(
+    `Income Statement` = empty_stmt,
+    `Balance Sheet` = empty_stmt,
+    `Cash Flow` = nonempty
+  )))
+)
 
 # Minimal merge: detail path must keep all evaluated rows even if eq/gate would filter
 old_wd <- getwd()

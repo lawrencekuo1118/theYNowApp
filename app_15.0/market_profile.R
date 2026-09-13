@@ -30,8 +30,16 @@ market_profile <- function(mode = get_market_mode()) {
       default_ticker = "2330.TW",
       wacc_tax = 20,
       rf_symbol = "TW_GOV_APPROX",
-      rf_label_zh = "台灣公債近似（文件化 fallback；Yahoo 無穩定台債指數時）",
+      # 一句透明：估值主源 Yahoo；Rf／法定 T 為市場預設（工程 fallback）
+      rf_label_zh = paste0(
+        "台灣公債近似（Yahoo 無穩定台債指數 → Rf fallback ",
+        "1.8%；法定 T＝20%）"
+      ),
       rf_fallback = 1.8,
+      data_source_note_zh = paste0(
+        "台股估值主源 Yahoo；Rf／法定 T 為市場預設",
+        "（Rf fallback 1.8%、T＝20%）。"
+      ),
       beta_bench = "0050.TW",
       beta_bench_choices = c(
         "0050.TW（元大台灣50）" = "0050.TW",
@@ -75,6 +83,7 @@ market_profile <- function(mode = get_market_mode()) {
       rf_symbol = "^TNX",
       rf_label_zh = "美國 10 年期公債（^TNX）",
       rf_fallback = 4.0,
+      data_source_note_zh = "美股估值主源 Yahoo；Rf 預設 ^TNX（fallback 約 4%）、法定 T＝21%。",
       beta_bench = "SPY",
       beta_bench_choices = c(
         "SPY (S&P 500 ETF)" = "SPY",

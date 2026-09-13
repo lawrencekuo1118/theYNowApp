@@ -129,6 +129,7 @@ capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
   box(
     h4(title),
     numericInput("capm_rf", "無風險利率 Rf (%)", value = APP_DEFAULTS$capm_rf, step = 0.01),
+    uiOutput("capm_rf_source_note"),
     numericInput("capm_rm", "市場報酬率 Rm (%)", value = APP_DEFAULTS$capm_rm, step = 0.01),
     numericInput("capm_beta", "Beta (β)", value = APP_DEFAULTS$capm_beta, step = 0.01),
     checkboxInput(
@@ -693,7 +694,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v15.05</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v15.06</span>'),
     titleWidth = 250,
     tags$li(
       class = "dropdown ynow-market-header",
@@ -2370,6 +2371,12 @@ ui <- dashboardPage(
     fluidRow(
       column(
         width = 12,
+        uiOutput("ynow_data_gap_banner")
+      )
+    ),
+    fluidRow(
+      column(
+        width = 12,
         tags$div(
           style = "width: 100%; text-align: left; margin-top: 8px;",
           tags$p(
@@ -3060,6 +3067,7 @@ ui <- dashboardPage(
                                     ),
                                     helpText("無現成 rᵈ 時欄位空白；財報抓取後以利息費用／總負債設算，並夾在下限～上限內。"),
                                     numericInput("wacc_tax", "所得稅率 T (%)", value = APP_DEFAULTS$wacc_tax, min = 0, max = 100, step = 0.01),
+                                    uiOutput("wacc_tax_source_note"),
                                     actionButton("calc_wacc", "計算 WACC", class = "btn-primary"),
                                     tags$br(), htmlOutput("wacc_result")
                                 ),
