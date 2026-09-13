@@ -7124,13 +7124,15 @@ server <- function(input, output, session) {
     tryCatch(
       summarize_fv_market_validation(
         vd, from = b$from, to = b$to,
-        as_of = Sys.Date(), oos_mode = mode
+        as_of = Sys.Date(), oos_mode = mode,
+        fv_models = input$bt_fv_models
       ),
       error = function(e) {
         tryCatch(
           summarize_fv_convergence(
             vd, from = b$from, to = b$to,
-            as_of = Sys.Date(), oos_mode = mode
+            as_of = Sys.Date(), oos_mode = mode,
+            fv_models = input$bt_fv_models
           ),
           error = function(e2) NULL
         )

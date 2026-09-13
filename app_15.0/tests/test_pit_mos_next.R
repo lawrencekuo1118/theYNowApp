@@ -122,9 +122,30 @@ fb_sum <- summarize_hist_param_fallbacks(data.frame(
   src_pb_mid = pit_fb$src_pb_mid, src_rf = "tnx", src_rm = "realized",
   src_beta = "rolling", session_tip = FALSE,
   stringsAsFactors = FALSE
-))
+), fv_models = "dcf")
 check("fallback summary any", isTRUE(fb_sum$any_fallback))
 check("fallback summary has g", "g" %in% fb_sum$items$key)
+
+fb_no_dcf <- summarize_hist_param_fallbacks(data.frame(
+  src_g = "app_defaults", src_n_years = "app_defaults",
+  src_rd = "session", src_tax = "session",
+  src_pb_mid = "justified", src_rf = "tnx", src_rm = "realized",
+  src_beta = "rolling", session_tip = FALSE,
+  stringsAsFactors = FALSE
+), fv_models = c("ddm", "ri"))
+check("no DCF → hide g hint", !"g" %in% fb_no_dcf$items$key)
+check("no DCF → hide n_years hint", !"n_years" %in% fb_no_dcf$items$key)
+check("no DCF → still show rd/tax", all(c("rd", "tax") %in% fb_no_dcf$items$key))
+
+fb_empty_models <- summarize_hist_param_fallbacks(data.frame(
+  src_g = "app_defaults", src_n_years = "app_defaults",
+  src_rd = "session", src_tax = "session",
+  src_pb_mid = "justified", src_rf = "tnx", src_rm = "realized",
+  src_beta = "rolling", session_tip = FALSE,
+  stringsAsFactors = FALSE
+), fv_models = character(0))
+check("empty models → hide DCF-only hints",
+      !any(c("g", "n_years") %in% fb_empty_models$items$key))
 
 # --- MOS next-period stats (legacy helper still available) ---
 vd <- data.frame(

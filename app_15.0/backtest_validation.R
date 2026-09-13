@@ -680,7 +680,12 @@ build_fv_convergence_pairs <- function(valuation_df) {
 }
 
 #' Aggregate which hist params used 預設／fallback across valuation rows.
-summarize_hist_param_fallbacks <- function(valuation_df) {
+#'
+#' @param fv_models Selected valuation models for this run (e.g. input$bt_fv_models).
+#'   When provided and `"dcf"` is not among them, DCF-only hints（永續 g、預測年數 n）
+#'   are omitted so the UI does not push users to DCF tabs without choosing DCF.
+#'   When `NULL` (legacy callers / tests), all keys are eligible.
+summarize_hist_param_fallbacks <- function(valuation_df, fv_models = NULL) {
   guide <- if (exists(".hist_param_guide", mode = "function")) {
     .hist_param_guide()
   } else {
@@ -709,6 +714,16 @@ summarize_hist_param_fallbacks <- function(valuation_df) {
   } else {
     hist_vd <- vd
   }
+  # DCF-only params: hide when caller supplies an explicit model set without DCF
+  dcf_only_keys <- c("g", "n_years")
+  models_known <- !is.null(fv_models)
+  models_norm <- if (models_known) {
+    unique(tolower(trimws(as.character(fv_models))))
+  } else {
+    character(0)
+  }
+  models_norm <- models_norm[nzchar(models_norm) & !is.na(models_norm)]
+  dcf_on <- isTRUE("dcf" %in% models_norm)
   src_cols <- c(
     g = "src_g", n_years = "src_n_years", rd = "src_rd", tax = "src_tax",
     pb_mid = "src_pb_mid", rf = "src_rf", rm = "src_rm", beta = "src_beta"
@@ -716,6 +731,7 @@ summarize_hist_param_fallbacks <- function(valuation_df) {
   items <- list()
   for (i in seq_len(nrow(guide))) {
     k <- guide$key[i]
+    if (models_known && k %in% dcf_only_keys && !dcf_on) next
     col <- src_cols[[k]]
     if (is.null(col) || !col %in% names(hist_vd)) next
     srcs <- as.character(hist_vd[[col]])
@@ -769,7 +785,8 @@ summarize_hist_param_fallbacks <- function(valuation_df) {
 #'   "insample" = no Date_next filter; "expanding" = also report expanding-window hit rate
 summarize_fv_market_validation <- function(valuation_df, from = NULL, to = NULL,
                                            as_of = Sys.Date(),
-                                           oos_mode = c("realized", "insample", "expanding")) {
+                                           oos_mode = c("realized", "insample", "expanding"),
+                                           fv_models = NULL) {
   oos_mode <- match.arg(oos_mode)
   pairs <- build_fv_convergence_pairs(valuation_df)
   empty <- list(
@@ -804,7 +821,7 @@ summarize_fv_market_validation <- function(valuation_df, from = NULL, to = NULL,
     small_sample = TRUE,
     note = "資料不足",
     frame = "歷史基本面驗證（理論估值 vs 實際市值），非策略回測",
-    fallbacks = summarize_hist_param_fallbacks(valuation_df),
+    fallbacks = summarize_hist_param_fallbacks(valuation_df, fv_models = fv_models),
     no_strategy_fv = FALSE
   )
   # 未勾選模型 → valuation 無有限 fair_value → 無配對
@@ -910,7 +927,7 @@ summarize_fv_market_validation <- function(valuation_df, from = NULL, to = NULL,
     small_sample = small,
     note = note,
     frame = "歷史基本面驗證（理論估值 vs 實際市值），非策略回測",
-    fallbacks = summarize_hist_param_fallbacks(valuation_df),
+    fallbacks = summarize_hist_param_fallbacks(valuation_df, fv_models = fv_models),
     no_strategy_fv = FALSE
   )
 }
@@ -919,9 +936,11 @@ summarize_fv_market_validation <- function(valuation_df, from = NULL, to = NULL,
 #' @export
 summarize_fv_convergence <- function(valuation_df, from = NULL, to = NULL,
                                      as_of = Sys.Date(),
-                                     oos_mode = c("realized", "insample", "expanding")) {
+                                     oos_mode = c("realized", "insample", "expanding"),
+                                     fv_models = NULL) {
   summarize_fv_market_validation(
-    valuation_df, from = from, to = to, as_of = as_of, oos_mode = oos_mode
+    valuation_df, from = from, to = to, as_of = as_of, oos_mode = oos_mode,
+    fv_models = fv_models
   )
 }
 

@@ -495,6 +495,7 @@ valuation_signal_label <- function(fv, price) {
 }
 
 #' Human labels + which APP tab to confirm each hist assumption.
+#' Keys `g` / `n_years` are DCF-oriented（摘要僅在勾選 DCF 時提示對應分頁）.
 .hist_param_guide <- function() {
   data.frame(
     key = c("g", "n_years", "rd", "tax", "pb_mid", "rf", "rm", "beta"),
