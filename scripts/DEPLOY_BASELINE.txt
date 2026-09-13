@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12548573
+bundleId=12548630
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=1804414
-commit=1804414
-short=1804414
-message=feat(app_15.0): TPEx OTC/ESB financial summary fallback for empty Yahoo .TWO (v15.09)
-captured_at=2026-09-13T14:01:42Z
+aligned_git=8d94103
+commit=8d94103
+short=8d94103
+message=feat(app_15.0): hist FV default reminders + no silent DCF when models unchecked (v15.10)
+captured_at=2026-09-13T14:18:35Z
 source_branch=master
-display_version=v15.09
-note=Canonical live line is app_15.0. Bundle 12548573 ships TPEx 上櫃/興櫃財務資料簡報 XLS fallback when Yahoo IS/BS/CF empty for .TWO (summary fields only; CF/CapEx/FCF not invented). Supersedes 12548563 / v15.08 and 12548523 / v15.07.
+display_version=v15.10
+note=Canonical live line is app_15.0. Bundle 12548630 ships hist-validation default/fallback reminders (g/n/Rd/tax/P/B/Rf/Rm/β → tabs) and removes silent DCF when no FV models checked (strategy FV/MOS=NA). Supersedes 12548573 / v15.09.
