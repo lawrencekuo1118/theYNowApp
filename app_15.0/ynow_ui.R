@@ -694,7 +694,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v15.07</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v15.08</span>'),
     titleWidth = 250,
     tags$li(
       class = "dropdown ynow-market-header",
@@ -776,9 +776,10 @@ ui <- dashboardPage(
     ),
     
     column(width = 12,
-           div(style = "padding: 10px; text-align: center; margin-top: 20px;",
-               downloadButton("download_report", "Download full analysis report (PDF)",
-                              style = "width: 100%; font-weight: bold; background-color: #1a1a1a; color: #ffffff; border: 1px solid #000000; box-shadow: none; text-shadow: none;")
+           div(class = "ynow-sidebar-download-wrap",
+               downloadButton("download_report", "Download Report (PDF)",
+                              class = "ynow-sidebar-download-btn",
+                              style = "background-color: #1a1a1a; color: #ffffff; border: 1px solid #000000; box-shadow: none; text-shadow: none;")
            )
     ),
     
@@ -1106,6 +1107,29 @@ ui <- dashboardPage(
         }
         .ynow-sidebar-test-link { margin-left: 8px; }
         .ynow-sidebar-feedback-link { margin-left: 8px; }
+        /* 側邊欄 PDF 下載：換行／縮放，避免長標籤撐破側欄 */
+        .ynow-sidebar-download-wrap {
+          padding: 10px;
+          text-align: center;
+          margin-top: 20px;
+          max-width: 100%;
+          box-sizing: border-box;
+        }
+        .ynow-sidebar-download-wrap #download_report,
+        .ynow-sidebar-download-btn {
+          display: inline-block;
+          width: 100%;
+          max-width: 100%;
+          box-sizing: border-box;
+          white-space: normal !important;
+          word-break: break-word;
+          overflow-wrap: anywhere;
+          line-height: 1.25;
+          padding: 8px 10px;
+          font-size: 13px;
+          font-weight: bold;
+          text-align: center;
+        }
         /* 主選單不應再出現 Snapshot */
         .sidebar-menu a[data-value="snapshot"] { display: none !important; }
         .sidebar-menu li:has(> a[data-value="snapshot"]) { display: none !important; }

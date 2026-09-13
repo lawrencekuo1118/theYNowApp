@@ -35,7 +35,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "This application integrates real-time financial data via web parsing ",
       "and API resources, applying comprehensive models for valuation."
     ),
-    download_report = "Download full analysis report (PDF)",
+    download_report = "Download Report (PDF)",
     snapshot_link = " Snapshot",
     test_link = " Testing",
     feedback_link = " Feedback",
@@ -110,7 +110,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "本應用程式整合即時財務資料（網頁解析與 API），",
       "並套用完整估值模型。"
     ),
-    download_report = "下載完整分析報告 (PDF)",
+    download_report = "下載報告 (PDF)",
     snapshot_link = " 快照",
     test_link = " 測試",
     feedback_link = " 意見區",
