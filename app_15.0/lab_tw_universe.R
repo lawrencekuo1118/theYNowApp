@@ -14,7 +14,11 @@ LAB_TW_CACHE_REL <- file.path("data", "tw_universe.csv")
 LAB_TWSE_COMPANY_URL <- "https://openapi.twse.com.tw/v1/opendata/t187ap03_L"
 LAB_TPEX_COMPANY_URL <- "https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap03_O"
 LAB_TPEX_ESB_COMPANY_URL <- "https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap03_R"
-# TWSE ISIN 公開一覽：2=上市、4=上櫃、5=興櫃（官方 HTML；OpenAPI 傳輸不穩時備援）
+# MOPS 公開 CSV（含「公司名稱」全稱；TPEx OpenAPI 常截斷時優先於此，再退 ISIN 簡稱）
+LAB_TWSE_COMPANY_CSV_URL <- "https://mopsfin.twse.com.tw/opendata/t187ap03_L.csv"
+LAB_TPEX_COMPANY_CSV_URL <- "https://mopsfin.twse.com.tw/opendata/t187ap03_O.csv"
+LAB_TPEX_ESB_COMPANY_CSV_URL <- "https://mopsfin.twse.com.tw/opendata/t187ap03_R.csv"
+# TWSE ISIN 公開一覽：2=上市、4=上櫃、5=興櫃（官方 HTML；僅證券簡稱，作最後備援）
 LAB_TW_ISIN_LISTED_URL <- "https://isin.twse.com.tw/isin/C_public.jsp?strMode=2"
 LAB_TW_ISIN_OTC_URL <- "https://isin.twse.com.tw/isin/C_public.jsp?strMode=4"
 LAB_TW_ISIN_ESB_URL <- "https://isin.twse.com.tw/isin/C_public.jsp?strMode=5"
@@ -119,16 +123,20 @@ lab_tw_row_to_record <- function(row, exchange, source, fetched_at) {
       "證券代號", "^股票代號$"
     )
   )
+  # 優先法定全稱（公司名稱／CompanyName）；勿先吃到簡稱或模糊 Name
   name <- .lab_tw_pick_field(
     row,
     c(
-      "公司名稱", "CompanyName", "Name", "name",
-      "證券名稱", "公司簡稱", "CompanyAbbreviation"
+      "^公司名稱$", "^CompanyName$",
+      "公司名稱", "CompanyName"
     )
   )
-  # Prefer short abbreviation as secondary fill if full name missing
+  # 全稱缺失才退證券名稱／簡稱（ISIN 一覽僅有簡稱）
   if (!nzchar(name) || identical(name, "NA")) {
-    name <- .lab_tw_pick_field(row, c("CompanyAbbreviation", "公司簡稱"))
+    name <- .lab_tw_pick_field(
+      row,
+      c("證券名稱", "公司簡稱", "CompanyAbbreviation", "^Name$", "^name$")
+    )
   }
   ind <- .lab_tw_pick_field(
     row,
@@ -301,6 +309,65 @@ lab_fetch_tw_isin_esb <- function(timeout_sec = 30) {
   )
 }
 
+#' MOPS 公開 CSV → 宇宙列（欄位含公司名稱全稱／公司簡稱）
+lab_fetch_tw_mopsfin_csv <- function(url, exchange, source_tag, timeout_sec = 40) {
+  tmp <- tempfile(fileext = ".csv")
+  on.exit(unlink(tmp), add = TRUE)
+  ok <- FALSE
+  if (exists(".lab_http_download", mode = "function")) {
+    ok <- isTRUE(.lab_http_download(url, tmp, timeout_sec))
+  } else {
+    old <- getOption("timeout")
+    on.exit(options(timeout = old), add = TRUE)
+    options(timeout = timeout_sec)
+    ok <- tryCatch({
+      utils::download.file(
+        url, destfile = tmp, quiet = TRUE, mode = "wb",
+        headers = c("User-Agent" = "theYNowApp/15.0 (lab TW universe)")
+      )
+      TRUE
+    }, error = function(e) FALSE)
+  }
+  if (!isTRUE(ok) || !file.exists(tmp) || isTRUE(file.info(tmp)$size < 200)) {
+    stop("TW mopsfin CSV download failed: ", url)
+  }
+  df <- tryCatch(
+    utils::read.csv(tmp, stringsAsFactors = FALSE, fileEncoding = "UTF-8"),
+    error = function(e) NULL
+  )
+  if (is.null(df) || !is.data.frame(df) || nrow(df) < 1L) {
+    stop("TW mopsfin CSV parse failed: ", url)
+  }
+  names(df) <- sub("^\ufeff", "", names(df))
+  ts <- format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
+  lab_finalize_tw_list(df, exchange = exchange, source = source_tag, fetched_at = ts)
+}
+
+#' 若主來源產業別為純數字／空白，用次來源（多為 ISIN 中文產業）覆寫
+lab_tw_overlay_industry <- function(primary, secondary) {
+  if (is.null(primary) || !is.data.frame(primary) || nrow(primary) < 1L) return(primary)
+  if (is.null(secondary) || !is.data.frame(secondary) || nrow(secondary) < 1L) {
+    return(primary)
+  }
+  if (!all(c("ticker", "industry_raw") %in% names(primary)) ||
+      !all(c("ticker", "industry_raw") %in% names(secondary))) {
+    return(primary)
+  }
+  bare_p <- toupper(sub("\\.(TW|TWO)$", "", as.character(primary$ticker), ignore.case = TRUE))
+  bare_s <- toupper(sub("\\.(TW|TWO)$", "", as.character(secondary$ticker), ignore.case = TRUE))
+  idx <- match(bare_p, bare_s)
+  for (i in which(!is.na(idx))) {
+    pr <- trimws(as.character(primary$industry_raw[[i]] %||% ""))
+    sr <- trimws(as.character(secondary$industry_raw[[idx[[i]]]] %||% ""))
+    if ((!nzchar(pr) || grepl("^[0-9]+$", pr)) &&
+        nzchar(sr) && !grepl("^[0-9]+$", sr)) {
+      primary$industry_raw[[i]] <- sr
+      primary$industry_key[[i]] <- lab_map_tw_industry_to_key(sr)
+    }
+  }
+  primary
+}
+
 lab_fetch_tw_otc_live <- function(timeout_sec = 25) {
   ts <- format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
   openapi <- tryCatch(
@@ -312,7 +379,21 @@ lab_fetch_tw_otc_live <- function(timeout_sec = 25) {
     ),
     error = function(e) lab_empty_tw()
   )
-  if (nrow(openapi) >= 100L) return(openapi)
+  if (nrow(openapi) >= 100L) {
+    isin <- tryCatch(lab_fetch_tw_isin_otc(max(timeout_sec, 30)), error = function(e) NULL)
+    return(lab_tw_overlay_industry(openapi, isin))
+  }
+  csv <- tryCatch(
+    lab_fetch_tw_mopsfin_csv(
+      LAB_TPEX_COMPANY_CSV_URL, "TPEX", "mopsfin_t187ap03_O_csv",
+      max(timeout_sec, 40)
+    ),
+    error = function(e) lab_empty_tw()
+  )
+  if (nrow(csv) >= 100L) {
+    isin <- tryCatch(lab_fetch_tw_isin_otc(max(timeout_sec, 30)), error = function(e) NULL)
+    return(lab_tw_overlay_industry(csv, isin))
+  }
   lab_fetch_tw_isin_otc(max(timeout_sec, 30))
 }
 
@@ -327,7 +408,21 @@ lab_fetch_tw_esb_live <- function(timeout_sec = 25) {
     ),
     error = function(e) lab_empty_tw()
   )
-  if (nrow(openapi) >= 50L) return(openapi)
+  if (nrow(openapi) >= 50L) {
+    isin <- tryCatch(lab_fetch_tw_isin_esb(max(timeout_sec, 30)), error = function(e) NULL)
+    return(lab_tw_overlay_industry(openapi, isin))
+  }
+  csv <- tryCatch(
+    lab_fetch_tw_mopsfin_csv(
+      LAB_TPEX_ESB_COMPANY_CSV_URL, "ESB", "mopsfin_t187ap03_R_csv",
+      max(timeout_sec, 40)
+    ),
+    error = function(e) lab_empty_tw()
+  )
+  if (nrow(csv) >= 50L) {
+    isin <- tryCatch(lab_fetch_tw_isin_esb(max(timeout_sec, 30)), error = function(e) NULL)
+    return(lab_tw_overlay_industry(csv, isin))
+  }
   lab_fetch_tw_isin_esb(max(timeout_sec, 30))
 }
 
@@ -355,6 +450,15 @@ lab_fetch_tw_universe_live <- function(timeout_sec = 20) {
     ),
     error = function(e) lab_empty_tw()
   )
+  if (nrow(twse) < 100L) {
+    twse <- tryCatch(
+      lab_fetch_tw_mopsfin_csv(
+        LAB_TWSE_COMPANY_CSV_URL, "TWSE", "mopsfin_t187ap03_L_csv",
+        max(timeout_sec, 40)
+      ),
+      error = function(e) lab_empty_tw()
+    )
+  }
   if (nrow(twse) < 100L) {
     twse <- tryCatch(
       lab_fetch_tw_isin_board(

@@ -149,6 +149,34 @@ if (file.exists(cache_path)) {
     check("search bare 7772 resolves", "7772.TWO" %in% unname(hits7772))
     hits_yaoying <- search_tw_universe_by_name("耀穎", max_results = 5L)
     check("CJK 耀穎 hits 7772", "7772.TWO" %in% unname(hits_yaoying))
+    zh7772 <- lookup_tw_universe_company_name("7772.TWO")
+    check(
+      "7772 universe name is full legal 公司型態",
+      nzchar(zh7772) && grepl("股份有限公司|(股)公司", zh7772)
+    )
+    check(
+      "7772 name is 耀穎光電…全稱",
+      grepl("耀穎光電", zh7772, fixed = TRUE)
+    )
+    # suggest 標籤應保留全稱（勿剝股份有限公司）
+    lab7772 <- names(hits7772)[match("7772.TWO", unname(hits7772))]
+    check(
+      "suggest label 7772 keeps full name",
+      nzchar(lab7772) && grepl("股份有限公司|(股)公司", lab7772)
+    )
+    # 上市／上櫃抽樣：全稱應含公司型態
+    zh2330_full <- lookup_tw_universe_company_name("2330.TW")
+    check(
+      "2330 listed full legal name",
+      grepl("股份有限公司", zh2330_full, fixed = TRUE)
+    )
+    zh6488 <- lookup_tw_universe_company_name("6488.TWO")
+    if (nzchar(zh6488)) {
+      check(
+        "6488 OTC full legal name",
+        grepl("股份有限公司|(股)公司", zh6488)
+      )
+    }
     # search_ticker_choices 不得因 R≥4.3 &&/vector grepl 而崩潰
     crawler <- file.path(root, "web_crawler.R")
     if (file.exists(crawler)) {

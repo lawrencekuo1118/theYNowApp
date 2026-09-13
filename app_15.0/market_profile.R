@@ -358,8 +358,8 @@ search_tw_universe_by_name <- function(query, max_results = 12L) {
       if (score[[i]] <= 0L) next
       if (length(hits) >= max_results) break
       disp <- display_ticker_for_market(tks[[i]], "TW")
-      short_nm <- sub("股份有限公司$", "", nms[[i]])
-      short_nm <- sub("有限公司$", "", short_nm)
+      # 顯示法定全稱（勿剝「股份有限公司」）；搜尋仍可依子字串／簡稱別名命中
+      disp_nm <- trimws(as.character(nms[[i]]))
       board_tag <- ""
       if ("exchange" %in% names(u)) {
         ex_i <- toupper(as.character(u$exchange[[i]])[1])
@@ -370,7 +370,7 @@ search_tw_universe_by_name <- function(query, max_results = 12L) {
           board_tag <- "（上櫃）"
         }
       }
-      add_hit(tks[[i]], paste0(disp, " — ", short_nm, board_tag))
+      add_hit(tks[[i]], paste0(disp, " — ", disp_nm, board_tag))
     }
   }
 

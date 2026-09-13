@@ -82,7 +82,31 @@ LAB_TICKER_NAMES <- c(
 
 #' 公司全稱：Yahoo 名稱優先，否則 S&P 宇宙／目錄對照
 lab_company_display_name <- function(ticker, yahoo_name = NULL) {
-  tk <- toupper(gsub("\\.", "-", trimws(as.character(ticker %||% "")[1])))
+  raw_tk <- trimws(as.character(ticker %||% "")[1])
+  tk <- toupper(gsub("\\.", "-", raw_tk))
+  # 台股：優先宇宙中文法定全稱（OpenAPI／MOPS CSV），再退 Yahoo 簡稱／英文
+  look_syms <- unique(c(
+    raw_tk,
+    gsub("-", ".", tk, fixed = TRUE),
+    if (grepl("-(TW|TWO)$", tk)) gsub("-", ".", tk, fixed = TRUE) else character(0)
+  ))
+  if (exists("lookup_tw_universe_company_name", mode = "function") &&
+      (grepl("\\.(TW|TWO)$", raw_tk, ignore.case = TRUE) ||
+       grepl("-(TW|TWO)$", tk) ||
+       grepl("^[0-9]{4,6}[A-Z]?$", toupper(raw_tk)))) {
+    for (sym in look_syms) {
+      uni <- tryCatch(
+        lookup_tw_universe_company_name(sym),
+        error = function(e) ""
+      )
+      uni <- trimws(as.character(uni %||% "")[1])
+      if (nzchar(uni) && !identical(uni, "NA") &&
+          !identical(toupper(uni), tk) &&
+          !identical(toupper(uni), toupper(raw_tk))) {
+        return(uni)
+      }
+    }
+  }
   yn <- trimws(as.character(yahoo_name %||% "")[1])
   if (is.na(yn)) yn <- ""
   if (nzchar(yn) && !identical(toupper(yn), tk)) return(yn)
