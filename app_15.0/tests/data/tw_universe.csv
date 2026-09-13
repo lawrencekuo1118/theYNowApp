@@ -1,6 +1,7 @@
 "ticker","name","exchange","industry_raw","industry_key","fetched_at","source"
 "2330.TW","台灣積體電路製造股份有限公司","TWSE","24","lab.Unmapped","2026-09-13T09:17:24Z","tw_boards|twse:twse_openapi|tpex:twse_isin_strMode4|esb:twse_isin_strMode5"
 "3105.TWO","穩懋","TPEX","半導體業","sc.Foundry","2026-09-13T09:17:24Z","tw_boards|twse:twse_openapi|tpex:twse_isin_strMode4|esb:twse_isin_strMode5"
+"7772.TWO","耀穎","TPEX","半導體業","sc.Foundry","2026-09-13T09:17:24Z","tw_boards|twse:twse_openapi|tpex:twse_isin_strMode4|esb:twse_isin_strMode5"
 "1260.TWO","富味鄉","ESB","食品工業","fmcg.Food_Beverages","2026-09-13T09:17:24Z","tw_boards|twse:twse_openapi|tpex:twse_isin_strMode4|esb:twse_isin_strMode5"
 "6488.TWO","環球晶","TPEX","半導體業","sc.Foundry","2026-09-13T09:17:24Z","tw_boards|twse:twse_openapi|tpex:twse_isin_strMode4|esb:twse_isin_strMode5"
 "1101.TW","臺灣水泥股份有限公司","TWSE","01","lab.Unmapped","2026-09-13T09:17:24Z","tw_boards|twse:twse_openapi|tpex:twse_isin_strMode4|esb:twse_isin_strMode5"

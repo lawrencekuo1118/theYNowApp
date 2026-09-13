@@ -391,12 +391,40 @@ lab_fetch_tw_universe_live <- function(timeout_sec = 20) {
   df
 }
 
+lab_tw_cache_candidates <- function() {
+  unique(c(
+    file.path(getwd(), LAB_TW_CACHE_REL),
+    LAB_TW_CACHE_REL,
+    # tests/ 目錄執行時可回退到 app 根目錄的完整宇宙
+    file.path(dirname(getwd()), LAB_TW_CACHE_REL),
+    file.path("app_15.0", LAB_TW_CACHE_REL)
+  ))
+}
+
+#' 讀取用快取路徑：優先選既有且檔案較大者（完整宇宙優於 tests fixture）
 lab_tw_cache_path <- function() {
+  hits <- lab_tw_cache_candidates()
+  hits <- hits[file.exists(hits)]
+  if (length(hits)) {
+    sizes <- suppressWarnings(as.numeric(file.info(hits)$size))
+    sizes[is.na(sizes)] <- 0
+    return(normalizePath(hits[[which.max(sizes)]], mustWork = FALSE))
+  }
   file.path(getwd(), LAB_TW_CACHE_REL)
 }
 
+#' 寫入用路徑：固定寫到目前工作目錄下（app 啟動會 setwd 到 app 根）
+lab_tw_cache_write_path <- function() {
+  wd <- getwd()
+  if (identical(basename(wd), "tests") &&
+      dir.exists(file.path(dirname(wd), "data"))) {
+    return(file.path(dirname(wd), LAB_TW_CACHE_REL))
+  }
+  file.path(wd, LAB_TW_CACHE_REL)
+}
+
 lab_write_tw_cache <- function(df) {
-  path <- lab_tw_cache_path()
+  path <- lab_tw_cache_write_path()
   dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
   utils::write.csv(df, path, row.names = FALSE, fileEncoding = "UTF-8")
   invisible(path)

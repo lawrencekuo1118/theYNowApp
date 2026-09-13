@@ -130,6 +130,42 @@ if (file.exists(cache_path)) {
   u <- lab_get_tw_universe(FALSE)
   has_otc <- any(toupper(as.character(u$exchange)) %in% c("TPEX", "TWO", "OTC"))
   check("universe has 上櫃 (TPEX)", isTRUE(has_otc))
+  # 耀穎 7772（上櫃，2026/05 掛牌）：純數字與中文皆應命中
+  if (any(grepl("^7772\\.TWO$", as.character(u$ticker), ignore.case = TRUE))) {
+    check(
+      "TW OTC 7772 → .TWO",
+      identical(normalize_ticker_for_market("7772", "TW"), "7772.TWO")
+    )
+    hits7772 <- search_tw_universe_by_name("7772", max_results = 5L)
+    check("search bare 7772 resolves", "7772.TWO" %in% unname(hits7772))
+    hits_yaoying <- search_tw_universe_by_name("耀穎", max_results = 5L)
+    check("CJK 耀穎 hits 7772", "7772.TWO" %in% unname(hits_yaoying))
+    # search_ticker_choices 不得因 R≥4.3 &&/vector grepl 而崩潰
+    crawler <- file.path(root, "web_crawler.R")
+    if (file.exists(crawler)) {
+      source(crawler, local = TRUE, encoding = "UTF-8")
+      ch7772 <- tryCatch(
+        search_ticker_choices("7772", market = "TW"),
+        error = function(e) structure(character(0), err = conditionMessage(e))
+      )
+      check(
+        "suggest 7772 does not crash",
+        is.null(attr(ch7772, "err")) && length(ch7772) > 0L
+      )
+      check("suggest 7772 includes 7772.TWO", "7772.TWO" %in% unname(ch7772))
+      ch_name <- tryCatch(
+        search_ticker_choices("耀穎", market = "TW"),
+        error = function(e) structure(character(0), err = conditionMessage(e))
+      )
+      check(
+        "suggest 耀穎 does not crash",
+        is.null(attr(ch_name, "err")) && length(ch_name) > 0L
+      )
+      check("suggest 耀穎 includes 7772.TWO", "7772.TWO" %in% unname(ch_name))
+    }
+  } else {
+    cat("NOTE: tw_universe.csv missing 7772.TWO — refresh OTC board\n")
+  }
   has_esb <- any(toupper(as.character(u$exchange)) %in% c("ESB", "EMERGING", "TPEX_ESB"))
   # 興櫃列可能尚未寫入舊快取；有則驗證解析與搜尋
   if (isTRUE(has_esb)) {

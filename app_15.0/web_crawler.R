@@ -402,13 +402,16 @@ search_ticker_choices <- function(query, max_results = 12L, market = NULL) {
   }
 
   # Local preset filter (ticker or company label)
+  # 注意：不可用 && 接 vector grepl（R ≥ 4.3 會直接錯誤，建議列整段失敗）
   q_up <- toupper(query)
   preset_keep <- grepl(q_up, toupper(presets), fixed = TRUE) |
-    grepl(q_up, toupper(names(presets)), fixed = TRUE) |
-    (identical(mode, "TW") && grepl(query, names(presets), fixed = TRUE))
+    grepl(q_up, toupper(names(presets)), fixed = TRUE)
+  if (identical(mode, "TW")) {
+    preset_keep <- preset_keep | grepl(query, names(presets), fixed = TRUE)
+  }
   local_hits <- presets[preset_keep]
 
-  # TW：CJK／公司名 → 上市／上櫃／興櫃宇宙 fallback（Yahoo typeahead 常對中文弱）
+  # TW：CJK／公司名／純數字 → 上市／上櫃／興櫃宇宙（Yahoo typeahead 常對中文弱）
   cjk_hits <- character(0)
   if (identical(mode, "TW") && exists("search_tw_universe_by_name", mode = "function")) {
     cjk_hits <- tryCatch(
@@ -429,9 +432,12 @@ search_ticker_choices <- function(query, max_results = 12L, market = NULL) {
     acc
   }
 
-  # Prefer: CJK/universe（中文輸入）→ Yahoo → presets
-  if (identical(mode, "TW") && exists("query_has_cjk", mode = "function") &&
-      isTRUE(query_has_cjk(query))) {
+  # Prefer: 宇宙（中文或純數字代號）→ Yahoo → presets；其餘 Yahoo 優先
+  tw_prefer_universe <- identical(mode, "TW") && (
+    (exists("query_has_cjk", mode = "function") && isTRUE(query_has_cjk(query))) ||
+      grepl("^[0-9]{4,6}[A-Za-z]?$", gsub("\\s+", "", query))
+  )
+  if (isTRUE(tw_prefer_universe)) {
     merged <- merge_named(cjk_hits, out, local_hits)
   } else {
     merged <- merge_named(out, cjk_hits, local_hits)
