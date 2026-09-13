@@ -1,0 +1,34 @@
+---
+description: After each feature, add en-US + zh-TW UI strings via ui_locale.R (no one-language hardcoding)
+alwaysApply: true
+---
+
+# i18n after feature (en-US + zh-TW)
+
+## When
+
+**每次特定功能的開發完成後**（新 UI 文案、按鈕、提示、tab／box 標題、通知等），在收尾前**自動**完成雙語，勿等使用者再說「翻譯」。
+
+## Do
+
+1. **Translate** all new user-facing strings into:
+   - **en-US** (American English)
+   - **zh-TW** (Taiwan Traditional Chinese)
+2. **Register both** in `app_15.0/ui_locale.R` under `.UI_STRINGS$en` and `.UI_STRINGS$zh-TW` (same keys).
+3. **Wire through locale**, not hardcoded one language:
+   - Server: `ui_str(...)` / `.push_ui_locale` / market → locale push
+   - Client: `applyUiLocale` / `ynowUiLocale` handlers in `ynow_ui.R`
+4. Follow **AGENTS.md** / `taiwan-terminology-zh-tw.mdc`: no Simplified or Hong Kong-only wording; keep formal finance terms in English (WACC, FCFF, FCFE, CapEx, MOS, Terminal Value, SGR, …).
+
+## Do not
+
+- Ship a feature with UI copy only in Chinese **or** only in English (except strings that are **finance-term-only English by design**).
+- Hardcode labels in modules/`ynow_ui.R` that bypass `ui_locale.R` when they should switch with locale.
+- Use Mainland / Simplified / non-TW wording (`默认`、`参数`、`数据`、…).
+
+## Checklist (feature done)
+
+- [ ] New keys in `ui_locale.R` for **en** and **zh-TW**
+- [ ] UI reads via locale helpers / `applyUiLocale`, not a single hardcoded language
+- [ ] Terminology matches AGENTS.md
+- [ ] Then proceed with normal verify / ship rules (deploy only if app behavior changed)
