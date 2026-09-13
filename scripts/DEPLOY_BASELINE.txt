@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12548642
+bundleId=12548667
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=607ff66
 commit=607ff66
 short=607ff66
 message=feat(app_15.0): move Backtest Zone reports into Testing tab (v15.11)
-captured_at=2026-09-13T14:23:35Z
+captured_at=2026-09-13T14:33:30Z
 source_branch=master
 display_version=v15.11
-note=Canonical live line is app_15.0. Bundle 12548642 moves Backtest Zone reports into Testing (lab_notes); sidebar Backtest entry removed with redirect stub. Includes v15.10 hist FV reminders + no silent DCF. Supersedes sibling baseline 12548630 / v15.10 and 12548573 / v15.09.
+note=Canonical live line is app_15.0. Bundle 12548667 ships clean tip app tree for Backtest Zone → Testing (lab_notes); sidebar Backtest entry removed with redirect stub. Keeps display v15.11. Supersedes 12548655 (WIP contaminated), 12548642, and 12548630 / v15.10.
