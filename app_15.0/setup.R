@@ -442,10 +442,13 @@ financials_is_bs_cf_all_empty <- function(res) {
     .stmt_empty("Cash Flow")
 }
 
-# Phase 下一包（刻意不做半套）：MOPS／櫃買 OpenAPI 年報欄位穩定 ingest。
-# 目前僅在空財報 banner 導向官方查詢；勿接 FinMind 全解析或 fragile HTML parser。
+# 櫃買「財務資料簡報」季報彙總（上櫃 O_*.xls／興櫃 U_*.xls）→ Yahoo 空三表時 fallback。
+# 僅摘要欄位；非完整 IS／BS／CF。實作見 tpex_financial_summary.py／tpex_financial.R。
+# 勿接 FinMind；勿對未提供科目捏造數值。
 YNOW_MOPS_HOME_URL <- "https://mops.twse.com.tw/"
 YNOW_TPEX_HOME_URL <- "https://www.tpex.org.tw/"
+YNOW_TPEX_FINANCIAL_SUMMARY_URL <-
+  "https://www.tpex.org.tw/zh-tw/mainboard/listed/financial/summary.html"
 
 # 從財報 DataFrame 中抽出特定科目的數值陣列
 # 欄位順序須為 TTM | 最新財年 → 最舊財年；[1] = 當期（含 TTM 時為 TTM）

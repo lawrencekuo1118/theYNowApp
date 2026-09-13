@@ -53,7 +53,8 @@ need <- shiny::need
 # shinyapps.io：以 py_require 宣告依賴（reticulate/uv 會安裝；單靠 requirements.txt 曾只裝到 numpy）
 py_pkgs <- c(
   "pandas", "numpy", "yfinance", "requests", "beautifulsoup4", "lxml",
-  "peewee", "platformdirs", "frozendict", "multitasking", "html5lib", "curl_cffi"
+  "peewee", "platformdirs", "frozendict", "multitasking", "html5lib", "curl_cffi",
+  "xlrd"
 )
 if (file.exists(python_path) && !on_shinyapps) {
   reticulate::use_virtualenv(env_dir, required = TRUE)
@@ -80,6 +81,7 @@ source("market_profile.R", local = TRUE, encoding = "UTF-8")
 source("ui_locale.R", local = TRUE, encoding = "UTF-8")
 source("fs_locale_zh_tw.R", local = TRUE, encoding = "UTF-8")
 source("web_crawler.R", local = TRUE, encoding = "UTF-8")
+source("tpex_financial.R", local = TRUE, encoding = "UTF-8")
 source("industry_standards.R", local = TRUE, encoding = "UTF-8")
 source("kpi_module.R", local = TRUE, encoding = "UTF-8")
 source("investment_decision_module.R", local = TRUE, encoding = "UTF-8")

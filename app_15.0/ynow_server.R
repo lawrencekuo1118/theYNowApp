@@ -9,9 +9,10 @@ server <- function(input, output, session) {
   # ==========================================
   summary_data <- reactiveVal(NULL)
   scraped_financials <- reactiveVal(NULL)
-  # 載入後資料缺口：IS／BS／CF 全空；興櫃短註
+  # 載入後資料缺口：IS／BS／CF 全空；興櫃短註；櫃買季報摘要 fallback
   fs_all_empty <- reactiveVal(FALSE)
   tw_is_esb <- reactiveVal(FALSE)
+  tw_tpex_fs_fallback <- reactiveVal(FALSE)  # TRUE 時 IS／BS 來自櫃買簡報（非完整三表）
   is_expanded <- reactiveVal(FALSE) 
   
   values <- reactiveValues(recentsearch = c())
@@ -295,6 +296,7 @@ server <- function(input, output, session) {
         # 換檔先清缺口旗標，避免殘留舊標的提示
         fs_all_empty(FALSE)
         tw_is_esb(FALSE)
+        tw_tpex_fs_fallback(FALSE)
 
         # 興櫃：宇宙板別（ESB）；可估但 Summary β／Blue Chip 有限制
         if (identical(market_mode(), "TW") &&
@@ -423,6 +425,36 @@ server <- function(input, output, session) {
         incProgress(0.5, detail = "正在抓取財報明細（yfinance）...")
         res <- cached_scrape_financials(stock_code)
         res <- normalize_all_financials(res)
+
+        # .TWO：Yahoo IS／BS／CF 全空 → 櫃買「財務資料簡報」摘要 fallback（上櫃 O_／興櫃 U_）
+        tpex_used <- FALSE
+        if (exists("apply_tpex_financial_fallback", mode = "function") &&
+            grepl("\\.TWO$", stock_code, ignore.case = TRUE) &&
+            exists("financials_is_bs_cf_all_empty", mode = "function") &&
+            isTRUE(financials_is_bs_cf_all_empty(res))) {
+          incProgress(0.55, detail = "Yahoo 年報空，改試櫃買季報彙總…")
+          fb <- tryCatch(
+            apply_tpex_financial_fallback(res, stock_code),
+            error = function(e) list(res = res, used = FALSE, error = conditionMessage(e))
+          )
+          if (isTRUE(fb$used)) {
+            res <- fb$res
+            tpex_used <- TRUE
+            tw_tpex_fs_fallback(TRUE)
+            showNotification(
+              paste0(
+                "Yahoo 尚無完整年報，已改用櫃買「財務資料簡報」補齊部分 IS／BS（",
+                if (identical(fb$meta$board %||% "", "ESB")) "興櫃" else "上櫃",
+                "）。此為截至當季累計摘要，非完整三表；CF／CapEx／FCF 等未提供項目不會捏造。"
+              ),
+              type = "message", duration = 12, id = "ynow_tpex_fs_fallback"
+            )
+          } else if (nzchar(as.character(fb$error %||% "")[1])) {
+            if (exists(".ynow_log", mode = "function")) {
+              .ynow_log("ℹ️ TPEx fallback 未採用: ", fb$error)
+            }
+          }
+        }
         scraped_financials(res)
 
         # P0／P2：IS／BS／CF 全空 → 明確提示（勿以為算完）；導向 MOPS／櫃買
@@ -432,11 +464,14 @@ server <- function(input, output, session) {
         if (isTRUE(empty_fs)) {
           showNotification(
             paste0(
-              "Yahoo 尚無年報（IS／BS／CF 皆空），基本面模型不可用。",
-              "完整財報請至公開資訊觀測站（MOPS）／櫃買中心查詢。"
+              "Yahoo 尚無年報（IS／BS／CF 皆空），且櫃買季報彙總亦無可用摘要，",
+              "基本面模型不可用。完整財報請至公開資訊觀測站（MOPS）／櫃買中心查詢。"
             ),
             type = "warning", duration = 12, id = "ynow_fs_empty_gap"
           )
+        } else if (isTRUE(tpex_used)) {
+          # 摘要有資料但非完整三表：勿顯示「全空」紅標
+          fs_all_empty(FALSE)
         }
         if (isTRUE(tw_is_esb())) {
           showNotification(
@@ -615,11 +650,12 @@ server <- function(input, output, session) {
   output$txt_corpname <- renderUI({ render_corpname_ui() })
   output$search_results <- renderText({ corp_industry_text() })
 
-  # P0／P1a／P2：公司標題下方資料缺口／興櫃短註 banner
+  # P0／P1a／P2：公司標題下方資料缺口／興櫃／櫃買摘要 fallback 短註 banner
   output$ynow_data_gap_banner <- renderUI({
     empty_fs <- isTRUE(fs_all_empty())
     esb <- isTRUE(tw_is_esb())
-    if (!empty_fs && !esb) return(NULL)
+    tpex_fb <- isTRUE(tw_tpex_fs_fallback())
+    if (!empty_fs && !esb && !tpex_fb) return(NULL)
 
     blocks <- list()
     if (empty_fs) {
@@ -649,6 +685,27 @@ server <- function(input, output, session) {
         tags$a(href = tpex_url, target = "_blank", rel = "noopener noreferrer",
                "櫃買中心"),
         "查詢。"
+      )
+    }
+    if (tpex_fb && !empty_fs) {
+      sum_url <- if (exists("YNOW_TPEX_FINANCIAL_SUMMARY_URL", inherits = TRUE)) {
+        YNOW_TPEX_FINANCIAL_SUMMARY_URL
+      } else {
+        "https://www.tpex.org.tw/zh-tw/mainboard/listed/financial/summary.html"
+      }
+      blocks[[length(blocks) + 1L]] <- tags$div(
+        class = "ynow-data-gap-tpex-fs",
+        style = paste0(
+          "margin: 6px 0 8px 0; padding: 10px 12px; border-left: 4px solid #2980b9;",
+          " background: #f0f7fc; color: #1a3a5a; font-size: 13px; line-height: 1.55;"
+        ),
+        tags$b("已改用櫃買「財務資料簡報」摘要："),
+        " Yahoo 年報三表為空時，以官方上櫃／興櫃季報彙總補齊營收、營業利益、稅後純益、股本、EPS、每股淨值等。",
+        "此非完整 IS／BS／CF（現金流量表仍空；CapEx／FCF／現金／負債等未提供項目不會捏造）。",
+        "可支援 P/B、RI 與部分簡單投入；完整年報請至 MOPS／",
+        tags$a(href = sum_url, target = "_blank", rel = "noopener noreferrer",
+               "櫃買財務資料簡報"),
+        "核對。"
       )
     }
     if (esb) {
@@ -1001,6 +1058,48 @@ server <- function(input, output, session) {
         company_type = "fallback"
       ))
     }
+    if (isTRUE(tw_tpex_fs_fallback())) {
+      # CF 必空；以 IS／BS 摘要決定 P/B／RI（不開 DCF）
+      is <- tryCatch(d_income_statement(), error = function(e) NULL)
+      bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
+      ni <- tryCatch(
+        select_current_metric_any(is, NET_INCOME_PATTERNS, "flow"),
+        error = function(e) NA_real_
+      )
+      equity <- tryCatch(
+        select_current_metric_any(bs, EQUITY_PATTERNS, "stock"),
+        error = function(e) NA_real_
+      )
+      has_roe <- is.finite(ni) && is.finite(equity) && equity > 0
+      has_bv <- is.finite(equity) && equity > 0
+      list(
+        company_type = "fallback",
+        primary = if (isTRUE(has_roe)) "ri" else "pb",
+        secondary = if (isTRUE(has_roe) && isTRUE(has_bv)) "pb" else NULL,
+        ddm = FALSE, dcf = FALSE,
+        pb = TRUE,
+        ri = isTRUE(has_roe),
+        tags = c(
+          if (isTRUE(has_roe)) "ri",
+          "pb",
+          "tpex_summary"
+        ),
+        summary_method = "櫃買財務資料簡報（摘要）→ P/B／RI",
+        reason = paste0(
+          "Yahoo 年報三表為空，已改用櫃買上櫃／興櫃季報彙總。",
+          "可估 P/B（每股淨值）與 RI（稅後純益／權益）；",
+          "無 CF／CapEx／FCF，不建議當完整 DCF 輸入。"
+        ),
+        suggest_two_stage = FALSE,
+        confidence_inputs = list(
+          fcf_cv = NA_real_, div_cv = NA_real_,
+          has_fcf = FALSE, has_div = FALSE,
+          has_roe = isTRUE(has_roe),
+          data_complete = FALSE,
+          source = "tpex_financial_summary"
+        )
+      )
+    } else {
     cf <- tryCatch(d_cash_flow(), error = function(e) NULL)
     is <- tryCatch(d_income_statement(), error = function(e) NULL)
     bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
@@ -1019,6 +1118,7 @@ server <- function(input, output, session) {
       d_bs = bs,
       industry_choice = input$industry_choice
     )
+    }
   })
 
   # Dynamic 「推薦」only on primary — patch badges in-place.
