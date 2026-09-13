@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12548853
+bundleId=12548870
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=99c2815
 commit=99c2815
 short=99c2815
 message=feat(app_15.0): move Run Backtest to Testing title row (v15.12)
-captured_at=2026-09-13T15:41:55Z
+captured_at=2026-09-13T15:46:32Z
 source_branch=master
 display_version=v15.12
-note=Canonical live line is app_15.0. Bundle 12548853 ships clean tip: Run Backtest control moved to Testing title row (v15.12), including Backtest Zone → Testing from v15.11. Supersedes 12548667 / v15.11 and 12548642 / 12548630.
+note=Canonical live line is app_15.0. Bundle 12548870 ships「執行回測」/ Run Backtest on the Testing tab「量化回測實驗室 (Backtest Zone)」title row (far right); inputId run_bt unchanged. Supersedes 12548853 and prior v15.11/v15.10 baselines. Git tip may be ahead (e.g. v15.13 analysis-frequency WIP) without changing this live baseline until a new shinyapps deploy is recorded.
