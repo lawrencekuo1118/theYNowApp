@@ -42,6 +42,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     industry_standard = "Industry Standard",
     btn_expand_all = "Expand All",
     btn_compress_all = "Compress (switch to summary)",
+    btn_run_bt = "Run Backtest",
     # --- tabBox headers ---
     box_financial_report = "FINANCIAL REPORT",
     box_performance = "PERFORMANCE",
@@ -116,6 +117,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     industry_standard = "產業標準",
     btn_expand_all = "全部展開",
     btn_compress_all = "壓縮（切換回精簡版）",
+    btn_run_bt = "執行回測",
     # --- tabBox headers ---
     box_financial_report = "財務報表",
     box_performance = "績效指標",

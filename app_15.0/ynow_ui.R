@@ -694,7 +694,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v15.11</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v15.12</span>'),
     titleWidth = 250,
     tags$li(
       class = "dropdown ynow-market-header",
@@ -1342,6 +1342,12 @@ ui <- dashboardPage(
               var expIcon = expandBtn.querySelector('i');
               var expIconHtml = expIcon ? expIcon.outerHTML + ' ' : '';
               expandBtn.innerHTML = expIconHtml + (isCompress ? s.btn_compress_all : s.btn_expand_all);
+            }
+            var runBt = document.getElementById('run_bt');
+            if (runBt && s.btn_run_bt) {
+              var runIcon = runBt.querySelector('i');
+              var runIconHtml = runIcon ? runIcon.outerHTML + ' ' : '';
+              runBt.innerHTML = runIconHtml + s.btn_run_bt;
             }
             document.documentElement.setAttribute('lang', (payload && payload.locale) || 'en');
             var mkt = (payload && payload.market) ? String(payload.market) : 'US';
@@ -3425,7 +3431,20 @@ ui <- dashboardPage(
         ),
 
         tags$hr(),
-        h3(tags$b("量化回測實驗室")),
+        tags$div(
+          class = "ynow-bt-lab-title-row",
+          style = "display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin: 4px 0 12px 0;",
+          h3(
+            tags$b("量化回測實驗室 (Backtest Zone)"),
+            style = "margin:0; flex:1 1 auto; min-width: 12rem;"
+          ),
+          actionButton(
+            "run_bt", "執行回測",
+            icon = icon("play"),
+            class = "btn-warning",
+            style = "margin:0; white-space:nowrap; font-weight:600;"
+          )
+        ),
 
         # 1) 折現比較圖置頂：合理價 vs 實際股價 vs 大盤
         fluidRow(
@@ -3608,14 +3627,9 @@ ui <- dashboardPage(
             .bt_hint(
               "單次動作：立刻用目前公司財報重算門檻／權重（可在取消自動後使用，不想持續自動覆寫時按一次即可）。"
             ),
-            actionButton(
-              "run_bt", "啟動量化回測",
-              class = "btn-warning btn-lg btn-block",
-              style = "margin-bottom: 0;"
-            ),
             tags$div(
               class = "ynow-bt-run-note",
-              "季頻再平衡 · 當年 Rf／已實現 Rm／市值結構 · Rolling β · 勾選模型平均 PIT。"
+              "執行回測請按上方標題列右側「執行回測」。季頻再平衡 · 當年 Rf／已實現 Rm／市值結構 · Rolling β · 勾選模型平均 PIT。"
             ),
             uiOutput("bt_run_status")
           )
