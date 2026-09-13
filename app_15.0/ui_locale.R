@@ -27,6 +27,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     menu_ri = "RI-Model",
     menu_ynow = "YNOW",
     menu_bluechip = "Blue Chip",
+    menu_hfv = "Hist. FV Validation",
     menu_about = "About",
     ticker_label = "Ticker / Stock Code",
     data_source_title = "Data Source:",
@@ -49,6 +50,21 @@ locale_for_market <- function(mode = get_market_mode()) {
     bt_freq_yearly = "Yearly",
     bt_freq_hint = "Only frequencies supported by available data are shown. Monthly appears only when a full monthly series exists (or can be produced). US and TW use the same rule.",
     bt_freq_insufficient = "Price history is too short for analysis-frequency options.",
+    hfv_page_title = "Historical Fundamental Validation",
+    hfv_page_sub = paste0(
+      "Theoretical FV vs actual market (odds & magnitude). ",
+      "This is not a trading-strategy backtest; quantitative backtest lives under Testing (sidebar foot)."
+    ),
+    lab_notes_title = "Testing — Quantitative Backtest",
+    lab_notes_sub = paste0(
+      "Strategy NAV, performance, parameters, and holding filters live here. ",
+      "Historical Fundamental Validation (theoretical FV vs actual market) is under the Hist. FV Validation sidebar. ",
+      "US blue-chip screening is under Blue Chip. SEC notes: Dashboard → FINANCIAL REPORT → SEC Notes."
+    ),
+    bt_zone_title = "Backtest Zone",
+    box_hfv_discount = "FV vs Market Price",
+    box_hfv_validation = "Historical Fundamental Validation: Theoretical FV vs Actual Market (odds & magnitude)",
+    box_hfv_param_inventory = "US Valuation Replay Inventory (Live vs Hist PIT)",
 
     # --- tabBox headers ---
     box_financial_report = "FINANCIAL REPORT",
@@ -109,6 +125,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     menu_ri = "RI 模型",
     menu_ynow = "YNOW",
     menu_bluechip = "Blue Chip 績優",
+    menu_hfv = "歷史基本面驗證",
     menu_about = "關於",
     ticker_label = "Ticker／股票代號",
     data_source_title = "資料來源：",
@@ -131,6 +148,21 @@ locale_for_market <- function(mode = get_market_mode()) {
     bt_freq_yearly = "每年",
     bt_freq_hint = "僅顯示資料可支持之頻率：有完整每月序列才顯示「每月」；僅有季頻則只顯示「每季」。美股／台股相同。",
     bt_freq_insufficient = "股價歷史不足，尚無可用分析頻率。",
+    hfv_page_title = "歷史基本面驗證",
+    hfv_page_sub = paste0(
+      "理論估值 vs 實際市值（漲跌機率／幅度）。",
+      "這不是交易策略回測；量化回測請至側邊底部「測試」。"
+    ),
+    lab_notes_title = "測試 — Testing（量化回測）",
+    lab_notes_sub = paste0(
+      "量化回測（策略淨值／績效／參數）與持倉閘門在此。",
+      "歷史基本面驗證（理論估值 vs 實際市值）請至側邊「歷史基本面驗證」。",
+      "美股績優篩選請至側邊 Blue Chip。SEC 財報附註在 Dashboard → FINANCIAL REPORT →「財報附註 (SEC)」。"
+    ),
+    bt_zone_title = "量化回測實驗室 (Backtest Zone)",
+    box_hfv_discount = "折現比較（合理價 vs 實際股價）",
+    box_hfv_validation = "歷史基本面驗證：理論估值 vs 實際市值（漲跌機率／幅度）",
+    box_hfv_param_inventory = "美股估值復盤參數盤點（Live vs Hist PIT）",
 
     # --- tabBox headers ---
     box_financial_report = "財務報表",
@@ -242,7 +274,13 @@ locale_for_market <- function(mode = get_market_mode()) {
   "模型選擇決策指南" = "box_model_guide",
   "Model Selection Guide" = "box_model_guide",
   "策略參數設定" = "box_bt_params",
-  "Strategy Parameters" = "box_bt_params"
+  "Strategy Parameters" = "box_bt_params",
+  "折現比較（合理價 vs 實際股價）" = "box_hfv_discount",
+  "FV vs Market Price" = "box_hfv_discount",
+  "歷史基本面驗證：理論估值 vs 實際市值（漲跌機率／幅度）" = "box_hfv_validation",
+  "Historical Fundamental Validation: Theoretical FV vs Actual Market (odds & magnitude)" = "box_hfv_validation",
+  "美股估值復盤參數盤點（Live vs Hist PIT）" = "box_hfv_param_inventory",
+  "US Valuation Replay Inventory (Live vs Hist PIT)" = "box_hfv_param_inventory"
 )
 
 #' 取單一 UI 字串

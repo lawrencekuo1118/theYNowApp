@@ -694,7 +694,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v15.13</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v15.14</span>'),
     titleWidth = 250,
     tags$li(
       class = "dropdown ynow-market-header",
@@ -761,7 +761,9 @@ ui <- dashboardPage(
              menuItem("RI-Model", tabName = "ri_calculator", icon = icon("gem")),
              menuItem("YNOW", tabName = "sensitivity", icon = icon("sliders-h")),
              menuItem("Blue Chip", tabName = "bluechip", icon = icon("star")),
-             # Backtest Zone 已併入底部「測試」；實驗區不放主選單
+             # 歷史基本面驗證（HFV）：理論估值 vs 實際市值 — 非策略回測
+             menuItem("Hist. FV Validation", tabName = "hfv", icon = icon("balance-scale")),
+             # 量化回測報表在底部「測試」；實驗區不放主選單
              menuItem("About", tabName = "about", icon = icon("info-circle"))
              # Snapshot 不放主選單（避免巢狀 li 被瀏覽器抬出隱藏）；改由底部捷徑切換
            ),
@@ -807,7 +809,7 @@ ui <- dashboardPage(
         icon("camera", class = "fa-fw"),
         tags$span(id = "ynow_snapshot_link_label", " Snapshot")
       ),
-      # 測試按鈕：Snapshot 旁的捷徑，開啟 Testing（含量化回測報表）
+      # 測試按鈕：Snapshot 旁的捷徑，開啟 Testing（量化回測／策略實驗）
       tags$a(
         id = "ynow_sidebar_test_btn",
         href = "#shiny-tab-lab_notes",
@@ -1304,6 +1306,7 @@ ui <- dashboardPage(
               ri_calculator: s.menu_ri,
               sensitivity: s.menu_ynow,
               bluechip: s.menu_bluechip,
+              hfv: s.menu_hfv,
               about: s.menu_about
             };
             Object.keys(menu).forEach(function (k) {
@@ -1311,6 +1314,16 @@ ui <- dashboardPage(
             });
             applyTabLabels((payload && payload.tabs) || {});
             applyBoxHeaders((payload && payload.boxes) || []);
+            var hfvTitle = document.getElementById('ynow_hfv_page_title');
+            if (hfvTitle && s.hfv_page_title) hfvTitle.textContent = s.hfv_page_title;
+            var hfvSub = document.getElementById('ynow_hfv_page_sub');
+            if (hfvSub && s.hfv_page_sub) hfvSub.textContent = s.hfv_page_sub;
+            var labTitle = document.getElementById('ynow_lab_notes_title');
+            if (labTitle && s.lab_notes_title) labTitle.textContent = s.lab_notes_title;
+            var labSub = document.getElementById('ynow_lab_notes_sub');
+            if (labSub && s.lab_notes_sub) labSub.textContent = s.lab_notes_sub;
+            var btZone = document.getElementById('ynow_bt_zone_title');
+            if (btZone && s.bt_zone_title) btZone.textContent = s.bt_zone_title;
             var recent = document.getElementById('ynow_recent_search_label');
             if (recent && s.recent_search) recent.textContent = s.recent_search;
             var scLab = document.querySelector('label[for=\"sc\"]');
@@ -3345,108 +3358,25 @@ ui <- dashboardPage(
         )
       ),
       
-      tabItem(
-        tabName = "backtest",
-        fluidRow(
-          column(
-            width = 12,
-            tags$div(
-              style = "margin: 24px 8px; padding: 16px 18px; background: #f5f5f5; border-left: 4px solid #222; font-size: 14px; line-height: 1.6;",
-              tags$b("量化回測實驗室已搬至「測試」。"),
-              "請由側邊欄底部 Snapshot 旁的「測試」開啟；本分頁僅保留導引，避免重複介面。",
-              tags$br(),
-              tags$a(
-                href = "#shiny-tab-lab_notes",
-                `data-toggle` = "tab",
-                `data-value` = "lab_notes",
-                style = "font-weight:600;",
-                onclick = "Shiny.setInputValue('sidebar_tabs', 'lab_notes', {priority: 'event'}); return false;",
-                "前往測試（含回測報表） →"
-              )
-            )
-          )
-        )
-      ),
-
       # ==========================================
-      # 🧪 實驗區 (Lab)：規劃／測試新功能
+      # 歷史基本面驗證（HFV）：理論估值 vs 實際市值 — 非策略回測
       # ==========================================
       tabItem(
-        tabName = "lab_notes",
+        tabName = "hfv",
         withMathJax(),
         fluidRow(
           column(
             width = 12,
-            h2(tags$b("測試 — Testing（含量化回測）")),
+            h2(tags$b(id = "ynow_hfv_page_title", "歷史基本面驗證")),
             p(
-              "回測相關報表與執行面板已併入本頁；持倉閘門（要不要持股）亦在此。美股績優篩選請至側邊 ",
-              tags$b("Blue Chip"),
-              "。",
-              tags$span(
-                style = "color:#888;",
-                "SEC 財報附註在 Dashboard → FINANCIAL REPORT →「財報附註 (SEC)」。"
-              )
+              id = "ynow_hfv_page_sub",
+              "理論估值 vs 實際市值（漲跌機率／幅度）。這不是交易策略回測；量化回測請至側邊底部「測試」。"
             ),
             tags$hr()
           )
         ),
-        fluidRow(
-          column(
-            width = 12,
-            box(
-              width = 12, status = "warning", solidHeader = TRUE,
-              title = tagList(icon("filter"), "要不要持股：持倉回測條件"),
-              .bt_section_intro(
-                "再平衡日（依所選分析頻率：每月／每季／每年）四項皆過才允許持倉；否則本頁基本面／情緒策略皆空手（Exp_A＝Exp_B＝0）。門檻仍供回測引擎與「回測濾鏡」共用。"
-              ),
-              fluidRow(
-                column(3, tipify(numericInput("bt_net_margin", "淨利率門檻 (%)", 5),
-                                 "自動模式取該公司歷史淨利率約一半。", placement = "top")),
-                column(3, tipify(numericInput("bt_rev_growth", "營收成長門檻 (%)", 25),
-                                 "自動模式取歷史營收成長約一半。", placement = "top")),
-                column(3, tipify(numericInput("bt_eps_growth", "EPS／淨利成長門檻 (%)", 15),
-                                 "自動模式取淨利成長約一半。", placement = "top")),
-                column(3, tipify(numericInput("bt_fcf_cv", "FCF 變異係數上限 (%)", 20),
-                                 "自動模式取 FCF CV × 1.25。", placement = "top"))
-              ),
-              tags$hr(),
-              tags$div(
-                style = "display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px;",
-                tags$span(style = "font-size:13px; font-weight:600;", "回測濾鏡"),
-                actionButton(
-                  "bt_kpi_filter", "比對目前公司",
-                  icon = icon("filter"),
-                  class = "btn-sm",
-                  style = "background-color: #222222; color: #ffffff; border: 1px solid #111111; font-size: 12px; padding: 6px 14px; border-radius: 4px; font-weight: 600;"
-                ),
-                uiOutput("bt_filter_badge")
-              ),
-              tags$p(
-                style = "margin: 0 0 8px 0; font-size: 12px; color: #666;",
-                "用 Dashboard 已載入公司的 KPI 對照上列門檻（與回測 Great Filter 同一套）。"
-              ),
-              uiOutput("bt_filter_detail")
-            )
-          )
-        ),
 
-        tags$hr(),
-        tags$div(
-          class = "ynow-bt-lab-title-row",
-          style = "display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin: 4px 0 12px 0;",
-          h3(
-            tags$b("量化回測實驗室 (Backtest Zone)"),
-            style = "margin:0; flex:1 1 auto; min-width: 12rem;"
-          ),
-          actionButton(
-            "run_bt", "執行回測",
-            icon = icon("play"),
-            class = "btn-warning",
-            style = "margin:0; white-space:nowrap; font-weight:600;"
-          )
-        ),
-
-        # 1) 折現比較圖置頂：合理價 vs 實際股價 vs 大盤
+        # 1) 折現比較圖：合理價 vs 實際股價 vs 大盤
         fluidRow(
           box(
             title = tagList(icon("balance-scale"), "折現比較（合理價 vs 實際股價）"),
@@ -3464,7 +3394,7 @@ ui <- dashboardPage(
                   class = "ynow-bt-hfv-models",
                   checkboxGroupInput(
                     "bt_fv_models",
-                    "回測用評價模型（可複選疊圖；策略 MOS／部位＝勾選且有限值者之平均；未勾＝不套用模型）",
+                    "評價模型（可複選疊圖；策略 MOS／部位＝勾選且有限值者之平均；未勾＝不套用模型）",
                     inline = TRUE,
                     choices = c(
                       "DCF" = "dcf",
@@ -3481,7 +3411,7 @@ ui <- dashboardPage(
           )
         ),
 
-        # 1b) 歷史基本面驗證：理論估值 vs 實際市值（漲跌機率／幅度）
+        # 2) 歷史基本面驗證：理論估值 vs 實際市值（漲跌機率／幅度）
         fluidRow(
           box(
             title = tagList(icon("balance-scale"), "歷史基本面驗證：理論估值 vs 實際市值（漲跌機率／幅度）"),
@@ -3495,7 +3425,7 @@ ui <- dashboardPage(
               "，再用後續實際市價 ", tags$code("P_{t+1}"),
               " 驗證：估算落在估值", tags$b("之上／之下"),
               "的頻率，以及幅度 ", tags$code("(P_{t+1}−FV_t)/FV_t"),
-              "。策略淨值／MOS 部位請看下方「策略淨值」區塊。"
+              "。策略淨值／MOS 部位請至側邊底部「測試」內的量化回測區塊。"
             ),
             tags$p(
               style = "font-size:11.5px;color:#888;line-height:1.45;margin-top:-4px;",
@@ -3554,7 +3484,99 @@ ui <- dashboardPage(
           )
         ),
 
-        # 2) 績效指標
+        # 3) 參數盤點（Live vs Hist PIT）— 歷史估值重建相關
+        fluidRow(
+          box(
+            title = tagList(icon("table"), "美股估值復盤參數盤點（Live vs Hist PIT）"),
+            width = 12, status = "primary", solidHeader = TRUE,
+            collapsible = TRUE, collapsed = TRUE,
+            tags$p(
+              style = "font-size:12.5px;color:#444;line-height:1.55;",
+              "歷史點理論估值使用當時可得資料重建；",
+              tags$b("hist DCF 優先 NOPAT／D&A／CapEx／ΔNWC 邊際路徑"),
+              "，否則退回 Gordon 幾何 ", tags$code("FCF0×(1+g)^t"), "；",
+              tags$b("不是"),
+              " Live DCF 分頁的營收→NOPAT／CapEx／ΔNWC 預測表。"
+            ),
+            tags$div(style = "overflow-x:auto;", tableOutput("bt_param_inventory"))
+          )
+        )
+      ),
+
+      # ==========================================
+      # 🧪 實驗區 (Lab)／量化回測：規劃／測試新功能
+      # ==========================================
+      tabItem(
+        tabName = "lab_notes",
+        withMathJax(),
+        fluidRow(
+          column(
+            width = 12,
+            h2(tags$b(id = "ynow_lab_notes_title", "測試 — Testing（量化回測）")),
+            p(
+              id = "ynow_lab_notes_sub",
+              "量化回測（策略淨值／績效／參數）與持倉閘門在此。歷史基本面驗證（理論估值 vs 實際市值）請至側邊「歷史基本面驗證」。美股績優篩選請至側邊 Blue Chip。SEC 財報附註在 Dashboard → FINANCIAL REPORT →「財報附註 (SEC)」。"
+            ),
+            tags$hr()
+          )
+        ),
+        fluidRow(
+          column(
+            width = 12,
+            box(
+              width = 12, status = "warning", solidHeader = TRUE,
+              title = tagList(icon("filter"), "要不要持股：持倉回測條件"),
+              .bt_section_intro(
+                "再平衡日（依所選分析頻率：每月／每季／每年）四項皆過才允許持倉；否則本頁基本面／情緒策略皆空手（Exp_A＝Exp_B＝0）。門檻仍供回測引擎與「回測濾鏡」共用。"
+              ),
+              fluidRow(
+                column(3, tipify(numericInput("bt_net_margin", "淨利率門檻 (%)", 5),
+                                 "自動模式取該公司歷史淨利率約一半。", placement = "top")),
+                column(3, tipify(numericInput("bt_rev_growth", "營收成長門檻 (%)", 25),
+                                 "自動模式取歷史營收成長約一半。", placement = "top")),
+                column(3, tipify(numericInput("bt_eps_growth", "EPS／淨利成長門檻 (%)", 15),
+                                 "自動模式取淨利成長約一半。", placement = "top")),
+                column(3, tipify(numericInput("bt_fcf_cv", "FCF 變異係數上限 (%)", 20),
+                                 "自動模式取 FCF CV × 1.25。", placement = "top"))
+              ),
+              tags$hr(),
+              tags$div(
+                style = "display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px;",
+                tags$span(style = "font-size:13px; font-weight:600;", "回測濾鏡"),
+                actionButton(
+                  "bt_kpi_filter", "比對目前公司",
+                  icon = icon("filter"),
+                  class = "btn-sm",
+                  style = "background-color: #222222; color: #ffffff; border: 1px solid #111111; font-size: 12px; padding: 6px 14px; border-radius: 4px; font-weight: 600;"
+                ),
+                uiOutput("bt_filter_badge")
+              ),
+              tags$p(
+                style = "margin: 0 0 8px 0; font-size: 12px; color: #666;",
+                "用 Dashboard 已載入公司的 KPI 對照上列門檻（與回測 Great Filter 同一套）。"
+              ),
+              uiOutput("bt_filter_detail")
+            )
+          )
+        ),
+
+        tags$hr(),
+        tags$div(
+          class = "ynow-bt-lab-title-row",
+          style = "display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin: 4px 0 12px 0;",
+          h3(
+            tags$b(id = "ynow_bt_zone_title", "量化回測實驗室 (Backtest Zone)"),
+            style = "margin:0; flex:1 1 auto; min-width: 12rem;"
+          ),
+          actionButton(
+            "run_bt", "執行回測",
+            icon = icon("play"),
+            class = "btn-warning",
+            style = "margin:0; white-space:nowrap; font-weight:600;"
+          )
+        ),
+
+        # 1) 績效指標
         fluidRow(
           box(
             title = tagList(icon("trophy"), "回測績效指標"),
@@ -3574,7 +3596,7 @@ ui <- dashboardPage(
               "兩者共用持倉條件閘門，部位路徑不同——",
               tags$b("基本面策略淨值"), "＝Exp_A×日報酬累積；",
               tags$b("情緒策略淨值"), "＝Exp_B×日報酬累積（Exp_A 混入動能／RSI）。",
-              "折現圖上的實際股價與本圖無對應關係。"
+              "折現圖（側邊「歷史基本面驗證」）上的實際股價與本圖無對應關係。"
             ),
             radioButtons(
               "bt_nav_window",
@@ -3605,7 +3627,7 @@ ui <- dashboardPage(
               tags$li(tags$b("基本面策略淨值"), "（橘線）＝持倉條件＋MOS 部位 × 日報酬，從 1 起算。"),
               tags$li(tags$b("情緒策略淨值"), "（藍線）＝在 Exp_A 上混入動能／RSI；參數見「情緒策略」標籤。"),
               tags$li(tags$b("該股買進持有"), "（綠）全程 100% 的財富指數；", tags$b("大盤"), "（灰虛）依市場模式為 SPY 或 0050.TW 財富指數。"),
-              tags$li("每股合理價 vs 實際股價見上方折現圖，勿與本圖混比。")
+              tags$li("每股合理價 vs 實際股價見側邊「歷史基本面驗證」折現圖，勿與本圖混比。")
             )
           ),
           box(
@@ -3618,7 +3640,7 @@ ui <- dashboardPage(
               value = TRUE
             ),
             .bt_hint(
-              "模式開關：勾選後，搜尋／載入新公司時會自動覆寫持倉門檻、曝險／情緒權重，並對齊上方推薦估值模型。手動改參數會自動取消勾選。"
+              "模式開關：勾選後，搜尋／載入新公司時會自動覆寫持倉門檻、曝險／情緒權重，並對齊「歷史基本面驗證」推薦估值模型。手動改參數會自動取消勾選。"
             ),
             actionButton(
               "bt_refresh_params", "立即依目前公司重算一次",
@@ -3630,7 +3652,7 @@ ui <- dashboardPage(
             ),
             tags$div(
               class = "ynow-bt-run-note",
-              "執行回測請按上方標題列右側「執行回測」。依分析頻率再平衡 · 當年 Rf／已實現 Rm／市值結構 · Rolling β · 勾選模型平均 PIT。"
+              "執行回測請按上方標題列右側「執行回測」。依分析頻率再平衡 · 當年 Rf／已實現 Rm／市值結構 · Rolling β · 「歷史基本面驗證」勾選模型平均 PIT。"
             ),
             uiOutput("bt_run_status")
           )
@@ -3654,7 +3676,7 @@ ui <- dashboardPage(
                 title = tagList(icon("balance-scale"), "基本面策略"),
                 value = "bt_fundamental",
                 .bt_section_intro(
-                  "模式 A：Exp_A → 淨值圖橘線。依 MOS 分級決定部位；MOS 來自折現圖勾選模型的平均合理價。"
+                  "模式 A：Exp_A → 淨值圖橘線。依 MOS 分級決定部位；MOS 來自「歷史基本面驗證」折現圖勾選模型的平均合理價。"
                 ),
                 fluidRow(
                   column(
@@ -3799,24 +3821,6 @@ ui <- dashboardPage(
             width = 12, status = "primary", solidHeader = TRUE,
             collapsible = TRUE, collapsed = TRUE,
             uiOutput("bt_methodology_notes")
-          )
-        ),
-
-        # 7) 參數盤點（Live vs Hist PIT）— 置於本頁最下方
-        fluidRow(
-          box(
-            title = tagList(icon("table"), "美股估值復盤參數盤點（Live vs Hist PIT）"),
-            width = 12, status = "primary", solidHeader = TRUE,
-            collapsible = TRUE, collapsed = TRUE,
-            tags$p(
-              style = "font-size:12.5px;color:#444;line-height:1.55;",
-              "歷史點理論估值使用當時可得資料重建；",
-              tags$b("hist DCF 優先 NOPAT／D&A／CapEx／ΔNWC 邊際路徑"),
-              "，否則退回 Gordon 幾何 ", tags$code("FCF0×(1+g)^t"), "；",
-              tags$b("不是"),
-              " Live DCF 分頁的營收→NOPAT／CapEx／ΔNWC 預測表。"
-            ),
-            tags$div(style = "overflow-x:auto;", tableOutput("bt_param_inventory"))
           )
         ),
 

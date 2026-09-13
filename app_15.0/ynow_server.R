@@ -7432,12 +7432,12 @@ server <- function(input, output, session) {
       tags$p(
         style = "margin-top:0;",
         tags$b("折現圖 vs 淨值圖："),
-        "折現圖是每股合理價 vs 實際股價；策略 MOS／部位用勾選模型的平均。",
-        "淨值圖是部位×日報酬的累積財富（起始＝1）——",
+        "折現圖（側邊「歷史基本面驗證」）是每股合理價 vs 實際股價；策略 MOS／部位用勾選模型的平均。",
+        "淨值圖（本頁「測試」）是部位×日報酬的累積財富（起始＝1）——",
         tags$b("基本面策略淨值"), "＝Exp_A；",
         tags$b("情緒策略淨值"), "＝Exp_B（Exp_A 混入動能／RSI）。兩圖標籤不可互換。"
       ),
-      tags$h5(tags$b("一、折現比較圖（合理價 vs 實際股價）")),
+      tags$h5(tags$b("一、折現比較圖（合理價 vs 實際股價｜側邊「歷史基本面驗證」）")),
       tags$ul(
         tags$li(tags$b("實際股價："), "該股歷史收盤（Yahoo 調整後）。搜尋後即預覽股價，不必先勾模型。"),
         tags$li(tags$b("大盤："), "圖上方「顯示大盤」開關疊加基準（預設 SPY，右軸）；與合理價無關。"),
@@ -7454,7 +7454,8 @@ server <- function(input, output, session) {
           tags$b("歷史基本面驗證（非策略回測）："),
           "以當期策略理論估值 FV_t（＝勾選且有限值模型平均；未勾＝無 FV）對照下期實際市價 P_{t+1}，",
           "估算之上／之下機率與幅度 (P−FV)/FV；預設只計已實現下期，可選擴張窗樣本外命中率。",
-          "若歷史點套用 APP_DEFAULTS／Session／法定稅率，摘要會列出預設／fallback 與對應分頁。"
+          "若歷史點套用 APP_DEFAULTS／Session／法定稅率，摘要會列出預設／fallback 與對應分頁。",
+          "此區塊在側邊「歷史基本面驗證」，與本頁策略淨值交易回測分開閱讀。"
         ),
         tags$li(
           tags$b("歷史各點 vs 末端："),
@@ -7469,7 +7470,7 @@ server <- function(input, output, session) {
         ),
         tags$li(
           tags$b("歷史基本面驗證區塊："),
-          "同上：機率＋幅度；與下方「策略淨值」交易回測分開閱讀。"
+          "同上：機率＋幅度；與本頁「策略淨值」交易回測分開閱讀。"
         )
       ),
       tags$h5(tags$b("二、資料來源")),
@@ -7754,9 +7755,9 @@ server <- function(input, output, session) {
   # ==========================================
   lab_sec_result <- reactiveVal(NULL)
 
-  # 側邊欄「測試」：開啟 Testing（含量化回測報表）
+  # 側邊欄「測試」：開啟 Testing（量化回測）
   observeEvent(input$sidebar_test_click, {
-    showNotification("已開啟測試（含量化回測報表）", type = "message", duration = 3)
+    showNotification("已開啟測試（量化回測）", type = "message", duration = 3)
   }, ignoreInit = TRUE)
 
   # ------------------------------------------
