@@ -707,7 +707,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v15.28</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v15.29</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -1197,11 +1197,25 @@ ui <- dashboardPage(
         }
         .ynow-sidebar-test-link { margin-left: 8px; }
         .ynow-sidebar-feedback-link { margin-left: 8px; }
+        /* 側欄小圓標：Recent Search 橫線下、Download Report 正上方 */
+        .ynow-sidebar-brand {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          padding: 6px 8px 4px 8px;
+        }
+        .ynow-sidebar-logo-mark {
+          width: 48px;
+          height: 48px;
+          object-fit: contain;
+          display: block;
+          opacity: 0.95;
+        }
         /* 側邊欄 PDF 下載：換行／縮放，避免長標籤撐破側欄 */
         .ynow-sidebar-download-wrap {
-          padding: 10px;
+          padding: 6px 10px 10px 10px;
           text-align: center;
-          margin-top: 20px;
+          margin-top: 4px;
           max-width: 100%;
           box-sizing: border-box;
         }
