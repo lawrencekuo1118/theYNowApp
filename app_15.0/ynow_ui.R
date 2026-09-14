@@ -699,15 +699,22 @@ ui <- dashboardPage(
     tags$li(
       id = "ynow-market-header",
       class = "dropdown ynow-market-header",
-      shinyWidgets::radioGroupButtons(
-        inputId = "market_mode_pick",
-        label = NULL,
-        choices = c("美股" = "US", "台股" = "TW"),
-        selected = "US",
-        status = "default",
-        size = "xs",
-        direction = "vertical",
-        individual = FALSE
+      tags$div(
+        class = "ynow-market-stack",
+        role = "group",
+        `aria-label` = "市場",
+        tags$button(
+          type = "button",
+          class = "ynow-mkt-btn active",
+          `data-value` = "US",
+          "美股"
+        ),
+        tags$button(
+          type = "button",
+          class = "ynow-mkt-btn",
+          `data-value` = "TW",
+          "台股"
+        )
       )
     ),
     tags$li(
@@ -915,88 +922,54 @@ ui <- dashboardPage(
           background-color: #000 !important;
         }
 
-        /* 美股／台股：緊靠三線 icon 右側，上下堆疊且合計佔滿標頭高度（50px） */
-        .main-header .navbar-custom-menu .navbar-nav > li#ynow-market-header.ynow-market-header,
-        .main-header .navbar .ynow-market-header {
+        /* 美股／台股：自訂垂直堆疊，緊靠三線 icon，合計 100% 標頭高度 */
+        .main-header .navbar-custom-menu .navbar-nav > li#ynow-market-header.ynow-market-header {
           position: absolute !important;
-          left: 50px !important; /* sidebar-toggle 寬度 */
+          left: 50px !important;
           top: 0 !important;
-          right: auto !important;
-          bottom: auto !important;
-          width: auto !important;
+          width: 40px !important;
           height: 50px !important;
-          min-height: 50px !important;
-          max-height: 50px !important;
           margin: 0 !important;
           padding: 0 !important;
           list-style: none !important;
-          display: block !important;
           float: none !important;
-          line-height: 0 !important;
           z-index: 20;
         }
-        #ynow-market-header .form-group,
-        #ynow-market-header .shiny-input-container,
-        #ynow-market-header .radio-group-buttons {
-          margin: 0 !important;
-          padding: 0 !important;
-          height: 50px !important;
-          min-height: 50px !important;
-          width: auto !important;
-          line-height: 0 !important;
+        #ynow-market-header .ynow-market-stack {
+          display: flex;
+          flex-direction: column;
+          width: 40px;
+          height: 50px;
+          margin: 0;
+          padding: 0;
         }
-        /* shinyWidgets vertical：外層 btn-group-vertical > 內層 btn-group > btn */
-        #ynow-market-header .btn-group-vertical.btn-group-container-sw,
-        #ynow-market-header .btn-group-vertical {
-          display: flex !important;
-          flex-direction: column !important;
-          height: 50px !important;
-          min-height: 50px !important;
-          width: auto !important;
-          margin: 0 !important;
-          float: none !important;
+        #ynow-market-header .ynow-mkt-btn {
+          box-sizing: border-box;
+          flex: 1 1 50%;
+          width: 100%;
+          height: 25px;
+          margin: 0;
+          padding: 0;
+          border: 1px solid rgba(255,255,255,0.35);
+          border-radius: 0;
+          background: rgba(255,255,255,0.12);
+          color: #fff;
+          font-size: 11px;
+          font-weight: 700;
+          line-height: 1;
+          cursor: pointer;
         }
-        #ynow-market-header .btn-group-vertical > .btn-group {
-          display: flex !important;
-          flex: 0 0 25px !important;
-          height: 25px !important;
-          min-height: 25px !important;
-          max-height: 25px !important;
-          width: 100% !important;
-          margin: 0 !important;
-          float: none !important;
+        #ynow-market-header .ynow-mkt-btn + .ynow-mkt-btn {
+          border-top-width: 0;
         }
-        #ynow-market-header .btn-group-vertical > .btn-group > .btn,
-        #ynow-market-header .btn-group-vertical > .btn {
-          flex: 1 1 auto !important;
-          width: 100% !important;
-          height: 25px !important;
-          min-height: 25px !important;
-          max-height: 25px !important;
-          margin: 0 !important;
-          border-radius: 0 !important;
-          line-height: 25px !important;
-          padding: 0 8px !important;
-          display: block !important;
-          float: none !important;
-          background: rgba(255,255,255,0.12) !important;
-          border: 1px solid rgba(255,255,255,0.35) !important;
-          color: #fff !important;
-          font-weight: 700 !important;
-          font-size: 11px !important;
-          box-shadow: none !important;
+        #ynow-market-header .ynow-mkt-btn.active {
+          background: #fff;
+          color: #222;
+          border-color: #fff;
         }
-        #ynow-market-header .btn-group-vertical > .btn-group + .btn-group > .btn,
-        #ynow-market-header .btn-group-vertical > .btn + .btn {
-          border-top-width: 0 !important;
+        #ynow-market-header .ynow-mkt-btn:focus {
+          outline: none;
         }
-        #ynow-market-header .btn-group-vertical > .btn-group > .btn.active,
-        #ynow-market-header .btn-group-vertical > .btn.active {
-          background: #fff !important;
-          color: #222 !important;
-          border-color: #fff !important;
-        }
-        #ynow-market-header .radiobtn { margin: 0 !important; }
 
         /* 台股：dashboardHeader 改以中華民國國旗填滿；美股維持全黑 */
         body.ynow-market-tw .main-header {
@@ -1311,6 +1284,41 @@ ui <- dashboardPage(
           }
           registerBadgeHandler();
 
+          /* 美股／台股：自訂垂直按鈕 → Shiny input market_mode_pick */
+          function bindMarketModeButtons() {
+            var stack = document.querySelector('#ynow-market-header .ynow-market-stack');
+            if (!stack) return;
+            if (stack.getAttribute('data-ynow-bound') === '1') return;
+            stack.setAttribute('data-ynow-bound', '1');
+            stack.addEventListener('click', function (ev) {
+              var btn = ev.target && ev.target.closest ? ev.target.closest('.ynow-mkt-btn') : null;
+              if (!btn || !stack.contains(btn)) return;
+              var val = btn.getAttribute('data-value');
+              if (!val) return;
+              stack.querySelectorAll('.ynow-mkt-btn').forEach(function (b) {
+                b.classList.toggle('active', b === btn);
+              });
+              if (window.Shiny && Shiny.setInputValue) {
+                Shiny.setInputValue('market_mode_pick', val, {priority: 'event'});
+              }
+            });
+            function pushInitial() {
+              if (!(window.Shiny && Shiny.setInputValue)) {
+                setTimeout(pushInitial, 50);
+                return;
+              }
+              var active = stack.querySelector('.ynow-mkt-btn.active');
+              var val = active ? active.getAttribute('data-value') : 'US';
+              Shiny.setInputValue('market_mode_pick', val || 'US', {priority: 'event'});
+            }
+            pushInitial();
+          }
+          if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', bindMarketModeButtons);
+          } else {
+            bindMarketModeButtons();
+          }
+
           /* ---- UI locale (en / zh-TW) in-place chrome labels ---- */
           function setMenuLabel(tab, label) {
             var a = document.querySelector('.sidebar-menu a[data-value=\"' + tab + '\"]');
@@ -1443,6 +1451,9 @@ ui <- dashboardPage(
             document.documentElement.setAttribute('lang', (payload && payload.locale) || 'en');
             var mkt = (payload && payload.market) ? String(payload.market) : 'US';
             document.body.classList.toggle('ynow-market-tw', mkt === 'TW');
+            document.querySelectorAll('#ynow-market-header .ynow-mkt-btn').forEach(function (b) {
+              b.classList.toggle('active', b.getAttribute('data-value') === mkt);
+            });
           }
 
           function registerLocaleHandler() {
