@@ -694,7 +694,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v15.18</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v15.19</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -3573,18 +3573,11 @@ ui <- dashboardPage(
               selected = "realized"
             ),
             uiOutput("bt_fv_conv_summary"),
-            fluidRow(
-              column(
-                7,
-                tags$h5(tags$b("逐期明細")),
-                tags$div(style = "overflow-x:auto;", tableOutput("bt_fv_conv_table"))
-              ),
-              column(
-                5,
-                tags$h5(tags$b("幅度 (P下一期 − FV) / FV")),
-                plotlyOutput("bt_fv_conv_plot", height = "280px") %>% withSpinner()
-              )
-            )
+            # 幅度圖在上、逐期明細在下（全寬堆疊；勿左右並排）
+            tags$h5(tags$b("幅度 (P下一期 − FV) / FV")),
+            plotlyOutput("bt_fv_conv_plot", height = "280px") %>% withSpinner(),
+            tags$h5(tags$b("逐期明細"), style = "margin-top: 14px;"),
+            tags$div(style = "overflow-x:auto;", tableOutput("bt_fv_conv_table"))
           )
         ),
 

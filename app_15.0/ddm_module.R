@@ -363,7 +363,10 @@ ddm_module_server <- function(id, auto_calc_pulse = reactive(0L),
     })
     
     return(list(
-      ddm_price = reactive({ res <- ddm_calc(); if(res$status == "success") res$value else NA })
+      ddm_price = reactive({
+        res <- tryCatch(ddm_calc(), error = function(e) NULL)
+        if (!is.null(res) && identical(res$status, "success")) res$value else NA
+      })
     ))
   })
 }
