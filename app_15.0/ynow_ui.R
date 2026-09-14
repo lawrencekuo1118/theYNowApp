@@ -3515,7 +3515,7 @@ ui <- dashboardPage(
           )
         ),
 
-        # 2) 歷史基本面驗證：理論估值 vs 實際市值（漲跌機率／幅度）
+        # 2) 歷史基本面驗證：市價下期漲跌與相對 FV
         fluidRow(
           box(
             title = tagList(icon("balance-scale"), "歷史基本面驗證：市價下期漲跌與相對 FV"),
