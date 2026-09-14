@@ -707,7 +707,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v15.30</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v15.31</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -1899,6 +1899,26 @@ ui <- dashboardPage(
           font-size: 13px;
           color: #333;
           min-width: 168px;
+        }
+        /* 目前產業標準快覽：手機兩兩並列；≥768px 三欄 */
+        .ynow-ind-snapshot-chips {
+          display: grid !important;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 10px;
+          align-items: stretch;
+        }
+        .ynow-ind-snapshot-chip {
+          min-width: 0 !important;
+          width: 100%;
+          box-sizing: border-box;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 2px;
+        }
+        @media (min-width: 768px) {
+          .ynow-ind-snapshot-chips {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+          }
         }
         .ynow-ann-swatch {
           width: 14px;

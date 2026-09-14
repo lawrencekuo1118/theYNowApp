@@ -384,13 +384,23 @@ kpi_band_value_box <- function(value, subtitle, color, icon = NULL, width = 4) {
 
 #' 產業標準欄位 → 顯示標籤／單位（單一來源，供快覽／Annotation／色碼共用）
 INDUSTRY_METRIC_META <- list(
-  gross_profit_margin = list(label = "毛利率", unit = "%"),
-  net_profit_margin   = list(label = "淨利率", unit = "%"),
-  opex_ratio          = list(label = "營運費用比", unit = "%"),
   rev_growth          = list(label = "營收成長", unit = "%"),
-  roa                 = list(label = "ROA", unit = "%"),
+  gross_profit_margin = list(label = "毛利率", unit = "%"),
   roe                 = list(label = "ROE", unit = "%"),
-  eqt_multiplier      = list(label = "財務槓桿", unit = "x")
+  roa                 = list(label = "ROA", unit = "%"),
+  opex_ratio          = list(label = "營運費用比", unit = "%"),
+  eqt_multiplier      = list(label = "財務槓桿", unit = "x"),
+  net_profit_margin   = list(label = "淨利率", unit = "%")
+)
+
+#' 「目前產業標準快覽」晶片固定順序（僅這六項；有定義才顯示）
+INDUSTRY_SNAPSHOT_METRIC_ORDER <- c(
+  "rev_growth",
+  "gross_profit_margin",
+  "roe",
+  "roa",
+  "opex_ratio",
+  "eqt_multiplier"
 )
 
 #' 格式化單一數值：整數保留整數寫法，對齊 industry_standards.R 字面量
@@ -438,9 +448,11 @@ industry_standard_bands_df <- function(industry_key) {
     ))
   }
   inds <- industry_standards[[key]]
-  metrics <- intersect(names(INDUSTRY_METRIC_META), names(inds))
-  # 固定顯示順序，但只輸出「有定義」的欄位
-  metrics <- names(INDUSTRY_METRIC_META)[names(INDUSTRY_METRIC_META) %in% metrics]
+  # 快覽固定順序：營收成長 → 毛利率 → ROE → ROA → 營運費用比 → 財務槓桿
+  metrics <- INDUSTRY_SNAPSHOT_METRIC_ORDER[
+    INDUSTRY_SNAPSHOT_METRIC_ORDER %in% names(inds) &
+      INDUSTRY_SNAPSHOT_METRIC_ORDER %in% names(INDUSTRY_METRIC_META)
+  ]
   do.call(rbind, lapply(metrics, function(m) {
     meta <- INDUSTRY_METRIC_META[[m]]
     data.frame(
@@ -586,8 +598,7 @@ industry_standard_snapshot_ui <- function(industry_key,
     if (nrow(bands) > 0) {
       chips <- lapply(seq_len(nrow(bands)), function(i) {
         tags$div(
-          class = "ynow-ann-chip",
-          style = "min-width:160px; flex-direction:column; align-items:flex-start; gap:2px;",
+          class = "ynow-ann-chip ynow-ind-snapshot-chip",
           tags$span(style = "font-size:11px; color:#888;", bands$label[[i]]),
           tags$span(style = "font-weight:700; color:#222222;", bands$band[[i]])
         )
@@ -623,7 +634,11 @@ industry_standard_snapshot_ui <- function(industry_key,
       )
     },
     if (!is.null(chips)) {
-      tags$div(class = "ynow-ann-legend", style = "margin-top:10px; margin-bottom:0;", chips)
+      tags$div(
+        class = "ynow-ann-legend ynow-ind-snapshot-chips",
+        style = "margin-top:10px; margin-bottom:0;",
+        chips
+      )
     }
   )
 }
