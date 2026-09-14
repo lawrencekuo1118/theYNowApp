@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12552310
+bundleId=12552361
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=c5d4ea4
-commit=c5d4ea4
-short=c5d4ea4
-message=feat(app_15.0): HFV next-period price up/down odds with MOS outlook
-captured_at=2026-09-14T12:30:00Z
+aligned_git=bef7477
+commit=bef7477
+short=bef7477
+message=fix(app_15.0): use Taiwan MOS group wording instead of 分桶
+captured_at=2026-09-14T12:40:00Z
 source_branch=cursor/hfv-price-updown-prob-f4a6
-display_version=v15.21
-note=Canonical live line is app_15.0. Bundle 12552310 adds HFV market up/down R=(P_next-P)/P odds + MOS-bucket outlook alongside vs-FV stats. Supersedes 12551952.
+display_version=v15.22
+note=Canonical live line is app_15.0. Bundle 12552361 renames HFV MOS 分桶展望 to 安全邊際（MOS）分組展望. Supersedes 12552310.
