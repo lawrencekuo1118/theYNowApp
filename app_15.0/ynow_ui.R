@@ -694,7 +694,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v15.21</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v15.22</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -3526,7 +3526,7 @@ ui <- dashboardPage(
               tags$b("這不是交易策略回測。"),
               "兩種口徑分開呈現：",
               tags$b("（1）市價下期漲跌"), " ", tags$code("R=(P_{t+1}-P_t)/P_t"),
-              " 的經驗頻率，並以目前 MOS 分桶條件機率作為展望；",
+              " 的經驗頻率，並以目前安全邊際（MOS）分組之條件機率作為展望；",
               tags$b("（2）相對理論 FV"), " ", tags$code("FV_t"),
               "（＝折現圖勾選且有限值模型平均；未勾選＝無策略 FV）落在之上／之下與幅度 ",
               tags$code("(P_{t+1}-FV_t)/FV_t"),

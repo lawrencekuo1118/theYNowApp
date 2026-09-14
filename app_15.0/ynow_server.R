@@ -7281,7 +7281,7 @@ server <- function(input, output, session) {
         tags$ul(
           style = "margin:6px 0 0 0;padding-left:18px;",
           tags$li(sprintf(
-            "目前 MOS＝%+.1f%% → 分桶「%s」（n＝%d%s）",
+            "目前安全邊際（MOS）＝%+.1f%% → 分組「%s」（n＝%d%s）",
             100 * mo$mos_now,
             mo$bucket %||% "—",
             mo$n %||% 0L,
@@ -7615,7 +7615,7 @@ server <- function(input, output, session) {
         tags$li(
           tags$b("歷史基本面驗證（非策略回測）："),
           "同時報告（1）市價下期漲跌 ", tags$code("R=(P_{t+1}-P_t)/P_t"),
-          " 經驗頻率，以及依目前 MOS 分桶的條件上漲／下跌機率；",
+          " 經驗頻率，以及依目前安全邊際（MOS）分組的條件上漲／下跌機率；",
           "（2）相對策略理論估值 FV_t（＝勾選且有限值模型平均；未勾＝無 FV）之上／之下與幅度 (P−FV)/FV。",
           "兩口徑不同，不可混稱。預設只計已實現下期，可選擴張窗樣本外命中率。",
           "若歷史點套用 APP_DEFAULTS／Session／法定稅率，摘要會列出預設／fallback 與對應分頁。",
