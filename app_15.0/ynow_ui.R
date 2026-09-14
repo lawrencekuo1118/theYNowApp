@@ -16,6 +16,16 @@
 
 #' About 分頁：中英左右對照專案簡介
 .about_bilingual_intro_ui <- function() {
+  brand <- tags$div(
+    class = "ynow-about-brand",
+    tags$img(
+      class = "ynow-about-logo-full",
+      src = "ynow-logo-full-480.png",
+      alt = "YNow — WH.Y VALUE NOW",
+      width = 240,
+      height = 240
+    )
+  )
   zh_features <- tags$ul(
     class = "ynow-about-feat",
     tags$li(
@@ -55,7 +65,9 @@
     )
   )
 
-  fluidRow(
+  tagList(
+    brand,
+    fluidRow(
     class = "ynow-about-bilingual",
     column(
       width = 6,
@@ -88,6 +100,7 @@
       ),
       tags$h4(class = "ynow-about-feat-h", tags$b("Core Features:")),
       en_features
+    )
     )
   )
 }
@@ -694,7 +707,13 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v15.25</span>'),
+    title = HTML(paste0(
+      '<span class="ynow-logo-wrap" title="YNow — WH.Y VALUE NOW">',
+      '<img class="ynow-logo-mark" src="ynow-logo-mark-48.png" ',
+      'width="34" height="34" alt="YNow"/>',
+      '<span class="ynow-app-title">v15.26</span>',
+      '</span>'
+    )),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -743,6 +762,16 @@ ui <- dashboardPage(
     width = 250,
     collapsed = FALSE,
     column(width = 12,
+           tags$div(
+             class = "ynow-sidebar-brand",
+             tags$img(
+               class = "ynow-sidebar-logo-mark",
+               src = "ynow-logo-mark-64.png",
+               width = 40,
+               height = 40,
+               alt = "YNow"
+             )
+           ),
            column(width = 12, textOutput("today"),
                   hr()
            )
@@ -840,6 +869,10 @@ ui <- dashboardPage(
     withMathJax(),
     
     tags$head(
+      tags$link(rel = "icon", type = "image/x-icon", href = "favicon.ico"),
+      tags$link(rel = "icon", type = "image/png", sizes = "32x32", href = "favicon-32.png"),
+      tags$link(rel = "icon", type = "image/png", sizes = "16x16", href = "favicon-16.png"),
+      tags$link(rel = "apple-touch-icon", sizes = "180x180", href = "apple-touch-icon.png"),
       tags$style(HTML('
         /* YNOW monochrome chrome: black/white (keep KPI bg-blue / Schilit red-green) */
         :root {
@@ -865,9 +898,7 @@ ui <- dashboardPage(
           50% { background-position: 100% 50%; }
         }
 
-        /* 標題金色箔面：漸層＋clip 只套在內層 .ynow-app-title，
-           勿對 .logo 容器同時用 filter + background-clip:text（Chromium 會整段消失），
-           也避免 AdminLTE .logo 的 background 縮寫蓋掉漸層。 */
+        /* 標題：圓標（無品牌文字）＋版號；金色箔面只套在 .ynow-app-title */
         .main-header .logo,
         .main-header .logo:hover {
           position: relative;
@@ -877,10 +908,31 @@ ui <- dashboardPage(
           background-color: var(--ynow-ink) !important;
           background-image: none !important;
           filter: none !important;
+          display: flex !important;
+          align-items: center;
+          justify-content: flex-start;
+          padding-left: 12px !important;
+          padding-right: 10px !important;
+        }
+        .main-header .logo .ynow-logo-wrap {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          max-width: 100%;
+          line-height: 1;
+        }
+        .main-header .logo .ynow-logo-mark {
+          width: 34px;
+          height: 34px;
+          flex: 0 0 34px;
+          object-fit: contain;
+          display: block;
         }
         .main-header .logo .ynow-app-title {
           display: inline-block;
           font-weight: bold;
+          font-size: 16px;
+          letter-spacing: 0.02em;
           color: #FFD700 !important;
           background-color: transparent !important;
           background-image: var(--ynow-gold-gradient) !important;
@@ -2165,6 +2217,21 @@ ui <- dashboardPage(
           font-size: 10px;
           color: #6b7280;
           line-height: 1.35;
+        }
+
+        /* About：完整 LOGO（含文字）置頂品牌區 */
+        .ynow-about-brand {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          margin: 4px 0 18px 0;
+          text-align: center;
+        }
+        .ynow-about-logo-full {
+          width: min(240px, 55vw);
+          height: auto;
+          display: block;
         }
 
         /* About：中英左右對照簡介 */
