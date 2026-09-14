@@ -105,30 +105,30 @@
   )
 }
 
-#' KPI 色碼圖例：藍／黑／紅／白（Dashboard：產業快覽下方、PERFORMANCE 上方）
+#' KPI 色碼圖例：藍→紅→黑→白（Dashboard：產業快覽下方、PERFORMANCE 上方）
 .kpi_band_color_legend_ui <- function() {
   tags$div(
-    class = "ynow-ann-legend",
+    class = "ynow-ann-legend ynow-kpi-legend-chips",
     tags$div(
-      class = "ynow-ann-chip",
+      class = "ynow-ann-chip ynow-kpi-legend-chip",
       tags$span(class = "ynow-ann-swatch", style = "background:#3c8dbc;"),
-      tags$span(tags$b("藍"), " · 優於區間 (Better)")
+      tags$span(id = "ynow_kpi_legend_blue", "藍 · 優於同業 (Better)")
     ),
     tags$div(
-      class = "ynow-ann-chip",
-      tags$span(class = "ynow-ann-swatch", style = "background:#222;"),
-      tags$span(tags$b("黑"), " · 符合區間 (In band)")
-    ),
-    tags$div(
-      class = "ynow-ann-chip",
+      class = "ynow-ann-chip ynow-kpi-legend-chip",
       tags$span(class = "ynow-ann-swatch", style = "background:#dd4b39;"),
-      tags$span(tags$b("紅"), " · 劣於區間／警示 (Worse)")
+      tags$span(id = "ynow_kpi_legend_red", "紅 · 劣於同業 (Worse)")
     ),
     tags$div(
-      class = "ynow-ann-chip",
+      class = "ynow-ann-chip ynow-kpi-legend-chip",
+      tags$span(class = "ynow-ann-swatch", style = "background:#222;"),
+      tags$span(id = "ynow_kpi_legend_black", "黑 · 與同業一致 (In band)")
+    ),
+    tags$div(
+      class = "ynow-ann-chip ynow-kpi-legend-chip",
       tags$span(class = "ynow-ann-swatch",
                 style = "background:#fff; border:1px solid #999;"),
-      tags$span(tags$b("白"), " · 未設產業區間／N/A")
+      tags$span(id = "ynow_kpi_legend_white", "白 · 無法比較／N/A")
     )
   )
 }
@@ -707,7 +707,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v15.31</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v15.32</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -950,8 +950,24 @@ ui <- dashboardPage(
           background-color: var(--ynow-ink) !important;
           position: relative;
         }
+        /* 側欄漢堡（三條線）：白字／白 icon，對比深色標頭 */
+        .main-header .navbar > .sidebar-toggle,
+        .skin-black .main-header .navbar .sidebar-toggle {
+          color: #fff !important;
+        }
+        .main-header .navbar > .sidebar-toggle .icon-bar,
+        .skin-black .main-header .navbar .sidebar-toggle .icon-bar {
+          background-color: #fff !important;
+        }
+        .main-header .navbar > .sidebar-toggle .fa,
+        .main-header .navbar > .sidebar-toggle .fas,
+        .skin-black .main-header .navbar .sidebar-toggle .fa,
+        .skin-black .main-header .navbar .sidebar-toggle .fas {
+          color: #fff !important;
+        }
         .skin-black .main-header .navbar .sidebar-toggle:hover {
           background-color: #000 !important;
+          color: #fff !important;
         }
 
         /* 美股／台股：三線 icon 右側上下堆疊；合計滿版標頭高度（各 25px） */
@@ -1049,8 +1065,17 @@ ui <- dashboardPage(
         body.ynow-market-tw .skin-black .main-header .logo::before {
           display: none;
         }
+        body.ynow-market-tw .main-header .navbar > .sidebar-toggle,
+        body.ynow-market-tw .skin-black .main-header .navbar .sidebar-toggle {
+          color: #fff !important;
+        }
+        body.ynow-market-tw .main-header .navbar > .sidebar-toggle .icon-bar,
+        body.ynow-market-tw .skin-black .main-header .navbar .sidebar-toggle .icon-bar {
+          background-color: #fff !important;
+        }
         body.ynow-market-tw .skin-black .main-header .navbar .sidebar-toggle:hover {
           background-color: rgba(0, 0, 0, 0.35) !important;
+          color: #fff !important;
         }
         body.ynow-market-tw .main-header .logo,
         body.ynow-market-tw .main-header .logo:hover {
@@ -1488,6 +1513,14 @@ ui <- dashboardPage(
             if (scLab && s.ticker_label) scLab.textContent = s.ticker_label;
             var indLab = document.querySelector('label[for=\"industry_choice\"]');
             if (indLab && s.industry_standard) indLab.textContent = s.industry_standard;
+            var kpiBlue = document.getElementById('ynow_kpi_legend_blue');
+            if (kpiBlue && s.kpi_legend_blue) kpiBlue.textContent = s.kpi_legend_blue;
+            var kpiRed = document.getElementById('ynow_kpi_legend_red');
+            if (kpiRed && s.kpi_legend_red) kpiRed.textContent = s.kpi_legend_red;
+            var kpiBlack = document.getElementById('ynow_kpi_legend_black');
+            if (kpiBlack && s.kpi_legend_black) kpiBlack.textContent = s.kpi_legend_black;
+            var kpiWhite = document.getElementById('ynow_kpi_legend_white');
+            if (kpiWhite && s.kpi_legend_white) kpiWhite.textContent = s.kpi_legend_white;
             var dsTitle = document.getElementById('ynow_data_source_title');
             if (dsTitle && s.data_source_title) dsTitle.textContent = s.data_source_title;
             var dsBody = document.getElementById('ynow_data_source_body');
@@ -1900,17 +1933,21 @@ ui <- dashboardPage(
           color: #333;
           min-width: 168px;
         }
-        /* 目前產業標準快覽：手機兩兩並列；≥768px 三欄 */
-        .ynow-ind-snapshot-chips {
+        /* 目前產業標準快覽／色碼圖例：手機兩兩並列；≥768px 三欄（圖例四格可為 2×2） */
+        .ynow-ind-snapshot-chips,
+        .ynow-kpi-legend-chips {
           display: grid !important;
           grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 10px;
           align-items: stretch;
         }
-        .ynow-ind-snapshot-chip {
+        .ynow-ind-snapshot-chip,
+        .ynow-kpi-legend-chip {
           min-width: 0 !important;
           width: 100%;
           box-sizing: border-box;
+        }
+        .ynow-ind-snapshot-chip {
           flex-direction: column;
           align-items: flex-start;
           gap: 2px;
@@ -1918,6 +1955,9 @@ ui <- dashboardPage(
         @media (min-width: 768px) {
           .ynow-ind-snapshot-chips {
             grid-template-columns: repeat(3, minmax(0, 1fr));
+          }
+          .ynow-kpi-legend-chips {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
           }
         }
         .ynow-ann-swatch {
