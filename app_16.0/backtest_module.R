@@ -339,6 +339,16 @@ estimate_hist_pb <- function(bvps, pb_mid) {
   v
 }
 
+#' Pure NAV fair value: NAVPS × NAV multiple (default 1× book NAV when investments unknown).
+estimate_hist_nav <- function(navps, nav_mid = 1) {
+  navps <- .safe_num(navps, NA_real_)
+  nav_mid <- .safe_num(nav_mid, 1)
+  if (!is.finite(navps) || navps <= 0 || !is.finite(nav_mid) || nav_mid <= 0) return(NA_real_)
+  v <- navps * nav_mid
+  if (!is.finite(v) || v <= 0) return(NA_real_)
+  v
+}
+
 #' Signal label: price vs model fair value (plain Chinese, no inverted jargon).
 #'   FV > price  → 便宜（P<FV）  undervalued / MOS > 0
 #'   FV < price  → 偏貴（P>FV）  overvalued / MOS < 0
@@ -680,7 +690,7 @@ valuation_signal_label <- function(fv, price) {
 #' Accepts `fv_models` (vector) or `fv_model` (string / vector / "composite").
 #' Empty selection → character(0)（不暗設 DCF）；策略 fair_value／MOS 為 NA。
 .normalize_fv_models <- function(model_params) {
-  known <- c("dcf", "ddm", "ri", "pb")
+  known <- c("dcf", "ddm", "ri", "pb", "nav")
   raw <- NULL
   if (is.list(model_params)) {
     if (!is.null(model_params$fv_models) && length(model_params$fv_models) > 0) {
@@ -749,6 +759,7 @@ reconstruct_fair_value_pit <- function(fund_row, price, model_params,
     n_yr <- as.integer(.safe_num(model_params$n_years, 5))
     g_ex <- .safe_num(model_params$g_explicit, sgr)
     pb_mid <- .safe_num(model_params$pb_mid, NA_real_)
+    nav_mid <- .safe_num(model_params$nav_mid, 1)
     ddm_g <- .safe_num(model_params$ddm_g, sgr)
     ddm_ke <- .safe_num(model_params$ddm_ke, ke)
     ri_years <- as.integer(.safe_num(model_params$ri_years, n_yr))
@@ -809,6 +820,8 @@ reconstruct_fair_value_pit <- function(fund_row, price, model_params,
     )
     src_pb_mid <- .hist_pb_source(roe_use, ke, g_ex, model_params)
     pb_mid <- .hist_justified_pb(roe_use, ke, g_ex, fallback = pb_fallback)
+    nav_mid <- .safe_num(model_params$nav_mid, 1)
+    if (!is.finite(nav_mid) || nav_mid <= 0) nav_mid <- 1
     roe_path <- NULL
     src_n_years <- "app_defaults"
     src_rd <- .hist_rd_source(fund_row, model_params)
@@ -864,11 +877,13 @@ reconstruct_fair_value_pit <- function(fund_row, price, model_params,
     bvps, roe_use, ri_ke, ri_g, n = ri_years, payout = payout_use, roe_path = roe_path
   )
   fv_pb  <- estimate_hist_pb(bvps, pb_mid)
+  # PIT 無投資科目明細時，以 BVPS 近似帳面 NAVPS（誠實：非市場 SOTP）
+  fv_nav <- estimate_hist_nav(bvps, nav_mid)
 
   pick_one <- function(x) if (is.finite(x) && x > 0) x else NA_real_
   named <- c(
     dcf = pick_one(fv_dcf), ddm = pick_one(fv_ddm),
-    ri = pick_one(fv_ri), pb = pick_one(fv_pb)
+    ri = pick_one(fv_ri), pb = pick_one(fv_pb), nav = pick_one(fv_nav)
   )
   models <- .normalize_fv_models(model_params)
   cand <- if (length(models) < 1L) numeric(0) else unname(named[models])
@@ -888,7 +903,7 @@ reconstruct_fair_value_pit <- function(fund_row, price, model_params,
   )
 
   list(
-    fv_dcf = fv_dcf, fv_ddm = fv_ddm, fv_ri = fv_ri, fv_pb = fv_pb,
+    fv_dcf = fv_dcf, fv_ddm = fv_ddm, fv_ri = fv_ri, fv_pb = fv_pb, fv_nav = fv_nav,
     fair_value = fair_value, mos = mos, signal = signal,
     valuation_score = score,
     bvps = bvps, roe = roe_use, dps = dps, payout = payout_use,
@@ -974,6 +989,7 @@ reconstruct_fair_value_pit <- function(fund_row, price, model_params,
   valuation_df$fv_ddm[j] <- .safe_num(pit$fv_ddm, NA_real_)
   valuation_df$fv_ri[j]  <- .safe_num(pit$fv_ri, NA_real_)
   valuation_df$fv_pb[j]  <- .safe_num(pit$fv_pb, NA_real_)
+  valuation_df$fv_nav[j] <- .safe_num(pit$fv_nav, NA_real_)
   valuation_df$fair_value[j] <- .safe_num(pit$fair_value, NA_real_)
   valuation_df$mos[j] <- pit$mos
   valuation_df$signal[j] <- pit$signal
@@ -1940,6 +1956,7 @@ evaluate_holding_filter <- function(metrics, thresholds) {
   equity_df$FV_DDM <- build_one("fv_ddm")
   equity_df$FV_RI  <- build_one("fv_ri")
   equity_df$FV_PB  <- build_one("fv_pb")
+  equity_df$FV_NAV <- build_one("fv_nav")
 
   # Strategy series = mean of checked models stored as fair_value at rebalances.
   # 未勾選任何模型 → FairValue 全 NA（不暗設 DCF）。
@@ -1949,7 +1966,7 @@ evaluate_holding_filter <- function(metrics, thresholds) {
     models <- .normalize_fv_models(list(
       fv_models = fv_models, fv_model = primary_model %||% fv_models
     ))
-    colmap <- c(dcf = "FV_DCF", ddm = "FV_DDM", ri = "FV_RI", pb = "FV_PB")
+    colmap <- c(dcf = "FV_DCF", ddm = "FV_DDM", ri = "FV_RI", pb = "FV_PB", nav = "FV_NAV")
     cols <- unname(colmap[models])
     cols <- cols[cols %in% names(equity_df)]
     if (length(cols) < 1L) {
@@ -2324,6 +2341,7 @@ supported_analysis_freqs <- function(price_dates = NULL, valuation_dates = NULL)
         fv_ddm = .safe_num(pit$fv_ddm, NA_real_),
         fv_ri  = .safe_num(pit$fv_ri,  NA_real_),
         fv_pb  = .safe_num(pit$fv_pb,  NA_real_),
+        fv_nav = .safe_num(pit$fv_nav, NA_real_),
         fair_value = .safe_num(pit$fair_value, NA_real_),
         mos = mos_i,
         signal = signal_i,
@@ -2390,7 +2408,7 @@ supported_analysis_freqs <- function(price_dates = NULL, valuation_dates = NULL)
     data.frame(
       Date = as.Date(character()), fund_year = integer(),
       hist_price = numeric(), bench_price = numeric(),
-      fv_dcf = numeric(), fv_ddm = numeric(), fv_ri = numeric(), fv_pb = numeric(),
+      fv_dcf = numeric(), fv_ddm = numeric(), fv_ri = numeric(), fv_pb = numeric(), fv_nav = numeric(),
       fair_value = numeric(),
       mos = numeric(), signal = character(),
       valuation_score = numeric(),
@@ -2459,7 +2477,7 @@ supported_analysis_freqs <- function(price_dates = NULL, valuation_dates = NULL)
   if (isTRUE(fv_only)) {
     return(list(
       equity_df = equity_df[, c("Date", "Close", "Bench", "FairValue",
-                                "FV_DCF", "FV_DDM", "FV_RI", "FV_PB"), drop = FALSE],
+                                "FV_DCF", "FV_DDM", "FV_RI", "FV_PB", "FV_NAV"), drop = FALSE],
       valuation_df = valuation_df,
       rebal_freq = rebal_freq,
       exposure = NULL,
@@ -2558,6 +2576,7 @@ refresh_backtest_fair_value <- function(res, fund, model_params) {
     vd$fv_ddm[j] <- .safe_num(pit$fv_ddm, NA_real_)
     vd$fv_ri[j]  <- .safe_num(pit$fv_ri, NA_real_)
     vd$fv_pb[j]  <- .safe_num(pit$fv_pb, NA_real_)
+    vd$fv_nav[j] <- .safe_num(pit$fv_nav, NA_real_)
     vd$fair_value[j] <- .safe_num(pit$fair_value, NA_real_)
     vd$mos[j] <- pit$mos
     vd$signal[j] <- pit$signal

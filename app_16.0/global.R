@@ -1,5 +1,5 @@
 # ==========================================
-# global.R - 初始化與環境設定（app_15.0）
+# global.R - 初始化與環境設定（app_16.0）
 # ==========================================
 
 # 🐍 Python：本機可選 .ynow_venv；shinyapps.io 用 requirements.txt 部署環境
@@ -90,6 +90,7 @@ source("ddm_module.R", local = TRUE, encoding = "UTF-8")
 source("fcf_projection_module.R", local = TRUE, encoding = "UTF-8")
 source("ri_module.R", local = TRUE, encoding = "UTF-8")
 source("pb_asset_module.R", local = TRUE, encoding = "UTF-8")
+source("nav_module.R", local = TRUE, encoding = "UTF-8")
 source("rebal_freq.R", local = TRUE, encoding = "UTF-8")
 source("backtest_module.R", local = TRUE, encoding = "UTF-8")
 source("backtest_validation.R", local = TRUE, encoding = "UTF-8")

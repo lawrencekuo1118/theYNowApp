@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# Deploy app_15.0 → shinyapps.io TheYNowApp
+# Deploy app_16.0 → shinyapps.io TheYNowApp
 #
 # Credentials (either):
 #   SHINYAPPS_ACCOUNT / SHINYAPPS_TOKEN / SHINYAPPS_SECRET
@@ -27,7 +27,7 @@ if (!use_env_creds) {
       "Missing shinyapps credentials.",
       "Set SHINYAPPS_ACCOUNT, SHINYAPPS_TOKEN, SHINYAPPS_SECRET",
       "(from https://www.shinyapps.io/admin/#/tokens) then re-run:",
-      "  Rscript scripts/deploy_app_15.R",
+      "  Rscript scripts/deploy_app_16.R",
       sep = "\n"
     ))
     quit(status = 2)
@@ -41,9 +41,9 @@ if (length(file_arg) == 1L && nzchar(file_arg)) {
 } else {
   root <- normalizePath(getwd(), mustWork = TRUE)
 }
-app_dir <- file.path(root, "app_15.0")
+app_dir <- file.path(root, "app_16.0")
 if (!dir.exists(app_dir) || !file.exists(file.path(app_dir, "app.R"))) {
-  stop("app_15.0/app.R not found under ", root)
+  stop("app_16.0/app.R not found under ", root)
 }
 
 app_name <- Sys.getenv("SHINYAPPS_APP_NAME", "TheYNowApp")

@@ -1690,8 +1690,8 @@ derive_valuation_method <- function(d_cf, industry_text = "", d_is = NULL, d_bs 
        primary = rec$primary, secondary = rec$secondary, company_type = rec$company_type)
 }
 
-#' 模型選擇器（v13）
-#' @return list with company_type, primary, secondary, ddm/dcf/pb/ri flags,
+#' 模型選擇器（v16：含獨立 NAV）
+#' @return list with company_type, primary, secondary, ddm/dcf/pb/ri/nav flags,
 #'   tags, summary_method, reason, suggest_two_stage, confidence_inputs
 recommend_valuation_models <- function(d_cf, industry_text = "", d_is = NULL, d_bs = NULL,
                                        industry_choice = NULL) {
@@ -1699,7 +1699,7 @@ recommend_valuation_models <- function(d_cf, industry_text = "", d_is = NULL, d_
     company_type = "fallback",
     primary = "pb",
     secondary = NULL,
-    ddm = FALSE, dcf = FALSE, pb = TRUE, ri = FALSE,
+    ddm = FALSE, dcf = FALSE, pb = TRUE, ri = FALSE, nav = FALSE,
     tags = "pb",
     summary_method = "P/B／相對估值",
     reason = "資料不足，暫以 P/B 定位。",
@@ -1777,7 +1777,7 @@ recommend_valuation_models <- function(d_cf, industry_text = "", d_is = NULL, d_
 
   .pack <- function(company_type, primary, secondary, summary_method, reason,
                     suggest_two_stage = FALSE) {
-    flags <- list(ddm = FALSE, dcf = FALSE, pb = FALSE, ri = FALSE)
+    flags <- list(ddm = FALSE, dcf = FALSE, pb = FALSE, ri = FALSE, nav = FALSE)
     flags[[primary]] <- TRUE
     if (!is.null(secondary) && nzchar(as.character(secondary))) {
       flags[[as.character(secondary)]] <- TRUE
@@ -1792,6 +1792,7 @@ recommend_valuation_models <- function(d_cf, industry_text = "", d_is = NULL, d_
       dcf = isTRUE(flags$dcf),
       pb = isTRUE(flags$pb),
       ri = isTRUE(flags$ri),
+      nav = isTRUE(flags$nav),
       tags = tags,
       summary_method = summary_method,
       reason = reason,
@@ -1800,20 +1801,22 @@ recommend_valuation_models <- function(d_cf, industry_text = "", d_is = NULL, d_
     )
   }
 
-  # 1) Holding / conglomerate — P/B + NAV build-up (+ RI)
+  # 1) Holding / conglomerate — 純 NAV 主模型；P/B 或 RI 交叉驗證
   if (isTRUE(is_holding)) {
-    sec <- if (isTRUE(is.finite(roe) && roe > 0)) "ri" else NULL
+    sec <- if (isTRUE(is.finite(roe) && roe > 0)) "ri" else "pb"
     return(.pack(
-      "holding_asset", "pb", sec,
-      "P/B＋NAV 拆解（控股／綜合）",
-      "控股／綜合企業以淨資產為錨：主模型 P/B，並用現金／投資科目做 NAV 拆解（可設控股折價）；ROE>0 時以 RI 交叉驗證。"
+      "holding_asset", "nav", sec,
+      "NAV（帳面控股淨資產）",
+      "控股／綜合企業以帳面淨資產為錨：主模型純 NAV（可設控股折價；非市場 SOTP）；副模型以 RI（ROE>0）或 P/B 倍數交叉驗證。"
     ))
   }
 
-  # 2) Financial / book-driven
+  # 2) Financial / book-driven — 仍以 P/B 倍數為主；資產型可副選 NAV
   if (isTRUE(asset_or_book_driven) || isTRUE(is_financial)) {
     sec <- if (isTRUE(is.finite(roe) && roe > 0)) {
       "ri"
+    } else if (grepl("REIT|Real Estate|Asset|Conglomerate|Holding", ind_txt, ignore.case = TRUE)) {
+      "nav"
     } else if (isTRUE(is_div_stable)) {
       "ddm"
     } else {
@@ -1821,8 +1824,8 @@ recommend_valuation_models <- function(d_cf, industry_text = "", d_is = NULL, d_
     }
     return(.pack(
       "financial", "pb", sec,
-      "P/B（本淨比／資產法）",
-      "金融／保險／公用／資產驅動：資本與淨值為尺；主模型 P/B，副模型以 RI（ROE>0）或穩定配息時的 DDM 交叉驗證。"
+      "P/B（本淨比／相對估值）",
+      "金融／保險／公用／資產驅動：資本與淨值為尺；主模型 P/B 倍數；副模型以 RI（ROE>0）、純 NAV（資產／控股傾向）或穩定配息時的 DDM 交叉驗證。"
     ))
   }
 
@@ -1867,15 +1870,21 @@ recommend_valuation_models <- function(d_cf, industry_text = "", d_is = NULL, d_
   )
 }
 
-#' Justified / industry / history P/B targets (v13)
+#' Justified / industry / history P/B targets (v13+)
 #' @param roe_pct ROE in percent (e.g. 15)
 #' @param ke_pct Cost of equity in percent
-#' @param g_pct Perpetual growth in percent
+#' @param g_pct Perpetual growth in percent (SGR / terminal g; Justified only)
 #' @param industry_band list(low, mid, high) or numeric length 2–3
 #' @param hist_pb numeric vector of trailing P/B observations (optional)
+#' @param include_justified if FALSE, skip Justified (ROE−g)/(Ke−g) — no SGR needed
+#' @param include_industry if FALSE, ignore industry_band even when provided
+#' @param include_history if FALSE, ignore hist_pb
 derive_pb_targets <- function(roe_pct = NA_real_, ke_pct = NA_real_, g_pct = NA_real_,
                               industry_band = NULL, hist_pb = NULL,
-                              clamp = c(0.3, 6)) {
+                              clamp = c(0.3, 6),
+                              include_justified = TRUE,
+                              include_industry = TRUE,
+                              include_history = TRUE) {
   lo_c <- clamp[1]; hi_c <- clamp[2]
   .clamp <- function(x) {
     x <- suppressWarnings(as.numeric(x)[1])
@@ -1885,7 +1894,7 @@ derive_pb_targets <- function(roe_pct = NA_real_, ke_pct = NA_real_, g_pct = NA_
 
   # Industry prior
   ind_lo <- ind_mid <- ind_hi <- NA_real_
-  if (!is.null(industry_band)) {
+  if (isTRUE(include_industry) && !is.null(industry_band)) {
     if (is.list(industry_band)) {
       ind_lo <- suppressWarnings(as.numeric(industry_band$low %||% industry_band[[1]])[1])
       ind_hi <- suppressWarnings(as.numeric(industry_band$high %||% industry_band[[2]])[1])
@@ -1901,22 +1910,26 @@ derive_pb_targets <- function(roe_pct = NA_real_, ke_pct = NA_real_, g_pct = NA_
     }
   }
 
-  # Justified P/B ≈ (ROE − g) / (Ke − g)  [levels, not percent]
+  # Justified P/B ≈ (ROE − g) / (Ke − g)  [levels, not percent]; needs SGR/g
   just <- NA_real_
-  roe <- suppressWarnings(as.numeric(roe_pct)[1]) / 100
-  ke  <- suppressWarnings(as.numeric(ke_pct)[1]) / 100
-  g   <- suppressWarnings(as.numeric(g_pct)[1]) / 100
-  if (is.finite(roe) && is.finite(ke) && is.finite(g) && ke > g) {
-    just <- .clamp((roe - g) / (ke - g))
+  if (isTRUE(include_justified)) {
+    roe <- suppressWarnings(as.numeric(roe_pct)[1]) / 100
+    ke  <- suppressWarnings(as.numeric(ke_pct)[1]) / 100
+    g   <- suppressWarnings(as.numeric(g_pct)[1]) / 100
+    if (is.finite(roe) && is.finite(ke) && is.finite(g) && ke > g) {
+      just <- .clamp((roe - g) / (ke - g))
+    }
   }
 
   # History percentiles
   hist_lo <- hist_mid <- hist_hi <- NA_real_
-  hp <- suppressWarnings(as.numeric(hist_pb))
-  hp <- hp[is.finite(hp) & hp > 0]
-  if (length(hp) >= 4) {
-    qs <- stats::quantile(hp, probs = c(0.25, 0.50, 0.75), names = FALSE, na.rm = TRUE)
-    hist_lo <- .clamp(qs[1]); hist_mid <- .clamp(qs[2]); hist_hi <- .clamp(qs[3])
+  if (isTRUE(include_history)) {
+    hp <- suppressWarnings(as.numeric(hist_pb))
+    hp <- hp[is.finite(hp) & hp > 0]
+    if (length(hp) >= 4) {
+      qs <- stats::quantile(hp, probs = c(0.25, 0.50, 0.75), names = FALSE, na.rm = TRUE)
+      hist_lo <- .clamp(qs[1]); hist_mid <- .clamp(qs[2]); hist_hi <- .clamp(qs[3])
+    }
   }
 
   sources <- list()
@@ -1930,6 +1943,11 @@ derive_pb_targets <- function(roe_pct = NA_real_, ke_pct = NA_real_, g_pct = NA_
   if (!length(present)) {
     # hard fallback
     base <- if (is.finite(ind_mid)) ind_mid else 1.4
+    note_fb <- if (!isTRUE(include_justified) && isTRUE(include_industry)) {
+      "無可用產業／歷史來源，退回通用區間（本模式不使用 Justified／SGR）"
+    } else {
+      "無可用 Justified／產業／歷史來源，退回通用區間"
+    }
     return(list(
       low = .clamp(if (is.finite(ind_lo)) ind_lo else base * 0.75),
       mid = .clamp(base),
@@ -1937,7 +1955,7 @@ derive_pb_targets <- function(roe_pct = NA_real_, ke_pct = NA_real_, g_pct = NA_
       justified = just, industry_low = ind_lo, industry_mid = ind_mid, industry_high = ind_hi,
       history_low = hist_lo, history_mid = hist_mid, history_high = hist_hi,
       weights_used = character(0),
-      source_note = "無可用 Justified／產業／歷史來源，退回通用區間"
+      source_note = note_fb
     ))
   }
   ww <- wmap[present]
@@ -2040,6 +2058,7 @@ score_valuation_confidence <- function(confidence_inputs = list(),
     "ddm" = "DDM",
     "pb" = "P/B",
     "ri" = "RI",
+    "nav" = "NAV",
     as.character(key %||% "N/A")
   )
 }

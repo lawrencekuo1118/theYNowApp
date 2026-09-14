@@ -97,6 +97,7 @@ decision_momentum_panel_ui <- function(id) {
 # -------------------------------------------
 decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_val_ddm, current_price, hist_price_data, industry_text,
                             intrinsic_val_pb = reactive(NA),
+                            intrinsic_val_nav = reactive(NA),
                             model_rec = reactive(NULL),
                             primary_band = reactive(NULL),
                             secondary_point = reactive(NA),
@@ -137,8 +138,11 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       dcf_v <- .pick_num(tryCatch(intrinsic_val_dcf(), error = function(e) NA))
       ddm_v <- .pick_num(tryCatch(intrinsic_val_ddm(), error = function(e) NA))
       pb_v  <- .pick_num(tryCatch(intrinsic_val_pb(), error = function(e) NA))
-      base <- switch(prim, "dcf" = dcf_v, "ddm" = ddm_v, "pb" = pb_v, "ri" = NA_real_, dcf_v)
-      if (is.na(base)) base <- if (!is.na(dcf_v)) dcf_v else if (!is.na(ddm_v)) ddm_v else pb_v
+      nav_v <- .pick_num(tryCatch(intrinsic_val_nav(), error = function(e) NA))
+      base <- switch(prim, "dcf" = dcf_v, "ddm" = ddm_v, "pb" = pb_v, "nav" = nav_v, "ri" = NA_real_, dcf_v)
+      if (is.na(base)) {
+        base <- if (!is.na(dcf_v)) dcf_v else if (!is.na(ddm_v)) ddm_v else if (!is.na(nav_v)) nav_v else pb_v
+      }
       list(bear = NA_real_, base = base, bull = NA_real_, label = .model_label(prim))
     })
 

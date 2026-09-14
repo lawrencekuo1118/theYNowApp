@@ -1,7 +1,8 @@
 # ==========================================
-# pb_asset_module.R - P/B／資產估值法
-# 專治：金融股、保險、控股集團、負 FCF 但帳面淨值可信的企業（如 BRK-B）
-# 核心：合理價 = BVPS × 目標本淨比 (Target P/B)
+# pb_asset_module.R - P/B 相對估值（倍數）
+# 合理價 = (BVPS／TBVPS／NAVPS) × 目標本淨比
+# 目標來源：產業／歷史倍數，或 Justified P/B（需 ROE、Ke、SGR／g）
+# 純 NAV（無倍數）請用獨立 NAV 模型，勿與此混淆。
 # ==========================================
 
 # ==========================================
@@ -21,7 +22,7 @@ pb_asset_module_ui <- function(id) {
                             column(3, valueBoxOutput(ns("vbx_mkt_pb"), width = 12))
                           ),
                           fluidRow(
-                            div("Fair Price = (BVPS / TBVPS / NAVPS) × Target P/B　｜　NAV = Equity − holdco discount × investments",
+                            div("Fair Price = (BVPS / TBVPS / NAVPS) × Target P/B　｜　純 NAV（無倍數）請用側邊「資產基礎法 → NAV」",
                                 style = "font-size: 16px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;")
                           ),
                           fluidRow(
@@ -89,6 +90,17 @@ pb_asset_module_ui <- function(id) {
 
                  tabPanel("目標本淨比", value = "target_pb", icon = icon("bullseye"),
                           h4(tags$b("目標本淨比假設")),
+                          radioButtons(
+                            ns("target_mode"),
+                            label = tags$span(style = "font-weight:bold;", "目標倍數來源"),
+                            choices = c(
+                              "產業／歷史倍數（無需 SGR）" = "multiples",
+                              "Justified P/B（需 ROE、Ke、SGR／g）" = "justified"
+                            ),
+                            selected = APP_DEFAULTS$pb_target_mode %||% "justified",
+                            inline = TRUE
+                          ),
+                          uiOutput(ns("ui_target_mode_help")),
                           fluidRow(
                             column(4, numericInput(ns("pb_low"),  "保守 P/B (×)", value = APP_DEFAULTS$pb_low,  step = 0.05, min = 0.1)),
                             column(4, numericInput(ns("pb_mid"),  "基準 P/B (×)", value = APP_DEFAULTS$pb_mid,  step = 0.05, min = 0.1)),
@@ -98,7 +110,7 @@ pb_asset_module_ui <- function(id) {
                           fluidRow(
                             column(12,
                                    checkboxInput(ns("use_industry_pb"),
-                                                 tags$span(style = "font-weight: bold;", "納入產業本淨比（與 Justified／歷史一併計算）"),
+                                                 tags$span(style = "font-weight: bold;", "納入產業本淨比"),
                                                  value = APP_DEFAULTS$pb_use_industry)
                             )
                           ),
@@ -216,21 +228,36 @@ pb_asset_module_server <- function(id,
 
     pb_targets_derived <- reactive({
       ind_band <- if (isTRUE(input$use_industry_pb)) industry_pb_band() else NULL
+      use_just <- identical(as.character(input$target_mode %||% "justified")[1], "justified")
       derive_pb_targets(
-        roe_pct = current_roe_pct(),
-        ke_pct = suppressWarnings(as.numeric(central_ke())[1]) * 100,
-        g_pct = suppressWarnings(as.numeric(central_g_pct())[1]),
+        roe_pct = if (isTRUE(use_just)) current_roe_pct() else NA_real_,
+        ke_pct = if (isTRUE(use_just)) suppressWarnings(as.numeric(central_ke())[1]) * 100 else NA_real_,
+        g_pct = if (isTRUE(use_just)) suppressWarnings(as.numeric(central_g_pct())[1]) else NA_real_,
         industry_band = ind_band,
-        hist_pb = hist_pb_series()
+        hist_pb = hist_pb_series(),
+        include_justified = isTRUE(use_just),
+        include_industry = isTRUE(input$use_industry_pb),
+        include_history = TRUE
       )
     })
 
     shares_resolve_note <- reactiveVal(NULL)
     pb_source_note <- reactiveVal("")
 
+    output$ui_target_mode_help <- renderUI({
+      mode <- as.character(input$target_mode %||% "justified")[1]
+      txt <- if (identical(mode, "multiples")) {
+        "本模式只用產業帶與／或歷史 P/B 合成目標倍數，不套用 Justified，亦不需要 SGR。"
+      } else {
+        "Justified P/B ≈ (ROE − g)/(Ke − g)；g 取中央 SGR。可再與產業／歷史合成。"
+      }
+      tags$p(style = "font-size:12px; color:#64748b; margin:0 0 10px 0;", txt)
+    })
+
     output$ui_pb_source_note <- renderUI({
       d <- tryCatch(pb_targets_derived(), error = function(e) NULL)
       note <- pb_source_note()
+      mode <- as.character(input$target_mode %||% "justified")[1]
       if (is.null(d) || !is.finite(suppressWarnings(as.numeric(d$mid)[1]))) {
         if (is.null(note) || !nzchar(note)) return(NULL)
         return(tags$div(
@@ -242,12 +269,23 @@ pb_asset_module_server <- function(id,
         x <- suppressWarnings(as.numeric(x)[1])
         if (!is.finite(x)) "—" else sprintf("%.2f", x)
       }
+      head_line <- if (identical(mode, "multiples")) {
+        sprintf(
+          "P/B 來源：產業中位 <b>%s</b>｜歷史中位 <b>%s</b>（不含 Justified／SGR）→ 建議 Bear/Base/Bull = <b>%.2f / %.2f / %.2f</b>",
+          fmt(d$industry_mid), fmt(d$history_mid),
+          as.numeric(d$low), as.numeric(d$mid), as.numeric(d$high)
+        )
+      } else {
+        sprintf(
+          "P/B 來源：Justified <b>%s</b>（ROE/Ke/g）｜產業中位 <b>%s</b>｜歷史中位 <b>%s</b> → 建議 Bear/Base/Bull = <b>%.2f / %.2f / %.2f</b>",
+          fmt(d$justified), fmt(d$industry_mid), fmt(d$history_mid),
+          as.numeric(d$low), as.numeric(d$mid), as.numeric(d$high)
+        )
+      }
       tags$div(
         style = "margin: 0 0 10px 0; padding: 8px 10px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; color: #1e3a8a; font-size: 12px;",
-        HTML(sprintf(
-          "P/B 來源：Justified <b>%s</b>（ROE/Ke）｜產業中位 <b>%s</b>｜歷史中位 <b>%s</b> → 建議 Bear/Base/Bull = <b>%.2f / %.2f / %.2f</b>%s",
-          fmt(d$justified), fmt(d$industry_mid), fmt(d$history_mid),
-          as.numeric(d$low), as.numeric(d$mid), as.numeric(d$high),
+        HTML(paste0(
+          head_line,
           if (nzchar(d$source_note %||% "")) paste0("<br/>", htmltools::htmlEscape(d$source_note)) else ""
         ))
       )
@@ -390,12 +428,11 @@ pb_asset_module_server <- function(id,
       )
     })
     
-    observeEvent(list(input$use_industry_pb, industry_choice(), industry_text(),
+    observeEvent(list(input$use_industry_pb, input$target_mode, industry_choice(), industry_text(),
                       current_roe_pct(), central_ke(), central_g_pct(), hist_pb_series(),
                       input$bvps), {
       tgt <- pb_targets_derived()
       if (is.null(tgt) || !is.finite(tgt$mid)) return()
-      # Always refresh when fundamentals/industry/history change (v13 derived multiples)
       updateNumericInput(session, "pb_low",  value = round(tgt$low, 2))
       updateNumericInput(session, "pb_mid",  value = round(tgt$mid, 2))
       updateNumericInput(session, "pb_high", value = round(tgt$high, 2))
@@ -415,9 +452,10 @@ pb_asset_module_server <- function(id,
       }
       updateSelectInput(session, "basis", selected = APP_DEFAULTS$pb_basis)
       updateCheckboxInput(session, "use_industry_pb", value = APP_DEFAULTS$pb_use_industry)
+      updateRadioButtons(session, "target_mode", selected = APP_DEFAULTS$pb_target_mode %||% "justified")
       updateNumericInput(session, "holdco_discount", value = APP_DEFAULTS$pb_holdco_discount * 100)
       sync_book_values()
-      showNotification("P/B 參數已依 Justified／產業／歷史重估", type = "message")
+      showNotification("P/B 參數已依目前目標來源重估", type = "message")
     })
     
     output$alert_missing_bv <- renderUI({
@@ -657,6 +695,7 @@ pb_asset_module_server <- function(id,
       roe0 <- tryCatch(current_roe_pct(), error = function(e) NA_real_)
       ke0 <- suppressWarnings(as.numeric(central_ke())[1]) * 100
       g0 <- suppressWarnings(as.numeric(central_g_pct())[1])
+      use_just <- identical(as.character(input$target_mode %||% "justified")[1], "justified")
       ind_band <- if (isTRUE(input$use_industry_pb)) {
         tryCatch(industry_pb_band(), error = function(e) NULL)
       } else {
@@ -665,21 +704,31 @@ pb_asset_module_server <- function(id,
       hist0 <- tryCatch(hist_pb_series(), error = function(e) NULL)
       tgt0 <- tryCatch(
         derive_pb_targets(
-          roe_pct = roe0, ke_pct = ke0, g_pct = g0,
-          industry_band = ind_band, hist_pb = hist0
+          roe_pct = if (isTRUE(use_just)) roe0 else NA_real_,
+          ke_pct = if (isTRUE(use_just)) ke0 else NA_real_,
+          g_pct = if (isTRUE(use_just)) g0 else NA_real_,
+          industry_band = ind_band, hist_pb = hist0,
+          include_justified = isTRUE(use_just),
+          include_industry = isTRUE(input$use_industry_pb),
+          include_history = TRUE
         ),
         error = function(e) NULL
       )
       just0 <- if (!is.null(tgt0)) suppressWarnings(as.numeric(tgt0$justified)[1]) else NA_real_
       .p_tgt <- function(roe = roe0, ke = ke0, g = g0, band = ind_band) {
         d <- derive_pb_targets(
-          roe_pct = roe, ke_pct = ke, g_pct = g,
-          industry_band = band, hist_pb = hist0
+          roe_pct = if (isTRUE(use_just)) roe else NA_real_,
+          ke_pct = if (isTRUE(use_just)) ke else NA_real_,
+          g_pct = if (isTRUE(use_just)) g else NA_real_,
+          industry_band = band, hist_pb = hist0,
+          include_justified = isTRUE(use_just),
+          include_industry = isTRUE(input$use_industry_pb),
+          include_history = TRUE
         )
         mid <- suppressWarnings(as.numeric(d$mid)[1])
         .pb_formula_p(basis = 1, pb = mid)
       }
-      if (is.finite(just0)) {
+      if (isTRUE(use_just) && is.finite(just0)) {
         if (.param_sensitivity_rel_ok(roe0)) {
           rows[[length(rows) + 1]] <- .param_sensitivity_infl_row(
             "Justified ROE", roe0, "%", v0,

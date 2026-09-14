@@ -1,5 +1,5 @@
 # test_tpex_financial_summary.R — 櫃買財務資料簡報 fallback（fixture + optional live smoke）
-# Run: Rscript app_15.0/tests/test_tpex_financial_summary.R
+# Run: Rscript app_16.0/tests/test_tpex_financial_summary.R
 
 Sys.setenv(YNOW_DEBUG_SKIP_PY = "1")  # avoid shiny/reticulate init side effects for R helpers
 args <- commandArgs(trailingOnly = FALSE)
@@ -101,7 +101,7 @@ tryCatch({
   py_ok <- TRUE
 }, error = function(e) {
   cat("NOTE: reticulate/python skip:", conditionMessage(e), "\n")
-  cat("      Run: python3 -c 'from tpex_financial_summary import *' from app_15.0/\n")
+  cat("      Run: python3 -c 'from tpex_financial_summary import *' from app_16.0/\n")
 })
 
 # Regression: delayed ensure must leave scrape_* callable AFTER ensure returns

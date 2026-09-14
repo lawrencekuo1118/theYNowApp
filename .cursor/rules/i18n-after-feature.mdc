@@ -14,7 +14,7 @@ alwaysApply: true
 1. **Translate** all new user-facing strings into:
    - **en-US** (American English)
    - **zh-TW** (Taiwan Traditional Chinese)
-2. **Register both** in `app_15.0/ui_locale.R` under `.UI_STRINGS$en` and `.UI_STRINGS$zh-TW` (same keys).
+2. **Register both** in `app_16.0/ui_locale.R` under `.UI_STRINGS$en` and `.UI_STRINGS$zh-TW` (same keys).
 3. **Wire through locale**, not hardcoded one language:
    - Server: `ui_str(...)` / `.push_ui_locale` / market → locale push
    - Client: `applyUiLocale` / `ynowUiLocale` handlers in `ynow_ui.R`

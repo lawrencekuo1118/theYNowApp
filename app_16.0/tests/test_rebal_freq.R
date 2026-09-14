@@ -1,4 +1,4 @@
-app_dir <- if (file.exists("../rebal_freq.R")) normalizePath("..") else if (file.exists("app_15.0/rebal_freq.R")) file.path(getwd(), "app_15.0") else stop("no rebal_freq.R")
+app_dir <- if (file.exists("../rebal_freq.R")) normalizePath("..") else if (file.exists("app_16.0/rebal_freq.R")) file.path(getwd(), "app_16.0") else stop("no rebal_freq.R")
 source(file.path(app_dir, "rebal_freq.R"), local = FALSE)
 check <- function(label, cond) { if (!isTRUE(cond)) stop(sprintf("FAIL: %s", label)); message("OK: ", label) }
 d_daily <- seq(as.Date("2019-01-02"), as.Date("2024-12-31"), by = "1 day")

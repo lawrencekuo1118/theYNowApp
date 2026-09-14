@@ -123,7 +123,7 @@ APP_DEFAULTS <- list(
   ri_payout       = 40,                      # 財報載入前占位；載入後覆寫
   roe_method      = "constant",              # constant / linear / industry / custom
 
-  # --- 7. P/B／資產法 ---
+  # --- 7. P/B（相對估值／倍數）---
   pb_bvps         = NA,
   pb_tbvps        = NA,
   pb_low          = round(pb_lo, 2),
@@ -131,7 +131,15 @@ APP_DEFAULTS <- list(
   pb_high         = round(pb_hi, 2),
   pb_basis        = "bvps",
   pb_use_industry = TRUE,
-  pb_holdco_discount = 0,                # 控股折價套用在已辨識投資科目（0–50%）
+  pb_holdco_discount = 0,                # 可選 NAVPS 基礎時的控股折價（0–50%）
+  # multiples = 產業／歷史；justified = Justified＋可選產業／歷史（需 SGR）
+  pb_target_mode  = "justified",
+
+  # --- 7b. 純 NAV（獨立模型；帳面控股，非市場 SOTP）---
+  nav_holdco_discount = 0,
+  nav_low         = 0.90,
+  nav_mid         = 1.00,
+  nav_high        = 1.05,
 
   # --- 8. FCF 投影：CapEx 暴衝平滑（使用者可於 FCF 分頁覆寫）---
   # 預設為工程啟發式，非學術或監管標準；見 FCF 分頁說明。

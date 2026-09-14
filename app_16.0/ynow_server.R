@@ -68,6 +68,7 @@ server <- function(input, output, session) {
   auto_calc_primary_sig <- reactiveVal("")
   auto_calc_ddm_pulse <- reactiveVal(0L)
   auto_calc_pb_pulse <- reactiveVal(0L)
+  auto_calc_nav_pulse <- reactiveVal(0L)
 
   # ==========================================
   # 🚀 股票代號：僅主區 Ticker / Stock Code（sc + Search）
@@ -1008,7 +1009,7 @@ server <- function(input, output, session) {
   .empty_model_rec <- function(summary_method, reason, company_type = "pending") {
     list(
       company_type = company_type, primary = "", secondary = NULL,
-      ddm = FALSE, dcf = FALSE, pb = FALSE, ri = FALSE, tags = character(0),
+      ddm = FALSE, dcf = FALSE, pb = FALSE, ri = FALSE, nav = FALSE, tags = character(0),
       summary_method = summary_method, reason = reason,
       suggest_two_stage = FALSE,
       confidence_inputs = list(data_complete = FALSE)
@@ -1107,7 +1108,8 @@ server <- function(input, output, session) {
       dcf_calculator = list(on = identical(prim, "dcf")),
       ddm_calculator = list(on = identical(prim, "ddm")),
       pb_calculator = list(on = identical(prim, "pb")),
-      ri_calculator = list(on = identical(prim, "ri"))
+      ri_calculator = list(on = identical(prim, "ri")),
+      nav_calculator = list(on = identical(prim, "nav"))
     )
     session$sendCustomMessage("ynowSidebarBadges", payload)
   })
@@ -1143,7 +1145,7 @@ server <- function(input, output, session) {
       bg <- if (identical(role, "主模型")) "#fffaf2" else if (identical(role, "副模型")) "#f7f9fc" else "#fff"
       badge_bg <- if (identical(role, "主模型")) color else if (identical(role, "副模型")) "#6c757d" else "#999"
       tags$div(
-        class = paste("col-sm-3", if (isTRUE(active)) "ynow-model-rec-active" else ""),
+        class = paste("col-sm-2", if (isTRUE(active)) "ynow-model-rec-active" else ""),
         tags$div(
           style = paste0(
             "border:1px solid ", border_col, ";",
@@ -1204,8 +1206,9 @@ server <- function(input, output, session) {
       fluidRow(
         make_card("DCF", "dcf", "calculator", "#00a65a", "FCFF／WACC 或 FCFE／Ke", "適合 FCF 為正且相對穩定的企業。"),
         make_card("DDM", "ddm", "hand-holding-usd", "#f39c12", "Gordon 或二階段 P0 = PV(股利)", "適合持續且穩定配息的企業。"),
-        make_card("P/B", "pb", "landmark", "#3c8dbc", "P = (BVPS／TBVPS／NAVPS) × 目標 P/B", "金融／保險／控股；倍數來自 Justified＋產業＋歷史。"),
-        make_card("RI", "ri", "gem", "#605ca8", "Value = Book Value + Σ Residual Income / (1+Ke)^t", "適合帳面價值與 ROE 具參考性的企業。")
+        make_card("RI", "ri", "gem", "#605ca8", "Value = Book Value + Σ Residual Income / (1+Ke)^t", "適合帳面價值與 ROE 具參考性的企業。"),
+        make_card("NAV", "nav", "sitemap", "#27ae60", "P = NAVPS × NAV multiple", "控股／綜合：帳面控股 NAV（非市場 SOTP）；無需 SGR。"),
+        make_card("P/B", "pb", "landmark", "#3c8dbc", "P = (BVPS／TBVPS／NAVPS) × 目標 P/B", "相對估值：產業／歷史倍數，或 Justified（需 SGR）。")
       )
     )
   })
@@ -1293,6 +1296,15 @@ server <- function(input, output, session) {
       c("P/B", "P/B Low", .snapshot_value(input[["mod_pb-pb_low"]]), "Price = BVPS × P/B"),
       c("P/B", "P/B Mid", .snapshot_value(input[["mod_pb-pb_mid"]]), "Price = BVPS × P/B"),
       c("P/B", "P/B High", .snapshot_value(input[["mod_pb-pb_high"]]), "Price = BVPS × P/B"),
+      c("P/B", "Target mode", .snapshot_value(input[["mod_pb-target_mode"]]), "multiples | justified"),
+      c("NAV", "NAVPS", .snapshot_value(input[["mod_nav-navps"]]), "Book holdco NAV per share"),
+      c("NAV", "Holdco discount (%)", .snapshot_value(input[["mod_nav-holdco_discount"]]), "Applied to identified investment lines"),
+      c("NAV", "NAV Low / Mid / High", paste(
+        .snapshot_value(input[["mod_nav-nav_low"]]),
+        .snapshot_value(input[["mod_nav-nav_mid"]]),
+        .snapshot_value(input[["mod_nav-nav_high"]]),
+        sep = " / "
+      ), "Price = NAVPS × NAV multiple"),
       c("Backtest", "Net Margin Threshold (%)", .snapshot_value(input$bt_net_margin), "持倉回測條件: Net Margin >= threshold"),
       c("Backtest", "Revenue Growth Threshold (%)", .snapshot_value(input$bt_rev_growth), "持倉回測條件: Revenue Growth >= threshold"),
       c("Backtest", "EPS / NI Growth Threshold (%)", .snapshot_value(input$bt_eps_growth), "持倉回測條件: EPS/NI Growth >= threshold"),
@@ -1827,6 +1839,9 @@ server <- function(input, output, session) {
     intrinsic_val_pb = reactive({
       if (!is.null(pb_results$pb_price)) pb_results$pb_price() else NA
     }),
+    intrinsic_val_nav = reactive({
+      if (!is.null(nav_results$nav_price)) nav_results$nav_price() else NA
+    }),
     current_price = reactive({
       req(scraped_market_cap())
       scraped_market_cap()$price
@@ -2299,6 +2314,27 @@ server <- function(input, output, session) {
   )
 
   # ==========================================
+  # 呼叫純 NAV 模組
+  # ==========================================
+  nav_results <- nav_module_server(
+    id = "mod_nav",
+    auto_calc_pulse = reactive(auto_calc_nav_pulse()),
+    d_balance_sheet = d_balance_sheet,
+    current_price = reactive({
+      tryCatch(scraped_market_cap()$price, error = function(e) NA_real_)
+    }),
+    market_cap = reactive({
+      extract_quote_price_mcap(summary_data())$market_cap
+    }),
+    quote_price = reactive({
+      extract_quote_price_mcap(summary_data())$price
+    }),
+    current_ticker = current_ticker,
+    quote_currency = quote_currency,
+    financial_currency = statement_currency
+  )
+
+  # ==========================================
   # v13：股數級距（DCF／RI／敏感度共用）
   # ==========================================
   .valuation_shares <- reactive({
@@ -2618,6 +2654,15 @@ server <- function(input, output, session) {
     list(bear = NA_real_, base = mid, bull = NA_real_, label = "P/B")
   })
 
+  nav_scenario_band <- reactive({
+    band <- tryCatch(nav_results$nav_band(), error = function(e) NULL)
+    if (!is.null(band) && is.finite(band$mid)) {
+      return(list(bear = band$low, base = band$mid, bull = band$high, label = "NAV"))
+    }
+    mid <- tryCatch(nav_results$nav_price(), error = function(e) NA_real_)
+    list(bear = NA_real_, base = mid, bull = NA_real_, label = "NAV")
+  })
+
   .model_point <- function(key) {
     switch(
       as.character(key %||% ""),
@@ -2632,6 +2677,10 @@ server <- function(input, output, session) {
       "pb" = {
         b <- tryCatch(pb_scenario_band(), error = function(e) NULL)
         if (!is.null(b) && is.finite(b$base)) b$base else tryCatch(pb_results$pb_price(), error = function(e) NA_real_)
+      },
+      "nav" = {
+        b <- tryCatch(nav_scenario_band(), error = function(e) NULL)
+        if (!is.null(b) && is.finite(b$base)) b$base else tryCatch(nav_results$nav_price(), error = function(e) NA_real_)
       },
       "ri" = {
         b <- tryCatch(ri_scenario_band(), error = function(e) NULL)
@@ -2649,6 +2698,7 @@ server <- function(input, output, session) {
       "dcf" = dcf_scenario_band(),
       "ddm" = ddm_scenario_band(),
       "pb" = pb_scenario_band(),
+      "nav" = nav_scenario_band(),
       "ri" = ri_scenario_band(),
       dcf_scenario_band()
     )
@@ -5380,6 +5430,7 @@ server <- function(input, output, session) {
     auto_calc_primary_sig("")
     auto_calc_ddm_pulse(0L)
     auto_calc_pb_pulse(0L)
+    auto_calc_nav_pulse(0L)
   }, ignoreNULL = TRUE, ignoreInit = TRUE)
 
   .auto_calc_primary_ready <- function(prim) {
@@ -5422,6 +5473,13 @@ server <- function(input, output, session) {
       return(is.finite(lo) && is.finite(mid) && is.finite(hi) &&
         lo > 0 && mid > 0 && hi > 0)
     }
+    if (identical(prim, "nav")) {
+      bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
+      if (is.null(bs) || !is.data.frame(bs) || nrow(bs) == 0L) return(FALSE)
+      navps <- suppressWarnings(as.numeric(input[["mod_nav-navps"]])[1])
+      mid <- suppressWarnings(as.numeric(input[["mod_nav-nav_mid"]])[1])
+      return(is.finite(navps) && navps > 0 && is.finite(mid) && mid > 0)
+    }
     FALSE
   }
 
@@ -5433,6 +5491,8 @@ server <- function(input, output, session) {
       auto_calc_ddm_pulse(isolate(auto_calc_ddm_pulse()) + 1L)
     } else if (identical(prim, "pb")) {
       auto_calc_pb_pulse(isolate(auto_calc_pb_pulse()) + 1L)
+    } else if (identical(prim, "nav")) {
+      auto_calc_nav_pulse(isolate(auto_calc_nav_pulse()) + 1L)
     }
     invisible(NULL)
   }
@@ -5443,7 +5503,7 @@ server <- function(input, output, session) {
     req(nzchar(tk))
     rec <- model_sidebar_rec()
     prim <- as.character(rec$primary %||% "")[1]
-    req(nzchar(prim), prim %in% c("dcf", "ddm", "pb", "ri"))
+    req(nzchar(prim), prim %in% c("dcf", "ddm", "pb", "ri", "nav"))
 
     sig <- paste(tk, prim, sep = "|")
     if (identical(auto_calc_primary_sig(), sig)) return()
@@ -6027,14 +6087,15 @@ server <- function(input, output, session) {
       dcf = list(col = "FV_DCF", label = "DCF", color = "#c0392b"),
       ddm = list(col = "FV_DDM", label = "DDM", color = "#8e44ad"),
       ri  = list(col = "FV_RI",  label = "RI",  color = "#16a085"),
-      pb  = list(col = "FV_PB",  label = "P/B", color = "#e67e22")
+      pb  = list(col = "FV_PB",  label = "P/B", color = "#e67e22"),
+      nav = list(col = "FV_NAV", label = "NAV", color = "#27ae60")
     )
   }
 
   .bt_raw_fv_models <- reactive({
     sel <- input$bt_fv_models
     if (is.null(sel) || length(sel) < 1) return(character(0))
-    ord <- c("dcf", "ddm", "ri", "pb")
+    ord <- c("dcf", "ddm", "ri", "pb", "nav")
     intersect(ord, as.character(sel))
   })
 
@@ -6112,6 +6173,10 @@ server <- function(input, output, session) {
     }
     if (!is.finite(pb_mid) || pb_mid <= 0) pb_mid <- APP_DEFAULTS$pb_mid
 
+    # NAV tab (module id mod_nav)
+    nav_mid <- suppressWarnings(as.numeric(input[["mod_nav-nav_mid"]])[1])
+    if (!is.finite(nav_mid) || nav_mid <= 0) nav_mid <- APP_DEFAULTS$nav_mid %||% 1
+
     # DDM tab
     ddm_g <- suppressWarnings(as.numeric(input[["mod_ddm-g"]])[1])
     if (!is.finite(ddm_g)) ddm_g <- sgr * 100
@@ -6151,7 +6216,7 @@ server <- function(input, output, session) {
     if (!is.finite(sgr)) sgr <- APP_DEFAULTS$sgr / 100
     if (!is.finite(g_explicit)) g_explicit <- sgr
     fv_models <- .bt_selected_fv_models()
-    fv_models <- fv_models[fv_models %in% c("dcf", "ddm", "ri", "pb")]
+    fv_models <- fv_models[fv_models %in% c("dcf", "ddm", "ri", "pb", "nav")]
     # 未勾選：保持空向量，策略 fair_value／MOS = NA（不暗設 DCF）
 
     rf <- suppressWarnings(as.numeric(input$capm_rf)[1]) / 100
@@ -6202,7 +6267,7 @@ server <- function(input, output, session) {
 
     list(
       wacc = wacc, ke = ke, sgr = sgr, g_explicit = g_explicit,
-      n_years = n_years, pb_mid = pb_mid, ddm_g = ddm_g, ddm_ke = ddm_ke,
+      n_years = n_years, pb_mid = pb_mid, nav_mid = nav_mid, ddm_g = ddm_g, ddm_ke = ddm_ke,
       ddm_mode = as.character(input[["mod_ddm-ddm_mode"]] %||% APP_DEFAULTS$ddm_mode)[1],
       ddm_g_stage1 = {
         v <- suppressWarnings(as.numeric(input[["mod_ddm-g_stage1"]])[1])
@@ -6806,7 +6871,7 @@ server <- function(input, output, session) {
         models <- .bt_raw_fv_models()
         marker_col <- if (length(models) == 1L) {
           switch(models[1],
-            "dcf" = "fv_dcf", "ddm" = "fv_ddm", "ri" = "fv_ri", "pb" = "fv_pb",
+            "dcf" = "fv_dcf", "ddm" = "fv_ddm", "ri" = "fv_ri", "pb" = "fv_pb", "nav" = "fv_nav",
             "fair_value")
         } else {
           "fair_value"

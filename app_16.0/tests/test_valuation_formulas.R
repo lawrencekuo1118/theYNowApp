@@ -10,6 +10,7 @@ test_dir <- if (length(file_arg) == 1L && nzchar(file_arg)) {
 app_dir <- normalizePath(file.path(test_dir, ".."), mustWork = TRUE)
 source(file.path(app_dir, "setup.R"), local = FALSE)
 source(file.path(app_dir, "ri_module.R"), local = FALSE)
+source(file.path(app_dir, "nav_module.R"), local = FALSE)
 source(file.path(app_dir, "backtest_module.R"), local = FALSE)
 
 fail <- 0L
@@ -44,6 +45,17 @@ check("DDM two-stage n=2 closed form", approx_eq(p_ts, p_ts_closed, 1e-10))
 
 # P/B: P = BVPS × target
 check("P/B linear", approx_eq(.pb_formula_p(basis = 12, pb = 1.5), 18))
+
+# Pure NAV: P = NAVPS × multiple
+check("NAV linear", approx_eq(.nav_formula_p(navps = 20, multiple = 0.9), 18))
+
+# derive_pb_targets without Justified (multiples mode)
+tgt_m <- derive_pb_targets(
+  roe_pct = 15, ke_pct = 10, g_pct = 3,
+  industry_band = list(low = 1.0, mid = 1.4, high = 1.8),
+  include_justified = FALSE, include_industry = TRUE, include_history = FALSE
+)
+check("multiples mode skips justified", !is.finite(tgt_m$justified) && approx_eq(tgt_m$mid, 1.4, 1e-6))
 
 # FCFE conversion: FCFE = FCFF − Int(1−T) + g×debt (debt then compounds)
 fcfe_path <- fcff_to_fcfe(c(100, 110), interest_after_tax = 10, debt0 = 200, g_path = 0.05)

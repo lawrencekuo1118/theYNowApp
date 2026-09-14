@@ -542,16 +542,23 @@ beta_rolling_section_ui <- function() {
 
        # Tab: P/B 模型解說
        tabPanel("Price-to-Book (P/B)", icon = icon("landmark"),
-                h4(tags$b("本淨比／資產估值法 (P/B)")),
-                p("以每股帳面淨值、有形淨值或控股 NAV 乘上目標本淨比，得到合理價區間。適用銀行、保險、控股等「資產為錨、折現模型前提常不成立」的情境。"),
+                h4(tags$b("本淨比／相對估值 (P/B)")),
+                p("以每股帳面淨值、有形淨值或控股 NAVPS 乘上目標本淨比。目標倍數可來自產業／歷史（無需 SGR），或 Justified P/B（需 ROE、Ke、SGR／g）。純帳面 NAV（無倍數）請用獨立「NAV」模型。"),
                 tags$ul(
                   tags$li(tags$b("$$BVPS = \\frac{Common\\ Equity}{Shares}$$")),
                   tags$li(tags$b("$$TBVPS = \\frac{Common\\ Equity - Goodwill - Intangibles}{Shares}$$")),
-                  tags$li(tags$b("$$NAV = Equity - Holdco\\ Discount \\times Identified\\ Investments$$")),
-                  tags$li(tags$b("$$NAVPS = NAV / Shares;\\quad P = NAVPS \\times Target\\ P/B$$")),
+                  tags$li(tags$b("$$P = (BVPS\\ /\\ TBVPS\\ /\\ NAVPS) \\times Target\\ P/B$$")),
                   tags$li(tags$b("Justified\\ P/B \\approx \\frac{ROE - g}{K_e - g}"))
                 ),
-                p("NAV 為帳面 SOTP：折價只套用在已辨識的投資科目，不是分部市值加總。無獨立投資科目時 NAV＝帳面權益。目標倍數可綜合 Justified（ROE／Ke）、產業中位與歷史中位，輸出 Bear／Base／Bull 三檔。雙重股權／ADR 等「報價股數 ≠ 財報股數」時，與 DCF／RI／回測相同，一律自動約當股數（市值÷股價）。")
+                p("雙重股權／ADR 等「報價股數 ≠ 財報股數」時，與 DCF／RI／回測相同，一律自動約當股數（市值÷股價）。")
+       ),
+       tabPanel("Net Asset Value (NAV)", icon = icon("sitemap"),
+                h4(tags$b("純 NAV（帳面控股淨資產）")),
+                p("評估「現在家底（存量）」：合理價 = NAVPS × 折價／溢價倍數。控股折價只套用在已辨識投資科目；無投資科目時 NAV＝帳面權益。此為帳面拆解，不是市場法分部 SOTP，亦不需要 Justified／SGR。"),
+                tags$ul(
+                  tags$li(tags$b("$$NAV = Equity - Holdco\\ Discount \\times Identified\\ Investments$$")),
+                  tags$li(tags$b("$$P = NAVPS \\times NAV\\ Multiple$$"))
+                )
        )
       )
     )
@@ -712,7 +719,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v15.35</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v16</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -786,10 +793,30 @@ ui <- dashboardPage(
              id = "sidebar_tabs",
              menuItem("Dashboard", tabName = "dashboard", icon = icon("chart-line")),
              menuItem("Get Started", tabName = "get_started", icon = icon("play-circle")),
-             menuItem("DCF-Model", tabName = "dcf_calculator", icon = icon("calculator")),
-             menuItem("DDM", tabName = "ddm_calculator", icon = icon("hand-holding-usd")),
-             menuItem("P/B-Asset", tabName = "pb_calculator", icon = icon("landmark")),
-             menuItem("RI-Model", tabName = "ri_calculator", icon = icon("gem")),
+             menuItem(
+               text = tags$span(id = "ynow_menu_cat_asset", "Asset-Based Approach"),
+               icon = icon("building"),
+               startExpanded = FALSE,
+               menuSubItem(
+                 text = tags$span(id = "ynow_menu_nav", "NAV"),
+                 tabName = "nav_calculator",
+                 icon = icon("sitemap")
+               )
+             ),
+             menuItem(
+               text = tags$span(id = "ynow_menu_cat_income", "Income / Cash Flow Approach"),
+               icon = icon("chart-area"),
+               startExpanded = FALSE,
+               menuSubItem("DCF-Model", tabName = "dcf_calculator", icon = icon("calculator")),
+               menuSubItem("DDM", tabName = "ddm_calculator", icon = icon("hand-holding-usd")),
+               menuSubItem("RI-Model", tabName = "ri_calculator", icon = icon("gem"))
+             ),
+             menuItem(
+               text = tags$span(id = "ynow_menu_cat_relative", "Relative Valuation"),
+               icon = icon("percentage"),
+               startExpanded = FALSE,
+               menuSubItem("P/B", tabName = "pb_calculator", icon = icon("landmark"))
+             ),
              menuItem("YNOW", tabName = "sensitivity", icon = icon("sliders-h")),
              menuItem("Blue Chip", tabName = "bluechip", icon = icon("star")),
              # 歷史基本面驗證（HFV）：理論估值 vs 實際市值 — 非策略回測
@@ -1356,7 +1383,7 @@ ui <- dashboardPage(
               return;
             }
             Shiny.addCustomMessageHandler('ynowSidebarBadges', function (map) {
-              var tabs = ['dcf_calculator', 'ddm_calculator', 'pb_calculator', 'ri_calculator'];
+              var tabs = ['dcf_calculator', 'ddm_calculator', 'pb_calculator', 'ri_calculator', 'nav_calculator'];
               tabs.forEach(function (t) {
                 var on = !!(map && map[t] && map[t].on);
                 setRecBadge(t, on);
@@ -1482,6 +1509,7 @@ ui <- dashboardPage(
               ddm_calculator: s.menu_ddm,
               pb_calculator: s.menu_pb,
               ri_calculator: s.menu_ri,
+              nav_calculator: s.menu_nav,
               sensitivity: s.menu_ynow,
               bluechip: s.menu_bluechip,
               hfv: s.menu_hfv,
@@ -1490,6 +1518,12 @@ ui <- dashboardPage(
             Object.keys(menu).forEach(function (k) {
               if (menu[k]) setMenuLabel(k, menu[k]);
             });
+            var catAsset = document.getElementById('ynow_menu_cat_asset');
+            if (catAsset && s.menu_cat_asset) catAsset.textContent = s.menu_cat_asset;
+            var catIncome = document.getElementById('ynow_menu_cat_income');
+            if (catIncome && s.menu_cat_income) catIncome.textContent = s.menu_cat_income;
+            var catRel = document.getElementById('ynow_menu_cat_relative');
+            if (catRel && s.menu_cat_relative) catRel.textContent = s.menu_cat_relative;
             applyTabLabels((payload && payload.tabs) || {});
             applyBoxHeaders((payload && payload.boxes) || []);
             var hfvTitle = document.getElementById('ynow_hfv_page_title');
@@ -2696,7 +2730,8 @@ ui <- dashboardPage(
             "input.sidebar_tabs == 'dcf_calculator' ||",
             "input.sidebar_tabs == 'ddm_calculator' ||",
             "input.sidebar_tabs == 'pb_calculator' ||",
-            "input.sidebar_tabs == 'ri_calculator'"
+            "input.sidebar_tabs == 'ri_calculator' ||",
+            "input.sidebar_tabs == 'nav_calculator'"
           ),
           class = "ynow-header-years",
           numericInput(
@@ -3410,8 +3445,11 @@ ui <- dashboardPage(
       # 🌟 呼叫 RI 模型分頁介面
       ri_module_ui("mod_ri"),
       
-      # 🌟 呼叫 P/B／資產估值分頁介面
+      # 🌟 呼叫 P/B 相對估值分頁介面
       pb_asset_module_ui("mod_pb"),
+
+      # 🌟 呼叫純 NAV 分頁介面
+      nav_module_ui("mod_nav"),
       
       tabItem(tabName = "sensitivity",
               decision_ui("main_decision")
@@ -3650,7 +3688,8 @@ ui <- dashboardPage(
                       "DCF" = "dcf",
                       "DDM" = "ddm",
                       "RI" = "ri",
-                      "P/B" = "pb"
+                      "P/B" = "pb",
+                      "NAV" = "nav"
                     ),
                     selected = character(0)
                   )
