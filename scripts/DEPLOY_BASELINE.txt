@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12550819
+bundleId=12550890
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=ac65a04
-commit=ac65a04
-short=ac65a04
-message=Merge branch 'cursor/market-btns-stack-left-f4a6': stack US/TW buttons left of navbar
-captured_at=2026-09-14T04:33:28Z
-source_branch=master
+aligned_git=9b92f44
+commit=9b92f44
+short=9b92f44
+message=fix(app_15.0): market buttons 18px each, vertically centered with toggle
+captured_at=2026-09-14T04:59:30Z
+source_branch=cursor/market-btns-18px-center-f4a6
 display_version=v15.17
-note=Canonical live line is app_15.0. Fresh redeploy of master tip (market buttons stacked flush left of sidebar toggle). Bundle 12550819 supersedes 12550795.
+note=Canonical live line is app_15.0. Bundle 12550890: 美股/台股 each 18px, stacked, vertically centered with sidebar toggle (centerDelta=0). Master merge 297c543. Supersedes 12550819.
