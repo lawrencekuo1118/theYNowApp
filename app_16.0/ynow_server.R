@@ -1145,12 +1145,13 @@ server <- function(input, output, session) {
       bg <- if (identical(role, "主模型")) "#fffaf2" else if (identical(role, "副模型")) "#f7f9fc" else "#fff"
       badge_bg <- if (identical(role, "主模型")) color else if (identical(role, "副模型")) "#6c757d" else "#999"
       tags$div(
-        class = paste("col-sm-2", if (isTRUE(active)) "ynow-model-rec-active" else ""),
+        class = paste("ynow-model-card-col", if (isTRUE(active)) "ynow-model-rec-active" else ""),
         tags$div(
+          class = "ynow-model-card",
           style = paste0(
             "border:1px solid ", border_col, ";",
             "border-radius:8px; padding:14px; min-height:170px; background:", bg,
-            "; box-shadow:0 2px 4px rgba(0,0,0,0.04);"
+            "; box-shadow:0 2px 4px rgba(0,0,0,0.04); height:100%;"
           ),
           tags$div(style = paste0("font-size:22px; color:", color, ";"), icon(icon_name)),
           tags$h4(style = "margin:8px 0 4px 0; font-weight:700;", title),
@@ -1185,6 +1186,35 @@ server <- function(input, output, session) {
           margin-bottom: 14px; padding: 10px 12px; border-left: 4px solid #222222;
           background: #f5f5f5; color: #333; font-size: 13px; line-height: 1.5;
         }
+        /* 五卡等寬填滿列（Bootstrap 12 無法整除 5 → flex） */
+        .ynow-model-selector-row {
+          display: flex;
+          flex-wrap: nowrap;
+          align-items: stretch;
+          margin-left: -7.5px;
+          margin-right: -7.5px;
+        }
+        .ynow-model-selector-row > .ynow-model-card-col {
+          flex: 1 1 0;
+          min-width: 0;
+          width: auto;
+          float: none;
+          padding-left: 7.5px;
+          padding-right: 7.5px;
+          box-sizing: border-box;
+        }
+        @media (max-width: 991px) {
+          .ynow-model-selector-row { flex-wrap: wrap; }
+          .ynow-model-selector-row > .ynow-model-card-col {
+            flex: 1 1 45%;
+            margin-bottom: 10px;
+          }
+        }
+        @media (max-width: 767px) {
+          .ynow-model-selector-row > .ynow-model-card-col {
+            flex: 1 1 100%;
+          }
+        }
       ")),
       tags$div(
         class = "ynow-model-selector-summary",
@@ -1203,11 +1233,13 @@ server <- function(input, output, session) {
         tags$br(),
         tags$span(rec$reason %||% "請先按下 Search 載入公司後產生推薦。")
       ),
-      fluidRow(
+      # L→R 對齊側欄估值子分頁順序：NAV → DCF → DDM → RI → P/B
+      tags$div(
+        class = "ynow-model-selector-row",
+        make_card("NAV", "nav", "sitemap", "#27ae60", "P = NAVPS × NAV multiple", "控股／綜合：帳面控股 NAV（非市場 SOTP）；無需 SGR。"),
         make_card("DCF", "dcf", "calculator", "#00a65a", "FCFF／WACC 或 FCFE／Ke", "適合 FCF 為正且相對穩定的企業。"),
         make_card("DDM", "ddm", "hand-holding-usd", "#f39c12", "Gordon 或二階段 P0 = PV(股利)", "適合持續且穩定配息的企業。"),
         make_card("RI", "ri", "gem", "#605ca8", "Value = Book Value + Σ Residual Income / (1+Ke)^t", "適合帳面價值與 ROE 具參考性的企業。"),
-        make_card("NAV", "nav", "sitemap", "#27ae60", "P = NAVPS × NAV multiple", "控股／綜合：帳面控股 NAV（非市場 SOTP）；無需 SGR。"),
         make_card("P/B", "pb", "landmark", "#3c8dbc", "P = (BVPS／TBVPS／NAVPS) × 目標 P/B", "相對估值：產業／歷史倍數，或 Justified（需 SGR）。")
       )
     )
