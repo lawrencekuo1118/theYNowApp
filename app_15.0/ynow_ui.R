@@ -929,24 +929,38 @@ ui <- dashboardPage(
           float: none !important;
           z-index: 20;
         }
-        .ynow-market-header .form-group {
+        .ynow-market-header .form-group,
+        .ynow-market-header .shiny-input-container,
+        .ynow-market-header .radio-group-buttons {
           margin: 0 !important;
-          height: 100%;
+          padding: 0 !important;
+          height: 100% !important;
+          width: auto !important;
         }
-        .ynow-market-header .btn-group-vertical,
-        .ynow-market-header .btn-group {
+        /* shinyWidgets vertical：外層 btn-group-vertical > 內層 btn-group > btn */
+        .ynow-market-header .btn-group-vertical.btn-group-container-sw,
+        .ynow-market-header .btn-group-vertical {
           display: flex !important;
           flex-direction: column !important;
           height: 100% !important;
-          width: auto;
+          width: auto !important;
           margin: 0 !important;
+          float: none !important;
         }
-        .ynow-market-header .btn-group-vertical > .btn,
-        .ynow-market-header .btn-group > .btn,
-        .ynow-market-header .btn-group-xs > .btn,
-        .ynow-market-header .btn-xs {
-          flex: 1 1 50%;
+        .ynow-market-header .btn-group-vertical > .btn-group {
+          display: flex !important;
+          flex: 1 1 50% !important;
           height: 50% !important;
+          min-height: 0 !important;
+          width: 100% !important;
+          margin: 0 !important;
+          float: none !important;
+        }
+        .ynow-market-header .btn-group-vertical > .btn-group > .btn,
+        .ynow-market-header .btn-group-vertical > .btn {
+          flex: 1 1 auto;
+          width: 100% !important;
+          height: 100% !important;
           min-height: 0 !important;
           margin: 0 !important;
           border-radius: 0 !important;
@@ -955,6 +969,7 @@ ui <- dashboardPage(
           display: flex !important;
           align-items: center;
           justify-content: center;
+          float: none !important;
           background: rgba(255,255,255,0.12) !important;
           border: 1px solid rgba(255,255,255,0.35) !important;
           color: #fff !important;
@@ -962,13 +977,12 @@ ui <- dashboardPage(
           font-size: 11px !important;
           box-shadow: none !important;
         }
-        .ynow-market-header .btn-group-vertical > .btn + .btn,
-        .ynow-market-header .btn-group > .btn + .btn {
+        .ynow-market-header .btn-group-vertical > .btn-group + .btn-group > .btn,
+        .ynow-market-header .btn-group-vertical > .btn + .btn {
           border-top-width: 0 !important;
         }
-        .ynow-market-header .btn-group-vertical > .btn.active,
-        .ynow-market-header .btn-group > .btn.active,
-        .ynow-market-header .btn-xs.active {
+        .ynow-market-header .btn-group-vertical > .btn-group > .btn.active,
+        .ynow-market-header .btn-group-vertical > .btn.active {
           background: #fff !important;
           color: #222 !important;
           border-color: #fff !important;
