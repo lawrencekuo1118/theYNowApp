@@ -13,8 +13,7 @@ server <- function(input, output, session) {
   fs_all_empty <- reactiveVal(FALSE)
   tw_is_esb <- reactiveVal(FALSE)
   tw_tpex_fs_fallback <- reactiveVal(FALSE)  # TRUE 時 IS／BS 來自櫃買簡報（非完整三表）
-  is_expanded <- reactiveVal(FALSE) 
-  
+
   values <- reactiveValues(recentsearch = c())
   corp_industry_text <- reactiveVal("等待搜尋...")
   corp_display_name <- reactiveVal("")
@@ -501,13 +500,6 @@ server <- function(input, output, session) {
           quote_currency(meta_qc)
         }
 
-        is_expanded(FALSE)
-        updateActionButton(
-          session, "btn_expand_all",
-          label = ui_str("btn_expand_all", isolate(ui_locale())),
-          icon = icon("expand")
-        )
-
         # 搜尋後：ADR／股數級距自動約當（市值÷報價股價）
         tryCatch({
           bs_df <- reorder_financial_columns(
@@ -870,27 +862,6 @@ server <- function(input, output, session) {
   # ==========================================
   # 📑 2. 三大財報資料分發與顯示
   # ==========================================
-  observeEvent(input$btn_expand_all, {
-    new_state <- !is_expanded()
-    is_expanded(new_state)
-    loc <- isolate(ui_locale())
-    if (new_state) {
-      updateActionButton(
-        session, "btn_expand_all",
-        label = ui_str("btn_compress_all", loc),
-        icon = icon("compress")
-      )
-      showNotification("✅ 已切換至深度展開明細！", type = "message")
-    } else {
-      updateActionButton(
-        session, "btn_expand_all",
-        label = ui_str("btn_expand_all", loc),
-        icon = icon("expand")
-      )
-      showNotification("已切換回精簡版報表", type = "message")
-    }
-  })
-
   # 「測試」回測濾鏡：目前公司 KPI vs 持倉回測條件門檻
   bt_filter_state <- reactiveVal(NULL)
 
@@ -1507,7 +1478,7 @@ server <- function(input, output, session) {
   output$tbIncomeStatement <- renderDataTable({
     req(scraped_financials())
     session_currency(); fx_usd_twd(); market_mode(); ui_locale()
-    raw <- if (is_expanded()) scraped_financials()[["Income Statement"]]$expanded else scraped_financials()[["Income Statement"]]$collapsed
+    raw <- scraped_financials()[["Income Statement"]]$collapsed
     prep <- .prep_fs_statement_display(raw)
     datatable(
       trim_financial_table(prep$df, "Tax Effect of Unusual Items"),
@@ -1519,7 +1490,7 @@ server <- function(input, output, session) {
   output$tbBalanceSheet <- renderDataTable({
     req(scraped_financials())
     session_currency(); fx_usd_twd(); market_mode(); ui_locale()
-    raw <- if (is_expanded()) scraped_financials()[["Balance Sheet"]]$expanded else scraped_financials()[["Balance Sheet"]]$collapsed
+    raw <- scraped_financials()[["Balance Sheet"]]$collapsed
     prep <- .prep_fs_statement_display(raw)
     datatable(
       trim_financial_table(prep$df, "Treasury Shares Number"),
@@ -1531,7 +1502,7 @@ server <- function(input, output, session) {
   output$tbCashFlow <- renderDataTable({
     req(scraped_financials())
     session_currency(); fx_usd_twd(); market_mode(); ui_locale()
-    raw <- if (is_expanded()) scraped_financials()[["Cash Flow"]]$expanded else scraped_financials()[["Cash Flow"]]$collapsed
+    raw <- scraped_financials()[["Cash Flow"]]$collapsed
     prep <- .prep_fs_statement_display(raw)
     datatable(
       trim_financial_table(prep$df, "Free Cash Flow"),

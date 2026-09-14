@@ -712,7 +712,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v15.33</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v15.34</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -1544,14 +1544,6 @@ ui <- dashboardPage(
             if (testL && s.test_link) testL.textContent = s.test_link;
             var fb = document.getElementById('ynow_feedback_link_label');
             if (fb && s.feedback_link) fb.textContent = s.feedback_link;
-            var expandBtn = document.getElementById('btn_expand_all');
-            if (expandBtn && s.btn_expand_all && s.btn_compress_all) {
-              var expTxt = (expandBtn.textContent || '');
-              var isCompress = /Compress|壓縮/.test(expTxt);
-              var expIcon = expandBtn.querySelector('i');
-              var expIconHtml = expIcon ? expIcon.outerHTML + ' ' : '';
-              expandBtn.innerHTML = expIconHtml + (isCompress ? s.btn_compress_all : s.btn_expand_all);
-            }
             var runBt = document.getElementById('run_bt');
             if (runBt && s.btn_run_bt) {
               var runIcon = runBt.querySelector('i');
@@ -2816,14 +2808,6 @@ ui <- dashboardPage(
 
       tabItem(tabName = "dashboard",
 
-              div(
-                style = "display: flex; justify-content: flex-end; align-items: center; margin-bottom: 10px; gap: 12px; flex-wrap: wrap;",
-                actionButton("btn_expand_all", "Expand All",
-                             icon = icon("expand"),
-                             class = "btn-sm",
-                             style = "background-color: #222222; color: #ffffff; border: 1px solid #555555; font-size: 12px; padding: 4px 12px; border-radius: 4px;")
-              ),
-              
               tabBox(title = "FINANCIAL REPORT",
                      id = "dashboard_fin_report",
                      width = "auto",
