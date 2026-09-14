@@ -167,7 +167,7 @@ capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
     helpText(
       "β 預估在",
       tags$b("Get Started"),
-      "→「永續成長率 SGR 設定」下方的",
+      "→「SGR」下方的",
       tags$b("BETA"),
       "小分頁（Beta Overview 選來源寫入 CAPM；同業去槓桿／Rolling 負責估算）。",
       "CAPM（Rf／β／Rm）在",
@@ -559,53 +559,58 @@ beta_rolling_section_ui <- function() {
 }
 
 .dcf_core_params_box <- function() {
-  box(
-    title = tagList(icon("seedling"), "永續成長率 SGR 設定"),
-    width = 12, status = "warning", solidHeader = TRUE,
-    tags$h5(tags$b("SGR 評價方法")),
-    selectInput(
-      "perpetual_g_method",
-      NULL,
-      choices = c(
-        "總體經濟錨定（Macro）" = "macro",
-        "基本面公式（Fundamental／SGR）" = "fundamental",
-        "產業生命週期（Lifecycle）" = "lifecycle"
-      ),
-      selected = APP_DEFAULTS$perpetual_g_method
-    ),
-    helpText(
-      "Macro：直接套用美國 10 年期公債 Rf。",
-      "Fundamental：Retention×ROE（僅適合成熟穩健企業）。",
-      "Lifecycle：依產業成熟度反推 g，可手動覆寫自動分類。"
-    ),
-    uiOutput("txt_perpetual_g_method_suggest"),
-    conditionalPanel(
-      condition = "input.perpetual_g_method == 'lifecycle'",
-      tags$h5(tags$b("生命週期檔位")),
+  # Chrome 對齊下方 BETA tabBox：左側單一頁籤 + 右側大標英文
+  tabBox(
+    title = "SUSTAINABLE GROWTH RATE",
+    width = "auto",
+    tabPanel(
+      "SGR",
+      icon = icon("seedling"),
+      tags$h5(tags$b("SGR 評價方法")),
       selectInput(
-        "lifecycle_stage",
+        "perpetual_g_method",
         NULL,
         choices = c(
-          "自動偵測" = "auto",
-          "夕陽／高度成熟（≈1.5–2%）" = "mature_sunset",
-          "成熟科技巨頭（≈2.5–3%）" = "mature_tech",
-          "高速成長→成熟（終值≈2.5%，建議 two-stage）" = "growth_to_mature",
-          "一般成熟（≈2.5%）" = "mature_general"
+          "總體經濟錨定（Macro）" = "macro",
+          "基本面公式（Fundamental／SGR）" = "fundamental",
+          "產業生命週期（Lifecycle）" = "lifecycle"
         ),
-        selected = APP_DEFAULTS$lifecycle_stage
+        selected = APP_DEFAULTS$perpetual_g_method
       ),
-      helpText("可覆寫自動偵測結果；影響終值 g 建議區間。")
-    ),
-    tags$h5(tags$b("估計依據")),
-    uiOutput("txt_perpetual_g_reason"),
-    tags$hr(style = "margin: 12px 0;"),
-    tags$h5(tags$b("終值永續成長率（SGR）")),
-    numericInput(
-      "sgr",
-      "SGR (%)",
-      value = APP_DEFAULTS$sgr
-    ),
-    helpText("供 DCF／RI 終值使用（相對 WACC）；與 DDM 股利成長率分開。可由上方方法自動估計，亦可手動覆寫。")
+      helpText(
+        "Macro：直接套用美國 10 年期公債 Rf。",
+        "Fundamental：Retention×ROE（僅適合成熟穩健企業）。",
+        "Lifecycle：依產業成熟度反推 g，可手動覆寫自動分類。"
+      ),
+      uiOutput("txt_perpetual_g_method_suggest"),
+      conditionalPanel(
+        condition = "input.perpetual_g_method == 'lifecycle'",
+        tags$h5(tags$b("生命週期檔位")),
+        selectInput(
+          "lifecycle_stage",
+          NULL,
+          choices = c(
+            "自動偵測" = "auto",
+            "夕陽／高度成熟（≈1.5–2%）" = "mature_sunset",
+            "成熟科技巨頭（≈2.5–3%）" = "mature_tech",
+            "高速成長→成熟（終值≈2.5%，建議 two-stage）" = "growth_to_mature",
+            "一般成熟（≈2.5%）" = "mature_general"
+          ),
+          selected = APP_DEFAULTS$lifecycle_stage
+        ),
+        helpText("可覆寫自動偵測結果；影響終值 g 建議區間。")
+      ),
+      tags$h5(tags$b("估計依據")),
+      uiOutput("txt_perpetual_g_reason"),
+      tags$hr(style = "margin: 12px 0;"),
+      tags$h5(tags$b("終值永續成長率（SGR）")),
+      numericInput(
+        "sgr",
+        "SGR (%)",
+        value = APP_DEFAULTS$sgr
+      ),
+      helpText("供 DCF／RI 終值使用（相對 WACC）；與 DDM 股利成長率分開。可由上方方法自動估計，亦可手動覆寫。")
+    )
   )
 }
 
@@ -707,7 +712,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v15.32</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v15.33</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
