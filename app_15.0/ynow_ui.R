@@ -697,6 +697,7 @@ ui <- dashboardPage(
     title = HTML('<span class="ynow-app-title">The YNow App v15.17</span>'),
     titleWidth = 250,
     tags$li(
+      id = "ynow-market-header",
       class = "dropdown ynow-market-header",
       shinyWidgets::radioGroupButtons(
         inputId = "market_mode_pick",
@@ -914,61 +915,69 @@ ui <- dashboardPage(
           background-color: #000 !important;
         }
 
-        /* 美股／台股：緊靠三線 icon 右側，上下堆疊且合計佔滿標頭高度 */
+        /* 美股／台股：緊靠三線 icon 右側，上下堆疊且合計佔滿標頭高度（50px） */
+        .main-header .navbar-custom-menu .navbar-nav > li#ynow-market-header.ynow-market-header,
         .main-header .navbar .ynow-market-header {
           position: absolute !important;
-          left: 50px; /* sidebar-toggle 寬度 */
-          top: 0;
-          bottom: 0;
+          left: 50px !important; /* sidebar-toggle 寬度 */
+          top: 0 !important;
+          right: auto !important;
+          bottom: auto !important;
+          width: auto !important;
           height: 50px !important;
+          min-height: 50px !important;
+          max-height: 50px !important;
           margin: 0 !important;
           padding: 0 !important;
-          list-style: none;
-          display: flex !important;
-          align-items: stretch;
+          list-style: none !important;
+          display: block !important;
           float: none !important;
+          line-height: 0 !important;
           z-index: 20;
         }
-        .ynow-market-header .form-group,
-        .ynow-market-header .shiny-input-container,
-        .ynow-market-header .radio-group-buttons {
+        #ynow-market-header .form-group,
+        #ynow-market-header .shiny-input-container,
+        #ynow-market-header .radio-group-buttons {
           margin: 0 !important;
           padding: 0 !important;
-          height: 100% !important;
+          height: 50px !important;
+          min-height: 50px !important;
           width: auto !important;
+          line-height: 0 !important;
         }
         /* shinyWidgets vertical：外層 btn-group-vertical > 內層 btn-group > btn */
-        .ynow-market-header .btn-group-vertical.btn-group-container-sw,
-        .ynow-market-header .btn-group-vertical {
+        #ynow-market-header .btn-group-vertical.btn-group-container-sw,
+        #ynow-market-header .btn-group-vertical {
           display: flex !important;
           flex-direction: column !important;
-          height: 100% !important;
+          height: 50px !important;
+          min-height: 50px !important;
           width: auto !important;
           margin: 0 !important;
           float: none !important;
         }
-        .ynow-market-header .btn-group-vertical > .btn-group {
+        #ynow-market-header .btn-group-vertical > .btn-group {
           display: flex !important;
-          flex: 1 1 50% !important;
-          height: 50% !important;
-          min-height: 0 !important;
+          flex: 0 0 25px !important;
+          height: 25px !important;
+          min-height: 25px !important;
+          max-height: 25px !important;
           width: 100% !important;
           margin: 0 !important;
           float: none !important;
         }
-        .ynow-market-header .btn-group-vertical > .btn-group > .btn,
-        .ynow-market-header .btn-group-vertical > .btn {
-          flex: 1 1 auto;
+        #ynow-market-header .btn-group-vertical > .btn-group > .btn,
+        #ynow-market-header .btn-group-vertical > .btn {
+          flex: 1 1 auto !important;
           width: 100% !important;
-          height: 100% !important;
-          min-height: 0 !important;
+          height: 25px !important;
+          min-height: 25px !important;
+          max-height: 25px !important;
           margin: 0 !important;
           border-radius: 0 !important;
-          line-height: 1 !important;
+          line-height: 25px !important;
           padding: 0 8px !important;
-          display: flex !important;
-          align-items: center;
-          justify-content: center;
+          display: block !important;
           float: none !important;
           background: rgba(255,255,255,0.12) !important;
           border: 1px solid rgba(255,255,255,0.35) !important;
@@ -977,17 +986,17 @@ ui <- dashboardPage(
           font-size: 11px !important;
           box-shadow: none !important;
         }
-        .ynow-market-header .btn-group-vertical > .btn-group + .btn-group > .btn,
-        .ynow-market-header .btn-group-vertical > .btn + .btn {
+        #ynow-market-header .btn-group-vertical > .btn-group + .btn-group > .btn,
+        #ynow-market-header .btn-group-vertical > .btn + .btn {
           border-top-width: 0 !important;
         }
-        .ynow-market-header .btn-group-vertical > .btn-group > .btn.active,
-        .ynow-market-header .btn-group-vertical > .btn.active {
+        #ynow-market-header .btn-group-vertical > .btn-group > .btn.active,
+        #ynow-market-header .btn-group-vertical > .btn.active {
           background: #fff !important;
           color: #222 !important;
           border-color: #fff !important;
         }
-        .ynow-market-header .radiobtn { margin: 0 !important; }
+        #ynow-market-header .radiobtn { margin: 0 !important; }
 
         /* 台股：dashboardHeader 改以中華民國國旗填滿；美股維持全黑 */
         body.ynow-market-tw .main-header {
