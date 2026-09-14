@@ -694,7 +694,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v15.22</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v15.23</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -1419,6 +1419,16 @@ ui <- dashboardPage(
             if (hfvTitle && s.hfv_page_title) hfvTitle.textContent = s.hfv_page_title;
             var hfvSub = document.getElementById('ynow_hfv_page_sub');
             if (hfvSub && s.hfv_page_sub) hfvSub.textContent = s.hfv_page_sub;
+            var hfvMethod = document.getElementById('ynow_hfv_sec_method');
+            if (hfvMethod && s.hfv_sec_method) hfvMethod.textContent = s.hfv_sec_method;
+            var hfvSettings = document.getElementById('ynow_hfv_sec_settings');
+            if (hfvSettings && s.hfv_sec_settings) hfvSettings.textContent = s.hfv_sec_settings;
+            var hfvResults = document.getElementById('ynow_hfv_sec_results');
+            if (hfvResults && s.hfv_sec_results) hfvResults.textContent = s.hfv_sec_results;
+            var hfvChart = document.getElementById('ynow_hfv_chart_gap');
+            if (hfvChart && s.hfv_chart_gap) hfvChart.textContent = s.hfv_chart_gap;
+            var hfvTable = document.getElementById('ynow_hfv_table_detail');
+            if (hfvTable && s.hfv_table_detail) hfvTable.textContent = s.hfv_table_detail;
             var labTitle = document.getElementById('ynow_lab_notes_title');
             if (labTitle && s.lab_notes_title) labTitle.textContent = s.lab_notes_title;
             var labSub = document.getElementById('ynow_lab_notes_sub');
@@ -3521,68 +3531,108 @@ ui <- dashboardPage(
             title = tagList(icon("balance-scale"), "歷史基本面驗證：市價下期漲跌與相對 FV"),
             width = 12, status = "warning", solidHeader = TRUE,
             collapsible = TRUE, collapsed = FALSE,
-            tags$p(
-              style = "font-size:12.5px;color:#444;line-height:1.55;",
-              tags$b("這不是交易策略回測。"),
-              "兩種口徑分開呈現：",
-              tags$b("（1）市價下期漲跌"), " ", tags$code("R=(P_{t+1}-P_t)/P_t"),
-              " 的經驗頻率，並以目前安全邊際（MOS）分組之條件機率作為展望；",
-              tags$b("（2）相對理論 FV"), " ", tags$code("FV_t"),
-              "（＝折現圖勾選且有限值模型平均；未勾選＝無策略 FV）落在之上／之下與幅度 ",
-              tags$code("(P_{t+1}-FV_t)/FV_t"),
-              "。兩者語意不同，不可混稱為同一「漲跌」。策略淨值請至側邊底部「測試」。"
-            ),
-            tags$p(
-              style = "font-size:11.5px;color:#888;line-height:1.45;margin-top:-4px;",
-              "資料注意：Yahoo 年報可能為重編；PIT 以財報期末＋約 90 日申報滯後過濾。",
-              "真・as-filed SEC EDGAR 仍待後續階段。",
-              "若歷史點套用系統預設／Session，摘要會顯示預設／fallback 提醒與對應分頁。",
-              "小樣本（n＜5）僅供參考，非預測保證。"
-            ),
-            radioButtons(
-              "bt_fv_conv_window",
-              "統計期間（依估值日 Date_t）",
-              inline = TRUE,
-              choices = c(
-                "全部" = "all",
-                "近1年" = "1y",
-                "近3年" = "3y",
-                "近5年" = "5y",
-                "自訂" = "custom"
+
+            # --- 說明（與結果分開）---
+            tags$div(
+              class = "ynow-hfv-method",
+              style = "margin:0 0 14px 0;padding:12px 14px;background:#f7f7f7;border:1px solid #e5e5e5;border-radius:4px;",
+              tags$h5(
+                id = "ynow_hfv_sec_method",
+                style = "margin:0 0 8px 0;font-weight:700;",
+                "說明"
               ),
-              selected = "all"
-            ),
-            uiOutput("bt_fv_analysis_freq_ui"),
-            conditionalPanel(
-              condition = "input.bt_fv_conv_window == 'custom'",
-              dateRangeInput(
-                "bt_fv_conv_custom",
-                NULL,
-                start = Sys.Date() - 365 * 3,
-                end = Sys.Date(),
-                language = "zh-TW"
+              tags$p(
+                style = "font-size:12.5px;color:#444;line-height:1.55;margin:0 0 8px 0;",
+                tags$b("這不是交易策略回測。"),
+                "兩種口徑分開呈現：",
+                tags$b("（1）市價下期漲跌"), " ", tags$code("R=(P_{t+1}-P_t)/P_t"),
+                " 的經驗頻率，並以目前安全邊際（MOS）分組之條件機率作為展望；",
+                tags$b("（2）相對理論 FV"), " ", tags$code("FV_t"),
+                "（＝折現圖勾選且有限值模型平均；未勾選＝無策略 FV）落在之上／之下與幅度 ",
+                tags$code("(P_{t+1}-FV_t)/FV_t"),
+                "。兩者語意不同，不可混稱為同一「漲跌」。策略淨值請至側邊底部「測試」。"
+              ),
+              tags$p(
+                style = "font-size:11.5px;color:#888;line-height:1.45;margin:0;",
+                "資料注意：Yahoo 年報可能為重編；PIT 以財報期末＋約 90 日申報滯後過濾。",
+                "真・as-filed SEC EDGAR 仍待後續階段。",
+                "若歷史點套用系統預設／Session，結果區會另列預設／fallback 提醒。",
+                "小樣本（n＜5）僅供參考，非預測保證。"
               )
             ),
-            radioButtons(
-              "bt_fv_oos_mode",
-              "驗證口徑",
-              inline = TRUE,
-              choices = c(
-                "已實現下期（預設）" = "realized",
-                "擴張窗樣本外命中" = "expanding",
-                "含未到期下期（樣本內）" = "insample"
-              ),
-              selected = "realized"
-            ),
-            uiOutput("bt_fv_conv_summary"),
-            # 幅度圖在上、逐期明細在下（全寬堆疊；勿左右並排）
-            tags$h5(tags$b("幅度 (P下一期 − FV) / FV")),
-            plotlyOutput("bt_fv_conv_plot", height = "280px") %>% withSpinner(),
-            tags$h5(tags$b("逐期明細"), style = "margin-top: 14px;"),
+
+            # --- 設定 ---
             tags$div(
-              style = "overflow-x:auto; width:100%;",
-              tags$style(HTML("#bt_fv_conv_table table { width: 100% !important; }")),
-              tableOutput("bt_fv_conv_table")
+              class = "ynow-hfv-settings",
+              style = "margin:0 0 16px 0;padding:12px 14px;background:#fff;border:1px solid #e8e8e8;border-radius:4px;",
+              tags$h5(
+                id = "ynow_hfv_sec_settings",
+                style = "margin:0 0 10px 0;font-weight:700;",
+                "設定"
+              ),
+              radioButtons(
+                "bt_fv_conv_window",
+                "統計期間（依估值日 Date_t）",
+                inline = TRUE,
+                choices = c(
+                  "全部" = "all",
+                  "近1年" = "1y",
+                  "近3年" = "3y",
+                  "近5年" = "5y",
+                  "自訂" = "custom"
+                ),
+                selected = "all"
+              ),
+              uiOutput("bt_fv_analysis_freq_ui"),
+              conditionalPanel(
+                condition = "input.bt_fv_conv_window == 'custom'",
+                dateRangeInput(
+                  "bt_fv_conv_custom",
+                  NULL,
+                  start = Sys.Date() - 365 * 3,
+                  end = Sys.Date(),
+                  language = "zh-TW"
+                )
+              ),
+              radioButtons(
+                "bt_fv_oos_mode",
+                "驗證口徑",
+                inline = TRUE,
+                choices = c(
+                  "已實現下期（預設）" = "realized",
+                  "擴張窗樣本外命中" = "expanding",
+                  "含未到期下期（樣本內）" = "insample"
+                ),
+                selected = "realized"
+              )
+            ),
+
+            # --- 結果（數字／圖／表；不含長文說明）---
+            tags$div(
+              class = "ynow-hfv-results",
+              style = "margin:0;padding:12px 14px;background:#fffdf8;border:1px solid #f0e0b8;border-radius:4px;",
+              tags$h5(
+                id = "ynow_hfv_sec_results",
+                style = "margin:0 0 10px 0;font-weight:700;",
+                "結果"
+              ),
+              uiOutput("bt_fv_conv_summary"),
+              tags$h5(
+                id = "ynow_hfv_chart_gap",
+                style = "margin-top: 14px; font-weight: 700;",
+                "幅度 (P下一期 − FV) / FV"
+              ),
+              plotlyOutput("bt_fv_conv_plot", height = "280px") %>% withSpinner(),
+              tags$h5(
+                id = "ynow_hfv_table_detail",
+                style = "margin-top: 14px; font-weight: 700;",
+                "逐期明細"
+              ),
+              tags$div(
+                style = "overflow-x:auto; width:100%;",
+                tags$style(HTML("#bt_fv_conv_table table { width: 100% !important; }")),
+                tableOutput("bt_fv_conv_table")
+              )
             )
           )
         ),

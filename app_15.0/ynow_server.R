@@ -7232,7 +7232,7 @@ server <- function(input, output, session) {
     loc <- tryCatch(isolate(ui_locale()), error = function(e) "zh-TW")
     if (is.null(s)) {
       return(tags$div(
-        style = "margin:0 0 12px 0;padding:12px;background:#f7f7f7;border-left:4px solid #999;font-size:13px;",
+        style = "margin:0 0 8px 0;padding:12px;background:#f0f0f0;border-left:4px solid #999;font-size:13px;",
         ui_str("hfv_sum_empty", loc)
       ))
     }
@@ -7242,36 +7242,15 @@ server <- function(input, output, session) {
     period_txt <- {
       if (!is.null(s$from) || !is.null(s$to)) {
         paste0(
-          "期間：",
+          "統計期間：",
           if (is.null(s$from)) "…" else format(s$from, "%Y-%m-%d"),
           " ～ ",
           if (is.null(s$to)) "…" else format(s$to, "%Y-%m-%d")
         )
-      } else "期間：全部估值日配對"
-    }
-    fb <- s$fallbacks
-    fb_ui <- NULL
-    if (!is.null(fb) && isTRUE(fb$any_fallback) && !is.null(fb$items) && nrow(fb$items) > 0) {
-      item_fmt <- ui_str("hfv_fb_item_fmt", loc)
-      fb_ui <- tags$div(
-        style = "margin:10px 0 0 0;padding:10px 12px;background:#fff8e8;border:1px solid #f0d78c;border-radius:4px;font-size:12.5px;line-height:1.55;",
-        tags$div(tags$b(ui_str("hfv_fb_title", loc))),
-        tags$p(style = "margin:4px 0 6px 0;color:#666;", fb$note %||% ""),
-        tags$ul(
-          style = "margin:0;padding-left:18px;",
-          lapply(seq_len(nrow(fb$items)), function(i) {
-            row <- fb$items[i, , drop = FALSE]
-            tags$li(sprintf(
-              item_fmt,
-              row$label[1], row$src_label[1], as.integer(row$n_rows[1])
-            ))
-          })
-        )
-      )
-    } else if (!is.null(fb) && !isTRUE(fb$any_fallback) && nzchar(fb$note %||% "")) {
-      fb_ui <- tags$p(style = "margin:8px 0 0 0;color:#666;font-size:12px;", fb$note)
+      } else "統計期間：全部估值日配對"
     }
 
+    # 結果數字區（不含長文說明）
     mo <- s$mos_outlook
     mos_ui <- NULL
     if (!is.null(mo) && is.list(mo) && is.finite(mo$mos_now)) {
@@ -7288,18 +7267,17 @@ server <- function(input, output, session) {
             if (isTRUE(mo$small_sample)) "，小樣本" else ""
           )),
           tags$li(sprintf(
-            "該桶歷史下期：上漲機率 %s · 下跌 %s · 報酬中位 %s、平均 %s",
+            "該分組歷史下期：上漲機率 %s · 下跌 %s · 報酬中位 %s、平均 %s",
             pct(mo$p_up), pct(mo$p_down),
             gap_pct(mo$median_ret), gap_pct(mo$mean_ret)
-          )),
-          tags$li(mo$note %||% "")
+          ))
         )
       )
     }
 
-    tags$div(
+    results_core <- tags$div(
       style = paste0(
-        "margin:0 0 14px 0;padding:14px 16px;background:#fffdf5;",
+        "margin:0;padding:12px 14px;background:#fff;",
         "border-left:4px solid ", border, ";border-radius:4px;font-size:13px;line-height:1.6;"
       ),
       tags$div(
@@ -7307,8 +7285,7 @@ server <- function(input, output, session) {
         if (isTRUE(s$small_sample)) tags$span(style = "color:#c27d0e;margin-left:8px;", "（小樣本）"),
         if (isTRUE(s$no_strategy_fv)) tags$span(style = "color:#c27d0e;margin-left:8px;", "（無策略 FV）")
       ),
-      tags$p(style = "margin:6px 0 0 0;color:#666;", period_txt),
-      tags$p(style = "margin:4px 0 0 0;color:#888;font-size:12px;", s$frame %||% ""),
+      tags$p(style = "margin:6px 0 0 0;color:#555;font-size:12.5px;", period_txt),
       tags$div(
         style = "margin-top:8px;",
         tags$b(ui_str("hfv_sum_price_block", loc)),
@@ -7327,7 +7304,7 @@ server <- function(input, output, session) {
           )),
           if (identical(s$oos_mode, "expanding") && is.finite(s$oos_dir_hit_rate)) {
             tags$li(sprintf(
-              "擴張窗漲跌方向命中率 %s（n＝%d；先前已實現配對多數漲／跌預測下一期）",
+              "擴張窗漲跌方向命中率 %s（n＝%d）",
               pct(s$oos_dir_hit_rate), s$oos_dir_n %||% 0L
             ))
           } else NULL
@@ -7358,9 +7335,59 @@ server <- function(input, output, session) {
             ))
           } else NULL
         )
-      ),
-      tags$p(style = "margin:8px 0 0 0;color:#666;font-size:12px;", s$note %||% ""),
-      fb_ui
+      )
+    )
+
+    # 結果附註／fallback：與數字區視覺分開，避免與說明混在同一段
+    fb <- s$fallbacks
+    notes_ui <- tagList()
+    if (nzchar(s$note %||% "")) {
+      notes_ui <- tagAppendChild(
+        notes_ui,
+        tags$p(style = "margin:0 0 6px 0;color:#666;font-size:12px;", s$note)
+      )
+    }
+    if (!is.null(mo) && is.list(mo) && nzchar(mo$note %||% "")) {
+      notes_ui <- tagAppendChild(
+        notes_ui,
+        tags$p(style = "margin:0 0 6px 0;color:#666;font-size:12px;", mo$note)
+      )
+    }
+    if (!is.null(fb) && isTRUE(fb$any_fallback) && !is.null(fb$items) && nrow(fb$items) > 0) {
+      item_fmt <- ui_str("hfv_fb_item_fmt", loc)
+      notes_ui <- tagAppendChild(
+        notes_ui,
+        tags$div(
+          style = "margin:8px 0 0 0;padding:10px 12px;background:#fff8e8;border:1px solid #f0d78c;border-radius:4px;font-size:12.5px;line-height:1.55;",
+          tags$div(tags$b(ui_str("hfv_fb_title", loc))),
+          tags$ul(
+            style = "margin:6px 0 0 0;padding-left:18px;",
+            lapply(seq_len(nrow(fb$items)), function(i) {
+              row <- fb$items[i, , drop = FALSE]
+              tags$li(sprintf(
+                item_fmt,
+                row$label[1], row$src_label[1], as.integer(row$n_rows[1])
+              ))
+            })
+          )
+        )
+      )
+    } else if (!is.null(fb) && !isTRUE(fb$any_fallback) && nzchar(fb$note %||% "")) {
+      notes_ui <- tagAppendChild(
+        notes_ui,
+        tags$p(style = "margin:6px 0 0 0;color:#666;font-size:12px;", fb$note)
+      )
+    }
+
+    tagList(
+      results_core,
+      if (length(notes_ui) > 0) {
+        tags$div(
+          style = "margin:12px 0 0 0;padding:10px 12px;background:#fafafa;border:1px dashed #ccc;border-radius:4px;",
+          tags$div(style = "font-size:12px;font-weight:700;color:#666;margin-bottom:4px;", "結果附註"),
+          notes_ui
+        )
+      } else NULL
     )
   })
 

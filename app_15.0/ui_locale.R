@@ -72,6 +72,11 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_sum_mos_block = "Outlook by current Margin of Safety (MOS) group (same-ticker history)",
     hfv_sum_fv_block = "Position vs theoretical FV (not the same as up/down)",
     hfv_sum_empty = "After Search and model selection, next-period up/down odds and vs-FV stats appear here (not a strategy backtest).",
+    hfv_sec_method = "How to read this panel",
+    hfv_sec_settings = "Settings",
+    hfv_sec_results = "Results",
+    hfv_chart_gap = "Magnitude (P_next − FV) / FV",
+    hfv_table_detail = "Period detail",
 
     # --- tabBox headers ---
     box_financial_report = "FINANCIAL REPORT",
@@ -177,6 +182,11 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_sum_mos_block = "依目前安全邊際（MOS）分組展望（該股自身歷史）",
     hfv_sum_fv_block = "相對理論 FV（與漲跌不同口徑）",
     hfv_sum_empty = "載入標的並勾選評價模型後，將顯示市價下期漲跌機率與相對 FV 統計（非策略回測）。",
+    hfv_sec_method = "說明",
+    hfv_sec_settings = "設定",
+    hfv_sec_results = "結果",
+    hfv_chart_gap = "幅度 (P下一期 − FV) / FV",
+    hfv_table_detail = "逐期明細",
 
     # --- tabBox headers ---
     box_financial_report = "財務報表",
