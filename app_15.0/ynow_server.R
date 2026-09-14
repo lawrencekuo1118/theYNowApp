@@ -7250,13 +7250,9 @@ server <- function(input, output, session) {
       } else "統計期間：全部估值日配對"
     }
 
-    # 結果數字區（不含長文說明）
     mo <- s$mos_outlook
-    mos_ui <- NULL
-    if (!is.null(mo) && is.list(mo) && is.finite(mo$mos_now)) {
-      mos_ui <- tags$div(
-        style = "margin:10px 0 0 0;padding:10px 12px;background:#f4f8ff;border:1px solid #c5d4ef;border-radius:4px;font-size:12.5px;line-height:1.55;",
-        tags$div(tags$b(ui_str("hfv_sum_mos_block", loc))),
+    mos_body <- {
+      if (!is.null(mo) && is.list(mo) && is.finite(mo$mos_now)) {
         tags$ul(
           style = "margin:6px 0 0 0;padding-left:18px;",
           tags$li(sprintf(
@@ -7272,73 +7268,79 @@ server <- function(input, output, session) {
             gap_pct(mo$median_ret), gap_pct(mo$mean_ret)
           ))
         )
-      )
+      } else {
+        tags$div(style = "margin-top:6px;color:#888;font-size:12px;", "目前無可用的 MOS 分組展望。")
+      }
     }
 
-    results_core <- tags$div(
+    price_card <- tags$div(
       style = paste0(
-        "margin:0;padding:12px 14px;background:#fff;",
-        "border-left:4px solid ", border, ";border-radius:4px;font-size:13px;line-height:1.6;"
+        "height:100%;margin:0;padding:12px 14px;background:#fff;",
+        "border:1px solid #d9e6f2;border-left:4px solid ", border, ";border-radius:4px;",
+        "font-size:13px;line-height:1.55;"
       ),
-      tags$div(
-        tags$b(ui_str("hfv_sum_title", loc)),
-        if (isTRUE(s$small_sample)) tags$span(style = "color:#c27d0e;margin-left:8px;", "（小樣本）"),
-        if (isTRUE(s$no_strategy_fv)) tags$span(style = "color:#c27d0e;margin-left:8px;", "（無策略 FV）")
+      tags$div(tags$b(ui_str("hfv_sum_price_block", loc))),
+      tags$div(style = "margin:4px 0 0 0;color:#6c757d;font-size:11.5px;", ui_str("hfv_sum_price_formula", loc)),
+      tags$p(style = "margin:6px 0 0 0;color:#555;font-size:12px;", period_txt),
+      tags$ul(
+        style = "margin:6px 0 0 0;padding-left:18px;",
+        tags$li(sprintf("配對數 n＝%d", s$n %||% 0L)),
+        tags$li(sprintf(
+          "上漲機率 %s（%d）· 下跌 %s（%d）· 持平 %s（%d）",
+          pct(s$p_up), s$n_up %||% 0L,
+          pct(s$p_down), s$n_down %||% 0L,
+          pct(s$p_flat_price), s$n_flat_price %||% 0L
+        )),
+        tags$li(sprintf(
+          "下期報酬：中位 %s、平均 %s",
+          gap_pct(s$median_ret), gap_pct(s$mean_ret)
+        )),
+        if (identical(s$oos_mode, "expanding") && is.finite(s$oos_dir_hit_rate)) {
+          tags$li(sprintf(
+            "擴張窗漲跌方向命中率 %s（n＝%d）",
+            pct(s$oos_dir_hit_rate), s$oos_dir_n %||% 0L
+          ))
+        } else NULL
       ),
-      tags$p(style = "margin:6px 0 0 0;color:#555;font-size:12.5px;", period_txt),
-      tags$div(
-        style = "margin-top:8px;",
-        tags$b(ui_str("hfv_sum_price_block", loc)),
-        tags$ul(
-          style = "margin:4px 0 0 0;padding-left:18px;",
-          tags$li(sprintf("配對數 n＝%d", s$n %||% 0L)),
-          tags$li(sprintf(
-            "上漲機率 %s（%d）· 下跌 %s（%d）· 持平 %s（%d）",
-            pct(s$p_up), s$n_up %||% 0L,
-            pct(s$p_down), s$n_down %||% 0L,
-            pct(s$p_flat_price), s$n_flat_price %||% 0L
-          )),
-          tags$li(sprintf(
-            "下期報酬：中位 %s、平均 %s",
-            gap_pct(s$median_ret), gap_pct(s$mean_ret)
-          )),
-          if (identical(s$oos_mode, "expanding") && is.finite(s$oos_dir_hit_rate)) {
-            tags$li(sprintf(
-              "擴張窗漲跌方向命中率 %s（n＝%d）",
-              pct(s$oos_dir_hit_rate), s$oos_dir_n %||% 0L
-            ))
-          } else NULL
-        )
+      tags$hr(style = "margin:10px 0 8px 0;border-top:1px dashed #c5d4ef;"),
+      tags$div(tags$b(ui_str("hfv_sum_mos_block", loc))),
+      mos_body
+    )
+
+    fv_card <- tags$div(
+      style = paste0(
+        "height:100%;margin:0;padding:12px 14px;background:#fff;",
+        "border:1px solid #e2e3e5;border-left:4px solid ", border, ";border-radius:4px;",
+        "font-size:13px;line-height:1.55;"
       ),
-      mos_ui,
-      tags$div(
-        style = "margin-top:10px;",
-        tags$b(ui_str("hfv_sum_fv_block", loc)),
-        tags$ul(
-          style = "margin:4px 0 0 0;padding-left:18px;",
+      tags$div(tags$b(ui_str("hfv_sum_fv_block", loc))),
+      tags$div(style = "margin:4px 0 0 0;color:#6c757d;font-size:11.5px;", ui_str("hfv_sum_fv_formula", loc)),
+      tags$p(style = "margin:6px 0 0 0;color:#555;font-size:12px;", period_txt),
+      tags$ul(
+        style = "margin:6px 0 0 0;padding-left:18px;",
+        tags$li(sprintf("配對數 n＝%d", s$n %||% 0L)),
+        tags$li(sprintf(
+          "之上機率 %s（%d）· 之下 %s（%d）· 持平 %s（%d）",
+          pct(s$p_above), s$n_above %||% 0L,
+          pct(s$p_below), s$n_below %||% 0L,
+          pct(s$p_flat_vs), s$n_flat_vs %||% 0L
+        )),
+        tags$li(sprintf(
+          "幅度 (P−FV)/FV：全體中位 %s、平均 %s；之上中位 %s；之下中位 %s；|幅度|中位 %s",
+          gap_pct(s$median_gap), gap_pct(s$mean_gap),
+          gap_pct(s$median_gap_above), gap_pct(s$median_gap_below),
+          gap_pct(s$median_abs_gap)
+        )),
+        if (identical(s$oos_mode, "expanding") && is.finite(s$oos_hit_rate)) {
           tags$li(sprintf(
-            "之上機率 %s（%d）· 之下 %s（%d）· 持平 %s（%d）",
-            pct(s$p_above), s$n_above %||% 0L,
-            pct(s$p_below), s$n_below %||% 0L,
-            pct(s$p_flat_vs), s$n_flat_vs %||% 0L
-          )),
-          tags$li(sprintf(
-            "幅度 (P−FV)/FV：全體中位 %s、平均 %s；之上中位 %s；之下中位 %s；|幅度|中位 %s",
-            gap_pct(s$median_gap), gap_pct(s$mean_gap),
-            gap_pct(s$median_gap_above), gap_pct(s$median_gap_below),
-            gap_pct(s$median_abs_gap)
-          )),
-          if (identical(s$oos_mode, "expanding") && is.finite(s$oos_hit_rate)) {
-            tags$li(sprintf(
-              "擴張窗相對 FV 命中率 %s（n＝%d）",
-              pct(s$oos_hit_rate), s$oos_n %||% 0L
-            ))
-          } else NULL
-        )
+            "擴張窗相對 FV 命中率 %s（n＝%d）",
+            pct(s$oos_hit_rate), s$oos_n %||% 0L
+          ))
+        } else NULL
       )
     )
 
-    # 結果附註／fallback：與數字區視覺分開，避免與說明混在同一段
+    # 結果附註／fallback：全寬置於兩欄下方
     fb <- s$fallbacks
     notes_ui <- tagList()
     if (nzchar(s$note %||% "")) {
@@ -7380,11 +7382,23 @@ server <- function(input, output, session) {
     }
 
     tagList(
-      results_core,
+      tags$div(
+        style = "margin:0 0 8px 0;font-size:13px;",
+        tags$b(ui_str("hfv_sum_title", loc)),
+        if (isTRUE(s$small_sample)) tags$span(style = "color:#c27d0e;margin-left:8px;", "（小樣本）"),
+        if (isTRUE(s$no_strategy_fv)) tags$span(style = "color:#c27d0e;margin-left:8px;", "（無策略 FV）")
+      ),
+      fluidRow(
+        column(6, style = "margin-bottom:10px;", price_card),
+        column(6, style = "margin-bottom:10px;", fv_card)
+      ),
       if (length(notes_ui) > 0) {
         tags$div(
-          style = "margin:12px 0 0 0;padding:10px 12px;background:#fafafa;border:1px dashed #ccc;border-radius:4px;",
-          tags$div(style = "font-size:12px;font-weight:700;color:#666;margin-bottom:4px;", "結果附註"),
+          style = "margin:4px 0 0 0;padding:10px 12px;background:#fafafa;border:1px dashed #ccc;border-radius:4px;",
+          tags$div(
+            style = "font-size:12px;font-weight:700;color:#666;margin-bottom:4px;",
+            ui_str("hfv_sum_notes", loc)
+          ),
           notes_ui
         )
       } else NULL
