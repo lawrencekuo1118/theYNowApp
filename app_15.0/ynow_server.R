@@ -66,7 +66,10 @@ server <- function(input, output, session) {
   sc_datalist_choices <- reactiveVal(ticker_presets_for_market("US"))
   lab_im_catalog_nonce <- reactiveVal(0L)
   lab_im_scores <- reactiveVal(NULL)
-  
+  auto_calc_primary_sig <- reactiveVal("")
+  auto_calc_ddm_pulse <- reactiveVal(0L)
+  auto_calc_pb_pulse <- reactiveVal(0L)
+
   # ==========================================
   # 🚀 股票代號：僅主區 Ticker / Stock Code（sc + Search）
   # ==========================================
@@ -1892,7 +1895,8 @@ server <- function(input, output, session) {
   # 掛載 DDM 模組 (🌟 套用中央大腦 Ke)
   # ==========================================
   ddm_results <- ddm_module_server(
-    id = "mod_ddm", 
+    id = "mod_ddm",
+    auto_calc_pulse = reactive(auto_calc_ddm_pulse()),
     ddm_g = reactive({
       if (!is.null(input$sgr) && is.finite(as.numeric(input$sgr))) as.numeric(input$sgr) else APP_DEFAULTS$ddm_g
     }), 
@@ -2295,6 +2299,7 @@ server <- function(input, output, session) {
   # ==========================================
   pb_results <- pb_asset_module_server(
     id = "mod_pb",
+    auto_calc_pulse = reactive(auto_calc_pb_pulse()),
     d_balance_sheet = d_balance_sheet,
     d_income_statement = d_income_statement,
     current_price = reactive({
@@ -5251,7 +5256,7 @@ server <- function(input, output, session) {
   # ==========================================
   # 💰 8. DCF 計算核心與企業估值 (對接 FCFF 預測序列)
   # ==========================================
-  observeEvent(input$calc, {
+  .execute_dcf_calc <- function() {
     req(current_ticker(), input$dcf_mode, input$years, fcf_results$df_fcf()) 
     
     n <- as.numeric(input$years)
@@ -5394,8 +5399,90 @@ server <- function(input, output, session) {
       glue::glue("✅ 估值更新：已套入 {if (identical(claim, 'fcfe')) 'FCFE／Ke' else 'FCFF／WACC'} 運算"),
       type = "message"
     )
+    invisible(TRUE)
+  }
+
+  observeEvent(input$calc, { .execute_dcf_calc() })
+
+  # Search 後：推薦主模型靜默自動試算（美股／台股；參數未就緒則略過）
+  observeEvent(current_ticker(), {
+    auto_calc_primary_sig("")
+    auto_calc_ddm_pulse(0L)
+    auto_calc_pb_pulse(0L)
+  }, ignoreNULL = TRUE, ignoreInit = TRUE)
+
+  .auto_calc_primary_ready <- function(prim) {
+    prim <- as.character(prim %||% "")[1]
+    if (!nzchar(prim)) return(FALSE)
+    if (identical(prim, "ri")) return(TRUE)
+    if (identical(prim, "dcf")) {
+      proj <- tryCatch(fcf_results$df_fcf(), error = function(e) NULL)
+      n <- suppressWarnings(as.numeric(input$years)[1])
+      if (is.null(proj) || !is.data.frame(proj) || nrow(proj) < 1L) return(FALSE)
+      if (!is.finite(n) || n <= 0L || nrow(proj) != as.integer(n)) return(FALSE)
+      mode <- as.character(input$dcf_mode %||% "gordon")[1]
+      if (identical(mode, "gordon")) {
+        w <- suppressWarnings(as.numeric(input$wacc_gordon)[1])
+        if (!is.finite(w) || w <= 0) return(FALSE)
+      } else {
+        w1 <- suppressWarnings(as.numeric(input$wacc_stage1)[1])
+        w2 <- suppressWarnings(as.numeric(input$wacc_stage2)[1])
+        if (!is.finite(w1) || w1 <= 0 || !is.finite(w2) || w2 <= 0) return(FALSE)
+      }
+      sgr <- suppressWarnings(as.numeric(input$sgr)[1])
+      return(is.finite(sgr))
+    }
+    if (identical(prim, "ddm")) {
+      g <- suppressWarnings(as.numeric(input[["mod_ddm-g"]])[1])
+      ke <- suppressWarnings(as.numeric(input[["mod_ddm-ke"]])[1])
+      return(is.finite(g) && is.finite(ke) && ke > 0)
+    }
+    if (identical(prim, "pb")) {
+      bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
+      if (is.null(bs) || !is.data.frame(bs) || nrow(bs) == 0L) return(FALSE)
+      equity <- tryCatch(
+        select_current_metric_any(bs, EQUITY_PATTERNS, "stock"),
+        error = function(e) NA_real_
+      )
+      if (!is.finite(equity) || equity <= 0) return(FALSE)
+      lo <- suppressWarnings(as.numeric(input[["mod_pb-pb_low"]])[1])
+      mid <- suppressWarnings(as.numeric(input[["mod_pb-pb_mid"]])[1])
+      hi <- suppressWarnings(as.numeric(input[["mod_pb-pb_high"]])[1])
+      return(is.finite(lo) && is.finite(mid) && is.finite(hi) &&
+        lo > 0 && mid > 0 && hi > 0)
+    }
+    FALSE
+  }
+
+  .fire_auto_calc_primary <- function(prim) {
+    prim <- as.character(prim %||% "")[1]
+    if (identical(prim, "dcf")) {
+      tryCatch(.execute_dcf_calc(), error = function(e) invisible(NULL))
+    } else if (identical(prim, "ddm")) {
+      auto_calc_ddm_pulse(isolate(auto_calc_ddm_pulse()) + 1L)
+    } else if (identical(prim, "pb")) {
+      auto_calc_pb_pulse(isolate(auto_calc_pb_pulse()) + 1L)
+    }
+    invisible(NULL)
+  }
+
+  observe({
+    req(isTRUE(user_has_searched()))
+    tk <- current_ticker()
+    req(nzchar(tk))
+    rec <- model_sidebar_rec()
+    prim <- as.character(rec$primary %||% "")[1]
+    req(nzchar(prim), prim %in% c("dcf", "ddm", "pb", "ri"))
+
+    sig <- paste(tk, prim, sep = "|")
+    if (identical(auto_calc_primary_sig(), sig)) return()
+    if (!isTRUE(.auto_calc_primary_ready(prim))) return()
+
+    auto_calc_primary_sig(sig)
+    if (identical(prim, "ri")) return(invisible(NULL))
+    .fire_auto_calc_primary(prim)
   })
-  
+
   # ==========================================
   # 渲染估值結果與 InfoBox
   # ==========================================
@@ -7142,10 +7229,11 @@ server <- function(input, output, session) {
 
   output$bt_fv_conv_summary <- renderUI({
     s <- bt_fv_conv()
+    loc <- tryCatch(isolate(ui_locale()), error = function(e) "zh-TW")
     if (is.null(s)) {
       return(tags$div(
-        style = "margin:0 0 12px 0;padding:12px;background:#f7f7f7;border-left:4px solid #999;font-size:13px;",
-        "載入標的並完成估值後，將以歷史基本面推估之 FV 對照實際市值，估算下期之上／之下機率與幅度（非策略回測）。"
+        style = "margin:0 0 8px 0;padding:12px;background:#f0f0f0;border-left:4px solid #999;font-size:13px;",
+        ui_str("hfv_sum_empty", loc)
       ))
     }
     pct <- function(x) if (is.finite(x)) sprintf("%.0f%%", 100 * x) else "—"
@@ -7154,56 +7242,89 @@ server <- function(input, output, session) {
     period_txt <- {
       if (!is.null(s$from) || !is.null(s$to)) {
         paste0(
-          "期間：",
+          "統計期間：",
           if (is.null(s$from)) "…" else format(s$from, "%Y-%m-%d"),
           " ～ ",
           if (is.null(s$to)) "…" else format(s$to, "%Y-%m-%d")
         )
-      } else "期間：全部估值日配對"
+      } else "統計期間：全部估值日配對"
     }
-    fb <- s$fallbacks
-    fb_ui <- NULL
-    loc <- tryCatch(isolate(ui_locale()), error = function(e) "zh-TW")
-    if (!is.null(fb) && isTRUE(fb$any_fallback) && !is.null(fb$items) && nrow(fb$items) > 0) {
-      item_fmt <- ui_str("hfv_fb_item_fmt", loc)
-      fb_ui <- tags$div(
-        style = "margin:10px 0 0 0;padding:10px 12px;background:#fff8e8;border:1px solid #f0d78c;border-radius:4px;font-size:12.5px;line-height:1.55;",
-        tags$div(tags$b(ui_str("hfv_fb_title", loc))),
-        tags$p(style = "margin:4px 0 6px 0;color:#666;", fb$note %||% ""),
+
+    mo <- s$mos_outlook
+    mos_body <- {
+      if (!is.null(mo) && is.list(mo) && is.finite(mo$mos_now)) {
         tags$ul(
-          style = "margin:0;padding-left:18px;",
-          lapply(seq_len(nrow(fb$items)), function(i) {
-            row <- fb$items[i, , drop = FALSE]
-            # Model-neutral: label + source + count only — no 「請至某模型分頁」CTA
-            tags$li(sprintf(
-              item_fmt,
-              row$label[1], row$src_label[1], as.integer(row$n_rows[1])
-            ))
-          })
+          style = "margin:6px 0 0 0;padding-left:18px;",
+          tags$li(sprintf(
+            "目前安全邊際（MOS）＝%+.1f%% → 分組「%s」（n＝%d%s）",
+            100 * mo$mos_now,
+            mo$bucket %||% "—",
+            mo$n %||% 0L,
+            if (isTRUE(mo$small_sample)) "，小樣本" else ""
+          )),
+          tags$li(sprintf(
+            "該分組歷史下期：上漲機率 %s · 下跌 %s · 報酬中位 %s、平均 %s",
+            pct(mo$p_up), pct(mo$p_down),
+            gap_pct(mo$median_ret), gap_pct(mo$mean_ret)
+          ))
         )
-      )
-    } else if (!is.null(fb) && !isTRUE(fb$any_fallback) && nzchar(fb$note %||% "")) {
-      fb_ui <- tags$p(style = "margin:8px 0 0 0;color:#666;font-size:12px;", fb$note)
+      } else {
+        tags$div(style = "margin-top:6px;color:#888;font-size:12px;", "目前無可用的 MOS 分組展望。")
+      }
     }
-    tags$div(
+
+    price_card <- tags$div(
       style = paste0(
-        "margin:0 0 14px 0;padding:14px 16px;background:#fffdf5;",
-        "border-left:4px solid ", border, ";border-radius:4px;font-size:13px;line-height:1.6;"
+        "height:100%;margin:0;padding:12px 14px;background:#fff;",
+        "border:1px solid #d9e6f2;border-left:4px solid ", border, ";border-radius:4px;",
+        "font-size:13px;line-height:1.55;"
       ),
-      tags$div(
-        tags$b("歷史基本面驗證摘要（理論估值 vs 實際市值）"),
-        if (isTRUE(s$small_sample)) tags$span(style = "color:#c27d0e;margin-left:8px;", "（小樣本）"),
-        if (isTRUE(s$no_strategy_fv)) tags$span(style = "color:#c27d0e;margin-left:8px;", "（無策略 FV）")
-      ),
-      tags$p(style = "margin:6px 0 0 0;color:#666;", period_txt),
-      tags$p(style = "margin:4px 0 0 0;color:#888;font-size:12px;", s$frame %||% ""),
+      tags$div(tags$b(ui_str("hfv_sum_price_block", loc))),
+      tags$div(style = "margin:4px 0 0 0;color:#6c757d;font-size:11.5px;", ui_str("hfv_sum_price_formula", loc)),
+      tags$p(style = "margin:6px 0 0 0;color:#555;font-size:12px;", period_txt),
       tags$ul(
-        style = "margin:8px 0 0 0;padding-left:18px;",
+        style = "margin:6px 0 0 0;padding-left:18px;",
         tags$li(sprintf("配對數 n＝%d", s$n %||% 0L)),
-        tags$li(sprintf("之上機率 %s（%d）· 之下 %s（%d）· 持平 %s（%d）",
-                        pct(s$p_above), s$n_above %||% 0L,
-                        pct(s$p_below), s$n_below %||% 0L,
-                        pct(s$p_flat_vs), s$n_flat_vs %||% 0L)),
+        tags$li(sprintf(
+          "上漲機率 %s（%d）· 下跌 %s（%d）· 持平 %s（%d）",
+          pct(s$p_up), s$n_up %||% 0L,
+          pct(s$p_down), s$n_down %||% 0L,
+          pct(s$p_flat_price), s$n_flat_price %||% 0L
+        )),
+        tags$li(sprintf(
+          "下期報酬：中位 %s、平均 %s",
+          gap_pct(s$median_ret), gap_pct(s$mean_ret)
+        )),
+        if (identical(s$oos_mode, "expanding") && is.finite(s$oos_dir_hit_rate)) {
+          tags$li(sprintf(
+            "擴張窗漲跌方向命中率 %s（n＝%d）",
+            pct(s$oos_dir_hit_rate), s$oos_dir_n %||% 0L
+          ))
+        } else NULL
+      ),
+      tags$hr(style = "margin:10px 0 8px 0;border-top:1px dashed #c5d4ef;"),
+      tags$div(tags$b(ui_str("hfv_sum_mos_block", loc))),
+      mos_body
+    )
+
+    fv_card <- tags$div(
+      style = paste0(
+        "height:100%;margin:0;padding:12px 14px;background:#fff;",
+        "border:1px solid #e2e3e5;border-left:4px solid ", border, ";border-radius:4px;",
+        "font-size:13px;line-height:1.55;"
+      ),
+      tags$div(tags$b(ui_str("hfv_sum_fv_block", loc))),
+      tags$div(style = "margin:4px 0 0 0;color:#6c757d;font-size:11.5px;", ui_str("hfv_sum_fv_formula", loc)),
+      tags$p(style = "margin:6px 0 0 0;color:#555;font-size:12px;", period_txt),
+      tags$ul(
+        style = "margin:6px 0 0 0;padding-left:18px;",
+        tags$li(sprintf("配對數 n＝%d", s$n %||% 0L)),
+        tags$li(sprintf(
+          "之上機率 %s（%d）· 之下 %s（%d）· 持平 %s（%d）",
+          pct(s$p_above), s$n_above %||% 0L,
+          pct(s$p_below), s$n_below %||% 0L,
+          pct(s$p_flat_vs), s$n_flat_vs %||% 0L
+        )),
         tags$li(sprintf(
           "幅度 (P−FV)/FV：全體中位 %s、平均 %s；之上中位 %s；之下中位 %s；|幅度|中位 %s",
           gap_pct(s$median_gap), gap_pct(s$mean_gap),
@@ -7211,12 +7332,76 @@ server <- function(input, output, session) {
           gap_pct(s$median_abs_gap)
         )),
         if (identical(s$oos_mode, "expanding") && is.finite(s$oos_hit_rate)) {
-          tags$li(sprintf("擴張窗樣本外命中率 %s（n＝%d；以先前已實現配對多數方向預測下一期）",
-                          pct(s$oos_hit_rate), s$oos_n %||% 0L))
-        } else NULL,
-        tags$li(s$note %||% "")
+          tags$li(sprintf(
+            "擴張窗相對 FV 命中率 %s（n＝%d）",
+            pct(s$oos_hit_rate), s$oos_n %||% 0L
+          ))
+        } else NULL
+      )
+    )
+
+    # 結果附註／fallback：全寬置於兩欄下方
+    fb <- s$fallbacks
+    notes_ui <- tagList()
+    if (nzchar(s$note %||% "")) {
+      notes_ui <- tagAppendChild(
+        notes_ui,
+        tags$p(style = "margin:0 0 6px 0;color:#666;font-size:12px;", s$note)
+      )
+    }
+    if (!is.null(mo) && is.list(mo) && nzchar(mo$note %||% "")) {
+      notes_ui <- tagAppendChild(
+        notes_ui,
+        tags$p(style = "margin:0 0 6px 0;color:#666;font-size:12px;", mo$note)
+      )
+    }
+    if (!is.null(fb) && isTRUE(fb$any_fallback) && !is.null(fb$items) && nrow(fb$items) > 0) {
+      item_fmt <- ui_str("hfv_fb_item_fmt", loc)
+      notes_ui <- tagAppendChild(
+        notes_ui,
+        tags$div(
+          style = "margin:8px 0 0 0;padding:10px 12px;background:#fff8e8;border:1px solid #f0d78c;border-radius:4px;font-size:12.5px;line-height:1.55;",
+          tags$div(tags$b(ui_str("hfv_fb_title", loc))),
+          tags$ul(
+            style = "margin:6px 0 0 0;padding-left:18px;",
+            lapply(seq_len(nrow(fb$items)), function(i) {
+              row <- fb$items[i, , drop = FALSE]
+              tags$li(sprintf(
+                item_fmt,
+                row$label[1], row$src_label[1], as.integer(row$n_rows[1])
+              ))
+            })
+          )
+        )
+      )
+    } else if (!is.null(fb) && !isTRUE(fb$any_fallback) && nzchar(fb$note %||% "")) {
+      notes_ui <- tagAppendChild(
+        notes_ui,
+        tags$p(style = "margin:6px 0 0 0;color:#666;font-size:12px;", fb$note)
+      )
+    }
+
+    tagList(
+      tags$div(
+        style = "margin:0 0 8px 0;font-size:13px;",
+        tags$b(ui_str("hfv_sum_title", loc)),
+        if (isTRUE(s$small_sample)) tags$span(style = "color:#c27d0e;margin-left:8px;", "（小樣本）"),
+        if (isTRUE(s$no_strategy_fv)) tags$span(style = "color:#c27d0e;margin-left:8px;", "（無策略 FV）")
       ),
-      fb_ui
+      fluidRow(
+        column(6, style = "margin-bottom:10px;", price_card),
+        column(6, style = "margin-bottom:10px;", fv_card)
+      ),
+      if (length(notes_ui) > 0) {
+        tags$div(
+          style = "margin:4px 0 0 0;padding:10px 12px;background:#fafafa;border:1px dashed #ccc;border-radius:4px;",
+          tags$div(
+            style = "font-size:12px;font-weight:700;color:#666;margin-bottom:4px;",
+            ui_str("hfv_sum_notes", loc)
+          ),
+          notes_ui
+        )
+      } else NULL
     )
   })
 
@@ -7232,6 +7417,17 @@ server <- function(input, output, session) {
     ))
     pp <- s$pairs
     gapv <- if ("gap_next" %in% names(pp)) pp$gap_next else (pp$price_next - pp$fair_value) / pp$fair_value
+    retv <- if ("ret_next" %in% names(pp)) {
+      pp$ret_next
+    } else {
+      (pp$price_next - pp$price) / pp$price
+    }
+    dirp <- if ("dir_price" %in% names(pp)) {
+      pp$dir_price
+    } else {
+      ifelse(!is.finite(retv), NA_character_,
+             ifelse(retv > 0, "漲", ifelse(retv < 0, "跌", "平")))
+    }
     fb_lab <- if ("fallback_keys" %in% names(pp)) {
       ifelse(is.na(pp$fallback_keys) | !nzchar(pp$fallback_keys), "—", pp$fallback_keys)
     } else {
@@ -7243,13 +7439,15 @@ server <- function(input, output, session) {
       當期市價 = round(pp$price, 2),
       理論FV = round(pp$fair_value, 2),
       下期市價 = round(pp$price_next, 2),
+      `下期報酬` = paste0(sprintf("%+.1f", 100 * retv), "%"),
+      市價漲跌 = dirp,
       `幅度(P−FV)/FV` = paste0(sprintf("%+.1f", 100 * gapv), "%"),
       相對FV = pp$vs_fv,
       `預設／fallback` = fb_lab,
       stringsAsFactors = FALSE,
       check.names = FALSE
     )
-  }, striped = TRUE, bordered = TRUE, spacing = "s")
+  }, striped = TRUE, bordered = TRUE, spacing = "s", width = "100%")
 
   output$bt_fv_conv_plot <- renderPlotly({
     s <- bt_fv_conv()
@@ -7457,8 +7655,10 @@ server <- function(input, output, session) {
         tags$li(tags$b("策略 MOS／部位："), "用目前勾選且有限值模型的算術平均，不是隱藏的主模型。只勾一個＝該模型。未勾選任何模型＝不套用策略 FV／MOS（不暗設 DCF）。"),
         tags$li(
           tags$b("歷史基本面驗證（非策略回測）："),
-          "以當期策略理論估值 FV_t（＝勾選且有限值模型平均；未勾＝無 FV）對照下期實際市價 P_{t+1}，",
-          "估算之上／之下機率與幅度 (P−FV)/FV；預設只計已實現下期，可選擴張窗樣本外命中率。",
+          "同時報告（1）市價下期漲跌 ", tags$code("R=(P_{t+1}-P_t)/P_t"),
+          " 經驗頻率，以及依目前安全邊際（MOS）分組的條件上漲／下跌機率；",
+          "（2）相對策略理論估值 FV_t（＝勾選且有限值模型平均；未勾＝無 FV）之上／之下與幅度 (P−FV)/FV。",
+          "兩口徑不同，不可混稱。預設只計已實現下期，可選擴張窗樣本外命中率。",
           "若歷史點套用 APP_DEFAULTS／Session／法定稅率，摘要會列出預設／fallback 與對應分頁。",
           "此區塊在側邊「歷史基本面驗證」，與本頁策略淨值交易回測分開閱讀。"
         ),

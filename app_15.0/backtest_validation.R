@@ -625,8 +625,10 @@ build_fv_convergence_pairs <- function(valuation_df) {
     dist_next = numeric(),
     delta_dist = numeric(),
     gap_next = numeric(),
+    ret_next = numeric(),
     outcome = character(),
     vs_fv = character(),
+    dir_price = character(),
     fallback_keys = character(),
     stringsAsFactors = FALSE
   )
@@ -650,12 +652,16 @@ build_fv_convergence_pairs <- function(valuation_df) {
   dist_next <- abs(price_next - fv)
   delta <- dist_next - dist
   gap_next <- (price_next - fv) / fv
+  ret_next <- (price_next - price) / price
   outcome <- ifelse(!is.finite(delta), NA_character_,
              ifelse(delta < 0, "趨近",
              ifelse(delta > 0, "遠離", "持平")))
   vs_fv <- ifelse(!is.finite(price_next), NA_character_,
            ifelse(price_next > fv, "之上",
            ifelse(price_next < fv, "之下", "持平")))
+  dir_price <- ifelse(!is.finite(ret_next), NA_character_,
+               ifelse(ret_next > 0, "漲",
+               ifelse(ret_next < 0, "跌", "平")))
   fb <- if ("fallback_keys" %in% names(vd)) {
     as.character(vd$fallback_keys)
   } else {
@@ -672,8 +678,10 @@ build_fv_convergence_pairs <- function(valuation_df) {
     dist_next = dist_next[use],
     delta_dist = delta[use],
     gap_next = gap_next[use],
+    ret_next = ret_next[use],
     outcome = outcome[use],
     vs_fv = vs_fv[use],
+    dir_price = dir_price[use],
     fallback_keys = fb[use],
     stringsAsFactors = FALSE
   )
@@ -809,6 +817,13 @@ summarize_fv_market_validation <- function(valuation_df, from = NULL, to = NULL,
                                            locale = "zh-TW") {
   oos_mode <- match.arg(oos_mode)
   pairs <- build_fv_convergence_pairs(valuation_df)
+  .empty_outlook <- list(
+    mos_now = NA_real_, bucket = NA_character_, n = 0L,
+    p_up = NA_real_, p_down = NA_real_,
+    mean_ret = NA_real_, median_ret = NA_real_,
+    mean_up = NA_real_, mean_down = NA_real_,
+    small_sample = TRUE, note = "資料不足"
+  )
   empty <- list(
     pairs = pairs,
     n = 0L,
@@ -824,6 +839,14 @@ summarize_fv_market_validation <- function(valuation_df, from = NULL, to = NULL,
     p_toward = NA_real_,
     p_away = NA_real_,
     p_flat = NA_real_,
+    n_up = 0L,
+    n_down = 0L,
+    n_flat_price = 0L,
+    p_up = NA_real_,
+    p_down = NA_real_,
+    p_flat_price = NA_real_,
+    mean_ret = NA_real_,
+    median_ret = NA_real_,
     mean_gap = NA_real_,
     median_gap = NA_real_,
     mean_gap_above = NA_real_,
@@ -834,15 +857,19 @@ summarize_fv_market_validation <- function(valuation_df, from = NULL, to = NULL,
     median_abs_gap = NA_real_,
     oos_n = 0L,
     oos_hit_rate = NA_real_,
+    oos_dir_n = 0L,
+    oos_dir_hit_rate = NA_real_,
     oos_mode = oos_mode,
     from = from,
     to = to,
     as_of = as_of,
     small_sample = TRUE,
     note = "資料不足",
-    frame = "歷史基本面驗證（理論估值 vs 實際市值），非策略回測",
+    frame = "歷史基本面驗證：市價下期漲跌與相對 FV（非策略回測）",
     fallbacks = summarize_hist_param_fallbacks(valuation_df, locale = locale),
-    no_strategy_fv = FALSE
+    no_strategy_fv = FALSE,
+    mos_stats = summarize_mos_next_period_stats(valuation_df),
+    mos_outlook = .empty_outlook
   )
   # 未勾選模型 → valuation 無有限 fair_value → 無配對
   n_fv <- if (!is.null(valuation_df) && is.data.frame(valuation_df) &&
@@ -889,29 +916,71 @@ summarize_fv_market_validation <- function(valuation_df, from = NULL, to = NULL,
   above_g <- gaps[pp$vs_fv == "之上" & is.finite(gaps)]
   below_g <- gaps[pp$vs_fv == "之下" & is.finite(gaps)]
 
-  # Expanding-window OOS: at each i, prior pairs with Date_next < Date_i predict majority side
+  rets <- as.numeric(pp$ret_next)
+  rets_ok <- rets[is.finite(rets)]
+  n_up <- sum(rets_ok > 0)
+  n_down <- sum(rets_ok < 0)
+  n_flat_price <- sum(rets_ok == 0)
+  n_ret <- length(rets_ok)
+
+  # Expanding-window OOS: FV side + price direction (separate)
   oos_hit_rate <- NA_real_
   oos_n <- 0L
+  oos_dir_hit_rate <- NA_real_
+  oos_dir_n <- 0L
   if (identical(oos_mode, "expanding") && n >= 3L) {
     hits <- logical(0)
+    dir_hits <- logical(0)
     for (i in seq_len(n)) {
       prior <- pp[pp$Date_next < pp$Date[i], , drop = FALSE]
       if (nrow(prior) < 2L) next
       p_ab <- mean(prior$vs_fv == "之上", na.rm = TRUE)
       pred <- if (is.finite(p_ab) && p_ab > 0.5) "之上" else if (is.finite(p_ab) && p_ab < 0.5) "之下" else NA_character_
-      if (is.na(pred)) next
-      hits <- c(hits, identical(pp$vs_fv[i], pred))
+      if (!is.na(pred)) hits <- c(hits, identical(pp$vs_fv[i], pred))
+
+      p_up_prior <- mean(prior$dir_price == "漲", na.rm = TRUE)
+      pred_dir <- if (is.finite(p_up_prior) && p_up_prior > 0.5) {
+        "漲"
+      } else if (is.finite(p_up_prior) && p_up_prior < 0.5) {
+        "跌"
+      } else {
+        NA_character_
+      }
+      if (!is.na(pred_dir) && !is.na(pp$dir_price[i])) {
+        dir_hits <- c(dir_hits, identical(pp$dir_price[i], pred_dir))
+      }
     }
     oos_n <- length(hits)
     if (oos_n > 0L) oos_hit_rate <- mean(hits)
+    oos_dir_n <- length(dir_hits)
+    if (oos_dir_n > 0L) oos_dir_hit_rate <- mean(dir_hits)
   }
+
+  # MOS-conditional outlook: tip = latest finite MOS among rows that still have a next period
+  mos_stats <- summarize_mos_next_period_stats(valuation_df)
+  mos_tip <- NA_real_
+  if (!is.null(valuation_df) && is.data.frame(valuation_df) &&
+      all(c("Date", "mos", "hist_price") %in% names(valuation_df))) {
+    vd_m <- valuation_df[order(valuation_df$Date), , drop = FALSE]
+    vd_m <- vd_m[is.finite(vd_m$mos) & is.finite(vd_m$hist_price) & vd_m$hist_price > 0, , drop = FALSE]
+    if (nrow(vd_m) >= 2L) {
+      # Exclude terminal row (no next rebalance) so outlook maps to a bucket with history
+      mos_tip <- as.numeric(vd_m$mos[nrow(vd_m) - 1L])
+    } else if (nrow(vd_m) == 1L) {
+      mos_tip <- as.numeric(vd_m$mos[1L])
+    }
+  }
+  mos_outlook <- lookup_mos_bucket_outlook(mos_tip, mos_stats)
 
   small <- n < 5L
   note <- if (small) {
-    sprintf("樣本 n=%d＜5，僅供參考（Yahoo 年報深度有限；重編財報仍有 look-ahead 風險）。", n)
+    sprintf(
+      "樣本 n=%d＜5，僅供參考（Yahoo 年報深度有限；重編財報仍有 look-ahead 風險）。市價漲跌為 R=(P下一期−P)/P，與相對 FV 不同。",
+      n
+    )
   } else {
     sprintf(
-      "樣本 n=%d：以過去基本面推估之 FV 對照實際市值，估算下期之上／之下頻率與幅度（非交易策略回測）。",
+      "樣本 n=%d：同時報告市價下期漲跌 R=(P下一期−P)/P 與相對 FV 之上／之下（非交易策略回測；非預測保證）。",
       n
     )
   }
@@ -930,6 +999,14 @@ summarize_fv_market_validation <- function(valuation_df, from = NULL, to = NULL,
     p_toward = n_toward / n,
     p_away = n_away / n,
     p_flat = n_flat / n,
+    n_up = as.integer(n_up),
+    n_down = as.integer(n_down),
+    n_flat_price = as.integer(n_flat_price),
+    p_up = if (n_ret > 0L) n_up / n_ret else NA_real_,
+    p_down = if (n_ret > 0L) n_down / n_ret else NA_real_,
+    p_flat_price = if (n_ret > 0L) n_flat_price / n_ret else NA_real_,
+    mean_ret = if (n_ret > 0L) mean(rets_ok) else NA_real_,
+    median_ret = if (n_ret > 0L) stats::median(rets_ok) else NA_real_,
     mean_gap = if (length(gaps_ok)) mean(gaps_ok) else NA_real_,
     median_gap = if (length(gaps_ok)) stats::median(gaps_ok) else NA_real_,
     mean_gap_above = if (length(above_g)) mean(above_g) else NA_real_,
@@ -940,15 +1017,19 @@ summarize_fv_market_validation <- function(valuation_df, from = NULL, to = NULL,
     median_abs_gap = if (length(gaps_ok)) stats::median(abs(gaps_ok)) else NA_real_,
     oos_n = as.integer(oos_n),
     oos_hit_rate = oos_hit_rate,
+    oos_dir_n = as.integer(oos_dir_n),
+    oos_dir_hit_rate = oos_dir_hit_rate,
     oos_mode = oos_mode,
     from = from,
     to = to,
     as_of = as_of,
     small_sample = small,
     note = note,
-    frame = "歷史基本面驗證（理論估值 vs 實際市值），非策略回測",
+    frame = "歷史基本面驗證：市價下期漲跌與相對 FV（非策略回測）",
     fallbacks = summarize_hist_param_fallbacks(valuation_df, locale = locale),
-    no_strategy_fv = FALSE
+    no_strategy_fv = FALSE,
+    mos_stats = mos_stats,
+    mos_outlook = mos_outlook
   )
 }
 

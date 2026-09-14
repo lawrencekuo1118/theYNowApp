@@ -2,8 +2,9 @@
 # ddm_module.R - 股利折現模型 (DDM) 後端模組
 # ==========================================
 
-ddm_module_server <- function(id, ddm_g = reactive(NULL), ddm_ke = reactive(NULL), 
-                              scraped_d0 = reactive(NULL), 
+ddm_module_server <- function(id, auto_calc_pulse = reactive(0L),
+                              ddm_g = reactive(NULL), ddm_ke = reactive(NULL),
+                              scraped_d0 = reactive(NULL),
                               summary_df = reactive(NULL), 
                               d_cash_flow = reactive(NULL), 
                               d_balance_sheet = reactive(NULL),
@@ -112,8 +113,17 @@ ddm_module_server <- function(id, ddm_g = reactive(NULL), ddm_ke = reactive(NULL
       showNotification("DDM 模型參數已依據最新財報與中央設定回復", type = "message")
     })
     
+    .ddm_calc_requested <- function() {
+      btn <- suppressWarnings(as.integer(input$btn_calc_ddm)[1])
+      pulse <- suppressWarnings(as.integer(auto_calc_pulse())[1])
+      (is.finite(btn) && btn >= 1L) || (is.finite(pulse) && pulse >= 1L)
+    }
+
     # DDM 核心：Gordon 或二階段
-    ddm_calc <- eventReactive(input$btn_calc_ddm, {
+    ddm_calc <- eventReactive(list(input$btn_calc_ddm, auto_calc_pulse()), {
+      if (!isTRUE(.ddm_calc_requested())) {
+        return(list(status = "idle"))
+      }
       d0 <- suppressWarnings(as.numeric(input$d0)[1])
       g_in <- suppressWarnings(as.numeric(input$g)[1])
       ke_in <- suppressWarnings(as.numeric(input$ke)[1])
@@ -145,12 +155,13 @@ ddm_module_server <- function(id, ddm_g = reactive(NULL), ddm_ke = reactive(NULL
       d1 <- d0 * (1 + g_dec)
       p0 <- d1 / (ke_dec - g_dec)
       return(list(status = "success", value = round(p0, 2), d1 = round(d1, 2), mode = "gordon"))
-    })
-    
+    }, ignoreNULL = FALSE)
+
     .ddm_calc_snapshot <- function() {
-      clicked <- suppressWarnings(as.integer(input$btn_calc_ddm)[1])
-      if (!is.finite(clicked) || clicked < 1L) return(NULL)
-      tryCatch(ddm_calc(), error = function(e) NULL)
+      if (!isTRUE(.ddm_calc_requested())) return(NULL)
+      res <- tryCatch(ddm_calc(), error = function(e) NULL)
+      if (is.null(res) || identical(res$status, "idle")) return(NULL)
+      res
     }
 
     output$ui_ddm_result <- renderUI({
@@ -352,7 +363,10 @@ ddm_module_server <- function(id, ddm_g = reactive(NULL), ddm_ke = reactive(NULL
     })
     
     return(list(
-      ddm_price = reactive({ res <- ddm_calc(); if(res$status == "success") res$value else NA })
+      ddm_price = reactive({
+        res <- tryCatch(ddm_calc(), error = function(e) NULL)
+        if (!is.null(res) && identical(res$status, "success")) res$value else NA
+      })
     ))
   })
 }

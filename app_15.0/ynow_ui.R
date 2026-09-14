@@ -16,6 +16,16 @@
 
 #' About 分頁：中英左右對照專案簡介
 .about_bilingual_intro_ui <- function() {
+  brand <- tags$div(
+    class = "ynow-about-brand",
+    tags$img(
+      class = "ynow-about-logo-full",
+      src = "ynow-logo-full-480.png",
+      alt = "YNow — WH.Y VALUE NOW",
+      width = 240,
+      height = 240
+    )
+  )
   zh_features <- tags$ul(
     class = "ynow-about-feat",
     tags$li(
@@ -55,7 +65,9 @@
     )
   )
 
-  fluidRow(
+  tagList(
+    brand,
+    fluidRow(
     class = "ynow-about-bilingual",
     column(
       width = 6,
@@ -88,6 +100,7 @@
       ),
       tags$h4(class = "ynow-about-feat-h", tags$b("Core Features:")),
       en_features
+    )
     )
   )
 }
@@ -694,7 +707,13 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v15.17</span>'),
+    title = HTML(paste0(
+      '<span class="ynow-logo-wrap" title="YNow — WH.Y VALUE NOW">',
+      '<img class="ynow-logo-mark" src="ynow-logo-mark-48.png" ',
+      'width="34" height="34" alt="YNow"/>',
+      '<span class="ynow-app-title">v15.26</span>',
+      '</span>'
+    )),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -743,6 +762,16 @@ ui <- dashboardPage(
     width = 250,
     collapsed = FALSE,
     column(width = 12,
+           tags$div(
+             class = "ynow-sidebar-brand",
+             tags$img(
+               class = "ynow-sidebar-logo-mark",
+               src = "ynow-logo-mark-64.png",
+               width = 40,
+               height = 40,
+               alt = "YNow"
+             )
+           ),
            column(width = 12, textOutput("today"),
                   hr()
            )
@@ -840,6 +869,10 @@ ui <- dashboardPage(
     withMathJax(),
     
     tags$head(
+      tags$link(rel = "icon", type = "image/x-icon", href = "favicon.ico"),
+      tags$link(rel = "icon", type = "image/png", sizes = "32x32", href = "favicon-32.png"),
+      tags$link(rel = "icon", type = "image/png", sizes = "16x16", href = "favicon-16.png"),
+      tags$link(rel = "apple-touch-icon", sizes = "180x180", href = "apple-touch-icon.png"),
       tags$style(HTML('
         /* YNOW monochrome chrome: black/white (keep KPI bg-blue / Schilit red-green) */
         :root {
@@ -865,9 +898,7 @@ ui <- dashboardPage(
           50% { background-position: 100% 50%; }
         }
 
-        /* 標題金色箔面：漸層＋clip 只套在內層 .ynow-app-title，
-           勿對 .logo 容器同時用 filter + background-clip:text（Chromium 會整段消失），
-           也避免 AdminLTE .logo 的 background 縮寫蓋掉漸層。 */
+        /* 標題：圓標（無品牌文字）＋版號；金色箔面只套在 .ynow-app-title */
         .main-header .logo,
         .main-header .logo:hover {
           position: relative;
@@ -877,10 +908,31 @@ ui <- dashboardPage(
           background-color: var(--ynow-ink) !important;
           background-image: none !important;
           filter: none !important;
+          display: flex !important;
+          align-items: center;
+          justify-content: flex-start;
+          padding-left: 12px !important;
+          padding-right: 10px !important;
+        }
+        .main-header .logo .ynow-logo-wrap {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          max-width: 100%;
+          line-height: 1;
+        }
+        .main-header .logo .ynow-logo-mark {
+          width: 34px;
+          height: 34px;
+          flex: 0 0 34px;
+          object-fit: contain;
+          display: block;
         }
         .main-header .logo .ynow-app-title {
           display: inline-block;
           font-weight: bold;
+          font-size: 16px;
+          letter-spacing: 0.02em;
           color: #FFD700 !important;
           background-color: transparent !important;
           background-image: var(--ynow-gold-gradient) !important;
@@ -1419,6 +1471,16 @@ ui <- dashboardPage(
             if (hfvTitle && s.hfv_page_title) hfvTitle.textContent = s.hfv_page_title;
             var hfvSub = document.getElementById('ynow_hfv_page_sub');
             if (hfvSub && s.hfv_page_sub) hfvSub.textContent = s.hfv_page_sub;
+            var hfvMethod = document.getElementById('ynow_hfv_sec_method');
+            if (hfvMethod && s.hfv_sec_method) hfvMethod.textContent = s.hfv_sec_method;
+            var hfvSettings = document.getElementById('ynow_hfv_sec_settings');
+            if (hfvSettings && s.hfv_sec_settings) hfvSettings.textContent = s.hfv_sec_settings;
+            var hfvResults = document.getElementById('ynow_hfv_sec_results');
+            if (hfvResults && s.hfv_sec_results) hfvResults.textContent = s.hfv_sec_results;
+            var hfvChart = document.getElementById('ynow_hfv_chart_gap');
+            if (hfvChart && s.hfv_chart_gap) hfvChart.textContent = s.hfv_chart_gap;
+            var hfvTable = document.getElementById('ynow_hfv_table_detail');
+            if (hfvTable && s.hfv_table_detail) hfvTable.textContent = s.hfv_table_detail;
             var labTitle = document.getElementById('ynow_lab_notes_title');
             if (labTitle && s.lab_notes_title) labTitle.textContent = s.lab_notes_title;
             var labSub = document.getElementById('ynow_lab_notes_sub');
@@ -2155,6 +2217,21 @@ ui <- dashboardPage(
           font-size: 10px;
           color: #6b7280;
           line-height: 1.35;
+        }
+
+        /* About：完整 LOGO（含文字）置頂品牌區 */
+        .ynow-about-brand {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          margin: 4px 0 18px 0;
+          text-align: center;
+        }
+        .ynow-about-logo-full {
+          width: min(240px, 55vw);
+          height: auto;
+          display: block;
         }
 
         /* About：中英左右對照簡介 */
@@ -3474,7 +3551,7 @@ ui <- dashboardPage(
             h2(tags$b(id = "ynow_hfv_page_title", "歷史基本面驗證")),
             p(
               id = "ynow_hfv_page_sub",
-              "理論估值 vs 實際市值（漲跌機率／幅度）。這不是交易策略回測；量化回測請至側邊底部「測試」。"
+              "市價下期漲跌機率 R=(P下一期−P)/P，以及相對理論 FV 的位置／幅度。這不是交易策略回測；量化回測請至側邊底部「測試」。"
             ),
             tags$hr()
           )
@@ -3515,74 +3592,113 @@ ui <- dashboardPage(
           )
         ),
 
-        # 2) 歷史基本面驗證：理論估值 vs 實際市值（漲跌機率／幅度）
+        # 2) 歷史基本面驗證：市價下期漲跌與相對 FV
         fluidRow(
           box(
-            title = tagList(icon("balance-scale"), "歷史基本面驗證：理論估值 vs 實際市值（漲跌機率／幅度）"),
+            title = tagList(icon("balance-scale"), "歷史基本面驗證：市價下期漲跌與相對 FV"),
             width = 12, status = "warning", solidHeader = TRUE,
             collapsible = TRUE, collapsed = FALSE,
-            tags$p(
-              style = "font-size:12.5px;color:#444;line-height:1.55;",
-              tags$b("這不是交易策略回測。"),
-              "以當時可得基本面重建理論估值 ", tags$code("FV_t"),
-              "（＝折現圖勾選且有限值模型平均；未勾選＝無策略 FV，不暗設 DCF）",
-              "，再用後續實際市價 ", tags$code("P_{t+1}"),
-              " 驗證：估算落在估值", tags$b("之上／之下"),
-              "的頻率，以及幅度 ", tags$code("(P_{t+1}−FV_t)/FV_t"),
-              "。策略淨值／MOS 部位請至側邊底部「測試」內的量化回測區塊。"
-            ),
-            tags$p(
-              style = "font-size:11.5px;color:#888;line-height:1.45;margin-top:-4px;",
-              "資料注意：Yahoo 年報可能為重編；PIT 以財報期末＋約 90 日申報滯後過濾。",
-              "真・as-filed SEC EDGAR 仍待後續階段。",
-              "若歷史點套用系統預設／Session，摘要會顯示預設／fallback 提醒與對應分頁。"
-            ),
-            radioButtons(
-              "bt_fv_conv_window",
-              "統計期間（依估值日 Date_t）",
-              inline = TRUE,
-              choices = c(
-                "全部" = "all",
-                "近1年" = "1y",
-                "近3年" = "3y",
-                "近5年" = "5y",
-                "自訂" = "custom"
+
+            # --- 說明（與結果分開）---
+            tags$div(
+              class = "ynow-hfv-method",
+              style = "margin:0 0 14px 0;padding:12px 14px;background:#f7f7f7;border:1px solid #e5e5e5;border-radius:4px;",
+              tags$h5(
+                id = "ynow_hfv_sec_method",
+                style = "margin:0 0 8px 0;font-weight:700;",
+                "說明"
               ),
-              selected = "all"
-            ),
-            uiOutput("bt_fv_analysis_freq_ui"),
-            conditionalPanel(
-              condition = "input.bt_fv_conv_window == 'custom'",
-              dateRangeInput(
-                "bt_fv_conv_custom",
-                NULL,
-                start = Sys.Date() - 365 * 3,
-                end = Sys.Date(),
-                language = "zh-TW"
+              tags$p(
+                style = "font-size:12.5px;color:#444;line-height:1.55;margin:0 0 8px 0;",
+                tags$b("這不是交易策略回測。"),
+                "兩種口徑分開呈現：",
+                tags$b("（1）市價下期漲跌"), " ", tags$code("R=(P_{t+1}-P_t)/P_t"),
+                " 的經驗頻率，並以目前安全邊際（MOS）分組之條件機率作為展望；",
+                tags$b("（2）相對理論 FV"), " ", tags$code("FV_t"),
+                "（＝折現圖勾選且有限值模型平均；未勾選＝無策略 FV）落在之上／之下與幅度 ",
+                tags$code("(P_{t+1}-FV_t)/FV_t"),
+                "。兩者語意不同，不可混稱為同一「漲跌」。策略淨值請至側邊底部「測試」。"
+              ),
+              tags$p(
+                style = "font-size:11.5px;color:#888;line-height:1.45;margin:0;",
+                "資料注意：Yahoo 年報可能為重編；PIT 以財報期末＋約 90 日申報滯後過濾。",
+                "真・as-filed SEC EDGAR 仍待後續階段。",
+                "若歷史點套用系統預設／Session，結果區會另列預設／fallback 提醒。",
+                "小樣本（n＜5）僅供參考，非預測保證。"
               )
             ),
-            radioButtons(
-              "bt_fv_oos_mode",
-              "驗證口徑",
-              inline = TRUE,
-              choices = c(
-                "已實現下期（預設）" = "realized",
-                "擴張窗樣本外命中" = "expanding",
-                "含未到期下期（樣本內）" = "insample"
+
+            # --- 設定 ---
+            tags$div(
+              class = "ynow-hfv-settings",
+              style = "margin:0 0 16px 0;padding:12px 14px;background:#fff;border:1px solid #e8e8e8;border-radius:4px;",
+              tags$h5(
+                id = "ynow_hfv_sec_settings",
+                style = "margin:0 0 10px 0;font-weight:700;",
+                "設定"
               ),
-              selected = "realized"
+              radioButtons(
+                "bt_fv_conv_window",
+                "統計期間（依估值日 Date_t）",
+                inline = TRUE,
+                choices = c(
+                  "全部" = "all",
+                  "近1年" = "1y",
+                  "近3年" = "3y",
+                  "近5年" = "5y",
+                  "自訂" = "custom"
+                ),
+                selected = "all"
+              ),
+              uiOutput("bt_fv_analysis_freq_ui"),
+              conditionalPanel(
+                condition = "input.bt_fv_conv_window == 'custom'",
+                dateRangeInput(
+                  "bt_fv_conv_custom",
+                  NULL,
+                  start = Sys.Date() - 365 * 3,
+                  end = Sys.Date(),
+                  language = "zh-TW"
+                )
+              ),
+              radioButtons(
+                "bt_fv_oos_mode",
+                "驗證口徑",
+                inline = TRUE,
+                choices = c(
+                  "已實現下期（預設）" = "realized",
+                  "擴張窗樣本外命中" = "expanding",
+                  "含未到期下期（樣本內）" = "insample"
+                ),
+                selected = "realized"
+              )
             ),
-            uiOutput("bt_fv_conv_summary"),
-            fluidRow(
-              column(
-                7,
-                tags$h5(tags$b("逐期明細")),
-                tags$div(style = "overflow-x:auto;", tableOutput("bt_fv_conv_table"))
+
+            # --- 結果（數字／圖／表；不含長文說明）---
+            tags$div(
+              class = "ynow-hfv-results",
+              style = "margin:0;padding:12px 14px;background:#fffdf8;border:1px solid #f0e0b8;border-radius:4px;",
+              tags$h5(
+                id = "ynow_hfv_sec_results",
+                style = "margin:0 0 10px 0;font-weight:700;",
+                "結果"
               ),
-              column(
-                5,
-                tags$h5(tags$b("幅度 (P下一期 − FV) / FV")),
-                plotlyOutput("bt_fv_conv_plot", height = "280px") %>% withSpinner()
+              uiOutput("bt_fv_conv_summary"),
+              tags$h5(
+                id = "ynow_hfv_chart_gap",
+                style = "margin-top: 14px; font-weight: 700;",
+                "幅度 (P下一期 − FV) / FV"
+              ),
+              plotlyOutput("bt_fv_conv_plot", height = "280px") %>% withSpinner(),
+              tags$h5(
+                id = "ynow_hfv_table_detail",
+                style = "margin-top: 14px; font-weight: 700;",
+                "逐期明細"
+              ),
+              tags$div(
+                style = "overflow-x:auto; width:100%;",
+                tags$style(HTML("#bt_fv_conv_table table { width: 100% !important; }")),
+                tableOutput("bt_fv_conv_table")
               )
             )
           )
