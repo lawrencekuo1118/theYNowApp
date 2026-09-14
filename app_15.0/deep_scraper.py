@@ -74,6 +74,11 @@ def fast_get_company_info(ticker="AMZN"):
 
 
 def _fmt_num(v, digits=2):
+    """Format a number for Summary Value cells (always a string for reticulate).
+
+    Large Python ints (e.g. TSM marketCap ≈ 2e12) must NOT be passed to R as
+    raw integers — reticulate maps them to 32-bit R integer and overflows.
+    """
     if v is None:
         return "N/A"
     try:
@@ -82,7 +87,9 @@ def _fmt_num(v, digits=2):
     except Exception:
         pass
     try:
-        fv = float(v)
+        # Cast via str→float so values > 2^31 stay exact enough for T/B suffixes
+        # and never become reticulate int32 overflow when R later parses the cell.
+        fv = float(v) if not isinstance(v, str) else float(str(v).replace(",", ""))
         if abs(fv) >= 1e12:
             return f"{fv/1e12:.2f}T"
         if abs(fv) >= 1e9:

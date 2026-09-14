@@ -208,8 +208,26 @@ format_financial_display_number <- function(x, digits = 2) {
   out
 }
 
-# Scale all period columns of a Yahoo financial statement DF into session currency.
+# 非金額列（股數／EPS／稅率等）：FX 換算時必須略過，否則 TSM 等 ADR
+# 會把 Ordinary Shares ≈25.9B 誤除以 ~32 → 破壞 ADR 對齊與每股 FV。
+.FS_SKIP_FX_MONEY_RE <- paste0(
+  "(EPS|Earnings Per Share|Average Shares|Share Issued|Shares Number|",
+  "Treasury Shares|Tax Rate|Tax Rate For Calcs|Shares Outstanding)"
+)
+
+#' 該科目列是否為「金額」而應套用 FX（股數／每股／稅率除外）
+fs_row_is_fx_money <- function(label) {
+  lab <- as.character(label %||% "")[1]
+  if (!nzchar(lab)) return(FALSE)
+  if (grepl("每股盈餘|加權平均股數|已發行股數|普通股股數|庫藏股數|計算用稅率|稅率", lab)) {
+    return(FALSE)
+  }
+  !grepl(.FS_SKIP_FX_MONEY_RE, lab, ignore.case = TRUE, perl = TRUE)
+}
+
+# Scale money period columns of a Yahoo financial statement DF into session currency.
 # Keeps full numeric precision for downstream KPI／估值；顯示四捨五入見 format_financial_df_display。
+# Share counts / EPS / tax-rate rows are left unchanged (not FX money).
 scale_financial_df_money <- function(df, from_ccy, session_ccy = NULL, usd_twd = NULL) {
   .tag_money <- function(x, scaled, ccy) {
     attr(x, "money_scaled") <- isTRUE(scaled)
@@ -229,14 +247,21 @@ scale_financial_df_money <- function(df, from_ccy, session_ccy = NULL, usd_twd =
     return(.tag_money(df, TRUE, if (is.na(sess)) fr else sess))
   }
   out <- df
+  labels <- as.character(out[[1]])
+  scale_row <- vapply(labels, fs_row_is_fx_money, logical(1), USE.NAMES = FALSE)
   for (j in seq.int(2L, ncol(out))) {
     raw <- as.character(out[[j]])
     nums <- parse_financial_number(raw)
-    scaled <- nums * mult
+    scaled <- ifelse(scale_row & is.finite(nums), nums * mult, nums)
     out[[j]] <- ifelse(
-      is.na(scaled),
+      is.na(scaled) | !is.finite(scaled),
       raw,
-      format(scaled, scientific = FALSE, trim = TRUE, digits = 15)
+      # Keep non-money rows as original raw when not scaled; money rows formatted.
+      ifelse(
+        scale_row,
+        format(scaled, scientific = FALSE, trim = TRUE, digits = 15),
+        raw
+      )
     )
   }
   .tag_money(out, TRUE, sess)
@@ -413,9 +438,36 @@ normalize_all_financials <- function(res) {
   meta <- res[["_meta"]]
   stmts <- if ("_meta" %in% names(res)) res[names(res) != "_meta"] else res
   out <- lapply(stmts, normalize_financial_statement)
+  q_ccy <- NULL
+  f_ccy <- NULL
   if (is.list(meta)) {
-    attr(out, "currency") <- meta$currency %||% meta$quote_currency
-    attr(out, "financialCurrency") <- meta$financialCurrency %||% meta$financial_currency
+    q_ccy <- meta$currency %||% meta$quote_currency
+    f_ccy <- meta$financialCurrency %||% meta$financial_currency
+    attr(out, "currency") <- q_ccy
+    attr(out, "financialCurrency") <- f_ccy
+  }
+  # Stamp quote/statement ccy onto each statement DF so FX scale / ADR
+  # resolve still works after nested list access.
+  if (!is.null(q_ccy) || !is.null(f_ccy)) {
+    out <- lapply(out, function(stmt) {
+      if (is.null(stmt)) return(stmt)
+      stamp <- function(df) {
+        if (is.null(df) || !is.data.frame(df)) return(df)
+        if (!is.null(q_ccy)) attr(df, "currency") <- q_ccy
+        if (!is.null(f_ccy)) attr(df, "financialCurrency") <- f_ccy
+        df
+      }
+      if (is.data.frame(stmt)) return(stamp(stmt))
+      if (is.list(stmt)) {
+        if (!is.null(stmt$collapsed)) stmt$collapsed <- stamp(stmt$collapsed)
+        if (!is.null(stmt$expanded)) stmt$expanded <- stamp(stmt$expanded)
+      }
+      stmt
+    })
+    if (is.list(meta)) {
+      attr(out, "currency") <- q_ccy
+      attr(out, "financialCurrency") <- f_ccy
+    }
   }
   out
 }
