@@ -719,7 +719,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v16</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v16.01</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -1226,6 +1226,34 @@ ui <- dashboardPage(
         .sidebar-menu > li.active > a,
         .sidebar-menu > li.menu-open > a {
           font-weight: 700 !important;
+        }
+        /* 估值分類子分頁標籤：黑底白字（僅 treeview-menu，不改父層分類標籤） */
+        .skin-black .sidebar-menu .treeview-menu {
+          background-color: #000 !important;
+          padding-top: 0 !important;
+          padding-bottom: 0 !important;
+        }
+        .skin-black .sidebar-menu .treeview-menu > li > a {
+          background-color: #000 !important;
+          color: #fff !important;
+          border-left: 3px solid transparent;
+        }
+        .skin-black .sidebar-menu .treeview-menu > li > a > .fa,
+        .skin-black .sidebar-menu .treeview-menu > li > a > .glyphicon,
+        .skin-black .sidebar-menu .treeview-menu > li > a > .ion {
+          color: #fff !important;
+        }
+        .skin-black .sidebar-menu .treeview-menu > li > a:hover {
+          background-color: #1a1a1a !important;
+          color: #fff !important;
+          border-left-color: rgba(255, 255, 255, 0.55);
+        }
+        .skin-black .sidebar-menu .treeview-menu > li.active > a,
+        .skin-black .sidebar-menu .treeview-menu > li.active > a:hover {
+          background-color: #000 !important;
+          color: #fff !important;
+          font-weight: 700 !important;
+          border-left-color: #fff;
         }
         /* Snapshot：側邊欄內容底部低調捷徑（正常文件流，避免 absolute 跑位） */
         .ynow-sidebar-snapshot-foot {
