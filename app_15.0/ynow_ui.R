@@ -694,7 +694,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v15.19</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v15.20</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -3577,7 +3577,11 @@ ui <- dashboardPage(
             tags$h5(tags$b("幅度 (P下一期 − FV) / FV")),
             plotlyOutput("bt_fv_conv_plot", height = "280px") %>% withSpinner(),
             tags$h5(tags$b("逐期明細"), style = "margin-top: 14px;"),
-            tags$div(style = "overflow-x:auto;", tableOutput("bt_fv_conv_table"))
+            tags$div(
+              style = "overflow-x:auto; width:100%;",
+              tags$style(HTML("#bt_fv_conv_table table { width: 100% !important; }")),
+              tableOutput("bt_fv_conv_table")
+            )
           )
         ),
 

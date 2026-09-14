@@ -7336,7 +7336,7 @@ server <- function(input, output, session) {
       stringsAsFactors = FALSE,
       check.names = FALSE
     )
-  }, striped = TRUE, bordered = TRUE, spacing = "s")
+  }, striped = TRUE, bordered = TRUE, spacing = "s", width = "100%")
 
   output$bt_fv_conv_plot <- renderPlotly({
     s <- bt_fv_conv()
