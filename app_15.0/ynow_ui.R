@@ -698,22 +698,15 @@ ui <- dashboardPage(
     titleWidth = 250,
     tags$li(
       class = "dropdown ynow-market-header",
-      style = "height: 50px; display: flex; align-items: center; padding: 0 8px 0 14px; list-style: none;",
-      tags$div(
-        style = "display: flex; flex-direction: column; align-items: flex-end; gap: 2px; line-height: 1.15;",
-        shinyWidgets::radioGroupButtons(
-          inputId = "market_mode_pick",
-          label = NULL,
-          choices = c("美股" = "US", "台股" = "TW"),
-          selected = "US",
-          status = "default",
-          size = "xs",
-          individual = TRUE
-        ),
-        tags$div(
-          style = "font-size: 10px; color: rgba(255,255,255,0.72); white-space: nowrap;",
-          "市場"
-        )
+      shinyWidgets::radioGroupButtons(
+        inputId = "market_mode_pick",
+        label = NULL,
+        choices = c("美股" = "US", "台股" = "TW"),
+        selected = "US",
+        status = "default",
+        size = "xs",
+        direction = "vertical",
+        individual = FALSE
       )
     ),
     tags$li(
@@ -915,10 +908,72 @@ ui <- dashboardPage(
         .content-wrapper, .right-side { background-color: #f7f7f7; }
         .skin-black .main-header .navbar {
           background-color: var(--ynow-ink) !important;
+          position: relative;
         }
         .skin-black .main-header .navbar .sidebar-toggle:hover {
           background-color: #000 !important;
         }
+
+        /* 美股／台股：緊靠三線 icon 右側，上下堆疊且合計佔滿標頭高度 */
+        .main-header .navbar .ynow-market-header {
+          position: absolute !important;
+          left: 50px; /* sidebar-toggle 寬度 */
+          top: 0;
+          bottom: 0;
+          height: 50px !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          list-style: none;
+          display: flex !important;
+          align-items: stretch;
+          float: none !important;
+          z-index: 20;
+        }
+        .ynow-market-header .form-group {
+          margin: 0 !important;
+          height: 100%;
+        }
+        .ynow-market-header .btn-group-vertical,
+        .ynow-market-header .btn-group {
+          display: flex !important;
+          flex-direction: column !important;
+          height: 100% !important;
+          width: auto;
+          margin: 0 !important;
+        }
+        .ynow-market-header .btn-group-vertical > .btn,
+        .ynow-market-header .btn-group > .btn,
+        .ynow-market-header .btn-group-xs > .btn,
+        .ynow-market-header .btn-xs {
+          flex: 1 1 50%;
+          height: 50% !important;
+          min-height: 0 !important;
+          margin: 0 !important;
+          border-radius: 0 !important;
+          line-height: 1 !important;
+          padding: 0 8px !important;
+          display: flex !important;
+          align-items: center;
+          justify-content: center;
+          background: rgba(255,255,255,0.12) !important;
+          border: 1px solid rgba(255,255,255,0.35) !important;
+          color: #fff !important;
+          font-weight: 700 !important;
+          font-size: 11px !important;
+          box-shadow: none !important;
+        }
+        .ynow-market-header .btn-group-vertical > .btn + .btn,
+        .ynow-market-header .btn-group > .btn + .btn {
+          border-top-width: 0 !important;
+        }
+        .ynow-market-header .btn-group-vertical > .btn.active,
+        .ynow-market-header .btn-group > .btn.active,
+        .ynow-market-header .btn-xs.active {
+          background: #fff !important;
+          color: #222 !important;
+          border-color: #fff !important;
+        }
+        .ynow-market-header .radiobtn { margin: 0 !important; }
 
         /* 台股：dashboardHeader 改以中華民國國旗填滿；美股維持全黑 */
         body.ynow-market-tw .main-header {
