@@ -707,7 +707,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v15.27</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v15.28</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -749,6 +749,18 @@ ui <- dashboardPage(
           textOutput("hdr_ccy_status", inline = TRUE)
         )
       )
+    ),
+    tags$li(
+      id = "ynow-header-logo",
+      class = "dropdown ynow-header-logo",
+      tags$img(
+        class = "ynow-header-logo-mark",
+        src = "ynow-logo-mark-40.png",
+        width = 36,
+        height = 36,
+        alt = "YNow",
+        title = "YNow — WH.Y VALUE NOW"
+      )
     )
   ),
   
@@ -756,16 +768,6 @@ ui <- dashboardPage(
     width = 250,
     collapsed = FALSE,
     column(width = 12,
-           tags$div(
-             class = "ynow-sidebar-brand",
-             tags$img(
-               class = "ynow-sidebar-logo-mark",
-               src = "ynow-logo-mark-64.png",
-               width = 40,
-               height = 40,
-               alt = "YNow"
-             )
-           ),
            column(width = 12, textOutput("today"),
                   hr()
            )
@@ -2186,6 +2188,28 @@ ui <- dashboardPage(
           font-size: 10px;
           color: #6b7280;
           line-height: 1.35;
+        }
+
+        /* 頂欄最右側：小圓標（無 wordmark） */
+        .main-header .navbar-custom-menu .navbar-nav > li#ynow-header-logo.ynow-header-logo,
+        .main-header .navbar > #ynow-header-logo.ynow-header-logo {
+          height: 50px;
+          display: flex !important;
+          align-items: center;
+          justify-content: center;
+          float: left;
+          list-style: none;
+          padding: 0 14px 0 8px;
+          margin: 0;
+        }
+        .ynow-header-logo-mark {
+          width: 36px;
+          height: 36px;
+          object-fit: contain;
+          display: block;
+        }
+        body.ynow-market-tw .ynow-header-logo-mark {
+          filter: drop-shadow(0 0 2px rgba(0,0,0,0.35));
         }
 
         /* About：完整 LOGO（含文字）置頂品牌區 */
