@@ -707,7 +707,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v15.29</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v15.30</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -806,11 +806,9 @@ ui <- dashboardPage(
            tags$div(
              class = "ynow-sidebar-brand",
              tags$img(
-               class = "ynow-sidebar-logo-mark",
-               src = "ynow-logo-mark-64.png",
-               width = 48,
-               height = 48,
-               alt = "YNow",
+               class = "ynow-sidebar-logo-full",
+               src = "ynow-logo-full-480.png",
+               alt = "YNow — WH.Y VALUE NOW",
                title = "YNow — WH.Y VALUE NOW"
              )
            ),
@@ -1197,19 +1195,20 @@ ui <- dashboardPage(
         }
         .ynow-sidebar-test-link { margin-left: 8px; }
         .ynow-sidebar-feedback-link { margin-left: 8px; }
-        /* 側欄小圓標：Recent Search 橫線下、Download Report 正上方 */
+        /* 側欄完整 LOGO：Recent Search 橫線下、Download Report 正上方；等比例放大 */
         .ynow-sidebar-brand {
           display: flex;
           justify-content: center;
           align-items: center;
-          padding: 6px 8px 4px 8px;
+          padding: 8px 10px 6px 10px;
         }
-        .ynow-sidebar-logo-mark {
-          width: 48px;
-          height: 48px;
+        .ynow-sidebar-logo-full {
+          width: min(200px, 92%);
+          height: auto;
+          max-width: 100%;
           object-fit: contain;
           display: block;
-          opacity: 0.95;
+          opacity: 0.98;
         }
         /* 側邊欄 PDF 下載：換行／縮放，避免長標籤撐破側欄 */
         .ynow-sidebar-download-wrap {
