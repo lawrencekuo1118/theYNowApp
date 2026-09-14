@@ -803,6 +803,17 @@ ui <- dashboardPage(
     ),
     
     column(width = 12,
+           tags$div(
+             class = "ynow-sidebar-brand",
+             tags$img(
+               class = "ynow-sidebar-logo-mark",
+               src = "ynow-logo-mark-64.png",
+               width = 48,
+               height = 48,
+               alt = "YNow",
+               title = "YNow — WH.Y VALUE NOW"
+             )
+           ),
            div(class = "ynow-sidebar-download-wrap",
                downloadButton("download_report", "Download Report (PDF)",
                               class = "ynow-sidebar-download-btn",
