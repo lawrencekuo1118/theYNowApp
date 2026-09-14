@@ -122,6 +122,7 @@ pb_asset_module_ui <- function(id) {
 # ⚙️ 後端 Server
 # ==========================================
 pb_asset_module_server <- function(id,
+                                   auto_calc_pulse = reactive(0L),
                                    d_balance_sheet,
                                    d_income_statement = reactive(NULL),
                                    current_price = reactive(NA),
@@ -451,8 +452,17 @@ pb_asset_module_server <- function(id,
       )
     }, striped = TRUE, hover = TRUE, bordered = TRUE, width = "100%")
     
+    .pb_calc_requested <- function() {
+      btn <- suppressWarnings(as.integer(input$btn_calc_pb)[1])
+      pulse <- suppressWarnings(as.integer(auto_calc_pulse())[1])
+      (is.finite(btn) && btn >= 1L) || (is.finite(pulse) && pulse >= 1L)
+    }
+
     # --- 核心計算 ---
-    pb_calc <- eventReactive(input$btn_calc_pb, {
+    pb_calc <- eventReactive(list(input$btn_calc_pb, auto_calc_pulse()), {
+      if (!isTRUE(.pb_calc_requested())) {
+        return(list(status = "idle"))
+      }
       basis_val <- .pb_basis_val()
       if (is.na(basis_val) || basis_val <= 0) {
         return(list(status = "error", message = "計算無效：請先提供有效的 BVPS／TBVPS／NAVPS（須 > 0）。"))
@@ -485,11 +495,11 @@ pb_asset_module_server <- function(id,
     
     # 初次／參數變更時若尚未按過也可顯示提示；正式結果依按鈕
     output$ui_pb_result <- renderUI({
-      if (is.null(input$btn_calc_pb) || input$btn_calc_pb == 0) {
+      res <- pb_calc()
+      if (identical(res$status, "idle")) {
         return(div(style = "color: #7f8c8d; padding: 15px; text-align: center;",
                    "請確認 P/B Settings 的 BVPS／TBVPS／NAVPS，以及「目標本淨比」分頁的倍數，然後按下「試算 P/B 合理價」。"))
       }
-      res <- pb_calc()
       if (res$status == "error") {
         return(div(style = "color: #d9534f; font-weight: bold; padding: 15px; background-color: #fdf2f2; border-left: 5px solid #d9534f; border-radius: 4px;",
                    icon("exclamation-triangle"), " ", res$message))
@@ -561,7 +571,7 @@ pb_asset_module_server <- function(id,
     })
     
     output$tbl_pb_band <- renderTable({
-      req(input$btn_calc_pb > 0)
+      req(.pb_calc_requested())
       res <- pb_calc()
       req(res$status == "success")
       data.frame(
@@ -573,7 +583,7 @@ pb_asset_module_server <- function(id,
     }, striped = TRUE, hover = TRUE, bordered = TRUE, align = "c", width = "100%")
     
     output$plt_pb_band <- renderPlot({
-      req(input$btn_calc_pb > 0)
+      req(.pb_calc_requested())
       res <- pb_calc()
       req(res$status == "success")
       
@@ -723,9 +733,8 @@ pb_asset_module_server <- function(id,
       pb_price = reactive({
         live <- pb_live_band()
         if (!is.null(live) && is.finite(live$mid)) return(live$mid)
-        if (is.null(input$btn_calc_pb) || input$btn_calc_pb == 0) return(NA_real_)
-        res <- pb_calc()
-        if (identical(res$status, "success")) res$fair_mid else NA_real_
+        res <- tryCatch(pb_calc(), error = function(e) NULL)
+        if (!is.null(res) && identical(res$status, "success")) res$fair_mid else NA_real_
       }),
       pb_band = reactive({
         live <- pb_live_band()
@@ -735,9 +744,8 @@ pb_asset_module_server <- function(id,
             basis_val = live$basis_val
           ))
         }
-        if (is.null(input$btn_calc_pb) || input$btn_calc_pb == 0) return(NULL)
-        res <- pb_calc()
-        if (!identical(res$status, "success")) return(NULL)
+        res <- tryCatch(pb_calc(), error = function(e) NULL)
+        if (is.null(res) || !identical(res$status, "success")) return(NULL)
         list(low = res$fair_low, mid = res$fair_mid, high = res$fair_high,
              market_pb = res$market_pb, basis_val = res$basis_val)
       })
