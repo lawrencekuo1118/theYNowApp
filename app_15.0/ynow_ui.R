@@ -707,13 +707,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML(paste0(
-      '<span class="ynow-logo-wrap" title="YNow — WH.Y VALUE NOW">',
-      '<img class="ynow-logo-mark" src="ynow-logo-mark-48.png" ',
-      'width="34" height="34" alt="YNow"/>',
-      '<span class="ynow-app-title">v15.26</span>',
-      '</span>'
-    )),
+    title = HTML('<span class="ynow-app-title">The YNow App v15.27</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -869,10 +863,6 @@ ui <- dashboardPage(
     withMathJax(),
     
     tags$head(
-      tags$link(rel = "icon", type = "image/x-icon", href = "favicon.ico"),
-      tags$link(rel = "icon", type = "image/png", sizes = "32x32", href = "favicon-32.png"),
-      tags$link(rel = "icon", type = "image/png", sizes = "16x16", href = "favicon-16.png"),
-      tags$link(rel = "apple-touch-icon", sizes = "180x180", href = "apple-touch-icon.png"),
       tags$style(HTML('
         /* YNOW monochrome chrome: black/white (keep KPI bg-blue / Schilit red-green) */
         :root {
@@ -898,7 +888,7 @@ ui <- dashboardPage(
           50% { background-position: 100% 50%; }
         }
 
-        /* 標題：圓標（無品牌文字）＋版號；金色箔面只套在 .ynow-app-title */
+        /* 標題金色箔面：漸層＋clip 只套在內層 .ynow-app-title（header／favicon 暫不嵌圓標） */
         .main-header .logo,
         .main-header .logo:hover {
           position: relative;
@@ -908,31 +898,10 @@ ui <- dashboardPage(
           background-color: var(--ynow-ink) !important;
           background-image: none !important;
           filter: none !important;
-          display: flex !important;
-          align-items: center;
-          justify-content: flex-start;
-          padding-left: 12px !important;
-          padding-right: 10px !important;
-        }
-        .main-header .logo .ynow-logo-wrap {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          max-width: 100%;
-          line-height: 1;
-        }
-        .main-header .logo .ynow-logo-mark {
-          width: 34px;
-          height: 34px;
-          flex: 0 0 34px;
-          object-fit: contain;
-          display: block;
         }
         .main-header .logo .ynow-app-title {
           display: inline-block;
           font-weight: bold;
-          font-size: 16px;
-          letter-spacing: 0.02em;
           color: #FFD700 !important;
           background-color: transparent !important;
           background-image: var(--ynow-gold-gradient) !important;
