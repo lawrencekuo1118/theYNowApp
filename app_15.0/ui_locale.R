@@ -52,7 +52,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     bt_freq_insufficient = "Price history is too short for analysis-frequency options.",
     hfv_page_title = "Historical Fundamental Validation",
     hfv_page_sub = paste0(
-      "Theoretical FV vs actual market (odds & magnitude). ",
+      "Next-period price up/down odds R=(P_next−P)/P, plus position vs theoretical FV. ",
       "This is not a trading-strategy backtest; quantitative backtest lives under Testing (sidebar foot)."
     ),
     lab_notes_title = "Testing — Quantitative Backtest",
@@ -63,10 +63,15 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     bt_zone_title = "Backtest Zone",
     box_hfv_discount = "FV vs Market Price",
-    box_hfv_validation = "Historical Fundamental Validation: Theoretical FV vs Actual Market (odds & magnitude)",
+    box_hfv_validation = "Historical Fundamental Validation: Next-Period Up/Down & vs FV",
     box_hfv_param_inventory = "US Valuation Replay Inventory (Live vs Hist PIT)",
     hfv_fb_title = "Default / fallback notice",
     hfv_fb_item_fmt = "%s — %s (~%d valuation points)",
+    hfv_sum_title = "Validation summary (price direction & vs FV)",
+    hfv_sum_price_block = "Next-period price move R = (P_next − P) / P",
+    hfv_sum_mos_block = "Outlook by current MOS bucket (same ticker history)",
+    hfv_sum_fv_block = "Position vs theoretical FV (not the same as up/down)",
+    hfv_sum_empty = "After Search and model selection, next-period up/down odds and vs-FV stats appear here (not a strategy backtest).",
 
     # --- tabBox headers ---
     box_financial_report = "FINANCIAL REPORT",
@@ -152,7 +157,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     bt_freq_insufficient = "股價歷史不足，尚無可用分析頻率。",
     hfv_page_title = "歷史基本面驗證",
     hfv_page_sub = paste0(
-      "理論估值 vs 實際市值（漲跌機率／幅度）。",
+      "市價下期漲跌機率 R=(P下一期−P)/P，以及相對理論 FV 的位置／幅度。",
       "這不是交易策略回測；量化回測請至側邊底部「測試」。"
     ),
     lab_notes_title = "測試 — Testing（量化回測）",
@@ -163,10 +168,15 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     bt_zone_title = "量化回測實驗室 (Backtest Zone)",
     box_hfv_discount = "折現比較（合理價 vs 實際股價）",
-    box_hfv_validation = "歷史基本面驗證：理論估值 vs 實際市值（漲跌機率／幅度）",
+    box_hfv_validation = "歷史基本面驗證：市價下期漲跌與相對 FV",
     box_hfv_param_inventory = "美股估值復盤參數盤點（Live vs Hist PIT）",
     hfv_fb_title = "預設／fallback 提醒",
     hfv_fb_item_fmt = "%s — %s（約 %d 個估值點）",
+    hfv_sum_title = "驗證摘要（市價漲跌與相對 FV）",
+    hfv_sum_price_block = "市價下期漲跌 R = (P下一期 − P) / P",
+    hfv_sum_mos_block = "依目前 MOS 分桶展望（該股自身歷史）",
+    hfv_sum_fv_block = "相對理論 FV（與漲跌不同口徑）",
+    hfv_sum_empty = "載入標的並勾選評價模型後，將顯示市價下期漲跌機率與相對 FV 統計（非策略回測）。",
 
     # --- tabBox headers ---
     box_financial_report = "財務報表",
@@ -281,6 +291,8 @@ locale_for_market <- function(mode = get_market_mode()) {
   "Strategy Parameters" = "box_bt_params",
   "折現比較（合理價 vs 實際股價）" = "box_hfv_discount",
   "FV vs Market Price" = "box_hfv_discount",
+  "歷史基本面驗證：市價下期漲跌與相對 FV" = "box_hfv_validation",
+  "Historical Fundamental Validation: Next-Period Up/Down & vs FV" = "box_hfv_validation",
   "歷史基本面驗證：理論估值 vs 實際市值（漲跌機率／幅度）" = "box_hfv_validation",
   "Historical Fundamental Validation: Theoretical FV vs Actual Market (odds & magnitude)" = "box_hfv_validation",
   "美股估值復盤參數盤點（Live vs Hist PIT）" = "box_hfv_param_inventory",

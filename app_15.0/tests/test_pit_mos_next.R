@@ -177,13 +177,32 @@ check("second away", identical(pairs$outcome[2], "遠離"))
 check("first below FV", identical(pairs$vs_fv[1], "之下"))
 check("third above FV", identical(pairs$vs_fv[3], "之上"))
 check("gap_next present", "gap_next" %in% names(pairs) && is.finite(pairs$gap_next[1]))
+check("ret_next present", "ret_next" %in% names(pairs) && is.finite(pairs$ret_next[1]))
+# vd prices: 100,110,105,120,115,130 → first ret = 110/100-1 = +0.10 → 漲
+check("first ret_next", abs(pairs$ret_next[1] - (110 / 100 - 1)) < 1e-12)
+check("first dir_price 漲", identical(pairs$dir_price[1], "漲"))
+# second: 110→105 → 跌
+check("second dir_price 跌", identical(pairs$dir_price[2], "跌"))
 
 sum_all <- summarize_fv_market_validation(vd, oos_mode = "insample")
 check("sum n=5", sum_all$n == 5L)
 check("above+below+flat = n",
       sum_all$n_above + sum_all$n_below + sum_all$n_flat_vs == sum_all$n)
+check("up+down+flat_price = n",
+      sum_all$n_up + sum_all$n_down + sum_all$n_flat_price == sum_all$n)
+check("p_up in [0,1]", is.finite(sum_all$p_up) && sum_all$p_up >= 0 && sum_all$p_up <= 1)
 check("median_gap finite", is.finite(sum_all$median_gap))
+check("median_ret finite", is.finite(sum_all$median_ret))
 check("frame note", grepl("非策略回測", sum_all$frame))
+check("mos_outlook list", is.list(sum_all$mos_outlook))
+# tip MOS = penultimate finite mos (= 0.55) → 便宜 MOS≥50%
+check("mos_outlook bucket", identical(sum_all$mos_outlook$bucket, "便宜 MOS≥50%"))
+check("mos_outlook p_up matches stats", {
+  st <- sum_all$mos_stats
+  hit <- st[st$bucket == "便宜 MOS≥50%", , drop = FALSE]
+  nrow(hit) == 1L && is.finite(hit$p_up[1]) &&
+    isTRUE(abs(sum_all$mos_outlook$p_up - hit$p_up[1]) < 1e-12)
+})
 
 sum_win <- summarize_fv_market_validation(
   vd, from = as.Date("2020-06-01"), to = as.Date("2020-12-31"), oos_mode = "insample"
@@ -197,5 +216,6 @@ check("realized as_of filters", sum_real$n < sum_all$n)
 
 sum_exp <- summarize_fv_market_validation(vd, oos_mode = "expanding")
 check("expanding runs", is.character(sum_exp$oos_mode))
+check("expanding has dir oos field", "oos_dir_hit_rate" %in% names(sum_exp))
 
 message("ALL PASS")

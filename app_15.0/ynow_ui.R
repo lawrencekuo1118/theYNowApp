@@ -694,7 +694,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v15.20</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v15.21</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -3474,7 +3474,7 @@ ui <- dashboardPage(
             h2(tags$b(id = "ynow_hfv_page_title", "歷史基本面驗證")),
             p(
               id = "ynow_hfv_page_sub",
-              "理論估值 vs 實際市值（漲跌機率／幅度）。這不是交易策略回測；量化回測請至側邊底部「測試」。"
+              "市價下期漲跌機率 R=(P下一期−P)/P，以及相對理論 FV 的位置／幅度。這不是交易策略回測；量化回測請至側邊底部「測試」。"
             ),
             tags$hr()
           )
@@ -3518,24 +3518,26 @@ ui <- dashboardPage(
         # 2) 歷史基本面驗證：理論估值 vs 實際市值（漲跌機率／幅度）
         fluidRow(
           box(
-            title = tagList(icon("balance-scale"), "歷史基本面驗證：理論估值 vs 實際市值（漲跌機率／幅度）"),
+            title = tagList(icon("balance-scale"), "歷史基本面驗證：市價下期漲跌與相對 FV"),
             width = 12, status = "warning", solidHeader = TRUE,
             collapsible = TRUE, collapsed = FALSE,
             tags$p(
               style = "font-size:12.5px;color:#444;line-height:1.55;",
               tags$b("這不是交易策略回測。"),
-              "以當時可得基本面重建理論估值 ", tags$code("FV_t"),
-              "（＝折現圖勾選且有限值模型平均；未勾選＝無策略 FV，不暗設 DCF）",
-              "，再用後續實際市價 ", tags$code("P_{t+1}"),
-              " 驗證：估算落在估值", tags$b("之上／之下"),
-              "的頻率，以及幅度 ", tags$code("(P_{t+1}−FV_t)/FV_t"),
-              "。策略淨值／MOS 部位請至側邊底部「測試」內的量化回測區塊。"
+              "兩種口徑分開呈現：",
+              tags$b("（1）市價下期漲跌"), " ", tags$code("R=(P_{t+1}-P_t)/P_t"),
+              " 的經驗頻率，並以目前 MOS 分桶條件機率作為展望；",
+              tags$b("（2）相對理論 FV"), " ", tags$code("FV_t"),
+              "（＝折現圖勾選且有限值模型平均；未勾選＝無策略 FV）落在之上／之下與幅度 ",
+              tags$code("(P_{t+1}-FV_t)/FV_t"),
+              "。兩者語意不同，不可混稱為同一「漲跌」。策略淨值請至側邊底部「測試」。"
             ),
             tags$p(
               style = "font-size:11.5px;color:#888;line-height:1.45;margin-top:-4px;",
               "資料注意：Yahoo 年報可能為重編；PIT 以財報期末＋約 90 日申報滯後過濾。",
               "真・as-filed SEC EDGAR 仍待後續階段。",
-              "若歷史點套用系統預設／Session，摘要會顯示預設／fallback 提醒與對應分頁。"
+              "若歷史點套用系統預設／Session，摘要會顯示預設／fallback 提醒與對應分頁。",
+              "小樣本（n＜5）僅供參考，非預測保證。"
             ),
             radioButtons(
               "bt_fv_conv_window",
