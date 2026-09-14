@@ -2323,6 +2323,90 @@ server <- function(input, output, session) {
   )
 
   # ==========================================
+  # Search 後：推薦主模型靜默自動試算（美股／台股；參數未就緒則略過）
+  # ==========================================
+  auto_calc_primary_sig <- reactiveVal("")
+
+  observeEvent(current_ticker(), {
+    auto_calc_primary_sig("")
+  }, ignoreNULL = TRUE, ignoreInit = TRUE)
+
+  .auto_calc_primary_btn_id <- function(prim) {
+    switch(as.character(prim %||% ""),
+      "dcf" = "calc",
+      "ddm" = "mod_ddm-btn_calc_ddm",
+      "pb"  = "mod_pb-btn_calc_pb",
+      NULL
+    )
+  }
+
+  .auto_calc_primary_ready <- function(prim) {
+    prim <- as.character(prim %||% "")[1]
+    if (!nzchar(prim)) return(FALSE)
+    if (identical(prim, "ri")) return(TRUE)
+    if (identical(prim, "dcf")) {
+      proj <- tryCatch(fcf_results$df_fcf(), error = function(e) NULL)
+      n <- suppressWarnings(as.numeric(input$years)[1])
+      if (is.null(proj) || !is.data.frame(proj) || nrow(proj) < 1L) return(FALSE)
+      if (!is.finite(n) || n <= 0L || nrow(proj) != as.integer(n)) return(FALSE)
+      mode <- as.character(input$dcf_mode %||% "gordon")[1]
+      if (identical(mode, "gordon")) {
+        w <- suppressWarnings(as.numeric(input$wacc_gordon)[1])
+        if (!is.finite(w) || w <= 0) {
+          wacc <- calculated_wacc()
+          if (!is.finite(wacc) || wacc <= 0) return(FALSE)
+        }
+      } else {
+        w1 <- suppressWarnings(as.numeric(input$wacc_stage1)[1])
+        w2 <- suppressWarnings(as.numeric(input$wacc_stage2)[1])
+        if (!is.finite(w1) || w1 <= 0 || !is.finite(w2) || w2 <= 0) return(FALSE)
+      }
+      sgr <- suppressWarnings(as.numeric(input$sgr)[1])
+      return(is.finite(sgr))
+    }
+    if (identical(prim, "ddm")) {
+      g <- suppressWarnings(as.numeric(input[["mod_ddm-g"]])[1])
+      ke <- suppressWarnings(as.numeric(input[["mod_ddm-ke"]])[1])
+      return(is.finite(g) && is.finite(ke) && ke > 0)
+    }
+    if (identical(prim, "pb")) {
+      bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
+      if (is.null(bs) || !is.data.frame(bs) || nrow(bs) == 0L) return(FALSE)
+      equity <- tryCatch(
+        select_current_metric_any(bs, EQUITY_PATTERNS, "stock"),
+        error = function(e) NA_real_
+      )
+      if (!is.finite(equity) || equity <= 0) return(FALSE)
+      lo <- suppressWarnings(as.numeric(input[["mod_pb-pb_low"]])[1])
+      mid <- suppressWarnings(as.numeric(input[["mod_pb-pb_mid"]])[1])
+      hi <- suppressWarnings(as.numeric(input[["mod_pb-pb_high"]])[1])
+      return(is.finite(lo) && is.finite(mid) && is.finite(hi) &&
+        lo > 0 && mid > 0 && hi > 0)
+    }
+    FALSE
+  }
+
+  observe({
+    req(isTRUE(user_has_searched()))
+    tk <- current_ticker()
+    req(nzchar(tk))
+    rec <- model_sidebar_rec()
+    prim <- as.character(rec$primary %||% "")[1]
+    req(nzchar(prim), prim %in% c("dcf", "ddm", "pb", "ri"))
+
+    sig <- paste(tk, prim, sep = "|")
+    if (identical(auto_calc_primary_sig(), sig)) return()
+    if (!isTRUE(.auto_calc_primary_ready(prim))) return()
+
+    auto_calc_primary_sig(sig)
+    if (identical(prim, "ri")) return(invisible(NULL))
+
+    btn <- .auto_calc_primary_btn_id(prim)
+    req(nzchar(btn))
+    shinyjs::delay(200, shinyjs::click(btn))
+  })
+
+  # ==========================================
   # v13：股數級距（DCF／RI／敏感度共用）
   # ==========================================
   .valuation_shares <- reactive({
