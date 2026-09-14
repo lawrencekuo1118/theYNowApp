@@ -922,17 +922,18 @@ ui <- dashboardPage(
           background-color: #000 !important;
         }
 
-        /* 美股／台股：自訂垂直堆疊，緊靠三線 icon，合計 100% 標頭高度 */
+        /* 美股／台股：插在三線 icon 右側（JS 搬移 DOM），上下合計 100% 標頭高度 */
+        .main-header .navbar > #ynow-market-header.ynow-market-header,
         .main-header .navbar-custom-menu .navbar-nav > li#ynow-market-header.ynow-market-header {
-          position: absolute !important;
-          left: 50px !important;
-          top: 0 !important;
+          float: left !important;
+          position: static !important;
+          left: auto !important;
+          top: auto !important;
           width: 40px !important;
           height: 50px !important;
           margin: 0 !important;
           padding: 0 !important;
           list-style: none !important;
-          float: none !important;
           z-index: 20;
         }
         #ynow-market-header .ynow-market-stack {
@@ -1284,8 +1285,16 @@ ui <- dashboardPage(
           }
           registerBadgeHandler();
 
-          /* 美股／台股：自訂垂直按鈕 → Shiny input market_mode_pick */
+          /* 美股／台股：搬到三線 toggle 正後方，並綁定 Shiny input */
+          function placeMarketHeaderByToggle() {
+            var toggle = document.querySelector('.main-header .navbar > .sidebar-toggle');
+            var market = document.getElementById('ynow-market-header');
+            if (!toggle || !market || !toggle.parentNode) return;
+            if (market.previousElementSibling === toggle) return;
+            toggle.parentNode.insertBefore(market, toggle.nextSibling);
+          }
           function bindMarketModeButtons() {
+            placeMarketHeaderByToggle();
             var stack = document.querySelector('#ynow-market-header .ynow-market-stack');
             if (!stack) return;
             if (stack.getAttribute('data-ynow-bound') === '1') return;
@@ -1318,6 +1327,9 @@ ui <- dashboardPage(
           } else {
             bindMarketModeButtons();
           }
+          /* AdminLTE 重繪後再貼一次位置 */
+          setTimeout(placeMarketHeaderByToggle, 0);
+          setTimeout(placeMarketHeaderByToggle, 250);
 
           /* ---- UI locale (en / zh-TW) in-place chrome labels ---- */
           function setMenuLabel(tab, label) {
