@@ -922,7 +922,7 @@ ui <- dashboardPage(
           background-color: #000 !important;
         }
 
-        /* 美股／台股：三線 icon 右側上下堆疊；各 18px，整組與 icon 垂直置中 */
+        /* 美股／台股：三線 icon 右側上下堆疊；合計滿版標頭高度（各 25px） */
         .main-header .navbar > #ynow-market-header.ynow-market-header,
         .main-header .navbar-custom-menu .navbar-nav > li#ynow-market-header.ynow-market-header {
           float: left !important;
@@ -934,26 +934,24 @@ ui <- dashboardPage(
           margin: 0 !important;
           padding: 0 !important;
           list-style: none !important;
-          display: flex !important;
-          align-items: center !important;
-          justify-content: center !important;
+          display: block !important;
           z-index: 20;
         }
         #ynow-market-header .ynow-market-stack {
           display: flex;
           flex-direction: column;
           width: 40px;
-          height: 36px; /* 18 + 18 */
+          height: 50px;
           margin: 0;
           padding: 0;
         }
         #ynow-market-header .ynow-mkt-btn {
           box-sizing: border-box;
-          flex: 0 0 18px;
+          flex: 1 1 50%;
           width: 100%;
-          height: 18px;
-          min-height: 18px;
-          max-height: 18px;
+          height: 25px;
+          min-height: 25px;
+          max-height: 25px;
           margin: 0;
           padding: 0;
           border: 1px solid rgba(255,255,255,0.35);
@@ -962,7 +960,7 @@ ui <- dashboardPage(
           color: #fff;
           font-size: 11px;
           font-weight: 700;
-          line-height: 16px;
+          line-height: 23px;
           cursor: pointer;
         }
         #ynow-market-header .ynow-mkt-btn + .ynow-mkt-btn {
