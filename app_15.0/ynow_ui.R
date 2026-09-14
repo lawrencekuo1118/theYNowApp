@@ -559,10 +559,10 @@ beta_rolling_section_ui <- function() {
 }
 
 .dcf_core_params_box <- function() {
-  # Chrome 對齊下方 BETA tabBox：左側單一頁籤 + 右側大標英文
+  # Chrome／欄寬對齊下方 BETA tabBox：左側單一頁籤 + 右側大標英文；同為 col-sm-12
   tabBox(
     title = "SUSTAINABLE GROWTH RATE",
-    width = "auto",
+    width = 12,
     tabPanel(
       "SGR",
       icon = icon("seedling"),
@@ -712,7 +712,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v15.34</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v15.35</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -2737,39 +2737,42 @@ ui <- dashboardPage(
             uiOutput("main_decision-ui_valuation_compare")
           )
         ),
+        # SGR 與 BETA 同層、同 col-sm-12（勿只對 SGR 外包 fluidRow，否則欄寬會不一致）
         fluidRow(
           .dcf_core_params_box()
         ),
-        tabBox(
-          title = "BETA",
-          width = "auto",
-          tabPanel(
-            "Beta Overview",
-            icon = icon("th-large"),
-            helpText(
-              "內在價值路徑：預設把 Summary β 寫入 CAPM；可改選產業／Bottom-Up／去槓桿化／手動。",
-              "Rolling 估計僅供對照，不寫入 CAPM。"
+        fluidRow(
+          tabBox(
+            title = "BETA",
+            width = 12,
+            tabPanel(
+              "Beta Overview",
+              icon = icon("th-large"),
+              helpText(
+                "內在價值路徑：預設把 Summary β 寫入 CAPM；可改選產業／Bottom-Up／去槓桿化／手動。",
+                "Rolling 估計僅供對照，不寫入 CAPM。"
+              ),
+              beta_overview_section_ui()
             ),
-            beta_overview_section_ui()
-          ),
-          tabPanel(
-            "同業去槓桿",
-            value = "peer_unlever",
-            icon = icon("users"),
-            helpText(
-              "左側先填同業、去槓桿後平均（Bottom-Up）。右側為本公司 Hamada 去槓桿與手動 βe。",
-              "寫入 CAPM 請到 Beta Overview「套用至 CAPM」。"
+            tabPanel(
+              "同業去槓桿",
+              value = "peer_unlever",
+              icon = icon("users"),
+              helpText(
+                "左側先填同業、去槓桿後平均（Bottom-Up）。右側為本公司 Hamada 去槓桿與手動 βe。",
+                "寫入 CAPM 請到 Beta Overview「套用至 CAPM」。"
+              ),
+              beta_unlever_section_ui()
             ),
-            beta_unlever_section_ui()
-          ),
-          tabPanel(
-            "Rolling β",
-            icon = icon("chart-area"),
-            helpText(
-              "用 Rolling β 對照估值結果（含情緒／事件噪音）。",
-              "不會寫入 CAPM；若與 Bottom-Up βᵤ 差距過大，請檢查同業、資本結構、事件與流動性。"
-            ),
-            beta_rolling_section_ui()
+            tabPanel(
+              "Rolling β",
+              icon = icon("chart-area"),
+              helpText(
+                "用 Rolling β 對照估值結果（含情緒／事件噪音）。",
+                "不會寫入 CAPM；若與 Bottom-Up βᵤ 差距過大，請檢查同業、資本結構、事件與流動性。"
+              ),
+              beta_rolling_section_ui()
+            )
           )
         )
       ),
