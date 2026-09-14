@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12550890
+bundleId=12550937
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=9b92f44
-commit=9b92f44
-short=9b92f44
-message=fix(app_15.0): market buttons 18px each, vertically centered with toggle
-captured_at=2026-09-14T04:59:30Z
-source_branch=cursor/market-btns-18px-center-f4a6
+aligned_git=bdb0ea7
+commit=bdb0ea7
+short=bdb0ea7
+message=fix(app_15.0): restore full-height stacked US/TW market buttons
+captured_at=2026-09-14T05:15:47Z
+source_branch=cursor/market-btns-full-height-f4a6
 display_version=v15.17
-note=Canonical live line is app_15.0. Bundle 12550890: 美股/台股 each 18px, stacked, vertically centered with sidebar toggle (centerDelta=0). Master merge 297c543. Supersedes 12550819.
+note=Canonical live line is app_15.0. Bundle 12550937 restores 美股/台股 to full header height (25px each / 50px stack) beside sidebar toggle. Master merge fa7fa5d. Supersedes 12550890.
