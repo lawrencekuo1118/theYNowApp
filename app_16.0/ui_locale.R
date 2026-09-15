@@ -83,6 +83,14 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Next-period price up/down odds R=(P_next−P)/P, plus position vs theoretical FV. ",
       "This is not a trading-strategy backtest; quantitative backtest lives under Testing (sidebar foot)."
     ),
+    hfv_method_data_note = paste0(
+      "Data notes: Yahoo annuals may be restated. PIT uses a strict filing lag (period_end + ~90 days; ",
+      "rows without period_end are excluded — no soft bypass). Near-term g and terminal SGR are separate. ",
+      "Missing CapEx/ΔNWC are not invented as 0 (margin DCF unavailable; geometric FCF only when FCF0 is observed). ",
+      "TW OTC/ESB: TPEx financial summary can fill IS/BS when Yahoo is thin (CF never invented). ",
+      "Listed TW MOPS / US SEC as-filed annuals are not yet on the HFV path. Small samples (n<5) are illustrative only."
+    ),
+    hfv_data_sources_label = "Fundamentals sources (this run)",
     lab_notes_title = "Testing — Quantitative Backtest",
     lab_notes_sub = paste0(
       "Strategy NAV, performance, parameters, and holding filters live here. ",
@@ -236,6 +244,13 @@ locale_for_market <- function(mode = get_market_mode()) {
       "市價下期漲跌機率 R=(P下一期−P)/P，以及相對理論 FV 的位置／幅度。",
       "這不是交易策略回測；量化回測請至側邊底部「測試」。"
     ),
+    hfv_method_data_note = paste0(
+      "資料注意：Yahoo 年報可能為重編；PIT 採嚴格申報滯後（財報期末＋約 90 日；無期末日則該列不採用，不作軟性 bypass）。",
+      "歷史點近期末成長 g 與終值 SGR 分開；缺 CapEx／ΔNWC 時不捏造為 0（margin DCF 改不可用／幾何 FCF 僅在有觀測 FCF 時）。",
+      "台股上櫃／興櫃 Yahoo 空時可補櫃買財務資料簡報（IS／BS；不捏造 CF）。上市櫃 MOPS／美股 SEC as-filed 仍待後續接入。",
+      "小樣本（n＜5）僅供參考，非預測保證。"
+    ),
+    hfv_data_sources_label = "本次基本面資料來源",
     lab_notes_title = "測試 — Testing（量化回測）",
     lab_notes_sub = paste0(
       "量化回測（策略淨值／績效／參數）與持倉閘門在此。",

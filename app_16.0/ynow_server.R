@@ -7507,6 +7507,27 @@ server <- function(input, output, session) {
     # 結果附註／fallback：全寬置於兩欄下方
     fb <- s$fallbacks
     notes_ui <- tagList()
+    fv_meta <- tryCatch(bt_hfv_fv(), error = function(e) NULL)
+    srcs <- if (!is.null(fv_meta)) fv_meta$hfv_data_sources else NULL
+    data_notes <- if (!is.null(fv_meta)) fv_meta$hfv_data_notes else NULL
+    if ((!is.null(srcs) && length(srcs) > 0) || (!is.null(data_notes) && length(data_notes) > 0)) {
+      notes_ui <- tagAppendChild(
+        notes_ui,
+        tags$div(
+          style = "margin:0 0 8px 0;padding:8px 10px;background:#eef4fb;border:1px solid #c5d4ef;border-radius:4px;font-size:12px;",
+          tags$div(tags$b(ui_str("hfv_data_sources_label", loc))),
+          if (!is.null(srcs) && length(srcs) > 0) {
+            tags$div(style = "margin-top:4px;", paste(srcs, collapse = " · "))
+          } else NULL,
+          if (!is.null(data_notes) && length(data_notes) > 0) {
+            tags$ul(
+              style = "margin:6px 0 0 0;padding-left:18px;color:#555;",
+              lapply(data_notes, function(n) tags$li(n))
+            )
+          } else NULL
+        )
+      )
+    }
     if (nzchar(s$note %||% "")) {
       notes_ui <- tagAppendChild(
         notes_ui,
@@ -8942,7 +8963,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v16.07"),
+      paste0("- **App：** The YNow App v16.08"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

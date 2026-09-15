@@ -92,6 +92,12 @@ check("hist src_tax pit", identical(pit$src_tax, "pit"))
 check("hist src_pb justified", identical(pit$src_pb_mid, "justified"))
 check("hist src_n_years app_defaults", identical(pit$src_n_years, "app_defaults"))
 check("hist n_years in fallback_keys", grepl("n_years", pit$fallback_keys, fixed = TRUE))
+check("hist near-term g ≠ terminal SGR", {
+  is.finite(pit$g_used) && is.finite(pit$sgr_used) &&
+    !isTRUE(abs(pit$g_used - pit$sgr_used) < 1e-12)
+})
+check("hist dcf_path set", identical(pit$dcf_path, "geometric") || identical(pit$dcf_path, "margin") ||
+        identical(pit$dcf_path, "na"))
 
 # --- empty model selection: no DCF fallback ---
 check("normalize empty → character(0)", length(.normalize_fv_models(list())) == 0L)
@@ -217,5 +223,58 @@ check("realized as_of filters", sum_real$n < sum_all$n)
 sum_exp <- summarize_fv_market_validation(vd, oos_mode = "expanding")
 check("expanding runs", is.character(sum_exp$oos_mode))
 check("expanding has dir oos field", "oos_dir_hit_rate" %in% names(sum_exp))
+
+# --- strict filing lag (fail-closed) ---
+fund_lag <- data.frame(
+  year = c(2023L, 2024L),
+  period_end = as.Date(c("2023-12-31", "2024-12-31")),
+  net_margin = c(10, 11), rev_growth = c(5, 6), eps_growth = c(5, 6),
+  fcf_growth = c(5, 6), revenue = c(100, 110), fcf = c(20, 22),
+  cash = c(5, 5), debt = c(10, 10), shares = c(10, 10),
+  dividends_paid = c(1, 1), equity_book = c(50, 55), ni = c(10, 11),
+  interest_expense = c(1, 1), tax_expense = c(2, 2), pretax_income = c(12, 13),
+  nopat_m = c(0.1, 0.1), depre_m = c(0.05, 0.05), capex_m = c(0.08, 0.08),
+  nwc_m = c(0.02, 0.02),
+  fund_source = c("yahoo", "yahoo"),
+  stringsAsFactors = FALSE
+)
+# as_of before 2023 FY available (period_end+90 = 2024-03-30)
+row_early <- .lookup_fund_at(fund_lag, as.Date("2024-01-15"), filing_lag_days = 90L)
+check("strict lag excludes unavailable FY", is.na(row_early$fund_year))
+row_ok <- .lookup_fund_at(fund_lag, as.Date("2024-04-01"), filing_lag_days = 90L)
+check("strict lag allows FY after lag", identical(as.integer(row_ok$fund_year), 2023L))
+fund_na_pe <- fund_lag
+fund_na_pe$period_end <- as.Date(c(NA, NA))
+row_na_pe <- .lookup_fund_at(fund_na_pe, as.Date("2025-06-01"), filing_lag_days = 90L)
+check("NA period_end fail-closed", is.na(row_na_pe$fund_year))
+
+# --- DCF: no CapEx invent → margin path blocked; geometric when FCF0 present ---
+fv_geo <- estimate_hist_dcf(
+  fcf0 = 100, cash = 0, debt = 0, shares = 10,
+  wacc = 0.10, sgr = 0.03, n_years = 1, g_explicit = 0.05,
+  revenue = 1000, nopat_m = 0.1, depre_m = 0.05,
+  capex_m = NA_real_, nwc_m = 0.02
+)
+check("missing CapEx uses geometric not margin", {
+  is.finite(fv_geo) && identical(attr(fv_geo, "dcf_path"), "geometric")
+})
+fv_na <- estimate_hist_dcf(
+  fcf0 = NA_real_, cash = 0, debt = 0, shares = 10,
+  wacc = 0.10, sgr = 0.03, n_years = 1, g_explicit = 0.05,
+  revenue = 1000, nopat_m = 0.1, depre_m = 0.05,
+  capex_m = NA_real_, nwc_m = NA_real_
+)
+check("no CapEx and no FCF0 → NA", !is.finite(fv_na) && identical(attr(fv_na, "dcf_path"), "na"))
+
+# --- enrich helper: honest notes, no invent ---
+en_tw <- enrich_hfv_statements_multisource(
+  "2330.TW",
+  d_is = data.frame(Item = "Total Revenue", Y1 = 100, stringsAsFactors = FALSE),
+  d_bs = data.frame(Item = "Total Debt", Y1 = 10, stringsAsFactors = FALSE),
+  d_cf = data.frame()
+)
+check("enrich TW CF-thin notes MOPS", any(grepl("MOPS", en_tw$notes, fixed = TRUE)))
+check("enrich never invents CF rows", is.null(en_tw$d_cf) || !is.data.frame(en_tw$d_cf) ||
+        ncol(en_tw$d_cf) < 2L || nrow(en_tw$d_cf) < 1L)
 
 message("ALL PASS")

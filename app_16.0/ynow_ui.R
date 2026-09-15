@@ -719,7 +719,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v16.07</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v16.08</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -1646,6 +1646,8 @@ ui <- dashboardPage(
             if (hfvChart && s.hfv_chart_gap) hfvChart.textContent = s.hfv_chart_gap;
             var hfvTable = document.getElementById('ynow_hfv_table_detail');
             if (hfvTable && s.hfv_table_detail) hfvTable.textContent = s.hfv_table_detail;
+            var hfvDataNote = document.getElementById('ynow_hfv_method_data_note');
+            if (hfvDataNote && s.hfv_method_data_note) hfvDataNote.textContent = s.hfv_method_data_note;
             var labTitle = document.getElementById('ynow_lab_notes_title');
             if (labTitle && s.lab_notes_title) labTitle.textContent = s.lab_notes_title;
             var labSub = document.getElementById('ynow_lab_notes_sub');
@@ -3926,9 +3928,10 @@ ui <- dashboardPage(
               ),
               tags$p(
                 style = "font-size:11.5px;color:#888;line-height:1.45;margin:0;",
-                "資料注意：Yahoo 年報可能為重編；PIT 以財報期末＋約 90 日申報滯後過濾。",
-                "真・as-filed SEC EDGAR 仍待後續階段。",
-                "若歷史點套用系統預設／Session，結果區會另列預設／fallback 提醒。",
+                id = "ynow_hfv_method_data_note",
+                "資料注意：Yahoo 年報可能為重編；PIT 採嚴格申報滯後（財報期末＋約 90 日；無期末日則該列不採用，不作軟性 bypass）。",
+                "歷史點近期末成長 g 與終值 SGR 分開；缺 CapEx／ΔNWC 時不捏造為 0（margin DCF 改不可用／改幾何 FCF 僅在有觀測 FCF 時）。",
+                "台股上櫃／興櫃 Yahoo 空時可補櫃買財務資料簡報（IS／BS；不捏造 CF）。上市櫃 MOPS／美股 SEC as-filed 仍待後續接入。",
                 "小樣本（n＜5）僅供參考，非預測保證。"
               )
             ),
