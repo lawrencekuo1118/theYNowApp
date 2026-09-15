@@ -719,7 +719,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v16.12</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v16.13</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -915,6 +915,12 @@ ui <- dashboardPage(
           --ynow-wash: #f5f5f5;
           /* 亮面金屬金（非土黃／ochre）；fallback 給不支援 clip 的環境） */
           --ynow-gold: #F5C518;
+          /* 白底標題用深金（對比足夠）；圖標可用亮金 */
+          --ynow-gold-ink: #856404;
+          --ynow-gold-deep: #C9A227;
+          /* logo 圖檔主色（藍／綠）— 現金流序列等資料色 */
+          --ynow-logo-blue: #0C5484;
+          --ynow-logo-green: #249C60;
           --ynow-gold-gradient: linear-gradient(
             105deg,
             #FFF6C8 0%,
@@ -1193,6 +1199,31 @@ ui <- dashboardPage(
         .nav-tabs-custom > .nav-tabs > li.active:hover > a {
           border-top-color: transparent;
           color: var(--ynow-ink) !important;
+        }
+        /* Dashboard 損益表／現金流量表：圖標與選取頂條對齊 logo 金 */
+        #dashboard_fin_report > .nav-tabs > li > a[data-value="Income Statement"] > .fa,
+        #dashboard_fin_report > .nav-tabs > li > a[data-value="Income Statement"] > .fas,
+        #dashboard_fin_report > .nav-tabs > li > a[data-value="Cash Flow"] > .fa,
+        #dashboard_fin_report > .nav-tabs > li > a[data-value="Cash Flow"] > .fas {
+          color: var(--ynow-gold-deep) !important;
+        }
+        #dashboard_fin_report > .nav-tabs > li.active > a[data-value="Income Statement"] > .fa,
+        #dashboard_fin_report > .nav-tabs > li.active > a[data-value="Income Statement"] > .fas,
+        #dashboard_fin_report > .nav-tabs > li.active > a[data-value="Cash Flow"] > .fa,
+        #dashboard_fin_report > .nav-tabs > li.active > a[data-value="Cash Flow"] > .fas {
+          color: var(--ynow-gold) !important;
+        }
+        #dashboard_fin_report > .nav-tabs > li.active:has(> a[data-value="Income Statement"]),
+        #dashboard_fin_report > .nav-tabs > li.active:has(> a[data-value="Cash Flow"]) {
+          border-top-color: var(--ynow-gold) !important;
+        }
+        @media (max-width: 767px) {
+          #dashboard_fin_report > .nav-tabs > li > a[data-value="Income Statement"] > .fa,
+          #dashboard_fin_report > .nav-tabs > li > a[data-value="Income Statement"] > .fas,
+          #dashboard_fin_report > .nav-tabs > li > a[data-value="Cash Flow"] > .fa,
+          #dashboard_fin_report > .nav-tabs > li > a[data-value="Cash Flow"] > .fas {
+            font-size: 13px;
+          }
         }
         .nav-pills > li.active > a,
         .nav-pills > li.active > a:hover,
@@ -3059,17 +3090,19 @@ ui <- dashboardPage(
                               downloadButton('FS_download', "Download Finance Summary")
                      ),
                      
-                     tabPanel("Income Statement",
-                              p("This section imports Income Statements from Yahoo Finance"),
-                              
-                              # 🌟 新增：Income Statement 下拉選單與互動圖表
-                              selectInput("is_type", "Select Income Statement Metric",
-                                          choices = c("Total Revenue", "Gross Profit", "EBITDA")),
-                              plotlyOutput("is_plot"),
-                              tags$hr(),
-                              
-                              dataTableOutput("tbIncomeStatement"), 
-                              downloadButton('IS_download', "Download Income Statement")
+                     tabPanel(
+                       "Income Statement",
+                       icon = icon("chart-line"),
+                       p("This section imports Income Statements from Yahoo Finance"),
+                       
+                       # 🌟 新增：Income Statement 下拉選單與互動圖表
+                       selectInput("is_type", "Select Income Statement Metric",
+                                   choices = c("Total Revenue", "Gross Profit", "EBITDA")),
+                       plotlyOutput("is_plot"),
+                       tags$hr(),
+                       
+                       dataTableOutput("tbIncomeStatement"), 
+                       downloadButton('IS_download', "Download Income Statement")
                      ),
                      
                      tabPanel("Balance Sheet",
@@ -3080,12 +3113,14 @@ ui <- dashboardPage(
                               downloadButton('BS_download', "Download Balance Sheet")
                      ),
                      
-                     tabPanel("Cash Flow",
-                              p("This section imports Cash Flow data from Yahoo Finance"),
-                              plotlyOutput("cf_plot", height = "460px") %>% withSpinner(),
-                              tags$hr(),
-                              dataTableOutput("tbCashFlow"),
-                              downloadButton('CF_download', "Download Cash Flow Data")
+                     tabPanel(
+                       "Cash Flow",
+                       icon = icon("money-bill-wave"),
+                       p("This section imports Cash Flow data from Yahoo Finance"),
+                       plotlyOutput("cf_plot", height = "460px") %>% withSpinner(),
+                       tags$hr(),
+                       dataTableOutput("tbCashFlow"),
+                       downloadButton('CF_download', "Download Cash Flow Data")
                      ),
 
                      # 財報附註擷取 (SEC EDGAR) — 僅美股模式顯示（server 以 shinyjs 控制）

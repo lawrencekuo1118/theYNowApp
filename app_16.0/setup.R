@@ -2424,7 +2424,10 @@ render_report_pdf <- function(html_path, pdf_path) {
 generate_safe_line_plot <- function(data, ticker_name, metric_name) {
   if (is.null(data) || !is.data.frame(data) || nrow(data) == 0) {
     return(plotly::plotly_empty() %>%
-             plotly::layout(title = paste0(ticker_name, " - ", metric_name, " (無資料)")))
+             plotly::layout(title = list(
+               text = paste0(ticker_name, " - ", metric_name, " (無資料)"),
+               font = list(size = 15, color = "#856404")
+             )))
   }
 
   # 多列命中時取第一列（呼叫端應已優先挑精確科目）
@@ -2435,7 +2438,10 @@ generate_safe_line_plot <- function(data, ticker_name, metric_name) {
   vals <- parse_financial_number(as.character(unlist(data[1, -1], use.names = FALSE)))
   if (length(labels) == 0 || length(vals) == 0) {
     return(plotly::plotly_empty() %>%
-             plotly::layout(title = paste0(ticker_name, " - ", metric_name, " (無資料)")))
+             plotly::layout(title = list(
+               text = paste0(ticker_name, " - ", metric_name, " (無資料)"),
+               font = list(size = 15, color = "#856404")
+             )))
   }
 
   # CAGR 僅用財年欄位（排除 TTM）；必須是有限正值才算，避免 if(NA)
@@ -2477,10 +2483,11 @@ generate_safe_line_plot <- function(data, ticker_name, metric_name) {
   plot_df$is_neg <- !is.na(plot_df$Value) & plot_df$Value < 0
 
   # 3. 繪製圖表 (使用 ggplot)
+  # 標題／正值點：對齊 app logo 金／墨（白底可讀的深金 #856404）
   p <- ggplot(plot_df, aes(x = Year, y = Value, group = 1, text = HoverText)) +
-    geom_line(color = "#7f8c8d", linewidth = 1, na.rm = TRUE) +
+    geom_line(color = "#C9A227", linewidth = 1, na.rm = TRUE) +
     geom_point(aes(color = is_neg), size = 2.5, na.rm = TRUE) +
-    scale_color_manual(values = c("FALSE" = "#2c3e50", "TRUE" = "#e74c3c"), guide = "none") +
+    scale_color_manual(values = c("FALSE" = "#0C5484", "TRUE" = "#c0392b"), guide = "none") +
     scale_y_continuous(
       labels = label_chart_number(prefix = money_prefix()),
       expand = expansion(mult = c(0.1, 0.15))
@@ -2492,7 +2499,7 @@ generate_safe_line_plot <- function(data, ticker_name, metric_name) {
       y = ""
     ) +
     theme(
-      plot.title = element_text(face = "bold", size = 15, color = "#2c3e50"),
+      plot.title = element_text(face = "bold", size = 15, color = "#856404"),
       axis.text.x = element_text(face = "bold")
     )
 

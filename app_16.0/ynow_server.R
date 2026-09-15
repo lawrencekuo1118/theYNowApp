@@ -1773,7 +1773,10 @@ server <- function(input, output, session) {
     empty_plot <- function(msg) {
       plotly::plotly_empty() %>%
         plotly::layout(
-          title = list(text = msg, x = 0.5),
+          title = list(
+            text = msg, x = 0.5,
+            font = list(size = 15, color = "#856404", family = "Arial, sans-serif")
+          ),
           xaxis = list(visible = FALSE), yaxis = list(visible = FALSE)
         )
     }
@@ -1782,10 +1785,11 @@ server <- function(input, output, session) {
     # Always show all three series (OCF / ICF / Financing FCF); no UI multi-select
     series_sel <- APP_DEFAULTS$cf_flow_series %||% c("ocf", "icf", "fcf")
 
+    # 序列色對齊 logo 藍／金／綠（勿用紫系 AI 預設）
     spec <- list(
-      ocf = list(key = "Operating Cash Flow", label = "營業現金流 OCF", color = "#2E86AB", symbol = "circle"),
-      icf = list(key = "Investing Cash Flow", label = "投資現金流 ICF", color = "#E67E22", symbol = "diamond"),
-      fcf = list(key = "Financing Cash Flow", label = "籌資現金流 FCF", color = "#8E44AD", symbol = "square")
+      ocf = list(key = "Operating Cash Flow", label = "營業現金流 OCF", color = "#0C5484", symbol = "circle"),
+      icf = list(key = "Investing Cash Flow", label = "投資現金流 ICF", color = "#C9A227", symbol = "diamond"),
+      fcf = list(key = "Financing Cash Flow", label = "籌資現金流 FCF", color = "#249C60", symbol = "square")
     )
 
     cf <- d_cash_flow()
@@ -1844,7 +1848,8 @@ server <- function(input, output, session) {
       plotly::layout(
         title = list(
           text = paste0("<b>", htmltools::htmlEscape(title_main), "</b>"),
-          x = 0.02
+          x = 0.02,
+          font = list(size = 15, color = "#856404", family = "Arial, sans-serif")
         ),
         xaxis = list(
           title = "期間", tickangle = -30,
@@ -9317,7 +9322,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v16.12"),
+      paste0("- **App：** The YNow App v16.13"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {
