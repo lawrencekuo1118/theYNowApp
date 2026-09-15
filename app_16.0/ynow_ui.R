@@ -719,7 +719,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v16.11</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v16.12</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -1650,6 +1650,8 @@ ui <- dashboardPage(
             if (hfvDataNote && s.hfv_method_data_note) hfvDataNote.textContent = s.hfv_method_data_note;
             var hfvMethodBody = document.getElementById('ynow_hfv_method_body');
             if (hfvMethodBody && s.hfv_method_body) hfvMethodBody.textContent = s.hfv_method_body;
+            var hfvScMatrix = document.getElementById('ynow_hfv_sum_scenario_matrix');
+            if (hfvScMatrix && s.hfv_sum_scenario_matrix) hfvScMatrix.textContent = s.hfv_sum_scenario_matrix;
             var hfvScThresh = document.getElementById('ynow_hfv_scenario_thresh_note');
             if (hfvScThresh && s.hfv_scenario_thresh_note) hfvScThresh.textContent = s.hfv_scenario_thresh_note;
             var chartModelsLab = document.querySelector('label[for=\"bt_fv_models\"]');
@@ -3865,7 +3867,7 @@ ui <- dashboardPage(
             h2(tags$b(id = "ynow_hfv_page_title", "歷史基本面驗證")),
             p(
               id = "ynow_hfv_page_sub",
-              "市價下期漲跌機率、相對理論 FV 位置／幅度，以及教育用歷史情境分類（價值錯位／基本面動能／價格動能）。這不是交易策略回測；量化回測請至側邊底部「測試」。"
+              "市價下期漲跌機率、相對理論 FV 位置／幅度，以及歷史情境分類（價值錯位／基本面動能／價格動能）。這不是交易策略回測；量化回測請至側邊底部「測試」。"
             ),
             tags$hr()
           )
@@ -3926,18 +3928,23 @@ ui <- dashboardPage(
               tags$p(
                 id = "ynow_hfv_method_body",
                 style = "font-size:12.5px;color:#444;line-height:1.55;margin:0 0 8px 0;",
-                "這不是交易策略回測，也不是 Strong Buy／Strong Sell 下單訊號。三層口徑：（1）市價下期漲跌經驗頻率與 MOS 分組展望；（2）相對復盤模型 FV 之上／之下與幅度；（3）教育用歷史情境分類（價值錯位／基本面動能／價格動能 → A–D）。復盤機率／幅度／情境僅依單選模型。"
+                "不是交易策略回測，也不是券商下單指令。驗證樣本上有三層口徑：（1）市價下期漲跌 R 與下期上漲頻率 P(up)，以及 MOS 分組展望；（2）相對復盤模型 FV 之上／之下與幅度；（3）歷史情境分類（價值錯位／基本面動能／價格動能 → A–D 或 other）。圖表可複選疊圖；機率／幅度／情境／P(up) 僅依復盤模型單選。"
+              ),
+              tags$p(
+                id = "ynow_hfv_sum_scenario_matrix",
+                style = "font-size:12px;color:#555;line-height:1.5;margin:0 0 8px 0;",
+                "A 錯殺黃金坑：FV↑、Price↓、Price ≪ FV · B 戴維斯雙擊：FV↑、Price↑、Price ≈ FV · C 價值陷阱：FV↓、Price↓、Price < FV · D 泡沫炒作：FV≤持平、Price 強升、Price ≫ FV · other＝未歸類（不硬套 A–D 結論）。"
               ),
               tags$p(
                 id = "ynow_hfv_scenario_thresh_note",
                 style = "font-size:11.5px;color:#666;line-height:1.45;margin:0 0 8px 0;",
-                "情境帶寬啟發式（工程預設，非學術標準）：動能持平 |Δ|/前期 ≤ 2%；Price ≈ FV 當 |MOS| ≤ 10%；Price ≪ FV 當 MOS ≥ 20%；Price ≫ FV 當 MOS ≤ −20%；情境 D 另要求價格動能 ≥ +5%。提醒：FV 垃圾進→分類失真；時機／凱因斯式非理性仍可能需催化劑。HFV 是歷史頻率驗證，不是交易保證。"
+                "情境帶寬啟發式（工程預設，非學術標準）：動能持平 |Δ|/前期 ≤ 2%；Price ≈ FV 當 |MOS| ≤ 10%；Price ≪ FV 當 MOS ≥ 20%；Price ≫ FV 當 MOS ≤ −20%；情境 D 另要求價格動能 ≥ +5%。FV 垃圾進會誤分類；市場可長期非理性且仍可能需催化劑。"
               ),
               tags$p(
                 style = "font-size:11.5px;color:#888;line-height:1.45;margin:0;",
                 id = "ynow_hfv_method_data_note",
                 "資料注意：Yahoo 年報可能為重編；PIT 採嚴格申報滯後（財報期末＋約 90 日；無期末日則該列不採用，不作軟性 bypass）。",
-                "歷史點近期末成長 g 與終值 SGR 分開；缺 CapEx／ΔNWC 時不捏造為 0（margin DCF 改不可用／改幾何 FCF 僅在有觀測 FCF 時）。",
+                "歷史點近期末成長 g 與終值 SGR 分開；缺 CapEx／ΔNWC 時不捏造為 0（margin DCF 改不可用／幾何 FCF 僅在有觀測 FCF 時）。",
                 "台股上櫃／興櫃 Yahoo 空時可補櫃買財務資料簡報（IS／BS；不捏造 CF）。上市櫃 MOPS／美股 SEC as-filed 仍待後續接入。",
                 "小樣本（n＜5）僅供參考，非預測保證。"
               )

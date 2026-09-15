@@ -7675,6 +7675,131 @@ server <- function(input, output, session) {
             make_sc_card("C", "exclamation-triangle", "#f39c12"),
             make_sc_card("D", "fire", "#dd4b39")
           ),
+          {
+            sc_color <- function(code) {
+              switch(
+                as.character(code)[1],
+                A = "#c9a227",
+                B = "#00a65a",
+                C = "#f39c12",
+                D = "#dd4b39",
+                "#6c757d"
+              )
+            }
+            make_concl_body <- function(code) {
+              code <- as.character(code)[1]
+              if (identical(code, "A")) {
+                tagList(
+                  tags$b(ui_str("hfv_scenario_concl_A_lead", loc)), " ",
+                  ui_str("hfv_scenario_concl_A_body", loc)
+                )
+              } else if (identical(code, "B")) {
+                tagList(
+                  tags$b(ui_str("hfv_scenario_concl_B_lead", loc)), " ",
+                  ui_str("hfv_scenario_concl_B_body", loc)
+                )
+              } else if (identical(code, "C")) {
+                tagList(
+                  tags$b(ui_str("hfv_scenario_concl_C_lead", loc)), " ",
+                  ui_str("hfv_scenario_concl_C_body", loc), " ",
+                  tags$b(ui_str("hfv_scenario_concl_C_emph", loc))
+                )
+              } else if (identical(code, "D")) {
+                tagList(
+                  tags$b(ui_str("hfv_scenario_concl_D_lead", loc)), " ",
+                  ui_str("hfv_scenario_concl_D_body", loc)
+                )
+              } else {
+                ui_str("hfv_scenario_concl_other", loc)
+              }
+            }
+            make_concl_callout <- function(scope_label, code, border_col) {
+              tags$div(
+                class = "ynow-hfv-scenario-concl",
+                style = paste0(
+                  "margin:10px 0 0 0;padding:10px 12px;background:#f5f5f5;",
+                  "border-left:4px solid ", border_col, ";",
+                  "border-radius:0 4px 4px 0;font-size:13px;line-height:1.55;color:#333;"
+                ),
+                tags$div(
+                  style = "margin:0 0 4px 0;font-size:12px;color:#555;",
+                  tags$b(scope_label),
+                  tags$span(style = "margin:0 6px;color:#bbb;", "|"),
+                  tags$span(sc_lab(code))
+                ),
+                tags$div(make_concl_body(code))
+              )
+            }
+            lead_c <- as.character(sc$most_frequent %||% NA_character_)[1]
+            if (!nzchar(lead_c) || identical(lead_c, "NA")) lead_c <- NA_character_
+            # Fallback if older summarize payload lacks most_frequent
+            if (is.na(lead_c) && !is.null(lead_code) && !is.na(lead_code)) {
+              lead_c <- as.character(lead_code)[1]
+            }
+            latest_c <- as.character(sc$latest %||% NA_character_)[1]
+            if (!nzchar(latest_c) || identical(latest_c, "NA")) {
+              # Fallback: last pair in attached pairs frame
+              pp_sc <- sc$pairs
+              if (!is.null(pp_sc) && is.data.frame(pp_sc) && nrow(pp_sc) > 0L &&
+                  "scenario" %in% names(pp_sc)) {
+                latest_c <- as.character(pp_sc$scenario[nrow(pp_sc)])[1]
+              } else {
+                latest_c <- NA_character_
+              }
+            }
+            d0 <- tryCatch(as.Date(sc$latest_date), error = function(e) as.Date(NA))
+            d1 <- tryCatch(as.Date(sc$latest_date_next), error = function(e) as.Date(NA))
+            lead_n <- suppressWarnings(as.integer(sc$most_frequent_n %||% NA_integer_)[1])
+            if (!is.finite(lead_n) || lead_n < 1L) {
+              lead_n <- if (!is.na(lead_c) && lead_c %in% abcd) {
+                as.integer(n_abcd[match(lead_c, abcd)])
+              } else {
+                0L
+              }
+            }
+            lead_label <- if (!is.na(lead_c) && lead_c %in% abcd) {
+              sprintf(
+                ui_str("hfv_scenario_concl_lead_fmt", loc),
+                sc_lab(lead_c),
+                lead_n
+              )
+            } else {
+              ui_str("hfv_scenario_concl_scope_lead", loc)
+            }
+            latest_label <- if (is.finite(d0) && is.finite(d1)) {
+              sprintf(
+                ui_str("hfv_scenario_concl_latest_fmt", loc),
+                format(d0, "%Y-%m-%d"),
+                format(d1, "%Y-%m-%d")
+              )
+            } else {
+              ui_str("hfv_scenario_concl_latest_nodate", loc)
+            }
+            tagList(
+              if (!is.na(lead_c) && lead_c %in% abcd) {
+                make_concl_callout(lead_label, lead_c, sc_color(lead_c))
+              } else {
+                tags$div(
+                  class = "ynow-hfv-scenario-concl",
+                  style = paste0(
+                    "margin:10px 0 0 0;padding:10px 12px;background:#f5f5f5;",
+                    "border-left:4px solid #6c757d;",
+                    "border-radius:0 4px 4px 0;font-size:12.5px;line-height:1.5;color:#555;"
+                  ),
+                  tags$b(ui_str("hfv_scenario_concl_scope_lead", loc)),
+                  tags$span(style = "margin:0 6px;color:#bbb;", "|"),
+                  ui_str("hfv_scenario_concl_none_abcd", loc)
+                )
+              },
+              if (!is.na(latest_c)) {
+                make_concl_callout(latest_label, latest_c, sc_color(latest_c))
+              } else NULL,
+              tags$div(
+                style = "margin:8px 0 0 0;color:#888;font-size:11.5px;line-height:1.45;",
+                ui_str("hfv_scenario_concl_note", loc)
+              )
+            )
+          },
           if (n_other > 0L) {
             tags$div(
               style = "margin:8px 0 0 0;color:#666;font-size:12px;",
@@ -7684,11 +7809,8 @@ server <- function(input, output, session) {
                 n_other
               )
             )
-          } else NULL,
-          tags$div(
-            style = "margin:8px 0 0 0;color:#888;font-size:11.5px;line-height:1.45;",
-            ui_str("hfv_sum_scenario_caveat", loc)
-          )
+          } else NULL
+          # Method-block notes cover thresholds / FV quality; avoid a second caveat here.
         )
       } else {
         tags$div(
@@ -9195,7 +9317,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v16.11"),
+      paste0("- **App：** The YNow App v16.12"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

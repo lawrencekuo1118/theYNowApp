@@ -977,13 +977,22 @@ build_hfv_scenario_pairs <- function(valuation_df,
 }
 
 #' Summarize scenario counts / frequencies over filtered pairs.
+#'
+#' Also returns most-frequent A–D code (ties → first in A…D) and the latest
+#' successive pair's scenario (last row by Date_next / row order).
 summarize_hfv_scenarios <- function(scenario_df) {
   codes <- .HFV_SCENARIO_CODES
+  abcd <- c("A", "B", "C", "D")
   empty_counts <- setNames(as.integer(rep(0L, length(codes))), codes)
   empty <- list(
     n = 0L,
     counts = empty_counts,
     freq = setNames(rep(NA_real_, length(codes)), codes),
+    most_frequent = NA_character_,
+    most_frequent_n = 0L,
+    latest = NA_character_,
+    latest_date = as.Date(NA),
+    latest_date_next = as.Date(NA),
     thresholds = hfv_scenario_threshold_defaults(),
     pairs = scenario_df
   )
@@ -1002,10 +1011,42 @@ summarize_hfv_scenarios <- function(scenario_df) {
   } else {
     empty$freq
   }
+  n_abcd <- as.integer(counts[abcd])
+  most_frequent <- if (any(n_abcd > 0L)) abcd[which.max(n_abcd)] else NA_character_
+  most_frequent_n <- if (!is.na(most_frequent)) {
+    as.integer(counts[[most_frequent]])
+  } else {
+    0L
+  }
+  # Prefer chronological latest by Date_next when available
+  ord <- seq_len(nrow(scenario_df))
+  if ("Date_next" %in% names(scenario_df)) {
+    dn <- suppressWarnings(as.Date(scenario_df$Date_next))
+    if (any(is.finite(dn))) {
+      ord <- order(dn, na.last = TRUE)
+    }
+  }
+  last_i <- ord[length(ord)]
+  latest <- as.character(sc[last_i])
+  latest_date <- if ("Date" %in% names(scenario_df)) {
+    suppressWarnings(as.Date(scenario_df$Date[last_i]))
+  } else {
+    as.Date(NA)
+  }
+  latest_date_next <- if ("Date_next" %in% names(scenario_df)) {
+    suppressWarnings(as.Date(scenario_df$Date_next[last_i]))
+  } else {
+    as.Date(NA)
+  }
   list(
     n = as.integer(n),
     counts = counts,
     freq = freq,
+    most_frequent = most_frequent,
+    most_frequent_n = most_frequent_n,
+    latest = latest,
+    latest_date = latest_date,
+    latest_date_next = latest_date_next,
     thresholds = hfv_scenario_threshold_defaults(),
     pairs = scenario_df
   )

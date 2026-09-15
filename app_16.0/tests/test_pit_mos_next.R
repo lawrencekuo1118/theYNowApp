@@ -331,5 +331,20 @@ check("scenarios attached", is.list(sum_sc$scenarios) && sum_sc$scenarios$n == 3
 check("scenario counts A=1", identical(as.integer(sum_sc$scenarios$counts[["A"]]), 1L))
 check("scenario counts B=1", identical(as.integer(sum_sc$scenarios$counts[["B"]]), 1L))
 check("scenario counts C=1", identical(as.integer(sum_sc$scenarios$counts[["C"]]), 1L))
+# Tie A/B/C → most_frequent is first among max (A); latest is last pair (C)
+check("most_frequent on tie → A", identical(sum_sc$scenarios$most_frequent, "A"))
+check("latest scenario → C", identical(sum_sc$scenarios$latest, "C"))
+check("latest Date_next", identical(as.character(sum_sc$scenarios$latest_date_next), "2020-12-31"))
+
+# other: no A–D conclusion path
+vd_other <- data.frame(
+  Date = as.Date(c("2021-03-31", "2021-06-30")),
+  hist_price = c(100, 102),
+  fair_value = c(100, 105),
+  stringsAsFactors = FALSE
+)
+sum_ot <- summarize_hfv_scenarios(build_hfv_scenario_pairs(vd_other))
+check("other-only most_frequent NA", is.na(sum_ot$most_frequent))
+check("other-only latest other", identical(sum_ot$latest, "other"))
 
 message("ALL PASS")
