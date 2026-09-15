@@ -300,6 +300,7 @@ lab_attach_market_caps <- function(pool) {
 }
 
 #' 規模過濾後依市值降序取最多 max_n 檔（無市值置後，再依代碼）
+#' 評估檔數 N：截斷只影響評估池／明細列數；排行榜另以 F-Score≥7 取 Top 10，不縮減明細。
 lab_rank_and_cap_eval_pool <- function(pool, max_n = 25L, size_filter = character(0)) {
   pool <- lab_dedupe_eval_pool(pool)
   if (is.null(pool) || !is.data.frame(pool)) {

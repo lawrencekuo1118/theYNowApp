@@ -1631,6 +1631,10 @@ ui <- dashboardPage(
               var labIconHtml = labIcon ? labIcon.outerHTML + ' ' : '';
               labImRun.innerHTML = labIconHtml + s.btn_lab_im_run;
             }
+            var labMaxNLabel = document.getElementById('ynow_lab_im_max_n_label');
+            if (labMaxNLabel && s.lab_im_max_n_label) labMaxNLabel.textContent = s.lab_im_max_n_label;
+            var labMaxNHelp = document.getElementById('ynow_lab_im_max_n_help');
+            if (labMaxNHelp && s.lab_im_max_n_help) labMaxNHelp.textContent = s.lab_im_max_n_help;
             document.documentElement.setAttribute('lang', (payload && payload.locale) || 'en');
             var mkt = (payload && payload.market) ? String(payload.market) : 'US';
             document.body.classList.toggle('ynow-market-tw', mkt === 'TW');
@@ -3583,7 +3587,8 @@ ui <- dashboardPage(
                   column(
                     width = 6,
                     selectInput(
-                      "lab_im_max_n", "評估檔數（明細列數）",
+                      "lab_im_max_n",
+                      tags$span(id = "ynow_lab_im_max_n_label", "評估檔數（明細列數）"),
                       choices = c(
                         "25 檔" = "25",
                         "50 檔" = "50",
@@ -3608,9 +3613,15 @@ ui <- dashboardPage(
                         width = "100%"
                       )
                     ),
-                    tags$span(
-                      style = "color:#888; font-size:12px; display:block; margin:-6px 0 10px 0;",
-                      "預設 100 檔。篩選後不足 N 則全列；候選多於 N 時依市值由大到小。明細列數＝評估檔數 N（品質勾選不縮明細）。可選「全部」或「自訂…」。"
+                    tags$div(
+                      id = "ynow_lab_im_max_n_help",
+                      style = "color:#888; font-size:12px; line-height:1.45; white-space:pre-line; margin:-6px 0 10px 0;",
+                      paste0(
+                        "評估檔數 N（預設 100）＝本次要評估的檔數。\n",
+                        "• 誰進評估池：篩選後若候選 > N，先依市值由大到小取 N 檔。\n",
+                        "• 明細／排行預設排序：以 n＝5 年換算的年化估值漲幅（upside_cagr_pct）降序。\n",
+                        "• Piotroski F-Score≥7 只過濾排行榜 Top 10，不縮減明細。"
+                      )
                     )
                   )
                 ),

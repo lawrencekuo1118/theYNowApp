@@ -65,6 +65,13 @@ locale_for_market <- function(mode = get_market_mode()) {
       "(F-Score≥7; unrelated to earnings-quality metrics), and rank by implied annualized valuation appreciation ",
       "over the App default horizon of n=%d years. Detail-row count equals the number of names evaluated, N."
     ),
+    lab_im_max_n_label = "Evaluation count (detail rows)",
+    lab_im_max_n_help = paste0(
+      "Evaluation count N (default 100) = how many names are evaluated this run.\n",
+      "• Evaluation pool: after filters, if candidates exceed N, take the top N by market cap (largest first).\n",
+      "• Detail / ranking default sort: implied annualized valuation appreciation over n=5 years (upside_cagr_pct), descending.\n",
+      "• Piotroski F-Score≥7 filters only the Top 10 leaderboard; it does not shrink the detail table."
+    ),
     bt_analysis_freq = "Analysis frequency (valuation date Date_t)",
     bt_freq_monthly = "Monthly",
     bt_freq_quarterly = "Quarterly",
@@ -201,6 +208,13 @@ locale_for_market <- function(mode = get_market_mode()) {
       "自 Wikipedia 的 S&P 500 成分名單篩選美股績優候選。",
       "流程先依規模、產業與適用評價模型進行條件篩選，再以 Piotroski 高門檻（F-Score≥7；與盈餘品質指標無涉）過濾排行榜，",
       "最後依 App 預設 n＝%d 年之隱含年化估值漲幅排序。明細列數等於本次評估檔數 N。"
+    ),
+    lab_im_max_n_label = "評估檔數（明細列數）",
+    lab_im_max_n_help = paste0(
+      "評估檔數 N（預設 100）＝本次要評估的檔數。\n",
+      "• 誰進評估池：篩選後若候選 > N，先依市值由大到小取 N 檔。\n",
+      "• 明細／排行預設排序：以 n＝5 年換算的年化估值漲幅（upside_cagr_pct）降序。\n",
+      "• Piotroski F-Score≥7 只過濾排行榜 Top 10，不縮減明細。"
     ),
     bt_analysis_freq = "分析頻率（估值日 Date_t）",
     bt_freq_monthly = "每月",

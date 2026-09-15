@@ -8185,6 +8185,7 @@ server <- function(input, output, session) {
           pool <- lab_attach_market_caps(pool)
         }
         pool <- lab_rank_and_cap_eval_pool(
+          # N 截斷：候選 > N 依市值降序取 N；明細＝該批；F-Score≥7 只濾排行榜 Top 10（不縮明細）
           pool, max_n = max_n, size_filter = input$lab_im_sizes
         )
         n_filtered <- as.integer(attr(pool, "n_filtered") %||% nrow(pool))
