@@ -7557,42 +7557,136 @@ server <- function(input, output, session) {
       if (!is.null(sc) && is.list(sc) && as.integer(sc$n %||% 0L) > 0L) {
         cnt <- sc$counts
         frq <- sc$freq
-        codes <- c("A", "B", "C", "D", "other")
+        abcd <- c("A", "B", "C", "D")
+        n_abcd <- vapply(abcd, function(code) {
+          if (!is.null(cnt) && code %in% names(cnt)) as.integer(cnt[[code]]) else 0L
+        }, integer(1))
+        lead_code <- if (any(n_abcd > 0L)) abcd[which.max(n_abcd)] else NA_character_
+        n_other <- if (!is.null(cnt) && "other" %in% names(cnt)) {
+          as.integer(cnt[["other"]])
+        } else {
+          0L
+        }
+        p_other <- if (!is.null(frq) && "other" %in% names(frq)) {
+          as.numeric(frq[["other"]])
+        } else {
+          NA_real_
+        }
+        make_sc_card <- function(code, icon_name, color) {
+          n_c <- if (!is.null(cnt) && code %in% names(cnt)) {
+            as.integer(cnt[[code]])
+          } else {
+            0L
+          }
+          p_c <- if (!is.null(frq) && code %in% names(frq)) {
+            as.numeric(frq[[code]])
+          } else {
+            NA_real_
+          }
+          is_lead <- identical(code, lead_code) && n_c > 0L
+          border_col <- if (is_lead) color else "#ddd"
+          bg <- if (is_lead) "#fffaf2" else "#fff"
+          tags$div(
+            class = paste(
+              "ynow-hfv-scenario-card-col",
+              if (is_lead) "ynow-hfv-scenario-lead" else ""
+            ),
+            tags$div(
+              class = "ynow-hfv-scenario-card",
+              style = paste0(
+                "border:1px solid ", border_col, ";",
+                "border-radius:8px; padding:12px 12px 10px 12px; min-height:148px; background:", bg,
+                "; box-shadow:0 2px 4px rgba(0,0,0,0.04); height:100%;"
+              ),
+              tags$div(style = paste0("font-size:20px; color:", color, ";"), icon(icon_name)),
+              tags$h4(
+                style = "margin:6px 0 4px 0; font-weight:700; font-size:14px; line-height:1.3;",
+                sc_lab(code)
+              ),
+              if (is_lead) tags$span(
+                style = paste0(
+                  "display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; color:#fff; background:",
+                  color, ";"
+                ),
+                ui_str("hfv_scenario_lead_badge", loc)
+              ),
+              tags$p(
+                style = "margin:8px 0 4px 0; font-size:13px; font-weight:600; color:#333;",
+                sprintf(ui_str("hfv_scenario_stat_fmt", loc), pct(p_c), n_c)
+              ),
+              tags$p(
+                style = "margin:0; font-size:11.5px; color:#666; line-height:1.4;",
+                ui_str(paste0("hfv_scenario_cue_", code), loc)
+              )
+            )
+          )
+        }
         tags$div(
           style = paste0(
             "margin:0 0 10px 0;padding:12px 14px;background:#fff;",
             "border:1px solid #e8dfd0;border-left:4px solid ", border, ";border-radius:4px;",
             "font-size:13px;line-height:1.55;"
           ),
+          tags$style(HTML("
+            .ynow-hfv-scenario-lead { transform: translateY(-2px); }
+            .ynow-hfv-scenario-row {
+              display: flex;
+              flex-wrap: nowrap;
+              align-items: stretch;
+              margin-left: -7.5px;
+              margin-right: -7.5px;
+            }
+            .ynow-hfv-scenario-row > .ynow-hfv-scenario-card-col {
+              flex: 1 1 0;
+              min-width: 0;
+              width: auto;
+              float: none;
+              padding-left: 7.5px;
+              padding-right: 7.5px;
+              box-sizing: border-box;
+            }
+            @media (max-width: 991px) {
+              .ynow-hfv-scenario-row { flex-wrap: wrap; }
+              .ynow-hfv-scenario-row > .ynow-hfv-scenario-card-col {
+                flex: 1 1 45%;
+                margin-bottom: 10px;
+              }
+            }
+            @media (max-width: 767px) {
+              .ynow-hfv-scenario-row > .ynow-hfv-scenario-card-col {
+                flex: 1 1 100%;
+              }
+            }
+          ")),
           tags$div(tags$b(ui_str("hfv_sum_scenario_block", loc))),
           tags$div(
             style = "margin:4px 0 0 0;color:#6c757d;font-size:11.5px;",
             ui_str("hfv_sum_scenario_formula", loc)
           ),
-          tags$p(style = "margin:6px 0 0 0;color:#555;font-size:12px;", period_txt),
-          tags$ul(
-            style = "margin:6px 0 0 0;padding-left:18px;",
-            tags$li(sprintf("配對數 n＝%d", sc$n %||% 0L)),
-            lapply(codes, function(code) {
-              n_c <- if (!is.null(cnt) && code %in% names(cnt)) {
-                as.integer(cnt[[code]])
-              } else {
-                0L
-              }
-              p_c <- if (!is.null(frq) && code %in% names(frq)) {
-                as.numeric(frq[[code]])
-              } else {
-                NA_real_
-              }
-              tags$li(sprintf("%s：%s（%d）", sc_lab(code), pct(p_c), n_c))
-            })
+          tags$p(style = "margin:6px 0 8px 0;color:#555;font-size:12px;", period_txt),
+          tags$div(
+            style = "margin:0 0 6px 0;color:#555;font-size:12px;",
+            sprintf("配對數 n＝%d", sc$n %||% 0L)
           ),
           tags$div(
-            style = "margin:8px 0 0 0;color:#666;font-size:11.5px;line-height:1.45;",
-            ui_str("hfv_sum_scenario_matrix", loc)
+            class = "ynow-hfv-scenario-row",
+            make_sc_card("A", "gem", "#c9a227"),
+            make_sc_card("B", "chart-line", "#00a65a"),
+            make_sc_card("C", "exclamation-triangle", "#f39c12"),
+            make_sc_card("D", "fire", "#dd4b39")
           ),
+          if (n_other > 0L) {
+            tags$div(
+              style = "margin:8px 0 0 0;color:#666;font-size:12px;",
+              sprintf(
+                ui_str("hfv_scenario_other_line", loc),
+                pct(p_other),
+                n_other
+              )
+            )
+          } else NULL,
           tags$div(
-            style = "margin:6px 0 0 0;color:#888;font-size:11.5px;line-height:1.45;",
+            style = "margin:8px 0 0 0;color:#888;font-size:11.5px;line-height:1.45;",
             ui_str("hfv_sum_scenario_caveat", loc)
           )
         )
@@ -9101,7 +9195,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v16.10"),
+      paste0("- **App：** The YNow App v16.11"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {
