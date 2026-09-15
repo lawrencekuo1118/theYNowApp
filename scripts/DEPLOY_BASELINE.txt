@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12558187
+bundleId=12558273
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=0b69b38
-commit=0b69b38
-short=0b69b38
-message=feat(hfv): split chart multi-select vs single replay model (v16.09)
-captured_at=2026-09-15T15:09:38Z
-display_version=v16.09
-note=Canonical live line is app_16.0. Bundle 12558187 ships v16.09 HFV chart multi-select vs single replay model (odds/magnitude/P(up)/strategy FV = replay radio only; no multi-model average). Replay results depend on selected replay model. Supersedes 12558020 (v16.08 PIT harden).
+aligned_git=663482f
+commit=663482f
+short=663482f
+message=feat(hfv): educational scenario taxonomy from replay FV pairs (v16.10)
+captured_at=2026-09-15T15:27:19Z
+display_version=v16.10
+note=Canonical live line is app_16.0. Bundle 12558273 ships v16.10 HFV educational scenario taxonomy (mispricing / FV momentum / price momentum → A–D; MOS band heuristics; not a trade ticket). Replay-model FV only. Supersedes 12558187 (v16.09 chart vs replay split).
