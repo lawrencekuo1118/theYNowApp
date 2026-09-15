@@ -20,18 +20,42 @@ ddm_module_server <- function(id, auto_calc_pulse = reactive(0L),
   moduleServer(id, function(input, output, session) {
     
     .ddm_quote_shares <- function() {
+      q_ccy <- tryCatch(quote_currency(), error = function(e) NULL)
+      f_ccy <- tryCatch(financial_currency(), error = function(e) NULL)
       sh <- tryCatch(
         resolve_valuation_shares(
           d_balance_sheet(),
           summary_df(),
           ticker = tryCatch(current_ticker(), error = function(e) ""),
-          quote_currency = tryCatch(quote_currency(), error = function(e) NULL),
-          financial_currency = tryCatch(financial_currency(), error = function(e) NULL)
+          quote_currency = q_ccy,
+          financial_currency = f_ccy
         ),
         error = function(e) NULL
       )
-      if (!is.null(sh) && is.finite(sh$shares) && sh$shares > 0) return(sh$shares)
+      if (!is.null(sh) && is.finite(sh$shares) && sh$shares > 0) {
+        # ADR／雙重股權：用約當報價股；報價幣≠財報幣且未約當 → 拒絕普通股 fallback
+        if (shares_auto_adjust_method(sh$method)) return(sh$shares)
+        if (statement_quote_units_differ(f_ccy, q_ccy)) return(NA_real_)
+        return(sh$shares)
+      }
+      if (statement_quote_units_differ(f_ccy, q_ccy)) return(NA_real_)
       select_current_metric_any(d_balance_sheet(), SHARE_PATTERNS, "stock")
+    }
+
+    #' CF→D0 only when money units match session／quote (ADR FX already applied or same ccy).
+    .ddm_cf_money_ok_for_d0 <- function(cf) {
+      if (is.null(cf) || !is.data.frame(cf)) return(FALSE)
+      q_ccy <- tryCatch(normalize_ccy(quote_currency()), error = function(e) NA_character_)
+      f_ccy <- tryCatch(normalize_ccy(financial_currency()), error = function(e) NA_character_)
+      mc <- tryCatch(normalize_ccy(attr(cf, "money_ccy")), error = function(e) NA_character_)
+      if (is.na(mc)) mc <- f_ccy
+      # Same statement／quote → OK; scaled CF tagged in quote／session USD／TWD → OK
+      if (!statement_quote_units_differ(f_ccy, q_ccy)) return(TRUE)
+      if (isTRUE(attr(cf, "money_scaled")) && !is.na(mc) && !is.na(q_ccy) &&
+          (identical(mc, q_ccy) || identical(mc, "USD") || identical(mc, "TWD"))) {
+        return(TRUE)
+      }
+      FALSE
     }
 
     # ==========================================
@@ -41,7 +65,8 @@ ddm_module_server <- function(id, auto_calc_pulse = reactive(0L),
       d0 <- NA_real_
       cf <- tryCatch(d_cash_flow(), error = function(e) NULL)
       bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
-      if (is.data.frame(cf) && nrow(cf) > 0 && is.data.frame(bs) && nrow(bs) > 0) {
+      if (is.data.frame(cf) && nrow(cf) > 0 && is.data.frame(bs) && nrow(bs) > 0 &&
+          isTRUE(.ddm_cf_money_ok_for_d0(cf))) {
         div_paid_total <- abs(select_current_metric(cf, "Cash Dividends Paid", "flow"))
         shares_issued <- .ddm_quote_shares()
         if (is.finite(div_paid_total) && is.finite(shares_issued) && shares_issued > 0) {
@@ -342,8 +367,16 @@ ddm_module_server <- function(id, auto_calc_pulse = reactive(0L),
     
     observeEvent(input$calc_d0_average, {
       req(d_cash_flow(), d_balance_sheet(), input$cycle_years)
-      
-      div_paid_seq <- select_clean_metric_row(d_cash_flow(), "Cash Dividends Paid", include_ttm = FALSE)
+      cf <- d_cash_flow()
+      if (!isTRUE(.ddm_cf_money_ok_for_d0(cf))) {
+        showNotification(
+          "無法計算平均 D0：財報幣與報價幣未對齊／缺少匯率換算（請改用 Summary 股利或手動輸入）",
+          type = "error"
+        )
+        return()
+      }
+
+      div_paid_seq <- select_clean_metric_row(cf, "Cash Dividends Paid", include_ttm = FALSE)
       shares <- .ddm_quote_shares()
       
       n_years <- min(input$cycle_years, length(div_paid_seq))

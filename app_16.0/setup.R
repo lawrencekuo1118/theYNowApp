@@ -113,11 +113,12 @@ fx_factor <- function(from_ccy, to_ccy, usd_twd = NULL) {
   if (is.na(fr) && is.na(to)) return(1)
   if (is.na(fr) || is.na(to)) return(NA_real_)
   if (identical(fr, to)) return(1)
+  # Only USD↔TWD is supported. Never silently treat CNY／EUR／… as USD (ADR FX).
   fx <- suppressWarnings(as.numeric(usd_twd %||% .ynow_ccy_ctx$fx_usd_twd)[1])
   if (!is.finite(fx) || fx <= 0) return(NA_real_)
   if (identical(fr, "USD") && identical(to, "TWD")) return(fx)
   if (identical(fr, "TWD") && identical(to, "USD")) return(1 / fx)
-  1
+  NA_real_
 }
 
 statement_quote_units_differ <- function(statement_ccy, quote_ccy) {

@@ -1970,27 +1970,47 @@ server <- function(input, output, session) {
     ddm_ke = reactive({ central_ke() * 100 }),  # 🌟 連動！
     
     scraped_d0 = reactive({
-      # 優先：財報推算每股股利（報價股約當股數）；其次：Summary 股利欄
+      # 優先：財報推算每股股利（報價股約當股數）；其次：Summary 股利欄（報價幣 DPS）
       cf <- d_cash_flow()
       bs <- d_balance_sheet()
+      q_ccy <- quote_currency()
+      f_ccy <- statement_currency()
       if (is.data.frame(cf) && nrow(cf) > 0 && is.data.frame(bs) && nrow(bs) > 0) {
-        div_paid <- select_current_metric(cf, "Cash Dividends Paid", "flow")
-        sh <- tryCatch(
-          resolve_valuation_shares(
-            bs, summary_data(),
-            ticker = current_ticker() %||% "",
-            quote_currency = quote_currency(),
-            financial_currency = statement_currency()
-          ),
-          error = function(e) NULL
-        )
-        shares <- if (!is.null(sh) && is.finite(sh$shares) && sh$shares > 0) {
-          sh$shares
-        } else {
-          select_current_metric_any(bs, SHARE_PATTERNS, "stock")
+        # 報價幣≠財報幣且 CF 未成功 FX 換算 → 勿用原幣總股利÷股數冒充報價 DPS
+        money_ok <- {
+          mc <- normalize_ccy(attr(cf, "money_ccy") %||% f_ccy)
+          if (!statement_quote_units_differ(f_ccy, q_ccy)) {
+            TRUE
+          } else {
+            isTRUE(attr(cf, "money_scaled")) && !is.na(mc) &&
+              (identical(mc, normalize_ccy(q_ccy)) ||
+                 identical(mc, "USD") || identical(mc, "TWD"))
+          }
         }
-        if (!is.na(div_paid) && !is.na(shares) && shares > 0) {
-          return(round(abs(div_paid) / shares, 2))
+        if (isTRUE(money_ok)) {
+          div_paid <- select_current_metric(cf, "Cash Dividends Paid", "flow")
+          sh <- tryCatch(
+            resolve_valuation_shares(
+              bs, summary_data(),
+              ticker = current_ticker() %||% "",
+              quote_currency = q_ccy,
+              financial_currency = f_ccy
+            ),
+            error = function(e) NULL
+          )
+          shares <- NA_real_
+          if (!is.null(sh) && is.finite(sh$shares) && sh$shares > 0) {
+            if (shares_auto_adjust_method(sh$method)) {
+              shares <- sh$shares
+            } else if (!statement_quote_units_differ(f_ccy, q_ccy)) {
+              shares <- sh$shares
+            }
+          } else if (!statement_quote_units_differ(f_ccy, q_ccy)) {
+            shares <- select_current_metric_any(bs, SHARE_PATTERNS, "stock")
+          }
+          if (!is.na(div_paid) && is.finite(shares) && shares > 0) {
+            return(round(abs(div_paid) / shares, 2))
+          }
         }
       }
       df <- summary_data()
@@ -9359,7 +9379,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v16.15"),
+      paste0("- **App：** The YNow App v16.16"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {
