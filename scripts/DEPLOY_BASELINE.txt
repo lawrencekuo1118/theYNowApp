@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12558020
+bundleId=12558187
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=13b4259
-commit=13b4259
-short=13b4259
-message=feat(hfv): harden PIT replay correctness and multi-source enrich (v16.08)
-captured_at=2026-09-15T14:34:31Z
-display_version=v16.08
-note=Canonical live line is app_16.0. Bundle 12558020 ships v16.08 HFV PIT harden (strict lag, g≠SGR, no CapEx invent, TPEx enrich, P(up) conclusion + OOS spacing from v16.07 ad72d0c). Supersedes 12557936 (v16.06 industry).
+aligned_git=0b69b38
+commit=0b69b38
+short=0b69b38
+message=feat(hfv): split chart multi-select vs single replay model (v16.09)
+captured_at=2026-09-15T15:09:38Z
+display_version=v16.09
+note=Canonical live line is app_16.0. Bundle 12558187 ships v16.09 HFV chart multi-select vs single replay model (odds/magnitude/P(up)/strategy FV = replay radio only; no multi-model average). Replay results depend on selected replay model. Supersedes 12558020 (v16.08 PIT harden).
