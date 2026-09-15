@@ -110,6 +110,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     hfv_chart_models_label = "Chart models (multi-select overlay)",
     hfv_replay_model_label = "Replay model (single; odds / magnitude / scenarios / next-period up frequency)",
+    hfv_session_params_title = "Session parameters (now)",
     hfv_data_sources_label = "Fundamentals sources (this run)",
     lab_notes_title = "Testing — Quantitative Backtest",
     lab_notes_sub = paste0(
@@ -333,6 +334,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     hfv_chart_models_label = "圖表模型（可複選疊圖）",
     hfv_replay_model_label = "復盤模型（單選；機率／幅度／情境／下期上漲頻率依此模型）",
+    hfv_session_params_title = "此刻參數（Session）",
     hfv_data_sources_label = "本次基本面資料來源",
     lab_notes_title = "測試 — Testing（量化回測）",
     lab_notes_sub = paste0(

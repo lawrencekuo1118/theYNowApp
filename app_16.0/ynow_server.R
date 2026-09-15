@@ -6883,50 +6883,87 @@ server <- function(input, output, session) {
                         "便宜（P<FV）＝市價低於模型；偏貴（P>FV）＝市價高於模型")),
       tags$div(style = "flex:1;min-width:120px;padding:8px 10px;background:#f5f5f5;border-left:4px solid #222222;",
                tags$div(class = "ynow-kpi-stat-label", "平均 MOS"),
-               tags$div(class = "ynow-kpi-stat-value", style = "color:#222222;", .fmt_pct(m$mean_hist_mos))),
-      tags$div(style = "flex:2;min-width:180px;padding:8px 10px;background:#fafafa;border-left:4px solid #555;",
-               tags$div(class = "ynow-kpi-stat-label", "此刻參數（Session）"),
-               tags$div(class = "ynow-kpi-stat-params", {
-                 chart_m <- paste(toupper(.bt_raw_fv_models()), collapse = "+")
-                 if (!nzchar(chart_m)) chart_m <- "—"
-                 replay_m <- toupper(.bt_replay_fv_model())
-                 if (length(replay_m) < 1L || !nzchar(replay_m[1])) replay_m <- "—"
-                 claim <- as.character(mp$dcf_claim %||% "fcff")[1]
-                 ddm_mode <- as.character(mp$ddm_mode %||% "gordon")[1]
-                 base <- sprintf(
-                   "圖表 %s · 復盤 %s · WACC %.2f%% · Ke %.2f%% · SGR %.2f%% · n=%s · PB mid %.2f · DCF %s",
-                   chart_m, replay_m[1],
-                   .safe_num(mp$wacc, NA) * 100, .safe_num(mp$ke, NA) * 100,
-                   .safe_num(mp$sgr, NA) * 100, mp$n_years, .safe_num(mp$pb_mid, NA),
-                   toupper(claim)
-                 )
-                 if ("ri" %in% .bt_replay_fv_model() || "ri" %in% .bt_raw_fv_models()) {
-                   paste0(
-                     base,
-                     sprintf(
-                       " · RI[ROE %.1f%% · payout %.0f%% · n=%s · g %.2f%% · Ke %.2f%% · fade=%s]",
-                       .safe_num(mp$ri_roe, NA) * 100,
-                       .safe_num(mp$ri_payout, NA) * 100,
-                       mp$ri_years %||% mp$n_years,
-                       .safe_num(mp$ri_g, NA) * 100,
-                       .safe_num(mp$ri_ke, NA) * 100,
-                       mp$roe_method %||% "constant"
-                     )
-                   )
-                 } else if ("ddm" %in% .bt_replay_fv_model() || "ddm" %in% .bt_raw_fv_models()) {
-                   paste0(
-                     base,
-                     sprintf(
-                       " · DDM[%s · g %.2f%% · Ke %.2f%%]",
-                       ddm_mode,
-                       .safe_num(mp$ddm_g, NA) * 100,
-                       .safe_num(mp$ddm_ke, NA) * 100
-                     )
-                   )
-                 } else {
-                   base
-                 }
-               }))
+               tags$div(class = "ynow-kpi-stat-value", style = "color:#222222;", .fmt_pct(m$mean_hist_mos)))
+    )
+  })
+
+  # 折現比較圖正下方：此刻 Session 參數（全寬鍵值網格）
+  output$bt_session_params <- renderUI({
+    src <- .bt_hfv_chart_source()
+    if (is.null(src) || !isTRUE(src$show_fv) || is.null(src$mp)) return(NULL)
+    mp <- src$mp
+    chart_m <- paste(toupper(.bt_raw_fv_models()), collapse = "+")
+    if (!nzchar(chart_m)) chart_m <- "—"
+    replay_m <- toupper(.bt_replay_fv_model())
+    if (length(replay_m) < 1L || !nzchar(replay_m[1])) replay_m <- "—"
+    claim <- toupper(as.character(mp$dcf_claim %||% "fcff")[1])
+    ddm_mode <- as.character(mp$ddm_mode %||% "gordon")[1]
+    .fmt_pct2 <- function(x) {
+      v <- .safe_num(x, NA_real_)
+      if (!is.finite(v)) return("—")
+      sprintf("%.2f%%", v * 100)
+    }
+    .fmt_num2 <- function(x) {
+      v <- .safe_num(x, NA_real_)
+      if (!is.finite(v)) return("—")
+      sprintf("%.2f", v)
+    }
+    .item <- function(key, val, span = FALSE) {
+      tags$div(
+        class = if (isTRUE(span)) {
+          "ynow-hfv-session-params__item ynow-hfv-session-params__span"
+        } else {
+          "ynow-hfv-session-params__item"
+        },
+        tags$span(class = "ynow-hfv-session-params__key", key),
+        tags$span(class = "ynow-hfv-session-params__val", val)
+      )
+    }
+    items <- list(
+      .item("圖表模型", chart_m),
+      .item("復盤模型", replay_m[1]),
+      .item("WACC", .fmt_pct2(mp$wacc)),
+      .item("Ke", .fmt_pct2(mp$ke)),
+      .item("SGR", .fmt_pct2(mp$sgr)),
+      .item("n（年）", as.character(mp$n_years %||% "—")),
+      .item("PB mid", .fmt_num2(mp$pb_mid)),
+      .item("DCF claim", claim)
+    )
+    if ("ri" %in% .bt_replay_fv_model() || "ri" %in% .bt_raw_fv_models()) {
+      items <- c(
+        items,
+        list(
+          .item("RI ROE", .fmt_pct2(mp$ri_roe)),
+          .item("RI payout", {
+            v <- .safe_num(mp$ri_payout, NA_real_)
+            if (!is.finite(v)) "—" else sprintf("%.0f%%", v * 100)
+          }),
+          .item("RI n", as.character(mp$ri_years %||% mp$n_years %||% "—")),
+          .item("RI g", .fmt_pct2(mp$ri_g)),
+          .item("RI Ke", .fmt_pct2(mp$ri_ke)),
+          .item("RI fade", as.character(mp$roe_method %||% "constant"))
+        )
+      )
+    } else if ("ddm" %in% .bt_replay_fv_model() || "ddm" %in% .bt_raw_fv_models()) {
+      items <- c(
+        items,
+        list(
+          .item("DDM mode", ddm_mode),
+          .item("DDM g", .fmt_pct2(mp$ddm_g)),
+          .item("DDM Ke", .fmt_pct2(mp$ddm_ke))
+        )
+      )
+    }
+    loc <- tryCatch(ui_locale(), error = function(e) "zh-TW")
+    title_txt <- ui_str("hfv_session_params_title", loc)
+    tags$div(
+      class = "ynow-hfv-session-params",
+      tags$div(
+        class = "ynow-hfv-session-params__title",
+        icon("sliders-h"),
+        tags$span(id = "ynow_hfv_session_params_title", title_txt)
+      ),
+      tags$div(class = "ynow-hfv-session-params__grid", items)
     )
   })
 
@@ -9322,7 +9359,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v16.14"),
+      paste0("- **App：** The YNow App v16.15"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

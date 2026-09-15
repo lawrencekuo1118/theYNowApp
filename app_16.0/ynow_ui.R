@@ -719,7 +719,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v16.14</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v16.15</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -1722,6 +1722,8 @@ ui <- dashboardPage(
             if (fsIsHead && s.tab_income_statement) fsIsHead.textContent = s.tab_income_statement;
             var fsCfHead = document.getElementById('ynow_fs_cf_chart_heading');
             if (fsCfHead && s.tab_cash_flow) fsCfHead.textContent = s.tab_cash_flow;
+            var hfvSessTitle = document.getElementById('ynow_hfv_session_params_title');
+            if (hfvSessTitle && s.hfv_session_params_title) hfvSessTitle.textContent = s.hfv_session_params_title;
             var chartModelsLab = document.querySelector('label[for=\"bt_fv_models\"]');
             if (chartModelsLab && s.hfv_chart_models_label) chartModelsLab.textContent = s.hfv_chart_models_label;
             var replayLab = document.querySelector('label[for=\"bt_fv_replay_model\"]');
@@ -2045,6 +2047,80 @@ ui <- dashboardPage(
         .ynow-kpi-stat-params {
           font-size: 12px !important;
           line-height: 1.4 !important;
+        }
+        /* HFV：此刻參數 — 圖表正下方、全寬、鍵值網格（勿擠成一行） */
+        .ynow-hfv-session-params {
+          width: 100%;
+          box-sizing: border-box;
+          margin: 14px 0 0 0;
+          padding: 12px 14px 14px 14px;
+          background: #fafafa;
+          border: 1px solid #e6e6e6;
+          border-left: 4px solid var(--ynow-gold-deep, #C9A227);
+          border-radius: 4px;
+        }
+        .ynow-hfv-session-params__title {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin: 0 0 10px 0;
+          font-size: 13px;
+          font-weight: 700;
+          color: var(--ynow-gold-ink, #856404);
+          letter-spacing: 0.01em;
+        }
+        .ynow-hfv-session-params__title > .fa,
+        .ynow-hfv-session-params__title > .fas {
+          color: var(--ynow-gold-deep, #C9A227);
+          width: 1.15em;
+          text-align: center;
+        }
+        .ynow-hfv-session-params__grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+          gap: 8px 12px;
+        }
+        .ynow-hfv-session-params__item {
+          min-width: 0;
+          padding: 7px 10px;
+          background: #fff;
+          border: 1px solid #ececec;
+          border-radius: 4px;
+        }
+        .ynow-hfv-session-params__key {
+          display: block;
+          font-size: 10.5px;
+          font-weight: 600;
+          color: #777;
+          letter-spacing: 0.02em;
+          margin: 0 0 3px 0;
+          line-height: 1.25;
+        }
+        .ynow-hfv-session-params__val {
+          display: block;
+          font-size: 13px;
+          font-weight: 600;
+          color: #1a1a1a;
+          font-variant-numeric: tabular-nums;
+          line-height: 1.35;
+          word-break: break-word;
+          overflow-wrap: anywhere;
+        }
+        .ynow-hfv-session-params__span {
+          grid-column: 1 / -1;
+        }
+        @media (max-width: 767px) {
+          .ynow-hfv-session-params {
+            margin-top: 10px;
+            padding: 10px 10px 12px 10px;
+          }
+          .ynow-hfv-session-params__grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 6px 8px;
+          }
+          .ynow-hfv-session-params__val {
+            font-size: 12px;
+          }
         }
         .ynow-kpi-hero-value {
           font-size: clamp(16px, 4vw, 22px) !important;
@@ -3992,7 +4068,8 @@ ui <- dashboardPage(
                   )
                 )
               ),
-              plotlyOutput("bt_hfv_timeline", height = "420px") %>% withSpinner()
+              plotlyOutput("bt_hfv_timeline", height = "420px") %>% withSpinner(),
+              uiOutput("bt_session_params")
             )
           )
         ),
