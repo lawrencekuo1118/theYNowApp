@@ -37,7 +37,7 @@ nav_module_ui <- function(id) {
       )
     ),
     tabBox(
-      title = "NAV (BOOK HOLDCO)", width = "auto",
+      title = "NET ASSET VALUE", width = "auto",
 
       tabPanel(
         "NAV Overview", icon = icon("sitemap"),
