@@ -20,7 +20,7 @@ locale_for_market <- function(mode = get_market_mode()) {
   en = list(
     recent_search = "Recent Search:",
     menu_dashboard = "Dashboard",
-    menu_get_started = "Get Started",
+    menu_get_started = "Basic Setup",
     menu_dcf = "DCF-Model",
     menu_ddm = "DDM",
     menu_pb = "P/B",
@@ -30,7 +30,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     menu_cat_income = "Income / Cash Flow Approach",
     menu_cat_relative = "Relative Valuation",
     menu_ynow = "YNOW",
-    menu_bluechip = "Blue Chip",
+    menu_bluechip = "Blue Chip Ranking",
     menu_hfv = "Hist. FV Validation",
     menu_about = "About",
     ticker_label = "Ticker / Stock Code",
@@ -65,7 +65,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_notes_sub = paste0(
       "Strategy NAV, performance, parameters, and holding filters live here. ",
       "Historical Fundamental Validation (theoretical FV vs actual market) is under the Hist. FV Validation sidebar. ",
-      "US blue-chip screening is under Blue Chip. SEC notes: Dashboard → FINANCIAL REPORT → SEC Notes."
+      "US blue-chip screening is under Blue Chip Ranking. SEC notes: Dashboard → FINANCIAL REPORT → SEC Notes."
     ),
     bt_zone_title = "Backtest Zone",
     box_hfv_discount = "FV vs Market Price",
@@ -96,7 +96,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     box_residual_income = "RESIDUAL INCOME",
     box_pb_asset = "P/B & ASSET VALUE",
     box_nav = "NAV (BOOK HOLDCO)",
-    box_blue_chip = "BLUE CHIP",
+    box_blue_chip = "BLUE CHIP RANKING",
     box_beta = "BETA",
     box_sgr = "SUSTAINABLE GROWTH RATE",
     box_model_guide = "Model Selection Guide",
@@ -145,7 +145,7 @@ locale_for_market <- function(mode = get_market_mode()) {
   `zh-TW` = list(
     recent_search = "最近搜尋：",
     menu_dashboard = "總覽 Dashboard",
-    menu_get_started = "開始設定",
+    menu_get_started = "基礎設定",
     menu_dcf = "DCF 模型",
     menu_ddm = "DDM",
     menu_pb = "P/B",
@@ -155,7 +155,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     menu_cat_income = "收益與現金流折現法",
     menu_cat_relative = "相對估值法",
     menu_ynow = "YNOW",
-    menu_bluechip = "Blue Chip 績優",
+    menu_bluechip = "績優股排行",
     menu_hfv = "歷史基本面驗證",
     menu_about = "關於",
     ticker_label = "Ticker／股票代號",
@@ -190,7 +190,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_notes_sub = paste0(
       "量化回測（策略淨值／績效／參數）與持倉閘門在此。",
       "歷史基本面驗證（理論估值 vs 實際市值）請至側邊「歷史基本面驗證」。",
-      "美股績優篩選請至側邊 Blue Chip。SEC 財報附註在 Dashboard → FINANCIAL REPORT →「財報附註 (SEC)」。"
+      "美股績優篩選請至側邊「績優股排行」。SEC 財報附註在 Dashboard → FINANCIAL REPORT →「財報附註 (SEC)」。"
     ),
     bt_zone_title = "量化回測實驗室 (Backtest Zone)",
     box_hfv_discount = "折現比較（合理價 vs 實際股價）",
@@ -221,7 +221,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     box_residual_income = "剩餘收益 RI",
     box_pb_asset = "P/B 與相對估值",
     box_nav = "NAV（帳面控股）",
-    box_blue_chip = "Blue Chip 績優",
+    box_blue_chip = "績優股排行",
     box_beta = "Beta β",
     box_sgr = "SUSTAINABLE GROWTH RATE",
     box_model_guide = "模型選擇決策指南",
@@ -329,6 +329,9 @@ locale_for_market <- function(mode = get_market_mode()) {
   "P/B & ASSET VALUE" = "box_pb_asset",
   "NAV (BOOK HOLDCO)" = "box_nav",
   "BLUE CHIP" = "box_blue_chip",
+  "BLUE CHIP RANKING" = "box_blue_chip",
+  "Blue Chip 績優" = "box_blue_chip",
+  "績優股排行" = "box_blue_chip",
   "BETA" = "box_beta",
   "SUSTAINABLE GROWTH RATE" = "box_sgr",
   "模型選擇決策指南" = "box_model_guide",

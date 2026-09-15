@@ -719,7 +719,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v16.02</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v16.03</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -792,7 +792,7 @@ ui <- dashboardPage(
            sidebarMenu(
              id = "sidebar_tabs",
              menuItem("Dashboard", tabName = "dashboard", icon = icon("chart-line")),
-             menuItem("Get Started", tabName = "get_started", icon = icon("play-circle")),
+             menuItem("Basic Setup", tabName = "get_started", icon = icon("play-circle")),
              menuItem(
                text = tags$span(id = "ynow_menu_cat_asset", "Asset-Based Approach"),
                icon = icon("building"),
@@ -818,7 +818,7 @@ ui <- dashboardPage(
                menuSubItem("P/B", tabName = "pb_calculator", icon = icon("landmark"))
              ),
              menuItem("YNOW", tabName = "sensitivity", icon = icon("sliders-h")),
-             menuItem("Blue Chip", tabName = "bluechip", icon = icon("star")),
+             menuItem("Blue Chip Ranking", tabName = "bluechip", icon = icon("star")),
              # 歷史基本面驗證（HFV）：理論估值 vs 實際市值 — 非策略回測
              menuItem("Hist. FV Validation", tabName = "hfv", icon = icon("balance-scale")),
              # 量化回測報表在底部「測試」；實驗區不放主選單
@@ -3871,7 +3871,7 @@ ui <- dashboardPage(
             h2(tags$b(id = "ynow_lab_notes_title", "測試 — Testing（量化回測）")),
             p(
               id = "ynow_lab_notes_sub",
-              "量化回測（策略淨值／績效／參數）與持倉閘門在此。歷史基本面驗證（理論估值 vs 實際市值）請至側邊「歷史基本面驗證」。美股績優篩選請至側邊 Blue Chip。SEC 財報附註在 Dashboard → FINANCIAL REPORT →「財報附註 (SEC)」。"
+              "量化回測（策略淨值／績效／參數）與持倉閘門在此。歷史基本面驗證（理論估值 vs 實際市值）請至側邊「歷史基本面驗證」。美股績優篩選請至側邊「績優股排行」。SEC 財報附註在 Dashboard → FINANCIAL REPORT →「財報附註 (SEC)」。"
             ),
             tags$hr()
           )

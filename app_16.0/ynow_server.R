@@ -1131,6 +1131,7 @@ server <- function(input, output, session) {
     sec <- as.character(rec$secondary %||% "")
     mark_roles <- nzchar(prim)
     make_card <- function(title, key, icon_name, color, formula, notes) {
+      # Only label 主模型／副模型; no「備選」chip on remaining cards
       role <- if (!mark_roles) {
         NULL
       } else if (identical(key, prim)) {
@@ -1138,12 +1139,12 @@ server <- function(input, output, session) {
       } else if (nzchar(sec) && identical(key, sec)) {
         "副模型"
       } else {
-        "備選"
+        NULL
       }
       active <- identical(role, "主模型")
       border_col <- if (identical(role, "主模型")) color else if (identical(role, "副模型")) "#888" else "#ddd"
       bg <- if (identical(role, "主模型")) "#fffaf2" else if (identical(role, "副模型")) "#f7f9fc" else "#fff"
-      badge_bg <- if (identical(role, "主模型")) color else if (identical(role, "副模型")) "#6c757d" else "#999"
+      badge_bg <- if (identical(role, "主模型")) color else if (identical(role, "副模型")) "#6c757d" else NULL
       tags$div(
         class = paste("ynow-model-card-col", if (isTRUE(active)) "ynow-model-rec-active" else ""),
         tags$div(
@@ -1155,7 +1156,7 @@ server <- function(input, output, session) {
           ),
           tags$div(style = paste0("font-size:22px; color:", color, ";"), icon(icon_name)),
           tags$h4(style = "margin:8px 0 4px 0; font-weight:700;", title),
-          if (!is.null(role)) tags$span(
+          if (!is.null(role) && !is.null(badge_bg)) tags$span(
             style = paste0(
               "display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; color:#fff; background:",
               badge_bg, ";"
