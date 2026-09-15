@@ -47,11 +47,11 @@ market_profile <- function(mode = get_market_mode()) {
       ),
       backtest_bench = "0050.TW",
       show_sec_lab = FALSE,
-      bluechip_title = "BLUE CHIP（台股績優）",
+      bluechip_title = "績優股排行（台股）",
+      # Intro copy lives in ui_locale.R (bluechip_blurb_tw); kept for profile completeness
       bluechip_blurb = paste0(
-        "自臺灣證券交易所／櫃買中心公開名單篩選台股績優候選（僅上市＋上櫃；不含興櫃，因流動性與 Yahoo 資料覆蓋較不穩）：",
-        "先套用規模 × 產業 × 評價模型，再以 Piotroski 高門檻與年化估值漲幅排序。",
-        "主搜尋可查上市／上櫃／興櫃（純數字代號或中文名稱）。"
+        "依據臺灣證券交易所與櫃買中心公開名單，篩選台股績優候選標的（範圍僅含上市與上櫃；不含興櫃）。",
+        "先依規模、產業與評價模型篩選，再以 Piotroski F-Score≥7 過濾並依隱含年化估值漲幅排序。"
       ),
       universe_label = "上市／上櫃／興櫃",
       # 顯示標籤用不含 .TW 的代號；值仍為 Yahoo fetch symbol
@@ -92,10 +92,11 @@ market_profile <- function(mode = get_market_mode()) {
       ),
       backtest_bench = "SPY",
       show_sec_lab = TRUE,
-      bluechip_title = "BLUE CHIP（美股績優）",
+      bluechip_title = "Blue Chip Ranking (US)",
+      # Intro copy lives in ui_locale.R (bluechip_blurb_us); kept for profile completeness
       bluechip_blurb = paste0(
-        "自 Wikipedia 的 S&P 500 成分名單篩選美股績優候選：",
-        "先套用規模 × 產業 × 評價模型，再以 Piotroski 高門檻與年化估值漲幅排序。"
+        "Screen US blue-chip candidates from the S&P 500 constituent list: ",
+        "size × industry × valuation-model filters, then Piotroski F-Score≥7 and implied annualized valuation appreciation."
       ),
       universe_label = "S&P 500",
       ticker_presets = c(

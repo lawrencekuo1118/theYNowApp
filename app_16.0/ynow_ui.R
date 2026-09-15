@@ -1612,6 +1612,12 @@ ui <- dashboardPage(
               var runIconHtml = runIcon ? runIcon.outerHTML + ' ' : '';
               runBt.innerHTML = runIconHtml + s.btn_run_bt;
             }
+            var labImRun = document.getElementById('lab_im_run_fscore');
+            if (labImRun && s.btn_lab_im_run) {
+              var labIcon = labImRun.querySelector('i');
+              var labIconHtml = labIcon ? labIcon.outerHTML + ' ' : '';
+              labImRun.innerHTML = labIconHtml + s.btn_lab_im_run;
+            }
             document.documentElement.setAttribute('lang', (payload && payload.locale) || 'en');
             var mkt = (payload && payload.market) ? String(payload.market) : 'US';
             document.body.classList.toggle('ynow-market-tw', mkt === 'TW');
@@ -3635,7 +3641,7 @@ ui <- dashboardPage(
                 tags$div(
                   class = "ynow-lab-im-actions",
                   actionButton(
-                    "lab_im_run_fscore", "評估績優",
+                    "lab_im_run_fscore", "搜尋績優股",
                     icon = icon("chart-line"),
                     class = "btn-success",
                     title = "Piotroski 高門檻（F-Score≥7）＋年化估值漲幅排序"

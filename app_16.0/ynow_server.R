@@ -8047,14 +8047,16 @@ server <- function(input, output, session) {
   })
 
   output$lab_im_bluechip_blurb <- renderUI({
-    prof <- active_market_profile()
+    loc <- ui_locale()
+    mode <- market_mode()
     n_yrs <- as.integer(APP_DEFAULTS$years %||% 5L)[1]
-    tags$p(
-      prof$bluechip_blurb,
-      "再以 Piotroski 高門檻（F-Score≥7；與盈餘品質無關）過濾排行榜，最後依 App 預設 n＝",
-      n_yrs,
-      " 年隱含年化估值漲幅排序。明細列數等於評估檔數 N。"
-    )
+    if (!is.finite(n_yrs) || n_yrs < 1L) n_yrs <- 5L
+    key <- if (identical(normalize_market_mode(mode), "TW")) {
+      "bluechip_blurb_tw"
+    } else {
+      "bluechip_blurb_us"
+    }
+    tags$p(sprintf(ui_str(key, loc), as.integer(n_yrs)))
   })
 
   output$lab_im_universe_meta <- renderUI({
@@ -8287,7 +8289,7 @@ server <- function(input, output, session) {
       }
       return(tags$p(
         style = "color:#888; font-size:12.5px;",
-        "尚未評估。請按下方「評估績優」；", cap_txt, "，並列出其中 F-Score≥7 且",
+        "尚未評估。請按下方「搜尋績優股」；", cap_txt, "，並列出其中 F-Score≥7 且",
         sprintf(" n=%d 年年化估值漲幅最高 ", n),
         "的 Top 10（與明細同一批、同一排序鍵）。"
       ))
@@ -8304,7 +8306,7 @@ server <- function(input, output, session) {
   output$lab_im_leaderboard <- renderTable({
     scores <- lab_im_scores()
     if (is.null(scores) || !is.data.frame(scores) || nrow(scores) == 0) {
-      return(data.frame(訊息 = "（尚無績優排行 — 請先按「評估績優」）"))
+      return(data.frame(訊息 = "（尚無績優排行 — 請先按「搜尋績優股」）"))
     }
     merged <- tryCatch(lab_im_merged(), error = function(e) NULL)
     if (is.null(merged) || nrow(merged) == 0) {
@@ -8358,7 +8360,7 @@ server <- function(input, output, session) {
     if (nrow(merged) == 0) {
       scores <- lab_im_scores()
       msg <- if (is.null(scores) || !is.data.frame(scores) || nrow(scores) == 0) {
-        "尚未評估。請按「評估績優」；明細列數將等於評估檔數 N（篩選後不足 N 則全列）。"
+        "尚未評估。請按「搜尋績優股」；明細列數將等於評估檔數 N（篩選後不足 N 則全列）。"
       } else {
         "沒有符合篩選的已評估列。可放寬規模／產業／模型，或重新評估。"
       }
@@ -8431,7 +8433,7 @@ server <- function(input, output, session) {
       evaluated_only = TRUE
     )
     if (nrow(merged) == 0) {
-      return(data.frame(訊息 = "目前篩選下無已評估明細列（請先按「評估績優」）"))
+      return(data.frame(訊息 = "目前篩選下無已評估明細列（請先按「搜尋績優股」）"))
     }
     size_lab <- unname(LAB_SIZE_LABELS[merged$size_band])
     size_lab[is.na(size_lab)] <- "—"
