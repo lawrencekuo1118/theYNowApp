@@ -2,10 +2,10 @@ source=shinyapps.io TheYNowApp
 bundleId=12558507
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=caf6d5c
-commit=caf6d5c
-short=caf6d5c
-message=feat(hfv): A–D scenario conclusions + merge duplicate method caveats (v16.12)
-captured_at=2026-09-15T16:10:46Z
-display_version=v16.12
-note=Canonical live line is app_16.0. Bundle 12558507 ships v16.12: Q3 callouts for most-frequent + latest successive-pair A–D conclusions (other stays neutral); method block keeps full replay/chart, P(up), three-signal/A–D matrix, thresholds, PIT/g≠SGR/data honesty; drops only repeated result-area caveat. Upload log also noted 12558489; rsconnect dcf active id=12558507. Supersedes 12558369 (v16.11).
+aligned_git=1042a9c
+commit=1042a9c
+short=1042a9c
+message=feat(ui): align IS/CF chart titles and icons with logo gold palette (v16.13)
+captured_at=2026-09-15T16:14:00Z
+display_version=v16.13
+note=Canonical live line is app_16.0. Bundle 12558507 is v16.13 (gold IS/CF chrome) and includes caf6d5c HFV work: Q3 most-frequent + latest A–D conclusion callouts; method block keeps full replay/chart, P(up), three-signal/A–D matrix, thresholds, PIT/g≠SGR/data honesty; drops only repeated result-area caveat. Prior upload 12558489 was v16.12-only during overlapping deploys. Supersedes 12558369 (v16.11).
