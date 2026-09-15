@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12558369
+bundleId=12558507
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=9c56ab6
-commit=9c56ab6
-short=9c56ab6
-message=feat(hfv): A–D scenario cards like Model Selector; drop educational-label tags (v16.11)
-captured_at=2026-09-15T15:46:15Z
-display_version=v16.11
-note=Canonical live line is app_16.0. Bundle 12558369 ships v16.11 HFV A–D scenario equal-width cards (Model Selector flex pattern; freq/count + signal cues; drop （教育標籤）/(educational) parentheticals). Replay-model FV only. Supersedes 12558273 (v16.10 taxonomy list).
+aligned_git=caf6d5c
+commit=caf6d5c
+short=caf6d5c
+message=feat(hfv): A–D scenario conclusions + merge duplicate method caveats (v16.12)
+captured_at=2026-09-15T16:10:46Z
+display_version=v16.12
+note=Canonical live line is app_16.0. Bundle 12558507 ships v16.12: Q3 callouts for most-frequent + latest successive-pair A–D conclusions (other stays neutral); method block keeps full replay/chart, P(up), three-signal/A–D matrix, thresholds, PIT/g≠SGR/data honesty; drops only repeated result-area caveat. Upload log also noted 12558489; rsconnect dcf active id=12558507. Supersedes 12558369 (v16.11).
