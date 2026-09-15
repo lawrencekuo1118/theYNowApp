@@ -80,8 +80,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     bt_freq_insufficient = "Price history is too short for analysis-frequency options.",
     hfv_page_title = "Historical Fundamental Validation",
     hfv_page_sub = paste0(
-      "Next-period price up/down odds R=(P_next−P)/P, plus position vs theoretical FV. ",
-      "This is not a trading-strategy backtest; quantitative backtest lives under Testing (sidebar foot)."
+      "Next-period price odds, position vs theoretical FV, and an educational historical scenario taxonomy ",
+      "(mispricing / FV momentum / price momentum). Not a trading-strategy backtest; quantitative backtest lives under Testing."
     ),
     hfv_method_data_note = paste0(
       "Data notes: Yahoo annuals may be restated. PIT uses a strict filing lag (period_end + ~90 days; ",
@@ -91,14 +91,25 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Listed TW MOPS / US SEC as-filed annuals are not yet on the HFV path. Small samples (n<5) are illustrative only."
     ),
     hfv_method_body = paste0(
-      "This is not a trading-strategy backtest. Two scopes: ",
+      "This is not a trading-strategy backtest or a Strong Buy / Strong Sell order ticket. Three layers: ",
       "(1) next-period price move R=(P_{t+1}-P_t)/P_t frequencies, with MOS-bucket conditional outlook; ",
       "(2) position vs theoretical FV_t from the single Replay model (not the chart multi-select average), ",
-      "plus magnitude (P_{t+1}-FV_t)/FV_t. Chart models may overlay multiple series; ",
-      "replay odds/magnitude use one model only. Strategy NAV lives under Testing."
+      "plus magnitude (P_{t+1}-FV_t)/FV_t; ",
+      "(3) educational historical scenario taxonomy on successive dates using Replay FV + prices — ",
+      "three signals: mispricing = FV_curr−Price_curr (MOS), FV momentum = FV_curr−FV_prev, ",
+      "price momentum = Price_curr−Price_prev → scenarios A–D (golden pit / Davis double / value trap / bubble hype). ",
+      "Chart models may overlay multiple series; replay odds/magnitude/scenarios use one model only. ",
+      "Strategy NAV lives under Testing."
+    ),
+    hfv_scenario_thresh_note = paste0(
+      "Scenario band heuristics (engineering defaults, not academic standards): ",
+      "momentum flat |Δ|/prev ≤ 2%; Price ≈ FV when |MOS| ≤ 10%; ",
+      "Price ≪ FV when MOS ≥ 20%; Price ≫ FV when MOS ≤ −20%; ",
+      "scenario D requires price momentum ≥ +5%. Caveats: garbage-in FV → misclassification; ",
+      "timing / Keynes irrationality — a catalyst may still be needed. HFV is historical frequency validation, not a trade guarantee."
     ),
     hfv_chart_models_label = "Chart models (multi-select overlay)",
-    hfv_replay_model_label = "Replay model (single; odds / magnitude / next-period up frequency)",
+    hfv_replay_model_label = "Replay model (single; odds / magnitude / scenarios / next-period up frequency)",
     hfv_data_sources_label = "Fundamentals sources (this run)",
     lab_notes_title = "Testing — Quantitative Backtest",
     lab_notes_sub = paste0(
@@ -108,7 +119,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     bt_zone_title = "Backtest Zone",
     box_hfv_discount = "FV vs Market Price",
-    box_hfv_validation = "Historical Fundamental Validation: Next-Period Up/Down & vs FV",
+    box_hfv_validation = "Historical Fundamental Validation: Odds, vs FV & Scenario Taxonomy",
     box_hfv_param_inventory = "US Valuation Replay Inventory (Live vs Hist PIT)",
     hfv_fb_title = "Default / fallback notice",
     hfv_fb_item_fmt = "%s — %s (~%d valuation points)",
@@ -123,7 +134,26 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_sum_mos_block = "MOS group outlook (same-ticker history)",
     hfv_sum_fv_block = "Q2 · Position vs theoretical FV",
     hfv_sum_fv_formula = "(P_next − FV) / FV — not the same as up/down",
-    hfv_sum_empty = "After Search and selecting a Replay model, next-period up/down odds and vs-FV stats appear here (not a strategy backtest). Replay results depend on the selected Replay model only.",
+    hfv_sum_scenario_block = "Q3 · Historical scenario taxonomy (educational)",
+    hfv_sum_scenario_formula = "Signals: mispricing = FV_curr−Price_curr; FV momentum; price momentum — Replay model only",
+    hfv_sum_scenario_matrix = paste0(
+      "A Golden pit (educational): FV↑, Price↓, Price ≪ FV · ",
+      "B Davis double: FV↑, Price↑, Price ≈ FV · ",
+      "C Value trap: FV↓, Price↓, Price < FV · ",
+      "D Bubble hype: FV≤flat, Price strong↑, Price ≫ FV · ",
+      "other = unmatched. Labels are taxonomy names — not order tickets."
+    ),
+    hfv_sum_scenario_caveat = paste0(
+      "Educational historical taxonomy only. Garbage-in FV misclassifies; markets can stay irrational without a catalyst. ",
+      "Not a Strong Buy / Strong Sell trading signal."
+    ),
+    hfv_sum_scenario_empty = "No classifiable successive-date pairs under the current sample scope.",
+    hfv_scenario_A = "A · Golden pit (educational)",
+    hfv_scenario_B = "B · Davis double (educational)",
+    hfv_scenario_C = "C · Value trap (educational)",
+    hfv_scenario_D = "D · Bubble hype (educational)",
+    hfv_scenario_other = "other · Unmatched",
+    hfv_sum_empty = "After Search and selecting a Replay model, next-period up/down odds, vs-FV stats, and scenario taxonomy appear here (not a strategy backtest). Replay results depend on the selected Replay model only.",
     hfv_sum_notes = "Result notes",
     hfv_sec_method = "How to read this panel",
     hfv_sec_settings = "Settings",
@@ -250,7 +280,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     bt_freq_insufficient = "股價歷史不足，尚無可用分析頻率。",
     hfv_page_title = "歷史基本面驗證",
     hfv_page_sub = paste0(
-      "市價下期漲跌機率 R=(P下一期−P)/P，以及相對理論 FV 的位置／幅度。",
+      "市價下期漲跌機率、相對理論 FV 位置／幅度，以及教育用歷史情境分類（價值錯位／基本面動能／價格動能）。",
       "這不是交易策略回測；量化回測請至側邊底部「測試」。"
     ),
     hfv_method_data_note = paste0(
@@ -260,13 +290,21 @@ locale_for_market <- function(mode = get_market_mode()) {
       "小樣本（n＜5）僅供參考，非預測保證。"
     ),
     hfv_method_body = paste0(
-      "這不是交易策略回測。兩種口徑分開呈現：",
+      "這不是交易策略回測，也不是 Strong Buy／Strong Sell 下單訊號。三層口徑：",
       "（1）市價下期漲跌 R=(P_{t+1}-P_t)/P_t 的經驗頻率，並以目前安全邊際（MOS）分組之條件機率作為展望；",
-      "（2）相對理論 FV_t（＝下方「復盤模型」單選之一；非圖表複選平均）落在之上／之下與幅度 (P_{t+1}-FV_t)/FV_t。",
-      "圖表可複選疊多條模型線；復盤機率／幅度僅依單選模型。策略淨值請至側邊底部「測試」。"
+      "（2）相對理論 FV_t（＝下方「復盤模型」單選之一；非圖表複選平均）落在之上／之下與幅度 (P_{t+1}-FV_t)/FV_t；",
+      "（3）教育用歷史情境分類：相鄰估值日的復盤 FV＋市價 → 三訊號（價值錯位＝當期FV−當期市價／MOS、基本面動能＝當期FV−前期FV、價格動能＝當期市價−前期市價）→ 情境 A–D",
+      "（錯殺黃金坑／戴維斯雙擊／價值陷阱／泡沫炒作）。",
+      "圖表可複選疊多條模型線；復盤機率／幅度／情境僅依單選模型。策略淨值請至側邊底部「測試」。"
+    ),
+    hfv_scenario_thresh_note = paste0(
+      "情境帶寬啟發式（工程預設，非學術標準）：動能持平 |Δ|/前期 ≤ 2%；",
+      "Price ≈ FV 當 |MOS| ≤ 10%；Price ≪ FV 當 MOS ≥ 20%；Price ≫ FV 當 MOS ≤ −20%；",
+      "情境 D 另要求價格動能 ≥ +5%。提醒：FV 垃圾進→分類失真；時機／凱因斯式非理性仍可能需催化劑。",
+      "HFV 是歷史頻率驗證，不是交易保證。"
     ),
     hfv_chart_models_label = "圖表模型（可複選疊圖）",
-    hfv_replay_model_label = "復盤模型（單選；機率／幅度／下期上漲頻率依此模型）",
+    hfv_replay_model_label = "復盤模型（單選；機率／幅度／情境／下期上漲頻率依此模型）",
     hfv_data_sources_label = "本次基本面資料來源",
     lab_notes_title = "測試 — Testing（量化回測）",
     lab_notes_sub = paste0(
@@ -276,7 +314,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     bt_zone_title = "量化回測實驗室 (Backtest Zone)",
     box_hfv_discount = "折現比較（合理價 vs 實際股價）",
-    box_hfv_validation = "歷史基本面驗證：市價下期漲跌與相對 FV",
+    box_hfv_validation = "歷史基本面驗證：漲跌機率、相對 FV 與情境分類",
     box_hfv_param_inventory = "美股估值復盤參數盤點（Live vs Hist PIT）",
     hfv_fb_title = "預設／fallback 提醒",
     hfv_fb_item_fmt = "%s — %s（約 %d 個估值點）",
@@ -291,7 +329,26 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_sum_mos_block = "安全邊際（MOS）分組展望（該股自身歷史）",
     hfv_sum_fv_block = "問題二・相對理論 FV",
     hfv_sum_fv_formula = "(P下一期 − FV) / FV — 與漲跌不同口徑",
-    hfv_sum_empty = "載入標的並選擇復盤模型後，將顯示市價下期漲跌機率與相對 FV 統計（非策略回測）。復盤結果僅依所選單一復盤模型。",
+    hfv_sum_scenario_block = "問題三・歷史情境分類（教育用）",
+    hfv_sum_scenario_formula = "三訊號：價值錯位＝當期FV−當期市價；基本面動能；價格動能 — 僅復盤模型",
+    hfv_sum_scenario_matrix = paste0(
+      "A 錯殺黃金坑（教育標籤）：FV↑、Price↓、Price ≪ FV · ",
+      "B 戴維斯雙擊：FV↑、Price↑、Price ≈ FV · ",
+      "C 價值陷阱：FV↓、Price↓、Price < FV · ",
+      "D 泡沫炒作：FV≤持平、Price 強升、Price ≫ FV · ",
+      "other＝未歸類。名稱是分類學標籤，不是下單指令。"
+    ),
+    hfv_sum_scenario_caveat = paste0(
+      "僅為教育用歷史情境分類。FV 垃圾進會誤分類；市場可長期非理性且仍需催化劑。",
+      "不是 Strong Buy／Strong Sell 交易訊號。"
+    ),
+    hfv_sum_scenario_empty = "目前驗證樣本口徑下無可分類的相鄰估值日配對。",
+    hfv_scenario_A = "A · 錯殺黃金坑（教育標籤）",
+    hfv_scenario_B = "B · 戴維斯雙擊（教育標籤）",
+    hfv_scenario_C = "C · 價值陷阱（教育標籤）",
+    hfv_scenario_D = "D · 泡沫炒作（教育標籤）",
+    hfv_scenario_other = "other · 未歸類",
+    hfv_sum_empty = "載入標的並選擇復盤模型後，將顯示市價下期漲跌機率、相對 FV 統計與情境分類（非策略回測）。復盤結果僅依所選單一復盤模型。",
     hfv_sum_notes = "結果附註",
     hfv_sec_method = "說明",
     hfv_sec_settings = "設定",
@@ -437,6 +494,8 @@ locale_for_market <- function(mode = get_market_mode()) {
   "Historical Fundamental Validation: Next-Period Up/Down & vs FV" = "box_hfv_validation",
   "歷史基本面驗證：理論估值 vs 實際市值（漲跌機率／幅度）" = "box_hfv_validation",
   "Historical Fundamental Validation: Theoretical FV vs Actual Market (odds & magnitude)" = "box_hfv_validation",
+  "歷史基本面驗證：漲跌機率、相對 FV 與情境分類" = "box_hfv_validation",
+  "Historical Fundamental Validation: Odds, vs FV & Scenario Taxonomy" = "box_hfv_validation",
   "美股估值復盤參數盤點（Live vs Hist PIT）" = "box_hfv_param_inventory",
   "US Valuation Replay Inventory (Live vs Hist PIT)" = "box_hfv_param_inventory"
 )

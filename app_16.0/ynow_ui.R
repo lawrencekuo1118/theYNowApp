@@ -719,7 +719,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v16.09</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v16.10</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -1650,6 +1650,8 @@ ui <- dashboardPage(
             if (hfvDataNote && s.hfv_method_data_note) hfvDataNote.textContent = s.hfv_method_data_note;
             var hfvMethodBody = document.getElementById('ynow_hfv_method_body');
             if (hfvMethodBody && s.hfv_method_body) hfvMethodBody.textContent = s.hfv_method_body;
+            var hfvScThresh = document.getElementById('ynow_hfv_scenario_thresh_note');
+            if (hfvScThresh && s.hfv_scenario_thresh_note) hfvScThresh.textContent = s.hfv_scenario_thresh_note;
             var chartModelsLab = document.querySelector('label[for=\"bt_fv_models\"]');
             if (chartModelsLab && s.hfv_chart_models_label) chartModelsLab.textContent = s.hfv_chart_models_label;
             var replayLab = document.querySelector('label[for=\"bt_fv_replay_model\"]');
@@ -3863,7 +3865,7 @@ ui <- dashboardPage(
             h2(tags$b(id = "ynow_hfv_page_title", "歷史基本面驗證")),
             p(
               id = "ynow_hfv_page_sub",
-              "市價下期漲跌機率 R=(P下一期−P)/P，以及相對理論 FV 的位置／幅度。這不是交易策略回測；量化回測請至側邊底部「測試」。"
+              "市價下期漲跌機率、相對理論 FV 位置／幅度，以及教育用歷史情境分類（價值錯位／基本面動能／價格動能）。這不是交易策略回測；量化回測請至側邊底部「測試」。"
             ),
             tags$hr()
           )
@@ -3908,7 +3910,7 @@ ui <- dashboardPage(
         # 2) 歷史基本面驗證：市價下期漲跌與相對 FV
         fluidRow(
           box(
-            title = tagList(icon("balance-scale"), "歷史基本面驗證：市價下期漲跌與相對 FV"),
+            title = tagList(icon("balance-scale"), "歷史基本面驗證：漲跌機率、相對 FV 與情境分類"),
             width = 12, status = "warning", solidHeader = TRUE,
             collapsible = TRUE, collapsed = FALSE,
 
@@ -3924,14 +3926,12 @@ ui <- dashboardPage(
               tags$p(
                 id = "ynow_hfv_method_body",
                 style = "font-size:12.5px;color:#444;line-height:1.55;margin:0 0 8px 0;",
-                tags$b("這不是交易策略回測。"),
-                "兩種口徑分開呈現：",
-                tags$b("（1）市價下期漲跌"), " ", tags$code("R=(P_{t+1}-P_t)/P_t"),
-                " 的經驗頻率，並以目前安全邊際（MOS）分組之條件機率作為展望；",
-                tags$b("（2）相對理論 FV"), " ", tags$code("FV_t"),
-                "（＝下方「復盤模型」單選之一；非圖表複選平均）落在之上／之下與幅度 ",
-                tags$code("(P_{t+1}-FV_t)/FV_t"),
-                "。圖表可複選疊多條模型線；復盤機率／幅度僅依單選模型。策略淨值請至側邊底部「測試」。"
+                "這不是交易策略回測，也不是 Strong Buy／Strong Sell 下單訊號。三層口徑：（1）市價下期漲跌經驗頻率與 MOS 分組展望；（2）相對復盤模型 FV 之上／之下與幅度；（3）教育用歷史情境分類（價值錯位／基本面動能／價格動能 → A–D）。復盤機率／幅度／情境僅依單選模型。"
+              ),
+              tags$p(
+                id = "ynow_hfv_scenario_thresh_note",
+                style = "font-size:11.5px;color:#666;line-height:1.45;margin:0 0 8px 0;",
+                "情境帶寬啟發式（工程預設，非學術標準）：動能持平 |Δ|/前期 ≤ 2%；Price ≈ FV 當 |MOS| ≤ 10%；Price ≪ FV 當 MOS ≥ 20%；Price ≫ FV 當 MOS ≤ −20%；情境 D 另要求價格動能 ≥ +5%。提醒：FV 垃圾進→分類失真；時機／凱因斯式非理性仍可能需催化劑。HFV 是歷史頻率驗證，不是交易保證。"
               ),
               tags$p(
                 style = "font-size:11.5px;color:#888;line-height:1.45;margin:0;",
@@ -3954,7 +3954,7 @@ ui <- dashboardPage(
               ),
               radioButtons(
                 "bt_fv_replay_model",
-                "復盤模型（單選；機率／幅度／下期上漲頻率依此模型）",
+                "復盤模型（單選；機率／幅度／情境／下期上漲頻率依此模型）",
                 inline = TRUE,
                 choices = c(
                   "DCF" = "dcf",

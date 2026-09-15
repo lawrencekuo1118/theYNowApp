@@ -277,4 +277,59 @@ check("enrich TW CF-thin notes MOPS", any(grepl("MOPS", en_tw$notes, fixed = TRU
 check("enrich never invents CF rows", is.null(en_tw$d_cf) || !is.data.frame(en_tw$d_cf) ||
         ncol(en_tw$d_cf) < 2L || nrow(en_tw$d_cf) < 1L)
 
+# --- HFV scenario taxonomy (educational A–D) ---
+check("A golden pit", identical(
+  classify_hfv_scenario(100, 120, 90, 80), "A"
+))
+check("B davis double", identical(
+  classify_hfv_scenario(100, 110, 100, 108), "B"
+))
+check("C value trap", identical(
+  classify_hfv_scenario(120, 100, 100, 90), "C"
+))
+# D: FV flat, strong price up, deep rich (MOS ≤ -20%)
+check("D bubble hype", identical(
+  classify_hfv_scenario(100, 101, 100, 130), "D"
+))
+# Edge: FV up + price up but deep cheap → not B (not ≈) → other
+check("near-miss not B when deep cheap", identical(
+  classify_hfv_scenario(100, 120, 70, 75), "other"
+))
+# Edge: FV up + price down but MOS only mild → not A
+check("mild MOS not A", identical(
+  classify_hfv_scenario(100, 110, 100, 95), "other"
+))
+# Edge: invalid / zero price
+check("NA on bad inputs", is.na(classify_hfv_scenario(100, 110, 0, 95)))
+# Flat FV band: |ΔFV|/prev ≤ 2% counts as flat for D (not up)
+check("D allows flat FV within 2%", identical(
+  classify_hfv_scenario(100, 101.5, 100, 130), "D"
+))
+# Price strong-up gate for D: +4% not enough with defaults
+check("D requires ≥5% price momentum", identical(
+  classify_hfv_scenario(100, 100, 100, 104), "other"
+))
+
+vd_sc <- data.frame(
+  Date = as.Date(c("2020-03-31", "2020-06-30", "2020-09-30", "2020-12-31")),
+  # t0→t1: A (FV 100→120, P 90→80, MOS=(120-80)/120=33%)
+  # t1→t2: B (FV 120→132, P 80→130≈FV, MOS~(132-130)/132≈1.5%)
+  # t2→t3: C (FV 132→100, P 130→90, MOS=(100-90)/100=10%)
+  hist_price = c(90, 80, 130, 90),
+  fair_value = c(100, 120, 132, 100),
+  stringsAsFactors = FALSE
+)
+sc_pairs <- build_hfv_scenario_pairs(vd_sc)
+check("scenario pairs n=3", nrow(sc_pairs) == 3L)
+check("pair1 A", identical(sc_pairs$scenario[1], "A"))
+check("pair2 B", identical(sc_pairs$scenario[2], "B"))
+check("pair3 C", identical(sc_pairs$scenario[3], "C"))
+check("mispricing = FV_curr - Price_curr",
+      abs(sc_pairs$mispricing[1] - (120 - 80)) < 1e-12)
+sum_sc <- summarize_fv_market_validation(vd_sc, oos_mode = "insample")
+check("scenarios attached", is.list(sum_sc$scenarios) && sum_sc$scenarios$n == 3L)
+check("scenario counts A=1", identical(as.integer(sum_sc$scenarios$counts[["A"]]), 1L))
+check("scenario counts B=1", identical(as.integer(sum_sc$scenarios$counts[["B"]]), 1L))
+check("scenario counts C=1", identical(as.integer(sum_sc$scenarios$counts[["C"]]), 1L))
+
 message("ALL PASS")

@@ -7541,6 +7541,78 @@ server <- function(input, output, session) {
       )
     )
 
+    sc <- s$scenarios
+    sc_lab <- function(code) {
+      key <- switch(
+        as.character(code)[1],
+        A = "hfv_scenario_A",
+        B = "hfv_scenario_B",
+        C = "hfv_scenario_C",
+        D = "hfv_scenario_D",
+        "hfv_scenario_other"
+      )
+      ui_str(key, loc)
+    }
+    scenario_card <- {
+      if (!is.null(sc) && is.list(sc) && as.integer(sc$n %||% 0L) > 0L) {
+        cnt <- sc$counts
+        frq <- sc$freq
+        codes <- c("A", "B", "C", "D", "other")
+        tags$div(
+          style = paste0(
+            "margin:0 0 10px 0;padding:12px 14px;background:#fff;",
+            "border:1px solid #e8dfd0;border-left:4px solid ", border, ";border-radius:4px;",
+            "font-size:13px;line-height:1.55;"
+          ),
+          tags$div(tags$b(ui_str("hfv_sum_scenario_block", loc))),
+          tags$div(
+            style = "margin:4px 0 0 0;color:#6c757d;font-size:11.5px;",
+            ui_str("hfv_sum_scenario_formula", loc)
+          ),
+          tags$p(style = "margin:6px 0 0 0;color:#555;font-size:12px;", period_txt),
+          tags$ul(
+            style = "margin:6px 0 0 0;padding-left:18px;",
+            tags$li(sprintf("配對數 n＝%d", sc$n %||% 0L)),
+            lapply(codes, function(code) {
+              n_c <- if (!is.null(cnt) && code %in% names(cnt)) {
+                as.integer(cnt[[code]])
+              } else {
+                0L
+              }
+              p_c <- if (!is.null(frq) && code %in% names(frq)) {
+                as.numeric(frq[[code]])
+              } else {
+                NA_real_
+              }
+              tags$li(sprintf("%s：%s（%d）", sc_lab(code), pct(p_c), n_c))
+            })
+          ),
+          tags$div(
+            style = "margin:8px 0 0 0;color:#666;font-size:11.5px;line-height:1.45;",
+            ui_str("hfv_sum_scenario_matrix", loc)
+          ),
+          tags$div(
+            style = "margin:6px 0 0 0;color:#888;font-size:11.5px;line-height:1.45;",
+            ui_str("hfv_sum_scenario_caveat", loc)
+          )
+        )
+      } else {
+        tags$div(
+          style = paste0(
+            "margin:0 0 10px 0;padding:12px 14px;background:#fafafa;",
+            "border:1px solid #ddd;border-left:4px solid ", border, ";border-radius:4px;",
+            "font-size:13px;line-height:1.55;color:#666;"
+          ),
+          tags$div(tags$b(ui_str("hfv_sum_scenario_block", loc))),
+          tags$div(style = "margin:4px 0 0 0;", ui_str("hfv_sum_scenario_empty", loc)),
+          tags$div(
+            style = "margin:6px 0 0 0;color:#888;font-size:11.5px;",
+            ui_str("hfv_sum_scenario_caveat", loc)
+          )
+        )
+      }
+    }
+
     # 結果附註／fallback：全寬置於兩欄下方
     fb <- s$fallbacks
     notes_ui <- tagList()
@@ -7615,6 +7687,7 @@ server <- function(input, output, session) {
         column(6, style = "margin-bottom:10px;", price_card),
         column(6, style = "margin-bottom:10px;", fv_card)
       ),
+      scenario_card,
       if (length(notes_ui) > 0) {
         tags$div(
           style = "margin:4px 0 0 0;padding:10px 12px;background:#fafafa;border:1px dashed #ccc;border-radius:4px;",
@@ -7630,10 +7703,11 @@ server <- function(input, output, session) {
 
   output$bt_fv_conv_table <- renderTable({
     s <- bt_fv_conv()
+    loc <- tryCatch(isolate(ui_locale()), error = function(e) "zh-TW")
     shiny::validate(shiny::need(
       !is.null(s) && !is.null(s$pairs) && nrow(s$pairs) > 0,
       if (isTRUE(s$no_strategy_fv)) {
-        "無策略理論 FV：請先於折現比較圖勾選評價模型（未勾選時不暗設 DCF）"
+        "無復盤理論 FV：請先選擇復盤模型（結果僅依單選模型）"
       } else {
         "選定期間內無配對資料"
       }
@@ -7656,6 +7730,31 @@ server <- function(input, output, session) {
     } else {
       rep("—", nrow(pp))
     }
+    sc_pairs <- if (!is.null(s$scenarios) && is.list(s$scenarios) &&
+                    !is.null(s$scenarios$pairs) && is.data.frame(s$scenarios$pairs)) {
+      s$scenarios$pairs
+    } else {
+      NULL
+    }
+    sc_code <- rep(NA_character_, nrow(pp))
+    if (!is.null(sc_pairs) && nrow(sc_pairs) > 0L &&
+        all(c("Date", "scenario") %in% names(sc_pairs))) {
+      ix <- match(pp$Date, sc_pairs$Date)
+      sc_code <- as.character(sc_pairs$scenario[ix])
+    }
+    sc_lab <- vapply(sc_code, function(code) {
+      if (is.na(code) || !nzchar(code)) return("—")
+      key <- switch(
+        code,
+        A = "hfv_scenario_A",
+        B = "hfv_scenario_B",
+        C = "hfv_scenario_C",
+        D = "hfv_scenario_D",
+        other = "hfv_scenario_other",
+        "hfv_scenario_other"
+      )
+      ui_str(key, loc)
+    }, character(1))
     data.frame(
       估值日 = format(pp$Date, "%Y-%m-%d"),
       下期日 = format(pp$Date_next, "%Y-%m-%d"),
@@ -7666,6 +7765,7 @@ server <- function(input, output, session) {
       市價漲跌 = dirp,
       `幅度(P−FV)/FV` = paste0(sprintf("%+.1f", 100 * gapv), "%"),
       相對FV = pp$vs_fv,
+      歷史情境 = sc_lab,
       `預設／fallback` = fb_lab,
       stringsAsFactors = FALSE,
       check.names = FALSE
@@ -9001,7 +9101,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v16.09"),
+      paste0("- **App：** The YNow App v16.10"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

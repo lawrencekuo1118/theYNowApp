@@ -12,6 +12,7 @@
 #   summarize_fv_market_validation(valuation_df, from, to, as_of, oos_mode)
 #   build_fv_convergence_pairs(valuation_df)  # alias retained
 #   summarize_fv_convergence(...)            # alias → summarize_fv_market_validation
+#   classify_hfv_scenario(...) / build_hfv_scenario_pairs(...) / summarize_hfv_scenarios(...)
 #   pit_param_inventory_table()
 # ==========================================
 
@@ -805,6 +806,211 @@ summarize_hist_param_fallbacks <- function(valuation_df, locale = "zh-TW") {
   )
 }
 
+# ==========================================
+# 6b) HFV scenario taxonomy (educational; not a trade ticket)
+# ==========================================
+#
+# Successive valuation dates (前期 → 當期) with single-replay-model FV + prices:
+#   價值錯位 mispricing = FV_curr − Price_curr   (also MOS = (FV−P)/FV)
+#   基本面動能 fv_mom     = FV_curr − FV_prev
+#   價格動能   px_mom     = Price_curr − Price_prev
+#
+# Four historical scenarios (engineering-heuristic bands; not academic standards):
+#   A 錯殺黃金坑: FV↑, Price↓, Price ≪ FV
+#   B 戴維斯雙擊: FV↑, Price↑, Price ≈ FV
+#   C 價值陷阱:   FV↓, Price↓, Price < FV
+#   D 泡沫炒作:   FV≤flat, Price strong↑, Price ≫ FV
+# Unmatched pairs → "other".
+
+.HFV_SCENARIO_CODES <- c("A", "B", "C", "D", "other")
+
+#' Default HFV scenario threshold heuristics (relative / MOS bands).
+#'
+#' Documented in UI help; not user-adjustable (no existing HFV threshold inputs).
+hfv_scenario_threshold_defaults <- function() {
+  list(
+    momentum_flat_band = 0.02,  # |Δ|/prev ≤ 2% → flat
+    price_strong_up = 0.05,     # Price≫ momentum for D: ≥ +5%
+    mos_near = 0.10,            # |MOS| ≤ 10% → Price ≈ FV
+    mos_deep_cheap = 0.20,      # MOS ≥ 20% → Price ≪ FV
+    mos_deep_rich = -0.20       # MOS ≤ −20% → Price ≫ FV
+  )
+}
+
+.hfv_rel_dir <- function(prev, curr, flat_band = 0.02) {
+  prev <- suppressWarnings(as.numeric(prev)[1])
+  curr <- suppressWarnings(as.numeric(curr)[1])
+  flat_band <- suppressWarnings(as.numeric(flat_band)[1])
+  if (!is.finite(prev) || !is.finite(curr) || prev <= 0 || !is.finite(flat_band)) {
+    return(NA_character_)
+  }
+  r <- (curr - prev) / prev
+  if (!is.finite(r)) return(NA_character_)
+  if (abs(r) <= flat_band) "flat" else if (r > 0) "up" else "down"
+}
+
+#' Classify one period pair into HFV scenario code A/B/C/D/other.
+#'
+#' @param fv_prev,fv_curr Fair values at Date_t / Date_{t+1} (replay model)
+#' @param price_prev,price_curr Market prices at the same dates
+#' @param thr Threshold list from [hfv_scenario_threshold_defaults]
+classify_hfv_scenario <- function(fv_prev, fv_curr, price_prev, price_curr,
+                                  thr = hfv_scenario_threshold_defaults()) {
+  if (is.null(thr)) thr <- list()
+  thr <- utils::modifyList(hfv_scenario_threshold_defaults(), as.list(thr))
+  fv_prev <- .bv_safe_num(fv_prev, NA_real_)
+  fv_curr <- .bv_safe_num(fv_curr, NA_real_)
+  price_prev <- .bv_safe_num(price_prev, NA_real_)
+  price_curr <- .bv_safe_num(price_curr, NA_real_)
+  if (!is.finite(fv_prev) || !is.finite(fv_curr) || fv_prev <= 0 || fv_curr <= 0 ||
+      !is.finite(price_prev) || !is.finite(price_curr) ||
+      price_prev <= 0 || price_curr <= 0) {
+    return(NA_character_)
+  }
+  mos <- (fv_curr - price_curr) / fv_curr
+  fv_dir <- .hfv_rel_dir(fv_prev, fv_curr, thr$momentum_flat_band)
+  px_dir <- .hfv_rel_dir(price_prev, price_curr, thr$momentum_flat_band)
+  px_rel <- (price_curr - price_prev) / price_prev
+  if (!is.finite(mos) || is.na(fv_dir) || is.na(px_dir) || !is.finite(px_rel)) {
+    return(NA_character_)
+  }
+
+  # A 錯殺黃金坑: FV↑, Price↓, Price ≪ FV
+  if (identical(fv_dir, "up") && identical(px_dir, "down") &&
+      mos >= thr$mos_deep_cheap) {
+    return("A")
+  }
+  # B 戴維斯雙擊: FV↑, Price↑, Price ≈ FV
+  if (identical(fv_dir, "up") && identical(px_dir, "up") &&
+      abs(mos) <= thr$mos_near) {
+    return("B")
+  }
+  # C 價值陷阱: FV↓, Price↓, Price < FV (any positive MOS)
+  if (identical(fv_dir, "down") && identical(px_dir, "down") && mos > 0) {
+    return("C")
+  }
+  # D 泡沫炒作: FV≤flat (not up), Price strong↑, Price ≫ FV
+  if (!identical(fv_dir, "up") && px_rel >= thr$price_strong_up &&
+      mos <= thr$mos_deep_rich) {
+    return("D")
+  }
+  "other"
+}
+
+#' Build successive-date HFV scenario pairs from valuation_df (replay FV + prices).
+#'
+#' Each row is (Date_t = 前期, Date_next = 當期) with three signals and scenario code.
+build_hfv_scenario_pairs <- function(valuation_df,
+                                     thr = hfv_scenario_threshold_defaults()) {
+  empty <- data.frame(
+    Date = as.Date(character()),
+    Date_next = as.Date(character()),
+    fv_prev = numeric(),
+    fv_curr = numeric(),
+    price_prev = numeric(),
+    price_curr = numeric(),
+    mispricing = numeric(),
+    mos_curr = numeric(),
+    fv_momentum = numeric(),
+    fv_momentum_rel = numeric(),
+    price_momentum = numeric(),
+    price_momentum_rel = numeric(),
+    fv_dir = character(),
+    price_dir = character(),
+    scenario = character(),
+    stringsAsFactors = FALSE
+  )
+  if (is.null(valuation_df) || !is.data.frame(valuation_df) || nrow(valuation_df) < 2) {
+    return(empty)
+  }
+  need <- c("Date", "hist_price", "fair_value")
+  if (!all(need %in% names(valuation_df))) return(empty)
+  if (is.null(thr)) thr <- list()
+  thr <- utils::modifyList(hfv_scenario_threshold_defaults(), as.list(thr))
+  vd <- valuation_df[order(valuation_df$Date), , drop = FALSE]
+  ok <- is.finite(vd$hist_price) & vd$hist_price > 0 &
+    is.finite(vd$fair_value) & vd$fair_value > 0
+  vd <- vd[ok, , drop = FALSE]
+  if (nrow(vd) < 2) return(empty)
+
+  n <- nrow(vd)
+  fv_prev <- vd$fair_value[-n]
+  fv_curr <- vd$fair_value[-1]
+  price_prev <- vd$hist_price[-n]
+  price_curr <- vd$hist_price[-1]
+  date_prev <- vd$Date[-n]
+  date_next <- vd$Date[-1]
+  mos_curr <- (fv_curr - price_curr) / fv_curr
+  fv_mom <- fv_curr - fv_prev
+  fv_mom_rel <- fv_mom / fv_prev
+  px_mom <- price_curr - price_prev
+  px_mom_rel <- px_mom / price_prev
+  fv_dir <- vapply(seq_along(fv_prev), function(i) {
+    .hfv_rel_dir(fv_prev[i], fv_curr[i], thr$momentum_flat_band)
+  }, character(1))
+  price_dir <- vapply(seq_along(price_prev), function(i) {
+    .hfv_rel_dir(price_prev[i], price_curr[i], thr$momentum_flat_band)
+  }, character(1))
+  scenario <- vapply(seq_along(fv_prev), function(i) {
+    classify_hfv_scenario(
+      fv_prev[i], fv_curr[i], price_prev[i], price_curr[i], thr = thr
+    )
+  }, character(1))
+  data.frame(
+    Date = date_prev,
+    Date_next = date_next,
+    fv_prev = fv_prev,
+    fv_curr = fv_curr,
+    price_prev = price_prev,
+    price_curr = price_curr,
+    mispricing = fv_curr - price_curr,
+    mos_curr = mos_curr,
+    fv_momentum = fv_mom,
+    fv_momentum_rel = fv_mom_rel,
+    price_momentum = px_mom,
+    price_momentum_rel = px_mom_rel,
+    fv_dir = fv_dir,
+    price_dir = price_dir,
+    scenario = scenario,
+    stringsAsFactors = FALSE
+  )
+}
+
+#' Summarize scenario counts / frequencies over filtered pairs.
+summarize_hfv_scenarios <- function(scenario_df) {
+  codes <- .HFV_SCENARIO_CODES
+  empty_counts <- setNames(as.integer(rep(0L, length(codes))), codes)
+  empty <- list(
+    n = 0L,
+    counts = empty_counts,
+    freq = setNames(rep(NA_real_, length(codes)), codes),
+    thresholds = hfv_scenario_threshold_defaults(),
+    pairs = scenario_df
+  )
+  if (is.null(scenario_df) || !is.data.frame(scenario_df) || nrow(scenario_df) < 1) {
+    return(empty)
+  }
+  sc <- as.character(scenario_df$scenario)
+  sc[!sc %in% codes & !is.na(sc)] <- "other"
+  sc[is.na(sc)] <- "other"
+  n <- length(sc)
+  counts <- empty_counts
+  tab <- table(factor(sc, levels = codes))
+  counts[codes] <- as.integer(tab[codes])
+  freq <- if (n > 0L) {
+    setNames(as.numeric(counts) / n, codes)
+  } else {
+    empty$freq
+  }
+  list(
+    n = as.integer(n),
+    counts = counts,
+    freq = freq,
+    thresholds = hfv_scenario_threshold_defaults(),
+    pairs = scenario_df
+  )
+}
+
 #' Aggregate historical FV vs market validation: frequencies + magnitude + OOS.
 #'
 #' @param from,to Date bounds on valuation date Date_t
@@ -869,9 +1075,10 @@ summarize_fv_market_validation <- function(valuation_df, from = NULL, to = NULL,
     fallbacks = summarize_hist_param_fallbacks(valuation_df, locale = locale),
     no_strategy_fv = FALSE,
     mos_stats = summarize_mos_next_period_stats(valuation_df),
-    mos_outlook = .empty_outlook
+    mos_outlook = .empty_outlook,
+    scenarios = summarize_hfv_scenarios(NULL)
   )
-  # 未勾選模型 → valuation 無有限 fair_value → 無配對
+  # 無復盤模型 FV → valuation 無有限 fair_value → 無配對
   n_fv <- if (!is.null(valuation_df) && is.data.frame(valuation_df) &&
              "fair_value" %in% names(valuation_df)) {
     sum(is.finite(valuation_df$fair_value) & valuation_df$fair_value > 0, na.rm = TRUE)
@@ -882,8 +1089,8 @@ summarize_fv_market_validation <- function(valuation_df, from = NULL, to = NULL,
     if (n_fv < 1L) {
       empty$no_strategy_fv <- TRUE
       empty$note <- paste0(
-        "目前無策略理論 FV（折現圖未勾選任何評價模型，或勾選模型無有限值）。",
-        "請於折現比較圖勾選 DCF／DDM／RI／P/B 後再驗證；未勾選時不暗設 DCF。"
+        "目前無復盤理論 FV（未選擇復盤模型，或該模型無有限值）。",
+        "請於「復盤模型」單選 DCF／DDM／RI／P/B／NAV 後再驗證；復盤結果僅依單選模型，不暗設平均。"
       )
     }
     return(empty)
@@ -900,8 +1107,19 @@ summarize_fv_market_validation <- function(valuation_df, from = NULL, to = NULL,
   }
   pp <- pairs[keep, , drop = FALSE]
   n <- nrow(pp)
+  scenario_all <- build_hfv_scenario_pairs(valuation_df)
+  sc_keep <- rep(TRUE, nrow(scenario_all))
+  if (nrow(scenario_all) > 0L) {
+    if (!is.null(from)) sc_keep <- sc_keep & scenario_all$Date >= from
+    if (!is.null(to)) sc_keep <- sc_keep & scenario_all$Date <= to
+    if (oos_mode %in% c("realized", "expanding")) {
+      sc_keep <- sc_keep & !is.na(scenario_all$Date_next) & scenario_all$Date_next <= as_of
+    }
+  }
+  scenarios <- summarize_hfv_scenarios(scenario_all[sc_keep, , drop = FALSE])
   if (n < 1) {
     empty$pairs <- pp
+    empty$scenarios <- scenarios
     empty$note <- "選定期間內無已實現下期配對"
     return(empty)
   }
@@ -1029,7 +1247,8 @@ summarize_fv_market_validation <- function(valuation_df, from = NULL, to = NULL,
     fallbacks = summarize_hist_param_fallbacks(valuation_df, locale = locale),
     no_strategy_fv = FALSE,
     mos_stats = mos_stats,
-    mos_outlook = mos_outlook
+    mos_outlook = mos_outlook,
+    scenarios = scenarios
   )
 }
 
