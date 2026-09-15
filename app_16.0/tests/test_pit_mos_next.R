@@ -23,7 +23,7 @@ inv <- pit_param_inventory_table()
 check("inventory has rows", is.data.frame(inv) && nrow(inv) >= 10)
 check("inventory has 狀態 col", "狀態" %in% names(inv))
 rf_live <- inv$Live來源[inv$參數 == "Rf"][1]
-check("inventory Rf notes TW session", grepl("TW", rf_live, fixed = TRUE))
+check("inventory Rf notes TNX for US/TW", grepl("TNX", rf_live, fixed = TRUE))
 
 # --- TW market Rf / statutory tax (no network) ---
 mp_path <- file.path(app_dir, "market_profile.R")
@@ -31,8 +31,17 @@ if (file.exists(mp_path)) {
   source(mp_path, local = FALSE, encoding = "UTF-8")
   check("TW statutory tax 20%", approx_eq(.default_statutory_tax_ratio("TW"), 0.20))
   check("US statutory tax 21%", approx_eq(.default_statutory_tax_ratio("US"), 0.21))
-  check("TW pit Rf history is NULL", is.null(fetch_pit_rf_history_df("5y", market = "TW")))
-  # pit_discount_params: NULL tnx_df → session Rf (do not invent US TNX)
+  # TW PIT Rf now uses same ^TNX path as US (stub fetch; no network)
+  called_tnx <- FALSE
+  old_tnx <- fetch_tnx_history_df
+  fetch_tnx_history_df <<- function(period = "10y") {
+    called_tnx <<- TRUE
+    data.frame(Date = as.Date("2024-06-01"), Close = 4.25, stringsAsFactors = FALSE)
+  }
+  on.exit({ fetch_tnx_history_df <<- old_tnx }, add = TRUE)
+  tw_rf_hist <- fetch_pit_rf_history_df("5y", market = "TW")
+  check("TW pit Rf history uses TNX path", isTRUE(called_tnx) && is.data.frame(tw_rf_hist) && nrow(tw_rf_hist) >= 1)
+  # pit_discount_params: NULL tnx_df → session Rf
   dates <- as.Date(c("2024-01-02", "2024-02-01", "2024-03-01", "2024-04-01",
                      "2024-05-01", "2024-06-03", "2024-07-01", "2024-08-01",
                      "2024-09-02", "2024-10-01", "2024-11-01", "2024-12-02",
@@ -46,12 +55,20 @@ if (file.exists(mp_path)) {
   stock <- 100 * (1.01 ^ seq_len(n))
   bench <- 100 * (1.008 ^ seq_len(n))
   disc <- pit_discount_params(
-    list(rf = 0.018, rm = 0.08, ke = 0.09, wacc = 0.08, tax = 0.20, beta_fallback = 1.0,
+    list(rf = 0.04, rm = 0.08, ke = 0.09, wacc = 0.08, tax = 0.20, beta_fallback = 1.0,
          beta_lookback_months = 12, beta_min_months = 6),
     stock, bench, dates, as_of = dates[n],
     tnx_df = NULL, fund_row = NULL, price = stock[n], realized_rm = FALSE
   )
-  check("TW NULL tnx uses session Rf", approx_eq(disc$rf, 0.018, 1e-9))
+  check("NULL tnx uses session Rf", approx_eq(disc$rf, 0.04, 1e-9))
+  disc_tnx <- pit_discount_params(
+    list(rf = 0.04, rm = 0.08, ke = 0.09, wacc = 0.08, tax = 0.20, beta_fallback = 1.0,
+         beta_lookback_months = 12, beta_min_months = 6),
+    stock, bench, dates, as_of = dates[n],
+    tnx_df = data.frame(Date = dates, Close = rep(4.25, n), stringsAsFactors = FALSE),
+    fund_row = NULL, price = stock[n], realized_rm = FALSE
+  )
+  check("TNX asof overrides session Rf", approx_eq(disc_tnx$rf, 0.0425, 1e-9))
 } else {
   message("SKIP: market_profile.R missing for TW Rf/tax checks")
 }

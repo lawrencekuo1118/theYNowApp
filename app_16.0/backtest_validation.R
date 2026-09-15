@@ -1063,14 +1063,14 @@ pit_param_inventory_table <- function() {
       "BVPS", "Target P/B"
     ),
     Live來源 = c(
-      "Yahoo quote", "Yahoo scrape", "US:^TNX；TW:session/fallback", "Summary／產業／手動", "產業 rm_avg／UI", "市值結構", "BS＋報價對齊",
+      "Yahoo quote", "Yahoo scrape", "US／TW:^TNX", "Summary／產業／手動", "產業 rm_avg／UI", "市值結構", "BS＋報價對齊",
       "FCF 預測表", "永續 g 方法／UI", "CAPM→WACC", "Interest/Debt；稅率 UI", "fcf_projection_module",
       "CF 股利÷股數", "中央 Ke／SGR",
       "Equity÷股數", "NI/Equity；UI fade", "中央 g／Ke",
       "Equity÷股數", "Justified＋產業＋歷史"
     ),
     Hist_PIT來源 = c(
-      "fetch_price_history_df", "build_annual_fundamentals", "US:^TNX；TW:session Rf（無台債序列）", "estimate_rolling_beta", "trailing realized bench（US:SPY／TW:0050）", "當日價×PIT shares/debt", "年欄股數（ADR 倍率固定）",
+      "fetch_price_history_df", "build_annual_fundamentals", "US／TW:^TNX", "estimate_rolling_beta", "trailing realized bench（US:SPY／TW:0050）", "當日價×PIT shares/debt", "年欄股數（ADR 倍率固定）",
       "CF Free Cash Flow 列；優先 NOPAT/D&A/CapEx/ΔNWC 邊際×營收", "截至該年營收／NI／FCF 成長（clamp＜r）", "Rolling β＋Rf＋Rm＋PIT We/Wd", "Interest/Debt；Tax/Pretax（缺則 session／法定稅）", "有邊際則 .dcf_unit_fcff_path；否則幾何 FCF",
       "dividends_paid÷shares", "PIT Ke；g 同上",
       "equity_book÷shares", "當期 ROE／payout", "PIT Ke；g 同上",
