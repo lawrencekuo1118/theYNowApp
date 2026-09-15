@@ -719,7 +719,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v16.13</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v16.14</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -1225,6 +1225,39 @@ ui <- dashboardPage(
             font-size: 13px;
           }
         }
+        /* 損益表／現金流量表圖表區：金色頂條 chrome（對齊 logo） */
+        .ynow-fs-chart {
+          border-top: 3px solid var(--ynow-gold);
+          margin-top: 6px;
+          padding-top: 10px;
+          background: linear-gradient(180deg, rgba(245, 197, 24, 0.06) 0%, rgba(255, 255, 255, 0) 28px);
+        }
+        .ynow-fs-chart-heading {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin: 0 0 8px 0;
+          font-size: 13px;
+          font-weight: 700;
+          color: var(--ynow-gold-ink);
+          letter-spacing: 0.01em;
+        }
+        .ynow-fs-chart-heading > .fa,
+        .ynow-fs-chart-heading > .fas {
+          color: var(--ynow-gold-deep);
+          font-size: 14px;
+          width: 1.2em;
+          text-align: center;
+        }
+        @media (max-width: 767px) {
+          .ynow-fs-chart {
+            border-top-width: 2px;
+            padding-top: 8px;
+          }
+          .ynow-fs-chart-heading {
+            font-size: 12px;
+          }
+        }
         .nav-pills > li.active > a,
         .nav-pills > li.active > a:hover,
         .nav-pills > li.active > a:focus {
@@ -1685,6 +1718,10 @@ ui <- dashboardPage(
             if (hfvScMatrix && s.hfv_sum_scenario_matrix) hfvScMatrix.textContent = s.hfv_sum_scenario_matrix;
             var hfvScThresh = document.getElementById('ynow_hfv_scenario_thresh_note');
             if (hfvScThresh && s.hfv_scenario_thresh_note) hfvScThresh.textContent = s.hfv_scenario_thresh_note;
+            var fsIsHead = document.getElementById('ynow_fs_is_chart_heading');
+            if (fsIsHead && s.tab_income_statement) fsIsHead.textContent = s.tab_income_statement;
+            var fsCfHead = document.getElementById('ynow_fs_cf_chart_heading');
+            if (fsCfHead && s.tab_cash_flow) fsCfHead.textContent = s.tab_cash_flow;
             var chartModelsLab = document.querySelector('label[for=\"bt_fv_models\"]');
             if (chartModelsLab && s.hfv_chart_models_label) chartModelsLab.textContent = s.hfv_chart_models_label;
             var replayLab = document.querySelector('label[for=\"bt_fv_replay_model\"]');
@@ -3098,7 +3135,15 @@ ui <- dashboardPage(
                        # 🌟 新增：Income Statement 下拉選單與互動圖表
                        selectInput("is_type", "Select Income Statement Metric",
                                    choices = c("Total Revenue", "Gross Profit", "EBITDA")),
-                       plotlyOutput("is_plot"),
+                       tags$div(
+                         class = "ynow-fs-chart ynow-fs-chart-is",
+                         tags$div(
+                           class = "ynow-fs-chart-heading",
+                           icon("chart-line"),
+                           tags$span(id = "ynow_fs_is_chart_heading", "Income Statement")
+                         ),
+                         plotlyOutput("is_plot")
+                       ),
                        tags$hr(),
                        
                        dataTableOutput("tbIncomeStatement"), 
@@ -3117,7 +3162,15 @@ ui <- dashboardPage(
                        "Cash Flow",
                        icon = icon("money-bill-wave"),
                        p("This section imports Cash Flow data from Yahoo Finance"),
-                       plotlyOutput("cf_plot", height = "460px") %>% withSpinner(),
+                       tags$div(
+                         class = "ynow-fs-chart ynow-fs-chart-cf",
+                         tags$div(
+                           class = "ynow-fs-chart-heading",
+                           icon("money-bill-wave"),
+                           tags$span(id = "ynow_fs_cf_chart_heading", "Cash Flow")
+                         ),
+                         plotlyOutput("cf_plot", height = "460px") %>% withSpinner()
+                       ),
                        tags$hr(),
                        dataTableOutput("tbCashFlow"),
                        downloadButton('CF_download', "Download Cash Flow Data")

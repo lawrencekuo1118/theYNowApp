@@ -2503,8 +2503,16 @@ generate_safe_line_plot <- function(data, ticker_name, metric_name) {
       axis.text.x = element_text(face = "bold")
     )
 
-  # 4. 轉換為 plotly 並指定 tooltip
-  ggplotly(p, tooltip = "text")
+  # 4. 轉換為 plotly 並指定 tooltip；強制標題色（ggplotly 常丟掉 theme 色）
+  title_txt <- paste0(ticker_name, " - ", metric_name, safe_cagr_msg)
+  ggplotly(p, tooltip = "text") %>%
+    plotly::layout(
+      title = list(
+        text = title_txt,
+        font = list(size = 15, color = "#856404", family = "Arial, sans-serif")
+      ),
+      margin = list(t = 48)
+    )
 }
 
 # =========================================================
