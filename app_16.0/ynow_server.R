@@ -5662,7 +5662,7 @@ server <- function(input, output, session) {
     wacc_range <- seq(base_wacc + 2, base_wacc - 2, length.out = 5)
     g_range <- seq(base_g - 1, base_g + 1, length.out = 5)
     claim <- as.character(input$dcf_claim %||% "fcff")[1]
-    rate_lab <- if (identical(claim, "fcfe")) "Ke " else "Rate "
+    rate_lab <- if (identical(claim, "fcfe")) "Ke " else "WACC "
 
     sens_matrix <- matrix(
       NA, nrow = 5, ncol = 5,
@@ -5834,7 +5834,8 @@ server <- function(input, output, session) {
     req(!is.null(st$built), !is.null(st$built$matrix))
     sens_matrix <- st$built$matrix
     out_df <- cbind(Rate = rownames(sens_matrix), as.data.frame(sens_matrix, check.names = FALSE))
-    names(out_df)[1] <- if (identical(st$disc_label, "Ke")) "Ke (%)" else "Rate (%)"
+    # 左上角欄名留白：列標籤已含 WACC／Ke，避免再顯示「WACC (%)」
+    names(out_df)[1] <- if (identical(st$disc_label, "Ke")) "Ke (%)" else "\u00a0"
     out_df
   }, digits = 2, striped = TRUE, hover = TRUE, bordered = TRUE, align = "c",
      width = "100%", na = "無效 (折現率≤g)")
