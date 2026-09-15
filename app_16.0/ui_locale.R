@@ -208,6 +208,11 @@ locale_for_market <- function(mode = get_market_mode()) {
     box_sgr = "SUSTAINABLE GROWTH RATE",
     box_model_guide = "Model Selection Guide",
     box_bt_params = "Strategy Parameters",
+    # --- SGR tab (Get Started) ---
+    sgr_method_title = "Terminal growth (SGR) method",
+    sgr_custom_label = "Custom SGR (%)",
+    vbx_sgr_subtitle = "SGR",
+    vbx_session_g_subtitle = "Current configured g (near-term)",
     # --- nested / small tabs (keyed for JS; data-value match) ---
     tab_finance_summary = "Finance Summary",
     tab_income_statement = "Income Statement",
@@ -431,6 +436,11 @@ locale_for_market <- function(mode = get_market_mode()) {
     box_sgr = "SUSTAINABLE GROWTH RATE",
     box_model_guide = "模型選擇決策指南",
     box_bt_params = "策略參數設定",
+    # --- SGR tab (Get Started) ---
+    sgr_method_title = "終值永續成長率 (SGR) 評價方法",
+    sgr_custom_label = "自訂 SGR (%)",
+    vbx_sgr_subtitle = "SGR",
+    vbx_session_g_subtitle = "當前設定 g（近期末）",
     # --- nested / small tabs ---
     tab_finance_summary = "財務摘要",
     tab_income_statement = "損益表",

@@ -103,6 +103,13 @@ server <- function(input, output, session) {
       boxes = ui_box_header_specs(loc)
     )
     session$sendCustomMessage("ynowUiLocale", payload)
+    # SGR 自訂輸入標籤隨 locale
+    tryCatch({
+      updateNumericInput(
+        session, "sgr",
+        label = ui_str("sgr_custom_label", loc)
+      )
+    }, error = function(e) NULL)
     # HFV 驗證樣本口徑：標籤／三選項隨 locale 更新（值不變）
     tryCatch({
       oos_sel <- isolate(input$bt_fv_oos_mode)
@@ -2235,6 +2242,40 @@ server <- function(input, output, session) {
       ticker = current_ticker() %||% APP_DEFAULTS$stock_code,
       lifecycle_stage = input$lifecycle_stage %||% "auto",
       wacc_pct = .current_wacc_pct()
+    )
+  })
+
+  # SGR tab：頂部 valueBox（與 BETA Overview 同款 small-box）
+  .session_near_term_g_pct <- function() {
+    # 近期末／session g（非終值 SGR）：優先 estimated_g，其次 g_stage1
+    eg <- tryCatch(estimated_g(), error = function(e) NULL)
+    eg <- suppressWarnings(as.numeric(eg)[1])
+    if (is.finite(eg)) return(eg)
+    g1 <- suppressWarnings(as.numeric(input$g_stage1)[1])
+    if (is.finite(g1)) return(g1)
+    suppressWarnings(as.numeric(APP_DEFAULTS$g_stage1)[1])
+  }
+
+  output$vbx_sgr_pct <- renderValueBox({
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
+    sgr_pct <- suppressWarnings(as.numeric(input$sgr)[1])
+    if (!is.finite(sgr_pct)) sgr_pct <- suppressWarnings(as.numeric(APP_DEFAULTS$sgr)[1])
+    valueBox(
+      if (is.finite(sgr_pct)) paste0(round(sgr_pct, 2), " %") else "N/A",
+      ui_str("vbx_sgr_subtitle", loc),
+      icon = icon("infinity"),
+      color = "maroon"
+    )
+  })
+
+  output$vbx_session_g <- renderValueBox({
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
+    g_pct <- .session_near_term_g_pct()
+    valueBox(
+      if (is.finite(g_pct)) paste0(round(g_pct, 2), " %") else "N/A",
+      ui_str("vbx_session_g_subtitle", loc),
+      icon = icon("chart-line"),
+      color = "olive"
     )
   })
 
@@ -9379,7 +9420,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v16.16"),
+      paste0("- **App：** The YNow App v16.17"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

@@ -573,7 +573,12 @@ beta_rolling_section_ui <- function() {
     tabPanel(
       "SGR",
       icon = icon("seedling"),
-      tags$h5(tags$b("SGR 評價方法")),
+      # 與 BETA Overview 同款 valueBox 列：各 50% 並排
+      fluidRow(
+        valueBoxOutput("vbx_sgr_pct", width = 6),
+        valueBoxOutput("vbx_session_g", width = 6)
+      ),
+      tags$h5(tags$b(id = "ynow_sgr_method_title", "終值永續成長率 (SGR) 評價方法")),
       selectInput(
         "perpetual_g_method",
         NULL,
@@ -610,10 +615,9 @@ beta_rolling_section_ui <- function() {
       tags$h5(tags$b("估計依據")),
       uiOutput("txt_perpetual_g_reason"),
       tags$hr(style = "margin: 12px 0;"),
-      tags$h5(tags$b("終值永續成長率（SGR）")),
       numericInput(
         "sgr",
-        "SGR (%)",
+        "自訂 SGR (%)",
         value = APP_DEFAULTS$sgr
       ),
       helpText("供 DCF／RI 終值使用（相對 WACC）；與 DDM 股利成長率分開。可由上方方法自動估計，亦可手動覆寫。")
@@ -719,7 +723,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v16.16</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v16.17</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -1740,6 +1744,10 @@ ui <- dashboardPage(
             if (scLab && s.ticker_label) scLab.textContent = s.ticker_label;
             var indLab = document.querySelector('label[for=\"industry_choice\"]');
             if (indLab && s.industry_standard) indLab.textContent = s.industry_standard;
+            var sgrMethodTitle = document.getElementById('ynow_sgr_method_title');
+            if (sgrMethodTitle && s.sgr_method_title) sgrMethodTitle.textContent = s.sgr_method_title;
+            var sgrCustomLab = document.querySelector('label[for=\"sgr\"]');
+            if (sgrCustomLab && s.sgr_custom_label) sgrCustomLab.textContent = s.sgr_custom_label;
             var kpiBlue = document.getElementById('ynow_kpi_legend_blue');
             if (kpiBlue && s.kpi_legend_blue) kpiBlue.textContent = s.kpi_legend_blue;
             var kpiRed = document.getElementById('ynow_kpi_legend_red');
