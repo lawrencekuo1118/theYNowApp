@@ -719,7 +719,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v16.03</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v16.04</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -1403,6 +1403,18 @@ ui <- dashboardPage(
           font-size: 13px;
           font-weight: 700;
           color: #333;
+        }
+        /* 手機：PREVIOUS CLOSE / MARKET CAP / EPS 直向堆疊、各佔 100% */
+        @media (max-width: 767px) {
+          .content-wrapper .ynow-header-kpi-row > [class*="col-"] {
+            width: 100% !important;
+            float: none !important;
+            display: block;
+            clear: both;
+          }
+          .content-wrapper .ynow-header-kpi-row .info-box {
+            margin-bottom: 10px;
+          }
         }
       ')),
       tags$script(HTML("
@@ -2776,10 +2788,21 @@ ui <- dashboardPage(
     br(),
     
     fluidRow(
-      infoBoxOutput("ibx_stockprice", width = 4),
-      infoBoxOutput("ibx_marketcap", width = 4),
+      class = "ynow-header-kpi-row",
+      # col-xs-12：手機直向全寬；col-sm-4：≥768px 三欄橫排
       column(
         width = 4,
+        class = "col-xs-12",
+        infoBoxOutput("ibx_stockprice", width = NULL)
+      ),
+      column(
+        width = 4,
+        class = "col-xs-12",
+        infoBoxOutput("ibx_marketcap", width = NULL)
+      ),
+      column(
+        width = 4,
+        class = "col-xs-12",
         infoBoxOutput("ibx_EPS", width = NULL),
         conditionalPanel(
           condition = paste(
