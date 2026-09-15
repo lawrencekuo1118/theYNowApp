@@ -389,7 +389,27 @@ server <- function(input, output, session) {
         )
 
         ind_info <- get_yahoo_industry(stock_code)
-        if (!is.null(ind_info)) corp_industry_text(ind_info$display_text)
+        if (!is.null(ind_info)) {
+          corp_industry_text(ind_info$display_text)
+          # Soft-suggest Industry Standard from Yahoo sector/industry（未知則保留原選）
+          mapped <- tryCatch(
+            resolve_industry_key_from_yahoo(
+              display_text = ind_info$display_text,
+              sector = ind_info$sector,
+              industry = ind_info$industry
+            ),
+            error = function(e) ""
+          )
+          if (nzchar(as.character(mapped %||% "")[1]) &&
+              mapped %in% names(industry_standards)) {
+            tryCatch(
+              shinyWidgets::updatePickerInput(
+                session, "industry_choice", selected = mapped
+              ),
+              error = function(e) NULL
+            )
+          }
+        }
 
         # Prefer full legal/display name from Summary or industry lookup (not ticker alone).
         .pick_company_name <- function(..., ticker = "") {
