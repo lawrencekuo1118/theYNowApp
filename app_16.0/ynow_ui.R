@@ -1227,7 +1227,7 @@ ui <- dashboardPage(
         .sidebar-menu > li.menu-open > a {
           font-weight: 700 !important;
         }
-        /* 側邊欄圖示與文字間距（父層＋子分頁；勿動 pull-right 展開箭頭） */
+        /* 側邊欄圖示固定寬度欄：英文標籤左緣對齊（父層＋子分頁；勿動 pull-right 展開箭頭） */
         .sidebar-menu > li > a > .fa:not(.pull-right),
         .sidebar-menu > li > a > .fas:not(.pull-right),
         .sidebar-menu > li > a > .far:not(.pull-right),
@@ -1238,7 +1238,12 @@ ui <- dashboardPage(
         .sidebar-menu .treeview-menu > li > a > .far:not(.pull-right),
         .sidebar-menu .treeview-menu > li > a > .glyphicon:not(.pull-right),
         .sidebar-menu .treeview-menu > li > a > .ion:not(.pull-right) {
+          display: inline-block;
+          width: 1.35em;
+          min-width: 1.35em;
           margin-right: 8px;
+          text-align: center;
+          vertical-align: middle;
         }
         /* 估值分類子分頁標籤：黑底白字（僅 treeview-menu，不改父層分類標籤） */
         .skin-black .sidebar-menu .treeview-menu {
