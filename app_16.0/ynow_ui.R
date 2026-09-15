@@ -1831,20 +1831,6 @@ ui <- dashboardPage(
             width: 33.333%;
             float: left;
           }
-          /* 覆寫上方三欄壓縮：header KPI 仍直向全寬 */
-          .content-wrapper .content .ynow-header-kpi-row > [class*="col-"],
-          .content-wrapper .ynow-header-kpi-row > [class*="col-sm-"],
-          .content .ynow-header-kpi-row > [class*="col-"] {
-            width: 100% !important;
-            float: none !important;
-            display: block !important;
-            clear: both !important;
-            max-width: 100% !important;
-          }
-          .content-wrapper .ynow-header-kpi-row .info-box {
-            width: 100% !important;
-            margin-bottom: 10px;
-          }
           .content-wrapper .small-box .inner {
             padding-right: 8px;
             padding-left: 8px;
