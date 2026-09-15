@@ -1386,7 +1386,8 @@ server <- function(input, output, session) {
       c("Backtest", "Max Exposure (bt_max_exp)", .snapshot_value(input$bt_max_exp), "Mode A ceiling; 1.0 can fit Buy&Hold"),
       c("Backtest", "Min Exp After Pass (bt_min_exp_pass)", .snapshot_value(input$bt_min_exp_pass), "Floor when filter passes & MOS >= -10%"),
       c("Backtest", "Auto Derive Params", .snapshot_value(input$bt_param_auto), "TRUE = sync thresholds/weights/model on ticker load"),
-      c("Backtest", "回測用評價模型", paste(.snapshot_value(input$bt_fv_models), collapse = ", "), "Multi-select FV overlay; mean of checked drives MOS/Exp_A"),
+      c("Backtest", "圖表模型", paste(.snapshot_value(input$bt_fv_models), collapse = ", "), "Multi-select chart FV overlay"),
+      c("Backtest", "復盤模型", paste(.snapshot_value(input$bt_fv_replay_model), collapse = ", "), "Single-select replay FV for odds/magnitude/MOS"),
       c("Backtest", "MOS / VG Weight (bt_w_vg)", .snapshot_value(input$bt_w_vg), "Exposure diagnostic blend; not FV path"),
       c("Backtest", "Momentum Weight (bt_w_mom)", .snapshot_value(input$bt_w_mom), "Sentiment overlay relative weight"),
       c("Backtest", "RSI Weight (bt_w_rsi)", .snapshot_value(input$bt_w_rsi), "Sentiment overlay relative weight"),
@@ -1517,7 +1518,8 @@ server <- function(input, output, session) {
       c("彈性表", "參數相對衝擊", "PARAM_SENSITIVITY_SHOCK",
         if (exists("PARAM_SENSITIVITY_SHOCK", inherits = TRUE)) as.character(PARAM_SENSITIVITY_SHOCK) else "0.01",
         "setup.R：公式參數彈性相對 ±1%（與個股價格無關）"),
-      c("Backtest", "FV 模型勾選", "bt_fv_models", "(none)", "HFV 圖預設不勾選，勾選才計算")
+      c("Backtest", "圖表模型勾選", "bt_fv_models", "(none)", "HFV 圖預設不勾選，勾選才疊圖"),
+      c("Backtest", "復盤模型單選", "bt_fv_replay_model", "dcf", "HFV 復盤／策略 FV 預設 DCF")
     )
     rows <- c(rows, extra)
 
@@ -6167,15 +6169,25 @@ server <- function(input, output, session) {
   }
 
   .bt_raw_fv_models <- reactive({
+    # Chart overlay: multi-select
     sel <- input$bt_fv_models
     if (is.null(sel) || length(sel) < 1) return(character(0))
     ord <- c("dcf", "ddm", "ri", "pb", "nav")
     intersect(ord, as.character(sel))
   })
 
+  .bt_replay_fv_model <- reactive({
+    # Replay / strategy FV: single-select only
+    sel <- input$bt_fv_replay_model
+    if (is.null(sel) || length(sel) < 1) return(character(0))
+    m <- tolower(trimws(as.character(sel)[1]))
+    if (!nzchar(m) || identical(m, "none")) return(character(0))
+    intersect(c("dcf", "ddm", "ri", "pb", "nav"), m)
+  })
+
   .bt_selected_fv_models <- reactive({
-    # 未勾選 → character(0)；策略 FV／MOS 不暗設 DCF
-    .bt_raw_fv_models()
+    # Strategy fair_value / MOS / HFV odds & magnitude: replay model only
+    .bt_replay_fv_model()
   })
 
   bt_hfv_base <- reactive({
@@ -6196,6 +6208,7 @@ server <- function(input, output, session) {
     was_applying <- isTRUE(bt_applying_params())
     bt_applying_params(TRUE)
     updateCheckboxGroupInput(session, "bt_fv_models", selected = character(0))
+    updateRadioButtons(session, "bt_fv_replay_model", selected = "dcf")
     if (!was_applying) bt_applying_params(FALSE)
   }, ignoreInit = TRUE)
 
@@ -6291,7 +6304,7 @@ server <- function(input, output, session) {
     if (!is.finite(g_explicit)) g_explicit <- sgr
     fv_models <- .bt_selected_fv_models()
     fv_models <- fv_models[fv_models %in% c("dcf", "ddm", "ri", "pb", "nav")]
-    # 未勾選：保持空向量，策略 fair_value／MOS = NA（不暗設 DCF）
+    # 未選復盤模型：保持空向量，策略 fair_value／MOS = NA（不暗設 DCF）
 
     rf <- suppressWarnings(as.numeric(input$capm_rf)[1]) / 100
     if (!is.finite(rf) || rf <= 0) {
@@ -6438,65 +6451,85 @@ server <- function(input, output, session) {
     }
   })
 
-  # 勾選評價模型即重建基本面價值；取消全部則隱藏折線
-  observeEvent(input$bt_fv_models, {
+  # 圖表複選或復盤單選變更 → 重建基本面價值；兩者皆空則隱藏折線
+  .bt_refresh_hfv_fv <- function(progress_msg = "重建基本面價值…") {
+    chart_sel <- .bt_raw_fv_models()
+    replay_sel <- .bt_replay_fv_model()
+    if (length(chart_sel) < 1L && length(replay_sel) < 1L) {
+      bt_fv_visible(FALSE)
+      bt_hfv_fv(NULL)
+      return(invisible(NULL))
+    }
+    if (is.null(current_ticker()) || !nzchar(as.character(current_ticker())[1])) {
+      return(invisible(NULL))
+    }
+    if (is.null(d_income_statement()) || is.null(d_cash_flow()) || is.null(d_balance_sheet())) {
+      stop("請先在 Dashboard 搜尋並載入該公司財報")
+    }
+    mp <- bt_current_model_params()
+    fund <- build_annual_fundamentals_for_quote(
+      d_income_statement(), d_balance_sheet(), d_cash_flow(),
+      ticker = current_ticker(), model_params = mp
+    )
+    withProgress(message = progress_msg, value = 0.2, {
+      fv_res <- compute_fair_value_timeline(
+        ticker = current_ticker(),
+        d_is = d_income_statement(),
+        d_bs = d_balance_sheet(),
+        d_cf = d_cash_flow(),
+        model_params = mp,
+        mos = bt_current_mos(),
+        bench_ticker = active_bench_ticker(),
+        years = 5,
+        rebal_freq = .bt_selected_rebal_freq()
+      )
+      bt_hfv_fv(fv_res)
+      bt_fv_visible(TRUE)
+      if (!is.null(bt_result())) {
+        bt_result(refresh_backtest_fair_value(bt_result(), fund, mp))
+      }
+      sa <- attr(fund, "share_align")
+      if (is.list(sa) && shares_auto_adjust_method(sa$method) &&
+          is.finite(sa$scale) && abs(sa$scale - 1) > 0.05) {
+        showNotification(
+          sprintf(
+            "折現比較股數已對齊報價股（×%.3g；%s）",
+            sa$scale, sa$method
+          ),
+          type = "message",
+          duration = 6
+        )
+      }
+    })
+    invisible(NULL)
+  }
+
+  observeEvent(list(input$bt_fv_models, input$bt_fv_replay_model), {
     if (isTRUE(bt_applying_params())) return()
     if (isTRUE(input$bt_param_auto)) {
       updateCheckboxInput(session, "bt_param_auto", value = FALSE)
     }
-
-    sel <- .bt_raw_fv_models()
-    if (length(sel) < 1) {
-      bt_fv_visible(FALSE)
-      bt_hfv_fv(NULL)
-      return()
-    }
-    if (is.null(current_ticker()) || !nzchar(as.character(current_ticker())[1])) return()
-
-    tryCatch({
-      if (is.null(d_income_statement()) || is.null(d_cash_flow()) || is.null(d_balance_sheet())) {
-        stop("請先在 Dashboard 搜尋並載入該公司財報")
+    tryCatch(
+      .bt_refresh_hfv_fv(),
+      error = function(e) {
+        bt_fv_visible(FALSE)
+        showNotification(paste("❌ 基本面價值計算失敗：", e$message), type = "error", duration = 8)
       }
-      mp <- bt_current_model_params()
-      fund <- build_annual_fundamentals_for_quote(
-        d_income_statement(), d_balance_sheet(), d_cash_flow(),
-        ticker = current_ticker(), model_params = mp
-      )
-      withProgress(message = "重建基本面價值…", value = 0.2, {
-        fv_res <- compute_fair_value_timeline(
-          ticker = current_ticker(),
-          d_is = d_income_statement(),
-          d_bs = d_balance_sheet(),
-          d_cf = d_cash_flow(),
-          model_params = mp,
-          mos = bt_current_mos(),
-          bench_ticker = active_bench_ticker(),
-          years = 5,
-          rebal_freq = .bt_selected_rebal_freq()
-        )
-        bt_hfv_fv(fv_res)
-        bt_fv_visible(TRUE)
-        if (!is.null(bt_result())) {
-          bt_result(refresh_backtest_fair_value(bt_result(), fund, mp))
-        }
-        sa <- attr(fund, "share_align")
-        if (is.list(sa) && shares_auto_adjust_method(sa$method) &&
-            is.finite(sa$scale) && abs(sa$scale - 1) > 0.05) {
-          showNotification(
-            sprintf(
-              "折現比較股數已對齊報價股（×%.3g；%s）",
-              sa$scale, sa$method
-            ),
-            type = "message",
-            duration = 6
-          )
-        }
-      })
-    }, error = function(e) {
-      bt_fv_visible(FALSE)
-      showNotification(paste("❌ 基本面價值計算失敗：", e$message), type = "error", duration = 8)
-    })
+    )
   }, ignoreInit = TRUE, ignoreNULL = FALSE)
+
+  # 搜尋載入財報後：若已有復盤模型（預設 DCF）且尚無 FV，自動重建一次
+  observeEvent(list(current_ticker(), d_income_statement(), d_balance_sheet(), d_cash_flow()), {
+    if (isTRUE(bt_applying_params())) return()
+    if (!is.null(bt_hfv_fv())) return()
+    if (length(.bt_replay_fv_model()) < 1L && length(.bt_raw_fv_models()) < 1L) return()
+    if (is.null(current_ticker()) || !nzchar(as.character(current_ticker())[1])) return()
+    if (is.null(d_income_statement()) || is.null(d_cash_flow()) || is.null(d_balance_sheet())) return()
+    tryCatch(
+      .bt_refresh_hfv_fv(),
+      error = function(e) NULL
+    )
+  }, ignoreInit = TRUE)
 
   # 分析頻率變更：以該頻率重建 Date_t／FV；策略回測需重跑（再平衡日會變）
   observeEvent(input$bt_fv_analysis_freq, {
@@ -6516,8 +6549,9 @@ server <- function(input, output, session) {
         ))
       }
     }
-    sel <- .bt_raw_fv_models()
-    if (length(sel) < 1L) {
+    sel_chart <- .bt_raw_fv_models()
+    sel_replay <- .bt_replay_fv_model()
+    if (length(sel_chart) < 1L && length(sel_replay) < 1L) {
       bt_hfv_fv(NULL)
       return()
     }
@@ -6780,13 +6814,13 @@ server <- function(input, output, session) {
     if (is.null(src)) {
       return(tags$p(
         style = "color:#888;font-size:12.5px;",
-        "搜尋股票後將預先顯示股價與大盤；勾選圖上方評價模型可計算合理價與 MOS 摘要（策略用勾選平均；未勾＝不套用模型）。"
+        "搜尋股票後將預先顯示股價與大盤；勾選「圖表模型」可疊合理價線；「復盤模型」單選驅動下方驗證統計與策略 FV／MOS。"
       ))
     }
     if (!isTRUE(src$show_fv)) {
       return(tags$p(
         style = "color:#888;font-size:12.5px;",
-        "已顯示實際股價與大盤。勾選圖上方評價模型以顯示合理價與下方摘要（策略 MOS＝勾選平均；未勾＝不套用模型）。"
+        "已顯示實際股價與大盤。勾選「圖表模型」以疊合理價線；驗證機率／幅度依「復盤模型」單選（非圖表平均）。"
       ))
     }
     m <- if (!is.null(bt_result()) && !is.null(bt_result()$metrics)) {
@@ -6848,17 +6882,20 @@ server <- function(input, output, session) {
       tags$div(style = "flex:2;min-width:180px;padding:8px 10px;background:#fafafa;border-left:4px solid #555;",
                tags$div(class = "ynow-kpi-stat-label", "此刻參數（Session）"),
                tags$div(class = "ynow-kpi-stat-params", {
-                 models <- paste(toupper(.bt_raw_fv_models()), collapse = "+")
+                 chart_m <- paste(toupper(.bt_raw_fv_models()), collapse = "+")
+                 if (!nzchar(chart_m)) chart_m <- "—"
+                 replay_m <- toupper(.bt_replay_fv_model())
+                 if (length(replay_m) < 1L || !nzchar(replay_m[1])) replay_m <- "—"
                  claim <- as.character(mp$dcf_claim %||% "fcff")[1]
                  ddm_mode <- as.character(mp$ddm_mode %||% "gordon")[1]
                  base <- sprintf(
-                   "模型 %s · WACC %.2f%% · Ke %.2f%% · SGR %.2f%% · n=%s · PB mid %.2f · DCF %s",
-                   models,
+                   "圖表 %s · 復盤 %s · WACC %.2f%% · Ke %.2f%% · SGR %.2f%% · n=%s · PB mid %.2f · DCF %s",
+                   chart_m, replay_m[1],
                    .safe_num(mp$wacc, NA) * 100, .safe_num(mp$ke, NA) * 100,
                    .safe_num(mp$sgr, NA) * 100, mp$n_years, .safe_num(mp$pb_mid, NA),
                    toupper(claim)
                  )
-                 if ("ri" %in% .bt_raw_fv_models()) {
+                 if ("ri" %in% .bt_replay_fv_model() || "ri" %in% .bt_raw_fv_models()) {
                    paste0(
                      base,
                      sprintf(
@@ -6871,7 +6908,7 @@ server <- function(input, output, session) {
                        mp$roe_method %||% "constant"
                      )
                    )
-                 } else if ("ddm" %in% .bt_raw_fv_models()) {
+                 } else if ("ddm" %in% .bt_replay_fv_model() || "ddm" %in% .bt_raw_fv_models()) {
                    paste0(
                      base,
                      sprintf(
@@ -6942,9 +6979,9 @@ server <- function(input, output, session) {
       }
       vd <- src$vd
       if (isTRUE(src$show_fv) && !is.null(vd) && is.data.frame(vd) && nrow(vd) > 0) {
-        models <- .bt_raw_fv_models()
-        marker_col <- if (length(models) == 1L) {
-          switch(models[1],
+        replay <- .bt_replay_fv_model()
+        marker_col <- if (length(replay) == 1L) {
+          switch(replay[1],
             "dcf" = "fv_dcf", "ddm" = "fv_ddm", "ri" = "fv_ri", "pb" = "fv_pb", "nav" = "fv_nav",
             "fair_value")
         } else {
@@ -7821,7 +7858,7 @@ server <- function(input, output, session) {
       tags$p(
         style = "margin-top:0;",
         tags$b("折現圖 vs 淨值圖："),
-        "折現圖（側邊「歷史基本面驗證」）是每股合理價 vs 實際股價；策略 MOS／部位用勾選模型的平均。",
+        "折現圖（側邊「歷史基本面驗證」）是每股合理價 vs 實際股價；策略 MOS／部位用「復盤模型」單選。",
         "淨值圖（本頁「測試」）是部位×日報酬的累積財富（起始＝1）——",
         tags$b("基本面策略淨值"), "＝Exp_A；",
         tags$b("情緒策略淨值"), "＝Exp_B（Exp_A 混入動能／RSI）。兩圖標籤不可互換。"
@@ -7830,7 +7867,8 @@ server <- function(input, output, session) {
       tags$ul(
         tags$li(tags$b("實際股價："), "該股歷史收盤（Yahoo 調整後）。搜尋後即預覽股價，不必先勾模型。"),
         tags$li(tags$b("大盤："), "圖上方「顯示大盤」開關疊加基準（預設 SPY，右軸）；與合理價無關。"),
-        tags$li(tags$b("合理價："), "勾選圖上方評價模型後才計算並疊圖（預設不勾選）。"),
+        tags$li(tags$b("圖表模型："), "圖上方可複選疊多條合理價線（預設不勾選）。"),
+        tags$li(tags$b("復盤模型："), "驗證區「設定」內單選；機率／幅度／下期上漲頻率與策略 FV／MOS 僅依此模型（非圖表複選平均）。"),
         tags$li(
           tags$b("PIT DCF（優先邊際路徑）："),
           "歷史點若有營收與 NOPAT/D&A/CapEx/ΔNWC 邊際，走與 Live 相同的 unit FCFF 路徑再折現；",
@@ -7838,12 +7876,12 @@ server <- function(input, output, session) {
           "財報可用條件：財報年 ≤ 日曆年−1，且 period_end＋約 90 日 ≤ 估值日（Yahoo 重編風險仍在）。",
           "僅折線末端最新點才掛目前 APP 分頁（含 FCFE／二階段 DDM）與 Session Rm。"
         ),
-        tags$li(tags$b("策略 MOS／部位："), "用目前勾選且有限值模型的算術平均，不是隱藏的主模型。只勾一個＝該模型。未勾選任何模型＝不套用策略 FV／MOS（不暗設 DCF）。"),
+        tags$li(tags$b("策略 MOS／部位："), "用「復盤模型」單選之合理價，不是圖表複選平均。未選復盤模型＝不套用策略 FV／MOS（不暗設 DCF）。"),
         tags$li(
           tags$b("歷史基本面驗證（非策略回測）："),
           "同時報告（1）市價下期漲跌 ", tags$code("R=(P_{t+1}-P_t)/P_t"),
           " 經驗頻率，以及依目前安全邊際（MOS）分組的條件上漲／下跌機率；",
-          "（2）相對策略理論估值 FV_t（＝勾選且有限值模型平均；未勾＝無 FV）之上／之下與幅度 (P−FV)/FV。",
+          "（2）相對復盤理論估值 FV_t（＝復盤模型單選；結果隨復盤模型而變）之上／之下與幅度 (P−FV)/FV。",
           "兩口徑不同，不可混稱。預設只計已實現下期，可選擴張窗樣本外命中率。",
           "若歷史點套用 APP_DEFAULTS／Session／法定稅率，摘要會列出預設／fallback 與對應分頁。",
           "此區塊在側邊「歷史基本面驗證」，與本頁策略淨值交易回測分開閱讀。"
@@ -7887,7 +7925,7 @@ server <- function(input, output, session) {
       ),
       tags$h5(tags$b("三、計算過程（依分析頻率 PIT）")),
       tags$ol(
-        tags$li("再平衡日：fund_year ≤ 日曆年−1 重建各模型合理價；策略 FV＝勾選且有限值者之平均（未勾＝NA） → MOS＝(FV−Price)/FV。"),
+        tags$li("再平衡日：fund_year ≤ 日曆年−1 重建各模型合理價；策略 FV＝復盤模型單選（未選＝NA） → MOS＝(FV−Price)/FV。"),
         tags$li("持倉回測條件未過 → Exp_A = Exp_B = 0（兩模式皆空手）。"),
         tags$li("通過則 Exp_A 依 MOS 滯後映射；Exp_B = (1−blend)×Exp_A + blend×(sentiment×max_exp)。"),
         tags$li("每日：策略淨值用 Exp×日報酬；Buy&Hold 滿持股；現金報酬=0；未扣交易成本。"),
@@ -8963,7 +9001,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v16.08"),
+      paste0("- **App：** The YNow App v16.09"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

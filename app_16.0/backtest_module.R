@@ -15,7 +15,7 @@
 #   (fallback APP_DEFAULTS / session); Ke/WACC are PIT.
 # Hist DCF prefers NOPAT/D&A/CapEx/ΔNWC margin path when annual rows exist;
 #   else falls back to geometric Free Cash Flow Gordon.
-# - Strategy fair_value: mean of checked, finite DCF/DDM/RI/P/B（未勾＝NA，不暗設 DCF）.
+# - Strategy fair_value: selected model(s) finite mean（HFV replay UI = single; empty＝NA，不暗設 DCF）.
 # - Model_A: normalized PIT fair-value INDEX (參數高原／內部用；不是淨值圖曲線).
 # - Trade_A (基本面策略淨值): Exp_A × 日報酬；Exp_A 來自 MOS＋Great Filter.
 # - Trade_B / Model_B (情緒策略淨值): Exp_B × 日報酬；
@@ -731,8 +731,8 @@ valuation_signal_label <- function(fv, price) {
 #' and market-value We/Wd from that day's price × PIT shares and PIT debt.
 #' Forward g / Rd / tax / Justified P/B derived from then-known fund fields
 #' (fallback to APP_DEFAULTS / session when missing).
-#' Strategy `fair_value` is the mean of checked models that are finite
-#' （未勾選任何模型 → fair_value／MOS 為 NA，不暗設 DCF）.
+#' Strategy `fair_value` is the mean of selected models that are finite
+#' （HFV replay UI passes a single model; empty → fair_value／MOS 為 NA，不暗設 DCF）.
 #'
 #' Tip / latest point (`use_session_assumptions = TRUE`): apply current APP
 #' tab parameters (years, g, RI ROE fade, DDM, P/B, …) on latest PIT inputs.
@@ -2097,8 +2097,8 @@ evaluate_holding_filter <- function(metrics, thresholds) {
   equity_df$FV_PB  <- build_one("fv_pb")
   equity_df$FV_NAV <- build_one("fv_nav")
 
-  # Strategy series = mean of checked models stored as fair_value at rebalances.
-  # 未勾選任何模型 → FairValue 全 NA（不暗設 DCF）。
+  # Strategy series = fair_value at rebalances (HFV: single replay model).
+  # 未選任何模型 → FairValue 全 NA（不暗設 DCF）。
   if (!is.null(valuation_df) && "fair_value" %in% names(valuation_df)) {
     equity_df$FairValue <- build_one("fair_value")
   } else {
@@ -2384,7 +2384,7 @@ supported_analysis_freqs <- function(price_dates = NULL, valuation_dates = NULL)
   equity_bm <- numeric(n); equity_bm[1] <- 1
   exp_a_daily <- numeric(n)
   exp_b_daily <- numeric(n)
-  # Strategy NAV: mean of checked models' PIT fair value, grown by hist-default SGR
+  # Strategy NAV: PIT fair value from selected model(s) (HFV: single replay), grown by hist-default SGR
   # between rebalances (session SGR only affects tip via overlay).
   fv_daily <- rep(NA_real_, n)
   fv_anchor <- NA_real_

@@ -719,7 +719,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v16.08</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v16.09</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -1648,6 +1648,12 @@ ui <- dashboardPage(
             if (hfvTable && s.hfv_table_detail) hfvTable.textContent = s.hfv_table_detail;
             var hfvDataNote = document.getElementById('ynow_hfv_method_data_note');
             if (hfvDataNote && s.hfv_method_data_note) hfvDataNote.textContent = s.hfv_method_data_note;
+            var hfvMethodBody = document.getElementById('ynow_hfv_method_body');
+            if (hfvMethodBody && s.hfv_method_body) hfvMethodBody.textContent = s.hfv_method_body;
+            var chartModelsLab = document.querySelector('label[for=\"bt_fv_models\"]');
+            if (chartModelsLab && s.hfv_chart_models_label) chartModelsLab.textContent = s.hfv_chart_models_label;
+            var replayLab = document.querySelector('label[for=\"bt_fv_replay_model\"]');
+            if (replayLab && s.hfv_replay_model_label) replayLab.textContent = s.hfv_replay_model_label;
             var labTitle = document.getElementById('ynow_lab_notes_title');
             if (labTitle && s.lab_notes_title) labTitle.textContent = s.lab_notes_title;
             var labSub = document.getElementById('ynow_lab_notes_sub');
@@ -3881,7 +3887,7 @@ ui <- dashboardPage(
                   class = "ynow-bt-hfv-models",
                   checkboxGroupInput(
                     "bt_fv_models",
-                    "評價模型（可複選疊圖；策略 MOS／部位＝勾選且有限值者之平均；未勾＝不套用模型）",
+                    "圖表模型（可複選疊圖）",
                     inline = TRUE,
                     choices = c(
                       "DCF" = "dcf",
@@ -3916,15 +3922,16 @@ ui <- dashboardPage(
                 "說明"
               ),
               tags$p(
+                id = "ynow_hfv_method_body",
                 style = "font-size:12.5px;color:#444;line-height:1.55;margin:0 0 8px 0;",
                 tags$b("這不是交易策略回測。"),
                 "兩種口徑分開呈現：",
                 tags$b("（1）市價下期漲跌"), " ", tags$code("R=(P_{t+1}-P_t)/P_t"),
                 " 的經驗頻率，並以目前安全邊際（MOS）分組之條件機率作為展望；",
                 tags$b("（2）相對理論 FV"), " ", tags$code("FV_t"),
-                "（＝折現圖勾選且有限值模型平均；未勾選＝無策略 FV）落在之上／之下與幅度 ",
+                "（＝下方「復盤模型」單選之一；非圖表複選平均）落在之上／之下與幅度 ",
                 tags$code("(P_{t+1}-FV_t)/FV_t"),
-                "。兩者語意不同，不可混稱為同一「漲跌」。策略淨值請至側邊底部「測試」。"
+                "。圖表可複選疊多條模型線；復盤機率／幅度僅依單選模型。策略淨值請至側邊底部「測試」。"
               ),
               tags$p(
                 style = "font-size:11.5px;color:#888;line-height:1.45;margin:0;",
@@ -3944,6 +3951,19 @@ ui <- dashboardPage(
                 id = "ynow_hfv_sec_settings",
                 style = "margin:0 0 10px 0;font-weight:700;",
                 "設定"
+              ),
+              radioButtons(
+                "bt_fv_replay_model",
+                "復盤模型（單選；機率／幅度／下期上漲頻率依此模型）",
+                inline = TRUE,
+                choices = c(
+                  "DCF" = "dcf",
+                  "DDM" = "ddm",
+                  "RI" = "ri",
+                  "P/B" = "pb",
+                  "NAV" = "nav"
+                ),
+                selected = "dcf"
               ),
               radioButtons(
                 "bt_fv_conv_window",
@@ -4180,7 +4200,7 @@ ui <- dashboardPage(
             ),
             tags$div(
               class = "ynow-bt-run-note",
-              "執行回測請按上方標題列右側「執行回測」。依分析頻率再平衡 · 當年 Rf／已實現 Rm／市值結構 · Rolling β · 「歷史基本面驗證」勾選模型平均 PIT。"
+              "執行回測請按上方標題列右側「執行回測」。依分析頻率再平衡 · 當年 Rf／已實現 Rm／市值結構 · Rolling β · 「歷史基本面驗證」復盤模型（單選）PIT。"
             ),
             uiOutput("bt_run_status")
           )
@@ -4204,7 +4224,7 @@ ui <- dashboardPage(
                 title = tagList(icon("balance-scale"), "基本面策略"),
                 value = "bt_fundamental",
                 .bt_section_intro(
-                  "模式 A：Exp_A → 淨值圖橘線。依 MOS 分級決定部位；MOS 來自「歷史基本面驗證」折現圖勾選模型的平均合理價。"
+                  "模式 A：Exp_A → 淨值圖橘線。依 MOS 分級決定部位；MOS 來自「歷史基本面驗證」復盤模型（單選）合理價。"
                 ),
                 fluidRow(
                   column(

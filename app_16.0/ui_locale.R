@@ -90,6 +90,15 @@ locale_for_market <- function(mode = get_market_mode()) {
       "TW OTC/ESB: TPEx financial summary can fill IS/BS when Yahoo is thin (CF never invented). ",
       "Listed TW MOPS / US SEC as-filed annuals are not yet on the HFV path. Small samples (n<5) are illustrative only."
     ),
+    hfv_method_body = paste0(
+      "This is not a trading-strategy backtest. Two scopes: ",
+      "(1) next-period price move R=(P_{t+1}-P_t)/P_t frequencies, with MOS-bucket conditional outlook; ",
+      "(2) position vs theoretical FV_t from the single Replay model (not the chart multi-select average), ",
+      "plus magnitude (P_{t+1}-FV_t)/FV_t. Chart models may overlay multiple series; ",
+      "replay odds/magnitude use one model only. Strategy NAV lives under Testing."
+    ),
+    hfv_chart_models_label = "Chart models (multi-select overlay)",
+    hfv_replay_model_label = "Replay model (single; odds / magnitude / next-period up frequency)",
     hfv_data_sources_label = "Fundamentals sources (this run)",
     lab_notes_title = "Testing — Quantitative Backtest",
     lab_notes_sub = paste0(
@@ -108,13 +117,13 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_sum_conclusion_fmt = "Next-period up frequency ≈ %s (n=%d)",
     hfv_sum_conclusion_def = "Definition: historical share of pairs with P_{t+1} > P_t, i.e. R=(P_next−P)/P > 0 — same Q1 sample / validation sample scope. Not P(toward FV) and not P(above FV).",
     hfv_sum_conclusion_caveat = "Descriptive frequency on the validation sample only — not a predictive guarantee for the next period.",
-    hfv_sum_conclusion_na = "No conclusion yet: need realized next-period pairs under the current validation sample scope (and checked FV models).",
+    hfv_sum_conclusion_na = "No conclusion yet: need realized next-period pairs under the current validation sample scope (and a selected Replay model).",
     hfv_sum_price_block = "Q1 · Next-period price move",
     hfv_sum_price_formula = "R = (P_next − P) / P",
     hfv_sum_mos_block = "MOS group outlook (same-ticker history)",
     hfv_sum_fv_block = "Q2 · Position vs theoretical FV",
     hfv_sum_fv_formula = "(P_next − FV) / FV — not the same as up/down",
-    hfv_sum_empty = "After Search and model selection, next-period up/down odds and vs-FV stats appear here (not a strategy backtest).",
+    hfv_sum_empty = "After Search and selecting a Replay model, next-period up/down odds and vs-FV stats appear here (not a strategy backtest). Replay results depend on the selected Replay model only.",
     hfv_sum_notes = "Result notes",
     hfv_sec_method = "How to read this panel",
     hfv_sec_settings = "Settings",
@@ -250,6 +259,14 @@ locale_for_market <- function(mode = get_market_mode()) {
       "台股上櫃／興櫃 Yahoo 空時可補櫃買財務資料簡報（IS／BS；不捏造 CF）。上市櫃 MOPS／美股 SEC as-filed 仍待後續接入。",
       "小樣本（n＜5）僅供參考，非預測保證。"
     ),
+    hfv_method_body = paste0(
+      "這不是交易策略回測。兩種口徑分開呈現：",
+      "（1）市價下期漲跌 R=(P_{t+1}-P_t)/P_t 的經驗頻率，並以目前安全邊際（MOS）分組之條件機率作為展望；",
+      "（2）相對理論 FV_t（＝下方「復盤模型」單選之一；非圖表複選平均）落在之上／之下與幅度 (P_{t+1}-FV_t)/FV_t。",
+      "圖表可複選疊多條模型線；復盤機率／幅度僅依單選模型。策略淨值請至側邊底部「測試」。"
+    ),
+    hfv_chart_models_label = "圖表模型（可複選疊圖）",
+    hfv_replay_model_label = "復盤模型（單選；機率／幅度／下期上漲頻率依此模型）",
     hfv_data_sources_label = "本次基本面資料來源",
     lab_notes_title = "測試 — Testing（量化回測）",
     lab_notes_sub = paste0(
@@ -268,13 +285,13 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_sum_conclusion_fmt = "下期上漲頻率 ≈ %s（n＝%d）",
     hfv_sum_conclusion_def = "定義：歷史配對中 P_{t+1} > P_t 的比例，即 R=(P下一期−P)/P > 0；與目前「問題一」／驗證樣本口徑相同。不是趨近 FV，也不是落在 FV 之上。",
     hfv_sum_conclusion_caveat = "僅為驗證樣本上的描述性頻率，非對下期的預測保證。",
-    hfv_sum_conclusion_na = "尚無結論：需在目前驗證樣本口徑下有已實現下期配對（並勾選評價模型）。",
+    hfv_sum_conclusion_na = "尚無結論：需在目前驗證樣本口徑下有已實現下期配對（並選擇復盤模型）。",
     hfv_sum_price_block = "問題一・市價下期漲跌",
     hfv_sum_price_formula = "R = (P下一期 − P) / P",
     hfv_sum_mos_block = "安全邊際（MOS）分組展望（該股自身歷史）",
     hfv_sum_fv_block = "問題二・相對理論 FV",
     hfv_sum_fv_formula = "(P下一期 − FV) / FV — 與漲跌不同口徑",
-    hfv_sum_empty = "載入標的並勾選評價模型後，將顯示市價下期漲跌機率與相對 FV 統計（非策略回測）。",
+    hfv_sum_empty = "載入標的並選擇復盤模型後，將顯示市價下期漲跌機率與相對 FV 統計（非策略回測）。復盤結果僅依所選單一復盤模型。",
     hfv_sum_notes = "結果附註",
     hfv_sec_method = "說明",
     hfv_sec_settings = "設定",
