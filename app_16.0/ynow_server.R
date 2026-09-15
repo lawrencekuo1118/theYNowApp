@@ -5834,7 +5834,8 @@ server <- function(input, output, session) {
     req(!is.null(st$built), !is.null(st$built$matrix))
     sens_matrix <- st$built$matrix
     out_df <- cbind(Rate = rownames(sens_matrix), as.data.frame(sens_matrix, check.names = FALSE))
-    names(out_df)[1] <- if (identical(st$disc_label, "Ke")) "Ke (%)" else "WACC (%)"
+    # 左上角欄名留白：列標籤已含 WACC／Ke，避免再顯示「WACC (%)」
+    names(out_df)[1] <- if (identical(st$disc_label, "Ke")) "Ke (%)" else "\u00a0"
     out_df
   }, digits = 2, striped = TRUE, hover = TRUE, bordered = TRUE, align = "c",
      width = "100%", na = "無效 (折現率≤g)")
