@@ -719,7 +719,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v16.06</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v16.07</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -1417,33 +1417,51 @@ ui <- dashboardPage(
           }
         }
 
-        /* HFV：驗證樣本口徑三選項直向、靠左對齊 */
+        /* HFV 設定：統計期間／驗證樣本口徑共用 label→選項間距與區塊節奏 */
+        .ynow-hfv-settings .shiny-input-radiogroup {
+          margin-top: 0;
+          margin-bottom: 12px;
+        }
+        .ynow-hfv-settings .shiny-input-radiogroup > label.control-label {
+          display: block;
+          margin-top: 0;
+          margin-bottom: 6px;
+          padding: 0;
+          line-height: 1.4;
+        }
+        .ynow-hfv-settings .shiny-input-radiogroup .shiny-options-group {
+          margin-top: 0;
+          margin-bottom: 0;
+          padding-top: 0;
+          padding-left: 0;
+        }
+        /* 驗證樣本口徑：直向靠左；選項間距緊湊，不另加大 label gap */
         #bt_fv_oos_mode .shiny-options-group {
           display: flex !important;
           flex-direction: column !important;
           flex-wrap: nowrap !important;
           align-items: flex-start !important;
           column-gap: 0 !important;
-          row-gap: 6px;
-          padding-left: 0;
+          row-gap: 4px;
           text-align: left;
         }
-        #bt_fv_oos_mode .radio,
-        #bt_fv_oos_mode .radio-inline {
+        #bt_fv_oos_mode .radio {
           display: block !important;
           float: none !important;
           width: auto;
           max-width: 100%;
-          margin: 0 !important;
+          margin-top: 0 !important;
+          margin-bottom: 0 !important;
+          min-height: 0;
           padding-left: 0;
           text-align: left;
         }
-        #bt_fv_oos_mode .radio label,
-        #bt_fv_oos_mode .radio-inline label {
+        #bt_fv_oos_mode .radio > label {
           display: inline-block;
           text-align: left;
           white-space: normal;
           font-weight: normal;
+          margin: 0;
           padding-left: 20px;
         }
       ')),

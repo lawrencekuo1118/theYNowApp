@@ -7359,6 +7359,60 @@ server <- function(input, output, session) {
         )
       } else "統計期間：全部估值日配對"
     }
+    oos_lab <- switch(
+      as.character(s$oos_mode %||% "realized")[1],
+      realized = ui_str("hfv_oos_realized", loc),
+      expanding = ui_str("hfv_oos_expanding", loc),
+      insample = ui_str("hfv_oos_insample", loc),
+      ui_str("hfv_oos_realized", loc)
+    )
+    conclusion_card <- {
+      if (is.finite(s$p_up) && as.integer(s$n %||% 0L) > 0L) {
+        tags$div(
+          style = paste0(
+            "margin:0 0 12px 0;padding:12px 14px;background:#eef7f1;",
+            "border:1px solid #b7dfc7;border-left:4px solid ", border, ";",
+            "border-radius:4px;font-size:13px;line-height:1.55;"
+          ),
+          tags$div(
+            tags$b(ui_str("hfv_sum_conclusion_label", loc)),
+            tags$span(
+              style = "margin-left:8px;font-size:16px;font-weight:700;",
+              sprintf(
+                ui_str("hfv_sum_conclusion_fmt", loc),
+                pct(s$p_up),
+                as.integer(s$n %||% 0L)
+              )
+            )
+          ),
+          tags$div(
+            style = "margin:4px 0 0 0;color:#555;font-size:12px;",
+            paste0(ui_str("hfv_oos_mode_label", loc), "：", oos_lab)
+          ),
+          tags$div(
+            style = "margin:4px 0 0 0;color:#6c757d;font-size:11.5px;",
+            ui_str("hfv_sum_conclusion_def", loc)
+          ),
+          tags$div(
+            style = "margin:4px 0 0 0;color:#888;font-size:11.5px;",
+            ui_str("hfv_sum_conclusion_caveat", loc)
+          )
+        )
+      } else {
+        tags$div(
+          style = paste0(
+            "margin:0 0 12px 0;padding:12px 14px;background:#fafafa;",
+            "border:1px solid #ddd;border-left:4px solid ", border, ";",
+            "border-radius:4px;font-size:13px;line-height:1.55;color:#666;"
+          ),
+          tags$div(tags$b(ui_str("hfv_sum_conclusion_label", loc))),
+          tags$div(
+            style = "margin:4px 0 0 0;",
+            ui_str("hfv_sum_conclusion_na", loc)
+          )
+        )
+      }
+    }
 
     mo <- s$mos_outlook
     mos_body <- {
@@ -7492,6 +7546,7 @@ server <- function(input, output, session) {
     }
 
     tagList(
+      conclusion_card,
       tags$div(
         style = "margin:0 0 8px 0;font-size:13px;",
         tags$b(ui_str("hfv_sum_title", loc)),
@@ -8887,7 +8942,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v14.0"),
+      paste0("- **App：** The YNow App v16.07"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {
