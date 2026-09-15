@@ -1370,22 +1370,10 @@ fetch_tnx_history_df <- function(period = "10y") {
   fetch_price_history_df("^TNX", period)
 }
 
-#' PIT Rf series by market (Damodaran: Rf currency must match cash-flow currency).
-#' US: ^TNX history. TW: NULL — Yahoo 無穩定台債指數；PIT 點改用 session Rf
-#' （`market_profile` 文件化 fallback，見 `get_risk_free_rate`）。
+#' PIT Rf series by market.
+#' US and TW both use ^TNX history（台股評價 Rf 與美股對齊）。
 fetch_pit_rf_history_df <- function(period = "10y", market = NULL) {
-  mode <- if (!is.null(market)) {
-    if (exists("normalize_market_mode", mode = "function")) {
-      normalize_market_mode(market)
-    } else {
-      toupper(as.character(market)[1])
-    }
-  } else if (exists("get_market_mode", mode = "function")) {
-    get_market_mode()
-  } else {
-    "US"
-  }
-  if (identical(mode, "TW")) return(NULL)
+  # market retained for API compatibility; Rf source is always ^TNX
   fetch_tnx_history_df(period)
 }
 
@@ -1477,8 +1465,7 @@ fetch_pit_rf_history_df <- function(period = "10y", market = NULL) {
 
 #' Build point-in-time Ke/WACC from rolling beta + then-known Rf / capital structure.
 #'
-#' Rf_t (US) = ^TNX close on/before as_of (fallback: session Rf).
-#' Rf_t (TW) = session Rf only（無穩定 Yahoo 台債序列；勿套用 ^TNX 於 TWD 現金流）。
+#' Rf_t (US／TW) = ^TNX close on/before as_of (fallback: session Rf).
 #' Rm_t = trailing realized annualized total return of the backtest benchmark
 #'   (US default SPY; TW mode passes 0050.TW) ending on/before as_of. Prefer 12m;
 #'   else longest ≥ ~6m; else 5y; else session Rm. Negative (Rm−Rf) is kept;

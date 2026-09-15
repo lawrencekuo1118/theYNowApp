@@ -228,25 +228,18 @@ get_risk_free_rate <- function(market = NULL) {
     rf
   }, error = function(e) {
     fb <- suppressWarnings(as.numeric(prof$rf_fallback %||% 4.0)[1])
-    if (!is.finite(fb) || fb <= 0) fb <- if (identical(mode, "TW")) 1.8 else 4.0
+    if (!is.finite(fb) || fb <= 0) fb <- 4.0
     .ynow_log("⚠️ Rf 抓取失敗，套用預設值 ", fb, "%。原因: ", e$message)
     fb
   })
 }
 
-# memoise by market：以 wrapper 包一層避免跨市場互相污染
+# memoise：台股／美股評價 Rf 皆走 ^TNX（同一 cache，避免市場切換後數值分歧）
 .cached_get_risk_free_rate_us <- memoise::memoise(function() get_risk_free_rate("US"), cache = my_cache)
-.cached_get_risk_free_rate_tw <- memoise::memoise(function() get_risk_free_rate("TW"), cache = my_cache)
 
 cached_get_risk_free_rate <- function(market = NULL) {
-  mode <- if (!is.null(market)) {
-    if (exists("normalize_market_mode", mode = "function")) normalize_market_mode(market) else "US"
-  } else if (exists("get_market_mode", mode = "function")) {
-    get_market_mode()
-  } else {
-    "US"
-  }
-  if (identical(mode, "TW")) .cached_get_risk_free_rate_tw() else .cached_get_risk_free_rate_us()
+  # TW valuation Rf intentionally identical to US (^TNX)
+  .cached_get_risk_free_rate_us()
 }
 
 # ==========================================

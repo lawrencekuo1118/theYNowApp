@@ -340,14 +340,10 @@ def get_price_history(ticker="AMZN", period="5y"):
 def get_risk_free_rate_yf(market="US"):
     """
     Risk-free rate via yfinance.
-    US: 10Y Treasury (^TNX).
-    TW: Yahoo lacks a stable TW gov-bond index — raise so R applies documented fallback.
+    US and TW both use 10Y Treasury (^TNX) — TW valuation Rf aligned with US.
     """
     m = str(market or "US").strip().upper()
-    if m in ("TW", "TWN", "TAIWAN"):
-        _dbg("📊 yfinance Rf TW — no stable symbol; R fallback")
-        raise RuntimeError("TW Rf uses documented R fallback")
-    _dbg("📊 yfinance Rf ^TNX")
+    _dbg(f"📊 yfinance Rf ^TNX (market={m})")
     tnx = yf.Ticker("^TNX")
     # prefer fast_info / history last close
     try:

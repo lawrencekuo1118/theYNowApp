@@ -29,16 +29,13 @@ market_profile <- function(mode = get_market_mode()) {
       session_currency = "TWD",
       default_ticker = "2330.TW",
       wacc_tax = 20,
-      rf_symbol = "TW_GOV_APPROX",
-      # 一句透明：估值主源 Yahoo；Rf／法定 T 為市場預設（工程 fallback）
-      rf_label_zh = paste0(
-        "台灣公債近似（Yahoo 無穩定台債指數 → Rf fallback ",
-        "1.8%；法定 T＝20%）"
-      ),
-      rf_fallback = 1.8,
+      # 產品決策：台股評價 Rf 與美股相同（^TNX）；法定 T 仍為 20%
+      rf_symbol = "^TNX",
+      rf_label_zh = "與美股相同：美國 10 年期公債（^TNX）；法定 T＝20%",
+      rf_fallback = 4.0,
       data_source_note_zh = paste0(
-        "台股估值主源 Yahoo；Rf／法定 T 為市場預設",
-        "（Rf fallback 1.8%、T＝20%）。"
+        "台股估值主源 Yahoo；Rf 與美股相同（^TNX，fallback 約 4%）、",
+        "法定 T＝20%。"
       ),
       beta_bench = "0050.TW",
       beta_bench_choices = c(
