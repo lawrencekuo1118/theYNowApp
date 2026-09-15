@@ -719,7 +719,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v16.04</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v16.05</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -1416,6 +1416,36 @@ ui <- dashboardPage(
             margin-bottom: 10px;
           }
         }
+
+        /* HFV：驗證樣本口徑三選項直向、靠左對齊 */
+        #bt_fv_oos_mode .shiny-options-group {
+          display: flex !important;
+          flex-direction: column !important;
+          flex-wrap: nowrap !important;
+          align-items: flex-start !important;
+          column-gap: 0 !important;
+          row-gap: 6px;
+          padding-left: 0;
+          text-align: left;
+        }
+        #bt_fv_oos_mode .radio,
+        #bt_fv_oos_mode .radio-inline {
+          display: block !important;
+          float: none !important;
+          width: auto;
+          max-width: 100%;
+          margin: 0 !important;
+          padding-left: 0;
+          text-align: left;
+        }
+        #bt_fv_oos_mode .radio label,
+        #bt_fv_oos_mode .radio-inline label {
+          display: inline-block;
+          text-align: left;
+          white-space: normal;
+          font-weight: normal;
+          padding-left: 20px;
+        }
       ')),
       tags$script(HTML("
         (function () {
@@ -1800,6 +1830,20 @@ ui <- dashboardPage(
           .content .row > [class*='col-sm-6']:has(.info-box) {
             width: 33.333%;
             float: left;
+          }
+          /* 覆寫上方三欄壓縮：header KPI 仍直向全寬 */
+          .content-wrapper .content .ynow-header-kpi-row > [class*="col-"],
+          .content-wrapper .ynow-header-kpi-row > [class*="col-sm-"],
+          .content .ynow-header-kpi-row > [class*="col-"] {
+            width: 100% !important;
+            float: none !important;
+            display: block !important;
+            clear: both !important;
+            max-width: 100% !important;
+          }
+          .content-wrapper .ynow-header-kpi-row .info-box {
+            width: 100% !important;
+            margin-bottom: 10px;
           }
           .content-wrapper .small-box .inner {
             padding-right: 8px;
@@ -2393,6 +2437,69 @@ ui <- dashboardPage(
         }
         body.ynow-market-tw .ynow-header-logo-mark {
           filter: drop-shadow(0 0 2px rgba(0,0,0,0.35));
+        }
+
+        /* 手機首次開啟：右上 logo＋USD/TWD 與左上漢堡垂直置中對齊 */
+        @media (max-width: 767px) {
+          .main-header .navbar {
+            min-height: 50px !important;
+            height: 50px;
+            display: flex !important;
+            align-items: center !important;
+          }
+          .main-header .navbar > .sidebar-toggle,
+          .skin-black .main-header .navbar .sidebar-toggle {
+            height: 50px !important;
+            min-height: 50px !important;
+            line-height: 50px !important;
+            padding: 0 15px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            float: none !important;
+            margin: 0 !important;
+          }
+          .main-header .navbar > #ynow-market-header.ynow-market-header {
+            float: none !important;
+            align-self: center;
+          }
+          .main-header .navbar-custom-menu {
+            float: none !important;
+            margin-left: auto !important;
+            height: 50px !important;
+            display: flex !important;
+            align-items: center !important;
+          }
+          .main-header .navbar-custom-menu > .navbar-nav {
+            display: flex !important;
+            flex-direction: row;
+            align-items: center !important;
+            height: 50px !important;
+            margin: 0 !important;
+          }
+          .main-header .navbar-custom-menu .navbar-nav > li.ynow-ccy-header,
+          .main-header .navbar-custom-menu .navbar-nav > li#ynow-header-logo.ynow-header-logo {
+            float: none !important;
+            height: 50px !important;
+            min-height: 50px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            margin: 0 !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+          }
+          .main-header .navbar-custom-menu .navbar-nav > li.ynow-ccy-header {
+            padding: 0 8px 0 4px !important;
+          }
+          /* 手機壓縮 FX 狀態列，避免把按鈕視覺重心下移 */
+          .ynow-ccy-header .shiny-text-output {
+            max-width: 96px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            line-height: 1.1;
+          }
         }
 
         /* About：完整 LOGO（含文字）置頂品牌區 */
@@ -3857,12 +3964,12 @@ ui <- dashboardPage(
               ),
               radioButtons(
                 "bt_fv_oos_mode",
-                "驗證口徑",
-                inline = TRUE,
+                "驗證樣本口徑",
+                inline = FALSE,
                 choices = c(
-                  "已實現下期（預設）" = "realized",
-                  "擴張窗樣本外命中" = "expanding",
-                  "含未到期下期（樣本內）" = "insample"
+                  "僅計已實現下期（預設）" = "realized",
+                  "擴張視窗樣本外命中" = "expanding",
+                  "含未實現下期（樣本內）" = "insample"
                 ),
                 selected = "realized"
               )

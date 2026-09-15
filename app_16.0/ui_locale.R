@@ -108,6 +108,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_sec_results = "Results",
     hfv_chart_gap = "Magnitude (P_next − FV) / FV",
     hfv_table_detail = "Period detail",
+    hfv_oos_mode_label = "Validation sample scope",
+    hfv_oos_realized = "Realized next period only (default)",
+    hfv_oos_expanding = "Expanding-window out-of-sample hits",
+    hfv_oos_insample = "Include unrealized next period (in-sample)",
 
     # --- tabBox headers ---
     box_financial_report = "FINANCIAL REPORT",
@@ -252,6 +256,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_sec_results = "結果",
     hfv_chart_gap = "幅度 (P下一期 − FV) / FV",
     hfv_table_detail = "逐期明細",
+    hfv_oos_mode_label = "驗證樣本口徑",
+    hfv_oos_realized = "僅計已實現下期（預設）",
+    hfv_oos_expanding = "擴張視窗樣本外命中",
+    hfv_oos_insample = "含未實現下期（樣本內）",
 
     # --- tabBox headers ---
     box_financial_report = "財務報表",

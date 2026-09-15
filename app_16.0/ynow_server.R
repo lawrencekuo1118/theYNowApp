@@ -103,6 +103,27 @@ server <- function(input, output, session) {
       boxes = ui_box_header_specs(loc)
     )
     session$sendCustomMessage("ynowUiLocale", payload)
+    # HFV 驗證樣本口徑：標籤／三選項隨 locale 更新（值不變）
+    tryCatch({
+      oos_sel <- isolate(input$bt_fv_oos_mode)
+      if (is.null(oos_sel) || !oos_sel %in% c("realized", "expanding", "insample")) {
+        oos_sel <- "realized"
+      }
+      updateRadioButtons(
+        session,
+        "bt_fv_oos_mode",
+        label = ui_str("hfv_oos_mode_label", loc),
+        choices = stats::setNames(
+          c("realized", "expanding", "insample"),
+          c(
+            ui_str("hfv_oos_realized", loc),
+            ui_str("hfv_oos_expanding", loc),
+            ui_str("hfv_oos_insample", loc)
+          )
+        ),
+        selected = oos_sel
+      )
+    }, error = function(e) NULL)
   }
 
   observeEvent(input$market_mode_pick, {
