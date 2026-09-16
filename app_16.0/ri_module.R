@@ -215,21 +215,11 @@ ri_module_ui <- function(id) {
             fluidRow(
               column(
                 width = 6,
-                actionButton(
-                  ns("btn_calc_ri"), "啟動RI模型試算",
-                  class = "btn-success btn-block",
-                  style = "padding: 12px; font-weight: bold; font-size: 16px;",
-                  icon = icon("calculator")
-                )
+                ynow_calc_btn(ns("btn_calc_ri"), "啟動RI模型試算")
               ),
               column(
                 width = 6,
-                actionButton(
-                  ns("btn_reset_ri_params"), "回復預設",
-                  class = "btn-default btn-block ynow-btn-reset",
-                  style = "padding: 12px; font-weight: bold; font-size: 16px; background-color: #7f8c8d; color: #ffffff; border-color: #6c757d;",
-                  icon = icon("refresh")
-                )
+                ynow_reset_defaults_btn(ns("btn_reset_ri_params"))
               )
             ),
             tags$p(
