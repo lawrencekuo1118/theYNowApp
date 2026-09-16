@@ -3098,20 +3098,14 @@ server <- function(input, output, session) {
     debt <- suppressWarnings(as.numeric(input$rd_interest_bearing_debt)[1])
     rd <- tryCatch(scraped_rd_pct(), error = function(e) NA_real_)
     if (!is.finite(interest) || interest <= 0 || !is.finite(debt) || debt <= 0) {
-      return(HTML("<span style='color:#888;'>請輸入利息費用與有息負債後按「估算 rᵈ」。</span>"))
+      return(tags$p(style = "color:#888;font-size:13px;", "請輸入利息費用與有息負債後按估算。"))
     }
     raw <- 100 * interest / debt
-    b <- .rd_clamp_bounds()
-    clamped <- is.finite(rd) && abs(raw - rd) > 1e-6
-    clamp_note <- if (isTRUE(clamped)) {
-      sprintf("（原始 %.2f%%，已夾限於 %.1f～%.1f%%）", raw, b[["lo"]], b[["hi"]])
-    } else {
-      ""
-    }
-    HTML(sprintf(
-      "<b>估算 rᵈ（稅前）= %.2f%%</b> %s<br/><span style='color:#666;font-size:12px;'>公式：利息費用 ÷ 有息負債；WACC 使用 Rd×(1−T)。</span>",
-      if (is.finite(rd)) rd else raw,
-      clamp_note
+    shown <- if (is.finite(rd)) rd else raw
+    HTML(glue::glue(
+      "<div style='padding:8px;border-left:4px solid #222222;background:#f5f5f5;font-size:13px;'>
+         rᵈ = 利息費用 ÷ 有息負債 = <b>{sprintf('%.2f%%', shown)}</b>
+       </div>"
     ))
   })
  
@@ -3363,8 +3357,7 @@ server <- function(input, output, session) {
     }
     HTML(glue::glue(
       "<div style='padding:8px;border-left:4px solid #222222;background:#f5f5f5;font-size:13px;'>
-         Ke = Rf + β×(Rm−Rf) = <b>{sprintf('%.2f%%', re)}</b><br/>
-         （亦同步至 DDM Ke／WACC rₑ）
+         rₑ = Rf + β×(Rm−Rf) = <b>{sprintf('%.2f%%', re)}</b>
        </div>"
     ))
   }
@@ -5170,7 +5163,7 @@ server <- function(input, output, session) {
         "所得稅率 T", tax0, "%",
         .ev_wacc_pct(.wacc_pct(tax_pct = .rel(tax0, -1))),
         .ev_wacc_pct(.wacc_pct(tax_pct = .rel(tax0, +1))),
-        "WACC 公式：稅盾 Rd×(1−T)"
+        "WACC 公式：稅盾 rᵈ×(1−T)"
       )
     }
 

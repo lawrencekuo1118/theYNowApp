@@ -217,26 +217,22 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Defaults to Estimated Revenue Growth; you can override. ",
       "Terminal growth still uses SGR from Basic Setup."
     ),
-    # --- WACC / Rd / CAPM ---
+    # --- WACC / rᵈ / CAPM ---
     wacc_box_title = "WACC Estimate",
     wacc_help = paste0(
-      "WACC = We×Re + Wd×Rd×(1−T). ",
-      "Pre-tax Rd can be estimated below from Interest Expense ÷ Interest-bearing Debt; ",
-      "the tax shield Rd×(1−T) is applied in WACC."
+      "WACC = We×rₑ + Wd×rᵈ×(1−T). ",
+      "Pre-tax rᵈ can be estimated below from Interest Expense ÷ Interest-bearing Debt; ",
+      "the tax shield rᵈ×(1−T) is applied in WACC."
     ),
-    rd_box_title = "Estimate Rd",
-    rd_formula_note = paste0(
-      "Pre-tax Rd = Interest Expense ÷ Interest-bearing Debt; ",
-      "WACC then applies the Rd×(1−T) tax shield."
-    ),
+    rd_box_title = "Estimate rᵈ",
     rd_interest_label = "Interest Expense",
     rd_debt_label = "Interest-bearing Debt",
-    rd_min_label = "Estimated Rd floor (%)",
-    rd_max_label = "Estimated Rd ceiling (%)",
-    use_estimated_rd_label = "Use estimated Rd (Interest / Interest-bearing Debt)",
-    btn_calc_rd = "Estimate Rd",
+    rd_min_label = "Estimated rᵈ floor (%)",
+    rd_max_label = "Estimated rᵈ ceiling (%)",
+    use_estimated_rd_label = "Use estimated rᵈ (Interest / Interest-bearing Debt)",
+    btn_calc_rd = "Estimate rᵈ",
     btn_calc_wacc = "Calculate WACC",
-    capm_box_title = "CAPM Estimate Re",
+    capm_box_title = "CAPM Estimate rₑ",
     btn_calc_ri = "Run RI Valuation",
     btn_reset_defaults = "Reset to defaults",
     ri_calc_hint = "Confirm RI Settings, then click Run RI Valuation. Auto-runs when RI is the recommended primary model.",
@@ -472,16 +468,13 @@ locale_for_market <- function(mode = get_market_mode()) {
       "預設帶入「預估營收成長率」；可手動覆寫。",
       "終值成長率仍用 Get Started 的 SGR。"
     ),
-    # --- WACC / Rd / CAPM ---
+    # --- WACC / rᵈ / CAPM ---
     wacc_box_title = "WACC 估算",
     wacc_help = paste0(
-      "WACC = We×Re + Wd×Rd×(1−T)。",
-      "Rd 可由下方「估算 rᵈ」以利息費用／有息負債推估（稅前），再於此套用稅盾。"
+      "WACC = We×rₑ + Wd×rᵈ×(1−T)。",
+      "rᵈ 可由下方「估算 rᵈ」以利息費用／有息負債推估（稅前），再於此套用稅盾。"
     ),
     rd_box_title = "估算 rᵈ",
-    rd_formula_note = paste0(
-      "稅前 Rd = 利息費用 ÷ 有息負債；WACC 再套用 Rd×(1−T) 稅盾。"
-    ),
     rd_interest_label = "利息費用",
     rd_debt_label = "有息負債",
     rd_min_label = "估算 rᵈ 下限 (%)",
