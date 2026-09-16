@@ -213,6 +213,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     sgr_custom_label = "Custom SGR (%)",
     vbx_sgr_subtitle = "SGR",
     vbx_session_g_subtitle = "Current configured g (near-term)",
+    g_stage1_help = paste0(
+      "Defaults to Estimated Revenue Growth; you can override. ",
+      "Terminal growth still uses SGR from Basic Setup."
+    ),
     # --- nested / small tabs (keyed for JS; data-value match) ---
     tab_finance_summary = "Finance Summary",
     tab_income_statement = "Income Statement",
@@ -441,6 +445,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     sgr_custom_label = "自訂 SGR (%)",
     vbx_sgr_subtitle = "SGR",
     vbx_session_g_subtitle = "當前設定 g（近期末）",
+    g_stage1_help = paste0(
+      "預設帶入「預估營收成長率」；可手動覆寫。",
+      "終值成長率仍用 Get Started 的 SGR。"
+    ),
     # --- nested / small tabs ---
     tab_finance_summary = "財務摘要",
     tab_income_statement = "損益表",

@@ -2103,6 +2103,17 @@ server <- function(input, output, session) {
   }, {
     run_calc_trigger(run_calc_trigger() + 1)
   }, ignoreInit = TRUE)
+
+  # 切換至 Two-Stage 時，確保 g1 帶入目前預估營收成長率
+  observeEvent(input$dcf_mode, {
+    if (!identical(input$dcf_mode, "two_stage")) return()
+    eg <- suppressWarnings(as.numeric(isolate(estimated_g()))[1])
+    if (!is.finite(eg)) return()
+    cur <- suppressWarnings(as.numeric(input$g_stage1)[1])
+    if (is.null(input$g_stage1) || !is.finite(cur) || abs(cur - eg) > 1e-4) {
+      updateNumericInput(session, "g_stage1", value = round(eg, 2))
+    }
+  }, ignoreInit = TRUE)
   
   observeEvent(input$dcf_claim, {
     claim <- input$dcf_claim %||% "fcff"
@@ -4579,7 +4590,8 @@ server <- function(input, output, session) {
                         label = paste0("預估營收成長率 ➔ ", val, " %"))
     }
 
-    if (method != "custom" && !is.na(val) && !identical(input$dcf_mode, "two_stage")) {
+    if (!is.na(val)) {
+      # 成長率 g1 預設帶入預估營收成長率（含 Two-Stage；自訂方法亦同）
       if (is.null(input$g_stage1) || is.na(as.numeric(input$g_stage1)) ||
           abs(as.numeric(input$g_stage1) - as.numeric(val)) > 1e-4) {
         updateNumericInput(session, "g_stage1", value = val)
@@ -8368,7 +8380,11 @@ server <- function(input, output, session) {
     updateSelectInput(session, "lifecycle_stage", selected = APP_DEFAULTS$lifecycle_stage)
     updateNumericInput(session, "wacc_gordon", value = APP_DEFAULTS$wacc_gordon)
     updateNumericInput(session, "yr_stage1", value = APP_DEFAULTS$yr_stage1)
-    updateNumericInput(session, "g_stage1", value = APP_DEFAULTS$g_stage1)
+    eg_reset <- suppressWarnings(as.numeric(isolate(estimated_g()))[1])
+    updateNumericInput(
+      session, "g_stage1",
+      value = if (is.finite(eg_reset)) round(eg_reset, 2) else APP_DEFAULTS$g_stage1
+    )
     updateNumericInput(session, "wacc_stage1", value = APP_DEFAULTS$wacc_gordon)
     updateNumericInput(session, "wacc_stage2", value = APP_DEFAULTS$wacc_gordon)
     # 依當前方法重算 g（勿寫死舊 SGR）

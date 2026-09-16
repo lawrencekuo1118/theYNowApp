@@ -634,6 +634,10 @@ beta_rolling_section_ui <- function() {
       tags$p(style = "margin: 0 0 6px 0; font-size: 12.5px; color: #555;", tags$b("第一階段｜高速成長")),
       numericInput("yr_stage1", "年數", value = APP_DEFAULTS$yr_stage1),
       numericInput("g_stage1", "成長率 g1 (%)", value = APP_DEFAULTS$g_stage1),
+      helpText(
+        id = "ynow_g_stage1_help",
+        "預設帶入「預估營收成長率」；可手動覆寫。終值成長率仍用 Get Started 的 SGR。"
+      ),
       conditionalPanel(
         condition = "input.dcf_claim != 'fcfe'",
         numericInput("wacc_stage1", "折現率 WACC1 (%)", value = APP_DEFAULTS$wacc_stage1, step = 0.01)
@@ -723,7 +727,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v16.17</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v16.18</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -1748,6 +1752,8 @@ ui <- dashboardPage(
             if (sgrMethodTitle && s.sgr_method_title) sgrMethodTitle.textContent = s.sgr_method_title;
             var sgrCustomLab = document.querySelector('label[for=\"sgr\"]');
             if (sgrCustomLab && s.sgr_custom_label) sgrCustomLab.textContent = s.sgr_custom_label;
+            var g1Help = document.getElementById('ynow_g_stage1_help');
+            if (g1Help && s.g_stage1_help) g1Help.textContent = s.g_stage1_help;
             var kpiBlue = document.getElementById('ynow_kpi_legend_blue');
             if (kpiBlue && s.kpi_legend_blue) kpiBlue.textContent = s.kpi_legend_blue;
             var kpiRed = document.getElementById('ynow_kpi_legend_red');
