@@ -1349,16 +1349,16 @@ server <- function(input, output, session) {
       c("Beta", "Rolling Benchmark", .snapshot_value(input$beta_bench), "Cross-check only; not written to CAPM"),
       c("Beta", "Rolling Lookback (months)", .snapshot_value(input$beta_lookback_months), "Cross-check window; default 60 ≈ Yahoo 5Y"),
       c("Beta", "Rolling Min Observations", .snapshot_value(input$beta_min_obs), "Minimum months required for Rolling β"),
-      c("WACC", "Calculated WACC (%)", .snapshot_value(wacc_pct), "WACC = E/(E+D)×Re + D/(E+D)×Rd×(1-T)"),
+      c("WACC", "Calculated WACC (%)", .snapshot_value(wacc_pct), "WACC = E/(E+D)×rₑ + D/(E+D)×rᵈ×(1-T)"),
       c("WACC", "Re (%)", .snapshot_value(input$wacc_re), "Cost of equity"),
       c("WACC", "Use CAPM Re", .snapshot_value(input$use_estimated_re), "TRUE uses CAPM-estimated Re"),
-      c("WACC", "Rd (%)", .snapshot_value(input$wacc_rd), "Cost of debt; NA until Interest/Interest-bearing Debt"),
-      c("WACC", "Rd Interest Expense", .snapshot_value(input$rd_interest_expense), "Numerator for pre-tax Rd"),
-      c("WACC", "Rd Interest-bearing Debt", .snapshot_value(input$rd_interest_bearing_debt), "Denominator for pre-tax Rd (有息負債)"),
-      c("WACC", "Rd min (%)", .snapshot_value(input$wacc_rd_min), "Clamp floor for estimated Rd"),
-      c("WACC", "Rd max (%)", .snapshot_value(input$wacc_rd_max), "Clamp ceiling for estimated Rd"),
-      c("WACC", "Use estimated Rd", .snapshot_value(input$use_estimated_rd), "TRUE uses Interest/Debt Rd"),
-      c("WACC", "Tax Rate T (%)", .snapshot_value(input$wacc_tax), "After-tax debt cost = Rd×(1-T)"),
+      c("WACC", "rᵈ (%)", .snapshot_value(input$wacc_rd), "Cost of debt; NA until Interest/Interest-bearing Debt"),
+      c("WACC", "rᵈ Interest Expense", .snapshot_value(input$rd_interest_expense), "Numerator for pre-tax rᵈ"),
+      c("WACC", "rᵈ Interest-bearing Debt", .snapshot_value(input$rd_interest_bearing_debt), "Denominator for pre-tax rᵈ (有息負債)"),
+      c("WACC", "rᵈ min (%)", .snapshot_value(input$wacc_rd_min), "Clamp floor for estimated rᵈ"),
+      c("WACC", "rᵈ max (%)", .snapshot_value(input$wacc_rd_max), "Clamp ceiling for estimated rᵈ"),
+      c("WACC", "Use estimated rᵈ", .snapshot_value(input$use_estimated_rd), "TRUE uses Interest/Debt rᵈ"),
+      c("WACC", "Tax Rate T (%)", .snapshot_value(input$wacc_tax), "After-tax debt cost = rᵈ×(1-T)"),
       c("DDM", "D0", .snapshot_value(input[["mod_ddm-d0"]]), "P0 = D1 / (Ke-g); D1 = D0×(1+g)"),
       c("DDM", "g (%)", .snapshot_value(input[["mod_ddm-g"]]), "Dividend growth; optional sync with central SGR"),
       c("DDM", "Sync g with SGR", .snapshot_value(input[["mod_ddm-sync_g"]]), "If TRUE, DDM g follows Get Started SGR"),
@@ -1471,12 +1471,12 @@ server <- function(input, output, session) {
       wacc_stage1 = c("Two-Stage", "WACC1 (%)", "Stage 1 discount"),
       wacc_stage2 = c("Two-Stage", "WACC2 (%)", "Terminal discount"),
       wacc_re = c("WACC", "Re (%)", "Cost of equity"),
-      wacc_rd = c("WACC", "Rd (%)", "NA＝無靜態預設；利息／有息負債後覆寫"),
-      wacc_rd_min = c("WACC", "Rd 下限 (%)", "推估 rᵈ 夾限下限"),
-      wacc_rd_max = c("WACC", "Rd 上限 (%)", "推估 rᵈ 夾限上限"),
-      use_est_rd = c("WACC", "使用估算 Rd", "UI: use_estimated_rd；TRUE = Rd 跟利息／有息負債"),
-      rd_interest_expense = c("WACC", "利息費用", "Rd 分子；損益 Interest Expense 或 CF Interest Paid"),
-      rd_interest_bearing_debt = c("WACC", "有息負債", "Rd 分母；Total Debt 或 ST+LT Debt"),
+      wacc_rd = c("WACC", "rᵈ (%)", "NA＝無靜態預設；利息／有息負債後覆寫"),
+      wacc_rd_min = c("WACC", "rᵈ 下限 (%)", "推估 rᵈ 夾限下限"),
+      wacc_rd_max = c("WACC", "rᵈ 上限 (%)", "推估 rᵈ 夾限上限"),
+      use_est_rd = c("WACC", "使用估算 rᵈ", "UI: use_estimated_rd；TRUE = rᵈ 跟利息／有息負債"),
+      rd_interest_expense = c("WACC", "利息費用", "rᵈ 分子；損益 Interest Expense 或 CF Interest Paid"),
+      rd_interest_bearing_debt = c("WACC", "有息負債", "rᵈ 分母；Total Debt 或 ST+LT Debt"),
       wacc_tax = c("WACC", "稅率 T (%)", "After-tax debt cost"),
       use_est_re = c("WACC", "使用 CAPM Re", "UI: use_estimated_re；TRUE = Re 跟 CAPM"),
       capm_rf = c("CAPM", "Rf (%)", "無風險利率（啟動時估）"),
@@ -3098,20 +3098,14 @@ server <- function(input, output, session) {
     debt <- suppressWarnings(as.numeric(input$rd_interest_bearing_debt)[1])
     rd <- tryCatch(scraped_rd_pct(), error = function(e) NA_real_)
     if (!is.finite(interest) || interest <= 0 || !is.finite(debt) || debt <= 0) {
-      return(HTML("<span style='color:#888;'>請輸入利息費用與有息負債後按「估算 rᵈ」。</span>"))
+      return(tags$p(style = "color:#888;font-size:13px;", "請輸入利息費用與有息負債後按估算。"))
     }
     raw <- 100 * interest / debt
-    b <- .rd_clamp_bounds()
-    clamped <- is.finite(rd) && abs(raw - rd) > 1e-6
-    clamp_note <- if (isTRUE(clamped)) {
-      sprintf("（原始 %.2f%%，已夾限於 %.1f～%.1f%%）", raw, b[["lo"]], b[["hi"]])
-    } else {
-      ""
-    }
-    HTML(sprintf(
-      "<b>估算 rᵈ（稅前）= %.2f%%</b> %s<br/><span style='color:#666;font-size:12px;'>公式：利息費用 ÷ 有息負債；WACC 使用 Rd×(1−T)。</span>",
-      if (is.finite(rd)) rd else raw,
-      clamp_note
+    shown <- if (is.finite(rd)) rd else raw
+    HTML(glue::glue(
+      "<div style='padding:8px;border-left:4px solid #222222;background:#f5f5f5;font-size:13px;'>
+         rᵈ = 利息費用 ÷ 有息負債 = <b>{sprintf('%.2f%%', shown)}</b>
+       </div>"
     ))
   })
  
@@ -3363,8 +3357,7 @@ server <- function(input, output, session) {
     }
     HTML(glue::glue(
       "<div style='padding:8px;border-left:4px solid #222222;background:#f5f5f5;font-size:13px;'>
-         Ke = Rf + β×(Rm−Rf) = <b>{sprintf('%.2f%%', re)}</b><br/>
-         （亦同步至 DDM Ke／WACC rₑ）
+         rₑ = Rf + β×(Rm−Rf) = <b>{sprintf('%.2f%%', re)}</b>
        </div>"
     ))
   }
@@ -5170,7 +5163,7 @@ server <- function(input, output, session) {
         "所得稅率 T", tax0, "%",
         .ev_wacc_pct(.wacc_pct(tax_pct = .rel(tax0, -1))),
         .ev_wacc_pct(.wacc_pct(tax_pct = .rel(tax0, +1))),
-        "WACC 公式：稅盾 Rd×(1−T)"
+        "WACC 公式：稅盾 rᵈ×(1−T)"
       )
     }
 

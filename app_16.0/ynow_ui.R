@@ -160,17 +160,12 @@ capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
   )
 }
 
-#' Rd estimation block: Interest Expense ÷ Interest-bearing Debt (pre-tax Rd).
+#' rᵈ estimation block: Interest Expense ÷ Interest-bearing Debt (pre-tax rᵈ).
 #' Layout companion to CAPM on the WACC tab (left 50%).
 rd_estimate_settings_ui <- function(width = 6) {
   box(
     width = width,
     h4("估算 rᵈ", id = "ynow_rd_box_title"),
-    tags$p(
-      id = "ynow_rd_formula_note",
-      style = "margin:0 0 8px 0;color:#555;font-size:12px;",
-      "稅前 Rd = 利息費用 ÷ 有息負債；WACC 再套用 Rd×(1−T) 稅盾。"
-    ),
     numericInput(
       "rd_interest_expense", "利息費用",
       value = NA_real_, min = 0, step = 1
@@ -773,7 +768,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v16.20</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v16.21</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -1806,8 +1801,6 @@ ui <- dashboardPage(
             if (waccHelp && s.wacc_help) waccHelp.textContent = s.wacc_help;
             var rdBoxTitle = document.getElementById('ynow_rd_box_title');
             if (rdBoxTitle && s.rd_box_title) rdBoxTitle.textContent = s.rd_box_title;
-            var rdFormula = document.getElementById('ynow_rd_formula_note');
-            if (rdFormula && s.rd_formula_note) rdFormula.textContent = s.rd_formula_note;
             var rdIntLab = document.querySelector('label[for=\"rd_interest_expense\"]');
             if (rdIntLab && s.rd_interest_label) rdIntLab.textContent = s.rd_interest_label;
             var rdDebtLab = document.querySelector('label[for=\"rd_interest_bearing_debt\"]');
@@ -3830,7 +3823,7 @@ ui <- dashboardPage(
                               ),
                               
                               uiOutput("dcf_disc_formula_banner"),
-                              # 上列 100%：WACC 估算；下列左 50% Rd、右 50% CAPM
+                              # 上列 100%：WACC 估算；下列左 50% rᵈ、右 50% CAPM
                               fluidRow(
                                 box(
                                   width = 12,
@@ -3858,7 +3851,7 @@ ui <- dashboardPage(
                                   tags$p(
                                     id = "ynow_wacc_help",
                                     style = "margin:0 0 8px 0;color:#666;font-size:12px;",
-                                    "WACC = We×Re + Wd×Rd×(1−T)。Rd 可由下方「估算 rᵈ」以利息費用／有息負債推估（稅前），再於此套用稅盾。"
+                                    "WACC = We×rₑ + Wd×rᵈ×(1−T)。rᵈ 可由下方「估算 rᵈ」以利息費用／有息負債推估（稅前），再於此套用稅盾。"
                                   ),
                                   actionButton("calc_wacc", "計算 WACC", class = "btn-primary"),
                                   tags$br(), htmlOutput("wacc_result")
