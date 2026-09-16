@@ -768,7 +768,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v16.29</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v16.30</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -861,7 +861,7 @@ ui <- dashboardPage(
              menuItem("Dashboard", tabName = "dashboard", icon = icon("chart-line")),
              menuItem("Basic Setup", tabName = "get_started", icon = icon("play-circle")),
              menuItem(
-               text = tags$span(id = "ynow_menu_cat_asset", "Asset-Based Approach"),
+               text = tags$span(id = "ynow_menu_cat_asset", "Asset-Based Appr."),
                icon = icon("building"),
                startExpanded = FALSE,
                menuSubItem(
@@ -871,7 +871,7 @@ ui <- dashboardPage(
                )
              ),
              menuItem(
-               text = tags$span(id = "ynow_menu_cat_income", "Income / Cash Flow Approach"),
+               text = tags$span(id = "ynow_menu_cat_income", "Income / Cash Flow Appr."),
                icon = icon("chart-area"),
                startExpanded = FALSE,
                menuSubItem("DCF-Model", tabName = "dcf_calculator", icon = icon("calculator")),
@@ -879,15 +879,15 @@ ui <- dashboardPage(
                menuSubItem("RI-Model", tabName = "ri_calculator", icon = icon("gem"))
              ),
              menuItem(
-               text = tags$span(id = "ynow_menu_cat_relative", "Relative Valuation"),
+               text = tags$span(id = "ynow_menu_cat_relative", "Relative Valuation Appr."),
                icon = icon("percentage"),
                startExpanded = FALSE,
                menuSubItem("P/B", tabName = "pb_calculator", icon = icon("landmark"))
              ),
-             menuItem("YNOW", tabName = "sensitivity", icon = icon("sliders-h")),
-             menuItem("Blue Chip Ranking", tabName = "bluechip", icon = icon("star")),
              # 歷史基本面驗證（HFV）：理論估值 vs 實際市值 — 非策略回測
              menuItem("Hist. FV Validation", tabName = "hfv", icon = icon("balance-scale")),
+             menuItem("YNOW", tabName = "sensitivity", icon = icon("sliders-h")),
+             menuItem("Blue Chip Ranking", tabName = "bluechip", icon = icon("star")),
              menuItem("Decision Checklist", tabName = "decision_checklist", icon = icon("clipboard-check")),
              # 量化回測報表在底部「測試」；實驗區不放主選單
              menuItem("About", tabName = "about", icon = icon("info-circle"))
