@@ -768,7 +768,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v16.30</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v16.31</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -972,6 +972,11 @@ ui <- dashboardPage(
   dashboardBody(
     shinyjs::useShinyjs(),
     withMathJax(),
+    # Credit: same vertical band as USD／TWD under black header
+    tags$div(
+      class = "ynow-credit-float",
+      tags$span(class = "ynow-credit-text", "a lawrence kuo shiny app")
+    ),
     
     tags$head(
       tags$style(HTML('
@@ -1052,6 +1057,10 @@ ui <- dashboardPage(
         }
 
         .content-wrapper, .right-side { background-color: #f7f7f7; }
+        /* Clear fixed credit／ccy band under header */
+        .content-wrapper > .content {
+          padding-top: 52px;
+        }
         .skin-black .main-header .navbar {
           background-color: var(--ynow-ink) !important;
           position: relative;
@@ -1642,6 +1651,44 @@ ui <- dashboardPage(
           text-align: right;
           line-height: 1.3;
           margin: 0;
+        }
+        /* Credit line: same row / vertical center as USD／TWD buttons */
+        .ynow-credit-float {
+          position: fixed;
+          top: 58px;
+          left: 265px;
+          height: 34px;
+          display: flex;
+          align-items: center;
+          z-index: 1034;
+          pointer-events: none;
+          max-width: min(420px, calc(100vw - 360px));
+        }
+        .sidebar-collapse .ynow-credit-float {
+          left: 65px;
+          max-width: min(420px, calc(100vw - 180px));
+        }
+        .ynow-credit-float .ynow-credit-text {
+          margin: 0;
+          padding: 0;
+          font-size: 13px;
+          font-weight: 600;
+          line-height: 1.2;
+          color: #666666;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        @media (max-width: 767px) {
+          .ynow-credit-float,
+          .sidebar-collapse .ynow-credit-float {
+            left: 12px;
+            top: 58px;
+            max-width: calc(100vw - 160px);
+          }
+          .ynow-credit-float .ynow-credit-text {
+            font-size: 11px;
+          }
         }
         /* 預測年數 n：固定在 EPS (TTM) 數字框正下方（右欄） */
         #ibx_EPS { margin-bottom: 8px; }
@@ -3356,7 +3403,6 @@ ui <- dashboardPage(
     # ==========================================
     fluidRow(
       column(width = 12,
-             titlePanel(h5("a lawrence kuo shiny app")),
              div(
                class = "ynow-sc-row",
                div(
