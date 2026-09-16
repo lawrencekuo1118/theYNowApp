@@ -1082,7 +1082,7 @@ server <- function(input, output, session) {
   })
 
   # ==========================================
-  # 📌 v13.0：分類 → 主／副模型（側邊欄僅標主模型「推薦」）
+  # 📌 v13.0：分類 → 主／副模型（側邊欄標主「推薦」、副「備選」，並上浮至 Appr. 父層）
   # ==========================================
   .empty_model_rec <- function(summary_method, reason, company_type = "pending") {
     list(
@@ -1174,20 +1174,33 @@ server <- function(input, output, session) {
     }
   })
 
-  # Dynamic 「推薦」only on primary — patch badges in-place.
+  # Dynamic 「推薦」／「備選」— primary + secondary; bubble to parent Appr. tabs
   sidebar_badge_sig <- reactiveVal("")
   observe({
     rec <- model_sidebar_rec()
-    prim <- as.character(rec$primary %||% "")
-    sig <- paste(prim, rec$secondary %||% "", rec$company_type %||% "", sep = "|")
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
+    prim <- as.character(rec$primary %||% "")[1]
+    sec <- as.character(rec$secondary %||% "")[1]
+    if (is.na(prim)) prim <- ""
+    if (is.na(sec)) sec <- ""
+    sig <- paste(prim, sec, loc, rec$company_type %||% "", sep = "|")
     if (identical(sidebar_badge_sig(), sig)) return()
     sidebar_badge_sig(sig)
+    role_of <- function(key) {
+      if (nzchar(prim) && identical(prim, key)) return("primary")
+      if (nzchar(sec) && identical(sec, key)) return("secondary")
+      ""
+    }
     payload <- list(
-      dcf_calculator = list(on = identical(prim, "dcf")),
-      ddm_calculator = list(on = identical(prim, "ddm")),
-      pb_calculator = list(on = identical(prim, "pb")),
-      ri_calculator = list(on = identical(prim, "ri")),
-      nav_calculator = list(on = identical(prim, "nav"))
+      labels = list(
+        primary = ui_str("menu_badge_primary", loc),
+        secondary = ui_str("menu_badge_secondary", loc)
+      ),
+      dcf_calculator = list(role = role_of("dcf")),
+      ddm_calculator = list(role = role_of("ddm")),
+      pb_calculator = list(role = role_of("pb")),
+      ri_calculator = list(role = role_of("ri")),
+      nav_calculator = list(role = role_of("nav"))
     )
     session$sendCustomMessage("ynowSidebarBadges", payload)
   })
@@ -9644,7 +9657,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v16.32"),
+      paste0("- **App：** The YNow App v16.33"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

@@ -768,7 +768,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v16.32</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v16.33</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -1374,6 +1374,15 @@ ui <- dashboardPage(
         .label-primary, .badge-primary {
           background-color: var(--ynow-ink) !important;
         }
+        /* Sidebar 推薦／備選 badges */
+        .sidebar-menu small.ynow-rec-badge.ynow-rec-primary {
+          background-color: #dd4b39 !important;
+          color: #ffffff !important;
+        }
+        .sidebar-menu small.ynow-rec-badge.ynow-rec-secondary {
+          background-color: #6c757d !important;
+          color: #ffffff !important;
+        }
         .progress-bar-primary {
           background-color: var(--ynow-ink) !important;
         }
@@ -1796,20 +1805,74 @@ ui <- dashboardPage(
       ')),
       tags$script(HTML("
         (function () {
-          function setRecBadge(tab, on) {
-            var a = document.querySelector('.sidebar-menu a[data-value=\"' + tab + '\"]');
+          var TAB_PARENT = {
+            nav_calculator: 'ynow_menu_cat_asset',
+            dcf_calculator: 'ynow_menu_cat_income',
+            ddm_calculator: 'ynow_menu_cat_income',
+            ri_calculator: 'ynow_menu_cat_income',
+            pb_calculator: 'ynow_menu_cat_relative'
+          };
+          var LAST_BADGE_MAP = null;
+
+          function clearRecBadges(a) {
             if (!a) return;
-            var badge = a.querySelector('small.badge');
-            if (!on) {
-              if (badge) badge.remove();
-              return;
-            }
-            if (!badge) {
-              badge = document.createElement('small');
-              a.appendChild(badge);
-            }
-            badge.className = 'badge pull-right bg-red';
-            badge.textContent = '推薦';
+            a.querySelectorAll('small.ynow-rec-badge').forEach(function (b) { b.remove(); });
+          }
+
+          function setRecBadgeOnAnchor(a, role, labels) {
+            if (!a) return;
+            clearRecBadges(a);
+            if (!role) return;
+            var lab = labels || {};
+            var isPrimary = role === 'primary';
+            var badge = document.createElement('small');
+            badge.className = 'badge pull-right ynow-rec-badge ' +
+              (isPrimary ? 'ynow-rec-primary bg-red' : 'ynow-rec-secondary');
+            badge.textContent = isPrimary
+              ? (lab.primary || '推薦')
+              : (lab.secondary || '備選');
+            a.appendChild(badge);
+          }
+
+          function setTabBadge(tab, role, labels) {
+            var a = document.querySelector('.sidebar-menu a[data-value=\"' + tab + '\"]');
+            setRecBadgeOnAnchor(a, role || '', labels);
+          }
+
+          function setParentBadges(map, labels) {
+            var rolesByParent = {
+              ynow_menu_cat_asset: [],
+              ynow_menu_cat_income: [],
+              ynow_menu_cat_relative: []
+            };
+            Object.keys(TAB_PARENT).forEach(function (tab) {
+              var role = (map && map[tab] && map[tab].role) ? String(map[tab].role) : '';
+              var pid = TAB_PARENT[tab];
+              if (role && rolesByParent[pid]) rolesByParent[pid].push(role);
+            });
+            Object.keys(rolesByParent).forEach(function (pid) {
+              var span = document.getElementById(pid);
+              if (!span) return;
+              var a = span.closest ? span.closest('a') : null;
+              if (!a) a = span.parentElement;
+              var roles = rolesByParent[pid] || [];
+              var parentRole = '';
+              if (roles.indexOf('primary') >= 0) parentRole = 'primary';
+              else if (roles.indexOf('secondary') >= 0) parentRole = 'secondary';
+              setRecBadgeOnAnchor(a, parentRole, labels);
+            });
+          }
+
+          function applySidebarBadges(map) {
+            LAST_BADGE_MAP = map || null;
+            var labels = (map && map.labels) || {};
+            var tabs = ['dcf_calculator', 'ddm_calculator', 'pb_calculator', 'ri_calculator', 'nav_calculator'];
+            tabs.forEach(function (t) {
+              var role = (map && map[t] && map[t].role) ? String(map[t].role) : '';
+              if (!role && map && map[t] && map[t].on) role = 'primary';
+              setTabBadge(t, role, labels);
+            });
+            setParentBadges(map, labels);
           }
 
           function registerBadgeHandler() {
@@ -1817,13 +1880,7 @@ ui <- dashboardPage(
               setTimeout(registerBadgeHandler, 50);
               return;
             }
-            Shiny.addCustomMessageHandler('ynowSidebarBadges', function (map) {
-              var tabs = ['dcf_calculator', 'ddm_calculator', 'pb_calculator', 'ri_calculator', 'nav_calculator'];
-              tabs.forEach(function (t) {
-                var on = !!(map && map[t] && map[t].on);
-                setRecBadge(t, on);
-              });
-            });
+            Shiny.addCustomMessageHandler('ynowSidebarBadges', applySidebarBadges);
           }
           registerBadgeHandler();
 
@@ -1878,13 +1935,14 @@ ui <- dashboardPage(
             var a = document.querySelector('.sidebar-menu a[data-value=\"' + tab + '\"]');
             if (!a || !label) return;
             var icon = a.querySelector('i');
-            var badge = a.querySelector('small.badge');
+            var badges = a.querySelectorAll('small.ynow-rec-badge, small.badge');
             var iconClone = icon ? icon.cloneNode(true) : null;
-            var badgeClone = badge ? badge.cloneNode(true) : null;
+            var badgeClones = [];
+            badges.forEach(function (b) { badgeClones.push(b.cloneNode(true)); });
             a.innerHTML = '';
             if (iconClone) a.appendChild(iconClone);
             a.appendChild(document.createTextNode(' ' + label + ' '));
-            if (badgeClone) a.appendChild(badgeClone);
+            badgeClones.forEach(function (bc) { a.appendChild(bc); });
           }
 
           function setNavLinkLabel(a, label) {
@@ -1960,6 +2018,13 @@ ui <- dashboardPage(
             if (catIncome && s.menu_cat_income) catIncome.textContent = s.menu_cat_income;
             var catRel = document.getElementById('ynow_menu_cat_relative');
             if (catRel && s.menu_cat_relative) catRel.textContent = s.menu_cat_relative;
+            if (LAST_BADGE_MAP) {
+              LAST_BADGE_MAP.labels = {
+                primary: s.menu_badge_primary || (LAST_BADGE_MAP.labels && LAST_BADGE_MAP.labels.primary) || '推薦',
+                secondary: s.menu_badge_secondary || (LAST_BADGE_MAP.labels && LAST_BADGE_MAP.labels.secondary) || '備選'
+              };
+              applySidebarBadges(LAST_BADGE_MAP);
+            }
             applyTabLabels((payload && payload.tabs) || {});
             applyBoxHeaders((payload && payload.boxes) || []);
             var hfvTitle = document.getElementById('ynow_hfv_page_title');
