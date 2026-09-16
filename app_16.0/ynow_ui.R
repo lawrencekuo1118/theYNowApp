@@ -133,19 +133,7 @@
   )
 }
 
-#' Shared gray「回復預設」button (all valuation models).
-ynow_reset_defaults_btn <- function(input_id, label = "回復預設", block = TRUE) {
-  actionButton(
-    input_id,
-    label,
-    icon = icon("refresh"),
-    class = if (isTRUE(block)) "btn-default btn-block ynow-btn-reset" else "btn-default ynow-btn-reset",
-    style = paste(
-      "padding: 12px; font-weight: bold; font-size: 16px;",
-      "background-color: #7f8c8d; color: #ffffff; border-color: #6c757d;"
-    )
-  )
-}
+# Shared gray「回復預設」／試算 helpers live in setup.R (ynow_reset_defaults_btn, ynow_calc_btn).
 
 #' Shared CAPM / Beta settings block (canonical IDs on DCF → WACC).
 #' @param calc_id actionButton id
@@ -785,7 +773,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v16.19</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v16.20</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -3568,21 +3556,11 @@ ui <- dashboardPage(
                            fluidRow(
                              column(
                                width = 6,
-                               actionButton(
-                                 "mod_ddm-btn_calc_ddm", "試算 DDM",
-                                 class = "btn-success btn-block",
-                                 style = "padding: 12px; font-weight: bold; font-size: 16px;",
-                                 icon = icon("calculator")
-                               )
+                               ynow_calc_btn("mod_ddm-btn_calc_ddm", "試算 DDM")
                              ),
                              column(
                                width = 6,
-                               actionButton(
-                                 "mod_ddm-reset_ddm", "回復預設",
-                                 class = "btn-default btn-block ynow-btn-reset",
-                                 style = "padding: 12px; font-weight: bold; font-size: 16px; background-color: #7f8c8d; color: #ffffff; border-color: #6c757d;",
-                                 icon = icon("refresh")
-                               )
+                               ynow_reset_defaults_btn("mod_ddm-reset_ddm")
                              )
                            ),
                            tags$div(style = "margin-top: 10px;", htmlOutput("mod_ddm-vtxt_ddm_setting_details"))
@@ -3799,13 +3777,8 @@ ui <- dashboardPage(
                                        plotOutput("plt_dcf_trajectory", height = "420px"),
                                        h6(uiOutput("dcf_chart_help")),
                                        fluidRow(
-                                         column(width = 6, actionButton("calc", "試算 DCF", class = "btn-success btn-block", style = "padding: 12px; font-weight: bold; font-size: 16px;")),
-                                         column(width = 6, actionButton(
-                                           "reset_dcf", "回復預設",
-                                           class = "btn-default btn-block ynow-btn-reset",
-                                           style = "padding: 12px; font-weight: bold; font-size: 16px; background-color: #7f8c8d; color: #ffffff; border-color: #6c757d;",
-                                           icon = icon("refresh")
-                                         ))
+                                         column(width = 6, ynow_calc_btn("calc", "試算 DCF")),
+                                         column(width = 6, ynow_reset_defaults_btn("reset_dcf"))
                                        ),
                                        tags$div(style = "margin-top: 10px;", htmlOutput("vtxt_dcf_setting_details"))
                                 )

@@ -135,7 +135,7 @@ ddm_module_server <- function(id, auto_calc_pulse = reactive(0L),
       updateNumericInput(session, "g_stage1", value = APP_DEFAULTS$ddm_g_stage1)
       updateNumericInput(session, "yr_stage1", value = APP_DEFAULTS$ddm_yr_stage1)
       sync_ddm_to_financials()
-      showNotification("DDM 模型參數已依據最新財報與中央設定回復", type = "message")
+      showNotification("🔁 DDM 參數已回復預設", type = "message")
     })
     
     .ddm_calc_requested <- function() {

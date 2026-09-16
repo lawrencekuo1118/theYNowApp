@@ -2661,3 +2661,30 @@ generate_safe_line_plot <- function(data, ticker_name, metric_name) {
   err_msg <- if (!is.null(parsed$message)) parsed$message else paste("HTTP", code)
   list(ok = FALSE, html_url = NA_character_, number = NA_integer_, message = as.character(err_msg))
 }
+
+# ==========================================
+# Shared gray「回復預設」button (all valuation models)
+# ==========================================
+ynow_reset_defaults_btn <- function(input_id, label = "回復預設", block = TRUE) {
+  actionButton(
+    input_id,
+    label,
+    icon = icon("refresh"),
+    class = if (isTRUE(block)) "btn-default btn-block ynow-btn-reset" else "btn-default ynow-btn-reset",
+    style = paste(
+      "padding: 12px; font-weight: bold; font-size: 16px;",
+      "background-color: #7f8c8d; color: #ffffff; border-color: #6c757d;"
+    )
+  )
+}
+
+#' Companion green「試算」block button (pair with ynow_reset_defaults_btn).
+ynow_calc_btn <- function(input_id, label, block = TRUE) {
+  actionButton(
+    input_id,
+    label,
+    icon = icon("calculator"),
+    class = if (isTRUE(block)) "btn-success btn-block" else "btn-success",
+    style = "padding: 12px; font-weight: bold; font-size: 16px;"
+  )
+}

@@ -8497,7 +8497,7 @@ server <- function(input, output, session) {
     } else {
       .push_perpetual_g(est, notify_two_stage = FALSE)
     }
-    showNotification("🔁 所有 DCF 模型欄位已回復", type = "message")
+    showNotification("🔁 DCF 參數已回復預設", type = "message")
   })
   
   output$download_report <- downloadHandler(
