@@ -116,9 +116,10 @@ pb_asset_module_ui <- function(id) {
                           ),
                           fluidRow(
                             column(12,
-                                   actionButton(ns("btn_reset_pb"), "回復系統預設參數",
-                                                icon = icon("undo"), class = "btn-sm",
-                                                style = "background-color: #7f8c8d; color: white; border: none; margin-top: 10px;")
+                                   actionButton(ns("btn_reset_pb"), "回復預設",
+                                                icon = icon("refresh"),
+                                                class = "btn-default btn-block ynow-btn-reset",
+                                                style = "padding: 12px; font-weight: bold; font-size: 16px; background-color: #7f8c8d; color: #ffffff; border-color: #6c757d; margin-top: 10px;")
                             )
                           )
                  )

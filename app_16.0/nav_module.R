@@ -48,7 +48,7 @@ nav_module_ui <- function(id) {
         ),
         fluidRow(
           div(
-            "Fair Price = NAVPS × NAV multiple　｜　NAV = Equity − holdco discount × investments",
+            "Fair Price = NAVPS × NAV 倍數　｜　NAV = 股東權益 − 控股折價 × 投資科目",
             style = paste(
               "font-size:16px; font-weight:bold; color:#2C3E50; text-align:center;",
               "margin-bottom:15px; padding:10px; background-color:#F2F4F4; border-radius:8px;"
@@ -138,9 +138,10 @@ nav_module_ui <- function(id) {
         ),
         fluidRow(
           column(12, actionButton(
-            ns("btn_reset_nav"), "回復系統預設參數",
-            icon = icon("undo"), class = "btn-sm",
-            style = "background-color:#7f8c8d; color:white; border:none; margin-top:10px;"
+            ns("btn_reset_nav"), "回復預設",
+            icon = icon("refresh"),
+            class = "btn-default btn-block ynow-btn-reset",
+            style = "padding: 12px; font-weight: bold; font-size: 16px; background-color: #7f8c8d; color: #ffffff; border-color: #6c757d; margin-top: 10px;"
           ))
         )
       )

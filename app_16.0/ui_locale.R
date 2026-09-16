@@ -213,6 +213,33 @@ locale_for_market <- function(mode = get_market_mode()) {
     sgr_custom_label = "Custom SGR (%)",
     vbx_sgr_subtitle = "SGR",
     vbx_session_g_subtitle = "Current configured g (near-term)",
+    g_stage1_help = paste0(
+      "Defaults to Estimated Revenue Growth; you can override. ",
+      "Terminal growth still uses SGR from Basic Setup."
+    ),
+    # --- WACC / Rd / CAPM ---
+    wacc_box_title = "WACC Estimate",
+    wacc_help = paste0(
+      "WACC = We×Re + Wd×Rd×(1−T). ",
+      "Pre-tax Rd can be estimated below from Interest Expense ÷ Interest-bearing Debt; ",
+      "the tax shield Rd×(1−T) is applied in WACC."
+    ),
+    rd_box_title = "Estimate Rd",
+    rd_formula_note = paste0(
+      "Pre-tax Rd = Interest Expense ÷ Interest-bearing Debt; ",
+      "WACC then applies the Rd×(1−T) tax shield."
+    ),
+    rd_interest_label = "Interest Expense",
+    rd_debt_label = "Interest-bearing Debt",
+    rd_min_label = "Estimated Rd floor (%)",
+    rd_max_label = "Estimated Rd ceiling (%)",
+    use_estimated_rd_label = "Use estimated Rd (Interest / Interest-bearing Debt)",
+    btn_calc_rd = "Estimate Rd",
+    btn_calc_wacc = "Calculate WACC",
+    capm_box_title = "CAPM Estimate Re",
+    btn_calc_ri = "Run RI Valuation",
+    btn_reset_defaults = "Reset to defaults",
+    ri_calc_hint = "Confirm RI Settings, then click Run RI Valuation. Auto-runs when RI is the recommended primary model.",
     # --- nested / small tabs (keyed for JS; data-value match) ---
     tab_finance_summary = "Finance Summary",
     tab_income_statement = "Income Statement",
@@ -441,6 +468,31 @@ locale_for_market <- function(mode = get_market_mode()) {
     sgr_custom_label = "自訂 SGR (%)",
     vbx_sgr_subtitle = "SGR",
     vbx_session_g_subtitle = "當前設定 g（近期末）",
+    g_stage1_help = paste0(
+      "預設帶入「預估營收成長率」；可手動覆寫。",
+      "終值成長率仍用 Get Started 的 SGR。"
+    ),
+    # --- WACC / Rd / CAPM ---
+    wacc_box_title = "WACC 估算",
+    wacc_help = paste0(
+      "WACC = We×Re + Wd×Rd×(1−T)。",
+      "Rd 可由下方「估算 rᵈ」以利息費用／有息負債推估（稅前），再於此套用稅盾。"
+    ),
+    rd_box_title = "估算 rᵈ",
+    rd_formula_note = paste0(
+      "稅前 Rd = 利息費用 ÷ 有息負債；WACC 再套用 Rd×(1−T) 稅盾。"
+    ),
+    rd_interest_label = "利息費用",
+    rd_debt_label = "有息負債",
+    rd_min_label = "估算 rᵈ 下限 (%)",
+    rd_max_label = "估算 rᵈ 上限 (%)",
+    use_estimated_rd_label = "採用估算 rᵈ（利息／有息負債）",
+    btn_calc_rd = "估算 rᵈ",
+    btn_calc_wacc = "計算 WACC",
+    capm_box_title = "CAPM 估算 rₑ",
+    btn_calc_ri = "啟動RI模型試算",
+    btn_reset_defaults = "回復預設",
+    ri_calc_hint = "請確認下方 RI Settings 參數後按「啟動RI模型試算」。搜尋後若 RI 為推薦主模型會自動試算。",
     # --- nested / small tabs ---
     tab_finance_summary = "財務摘要",
     tab_income_statement = "損益表",

@@ -1,4 +1,4 @@
-# The YNow App v16.17 — Valuation Methodology
+# The YNow App v16.19 — Valuation Methodology
 
 先分類，再選模型；先推導，再校正；先給區間，再給單點；先做基本面估值。
 
