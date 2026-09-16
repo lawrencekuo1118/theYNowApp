@@ -88,7 +88,7 @@ compute_ri_valuation <- function(b0,
     return(list(status = "error", message = "B0 無效，無法計算。", warnings = warnings))
   }
   if (validate && b0 <= 0) {
-    warnings <- c(warnings, "Book Value (B0) ≤ 0：RI 模型可能不可靠。")
+    warnings <- c(warnings, "帳面淨值 B0 ≤ 0：RI 模型可能不可靠。")
   }
   if (!is.finite(ke) || !is.finite(g)) {
     return(list(status = "error", message = "Ke 或 g 無效。", warnings = warnings))
@@ -201,7 +201,8 @@ ri_module_ui <- function(id) {
         "RI Overview", icon = icon("gem"),
         fluidRow(
           div(
-            "Residual Income = (ROE − Ke) × Beginning Book Value",
+            id = ns("ynow_ri_formula_banner"),
+            "剩餘收益 RI = (ROE − Ke) × 期初每股帳面淨值 B0",
             style = paste(
               "font-size: 16px; font-weight: bold; color: #2C3E50; text-align: center;",
               "margin-bottom: 12px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
@@ -211,13 +212,29 @@ ri_module_ui <- function(id) {
         fluidRow(
           column(
             12,
+            fluidRow(
+              column(
+                width = 6,
+                ynow_calc_btn(ns("btn_calc_ri"), "啟動RI模型試算")
+              ),
+              column(
+                width = 6,
+                ynow_reset_defaults_btn(ns("btn_reset_ri_params"))
+              )
+            ),
+            tags$p(
+              id = ns("ynow_ri_calc_hint"),
+              style = "margin: 8px 0 12px 0; color: #666; font-size: 12px;",
+              "請確認下方 RI Settings 參數後按「啟動RI模型試算」。搜尋後若 RI 為推薦主模型會自動試算。"
+            ),
+            uiOutput(ns("ui_ri_source_notes")),
             uiOutput(ns("ui_ri_warnings")),
             uiOutput(ns("ui_ri_breakdown"))
           )
         ),
         fluidRow(
           box(
-            title = "Valuation Waterfall", width = 12, status = "success", solidHeader = TRUE,
+            title = "估值瀑布圖 (Valuation Waterfall)", width = 12, status = "success", solidHeader = TRUE,
             plotlyOutput(ns("plt_ri_waterfall"), height = "360px") %>% withSpinner()
           )
         ),
@@ -229,7 +246,7 @@ ri_module_ui <- function(id) {
         ),
         fluidRow(
           box(
-            title = tagList(icon("table"), "Forecast Detail"),
+            title = tagList(icon("table"), "預測明細"),
             width = 12, status = "primary", solidHeader = TRUE,
             collapsible = TRUE, collapsed = FALSE,
             div(
@@ -269,25 +286,26 @@ ri_module_ui <- function(id) {
         h4(tags$b("模型參數假設")),
         fluidRow(
           column(4, numericInput(ns("ri_years"), "預測期 (Years)", value = APP_DEFAULTS$ri_years %||% 5, min = 1, max = 15, step = 1)),
-          column(4, numericInput(ns("ri_ke"), "股東權益成本 (Ke, %)", value = APP_DEFAULTS$ddm_ke %||% 8.0, step = 0.1)),
-          column(4, numericInput(ns("ri_g"), "終值永續成長率 (g, %)", value = APP_DEFAULTS$sgr %||% 2.0, step = 0.1))
+          column(4, numericInput(ns("ri_ke"), "股東權益成本 Ke (%)", value = APP_DEFAULTS$ddm_ke %||% 8.0, step = 0.1)),
+          column(4, numericInput(ns("ri_g"), "終值永續成長率 g (%)", value = APP_DEFAULTS$sgr %||% 2.0, step = 0.1))
         ),
         fluidRow(
           column(6, numericInput(ns("ri_roe"), "起始／預期 ROE (%)", value = APP_DEFAULTS$ri_roe %||% 15.0, step = 0.1)),
-          column(6, numericInput(ns("ri_payout"), "預期現金配息率 (Payout, %)", value = APP_DEFAULTS$ri_payout %||% 40.0, step = 1))
+          column(6, numericInput(ns("ri_payout"), "預期現金配息率 Payout (%)", value = APP_DEFAULTS$ri_payout %||% 40.0, step = 1))
         ),
+        uiOutput(ns("ui_ri_param_sources")),
         hr(style = "border-top: 1px solid #BDC3C7;"),
-        h4(tags$b("ROE Forecast Method")),
+        h4(tags$b("ROE 預測方法")),
         fluidRow(
           column(
             6,
             selectInput(
               ns("roe_method"), "ROE 預測方法",
               choices = c(
-                "Constant ROE" = "constant",
-                "Linear Fade" = "linear",
-                "Industry Fade" = "industry",
-                "Custom Vector" = "custom"
+                "固定 ROE（Constant）" = "constant",
+                "線性淡化（Linear Fade）" = "linear",
+                "產業收斂（Industry Fade）" = "industry",
+                "自訂向量（Custom）" = "custom"
               ),
               selected = APP_DEFAULTS$roe_method %||% "constant"
             )
@@ -298,14 +316,9 @@ ri_module_ui <- function(id) {
         fluidRow(
           column(
             12,
-            actionButton(
-              ns("btn_reset_ri_params"), "回復系統預設參數",
-              icon = icon("undo"), class = "btn-sm",
-              style = "background-color: #7f8c8d; color: white; border: none; margin-top: 10px;"
-            ),
-            tags$span(
-              style = "margin-left: 12px; color: #7f8c8d; font-size: 12px;",
-              "參數變更後估值會自動更新（無需另按試算）。"
+            tags$p(
+              style = "margin-top: 10px; color: #7f8c8d; font-size: 12px;",
+              "參數變更後請回 Overview 按「啟動RI模型試算」（或「回復預設」重設後再試算）。"
             )
           )
         )
@@ -324,7 +337,7 @@ ri_module_ui <- function(id) {
         ),
         fluidRow(
           box(
-            title = "Interactive Heatmap",
+            title = "互動熱力圖",
             width = 12, status = "info", solidHeader = TRUE,
             plotlyOutput(ns("plt_ri_heatmap"), height = "420px") %>% withSpinner()
           )
@@ -353,7 +366,8 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
                              capm_rf = reactive(NA),
                              capm_beta = reactive(NA),
                              capm_rm = reactive(NA),
-                             use_estimated_re = reactive(FALSE)) {
+                             use_estimated_re = reactive(FALSE),
+                             auto_calc_pulse = reactive(0L)) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -408,7 +422,8 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
     }, ignoreInit = TRUE)
 
     # ----- Sync B0 / ROE / payout from statements -----
-    observeEvent(list(d_balance_sheet(), current_price(), quote_price(), market_cap(), current_ticker()), {
+    observeEvent(list(d_balance_sheet(), d_income_statement(), d_cash_flow(),
+                      current_price(), quote_price(), market_cap(), current_ticker()), {
       req(d_balance_sheet(), d_income_statement())
       df_bs <- d_balance_sheet()
 
@@ -437,7 +452,12 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
         updateNumericInput(session, "ri_roe", value = round(.ri_clip(roe, -50, 80), 2))
       }
 
-      div_paid_total <- abs(select_current_metric(d_cash_flow(), "Cash Dividends Paid", "flow"))
+      cf <- tryCatch(d_cash_flow(), error = function(e) NULL)
+      div_paid_total <- if (!is.null(cf) && is.data.frame(cf) && nrow(cf) > 0) {
+        abs(select_current_metric(cf, "Cash Dividends Paid", "flow"))
+      } else {
+        NA_real_
+      }
       if (!is.na(div_paid_total) && !is.na(ni) && ni > 0) {
         payout <- .ri_clip((div_paid_total / ni) * 100, 0, 100)
         updateNumericInput(session, "ri_payout", value = round(payout, 2))
@@ -448,6 +468,42 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
       if (!is.null(global_g) && !is.null(global_g()) && is.finite(global_g())) {
         updateNumericInput(session, "ri_g", value = round(as.numeric(global_g()), 2))
       }
+    })
+
+    output$ui_ri_param_sources <- renderUI({
+      tags$ul(
+        style = "margin: 4px 0 0 0; padding-left: 18px; color: #555; font-size: 12px;",
+        tags$li(tags$b("B0："), "資產負債表 Common Equity ÷ 流通股數（ADR／雙重股權以市值÷股價約當）"),
+        tags$li(tags$b("ROE："), "損益表 Net Income ÷ Common Equity"),
+        tags$li(tags$b("Payout："), "現金流量表 Cash Dividends Paid ÷ Net Income（無股利則 0）"),
+        tags$li(tags$b("Ke："), "中央股權成本（WACC／CAPM 之 rₑ；勾選採用估算時跟 CAPM）"),
+        tags$li(tags$b("g："), "Get Started 終值永續成長率 SGR")
+      )
+    })
+
+    output$ui_ri_source_notes <- renderUI({
+      b0 <- suppressWarnings(as.numeric(input$b0)[1])
+      ke <- suppressWarnings(as.numeric(input$ri_ke)[1])
+      g <- suppressWarnings(as.numeric(input$ri_g)[1])
+      roe <- suppressWarnings(as.numeric(input$ri_roe)[1])
+      payout <- suppressWarnings(as.numeric(input$ri_payout)[1])
+      tags$div(
+        style = "margin: 0 0 10px 0; padding: 8px 10px; background: #f8f9fa; border-radius: 6px; font-size: 12px; color: #444;",
+        tags$b("參數資料來源（已套用）"),
+        tags$ul(
+          style = "margin: 4px 0 0 0; padding-left: 18px;",
+          tags$li(sprintf("B0＝%s（Common Equity／股數）",
+                          if (is.finite(b0)) sprintf("%.2f", b0) else "N/A")),
+          tags$li(sprintf("Ke＝%s%%（中央 CAPM／WACC rₑ）",
+                          if (is.finite(ke)) sprintf("%.2f", ke) else "N/A")),
+          tags$li(sprintf("g＝%s%%（SGR）",
+                          if (is.finite(g)) sprintf("%.2f", g) else "N/A")),
+          tags$li(sprintf("ROE＝%s%%（NI／Equity）",
+                          if (is.finite(roe)) sprintf("%.2f", roe) else "N/A")),
+          tags$li(sprintf("Payout＝%s%%（Cash Dividends Paid／NI）",
+                          if (is.finite(payout)) sprintf("%.2f", payout) else "N/A"))
+        )
+      )
     })
 
     observeEvent(input$btn_sync_b0, {
@@ -495,7 +551,26 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
       updateNumericInput(session, "ri_payout", value = APP_DEFAULTS$ri_payout %||% 40)
       updateSelectInput(session, "roe_method", selected = APP_DEFAULTS$roe_method %||% "constant")
       updateNumericInput(session, "roe_industry", value = industry_roe_pct())
-      showNotification("🔁 已重設為系統預設參數", type = "message")
+      # Re-sync B0 from statements when available
+      tryCatch({
+        df_bs <- d_balance_sheet()
+        if (!is.null(df_bs) && is.data.frame(df_bs) && nrow(df_bs) > 0) {
+          sh_ri <- .ri_resolve_shares(df_bs)
+          equity <- select_current_metric_any(df_bs, EQUITY_PATTERNS, "stock")
+          q_ccy <- tryCatch(quote_currency(), error = function(e) NA_character_)
+          f_ccy <- tryCatch(financial_currency(), error = function(e) NA_character_)
+          if (!is.na(equity) && is.finite(sh_ri$shares) && sh_ri$shares > 0) {
+            eq_ccy <- equity_money_ccy(df_bs, session_ccy = q_ccy, statement_ccy = f_ccy)
+            b0 <- per_share_in_quote(
+              equity, sh_ri$shares,
+              equity_ccy = eq_ccy, to_ccy = q_ccy,
+              share_method = sh_ri$method, statement_ccy = f_ccy
+            )
+            if (is.finite(b0)) updateNumericInput(session, "b0", value = round(b0, 2))
+          }
+        }
+      }, error = function(e) invisible(NULL))
+      showNotification("🔁 RI 參數已回復預設", type = "message")
     })
 
     observeEvent(global_re(), {
@@ -530,8 +605,8 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
 
       if (identical(method, "linear")) {
         fluidRow(
-          column(4, numericInput(ns("roe_terminal"), "Terminal ROE (%)", value = max(5, start_roe - 8), step = 0.1)),
-          column(8, helpText("由起始 ROE 線性淡化至 Terminal ROE，年數＝預測期。"))
+          column(4, numericInput(ns("roe_terminal"), "終值 ROE (%)", value = max(5, start_roe - 8), step = 0.1)),
+          column(8, helpText("由起始 ROE 線性淡化至終值 ROE，年數＝預測期。"))
         )
       } else if (identical(method, "industry")) {
         ind_val <- {
@@ -542,7 +617,7 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
           column(
             4,
             numericInput(
-              ns("roe_industry"), "Industry Average ROE (%)",
+              ns("roe_industry"), "產業平均 ROE (%)",
               value = ind_val, step = 0.1
             )
           ),
@@ -561,14 +636,14 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
             12,
             textInput(
               ns("roe_custom_txt"),
-              sprintf("Custom ROE Vector (%%, %d 年，逗號分隔)", n),
+              sprintf("自訂 ROE 向量（%%，%d 年，逗號分隔）", n),
               value = default_vec
             ),
             helpText("例：31, 29, 27, 25, 23 — 長度不足會沿用最後一值；過長會截斷。")
           )
         )
       } else {
-        helpText("Constant：各年 ROE 皆等於「起始／預期 ROE」。")
+        helpText("固定：各年 ROE 皆等於「起始／預期 ROE」。")
       }
     })
 
@@ -591,13 +666,22 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
       if (!length(path)) return(NULL)
       tags$div(
         style = "margin-top: 8px; font-size: 13px; color: #34495e;",
-        tags$b("ROE path (%): "),
+        tags$b("ROE 路徑 (%): "),
         paste(sprintf("%.1f", path), collapse = " → ")
       )
     })
 
-    # ----- Core reactive valuation (auto-updates) -----
-    ri_calc <- reactive({
+    .ri_calc_requested <- function() {
+      btn <- suppressWarnings(as.integer(input$btn_calc_ri)[1])
+      pulse <- suppressWarnings(as.integer(auto_calc_pulse())[1])
+      (is.finite(btn) && btn >= 1L) || (is.finite(pulse) && pulse >= 1L)
+    }
+
+    # ----- Core valuation（需「啟動RI模型試算」或自動試算 pulse）-----
+    ri_calc <- eventReactive(list(input$btn_calc_ri, auto_calc_pulse()), {
+      if (!isTRUE(.ri_calc_requested())) {
+        return(list(status = "idle"))
+      }
       req(!is.null(input$b0), !is.null(input$ri_ke), !is.null(input$ri_g),
           !is.null(input$ri_years), !is.null(input$ri_payout), !is.null(input$ri_roe))
 
@@ -621,11 +705,18 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
         roe_path = path_dec,
         validate = TRUE
       )
-    })
+    }, ignoreNULL = FALSE)
 
     # ----- Warnings -----
     output$ui_ri_warnings <- renderUI({
-      res <- ri_calc()
+      res <- tryCatch(ri_calc(), error = function(e) list(status = "idle"))
+      if (identical(res$status, "idle") || is.null(res$status)) {
+        return(div(
+          style = "margin-bottom:10px;padding:12px;background:#eef5ff;border-left:5px solid #3498db;border-radius:4px;color:#2c3e50;",
+          icon("info-circle"), " ",
+          "尚未試算：請按「啟動RI模型試算」。"
+        ))
+      }
       tags_list <- list()
 
       if (!is.null(res$message) && identical(res$status, "error")) {
@@ -652,7 +743,7 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
             div(
               style = "margin-bottom:10px;padding:12px;background:#fdf2f2;border-left:5px solid #d9534f;border-radius:4px;color:#a94442;font-weight:600;",
               icon("fire"), " ",
-              "Terminal Value dominates the valuation. Consider lowering perpetual growth or extending forecast years."
+              "終值（Terminal Value）佔比過高。請考慮降低永續成長率或拉長預測期。"
             )
           ))
         } else if (res$tv_ratio > 0.70) {
@@ -660,7 +751,7 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
             div(
               style = "margin-bottom:10px;padding:12px;background:#fff8e6;border-left:5px solid #f0ad4e;border-radius:4px;color:#8a6d3b;font-weight:600;",
               icon("exclamation-triangle"), " ",
-              "Terminal Value contributes over 70% of total valuation. The model is highly sensitive to Ke and perpetual growth."
+              "終值貢獻超過總估值 70%。模型對 Ke 與永續成長率高度敏感。"
             )
           ))
         }
@@ -693,22 +784,22 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
       else "#8e44ad"
 
       tagList(
-        h4(tags$b("Residual Income Breakdown"), style = "margin: 8px 0 4px 0;"),
+        h4(tags$b("剩餘收益拆解"), style = "margin: 8px 0 4px 0;"),
         div(
           style = "display:flex;flex-wrap:wrap;justify-content:space-between;align-items:stretch;",
-          card("Book Value (B0)", paste0(money_prefix(), sprintf("%.2f", res$b0))),
-          card("Forecast RI (PV)", paste0(money_prefix(), sprintf("%.2f", res$pv_ri)),
+          card("帳面淨值 B0", paste0(money_prefix(), sprintf("%.2f", res$b0))),
+          card("預測期 RI（現值）", paste0(money_prefix(), sprintf("%.2f", res$pv_ri)),
                accent = if (res$pv_ri >= 0) "#27ae60" else "#c0392b"),
-          card("Terminal Value (PV)", paste0(money_prefix(), sprintf("%.2f", res$pv_terminal)),
+          card("終值（現值）", paste0(money_prefix(), sprintf("%.2f", res$pv_terminal)),
                accent = "#8e44ad"),
-          card("Intrinsic Value", paste0(money_prefix(), sprintf("%.2f", res$intrinsic)),
+          card("內在價值", paste0(money_prefix(), sprintf("%.2f", res$intrinsic)),
                accent = "#1abc9c", bg = "#e8f8f5"),
-          card("Terminal Contribution", tv_pct, accent = tv_col,
+          card("終值佔比", tv_pct, accent = tv_col,
                sub = "PV_Terminal / Intrinsic")
         ),
         p(
           style = "font-size:12px;color:#7f8c8d;margin-top:4px;",
-          "Intrinsic Value = B0 + PV(Forecast RI) + PV(Terminal RI)"
+          "內在價值 = B0 + PV(預測期 RI) + PV(終值 RI)"
         )
       )
     })
@@ -719,7 +810,7 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
       validate(need(identical(res$status, "success"), "調整參數後顯示瀑布圖"))
 
       # Plotly waterfall: measure relative/total
-      x <- c("Book Value (B0)", "Forecast RI", "Terminal RI", "Intrinsic Value")
+      x <- c("帳面淨值 B0", "預測期 RI", "終值 RI", "內在價值")
       measure <- c("absolute", "relative", "relative", "total")
       y <- c(res$b0, res$pv_ri, res$pv_terminal, res$intrinsic)
       text <- sprintf("$%.2f", y)
@@ -737,8 +828,8 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
         totals = list(marker = list(color = "#1abc9c"))
       ) %>%
         layout(
-          title = list(text = "RI Valuation Waterfall", font = list(size = 14)),
-          yaxis = list(title = paste0(money_label(), " / share"), zeroline = TRUE),
+          title = list(text = "RI 估值瀑布圖", font = list(size = 14)),
+          yaxis = list(title = paste0(money_label(), "／股"), zeroline = TRUE),
           xaxis = list(title = ""),
           margin = list(t = 50, b = 80)
         )
@@ -927,7 +1018,7 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
         colorbar = list(title = "Intrinsic")
       ) %>%
         layout(
-          title = list(text = "RI Intrinsic Value Heatmap", font = list(size = 14)),
+          title = list(text = "RI 內在價值熱力圖", font = list(size = 14)),
           xaxis = list(title = "Cost of Equity Ke (%)", dtick = 1),
           yaxis = list(title = "Perpetual Growth g (%)", dtick = 1),
           margin = list(t = 50)

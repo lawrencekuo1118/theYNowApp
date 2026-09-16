@@ -25,6 +25,23 @@ check("fx missing → NA", !is.finite(fx_factor("TWD", "USD", usd_twd = NA_real_
 check("fx zero → NA", !is.finite(fx_factor("TWD", "USD", usd_twd = 0)))
 check("fx live 32", abs(fx_factor("TWD", "USD", usd_twd = 32) - 1 / 32) < 1e-12)
 check("same ccy → 1", identical(fx_factor("USD", "USD", usd_twd = NA_real_), 1))
+# Unsupported cross rates must refuse (never treat CNY／EUR as USD)
+check("fx CNY→USD → NA", !is.finite(fx_factor("CNY", "USD", usd_twd = 32)))
+check("fx EUR→USD → NA", !is.finite(fx_factor("EUR", "USD", usd_twd = 32)))
+check("fx USD→CNY → NA", !is.finite(fx_factor("USD", "CNY", usd_twd = 32)))
+
+# scale: CNY→USD must not silently tag as USD
+df_cny <- data.frame(Breakdown = "Cash", `2024` = "700", check.names = FALSE, stringsAsFactors = FALSE)
+out_cny <- scale_financial_df_money(df_cny, "CNY", "USD", usd_twd = 32)
+check("scale CNY refuse", isFALSE(attr(out_cny, "money_scaled")))
+check("scale CNY keep tag", identical(attr(out_cny, "money_ccy"), "CNY"))
+# BABA-like: ADR shares OK but per-share must refuse without CNY FX
+px_cny <- per_share_in_quote(
+  1e12, 2.25e9,
+  equity_ccy = "CNY", to_ccy = "USD", usd_twd = 32,
+  share_method = "market_cap_per_price", statement_ccy = "CNY"
+)
+check("refuse CNY equity as USD ADR", !is.finite(px_cny))
 
 # TSM 20-F: Equity_TWD / FX / ADR == NT$ per common × 5 / FX
 equity_twd <- 250920e8  # ~NT$25,092bn in absolute units as in CSV rebuild

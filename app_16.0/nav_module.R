@@ -37,7 +37,7 @@ nav_module_ui <- function(id) {
       )
     ),
     tabBox(
-      title = "NAV (BOOK HOLDCO)", width = "auto",
+      title = "NET ASSET VALUE", width = "auto",
 
       tabPanel(
         "NAV Overview", icon = icon("sitemap"),
@@ -48,7 +48,7 @@ nav_module_ui <- function(id) {
         ),
         fluidRow(
           div(
-            "Fair Price = NAVPS × NAV multiple　｜　NAV = Equity − holdco discount × investments",
+            "Fair Price = NAVPS × NAV 倍數　｜　NAV = 股東權益 − 控股折價 × 投資科目",
             style = paste(
               "font-size:16px; font-weight:bold; color:#2C3E50; text-align:center;",
               "margin-bottom:15px; padding:10px; background-color:#F2F4F4; border-radius:8px;"
@@ -56,17 +56,8 @@ nav_module_ui <- function(id) {
           )
         ),
         fluidRow(
-          div(
-            style = "text-align:center; margin-bottom:20px;",
-            actionButton(
-              ns("btn_calc_nav"), "試算 NAV 合理價",
-              style = paste(
-                "background-color:#1a1a1a; color:white; font-weight:bold; font-size:18px;",
-                "padding:12px 30px; border-radius:8px; border:none;",
-                "box-shadow:0 4px 6px rgba(0,0,0,0.1);"
-              )
-            )
-          )
+          column(width = 6, ynow_calc_btn(ns("btn_calc_nav"), "試算 NAV 合理價")),
+          column(width = 6, ynow_reset_defaults_btn(ns("btn_reset_nav")))
         ),
         fluidRow(
           column(
@@ -137,10 +128,9 @@ nav_module_ui <- function(id) {
           ))
         ),
         fluidRow(
-          column(12, actionButton(
-            ns("btn_reset_nav"), "回復系統預設參數",
-            icon = icon("undo"), class = "btn-sm",
-            style = "background-color:#7f8c8d; color:white; border:none; margin-top:10px;"
+          column(12, tags$p(
+            style = "margin-top: 10px; color: #7f8c8d; font-size: 12px;",
+            "「回復預設」在 Overview，與「試算 NAV 合理價」並排。"
           ))
         )
       )
@@ -251,7 +241,7 @@ nav_module_server <- function(id,
       updateNumericInput(session, "nav_mid", value = APP_DEFAULTS$nav_mid %||% 1.00)
       updateNumericInput(session, "nav_high", value = APP_DEFAULTS$nav_high %||% 1.05)
       sync_nav_from_bs()
-      showNotification("NAV 參數已回復系統預設", type = "message")
+      showNotification("🔁 NAV 參數已回復預設", type = "message")
     })
 
     output$txt_shares_resolve_note <- renderUI({

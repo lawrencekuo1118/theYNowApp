@@ -300,6 +300,7 @@ lab_attach_market_caps <- function(pool) {
 }
 
 #' 規模過濾後依市值降序取最多 max_n 檔（無市值置後，再依代碼）
+#' 評估檔數 N：截斷只影響評估池／明細列數；排行榜另以 F-Score≥7 取 Top 10，不縮減明細。
 lab_rank_and_cap_eval_pool <- function(pool, max_n = 25L, size_filter = character(0)) {
   pool <- lab_dedupe_eval_pool(pool)
   if (is.null(pool) || !is.data.frame(pool)) {
@@ -527,6 +528,21 @@ lab_estimate_fv_per_share <- function(method, industry_key, d_is, d_bs, d_cf,
 #' @return data.frame: industry_key, primary, secondary, suggest_two_stage, rationale
 lab_industry_method_defaults <- function() {
   rows <- list(
+    list("tech.Optoelectronics", "dcf", "pb", FALSE, "光電／顯示循環 → DCF"),
+    list("tech.Electronics_Distribution", "dcf", "pb", FALSE, "電子通路低毛利周轉 → DCF"),
+    list("tech.IT_Services", "dcf", "pb", FALSE, "資訊服務 → DCF"),
+    list("cons.Restaurants", "dcf", "ddm", FALSE, "餐飲現金流／成熟配息 → DCF"),
+    list("cons.Home_Living", "dcf", "pb", FALSE, "居家生活消費 → DCF"),
+    list("cons.Sports_Leisure", "dcf", "pb", FALSE, "運動休閒 → DCF"),
+    list("ind.Conglomerate", "pb", "dcf", FALSE, "綜合／其他 → P/B 粗定位"),
+    list("mat.Textiles", "dcf", "pb", FALSE, "紡織纖維循環 → DCF"),
+    list("mat.Paper_Packaging", "dcf", "pb", FALSE, "造紙包裝 → DCF"),
+    list("mat.Glass_Ceramics", "dcf", "pb", FALSE, "玻璃陶瓷 → DCF"),
+    list("en.Environmental", "dcf", "pb", TRUE, "綠能環保服務成長 → DCF"),
+    list("ag.Agriculture", "dcf", "pb", FALSE, "農業科技 → DCF"),
+    list("media.Advertising", "dcf", "pb", FALSE, "廣告行銷 → DCF"),
+    list("bus.Professional_Services", "dcf", "pb", FALSE, "專業服務 → DCF"),
+
     # 金融／控股／REIT／公用 → P/B（+ RI）
     list("fn.Banking", "pb", "ri", FALSE, "金融簿價驅動 → P/B；ROE 可時交叉 RI"),
     list("fn.Investment_Banking", "pb", "ri", FALSE, "金融簿價驅動 → P/B"),

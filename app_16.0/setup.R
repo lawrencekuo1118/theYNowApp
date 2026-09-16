@@ -113,11 +113,12 @@ fx_factor <- function(from_ccy, to_ccy, usd_twd = NULL) {
   if (is.na(fr) && is.na(to)) return(1)
   if (is.na(fr) || is.na(to)) return(NA_real_)
   if (identical(fr, to)) return(1)
+  # Only USD↔TWD is supported. Never silently treat CNY／EUR／… as USD (ADR FX).
   fx <- suppressWarnings(as.numeric(usd_twd %||% .ynow_ccy_ctx$fx_usd_twd)[1])
   if (!is.finite(fx) || fx <= 0) return(NA_real_)
   if (identical(fr, "USD") && identical(to, "TWD")) return(fx)
   if (identical(fr, "TWD") && identical(to, "USD")) return(1 / fx)
-  1
+  NA_real_
 }
 
 statement_quote_units_differ <- function(statement_ccy, quote_ccy) {
@@ -2424,7 +2425,10 @@ render_report_pdf <- function(html_path, pdf_path) {
 generate_safe_line_plot <- function(data, ticker_name, metric_name) {
   if (is.null(data) || !is.data.frame(data) || nrow(data) == 0) {
     return(plotly::plotly_empty() %>%
-             plotly::layout(title = paste0(ticker_name, " - ", metric_name, " (無資料)")))
+             plotly::layout(title = list(
+               text = paste0(ticker_name, " - ", metric_name, " (無資料)"),
+               font = list(size = 15, color = "#856404")
+             )))
   }
 
   # 多列命中時取第一列（呼叫端應已優先挑精確科目）
@@ -2435,7 +2439,10 @@ generate_safe_line_plot <- function(data, ticker_name, metric_name) {
   vals <- parse_financial_number(as.character(unlist(data[1, -1], use.names = FALSE)))
   if (length(labels) == 0 || length(vals) == 0) {
     return(plotly::plotly_empty() %>%
-             plotly::layout(title = paste0(ticker_name, " - ", metric_name, " (無資料)")))
+             plotly::layout(title = list(
+               text = paste0(ticker_name, " - ", metric_name, " (無資料)"),
+               font = list(size = 15, color = "#856404")
+             )))
   }
 
   # CAGR 僅用財年欄位（排除 TTM）；必須是有限正值才算，避免 if(NA)
@@ -2477,10 +2484,11 @@ generate_safe_line_plot <- function(data, ticker_name, metric_name) {
   plot_df$is_neg <- !is.na(plot_df$Value) & plot_df$Value < 0
 
   # 3. 繪製圖表 (使用 ggplot)
+  # 標題／正值點：對齊 app logo 金／墨（白底可讀的深金 #856404）
   p <- ggplot(plot_df, aes(x = Year, y = Value, group = 1, text = HoverText)) +
-    geom_line(color = "#7f8c8d", linewidth = 1, na.rm = TRUE) +
+    geom_line(color = "#C9A227", linewidth = 1, na.rm = TRUE) +
     geom_point(aes(color = is_neg), size = 2.5, na.rm = TRUE) +
-    scale_color_manual(values = c("FALSE" = "#2c3e50", "TRUE" = "#e74c3c"), guide = "none") +
+    scale_color_manual(values = c("FALSE" = "#0C5484", "TRUE" = "#c0392b"), guide = "none") +
     scale_y_continuous(
       labels = label_chart_number(prefix = money_prefix()),
       expand = expansion(mult = c(0.1, 0.15))
@@ -2492,12 +2500,20 @@ generate_safe_line_plot <- function(data, ticker_name, metric_name) {
       y = ""
     ) +
     theme(
-      plot.title = element_text(face = "bold", size = 15, color = "#2c3e50"),
+      plot.title = element_text(face = "bold", size = 15, color = "#856404"),
       axis.text.x = element_text(face = "bold")
     )
 
-  # 4. 轉換為 plotly 並指定 tooltip
-  ggplotly(p, tooltip = "text")
+  # 4. 轉換為 plotly 並指定 tooltip；強制標題色（ggplotly 常丟掉 theme 色）
+  title_txt <- paste0(ticker_name, " - ", metric_name, safe_cagr_msg)
+  ggplotly(p, tooltip = "text") %>%
+    plotly::layout(
+      title = list(
+        text = title_txt,
+        font = list(size = 15, color = "#856404", family = "Arial, sans-serif")
+      ),
+      margin = list(t = 48)
+    )
 }
 
 # =========================================================
@@ -2644,4 +2660,31 @@ generate_safe_line_plot <- function(data, ticker_name, metric_name) {
   }
   err_msg <- if (!is.null(parsed$message)) parsed$message else paste("HTTP", code)
   list(ok = FALSE, html_url = NA_character_, number = NA_integer_, message = as.character(err_msg))
+}
+
+# ==========================================
+# Shared gray「回復預設」button (all valuation models)
+# ==========================================
+ynow_reset_defaults_btn <- function(input_id, label = "回復預設", block = TRUE) {
+  actionButton(
+    input_id,
+    label,
+    icon = icon("refresh"),
+    class = if (isTRUE(block)) "btn-default btn-block ynow-btn-reset" else "btn-default ynow-btn-reset",
+    style = paste(
+      "padding: 12px; font-weight: bold; font-size: 16px;",
+      "background-color: #7f8c8d; color: #ffffff; border-color: #6c757d;"
+    )
+  )
+}
+
+#' Companion green「試算」block button (pair with ynow_reset_defaults_btn).
+ynow_calc_btn <- function(input_id, label, block = TRUE) {
+  actionButton(
+    input_id,
+    label,
+    icon = icon("calculator"),
+    class = if (isTRUE(block)) "btn-success btn-block" else "btn-success",
+    style = "padding: 12px; font-weight: bold; font-size: 16px;"
+  )
 }

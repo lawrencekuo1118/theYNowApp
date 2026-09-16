@@ -39,38 +39,111 @@ lab_empty_tw <- function() {
   )
 }
 
-#' 粗略對應證交所產業別 → App industry_standards 鍵
+#' 證交所／櫃買產業別 2 碼 → App industry_standards 鍵
+#' 來源：TWSE ISIN 分類查詢（01–38；缺 07、34）。代碼 91＝存託憑證標記，非產業。
+lab_tw_industry_code_map <- function() {
+  c(
+    "01" = "ind.Construction",          # 水泥工業
+    "02" = "fmcg.Food_Beverages",       # 食品工業
+    "03" = "mat.Chemicals",             # 塑膠工業
+    "04" = "mat.Textiles",              # 紡織纖維
+    "05" = "ind.Machinery",             # 電機機械
+    "06" = "en.Utilities",              # 電器電纜
+    "08" = "mat.Glass_Ceramics",        # 玻璃陶瓷
+    "09" = "mat.Paper_Packaging",       # 造紙工業
+    "10" = "mat.Metals_Mining",         # 鋼鐵工業
+    "11" = "mat.Chemicals",             # 橡膠工業
+    "12" = "auto.Parts_Suppliers",      # 汽車工業
+    "13" = "ec.Hardware",               # 電子工業（總類）
+    "14" = "ind.Construction",          # 建材營造業
+    "15" = "tr.Logistics_Shipping",     # 航運業
+    "16" = "hosp.Hotels_Travel",        # 觀光餐旅
+    "17" = "fn.Banking",                # 金融保險業
+    "18" = "retail.Brick_Mortar",       # 貿易百貨業
+    "19" = "ind.Conglomerate",          # 綜合
+    "20" = "ind.Conglomerate",          # 其他業
+    "21" = "mat.Chemicals",             # 化學工業
+    "22" = "hc.Medtech",                # 生技醫療業
+    "23" = "en.Utilities",              # 油電燃氣業
+    "24" = "sc.Foundry",                # 半導體業（涵蓋設計／代工／封測粗對）
+    "25" = "tech.Hardware",             # 電腦及週邊設備業
+    "26" = "tech.Optoelectronics",      # 光電業
+    "27" = "tel.Telecom",               # 通信網路業
+    "28" = "ec.Hardware",               # 電子零組件業
+    "29" = "tech.Electronics_Distribution", # 電子通路業
+    "30" = "tech.IT_Services",          # 資訊服務業
+    "31" = "ec.Hardware",               # 其他電子業
+    "32" = "media.Entertainment",       # 文化創意業
+    "33" = "ag.Agriculture",            # 農業科技業
+    "35" = "en.Environmental",          # 綠能環保
+    "36" = "saas.SaaS_Cloud",           # 數位雲端
+    "37" = "cons.Sports_Leisure",       # 運動休閒
+    "38" = "cons.Home_Living"           # 居家生活
+  )
+}
+
+#' 粗略對應證交所產業別（代碼或中文名）→ App industry_standards 鍵
 lab_map_tw_industry_to_key <- function(industry_raw) {
-  s <- as.character(industry_raw %||% "")[1]
-  if (!nzchar(s) || identical(s, "NA")) {
-    return(if (exists("LAB_UNMAPPED_KEY", inherits = TRUE)) LAB_UNMAPPED_KEY else "lab.Unmapped")
+  unmapped <- if (exists("LAB_UNMAPPED_KEY", inherits = TRUE)) LAB_UNMAPPED_KEY else "lab.Unmapped"
+  s <- trimws(as.character(industry_raw %||% "")[1])
+  if (!nzchar(s) || identical(s, "NA")) return(unmapped)
+
+  # 純數字代碼（含前導零／省略前導零）
+  if (grepl("^[0-9]{1,2}$", s)) {
+    code <- sprintf("%02d", suppressWarnings(as.integer(s)[1]))
+    if (identical(code, "91")) return(unmapped) # 存託憑證標記
+    cmap <- lab_tw_industry_code_map()
+    if (code %in% names(cmap)) {
+      key <- unname(cmap[[code]])
+      if (exists("industry_standards") && !(key %in% names(industry_standards))) return(unmapped)
+      return(key)
+    }
+    return(unmapped)
   }
+
+  # 中文／混合名稱：較具體者優先
   rules <- list(
-    "sc.Foundry" = c("半導體", "電子工業"),
-    "ec.Hardware" = c("電腦及週邊", "光電", "電子零組件", "其他電子", "通信網路", "資訊服務"),
-    "auto.Parts_Suppliers" = c("汽車工業"),
+    "sc.Foundry" = c("半導體"),
+    "tech.Optoelectronics" = c("光電"),
+    "tech.Electronics_Distribution" = c("電子通路"),
+    "tech.IT_Services" = c("資訊服務"),
+    "tech.Hardware" = c("電腦及週邊", "電腦週邊"),
+    "ec.Hardware" = c("電子零組件", "其他電子", "電子工業"),
+    "tel.Telecom" = c("通信網路", "電信"),
+    "saas.SaaS_Cloud" = c("數位雲端"),
+    "en.Environmental" = c("綠能環保"),
+    "en.Utilities" = c("油電燃氣", "電器電纜"),
+    "mat.Textiles" = c("紡織纖維", "紡織"),
+    "mat.Paper_Packaging" = c("造紙"),
+    "mat.Glass_Ceramics" = c("玻璃陶瓷", "玻璃", "陶瓷"),
+    "mat.Chemicals" = c("化學工業", "塑膠工業", "橡膠工業", "化學", "塑膠", "橡膠"),
+    "mat.Metals_Mining" = c("鋼鐵工業", "鋼鐵"),
+    "ind.Construction" = c("建材營造", "水泥工業", "水泥"),
+    "ind.Machinery" = c("電機機械"),
+    "ind.Conglomerate" = c("其他業", "綜合"),
+    "auto.Parts_Suppliers" = c("汽車工業", "汽車"),
     "fn.Banking" = c("金融保險", "銀行"),
     "fn.Asset_Management" = c("證券"),
-    "en.Utilities" = c("油電燃氣", "電器電纜"),
-    "mat.Chemicals" = c("化學工業", "塑膠工業", "橡膠工業"),
-    "mat.Metals_Mining" = c("鋼鐵工業", "油電"),
-    "ind.Machinery" = c("電機機械", "建材營造"),
-    "ind.Construction" = c("建材營造", "水泥工業"),
-    "fmcg.Food_Beverages" = c("食品工業"),
+    "fmcg.Food_Beverages" = c("食品工業", "食品"),
     "hc.Medtech" = c("生技醫療", "醫療"),
     "hc.Biotech" = c("生技"),
-    "tel.Telecom" = c("通信網路", "電信"),
-    "tr.Logistics_Shipping" = c("航運業", "貿易百貨"),
-    "retail.Brick_Mortar" = c("貿易百貨", "觀光事業", "觀光餐旅"),
+    "tr.Logistics_Shipping" = c("航運業", "航運"),
+    "retail.Brick_Mortar" = c("貿易百貨"),
+    "hosp.Hotels_Travel" = c("觀光餐旅", "觀光事業", "觀光"),
     "media.Entertainment" = c("文化創意"),
-    "re.REIT" = c("觀光")
+    "cons.Home_Living" = c("居家生活"),
+    "cons.Sports_Leisure" = c("運動休閒"),
+    "ag.Agriculture" = c("農業科技", "農業")
   )
   for (key in names(rules)) {
     for (pat in rules[[key]]) {
-      if (grepl(pat, s, fixed = TRUE)) return(key)
+      if (grepl(pat, s, fixed = TRUE)) {
+        if (exists("industry_standards") && !(key %in% names(industry_standards))) next
+        return(key)
+      }
     }
   }
-  if (exists("LAB_UNMAPPED_KEY", inherits = TRUE)) LAB_UNMAPPED_KEY else "lab.Unmapped"
+  unmapped
 }
 
 lab_is_excluded_tw_ticker <- function(code, yahoo_sym, name = "") {
@@ -543,7 +616,15 @@ lab_read_tw_cache <- function() {
   )
   need <- c("ticker", "name", "exchange", "industry_raw", "industry_key", "fetched_at", "source")
   for (nm in need) if (!nm %in% names(df)) df[[nm]] <- NA_character_
-  df[, need, drop = FALSE]
+  df <- df[, need, drop = FALSE]
+  # 以現行 mapping 重算鍵（快取可能是舊版未對應代碼／新產業）
+  df$industry_key <- vapply(
+    as.character(df$industry_raw),
+    lab_map_tw_industry_to_key,
+    character(1),
+    USE.NAMES = FALSE
+  )
+  df
 }
 
 lab_tw_is_stale <- function(max_days = LAB_TW_STALE_DAYS) {

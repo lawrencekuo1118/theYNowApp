@@ -133,14 +133,19 @@
   )
 }
 
+# Shared gray「回復預設」／試算 helpers live in setup.R (ynow_reset_defaults_btn, ynow_calc_btn).
+
 #' Shared CAPM / Beta settings block (canonical IDs on DCF → WACC).
 #' @param calc_id actionButton id
 #' @param result_id htmlOutput id for CAPM result text
+#' @param width shinydashboard box width (1–12)
 capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
                                   calc_id = "calc_capm",
-                                  result_id = "capm_result") {
+                                  result_id = "capm_result",
+                                  width = 6) {
   box(
-    h4(title),
+    width = width,
+    h4(title, id = "ynow_capm_box_title"),
     numericInput("capm_rf", "無風險利率 Rf (%)", value = APP_DEFAULTS$capm_rf, step = 0.01),
     uiOutput("capm_rf_source_note"),
     numericInput("capm_rm", "市場報酬率 Rm (%)", value = APP_DEFAULTS$capm_rm, step = 0.01),
@@ -152,6 +157,42 @@ capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
     ),
     actionButton(calc_id, "估算 rₑ（CAPM）", class = "btn-primary"),
     tags$br(), htmlOutput(result_id)
+  )
+}
+
+#' rᵈ estimation block: Interest Expense ÷ Interest-bearing Debt (pre-tax rᵈ).
+#' Layout companion to CAPM on the WACC tab (left 50%).
+rd_estimate_settings_ui <- function(width = 6) {
+  box(
+    width = width,
+    h4("估算 rᵈ", id = "ynow_rd_box_title"),
+    numericInput(
+      "rd_interest_expense", "利息費用",
+      value = NA_real_, min = 0, step = 1
+    ),
+    uiOutput("rd_interest_source_note"),
+    numericInput(
+      "rd_interest_bearing_debt", "有息負債",
+      value = NA_real_, min = 0, step = 1
+    ),
+    uiOutput("rd_debt_source_note"),
+    fluidRow(
+      column(6, numericInput(
+        "wacc_rd_min", "估算 rᵈ 下限 (%)",
+        value = APP_DEFAULTS$wacc_rd_min, min = 0, step = 0.1
+      )),
+      column(6, numericInput(
+        "wacc_rd_max", "估算 rᵈ 上限 (%)",
+        value = APP_DEFAULTS$wacc_rd_max, min = 0, step = 0.1
+      ))
+    ),
+    checkboxInput(
+      "use_estimated_rd",
+      tags$span(id = "ynow_use_estimated_rd_label", "採用估算 rᵈ（利息／有息負債）"),
+      value = isTRUE(APP_DEFAULTS$use_est_rd)
+    ),
+    actionButton("calc_rd", "估算 rᵈ", class = "btn-primary"),
+    tags$br(), htmlOutput("rd_result")
   )
 }
 
@@ -573,7 +614,12 @@ beta_rolling_section_ui <- function() {
     tabPanel(
       "SGR",
       icon = icon("seedling"),
-      tags$h5(tags$b("SGR 評價方法")),
+      # 與 BETA Overview 同款 valueBox 列：各 50% 並排
+      fluidRow(
+        valueBoxOutput("vbx_sgr_pct", width = 6),
+        valueBoxOutput("vbx_session_g", width = 6)
+      ),
+      tags$h5(tags$b(id = "ynow_sgr_method_title", "終值永續成長率 (SGR) 評價方法")),
       selectInput(
         "perpetual_g_method",
         NULL,
@@ -610,10 +656,9 @@ beta_rolling_section_ui <- function() {
       tags$h5(tags$b("估計依據")),
       uiOutput("txt_perpetual_g_reason"),
       tags$hr(style = "margin: 12px 0;"),
-      tags$h5(tags$b("終值永續成長率（SGR）")),
       numericInput(
         "sgr",
-        "SGR (%)",
+        "自訂 SGR (%)",
         value = APP_DEFAULTS$sgr
       ),
       helpText("供 DCF／RI 終值使用（相對 WACC）；與 DDM 股利成長率分開。可由上方方法自動估計，亦可手動覆寫。")
@@ -630,6 +675,10 @@ beta_rolling_section_ui <- function() {
       tags$p(style = "margin: 0 0 6px 0; font-size: 12.5px; color: #555;", tags$b("第一階段｜高速成長")),
       numericInput("yr_stage1", "年數", value = APP_DEFAULTS$yr_stage1),
       numericInput("g_stage1", "成長率 g1 (%)", value = APP_DEFAULTS$g_stage1),
+      helpText(
+        id = "ynow_g_stage1_help",
+        "預設帶入「預估營收成長率」；可手動覆寫。終值成長率仍用 Get Started 的 SGR。"
+      ),
       conditionalPanel(
         condition = "input.dcf_claim != 'fcfe'",
         numericInput("wacc_stage1", "折現率 WACC1 (%)", value = APP_DEFAULTS$wacc_stage1, step = 0.01)
@@ -719,7 +768,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v16.03</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v16.21</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -792,7 +841,7 @@ ui <- dashboardPage(
            sidebarMenu(
              id = "sidebar_tabs",
              menuItem("Dashboard", tabName = "dashboard", icon = icon("chart-line")),
-             menuItem("Get Started", tabName = "get_started", icon = icon("play-circle")),
+             menuItem("Basic Setup", tabName = "get_started", icon = icon("play-circle")),
              menuItem(
                text = tags$span(id = "ynow_menu_cat_asset", "Asset-Based Approach"),
                icon = icon("building"),
@@ -818,7 +867,7 @@ ui <- dashboardPage(
                menuSubItem("P/B", tabName = "pb_calculator", icon = icon("landmark"))
              ),
              menuItem("YNOW", tabName = "sensitivity", icon = icon("sliders-h")),
-             menuItem("Blue Chip", tabName = "bluechip", icon = icon("star")),
+             menuItem("Blue Chip Ranking", tabName = "bluechip", icon = icon("star")),
              # 歷史基本面驗證（HFV）：理論估值 vs 實際市值 — 非策略回測
              menuItem("Hist. FV Validation", tabName = "hfv", icon = icon("balance-scale")),
              # 量化回測報表在底部「測試」；實驗區不放主選單
@@ -915,6 +964,12 @@ ui <- dashboardPage(
           --ynow-wash: #f5f5f5;
           /* 亮面金屬金（非土黃／ochre）；fallback 給不支援 clip 的環境） */
           --ynow-gold: #F5C518;
+          /* 白底標題用深金（對比足夠）；圖標可用亮金 */
+          --ynow-gold-ink: #856404;
+          --ynow-gold-deep: #C9A227;
+          /* logo 圖檔主色（藍／綠）— 現金流序列等資料色 */
+          --ynow-logo-blue: #0C5484;
+          --ynow-logo-green: #249C60;
           --ynow-gold-gradient: linear-gradient(
             105deg,
             #FFF6C8 0%,
@@ -1194,6 +1249,64 @@ ui <- dashboardPage(
           border-top-color: transparent;
           color: var(--ynow-ink) !important;
         }
+        /* Dashboard 損益表／現金流量表：圖標與選取頂條對齊 logo 金 */
+        #dashboard_fin_report > .nav-tabs > li > a[data-value="Income Statement"] > .fa,
+        #dashboard_fin_report > .nav-tabs > li > a[data-value="Income Statement"] > .fas,
+        #dashboard_fin_report > .nav-tabs > li > a[data-value="Cash Flow"] > .fa,
+        #dashboard_fin_report > .nav-tabs > li > a[data-value="Cash Flow"] > .fas {
+          color: var(--ynow-gold-deep) !important;
+        }
+        #dashboard_fin_report > .nav-tabs > li.active > a[data-value="Income Statement"] > .fa,
+        #dashboard_fin_report > .nav-tabs > li.active > a[data-value="Income Statement"] > .fas,
+        #dashboard_fin_report > .nav-tabs > li.active > a[data-value="Cash Flow"] > .fa,
+        #dashboard_fin_report > .nav-tabs > li.active > a[data-value="Cash Flow"] > .fas {
+          color: var(--ynow-gold) !important;
+        }
+        #dashboard_fin_report > .nav-tabs > li.active:has(> a[data-value="Income Statement"]),
+        #dashboard_fin_report > .nav-tabs > li.active:has(> a[data-value="Cash Flow"]) {
+          border-top-color: var(--ynow-gold) !important;
+        }
+        @media (max-width: 767px) {
+          #dashboard_fin_report > .nav-tabs > li > a[data-value="Income Statement"] > .fa,
+          #dashboard_fin_report > .nav-tabs > li > a[data-value="Income Statement"] > .fas,
+          #dashboard_fin_report > .nav-tabs > li > a[data-value="Cash Flow"] > .fa,
+          #dashboard_fin_report > .nav-tabs > li > a[data-value="Cash Flow"] > .fas {
+            font-size: 13px;
+          }
+        }
+        /* 損益表／現金流量表圖表區：金色頂條 chrome（對齊 logo） */
+        .ynow-fs-chart {
+          border-top: 3px solid var(--ynow-gold);
+          margin-top: 6px;
+          padding-top: 10px;
+          background: linear-gradient(180deg, rgba(245, 197, 24, 0.06) 0%, rgba(255, 255, 255, 0) 28px);
+        }
+        .ynow-fs-chart-heading {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin: 0 0 8px 0;
+          font-size: 13px;
+          font-weight: 700;
+          color: var(--ynow-gold-ink);
+          letter-spacing: 0.01em;
+        }
+        .ynow-fs-chart-heading > .fa,
+        .ynow-fs-chart-heading > .fas {
+          color: var(--ynow-gold-deep);
+          font-size: 14px;
+          width: 1.2em;
+          text-align: center;
+        }
+        @media (max-width: 767px) {
+          .ynow-fs-chart {
+            border-top-width: 2px;
+            padding-top: 8px;
+          }
+          .ynow-fs-chart-heading {
+            font-size: 12px;
+          }
+        }
         .nav-pills > li.active > a,
         .nav-pills > li.active > a:hover,
         .nav-pills > li.active > a:focus {
@@ -1226,6 +1339,24 @@ ui <- dashboardPage(
         .sidebar-menu > li.active > a,
         .sidebar-menu > li.menu-open > a {
           font-weight: 700 !important;
+        }
+        /* 側邊欄圖示固定寬度欄：英文標籤左緣對齊（父層＋子分頁；勿動 pull-right 展開箭頭） */
+        .sidebar-menu > li > a > .fa:not(.pull-right),
+        .sidebar-menu > li > a > .fas:not(.pull-right),
+        .sidebar-menu > li > a > .far:not(.pull-right),
+        .sidebar-menu > li > a > .glyphicon:not(.pull-right),
+        .sidebar-menu > li > a > .ion:not(.pull-right),
+        .sidebar-menu .treeview-menu > li > a > .fa:not(.pull-right),
+        .sidebar-menu .treeview-menu > li > a > .fas:not(.pull-right),
+        .sidebar-menu .treeview-menu > li > a > .far:not(.pull-right),
+        .sidebar-menu .treeview-menu > li > a > .glyphicon:not(.pull-right),
+        .sidebar-menu .treeview-menu > li > a > .ion:not(.pull-right) {
+          display: inline-block;
+          width: 1.35em;
+          min-width: 1.35em;
+          margin-right: 8px;
+          text-align: center;
+          vertical-align: middle;
         }
         /* 估值分類子分頁標籤：黑底白字（僅 treeview-menu，不改父層分類標籤） */
         .skin-black .sidebar-menu .treeview-menu {
@@ -1385,6 +1516,66 @@ ui <- dashboardPage(
           font-size: 13px;
           font-weight: 700;
           color: #333;
+        }
+        /* 手機：PREVIOUS CLOSE / MARKET CAP / EPS 直向堆疊、各佔 100% */
+        @media (max-width: 767px) {
+          .content-wrapper .ynow-header-kpi-row > [class*="col-"] {
+            width: 100% !important;
+            float: none !important;
+            display: block;
+            clear: both;
+          }
+          .content-wrapper .ynow-header-kpi-row .info-box {
+            margin-bottom: 10px;
+          }
+        }
+
+        /* HFV 設定：統計期間／驗證樣本口徑共用 label→選項間距與區塊節奏 */
+        .ynow-hfv-settings .shiny-input-radiogroup {
+          margin-top: 0;
+          margin-bottom: 12px;
+        }
+        .ynow-hfv-settings .shiny-input-radiogroup > label.control-label {
+          display: block;
+          margin-top: 0;
+          margin-bottom: 6px;
+          padding: 0;
+          line-height: 1.4;
+        }
+        .ynow-hfv-settings .shiny-input-radiogroup .shiny-options-group {
+          margin-top: 0;
+          margin-bottom: 0;
+          padding-top: 0;
+          padding-left: 0;
+        }
+        /* 驗證樣本口徑：直向靠左；選項間距緊湊，不另加大 label gap */
+        #bt_fv_oos_mode .shiny-options-group {
+          display: flex !important;
+          flex-direction: column !important;
+          flex-wrap: nowrap !important;
+          align-items: flex-start !important;
+          column-gap: 0 !important;
+          row-gap: 4px;
+          text-align: left;
+        }
+        #bt_fv_oos_mode .radio {
+          display: block !important;
+          float: none !important;
+          width: auto;
+          max-width: 100%;
+          margin-top: 0 !important;
+          margin-bottom: 0 !important;
+          min-height: 0;
+          padding-left: 0;
+          text-align: left;
+        }
+        #bt_fv_oos_mode .radio > label {
+          display: inline-block;
+          text-align: left;
+          white-space: normal;
+          font-weight: normal;
+          margin: 0;
+          padding-left: 20px;
         }
       ')),
       tags$script(HTML("
@@ -1568,6 +1759,24 @@ ui <- dashboardPage(
             if (hfvChart && s.hfv_chart_gap) hfvChart.textContent = s.hfv_chart_gap;
             var hfvTable = document.getElementById('ynow_hfv_table_detail');
             if (hfvTable && s.hfv_table_detail) hfvTable.textContent = s.hfv_table_detail;
+            var hfvDataNote = document.getElementById('ynow_hfv_method_data_note');
+            if (hfvDataNote && s.hfv_method_data_note) hfvDataNote.textContent = s.hfv_method_data_note;
+            var hfvMethodBody = document.getElementById('ynow_hfv_method_body');
+            if (hfvMethodBody && s.hfv_method_body) hfvMethodBody.textContent = s.hfv_method_body;
+            var hfvScMatrix = document.getElementById('ynow_hfv_sum_scenario_matrix');
+            if (hfvScMatrix && s.hfv_sum_scenario_matrix) hfvScMatrix.textContent = s.hfv_sum_scenario_matrix;
+            var hfvScThresh = document.getElementById('ynow_hfv_scenario_thresh_note');
+            if (hfvScThresh && s.hfv_scenario_thresh_note) hfvScThresh.textContent = s.hfv_scenario_thresh_note;
+            var fsIsHead = document.getElementById('ynow_fs_is_chart_heading');
+            if (fsIsHead && s.tab_income_statement) fsIsHead.textContent = s.tab_income_statement;
+            var fsCfHead = document.getElementById('ynow_fs_cf_chart_heading');
+            if (fsCfHead && s.tab_cash_flow) fsCfHead.textContent = s.tab_cash_flow;
+            var hfvSessTitle = document.getElementById('ynow_hfv_session_params_title');
+            if (hfvSessTitle && s.hfv_session_params_title) hfvSessTitle.textContent = s.hfv_session_params_title;
+            var chartModelsLab = document.querySelector('label[for=\"bt_fv_models\"]');
+            if (chartModelsLab && s.hfv_chart_models_label) chartModelsLab.textContent = s.hfv_chart_models_label;
+            var replayLab = document.querySelector('label[for=\"bt_fv_replay_model\"]');
+            if (replayLab && s.hfv_replay_model_label) replayLab.textContent = s.hfv_replay_model_label;
             var labTitle = document.getElementById('ynow_lab_notes_title');
             if (labTitle && s.lab_notes_title) labTitle.textContent = s.lab_notes_title;
             var labSub = document.getElementById('ynow_lab_notes_sub');
@@ -1580,6 +1789,42 @@ ui <- dashboardPage(
             if (scLab && s.ticker_label) scLab.textContent = s.ticker_label;
             var indLab = document.querySelector('label[for=\"industry_choice\"]');
             if (indLab && s.industry_standard) indLab.textContent = s.industry_standard;
+            var sgrMethodTitle = document.getElementById('ynow_sgr_method_title');
+            if (sgrMethodTitle && s.sgr_method_title) sgrMethodTitle.textContent = s.sgr_method_title;
+            var sgrCustomLab = document.querySelector('label[for=\"sgr\"]');
+            if (sgrCustomLab && s.sgr_custom_label) sgrCustomLab.textContent = s.sgr_custom_label;
+            var g1Help = document.getElementById('ynow_g_stage1_help');
+            if (g1Help && s.g_stage1_help) g1Help.textContent = s.g_stage1_help;
+            var waccBoxTitle = document.getElementById('ynow_wacc_box_title');
+            if (waccBoxTitle && s.wacc_box_title) waccBoxTitle.textContent = s.wacc_box_title;
+            var waccHelp = document.getElementById('ynow_wacc_help');
+            if (waccHelp && s.wacc_help) waccHelp.textContent = s.wacc_help;
+            var rdBoxTitle = document.getElementById('ynow_rd_box_title');
+            if (rdBoxTitle && s.rd_box_title) rdBoxTitle.textContent = s.rd_box_title;
+            var rdIntLab = document.querySelector('label[for=\"rd_interest_expense\"]');
+            if (rdIntLab && s.rd_interest_label) rdIntLab.textContent = s.rd_interest_label;
+            var rdDebtLab = document.querySelector('label[for=\"rd_interest_bearing_debt\"]');
+            if (rdDebtLab && s.rd_debt_label) rdDebtLab.textContent = s.rd_debt_label;
+            var rdMinLab = document.querySelector('label[for=\"wacc_rd_min\"]');
+            if (rdMinLab && s.rd_min_label) rdMinLab.textContent = s.rd_min_label;
+            var rdMaxLab = document.querySelector('label[for=\"wacc_rd_max\"]');
+            if (rdMaxLab && s.rd_max_label) rdMaxLab.textContent = s.rd_max_label;
+            var useRdLab = document.getElementById('ynow_use_estimated_rd_label');
+            if (useRdLab && s.use_estimated_rd_label) useRdLab.textContent = s.use_estimated_rd_label;
+            var btnCalcRd = document.getElementById('calc_rd');
+            if (btnCalcRd && s.btn_calc_rd) {
+              var rdIcon = btnCalcRd.querySelector('i');
+              var rdIconHtml = rdIcon ? rdIcon.outerHTML + ' ' : '';
+              btnCalcRd.innerHTML = rdIconHtml + s.btn_calc_rd;
+            }
+            var btnCalcWacc = document.getElementById('calc_wacc');
+            if (btnCalcWacc && s.btn_calc_wacc) {
+              var wIcon = btnCalcWacc.querySelector('i');
+              var wIconHtml = wIcon ? wIcon.outerHTML + ' ' : '';
+              btnCalcWacc.innerHTML = wIconHtml + s.btn_calc_wacc;
+            }
+            var capmBoxTitle = document.getElementById('ynow_capm_box_title');
+            if (capmBoxTitle && s.capm_box_title) capmBoxTitle.textContent = s.capm_box_title;
             var kpiBlue = document.getElementById('ynow_kpi_legend_blue');
             if (kpiBlue && s.kpi_legend_blue) kpiBlue.textContent = s.kpi_legend_blue;
             var kpiRed = document.getElementById('ynow_kpi_legend_red');
@@ -1612,6 +1857,16 @@ ui <- dashboardPage(
               var runIconHtml = runIcon ? runIcon.outerHTML + ' ' : '';
               runBt.innerHTML = runIconHtml + s.btn_run_bt;
             }
+            var labImRun = document.getElementById('lab_im_run_fscore');
+            if (labImRun && s.btn_lab_im_run) {
+              var labIcon = labImRun.querySelector('i');
+              var labIconHtml = labIcon ? labIcon.outerHTML + ' ' : '';
+              labImRun.innerHTML = labIconHtml + s.btn_lab_im_run;
+            }
+            var labMaxNLabel = document.getElementById('ynow_lab_im_max_n_label');
+            if (labMaxNLabel && s.lab_im_max_n_label) labMaxNLabel.textContent = s.lab_im_max_n_label;
+            var labMaxNHelp = document.getElementById('ynow_lab_im_max_n_help');
+            if (labMaxNHelp && s.lab_im_max_n_help) labMaxNHelp.textContent = s.lab_im_max_n_help;
             document.documentElement.setAttribute('lang', (payload && payload.locale) || 'en');
             var mkt = (payload && payload.market) ? String(payload.market) : 'US';
             document.body.classList.toggle('ynow-market-tw', mkt === 'TW');
@@ -1877,6 +2132,80 @@ ui <- dashboardPage(
         .ynow-kpi-stat-params {
           font-size: 12px !important;
           line-height: 1.4 !important;
+        }
+        /* HFV：此刻參數 — 圖表正下方、全寬、鍵值網格（勿擠成一行） */
+        .ynow-hfv-session-params {
+          width: 100%;
+          box-sizing: border-box;
+          margin: 14px 0 0 0;
+          padding: 12px 14px 14px 14px;
+          background: #fafafa;
+          border: 1px solid #e6e6e6;
+          border-left: 4px solid var(--ynow-gold-deep, #C9A227);
+          border-radius: 4px;
+        }
+        .ynow-hfv-session-params__title {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin: 0 0 10px 0;
+          font-size: 13px;
+          font-weight: 700;
+          color: var(--ynow-gold-ink, #856404);
+          letter-spacing: 0.01em;
+        }
+        .ynow-hfv-session-params__title > .fa,
+        .ynow-hfv-session-params__title > .fas {
+          color: var(--ynow-gold-deep, #C9A227);
+          width: 1.15em;
+          text-align: center;
+        }
+        .ynow-hfv-session-params__grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+          gap: 8px 12px;
+        }
+        .ynow-hfv-session-params__item {
+          min-width: 0;
+          padding: 7px 10px;
+          background: #fff;
+          border: 1px solid #ececec;
+          border-radius: 4px;
+        }
+        .ynow-hfv-session-params__key {
+          display: block;
+          font-size: 10.5px;
+          font-weight: 600;
+          color: #777;
+          letter-spacing: 0.02em;
+          margin: 0 0 3px 0;
+          line-height: 1.25;
+        }
+        .ynow-hfv-session-params__val {
+          display: block;
+          font-size: 13px;
+          font-weight: 600;
+          color: #1a1a1a;
+          font-variant-numeric: tabular-nums;
+          line-height: 1.35;
+          word-break: break-word;
+          overflow-wrap: anywhere;
+        }
+        .ynow-hfv-session-params__span {
+          grid-column: 1 / -1;
+        }
+        @media (max-width: 767px) {
+          .ynow-hfv-session-params {
+            margin-top: 10px;
+            padding: 10px 10px 12px 10px;
+          }
+          .ynow-hfv-session-params__grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 6px 8px;
+          }
+          .ynow-hfv-session-params__val {
+            font-size: 12px;
+          }
         }
         .ynow-kpi-hero-value {
           font-size: clamp(16px, 4vw, 22px) !important;
@@ -2355,6 +2684,69 @@ ui <- dashboardPage(
           filter: drop-shadow(0 0 2px rgba(0,0,0,0.35));
         }
 
+        /* 手機首次開啟：右上 logo＋USD/TWD 與左上漢堡垂直置中對齊 */
+        @media (max-width: 767px) {
+          .main-header .navbar {
+            min-height: 50px !important;
+            height: 50px;
+            display: flex !important;
+            align-items: center !important;
+          }
+          .main-header .navbar > .sidebar-toggle,
+          .skin-black .main-header .navbar .sidebar-toggle {
+            height: 50px !important;
+            min-height: 50px !important;
+            line-height: 50px !important;
+            padding: 0 15px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            float: none !important;
+            margin: 0 !important;
+          }
+          .main-header .navbar > #ynow-market-header.ynow-market-header {
+            float: none !important;
+            align-self: center;
+          }
+          .main-header .navbar-custom-menu {
+            float: none !important;
+            margin-left: auto !important;
+            height: 50px !important;
+            display: flex !important;
+            align-items: center !important;
+          }
+          .main-header .navbar-custom-menu > .navbar-nav {
+            display: flex !important;
+            flex-direction: row;
+            align-items: center !important;
+            height: 50px !important;
+            margin: 0 !important;
+          }
+          .main-header .navbar-custom-menu .navbar-nav > li.ynow-ccy-header,
+          .main-header .navbar-custom-menu .navbar-nav > li#ynow-header-logo.ynow-header-logo {
+            float: none !important;
+            height: 50px !important;
+            min-height: 50px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            margin: 0 !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+          }
+          .main-header .navbar-custom-menu .navbar-nav > li.ynow-ccy-header {
+            padding: 0 8px 0 4px !important;
+          }
+          /* 手機壓縮 FX 狀態列，避免把按鈕視覺重心下移 */
+          .ynow-ccy-header .shiny-text-output {
+            max-width: 96px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            line-height: 1.1;
+          }
+        }
+
         /* About：完整 LOGO（含文字）置頂品牌區 */
         .ynow-about-brand {
           display: flex;
@@ -2748,10 +3140,21 @@ ui <- dashboardPage(
     br(),
     
     fluidRow(
-      infoBoxOutput("ibx_stockprice", width = 4),
-      infoBoxOutput("ibx_marketcap", width = 4),
+      class = "ynow-header-kpi-row",
+      # col-xs-12：手機直向全寬；col-sm-4：≥768px 三欄橫排
       column(
         width = 4,
+        class = "col-xs-12",
+        infoBoxOutput("ibx_stockprice", width = NULL)
+      ),
+      column(
+        width = 4,
+        class = "col-xs-12",
+        infoBoxOutput("ibx_marketcap", width = NULL)
+      ),
+      column(
+        width = 4,
+        class = "col-xs-12",
         infoBoxOutput("ibx_EPS", width = NULL),
         conditionalPanel(
           condition = paste(
@@ -2885,17 +3288,27 @@ ui <- dashboardPage(
                               downloadButton('FS_download', "Download Finance Summary")
                      ),
                      
-                     tabPanel("Income Statement",
-                              p("This section imports Income Statements from Yahoo Finance"),
-                              
-                              # 🌟 新增：Income Statement 下拉選單與互動圖表
-                              selectInput("is_type", "Select Income Statement Metric",
-                                          choices = c("Total Revenue", "Gross Profit", "EBITDA")),
-                              plotlyOutput("is_plot"),
-                              tags$hr(),
-                              
-                              dataTableOutput("tbIncomeStatement"), 
-                              downloadButton('IS_download', "Download Income Statement")
+                     tabPanel(
+                       "Income Statement",
+                       icon = icon("chart-line"),
+                       p("This section imports Income Statements from Yahoo Finance"),
+                       
+                       # 🌟 新增：Income Statement 下拉選單與互動圖表
+                       selectInput("is_type", "Select Income Statement Metric",
+                                   choices = c("Total Revenue", "Gross Profit", "EBITDA")),
+                       tags$div(
+                         class = "ynow-fs-chart ynow-fs-chart-is",
+                         tags$div(
+                           class = "ynow-fs-chart-heading",
+                           icon("chart-line"),
+                           tags$span(id = "ynow_fs_is_chart_heading", "Income Statement")
+                         ),
+                         plotlyOutput("is_plot")
+                       ),
+                       tags$hr(),
+                       
+                       dataTableOutput("tbIncomeStatement"), 
+                       downloadButton('IS_download', "Download Income Statement")
                      ),
                      
                      tabPanel("Balance Sheet",
@@ -2906,12 +3319,22 @@ ui <- dashboardPage(
                               downloadButton('BS_download', "Download Balance Sheet")
                      ),
                      
-                     tabPanel("Cash Flow",
-                              p("This section imports Cash Flow data from Yahoo Finance"),
-                              plotlyOutput("cf_plot", height = "460px") %>% withSpinner(),
-                              tags$hr(),
-                              dataTableOutput("tbCashFlow"),
-                              downloadButton('CF_download', "Download Cash Flow Data")
+                     tabPanel(
+                       "Cash Flow",
+                       icon = icon("money-bill-wave"),
+                       p("This section imports Cash Flow data from Yahoo Finance"),
+                       tags$div(
+                         class = "ynow-fs-chart ynow-fs-chart-cf",
+                         tags$div(
+                           class = "ynow-fs-chart-heading",
+                           icon("money-bill-wave"),
+                           tags$span(id = "ynow_fs_cf_chart_heading", "Cash Flow")
+                         ),
+                         plotlyOutput("cf_plot", height = "460px") %>% withSpinner()
+                       ),
+                       tags$hr(),
+                       dataTableOutput("tbCashFlow"),
+                       downloadButton('CF_download', "Download Cash Flow Data")
                      ),
 
                      # 財報附註擷取 (SEC EDGAR) — 僅美股模式顯示（server 以 shinyjs 控制）
@@ -3126,21 +3549,11 @@ ui <- dashboardPage(
                            fluidRow(
                              column(
                                width = 6,
-                               actionButton(
-                                 "mod_ddm-btn_calc_ddm", "試算 DDM",
-                                 class = "btn-success btn-block",
-                                 style = "padding: 12px; font-weight: bold; font-size: 16px;",
-                                 icon = icon("calculator")
-                               )
+                               ynow_calc_btn("mod_ddm-btn_calc_ddm", "試算 DDM")
                              ),
                              column(
                                width = 6,
-                               actionButton(
-                                 "mod_ddm-reset_ddm", "回復預設",
-                                 class = "btn-default btn-block",
-                                 style = "padding: 12px; font-weight: bold; font-size: 16px;",
-                                 icon = icon("refresh")
-                               )
+                               ynow_reset_defaults_btn("mod_ddm-reset_ddm")
                              )
                            ),
                            tags$div(style = "margin-top: 10px;", htmlOutput("mod_ddm-vtxt_ddm_setting_details"))
@@ -3357,8 +3770,8 @@ ui <- dashboardPage(
                                        plotOutput("plt_dcf_trajectory", height = "420px"),
                                        h6(uiOutput("dcf_chart_help")),
                                        fluidRow(
-                                         column(width = 6, actionButton("calc", "試算 DCF", class = "btn-success btn-block", style = "padding: 12px; font-weight: bold; font-size: 16px;")),
-                                         column(width = 6, actionButton("reset_dcf", "回復預設", class = "btn-default btn-block", style = "padding: 12px; font-weight: bold; font-size: 16px;"))
+                                         column(width = 6, ynow_calc_btn("calc", "試算 DCF")),
+                                         column(width = 6, ynow_reset_defaults_btn("reset_dcf"))
                                        ),
                                        tags$div(style = "margin-top: 10px;", htmlOutput("vtxt_dcf_setting_details"))
                                 )
@@ -3409,26 +3822,48 @@ ui <- dashboardPage(
                                 infoBoxOutput("ibx_re", width = 4)
                               ),
                               
+                              uiOutput("dcf_disc_formula_banner"),
+                              # 上列 100%：WACC 估算；下列左 50% rᵈ、右 50% CAPM
                               fluidRow(
-                                uiOutput("dcf_disc_formula_banner"),
-                                box(h4("WACC 估算"),
-                                    numericInput("wacc_re", "股權成本 rₑ (%)", value = APP_DEFAULTS$wacc_re, min = 0, step = 0.01),
-                                    checkboxInput("use_estimated_re", "採用估算 rₑ（來自CAPM）", value = APP_DEFAULTS$use_est_re),
-                                    numericInput("wacc_rd", "負債成本 rᵈ (%)", value = APP_DEFAULTS$wacc_rd, min = 0, step = 0.01),
-                                    fluidRow(
-                                      column(6, numericInput("wacc_rd_min", "估算 rᵈ 下限 (%)", value = APP_DEFAULTS$wacc_rd_min, min = 0, step = 0.1)),
-                                      column(6, numericInput("wacc_rd_max", "估算 rᵈ 上限 (%)", value = APP_DEFAULTS$wacc_rd_max, min = 0, step = 0.1))
-                                    ),
-                                    helpText("無現成 rᵈ 時欄位空白；財報抓取後以利息費用／總負債設算，並夾在下限～上限內。"),
-                                    numericInput("wacc_tax", "所得稅率 T (%)", value = APP_DEFAULTS$wacc_tax, min = 0, max = 100, step = 0.01),
-                                    uiOutput("wacc_tax_source_note"),
-                                    actionButton("calc_wacc", "計算 WACC", class = "btn-primary"),
-                                    tags$br(), htmlOutput("wacc_result")
-                                ),
+                                box(
+                                  width = 12,
+                                  h4("WACC 估算", id = "ynow_wacc_box_title"),
+                                  fluidRow(
+                                    column(4, numericInput(
+                                      "wacc_re", "股權成本 rₑ (%)",
+                                      value = APP_DEFAULTS$wacc_re, min = 0, step = 0.01
+                                    )),
+                                    column(4, numericInput(
+                                      "wacc_rd", "負債成本 rᵈ (%)",
+                                      value = APP_DEFAULTS$wacc_rd, min = 0, step = 0.01
+                                    )),
+                                    column(4, numericInput(
+                                      "wacc_tax", "所得稅率 T (%)",
+                                      value = APP_DEFAULTS$wacc_tax, min = 0, max = 100, step = 0.01
+                                    ))
+                                  ),
+                                  checkboxInput(
+                                    "use_estimated_re",
+                                    "採用估算 rₑ（來自 CAPM）",
+                                    value = APP_DEFAULTS$use_est_re
+                                  ),
+                                  uiOutput("wacc_tax_source_note"),
+                                  tags$p(
+                                    id = "ynow_wacc_help",
+                                    style = "margin:0 0 8px 0;color:#666;font-size:12px;",
+                                    "WACC = We×rₑ + Wd×rᵈ×(1−T)。rᵈ 可由下方「估算 rᵈ」以利息費用／有息負債推估（稅前），再於此套用稅盾。"
+                                  ),
+                                  actionButton("calc_wacc", "計算 WACC", class = "btn-primary"),
+                                  tags$br(), htmlOutput("wacc_result")
+                                )
+                              ),
+                              fluidRow(
+                                rd_estimate_settings_ui(width = 6),
                                 capm_beta_settings_ui(
                                   title = "CAPM 估算 rₑ",
                                   calc_id = "calc_capm",
-                                  result_id = "capm_result"
+                                  result_id = "capm_result",
+                                  width = 6
                                 )
                               )
                      ),
@@ -3564,7 +3999,8 @@ ui <- dashboardPage(
                   column(
                     width = 6,
                     selectInput(
-                      "lab_im_max_n", "評估檔數（明細列數）",
+                      "lab_im_max_n",
+                      tags$span(id = "ynow_lab_im_max_n_label", "評估檔數（明細列數）"),
                       choices = c(
                         "25 檔" = "25",
                         "50 檔" = "50",
@@ -3589,9 +4025,15 @@ ui <- dashboardPage(
                         width = "100%"
                       )
                     ),
-                    tags$span(
-                      style = "color:#888; font-size:12px; display:block; margin:-6px 0 10px 0;",
-                      "預設 100 檔。篩選後不足 N 則全列；候選多於 N 時依市值由大到小。明細列數＝評估檔數 N（品質勾選不縮明細）。可選「全部」或「自訂…」。"
+                    tags$div(
+                      id = "ynow_lab_im_max_n_help",
+                      style = "color:#888; font-size:12px; line-height:1.45; white-space:pre-line; margin:-6px 0 10px 0;",
+                      paste0(
+                        "評估檔數 N（預設 100）＝本次要評估的檔數。\n",
+                        "• 誰進評估池：篩選後若候選 > N，先依市值由大到小取 N 檔。\n",
+                        "• 明細／排行預設排序：以 n＝5 年換算的年化估值漲幅（upside_cagr_pct）降序。\n",
+                        "• Piotroski F-Score≥7 只過濾排行榜 Top 10，不縮減明細。"
+                      )
                     )
                   )
                 ),
@@ -3635,7 +4077,7 @@ ui <- dashboardPage(
                 tags$div(
                   class = "ynow-lab-im-actions",
                   actionButton(
-                    "lab_im_run_fscore", "評估績優",
+                    "lab_im_run_fscore", "搜尋績優股",
                     icon = icon("chart-line"),
                     class = "btn-success",
                     title = "Piotroski 高門檻（F-Score≥7）＋年化估值漲幅排序"
@@ -3686,7 +4128,7 @@ ui <- dashboardPage(
             h2(tags$b(id = "ynow_hfv_page_title", "歷史基本面驗證")),
             p(
               id = "ynow_hfv_page_sub",
-              "市價下期漲跌機率 R=(P下一期−P)/P，以及相對理論 FV 的位置／幅度。這不是交易策略回測；量化回測請至側邊底部「測試」。"
+              "市價下期漲跌機率、相對理論 FV 位置／幅度，以及歷史情境分類（價值錯位／基本面動能／價格動能）。這不是交易策略回測；量化回測請至側邊底部「測試」。"
             ),
             tags$hr()
           )
@@ -3710,7 +4152,7 @@ ui <- dashboardPage(
                   class = "ynow-bt-hfv-models",
                   checkboxGroupInput(
                     "bt_fv_models",
-                    "評價模型（可複選疊圖；策略 MOS／部位＝勾選且有限值者之平均；未勾＝不套用模型）",
+                    "圖表模型（可複選疊圖）",
                     inline = TRUE,
                     choices = c(
                       "DCF" = "dcf",
@@ -3723,7 +4165,8 @@ ui <- dashboardPage(
                   )
                 )
               ),
-              plotlyOutput("bt_hfv_timeline", height = "420px") %>% withSpinner()
+              plotlyOutput("bt_hfv_timeline", height = "420px") %>% withSpinner(),
+              uiOutput("bt_session_params")
             )
           )
         ),
@@ -3731,7 +4174,7 @@ ui <- dashboardPage(
         # 2) 歷史基本面驗證：市價下期漲跌與相對 FV
         fluidRow(
           box(
-            title = tagList(icon("balance-scale"), "歷史基本面驗證：市價下期漲跌與相對 FV"),
+            title = tagList(icon("balance-scale"), "歷史基本面驗證：漲跌機率、相對 FV 與情境分類"),
             width = 12, status = "warning", solidHeader = TRUE,
             collapsible = TRUE, collapsed = FALSE,
 
@@ -3745,21 +4188,26 @@ ui <- dashboardPage(
                 "說明"
               ),
               tags$p(
+                id = "ynow_hfv_method_body",
                 style = "font-size:12.5px;color:#444;line-height:1.55;margin:0 0 8px 0;",
-                tags$b("這不是交易策略回測。"),
-                "兩種口徑分開呈現：",
-                tags$b("（1）市價下期漲跌"), " ", tags$code("R=(P_{t+1}-P_t)/P_t"),
-                " 的經驗頻率，並以目前安全邊際（MOS）分組之條件機率作為展望；",
-                tags$b("（2）相對理論 FV"), " ", tags$code("FV_t"),
-                "（＝折現圖勾選且有限值模型平均；未勾選＝無策略 FV）落在之上／之下與幅度 ",
-                tags$code("(P_{t+1}-FV_t)/FV_t"),
-                "。兩者語意不同，不可混稱為同一「漲跌」。策略淨值請至側邊底部「測試」。"
+                "不是交易策略回測，也不是券商下單指令。驗證樣本上有三層口徑：（1）市價下期漲跌 R 與下期上漲頻率 P(up)，以及 MOS 分組展望；（2）相對復盤模型 FV 之上／之下與幅度；（3）歷史情境分類（價值錯位／基本面動能／價格動能 → A–D 或 other）。圖表可複選疊圖；機率／幅度／情境／P(up) 僅依復盤模型單選。"
+              ),
+              tags$p(
+                id = "ynow_hfv_sum_scenario_matrix",
+                style = "font-size:12px;color:#555;line-height:1.5;margin:0 0 8px 0;",
+                "A 錯殺黃金坑：FV↑、Price↓、Price ≪ FV · B 戴維斯雙擊：FV↑、Price↑、Price ≈ FV · C 價值陷阱：FV↓、Price↓、Price < FV · D 泡沫炒作：FV≤持平、Price 強升、Price ≫ FV · other＝未歸類（不硬套 A–D 結論）。"
+              ),
+              tags$p(
+                id = "ynow_hfv_scenario_thresh_note",
+                style = "font-size:11.5px;color:#666;line-height:1.45;margin:0 0 8px 0;",
+                "情境帶寬啟發式（工程預設，非學術標準）：動能持平 |Δ|/前期 ≤ 2%；Price ≈ FV 當 |MOS| ≤ 10%；Price ≪ FV 當 MOS ≥ 20%；Price ≫ FV 當 MOS ≤ −20%；情境 D 另要求價格動能 ≥ +5%。FV 垃圾進會誤分類；市場可長期非理性且仍可能需催化劑。"
               ),
               tags$p(
                 style = "font-size:11.5px;color:#888;line-height:1.45;margin:0;",
-                "資料注意：Yahoo 年報可能為重編；PIT 以財報期末＋約 90 日申報滯後過濾。",
-                "真・as-filed SEC EDGAR 仍待後續階段。",
-                "若歷史點套用系統預設／Session，結果區會另列預設／fallback 提醒。",
+                id = "ynow_hfv_method_data_note",
+                "資料注意：Yahoo 年報可能為重編；PIT 採嚴格申報滯後（財報期末＋約 90 日；無期末日則該列不採用，不作軟性 bypass）。",
+                "歷史點近期末成長 g 與終值 SGR 分開；缺 CapEx／ΔNWC 時不捏造為 0（margin DCF 改不可用／幾何 FCF 僅在有觀測 FCF 時）。",
+                "台股上櫃／興櫃 Yahoo 空時可補櫃買財務資料簡報（IS／BS；不捏造 CF）。上市櫃 MOPS／美股 SEC as-filed 仍待後續接入。",
                 "小樣本（n＜5）僅供參考，非預測保證。"
               )
             ),
@@ -3772,6 +4220,19 @@ ui <- dashboardPage(
                 id = "ynow_hfv_sec_settings",
                 style = "margin:0 0 10px 0;font-weight:700;",
                 "設定"
+              ),
+              radioButtons(
+                "bt_fv_replay_model",
+                "復盤模型（單選；機率／幅度／情境／下期上漲頻率依此模型）",
+                inline = TRUE,
+                choices = c(
+                  "DCF" = "dcf",
+                  "DDM" = "ddm",
+                  "RI" = "ri",
+                  "P/B" = "pb",
+                  "NAV" = "nav"
+                ),
+                selected = "dcf"
               ),
               radioButtons(
                 "bt_fv_conv_window",
@@ -3799,12 +4260,12 @@ ui <- dashboardPage(
               ),
               radioButtons(
                 "bt_fv_oos_mode",
-                "驗證口徑",
-                inline = TRUE,
+                "驗證樣本口徑",
+                inline = FALSE,
                 choices = c(
-                  "已實現下期（預設）" = "realized",
-                  "擴張窗樣本外命中" = "expanding",
-                  "含未到期下期（樣本內）" = "insample"
+                  "僅計已實現下期（預設）" = "realized",
+                  "擴張視窗樣本外命中" = "expanding",
+                  "含未實現下期（樣本內）" = "insample"
                 ),
                 selected = "realized"
               )
@@ -3871,7 +4332,7 @@ ui <- dashboardPage(
             h2(tags$b(id = "ynow_lab_notes_title", "測試 — Testing（量化回測）")),
             p(
               id = "ynow_lab_notes_sub",
-              "量化回測（策略淨值／績效／參數）與持倉閘門在此。歷史基本面驗證（理論估值 vs 實際市值）請至側邊「歷史基本面驗證」。美股績優篩選請至側邊 Blue Chip。SEC 財報附註在 Dashboard → FINANCIAL REPORT →「財報附註 (SEC)」。"
+              "量化回測（策略淨值／績效／參數）與持倉閘門在此。歷史基本面驗證（理論估值 vs 實際市值）請至側邊「歷史基本面驗證」。美股績優篩選請至側邊「績優股排行」。SEC 財報附註在 Dashboard → FINANCIAL REPORT →「財報附註 (SEC)」。"
             ),
             tags$hr()
           )
@@ -4008,7 +4469,7 @@ ui <- dashboardPage(
             ),
             tags$div(
               class = "ynow-bt-run-note",
-              "執行回測請按上方標題列右側「執行回測」。依分析頻率再平衡 · 當年 Rf／已實現 Rm／市值結構 · Rolling β · 「歷史基本面驗證」勾選模型平均 PIT。"
+              "執行回測請按上方標題列右側「執行回測」。依分析頻率再平衡 · 當年 Rf／已實現 Rm／市值結構 · Rolling β · 「歷史基本面驗證」復盤模型（單選）PIT。"
             ),
             uiOutput("bt_run_status")
           )
@@ -4032,7 +4493,7 @@ ui <- dashboardPage(
                 title = tagList(icon("balance-scale"), "基本面策略"),
                 value = "bt_fundamental",
                 .bt_section_intro(
-                  "模式 A：Exp_A → 淨值圖橘線。依 MOS 分級決定部位；MOS 來自「歷史基本面驗證」折現圖勾選模型的平均合理價。"
+                  "模式 A：Exp_A → 淨值圖橘線。依 MOS 分級決定部位；MOS 來自「歷史基本面驗證」復盤模型（單選）合理價。"
                 ),
                 fluidRow(
                   column(

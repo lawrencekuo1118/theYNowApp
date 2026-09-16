@@ -69,6 +69,7 @@ server <- function(input, output, session) {
   auto_calc_ddm_pulse <- reactiveVal(0L)
   auto_calc_pb_pulse <- reactiveVal(0L)
   auto_calc_nav_pulse <- reactiveVal(0L)
+  auto_calc_ri_pulse <- reactiveVal(0L)
 
   # ==========================================
   # 🚀 股票代號：僅主區 Ticker / Stock Code（sc + Search）
@@ -103,6 +104,34 @@ server <- function(input, output, session) {
       boxes = ui_box_header_specs(loc)
     )
     session$sendCustomMessage("ynowUiLocale", payload)
+    # SGR 自訂輸入標籤隨 locale
+    tryCatch({
+      updateNumericInput(
+        session, "sgr",
+        label = ui_str("sgr_custom_label", loc)
+      )
+    }, error = function(e) NULL)
+    # HFV 驗證樣本口徑：標籤／三選項隨 locale 更新（值不變）
+    tryCatch({
+      oos_sel <- isolate(input$bt_fv_oos_mode)
+      if (is.null(oos_sel) || !oos_sel %in% c("realized", "expanding", "insample")) {
+        oos_sel <- "realized"
+      }
+      updateRadioButtons(
+        session,
+        "bt_fv_oos_mode",
+        label = ui_str("hfv_oos_mode_label", loc),
+        choices = stats::setNames(
+          c("realized", "expanding", "insample"),
+          c(
+            ui_str("hfv_oos_realized", loc),
+            ui_str("hfv_oos_expanding", loc),
+            ui_str("hfv_oos_insample", loc)
+          )
+        ),
+        selected = oos_sel
+      )
+    }, error = function(e) NULL)
   }
 
   observeEvent(input$market_mode_pick, {
@@ -368,7 +397,27 @@ server <- function(input, output, session) {
         )
 
         ind_info <- get_yahoo_industry(stock_code)
-        if (!is.null(ind_info)) corp_industry_text(ind_info$display_text)
+        if (!is.null(ind_info)) {
+          corp_industry_text(ind_info$display_text)
+          # Soft-suggest Industry Standard from Yahoo sector/industry（未知則保留原選）
+          mapped <- tryCatch(
+            resolve_industry_key_from_yahoo(
+              display_text = ind_info$display_text,
+              sector = ind_info$sector,
+              industry = ind_info$industry
+            ),
+            error = function(e) ""
+          )
+          if (nzchar(as.character(mapped %||% "")[1]) &&
+              mapped %in% names(industry_standards)) {
+            tryCatch(
+              shinyWidgets::updatePickerInput(
+                session, "industry_choice", selected = mapped
+              ),
+              error = function(e) NULL
+            )
+          }
+        }
 
         # Prefer full legal/display name from Summary or industry lookup (not ticker alone).
         .pick_company_name <- function(..., ticker = "") {
@@ -1131,6 +1180,7 @@ server <- function(input, output, session) {
     sec <- as.character(rec$secondary %||% "")
     mark_roles <- nzchar(prim)
     make_card <- function(title, key, icon_name, color, formula, notes) {
+      # Only label 主模型／副模型; no「備選」chip on remaining cards
       role <- if (!mark_roles) {
         NULL
       } else if (identical(key, prim)) {
@@ -1138,12 +1188,12 @@ server <- function(input, output, session) {
       } else if (nzchar(sec) && identical(key, sec)) {
         "副模型"
       } else {
-        "備選"
+        NULL
       }
       active <- identical(role, "主模型")
       border_col <- if (identical(role, "主模型")) color else if (identical(role, "副模型")) "#888" else "#ddd"
       bg <- if (identical(role, "主模型")) "#fffaf2" else if (identical(role, "副模型")) "#f7f9fc" else "#fff"
-      badge_bg <- if (identical(role, "主模型")) color else if (identical(role, "副模型")) "#6c757d" else "#999"
+      badge_bg <- if (identical(role, "主模型")) color else if (identical(role, "副模型")) "#6c757d" else NULL
       tags$div(
         class = paste("ynow-model-card-col", if (isTRUE(active)) "ynow-model-rec-active" else ""),
         tags$div(
@@ -1155,7 +1205,7 @@ server <- function(input, output, session) {
           ),
           tags$div(style = paste0("font-size:22px; color:", color, ";"), icon(icon_name)),
           tags$h4(style = "margin:8px 0 4px 0; font-weight:700;", title),
-          if (!is.null(role)) tags$span(
+          if (!is.null(role) && !is.null(badge_bg)) tags$span(
             style = paste0(
               "display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; color:#fff; background:",
               badge_bg, ";"
@@ -1299,13 +1349,16 @@ server <- function(input, output, session) {
       c("Beta", "Rolling Benchmark", .snapshot_value(input$beta_bench), "Cross-check only; not written to CAPM"),
       c("Beta", "Rolling Lookback (months)", .snapshot_value(input$beta_lookback_months), "Cross-check window; default 60 ≈ Yahoo 5Y"),
       c("Beta", "Rolling Min Observations", .snapshot_value(input$beta_min_obs), "Minimum months required for Rolling β"),
-      c("WACC", "Calculated WACC (%)", .snapshot_value(wacc_pct), "WACC = E/(E+D)×Re + D/(E+D)×Rd×(1-T)"),
+      c("WACC", "Calculated WACC (%)", .snapshot_value(wacc_pct), "WACC = E/(E+D)×rₑ + D/(E+D)×rᵈ×(1-T)"),
       c("WACC", "Re (%)", .snapshot_value(input$wacc_re), "Cost of equity"),
       c("WACC", "Use CAPM Re", .snapshot_value(input$use_estimated_re), "TRUE uses CAPM-estimated Re"),
-      c("WACC", "Rd (%)", .snapshot_value(input$wacc_rd), "Cost of debt; NA until scraped interest/debt"),
-      c("WACC", "Rd min (%)", .snapshot_value(input$wacc_rd_min), "Clamp floor for scraped Rd"),
-      c("WACC", "Rd max (%)", .snapshot_value(input$wacc_rd_max), "Clamp ceiling for scraped Rd"),
-      c("WACC", "Tax Rate T (%)", .snapshot_value(input$wacc_tax), "After-tax debt cost = Rd×(1-T)"),
+      c("WACC", "rᵈ (%)", .snapshot_value(input$wacc_rd), "Cost of debt; NA until Interest/Interest-bearing Debt"),
+      c("WACC", "rᵈ Interest Expense", .snapshot_value(input$rd_interest_expense), "Numerator for pre-tax rᵈ"),
+      c("WACC", "rᵈ Interest-bearing Debt", .snapshot_value(input$rd_interest_bearing_debt), "Denominator for pre-tax rᵈ (有息負債)"),
+      c("WACC", "rᵈ min (%)", .snapshot_value(input$wacc_rd_min), "Clamp floor for estimated rᵈ"),
+      c("WACC", "rᵈ max (%)", .snapshot_value(input$wacc_rd_max), "Clamp ceiling for estimated rᵈ"),
+      c("WACC", "Use estimated rᵈ", .snapshot_value(input$use_estimated_rd), "TRUE uses Interest/Debt rᵈ"),
+      c("WACC", "Tax Rate T (%)", .snapshot_value(input$wacc_tax), "After-tax debt cost = rᵈ×(1-T)"),
       c("DDM", "D0", .snapshot_value(input[["mod_ddm-d0"]]), "P0 = D1 / (Ke-g); D1 = D0×(1+g)"),
       c("DDM", "g (%)", .snapshot_value(input[["mod_ddm-g"]]), "Dividend growth; optional sync with central SGR"),
       c("DDM", "Sync g with SGR", .snapshot_value(input[["mod_ddm-sync_g"]]), "If TRUE, DDM g follows Get Started SGR"),
@@ -1344,7 +1397,8 @@ server <- function(input, output, session) {
       c("Backtest", "Max Exposure (bt_max_exp)", .snapshot_value(input$bt_max_exp), "Mode A ceiling; 1.0 can fit Buy&Hold"),
       c("Backtest", "Min Exp After Pass (bt_min_exp_pass)", .snapshot_value(input$bt_min_exp_pass), "Floor when filter passes & MOS >= -10%"),
       c("Backtest", "Auto Derive Params", .snapshot_value(input$bt_param_auto), "TRUE = sync thresholds/weights/model on ticker load"),
-      c("Backtest", "回測用評價模型", paste(.snapshot_value(input$bt_fv_models), collapse = ", "), "Multi-select FV overlay; mean of checked drives MOS/Exp_A"),
+      c("Backtest", "圖表模型", paste(.snapshot_value(input$bt_fv_models), collapse = ", "), "Multi-select chart FV overlay"),
+      c("Backtest", "復盤模型", paste(.snapshot_value(input$bt_fv_replay_model), collapse = ", "), "Single-select replay FV for odds/magnitude/MOS"),
       c("Backtest", "MOS / VG Weight (bt_w_vg)", .snapshot_value(input$bt_w_vg), "Exposure diagnostic blend; not FV path"),
       c("Backtest", "Momentum Weight (bt_w_mom)", .snapshot_value(input$bt_w_mom), "Sentiment overlay relative weight"),
       c("Backtest", "RSI Weight (bt_w_rsi)", .snapshot_value(input$bt_w_rsi), "Sentiment overlay relative weight"),
@@ -1417,9 +1471,12 @@ server <- function(input, output, session) {
       wacc_stage1 = c("Two-Stage", "WACC1 (%)", "Stage 1 discount"),
       wacc_stage2 = c("Two-Stage", "WACC2 (%)", "Terminal discount"),
       wacc_re = c("WACC", "Re (%)", "Cost of equity"),
-      wacc_rd = c("WACC", "Rd (%)", "NA＝無靜態預設；財報利息／負債後覆寫"),
-      wacc_rd_min = c("WACC", "Rd 下限 (%)", "財報推估 rᵈ 夾限下限"),
-      wacc_rd_max = c("WACC", "Rd 上限 (%)", "財報推估 rᵈ 夾限上限"),
+      wacc_rd = c("WACC", "rᵈ (%)", "NA＝無靜態預設；利息／有息負債後覆寫"),
+      wacc_rd_min = c("WACC", "rᵈ 下限 (%)", "推估 rᵈ 夾限下限"),
+      wacc_rd_max = c("WACC", "rᵈ 上限 (%)", "推估 rᵈ 夾限上限"),
+      use_est_rd = c("WACC", "使用估算 rᵈ", "UI: use_estimated_rd；TRUE = rᵈ 跟利息／有息負債"),
+      rd_interest_expense = c("WACC", "利息費用", "rᵈ 分子；損益 Interest Expense 或 CF Interest Paid"),
+      rd_interest_bearing_debt = c("WACC", "有息負債", "rᵈ 分母；Total Debt 或 ST+LT Debt"),
       wacc_tax = c("WACC", "稅率 T (%)", "After-tax debt cost"),
       use_est_re = c("WACC", "使用 CAPM Re", "UI: use_estimated_re；TRUE = Re 跟 CAPM"),
       capm_rf = c("CAPM", "Rf (%)", "無風險利率（啟動時估）"),
@@ -1475,7 +1532,8 @@ server <- function(input, output, session) {
       c("彈性表", "參數相對衝擊", "PARAM_SENSITIVITY_SHOCK",
         if (exists("PARAM_SENSITIVITY_SHOCK", inherits = TRUE)) as.character(PARAM_SENSITIVITY_SHOCK) else "0.01",
         "setup.R：公式參數彈性相對 ±1%（與個股價格無關）"),
-      c("Backtest", "FV 模型勾選", "bt_fv_models", "(none)", "HFV 圖預設不勾選，勾選才計算")
+      c("Backtest", "圖表模型勾選", "bt_fv_models", "(none)", "HFV 圖預設不勾選，勾選才疊圖"),
+      c("Backtest", "復盤模型單選", "bt_fv_replay_model", "dcf", "HFV 復盤／策略 FV 預設 DCF")
     )
     rows <- c(rows, extra)
 
@@ -1729,7 +1787,10 @@ server <- function(input, output, session) {
     empty_plot <- function(msg) {
       plotly::plotly_empty() %>%
         plotly::layout(
-          title = list(text = msg, x = 0.5),
+          title = list(
+            text = msg, x = 0.5,
+            font = list(size = 15, color = "#856404", family = "Arial, sans-serif")
+          ),
           xaxis = list(visible = FALSE), yaxis = list(visible = FALSE)
         )
     }
@@ -1738,10 +1799,11 @@ server <- function(input, output, session) {
     # Always show all three series (OCF / ICF / Financing FCF); no UI multi-select
     series_sel <- APP_DEFAULTS$cf_flow_series %||% c("ocf", "icf", "fcf")
 
+    # 序列色對齊 logo 藍／金／綠（勿用紫系 AI 預設）
     spec <- list(
-      ocf = list(key = "Operating Cash Flow", label = "營業現金流 OCF", color = "#2E86AB", symbol = "circle"),
-      icf = list(key = "Investing Cash Flow", label = "投資現金流 ICF", color = "#E67E22", symbol = "diamond"),
-      fcf = list(key = "Financing Cash Flow", label = "籌資現金流 FCF", color = "#8E44AD", symbol = "square")
+      ocf = list(key = "Operating Cash Flow", label = "營業現金流 OCF", color = "#0C5484", symbol = "circle"),
+      icf = list(key = "Investing Cash Flow", label = "投資現金流 ICF", color = "#C9A227", symbol = "diamond"),
+      fcf = list(key = "Financing Cash Flow", label = "籌資現金流 FCF", color = "#249C60", symbol = "square")
     )
 
     cf <- d_cash_flow()
@@ -1800,7 +1862,8 @@ server <- function(input, output, session) {
       plotly::layout(
         title = list(
           text = paste0("<b>", htmltools::htmlEscape(title_main), "</b>"),
-          x = 0.02
+          x = 0.02,
+          font = list(size = 15, color = "#856404", family = "Arial, sans-serif")
         ),
         xaxis = list(
           title = "期間", tickangle = -30,
@@ -1921,27 +1984,47 @@ server <- function(input, output, session) {
     ddm_ke = reactive({ central_ke() * 100 }),  # 🌟 連動！
     
     scraped_d0 = reactive({
-      # 優先：財報推算每股股利（報價股約當股數）；其次：Summary 股利欄
+      # 優先：財報推算每股股利（報價股約當股數）；其次：Summary 股利欄（報價幣 DPS）
       cf <- d_cash_flow()
       bs <- d_balance_sheet()
+      q_ccy <- quote_currency()
+      f_ccy <- statement_currency()
       if (is.data.frame(cf) && nrow(cf) > 0 && is.data.frame(bs) && nrow(bs) > 0) {
-        div_paid <- select_current_metric(cf, "Cash Dividends Paid", "flow")
-        sh <- tryCatch(
-          resolve_valuation_shares(
-            bs, summary_data(),
-            ticker = current_ticker() %||% "",
-            quote_currency = quote_currency(),
-            financial_currency = statement_currency()
-          ),
-          error = function(e) NULL
-        )
-        shares <- if (!is.null(sh) && is.finite(sh$shares) && sh$shares > 0) {
-          sh$shares
-        } else {
-          select_current_metric_any(bs, SHARE_PATTERNS, "stock")
+        # 報價幣≠財報幣且 CF 未成功 FX 換算 → 勿用原幣總股利÷股數冒充報價 DPS
+        money_ok <- {
+          mc <- normalize_ccy(attr(cf, "money_ccy") %||% f_ccy)
+          if (!statement_quote_units_differ(f_ccy, q_ccy)) {
+            TRUE
+          } else {
+            isTRUE(attr(cf, "money_scaled")) && !is.na(mc) &&
+              (identical(mc, normalize_ccy(q_ccy)) ||
+                 identical(mc, "USD") || identical(mc, "TWD"))
+          }
         }
-        if (!is.na(div_paid) && !is.na(shares) && shares > 0) {
-          return(round(abs(div_paid) / shares, 2))
+        if (isTRUE(money_ok)) {
+          div_paid <- select_current_metric(cf, "Cash Dividends Paid", "flow")
+          sh <- tryCatch(
+            resolve_valuation_shares(
+              bs, summary_data(),
+              ticker = current_ticker() %||% "",
+              quote_currency = q_ccy,
+              financial_currency = f_ccy
+            ),
+            error = function(e) NULL
+          )
+          shares <- NA_real_
+          if (!is.null(sh) && is.finite(sh$shares) && sh$shares > 0) {
+            if (shares_auto_adjust_method(sh$method)) {
+              shares <- sh$shares
+            } else if (!statement_quote_units_differ(f_ccy, q_ccy)) {
+              shares <- sh$shares
+            }
+          } else if (!statement_quote_units_differ(f_ccy, q_ccy)) {
+            shares <- select_current_metric_any(bs, SHARE_PATTERNS, "stock")
+          }
+          if (!is.na(div_paid) && is.finite(shares) && shares > 0) {
+            return(round(abs(div_paid) / shares, 2))
+          }
         }
       }
       df <- summary_data()
@@ -2026,6 +2109,17 @@ server <- function(input, output, session) {
     input$sgr; input$g_stage1; input$dcf_mode
   }, {
     run_calc_trigger(run_calc_trigger() + 1)
+  }, ignoreInit = TRUE)
+
+  # 切換至 Two-Stage 時，確保 g1 帶入目前預估營收成長率
+  observeEvent(input$dcf_mode, {
+    if (!identical(input$dcf_mode, "two_stage")) return()
+    eg <- suppressWarnings(as.numeric(isolate(estimated_g()))[1])
+    if (!is.finite(eg)) return()
+    cur <- suppressWarnings(as.numeric(input$g_stage1)[1])
+    if (is.null(input$g_stage1) || !is.finite(cur) || abs(cur - eg) > 1e-4) {
+      updateNumericInput(session, "g_stage1", value = round(eg, 2))
+    }
   }, ignoreInit = TRUE)
   
   observeEvent(input$dcf_claim, {
@@ -2169,6 +2263,40 @@ server <- function(input, output, session) {
     )
   })
 
+  # SGR tab：頂部 valueBox（與 BETA Overview 同款 small-box）
+  .session_near_term_g_pct <- function() {
+    # 近期末／session g（非終值 SGR）：優先 estimated_g，其次 g_stage1
+    eg <- tryCatch(estimated_g(), error = function(e) NULL)
+    eg <- suppressWarnings(as.numeric(eg)[1])
+    if (is.finite(eg)) return(eg)
+    g1 <- suppressWarnings(as.numeric(input$g_stage1)[1])
+    if (is.finite(g1)) return(g1)
+    suppressWarnings(as.numeric(APP_DEFAULTS$g_stage1)[1])
+  }
+
+  output$vbx_sgr_pct <- renderValueBox({
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
+    sgr_pct <- suppressWarnings(as.numeric(input$sgr)[1])
+    if (!is.finite(sgr_pct)) sgr_pct <- suppressWarnings(as.numeric(APP_DEFAULTS$sgr)[1])
+    valueBox(
+      if (is.finite(sgr_pct)) paste0(round(sgr_pct, 2), " %") else "N/A",
+      ui_str("vbx_sgr_subtitle", loc),
+      icon = icon("infinity"),
+      color = "maroon"
+    )
+  })
+
+  output$vbx_session_g <- renderValueBox({
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
+    g_pct <- .session_near_term_g_pct()
+    valueBox(
+      if (is.finite(g_pct)) paste0(round(g_pct, 2), " %") else "N/A",
+      ui_str("vbx_session_g_subtitle", loc),
+      icon = icon("chart-line"),
+      color = "olive"
+    )
+  })
+
   output$txt_perpetual_g_reason <- renderUI({
     est <- central_perpetual_g()
     tags$div(
@@ -2309,7 +2437,8 @@ server <- function(input, output, session) {
     capm_rf = reactive(suppressWarnings(as.numeric(input$capm_rf)[1])),
     capm_beta = reactive(suppressWarnings(as.numeric(input$capm_beta)[1])),
     capm_rm = reactive(suppressWarnings(as.numeric(input$capm_rm)[1])),
-    use_estimated_re = reactive(isTRUE(input$use_estimated_re))
+    use_estimated_re = reactive(isTRUE(input$use_estimated_re)),
+    auto_calc_pulse = reactive(auto_calc_ri_pulse())
   )
   
   # ==========================================
@@ -2844,7 +2973,7 @@ server <- function(input, output, session) {
     return(ifelse(is.na(val), 0, val))
   })
 
-  # --- 負債成本 rᵈ (%)：利息費用／總負債（無全域預設）；上下限由 UI 參數決定 ---
+  # --- 負債成本 rᵈ (%)：利息費用／有息負債（稅前；無全域預設）；上下限由 UI 參數決定 ---
   .rd_clamp_bounds <- function() {
     lo <- suppressWarnings(as.numeric(input$wacc_rd_min)[1])
     hi <- suppressWarnings(as.numeric(input$wacc_rd_max)[1])
@@ -2856,8 +2985,7 @@ server <- function(input, output, session) {
     c(lo = lo, hi = hi)
   }
 
-  scraped_rd_pct <- reactive({
-    req(d_income_statement(), d_balance_sheet())
+  .scraped_interest_expense <- function() {
     interest <- tryCatch(
       abs(as.numeric(select_current_metric_any(
         d_income_statement(), INTEREST_EXPENSE_PATTERNS, "flow"
@@ -2873,9 +3001,20 @@ server <- function(input, output, session) {
           ))[1]),
           error = function(e) NA_real_
         )
+        if (is.finite(interest) && interest > 0) {
+          attr(interest, "source") <- "cash_flow_interest_paid"
+          return(interest)
+        }
       }
+      return(NA_real_)
     }
-    debt <- tryCatch(as.numeric(scraped_debt())[1], error = function(e) NA_real_)
+    attr(interest, "source") <- "income_interest_expense"
+    interest
+  }
+
+  scraped_rd_pct <- reactive({
+    interest <- suppressWarnings(as.numeric(input$rd_interest_expense)[1])
+    debt <- suppressWarnings(as.numeric(input$rd_interest_bearing_debt)[1])
     if (!is.finite(interest) || interest <= 0 || !is.finite(debt) || debt <= 0) {
       return(NA_real_)
     }
@@ -2884,20 +3023,92 @@ server <- function(input, output, session) {
     max(b[["lo"]], min(rd, b[["hi"]]))
   })
 
+  .apply_estimated_rd <- function(notify = FALSE) {
+    rd <- tryCatch(scraped_rd_pct(), error = function(e) NA_real_)
+    if (!is.finite(rd)) return(invisible(NA_real_))
+    updateNumericInput(session, "wacc_rd", value = round(rd, 2))
+    if (isTRUE(notify)) {
+      showNotification(
+        glue::glue("📌 已估算 rᵈ = {round(rd, 2)}%（利息費用／有息負債）"),
+        type = "message",
+        duration = 5
+      )
+    }
+    invisible(rd)
+  }
+
+  # 財報就緒：帶入利息費用與有息負債（Total Debt 或 ST+LT）
   observeEvent(
-    list(
-      d_income_statement(), d_balance_sheet(), d_cash_flow(), scraped_debt(),
-      input$wacc_rd_min, input$wacc_rd_max
-    ),
+    list(d_income_statement(), d_balance_sheet(), d_cash_flow(), scraped_debt()),
     {
-      rd <- tryCatch(scraped_rd_pct(), error = function(e) NA_real_)
-      if (is.finite(rd)) {
-        updateNumericInput(session, "wacc_rd", value = round(rd, 2))
+      interest <- tryCatch(.scraped_interest_expense(), error = function(e) NA_real_)
+      debt <- tryCatch(as.numeric(scraped_debt())[1], error = function(e) NA_real_)
+      if (is.finite(interest) && interest > 0) {
+        updateNumericInput(session, "rd_interest_expense", value = round(interest, 2))
+      }
+      if (is.finite(debt) && debt > 0) {
+        updateNumericInput(session, "rd_interest_bearing_debt", value = round(debt, 2))
       }
     },
     ignoreInit = FALSE
   )
-  
+
+  # 估算參數變更：勾選「採用估算 rᵈ」時覆寫 wacc_rd
+  observeEvent(
+    list(
+      input$rd_interest_expense, input$rd_interest_bearing_debt,
+      input$wacc_rd_min, input$wacc_rd_max, input$use_estimated_rd
+    ),
+    {
+      if (!isTRUE(input$use_estimated_rd)) return()
+      .apply_estimated_rd(notify = FALSE)
+    },
+    ignoreInit = FALSE
+  )
+
+  observeEvent(input$calc_rd, {
+    .apply_estimated_rd(notify = TRUE)
+  })
+
+  output$rd_interest_source_note <- renderUI({
+    interest <- tryCatch(.scraped_interest_expense(), error = function(e) NA_real_)
+    src <- attr(interest, "source")
+    lab <- if (identical(src, "cash_flow_interest_paid")) {
+      "財報來源：現金流量表 Interest Paid"
+    } else if (identical(src, "income_interest_expense")) {
+      "財報來源：損益表 Interest Expense"
+    } else {
+      "財報來源：尚無利息費用；可手動輸入"
+    }
+    tags$p(style = "margin:-6px 0 8px 0;color:#666;font-size:11px;", lab)
+  })
+
+  output$rd_debt_source_note <- renderUI({
+    debt <- tryCatch(as.numeric(scraped_debt())[1], error = function(e) NA_real_)
+    lab <- if (is.finite(debt) && debt > 0) {
+      "財報來源：有息負債（優先 Total Debt；否則 Short-term + Long-term Debt）"
+    } else {
+      "財報來源：尚無有息負債；可手動輸入"
+    }
+    tags$p(style = "margin:-6px 0 8px 0;color:#666;font-size:11px;", lab)
+  })
+
+  output$rd_result <- renderUI({
+    interest <- suppressWarnings(as.numeric(input$rd_interest_expense)[1])
+    debt <- suppressWarnings(as.numeric(input$rd_interest_bearing_debt)[1])
+    rd <- tryCatch(scraped_rd_pct(), error = function(e) NA_real_)
+    if (!is.finite(interest) || interest <= 0 || !is.finite(debt) || debt <= 0) {
+      return(tags$p(style = "color:#888;font-size:13px;", "請輸入利息費用與有息負債後按估算。"))
+    }
+    raw <- 100 * interest / debt
+    shown <- if (is.finite(rd)) rd else raw
+    HTML(glue::glue(
+      "<div style='padding:8px;border-left:4px solid #222222;background:#f5f5f5;font-size:13px;'>
+         rᵈ = 利息費用 ÷ 有息負債 = <b>{sprintf('%.2f%%', shown)}</b>
+       </div>"
+    ))
+  })
+ 
   # --- 股數與市值（報價 → session；ADR 自動約當股數 = 市值÷股價）---
   scraped_market_cap <- reactive({
     req(d_balance_sheet(), summary_data())
@@ -3146,8 +3357,7 @@ server <- function(input, output, session) {
     }
     HTML(glue::glue(
       "<div style='padding:8px;border-left:4px solid #222222;background:#f5f5f5;font-size:13px;'>
-         Ke = Rf + β×(Rm−Rf) = <b>{sprintf('%.2f%%', re)}</b><br/>
-         （亦同步至 DDM Ke／WACC rₑ）
+         rₑ = Rf + β×(Rm−Rf) = <b>{sprintf('%.2f%%', re)}</b>
        </div>"
     ))
   }
@@ -4469,7 +4679,8 @@ server <- function(input, output, session) {
                         label = paste0("預估營收成長率 ➔ ", val, " %"))
     }
 
-    if (method != "custom" && !is.na(val) && !identical(input$dcf_mode, "two_stage")) {
+    if (!is.na(val)) {
+      # 成長率 g1 預設帶入預估營收成長率（含 Two-Stage；自訂方法亦同）
       if (is.null(input$g_stage1) || is.na(as.numeric(input$g_stage1)) ||
           abs(as.numeric(input$g_stage1) - as.numeric(val)) > 1e-4) {
         updateNumericInput(session, "g_stage1", value = val)
@@ -4952,7 +5163,7 @@ server <- function(input, output, session) {
         "所得稅率 T", tax0, "%",
         .ev_wacc_pct(.wacc_pct(tax_pct = .rel(tax0, -1))),
         .ev_wacc_pct(.wacc_pct(tax_pct = .rel(tax0, +1))),
-        "WACC 公式：稅盾 Rd×(1−T)"
+        "WACC 公式：稅盾 rᵈ×(1−T)"
       )
     }
 
@@ -5463,12 +5674,18 @@ server <- function(input, output, session) {
     auto_calc_ddm_pulse(0L)
     auto_calc_pb_pulse(0L)
     auto_calc_nav_pulse(0L)
+    auto_calc_ri_pulse(0L)
   }, ignoreNULL = TRUE, ignoreInit = TRUE)
 
   .auto_calc_primary_ready <- function(prim) {
     prim <- as.character(prim %||% "")[1]
     if (!nzchar(prim)) return(FALSE)
-    if (identical(prim, "ri")) return(TRUE)
+    if (identical(prim, "ri")) {
+      b0 <- suppressWarnings(as.numeric(input[["mod_ri-b0"]])[1])
+      ke <- suppressWarnings(as.numeric(input[["mod_ri-ri_ke"]])[1])
+      g <- suppressWarnings(as.numeric(input[["mod_ri-ri_g"]])[1])
+      return(is.finite(b0) && is.finite(ke) && ke > 0 && is.finite(g) && g < ke)
+    }
     if (identical(prim, "dcf")) {
       proj <- tryCatch(fcf_results$df_fcf(), error = function(e) NULL)
       n <- suppressWarnings(as.numeric(input$years)[1])
@@ -5525,6 +5742,8 @@ server <- function(input, output, session) {
       auto_calc_pb_pulse(isolate(auto_calc_pb_pulse()) + 1L)
     } else if (identical(prim, "nav")) {
       auto_calc_nav_pulse(isolate(auto_calc_nav_pulse()) + 1L)
+    } else if (identical(prim, "ri")) {
+      auto_calc_ri_pulse(isolate(auto_calc_ri_pulse()) + 1L)
     }
     invisible(NULL)
   }
@@ -5542,7 +5761,6 @@ server <- function(input, output, session) {
     if (!isTRUE(.auto_calc_primary_ready(prim))) return()
 
     auto_calc_primary_sig(sig)
-    if (identical(prim, "ri")) return(invisible(NULL))
     .fire_auto_calc_primary(prim)
   })
 
@@ -6125,15 +6343,25 @@ server <- function(input, output, session) {
   }
 
   .bt_raw_fv_models <- reactive({
+    # Chart overlay: multi-select
     sel <- input$bt_fv_models
     if (is.null(sel) || length(sel) < 1) return(character(0))
     ord <- c("dcf", "ddm", "ri", "pb", "nav")
     intersect(ord, as.character(sel))
   })
 
+  .bt_replay_fv_model <- reactive({
+    # Replay / strategy FV: single-select only
+    sel <- input$bt_fv_replay_model
+    if (is.null(sel) || length(sel) < 1) return(character(0))
+    m <- tolower(trimws(as.character(sel)[1]))
+    if (!nzchar(m) || identical(m, "none")) return(character(0))
+    intersect(c("dcf", "ddm", "ri", "pb", "nav"), m)
+  })
+
   .bt_selected_fv_models <- reactive({
-    # 未勾選 → character(0)；策略 FV／MOS 不暗設 DCF
-    .bt_raw_fv_models()
+    # Strategy fair_value / MOS / HFV odds & magnitude: replay model only
+    .bt_replay_fv_model()
   })
 
   bt_hfv_base <- reactive({
@@ -6154,6 +6382,7 @@ server <- function(input, output, session) {
     was_applying <- isTRUE(bt_applying_params())
     bt_applying_params(TRUE)
     updateCheckboxGroupInput(session, "bt_fv_models", selected = character(0))
+    updateRadioButtons(session, "bt_fv_replay_model", selected = "dcf")
     if (!was_applying) bt_applying_params(FALSE)
   }, ignoreInit = TRUE)
 
@@ -6249,7 +6478,7 @@ server <- function(input, output, session) {
     if (!is.finite(g_explicit)) g_explicit <- sgr
     fv_models <- .bt_selected_fv_models()
     fv_models <- fv_models[fv_models %in% c("dcf", "ddm", "ri", "pb", "nav")]
-    # 未勾選：保持空向量，策略 fair_value／MOS = NA（不暗設 DCF）
+    # 未選復盤模型：保持空向量，策略 fair_value／MOS = NA（不暗設 DCF）
 
     rf <- suppressWarnings(as.numeric(input$capm_rf)[1]) / 100
     if (!is.finite(rf) || rf <= 0) {
@@ -6396,65 +6625,85 @@ server <- function(input, output, session) {
     }
   })
 
-  # 勾選評價模型即重建基本面價值；取消全部則隱藏折線
-  observeEvent(input$bt_fv_models, {
+  # 圖表複選或復盤單選變更 → 重建基本面價值；兩者皆空則隱藏折線
+  .bt_refresh_hfv_fv <- function(progress_msg = "重建基本面價值…") {
+    chart_sel <- .bt_raw_fv_models()
+    replay_sel <- .bt_replay_fv_model()
+    if (length(chart_sel) < 1L && length(replay_sel) < 1L) {
+      bt_fv_visible(FALSE)
+      bt_hfv_fv(NULL)
+      return(invisible(NULL))
+    }
+    if (is.null(current_ticker()) || !nzchar(as.character(current_ticker())[1])) {
+      return(invisible(NULL))
+    }
+    if (is.null(d_income_statement()) || is.null(d_cash_flow()) || is.null(d_balance_sheet())) {
+      stop("請先在 Dashboard 搜尋並載入該公司財報")
+    }
+    mp <- bt_current_model_params()
+    fund <- build_annual_fundamentals_for_quote(
+      d_income_statement(), d_balance_sheet(), d_cash_flow(),
+      ticker = current_ticker(), model_params = mp
+    )
+    withProgress(message = progress_msg, value = 0.2, {
+      fv_res <- compute_fair_value_timeline(
+        ticker = current_ticker(),
+        d_is = d_income_statement(),
+        d_bs = d_balance_sheet(),
+        d_cf = d_cash_flow(),
+        model_params = mp,
+        mos = bt_current_mos(),
+        bench_ticker = active_bench_ticker(),
+        years = 5,
+        rebal_freq = .bt_selected_rebal_freq()
+      )
+      bt_hfv_fv(fv_res)
+      bt_fv_visible(TRUE)
+      if (!is.null(bt_result())) {
+        bt_result(refresh_backtest_fair_value(bt_result(), fund, mp))
+      }
+      sa <- attr(fund, "share_align")
+      if (is.list(sa) && shares_auto_adjust_method(sa$method) &&
+          is.finite(sa$scale) && abs(sa$scale - 1) > 0.05) {
+        showNotification(
+          sprintf(
+            "折現比較股數已對齊報價股（×%.3g；%s）",
+            sa$scale, sa$method
+          ),
+          type = "message",
+          duration = 6
+        )
+      }
+    })
+    invisible(NULL)
+  }
+
+  observeEvent(list(input$bt_fv_models, input$bt_fv_replay_model), {
     if (isTRUE(bt_applying_params())) return()
     if (isTRUE(input$bt_param_auto)) {
       updateCheckboxInput(session, "bt_param_auto", value = FALSE)
     }
-
-    sel <- .bt_raw_fv_models()
-    if (length(sel) < 1) {
-      bt_fv_visible(FALSE)
-      bt_hfv_fv(NULL)
-      return()
-    }
-    if (is.null(current_ticker()) || !nzchar(as.character(current_ticker())[1])) return()
-
-    tryCatch({
-      if (is.null(d_income_statement()) || is.null(d_cash_flow()) || is.null(d_balance_sheet())) {
-        stop("請先在 Dashboard 搜尋並載入該公司財報")
+    tryCatch(
+      .bt_refresh_hfv_fv(),
+      error = function(e) {
+        bt_fv_visible(FALSE)
+        showNotification(paste("❌ 基本面價值計算失敗：", e$message), type = "error", duration = 8)
       }
-      mp <- bt_current_model_params()
-      fund <- build_annual_fundamentals_for_quote(
-        d_income_statement(), d_balance_sheet(), d_cash_flow(),
-        ticker = current_ticker(), model_params = mp
-      )
-      withProgress(message = "重建基本面價值…", value = 0.2, {
-        fv_res <- compute_fair_value_timeline(
-          ticker = current_ticker(),
-          d_is = d_income_statement(),
-          d_bs = d_balance_sheet(),
-          d_cf = d_cash_flow(),
-          model_params = mp,
-          mos = bt_current_mos(),
-          bench_ticker = active_bench_ticker(),
-          years = 5,
-          rebal_freq = .bt_selected_rebal_freq()
-        )
-        bt_hfv_fv(fv_res)
-        bt_fv_visible(TRUE)
-        if (!is.null(bt_result())) {
-          bt_result(refresh_backtest_fair_value(bt_result(), fund, mp))
-        }
-        sa <- attr(fund, "share_align")
-        if (is.list(sa) && shares_auto_adjust_method(sa$method) &&
-            is.finite(sa$scale) && abs(sa$scale - 1) > 0.05) {
-          showNotification(
-            sprintf(
-              "折現比較股數已對齊報價股（×%.3g；%s）",
-              sa$scale, sa$method
-            ),
-            type = "message",
-            duration = 6
-          )
-        }
-      })
-    }, error = function(e) {
-      bt_fv_visible(FALSE)
-      showNotification(paste("❌ 基本面價值計算失敗：", e$message), type = "error", duration = 8)
-    })
+    )
   }, ignoreInit = TRUE, ignoreNULL = FALSE)
+
+  # 搜尋載入財報後：若已有復盤模型（預設 DCF）且尚無 FV，自動重建一次
+  observeEvent(list(current_ticker(), d_income_statement(), d_balance_sheet(), d_cash_flow()), {
+    if (isTRUE(bt_applying_params())) return()
+    if (!is.null(bt_hfv_fv())) return()
+    if (length(.bt_replay_fv_model()) < 1L && length(.bt_raw_fv_models()) < 1L) return()
+    if (is.null(current_ticker()) || !nzchar(as.character(current_ticker())[1])) return()
+    if (is.null(d_income_statement()) || is.null(d_cash_flow()) || is.null(d_balance_sheet())) return()
+    tryCatch(
+      .bt_refresh_hfv_fv(),
+      error = function(e) NULL
+    )
+  }, ignoreInit = TRUE)
 
   # 分析頻率變更：以該頻率重建 Date_t／FV；策略回測需重跑（再平衡日會變）
   observeEvent(input$bt_fv_analysis_freq, {
@@ -6474,8 +6723,9 @@ server <- function(input, output, session) {
         ))
       }
     }
-    sel <- .bt_raw_fv_models()
-    if (length(sel) < 1L) {
+    sel_chart <- .bt_raw_fv_models()
+    sel_replay <- .bt_replay_fv_model()
+    if (length(sel_chart) < 1L && length(sel_replay) < 1L) {
       bt_hfv_fv(NULL)
       return()
     }
@@ -6738,13 +6988,13 @@ server <- function(input, output, session) {
     if (is.null(src)) {
       return(tags$p(
         style = "color:#888;font-size:12.5px;",
-        "搜尋股票後將預先顯示股價與大盤；勾選圖上方評價模型可計算合理價與 MOS 摘要（策略用勾選平均；未勾＝不套用模型）。"
+        "搜尋股票後將預先顯示股價與大盤；勾選「圖表模型」可疊合理價線；「復盤模型」單選驅動下方驗證統計與策略 FV／MOS。"
       ))
     }
     if (!isTRUE(src$show_fv)) {
       return(tags$p(
         style = "color:#888;font-size:12.5px;",
-        "已顯示實際股價與大盤。勾選圖上方評價模型以顯示合理價與下方摘要（策略 MOS＝勾選平均；未勾＝不套用模型）。"
+        "已顯示實際股價與大盤。勾選「圖表模型」以疊合理價線；驗證機率／幅度依「復盤模型」單選（非圖表平均）。"
       ))
     }
     m <- if (!is.null(bt_result()) && !is.null(bt_result()$metrics)) {
@@ -6802,47 +7052,87 @@ server <- function(input, output, session) {
                         "便宜（P<FV）＝市價低於模型；偏貴（P>FV）＝市價高於模型")),
       tags$div(style = "flex:1;min-width:120px;padding:8px 10px;background:#f5f5f5;border-left:4px solid #222222;",
                tags$div(class = "ynow-kpi-stat-label", "平均 MOS"),
-               tags$div(class = "ynow-kpi-stat-value", style = "color:#222222;", .fmt_pct(m$mean_hist_mos))),
-      tags$div(style = "flex:2;min-width:180px;padding:8px 10px;background:#fafafa;border-left:4px solid #555;",
-               tags$div(class = "ynow-kpi-stat-label", "此刻參數（Session）"),
-               tags$div(class = "ynow-kpi-stat-params", {
-                 models <- paste(toupper(.bt_raw_fv_models()), collapse = "+")
-                 claim <- as.character(mp$dcf_claim %||% "fcff")[1]
-                 ddm_mode <- as.character(mp$ddm_mode %||% "gordon")[1]
-                 base <- sprintf(
-                   "模型 %s · WACC %.2f%% · Ke %.2f%% · SGR %.2f%% · n=%s · PB mid %.2f · DCF %s",
-                   models,
-                   .safe_num(mp$wacc, NA) * 100, .safe_num(mp$ke, NA) * 100,
-                   .safe_num(mp$sgr, NA) * 100, mp$n_years, .safe_num(mp$pb_mid, NA),
-                   toupper(claim)
-                 )
-                 if ("ri" %in% .bt_raw_fv_models()) {
-                   paste0(
-                     base,
-                     sprintf(
-                       " · RI[ROE %.1f%% · payout %.0f%% · n=%s · g %.2f%% · Ke %.2f%% · fade=%s]",
-                       .safe_num(mp$ri_roe, NA) * 100,
-                       .safe_num(mp$ri_payout, NA) * 100,
-                       mp$ri_years %||% mp$n_years,
-                       .safe_num(mp$ri_g, NA) * 100,
-                       .safe_num(mp$ri_ke, NA) * 100,
-                       mp$roe_method %||% "constant"
-                     )
-                   )
-                 } else if ("ddm" %in% .bt_raw_fv_models()) {
-                   paste0(
-                     base,
-                     sprintf(
-                       " · DDM[%s · g %.2f%% · Ke %.2f%%]",
-                       ddm_mode,
-                       .safe_num(mp$ddm_g, NA) * 100,
-                       .safe_num(mp$ddm_ke, NA) * 100
-                     )
-                   )
-                 } else {
-                   base
-                 }
-               }))
+               tags$div(class = "ynow-kpi-stat-value", style = "color:#222222;", .fmt_pct(m$mean_hist_mos)))
+    )
+  })
+
+  # 折現比較圖正下方：此刻 Session 參數（全寬鍵值網格）
+  output$bt_session_params <- renderUI({
+    src <- .bt_hfv_chart_source()
+    if (is.null(src) || !isTRUE(src$show_fv) || is.null(src$mp)) return(NULL)
+    mp <- src$mp
+    chart_m <- paste(toupper(.bt_raw_fv_models()), collapse = "+")
+    if (!nzchar(chart_m)) chart_m <- "—"
+    replay_m <- toupper(.bt_replay_fv_model())
+    if (length(replay_m) < 1L || !nzchar(replay_m[1])) replay_m <- "—"
+    claim <- toupper(as.character(mp$dcf_claim %||% "fcff")[1])
+    ddm_mode <- as.character(mp$ddm_mode %||% "gordon")[1]
+    .fmt_pct2 <- function(x) {
+      v <- .safe_num(x, NA_real_)
+      if (!is.finite(v)) return("—")
+      sprintf("%.2f%%", v * 100)
+    }
+    .fmt_num2 <- function(x) {
+      v <- .safe_num(x, NA_real_)
+      if (!is.finite(v)) return("—")
+      sprintf("%.2f", v)
+    }
+    .item <- function(key, val, span = FALSE) {
+      tags$div(
+        class = if (isTRUE(span)) {
+          "ynow-hfv-session-params__item ynow-hfv-session-params__span"
+        } else {
+          "ynow-hfv-session-params__item"
+        },
+        tags$span(class = "ynow-hfv-session-params__key", key),
+        tags$span(class = "ynow-hfv-session-params__val", val)
+      )
+    }
+    items <- list(
+      .item("圖表模型", chart_m),
+      .item("復盤模型", replay_m[1]),
+      .item("WACC", .fmt_pct2(mp$wacc)),
+      .item("Ke", .fmt_pct2(mp$ke)),
+      .item("SGR", .fmt_pct2(mp$sgr)),
+      .item("n（年）", as.character(mp$n_years %||% "—")),
+      .item("PB mid", .fmt_num2(mp$pb_mid)),
+      .item("DCF claim", claim)
+    )
+    if ("ri" %in% .bt_replay_fv_model() || "ri" %in% .bt_raw_fv_models()) {
+      items <- c(
+        items,
+        list(
+          .item("RI ROE", .fmt_pct2(mp$ri_roe)),
+          .item("RI payout", {
+            v <- .safe_num(mp$ri_payout, NA_real_)
+            if (!is.finite(v)) "—" else sprintf("%.0f%%", v * 100)
+          }),
+          .item("RI n", as.character(mp$ri_years %||% mp$n_years %||% "—")),
+          .item("RI g", .fmt_pct2(mp$ri_g)),
+          .item("RI Ke", .fmt_pct2(mp$ri_ke)),
+          .item("RI fade", as.character(mp$roe_method %||% "constant"))
+        )
+      )
+    } else if ("ddm" %in% .bt_replay_fv_model() || "ddm" %in% .bt_raw_fv_models()) {
+      items <- c(
+        items,
+        list(
+          .item("DDM mode", ddm_mode),
+          .item("DDM g", .fmt_pct2(mp$ddm_g)),
+          .item("DDM Ke", .fmt_pct2(mp$ddm_ke))
+        )
+      )
+    }
+    loc <- tryCatch(ui_locale(), error = function(e) "zh-TW")
+    title_txt <- ui_str("hfv_session_params_title", loc)
+    tags$div(
+      class = "ynow-hfv-session-params",
+      tags$div(
+        class = "ynow-hfv-session-params__title",
+        icon("sliders-h"),
+        tags$span(id = "ynow_hfv_session_params_title", title_txt)
+      ),
+      tags$div(class = "ynow-hfv-session-params__grid", items)
     )
   })
 
@@ -6900,9 +7190,9 @@ server <- function(input, output, session) {
       }
       vd <- src$vd
       if (isTRUE(src$show_fv) && !is.null(vd) && is.data.frame(vd) && nrow(vd) > 0) {
-        models <- .bt_raw_fv_models()
-        marker_col <- if (length(models) == 1L) {
-          switch(models[1],
+        replay <- .bt_replay_fv_model()
+        marker_col <- if (length(replay) == 1L) {
+          switch(replay[1],
             "dcf" = "fv_dcf", "ddm" = "fv_ddm", "ri" = "fv_ri", "pb" = "fv_pb", "nav" = "fv_nav",
             "fair_value")
         } else {
@@ -7317,6 +7607,60 @@ server <- function(input, output, session) {
         )
       } else "統計期間：全部估值日配對"
     }
+    oos_lab <- switch(
+      as.character(s$oos_mode %||% "realized")[1],
+      realized = ui_str("hfv_oos_realized", loc),
+      expanding = ui_str("hfv_oos_expanding", loc),
+      insample = ui_str("hfv_oos_insample", loc),
+      ui_str("hfv_oos_realized", loc)
+    )
+    conclusion_card <- {
+      if (is.finite(s$p_up) && as.integer(s$n %||% 0L) > 0L) {
+        tags$div(
+          style = paste0(
+            "margin:0 0 12px 0;padding:12px 14px;background:#eef7f1;",
+            "border:1px solid #b7dfc7;border-left:4px solid ", border, ";",
+            "border-radius:4px;font-size:13px;line-height:1.55;"
+          ),
+          tags$div(
+            tags$b(ui_str("hfv_sum_conclusion_label", loc)),
+            tags$span(
+              style = "margin-left:8px;font-size:16px;font-weight:700;",
+              sprintf(
+                ui_str("hfv_sum_conclusion_fmt", loc),
+                pct(s$p_up),
+                as.integer(s$n %||% 0L)
+              )
+            )
+          ),
+          tags$div(
+            style = "margin:4px 0 0 0;color:#555;font-size:12px;",
+            paste0(ui_str("hfv_oos_mode_label", loc), "：", oos_lab)
+          ),
+          tags$div(
+            style = "margin:4px 0 0 0;color:#6c757d;font-size:11.5px;",
+            ui_str("hfv_sum_conclusion_def", loc)
+          ),
+          tags$div(
+            style = "margin:4px 0 0 0;color:#888;font-size:11.5px;",
+            ui_str("hfv_sum_conclusion_caveat", loc)
+          )
+        )
+      } else {
+        tags$div(
+          style = paste0(
+            "margin:0 0 12px 0;padding:12px 14px;background:#fafafa;",
+            "border:1px solid #ddd;border-left:4px solid ", border, ";",
+            "border-radius:4px;font-size:13px;line-height:1.55;color:#666;"
+          ),
+          tags$div(tags$b(ui_str("hfv_sum_conclusion_label", loc))),
+          tags$div(
+            style = "margin:4px 0 0 0;",
+            ui_str("hfv_sum_conclusion_na", loc)
+          )
+        )
+      }
+    }
 
     mo <- s$mos_outlook
     mos_body <- {
@@ -7408,9 +7752,318 @@ server <- function(input, output, session) {
       )
     )
 
+    sc <- s$scenarios
+    sc_lab <- function(code) {
+      key <- switch(
+        as.character(code)[1],
+        A = "hfv_scenario_A",
+        B = "hfv_scenario_B",
+        C = "hfv_scenario_C",
+        D = "hfv_scenario_D",
+        "hfv_scenario_other"
+      )
+      ui_str(key, loc)
+    }
+    scenario_card <- {
+      if (!is.null(sc) && is.list(sc) && as.integer(sc$n %||% 0L) > 0L) {
+        cnt <- sc$counts
+        frq <- sc$freq
+        abcd <- c("A", "B", "C", "D")
+        n_abcd <- vapply(abcd, function(code) {
+          if (!is.null(cnt) && code %in% names(cnt)) as.integer(cnt[[code]]) else 0L
+        }, integer(1))
+        lead_code <- if (any(n_abcd > 0L)) abcd[which.max(n_abcd)] else NA_character_
+        n_other <- if (!is.null(cnt) && "other" %in% names(cnt)) {
+          as.integer(cnt[["other"]])
+        } else {
+          0L
+        }
+        p_other <- if (!is.null(frq) && "other" %in% names(frq)) {
+          as.numeric(frq[["other"]])
+        } else {
+          NA_real_
+        }
+        make_sc_card <- function(code, icon_name, color) {
+          n_c <- if (!is.null(cnt) && code %in% names(cnt)) {
+            as.integer(cnt[[code]])
+          } else {
+            0L
+          }
+          p_c <- if (!is.null(frq) && code %in% names(frq)) {
+            as.numeric(frq[[code]])
+          } else {
+            NA_real_
+          }
+          is_lead <- identical(code, lead_code) && n_c > 0L
+          border_col <- if (is_lead) color else "#ddd"
+          bg <- if (is_lead) "#fffaf2" else "#fff"
+          tags$div(
+            class = paste(
+              "ynow-hfv-scenario-card-col",
+              if (is_lead) "ynow-hfv-scenario-lead" else ""
+            ),
+            tags$div(
+              class = "ynow-hfv-scenario-card",
+              style = paste0(
+                "border:1px solid ", border_col, ";",
+                "border-radius:8px; padding:12px 12px 10px 12px; min-height:148px; background:", bg,
+                "; box-shadow:0 2px 4px rgba(0,0,0,0.04); height:100%;"
+              ),
+              tags$div(style = paste0("font-size:20px; color:", color, ";"), icon(icon_name)),
+              tags$h4(
+                style = "margin:6px 0 4px 0; font-weight:700; font-size:14px; line-height:1.3;",
+                sc_lab(code)
+              ),
+              if (is_lead) tags$span(
+                style = paste0(
+                  "display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; color:#fff; background:",
+                  color, ";"
+                ),
+                ui_str("hfv_scenario_lead_badge", loc)
+              ),
+              tags$p(
+                style = "margin:8px 0 4px 0; font-size:13px; font-weight:600; color:#333;",
+                sprintf(ui_str("hfv_scenario_stat_fmt", loc), pct(p_c), n_c)
+              ),
+              tags$p(
+                style = "margin:0; font-size:11.5px; color:#666; line-height:1.4;",
+                ui_str(paste0("hfv_scenario_cue_", code), loc)
+              )
+            )
+          )
+        }
+        tags$div(
+          style = paste0(
+            "margin:0 0 10px 0;padding:12px 14px;background:#fff;",
+            "border:1px solid #e8dfd0;border-left:4px solid ", border, ";border-radius:4px;",
+            "font-size:13px;line-height:1.55;"
+          ),
+          tags$style(HTML("
+            .ynow-hfv-scenario-lead { transform: translateY(-2px); }
+            .ynow-hfv-scenario-row {
+              display: flex;
+              flex-wrap: nowrap;
+              align-items: stretch;
+              margin-left: -7.5px;
+              margin-right: -7.5px;
+            }
+            .ynow-hfv-scenario-row > .ynow-hfv-scenario-card-col {
+              flex: 1 1 0;
+              min-width: 0;
+              width: auto;
+              float: none;
+              padding-left: 7.5px;
+              padding-right: 7.5px;
+              box-sizing: border-box;
+            }
+            @media (max-width: 991px) {
+              .ynow-hfv-scenario-row { flex-wrap: wrap; }
+              .ynow-hfv-scenario-row > .ynow-hfv-scenario-card-col {
+                flex: 1 1 45%;
+                margin-bottom: 10px;
+              }
+            }
+            @media (max-width: 767px) {
+              .ynow-hfv-scenario-row > .ynow-hfv-scenario-card-col {
+                flex: 1 1 100%;
+              }
+            }
+          ")),
+          tags$div(tags$b(ui_str("hfv_sum_scenario_block", loc))),
+          tags$div(
+            style = "margin:4px 0 0 0;color:#6c757d;font-size:11.5px;",
+            ui_str("hfv_sum_scenario_formula", loc)
+          ),
+          tags$p(style = "margin:6px 0 8px 0;color:#555;font-size:12px;", period_txt),
+          tags$div(
+            style = "margin:0 0 6px 0;color:#555;font-size:12px;",
+            sprintf("配對數 n＝%d", sc$n %||% 0L)
+          ),
+          tags$div(
+            class = "ynow-hfv-scenario-row",
+            make_sc_card("A", "gem", "#c9a227"),
+            make_sc_card("B", "chart-line", "#00a65a"),
+            make_sc_card("C", "exclamation-triangle", "#f39c12"),
+            make_sc_card("D", "fire", "#dd4b39")
+          ),
+          {
+            sc_color <- function(code) {
+              switch(
+                as.character(code)[1],
+                A = "#c9a227",
+                B = "#00a65a",
+                C = "#f39c12",
+                D = "#dd4b39",
+                "#6c757d"
+              )
+            }
+            make_concl_body <- function(code) {
+              code <- as.character(code)[1]
+              if (identical(code, "A")) {
+                tagList(
+                  tags$b(ui_str("hfv_scenario_concl_A_lead", loc)), " ",
+                  ui_str("hfv_scenario_concl_A_body", loc)
+                )
+              } else if (identical(code, "B")) {
+                tagList(
+                  tags$b(ui_str("hfv_scenario_concl_B_lead", loc)), " ",
+                  ui_str("hfv_scenario_concl_B_body", loc)
+                )
+              } else if (identical(code, "C")) {
+                tagList(
+                  tags$b(ui_str("hfv_scenario_concl_C_lead", loc)), " ",
+                  ui_str("hfv_scenario_concl_C_body", loc), " ",
+                  tags$b(ui_str("hfv_scenario_concl_C_emph", loc))
+                )
+              } else if (identical(code, "D")) {
+                tagList(
+                  tags$b(ui_str("hfv_scenario_concl_D_lead", loc)), " ",
+                  ui_str("hfv_scenario_concl_D_body", loc)
+                )
+              } else {
+                ui_str("hfv_scenario_concl_other", loc)
+              }
+            }
+            make_concl_callout <- function(scope_label, code, border_col) {
+              tags$div(
+                class = "ynow-hfv-scenario-concl",
+                style = paste0(
+                  "margin:10px 0 0 0;padding:10px 12px;background:#f5f5f5;",
+                  "border-left:4px solid ", border_col, ";",
+                  "border-radius:0 4px 4px 0;font-size:13px;line-height:1.55;color:#333;"
+                ),
+                tags$div(
+                  style = "margin:0 0 4px 0;font-size:12px;color:#555;",
+                  tags$b(scope_label),
+                  tags$span(style = "margin:0 6px;color:#bbb;", "|"),
+                  tags$span(sc_lab(code))
+                ),
+                tags$div(make_concl_body(code))
+              )
+            }
+            lead_c <- as.character(sc$most_frequent %||% NA_character_)[1]
+            if (!nzchar(lead_c) || identical(lead_c, "NA")) lead_c <- NA_character_
+            # Fallback if older summarize payload lacks most_frequent
+            if (is.na(lead_c) && !is.null(lead_code) && !is.na(lead_code)) {
+              lead_c <- as.character(lead_code)[1]
+            }
+            latest_c <- as.character(sc$latest %||% NA_character_)[1]
+            if (!nzchar(latest_c) || identical(latest_c, "NA")) {
+              # Fallback: last pair in attached pairs frame
+              pp_sc <- sc$pairs
+              if (!is.null(pp_sc) && is.data.frame(pp_sc) && nrow(pp_sc) > 0L &&
+                  "scenario" %in% names(pp_sc)) {
+                latest_c <- as.character(pp_sc$scenario[nrow(pp_sc)])[1]
+              } else {
+                latest_c <- NA_character_
+              }
+            }
+            d0 <- tryCatch(as.Date(sc$latest_date), error = function(e) as.Date(NA))
+            d1 <- tryCatch(as.Date(sc$latest_date_next), error = function(e) as.Date(NA))
+            lead_n <- suppressWarnings(as.integer(sc$most_frequent_n %||% NA_integer_)[1])
+            if (!is.finite(lead_n) || lead_n < 1L) {
+              lead_n <- if (!is.na(lead_c) && lead_c %in% abcd) {
+                as.integer(n_abcd[match(lead_c, abcd)])
+              } else {
+                0L
+              }
+            }
+            lead_label <- if (!is.na(lead_c) && lead_c %in% abcd) {
+              sprintf(
+                ui_str("hfv_scenario_concl_lead_fmt", loc),
+                sc_lab(lead_c),
+                lead_n
+              )
+            } else {
+              ui_str("hfv_scenario_concl_scope_lead", loc)
+            }
+            latest_label <- if (is.finite(d0) && is.finite(d1)) {
+              sprintf(
+                ui_str("hfv_scenario_concl_latest_fmt", loc),
+                format(d0, "%Y-%m-%d"),
+                format(d1, "%Y-%m-%d")
+              )
+            } else {
+              ui_str("hfv_scenario_concl_latest_nodate", loc)
+            }
+            tagList(
+              if (!is.na(lead_c) && lead_c %in% abcd) {
+                make_concl_callout(lead_label, lead_c, sc_color(lead_c))
+              } else {
+                tags$div(
+                  class = "ynow-hfv-scenario-concl",
+                  style = paste0(
+                    "margin:10px 0 0 0;padding:10px 12px;background:#f5f5f5;",
+                    "border-left:4px solid #6c757d;",
+                    "border-radius:0 4px 4px 0;font-size:12.5px;line-height:1.5;color:#555;"
+                  ),
+                  tags$b(ui_str("hfv_scenario_concl_scope_lead", loc)),
+                  tags$span(style = "margin:0 6px;color:#bbb;", "|"),
+                  ui_str("hfv_scenario_concl_none_abcd", loc)
+                )
+              },
+              if (!is.na(latest_c)) {
+                make_concl_callout(latest_label, latest_c, sc_color(latest_c))
+              } else NULL,
+              tags$div(
+                style = "margin:8px 0 0 0;color:#888;font-size:11.5px;line-height:1.45;",
+                ui_str("hfv_scenario_concl_note", loc)
+              )
+            )
+          },
+          if (n_other > 0L) {
+            tags$div(
+              style = "margin:8px 0 0 0;color:#666;font-size:12px;",
+              sprintf(
+                ui_str("hfv_scenario_other_line", loc),
+                pct(p_other),
+                n_other
+              )
+            )
+          } else NULL
+          # Method-block notes cover thresholds / FV quality; avoid a second caveat here.
+        )
+      } else {
+        tags$div(
+          style = paste0(
+            "margin:0 0 10px 0;padding:12px 14px;background:#fafafa;",
+            "border:1px solid #ddd;border-left:4px solid ", border, ";border-radius:4px;",
+            "font-size:13px;line-height:1.55;color:#666;"
+          ),
+          tags$div(tags$b(ui_str("hfv_sum_scenario_block", loc))),
+          tags$div(style = "margin:4px 0 0 0;", ui_str("hfv_sum_scenario_empty", loc)),
+          tags$div(
+            style = "margin:6px 0 0 0;color:#888;font-size:11.5px;",
+            ui_str("hfv_sum_scenario_caveat", loc)
+          )
+        )
+      }
+    }
+
     # 結果附註／fallback：全寬置於兩欄下方
     fb <- s$fallbacks
     notes_ui <- tagList()
+    fv_meta <- tryCatch(bt_hfv_fv(), error = function(e) NULL)
+    srcs <- if (!is.null(fv_meta)) fv_meta$hfv_data_sources else NULL
+    data_notes <- if (!is.null(fv_meta)) fv_meta$hfv_data_notes else NULL
+    if ((!is.null(srcs) && length(srcs) > 0) || (!is.null(data_notes) && length(data_notes) > 0)) {
+      notes_ui <- tagAppendChild(
+        notes_ui,
+        tags$div(
+          style = "margin:0 0 8px 0;padding:8px 10px;background:#eef4fb;border:1px solid #c5d4ef;border-radius:4px;font-size:12px;",
+          tags$div(tags$b(ui_str("hfv_data_sources_label", loc))),
+          if (!is.null(srcs) && length(srcs) > 0) {
+            tags$div(style = "margin-top:4px;", paste(srcs, collapse = " · "))
+          } else NULL,
+          if (!is.null(data_notes) && length(data_notes) > 0) {
+            tags$ul(
+              style = "margin:6px 0 0 0;padding-left:18px;color:#555;",
+              lapply(data_notes, function(n) tags$li(n))
+            )
+          } else NULL
+        )
+      )
+    }
     if (nzchar(s$note %||% "")) {
       notes_ui <- tagAppendChild(
         notes_ui,
@@ -7450,6 +8103,7 @@ server <- function(input, output, session) {
     }
 
     tagList(
+      conclusion_card,
       tags$div(
         style = "margin:0 0 8px 0;font-size:13px;",
         tags$b(ui_str("hfv_sum_title", loc)),
@@ -7460,6 +8114,7 @@ server <- function(input, output, session) {
         column(6, style = "margin-bottom:10px;", price_card),
         column(6, style = "margin-bottom:10px;", fv_card)
       ),
+      scenario_card,
       if (length(notes_ui) > 0) {
         tags$div(
           style = "margin:4px 0 0 0;padding:10px 12px;background:#fafafa;border:1px dashed #ccc;border-radius:4px;",
@@ -7475,10 +8130,11 @@ server <- function(input, output, session) {
 
   output$bt_fv_conv_table <- renderTable({
     s <- bt_fv_conv()
+    loc <- tryCatch(isolate(ui_locale()), error = function(e) "zh-TW")
     shiny::validate(shiny::need(
       !is.null(s) && !is.null(s$pairs) && nrow(s$pairs) > 0,
       if (isTRUE(s$no_strategy_fv)) {
-        "無策略理論 FV：請先於折現比較圖勾選評價模型（未勾選時不暗設 DCF）"
+        "無復盤理論 FV：請先選擇復盤模型（結果僅依單選模型）"
       } else {
         "選定期間內無配對資料"
       }
@@ -7501,6 +8157,31 @@ server <- function(input, output, session) {
     } else {
       rep("—", nrow(pp))
     }
+    sc_pairs <- if (!is.null(s$scenarios) && is.list(s$scenarios) &&
+                    !is.null(s$scenarios$pairs) && is.data.frame(s$scenarios$pairs)) {
+      s$scenarios$pairs
+    } else {
+      NULL
+    }
+    sc_code <- rep(NA_character_, nrow(pp))
+    if (!is.null(sc_pairs) && nrow(sc_pairs) > 0L &&
+        all(c("Date", "scenario") %in% names(sc_pairs))) {
+      ix <- match(pp$Date, sc_pairs$Date)
+      sc_code <- as.character(sc_pairs$scenario[ix])
+    }
+    sc_lab <- vapply(sc_code, function(code) {
+      if (is.na(code) || !nzchar(code)) return("—")
+      key <- switch(
+        code,
+        A = "hfv_scenario_A",
+        B = "hfv_scenario_B",
+        C = "hfv_scenario_C",
+        D = "hfv_scenario_D",
+        other = "hfv_scenario_other",
+        "hfv_scenario_other"
+      )
+      ui_str(key, loc)
+    }, character(1))
     data.frame(
       估值日 = format(pp$Date, "%Y-%m-%d"),
       下期日 = format(pp$Date_next, "%Y-%m-%d"),
@@ -7511,6 +8192,7 @@ server <- function(input, output, session) {
       市價漲跌 = dirp,
       `幅度(P−FV)/FV` = paste0(sprintf("%+.1f", 100 * gapv), "%"),
       相對FV = pp$vs_fv,
+      歷史情境 = sc_lab,
       `預設／fallback` = fb_lab,
       stringsAsFactors = FALSE,
       check.names = FALSE
@@ -7703,7 +8385,7 @@ server <- function(input, output, session) {
       tags$p(
         style = "margin-top:0;",
         tags$b("折現圖 vs 淨值圖："),
-        "折現圖（側邊「歷史基本面驗證」）是每股合理價 vs 實際股價；策略 MOS／部位用勾選模型的平均。",
+        "折現圖（側邊「歷史基本面驗證」）是每股合理價 vs 實際股價；策略 MOS／部位用「復盤模型」單選。",
         "淨值圖（本頁「測試」）是部位×日報酬的累積財富（起始＝1）——",
         tags$b("基本面策略淨值"), "＝Exp_A；",
         tags$b("情緒策略淨值"), "＝Exp_B（Exp_A 混入動能／RSI）。兩圖標籤不可互換。"
@@ -7712,7 +8394,8 @@ server <- function(input, output, session) {
       tags$ul(
         tags$li(tags$b("實際股價："), "該股歷史收盤（Yahoo 調整後）。搜尋後即預覽股價，不必先勾模型。"),
         tags$li(tags$b("大盤："), "圖上方「顯示大盤」開關疊加基準（預設 SPY，右軸）；與合理價無關。"),
-        tags$li(tags$b("合理價："), "勾選圖上方評價模型後才計算並疊圖（預設不勾選）。"),
+        tags$li(tags$b("圖表模型："), "圖上方可複選疊多條合理價線（預設不勾選）。"),
+        tags$li(tags$b("復盤模型："), "驗證區「設定」內單選；機率／幅度／下期上漲頻率與策略 FV／MOS 僅依此模型（非圖表複選平均）。"),
         tags$li(
           tags$b("PIT DCF（優先邊際路徑）："),
           "歷史點若有營收與 NOPAT/D&A/CapEx/ΔNWC 邊際，走與 Live 相同的 unit FCFF 路徑再折現；",
@@ -7720,12 +8403,12 @@ server <- function(input, output, session) {
           "財報可用條件：財報年 ≤ 日曆年−1，且 period_end＋約 90 日 ≤ 估值日（Yahoo 重編風險仍在）。",
           "僅折線末端最新點才掛目前 APP 分頁（含 FCFE／二階段 DDM）與 Session Rm。"
         ),
-        tags$li(tags$b("策略 MOS／部位："), "用目前勾選且有限值模型的算術平均，不是隱藏的主模型。只勾一個＝該模型。未勾選任何模型＝不套用策略 FV／MOS（不暗設 DCF）。"),
+        tags$li(tags$b("策略 MOS／部位："), "用「復盤模型」單選之合理價，不是圖表複選平均。未選復盤模型＝不套用策略 FV／MOS（不暗設 DCF）。"),
         tags$li(
           tags$b("歷史基本面驗證（非策略回測）："),
           "同時報告（1）市價下期漲跌 ", tags$code("R=(P_{t+1}-P_t)/P_t"),
           " 經驗頻率，以及依目前安全邊際（MOS）分組的條件上漲／下跌機率；",
-          "（2）相對策略理論估值 FV_t（＝勾選且有限值模型平均；未勾＝無 FV）之上／之下與幅度 (P−FV)/FV。",
+          "（2）相對復盤理論估值 FV_t（＝復盤模型單選；結果隨復盤模型而變）之上／之下與幅度 (P−FV)/FV。",
           "兩口徑不同，不可混稱。預設只計已實現下期，可選擴張窗樣本外命中率。",
           "若歷史點套用 APP_DEFAULTS／Session／法定稅率，摘要會列出預設／fallback 與對應分頁。",
           "此區塊在側邊「歷史基本面驗證」，與本頁策略淨值交易回測分開閱讀。"
@@ -7769,7 +8452,7 @@ server <- function(input, output, session) {
       ),
       tags$h5(tags$b("三、計算過程（依分析頻率 PIT）")),
       tags$ol(
-        tags$li("再平衡日：fund_year ≤ 日曆年−1 重建各模型合理價；策略 FV＝勾選且有限值者之平均（未勾＝NA） → MOS＝(FV−Price)/FV。"),
+        tags$li("再平衡日：fund_year ≤ 日曆年−1 重建各模型合理價；策略 FV＝復盤模型單選（未選＝NA） → MOS＝(FV−Price)/FV。"),
         tags$li("持倉回測條件未過 → Exp_A = Exp_B = 0（兩模式皆空手）。"),
         tags$li("通過則 Exp_A 依 MOS 滯後映射；Exp_B = (1−blend)×Exp_A + blend×(sentiment×max_exp)。"),
         tags$li("每日：策略淨值用 Exp×日報酬；Buy&Hold 滿持股；現金報酬=0；未扣交易成本。"),
@@ -7793,7 +8476,11 @@ server <- function(input, output, session) {
     updateSelectInput(session, "lifecycle_stage", selected = APP_DEFAULTS$lifecycle_stage)
     updateNumericInput(session, "wacc_gordon", value = APP_DEFAULTS$wacc_gordon)
     updateNumericInput(session, "yr_stage1", value = APP_DEFAULTS$yr_stage1)
-    updateNumericInput(session, "g_stage1", value = APP_DEFAULTS$g_stage1)
+    eg_reset <- suppressWarnings(as.numeric(isolate(estimated_g()))[1])
+    updateNumericInput(
+      session, "g_stage1",
+      value = if (is.finite(eg_reset)) round(eg_reset, 2) else APP_DEFAULTS$g_stage1
+    )
     updateNumericInput(session, "wacc_stage1", value = APP_DEFAULTS$wacc_gordon)
     updateNumericInput(session, "wacc_stage2", value = APP_DEFAULTS$wacc_gordon)
     # 依當前方法重算 g（勿寫死舊 SGR）
@@ -7803,7 +8490,7 @@ server <- function(input, output, session) {
     } else {
       .push_perpetual_g(est, notify_two_stage = FALSE)
     }
-    showNotification("🔁 所有 DCF 模型欄位已回復", type = "message")
+    showNotification("🔁 DCF 參數已回復預設", type = "message")
   })
   
   output$download_report <- downloadHandler(
@@ -8046,14 +8733,16 @@ server <- function(input, output, session) {
   })
 
   output$lab_im_bluechip_blurb <- renderUI({
-    prof <- active_market_profile()
+    loc <- ui_locale()
+    mode <- market_mode()
     n_yrs <- as.integer(APP_DEFAULTS$years %||% 5L)[1]
-    tags$p(
-      prof$bluechip_blurb,
-      "再以 Piotroski 高門檻（F-Score≥7；與盈餘品質無關）過濾排行榜，最後依 App 預設 n＝",
-      n_yrs,
-      " 年隱含年化估值漲幅排序。明細列數等於評估檔數 N。"
-    )
+    if (!is.finite(n_yrs) || n_yrs < 1L) n_yrs <- 5L
+    key <- if (identical(normalize_market_mode(mode), "TW")) {
+      "bluechip_blurb_tw"
+    } else {
+      "bluechip_blurb_us"
+    }
+    tags$p(sprintf(ui_str(key, loc), as.integer(n_yrs)))
   })
 
   output$lab_im_universe_meta <- renderUI({
@@ -8182,6 +8871,7 @@ server <- function(input, output, session) {
           pool <- lab_attach_market_caps(pool)
         }
         pool <- lab_rank_and_cap_eval_pool(
+          # N 截斷：候選 > N 依市值降序取 N；明細＝該批；F-Score≥7 只濾排行榜 Top 10（不縮明細）
           pool, max_n = max_n, size_filter = input$lab_im_sizes
         )
         n_filtered <- as.integer(attr(pool, "n_filtered") %||% nrow(pool))
@@ -8286,7 +8976,7 @@ server <- function(input, output, session) {
       }
       return(tags$p(
         style = "color:#888; font-size:12.5px;",
-        "尚未評估。請按下方「評估績優」；", cap_txt, "，並列出其中 F-Score≥7 且",
+        "尚未評估。請按下方「搜尋績優股」；", cap_txt, "，並列出其中 F-Score≥7 且",
         sprintf(" n=%d 年年化估值漲幅最高 ", n),
         "的 Top 10（與明細同一批、同一排序鍵）。"
       ))
@@ -8303,7 +8993,7 @@ server <- function(input, output, session) {
   output$lab_im_leaderboard <- renderTable({
     scores <- lab_im_scores()
     if (is.null(scores) || !is.data.frame(scores) || nrow(scores) == 0) {
-      return(data.frame(訊息 = "（尚無績優排行 — 請先按「評估績優」）"))
+      return(data.frame(訊息 = "（尚無績優排行 — 請先按「搜尋績優股」）"))
     }
     merged <- tryCatch(lab_im_merged(), error = function(e) NULL)
     if (is.null(merged) || nrow(merged) == 0) {
@@ -8357,7 +9047,7 @@ server <- function(input, output, session) {
     if (nrow(merged) == 0) {
       scores <- lab_im_scores()
       msg <- if (is.null(scores) || !is.data.frame(scores) || nrow(scores) == 0) {
-        "尚未評估。請按「評估績優」；明細列數將等於評估檔數 N（篩選後不足 N 則全列）。"
+        "尚未評估。請按「搜尋績優股」；明細列數將等於評估檔數 N（篩選後不足 N 則全列）。"
       } else {
         "沒有符合篩選的已評估列。可放寬規模／產業／模型，或重新評估。"
       }
@@ -8430,7 +9120,7 @@ server <- function(input, output, session) {
       evaluated_only = TRUE
     )
     if (nrow(merged) == 0) {
-      return(data.frame(訊息 = "目前篩選下無已評估明細列（請先按「評估績優」）"))
+      return(data.frame(訊息 = "目前篩選下無已評估明細列（請先按「搜尋績優股」）"))
     }
     size_lab <- unname(LAB_SIZE_LABELS[merged$size_band])
     size_lab[is.na(size_lab)] <- "—"
@@ -8842,7 +9532,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v14.0"),
+      paste0("- **App：** The YNow App v16.17"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

@@ -26,10 +26,8 @@ pb_asset_module_ui <- function(id) {
                                 style = "font-size: 16px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;")
                           ),
                           fluidRow(
-                            div(style = "text-align: center; margin-bottom: 20px;",
-                                actionButton(ns("btn_calc_pb"), "試算 P/B 合理價",
-                                             style = "background-color: #1a1a1a; color: white; font-weight: bold; font-size: 18px; padding: 12px 30px; border-radius: 8px; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1);")
-                            )
+                            column(width = 6, ynow_calc_btn(ns("btn_calc_pb"), "試算 P/B 合理價")),
+                            column(width = 6, ynow_reset_defaults_btn(ns("btn_reset_pb")))
                           ),
                           fluidRow(
                             column(width = 12,
@@ -116,9 +114,10 @@ pb_asset_module_ui <- function(id) {
                           ),
                           fluidRow(
                             column(12,
-                                   actionButton(ns("btn_reset_pb"), "回復系統預設參數",
-                                                icon = icon("undo"), class = "btn-sm",
-                                                style = "background-color: #7f8c8d; color: white; border: none; margin-top: 10px;")
+                                   tags$p(
+                                     style = "margin-top: 10px; color: #7f8c8d; font-size: 12px;",
+                                     "「回復預設」在 Overview，與「試算 P/B 合理價」並排。"
+                                   )
                             )
                           )
                  )
@@ -455,7 +454,7 @@ pb_asset_module_server <- function(id,
       updateRadioButtons(session, "target_mode", selected = APP_DEFAULTS$pb_target_mode %||% "justified")
       updateNumericInput(session, "holdco_discount", value = APP_DEFAULTS$pb_holdco_discount * 100)
       sync_book_values()
-      showNotification("P/B 參數已依目前目標來源重估", type = "message")
+      showNotification("🔁 P/B 參數已回復預設", type = "message")
     })
     
     output$alert_missing_bv <- renderUI({

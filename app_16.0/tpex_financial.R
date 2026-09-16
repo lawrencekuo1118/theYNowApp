@@ -57,13 +57,26 @@ YNOW_TPEX_FINANCIAL_SUMMARY_URL <-
   isTRUE(ok) && isTRUE(.tpex_fs_fn_ready())
 }
 
-#' 是否應嘗試櫃買季報摘要 fallback（.TWO 且 Yahoo 三表皆空）
+#' 是否應嘗試櫃買季報摘要 fallback（.TWO 且 Yahoo IS／BS 空或缺）
 should_try_tpex_financial_fallback <- function(ticker, yahoo_res = NULL) {
   tk <- toupper(trimws(as.character(ticker %||% "")[1]))
   if (!nzchar(tk) || !grepl("\\.TWO$", tk)) return(FALSE)
   if (is.null(yahoo_res)) return(TRUE)
-  if (!exists("financials_is_bs_cf_all_empty", mode = "function")) return(TRUE)
-  isTRUE(financials_is_bs_cf_all_empty(yahoo_res))
+  if (!exists("financial_df_is_empty", mode = "function") ||
+      !exists("coerce_financial_df", mode = "function")) {
+    if (exists("financials_is_bs_cf_all_empty", mode = "function")) {
+      return(isTRUE(financials_is_bs_cf_all_empty(yahoo_res)))
+    }
+    return(TRUE)
+  }
+  is_empty <- financial_df_is_empty(
+    coerce_financial_df(yahoo_res[["Income Statement"]]$expanded)
+  )
+  bs_empty <- financial_df_is_empty(
+    coerce_financial_df(yahoo_res[["Balance Sheet"]]$expanded)
+  )
+  # CF 空不擋 TPEx：摘要本來就不提供 CF，仍可用來補 IS／BS
+  isTRUE(is_empty) || isTRUE(bs_empty)
 }
 
 #' 抓取櫃買財務資料簡報並轉成 Yahoo 形狀三表（CF 通常為空）
