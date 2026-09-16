@@ -3823,7 +3823,7 @@ ui <- dashboardPage(
                               ),
                               
                               uiOutput("dcf_disc_formula_banner"),
-                              # 上列 100%：WACC 估算；下列左 50% Rd、右 50% CAPM
+                              # 上列 100%：WACC 估算；下列左 50% rᵈ、右 50% CAPM
                               fluidRow(
                                 box(
                                   width = 12,
