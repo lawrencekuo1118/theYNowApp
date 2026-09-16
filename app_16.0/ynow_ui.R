@@ -768,7 +768,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v16.28</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v16.29</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -2149,9 +2149,65 @@ ui <- dashboardPage(
           color: #222222;
           font-weight: 400;
         }
+        .ynow-sc-row {
+          display: flex;
+          flex-direction: row;
+          flex-wrap: nowrap;
+          align-items: flex-end;
+          gap: 10px;
+          max-width: 420px;
+          margin-bottom: 8px;
+        }
         .ynow-sc-wrap {
           position: relative;
-          max-width: 400px;
+          flex: 1 1 auto;
+          width: 260px;
+          max-width: 280px;
+          min-width: 0;
+        }
+        .ynow-sc-wrap .form-group {
+          margin-bottom: 0 !important;
+        }
+        .ynow-sc-wrap .control-label {
+          display: block;
+          margin-bottom: 5px;
+        }
+        .ynow-sc-row #search.ynow-search-btn,
+        #search.ynow-search-btn {
+          flex: 0 0 auto;
+          align-self: flex-end;
+          height: 34px;
+          padding: 6px 14px;
+          margin: 0 0 0 0;
+          background: #111111 !important;
+          border: 1px solid #000000 !important;
+          color: #F5C518 !important;
+          font-weight: 700;
+          line-height: 1.2;
+          box-shadow: none;
+        }
+        .ynow-sc-row #search.ynow-search-btn:hover,
+        .ynow-sc-row #search.ynow-search-btn:focus,
+        #search.ynow-search-btn:hover,
+        #search.ynow-search-btn:focus {
+          background: #000000 !important;
+          border-color: #000000 !important;
+          color: #C9A227 !important;
+        }
+        .ynow-sc-row #search.ynow-search-btn .fa,
+        .ynow-sc-row #search.ynow-search-btn .fas,
+        #search.ynow-search-btn .fa,
+        #search.ynow-search-btn .fas {
+          color: #F5C518 !important;
+        }
+        @media (max-width: 480px) {
+          .ynow-sc-row {
+            max-width: 100%;
+          }
+          .ynow-sc-wrap {
+            width: auto;
+            max-width: calc(100% - 100px);
+          }
         }
         
         /* 大數字框（valueBox / infoBox）統一響應式：換行、縮字、避免溢出 */
@@ -3302,9 +3358,18 @@ ui <- dashboardPage(
       column(width = 12,
              titlePanel(h5("a lawrence kuo shiny app")),
              div(
-               class = "ynow-sc-wrap",
-               textInput("sc", "Ticker / Stock Code", value = APP_DEFAULTS$stock_code),
-               uiOutput("sc_ticker_suggest_ui")
+               class = "ynow-sc-row",
+               div(
+                 class = "ynow-sc-wrap",
+                 textInput("sc", "Ticker / Stock Code", value = APP_DEFAULTS$stock_code),
+                 uiOutput("sc_ticker_suggest_ui")
+               ),
+               actionButton(
+                 "search",
+                 "Search",
+                 icon = icon("search"),
+                 class = "ynow-search-btn"
+               )
              ),
              tags$script(HTML("
                (function() {
@@ -3379,11 +3444,7 @@ ui <- dashboardPage(
     ),
     fluidRow(
       column(
-        width = 4,
-        actionButton("search", "Search", icon = icon("search"))
-      ),
-      column(
-        width = 8,
+        width = 12,
         h2(uiOutput("txt_corpname", inline = TRUE), class = "ynow-corpname")
       )
     ),
