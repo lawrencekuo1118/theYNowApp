@@ -768,7 +768,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v16.27</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v16.28</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -810,7 +810,7 @@ ui <- dashboardPage(
         )
       )
     ),
-    # Logo + USD／TWD under logo (currency sits just below black header edge)
+    # Logo + USD／TWD under logo (modest gap below black header)
     tags$li(
       id = "ynow-header-logo",
       class = "dropdown ynow-header-logo",
@@ -1536,6 +1536,37 @@ ui <- dashboardPage(
           align-items: center;
           line-height: 1.15;
         }
+        /* 繁中／EN 與小 logo 在頁首列垂直置中對齊 */
+        .main-header .navbar-custom-menu {
+          height: 50px;
+          display: flex !important;
+          align-items: center !important;
+        }
+        .main-header .navbar-custom-menu > .navbar-nav {
+          display: flex !important;
+          flex-direction: row;
+          align-items: center !important;
+          height: 50px !important;
+          margin: 0 !important;
+        }
+        .main-header .navbar-custom-menu .navbar-nav > li.ynow-lang-header,
+        .main-header .navbar-custom-menu .navbar-nav > li#ynow-header-logo.ynow-header-logo {
+          float: none !important;
+          height: 50px !important;
+          min-height: 50px !important;
+          display: flex !important;
+          align-items: center !important;
+          margin: 0 !important;
+        }
+        .ynow-lang-header .form-group,
+        .ynow-lang-header .shiny-input-container {
+          margin: 0 !important;
+        }
+        .ynow-lang-header .btn-group,
+        .ynow-lang-header .btn-group-xs {
+          margin: 0 !important;
+          vertical-align: middle;
+        }
         .ynow-lang-header .btn-group-xs > .btn,
         .ynow-lang-header .btn-xs {
           background: rgba(255,255,255,0.12) !important;
@@ -1543,6 +1574,9 @@ ui <- dashboardPage(
           color: #fff !important;
           font-weight: 700 !important;
           min-width: 42px;
+          padding-top: 3px !important;
+          padding-bottom: 3px !important;
+          line-height: 1.2 !important;
         }
         .ynow-lang-header .btn-group-xs > .btn.active,
         .ynow-lang-header .btn-xs.active {
@@ -1553,7 +1587,7 @@ ui <- dashboardPage(
         }
         .ynow-lang-header .radiobtn { margin: 0 !important; }
 
-        /* USD／TWD: top-right under logo, tight to black header bottom edge */
+        /* USD／TWD: under logo with modest gap below black header */
         .main-header,
         .main-header .navbar,
         .main-header .navbar-custom-menu,
@@ -1564,15 +1598,20 @@ ui <- dashboardPage(
           position: absolute;
           top: 100%;
           right: 14px;
-          margin: 0;
+          margin: 8px 0 0 0;
           padding: 0;
           z-index: 1035;
           display: flex;
           flex-direction: column;
           align-items: flex-end;
-          gap: 2px;
+          gap: 4px;
           line-height: 1.15;
           pointer-events: auto;
+          max-width: min(320px, calc(100vw - 16px));
+        }
+        .ynow-ccy-float .form-group,
+        .ynow-ccy-float .shiny-input-container {
+          margin: 0 !important;
         }
         .ynow-ccy-float .btn-group-xs > .btn,
         .ynow-ccy-float .btn-xs {
@@ -1591,14 +1630,18 @@ ui <- dashboardPage(
           box-shadow: none !important;
         }
         .ynow-ccy-float .radiobtn { margin: 0 !important; }
-        .ynow-ccy-float .ynow-hdr-ccy-status {
+        .ynow-ccy-float .ynow-hdr-ccy-status,
+        .ynow-ccy-float .ynow-hdr-ccy-status .shiny-text-output {
+          display: block;
           font-size: 10px;
           color: rgba(26, 26, 26, 0.62);
-          white-space: nowrap;
-          max-width: 280px;
-          overflow: hidden;
-          text-overflow: ellipsis;
+          white-space: normal;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+          max-width: min(280px, calc(100vw - 24px));
           text-align: right;
+          line-height: 1.3;
+          margin: 0;
         }
         /* 預測年數 n：固定在 EPS (TTM) 數字框正下方（右欄） */
         #ibx_EPS { margin-bottom: 8px; }
@@ -2916,14 +2959,17 @@ ui <- dashboardPage(
           }
           .ynow-ccy-float {
             right: 8px;
+            margin-top: 8px;
+            max-width: min(240px, calc(100vw - 16px));
           }
           .ynow-ccy-float .ynow-hdr-ccy-status,
-          .ynow-ccy-float .shiny-text-output {
-            max-width: 120px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            line-height: 1.1;
+          .ynow-ccy-float .ynow-hdr-ccy-status .shiny-text-output {
+            max-width: min(200px, calc(100vw - 20px));
+            white-space: normal;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            line-height: 1.25;
+            font-size: 9px;
           }
         }
 
