@@ -768,7 +768,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v16.25</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v16.26</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -791,15 +791,14 @@ ui <- dashboardPage(
         )
       )
     ),
-    # Language (zh-TW ↔ en-US) — independent of display currency
+    # Language (zh-TW ↔ en-US) — former currency slot in the black header bar
     tags$li(
       class = "dropdown ynow-lang-header ynow-hdr-toggle",
-      style = "height: 50px; display: flex; align-items: center; padding: 0 8px 0 4px; list-style: none;",
+      style = "height: 50px; display: flex; align-items: center; padding: 0 14px 0 4px; list-style: none;",
       tags$div(
         class = "ynow-hdr-toggle-stack",
         role = "group",
-        `aria-labelledby` = "ynow_hdr_lang_label",
-        tags$span(id = "ynow_hdr_lang_label", class = "ynow-hdr-toggle-label", "Language"),
+        `aria-label` = "Language",
         shinyWidgets::radioGroupButtons(
           inputId = "ui_locale_pick",
           label = NULL,
@@ -811,15 +810,22 @@ ui <- dashboardPage(
         )
       )
     ),
-    # Currency display (TWD ↔ USD) — independent of UI language
+    # Logo + USD／TWD under logo (currency sits just below black header edge)
     tags$li(
-      class = "dropdown ynow-ccy-header ynow-hdr-toggle",
-      style = "height: 50px; display: flex; align-items: center; padding: 0 14px 0 4px; list-style: none;",
+      id = "ynow-header-logo",
+      class = "dropdown ynow-header-logo",
+      tags$img(
+        class = "ynow-header-logo-mark",
+        src = "ynow-logo-mark-40.png",
+        width = 36,
+        height = 36,
+        alt = "YNow",
+        title = "YNow — WH.Y VALUE NOW"
+      ),
       tags$div(
-        class = "ynow-hdr-toggle-stack",
+        class = "ynow-ccy-float",
         role = "group",
-        `aria-labelledby` = "ynow_hdr_ccy_label",
-        tags$span(id = "ynow_hdr_ccy_label", class = "ynow-hdr-toggle-label", "Currency"),
+        `aria-label` = "Currency",
         shinyWidgets::radioGroupButtons(
           inputId = "session_ccy_pick",
           label = NULL,
@@ -833,18 +839,6 @@ ui <- dashboardPage(
           class = "ynow-hdr-ccy-status",
           textOutput("hdr_ccy_status", inline = TRUE)
         )
-      )
-    ),
-    tags$li(
-      id = "ynow-header-logo",
-      class = "dropdown ynow-header-logo",
-      tags$img(
-        class = "ynow-header-logo-mark",
-        src = "ynow-logo-mark-40.png",
-        width = 36,
-        height = 36,
-        alt = "YNow",
-        title = "YNow — WH.Y VALUE NOW"
       )
     )
   ),
@@ -1199,8 +1193,7 @@ ui <- dashboardPage(
         }
         body.ynow-market-tw .main-header .navbar .nav > li > a,
         body.ynow-market-tw .ynow-market-header,
-        body.ynow-market-tw .ynow-lang-header,
-        body.ynow-market-tw .ynow-ccy-header {
+        body.ynow-market-tw .ynow-lang-header {
           color: #fff !important;
           text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
         }
@@ -1536,34 +1529,15 @@ ui <- dashboardPage(
         .ynow-corpname .ynow-corpname-single {
           display: inline;
         }
-        /* Header Language + Currency toggles (independent controls) */
+        /* Header Language toggle (in black bar); Currency floats under logo */
         .ynow-hdr-toggle-stack {
           display: flex;
-          flex-direction: column;
-          align-items: flex-end;
-          gap: 2px;
+          flex-direction: row;
+          align-items: center;
           line-height: 1.15;
         }
-        .ynow-hdr-toggle-label {
-          font-size: 9px;
-          font-weight: 600;
-          letter-spacing: 0.04em;
-          text-transform: uppercase;
-          color: rgba(255,255,255,0.72);
-          white-space: nowrap;
-        }
-        .ynow-hdr-ccy-status {
-          font-size: 10px;
-          color: rgba(255,255,255,0.72);
-          white-space: nowrap;
-          max-width: 320px;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
         .ynow-lang-header .btn-group-xs > .btn,
-        .ynow-lang-header .btn-xs,
-        .ynow-ccy-header .btn-group-xs > .btn,
-        .ynow-ccy-header .btn-xs {
+        .ynow-lang-header .btn-xs {
           background: rgba(255,255,255,0.12) !important;
           border: 1px solid rgba(255,255,255,0.35) !important;
           color: #fff !important;
@@ -1571,16 +1545,61 @@ ui <- dashboardPage(
           min-width: 42px;
         }
         .ynow-lang-header .btn-group-xs > .btn.active,
-        .ynow-lang-header .btn-xs.active,
-        .ynow-ccy-header .btn-group-xs > .btn.active,
-        .ynow-ccy-header .btn-xs.active {
+        .ynow-lang-header .btn-xs.active {
           background: #fff !important;
           color: #222 !important;
           border-color: #fff !important;
           box-shadow: none !important;
         }
-        .ynow-lang-header .radiobtn,
-        .ynow-ccy-header .radiobtn { margin: 0 !important; }
+        .ynow-lang-header .radiobtn { margin: 0 !important; }
+
+        /* USD／TWD: top-right under logo, tight to black header bottom edge */
+        .main-header,
+        .main-header .navbar,
+        .main-header .navbar-custom-menu,
+        .main-header .navbar-custom-menu > .navbar-nav {
+          overflow: visible !important;
+        }
+        .ynow-ccy-float {
+          position: absolute;
+          top: 100%;
+          right: 14px;
+          margin: 0;
+          padding: 0;
+          z-index: 1035;
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          gap: 2px;
+          line-height: 1.15;
+          pointer-events: auto;
+        }
+        .ynow-ccy-float .btn-group-xs > .btn,
+        .ynow-ccy-float .btn-xs {
+          background: #ffffff !important;
+          border: 1px solid var(--ynow-ink) !important;
+          color: var(--ynow-ink) !important;
+          font-weight: 700 !important;
+          min-width: 42px;
+          box-shadow: 0 1px 2px rgba(26, 26, 26, 0.12);
+        }
+        .ynow-ccy-float .btn-group-xs > .btn.active,
+        .ynow-ccy-float .btn-xs.active {
+          background: var(--ynow-ink) !important;
+          color: #fff !important;
+          border-color: var(--ynow-ink) !important;
+          box-shadow: none !important;
+        }
+        .ynow-ccy-float .radiobtn { margin: 0 !important; }
+        .ynow-ccy-float .ynow-hdr-ccy-status {
+          font-size: 10px;
+          color: rgba(26, 26, 26, 0.62);
+          white-space: nowrap;
+          max-width: 280px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          text-align: right;
+        }
         /* 預測年數 n：固定在 EPS (TTM) 數字框正下方（右欄） */
         #ibx_EPS { margin-bottom: 8px; }
         .ynow-header-years {
@@ -1905,10 +1924,6 @@ ui <- dashboardPage(
             if (btZone && s.bt_zone_title) btZone.textContent = s.bt_zone_title;
             var recent = document.getElementById('ynow_recent_search_label');
             if (recent && s.recent_search) recent.textContent = s.recent_search;
-            var langLab = document.getElementById('ynow_hdr_lang_label');
-            if (langLab && s.hdr_lang_label) langLab.textContent = s.hdr_lang_label;
-            var ccyLab = document.getElementById('ynow_hdr_ccy_label');
-            if (ccyLab && s.hdr_ccy_label) ccyLab.textContent = s.hdr_ccy_label;
             var scLab = document.querySelector('label[for=\"sc\"]');
             if (scLab && s.ticker_label) scLab.textContent = s.ticker_label;
             var indLab = document.querySelector('label[for=\"industry_choice\"]');
@@ -2819,9 +2834,10 @@ ui <- dashboardPage(
           line-height: 1.35;
         }
 
-        /* 頂欄最右側：小圓標（無 wordmark） */
+        /* 頂欄最右側：小圓標（無 wordmark）；幣別浮在 logo 正下方 */
         .main-header .navbar-custom-menu .navbar-nav > li#ynow-header-logo.ynow-header-logo,
         .main-header .navbar > #ynow-header-logo.ynow-header-logo {
+          position: relative !important;
           height: 50px;
           display: flex !important;
           align-items: center;
@@ -2830,6 +2846,7 @@ ui <- dashboardPage(
           list-style: none;
           padding: 0 14px 0 8px;
           margin: 0;
+          overflow: visible !important;
         }
         .ynow-header-logo-mark {
           width: 36px;
@@ -2841,13 +2858,14 @@ ui <- dashboardPage(
           filter: drop-shadow(0 0 2px rgba(0,0,0,0.35));
         }
 
-        /* 手機首次開啟：右上 logo＋USD/TWD 與左上漢堡垂直置中對齊 */
+        /* 手機：右上 繁中／EN＋logo 與左上漢堡垂直置中；幣別仍貼頁首下緣 */
         @media (max-width: 767px) {
           .main-header .navbar {
             min-height: 50px !important;
             height: 50px;
             display: flex !important;
             align-items: center !important;
+            overflow: visible !important;
           }
           .main-header .navbar > .sidebar-toggle,
           .skin-black .main-header .navbar .sidebar-toggle {
@@ -2871,6 +2889,7 @@ ui <- dashboardPage(
             height: 50px !important;
             display: flex !important;
             align-items: center !important;
+            overflow: visible !important;
           }
           .main-header .navbar-custom-menu > .navbar-nav {
             display: flex !important;
@@ -2878,9 +2897,9 @@ ui <- dashboardPage(
             align-items: center !important;
             height: 50px !important;
             margin: 0 !important;
+            overflow: visible !important;
           }
           .main-header .navbar-custom-menu .navbar-nav > li.ynow-lang-header,
-          .main-header .navbar-custom-menu .navbar-nav > li.ynow-ccy-header,
           .main-header .navbar-custom-menu .navbar-nav > li#ynow-header-logo.ynow-header-logo {
             float: none !important;
             height: 50px !important;
@@ -2893,15 +2912,18 @@ ui <- dashboardPage(
             padding-bottom: 0 !important;
           }
           .main-header .navbar-custom-menu .navbar-nav > li.ynow-lang-header {
-            padding: 0 4px 0 2px !important;
+            padding: 0 8px 0 2px !important;
           }
-          .main-header .navbar-custom-menu .navbar-nav > li.ynow-ccy-header {
-            padding: 0 8px 0 4px !important;
+          .main-header .navbar-custom-menu .navbar-nav > li#ynow-header-logo.ynow-header-logo {
+            position: relative !important;
+            overflow: visible !important;
           }
-          /* 手機壓縮 FX 狀態列，避免把按鈕視覺重心下移 */
-          .ynow-ccy-header .ynow-hdr-ccy-status,
-          .ynow-ccy-header .shiny-text-output {
-            max-width: 96px;
+          .ynow-ccy-float {
+            right: 8px;
+          }
+          .ynow-ccy-float .ynow-hdr-ccy-status,
+          .ynow-ccy-float .shiny-text-output {
+            max-width: 120px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
