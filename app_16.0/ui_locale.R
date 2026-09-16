@@ -1,6 +1,7 @@
 # ==========================================
 # ui_locale.R — 主介面文案（en ｜ zh-TW）
-# 台股模式預設 zh-TW；美股模式恢復 en。
+# 語言與顯示幣別為獨立控制；市場模式僅提供「初次」locale 預設，
+# 不可在切換市場／幣別時靜默覆寫使用者已選語言。
 # 財務專有名詞維持英文（WACC、FCFF、DCF…）。
 # ==========================================
 
@@ -11,7 +12,7 @@ normalize_ui_locale <- function(locale) {
   "en"
 }
 
-#' 市場模式 → 預設 UI locale
+#' 市場模式 → 初次載入用的預設 UI locale（非強制綁定）
 locale_for_market <- function(mode = get_market_mode()) {
   if (identical(normalize_market_mode(mode), "TW")) "zh-TW" else "en"
 }
@@ -45,6 +46,14 @@ locale_for_market <- function(mode = get_market_mode()) {
     test_link = " Testing",
     feedback_link = " Feedback",
     market_hint = "Market",
+    hdr_lang_label = "Language",
+    hdr_ccy_label = "Currency",
+    hdr_lang_zh = "ZH",
+    hdr_lang_en = "EN",
+    hdr_ccy_quote = "Quote",
+    hdr_ccy_stmt = "Statements",
+    hdr_ccy_display = "Display",
+    hdr_ccy_fx_missing = "FX unavailable (conversion refused)",
     industry_standard = "Industry Standard",
     kpi_legend_blue = "Blue · Better",
     kpi_legend_red = "Red · Worse",
@@ -399,6 +408,14 @@ locale_for_market <- function(mode = get_market_mode()) {
     test_link = " 測試",
     feedback_link = " 意見區",
     market_hint = "市場",
+    hdr_lang_label = "語言",
+    hdr_ccy_label = "顯示幣別",
+    hdr_lang_zh = "繁中",
+    hdr_lang_en = "EN",
+    hdr_ccy_quote = "報價",
+    hdr_ccy_stmt = "財報",
+    hdr_ccy_display = "顯示",
+    hdr_ccy_fx_missing = "匯率未取得（已拒絕換匯）",
     industry_standard = "產業標準",
     kpi_legend_blue = "藍 · 優於同業 (Better)",
     kpi_legend_red = "紅 · 劣於同業 (Worse)",

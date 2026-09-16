@@ -768,7 +768,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v16.23</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v16.24</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -791,11 +791,35 @@ ui <- dashboardPage(
         )
       )
     ),
+    # Language (zh-TW ↔ en-US) — independent of display currency
     tags$li(
-      class = "dropdown ynow-ccy-header",
+      class = "dropdown ynow-lang-header ynow-hdr-toggle",
+      style = "height: 50px; display: flex; align-items: center; padding: 0 8px 0 4px; list-style: none;",
+      tags$div(
+        class = "ynow-hdr-toggle-stack",
+        role = "group",
+        `aria-labelledby` = "ynow_hdr_lang_label",
+        tags$span(id = "ynow_hdr_lang_label", class = "ynow-hdr-toggle-label", "Language"),
+        shinyWidgets::radioGroupButtons(
+          inputId = "ui_locale_pick",
+          label = NULL,
+          choices = c("繁中" = "zh-TW", "EN" = "en"),
+          selected = "en",
+          status = "default",
+          size = "xs",
+          individual = TRUE
+        )
+      )
+    ),
+    # Currency display (TWD ↔ USD) — independent of UI language
+    tags$li(
+      class = "dropdown ynow-ccy-header ynow-hdr-toggle",
       style = "height: 50px; display: flex; align-items: center; padding: 0 14px 0 4px; list-style: none;",
       tags$div(
-        style = "display: flex; flex-direction: column; align-items: flex-end; gap: 2px; line-height: 1.15;",
+        class = "ynow-hdr-toggle-stack",
+        role = "group",
+        `aria-labelledby` = "ynow_hdr_ccy_label",
+        tags$span(id = "ynow_hdr_ccy_label", class = "ynow-hdr-toggle-label", "Currency"),
         shinyWidgets::radioGroupButtons(
           inputId = "session_ccy_pick",
           label = NULL,
@@ -806,7 +830,7 @@ ui <- dashboardPage(
           individual = TRUE
         ),
         tags$div(
-          style = "font-size: 10px; color: rgba(255,255,255,0.72); white-space: nowrap; max-width: 320px; overflow: hidden; text-overflow: ellipsis;",
+          class = "ynow-hdr-ccy-status",
           textOutput("hdr_ccy_status", inline = TRUE)
         )
       )
@@ -1175,6 +1199,7 @@ ui <- dashboardPage(
         }
         body.ynow-market-tw .main-header .navbar .nav > li > a,
         body.ynow-market-tw .ynow-market-header,
+        body.ynow-market-tw .ynow-lang-header,
         body.ynow-market-tw .ynow-ccy-header {
           color: #fff !important;
           text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
@@ -1511,7 +1536,32 @@ ui <- dashboardPage(
         .ynow-corpname .ynow-corpname-single {
           display: inline;
         }
-        /* Header USD|TWD toggle (radioGroupButtons) */
+        /* Header Language + Currency toggles (independent controls) */
+        .ynow-hdr-toggle-stack {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          gap: 2px;
+          line-height: 1.15;
+        }
+        .ynow-hdr-toggle-label {
+          font-size: 9px;
+          font-weight: 600;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+          color: rgba(255,255,255,0.72);
+          white-space: nowrap;
+        }
+        .ynow-hdr-ccy-status {
+          font-size: 10px;
+          color: rgba(255,255,255,0.72);
+          white-space: nowrap;
+          max-width: 320px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .ynow-lang-header .btn-group-xs > .btn,
+        .ynow-lang-header .btn-xs,
         .ynow-ccy-header .btn-group-xs > .btn,
         .ynow-ccy-header .btn-xs {
           background: rgba(255,255,255,0.12) !important;
@@ -1520,6 +1570,8 @@ ui <- dashboardPage(
           font-weight: 700 !important;
           min-width: 42px;
         }
+        .ynow-lang-header .btn-group-xs > .btn.active,
+        .ynow-lang-header .btn-xs.active,
         .ynow-ccy-header .btn-group-xs > .btn.active,
         .ynow-ccy-header .btn-xs.active {
           background: #fff !important;
@@ -1527,6 +1579,7 @@ ui <- dashboardPage(
           border-color: #fff !important;
           box-shadow: none !important;
         }
+        .ynow-lang-header .radiobtn,
         .ynow-ccy-header .radiobtn { margin: 0 !important; }
         /* 預測年數 n：固定在 EPS (TTM) 數字框正下方（右欄） */
         #ibx_EPS { margin-bottom: 8px; }
@@ -1852,6 +1905,10 @@ ui <- dashboardPage(
             if (btZone && s.bt_zone_title) btZone.textContent = s.bt_zone_title;
             var recent = document.getElementById('ynow_recent_search_label');
             if (recent && s.recent_search) recent.textContent = s.recent_search;
+            var langLab = document.getElementById('ynow_hdr_lang_label');
+            if (langLab && s.hdr_lang_label) langLab.textContent = s.hdr_lang_label;
+            var ccyLab = document.getElementById('ynow_hdr_ccy_label');
+            if (ccyLab && s.hdr_ccy_label) ccyLab.textContent = s.hdr_ccy_label;
             var scLab = document.querySelector('label[for=\"sc\"]');
             if (scLab && s.ticker_label) scLab.textContent = s.ticker_label;
             var indLab = document.querySelector('label[for=\"industry_choice\"]');
@@ -1932,8 +1989,22 @@ ui <- dashboardPage(
             }
             var labMaxNLabel = document.getElementById('ynow_lab_im_max_n_label');
             if (labMaxNLabel && s.lab_im_max_n_label) labMaxNLabel.textContent = s.lab_im_max_n_label;
+            var labMaxNCustom = document.getElementById('ynow_lab_im_max_n_custom_label');
+            if (labMaxNCustom && s.lab_im_max_n_custom_label) labMaxNCustom.textContent = s.lab_im_max_n_custom_label;
             var labMaxNHelp = document.getElementById('ynow_lab_im_max_n_help');
             if (labMaxNHelp && s.lab_im_max_n_help) labMaxNHelp.textContent = s.lab_im_max_n_help;
+            var labDetailIntro = document.getElementById('ynow_lab_im_detail_intro');
+            if (labDetailIntro && s.lab_im_detail_intro) labDetailIntro.textContent = s.lab_im_detail_intro;
+            var labLbMode = document.getElementById('ynow_lab_im_lb_mode_label');
+            if (labLbMode && s.lab_im_lb_mode_label) labLbMode.textContent = s.lab_im_lb_mode_label;
+            var labLbOverall = document.getElementById('ynow_lab_im_lb_mode_overall');
+            if (labLbOverall && s.lab_im_lb_mode_overall) labLbOverall.textContent = s.lab_im_lb_mode_overall;
+            var labLbByInd = document.getElementById('ynow_lab_im_lb_mode_by_ind');
+            if (labLbByInd && s.lab_im_lb_mode_by_industry) labLbByInd.textContent = s.lab_im_lb_mode_by_industry;
+            var labLbInd = document.getElementById('ynow_lab_im_lb_industry_label');
+            if (labLbInd && s.lab_im_lb_industry_label) labLbInd.textContent = s.lab_im_lb_industry_label;
+            var labLbHelp = document.getElementById('ynow_lab_im_lb_scope_help');
+            if (labLbHelp && s.lab_im_lb_scope_help) labLbHelp.textContent = s.lab_im_lb_scope_help;
             document.documentElement.setAttribute('lang', (payload && payload.locale) || 'en');
             var mkt = (payload && payload.market) ? String(payload.market) : 'US';
             document.body.classList.toggle('ynow-market-tw', mkt === 'TW');
@@ -2808,6 +2879,7 @@ ui <- dashboardPage(
             height: 50px !important;
             margin: 0 !important;
           }
+          .main-header .navbar-custom-menu .navbar-nav > li.ynow-lang-header,
           .main-header .navbar-custom-menu .navbar-nav > li.ynow-ccy-header,
           .main-header .navbar-custom-menu .navbar-nav > li#ynow-header-logo.ynow-header-logo {
             float: none !important;
@@ -2820,10 +2892,14 @@ ui <- dashboardPage(
             padding-top: 0 !important;
             padding-bottom: 0 !important;
           }
+          .main-header .navbar-custom-menu .navbar-nav > li.ynow-lang-header {
+            padding: 0 4px 0 2px !important;
+          }
           .main-header .navbar-custom-menu .navbar-nav > li.ynow-ccy-header {
             padding: 0 8px 0 4px !important;
           }
           /* 手機壓縮 FX 狀態列，避免把按鈕視覺重心下移 */
+          .ynow-ccy-header .ynow-hdr-ccy-status,
           .ynow-ccy-header .shiny-text-output {
             max-width: 96px;
             overflow: hidden;
@@ -4056,14 +4132,44 @@ ui <- dashboardPage(
           width = "auto",
 
           tabPanel(
-            title = "篩選條件",
+            title = "排行",
             value = "im_filters",
-            icon = icon("sliders-h"),
+            icon = icon("trophy"),
             uiOutput("lab_im_bluechip_blurb"),
             tags$hr(),
             fluidRow(
               column(
                 width = 12,
+                tags$div(
+                  class = "ynow-lab-im-lb-scope",
+                  style = "margin:0 0 10px 0;",
+                  radioButtons(
+                    "lab_im_lb_mode",
+                    tags$span(id = "ynow_lab_im_lb_mode_label", "排行視角"),
+                    choiceNames = list(
+                      tags$span(id = "ynow_lab_im_lb_mode_overall", "整體前十名"),
+                      tags$span(id = "ynow_lab_im_lb_mode_by_ind", "依產業前十名")
+                    ),
+                    choiceValues = list("overall", "by_industry"),
+                    selected = "overall",
+                    inline = TRUE
+                  ),
+                  selectInput(
+                    "lab_im_lb_industry",
+                    tags$span(id = "ynow_lab_im_lb_industry_label", "排行產業"),
+                    choices = c("全部產業" = "__all__"),
+                    selected = "__all__",
+                    width = "100%"
+                  ),
+                  tags$div(
+                    id = "ynow_lab_im_lb_scope_help",
+                    style = "color:#888; font-size:12px; line-height:1.45; margin:-4px 0 8px 0;",
+                    paste0(
+                      "整體前十名：跨產業依年化估值漲幅取 Top 10，並顯示產業欄。",
+                      "依產業前十名：每個產業（或選定單一產業）各自列出 Top 10。"
+                    )
+                  )
+                ),
                 uiOutput("lab_im_leader_note"),
                 tableOutput("lab_im_leaderboard")
               )
@@ -4127,48 +4233,6 @@ ui <- dashboardPage(
                   ),
                   column(
                     width = 6,
-                    selectInput(
-                      "lab_im_max_n",
-                      tags$span(id = "ynow_lab_im_max_n_label", "評估檔數（明細列數）"),
-                      choices = c(
-                        "25 檔" = "25",
-                        "50 檔" = "50",
-                        "100 檔" = "100",
-                        "200 檔" = "200",
-                        "500 檔" = "500",
-                        "全部" = "all",
-                        "自訂…" = "custom"
-                      ),
-                      selected = "100",
-                      width = "100%"
-                    ),
-                    conditionalPanel(
-                      condition = "input.lab_im_max_n == 'custom'",
-                      numericInput(
-                        "lab_im_max_n_custom",
-                        "自訂檔數",
-                        value = 100,
-                        min = 1,
-                        max = 500,
-                        step = 1,
-                        width = "100%"
-                      )
-                    ),
-                    tags$div(
-                      id = "ynow_lab_im_max_n_help",
-                      style = "color:#888; font-size:12px; line-height:1.45; white-space:pre-line; margin:-6px 0 10px 0;",
-                      paste0(
-                        "評估檔數 N（預設 100）＝本次要評估的檔數。\n",
-                        "• 誰進評估池：篩選後若候選 > N，先依市值由大到小取 N 檔。\n",
-                        "• 明細／排行預設排序：以 n＝5 年換算的年化估值漲幅（upside_cagr_pct）降序。\n",
-                        "• Piotroski F-Score≥7 只過濾排行榜 Top 10，不縮減明細。"
-                      )
-                    )
-                  )
-                ),
-                fluidRow(
-                  column(
-                    width = 6,
                     tags$div(
                       class = "ynow-lab-im-quality",
                       checkboxInput(
@@ -4180,12 +4244,10 @@ ui <- dashboardPage(
                         class = "ynow-lab-im-quality-hint",
                         "預設勾選：排行榜／摘要只列盈餘品質通過者；取消勾選則不過濾。不影響明細列數。"
                       )
-                    )
-                  ),
-                  column(
-                    width = 6,
+                    ),
                     tags$div(
                       class = "ynow-lab-im-quality",
+                      style = "margin-top:12px;",
                       checkboxInput(
                         "lab_im_gate_only",
                         "Piotroski 高門檻",
@@ -4231,9 +4293,52 @@ ui <- dashboardPage(
             value = "im_detail",
             icon = icon("list"),
             p(
+              id = "ynow_lab_im_detail_intro",
               "本次已評估檔的明細（按年化估值漲幅排序）。列數等於「評估檔數（明細列數）」N（不足則全列）。"
             ),
             tags$hr(),
+            fluidRow(
+              column(
+                width = 12,
+                selectInput(
+                  "lab_im_max_n",
+                  tags$span(id = "ynow_lab_im_max_n_label", "評估檔數（明細列數）"),
+                  choices = c(
+                    "25 檔" = "25",
+                    "50 檔" = "50",
+                    "100 檔" = "100",
+                    "200 檔" = "200",
+                    "500 檔" = "500",
+                    "全部" = "all",
+                    "自訂…" = "custom"
+                  ),
+                  selected = "100",
+                  width = "280px"
+                ),
+                conditionalPanel(
+                  condition = "input.lab_im_max_n == 'custom'",
+                  numericInput(
+                    "lab_im_max_n_custom",
+                    tags$span(id = "ynow_lab_im_max_n_custom_label", "自訂檔數"),
+                    value = 100,
+                    min = 1,
+                    max = 500,
+                    step = 1,
+                    width = "280px"
+                  )
+                ),
+                tags$div(
+                  id = "ynow_lab_im_max_n_help",
+                  style = "color:#888; font-size:12px; line-height:1.45; white-space:pre-line; margin:-6px 0 12px 0;",
+                  paste0(
+                    "評估檔數 N（預設 100）＝本次要評估的檔數。\n",
+                    "• 誰進評估池：篩選後若候選 > N，先依市值由大到小取 N 檔。\n",
+                    "• 明細／排行預設排序：以 n＝5 年換算的年化估值漲幅（upside_cagr_pct）降序。\n",
+                    "• Piotroski F-Score≥7 只過濾排行榜 Top 10，不縮減明細。"
+                  )
+                )
+              )
+            ),
             fluidRow(
               box(
                 width = 12, status = "info", solidHeader = TRUE,
@@ -4241,8 +4346,7 @@ ui <- dashboardPage(
                 DT::dataTableOutput("lab_im_table") %>% shinycssloaders::withSpinner()
               )
             )
-          )
-        )
+          )        )
       ),
       
       # ==========================================

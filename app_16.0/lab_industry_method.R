@@ -1018,18 +1018,9 @@ lab_merge_catalog_scores <- function(catalog, scores = NULL,
   df[o, , drop = FALSE]
 }
 
-#' 績優排行榜：同一評估／明細集合中，Piotroski 高門檻（F-Score≥7）且有年化漲幅，依 CAGR 降序取 Top-K
-#' （只截斷顯示，不另抽樣；輸入應已是本次評估的 N 檔。）
-#' @param eq_only 若 TRUE，再只保留盈餘品質通過者（與 Piotroski 高門檻獨立）
-lab_quality_leaderboard <- function(merged_df, top_n = 10L, eq_only = FALSE) {
-  empty <- data.frame(
-    排名 = integer(0), 代號 = character(0), 公司名稱 = character(0),
-    年化估值漲幅 = character(0),
-    總潛在漲幅 = character(0),
-    估值方法 = character(0), `F-Score` = numeric(0),
-    產業 = character(0),
-    stringsAsFactors = FALSE, check.names = FALSE
-  )
+#' 排行榜候選池：F-Score≥7、有年化漲幅；同一代碼只留最高 CAGR 一列
+lab_leaderboard_pool <- function(merged_df, eq_only = FALSE) {
+  empty <- merged_df[0, , drop = FALSE]
   if (is.null(merged_df) || !is.data.frame(merged_df) || nrow(merged_df) == 0) {
     return(empty)
   }
@@ -1040,41 +1031,127 @@ lab_quality_leaderboard <- function(merged_df, top_n = 10L, eq_only = FALSE) {
   fs <- suppressWarnings(as.numeric(df$f_score))
   keep <- is.finite(fs) & fs >= 7 & is.finite(df$upside_cagr_pct)
   df <- df[keep, , drop = FALSE]
-  if (nrow(df) == 0) return(empty)
-  # 同一代碼保留年化漲幅最高的一列
+  if (nrow(df) == 0) return(df)
   df <- df[order(-df$upside_cagr_pct, df$ticker), , drop = FALSE]
-  df <- df[!duplicated(df$ticker), , drop = FALSE]
-  top_n <- max(1L, as.integer(top_n)[1])
-  df <- head(df, top_n)
-  meth <- as.character(df$method_used)
-  prim <- as.character(df$primary)
-  miss <- is.na(meth) | !nzchar(meth)
-  meth[miss] <- prim[miss]
-  meth <- toupper(meth)
-  meth[is.na(meth) | !nzchar(meth)] <- "—"
-  yahoo_nm <- if ("company_name" %in% names(df)) df$company_name else NA_character_
-  names_out <- vapply(seq_len(nrow(df)), function(i) {
-    nm <- lab_company_display_name(df$ticker[[i]], yahoo_nm[[i]])
-    if (!nzchar(nm) || identical(nm, "—")) as.character(df$ticker[[i]]) else nm
-  }, character(1))
-  data.frame(
-    排名 = seq_len(nrow(df)),
-    代號 = if (exists("display_tickers_for_market", mode = "function")) {
-      display_tickers_for_market(df$ticker, tryCatch(get_market_mode(), error = function(e) "US"))
-    } else {
-      df$ticker
-    },
-    公司名稱 = names_out,
-    年化估值漲幅 = sprintf("%+.1f%%", df$upside_cagr_pct),
-    總潛在漲幅 = ifelse(
-      is.na(df$upside_total_pct), "—", sprintf("%+.1f%%", df$upside_total_pct)
-    ),
-    估值方法 = meth,
-    `F-Score` = df$f_score,
-    產業 = df$industry_label,
-    stringsAsFactors = FALSE,
-    check.names = FALSE
+  df[!duplicated(df$ticker), , drop = FALSE]
+}
+
+#' 排行產業下拉：全部 + 目前排行候選池內的產業標籤
+#' @return named character vector（顯示名 = 值；`__all__` 為全部）
+lab_leaderboard_industry_choices <- function(merged_df, eq_only = FALSE,
+                                            all_label = "全部產業") {
+  pool <- lab_leaderboard_pool(merged_df, eq_only = eq_only)
+  labs <- if (nrow(pool) > 0 && "industry_label" %in% names(pool)) {
+    unique(as.character(pool$industry_label))
+  } else {
+    character(0)
+  }
+  labs <- labs[nzchar(labs) & !is.na(labs)]
+  labs <- sort(unique(labs))
+  out <- c(stats::setNames("__all__", all_label))
+  if (length(labs)) {
+    out <- c(out, stats::setNames(labs, labs))
+  }
+  out
+}
+
+#' 績優排行榜：同一評估／明細集合中，Piotroski 高門檻（F-Score≥7）且有年化漲幅，依 CAGR 降序取 Top-K
+#' （只截斷顯示，不另抽樣；輸入應已是本次評估的 N 檔。）
+#' @param eq_only 若 TRUE，再只保留盈餘品質通過者（與 Piotroski 高門檻獨立）
+#' @param scope `"overall"`＝整體前十（含產業欄）；`"by_industry"`＝各產業（或單一產業）前十
+#' @param industry_filter `NULL`／`""`／`"__all__"`＝不限單一產業；否則依 `industry_label` 篩選
+lab_quality_leaderboard <- function(merged_df, top_n = 10L, eq_only = FALSE,
+                                    scope = c("overall", "by_industry"),
+                                    industry_filter = NULL) {
+  scope <- match.arg(scope)
+  empty <- data.frame(
+    排名 = integer(0), 產業 = character(0), 代號 = character(0), 公司名稱 = character(0),
+    年化估值漲幅 = character(0),
+    總潛在漲幅 = character(0),
+    估值方法 = character(0), `F-Score` = numeric(0),
+    stringsAsFactors = FALSE, check.names = FALSE
   )
+  df <- lab_leaderboard_pool(merged_df, eq_only = eq_only)
+  if (nrow(df) == 0) return(empty)
+
+  ind_sel <- as.character(industry_filter %||% "__all__")[1]
+  if (!nzchar(ind_sel) || identical(ind_sel, "NULL")) ind_sel <- "__all__"
+  if (!identical(ind_sel, "__all__") && "industry_label" %in% names(df)) {
+    df <- df[as.character(df$industry_label) == ind_sel, , drop = FALSE]
+  }
+  if (nrow(df) == 0) return(empty)
+
+  top_n <- max(1L, as.integer(top_n)[1])
+  .fmt_lb_rows <- function(sub, rank_col = "排名") {
+    if (nrow(sub) == 0) return(NULL)
+    meth <- as.character(sub$method_used)
+    prim <- as.character(sub$primary)
+    miss <- is.na(meth) | !nzchar(meth)
+    meth[miss] <- prim[miss]
+    meth <- toupper(meth)
+    meth[is.na(meth) | !nzchar(meth)] <- "—"
+    yahoo_nm <- if ("company_name" %in% names(sub)) sub$company_name else NA_character_
+    names_out <- vapply(seq_len(nrow(sub)), function(i) {
+      nm <- lab_company_display_name(sub$ticker[[i]], yahoo_nm[[i]])
+      if (!nzchar(nm) || identical(nm, "—")) as.character(sub$ticker[[i]]) else nm
+    }, character(1))
+    ind_lab <- if ("industry_label" %in% names(sub)) {
+      as.character(sub$industry_label)
+    } else {
+      rep("—", nrow(sub))
+    }
+    ind_lab[is.na(ind_lab) | !nzchar(ind_lab)] <- "—"
+    out <- data.frame(
+      排名 = seq_len(nrow(sub)),
+      產業 = ind_lab,
+      代號 = if (exists("display_tickers_for_market", mode = "function")) {
+        display_tickers_for_market(sub$ticker, tryCatch(get_market_mode(), error = function(e) "US"))
+      } else {
+        sub$ticker
+      },
+      公司名稱 = names_out,
+      年化估值漲幅 = sprintf("%+.1f%%", sub$upside_cagr_pct),
+      總潛在漲幅 = ifelse(
+        is.na(sub$upside_total_pct), "—", sprintf("%+.1f%%", sub$upside_total_pct)
+      ),
+      估值方法 = meth,
+      `F-Score` = sub$f_score,
+      stringsAsFactors = FALSE,
+      check.names = FALSE
+    )
+    if (!identical(rank_col, "排名")) {
+      names(out)[names(out) == "排名"] <- rank_col
+    }
+    out
+  }
+
+  # 單一產業（無論整體／依產業視角）＝該產業 Top-K
+  if (!identical(ind_sel, "__all__")) {
+    df <- head(df, top_n)
+    return(.fmt_lb_rows(df, rank_col = if (identical(scope, "by_industry")) "產業內排名" else "排名"))
+  }
+
+  if (identical(scope, "overall")) {
+    df <- head(df, top_n)
+    return(.fmt_lb_rows(df, rank_col = "排名"))
+  }
+
+  # 依產業：每個產業各取 Top-K，產業標籤排序後串接
+  ind_labs <- as.character(df$industry_label)
+  ind_labs[is.na(ind_labs) | !nzchar(ind_labs)] <- "—"
+  parts <- lapply(sort(unique(ind_labs)), function(lab) {
+    sub <- df[ind_labs == lab, , drop = FALSE]
+    sub <- head(sub, top_n)
+    .fmt_lb_rows(sub, rank_col = "產業內排名")
+  })
+  parts <- Filter(Negate(is.null), parts)
+  if (!length(parts)) return(empty)
+  out <- do.call(rbind, parts)
+  rownames(out) <- NULL
+  # 依產業視角：產業欄置前，產業內排名次之
+  pref <- c("產業", "產業內排名")
+  rest <- setdiff(names(out), pref)
+  out[, c(pref[pref %in% names(out)], rest), drop = FALSE]
 }
 
 #' 顯示用摘要：依主方法分組的產業數／候選檔數
