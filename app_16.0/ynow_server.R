@@ -85,13 +85,28 @@ server <- function(input, output, session) {
   })
 
   # ==========================================
-  # 市場一鍵切換（美股｜台股）＋ UI locale
+  # UI locale（語言）與顯示幣別分開；市場切換不覆寫語言
   # ==========================================
   ui_locale <- reactiveVal("en")
 
-  .push_ui_locale <- function(locale) {
+  .push_ui_locale <- function(locale, sync_picker = TRUE) {
     loc <- normalize_ui_locale(locale)
     ui_locale(loc)
+    # Keep Language control in sync (labels + selection); never touch currency
+    if (isTRUE(sync_picker)) {
+      tryCatch(
+        shinyWidgets::updateRadioGroupButtons(
+          session,
+          "ui_locale_pick",
+          choices = stats::setNames(
+            c("zh-TW", "en"),
+            c(ui_str("hdr_lang_zh", loc), ui_str("hdr_lang_en", loc))
+          ),
+          selected = loc
+        ),
+        error = function(e) NULL
+      )
+    }
     mode <- tryCatch(
       normalize_market_mode(isolate(market_mode())),
       error = function(e) get_market_mode()
@@ -134,6 +149,13 @@ server <- function(input, output, session) {
     }, error = function(e) NULL)
   }
 
+  # 語言控制：只改 UI locale，不碰顯示幣別
+  observeEvent(input$ui_locale_pick, {
+    pick <- normalize_ui_locale(input$ui_locale_pick)
+    if (identical(pick, isolate(ui_locale()))) return()
+    .push_ui_locale(pick, sync_picker = FALSE)
+  }, ignoreInit = TRUE)
+
   observeEvent(input$market_mode_pick, {
     mode <- normalize_market_mode(input$market_mode_pick)
     prev <- market_mode()
@@ -142,8 +164,8 @@ server <- function(input, output, session) {
     set_market_mode(mode)
     prof <- market_profile(mode)
 
-    # TW → zh-TW；US → en
-    .push_ui_locale(locale_for_market(mode))
+    # 市場切換：不覆寫使用者語言；僅刷新 chrome 的 market class／美股｜台股按鈕
+    .push_ui_locale(isolate(ui_locale()), sync_picker = FALSE)
 
     # 損益表圖表選單：台股顯示台灣中文標籤（值仍為英文，供比對）
     tryCatch({
@@ -153,7 +175,7 @@ server <- function(input, output, session) {
       updateSelectInput(session, "is_type", choices = ch, selected = sel)
     }, error = function(e) NULL)
 
-    # 顯示幣別與預設稅／基準／搜尋建議
+    # 顯示幣別預設（與語言無關；使用者仍可再切 USD／TWD）
     session_currency(prof$session_currency)
     shinyWidgets::updateRadioGroupButtons(
       session, "session_ccy_pick", selected = prof$session_currency
@@ -203,8 +225,8 @@ server <- function(input, output, session) {
     showNotification(
       paste0(
         "已切換至", prof$label_zh, "模式（預設 ", disp,
-        "；Rf：", prof$rf_label_zh, "；介面 ",
-        if (identical(mode, "TW")) "繁體中文" else "English", "）"
+        "；Rf：", prof$rf_label_zh, "；顯示幣別 ",
+        prof$session_currency, "；語言不變）"
       ),
       type = "message", duration = 8
     )
@@ -634,11 +656,13 @@ server <- function(input, output, session) {
   }
 
   observeEvent(input$session_ccy_pick, {
+    # 顯示幣別：只換匯，不改 UI 語言
     pick <- as.character(input$session_ccy_pick %||% "")[1]
     .apply_session_currency(pick)
   }, ignoreInit = TRUE)
 
   output$hdr_ccy_status <- renderText({
+    loc <- ui_locale()
     q <- quote_currency() %||% "?"
     f <- statement_currency() %||% "?"
     sc <- session_currency() %||% "?"
@@ -646,9 +670,14 @@ server <- function(input, output, session) {
     fx_txt <- if (is.finite(fx) && fx > 0) {
       paste0("1 USD = ", round(as.numeric(fx), 2), " TWD")
     } else {
-      "匯率未取得（已拒絕換匯）"
+      ui_str("hdr_ccy_fx_missing", loc)
     }
-    paste0("報價 ", q, " · 財報 ", f, " · 顯示 ", sc, " · ", fx_txt)
+    paste0(
+      ui_str("hdr_ccy_quote", loc), " ", q, " · ",
+      ui_str("hdr_ccy_stmt", loc), " ", f, " · ",
+      ui_str("hdr_ccy_display", loc), " ", sc, " · ",
+      fx_txt
+    )
   })
   
   # ==========================================
@@ -9044,7 +9073,7 @@ server <- function(input, output, session) {
 
   observe({
     merged <- tryCatch(lab_im_merged(), error = function(e) NULL)
-    loc <- tryCatch(locale_for_market(market_mode()), error = function(e) NULL)
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) NULL)
     all_lab <- if (!is.null(loc)) ui_str("lab_im_lb_industry_all", loc) else "全部產業"
     choices <- lab_leaderboard_industry_choices(
       merged,
@@ -9609,7 +9638,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v16.24"),
+      paste0("- **App：** The YNow App v16.25"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {
