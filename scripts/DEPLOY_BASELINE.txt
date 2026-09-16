@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12563641
+bundleId=12563661
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=6ec2436
 commit=6ec2436c142b1817f6cf06f436a4744cc3c9994d
 short=6ec2436
-message=feat(app_16.0): add Decision Checklist sidebar gate (v16.22)
-captured_at=2026-09-16T16:09:14Z
+message=fix(ui): separate language and currency header controls (v16.25)
+captured_at=2026-09-16T16:14:30Z
 source_branch=master
-display_version=v16.22
-note=Canonical live line is app_16.0. Bundle 12563641 ships v16.22: new sidebar Decision Checklist / 決策檢核 with customizable pass-fail gates; Bear/Base and HFV-veto defaults; en-US + zh-TW. Supersedes 12562877 (v16.21).
+display_version=v16.25
+note=Canonical live line is app_16.0. Bundle 12563661 ships v16.25 tip including logo-green 試算 buttons (#249C60) + header KPI brand green/gold, Decision Checklist (v16.22), Blue Chip rankings (v16.24), and language/currency header separation. Supersedes 12563641.
