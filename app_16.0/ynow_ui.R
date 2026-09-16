@@ -133,14 +133,31 @@
   )
 }
 
+#' Shared gray「回復預設」button (all valuation models).
+ynow_reset_defaults_btn <- function(input_id, label = "回復預設", block = TRUE) {
+  actionButton(
+    input_id,
+    label,
+    icon = icon("refresh"),
+    class = if (isTRUE(block)) "btn-default btn-block ynow-btn-reset" else "btn-default ynow-btn-reset",
+    style = paste(
+      "padding: 12px; font-weight: bold; font-size: 16px;",
+      "background-color: #7f8c8d; color: #ffffff; border-color: #6c757d;"
+    )
+  )
+}
+
 #' Shared CAPM / Beta settings block (canonical IDs on DCF → WACC).
 #' @param calc_id actionButton id
 #' @param result_id htmlOutput id for CAPM result text
+#' @param width shinydashboard box width (1–12)
 capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
                                   calc_id = "calc_capm",
-                                  result_id = "capm_result") {
+                                  result_id = "capm_result",
+                                  width = 6) {
   box(
-    h4(title),
+    width = width,
+    h4(title, id = "ynow_capm_box_title"),
     numericInput("capm_rf", "無風險利率 Rf (%)", value = APP_DEFAULTS$capm_rf, step = 0.01),
     uiOutput("capm_rf_source_note"),
     numericInput("capm_rm", "市場報酬率 Rm (%)", value = APP_DEFAULTS$capm_rm, step = 0.01),
@@ -152,6 +169,47 @@ capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
     ),
     actionButton(calc_id, "估算 rₑ（CAPM）", class = "btn-primary"),
     tags$br(), htmlOutput(result_id)
+  )
+}
+
+#' Rd estimation block: Interest Expense ÷ Interest-bearing Debt (pre-tax Rd).
+#' Layout companion to CAPM on the WACC tab (left 50%).
+rd_estimate_settings_ui <- function(width = 6) {
+  box(
+    width = width,
+    h4("估算 rᵈ", id = "ynow_rd_box_title"),
+    tags$p(
+      id = "ynow_rd_formula_note",
+      style = "margin:0 0 8px 0;color:#555;font-size:12px;",
+      "稅前 Rd = 利息費用 ÷ 有息負債；WACC 再套用 Rd×(1−T) 稅盾。"
+    ),
+    numericInput(
+      "rd_interest_expense", "利息費用",
+      value = NA_real_, min = 0, step = 1
+    ),
+    uiOutput("rd_interest_source_note"),
+    numericInput(
+      "rd_interest_bearing_debt", "有息負債",
+      value = NA_real_, min = 0, step = 1
+    ),
+    uiOutput("rd_debt_source_note"),
+    fluidRow(
+      column(6, numericInput(
+        "wacc_rd_min", "估算 rᵈ 下限 (%)",
+        value = APP_DEFAULTS$wacc_rd_min, min = 0, step = 0.1
+      )),
+      column(6, numericInput(
+        "wacc_rd_max", "估算 rᵈ 上限 (%)",
+        value = APP_DEFAULTS$wacc_rd_max, min = 0, step = 0.1
+      ))
+    ),
+    checkboxInput(
+      "use_estimated_rd",
+      tags$span(id = "ynow_use_estimated_rd_label", "採用估算 rᵈ（利息／有息負債）"),
+      value = isTRUE(APP_DEFAULTS$use_est_rd)
+    ),
+    actionButton("calc_rd", "估算 rᵈ", class = "btn-primary"),
+    tags$br(), htmlOutput("rd_result")
   )
 }
 
@@ -727,7 +785,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v16.18</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v16.19</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -1754,6 +1812,38 @@ ui <- dashboardPage(
             if (sgrCustomLab && s.sgr_custom_label) sgrCustomLab.textContent = s.sgr_custom_label;
             var g1Help = document.getElementById('ynow_g_stage1_help');
             if (g1Help && s.g_stage1_help) g1Help.textContent = s.g_stage1_help;
+            var waccBoxTitle = document.getElementById('ynow_wacc_box_title');
+            if (waccBoxTitle && s.wacc_box_title) waccBoxTitle.textContent = s.wacc_box_title;
+            var waccHelp = document.getElementById('ynow_wacc_help');
+            if (waccHelp && s.wacc_help) waccHelp.textContent = s.wacc_help;
+            var rdBoxTitle = document.getElementById('ynow_rd_box_title');
+            if (rdBoxTitle && s.rd_box_title) rdBoxTitle.textContent = s.rd_box_title;
+            var rdFormula = document.getElementById('ynow_rd_formula_note');
+            if (rdFormula && s.rd_formula_note) rdFormula.textContent = s.rd_formula_note;
+            var rdIntLab = document.querySelector('label[for=\"rd_interest_expense\"]');
+            if (rdIntLab && s.rd_interest_label) rdIntLab.textContent = s.rd_interest_label;
+            var rdDebtLab = document.querySelector('label[for=\"rd_interest_bearing_debt\"]');
+            if (rdDebtLab && s.rd_debt_label) rdDebtLab.textContent = s.rd_debt_label;
+            var rdMinLab = document.querySelector('label[for=\"wacc_rd_min\"]');
+            if (rdMinLab && s.rd_min_label) rdMinLab.textContent = s.rd_min_label;
+            var rdMaxLab = document.querySelector('label[for=\"wacc_rd_max\"]');
+            if (rdMaxLab && s.rd_max_label) rdMaxLab.textContent = s.rd_max_label;
+            var useRdLab = document.getElementById('ynow_use_estimated_rd_label');
+            if (useRdLab && s.use_estimated_rd_label) useRdLab.textContent = s.use_estimated_rd_label;
+            var btnCalcRd = document.getElementById('calc_rd');
+            if (btnCalcRd && s.btn_calc_rd) {
+              var rdIcon = btnCalcRd.querySelector('i');
+              var rdIconHtml = rdIcon ? rdIcon.outerHTML + ' ' : '';
+              btnCalcRd.innerHTML = rdIconHtml + s.btn_calc_rd;
+            }
+            var btnCalcWacc = document.getElementById('calc_wacc');
+            if (btnCalcWacc && s.btn_calc_wacc) {
+              var wIcon = btnCalcWacc.querySelector('i');
+              var wIconHtml = wIcon ? wIcon.outerHTML + ' ' : '';
+              btnCalcWacc.innerHTML = wIconHtml + s.btn_calc_wacc;
+            }
+            var capmBoxTitle = document.getElementById('ynow_capm_box_title');
+            if (capmBoxTitle && s.capm_box_title) capmBoxTitle.textContent = s.capm_box_title;
             var kpiBlue = document.getElementById('ynow_kpi_legend_blue');
             if (kpiBlue && s.kpi_legend_blue) kpiBlue.textContent = s.kpi_legend_blue;
             var kpiRed = document.getElementById('ynow_kpi_legend_red');
@@ -3489,8 +3579,8 @@ ui <- dashboardPage(
                                width = 6,
                                actionButton(
                                  "mod_ddm-reset_ddm", "回復預設",
-                                 class = "btn-default btn-block",
-                                 style = "padding: 12px; font-weight: bold; font-size: 16px;",
+                                 class = "btn-default btn-block ynow-btn-reset",
+                                 style = "padding: 12px; font-weight: bold; font-size: 16px; background-color: #7f8c8d; color: #ffffff; border-color: #6c757d;",
                                  icon = icon("refresh")
                                )
                              )
@@ -3710,7 +3800,12 @@ ui <- dashboardPage(
                                        h6(uiOutput("dcf_chart_help")),
                                        fluidRow(
                                          column(width = 6, actionButton("calc", "試算 DCF", class = "btn-success btn-block", style = "padding: 12px; font-weight: bold; font-size: 16px;")),
-                                         column(width = 6, actionButton("reset_dcf", "回復預設", class = "btn-default btn-block", style = "padding: 12px; font-weight: bold; font-size: 16px;"))
+                                         column(width = 6, actionButton(
+                                           "reset_dcf", "回復預設",
+                                           class = "btn-default btn-block ynow-btn-reset",
+                                           style = "padding: 12px; font-weight: bold; font-size: 16px; background-color: #7f8c8d; color: #ffffff; border-color: #6c757d;",
+                                           icon = icon("refresh")
+                                         ))
                                        ),
                                        tags$div(style = "margin-top: 10px;", htmlOutput("vtxt_dcf_setting_details"))
                                 )
@@ -3761,26 +3856,48 @@ ui <- dashboardPage(
                                 infoBoxOutput("ibx_re", width = 4)
                               ),
                               
+                              uiOutput("dcf_disc_formula_banner"),
+                              # 上列 100%：WACC 估算；下列左 50% Rd、右 50% CAPM
                               fluidRow(
-                                uiOutput("dcf_disc_formula_banner"),
-                                box(h4("WACC 估算"),
-                                    numericInput("wacc_re", "股權成本 rₑ (%)", value = APP_DEFAULTS$wacc_re, min = 0, step = 0.01),
-                                    checkboxInput("use_estimated_re", "採用估算 rₑ（來自CAPM）", value = APP_DEFAULTS$use_est_re),
-                                    numericInput("wacc_rd", "負債成本 rᵈ (%)", value = APP_DEFAULTS$wacc_rd, min = 0, step = 0.01),
-                                    fluidRow(
-                                      column(6, numericInput("wacc_rd_min", "估算 rᵈ 下限 (%)", value = APP_DEFAULTS$wacc_rd_min, min = 0, step = 0.1)),
-                                      column(6, numericInput("wacc_rd_max", "估算 rᵈ 上限 (%)", value = APP_DEFAULTS$wacc_rd_max, min = 0, step = 0.1))
-                                    ),
-                                    helpText("無現成 rᵈ 時欄位空白；財報抓取後以利息費用／總負債設算，並夾在下限～上限內。"),
-                                    numericInput("wacc_tax", "所得稅率 T (%)", value = APP_DEFAULTS$wacc_tax, min = 0, max = 100, step = 0.01),
-                                    uiOutput("wacc_tax_source_note"),
-                                    actionButton("calc_wacc", "計算 WACC", class = "btn-primary"),
-                                    tags$br(), htmlOutput("wacc_result")
-                                ),
+                                box(
+                                  width = 12,
+                                  h4("WACC 估算", id = "ynow_wacc_box_title"),
+                                  fluidRow(
+                                    column(4, numericInput(
+                                      "wacc_re", "股權成本 rₑ (%)",
+                                      value = APP_DEFAULTS$wacc_re, min = 0, step = 0.01
+                                    )),
+                                    column(4, numericInput(
+                                      "wacc_rd", "負債成本 rᵈ (%)",
+                                      value = APP_DEFAULTS$wacc_rd, min = 0, step = 0.01
+                                    )),
+                                    column(4, numericInput(
+                                      "wacc_tax", "所得稅率 T (%)",
+                                      value = APP_DEFAULTS$wacc_tax, min = 0, max = 100, step = 0.01
+                                    ))
+                                  ),
+                                  checkboxInput(
+                                    "use_estimated_re",
+                                    "採用估算 rₑ（來自 CAPM）",
+                                    value = APP_DEFAULTS$use_est_re
+                                  ),
+                                  uiOutput("wacc_tax_source_note"),
+                                  tags$p(
+                                    id = "ynow_wacc_help",
+                                    style = "margin:0 0 8px 0;color:#666;font-size:12px;",
+                                    "WACC = We×Re + Wd×Rd×(1−T)。Rd 可由下方「估算 rᵈ」以利息費用／有息負債推估（稅前），再於此套用稅盾。"
+                                  ),
+                                  actionButton("calc_wacc", "計算 WACC", class = "btn-primary"),
+                                  tags$br(), htmlOutput("wacc_result")
+                                )
+                              ),
+                              fluidRow(
+                                rd_estimate_settings_ui(width = 6),
                                 capm_beta_settings_ui(
                                   title = "CAPM 估算 rₑ",
                                   calc_id = "calc_capm",
-                                  result_id = "capm_result"
+                                  result_id = "capm_result",
+                                  width = 6
                                 )
                               )
                      ),

@@ -69,6 +69,7 @@ server <- function(input, output, session) {
   auto_calc_ddm_pulse <- reactiveVal(0L)
   auto_calc_pb_pulse <- reactiveVal(0L)
   auto_calc_nav_pulse <- reactiveVal(0L)
+  auto_calc_ri_pulse <- reactiveVal(0L)
 
   # ==========================================
   # 🚀 股票代號：僅主區 Ticker / Stock Code（sc + Search）
@@ -1351,9 +1352,12 @@ server <- function(input, output, session) {
       c("WACC", "Calculated WACC (%)", .snapshot_value(wacc_pct), "WACC = E/(E+D)×Re + D/(E+D)×Rd×(1-T)"),
       c("WACC", "Re (%)", .snapshot_value(input$wacc_re), "Cost of equity"),
       c("WACC", "Use CAPM Re", .snapshot_value(input$use_estimated_re), "TRUE uses CAPM-estimated Re"),
-      c("WACC", "Rd (%)", .snapshot_value(input$wacc_rd), "Cost of debt; NA until scraped interest/debt"),
-      c("WACC", "Rd min (%)", .snapshot_value(input$wacc_rd_min), "Clamp floor for scraped Rd"),
-      c("WACC", "Rd max (%)", .snapshot_value(input$wacc_rd_max), "Clamp ceiling for scraped Rd"),
+      c("WACC", "Rd (%)", .snapshot_value(input$wacc_rd), "Cost of debt; NA until Interest/Interest-bearing Debt"),
+      c("WACC", "Rd Interest Expense", .snapshot_value(input$rd_interest_expense), "Numerator for pre-tax Rd"),
+      c("WACC", "Rd Interest-bearing Debt", .snapshot_value(input$rd_interest_bearing_debt), "Denominator for pre-tax Rd (有息負債)"),
+      c("WACC", "Rd min (%)", .snapshot_value(input$wacc_rd_min), "Clamp floor for estimated Rd"),
+      c("WACC", "Rd max (%)", .snapshot_value(input$wacc_rd_max), "Clamp ceiling for estimated Rd"),
+      c("WACC", "Use estimated Rd", .snapshot_value(input$use_estimated_rd), "TRUE uses Interest/Debt Rd"),
       c("WACC", "Tax Rate T (%)", .snapshot_value(input$wacc_tax), "After-tax debt cost = Rd×(1-T)"),
       c("DDM", "D0", .snapshot_value(input[["mod_ddm-d0"]]), "P0 = D1 / (Ke-g); D1 = D0×(1+g)"),
       c("DDM", "g (%)", .snapshot_value(input[["mod_ddm-g"]]), "Dividend growth; optional sync with central SGR"),
@@ -1467,9 +1471,12 @@ server <- function(input, output, session) {
       wacc_stage1 = c("Two-Stage", "WACC1 (%)", "Stage 1 discount"),
       wacc_stage2 = c("Two-Stage", "WACC2 (%)", "Terminal discount"),
       wacc_re = c("WACC", "Re (%)", "Cost of equity"),
-      wacc_rd = c("WACC", "Rd (%)", "NA＝無靜態預設；財報利息／負債後覆寫"),
-      wacc_rd_min = c("WACC", "Rd 下限 (%)", "財報推估 rᵈ 夾限下限"),
-      wacc_rd_max = c("WACC", "Rd 上限 (%)", "財報推估 rᵈ 夾限上限"),
+      wacc_rd = c("WACC", "Rd (%)", "NA＝無靜態預設；利息／有息負債後覆寫"),
+      wacc_rd_min = c("WACC", "Rd 下限 (%)", "推估 rᵈ 夾限下限"),
+      wacc_rd_max = c("WACC", "Rd 上限 (%)", "推估 rᵈ 夾限上限"),
+      use_est_rd = c("WACC", "使用估算 Rd", "UI: use_estimated_rd；TRUE = Rd 跟利息／有息負債"),
+      rd_interest_expense = c("WACC", "利息費用", "Rd 分子；損益 Interest Expense 或 CF Interest Paid"),
+      rd_interest_bearing_debt = c("WACC", "有息負債", "Rd 分母；Total Debt 或 ST+LT Debt"),
       wacc_tax = c("WACC", "稅率 T (%)", "After-tax debt cost"),
       use_est_re = c("WACC", "使用 CAPM Re", "UI: use_estimated_re；TRUE = Re 跟 CAPM"),
       capm_rf = c("CAPM", "Rf (%)", "無風險利率（啟動時估）"),
@@ -2430,7 +2437,8 @@ server <- function(input, output, session) {
     capm_rf = reactive(suppressWarnings(as.numeric(input$capm_rf)[1])),
     capm_beta = reactive(suppressWarnings(as.numeric(input$capm_beta)[1])),
     capm_rm = reactive(suppressWarnings(as.numeric(input$capm_rm)[1])),
-    use_estimated_re = reactive(isTRUE(input$use_estimated_re))
+    use_estimated_re = reactive(isTRUE(input$use_estimated_re)),
+    auto_calc_pulse = reactive(auto_calc_ri_pulse())
   )
   
   # ==========================================
@@ -2965,7 +2973,7 @@ server <- function(input, output, session) {
     return(ifelse(is.na(val), 0, val))
   })
 
-  # --- 負債成本 rᵈ (%)：利息費用／總負債（無全域預設）；上下限由 UI 參數決定 ---
+  # --- 負債成本 rᵈ (%)：利息費用／有息負債（稅前；無全域預設）；上下限由 UI 參數決定 ---
   .rd_clamp_bounds <- function() {
     lo <- suppressWarnings(as.numeric(input$wacc_rd_min)[1])
     hi <- suppressWarnings(as.numeric(input$wacc_rd_max)[1])
@@ -2977,8 +2985,7 @@ server <- function(input, output, session) {
     c(lo = lo, hi = hi)
   }
 
-  scraped_rd_pct <- reactive({
-    req(d_income_statement(), d_balance_sheet())
+  .scraped_interest_expense <- function() {
     interest <- tryCatch(
       abs(as.numeric(select_current_metric_any(
         d_income_statement(), INTEREST_EXPENSE_PATTERNS, "flow"
@@ -2994,9 +3001,20 @@ server <- function(input, output, session) {
           ))[1]),
           error = function(e) NA_real_
         )
+        if (is.finite(interest) && interest > 0) {
+          attr(interest, "source") <- "cash_flow_interest_paid"
+          return(interest)
+        }
       }
+      return(NA_real_)
     }
-    debt <- tryCatch(as.numeric(scraped_debt())[1], error = function(e) NA_real_)
+    attr(interest, "source") <- "income_interest_expense"
+    interest
+  }
+
+  scraped_rd_pct <- reactive({
+    interest <- suppressWarnings(as.numeric(input$rd_interest_expense)[1])
+    debt <- suppressWarnings(as.numeric(input$rd_interest_bearing_debt)[1])
     if (!is.finite(interest) || interest <= 0 || !is.finite(debt) || debt <= 0) {
       return(NA_real_)
     }
@@ -3005,20 +3023,98 @@ server <- function(input, output, session) {
     max(b[["lo"]], min(rd, b[["hi"]]))
   })
 
+  .apply_estimated_rd <- function(notify = FALSE) {
+    rd <- tryCatch(scraped_rd_pct(), error = function(e) NA_real_)
+    if (!is.finite(rd)) return(invisible(NA_real_))
+    updateNumericInput(session, "wacc_rd", value = round(rd, 2))
+    if (isTRUE(notify)) {
+      showNotification(
+        glue::glue("📌 已估算 rᵈ = {round(rd, 2)}%（利息費用／有息負債）"),
+        type = "message",
+        duration = 5
+      )
+    }
+    invisible(rd)
+  }
+
+  # 財報就緒：帶入利息費用與有息負債（Total Debt 或 ST+LT）
   observeEvent(
-    list(
-      d_income_statement(), d_balance_sheet(), d_cash_flow(), scraped_debt(),
-      input$wacc_rd_min, input$wacc_rd_max
-    ),
+    list(d_income_statement(), d_balance_sheet(), d_cash_flow(), scraped_debt()),
     {
-      rd <- tryCatch(scraped_rd_pct(), error = function(e) NA_real_)
-      if (is.finite(rd)) {
-        updateNumericInput(session, "wacc_rd", value = round(rd, 2))
+      interest <- tryCatch(.scraped_interest_expense(), error = function(e) NA_real_)
+      debt <- tryCatch(as.numeric(scraped_debt())[1], error = function(e) NA_real_)
+      if (is.finite(interest) && interest > 0) {
+        updateNumericInput(session, "rd_interest_expense", value = round(interest, 2))
+      }
+      if (is.finite(debt) && debt > 0) {
+        updateNumericInput(session, "rd_interest_bearing_debt", value = round(debt, 2))
       }
     },
     ignoreInit = FALSE
   )
-  
+
+  # 估算參數變更：勾選「採用估算 rᵈ」時覆寫 wacc_rd
+  observeEvent(
+    list(
+      input$rd_interest_expense, input$rd_interest_bearing_debt,
+      input$wacc_rd_min, input$wacc_rd_max, input$use_estimated_rd
+    ),
+    {
+      if (!isTRUE(input$use_estimated_rd)) return()
+      .apply_estimated_rd(notify = FALSE)
+    },
+    ignoreInit = FALSE
+  )
+
+  observeEvent(input$calc_rd, {
+    .apply_estimated_rd(notify = TRUE)
+  })
+
+  output$rd_interest_source_note <- renderUI({
+    interest <- tryCatch(.scraped_interest_expense(), error = function(e) NA_real_)
+    src <- attr(interest, "source")
+    lab <- if (identical(src, "cash_flow_interest_paid")) {
+      "財報來源：現金流量表 Interest Paid"
+    } else if (identical(src, "income_interest_expense")) {
+      "財報來源：損益表 Interest Expense"
+    } else {
+      "財報來源：尚無利息費用；可手動輸入"
+    }
+    tags$p(style = "margin:-6px 0 8px 0;color:#666;font-size:11px;", lab)
+  })
+
+  output$rd_debt_source_note <- renderUI({
+    debt <- tryCatch(as.numeric(scraped_debt())[1], error = function(e) NA_real_)
+    lab <- if (is.finite(debt) && debt > 0) {
+      "財報來源：有息負債（優先 Total Debt；否則 Short-term + Long-term Debt）"
+    } else {
+      "財報來源：尚無有息負債；可手動輸入"
+    }
+    tags$p(style = "margin:-6px 0 8px 0;color:#666;font-size:11px;", lab)
+  })
+
+  output$rd_result <- renderUI({
+    interest <- suppressWarnings(as.numeric(input$rd_interest_expense)[1])
+    debt <- suppressWarnings(as.numeric(input$rd_interest_bearing_debt)[1])
+    rd <- tryCatch(scraped_rd_pct(), error = function(e) NA_real_)
+    if (!is.finite(interest) || interest <= 0 || !is.finite(debt) || debt <= 0) {
+      return(HTML("<span style='color:#888;'>請輸入利息費用與有息負債後按「估算 rᵈ」。</span>"))
+    }
+    raw <- 100 * interest / debt
+    b <- .rd_clamp_bounds()
+    clamped <- is.finite(rd) && abs(raw - rd) > 1e-6
+    clamp_note <- if (isTRUE(clamped)) {
+      sprintf("（原始 %.2f%%，已夾限於 %.1f～%.1f%%）", raw, b[["lo"]], b[["hi"]])
+    } else {
+      ""
+    }
+    HTML(sprintf(
+      "<b>估算 rᵈ（稅前）= %.2f%%</b> %s<br/><span style='color:#666;font-size:12px;'>公式：利息費用 ÷ 有息負債；WACC 使用 Rd×(1−T)。</span>",
+      if (is.finite(rd)) rd else raw,
+      clamp_note
+    ))
+  })
+ 
   # --- 股數與市值（報價 → session；ADR 自動約當股數 = 市值÷股價）---
   scraped_market_cap <- reactive({
     req(d_balance_sheet(), summary_data())
@@ -5585,12 +5681,18 @@ server <- function(input, output, session) {
     auto_calc_ddm_pulse(0L)
     auto_calc_pb_pulse(0L)
     auto_calc_nav_pulse(0L)
+    auto_calc_ri_pulse(0L)
   }, ignoreNULL = TRUE, ignoreInit = TRUE)
 
   .auto_calc_primary_ready <- function(prim) {
     prim <- as.character(prim %||% "")[1]
     if (!nzchar(prim)) return(FALSE)
-    if (identical(prim, "ri")) return(TRUE)
+    if (identical(prim, "ri")) {
+      b0 <- suppressWarnings(as.numeric(input[["mod_ri-b0"]])[1])
+      ke <- suppressWarnings(as.numeric(input[["mod_ri-ri_ke"]])[1])
+      g <- suppressWarnings(as.numeric(input[["mod_ri-ri_g"]])[1])
+      return(is.finite(b0) && is.finite(ke) && ke > 0 && is.finite(g) && g < ke)
+    }
     if (identical(prim, "dcf")) {
       proj <- tryCatch(fcf_results$df_fcf(), error = function(e) NULL)
       n <- suppressWarnings(as.numeric(input$years)[1])
@@ -5647,6 +5749,8 @@ server <- function(input, output, session) {
       auto_calc_pb_pulse(isolate(auto_calc_pb_pulse()) + 1L)
     } else if (identical(prim, "nav")) {
       auto_calc_nav_pulse(isolate(auto_calc_nav_pulse()) + 1L)
+    } else if (identical(prim, "ri")) {
+      auto_calc_ri_pulse(isolate(auto_calc_ri_pulse()) + 1L)
     }
     invisible(NULL)
   }
@@ -5664,7 +5768,6 @@ server <- function(input, output, session) {
     if (!isTRUE(.auto_calc_primary_ready(prim))) return()
 
     auto_calc_primary_sig(sig)
-    if (identical(prim, "ri")) return(invisible(NULL))
     .fire_auto_calc_primary(prim)
   })
 
