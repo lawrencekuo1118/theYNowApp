@@ -768,7 +768,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v16.22</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v16.23</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -1242,6 +1242,28 @@ ui <- dashboardPage(
           border-color: #000 !important;
           color: #fff !important;
         }
+        /* Valuation「試算」：logo 綠 #249C60、白字（DCF／DDM／RI／P/B／NAV） */
+        .btn.ynow-btn-calc,
+        .btn.ynow-btn-calc:focus,
+        .btn.ynow-btn-calc:active,
+        .btn.ynow-btn-calc.active,
+        .btn.ynow-btn-calc:visited {
+          background-color: var(--ynow-logo-green) !important;
+          background-image: none !important;
+          border-color: #1e7a4c !important;
+          color: #ffffff !important;
+          text-shadow: none !important;
+        }
+        .btn.ynow-btn-calc:hover {
+          background-color: #1e8552 !important;
+          background-image: none !important;
+          border-color: #196b42 !important;
+          color: #ffffff !important;
+        }
+        .btn.ynow-btn-calc .fa,
+        .btn.ynow-btn-calc .fas {
+          color: #ffffff !important;
+        }
         .nav-tabs-custom > .nav-tabs > li.active {
           border-top-color: var(--ynow-ink) !important;
         }
@@ -1518,9 +1540,44 @@ ui <- dashboardPage(
           font-weight: 700;
           color: #333;
         }
+        /* Header KPI：Previous Close／Market Cap／EPS — logo 綠／金 */
+        .ynow-header-kpi-row .info-box {
+          background: #ffffff;
+          border: 1px solid rgba(201, 162, 39, 0.55);
+          border-top: 3px solid var(--ynow-gold);
+          box-shadow: 0 1px 2px rgba(26, 26, 26, 0.06);
+          background-image: linear-gradient(
+            180deg,
+            rgba(245, 197, 24, 0.07) 0%,
+            rgba(255, 255, 255, 0) 36px
+          );
+        }
+        .ynow-header-kpi-row .info-box .info-box-icon,
+        .ynow-header-kpi-row .info-box .info-box-icon.bg-purple,
+        .ynow-header-kpi-row .info-box .info-box-icon.bg-aqua,
+        .ynow-header-kpi-row .info-box .info-box-icon.bg-green,
+        .ynow-header-kpi-row .info-box .info-box-icon.bg-yellow,
+        .ynow-header-kpi-row .info-box .info-box-icon.bg-blue,
+        .ynow-header-kpi-row .info-box .info-box-icon.bg-teal {
+          background-color: var(--ynow-logo-green) !important;
+          color: #ffffff !important;
+        }
+        .ynow-header-kpi-row .info-box .info-box-icon > .fa,
+        .ynow-header-kpi-row .info-box .info-box-icon > .fas {
+          color: #ffffff !important;
+        }
+        .ynow-header-kpi-row .info-box .info-box-text {
+          color: var(--ynow-gold-ink) !important;
+          font-weight: 700;
+          letter-spacing: 0.02em;
+        }
+        .ynow-header-kpi-row .info-box .info-box-number,
+        .ynow-header-kpi-row .info-box .info-box-number h3 {
+          color: var(--ynow-ink) !important;
+        }
         /* 手機：PREVIOUS CLOSE / MARKET CAP / EPS 直向堆疊、各佔 100% */
         @media (max-width: 767px) {
-          .content-wrapper .ynow-header-kpi-row > [class*="col-"] {
+          .content-wrapper .ynow-header-kpi-row > .col-xs-12 {
             width: 100% !important;
             float: none !important;
             display: block;

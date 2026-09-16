@@ -2679,12 +2679,17 @@ ynow_reset_defaults_btn <- function(input_id, label = "回復預設", block = TR
 }
 
 #' Companion green「試算」block button (pair with ynow_reset_defaults_btn).
+#' Color: logo green (--ynow-logo-green / #249C60) via .ynow-btn-calc in ynow_ui.R.
 ynow_calc_btn <- function(input_id, label, block = TRUE) {
   actionButton(
     input_id,
     label,
     icon = icon("calculator"),
-    class = if (isTRUE(block)) "btn-success btn-block" else "btn-success",
+    class = if (isTRUE(block)) {
+      "btn-success btn-block ynow-btn-calc"
+    } else {
+      "btn-success ynow-btn-calc"
+    },
     style = "padding: 12px; font-weight: bold; font-size: 16px;"
   )
 }
