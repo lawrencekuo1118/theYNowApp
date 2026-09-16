@@ -95,10 +95,11 @@ market_profile <- function(mode = get_market_mode()) {
       bluechip_title = "Blue Chip Ranking (US)",
       # Intro copy lives in ui_locale.R (bluechip_blurb_us); kept for profile completeness
       bluechip_blurb = paste0(
-        "Screen US blue-chip candidates from the S&P 500 constituent list: ",
+        "Screen US blue-chip candidates from the S&P 500 constituent list ",
+        "(Nasdaq and NYSE listings): ",
         "size × industry × valuation-model filters, then Piotroski F-Score≥7 and implied annualized valuation appreciation."
       ),
-      universe_label = "S&P 500",
+      universe_label = "S&P 500 (Nasdaq + NYSE)",
       ticker_presets = c(
         "AMZN — Amazon.com" = "AMZN",
         "AAPL — Apple" = "AAPL",
@@ -110,12 +111,43 @@ market_profile <- function(mode = get_market_mode()) {
         "BRK-B — Berkshire Hathaway" = "BRK-B",
         "JPM — JPMorgan Chase" = "JPM",
         "V — Visa" = "V",
+        "JNJ — Johnson & Johnson" = "JNJ",
+        "XOM — Exxon Mobil" = "XOM",
+        "KO — Coca-Cola" = "KO",
         "TSM — Taiwan Semiconductor (ADR)" = "TSM",
         "SPY — S&P 500 ETF" = "SPY",
         "QQQ — Nasdaq 100 ETF" = "QQQ"
       )
     )
   }
+}
+
+#' Yahoo / SEC exchange → Nasdaq listing family (NMS, NasdaqGS, …)
+is_us_nasdaq_exchange <- function(exch) {
+  e <- toupper(trimws(as.character(exch %||% "")[1]))
+  if (!nzchar(e)) return(FALSE)
+  grepl("NASDAQ", e, fixed = TRUE) || e %in% c("NMS", "NGM", "NCM", "NAS")
+}
+
+#' Yahoo / SEC exchange → NYSE listing family (NYQ, NYSE, NYSE American)
+#' Note: NYSEArca / BATS are venues for many ETFs — not counted as NYSE equities here.
+is_us_nyse_exchange <- function(exch) {
+  e <- toupper(trimws(as.character(exch %||% "")[1]))
+  if (!nzchar(e)) return(FALSE)
+  if (grepl("ARCA|BATS|CBOE", e)) return(FALSE)
+  e %in% c("NYSE", "NYQ", "NYA", "ASE", "AMEX", "NYSE AMERICAN", "NYSE MKT", "NEW YORK STOCK EXCHANGE")
+}
+
+#' US primary listing venues we keep in 美股 search / universe meta
+is_us_primary_listing_exchange <- function(exch) {
+  is_us_nasdaq_exchange(exch) || is_us_nyse_exchange(exch)
+}
+
+#' Normalize to NASDAQ / NYSE for universe CSV (else NA)
+normalize_us_listing_exchange <- function(exch) {
+  if (is_us_nasdaq_exchange(exch)) return("NASDAQ")
+  if (is_us_nyse_exchange(exch)) return("NYSE")
+  NA_character_
 }
 
 #' 自上市／上櫃／興櫃宇宙解析純數字代號 → Yahoo 後綴（優先 .TW／TWSE，其次上櫃，再興櫃）
@@ -375,6 +407,62 @@ search_tw_universe_by_name <- function(query, max_results = 12L) {
     }
   }
 
+  if (!length(hits)) return(character(0))
+  stats::setNames(hits, labs)
+}
+
+#' Search S&P 500 universe by ticker / company name (offline; Nasdaq + NYSE constituents)
+#' @return named character：names = 「代號 — 名稱」, values = Yahoo fetch symbol
+search_us_universe_by_name <- function(query, max_results = 12L) {
+  q <- trimws(as.character(query %||% "")[1])
+  if (!nzchar(q)) return(character(0))
+  max_results <- max(1L, as.integer(max_results)[1])
+
+  u <- tryCatch({
+    if (exists("lab_get_sp500_universe", mode = "function")) {
+      lab_get_sp500_universe(FALSE)
+    } else {
+      NULL
+    }
+  }, error = function(e) NULL)
+  if (is.null(u) || !is.data.frame(u) || nrow(u) < 1L ||
+      !all(c("ticker", "name") %in% names(u))) {
+    return(character(0))
+  }
+
+  tks <- as.character(u$ticker)
+  nms <- as.character(u$name)
+  q_u <- toupper(gsub("\\s+", "", q))
+  score <- rep(0L, length(tks))
+  for (i in seq_along(tks)) {
+    tk_u <- toupper(gsub("\\s+", "", tks[[i]]))
+    nm <- nms[[i]]
+    if (identical(tk_u, q_u)) {
+      score[[i]] <- 100L
+    } else if (nzchar(nm) && grepl(q, nm, ignore.case = TRUE, fixed = TRUE)) {
+      score[[i]] <- 80L
+    } else if (grepl(q_u, tk_u, fixed = TRUE)) {
+      score[[i]] <- 60L
+    }
+  }
+  ord <- order(-score, tks, na.last = TRUE)
+  hits <- character(0)
+  labs <- character(0)
+  for (i in ord) {
+    if (score[[i]] <= 0L) next
+    if (length(hits) >= max_results) break
+    board_tag <- ""
+    if ("exchange" %in% names(u)) {
+      ex_norm <- normalize_us_listing_exchange(u$exchange[[i]])
+      if (identical(ex_norm, "NASDAQ")) board_tag <- " (Nasdaq)"
+      else if (identical(ex_norm, "NYSE")) board_tag <- " (NYSE)"
+    }
+    nm_disp <- trimws(as.character(nms[[i]]))
+    lab <- if (nzchar(nm_disp)) paste0(tks[[i]], " — ", nm_disp, board_tag) else
+      paste0(tks[[i]], board_tag)
+    hits <- c(hits, tks[[i]])
+    labs <- c(labs, lab)
+  }
   if (!length(hits)) return(character(0))
   stats::setNames(hits, labs)
 }

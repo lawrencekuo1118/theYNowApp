@@ -70,10 +70,12 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Detail-row count equals the number of names evaluated, N."
     ),
     bluechip_blurb_us = paste0(
-      "Screen US blue-chip candidates from the S&P 500 constituent list. ",
+      "Screen US blue-chip candidates from the S&P 500 constituent list ",
+      "(Nasdaq and NYSE listings). ",
       "First apply size × industry × valuation-model filters, then keep the leaderboard at a high Piotroski threshold ",
       "(F-Score≥7; unrelated to earnings-quality metrics), and rank by implied annualized valuation appreciation ",
-      "over the App default horizon of n=%d years. Detail-row count equals the number of names evaluated, N."
+      "over the App default horizon of n=%d years. Main search keeps Nasdaq and NYSE primary listings ",
+      "(Yahoo typeahead plus the S&P 500 name/ticker universe). Detail-row count equals the number of names evaluated, N."
     ),
     lab_im_max_n_label = "Evaluation count (detail rows)",
     lab_im_max_n_custom_label = "Custom count",
@@ -430,9 +432,10 @@ locale_for_market <- function(mode = get_market_mode()) {
       "明細列數等於本次評估檔數 N。"
     ),
     bluechip_blurb_us = paste0(
-      "自 Wikipedia 的 S&P 500 成分名單篩選美股績優候選。",
+      "自 S&P 500 成分名單篩選美股績優候選（涵蓋 Nasdaq 與 NYSE 上市股票）。",
       "流程先依規模、產業與適用評價模型進行條件篩選，再以 Piotroski 高門檻（F-Score≥7；與盈餘品質指標無涉）過濾排行榜，",
-      "最後依 App 預設 n＝%d 年之隱含年化估值漲幅排序。明細列數等於本次評估檔數 N。"
+      "最後依 App 預設 n＝%d 年之隱含年化估值漲幅排序。主搜尋保留 Nasdaq／NYSE 主要上市",
+      "（Yahoo 建議列＋S&P 500 名稱／代號宇宙）。明細列數等於本次評估檔數 N。"
     ),
     lab_im_max_n_label = "評估檔數（明細列數）",
     lab_im_max_n_custom_label = "自訂檔數",

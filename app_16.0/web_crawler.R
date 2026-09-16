@@ -271,6 +271,7 @@ TICKER_PRESETS_US <- c(
   "XOM — Exxon Mobil" = "XOM",
   "UNH — UnitedHealth" = "UNH",
   "LLY — Eli Lilly" = "LLY",
+  "KO — Coca-Cola" = "KO",
   "AVGO — Broadcom" = "AVGO",
   "TSM — Taiwan Semiconductor (ADR)" = "TSM",
   "SPY — S&P 500 ETF" = "SPY",
@@ -400,8 +401,29 @@ search_ticker_choices <- function(query, max_results = 12L, market = NULL) {
       }
       syms <- syms[keep]; labs <- labs[keep]
     } else {
-      drop <- grepl("\\.(TW|TWO)$", syms, ignore.case = TRUE)
-      syms <- syms[!drop]; labs <- labs[!drop]
+      # 美股：納入 Nasdaq + NYSE 主要上市；排除台股後綴、海外交易所後綴、期貨／外匯
+      drop <- grepl("\\.(TW|TWO)$", syms, ignore.case = TRUE) |
+        grepl(
+          "\\.(TO|V|L|DE|PA|HK|T|AX|SS|SZ|KS|KQ|BO|NS|SA|MX|NE|F|SW|MI|AS|BR|HE|ST|CO|OL|IC|LS|AT)$",
+          syms,
+          ignore.case = TRUE
+        ) |
+        grepl("=F$|=X$", syms) |
+        grepl("^\\^", syms)
+      keep <- !drop
+      if (length(exch) == length(syms) && exists("is_us_primary_listing_exchange", mode = "function")) {
+        has_ex <- nzchar(trimws(as.character(exch)))
+        us_ex <- vapply(
+          exch,
+          function(e) isTRUE(is_us_primary_listing_exchange(e)),
+          logical(1)
+        )
+        # 有交易所碼時必須是 Nasdaq／NYSE；無碼時僅靠符號過濾（保留 AAPL、BRK-B）
+        keep <- keep & (!has_ex | us_ex)
+      }
+      syms <- syms[keep]
+      labs <- labs[keep]
+      if (length(exch) == length(keep)) exch <- exch[keep]
     }
     if (length(syms)) {
       labs <- vapply(seq_along(syms), function(i) {
@@ -423,10 +445,18 @@ search_ticker_choices <- function(query, max_results = 12L, market = NULL) {
   local_hits <- presets[preset_keep]
 
   # TW：CJK／公司名／純數字 → 上市／上櫃／興櫃宇宙（Yahoo typeahead 常對中文弱）
+  # US：公司名／代號 → S&P 500 宇宙（確保 Nasdaq + NYSE 成分可離線命中）
   cjk_hits <- character(0)
   if (identical(mode, "TW") && exists("search_tw_universe_by_name", mode = "function")) {
     cjk_hits <- tryCatch(
       search_tw_universe_by_name(query, max_results = max_results),
+      error = function(e) character(0)
+    )
+  }
+  us_uni_hits <- character(0)
+  if (identical(mode, "US") && exists("search_us_universe_by_name", mode = "function")) {
+    us_uni_hits <- tryCatch(
+      search_us_universe_by_name(query, max_results = max_results),
       error = function(e) character(0)
     )
   }
@@ -450,6 +480,8 @@ search_ticker_choices <- function(query, max_results = 12L, market = NULL) {
   )
   if (isTRUE(tw_prefer_universe)) {
     merged <- merge_named(cjk_hits, out, local_hits)
+  } else if (identical(mode, "US")) {
+    merged <- merge_named(out, us_uni_hits, local_hits)
   } else {
     merged <- merge_named(out, cjk_hits, local_hits)
   }

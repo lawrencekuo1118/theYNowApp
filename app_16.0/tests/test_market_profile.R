@@ -60,6 +60,38 @@ check(
   identical(fetch_ticker_for_market("2330", "TW"), normalize_ticker_for_market("2330", "TW"))
 )
 
+# US Nasdaq + NYSE exchange helpers / universe coverage
+check("Nasdaq NMS", isTRUE(is_us_nasdaq_exchange("NMS")))
+check("Nasdaq exchDisp", isTRUE(is_us_nasdaq_exchange("NASDAQ")))
+check("NYSE NYQ", isTRUE(is_us_nyse_exchange("NYQ")))
+check("NYSE exchDisp", isTRUE(is_us_nyse_exchange("NYSE")))
+check("NYSEArca not NYSE equity", isFALSE(is_us_nyse_exchange("NYSEArca")))
+check("primary keeps both", isTRUE(is_us_primary_listing_exchange("NMS")) &&
+        isTRUE(is_us_primary_listing_exchange("NYQ")))
+check("normalize NMS→NASDAQ", identical(normalize_us_listing_exchange("NMS"), "NASDAQ"))
+check("normalize NYQ→NYSE", identical(normalize_us_listing_exchange("NYQ"), "NYSE"))
+
+sp500_path <- file.path(root, "data", "sp500_universe.csv")
+if (file.exists(sp500_path)) {
+  source(file.path(root, "lab_sp500_universe.R"), local = TRUE, encoding = "UTF-8")
+  u_sp <- lab_get_sp500_universe(FALSE)
+  check("SP500 has AAPL (Nasdaq)", "AAPL" %in% as.character(u_sp$ticker))
+  check("SP500 has JPM (NYSE)", "JPM" %in% as.character(u_sp$ticker))
+  if ("exchange" %in% names(u_sp)) {
+    ex_aapl <- toupper(as.character(u_sp$exchange[match("AAPL", u_sp$ticker)]))[1]
+    ex_jpm <- toupper(as.character(u_sp$exchange[match("JPM", u_sp$ticker)]))[1]
+    check("AAPL exchange NASDAQ", identical(ex_aapl, "NASDAQ"))
+    check("JPM exchange NYSE", identical(ex_jpm, "NYSE"))
+    meta_sp <- lab_sp500_universe_meta()
+    check("meta n_nasdaq>0", isTRUE(as.integer(meta_sp$n_nasdaq) > 0L))
+    check("meta n_nyse>0", isTRUE(as.integer(meta_sp$n_nyse) > 0L))
+  }
+  us_hits <- search_us_universe_by_name("Apple", max_results = 8L)
+  check("US universe Apple→AAPL", "AAPL" %in% unname(us_hits))
+  us_jpm <- search_us_universe_by_name("JPMorgan", max_results = 8L)
+  check("US universe JPMorgan→JPM", "JPM" %in% unname(us_jpm))
+}
+
 # Locale
 check("TW locale zh-TW", identical(locale_for_market("TW"), "zh-TW"))
 check("US locale en", identical(locale_for_market("US"), "en"))

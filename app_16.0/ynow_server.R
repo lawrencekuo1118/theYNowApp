@@ -8837,7 +8837,13 @@ server <- function(input, output, session) {
       }
     } else {
       meta <- tryCatch(lab_sp500_universe_meta(), error = function(e) NULL)
-      label <- "S&P 500"
+      n_nas <- if (is.null(meta)) 0L else as.integer(meta$n_nasdaq %||% 0L)
+      n_ny <- if (is.null(meta)) 0L else as.integer(meta$n_nyse %||% 0L)
+      if (n_nas > 0L || n_ny > 0L) {
+        label <- sprintf("S&P 500（Nasdaq %d／NYSE %d）", n_nas, n_ny)
+      } else {
+        label <- "S&P 500（Nasdaq＋NYSE 成分）"
+      }
     }
     n <- if (is.null(meta)) 0L else as.integer(meta$n %||% 0L)
     fetched <- if (is.null(meta)) "—" else lab_format_fetched_at(meta$fetched_at)
@@ -9638,7 +9644,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v16.31"),
+      paste0("- **App：** The YNow App v16.32"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

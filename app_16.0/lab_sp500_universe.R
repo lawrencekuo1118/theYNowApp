@@ -10,6 +10,8 @@ LAB_SP500_STALE_DAYS <- 7
 LAB_SP500_CACHE_REL <- file.path("data", "sp500_universe.csv")
 LAB_SP500_WIKI_URL <- "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
 LAB_SP500_GITHUB_URL <- "https://raw.githubusercontent.com/datasets/s-and-p-500-companies/master/data/constituents.csv"
+# SEC filer exchange map（Nasdaq / NYSE / OTC…）— 補強 Wikipedia／GitHub 成分表無交易所欄
+LAB_SEC_EXCHANGE_URL <- "https://www.sec.gov/files/company_tickers_exchange.json"
 LAB_INDEX_ETFS <- c("SPY", "QQQ", "DIA", "IWM")
 
 .lab_sp500_env <- new.env(parent = emptyenv())
@@ -244,6 +246,7 @@ lab_empty_sp500 <- function() {
   data.frame(
     ticker = character(0),
     name = character(0),
+    exchange = character(0),
     gics_sector = character(0),
     gics_sub_industry = character(0),
     industry_key = character(0),
@@ -269,11 +272,13 @@ lab_finalize_sp500 <- function(raw_df, source, fetched_at = NULL) {
   nm <- .lab_pick_col(raw_df, c("^Security$", "^Name$", "^Company$"))
   sec <- .lab_pick_col(raw_df, c("GICS.?Sector", "^Sector$"))
   sub <- .lab_pick_col(raw_df, c("GICS.?Sub", "Sub.?Industry"))
+  exch_raw <- .lab_pick_col(raw_df, c("^exchange$", "^Exchange$", "^Listing.?Exchange$"))
   if (is.null(sym)) return(empty)
   n <- length(sym)
   if (is.null(nm)) nm <- rep(NA_character_, n)
   if (is.null(sec)) sec <- rep(NA_character_, n)
   if (is.null(sub)) sub <- rep(NA_character_, n)
+  if (is.null(exch_raw)) exch_raw <- rep(NA_character_, n)
   ts <- as.character(fetched_at %||% format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"))[1]
   rows <- vector("list", n)
   seen <- character(0)
@@ -286,9 +291,20 @@ lab_finalize_sp500 <- function(raw_df, source, fetched_at = NULL) {
     key <- lab_map_gics_to_industry_key(sec[[i]], sub[[i]], y)
     cname <- trimws(as.character(nm[[i]] %||% "")[1])
     if (is.na(cname)) cname <- ""
+    ex_norm <- if (exists("normalize_us_listing_exchange", mode = "function")) {
+      normalize_us_listing_exchange(exch_raw[[i]])
+    } else {
+      NA_character_
+    }
+    if (is.na(ex_norm) || !nzchar(ex_norm)) {
+      ex_up <- toupper(trimws(as.character(exch_raw[[i]] %||% "")[1]))
+      if (ex_up %in% c("NASDAQ", "NYSE")) ex_norm <- ex_up
+      else ex_norm <- NA_character_
+    }
     rows[[length(rows) + 1L]] <- data.frame(
       ticker = y,
       name = cname,
+      exchange = as.character(ex_norm %||% NA_character_)[1],
       gics_sector = trimws(as.character(sec[[i]] %||% "")[1]),
       gics_sub_industry = trimws(as.character(sub[[i]] %||% "")[1]),
       industry_key = key,
@@ -300,6 +316,57 @@ lab_finalize_sp500 <- function(raw_df, source, fetched_at = NULL) {
   rows <- Filter(Negate(is.null), rows)
   if (!length(rows)) return(empty)
   do.call(rbind, rows)
+}
+
+#' SEC company_tickers_exchange.json → named character (Yahoo ticker → NASDAQ|NYSE)
+lab_fetch_sec_exchange_map <- function(timeout_sec = 20) {
+  tmp <- tempfile(fileext = ".json")
+  on.exit(unlink(tmp), add = TRUE)
+  ok <- tryCatch(
+    .lab_http_download(LAB_SEC_EXCHANGE_URL, tmp, timeout_sec),
+    error = function(e) FALSE
+  )
+  if (!isTRUE(ok) || !file.exists(tmp)) return(character(0))
+  raw <- tryCatch(
+    jsonlite::fromJSON(tmp, simplifyVector = FALSE),
+    error = function(e) NULL
+  )
+  if (is.null(raw) || is.null(raw$data)) return(character(0))
+  tks <- character(0)
+  exs <- character(0)
+  for (row in raw$data) {
+    if (!is.list(row) || length(row) < 4L) next
+    tk <- lab_yahoo_symbol(row[[3]])
+    if (is.na(tk) || !nzchar(tk)) next
+    ex <- if (exists("normalize_us_listing_exchange", mode = "function")) {
+      normalize_us_listing_exchange(row[[4]])
+    } else {
+      NA_character_
+    }
+    if (is.na(ex) || !nzchar(ex)) next
+    if (tk %in% tks) next
+    tks <- c(tks, tk)
+    exs <- c(exs, ex)
+  }
+  stats::setNames(exs, tks)
+}
+
+#' 以 SEC 交易所碼補齊 S&P 500 宇宙的 Nasdaq／NYSE 欄（不覆寫既有非空值）
+lab_enrich_sp500_exchanges <- function(df, force = FALSE) {
+  if (is.null(df) || !is.data.frame(df) || nrow(df) < 1L) return(df)
+  if (!("exchange" %in% names(df))) {
+    df$exchange <- rep(NA_character_, nrow(df))
+  }
+  need <- is.na(df$exchange) | !nzchar(trimws(as.character(df$exchange)))
+  if (!isTRUE(force) && !any(need)) return(df)
+  m <- tryCatch(lab_fetch_sec_exchange_map(), error = function(e) character(0))
+  if (!length(m)) return(df)
+  for (i in which(need)) {
+    tk <- as.character(df$ticker[[i]])
+    hit <- unname(m[tk])[1]
+    if (!is.null(hit) && !is.na(hit) && nzchar(hit)) df$exchange[[i]] <- hit
+  }
+  df
 }
 
 lab_fetch_sp500_wikipedia <- function(timeout_sec = 12) {
@@ -327,11 +394,19 @@ lab_fetch_sp500_github <- function(timeout_sec = 12) {
 
 lab_try_fetch_sp500 <- function(timeout_sec = 12) {
   wiki <- tryCatch(lab_fetch_sp500_wikipedia(timeout_sec), error = function(e) NULL)
-  if (is.data.frame(wiki) && nrow(wiki) >= 400L) return(wiki)
+  if (is.data.frame(wiki) && nrow(wiki) >= 400L) {
+    return(lab_enrich_sp500_exchanges(wiki))
+  }
   gh <- tryCatch(lab_fetch_sp500_github(timeout_sec), error = function(e) NULL)
-  if (is.data.frame(gh) && nrow(gh) >= 400L) return(gh)
-  if (is.data.frame(wiki) && nrow(wiki) > 0) return(wiki)
-  if (is.data.frame(gh) && nrow(gh) > 0) return(gh)
+  if (is.data.frame(gh) && nrow(gh) >= 400L) {
+    return(lab_enrich_sp500_exchanges(gh))
+  }
+  if (is.data.frame(wiki) && nrow(wiki) > 0) {
+    return(lab_enrich_sp500_exchanges(wiki))
+  }
+  if (is.data.frame(gh) && nrow(gh) > 0) {
+    return(lab_enrich_sp500_exchanges(gh))
+  }
   NULL
 }
 
@@ -360,8 +435,16 @@ lab_save_sp500_cache <- function(df) {
     LAB_SP500_CACHE_REL,
     file.path(getwd(), LAB_SP500_CACHE_REL)
   ))
-  keep <- df[, c("ticker", "name", "gics_sector", "gics_sub_industry",
-                 "fetched_at", "source"), drop = FALSE]
+  keep_cols <- c("ticker", "name", "exchange", "gics_sector", "gics_sub_industry",
+                 "fetched_at", "source")
+  keep_cols <- keep_cols[keep_cols %in% names(df)]
+  if (!("exchange" %in% keep_cols)) {
+    df$exchange <- rep(NA_character_, nrow(df))
+    keep_cols <- c("ticker", "name", "exchange", "gics_sector", "gics_sub_industry",
+                   "fetched_at", "source")
+    keep_cols <- keep_cols[keep_cols %in% names(df)]
+  }
+  keep <- df[, keep_cols, drop = FALSE]
   for (p in dests) {
     dir.create(dirname(p), recursive = TRUE, showWarnings = FALSE)
     ok <- tryCatch({
@@ -428,6 +511,7 @@ lab_get_sp500_universe <- function(force_refresh = FALSE) {
 lab_refresh_sp500_universe <- function() {
   fetched <- lab_try_fetch_sp500()
   if (!is.data.frame(fetched) || nrow(fetched) < 1) return(NULL)
+  fetched <- lab_enrich_sp500_exchanges(fetched, force = TRUE)
   lab_save_sp500_cache(fetched)
   .lab_sp500_env$universe <- fetched
   fetched
@@ -440,8 +524,17 @@ lab_sp500_universe_meta <- function() {
     sum(u$industry_key == LAB_UNMAPPED_KEY, na.rm = TRUE)
   fetched_at <- if (!is.null(u) && nrow(u)) as.character(u$fetched_at[1]) else NA_character_
   src <- if (!is.null(u) && nrow(u) && "source" %in% names(u)) as.character(u$source[1]) else NA_character_
+  ex <- if (!is.null(u) && nrow(u) && "exchange" %in% names(u)) {
+    toupper(trimws(as.character(u$exchange)))
+  } else {
+    character(0)
+  }
+  n_nasdaq <- if (!length(ex)) 0L else sum(ex == "NASDAQ", na.rm = TRUE)
+  n_nyse <- if (!length(ex)) 0L else sum(ex == "NYSE", na.rm = TRUE)
   list(
     n = as.integer(n),
+    n_nasdaq = as.integer(n_nasdaq),
+    n_nyse = as.integer(n_nyse),
     n_unmapped = as.integer(n_unmap),
     fetched_at = fetched_at,
     source = src,
