@@ -768,7 +768,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v16.26</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v16.27</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -1612,17 +1612,13 @@ ui <- dashboardPage(
           font-weight: 700;
           color: #333;
         }
-        /* Header KPI：Previous Close／Market Cap／EPS — logo 綠／金 */
+        /* Header KPI：Previous Close／Market Cap／EPS — logo 綠圖示；無金框 */
         .ynow-header-kpi-row .info-box {
           background: #ffffff;
-          border: 1px solid rgba(201, 162, 39, 0.55);
-          border-top: 3px solid var(--ynow-gold);
+          border: 1px solid rgba(26, 26, 26, 0.10);
+          border-top: none;
           box-shadow: 0 1px 2px rgba(26, 26, 26, 0.06);
-          background-image: linear-gradient(
-            180deg,
-            rgba(245, 197, 24, 0.07) 0%,
-            rgba(255, 255, 255, 0) 36px
-          );
+          background-image: none;
         }
         .ynow-header-kpi-row .info-box .info-box-icon,
         .ynow-header-kpi-row .info-box .info-box-icon.bg-purple,
