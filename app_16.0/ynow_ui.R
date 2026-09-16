@@ -768,7 +768,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v16.21</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v16.22</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -870,6 +870,7 @@ ui <- dashboardPage(
              menuItem("Blue Chip Ranking", tabName = "bluechip", icon = icon("star")),
              # 歷史基本面驗證（HFV）：理論估值 vs 實際市值 — 非策略回測
              menuItem("Hist. FV Validation", tabName = "hfv", icon = icon("balance-scale")),
+             menuItem("Decision Checklist", tabName = "decision_checklist", icon = icon("clipboard-check")),
              # 量化回測報表在底部「測試」；實驗區不放主選單
              menuItem("About", tabName = "about", icon = icon("info-circle"))
              # Snapshot 不放主選單（避免巢狀 li 被瀏覽器抬出隱藏）；改由底部捷徑切換
@@ -1732,6 +1733,7 @@ ui <- dashboardPage(
               sensitivity: s.menu_ynow,
               bluechip: s.menu_bluechip,
               hfv: s.menu_hfv,
+              decision_checklist: s.menu_decision_checklist,
               about: s.menu_about
             };
             Object.keys(menu).forEach(function (k) {
@@ -1749,6 +1751,14 @@ ui <- dashboardPage(
             if (hfvTitle && s.hfv_page_title) hfvTitle.textContent = s.hfv_page_title;
             var hfvSub = document.getElementById('ynow_hfv_page_sub');
             if (hfvSub && s.hfv_page_sub) hfvSub.textContent = s.hfv_page_sub;
+            var dcTitle = document.getElementById('ynow_dc_page_title');
+            if (dcTitle && s.dc_page_title) dcTitle.textContent = s.dc_page_title;
+            var dcSub = document.getElementById('ynow_dc_page_sub');
+            if (dcSub && s.dc_page_sub) dcSub.textContent = s.dc_page_sub;
+            var dcBoxChecks = document.getElementById('ynow_dc_box_checks');
+            if (dcBoxChecks && s.dc_box_checks) dcBoxChecks.textContent = s.dc_box_checks;
+            var dcBoxSum = document.getElementById('ynow_dc_box_summary');
+            if (dcBoxSum && s.dc_box_summary) dcBoxSum.textContent = s.dc_box_summary;
             var hfvMethod = document.getElementById('ynow_hfv_sec_method');
             if (hfvMethod && s.hfv_sec_method) hfvMethod.textContent = s.hfv_sec_method;
             var hfvSettings = document.getElementById('ynow_hfv_sec_settings');
@@ -1875,12 +1885,31 @@ ui <- dashboardPage(
             });
           }
 
+          function applyDcLocale(payload) {
+            if (!payload) return;
+            var hint = document.getElementById('ynow_dc_panel_hint');
+            if (hint && payload.panel_hint) hint.textContent = payload.panel_hint;
+            var items = payload.items || [];
+            items.forEach(function (it) {
+              var lab = document.getElementById('ynow_dc_label_' + it.id);
+              if (lab && it.label) lab.textContent = it.label;
+              var h = document.getElementById('ynow_dc_hint_' + it.id);
+              if (h && it.hint) h.textContent = it.hint;
+              var badge = document.getElementById('ynow_dc_badge_' + it.id);
+              if (badge && payload.badge) badge.textContent = payload.badge;
+              (it.conds || []).forEach(function (c) {
+                var el = document.querySelector('label[for=\"' + c.input_id + '\"]');
+                if (el && c.label) el.textContent = c.label;
+              });
+            });
+          }
           function registerLocaleHandler() {
             if (!window.Shiny || !Shiny.addCustomMessageHandler) {
               setTimeout(registerLocaleHandler, 50);
               return;
             }
             Shiny.addCustomMessageHandler('ynowUiLocale', applyUiLocale);
+            Shiny.addCustomMessageHandler('ynowDcLocale', applyDcLocale);
           }
           registerLocaleHandler();
         })();
@@ -2902,6 +2931,49 @@ ui <- dashboardPage(
           margin-bottom: 0;
           font-size: 12px;
         }
+
+        /* Decision Checklist */
+        .ynow-dc-item {
+          margin: 0 0 14px 0;
+          padding: 10px 12px;
+          border: 1px solid #e9ecef;
+          border-radius: 4px;
+          background: #fff;
+        }
+        .ynow-dc-panel-hint {
+          margin: 0 0 12px 0;
+          font-size: 12.5px;
+          color: #555;
+          line-height: 1.5;
+        }
+        .ynow-dc-hint {
+          margin: 2px 0 0 26px;
+          font-size: 11.5px;
+          color: #6c757d;
+          line-height: 1.45;
+        }
+        .ynow-dc-badge {
+          margin-left: 6px;
+          padding: 1px 6px;
+          font-size: 10px;
+          font-weight: 700;
+          color: #0c5460;
+          background: #d1ecf1;
+          border-radius: 3px;
+          white-space: nowrap;
+        }
+        .ynow-dc-conds {
+          margin: 8px 0 0 26px;
+          max-width: 420px;
+        }
+        .ynow-dc-label-wrap {
+          display: inline;
+        }
+        @media (max-width: 767px) {
+          .ynow-dc-conds { margin-left: 0; max-width: 100%; }
+          .ynow-dc-hint { margin-left: 0; }
+        }
+
         .ynow-bt-hfv-wrap {
           position: relative;
         }
@@ -4319,6 +4391,11 @@ ui <- dashboardPage(
           )
         )
       ),
+
+      # ==========================================
+      # 決策檢核（投資決策通過檢核表）
+      # ==========================================
+      decision_checklist_tab_ui(),
 
       # ==========================================
       # 🧪 實驗區 (Lab)／量化回測：規劃／測試新功能

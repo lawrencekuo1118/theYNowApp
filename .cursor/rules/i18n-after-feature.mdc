@@ -18,7 +18,7 @@ alwaysApply: true
 3. **Wire through locale**, not hardcoded one language:
    - Server: `ui_str(...)` / `.push_ui_locale` / market → locale push
    - Client: `applyUiLocale` / `ynowUiLocale` handlers in `ynow_ui.R`
-4. Follow **AGENTS.md** / `taiwan-terminology-zh-tw.mdc`: no Simplified or Hong Kong-only wording; keep formal finance terms in English (WACC, FCFF, FCFE, CapEx, MOS, Terminal Value, SGR, …).
+4. Follow **AGENTS.md** / `taiwan-terminology-zh-tw.mdc`: zh-TW = **台灣投資界用語**; English = **en-US American English**; no Simplified or Hong Kong-only wording; keep formal finance terms in English (WACC, FCFF, FCFE, CapEx, MOS, Terminal Value, SGR, Bear/Base, HFV, …).
 
 ## Do not
 

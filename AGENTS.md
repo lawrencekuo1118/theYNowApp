@@ -7,8 +7,9 @@ Guidance for Cursor Agents working in this repository.
 All **user-facing copy**, **commit/PR descriptions to the user**, and **in-app UI strings** must follow:
 
 1. **Formal English** for standard finance / valuation terms (keep the English term when it is the industry norm).
-2. **Taiwan Traditional Chinese (zh-TW)** for explanatory prose and labels—not Mainland (`zh-CN`) or Hong Kong wording.
-3. **No Simplified Chinese** in UI or agent replies.
+2. **Taiwan Traditional Chinese (zh-TW)** for explanatory prose and labels—using **台灣投資界專有名詞／用語**, not Mainland (`zh-CN`) or Hong Kong wording.
+3. **English UI strings: American English (en-US) only.**
+4. **No Simplified Chinese** in UI or agent replies.
 
 ### Prefer (English or Taiwan usage)
 
@@ -28,6 +29,13 @@ All **user-facing copy**, **commit/PR descriptions to the user**, and **in-app U
 When unsure: use the **English term** + brief Taiwan Chinese gloss on first mention.
 
 ### App copy conventions
+
+### Checklist / Decision Checklist copy
+
+- Sidebar **決策檢核** / **Decision Checklist** and related gate copy use **台灣投資界專有名詞／用語** (TW market jargon) for zh-TW, and **American English (en-US)** only for English UI strings.
+- Keep formal English finance terms where industry-standard (WACC, FCFF, MOS, FV, SGR, Bear/Base, HFV, F-Score…).
+- HFV wording must stay a **veto tool**, never a bullish / buy signal.
+
 
 - Live app line: **`app_16.0/`** (see `scripts/DEPLOY_BASELINE.txt` for deployed baseline).
 - Prefer existing labels in `ynow_ui.R` / module UI before inventing new terms.

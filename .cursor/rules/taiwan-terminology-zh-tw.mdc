@@ -9,9 +9,11 @@ alwaysApply: true
 
 In replies to the user and in any **UI / help text / notifications** you add or edit:
 
-- Use **formal English** for standard valuation terms: WACC, FCFF, FCFE, CapEx, Terminal Value, SGR, Two-Stage DCF, Gordon model, MOS, etc.
-- Use **Taiwan Traditional Chinese** for the rest (繁體、台灣用語).
+- Use **formal English** for standard valuation terms: WACC, FCFF, FCFE, CapEx, Terminal Value, SGR, Two-Stage DCF, Gordon model, MOS, FV, Bear/Base, HFV, F-Score, etc.
+- English prose/labels: **American English (en-US) only**.
+- Use **Taiwan Traditional Chinese** for the rest (繁體、**台灣投資界專有名詞／用語**).
 - **Strictly avoid** Mainland Chinese, Hong Kong-only wording, and Simplified Chinese.
+- **決策檢核 / Decision Checklist**: TW investment-desk tone; HFV copy = veto only, never a buy signal.
 
 ## Quick swap list
 

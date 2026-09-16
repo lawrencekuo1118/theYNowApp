@@ -1950,6 +1950,52 @@ server <- function(input, output, session) {
     industry_key = reactive(input$industry_choice)
   )
 
+  # --- 決策檢核（獨立側邊 tab：通過／否決閘門）---
+  decision_checklist_server(
+    input, output, session,
+    ui_locale = ui_locale,
+    primary_band = reactive({ primary_valuation_band() }),
+    current_price = reactive({
+      tryCatch({
+        req(scraped_market_cap())
+        scraped_market_cap()$price
+      }, error = function(e) NA_real_)
+    }),
+    model_rec = reactive({ model_sidebar_rec() }),
+    g_near_pct = reactive({
+      tryCatch(.session_near_term_g_pct(), error = function(e) NA_real_)
+    }),
+    sgr_pct = reactive({
+      sgr <- suppressWarnings(as.numeric(input$sgr)[1])
+      if (!is.finite(sgr)) sgr <- suppressWarnings(as.numeric(APP_DEFAULTS$sgr)[1])
+      sgr
+    }),
+    wacc_pct = reactive({
+      # Prefer session Gordon WACC; fall back to stage-2 / Ke when needed
+      w <- suppressWarnings(as.numeric(input$wacc_gordon)[1])
+      if (!is.finite(w) && identical(input$dcf_mode, "two_stage")) {
+        w <- suppressWarnings(as.numeric(input$wacc_stage2)[1])
+      }
+      if (!is.finite(w)) {
+        ke <- tryCatch(central_ke(), error = function(e) NA_real_)
+        if (is.finite(ke)) w <- ke * 100
+      }
+      if (!is.finite(w)) w <- suppressWarnings(as.numeric(APP_DEFAULTS$wacc_gordon)[1])
+      w
+    }),
+    hfv_scenarios = reactive({
+      s <- tryCatch(bt_fv_conv(), error = function(e) NULL)
+      if (is.null(s) || is.null(s$scenarios)) return(NULL)
+      s$scenarios
+    }),
+    fscore_total = reactive({
+      tryCatch({
+        res <- compute_report_f_score(d_income_statement(), d_balance_sheet(), d_cash_flow())
+        suppressWarnings(as.numeric(res$total)[1])
+      }, error = function(e) NA_real_)
+    })
+  )
+
   kpi_module_server("kpi", d_income_statement, d_balance_sheet, d_cash_flow, reactive(input$industry_choice))
   
   run_calc_trigger <- reactiveVal(0)
@@ -8968,6 +9014,13 @@ server <- function(input, output, session) {
     max_n <- lab_resolve_im_max_n(input$lab_im_max_n, input$lab_im_max_n_custom)
     max_n_label <- lab_resolve_im_max_n_label(input$lab_im_max_n, input$lab_im_max_n_custom)
     n_eval <- if (is.data.frame(scores) && nrow(scores) > 0) nrow(scores) else 0L
+    scope <- as.character(input$lab_im_lb_mode %||% "overall")[1]
+    ind_f <- as.character(input$lab_im_lb_industry %||% "__all__")[1]
+    scope_txt <- if (identical(scope, "by_industry")) {
+      if (identical(ind_f, "__all__")) "依產業各列 Top 10" else paste0("產業「", ind_f, "」內 Top 10")
+    } else {
+      if (identical(ind_f, "__all__")) "整體 Top 10（含產業欄）" else paste0("產業「", ind_f, "」內 Top 10")
+    }
     if (n_eval == 0L) {
       cap_txt <- if (is.finite(max_n)) {
         paste0("將評估最多 ", tags$b(max_n_label), " 檔（明細列數相同）")
@@ -8977,17 +9030,30 @@ server <- function(input, output, session) {
       return(tags$p(
         style = "color:#888; font-size:12.5px;",
         "尚未評估。請按下方「搜尋績優股」；", cap_txt, "，並列出其中 F-Score≥7 且",
-        sprintf(" n=%d 年年化估值漲幅最高 ", n),
-        "的 Top 10（與明細同一批、同一排序鍵）。"
+        sprintf(" n=%d 年年化估值漲幅最高者（", n), scope_txt, "；與明細同一批、同一排序鍵）。"
       ))
     }
     tags$p(
       style = "color:#555; font-size:12.5px;",
       sprintf(
-        "本次已評估 %d 檔（＝明細列數，盈餘品質／Piotroski 高門檻未勾選時）。排序鍵＝模型合理價相對現價，於 %d 年預測期換算之年化漲幅；排行榜僅列 F-Score≥7 者的 Top %d（一代號一列，不另抽樣）。",
-        n_eval, n, as.integer(min(10L, n_eval))
+        "本次已評估 %d 檔（＝明細列數，盈餘品質／Piotroski 高門檻未勾選時）。排序鍵＝模型合理價相對現價，於 %d 年預測期換算之年化漲幅；目前排行視角＝%s。",
+        n_eval, n, scope_txt
       )
     )
+  })
+
+  observe({
+    merged <- tryCatch(lab_im_merged(), error = function(e) NULL)
+    loc <- tryCatch(locale_for_market(market_mode()), error = function(e) NULL)
+    all_lab <- if (!is.null(loc)) ui_str("lab_im_lb_industry_all", loc) else "全部產業"
+    choices <- lab_leaderboard_industry_choices(
+      merged,
+      eq_only = isTRUE(input$lab_im_eq_only),
+      all_label = all_lab
+    )
+    cur <- as.character(isolate(input$lab_im_lb_industry) %||% "__all__")[1]
+    if (!cur %in% unname(choices)) cur <- "__all__"
+    updateSelectInput(session, "lab_im_lb_industry", choices = choices, selected = cur)
   })
 
   output$lab_im_leaderboard <- renderTable({
@@ -9010,10 +9076,15 @@ server <- function(input, output, session) {
         )
       ))
     }
+    scope <- as.character(input$lab_im_lb_mode %||% "overall")[1]
+    if (!scope %in% c("overall", "by_industry")) scope <- "overall"
+    ind_f <- as.character(input$lab_im_lb_industry %||% "__all__")[1]
     lb <- lab_quality_leaderboard(
       merged,
       top_n = 10L,
-      eq_only = isTRUE(input$lab_im_eq_only)
+      eq_only = isTRUE(input$lab_im_eq_only),
+      scope = scope,
+      industry_filter = ind_f
     )
     if (nrow(lb) == 0) {
       fs_m <- suppressWarnings(as.numeric(merged$f_score))
@@ -9218,7 +9289,13 @@ server <- function(input, output, session) {
       if (isTRUE(evaluated)) {
         merged_lb <- tryCatch(lab_im_merged(), error = function(e) NULL)
         if (is.data.frame(merged_lb) && nrow(merged_lb) > 0) {
-          lb <- lab_quality_leaderboard(merged_lb, top_n = 10L, eq_only = eq_on)
+          lb_scope <- as.character(isolate(input$lab_im_lb_mode) %||% "overall")[1]
+          if (!lb_scope %in% c("overall", "by_industry")) lb_scope <- "overall"
+          lb_ind <- as.character(isolate(input$lab_im_lb_industry) %||% "__all__")[1]
+          lb <- lab_quality_leaderboard(
+            merged_lb, top_n = 10L, eq_only = eq_on,
+            scope = lb_scope, industry_filter = lb_ind
+          )
         }
         if (is.null(lb) || !nrow(lb)) {
           lb <- data.frame(訊息 = "尚無符合 F-Score≥7 的排行（或目前篩選為空）")
@@ -9532,7 +9609,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v16.17"),
+      paste0("- **App：** The YNow App v16.22"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {
