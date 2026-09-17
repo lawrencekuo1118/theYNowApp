@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12569000
+bundleId=12569032
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=12d0636
 commit=12d0636f9d13d0c336013b1e099357ea973b14e1
 short=12d0636
 message=feat(bluechip): add NAV model option and drop size/scale filters (v16.39)
-captured_at=2026-09-17T17:34:34Z
+captured_at=2026-09-17T17:40:07Z
 source_branch=master
 display_version=v16.39
-note=Canonical live line is app_16.0. Bundle 12569000 ships tip v16.39: Blue Chip adds NAV as a selectable model (simplified NAV fair value for holdcos) and removes company-size / market-cap-band filters from ranking UI and backend. Supersedes 12568963 (incorrect v16.38 baseline note) and 12568725.
+note=Canonical live line is app_16.0. Bundle 12569032 ships tip v16.39 (includes FCFF sync-banner removal from v16.36, sidebar badge work, Basic Setup rename, Blue Chip NAV + no size filters). Supersedes 12569000 / 12568963 / 12568725.
