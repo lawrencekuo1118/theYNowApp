@@ -53,7 +53,6 @@ check(
 pool <- data.frame(
   ticker = c("AAA", "BBB", "CCC", "DDD"),
   market_cap = c(100, 400, 200, 50),
-  size_band = rep("large", 4),
   stringsAsFactors = FALSE
 )
 capped <- lab_rank_and_cap_eval_pool(pool, max_n = 2L)

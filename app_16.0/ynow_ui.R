@@ -768,7 +768,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v16.38</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v16.39</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -2846,23 +2846,6 @@ ui <- dashboardPage(
           padding: 6px 14px;
           font-weight: 700;
         }
-        .ynow-lab-im-sizes .shiny-options-group {
-          display: inline-flex;
-          flex-wrap: nowrap;
-          flex-direction: row;
-          align-items: center;
-          column-gap: 12px;
-          row-gap: 0;
-          white-space: nowrap;
-        }
-        .ynow-lab-im-sizes .checkbox-inline {
-          display: inline-block;
-          margin-left: 0 !important;
-          margin-right: 0 !important;
-          padding-left: 18px;
-          white-space: nowrap;
-          font-size: 13px;
-        }
         .ynow-lab-im-methods .shiny-options-group {
           display: inline-flex;
           flex-wrap: wrap;
@@ -4502,15 +4485,6 @@ ui <- dashboardPage(
                       )
                     ),
                     tags$div(
-                      class = "ynow-lab-im-sizes",
-                      checkboxGroupInput(
-                        "lab_im_sizes", "規模",
-                        choices = lab_size_picker_choices(),
-                        selected = names(LAB_SIZE_LABELS),
-                        inline = TRUE
-                      )
-                    ),
-                    tags$div(
                       class = "ynow-lab-im-methods",
                       checkboxGroupInput(
                         "lab_im_methods", "模型",
@@ -4518,9 +4492,10 @@ ui <- dashboardPage(
                           "DCF" = "dcf",
                           "DDM" = "ddm",
                           "P/B" = "pb",
-                          "RI" = "ri"
+                          "RI" = "ri",
+                          "NAV" = "nav"
                         ),
-                        selected = c("dcf", "ddm", "pb", "ri"),
+                        selected = c("dcf", "ddm", "pb", "ri", "nav"),
                         inline = TRUE
                       )
                     )

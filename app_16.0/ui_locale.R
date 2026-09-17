@@ -66,7 +66,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     bluechip_blurb_tw = paste0(
       "Screen Taiwan blue-chip candidates from TWSE and TPEx public listings ",
       "(listed and OTC only; emerging/ESB names are excluded because liquidity and Yahoo data coverage are less stable). ",
-      "First apply size × industry × valuation-model filters, then keep the leaderboard at a high Piotroski threshold ",
+      "First apply industry × valuation-model filters, then keep the leaderboard at a high Piotroski threshold ",
       "(F-Score≥7; unrelated to earnings-quality metrics), and rank by implied annualized valuation appreciation ",
       "over the App default horizon of n=%d years. Main search still covers listed, OTC, and ESB names by numeric ticker or Chinese company name. ",
       "Detail-row count equals the number of names evaluated, N."
@@ -74,7 +74,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     bluechip_blurb_us = paste0(
       "Screen US blue-chip candidates from the S&P 500 constituent list ",
       "(Nasdaq and NYSE listings). ",
-      "First apply size × industry × valuation-model filters, then keep the leaderboard at a high Piotroski threshold ",
+      "First apply industry × valuation-model filters, then keep the leaderboard at a high Piotroski threshold ",
       "(F-Score≥7; unrelated to earnings-quality metrics), and rank by implied annualized valuation appreciation ",
       "over the App default horizon of n=%d years. Main search keeps Nasdaq and NYSE primary listings ",
       "(Yahoo typeahead plus the S&P 500 name/ticker universe). Detail-row count equals the number of names evaluated, N."
@@ -433,13 +433,13 @@ locale_for_market <- function(mode = get_market_mode()) {
     btn_lab_im_run = "搜尋績優股",
     bluechip_blurb_tw = paste0(
       "依據臺灣證券交易所與櫃買中心公開名單，篩選台股績優候選標的（範圍僅含上市與上櫃；不含興櫃，因其流動性與 Yahoo 資料覆蓋相對不穩）。",
-      "流程先依規模、產業與適用評價模型進行條件篩選，再以 Piotroski 高門檻（F-Score≥7；與盈餘品質指標無涉）過濾排行榜，",
+      "流程先依產業與適用評價模型進行條件篩選，再以 Piotroski 高門檻（F-Score≥7；與盈餘品質指標無涉）過濾排行榜，",
       "最後依 App 預設 n＝%d 年之隱含年化估值漲幅排序。主搜尋支援上市／上櫃／興櫃查詢（純數字代號或中文名稱）。",
       "明細列數等於本次評估檔數 N。"
     ),
     bluechip_blurb_us = paste0(
       "自 S&P 500 成分名單篩選美股績優候選（涵蓋 Nasdaq 與 NYSE 上市股票）。",
-      "流程先依規模、產業與適用評價模型進行條件篩選，再以 Piotroski 高門檻（F-Score≥7；與盈餘品質指標無涉）過濾排行榜，",
+      "流程先依產業與適用評價模型進行條件篩選，再以 Piotroski 高門檻（F-Score≥7；與盈餘品質指標無涉）過濾排行榜，",
       "最後依 App 預設 n＝%d 年之隱含年化估值漲幅排序。主搜尋保留 Nasdaq／NYSE 主要上市",
       "（Yahoo 建議列＋S&P 500 名稱／代號宇宙）。明細列數等於本次評估檔數 N。"
     ),

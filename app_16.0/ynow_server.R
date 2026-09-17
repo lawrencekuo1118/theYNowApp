@@ -8809,7 +8809,7 @@ server <- function(input, output, session) {
   }, ignoreInit = TRUE)
 
   # ------------------------------------------
-  # Lab：規模×產業×模型複選；Piotroski 高門檻（F-Score≥7）後依年化估值漲幅排序
+  # Lab：產業×模型複選；Piotroski 高門檻（F-Score≥7）後依年化估值漲幅排序
   # ------------------------------------------
   lab_im_catalog <- reactive({
     lab_im_catalog_nonce()
@@ -8928,7 +8928,6 @@ server <- function(input, output, session) {
       scores = lab_im_scores(),
       method_filter = input$lab_im_methods,
       industry_filter = input$lab_im_industries,
-      size_filter = input$lab_im_sizes,
       eq_only = FALSE,
       gate_only = FALSE
     )
@@ -8937,13 +8936,12 @@ server <- function(input, output, session) {
   observeEvent(input$lab_im_run_fscore, {
     catlg <- lab_im_catalog()
     req(is.data.frame(catlg), nrow(catlg) > 0)
-    # 評估池：產業／模型複選；規模在取到市值後再濾，再依市值取 N 檔
+    # 評估池：產業／模型複選；候選 > N 時依市值取 N 檔（非規模篩選）
     pool <- lab_merge_catalog_scores(
       catlg,
       scores = NULL,
       method_filter = input$lab_im_methods,
       industry_filter = input$lab_im_industries,
-      size_filter = character(0),
       eq_only = FALSE,
       gate_only = FALSE
     )
@@ -8953,25 +8951,23 @@ server <- function(input, output, session) {
       return()
     }
     max_n <- lab_resolve_im_max_n(input$lab_im_max_n, input$lab_im_max_n_custom)
-    sf <- lab_normalize_size_filter(input$lab_im_sizes)
-    size_restricts <- length(sf) > 0L && !isTRUE(setequal(sf, names(LAB_SIZE_LABELS)))
     n_yrs <- lab_model_horizon_years()
     scores <- withProgress(
       message = paste0("評估中（Piotroski 高門檻＋", n_yrs, " 年年化估值漲幅）…"),
       value = 0, {
         n_raw <- nrow(pool)
-        if ((is.finite(max_n) && n_raw > max_n) || size_restricts) {
-          incProgress(0.08, detail = "取 Yahoo 市值（排序／規模）…")
+        if (is.finite(max_n) && n_raw > max_n) {
+          incProgress(0.08, detail = "取 Yahoo 市值（評估池排序）…")
           pool <- lab_attach_market_caps(pool)
         }
         pool <- lab_rank_and_cap_eval_pool(
           # N 截斷：候選 > N 依市值降序取 N；明細＝該批；F-Score≥7 只濾排行榜 Top 10（不縮明細）
-          pool, max_n = max_n, size_filter = input$lab_im_sizes
+          pool, max_n = max_n
         )
         n_filtered <- as.integer(attr(pool, "n_filtered") %||% nrow(pool))
         used_mcap <- isTRUE(attr(pool, "used_market_cap"))
         if (nrow(pool) == 0L) {
-          showNotification("規模×產業×模型篩選後沒有可評估的候選。", type = "warning")
+          showNotification("產業×模型篩選後沒有可評估的候選。", type = "warning")
           return(NULL)
         }
         if (is.finite(max_n) && n_filtered > max_n) {
@@ -9030,7 +9026,6 @@ server <- function(input, output, session) {
       scores = NULL,
       method_filter = input$lab_im_methods,
       industry_filter = input$lab_im_industries,
-      size_filter = character(0),
       eq_only = FALSE,
       gate_only = FALSE
     )
@@ -9049,7 +9044,6 @@ server <- function(input, output, session) {
       scores = lab_im_scores(),
       method_filter = input$lab_im_methods,
       industry_filter = input$lab_im_industries,
-      size_filter = input$lab_im_sizes,
       eq_only = FALSE,
       gate_only = FALSE,
       evaluated_only = TRUE
@@ -9111,7 +9105,6 @@ server <- function(input, output, session) {
     }
     merged <- tryCatch(lab_im_merged(), error = function(e) NULL)
     if (is.null(merged) || nrow(merged) == 0) {
-      # 區分：複選（尤其規模）把評估結果濾光 vs 尚未合併
       n_scored <- nrow(scores)
       n_pass <- sum(is.finite(suppressWarnings(as.numeric(scores$f_score))) &
                       suppressWarnings(as.numeric(scores$f_score)) >= 7, na.rm = TRUE)
@@ -9119,8 +9112,7 @@ server <- function(input, output, session) {
         訊息 = paste0(
           "評估有 ", n_scored, " 檔（F-Score≥7 通過 ", n_pass, "），",
           "但目前複選條件下明細為空。",
-          "常見原因：規模篩選與市值分級對不上，或產業／模型過窄。",
-          "請放寬「公司規模」後再看排行榜。"
+          "常見原因：產業／模型過窄。請放寬產業或模型後再看排行榜。"
         )
       ))
     }
@@ -9158,7 +9150,6 @@ server <- function(input, output, session) {
       scores = lab_im_scores(),
       method_filter = input$lab_im_methods,
       industry_filter = input$lab_im_industries,
-      size_filter = input$lab_im_sizes,
       eq_only = FALSE,
       gate_only = FALSE,
       evaluated_only = TRUE
@@ -9168,15 +9159,13 @@ server <- function(input, output, session) {
       msg <- if (is.null(scores) || !is.data.frame(scores) || nrow(scores) == 0) {
         "尚未評估。請按「搜尋績優股」；明細列數將等於評估檔數 N（篩選後不足 N 則全列）。"
       } else {
-        "沒有符合篩選的已評估列。可放寬規模／產業／模型，或重新評估。"
+        "沒有符合篩選的已評估列。可放寬產業／模型，或重新評估。"
       }
       return(DT::datatable(
         data.frame(訊息 = msg),
         rownames = FALSE, options = list(dom = "t")
       ))
     }
-    size_lab <- unname(LAB_SIZE_LABELS[merged$size_band])
-    size_lab[is.na(size_lab)] <- "—"
     yahoo_nm <- if ("company_name" %in% names(merged)) merged$company_name else NA_character_
     show_df <- data.frame(
       代號 = display_tickers_for_market(merged$ticker, market_mode()),
@@ -9193,7 +9182,6 @@ server <- function(input, output, session) {
         is.na(merged$upside_total_pct), "",
         sprintf("%+.1f%%", merged$upside_total_pct)
       ),
-      規模 = size_lab,
       實際估值方法 = ifelse(
         is.na(merged$method_used) | !nzchar(as.character(merged$method_used)),
         "", toupper(as.character(merged$method_used))
@@ -9233,7 +9221,6 @@ server <- function(input, output, session) {
       scores = lab_im_scores(),
       method_filter = isolate(input$lab_im_methods),
       industry_filter = isolate(input$lab_im_industries),
-      size_filter = isolate(input$lab_im_sizes),
       eq_only = FALSE,
       gate_only = FALSE,
       evaluated_only = TRUE
@@ -9241,8 +9228,6 @@ server <- function(input, output, session) {
     if (nrow(merged) == 0) {
       return(data.frame(訊息 = "目前篩選下無已評估明細列（請先按「搜尋績優股」）"))
     }
-    size_lab <- unname(LAB_SIZE_LABELS[merged$size_band])
-    size_lab[is.na(size_lab)] <- "—"
     yahoo_nm <- if ("company_name" %in% names(merged)) merged$company_name else NA_character_
     data.frame(
       代號 = display_tickers_for_market(merged$ticker, market_mode()),
@@ -9259,7 +9244,6 @@ server <- function(input, output, session) {
         is.na(merged$upside_total_pct), "",
         sprintf("%+.1f%%", merged$upside_total_pct)
       ),
-      規模 = size_lab,
       實際估值方法 = ifelse(
         is.na(merged$method_used) | !nzchar(as.character(merged$method_used)),
         "", toupper(as.character(merged$method_used))
@@ -9288,12 +9272,6 @@ server <- function(input, output, session) {
       fetched <- if (is.null(meta)) "—" else lab_format_fetched_at(meta$fetched_at)
       src <- if (is.null(meta)) "" else as.character(meta$source %||% "")[1]
       n_un <- if (is.null(meta)) 0L else as.integer(meta$n_unmapped %||% 0L)
-      size_sel <- lab_normalize_size_filter(isolate(input$lab_im_sizes))
-      size_txt <- if (!length(size_sel)) {
-        "不過濾"
-      } else {
-        paste(unname(LAB_SIZE_LABELS[size_sel]), collapse = "、")
-      }
       all_ind <- unname(lab_industry_picker_choices())
       ind_sel <- lab_normalize_multi_filter(isolate(input$lab_im_industries))
       ind_txt <- if (!length(ind_sel) || (length(all_ind) > 0 && setequal(ind_sel, all_ind))) {
@@ -9323,7 +9301,6 @@ server <- function(input, output, session) {
           catlg, scores = NULL,
           method_filter = isolate(input$lab_im_methods),
           industry_filter = isolate(input$lab_im_industries),
-          size_filter = character(0),
           eq_only = FALSE, gate_only = FALSE
         )
       } else {
@@ -9366,7 +9343,6 @@ server <- function(input, output, session) {
                 n_uni, fetched,
                 if (nzchar(src)) paste0(" · 來源 ", src) else ""),
         sprintf("- 未對應產業：%d 檔", n_un),
-        sprintf("- 規模：%s", size_txt),
         sprintf("- 產業：%s", ind_txt),
         sprintf("- 模型：%s", meth_txt),
         sprintf("- 盈餘品質過濾：%s", if (eq_on) "開" else "關"),
@@ -9657,7 +9633,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v16.38"),
+      paste0("- **App：** The YNow App v16.39"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

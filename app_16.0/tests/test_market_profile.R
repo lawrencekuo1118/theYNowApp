@@ -366,7 +366,6 @@ scores <- data.frame(
   is_quality = c(TRUE, FALSE, TRUE),
   is_quality_upside = c(TRUE, FALSE, TRUE),
   market_cap = c(1e11, 2e10, 5e10),
-  size_band = c("large", "mid", "mid"),
   price = c(10, 20, 30),
   fv = c(15, 25, 40),
   upside_total_pct = c(50, 25, 33),
