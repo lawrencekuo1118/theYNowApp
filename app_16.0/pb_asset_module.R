@@ -26,7 +26,7 @@ pb_asset_module_ui <- function(id) {
                                 style = "font-size: 16px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;")
                           ),
                           fluidRow(
-                            column(width = 6, ynow_calc_btn(ns("btn_calc_pb"), "試算 P/B 合理價")),
+                            column(width = 6, ynow_calc_btn(ns("btn_calc_pb"), "試算 P/B")),
                             column(width = 6, ynow_reset_defaults_btn(ns("btn_reset_pb")))
                           ),
                           fluidRow(
@@ -115,8 +115,9 @@ pb_asset_module_ui <- function(id) {
                           fluidRow(
                             column(12,
                                    tags$p(
+                                     id = ns("ynow_pb_settings_reset_hint"),
                                      style = "margin-top: 10px; color: #7f8c8d; font-size: 12px;",
-                                     "「回復預設」在 Overview，與「試算 P/B 合理價」並排。"
+                                     "「回復預設」在 Overview，與「試算 P/B」並排。"
                                    )
                             )
                           )
@@ -150,8 +151,13 @@ pb_asset_module_server <- function(id,
                                    capm_rf = reactive(NA),
                                    capm_beta = reactive(NA),
                                    capm_rm = reactive(NA),
-                                   use_estimated_re = reactive(FALSE)) {
+                                   use_estimated_re = reactive(FALSE),
+                                   ui_locale = reactive("zh-TW")) {
   moduleServer(id, function(input, output, session) {
+
+    .loc <- function() {
+      tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    }
     
     nav_shares <- reactiveVal(NA_real_)
     nav_components <- reactiveVal(NULL)
@@ -535,7 +541,7 @@ pb_asset_module_server <- function(id,
       res <- pb_calc()
       if (identical(res$status, "idle")) {
         return(div(style = "color: #7f8c8d; padding: 15px; text-align: center;",
-                   "請確認 P/B Settings 的 BVPS／TBVPS／NAVPS，以及「目標本淨比」分頁的倍數，然後按下「試算 P/B 合理價」。"))
+                   ui_str("pb_idle_hint", .loc())))
       }
       if (res$status == "error") {
         return(div(style = "color: #d9534f; font-weight: bold; padding: 15px; background-color: #fdf2f2; border-left: 5px solid #d9534f; border-radius: 4px;",

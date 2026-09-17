@@ -2526,7 +2526,8 @@ server <- function(input, output, session) {
     capm_beta = reactive(suppressWarnings(as.numeric(input$capm_beta)[1])),
     capm_rm = reactive(suppressWarnings(as.numeric(input$capm_rm)[1])),
     use_estimated_re = reactive(isTRUE(input$use_estimated_re)),
-    auto_calc_pulse = reactive(auto_calc_ri_pulse())
+    auto_calc_pulse = reactive(auto_calc_ri_pulse()),
+    ui_locale = ui_locale
   )
   
   # ==========================================
@@ -2559,7 +2560,8 @@ server <- function(input, output, session) {
     capm_rf = reactive(suppressWarnings(as.numeric(input$capm_rf)[1])),
     capm_beta = reactive(suppressWarnings(as.numeric(input$capm_beta)[1])),
     capm_rm = reactive(suppressWarnings(as.numeric(input$capm_rm)[1])),
-    use_estimated_re = reactive(isTRUE(input$use_estimated_re))
+    use_estimated_re = reactive(isTRUE(input$use_estimated_re)),
+    ui_locale = ui_locale
   )
 
   # ==========================================
@@ -2580,7 +2582,8 @@ server <- function(input, output, session) {
     }),
     current_ticker = current_ticker,
     quote_currency = quote_currency,
-    financial_currency = statement_currency
+    financial_currency = statement_currency,
+    ui_locale = ui_locale
   )
 
   # ==========================================
@@ -5861,7 +5864,7 @@ server <- function(input, output, session) {
     claim <- as.character(input$dcf_claim %||% "fcff")[1]
     
     if (length(ev_val) == 0 || is.na(ev_val)) {
-      return("⚠️ 尚未計算 DCF，請確認參數後按下「試算 DCF」")
+      return(paste0("⚠️ ", ui_str("dcf_idle_hint", isolate(ui_locale()))))
     }
     
     msg <- if (identical(claim, "fcfe")) {
@@ -9633,7 +9636,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v16.39"),
+      paste0("- **App：** The YNow App v16.40"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

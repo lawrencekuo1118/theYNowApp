@@ -56,7 +56,7 @@ nav_module_ui <- function(id) {
           )
         ),
         fluidRow(
-          column(width = 6, ynow_calc_btn(ns("btn_calc_nav"), "試算 NAV 合理價")),
+          column(width = 6, ynow_calc_btn(ns("btn_calc_nav"), "試算 NAV")),
           column(width = 6, ynow_reset_defaults_btn(ns("btn_reset_nav")))
         ),
         fluidRow(
@@ -129,8 +129,9 @@ nav_module_ui <- function(id) {
         ),
         fluidRow(
           column(12, tags$p(
+            id = ns("ynow_nav_settings_reset_hint"),
             style = "margin-top: 10px; color: #7f8c8d; font-size: 12px;",
-            "「回復預設」在 Overview，與「試算 NAV 合理價」並排。"
+            "「回復預設」在 Overview，與「試算 NAV」並排。"
           ))
         )
       )
@@ -149,11 +150,16 @@ nav_module_server <- function(id,
                               quote_price = reactive(NA),
                               current_ticker = reactive(""),
                               quote_currency = reactive(NA),
-                              financial_currency = reactive(NA)) {
+                              financial_currency = reactive(NA),
+                              ui_locale = reactive("zh-TW")) {
   moduleServer(id, function(input, output, session) {
     nav_shares <- reactiveVal(NA_real_)
     nav_components <- reactiveVal(NULL)
     shares_resolve_note <- reactiveVal(NULL)
+
+    .loc <- function() {
+      tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    }
 
     sync_nav_from_bs <- function() {
       req(d_balance_sheet())
@@ -340,7 +346,7 @@ nav_module_server <- function(id,
       if (identical(res$status, "idle")) {
         return(div(
           style = "color:#7f8c8d; padding:15px; text-align:center;",
-          "請確認 NAV Settings 的 NAVPS 與倍數，然後按下「試算 NAV 合理價」。"
+          ui_str("nav_idle_hint", .loc())
         ))
       }
       if (identical(res$status, "error")) {

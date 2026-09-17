@@ -768,7 +768,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v16.39</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v16.40</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -2168,6 +2168,32 @@ ui <- dashboardPage(
               var wIconHtml = wIcon ? wIcon.outerHTML + ' ' : '';
               btnCalcWacc.innerHTML = wIconHtml + s.btn_calc_wacc;
             }
+            function setBtnLabel(id, label) {
+              if (!id || !label) return;
+              var el = document.getElementById(id);
+              if (!el) return;
+              var ic = el.querySelector('i');
+              el.innerHTML = (ic ? ic.outerHTML + ' ' : '') + label;
+            }
+            setBtnLabel('calc', s.btn_calc_dcf);
+            setBtnLabel('mod_ddm-btn_calc_ddm', s.btn_calc_ddm);
+            setBtnLabel('mod_ri-btn_calc_ri', s.btn_calc_ri);
+            setBtnLabel('mod_pb-btn_calc_pb', s.btn_calc_pb);
+            setBtnLabel('mod_nav-btn_calc_nav', s.btn_calc_nav);
+            if (s.btn_reset_defaults) {
+              document.querySelectorAll('.ynow-btn-reset').forEach(function (el) {
+                var ic = el.querySelector('i');
+                el.innerHTML = (ic ? ic.outerHTML + ' ' : '') + s.btn_reset_defaults;
+              });
+            }
+            var riCalcHint = document.getElementById('mod_ri-ynow_ri_calc_hint');
+            if (riCalcHint && s.ri_calc_hint) riCalcHint.textContent = s.ri_calc_hint;
+            var riSettingsHint = document.getElementById('mod_ri-ynow_ri_settings_recalc_hint');
+            if (riSettingsHint && s.ri_settings_recalc_hint) riSettingsHint.textContent = s.ri_settings_recalc_hint;
+            var pbSettingsHint = document.getElementById('mod_pb-ynow_pb_settings_reset_hint');
+            if (pbSettingsHint && s.pb_settings_reset_hint) pbSettingsHint.textContent = s.pb_settings_reset_hint;
+            var navSettingsHint = document.getElementById('mod_nav-ynow_nav_settings_reset_hint');
+            if (navSettingsHint && s.nav_settings_reset_hint) navSettingsHint.textContent = s.nav_settings_reset_hint;
             var capmBoxTitle = document.getElementById('ynow_capm_box_title');
             if (capmBoxTitle && s.capm_box_title) capmBoxTitle.textContent = s.capm_box_title;
             var syncGsLab = document.getElementById('ynow_sync_gs_beta_label');
