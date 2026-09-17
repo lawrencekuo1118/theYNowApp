@@ -1052,7 +1052,7 @@ ui <- dashboardPage(
         }
 
         .content-wrapper, .right-side { background-color: #f7f7f7; }
-        /* Clear fixed credit／ccy band under header */
+        /* Clear absolute USD／TWD band under header (credit is in document flow) */
         .content-wrapper > .content {
           padding-top: 52px;
         }
