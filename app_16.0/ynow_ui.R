@@ -768,7 +768,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v16.37</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v16.38</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -2170,6 +2170,10 @@ ui <- dashboardPage(
             }
             var capmBoxTitle = document.getElementById('ynow_capm_box_title');
             if (capmBoxTitle && s.capm_box_title) capmBoxTitle.textContent = s.capm_box_title;
+            var syncGsLab = document.getElementById('ynow_sync_gs_beta_label');
+            if (syncGsLab && s.sync_gs_beta_label) syncGsLab.textContent = s.sync_gs_beta_label;
+            var betaHome = document.getElementById('ynow_beta_home_name');
+            if (betaHome && s.beta_home_name) betaHome.textContent = s.beta_home_name;
             var kpiBlue = document.getElementById('ynow_kpi_legend_blue');
             if (kpiBlue && s.kpi_legend_blue) kpiBlue.textContent = s.kpi_legend_blue;
             var kpiRed = document.getElementById('ynow_kpi_legend_red');

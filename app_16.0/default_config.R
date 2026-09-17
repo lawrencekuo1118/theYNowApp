@@ -63,7 +63,7 @@ APP_DEFAULTS <- list(
   ddm_d0          = 0,                  # 由財報自動帶入；無法計算則顯示 0
   ddm_g           = default_sgr,        # 股利 g；預設對齊中央 SGR，可覆寫
   ddm_ke          = default_re,
-  ddm_sync_central_g = TRUE,            # 與 Get Started SGR 同步
+  ddm_sync_central_g = TRUE,            # 與基礎設定 SGR 同步
   ddm_mode        = "gordon",           # gordon | two_stage
   ddm_g_stage1    = default_g,          # 二階段高速期股利成長
   ddm_yr_stage1   = 5,                  # 二階段高速期年數
@@ -100,7 +100,7 @@ APP_DEFAULTS <- list(
 
   capm_rf         = default_rf,
   capm_beta       = round(default_beta, 2),  # 啟動占位；估值路徑就緒後改寫入選定來源（預設 Summary β）
-  sync_gs_beta    = TRUE,                    # TRUE = WACC/CAPM β 跟隨 Get Started「套用至 CAPM」
+  sync_gs_beta    = TRUE,                    # TRUE = WACC/CAPM β 跟隨基礎設定「套用至 CAPM」
   capm_rm         = round(default_rm, 2),
   beta_bench      = "SPY",
   beta_lookback_months = 60,                 # Rolling 僅對照用（不寫入 CAPM）

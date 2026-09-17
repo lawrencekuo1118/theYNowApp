@@ -52,8 +52,8 @@ server <- function(input, output, session) {
   dcf_value_result <- reactiveVal(NULL)
   stock_price_estimate_val <- reactiveVal(NULL)
 
-  # CAPM Beta：WACC「與Get Started 同步」（預設開）時跟隨 Get Started 套用來源
-  # driver: gs（Get Started 選定來源）| rolling | industry | manual（WACC 獨立）
+  # CAPM Beta：WACC「與基礎設定同步」（預設開）時跟隨基礎設定套用來源
+  # driver: gs（基礎設定選定來源）| rolling | industry | manual（WACC 獨立）
   capm_beta_dirty <- reactiveVal(FALSE)
   capm_beta_updating <- reactiveVal(FALSE)
   sync_gs_beta_updating <- reactiveVal(FALSE)
@@ -327,7 +327,7 @@ server <- function(input, output, session) {
 
   observeEvent(current_ticker(), {
     req(current_ticker())
-    # 換股票：回到 Get Started 連動，讓新 Summary／Unlever 路徑可自動帶入 CAPM
+    # 換股票：回到基礎設定連動，讓新 Summary／Unlever 路徑可自動帶入 CAPM
     capm_beta_dirty(FALSE)
     beta_capm_driver("gs")
     stock_code <- current_ticker()
@@ -1357,7 +1357,7 @@ server <- function(input, output, session) {
     rows <- list(
       c("Meta", "Downloaded At", ts, "Timestamp at download/render"),
       c("Meta", "Ticker", ticker, "Selected ticker"),
-      c("Meta", "Industry", .snapshot_value(input$industry_choice), "Get Started industry_standards key"),
+      c("Meta", "Industry", .snapshot_value(input$industry_choice), "Basic Setup industry_standards key"),
       c("Meta", "Session Currency", .snapshot_value(input$session_ccy_pick), "USD / TWD display conversion"),
       c("Model Selector", "Recommended Method", .snapshot_value(rec$summary_method), "Rule-based model ranking"),
       c("DCF", "DCF Mode", .snapshot_value(input$dcf_mode), "Gordon or Two-Stage DCF"),
@@ -1380,7 +1380,7 @@ server <- function(input, output, session) {
       c("DCF - WACC", "Calculated WACC (%)", .snapshot_value(wacc_pct), "System CAPM/WACC estimate (also synced into WACC inputs)"),
       c("CAPM", "Rf (%)", .snapshot_value(input$capm_rf), "Ke = Rf + Beta × (Rm-Rf)"),
       c("CAPM", "Beta", .snapshot_value(input$capm_beta), "Systematic risk coefficient"),
-      c("CAPM", "Sync Get Started β", .snapshot_value(input$sync_gs_beta), "TRUE = WACC β follows Get Started 套用至 CAPM source"),
+      c("CAPM", "Sync Basic Setup β", .snapshot_value(input$sync_gs_beta), "TRUE = WACC β follows Basic Setup apply-to-CAPM source"),
       c("CAPM", "Rm (%)", .snapshot_value(input$capm_rm), "Expected market return"),
       c("Beta", "Purpose", .snapshot_value(input$beta_purpose), "valuation; Rolling blocked from CAPM"),
       c("Beta", "Unlever β_L source", .snapshot_value(input$beta_bl_source), "feeds 去槓桿化 βᵤ (Hamada)"),
@@ -1403,7 +1403,7 @@ server <- function(input, output, session) {
       c("WACC", "Tax Rate T (%)", .snapshot_value(input$wacc_tax), "After-tax debt cost = rᵈ×(1-T)"),
       c("DDM", "D0", .snapshot_value(input[["mod_ddm-d0"]]), "P0 = D1 / (Ke-g); D1 = D0×(1+g)"),
       c("DDM", "g (%)", .snapshot_value(input[["mod_ddm-g"]]), "Dividend growth; optional sync with central SGR"),
-      c("DDM", "Sync g with SGR", .snapshot_value(input[["mod_ddm-sync_g"]]), "If TRUE, DDM g follows Get Started SGR"),
+      c("DDM", "Sync g with SGR", .snapshot_value(input[["mod_ddm-sync_g"]]), "If TRUE, DDM g follows Basic Setup SGR"),
       c("DDM", "DDM Mode", .snapshot_value(input[["mod_ddm-ddm_mode"]]), "gordon / two_stage"),
       c("DDM", "Stage 1 g1 (%)", .snapshot_value(input[["mod_ddm-g_stage1"]]), "Two-stage high-growth dividend g"),
       c("DDM", "Stage 1 years", .snapshot_value(input[["mod_ddm-yr_stage1"]]), "Two-stage high-growth years n1"),
@@ -1523,7 +1523,7 @@ server <- function(input, output, session) {
       use_est_re = c("WACC", "使用 CAPM Re", "UI: use_estimated_re；TRUE = Re 跟 CAPM"),
       capm_rf = c("CAPM", "Rf (%)", "無風險利率（啟動時估）"),
       capm_beta = c("CAPM", "Beta", "啟動暫定值；估值路徑就緒後改寫入選定來源"),
-      sync_gs_beta = c("CAPM", "與 Get Started 同步", "TRUE = WACC/CAPM β 跟隨 Get Started 套用來源（預設 Summary β）"),
+      sync_gs_beta = c("CAPM", "與基礎設定同步", "TRUE = WACC/CAPM β 跟隨基礎設定套用來源（預設 Summary β）"),
       beta_bench = c("Beta", "基準指數", "Rolling β 對照標的，預設 SPY（不寫入 CAPM）"),
       beta_lookback_months = c("Beta", "回溯月數", "常見 36／60／84；預設 60 對齊 Yahoo 5Y"),
       beta_min_obs = c("Beta", "最少觀測", "Rolling 估計最低月數"),
@@ -2281,7 +2281,7 @@ server <- function(input, output, session) {
     claim <- input$dcf_claim %||% "fcff"
     disc <- dcf_disc_tag(claim)
     p(helpText(sprintf(
-      "軸心採用 Get Started／Dashboard 目前的 SGR 與 %s；觀察鄰近組合下的每股內在價值變化。",
+      "軸心採用基礎設定／Dashboard 目前的 SGR 與 %s；觀察鄰近組合下的每股內在價值變化。",
       disc
     )))
   })
@@ -3306,7 +3306,7 @@ server <- function(input, output, session) {
     }
   }, ignoreInit = FALSE)
   
-  # ---------- CAPM Beta：與 Get Started BETA 雙向連動 ----------
+  # ---------- CAPM Beta：與基礎設定 BETA 雙向連動 ----------
   .summary_beta_value <- function() {
     df <- tryCatch(summary_data(), error = function(e) NULL)
     if (is.null(df) || !is.data.frame(df) || nrow(df) == 0) return(NA_real_)
@@ -3334,7 +3334,7 @@ server <- function(input, output, session) {
     invisible(TRUE)
   }
 
-  # 產業來源就緒且「與Get Started 同步」時，把產業 β 寫入 CAPM
+  # 產業來源就緒且「與基礎設定同步」時，把產業 β 寫入 CAPM
   .sync_capm_beta_industry <- function() {
     if (!isTRUE(input$sync_gs_beta)) return(invisible(NULL))
     src <- as.character(input$beta_u_apply_source %||% "")[1]
@@ -3356,7 +3356,7 @@ server <- function(input, output, session) {
     invisible(TRUE)
   }
 
-  # CAPM 手動改 β → 取消「與Get Started 同步」，WACC 獨立；不改寫 Get Started 來源
+  # CAPM 手動改 β → 取消「與基礎設定同步」，WACC 獨立；不改寫基礎設定來源
   observeEvent(input$capm_beta, {
     if (isTRUE(capm_beta_updating())) {
       capm_beta_updating(FALSE)
@@ -3373,7 +3373,7 @@ server <- function(input, output, session) {
     capm_beta_dirty(TRUE)
   }, ignoreInit = TRUE)
 
-  # 換產業：僅在同步開啟且 Get Started 來源為產業預設時更新 CAPM β
+  # 換產業：僅在同步開啟且基礎設定來源為產業預設時更新 CAPM β
   observeEvent(input$industry_choice, {
     if (!isTRUE(input$sync_gs_beta)) return()
     src <- as.character(input$beta_u_apply_source %||% "")[1]
@@ -3382,17 +3382,17 @@ server <- function(input, output, session) {
     }
   }, ignoreInit = TRUE)
 
-  # 智慧標籤：與 Get Started 來源鎖步（或 WACC 獨立）
+  # 智慧標籤：與基礎設定來源鎖步（或 WACC 獨立）
   .capm_beta_label_html <- function(beta) {
     src <- as.character(input$beta_u_apply_source %||% "summary")[1]
     gs_tag <- switch(
       src,
-      "summary" = "Get Started｜Summary β",
-      "industry" = "Get Started｜產業預設 β",
-      "bottomup" = "Get Started｜Bottom-Up βᵤ",
-      "unlever_firm" = "Get Started｜去槓桿化 βᵤ",
-      "manual" = "Get Started｜手動 β",
-      "Get Started｜β"
+      "summary" = "基礎設定｜Summary β",
+      "industry" = "基礎設定｜產業預設 β",
+      "bottomup" = "基礎設定｜Bottom-Up βᵤ",
+      "unlever_firm" = "基礎設定｜去槓桿化 βᵤ",
+      "manual" = "基礎設定｜手動 β",
+      "基礎設定｜β"
     )
     if (identical(src, "rolling")) {
       HTML("Beta (β) <span style='color: #c0392b; font-size: 12px;'>[Rolling 已排除｜請改其他來源]</span>")
@@ -3457,12 +3457,12 @@ server <- function(input, output, session) {
       "<div style='font-size:14px;line-height:1.6;'>
          <b>目前 CAPM β</b>：{if (is.finite(b)) sprintf('%.3f', b) else 'N/A'}<br/>
          <b>目前 Ke（供 DDM）</b>：{if (is.finite(ke)) sprintf('%.2f%%', ke) else 'N/A'}<br/>
-         <span style='color:#666;font-size:12px;'>來源：{if (isTRUE(input$use_estimated_re)) 'CAPM 估算（Get Started）' else 'WACC 分頁 rₑ 手動／覆寫'}</span>
+         <span style='color:#666;font-size:12px;'>來源：{if (isTRUE(input$use_estimated_re)) 'CAPM 估算（基礎設定）' else 'WACC 分頁 rₑ 手動／覆寫'}</span>
        </div>"
     ))
   })
 
-  # ---------- Get Started：Rolling／Unlevered Beta 預估 ----------
+  # ---------- 基礎設定：Rolling／Unlevered Beta 預估 ----------
   beta_est_result <- reactiveVal(NULL)  # list(beta, n_obs, method, rs, rm, dates, bench, lookback)
   .beta_price_cache <- new.env(parent = emptyenv())
 
@@ -4145,7 +4145,7 @@ server <- function(input, output, session) {
     }, once = TRUE)
   })
 
-  # Get Started → CAPM 自動同步（僅在「與Get Started 同步」勾選時）
+  # 基礎設定 → CAPM 自動同步（僅在「與基礎設定同步」勾選時）
   .maybe_sync_gs_beta_to_capm <- function() {
     if (!isTRUE(input$sync_gs_beta)) return(invisible(FALSE))
     src <- as.character(input$beta_u_apply_source %||% APP_DEFAULTS$beta_u_apply_source)[1]
@@ -4212,12 +4212,12 @@ server <- function(input, output, session) {
       updateRadioButtons(session, "beta_u_apply_source", selected = "manual")
       return()
     }
-    # Get Started 側改手動 β → 推回 CAPM（維持連動）
+    # 基礎設定側改手動 β → 推回 CAPM（維持連動）
     beta_capm_driver("gs")
     .apply_selected_beta_u_to_capm(silent = TRUE)
   }, ignoreInit = TRUE)
 
-  # 「與Get Started 同步」：勾選則帶入目前 Get Started β；取消則 WACC 獨立
+  # 「與基礎設定同步」：勾選則帶入目前基礎設定β；取消則 WACC 獨立
   observeEvent(input$sync_gs_beta, {
     if (isTRUE(sync_gs_beta_updating())) {
       sync_gs_beta_updating(FALSE)
@@ -4529,7 +4529,7 @@ server <- function(input, output, session) {
     )
   }, striped = TRUE, bordered = TRUE, spacing = "s", width = "100%")
 
-  # 保留：切換產業時刷新 Rm／成長／P/B；Beta 僅在 Get Started 來源為產業且同步開啟時由上方處理
+  # 保留：切換產業時刷新 Rm／成長／P/B；Beta 僅在基礎設定來源為產業且同步開啟時由上方處理
   observeEvent(input$industry_choice, {
     req(input$industry_choice)
     inds <- industry_standards[[input$industry_choice]]
@@ -6121,7 +6121,7 @@ server <- function(input, output, session) {
       ))
     }
 
-    # DCF：與 Dashboard／Get Started 同一套「目前 WACC」
+    # DCF：與 Dashboard／基礎設定同一套「目前 WACC」
     base_wacc <- tryCatch(.current_wacc_pct(), error = function(e) NA_real_)
     if (is.null(base_wacc) || !is.finite(base_wacc)) base_wacc <- APP_DEFAULTS$wacc_gordon
     req(fcf_results$df_fcf())
@@ -6150,7 +6150,7 @@ server <- function(input, output, session) {
     if (is.null(st) || is.null(st$built)) {
       return(tags$div(
         style = "background:#fff8f0; border:1px solid #f0ad4e; border-radius:6px; padding:12px; font-size:13px; color:#666;",
-        "請先完成 Get Started 參數並執行估值計算後，即可顯示敏感度解讀。"
+        "請先完成基礎設定參數並執行估值計算後，即可顯示敏感度解讀。"
       ))
     }
 
@@ -6194,7 +6194,7 @@ server <- function(input, output, session) {
       tags$h5(style = "margin-top:0; color:#222222; font-weight:700;", icon("lightbulb"), " 簡要分析"),
       tags$p(
         tags$b("目前軸心："),
-        sprintf("%s = %s%%，SGR (g) = %s%%（與 Get Started／Dashboard 同步）",
+        sprintf("%s = %s%%，SGR (g) = %s%%（與基礎設定／Dashboard 同步）",
                 st$disc_label, fmt(st$base_disc), fmt(st$base_g))
       ),
       tags$p(tags$b("矩陣解讀："), vs_price),
@@ -9657,7 +9657,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v16.37"),
+      paste0("- **App：** The YNow App v16.38"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

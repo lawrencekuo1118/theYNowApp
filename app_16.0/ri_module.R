@@ -477,7 +477,7 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
         tags$li(tags$b("ROE："), "損益表 Net Income ÷ Common Equity"),
         tags$li(tags$b("Payout："), "現金流量表 Cash Dividends Paid ÷ Net Income（無股利則 0）"),
         tags$li(tags$b("Ke："), "中央股權成本（WACC／CAPM 之 rₑ；勾選採用估算時跟 CAPM）"),
-        tags$li(tags$b("g："), "Get Started 終值永續成長率 SGR")
+        tags$li(tags$b("g："), "基礎設定 終值永續成長率 SGR")
       )
     })
 
