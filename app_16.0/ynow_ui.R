@@ -768,7 +768,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v16.33</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v16.34</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -871,7 +871,7 @@ ui <- dashboardPage(
                )
              ),
              menuItem(
-               text = tags$span(id = "ynow_menu_cat_income", "Income / Cash Flow Appr."),
+               text = tags$span(id = "ynow_menu_cat_income", "Income / Cashflow Appr."),
                icon = icon("chart-area"),
                startExpanded = FALSE,
                menuSubItem("DCF-Model", tabName = "dcf_calculator", icon = icon("calculator")),
@@ -1374,12 +1374,56 @@ ui <- dashboardPage(
         .label-primary, .badge-primary {
           background-color: var(--ynow-ink) !important;
         }
-        /* Sidebar 推薦／備選 badges */
-        .sidebar-menu small.ynow-rec-badge.ynow-rec-primary {
+        /* Sidebar 推薦／備選 badges: same row as label; row height unchanged */
+        .sidebar-menu > li > a,
+        .sidebar-menu .treeview-menu > li > a {
+          display: flex !important;
+          align-items: center !important;
+          flex-wrap: nowrap !important;
+        }
+        .sidebar-menu > li > a > span:not(.pull-right-container),
+        .sidebar-menu .treeview-menu > li > a > span:not(.pull-right-container) {
+          flex: 1 1 auto;
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .sidebar-menu > li > a > .pull-right-container {
+          float: none !important;
+          position: static !important;
+          margin-left: 4px !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          flex: 0 0 auto;
+          gap: 4px;
+        }
+        .sidebar-menu > li > a > .pull-right-container > .fa.pull-right,
+        .sidebar-menu > li > a > .pull-right-container > .fas.pull-right {
+          float: none !important;
+          position: static !important;
+          margin: 0 !important;
+        }
+        .sidebar-menu small.ynow-sidebar-badge {
+          float: none !important;
+          position: static !important;
+          flex: 0 0 auto;
+          align-self: center;
+          margin: 0 !important;
+          white-space: nowrap;
+          line-height: 1.15 !important;
+          vertical-align: middle;
+          transform-origin: center right;
+          max-width: none;
+        }
+        .sidebar-menu .treeview-menu > li > a > small.ynow-sidebar-badge {
+          margin-left: auto !important;
+        }
+        .sidebar-menu small.ynow-sidebar-badge.ynow-rec-primary {
           background-color: #dd4b39 !important;
           color: #ffffff !important;
         }
-        .sidebar-menu small.ynow-rec-badge.ynow-rec-secondary {
+        .sidebar-menu small.ynow-sidebar-badge.ynow-rec-secondary {
           background-color: #6c757d !important;
           color: #ffffff !important;
         }
@@ -1411,6 +1455,7 @@ ui <- dashboardPage(
         .sidebar-menu .treeview-menu > li > a > .glyphicon:not(.pull-right),
         .sidebar-menu .treeview-menu > li > a > .ion:not(.pull-right) {
           display: inline-block;
+          flex: 0 0 1.35em;
           width: 1.35em;
           min-width: 1.35em;
           margin-right: 8px;
@@ -1661,12 +1706,12 @@ ui <- dashboardPage(
           line-height: 1.3;
           margin: 0;
         }
-        /* Credit line: same row / vertical center as USD／TWD buttons */
+        /* Credit: top-left content band; vertically centered with USD／TWD buttons */
         .ynow-credit-float {
           position: fixed;
-          top: 58px;
-          left: 265px;
-          height: 34px;
+          top: calc(50px + 8px);
+          left: calc(250px + 14px);
+          height: 26px;
           display: flex;
           align-items: center;
           z-index: 1034;
@@ -1674,7 +1719,7 @@ ui <- dashboardPage(
           max-width: min(420px, calc(100vw - 360px));
         }
         .sidebar-collapse .ynow-credit-float {
-          left: 65px;
+          left: calc(50px + 14px);
           max-width: min(420px, calc(100vw - 180px));
         }
         .ynow-credit-float .ynow-credit-text {
@@ -1692,7 +1737,7 @@ ui <- dashboardPage(
           .ynow-credit-float,
           .sidebar-collapse .ynow-credit-float {
             left: 12px;
-            top: 58px;
+            top: calc(50px + 8px);
             max-width: calc(100vw - 160px);
           }
           .ynow-credit-float .ynow-credit-text {
@@ -1816,7 +1861,47 @@ ui <- dashboardPage(
 
           function clearRecBadges(a) {
             if (!a) return;
-            a.querySelectorAll('small.ynow-rec-badge').forEach(function (b) { b.remove(); });
+            a.querySelectorAll('small.ynow-sidebar-badge, small.ynow-rec-badge').forEach(function (b) {
+              b.remove();
+            });
+          }
+
+          function fitSidebarBadges() {
+            var badges = document.querySelectorAll('.sidebar-menu small.ynow-sidebar-badge');
+            if (!badges.length) return;
+            var root = document.querySelector('.sidebar-menu');
+            if (root) root.style.removeProperty('--ynow-badge-scale');
+            badges.forEach(function (b) {
+              b.style.transform = '';
+            });
+            var maxNatural = 0;
+            var minRoom = Infinity;
+            badges.forEach(function (b) {
+              var a = b.closest('a');
+              if (!a) return;
+              var natural = b.scrollWidth || b.offsetWidth || 0;
+              if (natural > maxNatural) maxNatural = natural;
+              var aRect = a.getBoundingClientRect();
+              var bRect = b.getBoundingClientRect();
+              var room = Math.max(0, aRect.right - bRect.left + (bRect.width || 0) - 4);
+              /* Prefer space to the right of the label text */
+              var label = a.querySelector('span[id^="ynow_menu_"], span:not(.pull-right-container)');
+              if (label) {
+                var lRect = label.getBoundingClientRect();
+                var chev = a.querySelector('.pull-right-container > .fa.pull-right, .pull-right-container > .fas.pull-right');
+                var chevW = chev ? (chev.getBoundingClientRect().width + 6) : 6;
+                room = Math.max(0, aRect.right - lRect.right - chevW - 4);
+              }
+              if (room < minRoom) minRoom = room;
+            });
+            if (!(maxNatural > 0) || !(minRoom < Infinity)) return;
+            var scale = Math.min(1, minRoom / maxNatural);
+            if (scale < 0.55) scale = 0.55;
+            if (scale >= 0.995) return;
+            if (root) root.style.setProperty('--ynow-badge-scale', String(scale));
+            badges.forEach(function (b) {
+              b.style.transform = 'scale(' + scale + ')';
+            });
           }
 
           function setRecBadgeOnAnchor(a, role, labels) {
@@ -1826,12 +1911,19 @@ ui <- dashboardPage(
             var lab = labels || {};
             var isPrimary = role === 'primary';
             var badge = document.createElement('small');
-            badge.className = 'badge pull-right ynow-rec-badge ' +
+            badge.className = 'badge ynow-sidebar-badge ' +
               (isPrimary ? 'ynow-rec-primary bg-red' : 'ynow-rec-secondary');
             badge.textContent = isPrimary
               ? (lab.primary || '推薦')
               : (lab.secondary || '備選');
-            a.appendChild(badge);
+            var prc = a.querySelector('.pull-right-container');
+            if (prc) {
+              var chev = prc.querySelector('.fa.pull-right, .fas.pull-right');
+              if (chev) prc.insertBefore(badge, chev);
+              else prc.appendChild(badge);
+            } else {
+              a.appendChild(badge);
+            }
           }
 
           function setTabBadge(tab, role, labels) {
@@ -1873,6 +1965,9 @@ ui <- dashboardPage(
               setTabBadge(t, role, labels);
             });
             setParentBadges(map, labels);
+            requestAnimationFrame(function () {
+              fitSidebarBadges();
+            });
           }
 
           function registerBadgeHandler() {
@@ -1935,7 +2030,7 @@ ui <- dashboardPage(
             var a = document.querySelector('.sidebar-menu a[data-value=\"' + tab + '\"]');
             if (!a || !label) return;
             var icon = a.querySelector('i');
-            var badges = a.querySelectorAll('small.ynow-rec-badge, small.badge');
+            var badges = a.querySelectorAll('small.ynow-sidebar-badge, small.ynow-rec-badge, small.badge');
             var iconClone = icon ? icon.cloneNode(true) : null;
             var badgeClones = [];
             badges.forEach(function (b) { badgeClones.push(b.cloneNode(true)); });
