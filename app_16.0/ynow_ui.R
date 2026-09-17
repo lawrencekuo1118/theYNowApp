@@ -768,7 +768,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v16.33</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v16.34</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -972,11 +972,6 @@ ui <- dashboardPage(
   dashboardBody(
     shinyjs::useShinyjs(),
     withMathJax(),
-    # Credit: same vertical band as USD／TWD under black header
-    tags$div(
-      class = "ynow-credit-float",
-      tags$span(class = "ynow-credit-text", "a lawrence kuo shiny app")
-    ),
     
     tags$head(
       tags$style(HTML('
@@ -1057,7 +1052,7 @@ ui <- dashboardPage(
         }
 
         .content-wrapper, .right-side { background-color: #f7f7f7; }
-        /* Clear fixed credit／ccy band under header */
+        /* Clear absolute USD／TWD band under header (credit is in document flow) */
         .content-wrapper > .content {
           padding-top: 52px;
         }
@@ -1661,23 +1656,17 @@ ui <- dashboardPage(
           line-height: 1.3;
           margin: 0;
         }
-        /* Credit line: same row / vertical center as USD／TWD buttons */
-        .ynow-credit-float {
-          position: fixed;
-          top: 58px;
-          left: 265px;
-          height: 34px;
-          display: flex;
-          align-items: center;
-          z-index: 1034;
-          pointer-events: none;
-          max-width: min(420px, calc(100vw - 360px));
+        /* Credit line: document-flow pin above ticker (not viewport-fixed float) */
+        .ynow-credit-pin {
+          position: static;
+          float: none;
+          clear: both;
+          display: block;
+          margin: 0 0 6px 0;
+          padding: 0;
+          max-width: 420px;
         }
-        .sidebar-collapse .ynow-credit-float {
-          left: 65px;
-          max-width: min(420px, calc(100vw - 180px));
-        }
-        .ynow-credit-float .ynow-credit-text {
+        .ynow-credit-pin .ynow-credit-text {
           margin: 0;
           padding: 0;
           font-size: 13px;
@@ -1689,13 +1678,10 @@ ui <- dashboardPage(
           text-overflow: ellipsis;
         }
         @media (max-width: 767px) {
-          .ynow-credit-float,
-          .sidebar-collapse .ynow-credit-float {
-            left: 12px;
-            top: 58px;
-            max-width: calc(100vw - 160px);
+          .ynow-credit-pin {
+            max-width: 100%;
           }
-          .ynow-credit-float .ynow-credit-text {
+          .ynow-credit-pin .ynow-credit-text {
             font-size: 11px;
           }
         }
@@ -3468,6 +3454,11 @@ ui <- dashboardPage(
     # ==========================================
     fluidRow(
       column(width = 12,
+             # Author credit: fixed layout pin above search (not position:fixed float)
+             tags$div(
+               class = "ynow-credit-pin",
+               tags$span(class = "ynow-credit-text", "a lawrence kuo shiny app")
+             ),
              div(
                class = "ynow-sc-row",
                div(
