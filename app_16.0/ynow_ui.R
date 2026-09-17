@@ -768,7 +768,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v16.34</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v16.35</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -3051,8 +3051,21 @@ ui <- dashboardPage(
           filter: drop-shadow(0 0 2px rgba(0,0,0,0.35));
         }
 
-        /* 手機：右上 繁中／EN＋logo 與左上漢堡垂直置中；幣別仍貼頁首下緣 */
+        /* 手機：右上 繁中／EN＋logo 與左上漢堡垂直置中；幣別仍貼頁首下緣；黑色頁首置頂不滑掉 */
         @media (max-width: 767px) {
+          .main-header {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            width: 100% !important;
+            z-index: 1030 !important;
+          }
+          /* 內容下移，避免被固定頁首遮住（AdminLTE 預設非 fixed 時 margin-top 為 0） */
+          .content-wrapper,
+          .right-side {
+            margin-top: 50px !important;
+          }
           .main-header .navbar {
             min-height: 50px !important;
             height: 50px;
