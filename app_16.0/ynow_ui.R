@@ -152,7 +152,7 @@ capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
     numericInput("capm_beta", "Beta (β)", value = APP_DEFAULTS$capm_beta, step = 0.01),
     checkboxInput(
       "sync_gs_beta",
-      tags$span(style = "font-weight: bold;", "與Get Started 同步"),
+      tags$span(id = "ynow_sync_gs_beta_label", style = "font-weight: bold;", "與基礎設定同步"),
       value = isTRUE(APP_DEFAULTS$sync_gs_beta)
     ),
     actionButton(calc_id, "估算 rₑ（CAPM）", class = "btn-primary"),
@@ -196,7 +196,7 @@ rd_estimate_settings_ui <- function(width = 6) {
   )
 }
 
-#' Pointer when advanced Beta controls live on Get Started (CAPM is on WACC).
+#' Pointer when advanced Beta controls live on Basic Setup (CAPM is on WACC).
 #' Outer shinydashboard box removed — heading + help text sit on the tab.
 .beta_moved_to_get_started_box <- function(extra = NULL) {
   tagList(
@@ -207,7 +207,7 @@ rd_estimate_settings_ui <- function(width = 6) {
     ),
     helpText(
       "β 預估在",
-      tags$b("Get Started"),
+      tags$b(id = "ynow_beta_home_name", "基礎設定"),
       "→「SGR」下方的",
       tags$b("BETA"),
       "小分頁（Beta Overview 選來源寫入 CAPM；同業去槓桿／Rolling 負責估算）。",
@@ -361,7 +361,7 @@ beta_unlever_section_ui <- function() {
   )
 }
 
-#' Rolling β 預估（Get Started）
+#' Rolling β 預估（基礎設定）
 #' 僅交叉檢驗：對照估值用 β，不寫入 CAPM。
 beta_rolling_section_ui <- function() {
   tagList(
@@ -677,14 +677,14 @@ beta_rolling_section_ui <- function() {
       numericInput("g_stage1", "成長率 g1 (%)", value = APP_DEFAULTS$g_stage1),
       helpText(
         id = "ynow_g_stage1_help",
-        "預設帶入「預估營收成長率」；可手動覆寫。終值成長率仍用 Get Started 的 SGR。"
+        "預設帶入「預估營收成長率」；可手動覆寫。終值成長率仍用基礎設定的 SGR。"
       ),
       conditionalPanel(
         condition = "input.dcf_claim != 'fcfe'",
         numericInput("wacc_stage1", "折現率 WACC1 (%)", value = APP_DEFAULTS$wacc_stage1, step = 0.01)
       ),
       tags$p(style = "margin: 10px 0 6px 0; font-size: 12.5px; color: #555;", tags$b("第二階段｜永續成長")),
-      helpText("第二階段成長率採用 Get Started 的 SGR；以下設定折現率。"),
+      helpText("第二階段成長率採用基礎設定的 SGR；以下設定折現率。"),
       conditionalPanel(
         condition = "input.dcf_claim != 'fcfe'",
         numericInput("wacc_stage2", "折現率 WACC2 (%)", value = APP_DEFAULTS$wacc_stage2, step = 0.01)
@@ -713,7 +713,7 @@ beta_rolling_section_ui <- function() {
         value = APP_DEFAULTS$ddm_g_stage1, step = 0.1
       ),
       tags$p(style = "margin: 10px 0 6px 0; font-size: 12.5px; color: #555;", tags$b("第二階段｜永續成長")),
-      helpText("第二階段股利成長率採用 Overview 的永續 g（可與 Get Started SGR 同步）；折現率採用 Ke 分頁。終值約束：g2 < Ke。")
+      helpText("第二階段股利成長率採用 Overview 的永續 g（可與基礎設定 SGR 同步）；折現率採用 Ke 分頁。終值約束：g2 < Ke。")
     )
   )
 }
@@ -768,7 +768,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v16.36</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v16.37</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -1442,7 +1442,7 @@ ui <- dashboardPage(
         /* Do not remap .bg-blue — KPI band 「優於區間」uses AdminLTE blue */
 
         #shiny-tab-get_started > h2 { font-weight: 800 !important; }
-        /* 側邊欄：僅目前選取頁面粗體（勿固定加粗 Get Started） */
+        /* 側邊欄：僅目前選取頁面粗體（勿固定加粗基礎設定） */
         .sidebar-menu > li > a {
           font-weight: 400 !important;
         }
@@ -1873,52 +1873,6 @@ ui <- dashboardPage(
             });
           }
 
-          function fitSidebarBadges() {
-            var badges = document.querySelectorAll('.sidebar-menu small.ynow-sidebar-badge');
-            if (!badges.length) return;
-            var root = document.querySelector('.sidebar-menu');
-            if (root) root.style.removeProperty('--ynow-badge-scale');
-            badges.forEach(function (b) {
-              b.style.transform = '';
-            });
-            var maxNatural = 0;
-            var minRoom = Infinity;
-            badges.forEach(function (b) {
-              var a = b.closest('a');
-              if (!a) return;
-              var natural = b.scrollWidth || b.offsetWidth || 0;
-              if (natural > maxNatural) maxNatural = natural;
-              var aRect = a.getBoundingClientRect();
-              var room = Math.max(0, aRect.width - 8);
-              var label = null;
-              var spans = a.getElementsByTagName('span');
-              for (var si = 0; si < spans.length; si++) {
-                var sp = spans[si];
-                if (sp.classList && sp.classList.contains('pull-right-container')) continue;
-                if (sp.id && sp.id.indexOf('ynow_menu_') === 0) {
-                  label = sp;
-                  break;
-                }
-                if (!label) label = sp;
-              }
-              if (label) {
-                var lRect = label.getBoundingClientRect();
-                var chev = a.querySelector('.pull-right-container > .fa.pull-right, .pull-right-container > .fas.pull-right');
-                var chevW = chev ? (chev.getBoundingClientRect().width + 6) : 6;
-                room = Math.max(0, aRect.right - lRect.right - chevW - 4);
-              }
-              if (room < minRoom) minRoom = room;
-            });
-            if (!(maxNatural > 0) || !(minRoom < Infinity)) return;
-            var scale = Math.min(1, minRoom / maxNatural);
-            if (scale < 0.55) scale = 0.55;
-            if (scale >= 0.995) return;
-            if (root) root.style.setProperty('--ynow-badge-scale', String(scale));
-            badges.forEach(function (b) {
-              b.style.transform = 'scale(' + scale + ')';
-            });
-          }
-
           function setRecBadgeOnAnchor(a, role, labels) {
             if (!a) return;
             clearRecBadges(a);
@@ -1931,14 +1885,8 @@ ui <- dashboardPage(
             badge.textContent = isPrimary
               ? (lab.primary || '推薦')
               : (lab.secondary || '備選');
-            var prc = a.querySelector('.pull-right-container');
-            if (prc) {
-              var chev = prc.querySelector('.fa.pull-right, .fas.pull-right');
-              if (chev) prc.insertBefore(badge, chev);
-              else prc.appendChild(badge);
-            } else {
-              a.appendChild(badge);
-            }
+            /* Last child of <a>: flush to sidebar right (after chevron if present) */
+            a.appendChild(badge);
           }
 
           function setTabBadge(tab, role, labels) {
@@ -1980,9 +1928,6 @@ ui <- dashboardPage(
               setTabBadge(t, role, labels);
             });
             setParentBadges(map, labels);
-            requestAnimationFrame(function () {
-              fitSidebarBadges();
-            });
           }
 
           function registerBadgeHandler() {
@@ -4019,7 +3964,7 @@ ui <- dashboardPage(
                            tags$p(
                              class = "ynow-ann-note",
                              tags$b("用途："),
-                             "解讀上方 KPI 色碼如何對照「Get Started → Industry Standard」產業區間。",
+                             "解讀上方 KPI 色碼如何對照「基礎設定 → Industry Standard」產業區間。",
                              "數值採年報序列（排除 TTM）的多年平均或年均 YoY，以利跨期／同業比較。"
                            ),
                            tags$p(
@@ -4143,7 +4088,7 @@ ui <- dashboardPage(
                            ),
                            checkboxInput(
                              "mod_ddm-sync_g",
-                             "與中央永續成長率（Get Started SGR）同步",
+                             "與中央永續成長率（基礎設定 SGR）同步",
                              value = isTRUE(APP_DEFAULTS$ddm_sync_central_g)
                            ),
                            helpText("勾選時跟隨中央 SGR；取消勾選後可單獨覆寫股利成長率（不必等於 FCFF 終值 g）。二階段時此值即 g₂。"),

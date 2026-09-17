@@ -30,7 +30,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     menu_cat_asset = "Asset-Based Appr.",
     menu_cat_income = "Income / Cashflow Appr.",
     menu_cat_relative = "Relative Valuation Appr.",
-    menu_badge_primary = "Recommended",
+    menu_badge_primary = "Recommend",
     menu_badge_secondary = "Secondary",
     menu_ynow = "YNOW",
     menu_bluechip = "Blue Chip Ranking",
@@ -236,7 +236,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     box_sgr = "SUSTAINABLE GROWTH RATE",
     box_model_guide = "Model Selection Guide",
     box_bt_params = "Strategy Parameters",
-    # --- SGR tab (Get Started) ---
+    # --- SGR tab (Basic Setup) ---
     sgr_method_title = "Terminal growth (SGR) method",
     sgr_custom_label = "Custom SGR (%)",
     vbx_sgr_subtitle = "SGR",
@@ -592,14 +592,14 @@ locale_for_market <- function(mode = get_market_mode()) {
     box_sgr = "SUSTAINABLE GROWTH RATE",
     box_model_guide = "模型選擇決策指南",
     box_bt_params = "策略參數設定",
-    # --- SGR tab (Get Started) ---
+    # --- SGR tab (Basic Setup) ---
     sgr_method_title = "終值永續成長率 (SGR) 評價方法",
     sgr_custom_label = "自訂 SGR (%)",
     vbx_sgr_subtitle = "SGR",
     vbx_session_g_subtitle = "當前設定 g（近期末）",
     g_stage1_help = paste0(
       "預設帶入「預估營收成長率」；可手動覆寫。",
-      "終值成長率仍用 Get Started 的 SGR。"
+      "終值成長率仍用基礎設定的 SGR。"
     ),
     # --- WACC / rᵈ / CAPM ---
     wacc_box_title = "WACC 估算",
