@@ -768,7 +768,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v16.34</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v16.35</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -1882,10 +1882,18 @@ ui <- dashboardPage(
               var natural = b.scrollWidth || b.offsetWidth || 0;
               if (natural > maxNatural) maxNatural = natural;
               var aRect = a.getBoundingClientRect();
-              var bRect = b.getBoundingClientRect();
-              var room = Math.max(0, aRect.right - bRect.left + (bRect.width || 0) - 4);
-              /* Prefer space to the right of the label text */
-              var label = a.querySelector('span[id^="ynow_menu_"], span:not(.pull-right-container)');
+              var room = Math.max(0, aRect.width - 8);
+              var label = null;
+              var spans = a.getElementsByTagName('span');
+              for (var si = 0; si < spans.length; si++) {
+                var sp = spans[si];
+                if (sp.classList && sp.classList.contains('pull-right-container')) continue;
+                if (sp.id && sp.id.indexOf('ynow_menu_') === 0) {
+                  label = sp;
+                  break;
+                }
+                if (!label) label = sp;
+              }
               if (label) {
                 var lRect = label.getBoundingClientRect();
                 var chev = a.querySelector('.pull-right-container > .fa.pull-right, .pull-right-container > .fas.pull-right');
