@@ -768,7 +768,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v16.35</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v16.36</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -1374,7 +1374,7 @@ ui <- dashboardPage(
         .label-primary, .badge-primary {
           background-color: var(--ynow-ink) !important;
         }
-        /* Sidebar 推薦／備選 badges: same row as label; row height unchanged */
+        /* Sidebar 推薦／備選 badges: same row as label; flush to right edge; normal font size */
         .sidebar-menu > li > a,
         .sidebar-menu .treeview-menu > li > a {
           display: flex !important;
@@ -1383,7 +1383,7 @@ ui <- dashboardPage(
         }
         .sidebar-menu > li > a > span:not(.pull-right-container),
         .sidebar-menu .treeview-menu > li > a > span:not(.pull-right-container) {
-          flex: 1 1 auto;
+          flex: 0 1 auto;
           min-width: 0;
           overflow: hidden;
           text-overflow: ellipsis;
@@ -1392,7 +1392,8 @@ ui <- dashboardPage(
         .sidebar-menu > li > a > .pull-right-container {
           float: none !important;
           position: static !important;
-          margin-left: 4px !important;
+          margin-left: auto !important;
+          margin-right: 0 !important;
           display: inline-flex !important;
           align-items: center !important;
           flex: 0 0 auto;
@@ -1409,15 +1410,21 @@ ui <- dashboardPage(
           position: static !important;
           flex: 0 0 auto;
           align-self: center;
-          margin: 0 !important;
+          margin: 0 0 0 4px !important;
           white-space: nowrap;
           line-height: 1.15 !important;
           vertical-align: middle;
-          transform-origin: center right;
           max-width: none;
+          transform: none !important;
         }
+        /* Child rows (no chevron): push badge to sidebar right edge */
         .sidebar-menu .treeview-menu > li > a > small.ynow-sidebar-badge {
           margin-left: auto !important;
+        }
+        /* Parent Appr. expanded: hide parent badges; children keep theirs */
+        .sidebar-menu > li.menu-open > a > small.ynow-sidebar-badge,
+        .sidebar-menu > li.menu-open > a > .pull-right-container > small.ynow-sidebar-badge {
+          display: none !important;
         }
         .sidebar-menu small.ynow-sidebar-badge.ynow-rec-primary {
           background-color: #dd4b39 !important;
@@ -4325,8 +4332,7 @@ ui <- dashboardPage(
                      tabPanel("DCF Calculation Details",
                               fluidRow(
                                 column(width = 12,
-                                       plotOutput("mod_fcf-fcf_plot", height = "350px"),
-                                       htmlOutput("mod_fcf-txt_fcf_raw_data") 
+                                       plotOutput("mod_fcf-fcf_plot", height = "350px")
                                 ),
                                 uiOutput("ui_data_validation") 
                               )

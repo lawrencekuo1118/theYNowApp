@@ -850,34 +850,10 @@ fcf_projection_module_server <- function(
       )
     })
     
-    # 1. 渲染圖表 (對應 UI 的 mod_fcf-fcf_plot)
+    # 渲染圖表 (對應 UI 的 mod_fcf-fcf_plot；明細見 tbl_fcf_projection)
     output$fcf_plot <- renderPlot({
       req(fcf_plot_obj())
       fcf_plot_obj()
-    })
-    
-    # 2. 渲染文字狀態 (對應 UI 的 mod_fcf-txt_fcf_raw_data)
-    output$txt_fcf_raw_data <- renderUI({
-      df <- proj_table_data()
-      if (is.null(df)) {
-        return(HTML("<div style='color: gray; font-size: 14px;'>⏳ 尚未匯入財報資料，或正在等待計算...</div>"))
-      }
-      cfs <- extract_dcf_claim_series(
-        df, claim_val(),
-        interest_after_tax = fcfe_interest_after_tax(),
-        debt0 = fcfe_debt0(),
-        g_path = fcfe_g()
-      )
-      tag <- cf_tag()
-      
-      HTML(glue::glue(
-        "<div style='background-color: #f9f9f9; padding: 15px; border-left: 4px solid #00a65a; margin-top: 10px;'>
-           <b>{tag} 預測資料已同步！</b><br/>
-           -------------------------<br/>
-           第 1 年預測現金流: <b>${round(cfs[1], 2)}</b><br/>
-           第 {nrow(df)} 年預測現金流: <b>${round(tail(cfs, 1), 2)}</b><br/>
-         </div>"
-      ))
     })
     
     # ==========================================
