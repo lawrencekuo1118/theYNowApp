@@ -9,9 +9,9 @@ alwaysApply: true
 
 Every time code is **merged to master** or **shipped** (commit + push + deploy of the live line), increment the **display version** by **+0.01** (patch-style).
 
-Examples: `v16` → `v16.01` → `v16.02` → …
+Examples: `v17` → `v17.01` → `v17.02` → …
 
-Later, if the user asks to switch to whole-step bumps, use **+1** instead (e.g. `v16` → `v17`, or `v16.02` → `v17`).
+Later, if the user asks to switch to whole-step bumps, use **+1** instead (e.g. `v17` → `v18`, or `v17.02` → `v18`).
 
 ## What “version in code” means
 
@@ -19,7 +19,7 @@ Update these when bumping (keep them consistent):
 
 | Surface | Examples |
 |---------|----------|
-| UI / header | `dashboardHeader` title (`The YNow App v16…`), About 文案, 意見區 / report strings that show app version |
+| UI / header | `dashboardHeader` title (`The YNow App v17…`), About 文案, 意見區 / report strings that show app version |
 | Docs in app tree | README / comments that state the current display version |
 | Deploy notes | `scripts/DEPLOY_BASELINE.txt` note (and similar) may mention the display version |
 | Deploy scripts | Keep targeting the live folder; rename scripts only on a full +1 cut if needed |
@@ -28,8 +28,8 @@ Do **not** invent a second version number; one display version for the live line
 
 ## Folder vs display version
 
-- **Live directory** may stay `app_16.0/` while display shows `v16.01`, `v16.02`, …
-- **Directory rename** (e.g. `app_16.0/` → `app_17.0/`) only when the user requests a full **+1** version cut.
+- **Live directory** may stay `app_17.0/` while display shows `v17.01`, `v17.02`, …
+- **Directory rename** (e.g. `app_17.0/` → `app_18.0/`) only when the user requests a full **+1** version cut.
 - If header/UI and folder naming disagree: **UI/header/version strings bump +0.01 each merge**; **folder stays** until that +1 cut.
 
 ## When to bump

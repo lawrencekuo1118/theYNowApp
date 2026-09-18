@@ -75,7 +75,7 @@
       tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
       tags$p(
         class = "ynow-about-lead",
-        "The YNow App (v14.0) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合了即時財報抓取、多維度估值模型與動態回測引擎，將繁雜的市場資料轉化為直覺、科學的投資決策。"
+        "The YNow App (v17) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合了即時財報抓取、多維度估值模型與動態回測引擎，將繁雜的市場資料轉化為直覺、科學的投資決策。"
       ),
       tags$p(
         class = "ynow-about-method",
@@ -91,7 +91,7 @@
       tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
       tags$p(
         class = "ynow-about-lead",
-        "The YNow App (v14.0) is a comprehensive quantitative financial analysis and valuation decision system designed for professional investors and analysts. It seamlessly integrates real-time financial data parsing, multi-dimensional valuation models, and a dynamic backtesting engine to transform complex market data into actionable, scientific investment insights."
+        "The YNow App (v17) is a comprehensive quantitative financial analysis and valuation decision system designed for professional investors and analysts. It seamlessly integrates real-time financial data parsing, multi-dimensional valuation models, and a dynamic backtesting engine to transform complex market data into actionable, scientific investment insights."
       ),
       tags$p(
         class = "ynow-about-method",
@@ -691,16 +691,41 @@ beta_rolling_section_ui <- function() {
         valueBoxOutput("vbx_sgr_pct", width = 6),
         valueBoxOutput("vbx_session_g", width = 6)
       ),
-      tags$h5(tags$b(id = "ynow_sgr_method_title", "終值永續成長率 (SGR) 評價方法")),
-      selectInput(
-        "perpetual_g_method",
-        NULL,
-        choices = c(
-          "總體經濟錨定（Macro）" = "macro",
-          "基本面公式（Fundamental／SGR）" = "fundamental",
-          "產業生命週期（Lifecycle）" = "lifecycle"
+      fluidRow(
+        column(
+          width = 6,
+          tags$h5(tags$b(id = "ynow_sgr_method_title", "終值永續成長率 (SGR) 評價方法")),
+          selectInput(
+            "perpetual_g_method",
+            NULL,
+            choices = c(
+              "總體經濟錨定（Macro）" = "macro",
+              "基本面公式（Fundamental／SGR）" = "fundamental",
+              "產業生命週期（Lifecycle）" = "lifecycle"
+            ),
+            selected = APP_DEFAULTS$perpetual_g_method
+          )
         ),
-        selected = APP_DEFAULTS$perpetual_g_method
+        column(
+          width = 6,
+          conditionalPanel(
+            condition = "input.perpetual_g_method == 'lifecycle'",
+            tags$h5(tags$b(id = "ynow_lifecycle_stage_title", "生命週期檔位")),
+            selectInput(
+              "lifecycle_stage",
+              NULL,
+              choices = c(
+                "自動偵測" = "auto",
+                "夕陽／高度成熟（≈1.5–2%）" = "mature_sunset",
+                "成熟科技巨頭（≈2.5–3%）" = "mature_tech",
+                "高速成長→成熟（終值≈2.5%，建議 two-stage）" = "growth_to_mature",
+                "一般成熟（≈2.5%）" = "mature_general"
+              ),
+              selected = APP_DEFAULTS$lifecycle_stage
+            ),
+            helpText(id = "ynow_lifecycle_stage_help", "可覆寫自動偵測結果；影響終值 g 建議區間。")
+          )
+        )
       ),
       helpText(
         "Macro：直接套用美國 10 年期公債 Rf。",
@@ -708,23 +733,6 @@ beta_rolling_section_ui <- function() {
         "Lifecycle：依產業成熟度反推 g，可手動覆寫自動分類。"
       ),
       uiOutput("txt_perpetual_g_method_suggest"),
-      conditionalPanel(
-        condition = "input.perpetual_g_method == 'lifecycle'",
-        tags$h5(tags$b("生命週期檔位")),
-        selectInput(
-          "lifecycle_stage",
-          NULL,
-          choices = c(
-            "自動偵測" = "auto",
-            "夕陽／高度成熟（≈1.5–2%）" = "mature_sunset",
-            "成熟科技巨頭（≈2.5–3%）" = "mature_tech",
-            "高速成長→成熟（終值≈2.5%，建議 two-stage）" = "growth_to_mature",
-            "一般成熟（≈2.5%）" = "mature_general"
-          ),
-          selected = APP_DEFAULTS$lifecycle_stage
-        ),
-        helpText("可覆寫自動偵測結果；影響終值 g 建議區間。")
-      ),
       tags$h5(tags$b("估計依據")),
       uiOutput("txt_perpetual_g_reason"),
       tags$hr(style = "margin: 12px 0;"),
@@ -733,7 +741,7 @@ beta_rolling_section_ui <- function() {
         "自訂 SGR (%)",
         value = APP_DEFAULTS$sgr
       ),
-      helpText("供 DCF／RI 終值使用（相對 WACC）；與 DDM 股利成長率分開。可由上方方法自動估計，亦可手動覆寫。")
+      helpText(id = "ynow_sgr_manual_help", "可由上方方法自動估計，亦可手動覆寫。")
     )
   )
 }
@@ -840,7 +848,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v16.55</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -1137,7 +1145,7 @@ ui <- dashboardPage(
         .right-side {
           margin-top: 50px !important;
         }
-        /* Clear fixed credit／ccy band under header */
+        /* Reserve band under fixed header for credit (left) + USD/TWD (right) */
         .content-wrapper > .content {
           padding-top: 52px;
         }
@@ -1793,17 +1801,28 @@ ui <- dashboardPage(
           line-height: 1.3;
           margin: 0;
         }
-        /* Credit line: document-flow pin above ticker (not viewport-fixed float) */
-        .ynow-credit-pin {
+        /* Credit: document-flow subband (left), same row as USD/TWD — not fixed/sticky */
+        .ynow-hdr-subband {
+          position: relative;
+          display: flex;
+          align-items: center;
+          min-height: 36px;
+          margin: -44px 0 10px 0;
+          padding: 0;
+          max-width: calc(100% - 140px);
+          pointer-events: none;
+        }
+        .ynow-hdr-subband .ynow-credit-flow {
+          pointer-events: auto;
           position: static;
           float: none;
-          clear: both;
-          display: block;
-          margin: 0 0 6px 0;
+          display: flex;
+          align-items: center;
+          margin: 0;
           padding: 0;
-          max-width: 420px;
+          max-width: 100%;
         }
-        .ynow-credit-pin .ynow-credit-text {
+        .ynow-hdr-subband .ynow-credit-text {
           margin: 0;
           padding: 0;
           font-size: 13px;
@@ -1815,12 +1834,43 @@ ui <- dashboardPage(
           text-overflow: ellipsis;
         }
         @media (max-width: 767px) {
-          .ynow-credit-pin {
-            max-width: 100%;
+          .ynow-hdr-subband {
+            max-width: calc(100% - 120px);
+            margin-top: -40px;
           }
-          .ynow-credit-pin .ynow-credit-text {
+          .ynow-hdr-subband .ynow-credit-text {
             font-size: 11px;
           }
+        }
+        /* Compact composite valuation status (replaces KPI row on model pages) */
+        .ynow-val-status-header {
+          background: #ffffff;
+          padding: 14px 16px;
+          border-radius: 8px;
+          box-shadow: 0 1px 2px rgba(26, 26, 26, 0.08);
+          margin-bottom: 4px;
+        }
+        .ynow-val-status-header h4 {
+          margin: 0;
+          font-weight: 700;
+          font-size: 16px;
+          line-height: 1.35;
+        }
+        .ynow-ind-overview-block {
+          margin: 0 0 12px 0;
+          padding: 12px 14px;
+          background: #f5f5f5;
+          border-left: 4px solid #222222;
+          border-radius: 4px;
+        }
+        .ynow-ind-overview-block .ynow-ind-overview-title {
+          font-size: 13px;
+          font-weight: 700;
+          color: #222222;
+          margin: 0 0 8px 0;
+        }
+        .ynow-ind-overview-block .form-group {
+          margin-bottom: 10px;
         }
         /* 預測年數 n：固定在 EPS (TTM) 數字框正下方（右欄） */
         #ibx_EPS { margin-bottom: 8px; }
@@ -1954,10 +2004,16 @@ ui <- dashboardPage(
             badge.className = 'badge ynow-sidebar-badge ' +
               (isPrimary ? 'ynow-rec-primary bg-red' : 'ynow-rec-secondary');
             badge.textContent = isPrimary
-              ? (lab.primary || '推薦')
-              : (lab.secondary || '備選');
-            /* Last child of <a>: flush to sidebar right (after chevron if present) */
-            a.appendChild(badge);
+              ? (lab.primary || 'Recommend')
+              : (lab.secondary || 'Secondary');
+            /* Prefer after pull-right chevron so badge stays flush right */
+            var prc = a.querySelector('.pull-right-container');
+            if (prc && prc.parentNode === a) {
+              if (prc.nextSibling) a.insertBefore(badge, prc.nextSibling);
+              else a.appendChild(badge);
+            } else {
+              a.appendChild(badge);
+            }
           }
 
           function setTabBadge(tab, role, labels) {
@@ -2054,22 +2110,43 @@ ui <- dashboardPage(
           } else {
             bindMarketModeButtons();
           }
-          /* AdminLTE 重繪後再貼一次位置 */
+          /* AdminLTE 重繪後再貼一次位置；持續監看以免被抬回右側 */
           setTimeout(placeMarketHeaderByToggle, 0);
           setTimeout(placeMarketHeaderByToggle, 250);
+          setTimeout(placeMarketHeaderByToggle, 1000);
+          if (typeof MutationObserver !== 'undefined') {
+            var hdrNav = document.querySelector('.main-header .navbar');
+            if (hdrNav) {
+              var mktObs = new MutationObserver(function () {
+                placeMarketHeaderByToggle();
+              });
+              mktObs.observe(hdrNav, { childList: true, subtree: true });
+            }
+            document.addEventListener('click', function (ev) {
+              var t = ev.target;
+              if (t && t.closest && t.closest('.sidebar-menu .treeview > a')) {
+                setTimeout(function () {
+                  if (LAST_BADGE_MAP) applySidebarBadges(LAST_BADGE_MAP);
+                }, 0);
+              }
+            });
+          }
 
           /* ---- UI locale (en / zh-TW) in-place chrome labels ---- */
           function setMenuLabel(tab, label) {
             var a = document.querySelector('.sidebar-menu a[data-value=\"' + tab + '\"]');
             if (!a || !label) return;
-            var icon = a.querySelector('i');
-            var badges = a.querySelectorAll('small.ynow-sidebar-badge, small.ynow-rec-badge, small.badge');
+            var icon = a.querySelector('i.fa:not(.pull-right), i.fas:not(.pull-right), i.far:not(.pull-right), i.glyphicon:not(.pull-right), i.ion:not(.pull-right)');
+            var prc = a.querySelector('.pull-right-container');
+            var badges = a.querySelectorAll('small.ynow-sidebar-badge, small.ynow-rec-badge');
             var iconClone = icon ? icon.cloneNode(true) : null;
+            var prcClone = prc ? prc.cloneNode(true) : null;
             var badgeClones = [];
             badges.forEach(function (b) { badgeClones.push(b.cloneNode(true)); });
             a.innerHTML = '';
             if (iconClone) a.appendChild(iconClone);
             a.appendChild(document.createTextNode(' ' + label + ' '));
+            if (prcClone) a.appendChild(prcClone);
             badgeClones.forEach(function (bc) { a.appendChild(bc); });
           }
 
@@ -2209,8 +2286,18 @@ ui <- dashboardPage(
             if (indLab && s.industry_standard) indLab.textContent = s.industry_standard;
             var sgrMethodTitle = document.getElementById('ynow_sgr_method_title');
             if (sgrMethodTitle && s.sgr_method_title) sgrMethodTitle.textContent = s.sgr_method_title;
+            var lifeTitle = document.getElementById('ynow_lifecycle_stage_title');
+            if (lifeTitle && s.lifecycle_stage_title) lifeTitle.textContent = s.lifecycle_stage_title;
+            var lifeHelp = document.getElementById('ynow_lifecycle_stage_help');
+            if (lifeHelp && s.lifecycle_stage_help) lifeHelp.textContent = s.lifecycle_stage_help;
+            var sgrManualHelp = document.getElementById('ynow_sgr_manual_help');
+            if (sgrManualHelp && s.sgr_manual_help) sgrManualHelp.textContent = s.sgr_manual_help;
             var sgrCustomLab = document.querySelector('label[for=\"sgr\"]');
             if (sgrCustomLab && s.sgr_custom_label) sgrCustomLab.textContent = s.sgr_custom_label;
+            var indOverviewTitle = document.getElementById('ynow_ind_overview_title');
+            if (indOverviewTitle && s.industry_overview_title) indOverviewTitle.textContent = s.industry_overview_title;
+            var valStatusPrefix = document.getElementById('ynow_val_status_prefix');
+            if (valStatusPrefix && s.composite_status_prefix) valStatusPrefix.textContent = s.composite_status_prefix;
             var g1Help = document.getElementById('ynow_g_stage1_help');
             if (g1Help && s.g_stage1_help) g1Help.textContent = s.g_stage1_help;
             var waccBoxTitle = document.getElementById('ynow_wacc_box_title');
@@ -3742,13 +3829,16 @@ ui <- dashboardPage(
     # ==========================================
     # 獨立的 sc 搜尋輸入框與按鈕區塊
     # ==========================================
+    # Author credit: same visual row as USD/TWD (document flow, not fixed/sticky)
+    tags$div(
+      class = "ynow-hdr-subband",
+      tags$div(
+        class = "ynow-credit-flow",
+        tags$span(class = "ynow-credit-text", "a lawrence kuo shiny app")
+      )
+    ),
     fluidRow(
       column(width = 12,
-             # Author credit: fixed layout pin above search (not position:fixed float)
-             tags$div(
-               class = "ynow-credit-pin",
-               tags$span(class = "ynow-credit-text", "a lawrence kuo shiny app")
-             ),
              div(
                class = "ynow-sc-row",
                div(
@@ -3861,35 +3951,53 @@ ui <- dashboardPage(
     ),
     br(),
     
-    fluidRow(
-      class = "ynow-header-kpi-row",
-      # col-xs-12：手機直向全寬；col-sm-4：≥768px 三欄橫排
-      column(
-        width = 4,
-        class = "col-xs-12",
-        infoBoxOutput("ibx_stockprice", width = NULL)
+    # Header KPIs: Dashboard only (Previous Close / Market Cap / EPS TTM)
+    conditionalPanel(
+      condition = "input.sidebar_tabs == 'dashboard'",
+      fluidRow(
+        class = "ynow-header-kpi-row",
+        column(
+          width = 4,
+          class = "col-xs-12",
+          infoBoxOutput("ibx_stockprice", width = NULL)
+        ),
+        column(
+          width = 4,
+          class = "col-xs-12",
+          infoBoxOutput("ibx_marketcap", width = NULL)
+        ),
+        column(
+          width = 4,
+          class = "col-xs-12",
+          infoBoxOutput("ibx_EPS", width = NULL)
+        )
+      )
+    ),
+    # Model pages: composite valuation status replaces the KPI row
+    conditionalPanel(
+      condition = paste(
+        "input.sidebar_tabs == 'dcf_calculator' ||",
+        "input.sidebar_tabs == 'ddm_calculator' ||",
+        "input.sidebar_tabs == 'pb_calculator' ||",
+        "input.sidebar_tabs == 'ri_calculator' ||",
+        "input.sidebar_tabs == 'nav_calculator'"
       ),
-      column(
-        width = 4,
-        class = "col-xs-12",
-        infoBoxOutput("ibx_marketcap", width = NULL)
-      ),
-      column(
-        width = 4,
-        class = "col-xs-12",
-        infoBoxOutput("ibx_EPS", width = NULL),
-        conditionalPanel(
-          condition = paste(
-            "input.sidebar_tabs == 'dcf_calculator' ||",
-            "input.sidebar_tabs == 'ddm_calculator' ||",
-            "input.sidebar_tabs == 'pb_calculator' ||",
-            "input.sidebar_tabs == 'ri_calculator' ||",
-            "input.sidebar_tabs == 'nav_calculator'"
-          ),
-          class = "ynow-header-years",
-          numericInput(
-            "years", "預測年數 n",
-            value = APP_DEFAULTS$years, min = 1, max = 30
+      fluidRow(
+        class = "ynow-header-status-row",
+        column(
+          width = 9,
+          class = "col-xs-12",
+          uiOutput("main_decision-ui_valuation_status_header")
+        ),
+        column(
+          width = 3,
+          class = "col-xs-12",
+          tags$div(
+            class = "ynow-header-years",
+            numericInput(
+              "years", "預測年數 n",
+              value = APP_DEFAULTS$years, min = 1, max = 30
+            )
           )
         )
       )
@@ -3900,18 +4008,6 @@ ui <- dashboardPage(
     tabItems(
       tabItem(
         tabName = "get_started",
-        fluidRow(
-          column(
-            width = 12,
-            pickerInput(
-              inputId = "industry_choice",
-              label = "Industry Standard",
-              choices = industry_picker_choices(),
-              selected = APP_DEFAULTS$industry_choice,
-              options = list(`live-search` = TRUE, `size` = 12)
-            )
-          )
-        ),
         fluidRow(
           box(
             title = tagList(icon("route"), "Model Selector｜估值模型推薦"),
@@ -4142,7 +4238,22 @@ ui <- dashboardPage(
                      )
               ),
               
-              uiOutput("dashboard_selected_industry"),
+              tags$div(
+                class = "ynow-ind-overview-block",
+                tags$div(
+                  class = "ynow-ind-overview-title",
+                  id = "ynow_ind_overview_title",
+                  "目前產業標準快覽"
+                ),
+                pickerInput(
+                  inputId = "industry_choice",
+                  label = "Industry Standard",
+                  choices = industry_picker_choices(),
+                  selected = APP_DEFAULTS$industry_choice,
+                  options = list(`live-search` = TRUE, `size` = 12)
+                ),
+                uiOutput("dashboard_selected_industry")
+              ),
               .kpi_band_color_legend_ui(),
               
               tabBox(title = "PERFORMANCE",
@@ -4190,7 +4301,7 @@ ui <- dashboardPage(
                            tags$p(
                              class = "ynow-ann-note",
                              tags$b("用途："),
-                             "解讀上方 KPI 色碼如何對照「基礎設定 → Industry Standard」產業區間。",
+                             "解讀上方 KPI 色碼如何對照 Dashboard「目前產業標準快覽」內的 Industry Standard 產業區間。",
                              "數值採年報序列（排除 TTM）的多年平均或年均 YoY，以利跨期／同業比較。"
                            ),
                            tags$p(
@@ -4199,7 +4310,7 @@ ui <- dashboardPage(
                              "多數指標「越高越好」；",
                              tags$b("營運費用比、財務槓桿"), " 為「越低越好」（反向著色）。",
                              "落在產業 ", tags$code("[下限, 上限]"), " 內→黑；越出有利側→藍；不利側→紅（警示）；未設區間／N/A→白。",
-                             " KPI 數字框僅用黑／白／紅／藍。色碼圖例與產業標準快覽見上方 PERFORMANCE 區塊外。"
+                             " KPI 數字框僅用黑／白／紅／藍。色碼圖例與產業標準快覽見上方 PERFORMANCE 區塊外（含 Industry Standard 選單）。"
                            ),
                            tags$h4("KPI 計算與產業區間", class = "ynow-ann-h"),
                            DT::dataTableOutput("annotation_kpi_guide"),

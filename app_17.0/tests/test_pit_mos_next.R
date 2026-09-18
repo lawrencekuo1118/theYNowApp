@@ -1,10 +1,10 @@
 # Unit tests: MOS next-period stats + hist PIT helpers
 app_dir <- if (file.exists("backtest_validation.R")) {
   getwd()
-} else if (file.exists("app_16.0/backtest_validation.R")) {
-  file.path(getwd(), "app_16.0")
+} else if (file.exists("app_17.0/backtest_validation.R")) {
+  file.path(getwd(), "app_17.0")
 } else {
-  stop("Cannot locate app_16.0")
+  stop("Cannot locate app_17.0")
 }
 
 source(file.path(app_dir, "backtest_module.R"), local = FALSE)

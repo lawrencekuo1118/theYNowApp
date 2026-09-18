@@ -27,7 +27,7 @@ print(params[["fcf", "g", "ke", "wacc", "rd", "tax", "justified_pb", "tbvps"]])
 ## Tests (offline)
 
 ```bash
-cd app_16.0
+cd app_17.0
 python tests/test_valuation_pipeline.py
 ```
 

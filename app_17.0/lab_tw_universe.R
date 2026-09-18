@@ -574,7 +574,7 @@ lab_tw_cache_candidates <- function() {
     LAB_TW_CACHE_REL,
     # tests/ 目錄執行時可回退到 app 根目錄的完整宇宙
     file.path(dirname(getwd()), LAB_TW_CACHE_REL),
-    file.path("app_16.0", LAB_TW_CACHE_REL)
+    file.path("app_17.0", LAB_TW_CACHE_REL)
   ))
 }
 

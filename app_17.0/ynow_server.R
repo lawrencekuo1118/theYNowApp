@@ -896,7 +896,13 @@ server <- function(input, output, session) {
       industry_key = input$industry_choice,
       yahoo_text = corp_industry_text(),
       show_chips = TRUE,
-      show_title = TRUE,
+      show_title = FALSE,
+      embedded = TRUE,
+      empty_message = if (identical(tryCatch(ui_locale(), error = function(e) "en"), "en")) {
+        "No comparison industry selected (use Industry Standard above)."
+      } else {
+        "尚未選擇比較產業（請於上方 Industry Standard 選取）。"
+      },
       profile_id = if (nzchar(fp_id)) fp_id else NULL,
       profile_label = if (nzchar(fp_lab)) fp_lab else NULL,
       profile_title = if (nzchar(fp_why)) fp_why else NULL
@@ -10088,7 +10094,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v16.55"),
+      paste0("- **App：** The YNow App v17"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

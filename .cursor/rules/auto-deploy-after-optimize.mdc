@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Auto deploy after development (always)
 
-When **development on the live line** (`app_16.0/`) is **finished and verified** in this session, **always** auto-deploy to shinyapps.io. Do **not** wait for the user to say「部署」or「推送」.
+When **development on the live line** (`app_17.0/`) is **finished and verified** in this session, **always** auto-deploy to shinyapps.io. Do **not** wait for the user to say「部署」or「推送」.
 
 Immediately run the full ship sequence from the **coding clone** (`/Users/lawrencekuo/coding/theYNowApp`):
 
@@ -13,15 +13,15 @@ Immediately run the full ship sequence from the **coding clone** (`/Users/lawren
 2. **Commit** only the relevant app changes (message: why, 1–2 sentences).  
    - This repo’s Git may reject `git commit --trailer`; if so use `write-tree` → `commit-tree` → `update-ref`.
 3. **`git push origin HEAD`**
-4. **Deploy:** `Rscript scripts/deploy_app_16.R`  
+4. **Deploy:** `Rscript scripts/deploy_app_17.R`  
    - Confirm live bundle via rsconnect (`status=running`, new `bundleId`).  
    - If local client dies (disk) but upload succeeded, poll until the new bundle is active before recording baseline.
-5. **Baseline:** update `scripts/DEPLOY_BASELINE.txt` (bundleId, aligned_git/commit/short, message, `captured_at`, display version if noted), commit as `chore: record shinyapps baseline bundle <id> (app_16.0)`, push.
+5. **Baseline:** update `scripts/DEPLOY_BASELINE.txt` (bundleId, aligned_git/commit/short, message, `captured_at`, display version if noted), commit as `chore: record shinyapps baseline bundle <id> (app_17.0)`, push.
 6. Briefly report: app commit, baseline commit, display version, bundleId, live URL.
 
 ## Applies when (default = ship)
 
-- Any completed feature, fix, UI/logic change, optimization, or other **app behavior** work on `app_16.0/` that is verified in-session.
+- Any completed feature, fix, UI/logic change, optimization, or other **app behavior** work on `app_17.0/` that is verified in-session.
 - Explicit「部署／推送」is **not** required once development is complete.
 
 ## Does **not** apply (ask or skip ship)

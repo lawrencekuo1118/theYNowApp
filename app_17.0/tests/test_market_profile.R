@@ -12,7 +12,7 @@ check <- function(label, cond) {
 }
 
 root <- normalizePath("..", mustWork = TRUE)
-# Allow running from app_16.0/tests
+# Allow running from app_17.0/tests
 if (!file.exists(file.path(root, "market_profile.R"))) {
   root <- normalizePath(getwd(), mustWork = TRUE)
 }

@@ -256,7 +256,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     box_bt_params = "Strategy Parameters",
     # --- SGR tab (Basic Setup) ---
     sgr_method_title = "Terminal growth (SGR) method",
+    lifecycle_stage_title = "Lifecycle tier",
+    lifecycle_stage_help = "Override auto-detection; affects the suggested terminal g range.",
+    sgr_manual_help = "Can be estimated from the method above, or overridden manually.",
     sgr_custom_label = "Custom SGR (%)",
+    industry_overview_title = "Current industry standard snapshot",
+    composite_status_prefix = "Composite valuation status: ",
     vbx_sgr_subtitle = "SGR",
     vbx_session_g_subtitle = "Current configured g (near-term)",
     g_stage1_help = paste0(
@@ -693,7 +698,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     box_bt_params = "策略參數設定",
     # --- SGR tab (Basic Setup) ---
     sgr_method_title = "終值永續成長率 (SGR) 評價方法",
+    lifecycle_stage_title = "生命週期檔位",
+    lifecycle_stage_help = "可覆寫自動偵測結果；影響終值 g 建議區間。",
+    sgr_manual_help = "可由上方方法自動估計，亦可手動覆寫。",
     sgr_custom_label = "自訂 SGR (%)",
+    industry_overview_title = "目前產業標準快覽",
+    composite_status_prefix = "綜合估值狀態：",
     vbx_sgr_subtitle = "SGR",
     vbx_session_g_subtitle = "當前設定 g（近期末）",
     g_stage1_help = paste0(

@@ -1,5 +1,5 @@
 # ==========================================
-# app.R — 唯一 Shiny / shinyapps.io 進入點（app_16.0）
+# app.R — 唯一 Shiny / shinyapps.io 進入點（app_17.0）
 # ==========================================
 # 重要：不可與根目錄的 ui.R／server.R 並存。
 # shiny::shinyAppDir() 若偵測到 server.R 會優先走 server.R 模式，
@@ -14,7 +14,7 @@
 setwd(.ynow_app_dir)
 
 # R only auto-reads ~/.Renviron (RStudio also loads a project file locally).
-# shinyapps.io needs an explicit load so bundled app_16.0/.Renviron is visible.
+# shinyapps.io needs an explicit load so bundled app_17.0/.Renviron is visible.
 .ynow_renviron <- file.path(.ynow_app_dir, ".Renviron")
 if (file.exists(.ynow_renviron)) {
   readRenviron(.ynow_renviron)

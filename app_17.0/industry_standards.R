@@ -879,20 +879,27 @@ annotation_stability_df <- function() {
 #' @param profile_id 財報屬性 id（顯示於 Yahoo Sector/Industry 列右側）
 #' @param profile_label 財報屬性顯示名
 #' @param profile_title 財報屬性 hover 說明
+#' @param embedded 若 TRUE，略過外層灰底框（供 Dashboard 外層 overview block 包住）
 industry_standard_snapshot_ui <- function(industry_key,
                                           yahoo_text = NULL,
                                           show_chips = TRUE,
                                           show_title = TRUE,
-                                          empty_message = "尚未選擇比較產業（請至基礎設定 → Industry Standard）",
+                                          empty_message = "尚未選擇比較產業（請於上方 Industry Standard 選取）",
                                           profile_id = NULL,
                                           profile_label = NULL,
-                                          profile_title = NULL) {
+                                          profile_title = NULL,
+                                          embedded = FALSE) {
   key <- as.character(industry_key %||% "")[1]
   if (!nzchar(key) || !(key %in% names(industry_standards))) {
-    return(tags$div(
-      style = "margin: 0 0 12px 0; padding: 10px 12px; background: #f7f7f7; border-left: 4px solid #999; border-radius: 4px;",
+    empty_el <- tags$div(
+      style = if (isTRUE(embedded)) {
+        "margin: 0; padding: 0;"
+      } else {
+        "margin: 0 0 12px 0; padding: 10px 12px; background: #f7f7f7; border-left: 4px solid #999; border-radius: 4px;"
+      },
       tags$span(style = "color:#666; font-size:13px;", empty_message)
-    ))
+    )
+    return(empty_el)
   }
   lab <- industry_label(key)
   if (!nzchar(as.character(lab %||% "")[1])) lab <- key
@@ -950,9 +957,8 @@ industry_standard_snapshot_ui <- function(industry_key,
     NULL
   }
 
-  tags$div(
-    style = "margin: 0 0 12px 0; padding: 12px 14px; background: #f5f5f5; border-left: 4px solid #222222; border-radius: 4px;",
-    if (isTRUE(show_title)) {
+  body <- tagList(
+    if (isTRUE(show_title) && !isTRUE(embedded)) {
       tags$div(
         style = "font-size: 13px; font-weight: 700; color: #222222; margin-bottom: 6px;",
         "目前產業標準快覽"
@@ -991,6 +997,15 @@ industry_standard_snapshot_ui <- function(industry_key,
         chips
       )
     }
+  )
+
+  if (isTRUE(embedded)) {
+    return(tags$div(style = "margin: 0;", body))
+  }
+
+  tags$div(
+    style = "margin: 0 0 12px 0; padding: 12px 14px; background: #f5f5f5; border-left: 4px solid #222222; border-radius: 4px;",
+    body
   )
 }
 

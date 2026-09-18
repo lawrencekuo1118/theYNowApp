@@ -37,7 +37,7 @@ When unsure: use the **English term** + brief Taiwan Chinese gloss on first ment
 - HFV wording must stay a **veto tool**, never a bullish / buy signal.
 
 
-- Live app line: **`app_16.0/`** (see `scripts/DEPLOY_BASELINE.txt` for deployed baseline).
+- Live app line: **`app_17.0/`** (see `scripts/DEPLOY_BASELINE.txt` for deployed baseline).
 - Prefer existing labels in `ynow_ui.R` / module UI before inventing new terms.
 - CapEx spike smoothing UI: **暴衝倍數閾值**、**均值年數**、**週期**（勿用「周期」）。
 
@@ -46,20 +46,20 @@ When unsure: use the **English term** + brief Taiwan Chinese gloss on first ment
 **每次特定功能開發完成後**，自動補齊雙語，勿等使用者再說「翻譯」：
 
 1. 新 UI 文案同時提供 **en-US** 與 **zh-TW**（台灣繁體；勿用簡體／港式）。
-2. 字串必須進 `app_16.0/ui_locale.R` 的 `.UI_STRINGS$en` / `.UI_STRINGS$zh-TW`（同一 key），再經 `ui_str`、`.push_ui_locale`、市場→locale 推送，以及前端 `applyUiLocale` / `ynowUiLocale` 套用。
+2. 字串必須進 `app_17.0/ui_locale.R` 的 `.UI_STRINGS$en` / `.UI_STRINGS$zh-TW`（同一 key），再經 `ui_str`、`.push_ui_locale`、市場→locale 推送，以及前端 `applyUiLocale` / `ynowUiLocale` 套用。
 3. **禁止**只硬編碼單一語言；僅財經專有名詞維持正式英文（WACC、FCFF、MOS…）可例外。詳見 `.cursor/rules/i18n-after-feature.mdc`。
 
 ## Testing
 
-- Run targeted tests under `app_16.0/tests/` when changing valuation or FCF logic.
+- Run targeted tests under `app_17.0/tests/` when changing valuation or FCF logic.
 - Non-trivial UI changes: manual/browser verification when the environment supports it.
 
 ## Git & deploy
 
 See `.cursor/rules/auto-deploy-after-optimize.mdc` and `.cursor/rules/dual-workspace-sync.mdc` for ship workflow and workspace sync.
 
-**Auto deploy：** 每次在活動線 `app_16.0/` **完成開發並驗證後**，一律自動 commit → push → `Rscript scripts/deploy_app_16.R` → 更新 `DEPLOY_BASELINE.txt`，無需等候使用者再說「部署／推送」。僅文件／規則／未完成 WIP 或使用者明確要求不部署時略過。
+**Auto deploy：** 每次在活動線 `app_17.0/` **完成開發並驗證後**，一律自動 commit → push → `Rscript scripts/deploy_app_17.R` → 更新 `DEPLOY_BASELINE.txt`，無需等候使用者再說「部署／推送」。僅文件／規則／未完成 WIP 或使用者明確要求不部署時略過。
 
 **i18n before ship：** 功能收尾時先完成 en-US + zh-TW（`ui_locale.R` + locale push）。**僅規則／AGENTS／文件**變更 → commit + push，**不** shinyapps 部署、**不**版號 +0.01。
 
-**Version bump：** 每次 merge／ship 將 UI／header 等顯示版號 **+0.01**（如 `v15.01`、`v15.02`）；目錄可維持 `app_16.0/`，僅在使用者要求整階 **+1** 時才改名。詳見 `.cursor/rules/version-bump-on-merge.mdc`。
+**Version bump：** 每次 merge／ship 將 UI／header 等顯示版號 **+0.01**（如 `v15.01`、`v15.02`）；目錄可維持 `app_17.0/`，僅在使用者要求整階 **+1** 時才改名。詳見 `.cursor/rules/version-bump-on-merge.mdc`。

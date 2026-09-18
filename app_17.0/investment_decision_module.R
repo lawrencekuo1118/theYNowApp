@@ -434,5 +434,75 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
         "</div>"
       ))
     })
+
+    # Compact status for model-page header row (replaces Previous Close / Market Cap / EPS)
+    output$ui_valuation_status_header <- renderUI({
+      root <- tryCatch(session$rootScope(), error = function(e) session)
+      loc_pick <- tryCatch(root$input$ui_locale_pick, error = function(e) NULL)
+      is_en <- identical(as.character(loc_pick %||% "en")[1], "en")
+
+      prefix <- if (is_en) "Composite valuation status: " else "綜合估值狀態："
+      waiting <- if (is_en) "Waiting for market data…" else "正在等待市場資料…"
+      waiting_val <- if (is_en) "Waiting for valuation…" else "等待估值結果…"
+      fair <- if (is_en) "Fair value range" else "合理區間"
+      undervalued <- if (is_en) "Undervalued (vs Base)" else "低估（相對 Base）"
+      overvalued <- if (is_en) "Overvalued (vs Base)" else "高估（相對 Base）"
+
+      pv <- primary_values()
+      p_curr <- .pick_num(current_price())
+      if (is.na(p_curr)) {
+        return(tags$div(
+          class = "ynow-val-status-header",
+          style = "border-top: 3px solid #999;",
+          tags$h4(
+            tags$i(class = "fa fa-balance-scale"),
+            " ",
+            tags$span(id = "ynow_val_status_prefix", prefix),
+            tags$span(style = "color:#888;", waiting)
+          )
+        ))
+      }
+
+      base <- pv$base
+      if (is.na(base)) {
+        p_dcf <- .pick_num(tryCatch(intrinsic_val_dcf(), error = function(e) NA))
+        p_ddm <- .pick_num(tryCatch(intrinsic_val_ddm(), error = function(e) NA))
+        p_pb  <- .pick_num(tryCatch(intrinsic_val_pb(), error = function(e) NA))
+        base <- if (!is.na(p_dcf)) p_dcf else if (!is.na(p_pb)) p_pb else p_ddm
+      }
+      if (is.na(base)) {
+        return(tags$div(
+          class = "ynow-val-status-header",
+          style = "border-top: 3px solid #999;",
+          tags$h4(
+            tags$i(class = "fa fa-balance-scale"),
+            " ",
+            tags$span(id = "ynow_val_status_prefix", prefix),
+            tags$span(style = "color:#888;", waiting_val)
+          )
+        ))
+      }
+
+      status_text <- fair
+      status_color <- "#f39c12"
+      if (p_curr < base * 0.8) {
+        status_text <- undervalued
+        status_color <- "#00a65a"
+      } else if (p_curr > base * 1.2) {
+        status_text <- overvalued
+        status_color <- "#d9534f"
+      }
+
+      tags$div(
+        class = "ynow-val-status-header",
+        style = paste0("border-top: 3px solid ", status_color, ";"),
+        tags$h4(
+          tags$i(class = "fa fa-balance-scale"),
+          " ",
+          tags$span(id = "ynow_val_status_prefix", prefix),
+          tags$span(style = paste0("color:", status_color, ";"), status_text)
+        )
+      )
+    })
   })
 }
