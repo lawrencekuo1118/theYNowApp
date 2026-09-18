@@ -779,7 +779,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v16.52</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v16.53</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -2288,6 +2288,8 @@ ui <- dashboardPage(
             if (clusterK && s.lab_cluster_k_label) clusterK.textContent = s.lab_cluster_k_label;
             var clusterMaxN = document.getElementById('ynow_lab_cluster_max_n_label');
             if (clusterMaxN && s.lab_cluster_max_n_label) clusterMaxN.textContent = s.lab_cluster_max_n_label;
+            var clusterMaxNCustom = document.getElementById('ynow_lab_cluster_max_n_custom_label');
+            if (clusterMaxNCustom && s.lab_cluster_max_n_custom_label) clusterMaxNCustom.textContent = s.lab_cluster_max_n_custom_label;
             var clusterX = document.getElementById('ynow_lab_cluster_x_label');
             if (clusterX && s.lab_cluster_x_label) clusterX.textContent = s.lab_cluster_x_label;
             var clusterY = document.getElementById('ynow_lab_cluster_y_label');
@@ -4728,15 +4730,7 @@ ui <- dashboardPage(
                 selectInput(
                   "lab_im_max_n",
                   tags$span(id = "ynow_lab_im_max_n_label", "評估檔數（明細列數）"),
-                  choices = c(
-                    "25 檔" = "25",
-                    "50 檔" = "50",
-                    "100 檔" = "100",
-                    "200 檔" = "200",
-                    "500 檔" = "500",
-                    "全部" = "all",
-                    "自訂…" = "custom"
-                  ),
+                  choices = lab_im_max_n_select_choices(),
                   selected = "100",
                   width = "280px"
                 ),
@@ -4804,9 +4798,21 @@ ui <- dashboardPage(
                 selectInput(
                   "lab_cluster_max_n",
                   tags$span(id = "ynow_lab_cluster_max_n_label", "宇宙檔數（N）"),
-                  choices = c("25" = "25", "40" = "40", "50" = "50", "75" = "75", "100" = "100"),
-                  selected = "25",
+                  choices = lab_im_max_n_select_choices(),
+                  selected = "100",
                   width = "100%"
+                ),
+                conditionalPanel(
+                  condition = "input.lab_cluster_max_n == 'custom'",
+                  numericInput(
+                    "lab_cluster_max_n_custom",
+                    tags$span(id = "ynow_lab_cluster_max_n_custom_label", "自訂檔數"),
+                    value = 100,
+                    min = 1,
+                    max = 500,
+                    step = 1,
+                    width = "100%"
+                  )
                 )
               ),
               column(
@@ -4875,7 +4881,8 @@ ui <- dashboardPage(
               style = "color:#888; font-size:12px;",
               paste0(
                 "沿用「排行」頁目前的產業／模型篩選（若有）。",
-                "對最多 N 檔（市值由大到小）抓取 Yahoo 比率特徵。預設 N＝40。"
+                "對最多 N 檔（市值由大到小）抓取 Yahoo 比率特徵。",
+                "N 與「明細」評估檔數同步（預設 100）。"
               )
             ),
             fluidRow(

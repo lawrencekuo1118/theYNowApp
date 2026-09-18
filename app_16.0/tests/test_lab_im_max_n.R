@@ -50,6 +50,12 @@ check(
   identical(lab_resolve_im_max_n_label("custom", 42), "42")
 )
 
+ch <- lab_im_max_n_select_choices()
+check(
+  "shared N choice values",
+  identical(unname(ch), c("25", "50", "100", "200", "500", "all", "custom"))
+)
+
 pool <- data.frame(
   ticker = c("AAA", "BBB", "CCC", "DDD"),
   market_cap = c(100, 400, 200, 50),

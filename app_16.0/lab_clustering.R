@@ -280,7 +280,7 @@ lab_cluster_build_pool <- function(catalog, industry_filter = NULL, method_filte
   )
   pool <- lab_dedupe_eval_pool(pool)
   if (is.null(pool) || nrow(pool) == 0L) return(empty)
-  max_n <- lab_resolve_im_max_n(max_n, custom = NULL, lo = 5L, hi = 100L)
+  max_n <- lab_resolve_im_max_n(max_n, custom = NULL, lo = 1L, hi = 500L)
   if (is.finite(max_n) && nrow(pool) > max_n) {
     pool <- lab_attach_market_caps(pool)
   }
@@ -531,6 +531,21 @@ lab_cluster_has_result <- function(res) {
     !is.null(res$data) &&
     is.data.frame(res$data) &&
     nrow(res$data) > 0L
+}
+
+#' Round numeric columns in Cluster assignments table to 2 decimal places
+#' (Cluster_ID and non-numeric identity columns left unchanged).
+lab_cluster_format_assignments_df <- function(df) {
+  if (is.null(df) || !is.data.frame(df) || !ncol(df)) return(df)
+  out <- df
+  skip <- c("ticker", "name", "Cluster_ID", "Cluster_Label", "industry_key", "industry_label")
+  for (nm in names(out)) {
+    if (nm %in% skip) next
+    if (is.numeric(out[[nm]])) {
+      out[[nm]] <- round(as.numeric(out[[nm]]), 2)
+    }
+  }
+  out
 }
 
 #' Idle placeholder HTML (used when lab_cluster_result is NULL so Plotly/DT are destroyed).

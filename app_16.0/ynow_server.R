@@ -9534,6 +9534,49 @@ server <- function(input, output, session) {
   # ------------------------------------------
   # Lab：基本面 K-Means 分群（研究用；非買進訊號）
   # ------------------------------------------
+  # Detail Evaluation count ↔ Clustering Universe size (shared choice set)
+  .lab_max_n_syncing <- reactiveVal(FALSE)
+
+  observeEvent(input$lab_im_max_n, {
+    if (isTRUE(.lab_max_n_syncing())) return()
+    new <- as.character(input$lab_im_max_n %||% "100")[1]
+    cur <- as.character(input$lab_cluster_max_n %||% "")[1]
+    if (identical(cur, new)) return()
+    .lab_max_n_syncing(TRUE)
+    on.exit(.lab_max_n_syncing(FALSE), add = TRUE)
+    updateSelectInput(session, "lab_cluster_max_n", selected = new)
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$lab_cluster_max_n, {
+    if (isTRUE(.lab_max_n_syncing())) return()
+    new <- as.character(input$lab_cluster_max_n %||% "100")[1]
+    cur <- as.character(input$lab_im_max_n %||% "")[1]
+    if (identical(cur, new)) return()
+    .lab_max_n_syncing(TRUE)
+    on.exit(.lab_max_n_syncing(FALSE), add = TRUE)
+    updateSelectInput(session, "lab_im_max_n", selected = new)
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$lab_im_max_n_custom, {
+    if (isTRUE(.lab_max_n_syncing())) return()
+    new <- suppressWarnings(as.numeric(input$lab_im_max_n_custom)[1])
+    cur <- suppressWarnings(as.numeric(input$lab_cluster_max_n_custom)[1])
+    if (!is.finite(new) || (is.finite(cur) && identical(as.integer(cur), as.integer(new)))) return()
+    .lab_max_n_syncing(TRUE)
+    on.exit(.lab_max_n_syncing(FALSE), add = TRUE)
+    updateNumericInput(session, "lab_cluster_max_n_custom", value = as.integer(new))
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$lab_cluster_max_n_custom, {
+    if (isTRUE(.lab_max_n_syncing())) return()
+    new <- suppressWarnings(as.numeric(input$lab_cluster_max_n_custom)[1])
+    cur <- suppressWarnings(as.numeric(input$lab_im_max_n_custom)[1])
+    if (!is.finite(new) || (is.finite(cur) && identical(as.integer(cur), as.integer(new)))) return()
+    .lab_max_n_syncing(TRUE)
+    on.exit(.lab_max_n_syncing(FALSE), add = TRUE)
+    updateNumericInput(session, "lab_im_max_n_custom", value = as.integer(new))
+  }, ignoreInit = TRUE)
+
   # Plotly/DT htmlwidgets keep the last figure when validate() fails or when
   # renderPlotly returns plotly_empty — destroy outputs via renderUI instead.
   .lab_cluster_idle_msg <- function(kind = c("map", "radar", "table", "focus")) {
@@ -9556,9 +9599,12 @@ server <- function(input, output, session) {
     k <- suppressWarnings(as.integer(input$lab_cluster_k %||% 4L)[1])
     if (!is.finite(k)) k <- 4L
     k <- max(2L, min(8L, k))
-    max_n <- suppressWarnings(as.integer(input$lab_cluster_max_n %||% 40L)[1])
-    if (!is.finite(max_n)) max_n <- 40L
-    max_n <- max(5L, min(100L, max_n))
+    max_n <- lab_resolve_im_max_n(
+      input$lab_cluster_max_n,
+      input$lab_cluster_max_n_custom,
+      lo = 1L,
+      hi = 500L
+    )
 
     result <- withProgress(
       message = if (identical(normalize_ui_locale(loc), "zh-TW")) {
@@ -9699,12 +9745,17 @@ server <- function(input, output, session) {
       ),
       names(df)
     )
-    out <- df[, cols, drop = FALSE]
-    DT::datatable(
+    out <- lab_cluster_format_assignments_df(df[, cols, drop = FALSE])
+    num_cols <- names(out)[vapply(out, is.numeric, logical(1)) & names(out) != "Cluster_ID"]
+    dt <- DT::datatable(
       out,
       rownames = FALSE,
       options = list(pageLength = 25, scrollX = TRUE, order = list(list(2, "asc")))
     )
+    if (length(num_cols)) {
+      dt <- DT::formatRound(dt, columns = num_cols, digits = 2)
+    }
+    dt
   })
 
   # 沿用主頁 Ticker / Stock Code：優先用已搜尋的代碼，否則用主頁輸入框
@@ -9971,7 +10022,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v16.52"),
+      paste0("- **App：** The YNow App v16.53"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

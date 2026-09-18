@@ -190,6 +190,19 @@ lab_clamp_im_max_n <- function(x, default = 100L, lo = 1L, hi = NULL) {
   as.integer(n)
 }
 
+#' Shared Evaluation count / Universe size (N) choices for Detail + Clustering
+lab_im_max_n_select_choices <- function() {
+  c(
+    "25 檔" = "25",
+    "50 檔" = "50",
+    "100 檔" = "100",
+    "200 檔" = "200",
+    "500 檔" = "500",
+    "全部" = "all",
+    "自訂…" = "custom"
+  )
+}
+
 #' Resolve select + optional custom numeric into clampable max_n
 lab_resolve_im_max_n <- function(sel, custom = NULL, lo = 1L, hi = 500L) {
   s <- if (is.null(sel) || !length(sel)) "" else trimws(as.character(sel)[1])

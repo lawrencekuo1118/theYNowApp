@@ -423,6 +423,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     lab_cluster_k_label = "Clusters (k)",
     lab_cluster_max_n_label = "Universe size (N)",
+    lab_cluster_max_n_custom_label = "Custom count",
     lab_cluster_x_label = "Scatter X",
     lab_cluster_y_label = "Scatter Y",
     lab_cluster_focus_label = "Radar focus ticker",
@@ -430,7 +431,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_cluster_hint = paste0(
       "Uses the same industry/model filters as Rankings when set. ",
       "Fetches Yahoo ratios for up to N names (largest market cap first). ",
-      "Default N=40 keeps runtime practical on shinyapps."
+      "N stays in sync with Detail evaluation count (default 100)."
     ),
     lab_cluster_map_title = "Cluster map",
     lab_cluster_radar_title = "Same-cluster radar",
@@ -834,6 +835,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     lab_cluster_k_label = "群數（k）",
     lab_cluster_max_n_label = "宇宙檔數（N）",
+    lab_cluster_max_n_custom_label = "自訂檔數",
     lab_cluster_x_label = "散點 X",
     lab_cluster_y_label = "散點 Y",
     lab_cluster_focus_label = "雷達焦點代號",
@@ -841,7 +843,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_cluster_hint = paste0(
       "沿用「排行」頁目前的產業／模型篩選（若有）。",
       "對最多 N 檔（市值由大到小）抓取 Yahoo 比率特徵。",
-      "預設 N＝40，以利 shinyapps 可接受的執行時間。"
+      "N 與「明細」評估檔數同步（預設 100）。"
     ),
     lab_cluster_map_title = "分群星團圖",
     lab_cluster_radar_title = "同群雷達圖",

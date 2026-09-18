@@ -53,4 +53,18 @@ stopifnot(identical(lab_cluster_panel_mode(sim), "live"))
 sim <- NULL
 stopifnot(identical(lab_cluster_panel_mode(sim), "idle"))
 
+# Cluster assignments: numeric columns → 2 decimal places
+fmt <- lab_cluster_format_assignments_df(res$data)
+stopifnot(is.integer(fmt$Cluster_ID) || all(fmt$Cluster_ID == as.integer(fmt$Cluster_ID)))
+for (nm in intersect(LAB_CLUSTER_FEATURES, names(fmt))) {
+  vals <- fmt[[nm]][is.finite(fmt[[nm]])]
+  if (length(vals)) {
+    stopifnot(all(abs(vals - round(vals, 2)) < 1e-9))
+  }
+}
+if ("market_cap" %in% names(fmt)) {
+  vals <- fmt$market_cap[is.finite(fmt$market_cap)]
+  if (length(vals)) stopifnot(all(abs(vals - round(vals, 2)) < 1e-9))
+}
+
 cat("PASS lab_clustering\n")
