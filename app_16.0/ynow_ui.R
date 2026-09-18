@@ -768,7 +768,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v16.42</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v16.43</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -3836,8 +3836,7 @@ ui <- dashboardPage(
                      tabPanel("Finance Summary",
                               p("This section imports Finance Summaries from Yahoo Finance",
                                 style = "margin-bottom: 12px; color: #666; font-size: 13px;"),
-                              uiOutput("fs_summary_ui"),
-                              downloadButton('FS_download', "Download Finance Summary")
+                              uiOutput("fs_summary_ui")
                      ),
                      
                      tabPanel(
@@ -4404,8 +4403,7 @@ ui <- dashboardPage(
                                     style = "margin:0 0 8px 0;color:#666;font-size:12px;",
                                     "WACC = We×rₑ + Wd×rᵈ×(1−T)。rᵈ 可由下方「估算 rᵈ」以利息費用／有息負債推估（稅前），再於此套用稅盾。"
                                   ),
-                                  actionButton("calc_wacc", "計算 WACC", class = "btn-primary"),
-                                  tags$br(), htmlOutput("wacc_result")
+                                  actionButton("calc_wacc", "計算 WACC", class = "btn-primary")
                                 )
                               ),
                               fluidRow(

@@ -932,12 +932,6 @@ server <- function(input, output, session) {
     )
   })
 
-  # 保留表格輸出供下載／相容（不在 UI 顯示）
-  output$tbFinanceSummary <- renderDataTable({
-    req(summary_data())
-    datatable(summary_data(), options = list(pageLength = 20, dom = 't', scrollX = TRUE), rownames = TRUE)
-  })
-  
   # ==========================================
   # 📑 2. 三大財報資料分發與顯示
   # ==========================================
@@ -3021,9 +3015,6 @@ server <- function(input, output, session) {
   
   # 財報警訊已併入 YNOW 分頁 Schilit 自動判讀（decision_server$shenanigans_panel）
 
-  # Annotation 產業快覽已併入 dashboard_selected_industry；此處保留空輸出以免舊引用
-  output$annotation_industry_bands <- renderUI({ NULL })
-
   output$annotation_kpi_guide <- DT::renderDataTable({
     key <- as.character(input$industry_choice %||% "")[1]
     df <- annotation_kpi_guide_df(key)
@@ -3582,17 +3573,7 @@ server <- function(input, output, session) {
     }
   })
 
-  .apply_rolling_beta_to_capm <- function(silent = FALSE) {
-    # 已排除：Rolling β 含市場情緒／短窗噪音，不得寫入 CAPM／Ke／WACC
-    if (!isTRUE(silent)) {
-      showNotification(
-        "Rolling β 只供對照，不能寫入 CAPM。請改用 Bottom-Up (βᵤ→βe)。",
-        type = "warning", duration = 8
-      )
-    }
-    invisible(FALSE)
-  }
-  observeEvent(input$apply_beta_est, { .apply_rolling_beta_to_capm(silent = FALSE) }, ignoreNULL = TRUE)
+  # Rolling β 不得寫入 CAPM／Ke／WACC（含市場情緒／短窗噪音）
 
   # 搜尋新標的後清掉舊估計（避免套用他股 β）
   observeEvent(current_ticker(), {
@@ -4400,66 +4381,6 @@ server <- function(input, output, session) {
     ))
   }
 
-  output$beta_decision_tree_panel <- renderUI({
-    rec <- .beta_decision_recommend()
-    color <- if (isTRUE(rec$ready)) "#1f6f5b" else "#9a5b00"
-    bg <- if (isTRUE(rec$ready)) "#e8f6f1" else "#fff7e8"
-    tags$div(
-      style = paste0(
-        "padding:12px 14px;border-left:4px solid ", color,
-        ";background:", bg, ";font-size:13px;line-height:1.55;"
-      ),
-      tags$div(tags$b(rec$title)),
-      tags$div(style = "margin-top:6px;", rec$rationale),
-      tags$div(
-        style = "margin-top:6px;color:#555;",
-        tags$span("決策節點："),
-        if (identical(rec$source, "summary")) {
-          "內在價值 → Summary β（預設）"
-        } else if (identical(rec$source, "industry")) {
-          "內在價值 → 產業預設 β"
-        } else if (identical(rec$source, "bottomup")) {
-          "內在價值 → 自選公司平均 Bottom-Up βᵤ"
-        } else if (identical(rec$source, "unlever_firm")) {
-          "內在價值 → 去槓桿化 βᵤ（Hamada）"
-        } else {
-          "內在價值 → 待 Summary／產業／Bottom-Up／手動（Rolling 禁用）"
-        }
-      ),
-      tags$div(style = "margin-top:6px;", tags$i(rec$next_steps))
-    )
-  })
-
-  observeEvent(input$apply_beta_decision_tree, {
-    rec <- .beta_decision_recommend()
-    src <- as.character(rec$source %||% "")[1]
-    if (!nzchar(src)) {
-      showNotification("決策樹尚無可用建議來源。", type = "warning", duration = 6)
-      return()
-    }
-    # 估值且建議 Bottom-Up 但未算完：提示先算
-    if (identical(src, "bottomup") && !isTRUE(rec$ready)) {
-      showNotification(rec$next_steps %||% "請先計算 Bottom-Up βᵤ。", type = "warning", duration = 8)
-      updateRadioButtons(session, "beta_u_apply_source", selected = "bottomup")
-      return()
-    }
-    if (identical(src, "rolling")) {
-      showNotification("Rolling 估計不可寫入 CAPM，改建議 Summary／產業／Bottom-Up／去槓桿化來源。", type = "warning", duration = 7)
-      src <- "summary"
-    }
-    cur <- as.character(input$beta_u_apply_source %||% "")[1]
-    if (!identical(cur, src)) {
-      updateRadioButtons(session, "beta_u_apply_source", selected = src)
-      # radio observer 會同步 CAPM
-    } else {
-      .apply_selected_beta_u_to_capm(silent = FALSE, force = TRUE)
-    }
-    showNotification(
-      glue::glue("已依決策樹選擇「{rec$title}」。"),
-      type = "message", duration = 6
-    )
-  })
-
   # 用途固定為估值／去情緒；不再提供監控→Rolling 寫入 CAPM 的切換
   observeEvent(input$beta_purpose, {
     # hidden fixed input; keep CAPM on recommended source
@@ -4779,45 +4700,6 @@ server <- function(input, output, session) {
     }
     if (isTRUE(changed)) {
       run_calc_trigger(isolate(run_calc_trigger()) + 1)
-    }
-  })
-  output$g_result <- renderUI({
-    method <- estimated_g_meta$method
-    fund_res <- estimated_g_meta$fund_res
-    if (is.null(method)) return(NULL)
-    
-    if (method == "fundamental" && !is.null(fund_res)) {
-      hit_ceiling_raw <- fund_res$raw_g > 25
-      
-      ceiling_status_msg <- if (hit_ceiling_raw && fund_res$ceiling_applied) {
-        glue::glue("<div style='color: #d9534f; margin-top: 5px; font-weight: bold;'>原始成長率過高，已啟動防呆強制封頂。(實際輸出至模型: 25.00 %)</div>")
-      } else if (hit_ceiling_raw && !fund_res$ceiling_applied) {
-        glue::glue("<div style='color: #8e44ad; margin-top: 5px; font-weight: bold; padding: 5px; border: 1px solid #8e44ad; background: #f4ecf7;'>警告：已解除天花板！將使用極端成長率進行估值 (實際輸出至模型: {fund_res$g} %)</div>")
-      } else {
-        glue::glue("<div style='color: #00a65a; margin-top: 5px; font-weight: bold;'>成長率處於合理範圍內 (實際輸出至模型: {fund_res$g} %)</div>")
-      }
-      
-      HTML(glue::glue(
-        "<div style='padding: 12px; background-color: #fdfaf6; border-left: 4px solid #d35400; font-size: 13px;'>
-           <b>學理推估 (Fundamental) 拆解：</b><br/>
-           <span style='color: #555;'>公式：投資報酬率 (ROIC) × 再投資率 (RR)</span><br/>
-           <span style='color: #1a1a1a; font-weight: bold;'>
-             {round(fund_res$roic * 100, 2)} % × {round(fund_res$rr * 100, 2)} % = {fund_res$raw_g} %
-           </span><br/>
-           {ceiling_status_msg}
-         </div>"
-      ))
-    } else if (method %in% c("cagr", "mean", "median", "last_year")) {
-      src <- estimated_g_meta$source %||% "營收"
-      cf_tag <- dcf_cf_tag(input$dcf_claim %||% "fcff")
-      HTML(glue::glue(
-        "<div style='padding: 10px; border-left: 4px solid #222222; font-size: 13px; color: #555;'>
-           以<strong>營收</strong>歷史計算近中期成長（{src}），再驅動營收→{cf_tag} 預測。
-           已套用 −5%～25% 防呆，避免把單年暴衝／暴跌寫進模型。
-         </div>"
-      ))
-    } else {
-      NULL
     }
   })
   
@@ -5590,24 +5472,6 @@ server <- function(input, output, session) {
       )
   })
   
-  output$dft_fcf_plot <- renderPlot({
-    session_currency()
-    df <- fcf_results$df_fcf()
-    if (is.null(df) || nrow(df) == 0) { plot.new(); text(0.5, 0.5, "⏳ 等待財報資料匯入...", cex = 1.4); return() }
-    fcff_vals <- extract_fcff_series(df)
-    plot_df <- data.frame(Year = df$Year, FCFF = fcff_vals, stringsAsFactors = FALSE)
-    plot_df <- plot_df[!is.na(plot_df$FCFF), ]
-    if (nrow(plot_df) == 0) { plot.new(); text(0.5, 0.5, "⏳ 等待財報資料匯入...", cex = 1.4); return() }
-    
-    ggplot(plot_df, aes(x = Year, y = FCFF, group = 1)) + 
-      geom_line(linewidth = 1.2, color = "steelblue") + 
-      geom_point(aes(color = FCFF < 0), size = 3) +
-      scale_color_manual(values = c("TRUE" = "red", "FALSE" = "steelblue"), guide = "none") +
-      scale_y_continuous(labels = label_chart_number(prefix = money_prefix())) +
-      theme_minimal(base_size = 14) +
-      labs(title = "FCFF 預測即時預覽", x = "預測期", y = paste0("FCFF (", money_label(), ")")) + theme(legend.position = "top")
-  })
-  
   # ==========================================
   # 💰 8. DCF 計算核心與企業估值 (對接 FCFF 預測序列)
   # ==========================================
@@ -5858,27 +5722,6 @@ server <- function(input, output, session) {
   # ==========================================
   # 渲染估值結果與 InfoBox
   # ==========================================
-  output$vtxt_dcf_results <- renderText({
-    ev_val <- dcf_value_result()
-    stock_val <- stock_price_estimate_val()
-    claim <- as.character(input$dcf_claim %||% "fcff")[1]
-    
-    if (length(ev_val) == 0 || is.na(ev_val)) {
-      return(paste0("⚠️ ", ui_str("dcf_idle_hint", isolate(ui_locale()))))
-    }
-    
-    msg <- if (identical(claim, "fcfe")) {
-      glue::glue("股權現金流現值 (PV of FCFE)：${round(ev_val, 2)}")
-    } else {
-      glue::glue("企業總價值 (EV)：${round(ev_val, 2)}")
-    }
-    
-    if (length(stock_val) > 0 && !is.na(stock_val)) {
-      msg <- glue::glue("{msg}\n 最終每股合理價：{money_prefix()}{round(stock_val, 2)}")
-    }
-    return(msg)
-  })
-  
   output$ibx_stock_value_dcf <- renderInfoBox({ 
     infoBox("每股估值（DCF）", 
             if(is.null(stock_price_estimate_val())) "N/A" else paste0(money_prefix(), round(stock_price_estimate_val(), 2)), 
@@ -9636,7 +9479,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v16.42"),
+      paste0("- **App：** The YNow App v16.43"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {
