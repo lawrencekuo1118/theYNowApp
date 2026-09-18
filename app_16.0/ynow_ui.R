@@ -779,7 +779,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v16.46</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v16.47</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -2276,6 +2276,30 @@ ui <- dashboardPage(
             if (labLbInd && s.lab_im_lb_industry_label) labLbInd.textContent = s.lab_im_lb_industry_label;
             var labLbHelp = document.getElementById('ynow_lab_im_lb_scope_help');
             if (labLbHelp && s.lab_im_lb_scope_help) labLbHelp.textContent = s.lab_im_lb_scope_help;
+            var clusterBlurb = document.getElementById('ynow_lab_cluster_blurb');
+            if (clusterBlurb && s.lab_cluster_blurb) clusterBlurb.textContent = s.lab_cluster_blurb;
+            var clusterDisc = document.getElementById('ynow_lab_cluster_disclaimer');
+            if (clusterDisc && s.lab_cluster_disclaimer) clusterDisc.textContent = s.lab_cluster_disclaimer;
+            var clusterHint = document.getElementById('ynow_lab_cluster_hint');
+            if (clusterHint && s.lab_cluster_hint) clusterHint.textContent = s.lab_cluster_hint;
+            var clusterK = document.getElementById('ynow_lab_cluster_k_label');
+            if (clusterK && s.lab_cluster_k_label) clusterK.textContent = s.lab_cluster_k_label;
+            var clusterMaxN = document.getElementById('ynow_lab_cluster_max_n_label');
+            if (clusterMaxN && s.lab_cluster_max_n_label) clusterMaxN.textContent = s.lab_cluster_max_n_label;
+            var clusterX = document.getElementById('ynow_lab_cluster_x_label');
+            if (clusterX && s.lab_cluster_x_label) clusterX.textContent = s.lab_cluster_x_label;
+            var clusterY = document.getElementById('ynow_lab_cluster_y_label');
+            if (clusterY && s.lab_cluster_y_label) clusterY.textContent = s.lab_cluster_y_label;
+            var clusterFocus = document.getElementById('ynow_lab_cluster_focus_label');
+            if (clusterFocus && s.lab_cluster_focus_label) clusterFocus.textContent = s.lab_cluster_focus_label;
+            var clusterRun = document.getElementById('ynow_lab_cluster_run_label');
+            if (clusterRun && s.btn_lab_cluster_run) clusterRun.textContent = s.btn_lab_cluster_run;
+            var clusterMap = document.getElementById('ynow_lab_cluster_map_title');
+            if (clusterMap && s.lab_cluster_map_title) clusterMap.textContent = s.lab_cluster_map_title;
+            var clusterRadar = document.getElementById('ynow_lab_cluster_radar_title');
+            if (clusterRadar && s.lab_cluster_radar_title) clusterRadar.textContent = s.lab_cluster_radar_title;
+            var clusterTable = document.getElementById('ynow_lab_cluster_table_title');
+            if (clusterTable && s.lab_cluster_table_title) clusterTable.textContent = s.lab_cluster_table_title;
             document.documentElement.setAttribute('lang', (payload && payload.locale) || 'en');
             var mkt = (payload && payload.market) ? String(payload.market) : 'US';
             document.body.classList.toggle('ynow-market-tw', mkt === 'TW');
@@ -4745,7 +4769,136 @@ ui <- dashboardPage(
                 DT::dataTableOutput("lab_im_table") %>% shinycssloaders::withSpinner()
               )
             )
-          )        )
+          ),
+
+          tabPanel(
+            title = "分群",
+            value = "im_cluster",
+            icon = icon("project-diagram"),
+            tags$p(
+              id = "ynow_lab_cluster_blurb",
+              paste0(
+                "研究用分群 Lab：僅以比率／成長率做 K-Means（不把金額放入模型），",
+                "降低公司規模對距離的干擾。語意標籤為描述性啟發式，非買進／賣出訊號。"
+              )
+            ),
+            tags$p(
+              id = "ynow_lab_cluster_disclaimer",
+              style = "color:#a94442; font-size:12px; margin-top:-6px;",
+              "僅供研究／教育，非投資建議，亦非買進訊號。"
+            ),
+            tags$hr(),
+            fluidRow(
+              column(
+                width = 3,
+                numericInput(
+                  "lab_cluster_k",
+                  tags$span(id = "ynow_lab_cluster_k_label", "群數（k）"),
+                  value = 4, min = 2, max = 8, step = 1, width = "100%"
+                )
+              ),
+              column(
+                width = 3,
+                selectInput(
+                  "lab_cluster_max_n",
+                  tags$span(id = "ynow_lab_cluster_max_n_label", "宇宙檔數（N）"),
+                  choices = c("25" = "25", "40" = "40", "50" = "50", "75" = "75", "100" = "100"),
+                  selected = "40",
+                  width = "100%"
+                )
+              ),
+              column(
+                width = 3,
+                selectInput(
+                  "lab_cluster_x",
+                  tags$span(id = "ynow_lab_cluster_x_label", "散點 X"),
+                  choices = c(
+                    "ROE" = "ROE",
+                    "Operating Margin" = "Operating_Margin",
+                    "Rev YoY" = "Rev_YoY",
+                    "OpInc YoY" = "OpInc_YoY",
+                    "Debt Ratio" = "Debt_Ratio",
+                    "Trailing P/E" = "PE_Ratio",
+                    "P/B" = "PB_Ratio"
+                  ),
+                  selected = "ROE",
+                  width = "100%"
+                )
+              ),
+              column(
+                width = 3,
+                selectInput(
+                  "lab_cluster_y",
+                  tags$span(id = "ynow_lab_cluster_y_label", "散點 Y"),
+                  choices = c(
+                    "ROE" = "ROE",
+                    "Operating Margin" = "Operating_Margin",
+                    "Rev YoY" = "Rev_YoY",
+                    "OpInc YoY" = "OpInc_YoY",
+                    "Debt Ratio" = "Debt_Ratio",
+                    "Trailing P/E" = "PE_Ratio",
+                    "P/B" = "PB_Ratio"
+                  ),
+                  selected = "PE_Ratio",
+                  width = "100%"
+                )
+              )
+            ),
+            fluidRow(
+              column(
+                width = 4,
+                selectInput(
+                  "lab_cluster_focus",
+                  tags$span(id = "ynow_lab_cluster_focus_label", "雷達焦點代號"),
+                  choices = c("—" = ""),
+                  selected = "",
+                  width = "100%"
+                )
+              ),
+              column(
+                width = 8,
+                tags$div(
+                  style = "margin-top: 24px;",
+                  actionButton(
+                    "lab_cluster_run",
+                    tags$span(id = "ynow_lab_cluster_run_label", "執行分群"),
+                    icon = icon("object-ungroup"),
+                    class = "btn-success"
+                  )
+                )
+              )
+            ),
+            tags$p(
+              id = "ynow_lab_cluster_hint",
+              style = "color:#888; font-size:12px;",
+              paste0(
+                "沿用「排行」頁目前的產業／模型篩選（若有）。",
+                "對最多 N 檔（市值由大到小）抓取 Yahoo 比率特徵。預設 N＝40。"
+              )
+            ),
+            fluidRow(
+              box(
+                width = 7, status = "primary", solidHeader = TRUE,
+                title = tags$span(id = "ynow_lab_cluster_map_title", "分群星團圖"),
+                plotly::plotlyOutput("lab_cluster_scatter", height = "420px") %>%
+                  shinycssloaders::withSpinner()
+              ),
+              box(
+                width = 5, status = "info", solidHeader = TRUE,
+                title = tags$span(id = "ynow_lab_cluster_radar_title", "同群雷達圖"),
+                plotly::plotlyOutput("lab_cluster_radar", height = "420px") %>%
+                  shinycssloaders::withSpinner()
+              )
+            ),
+            fluidRow(
+              box(
+                width = 12, status = "primary", solidHeader = TRUE,
+                title = tags$span(id = "ynow_lab_cluster_table_title", "分群結果"),
+                DT::dataTableOutput("lab_cluster_table") %>% shinycssloaders::withSpinner()
+              )
+            )
+          )
+        )
       ),
       
       # ==========================================

@@ -413,8 +413,29 @@ locale_for_market <- function(mode = get_market_mode()) {
     tab_about_nav = "Net Asset Value (NAV)",
     tab_im_filters = "Rankings",
     tab_im_detail = "Detail",
+    tab_im_cluster = "Clustering",
     tab_bt_fundamental = "Fundamental Strategy",
-    tab_bt_sentiment = "Sentiment Strategy"
+    tab_bt_sentiment = "Sentiment Strategy",
+    lab_cluster_blurb = paste0(
+      "Research Clustering Lab: K-Means on ratio/growth features only (no dollar amounts), ",
+      "so firm size does not dominate distance. Winsorize (1%/99%) → standardize → cluster. ",
+      "Semantic labels are descriptive heuristics, not buy/sell signals."
+    ),
+    lab_cluster_k_label = "Clusters (k)",
+    lab_cluster_max_n_label = "Universe size (N)",
+    lab_cluster_x_label = "Scatter X",
+    lab_cluster_y_label = "Scatter Y",
+    lab_cluster_focus_label = "Radar focus ticker",
+    btn_lab_cluster_run = "Run clustering",
+    lab_cluster_hint = paste0(
+      "Uses the same industry/model filters as Rankings when set. ",
+      "Fetches Yahoo ratios for up to N names (largest market cap first). ",
+      "Default N=40 keeps runtime practical on shinyapps."
+    ),
+    lab_cluster_map_title = "Cluster map",
+    lab_cluster_radar_title = "Same-cluster radar",
+    lab_cluster_table_title = "Cluster assignments",
+    lab_cluster_disclaimer = "Research / education only — not investment advice or a buy signal."
   ),
   `zh-TW` = list(
     recent_search = "最近搜尋：",
@@ -799,8 +820,29 @@ locale_for_market <- function(mode = get_market_mode()) {
     tab_about_nav = "淨資產價值 (NAV)",
     tab_im_filters = "排行",
     tab_im_detail = "明細",
+    tab_im_cluster = "分群",
     tab_bt_fundamental = "基本面策略",
-    tab_bt_sentiment = "情緒策略"
+    tab_bt_sentiment = "情緒策略",
+    lab_cluster_blurb = paste0(
+      "研究用分群 Lab：僅以比率／成長率做 K-Means（不把金額放入模型），",
+      "降低公司規模對距離的干擾。流程為 Winsorize（1%／99%）→ 標準化 → 分群。",
+      "語意標籤為描述性啟發式，非買進／賣出訊號。"
+    ),
+    lab_cluster_k_label = "群數（k）",
+    lab_cluster_max_n_label = "宇宙檔數（N）",
+    lab_cluster_x_label = "散點 X",
+    lab_cluster_y_label = "散點 Y",
+    lab_cluster_focus_label = "雷達焦點代號",
+    btn_lab_cluster_run = "執行分群",
+    lab_cluster_hint = paste0(
+      "沿用「排行」頁目前的產業／模型篩選（若有）。",
+      "對最多 N 檔（市值由大到小）抓取 Yahoo 比率特徵。",
+      "預設 N＝40，以利 shinyapps 可接受的執行時間。"
+    ),
+    lab_cluster_map_title = "分群星團圖",
+    lab_cluster_radar_title = "同群雷達圖",
+    lab_cluster_table_title = "分群結果",
+    lab_cluster_disclaimer = "僅供研究／教育，非投資建議，亦非買進訊號。"
   )
 )
 
@@ -843,6 +885,7 @@ locale_for_market <- function(mode = get_market_mode()) {
   "Net Asset Value (NAV)" = "tab_about_nav",
   "im_filters" = "tab_im_filters",
   "im_detail" = "tab_im_detail",
+  "im_cluster" = "tab_im_cluster",
   "bt_fundamental" = "tab_bt_fundamental",
   "bt_sentiment" = "tab_bt_sentiment",
   # legacy Chinese data-value (pre-stable-value tabs) — still match if present
@@ -851,6 +894,7 @@ locale_for_market <- function(mode = get_market_mode()) {
   "篩選條件" = "tab_im_filters",
   "排行" = "tab_im_filters",
   "明細" = "tab_im_detail",
+  "分群" = "tab_im_cluster",
   "財報附註 (SEC)" = "tab_sec_notes"
 )
 

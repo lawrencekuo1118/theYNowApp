@@ -65,6 +65,7 @@ server <- function(input, output, session) {
   sc_datalist_choices <- reactiveVal(ticker_presets_for_market("US"))
   lab_im_catalog_nonce <- reactiveVal(0L)
   lab_im_scores <- reactiveVal(NULL)
+  lab_cluster_result <- reactiveVal(NULL)
   auto_calc_primary_sig <- reactiveVal("")
   auto_calc_ddm_pulse <- reactiveVal(0L)
   auto_calc_pb_pulse <- reactiveVal(0L)
@@ -195,6 +196,7 @@ server <- function(input, output, session) {
 
     sc_datalist_choices(ticker_presets_for_market(mode))
     lab_im_scores(NULL)
+    lab_cluster_result(NULL)
     lab_im_catalog_nonce(isolate(lab_im_catalog_nonce()) + 1L)
 
     # Rf
@@ -9495,6 +9497,131 @@ server <- function(input, output, session) {
     contentType = if (isTRUE(lab_lab_report_use_zip())) "application/zip" else "text/markdown; charset=utf-8"
   )
 
+  # ------------------------------------------
+  # Lab：基本面 K-Means 分群（研究用；非買進訊號）
+  # ------------------------------------------
+  observeEvent(input$lab_cluster_run, {
+    catlg <- lab_im_catalog()
+    req(is.data.frame(catlg), nrow(catlg) > 0)
+    loc <- ui_locale()
+    k <- suppressWarnings(as.integer(input$lab_cluster_k %||% 4L)[1])
+    if (!is.finite(k)) k <- 4L
+    k <- max(2L, min(8L, k))
+    max_n <- suppressWarnings(as.integer(input$lab_cluster_max_n %||% 40L)[1])
+    if (!is.finite(max_n)) max_n <- 40L
+    max_n <- max(5L, min(100L, max_n))
+
+    result <- withProgress(
+      message = if (identical(normalize_ui_locale(loc), "zh-TW")) {
+        "分群中（抓取比率特徵 → K-Means）…"
+      } else {
+        "Clustering (fetch ratios → K-Means)…"
+      },
+      value = 0, {
+        incProgress(0.1, detail = "Build pool")
+        pool <- tryCatch(
+          lab_cluster_build_pool(
+            catlg,
+            industry_filter = input$lab_im_industries,
+            method_filter = input$lab_im_methods,
+            max_n = max_n
+          ),
+          error = function(e) {
+            showNotification(paste("Cluster pool failed:", e$message), type = "error")
+            NULL
+          }
+        )
+        if (is.null(pool) || nrow(pool) < k) {
+          showNotification(
+            sprintf("Need at least %d tickers in the pool (got %d).", k, if (is.null(pool)) 0L else nrow(pool)),
+            type = "warning"
+          )
+          return(NULL)
+        }
+        incProgress(0.25, detail = sprintf("Yahoo features (%d)", nrow(pool)))
+        feats <- tryCatch(
+          lab_fetch_cluster_features(pool$ticker),
+          error = function(e) {
+            showNotification(paste("Feature fetch failed:", e$message), type = "error")
+            NULL
+          }
+        )
+        if (is.null(feats) || nrow(feats) < k) {
+          showNotification(
+            sprintf("Too few feature rows for k=%d (got %d).", k, if (is.null(feats)) 0L else nrow(feats)),
+            type = "warning"
+          )
+          return(NULL)
+        }
+        # Attach industry_key when available
+        if ("industry_key" %in% names(pool)) {
+          feats$industry_key <- pool$industry_key[match(feats$ticker, pool$ticker)]
+        }
+        incProgress(0.75, detail = "K-Means")
+        tryCatch(
+          lab_run_stock_clustering(feats, k_clusters = k, locale = loc),
+          error = function(e) {
+            showNotification(paste("Clustering failed:", e$message), type = "error")
+            NULL
+          }
+        )
+      }
+    )
+    if (is.null(result) || is.null(result$data) || nrow(result$data) == 0L) return()
+    lab_cluster_result(result)
+    choices <- stats::setNames(result$data$ticker, paste0(result$data$ticker, " · ", result$data$Cluster_Label))
+    focus_default <- result$data$ticker[[1]]
+    cur <- current_ticker()
+    if (!is.null(cur) && toupper(trimws(as.character(cur))) %in% result$data$ticker) {
+      focus_default <- toupper(trimws(as.character(cur)))
+    }
+    updateSelectInput(session, "lab_cluster_focus", choices = choices, selected = focus_default)
+    showNotification(
+      sprintf("Clustered %d names into %d groups.", result$n, result$k),
+      type = "message",
+      duration = 6
+    )
+  }, ignoreInit = TRUE)
+
+  output$lab_cluster_scatter <- plotly::renderPlotly({
+    res <- lab_cluster_result()
+    validate(need(!is.null(res), "Run clustering to see the map."))
+    lab_cluster_scatter_plotly(
+      res,
+      x_feat = as.character(input$lab_cluster_x %||% "ROE")[1],
+      y_feat = as.character(input$lab_cluster_y %||% "PE_Ratio")[1],
+      locale = ui_locale()
+    )
+  })
+
+  output$lab_cluster_radar <- plotly::renderPlotly({
+    res <- lab_cluster_result()
+    validate(need(!is.null(res), "Run clustering to see the radar."))
+    focus <- as.character(input$lab_cluster_focus %||% "")[1]
+    validate(need(nzchar(focus), "Pick a focus ticker for the radar."))
+    lab_cluster_radar_plotly(res, focus_ticker = focus, locale = ui_locale())
+  })
+
+  output$lab_cluster_table <- DT::renderDataTable({
+    res <- lab_cluster_result()
+    validate(need(!is.null(res), "Run clustering to see assignments."))
+    df <- res$data
+    cols <- intersect(
+      c(
+        "ticker", "name", "Cluster_ID", "Cluster_Label", "industry_key",
+        "ROE", "Operating_Margin", "Rev_YoY", "OpInc_YoY",
+        "Debt_Ratio", "PE_Ratio", "PB_Ratio", "market_cap"
+      ),
+      names(df)
+    )
+    out <- df[, cols, drop = FALSE]
+    DT::datatable(
+      out,
+      rownames = FALSE,
+      options = list(pageLength = 25, scrollX = TRUE, order = list(list(2, "asc")))
+    )
+  })
+
   # 沿用主頁 Ticker / Stock Code：優先用已搜尋的代碼，否則用主頁輸入框
   lab_ticker <- reactive({
     tk <- current_ticker()
@@ -9759,7 +9886,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v16.46"),
+      paste0("- **App：** The YNow App v16.47"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

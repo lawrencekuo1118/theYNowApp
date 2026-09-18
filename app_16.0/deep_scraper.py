@@ -1132,3 +1132,101 @@ def sec_report_notes(ticker="AAPL", form="10-K", max_chars=1500):
     except Exception as e:  # noqa: BLE001
         _dbg(f"⚠️ sec_report_notes failed ({tk} {form}): {e}")
         return _sec_empty_result(str(e))
+
+
+def get_cluster_features_batch(tickers):
+    """Batch Yahoo fundamentals for Clustering Lab (ratio features only).
+
+    Returns a list of dicts (reticulate-friendly) with keys:
+      ticker, name, market_cap,
+      ROE, Operating_Margin, Rev_YoY, OpInc_YoY, Debt_Ratio, PE_Ratio, PB_Ratio
+    Percent-style features are stored as percent points (e.g. 15.0 = 15%).
+    Debt_Ratio uses Yahoo debtToEquity normalized to percent points.
+    """
+    cleaned = []
+    seen = set()
+    for raw in tickers or []:
+        t = str(raw or "").strip().upper().replace("/", "-")
+        if not t or t in seen:
+            continue
+        seen.add(t)
+        cleaned.append(t)
+
+    def _sf(v):
+        try:
+            if v is None:
+                return None
+            x = float(v)
+            if x != x:  # NaN
+                return None
+            return x
+        except (TypeError, ValueError):
+            return None
+
+    def _pct_points(v):
+        x = _sf(v)
+        if x is None:
+            return None
+        # Yahoo often returns 0.15 for 15%; sometimes already percent points.
+        if abs(x) <= 1.5:
+            return x * 100.0
+        return x
+
+    def _debt_pct(v):
+        x = _sf(v)
+        if x is None:
+            return None
+        # Yahoo debtToEquity is commonly Equity*100 style (e.g. 54.2).
+        if abs(x) < 5:
+            return x * 100.0
+        return x
+
+    out = []
+    for sym in cleaned:
+        row = {
+            "ticker": sym,
+            "name": None,
+            "market_cap": None,
+            "ROE": None,
+            "Operating_Margin": None,
+            "Rev_YoY": None,
+            "OpInc_YoY": None,
+            "Debt_Ratio": None,
+            "PE_Ratio": None,
+            "PB_Ratio": None,
+        }
+        try:
+            stock = yf.Ticker(sym)
+            info = {}
+            try:
+                info = stock.info or {}
+            except Exception as e:  # noqa: BLE001
+                _dbg(f"⚠️ cluster info {sym}: {e}")
+                info = {}
+            if not isinstance(info, dict):
+                info = {}
+            row["name"] = _best_company_name(info, sym)
+            row["market_cap"] = _sf(info.get("marketCap"))
+            row["ROE"] = _pct_points(info.get("returnOnEquity"))
+            row["Operating_Margin"] = _pct_points(info.get("operatingMargins"))
+            row["Rev_YoY"] = _pct_points(info.get("revenueGrowth"))
+            # Prefer quarterly earnings growth; fall back to earningsGrowth.
+            row["OpInc_YoY"] = _pct_points(
+                info.get("earningsQuarterlyGrowth")
+                if info.get("earningsQuarterlyGrowth") is not None
+                else info.get("earningsGrowth")
+            )
+            row["Debt_Ratio"] = _debt_pct(info.get("debtToEquity"))
+            row["PE_Ratio"] = _sf(info.get("trailingPE") if info.get("trailingPE") is not None else info.get("forwardPE"))
+            row["PB_Ratio"] = _sf(info.get("priceToBook"))
+            # Drop clearly nonsensical valuation multiples (keep winsorize for the rest).
+            if row["PE_Ratio"] is not None and row["PE_Ratio"] <= 0:
+                row["PE_Ratio"] = None
+            if row["PB_Ratio"] is not None and row["PB_Ratio"] <= 0:
+                row["PB_Ratio"] = None
+        except Exception as e:  # noqa: BLE001
+            _dbg(f"⚠️ cluster feature {sym}: {e}")
+        out.append(row)
+    n_ok = sum(1 for r in out if r.get("ROE") is not None or r.get("PE_Ratio") is not None)
+    _dbg(f"✅ cluster features {n_ok}/{len(out)}")
+    return out
