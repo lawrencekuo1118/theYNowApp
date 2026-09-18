@@ -776,7 +776,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v16.40</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v16.41</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
