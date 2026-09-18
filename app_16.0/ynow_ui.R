@@ -105,7 +105,7 @@
   )
 }
 
-#' KPI 色碼圖例：藍→紅→黑→白；琥珀屬性重視改一行文字註解（非 chip 框）
+#' KPI 色碼圖例：藍→紅→黑→白；金色屬性重視改一行文字註解（非 chip 框）
 .kpi_band_color_legend_ui <- function() {
   tags$div(
     class = "ynow-kpi-legend-wrap",
@@ -139,7 +139,7 @@
         class = "ynow-focus-metric-dot ynow-focus-metric-dot--legend",
         `aria-hidden` = "true"
       ),
-      tags$span(id = "ynow_kpi_legend_focus", "琥珀 · 本財報屬性關鍵指標")
+      tags$span(id = "ynow_kpi_legend_focus", "金 · 本財報屬性關鍵指標")
     )
   )
 }
@@ -2585,14 +2585,14 @@ ui <- dashboardPage(
           word-break: break-word;
           overflow-wrap: anywhere;
         }
-        /* 財報屬性「重視指標」琥珀點（與同業紅＝劣於同業語意分離） */
+        /* 財報屬性「重視指標」點：與 APP 標題金色一致（非黃土琥珀） */
         .ynow-focus-metric-dot {
           display: inline-block;
           width: 8px;
           height: 8px;
           margin-left: 6px;
           border-radius: 50%;
-          background: #E0A800;
+          background: var(--ynow-gold, #F5C518);
           vertical-align: middle;
           box-shadow: 0 0 0 1px rgba(0,0,0,0.08);
         }
