@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12572449
+bundleId=12572552
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=e88e8ce
-commit=e88e8ce
-short=e88e8ce
-message=fix(ui): pin black header on desktop as well as mobile (v16.42)
-captured_at=2026-09-18T10:40:00Z
+aligned_git=8c2a1cc
+commit=8c2a1cc
+short=8c2a1cc
+message=fix(ui): use app-title gold for fundamental-profile focus dots
+captured_at=2026-09-18T11:15:00Z
 source_branch=cursor/fundamental-profile-focus-f4a6
-display_version=v16.42
-note=Canonical live line is app_16.0. Bundle 12572449 ships v16.42: fundamental-profile amber focus metrics + global sticky .main-header (desktop=mobile, same behavior as prior sticky ship 12571179). Supersedes 12572359 (v16.41).
+display_version=v16.44
+note=Canonical live line is app_16.0. Bundle 12572552 ships v16.44: document-flow credit pin (.ynow-credit-pin), focus legend as text note (not chip), focus dots use --ynow-gold (#F5C518). Supersedes 12572449 (v16.42).
