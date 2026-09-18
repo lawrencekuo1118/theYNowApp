@@ -1142,7 +1142,16 @@ def get_cluster_features_batch(tickers):
       ROE, Operating_Margin, Rev_YoY, OpInc_YoY, Debt_Ratio, PE_Ratio, PB_Ratio
     Percent-style features are stored as percent points (e.g. 15.0 = 15%).
     Debt_Ratio uses Yahoo debtToEquity normalized to percent points.
+
+    Performance: quote-API first for PE/PB/cap/name, then threaded .info fill-in
+    for missing ratio fields. Disk cache (~24h) avoids re-hitting Yahoo on Lab re-runs.
     """
+    import json
+    import time
+    import tempfile
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    from pathlib import Path
+
     cleaned = []
     seen = set()
     for raw in tickers or []:
@@ -1167,7 +1176,6 @@ def get_cluster_features_batch(tickers):
         x = _sf(v)
         if x is None:
             return None
-        # Yahoo often returns 0.15 for 15%; sometimes already percent points.
         if abs(x) <= 1.5:
             return x * 100.0
         return x
@@ -1176,14 +1184,12 @@ def get_cluster_features_batch(tickers):
         x = _sf(v)
         if x is None:
             return None
-        # Yahoo debtToEquity is commonly Equity*100 style (e.g. 54.2).
         if abs(x) < 5:
             return x * 100.0
         return x
 
-    out = []
-    for sym in cleaned:
-        row = {
+    def _empty_row(sym):
+        return {
             "ticker": sym,
             "name": None,
             "market_cap": None,
@@ -1195,6 +1201,98 @@ def get_cluster_features_batch(tickers):
             "PE_Ratio": None,
             "PB_Ratio": None,
         }
+
+    cache_dir = Path(tempfile.gettempdir()) / "ynow_cluster_feat_cache"
+    try:
+        cache_dir.mkdir(parents=True, exist_ok=True)
+    except Exception:  # noqa: BLE001
+        cache_dir = None
+    cache_ttl = 24 * 3600
+
+    def _cache_get(sym):
+        if cache_dir is None:
+            return None
+        path = cache_dir / f"{sym.replace('.', '_')}.json"
+        try:
+            if not path.is_file():
+                return None
+            if time.time() - path.stat().st_mtime > cache_ttl:
+                return None
+            return json.loads(path.read_text(encoding="utf-8"))
+        except Exception:  # noqa: BLE001
+            return None
+
+    def _cache_put(sym, row):
+        if cache_dir is None:
+            return
+        path = cache_dir / f"{sym.replace('.', '_')}.json"
+        try:
+            path.write_text(json.dumps(row), encoding="utf-8")
+        except Exception:  # noqa: BLE001
+            pass
+
+    out_map = {sym: _empty_row(sym) for sym in cleaned}
+    need_info = []
+    for sym in cleaned:
+        cached = _cache_get(sym)
+        if isinstance(cached, dict) and (
+            cached.get("ROE") is not None or cached.get("PE_Ratio") is not None
+        ):
+            for k, v in cached.items():
+                if k in out_map[sym]:
+                    out_map[sym][k] = v
+            out_map[sym]["ticker"] = sym
+        else:
+            need_info.append(sym)
+
+    # Batch quote for PE / PB / marketCap / shortName (fast path)
+    try:
+        from yfinance.data import YfData
+
+        yd = YfData()
+        url = "https://query2.finance.yahoo.com/v7/finance/quote"
+        chunk_size = 40
+        for i in range(0, len(need_info), chunk_size):
+            chunk = need_info[i : i + chunk_size]
+            try:
+                raw = yd.get(url, params={"symbols": ",".join(chunk)})
+                if hasattr(raw, "json") and not isinstance(raw, dict):
+                    raw = raw.json()
+                quotes = []
+                if isinstance(raw, dict):
+                    quotes = (raw.get("quoteResponse") or {}).get("result") or []
+                for q in quotes or []:
+                    if not isinstance(q, dict):
+                        continue
+                    sym = str(q.get("symbol") or "").strip().upper()
+                    if not sym:
+                        continue
+                    keys = {sym, sym.replace(".", "-"), sym.replace("-", ".")}
+                    target = None
+                    for k in keys:
+                        if k in out_map:
+                            target = k
+                            break
+                    if target is None:
+                        continue
+                    row = out_map[target]
+                    nm = q.get("shortName") or q.get("longName")
+                    if nm:
+                        row["name"] = str(nm)
+                    row["market_cap"] = _sf(q.get("marketCap"))
+                    pe = _sf(q.get("trailingPE") if q.get("trailingPE") is not None else q.get("forwardPE"))
+                    pb = _sf(q.get("priceToBook"))
+                    if pe is not None and pe > 0:
+                        row["PE_Ratio"] = pe
+                    if pb is not None and pb > 0:
+                        row["PB_Ratio"] = pb
+            except Exception as e:  # noqa: BLE001
+                _dbg(f"⚠️ cluster quote chunk failed: {e}")
+    except Exception as e:  # noqa: BLE001
+        _dbg(f"⚠️ cluster quote batch unavailable: {e}")
+
+    def _fill_info(sym):
+        row = dict(out_map[sym])
         try:
             stock = yf.Ticker(sym)
             info = {}
@@ -1205,28 +1303,61 @@ def get_cluster_features_batch(tickers):
                 info = {}
             if not isinstance(info, dict):
                 info = {}
-            row["name"] = _best_company_name(info, sym)
-            row["market_cap"] = _sf(info.get("marketCap"))
-            row["ROE"] = _pct_points(info.get("returnOnEquity"))
-            row["Operating_Margin"] = _pct_points(info.get("operatingMargins"))
-            row["Rev_YoY"] = _pct_points(info.get("revenueGrowth"))
-            # Prefer quarterly earnings growth; fall back to earningsGrowth.
-            row["OpInc_YoY"] = _pct_points(
-                info.get("earningsQuarterlyGrowth")
-                if info.get("earningsQuarterlyGrowth") is not None
-                else info.get("earningsGrowth")
-            )
-            row["Debt_Ratio"] = _debt_pct(info.get("debtToEquity"))
-            row["PE_Ratio"] = _sf(info.get("trailingPE") if info.get("trailingPE") is not None else info.get("forwardPE"))
-            row["PB_Ratio"] = _sf(info.get("priceToBook"))
-            # Drop clearly nonsensical valuation multiples (keep winsorize for the rest).
-            if row["PE_Ratio"] is not None and row["PE_Ratio"] <= 0:
-                row["PE_Ratio"] = None
-            if row["PB_Ratio"] is not None and row["PB_Ratio"] <= 0:
-                row["PB_Ratio"] = None
+            if not row.get("name"):
+                row["name"] = _best_company_name(info, sym)
+            if row.get("market_cap") is None:
+                row["market_cap"] = _sf(info.get("marketCap"))
+            if row.get("ROE") is None:
+                row["ROE"] = _pct_points(info.get("returnOnEquity"))
+            if row.get("Operating_Margin") is None:
+                row["Operating_Margin"] = _pct_points(info.get("operatingMargins"))
+            if row.get("Rev_YoY") is None:
+                row["Rev_YoY"] = _pct_points(info.get("revenueGrowth"))
+            if row.get("OpInc_YoY") is None:
+                row["OpInc_YoY"] = _pct_points(
+                    info.get("earningsQuarterlyGrowth")
+                    if info.get("earningsQuarterlyGrowth") is not None
+                    else info.get("earningsGrowth")
+                )
+            if row.get("Debt_Ratio") is None:
+                row["Debt_Ratio"] = _debt_pct(info.get("debtToEquity"))
+            if row.get("PE_Ratio") is None:
+                pe = _sf(info.get("trailingPE") if info.get("trailingPE") is not None else info.get("forwardPE"))
+                if pe is not None and pe > 0:
+                    row["PE_Ratio"] = pe
+            if row.get("PB_Ratio") is None:
+                pb = _sf(info.get("priceToBook"))
+                if pb is not None and pb > 0:
+                    row["PB_Ratio"] = pb
         except Exception as e:  # noqa: BLE001
             _dbg(f"⚠️ cluster feature {sym}: {e}")
-        out.append(row)
+        return sym, row
+
+    still_need = [
+        s
+        for s in need_info
+        if out_map[s].get("ROE") is None and out_map[s].get("Operating_Margin") is None
+    ]
+    workers = min(8, max(1, len(still_need)))
+    if still_need:
+        with ThreadPoolExecutor(max_workers=workers) as ex:
+            futs = {ex.submit(_fill_info, s): s for s in still_need}
+            for fut in as_completed(futs):
+                try:
+                    sym, row = fut.result()
+                    out_map[sym] = row
+                    _cache_put(sym, row)
+                except Exception as e:  # noqa: BLE001
+                    _dbg(f"⚠️ cluster worker failed: {e}")
+
+    for sym in need_info:
+        if sym not in still_need:
+            _cache_put(sym, out_map[sym])
+
+    out = [out_map[s] for s in cleaned]
     n_ok = sum(1 for r in out if r.get("ROE") is not None or r.get("PE_Ratio") is not None)
-    _dbg(f"✅ cluster features {n_ok}/{len(out)}")
+    _dbg(
+        f"✅ cluster features {n_ok}/{len(out)} "
+        f"(info={len(still_need)}, cached={len(cleaned) - len(need_info)})"
+    )
     return out

@@ -779,7 +779,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v16.47</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v16.48</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -4803,7 +4803,7 @@ ui <- dashboardPage(
                   "lab_cluster_max_n",
                   tags$span(id = "ynow_lab_cluster_max_n_label", "宇宙檔數（N）"),
                   choices = c("25" = "25", "40" = "40", "50" = "50", "75" = "75", "100" = "100"),
-                  selected = "40",
+                  selected = "25",
                   width = "100%"
                 )
               ),
