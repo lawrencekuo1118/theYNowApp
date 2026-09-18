@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12572359
+bundleId=12572449
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=f98f852
-commit=f98f852
-short=f98f852
-message=feat(kpi): classify fundamental profile and mark focus metrics (v16.41)
-captured_at=2026-09-18T10:10:00Z
+aligned_git=e88e8ce
+commit=e88e8ce
+short=e88e8ce
+message=fix(ui): pin black header on desktop as well as mobile (v16.42)
+captured_at=2026-09-18T10:40:00Z
 source_branch=cursor/fundamental-profile-focus-f4a6
-display_version=v16.41
-note=Canonical live line is app_16.0. Bundle 12572359 ships v16.41: rule-based fundamental-profile clusters + amber focus dots on KPI/FS (orthogonal to industry band colors). Supersedes 12569141 (v16.40).
+display_version=v16.42
+note=Canonical live line is app_16.0. Bundle 12572449 ships v16.42: fundamental-profile amber focus metrics + global sticky .main-header (desktop=mobile, same behavior as prior sticky ship 12571179). Supersedes 12572359 (v16.41).
