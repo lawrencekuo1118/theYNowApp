@@ -66,6 +66,14 @@ server <- function(input, output, session) {
   lab_im_catalog_nonce <- reactiveVal(0L)
   lab_im_scores <- reactiveVal(NULL)
   lab_cluster_result <- reactiveVal(NULL)
+  # Blank Plotly/DT on market switch (validate() alone leaves stale widgets).
+  .clear_lab_cluster_result <- function() {
+    lab_cluster_result(NULL)
+    tryCatch(
+      updateSelectInput(session, "lab_cluster_focus", choices = character(0), selected = character(0)),
+      error = function(e) NULL
+    )
+  }
   auto_calc_primary_sig <- reactiveVal("")
   auto_calc_ddm_pulse <- reactiveVal(0L)
   auto_calc_pb_pulse <- reactiveVal(0L)
@@ -196,7 +204,7 @@ server <- function(input, output, session) {
 
     sc_datalist_choices(ticker_presets_for_market(mode))
     lab_im_scores(NULL)
-    lab_cluster_result(NULL)
+    .clear_lab_cluster_result()
     lab_im_catalog_nonce(isolate(lab_im_catalog_nonce()) + 1L)
 
     # Rf
@@ -9500,6 +9508,37 @@ server <- function(input, output, session) {
   # ------------------------------------------
   # Lab：基本面 K-Means 分群（研究用；非買進訊號）
   # ------------------------------------------
+  # Plotly/DT keep the last widget when validate() fails; return empty
+  # figures so market switch actually blanks the Clustering tab.
+  .lab_cluster_idle_msg <- function(kind = c("map", "radar", "table", "focus")) {
+    kind <- match.arg(kind)
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "en")
+    key <- switch(
+      kind,
+      map = "lab_cluster_idle_map",
+      radar = "lab_cluster_idle_radar",
+      table = "lab_cluster_idle_table",
+      focus = "lab_cluster_idle_focus"
+    )
+    ui_str(key, loc)
+  }
+
+  .lab_cluster_empty_plotly <- function(msg) {
+    plotly::plotly_empty(type = "scatter") %>%
+      plotly::layout(
+        annotations = list(list(
+          text = msg,
+          xref = "paper", yref = "paper",
+          x = 0.5, y = 0.5,
+          showarrow = FALSE,
+          font = list(size = 14)
+        )),
+        xaxis = list(visible = FALSE),
+        yaxis = list(visible = FALSE)
+      ) %>%
+      plotly::config(displayModeBar = FALSE)
+  }
+
   observeEvent(input$lab_cluster_run, {
     catlg <- lab_im_catalog()
     req(is.data.frame(catlg), nrow(catlg) > 0)
@@ -9585,7 +9624,9 @@ server <- function(input, output, session) {
 
   output$lab_cluster_scatter <- plotly::renderPlotly({
     res <- lab_cluster_result()
-    validate(need(!is.null(res), "Run clustering to see the map."))
+    if (is.null(res) || is.null(res$data) || nrow(res$data) == 0L) {
+      return(.lab_cluster_empty_plotly(.lab_cluster_idle_msg("map")))
+    }
     lab_cluster_scatter_plotly(
       res,
       x_feat = as.character(input$lab_cluster_x %||% "ROE")[1],
@@ -9596,15 +9637,25 @@ server <- function(input, output, session) {
 
   output$lab_cluster_radar <- plotly::renderPlotly({
     res <- lab_cluster_result()
-    validate(need(!is.null(res), "Run clustering to see the radar."))
+    if (is.null(res) || is.null(res$data) || nrow(res$data) == 0L) {
+      return(.lab_cluster_empty_plotly(.lab_cluster_idle_msg("radar")))
+    }
     focus <- as.character(input$lab_cluster_focus %||% "")[1]
-    validate(need(nzchar(focus), "Pick a focus ticker for the radar."))
+    if (!nzchar(focus)) {
+      return(.lab_cluster_empty_plotly(.lab_cluster_idle_msg("focus")))
+    }
     lab_cluster_radar_plotly(res, focus_ticker = focus, locale = ui_locale())
   })
 
   output$lab_cluster_table <- DT::renderDataTable({
     res <- lab_cluster_result()
-    validate(need(!is.null(res), "Run clustering to see assignments."))
+    if (is.null(res) || is.null(res$data) || nrow(res$data) == 0L) {
+      return(DT::datatable(
+        data.frame(Note = .lab_cluster_idle_msg("table"), stringsAsFactors = FALSE),
+        rownames = FALSE,
+        options = list(dom = "t", ordering = FALSE, paging = FALSE, searching = FALSE)
+      ))
+    }
     df <- res$data
     cols <- intersect(
       c(
@@ -9886,7 +9937,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v16.49"),
+      paste0("- **App：** The YNow App v16.50"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

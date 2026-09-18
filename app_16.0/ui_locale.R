@@ -435,7 +435,11 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_cluster_map_title = "Cluster map",
     lab_cluster_radar_title = "Same-cluster radar",
     lab_cluster_table_title = "Cluster assignments",
-    lab_cluster_disclaimer = "Research / education only — not investment advice or a buy signal."
+    lab_cluster_disclaimer = "Research / education only — not investment advice or a buy signal.",
+    lab_cluster_idle_map = "Run clustering to see the map.",
+    lab_cluster_idle_radar = "Run clustering to see the radar.",
+    lab_cluster_idle_table = "Run clustering to see assignments.",
+    lab_cluster_idle_focus = "Pick a focus ticker for the radar."
   ),
   `zh-TW` = list(
     recent_search = "最近搜尋：",
@@ -842,7 +846,11 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_cluster_map_title = "分群星團圖",
     lab_cluster_radar_title = "同群雷達圖",
     lab_cluster_table_title = "分群結果",
-    lab_cluster_disclaimer = "僅供研究／教育，非投資建議，亦非買進訊號。"
+    lab_cluster_disclaimer = "僅供研究／教育，非投資建議，亦非買進訊號。",
+    lab_cluster_idle_map = "請執行分群以顯示星團圖。",
+    lab_cluster_idle_radar = "請執行分群以顯示雷達圖。",
+    lab_cluster_idle_table = "請執行分群以顯示分群結果。",
+    lab_cluster_idle_focus = "請選擇雷達焦點代號。"
   )
 )
 
