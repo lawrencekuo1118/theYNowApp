@@ -100,12 +100,12 @@ APP_DEFAULTS <- list(
 
   capm_rf         = default_rf,
   capm_beta       = round(default_beta, 2),  # 啟動占位；估值路徑就緒後改寫入選定來源（預設 Summary β）
-  sync_gs_beta    = TRUE,                    # TRUE = WACC/CAPM β 跟隨基礎設定「套用至 CAPM」
+  sync_gs_beta    = TRUE,                    # TRUE = WACC/CAPM β 跟隨基礎設定 β 來源
   capm_rm         = round(default_rm, 2),
   beta_bench      = "SPY",
   beta_lookback_months = 60,                 # Rolling 僅對照用（不寫入 CAPM）
   beta_min_obs    = 24,
-  # Rolling 估計不得寫入 CAPM；Summary β 可為預設套用來源
+  # Rolling 估計不得寫入 CAPM；Summary β 可為預設來源
   beta_purpose    = "valuation",
   # 去槓桿化 βᵤ = Hamada(β_L,T,D/E)；β_L 預設 Summary
   beta_bl_source  = "summary",
@@ -114,7 +114,7 @@ APP_DEFAULTS <- list(
   # 舊版再槓桿設定已移除（隱藏相容）；不再提供目標 D/E UI
   beta_relever_de_mode = "current",
   beta_target_de  = NA,
-  # 套用至 CAPM：summary | industry | bottomup | unlever_firm | manual
+  # β 來源（寫入 CAPM）：summary | industry | bottomup | unlever_firm | manual
   beta_u_apply_source = "summary",
   beta_u_manual   = NA,                      # 手動 β（直接寫入 CAPM）
 

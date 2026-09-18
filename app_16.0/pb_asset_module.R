@@ -121,6 +121,16 @@ pb_asset_module_ui <- function(id) {
                                    )
                             )
                           )
+                 ),
+
+                 tabPanel(
+                   "Beta (β)",
+                   icon = icon("chart-line"),
+                   .beta_model_source_section_ui(
+                     "pb_beta_u_apply_source",
+                     "pb_apply_beta_u_selected",
+                     extra = helpText("Justified P/B 使用中央 Ke（CAPM）；此處 β 來源與基礎設定及其他模型雙向同步。")
+                   )
                  )
           ),
           .model_param_sensitivity_box(

@@ -343,6 +343,17 @@ ri_module_ui <- function(id) {
             plotlyOutput(ns("plt_ri_heatmap"), height = "420px") %>% withSpinner()
           )
         )
+      ),
+
+      # ----- Beta source (synced with Basic Setup) -----
+      tabPanel(
+        "Beta (β)",
+        icon = icon("chart-line"),
+        .beta_model_source_section_ui(
+          "ri_beta_u_apply_source",
+          "ri_apply_beta_u_selected",
+          extra = helpText("RI 的 Ke 跟隨中央 CAPM／WACC；此處 β 來源與基礎設定及其他模型雙向同步。")
+        )
       )
     ),
     .model_param_sensitivity_box(

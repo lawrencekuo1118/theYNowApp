@@ -207,26 +207,117 @@ rd_estimate_settings_ui <- function(width = 6) {
   )
 }
 
-#' Pointer when advanced Beta controls live on Basic Setup (CAPM is on WACC).
-#' Outer shinydashboard box removed — heading + help text sit on the tab.
-.beta_moved_to_get_started_box <- function(extra = NULL) {
+#' Canonical + mirrored β-source radio IDs (bidirectional sync in server).
+.BETA_U_APPLY_SOURCE_IDS <- c(
+  "beta_u_apply_source",
+  "dcf_beta_u_apply_source",
+  "ddm_beta_u_apply_source",
+  "ri_beta_u_apply_source",
+  "pb_beta_u_apply_source"
+)
+
+#' Matching "sync selected β" buttons (same order as .BETA_U_APPLY_SOURCE_IDS).
+.BETA_U_APPLY_BTN_IDS <- c(
+  "apply_beta_u_selected",
+  "dcf_apply_beta_u_selected",
+  "ddm_apply_beta_u_selected",
+  "ri_apply_beta_u_selected",
+  "pb_apply_beta_u_selected"
+)
+
+#' Shared β source picker (Yahoo / industry / Bottom-Up / Hamada / manual).
+#' Unique input_id per placement; server keeps all IDs in sync.
+#' @param input_id radioButtons id
+#' @param apply_btn_id actionButton id (sync selected β into CAPM)
+#' @param include_hidden_purpose keep legacy beta_purpose input (Basic Setup only)
+#' @param include_crosscheck render beta_crosscheck_panel under the picker
+#' @param show_advanced_note short pointer to Basic Setup peer-unlever / Rolling
+beta_source_picker_ui <- function(input_id,
+                                  apply_btn_id,
+                                  include_hidden_purpose = FALSE,
+                                  include_crosscheck = FALSE,
+                                  show_advanced_note = FALSE,
+                                  extra = NULL) {
+  default_selected <- tryCatch(
+    APP_DEFAULTS$beta_u_apply_source,
+    error = function(e) "summary"
+  )
+  if (!nzchar(as.character(default_selected %||% "")[1])) default_selected <- "summary"
+
   tagList(
-    h4(
-      style = "margin-top: 0;",
-      icon("info-circle"),
-      " Beta 進階預估"
+    tags$p(
+      class = "ynow-beta-source-heading",
+      style = "font-weight:600; margin:0 0 10px 0;",
+      "β 來源（預設寫入 CAPM）"
     ),
-    helpText(
-      "β 預估在",
-      tags$b(id = "ynow_beta_home_name", "基礎設定"),
-      "→「SGR」下方的",
-      tags$b("BETA"),
-      "小分頁（Beta Overview 選來源寫入 CAPM；同業去槓桿／Rolling 負責估算）。",
-      "CAPM（Rf／β／Rm）在",
-      tags$b("DCF-Model → WACC"),
-      "；勾選「採用估算 rₑ／Ke」時由該處 CAPM 驅動。"
+    # choiceNames／choiceValues 由 server 動態覆寫（數字粗體 + 各選項旁說明）
+    radioButtons(
+      input_id,
+      label = NULL,
+      choiceNames = list(
+        HTML("Yahoo Finance Summary β <b>n/a</b> <span style='color:#666;font-size:12px;'>— Yahoo Finance Summary「Beta (5Y Monthly)」；預設寫入 CAPM。</span>"),
+        HTML("產業預設 β <b>n/a</b> <span style='color:#666;font-size:12px;'>— 所選產業結構 β。</span>"),
+        HTML("自選公司平均 Bottom-Up (βᵤ→βe) <b>n/a</b> <span style='color:#666;font-size:12px;'>— 可比公司去槓桿平均／中位 βᵤ。</span>"),
+        HTML("去槓桿化 βᵤ <b>n/a</b> <span style='color:#666;font-size:12px;'>— Hamada βᵤ = β_L / (1+(1−T)·D/E)。</span>"),
+        HTML("手動定義 βe <b>n/a</b>")
+      ),
+      choiceValues = list("summary", "industry", "bottomup", "unlever_firm", "manual"),
+      selected = default_selected,
+      inline = FALSE
     ),
-    extra
+    if (isTRUE(include_hidden_purpose)) {
+      tags$div(
+        style = "display:none;",
+        radioButtons(
+          "beta_purpose",
+          NULL,
+          choices = c("valuation" = "valuation"),
+          selected = "valuation"
+        )
+      )
+    },
+    tags$p(
+      class = "ynow-beta-rolling-help help-block",
+      style = "margin-top:0;",
+      "Rolling 估計僅供對照，不寫入 CAPM（故不列於上列選項）。"
+    ),
+    actionButton(
+      apply_btn_id,
+      "立即同步所選 β",
+      class = "btn-success ynow-btn-sync-selected-beta",
+      icon = icon("check")
+    ),
+    if (isTRUE(show_advanced_note)) {
+      tags$p(
+        class = "ynow-beta-advanced-note help-block",
+        style = "margin-top:12px;",
+        "同業去槓桿／Rolling β 仍在",
+        tags$b(class = "ynow-beta-home-name", "基礎設定"),
+        "→ BETA。CAPM（Rf／β／Rm）在 DCF-Model → WACC。"
+      )
+    },
+    extra,
+    if (isTRUE(include_crosscheck)) {
+      tagList(tags$br(), tags$br(), uiOutput("beta_crosscheck_panel"))
+    }
+  )
+}
+
+#' Model Beta tab: shared picker + note (replaces old "moved to Basic Setup" stub).
+.beta_model_source_section_ui <- function(input_id, apply_btn_id, extra = NULL) {
+  fluidRow(
+    column(
+      width = 12,
+      box(
+        width = 12, status = "success", solidHeader = FALSE,
+        beta_source_picker_ui(
+          input_id = input_id,
+          apply_btn_id = apply_btn_id,
+          show_advanced_note = TRUE,
+          extra = extra
+        )
+      )
+    )
   )
 }
 
@@ -245,42 +336,12 @@ beta_overview_section_ui <- function() {
     fluidRow(
       box(
         width = 12, status = "success", solidHeader = FALSE,
-        tags$p(
-          style = "font-weight:600; margin:0 0 10px 0;",
-          "套用至 CAPM"
-        ),
-        # choiceNames／choiceValues 由 server 動態覆寫（數字粗體 + 各選項旁說明）
-        radioButtons(
-          "beta_u_apply_source",
-          label = NULL,
-          choiceNames = list(
-            HTML("Summary β <b>n/a</b> <span style='color:#666;font-size:12px;'>— Yahoo Finance Summary「Beta (5Y Monthly)」，預設寫入 CAPM。</span>"),
-            HTML("產業預設 β <b>n/a</b> <span style='color:#666;font-size:12px;'>— 所選產業結構 β。</span>"),
-            HTML("自選公司平均 Bottom-Up (βᵤ→βe) <b>n/a</b> <span style='color:#666;font-size:12px;'>— 可比公司去槓桿平均／中位 βᵤ。</span>"),
-            HTML("去槓桿化 βᵤ <b>n/a</b> <span style='color:#666;font-size:12px;'>— Hamada βᵤ = β_L / (1+(1−T)·D/E)。</span>"),
-            HTML("手動定義 βe <b>n/a</b>")
-          ),
-          choiceValues = list("summary", "industry", "bottomup", "unlever_firm", "manual"),
-          selected = "summary",
-          inline = FALSE
-        ),
-        # 保留隱藏欄位，避免舊 session / server 讀取時缺 ID
-        tags$div(
-          style = "display:none;",
-          radioButtons(
-            "beta_purpose",
-            NULL,
-            choices = c("valuation" = "valuation"),
-            selected = "valuation"
-          )
-        ),
-        helpText("Rolling 估計僅供對照，不寫入 CAPM（故不列於上列選項）。"),
-        actionButton(
-          "apply_beta_u_selected", "立即同步所選 β 至 CAPM",
-          class = "btn-success", icon = icon("check")
-        ),
-        tags$br(), tags$br(),
-        uiOutput("beta_crosscheck_panel")
+        beta_source_picker_ui(
+          input_id = "beta_u_apply_source",
+          apply_btn_id = "apply_beta_u_selected",
+          include_hidden_purpose = TRUE,
+          include_crosscheck = TRUE
+        )
       )
     )
   )
@@ -352,7 +413,7 @@ beta_unlever_section_ui <- function() {
         helpText(
           "Hamada（假設債務 β≈0）：βᵤ = β_L / (1+(1−T)·D/E)。",
           "β_L 預設 Yahoo Finance Summary「Beta (5Y Monthly)」；T 取自 WACC；D/E = Total Debt ÷ 股權市值。",
-          "可於 Beta Overview「套用至 CAPM」選「去槓桿化 βᵤ」寫入；槓桿 β_L 本身仍不直接寫入 CAPM。"
+          "可於 β 來源選「去槓桿化 βᵤ」寫入 CAPM；槓桿 β_L 本身仍不直接寫入 CAPM。"
         ),
         htmlOutput("beta_unlever_firm_result"),
         tags$hr(),
@@ -364,7 +425,7 @@ beta_unlever_section_ui <- function() {
           min = 0, max = 5, step = 0.01
         ),
         helpText(
-          "於 Beta Overview 選「手動定義 βe」後，此值會直接寫入 CAPM；",
+          "於 β 來源選「手動定義 βe」後，此值會直接寫入 CAPM；",
           "在此修改數值時也會自動改選手動來源並同步。"
         )
       )
@@ -779,7 +840,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v16.53</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v16.54</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -2210,6 +2271,26 @@ ui <- dashboardPage(
             if (capmBoxTitle && s.capm_box_title) capmBoxTitle.textContent = s.capm_box_title;
             var syncGsLab = document.getElementById('ynow_sync_gs_beta_label');
             if (syncGsLab && s.sync_gs_beta_label) syncGsLab.textContent = s.sync_gs_beta_label;
+            document.querySelectorAll('.ynow-beta-home-name').forEach(function (el) {
+              if (s.beta_home_name) el.textContent = s.beta_home_name;
+            });
+            document.querySelectorAll('.ynow-beta-source-heading').forEach(function (el) {
+              if (s.beta_source_heading) el.textContent = s.beta_source_heading;
+            });
+            document.querySelectorAll('.ynow-beta-rolling-help').forEach(function (el) {
+              if (s.beta_rolling_help) el.textContent = s.beta_rolling_help;
+            });
+            document.querySelectorAll('.ynow-beta-advanced-note').forEach(function (el) {
+              if (s.beta_advanced_note) {
+                var home = s.beta_home_name || 'Basic Setup';
+                el.innerHTML = String(s.beta_advanced_note).split('{home}').join('<b class=\'ynow-beta-home-name\'>' + home + '</b>');
+              }
+            });
+            document.querySelectorAll('.ynow-btn-sync-selected-beta').forEach(function (el) {
+              if (!s.btn_sync_selected_beta) return;
+              var ic = el.querySelector('i');
+              el.innerHTML = (ic ? ic.outerHTML + ' ' : '') + s.btn_sync_selected_beta;
+            });
             var betaHome = document.getElementById('ynow_beta_home_name');
             if (betaHome && s.beta_home_name) betaHome.textContent = s.beta_home_name;
             var kpiBlue = document.getElementById('ynow_kpi_legend_blue');
@@ -3867,7 +3948,7 @@ ui <- dashboardPage(
               icon = icon("users"),
               helpText(
                 "左側先填同業、去槓桿後平均（Bottom-Up）。右側為本公司 Hamada 去槓桿與手動 βe。",
-                "寫入 CAPM 請到 Beta Overview「套用至 CAPM」。"
+                "寫入 CAPM：到 Beta Overview（或各模型 Beta 分頁）選對應 β 來源。"
               ),
               beta_unlever_section_ui()
             ),
@@ -4299,15 +4380,10 @@ ui <- dashboardPage(
                      tabPanel(
                        "Beta (β)",
                        icon = icon("chart-line"),
-                       fluidRow(
-                         column(
-                           width = 12,
-                           .beta_moved_to_get_started_box(
-                             tagList(
-                               helpText("DDM → Ke 的「採用估算 Ke」仍跟隨 DCF → WACC 的 CAPM。")
-                             )
-                           )
-                         )
+                       .beta_model_source_section_ui(
+                         "ddm_beta_u_apply_source",
+                         "ddm_apply_beta_u_selected",
+                         extra = helpText("DDM → Ke 的「採用估算 Ke」仍跟隨 DCF → WACC 的 CAPM。")
                        )
                      )
               ),
@@ -4511,7 +4587,10 @@ ui <- dashboardPage(
                      tabPanel(
                        "Beta (β)",
                        icon = icon("chart-line"),
-                       fluidRow(column(width = 12, .beta_moved_to_get_started_box()))
+                       .beta_model_source_section_ui(
+                         "dcf_beta_u_apply_source",
+                         "dcf_apply_beta_u_selected"
+                       )
                      )
               ),
               tabBox(title = "SENSITIVITY", width = "auto",

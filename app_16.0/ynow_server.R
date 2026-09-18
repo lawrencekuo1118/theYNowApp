@@ -1533,7 +1533,7 @@ server <- function(input, output, session) {
       c("DCF - WACC", "Calculated WACC (%)", .snapshot_value(wacc_pct), "System CAPM/WACC estimate (also synced into WACC inputs)"),
       c("CAPM", "Rf (%)", .snapshot_value(input$capm_rf), "Ke = Rf + Beta × (Rm-Rf)"),
       c("CAPM", "Beta", .snapshot_value(input$capm_beta), "Systematic risk coefficient"),
-      c("CAPM", "Sync Basic Setup β", .snapshot_value(input$sync_gs_beta), "TRUE = WACC β follows Basic Setup apply-to-CAPM source"),
+      c("CAPM", "Sync Basic Setup β", .snapshot_value(input$sync_gs_beta), "TRUE = WACC β follows Basic Setup β source"),
       c("CAPM", "Rm (%)", .snapshot_value(input$capm_rm), "Expected market return"),
       c("Beta", "Purpose", .snapshot_value(input$beta_purpose), "valuation; Rolling blocked from CAPM"),
       c("Beta", "Unlever β_L source", .snapshot_value(input$beta_bl_source), "feeds 去槓桿化 βᵤ (Hamada)"),
@@ -1676,14 +1676,14 @@ server <- function(input, output, session) {
       use_est_re = c("WACC", "使用 CAPM Re", "UI: use_estimated_re；TRUE = Re 跟 CAPM"),
       capm_rf = c("CAPM", "Rf (%)", "無風險利率（啟動時估）"),
       capm_beta = c("CAPM", "Beta", "啟動暫定值；估值路徑就緒後改寫入選定來源"),
-      sync_gs_beta = c("CAPM", "與基礎設定同步", "TRUE = WACC/CAPM β 跟隨基礎設定套用來源（預設 Summary β）"),
+      sync_gs_beta = c("CAPM", "與基礎設定同步", "TRUE = WACC/CAPM β 跟隨基礎設定 β 來源（預設 Summary β）"),
       beta_bench = c("Beta", "基準指數", "Rolling β 對照標的，預設 SPY（不寫入 CAPM）"),
       beta_lookback_months = c("Beta", "回溯月數", "常見 36／60／84；預設 60 對齊 Yahoo 5Y"),
       beta_min_obs = c("Beta", "最少觀測", "Rolling 估計最低月數"),
       beta_purpose = c("Beta", "用途", "valuation；Rolling 不得寫入 CAPM"),
       beta_bl_source = c("Beta", "Unlever β_L 來源", "summary / rolling / auto"),
       beta_bottomup_agg = c("Beta", "Bottom-Up 聚合", "mean / median"),
-      beta_u_apply_source = c("Beta", "套用 β 來源", "summary / industry / bottomup / unlever_firm / manual (rolling blocked)"),
+      beta_u_apply_source = c("Beta", "β 來源", "summary / industry / bottomup / unlever_firm / manual (rolling blocked)"),
       beta_u_manual = c("Beta", "手動 β", "數值（直接寫入 CAPM）"),
       beta_peers = c("Beta", "Bottom-up 同業", "逗號分隔代號；UI 多選"),
       beta_relever_de_mode = c("Beta（舊版相容）", "再槓桿 D/E 模式", "隱藏相容；UI 已移除"),
@@ -4211,8 +4211,44 @@ server <- function(input, output, session) {
     invisible(TRUE)
   }
   observeEvent(input$apply_beta_u_selected, { .apply_selected_beta_u_to_capm(silent = FALSE, force = TRUE) })
+  # Mirror apply buttons on DCF / DDM / RI / P/B Beta tabs
+  observeEvent(input$dcf_apply_beta_u_selected, { .apply_selected_beta_u_to_capm(silent = FALSE, force = TRUE) })
+  observeEvent(input$ddm_apply_beta_u_selected, { .apply_selected_beta_u_to_capm(silent = FALSE, force = TRUE) })
+  observeEvent(input$ri_apply_beta_u_selected, { .apply_selected_beta_u_to_capm(silent = FALSE, force = TRUE) })
+  observeEvent(input$pb_apply_beta_u_selected, { .apply_selected_beta_u_to_capm(silent = FALSE, force = TRUE) })
 
-  # Beta Overview：選項旁動態顯示各來源當前 β（數字粗體）+ 分項說明
+  # β 來源：Basic Setup 與各模型 Beta 分頁雙向同步（防回授，同 Clustering N）
+  .beta_apply_source_syncing <- reactiveVal(FALSE)
+  .beta_u_apply_source_ids <- function() {
+    ids <- tryCatch(.BETA_U_APPLY_SOURCE_IDS, error = function(e) NULL)
+    if (is.null(ids) || !length(ids)) {
+      ids <- c(
+        "beta_u_apply_source",
+        "dcf_beta_u_apply_source",
+        "ddm_beta_u_apply_source",
+        "ri_beta_u_apply_source",
+        "pb_beta_u_apply_source"
+      )
+    }
+    as.character(ids)
+  }
+  .set_beta_u_apply_source_all <- function(src, except_id = NULL) {
+    src <- as.character(src %||% "")[1]
+    if (!nzchar(src)) return(invisible(FALSE))
+    if (isTRUE(.beta_apply_source_syncing())) return(invisible(FALSE))
+    .beta_apply_source_syncing(TRUE)
+    on.exit(.beta_apply_source_syncing(FALSE), add = TRUE)
+    for (id in .beta_u_apply_source_ids()) {
+      if (!is.null(except_id) && identical(id, except_id)) next
+      cur <- as.character(input[[id]] %||% "")[1]
+      if (!identical(cur, src)) {
+        updateRadioButtons(session, id, selected = src)
+      }
+    }
+    invisible(TRUE)
+  }
+
+  # Beta Overview／模型鏡像：選項旁動態顯示各來源當前 β（數字粗體）+ 分項說明
   .fmt_beta_choice_val <- function(v, digits = 2) {
     v <- suppressWarnings(as.numeric(v)[1])
     if (is.finite(v)) sprintf("<b>%.*f</b>", digits, v) else "<b>n/a</b>"
@@ -4230,6 +4266,7 @@ server <- function(input, output, session) {
     HTML(paste0(htmltools::htmlEscape(title), " ", val_html, help_html))
   }
   .beta_apply_source_choice_ui <- function() {
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
     sum_v <- tryCatch(.summary_beta_value(), error = function(e) NA_real_)
     firm <- tryCatch(firm_unlever_reactive(), error = function(e) NULL)
     firm_v <- if (!is.null(firm)) suppressWarnings(as.numeric(firm$beta_u)[1]) else NA_real_
@@ -4241,32 +4278,37 @@ server <- function(input, output, session) {
     ind_lab <- if (nzchar(ind_key)) {
       as.character(industry_labels[[ind_key]] %||% ind_key)[1]
     } else {
-      "未選產業"
+      ui_str("beta_opt_industry_none", loc)
     }
+    ind_title <- gsub(
+      "{ind}", ind_lab, ui_str("beta_opt_industry_title", loc),
+      fixed = TRUE
+    )
     values <- c("summary", "industry", "bottomup", "unlever_firm", "manual")
     names_ui <- list(
       .beta_apply_opt_label(
-        "Summary β", .fmt_beta_choice_val(sum_v),
-        "Yahoo Finance Summary「Beta (5Y Monthly)」，預設寫入 CAPM。"
+        ui_str("beta_opt_summary_title", loc), .fmt_beta_choice_val(sum_v),
+        ui_str("beta_opt_summary_help", loc)
       ),
       .beta_apply_opt_label(
-        paste0("產業預設 β（", ind_lab, "）"), .fmt_beta_choice_val(ind_b),
-        "所選產業結構 β。"
+        ind_title, .fmt_beta_choice_val(ind_b),
+        ui_str("beta_opt_industry_help", loc)
       ),
       .beta_apply_opt_label(
-        "自選公司平均 Bottom-Up (βᵤ→βe)", .fmt_beta_choice_val(bu_v),
-        "可比公司去槓桿平均／中位 βᵤ。"
+        ui_str("beta_opt_bottomup_title", loc), .fmt_beta_choice_val(bu_v),
+        ui_str("beta_opt_bottomup_help", loc)
       ),
       .beta_apply_opt_label(
-        "去槓桿化 βᵤ", .fmt_beta_choice_val(firm_v),
-        "Hamada βᵤ = β_L / (1+(1−T)·D/E)。"
+        ui_str("beta_opt_unlever_title", loc), .fmt_beta_choice_val(firm_v),
+        ui_str("beta_opt_unlever_help", loc)
       ),
       .beta_apply_opt_label(
-        "手動定義 βe", .fmt_beta_choice_val(man_b)
+        ui_str("beta_opt_manual_title", loc), .fmt_beta_choice_val(man_b)
       )
     )
     label_key <- paste(
       c(
+        loc,
         .fmt_beta_choice_val(sum_v),
         paste0(.fmt_beta_choice_val(ind_b), "|", ind_lab),
         .fmt_beta_choice_val(bu_v),
@@ -4290,18 +4332,21 @@ server <- function(input, output, session) {
     beta_est_result()
     input$industry_choice
     input$beta_u_manual
+    ui_locale()
     ui_ch <- .beta_apply_source_choice_ui()
     if (identical(ui_ch$label_key, isolate(beta_apply_choice_labels()))) return()
     beta_apply_choice_labels(ui_ch$label_key)
     sel <- isolate(as.character(input$beta_u_apply_source %||% APP_DEFAULTS$beta_u_apply_source)[1])
     if (!sel %in% ui_ch$values) sel <- APP_DEFAULTS$beta_u_apply_source
     beta_apply_choices_updating(TRUE)
-    updateRadioButtons(
-      session, "beta_u_apply_source",
-      choiceNames = ui_ch$choiceNames,
-      choiceValues = ui_ch$choiceValues,
-      selected = sel
-    )
+    for (id in .beta_u_apply_source_ids()) {
+      updateRadioButtons(
+        session, id,
+        choiceNames = ui_ch$choiceNames,
+        choiceValues = ui_ch$choiceValues,
+        selected = sel
+      )
+    }
     session$onFlushed(function() {
       beta_apply_choices_updating(FALSE)
     }, once = TRUE)
@@ -4320,7 +4365,7 @@ server <- function(input, output, session) {
 
     # 舊值／誤選 Rolling 時，改回預設 Summary β（不寫入 CAPM）
     if (identical(src, "rolling")) {
-      updateRadioButtons(session, "beta_u_apply_source", selected = "summary")
+      .set_beta_u_apply_source_all("summary")
       return(invisible(TRUE))
     }
 
@@ -4343,24 +4388,26 @@ server <- function(input, output, session) {
     .maybe_sync_gs_beta_to_capm()
   }, ignoreInit = FALSE)
 
-  observeEvent(input$beta_u_apply_source, {
-    if (isTRUE(beta_apply_choices_updating())) {
-      beta_apply_choices_updating(FALSE)
-      return()
-    }
-    if (isTRUE(beta_link_from_capm())) {
-      beta_link_from_capm(FALSE)
-      return()
-    }
-    src <- as.character(input$beta_u_apply_source %||% "")[1]
-    if (identical(src, "rolling")) {
-      updateRadioButtons(session, "beta_u_apply_source", selected = "summary")
-      return()
-    }
-    if (!isTRUE(input$sync_gs_beta)) return()
-    beta_capm_driver("gs")
-    .apply_selected_beta_u_to_capm(silent = TRUE)
-  }, ignoreInit = TRUE)
+  .on_beta_u_apply_source_change <- function(id) {
+    observeEvent(input[[id]], {
+      if (isTRUE(beta_apply_choices_updating())) return()
+      if (isTRUE(.beta_apply_source_syncing())) return()
+      if (isTRUE(beta_link_from_capm())) {
+        beta_link_from_capm(FALSE)
+        return()
+      }
+      src <- as.character(input[[id]] %||% "")[1]
+      if (identical(src, "rolling")) {
+        .set_beta_u_apply_source_all("summary")
+        return()
+      }
+      .set_beta_u_apply_source_all(src, except_id = id)
+      if (!isTRUE(input$sync_gs_beta)) return()
+      beta_capm_driver("gs")
+      .apply_selected_beta_u_to_capm(silent = TRUE)
+    }, ignoreInit = TRUE)
+  }
+  lapply(.beta_u_apply_source_ids(), .on_beta_u_apply_source_change)
 
   observeEvent(input$beta_u_manual, {
     if (isTRUE(beta_link_from_capm())) {
@@ -4371,7 +4418,7 @@ server <- function(input, output, session) {
     if (!identical(src, "manual")) {
       # Unlevered「手動設算」改值 → 改選手動來源（radio observer 會同步 CAPM）
       beta_link_from_capm(FALSE)
-      updateRadioButtons(session, "beta_u_apply_source", selected = "manual")
+      .set_beta_u_apply_source_all("manual")
       return()
     }
     # 基礎設定側改手動 β → 推回 CAPM（維持連動）
@@ -4460,7 +4507,7 @@ server <- function(input, output, session) {
     HTML(glue::glue(
       "<div style='padding:10px;border-left:4px solid #27ae60;background:#eafaf1;font-size:13px;'>
          <b>{res$label}</b> · T = {sprintf('%.1f%%', res$tax * 100)}<br/>
-         βᵤ = <b>{res$beta_u_avg}</b>（套用至 CAPM 時直接使用此值）
+         βᵤ = <b>{res$beta_u_avg}</b>（寫入 CAPM 時直接使用此值）
        </div>"
     ))
   }
@@ -4599,7 +4646,7 @@ server <- function(input, output, session) {
     # 估值且建議 Bottom-Up 但未算完：提示先算
     if (identical(src, "bottomup") && !isTRUE(rec$ready)) {
       showNotification(rec$next_steps %||% "請先計算 Bottom-Up βᵤ。", type = "warning", duration = 8)
-      updateRadioButtons(session, "beta_u_apply_source", selected = "bottomup")
+      .set_beta_u_apply_source_all("bottomup")
       return()
     }
     if (identical(src, "rolling")) {
@@ -4608,7 +4655,7 @@ server <- function(input, output, session) {
     }
     cur <- as.character(input$beta_u_apply_source %||% "")[1]
     if (!identical(cur, src)) {
-      updateRadioButtons(session, "beta_u_apply_source", selected = src)
+      .set_beta_u_apply_source_all(src)
       # radio observer 會同步 CAPM
     } else {
       .apply_selected_beta_u_to_capm(silent = FALSE, force = TRUE)
@@ -4628,7 +4675,7 @@ server <- function(input, output, session) {
     if (!nzchar(src) || identical(src, "rolling")) return()
     cur <- as.character(input$beta_u_apply_source %||% "")[1]
     if (!identical(cur, src) && src %in% c("summary", "industry", "bottomup", "unlever_firm", "manual")) {
-      updateRadioButtons(session, "beta_u_apply_source", selected = src)
+      .set_beta_u_apply_source_all(src)
     }
   }, ignoreInit = TRUE)
 
@@ -10022,7 +10069,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v16.53"),
+      paste0("- **App：** The YNow App v16.54"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {
