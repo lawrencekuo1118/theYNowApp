@@ -768,7 +768,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v16.40</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v16.43</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -972,11 +972,6 @@ ui <- dashboardPage(
   dashboardBody(
     shinyjs::useShinyjs(),
     withMathJax(),
-    # Credit: same vertical band as USD／TWD under black header
-    tags$div(
-      class = "ynow-credit-float",
-      tags$span(class = "ynow-credit-text", "a lawrence kuo shiny app")
-    ),
     
     tags$head(
       tags$style(HTML('
@@ -1057,7 +1052,7 @@ ui <- dashboardPage(
         }
 
         .content-wrapper, .right-side { background-color: #f7f7f7; }
-        /* Clear fixed credit／ccy band under header */
+        /* Clear absolute USD／TWD band under header (credit is in document flow) */
         .content-wrapper > .content {
           padding-top: 52px;
         }
@@ -1713,23 +1708,17 @@ ui <- dashboardPage(
           line-height: 1.3;
           margin: 0;
         }
-        /* Credit: top-left content band; vertically centered with USD／TWD buttons */
-        .ynow-credit-float {
-          position: fixed;
-          top: calc(50px + 8px);
-          left: calc(250px + 14px);
-          height: 26px;
-          display: flex;
-          align-items: center;
-          z-index: 1034;
-          pointer-events: none;
-          max-width: min(420px, calc(100vw - 360px));
+        /* Credit line: document-flow pin above ticker (not viewport-fixed float) */
+        .ynow-credit-pin {
+          position: static;
+          float: none;
+          clear: both;
+          display: block;
+          margin: 0 0 6px 0;
+          padding: 0;
+          max-width: 420px;
         }
-        .sidebar-collapse .ynow-credit-float {
-          left: calc(50px + 14px);
-          max-width: min(420px, calc(100vw - 180px));
-        }
-        .ynow-credit-float .ynow-credit-text {
+        .ynow-credit-pin .ynow-credit-text {
           margin: 0;
           padding: 0;
           font-size: 13px;
@@ -1741,13 +1730,10 @@ ui <- dashboardPage(
           text-overflow: ellipsis;
         }
         @media (max-width: 767px) {
-          .ynow-credit-float,
-          .sidebar-collapse .ynow-credit-float {
-            left: 12px;
-            top: calc(50px + 8px);
-            max-width: calc(100vw - 160px);
+          .ynow-credit-pin {
+            max-width: 100%;
           }
-          .ynow-credit-float .ynow-credit-text {
+          .ynow-credit-pin .ynow-credit-text {
             font-size: 11px;
           }
         }
@@ -2412,9 +2398,12 @@ ui <- dashboardPage(
           min-width: 0;
         }
         .content-wrapper .small-box,
-        .content-wrapper .info-box {
+        .content-wrapper .info-box,
+        .tab-content .small-box,
+        .tab-content .info-box {
           min-width: 0;
           max-width: 100%;
+          width: 100%;
           box-sizing: border-box;
           overflow: hidden;
         }
@@ -2456,57 +2445,81 @@ ui <- dashboardPage(
           white-space: normal;
           overflow-wrap: anywhere;
         }
+        /* 平板：較窄欄的彩色 BOX 兩欄並排 */
         @media (max-width: 991px) {
-          .content .row > [class*='col-sm-3']:has(.small-box),
-          .content .row > [class*='col-sm-4']:has(.small-box),
-          .content .row > [class*='col-sm-3']:has(.info-box),
-          .content .row > [class*='col-sm-4']:has(.info-box) {
-            width: 50%;
-            float: left;
-          }
-          .content .row > [class*='col-sm-6']:has(.small-box),
-          .content .row > [class*='col-sm-6']:has(.info-box) {
-            width: 50%;
-            float: left;
+          .content-wrapper .row > [class*='col-sm-2']:has(.small-box),
+          .content-wrapper .row > [class*='col-sm-3']:has(.small-box),
+          .content-wrapper .row > [class*='col-sm-4']:has(.small-box),
+          .content-wrapper .row > [class*='col-sm-2']:has(.info-box),
+          .content-wrapper .row > [class*='col-sm-3']:has(.info-box),
+          .content-wrapper .row > [class*='col-sm-4']:has(.info-box),
+          .tab-content .row > [class*='col-sm-2']:has(.small-box),
+          .tab-content .row > [class*='col-sm-3']:has(.small-box),
+          .tab-content .row > [class*='col-sm-4']:has(.small-box),
+          .tab-content .row > [class*='col-sm-2']:has(.info-box),
+          .tab-content .row > [class*='col-sm-3']:has(.info-box),
+          .tab-content .row > [class*='col-sm-4']:has(.info-box) {
+            width: 50% !important;
+            float: left !important;
+            clear: none;
           }
         }
+        /* 手機：頁籤／內容區彩色 BOX 直向全寬（勿再壓成 33% 三欄） */
         @media (max-width: 767px) {
-          .content .row > [class*='col-sm-3']:has(.small-box),
-          .content .row > [class*='col-sm-4']:has(.small-box),
-          .content .row > [class*='col-sm-6']:has(.small-box),
-          .content .row > [class*='col-sm-3']:has(.info-box),
-          .content .row > [class*='col-sm-4']:has(.info-box),
-          .content .row > [class*='col-sm-6']:has(.info-box) {
-            width: 33.333%;
-            float: left;
+          .content-wrapper .row > [class*='col-']:has(.small-box),
+          .content-wrapper .row > [class*='col-']:has(.info-box),
+          .tab-content .row > [class*='col-']:has(.small-box),
+          .tab-content .row > [class*='col-']:has(.info-box),
+          .tab-pane .row > [class*='col-']:has(.small-box),
+          .tab-pane .row > [class*='col-']:has(.info-box) {
+            width: 100% !important;
+            max-width: 100% !important;
+            float: none !important;
+            display: block !important;
+            clear: both !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+          }
+          .content-wrapper .small-box,
+          .content-wrapper .info-box,
+          .tab-content .small-box,
+          .tab-content .info-box {
+            margin-bottom: 10px !important;
           }
           .content-wrapper .small-box .inner {
-            padding-right: 8px;
-            padding-left: 8px;
+            padding-right: 12px;
+            padding-left: 12px;
           }
           .content-wrapper .small-box .icon {
             display: none;
           }
           .content-wrapper .small-box .inner h3,
           .content-wrapper .small-box .inner h3 * {
-            font-size: clamp(11px, 3.2vw, 16px) !important;
+            font-size: clamp(18px, 5.5vw, 26px) !important;
+          }
+          .content-wrapper .small-box .inner p {
+            font-size: clamp(11px, 3.2vw, 13px) !important;
           }
           .content-wrapper .info-box {
             min-height: 0;
+            height: auto !important;
           }
           .content-wrapper .info-box .info-box-icon {
-            width: 36px;
-            height: 36px;
-            font-size: 16px;
-            line-height: 36px;
+            width: 48px;
+            height: 48px;
+            font-size: 20px;
+            line-height: 48px;
           }
           .content-wrapper .info-box .info-box-content {
-            margin-left: 36px;
-            padding: 4px 6px 4px 8px;
+            margin-left: 48px;
+            padding: 6px 10px 6px 12px;
           }
           .content-wrapper .info-box .info-box-number,
           .content-wrapper .info-box .info-box-number h3 {
-            font-size: clamp(11px, 3vw, 15px) !important;
+            font-size: clamp(16px, 4.8vw, 22px) !important;
+          }
+          .content-wrapper .info-box .info-box-text {
+            font-size: clamp(11px, 3vw, 13px) !important;
           }
         }
 
@@ -2535,8 +2548,11 @@ ui <- dashboardPage(
         @media (max-width: 992px) {
           .ynow-fs-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
         }
-        @media (max-width: 576px) {
+        @media (max-width: 767px) {
           .ynow-fs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        @media (max-width: 420px) {
+          .ynow-fs-grid { grid-template-columns: 1fr; }
         }
         .ynow-fs-card {
           background: linear-gradient(165deg, #fafafa 0%, #f0f0f0 100%);
@@ -2699,19 +2715,22 @@ ui <- dashboardPage(
         }
         @media (max-width: 992px) {
           .ynow-kpi-grid > * {
-            width: 33.333% !important;
-            max-width: 33.333% !important;
-            flex-basis: 33.333%;
+            width: 50% !important;
+            max-width: 50% !important;
+            flex-basis: 50%;
           }
         }
         @media (max-width: 767px) {
           .ynow-kpi-grid > * {
-            width: 33.333% !important;
-            max-width: 33.333% !important;
-            flex-basis: 33.333%;
+            width: 50% !important;
+            max-width: 50% !important;
+            flex-basis: 50%;
           }
           .ynow-kpi-grid .small-box .inner h3 {
-            font-size: clamp(11px, 3.2vw, 16px) !important;
+            font-size: clamp(13px, 4vw, 18px) !important;
+          }
+          .ynow-kpi-grid .small-box .inner p {
+            font-size: clamp(10px, 2.8vw, 12px) !important;
           }
         }
         .ynow-kpi-grid .small-box {
@@ -2810,6 +2829,12 @@ ui <- dashboardPage(
           }
           .ynow-kpi-legend-chips {
             grid-template-columns: repeat(4, minmax(0, 1fr));
+          }
+        }
+        @media (max-width: 420px) {
+          .ynow-ind-snapshot-chips,
+          .ynow-kpi-legend-chips {
+            grid-template-columns: 1fr;
           }
         }
         .ynow-ann-swatch {
@@ -3133,8 +3158,21 @@ ui <- dashboardPage(
           filter: drop-shadow(0 0 2px rgba(0,0,0,0.35));
         }
 
-        /* 手機：右上 繁中／EN＋logo 與左上漢堡垂直置中；幣別仍貼頁首下緣 */
+        /* 手機：右上 繁中／EN＋logo 與左上漢堡垂直置中；幣別仍貼頁首下緣；黑色頁首置頂不滑掉 */
         @media (max-width: 767px) {
+          .main-header {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            width: 100% !important;
+            z-index: 1030 !important;
+          }
+          /* 內容下移，避免被固定頁首遮住（AdminLTE 預設非 fixed 時 margin-top 為 0） */
+          .content-wrapper,
+          .right-side {
+            margin-top: 50px !important;
+          }
           .main-header .navbar {
             min-height: 50px !important;
             height: 50px;
@@ -3536,6 +3574,11 @@ ui <- dashboardPage(
     # ==========================================
     fluidRow(
       column(width = 12,
+             # Author credit: fixed layout pin above search (not position:fixed float)
+             tags$div(
+               class = "ynow-credit-pin",
+               tags$span(class = "ynow-credit-text", "a lawrence kuo shiny app")
+             ),
              div(
                class = "ynow-sc-row",
                div(
@@ -3793,8 +3836,7 @@ ui <- dashboardPage(
                      tabPanel("Finance Summary",
                               p("This section imports Finance Summaries from Yahoo Finance",
                                 style = "margin-bottom: 12px; color: #666; font-size: 13px;"),
-                              uiOutput("fs_summary_ui"),
-                              downloadButton('FS_download', "Download Finance Summary")
+                              uiOutput("fs_summary_ui")
                      ),
                      
                      tabPanel(
@@ -4361,8 +4403,7 @@ ui <- dashboardPage(
                                     style = "margin:0 0 8px 0;color:#666;font-size:12px;",
                                     "WACC = We×rₑ + Wd×rᵈ×(1−T)。rᵈ 可由下方「估算 rᵈ」以利息費用／有息負債推估（稅前），再於此套用稅盾。"
                                   ),
-                                  actionButton("calc_wacc", "計算 WACC", class = "btn-primary"),
-                                  tags$br(), htmlOutput("wacc_result")
+                                  actionButton("calc_wacc", "計算 WACC", class = "btn-primary")
                                 )
                               ),
                               fluidRow(
