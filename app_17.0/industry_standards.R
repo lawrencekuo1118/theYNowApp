@@ -869,6 +869,28 @@ annotation_stability_df <- function() {
   )
 }
 
+#' 產業標準六格 KPI chips（Dashboard 選單列正下方）
+industry_standard_metric_chips_ui <- function(industry_key) {
+  key <- as.character(industry_key %||% "")[1]
+  if (!nzchar(key) || !(key %in% names(industry_standards))) {
+    return(NULL)
+  }
+  bands <- industry_standard_bands_df(key)
+  if (is.null(bands) || !nrow(bands)) return(NULL)
+  chips <- lapply(seq_len(nrow(bands)), function(i) {
+    tags$div(
+      class = "ynow-ann-chip ynow-ind-snapshot-chip",
+      tags$span(style = "font-size:11px; color:#888;", bands$label[[i]]),
+      tags$span(style = "font-weight:700; color:#222222;", bands$band[[i]])
+    )
+  })
+  tags$div(
+    class = "ynow-ann-legend ynow-ind-snapshot-chips",
+    style = "margin-top:0; margin-bottom:0;",
+    chips
+  )
+}
+
 #' 目前產業標準快覽 UI（Dashboard／Annotation 共用）
 #' 數值一律即時讀自 industry_standards[[key]]，不另硬編碼區間。
 #' @param industry_key 產業鍵（如 sc.Foundry）
@@ -884,7 +906,7 @@ industry_standard_snapshot_ui <- function(industry_key,
                                           yahoo_text = NULL,
                                           show_chips = TRUE,
                                           show_title = TRUE,
-                                          empty_message = "尚未選擇比較產業（請於上方 Industry Standard 選取）",
+                                          empty_message = "尚未選擇比較產業（請於上方產業選單選取）。",
                                           profile_id = NULL,
                                           profile_label = NULL,
                                           profile_title = NULL,

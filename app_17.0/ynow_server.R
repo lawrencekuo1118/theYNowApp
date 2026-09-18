@@ -895,18 +895,26 @@ server <- function(input, output, session) {
     industry_standard_snapshot_ui(
       industry_key = input$industry_choice,
       yahoo_text = corp_industry_text(),
-      show_chips = TRUE,
+      show_chips = FALSE,
       show_title = FALSE,
       embedded = TRUE,
-      empty_message = if (identical(tryCatch(ui_locale(), error = function(e) "en"), "en")) {
-        "No comparison industry selected (use Industry Standard above)."
+      empty_message = if (exists("ui_str", mode = "function")) {
+        tryCatch(ui_str("industry_picker_empty"), error = function(e) {
+          "尚未選擇比較產業（請於上方產業選單選取）。"
+        })
       } else {
-        "尚未選擇比較產業（請於上方 Industry Standard 選取）。"
+        "尚未選擇比較產業（請於上方產業選單選取）。"
       },
       profile_id = if (nzchar(fp_id)) fp_id else NULL,
       profile_label = if (nzchar(fp_lab)) fp_lab else NULL,
       profile_title = if (nzchar(fp_why)) fp_why else NULL
     )
+  })
+
+  output$dashboard_industry_metric_chips <- renderUI({
+    ui_locale()
+    input$industry_choice
+    industry_standard_metric_chips_ui(input$industry_choice)
   })
   
   output$ibx_stockprice <- renderInfoBox({
@@ -1727,7 +1735,16 @@ server <- function(input, output, session) {
       pb_high = c("P/B", "P/B High", "產業帶上緣"),
       pb_basis = c("P/B", "Basis", "bvps / tbvps / navps"),
       pb_use_industry = c("P/B", "使用產業 P/B", "TRUE = 跟產業帶"),
-      pb_holdco_discount = c("P/B", "控股折價", "套用在已辨識投資科目")
+      pb_holdco_discount = c("P/B", "控股折價", "套用在已辨識投資科目"),
+      pb_target_mode = c("P/B", "目標模式", "multiples / justified"),
+      nav_holdco_discount = c("NAV", "控股折價", "套用在已辨識投資科目"),
+      nav_low = c("NAV", "NAV Low 倍數", "Bear 倍數"),
+      nav_mid = c("NAV", "NAV Mid 倍數", "Base 倍數"),
+      nav_high = c("NAV", "NAV High 倍數", "Bull 倍數"),
+      apply_capex_spike_smooth = c("FCF", "啟用 CapEx 暴衝平滑", "TRUE = 暴衝時改採均值"),
+      capex_spike_mult = c("FCF", "暴衝倍數閾值", "最新 CapEx/Rev > mult × 前期均值"),
+      capex_spike_avg_years = c("FCF", "暴衝均值年數", "暴衝時投影採最近 N 年均值"),
+      capex_spike_prior_years = c("FCF", "暴衝判定前期年數", "不含最新年的前期均值窗口")
     )
 
     keys <- names(APP_DEFAULTS)
@@ -10107,7 +10124,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.03"),
+      paste0("- **App：** The YNow App v17.04"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

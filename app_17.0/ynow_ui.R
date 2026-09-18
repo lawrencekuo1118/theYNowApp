@@ -75,7 +75,7 @@
       tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
       tags$p(
         class = "ynow-about-lead",
-        "The YNow App (v17.03) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合了即時財報抓取、多維度估值模型與動態回測引擎，將繁雜的市場資料轉化為直覺、科學的投資決策。"
+        "The YNow App (v17.04) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合了即時財報抓取、多維度估值模型與動態回測引擎，將繁雜的市場資料轉化為直覺、科學的投資決策。"
       ),
       tags$p(
         class = "ynow-about-method",
@@ -91,7 +91,7 @@
       tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
       tags$p(
         class = "ynow-about-lead",
-        "The YNow App (v17.03) is a comprehensive quantitative financial analysis and valuation decision system designed for professional investors and analysts. It seamlessly integrates real-time financial data parsing, multi-dimensional valuation models, and a dynamic backtesting engine to transform complex market data into actionable, scientific investment insights."
+        "The YNow App (v17.04) is a comprehensive quantitative financial analysis and valuation decision system designed for professional investors and analysts. It seamlessly integrates real-time financial data parsing, multi-dimensional valuation models, and a dynamic backtesting engine to transform complex market data into actionable, scientific investment insights."
       ),
       tags$p(
         class = "ynow-about-method",
@@ -723,8 +723,7 @@ beta_rolling_section_ui <- function() {
         "sgr",
         "自訂 SGR (%)",
         value = APP_DEFAULTS$sgr
-      ),
-      helpText(id = "ynow_sgr_manual_help", "可由上方方法自動估計，亦可手動覆寫。")
+      )
     )
   )
 }
@@ -831,7 +830,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.03</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.04</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -1156,15 +1155,20 @@ ui <- dashboardPage(
           color: #fff !important;
         }
 
-        /* 美股／台股：釘在三線 icon 右側（navbar 座標；脫離右欄 flex） */
+        /* 美股／台股：釘在三線 icon 右側（navbar 座標；脫離右欄 flex；無空隙） */
         .main-header .navbar {
           position: relative !important;
+        }
+        .main-header .navbar > .sidebar-toggle,
+        .skin-black .main-header .navbar .sidebar-toggle {
+          padding-right: 0 !important;
+          margin-right: 0 !important;
         }
         .main-header .navbar #ynow-market-header.ynow-market-header,
         .main-header .navbar-custom-menu #ynow-market-header.ynow-market-header,
         .main-header .navbar-custom-menu .navbar-nav > li#ynow-market-header.ynow-market-header {
           position: absolute !important;
-          left: 50px !important; /* .sidebar-toggle 寬度 */
+          left: 44px !important; /* fallback；JS 依 toggle.offsetWidth 覆寫 */
           right: auto !important;
           top: 0 !important;
           float: none !important;
@@ -2151,7 +2155,7 @@ ui <- dashboardPage(
           }
           registerBadgeHandler();
 
-          /* 美股／台股：搬到三線 toggle 正後方（CSS absolute 為視覺後備），並綁定 Shiny input */
+          /* 美股／台股：搬到三線 toggle 正後方；left = toggle 右緣（無空隙） */
           function placeMarketHeaderByToggle() {
             var navbar = document.querySelector('.main-header .navbar');
             var market = document.getElementById('ynow-market-header');
@@ -2166,8 +2170,14 @@ ui <- dashboardPage(
             }
             if (!toggle) toggle = navbar.querySelector('.sidebar-toggle');
             if (!toggle) return;
-            if (market.parentNode === navbar && market.previousElementSibling === toggle) return;
-            navbar.insertBefore(market, toggle.nextSibling);
+            if (!(market.parentNode === navbar && market.previousElementSibling === toggle)) {
+              navbar.insertBefore(market, toggle.nextSibling);
+            }
+            var leftPx = Math.round(toggle.offsetLeft + toggle.offsetWidth);
+            if (!(leftPx > 0)) leftPx = Math.round(toggle.offsetWidth);
+            market.style.left = leftPx + 'px';
+            market.style.marginLeft = '0';
+            market.style.paddingLeft = '0';
           }
           function bindMarketModeButtons() {
             placeMarketHeaderByToggle();
@@ -2405,15 +2415,16 @@ ui <- dashboardPage(
             var scLab = document.querySelector('label[for=\"sc\"]');
             if (scLab && s.ticker_label) scLab.textContent = s.ticker_label;
             var indLab = document.querySelector('label[for=\"industry_choice\"]');
-            if (indLab && s.industry_standard) indLab.textContent = s.industry_standard;
+            if (indLab) {
+              indLab.style.display = 'none';
+              indLab.textContent = '';
+            }
             var sgrMethodTitle = document.getElementById('ynow_sgr_method_title');
             if (sgrMethodTitle && s.sgr_method_title) sgrMethodTitle.textContent = s.sgr_method_title;
             var lifeTitle = document.getElementById('ynow_lifecycle_stage_title');
             if (lifeTitle && s.lifecycle_stage_title) lifeTitle.textContent = s.lifecycle_stage_title;
             var lifeHelp = document.getElementById('ynow_lifecycle_stage_help');
             if (lifeHelp && s.lifecycle_stage_help) lifeHelp.textContent = s.lifecycle_stage_help;
-            var sgrManualHelp = document.getElementById('ynow_sgr_manual_help');
-            if (sgrManualHelp && s.sgr_manual_help) sgrManualHelp.textContent = s.sgr_manual_help;
             var sgrCustomLab = document.querySelector('label[for=\"sgr\"]');
             if (sgrCustomLab && s.sgr_custom_label) sgrCustomLab.textContent = s.sgr_custom_label;
             var indOverviewTitle = document.getElementById('ynow_ind_overview_title');
@@ -3190,7 +3201,11 @@ ui <- dashboardPage(
           color: #333;
           min-width: 168px;
         }
-        /* 目前產業標準快覽／色碼圖例：手機兩兩並列；≥768px 三欄（圖例四格可為 2×2） */
+        /* 產業標準六格：手機兩欄；≥768px 六欄均分。色碼圖例：手機兩欄／桌面四欄 */
+        .ynow-ind-overview-metrics {
+          width: 100%;
+          margin-top: 10px;
+        }
         .ynow-ind-snapshot-chips,
         .ynow-kpi-legend-chips {
           display: grid !important;
@@ -3211,7 +3226,7 @@ ui <- dashboardPage(
         }
         @media (min-width: 768px) {
           .ynow-ind-snapshot-chips {
-            grid-template-columns: repeat(3, minmax(0, 1fr));
+            grid-template-columns: repeat(6, minmax(0, 1fr));
           }
           .ynow-kpi-legend-chips {
             grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -3553,7 +3568,7 @@ ui <- dashboardPage(
             height: 50px !important;
             min-height: 50px !important;
             line-height: 50px !important;
-            padding: 0 15px !important;
+            padding: 0 0 0 15px !important;
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
@@ -3562,10 +3577,12 @@ ui <- dashboardPage(
           }
           .main-header .navbar #ynow-market-header.ynow-market-header {
             position: absolute !important;
-            left: 50px !important;
+            left: 44px !important; /* fallback；JS 依 toggle.offsetWidth 覆寫 */
             top: 0 !important;
             float: none !important;
             align-self: auto;
+            margin: 0 !important;
+            padding: 0 !important;
           }
           .main-header .navbar-custom-menu {
             float: none !important;
@@ -4359,7 +4376,7 @@ ui <- dashboardPage(
                     class = "ynow-ind-overview-picker",
                     pickerInput(
                       inputId = "industry_choice",
-                      label = "Industry Standard",
+                      label = NULL,
                       choices = industry_picker_choices(),
                       selected = APP_DEFAULTS$industry_choice,
                       options = list(`live-search` = TRUE, `size` = 12)
@@ -4369,6 +4386,10 @@ ui <- dashboardPage(
                     class = "ynow-ind-overview-summary",
                     uiOutput("dashboard_selected_industry")
                   )
+                ),
+                tags$div(
+                  class = "ynow-ind-overview-metrics",
+                  uiOutput("dashboard_industry_metric_chips")
                 )
               ),
               .kpi_band_color_legend_ui(),
@@ -4418,7 +4439,7 @@ ui <- dashboardPage(
                            tags$p(
                              class = "ynow-ann-note",
                              tags$b("用途："),
-                             "解讀上方 KPI 色碼如何對照 Dashboard「目前產業標準快覽」內的 Industry Standard 產業區間。",
+                             "解讀上方 KPI 色碼如何對照 Dashboard「目前產業標準快覽」內的產業區間。",
                              "數值採年報序列（排除 TTM）的多年平均或年均 YoY，以利跨期／同業比較。"
                            ),
                            tags$p(
@@ -4427,7 +4448,7 @@ ui <- dashboardPage(
                              "多數指標「越高越好」；",
                              tags$b("營運費用比、財務槓桿"), " 為「越低越好」（反向著色）。",
                              "落在產業 ", tags$code("[下限, 上限]"), " 內→黑；越出有利側→藍；不利側→紅（警示）；未設區間／N/A→白。",
-                             " KPI 數字框僅用黑／白／紅／藍。色碼圖例與產業標準快覽見上方 PERFORMANCE 區塊外（含 Industry Standard 選單）。"
+                             " KPI 數字框僅用黑／白／紅／藍。色碼圖例與產業標準快覽見上方 PERFORMANCE 區塊外（含產業選單）。"
                            ),
                            tags$h4("KPI 計算與產業區間", class = "ynow-ann-h"),
                            DT::dataTableOutput("annotation_kpi_guide"),
