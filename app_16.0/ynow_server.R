@@ -886,11 +886,30 @@ server <- function(input, output, session) {
     if (length(leftover) > 0) groups$Other <- leftover
 
     use_zh_fs <- should_localize_fs_zh_tw(mode = market_mode(), locale = ui_locale())
-    mk_card <- function(item, value) {
+    fp <- tryCatch(fundamental_profile_rec(), error = function(e) NULL)
+    fp_id <- as.character(fp$profile %||% "")[1]
+    focus_tip <- tryCatch(ui_str("kpi_legend_focus_metric"), error = function(e) "本財報屬性關鍵指標")
+    mk_card <- function(item, value, raw_item = item) {
+      mid <- if (exists("fs_item_to_focus_metric", mode = "function")) {
+        fs_item_to_focus_metric(raw_item)
+      } else {
+        NA_character_
+      }
+      mark <- if (nzchar(fp_id) && !is.na(mid) &&
+                  exists("is_profile_focus_metric", mode = "function") &&
+                  isTRUE(is_profile_focus_metric(fp_id, mid))) {
+        .ynow_focus_metric_mark(focus_tip)
+      } else {
+        NULL
+      }
       tags$div(
         class = "ynow-fs-card",
         tags$div(class = "ynow-fs-label", item),
-        tags$div(class = "ynow-fs-value", value)
+        tags$div(
+          class = "ynow-fs-value",
+          value,
+          if (!is.null(mark)) mark
+        )
       )
     }
 
@@ -914,7 +933,8 @@ server <- function(input, output, session) {
             )
             mk_card(
               localize_summary_item_zh_tw(rows$Item[i], enabled = use_zh_fs),
-              disp
+              disp,
+              raw_item = rows$Item[i]
             )
           })
         )
@@ -1174,6 +1194,29 @@ server <- function(input, output, session) {
     }
   })
 
+  # 財報屬性分群（與產業正交；供 KPI 琥珀點／Annotation／Get Started）
+  fundamental_profile_rec <- reactive({
+    if (!isTRUE(user_has_searched())) {
+      return(list(
+        profile = "fallback",
+        signals = list(),
+        reason = "請先搜尋載入財報。",
+        focus_metrics = character(0)
+      ))
+    }
+    if (!exists("classify_fundamental_profile", mode = "function")) {
+      return(list(profile = "fallback", signals = list(), reason = "", focus_metrics = character(0)))
+    }
+    cf <- tryCatch(d_cash_flow(), error = function(e) NULL)
+    is <- tryCatch(d_income_statement(), error = function(e) NULL)
+    bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
+    classify_fundamental_profile(
+      d_cf = cf, d_is = is, d_bs = bs,
+      industry_text = tryCatch(corp_industry_text(), error = function(e) ""),
+      industry_choice = input$industry_choice
+    )
+  })
+
   # Dynamic 「推薦」／「備選」— primary + secondary; bubble to parent Appr. tabs
   sidebar_badge_sig <- reactiveVal("")
   observe({
@@ -1270,6 +1313,39 @@ server <- function(input, output, session) {
       "pending" = "待搜尋",
       "待分類"
     )
+    fp <- tryCatch(fundamental_profile_rec(), error = function(e) NULL)
+    fp_id <- as.character(fp$profile %||% "fallback")[1]
+    loc <- tryCatch(ui_locale(), error = function(e) "zh-TW")
+    fp_lab <- if (exists("ui_str", mode = "function")) {
+      tryCatch({
+        k <- paste0("fund_profile_", fp_id)
+        s <- ui_str(k)
+        if (identical(s, k) || !nzchar(s)) {
+          .fundamental_profile_label_fallback(fp_id, loc)
+        } else {
+          s
+        }
+      }, error = function(e) .fundamental_profile_label_fallback(fp_id, loc))
+    } else if (exists(".fundamental_profile_label_fallback", mode = "function")) {
+      .fundamental_profile_label_fallback(fp_id, loc)
+    } else {
+      fp_id
+    }
+    fp_why <- if (exists("ui_str", mode = "function")) {
+      tryCatch({
+        k <- paste0("fund_profile_why_", fp_id)
+        s <- ui_str(k)
+        if (identical(s, k) || !nzchar(s)) {
+          .fundamental_profile_why_fallback(fp_id, loc)
+        } else {
+          s
+        }
+      }, error = function(e) .fundamental_profile_why_fallback(fp_id, loc))
+    } else if (exists(".fundamental_profile_why_fallback", mode = "function")) {
+      .fundamental_profile_why_fallback(fp_id, loc)
+    } else {
+      as.character(fp$reason %||% "")[1]
+    }
 
     tagList(
       tags$style(HTML("
@@ -1322,6 +1398,10 @@ server <- function(input, output, session) {
           tags$span(style = "margin:0 8px; color:#bbb;", "|"),
           tags$b("主模型："), "尚未標示"
         ),
+        tags$br(),
+        tags$b(id = "ynow_fund_profile_label", "財報屬性："), fp_lab,
+        tags$span(style = "margin:0 8px; color:#bbb;", "|"),
+        tags$span(style = "color:#555;", fp_why),
         tags$br(),
         tags$span(rec$reason %||% "請先按下 Search 載入公司後產生推薦。")
       ),
@@ -2038,7 +2118,11 @@ server <- function(input, output, session) {
     })
   )
 
-  kpi_module_server("kpi", d_income_statement, d_balance_sheet, d_cash_flow, reactive(input$industry_choice))
+  kpi_module_server(
+    "kpi", d_income_statement, d_balance_sheet, d_cash_flow,
+    reactive(input$industry_choice),
+    fundamental_profile = fundamental_profile_rec
+  )
   
   run_calc_trigger <- reactiveVal(0)
   observeEvent(input$calc, { run_calc_trigger(run_calc_trigger() + 1) })
@@ -3026,7 +3110,9 @@ server <- function(input, output, session) {
 
   output$annotation_kpi_guide <- DT::renderDataTable({
     key <- as.character(input$industry_choice %||% "")[1]
-    df <- annotation_kpi_guide_df(key)
+    fp <- tryCatch(fundamental_profile_rec(), error = function(e) NULL)
+    pid <- as.character(fp$profile %||% "")[1]
+    df <- annotation_kpi_guide_df(key, profile_id = pid)
     DT::datatable(
       df,
       rownames = FALSE,
@@ -9636,7 +9722,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v16.40"),
+      paste0("- **App：** The YNow App v16.41"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

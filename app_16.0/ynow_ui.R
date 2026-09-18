@@ -105,7 +105,7 @@
   )
 }
 
-#' KPI 色碼圖例：藍→紅→黑→白（Dashboard：產業快覽下方、PERFORMANCE 上方）
+#' KPI 色碼圖例：藍→紅→黑→白＋琥珀屬性重視（Dashboard：產業快覽下方、PERFORMANCE 上方）
 .kpi_band_color_legend_ui <- function() {
   tags$div(
     class = "ynow-ann-legend ynow-kpi-legend-chips",
@@ -129,6 +129,14 @@
       tags$span(class = "ynow-ann-swatch",
                 style = "background:#fff; border:1px solid #999;"),
       tags$span(id = "ynow_kpi_legend_white", "白 · 無法比較／N/A")
+    ),
+    tags$div(
+      class = "ynow-ann-chip ynow-kpi-legend-chip",
+      tags$span(
+        class = "ynow-focus-metric-dot ynow-focus-metric-dot--legend",
+        style = "margin:0 4px 0 0; vertical-align:middle;"
+      ),
+      tags$span(id = "ynow_kpi_legend_focus", "琥珀 · 本財報屬性關鍵指標")
     )
   )
 }
@@ -2208,6 +2216,10 @@ ui <- dashboardPage(
             if (kpiBlack && s.kpi_legend_black) kpiBlack.textContent = s.kpi_legend_black;
             var kpiWhite = document.getElementById('ynow_kpi_legend_white');
             if (kpiWhite && s.kpi_legend_white) kpiWhite.textContent = s.kpi_legend_white;
+            var kpiFocus = document.getElementById('ynow_kpi_legend_focus');
+            if (kpiFocus && s.kpi_legend_focus_metric) kpiFocus.textContent = s.kpi_legend_focus_metric;
+            var fundProfLab = document.getElementById('ynow_fund_profile_label');
+            if (fundProfLab && s.fund_profile_label) fundProfLab.textContent = s.fund_profile_label + '：';
             var dsTitle = document.getElementById('ynow_data_source_title');
             if (dsTitle && s.data_source_title) dsTitle.textContent = s.data_source_title;
             var dsBody = document.getElementById('ynow_data_source_body');
@@ -2570,6 +2582,24 @@ ui <- dashboardPage(
           line-height: 1.2;
           word-break: break-word;
           overflow-wrap: anywhere;
+        }
+        /* 財報屬性「重視指標」琥珀點（與同業紅＝劣於同業語意分離） */
+        .ynow-focus-metric-dot {
+          display: inline-block;
+          width: 8px;
+          height: 8px;
+          margin-left: 6px;
+          border-radius: 50%;
+          background: #E0A800;
+          vertical-align: middle;
+          box-shadow: 0 0 0 1px rgba(0,0,0,0.08);
+        }
+        .ynow-focus-metric-dot--legend {
+          margin-left: 0;
+        }
+        .content-wrapper .small-box .inner h3 .ynow-focus-metric-dot {
+          margin-left: 8px;
+          vertical-align: middle;
         }
 
         /* Snapshot / HFV 摘要數字：維持可覆寫 class，尺寸回預設 */
