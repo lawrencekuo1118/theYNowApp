@@ -71,6 +71,22 @@ lab_cluster_features_to_df <- function(rows) {
     return(empty)
   }
   if (!is.data.frame(df) || nrow(df) == 0L) return(empty)
+  rename_map <- c(
+    Ticker = "ticker", Symbol = "ticker", symbol = "ticker",
+    Name = "name", shortName = "name",
+    marketCap = "market_cap", Market_Cap = "market_cap",
+    OperatingMargin = "Operating_Margin", operatingMargins = "Operating_Margin",
+    RevYoY = "Rev_YoY", revenueGrowth = "Rev_YoY",
+    OpIncYoY = "OpInc_YoY",
+    DebtRatio = "Debt_Ratio", debtToEquity = "Debt_Ratio",
+    PE = "PE_Ratio", trailingPE = "PE_Ratio",
+    PB = "PB_Ratio", priceToBook = "PB_Ratio"
+  )
+  for (nm in names(rename_map)) {
+    if (nm %in% names(df) && !rename_map[[nm]] %in% names(df)) {
+      names(df)[names(df) == nm] <- rename_map[[nm]]
+    }
+  }
   need <- names(empty)
   for (nm in need) {
     if (!nm %in% names(df)) {
@@ -78,6 +94,10 @@ lab_cluster_features_to_df <- function(rows) {
     }
   }
   df$ticker <- toupper(trimws(as.character(df$ticker)))
+  blank <- is.na(df$ticker) | !nzchar(df$ticker)
+  if (any(blank) && !is.null(rownames(df))) {
+    df$ticker[blank] <- toupper(trimws(rownames(df)[blank]))
+  }
   df$name <- as.character(df$name)
   df$name[is.na(df$name) | !nzchar(df$name)] <- df$ticker[is.na(df$name) | !nzchar(df$name)]
   for (f in LAB_CLUSTER_FEATURES) {
@@ -89,19 +109,154 @@ lab_cluster_features_to_df <- function(rows) {
   df
 }
 
-#' Fetch Yahoo ratio features for tickers (via deep_scraper.get_cluster_features_batch)
+.lab_cluster_yahoo_raw <- function(x) {
+  if (is.null(x)) return(NA_real_)
+  if (is.list(x) && !is.null(x$raw)) x <- x$raw
+  suppressWarnings(as.numeric(x)[1])
+}
+
+.lab_cluster_pct_points <- function(x) {
+  v <- .lab_cluster_yahoo_raw(x)
+  if (!is.finite(v)) return(NA_real_)
+  if (abs(v) <= 1.5) v * 100 else v
+}
+
+.lab_cluster_debt_pct <- function(x) {
+  v <- .lab_cluster_yahoo_raw(x)
+  if (!is.finite(v)) return(NA_real_)
+  if (abs(v) < 5) v * 100 else v
+}
+
+#' R-only Yahoo quoteSummary fallback (no Python / reticulate)
+lab_fetch_cluster_features_r <- function(tickers, timeout_sec = 12) {
+  tks <- unique(toupper(trimws(as.character(tickers))))
+  tks <- tks[nzchar(tks) & !is.na(tks)]
+  empty <- lab_cluster_features_to_df(NULL)
+  if (!length(tks)) return(empty)
+  if (!requireNamespace("httr", quietly = TRUE) ||
+      !requireNamespace("jsonlite", quietly = TRUE)) {
+    stop("httr/jsonlite required for R Yahoo feature fallback.")
+  }
+
+  rows <- lapply(tks, function(sym) {
+    url <- sprintf(
+      "https://query2.finance.yahoo.com/v10/finance/quoteSummary/%s",
+      utils::URLencode(sym, reserved = TRUE)
+    )
+    res <- tryCatch(
+      httr::GET(
+        url,
+        query = list(modules = "defaultKeyStatistics,financialData,summaryDetail,price"),
+        httr::add_headers(
+          `User-Agent` = "Mozilla/5.0 (compatible; TheYNowApp/16.0; +https://github.com/lawrencekuo1118/theYNowApp)",
+          Accept = "application/json"
+        ),
+        httr::timeout(as.numeric(timeout_sec)[1])
+      ),
+      error = function(e) NULL
+    )
+    row <- list(
+      ticker = sym,
+      name = NA_character_,
+      market_cap = NA_real_,
+      ROE = NA_real_,
+      Operating_Margin = NA_real_,
+      Rev_YoY = NA_real_,
+      OpInc_YoY = NA_real_,
+      Debt_Ratio = NA_real_,
+      PE_Ratio = NA_real_,
+      PB_Ratio = NA_real_
+    )
+    if (is.null(res) || httr::status_code(res) >= 400) return(row)
+    body <- tryCatch(
+      httr::content(res, as = "parsed", type = "application/json"),
+      error = function(e) NULL
+    )
+    result <- tryCatch(body$quoteSummary$result[[1]], error = function(e) NULL)
+    if (is.null(result)) return(row)
+    fd <- result$financialData %||% list()
+    ks <- result$defaultKeyStatistics %||% list()
+    sd <- result$summaryDetail %||% list()
+    pr <- result$price %||% list()
+    nm <- pr$shortName %||% pr$longName %||% NA_character_
+    if (!is.null(nm) && !is.na(nm)) row$name <- as.character(nm)[1]
+    row$market_cap <- .lab_cluster_yahoo_raw(pr$marketCap %||% ks$enterpriseValue)
+    row$ROE <- .lab_cluster_pct_points(fd$returnOnEquity)
+    row$Operating_Margin <- .lab_cluster_pct_points(fd$operatingMargins)
+    row$Rev_YoY <- .lab_cluster_pct_points(fd$revenueGrowth)
+    row$OpInc_YoY <- .lab_cluster_pct_points(fd$earningsGrowth %||% ks$earningsQuarterlyGrowth)
+    row$Debt_Ratio <- .lab_cluster_debt_pct(fd$debtToEquity)
+    pe <- .lab_cluster_yahoo_raw(sd$trailingPE %||% ks$forwardPE %||% fd$currentPrice)
+    # Prefer trailingPE from summaryDetail / defaultKeyStatistics
+    pe <- .lab_cluster_yahoo_raw(sd$trailingPE)
+    if (!is.finite(pe)) pe <- .lab_cluster_yahoo_raw(ks$forwardPE)
+    pb <- .lab_cluster_yahoo_raw(sd$priceToBook %||% ks$priceToBook)
+    if (is.finite(pe) && pe > 0) row$PE_Ratio <- pe
+    if (is.finite(pb) && pb > 0) row$PB_Ratio <- pb
+    row
+  })
+
+  lab_cluster_features_to_df(rows)
+}
+
+#' Fetch Yahoo ratio features (Python first, R quoteSummary fallback)
+#' R-only Yahoo quoteSummary fallback (works when reticulate Python is unavailable)
+#' Fetch Yahoo ratio features (Python first; R quoteSummary fallback for shinyapps)
 lab_fetch_cluster_features <- function(tickers) {
   tks <- unique(toupper(trimws(as.character(tickers))))
   tks <- tks[nzchar(tks) & !is.na(tks)]
   if (!length(tks)) return(lab_cluster_features_to_df(NULL))
+
+  `%||%` <- function(a, b) if (is.null(a)) b else a
+  py_err <- NULL
+  df <- NULL
   ready <- exists(".ensure_python_scraper", mode = "function") &&
-    isTRUE(.ensure_python_scraper()) &&
-    exists("get_cluster_features_batch", mode = "function")
-  if (!isTRUE(ready)) {
-    stop("Python cluster feature fetcher unavailable (deep_scraper.py / reticulate).")
+    isTRUE(tryCatch(.ensure_python_scraper(), error = function(e) FALSE))
+  if (isTRUE(ready)) {
+    fn <- NULL
+    if (exists(".py_scraper_env") &&
+        exists("get_cluster_features_batch", envir = .py_scraper_env, inherits = FALSE, mode = "function")) {
+      fn <- get("get_cluster_features_batch", envir = .py_scraper_env, inherits = FALSE)
+    } else if (exists("get_cluster_features_batch", mode = "function")) {
+      fn <- get_cluster_features_batch
+    }
+    if (is.function(fn)) {
+      df <- tryCatch({
+        raw <- fn(as.list(tks))
+        lab_cluster_features_to_df(raw)
+      }, error = function(e) {
+        py_err <<- conditionMessage(e)
+        NULL
+      })
+    } else {
+      py_err <- "get_cluster_features_batch not found"
+    }
+  } else {
+    py_err <- "Python scraper unavailable"
   }
-  raw <- get_cluster_features_batch(tks)
-  lab_cluster_features_to_df(raw)
+
+  n_ok <- if (is.null(df) || nrow(df) == 0L) {
+    0L
+  } else {
+    sum(is.finite(df$ROE) | is.finite(df$PE_Ratio) | is.finite(df$Operating_Margin), na.rm = TRUE)
+  }
+  if (is.null(df) || nrow(df) == 0L || n_ok < 2L) {
+    df_r <- tryCatch(
+      lab_fetch_cluster_features_r(tks),
+      error = function(e) {
+        stop(sprintf(
+          "Feature fetch failed (python: %s; R fallback: %s)",
+          py_err %||% "n/a", conditionMessage(e)
+        ))
+      }
+    )
+    if (!is.null(df_r) && nrow(df_r) > 0L) return(df_r)
+    stop(sprintf(
+      "Feature fetch returned 0 usable rows for %d tickers (python: %s).",
+      length(tks), py_err %||% "n/a"
+    ))
+  }
+  df
 }
 
 #' Build evaluation pool for clustering from Blue Chip catalog filters
