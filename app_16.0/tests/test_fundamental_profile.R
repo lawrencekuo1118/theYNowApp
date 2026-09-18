@@ -8,6 +8,7 @@ test_dir <- if (length(file_arg) == 1L && nzchar(file_arg)) {
   getwd()
 }
 app_dir <- normalizePath(file.path(test_dir, ".."), mustWork = TRUE)
+suppressPackageStartupMessages(library(htmltools))
 source(file.path(app_dir, "setup.R"), local = FALSE)
 source(file.path(app_dir, "industry_standards.R"), local = FALSE)
 source(file.path(app_dir, "fundamental_profile.R"), local = FALSE)
@@ -116,6 +117,13 @@ df_ann <- annotation_kpi_guide_df("sc.Foundry", profile_id = "growth")
 check("annotation has 屬性重視", "屬性重視" %in% names(df_ann))
 rev_row <- df_ann[df_ann$指標 == "營收成長率", , drop = FALSE]
 check("annotation growth marks rev", nrow(rev_row) == 1L && identical(as.character(rev_row[["屬性重視"]][1]), "★"))
+
+# --- Profile badge HTML ---
+badge <- .ynow_fund_profile_badge_ui("capital_intensive", "資本密集", title = "重資產")
+badge_html <- as.character(badge)
+check("badge has class", grepl("ynow-fund-profile-badge", badge_html, fixed = TRUE))
+check("badge has data-profile-id", grepl('data-profile-id="capital_intensive"', badge_html, fixed = TRUE))
+check("badge shows label", grepl("資本密集", badge_html, fixed = TRUE))
 
 if (fail > 0L) {
   cat("FAILED ", fail, " checks\n", sep = "")
