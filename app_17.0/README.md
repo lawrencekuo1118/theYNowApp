@@ -1,12 +1,18 @@
-# The YNow App v17.04 — Valuation Methodology
+# The YNow App v17.05 — Valuation Methodology
 
 先分類，再選模型；先推導，再校正；先給區間，再給單點；先做基本面估值。
 
-## v17.04 重點
+## v17.05 重點
 
+- **DDM／RI Beta 分頁**：恢復 β 來源設定（與 Basic Setup／DCF 同款 picker）；`beta_u_apply_source` ↔ `ddm_beta_u_apply_source` ↔ `ri_beta_u_apply_source` 雙向同步；P/B／NAV 仍無 Beta
 - **美股／台股切換**：緊貼三線漢堡（`left` 依 toggle 右緣；padding／margin 歸零），無空隙
 - **產業標準快覽**：移除選單上「Industry Standard／產業標準」字樣；選單＋摘要同列；六格 KPI 區間均分於其下
 - **預設參數表**：補齊 NAV／CapEx 暴衝／P/B target mode 等 `APP_DEFAULTS` 欄位標籤
+- **目錄**：`app_17.0/`；顯示版號 **v17.05**
+
+## v17.04 重點
+
+- **美股／台股／產業快覽／預設表**：見 v17.05（本版曾部署為過渡 bundle，已被 v17.05 覆蓋）
 - **目錄**：`app_17.0/`；顯示版號 **v17.04**
 
 ## v17.03 重點
@@ -20,7 +26,7 @@
 
 - **綜合估值整塊**：自 Basic Setup 移至各模型設定頁表頭（主／副模型、Bear–Base–Bull、狀態列與市價帶）
 - **側邊欄推薦標籤**：修復 Recommend／推薦徽章可見性（flex 裁切＋handler 就緒重送）
-- **Beta 小頁籤**：僅保留公式實際用到 β 的路徑（Basic Setup BETA＋DCF）；DDM／RI／P/B／NAV 不放冗餘 Beta 分頁
+- **Beta 小頁籤**：Basic Setup BETA＋DCF＋DDM＋RI（β→CAPM→Ke）；P/B／NAV 不放冗餘 Beta 分頁
 - **目錄**：`app_17.0/`；顯示版號 **v17.01**
 
 ## v17 重點
@@ -29,7 +35,7 @@
 - **側邊欄三分法**：資產基礎法（NAV）｜收益與現金流折現法（DCF／DDM／RI）｜相對估值法（P/B）
 - **P/B 專注倍數**：產業／歷史或 Justified（需 SGR）；與純 NAV 分開
 - **推薦邏輯**：控股／綜合 → 主模型 NAV；金融／帳面驅動仍以 P/B 為主，資產傾向可副選 NAV
-- **目錄**：`app_17.0/`；顯示版號 **v17**（已遞增至 v17.04）
+- **目錄**：`app_17.0/`；顯示版號 **v17**（已遞增至 v17.05）
 - **Blue Chip 分群 Lab**：K-Means 對比率／成長率特徵分群（星團圖＋同群雷達；預設 N＝25、批次 quote＋快取）；研究用，非買進訊號
 - **財報屬性分群**：依三大報表規則標示 KPI／FS 金色點（與產業同業色碼正交）；產業快覽 Yahoo Sector/Industry 列右側顯示屬性標籤
 - **頁首置頂固定**：網頁／手機共用 `.main-header { position: fixed }`，捲動不滑掉

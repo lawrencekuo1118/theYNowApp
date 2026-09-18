@@ -325,6 +325,16 @@ ri_module_ui <- function(id) {
         )
       ),
 
+      # ----- Beta (β)：與 Basic Setup／DCF／DDM 同源 picker，雙向同步 -----
+      tabPanel(
+        "Beta (β)",
+        icon = icon("chart-line"),
+        .beta_model_source_section_ui(
+          "ri_beta_u_apply_source",
+          "ri_apply_beta_u_selected"
+        )
+      ),
+
       # ----- Sensitivity -----
       tabPanel(
         "Sensitivity Analysis", icon = icon("th"),
@@ -344,8 +354,6 @@ ri_module_ui <- function(id) {
           )
         )
       )
-
-      # Beta tab removed: RI discounts with Ke (central CAPM rₑ), not a local β input.
     ),
     .model_param_sensitivity_box(
       "RI 公式參數：每股估值貢獻與敏感度",

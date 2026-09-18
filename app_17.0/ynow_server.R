@@ -4256,15 +4256,20 @@ server <- function(input, output, session) {
     invisible(TRUE)
   }
   observeEvent(input$apply_beta_u_selected, { .apply_selected_beta_u_to_capm(silent = FALSE, force = TRUE) })
-  # Mirror apply button on DCF Beta tab (Basic Setup remains canonical)
+  # Mirror apply buttons on DCF / DDM / RI Beta tabs (Basic Setup remains canonical)
   observeEvent(input$dcf_apply_beta_u_selected, { .apply_selected_beta_u_to_capm(silent = FALSE, force = TRUE) })
+  observeEvent(input$ddm_apply_beta_u_selected, { .apply_selected_beta_u_to_capm(silent = FALSE, force = TRUE) })
+  observeEvent(input$ri_apply_beta_u_selected, { .apply_selected_beta_u_to_capm(silent = FALSE, force = TRUE) })
 
-  # β 來源：Basic Setup ↔ DCF Beta 分頁雙向同步（防回授）
+  # β 來源：Basic Setup ↔ DCF ↔ DDM ↔ RI Beta 分頁雙向同步（防回授）
   .beta_apply_source_syncing <- reactiveVal(FALSE)
   .beta_u_apply_source_ids <- function() {
     ids <- tryCatch(.BETA_U_APPLY_SOURCE_IDS, error = function(e) NULL)
     if (is.null(ids) || !length(ids)) {
-      ids <- c("beta_u_apply_source", "dcf_beta_u_apply_source")
+      ids <- c(
+        "beta_u_apply_source", "dcf_beta_u_apply_source",
+        "ddm_beta_u_apply_source", "ri_beta_u_apply_source"
+      )
     }
     as.character(ids)
   }
@@ -10124,7 +10129,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.04"),
+      paste0("- **App：** The YNow App v17.05"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {
