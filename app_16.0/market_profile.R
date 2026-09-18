@@ -51,7 +51,7 @@ market_profile <- function(mode = get_market_mode()) {
       # Intro copy lives in ui_locale.R (bluechip_blurb_tw); kept for profile completeness
       bluechip_blurb = paste0(
         "依據臺灣證券交易所與櫃買中心公開名單，篩選台股績優候選標的（範圍僅含上市與上櫃；不含興櫃）。",
-        "先依規模、產業與評價模型篩選，再以 Piotroski F-Score≥7 過濾並依隱含年化估值漲幅排序。"
+        "先依產業與評價模型篩選，再以 Piotroski F-Score≥7 過濾並依隱含年化估值漲幅排序。"
       ),
       universe_label = "上市／上櫃／興櫃",
       # 顯示標籤用不含 .TW 的代號；值仍為 Yahoo fetch symbol
@@ -97,7 +97,7 @@ market_profile <- function(mode = get_market_mode()) {
       bluechip_blurb = paste0(
         "Screen US blue-chip candidates from the S&P 500 constituent list ",
         "(Nasdaq and NYSE listings): ",
-        "size × industry × valuation-model filters, then Piotroski F-Score≥7 and implied annualized valuation appreciation."
+        "industry × valuation-model filters, then Piotroski F-Score≥7 and implied annualized valuation appreciation."
       ),
       universe_label = "S&P 500 (Nasdaq + NYSE)",
       ticker_presets = c(

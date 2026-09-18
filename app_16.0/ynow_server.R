@@ -52,8 +52,8 @@ server <- function(input, output, session) {
   dcf_value_result <- reactiveVal(NULL)
   stock_price_estimate_val <- reactiveVal(NULL)
 
-  # CAPM Beta：WACC「與Get Started 同步」（預設開）時跟隨 Get Started 套用來源
-  # driver: gs（Get Started 選定來源）| rolling | industry | manual（WACC 獨立）
+  # CAPM Beta：WACC「與基礎設定同步」（預設開）時跟隨基礎設定套用來源
+  # driver: gs（基礎設定選定來源）| rolling | industry | manual（WACC 獨立）
   capm_beta_dirty <- reactiveVal(FALSE)
   capm_beta_updating <- reactiveVal(FALSE)
   sync_gs_beta_updating <- reactiveVal(FALSE)
@@ -327,7 +327,7 @@ server <- function(input, output, session) {
 
   observeEvent(current_ticker(), {
     req(current_ticker())
-    # 換股票：回到 Get Started 連動，讓新 Summary／Unlever 路徑可自動帶入 CAPM
+    # 換股票：回到基礎設定連動，讓新 Summary／Unlever 路徑可自動帶入 CAPM
     capm_beta_dirty(FALSE)
     beta_capm_driver("gs")
     stock_code <- current_ticker()
@@ -1357,7 +1357,7 @@ server <- function(input, output, session) {
     rows <- list(
       c("Meta", "Downloaded At", ts, "Timestamp at download/render"),
       c("Meta", "Ticker", ticker, "Selected ticker"),
-      c("Meta", "Industry", .snapshot_value(input$industry_choice), "Get Started industry_standards key"),
+      c("Meta", "Industry", .snapshot_value(input$industry_choice), "Basic Setup industry_standards key"),
       c("Meta", "Session Currency", .snapshot_value(input$session_ccy_pick), "USD / TWD display conversion"),
       c("Model Selector", "Recommended Method", .snapshot_value(rec$summary_method), "Rule-based model ranking"),
       c("DCF", "DCF Mode", .snapshot_value(input$dcf_mode), "Gordon or Two-Stage DCF"),
@@ -1380,7 +1380,7 @@ server <- function(input, output, session) {
       c("DCF - WACC", "Calculated WACC (%)", .snapshot_value(wacc_pct), "System CAPM/WACC estimate (also synced into WACC inputs)"),
       c("CAPM", "Rf (%)", .snapshot_value(input$capm_rf), "Ke = Rf + Beta × (Rm-Rf)"),
       c("CAPM", "Beta", .snapshot_value(input$capm_beta), "Systematic risk coefficient"),
-      c("CAPM", "Sync Get Started β", .snapshot_value(input$sync_gs_beta), "TRUE = WACC β follows Get Started 套用至 CAPM source"),
+      c("CAPM", "Sync Basic Setup β", .snapshot_value(input$sync_gs_beta), "TRUE = WACC β follows Basic Setup apply-to-CAPM source"),
       c("CAPM", "Rm (%)", .snapshot_value(input$capm_rm), "Expected market return"),
       c("Beta", "Purpose", .snapshot_value(input$beta_purpose), "valuation; Rolling blocked from CAPM"),
       c("Beta", "Unlever β_L source", .snapshot_value(input$beta_bl_source), "feeds 去槓桿化 βᵤ (Hamada)"),
@@ -1403,7 +1403,7 @@ server <- function(input, output, session) {
       c("WACC", "Tax Rate T (%)", .snapshot_value(input$wacc_tax), "After-tax debt cost = rᵈ×(1-T)"),
       c("DDM", "D0", .snapshot_value(input[["mod_ddm-d0"]]), "P0 = D1 / (Ke-g); D1 = D0×(1+g)"),
       c("DDM", "g (%)", .snapshot_value(input[["mod_ddm-g"]]), "Dividend growth; optional sync with central SGR"),
-      c("DDM", "Sync g with SGR", .snapshot_value(input[["mod_ddm-sync_g"]]), "If TRUE, DDM g follows Get Started SGR"),
+      c("DDM", "Sync g with SGR", .snapshot_value(input[["mod_ddm-sync_g"]]), "If TRUE, DDM g follows Basic Setup SGR"),
       c("DDM", "DDM Mode", .snapshot_value(input[["mod_ddm-ddm_mode"]]), "gordon / two_stage"),
       c("DDM", "Stage 1 g1 (%)", .snapshot_value(input[["mod_ddm-g_stage1"]]), "Two-stage high-growth dividend g"),
       c("DDM", "Stage 1 years", .snapshot_value(input[["mod_ddm-yr_stage1"]]), "Two-stage high-growth years n1"),
@@ -1523,7 +1523,7 @@ server <- function(input, output, session) {
       use_est_re = c("WACC", "使用 CAPM Re", "UI: use_estimated_re；TRUE = Re 跟 CAPM"),
       capm_rf = c("CAPM", "Rf (%)", "無風險利率（啟動時估）"),
       capm_beta = c("CAPM", "Beta", "啟動暫定值；估值路徑就緒後改寫入選定來源"),
-      sync_gs_beta = c("CAPM", "與 Get Started 同步", "TRUE = WACC/CAPM β 跟隨 Get Started 套用來源（預設 Summary β）"),
+      sync_gs_beta = c("CAPM", "與基礎設定同步", "TRUE = WACC/CAPM β 跟隨基礎設定套用來源（預設 Summary β）"),
       beta_bench = c("Beta", "基準指數", "Rolling β 對照標的，預設 SPY（不寫入 CAPM）"),
       beta_lookback_months = c("Beta", "回溯月數", "常見 36／60／84；預設 60 對齊 Yahoo 5Y"),
       beta_min_obs = c("Beta", "最少觀測", "Rolling 估計最低月數"),
@@ -2281,7 +2281,7 @@ server <- function(input, output, session) {
     claim <- input$dcf_claim %||% "fcff"
     disc <- dcf_disc_tag(claim)
     p(helpText(sprintf(
-      "軸心採用 Get Started／Dashboard 目前的 SGR 與 %s；觀察鄰近組合下的每股內在價值變化。",
+      "軸心採用基礎設定／Dashboard 目前的 SGR 與 %s；觀察鄰近組合下的每股內在價值變化。",
       disc
     )))
   })
@@ -2526,7 +2526,8 @@ server <- function(input, output, session) {
     capm_beta = reactive(suppressWarnings(as.numeric(input$capm_beta)[1])),
     capm_rm = reactive(suppressWarnings(as.numeric(input$capm_rm)[1])),
     use_estimated_re = reactive(isTRUE(input$use_estimated_re)),
-    auto_calc_pulse = reactive(auto_calc_ri_pulse())
+    auto_calc_pulse = reactive(auto_calc_ri_pulse()),
+    ui_locale = ui_locale
   )
   
   # ==========================================
@@ -2559,7 +2560,8 @@ server <- function(input, output, session) {
     capm_rf = reactive(suppressWarnings(as.numeric(input$capm_rf)[1])),
     capm_beta = reactive(suppressWarnings(as.numeric(input$capm_beta)[1])),
     capm_rm = reactive(suppressWarnings(as.numeric(input$capm_rm)[1])),
-    use_estimated_re = reactive(isTRUE(input$use_estimated_re))
+    use_estimated_re = reactive(isTRUE(input$use_estimated_re)),
+    ui_locale = ui_locale
   )
 
   # ==========================================
@@ -2580,7 +2582,8 @@ server <- function(input, output, session) {
     }),
     current_ticker = current_ticker,
     quote_currency = quote_currency,
-    financial_currency = statement_currency
+    financial_currency = statement_currency,
+    ui_locale = ui_locale
   )
 
   # ==========================================
@@ -3306,7 +3309,7 @@ server <- function(input, output, session) {
     }
   }, ignoreInit = FALSE)
   
-  # ---------- CAPM Beta：與 Get Started BETA 雙向連動 ----------
+  # ---------- CAPM Beta：與基礎設定 BETA 雙向連動 ----------
   .summary_beta_value <- function() {
     df <- tryCatch(summary_data(), error = function(e) NULL)
     if (is.null(df) || !is.data.frame(df) || nrow(df) == 0) return(NA_real_)
@@ -3334,7 +3337,7 @@ server <- function(input, output, session) {
     invisible(TRUE)
   }
 
-  # 產業來源就緒且「與Get Started 同步」時，把產業 β 寫入 CAPM
+  # 產業來源就緒且「與基礎設定同步」時，把產業 β 寫入 CAPM
   .sync_capm_beta_industry <- function() {
     if (!isTRUE(input$sync_gs_beta)) return(invisible(NULL))
     src <- as.character(input$beta_u_apply_source %||% "")[1]
@@ -3356,7 +3359,7 @@ server <- function(input, output, session) {
     invisible(TRUE)
   }
 
-  # CAPM 手動改 β → 取消「與Get Started 同步」，WACC 獨立；不改寫 Get Started 來源
+  # CAPM 手動改 β → 取消「與基礎設定同步」，WACC 獨立；不改寫基礎設定來源
   observeEvent(input$capm_beta, {
     if (isTRUE(capm_beta_updating())) {
       capm_beta_updating(FALSE)
@@ -3373,7 +3376,7 @@ server <- function(input, output, session) {
     capm_beta_dirty(TRUE)
   }, ignoreInit = TRUE)
 
-  # 換產業：僅在同步開啟且 Get Started 來源為產業預設時更新 CAPM β
+  # 換產業：僅在同步開啟且基礎設定來源為產業預設時更新 CAPM β
   observeEvent(input$industry_choice, {
     if (!isTRUE(input$sync_gs_beta)) return()
     src <- as.character(input$beta_u_apply_source %||% "")[1]
@@ -3382,17 +3385,17 @@ server <- function(input, output, session) {
     }
   }, ignoreInit = TRUE)
 
-  # 智慧標籤：與 Get Started 來源鎖步（或 WACC 獨立）
+  # 智慧標籤：與基礎設定來源鎖步（或 WACC 獨立）
   .capm_beta_label_html <- function(beta) {
     src <- as.character(input$beta_u_apply_source %||% "summary")[1]
     gs_tag <- switch(
       src,
-      "summary" = "Get Started｜Summary β",
-      "industry" = "Get Started｜產業預設 β",
-      "bottomup" = "Get Started｜Bottom-Up βᵤ",
-      "unlever_firm" = "Get Started｜去槓桿化 βᵤ",
-      "manual" = "Get Started｜手動 β",
-      "Get Started｜β"
+      "summary" = "基礎設定｜Summary β",
+      "industry" = "基礎設定｜產業預設 β",
+      "bottomup" = "基礎設定｜Bottom-Up βᵤ",
+      "unlever_firm" = "基礎設定｜去槓桿化 βᵤ",
+      "manual" = "基礎設定｜手動 β",
+      "基礎設定｜β"
     )
     if (identical(src, "rolling")) {
       HTML("Beta (β) <span style='color: #c0392b; font-size: 12px;'>[Rolling 已排除｜請改其他來源]</span>")
@@ -3457,12 +3460,12 @@ server <- function(input, output, session) {
       "<div style='font-size:14px;line-height:1.6;'>
          <b>目前 CAPM β</b>：{if (is.finite(b)) sprintf('%.3f', b) else 'N/A'}<br/>
          <b>目前 Ke（供 DDM）</b>：{if (is.finite(ke)) sprintf('%.2f%%', ke) else 'N/A'}<br/>
-         <span style='color:#666;font-size:12px;'>來源：{if (isTRUE(input$use_estimated_re)) 'CAPM 估算（Get Started）' else 'WACC 分頁 rₑ 手動／覆寫'}</span>
+         <span style='color:#666;font-size:12px;'>來源：{if (isTRUE(input$use_estimated_re)) 'CAPM 估算（基礎設定）' else 'WACC 分頁 rₑ 手動／覆寫'}</span>
        </div>"
     ))
   })
 
-  # ---------- Get Started：Rolling／Unlevered Beta 預估 ----------
+  # ---------- 基礎設定：Rolling／Unlevered Beta 預估 ----------
   beta_est_result <- reactiveVal(NULL)  # list(beta, n_obs, method, rs, rm, dates, bench, lookback)
   .beta_price_cache <- new.env(parent = emptyenv())
 
@@ -4145,7 +4148,7 @@ server <- function(input, output, session) {
     }, once = TRUE)
   })
 
-  # Get Started → CAPM 自動同步（僅在「與Get Started 同步」勾選時）
+  # 基礎設定 → CAPM 自動同步（僅在「與基礎設定同步」勾選時）
   .maybe_sync_gs_beta_to_capm <- function() {
     if (!isTRUE(input$sync_gs_beta)) return(invisible(FALSE))
     src <- as.character(input$beta_u_apply_source %||% APP_DEFAULTS$beta_u_apply_source)[1]
@@ -4212,12 +4215,12 @@ server <- function(input, output, session) {
       updateRadioButtons(session, "beta_u_apply_source", selected = "manual")
       return()
     }
-    # Get Started 側改手動 β → 推回 CAPM（維持連動）
+    # 基礎設定側改手動 β → 推回 CAPM（維持連動）
     beta_capm_driver("gs")
     .apply_selected_beta_u_to_capm(silent = TRUE)
   }, ignoreInit = TRUE)
 
-  # 「與Get Started 同步」：勾選則帶入目前 Get Started β；取消則 WACC 獨立
+  # 「與基礎設定同步」：勾選則帶入目前基礎設定β；取消則 WACC 獨立
   observeEvent(input$sync_gs_beta, {
     if (isTRUE(sync_gs_beta_updating())) {
       sync_gs_beta_updating(FALSE)
@@ -4529,7 +4532,7 @@ server <- function(input, output, session) {
     )
   }, striped = TRUE, bordered = TRUE, spacing = "s", width = "100%")
 
-  # 保留：切換產業時刷新 Rm／成長／P/B；Beta 僅在 Get Started 來源為產業且同步開啟時由上方處理
+  # 保留：切換產業時刷新 Rm／成長／P/B；Beta 僅在基礎設定來源為產業且同步開啟時由上方處理
   observeEvent(input$industry_choice, {
     req(input$industry_choice)
     inds <- industry_standards[[input$industry_choice]]
@@ -5861,7 +5864,7 @@ server <- function(input, output, session) {
     claim <- as.character(input$dcf_claim %||% "fcff")[1]
     
     if (length(ev_val) == 0 || is.na(ev_val)) {
-      return("⚠️ 尚未計算 DCF，請確認參數後按下「試算 DCF」")
+      return(paste0("⚠️ ", ui_str("dcf_idle_hint", isolate(ui_locale()))))
     }
     
     msg <- if (identical(claim, "fcfe")) {
@@ -6121,7 +6124,7 @@ server <- function(input, output, session) {
       ))
     }
 
-    # DCF：與 Dashboard／Get Started 同一套「目前 WACC」
+    # DCF：與 Dashboard／基礎設定同一套「目前 WACC」
     base_wacc <- tryCatch(.current_wacc_pct(), error = function(e) NA_real_)
     if (is.null(base_wacc) || !is.finite(base_wacc)) base_wacc <- APP_DEFAULTS$wacc_gordon
     req(fcf_results$df_fcf())
@@ -6150,7 +6153,7 @@ server <- function(input, output, session) {
     if (is.null(st) || is.null(st$built)) {
       return(tags$div(
         style = "background:#fff8f0; border:1px solid #f0ad4e; border-radius:6px; padding:12px; font-size:13px; color:#666;",
-        "請先完成 Get Started 參數並執行估值計算後，即可顯示敏感度解讀。"
+        "請先完成基礎設定參數並執行估值計算後，即可顯示敏感度解讀。"
       ))
     }
 
@@ -6194,7 +6197,7 @@ server <- function(input, output, session) {
       tags$h5(style = "margin-top:0; color:#222222; font-weight:700;", icon("lightbulb"), " 簡要分析"),
       tags$p(
         tags$b("目前軸心："),
-        sprintf("%s = %s%%，SGR (g) = %s%%（與 Get Started／Dashboard 同步）",
+        sprintf("%s = %s%%，SGR (g) = %s%%（與基礎設定／Dashboard 同步）",
                 st$disc_label, fmt(st$base_disc), fmt(st$base_g))
       ),
       tags$p(tags$b("矩陣解讀："), vs_price),
@@ -8809,7 +8812,7 @@ server <- function(input, output, session) {
   }, ignoreInit = TRUE)
 
   # ------------------------------------------
-  # Lab：規模×產業×模型複選；Piotroski 高門檻（F-Score≥7）後依年化估值漲幅排序
+  # Lab：產業×模型複選；Piotroski 高門檻（F-Score≥7）後依年化估值漲幅排序
   # ------------------------------------------
   lab_im_catalog <- reactive({
     lab_im_catalog_nonce()
@@ -8928,7 +8931,6 @@ server <- function(input, output, session) {
       scores = lab_im_scores(),
       method_filter = input$lab_im_methods,
       industry_filter = input$lab_im_industries,
-      size_filter = input$lab_im_sizes,
       eq_only = FALSE,
       gate_only = FALSE
     )
@@ -8937,13 +8939,12 @@ server <- function(input, output, session) {
   observeEvent(input$lab_im_run_fscore, {
     catlg <- lab_im_catalog()
     req(is.data.frame(catlg), nrow(catlg) > 0)
-    # 評估池：產業／模型複選；規模在取到市值後再濾，再依市值取 N 檔
+    # 評估池：產業／模型複選；候選 > N 時依市值取 N 檔（非規模篩選）
     pool <- lab_merge_catalog_scores(
       catlg,
       scores = NULL,
       method_filter = input$lab_im_methods,
       industry_filter = input$lab_im_industries,
-      size_filter = character(0),
       eq_only = FALSE,
       gate_only = FALSE
     )
@@ -8953,25 +8954,23 @@ server <- function(input, output, session) {
       return()
     }
     max_n <- lab_resolve_im_max_n(input$lab_im_max_n, input$lab_im_max_n_custom)
-    sf <- lab_normalize_size_filter(input$lab_im_sizes)
-    size_restricts <- length(sf) > 0L && !isTRUE(setequal(sf, names(LAB_SIZE_LABELS)))
     n_yrs <- lab_model_horizon_years()
     scores <- withProgress(
       message = paste0("評估中（Piotroski 高門檻＋", n_yrs, " 年年化估值漲幅）…"),
       value = 0, {
         n_raw <- nrow(pool)
-        if ((is.finite(max_n) && n_raw > max_n) || size_restricts) {
-          incProgress(0.08, detail = "取 Yahoo 市值（排序／規模）…")
+        if (is.finite(max_n) && n_raw > max_n) {
+          incProgress(0.08, detail = "取 Yahoo 市值（評估池排序）…")
           pool <- lab_attach_market_caps(pool)
         }
         pool <- lab_rank_and_cap_eval_pool(
           # N 截斷：候選 > N 依市值降序取 N；明細＝該批；F-Score≥7 只濾排行榜 Top 10（不縮明細）
-          pool, max_n = max_n, size_filter = input$lab_im_sizes
+          pool, max_n = max_n
         )
         n_filtered <- as.integer(attr(pool, "n_filtered") %||% nrow(pool))
         used_mcap <- isTRUE(attr(pool, "used_market_cap"))
         if (nrow(pool) == 0L) {
-          showNotification("規模×產業×模型篩選後沒有可評估的候選。", type = "warning")
+          showNotification("產業×模型篩選後沒有可評估的候選。", type = "warning")
           return(NULL)
         }
         if (is.finite(max_n) && n_filtered > max_n) {
@@ -9030,7 +9029,6 @@ server <- function(input, output, session) {
       scores = NULL,
       method_filter = input$lab_im_methods,
       industry_filter = input$lab_im_industries,
-      size_filter = character(0),
       eq_only = FALSE,
       gate_only = FALSE
     )
@@ -9049,7 +9047,6 @@ server <- function(input, output, session) {
       scores = lab_im_scores(),
       method_filter = input$lab_im_methods,
       industry_filter = input$lab_im_industries,
-      size_filter = input$lab_im_sizes,
       eq_only = FALSE,
       gate_only = FALSE,
       evaluated_only = TRUE
@@ -9111,7 +9108,6 @@ server <- function(input, output, session) {
     }
     merged <- tryCatch(lab_im_merged(), error = function(e) NULL)
     if (is.null(merged) || nrow(merged) == 0) {
-      # 區分：複選（尤其規模）把評估結果濾光 vs 尚未合併
       n_scored <- nrow(scores)
       n_pass <- sum(is.finite(suppressWarnings(as.numeric(scores$f_score))) &
                       suppressWarnings(as.numeric(scores$f_score)) >= 7, na.rm = TRUE)
@@ -9119,8 +9115,7 @@ server <- function(input, output, session) {
         訊息 = paste0(
           "評估有 ", n_scored, " 檔（F-Score≥7 通過 ", n_pass, "），",
           "但目前複選條件下明細為空。",
-          "常見原因：規模篩選與市值分級對不上，或產業／模型過窄。",
-          "請放寬「公司規模」後再看排行榜。"
+          "常見原因：產業／模型過窄。請放寬產業或模型後再看排行榜。"
         )
       ))
     }
@@ -9158,7 +9153,6 @@ server <- function(input, output, session) {
       scores = lab_im_scores(),
       method_filter = input$lab_im_methods,
       industry_filter = input$lab_im_industries,
-      size_filter = input$lab_im_sizes,
       eq_only = FALSE,
       gate_only = FALSE,
       evaluated_only = TRUE
@@ -9168,15 +9162,13 @@ server <- function(input, output, session) {
       msg <- if (is.null(scores) || !is.data.frame(scores) || nrow(scores) == 0) {
         "尚未評估。請按「搜尋績優股」；明細列數將等於評估檔數 N（篩選後不足 N 則全列）。"
       } else {
-        "沒有符合篩選的已評估列。可放寬規模／產業／模型，或重新評估。"
+        "沒有符合篩選的已評估列。可放寬產業／模型，或重新評估。"
       }
       return(DT::datatable(
         data.frame(訊息 = msg),
         rownames = FALSE, options = list(dom = "t")
       ))
     }
-    size_lab <- unname(LAB_SIZE_LABELS[merged$size_band])
-    size_lab[is.na(size_lab)] <- "—"
     yahoo_nm <- if ("company_name" %in% names(merged)) merged$company_name else NA_character_
     show_df <- data.frame(
       代號 = display_tickers_for_market(merged$ticker, market_mode()),
@@ -9193,7 +9185,6 @@ server <- function(input, output, session) {
         is.na(merged$upside_total_pct), "",
         sprintf("%+.1f%%", merged$upside_total_pct)
       ),
-      規模 = size_lab,
       實際估值方法 = ifelse(
         is.na(merged$method_used) | !nzchar(as.character(merged$method_used)),
         "", toupper(as.character(merged$method_used))
@@ -9233,7 +9224,6 @@ server <- function(input, output, session) {
       scores = lab_im_scores(),
       method_filter = isolate(input$lab_im_methods),
       industry_filter = isolate(input$lab_im_industries),
-      size_filter = isolate(input$lab_im_sizes),
       eq_only = FALSE,
       gate_only = FALSE,
       evaluated_only = TRUE
@@ -9241,8 +9231,6 @@ server <- function(input, output, session) {
     if (nrow(merged) == 0) {
       return(data.frame(訊息 = "目前篩選下無已評估明細列（請先按「搜尋績優股」）"))
     }
-    size_lab <- unname(LAB_SIZE_LABELS[merged$size_band])
-    size_lab[is.na(size_lab)] <- "—"
     yahoo_nm <- if ("company_name" %in% names(merged)) merged$company_name else NA_character_
     data.frame(
       代號 = display_tickers_for_market(merged$ticker, market_mode()),
@@ -9259,7 +9247,6 @@ server <- function(input, output, session) {
         is.na(merged$upside_total_pct), "",
         sprintf("%+.1f%%", merged$upside_total_pct)
       ),
-      規模 = size_lab,
       實際估值方法 = ifelse(
         is.na(merged$method_used) | !nzchar(as.character(merged$method_used)),
         "", toupper(as.character(merged$method_used))
@@ -9288,12 +9275,6 @@ server <- function(input, output, session) {
       fetched <- if (is.null(meta)) "—" else lab_format_fetched_at(meta$fetched_at)
       src <- if (is.null(meta)) "" else as.character(meta$source %||% "")[1]
       n_un <- if (is.null(meta)) 0L else as.integer(meta$n_unmapped %||% 0L)
-      size_sel <- lab_normalize_size_filter(isolate(input$lab_im_sizes))
-      size_txt <- if (!length(size_sel)) {
-        "不過濾"
-      } else {
-        paste(unname(LAB_SIZE_LABELS[size_sel]), collapse = "、")
-      }
       all_ind <- unname(lab_industry_picker_choices())
       ind_sel <- lab_normalize_multi_filter(isolate(input$lab_im_industries))
       ind_txt <- if (!length(ind_sel) || (length(all_ind) > 0 && setequal(ind_sel, all_ind))) {
@@ -9323,7 +9304,6 @@ server <- function(input, output, session) {
           catlg, scores = NULL,
           method_filter = isolate(input$lab_im_methods),
           industry_filter = isolate(input$lab_im_industries),
-          size_filter = character(0),
           eq_only = FALSE, gate_only = FALSE
         )
       } else {
@@ -9366,7 +9346,6 @@ server <- function(input, output, session) {
                 n_uni, fetched,
                 if (nzchar(src)) paste0(" · 來源 ", src) else ""),
         sprintf("- 未對應產業：%d 檔", n_un),
-        sprintf("- 規模：%s", size_txt),
         sprintf("- 產業：%s", ind_txt),
         sprintf("- 模型：%s", meth_txt),
         sprintf("- 盈餘品質過濾：%s", if (eq_on) "開" else "關"),
@@ -9657,7 +9636,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v16.35"),
+      paste0("- **App：** The YNow App v16.41"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

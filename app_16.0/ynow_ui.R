@@ -152,7 +152,7 @@ capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
     numericInput("capm_beta", "Beta (β)", value = APP_DEFAULTS$capm_beta, step = 0.01),
     checkboxInput(
       "sync_gs_beta",
-      tags$span(style = "font-weight: bold;", "與Get Started 同步"),
+      tags$span(id = "ynow_sync_gs_beta_label", style = "font-weight: bold;", "與基礎設定同步"),
       value = isTRUE(APP_DEFAULTS$sync_gs_beta)
     ),
     actionButton(calc_id, "估算 rₑ（CAPM）", class = "btn-primary"),
@@ -196,7 +196,7 @@ rd_estimate_settings_ui <- function(width = 6) {
   )
 }
 
-#' Pointer when advanced Beta controls live on Get Started (CAPM is on WACC).
+#' Pointer when advanced Beta controls live on Basic Setup (CAPM is on WACC).
 #' Outer shinydashboard box removed — heading + help text sit on the tab.
 .beta_moved_to_get_started_box <- function(extra = NULL) {
   tagList(
@@ -207,7 +207,7 @@ rd_estimate_settings_ui <- function(width = 6) {
     ),
     helpText(
       "β 預估在",
-      tags$b("Get Started"),
+      tags$b(id = "ynow_beta_home_name", "基礎設定"),
       "→「SGR」下方的",
       tags$b("BETA"),
       "小分頁（Beta Overview 選來源寫入 CAPM；同業去槓桿／Rolling 負責估算）。",
@@ -361,7 +361,7 @@ beta_unlever_section_ui <- function() {
   )
 }
 
-#' Rolling β 預估（Get Started）
+#' Rolling β 預估（基礎設定）
 #' 僅交叉檢驗：對照估值用 β，不寫入 CAPM。
 beta_rolling_section_ui <- function() {
   tagList(
@@ -677,14 +677,14 @@ beta_rolling_section_ui <- function() {
       numericInput("g_stage1", "成長率 g1 (%)", value = APP_DEFAULTS$g_stage1),
       helpText(
         id = "ynow_g_stage1_help",
-        "預設帶入「預估營收成長率」；可手動覆寫。終值成長率仍用 Get Started 的 SGR。"
+        "預設帶入「預估營收成長率」；可手動覆寫。終值成長率仍用基礎設定的 SGR。"
       ),
       conditionalPanel(
         condition = "input.dcf_claim != 'fcfe'",
         numericInput("wacc_stage1", "折現率 WACC1 (%)", value = APP_DEFAULTS$wacc_stage1, step = 0.01)
       ),
       tags$p(style = "margin: 10px 0 6px 0; font-size: 12.5px; color: #555;", tags$b("第二階段｜永續成長")),
-      helpText("第二階段成長率採用 Get Started 的 SGR；以下設定折現率。"),
+      helpText("第二階段成長率採用基礎設定的 SGR；以下設定折現率。"),
       conditionalPanel(
         condition = "input.dcf_claim != 'fcfe'",
         numericInput("wacc_stage2", "折現率 WACC2 (%)", value = APP_DEFAULTS$wacc_stage2, step = 0.01)
@@ -713,7 +713,7 @@ beta_rolling_section_ui <- function() {
         value = APP_DEFAULTS$ddm_g_stage1, step = 0.1
       ),
       tags$p(style = "margin: 10px 0 6px 0; font-size: 12.5px; color: #555;", tags$b("第二階段｜永續成長")),
-      helpText("第二階段股利成長率採用 Overview 的永續 g（可與 Get Started SGR 同步）；折現率採用 Ke 分頁。終值約束：g2 < Ke。")
+      helpText("第二階段股利成長率採用 Overview 的永續 g（可與基礎設定 SGR 同步）；折現率採用 Ke 分頁。終值約束：g2 < Ke。")
     )
   )
 }
@@ -768,7 +768,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-    title = HTML('<span class="ynow-app-title">The YNow App v16.35</span>'),
+    title = HTML('<span class="ynow-app-title">The YNow App v16.41</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -871,7 +871,7 @@ ui <- dashboardPage(
                )
              ),
              menuItem(
-               text = tags$span(id = "ynow_menu_cat_income", "Income / Cash Flow Appr."),
+               text = tags$span(id = "ynow_menu_cat_income", "Income / Cashflow Appr."),
                icon = icon("chart-area"),
                startExpanded = FALSE,
                menuSubItem("DCF-Model", tabName = "dcf_calculator", icon = icon("calculator")),
@@ -1369,12 +1369,63 @@ ui <- dashboardPage(
         .label-primary, .badge-primary {
           background-color: var(--ynow-ink) !important;
         }
-        /* Sidebar 推薦／備選 badges */
-        .sidebar-menu small.ynow-rec-badge.ynow-rec-primary {
+        /* Sidebar 推薦／備選 badges: same row as label; flush to right edge; normal font size */
+        .sidebar-menu > li > a,
+        .sidebar-menu .treeview-menu > li > a {
+          display: flex !important;
+          align-items: center !important;
+          flex-wrap: nowrap !important;
+        }
+        .sidebar-menu > li > a > span:not(.pull-right-container),
+        .sidebar-menu .treeview-menu > li > a > span:not(.pull-right-container) {
+          flex: 0 1 auto;
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .sidebar-menu > li > a > .pull-right-container {
+          float: none !important;
+          position: static !important;
+          margin-left: auto !important;
+          margin-right: 0 !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          flex: 0 0 auto;
+          gap: 4px;
+        }
+        .sidebar-menu > li > a > .pull-right-container > .fa.pull-right,
+        .sidebar-menu > li > a > .pull-right-container > .fas.pull-right {
+          float: none !important;
+          position: static !important;
+          margin: 0 !important;
+        }
+        .sidebar-menu small.ynow-sidebar-badge {
+          float: none !important;
+          position: static !important;
+          flex: 0 0 auto;
+          align-self: center;
+          margin: 0 0 0 4px !important;
+          white-space: nowrap;
+          line-height: 1.15 !important;
+          vertical-align: middle;
+          max-width: none;
+          transform: none !important;
+        }
+        /* Child rows (no chevron): push badge to sidebar right edge */
+        .sidebar-menu .treeview-menu > li > a > small.ynow-sidebar-badge {
+          margin-left: auto !important;
+        }
+        /* Parent Appr. expanded: hide parent badges; children keep theirs */
+        .sidebar-menu > li.menu-open > a > small.ynow-sidebar-badge,
+        .sidebar-menu > li.menu-open > a > .pull-right-container > small.ynow-sidebar-badge {
+          display: none !important;
+        }
+        .sidebar-menu small.ynow-sidebar-badge.ynow-rec-primary {
           background-color: #dd4b39 !important;
           color: #ffffff !important;
         }
-        .sidebar-menu small.ynow-rec-badge.ynow-rec-secondary {
+        .sidebar-menu small.ynow-sidebar-badge.ynow-rec-secondary {
           background-color: #6c757d !important;
           color: #ffffff !important;
         }
@@ -1386,7 +1437,7 @@ ui <- dashboardPage(
         /* Do not remap .bg-blue — KPI band 「優於區間」uses AdminLTE blue */
 
         #shiny-tab-get_started > h2 { font-weight: 800 !important; }
-        /* 側邊欄：僅目前選取頁面粗體（勿固定加粗 Get Started） */
+        /* 側邊欄：僅目前選取頁面粗體（勿固定加粗基礎設定） */
         .sidebar-menu > li > a {
           font-weight: 400 !important;
         }
@@ -1406,6 +1457,7 @@ ui <- dashboardPage(
         .sidebar-menu .treeview-menu > li > a > .glyphicon:not(.pull-right),
         .sidebar-menu .treeview-menu > li > a > .ion:not(.pull-right) {
           display: inline-block;
+          flex: 0 0 1.35em;
           width: 1.35em;
           min-width: 1.35em;
           margin-right: 8px;
@@ -1802,7 +1854,9 @@ ui <- dashboardPage(
 
           function clearRecBadges(a) {
             if (!a) return;
-            a.querySelectorAll('small.ynow-rec-badge').forEach(function (b) { b.remove(); });
+            a.querySelectorAll('small.ynow-sidebar-badge, small.ynow-rec-badge').forEach(function (b) {
+              b.remove();
+            });
           }
 
           function setRecBadgeOnAnchor(a, role, labels) {
@@ -1812,11 +1866,12 @@ ui <- dashboardPage(
             var lab = labels || {};
             var isPrimary = role === 'primary';
             var badge = document.createElement('small');
-            badge.className = 'badge pull-right ynow-rec-badge ' +
+            badge.className = 'badge ynow-sidebar-badge ' +
               (isPrimary ? 'ynow-rec-primary bg-red' : 'ynow-rec-secondary');
             badge.textContent = isPrimary
               ? (lab.primary || '推薦')
               : (lab.secondary || '備選');
+            /* Last child of <a>: flush to sidebar right (after chevron if present) */
             a.appendChild(badge);
           }
 
@@ -1921,7 +1976,7 @@ ui <- dashboardPage(
             var a = document.querySelector('.sidebar-menu a[data-value=\"' + tab + '\"]');
             if (!a || !label) return;
             var icon = a.querySelector('i');
-            var badges = a.querySelectorAll('small.ynow-rec-badge, small.badge');
+            var badges = a.querySelectorAll('small.ynow-sidebar-badge, small.ynow-rec-badge, small.badge');
             var iconClone = icon ? icon.cloneNode(true) : null;
             var badgeClones = [];
             badges.forEach(function (b) { badgeClones.push(b.cloneNode(true)); });
@@ -2099,8 +2154,38 @@ ui <- dashboardPage(
               var wIconHtml = wIcon ? wIcon.outerHTML + ' ' : '';
               btnCalcWacc.innerHTML = wIconHtml + s.btn_calc_wacc;
             }
+            function setBtnLabel(id, label) {
+              if (!id || !label) return;
+              var el = document.getElementById(id);
+              if (!el) return;
+              var ic = el.querySelector('i');
+              el.innerHTML = (ic ? ic.outerHTML + ' ' : '') + label;
+            }
+            setBtnLabel('calc', s.btn_calc_dcf);
+            setBtnLabel('mod_ddm-btn_calc_ddm', s.btn_calc_ddm);
+            setBtnLabel('mod_ri-btn_calc_ri', s.btn_calc_ri);
+            setBtnLabel('mod_pb-btn_calc_pb', s.btn_calc_pb);
+            setBtnLabel('mod_nav-btn_calc_nav', s.btn_calc_nav);
+            if (s.btn_reset_defaults) {
+              document.querySelectorAll('.ynow-btn-reset').forEach(function (el) {
+                var ic = el.querySelector('i');
+                el.innerHTML = (ic ? ic.outerHTML + ' ' : '') + s.btn_reset_defaults;
+              });
+            }
+            var riCalcHint = document.getElementById('mod_ri-ynow_ri_calc_hint');
+            if (riCalcHint && s.ri_calc_hint) riCalcHint.textContent = s.ri_calc_hint;
+            var riSettingsHint = document.getElementById('mod_ri-ynow_ri_settings_recalc_hint');
+            if (riSettingsHint && s.ri_settings_recalc_hint) riSettingsHint.textContent = s.ri_settings_recalc_hint;
+            var pbSettingsHint = document.getElementById('mod_pb-ynow_pb_settings_reset_hint');
+            if (pbSettingsHint && s.pb_settings_reset_hint) pbSettingsHint.textContent = s.pb_settings_reset_hint;
+            var navSettingsHint = document.getElementById('mod_nav-ynow_nav_settings_reset_hint');
+            if (navSettingsHint && s.nav_settings_reset_hint) navSettingsHint.textContent = s.nav_settings_reset_hint;
             var capmBoxTitle = document.getElementById('ynow_capm_box_title');
             if (capmBoxTitle && s.capm_box_title) capmBoxTitle.textContent = s.capm_box_title;
+            var syncGsLab = document.getElementById('ynow_sync_gs_beta_label');
+            if (syncGsLab && s.sync_gs_beta_label) syncGsLab.textContent = s.sync_gs_beta_label;
+            var betaHome = document.getElementById('ynow_beta_home_name');
+            if (betaHome && s.beta_home_name) betaHome.textContent = s.beta_home_name;
             var kpiBlue = document.getElementById('ynow_kpi_legend_blue');
             if (kpiBlue && s.kpi_legend_blue) kpiBlue.textContent = s.kpi_legend_blue;
             var kpiRed = document.getElementById('ynow_kpi_legend_red');
@@ -2772,23 +2857,6 @@ ui <- dashboardPage(
           white-space: nowrap;
           padding: 6px 14px;
           font-weight: 700;
-        }
-        .ynow-lab-im-sizes .shiny-options-group {
-          display: inline-flex;
-          flex-wrap: nowrap;
-          flex-direction: row;
-          align-items: center;
-          column-gap: 12px;
-          row-gap: 0;
-          white-space: nowrap;
-        }
-        .ynow-lab-im-sizes .checkbox-inline {
-          display: inline-block;
-          margin-left: 0 !important;
-          margin-right: 0 !important;
-          padding-left: 18px;
-          white-space: nowrap;
-          font-size: 13px;
         }
         .ynow-lab-im-methods .shiny-options-group {
           display: inline-flex;
@@ -3913,7 +3981,7 @@ ui <- dashboardPage(
                            tags$p(
                              class = "ynow-ann-note",
                              tags$b("用途："),
-                             "解讀上方 KPI 色碼如何對照「Get Started → Industry Standard」產業區間。",
+                             "解讀上方 KPI 色碼如何對照「基礎設定 → Industry Standard」產業區間。",
                              "數值採年報序列（排除 TTM）的多年平均或年均 YoY，以利跨期／同業比較。"
                            ),
                            tags$p(
@@ -4037,7 +4105,7 @@ ui <- dashboardPage(
                            ),
                            checkboxInput(
                              "mod_ddm-sync_g",
-                             "與中央永續成長率（Get Started SGR）同步",
+                             "與中央永續成長率（基礎設定 SGR）同步",
                              value = isTRUE(APP_DEFAULTS$ddm_sync_central_g)
                            ),
                            helpText("勾選時跟隨中央 SGR；取消勾選後可單獨覆寫股利成長率（不必等於 FCFF 終值 g）。二階段時此值即 g₂。"),
@@ -4226,8 +4294,7 @@ ui <- dashboardPage(
                      tabPanel("DCF Calculation Details",
                               fluidRow(
                                 column(width = 12,
-                                       plotOutput("mod_fcf-fcf_plot", height = "350px"),
-                                       htmlOutput("mod_fcf-txt_fcf_raw_data") 
+                                       plotOutput("mod_fcf-fcf_plot", height = "350px")
                                 ),
                                 uiOutput("ui_data_validation") 
                               )
@@ -4448,15 +4515,6 @@ ui <- dashboardPage(
                       )
                     ),
                     tags$div(
-                      class = "ynow-lab-im-sizes",
-                      checkboxGroupInput(
-                        "lab_im_sizes", "規模",
-                        choices = lab_size_picker_choices(),
-                        selected = names(LAB_SIZE_LABELS),
-                        inline = TRUE
-                      )
-                    ),
-                    tags$div(
                       class = "ynow-lab-im-methods",
                       checkboxGroupInput(
                         "lab_im_methods", "模型",
@@ -4464,9 +4522,10 @@ ui <- dashboardPage(
                           "DCF" = "dcf",
                           "DDM" = "ddm",
                           "P/B" = "pb",
-                          "RI" = "ri"
+                          "RI" = "ri",
+                          "NAV" = "nav"
                         ),
-                        selected = c("dcf", "ddm", "pb", "ri"),
+                        selected = c("dcf", "ddm", "pb", "ri", "nav"),
                         inline = TRUE
                       )
                     )

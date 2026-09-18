@@ -561,7 +561,7 @@ lab_format_fetched_at <- function(x) {
   format(t, "%Y-%m-%d")
 }
 
-#' Lab 產業 picker：App 產業＋未對應桶（不污染 Get Started）
+#' Lab 產業 picker：App 產業＋未對應桶（不污染基礎設定）
 lab_industry_picker_choices <- function() {
   base <- industry_picker_choices()
   extra <- stats::setNames(LAB_UNMAPPED_KEY, LAB_UNMAPPED_LABEL)

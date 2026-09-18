@@ -854,7 +854,7 @@ industry_standard_snapshot_ui <- function(industry_key,
                                           yahoo_text = NULL,
                                           show_chips = TRUE,
                                           show_title = TRUE,
-                                          empty_message = "尚未選擇比較產業（請至 Get Started → Industry Standard）") {
+                                          empty_message = "尚未選擇比較產業（請至基礎設定 → Industry Standard）") {
   key <- as.character(industry_key %||% "")[1]
   if (!nzchar(key) || !(key %in% names(industry_standards))) {
     return(tags$div(

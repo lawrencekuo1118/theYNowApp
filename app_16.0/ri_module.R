@@ -215,7 +215,7 @@ ri_module_ui <- function(id) {
             fluidRow(
               column(
                 width = 6,
-                ynow_calc_btn(ns("btn_calc_ri"), "啟動RI模型試算")
+                ynow_calc_btn(ns("btn_calc_ri"), "試算 RI")
               ),
               column(
                 width = 6,
@@ -225,7 +225,7 @@ ri_module_ui <- function(id) {
             tags$p(
               id = ns("ynow_ri_calc_hint"),
               style = "margin: 8px 0 12px 0; color: #666; font-size: 12px;",
-              "請確認下方 RI Settings 參數後按「啟動RI模型試算」。搜尋後若 RI 為推薦主模型會自動試算。"
+              "請確認下方 RI Settings 參數後按「試算 RI」。搜尋後若 RI 為推薦主模型會自動試算。"
             ),
             uiOutput(ns("ui_ri_source_notes")),
             uiOutput(ns("ui_ri_warnings")),
@@ -317,8 +317,9 @@ ri_module_ui <- function(id) {
           column(
             12,
             tags$p(
+              id = ns("ynow_ri_settings_recalc_hint"),
               style = "margin-top: 10px; color: #7f8c8d; font-size: 12px;",
-              "參數變更後請回 Overview 按「啟動RI模型試算」（或「回復預設」重設後再試算）。"
+              "參數變更後請回 Overview 按「試算 RI」（或「回復預設」重設後再試算）。"
             )
           )
         )
@@ -367,9 +368,14 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
                              capm_beta = reactive(NA),
                              capm_rm = reactive(NA),
                              use_estimated_re = reactive(FALSE),
-                             auto_calc_pulse = reactive(0L)) {
+                             auto_calc_pulse = reactive(0L),
+                             ui_locale = reactive("zh-TW")) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
+
+    .loc <- function() {
+      tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    }
 
     industry_roe_pct <- reactive({
       v <- .industry_roe_pct(industry_choice())
@@ -477,7 +483,7 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
         tags$li(tags$b("ROE："), "損益表 Net Income ÷ Common Equity"),
         tags$li(tags$b("Payout："), "現金流量表 Cash Dividends Paid ÷ Net Income（無股利則 0）"),
         tags$li(tags$b("Ke："), "中央股權成本（WACC／CAPM 之 rₑ；勾選採用估算時跟 CAPM）"),
-        tags$li(tags$b("g："), "Get Started 終值永續成長率 SGR")
+        tags$li(tags$b("g："), "基礎設定 終值永續成長率 SGR")
       )
     })
 
@@ -677,7 +683,7 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
       (is.finite(btn) && btn >= 1L) || (is.finite(pulse) && pulse >= 1L)
     }
 
-    # ----- Core valuation（需「啟動RI模型試算」或自動試算 pulse）-----
+    # ----- Core valuation（需「試算 RI」或自動試算 pulse）-----
     ri_calc <- eventReactive(list(input$btn_calc_ri, auto_calc_pulse()), {
       if (!isTRUE(.ri_calc_requested())) {
         return(list(status = "idle"))
@@ -714,7 +720,7 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
         return(div(
           style = "margin-bottom:10px;padding:12px;background:#eef5ff;border-left:5px solid #3498db;border-radius:4px;color:#2c3e50;",
           icon("info-circle"), " ",
-          "尚未試算：請按「啟動RI模型試算」。"
+          ui_str("ri_idle_hint", .loc())
         ))
       }
       tags_list <- list()

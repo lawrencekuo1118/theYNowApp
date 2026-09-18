@@ -18,13 +18,6 @@ LAB_METHOD_LABELS <- c(
   nav = "NAV（帳面控股淨資產）"
 )
 
-# 市值分級（USD）：大型 ≥100B／中型 10–100B／小型 ＜10B
-LAB_SIZE_LABELS <- c(
-  large = "大型（≥100B）",
-  mid   = "中型（10–100B）",
-  small = "小型（＜10B）"
-)
-
 # 目錄代碼 → 公司全稱（評估前即可顯示；Yahoo 名稱可覆寫）
 LAB_TICKER_NAMES <- c(
   AVGO = "Broadcom Inc.", AMD = "Advanced Micro Devices, Inc.",
@@ -118,15 +111,6 @@ lab_company_display_name <- function(ticker, yahoo_name = NULL) {
   if (!is.na(nm) && nzchar(nm)) return(as.character(nm)[1])
   if (nzchar(yn)) return(yn)
   "—"
-}
-
-#' 依市值（USD）分級；無法判定則 NA
-lab_classify_market_cap <- function(mcap_usd) {
-  x <- suppressWarnings(as.numeric(mcap_usd)[1])
-  if (!is.finite(x) || x <= 0) return(NA_character_)
-  if (x >= 1e11) return("large")
-  if (x >= 1e10) return("mid")
-  "small"
 }
 
 #' 模型預測年數（與 App DCF／預設 n 對齊）
@@ -282,26 +266,19 @@ lab_fetch_market_caps_usd <- function(tickers) {
   out
 }
 
-#' 掛上市值與規模，供評估前篩選／市值排序
+#' 掛上市值，供候選 > N 時依市值降序截斷評估池（非規模篩選）
 lab_attach_market_caps <- function(pool) {
   pool <- lab_dedupe_eval_pool(pool)
   if (is.null(pool) || nrow(pool) == 0L) return(pool)
   caps <- lab_fetch_market_caps_usd(pool$ticker)
   pool$market_cap <- unname(caps[pool$ticker])
-  pool$size_band <- vapply(
-    pool$market_cap,
-    function(x) {
-      b <- lab_classify_market_cap(x)
-      if (is.null(b) || !nzchar(as.character(b)[1])) NA_character_ else as.character(b)[1]
-    },
-    character(1)
-  )
   pool
 }
 
-#' 規模過濾後依市值降序取最多 max_n 檔（無市值置後，再依代碼）
+#' 依市值降序取最多 max_n 檔（無市值置後，再依代碼）
 #' 評估檔數 N：截斷只影響評估池／明細列數；排行榜另以 F-Score≥7 取 Top 10，不縮減明細。
-lab_rank_and_cap_eval_pool <- function(pool, max_n = 25L, size_filter = character(0)) {
+#' 不做市值分級／規模篩選。
+lab_rank_and_cap_eval_pool <- function(pool, max_n = 25L) {
   pool <- lab_dedupe_eval_pool(pool)
   if (is.null(pool) || !is.data.frame(pool)) {
     empty <- data.frame(ticker = character(0), stringsAsFactors = FALSE)
@@ -311,11 +288,6 @@ lab_rank_and_cap_eval_pool <- function(pool, max_n = 25L, size_filter = characte
     return(empty)
   }
   if (!"market_cap" %in% names(pool)) pool$market_cap <- NA_real_
-  if (!"size_band" %in% names(pool)) pool$size_band <- NA_character_
-  sf <- lab_normalize_size_filter(size_filter)
-  if (length(sf) > 0L) {
-    pool <- pool[is.na(pool$size_band) | pool$size_band %in% sf, , drop = FALSE]
-  }
   max_n <- lab_clamp_im_max_n(max_n)
   n_filtered <- nrow(pool)
   mcap <- suppressWarnings(as.numeric(pool$market_cap))
@@ -335,29 +307,6 @@ lab_normalize_multi_filter <- function(x) {
   v <- unique(as.character(unlist(x, use.names = FALSE)))
   v <- v[nzchar(v) & !is.na(v) & v != "all"]
   v
-}
-
-#' 規模複選 → size_band keys（相容誤傳中文標籤）
-lab_normalize_size_filter <- function(x) {
-  v <- lab_normalize_multi_filter(x)
-  if (length(v) == 0L) return(character(0))
-  # 已是 key
-  keys <- names(LAB_SIZE_LABELS)
-  labels <- unname(LAB_SIZE_LABELS)
-  out <- character(0)
-  for (item in v) {
-    if (item %in% keys) {
-      out <- c(out, item)
-    } else if (item %in% labels) {
-      out <- c(out, keys[match(item, labels)])
-    }
-  }
-  unique(out[!is.na(out) & nzchar(out)])
-}
-
-#' picker 用：顯示中文、回傳 large/mid/small
-lab_size_picker_choices <- function() {
-  stats::setNames(names(LAB_SIZE_LABELS), unname(LAB_SIZE_LABELS))
 }
 
 # S&P 500 宇宙（可更新快取）；須在候選目錄／名稱查詢之前載入
@@ -481,6 +430,30 @@ lab_estimate_fv_per_share <- function(method, industry_key, d_is, d_bs, d_cf,
       fv <- bvps * .pb_mid()
       note <- "RI缺ROE→P/B"
     }
+  } else if (identical(method, "nav")) {
+    disc <- suppressWarnings(as.numeric(APP_DEFAULTS$nav_holdco_discount %||% 0)[1])
+    if (!is.finite(disc)) disc <- 0
+    disc <- max(0, min(0.5, disc))
+    navc <- tryCatch(
+      extract_nav_components(d_bs, holdco_discount = disc),
+      error = function(e) NULL
+    )
+    nav_tot <- if (!is.null(navc)) suppressWarnings(as.numeric(navc$nav)[1]) else NA_real_
+    navps <- if (is.finite(nav_tot) && nav_tot > 0) nav_tot / shares else NA_real_
+    if (!is.finite(navps) && is.finite(bvps) && bvps > 0) navps <- bvps
+    mult <- suppressWarnings(as.numeric(APP_DEFAULTS$nav_mid %||% 1)[1])
+    if (!is.finite(mult) || mult <= 0) mult <- 1
+    if (is.finite(navps) && navps > 0) {
+      fv <- navps * mult
+      note <- if (!is.null(navc) && nzchar(as.character(navc$note %||% "")[1])) {
+        paste0("簡化NAV×", sprintf("%.2f", mult), "（", as.character(navc$note)[1], "）")
+      } else {
+        paste0("簡化NAV×", sprintf("%.2f", mult))
+      }
+    } else if (is.finite(bvps)) {
+      fv <- bvps * .pb_mid()
+      note <- "NAV缺權益→P/B"
+    }
   } else {
     # DCF：n 年顯式 FCF 成長＋終值（用 Ke 近似折現；實驗區簡化）
     fcf <- tryCatch(
@@ -534,7 +507,7 @@ lab_industry_method_defaults <- function() {
     list("cons.Restaurants", "dcf", "ddm", FALSE, "餐飲現金流／成熟配息 → DCF"),
     list("cons.Home_Living", "dcf", "pb", FALSE, "居家生活消費 → DCF"),
     list("cons.Sports_Leisure", "dcf", "pb", FALSE, "運動休閒 → DCF"),
-    list("ind.Conglomerate", "pb", "dcf", FALSE, "綜合／其他 → P/B 粗定位"),
+    list("ind.Conglomerate", "nav", "pb", FALSE, "綜合／其他 → 純 NAV；P/B 交叉"),
     list("mat.Textiles", "dcf", "pb", FALSE, "紡織纖維循環 → DCF"),
     list("mat.Paper_Packaging", "dcf", "pb", FALSE, "造紙包裝 → DCF"),
     list("mat.Glass_Ceramics", "dcf", "pb", FALSE, "玻璃陶瓷 → DCF"),
@@ -543,14 +516,14 @@ lab_industry_method_defaults <- function() {
     list("media.Advertising", "dcf", "pb", FALSE, "廣告行銷 → DCF"),
     list("bus.Professional_Services", "dcf", "pb", FALSE, "專業服務 → DCF"),
 
-    # 金融／控股／REIT／公用 → P/B（+ RI）
+    # 金融／控股／REIT／公用 → P/B（+ RI）；控股主模型純 NAV
     list("fn.Banking", "pb", "ri", FALSE, "金融簿價驅動 → P/B；ROE 可時交叉 RI"),
     list("fn.Investment_Banking", "pb", "ri", FALSE, "金融簿價驅動 → P/B"),
     list("fn.Insurance", "pb", "ri", FALSE, "保險／帳面導向 → P/B"),
-    list("fn.Asset_Management", "pb", "ri", FALSE, "資產管理偏帳面／AUM → P/B"),
+    list("fn.Asset_Management", "pb", "nav", FALSE, "資產管理偏帳面 → P/B；副選純 NAV"),
     list("fn.Fintech", "dcf", "pb", TRUE, "成長型金融科技 → 兩階段 DCF"),
-    list("fn.Conglomerate_Holding", "pb", "ri", FALSE, "控股／綜合企業 → P/B（+ RI）"),
-    list("re.REIT", "pb", "ddm", FALSE, "REIT 簿價／殖利率 → P/B；穩定股利可輔 DDM"),
+    list("fn.Conglomerate_Holding", "nav", "ri", FALSE, "控股／綜合企業 → 純 NAV（+ RI）"),
+    list("re.REIT", "pb", "nav", FALSE, "REIT 簿價／殖利率 → P/B；副選純 NAV"),
     list("en.Utilities", "pb", "ddm", FALSE, "公用事業簿價／管制資產 → P/B；高配息輔 DDM"),
 
     # 高成長科技／生技／EV → DCF two-stage
@@ -764,7 +737,6 @@ lab_evaluate_ticker_fscore <- function(ticker, industry_key = NULL, method = NUL
     quality_flag = NA_real_,
     is_quality = FALSE,
     market_cap = NA_real_,
-    size_band = NA_character_,
     price = NA_real_,
     fv = NA_real_,
     upside_total_pct = NA_real_,
@@ -789,7 +761,6 @@ lab_evaluate_ticker_fscore <- function(ticker, industry_key = NULL, method = NUL
   out$market_cap <- suppressWarnings(as.numeric(sm$market_cap)[1])
   out$price <- suppressWarnings(as.numeric(sm$price)[1])
   out$company_name <- lab_company_display_name(tk, sm$company_name)
-  out$size_band <- lab_classify_market_cap(out$market_cap)
 
   res <- tryCatch(cached_scrape_financials(tk), error = function(e) e)
   if (inherits(res, "error")) {
@@ -908,7 +879,6 @@ lab_screen_tickers_fscore <- function(tickers, progress_cb = NULL, max_n = Inf,
       is_quality = isTRUE(ev$is_quality),
       is_quality_upside = isTRUE(ev$is_quality_upside),
       market_cap = ev$market_cap,
-      size_band = ev$size_band %||% NA_character_,
       price = ev$price,
       fv = ev$fv,
       upside_total_pct = ev$upside_total_pct,
@@ -927,7 +897,7 @@ lab_screen_tickers_fscore <- function(tickers, progress_cb = NULL, max_n = Inf,
     ticker = character(0), ok = logical(0), f_score = numeric(0),
     quality_flag = numeric(0), is_quality = logical(0),
     is_quality_upside = logical(0),
-    market_cap = numeric(0), size_band = character(0),
+    market_cap = numeric(0),
     price = numeric(0), fv = numeric(0),
     upside_total_pct = numeric(0), upside_cagr_pct = numeric(0),
     n_years = integer(0), fv_note = character(0), method_used = character(0),
@@ -945,7 +915,6 @@ lab_screen_tickers_fscore <- function(tickers, progress_cb = NULL, max_n = Inf,
 lab_merge_catalog_scores <- function(catalog, scores = NULL,
                                      method_filter = character(0),
                                      industry_filter = character(0),
-                                     size_filter = character(0),
                                      eq_only = FALSE,
                                      gate_only = FALSE,
                                      quality_only = FALSE,
@@ -960,7 +929,6 @@ lab_merge_catalog_scores <- function(catalog, scores = NULL,
     d$is_quality <- NA
     d$is_quality_upside <- NA
     d$market_cap <- NA_real_
-    d$size_band <- NA_character_
     d$price <- NA_real_
     d$fv <- NA_real_
     d$upside_total_pct <- NA_real_
@@ -996,11 +964,6 @@ lab_merge_catalog_scores <- function(catalog, scores = NULL,
   indf <- lab_normalize_multi_filter(industry_filter)
   if (length(indf) > 0) {
     df <- df[df$industry_key %in% indf, , drop = FALSE]
-  }
-  sf <- lab_normalize_size_filter(size_filter)
-  if (length(sf) > 0) {
-    # 未知規模（尚未評估）視為通過，評估後再依市值分級
-    df <- df[is.na(df$size_band) | df$size_band %in% sf, , drop = FALSE]
   }
   if (isTRUE(eq_only)) {
     df <- df[!is.na(df$quality_flag) & df$quality_flag %in% 1, , drop = FALSE]

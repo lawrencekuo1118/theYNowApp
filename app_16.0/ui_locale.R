@@ -28,9 +28,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     menu_ri = "RI-Model",
     menu_nav = "NAV",
     menu_cat_asset = "Asset-Based Appr.",
-    menu_cat_income = "Income / Cash Flow Appr.",
+    menu_cat_income = "Income / Cashflow Appr.",
     menu_cat_relative = "Relative Valuation Appr.",
-    menu_badge_primary = "Recommended",
+    menu_badge_primary = "Recommend",
     menu_badge_secondary = "Secondary",
     menu_ynow = "YNOW",
     menu_bluechip = "Blue Chip Ranking",
@@ -66,7 +66,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     bluechip_blurb_tw = paste0(
       "Screen Taiwan blue-chip candidates from TWSE and TPEx public listings ",
       "(listed and OTC only; emerging/ESB names are excluded because liquidity and Yahoo data coverage are less stable). ",
-      "First apply size × industry × valuation-model filters, then keep the leaderboard at a high Piotroski threshold ",
+      "First apply industry × valuation-model filters, then keep the leaderboard at a high Piotroski threshold ",
       "(F-Score≥7; unrelated to earnings-quality metrics), and rank by implied annualized valuation appreciation ",
       "over the App default horizon of n=%d years. Main search still covers listed, OTC, and ESB names by numeric ticker or Chinese company name. ",
       "Detail-row count equals the number of names evaluated, N."
@@ -74,7 +74,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     bluechip_blurb_us = paste0(
       "Screen US blue-chip candidates from the S&P 500 constituent list ",
       "(Nasdaq and NYSE listings). ",
-      "First apply size × industry × valuation-model filters, then keep the leaderboard at a high Piotroski threshold ",
+      "First apply industry × valuation-model filters, then keep the leaderboard at a high Piotroski threshold ",
       "(F-Score≥7; unrelated to earnings-quality metrics), and rank by implied annualized valuation appreciation ",
       "over the App default horizon of n=%d years. Main search keeps Nasdaq and NYSE primary listings ",
       "(Yahoo typeahead plus the S&P 500 name/ticker universe). Detail-row count equals the number of names evaluated, N."
@@ -236,7 +236,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     box_sgr = "SUSTAINABLE GROWTH RATE",
     box_model_guide = "Model Selection Guide",
     box_bt_params = "Strategy Parameters",
-    # --- SGR tab (Get Started) ---
+    # --- SGR tab (Basic Setup) ---
     sgr_method_title = "Terminal growth (SGR) method",
     sgr_custom_label = "Custom SGR (%)",
     vbx_sgr_subtitle = "SGR",
@@ -261,9 +261,23 @@ locale_for_market <- function(mode = get_market_mode()) {
     btn_calc_rd = "Estimate rᵈ",
     btn_calc_wacc = "Calculate WACC",
     capm_box_title = "CAPM Estimate rₑ",
-    btn_calc_ri = "Run RI Valuation",
+    sync_gs_beta_label = "Sync with Basic Setup",
+    beta_home_name = "Basic Setup",
+    # Valuation-model trial buttons (canonical: Run {MODEL} / 試算 {MODEL})
+    btn_calc_dcf = "Run DCF",
+    btn_calc_ddm = "Run DDM",
+    btn_calc_ri = "Run RI",
+    btn_calc_pb = "Run P/B",
+    btn_calc_nav = "Run NAV",
     btn_reset_defaults = "Reset to defaults",
-    ri_calc_hint = "Confirm RI Settings, then click Run RI Valuation. Auto-runs when RI is the recommended primary model.",
+    ri_calc_hint = "Confirm RI Settings, then click Run RI. Auto-runs when RI is the recommended primary model.",
+    ri_settings_recalc_hint = "After changing parameters, return to Overview and click Run RI (or Reset to defaults, then run again).",
+    ri_idle_hint = "Not run yet: click Run RI.",
+    pb_settings_reset_hint = "Reset to defaults is on Overview, next to Run P/B.",
+    pb_idle_hint = "Confirm BVPS / TBVPS / NAVPS in P/B Settings and the target multiples tab, then click Run P/B.",
+    nav_settings_reset_hint = "Reset to defaults is on Overview, next to Run NAV.",
+    nav_idle_hint = "Confirm NAVPS and multiples in NAV Settings, then click Run NAV.",
+    dcf_idle_hint = "DCF has not been run yet. Confirm parameters, then click Run DCF.",
     # --- Decision Checklist ---
     dc_page_title = "Decision Checklist",
     dc_page_sub = paste0(
@@ -431,13 +445,13 @@ locale_for_market <- function(mode = get_market_mode()) {
     btn_lab_im_run = "搜尋績優股",
     bluechip_blurb_tw = paste0(
       "依據臺灣證券交易所與櫃買中心公開名單，篩選台股績優候選標的（範圍僅含上市與上櫃；不含興櫃，因其流動性與 Yahoo 資料覆蓋相對不穩）。",
-      "流程先依規模、產業與適用評價模型進行條件篩選，再以 Piotroski 高門檻（F-Score≥7；與盈餘品質指標無涉）過濾排行榜，",
+      "流程先依產業與適用評價模型進行條件篩選，再以 Piotroski 高門檻（F-Score≥7；與盈餘品質指標無涉）過濾排行榜，",
       "最後依 App 預設 n＝%d 年之隱含年化估值漲幅排序。主搜尋支援上市／上櫃／興櫃查詢（純數字代號或中文名稱）。",
       "明細列數等於本次評估檔數 N。"
     ),
     bluechip_blurb_us = paste0(
       "自 S&P 500 成分名單篩選美股績優候選（涵蓋 Nasdaq 與 NYSE 上市股票）。",
-      "流程先依規模、產業與適用評價模型進行條件篩選，再以 Piotroski 高門檻（F-Score≥7；與盈餘品質指標無涉）過濾排行榜，",
+      "流程先依產業與適用評價模型進行條件篩選，再以 Piotroski 高門檻（F-Score≥7；與盈餘品質指標無涉）過濾排行榜，",
       "最後依 App 預設 n＝%d 年之隱含年化估值漲幅排序。主搜尋保留 Nasdaq／NYSE 主要上市",
       "（Yahoo 建議列＋S&P 500 名稱／代號宇宙）。明細列數等於本次評估檔數 N。"
     ),
@@ -592,14 +606,14 @@ locale_for_market <- function(mode = get_market_mode()) {
     box_sgr = "SUSTAINABLE GROWTH RATE",
     box_model_guide = "模型選擇決策指南",
     box_bt_params = "策略參數設定",
-    # --- SGR tab (Get Started) ---
+    # --- SGR tab (Basic Setup) ---
     sgr_method_title = "終值永續成長率 (SGR) 評價方法",
     sgr_custom_label = "自訂 SGR (%)",
     vbx_sgr_subtitle = "SGR",
     vbx_session_g_subtitle = "當前設定 g（近期末）",
     g_stage1_help = paste0(
       "預設帶入「預估營收成長率」；可手動覆寫。",
-      "終值成長率仍用 Get Started 的 SGR。"
+      "終值成長率仍用基礎設定的 SGR。"
     ),
     # --- WACC / rᵈ / CAPM ---
     wacc_box_title = "WACC 估算",
@@ -616,9 +630,23 @@ locale_for_market <- function(mode = get_market_mode()) {
     btn_calc_rd = "估算 rᵈ",
     btn_calc_wacc = "計算 WACC",
     capm_box_title = "CAPM 估算 rₑ",
-    btn_calc_ri = "啟動RI模型試算",
+    sync_gs_beta_label = "與基礎設定同步",
+    beta_home_name = "基礎設定",
+    # 評價模型試算按鈕（統一：試算 {MODEL} / Run {MODEL}）
+    btn_calc_dcf = "試算 DCF",
+    btn_calc_ddm = "試算 DDM",
+    btn_calc_ri = "試算 RI",
+    btn_calc_pb = "試算 P/B",
+    btn_calc_nav = "試算 NAV",
     btn_reset_defaults = "回復預設",
-    ri_calc_hint = "請確認下方 RI Settings 參數後按「啟動RI模型試算」。搜尋後若 RI 為推薦主模型會自動試算。",
+    ri_calc_hint = "請確認下方 RI Settings 參數後按「試算 RI」。搜尋後若 RI 為推薦主模型會自動試算。",
+    ri_settings_recalc_hint = "參數變更後請回 Overview 按「試算 RI」（或「回復預設」重設後再試算）。",
+    ri_idle_hint = "尚未試算：請按「試算 RI」。",
+    pb_settings_reset_hint = "「回復預設」在 Overview，與「試算 P/B」並排。",
+    pb_idle_hint = "請確認 P/B Settings 的 BVPS／TBVPS／NAVPS，以及「目標本淨比」分頁的倍數，然後按下「試算 P/B」。",
+    nav_settings_reset_hint = "「回復預設」在 Overview，與「試算 NAV」並排。",
+    nav_idle_hint = "請確認 NAV Settings 的 NAVPS 與倍數，然後按下「試算 NAV」。",
+    dcf_idle_hint = "尚未計算 DCF，請確認參數後按下「試算 DCF」。",
     # --- 決策檢核 ---
     dc_page_title = "決策檢核",
     dc_page_sub = paste0(
