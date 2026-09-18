@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12569141
+bundleId=12571496
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=2810aff
-commit=2810affc1dbf4844885a6d47acb47c805fdc8e66
-short=2810aff
-message=unify(ui): standardize valuation trial buttons as Run/試算 {MODEL} (v16.40)
-captured_at=2026-09-17T17:59:01Z
-source_branch=master
-display_version=v16.40
-note=Canonical live line is app_16.0. Bundle 12569141 ships tip v16.40 (valuation trial buttons unified: Run/試算 {MODEL} for DCF/DDM/RI/P/B/NAV). Supersedes 12569032 / 12569000 / 12568963.
+aligned_git=2e126f5
+commit=2e126f5f9f1f1062476e167b1fb8598c2f785a05
+short=2e126f5
+message=feat(ddm): add SPM as GGM-family mode beside Gordon (v16.41)
+captured_at=2026-09-18T05:40:00Z
+source_branch=cursor/ddm-spm-ggm-choice-f4a6
+display_version=v16.41
+note=Canonical live line is app_16.0. Bundle 12571496 ships v16.41: DDM mode SPM (Sum of Perpetuities, Brown & Abraham) beside Gordon GGM and two-stage. Formula P=E*g/Ke^2+D/Ke. Supersedes 12569141 (v16.40).

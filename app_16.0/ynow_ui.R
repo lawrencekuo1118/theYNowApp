@@ -34,7 +34,7 @@
     ),
     tags$li(
       tags$b("四大估值引擎："),
-      "內建自由現金流 (DCF：FCFF／WACC 或 FCFE／Ke)、股利折現 (DDM：Gordon 或二階段)、資產本淨比 (P/B＋NAV) 與剩餘收益 (RI) 模型，系統能根據產業屬性與企業生命週期，動態推薦最適合的評價路徑。"
+      "內建自由現金流 (DCF：FCFF／WACC 或 FCFE／Ke)、股利折現 (DDM：Gordon／SPM／二階段)、資產本淨比 (P/B＋NAV) 與剩餘收益 (RI) 模型，系統能根據產業屬性與企業生命週期，動態推薦最適合的評價路徑。"
     ),
     tags$li(
       tags$b("智慧決策與量化回測："),
@@ -53,7 +53,7 @@
     ),
     tags$li(
       tags$b("Four Valuation Engines: "),
-      "Features Discounted Cash Flow (DCF: FCFF/WACC or FCFE/Ke), Dividend Discount Model (DDM: Gordon or two-stage), Price-to-Book with holding NAV, and Residual Income (RI) models. The system dynamically recommends the most suitable valuation path based on sector attributes and industry lifecycles."
+      "Features Discounted Cash Flow (DCF: FCFF/WACC or FCFE/Ke), Dividend Discount Model (DDM: Gordon / SPM / two-stage), Price-to-Book with holding NAV, and Residual Income (RI) models. The system dynamically recommends the most suitable valuation path based on sector attributes and industry lifecycles."
     ),
     tags$li(
       tags$b("Smart Decision Matrix & Backtesting: "),
@@ -445,7 +445,7 @@ beta_rolling_section_ui <- function() {
                                  <thead style='background-color: #2C3E50; color: white;'>
                                    <tr>
                                      <th>對照項目</th>
-                                     <th>DDM（Gordon／二階段）</th>
+                                     <th>DDM（Gordon／SPM／二階段）</th>
                                      <th>DCF（FCFF 或 FCFE）</th>
                                      <th>RI（剩餘收益）</th>
                                      <th>P/B（本淨比）</th>
@@ -468,14 +468,14 @@ beta_rolling_section_ui <- function() {
                                    </tr>
                                    <tr>
                                      <td><b>成長率 g</b></td>
-                                     <td>股利永續 g；二階段另有高速期 g1</td>
+                                     <td>股利永續 g；SPM 為盈餘成長 g；二階段另有高速期 g1</td>
                                      <td>終值成長率 SGR（FCFF 相對 WACC；FCFE 相對 Ke）</td>
                                      <td>剩餘收益終值成長率（相對 Ke）</td>
                                      <td>不直接使用 g；倍數反映成長與 ROE</td>
                                    </tr>
                                    <tr>
                                      <td><b>核心公式含義</b></td>
-                                     <td>Gordon：P₀ = D₁/(Ke−g)；二階段：Σ PV(D_t)+PV(TV)</td>
+                                     <td>Gordon：P₀ = D₁/(Ke−g)；SPM：P₀ = E·g/Ke² + D/Ke；二階段：Σ PV(D_t)+PV(TV)</td>
                                      <td>FCFF：EV＝Σ PV(FCFF)+PV(TV)；FCFE：Equity＝Σ PV(FCFE)+PV(TV)</td>
                                      <td>V₀ = B₀ + Σ PV(RI) + PV(TV_RI)</td>
                                      <td>P = (BVPS／TBVPS／NAVPS) × 目標 P/B</td>
@@ -544,14 +544,17 @@ beta_rolling_section_ui <- function() {
        
        # Tab: DDM 模型解說
        tabPanel("Dividend Discount Model (DDM)", icon = icon("hand-holding-usd"),
-                h4(tags$b("股利折現模型（Gordon 或二階段）")),
-                p("DDM 將普通股價值視為未來現金股利的現值。現金流是股利、折現率是 Ke，與以 FCFF／WACC 為核心的 DCF 屬不同層級。"),
+                h4(tags$b("股利折現模型（Gordon／SPM／二階段）")),
+                p("DDM 將普通股價值視為未來現金股利的現值。現金流是股利、折現率是 Ke，與以 FCFF／WACC 為核心的 DCF 屬不同層級。本 App 的永續成長家族含 Gordon Growth Model (GGM) 與 Sum of Perpetuities Method (SPM)。"),
                 tags$ul(
-                  tags$li(tags$b("Gordon："), tags$b("$$P_0 = \\frac{D_1}{K_e - g} = \\frac{D_0 \\times (1 + g)}{K_e - g}$$")),
+                  tags$li(tags$b("Gordon (GGM)："), tags$b("$$P_0 = \\frac{D_1}{K_e - g} = \\frac{D_0 \\times (1 + g)}{K_e - g}$$"),
+                          " 假設現金發放率維持固定比例，股利隨盈餘以 g 成長。約束：g < Ke。"),
+                  tags$li(tags$b("SPM（永續和）："), tags$b("$$P_0 = \\frac{E \\times g}{K_e^2} + \\frac{D}{K_e}$$"),
+                          " Brown & Abraham (2012)：將「定額股利永續」與「保留盈餘創造之成長」分開折現；對輸入較不敏感。當 ROE = Ke 且 g = ROE × 保留率時，與前向股利版 GGM 等價。EPS 取 D0 分頁之預估／最新 EPS；D 取今年股利。"),
                   tags$li(tags$b("二階段："), "前 n₁ 年股利以 g₁ 成長，之後以永續 g₂ 做 Gordon 終值。約束：g₂ < Ke。"),
                   tags$li(tags$b("$$D_t = D_0(1+g_1)^t,\\quad TV = \\frac{D_{n_1}(1+g_2)}{K_e-g_2},\\quad P_0 = \\sum_{t=1}^{n_1}\\frac{D_t}{(1+K_e)^t} + \\frac{TV}{(1+K_e)^{n_1}}$$"))
                 ),
-                p("股利成長率 g（二階段的 g₂）可與中央終值 SGR 同步，亦可在 DDM 分頁單獨覆寫。基本面法可參考 $$g = ROE \\times Retention\\ Ratio$$，但不宜與 FCFF 終值 g 強制畫上等號。")
+                p("股利成長率 g（二階段的 g₂；SPM 的盈餘成長 g）可與中央終值 SGR 同步，亦可在 DDM 分頁單獨覆寫。基本面法可參考 $$g = ROE \\times Retention\\ Ratio$$（或 ROA × RR），但不宜與 FCFF 終值 g 強制畫上等號。選擇 GGM 或 SPM 時，宜先觀察公司股利政策較接近「固定配息率」或「固定股利金額」。")
        ),
        
        # Tab: DCF 模型解說
@@ -721,10 +724,17 @@ beta_rolling_section_ui <- function() {
 .ddm_formula_banner <- function() {
   tagList(
     conditionalPanel(
-      condition = "input['mod_ddm-ddm_mode'] != 'two_stage'",
+      condition = "input['mod_ddm-ddm_mode'] == 'gordon' || input['mod_ddm-ddm_mode'] == null || input['mod_ddm-ddm_mode'] == ''",
       div(
         "P₀ = D₁ / (Ke − g)　｜　D₁ = D₀ × (1 + g)",
         style = "font-size: 18px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
+      )
+    ),
+    conditionalPanel(
+      condition = "input['mod_ddm-ddm_mode'] == 'spm'",
+      div(
+        "P₀ = (E × g) / Ke² + D / Ke　｜　SPM（Sum of Perpetuities）",
+        style = "font-size: 16px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
       )
     ),
     conditionalPanel(
@@ -768,7 +778,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v16.40</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v16.41</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -4016,12 +4026,13 @@ ui <- dashboardPage(
                                     "mod_ddm-ddm_mode",
                                     "選擇 DDM 估值模型：",
                                     choices = list(
-                                      "Gordon 永續成長" = "gordon",
+                                      "Gordon 永續成長 (GGM)" = "gordon",
+                                      "SPM 永續和 (Sum of Perpetuities)" = "spm",
                                       "二階段成長法 (Two-Stage Model)" = "two_stage"
                                     ),
                                     selected = APP_DEFAULTS$ddm_mode
                                   ),
-                                  helpText("Gordon：單一永續 g。二階段：前 n₁ 年以 g₁ 成長，之後以永續 g 做 Gordon 終值（約束 g₂ < Ke）。")
+                                  helpText("Gordon (GGM)：固定配息率、股利隨 g 成長（需 Ke > g）。SPM：定額股利永續 + 保留盈餘成長項 P = E·g/Ke² + D/Ke（需 EPS；對參數較不敏感）。二階段：前 n₁ 年 g₁，之後永續 g 做 Gordon 終值。")
                                 ),
                                 column(
                                   width = 6,
@@ -4030,7 +4041,14 @@ ui <- dashboardPage(
                                     "今年發放股利 (D0)",
                                     value = APP_DEFAULTS$ddm_d0
                                   ),
-                                  helpText("由財報自動帶入：現金股利（現金流量表）÷ 股數；若無則顯示 0。可手動覆寫，或至 D0 以配息率／歷史平均覆寫。")
+                                  helpText("由財報自動帶入：現金股利（現金流量表）÷ 股數；若無則顯示 0。可手動覆寫，或至 D0 以配息率／歷史平均覆寫。SPM 模式下此值為定額永續股利 D。"),
+                                  conditionalPanel(
+                                    condition = "input['mod_ddm-ddm_mode'] == 'spm'",
+                                    tags$div(
+                                      style = "margin-top: 8px; padding: 8px 10px; background: #FFF8E7; border-left: 3px solid #E0A800; border-radius: 4px; font-size: 13px;",
+                                      tags$b("SPM 提示："), " 請至下方 D0 分頁確認「預估／最新 EPS」；公式使用 E（EPS）與 D（上方股利）。"
+                                    )
+                                  )
                                 )
                               )
                      )
@@ -4104,8 +4122,15 @@ ui <- dashboardPage(
                              "與中央永續成長率（基礎設定 SGR）同步",
                              value = isTRUE(APP_DEFAULTS$ddm_sync_central_g)
                            ),
-                           helpText("勾選時跟隨中央 SGR；取消勾選後可單獨覆寫股利成長率（不必等於 FCFF 終值 g）。二階段時此值即 g₂。"),
-                           tags$div(style = "margin-top: 12px;", .ddm_two_stage_params_box())
+                           helpText("勾選時跟隨中央 SGR；取消勾選後可單獨覆寫股利成長率（不必等於 FCFF 終值 g）。二階段時此值即 g₂；SPM 時為公式中的盈餘成長 g。"),
+                           tags$div(style = "margin-top: 12px;", .ddm_two_stage_params_box()),
+                           conditionalPanel(
+                             condition = "input['mod_ddm-ddm_mode'] == 'spm'",
+                             tags$div(
+                               style = "margin-top: 12px;",
+                               helpText("SPM 另需 EPS（E）：請至 D0 分頁確認「預估／最新 EPS」。成長 g 常用 ROE×保留率或 ROA×保留率。")
+                             )
+                           )
                          )
                        )
                      ),
