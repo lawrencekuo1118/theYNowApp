@@ -348,7 +348,7 @@ lab_cluster_radar_plotly <- function(result, focus_ticker, peer_tickers = NULL,
     nm <- names(LAB_CLUSTER_AXIS_CHOICES)[match(feats[i], LAB_CLUSTER_AXIS_CHOICES)]
     if (!is.na(nm)) axis_labs[i] <- nm
   }
-  p <- plotly::plot_ly(type = "scatterpolar", fill = "toself")
+  p <- plotly::plot_ly(type = "scatterpolar", mode = "lines", fill = "toself")
   for (i in seq_len(nrow(sub))) {
     vals <- as.numeric(scaled[i, ])
     p <- plotly::add_trace(
