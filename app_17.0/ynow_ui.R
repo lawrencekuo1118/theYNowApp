@@ -75,7 +75,7 @@
       tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
       tags$p(
         class = "ynow-about-lead",
-        "The YNow App (v17.01) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合了即時財報抓取、多維度估值模型與動態回測引擎，將繁雜的市場資料轉化為直覺、科學的投資決策。"
+        "The YNow App (v17.02) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合了即時財報抓取、多維度估值模型與動態回測引擎，將繁雜的市場資料轉化為直覺、科學的投資決策。"
       ),
       tags$p(
         class = "ynow-about-method",
@@ -91,7 +91,7 @@
       tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
       tags$p(
         class = "ynow-about-lead",
-        "The YNow App (v17.01) is a comprehensive quantitative financial analysis and valuation decision system designed for professional investors and analysts. It seamlessly integrates real-time financial data parsing, multi-dimensional valuation models, and a dynamic backtesting engine to transform complex market data into actionable, scientific investment insights."
+        "The YNow App (v17.02) is a comprehensive quantitative financial analysis and valuation decision system designed for professional investors and analysts. It seamlessly integrates real-time financial data parsing, multi-dimensional valuation models, and a dynamic backtesting engine to transform complex market data into actionable, scientific investment insights."
       ),
       tags$p(
         class = "ynow-about-method",
@@ -226,12 +226,10 @@ rd_estimate_settings_ui <- function(width = 6) {
 #' @param apply_btn_id actionButton id (sync selected β into CAPM)
 #' @param include_hidden_purpose keep legacy beta_purpose input (Basic Setup only)
 #' @param include_crosscheck render beta_crosscheck_panel under the picker
-#' @param show_advanced_note short pointer to Basic Setup peer-unlever / Rolling
 beta_source_picker_ui <- function(input_id,
                                   apply_btn_id,
                                   include_hidden_purpose = FALSE,
                                   include_crosscheck = FALSE,
-                                  show_advanced_note = FALSE,
                                   extra = NULL) {
   default_selected <- tryCatch(
     APP_DEFAULTS$beta_u_apply_source,
@@ -282,15 +280,6 @@ beta_source_picker_ui <- function(input_id,
       class = "btn-success ynow-btn-sync-selected-beta",
       icon = icon("check")
     ),
-    if (isTRUE(show_advanced_note)) {
-      tags$p(
-        class = "ynow-beta-advanced-note help-block",
-        style = "margin-top:12px;",
-        "同業去槓桿／Rolling β 仍在",
-        tags$b(class = "ynow-beta-home-name", "基礎設定"),
-        "→ BETA。CAPM（Rf／β／Rm）在 DCF-Model → WACC。"
-      )
-    },
     extra,
     if (isTRUE(include_crosscheck)) {
       tagList(tags$br(), tags$br(), uiOutput("beta_crosscheck_panel"))
@@ -308,7 +297,6 @@ beta_source_picker_ui <- function(input_id,
         beta_source_picker_ui(
           input_id = input_id,
           apply_btn_id = apply_btn_id,
-          show_advanced_note = TRUE,
           extra = extra
         )
       )
@@ -843,7 +831,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.01</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.02</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -1168,20 +1156,19 @@ ui <- dashboardPage(
           color: #fff !important;
         }
 
-        /* 美股／台股：三線 icon 右側上下堆疊；合計滿版標頭高度（各 25px） */
-        .main-header .navbar > #ynow-market-header.ynow-market-header,
-        .main-header .navbar-custom-menu .navbar-nav > li#ynow-market-header.ynow-market-header {
-          float: left !important;
-          position: static !important;
-          left: auto !important;
-          top: auto !important;
+        /* 美股／台股：釘在三線 icon 右側（absolute；不依賴 JS／右欄 flex） */
+        .main-header .navbar #ynow-market-header.ynow-market-header {
+          position: absolute !important;
+          left: 50px !important; /* .sidebar-toggle 寬度 */
+          top: 0 !important;
+          float: none !important;
           width: 40px !important;
           height: 50px !important;
           margin: 0 !important;
           padding: 0 !important;
           list-style: none !important;
           display: block !important;
-          z-index: 20;
+          z-index: 1040;
         }
         #ynow-market-header .ynow-market-stack {
           display: flex;
@@ -1866,8 +1853,33 @@ ui <- dashboardPage(
           color: #222222;
           margin: 0 0 8px 0;
         }
+        .ynow-ind-overview-row {
+          display: flex;
+          flex-direction: row;
+          align-items: flex-start;
+          gap: 16px;
+          flex-wrap: wrap;
+        }
+        .ynow-ind-overview-picker {
+          flex: 0 1 280px;
+          min-width: 200px;
+          max-width: 360px;
+        }
+        .ynow-ind-overview-summary {
+          flex: 1 1 260px;
+          min-width: 0;
+        }
         .ynow-ind-overview-block .form-group {
-          margin-bottom: 10px;
+          margin-bottom: 0;
+        }
+        @media (max-width: 767px) {
+          .ynow-ind-overview-row {
+            flex-direction: column;
+          }
+          .ynow-ind-overview-picker {
+            max-width: none;
+            width: 100%;
+          }
         }
         /* 預測年數 n：固定在 EPS (TTM) 數字框正下方（右欄） */
         #ibx_EPS { margin-bottom: 8px; }
@@ -2104,13 +2116,23 @@ ui <- dashboardPage(
           }
           registerBadgeHandler();
 
-          /* 美股／台股：搬到三線 toggle 正後方，並綁定 Shiny input */
+          /* 美股／台股：搬到三線 toggle 正後方（CSS absolute 為視覺後備），並綁定 Shiny input */
           function placeMarketHeaderByToggle() {
-            var toggle = document.querySelector('.main-header .navbar > .sidebar-toggle');
+            var navbar = document.querySelector('.main-header .navbar');
             var market = document.getElementById('ynow-market-header');
-            if (!toggle || !market || !toggle.parentNode) return;
-            if (market.previousElementSibling === toggle) return;
-            toggle.parentNode.insertBefore(market, toggle.nextSibling);
+            if (!navbar || !market) return;
+            var toggle = null;
+            var kids = navbar.children;
+            for (var i = 0; i < kids.length; i++) {
+              if (kids[i].classList && kids[i].classList.contains('sidebar-toggle')) {
+                toggle = kids[i];
+                break;
+              }
+            }
+            if (!toggle) toggle = navbar.querySelector('.sidebar-toggle');
+            if (!toggle) return;
+            if (market.parentNode === navbar && market.previousElementSibling === toggle) return;
+            navbar.insertBefore(market, toggle.nextSibling);
           }
           function bindMarketModeButtons() {
             placeMarketHeaderByToggle();
@@ -2143,32 +2165,39 @@ ui <- dashboardPage(
             }
             pushInitial();
           }
-          if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', bindMarketModeButtons);
-          } else {
+          function armMarketHeaderPlacement() {
+            placeMarketHeaderByToggle();
             bindMarketModeButtons();
-          }
-          /* AdminLTE 重繪後再貼一次位置；持續監看以免被抬回右側 */
-          setTimeout(placeMarketHeaderByToggle, 0);
-          setTimeout(placeMarketHeaderByToggle, 250);
-          setTimeout(placeMarketHeaderByToggle, 1000);
-          if (typeof MutationObserver !== 'undefined') {
-            var hdrNav = document.querySelector('.main-header .navbar');
-            if (hdrNav) {
-              var mktObs = new MutationObserver(function () {
-                placeMarketHeaderByToggle();
-              });
-              mktObs.observe(hdrNav, { childList: true, subtree: true });
-            }
-            document.addEventListener('click', function (ev) {
-              var t = ev.target;
-              if (t && t.closest && t.closest('.sidebar-menu .treeview > a')) {
-                setTimeout(function () {
-                  if (LAST_BADGE_MAP) applySidebarBadges(LAST_BADGE_MAP);
-                }, 0);
+            if (typeof MutationObserver !== 'undefined') {
+              var hdrNav = document.querySelector('.main-header .navbar');
+              if (hdrNav && !hdrNav.getAttribute('data-ynow-mkt-obs')) {
+                hdrNav.setAttribute('data-ynow-mkt-obs', '1');
+                var mktObs = new MutationObserver(function () {
+                  placeMarketHeaderByToggle();
+                });
+                mktObs.observe(hdrNav, { childList: true, subtree: true });
               }
-            });
+            }
           }
+          if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', armMarketHeaderPlacement);
+          } else {
+            armMarketHeaderPlacement();
+          }
+          [0, 250, 1000, 2500].forEach(function (ms) {
+            setTimeout(placeMarketHeaderByToggle, ms);
+          });
+          if (window.jQuery) {
+            jQuery(document).on('shiny:connected shiny:sessioninitialized', placeMarketHeaderByToggle);
+          }
+          document.addEventListener('click', function (ev) {
+            var t = ev.target;
+            if (t && t.closest && t.closest('.sidebar-menu .treeview > a')) {
+              setTimeout(function () {
+                if (LAST_BADGE_MAP) applySidebarBadges(LAST_BADGE_MAP);
+              }, 0);
+            }
+          });
 
           /* ---- UI locale (en / zh-TW) in-place chrome labels ---- */
           function setMenuLabel(tab, label) {
@@ -2402,28 +2431,17 @@ ui <- dashboardPage(
             if (capmBoxTitle && s.capm_box_title) capmBoxTitle.textContent = s.capm_box_title;
             var syncGsLab = document.getElementById('ynow_sync_gs_beta_label');
             if (syncGsLab && s.sync_gs_beta_label) syncGsLab.textContent = s.sync_gs_beta_label;
-            document.querySelectorAll('.ynow-beta-home-name').forEach(function (el) {
-              if (s.beta_home_name) el.textContent = s.beta_home_name;
-            });
             document.querySelectorAll('.ynow-beta-source-heading').forEach(function (el) {
               if (s.beta_source_heading) el.textContent = s.beta_source_heading;
             });
             document.querySelectorAll('.ynow-beta-rolling-help').forEach(function (el) {
               if (s.beta_rolling_help) el.textContent = s.beta_rolling_help;
             });
-            document.querySelectorAll('.ynow-beta-advanced-note').forEach(function (el) {
-              if (s.beta_advanced_note) {
-                var home = s.beta_home_name || 'Basic Setup';
-                el.innerHTML = String(s.beta_advanced_note).split('{home}').join('<b class=\'ynow-beta-home-name\'>' + home + '</b>');
-              }
-            });
             document.querySelectorAll('.ynow-btn-sync-selected-beta').forEach(function (el) {
               if (!s.btn_sync_selected_beta) return;
               var ic = el.querySelector('i');
               el.innerHTML = (ic ? ic.outerHTML + ' ' : '') + s.btn_sync_selected_beta;
             });
-            var betaHome = document.getElementById('ynow_beta_home_name');
-            if (betaHome && s.beta_home_name) betaHome.textContent = s.beta_home_name;
             var kpiBlue = document.getElementById('ynow_kpi_legend_blue');
             if (kpiBlue && s.kpi_legend_blue) kpiBlue.textContent = s.kpi_legend_blue;
             var kpiRed = document.getElementById('ynow_kpi_legend_red');
@@ -3493,9 +3511,12 @@ ui <- dashboardPage(
             float: none !important;
             margin: 0 !important;
           }
-          .main-header .navbar > #ynow-market-header.ynow-market-header {
+          .main-header .navbar #ynow-market-header.ynow-market-header {
+            position: absolute !important;
+            left: 50px !important;
+            top: 0 !important;
             float: none !important;
-            align-self: center;
+            align-self: auto;
           }
           .main-header .navbar-custom-menu {
             float: none !important;
@@ -4283,14 +4304,23 @@ ui <- dashboardPage(
                   id = "ynow_ind_overview_title",
                   "目前產業標準快覽"
                 ),
-                pickerInput(
-                  inputId = "industry_choice",
-                  label = "Industry Standard",
-                  choices = industry_picker_choices(),
-                  selected = APP_DEFAULTS$industry_choice,
-                  options = list(`live-search` = TRUE, `size` = 12)
-                ),
-                uiOutput("dashboard_selected_industry")
+                tags$div(
+                  class = "ynow-ind-overview-row",
+                  tags$div(
+                    class = "ynow-ind-overview-picker",
+                    pickerInput(
+                      inputId = "industry_choice",
+                      label = "Industry Standard",
+                      choices = industry_picker_choices(),
+                      selected = APP_DEFAULTS$industry_choice,
+                      options = list(`live-search` = TRUE, `size` = 12)
+                    )
+                  ),
+                  tags$div(
+                    class = "ynow-ind-overview-summary",
+                    uiOutput("dashboard_selected_industry")
+                  )
+                )
               ),
               .kpi_band_color_legend_ui(),
               
@@ -4521,7 +4551,7 @@ ui <- dashboardPage(
                              "採用估算 Ke（來自 CAPM β）",
                              value = isTRUE(APP_DEFAULTS$use_est_re)
                            ),
-                           helpText("與 DCF→WACC「採用估算 rₑ」同步；勾選時 Ke 跟隨 CAPM。CAPM／β 輸入在 DCF-Model → WACC／Beta，或基礎設定 → BETA。"),
+                           helpText("與 DCF→WACC「採用估算 rₑ」同步；勾選時 Ke 跟隨 CAPM。"),
                            htmlOutput("ddm_beta_ke_status")
                          )
                        )
