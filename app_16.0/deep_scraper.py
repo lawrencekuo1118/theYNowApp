@@ -1240,15 +1240,10 @@ def get_cluster_features_batch(tickers):
             cached["ticker"] = sym
             return cached
         row = _empty(sym)
-        try:
-            info = {}
-            try:
-                info = yf.Ticker(sym).info or {}
-            except Exception as e:  # noqa: BLE001
-                _dbg(f"⚠️ cluster info {sym}: {e}")
-                info = {}
+
+        def _fill_from_info(info):
             if not isinstance(info, dict):
-                info = {}
+                return False
             row["name"] = _best_company_name(info, sym)
             row["market_cap"] = _sf(info.get("marketCap"))
             row["ROE"] = _pct_points(info.get("returnOnEquity"))
@@ -1260,13 +1255,57 @@ def get_cluster_features_batch(tickers):
                 else info.get("earningsGrowth")
             )
             row["Debt_Ratio"] = _debt_pct(info.get("debtToEquity"))
-            pe = _sf(info.get("trailingPE") if info.get("trailingPE") is not None else info.get("forwardPE"))
+            pe = _sf(
+                info.get("trailingPE")
+                if info.get("trailingPE") is not None
+                else info.get("forwardPE")
+            )
             pb = _sf(info.get("priceToBook"))
             if pe is not None and pe > 0:
                 row["PE_Ratio"] = pe
             if pb is not None and pb > 0:
                 row["PB_Ratio"] = pb
-            _cache_put(sym, row)
+            return (
+                row.get("ROE") is not None
+                or row.get("PE_Ratio") is not None
+                or row.get("Operating_Margin") is not None
+            )
+
+        try:
+            info = {}
+            ok = False
+            # Retry: Yahoo / yfinance intermittently returns empty .info for TW/TWO
+            for attempt in range(2):
+                try:
+                    tk = yf.Ticker(sym)
+                    info = {}
+                    try:
+                        info = tk.info or {}
+                    except Exception as e:  # noqa: BLE001
+                        _dbg(f"⚠️ cluster info {sym} attempt={attempt}: {e}")
+                        info = {}
+                    if not isinstance(info, dict):
+                        info = {}
+                    ok = _fill_from_info(info)
+                    if ok:
+                        break
+                    # Second pass: get_info() when available (some yfinance builds)
+                    if attempt == 0 and hasattr(tk, "get_info"):
+                        try:
+                            info2 = tk.get_info() or {}
+                            if _fill_from_info(info2):
+                                ok = True
+                                break
+                        except Exception as e2:  # noqa: BLE001
+                            _dbg(f"⚠️ cluster get_info {sym}: {e2}")
+                    if attempt == 0:
+                        time.sleep(0.35)
+                except Exception as e:  # noqa: BLE001
+                    _dbg(f"⚠️ cluster feature {sym} attempt={attempt}: {e}")
+                    if attempt == 0:
+                        time.sleep(0.35)
+            if ok:
+                _cache_put(sym, row)
         except Exception as e:  # noqa: BLE001
             _dbg(f"⚠️ cluster feature {sym}: {e}")
         return row
@@ -1274,7 +1313,8 @@ def get_cluster_features_batch(tickers):
     if not cleaned:
         return pd.DataFrame(columns=list(_empty("").keys()))
 
-    workers = min(6, max(1, len(cleaned)))
+    # Slightly fewer workers reduces Yahoo 429 bursts (esp. TW universe)
+    workers = min(4, max(1, len(cleaned)))
     out_map = {}
     with ThreadPoolExecutor(max_workers=workers) as ex:
         futs = {ex.submit(_one, s): s for s in cleaned}

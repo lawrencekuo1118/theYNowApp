@@ -67,4 +67,17 @@ if ("market_cap" %in% names(fmt)) {
   if (length(vals)) stopifnot(all(abs(vals - round(vals, 2)) < 1e-9))
 }
 
+# Usable-row helper: all-NA shells must count as 0 (R Yahoo fallback failure mode)
+empty_shell <- lab_cluster_features_to_df(lapply(1:4, function(i) {
+  list(
+    ticker = paste0("T", i, ".TW"),
+    name = paste0("T", i),
+    market_cap = NA_real_,
+    ROE = NA_real_, Operating_Margin = NA_real_, Rev_YoY = NA_real_,
+    OpInc_YoY = NA_real_, Debt_Ratio = NA_real_, PE_Ratio = NA_real_, PB_Ratio = NA_real_
+  )
+}))
+stopifnot(identical(lab_cluster_usable_feature_rows(empty_shell), 0L))
+stopifnot(lab_cluster_usable_feature_rows(res$data) >= 4L)
+
 cat("PASS lab_clustering\n")

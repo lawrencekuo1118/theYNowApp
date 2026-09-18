@@ -127,6 +127,19 @@ lab_cluster_features_to_df <- function(rows) {
   if (abs(v) < 5) v * 100 else v
 }
 
+#' Count rows with usable ratio features (same criteria as missing-data keep rule)
+lab_cluster_usable_feature_rows <- function(df) {
+  if (is.null(df) || !is.data.frame(df) || nrow(df) == 0L) return(0L)
+  feats <- intersect(LAB_CLUSTER_FEATURES, names(df))
+  if (!length(feats)) return(0L)
+  n_finite <- rowSums(vapply(
+    feats,
+    function(f) is.finite(suppressWarnings(as.numeric(df[[f]]))),
+    logical(nrow(df))
+  ))
+  as.integer(sum(n_finite >= 2L, na.rm = TRUE))
+}
+
 #' R-only Yahoo quoteSummary fallback (no Python / reticulate)
 lab_fetch_cluster_features_r <- function(tickers, timeout_sec = 12) {
   tks <- unique(toupper(trimws(as.character(tickers))))
@@ -199,12 +212,11 @@ lab_fetch_cluster_features_r <- function(tickers, timeout_sec = 12) {
   lab_cluster_features_to_df(rows)
 }
 
-#' Fetch Yahoo ratio features (Python first, R quoteSummary fallback)
-#' R-only Yahoo quoteSummary fallback (works when reticulate Python is unavailable)
-#' Fetch Yahoo ratio features (Python first; R quoteSummary fallback for shinyapps)
+#' Fetch Yahoo ratio features (Python first; R quoteSummary only if it improves coverage)
 lab_fetch_cluster_features <- function(tickers) {
   tks <- unique(toupper(trimws(as.character(tickers))))
   tks <- tks[nzchar(tks) & !is.na(tks)]
+  # Keep TW/TWO suffixes intact (do not strip dots)
   if (!length(tks)) return(lab_cluster_features_to_df(NULL))
 
   `%||%` <- function(a, b) if (is.null(a)) b else a
@@ -223,6 +235,11 @@ lab_fetch_cluster_features <- function(tickers) {
     if (is.function(fn)) {
       df <- tryCatch({
         raw <- fn(as.list(tks))
+        # reticulate may hand back a pandas object — normalize via py_to_r when needed
+        if (!is.data.frame(raw) && !is.list(raw) &&
+            requireNamespace("reticulate", quietly = TRUE)) {
+          raw <- tryCatch(reticulate::py_to_r(raw), error = function(e) raw)
+        }
         lab_cluster_features_to_df(raw)
       }, error = function(e) {
         py_err <<- conditionMessage(e)
@@ -235,25 +252,32 @@ lab_fetch_cluster_features <- function(tickers) {
     py_err <- "Python scraper unavailable"
   }
 
-  n_ok <- if (is.null(df) || nrow(df) == 0L) {
-    0L
-  } else {
-    sum(is.finite(df$ROE) | is.finite(df$PE_Ratio) | is.finite(df$Operating_Margin), na.rm = TRUE)
-  }
+  n_ok <- lab_cluster_usable_feature_rows(df)
   if (is.null(df) || nrow(df) == 0L || n_ok < 2L) {
     df_r <- tryCatch(
       lab_fetch_cluster_features_r(tks),
       error = function(e) {
-        stop(sprintf(
-          "Feature fetch failed (python: %s; R fallback: %s)",
-          py_err %||% "n/a", conditionMessage(e)
-        ))
+        if (is.null(py_err)) py_err <<- conditionMessage(e)
+        NULL
       }
     )
-    if (!is.null(df_r) && nrow(df_r) > 0L) return(df_r)
+    n_ok_r <- lab_cluster_usable_feature_rows(df_r)
+    # Only accept R fallback when it actually improves usable coverage
+    if (!is.null(df_r) && nrow(df_r) > 0L && n_ok_r > n_ok) {
+      df <- df_r
+      n_ok <- n_ok_r
+    }
+  }
+
+  if (is.null(df) || nrow(df) == 0L || n_ok < 2L) {
     stop(sprintf(
-      "Feature fetch returned 0 usable rows for %d tickers (python: %s).",
-      length(tks), py_err %||% "n/a"
+      paste0(
+        "Yahoo ratio features unavailable for clustering ",
+        "(%d/%d tickers with ≥2 finite ratios; python: %s). ",
+        "Retry later or lower Universe size (N). ",
+        "TW and US use the same Yahoo fields (ROE, margins, growth, D/E, P/E, P/B)."
+      ),
+      n_ok, length(tks), py_err %||% "n/a"
     ))
   }
   df
@@ -361,7 +385,11 @@ lab_run_stock_clustering <- function(df_financials, k_clusters = 4L,
   keep <- n_finite_orig >= 2L
   if (sum(keep) < k_clusters) {
     stop(sprintf(
-      "After missing-data filter, only %d stocks remain (need ≥ %d).",
+      paste0(
+        "After missing-data filter, only %d stocks remain (need ≥ %d). ",
+        "Each name needs ≥2 finite Yahoo ratios among: ",
+        paste(feats, collapse = ", "), "."
+      ),
       sum(keep), k_clusters
     ))
   }

@@ -9684,15 +9684,24 @@ server <- function(input, output, session) {
         feats <- tryCatch(
           lab_fetch_cluster_features(pool$ticker),
           error = function(e) {
-            showNotification(paste("Feature fetch failed:", e$message), type = "error")
+            msg <- conditionMessage(e)
+            loc_msg <- tryCatch(ui_str("lab_cluster_err_features", loc), error = function(e2) NULL)
+            if (grepl("Yahoo ratio features unavailable|usable rows|python:", msg, ignore.case = TRUE) &&
+                !is.null(loc_msg) && nzchar(loc_msg)) {
+              showNotification(loc_msg, type = "error", duration = 12)
+            } else {
+              showNotification(paste("Feature fetch failed:", msg), type = "error", duration = 12)
+            }
             NULL
           }
         )
         if (is.null(feats) || nrow(feats) < k) {
-          showNotification(
-            sprintf("Too few feature rows for k=%d (got %d).", k, if (is.null(feats)) 0L else nrow(feats)),
-            type = "warning"
-          )
+          if (!is.null(feats)) {
+            showNotification(
+              sprintf("Too few feature rows for k=%d (got %d).", k, nrow(feats)),
+              type = "warning"
+            )
+          }
           return(NULL)
         }
         # Attach industry_key when available
@@ -9703,7 +9712,17 @@ server <- function(input, output, session) {
         tryCatch(
           lab_run_stock_clustering(feats, k_clusters = k, locale = loc),
           error = function(e) {
-            showNotification(paste("Clustering failed:", e$message), type = "error")
+            msg <- conditionMessage(e)
+            if (grepl("missing-data filter", msg, ignore.case = TRUE)) {
+              loc_msg <- tryCatch(ui_str("lab_cluster_err_missing", loc), error = function(e2) NULL)
+              if (!is.null(loc_msg) && nzchar(loc_msg)) {
+                showNotification(loc_msg, type = "error", duration = 12)
+              } else {
+                showNotification(paste("Clustering failed:", msg), type = "error", duration = 12)
+              }
+            } else {
+              showNotification(paste("Clustering failed:", msg), type = "error", duration = 12)
+            }
             NULL
           }
         )
@@ -10069,7 +10088,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v16.54"),
+      paste0("- **App：** The YNow App v16.55"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

@@ -454,7 +454,16 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_cluster_idle_map = "Run clustering to see the map.",
     lab_cluster_idle_radar = "Run clustering to see the radar.",
     lab_cluster_idle_table = "Run clustering to see assignments.",
-    lab_cluster_idle_focus = "Pick a focus ticker for the radar."
+    lab_cluster_idle_focus = "Pick a focus ticker for the radar.",
+    lab_cluster_err_features = paste0(
+      "Yahoo ratio features unavailable for clustering. ",
+      "TW and US use the same fields (ROE, margins, growth, D/E, P/E, P/B). ",
+      "Retry later or lower Universe size (N)."
+    ),
+    lab_cluster_err_missing = paste0(
+      "Too few names with usable Yahoo ratios after the missing-data filter. ",
+      "Each name needs at least 2 finite ratios. Retry later or lower N."
+    )
   ),
   `zh-TW` = list(
     recent_search = "最近搜尋：",
@@ -880,7 +889,16 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_cluster_idle_map = "請執行分群以顯示星團圖。",
     lab_cluster_idle_radar = "請執行分群以顯示雷達圖。",
     lab_cluster_idle_table = "請執行分群以顯示分群結果。",
-    lab_cluster_idle_focus = "請選擇雷達焦點代號。"
+    lab_cluster_idle_focus = "請選擇雷達焦點代號。",
+    lab_cluster_err_features = paste0(
+      "無法取得分群所需的 Yahoo 比率特徵。",
+      "台股與美股使用相同欄位（ROE、利潤率、成長率、D/E、P/E、P/B）。",
+      "請稍後再試，或調降宇宙檔數（N）。"
+    ),
+    lab_cluster_err_missing = paste0(
+      "缺值過濾後，可用比率特徵的檔數不足。",
+      "每一檔至少需要 2 個有效比率。請稍後再試，或調降 N。"
+    )
   )
 )
 

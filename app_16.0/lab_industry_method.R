@@ -666,7 +666,8 @@ lab_quality_candidates_for_market <- function(mode = get_market_mode()) {
   mode <- if (exists("normalize_market_mode", mode = "function")) {
     normalize_market_mode(mode)
   } else {
-    "US"
+    m <- toupper(trimws(as.character(mode)[1]))
+    if (identical(m, "TW") || identical(m, "TWN") || identical(m, "TAIWAN")) "TW" else "US"
   }
   if (identical(mode, "TW") && exists("lab_tw_quality_candidates", mode = "function")) {
     return(lab_tw_quality_candidates())
@@ -678,7 +679,12 @@ lab_quality_candidates_for_market <- function(mode = get_market_mode()) {
 #' @param market_mode "US" | "TW"（預設讀取 get_market_mode）
 lab_build_industry_method_catalog <- function(market_mode = NULL) {
   mode <- if (!is.null(market_mode)) {
-    if (exists("normalize_market_mode", mode = "function")) normalize_market_mode(market_mode) else "US"
+    if (exists("normalize_market_mode", mode = "function")) {
+      normalize_market_mode(market_mode)
+    } else {
+      m <- toupper(trimws(as.character(market_mode)[1]))
+      if (identical(m, "TW") || identical(m, "TWN") || identical(m, "TAIWAN")) "TW" else "US"
+    }
   } else if (exists("get_market_mode", mode = "function")) {
     get_market_mode()
   } else {
