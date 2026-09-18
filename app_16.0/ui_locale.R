@@ -61,6 +61,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     kpi_legend_red = "Red · Worse",
     kpi_legend_black = "Black · In band",
     kpi_legend_white = "White · N/A",
+    ddm_mode_help = "Gordon (GGM): constant payout ratio. SPM: sticky dividend + retention growth (P = E·g/Ke² + D/Ke). Two-stage: g1 then Gordon TV.",
+    ddm_spm_tip = "SPM needs EPS on the D0 tab (E) and dividend D above.",
     btn_run_bt = "Run Backtest",
     btn_lab_im_run = "Search Blue Chips",
     bluechip_blurb_tw = paste0(
@@ -441,6 +443,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     kpi_legend_red = "紅 · 劣於同業 (Worse)",
     kpi_legend_black = "黑 · 與同業一致 (In band)",
     kpi_legend_white = "白 · 無法比較／N/A",
+    ddm_mode_help = "Gordon (GGM)：固定配息率。SPM：定額股利永續 + 保留盈餘成長（P = E·g/Ke² + D/Ke）。二階段：g1 後接 Gordon 終值。",
+    ddm_spm_tip = "SPM 請至 D0 分頁確認 EPS（E），上方股利為定額 D。",
     btn_run_bt = "執行回測",
     btn_lab_im_run = "搜尋績優股",
     bluechip_blurb_tw = paste0(
