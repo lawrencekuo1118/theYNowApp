@@ -779,7 +779,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v16.45</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v16.46</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -2555,8 +2555,9 @@ ui <- dashboardPage(
         @media (max-width: 992px) {
           .ynow-fs-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
         }
-        @media (max-width: 576px) {
-          .ynow-fs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        /* 手機：兩兩並排（FINANCIAL REPORT Finance Summary 卡片） */
+        @media (max-width: 767px) {
+          .ynow-fs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
         }
         .ynow-fs-card {
           background: linear-gradient(165deg, #fafafa 0%, #f0f0f0 100%);
@@ -2798,13 +2799,17 @@ ui <- dashboardPage(
           }
         }
         @media (max-width: 767px) {
+          /* FINANCIAL REPORT／Dashboard：KPI 框格兩兩並排（勿三欄過窄） */
           .ynow-kpi-grid > * {
-            width: 33.333% !important;
-            max-width: 33.333% !important;
-            flex-basis: 33.333%;
+            width: 50% !important;
+            max-width: 50% !important;
+            flex-basis: 50%;
           }
           .ynow-kpi-grid .small-box .inner h3 {
             font-size: clamp(11px, 3.2vw, 16px) !important;
+          }
+          .ynow-kpi-grid .small-box .icon-large {
+            display: none !important;
           }
         }
         .ynow-kpi-grid .small-box {
