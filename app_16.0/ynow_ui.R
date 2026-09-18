@@ -105,36 +105,39 @@
   )
 }
 
-#' KPI 色碼圖例：藍→紅→黑→白＋琥珀屬性重視（Dashboard：產業快覽下方、PERFORMANCE 上方）
+#' KPI 色碼圖例：藍→紅→黑→白；琥珀屬性重視改一行文字註解（非 chip 框）
 .kpi_band_color_legend_ui <- function() {
   tags$div(
-    class = "ynow-ann-legend ynow-kpi-legend-chips",
+    class = "ynow-kpi-legend-wrap",
     tags$div(
-      class = "ynow-ann-chip ynow-kpi-legend-chip",
-      tags$span(class = "ynow-ann-swatch", style = "background:#3c8dbc;"),
-      tags$span(id = "ynow_kpi_legend_blue", "藍 · 優於同業 (Better)")
+      class = "ynow-ann-legend ynow-kpi-legend-chips",
+      tags$div(
+        class = "ynow-ann-chip ynow-kpi-legend-chip",
+        tags$span(class = "ynow-ann-swatch", style = "background:#3c8dbc;"),
+        tags$span(id = "ynow_kpi_legend_blue", "藍 · 優於同業 (Better)")
+      ),
+      tags$div(
+        class = "ynow-ann-chip ynow-kpi-legend-chip",
+        tags$span(class = "ynow-ann-swatch", style = "background:#dd4b39;"),
+        tags$span(id = "ynow_kpi_legend_red", "紅 · 劣於同業 (Worse)")
+      ),
+      tags$div(
+        class = "ynow-ann-chip ynow-kpi-legend-chip",
+        tags$span(class = "ynow-ann-swatch", style = "background:#222;"),
+        tags$span(id = "ynow_kpi_legend_black", "黑 · 與同業一致 (In band)")
+      ),
+      tags$div(
+        class = "ynow-ann-chip ynow-kpi-legend-chip",
+        tags$span(class = "ynow-ann-swatch",
+                  style = "background:#fff; border:1px solid #999;"),
+        tags$span(id = "ynow_kpi_legend_white", "白 · 無法比較／N/A")
+      )
     ),
-    tags$div(
-      class = "ynow-ann-chip ynow-kpi-legend-chip",
-      tags$span(class = "ynow-ann-swatch", style = "background:#dd4b39;"),
-      tags$span(id = "ynow_kpi_legend_red", "紅 · 劣於同業 (Worse)")
-    ),
-    tags$div(
-      class = "ynow-ann-chip ynow-kpi-legend-chip",
-      tags$span(class = "ynow-ann-swatch", style = "background:#222;"),
-      tags$span(id = "ynow_kpi_legend_black", "黑 · 與同業一致 (In band)")
-    ),
-    tags$div(
-      class = "ynow-ann-chip ynow-kpi-legend-chip",
-      tags$span(class = "ynow-ann-swatch",
-                style = "background:#fff; border:1px solid #999;"),
-      tags$span(id = "ynow_kpi_legend_white", "白 · 無法比較／N/A")
-    ),
-    tags$div(
-      class = "ynow-ann-chip ynow-kpi-legend-chip",
+    tags$p(
+      class = "ynow-focus-metric-note",
       tags$span(
         class = "ynow-focus-metric-dot ynow-focus-metric-dot--legend",
-        style = "margin:0 4px 0 0; vertical-align:middle;"
+        `aria-hidden` = "true"
       ),
       tags$span(id = "ynow_kpi_legend_focus", "琥珀 · 本財報屬性關鍵指標")
     )
@@ -776,7 +779,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v16.43</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v16.44</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -2594,7 +2597,20 @@ ui <- dashboardPage(
           box-shadow: 0 0 0 1px rgba(0,0,0,0.08);
         }
         .ynow-focus-metric-dot--legend {
-          margin-left: 0;
+          margin: 0 6px 0 0;
+        }
+        .ynow-kpi-legend-wrap {
+          margin: 0 0 10px 0;
+        }
+        .ynow-focus-metric-note {
+          margin: 6px 2px 0 2px;
+          padding: 0;
+          border: none;
+          background: transparent;
+          font-size: 12px;
+          line-height: 1.35;
+          color: #666666;
+          font-weight: 500;
         }
         .content-wrapper .small-box .inner h3 .ynow-focus-metric-dot {
           margin-left: 8px;
