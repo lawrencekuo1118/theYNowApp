@@ -105,30 +105,41 @@
   )
 }
 
-#' KPI 色碼圖例：藍→紅→黑→白（Dashboard：產業快覽下方、PERFORMANCE 上方）
+#' KPI 色碼圖例：藍→紅→黑→白；金色屬性重視改一行文字註解（非 chip 框）
 .kpi_band_color_legend_ui <- function() {
   tags$div(
-    class = "ynow-ann-legend ynow-kpi-legend-chips",
+    class = "ynow-kpi-legend-wrap",
     tags$div(
-      class = "ynow-ann-chip ynow-kpi-legend-chip",
-      tags$span(class = "ynow-ann-swatch", style = "background:#3c8dbc;"),
-      tags$span(id = "ynow_kpi_legend_blue", "藍 · 優於同業 (Better)")
+      class = "ynow-ann-legend ynow-kpi-legend-chips",
+      tags$div(
+        class = "ynow-ann-chip ynow-kpi-legend-chip",
+        tags$span(class = "ynow-ann-swatch", style = "background:#3c8dbc;"),
+        tags$span(id = "ynow_kpi_legend_blue", "藍 · 優於同業 (Better)")
+      ),
+      tags$div(
+        class = "ynow-ann-chip ynow-kpi-legend-chip",
+        tags$span(class = "ynow-ann-swatch", style = "background:#dd4b39;"),
+        tags$span(id = "ynow_kpi_legend_red", "紅 · 劣於同業 (Worse)")
+      ),
+      tags$div(
+        class = "ynow-ann-chip ynow-kpi-legend-chip",
+        tags$span(class = "ynow-ann-swatch", style = "background:#222;"),
+        tags$span(id = "ynow_kpi_legend_black", "黑 · 與同業一致 (In band)")
+      ),
+      tags$div(
+        class = "ynow-ann-chip ynow-kpi-legend-chip",
+        tags$span(class = "ynow-ann-swatch",
+                  style = "background:#fff; border:1px solid #999;"),
+        tags$span(id = "ynow_kpi_legend_white", "白 · 無法比較／N/A")
+      )
     ),
-    tags$div(
-      class = "ynow-ann-chip ynow-kpi-legend-chip",
-      tags$span(class = "ynow-ann-swatch", style = "background:#dd4b39;"),
-      tags$span(id = "ynow_kpi_legend_red", "紅 · 劣於同業 (Worse)")
-    ),
-    tags$div(
-      class = "ynow-ann-chip ynow-kpi-legend-chip",
-      tags$span(class = "ynow-ann-swatch", style = "background:#222;"),
-      tags$span(id = "ynow_kpi_legend_black", "黑 · 與同業一致 (In band)")
-    ),
-    tags$div(
-      class = "ynow-ann-chip ynow-kpi-legend-chip",
-      tags$span(class = "ynow-ann-swatch",
-                style = "background:#fff; border:1px solid #999;"),
-      tags$span(id = "ynow_kpi_legend_white", "白 · 無法比較／N/A")
+    tags$p(
+      class = "ynow-focus-metric-note",
+      tags$span(
+        class = "ynow-focus-metric-dot ynow-focus-metric-dot--legend",
+        `aria-hidden` = "true"
+      ),
+      tags$span(id = "ynow_kpi_legend_focus", "金 · 本財報屬性關鍵指標")
     )
   )
 }
@@ -768,7 +779,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v16.40</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v16.46</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -972,11 +983,6 @@ ui <- dashboardPage(
   dashboardBody(
     shinyjs::useShinyjs(),
     withMathJax(),
-    # Credit: same vertical band as USD／TWD under black header
-    tags$div(
-      class = "ynow-credit-float",
-      tags$span(class = "ynow-credit-text", "a lawrence kuo shiny app")
-    ),
     
     tags$head(
       tags$style(HTML('
@@ -1057,6 +1063,19 @@ ui <- dashboardPage(
         }
 
         .content-wrapper, .right-side { background-color: #f7f7f7; }
+        /* 網頁／手機共用：黑色頁首橫列置頂固定，捲動不滑掉 */
+        .main-header {
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          right: 0 !important;
+          width: 100% !important;
+          z-index: 1030 !important;
+        }
+        .content-wrapper,
+        .right-side {
+          margin-top: 50px !important;
+        }
         /* Clear fixed credit／ccy band under header */
         .content-wrapper > .content {
           padding-top: 52px;
@@ -1713,23 +1732,17 @@ ui <- dashboardPage(
           line-height: 1.3;
           margin: 0;
         }
-        /* Credit: top-left content band; vertically centered with USD／TWD buttons */
-        .ynow-credit-float {
-          position: fixed;
-          top: calc(50px + 8px);
-          left: calc(250px + 14px);
-          height: 26px;
-          display: flex;
-          align-items: center;
-          z-index: 1034;
-          pointer-events: none;
-          max-width: min(420px, calc(100vw - 360px));
+        /* Credit line: document-flow pin above ticker (not viewport-fixed float) */
+        .ynow-credit-pin {
+          position: static;
+          float: none;
+          clear: both;
+          display: block;
+          margin: 0 0 6px 0;
+          padding: 0;
+          max-width: 420px;
         }
-        .sidebar-collapse .ynow-credit-float {
-          left: calc(50px + 14px);
-          max-width: min(420px, calc(100vw - 180px));
-        }
-        .ynow-credit-float .ynow-credit-text {
+        .ynow-credit-pin .ynow-credit-text {
           margin: 0;
           padding: 0;
           font-size: 13px;
@@ -1741,13 +1754,10 @@ ui <- dashboardPage(
           text-overflow: ellipsis;
         }
         @media (max-width: 767px) {
-          .ynow-credit-float,
-          .sidebar-collapse .ynow-credit-float {
-            left: 12px;
-            top: calc(50px + 8px);
-            max-width: calc(100vw - 160px);
+          .ynow-credit-pin {
+            max-width: 100%;
           }
-          .ynow-credit-float .ynow-credit-text {
+          .ynow-credit-pin .ynow-credit-text {
             font-size: 11px;
           }
         }
@@ -2208,6 +2218,16 @@ ui <- dashboardPage(
             if (kpiBlack && s.kpi_legend_black) kpiBlack.textContent = s.kpi_legend_black;
             var kpiWhite = document.getElementById('ynow_kpi_legend_white');
             if (kpiWhite && s.kpi_legend_white) kpiWhite.textContent = s.kpi_legend_white;
+            var kpiFocus = document.getElementById('ynow_kpi_legend_focus');
+            if (kpiFocus && s.kpi_legend_focus_metric) kpiFocus.textContent = s.kpi_legend_focus_metric;
+            var fundProfLab = document.getElementById('ynow_fund_profile_label');
+            if (fundProfLab && s.fund_profile_label) fundProfLab.textContent = s.fund_profile_label + '：';
+            var fundBadge = document.getElementById('ynow_fund_profile_badge_text');
+            if (fundBadge) {
+              var pid = fundBadge.getAttribute('data-profile-id') || '';
+              var pkey = pid ? ('fund_profile_' + pid) : '';
+              if (pkey && s[pkey]) fundBadge.textContent = s[pkey];
+            }
             var dsTitle = document.getElementById('ynow_data_source_title');
             if (dsTitle && s.data_source_title) dsTitle.textContent = s.data_source_title;
             var dsBody = document.getElementById('ynow_data_source_body');
@@ -2535,8 +2555,9 @@ ui <- dashboardPage(
         @media (max-width: 992px) {
           .ynow-fs-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
         }
-        @media (max-width: 576px) {
-          .ynow-fs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        /* 手機：兩兩並排（FINANCIAL REPORT Finance Summary 卡片） */
+        @media (max-width: 767px) {
+          .ynow-fs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
         }
         .ynow-fs-card {
           background: linear-gradient(165deg, #fafafa 0%, #f0f0f0 100%);
@@ -2570,6 +2591,79 @@ ui <- dashboardPage(
           line-height: 1.2;
           word-break: break-word;
           overflow-wrap: anywhere;
+        }
+        /* 財報屬性「重視指標」點：與 APP 標題金色一致（非黃土琥珀） */
+        .ynow-focus-metric-dot {
+          display: inline-block;
+          width: 8px;
+          height: 8px;
+          margin-left: 6px;
+          border-radius: 50%;
+          background: var(--ynow-gold, #F5C518);
+          vertical-align: middle;
+          box-shadow: 0 0 0 1px rgba(0,0,0,0.08);
+        }
+        .ynow-focus-metric-dot--legend {
+          margin: 0 6px 0 0;
+        }
+        .ynow-kpi-legend-wrap {
+          margin: 0 0 10px 0;
+        }
+        .ynow-focus-metric-note {
+          margin: 6px 2px 0 2px;
+          padding: 0;
+          border: none;
+          background: transparent;
+          font-size: 12px;
+          line-height: 1.35;
+          color: #666666;
+          font-weight: 500;
+        }
+        /* Yahoo Sector/Industry 列：屬性標籤靠右 */
+        .ynow-ind-yahoo-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px 14px;
+          margin-top: 4px;
+          font-size: 12px;
+          color: #777;
+          line-height: 1.45;
+          flex-wrap: wrap;
+        }
+        .ynow-ind-yahoo-text {
+          min-width: 0;
+          flex: 1 1 auto;
+        }
+        .ynow-fund-profile-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          margin-left: auto;
+          padding: 3px 10px;
+          border-radius: 4px;
+          border: 1px solid var(--ynow-gold, #F5C518);
+          background: rgba(245, 197, 24, 0.12);
+          color: var(--ynow-gold-ink, #856404);
+          font-size: 12px;
+          font-weight: 700;
+          white-space: nowrap;
+          line-height: 1.2;
+        }
+        .ynow-fund-profile-badge .ynow-focus-metric-dot {
+          margin-left: 0;
+        }
+        @media (max-width: 767px) {
+          .ynow-ind-yahoo-row {
+            align-items: flex-start;
+          }
+          .ynow-fund-profile-badge {
+            margin-left: 0;
+          }
+        }
+        .content-wrapper .small-box .inner h3 .ynow-focus-metric-dot {
+          margin-left: 8px;
+          vertical-align: middle;
         }
 
         /* Snapshot / HFV 摘要數字：維持可覆寫 class，尺寸回預設 */
@@ -2705,13 +2799,17 @@ ui <- dashboardPage(
           }
         }
         @media (max-width: 767px) {
+          /* FINANCIAL REPORT／Dashboard：KPI 框格兩兩並排（勿三欄過窄） */
           .ynow-kpi-grid > * {
-            width: 33.333% !important;
-            max-width: 33.333% !important;
-            flex-basis: 33.333%;
+            width: 50% !important;
+            max-width: 50% !important;
+            flex-basis: 50%;
           }
           .ynow-kpi-grid .small-box .inner h3 {
             font-size: clamp(11px, 3.2vw, 16px) !important;
+          }
+          .ynow-kpi-grid .small-box .icon-large {
+            display: none !important;
           }
         }
         .ynow-kpi-grid .small-box {
@@ -3133,7 +3231,8 @@ ui <- dashboardPage(
           filter: drop-shadow(0 0 2px rgba(0,0,0,0.35));
         }
 
-        /* 手機：右上 繁中／EN＋logo 與左上漢堡垂直置中；幣別仍貼頁首下緣 */
+        /* 手機：右上 繁中／EN＋logo 與左上漢堡垂直置中；幣別仍貼頁首下緣
+           （黑色頁首置頂固定見全域 .main-header） */
         @media (max-width: 767px) {
           .main-header .navbar {
             min-height: 50px !important;
@@ -3536,6 +3635,11 @@ ui <- dashboardPage(
     # ==========================================
     fluidRow(
       column(width = 12,
+             # Author credit: fixed layout pin above search (not position:fixed float)
+             tags$div(
+               class = "ynow-credit-pin",
+               tags$span(class = "ynow-credit-text", "a lawrence kuo shiny app")
+             ),
              div(
                class = "ynow-sc-row",
                div(

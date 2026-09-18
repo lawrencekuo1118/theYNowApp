@@ -665,19 +665,32 @@ get_box_color <- function(industry_choice, metric_name, val) {
 }
 
 #' KPI valueBox：僅允許黑／白／紅／藍（AdminLTE: black, red, blue；白＝none）
-kpi_band_value_box <- function(value, subtitle, color, icon = NULL, width = 4) {
+#' @param mark_focus 若 TRUE，在數值旁加琥珀色「屬性重視」小圓點（與同業紅藍語意分離）
+#' @param focus_title 圓點 title／aria-label
+kpi_band_value_box <- function(value, subtitle, color, icon = NULL, width = 4,
+                               mark_focus = FALSE, focus_title = NULL) {
   color <- as.character(color %||% "none")[1]
   allowed <- c("black", "red", "blue", "none", "white")
   if (!nzchar(color) || is.na(color) || !(color %in% allowed)) color <- "none"
+  mark <- if (isTRUE(mark_focus) && exists(".ynow_focus_metric_mark", mode = "function")) {
+    .ynow_focus_metric_mark(focus_title)
+  } else {
+    NULL
+  }
+  value_ui <- if (!is.null(mark)) {
+    tagList(value, mark)
+  } else {
+    value
+  }
   if (identical(color, "none") || identical(color, "white")) {
     box_content <- div(
       class = "small-box ynow-kpi-na",
-      div(class = "inner", h3(value), p(subtitle)),
+      div(class = "inner", h3(value_ui), p(subtitle)),
       if (!is.null(icon)) div(class = "icon-large", icon)
     )
     return(div(class = if (!is.null(width)) paste0("col-sm-", width), box_content))
   }
-  valueBox(value = value, subtitle = subtitle, icon = icon, color = color, width = width)
+  valueBox(value = value_ui, subtitle = subtitle, icon = icon, color = color, width = width)
 }
 
 #' 產業標準欄位 → 顯示標籤／單位（單一來源，供快覽／Annotation／色碼共用）
@@ -763,9 +776,10 @@ industry_standard_bands_df <- function(industry_key) {
   }))
 }
 
-#' Annotation：Dashboard KPI 解讀表（可帶入目前產業區間）
-annotation_kpi_guide_df <- function(industry_key = NULL) {
+#' Annotation：Dashboard KPI 解讀表（可帶入目前產業區間與財報屬性重視）
+annotation_kpi_guide_df <- function(industry_key = NULL, profile_id = NULL) {
   key <- as.character(industry_key %||% "")[1]
+  prof <- as.character(profile_id %||% "")[1]
   rows <- list(
     list("毛利率", "Gross Profit / Revenue", "越高越好", "gross_profit_margin", "%",
          "技術／品牌定價力；著色對照產業毛利率區間"),
@@ -800,11 +814,23 @@ annotation_kpi_guide_df <- function(industry_key = NULL) {
     } else {
       "—"
     }
+    focus_id <- if (exists(".annotation_row_focus_id", mode = "function")) {
+      .annotation_row_focus_id(r[[4]], r[[1]])
+    } else {
+      r[[4]]
+    }
+    focus_mark <- if (nzchar(prof) && exists("is_profile_focus_metric", mode = "function") &&
+                      isTRUE(is_profile_focus_metric(prof, focus_id))) {
+      "★"
+    } else {
+      "—"
+    }
     data.frame(
       指標 = r[[1]],
       計算 = r[[2]],
       解讀方向 = r[[3]],
       產業標準區間 = band,
+      `屬性重視` = focus_mark,
       說明 = r[[6]],
       stringsAsFactors = FALSE,
       check.names = FALSE
@@ -850,11 +876,17 @@ annotation_stability_df <- function() {
 #' @param show_chips 是否顯示該產業「已定義」的 KPI 區間 chips
 #' @param show_title 是否顯示「目前產業標準快覽」標題
 #' @param empty_message 未選產業時提示
+#' @param profile_id 財報屬性 id（顯示於 Yahoo Sector/Industry 列右側）
+#' @param profile_label 財報屬性顯示名
+#' @param profile_title 財報屬性 hover 說明
 industry_standard_snapshot_ui <- function(industry_key,
                                           yahoo_text = NULL,
                                           show_chips = TRUE,
                                           show_title = TRUE,
-                                          empty_message = "尚未選擇比較產業（請至基礎設定 → Industry Standard）") {
+                                          empty_message = "尚未選擇比較產業（請至基礎設定 → Industry Standard）",
+                                          profile_id = NULL,
+                                          profile_label = NULL,
+                                          profile_title = NULL) {
   key <- as.character(industry_key %||% "")[1]
   if (!nzchar(key) || !(key %in% names(industry_standards))) {
     return(tags$div(
@@ -905,6 +937,19 @@ industry_standard_snapshot_ui <- function(industry_key,
   }
 
   yahoo <- trimws(as.character(yahoo_text %||% "")[1])
+  pid <- as.character(profile_id %||% "")[1]
+  plab <- as.character(profile_label %||% "")[1]
+  show_badge <- nzchar(pid) || nzchar(plab)
+  badge <- if (isTRUE(show_badge) && exists(".ynow_fund_profile_badge_ui", mode = "function")) {
+    .ynow_fund_profile_badge_ui(
+      profile_id = if (nzchar(pid)) pid else "fallback",
+      profile_label = plab,
+      title = profile_title
+    )
+  } else {
+    NULL
+  }
+
   tags$div(
     style = "margin: 0 0 12px 0; padding: 12px 14px; background: #f5f5f5; border-left: 4px solid #222222; border-radius: 4px;",
     if (isTRUE(show_title)) {
@@ -924,11 +969,19 @@ industry_standard_snapshot_ui <- function(industry_key,
         )
       }
     ),
-    if (nzchar(yahoo)) {
+    if (nzchar(yahoo) || !is.null(badge)) {
       tags$div(
-        style = "margin-top:4px; font-size:12px; color:#777;",
-        tags$span(style = "font-weight:600;", "Yahoo："),
-        yahoo
+        class = "ynow-ind-yahoo-row",
+        tags$div(
+          class = "ynow-ind-yahoo-text",
+          if (nzchar(yahoo)) {
+            tagList(
+              tags$span(style = "font-weight:600;", "Yahoo："),
+              yahoo
+            )
+          }
+        ),
+        if (!is.null(badge)) badge
       )
     },
     if (!is.null(chips)) {
