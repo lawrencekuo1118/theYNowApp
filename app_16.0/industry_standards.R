@@ -876,11 +876,17 @@ annotation_stability_df <- function() {
 #' @param show_chips 是否顯示該產業「已定義」的 KPI 區間 chips
 #' @param show_title 是否顯示「目前產業標準快覽」標題
 #' @param empty_message 未選產業時提示
+#' @param profile_id 財報屬性 id（顯示於 Yahoo Sector/Industry 列右側）
+#' @param profile_label 財報屬性顯示名
+#' @param profile_title 財報屬性 hover 說明
 industry_standard_snapshot_ui <- function(industry_key,
                                           yahoo_text = NULL,
                                           show_chips = TRUE,
                                           show_title = TRUE,
-                                          empty_message = "尚未選擇比較產業（請至基礎設定 → Industry Standard）") {
+                                          empty_message = "尚未選擇比較產業（請至基礎設定 → Industry Standard）",
+                                          profile_id = NULL,
+                                          profile_label = NULL,
+                                          profile_title = NULL) {
   key <- as.character(industry_key %||% "")[1]
   if (!nzchar(key) || !(key %in% names(industry_standards))) {
     return(tags$div(
@@ -931,6 +937,19 @@ industry_standard_snapshot_ui <- function(industry_key,
   }
 
   yahoo <- trimws(as.character(yahoo_text %||% "")[1])
+  pid <- as.character(profile_id %||% "")[1]
+  plab <- as.character(profile_label %||% "")[1]
+  show_badge <- nzchar(pid) || nzchar(plab)
+  badge <- if (isTRUE(show_badge) && exists(".ynow_fund_profile_badge_ui", mode = "function")) {
+    .ynow_fund_profile_badge_ui(
+      profile_id = if (nzchar(pid)) pid else "fallback",
+      profile_label = plab,
+      title = profile_title
+    )
+  } else {
+    NULL
+  }
+
   tags$div(
     style = "margin: 0 0 12px 0; padding: 12px 14px; background: #f5f5f5; border-left: 4px solid #222222; border-radius: 4px;",
     if (isTRUE(show_title)) {
@@ -950,11 +969,19 @@ industry_standard_snapshot_ui <- function(industry_key,
         )
       }
     ),
-    if (nzchar(yahoo)) {
+    if (nzchar(yahoo) || !is.null(badge)) {
       tags$div(
-        style = "margin-top:4px; font-size:12px; color:#777;",
-        tags$span(style = "font-weight:600;", "Yahoo："),
-        yahoo
+        class = "ynow-ind-yahoo-row",
+        tags$div(
+          class = "ynow-ind-yahoo-text",
+          if (nzchar(yahoo)) {
+            tagList(
+              tags$span(style = "font-weight:600;", "Yahoo："),
+              yahoo
+            )
+          }
+        ),
+        if (!is.null(badge)) badge
       )
     },
     if (!is.null(chips)) {

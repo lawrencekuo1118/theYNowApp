@@ -822,11 +822,48 @@ server <- function(input, output, session) {
   output$today <- renderText({ format(Sys.Date(), "%Y/%m/%d") })
 
   output$dashboard_selected_industry <- renderUI({
+    ui_locale()
+    fp <- tryCatch(fundamental_profile_rec(), error = function(e) NULL)
+    fp_id <- as.character(fp$profile %||% "")[1]
+    loc <- tryCatch(ui_locale(), error = function(e) "zh-TW")
+    fp_lab <- ""
+    fp_why <- ""
+    if (nzchar(fp_id)) {
+      fp_lab <- if (exists("ui_str", mode = "function")) {
+        tryCatch({
+          k <- paste0("fund_profile_", fp_id)
+          s <- ui_str(k)
+          if (identical(s, k) || !nzchar(s)) {
+            .fundamental_profile_label_fallback(fp_id, loc)
+          } else {
+            s
+          }
+        }, error = function(e) .fundamental_profile_label_fallback(fp_id, loc))
+      } else {
+        .fundamental_profile_label_fallback(fp_id, loc)
+      }
+      fp_why <- if (exists("ui_str", mode = "function")) {
+        tryCatch({
+          k <- paste0("fund_profile_why_", fp_id)
+          s <- ui_str(k)
+          if (identical(s, k) || !nzchar(s)) {
+            .fundamental_profile_why_fallback(fp_id, loc)
+          } else {
+            s
+          }
+        }, error = function(e) .fundamental_profile_why_fallback(fp_id, loc))
+      } else {
+        .fundamental_profile_why_fallback(fp_id, loc)
+      }
+    }
     industry_standard_snapshot_ui(
       industry_key = input$industry_choice,
       yahoo_text = corp_industry_text(),
       show_chips = TRUE,
-      show_title = TRUE
+      show_title = TRUE,
+      profile_id = if (nzchar(fp_id)) fp_id else NULL,
+      profile_label = if (nzchar(fp_lab)) fp_lab else NULL,
+      profile_title = if (nzchar(fp_why)) fp_why else NULL
     )
   })
   
@@ -9722,7 +9759,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v16.44"),
+      paste0("- **App：** The YNow App v16.45"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

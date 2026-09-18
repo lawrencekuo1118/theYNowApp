@@ -779,7 +779,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v16.44</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v16.45</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -2222,6 +2222,12 @@ ui <- dashboardPage(
             if (kpiFocus && s.kpi_legend_focus_metric) kpiFocus.textContent = s.kpi_legend_focus_metric;
             var fundProfLab = document.getElementById('ynow_fund_profile_label');
             if (fundProfLab && s.fund_profile_label) fundProfLab.textContent = s.fund_profile_label + '：';
+            var fundBadge = document.getElementById('ynow_fund_profile_badge_text');
+            if (fundBadge) {
+              var pid = fundBadge.getAttribute('data-profile-id') || '';
+              var pkey = pid ? ('fund_profile_' + pid) : '';
+              if (pkey && s[pkey]) fundBadge.textContent = s[pkey];
+            }
             var dsTitle = document.getElementById('ynow_data_source_title');
             if (dsTitle && s.data_source_title) dsTitle.textContent = s.data_source_title;
             var dsBody = document.getElementById('ynow_data_source_body');
@@ -2611,6 +2617,48 @@ ui <- dashboardPage(
           line-height: 1.35;
           color: #666666;
           font-weight: 500;
+        }
+        /* Yahoo Sector/Industry 列：屬性標籤靠右 */
+        .ynow-ind-yahoo-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px 14px;
+          margin-top: 4px;
+          font-size: 12px;
+          color: #777;
+          line-height: 1.45;
+          flex-wrap: wrap;
+        }
+        .ynow-ind-yahoo-text {
+          min-width: 0;
+          flex: 1 1 auto;
+        }
+        .ynow-fund-profile-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          margin-left: auto;
+          padding: 3px 10px;
+          border-radius: 4px;
+          border: 1px solid var(--ynow-gold, #F5C518);
+          background: rgba(245, 197, 24, 0.12);
+          color: var(--ynow-gold-ink, #856404);
+          font-size: 12px;
+          font-weight: 700;
+          white-space: nowrap;
+          line-height: 1.2;
+        }
+        .ynow-fund-profile-badge .ynow-focus-metric-dot {
+          margin-left: 0;
+        }
+        @media (max-width: 767px) {
+          .ynow-ind-yahoo-row {
+            align-items: flex-start;
+          }
+          .ynow-fund-profile-badge {
+            margin-left: 0;
+          }
         }
         .content-wrapper .small-box .inner h3 .ynow-focus-metric-dot {
           margin-left: 8px;

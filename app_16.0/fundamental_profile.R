@@ -159,6 +159,36 @@ fs_item_to_focus_metric <- function(item) {
   )
 }
 
+#' 財報屬性標籤（產業快覽 Yahoo Sector/Industry 列右側）
+#' @param profile_id 屬性 id
+#' @param profile_label 顯示名稱
+#' @param title 可選 hover 說明（why）
+.ynow_fund_profile_badge_ui <- function(profile_id = NULL,
+                                         profile_label = NULL,
+                                         title = NULL) {
+  pid <- as.character(profile_id %||% "fallback")[1]
+  if (!nzchar(pid)) pid <- "fallback"
+  lab <- as.character(profile_label %||% "")[1]
+  if (!nzchar(lab)) {
+    lab <- if (exists(".fundamental_profile_label_fallback", mode = "function")) {
+      .fundamental_profile_label_fallback(pid, "zh-TW")
+    } else {
+      pid
+    }
+  }
+  tip <- as.character(title %||% "")[1]
+  tags$span(
+    class = "ynow-fund-profile-badge",
+    title = if (nzchar(tip)) tip else lab,
+    tags$span(class = "ynow-focus-metric-dot ynow-focus-metric-dot--legend", `aria-hidden` = "true"),
+    tags$span(
+      id = "ynow_fund_profile_badge_text",
+      `data-profile-id` = pid,
+      lab
+    )
+  )
+}
+
 #' 依三大報表規則分群財報屬性（優先序：先命中先歸類）
 #'
 #' @return list(profile, signals, reason, focus_metrics)
