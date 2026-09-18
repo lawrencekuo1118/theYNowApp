@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12572860
+bundleId=12572972
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=6972eca
-commit=6972eca7c9c747bbd98939cf5a0eed15d1b87e01
-short=6972eca
-message=feat(lab): add Blue Chip K-Means clustering Lab (v16.47)
-captured_at=2026-09-18T12:49:51Z
+aligned_git=8c50144
+commit=8c50144c3e77f6ea85db9dee591a68339987dff2
+short=8c50144
+message=fix(lab): speed up clustering feature fetch (v16.48)
+captured_at=2026-09-18T13:14:55Z
 source_branch=cursor/lab-clustering-3580
-display_version=v16.47
-note=Canonical live line is app_16.0. Bundle 12572860 ships Clustering Lab under Blue Chip (ratio-only K-Means; research, not a buy signal). Supersedes 12572699.
+display_version=v16.48
+note=Canonical live line is app_16.0. Bundle 12572972 ships Clustering Lab with faster Yahoo feature fetch (quote+threads+cache; default N=25). Supersedes 12572860.
