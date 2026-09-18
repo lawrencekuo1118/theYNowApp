@@ -779,7 +779,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v16.46</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v16.47</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -2643,8 +2643,8 @@ ui <- dashboardPage(
           padding: 3px 10px;
           border-radius: 4px;
           border: 1px solid var(--ynow-gold, #F5C518);
-          background: rgba(245, 197, 24, 0.12);
-          color: var(--ynow-gold-ink, #856404);
+          background: #111111;
+          color: var(--ynow-gold, #F5C518);
           font-size: 12px;
           font-weight: 700;
           white-space: nowrap;
@@ -2652,6 +2652,11 @@ ui <- dashboardPage(
         }
         .ynow-fund-profile-badge .ynow-focus-metric-dot {
           margin-left: 0;
+          background: var(--ynow-gold, #F5C518);
+          box-shadow: none;
+        }
+        .ynow-fund-profile-badge #ynow_fund_profile_badge_text {
+          color: var(--ynow-gold, #F5C518);
         }
         @media (max-width: 767px) {
           .ynow-ind-yahoo-row {
