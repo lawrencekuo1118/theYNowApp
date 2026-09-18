@@ -31,4 +31,26 @@ p1 <- lab_cluster_scatter_plotly(res, x_feat = "ROE", y_feat = "PE_Ratio", local
 p2 <- lab_cluster_radar_plotly(res, focus_ticker = focus, locale = "en")
 stopifnot(inherits(p1, "plotly"), inherits(p2, "plotly"))
 
+# Idle vs live panel mode (market-switch clear must destroy Plotly/DT hosts)
+stopifnot(identical(lab_cluster_panel_mode(NULL), "idle"))
+stopifnot(identical(lab_cluster_panel_mode(list(data = data.frame())), "idle"))
+stopifnot(identical(lab_cluster_panel_mode(res), "live"))
+stopifnot(isTRUE(lab_cluster_has_result(res)))
+stopifnot(!isTRUE(lab_cluster_has_result(NULL)))
+
+ph <- lab_cluster_idle_placeholder("Run clustering to see the map.", min_height = "420px")
+stopifnot(inherits(ph, "shiny.tag"))
+stopifnot(identical(ph$attribs$class, "ynow-lab-cluster-idle"))
+html <- as.character(ph)
+stopifnot(grepl("ynow-lab-cluster-idle", html, fixed = TRUE))
+stopifnot(grepl("Run clustering to see the map", html, fixed = TRUE))
+# Placeholder must NOT embed plotly/DT output bindings
+stopifnot(!grepl("plotly-html-widget|htmlwidget-output|datatables", html, ignore.case = TRUE))
+
+# Simulate market-switch clear: result → NULL flips idle (no live widget host)
+sim <- res
+stopifnot(identical(lab_cluster_panel_mode(sim), "live"))
+sim <- NULL
+stopifnot(identical(lab_cluster_panel_mode(sim), "idle"))
+
 cat("PASS lab_clustering\n")

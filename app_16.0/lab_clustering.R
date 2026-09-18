@@ -524,6 +524,37 @@ lab_cluster_radar_plotly <- function(result, focus_ticker, peer_tickers = NULL,
     plotly::config(displayModeBar = TRUE, responsive = TRUE)
 }
 
+#' TRUE when Clustering Lab has a non-empty result worth rendering.
+lab_cluster_has_result <- function(res) {
+  !is.null(res) &&
+    is.list(res) &&
+    !is.null(res$data) &&
+    is.data.frame(res$data) &&
+    nrow(res$data) > 0L
+}
+
+#' Idle placeholder HTML (used when lab_cluster_result is NULL so Plotly/DT are destroyed).
+lab_cluster_idle_placeholder <- function(msg, min_height = "420px") {
+  txt <- if (is.null(msg) || length(msg) < 1L || is.na(msg[[1]])) "" else as.character(msg[[1]])
+  htmltools::tags$div(
+    class = "ynow-lab-cluster-idle",
+    style = sprintf(
+      paste0(
+        "min-height:%s;display:flex;align-items:center;justify-content:center;",
+        "color:#666;padding:12px;text-align:center;"
+      ),
+      min_height
+    ),
+    txt
+  )
+}
+
+#' Decide Clustering panel body: idle placeholder vs live output id marker.
+#' Returns a list(mode=..., msg=...) for tests; UI builders use the same predicate.
+lab_cluster_panel_mode <- function(res) {
+  if (lab_cluster_has_result(res)) "live" else "idle"
+}
+
 #' Synthetic feature frame for unit tests (no network)
 lab_cluster_synthetic_features <- function(n = 24L, seed = 1L) {
   set.seed(as.integer(seed)[1])

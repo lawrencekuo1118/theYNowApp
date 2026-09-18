@@ -66,11 +66,16 @@ server <- function(input, output, session) {
   lab_im_catalog_nonce <- reactiveVal(0L)
   lab_im_scores <- reactiveVal(NULL)
   lab_cluster_result <- reactiveVal(NULL)
-  # Blank Plotly/DT on market switch (validate() alone leaves stale widgets).
+  # Destroy Plotly/DT via renderUI idle placeholders on market switch
+  # (empty plotly/validate leave stale htmlwidgets in the DOM).
   .clear_lab_cluster_result <- function() {
     lab_cluster_result(NULL)
     tryCatch(
-      updateSelectInput(session, "lab_cluster_focus", choices = character(0), selected = character(0)),
+      updateSelectInput(
+        session, "lab_cluster_focus",
+        choices = c("—" = ""),
+        selected = ""
+      ),
       error = function(e) NULL
     )
   }
@@ -9508,8 +9513,8 @@ server <- function(input, output, session) {
   # ------------------------------------------
   # Lab：基本面 K-Means 分群（研究用；非買進訊號）
   # ------------------------------------------
-  # Plotly/DT keep the last widget when validate() fails; return empty
-  # figures so market switch actually blanks the Clustering tab.
+  # Plotly/DT htmlwidgets keep the last figure when validate() fails or when
+  # renderPlotly returns plotly_empty — destroy outputs via renderUI instead.
   .lab_cluster_idle_msg <- function(kind = c("map", "radar", "table", "focus")) {
     kind <- match.arg(kind)
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "en")
@@ -9521,22 +9526,6 @@ server <- function(input, output, session) {
       focus = "lab_cluster_idle_focus"
     )
     ui_str(key, loc)
-  }
-
-  .lab_cluster_empty_plotly <- function(msg) {
-    plotly::plotly_empty(type = "scatter") %>%
-      plotly::layout(
-        annotations = list(list(
-          text = msg,
-          xref = "paper", yref = "paper",
-          x = 0.5, y = 0.5,
-          showarrow = FALSE,
-          font = list(size = 14)
-        )),
-        xaxis = list(visible = FALSE),
-        yaxis = list(visible = FALSE)
-      ) %>%
-      plotly::config(displayModeBar = FALSE)
   }
 
   observeEvent(input$lab_cluster_run, {
@@ -9622,11 +9611,45 @@ server <- function(input, output, session) {
     )
   }, ignoreInit = TRUE)
 
+  # Dynamic hosts: idle → placeholder (no plotly/DT node); live → recreate outputs
+  output$lab_cluster_scatter_ui <- renderUI({
+    res <- lab_cluster_result()
+    mode <- lab_cluster_panel_mode(res)
+    if (identical(mode, "idle")) {
+      return(lab_cluster_idle_placeholder(.lab_cluster_idle_msg("map"), min_height = "420px"))
+    }
+    shinycssloaders::withSpinner(
+      plotly::plotlyOutput("lab_cluster_scatter", height = "420px")
+    )
+  })
+
+  output$lab_cluster_radar_ui <- renderUI({
+    res <- lab_cluster_result()
+    mode <- lab_cluster_panel_mode(res)
+    focus <- as.character(input$lab_cluster_focus %||% "")[1]
+    if (identical(mode, "idle")) {
+      return(lab_cluster_idle_placeholder(.lab_cluster_idle_msg("radar"), min_height = "420px"))
+    }
+    if (!nzchar(focus)) {
+      return(lab_cluster_idle_placeholder(.lab_cluster_idle_msg("focus"), min_height = "420px"))
+    }
+    shinycssloaders::withSpinner(
+      plotly::plotlyOutput("lab_cluster_radar", height = "420px")
+    )
+  })
+
+  output$lab_cluster_table_ui <- renderUI({
+    res <- lab_cluster_result()
+    mode <- lab_cluster_panel_mode(res)
+    if (identical(mode, "idle")) {
+      return(lab_cluster_idle_placeholder(.lab_cluster_idle_msg("table"), min_height = "120px"))
+    }
+    shinycssloaders::withSpinner(DT::dataTableOutput("lab_cluster_table"))
+  })
+
   output$lab_cluster_scatter <- plotly::renderPlotly({
     res <- lab_cluster_result()
-    if (is.null(res) || is.null(res$data) || nrow(res$data) == 0L) {
-      return(.lab_cluster_empty_plotly(.lab_cluster_idle_msg("map")))
-    }
+    req(lab_cluster_has_result(res))
     lab_cluster_scatter_plotly(
       res,
       x_feat = as.character(input$lab_cluster_x %||% "ROE")[1],
@@ -9637,25 +9660,15 @@ server <- function(input, output, session) {
 
   output$lab_cluster_radar <- plotly::renderPlotly({
     res <- lab_cluster_result()
-    if (is.null(res) || is.null(res$data) || nrow(res$data) == 0L) {
-      return(.lab_cluster_empty_plotly(.lab_cluster_idle_msg("radar")))
-    }
+    req(lab_cluster_has_result(res))
     focus <- as.character(input$lab_cluster_focus %||% "")[1]
-    if (!nzchar(focus)) {
-      return(.lab_cluster_empty_plotly(.lab_cluster_idle_msg("focus")))
-    }
+    req(nzchar(focus))
     lab_cluster_radar_plotly(res, focus_ticker = focus, locale = ui_locale())
   })
 
   output$lab_cluster_table <- DT::renderDataTable({
     res <- lab_cluster_result()
-    if (is.null(res) || is.null(res$data) || nrow(res$data) == 0L) {
-      return(DT::datatable(
-        data.frame(Note = .lab_cluster_idle_msg("table"), stringsAsFactors = FALSE),
-        rownames = FALSE,
-        options = list(dom = "t", ordering = FALSE, paging = FALSE, searching = FALSE)
-      ))
-    }
+    req(lab_cluster_has_result(res))
     df <- res$data
     cols <- intersect(
       c(

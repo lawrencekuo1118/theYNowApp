@@ -4880,21 +4880,20 @@ ui <- dashboardPage(
               box(
                 width = 7, status = "primary", solidHeader = TRUE,
                 title = tags$span(id = "ynow_lab_cluster_map_title", "分群星團圖"),
-                plotly::plotlyOutput("lab_cluster_scatter", height = "420px") %>%
-                  shinycssloaders::withSpinner()
+                # renderUI destroys plotlyOutput when idle (empty plotly leaves stale widgets)
+                uiOutput("lab_cluster_scatter_ui")
               ),
               box(
                 width = 5, status = "info", solidHeader = TRUE,
                 title = tags$span(id = "ynow_lab_cluster_radar_title", "同群雷達圖"),
-                plotly::plotlyOutput("lab_cluster_radar", height = "420px") %>%
-                  shinycssloaders::withSpinner()
+                uiOutput("lab_cluster_radar_ui")
               )
             ),
             fluidRow(
               box(
                 width = 12, status = "primary", solidHeader = TRUE,
                 title = tags$span(id = "ynow_lab_cluster_table_title", "分群結果"),
-                DT::dataTableOutput("lab_cluster_table") %>% shinycssloaders::withSpinner()
+                uiOutput("lab_cluster_table_ui")
               )
             )
           )
