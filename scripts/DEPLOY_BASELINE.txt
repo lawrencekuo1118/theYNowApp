@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12572972
+bundleId=12573028
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=8c50144
-commit=8c50144c3e77f6ea85db9dee591a68339987dff2
-short=8c50144
-message=fix(lab): speed up clustering feature fetch (v16.48)
-captured_at=2026-09-18T13:14:55Z
+aligned_git=b9741cd
+commit=b9741cd101c37589dbfac669ffafbdea0d2aa618
+short=b9741cd
+message=fix(lab): restore stable cluster feature fetch (v16.49)
+captured_at=2026-09-18T13:28:47Z
 source_branch=cursor/lab-clustering-3580
-display_version=v16.48
-note=Canonical live line is app_16.0. Bundle 12572972 ships Clustering Lab with faster Yahoo feature fetch (quote+threads+cache; default N=25). Supersedes 12572860.
+display_version=v16.49
+note=Canonical live line is app_16.0. Bundle 12573028 restores threaded+cached cluster feature fetch with R fallback path. Supersedes 12572972.
