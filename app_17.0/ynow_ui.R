@@ -75,7 +75,7 @@
       tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
       tags$p(
         class = "ynow-about-lead",
-        "The YNow App (v17) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合了即時財報抓取、多維度估值模型與動態回測引擎，將繁雜的市場資料轉化為直覺、科學的投資決策。"
+        "The YNow App (v17.01) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合了即時財報抓取、多維度估值模型與動態回測引擎，將繁雜的市場資料轉化為直覺、科學的投資決策。"
       ),
       tags$p(
         class = "ynow-about-method",
@@ -91,7 +91,7 @@
       tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
       tags$p(
         class = "ynow-about-lead",
-        "The YNow App (v17) is a comprehensive quantitative financial analysis and valuation decision system designed for professional investors and analysts. It seamlessly integrates real-time financial data parsing, multi-dimensional valuation models, and a dynamic backtesting engine to transform complex market data into actionable, scientific investment insights."
+        "The YNow App (v17.01) is a comprehensive quantitative financial analysis and valuation decision system designed for professional investors and analysts. It seamlessly integrates real-time financial data parsing, multi-dimensional valuation models, and a dynamic backtesting engine to transform complex market data into actionable, scientific investment insights."
       ),
       tags$p(
         class = "ynow-about-method",
@@ -207,22 +207,17 @@ rd_estimate_settings_ui <- function(width = 6) {
   )
 }
 
-#' Canonical + mirrored β-source radio IDs (bidirectional sync in server).
+#' Canonical + DCF-mirrored β-source radio IDs (bidirectional sync in server).
+#' DDM / RI / P/B / NAV do not host Beta tabs (formulas take Ke or no discount rate).
 .BETA_U_APPLY_SOURCE_IDS <- c(
   "beta_u_apply_source",
-  "dcf_beta_u_apply_source",
-  "ddm_beta_u_apply_source",
-  "ri_beta_u_apply_source",
-  "pb_beta_u_apply_source"
+  "dcf_beta_u_apply_source"
 )
 
 #' Matching "sync selected β" buttons (same order as .BETA_U_APPLY_SOURCE_IDS).
 .BETA_U_APPLY_BTN_IDS <- c(
   "apply_beta_u_selected",
-  "dcf_apply_beta_u_selected",
-  "ddm_apply_beta_u_selected",
-  "ri_apply_beta_u_selected",
-  "pb_apply_beta_u_selected"
+  "dcf_apply_beta_u_selected"
 )
 
 #' Shared β source picker (Yahoo / industry / Bottom-Up / Hamada / manual).
@@ -848,7 +843,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.01</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -1462,16 +1457,19 @@ ui <- dashboardPage(
         .label-primary, .badge-primary {
           background-color: var(--ynow-ink) !important;
         }
-        /* Sidebar 推薦／備選 badges: same row as label; flush to right edge; normal font size */
+        /* Sidebar 推薦／備選 badges: shrinkable label + badge flush right (before chevron) */
         .sidebar-menu > li > a,
         .sidebar-menu .treeview-menu > li > a {
           display: flex !important;
           align-items: center !important;
           flex-wrap: nowrap !important;
+          overflow: hidden;
         }
         .sidebar-menu > li > a > span:not(.pull-right-container),
-        .sidebar-menu .treeview-menu > li > a > span:not(.pull-right-container) {
-          flex: 0 1 auto;
+        .sidebar-menu .treeview-menu > li > a > span:not(.pull-right-container),
+        .sidebar-menu > li > a > .ynow-menu-label,
+        .sidebar-menu .treeview-menu > li > a > .ynow-menu-label {
+          flex: 1 1 auto;
           min-width: 0;
           overflow: hidden;
           text-overflow: ellipsis;
@@ -1480,7 +1478,7 @@ ui <- dashboardPage(
         .sidebar-menu > li > a > .pull-right-container {
           float: none !important;
           position: static !important;
-          margin-left: auto !important;
+          margin-left: 4px !important;
           margin-right: 0 !important;
           display: inline-flex !important;
           align-items: center !important;
@@ -1488,26 +1486,25 @@ ui <- dashboardPage(
           gap: 4px;
         }
         .sidebar-menu > li > a > .pull-right-container > .fa.pull-right,
-        .sidebar-menu > li > a > .pull-right-container > .fas.pull-right {
+        .sidebar-menu > li > a > .pull-right-container > .fas.pull-right,
+        .sidebar-menu > li > a > .fa.pull-right,
+        .sidebar-menu > li > a > .fas.pull-right {
           float: none !important;
           position: static !important;
-          margin: 0 !important;
+          margin: 0 0 0 4px !important;
+          flex: 0 0 auto;
         }
         .sidebar-menu small.ynow-sidebar-badge {
           float: none !important;
           position: static !important;
           flex: 0 0 auto;
           align-self: center;
-          margin: 0 0 0 4px !important;
+          margin: 0 0 0 auto !important;
           white-space: nowrap;
           line-height: 1.15 !important;
           vertical-align: middle;
           max-width: none;
           transform: none !important;
-        }
-        /* Child rows (no chevron): push badge to sidebar right edge */
-        .sidebar-menu .treeview-menu > li > a > small.ynow-sidebar-badge {
-          margin-left: auto !important;
         }
         /* Parent Appr. expanded: hide parent badges; children keep theirs */
         .sidebar-menu > li.menu-open > a > small.ynow-sidebar-badge,
@@ -1994,10 +1991,27 @@ ui <- dashboardPage(
             });
           }
 
+          /* Wrap bare text so flex can shrink the label; otherwise badges clip past overflow:hidden */
+          function ensureShrinkableLabel(a) {
+            if (!a) return;
+            var nodes = Array.prototype.slice.call(a.childNodes);
+            for (var i = 0; i < nodes.length; i++) {
+              var n = nodes[i];
+              if (n.nodeType !== 3) continue;
+              var t = String(n.textContent || '').replace(/\\s+/g, ' ').trim();
+              if (!t) continue;
+              var span = document.createElement('span');
+              span.className = 'ynow-menu-label';
+              span.textContent = ' ' + t + ' ';
+              a.replaceChild(span, n);
+            }
+          }
+
           function setRecBadgeOnAnchor(a, role, labels) {
             if (!a) return;
             clearRecBadges(a);
             if (!role) return;
+            ensureShrinkableLabel(a);
             var lab = labels || {};
             var isPrimary = role === 'primary';
             var badge = document.createElement('small');
@@ -2006,14 +2020,29 @@ ui <- dashboardPage(
             badge.textContent = isPrimary
               ? (lab.primary || 'Recommend')
               : (lab.secondary || 'Secondary');
-            /* Prefer after pull-right chevron so badge stays flush right */
-            var prc = a.querySelector('.pull-right-container');
-            if (prc && prc.parentNode === a) {
-              if (prc.nextSibling) a.insertBefore(badge, prc.nextSibling);
-              else a.appendChild(badge);
-            } else {
-              a.appendChild(badge);
+            /* Insert before chevron so margin-left:auto pushes badge to the right edge */
+            var prc = null;
+            var kids = a.children;
+            for (var ci = 0; ci < kids.length; ci++) {
+              if (kids[ci].classList && kids[ci].classList.contains('pull-right-container')) {
+                prc = kids[ci];
+                break;
+              }
             }
+            var angle = null;
+            for (var ai = 0; ai < kids.length; ai++) {
+              var el = kids[ai];
+              if (!el.classList) continue;
+              if (el.classList.contains('pull-right') &&
+                  (el.classList.contains('fa') || el.classList.contains('fas') ||
+                   el.classList.contains('far') || el.classList.contains('glyphicon'))) {
+                angle = el;
+                break;
+              }
+            }
+            if (prc) a.insertBefore(badge, prc);
+            else if (angle) a.insertBefore(badge, angle);
+            else a.appendChild(badge);
           }
 
           function setTabBadge(tab, role, labels) {
@@ -2063,6 +2092,15 @@ ui <- dashboardPage(
               return;
             }
             Shiny.addCustomMessageHandler('ynowSidebarBadges', applySidebarBadges);
+            /* Ask server to re-push — early custom messages are lost before this handler exists */
+            function pingReady() {
+              if (!(window.Shiny && Shiny.setInputValue)) {
+                setTimeout(pingReady, 50);
+                return;
+              }
+              Shiny.setInputValue('ynow_sidebar_badges_ready', Date.now(), {priority: 'event'});
+            }
+            pingReady();
           }
           registerBadgeHandler();
 
@@ -2138,16 +2176,22 @@ ui <- dashboardPage(
             if (!a || !label) return;
             var icon = a.querySelector('i.fa:not(.pull-right), i.fas:not(.pull-right), i.far:not(.pull-right), i.glyphicon:not(.pull-right), i.ion:not(.pull-right)');
             var prc = a.querySelector('.pull-right-container');
+            var angle = a.querySelector('i.fa.pull-right, i.fas.pull-right, i.far.pull-right, i.glyphicon.pull-right');
             var badges = a.querySelectorAll('small.ynow-sidebar-badge, small.ynow-rec-badge');
             var iconClone = icon ? icon.cloneNode(true) : null;
             var prcClone = prc ? prc.cloneNode(true) : null;
+            var angleClone = (!prc && angle) ? angle.cloneNode(true) : null;
             var badgeClones = [];
             badges.forEach(function (b) { badgeClones.push(b.cloneNode(true)); });
             a.innerHTML = '';
             if (iconClone) a.appendChild(iconClone);
-            a.appendChild(document.createTextNode(' ' + label + ' '));
-            if (prcClone) a.appendChild(prcClone);
+            var lab = document.createElement('span');
+            lab.className = 'ynow-menu-label';
+            lab.textContent = ' ' + label + ' ';
+            a.appendChild(lab);
             badgeClones.forEach(function (bc) { a.appendChild(bc); });
+            if (prcClone) a.appendChild(prcClone);
+            else if (angleClone) a.appendChild(angleClone);
           }
 
           function setNavLinkLabel(a, label) {
@@ -3973,7 +4017,7 @@ ui <- dashboardPage(
         )
       )
     ),
-    # Model pages: composite valuation status replaces the KPI row
+    # Model pages: full composite valuation block (shared output) + forecast years
     conditionalPanel(
       condition = paste(
         "input.sidebar_tabs == 'dcf_calculator' ||",
@@ -3983,12 +4027,14 @@ ui <- dashboardPage(
         "input.sidebar_tabs == 'nav_calculator'"
       ),
       fluidRow(
-        class = "ynow-header-status-row",
+        class = "ynow-header-composite-row",
         column(
-          width = 9,
+          width = 12,
           class = "col-xs-12",
-          uiOutput("main_decision-ui_valuation_status_header")
-        ),
+          decision_valuation_compare_ui("main_decision")
+        )
+      ),
+      fluidRow(
         column(
           width = 3,
           class = "col-xs-12",
@@ -4003,8 +4049,6 @@ ui <- dashboardPage(
       )
     ),
     
-    # 插入智能估值顧問的 UI 輸出點（由 decision 模組提供）
-    
     tabItems(
       tabItem(
         tabName = "get_started",
@@ -4013,12 +4057,6 @@ ui <- dashboardPage(
             title = tagList(icon("route"), "Model Selector｜估值模型推薦"),
             width = 12, status = "primary", solidHeader = TRUE,
             uiOutput("get_started_model_selector")
-          )
-        ),
-        fluidRow(
-          column(
-            width = 12,
-            uiOutput("main_decision-ui_valuation_compare")
           )
         ),
         # SGR 與 BETA 同層、同 col-sm-12（勿只對 SGR 外包 fluidRow，否則欄寬會不一致）
@@ -4044,7 +4082,7 @@ ui <- dashboardPage(
               icon = icon("users"),
               helpText(
                 "左側先填同業、去槓桿後平均（Bottom-Up）。右側為本公司 Hamada 去槓桿與手動 βe。",
-                "寫入 CAPM：到 Beta Overview（或各模型 Beta 分頁）選對應 β 來源。"
+                "寫入 CAPM：到 Beta Overview 或 DCF → Beta 分頁選對應 β 來源。"
               ),
               beta_unlever_section_ui()
             ),
@@ -4483,18 +4521,9 @@ ui <- dashboardPage(
                              "採用估算 Ke（來自 CAPM β）",
                              value = isTRUE(APP_DEFAULTS$use_est_re)
                            ),
-                           helpText("與 DCF→WACC「採用估算 rₑ」同步；勾選時 Ke 跟隨 CAPM。CAPM 輸入在 DCF-Model → WACC。"),
+                           helpText("與 DCF→WACC「採用估算 rₑ」同步；勾選時 Ke 跟隨 CAPM。CAPM／β 輸入在 DCF-Model → WACC／Beta，或基礎設定 → BETA。"),
                            htmlOutput("ddm_beta_ke_status")
                          )
-                       )
-                     ),
-                     tabPanel(
-                       "Beta (β)",
-                       icon = icon("chart-line"),
-                       .beta_model_source_section_ui(
-                         "ddm_beta_u_apply_source",
-                         "ddm_apply_beta_u_selected",
-                         extra = helpText("DDM → Ke 的「採用估算 Ke」仍跟隨 DCF → WACC 的 CAPM。")
                        )
                      )
               ),

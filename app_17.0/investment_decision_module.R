@@ -11,6 +11,13 @@ library(glue)
 # -------------------------------------------
 # 1. UI 模組：視覺化決策看板
 # -------------------------------------------
+#' Shared composite valuation block (main/sub model, Bear–Base–Bull, status bar).
+#' Mount once in the model-page header — not on Basic Setup.
+decision_valuation_compare_ui <- function(id) {
+  ns <- NS(id)
+  uiOutput(ns("ui_valuation_compare"))
+}
+
 decision_ui <- function(id) {
   ns <- NS(id)
   tagList(
@@ -102,12 +109,17 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
                             primary_band = reactive(NULL),
                             secondary_point = reactive(NA),
                             confidence = reactive(NULL),
-                            industry_key = reactive(NULL)) {
+                            industry_key = reactive(NULL),
+                            ui_locale = reactive("en")) {
   moduleServer(id, function(input, output, session) {
 
     .pick_num <- function(x) {
       x <- suppressWarnings(as.numeric(x)[1])
       if (length(x) != 1 || is.null(x) || is.na(x) || !is.finite(x) || x == 0) NA_real_ else x
+    }
+
+    .ui_loc <- function() {
+      tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "en")
     }
 
     f_score_eval <- reactive({
@@ -327,9 +339,14 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
     }, striped = TRUE, hover = TRUE, width = "100%")
 
     output$ui_valuation_compare <- renderUI({
+      loc <- .ui_loc()
+      str <- function(key) ui_str(key, loc)
+
       pv <- primary_values()
       p_curr <- .pick_num(current_price())
-      if (is.na(p_curr)) return(div(class = "alert alert-info", "正在等待市場資料..."))
+      if (is.na(p_curr)) {
+        return(div(class = "alert alert-info", str("composite_waiting_market")))
+      }
 
       rec <- tryCatch(model_rec(), error = function(e) NULL)
       prim <- as.character(rec$primary %||% "")
@@ -348,22 +365,24 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       }
 
       rec_title <- paste0(
-        "主模型：", .model_label(prim),
-        if (nzchar(sec)) paste0("　｜　副模型：", .model_label(sec)) else ""
+        str("composite_main_model"), " ", .model_label(prim),
+        if (nzchar(sec)) paste0(" ｜ ", str("composite_sub_model"), " ", .model_label(sec)) else ""
       )
       rec_desc <- as.character(rec$reason %||% "")
       conf_txt <- if (is.list(conf) && !is.null(conf$level)) {
         paste0(
-          "可信度：", conf$level,
+          str("composite_confidence_prefix"), " ", conf$level,
           if (!is.null(conf$score)) paste0("（", conf$score, "）") else "",
           if (length(conf$reasons)) paste0(" — ", paste(utils::head(conf$reasons, 3), collapse = "；")) else ""
         )
       } else {
-        "可信度：計算中"
+        paste0(str("composite_confidence_prefix"), " ", str("composite_confidence_calculating"))
       }
 
       all_vals <- stats::na.omit(c(p_curr, bear, base, bull, sec_pt))
-      if (!length(all_vals)) return(div(class = "alert alert-info", "等待估值結果..."))
+      if (!length(all_vals)) {
+        return(div(class = "alert alert-info", str("composite_waiting_val")))
+      }
       min_val <- min(all_vals) * 0.85
       max_val <- max(all_vals) * 1.15
       range_val <- max(max_val - min_val, 1)
@@ -379,13 +398,13 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       base_opacity <- if (is.na(pos_base)) 0 else 1
       pos_base_css <- if (is.na(pos_base)) 0 else pos_base
 
-      status_text <- "合理區間"
+      status_text <- str("composite_fair")
       status_color <- "#f39c12"
       if (!is.na(base) && p_curr < base * 0.8) {
-        status_text <- "低估（相對 Base）"
+        status_text <- str("composite_undervalued")
         status_color <- "#00a65a"
       } else if (!is.na(base) && p_curr > base * 1.2) {
-        status_text <- "高估（相對 Base）"
+        status_text <- str("composite_overvalued")
         status_color <- "#d9534f"
       }
 
@@ -394,7 +413,7 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       upside_txt <- if (is.na(upside)) "—" else sprintf("%+.1f%%", upside)
 
       HTML(paste0(
-        "<div style='background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; border-top: 3px solid ", status_color, ";'>",
+        "<div class='ynow-composite-valuation' style='background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 12px; border-top: 3px solid ", status_color, ";'>",
         "<div style='background: #1a1a1a15; border-left: 5px solid #222222; padding: 12px; border-radius: 4px; margin-bottom: 16px;'>",
         "<h5 style='color: #222222; margin-top: 0; font-weight: bold;'>", htmltools::htmlEscape(rec_title), "</h5>",
         "<p style='margin-bottom: 6px; font-size: 13px; color: #555;'>", htmltools::htmlEscape(rec_desc), "</p>",
@@ -407,17 +426,18 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
         "<div style='flex:1; min-width:120px; padding:10px; background:#f5f5f5; border-radius:6px;'>",
         "<div style='font-size:12px; color:#888;'>Base</div>",
         "<div style='font-size:22px; font-weight:700; color:#1a1a1a;'>", fmt(base), "</div>",
-        "<div style='font-size:12px; color:#555;'>潛在報酬 ", upside_txt, "</div></div>",
+        "<div style='font-size:12px; color:#555;'>", htmltools::htmlEscape(str("composite_upside_prefix")), upside_txt, "</div></div>",
         "<div style='flex:1; min-width:120px; padding:10px; background:#eafaf1; border-radius:6px;'>",
         "<div style='font-size:12px; color:#888;'>Bull</div>",
         "<div style='font-size:20px; font-weight:700; color:#1e8449;'>", fmt(bull), "</div></div>",
         "<div style='flex:1; min-width:120px; padding:10px; background:#f4f6f7; border-radius:6px;'>",
-        "<div style='font-size:12px; color:#888;'>副模型檢核</div>",
+        "<div style='font-size:12px; color:#888;'>", htmltools::htmlEscape(str("composite_secondary_check")), "</div>",
         "<div style='font-size:18px; font-weight:700; color:#566573;'>", fmt(sec_pt), "</div>",
         "<div style='font-size:12px; color:#777;'>", htmltools::htmlEscape(.model_label(sec)), "</div></div>",
         "</div>",
-        "<h4 style='margin-top: 0; font-weight: bold;'><i class='fa fa-balance-scale'></i> 綜合估值狀態：",
-        "<span style='color: ", status_color, ";'>", status_text, "</span></h4>",
+        "<h4 style='margin-top: 0; font-weight: bold;'><i class='fa fa-balance-scale'></i> ",
+        htmltools::htmlEscape(str("composite_status_prefix")),
+        "<span style='color: ", status_color, ";'>", htmltools::htmlEscape(status_text), "</span></h4>",
         "<div style='position: relative; height: 80px; margin-top: 28px;'>",
         "<div style='position: absolute; top: 28px; left: 0; right: 0; height: 10px; background: #ecf0f1; border-radius: 5px;'></div>",
         "<div style='position: absolute; top: 28px; left: ", band_left, "%; width: ", band_width,
@@ -426,83 +446,15 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
         "<div style='font-size: 11px; color: #7f8c8d;'>Base</div>",
         "<div style='width: 3px; height: 35px; background: #1a1a1a; margin: 0 auto;'></div></div>",
         "<div style='position: absolute; top: -10px; left: ", pos_curr, "%; transform: translateX(-50%); z-index: 10;'>",
-        "<div style='font-size: 12px; color: white; background: #2c3e50; padding: 2px 6px; border-radius: 4px;'>目前市價</div>",
+        "<div style='font-size: 12px; color: white; background: #2c3e50; padding: 2px 6px; border-radius: 4px;'>",
+        htmltools::htmlEscape(str("composite_current_price")), "</div>",
         "<div style='width: 12px; height: 12px; background: #2c3e50; border: 2px solid white; border-radius: 50%; margin: 2px auto;'></div>",
         "<div style='font-size: 15px; color: #2c3e50; font-weight: bold;'>$", round(p_curr, 2), "</div></div>",
         "</div>",
-        "<p style='margin: 8px 0 0 0; font-size: 12px; color: #888;'>藍帶 = 主模型 Bear–Bull；點位為 Base。副模型僅作交叉驗證。</p>",
+        "<p style='margin: 8px 0 0 0; font-size: 12px; color: #888;'>",
+        htmltools::htmlEscape(str("composite_footer_note")), "</p>",
         "</div>"
       ))
-    })
-
-    # Compact status for model-page header row (replaces Previous Close / Market Cap / EPS)
-    output$ui_valuation_status_header <- renderUI({
-      root <- tryCatch(session$rootScope(), error = function(e) session)
-      loc_pick <- tryCatch(root$input$ui_locale_pick, error = function(e) NULL)
-      is_en <- identical(as.character(loc_pick %||% "en")[1], "en")
-
-      prefix <- if (is_en) "Composite valuation status: " else "綜合估值狀態："
-      waiting <- if (is_en) "Waiting for market data…" else "正在等待市場資料…"
-      waiting_val <- if (is_en) "Waiting for valuation…" else "等待估值結果…"
-      fair <- if (is_en) "Fair value range" else "合理區間"
-      undervalued <- if (is_en) "Undervalued (vs Base)" else "低估（相對 Base）"
-      overvalued <- if (is_en) "Overvalued (vs Base)" else "高估（相對 Base）"
-
-      pv <- primary_values()
-      p_curr <- .pick_num(current_price())
-      if (is.na(p_curr)) {
-        return(tags$div(
-          class = "ynow-val-status-header",
-          style = "border-top: 3px solid #999;",
-          tags$h4(
-            tags$i(class = "fa fa-balance-scale"),
-            " ",
-            tags$span(id = "ynow_val_status_prefix", prefix),
-            tags$span(style = "color:#888;", waiting)
-          )
-        ))
-      }
-
-      base <- pv$base
-      if (is.na(base)) {
-        p_dcf <- .pick_num(tryCatch(intrinsic_val_dcf(), error = function(e) NA))
-        p_ddm <- .pick_num(tryCatch(intrinsic_val_ddm(), error = function(e) NA))
-        p_pb  <- .pick_num(tryCatch(intrinsic_val_pb(), error = function(e) NA))
-        base <- if (!is.na(p_dcf)) p_dcf else if (!is.na(p_pb)) p_pb else p_ddm
-      }
-      if (is.na(base)) {
-        return(tags$div(
-          class = "ynow-val-status-header",
-          style = "border-top: 3px solid #999;",
-          tags$h4(
-            tags$i(class = "fa fa-balance-scale"),
-            " ",
-            tags$span(id = "ynow_val_status_prefix", prefix),
-            tags$span(style = "color:#888;", waiting_val)
-          )
-        ))
-      }
-
-      status_text <- fair
-      status_color <- "#f39c12"
-      if (p_curr < base * 0.8) {
-        status_text <- undervalued
-        status_color <- "#00a65a"
-      } else if (p_curr > base * 1.2) {
-        status_text <- overvalued
-        status_color <- "#d9534f"
-      }
-
-      tags$div(
-        class = "ynow-val-status-header",
-        style = paste0("border-top: 3px solid ", status_color, ";"),
-        tags$h4(
-          tags$i(class = "fa fa-balance-scale"),
-          " ",
-          tags$span(id = "ynow_val_status_prefix", prefix),
-          tags$span(style = paste0("color:", status_color, ";"), status_text)
-        )
-      )
     })
   })
 }

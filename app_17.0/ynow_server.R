@@ -1298,15 +1298,16 @@ server <- function(input, output, session) {
 
   # Dynamic 「推薦」／「備選」— primary + secondary; bubble to parent Appr. tabs
   sidebar_badge_sig <- reactiveVal("")
-  observe({
-    rec <- model_sidebar_rec()
+  .push_sidebar_badges <- function(force = FALSE) {
+    rec <- tryCatch(model_sidebar_rec(), error = function(e) NULL)
+    if (is.null(rec)) return(invisible(FALSE))
     loc <- tryCatch(ui_locale(), error = function(e) "en")
     prim <- as.character(rec$primary %||% "")[1]
     sec <- as.character(rec$secondary %||% "")[1]
     if (is.na(prim)) prim <- ""
     if (is.na(sec)) sec <- ""
     sig <- paste(prim, sec, loc, rec$company_type %||% "", sep = "|")
-    if (identical(sidebar_badge_sig(), sig)) return()
+    if (!isTRUE(force) && identical(sidebar_badge_sig(), sig)) return(invisible(FALSE))
     sidebar_badge_sig(sig)
     role_of <- function(key) {
       if (nzchar(prim) && identical(prim, key)) return("primary")
@@ -1325,7 +1326,17 @@ server <- function(input, output, session) {
       nav_calculator = list(role = role_of("nav"))
     )
     session$sendCustomMessage("ynowSidebarBadges", payload)
+    invisible(TRUE)
+  }
+  observe({
+    model_sidebar_rec()
+    ui_locale()
+    .push_sidebar_badges(force = FALSE)
   })
+  # Client handler may register after the first push — re-send when JS pings ready
+  observeEvent(input$ynow_sidebar_badges_ready, {
+    .push_sidebar_badges(force = TRUE)
+  }, ignoreNULL = TRUE)
 
   # Growth classification → 僅提示 Two-Stage（不再強制覆寫；預設維持 Gordon）
   observeEvent(model_sidebar_rec(), {
@@ -2148,7 +2159,8 @@ server <- function(input, output, session) {
     primary_band = reactive({ primary_valuation_band() }),
     secondary_point = reactive({ secondary_valuation_point() }),
     confidence = reactive({ valuation_confidence() }),
-    industry_key = reactive(input$industry_choice)
+    industry_key = reactive(input$industry_choice),
+    ui_locale = ui_locale
   )
 
   # --- 決策檢核（獨立側邊 tab：通過／否決閘門）---
@@ -4217,24 +4229,15 @@ server <- function(input, output, session) {
     invisible(TRUE)
   }
   observeEvent(input$apply_beta_u_selected, { .apply_selected_beta_u_to_capm(silent = FALSE, force = TRUE) })
-  # Mirror apply buttons on DCF / DDM / RI / P/B Beta tabs
+  # Mirror apply button on DCF Beta tab (Basic Setup remains canonical)
   observeEvent(input$dcf_apply_beta_u_selected, { .apply_selected_beta_u_to_capm(silent = FALSE, force = TRUE) })
-  observeEvent(input$ddm_apply_beta_u_selected, { .apply_selected_beta_u_to_capm(silent = FALSE, force = TRUE) })
-  observeEvent(input$ri_apply_beta_u_selected, { .apply_selected_beta_u_to_capm(silent = FALSE, force = TRUE) })
-  observeEvent(input$pb_apply_beta_u_selected, { .apply_selected_beta_u_to_capm(silent = FALSE, force = TRUE) })
 
-  # β 來源：Basic Setup 與各模型 Beta 分頁雙向同步（防回授，同 Clustering N）
+  # β 來源：Basic Setup ↔ DCF Beta 分頁雙向同步（防回授）
   .beta_apply_source_syncing <- reactiveVal(FALSE)
   .beta_u_apply_source_ids <- function() {
     ids <- tryCatch(.BETA_U_APPLY_SOURCE_IDS, error = function(e) NULL)
     if (is.null(ids) || !length(ids)) {
-      ids <- c(
-        "beta_u_apply_source",
-        "dcf_beta_u_apply_source",
-        "ddm_beta_u_apply_source",
-        "ri_beta_u_apply_source",
-        "pb_beta_u_apply_source"
-      )
+      ids <- c("beta_u_apply_source", "dcf_beta_u_apply_source")
     }
     as.character(ids)
   }
@@ -10094,7 +10097,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17"),
+      paste0("- **App：** The YNow App v17.01"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {
