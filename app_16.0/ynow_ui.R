@@ -779,7 +779,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v16.51</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v16.52</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -1973,6 +1973,8 @@ ui <- dashboardPage(
               });
               if (window.Shiny && Shiny.setInputValue) {
                 Shiny.setInputValue('market_mode_pick', val, {priority: 'event'});
+                // Force Clustering Lab clear even if mode was already applied client-side
+                Shiny.setInputValue('lab_cluster_clear_tick', Date.now(), {priority: 'event'});
               }
             });
             function pushInitial() {

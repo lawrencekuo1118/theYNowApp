@@ -68,7 +68,8 @@ server <- function(input, output, session) {
   lab_cluster_result <- reactiveVal(NULL)
   # Destroy Plotly/DT via renderUI idle placeholders on market switch
   # (empty plotly/validate leave stale htmlwidgets in the DOM).
-  .clear_lab_cluster_result <- function() {
+  .clear_lab_cluster_result <- function(reason = NULL) {
+    # Always write NULL (even if already NULL) so renderUI hosts rebuild.
     lab_cluster_result(NULL)
     tryCatch(
       updateSelectInput(
@@ -78,7 +79,27 @@ server <- function(input, output, session) {
       ),
       error = function(e) NULL
     )
+    # Nuclear: strip any leftover htmlwidget hosts before idle placeholder paints.
+    tryCatch(
+      shinyjs::runjs(paste(
+        "['lab_cluster_scatter_ui','lab_cluster_radar_ui','lab_cluster_table_ui'].forEach(function(id){",
+        "  var el=document.getElementById(id); if(el){ el.innerHTML=''; }",
+        "});"
+      )),
+      error = function(e) NULL
+    )
+    invisible(reason)
   }
+
+  # Belt-and-suspenders: clear whenever market mode reactive flips.
+  observeEvent(market_mode(), {
+    .clear_lab_cluster_result("market_mode")
+  }, ignoreInit = TRUE)
+
+  # JS market buttons also pulse this tick so Clustering clears even if mode is unchanged.
+  observeEvent(input$lab_cluster_clear_tick, {
+    .clear_lab_cluster_result("clear_tick")
+  }, ignoreInit = TRUE)
   auto_calc_primary_sig <- reactiveVal("")
   auto_calc_ddm_pulse <- reactiveVal(0L)
   auto_calc_pb_pulse <- reactiveVal(0L)
@@ -9950,7 +9971,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v16.51"),
+      paste0("- **App：** The YNow App v16.52"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {
