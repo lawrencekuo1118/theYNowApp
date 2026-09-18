@@ -75,7 +75,7 @@
       tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
       tags$p(
         class = "ynow-about-lead",
-        "The YNow App (v17.02) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合了即時財報抓取、多維度估值模型與動態回測引擎，將繁雜的市場資料轉化為直覺、科學的投資決策。"
+        "The YNow App (v17.03) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合了即時財報抓取、多維度估值模型與動態回測引擎，將繁雜的市場資料轉化為直覺、科學的投資決策。"
       ),
       tags$p(
         class = "ynow-about-method",
@@ -91,7 +91,7 @@
       tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
       tags$p(
         class = "ynow-about-lead",
-        "The YNow App (v17.02) is a comprehensive quantitative financial analysis and valuation decision system designed for professional investors and analysts. It seamlessly integrates real-time financial data parsing, multi-dimensional valuation models, and a dynamic backtesting engine to transform complex market data into actionable, scientific investment insights."
+        "The YNow App (v17.03) is a comprehensive quantitative financial analysis and valuation decision system designed for professional investors and analysts. It seamlessly integrates real-time financial data parsing, multi-dimensional valuation models, and a dynamic backtesting engine to transform complex market data into actionable, scientific investment insights."
       ),
       tags$p(
         class = "ynow-about-method",
@@ -831,7 +831,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.02</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.03</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -1156,10 +1156,16 @@ ui <- dashboardPage(
           color: #fff !important;
         }
 
-        /* 美股／台股：釘在三線 icon 右側（absolute；不依賴 JS／右欄 flex） */
-        .main-header .navbar #ynow-market-header.ynow-market-header {
+        /* 美股／台股：釘在三線 icon 右側（navbar 座標；脫離右欄 flex） */
+        .main-header .navbar {
+          position: relative !important;
+        }
+        .main-header .navbar #ynow-market-header.ynow-market-header,
+        .main-header .navbar-custom-menu #ynow-market-header.ynow-market-header,
+        .main-header .navbar-custom-menu .navbar-nav > li#ynow-market-header.ynow-market-header {
           position: absolute !important;
           left: 50px !important; /* .sidebar-toggle 寬度 */
+          right: auto !important;
           top: 0 !important;
           float: none !important;
           width: 40px !important;
@@ -1168,6 +1174,7 @@ ui <- dashboardPage(
           padding: 0 !important;
           list-style: none !important;
           display: block !important;
+          visibility: visible !important;
           z-index: 1040;
         }
         #ynow-market-header .ynow-market-stack {
@@ -1444,16 +1451,16 @@ ui <- dashboardPage(
         .label-primary, .badge-primary {
           background-color: var(--ynow-ink) !important;
         }
-        /* Sidebar 推薦／備選 badges: shrinkable label + badge flush right (before chevron) */
+        /* Sidebar 推薦／備選 badges — overflow:visible so flex cannot clip the chip */
         .sidebar-menu > li > a,
         .sidebar-menu .treeview-menu > li > a {
           display: flex !important;
           align-items: center !important;
           flex-wrap: nowrap !important;
-          overflow: hidden;
+          overflow: visible !important;
         }
-        .sidebar-menu > li > a > span:not(.pull-right-container),
-        .sidebar-menu .treeview-menu > li > a > span:not(.pull-right-container),
+        .sidebar-menu > li > a > span:not(.pull-right-container):not(.ynow-rec-slot),
+        .sidebar-menu .treeview-menu > li > a > span:not(.pull-right-container):not(.ynow-rec-slot),
         .sidebar-menu > li > a > .ynow-menu-label,
         .sidebar-menu .treeview-menu > li > a > .ynow-menu-label {
           flex: 1 1 auto;
@@ -1462,7 +1469,8 @@ ui <- dashboardPage(
           text-overflow: ellipsis;
           white-space: nowrap;
         }
-        .sidebar-menu > li > a > .pull-right-container {
+        .sidebar-menu > li > a > .pull-right-container,
+        .sidebar-menu .treeview-menu > li > a > .pull-right-container {
           float: none !important;
           position: static !important;
           margin-left: 4px !important;
@@ -1475,28 +1483,43 @@ ui <- dashboardPage(
         .sidebar-menu > li > a > .pull-right-container > .fa.pull-right,
         .sidebar-menu > li > a > .pull-right-container > .fas.pull-right,
         .sidebar-menu > li > a > .fa.pull-right,
-        .sidebar-menu > li > a > .fas.pull-right {
+        .sidebar-menu > li > a > .fas.pull-right,
+        .sidebar-menu > li > a > .fa-angle-left,
+        .sidebar-menu > li > a > .fas.fa-angle-left {
           float: none !important;
           position: static !important;
+          top: auto !important;
+          right: auto !important;
           margin: 0 0 0 4px !important;
           flex: 0 0 auto;
-        }
-        .sidebar-menu small.ynow-sidebar-badge {
-          float: none !important;
-          position: static !important;
-          flex: 0 0 auto;
-          align-self: center;
-          margin: 0 0 0 auto !important;
-          white-space: nowrap;
-          line-height: 1.15 !important;
-          vertical-align: middle;
-          max-width: none;
           transform: none !important;
         }
-        /* Parent Appr. expanded: hide parent badges; children keep theirs */
-        .sidebar-menu > li.menu-open > a > small.ynow-sidebar-badge,
-        .sidebar-menu > li.menu-open > a > .pull-right-container > small.ynow-sidebar-badge {
-          display: none !important;
+        .sidebar-menu .ynow-rec-slot {
+          display: inline-flex !important;
+          align-items: center !important;
+          flex: 0 0 auto !important;
+          margin-left: 6px !important;
+          max-width: none !important;
+          overflow: visible !important;
+        }
+        .sidebar-menu small.ynow-sidebar-badge {
+          display: inline-block !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+          float: none !important;
+          position: static !important;
+          flex: 0 0 auto !important;
+          align-self: center;
+          margin: 0 !important;
+          padding: 2px 6px !important;
+          white-space: nowrap !important;
+          line-height: 1.2 !important;
+          font-size: 10px !important;
+          font-weight: 700 !important;
+          border-radius: 3px !important;
+          max-width: none !important;
+          transform: none !important;
+          z-index: 5;
         }
         .sidebar-menu small.ynow-sidebar-badge.ynow-rec-primary {
           background-color: #dd4b39 !important;
@@ -1505,6 +1528,9 @@ ui <- dashboardPage(
         .sidebar-menu small.ynow-sidebar-badge.ynow-rec-secondary {
           background-color: #6c757d !important;
           color: #ffffff !important;
+        }
+        .sidebar-menu .treeview-menu {
+          overflow: visible !important;
         }
         .progress-bar-primary {
           background-color: var(--ynow-ink) !important;
@@ -1998,12 +2024,12 @@ ui <- dashboardPage(
 
           function clearRecBadges(a) {
             if (!a) return;
-            a.querySelectorAll('small.ynow-sidebar-badge, small.ynow-rec-badge').forEach(function (b) {
+            a.querySelectorAll('small.ynow-sidebar-badge, small.ynow-rec-badge, .ynow-rec-slot').forEach(function (b) {
               b.remove();
             });
           }
 
-          /* Wrap bare text so flex can shrink the label; otherwise badges clip past overflow:hidden */
+          /* Wrap bare text so flex can shrink the label; otherwise badges clip */
           function ensureShrinkableLabel(a) {
             if (!a) return;
             var nodes = Array.prototype.slice.call(a.childNodes);
@@ -2019,6 +2045,25 @@ ui <- dashboardPage(
             }
           }
 
+          function findChevron(a) {
+            if (!a) return null;
+            var kids = a.children;
+            for (var i = 0; i < kids.length; i++) {
+              var el = kids[i];
+              if (!el.classList) continue;
+              if (el.classList.contains('pull-right-container')) return el;
+              if (el.classList.contains('pull-right') &&
+                  (el.classList.contains('fa') || el.classList.contains('fas') ||
+                   el.classList.contains('far') || el.classList.contains('glyphicon'))) {
+                return el;
+              }
+              if (el.classList.contains('fa-angle-left') || el.classList.contains('fa-angle-down')) {
+                return el;
+              }
+            }
+            return null;
+          }
+
           function setRecBadgeOnAnchor(a, role, labels) {
             if (!a) return;
             clearRecBadges(a);
@@ -2027,38 +2072,22 @@ ui <- dashboardPage(
             var lab = labels || {};
             var isPrimary = role === 'primary';
             var badge = document.createElement('small');
-            badge.className = 'badge ynow-sidebar-badge ' +
-              (isPrimary ? 'ynow-rec-primary bg-red' : 'ynow-rec-secondary');
+            badge.className = 'ynow-sidebar-badge ' +
+              (isPrimary ? 'ynow-rec-primary' : 'ynow-rec-secondary');
             badge.textContent = isPrimary
               ? (lab.primary || 'Recommend')
               : (lab.secondary || 'Secondary');
-            /* Insert before chevron so margin-left:auto pushes badge to the right edge */
-            var prc = null;
-            var kids = a.children;
-            for (var ci = 0; ci < kids.length; ci++) {
-              if (kids[ci].classList && kids[ci].classList.contains('pull-right-container')) {
-                prc = kids[ci];
-                break;
-              }
-            }
-            var angle = null;
-            for (var ai = 0; ai < kids.length; ai++) {
-              var el = kids[ai];
-              if (!el.classList) continue;
-              if (el.classList.contains('pull-right') &&
-                  (el.classList.contains('fa') || el.classList.contains('fas') ||
-                   el.classList.contains('far') || el.classList.contains('glyphicon'))) {
-                angle = el;
-                break;
-              }
-            }
-            if (prc) a.insertBefore(badge, prc);
-            else if (angle) a.insertBefore(badge, angle);
-            else a.appendChild(badge);
+            var slot = document.createElement('span');
+            slot.className = 'ynow-rec-slot';
+            slot.appendChild(badge);
+            var chev = findChevron(a);
+            if (chev) a.insertBefore(slot, chev);
+            else a.appendChild(slot);
           }
 
           function setTabBadge(tab, role, labels) {
-            var a = document.querySelector('.sidebar-menu a[data-value=\"' + tab + '\"]');
+            var a = document.querySelector('.main-sidebar .sidebar-menu a[data-value=\"' + tab + '\"]') ||
+                    document.querySelector('.sidebar-menu a[data-value=\"' + tab + '\"]');
             setRecBadgeOnAnchor(a, role || '', labels);
           }
 
@@ -2104,7 +2133,6 @@ ui <- dashboardPage(
               return;
             }
             Shiny.addCustomMessageHandler('ynowSidebarBadges', applySidebarBadges);
-            /* Ask server to re-push — early custom messages are lost before this handler exists */
             function pingReady() {
               if (!(window.Shiny && Shiny.setInputValue)) {
                 setTimeout(pingReady, 50);
@@ -2113,6 +2141,13 @@ ui <- dashboardPage(
               Shiny.setInputValue('ynow_sidebar_badges_ready', Date.now(), {priority: 'event'});
             }
             pingReady();
+            if (window.jQuery) {
+              jQuery(document).on('shiny:connected shiny:sessioninitialized', function () {
+                setTimeout(pingReady, 0);
+                setTimeout(pingReady, 400);
+                if (LAST_BADGE_MAP) applySidebarBadges(LAST_BADGE_MAP);
+              });
+            }
           }
           registerBadgeHandler();
 
@@ -2196,29 +2231,43 @@ ui <- dashboardPage(
               setTimeout(function () {
                 if (LAST_BADGE_MAP) applySidebarBadges(LAST_BADGE_MAP);
               }, 0);
+              setTimeout(function () {
+                if (LAST_BADGE_MAP) applySidebarBadges(LAST_BADGE_MAP);
+              }, 200);
             }
           });
 
           /* ---- UI locale (en / zh-TW) in-place chrome labels ---- */
           function setMenuLabel(tab, label) {
-            var a = document.querySelector('.sidebar-menu a[data-value=\"' + tab + '\"]');
+            var a = document.querySelector('.main-sidebar .sidebar-menu a[data-value=\"' + tab + '\"]') ||
+                    document.querySelector('.sidebar-menu a[data-value=\"' + tab + '\"]');
             if (!a || !label) return;
             var icon = a.querySelector('i.fa:not(.pull-right), i.fas:not(.pull-right), i.far:not(.pull-right), i.glyphicon:not(.pull-right), i.ion:not(.pull-right)');
             var prc = a.querySelector('.pull-right-container');
-            var angle = a.querySelector('i.fa.pull-right, i.fas.pull-right, i.far.pull-right, i.glyphicon.pull-right');
+            var angle = a.querySelector('i.fa.pull-right, i.fas.pull-right, i.far.pull-right, i.glyphicon.pull-right, i.fa-angle-left, i.fas.fa-angle-left');
+            var slots = a.querySelectorAll('.ynow-rec-slot');
             var badges = a.querySelectorAll('small.ynow-sidebar-badge, small.ynow-rec-badge');
             var iconClone = icon ? icon.cloneNode(true) : null;
             var prcClone = prc ? prc.cloneNode(true) : null;
             var angleClone = (!prc && angle) ? angle.cloneNode(true) : null;
-            var badgeClones = [];
-            badges.forEach(function (b) { badgeClones.push(b.cloneNode(true)); });
+            var slotClones = [];
+            if (slots.length) {
+              slots.forEach(function (s) { slotClones.push(s.cloneNode(true)); });
+            } else {
+              badges.forEach(function (b) {
+                var slot = document.createElement('span');
+                slot.className = 'ynow-rec-slot';
+                slot.appendChild(b.cloneNode(true));
+                slotClones.push(slot);
+              });
+            }
             a.innerHTML = '';
             if (iconClone) a.appendChild(iconClone);
             var lab = document.createElement('span');
             lab.className = 'ynow-menu-label';
             lab.textContent = ' ' + label + ' ';
             a.appendChild(lab);
-            badgeClones.forEach(function (bc) { a.appendChild(bc); });
+            slotClones.forEach(function (sc) { a.appendChild(sc); });
             if (prcClone) a.appendChild(prcClone);
             else if (angleClone) a.appendChild(angleClone);
           }

@@ -1335,8 +1335,18 @@ server <- function(input, output, session) {
   })
   # Client handler may register after the first push — re-send when JS pings ready
   observeEvent(input$ynow_sidebar_badges_ready, {
+    session$onFlushed(function() {
+      .push_sidebar_badges(force = TRUE)
+    }, once = TRUE)
     .push_sidebar_badges(force = TRUE)
   }, ignoreNULL = TRUE)
+  # After Search completes, force a badge refresh (empty → primary mapping)
+  observeEvent(user_has_searched(), {
+    if (!isTRUE(user_has_searched())) return()
+    session$onFlushed(function() {
+      .push_sidebar_badges(force = TRUE)
+    }, once = TRUE)
+  }, ignoreInit = TRUE)
 
   # Growth classification → 僅提示 Two-Stage（不再強制覆寫；預設維持 Gordon）
   observeEvent(model_sidebar_rec(), {
@@ -10097,7 +10107,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.02"),
+      paste0("- **App：** The YNow App v17.03"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {
