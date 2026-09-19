@@ -116,7 +116,9 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Evaluation count N (default 25) = how many names are evaluated this run.\n",
       "• Evaluation pool: after filters, if candidates exceed N, apply the truncate rule ",
       "(market cap / concept groups / 1Y return / random).\n",
-      "• Concept groups: intersection of selected themes with the filtered pool; if still > N, cap by market cap.\n",
+      "• Market cap mode: Yahoo market cap descending; if caps are unavailable, fall back to ticker sort then take N.\n",
+      "• Concept groups: intersection of selected themes with the filtered pool; if still > N, cap by market cap ",
+      "(same ticker-sort fallback when caps are missing).\n",
       "• Detail / ranking default sort: implied annualized valuation appreciation over n=5 years (upside_cagr_pct), descending.\n",
       "• Piotroski F-Score≥7 filters only the Top 10 leaderboard; it does not shrink the detail table."
     ),
@@ -491,9 +493,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     btn_lab_cluster_run = "Run clustering",
     lab_cluster_hint = paste0(
       "Uses the same industry/model filters as Rankings when set. ",
-      "Fetches Yahoo ratios for up to N names (largest market cap first), ",
-      "with a bundled offline snapshot fallback when Yahoo is blocked. ",
-      "N stays in sync with Detail evaluation count (default 25)."
+      "When candidates exceed N, applies the same Candidate truncate rule as Detail ",
+      "(market cap / concept groups / 1Y return / random; market-cap fallback = ticker sort). ",
+      "Fetches Yahoo ratios with a bundled offline snapshot fallback when Yahoo is blocked. ",
+      "N and truncate rule stay in sync with Detail (default N=25)."
     ),
     lab_cluster_map_title = "Cluster map",
     lab_cluster_radar_title = "Same-cluster radar",
@@ -611,7 +614,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_max_n_help = paste0(
       "評估檔數 N（預設 25）＝本次要評估的檔數。\n",
       "• 誰進評估池：篩選後若候選 > N，依「候選截斷邏輯」取 N（市值／概念股／近一年漲幅／隨機）。\n",
-      "• 概念股：取所選概念群聯集與目前篩選之交集；若仍 > N 再依市值截斷。\n",
+      "• 市值模式：Yahoo 市值由大到小；市值暫不可用時改依代號排序再取 N。\n",
+      "• 概念股：取所選概念群聯集與目前篩選之交集；若仍 > N 再依市值截斷（市值缺值同代號排序後援）。\n",
       "• 明細／排行預設排序：以 n＝5 年換算的年化估值漲幅（upside_cagr_pct）降序。\n",
       "• Piotroski F-Score≥7 只過濾排行榜 Top 10，不縮減明細。"
     ),
@@ -978,9 +982,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     btn_lab_cluster_run = "執行分群",
     lab_cluster_hint = paste0(
       "沿用「排行」頁目前的產業／模型篩選（若有）。",
-      "對最多 N 檔（市值由大到小）抓取 Yahoo 比率特徵；",
-      "若 Yahoo 受限則改用內建離線快照。",
-      "N 與「明細」評估檔數同步（預設 25）。"
+      "候選 > N 時套用與「明細」相同的「候選截斷邏輯」",
+      "（市值／概念股／近一年漲幅／隨機；市值缺值則改依代號排序）。",
+      "抓取 Yahoo 比率特徵；若 Yahoo 受限則改用內建離線快照。",
+      "N 與截斷邏輯皆與「明細」同步（預設 N＝25）。"
     ),
     lab_cluster_map_title = "分群星團圖",
     lab_cluster_radar_title = "同群雷達圖",

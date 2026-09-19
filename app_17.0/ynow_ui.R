@@ -85,7 +85,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v17.25) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報抓取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v17.26) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報抓取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -101,7 +101,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v17.25) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v17.26) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -899,7 +899,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.25</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.26</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -1204,7 +1204,7 @@ ui <- dashboardPage(
           background-color: var(--ynow-ink) !important;
           position: relative;
         }
-        /* 側欄漢堡：僅三條白線，無外框／無 FA 字型邊框 */
+        /* 側欄漢堡：僅三條白線，無外框／無 FA 字型邊框；整顆按鈕與線條皆垂直置中 */
         .main-header .navbar > .sidebar-toggle,
         .skin-black .main-header .navbar .sidebar-toggle {
           color: transparent !important;
@@ -1215,24 +1215,45 @@ ui <- dashboardPage(
           background-color: transparent !important;
           background-image: none !important;
           position: relative !important;
+          box-sizing: border-box !important;
+          float: left;
+          width: 44px;
           min-width: 44px;
+          height: 50px !important;
+          min-height: 50px !important;
+          max-height: 50px !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          line-height: 0 !important;
         }
         .main-header .navbar > .sidebar-toggle:before,
         .skin-black .main-header .navbar .sidebar-toggle:before {
           content: "" !important;
           display: block !important;
           width: 18px;
-          height: 2px;
+          height: 14px;
           margin: 0;
           padding: 0;
-          background-color: #fff !important;
           border: none !important;
           border-radius: 0 !important;
-          box-shadow: 0 6px 0 #fff, 0 12px 0 #fff;
-          position: absolute !important;
-          left: 50%;
-          top: 50%;
-          transform: translate(-50%, -7px);
+          /* 14px 高的三線 icon，flex 可正確垂直置中（勿用 2px+box-shadow） */
+          background-color: transparent !important;
+          background-image: linear-gradient(
+            to bottom,
+            #fff 0px, #fff 2px,
+            transparent 2px, transparent 6px,
+            #fff 6px, #fff 8px,
+            transparent 8px, transparent 12px,
+            #fff 12px, #fff 14px
+          ) !important;
+          box-shadow: none !important;
+          position: relative !important;
+          left: auto !important;
+          top: auto !important;
+          transform: none !important;
           font-family: none !important;
           font-weight: normal !important;
           line-height: 0 !important;
@@ -1257,8 +1278,16 @@ ui <- dashboardPage(
         }
         .skin-black .main-header .navbar .sidebar-toggle:hover:before,
         .skin-black .main-header .navbar .sidebar-toggle:focus:before {
-          background-color: #fff !important;
-          box-shadow: 0 6px 0 #fff, 0 12px 0 #fff;
+          background-color: transparent !important;
+          background-image: linear-gradient(
+            to bottom,
+            #fff 0px, #fff 2px,
+            transparent 2px, transparent 6px,
+            #fff 6px, #fff 8px,
+            transparent 8px, transparent 12px,
+            #fff 12px, #fff 14px
+          ) !important;
+          box-shadow: none !important;
         }
 
         /* 美股／台股：釘在三線 icon 右側（navbar 座標；脫離右欄 flex；無空隙） */
@@ -1375,8 +1404,16 @@ ui <- dashboardPage(
         }
         body.ynow-market-tw .main-header .navbar > .sidebar-toggle:before,
         body.ynow-market-tw .skin-black .main-header .navbar .sidebar-toggle:before {
-          background-color: #fff !important;
-          box-shadow: 0 6px 0 #fff, 0 12px 0 #fff;
+          background-color: transparent !important;
+          background-image: linear-gradient(
+            to bottom,
+            #fff 0px, #fff 2px,
+            transparent 2px, transparent 6px,
+            #fff 6px, #fff 8px,
+            transparent 8px, transparent 12px,
+            #fff 12px, #fff 14px
+          ) !important;
+          box-shadow: none !important;
         }
         body.ynow-market-tw .main-header .navbar > .sidebar-toggle .icon-bar,
         body.ynow-market-tw .skin-black .main-header .navbar .sidebar-toggle .icon-bar {
@@ -1816,14 +1853,16 @@ ui <- dashboardPage(
         }
         /* Header Language toggle (in black bar); Currency floats under logo */
         .ynow-hdr-toggle-stack {
-          display: flex;
+          display: flex !important;
           flex-direction: row;
-          align-items: center;
-          line-height: 1.15;
+          align-items: center !important;
+          justify-content: center !important;
+          height: 100%;
+          line-height: 1;
         }
         /* 繁中／EN 與小 logo 在頁首列垂直置中對齊 */
         .main-header .navbar-custom-menu {
-          height: 50px;
+          height: 50px !important;
           display: flex !important;
           align-items: center !important;
         }
@@ -1841,15 +1880,24 @@ ui <- dashboardPage(
           min-height: 50px !important;
           display: flex !important;
           align-items: center !important;
+          justify-content: center !important;
           margin: 0 !important;
+          padding-top: 0 !important;
+          padding-bottom: 0 !important;
         }
         .ynow-lang-header .form-group,
         .ynow-lang-header .shiny-input-container {
           margin: 0 !important;
+          padding: 0 !important;
+          display: flex !important;
+          align-items: center !important;
+          height: auto !important;
         }
         .ynow-lang-header .btn-group,
         .ynow-lang-header .btn-group-xs {
           margin: 0 !important;
+          display: inline-flex !important;
+          align-items: center !important;
           vertical-align: middle;
         }
         .ynow-lang-header .btn-group-xs > .btn,
@@ -1859,9 +1907,12 @@ ui <- dashboardPage(
           color: #fff !important;
           font-weight: 700 !important;
           min-width: 42px;
-          padding-top: 3px !important;
-          padding-bottom: 3px !important;
+          padding-top: 4px !important;
+          padding-bottom: 4px !important;
           line-height: 1.2 !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
         }
         .ynow-lang-header .btn-group-xs > .btn.active,
         .ynow-lang-header .btn-xs.active {
@@ -2737,6 +2788,10 @@ ui <- dashboardPage(
             if (labPoolRank && s.lab_im_pool_rank_label) labPoolRank.textContent = s.lab_im_pool_rank_label;
             var labConcepts = document.getElementById('ynow_lab_im_concepts_label');
             if (labConcepts && s.lab_im_concepts_label) labConcepts.textContent = s.lab_im_concepts_label;
+            var clusterPoolRank = document.getElementById('ynow_lab_cluster_pool_rank_label');
+            if (clusterPoolRank && s.lab_im_pool_rank_label) clusterPoolRank.textContent = s.lab_im_pool_rank_label;
+            var clusterConcepts = document.getElementById('ynow_lab_cluster_concepts_label');
+            if (clusterConcepts && s.lab_im_concepts_label) clusterConcepts.textContent = s.lab_im_concepts_label;
             var labMaxNHelp = document.getElementById('ynow_lab_im_max_n_help');
             if (labMaxNHelp && s.lab_im_max_n_help) labMaxNHelp.textContent = s.lab_im_max_n_help;
             var labDetailIntro = document.getElementById('ynow_lab_im_detail_intro');
@@ -3912,9 +3967,11 @@ ui <- dashboardPage(
           .skin-black .main-header .navbar .sidebar-toggle {
             height: 50px !important;
             min-height: 50px !important;
-            line-height: 50px !important;
-            padding: 0 0 0 15px !important;
-            display: flex !important;
+            max-height: 50px !important;
+            line-height: 0 !important;
+            padding: 0 !important;
+            width: 44px !important;
+            display: inline-flex !important;
             align-items: center !important;
             justify-content: center !important;
             float: none !important;
@@ -5563,7 +5620,8 @@ ui <- dashboardPage(
               paste0(
                 "評估檔數 N（預設 25）＝本次要評估的檔數。\n",
                 "• 誰進評估池：篩選後若候選 > N，依「候選截斷邏輯」取 N（市值／概念股／近一年漲幅／隨機）。\n",
-                "• 概念股：取所選概念群聯集與目前篩選之交集；若仍 > N 再依市值截斷。\n",
+                "• 市值模式：Yahoo 市值由大到小；市值暫不可用時改依代號排序再取 N。\n",
+                "• 概念股：取所選概念群聯集與目前篩選之交集；若仍 > N 再依市值截斷（市值缺值同代號排序後援）。\n",
                 "• 明細／排行預設排序：以 n＝5 年換算的年化估值漲幅（upside_cagr_pct）降序。\n",
                 "• Piotroski F-Score≥7 只過濾排行榜 Top 10，不縮減明細。"
               )
@@ -5628,6 +5686,36 @@ ui <- dashboardPage(
               column(
                 width = 3,
                 selectInput(
+                  "lab_cluster_pool_rank",
+                  tags$span(id = "ynow_lab_cluster_pool_rank_label", "候選截斷邏輯"),
+                  choices = lab_im_pool_rank_choices(),
+                  selected = "mcap",
+                  width = "100%"
+                )
+              ),
+              column(
+                width = 3,
+                conditionalPanel(
+                  condition = "input.lab_cluster_pool_rank == 'concept'",
+                  selectizeInput(
+                    "lab_cluster_concepts",
+                    tags$span(id = "ynow_lab_cluster_concepts_label", "概念股群"),
+                    choices = lab_concept_group_choices("US", "zh-TW"),
+                    selected = character(0),
+                    multiple = TRUE,
+                    options = list(
+                      placeholder = "選擇一或多個概念股群…",
+                      plugins = list("remove_button")
+                    ),
+                    width = "100%"
+                  )
+                )
+              )
+            ),
+            fluidRow(
+              column(
+                width = 3,
+                selectInput(
                   "lab_cluster_x",
                   tags$span(id = "ynow_lab_cluster_x_label", "散點 X"),
                   choices = c(
@@ -5660,11 +5748,9 @@ ui <- dashboardPage(
                   selected = "PE_Ratio",
                   width = "100%"
                 )
-              )
-            ),
-            fluidRow(
+              ),
               column(
-                width = 4,
+                width = 3,
                 selectInput(
                   "lab_cluster_focus",
                   tags$span(id = "ynow_lab_cluster_focus_label", "雷達焦點代號"),
@@ -5674,7 +5760,7 @@ ui <- dashboardPage(
                 )
               ),
               column(
-                width = 8,
+                width = 3,
                 tags$div(
                   style = "margin-top: 24px;",
                   actionButton(
@@ -5691,8 +5777,10 @@ ui <- dashboardPage(
               style = "color:#888; font-size:12px;",
               paste0(
                 "沿用「排行」頁目前的產業／模型篩選（若有）。",
-                "對最多 N 檔（市值由大到小）抓取 Yahoo 比率特徵。",
-                "N 與「明細」評估檔數同步（預設 25）。"
+                "候選 > N 時套用與「明細」相同的「候選截斷邏輯」",
+                "（市值／概念股／近一年漲幅／隨機；市值缺值則改依代號排序）。",
+                "抓取 Yahoo 比率特徵；若 Yahoo 受限則改用內建離線快照。",
+                "N 與截斷邏輯皆與「明細」同步（預設 N＝25）。"
               )
             ),
             fluidRow(
