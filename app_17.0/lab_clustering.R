@@ -740,9 +740,59 @@ lab_fetch_cluster_features <- function(tickers, chunk_size = 20L) {
   df
 }
 
+#' Match a session/focus ticker against a ticker vector (TW suffix / BRK.B↔BRK-B)
+lab_cluster_match_ticker <- function(tickers, focus) {
+  tks <- toupper(trimws(as.character(tickers)))
+  foc <- toupper(trimws(as.character(focus %||% "")[1]))
+  if (!nzchar(foc) || !length(tks)) return(NA_character_)
+  if (foc %in% tks) return(foc)
+  bare <- function(x) sub("\\.(TW|TWO)$", "", x, ignore.case = TRUE)
+  hit <- which(bare(tks) == bare(foc))
+  if (length(hit)) return(tks[[hit[[1]]]])
+  foc2 <- gsub("\\.", "-", foc)
+  tks2 <- gsub("\\.", "-", tks)
+  hit <- which(tks2 == foc2)
+  if (length(hit)) return(tks[[hit[[1]]]])
+  NA_character_
+}
+
+#' Force-include ensure_ticker in a capped pool (drop lowest mcap non-focus if over N)
+lab_cluster_ensure_ticker_in_pool <- function(pool, catalog, ensure_ticker, max_n) {
+  ensure <- toupper(trimws(as.character(ensure_ticker %||% "")[1]))
+  if (!nzchar(ensure) || is.null(pool) || !is.data.frame(pool)) return(pool)
+  matched <- lab_cluster_match_ticker(pool$ticker, ensure)
+  if (!is.na(matched)) return(pool)
+  # Prefer unfiltered catalog so the session ticker can enter even if filters excluded it
+  src <- catalog
+  if (is.null(src) || !is.data.frame(src) || !"ticker" %in% names(src)) {
+    src <- pool
+  }
+  src$ticker <- toupper(trimws(as.character(src$ticker)))
+  matched <- lab_cluster_match_ticker(src$ticker, ensure)
+  if (is.na(matched)) return(pool)
+  row <- src[src$ticker == matched, , drop = FALSE][1, , drop = FALSE]
+  need_cols <- unique(c(names(pool), "ticker", "industry_key", "industry_label", "market_cap"))
+  for (nm in setdiff(need_cols, names(row))) row[[nm]] <- NA
+  for (nm in setdiff(need_cols, names(pool))) pool[[nm]] <- if (nm == "ticker") character(nrow(pool)) else NA
+  pool <- rbind(pool[, need_cols, drop = FALSE], row[, need_cols, drop = FALSE])
+  pool <- lab_dedupe_eval_pool(pool)
+  max_n <- lab_resolve_im_max_n(max_n, custom = NULL, lo = 1L, hi = 500L)
+  if (is.finite(max_n) && nrow(pool) > max_n) {
+    keep_focus <- which(pool$ticker == matched)[1]
+    drop_cand <- setdiff(seq_len(nrow(pool)), keep_focus)
+    if (length(drop_cand)) {
+      mcap <- suppressWarnings(as.numeric(pool$market_cap))
+      mcap[!is.finite(mcap)] <- Inf
+      drop_one <- drop_cand[order(mcap[drop_cand], pool$ticker[drop_cand])[1]]
+      pool <- pool[-drop_one, , drop = FALSE]
+    }
+  }
+  pool
+}
+
 #' Build evaluation pool for clustering from Blue Chip catalog filters
 lab_cluster_build_pool <- function(catalog, industry_filter = NULL, method_filter = NULL,
-                                   max_n = 50L) {
+                                   max_n = 50L, ensure_ticker = NULL) {
   empty <- data.frame(
     ticker = character(0),
     industry_key = character(0),
@@ -760,12 +810,19 @@ lab_cluster_build_pool <- function(catalog, industry_filter = NULL, method_filte
     gate_only = FALSE
   )
   pool <- lab_dedupe_eval_pool(pool)
-  if (is.null(pool) || nrow(pool) == 0L) return(empty)
+  if (is.null(pool) || nrow(pool) == 0L) {
+    # Filters emptied the pool — still try to seed with the session ticker alone
+    pool <- lab_cluster_ensure_ticker_in_pool(empty, catalog, ensure_ticker, max_n = 1L)
+    if (is.null(pool) || nrow(pool) == 0L) return(empty)
+    cols <- intersect(c("ticker", "industry_key", "industry_label", "market_cap"), names(pool))
+    return(pool[, cols, drop = FALSE])
+  }
   max_n <- lab_resolve_im_max_n(max_n, custom = NULL, lo = 1L, hi = 500L)
   if (is.finite(max_n) && nrow(pool) > max_n) {
     pool <- lab_attach_market_caps(pool)
   }
   pool <- lab_rank_and_cap_eval_pool(pool, max_n = max_n)
+  pool <- lab_cluster_ensure_ticker_in_pool(pool, catalog, ensure_ticker, max_n = max_n)
   cols <- intersect(c("ticker", "industry_key", "industry_label", "market_cap"), names(pool))
   pool[, cols, drop = FALSE]
 }
@@ -808,7 +865,7 @@ lab_cluster_semantic_labels <- function(centers_df, locale = "en") {
 }
 
 #' Run Winsorize → median impute → scale → K-Means clustering
-lab_run_stock_clustering <- function(df_financials, k_clusters = 4L,
+lab_run_stock_clustering <- function(df_financials, k_clusters = 3L,
                                      features = LAB_CLUSTER_FEATURES,
                                      locale = "en", seed = 42L) {
   k_clusters <- as.integer(k_clusters)[1]

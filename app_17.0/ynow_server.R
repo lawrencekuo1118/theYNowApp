@@ -9897,7 +9897,7 @@ server <- function(input, output, session) {
 
   observeEvent(input$lab_im_max_n, {
     if (isTRUE(.lab_max_n_syncing())) return()
-    new <- as.character(input$lab_im_max_n %||% "100")[1]
+    new <- as.character(input$lab_im_max_n %||% "25")[1]
     cur <- as.character(input$lab_cluster_max_n %||% "")[1]
     if (identical(cur, new)) return()
     .lab_max_n_syncing(TRUE)
@@ -9907,7 +9907,7 @@ server <- function(input, output, session) {
 
   observeEvent(input$lab_cluster_max_n, {
     if (isTRUE(.lab_max_n_syncing())) return()
-    new <- as.character(input$lab_cluster_max_n %||% "100")[1]
+    new <- as.character(input$lab_cluster_max_n %||% "25")[1]
     cur <- as.character(input$lab_im_max_n %||% "")[1]
     if (identical(cur, new)) return()
     .lab_max_n_syncing(TRUE)
@@ -9954,14 +9954,18 @@ server <- function(input, output, session) {
     catlg <- lab_im_catalog()
     req(is.data.frame(catlg), nrow(catlg) > 0)
     loc <- ui_locale()
-    k <- suppressWarnings(as.integer(input$lab_cluster_k %||% 4L)[1])
-    if (!is.finite(k)) k <- 4L
+    k <- suppressWarnings(as.integer(input$lab_cluster_k %||% 3L)[1])
+    if (!is.finite(k)) k <- 3L
     k <- max(2L, min(8L, k))
     max_n <- lab_resolve_im_max_n(
       input$lab_cluster_max_n,
       input$lab_cluster_max_n_custom,
       lo = 1L,
       hi = 500L
+    )
+    session_tk <- tryCatch(
+      toupper(trimws(as.character(current_ticker() %||% "")[1])),
+      error = function(e) ""
     )
 
     result <- withProgress(
@@ -9977,7 +9981,8 @@ server <- function(input, output, session) {
             catlg,
             industry_filter = input$lab_im_industries,
             method_filter = input$lab_im_methods,
-            max_n = max_n
+            max_n = max_n,
+            ensure_ticker = session_tk
           ),
           error = function(e) {
             showNotification(paste("Cluster pool failed:", e$message), type = "error")
@@ -10070,9 +10075,9 @@ server <- function(input, output, session) {
     lab_cluster_result(result)
     choices <- stats::setNames(result$data$ticker, paste0(result$data$ticker, " · ", result$data$Cluster_Label))
     focus_default <- result$data$ticker[[1]]
-    cur <- current_ticker()
-    if (!is.null(cur) && toupper(trimws(as.character(cur))) %in% result$data$ticker) {
-      focus_default <- toupper(trimws(as.character(cur)))
+    matched_focus <- lab_cluster_match_ticker(result$data$ticker, session_tk)
+    if (!is.na(matched_focus) && nzchar(matched_focus)) {
+      focus_default <- matched_focus
     }
     updateSelectInput(session, "lab_cluster_focus", choices = choices, selected = focus_default)
     showNotification(
@@ -10426,7 +10431,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.16"),
+      paste0("- **App：** The YNow App v17.17"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

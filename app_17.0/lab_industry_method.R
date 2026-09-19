@@ -4,7 +4,7 @@
 # 宇宙依市場模式：美股＝S&P 500（Nasdaq＋NYSE；lab_sp500_universe.R）；台股＝上市／上櫃／興櫃（lab_tw_universe.R；績優候選不含興櫃）。
 # 績優原則：在 Piotroski 高門檻（F-Score≥7；不含盈餘品質）後，選「模型合理價相對現價」、
 # 並依 App 預設預測年數 n（APP_DEFAULTS$years）換算年化漲幅最大者。
-# 「評估檔數（明細列數）」（lab_im_max_n；預設 100）＝本次 Yahoo 評估檔數＝明細列數。
+# 「評估檔數（明細列數）」（lab_im_max_n；預設 25）＝本次 Yahoo 評估檔數＝明細列數。
 # 盈餘品質／Piotroski 高門檻勾選只影響排行榜／摘要，不縮減明細列數。
 # 選 N 且候選多於 N 時依市值由大到小取 N。排行榜＝同一批中 F-Score≥7 的 Top 10。
 # 產業建議方法對齊 recommend_valuation_models 的產業層規則（簡化估值）。
@@ -155,7 +155,7 @@ lab_fetch_summary_metrics <- function(ticker) {
   out
 }
 
-#' 評估檔數（明細列數）："all"／"全部" → 不設上限；空／自訂未填 → 預設 100
+#' 評估檔數（明細列數）："all"／"全部" → 不設上限；空／自訂未填 → 預設 25
 lab_parse_im_max_n <- function(x, default_n = 100L) {
   default_n <- max(1L, as.integer(default_n)[1])
   if (is.null(x) || !length(x) || (length(x) == 1L && is.na(x))) {

@@ -75,7 +75,7 @@
       tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
       tags$p(
         class = "ynow-about-lead",
-        "The YNow App (v17.16) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合了即時財報抓取、多維度估值模型與動態回測引擎，將繁雜的市場資料轉化為直覺、科學的投資決策。"
+        "The YNow App (v17.17) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合了即時財報抓取、多維度估值模型與動態回測引擎，將繁雜的市場資料轉化為直覺、科學的投資決策。"
       ),
       tags$p(
         class = "ynow-about-method",
@@ -91,7 +91,7 @@
       tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
       tags$p(
         class = "ynow-about-lead",
-        "The YNow App (v17.16) is a comprehensive quantitative financial analysis and valuation decision system designed for professional investors and analysts. It seamlessly integrates real-time financial data parsing, multi-dimensional valuation models, and a dynamic backtesting engine to transform complex market data into actionable, scientific investment insights."
+        "The YNow App (v17.17) is a comprehensive quantitative financial analysis and valuation decision system designed for professional investors and analysts. It seamlessly integrates real-time financial data parsing, multi-dimensional valuation models, and a dynamic backtesting engine to transform complex market data into actionable, scientific investment insights."
       ),
       tags$p(
         class = "ynow-about-method",
@@ -880,7 +880,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.16</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.17</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -5402,7 +5402,7 @@ ui <- dashboardPage(
                   "lab_im_max_n",
                   tags$span(id = "ynow_lab_im_max_n_label", "評估檔數（明細列數）"),
                   choices = lab_im_max_n_select_choices(),
-                  selected = "100",
+                  selected = "25",
                   width = "280px"
                 ),
                 conditionalPanel(
@@ -5410,7 +5410,7 @@ ui <- dashboardPage(
                   numericInput(
                     "lab_im_max_n_custom",
                     tags$span(id = "ynow_lab_im_max_n_custom_label", "自訂檔數"),
-                    value = 100,
+                    value = 25,
                     min = 1,
                     max = 500,
                     step = 1,
@@ -5421,7 +5421,7 @@ ui <- dashboardPage(
                   id = "ynow_lab_im_max_n_help",
                   style = "color:#888; font-size:12px; line-height:1.45; white-space:pre-line; margin:-6px 0 12px 0;",
                   paste0(
-                    "評估檔數 N（預設 100）＝本次要評估的檔數。\n",
+                    "評估檔數 N（預設 25）＝本次要評估的檔數。\n",
                     "• 誰進評估池：篩選後若候選 > N，先依市值由大到小取 N 檔。\n",
                     "• 明細／排行預設排序：以 n＝5 年換算的年化估值漲幅（upside_cagr_pct）降序。\n",
                     "• Piotroski F-Score≥7 只過濾排行榜 Top 10，不縮減明細。"
@@ -5461,7 +5461,7 @@ ui <- dashboardPage(
                 numericInput(
                   "lab_cluster_k",
                   tags$span(id = "ynow_lab_cluster_k_label", "群數（k）"),
-                  value = 4, min = 2, max = 8, step = 1, width = "100%"
+                  value = 3, min = 2, max = 8, step = 1, width = "100%"
                 )
               ),
               column(
@@ -5470,7 +5470,7 @@ ui <- dashboardPage(
                   "lab_cluster_max_n",
                   tags$span(id = "ynow_lab_cluster_max_n_label", "宇宙檔數（N）"),
                   choices = lab_im_max_n_select_choices(),
-                  selected = "100",
+                  selected = "25",
                   width = "100%"
                 ),
                 conditionalPanel(
@@ -5478,7 +5478,7 @@ ui <- dashboardPage(
                   numericInput(
                     "lab_cluster_max_n_custom",
                     tags$span(id = "ynow_lab_cluster_max_n_custom_label", "自訂檔數"),
-                    value = 100,
+                    value = 25,
                     min = 1,
                     max = 500,
                     step = 1,
@@ -5553,7 +5553,7 @@ ui <- dashboardPage(
               paste0(
                 "沿用「排行」頁目前的產業／模型篩選（若有）。",
                 "對最多 N 檔（市值由大到小）抓取 Yahoo 比率特徵。",
-                "N 與「明細」評估檔數同步（預設 100）。"
+                "N 與「明細」評估檔數同步（預設 25）。"
               )
             ),
             fluidRow(

@@ -110,7 +110,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_max_n_label = "Evaluation count (detail rows)",
     lab_im_max_n_custom_label = "Custom count",
     lab_im_max_n_help = paste0(
-      "Evaluation count N (default 100) = how many names are evaluated this run.\n",
+      "Evaluation count N (default 25) = how many names are evaluated this run.\n",
       "• Evaluation pool: after filters, if candidates exceed N, take the top N by market cap (largest first).\n",
       "• Detail / ranking default sort: implied annualized valuation appreciation over n=5 years (upside_cagr_pct), descending.\n",
       "• Piotroski F-Score≥7 filters only the Top 10 leaderboard; it does not shrink the detail table."
@@ -488,7 +488,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Uses the same industry/model filters as Rankings when set. ",
       "Fetches Yahoo ratios for up to N names (largest market cap first), ",
       "with a bundled offline snapshot fallback when Yahoo is blocked. ",
-      "N stays in sync with Detail evaluation count (default 100)."
+      "N stays in sync with Detail evaluation count (default 25)."
     ),
     lab_cluster_map_title = "Cluster map",
     lab_cluster_radar_title = "Same-cluster radar",
@@ -601,7 +601,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_max_n_label = "評估檔數（明細列數）",
     lab_im_max_n_custom_label = "自訂檔數",
     lab_im_max_n_help = paste0(
-      "評估檔數 N（預設 100）＝本次要評估的檔數。\n",
+      "評估檔數 N（預設 25）＝本次要評估的檔數。\n",
       "• 誰進評估池：篩選後若候選 > N，先依市值由大到小取 N 檔。\n",
       "• 明細／排行預設排序：以 n＝5 年換算的年化估值漲幅（upside_cagr_pct）降序。\n",
       "• Piotroski F-Score≥7 只過濾排行榜 Top 10，不縮減明細。"
@@ -971,7 +971,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "沿用「排行」頁目前的產業／模型篩選（若有）。",
       "對最多 N 檔（市值由大到小）抓取 Yahoo 比率特徵；",
       "若 Yahoo 受限則改用內建離線快照。",
-      "N 與「明細」評估檔數同步（預設 100）。"
+      "N 與「明細」評估檔數同步（預設 25）。"
     ),
     lab_cluster_map_title = "分群星團圖",
     lab_cluster_radar_title = "同群雷達圖",
