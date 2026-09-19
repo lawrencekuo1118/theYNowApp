@@ -75,7 +75,7 @@
       tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
       tags$p(
         class = "ynow-about-lead",
-        "The YNow App (v17.05) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合了即時財報抓取、多維度估值模型與動態回測引擎，將繁雜的市場資料轉化為直覺、科學的投資決策。"
+        "The YNow App (v17.06) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合了即時財報抓取、多維度估值模型與動態回測引擎，將繁雜的市場資料轉化為直覺、科學的投資決策。"
       ),
       tags$p(
         class = "ynow-about-method",
@@ -91,7 +91,7 @@
       tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
       tags$p(
         class = "ynow-about-lead",
-        "The YNow App (v17.05) is a comprehensive quantitative financial analysis and valuation decision system designed for professional investors and analysts. It seamlessly integrates real-time financial data parsing, multi-dimensional valuation models, and a dynamic backtesting engine to transform complex market data into actionable, scientific investment insights."
+        "The YNow App (v17.06) is a comprehensive quantitative financial analysis and valuation decision system designed for professional investors and analysts. It seamlessly integrates real-time financial data parsing, multi-dimensional valuation models, and a dynamic backtesting engine to transform complex market data into actionable, scientific investment insights."
       ),
       tags$p(
         class = "ynow-about-method",
@@ -834,7 +834,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.05</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.06</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -2749,14 +2749,23 @@ ui <- dashboardPage(
           }
         }
         
-        /* 大數字框（valueBox / infoBox）統一響應式：換行、縮字、避免溢出 */
-        .content-wrapper .row > [class*='col-'] {
+        /* 大數字框（valueBox / infoBox）統一響應式：換行、縮字、避免溢出
+           （還原 v16.42：手機勿再壓成 33% 三欄；不用 [class*=…] 屬性選擇器） */
+        .content-wrapper .row > .col-xs-12,
+        .content-wrapper .row > .col-sm-2,
+        .content-wrapper .row > .col-sm-3,
+        .content-wrapper .row > .col-sm-4,
+        .content-wrapper .row > .col-sm-6,
+        .content-wrapper .row > .col-sm-12 {
           min-width: 0;
         }
         .content-wrapper .small-box,
-        .content-wrapper .info-box {
+        .content-wrapper .info-box,
+        .tab-content .small-box,
+        .tab-content .info-box {
           min-width: 0;
           max-width: 100%;
+          width: 100%;
           box-sizing: border-box;
           overflow: hidden;
         }
@@ -2798,57 +2807,111 @@ ui <- dashboardPage(
           white-space: normal;
           overflow-wrap: anywhere;
         }
+        /* 平板：較窄欄的彩色 BOX 兩欄並排 */
         @media (max-width: 991px) {
-          .content .row > [class*='col-sm-3']:has(.small-box),
-          .content .row > [class*='col-sm-4']:has(.small-box),
-          .content .row > [class*='col-sm-3']:has(.info-box),
-          .content .row > [class*='col-sm-4']:has(.info-box) {
-            width: 50%;
-            float: left;
-          }
-          .content .row > [class*='col-sm-6']:has(.small-box),
-          .content .row > [class*='col-sm-6']:has(.info-box) {
-            width: 50%;
-            float: left;
+          .content-wrapper .row > .col-sm-2:has(.small-box),
+          .content-wrapper .row > .col-sm-3:has(.small-box),
+          .content-wrapper .row > .col-sm-4:has(.small-box),
+          .content-wrapper .row > .col-sm-2:has(.info-box),
+          .content-wrapper .row > .col-sm-3:has(.info-box),
+          .content-wrapper .row > .col-sm-4:has(.info-box),
+          .tab-content .row > .col-sm-2:has(.small-box),
+          .tab-content .row > .col-sm-3:has(.small-box),
+          .tab-content .row > .col-sm-4:has(.small-box),
+          .tab-content .row > .col-sm-2:has(.info-box),
+          .tab-content .row > .col-sm-3:has(.info-box),
+          .tab-content .row > .col-sm-4:has(.info-box) {
+            width: 50% !important;
+            float: left !important;
+            clear: none;
           }
         }
+        /* 手機：頁籤／內容區彩色 BOX 直向全寬（勿再壓成 33% 三欄） */
         @media (max-width: 767px) {
-          .content .row > [class*='col-sm-3']:has(.small-box),
-          .content .row > [class*='col-sm-4']:has(.small-box),
-          .content .row > [class*='col-sm-6']:has(.small-box),
-          .content .row > [class*='col-sm-3']:has(.info-box),
-          .content .row > [class*='col-sm-4']:has(.info-box),
-          .content .row > [class*='col-sm-6']:has(.info-box) {
-            width: 33.333%;
-            float: left;
+          .content-wrapper .row > .col-xs-12:has(.small-box),
+          .content-wrapper .row > .col-sm-2:has(.small-box),
+          .content-wrapper .row > .col-sm-3:has(.small-box),
+          .content-wrapper .row > .col-sm-4:has(.small-box),
+          .content-wrapper .row > .col-sm-6:has(.small-box),
+          .content-wrapper .row > .col-sm-12:has(.small-box),
+          .content-wrapper .row > .col-xs-12:has(.info-box),
+          .content-wrapper .row > .col-sm-2:has(.info-box),
+          .content-wrapper .row > .col-sm-3:has(.info-box),
+          .content-wrapper .row > .col-sm-4:has(.info-box),
+          .content-wrapper .row > .col-sm-6:has(.info-box),
+          .content-wrapper .row > .col-sm-12:has(.info-box),
+          .tab-content .row > .col-xs-12:has(.small-box),
+          .tab-content .row > .col-sm-2:has(.small-box),
+          .tab-content .row > .col-sm-3:has(.small-box),
+          .tab-content .row > .col-sm-4:has(.small-box),
+          .tab-content .row > .col-sm-6:has(.small-box),
+          .tab-content .row > .col-sm-12:has(.small-box),
+          .tab-content .row > .col-xs-12:has(.info-box),
+          .tab-content .row > .col-sm-2:has(.info-box),
+          .tab-content .row > .col-sm-3:has(.info-box),
+          .tab-content .row > .col-sm-4:has(.info-box),
+          .tab-content .row > .col-sm-6:has(.info-box),
+          .tab-content .row > .col-sm-12:has(.info-box),
+          .tab-pane .row > .col-xs-12:has(.small-box),
+          .tab-pane .row > .col-sm-2:has(.small-box),
+          .tab-pane .row > .col-sm-3:has(.small-box),
+          .tab-pane .row > .col-sm-4:has(.small-box),
+          .tab-pane .row > .col-sm-6:has(.small-box),
+          .tab-pane .row > .col-sm-12:has(.small-box),
+          .tab-pane .row > .col-xs-12:has(.info-box),
+          .tab-pane .row > .col-sm-2:has(.info-box),
+          .tab-pane .row > .col-sm-3:has(.info-box),
+          .tab-pane .row > .col-sm-4:has(.info-box),
+          .tab-pane .row > .col-sm-6:has(.info-box),
+          .tab-pane .row > .col-sm-12:has(.info-box) {
+            width: 100% !important;
+            max-width: 100% !important;
+            float: none !important;
+            display: block !important;
+            clear: both !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+          }
+          .content-wrapper .small-box,
+          .content-wrapper .info-box,
+          .tab-content .small-box,
+          .tab-content .info-box {
+            margin-bottom: 10px !important;
           }
           .content-wrapper .small-box .inner {
-            padding-right: 8px;
-            padding-left: 8px;
+            padding-right: 12px;
+            padding-left: 12px;
           }
           .content-wrapper .small-box .icon {
             display: none;
           }
           .content-wrapper .small-box .inner h3,
           .content-wrapper .small-box .inner h3 * {
-            font-size: clamp(11px, 3.2vw, 16px) !important;
+            font-size: clamp(18px, 5.5vw, 26px) !important;
+          }
+          .content-wrapper .small-box .inner p {
+            font-size: clamp(11px, 3.2vw, 13px) !important;
           }
           .content-wrapper .info-box {
             min-height: 0;
+            height: auto !important;
           }
           .content-wrapper .info-box .info-box-icon {
-            width: 36px;
-            height: 36px;
-            font-size: 16px;
-            line-height: 36px;
+            width: 48px;
+            height: 48px;
+            font-size: 20px;
+            line-height: 48px;
           }
           .content-wrapper .info-box .info-box-content {
-            margin-left: 36px;
-            padding: 4px 6px 4px 8px;
+            margin-left: 48px;
+            padding: 6px 10px 6px 12px;
           }
           .content-wrapper .info-box .info-box-number,
           .content-wrapper .info-box .info-box-number h3 {
-            font-size: clamp(11px, 3vw, 15px) !important;
+            font-size: clamp(16px, 4.8vw, 22px) !important;
+          }
+          .content-wrapper .info-box .info-box-text {
+            font-size: clamp(11px, 3vw, 13px) !important;
           }
         }
 
@@ -3418,7 +3481,8 @@ ui <- dashboardPage(
           .ynow-metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         }
         @media (max-width: 767px) {
-          .ynow-metric-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+          /* 手機兩欄（勿三欄過窄；與 FS／KPI grid 一致） */
+          .ynow-metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
           .ynow-metric-card__body { padding: 8px 8px 8px 8px; gap: 4px; }
           .ynow-metric-card__icon { width: 22px; height: 22px; font-size: 11px; border-radius: 5px; }
           .ynow-metric-card__value { font-size: clamp(11px, 3.4vw, 16px); }
@@ -3753,7 +3817,11 @@ ui <- dashboardPage(
         }
 
         /* 僅美化：情緒策略參數（寬螢幕四參數一列；按鈕獨立列） */
-        .ynow-bt-mode-b .ynow-bt-mode-b-grid > [class*='col-'] {
+        .ynow-bt-mode-b .ynow-bt-mode-b-grid > .col-sm-3,
+        .ynow-bt-mode-b .ynow-bt-mode-b-grid > .col-sm-4,
+        .ynow-bt-mode-b .ynow-bt-mode-b-grid > .col-sm-6,
+        .ynow-bt-mode-b .ynow-bt-mode-b-grid > .col-sm-12,
+        .ynow-bt-mode-b .ynow-bt-mode-b-grid > .col-xs-12 {
           margin-bottom: 8px;
         }
         .ynow-bt-mode-b .ynow-bt-fit-row {
