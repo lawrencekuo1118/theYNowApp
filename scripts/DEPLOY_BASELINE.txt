@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12576969
+bundleId=12576994
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=99618cf
-commit=99618cf
-short=99618cf
-message=fix(ui): include Data-limited black/gold badge CSS in tree (v17.22)
-captured_at=2026-09-19T13:08:59Z
+aligned_git=f91209b
+commit=f91209b8e64ba5d830bcf795d5a33f7d9b68cc62
+short=f91209b
+message=docs(ui): refresh About bilingual copy and add GitHub link (v17.25)
+captured_at=2026-09-19T13:20:46Z
 source_branch=master
-display_version=v17.22
-note=Canonical live line is app_17.0. Bundle 12576969 = tip v17.22 (all session features accumulated; Data-limited CSS fixed). Deploy via scripts/deploy_app_17.R.
+display_version=v17.25
+note=Canonical live line is app_17.0. Bundle 12576994 = tip v17.25 (About bilingual refresh + GitHub link). Deploy via scripts/deploy_app_17.R.
