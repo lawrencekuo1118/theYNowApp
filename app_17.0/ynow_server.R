@@ -2493,7 +2493,7 @@ server <- function(input, output, session) {
       head <- paste0(head, " 目前選 FCFE：請確認淨舉債假設與 Ke 配對。")
     }
     tags$div(
-      style = "margin: 4px 0 0 0; padding: 8px 10px; background: #f5f5f5; border-left: 4px solid #222; font-size: 12px; color: #444; line-height: 1.5;",
+      class = "ynow-dcf-claim-suggest",
       tags$b(head),
       tags$ul(
         style = "margin: 6px 0 0 18px; padding: 0;",
@@ -10613,7 +10613,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.31"),
+      paste0("- **App：** The YNow App v17.32"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {
