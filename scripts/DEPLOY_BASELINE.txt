@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12577733
+bundleId=12577759
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=fe49aca
-commit=fe49aca
-short=fe49aca
-message=fix(ui): tighten mobile industry overview spacing (v17.43)
-captured_at=2026-09-19T17:49:53Z
+aligned_git=504de23
+commit=504de23
+short=504de23
+message=feat(ui): set NAV model theme to SGR maroon pink (v17.44)
+captured_at=2026-09-19T17:57:52Z
 source_branch=master
-display_version=v17.43
-note=Canonical live line is app_17.0. Bundle 12577733 = tip v17.43 (mobile industry overview spacing). Deploy via scripts/deploy_app_17.R.
+display_version=v17.44
+note=Canonical live line is app_17.0. Bundle 12577759 = tip v17.44 (NAV theme = SGR maroon #d81b60). Deploy via scripts/deploy_app_17.R.
