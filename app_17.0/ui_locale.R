@@ -276,7 +276,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     lifecycle_stage_title = "Lifecycle tier",
     lifecycle_stage_help = "Override auto-detection; affects the suggested terminal g range.",
     sgr_method_help = paste0(
-      "Macro: uses the live scraped market 10Y Treasury Rf (US: Yahoo ^TNX; ",
+      "Macro: uses the live scraped market 10Y Treasury Rf ",
+      "(US: Yahoo ^TNX; TW: TPEx government-bond Curve 10Y; ",
       "on failure, last successful value; fixed engineering fallback only as last resort, clearly labeled). ",
       "Fundamental: Retention×ROE (mature, stable firms only). ",
       "Lifecycle: infer g from industry maturity; auto-class can be overridden."
@@ -777,7 +778,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     lifecycle_stage_title = "生命週期檔位",
     lifecycle_stage_help = "可覆寫自動偵測結果；影響終值 g 建議區間。",
     sgr_method_help = paste0(
-      "Macro：採用即時抓取的市場 10 年期公債 Rf（美股 Yahoo ^TNX；",
+      "Macro：採用即時抓取的市場 10 年期公債 Rf",
+      "（美股 Yahoo ^TNX；台股櫃買 TPEx 公債殖利率曲線 10 年期；",
       "失敗則最近成功值，再失敗才工程 fallback 並標明）。",
       "Fundamental：Retention×ROE（僅適合成熟穩健企業）。",
       "Lifecycle：依產業成熟度反推 g，可手動覆寫自動分類。"

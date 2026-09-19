@@ -205,7 +205,7 @@ get_usd_twd_fx <- function() {
 cached_get_usd_twd_fx <- memoise::memoise(get_usd_twd_fx, cache = my_cache)
 
 # ==========================================
-# 🇺🇸／🇹🇼 4. 無風險利率 Rf（僅 yfinance；依市場）
+# 🇺🇸／🇹🇼 4. 無風險利率 Rf（US: Yahoo ^TNX；TW: TPEx Curve 10Y）
 # ==========================================
 if (!exists("%||%", mode = "function")) {
   `%||%` <- function(x, y) if (is.null(x) || (length(x) == 1 && is.na(x))) y else x
@@ -229,8 +229,8 @@ if (!exists("%||%", mode = "function")) {
   } else {
     list(
       rf_fallback = if (identical(mode, "TW")) 1.8 else 5.0,
-      rf_label_zh = if (identical(mode, "TW")) "台灣公債近似" else "美國 10 年期公債（^TNX）",
-      rf_symbol = if (identical(mode, "TW")) "TW_GOV_APPROX" else "^TNX"
+      rf_label_zh = if (identical(mode, "TW")) "台灣 10 年期公債（TPEx）" else "美國 10 年期公債（^TNX）",
+      rf_symbol = if (identical(mode, "TW")) "TPEX_CURVE_10Y" else "^TNX"
     )
   }
 }
@@ -242,8 +242,8 @@ if (!exists("%||%", mode = "function")) {
   fb
 }
 
-#' Live Yahoo Rf only（失敗則 throw；不回傳固定 fallback）。
-#' US: ^TNX；TW: 無穩定指數 → 一律失敗，由上層走 last_known／fallback。
+#' Live Rf（失敗則 throw；不回傳固定 fallback）。
+#' US: Yahoo ^TNX；TW: 櫃買 TPEx 公債殖利率曲線 10 年期。
 .fetch_risk_free_rate_live <- function(mode = "US") {
   mode <- .rf_market_mode(mode)
   if (!isTRUE(.ensure_python_scraper())) {
@@ -277,7 +277,7 @@ get_risk_free_rate_detail <- function(market = NULL) {
   symbol <- as.character(prof$rf_symbol %||% "")[1]
   fb <- .rf_documented_fallback(mode, prof)
 
-  .ynow_log(paste0("🔍 正在抓取 Rf（", label, "）via yfinance..."))
+  .ynow_log(paste0("🔍 正在抓取 Rf（", label, "）via ", symbol, "..."))
 
   live <- tryCatch({
     r <- if (identical(mode, "TW")) {
@@ -293,7 +293,7 @@ get_risk_free_rate_detail <- function(market = NULL) {
 
   if (is.finite(live) && live > 0) {
     .rf_live_last[[mode]] <- list(rf = live, at = Sys.time())
-    .ynow_log(paste("✅ yfinance Rf (live):", live, "%"))
+    .ynow_log(paste("✅ Rf (live):", live, "%"))
     return(list(
       rf_pct = round(live, 2),
       source = "live",

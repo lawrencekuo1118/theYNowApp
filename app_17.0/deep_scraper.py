@@ -382,16 +382,174 @@ def get_price_history(ticker="AMZN", period="5y"):
     return {"Date": dates, "Close": closes, "Volume": vols}
 
 
+def get_tw_10y_gov_bond_yield():
+    """
+    Latest Taiwan 10Y government bond yield (%) from TPEx daily Curve XLS.
+
+    Flow: POST /www/zh-tw/bond/govDaily2 (fileCode=Curve) → download newest
+    Curve.*.xls → sheet「含息殖利率曲線」row「10年(Year)」.
+    """
+    import datetime as _dt
+    import io
+    import tempfile
+
+    try:
+        import requests
+    except Exception as e:
+        raise RuntimeError(f"requests unavailable for TW Rf: {e}") from e
+    try:
+        import xlrd
+    except Exception as e:
+        raise RuntimeError(f"xlrd unavailable for TW Rf XLS: {e}") from e
+
+    sess = requests.Session()
+    sess.verify = False  # TPEx cert chain often fails on cloud hosts
+    sess.headers.update(
+        {
+            "User-Agent": (
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            ),
+            "Accept": "application/json, text/plain, */*",
+            "X-Requested-With": "XMLHttpRequest",
+            "Referer": "https://www.tpex.org.tw/zh-tw/bond/info/statistics-gb/day/yield.html",
+        }
+    )
+    # Suppress only the verify=False warning noise
+    try:
+        import urllib3
+
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    except Exception:
+        pass
+
+    api = "https://www.tpex.org.tw/www/zh-tw/bond/govDaily2"
+    today = _dt.date.today()
+    last_err = None
+    meta = None
+    for months_back in range(0, 4):
+        y = today.year
+        m = today.month - months_back
+        while m <= 0:
+            m += 12
+            y -= 1
+        date_param = f"{y:04d}/{m:02d}/01"
+        try:
+            r = sess.post(
+                api,
+                data={
+                    "date": date_param,
+                    "fileCode": "Curve",
+                    "id": "",
+                    "response": "json",
+                },
+                timeout=45,
+            )
+            r.raise_for_status()
+            meta = r.json()
+            tables = meta.get("tables") or []
+            if tables and (tables[0].get("data") or []):
+                _dbg(f"📊 TPEx govDaily2 OK date={date_param} rows={len(tables[0]['data'])}")
+                break
+            last_err = f"empty tables for {date_param}: {meta}"
+            meta = None
+        except Exception as e:
+            last_err = str(e)
+            meta = None
+    if not meta:
+        raise RuntimeError(f"TPEx govDaily2 failed: {last_err}")
+
+    rows = (meta.get("tables") or [{}])[0].get("data") or []
+    if not rows:
+        raise RuntimeError("TPEx Curve list empty")
+    xls_rel = rows[0][1] if isinstance(rows[0], (list, tuple)) and len(rows[0]) > 1 else None
+    if not xls_rel:
+        raise RuntimeError(f"TPEx Curve row missing xls path: {rows[0]!r}")
+    xls_url = (
+        xls_rel
+        if str(xls_rel).startswith("http")
+        else "https://www.tpex.org.tw" + str(xls_rel)
+    )
+    _dbg(f"📊 TPEx Curve XLS {xls_url}")
+    xr = sess.get(xls_url, timeout=60)
+    xr.raise_for_status()
+    raw = xr.content
+    if not raw or len(raw) < 100:
+        raise RuntimeError("TPEx Curve XLS empty")
+
+    book = xlrd.open_workbook(file_contents=raw)
+    # Prefer on-the-run Treasury Yield Curve sheet
+    sheet = None
+    for name in book.sheet_names():
+        if "Treasury Yield Curve" in name or "含息殖利率" in name:
+            sheet = book.sheet_by_name(name)
+            break
+    if sheet is None:
+        sheet = book.sheet_by_index(0)
+
+    tenors = []
+    for r in range(sheet.nrows):
+        cells = [sheet.cell_value(r, c) for c in range(sheet.ncols)]
+        tenor = str(cells[1]) if len(cells) > 1 else ""
+        if "10" in tenor and ("年" in tenor or "Year" in tenor or "Y" in tenor.upper()):
+            yld = cells[2] if len(cells) > 2 else None
+            try:
+                yv = float(yld)
+            except Exception:
+                continue
+            if yv > 0:
+                # XLS stores percent (e.g. 1.9205), not decimal
+                if yv < 0.5:
+                    yv = yv * 100.0
+                _dbg(f"✅ TW 10Y gov bond yield {yv}% (tenor={tenor})")
+                # #region agent log
+                try:
+                    import json as _json
+                    import time as _time
+
+                    _payload = {
+                        "sessionId": "ef0f33",
+                        "hypothesisId": "TW_RF",
+                        "runId": "live-fetch",
+                        "location": "deep_scraper.py:get_tw_10y_gov_bond_yield",
+                        "message": "TW 10Y yield scraped from TPEx Curve XLS",
+                        "data": {
+                            "yield_pct": yv,
+                            "tenor": tenor,
+                            "xls": str(xls_rel),
+                            "asof_row0": str(rows[0][0]) if rows else None,
+                        },
+                        "timestamp": int(_time.time() * 1000),
+                    }
+                    for _p in (
+                        "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-ef0f33.log",
+                        os.path.join(tempfile.gettempdir(), "debug-ef0f33.log"),
+                    ):
+                        try:
+                            os.makedirs(os.path.dirname(_p), exist_ok=True)
+                            with open(_p, "a", encoding="utf-8") as _f:
+                                _f.write(_json.dumps(_payload, ensure_ascii=False) + "\n")
+                            break
+                        except Exception:
+                            continue
+                except Exception:
+                    pass
+                # #endregion
+                return float(yv)
+            tenors.append(tenor)
+    raise RuntimeError(f"10Y row not found in Curve XLS (tenors seen: {tenors[:8]})")
+
+
 def get_risk_free_rate_yf(market="US"):
     """
-    Risk-free rate via yfinance.
-    US: 10Y Treasury (^TNX).
-    TW: Yahoo lacks a stable TW gov-bond index — raise so R applies documented fallback.
+    Risk-free rate via live scrape.
+    US: 10Y Treasury (^TNX) via yfinance.
+    TW: 10Y government bond yield via TPEx Curve XLS (recent trading day).
     """
     m = str(market or "US").strip().upper()
     if m in ("TW", "TWN", "TAIWAN"):
-        _dbg("📊 yfinance Rf TW — no stable symbol; R fallback")
-        raise RuntimeError("TW Rf uses documented R fallback")
+        _dbg("📊 TW Rf via TPEx 10Y Curve")
+        return float(get_tw_10y_gov_bond_yield())
     _dbg("📊 yfinance Rf ^TNX")
     tnx = yf.Ticker("^TNX")
     # prefer fast_info / history last close

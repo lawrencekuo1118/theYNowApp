@@ -29,16 +29,13 @@ market_profile <- function(mode = get_market_mode()) {
       session_currency = "TWD",
       default_ticker = "2330.TW",
       wacc_tax = 20,
-      rf_symbol = "TW_GOV_APPROX",
-      # 一句透明：估值主源 Yahoo；Rf／法定 T 為市場預設（工程 fallback）
-      rf_label_zh = paste0(
-        "台灣公債近似（Yahoo 無穩定台債指數 → Rf fallback ",
-        "1.8%；法定 T＝20%）"
-      ),
+      rf_symbol = "TPEX_CURVE_10Y",
+      rf_label_zh = "台灣 10 年期公債（櫃買 TPEx 殖利率曲線，即時）",
+      # 僅在即時抓取與 last-known 皆失敗時使用；非「標準 Rf」
       rf_fallback = 1.8,
       data_source_note_zh = paste0(
-        "台股估值主源 Yahoo；Rf／法定 T 為市場預設",
-        "（Rf fallback 1.8%、T＝20%）。"
+        "台股估值主源 Yahoo；Rf＝櫃買 TPEx 公債殖利率曲線最近交易日 10 年期",
+        "（失敗則最近成功值；再失敗才工程 fallback 1.8%，非固定公債）。法定 T＝20%。"
       ),
       beta_bench = "0050.TW",
       beta_bench_choices = c(

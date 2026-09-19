@@ -878,7 +878,7 @@ beta_rolling_section_ui <- function() {
       ),
       helpText(
         id = "ynow_sgr_method_help",
-        "Macro：採用即時抓取的市場 10 年期公債 Rf（美股 Yahoo ^TNX；失敗則最近成功值，再失敗才工程 fallback 並標明）。",
+        "Macro：採用即時抓取的市場 10 年期公債 Rf（美股 Yahoo ^TNX；台股櫃買 TPEx 公債殖利率曲線 10 年期；失敗則最近成功值，再失敗才工程 fallback 並標明）。",
         "Fundamental：Retention×ROE（僅適合成熟穩健企業）。",
         "Lifecycle：依產業成熟度反推 g，可手動覆寫自動分類。"
       ),
@@ -1004,7 +1004,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.33</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.34</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
