@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12576656
+bundleId=12576701
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=1d4a3aa
-commit=1d4a3aa
-short=1d4a3aa
-message=fix(lab): chunk Clustering Yahoo fetches and back off on 429 (v17.10)
-captured_at=2026-09-19T11:11:18Z
+aligned_git=115c0bd
+commit=115c0bd
+short=115c0bd
+message=fix(ui): gate composite status and overlay all model FVs (v17.11)
+captured_at=2026-09-19T11:35:08Z
 source_branch=master
-display_version=v17.10
-note=Canonical live line is app_17.0. Bundle 12576656 = v17.10 Clustering chunked Yahoo fetches + crumb 429 backoff; N=25–50 guidance. Deploy via scripts/deploy_app_17.R.
+display_version=v17.11
+note=Canonical live line is app_17.0. Bundle 12576701 = v17.11 composite status gate (no premature Fair/Overvalued) + all-model FV markers on Current price axis. Deploy via scripts/deploy_app_17.R.
