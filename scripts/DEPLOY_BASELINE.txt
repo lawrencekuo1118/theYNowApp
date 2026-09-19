@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12577802
+bundleId=12578101
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=f03389d
-commit=f03389d
-short=f03389d
-message=fix(lab): remove Candidate truncate rule from Blue Chip Detail (v17.46)
-captured_at=2026-09-19T18:13:03Z
+aligned_git=ad8c827
+commit=ad8c827
+short=ad8c827
+message=feat(lab): link Data-limited profile to Clustering coverage (v17.47)
+captured_at=2026-09-19T20:27:14Z
 source_branch=master
-display_version=v17.46
-note=Canonical live line is app_17.0. Bundle 12577802 = tip v17.46 (Detail drops truncate rule; Clustering keeps it). Deploy via scripts/deploy_app_17.R.
+display_version=v17.47
+note=Canonical live line is app_17.0. Bundle 12578101 = tip v17.47 (Clustering Coverage ↔ Data-limited). Deploy via scripts/deploy_app_17.R.
