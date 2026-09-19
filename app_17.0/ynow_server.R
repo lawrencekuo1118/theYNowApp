@@ -2557,20 +2557,68 @@ server <- function(input, output, session) {
     APP_DEFAULTS$wacc_gordon
   }
 
-  .current_rf_pct <- function() {
-    if (!is.null(input$capm_rf) && is.finite(as.numeric(input$capm_rf))) {
-      return(as.numeric(input$capm_rf))
+  .current_rf_detail <- function() {
+    det <- tryCatch({
+      if (exists("cached_get_risk_free_rate_detail", mode = "function")) {
+        cached_get_risk_free_rate_detail()
+      } else if (exists("get_risk_free_rate_detail", mode = "function")) {
+        get_risk_free_rate_detail()
+      } else {
+        r <- as.numeric(cached_get_risk_free_rate())
+        list(
+          rf_pct = r, source = "live", label = "Rf",
+          symbol = "", is_fallback = FALSE
+        )
+      }
+    }, error = function(e) {
+      list(
+        rf_pct = NA_real_, source = "fallback", label = "Rf",
+        symbol = "", is_fallback = TRUE
+      )
+    })
+    # Prefer live / last-known scrape for Macro anchoring
+    if (!isTRUE(det$is_fallback) && is.finite(suppressWarnings(as.numeric(det$rf_pct)[1]))) {
+      return(det)
     }
-    tryCatch(as.numeric(cached_get_risk_free_rate()), error = function(e) APP_DEFAULTS$capm_rf)
+    sess <- suppressWarnings(as.numeric(input$capm_rf)[1])
+    if (is.finite(sess) && sess > 0) {
+      return(list(
+        rf_pct = round(sess, 2),
+        source = "session",
+        label = as.character(det$label %||% "Rf")[1],
+        symbol = as.character(det$symbol %||% "")[1],
+        is_fallback = FALSE
+      ))
+    }
+    fb <- suppressWarnings(as.numeric(APP_DEFAULTS$capm_rf)[1])
+    if (!is.finite(fb) || fb <= 0) fb <- 5
+    list(
+      rf_pct = round(fb, 2),
+      source = "fallback",
+      label = as.character(det$label %||% "Rf")[1],
+      symbol = as.character(det$symbol %||% "")[1],
+      is_fallback = TRUE
+    )
+  }
+
+  .current_rf_pct <- function() {
+    suppressWarnings(as.numeric(.current_rf_detail()$rf_pct)[1])
   }
 
   central_perpetual_g <- reactive({
+    # Locale affects Macro reason bilingual copy
+    tryCatch(ui_locale(), error = function(e) NULL)
     d_is <- tryCatch(d_income_statement(), error = function(e) NULL)
     d_bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
     d_cf <- tryCatch(d_cash_flow(), error = function(e) NULL)
+    rf_det <- .current_rf_detail()
+    loc <- tryCatch(ui_locale(), error = function(e) "zh-TW")
     estimate_perpetual_g(
       method = input$perpetual_g_method %||% APP_DEFAULTS$perpetual_g_method,
-      rf_pct = .current_rf_pct(),
+      rf_pct = rf_det$rf_pct,
+      rf_source = rf_det$source,
+      rf_label = rf_det$label,
+      locale = loc,
       d_is = d_is,
       d_bs = d_bs,
       d_cf = d_cf,
@@ -10561,7 +10609,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.28"),
+      paste0("- **App：** The YNow App v17.29"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

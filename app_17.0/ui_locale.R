@@ -275,6 +275,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     sgr_method_title = "Terminal growth (SGR) method",
     lifecycle_stage_title = "Lifecycle tier",
     lifecycle_stage_help = "Override auto-detection; affects the suggested terminal g range.",
+    sgr_method_help = paste0(
+      "Macro: uses the live scraped market 10Y Treasury Rf (US: Yahoo ^TNX; ",
+      "on failure, last successful value; fixed engineering fallback only as last resort, clearly labeled). ",
+      "Fundamental: Retention×ROE (mature, stable firms only). ",
+      "Lifecycle: infer g from industry maturity; auto-class can be overridden."
+    ),
     sgr_manual_help = "Can be estimated from the method above, or overridden manually.",
     sgr_custom_label = "Custom SGR (%)",
     industry_overview_title = "Current industry standard snapshot",
@@ -766,6 +772,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     sgr_method_title = "終值永續成長率 (SGR) 評價方法",
     lifecycle_stage_title = "生命週期檔位",
     lifecycle_stage_help = "可覆寫自動偵測結果；影響終值 g 建議區間。",
+    sgr_method_help = paste0(
+      "Macro：採用即時抓取的市場 10 年期公債 Rf（美股 Yahoo ^TNX；",
+      "失敗則最近成功值，再失敗才工程 fallback 並標明）。",
+      "Fundamental：Retention×ROE（僅適合成熟穩健企業）。",
+      "Lifecycle：依產業成熟度反推 g，可手動覆寫自動分類。"
+    ),
     sgr_manual_help = "可由上方方法自動估計，亦可手動覆寫。",
     sgr_custom_label = "自訂 SGR (%)",
     industry_overview_title = "目前產業標準快覽",

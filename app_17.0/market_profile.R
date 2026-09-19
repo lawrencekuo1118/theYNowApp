@@ -81,9 +81,13 @@ market_profile <- function(mode = get_market_mode()) {
       default_ticker = "TSM",
       wacc_tax = 21,
       rf_symbol = "^TNX",
-      rf_label_zh = "美國 10 年期公債（^TNX）",
-      rf_fallback = 4.0,
-      data_source_note_zh = "美股估值主源 Yahoo；Rf 預設 ^TNX（fallback 約 4%）、法定 T＝21%。",
+      rf_label_zh = "美國 10 年期公債（Yahoo ^TNX，即時）",
+      # 僅在即時抓取與 last-known 皆失敗時使用；非「標準 Rf」
+      rf_fallback = 5.0,
+      data_source_note_zh = paste0(
+        "美股估值主源 Yahoo；Rf＝即時 ^TNX（失敗則最近成功值；",
+        "再失敗才工程 fallback 5%，非固定公債）。法定 T＝21%。"
+      ),
       beta_bench = "SPY",
       beta_bench_choices = c(
         "SPY (S&P 500 ETF)" = "SPY",

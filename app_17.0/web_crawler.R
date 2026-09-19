@@ -207,46 +207,137 @@ cached_get_usd_twd_fx <- memoise::memoise(get_usd_twd_fx, cache = my_cache)
 # ==========================================
 # 🇺🇸／🇹🇼 4. 無風險利率 Rf（僅 yfinance；依市場）
 # ==========================================
-get_risk_free_rate <- function(market = NULL) {
-  mode <- if (!is.null(market)) {
-    if (exists("normalize_market_mode", mode = "function")) normalize_market_mode(market) else "US"
-  } else if (exists("get_market_mode", mode = "function")) {
-    get_market_mode()
-  } else {
-    "US"
-  }
-  prof <- if (exists("market_profile", mode = "function")) market_profile(mode) else list(rf_fallback = 4.0, rf_label_zh = "Rf")
-  .ynow_log(paste0("🔍 正在抓取 Rf（", prof$rf_label_zh %||% mode, "）via yfinance..."))
+if (!exists("%||%", mode = "function")) {
+  `%||%` <- function(x, y) if (is.null(x) || (length(x) == 1 && is.na(x))) y else x
+}
+# Last successful *live* Rf by market (not the documented fixed fallback).
+.rf_live_last <- new.env(parent = emptyenv())
 
-  tryCatch({
-    if (!exists("get_risk_free_rate_yf", mode = "function")) {
-      stop("get_risk_free_rate_yf 未載入")
+.rf_market_mode <- function(market = NULL) {
+  if (!is.null(market)) {
+    if (exists("normalize_market_mode", mode = "function")) {
+      return(normalize_market_mode(market))
     }
-    rf <- as.numeric(get_risk_free_rate_yf(mode))
-    if (is.na(rf) || rf <= 0) stop("invalid rf")
-    .ynow_log(paste("✅ yfinance Rf:", rf, "%"))
-    rf
-  }, error = function(e) {
-    fb <- suppressWarnings(as.numeric(prof$rf_fallback %||% 4.0)[1])
-    if (!is.finite(fb) || fb <= 0) fb <- if (identical(mode, "TW")) 1.8 else 4.0
-    .ynow_log("⚠️ Rf 抓取失敗，套用預設值 ", fb, "%。原因: ", e$message)
-    fb
-  })
+    return("US")
+  }
+  if (exists("get_market_mode", mode = "function")) get_market_mode() else "US"
 }
 
-# memoise by market：以 wrapper 包一層避免跨市場互相污染
-.cached_get_risk_free_rate_us <- memoise::memoise(function() get_risk_free_rate("US"), cache = my_cache)
-.cached_get_risk_free_rate_tw <- memoise::memoise(function() get_risk_free_rate("TW"), cache = my_cache)
+.rf_profile_bits <- function(mode) {
+  if (exists("market_profile", mode = "function")) {
+    market_profile(mode)
+  } else {
+    list(
+      rf_fallback = if (identical(mode, "TW")) 1.8 else 5.0,
+      rf_label_zh = if (identical(mode, "TW")) "台灣公債近似" else "美國 10 年期公債（^TNX）",
+      rf_symbol = if (identical(mode, "TW")) "TW_GOV_APPROX" else "^TNX"
+    )
+  }
+}
+
+.rf_documented_fallback <- function(mode, prof = NULL) {
+  prof <- prof %||% .rf_profile_bits(mode)
+  fb <- suppressWarnings(as.numeric(prof$rf_fallback %||% NA_real_)[1])
+  if (!is.finite(fb) || fb <= 0) fb <- if (identical(mode, "TW")) 1.8 else 5.0
+  fb
+}
+
+#' Live Yahoo Rf only（失敗則 throw；不回傳固定 fallback）。
+#' US: ^TNX；TW: 無穩定指數 → 一律失敗，由上層走 last_known／fallback。
+.fetch_risk_free_rate_live <- function(mode = "US") {
+  mode <- .rf_market_mode(mode)
+  if (!isTRUE(.ensure_python_scraper())) {
+    stop("Python scraper unavailable for Rf")
+  }
+  if (!exists("get_risk_free_rate_yf", envir = .py_scraper_env, inherits = FALSE, mode = "function") &&
+      !exists("get_risk_free_rate_yf", mode = "function")) {
+    stop("get_risk_free_rate_yf 未載入")
+  }
+  rf <- as.numeric(get_risk_free_rate_yf(mode))
+  if (is.na(rf) || !is.finite(rf) || rf <= 0) stop("invalid rf")
+  rf
+}
+
+.cached_fetch_rf_live_us <- memoise::memoise(
+  function() .fetch_risk_free_rate_live("US"),
+  cache = my_cache
+)
+.cached_fetch_rf_live_tw <- memoise::memoise(
+  function() .fetch_risk_free_rate_live("TW"),
+  cache = my_cache
+)
+
+#' Resolve Rf with explicit source for Macro／CAPM UI.
+#' @return list(rf_pct, source, label, symbol, is_fallback)
+#'   source: "live" | "last_known" | "fallback"
+get_risk_free_rate_detail <- function(market = NULL) {
+  mode <- .rf_market_mode(market)
+  prof <- .rf_profile_bits(mode)
+  label <- as.character(prof$rf_label_zh %||% "Rf")[1]
+  symbol <- as.character(prof$rf_symbol %||% "")[1]
+  fb <- .rf_documented_fallback(mode, prof)
+
+  .ynow_log(paste0("🔍 正在抓取 Rf（", label, "）via yfinance..."))
+
+  live <- tryCatch({
+    r <- if (identical(mode, "TW")) {
+      .cached_fetch_rf_live_tw()
+    } else {
+      .cached_fetch_rf_live_us()
+    }
+    suppressWarnings(as.numeric(r)[1])
+  }, error = function(e) {
+    .ynow_log("⚠️ Rf 即時抓取失敗: ", e$message)
+    NA_real_
+  })
+
+  if (is.finite(live) && live > 0) {
+    .rf_live_last[[mode]] <- list(rf = live, at = Sys.time())
+    .ynow_log(paste("✅ yfinance Rf (live):", live, "%"))
+    return(list(
+      rf_pct = round(live, 2),
+      source = "live",
+      label = label,
+      symbol = symbol,
+      is_fallback = FALSE
+    ))
+  }
+
+  prev <- .rf_live_last[[mode]]
+  if (is.list(prev)) {
+    prev_rf <- suppressWarnings(as.numeric(prev$rf)[1])
+    if (is.finite(prev_rf) && prev_rf > 0) {
+      .ynow_log(paste("ℹ️ Rf 使用最近一次成功抓取值:", prev_rf, "%"))
+      return(list(
+        rf_pct = round(prev_rf, 2),
+        source = "last_known",
+        label = label,
+        symbol = symbol,
+        is_fallback = FALSE
+      ))
+    }
+  }
+
+  .ynow_log("⚠️ Rf 無即時／快取，套用工程 fallback ", fb, "%（非即時公債殖利率）")
+  list(
+    rf_pct = round(fb, 2),
+    source = "fallback",
+    label = label,
+    symbol = symbol,
+    is_fallback = TRUE
+  )
+}
+
+get_risk_free_rate <- function(market = NULL) {
+  get_risk_free_rate_detail(market)$rf_pct
+}
 
 cached_get_risk_free_rate <- function(market = NULL) {
-  mode <- if (!is.null(market)) {
-    if (exists("normalize_market_mode", mode = "function")) normalize_market_mode(market) else "US"
-  } else if (exists("get_market_mode", mode = "function")) {
-    get_market_mode()
-  } else {
-    "US"
-  }
-  if (identical(mode, "TW")) .cached_get_risk_free_rate_tw() else .cached_get_risk_free_rate_us()
+  get_risk_free_rate_detail(market)$rf_pct
+}
+
+cached_get_risk_free_rate_detail <- function(market = NULL) {
+  get_risk_free_rate_detail(market)
 }
 
 # ==========================================

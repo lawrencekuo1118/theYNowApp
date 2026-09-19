@@ -1,6 +1,10 @@
-# The YNow App v17.28 — Valuation Methodology
+# The YNow App v17.29 — Valuation Methodology
 
 先分類，再選模型；先推導，再校正；先給區間，再給單點；先做基本面估值。
+
+## v17.29 重點
+- **Macro g／Rf**：Macroeconomic Anchoring 改採即時 Yahoo ^TNX（失敗→最近成功值→工程 fallback 5% 並標明）；不再把固定 5% 當成「就是」十年公債
+- **目錄**：`app_17.0/`；顯示版號 **v17.29**
 
 ## v17.28 重點
 - **評價方法論**：About「Valuation Methodology｜評價方法論」對齊現況——流程紀律、四大引擎（含 P/B＋NAV）、Composite 僅疊已試算模型、Decision Checklist／MOS／F-Score／HFV（否決非買訊）、CapEx 暴衝平滑啟發式、Blue Chip Lab 研究輔助；中英雙語 Process & Guardrails
@@ -112,7 +116,7 @@
 - **側邊欄三分法**：資產基礎法（NAV）｜收益與現金流折現法（DCF／DDM／RI）｜相對估值法（P/B）
 - **P/B 專注倍數**：產業／歷史或 Justified（需 SGR）；與純 NAV 分開
 - **推薦邏輯**：控股／綜合 → 主模型 NAV；金融／帳面驅動仍以 P/B 為主，資產傾向可副選 NAV
-- **目錄**：`app_17.0/`；顯示版號 **v17**（已遞增至 v17.28）
+- **目錄**：`app_17.0/`；顯示版號 **v17**（已遞增至 v17.29）
 - **Blue Chip 分群 Lab**：K-Means 對比率／成長率特徵分群（星團圖＋同群雷達；預設 N＝25、批次 quote＋快取）；研究用，非買進訊號
 - **財報屬性分群**：依三大報表規則標示 KPI／FS 金色點（與產業同業色碼正交）；產業快覽 Yahoo Sector/Industry 列右側顯示屬性標籤
 - **頁首置頂固定**：網頁／手機共用 `.main-header { position: fixed }`，捲動不滑掉

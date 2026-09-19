@@ -2272,8 +2272,12 @@ recommend_perpetual_g_method <- function(rf_pct = NA_real_,
 }
 
 #' 估計永續成長率（%）並附說明；必要時建議 two-stage
+#' @param rf_pct CAPM／Macro 用 Rf（%，與 App 其餘處一致）
+#' @param rf_source "live" | "last_known" | "fallback" | "session"；影響 Macro 文案
+#' @param rf_label 公債來源標籤（如 Yahoo ^TNX）
+#' @param locale "en" / "zh-TW"（Macro 說明雙語）
 #' @return list(g_pct, reason, lifecycle_stage, suggest_two_stage, g_stage1_pct, auto_lifecycle,
-#'   recommended_method, recommend_label, recommend_reason)
+#'   recommended_method, recommend_label, recommend_reason, rf_pct, rf_source)
 estimate_perpetual_g <- function(method = "macro",
                                  rf_pct = NA_real_,
                                  d_is = NULL,
@@ -2283,10 +2287,15 @@ estimate_perpetual_g <- function(method = "macro",
                                  ticker = "",
                                  lifecycle_stage = "auto",
                                  wacc_pct = NA_real_,
-                                 rev_cagr = NA_real_) {
+                                 rev_cagr = NA_real_,
+                                 rf_source = NULL,
+                                 rf_label = NULL,
+                                 locale = "zh-TW") {
   method <- as.character(method %||% "macro")[1]
   rf_pct <- suppressWarnings(as.numeric(rf_pct)[1])
   wacc_pct <- suppressWarnings(as.numeric(wacc_pct)[1])
+  rf_source <- as.character(rf_source %||% "")[1]
+  rf_label <- as.character(rf_label %||% "")[1]
   if (is.na(rev_cagr) || !is.finite(rev_cagr)) {
     rev_cagr <- tryCatch({
       get_avg_growth(select_clean_metric_row(d_is, "Total Revenue", include_ttm = FALSE))
@@ -2342,9 +2351,60 @@ estimate_perpetual_g <- function(method = "macro",
     }
     reason <- paste0(reason, " 自動分類=", auto_stage, "；目前採用=", stage, "。")
   } else {
-    # macro（預設）：直接套用美國國債利率 Rf
-    g_pct <- if (is.finite(rf_pct)) round(rf_pct, 2) else 4
-    reason <- paste0("Macroeconomic Anchoring：直接套用美國 10 年期公債殖利率 Rf=", g_pct, "%。")
+    # macro：錨定即時（或 last-known）10Y／市場 Rf；固定數僅為最後工程 fallback
+    if (!is.finite(rf_pct)) {
+      rf_pct <- 5
+      if (!nzchar(rf_source)) rf_source <- "fallback"
+    }
+    g_pct <- round(rf_pct, 2)
+    lab <- if (nzchar(rf_label)) rf_label else "10Y Treasury / 10 年期公債"
+    en <- identical(tolower(as.character(locale %||% "")[1]), "en") ||
+      identical(as.character(locale %||% "")[1], "en-US")
+    if (identical(rf_source, "fallback")) {
+      reason <- if (en) {
+        paste0(
+          "Macroeconomic Anchoring: live Treasury fetch failed; engineering fallback Rf=",
+          g_pct, "% (not a live yield; prefer Yahoo-scraped ", lab, ")."
+        )
+      } else {
+        paste0(
+          "Macroeconomic Anchoring：即時公債抓取失敗，工程 fallback Rf=", g_pct,
+          "%（非即時殖利率；優先應使用 Yahoo 抓取的 ", lab, "）。"
+        )
+      }
+    } else if (identical(rf_source, "last_known")) {
+      reason <- if (en) {
+        paste0(
+          "Macroeconomic Anchoring: live fetch failed; using last successful ",
+          lab, " Rf=", g_pct, "% (not a fixed default)."
+        )
+      } else {
+        paste0(
+          "Macroeconomic Anchoring：本次即時抓取失敗，改用最近一次成功的 ",
+          lab, " Rf=", g_pct, "%（非固定預設）。"
+        )
+      }
+    } else {
+      reason <- if (en) {
+        paste0(
+          "Macroeconomic Anchoring: using ", lab, " Rf=", g_pct, "%",
+          if (identical(rf_source, "session")) {
+            " (synced with CAPM Rf; live scrape or user override)."
+          } else {
+            " (live scrape)."
+          }
+        )
+      } else {
+        paste0(
+          "Macroeconomic Anchoring：採用", lab, " Rf=", g_pct, "%",
+          if (identical(rf_source, "session")) {
+            "（與 CAPM Rf 同步；來源為即時抓取或使用者覆寫）。"
+          } else {
+            "（即時抓取）。"
+          }
+        )
+      }
+    }
   }
 
   if (is.finite(wacc_pct) && is.finite(g_pct) && g_pct >= wacc_pct) {
@@ -2374,9 +2434,12 @@ estimate_perpetual_g <- function(method = "macro",
     g_stage1_pct = g_stage1_pct,
     recommended_method = rec$method,
     recommend_label = rec$label,
-    recommend_reason = rec$reason
+    recommend_reason = rec$reason,
+    rf_pct = if (is.finite(rf_pct)) round(rf_pct, 2) else NA_real_,
+    rf_source = if (nzchar(rf_source)) rf_source else NA_character_
   )
 }
+
 
 # `%||%` 若環境尚無
 if (!exists("%||%", mode = "function")) {

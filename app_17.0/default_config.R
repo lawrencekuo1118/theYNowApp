@@ -16,9 +16,9 @@ default_debt <- if (!is.null(ind_kpi$debt_ratio_avg)) ind_kpi$debt_ratio_avg els
 raw_g <- if (!is.null(ind_kpi$rev_growth)) mean(ind_kpi$rev_growth) else 6
 default_g <- round(max(2, min(raw_g, 10)), 2)
 
-# ---------- 利率／CAPM（與即時 Rf 連動）----------
-default_rf <- tryCatch(cached_get_risk_free_rate(), error = function(e) 4.0)
-if (is.null(default_rf) || is.na(default_rf) || default_rf <= 0) default_rf <- 4.0
+# ---------- 利率／CAPM（與即時 Rf 連動；失敗才工程 fallback 5%）----------
+default_rf <- tryCatch(cached_get_risk_free_rate(), error = function(e) 5.0)
+if (is.null(default_rf) || is.na(default_rf) || default_rf <= 0) default_rf <- 5.0
 default_rf <- round(as.numeric(default_rf), 2)
 
 # 若產業 Rm 低於 Rf+3，自動抬升為 Rf+5（合理股權風險溢酬）
@@ -40,7 +40,7 @@ default_wacc <- round(default_re, 2)
 
 # 永續成長率 SGR：啟動值錨在 Rf，執行基本面／生命週期法後由 central_perpetual_g 覆寫
 default_sgr <- round(as.numeric(default_rf), 2)
-if (is.na(default_sgr) || default_sgr <= 0) default_sgr <- 4.0
+if (is.na(default_sgr) || default_sgr <= 0) default_sgr <- 5.0
 
 # P/B 預設：優先產業 pb_band，否則用保守通用區間
 if (!is.null(ind_kpi$pb_band) && length(ind_kpi$pb_band) >= 2) {
