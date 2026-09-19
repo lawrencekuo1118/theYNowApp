@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12576949
+bundleId=12576969
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=241e930
-commit=241e930
-short=241e930
-message=fix(ui): Data-limited badge — black ground, title gold text/border, no dot (v17.21)
-captured_at=2026-09-19T13:02:00Z
+aligned_git=99618cf
+commit=99618cf
+short=99618cf
+message=fix(ui): include Data-limited black/gold badge CSS in tree (v17.22)
+captured_at=2026-09-19T13:08:59Z
 source_branch=master
-display_version=v17.21
-note=Canonical live line is app_17.0. Bundle 12576949 = tip v17.21 (Data-limited black/gold badge). Deploy via scripts/deploy_app_17.R.
+display_version=v17.22
+note=Canonical live line is app_17.0. Bundle 12576969 = tip v17.22 (all session features accumulated; Data-limited CSS fixed). Deploy via scripts/deploy_app_17.R.
