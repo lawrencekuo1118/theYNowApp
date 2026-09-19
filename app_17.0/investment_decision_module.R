@@ -454,7 +454,7 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
 
       model_colors <- c(
         dcf = "#2980b9", ddm = "#8e44ad", ri = "#16a085",
-        pb = "#d35400", nav = "#7f8c8d"
+        pb = "#d35400", nav = "#d81b60"
       )
       # Model FV markers: same visual stack as Current price (pill + circle + $),
       # same vertical baseline (top: -10px) — not staggered ticks below the axis.

@@ -1005,7 +1005,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.43</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.44</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -1227,7 +1227,7 @@ ui <- dashboardPage(
           --ynow-logo-blue: #0C5484;
           --ynow-logo-green: #249C60;
           /* Model Selector｜估值模型推薦 色系（各模型頁主題） */
-          --ynow-model-nav: #27ae60;
+          --ynow-model-nav: #d81b60;
           --ynow-model-dcf: #00a65a;
           --ynow-model-ddm: #f39c12;
           --ynow-model-ri: #605ca8;

@@ -1548,7 +1548,7 @@ server <- function(input, output, session) {
       # L→R 對齊側欄估值子分頁順序：NAV → DCF → DDM → RI → P/B
       tags$div(
         class = "ynow-model-selector-row",
-        make_card("NAV", "nav", "sitemap", "#27ae60", "P = NAVPS × NAV multiple", "控股／綜合：帳面控股 NAV（非市場 SOTP）；無需 SGR。"),
+        make_card("NAV", "nav", "sitemap", "#d81b60", "P = NAVPS × NAV multiple", "控股／綜合：帳面控股 NAV（非市場 SOTP）；無需 SGR。"),
         make_card("DCF", "dcf", "calculator", "#00a65a", "FCFF／WACC 或 FCFE／Ke", "適合 FCF 為正且相對穩定的企業。"),
         make_card("DDM", "ddm", "hand-holding-usd", "#f39c12", "Gordon／SPM／二階段 P0 = PV(股利)", "適合持續且穩定配息的企業。"),
         make_card("RI", "ri", "gem", "#605ca8", "Value = Book Value + Σ Residual Income / (1+Ke)^t", "適合帳面價值與 ROE 具參考性的企業。"),
@@ -6967,7 +6967,7 @@ server <- function(input, output, session) {
       ddm = list(col = "FV_DDM", label = "DDM", color = "#8e44ad"),
       ri  = list(col = "FV_RI",  label = "RI",  color = "#16a085"),
       pb  = list(col = "FV_PB",  label = "P/B", color = "#e67e22"),
-      nav = list(col = "FV_NAV", label = "NAV", color = "#27ae60")
+      nav = list(col = "FV_NAV", label = "NAV", color = "#d81b60")
     )
   }
 
@@ -10714,7 +10714,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.43"),
+      paste0("- **App：** The YNow App v17.44"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {
