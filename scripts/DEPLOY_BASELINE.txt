@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12577482
+bundleId=12577520
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=70d6349
-commit=70d6349
-short=70d6349
-message=feat(tw): live TW Rf from TPEx 10Y gov bond Curve (v17.34)
-captured_at=2026-09-19T16:05:11Z
+aligned_git=f4b1b63
+commit=f4b1b63
+short=f4b1b63
+message=fix(ui): left-align DCF model/years and claim/suggest columns (v17.35)
+captured_at=2026-09-19T16:21:49Z
 source_branch=master
-display_version=v17.34
-note=Canonical live line is app_17.0. Bundle 12577482 = tip v17.34 (TW Rf via TPEx Curve 10Y). Deploy via scripts/deploy_app_17.R.
+display_version=v17.35
+note=Canonical live line is app_17.0. Bundle 12577520 = tip v17.35 (DCF header 6+6 left align). Deploy via scripts/deploy_app_17.R.
