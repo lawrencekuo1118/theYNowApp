@@ -7,7 +7,7 @@
 # 「評估檔數（明細列數）」（lab_im_max_n；預設 25）＝本次 Yahoo 評估檔數＝明細列數。
 # 盈餘品質／Piotroski 高門檻勾選只影響排行榜／摘要，不縮減明細列數。
 # 候選 > N 時依使用者選的截斷邏輯（市值／概念股／近一年漲幅／隨機）取 N。
-# 排行榜＝同一批中 F-Score≥7 的 Top 10。
+# 排行榜＝同一批合格者的 Top 10（預設 F-Score≥7；gate_only=FALSE 時不設 F 門檻；不足 10 不湊滿）。
 # 產業建議方法對齊 recommend_valuation_models 的產業層規則（簡化估值）。
 # ==========================================
 
@@ -364,7 +364,7 @@ lab_attach_returns_1y <- function(pool) {
 }
 
 #' 依市值降序取最多 max_n 檔（無市值置後，再依代碼）
-#' 評估檔數 N：截斷只影響評估池／明細列數；排行榜另以 F-Score≥7 取 Top 10，不縮減明細。
+#' 評估檔數 N：截斷只影響評估池／明細列數；排行榜另取合格者 Top 10（預設 F≥7），不縮減明細、不足不湊滿。
 #' 不做市值分級／規模篩選。
 lab_rank_and_cap_eval_pool <- function(pool, max_n = 25L) {
   lab_select_eval_pool(pool, max_n = max_n, mode = "mcap")
@@ -1175,8 +1175,9 @@ lab_merge_catalog_scores <- function(catalog, scores = NULL,
   df[o, , drop = FALSE]
 }
 
-#' 排行榜候選池：F-Score≥7、有年化漲幅；同一代碼只留最高 CAGR 一列
-lab_leaderboard_pool <- function(merged_df, eq_only = FALSE) {
+#' 排行榜候選池：有年化漲幅；可選 F-Score≥7；同一代碼只留最高 CAGR 一列
+#' @param gate_only 若 TRUE（預設），只保留 F-Score≥7；FALSE＝不設 F 門檻（仍須有年化漲幅）
+lab_leaderboard_pool <- function(merged_df, eq_only = FALSE, gate_only = TRUE) {
   empty <- merged_df[0, , drop = FALSE]
   if (is.null(merged_df) || !is.data.frame(merged_df) || nrow(merged_df) == 0) {
     return(empty)
@@ -1186,7 +1187,10 @@ lab_leaderboard_pool <- function(merged_df, eq_only = FALSE) {
     df <- df[!is.na(df$quality_flag) & df$quality_flag %in% 1, , drop = FALSE]
   }
   fs <- suppressWarnings(as.numeric(df$f_score))
-  keep <- is.finite(fs) & fs >= 7 & is.finite(df$upside_cagr_pct)
+  keep <- is.finite(df$upside_cagr_pct)
+  if (isTRUE(gate_only)) {
+    keep <- keep & is.finite(fs) & fs >= 7
+  }
   df <- df[keep, , drop = FALSE]
   if (nrow(df) == 0) return(df)
   df <- df[order(-df$upside_cagr_pct, df$ticker), , drop = FALSE]
@@ -1196,8 +1200,9 @@ lab_leaderboard_pool <- function(merged_df, eq_only = FALSE) {
 #' 排行產業下拉：全部 + 目前排行候選池內的產業標籤
 #' @return named character vector（顯示名 = 值；`__all__` 為全部）
 lab_leaderboard_industry_choices <- function(merged_df, eq_only = FALSE,
+                                            gate_only = TRUE,
                                             all_label = "全部產業") {
-  pool <- lab_leaderboard_pool(merged_df, eq_only = eq_only)
+  pool <- lab_leaderboard_pool(merged_df, eq_only = eq_only, gate_only = gate_only)
   labs <- if (nrow(pool) > 0 && "industry_label" %in% names(pool)) {
     unique(as.character(pool$industry_label))
   } else {
@@ -1212,12 +1217,14 @@ lab_leaderboard_industry_choices <- function(merged_df, eq_only = FALSE,
   out
 }
 
-#' 績優排行榜：同一評估／明細集合中，Piotroski 高門檻（F-Score≥7）且有年化漲幅，依 CAGR 降序取 Top-K
+#' 績優排行榜：同一評估／明細集合中，依年化漲幅降序取 Top-K（預設再套 F-Score≥7）
 #' （只截斷顯示，不另抽樣；輸入應已是本次評估的 N 檔。）
 #' @param eq_only 若 TRUE，再只保留盈餘品質通過者（與 Piotroski 高門檻獨立）
+#' @param gate_only 若 TRUE，只列 F-Score≥7；FALSE＝不設 F 門檻
 #' @param scope `"overall"`＝整體前十（含產業欄）；`"by_industry"`＝各產業（或單一產業）前十
 #' @param industry_filter `NULL`／`""`／`"__all__"`＝不限單一產業；否則依 `industry_label` 篩選
 lab_quality_leaderboard <- function(merged_df, top_n = 10L, eq_only = FALSE,
+                                    gate_only = TRUE,
                                     scope = c("overall", "by_industry"),
                                     industry_filter = NULL) {
   scope <- match.arg(scope)
@@ -1228,7 +1235,7 @@ lab_quality_leaderboard <- function(merged_df, top_n = 10L, eq_only = FALSE,
     估值方法 = character(0), `F-Score` = numeric(0),
     stringsAsFactors = FALSE, check.names = FALSE
   )
-  df <- lab_leaderboard_pool(merged_df, eq_only = eq_only)
+  df <- lab_leaderboard_pool(merged_df, eq_only = eq_only, gate_only = gate_only)
   if (nrow(df) == 0) return(empty)
 
   ind_sel <- as.character(industry_filter %||% "__all__")[1]

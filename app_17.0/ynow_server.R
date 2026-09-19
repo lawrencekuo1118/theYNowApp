@@ -9630,11 +9630,18 @@ server <- function(input, output, session) {
     n_eval <- if (is.data.frame(scores) && nrow(scores) > 0) nrow(scores) else 0L
     scope <- as.character(input$lab_im_lb_mode %||% "overall")[1]
     ind_f <- as.character(input$lab_im_lb_industry %||% "__all__")[1]
+    gate_on <- isTRUE(input$lab_im_gate_only)
+    eq_on <- isTRUE(input$lab_im_eq_only)
     scope_txt <- if (identical(scope, "by_industry")) {
       if (identical(ind_f, "__all__")) "依產業各列 Top 10" else paste0("產業「", ind_f, "」內 Top 10")
     } else {
       if (identical(ind_f, "__all__")) "整體 Top 10（含產業欄）" else paste0("產業「", ind_f, "」內 Top 10")
     }
+    gate_txt <- paste0(
+      if (gate_on) "F-Score≥7" else "不設 F 門檻",
+      "／",
+      if (eq_on) "盈餘品質通過" else "不過濾盈餘品質"
+    )
     if (n_eval == 0L) {
       cap_txt <- if (is.finite(max_n)) {
         paste0("將評估最多 ", tags$b(max_n_label), " 檔（明細列數相同）")
@@ -9643,15 +9650,16 @@ server <- function(input, output, session) {
       }
       return(tags$p(
         style = "color:#888; font-size:12.5px;",
-        "尚未評估。請按下方「搜尋績優股」；", cap_txt, "，並列出其中 F-Score≥7 且",
-        sprintf(" n=%d 年年化估值漲幅最高者（", n), scope_txt, "；與明細同一批、同一排序鍵）。"
+        "尚未評估。請按下方「搜尋績優股」；", cap_txt, "，並從前十名合格池（",
+        gate_txt, "，且能量到年化估值漲幅）取最多 10 檔（",
+        scope_txt, "；與明細同一批、同一排序鍵；合格不足 10 時不會湊滿）。"
       ))
     }
     tags$p(
       style = "color:#555; font-size:12.5px;",
       sprintf(
-        "本次已評估 %d 檔（＝明細列數，盈餘品質／Piotroski 高門檻未勾選時）。排序鍵＝模型合理價相對現價，於 %d 年預測期換算之年化漲幅；目前排行視角＝%s。",
-        n_eval, n, scope_txt
+        "本次已評估 %d 檔（＝明細列數）。排序鍵＝模型合理價相對現價，於 %d 年預測期換算之年化漲幅；前十名門檻＝%s；目前排行視角＝%s。",
+        n_eval, n, gate_txt, scope_txt
       )
     )
   })
@@ -9663,6 +9671,7 @@ server <- function(input, output, session) {
     choices <- lab_leaderboard_industry_choices(
       merged,
       eq_only = isTRUE(input$lab_im_eq_only),
+      gate_only = isTRUE(input$lab_im_gate_only),
       all_label = all_lab
     )
     cur <- as.character(isolate(input$lab_im_lb_industry) %||% "__all__")[1]
@@ -9731,23 +9740,89 @@ server <- function(input, output, session) {
       merged,
       top_n = 10L,
       eq_only = isTRUE(input$lab_im_eq_only),
+      gate_only = isTRUE(input$lab_im_gate_only),
       scope = scope,
       industry_filter = ind_f
     )
     if (nrow(lb) == 0) {
+      pool <- lab_leaderboard_pool(
+        merged,
+        eq_only = isTRUE(input$lab_im_eq_only),
+        gate_only = isTRUE(input$lab_im_gate_only)
+      )
       fs_m <- suppressWarnings(as.numeric(merged$f_score))
-      n_pass <- sum(is.finite(fs_m) & fs_m >= 7, na.rm = TRUE)
-      n_up <- sum(is.finite(fs_m) & fs_m >= 7 & is.finite(merged$upside_cagr_pct), na.rm = TRUE)
-      return(data.frame(
-        訊息 = paste0(
-          "目前篩選下有 ", nrow(merged), " 列、F-Score≥7 通過 ", n_pass,
-          "、能量到年化漲幅 ", n_up,
-          "。若為 0：放寬 Piotroski 高門檻池或檢查估值是否算出合理價。"
+      n_f7 <- sum(is.finite(fs_m) & fs_m >= 7, na.rm = TRUE)
+      n_up <- sum(is.finite(merged$upside_cagr_pct), na.rm = TRUE)
+      loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+      msg <- tryCatch(
+        sprintf(
+          ui_str("lab_im_lb_empty", loc),
+          as.integer(nrow(merged)), as.integer(n_up), as.integer(n_f7), as.integer(nrow(pool))
+        ),
+        error = function(e) paste0(
+          "前十名尚無列可顯示。已評估 ", nrow(merged),
+          " 檔；能量到年化漲幅 ", n_up,
+          "；F-Score≥7 通過 ", n_f7,
+          "；目前勾選條件下合格 ", nrow(pool),
+          "。說明：評估檔數 N 是明細列數，前十名只從「合格者」取最多 10 檔，不會補足到 10。"
         )
-      ))
+      )
+      return(data.frame(訊息 = msg))
     }
     lb
   }, striped = TRUE, bordered = TRUE, hover = TRUE, spacing = "m", width = "100%")
+
+  output$lab_im_leaderboard_status <- renderUI({
+    scores <- lab_im_scores()
+    if (is.null(scores) || !is.data.frame(scores) || nrow(scores) == 0) return(NULL)
+    merged <- tryCatch(lab_im_merged(), error = function(e) NULL)
+    if (is.null(merged) || nrow(merged) == 0) return(NULL)
+    gate_on <- isTRUE(input$lab_im_gate_only)
+    eq_on <- isTRUE(input$lab_im_eq_only)
+    scope <- as.character(input$lab_im_lb_mode %||% "overall")[1]
+    if (!scope %in% c("overall", "by_industry")) scope <- "overall"
+    ind_f <- as.character(input$lab_im_lb_industry %||% "__all__")[1]
+    lb <- tryCatch(
+      lab_quality_leaderboard(
+        merged, top_n = 10L, eq_only = eq_on, gate_only = gate_on,
+        scope = scope, industry_filter = ind_f
+      ),
+      error = function(e) NULL
+    )
+    pool <- tryCatch(
+      lab_leaderboard_pool(merged, eq_only = eq_on, gate_only = gate_on),
+      error = function(e) NULL
+    )
+    n_show <- if (is.data.frame(lb)) nrow(lb) else 0L
+    n_qual <- if (is.data.frame(pool)) nrow(pool) else 0L
+    n_eval <- nrow(merged)
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    if (identical(scope, "by_industry") && identical(ind_f, "__all__")) {
+      txt <- tryCatch(
+        sprintf(
+          ui_str("lab_im_lb_status_by_ind", loc),
+          as.integer(n_show), as.integer(n_qual), as.integer(n_eval)
+        ),
+        error = function(e) sprintf(
+          "依產業前十名共顯示 %d 列（合格 %d／已評估 %d）。各產業各自最多 10 檔；N＝明細列數，不會為湊滿而另抽樣。",
+          as.integer(n_show), as.integer(n_qual), as.integer(n_eval)
+        )
+      )
+    } else {
+      txt <- tryCatch(
+        sprintf(ui_str("lab_im_lb_status", loc), as.integer(n_show), as.integer(n_qual), as.integer(n_eval)),
+        error = function(e) sprintf(
+          "前十名顯示 %d／10（合格 %d／已評估 %d）。N＝明細列數；前十名只取合格者最多 10 檔，不會為湊滿 10 而另抽樣。",
+          as.integer(n_show), as.integer(n_qual), as.integer(n_eval)
+        )
+      )
+    }
+    tags$p(
+      class = "ynow-lab-im-lb-status",
+      style = "margin:6px 0 10px 0; color:#555; font-size:12px;",
+      txt
+    )
+  })
 
   output$lab_im_table <- DT::renderDataTable({
     catlg <- lab_im_catalog()
@@ -9927,11 +10002,12 @@ server <- function(input, output, session) {
           lb_ind <- as.character(isolate(input$lab_im_lb_industry) %||% "__all__")[1]
           lb <- lab_quality_leaderboard(
             merged_lb, top_n = 10L, eq_only = eq_on,
+            gate_only = isTRUE(isolate(input$lab_im_gate_only)),
             scope = lb_scope, industry_filter = lb_ind
           )
         }
         if (is.null(lb) || !nrow(lb)) {
-          lb <- data.frame(訊息 = "尚無符合 F-Score≥7 的排行（或目前篩選為空）")
+          lb <- data.frame(訊息 = "尚無符合目前排行門檻的列（或目前篩選為空）")
         }
       } else {
         lb <- data.frame(訊息 = "尚未評估")
@@ -9961,9 +10037,20 @@ server <- function(input, output, session) {
         sprintf("- 本頁代號：%s", if (length(tks)) paste(tks, collapse = ", ") else "（無）"),
         "",
         if (is.finite(max_n)) {
-          "宇宙依市場模式（美股 S&P 500／台股上市＋上櫃；搜尋另含興櫃但不納入績優）。候選多於 N 時依「候選截斷邏輯」取 N（市值／概念股／近一年漲幅／隨機；市值缺值則改依代號排序）；明細＝該批（＝評估檔數 N）；排行榜＝同一批中 F-Score≥7 者的 Top 10。"
+          paste0(
+            "宇宙依市場模式（美股 S&P 500／台股上市＋上櫃；搜尋另含興櫃但不納入績優）。",
+            "候選多於 N 時依「候選截斷邏輯」取 N（市值／概念股／近一年漲幅／隨機；市值缺值則改依代號排序）；",
+            "明細＝該批（＝評估檔數 N）；排行榜＝同一批合格者最多 Top 10",
+            if (gate_on) "（目前 Piotroski 高門檻開：F-Score≥7）" else "（目前不設 F 門檻）",
+            "；合格不足 10 時不湊滿。"
+          )
         } else {
-          "宇宙依市場模式（美股 S&P 500／台股上市＋上櫃；搜尋另含興櫃但不納入績優）。本次選「全部」：評估篩選後全部候選；明細＝該批（＝評估檔數）；排行榜＝同一批中 F-Score≥7 者的 Top 10。"
+          paste0(
+            "宇宙依市場模式（美股 S&P 500／台股上市＋上櫃；搜尋另含興櫃但不納入績優）。",
+            "本次選「全部」：評估篩選後全部候選；明細＝該批（＝評估檔數）；排行榜＝同一批合格者最多 Top 10",
+            if (gate_on) "（目前 Piotroski 高門檻開：F-Score≥7）" else "（目前不設 F 門檻）",
+            "；合格不足 10 時不湊滿。"
+          )
         }
       )
       lab_write_lab_page_report(
@@ -10627,7 +10714,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.41"),
+      paste0("- **App：** The YNow App v17.42"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

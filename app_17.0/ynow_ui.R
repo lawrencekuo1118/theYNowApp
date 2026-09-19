@@ -1005,7 +1005,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.41</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.42</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -3034,6 +3034,12 @@ ui <- dashboardPage(
             if (labLbInd && s.lab_im_lb_industry_label) labLbInd.textContent = s.lab_im_lb_industry_label;
             var labLbHelp = document.getElementById('ynow_lab_im_lb_scope_help');
             if (labLbHelp && s.lab_im_lb_scope_help) labLbHelp.textContent = s.lab_im_lb_scope_help;
+            var labGateRoot = document.getElementById('lab_im_gate_only');
+            if (labGateRoot && s.lab_im_gate_hint) {
+              var labGateBox = labGateRoot.closest('.ynow-lab-im-quality');
+              var labGateHint = labGateBox ? labGateBox.querySelector('.ynow-lab-im-quality-hint') : null;
+              if (labGateHint) labGateHint.textContent = s.lab_im_gate_hint;
+            }
             var clusterBlurb = document.getElementById('ynow_lab_cluster_blurb');
             if (clusterBlurb && s.lab_cluster_blurb) clusterBlurb.textContent = s.lab_cluster_blurb;
             var clusterDisc = document.getElementById('ynow_lab_cluster_disclaimer');
@@ -5670,11 +5676,13 @@ ui <- dashboardPage(
                     style = "color:#888; font-size:12px; line-height:1.45; margin:-4px 0 8px 0;",
                     paste0(
                       "整體前十名：跨產業依年化估值漲幅取 Top 10，並顯示產業欄。",
-                      "依產業前十名：每個產業（或選定單一產業）各自列出 Top 10。"
+                      "依產業前十名：每個產業（或選定單一產業）各自列出 Top 10。",
+                      "前十名只從合格者取最多 10 檔；合格不足 10 時不會湊滿。"
                     )
                   )
                 ),
                 uiOutput("lab_im_leader_note"),
+                uiOutput("lab_im_leaderboard_status"),
                 tableOutput("lab_im_leaderboard")
               )
             ),
@@ -5751,7 +5759,7 @@ ui <- dashboardPage(
                       ),
                       tags$span(
                         class = "ynow-lab-im-quality-hint",
-                        "預設勾選：排行榜只列 F-Score≥7 者；取消勾選則顯示全部。不影響明細列數。"
+                        "預設勾選：前十名只列 F-Score≥7 者；取消勾選則不設 F 門檻。不影響明細列數；合格不足 10 時不會湊滿。"
                       )
                     )
                   )
@@ -5854,7 +5862,7 @@ ui <- dashboardPage(
                 "• 市值模式：Yahoo 市值由大到小；市值暫不可用時改依代號排序再取 N。\n",
                 "• 概念股：取所選概念群聯集與目前篩選之交集；若仍 > N 再依市值截斷（市值缺值同代號排序後援）。\n",
                 "• 明細／排行預設排序：以 n＝5 年換算的年化估值漲幅（upside_cagr_pct）降序。\n",
-                "• Piotroski F-Score≥7 只過濾排行榜 Top 10，不縮減明細。"
+                "• 前十名＝同一批合格者最多 10 檔（預設 F-Score≥7；可取消「Piotroski 高門檻」）；N≠保證 10 列，合格不足時不會湊滿，也不縮減明細。"
               )
             ),
             fluidRow(

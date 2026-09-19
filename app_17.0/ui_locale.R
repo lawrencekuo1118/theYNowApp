@@ -120,7 +120,21 @@ locale_for_market <- function(mode = get_market_mode()) {
       "• Concept groups: intersection of selected themes with the filtered pool; if still > N, cap by market cap ",
       "(same ticker-sort fallback when caps are missing).\n",
       "• Detail / ranking default sort: implied annualized valuation appreciation over n=5 years (upside_cagr_pct), descending.\n",
-      "• Piotroski F-Score≥7 filters only the Top 10 leaderboard; it does not shrink the detail table."
+      "• Top 10 = at most 10 qualified names from the same batch (default F-Score≥7; uncheck Piotroski high gate to drop the F filter). ",
+      "N does not guarantee 10 rows; shortfalls are not padded, and the detail table is not shrunk."
+    ),
+    lab_im_lb_status = paste0(
+      "Top 10 shows %d/10 (qualified %d / evaluated %d). ",
+      "N = detail rows; Top 10 takes at most 10 qualified names and does not pad to fill 10."
+    ),
+    lab_im_lb_status_by_ind = paste0(
+      "By-industry Top 10 shows %d rows (qualified %d / evaluated %d). ",
+      "Each industry lists at most 10; N = detail rows and shortfalls are not padded."
+    ),
+    lab_im_lb_empty = paste0(
+      "Top 10 has no rows. Evaluated %d; annualized upside available %d; F-Score≥7 pass %d; ",
+      "qualified under current checks %d. N is detail-row count; Top 10 only takes qualified names (max 10) and does not pad. ",
+      "Uncheck Earnings quality or Piotroski high gate, raise N, or widen industry filters, then search again."
     ),
     lab_im_detail_intro = paste0(
       "Detail of names evaluated this run (sorted by annualized valuation appreciation). ",
@@ -133,7 +147,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_lb_industry_all = "All industries",
     lab_im_lb_scope_help = paste0(
       "Overall Top 10: cross-industry Top 10 by annualized valuation appreciation, with an Industry column. ",
-      "Top 10 by industry: list Top 10 within each industry (or the one industry you pick)."
+      "Top 10 by industry: list Top 10 within each industry (or the one industry you pick). ",
+      "Top 10 takes at most 10 qualified names; shortfalls are not padded."
+    ),
+    lab_im_gate_hint = paste0(
+      "Default on: Top 10 keeps only F-Score≥7. Uncheck to drop the F gate. ",
+      "Does not change detail-row count; shortfalls are not padded to 10."
     ),
     bt_analysis_freq = "Analysis frequency (valuation date Date_t)",
     bt_freq_monthly = "Monthly",
@@ -628,7 +647,20 @@ locale_for_market <- function(mode = get_market_mode()) {
       "• 市值模式：Yahoo 市值由大到小；市值暫不可用時改依代號排序再取 N。\n",
       "• 概念股：取所選概念群聯集與目前篩選之交集；若仍 > N 再依市值截斷（市值缺值同代號排序後援）。\n",
       "• 明細／排行預設排序：以 n＝5 年換算的年化估值漲幅（upside_cagr_pct）降序。\n",
-      "• Piotroski F-Score≥7 只過濾排行榜 Top 10，不縮減明細。"
+      "• 前十名＝同一批合格者最多 10 檔（預設 F-Score≥7；可取消「Piotroski 高門檻」）；N≠保證 10 列，合格不足時不會湊滿，也不縮減明細。"
+    ),
+    lab_im_lb_status = paste0(
+      "前十名顯示 %d／10（合格 %d／已評估 %d）。",
+      "N＝明細列數；前十名只取合格者最多 10 檔，不會為湊滿 10 而另抽樣。"
+    ),
+    lab_im_lb_status_by_ind = paste0(
+      "依產業前十名共顯示 %d 列（合格 %d／已評估 %d）。",
+      "各產業各自最多 10 檔；N＝明細列數，不會為湊滿而另抽樣。"
+    ),
+    lab_im_lb_empty = paste0(
+      "前十名尚無列可顯示。已評估 %d 檔；能量到年化漲幅 %d；F-Score≥7 通過 %d；目前勾選條件下合格 %d。",
+      "說明：評估檔數 N 是明細列數，前十名只從「合格者」取最多 10 檔，不會補足到 10。",
+      "可取消「盈餘品質」或「Piotroski 高門檻」，或提高 N／放寬產業後再搜尋。"
     ),
     lab_im_detail_intro = paste0(
       "本次已評估檔的明細（按年化估值漲幅排序）。",
@@ -641,7 +673,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_lb_industry_all = "全部產業",
     lab_im_lb_scope_help = paste0(
       "整體前十名：跨產業依年化估值漲幅取 Top 10，並顯示產業欄。",
-      "依產業前十名：每個產業（或選定單一產業）各自列出 Top 10。"
+      "依產業前十名：每個產業（或選定單一產業）各自列出 Top 10。",
+      "前十名只從合格者取最多 10 檔；合格不足 10 時不會湊滿。"
+    ),
+    lab_im_gate_hint = paste0(
+      "預設勾選：前十名只列 F-Score≥7 者；取消勾選則不設 F 門檻。",
+      "不影響明細列數；合格不足 10 時不會湊滿。"
     ),
     bt_analysis_freq = "分析頻率（估值日 Date_t）",
     bt_freq_monthly = "每月",
