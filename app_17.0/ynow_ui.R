@@ -30,15 +30,19 @@
     class = "ynow-about-feat",
     tags$li(
       tags$b("自動化資料與防雷機制："),
-        "即時抓取三大報表，並內建「財報警訊」（三表對照），交叉比對現金流與獲利品質，自動偵測潛在地雷股與價值陷阱。"
+      "即時抓取三大報表，並內建「財報警訊」（三表對照），交叉比對現金流與獲利品質，自動偵測潛在地雷股與價值陷阱；支援美股與台股市場切換。"
     ),
     tags$li(
       tags$b("四大估值引擎："),
-      "內建自由現金流 (DCF：FCFF／WACC 或 FCFE／Ke)、股利折現 (DDM：Gordon／SPM／二階段)、資產本淨比 (P/B＋NAV) 與剩餘收益 (RI) 模型，系統能根據產業屬性與企業生命週期，動態推薦最適合的評價路徑。"
+      "內建自由現金流 (DCF：FCFF／WACC 或 FCFE／Ke)、股利折現 (DDM：Gordon／SPM／二階段)、資產本淨比 (P/B＋NAV) 與剩餘收益 (RI) 模型；依產業屬性動態推薦路徑，並以 Composite valuation 並陳各模型相對現價位置。"
     ),
     tags$li(
       tags$b("智慧決策與量化回測："),
-      "結合 Piotroski F-Score 財務體質檢核、安全邊際 (MOS) 區間，以及具備「機構級風控思維」的 Point-in-Time (PIT) 回測引擎，提供貼近實戰的策略驗證。"
+      "結合 Piotroski F-Score、安全邊際 (MOS)、決策檢核（Decision Checklist）、Historical Fundamental Validation (HFV)，以及 Point-in-Time (PIT) 回測引擎，提供貼近實戰的策略驗證。"
+    ),
+    tags$li(
+      tags$b("Blue Chip Lab："),
+      "產業×方法評估池、Clustering（比率特徵／離線快照備援）、候選截斷邏輯（市值／概念股／近一年漲幅／隨機），輔助同業比較與研究分群（非買進訊號）。"
     ),
     tags$li(
       tags$b("一鍵投資報告："),
@@ -49,58 +53,74 @@
     class = "ynow-about-feat",
     tags$li(
       tags$b("Automated Data & Fraud Detection: "),
-      "Instantly fetches the three financial statements and flags earnings-quality issues by cross-checking cash flow against reported profits, to catch potential value traps."
+      "Fetches the three financial statements in real time and flags earnings-quality issues by cross-checking cash flow against reported profits, helping surface potential value traps. Supports US and TW market modes."
     ),
     tags$li(
       tags$b("Four Valuation Engines: "),
-      "Features Discounted Cash Flow (DCF: FCFF/WACC or FCFE/Ke), Dividend Discount Model (DDM: Gordon / SPM / two-stage), Price-to-Book with holding NAV, and Residual Income (RI) models. The system dynamically recommends the most suitable valuation path based on sector attributes and industry lifecycles."
+      "Discounted Cash Flow (DCF: FCFF/WACC or FCFE/Ke), Dividend Discount Model (DDM: Gordon / SPM / two-stage), Price-to-Book with holding NAV, and Residual Income (RI). The app recommends a path by industry attributes and overlays model fair values versus the current price on the Composite valuation axis."
     ),
     tags$li(
       tags$b("Smart Decision Matrix & Backtesting: "),
-      "Combines the Piotroski F-Score for financial health checks, Margin of Safety (MOS) bands, and an institutional-grade Point-in-Time (PIT) backtesting engine to offer robust, real-world strategy validation."
+      "Combines the Piotroski F-Score, Margin of Safety (MOS), Decision Checklist, Historical Fundamental Validation (HFV), and an institutional-grade Point-in-Time (PIT) backtesting engine for real-world strategy checks."
+    ),
+    tags$li(
+      tags$b("Blue Chip Lab: "),
+      "Industry × method evaluation pools, Clustering (ratio features with offline snapshot fallback), and candidate truncate rules (market cap / concept groups / 1Y return / random) for peer research—not buy signals."
     ),
     tags$li(
       tags$b("One-Click Investment Reports: "),
-      "Automatically compiles valuation charts, KPIs, and analysis results into professional, downloadable PDF investment opinion reports."
+      "Compiles valuation charts, KPIs, and analysis into downloadable PDF investment opinion reports."
     )
   )
+
+  github_url <- "https://github.com/lawrencekuo1118/theYNowApp"
 
   tagList(
     brand,
     fluidRow(
-    class = "ynow-about-bilingual",
-    column(
-      width = 6,
-      class = "ynow-about-col ynow-about-col--zh",
-      tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
-      tags$p(
-        class = "ynow-about-lead",
-        "The YNow App (v17.24) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合了即時財報抓取、多維度估值模型與動態回測引擎，將繁雜的市場資料轉化為直覺、科學的投資決策。"
+      class = "ynow-about-bilingual",
+      column(
+        width = 6,
+        class = "ynow-about-col ynow-about-col--zh",
+        tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
+        tags$p(
+          class = "ynow-about-lead",
+          "The YNow App (v17.25) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報抓取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+        ),
+        tags$p(
+          class = "ynow-about-method",
+          "我們的核心方法論為：",
+          tags$b("「先分類，再選模型；先推導，再校正；先給區間，再給單點。」")
+        ),
+        tags$h4(class = "ynow-about-feat-h", tags$b("核心功能亮點：")),
+        zh_features
       ),
-      tags$p(
-        class = "ynow-about-method",
-        "我們的核心方法論為：",
-        tags$b("「先分類，再選模型；先推導，再校正；先給區間，再給單點。」")
-      ),
-      tags$h4(class = "ynow-about-feat-h", tags$b("核心功能亮點：")),
-      zh_features
+      column(
+        width = 6,
+        class = "ynow-about-col ynow-about-col--en",
+        tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
+        tags$p(
+          class = "ynow-about-lead",
+          "The YNow App (v17.25) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+        ),
+        tags$p(
+          class = "ynow-about-method",
+          "Our core methodology is: ",
+          tags$b("\"Classify before selecting models; derive before calibrating; provide valuation ranges before absolute price targets.\"")
+        ),
+        tags$h4(class = "ynow-about-feat-h", tags$b("Core Features:")),
+        en_features
+      )
     ),
-    column(
-      width = 6,
-      class = "ynow-about-col ynow-about-col--en",
-      tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
-      tags$p(
-        class = "ynow-about-lead",
-        "The YNow App (v17.24) is a comprehensive quantitative financial analysis and valuation decision system designed for professional investors and analysts. It seamlessly integrates real-time financial data parsing, multi-dimensional valuation models, and a dynamic backtesting engine to transform complex market data into actionable, scientific investment insights."
-      ),
-      tags$p(
-        class = "ynow-about-method",
-        "Our core methodology is: ",
-        tags$b("\"Classify before selecting models; derive before calibrating; provide valuation ranges before absolute price targets.\"")
-      ),
-      tags$h4(class = "ynow-about-feat-h", tags$b("Core Features:")),
-      en_features
-    )
+    tags$p(
+      class = "ynow-about-github",
+      tags$span("GitHub："),
+      tags$a(
+        href = github_url,
+        target = "_blank",
+        rel = "noopener noreferrer",
+        github_url
+      )
     )
   )
 }
@@ -879,7 +899,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.24</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.25</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -4029,6 +4049,16 @@ ui <- dashboardPage(
         }
         .ynow-about-feat > li > b {
           color: #1a1a1a;
+        }
+        .ynow-about-github {
+          margin: 14px 0 0 0;
+          font-size: 13px;
+          line-height: 1.5;
+          color: #444;
+        }
+        .ynow-about-github a {
+          color: #0b57d0;
+          word-break: break-all;
         }
         /* About 後續區塊：標題／內文與「關於 The YNow App」同左緣 */
         #shiny-tab-about .ynow-about-section-title,
