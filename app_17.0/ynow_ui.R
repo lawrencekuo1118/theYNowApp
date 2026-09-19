@@ -75,7 +75,7 @@
       tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
       tags$p(
         class = "ynow-about-lead",
-        "The YNow App (v17.07) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合了即時財報抓取、多維度估值模型與動態回測引擎，將繁雜的市場資料轉化為直覺、科學的投資決策。"
+        "The YNow App (v17.08) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合了即時財報抓取、多維度估值模型與動態回測引擎，將繁雜的市場資料轉化為直覺、科學的投資決策。"
       ),
       tags$p(
         class = "ynow-about-method",
@@ -91,7 +91,7 @@
       tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
       tags$p(
         class = "ynow-about-lead",
-        "The YNow App (v17.07) is a comprehensive quantitative financial analysis and valuation decision system designed for professional investors and analysts. It seamlessly integrates real-time financial data parsing, multi-dimensional valuation models, and a dynamic backtesting engine to transform complex market data into actionable, scientific investment insights."
+        "The YNow App (v17.08) is a comprehensive quantitative financial analysis and valuation decision system designed for professional investors and analysts. It seamlessly integrates real-time financial data parsing, multi-dimensional valuation models, and a dynamic backtesting engine to transform complex market data into actionable, scientific investment insights."
       ),
       tags$p(
         class = "ynow-about-method",
@@ -834,7 +834,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.07</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.08</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -2189,7 +2189,8 @@ ui <- dashboardPage(
             market.style.paddingLeft = '0';
             placeMobileAppTitle();
           }
-          /* Mobile: app title between 美股/台股 and right logo, vertically centered */
+          /* Mobile: app title between 美股/台股 and right logo, vertically centered.
+             right edge must clear .navbar-custom-menu so 繁中 is not covered. */
           function placeMobileAppTitle() {
             var logo = document.querySelector('.main-header .logo');
             if (!logo) return;
@@ -2200,15 +2201,22 @@ ui <- dashboardPage(
             }
             var mkt = document.getElementById('ynow-market-header');
             var custom = document.querySelector('.main-header .navbar-custom-menu');
+            var lang = document.querySelector('.ynow-lang-header');
             if (!mkt || !custom) return;
             var gap = 6;
             var leftPx = Math.round(mkt.getBoundingClientRect().right + gap);
-            var rightPx = Math.round(window.innerWidth - custom.getBoundingClientRect().left + gap);
+            /* Prefer lang left edge so title never overlaps 繁中／EN */
+            var stopEl = lang || custom;
+            var rightPx = Math.round(window.innerWidth - stopEl.getBoundingClientRect().left + gap);
             if (!(leftPx > 0)) leftPx = 90;
-            if (!(rightPx > 0)) rightPx = 110;
+            if (!(rightPx >= 120)) rightPx = 160;
+            if (leftPx + 40 >= window.innerWidth - rightPx) {
+              rightPx = Math.max(160, Math.round(window.innerWidth - leftPx - 80));
+            }
             logo.style.left = leftPx + 'px';
             logo.style.right = rightPx + 'px';
           }
+          window.placeMobileAppTitle = placeMobileAppTitle;
           function bindMarketModeButtons() {
             placeMarketHeaderByToggle();
             var stack = document.querySelector('#ynow-market-header .ynow-market-stack');
@@ -3659,14 +3667,16 @@ ui <- dashboardPage(
             max-height: 50px !important;
             height: 50px !important;
           }
-          /* Collapse AdminLTE stacked logo+navbar (was ~100px) into one 50px bar */
+          /* Collapse AdminLTE stacked logo+navbar (was ~100px) into one 50px bar.
+             left/right MUST NOT use !important — JS placeMobileAppTitle() sets them
+             so the title box stops before 繁中／EN (else absolute box covers 繁中). */
           .main-header .logo,
           .skin-black .main-header .logo,
           .skin-black .main-header .logo:hover {
             position: absolute !important;
             top: 0 !important;
-            left: 90px !important; /* fallback; JS sets between market & custom-menu */
-            right: 110px !important;
+            left: 90px; /* fallback; JS overrides */
+            right: 160px; /* fallback clears lang+mark; JS tightens */
             width: auto !important;
             max-width: none !important;
             height: 50px !important;
@@ -3693,6 +3703,24 @@ ui <- dashboardPage(
             text-overflow: ellipsis;
             max-width: 100%;
             height: auto !important;
+          }
+          /* Keep 繁中／EN above the absolute title band */
+          .main-header .navbar-custom-menu .navbar-nav > li.ynow-lang-header {
+            position: relative !important;
+            z-index: 1050 !important;
+            flex-shrink: 0 !important;
+          }
+          .main-header .navbar-custom-menu .navbar-nav > li#ynow-header-logo.ynow-header-logo {
+            position: relative !important;
+            z-index: 1050 !important;
+            flex-shrink: 0 !important;
+          }
+          .ynow-lang-header .btn-group-xs > .btn,
+          .ynow-lang-header .btn-xs {
+            min-width: 36px;
+            padding-left: 6px !important;
+            padding-right: 6px !important;
+            font-size: 11px !important;
           }
           .main-header .navbar {
             min-height: 50px !important;
