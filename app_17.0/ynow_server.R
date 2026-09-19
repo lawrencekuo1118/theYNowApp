@@ -9456,7 +9456,7 @@ server <- function(input, output, session) {
   observeEvent(input$lab_im_run_fscore, {
     catlg <- lab_im_catalog()
     req(is.data.frame(catlg), nrow(catlg) > 0)
-    # 評估池：產業／模型複選；候選 > N 時依市值取 N 檔（非規模篩選）
+    # 評估池：產業／模型複選；候選 > N 時依使用者截斷邏輯取 N
     pool <- lab_merge_catalog_scores(
       catlg,
       scores = NULL,
@@ -9471,27 +9471,54 @@ server <- function(input, output, session) {
       return()
     }
     max_n <- lab_resolve_im_max_n(input$lab_im_max_n, input$lab_im_max_n_custom)
+    rank_mode <- lab_normalize_pool_rank_mode(input$lab_im_pool_rank %||% "mcap")
+    concept_keys <- input$lab_im_concepts
+    mm <- tryCatch(market_mode(), error = function(e) "US")
     n_yrs <- lab_model_horizon_years()
     scores <- withProgress(
       message = paste0("評估中（Piotroski 高門檻＋", n_yrs, " 年年化估值漲幅）…"),
       value = 0, {
         n_raw <- nrow(pool)
         if (is.finite(max_n) && n_raw > max_n) {
-          incProgress(0.08, detail = "取 Yahoo 市值（評估池排序）…")
-          pool <- lab_attach_market_caps(pool)
+          detail <- switch(
+            rank_mode,
+            ret_1y = "取近一年漲幅（評估池排序）…",
+            random = "系統隨機抽樣…",
+            concept = "套用概念股群…",
+            "取 Yahoo 市值（評估池排序）…"
+          )
+          incProgress(0.08, detail = detail)
+          if (identical(rank_mode, "mcap") || identical(rank_mode, "concept")) {
+            pool <- lab_attach_market_caps(pool)
+          }
         }
-        pool <- lab_rank_and_cap_eval_pool(
-          # N 截斷：候選 > N 依市值降序取 N；明細＝該批；F-Score≥7 只濾排行榜 Top 10（不縮明細）
-          pool, max_n = max_n
+        pool <- lab_select_eval_pool(
+          pool,
+          max_n = max_n,
+          mode = rank_mode,
+          concept_keys = concept_keys,
+          market_mode = mm,
+          seed = as.integer(Sys.time())
         )
         n_filtered <- as.integer(attr(pool, "n_filtered") %||% nrow(pool))
         used_mcap <- isTRUE(attr(pool, "used_market_cap"))
+        mode_used <- as.character(attr(pool, "pool_rank_mode") %||% rank_mode)[1]
+        note <- as.character(attr(pool, "pool_rank_note") %||% "")[1]
         if (nrow(pool) == 0L) {
           showNotification("產業×模型篩選後沒有可評估的候選。", type = "warning")
           return(NULL)
         }
-        if (is.finite(max_n) && n_filtered > max_n) {
-          how <- if (used_mcap) "依市值由大到小" else "市值暫不可用，改依代號"
+        if (is.finite(max_n) && n_filtered > nrow(pool)) {
+          how <- switch(
+            mode_used,
+            ret_1y = "依近一年股價漲幅",
+            random = "系統隨機",
+            concept = "所選概念股（必要時再依市值）",
+            if (used_mcap) "依市值由大到小" else "市值暫不可用，改依代號"
+          )
+          if (grepl("fallback_mcap", note, fixed = TRUE)) {
+            how <- paste0(how, "；概念股無交集時改市值")
+          }
           showNotification(
             paste0("篩選後 ", n_filtered, " 檔，", how, "評估 ", nrow(pool), " 檔。"),
             type = "message", duration = 6
@@ -9616,6 +9643,31 @@ server <- function(input, output, session) {
     cur <- as.character(isolate(input$lab_im_lb_industry) %||% "__all__")[1]
     if (!cur %in% unname(choices)) cur <- "__all__"
     updateSelectInput(session, "lab_im_lb_industry", choices = choices, selected = cur)
+  })
+
+  # Refresh truncate-rule labels + concept groups when market / locale changes
+  observe({
+    mm <- tryCatch(market_mode(), error = function(e) "US")
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    rank_cur <- as.character(isolate(input$lab_im_pool_rank) %||% "mcap")[1]
+    rank_choices <- lab_im_pool_rank_choices(loc)
+    if (!rank_cur %in% unname(rank_choices)) rank_cur <- "mcap"
+    updateSelectInput(session, "lab_im_pool_rank", choices = rank_choices, selected = rank_cur)
+
+    concept_choices <- lab_concept_group_choices(mm, loc)
+    concept_cur <- isolate(input$lab_im_concepts)
+    concept_cur <- as.character(concept_cur %||% character(0))
+    concept_cur <- concept_cur[concept_cur %in% unname(concept_choices)]
+    updateSelectizeInput(
+      session,
+      "lab_im_concepts",
+      choices = concept_choices,
+      selected = concept_cur,
+      options = list(
+        placeholder = ui_str("lab_im_concepts_placeholder", loc),
+        plugins = list("remove_button")
+      )
+    )
   })
 
   output$lab_im_leaderboard <- renderTable({
@@ -9986,7 +10038,10 @@ server <- function(input, output, session) {
             industry_filter = input$lab_im_industries,
             method_filter = input$lab_im_methods,
             max_n = max_n,
-            ensure_ticker = session_tk
+            ensure_ticker = session_tk,
+            rank_mode = isolate(input$lab_im_pool_rank %||% "mcap"),
+            concept_keys = isolate(input$lab_im_concepts),
+            market_mode = tryCatch(isolate(market_mode()), error = function(e) "US")
           ),
           error = function(e) {
             showNotification(paste("Cluster pool failed:", e$message), type = "error")
@@ -10449,7 +10504,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.18"),
+      paste0("- **App：** The YNow App v17.19"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

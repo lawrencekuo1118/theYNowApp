@@ -1,0 +1,67 @@
+#!/usr/bin/env Rscript
+# Offline tests for lab_select_eval_pool / concept groups.
+args <- commandArgs(trailingOnly = FALSE)
+file_arg <- sub("^--file=", "", args[grep("^--file=", args)])
+test_dir <- if (length(file_arg) == 1L && nzchar(file_arg)) {
+  dirname(normalizePath(file_arg))
+} else {
+  getwd()
+}
+app_dir <- normalizePath(file.path(test_dir, ".."), mustWork = TRUE)
+setwd(app_dir)
+source(file.path(app_dir, "setup.R"), local = FALSE)
+source(file.path(app_dir, "industry_standards.R"), local = FALSE)
+source(file.path(app_dir, "lab_industry_method.R"), local = FALSE)
+
+fail <- 0L
+check <- function(label, cond) {
+  if (isTRUE(cond)) {
+    cat("OK ", label, "\n", sep = "")
+  } else {
+    cat("FAIL ", label, "\n", sep = "")
+    fail <<- fail + 1L
+  }
+}
+
+check("normalize mcap", identical(lab_normalize_pool_rank_mode("市值"), "mcap"))
+check("normalize concept", identical(lab_normalize_pool_rank_mode("concept"), "concept"))
+check("normalize ret", identical(lab_normalize_pool_rank_mode("ret_1y"), "ret_1y"))
+check("normalize random", identical(lab_normalize_pool_rank_mode("random"), "random"))
+
+us_ch <- lab_concept_group_choices("US", "en")
+tw_ch <- lab_concept_group_choices("TW", "zh-TW")
+check("US concepts nonempty", length(us_ch) >= 8L)
+check("TW concepts nonempty", length(tw_ch) >= 8L)
+check("mag7 has NVDA", "NVDA" %in% lab_concept_tickers("mag7", "US"))
+check("TW ai has 2330.TW", "2330.TW" %in% lab_concept_tickers("ai_foundry", "TW"))
+
+pool <- data.frame(
+  ticker = c("AAA", "BBB", "CCC", "DDD", "EEE"),
+  market_cap = c(5, 40, 10, NA, 20),
+  stringsAsFactors = FALSE
+)
+mcap_p <- lab_select_eval_pool(pool, max_n = 2L, mode = "mcap")
+check("mcap top2", identical(as.character(mcap_p$ticker), c("BBB", "EEE")))
+
+rand_a <- lab_select_eval_pool(pool, max_n = 2L, mode = "random", seed = 1L)
+rand_b <- lab_select_eval_pool(pool, max_n = 2L, mode = "random", seed = 1L)
+check("random reproducible", identical(sort(rand_a$ticker), sort(rand_b$ticker)))
+check("random size 2", nrow(rand_a) == 2L)
+
+# Concept: only overlapping names kept
+pool2 <- data.frame(
+  ticker = c("AAPL", "MSFT", "ZZZ"),
+  market_cap = c(100, 90, 1000),
+  stringsAsFactors = FALSE
+)
+cp <- lab_select_eval_pool(
+  pool2, max_n = 10L, mode = "concept",
+  concept_keys = "mag7", market_mode = "US"
+)
+check("concept filters ZZZ", !("ZZZ" %in% cp$ticker) && all(cp$ticker %in% c("AAPL", "MSFT")))
+
+if (fail > 0L) {
+  cat("FAILED ", fail, " checks\n", sep = "")
+  quit(status = 1L)
+}
+cat("PASS lab_pool_rank\n")

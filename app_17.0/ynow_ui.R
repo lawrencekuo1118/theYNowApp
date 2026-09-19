@@ -75,7 +75,7 @@
       tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
       tags$p(
         class = "ynow-about-lead",
-        "The YNow App (v17.18) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合了即時財報抓取、多維度估值模型與動態回測引擎，將繁雜的市場資料轉化為直覺、科學的投資決策。"
+        "The YNow App (v17.19) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合了即時財報抓取、多維度估值模型與動態回測引擎，將繁雜的市場資料轉化為直覺、科學的投資決策。"
       ),
       tags$p(
         class = "ynow-about-method",
@@ -91,7 +91,7 @@
       tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
       tags$p(
         class = "ynow-about-lead",
-        "The YNow App (v17.18) is a comprehensive quantitative financial analysis and valuation decision system designed for professional investors and analysts. It seamlessly integrates real-time financial data parsing, multi-dimensional valuation models, and a dynamic backtesting engine to transform complex market data into actionable, scientific investment insights."
+        "The YNow App (v17.19) is a comprehensive quantitative financial analysis and valuation decision system designed for professional investors and analysts. It seamlessly integrates real-time financial data parsing, multi-dimensional valuation models, and a dynamic backtesting engine to transform complex market data into actionable, scientific investment insights."
       ),
       tags$p(
         class = "ynow-about-method",
@@ -880,7 +880,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.18</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.19</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -2673,6 +2673,10 @@ ui <- dashboardPage(
             if (labMaxNLabel && s.lab_im_max_n_label) labMaxNLabel.textContent = s.lab_im_max_n_label;
             var labMaxNCustom = document.getElementById('ynow_lab_im_max_n_custom_label');
             if (labMaxNCustom && s.lab_im_max_n_custom_label) labMaxNCustom.textContent = s.lab_im_max_n_custom_label;
+            var labPoolRank = document.getElementById('ynow_lab_im_pool_rank_label');
+            if (labPoolRank && s.lab_im_pool_rank_label) labPoolRank.textContent = s.lab_im_pool_rank_label;
+            var labConcepts = document.getElementById('ynow_lab_im_concepts_label');
+            if (labConcepts && s.lab_im_concepts_label) labConcepts.textContent = s.lab_im_concepts_label;
             var labMaxNHelp = document.getElementById('ynow_lab_im_max_n_help');
             if (labMaxNHelp && s.lab_im_max_n_help) labMaxNHelp.textContent = s.lab_im_max_n_help;
             var labDetailIntro = document.getElementById('ynow_lab_im_detail_intro');
@@ -5397,13 +5401,13 @@ ui <- dashboardPage(
             tags$hr(),
             fluidRow(
               column(
-                width = 12,
+                width = 4,
                 selectInput(
                   "lab_im_max_n",
                   tags$span(id = "ynow_lab_im_max_n_label", "評估檔數（明細列數）"),
                   choices = lab_im_max_n_select_choices(),
                   selected = "25",
-                  width = "280px"
+                  width = "100%"
                 ),
                 conditionalPanel(
                   condition = "input.lab_im_max_n == 'custom'",
@@ -5414,19 +5418,48 @@ ui <- dashboardPage(
                     min = 1,
                     max = 500,
                     step = 1,
-                    width = "280px"
-                  )
-                ),
-                tags$div(
-                  id = "ynow_lab_im_max_n_help",
-                  style = "color:#888; font-size:12px; line-height:1.45; white-space:pre-line; margin:-6px 0 12px 0;",
-                  paste0(
-                    "評估檔數 N（預設 25）＝本次要評估的檔數。\n",
-                    "• 誰進評估池：篩選後若候選 > N，先依市值由大到小取 N 檔。\n",
-                    "• 明細／排行預設排序：以 n＝5 年換算的年化估值漲幅（upside_cagr_pct）降序。\n",
-                    "• Piotroski F-Score≥7 只過濾排行榜 Top 10，不縮減明細。"
+                    width = "100%"
                   )
                 )
+              ),
+              column(
+                width = 4,
+                selectInput(
+                  "lab_im_pool_rank",
+                  tags$span(id = "ynow_lab_im_pool_rank_label", "候選截斷邏輯"),
+                  choices = lab_im_pool_rank_choices(),
+                  selected = "mcap",
+                  width = "100%"
+                )
+              ),
+              column(
+                width = 4,
+                conditionalPanel(
+                  condition = "input.lab_im_pool_rank == 'concept'",
+                  selectizeInput(
+                    "lab_im_concepts",
+                    tags$span(id = "ynow_lab_im_concepts_label", "概念股群"),
+                    choices = lab_concept_group_choices("US", "zh-TW"),
+                    selected = character(0),
+                    multiple = TRUE,
+                    options = list(
+                      placeholder = "選擇一或多個概念股群…",
+                      plugins = list("remove_button")
+                    ),
+                    width = "100%"
+                  )
+                )
+              )
+            ),
+            tags$div(
+              id = "ynow_lab_im_max_n_help",
+              style = "color:#888; font-size:12px; line-height:1.45; white-space:pre-line; margin:-6px 0 12px 0;",
+              paste0(
+                "評估檔數 N（預設 25）＝本次要評估的檔數。\n",
+                "• 誰進評估池：篩選後若候選 > N，依「候選截斷邏輯」取 N（市值／概念股／近一年漲幅／隨機）。\n",
+                "• 概念股：取所選概念群聯集與目前篩選之交集；若仍 > N 再依市值截斷。\n",
+                "• 明細／排行預設排序：以 n＝5 年換算的年化估值漲幅（upside_cagr_pct）降序。\n",
+                "• Piotroski F-Score≥7 只過濾排行榜 Top 10，不縮減明細。"
               )
             ),
             fluidRow(

@@ -6,7 +6,8 @@
 # 並依 App 預設預測年數 n（APP_DEFAULTS$years）換算年化漲幅最大者。
 # 「評估檔數（明細列數）」（lab_im_max_n；預設 25）＝本次 Yahoo 評估檔數＝明細列數。
 # 盈餘品質／Piotroski 高門檻勾選只影響排行榜／摘要，不縮減明細列數。
-# 選 N 且候選多於 N 時依市值由大到小取 N。排行榜＝同一批中 F-Score≥7 的 Top 10。
+# 候選 > N 時依使用者選的截斷邏輯（市值／概念股／近一年漲幅／隨機）取 N。
+# 排行榜＝同一批中 F-Score≥7 的 Top 10。
 # 產業建議方法對齊 recommend_valuation_models 的產業層規則（簡化估值）。
 # ==========================================
 
@@ -288,30 +289,203 @@ lab_attach_market_caps <- function(pool) {
   pool
 }
 
+#' Pool truncate / rank modes when candidates > N
+lab_im_pool_rank_choices <- function(locale = "zh-TW") {
+  loc <- if (exists("normalize_ui_locale", mode = "function")) {
+    normalize_ui_locale(locale)
+  } else {
+    as.character(locale %||% "zh-TW")[1]
+  }
+  is_zh <- grepl("^zh", tolower(loc), perl = TRUE)
+  if (is_zh) {
+    c(
+      "依市值（由大到小）" = "mcap",
+      "所選概念股全部" = "concept",
+      "依近一年股價漲幅" = "ret_1y",
+      "系統隨機" = "random"
+    )
+  } else {
+    c(
+      "By market cap (largest first)" = "mcap",
+      "All selected concept groups" = "concept",
+      "By 1Y price return" = "ret_1y",
+      "System random" = "random"
+    )
+  }
+}
+
+lab_normalize_pool_rank_mode <- function(x, default = "mcap") {
+  s <- tolower(trimws(as.character(x %||% default)[1]))
+  if (!nzchar(s)) s <- default
+  if (s %in% c("mcap", "market_cap", "cap", "市值")) return("mcap")
+  if (s %in% c("concept", "concepts", "theme", "概念", "概念股")) return("concept")
+  if (s %in% c("ret_1y", "return_1y", "1y", "漲幅", "近一年")) return("ret_1y")
+  if (s %in% c("random", "rand", "隨機")) return("random")
+  default
+}
+
+#' Batch 1Y total return (fraction); Yahoo via Python when available
+lab_fetch_returns_1y <- function(tickers) {
+  tks <- unique(toupper(trimws(as.character(tickers))))
+  tks <- tks[nzchar(tks) & !is.na(tks)]
+  out <- stats::setNames(rep(NA_real_, length(tks)), tks)
+  if (!length(tks)) return(out)
+  fetched <- NULL
+  if (exists(".ensure_python_scraper", mode = "function") &&
+      isTRUE(.ensure_python_scraper()) &&
+      exists("get_returns_1y_batch", mode = "function")) {
+    fetched <- tryCatch(get_returns_1y_batch(tks), error = function(e) NULL)
+  }
+  if (!is.null(fetched) && (is.list(fetched) || is.numeric(fetched))) {
+    nms <- toupper(trimws(as.character(names(fetched))))
+    vals <- suppressWarnings(as.numeric(unlist(fetched, use.names = FALSE)))
+    if (length(nms) == length(vals) && length(nms) > 0) {
+      for (i in seq_along(nms)) {
+        key <- gsub("/", "-", nms[[i]])
+        v <- vals[[i]]
+        if (!nzchar(key) || !is.finite(v)) next
+        out[[key]] <- v
+        alt <- gsub("\\.", "-", key)
+        if (!identical(alt, key) && alt %in% names(out) && !is.finite(out[[alt]])) {
+          out[[alt]] <- v
+        }
+      }
+    }
+  }
+  out
+}
+
+lab_attach_returns_1y <- function(pool) {
+  pool <- lab_dedupe_eval_pool(pool)
+  if (is.null(pool) || nrow(pool) == 0L) return(pool)
+  rets <- lab_fetch_returns_1y(pool$ticker)
+  pool$ret_1y <- unname(rets[pool$ticker])
+  pool
+}
+
 #' 依市值降序取最多 max_n 檔（無市值置後，再依代碼）
 #' 評估檔數 N：截斷只影響評估池／明細列數；排行榜另以 F-Score≥7 取 Top 10，不縮減明細。
 #' 不做市值分級／規模篩選。
 lab_rank_and_cap_eval_pool <- function(pool, max_n = 25L) {
+  lab_select_eval_pool(pool, max_n = max_n, mode = "mcap")
+}
+
+#' Select / truncate evaluation pool by user mode
+#'
+#' Modes:
+#' - mcap: largest market cap first (legacy)
+#' - concept: keep only selected concept-group tickers; if still > N, mcap within
+#' - ret_1y: highest 1Y price return first
+#' - random: uniform random sample of N
+lab_select_eval_pool <- function(pool, max_n = 25L, mode = "mcap",
+                                 concept_keys = NULL,
+                                 market_mode = "US",
+                                 seed = NULL) {
   pool <- lab_dedupe_eval_pool(pool)
+  mode <- lab_normalize_pool_rank_mode(mode)
   if (is.null(pool) || !is.data.frame(pool)) {
     empty <- data.frame(ticker = character(0), stringsAsFactors = FALSE)
     attr(empty, "n_filtered") <- 0L
     attr(empty, "max_n") <- lab_clamp_im_max_n(max_n)
     attr(empty, "used_market_cap") <- FALSE
+    attr(empty, "pool_rank_mode") <- mode
+    attr(empty, "pool_rank_note") <- "empty"
     return(empty)
   }
-  if (!"market_cap" %in% names(pool)) pool$market_cap <- NA_real_
   max_n <- lab_clamp_im_max_n(max_n)
   n_filtered <- nrow(pool)
+  note <- mode
+  used_mcap <- FALSE
+  mm <- tryCatch({
+    if (exists("normalize_market_mode", mode = "function")) {
+      normalize_market_mode(market_mode)
+    } else {
+      m <- toupper(trimws(as.character(market_mode)[1]))
+      if (identical(m, "TW") || identical(m, "TWN") || identical(m, "TAIWAN")) "TW" else "US"
+    }
+  }, error = function(e) "US")
+
+  if (identical(mode, "concept")) {
+    if (!exists("lab_concept_tickers", mode = "function")) {
+      mode <- "mcap"
+      note <- "concept_unavailable_fallback_mcap"
+    } else {
+      ckeys <- lab_normalize_multi_filter(concept_keys)
+      ctks <- lab_concept_tickers(ckeys, market = mm)
+      if (!length(ckeys) || !length(ctks)) {
+        mode <- "mcap"
+        note <- "concept_none_selected_fallback_mcap"
+      } else {
+        pool$ticker <- toupper(trimws(as.character(pool$ticker)))
+        ctks_u <- unique(toupper(trimws(ctks)))
+        # Match TW bare / BRK.B variants lightly
+        bare <- function(x) sub("\\.(TW|TWO)$", "", x, ignore.case = TRUE)
+        keep <- pool$ticker %in% ctks_u |
+          bare(pool$ticker) %in% bare(ctks_u) |
+          gsub("\\.", "-", pool$ticker) %in% gsub("\\.", "-", ctks_u)
+        pool_c <- pool[keep, , drop = FALSE]
+        if (nrow(pool_c) == 0L) {
+          mode <- "mcap"
+          note <- "concept_no_overlap_fallback_mcap"
+        } else {
+          pool <- pool_c
+          note <- sprintf("concept_n=%d", nrow(pool))
+        }
+      }
+    }
+  }
+
+  if (identical(mode, "random")) {
+    if (is.finite(max_n) && nrow(pool) > max_n) {
+      if (!is.null(seed) && is.finite(as.numeric(seed)[1])) {
+        set.seed(as.integer(seed)[1])
+      }
+      pool <- pool[sample.int(nrow(pool), size = as.integer(max_n)), , drop = FALSE]
+      pool <- pool[order(pool$ticker), , drop = FALSE]
+    }
+    attr(pool, "n_filtered") <- as.integer(n_filtered)
+    attr(pool, "max_n") <- max_n
+    attr(pool, "used_market_cap") <- FALSE
+    attr(pool, "pool_rank_mode") <- "random"
+    attr(pool, "pool_rank_note") <- note
+    return(pool)
+  }
+
+  if (identical(mode, "ret_1y")) {
+    pool <- lab_attach_returns_1y(pool)
+    ret <- suppressWarnings(as.numeric(pool$ret_1y))
+    missing <- is.na(ret) | !is.finite(ret)
+    o <- order(missing, -ifelse(missing, 0, ret), pool$ticker, na.last = TRUE)
+    pool <- pool[o, , drop = FALSE]
+    if (is.finite(max_n) && nrow(pool) > max_n) pool <- utils::head(pool, max_n)
+    attr(pool, "n_filtered") <- as.integer(n_filtered)
+    attr(pool, "max_n") <- max_n
+    attr(pool, "used_market_cap") <- FALSE
+    attr(pool, "pool_rank_mode") <- "ret_1y"
+    attr(pool, "pool_rank_note") <- note
+    return(pool)
+  }
+
+  # Default / fallback: market cap
+  if (!"market_cap" %in% names(pool) ||
+      !isTRUE(sum(is.finite(suppressWarnings(as.numeric(pool$market_cap))) &
+                    suppressWarnings(as.numeric(pool$market_cap)) > 0) > 0L)) {
+    if (is.finite(max_n) && nrow(pool) > max_n) {
+      pool <- lab_attach_market_caps(pool)
+    }
+  }
+  if (!"market_cap" %in% names(pool)) pool$market_cap <- NA_real_
   mcap <- suppressWarnings(as.numeric(pool$market_cap))
   missing <- is.na(mcap) | !is.finite(mcap) | mcap <= 0
-  used <- isTRUE(sum(!missing) > 0L)
+  used_mcap <- isTRUE(sum(!missing) > 0L)
   o <- order(missing, -ifelse(missing, 0, mcap), pool$ticker, na.last = TRUE)
   pool <- pool[o, , drop = FALSE]
-  if (n_filtered > max_n && is.finite(max_n)) pool <- utils::head(pool, max_n)
+  if (is.finite(max_n) && nrow(pool) > max_n) pool <- utils::head(pool, max_n)
   attr(pool, "n_filtered") <- as.integer(n_filtered)
   attr(pool, "max_n") <- max_n
-  attr(pool, "used_market_cap") <- used
+  attr(pool, "used_market_cap") <- used_mcap
+  attr(pool, "pool_rank_mode") <- "mcap"
+  attr(pool, "pool_rank_note") <- note
   pool
 }
 
@@ -325,6 +499,7 @@ lab_normalize_multi_filter <- function(x) {
 # S&P 500 宇宙（可更新快取）；須在候選目錄／名稱查詢之前載入
 source("lab_sp500_universe.R", local = TRUE, encoding = "UTF-8")
 source("lab_tw_universe.R", local = TRUE, encoding = "UTF-8")
+source("lab_concept_groups.R", local = TRUE, encoding = "UTF-8")
 
 #' 產業 CAPM Ke（%）
 lab_industry_ke_pct <- function(industry_key) {

@@ -3,6 +3,7 @@ app_11.0 — cloud-compatible financials.
 Prefer yfinance API (works on shinyapps.io). Selenium is optional fallback for local only.
 """
 import os
+import time
 import pandas as pd
 import yfinance as yf
 
@@ -283,6 +284,50 @@ def get_market_caps_batch(tickers):
         _dbg(f"✅ market caps {n_ok}/{len(cleaned)}")
     else:
         _dbg("⚠️ market cap batch empty; Lab will fall back to ticker order")
+    return out
+
+
+def get_returns_1y_batch(tickers):
+    """1Y total return (fraction) for many tickers via yfinance history.
+
+    Returns {SYMBOL: float|None}. Used by Lab pool ranking (ret_1y mode).
+    """
+    cleaned = []
+    seen = set()
+    for raw in tickers or []:
+        t = str(raw or "").strip().upper().replace("/", "-")
+        if not t or t in seen:
+            continue
+        seen.add(t)
+        cleaned.append(t)
+    out = {t: None for t in cleaned}
+    if not cleaned:
+        return out
+
+    def _one(sym):
+        try:
+            hist = yf.Ticker(sym).history(period="1y", auto_adjust=True)
+            if hist is None or hist.empty or "Close" not in hist.columns:
+                return None
+            closes = hist["Close"].dropna()
+            if len(closes) < 2:
+                return None
+            a = float(closes.iloc[0])
+            b = float(closes.iloc[-1])
+            if a <= 0 or b <= 0:
+                return None
+            return (b / a) - 1.0
+        except Exception as e:  # noqa: BLE001
+            _dbg(f"⚠️ ret_1y {sym}: {e}")
+            return None
+
+    # Serial with light pause — avoids Yahoo 429 on large N
+    for i, sym in enumerate(cleaned):
+        if i and i % 15 == 0:
+            time.sleep(0.35)
+        out[sym] = _one(sym)
+    n_ok = sum(1 for v in out.values() if v is not None)
+    _dbg(f"✅ returns 1y {n_ok}/{len(cleaned)}")
     return out
 
 

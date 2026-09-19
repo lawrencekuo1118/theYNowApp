@@ -109,9 +109,14 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     lab_im_max_n_label = "Evaluation count (detail rows)",
     lab_im_max_n_custom_label = "Custom count",
+    lab_im_pool_rank_label = "Candidate truncate rule",
+    lab_im_concepts_label = "Concept groups",
+    lab_im_concepts_placeholder = "Select one or more concept groups…",
     lab_im_max_n_help = paste0(
       "Evaluation count N (default 25) = how many names are evaluated this run.\n",
-      "• Evaluation pool: after filters, if candidates exceed N, take the top N by market cap (largest first).\n",
+      "• Evaluation pool: after filters, if candidates exceed N, apply the truncate rule ",
+      "(market cap / concept groups / 1Y return / random).\n",
+      "• Concept groups: intersection of selected themes with the filtered pool; if still > N, cap by market cap.\n",
       "• Detail / ranking default sort: implied annualized valuation appreciation over n=5 years (upside_cagr_pct), descending.\n",
       "• Piotroski F-Score≥7 filters only the Top 10 leaderboard; it does not shrink the detail table."
     ),
@@ -600,9 +605,13 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     lab_im_max_n_label = "評估檔數（明細列數）",
     lab_im_max_n_custom_label = "自訂檔數",
+    lab_im_pool_rank_label = "候選截斷邏輯",
+    lab_im_concepts_label = "概念股群",
+    lab_im_concepts_placeholder = "選擇一或多個概念股群…",
     lab_im_max_n_help = paste0(
       "評估檔數 N（預設 25）＝本次要評估的檔數。\n",
-      "• 誰進評估池：篩選後若候選 > N，先依市值由大到小取 N 檔。\n",
+      "• 誰進評估池：篩選後若候選 > N，依「候選截斷邏輯」取 N（市值／概念股／近一年漲幅／隨機）。\n",
+      "• 概念股：取所選概念群聯集與目前篩選之交集；若仍 > N 再依市值截斷。\n",
       "• 明細／排行預設排序：以 n＝5 年換算的年化估值漲幅（upside_cagr_pct）降序。\n",
       "• Piotroski F-Score≥7 只過濾排行榜 Top 10，不縮減明細。"
     ),

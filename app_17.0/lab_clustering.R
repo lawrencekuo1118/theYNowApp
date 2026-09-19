@@ -792,7 +792,9 @@ lab_cluster_ensure_ticker_in_pool <- function(pool, catalog, ensure_ticker, max_
 
 #' Build evaluation pool for clustering from Blue Chip catalog filters
 lab_cluster_build_pool <- function(catalog, industry_filter = NULL, method_filter = NULL,
-                                   max_n = 50L, ensure_ticker = NULL) {
+                                   max_n = 50L, ensure_ticker = NULL,
+                                   rank_mode = "mcap", concept_keys = NULL,
+                                   market_mode = "US") {
   empty <- data.frame(
     ticker = character(0),
     industry_key = character(0),
@@ -818,10 +820,19 @@ lab_cluster_build_pool <- function(catalog, industry_filter = NULL, method_filte
     return(pool[, cols, drop = FALSE])
   }
   max_n <- lab_resolve_im_max_n(max_n, custom = NULL, lo = 1L, hi = 500L)
-  if (is.finite(max_n) && nrow(pool) > max_n) {
+  mode <- lab_normalize_pool_rank_mode(rank_mode)
+  if (is.finite(max_n) && nrow(pool) > max_n &&
+      mode %in% c("mcap", "concept")) {
     pool <- lab_attach_market_caps(pool)
   }
-  pool <- lab_rank_and_cap_eval_pool(pool, max_n = max_n)
+  pool <- lab_select_eval_pool(
+    pool,
+    max_n = max_n,
+    mode = mode,
+    concept_keys = concept_keys,
+    market_mode = market_mode,
+    seed = as.integer(Sys.time())
+  )
   pool <- lab_cluster_ensure_ticker_in_pool(pool, catalog, ensure_ticker, max_n = max_n)
   cols <- intersect(c("ticker", "industry_key", "industry_label", "market_cap"), names(pool))
   pool[, cols, drop = FALSE]
