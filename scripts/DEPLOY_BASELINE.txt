@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12576731
+bundleId=12576748
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=c241691
-commit=c241691fbc007ec5615f98ac9faa679498271310
-short=c241691
-message=fix(lab): offline Clustering feature snapshot when Yahoo blocked (v17.12)
-captured_at=2026-09-19T11:47:27Z
+aligned_git=d1f792e
+commit=d1f792ebf0cd23be817f38cfa956e2b762d87f7e
+short=d1f792e
+message=fix(ui): place forecast years n below DCF model select (v17.13)
+captured_at=2026-09-19T11:54:29Z
 source_branch=master
-display_version=v17.12
-note=Canonical live line is app_17.0. Bundle 12576731 = redeploy of v17.12 offline cluster_features_snapshot.csv fallback (S&P500+TW) when Yahoo crumb blocked. Deploy via scripts/deploy_app_17.R.
+display_version=v17.13
+note=Canonical live line is app_17.0. Bundle 12576748 = v17.13 DCF-Model: 預測年數 n immediately below 選擇 DCF 估值模型 (shared header). Deploy via scripts/deploy_app_17.R.
