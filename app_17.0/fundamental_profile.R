@@ -177,17 +177,10 @@ fs_item_to_focus_metric <- function(item) {
     }
   }
   tip <- as.character(title %||% "")[1]
-  is_fallback <- identical(pid, "fallback")
   tags$span(
-    class = paste(
-      "ynow-fund-profile-badge",
-      if (is_fallback) "ynow-fund-profile-badge--fallback" else NULL
-    ),
+    class = "ynow-fund-profile-badge",
     title = if (nzchar(tip)) tip else lab,
-    # Data-limited / 資料受限：無圓點；其餘屬性保留圖例色點
-    if (!is_fallback) {
-      tags$span(class = "ynow-focus-metric-dot ynow-focus-metric-dot--legend", `aria-hidden` = "true")
-    },
+    # 一律黑底金框金字、無圓點（含 High growth／Data-limited 等）
     tags$span(
       id = "ynow_fund_profile_badge_text",
       `data-profile-id` = pid,

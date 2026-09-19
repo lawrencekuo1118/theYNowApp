@@ -124,6 +124,11 @@ badge_html <- as.character(badge)
 check("badge has class", grepl("ynow-fund-profile-badge", badge_html, fixed = TRUE))
 check("badge has data-profile-id", grepl('data-profile-id="capital_intensive"', badge_html, fixed = TRUE))
 check("badge shows label", grepl("資本密集", badge_html, fixed = TRUE))
+check("badge has no legend dot", !grepl("ynow-focus-metric-dot", badge_html, fixed = TRUE))
+badge_g <- .ynow_fund_profile_badge_ui("growth", "High growth")
+badge_g_html <- as.character(badge_g)
+check("growth badge no dot", !grepl("ynow-focus-metric-dot", badge_g_html, fixed = TRUE))
+check("growth badge label", grepl("High growth", badge_g_html, fixed = TRUE))
 
 if (fail > 0L) {
   cat("FAILED ", fail, " checks\n", sep = "")

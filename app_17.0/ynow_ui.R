@@ -1005,7 +1005,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.39</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.40</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -3405,33 +3405,24 @@ ui <- dashboardPage(
           flex: 1 1 auto;
         }
 
+        /* 財報屬性標籤：黑底＋標題同款金字金框，無圓點（High growth／資料受限等一律） */
         .ynow-fund-profile-badge {
           display: inline-flex;
           align-items: center;
-          gap: 6px;
+          gap: 0;
           margin-left: auto;
           padding: 3px 10px;
           border-radius: 4px;
-          border: 1px solid var(--ynow-gold, #F5C518);
-          background: rgba(245, 197, 24, 0.12);
-          color: var(--ynow-gold-ink, #856404);
+          border: 1px solid var(--ynow-gold, #F5C518) !important;
+          background: #000000 !important;
+          color: var(--ynow-gold, #F5C518) !important;
           font-size: 12px;
           font-weight: 700;
           white-space: nowrap;
           line-height: 1.2;
         }
-        /* Data-limited / 資料受限：黑底＋標題同款金字金框，無圓點 */
-        .ynow-fund-profile-badge.ynow-fund-profile-badge--fallback {
-          background: #000000 !important;
-          color: var(--ynow-gold, #F5C518) !important;
-          border: 1px solid var(--ynow-gold, #F5C518) !important;
-          gap: 0;
-        }
-        .ynow-fund-profile-badge.ynow-fund-profile-badge--fallback .ynow-focus-metric-dot {
-          display: none !important;
-        }
         .ynow-fund-profile-badge .ynow-focus-metric-dot {
-          margin-left: 0;
+          display: none !important;
         }
         @media (max-width: 767px) {
           .ynow-ind-yahoo-row {
