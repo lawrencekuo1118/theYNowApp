@@ -99,4 +99,64 @@ stopifnot(isTRUE(abs(merged$ROE[[1]] - 40) < 1e-9))
 stopifnot(isTRUE(abs(merged$Operating_Margin[[1]] - 55) < 1e-9))
 stopifnot(lab_cluster_usable_feature_rows(merged) >= 1L)
 
+# Offline snapshot must load and support US + TW without live Yahoo
+snap_all <- lab_load_cluster_features_snapshot(NULL)
+stopifnot(is.data.frame(snap_all), nrow(snap_all) >= 100L)
+stopifnot(lab_cluster_usable_feature_rows(snap_all) >= 100L)
+us_sample <- utils::head(snap_all$ticker[!grepl("\\.(TW|TWO)$", snap_all$ticker)], 25)
+tw_sample <- utils::head(snap_all$ticker[grepl("\\.(TW|TWO)$", snap_all$ticker)], 25)
+stopifnot(length(us_sample) >= 10L, length(tw_sample) >= 10L)
+# Simulate Yahoo-blocked host: snapshot-only fetch for N≈25 US / TW
+old_ensure <- if (exists(".ensure_python_scraper", mode = "function", inherits = TRUE)) {
+  get(".ensure_python_scraper", mode = "function")
+} else {
+  NULL
+}
+assign(".ensure_python_scraper", function() FALSE, envir = .GlobalEnv)
+on.exit({
+  if (is.null(old_ensure)) {
+    if (exists(".ensure_python_scraper", envir = .GlobalEnv, inherits = FALSE)) {
+      rm(".ensure_python_scraper", envir = .GlobalEnv)
+    }
+  } else {
+    assign(".ensure_python_scraper", old_ensure, envir = .GlobalEnv)
+  }
+}, add = TRUE)
+# Stub R crumb path to empty (rate_limited)
+assign("lab_fetch_cluster_features_r", function(tickers, timeout_sec = 12) {
+  out <- lab_cluster_features_to_df(NULL)
+  attr(out, "yahoo_r_error") <- "rate_limited"
+  out
+}, envir = .GlobalEnv)
+feats_us <- lab_fetch_cluster_features(us_sample)
+feats_tw <- lab_fetch_cluster_features(tw_sample)
+stopifnot(lab_cluster_usable_feature_rows(feats_us) >= 2L)
+stopifnot(lab_cluster_usable_feature_rows(feats_tw) >= 2L)
+stopifnot(isTRUE(attr(feats_us, "used_snapshot")) || lab_cluster_usable_feature_rows(feats_us) >= 2L)
+res_off <- lab_run_stock_clustering(feats_us, k_clusters = 4L, locale = "en", seed = 3L)
+stopifnot(identical(as.integer(res_off$k), 4L), nrow(res_off$data) >= 4L)
+
+# #region agent log
+tryCatch({
+  .dbg <- list(
+    sessionId = "ef0f33",
+    runId = "cluster-snap-verify",
+    hypothesisId = "H_offline",
+    location = "tests/test_lab_clustering.R",
+    message = "offline_snapshot_ok",
+    timestamp = as.numeric(Sys.time()) * 1000,
+    data = list(
+      snap_n = nrow(snap_all),
+      us_ok = lab_cluster_usable_feature_rows(feats_us),
+      tw_ok = lab_cluster_usable_feature_rows(feats_tw),
+      clustered = nrow(res_off$data)
+    )
+  )
+  cat(jsonlite::toJSON(.dbg, auto_unbox = TRUE, null = "null"), "\n",
+      file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-ef0f33.log",
+      append = TRUE)
+}, error = function(e) invisible(NULL))
+# #endregion
+
 cat("PASS lab_clustering\n")
+

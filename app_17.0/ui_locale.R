@@ -462,7 +462,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     btn_lab_cluster_run = "Run clustering",
     lab_cluster_hint = paste0(
       "Uses the same industry/model filters as Rankings when set. ",
-      "Fetches Yahoo ratios for up to N names (largest market cap first). ",
+      "Fetches Yahoo ratios for up to N names (largest market cap first), ",
+      "with a bundled offline snapshot fallback when Yahoo is blocked. ",
       "N stays in sync with Detail evaluation count (default 100)."
     ),
     lab_cluster_map_title = "Cluster map",
@@ -474,15 +475,19 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_cluster_idle_table = "Run clustering to see assignments.",
     lab_cluster_idle_focus = "Pick a focus ticker for the radar.",
     lab_cluster_err_features = paste0(
-      "Yahoo ratio features unavailable for clustering. ",
-      "TW and US use the same fields (ROE, margins, growth, D/E, P/E, P/B). ",
-      "If you just opened the app, run a Search first to warm data, then retry with N=25–50 ",
-      "(N=100 often hits Yahoo rate limits). Auth failures can also cause this."
+      "Ratio features unavailable for clustering. ",
+      "Live Yahoo ratios failed and the offline snapshot has too few matches for this universe. ",
+      "Retry later or lower Universe size (N)."
     ),
     lab_cluster_err_missing = paste0(
-      "Too few names with usable Yahoo ratios after the missing-data filter. ",
+      "Too few names with usable ratios after the missing-data filter. ",
       "Each name needs at least 2 finite ratios. Retry later or lower N."
-    )
+    ),
+    lab_cluster_snapshot_note = paste0(
+      "Using bundled offline feature snapshot ",
+      "(live Yahoo ratios unavailable or incomplete on this host)."
+    ),
+    lab_cluster_partial_k = "Lowered cluster count k because fewer than k names have usable ratios."
   ),
   `zh-TW` = list(
     recent_search = "最近搜尋：",
@@ -916,7 +921,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     btn_lab_cluster_run = "執行分群",
     lab_cluster_hint = paste0(
       "沿用「排行」頁目前的產業／模型篩選（若有）。",
-      "對最多 N 檔（市值由大到小）抓取 Yahoo 比率特徵。",
+      "對最多 N 檔（市值由大到小）抓取 Yahoo 比率特徵；",
+      "若 Yahoo 受限則改用內建離線快照。",
       "N 與「明細」評估檔數同步（預設 100）。"
     ),
     lab_cluster_map_title = "分群星團圖",
@@ -928,15 +934,19 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_cluster_idle_table = "請執行分群以顯示分群結果。",
     lab_cluster_idle_focus = "請選擇雷達焦點代號。",
     lab_cluster_err_features = paste0(
-      "無法取得分群所需的 Yahoo 比率特徵。",
-      "台股與美股使用相同欄位（ROE、利潤率、成長率、D/E、P/E、P/B）。",
-      "若剛開啟應用程式，請先執行一次搜尋以暖機，再以 N=25–50 重試",
-      "（N=100 容易觸發 Yahoo 流量限制）。驗證失敗也可能造成此狀況。"
+      "無法取得分群所需的比率特徵。",
+      "即時 Yahoo 失敗，且離線快照對此宇宙可用檔數不足。",
+      "請稍後再試，或調降宇宙檔數（N）。"
     ),
     lab_cluster_err_missing = paste0(
       "缺值過濾後，可用比率特徵的檔數不足。",
       "每一檔至少需要 2 個有效比率。請稍後再試，或調降 N。"
-    )
+    ),
+    lab_cluster_snapshot_note = paste0(
+      "目前使用內建離線特徵快照",
+      "（此主機無法取得完整即時 Yahoo 比率）。"
+    ),
+    lab_cluster_partial_k = "可用比率特徵的檔數少於群數 k，已自動調降 k。"
   )
 )
 

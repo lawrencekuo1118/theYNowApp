@@ -1,6 +1,11 @@
-# The YNow App v17.11 — Valuation Methodology
+# The YNow App v17.12 — Valuation Methodology
 
 先分類，再選模型；先推導，再校正；先給區間，再給單點；先做基本面估值。
+
+## v17.12 重點
+
+- **Clustering Lab**：內建離線比率特徵快照（S&P 500 + 台股上市／上櫃）；Yahoo 受限時仍可分群；可用檔數不足時自動調降 k；即時 Yahoo 仍優先覆寫快照
+- **目錄**：`app_17.0/`；顯示版號 **v17.12**
 
 ## v17.11 重點
 
@@ -9,7 +14,7 @@
 
 ## v17.10 重點
 
-- **Clustering Lab**：Yahoo 比率特徵抓取韌性（Python `.info` 重試＋YfData `quoteSummary` crumb 後備＋稀疏 ticker 序列補洞；R 端 crumb 驗證並拒絕空殼；en-US／zh-TW 提示）
+- **Clustering Lab**：Yahoo 比率特徵抓取韌性（chunked fetch + crumb 429 backoff）
 - **目錄**：`app_17.0/`；顯示版號 **v17.10**
 
 ## v17.08 重點
@@ -60,7 +65,7 @@
 - **側邊欄三分法**：資產基礎法（NAV）｜收益與現金流折現法（DCF／DDM／RI）｜相對估值法（P/B）
 - **P/B 專注倍數**：產業／歷史或 Justified（需 SGR）；與純 NAV 分開
 - **推薦邏輯**：控股／綜合 → 主模型 NAV；金融／帳面驅動仍以 P/B 為主，資產傾向可副選 NAV
-- **目錄**：`app_17.0/`；顯示版號 **v17**（已遞增至 v17.11）
+- **目錄**：`app_17.0/`；顯示版號 **v17**（已遞增至 v17.12）
 - **Blue Chip 分群 Lab**：K-Means 對比率／成長率特徵分群（星團圖＋同群雷達；預設 N＝25、批次 quote＋快取）；研究用，非買進訊號
 - **財報屬性分群**：依三大報表規則標示 KPI／FS 金色點（與產業同業色碼正交）；產業快覽 Yahoo Sector/Industry 列右側顯示屬性標籤
 - **頁首置頂固定**：網頁／手機共用 `.main-header { position: fixed }`，捲動不滑掉

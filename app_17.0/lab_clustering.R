@@ -460,7 +460,75 @@ lab_fetch_cluster_features_r <- function(tickers, timeout_sec = 12) {
   out
 }
 
-#' Fetch Yahoo ratio features (Python first; R crumb quoteSummary gap-fills)
+
+#' Best-effort debug NDJSON writer (local .cursor path or temp)
+.lab_cluster_debug_log <- function(payload) {
+  paths <- c(
+    "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-ef0f33.log",
+    file.path(tempdir(), "debug-ef0f33.log")
+  )
+  line <- tryCatch(
+    paste0(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"), "\n"),
+    error = function(e) NULL
+  )
+  if (is.null(line)) return(invisible(FALSE))
+  for (p in paths) {
+    ok <- tryCatch({
+      dir.create(dirname(p), recursive = TRUE, showWarnings = FALSE)
+      cat(line, file = p, append = TRUE)
+      TRUE
+    }, error = function(e) FALSE)
+    if (isTRUE(ok)) return(invisible(TRUE))
+  }
+  invisible(FALSE)
+}
+
+#' Path to bundled offline Clustering feature snapshot (CSV)
+lab_cluster_features_snapshot_path <- function() {
+  candidates <- c(
+    file.path("data", "cluster_features_snapshot.csv"),
+    file.path("app_17.0", "data", "cluster_features_snapshot.csv")
+  )
+  for (p in candidates) {
+    if (file.exists(p)) return(normalizePath(p, winslash = "/", mustWork = FALSE))
+  }
+  NA_character_
+}
+
+#' Load bundled offline ratio features (durable when Yahoo crumb is blocked)
+lab_load_cluster_features_snapshot <- function(tickers = NULL) {
+  path <- lab_cluster_features_snapshot_path()
+  empty <- lab_cluster_features_to_df(NULL)
+  if (!nzchar(path) || is.na(path) || !file.exists(path)) {
+    attr(empty, "snapshot_source") <- "missing"
+    return(empty)
+  }
+  raw <- tryCatch(
+    utils::read.csv(path, stringsAsFactors = FALSE, check.names = FALSE, fileEncoding = "UTF-8"),
+    error = function(e) NULL
+  )
+  if (is.null(raw) || !is.data.frame(raw) || nrow(raw) == 0L) {
+    attr(empty, "snapshot_source") <- "empty"
+    return(empty)
+  }
+  df <- lab_cluster_features_to_df(raw)
+  if (!is.null(tickers) && length(tickers)) {
+    want <- unique(toupper(trimws(as.character(tickers))))
+    want <- want[nzchar(want) & !is.na(want)]
+    df <- df[df$ticker %in% want, , drop = FALSE]
+  }
+  snap_at <- if ("snapshot_at" %in% names(raw)) {
+    as.character(raw$snapshot_at[[1]])
+  } else {
+    NA_character_
+  }
+  attr(df, "snapshot_source") <- path
+  attr(df, "snapshot_at") <- snap_at
+  rownames(df) <- NULL
+  df
+}
+
+#' Fetch Clustering features: live Yahoo overlay + durable offline snapshot fallback
 #' Chunks large universes to reduce Yahoo 429s (N=100 is especially fragile).
 lab_fetch_cluster_features <- function(tickers, chunk_size = 20L) {
   tks <- unique(toupper(trimws(as.character(tickers))))
@@ -471,10 +539,26 @@ lab_fetch_cluster_features <- function(tickers, chunk_size = 20L) {
   `%||%` <- function(a, b) if (is.null(a)) b else a
   py_err <- NULL
   r_err <- NULL
+  snap_err <- NULL
   df <- NULL
+  used_snapshot <- FALSE
   chunk_size <- as.integer(chunk_size)[1]
   if (!is.finite(chunk_size) || chunk_size < 5L) chunk_size <- 20L
   if (chunk_size > 40L) chunk_size <- 40L
+
+  # Durable base layer: bundled snapshot (works when Yahoo datacenter blocks crumb)
+  snap <- tryCatch(
+    lab_load_cluster_features_snapshot(tks),
+    error = function(e) {
+      snap_err <<- conditionMessage(e)
+      NULL
+    }
+  )
+  n_snap <- lab_cluster_usable_feature_rows(snap)
+  if (!is.null(snap) && nrow(snap) > 0L && n_snap > 0L) {
+    df <- snap
+    used_snapshot <- TRUE
+  }
 
   .py_fetch_chunk <- function(chunk) {
     fn <- NULL
@@ -509,14 +593,15 @@ lab_fetch_cluster_features <- function(tickers, chunk_size = 20L) {
       if (ci > 1L) Sys.sleep(0.55)
       part <- .py_fetch_chunk(chunks[[ci]])
       if (!is.null(part) && nrow(part) > 0L) {
-        df <- lab_cluster_merge_feature_dfs(df, part)
+        # Live Yahoo preferred over snapshot when finite
+        df <- lab_cluster_merge_feature_dfs(part, df)
       }
       # #region agent log
       tryCatch({
         .dbg <- list(
           sessionId = "ef0f33",
-          runId = "cluster-pre",
-          hypothesisId = "H1",
+          runId = "cluster-snap",
+          hypothesisId = "H_offline",
           location = "lab_clustering.R:lab_fetch_cluster_features",
           message = "py_chunk",
           timestamp = as.numeric(Sys.time()) * 1000,
@@ -525,12 +610,12 @@ lab_fetch_cluster_features <- function(tickers, chunk_size = 20L) {
             n_chunks = length(chunks),
             chunk_n = length(chunks[[ci]]),
             n_ok_so_far = lab_cluster_usable_feature_rows(df),
+            n_snap = n_snap,
+            used_snapshot = used_snapshot,
             py_err = py_err
           )
         )
-        cat(jsonlite::toJSON(.dbg, auto_unbox = TRUE, null = "null"), "\n",
-            file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-ef0f33.log",
-            append = TRUE)
+        .lab_cluster_debug_log(.dbg)
       }, error = function(e) invisible(NULL))
       # #endregion
     }
@@ -563,7 +648,7 @@ lab_fetch_cluster_features <- function(tickers, chunk_size = 20L) {
         }
         n_ok_r <- lab_cluster_usable_feature_rows(df_r)
         if (n_ok_r > 0L) {
-          df <- lab_cluster_merge_feature_dfs(df, df_r)
+          df <- lab_cluster_merge_feature_dfs(df_r, df)
           n_ok <- lab_cluster_usable_feature_rows(df)
         }
       }
@@ -571,17 +656,32 @@ lab_fetch_cluster_features <- function(tickers, chunk_size = 20L) {
     }
   }
 
+  # If live Yahoo failed, re-merge full snapshot for requested tickers
+  if (n_ok < 2L) {
+    snap2 <- tryCatch(
+      lab_load_cluster_features_snapshot(tks),
+      error = function(e) NULL
+    )
+    if (!is.null(snap2) && lab_cluster_usable_feature_rows(snap2) > 0L) {
+      df <- lab_cluster_merge_feature_dfs(df, snap2)
+      n_ok <- lab_cluster_usable_feature_rows(df)
+      used_snapshot <- TRUE
+    }
+  }
+
   if (is.null(df) || nrow(df) == 0L || n_ok < 2L) {
     detail <- paste0(
       "python: ", py_err %||% "n/a",
-      if (!is.null(r_err)) paste0("; R: ", r_err) else ""
+      if (!is.null(r_err)) paste0("; R: ", r_err) else "",
+      if (!is.null(snap_err)) paste0("; snapshot: ", snap_err) else "",
+      "; snapshot_usable=", n_snap
     )
     # #region agent log
     tryCatch({
       .dbg <- list(
         sessionId = "ef0f33",
-        runId = "cluster-pre",
-        hypothesisId = "H1_H2",
+        runId = "cluster-snap",
+        hypothesisId = "H_offline",
         location = "lab_clustering.R:lab_fetch_cluster_features",
         message = "features_unavailable",
         timestamp = as.numeric(Sys.time()) * 1000,
@@ -589,6 +689,8 @@ lab_fetch_cluster_features <- function(tickers, chunk_size = 20L) {
           n_tickers = length(tks),
           n_ok = n_ok,
           n_rows = if (is.null(df)) 0L else nrow(df),
+          n_snap = n_snap,
+          used_snapshot = used_snapshot,
           py_ready = isTRUE(ready),
           py_err = py_err,
           r_err = r_err,
@@ -596,27 +698,28 @@ lab_fetch_cluster_features <- function(tickers, chunk_size = 20L) {
           sample_tickers = utils::head(tks, 8)
         )
       )
-      cat(jsonlite::toJSON(.dbg, auto_unbox = TRUE, null = "null"), "\n",
-          file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-ef0f33.log",
-          append = TRUE)
+      .lab_cluster_debug_log(.dbg)
     }, error = function(e) invisible(NULL))
     # #endregion
     stop(sprintf(
       paste0(
-        "Yahoo ratio features unavailable for clustering ",
+        "Ratio features unavailable for clustering ",
         "(%d/%d tickers with ≥2 finite ratios; %s). ",
-        "Retry later or lower Universe size (N). ",
-        "TW and US use the same Yahoo fields (ROE, margins, growth, D/E, P/E, P/B)."
+        "Offline snapshot missing or incomplete for this universe — ",
+        "retry later or lower Universe size (N)."
       ),
       n_ok, length(tks), detail
     ))
   }
+  attr(df, "used_snapshot") <- used_snapshot
+  attr(df, "snapshot_at") <- if (!is.null(snap)) attr(snap, "snapshot_at") else NA_character_
+  attr(df, "n_live_ok") <- n_ok
   # #region agent log
   tryCatch({
     .dbg <- list(
       sessionId = "ef0f33",
-      runId = "cluster-pre",
-      hypothesisId = "H1",
+      runId = "cluster-snap",
+      hypothesisId = "H_offline",
       location = "lab_clustering.R:lab_fetch_cluster_features",
       message = "features_ok",
       timestamp = as.numeric(Sys.time()) * 1000,
@@ -624,14 +727,14 @@ lab_fetch_cluster_features <- function(tickers, chunk_size = 20L) {
         n_tickers = length(tks),
         n_ok = n_ok,
         n_rows = nrow(df),
+        n_snap = n_snap,
+        used_snapshot = used_snapshot,
         py_err = py_err,
         r_err = r_err,
         need_r_n = length(need_r)
       )
     )
-    cat(jsonlite::toJSON(.dbg, auto_unbox = TRUE, null = "null"), "\n",
-        file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-ef0f33.log",
-        append = TRUE)
+    .lab_cluster_debug_log(.dbg)
   }, error = function(e) invisible(NULL))
   # #endregion
   df

@@ -9782,13 +9782,13 @@ server <- function(input, output, session) {
           )
           return(NULL)
         }
-        incProgress(0.25, detail = sprintf("Yahoo features (%d)", nrow(pool)))
+        incProgress(0.25, detail = sprintf("Features (%d)", nrow(pool)))
         feats <- tryCatch(
           lab_fetch_cluster_features(pool$ticker),
           error = function(e) {
             msg <- conditionMessage(e)
             loc_msg <- tryCatch(ui_str("lab_cluster_err_features", loc), error = function(e2) NULL)
-            if (grepl("Yahoo ratio features unavailable|usable rows|python:", msg, ignore.case = TRUE) &&
+            if (grepl("features unavailable|usable rows|python:|snapshot", msg, ignore.case = TRUE) &&
                 !is.null(loc_msg) && nzchar(loc_msg)) {
               showNotification(loc_msg, type = "error", duration = 12)
             } else {
@@ -9797,14 +9797,41 @@ server <- function(input, output, session) {
             NULL
           }
         )
-        if (is.null(feats) || nrow(feats) < k) {
+        n_usable <- lab_cluster_usable_feature_rows(feats)
+        if (is.null(feats) || n_usable < 2L) {
           if (!is.null(feats)) {
             showNotification(
-              sprintf("Too few feature rows for k=%d (got %d).", k, nrow(feats)),
+              sprintf("Too few usable feature rows (got %d; need ≥ 2).", n_usable),
               type = "warning"
             )
           }
           return(NULL)
+        }
+        # Partial clustering: auto-lower k when usable names < requested k
+        k_eff <- k
+        if (n_usable < k_eff) {
+          k_eff <- max(2L, as.integer(n_usable))
+          showNotification(
+            sprintf(
+              "%s (k=%d → %d; usable=%d)",
+              tryCatch(ui_str("lab_cluster_partial_k", loc), error = function(e) "Lowered k"),
+              k, k_eff, n_usable
+            ),
+            type = "warning",
+            duration = 8
+          )
+        }
+        if (isTRUE(attr(feats, "used_snapshot"))) {
+          showNotification(
+            tryCatch(
+              ui_str("lab_cluster_snapshot_note", loc),
+              error = function(e) {
+                "Using bundled offline feature snapshot (Yahoo live ratios unavailable or incomplete)."
+              }
+            ),
+            type = "message",
+            duration = 8
+          )
         }
         # Attach industry_key when available
         if ("industry_key" %in% names(pool)) {
@@ -9812,7 +9839,7 @@ server <- function(input, output, session) {
         }
         incProgress(0.75, detail = "K-Means")
         tryCatch(
-          lab_run_stock_clustering(feats, k_clusters = k, locale = loc),
+          lab_run_stock_clustering(feats, k_clusters = k_eff, locale = loc),
           error = function(e) {
             msg <- conditionMessage(e)
             if (grepl("missing-data filter", msg, ignore.case = TRUE)) {
@@ -10190,7 +10217,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.11"),
+      paste0("- **App：** The YNow App v17.12"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {
