@@ -4,6 +4,7 @@ suppressPackageStartupMessages({
   library(plotly)
 })
 
+source("lab_industry_method.R", encoding = "UTF-8")
 source("lab_clustering.R", encoding = "UTF-8")
 
 df <- lab_cluster_synthetic_features(n = 24L, seed = 7L)
@@ -141,6 +142,27 @@ stopifnot(identical(lab_cluster_match_ticker(c("AAPL", "MSFT"), "aapl"), "AAPL")
 stopifnot(identical(lab_cluster_match_ticker(c("2330.TW", "2317.TW"), "2330"), "2330.TW"))
 stopifnot(identical(lab_cluster_match_ticker(c("BRK-B", "AAPL"), "BRK.B"), "BRK-B"))
 stopifnot(is.na(lab_cluster_match_ticker(c("AAPL"), "MSFT")))
+
+# Universe N must force-include Search ticker; clustering keeps sparse Search row
+catlg <- data.frame(
+  ticker = c("AAA", "BBB", "CCC", "DDD", "EEE"),
+  industry_key = rep("tech", 5),
+  industry_label = rep("Tech", 5),
+  market_cap = c(5, 4, 3, 2, 1) * 1e9,
+  stringsAsFactors = FALSE
+)
+pool_top <- catlg[order(-catlg$market_cap), , drop = FALSE][1:3, , drop = FALSE]
+stopifnot(is.na(lab_cluster_match_ticker(pool_top$ticker, "EEE")))
+pool_n <- lab_cluster_ensure_ticker_in_pool(pool_top, catlg, "EEE", max_n = 3L)
+stopifnot(nrow(pool_n) <= 3L)
+stopifnot(!is.na(lab_cluster_match_ticker(pool_n$ticker, "EEE")))
+
+feats_shell <- lab_cluster_ensure_ticker_in_features(df[1:8, ], "ZZZ")
+stopifnot(!is.na(lab_cluster_match_ticker(feats_shell$ticker, "ZZZ")))
+res_keep <- lab_run_stock_clustering(
+  feats_shell, k_clusters = 3L, locale = "en", seed = 1L, ensure_ticker = "ZZZ"
+)
+stopifnot(!is.na(lab_cluster_match_ticker(res_keep$data$ticker, "ZZZ")))
 
 cat("PASS lab_clustering\n")
 

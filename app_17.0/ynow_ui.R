@@ -1004,7 +1004,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.30</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.31</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -5890,6 +5890,7 @@ ui <- dashboardPage(
                 "沿用「排行」頁目前的產業／模型篩選（若有）。",
                 "候選 > N 時套用與「明細」相同的「候選截斷邏輯」",
                 "（市值／概念股／近一年漲幅／隨機；市值缺值則改依代號排序）。",
+                "Search 後的代號一律強制納入宇宙（N），並作為雷達焦點預設。",
                 "抓取 Yahoo 比率特徵；若 Yahoo 受限則改用內建離線快照。",
                 "N 與截斷邏輯皆與「明細」同步（預設 N＝25）。"
               )

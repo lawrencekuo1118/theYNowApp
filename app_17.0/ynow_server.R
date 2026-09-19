@@ -10146,6 +10146,7 @@ server <- function(input, output, session) {
             NULL
           }
         )
+        feats <- lab_cluster_ensure_ticker_in_features(feats, session_tk)
         n_usable <- lab_cluster_usable_feature_rows(feats)
         if (is.null(feats) || n_usable < 2L) {
           if (!is.null(feats)) {
@@ -10188,7 +10189,10 @@ server <- function(input, output, session) {
         }
         incProgress(0.75, detail = "K-Means")
         tryCatch(
-          lab_run_stock_clustering(feats, k_clusters = k_eff, locale = loc),
+          lab_run_stock_clustering(
+            feats, k_clusters = k_eff, locale = loc,
+            ensure_ticker = session_tk
+          ),
           error = function(e) {
             msg <- conditionMessage(e)
             if (grepl("missing-data filter", msg, ignore.case = TRUE)) {
@@ -10209,10 +10213,25 @@ server <- function(input, output, session) {
     if (is.null(result) || is.null(result$data) || nrow(result$data) == 0L) return()
     lab_cluster_result(result)
     choices <- stats::setNames(result$data$ticker, paste0(result$data$ticker, " · ", result$data$Cluster_Label))
+    # Default radar focus = Search ticker (must be in Universe after ensure)
     focus_default <- result$data$ticker[[1]]
     matched_focus <- lab_cluster_match_ticker(result$data$ticker, session_tk)
     if (!is.na(matched_focus) && nzchar(matched_focus)) {
       focus_default <- matched_focus
+    } else if (nzchar(session_tk)) {
+      showNotification(
+        tryCatch(
+          ui_str("lab_cluster_focus_missing", loc),
+          error = function(e) {
+            paste0(
+              "Search ticker ", session_tk,
+              " was not in the clustered set; radar focus fell back to the first name."
+            )
+          }
+        ),
+        type = "warning",
+        duration = 8
+      )
     }
     updateSelectInput(session, "lab_cluster_focus", choices = choices, selected = focus_default)
     showNotification(
@@ -10224,10 +10243,24 @@ server <- function(input, output, session) {
 
   # Keep radar focus on the session Search ticker when it appears in current clusters
   observeEvent(current_ticker(), {
+    tk <- tryCatch({
+      raw <- current_ticker()
+      if (is.null(raw) || !nzchar(trimws(as.character(raw)[1]))) raw <- input$sc
+      normalize_ticker_for_market(raw, market_mode())
+    }, error = function(e) "")
+    if (is.null(tk) || is.na(tk)) tk <- ""
+    tk <- toupper(trimws(as.character(tk)[1]))
+    if (!nzchar(tk)) return()
     res <- lab_cluster_result()
-    if (!isTRUE(tryCatch(lab_cluster_has_result(res), error = function(e) FALSE))) return()
-    tk <- current_ticker()
-    if (is.null(tk) || !nzchar(trimws(as.character(tk)[1]))) return()
+    if (!isTRUE(tryCatch(lab_cluster_has_result(res), error = function(e) FALSE))) {
+      # Pre-seed focus dropdown to Search ticker before the first clustering run
+      updateSelectInput(
+        session, "lab_cluster_focus",
+        choices = stats::setNames(tk, paste0(tk, " · Search")),
+        selected = tk
+      )
+      return()
+    }
     matched <- lab_cluster_match_ticker(res$data$ticker, tk)
     if (is.na(matched) || !nzchar(matched)) return()
     cur_focus <- as.character(isolate(input$lab_cluster_focus) %||% "")[1]
@@ -10580,7 +10613,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.30"),
+      paste0("- **App：** The YNow App v17.31"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

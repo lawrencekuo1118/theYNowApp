@@ -501,6 +501,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Uses the same industry/model filters as Rankings when set. ",
       "When candidates exceed N, applies the same Candidate truncate rule as Detail ",
       "(market cap / concept groups / 1Y return / random; market-cap fallback = ticker sort). ",
+      "The Search ticker is always force-included in Universe (N) and is the default radar focus. ",
       "Fetches Yahoo ratios with a bundled offline snapshot fallback when Yahoo is blocked. ",
       "N and truncate rule stay in sync with Detail (default N=25)."
     ),
@@ -512,6 +513,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_cluster_idle_radar = "Run clustering to see the radar.",
     lab_cluster_idle_table = "Run clustering to see assignments.",
     lab_cluster_idle_focus = "Pick a focus ticker for the radar.",
+    lab_cluster_focus_missing = paste0(
+      "Search ticker was not in the clustered set; radar focus fell back to the first name."
+    ),
     lab_cluster_err_features = paste0(
       "Ratio features unavailable for clustering. ",
       "Live Yahoo ratios failed and the offline snapshot has too few matches for this universe. ",
@@ -996,6 +1000,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "沿用「排行」頁目前的產業／模型篩選（若有）。",
       "候選 > N 時套用與「明細」相同的「候選截斷邏輯」",
       "（市值／概念股／近一年漲幅／隨機；市值缺值則改依代號排序）。",
+      "Search 後的代號一律強制納入宇宙（N），並作為雷達焦點預設。",
       "抓取 Yahoo 比率特徵；若 Yahoo 受限則改用內建離線快照。",
       "N 與截斷邏輯皆與「明細」同步（預設 N＝25）。"
     ),
@@ -1007,6 +1012,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_cluster_idle_radar = "請執行分群以顯示雷達圖。",
     lab_cluster_idle_table = "請執行分群以顯示分群結果。",
     lab_cluster_idle_focus = "請選擇雷達焦點代號。",
+    lab_cluster_focus_missing = paste0(
+      "Search 代號未進入分群結果，雷達焦點已改為清單第一檔。"
+    ),
     lab_cluster_err_features = paste0(
       "無法取得分群所需的比率特徵。",
       "即時 Yahoo 失敗，且離線快照對此宇宙可用檔數不足。",

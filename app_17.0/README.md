@@ -1,6 +1,10 @@
-# The YNow App v17.30 — Valuation Methodology
+# The YNow App v17.31 — Valuation Methodology
 
 先分類，再選模型；先推導，再校正；先給區間，再給單點；先做基本面估值。
+
+## v17.31 重點
+- **Clustering 雷達焦點**：預設為 Search 後的 Ticker；Universe（N）強制納入該股（特徵缺值仍保留於分群）
+- **目錄**：`app_17.0/`；顯示版號 **v17.31**
 
 ## v17.30 重點
 - **ADR 股數通知**：Search 後同一則「市值÷股價」toast 只彈一次（固定 id）；P/B／NAV 改頁內 note，不再重複通知
