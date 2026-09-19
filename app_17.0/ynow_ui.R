@@ -3179,6 +3179,32 @@ ui <- dashboardPage(
           min-width: 0;
           flex: 1 1 auto;
         }
+
+        /* β 來源選項：兩欄並排（各模型 Beta 頁籤＋Overview） */
+        .ynow-beta-source-picker .shiny-options-group {
+          display: grid !important;
+          grid-template-columns: 1fr 1fr;
+          column-gap: 18px;
+          row-gap: 10px;
+          margin-top: 0 !important;
+        }
+        .ynow-beta-source-picker .radio,
+        .ynow-beta-source-picker .checkbox {
+          margin-top: 0 !important;
+          margin-bottom: 0 !important;
+        }
+        .ynow-beta-source-picker .radio label {
+          display: flex;
+          align-items: flex-start;
+          white-space: normal;
+          font-weight: 400;
+          line-height: 1.35;
+        }
+        @media (max-width: 767px) {
+          .ynow-beta-source-picker .shiny-options-group {
+            grid-template-columns: 1fr;
+          }
+        }
         .ynow-fund-profile-badge {
           display: inline-flex;
           align-items: center;
