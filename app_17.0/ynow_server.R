@@ -3094,7 +3094,37 @@ server <- function(input, output, session) {
     suppressWarnings(as.numeric(res$intrinsic)[1])
   }
 
+  # Session run-state: true only after 試算 / Run (or silent primary auto-calc).
+  # Live formula helpers (.dcf_price_at / .ddm_price_at / .ri_price_at) must NOT
+  # feed Composite overlays or primary/secondary bands before the user has run.
+  .model_has_run <- function(key) {
+    key <- as.character(key %||% "")[1]
+    v <- switch(
+      key,
+      "dcf" = suppressWarnings(as.numeric(stock_price_estimate_val())[1]),
+      "ddm" = tryCatch({
+        if (!is.null(ddm_results$ddm_price)) ddm_results$ddm_price() else NA_real_
+      }, error = function(e) NA_real_),
+      "ri" = tryCatch({
+        if (!is.null(ri_results$ri_price)) ri_results$ri_price() else NA_real_
+      }, error = function(e) NA_real_),
+      "pb" = tryCatch({
+        if (!is.null(pb_results$pb_price)) pb_results$pb_price() else NA_real_
+      }, error = function(e) NA_real_),
+      "nav" = tryCatch({
+        if (!is.null(nav_results$nav_price)) nav_results$nav_price() else NA_real_
+      }, error = function(e) NA_real_),
+      NA_real_
+    )
+    is.finite(suppressWarnings(as.numeric(v)[1]))
+  }
+
+  .model_empty_band <- function(label) {
+    list(bear = NA_real_, base = NA_real_, bull = NA_real_, label = label)
+  }
+
   dcf_scenario_band <- reactive({
+    if (!isTRUE(.model_has_run("dcf"))) return(.model_empty_band("DCF"))
     sf <- scenario_stress_factors("dcf")
     base <- .dcf_price_at(0, 0, 1)
     if (!is.finite(base)) {
@@ -3106,6 +3136,7 @@ server <- function(input, output, session) {
   })
 
   ddm_scenario_band <- reactive({
+    if (!isTRUE(.model_has_run("ddm"))) return(.model_empty_band("DDM"))
     sf <- scenario_stress_factors("ddm")
     base <- .ddm_price_at(0, 0)
     if (!is.finite(base)) {
@@ -3120,6 +3151,7 @@ server <- function(input, output, session) {
   })
 
   ri_scenario_band <- reactive({
+    if (!isTRUE(.model_has_run("ri"))) return(.model_empty_band("RI"))
     sf <- scenario_stress_factors("ri")
     base <- .ri_price_at(0, 0, 0)
     if (!is.finite(base)) {
@@ -3134,6 +3166,7 @@ server <- function(input, output, session) {
   })
 
   pb_scenario_band <- reactive({
+    if (!isTRUE(.model_has_run("pb"))) return(.model_empty_band("P/B"))
     band <- tryCatch(pb_results$pb_band(), error = function(e) NULL)
     if (!is.null(band) && is.finite(band$mid)) {
       return(list(bear = band$low, base = band$mid, bull = band$high, label = "P/B"))
@@ -3143,6 +3176,7 @@ server <- function(input, output, session) {
   })
 
   nav_scenario_band <- reactive({
+    if (!isTRUE(.model_has_run("nav"))) return(.model_empty_band("NAV"))
     band <- tryCatch(nav_results$nav_band(), error = function(e) NULL)
     if (!is.null(band) && is.finite(band$mid)) {
       return(list(bear = band$low, base = band$mid, bull = band$high, label = "NAV"))
@@ -3152,8 +3186,10 @@ server <- function(input, output, session) {
   })
 
   .model_point <- function(key) {
+    key <- as.character(key %||% "")[1]
+    if (!nzchar(key) || !isTRUE(.model_has_run(key))) return(NA_real_)
     switch(
-      as.character(key %||% ""),
+      key,
       "dcf" = {
         b <- tryCatch(dcf_scenario_band(), error = function(e) NULL)
         if (!is.null(b) && is.finite(b$base)) b$base else suppressWarnings(as.numeric(stock_price_estimate_val())[1])
@@ -3240,9 +3276,11 @@ server <- function(input, output, session) {
   })
 
   # All model Base/FV points for composite Current-price axis overlays
+  # (only models with a successful 試算 / Run in this session)
   all_model_valuation_points <- reactive({
     keys <- c("dcf", "ddm", "ri", "pb", "nav")
     out <- lapply(keys, function(k) {
+      if (!isTRUE(.model_has_run(k))) return(NA_real_)
       v <- suppressWarnings(as.numeric(tryCatch(.model_point(k), error = function(e) NA_real_))[1])
       if (length(v) != 1L || is.null(v) || is.na(v) || !is.finite(v) || v == 0) NA_real_ else v
     })
@@ -6221,6 +6259,9 @@ server <- function(input, output, session) {
 
   # Search 後：推薦主模型靜默自動試算（美股／台股；參數未就緒則略過）
   observeEvent(current_ticker(), {
+    # Clear prior-ticker DCF so Composite does not keep stale run-state overlays
+    stock_price_estimate_val(NULL)
+    dcf_value_result(NULL)
     auto_calc_primary_sig("")
     auto_calc_ddm_pulse(0L)
     auto_calc_pb_pulse(0L)
@@ -10385,7 +10426,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.15"),
+      paste0("- **App：** The YNow App v17.16"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {
