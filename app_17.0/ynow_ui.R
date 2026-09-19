@@ -1005,7 +1005,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.45</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.46</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -3038,10 +3038,6 @@ ui <- dashboardPage(
             if (labMaxNLabel && s.lab_im_max_n_label) labMaxNLabel.textContent = s.lab_im_max_n_label;
             var labMaxNCustom = document.getElementById('ynow_lab_im_max_n_custom_label');
             if (labMaxNCustom && s.lab_im_max_n_custom_label) labMaxNCustom.textContent = s.lab_im_max_n_custom_label;
-            var labPoolRank = document.getElementById('ynow_lab_im_pool_rank_label');
-            if (labPoolRank && s.lab_im_pool_rank_label) labPoolRank.textContent = s.lab_im_pool_rank_label;
-            var labConcepts = document.getElementById('ynow_lab_im_concepts_label');
-            if (labConcepts && s.lab_im_concepts_label) labConcepts.textContent = s.lab_im_concepts_label;
             var clusterPoolRank = document.getElementById('ynow_lab_cluster_pool_rank_label');
             if (clusterPoolRank && s.lab_im_pool_rank_label) clusterPoolRank.textContent = s.lab_im_pool_rank_label;
             var clusterConcepts = document.getElementById('ynow_lab_cluster_concepts_label');
@@ -5858,34 +5854,6 @@ ui <- dashboardPage(
                     width = "100%"
                   )
                 )
-              ),
-              column(
-                width = 4,
-                selectInput(
-                  "lab_im_pool_rank",
-                  tags$span(id = "ynow_lab_im_pool_rank_label", "候選截斷邏輯"),
-                  choices = lab_im_pool_rank_choices(),
-                  selected = "mcap",
-                  width = "100%"
-                )
-              ),
-              column(
-                width = 4,
-                conditionalPanel(
-                  condition = "input.lab_im_pool_rank == 'concept'",
-                  selectizeInput(
-                    "lab_im_concepts",
-                    tags$span(id = "ynow_lab_im_concepts_label", "概念股群"),
-                    choices = lab_concept_group_choices("US", "zh-TW"),
-                    selected = character(0),
-                    multiple = TRUE,
-                    options = list(
-                      placeholder = "選擇一或多個概念股群…",
-                      plugins = list("remove_button")
-                    ),
-                    width = "100%"
-                  )
-                )
               )
             ),
             tags$div(
@@ -5893,9 +5861,7 @@ ui <- dashboardPage(
               style = "color:#888; font-size:12px; line-height:1.45; white-space:pre-line; margin:-6px 0 12px 0;",
               paste0(
                 "評估檔數 N（預設 25）＝本次要評估的檔數。\n",
-                "• 誰進評估池：篩選後若候選 > N，依「候選截斷邏輯」取 N（市值／概念股／近一年漲幅／隨機）。\n",
-                "• 市值模式：Yahoo 市值由大到小；市值暫不可用時改依代號排序再取 N。\n",
-                "• 概念股：取所選概念群聯集與目前篩選之交集；若仍 > N 再依市值截斷（市值缺值同代號排序後援）。\n",
+                "• 誰進評估池：篩選後若候選 > N，依市值由大到小取 N（市值暫不可用時改依代號排序）。\n",
                 "• 明細／排行預設排序：以 n＝5 年換算的年化估值漲幅（upside_cagr_pct）降序。\n",
                 "• 前十名＝同一批合格者最多 10 檔（預設 F-Score≥7；可取消「Piotroski 高門檻」）；N≠保證 10 列，合格不足時不會湊滿，也不縮減明細。"
               )
@@ -6051,11 +6017,11 @@ ui <- dashboardPage(
               style = "color:#888; font-size:12px;",
               paste0(
                 "沿用「排行」頁目前的產業／模型篩選（若有）。",
-                "候選 > N 時套用與「明細」相同的「候選截斷邏輯」",
+                "候選 > N 時套用本頁「候選截斷邏輯」",
                 "（市值／概念股／近一年漲幅／隨機；市值缺值則改依代號排序）。",
                 "Search 後的代號一律強制納入宇宙（N），並作為雷達焦點預設。",
                 "抓取 Yahoo 比率特徵；若 Yahoo 受限則改用內建離線快照。",
-                "N 與截斷邏輯皆與「明細」同步（預設 N＝25）。"
+                "宇宙檔數 N 與「明細」同步（預設 N＝25）。"
               )
             ),
             fluidRow(
