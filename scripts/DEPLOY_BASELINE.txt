@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12577086
+bundleId=12577101
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=2294295
-commit=2294295106e8424923f1c8c6a9177ad9ee54b977
-short=2294295
-message=fix(ui): show ADR share-count toast only once after Search (v17.30)
-captured_at=2026-09-19T13:45:04Z
+aligned_git=6d3907c
+commit=6d3907caaf1da19a6ae3415cc970c704a3188eae
+short=6d3907c
+message=chore: record shinyapps baseline bundle 12577086 (app_17.0)
+captured_at=2026-09-19T13:46:50Z
 source_branch=master
 display_version=v17.30
-note=Canonical live line is app_17.0. Bundle 12577086 = tip v17.30 (ADR share toast once; includes cluster truncate sync, About, Methodology, Macro live Rf). Deploy via scripts/deploy_app_17.R.
+note=Canonical live line is app_17.0. Bundle 12577101 = tip v17.30 (ADR share toast once after Search). Deploy via scripts/deploy_app_17.R.
