@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12577540
+bundleId=12577635
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=696b088
-commit=696b088
-short=696b088
-message=fix(lab): show Radar focus ticker on same-cluster radar (v17.36)
-captured_at=2026-09-19T16:53:31Z
+aligned_git=8cfdf31
+commit=8cfdf31
+short=8cfdf31
+message=fix(ui): restore Beta Overview single-column source picker (v17.38)
+captured_at=2026-09-19T17:05:41Z
 source_branch=master
-display_version=v17.36
-note=Canonical live line is app_17.0. Bundle 12577540 = tip v17.36 (radar focus match + impute writeback). Deploy via scripts/deploy_app_17.R.
+display_version=v17.38
+note=Canonical live line is app_17.0. Bundle 12577635 = tip v17.38 (Beta Overview single-column restore; also ships v17.37 red focus). Deploy via scripts/deploy_app_17.R.
