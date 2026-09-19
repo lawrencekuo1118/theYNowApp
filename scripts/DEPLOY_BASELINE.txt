@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12576764
+bundleId=12576800
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=11e508f
-commit=11e508f085a81a13d2ffaa78e7b6b764050bb2fc
-short=11e508f
-message=docs: note composite FV marker style in v17.13 README
-captured_at=2026-09-19T11:59:04Z
+aligned_git=500dfb3
+commit=500dfb3391518e49db054ec1f5d221a23a321fb9
+short=500dfb3
+message=feat(ddm): redesign Ke tab like WACC and swap Ke/Beta order (v17.15)
+captured_at=2026-09-19T12:08:40Z
 source_branch=master
-display_version=v17.13
-note=Canonical live line is app_17.0. Bundle 12576764 = v17.13 composite FV markers match Current price style (same pill+circle+$ baseline) + DCF header years layout. Deploy via scripts/deploy_app_17.R.
+display_version=v17.15
+note=Canonical live line is app_17.0. Bundle 12576800 = v17.15 DDM Ke tab WACC-parity layout + Ke/Beta tab order swap. Deploy via scripts/deploy_app_17.R.
