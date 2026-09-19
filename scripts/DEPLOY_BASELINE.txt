@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12577715
+bundleId=12577733
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=0513baa
-commit=0513baa
-short=0513baa
-message=fix(lab): Blue Chip Top 10 respects gate toggle and clarifies N≠10 fill (v17.42)
-captured_at=2026-09-19T17:45:00Z
+aligned_git=fe49aca
+commit=fe49aca
+short=fe49aca
+message=fix(ui): tighten mobile industry overview spacing (v17.43)
+captured_at=2026-09-19T17:49:53Z
 source_branch=master
-display_version=v17.42
-note=Canonical live line is app_17.0. Bundle 12577715 = tip v17.42 (Blue Chip Top 10 gate + N≠10 status). Deploy via scripts/deploy_app_17.R.
+display_version=v17.43
+note=Canonical live line is app_17.0. Bundle 12577733 = tip v17.43 (mobile industry overview spacing). Deploy via scripts/deploy_app_17.R.
