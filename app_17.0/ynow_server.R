@@ -2176,6 +2176,9 @@ server <- function(input, output, session) {
     intrinsic_val_nav = reactive({
       if (!is.null(nav_results$nav_price)) nav_results$nav_price() else NA
     }),
+    intrinsic_val_ri = reactive({
+      if (!is.null(ri_results$ri_price)) ri_results$ri_price() else NA
+    }),
     current_price = reactive({
       req(scraped_market_cap())
       scraped_market_cap()$price
@@ -2185,6 +2188,8 @@ server <- function(input, output, session) {
     model_rec = reactive({ model_sidebar_rec() }),
     primary_band = reactive({ primary_valuation_band() }),
     secondary_point = reactive({ secondary_valuation_point() }),
+    model_points = reactive({ all_model_valuation_points() }),
+    active_model_key = reactive({ active_valuation_model_key() }),
     confidence = reactive({ valuation_confidence() }),
     industry_key = reactive(input$industry_choice),
     ui_locale = ui_locale
@@ -3203,6 +3208,30 @@ server <- function(input, output, session) {
     sec <- as.character(rec$secondary %||% "")
     if (!nzchar(sec)) return(NA_real_)
     .model_point(sec)
+  })
+
+  # All model Base/FV points for composite Current-price axis overlays
+  all_model_valuation_points <- reactive({
+    keys <- c("dcf", "ddm", "ri", "pb", "nav")
+    out <- lapply(keys, function(k) {
+      v <- suppressWarnings(as.numeric(tryCatch(.model_point(k), error = function(e) NA_real_))[1])
+      if (length(v) != 1L || is.null(v) || is.na(v) || !is.finite(v) || v == 0) NA_real_ else v
+    })
+    names(out) <- keys
+    out
+  })
+
+  active_valuation_model_key <- reactive({
+    tab <- as.character(input$sidebar_tabs %||% "")[1]
+    switch(
+      tab,
+      "dcf_calculator" = "dcf",
+      "ddm_calculator" = "ddm",
+      "ri_calculator" = "ri",
+      "pb_calculator" = "pb",
+      "nav_calculator" = "nav",
+      NA_character_
+    )
   })
 
   valuation_confidence <- reactive({
@@ -10161,7 +10190,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.10"),
+      paste0("- **App：** The YNow App v17.11"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

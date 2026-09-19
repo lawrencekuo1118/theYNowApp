@@ -105,9 +105,12 @@ decision_momentum_panel_ui <- function(id) {
 decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_val_ddm, current_price, hist_price_data, industry_text,
                             intrinsic_val_pb = reactive(NA),
                             intrinsic_val_nav = reactive(NA),
+                            intrinsic_val_ri = reactive(NA),
                             model_rec = reactive(NULL),
                             primary_band = reactive(NULL),
                             secondary_point = reactive(NA),
+                            model_points = reactive(NULL),
+                            active_model_key = reactive(NA_character_),
                             confidence = reactive(NULL),
                             industry_key = reactive(NULL),
                             ui_locale = reactive("en")) {
@@ -120,6 +123,24 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
 
     .ui_loc <- function() {
       tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "en")
+    }
+
+    .collect_model_points <- function() {
+      pts <- tryCatch(model_points(), error = function(e) NULL)
+      if (is.list(pts) && length(pts)) {
+        out <- lapply(pts, .pick_num)
+        if (is.null(names(out)) || !any(nzchar(names(out)))) {
+          names(out) <- paste0("m", seq_along(out))
+        }
+        return(out)
+      }
+      list(
+        dcf = .pick_num(tryCatch(intrinsic_val_dcf(), error = function(e) NA)),
+        ddm = .pick_num(tryCatch(intrinsic_val_ddm(), error = function(e) NA)),
+        ri  = .pick_num(tryCatch(intrinsic_val_ri(), error = function(e) NA)),
+        pb  = .pick_num(tryCatch(intrinsic_val_pb(), error = function(e) NA)),
+        nav = .pick_num(tryCatch(intrinsic_val_nav(), error = function(e) NA))
+      )
     }
 
     f_score_eval <- reactive({
@@ -151,9 +172,10 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       ddm_v <- .pick_num(tryCatch(intrinsic_val_ddm(), error = function(e) NA))
       pb_v  <- .pick_num(tryCatch(intrinsic_val_pb(), error = function(e) NA))
       nav_v <- .pick_num(tryCatch(intrinsic_val_nav(), error = function(e) NA))
-      base <- switch(prim, "dcf" = dcf_v, "ddm" = ddm_v, "pb" = pb_v, "nav" = nav_v, "ri" = NA_real_, dcf_v)
+      ri_v  <- .pick_num(tryCatch(intrinsic_val_ri(), error = function(e) NA))
+      base <- switch(prim, "dcf" = dcf_v, "ddm" = ddm_v, "pb" = pb_v, "nav" = nav_v, "ri" = ri_v, dcf_v)
       if (is.na(base)) {
-        base <- if (!is.na(dcf_v)) dcf_v else if (!is.na(ddm_v)) ddm_v else if (!is.na(nav_v)) nav_v else pb_v
+        base <- if (!is.na(dcf_v)) dcf_v else if (!is.na(ddm_v)) ddm_v else if (!is.na(ri_v)) ri_v else if (!is.na(nav_v)) nav_v else pb_v
       }
       list(bear = NA_real_, base = base, bull = NA_real_, label = .model_label(prim))
     })
@@ -353,15 +375,20 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       sec <- as.character(rec$secondary %||% "")
       conf <- tryCatch(confidence(), error = function(e) NULL)
       sec_pt <- .pick_num(tryCatch(secondary_point(), error = function(e) NA))
+      pts <- .collect_model_points()
+      active_key <- as.character(tryCatch(active_model_key(), error = function(e) NA_character_) %||% "")[1]
 
       bear <- pv$bear
       base <- pv$base
       bull <- pv$bull
-      if (is.na(base)) {
-        p_dcf <- .pick_num(tryCatch(intrinsic_val_dcf(), error = function(e) NA))
-        p_ddm <- .pick_num(tryCatch(intrinsic_val_ddm(), error = function(e) NA))
-        p_pb  <- .pick_num(tryCatch(intrinsic_val_pb(), error = function(e) NA))
-        base <- if (!is.na(p_dcf)) p_dcf else if (!is.na(p_pb)) p_pb else p_ddm
+      # Do not invent a Base from unrelated models — keep assessment empty until primary band is ready
+      model_vals <- unlist(pts, use.names = FALSE)
+      model_vals <- model_vals[is.finite(model_vals)]
+      has_primary_base <- !is.na(base)
+      has_any_model_fv <- length(model_vals) > 0L || !is.na(sec_pt)
+
+      if (!has_primary_base && !has_any_model_fv) {
+        return(div(class = "alert alert-info", str("composite_waiting_val")))
       }
 
       rec_title <- paste0(
@@ -379,7 +406,7 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
         paste0(str("composite_confidence_prefix"), " ", str("composite_confidence_calculating"))
       }
 
-      all_vals <- stats::na.omit(c(p_curr, bear, base, bull, sec_pt))
+      all_vals <- stats::na.omit(c(p_curr, bear, base, bull, sec_pt, model_vals))
       if (!length(all_vals)) {
         return(div(class = "alert alert-info", str("composite_waiting_val")))
       }
@@ -398,35 +425,92 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       base_opacity <- if (is.na(pos_base)) 0 else 1
       pos_base_css <- if (is.na(pos_base)) 0 else pos_base
 
-      status_text <- str("composite_fair")
-      status_color <- "#f39c12"
-      if (!is.na(base) && p_curr < base * 0.8) {
-        status_text <- str("composite_undervalued")
-        status_color <- "#00a65a"
-      } else if (!is.na(base) && p_curr > base * 1.2) {
-        status_text <- str("composite_overvalued")
-        status_color <- "#d9534f"
+      # Assessment verdict only when primary Base is available (no cold-load Fair/Overvalued)
+      if (isTRUE(has_primary_base)) {
+        status_text <- str("composite_fair")
+        status_color <- "#f39c12"
+        if (p_curr < base * 0.8) {
+          status_text <- str("composite_undervalued")
+          status_color <- "#00a65a"
+        } else if (p_curr > base * 1.2) {
+          status_text <- str("composite_overvalued")
+          status_color <- "#d9534f"
+        }
+        status_html <- paste0(
+          "<span style='color: ", status_color, ";'>",
+          htmltools::htmlEscape(status_text), "</span>"
+        )
+      } else {
+        status_color <- "#bdc3c7"
+        status_html <- paste0(
+          "<span style='color: #95a5a6; font-weight: 500;'>",
+          htmltools::htmlEscape(str("composite_status_pending")), "</span>"
+        )
       }
 
       fmt <- function(x) if (is.na(x)) "—" else sprintf("$%.2f", x)
       upside <- if (!is.na(base) && p_curr > 0) (base - p_curr) / p_curr * 100 else NA_real_
       upside_txt <- if (is.na(upside)) "—" else sprintf("%+.1f%%", upside)
 
+      model_colors <- c(
+        dcf = "#2980b9", ddm = "#8e44ad", ri = "#16a085",
+        pb = "#d35400", nav = "#7f8c8d"
+      )
+      # Build overlay markers for every model with a finite FV
+      overlay_html <- ""
+      overlay_keys <- names(pts)
+      if (is.null(overlay_keys)) overlay_keys <- character(0)
+      row_i <- 0L
+      for (k in overlay_keys) {
+        v <- .pick_num(pts[[k]])
+        if (is.na(v)) next
+        p_x <- pos(v)
+        if (is.na(p_x)) next
+        row_i <- row_i + 1L
+        col <- unname(model_colors[[k]] %||% "#566573")
+        is_active <- nzchar(active_key) && identical(k, active_key)
+        is_prim <- nzchar(prim) && identical(k, prim)
+        is_sec <- nzchar(sec) && identical(k, sec)
+        lab <- .model_label(k)
+        # Stagger below the axis to reduce label collisions
+        top_px <- 48 + ((row_i - 1L) %% 3L) * 22
+        z <- if (is_active) 12 else if (is_prim) 9 else 8
+        border_w <- if (is_active) "2px" else "1px"
+        font_w <- if (is_active || is_prim) "700" else "600"
+        role_tag <- if (is_prim) "★" else if (is_sec) "◇" else ""
+        overlay_html <- paste0(
+          overlay_html,
+          "<div class='ynow-composite-model-mark' style='position:absolute; top:", top_px,
+          "px; left:", p_x, "%; transform:translateX(-50%); z-index:", z,
+          "; text-align:center; max-width:72px;'>",
+          "<div style='width:2px; height:14px; background:", col,
+          "; margin:0 auto; opacity:0.9;'></div>",
+          "<div style='font-size:10px; line-height:1.15; color:", col,
+          "; font-weight:", font_w, "; border:", border_w, " solid ", col,
+          "; border-radius:3px; padding:1px 4px; background:#fff; white-space:nowrap;'>",
+          htmltools::htmlEscape(paste0(role_tag, lab)), "<br/>",
+          htmltools::htmlEscape(sprintf("$%.2f", v)),
+          "</div></div>"
+        )
+      }
+      axis_height <- if (row_i > 0L) max(110, 48 + min(3L, row_i) * 22 + 28) else 80
+
       # #region agent log
       tryCatch({
         .dbg <- list(
           sessionId = "ef0f33",
-          runId = "pre",
-          hypothesisId = "H1_H5",
+          runId = "post-fix",
+          hypothesisId = "H5",
           location = "investment_decision_module.R:ui_valuation_compare",
           message = "composite_render",
           timestamp = as.numeric(Sys.time()) * 1000,
           data = list(
-            prim = prim, sec = sec,
+            prim = prim, sec = sec, active_key = active_key,
             bear = bear, base = base, bull = bull, sec_pt = sec_pt,
             p_curr = p_curr,
-            has_overlay_slot = FALSE,
-            note = "UI currently shows only recommended primary band + secondary point; no active-tab overlay"
+            has_primary_base = has_primary_base,
+            overlay_n = row_i,
+            overlay_keys = overlay_keys[!is.na(vapply(pts, .pick_num, numeric(1)))]
           )
         )
         cat(jsonlite::toJSON(.dbg, auto_unbox = TRUE, null = "null"), "\n",
@@ -460,8 +544,8 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
         "</div>",
         "<h4 style='margin-top: 0; font-weight: bold;'><i class='fa fa-balance-scale'></i> ",
         htmltools::htmlEscape(str("composite_status_prefix")),
-        "<span style='color: ", status_color, ";'>", htmltools::htmlEscape(status_text), "</span></h4>",
-        "<div style='position: relative; height: 80px; margin-top: 28px;'>",
+        status_html, "</h4>",
+        "<div style='position: relative; height: ", axis_height, "px; margin-top: 28px; margin-bottom: 8px;'>",
         "<div style='position: absolute; top: 28px; left: 0; right: 0; height: 10px; background: #ecf0f1; border-radius: 5px;'></div>",
         "<div style='position: absolute; top: 28px; left: ", band_left, "%; width: ", band_width,
         "%; height: 10px; background: #aed6f1; border-radius: 5px; opacity: ", band_opacity, ";'></div>",
@@ -473,6 +557,7 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
         htmltools::htmlEscape(str("composite_current_price")), "</div>",
         "<div style='width: 12px; height: 12px; background: #2c3e50; border: 2px solid white; border-radius: 50%; margin: 2px auto;'></div>",
         "<div style='font-size: 15px; color: #2c3e50; font-weight: bold;'>$", round(p_curr, 2), "</div></div>",
+        overlay_html,
         "</div>",
         "<p style='margin: 8px 0 0 0; font-size: 12px; color: #888;'>",
         htmltools::htmlEscape(str("composite_footer_note")), "</p>",
