@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12577138
+bundleId=12577451
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=feb6bd4
-commit=feb6bd4
-short=feb6bd4
-message=fix(lab): default radar focus to Search ticker and force-include in N (v17.31)
-captured_at=2026-09-19T14:00:49Z
+aligned_git=cb5e98a
+commit=cb5e98a
+short=cb5e98a
+message=fix(ui): remove CSS NUL escape that crashed app startup (v17.33)
+captured_at=2026-09-19T15:52:39Z
 source_branch=master
-display_version=v17.31
-note=Canonical live line is app_17.0. Bundle 12577138 = tip v17.31 (radar focus = Search; Universe N force-includes session ticker). Deploy via scripts/deploy_app_17.R.
+display_version=v17.33
+note=Canonical live line is app_17.0. Bundle 12577451 = tip v17.33 (startup NUL fix). Deploy via scripts/deploy_app_17.R.
