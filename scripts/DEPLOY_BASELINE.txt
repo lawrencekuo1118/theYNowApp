@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12577635
+bundleId=12577664
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=8cfdf31
-commit=8cfdf31
-short=8cfdf31
-message=fix(ui): restore Beta Overview single-column source picker (v17.38)
-captured_at=2026-09-19T17:05:41Z
+aligned_git=2ce8da8
+commit=2ce8da8
+short=2ce8da8
+message=fix(valuation): hide NAV/P/B from Composite until session Run (v17.39)
+captured_at=2026-09-19T17:16:48Z
 source_branch=master
-display_version=v17.38
-note=Canonical live line is app_17.0. Bundle 12577635 = tip v17.38 (Beta Overview single-column restore; also ships v17.37 red focus). Deploy via scripts/deploy_app_17.R.
+display_version=v17.39
+note=Canonical live line is app_17.0. Bundle 12577664 = tip v17.39 (Composite NAV/P/B calc-gated). Deploy via scripts/deploy_app_17.R.
