@@ -10147,6 +10147,13 @@ server <- function(input, output, session) {
           }
         )
         feats <- lab_cluster_ensure_ticker_in_features(feats, session_tk)
+        # Priority solo refill so Radar focus has real ratios (not all-NA shell)
+        if (nzchar(session_tk) && exists("lab_cluster_priority_refill_features", mode = "function")) {
+          feats <- tryCatch(
+            lab_cluster_priority_refill_features(feats, session_tk),
+            error = function(e) feats
+          )
+        }
         n_usable <- lab_cluster_usable_feature_rows(feats)
         if (is.null(feats) || n_usable < 2L) {
           if (!is.null(feats)) {
@@ -10613,7 +10620,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.35"),
+      paste0("- **App：** The YNow App v17.36"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

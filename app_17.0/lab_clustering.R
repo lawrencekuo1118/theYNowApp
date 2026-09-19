@@ -140,6 +140,21 @@ lab_cluster_usable_feature_rows <- function(df) {
   as.integer(sum(n_finite >= 2L, na.rm = TRUE))
 }
 
+#' Count finite clustering ratios for one ticker (0 if absent)
+lab_cluster_n_finite_for_ticker <- function(df, ticker) {
+  if (is.null(df) || !is.data.frame(df) || nrow(df) == 0L) return(0L)
+  matched <- lab_cluster_match_ticker(df$ticker, ticker)
+  if (is.na(matched) || !nzchar(matched)) return(0L)
+  feats <- intersect(LAB_CLUSTER_FEATURES, names(df))
+  if (!length(feats)) return(0L)
+  row <- df[toupper(trimws(as.character(df$ticker))) == matched, , drop = FALSE][1, , drop = FALSE]
+  as.integer(sum(vapply(
+    feats,
+    function(f) is.finite(suppressWarnings(as.numeric(row[[f]][[1]]))),
+    logical(1)
+  )))
+}
+
 #' Tickers that still need ≥2 finite ratios (for R gap-fill)
 lab_cluster_sparse_tickers <- function(df, tickers) {
   tks <- unique(toupper(trimws(as.character(tickers))))
@@ -148,20 +163,14 @@ lab_cluster_sparse_tickers <- function(df, tickers) {
   if (is.null(df) || !is.data.frame(df) || nrow(df) == 0L) return(tks)
   feats <- intersect(LAB_CLUSTER_FEATURES, names(df))
   if (!length(feats)) return(tks)
-  idx <- match(tks, toupper(trimws(as.character(df$ticker))))
   sparse <- logical(length(tks))
   for (i in seq_along(tks)) {
-    j <- idx[[i]]
-    if (!is.finite(j) || j < 1L) {
+    matched <- lab_cluster_match_ticker(df$ticker, tks[[i]])
+    if (is.na(matched) || !nzchar(matched)) {
       sparse[[i]] <- TRUE
       next
     }
-    n_fin <- sum(vapply(
-      feats,
-      function(f) is.finite(suppressWarnings(as.numeric(df[[f]][[j]]))),
-      logical(1)
-    ))
-    sparse[[i]] <- n_fin < 2L
+    sparse[[i]] <- lab_cluster_n_finite_for_ticker(df, matched) < 2L
   }
   tks[sparse]
 }
@@ -608,7 +617,9 @@ lab_fetch_cluster_features <- function(tickers, chunk_size = 20L) {
           n_ok <- lab_cluster_usable_feature_rows(df)
         }
       }
-      if (n_ok >= 25L) break
+      # Do not abandon remaining sparse names while any requested ticker is still empty
+      still_sparse <- lab_cluster_sparse_tickers(df, tks)
+      if (!length(still_sparse)) break
     }
   }
 
@@ -756,6 +767,131 @@ lab_cluster_ensure_ticker_in_features <- function(feats, ensure_ticker) {
   )
   for (f in LAB_CLUSTER_FEATURES) row[[f]] <- NA_real_
   lab_cluster_merge_feature_dfs(feats, lab_cluster_features_to_df(list(row)))
+}
+
+#' Solo re-fetch for Search / radar-focus when still <2 finite ratios.
+#' Tries Python batch → R crumb → offline snapshot (fuzzy match).
+lab_cluster_priority_refill_features <- function(feats, ticker) {
+  ensure_raw <- toupper(trimws(as.character(ticker %||% "")[1]))
+  if (!nzchar(ensure_raw)) {
+    return(if (is.null(feats)) lab_cluster_features_to_df(NULL) else feats)
+  }
+  if (is.null(feats) || !is.data.frame(feats)) {
+    feats <- lab_cluster_features_to_df(NULL)
+  }
+  n0 <- lab_cluster_n_finite_for_ticker(feats, ensure_raw)
+  # #region agent log
+  .lab_cluster_dbg_log("H1", "priority_refill_enter", list(
+    ticker = ensure_raw, n_finite_before = n0, nrow = nrow(feats)
+  ))
+  # #endregion
+  if (n0 >= 2L) return(feats)
+
+  # 1) Python solo
+  py_part <- NULL
+  ready <- exists(".ensure_python_scraper", mode = "function") &&
+    isTRUE(tryCatch(.ensure_python_scraper(), error = function(e) FALSE))
+  if (isTRUE(ready)) {
+    fn <- NULL
+    if (exists(".py_scraper_env") &&
+        exists("get_cluster_features_batch", envir = .py_scraper_env, inherits = FALSE, mode = "function")) {
+      fn <- get("get_cluster_features_batch", envir = .py_scraper_env, inherits = FALSE)
+    } else if (exists("get_cluster_features_batch", mode = "function")) {
+      fn <- get_cluster_features_batch
+    }
+    if (is.function(fn)) {
+      py_part <- tryCatch({
+        raw <- fn(as.list(ensure_raw))
+        if (!is.data.frame(raw) && !is.list(raw) &&
+            requireNamespace("reticulate", quietly = TRUE)) {
+          raw <- tryCatch(reticulate::py_to_r(raw), error = function(e) raw)
+        }
+        lab_cluster_features_to_df(raw)
+      }, error = function(e) NULL)
+    }
+  }
+  if (!is.null(py_part) && nrow(py_part) > 0L) {
+    feats <- lab_cluster_merge_feature_dfs(py_part, feats)
+  }
+  n1 <- lab_cluster_n_finite_for_ticker(feats, ensure_raw)
+  if (n1 >= 2L) {
+    # #region agent log
+    .lab_cluster_dbg_log("H1", "priority_refill_py_ok", list(
+      ticker = ensure_raw, n_finite = n1
+    ))
+    # #endregion
+    return(feats)
+  }
+
+  # 2) R crumb solo
+  r_part <- tryCatch(
+    lab_fetch_cluster_features_r(ensure_raw),
+    error = function(e) NULL
+  )
+  if (!is.null(r_part) && nrow(r_part) > 0L &&
+      lab_cluster_usable_feature_rows(r_part) > 0L) {
+    feats <- lab_cluster_merge_feature_dfs(r_part, feats)
+  }
+  n2 <- lab_cluster_n_finite_for_ticker(feats, ensure_raw)
+  if (n2 >= 2L) {
+    # #region agent log
+    .lab_cluster_dbg_log("H2", "priority_refill_r_ok", list(
+      ticker = ensure_raw, n_finite = n2
+    ))
+    # #endregion
+    return(feats)
+  }
+
+  # 3) Offline snapshot (exact + bare TW / BRK variants)
+  snap <- tryCatch(
+    lab_load_cluster_features_snapshot(NULL),
+    error = function(e) NULL
+  )
+  if (!is.null(snap) && nrow(snap) > 0L) {
+    hit <- lab_cluster_match_ticker(snap$ticker, ensure_raw)
+    if (!is.na(hit) && nzchar(hit)) {
+      feats <- lab_cluster_merge_feature_dfs(
+        snap[toupper(trimws(as.character(snap$ticker))) == hit, , drop = FALSE],
+        feats
+      )
+    }
+  }
+  n3 <- lab_cluster_n_finite_for_ticker(feats, ensure_raw)
+  # #region agent log
+  .lab_cluster_dbg_log("H3", "priority_refill_exit", list(
+    ticker = ensure_raw, n_finite_after = n3, source = if (n3 >= 2L) "ok" else "still_sparse"
+  ))
+  # #endregion
+  feats
+}
+
+#' Compact NDJSON debug logger for Clustering focus-feature path
+.lab_cluster_dbg_log <- function(hypothesis_id, message, data = list()) {
+  tryCatch({
+    payload <- list(
+      sessionId = "ef0f33",
+      runId = "cluster-focus",
+      hypothesisId = as.character(hypothesis_id)[1],
+      location = "lab_clustering.R",
+      message = as.character(message)[1],
+      data = data,
+      timestamp = as.numeric(Sys.time()) * 1000
+    )
+    line <- jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null")
+    paths <- c(
+      "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-ef0f33.log",
+      file.path(tempdir(), "debug-ef0f33.log")
+    )
+    for (p in paths) {
+      ok <- tryCatch({
+        dir.create(dirname(p), showWarnings = FALSE, recursive = TRUE)
+        cat(line, "\n", file = p, append = TRUE, sep = "")
+        TRUE
+      }, error = function(e) FALSE)
+      if (isTRUE(ok)) break
+    }
+  }, error = function(e) invisible(NULL))
+  invisible(NULL)
 }
 
 #' Build evaluation pool for clustering from Blue Chip catalog filters
@@ -908,6 +1044,12 @@ lab_run_stock_clustering <- function(df_financials, k_clusters = 3L,
   km <- stats::kmeans(Xs, centers = k_clusters, nstart = 25L, iter.max = 100L)
   df$Cluster_ID <- as.integer(km$cluster)
 
+  # Write back winsorized+imputed ratios so radar / assignments show the
+  # values used for clustering (raw all-NA Search shells otherwise plot as r=0).
+  for (f in feats) {
+    df[[f]] <- as.numeric(X[[f]])
+  }
+
   centers <- as.data.frame(
     stats::aggregate(X, by = list(Cluster_ID = df$Cluster_ID), FUN = mean)
   )
@@ -930,8 +1072,8 @@ lab_run_stock_clustering <- function(df_financials, k_clusters = 3L,
 #' Pick same-cluster peers for radar (exclude focus; prefer closest in feature space)
 lab_cluster_radar_peers <- function(result, focus_ticker, n_peers = 3L) {
   df <- result$data
-  focus <- toupper(trimws(as.character(focus_ticker)[1]))
-  if (!nzchar(focus) || !focus %in% df$ticker) return(character(0))
+  focus <- lab_cluster_match_ticker(df$ticker, focus_ticker)
+  if (is.na(focus) || !nzchar(focus)) return(character(0))
   cid <- df$Cluster_ID[match(focus, df$ticker)]
   peers <- df[df$Cluster_ID == cid & df$ticker != focus, , drop = FALSE]
   if (nrow(peers) == 0L) return(character(0))
@@ -941,6 +1083,7 @@ lab_cluster_radar_peers <- function(result, focus_ticker, n_peers = 3L) {
   d <- sqrt(rowSums(
     (peer_mat - matrix(focus_row, nrow = nrow(peer_mat), ncol = length(focus_row), byrow = TRUE))^2
   ))
+  d[!is.finite(d)] <- Inf
   o <- order(d, peers$ticker)
   utils::head(peers$ticker[o], as.integer(n_peers)[1])
 }
@@ -1001,17 +1144,28 @@ lab_cluster_radar_plotly <- function(result, focus_ticker, peer_tickers = NULL,
                                      locale = "en") {
   df <- result$data
   feats <- result$features
-  focus <- toupper(trimws(as.character(focus_ticker)[1]))
+  focus_raw <- toupper(trimws(as.character(focus_ticker)[1]))
+  focus <- lab_cluster_match_ticker(df$ticker, focus_raw)
   empty_msg <- function(msg) {
     plotly::plotly_empty() %>%
       plotly::layout(annotations = list(list(text = msg, showarrow = FALSE)))
   }
-  if (!nzchar(focus) || !focus %in% df$ticker) return(empty_msg("Select a focus ticker"))
+  # #region agent log
+  .lab_cluster_dbg_log("H_RADAR", "radar_focus_resolve", list(
+    focus_raw = focus_raw,
+    focus_matched = if (is.na(focus)) NA_character_ else focus,
+    in_data = !is.na(focus) && nzchar(focus),
+    n_finite = if (is.na(focus)) 0L else lab_cluster_n_finite_for_ticker(df, focus)
+  ))
+  # #endregion
+  if (is.na(focus) || !nzchar(focus)) return(empty_msg("Select a focus ticker"))
   if (is.null(peer_tickers) || !length(peer_tickers)) {
     peer_tickers <- lab_cluster_radar_peers(result, focus, n_peers = 3L)
   }
   tickers <- unique(c(focus, toupper(as.character(peer_tickers))))
-  sub <- df[df$ticker %in% tickers, , drop = FALSE]
+  # Keep focus first so its trace is always drawn / named with ★
+  sub <- df[match(tickers, df$ticker), , drop = FALSE]
+  sub <- sub[!is.na(sub$ticker), , drop = FALSE]
   if (nrow(sub) < 1L) return(empty_msg("No peers"))
   mat <- as.matrix(sub[, feats, drop = FALSE])
   rng <- apply(mat, 2, function(col) {
@@ -1034,17 +1188,35 @@ lab_cluster_radar_plotly <- function(result, focus_ticker, peer_tickers = NULL,
     nm <- names(LAB_CLUSTER_AXIS_CHOICES)[match(feats[i], LAB_CLUSTER_AXIS_CHOICES)]
     if (!is.na(nm)) axis_labs[i] <- nm
   }
-  p <- plotly::plot_ly(type = "scatterpolar", mode = "lines", fill = "toself")
+  p <- NULL
   for (i in seq_len(nrow(sub))) {
     vals <- as.numeric(scaled[i, ])
-    p <- plotly::add_trace(
-      p,
+    is_focus <- identical(as.character(sub$ticker[i]), focus)
+    args <- list(
       r = c(vals, vals[1]),
       theta = c(axis_labs, axis_labs[1]),
-      name = paste0(sub$ticker[i], if (identical(sub$ticker[i], focus)) " ★" else ""),
-      mode = "lines"
+      name = paste0(sub$ticker[i], if (is_focus) " ★" else ""),
+      type = "scatterpolar",
+      mode = "lines",
+      fill = "toself",
+      line = if (is_focus) list(width = 3) else list(width = 1.5),
+      opacity = if (is_focus) 1 else 0.75
     )
+    if (is.null(p)) {
+      p <- do.call(plotly::plot_ly, args)
+    } else {
+      p <- do.call(plotly::add_trace, c(list(p), args))
+    }
   }
+  if (is.null(p)) return(empty_msg("No peers"))
+  # #region agent log
+  .lab_cluster_dbg_log("H_RADAR", "radar_trace_built", list(
+    focus = focus,
+    n_traces = nrow(sub),
+    tickers = as.character(sub$ticker),
+    focus_r_mean = if (nrow(sub)) mean(as.numeric(scaled[1, ]), na.rm = TRUE) else NA_real_
+  ))
+  # #endregion
   p %>%
     plotly::layout(
       title = list(text = title, font = list(size = 14)),
