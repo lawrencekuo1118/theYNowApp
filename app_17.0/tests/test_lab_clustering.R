@@ -28,9 +28,23 @@ focus <- res$data$ticker[[1]]
 peers <- lab_cluster_radar_peers(res, focus, n_peers = 3L)
 stopifnot(length(peers) <= 3L, !focus %in% peers)
 
-p1 <- lab_cluster_scatter_plotly(res, x_feat = "ROE", y_feat = "PE_Ratio", locale = "en")
+p1 <- lab_cluster_scatter_plotly(
+  res, x_feat = "ROE", y_feat = "PE_Ratio", locale = "en", focus_ticker = focus
+)
 p2 <- lab_cluster_radar_plotly(res, focus_ticker = focus, locale = "en")
 stopifnot(inherits(p1, "plotly"), inherits(p2, "plotly"))
+p1b <- plotly::plotly_build(p1)
+focus_trace <- NULL
+for (tr in p1b$x$data) {
+  nm <- as.character(tr$name %||% "")
+  if (grepl("★", nm, fixed = TRUE)) {
+    focus_trace <- tr
+    break
+  }
+}
+stopifnot(!is.null(focus_trace))
+focus_col <- tolower(as.character(focus_trace$marker$color %||% "")[1])
+stopifnot(identical(focus_col, "#e53935") || identical(focus_col, "rgb(229, 57, 53)"))
 
 # Idle vs live panel mode (market-switch clear must destroy Plotly/DT hosts)
 stopifnot(identical(lab_cluster_panel_mode(NULL), "idle"))

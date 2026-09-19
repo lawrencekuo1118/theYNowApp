@@ -1089,8 +1089,9 @@ lab_cluster_radar_peers <- function(result, focus_ticker, n_peers = 3L) {
 }
 
 #' Plotly 2D cluster scatter
+#' @param focus_ticker optional Radar focus; drawn as a red marker on top
 lab_cluster_scatter_plotly <- function(result, x_feat = "ROE", y_feat = "PE_Ratio",
-                                       locale = "en") {
+                                       locale = "en", focus_ticker = NULL) {
   df <- result$data
   empty_msg <- function(msg) {
     plotly::plotly_empty() %>%
@@ -1118,17 +1119,63 @@ lab_cluster_scatter_plotly <- function(result, x_feat = "ROE", y_feat = "PE_Rati
   )
   df$._x <- df[[x_feat]]
   df$._y <- df[[y_feat]]
-  plotly::plot_ly(
-    df,
-    x = ~._x,
-    y = ~._y,
-    color = ~Cluster_Label,
-    text = ~hover,
-    type = "scatter",
-    mode = "markers",
-    hoverinfo = "text",
-    marker = list(size = 11, opacity = 0.85)
-  ) %>%
+  focus <- lab_cluster_match_ticker(df$ticker, focus_ticker)
+  is_focus_row <- !is.na(focus) & nzchar(focus) &
+    toupper(trimws(as.character(df$ticker))) == focus
+  df_rest <- df[!is_focus_row, , drop = FALSE]
+  df_focus <- df[is_focus_row, , drop = FALSE]
+
+  # #region agent log
+  .lab_cluster_dbg_log("H_MAP", "scatter_focus_marker", list(
+    focus_raw = as.character(focus_ticker %||% "")[1],
+    focus_matched = if (is.na(focus)) NA_character_ else focus,
+    n_focus = nrow(df_focus),
+    n_rest = nrow(df_rest)
+  ))
+  # #endregion
+
+  p <- NULL
+  if (nrow(df_rest) > 0L) {
+    p <- plotly::plot_ly(
+      data = df_rest,
+      x = ~._x,
+      y = ~._y,
+      color = ~Cluster_Label,
+      text = ~hover,
+      type = "scatter",
+      mode = "markers",
+      hoverinfo = "text",
+      marker = list(size = 11, opacity = 0.85),
+      showlegend = TRUE
+    )
+  }
+  if (nrow(df_focus) > 0L) {
+    focus_name <- paste0(df_focus$ticker[[1]], " ★")
+    focus_args <- list(
+      data = df_focus,
+      x = ~._x,
+      y = ~._y,
+      text = ~hover,
+      name = focus_name,
+      type = "scatter",
+      mode = "markers",
+      hoverinfo = "text",
+      marker = list(
+        size = 16,
+        color = "#E53935",
+        opacity = 1,
+        line = list(color = "#B71C1C", width = 1.5)
+      ),
+      showlegend = TRUE
+    )
+    if (is.null(p)) {
+      p <- do.call(plotly::plot_ly, focus_args)
+    } else {
+      p <- do.call(plotly::add_trace, c(list(p), focus_args))
+    }
+  }
+  if (is.null(p)) return(empty_msg("No cluster data"))
+  p %>%
     plotly::layout(
       title = list(text = title, font = list(size = 14)),
       xaxis = list(title = xlab, zeroline = FALSE),

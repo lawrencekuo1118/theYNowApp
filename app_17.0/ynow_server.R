@@ -10319,7 +10319,8 @@ server <- function(input, output, session) {
       res,
       x_feat = as.character(input$lab_cluster_x %||% "ROE")[1],
       y_feat = as.character(input$lab_cluster_y %||% "PE_Ratio")[1],
-      locale = ui_locale()
+      locale = ui_locale(),
+      focus_ticker = as.character(input$lab_cluster_focus %||% "")[1]
     )
   })
 
@@ -10620,7 +10621,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.36"),
+      paste0("- **App：** The YNow App v17.37"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {
