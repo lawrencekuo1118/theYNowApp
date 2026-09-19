@@ -308,6 +308,21 @@ locale_for_market <- function(mode = get_market_mode()) {
     btn_calc_rd = "Estimate rᵈ",
     btn_calc_wacc = "Calculate WACC",
     capm_box_title = "CAPM Estimate rₑ",
+    ddm_ke_box_title = "Ke Estimate",
+    ddm_ke_help = paste0(
+      "Ke = Rf + β × (Rm − Rf). Bidirectionally synced with DCF→WACC \"Use estimated rₑ\" and the rₑ value; ",
+      "when checked, Ke follows CAPM; uncheck to override manually."
+    ),
+    ddm_use_estimated_ke_label = "Use estimated Ke (from CAPM)",
+    btn_calc_ddm_ke = "Calculate Ke (CAPM)",
+    ddm_ke_bridge_title = "Ke and central rₑ",
+    ddm_ke_bridge_help = paste0(
+      "DDM discounts at equity cost Ke, the same central Ke as DCF→WACC rₑ. ",
+      "When \"Use estimated Ke\" is checked, Ke follows CAPM; uncheck to override and keep bidirectional sync with WACC rₑ. ",
+      "Choose β source on this model's Beta (β) tab."
+    ),
+    ddm_capm_box_title = "CAPM Estimate Ke",
+    btn_calc_ddm_capm = "Estimate Ke (CAPM)",
     sync_gs_beta_label = "Sync with Basic Setup",
     beta_source_heading = "Beta source (default writes into CAPM)",
     beta_rolling_help = "Rolling estimates are for cross-check only and are not written into CAPM (hence omitted above).",
@@ -777,6 +792,21 @@ locale_for_market <- function(mode = get_market_mode()) {
     btn_calc_rd = "估算 rᵈ",
     btn_calc_wacc = "計算 WACC",
     capm_box_title = "CAPM 估算 rₑ",
+    ddm_ke_box_title = "Ke 估算",
+    ddm_ke_help = paste0(
+      "Ke = Rf + β × (Rm − Rf)。與 DCF→WACC「採用估算 rₑ」及 rₑ 數值雙向同步；",
+      "勾選時 Ke 跟隨 CAPM，取消後可手動覆寫。"
+    ),
+    ddm_use_estimated_ke_label = "採用估算 Ke（來自 CAPM）",
+    btn_calc_ddm_ke = "計算 Ke（CAPM）",
+    ddm_ke_bridge_title = "Ke 與中央 rₑ",
+    ddm_ke_bridge_help = paste0(
+      "DDM 折現率為股權成本 Ke，與 DCF→WACC 的 rₑ 同源（central Ke）。",
+      "勾選「採用估算 Ke」時跟隨 CAPM；取消後可手動覆寫，並與 WACC 分頁 rₑ 雙向同步。",
+      "β 來源請至同模型的 Beta (β) 分頁選擇。"
+    ),
+    ddm_capm_box_title = "CAPM 估算 Ke",
+    btn_calc_ddm_capm = "估算 Ke（CAPM）",
     sync_gs_beta_label = "與基礎設定同步",
     beta_source_heading = "β 來源（預設寫入 CAPM）",
     beta_rolling_help = "Rolling 估計僅供對照，不寫入 CAPM（故不列於上列選項）。",

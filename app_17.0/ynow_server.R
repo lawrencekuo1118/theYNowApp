@@ -854,7 +854,7 @@ server <- function(input, output, session) {
     do.call(tagList, blocks)
   })
 
-  output$capm_rf_source_note <- renderUI({
+  .capm_rf_source_note_ui <- function() {
     prof <- tryCatch(active_market_profile(), error = function(e) NULL)
     note <- if (!is.null(prof)) as.character(prof$data_source_note_zh %||% "")[1] else ""
     if (!nzchar(note)) {
@@ -862,7 +862,9 @@ server <- function(input, output, session) {
     }
     if (!nzchar(note)) return(NULL)
     helpText(style = "margin-top:-6px; margin-bottom:8px; font-size:12px;", note)
-  })
+  }
+  output$capm_rf_source_note <- renderUI({ .capm_rf_source_note_ui() })
+  output$ddm_capm_rf_source_note <- renderUI({ .capm_rf_source_note_ui() })
 
   output$wacc_tax_source_note <- renderUI({
     mode <- tryCatch(normalize_market_mode(market_mode()), error = function(e) "US")
@@ -3709,6 +3711,7 @@ server <- function(input, output, session) {
     if (length(beta) < 1L || !is.finite(beta)) return()
     lab <- .capm_beta_label_html(beta)
     updateNumericInput(session, "capm_beta", label = lab)
+    updateNumericInput(session, "ddm_capm_beta", label = lab)
   }, ignoreInit = FALSE)
 
   # ---------- DDM「採用估算 Ke」↔ WACC「採用估算 rₑ」同步 ----------
@@ -3730,6 +3733,66 @@ server <- function(input, output, session) {
     }
   }, ignoreInit = TRUE)
 
+  # ---------- DDM Ke ↔ WACC rₑ 數值雙向同步（手動覆寫時同源） ----------
+  ke_re_num_syncing <- reactiveVal(FALSE)
+  observeEvent(input$wacc_re, {
+    if (isTRUE(ke_re_num_syncing())) return()
+    ke_re_num_syncing(TRUE)
+    on.exit(ke_re_num_syncing(FALSE), add = TRUE)
+    re <- suppressWarnings(as.numeric(input$wacc_re)[1])
+    if (!is.finite(re)) return()
+    cur <- suppressWarnings(as.numeric(input[["mod_ddm-ke"]])[1])
+    if (!is.finite(cur) || abs(cur - re) > 1e-4) {
+      updateNumericInput(session, "mod_ddm-ke", value = round(re, 2))
+    }
+  }, ignoreInit = FALSE)
+  observeEvent(input[["mod_ddm-ke"]], {
+    if (isTRUE(ke_re_num_syncing())) return()
+    # 採用 CAPM 估算時以 CAPM／wacc_re 為準，勿把 DDM 殘值回寫
+    if (isTRUE(input$use_estimated_re)) return()
+    ke_re_num_syncing(TRUE)
+    on.exit(ke_re_num_syncing(FALSE), add = TRUE)
+    ke <- suppressWarnings(as.numeric(input[["mod_ddm-ke"]])[1])
+    if (!is.finite(ke)) return()
+    cur <- suppressWarnings(as.numeric(input$wacc_re)[1])
+    if (!is.finite(cur) || abs(cur - ke) > 1e-4) {
+      updateNumericInput(session, "wacc_re", value = round(ke, 2))
+    }
+  }, ignoreInit = TRUE)
+
+  # ---------- DDM CAPM 鏡像 ↔ 正規 CAPM（WACC 分頁）雙向同步 ----------
+  capm_mirror_syncing <- reactiveVal(FALSE)
+  .sync_capm_pair <- function(from_id, to_id, is_checkbox = FALSE) {
+    if (isTRUE(capm_mirror_syncing())) return()
+    capm_mirror_syncing(TRUE)
+    on.exit(capm_mirror_syncing(FALSE), add = TRUE)
+    if (isTRUE(is_checkbox)) {
+      v <- isTRUE(input[[from_id]])
+      if (!identical(isTRUE(input[[to_id]]), v)) {
+        updateCheckboxInput(session, to_id, value = v)
+      }
+    } else {
+      v <- suppressWarnings(as.numeric(input[[from_id]])[1])
+      if (!is.finite(v)) return()
+      cur <- suppressWarnings(as.numeric(input[[to_id]])[1])
+      if (!is.finite(cur) || abs(cur - v) > 1e-6) {
+        updateNumericInput(session, to_id, value = v)
+      }
+    }
+  }
+  observeEvent(input$capm_rf, { .sync_capm_pair("capm_rf", "ddm_capm_rf") }, ignoreInit = FALSE)
+  observeEvent(input$ddm_capm_rf, { .sync_capm_pair("ddm_capm_rf", "capm_rf") }, ignoreInit = TRUE)
+  observeEvent(input$capm_rm, { .sync_capm_pair("capm_rm", "ddm_capm_rm") }, ignoreInit = FALSE)
+  observeEvent(input$ddm_capm_rm, { .sync_capm_pair("ddm_capm_rm", "capm_rm") }, ignoreInit = TRUE)
+  observeEvent(input$capm_beta, { .sync_capm_pair("capm_beta", "ddm_capm_beta") }, ignoreInit = FALSE)
+  observeEvent(input$ddm_capm_beta, { .sync_capm_pair("ddm_capm_beta", "capm_beta") }, ignoreInit = TRUE)
+  observeEvent(input$sync_gs_beta, {
+    .sync_capm_pair("sync_gs_beta", "ddm_sync_gs_beta", is_checkbox = TRUE)
+  }, ignoreInit = FALSE)
+  observeEvent(input$ddm_sync_gs_beta, {
+    .sync_capm_pair("ddm_sync_gs_beta", "sync_gs_beta", is_checkbox = TRUE)
+  }, ignoreInit = TRUE)
+
   .capm_result_html <- function() {
     rf <- suppressWarnings(as.numeric(input$capm_rf)[1])
     b  <- suppressWarnings(as.numeric(input$capm_beta)[1])
@@ -3740,21 +3803,77 @@ server <- function(input, output, session) {
     }
     HTML(glue::glue(
       "<div style='padding:8px;border-left:4px solid #222222;background:#f5f5f5;font-size:13px;'>
-         rₑ = Rf + β×(Rm−Rf) = <b>{sprintf('%.2f%%', re)}</b>
+         rₑ / Ke = Rf + β×(Rm−Rf) = <b>{sprintf('%.2f%%', re)}</b>
        </div>"
     ))
   }
   output$capm_result <- renderUI({ .capm_result_html() })
+  output$ddm_capm_result <- renderUI({ .capm_result_html() })
   output$ddm_beta_ke_status <- renderUI({
     ke <- tryCatch(central_ke() * 100, error = function(e) NA_real_)
     b <- suppressWarnings(as.numeric(input$capm_beta)[1])
     HTML(glue::glue(
-      "<div style='font-size:14px;line-height:1.6;'>
+      "<div style='padding:8px;border-left:4px solid #222222;background:#f5f5f5;font-size:13px;line-height:1.6;'>
          <b>目前 CAPM β</b>：{if (is.finite(b)) sprintf('%.3f', b) else 'N/A'}<br/>
          <b>目前 Ke（供 DDM）</b>：{if (is.finite(ke)) sprintf('%.2f%%', ke) else 'N/A'}<br/>
-         <span style='color:#666;font-size:12px;'>來源：{if (isTRUE(input$use_estimated_re)) 'CAPM 估算（基礎設定）' else 'WACC 分頁 rₑ 手動／覆寫'}</span>
+         <span style='color:#666;font-size:12px;'>來源：{if (isTRUE(input$use_estimated_re)) 'CAPM 估算' else '手動／WACC 分頁 rₑ 覆寫'}</span>
        </div>"
     ))
+  })
+  output$ddm_ke_bridge_status <- renderUI({
+    rf <- suppressWarnings(as.numeric(input$capm_rf)[1])
+    rm <- suppressWarnings(as.numeric(input$capm_rm)[1])
+    b <- suppressWarnings(as.numeric(input$capm_beta)[1])
+    erp <- if (is.finite(rf) && is.finite(rm)) rm - rf else NA_real_
+    ke <- tryCatch(central_ke() * 100, error = function(e) NA_real_)
+    HTML(glue::glue(
+      "<div style='font-size:13px;line-height:1.55;'>
+         <b>Rf</b>：{if (is.finite(rf)) sprintf('%.2f%%', rf) else 'N/A'}　
+         <b>Rm</b>：{if (is.finite(rm)) sprintf('%.2f%%', rm) else 'N/A'}　
+         <b>ERP</b>：{if (is.finite(erp)) sprintf('%.2f%%', erp) else 'N/A'}<br/>
+         <b>β</b>：{if (is.finite(b)) sprintf('%.3f', b) else 'N/A'}　
+         <b>Ke</b>：{if (is.finite(ke)) sprintf('%.2f%%', ke) else 'N/A'}
+       </div>"
+    ))
+  })
+  output$ddm_ke_erp_summary <- renderUI({
+    rf <- suppressWarnings(as.numeric(input$capm_rf)[1])
+    rm <- suppressWarnings(as.numeric(input$capm_rm)[1])
+    erp <- if (is.finite(rf) && is.finite(rm)) rm - rf else NA_real_
+    tags$span(
+      style = "color:#555;font-size:13px;",
+      if (is.finite(erp)) sprintf("ERP (Rm−Rf)＝%.2f%%", erp) else "ERP (Rm−Rf)＝—"
+    )
+  })
+  output$ddm_ke_source_chip <- renderUI({
+    tags$span(
+      style = "color:#555;font-size:13px;",
+      if (isTRUE(input$use_estimated_re)) "來源：CAPM 估算" else "來源：手動／rₑ 覆寫"
+    )
+  })
+  output$ddm_ke_tab_note <- renderUI({
+    tags$div(
+      style = "background:#f5f5f5; border-left:4px solid #222222; padding:10px 12px; margin-bottom:12px; font-size:13px;",
+      tags$b("DDM："),
+      "本頁折現率為 Ke（CAPM 股權成本）。版面節奏對齊 DCF→WACC：上列估算、下列 CAPM；β 來源見右側 Beta (β) 分頁。"
+    )
+  })
+  output$ibx_ddm_ke <- renderInfoBox({
+    ke <- tryCatch(central_ke() * 100, error = function(e) NA_real_)
+    if (!is.finite(ke)) ke <- APP_DEFAULTS$ddm_ke
+    infoBox("股權成本 (Ke)", h3(paste0(round(ke, 2), " %")), icon = icon("percent"), color = "teal", fill = TRUE)
+  })
+  output$ibx_ddm_beta <- renderInfoBox({
+    b <- suppressWarnings(as.numeric(input$capm_beta)[1])
+    disp <- if (is.finite(b)) sprintf("%.3f", b) else "N/A"
+    infoBox("CAPM β", h3(disp), icon = icon("chart-line"), color = "aqua", fill = TRUE)
+  })
+  output$ibx_ddm_erp <- renderInfoBox({
+    rf <- suppressWarnings(as.numeric(input$capm_rf)[1])
+    rm <- suppressWarnings(as.numeric(input$capm_rm)[1])
+    erp <- if (is.finite(rf) && is.finite(rm)) rm - rf else NA_real_
+    disp <- if (is.finite(erp)) paste0(round(erp, 2), " %") else "N/A"
+    infoBox("ERP (Rm−Rf)", h3(disp), icon = icon("arrow-up"), color = "purple", fill = TRUE)
   })
 
   # ---------- 基礎設定：Rolling／Unlevered Beta 預估 ----------
@@ -5599,6 +5718,12 @@ server <- function(input, output, session) {
   }, striped = TRUE, bordered = TRUE, spacing = "s", width = "100%")
 
   observeEvent(input$calc_capm, {
+    .auto_recalc_capm_wacc(notify = TRUE, wacc_too = FALSE)
+  })
+  observeEvent(input$calc_ddm_capm, {
+    .auto_recalc_capm_wacc(notify = TRUE, wacc_too = FALSE)
+  })
+  observeEvent(input$calc_ddm_ke, {
     .auto_recalc_capm_wacc(notify = TRUE, wacc_too = FALSE)
   })
   
@@ -10260,7 +10385,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.14"),
+      paste0("- **App：** The YNow App v17.15"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

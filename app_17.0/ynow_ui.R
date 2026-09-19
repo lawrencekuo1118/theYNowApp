@@ -75,7 +75,7 @@
       tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
       tags$p(
         class = "ynow-about-lead",
-        "The YNow App (v17.14) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合了即時財報抓取、多維度估值模型與動態回測引擎，將繁雜的市場資料轉化為直覺、科學的投資決策。"
+        "The YNow App (v17.15) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合了即時財報抓取、多維度估值模型與動態回測引擎，將繁雜的市場資料轉化為直覺、科學的投資決策。"
       ),
       tags$p(
         class = "ynow-about-method",
@@ -91,7 +91,7 @@
       tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
       tags$p(
         class = "ynow-about-lead",
-        "The YNow App (v17.14) is a comprehensive quantitative financial analysis and valuation decision system designed for professional investors and analysts. It seamlessly integrates real-time financial data parsing, multi-dimensional valuation models, and a dynamic backtesting engine to transform complex market data into actionable, scientific investment insights."
+        "The YNow App (v17.15) is a comprehensive quantitative financial analysis and valuation decision system designed for professional investors and analysts. It seamlessly integrates real-time financial data parsing, multi-dimensional valuation models, and a dynamic backtesting engine to transform complex market data into actionable, scientific investment insights."
       ),
       tags$p(
         class = "ynow-about-method",
@@ -147,27 +147,65 @@
 # Shared gray「回復預設」／試算 helpers live in setup.R (ynow_reset_defaults_btn, ynow_calc_btn).
 
 #' Shared CAPM / Beta settings block (canonical IDs on DCF → WACC).
+#' DDM → Ke uses the same layout with `id_prefix = "ddm_"`; server keeps mirrors in sync.
 #' @param calc_id actionButton id
 #' @param result_id htmlOutput id for CAPM result text
 #' @param width shinydashboard box width (1–12)
+#' @param id_prefix optional prefix for input ids (e.g. `"ddm_"` → `ddm_capm_rf`)
+#' @param box_title_id DOM id for locale title
+#' @param sync_label_id DOM id for sync-checkbox label
+#' @param rf_note_id uiOutput id for Rf source note
+#' @param btn_label actionButton label (locale may overwrite)
 capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
                                   calc_id = "calc_capm",
                                   result_id = "capm_result",
-                                  width = 6) {
+                                  width = 6,
+                                  id_prefix = "",
+                                  box_title_id = "ynow_capm_box_title",
+                                  sync_label_id = "ynow_sync_gs_beta_label",
+                                  rf_note_id = "capm_rf_source_note",
+                                  btn_label = "估算 rₑ（CAPM）") {
+  pid <- function(x) {
+    if (nzchar(as.character(id_prefix %||% "")[1])) paste0(id_prefix, x) else x
+  }
   box(
     width = width,
-    h4(title, id = "ynow_capm_box_title"),
-    numericInput("capm_rf", "無風險利率 Rf (%)", value = APP_DEFAULTS$capm_rf, step = 0.01),
-    uiOutput("capm_rf_source_note"),
-    numericInput("capm_rm", "市場報酬率 Rm (%)", value = APP_DEFAULTS$capm_rm, step = 0.01),
-    numericInput("capm_beta", "Beta (β)", value = APP_DEFAULTS$capm_beta, step = 0.01),
+    h4(title, id = box_title_id),
+    numericInput(pid("capm_rf"), "無風險利率 Rf (%)", value = APP_DEFAULTS$capm_rf, step = 0.01),
+    uiOutput(rf_note_id),
+    numericInput(pid("capm_rm"), "市場報酬率 Rm (%)", value = APP_DEFAULTS$capm_rm, step = 0.01),
+    numericInput(pid("capm_beta"), "Beta (β)", value = APP_DEFAULTS$capm_beta, step = 0.01),
     checkboxInput(
-      "sync_gs_beta",
-      tags$span(id = "ynow_sync_gs_beta_label", style = "font-weight: bold;", "與基礎設定同步"),
+      pid("sync_gs_beta"),
+      tags$span(id = sync_label_id, style = "font-weight: bold;", "與基礎設定同步"),
       value = isTRUE(APP_DEFAULTS$sync_gs_beta)
     ),
-    actionButton(calc_id, "估算 rₑ（CAPM）", class = "btn-primary"),
+    actionButton(calc_id, btn_label, class = "btn-primary"),
     tags$br(), htmlOutput(result_id)
+  )
+}
+
+#' Left companion on DDM → Ke (mirrors WACC tab’s rᵈ column role: context beside CAPM).
+ddm_ke_bridge_settings_ui <- function(width = 6) {
+  box(
+    width = width,
+    h4("Ke 與中央 rₑ", id = "ynow_ddm_ke_bridge_title"),
+    tags$p(
+      id = "ynow_ddm_ke_bridge_help",
+      style = "margin:0 0 10px 0;color:#666;font-size:12px;line-height:1.55;",
+      paste0(
+        "DDM 折現率為股權成本 Ke，與 DCF→WACC 的 rₑ 同源（central Ke）。",
+        "勾選「採用估算 Ke」時跟隨 CAPM；取消後可手動覆寫，並與 WACC 分頁 rₑ 雙向同步。",
+        "β 來源請至同模型的 Beta (β) 分頁選擇。"
+      )
+    ),
+    tags$div(
+      style = "padding:8px;border-left:4px solid #222222;background:#f5f5f5;font-size:13px;margin-bottom:10px;",
+      tags$b("CAPM："), " Ke = Rf + β × (Rm − Rf)",
+      tags$br(),
+      tags$span(style = "color:#666;font-size:12px;", "ERP = Rm − Rf（市場風險溢酬）")
+    ),
+    htmlOutput("ddm_ke_bridge_status")
   )
 }
 
@@ -844,7 +882,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.14</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.15</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -2556,8 +2594,24 @@ ui <- dashboardPage(
             if (navSettingsHint && s.nav_settings_reset_hint) navSettingsHint.textContent = s.nav_settings_reset_hint;
             var capmBoxTitle = document.getElementById('ynow_capm_box_title');
             if (capmBoxTitle && s.capm_box_title) capmBoxTitle.textContent = s.capm_box_title;
+            var ddmCapmBoxTitle = document.getElementById('ynow_ddm_capm_box_title');
+            if (ddmCapmBoxTitle && s.ddm_capm_box_title) ddmCapmBoxTitle.textContent = s.ddm_capm_box_title;
+            var ddmKeBoxTitle = document.getElementById('ynow_ddm_ke_box_title');
+            if (ddmKeBoxTitle && s.ddm_ke_box_title) ddmKeBoxTitle.textContent = s.ddm_ke_box_title;
+            var ddmKeHelp = document.getElementById('ynow_ddm_ke_help');
+            if (ddmKeHelp && s.ddm_ke_help) ddmKeHelp.textContent = s.ddm_ke_help;
+            var ddmKeBridgeTitle = document.getElementById('ynow_ddm_ke_bridge_title');
+            if (ddmKeBridgeTitle && s.ddm_ke_bridge_title) ddmKeBridgeTitle.textContent = s.ddm_ke_bridge_title;
+            var ddmKeBridgeHelp = document.getElementById('ynow_ddm_ke_bridge_help');
+            if (ddmKeBridgeHelp && s.ddm_ke_bridge_help) ddmKeBridgeHelp.textContent = s.ddm_ke_bridge_help;
+            var ddmUseEstKe = document.getElementById('ynow_ddm_use_estimated_ke_label');
+            if (ddmUseEstKe && s.ddm_use_estimated_ke_label) ddmUseEstKe.textContent = s.ddm_use_estimated_ke_label;
+            setBtnLabel('calc_ddm_ke', s.btn_calc_ddm_ke);
+            setBtnLabel('calc_ddm_capm', s.btn_calc_ddm_capm);
             var syncGsLab = document.getElementById('ynow_sync_gs_beta_label');
             if (syncGsLab && s.sync_gs_beta_label) syncGsLab.textContent = s.sync_gs_beta_label;
+            var ddmSyncGsLab = document.getElementById('ynow_ddm_sync_gs_beta_label');
+            if (ddmSyncGsLab && s.sync_gs_beta_label) ddmSyncGsLab.textContent = s.sync_gs_beta_label;
             document.querySelectorAll('.ynow-beta-source-heading').forEach(function (el) {
               if (s.beta_source_heading) el.textContent = s.beta_source_heading;
             });
@@ -4869,33 +4923,90 @@ ui <- dashboardPage(
                          )
                        )
                      ),
+                     # Ke ↔ Beta 左右對調：Ke 在前（對齊 DCF 的 WACC → Beta 節奏）
+                     tabPanel(
+                       "Ke",
+                       icon = icon("balance-scale"),
+                       uiOutput("ddm_ke_tab_note"),
+                       fluidRow(
+                         infoBoxOutput("ibx_ddm_ke", width = 4),
+                         infoBoxOutput("ibx_ddm_beta", width = 4),
+                         infoBoxOutput("ibx_ddm_erp", width = 4)
+                       ),
+                       div(
+                         id = "ynow_ddm_ke_formula_banner",
+                         "Ke = Rf + β × (Rm − Rf)",
+                         style = "font-size: 18px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
+                       ),
+                       # 上列 100%：Ke 估算（對齊 WACC 估算盒）；下列左說明、右 CAPM
+                       fluidRow(
+                         box(
+                           width = 12,
+                           h4("Ke 估算", id = "ynow_ddm_ke_box_title"),
+                           fluidRow(
+                             column(
+                               4,
+                               numericInput(
+                                 "mod_ddm-ke", "股權成本 Ke (%)",
+                                 value = APP_DEFAULTS$ddm_ke, min = 0, step = 0.01
+                               )
+                             ),
+                             column(
+                               4,
+                               tags$div(
+                                 style = "margin-top: 25px;",
+                                 htmlOutput("ddm_ke_erp_summary")
+                               )
+                             ),
+                             column(
+                               4,
+                               tags$div(
+                                 style = "margin-top: 25px;",
+                                 htmlOutput("ddm_ke_source_chip")
+                               )
+                             )
+                           ),
+                           checkboxInput(
+                             "ddm_use_estimated_re",
+                             tags$span(
+                               id = "ynow_ddm_use_estimated_ke_label",
+                               "採用估算 Ke（來自 CAPM）"
+                             ),
+                             value = isTRUE(APP_DEFAULTS$use_est_re)
+                           ),
+                           tags$p(
+                             id = "ynow_ddm_ke_help",
+                             style = "margin:0 0 8px 0;color:#666;font-size:12px;",
+                             paste0(
+                               "Ke = Rf + β × (Rm − Rf)。與 DCF→WACC「採用估算 rₑ」及 rₑ 數值雙向同步；",
+                               "勾選時 Ke 跟隨 CAPM，取消後可手動覆寫。"
+                             )
+                           ),
+                           actionButton("calc_ddm_ke", "計算 Ke（CAPM）", class = "btn-primary"),
+                           tags$br(), htmlOutput("ddm_beta_ke_status")
+                         )
+                       ),
+                       fluidRow(
+                         ddm_ke_bridge_settings_ui(width = 6),
+                         capm_beta_settings_ui(
+                           title = "CAPM 估算 Ke",
+                           calc_id = "calc_ddm_capm",
+                           result_id = "ddm_capm_result",
+                           width = 6,
+                           id_prefix = "ddm_",
+                           box_title_id = "ynow_ddm_capm_box_title",
+                           sync_label_id = "ynow_ddm_sync_gs_beta_label",
+                           rf_note_id = "ddm_capm_rf_source_note",
+                           btn_label = "估算 Ke（CAPM）"
+                         )
+                       )
+                     ),
                      tabPanel(
                        "Beta (β)",
                        icon = icon("chart-line"),
                        .beta_model_source_section_ui(
                          "ddm_beta_u_apply_source",
                          "ddm_apply_beta_u_selected"
-                       )
-                     ),
-                     tabPanel(
-                       "Ke",
-                       icon = icon("balance-scale"),
-                       fluidRow(
-                         div(
-                           "Ke = Rf + β × (Rm − Rf)",
-                           style = "font-size: 18px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
-                         ),
-                         box(
-                           h4("股權成本 Ke"),
-                           numericInput("mod_ddm-ke", "要求報酬率 (Ke) %", value = APP_DEFAULTS$ddm_ke),
-                           checkboxInput(
-                             "ddm_use_estimated_re",
-                             "採用估算 Ke（來自 CAPM β）",
-                             value = isTRUE(APP_DEFAULTS$use_est_re)
-                           ),
-                           helpText("與 DCF→WACC「採用估算 rₑ」同步；勾選時 Ke 跟隨 CAPM。"),
-                           htmlOutput("ddm_beta_ke_status")
-                         )
                        )
                      )
               ),
