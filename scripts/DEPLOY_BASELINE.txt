@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12577687
+bundleId=12577715
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=0234c20
-commit=0234c20
-short=0234c20
-message=feat(ui): per-model page color themes from Model Selector (v17.41)
-captured_at=2026-09-19T17:31:36Z
+aligned_git=0513baa
+commit=0513baa
+short=0513baa
+message=fix(lab): Blue Chip Top 10 respects gate toggle and clarifies N≠10 fill (v17.42)
+captured_at=2026-09-19T17:45:00Z
 source_branch=master
-display_version=v17.41
-note=Canonical live line is app_17.0. Bundle 12577687 = tip v17.41 (model page themes). Deploy via scripts/deploy_app_17.R.
+display_version=v17.42
+note=Canonical live line is app_17.0. Bundle 12577715 = tip v17.42 (Blue Chip Top 10 gate + N≠10 status). Deploy via scripts/deploy_app_17.R.
