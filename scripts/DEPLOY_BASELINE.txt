@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12577029
+bundleId=12577074
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=fb3a49b
 commit=fb3a49b169f71b700c0be4a1f491c33e6eac867f
 short=fb3a49b
 message=fix(valuation): Macro g uses live Yahoo ^TNX Rf, not fixed 5% (v17.29)
-captured_at=2026-09-19T13:30:45Z
+captured_at=2026-09-19T13:37:36Z
 source_branch=master
 display_version=v17.29
-note=Canonical live line is app_17.0. Bundle 12577029 = tip v17.29 (includes header hamburger/locale vertical centering from 4877b3c / v17.26). Deploy via scripts/deploy_app_17.R.
+note=Canonical live line is app_17.0. Bundle 12577074 = tip v17.29 (Macroeconomic Anchoring uses live Yahoo ^TNX Rf with last-known then labeled fallback). Deploy via scripts/deploy_app_17.R.
