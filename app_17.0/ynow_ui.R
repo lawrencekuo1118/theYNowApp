@@ -1005,7 +1005,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.42</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.43</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -2256,12 +2256,42 @@ ui <- dashboardPage(
           margin-bottom: 0;
         }
         @media (max-width: 767px) {
+          .ynow-ind-overview-block {
+            padding: 10px 12px;
+          }
+          .ynow-ind-overview-block .ynow-ind-overview-title {
+            margin: 0 0 4px 0;
+          }
           .ynow-ind-overview-row {
             flex-direction: column;
+            gap: 4px;
           }
           .ynow-ind-overview-picker {
             max-width: none;
             width: 100%;
+          }
+          .ynow-ind-overview-picker .bootstrap-select,
+          .ynow-ind-overview-picker .btn-group.bootstrap-select {
+            margin-bottom: 0 !important;
+          }
+          .ynow-ind-overview-summary {
+            margin: 0;
+          }
+          .ynow-ind-overview-block .shiny-html-output,
+          .ynow-ind-overview-block .shiny-bound-output {
+            min-height: 0 !important;
+          }
+          .ynow-ind-overview-block .ynow-ind-yahoo-row {
+            margin-top: 2px;
+          }
+          .ynow-ind-overview-metrics {
+            margin-top: 6px;
+          }
+          .ynow-ind-snapshot-chips,
+          .ynow-kpi-legend-chips {
+            gap: 6px;
+            row-gap: 6px;
+            column-gap: 6px;
           }
         }
         /* DCF shared header：上列「選擇模型／採用現金流」與下列「預測年數 n／建議」同寬靠左對齊 */
