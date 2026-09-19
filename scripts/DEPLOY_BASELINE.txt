@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12577101
+bundleId=12577138
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=2294295
-commit=2294295fix(ui): show ADR share-count toast only once after Search (v17.30)
-short=2294295
-message=fix(ui): show ADR share-count toast only once after Search (v17.30)
-captured_at=2026-09-19T13:47:08Z
+aligned_git=feb6bd4
+commit=feb6bd4
+short=feb6bd4
+message=fix(lab): default radar focus to Search ticker and force-include in N (v17.31)
+captured_at=2026-09-19T14:00:49Z
 source_branch=master
-display_version=v17.30
-note=Canonical live line is app_17.0. Bundle 12577101 = tip v17.30 (ADR share toast once after Search). Deploy via scripts/deploy_app_17.R.
+display_version=v17.31
+note=Canonical live line is app_17.0. Bundle 12577138 = tip v17.31 (radar focus = Search; Universe N force-includes session ticker). Deploy via scripts/deploy_app_17.R.
