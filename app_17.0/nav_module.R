@@ -476,20 +476,19 @@ nav_module_server <- function(id,
     })
 
     return(list(
+      # Calc-only exports: Composite overlays must not appear until 試算 / Run
+      # (or silent primary auto-calc). Keep nav_live_band for in-module value boxes.
       nav_price = reactive({
-        live <- nav_live_band()
-        if (!is.null(live) && is.finite(live$mid)) return(live$mid)
         res <- tryCatch(nav_calc(), error = function(e) NULL)
         if (!is.null(res) && identical(res$status, "success")) res$fair_mid else NA_real_
       }),
       nav_band = reactive({
-        live <- nav_live_band()
-        if (!is.null(live)) {
-          return(list(low = live$low, mid = live$mid, high = live$high, navps = live$navps))
-        }
         res <- tryCatch(nav_calc(), error = function(e) NULL)
         if (is.null(res) || !identical(res$status, "success")) return(NULL)
-        list(low = res$fair_low, mid = res$fair_mid, high = res$fair_high, navps = res$navps)
+        list(
+          low = res$fair_low, mid = res$fair_mid, high = res$fair_high,
+          navps = res$navps
+        )
       })
     ))
   })

@@ -655,7 +655,8 @@ pb_asset_module_server <- function(id,
       p
     })
     
-    # Live band from current inputs (Dashboard / confidence); button still gates Overview UI
+    # Live band from current inputs (module value boxes only).
+    # Composite / decision exports must stay calc-gated (see pb_price / pb_band).
     pb_live_band <- reactive({
       basis_val <- .pb_basis_val()
       lo <- safe_num(input$pb_low)
@@ -785,24 +786,19 @@ pb_asset_module_server <- function(id,
     }, striped = TRUE, hover = TRUE, bordered = TRUE, spacing = "s", width = "100%")
 
     return(list(
+      # Calc-only exports: Composite overlays must not appear until 試算 / Run
+      # (or silent primary auto-calc). Keep pb_live_band for in-module value boxes.
       pb_price = reactive({
-        live <- pb_live_band()
-        if (!is.null(live) && is.finite(live$mid)) return(live$mid)
         res <- tryCatch(pb_calc(), error = function(e) NULL)
         if (!is.null(res) && identical(res$status, "success")) res$fair_mid else NA_real_
       }),
       pb_band = reactive({
-        live <- pb_live_band()
-        if (!is.null(live)) {
-          return(list(
-            low = live$low, mid = live$mid, high = live$high,
-            basis_val = live$basis_val
-          ))
-        }
         res <- tryCatch(pb_calc(), error = function(e) NULL)
         if (is.null(res) || !identical(res$status, "success")) return(NULL)
-        list(low = res$fair_low, mid = res$fair_mid, high = res$fair_high,
-             market_pb = res$market_pb, basis_val = res$basis_val)
+        list(
+          low = res$fair_low, mid = res$fair_mid, high = res$fair_high,
+          market_pb = res$market_pb, basis_val = res$basis_val
+        )
       })
     ))
   })
