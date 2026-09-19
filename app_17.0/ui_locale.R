@@ -546,7 +546,18 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Using bundled offline feature snapshot ",
       "(live Yahoo ratios unavailable or incomplete on this host)."
     ),
-    lab_cluster_partial_k = "Lowered cluster count k because fewer than k names have usable ratios."
+    lab_cluster_partial_k = "Lowered cluster count k because fewer than k names have usable ratios.",
+    lab_cluster_coverage_col = "Coverage",
+    lab_cluster_coverage_ok = "OK",
+    lab_cluster_coverage_datalimited = "Data-limited",
+    lab_cluster_note_search_datalimited = paste0(
+      "Search ticker is Data-limited (fundamental profile and/or sparse cluster ratios): ",
+      "cross-read the full statements; do not rely on radar/cluster distance alone."
+    ),
+    lab_cluster_note_impute = paste0(
+      "%d names have sparse ratios (Data-limited); table/radar values may include median imputation — ",
+      "cross-read statements."
+    )
   ),
   `zh-TW` = list(
     recent_search = "最近搜尋：",
@@ -1062,7 +1073,18 @@ locale_for_market <- function(mode = get_market_mode()) {
       "目前使用內建離線特徵快照",
       "（此主機無法取得完整即時 Yahoo 比率）。"
     ),
-    lab_cluster_partial_k = "可用比率特徵的檔數少於群數 k，已自動調降 k。"
+    lab_cluster_partial_k = "可用比率特徵的檔數少於群數 k，已自動調降 k。",
+    lab_cluster_coverage_col = "資料覆蓋",
+    lab_cluster_coverage_ok = "充足",
+    lab_cluster_coverage_datalimited = "資料受限",
+    lab_cluster_note_search_datalimited = paste0(
+      "Search 代號為資料受限（財報屬性或 Clustering 比率不足）：",
+      "請交叉閱讀完整財報，勿只依雷達／分群距離。"
+    ),
+    lab_cluster_note_impute = paste0(
+      "宇宙中有 %d 檔比率特徵不足（資料受限）；",
+      "表內／雷達數值可能含中位數補值，請交叉閱讀財報。"
+    )
   )
 )
 

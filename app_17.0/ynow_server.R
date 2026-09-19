@@ -10337,7 +10337,78 @@ server <- function(input, output, session) {
     if (identical(mode, "idle")) {
       return(lab_cluster_idle_placeholder(.lab_cluster_idle_msg("table"), min_height = "120px"))
     }
-    shinycssloaders::withSpinner(DT::dataTableOutput("lab_cluster_table"))
+    tagList(
+      uiOutput("lab_cluster_coverage_note"),
+      shinycssloaders::withSpinner(DT::dataTableOutput("lab_cluster_table"))
+    )
+  })
+
+  output$lab_cluster_coverage_note <- renderUI({
+    res <- lab_cluster_result()
+    if (!lab_cluster_has_result(res)) return(NULL)
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    df <- res$data
+    nf <- if ("n_finite" %in% names(df)) {
+      suppressWarnings(as.integer(df$n_finite))
+    } else {
+      rep(NA_integer_, nrow(df))
+    }
+    n_sparse <- sum(!is.finite(nf) | nf < 2L, na.rm = TRUE)
+    session_tk <- tryCatch({
+      tk <- current_ticker()
+      if (is.null(tk) || !nzchar(trimws(as.character(tk)[1]))) tk <- input$sc
+      normalize_ticker_for_market(tk, market_mode())
+    }, error = function(e) "")
+    session_tk <- toupper(trimws(as.character(session_tk %||% "")[1]))
+    fp <- tryCatch(fundamental_profile_rec(), error = function(e) NULL)
+    search_fallback <- identical(as.character(fp$profile %||% "")[1], "fallback")
+    search_sparse <- FALSE
+    if (nzchar(session_tk) && "ticker" %in% names(df)) {
+      m <- lab_cluster_match_ticker(df$ticker, session_tk)
+      if (!is.na(m) && nzchar(m)) {
+        i <- match(m, toupper(trimws(as.character(df$ticker))))
+        if (is.finite(i)) {
+          search_sparse <- !is.finite(nf[[i]]) || nf[[i]] < 2L
+        }
+      }
+    }
+    msgs <- character(0)
+    if (isTRUE(search_fallback) || isTRUE(search_sparse)) {
+      msgs <- c(msgs, tryCatch(
+        ui_str("lab_cluster_note_search_datalimited", loc),
+        error = function(e) {
+          if (identical(loc, "zh-TW")) {
+            "Search 代號為資料受限（財報屬性或 Clustering 比率不足）：請交叉閱讀完整財報，勿只依雷達／分群距離。"
+          } else {
+            "Search ticker is Data-limited (fundamental profile and/or sparse cluster ratios): cross-read the full statements; do not rely on radar/cluster distance alone."
+          }
+        }
+      ))
+    }
+    if (n_sparse > 0L) {
+      msgs <- c(msgs, tryCatch(
+        sprintf(ui_str("lab_cluster_note_impute", loc), as.integer(n_sparse)),
+        error = function(e) {
+          if (identical(loc, "zh-TW")) {
+            sprintf(
+              "宇宙中有 %d 檔比率特徵不足（資料受限）；表內／雷達數值可能含中位數補值，請交叉閱讀財報。",
+              as.integer(n_sparse)
+            )
+          } else {
+            sprintf(
+              "%d names have sparse ratios (Data-limited); table/radar values may include median imputation — cross-read statements.",
+              as.integer(n_sparse)
+            )
+          }
+        }
+      ))
+    }
+    if (!length(msgs)) return(NULL)
+    tags$div(
+      class = "ynow-lab-cluster-coverage-note",
+      style = "margin:0 0 10px 0; padding:8px 10px; background:#fff8e8; border:1px solid #f0d78c; border-radius:4px; color:#5a3a10; font-size:12.5px; line-height:1.45;",
+      lapply(msgs, function(m) tags$p(style = "margin:0 0 4px 0;", m))
+    )
   })
 
   output$lab_cluster_scatter <- plotly::renderPlotly({
@@ -10363,21 +10434,42 @@ server <- function(input, output, session) {
   output$lab_cluster_table <- DT::renderDataTable({
     res <- lab_cluster_result()
     req(lab_cluster_has_result(res))
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
     df <- res$data
+    session_tk <- tryCatch({
+      tk <- current_ticker()
+      if (is.null(tk) || !nzchar(trimws(as.character(tk)[1]))) tk <- input$sc
+      normalize_ticker_for_market(tk, market_mode())
+    }, error = function(e) "")
+    session_tk <- toupper(trimws(as.character(session_tk %||% "")[1]))
+    fp <- tryCatch(fundamental_profile_rec(), error = function(e) NULL)
+    search_fallback <- identical(as.character(fp$profile %||% "")[1], "fallback")
+    nf <- if ("n_finite" %in% names(df)) df$n_finite else rep(NA_integer_, nrow(df))
+    cov_lab <- lab_cluster_coverage_labels(
+      nf,
+      df$ticker,
+      search_ticker = session_tk,
+      search_is_fallback = search_fallback,
+      locale = loc
+    )
+    cov_col <- if (identical(loc, "zh-TW")) "資料覆蓋" else "Coverage"
+    df[[cov_col]] <- cov_lab
     cols <- intersect(
       c(
-        "ticker", "name", "Cluster_ID", "Cluster_Label", "industry_key",
+        "ticker", "name", cov_col, "Cluster_ID", "Cluster_Label", "industry_key",
         "ROE", "Operating_Margin", "Rev_YoY", "OpInc_YoY",
-        "Debt_Ratio", "PE_Ratio", "PB_Ratio", "market_cap"
+        "Debt_Ratio", "PE_Ratio", "PB_Ratio", "market_cap", "n_finite"
       ),
       names(df)
     )
+    # Keep n_finite out of display; Coverage is enough
+    cols <- setdiff(cols, "n_finite")
     out <- lab_cluster_format_assignments_df(df[, cols, drop = FALSE])
     num_cols <- names(out)[vapply(out, is.numeric, logical(1)) & names(out) != "Cluster_ID"]
     dt <- DT::datatable(
       out,
       rownames = FALSE,
-      options = list(pageLength = 25, scrollX = TRUE, order = list(list(2, "asc")))
+      options = list(pageLength = 25, scrollX = TRUE, order = list(list(3, "asc")))
     )
     if (length(num_cols)) {
       dt <- DT::formatRound(dt, columns = num_cols, digits = 2)
@@ -10649,7 +10741,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.46"),
+      paste0("- **App：** The YNow App v17.47"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

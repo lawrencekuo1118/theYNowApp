@@ -177,6 +177,26 @@ res_keep <- lab_run_stock_clustering(
   feats_shell, k_clusters = 3L, locale = "en", seed = 1L, ensure_ticker = "ZZZ"
 )
 stopifnot(!is.na(lab_cluster_match_ticker(res_keep$data$ticker, "ZZZ")))
+stopifnot("n_finite" %in% names(res_keep$data))
+zz_i <- which(toupper(res_keep$data$ticker) == "ZZZ")[1]
+stopifnot(is.finite(zz_i), res_keep$data$n_finite[[zz_i]] < 2L)
+
+cov_en <- lab_cluster_coverage_labels(
+  res_keep$data$n_finite, res_keep$data$ticker,
+  search_ticker = "ZZZ", search_is_fallback = TRUE, locale = "en"
+)
+stopifnot(identical(cov_en[[zz_i]], "Data-limited"))
+cov_zh <- lab_cluster_coverage_labels(
+  res_keep$data$n_finite, res_keep$data$ticker,
+  search_ticker = "ZZZ", search_is_fallback = FALSE, locale = "zh-TW"
+)
+stopifnot(identical(cov_zh[[zz_i]], "資料受限"))
+# Dense synthetic row stays OK when not search-fallback
+cov_ok <- lab_cluster_coverage_labels(
+  res$data$n_finite, res$data$ticker, locale = "en"
+)
+stopifnot(all(cov_ok == "OK"))
+stopifnot("n_finite" %in% names(res$data))
 
 cat("PASS lab_clustering\n")
 

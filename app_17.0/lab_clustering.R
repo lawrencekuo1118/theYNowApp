@@ -1034,6 +1034,7 @@ lab_run_stock_clustering <- function(df_financials, k_clusters = 3L,
   }
   df <- df[keep, , drop = FALSE]
   X <- X[keep, , drop = FALSE]
+  n_finite_kept <- as.integer(n_finite_orig[keep])
   rownames(df) <- NULL
   rownames(X) <- NULL
 
@@ -1043,6 +1044,8 @@ lab_run_stock_clustering <- function(df_financials, k_clusters = 3L,
   set.seed(as.integer(seed)[1])
   km <- stats::kmeans(Xs, centers = k_clusters, nstart = 25L, iter.max = 100L)
   df$Cluster_ID <- as.integer(km$cluster)
+  # Pre-impute coverage (usable-row rule uses ≥2 finite Yahoo ratios)
+  df$n_finite <- n_finite_kept
 
   # Write back winsorized+imputed ratios so radar / assignments show the
   # values used for clustering (raw all-NA Search shells otherwise plot as r=0).
@@ -1283,12 +1286,46 @@ lab_cluster_has_result <- function(res) {
     nrow(res$data) > 0L
 }
 
+#' Coverage label for Clustering assignments (Data-limited vs OK)
+#' @param n_finite integer vector of pre-impute finite feature counts
+#' @param tickers character vector of tickers (same length)
+#' @param search_ticker optional Search ticker — if fund_profile_fallback, force Data-limited
+#' @param search_is_fallback TRUE when Search fundamental profile is fallback
+#' @param locale en | zh-TW
+lab_cluster_coverage_labels <- function(n_finite, tickers,
+                                        search_ticker = NULL,
+                                        search_is_fallback = FALSE,
+                                        locale = "en") {
+  loc <- as.character(locale %||% "en")[1]
+  if (exists("normalize_ui_locale", mode = "function")) {
+    loc <- tryCatch(normalize_ui_locale(loc), error = function(e) loc)
+  }
+  use_zh <- identical(loc, "zh-TW") || grepl("^zh", loc, ignore.case = TRUE)
+  lab_ok <- if (isTRUE(use_zh)) "充足" else "OK"
+  lab_dl <- if (isTRUE(use_zh)) "資料受限" else "Data-limited"
+  nf <- suppressWarnings(as.integer(n_finite))
+  tks <- toupper(trimws(as.character(tickers %||% character(0))))
+  out <- ifelse(is.finite(nf) & nf >= 2L, lab_ok, lab_dl)
+  out[!is.finite(nf)] <- lab_dl
+  foc <- toupper(trimws(as.character(search_ticker %||% "")[1]))
+  if (isTRUE(search_is_fallback) && nzchar(foc) && length(tks)) {
+    matched <- lab_cluster_match_ticker(tks, foc)
+    if (!is.na(matched) && nzchar(matched)) {
+      out[toupper(trimws(tks)) == matched] <- lab_dl
+    }
+  }
+  as.character(out)
+}
+
 #' Round numeric columns in Cluster assignments table to 2 decimal places
 #' (Cluster_ID and non-numeric identity columns left unchanged).
 lab_cluster_format_assignments_df <- function(df) {
   if (is.null(df) || !is.data.frame(df) || !ncol(df)) return(df)
   out <- df
-  skip <- c("ticker", "name", "Cluster_ID", "Cluster_Label", "industry_key", "industry_label")
+  skip <- c(
+    "ticker", "name", "Cluster_ID", "Cluster_Label", "industry_key", "industry_label",
+    "n_finite", "Coverage", "資料覆蓋", "coverage"
+  )
   for (nm in names(out)) {
     if (nm %in% skip) next
     if (is.numeric(out[[nm]])) {
