@@ -6,7 +6,7 @@ aligned_git=70d6349
 commit=70d6349
 short=70d6349
 message=feat(tw): live TW Rf from TPEx 10Y gov bond Curve (v17.34)
-captured_at=2026-09-19T15:55:00Z
+captured_at=2026-09-19T16:05:11Z
 source_branch=master
 display_version=v17.34
 note=Canonical live line is app_17.0. Bundle 12577482 = tip v17.34 (TW Rf via TPEx Curve 10Y). Deploy via scripts/deploy_app_17.R.
