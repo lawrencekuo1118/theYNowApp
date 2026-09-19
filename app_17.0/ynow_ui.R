@@ -1004,7 +1004,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.32</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.33</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -2220,19 +2220,8 @@ ui <- dashboardPage(
           line-height: 1.35;
         }
         .ynow-dcf-claim-suggest-wrap {
-          padding: 0 10px 8px 10px;
+          padding: 23px 10px 8px 10px; /* 對齊「預測年數 n」label 高度（13px line + 5px margin） */
           width: 100%;
-        }
-        /* 與「預測年數 n」label 同高，使註解框與數字輸入框頂緣對齊 */
-        .ynow-dcf-claim-suggest-wrap::before {
-          content: "\00a0";
-          display: block;
-          font-size: 13px;
-          font-weight: 700;
-          line-height: 1.35;
-          margin-bottom: 5px;
-          min-height: 18px;
-          visibility: hidden;
         }
         .ynow-dcf-claim-suggest-wrap .ynow-dcf-claim-suggest {
           margin: 0;

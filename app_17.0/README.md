@@ -1,6 +1,10 @@
-# The YNow App v17.32 — Valuation Methodology
+# The YNow App v17.33 — Valuation Methodology
 
 先分類，再選模型；先推導，再校正；先給區間，再給單點；先做基本面估值。
+
+## v17.33 重點
+- **啟動修復**：移除 CSS `content: "\00a0"`（R 字串解析成 NUL 導致 shinyapps exit status 1）；預測年數 n 與建議註解改以 padding 對齊
+- **目錄**：`app_17.0/`；顯示版號 **v17.33**
 
 ## v17.32 重點
 - **DCF header**：預測年數 n 與 FCFF／FCFE 建議註解同列垂直對齊
