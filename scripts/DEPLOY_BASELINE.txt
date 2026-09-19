@@ -2,9 +2,9 @@ source=shinyapps.io TheYNowApp
 bundleId=12576871
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=384f557
-commit=384f5578c8fcfc68c08fb197cff3c940387d5608
-short=384f557
+aligned_git=d224fbd
+commit=d224fbd565d5d72b5277db0fed2b5fa3c46660ca
+short=d224fbd
 message=feat(lab): polish Clustering radar focus and N=25 parse defaults (v17.18).
 captured_at=2026-09-19T12:35:38Z
 source_branch=master
