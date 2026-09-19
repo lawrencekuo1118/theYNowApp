@@ -3198,6 +3198,16 @@ ui <- dashboardPage(
           white-space: nowrap;
           line-height: 1.2;
         }
+        /* Data-limited / 資料受限：黑底＋標題同款金字金框，無圓點 */
+        .ynow-fund-profile-badge.ynow-fund-profile-badge--fallback {
+          background: #000000 !important;
+          color: var(--ynow-gold, #F5C518) !important;
+          border: 1px solid var(--ynow-gold, #F5C518) !important;
+          gap: 0;
+        }
+        .ynow-fund-profile-badge.ynow-fund-profile-badge--fallback .ynow-focus-metric-dot {
+          display: none !important;
+        }
         .ynow-fund-profile-badge .ynow-focus-metric-dot {
           margin-left: 0;
         }
