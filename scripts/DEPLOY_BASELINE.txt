@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12577674
+bundleId=12577687
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=1374ba4
-commit=1374ba4
-short=1374ba4
-message=fix(ui): all fund-profile badges use black/gold no-dot style (v17.40)
-captured_at=2026-09-19T17:23:05Z
+aligned_git=0234c20
+commit=0234c20
+short=0234c20
+message=feat(ui): per-model page color themes from Model Selector (v17.41)
+captured_at=2026-09-19T17:31:36Z
 source_branch=master
-display_version=v17.40
-note=Canonical live line is app_17.0. Bundle 12577674 = tip v17.40 (fund-profile black/gold no-dot). Deploy via scripts/deploy_app_17.R.
+display_version=v17.41
+note=Canonical live line is app_17.0. Bundle 12577687 = tip v17.41 (model page themes). Deploy via scripts/deploy_app_17.R.
