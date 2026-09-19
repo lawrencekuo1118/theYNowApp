@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12576994
+bundleId=12577029
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=f91209b
-commit=f91209b8e64ba5d830bcf795d5a33f7d9b68cc62
-short=f91209b
-message=docs(ui): refresh About bilingual copy and add GitHub link (v17.25)
-captured_at=2026-09-19T13:20:46Z
+aligned_git=fb3a49b
+commit=fb3a49b169f71b700c0be4a1f491c33e6eac867f
+short=fb3a49b
+message=fix(valuation): Macro g uses live Yahoo ^TNX Rf, not fixed 5% (v17.29)
+captured_at=2026-09-19T13:30:45Z
 source_branch=master
-display_version=v17.25
-note=Canonical live line is app_17.0. Bundle 12576994 = tip v17.25 (About bilingual refresh + GitHub link). Deploy via scripts/deploy_app_17.R.
+display_version=v17.29
+note=Canonical live line is app_17.0. Bundle 12577029 = tip v17.29 (includes header hamburger/locale vertical centering from 4877b3c / v17.26). Deploy via scripts/deploy_app_17.R.
