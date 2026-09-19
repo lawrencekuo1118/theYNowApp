@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12576856
+bundleId=12576871
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=d224fbd
-commit=d224fbd565d5d72b5277db0fed2b5fa3c46660ca
-short=d224fbd
+aligned_git=384f557
+commit=384f5578c8fcfc68c08fb197cff3c940387d5608
+short=384f557
 message=feat(lab): polish Clustering radar focus and N=25 parse defaults (v17.18).
-captured_at=2026-09-19T12:30:38Z
+captured_at=2026-09-19T12:35:38Z
 source_branch=master
 display_version=v17.18
-note=Canonical live line is app_17.0. Bundle 12576856 includes Composite overlay gating (.model_has_run / session 試算) from e461303 (v17.16) plus later lab tip through v17.18. Deploy via scripts/deploy_app_17.R.
+note=Canonical live line is app_17.0. Bundle 12576871 = tip v17.18 (Clustering k=3 N=25, radar focus = session Search ticker + sc normalize; includes v17.17 Clustering defaults). Deploy via scripts/deploy_app_17.R.
