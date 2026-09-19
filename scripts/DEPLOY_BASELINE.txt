@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12576822
+bundleId=12576845
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=500dfb3
-commit=500dfb3391518e49db054ec1f5d221a23a321fb9
-short=500dfb3
-message=feat(ddm): redesign Ke tab like WACC and swap Ke/Beta order (v17.15)
-captured_at=2026-09-19T12:13:46Z
+aligned_git=e461303
+commit=e46130303f7e0b42f50badd305bdff04a2e334a2
+short=e461303
+message=fix(ui): drop Beta-source box chrome on model tabs; gate Composite overlays (v17.16).
+captured_at=2026-09-19T12:25:19Z
 source_branch=master
-display_version=v17.15
-note=Canonical live line is app_17.0. Bundle 12576822 = tip v17.15 (includes DDM SPM restore from 3eca2c8 / v17.14 + Ke tab WACC-parity). Deploy via scripts/deploy_app_17.R.
+display_version=v17.16
+note=Canonical live line is app_17.0. Bundle 12576845 = tip v17.16 (Beta-source box chrome removed on DCF/DDM/RI + Composite run-gating). Deploy via scripts/deploy_app_17.R.
