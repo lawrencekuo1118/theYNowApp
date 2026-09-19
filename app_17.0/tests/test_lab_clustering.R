@@ -80,4 +80,23 @@ empty_shell <- lab_cluster_features_to_df(lapply(1:4, function(i) {
 stopifnot(identical(lab_cluster_usable_feature_rows(empty_shell), 0L))
 stopifnot(lab_cluster_usable_feature_rows(res$data) >= 4L)
 
+# Sparse ticker detection + merge prefer finite primary then secondary
+sparse <- lab_cluster_sparse_tickers(empty_shell, c("T1.TW", "T9.TW"))
+stopifnot(identical(sort(sparse), c("T1.TW", "T9.TW")))
+partial_a <- lab_cluster_features_to_df(list(list(
+  ticker = "2330.TW", name = "TSMC", market_cap = 1e12,
+  ROE = 40, Operating_Margin = NA_real_, Rev_YoY = NA_real_,
+  OpInc_YoY = NA_real_, Debt_Ratio = NA_real_, PE_Ratio = NA_real_, PB_Ratio = NA_real_
+)))
+partial_b <- lab_cluster_features_to_df(list(list(
+  ticker = "2330.TW", name = "TSMC", market_cap = NA_real_,
+  ROE = NA_real_, Operating_Margin = 55, Rev_YoY = 30,
+  OpInc_YoY = NA_real_, Debt_Ratio = 20, PE_Ratio = 22, PB_Ratio = 8
+)))
+merged <- lab_cluster_merge_feature_dfs(partial_a, partial_b)
+stopifnot(identical(merged$ticker[[1]], "2330.TW"))
+stopifnot(isTRUE(abs(merged$ROE[[1]] - 40) < 1e-9))
+stopifnot(isTRUE(abs(merged$Operating_Margin[[1]] - 55) < 1e-9))
+stopifnot(lab_cluster_usable_feature_rows(merged) >= 1L)
+
 cat("PASS lab_clustering\n")

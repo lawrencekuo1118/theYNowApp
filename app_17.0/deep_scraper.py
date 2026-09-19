@@ -1232,11 +1232,32 @@ def get_cluster_features_batch(tickers):
         except Exception:  # noqa: BLE001
             pass
 
-    def _one(sym):
-        cached = _cache_get(sym)
-        if isinstance(cached, dict) and (
-            cached.get("ROE") is not None or cached.get("PE_Ratio") is not None
+    def _yahoo_raw(v):
+        """Unwrap quoteSummary {raw,fmt} shells or plain scalars."""
+        if isinstance(v, dict) and "raw" in v:
+            return v.get("raw")
+        return v
+
+    def _row_usable(r):
+        if not isinstance(r, dict):
+            return False
+        n_fin = 0
+        for k in (
+            "ROE",
+            "Operating_Margin",
+            "Rev_YoY",
+            "OpInc_YoY",
+            "Debt_Ratio",
+            "PE_Ratio",
+            "PB_Ratio",
         ):
+            if r.get(k) is not None:
+                n_fin += 1
+        return n_fin >= 2
+
+    def _one(sym, allow_quote_summary=True):
+        cached = _cache_get(sym)
+        if isinstance(cached, dict) and _row_usable(cached):
             cached["ticker"] = sym
             return cached
         row = _empty(sym)
@@ -1265,17 +1286,87 @@ def get_cluster_features_batch(tickers):
                 row["PE_Ratio"] = pe
             if pb is not None and pb > 0:
                 row["PB_Ratio"] = pb
-            return (
+            return _row_usable(row) or (
                 row.get("ROE") is not None
                 or row.get("PE_Ratio") is not None
                 or row.get("Operating_Margin") is not None
             )
 
+        def _fill_from_quote_summary():
+            """Authenticated quoteSummary via yfinance YfData (crumb+cookie).
+
+            Plain R/httr calls without crumb get 401 Invalid Crumb and empty shells.
+            """
+            try:
+                from yfinance.data import YfData
+
+                yd = YfData()
+                # Prefer query2; fall back to query1 on soft failure
+                last_err = None
+                for host in (
+                    "https://query2.finance.yahoo.com",
+                    "https://query1.finance.yahoo.com",
+                ):
+                    try:
+                        url = f"{host}/v10/finance/quoteSummary/{sym}"
+                        raw = yd.get(
+                            url,
+                            params={
+                                "modules": (
+                                    "financialData,defaultKeyStatistics,"
+                                    "summaryDetail,price"
+                                )
+                            },
+                        )
+                        if hasattr(raw, "json") and not isinstance(raw, dict):
+                            raw = raw.json()
+                        if not isinstance(raw, dict):
+                            continue
+                        results = (raw.get("quoteSummary") or {}).get("result") or []
+                        if not results:
+                            err = (raw.get("quoteSummary") or {}).get("error") or {}
+                            last_err = err.get("description") or err.get("code")
+                            continue
+                        mod = results[0] or {}
+                        fd = mod.get("financialData") or {}
+                        ks = mod.get("defaultKeyStatistics") or {}
+                        sd = mod.get("summaryDetail") or {}
+                        pr = mod.get("price") or {}
+                        info = {
+                            "shortName": _yahoo_raw(pr.get("shortName"))
+                            or _yahoo_raw(pr.get("longName")),
+                            "longName": _yahoo_raw(pr.get("longName")),
+                            "marketCap": _yahoo_raw(
+                                pr.get("marketCap") or ks.get("enterpriseValue")
+                            ),
+                            "returnOnEquity": _yahoo_raw(fd.get("returnOnEquity")),
+                            "operatingMargins": _yahoo_raw(fd.get("operatingMargins")),
+                            "revenueGrowth": _yahoo_raw(fd.get("revenueGrowth")),
+                            "earningsGrowth": _yahoo_raw(fd.get("earningsGrowth")),
+                            "earningsQuarterlyGrowth": _yahoo_raw(
+                                ks.get("earningsQuarterlyGrowth")
+                            ),
+                            "debtToEquity": _yahoo_raw(fd.get("debtToEquity")),
+                            "trailingPE": _yahoo_raw(sd.get("trailingPE")),
+                            "forwardPE": _yahoo_raw(ks.get("forwardPE")),
+                            "priceToBook": _yahoo_raw(
+                                sd.get("priceToBook") or ks.get("priceToBook")
+                            ),
+                        }
+                        return _fill_from_info(info)
+                    except Exception as e:  # noqa: BLE001
+                        last_err = str(e)
+                        continue
+                if last_err:
+                    _dbg(f"⚠️ cluster quoteSummary {sym}: {last_err}")
+            except Exception as e:  # noqa: BLE001
+                _dbg(f"⚠️ cluster quoteSummary {sym}: {e}")
+            return False
+
         try:
-            info = {}
             ok = False
             # Retry: Yahoo / yfinance intermittently returns empty .info for TW/TWO
-            for attempt in range(2):
+            for attempt in range(3):
                 try:
                     tk = yf.Ticker(sym)
                     info = {}
@@ -1290,7 +1381,7 @@ def get_cluster_features_batch(tickers):
                     if ok:
                         break
                     # Second pass: get_info() when available (some yfinance builds)
-                    if attempt == 0 and hasattr(tk, "get_info"):
+                    if attempt < 2 and hasattr(tk, "get_info"):
                         try:
                             info2 = tk.get_info() or {}
                             if _fill_from_info(info2):
@@ -1298,12 +1389,15 @@ def get_cluster_features_batch(tickers):
                                 break
                         except Exception as e2:  # noqa: BLE001
                             _dbg(f"⚠️ cluster get_info {sym}: {e2}")
-                    if attempt == 0:
-                        time.sleep(0.35)
+                    if attempt < 2:
+                        time.sleep(0.25 + 0.2 * attempt)
                 except Exception as e:  # noqa: BLE001
                     _dbg(f"⚠️ cluster feature {sym} attempt={attempt}: {e}")
-                    if attempt == 0:
-                        time.sleep(0.35)
+                    if attempt < 2:
+                        time.sleep(0.25 + 0.2 * attempt)
+            # Crumb-authenticated quoteSummary when .info stayed empty
+            if not ok and allow_quote_summary:
+                ok = _fill_from_quote_summary()
             if ok:
                 _cache_put(sym, row)
         except Exception as e:  # noqa: BLE001
@@ -1313,8 +1407,19 @@ def get_cluster_features_batch(tickers):
     if not cleaned:
         return pd.DataFrame(columns=list(_empty("").keys()))
 
-    # Slightly fewer workers reduces Yahoo 429 bursts (esp. TW universe)
-    workers = min(4, max(1, len(cleaned)))
+    # Warm crumb/cookie once so first .info / quoteSummary is less likely to 401
+    try:
+        from yfinance.data import YfData
+
+        YfData().get(
+            "https://query2.finance.yahoo.com/v7/finance/quote",
+            params={"symbols": cleaned[0]},
+        )
+    except Exception as e:  # noqa: BLE001
+        _dbg(f"⚠️ cluster warm session: {e}")
+
+    # Fewer workers reduces Yahoo 429 bursts (esp. TW universe)
+    workers = min(3, max(1, len(cleaned)))
     out_map = {}
     with ThreadPoolExecutor(max_workers=workers) as ex:
         futs = {ex.submit(_one, s): s for s in cleaned}
@@ -1326,8 +1431,20 @@ def get_cluster_features_batch(tickers):
                 _dbg(f"⚠️ cluster worker {sym}: {e}")
                 out_map[sym] = _empty(sym)
 
+    # Serial gap-fill for names that still lack ≥2 finite ratios
+    misses = [s for s in cleaned if not _row_usable(out_map.get(s))]
+    if misses:
+        _dbg(f"↻ cluster serial gap-fill {len(misses)}/{len(cleaned)}")
+        for i, sym in enumerate(misses):
+            try:
+                time.sleep(0.15 if i else 0.0)
+                out_map[sym] = _one(sym, allow_quote_summary=True)
+            except Exception as e:  # noqa: BLE001
+                _dbg(f"⚠️ cluster gap-fill {sym}: {e}")
+                out_map[sym] = out_map.get(sym) or _empty(sym)
+
     out = [out_map.get(s, _empty(s)) for s in cleaned]
-    n_ok = sum(1 for r in out if r.get("ROE") is not None or r.get("PE_Ratio") is not None)
+    n_ok = sum(1 for r in out if _row_usable(r))
     _dbg(f"✅ cluster features {n_ok}/{len(out)}")
     try:
         return pd.DataFrame(out)

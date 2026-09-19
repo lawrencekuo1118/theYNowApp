@@ -132,16 +132,159 @@ lab_cluster_usable_feature_rows <- function(df) {
   if (is.null(df) || !is.data.frame(df) || nrow(df) == 0L) return(0L)
   feats <- intersect(LAB_CLUSTER_FEATURES, names(df))
   if (!length(feats)) return(0L)
-  n_finite <- rowSums(vapply(
-    feats,
-    function(f) is.finite(suppressWarnings(as.numeric(df[[f]]))),
-    logical(nrow(df))
-  ))
+  mat <- do.call(
+    cbind,
+    lapply(feats, function(f) is.finite(suppressWarnings(as.numeric(df[[f]]))))
+  )
+  n_finite <- as.integer(rowSums(mat, na.rm = TRUE))
   as.integer(sum(n_finite >= 2L, na.rm = TRUE))
 }
 
-#' R-only Yahoo quoteSummary fallback (no Python / reticulate)
+#' Tickers that still need ≥2 finite ratios (for R gap-fill)
+lab_cluster_sparse_tickers <- function(df, tickers) {
+  tks <- unique(toupper(trimws(as.character(tickers))))
+  tks <- tks[nzchar(tks) & !is.na(tks)]
+  if (!length(tks)) return(character(0))
+  if (is.null(df) || !is.data.frame(df) || nrow(df) == 0L) return(tks)
+  feats <- intersect(LAB_CLUSTER_FEATURES, names(df))
+  if (!length(feats)) return(tks)
+  idx <- match(tks, toupper(trimws(as.character(df$ticker))))
+  sparse <- logical(length(tks))
+  for (i in seq_along(tks)) {
+    j <- idx[[i]]
+    if (!is.finite(j) || j < 1L) {
+      sparse[[i]] <- TRUE
+      next
+    }
+    n_fin <- sum(vapply(
+      feats,
+      function(f) is.finite(suppressWarnings(as.numeric(df[[f]][[j]]))),
+      logical(1)
+    ))
+    sparse[[i]] <- n_fin < 2L
+  }
+  tks[sparse]
+}
+
+#' Merge feature frames by ticker (prefer finite values from primary, then secondary)
+lab_cluster_merge_feature_dfs <- function(primary, secondary) {
+  empty <- lab_cluster_features_to_df(NULL)
+  a <- if (is.null(primary)) empty else lab_cluster_features_to_df(primary)
+  b <- if (is.null(secondary)) empty else lab_cluster_features_to_df(secondary)
+  if (nrow(a) == 0L) return(b)
+  if (nrow(b) == 0L) return(a)
+  all_tks <- unique(c(as.character(a$ticker), as.character(b$ticker)))
+  all_tks <- all_tks[nzchar(all_tks) & !is.na(all_tks)]
+  feats <- LAB_CLUSTER_FEATURES
+  rows <- lapply(all_tks, function(sym) {
+    ra <- a[match(sym, a$ticker), , drop = FALSE]
+    rb <- b[match(sym, b$ticker), , drop = FALSE]
+    has_a <- nrow(ra) == 1L && !all(is.na(ra$ticker))
+    has_b <- nrow(rb) == 1L && !all(is.na(rb$ticker))
+    out <- list(
+      ticker = sym,
+      name = NA_character_,
+      market_cap = NA_real_
+    )
+    for (f in feats) out[[f]] <- NA_real_
+    if (has_a) {
+      nm <- as.character(ra$name[[1]])
+      if (nzchar(nm) && !is.na(nm)) out$name <- nm
+      mc <- suppressWarnings(as.numeric(ra$market_cap[[1]]))
+      if (is.finite(mc)) out$market_cap <- mc
+      for (f in feats) {
+        v <- suppressWarnings(as.numeric(ra[[f]][[1]]))
+        if (is.finite(v)) out[[f]] <- v
+      }
+    }
+    if (has_b) {
+      if (is.na(out$name) || !nzchar(out$name)) {
+        nm <- as.character(rb$name[[1]])
+        if (nzchar(nm) && !is.na(nm)) out$name <- nm
+      }
+      if (!is.finite(out$market_cap)) {
+        mc <- suppressWarnings(as.numeric(rb$market_cap[[1]]))
+        if (is.finite(mc)) out$market_cap <- mc
+      }
+      for (f in feats) {
+        if (!is.finite(out[[f]])) {
+          v <- suppressWarnings(as.numeric(rb[[f]][[1]]))
+          if (is.finite(v)) out[[f]] <- v
+        }
+      }
+    }
+    out
+  })
+  lab_cluster_features_to_df(rows)
+}
+
+#' Mint Yahoo crumb + cookie handle (required since quoteSummary returns 401 without it)
+.lab_yahoo_crumb_session <- function(timeout_sec = 12) {
+  if (!requireNamespace("httr", quietly = TRUE)) return(NULL)
+  ua <- paste0(
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) ",
+    "AppleWebKit/537.36 (KHTML, like Gecko) ",
+    "Chrome/122.0.0.0 Safari/537.36"
+  )
+  h <- httr::handle("https://finance.yahoo.com")
+  to <- as.numeric(timeout_sec)[1]
+  tryCatch(
+    httr::GET(
+      "https://fc.yahoo.com",
+      handle = h,
+      httr::add_headers(`User-Agent` = ua),
+      httr::timeout(to)
+    ),
+    error = function(e) NULL
+  )
+  tryCatch(
+    httr::GET(
+      "https://finance.yahoo.com/",
+      handle = h,
+      httr::add_headers(`User-Agent` = ua),
+      httr::timeout(to)
+    ),
+    error = function(e) NULL
+  )
+  crumb <- NULL
+  for (crumb_url in c(
+    "https://query2.finance.yahoo.com/v1/test/getcrumb",
+    "https://query1.finance.yahoo.com/v1/test/getcrumb"
+  )) {
+    res <- tryCatch(
+      httr::GET(
+        crumb_url,
+        handle = h,
+        httr::add_headers(`User-Agent` = ua, Accept = "text/plain"),
+        httr::timeout(to)
+      ),
+      error = function(e) NULL
+    )
+    if (is.null(res)) next
+    sc <- httr::status_code(res)
+    txt <- tryCatch(
+      httr::content(res, as = "text", encoding = "UTF-8"),
+      error = function(e) ""
+    )
+    if (identical(sc, 429L) || grepl("Too Many Requests", txt, fixed = TRUE)) {
+      return(list(handle = h, crumb = NULL, ua = ua, error = "rate_limited"))
+    }
+    if (sc >= 400L) next
+    if (!nzchar(txt) || grepl("<html>|Unauthorized|Invalid", txt, ignore.case = TRUE)) {
+      next
+    }
+    crumb <- trimws(txt)
+    if (nzchar(crumb)) break
+  }
+  if (is.null(crumb) || !nzchar(crumb)) {
+    return(list(handle = h, crumb = NULL, ua = ua, error = "no_crumb"))
+  }
+  list(handle = h, crumb = crumb, ua = ua, error = NULL)
+}
+
+#' R-only Yahoo quoteSummary fallback (crumb+cookie; no Python / reticulate)
 lab_fetch_cluster_features_r <- function(tickers, timeout_sec = 12) {
+  `%||%` <- function(a, b) if (is.null(a)) b else a
   tks <- unique(toupper(trimws(as.character(tickers))))
   tks <- tks[nzchar(tks) & !is.na(tks)]
   empty <- lab_cluster_features_to_df(NULL)
@@ -151,24 +294,17 @@ lab_fetch_cluster_features_r <- function(tickers, timeout_sec = 12) {
     stop("httr/jsonlite required for R Yahoo feature fallback.")
   }
 
-  rows <- lapply(tks, function(sym) {
-    url <- sprintf(
-      "https://query2.finance.yahoo.com/v10/finance/quoteSummary/%s",
-      utils::URLencode(sym, reserved = TRUE)
-    )
-    res <- tryCatch(
-      httr::GET(
-        url,
-        query = list(modules = "defaultKeyStatistics,financialData,summaryDetail,price"),
-        httr::add_headers(
-          `User-Agent` = "Mozilla/5.0 (compatible; TheYNowApp/16.0; +https://github.com/lawrencekuo1118/theYNowApp)",
-          Accept = "application/json"
-        ),
-        httr::timeout(as.numeric(timeout_sec)[1])
-      ),
-      error = function(e) NULL
-    )
-    row <- list(
+  sess <- .lab_yahoo_crumb_session(timeout_sec = timeout_sec)
+  if (is.null(sess) || is.null(sess$crumb) || !nzchar(sess$crumb)) {
+    err <- if (!is.null(sess)) sess$error else "session_failed"
+    # Empty shells must NOT be treated as coverage — attach reason for caller
+    out <- empty
+    attr(out, "yahoo_r_error") <- err %||% "no_crumb"
+    return(out)
+  }
+
+  empty_row <- function(sym) {
+    list(
       ticker = sym,
       name = NA_character_,
       market_cap = NA_real_,
@@ -180,39 +316,103 @@ lab_fetch_cluster_features_r <- function(tickers, timeout_sec = 12) {
       PE_Ratio = NA_real_,
       PB_Ratio = NA_real_
     )
-    if (is.null(res) || httr::status_code(res) >= 400) return(row)
-    body <- tryCatch(
-      httr::content(res, as = "parsed", type = "application/json"),
-      error = function(e) NULL
-    )
-    result <- tryCatch(body$quoteSummary$result[[1]], error = function(e) NULL)
-    if (is.null(result)) return(row)
-    fd <- result$financialData %||% list()
-    ks <- result$defaultKeyStatistics %||% list()
-    sd <- result$summaryDetail %||% list()
-    pr <- result$price %||% list()
-    nm <- pr$shortName %||% pr$longName %||% NA_character_
-    if (!is.null(nm) && !is.na(nm)) row$name <- as.character(nm)[1]
-    row$market_cap <- .lab_cluster_yahoo_raw(pr$marketCap %||% ks$enterpriseValue)
-    row$ROE <- .lab_cluster_pct_points(fd$returnOnEquity)
-    row$Operating_Margin <- .lab_cluster_pct_points(fd$operatingMargins)
-    row$Rev_YoY <- .lab_cluster_pct_points(fd$revenueGrowth)
-    row$OpInc_YoY <- .lab_cluster_pct_points(fd$earningsGrowth %||% ks$earningsQuarterlyGrowth)
-    row$Debt_Ratio <- .lab_cluster_debt_pct(fd$debtToEquity)
-    pe <- .lab_cluster_yahoo_raw(sd$trailingPE %||% ks$forwardPE %||% fd$currentPrice)
-    # Prefer trailingPE from summaryDetail / defaultKeyStatistics
-    pe <- .lab_cluster_yahoo_raw(sd$trailingPE)
-    if (!is.finite(pe)) pe <- .lab_cluster_yahoo_raw(ks$forwardPE)
-    pb <- .lab_cluster_yahoo_raw(sd$priceToBook %||% ks$priceToBook)
-    if (is.finite(pe) && pe > 0) row$PE_Ratio <- pe
-    if (is.finite(pb) && pb > 0) row$PB_Ratio <- pb
-    row
-  })
+  }
 
-  lab_cluster_features_to_df(rows)
+  refresh_crumb <- function() {
+    sess <<- .lab_yahoo_crumb_session(timeout_sec = timeout_sec)
+    !is.null(sess) && !is.null(sess$crumb) && nzchar(sess$crumb)
+  }
+
+  fetch_one <- function(sym) {
+    row <- empty_row(sym)
+    hosts <- c(
+      "https://query2.finance.yahoo.com",
+      "https://query1.finance.yahoo.com"
+    )
+    for (attempt in 1:2) {
+      auth_retry <- FALSE
+      for (host in hosts) {
+        url <- sprintf(
+          "%s/v10/finance/quoteSummary/%s",
+          host,
+          utils::URLencode(sym, reserved = TRUE)
+        )
+        res <- tryCatch(
+          httr::GET(
+            url,
+            handle = sess$handle,
+            query = list(
+              modules = "defaultKeyStatistics,financialData,summaryDetail,price",
+              crumb = sess$crumb
+            ),
+            httr::add_headers(
+              `User-Agent` = sess$ua,
+              Accept = "application/json"
+            ),
+            httr::timeout(as.numeric(timeout_sec)[1])
+          ),
+          error = function(e) NULL
+        )
+        if (is.null(res)) next
+        sc <- httr::status_code(res)
+        if (identical(sc, 429L)) {
+          attr(row, "yahoo_r_error") <- "rate_limited"
+          return(row)
+        }
+        if (identical(sc, 401L) || identical(sc, 403L)) {
+          if (attempt == 1L && isTRUE(refresh_crumb())) {
+            auth_retry <- TRUE
+            break
+          }
+          next
+        }
+        if (sc >= 400L) next
+        body <- tryCatch(
+          httr::content(res, as = "parsed", type = "application/json"),
+          error = function(e) NULL
+        )
+        result <- tryCatch(body$quoteSummary$result[[1]], error = function(e) NULL)
+        if (is.null(result)) next
+        fd <- result$financialData %||% list()
+        ks <- result$defaultKeyStatistics %||% list()
+        sd <- result$summaryDetail %||% list()
+        pr <- result$price %||% list()
+        nm <- pr$shortName %||% pr$longName %||% NA_character_
+        if (!is.null(nm) && !is.na(nm)) row$name <- as.character(nm)[1]
+        row$market_cap <- .lab_cluster_yahoo_raw(pr$marketCap %||% ks$enterpriseValue)
+        row$ROE <- .lab_cluster_pct_points(fd$returnOnEquity)
+        row$Operating_Margin <- .lab_cluster_pct_points(fd$operatingMargins)
+        row$Rev_YoY <- .lab_cluster_pct_points(fd$revenueGrowth)
+        row$OpInc_YoY <- .lab_cluster_pct_points(
+          fd$earningsGrowth %||% ks$earningsQuarterlyGrowth
+        )
+        row$Debt_Ratio <- .lab_cluster_debt_pct(fd$debtToEquity)
+        pe <- .lab_cluster_yahoo_raw(sd$trailingPE)
+        if (!is.finite(pe)) pe <- .lab_cluster_yahoo_raw(ks$forwardPE)
+        pb <- .lab_cluster_yahoo_raw(sd$priceToBook %||% ks$priceToBook)
+        if (is.finite(pe) && pe > 0) row$PE_Ratio <- pe
+        if (is.finite(pb) && pb > 0) row$PB_Ratio <- pb
+        return(row)
+      }
+      if (!isTRUE(auth_retry)) break
+    }
+    row
+  }
+
+  rows <- vector("list", length(tks))
+  for (i in seq_along(tks)) {
+    if (i > 1L) Sys.sleep(0.08)
+    rows[[i]] <- fetch_one(tks[[i]])
+  }
+
+  out <- lab_cluster_features_to_df(rows)
+  if (lab_cluster_usable_feature_rows(out) < 1L) {
+    attr(out, "yahoo_r_error") <- sess$error %||% "empty_quoteSummary"
+  }
+  out
 }
 
-#' Fetch Yahoo ratio features (Python first; R quoteSummary only if it improves coverage)
+#' Fetch Yahoo ratio features (Python first; R crumb quoteSummary gap-fills)
 lab_fetch_cluster_features <- function(tickers) {
   tks <- unique(toupper(trimws(as.character(tickers))))
   tks <- tks[nzchar(tks) & !is.na(tks)]
@@ -221,6 +421,7 @@ lab_fetch_cluster_features <- function(tickers) {
 
   `%||%` <- function(a, b) if (is.null(a)) b else a
   py_err <- NULL
+  r_err <- NULL
   df <- NULL
   ready <- exists(".ensure_python_scraper", mode = "function") &&
     isTRUE(tryCatch(.ensure_python_scraper(), error = function(e) FALSE))
@@ -253,31 +454,42 @@ lab_fetch_cluster_features <- function(tickers) {
   }
 
   n_ok <- lab_cluster_usable_feature_rows(df)
-  if (is.null(df) || nrow(df) == 0L || n_ok < 2L) {
+  # Gap-fill sparse / missing tickers via R crumb path (also covers cold Python)
+  need_r <- lab_cluster_sparse_tickers(df, tks)
+  if (length(need_r) > 0L) {
     df_r <- tryCatch(
-      lab_fetch_cluster_features_r(tks),
+      lab_fetch_cluster_features_r(need_r),
       error = function(e) {
-        if (is.null(py_err)) py_err <<- conditionMessage(e)
+        r_err <<- conditionMessage(e)
         NULL
       }
     )
-    n_ok_r <- lab_cluster_usable_feature_rows(df_r)
-    # Only accept R fallback when it actually improves usable coverage
-    if (!is.null(df_r) && nrow(df_r) > 0L && n_ok_r > n_ok) {
-      df <- df_r
-      n_ok <- n_ok_r
+    if (!is.null(df_r)) {
+      r_attr <- attr(df_r, "yahoo_r_error")
+      if (!is.null(r_attr) && nzchar(as.character(r_attr)[1])) {
+        r_err <- as.character(r_attr)[1]
+      }
+      n_ok_r <- lab_cluster_usable_feature_rows(df_r)
+      if (n_ok_r > 0L) {
+        df <- lab_cluster_merge_feature_dfs(df, df_r)
+        n_ok <- lab_cluster_usable_feature_rows(df)
+      }
     }
   }
 
   if (is.null(df) || nrow(df) == 0L || n_ok < 2L) {
+    detail <- paste0(
+      "python: ", py_err %||% "n/a",
+      if (!is.null(r_err)) paste0("; R: ", r_err) else ""
+    )
     stop(sprintf(
       paste0(
         "Yahoo ratio features unavailable for clustering ",
-        "(%d/%d tickers with ≥2 finite ratios; python: %s). ",
+        "(%d/%d tickers with ≥2 finite ratios; %s). ",
         "Retry later or lower Universe size (N). ",
         "TW and US use the same Yahoo fields (ROE, margins, growth, D/E, P/E, P/B)."
       ),
-      n_ok, length(tks), py_err %||% "n/a"
+      n_ok, length(tks), detail
     ))
   }
   df
@@ -377,11 +589,10 @@ lab_run_stock_clustering <- function(df_financials, k_clusters = 4L,
     X[[f]] <- col
   }
 
-  n_finite_orig <- rowSums(vapply(
-    feats,
-    function(f) is.finite(suppressWarnings(as.numeric(df[[f]]))),
-    logical(nrow(df))
-  ))
+  n_finite_orig <- as.integer(rowSums(do.call(
+    cbind,
+    lapply(feats, function(f) is.finite(suppressWarnings(as.numeric(df[[f]]))))
+  ), na.rm = TRUE))
   keep <- n_finite_orig >= 2L
   if (sum(keep) < k_clusters) {
     stop(sprintf(

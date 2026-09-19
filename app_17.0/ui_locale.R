@@ -475,7 +475,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_cluster_err_features = paste0(
       "Yahoo ratio features unavailable for clustering. ",
       "TW and US use the same fields (ROE, margins, growth, D/E, P/E, P/B). ",
-      "Retry later or lower Universe size (N)."
+      "If you just opened the app, run a Search first to warm data, then retry; ",
+      "or lower Universe size (N). Yahoo rate limits or auth can also cause this."
     ),
     lab_cluster_err_missing = paste0(
       "Too few names with usable Yahoo ratios after the missing-data filter. ",
@@ -927,7 +928,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_cluster_err_features = paste0(
       "無法取得分群所需的 Yahoo 比率特徵。",
       "台股與美股使用相同欄位（ROE、利潤率、成長率、D/E、P/E、P/B）。",
-      "請稍後再試，或調降宇宙檔數（N）。"
+      "若剛開啟應用程式，請先執行一次搜尋以暖機後再試；",
+      "或調降宇宙檔數（N）。Yahoo 流量限制或驗證失敗也可能造成此狀況。"
     ),
     lab_cluster_err_missing = paste0(
       "缺值過濾後，可用比率特徵的檔數不足。",
