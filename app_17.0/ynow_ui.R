@@ -75,7 +75,7 @@
       tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
       tags$p(
         class = "ynow-about-lead",
-        "The YNow App (v17.22) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合了即時財報抓取、多維度估值模型與動態回測引擎，將繁雜的市場資料轉化為直覺、科學的投資決策。"
+        "The YNow App (v17.23) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合了即時財報抓取、多維度估值模型與動態回測引擎，將繁雜的市場資料轉化為直覺、科學的投資決策。"
       ),
       tags$p(
         class = "ynow-about-method",
@@ -91,7 +91,7 @@
       tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
       tags$p(
         class = "ynow-about-lead",
-        "The YNow App (v17.22) is a comprehensive quantitative financial analysis and valuation decision system designed for professional investors and analysts. It seamlessly integrates real-time financial data parsing, multi-dimensional valuation models, and a dynamic backtesting engine to transform complex market data into actionable, scientific investment insights."
+        "The YNow App (v17.23) is a comprehensive quantitative financial analysis and valuation decision system designed for professional investors and analysts. It seamlessly integrates real-time financial data parsing, multi-dimensional valuation models, and a dynamic backtesting engine to transform complex market data into actionable, scientific investment insights."
       ),
       tags$p(
         class = "ynow-about-method",
@@ -280,25 +280,24 @@ beta_source_picker_ui <- function(input_id,
   if (!nzchar(as.character(default_selected %||% "")[1])) default_selected <- "summary"
 
   tagList(
-    tags$p(
-      class = "ynow-beta-source-heading",
-      style = "font-weight:600; margin:0 0 10px 0;",
-      "β 來源（預設寫入 CAPM）"
-    ),
     # choiceNames／choiceValues 由 server 動態覆寫（數字粗體 + 各選項旁說明）
-    radioButtons(
-      input_id,
-      label = NULL,
-      choiceNames = list(
-        HTML("Yahoo Finance Summary β <b>n/a</b> <span style='color:#666;font-size:12px;'>— Yahoo Finance Summary「Beta (5Y Monthly)」；預設寫入 CAPM。</span>"),
-        HTML("產業預設 β <b>n/a</b> <span style='color:#666;font-size:12px;'>— 所選產業結構 β。</span>"),
-        HTML("自選公司平均 Bottom-Up (βᵤ→βe) <b>n/a</b> <span style='color:#666;font-size:12px;'>— 可比公司去槓桿平均／中位 βᵤ。</span>"),
-        HTML("去槓桿化 βᵤ <b>n/a</b> <span style='color:#666;font-size:12px;'>— Hamada βᵤ = β_L / (1+(1−T)·D/E)。</span>"),
-        HTML("手動定義 βe <b>n/a</b>")
-      ),
-      choiceValues = list("summary", "industry", "bottomup", "unlever_firm", "manual"),
-      selected = default_selected,
-      inline = FALSE
+    # 兩欄並排：CSS grid on .shiny-options-group（見 ynow-beta-source-picker）
+    tags$div(
+      class = "ynow-beta-source-picker",
+      radioButtons(
+        input_id,
+        label = NULL,
+        choiceNames = list(
+          HTML("Yahoo Finance Summary β <b>n/a</b> <span style='color:#666;font-size:12px;'>— Yahoo Finance Summary「Beta (5Y Monthly)」；預設寫入 CAPM。</span>"),
+          HTML("產業預設 β <b>n/a</b> <span style='color:#666;font-size:12px;'>— 所選產業結構 β。</span>"),
+          HTML("自選公司平均 Bottom-Up (βᵤ→βe) <b>n/a</b> <span style='color:#666;font-size:12px;'>— 可比公司去槓桿平均／中位 βᵤ。</span>"),
+          HTML("去槓桿化 βᵤ <b>n/a</b> <span style='color:#666;font-size:12px;'>— Hamada βᵤ = β_L / (1+(1−T)·D/E)。</span>"),
+          HTML("手動定義 βe <b>n/a</b>")
+        ),
+        choiceValues = list("summary", "industry", "bottomup", "unlever_firm", "manual"),
+        selected = default_selected,
+        inline = FALSE
+      )
     ),
     if (isTRUE(include_hidden_purpose)) {
       tags$div(
@@ -313,7 +312,7 @@ beta_source_picker_ui <- function(input_id,
     },
     tags$p(
       class = "ynow-beta-rolling-help help-block",
-      style = "margin-top:0;",
+      style = "margin-top:8px;",
       "Rolling 估計僅供對照，不寫入 CAPM（故不列於上列選項）。"
     ),
     actionButton(
@@ -880,7 +879,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.22</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.23</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -2654,9 +2653,6 @@ ui <- dashboardPage(
             if (syncGsLab && s.sync_gs_beta_label) syncGsLab.textContent = s.sync_gs_beta_label;
             var ddmSyncGsLab = document.getElementById('ynow_ddm_sync_gs_beta_label');
             if (ddmSyncGsLab && s.sync_gs_beta_label) ddmSyncGsLab.textContent = s.sync_gs_beta_label;
-            document.querySelectorAll('.ynow-beta-source-heading').forEach(function (el) {
-              if (s.beta_source_heading) el.textContent = s.beta_source_heading;
-            });
             document.querySelectorAll('.ynow-beta-rolling-help').forEach(function (el) {
               if (s.beta_rolling_help) el.textContent = s.beta_rolling_help;
             });
