@@ -1920,8 +1920,13 @@ ui <- dashboardPage(
             width: 100%;
           }
         }
-        /* 預測年數 n：固定在 EPS (TTM) 數字框正下方（右欄） */
+        /* 預測年數 n：model 頁 shared header；DCF 時緊接「選擇 DCF 估值模型」下方 */
         #ibx_EPS { margin-bottom: 8px; }
+        .ynow-dcf-mode-row {
+          padding: 0 10px 4px 10px;
+          margin-bottom: 0;
+        }
+        .ynow-dcf-mode-row .form-group { margin-bottom: 8px; }
         .ynow-header-years {
           padding: 0 10px 8px 10px;
           margin-top: 0;
@@ -4293,6 +4298,41 @@ ui <- dashboardPage(
           decision_valuation_compare_ui("main_decision")
         )
       ),
+      # DCF-Model：模型選擇置於預測年數 n 正上方（同一 shared header，保留單一 input$years）
+      conditionalPanel(
+        condition = "input.sidebar_tabs == 'dcf_calculator'",
+        fluidRow(
+          class = "ynow-dcf-mode-row",
+          column(
+            width = 6,
+            class = "col-xs-12",
+            radioButtons(
+              "dcf_mode", "選擇 DCF 估值模型：",
+              choices = list(
+                "明確預測 + Gordon 終值" = "gordon",
+                "二階段成長法 (Two-Stage Model)" = "two_stage"
+              ),
+              selected = APP_DEFAULTS$dcf_mode
+            )
+          ),
+          column(
+            width = 6,
+            class = "col-xs-12",
+            radioButtons(
+              "dcf_claim",
+              "採用現金流",
+              choices = list(
+                "FCFF（WACC，再橋接股權）" = "fcff",
+                "FCFE（Ke，直接股權）" = "fcfe"
+              ),
+              selected = APP_DEFAULTS$dcf_claim,
+              inline = TRUE
+            ),
+            helpText("FCFE = FCFF − 稅後利息 + 淨舉債（負債隨 g 成長）；以 Ke 折現，不再減負債。"),
+            uiOutput("dcf_claim_suggest")
+          )
+        )
+      ),
       fluidRow(
         column(
           width = 3,
@@ -4843,43 +4883,14 @@ ui <- dashboardPage(
       # DCF Calculator 分頁
       # ==========================================
       tabItem(tabName = "dcf_calculator",
-              tabBox(width = "auto",
-                     tabPanel("", 
-                              fluidRow(
-                                column(
-                                  width = 6,
-                                  radioButtons("dcf_mode", "選擇 DCF 估值模型：",
-                                               choices = list(
-                                                 "明確預測 + Gordon 終值" = "gordon",
-                                                 "二階段成長法 (Two-Stage Model)" = "two_stage"
-                                               ),
-                                               selected = APP_DEFAULTS$dcf_mode)
-                                ),
-                                column(
-                                  width = 6,
-                                  radioButtons(
-                                    "dcf_claim",
-                                    "採用現金流",
-                                    choices = list(
-                                      "FCFF（WACC，再橋接股權）" = "fcff",
-                                      "FCFE（Ke，直接股權）" = "fcfe"
-                                    ),
-                                    selected = APP_DEFAULTS$dcf_claim,
-                                    inline = TRUE
-                                  ),
-                                  helpText("FCFE = FCFF − 稅後利息 + 淨舉債（負債隨 g 成長）；以 Ke 折現，不再減負債。"),
-                                  uiOutput("dcf_claim_suggest")
-                                )
-                              ),
-                              # WACC 改由 DCF → WACC 分頁／CAPM 同步；此處隱藏保留 input$id 供計算鏈使用
-                              tags$div(
-                                style = "display:none;",
-                                numericInput(
-                                  "wacc_gordon", "折現率 WACC (%)",
-                                  value = APP_DEFAULTS$wacc_gordon, step = 0.01
-                                )
-                              )
-                     )
+              # dcf_mode／dcf_claim 已上移至 shared header（預測年數 n 正上方）
+              # WACC 改由 DCF → WACC 分頁／CAPM 同步；此處隱藏保留 input$id 供計算鏈使用
+              tags$div(
+                style = "display:none;",
+                numericInput(
+                  "wacc_gordon", "折現率 WACC (%)",
+                  value = APP_DEFAULTS$wacc_gordon, step = 0.01
+                )
               ),
               
               tabBox(title = "DISCOUNTED CASH FLOW", width = "auto",
