@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12576845
+bundleId=12576856
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=e461303
 commit=e46130303f7e0b42f50badd305bdff04a2e334a2
 short=e461303
 message=fix(ui): drop Beta-source box chrome on model tabs; gate Composite overlays (v17.16).
-captured_at=2026-09-19T12:25:19Z
+captured_at=2026-09-19T12:30:38Z
 source_branch=master
 display_version=v17.16
-note=Canonical live line is app_17.0. Bundle 12576845 = tip v17.16 (Beta-source box chrome removed on DCF/DDM/RI + Composite run-gating). Deploy via scripts/deploy_app_17.R.
+note=Canonical live line is app_17.0. Bundle 12576856 = tip v17.16 (Composite overlays gated on session 試算/Run via .model_has_run). Deploy via scripts/deploy_app_17.R.
