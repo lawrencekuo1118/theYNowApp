@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12576893
+bundleId=12576906
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=d224fbd
-commit=d224fbd
+commit=d224fbd565d5d72b5277db0fed2b5fa3c46660ca
 short=d224fbd
 message=feat(lab): polish Clustering radar focus and N=25 parse defaults (v17.18).
-captured_at=2026-09-19T12:41:30Z
+captured_at=2026-09-19T12:45:43Z
 source_branch=master
 display_version=v17.18
-note=Canonical live line is app_17.0. Bundle 12576893 = tip v17.18 (Clustering k=3 N=25 radar focus + polish). Deploy via scripts/deploy_app_17.R.
+note=Canonical live line is app_17.0. Bundle 12576906 = tip v17.18 (Clustering k=3 N=25, radar focus = session Search/sc ticker; includes v17.17 Clustering defaults). Deploy via scripts/deploy_app_17.R.
