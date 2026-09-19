@@ -85,7 +85,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v17.27) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報抓取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v17.28) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報抓取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -101,7 +101,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v17.27) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v17.28) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -545,24 +545,111 @@ beta_rolling_section_ui <- function() {
         withMathJax(),
         p(
           class = "ynow-about-section-lead",
-          "在進行企業估值時，選擇正確的模型與計算數字一樣重要。本系統支援四大評價邏輯：DCF、DDM、RI、P/B，以下說明適用場景與核心公式。"
+          tags$b("先分類，再選模型；先推導，再校正；先給區間，再給單點。"),
+          " 四大引擎：DCF（FCFF／WACC、FCFE／Ke）、DDM（Gordon／SPM／二階段）、P/B＋NAV、RI。",
+          " 選對路徑與算對數字同等重要；以下說明流程紀律、適用場景與核心公式。"
+        ),
+        p(
+          class = "ynow-about-section-lead",
+          style = "margin-top: -6px;",
+          tags$b("Classify before models; derive before calibrating; ranges before point targets. "),
+          "Engines: DCF (FCFF/WACC, FCFE/Ke), DDM (Gordon / SPM / two-stage), P/B + NAV, and RI. ",
+          "Path selection matters as much as the arithmetic—process, fit, and formulas below."
         )
       )
     ),
     fluidRow(
-      tabBox(title = "Model Selection Guide", width = 12, side = "left",
-       
-       # Tab 1: 方法論比較矩陣 (表格)
-       tabPanel("Decision Matrix", icon = icon("table"),
-                tags$div(style = "overflow-x: auto; margin-bottom: 18px;",
-                         HTML("<table class='table table-striped table-hover table-bordered' style='background-color: white;'>
+      tabBox(
+        title = "Model Selection Guide",
+        width = 12,
+        side = "left",
+
+        # Tab 0: 流程與紀律（與 About 方法論對齊）
+        tabPanel(
+          "Process & Guardrails",
+          icon = icon("compass"),
+          fluidRow(
+            column(
+              width = 6,
+              h4(tags$b("流程與紀律（zh-TW）")),
+              tags$ul(
+                tags$li(
+                  tags$b("工作順序："),
+                  "先依產業／財報屬性分類並挑選主／副模型，再以財報推導參數，校正折現率與成長假設後，輸出 Bear／Base／Bull 區間，最後才給單點合理價。"
+                ),
+                tags$li(
+                  tags$b("四大引擎："),
+                  "DCF（FCFF＋WACC 或 FCFE＋Ke）、DDM（Gordon／SPM／二階段）、P/B（倍數法）與獨立純 NAV（帳面控股淨資產）、RI（剩餘收益）。側邊欄三分法：資產基礎（NAV）｜收益與現金流折現（DCF／DDM／RI）｜相對估值（P/B）。"
+                ),
+                tags$li(
+                  tags$b("Composite valuation："),
+                  "綜合估值軸僅疊加本工作階段已按過「試算／Run」（含主模型靜默自動試算）的模型 FV；未試算者不顯示，避免把未跑過的模型當成已定價。"
+                ),
+                tags$li(
+                  tags$b("決策工具："),
+                  "Decision Checklist（決策檢核）、安全邊際 MOS、Piotroski F-Score、Historical Fundamental Validation (HFV)。",
+                  tags$b(" HFV 僅作否決／情境教育工具，絕非買進訊號。")
+                ),
+                tags$li(
+                  tags$b("CapEx 暴衝平滑："),
+                  "當最新 CapEx／營收相對前期均值超過可調倍數閾值時，可改採近年均值投影。此為工程啟發式（非學術標準），參數可調整。"
+                ),
+                tags$li(
+                  tags$b("Blue Chip Lab／產業×方法："),
+                  "評估池、Clustering、候選截斷僅供同業比較與研究分群；",
+                  tags$b("非買進訊號。")
+                )
+              )
+            ),
+            column(
+              width = 6,
+              h4(tags$b("Process & Guardrails (en-US)")),
+              tags$ul(
+                tags$li(
+                  tags$b("Workflow: "),
+                  "Classify by industry/statement attributes and pick primary/secondary models; derive inputs from financials; calibrate discount rates and growth; publish Bear/Base/Bull ranges before any point target."
+                ),
+                tags$li(
+                  tags$b("Four engines: "),
+                  "DCF (FCFF+WACC or FCFE+Ke), DDM (Gordon / SPM / two-stage), P/B multiples plus a separate pure NAV (book holding NAV), and RI. Sidebar triad: asset-based (NAV) | income & cash-flow discounting (DCF/DDM/RI) | relative (P/B)."
+                ),
+                tags$li(
+                  tags$b("Composite valuation: "),
+                  "The current-price axis overlays FV markers only for models that have been run (試算/Run, including silent auto-run of the primary model) in this session. Unrun models stay off the axis."
+                ),
+                tags$li(
+                  tags$b("Decision tools: "),
+                  "Decision Checklist, Margin of Safety (MOS), Piotroski F-Score, and Historical Fundamental Validation (HFV). ",
+                  tags$b("HFV is a veto / educational scenario tool only—never a buy signal.")
+                ),
+                tags$li(
+                  tags$b("CapEx spike smoothing: "),
+                  "If latest CapEx/Revenue exceeds a tunable multiple of the prior-year average, projections may use a recent multi-year average. This is an engineering heuristic, not an academic standard; thresholds remain user-adjustable."
+                ),
+                tags$li(
+                  tags$b("Blue Chip Lab / industry × method: "),
+                  "Evaluation pools, Clustering, and truncate rules aid peer research—",
+                  tags$b("not buy signals.")
+                )
+              )
+            )
+          )
+        ),
+
+        # Tab 1: 方法論比較矩陣 (表格)
+        tabPanel(
+          "Decision Matrix",
+          icon = icon("table"),
+          tags$div(
+            style = "overflow-x: auto; margin-bottom: 18px;",
+            HTML("<table class='table table-striped table-hover table-bordered' style='background-color: white;'>
                                  <thead style='background-color: #2C3E50; color: white;'>
                                    <tr>
                                      <th>對照項目</th>
                                      <th>DDM（Gordon／SPM／二階段）</th>
                                      <th>DCF（FCFF 或 FCFE）</th>
                                      <th>RI（剩餘收益）</th>
-                                     <th>P/B（本淨比）</th>
+                                     <th>P/B＋NAV</th>
                                    </tr>
                                  </thead>
                                  <tbody>
@@ -571,48 +658,49 @@ beta_rolling_section_ui <- function() {
                                      <td>每股股利 D（股權請求權）</td>
                                      <td>FCFF（企業）或 FCFE（股權）</td>
                                      <td>帳面淨值 + 超額盈餘</td>
-                                     <td>BVPS／TBVPS／控股 NAVPS</td>
+                                     <td>P/B：BVPS／TBVPS／控股 NAVPS × 倍數；純 NAV：帳面控股淨資產</td>
                                    </tr>
                                    <tr>
                                      <td><b>折現率／倍數</b></td>
                                      <td>Ke（CAPM 股權成本）</td>
                                      <td>FCFF：WACC；FCFE：Ke</td>
                                      <td>Ke（CAPM 股權成本）</td>
-                                     <td>目標 P/B 倍數（Justified／產業／歷史）</td>
+                                     <td>P/B：目標倍數（Justified／產業／歷史）；NAV：折價／溢價倍數</td>
                                    </tr>
                                    <tr>
                                      <td><b>成長率 g</b></td>
                                      <td>股利永續 g；SPM 為盈餘成長 g；二階段另有高速期 g1</td>
                                      <td>終值成長率 SGR（FCFF 相對 WACC；FCFE 相對 Ke）</td>
                                      <td>剩餘收益終值成長率（相對 Ke）</td>
-                                     <td>不直接使用 g；倍數反映成長與 ROE</td>
+                                     <td>Justified P/B 需 g；產業／歷史倍數與純 NAV 不強制 SGR</td>
                                    </tr>
                                    <tr>
                                      <td><b>核心公式含義</b></td>
                                      <td>Gordon：P₀ = D₁/(Ke−g)；SPM：P₀ = E·g/Ke² + D/Ke；二階段：Σ PV(D_t)+PV(TV)</td>
                                      <td>FCFF：EV＝Σ PV(FCFF)+PV(TV)；FCFE：Equity＝Σ PV(FCFE)+PV(TV)</td>
                                      <td>V₀ = B₀ + Σ PV(RI) + PV(TV_RI)</td>
-                                     <td>P = (BVPS／TBVPS／NAVPS) × 目標 P/B</td>
+                                     <td>P/B：P = (BVPS／TBVPS／NAVPS)×目標 P/B；NAV：P = NAVPS×倍數</td>
                                    </tr>
                                    <tr>
                                      <td><b>輸出</b></td>
-                                     <td>直接為每股合理價</td>
+                                     <td>直接為每股合理價（可配 Bear／Base／Bull）</td>
                                      <td>FCFF 先得 EV 再加減淨現金／負債；FCFE 直接為股權價值</td>
                                      <td>直接為每股內在價值</td>
                                      <td>Bear／Base／Bull 三檔合理價區間</td>
                                    </tr>
                                  </tbody>
                                </table>")
-                ),
-                tags$div(style = "overflow-x: auto;",
-                         HTML("<table class='table table-striped table-hover table-bordered' style='background-color: white;'>
+          ),
+          tags$div(
+            style = "overflow-x: auto;",
+            HTML("<table class='table table-striped table-hover table-bordered' style='background-color: white;'>
                                  <thead style='background-color: #2C3E50; color: white;'>
                                    <tr>
                                      <th>考慮維度</th>
                                      <th>股利折現模型 (DDM)</th>
                                      <th>自由現金流 (DCF)</th>
                                      <th>剩餘收益模型 (RI)</th>
-                                     <th>本淨比 (P/B)</th>
+                                     <th>本淨比 (P/B)／純 NAV</th>
                                    </tr>
                                  </thead>
                                  <tbody>
@@ -649,75 +737,91 @@ beta_rolling_section_ui <- function() {
                                      <td>不配息／配息波動大時失效</td>
                                      <td>FCF 長期為負或高度循環時難估</td>
                                      <td>帳面淨值失真／ROE 不可持續時偏誤</td>
-                                     <td>無形資產主導或帳面嚴重扭曲時失準</td>
+                                     <td>無形資產主導或帳面嚴重扭曲時失準；純 NAV 非市場法 SOTP</td>
                                    </tr>
                                  </tbody>
                                </table>")
-                )
-       ),
-       
-       # Tab: DDM 模型解說
-       tabPanel("Dividend Discount Model (DDM)", icon = icon("hand-holding-usd"),
-                h4(tags$b("股利折現模型（Gordon／SPM／二階段）")),
-                p("DDM 將普通股價值視為未來現金股利的現值。現金流是股利、折現率是 Ke，與以 FCFF／WACC 為核心的 DCF 屬不同層級。本 App 的永續成長家族含 Gordon Growth Model (GGM) 與 Sum of Perpetuities Method (SPM)。"),
-                tags$ul(
-                  tags$li(tags$b("Gordon (GGM)："), tags$b("$$P_0 = \\frac{D_1}{K_e - g} = \\frac{D_0 \\times (1 + g)}{K_e - g}$$"),
-                          " 假設現金發放率維持固定比例，股利隨盈餘以 g 成長。約束：g < Ke。"),
-                  tags$li(tags$b("SPM（永續和）："), tags$b("$$P_0 = \\frac{E \\times g}{K_e^2} + \\frac{D}{K_e}$$"),
-                          " Brown & Abraham (2012)：將「定額股利永續」與「保留盈餘創造之成長」分開折現；對輸入較不敏感。當 ROE = Ke 且 g = ROE × 保留率時，與前向股利版 GGM 等價。EPS 取 D0 分頁之預估／最新 EPS；D 取今年股利。"),
-                  tags$li(tags$b("二階段："), "前 n₁ 年股利以 g₁ 成長，之後以永續 g₂ 做 Gordon 終值。約束：g₂ < Ke。"),
-                  tags$li(tags$b("$$D_t = D_0(1+g_1)^t,\\quad TV = \\frac{D_{n_1}(1+g_2)}{K_e-g_2},\\quad P_0 = \\sum_{t=1}^{n_1}\\frac{D_t}{(1+K_e)^t} + \\frac{TV}{(1+K_e)^{n_1}}$$"))
-                ),
-                p("股利成長率 g（二階段的 g₂；SPM 的盈餘成長 g）可與中央終值 SGR 同步，亦可在 DDM 分頁單獨覆寫。基本面法可參考 $$g = ROE \\times Retention\\ Ratio$$（或 ROA × RR），但不宜與 FCFF 終值 g 強制畫上等號。選擇 GGM 或 SPM 時，宜先觀察公司股利政策較接近「固定配息率」或「固定股利金額」。")
-       ),
-       
-       # Tab: DCF 模型解說
-       tabPanel("Discounted Cash Flow (DCF)", icon = icon("money-bill-wave"),
-                h4(tags$b("自由現金流折現模型 (FCFF／FCFE)")),
-                p("DCF 關注企業造血能力。預設以 FCFF 用 WACC 折現得到企業價值，再橋接至股權價值。亦可切換 FCFE：將 FCFF 轉成股權現金流後以 Ke 折現，不再加減淨現金／負債。本 app 的「Gordon」模式為明確預測期加上 Gordon 終值，而非單期 EV = FCF₁/(WACC−g)。"),
-                tags$ul(
-                  tags$li(tags$b("$$FCFF = NOPAT + D\\&A - \\Delta NWC - CapEx$$")),
-                  tags$li(tags$b("$$FCFE = FCFF - Interest\\times(1-T) + Net\\ Borrowing$$")),
-                  tags$li(tags$b("FCFF："), tags$b("$$Enterprise\\ Value = \\sum \\frac{FCFF_t}{(1+WACC)^t} + \\frac{TV}{(1+WACC)^n}$$")),
-                  tags$li(tags$b("FCFE："), tags$b("$$Equity = \\sum \\frac{FCFE_t}{(1+K_e)^t} + \\frac{TV}{(1+K_e)^n}$$")),
-                  tags$li(tags$b("$$Terminal\\ Value = \\frac{CF_n \\times (1 + g)}{r - g}$$"))
-                ),
-                p("Live 預測表以 NOPAT（EBIT×(1−T)）為錨，不是淨利 NI。FCFE 的淨舉債採固定槓桿近似：各年淨舉債＝g×期初負債。兩階段模式在高速成長期後將終值成長率收斂至 SGR；FCFF 約束 g < WACC，FCFE 約束 g < Ke。")
-       ),
+          )
+        ),
 
-       # Tab: RI 模型解說
-       tabPanel("Residual Income (RI)", icon = icon("gem"),
-                h4(tags$b("剩餘收益模型 (Residual Income)")),
-                p("RI 以帳面淨值為起點，將「超過股權成本的盈餘」折現加總。適合 FCF 為負、但淨值與 ROE 具參考性的企業；折現率使用 Ke（與 DDM 同屬股權層級）。"),
-                tags$ul(
-                  tags$li(tags$b("$$RI_t = (ROE_t - K_e) \\times B_{t-1}$$")),
-                  tags$li(tags$b("$$B_t = B_{t-1} + NI_t \\times (1 - Payout)$$")),
-                  tags$li(tags$b("$$V_0 = B_0 + \\sum_{t=1}^{n} \\frac{RI_t}{(1+K_e)^t} + \\frac{TV_{RI}}{(1+K_e)^n}$$")),
-                  tags$li(tags$b("$$TV_{RI} = \\frac{RI_n \\times (1 + g)}{K_e - g}$$"))
-                ),
-                p("本 app 可設定固定 ROE、線性淡化或產業 ROE；終值成長 g 須滿足 g < Ke。當 ROE < Ke 時，剩餘收益為負，代表價值減損。")
-       ),
+        # Tab: DDM 模型解說
+        tabPanel(
+          "Dividend Discount Model (DDM)",
+          icon = icon("hand-holding-usd"),
+          h4(tags$b("股利折現模型（Gordon／SPM／二階段）")),
+          p("DDM 將普通股價值視為未來現金股利的現值。現金流是股利、折現率是 Ke，與以 FCFF／WACC 為核心的 DCF 屬不同層級。本 App 的永續成長家族含 Gordon Growth Model (GGM) 與 Sum of Perpetuities Method (SPM)。"),
+          tags$ul(
+            tags$li(
+              tags$b("Gordon (GGM)："),
+              tags$b("$$P_0 = \\frac{D_1}{K_e - g} = \\frac{D_0 \\times (1 + g)}{K_e - g}$$"),
+              " 假設現金發放率維持固定比例，股利隨盈餘以 g 成長。約束：g < Ke。"
+            ),
+            tags$li(
+              tags$b("SPM（永續和）："),
+              tags$b("$$P_0 = \\frac{E \\times g}{K_e^2} + \\frac{D}{K_e}$$"),
+              " Brown & Abraham (2012)：將「定額股利永續」與「保留盈餘創造之成長」分開折現；對輸入較不敏感。當 ROE = Ke 且 g = ROE × 保留率時，與前向股利版 GGM 等價。EPS 取 D0 分頁之預估／最新 EPS；D 取今年股利。"
+            ),
+            tags$li(tags$b("二階段："), "前 n₁ 年股利以 g₁ 成長，之後以永續 g₂ 做 Gordon 終值。約束：g₂ < Ke。"),
+            tags$li(tags$b("$$D_t = D_0(1+g_1)^t,\\quad TV = \\frac{D_{n_1}(1+g_2)}{K_e-g_2},\\quad P_0 = \\sum_{t=1}^{n_1}\\frac{D_t}{(1+K_e)^t} + \\frac{TV}{(1+K_e)^{n_1}}$$"))
+          ),
+          p("股利成長率 g（二階段的 g₂；SPM 的盈餘成長 g）可與中央終值 SGR 同步，亦可在 DDM 分頁單獨覆寫。基本面法可參考 $$g = ROE \\times Retention\\ Ratio$$（或 ROA × RR），但不宜與 FCFF 終值 g 強制畫上等號。選擇 GGM 或 SPM 時，宜先觀察公司股利政策較接近「固定配息率」或「固定股利金額」。")
+        ),
 
-       # Tab: P/B 模型解說
-       tabPanel("Price-to-Book (P/B)", icon = icon("landmark"),
-                h4(tags$b("本淨比／相對估值 (P/B)")),
-                p("以每股帳面淨值、有形淨值或控股 NAVPS 乘上目標本淨比。目標倍數可來自產業／歷史（無需 SGR），或 Justified P/B（需 ROE、Ke、SGR／g）。純帳面 NAV（無倍數）請用獨立「NAV」模型。"),
-                tags$ul(
-                  tags$li(tags$b("$$BVPS = \\frac{Common\\ Equity}{Shares}$$")),
-                  tags$li(tags$b("$$TBVPS = \\frac{Common\\ Equity - Goodwill - Intangibles}{Shares}$$")),
-                  tags$li(tags$b("$$P = (BVPS\\ /\\ TBVPS\\ /\\ NAVPS) \\times Target\\ P/B$$")),
-                  tags$li(tags$b("Justified\\ P/B \\approx \\frac{ROE - g}{K_e - g}"))
-                ),
-                p("雙重股權／ADR 等「報價股數 ≠ 財報股數」時，與 DCF／RI／回測相同，一律自動約當股數（市值÷股價）。")
-       ),
-       tabPanel("Net Asset Value (NAV)", icon = icon("sitemap"),
-                h4(tags$b("純 NAV（帳面控股淨資產）")),
-                p("評估「現在家底（存量）」：合理價 = NAVPS × 折價／溢價倍數。控股折價只套用在已辨識投資科目；無投資科目時 NAV＝帳面權益。此為帳面拆解，不是市場法分部 SOTP，亦不需要 Justified／SGR。"),
-                tags$ul(
-                  tags$li(tags$b("$$NAV = Equity - Holdco\\ Discount \\times Identified\\ Investments$$")),
-                  tags$li(tags$b("$$P = NAVPS \\times NAV\\ Multiple$$"))
-                )
-       )
+        # Tab: DCF 模型解說
+        tabPanel(
+          "Discounted Cash Flow (DCF)",
+          icon = icon("money-bill-wave"),
+          h4(tags$b("自由現金流折現模型 (FCFF／FCFE)")),
+          p("DCF 關注企業造血能力。預設以 FCFF 用 WACC 折現得到企業價值，再橋接至股權價值。亦可切換 FCFE：將 FCFF 轉成股權現金流後以 Ke 折現，不再加減淨現金／負債。本 app 的「Gordon」模式為明確預測期加上 Gordon 終值，而非單期 EV = FCF₁/(WACC−g)。CapEx 暴衝平滑為可選工程啟發式，見 Process & Guardrails。"),
+          tags$ul(
+            tags$li(tags$b("$$FCFF = NOPAT + D\\&A - \\Delta NWC - CapEx$$")),
+            tags$li(tags$b("$$FCFE = FCFF - Interest\\times(1-T) + Net\\ Borrowing$$")),
+            tags$li(tags$b("FCFF："), tags$b("$$Enterprise\\ Value = \\sum \\frac{FCFF_t}{(1+WACC)^t} + \\frac{TV}{(1+WACC)^n}$$")),
+            tags$li(tags$b("FCFE："), tags$b("$$Equity = \\sum \\frac{FCFE_t}{(1+K_e)^t} + \\frac{TV}{(1+K_e)^n}$$")),
+            tags$li(tags$b("$$Terminal\\ Value = \\frac{CF_n \\times (1 + g)}{r - g}$$"))
+          ),
+          p("Live 預測表以 NOPAT（EBIT×(1−T)）為錨，不是淨利 NI。FCFE 的淨舉債採固定槓桿近似：各年淨舉債＝g×期初負債。兩階段模式在高速成長期後將終值成長率收斂至 SGR；FCFF 約束 g < WACC，FCFE 約束 g < Ke。")
+        ),
+
+        # Tab: RI 模型解說
+        tabPanel(
+          "Residual Income (RI)",
+          icon = icon("gem"),
+          h4(tags$b("剩餘收益模型 (Residual Income)")),
+          p("RI 以帳面淨值為起點，將「超過股權成本的盈餘」折現加總。適合 FCF 為負、但淨值與 ROE 具參考性的企業；折現率使用 Ke（與 DDM 同屬股權層級）。"),
+          tags$ul(
+            tags$li(tags$b("$$RI_t = (ROE_t - K_e) \\times B_{t-1}$$")),
+            tags$li(tags$b("$$B_t = B_{t-1} + NI_t \\times (1 - Payout)$$")),
+            tags$li(tags$b("$$V_0 = B_0 + \\sum_{t=1}^{n} \\frac{RI_t}{(1+K_e)^t} + \\frac{TV_{RI}}{(1+K_e)^n}$$")),
+            tags$li(tags$b("$$TV_{RI} = \\frac{RI_n \\times (1 + g)}{K_e - g}$$"))
+          ),
+          p("本 app 可設定固定 ROE、線性淡化或產業 ROE；終值成長 g 須滿足 g < Ke。當 ROE < Ke 時，剩餘收益為負，代表價值減損。")
+        ),
+
+        # Tab: P/B 模型解說
+        tabPanel(
+          "Price-to-Book (P/B)",
+          icon = icon("landmark"),
+          h4(tags$b("本淨比／相對估值 (P/B)")),
+          p("以每股帳面淨值、有形淨值或控股 NAVPS 乘上目標本淨比。目標倍數可來自產業／歷史（無需 SGR），或 Justified P/B（需 ROE、Ke、SGR／g）。純帳面 NAV（無倍數法 Justified）請用獨立「NAV」模型——兩者同屬資產／帳面家族，但路徑分開。"),
+          tags$ul(
+            tags$li(tags$b("$$BVPS = \\frac{Common\\ Equity}{Shares}$$")),
+            tags$li(tags$b("$$TBVPS = \\frac{Common\\ Equity - Goodwill - Intangibles}{Shares}$$")),
+            tags$li(tags$b("$$P = (BVPS\\ /\\ TBVPS\\ /\\ NAVPS) \\times Target\\ P/B$$")),
+            tags$li(tags$b("Justified\\ P/B \\approx \\frac{ROE - g}{K_e - g}"))
+          ),
+          p("雙重股權／ADR 等「報價股數 ≠ 財報股數」時，與 DCF／RI／回測相同，一律自動約當股數（市值÷股價）。")
+        ),
+        tabPanel(
+          "Net Asset Value (NAV)",
+          icon = icon("sitemap"),
+          h4(tags$b("純 NAV（帳面控股淨資產）")),
+          p("評估「現在家底（存量）」：合理價 = NAVPS × 折價／溢價倍數。控股折價只套用在已辨識投資科目；無投資科目時 NAV＝帳面權益。此為帳面拆解，不是市場法分部 SOTP，亦不需要 Justified／SGR。"),
+          tags$ul(
+            tags$li(tags$b("$$NAV = Equity - Holdco\\ Discount \\times Identified\\ Investments$$")),
+            tags$li(tags$b("$$P = NAVPS \\times NAV\\ Multiple$$"))
+          )
+        )
       )
     )
   )
@@ -773,7 +877,8 @@ beta_rolling_section_ui <- function() {
         )
       ),
       helpText(
-        "Macro：直接套用美國 10 年期公債 Rf。",
+        id = "ynow_sgr_method_help",
+        "Macro：採用即時抓取的市場 10 年期公債 Rf（美股 Yahoo ^TNX；失敗則最近成功值，再失敗才工程 fallback 並標明）。",
         "Fundamental：Retention×ROE（僅適合成熟穩健企業）。",
         "Lifecycle：依產業成熟度反推 g，可手動覆寫自動分類。"
       ),
@@ -899,7 +1004,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.27</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.28</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -2632,6 +2737,8 @@ ui <- dashboardPage(
             if (lifeTitle && s.lifecycle_stage_title) lifeTitle.textContent = s.lifecycle_stage_title;
             var lifeHelp = document.getElementById('ynow_lifecycle_stage_help');
             if (lifeHelp && s.lifecycle_stage_help) lifeHelp.textContent = s.lifecycle_stage_help;
+            var sgrMethodHelp = document.getElementById('ynow_sgr_method_help');
+            if (sgrMethodHelp && s.sgr_method_help) sgrMethodHelp.textContent = s.sgr_method_help;
             var sgrCustomLab = document.querySelector('label[for=\"sgr\"]');
             if (sgrCustomLab && s.sgr_custom_label) sgrCustomLab.textContent = s.sgr_custom_label;
             var indOverviewTitle = document.getElementById('ynow_ind_overview_title');
