@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12577759
+bundleId=12577777
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=504de23
-commit=504de23
-short=504de23
-message=feat(ui): set NAV model theme to SGR maroon pink (v17.44)
-captured_at=2026-09-19T17:57:52Z
+aligned_git=7e2cc61
+commit=7e2cc61
+short=7e2cc61
+message=fix(ui): restore mobile header title size and center it (v17.45)
+captured_at=2026-09-19T18:04:24Z
 source_branch=master
-display_version=v17.44
-note=Canonical live line is app_17.0. Bundle 12577759 = tip v17.44 (NAV theme = SGR maroon #d81b60). Deploy via scripts/deploy_app_17.R.
+display_version=v17.45
+note=Canonical live line is app_17.0. Bundle 12577777 = tip v17.45 (mobile title 16px centered; 繁中/EN shrunk). Deploy via scripts/deploy_app_17.R.
