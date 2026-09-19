@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12576918
+bundleId=12576936
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=af7212a
-commit=af7212a
-short=af7212a
-message=feat(lab): selectable eval-pool truncate rules with concept groups (v17.19)
-captured_at=2026-09-19T12:50:18Z
+aligned_git=b5e98bd
+commit=b5e98bd
+short=b5e98bd
+message=fix(ui): hamburger icon — three white lines only, no outer frame (v17.20)
+captured_at=2026-09-19T12:56:33Z
 source_branch=master
-display_version=v17.19
-note=Canonical live line is app_17.0. Bundle 12576918 = tip v17.19 (eval-pool truncate: mcap/concept/1y/random). Deploy via scripts/deploy_app_17.R.
+display_version=v17.20
+note=Canonical live line is app_17.0. Bundle 12576936 = tip v17.20 (hamburger three white lines only). Deploy via scripts/deploy_app_17.R.
