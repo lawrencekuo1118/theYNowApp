@@ -412,6 +412,29 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       upside <- if (!is.na(base) && p_curr > 0) (base - p_curr) / p_curr * 100 else NA_real_
       upside_txt <- if (is.na(upside)) "—" else sprintf("%+.1f%%", upside)
 
+      # #region agent log
+      tryCatch({
+        .dbg <- list(
+          sessionId = "ef0f33",
+          runId = "pre",
+          hypothesisId = "H1_H5",
+          location = "investment_decision_module.R:ui_valuation_compare",
+          message = "composite_render",
+          timestamp = as.numeric(Sys.time()) * 1000,
+          data = list(
+            prim = prim, sec = sec,
+            bear = bear, base = base, bull = bull, sec_pt = sec_pt,
+            p_curr = p_curr,
+            has_overlay_slot = FALSE,
+            note = "UI currently shows only recommended primary band + secondary point; no active-tab overlay"
+          )
+        )
+        cat(jsonlite::toJSON(.dbg, auto_unbox = TRUE, null = "null"), "\n",
+            file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-ef0f33.log",
+            append = TRUE)
+      }, error = function(e) invisible(NULL))
+      # #endregion
+
       HTML(paste0(
         "<div class='ynow-composite-valuation' style='background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 12px; border-top: 3px solid ", status_color, ";'>",
         "<div style='background: #1a1a1a15; border-left: 5px solid #222222; padding: 12px; border-radius: 4px; margin-bottom: 16px;'>",

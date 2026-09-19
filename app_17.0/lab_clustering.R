@@ -219,67 +219,81 @@ lab_cluster_merge_feature_dfs <- function(primary, secondary) {
 }
 
 #' Mint Yahoo crumb + cookie handle (required since quoteSummary returns 401 without it)
-.lab_yahoo_crumb_session <- function(timeout_sec = 12) {
+.lab_yahoo_crumb_session <- function(timeout_sec = 12, max_attempts = 3L) {
   if (!requireNamespace("httr", quietly = TRUE)) return(NULL)
   ua <- paste0(
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) ",
     "AppleWebKit/537.36 (KHTML, like Gecko) ",
     "Chrome/122.0.0.0 Safari/537.36"
   )
-  h <- httr::handle("https://finance.yahoo.com")
-  to <- as.numeric(timeout_sec)[1]
-  tryCatch(
-    httr::GET(
-      "https://fc.yahoo.com",
-      handle = h,
-      httr::add_headers(`User-Agent` = ua),
-      httr::timeout(to)
-    ),
-    error = function(e) NULL
-  )
-  tryCatch(
-    httr::GET(
-      "https://finance.yahoo.com/",
-      handle = h,
-      httr::add_headers(`User-Agent` = ua),
-      httr::timeout(to)
-    ),
-    error = function(e) NULL
-  )
-  crumb <- NULL
-  for (crumb_url in c(
-    "https://query2.finance.yahoo.com/v1/test/getcrumb",
-    "https://query1.finance.yahoo.com/v1/test/getcrumb"
-  )) {
-    res <- tryCatch(
+  last_err <- "no_crumb"
+  max_attempts <- as.integer(max_attempts)[1]
+  if (!is.finite(max_attempts) || max_attempts < 1L) max_attempts <- 3L
+  for (attempt in seq_len(max_attempts)) {
+    h <- httr::handle("https://finance.yahoo.com")
+    to <- as.numeric(timeout_sec)[1]
+    tryCatch(
       httr::GET(
-        crumb_url,
+        "https://fc.yahoo.com",
         handle = h,
-        httr::add_headers(`User-Agent` = ua, Accept = "text/plain"),
+        httr::add_headers(`User-Agent` = ua),
         httr::timeout(to)
       ),
       error = function(e) NULL
     )
-    if (is.null(res)) next
-    sc <- httr::status_code(res)
-    txt <- tryCatch(
-      httr::content(res, as = "text", encoding = "UTF-8"),
-      error = function(e) ""
+    tryCatch(
+      httr::GET(
+        "https://finance.yahoo.com/",
+        handle = h,
+        httr::add_headers(`User-Agent` = ua),
+        httr::timeout(to)
+      ),
+      error = function(e) NULL
     )
-    if (identical(sc, 429L) || grepl("Too Many Requests", txt, fixed = TRUE)) {
-      return(list(handle = h, crumb = NULL, ua = ua, error = "rate_limited"))
+    crumb <- NULL
+    rate_hit <- FALSE
+    for (crumb_url in c(
+      "https://query2.finance.yahoo.com/v1/test/getcrumb",
+      "https://query1.finance.yahoo.com/v1/test/getcrumb"
+    )) {
+      res <- tryCatch(
+        httr::GET(
+          crumb_url,
+          handle = h,
+          httr::add_headers(`User-Agent` = ua, Accept = "text/plain"),
+          httr::timeout(to)
+        ),
+        error = function(e) NULL
+      )
+      if (is.null(res)) next
+      sc <- httr::status_code(res)
+      txt <- tryCatch(
+        httr::content(res, as = "text", encoding = "UTF-8"),
+        error = function(e) ""
+      )
+      if (identical(sc, 429L) || grepl("Too Many Requests", txt, fixed = TRUE)) {
+        rate_hit <- TRUE
+        last_err <- "rate_limited"
+        break
+      }
+      if (sc >= 400L) next
+      if (!nzchar(txt) || grepl("<html>|Unauthorized|Invalid", txt, ignore.case = TRUE)) {
+        next
+      }
+      crumb <- trimws(txt)
+      if (nzchar(crumb)) {
+        return(list(handle = h, crumb = crumb, ua = ua, error = NULL))
+      }
     }
-    if (sc >= 400L) next
-    if (!nzchar(txt) || grepl("<html>|Unauthorized|Invalid", txt, ignore.case = TRUE)) {
+    if (isTRUE(rate_hit) && attempt < max_attempts) {
+      Sys.sleep(1.2 * attempt)
       next
     }
-    crumb <- trimws(txt)
-    if (nzchar(crumb)) break
+    if (!is.null(crumb) && nzchar(crumb)) {
+      return(list(handle = h, crumb = crumb, ua = ua, error = NULL))
+    }
   }
-  if (is.null(crumb) || !nzchar(crumb)) {
-    return(list(handle = h, crumb = NULL, ua = ua, error = "no_crumb"))
-  }
-  list(handle = h, crumb = crumb, ua = ua, error = NULL)
+  list(handle = httr::handle("https://finance.yahoo.com"), crumb = NULL, ua = ua, error = last_err)
 }
 
 #' R-only Yahoo quoteSummary fallback (crumb+cookie; no Python / reticulate)
@@ -356,8 +370,31 @@ lab_fetch_cluster_features_r <- function(tickers, timeout_sec = 12) {
         if (is.null(res)) next
         sc <- httr::status_code(res)
         if (identical(sc, 429L)) {
-          attr(row, "yahoo_r_error") <- "rate_limited"
-          return(row)
+          # Back off once then retry same symbol (Yahoo bursts after N≈25–100)
+          Sys.sleep(1.5)
+          res2 <- tryCatch(
+            httr::GET(
+              url,
+              handle = sess$handle,
+              query = list(
+                modules = "defaultKeyStatistics,financialData,summaryDetail,price",
+                crumb = sess$crumb
+              ),
+              httr::add_headers(
+                `User-Agent` = sess$ua,
+                Accept = "application/json"
+              ),
+              httr::timeout(as.numeric(timeout_sec)[1])
+            ),
+            error = function(e) NULL
+          )
+          if (!is.null(res2) && identical(httr::status_code(res2), 200L)) {
+            res <- res2
+            sc <- 200L
+          } else {
+            attr(row, "yahoo_r_error") <- "rate_limited"
+            return(row)
+          }
         }
         if (identical(sc, 401L) || identical(sc, 403L)) {
           if (attempt == 1L && isTRUE(refresh_crumb())) {
@@ -401,19 +438,31 @@ lab_fetch_cluster_features_r <- function(tickers, timeout_sec = 12) {
 
   rows <- vector("list", length(tks))
   for (i in seq_along(tks)) {
-    if (i > 1L) Sys.sleep(0.08)
+    if (i > 1L) Sys.sleep(0.18)
     rows[[i]] <- fetch_one(tks[[i]])
   }
 
   out <- lab_cluster_features_to_df(rows)
-  if (lab_cluster_usable_feature_rows(out) < 1L) {
-    attr(out, "yahoo_r_error") <- sess$error %||% "empty_quoteSummary"
+  n_ok_out <- lab_cluster_usable_feature_rows(out)
+  if (n_ok_out < 1L) {
+    # Prefer first per-row rate_limited / auth signal over generic empty
+    row_errs <- vapply(rows, function(r) {
+      ae <- attr(r, "yahoo_r_error")
+      if (is.null(ae)) "" else as.character(ae)[1]
+    }, character(1))
+    row_errs <- row_errs[nzchar(row_errs)]
+    attr(out, "yahoo_r_error") <- if (length(row_errs)) {
+      row_errs[[1]]
+    } else {
+      sess$error %||% "empty_quoteSummary"
+    }
   }
   out
 }
 
 #' Fetch Yahoo ratio features (Python first; R crumb quoteSummary gap-fills)
-lab_fetch_cluster_features <- function(tickers) {
+#' Chunks large universes to reduce Yahoo 429s (N=100 is especially fragile).
+lab_fetch_cluster_features <- function(tickers, chunk_size = 20L) {
   tks <- unique(toupper(trimws(as.character(tickers))))
   tks <- tks[nzchar(tks) & !is.na(tks)]
   # Keep TW/TWO suffixes intact (do not strip dots)
@@ -423,9 +472,11 @@ lab_fetch_cluster_features <- function(tickers) {
   py_err <- NULL
   r_err <- NULL
   df <- NULL
-  ready <- exists(".ensure_python_scraper", mode = "function") &&
-    isTRUE(tryCatch(.ensure_python_scraper(), error = function(e) FALSE))
-  if (isTRUE(ready)) {
+  chunk_size <- as.integer(chunk_size)[1]
+  if (!is.finite(chunk_size) || chunk_size < 5L) chunk_size <- 20L
+  if (chunk_size > 40L) chunk_size <- 40L
+
+  .py_fetch_chunk <- function(chunk) {
     fn <- NULL
     if (exists(".py_scraper_env") &&
         exists("get_cluster_features_batch", envir = .py_scraper_env, inherits = FALSE, mode = "function")) {
@@ -433,21 +484,55 @@ lab_fetch_cluster_features <- function(tickers) {
     } else if (exists("get_cluster_features_batch", mode = "function")) {
       fn <- get_cluster_features_batch
     }
-    if (is.function(fn)) {
-      df <- tryCatch({
-        raw <- fn(as.list(tks))
-        # reticulate may hand back a pandas object — normalize via py_to_r when needed
-        if (!is.data.frame(raw) && !is.list(raw) &&
-            requireNamespace("reticulate", quietly = TRUE)) {
-          raw <- tryCatch(reticulate::py_to_r(raw), error = function(e) raw)
-        }
-        lab_cluster_features_to_df(raw)
-      }, error = function(e) {
-        py_err <<- conditionMessage(e)
-        NULL
-      })
-    } else {
-      py_err <- "get_cluster_features_batch not found"
+    if (!is.function(fn)) {
+      py_err <<- "get_cluster_features_batch not found"
+      return(NULL)
+    }
+    tryCatch({
+      raw <- fn(as.list(chunk))
+      if (!is.data.frame(raw) && !is.list(raw) &&
+          requireNamespace("reticulate", quietly = TRUE)) {
+        raw <- tryCatch(reticulate::py_to_r(raw), error = function(e) raw)
+      }
+      lab_cluster_features_to_df(raw)
+    }, error = function(e) {
+      py_err <<- conditionMessage(e)
+      NULL
+    })
+  }
+
+  ready <- exists(".ensure_python_scraper", mode = "function") &&
+    isTRUE(tryCatch(.ensure_python_scraper(), error = function(e) FALSE))
+  if (isTRUE(ready)) {
+    chunks <- split(tks, ceiling(seq_along(tks) / chunk_size))
+    for (ci in seq_along(chunks)) {
+      if (ci > 1L) Sys.sleep(0.55)
+      part <- .py_fetch_chunk(chunks[[ci]])
+      if (!is.null(part) && nrow(part) > 0L) {
+        df <- lab_cluster_merge_feature_dfs(df, part)
+      }
+      # #region agent log
+      tryCatch({
+        .dbg <- list(
+          sessionId = "ef0f33",
+          runId = "cluster-pre",
+          hypothesisId = "H1",
+          location = "lab_clustering.R:lab_fetch_cluster_features",
+          message = "py_chunk",
+          timestamp = as.numeric(Sys.time()) * 1000,
+          data = list(
+            chunk = ci,
+            n_chunks = length(chunks),
+            chunk_n = length(chunks[[ci]]),
+            n_ok_so_far = lab_cluster_usable_feature_rows(df),
+            py_err = py_err
+          )
+        )
+        cat(jsonlite::toJSON(.dbg, auto_unbox = TRUE, null = "null"), "\n",
+            file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-ef0f33.log",
+            append = TRUE)
+      }, error = function(e) invisible(NULL))
+      # #endregion
     }
   } else {
     py_err <- "Python scraper unavailable"
@@ -456,24 +541,33 @@ lab_fetch_cluster_features <- function(tickers) {
   n_ok <- lab_cluster_usable_feature_rows(df)
   # Gap-fill sparse / missing tickers via R crumb path (also covers cold Python)
   need_r <- lab_cluster_sparse_tickers(df, tks)
+  # Prefer filling a usable core first when universe is huge (N=100 rate-limit)
+  if (length(need_r) > 40L && n_ok < 8L) {
+    need_r <- need_r[seq_len(40L)]
+  }
   if (length(need_r) > 0L) {
-    df_r <- tryCatch(
-      lab_fetch_cluster_features_r(need_r),
-      error = function(e) {
-        r_err <<- conditionMessage(e)
-        NULL
+    r_chunks <- split(need_r, ceiling(seq_along(need_r) / chunk_size))
+    for (ri in seq_along(r_chunks)) {
+      if (ri > 1L) Sys.sleep(0.7)
+      df_r <- tryCatch(
+        lab_fetch_cluster_features_r(r_chunks[[ri]]),
+        error = function(e) {
+          r_err <<- conditionMessage(e)
+          NULL
+        }
+      )
+      if (!is.null(df_r)) {
+        r_attr <- attr(df_r, "yahoo_r_error")
+        if (!is.null(r_attr) && nzchar(as.character(r_attr)[1])) {
+          r_err <- as.character(r_attr)[1]
+        }
+        n_ok_r <- lab_cluster_usable_feature_rows(df_r)
+        if (n_ok_r > 0L) {
+          df <- lab_cluster_merge_feature_dfs(df, df_r)
+          n_ok <- lab_cluster_usable_feature_rows(df)
+        }
       }
-    )
-    if (!is.null(df_r)) {
-      r_attr <- attr(df_r, "yahoo_r_error")
-      if (!is.null(r_attr) && nzchar(as.character(r_attr)[1])) {
-        r_err <- as.character(r_attr)[1]
-      }
-      n_ok_r <- lab_cluster_usable_feature_rows(df_r)
-      if (n_ok_r > 0L) {
-        df <- lab_cluster_merge_feature_dfs(df, df_r)
-        n_ok <- lab_cluster_usable_feature_rows(df)
-      }
+      if (n_ok >= 25L) break
     }
   }
 
@@ -482,6 +576,31 @@ lab_fetch_cluster_features <- function(tickers) {
       "python: ", py_err %||% "n/a",
       if (!is.null(r_err)) paste0("; R: ", r_err) else ""
     )
+    # #region agent log
+    tryCatch({
+      .dbg <- list(
+        sessionId = "ef0f33",
+        runId = "cluster-pre",
+        hypothesisId = "H1_H2",
+        location = "lab_clustering.R:lab_fetch_cluster_features",
+        message = "features_unavailable",
+        timestamp = as.numeric(Sys.time()) * 1000,
+        data = list(
+          n_tickers = length(tks),
+          n_ok = n_ok,
+          n_rows = if (is.null(df)) 0L else nrow(df),
+          py_ready = isTRUE(ready),
+          py_err = py_err,
+          r_err = r_err,
+          need_r_n = length(need_r),
+          sample_tickers = utils::head(tks, 8)
+        )
+      )
+      cat(jsonlite::toJSON(.dbg, auto_unbox = TRUE, null = "null"), "\n",
+          file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-ef0f33.log",
+          append = TRUE)
+    }, error = function(e) invisible(NULL))
+    # #endregion
     stop(sprintf(
       paste0(
         "Yahoo ratio features unavailable for clustering ",
@@ -492,6 +611,29 @@ lab_fetch_cluster_features <- function(tickers) {
       n_ok, length(tks), detail
     ))
   }
+  # #region agent log
+  tryCatch({
+    .dbg <- list(
+      sessionId = "ef0f33",
+      runId = "cluster-pre",
+      hypothesisId = "H1",
+      location = "lab_clustering.R:lab_fetch_cluster_features",
+      message = "features_ok",
+      timestamp = as.numeric(Sys.time()) * 1000,
+      data = list(
+        n_tickers = length(tks),
+        n_ok = n_ok,
+        n_rows = nrow(df),
+        py_err = py_err,
+        r_err = r_err,
+        need_r_n = length(need_r)
+      )
+    )
+    cat(jsonlite::toJSON(.dbg, auto_unbox = TRUE, null = "null"), "\n",
+        file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-ef0f33.log",
+        append = TRUE)
+  }, error = function(e) invisible(NULL))
+  # #endregion
   df
 }
 

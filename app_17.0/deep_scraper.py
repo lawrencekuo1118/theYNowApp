@@ -1418,8 +1418,8 @@ def get_cluster_features_batch(tickers):
     except Exception as e:  # noqa: BLE001
         _dbg(f"⚠️ cluster warm session: {e}")
 
-    # Fewer workers reduces Yahoo 429 bursts (esp. TW universe)
-    workers = min(3, max(1, len(cleaned)))
+    # Fewer workers reduces Yahoo 429 bursts (esp. TW / N=100)
+    workers = 1 if len(cleaned) > 25 else min(2, max(1, len(cleaned)))
     out_map = {}
     with ThreadPoolExecutor(max_workers=workers) as ex:
         futs = {ex.submit(_one, s): s for s in cleaned}
