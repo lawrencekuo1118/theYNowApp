@@ -1004,7 +1004,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.34</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.35</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -2185,32 +2185,32 @@ ui <- dashboardPage(
             width: 100%;
           }
         }
-        /* 預測年數 n：model 頁 shared header；DCF 時與 claim 建議註解同列垂直對齊 */
+        /* DCF shared header：上列「選擇模型／採用現金流」與下列「預測年數 n／建議」同寬靠左對齊 */
         #ibx_EPS { margin-bottom: 8px; }
-        .ynow-dcf-mode-row {
-          padding: 0 10px 4px 10px;
-          margin-bottom: 0;
-        }
-        .ynow-dcf-mode-row .form-group { margin-bottom: 8px; }
+        .ynow-dcf-mode-row,
         .ynow-header-years-suggest-row {
           display: flex;
           flex-wrap: wrap;
           align-items: flex-start;
           margin-left: 0;
           margin-right: 0;
+          padding: 0;
         }
+        .ynow-dcf-mode-row > [class*="col-"],
         .ynow-header-years-suggest-row > [class*="col-"] {
           float: none;
-          display: flex;
-          flex-direction: column;
-          justify-content: flex-start;
+          padding-left: 10px;
+          padding-right: 10px;
         }
+        .ynow-dcf-mode-row .form-group { margin-bottom: 8px; }
+        .ynow-dcf-mode-col,
         .ynow-header-years {
-          padding: 0 10px 8px 10px;
+          padding: 0 0 8px 0;
           margin-top: 0;
           width: 100%;
         }
         .ynow-header-years .form-group { margin-bottom: 0; }
+        .ynow-dcf-mode-col > .form-group > label.control-label,
         .ynow-header-years label.control-label {
           font-size: 13px;
           font-weight: 700;
@@ -2218,9 +2218,15 @@ ui <- dashboardPage(
           margin-bottom: 5px;
           min-height: 18px;
           line-height: 1.35;
+          display: block;
+          text-align: left;
+        }
+        .ynow-dcf-claim-col {
+          padding: 0 0 8px 0;
+          width: 100%;
         }
         .ynow-dcf-claim-suggest-wrap {
-          padding: 23px 10px 8px 10px; /* 對齊「預測年數 n」label 高度（13px line + 5px margin） */
+          padding: 0 0 8px 0;
           width: 100%;
         }
         .ynow-dcf-claim-suggest-wrap .ynow-dcf-claim-suggest {
@@ -2233,6 +2239,7 @@ ui <- dashboardPage(
           line-height: 1.5;
           box-sizing: border-box;
           min-height: 34px;
+          text-align: left;
         }
         /* Header KPI：Previous Close／Market Cap／EPS — logo 綠圖示；無金框 */
         .ynow-header-kpi-row .info-box {
@@ -4680,46 +4687,52 @@ ui <- dashboardPage(
           decision_valuation_compare_ui("main_decision")
         )
       ),
-      # DCF-Model：模型選擇置於預測年數 n 正上方（同一 shared header，保留單一 input$years）
+      # DCF-Model：模型選擇／採用現金流 與下方 預測年數 n／建議 同為 6+6 靠左對齊
       conditionalPanel(
         condition = "input.sidebar_tabs == 'dcf_calculator'",
         fluidRow(
           class = "ynow-dcf-mode-row",
           column(
             width = 6,
-            class = "col-xs-12",
-            radioButtons(
-              "dcf_mode", "選擇 DCF 估值模型：",
-              choices = list(
-                "明確預測 + Gordon 終值" = "gordon",
-                "二階段成長法 (Two-Stage Model)" = "two_stage"
-              ),
-              selected = APP_DEFAULTS$dcf_mode
+            class = "col-xs-12 col-sm-6",
+            tags$div(
+              class = "ynow-dcf-mode-col",
+              radioButtons(
+                "dcf_mode", "選擇 DCF 估值模型：",
+                choices = list(
+                  "明確預測 + Gordon 終值" = "gordon",
+                  "二階段成長法 (Two-Stage Model)" = "two_stage"
+                ),
+                selected = APP_DEFAULTS$dcf_mode
+              )
             )
           ),
           column(
             width = 6,
-            class = "col-xs-12",
-            radioButtons(
-              "dcf_claim",
-              "採用現金流",
-              choices = list(
-                "FCFF（WACC，再橋接股權）" = "fcff",
-                "FCFE（Ke，直接股權）" = "fcfe"
+            class = "col-xs-12 col-sm-6",
+            tags$div(
+              class = "ynow-dcf-claim-col",
+              radioButtons(
+                "dcf_claim",
+                "採用現金流",
+                choices = list(
+                  "FCFF（WACC，再橋接股權）" = "fcff",
+                  "FCFE（Ke，直接股權）" = "fcfe"
+                ),
+                selected = APP_DEFAULTS$dcf_claim,
+                inline = TRUE
               ),
-              selected = APP_DEFAULTS$dcf_claim,
-              inline = TRUE
-            ),
-            helpText("FCFE = FCFF − 稅後利息 + 淨舉債（負債隨 g 成長）；以 Ke 折現，不再減負債。")
+              helpText("FCFE = FCFF − 稅後利息 + 淨舉債（負債隨 g 成長）；以 Ke 折現，不再減負債。")
+            )
           )
         )
       ),
-      # 預測年數 n 與 DCF claim 建議註解同列垂直對齊（建議僅 DCF 顯示）
+      # 預測年數 n（左）與 DCF claim 建議（右）— 與上列同寬欄位靠左對齊
       fluidRow(
         class = "ynow-header-years-suggest-row",
         column(
-          width = 3,
-          class = "col-xs-12 col-sm-3",
+          width = 6,
+          class = "col-xs-12 col-sm-6",
           tags$div(
             class = "ynow-header-years",
             numericInput(
@@ -4729,8 +4742,8 @@ ui <- dashboardPage(
           )
         ),
         column(
-          width = 9,
-          class = "col-xs-12 col-sm-9",
+          width = 6,
+          class = "col-xs-12 col-sm-6",
           conditionalPanel(
             condition = "input.sidebar_tabs == 'dcf_calculator'",
             tags$div(
