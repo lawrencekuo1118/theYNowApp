@@ -85,7 +85,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v17.26) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報抓取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v17.27) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報抓取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -101,7 +101,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v17.26) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v17.27) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -899,7 +899,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.26</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.27</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -4384,119 +4384,123 @@ ui <- dashboardPage(
         tags$span(class = "ynow-credit-text", "a lawrence kuo shiny app")
       )
     ),
-    fluidRow(
-      column(width = 12,
-             div(
-               class = "ynow-sc-row",
+    # Ticker search + Yahoo industry chrome: hide on About (inputs kept via CSS display)
+    conditionalPanel(
+      condition = "input.sidebar_tabs != 'about'",
+      fluidRow(
+        column(width = 12,
                div(
-                 class = "ynow-sc-wrap",
-                 textInput("sc", "Ticker / Stock Code", value = APP_DEFAULTS$stock_code),
-                 uiOutput("sc_ticker_suggest_ui")
+                 class = "ynow-sc-row",
+                 div(
+                   class = "ynow-sc-wrap",
+                   textInput("sc", "Ticker / Stock Code", value = APP_DEFAULTS$stock_code),
+                   uiOutput("sc_ticker_suggest_ui")
+                 ),
+                 actionButton(
+                   "search",
+                   "Search",
+                   icon = icon("search"),
+                   class = "ynow-search-btn"
+                 )
                ),
-               actionButton(
-                 "search",
-                 "Search",
-                 icon = icon("search"),
-                 class = "ynow-search-btn"
-               )
-             ),
-             tags$script(HTML("
-               (function() {
-                 /* Dropdown only while typing (not on focus/empty). */
-                 var typingOpen = false;
+               tags$script(HTML("
+                 (function() {
+                   /* Dropdown only while typing (not on focus/empty). */
+                   var typingOpen = false;
 
-                 function scValue() {
-                   var inp = document.getElementById('sc');
-                   return inp ? (inp.value || '') : '';
-                 }
-
-                 function hasTypedQuery() {
-                   return scValue().trim().length > 0;
-                 }
-
-                 function showSuggest() {
-                   var el = document.getElementById('sc_ticker_suggest');
-                   if (!el) return;
-                   if (typingOpen && hasTypedQuery() && el.children.length) {
-                     el.style.display = 'block';
-                   } else {
-                     el.style.display = 'none';
+                   function scValue() {
+                     var inp = document.getElementById('sc');
+                     return inp ? (inp.value || '') : '';
                    }
-                 }
 
-                 function hideSuggest() {
-                   typingOpen = false;
-                   var el = document.getElementById('sc_ticker_suggest');
-                   if (el) el.style.display = 'none';
-                 }
-
-                 $(document).on('input', '#sc', function() {
-                   var v = $(this).val() || '';
-                   Shiny.setInputValue('ticker_typeahead', v, {priority: 'event'});
-                   typingOpen = v.trim().length > 0;
-                   showSuggest();
-                 });
-
-                 $(document).on('blur', '#sc', function(e) {
-                   var rt = e.relatedTarget;
-                   var el = document.getElementById('sc_ticker_suggest');
-                   if (el && rt && el.contains(rt)) return;
-                   hideSuggest();
-                 });
-
-                 $(document).on('keydown', '#sc', function(e) {
-                   if (e.key === 'Enter' || e.keyCode === 13) hideSuggest();
-                 });
-
-                 $(document).on('click', '#search', function() {
-                   hideSuggest();
-                 });
-
-                 $(document).on('mousedown', '#sc_ticker_suggest .ynow-suggest-item', function(e) {
-                   e.preventDefault();
-                   var sym = $(this).data('symbol');
-                   hideSuggest();
-                   if (sym) {
-                     $('#sc').val(sym).trigger('change');
-                     Shiny.setInputValue('sc', sym, {priority: 'event'});
+                   function hasTypedQuery() {
+                     return scValue().trim().length > 0;
                    }
-                 });
 
-                 $(document).on('shiny:value', function(e) {
-                   if (e.name === 'sc_ticker_suggest_ui') {
-                     setTimeout(showSuggest, 0);
+                   function showSuggest() {
+                     var el = document.getElementById('sc_ticker_suggest');
+                     if (!el) return;
+                     if (typingOpen && hasTypedQuery() && el.children.length) {
+                       el.style.display = 'block';
+                     } else {
+                       el.style.display = 'none';
+                     }
                    }
-                 });
-               })();
-             "))
-      )
-    ),
-    fluidRow(
-      column(
-        width = 12,
-        h2(uiOutput("txt_corpname", inline = TRUE), class = "ynow-corpname")
-      )
-    ),
-    fluidRow(
-      column(
-        width = 12,
-        uiOutput("ynow_data_gap_banner")
-      )
-    ),
-    fluidRow(
-      column(
-        width = 12,
-        tags$div(
-          style = "width: 100%; text-align: left; margin-top: 8px;",
-          tags$p(
-            "industry info from Yahoo",
-            style = "font-size: 12px; color: #888; margin: 0 0 4px 0; font-weight: bold;"
-          ),
-          verbatimTextOutput("search_results")
+
+                   function hideSuggest() {
+                     typingOpen = false;
+                     var el = document.getElementById('sc_ticker_suggest');
+                     if (el) el.style.display = 'none';
+                   }
+
+                   $(document).on('input', '#sc', function() {
+                     var v = $(this).val() || '';
+                     Shiny.setInputValue('ticker_typeahead', v, {priority: 'event'});
+                     typingOpen = v.trim().length > 0;
+                     showSuggest();
+                   });
+
+                   $(document).on('blur', '#sc', function(e) {
+                     var rt = e.relatedTarget;
+                     var el = document.getElementById('sc_ticker_suggest');
+                     if (el && rt && el.contains(rt)) return;
+                     hideSuggest();
+                   });
+
+                   $(document).on('keydown', '#sc', function(e) {
+                     if (e.key === 'Enter' || e.keyCode === 13) hideSuggest();
+                   });
+
+                   $(document).on('click', '#search', function() {
+                     hideSuggest();
+                   });
+
+                   $(document).on('mousedown', '#sc_ticker_suggest .ynow-suggest-item', function(e) {
+                     e.preventDefault();
+                     var sym = $(this).data('symbol');
+                     hideSuggest();
+                     if (sym) {
+                       $('#sc').val(sym).trigger('change');
+                       Shiny.setInputValue('sc', sym, {priority: 'event'});
+                     }
+                   });
+
+                   $(document).on('shiny:value', function(e) {
+                     if (e.name === 'sc_ticker_suggest_ui') {
+                       setTimeout(showSuggest, 0);
+                     }
+                   });
+                 })();
+               "))
         )
-      )
+      ),
+      fluidRow(
+        column(
+          width = 12,
+          h2(uiOutput("txt_corpname", inline = TRUE), class = "ynow-corpname")
+        )
+      ),
+      fluidRow(
+        column(
+          width = 12,
+          uiOutput("ynow_data_gap_banner")
+        )
+      ),
+      fluidRow(
+        column(
+          width = 12,
+          tags$div(
+            style = "width: 100%; text-align: left; margin-top: 8px;",
+            tags$p(
+              "industry info from Yahoo",
+              style = "font-size: 12px; color: #888; margin: 0 0 4px 0; font-weight: bold;"
+            ),
+            verbatimTextOutput("search_results")
+          )
+        )
+      ),
+      br()
     ),
-    br(),
     
     # Header KPIs: Dashboard only (Previous Close / Market Cap / EPS TTM)
     conditionalPanel(
