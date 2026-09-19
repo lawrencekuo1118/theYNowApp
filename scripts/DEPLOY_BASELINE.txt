@@ -2,11 +2,11 @@ source=shinyapps.io TheYNowApp
 bundleId=12577086
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=fb3a49b
-commit=fb3a49b169f71b700c0be4a1f491c33e6eac867f
-short=fb3a49b
-message=fix(valuation): Macro g uses live Yahoo ^TNX Rf, not fixed 5% (v17.29)
-captured_at=2026-09-19T13:42:51Z
+aligned_git=2294295
+commit=2294295106e8424923f1c8c6a9177ad9ee54b977
+short=2294295
+message=fix(ui): show ADR share-count toast only once after Search (v17.30)
+captured_at=2026-09-19T13:45:04Z
 source_branch=master
-display_version=v17.29
-note=Canonical live line is app_17.0. Bundle 12577086 = tip v17.29 including Valuation Methodology refresh (bc62f5e / v17.28) and Macro live Rf (fb3a49b). Deploy via scripts/deploy_app_17.R.
+display_version=v17.30
+note=Canonical live line is app_17.0. Bundle 12577086 = tip v17.30 (ADR share toast once; includes cluster truncate sync, About, Methodology, Macro live Rf). Deploy via scripts/deploy_app_17.R.
