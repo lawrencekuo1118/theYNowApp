@@ -456,68 +456,42 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
         dcf = "#2980b9", ddm = "#8e44ad", ri = "#16a085",
         pb = "#d35400", nav = "#7f8c8d"
       )
-      # Build overlay markers for every model with a finite FV
+      # Model FV markers: same visual stack as Current price (pill + circle + $),
+      # same vertical baseline (top: -10px) — not staggered ticks below the axis.
       overlay_html <- ""
       overlay_keys <- names(pts)
       if (is.null(overlay_keys)) overlay_keys <- character(0)
-      row_i <- 0L
       for (k in overlay_keys) {
         v <- .pick_num(pts[[k]])
         if (is.na(v)) next
         p_x <- pos(v)
         if (is.na(p_x)) next
-        row_i <- row_i + 1L
         col <- unname(model_colors[[k]] %||% "#566573")
         is_active <- nzchar(active_key) && identical(k, active_key)
         is_prim <- nzchar(prim) && identical(k, prim)
         is_sec <- nzchar(sec) && identical(k, sec)
         lab <- .model_label(k)
-        # Stagger below the axis to reduce label collisions
-        top_px <- 48 + ((row_i - 1L) %% 3L) * 22
         z <- if (is_active) 12 else if (is_prim) 9 else 8
-        border_w <- if (is_active) "2px" else "1px"
-        font_w <- if (is_active || is_prim) "700" else "600"
         role_tag <- if (is_prim) "★" else if (is_sec) "◇" else ""
+        pill_label <- paste0(role_tag, lab)
         overlay_html <- paste0(
           overlay_html,
-          "<div class='ynow-composite-model-mark' style='position:absolute; top:", top_px,
-          "px; left:", p_x, "%; transform:translateX(-50%); z-index:", z,
-          "; text-align:center; max-width:72px;'>",
-          "<div style='width:2px; height:14px; background:", col,
-          "; margin:0 auto; opacity:0.9;'></div>",
-          "<div style='font-size:10px; line-height:1.15; color:", col,
-          "; font-weight:", font_w, "; border:", border_w, " solid ", col,
-          "; border-radius:3px; padding:1px 4px; background:#fff; white-space:nowrap;'>",
-          htmltools::htmlEscape(paste0(role_tag, lab)), "<br/>",
+          "<div class='ynow-composite-model-mark' style='position:absolute; top:-10px; left:",
+          p_x, "%; transform:translateX(-50%); z-index:", z,
+          "; text-align:center;'>",
+          "<div style='font-size:12px; color:white; background:", col,
+          "; padding:2px 6px; border-radius:4px; white-space:nowrap;",
+          if (is_active) " box-shadow:0 0 0 2px rgba(44,62,80,0.35);" else "",
+          "'>",
+          htmltools::htmlEscape(pill_label), "</div>",
+          "<div style='width:12px; height:12px; background:", col,
+          "; border:2px solid white; border-radius:50%; margin:2px auto;'></div>",
+          "<div style='font-size:15px; color:", col, "; font-weight:bold;'>",
           htmltools::htmlEscape(sprintf("$%.2f", v)),
           "</div></div>"
         )
       }
-      axis_height <- if (row_i > 0L) max(110, 48 + min(3L, row_i) * 22 + 28) else 80
-
-      # #region agent log
-      tryCatch({
-        .dbg <- list(
-          sessionId = "ef0f33",
-          runId = "post-fix",
-          hypothesisId = "H5",
-          location = "investment_decision_module.R:ui_valuation_compare",
-          message = "composite_render",
-          timestamp = as.numeric(Sys.time()) * 1000,
-          data = list(
-            prim = prim, sec = sec, active_key = active_key,
-            bear = bear, base = base, bull = bull, sec_pt = sec_pt,
-            p_curr = p_curr,
-            has_primary_base = has_primary_base,
-            overlay_n = row_i,
-            overlay_keys = overlay_keys[!is.na(vapply(pts, .pick_num, numeric(1)))]
-          )
-        )
-        cat(jsonlite::toJSON(.dbg, auto_unbox = TRUE, null = "null"), "\n",
-            file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-ef0f33.log",
-            append = TRUE)
-      }, error = function(e) invisible(NULL))
-      # #endregion
+      axis_height <- 80
 
       HTML(paste0(
         "<div class='ynow-composite-valuation' style='background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 12px; border-top: 3px solid ", status_color, ";'>",

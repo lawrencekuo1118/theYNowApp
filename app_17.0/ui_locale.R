@@ -276,7 +276,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     composite_waiting_market = "Waiting for market data…",
     composite_waiting_val = "Waiting for valuation…",
     composite_current_price = "Current price",
-    composite_footer_note = "Blue band = main-model Bear–Bull; Base marker on top. Colored ticks below = each model FV vs Current price (★ main, ◇ sub-model).",
+    composite_footer_note = "Blue band = main-model Bear–Bull; Base marker on top. Model markers use the same style as Current price and sit on the same line (★ main, ◇ sub-model).",
     vbx_sgr_subtitle = "SGR",
     vbx_session_g_subtitle = "Current configured g (near-term)",
     g_stage1_help = paste0(
@@ -737,7 +737,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     composite_waiting_market = "正在等待市場資料…",
     composite_waiting_val = "等待估值結果…",
     composite_current_price = "目前市價",
-    composite_footer_note = "藍帶 = 主模型 Bear–Bull；上方點為 Base。下方色標 = 各模型合理價相對目前市價（★ 主模型、◇ 副模型）。",
+    composite_footer_note = "藍帶 = 主模型 Bear–Bull；上方點為 Base。各模型標記樣式與目前市價相同，並置於同一水平線（★ 主模型、◇ 副模型）。",
     vbx_sgr_subtitle = "SGR",
     vbx_session_g_subtitle = "當前設定 g（近期末）",
     g_stage1_help = paste0(
