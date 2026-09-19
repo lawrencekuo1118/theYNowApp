@@ -75,7 +75,7 @@
       tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
       tags$p(
         class = "ynow-about-lead",
-        "The YNow App (v17.19) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合了即時財報抓取、多維度估值模型與動態回測引擎，將繁雜的市場資料轉化為直覺、科學的投資決策。"
+        "The YNow App (v17.20) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合了即時財報抓取、多維度估值模型與動態回測引擎，將繁雜的市場資料轉化為直覺、科學的投資決策。"
       ),
       tags$p(
         class = "ynow-about-method",
@@ -91,7 +91,7 @@
       tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
       tags$p(
         class = "ynow-about-lead",
-        "The YNow App (v17.19) is a comprehensive quantitative financial analysis and valuation decision system designed for professional investors and analysts. It seamlessly integrates real-time financial data parsing, multi-dimensional valuation models, and a dynamic backtesting engine to transform complex market data into actionable, scientific investment insights."
+        "The YNow App (v17.20) is a comprehensive quantitative financial analysis and valuation decision system designed for professional investors and analysts. It seamlessly integrates real-time financial data parsing, multi-dimensional valuation models, and a dynamic backtesting engine to transform complex market data into actionable, scientific investment insights."
       ),
       tags$p(
         class = "ynow-about-method",
@@ -880,7 +880,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.19</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.20</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -1185,24 +1185,61 @@ ui <- dashboardPage(
           background-color: var(--ynow-ink) !important;
           position: relative;
         }
-        /* 側欄漢堡（三條線）：白字／白 icon，對比深色標頭 */
+        /* 側欄漢堡：僅三條白線，無外框／無 FA 字型邊框 */
         .main-header .navbar > .sidebar-toggle,
         .skin-black .main-header .navbar .sidebar-toggle {
-          color: #fff !important;
+          color: transparent !important;
+          border: none !important;
+          border-right: none !important;
+          box-shadow: none !important;
+          outline: none !important;
+          background-color: transparent !important;
+          background-image: none !important;
+          position: relative !important;
+          min-width: 44px;
+        }
+        .main-header .navbar > .sidebar-toggle:before,
+        .skin-black .main-header .navbar .sidebar-toggle:before {
+          content: "" !important;
+          display: block !important;
+          width: 18px;
+          height: 2px;
+          margin: 0;
+          padding: 0;
+          background-color: #fff !important;
+          border: none !important;
+          border-radius: 0 !important;
+          box-shadow: 0 6px 0 #fff, 0 12px 0 #fff;
+          position: absolute !important;
+          left: 50%;
+          top: 50%;
+          transform: translate(-50%, -7px);
+          font-family: none !important;
+          font-weight: normal !important;
+          line-height: 0 !important;
         }
         .main-header .navbar > .sidebar-toggle .icon-bar,
         .skin-black .main-header .navbar .sidebar-toggle .icon-bar {
-          background-color: #fff !important;
+          display: none !important;
         }
         .main-header .navbar > .sidebar-toggle .fa,
         .main-header .navbar > .sidebar-toggle .fas,
         .skin-black .main-header .navbar .sidebar-toggle .fa,
         .skin-black .main-header .navbar .sidebar-toggle .fas {
-          color: #fff !important;
+          display: none !important;
         }
-        .skin-black .main-header .navbar .sidebar-toggle:hover {
-          background-color: #000 !important;
-          color: #fff !important;
+        .skin-black .main-header .navbar .sidebar-toggle:hover,
+        .skin-black .main-header .navbar .sidebar-toggle:focus,
+        .skin-black .main-header .navbar .sidebar-toggle:active {
+          background-color: transparent !important;
+          color: transparent !important;
+          border: none !important;
+          box-shadow: none !important;
+        }
+        .skin-black .main-header .navbar .sidebar-toggle:hover:before,
+        .skin-black .main-header .navbar .sidebar-toggle:focus:before {
+          background-color: #fff !important;
+          box-shadow: 0 6px 0 #fff, 0 12px 0 #fff;
         }
 
         /* 美股／台股：釘在三線 icon 右側（navbar 座標；脫離右欄 flex；無空隙） */
@@ -1313,15 +1350,22 @@ ui <- dashboardPage(
         }
         body.ynow-market-tw .main-header .navbar > .sidebar-toggle,
         body.ynow-market-tw .skin-black .main-header .navbar .sidebar-toggle {
-          color: #fff !important;
+          color: transparent !important;
+          border: none !important;
+          background-color: transparent !important;
+        }
+        body.ynow-market-tw .main-header .navbar > .sidebar-toggle:before,
+        body.ynow-market-tw .skin-black .main-header .navbar .sidebar-toggle:before {
+          background-color: #fff !important;
+          box-shadow: 0 6px 0 #fff, 0 12px 0 #fff;
         }
         body.ynow-market-tw .main-header .navbar > .sidebar-toggle .icon-bar,
         body.ynow-market-tw .skin-black .main-header .navbar .sidebar-toggle .icon-bar {
-          background-color: #fff !important;
+          display: none !important;
         }
         body.ynow-market-tw .skin-black .main-header .navbar .sidebar-toggle:hover {
-          background-color: rgba(0, 0, 0, 0.35) !important;
-          color: #fff !important;
+          background-color: transparent !important;
+          color: transparent !important;
         }
         body.ynow-market-tw .main-header .logo,
         body.ynow-market-tw .main-header .logo:hover {
