@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12576724
+bundleId=12576731
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=c241691
 commit=c241691fbc007ec5615f98ac9faa679498271310
 short=c241691
 message=fix(lab): offline Clustering feature snapshot when Yahoo blocked (v17.12)
-captured_at=2026-09-19T11:42:54Z
+captured_at=2026-09-19T11:47:27Z
 source_branch=master
 display_version=v17.12
-note=Canonical live line is app_17.0. Bundle 12576724 = v17.12 offline cluster_features_snapshot.csv fallback (S&P500+TW) when Yahoo crumb blocked. Deploy via scripts/deploy_app_17.R.
+note=Canonical live line is app_17.0. Bundle 12576731 = redeploy of v17.12 offline cluster_features_snapshot.csv fallback (S&P500+TW) when Yahoo crumb blocked. Deploy via scripts/deploy_app_17.R.
