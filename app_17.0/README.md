@@ -4,6 +4,7 @@
 
 ## v17.13 重點
 
+- **綜合估值軸**：各模型 FV 標記改為與 Current price 相同樣式（色塊標籤＋圓點＋價格），並置於同一水平線垂直置中
 - **DCF-Model**：「預測年數 n」緊接在「選擇 DCF 估值模型」選項下方（shared header；`input$years`／`dcf_mode`／`dcf_claim` 不變）
 - **目錄**：`app_17.0/`；顯示版號 **v17.13**
 
