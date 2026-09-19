@@ -1005,7 +1005,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.44</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.45</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -2607,32 +2607,28 @@ ui <- dashboardPage(
             market.style.paddingLeft = '0';
             placeMobileAppTitle();
           }
-          /* Mobile: app title between 美股/台股 and right logo, vertically centered.
-             right edge must clear .navbar-custom-menu so 繁中 is not covered. */
+          /* Mobile: app title full-bleed and viewport-centered; max-width clears chrome. */
           function placeMobileAppTitle() {
             var logo = document.querySelector('.main-header .logo');
             if (!logo) return;
+            var title = logo.querySelector('.ynow-app-title');
             if (window.innerWidth > 767) {
               logo.style.left = '';
               logo.style.right = '';
+              if (title) title.style.maxWidth = '';
               return;
             }
+            logo.style.left = '0px';
+            logo.style.right = '0px';
             var mkt = document.getElementById('ynow-market-header');
             var custom = document.querySelector('.main-header .navbar-custom-menu');
-            var lang = document.querySelector('.ynow-lang-header');
-            if (!mkt || !custom) return;
-            var gap = 6;
-            var leftPx = Math.round(mkt.getBoundingClientRect().right + gap);
-            /* Prefer lang left edge so title never overlaps 繁中／EN */
-            var stopEl = lang || custom;
-            var rightPx = Math.round(window.innerWidth - stopEl.getBoundingClientRect().left + gap);
-            if (!(leftPx > 0)) leftPx = 90;
-            if (!(rightPx >= 120)) rightPx = 160;
-            if (leftPx + 40 >= window.innerWidth - rightPx) {
-              rightPx = Math.max(160, Math.round(window.innerWidth - leftPx - 80));
-            }
-            logo.style.left = leftPx + 'px';
-            logo.style.right = rightPx + 'px';
+            var gap = 8;
+            var leftClear = mkt ? Math.round(mkt.getBoundingClientRect().right) : 90;
+            var rightClear = custom
+              ? Math.round(window.innerWidth - custom.getBoundingClientRect().left)
+              : 120;
+            var maxW = Math.max(80, window.innerWidth - leftClear - rightClear - gap * 2);
+            if (title) title.style.maxWidth = maxW + 'px';
           }
           window.placeMobileAppTitle = placeMobileAppTitle;
           function bindMarketModeButtons() {
@@ -4145,21 +4141,22 @@ ui <- dashboardPage(
             height: 50px !important;
           }
           /* Collapse AdminLTE stacked logo+navbar (was ~100px) into one 50px bar.
-             left/right MUST NOT use !important — JS placeMobileAppTitle() sets them
-             so the title box stops before 繁中／EN (else absolute box covers 繁中). */
+             Title is full-bleed + viewport-centered; JS only sets title max-width
+             so glyphs clear 美股／台股 and 繁中／EN (controls sit above via z-index). */
           .main-header .logo,
           .skin-black .main-header .logo,
           .skin-black .main-header .logo:hover {
             position: absolute !important;
             top: 0 !important;
-            left: 90px; /* fallback; JS overrides */
-            right: 160px; /* fallback clears lang+mark; JS tightens */
+            /* Full-bleed so title centers on the viewport; controls sit above via z-index */
+            left: 0 !important;
+            right: 0 !important;
             width: auto !important;
             max-width: none !important;
             height: 50px !important;
             min-height: 50px !important;
             line-height: 50px !important;
-            padding: 0 4px !important;
+            padding: 0 8px !important;
             margin: 0 !important;
             float: none !important;
             display: flex !important;
@@ -4173,12 +4170,13 @@ ui <- dashboardPage(
             pointer-events: none;
           }
           .main-header .logo .ynow-app-title {
-            font-size: 12px !important;
+            /* Restore toward AdminLTE logo 20px; clamp so long version strings still fit */
+            font-size: 16px !important;
             line-height: 1.15 !important;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            max-width: 100%;
+            max-width: min(100%, calc(100vw - 200px));
             height: auto !important;
           }
           /* Keep 繁中／EN above the absolute title band */
@@ -4192,12 +4190,18 @@ ui <- dashboardPage(
             z-index: 1050 !important;
             flex-shrink: 0 !important;
           }
+          /* Slightly compress 繁中／EN to free width for the centered title */
           .ynow-lang-header .btn-group-xs > .btn,
           .ynow-lang-header .btn-xs {
-            min-width: 36px;
-            padding-left: 6px !important;
-            padding-right: 6px !important;
-            font-size: 11px !important;
+            min-width: 28px !important;
+            padding-left: 4px !important;
+            padding-right: 4px !important;
+            padding-top: 3px !important;
+            padding-bottom: 3px !important;
+            font-size: 10px !important;
+          }
+          .main-header .navbar-custom-menu .navbar-nav > li.ynow-lang-header {
+            padding: 0 4px 0 0 !important;
           }
           .main-header .navbar {
             min-height: 50px !important;
@@ -4260,7 +4264,8 @@ ui <- dashboardPage(
             padding-bottom: 0 !important;
           }
           .main-header .navbar-custom-menu .navbar-nav > li.ynow-lang-header {
-            padding: 0 8px 0 2px !important;
+            padding-left: 0 !important;
+            padding-right: 4px !important;
           }
           .main-header .navbar-custom-menu .navbar-nav > li#ynow-header-logo.ynow-header-logo {
             position: relative !important;
