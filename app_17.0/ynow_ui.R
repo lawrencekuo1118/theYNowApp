@@ -1005,7 +1005,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.40</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.41</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -1226,6 +1226,12 @@ ui <- dashboardPage(
           /* logo 圖檔主色（藍／綠）— 現金流序列等資料色 */
           --ynow-logo-blue: #0C5484;
           --ynow-logo-green: #249C60;
+          /* Model Selector｜估值模型推薦 色系（各模型頁主題） */
+          --ynow-model-nav: #27ae60;
+          --ynow-model-dcf: #00a65a;
+          --ynow-model-ddm: #f39c12;
+          --ynow-model-ri: #605ca8;
+          --ynow-model-pb: #3c8dbc;
           --ynow-gold-gradient: linear-gradient(
             105deg,
             #FFF6C8 0%,
@@ -1636,6 +1642,78 @@ ui <- dashboardPage(
           border-top-color: transparent;
           color: var(--ynow-ink) !important;
         }
+
+        /* --- 估值模型頁色系（對齊 Model Selector；不含 試算／回復預設 按鈕）--- */
+        body.ynow-theme-nav { --ynow-model-accent: var(--ynow-model-nav); }
+        body.ynow-theme-dcf { --ynow-model-accent: var(--ynow-model-dcf); }
+        body.ynow-theme-ddm { --ynow-model-accent: var(--ynow-model-ddm); }
+        body.ynow-theme-ri  { --ynow-model-accent: var(--ynow-model-ri); }
+        body.ynow-theme-pb  { --ynow-model-accent: var(--ynow-model-pb); }
+
+        body.ynow-theme-model .content-wrapper .box.box-primary,
+        body.ynow-theme-model .content-wrapper .box.box-info,
+        body.ynow-theme-model .content-wrapper .box.box-success,
+        body.ynow-theme-model .content-wrapper .box.box-warning {
+          border-top-color: var(--ynow-model-accent) !important;
+        }
+        body.ynow-theme-model .content-wrapper .box.box-solid.box-primary,
+        body.ynow-theme-model .content-wrapper .box.box-solid.box-info,
+        body.ynow-theme-model .content-wrapper .box.box-solid.box-success,
+        body.ynow-theme-model .content-wrapper .box.box-solid.box-warning {
+          border: 1px solid var(--ynow-model-accent) !important;
+        }
+        body.ynow-theme-model .content-wrapper .box.box-solid.box-primary > .box-header,
+        body.ynow-theme-model .content-wrapper .box.box-solid.box-info > .box-header,
+        body.ynow-theme-model .content-wrapper .box.box-solid.box-success > .box-header,
+        body.ynow-theme-model .content-wrapper .box.box-solid.box-warning > .box-header {
+          color: #fff !important;
+          background: var(--ynow-model-accent) !important;
+          background-color: var(--ynow-model-accent) !important;
+        }
+        body.ynow-theme-model .content-wrapper .box.box-solid.box-primary > .box-header a,
+        body.ynow-theme-model .content-wrapper .box.box-solid.box-primary > .box-header .btn,
+        body.ynow-theme-model .content-wrapper .box.box-solid.box-info > .box-header a,
+        body.ynow-theme-model .content-wrapper .box.box-solid.box-info > .box-header .btn,
+        body.ynow-theme-model .content-wrapper .box.box-solid.box-success > .box-header a,
+        body.ynow-theme-model .content-wrapper .box.box-solid.box-success > .box-header .btn,
+        body.ynow-theme-model .content-wrapper .box.box-solid.box-warning > .box-header a,
+        body.ynow-theme-model .content-wrapper .box.box-solid.box-warning > .box-header .btn {
+          color: #fff !important;
+        }
+        body.ynow-theme-model .content-wrapper .nav-tabs-custom > .nav-tabs > li.active {
+          border-top-color: var(--ynow-model-accent) !important;
+        }
+        body.ynow-theme-model .content-wrapper .nav-tabs-custom > .nav-tabs > li.active > a,
+        body.ynow-theme-model .content-wrapper .nav-tabs-custom > .nav-tabs > li.active:hover > a {
+          color: var(--ynow-model-accent) !important;
+        }
+        /* 共用 Composite／years header：左側色條提示目前模型 */
+        body.ynow-theme-model .ynow-header-composite-row,
+        body.ynow-theme-model .ynow-dcf-mode-row,
+        body.ynow-theme-model .ynow-header-years-suggest-row {
+          border-left: 4px solid var(--ynow-model-accent);
+          padding-left: 6px;
+          margin-left: 0;
+        }
+        /* 明確排除：試算／回復預設按鈕色不變 */
+        body.ynow-theme-model .btn.ynow-btn-calc,
+        body.ynow-theme-model .btn.ynow-btn-calc:hover,
+        body.ynow-theme-model .btn.ynow-btn-calc:focus,
+        body.ynow-theme-model .btn.ynow-btn-calc:active,
+        body.ynow-theme-model .btn.ynow-btn-calc.active {
+          background-color: var(--ynow-logo-green) !important;
+          border-color: #1e7a4c !important;
+          color: #ffffff !important;
+        }
+        body.ynow-theme-model .btn.ynow-btn-reset,
+        body.ynow-theme-model .btn.ynow-btn-reset:hover,
+        body.ynow-theme-model .btn.ynow-btn-reset:focus,
+        body.ynow-theme-model .btn.ynow-btn-reset:active {
+          background-color: #7f8c8d !important;
+          border-color: #6c757d !important;
+          color: #ffffff !important;
+        }
+
         /* Dashboard 損益表／現金流量表：圖標與選取頂條對齊 logo 金 */
         #dashboard_fin_report > .nav-tabs > li > a[data-value="Income Statement"] > .fa,
         #dashboard_fin_report > .nav-tabs > li > a[data-value="Income Statement"] > .fas,
@@ -3015,6 +3093,21 @@ ui <- dashboardPage(
             }
             Shiny.addCustomMessageHandler('ynowUiLocale', applyUiLocale);
             Shiny.addCustomMessageHandler('ynowDcLocale', applyDcLocale);
+            Shiny.addCustomMessageHandler('ynowModelTheme', function (payload) {
+              var tab = (payload && payload.tab) ? String(payload.tab) : '';
+              var map = {
+                nav_calculator: 'nav',
+                dcf_calculator: 'dcf',
+                ddm_calculator: 'ddm',
+                ri_calculator: 'ri',
+                pb_calculator: 'pb'
+              };
+              var key = map[tab] || null;
+              ['nav', 'dcf', 'ddm', 'ri', 'pb'].forEach(function (k) {
+                document.body.classList.toggle('ynow-theme-' + k, k === key);
+              });
+              document.body.classList.toggle('ynow-theme-model', !!key);
+            });
           }
           registerLocaleHandler();
         })();

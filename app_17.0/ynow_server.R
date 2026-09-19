@@ -96,6 +96,12 @@ server <- function(input, output, session) {
     .clear_lab_cluster_result("market_mode")
   }, ignoreInit = TRUE)
 
+  # Valuation-model page accent (Model Selector hex); Basic Setup / other tabs clear theme
+  observeEvent(input$sidebar_tabs, {
+    tab <- as.character(input$sidebar_tabs %||% "")[1]
+    session$sendCustomMessage("ynowModelTheme", list(tab = tab))
+  }, ignoreNULL = FALSE, ignoreInit = FALSE)
+
   # JS market buttons also pulse this tick so Clustering clears even if mode is unchanged.
   observeEvent(input$lab_cluster_clear_tick, {
     .clear_lab_cluster_result("clear_tick")
@@ -10621,7 +10627,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.40"),
+      paste0("- **App：** The YNow App v17.41"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {
