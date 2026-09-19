@@ -64,7 +64,7 @@ APP_DEFAULTS <- list(
   ddm_g           = default_sgr,        # 股利 g；預設對齊中央 SGR，可覆寫
   ddm_ke          = default_re,
   ddm_sync_central_g = TRUE,            # 與基礎設定 SGR 同步
-  ddm_mode        = "gordon",           # gordon | two_stage
+  ddm_mode        = "gordon",           # gordon | spm | two_stage
   ddm_g_stage1    = default_g,          # 二階段高速期股利成長
   ddm_yr_stage1   = 5,                  # 二階段高速期年數
 

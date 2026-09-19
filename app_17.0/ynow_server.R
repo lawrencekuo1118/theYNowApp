@@ -182,6 +182,27 @@ server <- function(input, output, session) {
         selected = oos_sel
       )
     }, error = function(e) NULL)
+    # DDM 模型選項：標籤隨 locale（值不變）
+    tryCatch({
+      ddm_sel <- isolate(input[["mod_ddm-ddm_mode"]])
+      if (is.null(ddm_sel) || !ddm_sel %in% c("gordon", "spm", "two_stage")) {
+        ddm_sel <- APP_DEFAULTS$ddm_mode %||% "gordon"
+      }
+      updateRadioButtons(
+        session,
+        "mod_ddm-ddm_mode",
+        label = ui_str("ddm_mode_label", loc),
+        choices = stats::setNames(
+          c("gordon", "spm", "two_stage"),
+          c(
+            ui_str("ddm_mode_gordon", loc),
+            ui_str("ddm_mode_spm", loc),
+            ui_str("ddm_mode_two_stage", loc)
+          )
+        ),
+        selected = ddm_sel
+      )
+    }, error = function(e) NULL)
   }
 
   # 語言控制：只改 UI locale，不碰顯示幣別
@@ -1518,7 +1539,7 @@ server <- function(input, output, session) {
         class = "ynow-model-selector-row",
         make_card("NAV", "nav", "sitemap", "#27ae60", "P = NAVPS × NAV multiple", "控股／綜合：帳面控股 NAV（非市場 SOTP）；無需 SGR。"),
         make_card("DCF", "dcf", "calculator", "#00a65a", "FCFF／WACC 或 FCFE／Ke", "適合 FCF 為正且相對穩定的企業。"),
-        make_card("DDM", "ddm", "hand-holding-usd", "#f39c12", "Gordon 或二階段 P0 = PV(股利)", "適合持續且穩定配息的企業。"),
+        make_card("DDM", "ddm", "hand-holding-usd", "#f39c12", "Gordon／SPM／二階段 P0 = PV(股利)", "適合持續且穩定配息的企業。"),
         make_card("RI", "ri", "gem", "#605ca8", "Value = Book Value + Σ Residual Income / (1+Ke)^t", "適合帳面價值與 ROE 具參考性的企業。"),
         make_card("P/B", "pb", "landmark", "#3c8dbc", "P = (BVPS／TBVPS／NAVPS) × 目標 P/B", "相對估值：產業／歷史倍數，或 Justified（需 SGR）。")
       )
@@ -1592,7 +1613,7 @@ server <- function(input, output, session) {
       c("DDM", "D0", .snapshot_value(input[["mod_ddm-d0"]]), "P0 = D1 / (Ke-g); D1 = D0×(1+g)"),
       c("DDM", "g (%)", .snapshot_value(input[["mod_ddm-g"]]), "Dividend growth; optional sync with central SGR"),
       c("DDM", "Sync g with SGR", .snapshot_value(input[["mod_ddm-sync_g"]]), "If TRUE, DDM g follows Basic Setup SGR"),
-      c("DDM", "DDM Mode", .snapshot_value(input[["mod_ddm-ddm_mode"]]), "gordon / two_stage"),
+      c("DDM", "DDM Mode", .snapshot_value(input[["mod_ddm-ddm_mode"]]), "gordon / spm / two_stage"),
       c("DDM", "Stage 1 g1 (%)", .snapshot_value(input[["mod_ddm-g_stage1"]]), "Two-stage high-growth dividend g"),
       c("DDM", "Stage 1 years", .snapshot_value(input[["mod_ddm-yr_stage1"]]), "Two-stage high-growth years n1"),
       c("DDM", "Ke (%)", .snapshot_value(input[["mod_ddm-ke"]]), "Equity required return (CAPM)"),
@@ -1682,7 +1703,7 @@ server <- function(input, output, session) {
       ddm_g = c("DDM", "股利成長 g (%)", "預設對齊中央 SGR"),
       ddm_ke = c("DDM", "Ke (%)", "預設對齊 CAPM Re"),
       ddm_sync_central_g = c("DDM", "與中央 SGR 同步", "TRUE 時 DDM g 跟隨 SGR"),
-      ddm_mode = c("DDM", "DDM 結構", "gordon / two_stage"),
+      ddm_mode = c("DDM", "DDM 結構", "gordon / spm / two_stage"),
       ddm_g_stage1 = c("DDM", "高速期 g1 (%)", "二階段前段股利成長"),
       ddm_yr_stage1 = c("DDM", "高速期年數 n1", "二階段前段年數"),
       dcf_mode = c("DCF", "DCF 模式", "gordon / two_stage"),
@@ -3020,13 +3041,19 @@ server <- function(input, output, session) {
     d0 <- suppressWarnings(as.numeric(input[["mod_ddm-d0"]])[1])
     g0 <- suppressWarnings(as.numeric(input[["mod_ddm-g"]])[1])
     ke0 <- suppressWarnings(as.numeric(input[["mod_ddm-ke"]])[1])
-    if (!is.finite(d0) || d0 <= 0) return(NA_real_)
+    if (!is.finite(d0) || d0 < 0) return(NA_real_)
     if (!is.finite(g0)) g0 <- if (!is.null(input$sgr) && is.finite(as.numeric(input$sgr))) as.numeric(input$sgr) else APP_DEFAULTS$sgr
     if (!is.finite(ke0)) ke0 <- central_ke() * 100
     g <- (g0 + g_pp_delta) / 100
     ke <- (ke0 + ke_pp_delta) / 100
-    if (!is.finite(ke) || !is.finite(g) || ke <= g) return(NA_real_)
     mode <- as.character(input[["mod_ddm-ddm_mode"]] %||% "gordon")[1]
+    if (identical(mode, "spm")) {
+      eps <- suppressWarnings(as.numeric(input[["mod_ddm-est_eps"]])[1])
+      if (!is.finite(eps) || !is.finite(ke) || !is.finite(g) || ke <= 0) return(NA_real_)
+      return(.ddm_formula_spm(eps = eps, d = d0, g = g, ke = ke))
+    }
+    if (!is.finite(d0) || d0 <= 0) return(NA_real_)
+    if (!is.finite(ke) || !is.finite(g) || ke <= g) return(NA_real_)
     if (identical(mode, "two_stage")) {
       g1 <- suppressWarnings(as.numeric(input[["mod_ddm-g_stage1"]])[1]) / 100
       n1 <- suppressWarnings(as.integer(input[["mod_ddm-yr_stage1"]])[1])
@@ -6346,7 +6373,14 @@ server <- function(input, output, session) {
         NA_real_
       }
     }, error = function(e) NA_real_)
-    if (is.na(d0) || d0 <= 0) return(NULL)
+    mode <- as.character(input[["mod_ddm-ddm_mode"]] %||% "gordon")[1]
+    if (identical(mode, "spm")) {
+      if (is.na(d0) || d0 < 0) d0 <- 0
+      eps <- suppressWarnings(as.numeric(input[["mod_ddm-est_eps"]])[1])
+      if (!is.finite(eps)) return(NULL)
+    } else if (is.na(d0) || d0 <= 0) {
+      return(NULL)
+    }
 
     ke_range <- seq(base_ke + 2, base_ke - 2, length.out = 5)
     g_range <- seq(base_g - 1, base_g + 1, length.out = 5)
@@ -6361,8 +6395,13 @@ server <- function(input, output, session) {
       for (j in 1:5) {
         ke_val <- ke_range[i] / 100
         g_val <- g_range[j] / 100
-        if (!is.na(ke_val) && !is.na(g_val) && ke_val > g_val) {
-          mode <- as.character(input[["mod_ddm-ddm_mode"]] %||% "gordon")[1]
+        if (is.na(ke_val) || is.na(g_val)) next
+        if (identical(mode, "spm")) {
+          eps <- suppressWarnings(as.numeric(input[["mod_ddm-est_eps"]])[1])
+          if (is.finite(eps) && ke_val > 0) {
+            sens_matrix[i, j] <- .ddm_formula_spm(eps = eps, d = d0, g = g_val, ke = ke_val)
+          }
+        } else if (ke_val > g_val) {
           if (identical(mode, "two_stage")) {
             g1 <- suppressWarnings(as.numeric(input[["mod_ddm-g_stage1"]])[1]) / 100
             n1 <- suppressWarnings(as.integer(input[["mod_ddm-yr_stage1"]])[1])
@@ -6929,6 +6968,10 @@ server <- function(input, output, session) {
       wacc = wacc, ke = ke, sgr = sgr, g_explicit = g_explicit,
       n_years = n_years, pb_mid = pb_mid, nav_mid = nav_mid, ddm_g = ddm_g, ddm_ke = ddm_ke,
       ddm_mode = as.character(input[["mod_ddm-ddm_mode"]] %||% APP_DEFAULTS$ddm_mode)[1],
+      ddm_eps = {
+        v <- suppressWarnings(as.numeric(input[["mod_ddm-est_eps"]])[1])
+        if (is.finite(v)) v else NA_real_
+      },
       ddm_g_stage1 = {
         v <- suppressWarnings(as.numeric(input[["mod_ddm-g_stage1"]])[1])
         if (is.finite(v)) v / 100 else g_explicit
@@ -10217,7 +10260,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.13"),
+      paste0("- **App：** The YNow App v17.14"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

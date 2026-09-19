@@ -1224,6 +1224,22 @@ dcf_gordon_tv_pv <- function(last_cf, g, r, discount_factor_n) {
   d0 * (1 + g) / (ke - g)
 }
 
+#' Sum of Perpetuities Method (SPM; Brown & Abraham 2012).
+#' P0 = (E × g) / Ke² + D / Ke.
+#' Separates capitalized sticky dividend from PV of earnings growth via retention.
+#' Does not require Ke > g (unlike Gordon); only Ke > 0. Rates are decimals.
+#' When ROE = Ke and g = ROE × retention, SPM equals forward-D Gordon P = D/(Ke−g).
+.ddm_formula_spm <- function(eps, d, g, ke) {
+  eps <- suppressWarnings(as.numeric(eps)[1])
+  d <- suppressWarnings(as.numeric(d)[1])
+  g <- suppressWarnings(as.numeric(g)[1])
+  ke <- suppressWarnings(as.numeric(ke)[1])
+  if (!is.finite(eps) || !is.finite(d) || !is.finite(g) || !is.finite(ke)) return(NA_real_)
+  if (ke <= 0) return(NA_real_)
+  if (d < 0) d <- 0
+  (eps * g) / (ke * ke) + d / ke
+}
+
 #' Two-stage DDM: high-growth g1 for n years, then Gordon at g2.
 #' D_t = D0(1+g1)^t for t=1..n; TV = D_n(1+g2)/(Ke−g2); P0 = Σ PV(D_t) + PV(TV).
 .ddm_formula_two_stage <- function(d0 = 1, g1, n, g2, ke) {

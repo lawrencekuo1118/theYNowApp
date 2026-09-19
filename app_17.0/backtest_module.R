@@ -263,16 +263,29 @@ estimate_hist_dcf <- function(fcf0, cash, debt, shares,
   .dcf_out(fv, "geometric")
 }
 
-#' Historical / PIT DDM (Gordon or two-stage).
+#' Historical / PIT DDM (Gordon, SPM, or two-stage).
 #' d0 is DIVIDEND-PER-SHARE. Two-stage uses g_explicit for n years then sgr.
-estimate_hist_ddm <- function(d0, ke, g, n = 1L, g_explicit = NULL) {
+#' SPM uses eps (earnings per share): P = E·g/Ke² + D/Ke.
+estimate_hist_ddm <- function(d0, ke, g, n = 1L, g_explicit = NULL,
+                              eps = NULL, mode = "gordon") {
   d0 <- .safe_num(d0, NA_real_)
   ke <- .safe_num(ke, NA_real_)
   g  <- .safe_num(g,  NA_real_)
+  mode <- as.character(mode %||% "gordon")[1]
+  if (identical(mode, "spm")) {
+    eps <- .safe_num(eps, NA_real_)
+    if (!is.finite(d0) || d0 < 0 || !is.finite(ke) || !is.finite(g) || !is.finite(eps)) {
+      return(NA_real_)
+    }
+    p0 <- .ddm_formula_spm(eps = eps, d = d0, g = g, ke = ke)
+    if (!is.finite(p0) || p0 <= 0) return(NA_real_)
+    return(p0)
+  }
   if (!is.finite(d0) || d0 <= 0 || !is.finite(ke) || !is.finite(g)) return(NA_real_)
   n <- as.integer(.safe_num(n, 1))
   g1 <- .safe_num(g_explicit, g)
-  if (is.finite(g1) && is.finite(n) && n >= 2L && abs(g1 - g) > 1e-12) {
+  if (identical(mode, "two_stage") ||
+      (is.finite(g1) && is.finite(n) && n >= 2L && abs(g1 - g) > 1e-12)) {
     p0 <- .ddm_formula_two_stage(d0 = d0, g1 = g1, n = n, g2 = g, ke = ke)
   } else {
     if (ke <= g) return(NA_real_)
@@ -756,6 +769,7 @@ reconstruct_fair_value_pit <- function(fund_row, price, model_params,
   bvps <- if (is.finite(eqbook) && is.finite(shares) && shares > 1) eqbook / shares else NA_real_
   roe_pit <- if (is.finite(ni) && is.finite(eqbook) && eqbook > 0) ni / eqbook else NA_real_
   dps  <- if (is.finite(divp) && is.finite(shares) && shares > 1) abs(divp) / shares else NA_real_
+  eps_ps <- if (is.finite(ni) && is.finite(shares) && shares > 1) ni / shares else NA_real_
   payout_pit <- if (is.finite(divp) && is.finite(ni) && ni > 0 && is.finite(shares) && shares > 1) {
     min(max(abs(divp) / ni, 0), 1)
   } else NA_real_
@@ -878,19 +892,33 @@ reconstruct_fair_value_pit <- function(fund_row, price, model_params,
   fv_dcf <- .safe_num(fv_dcf_raw, NA_real_)
   dcf_path <- as.character(attr(fv_dcf_raw, "dcf_path") %||% "na")[1]
   if (!nzchar(dcf_path) || is.na(dcf_path)) dcf_path <- "na"
-  fv_ddm <- if (is.finite(dps) && dps > 0) {
-    if (isTRUE(use_session_assumptions) &&
-        identical(as.character(model_params$ddm_mode %||% "gordon")[1], "two_stage")) {
-      estimate_hist_ddm(
-        dps, ddm_ke, ddm_g,
-        n = .safe_num(model_params$ddm_yr_stage1, n_yr),
-        g_explicit = .safe_num(model_params$ddm_g_stage1, g_ex)
-      )
+  fv_ddm <- {
+    ddm_mode_use <- as.character(model_params$ddm_mode %||% "gordon")[1]
+    if (identical(ddm_mode_use, "spm")) {
+      eps_use <- if (isTRUE(use_session_assumptions)) {
+        .safe_num(model_params$ddm_eps, eps_ps)
+      } else {
+        eps_ps
+      }
+      if (is.finite(dps) && dps >= 0 && is.finite(eps_use)) {
+        estimate_hist_ddm(dps, ddm_ke, ddm_g, eps = eps_use, mode = "spm")
+      } else {
+        NA_real_
+      }
+    } else if (is.finite(dps) && dps > 0) {
+      if (isTRUE(use_session_assumptions) && identical(ddm_mode_use, "two_stage")) {
+        estimate_hist_ddm(
+          dps, ddm_ke, ddm_g,
+          n = .safe_num(model_params$ddm_yr_stage1, n_yr),
+          g_explicit = .safe_num(model_params$ddm_g_stage1, g_ex),
+          mode = "two_stage"
+        )
+      } else {
+        estimate_hist_ddm(dps, ddm_ke, ddm_g)
+      }
     } else {
-      estimate_hist_ddm(dps, ddm_ke, ddm_g)
+      NA_real_
     }
-  } else {
-    NA_real_
   }
   fv_ri  <- estimate_hist_ri(
     bvps, roe_use, ri_ke, ri_g, n = ri_years, payout = payout_use, roe_path = roe_path
