@@ -461,28 +461,6 @@ lab_fetch_cluster_features_r <- function(tickers, timeout_sec = 12) {
 }
 
 
-#' Best-effort debug NDJSON writer (local .cursor path or temp)
-.lab_cluster_debug_log <- function(payload) {
-  paths <- c(
-    "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-ef0f33.log",
-    file.path(tempdir(), "debug-ef0f33.log")
-  )
-  line <- tryCatch(
-    paste0(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"), "\n"),
-    error = function(e) NULL
-  )
-  if (is.null(line)) return(invisible(FALSE))
-  for (p in paths) {
-    ok <- tryCatch({
-      dir.create(dirname(p), recursive = TRUE, showWarnings = FALSE)
-      cat(line, file = p, append = TRUE)
-      TRUE
-    }, error = function(e) FALSE)
-    if (isTRUE(ok)) return(invisible(TRUE))
-  }
-  invisible(FALSE)
-}
-
 #' Path to bundled offline Clustering feature snapshot (CSV)
 lab_cluster_features_snapshot_path <- function() {
   candidates <- c(
@@ -596,28 +574,6 @@ lab_fetch_cluster_features <- function(tickers, chunk_size = 20L) {
         # Live Yahoo preferred over snapshot when finite
         df <- lab_cluster_merge_feature_dfs(part, df)
       }
-      # #region agent log
-      tryCatch({
-        .dbg <- list(
-          sessionId = "ef0f33",
-          runId = "cluster-snap",
-          hypothesisId = "H_offline",
-          location = "lab_clustering.R:lab_fetch_cluster_features",
-          message = "py_chunk",
-          timestamp = as.numeric(Sys.time()) * 1000,
-          data = list(
-            chunk = ci,
-            n_chunks = length(chunks),
-            chunk_n = length(chunks[[ci]]),
-            n_ok_so_far = lab_cluster_usable_feature_rows(df),
-            n_snap = n_snap,
-            used_snapshot = used_snapshot,
-            py_err = py_err
-          )
-        )
-        .lab_cluster_debug_log(.dbg)
-      }, error = function(e) invisible(NULL))
-      # #endregion
     }
   } else {
     py_err <- "Python scraper unavailable"
@@ -676,31 +632,6 @@ lab_fetch_cluster_features <- function(tickers, chunk_size = 20L) {
       if (!is.null(snap_err)) paste0("; snapshot: ", snap_err) else "",
       "; snapshot_usable=", n_snap
     )
-    # #region agent log
-    tryCatch({
-      .dbg <- list(
-        sessionId = "ef0f33",
-        runId = "cluster-snap",
-        hypothesisId = "H_offline",
-        location = "lab_clustering.R:lab_fetch_cluster_features",
-        message = "features_unavailable",
-        timestamp = as.numeric(Sys.time()) * 1000,
-        data = list(
-          n_tickers = length(tks),
-          n_ok = n_ok,
-          n_rows = if (is.null(df)) 0L else nrow(df),
-          n_snap = n_snap,
-          used_snapshot = used_snapshot,
-          py_ready = isTRUE(ready),
-          py_err = py_err,
-          r_err = r_err,
-          need_r_n = length(need_r),
-          sample_tickers = utils::head(tks, 8)
-        )
-      )
-      .lab_cluster_debug_log(.dbg)
-    }, error = function(e) invisible(NULL))
-    # #endregion
     stop(sprintf(
       paste0(
         "Ratio features unavailable for clustering ",
@@ -714,29 +645,6 @@ lab_fetch_cluster_features <- function(tickers, chunk_size = 20L) {
   attr(df, "used_snapshot") <- used_snapshot
   attr(df, "snapshot_at") <- if (!is.null(snap)) attr(snap, "snapshot_at") else NA_character_
   attr(df, "n_live_ok") <- n_ok
-  # #region agent log
-  tryCatch({
-    .dbg <- list(
-      sessionId = "ef0f33",
-      runId = "cluster-snap",
-      hypothesisId = "H_offline",
-      location = "lab_clustering.R:lab_fetch_cluster_features",
-      message = "features_ok",
-      timestamp = as.numeric(Sys.time()) * 1000,
-      data = list(
-        n_tickers = length(tks),
-        n_ok = n_ok,
-        n_rows = nrow(df),
-        n_snap = n_snap,
-        used_snapshot = used_snapshot,
-        py_err = py_err,
-        r_err = r_err,
-        need_r_n = length(need_r)
-      )
-    )
-    .lab_cluster_debug_log(.dbg)
-  }, error = function(e) invisible(NULL))
-  # #endregion
   df
 }
 

@@ -136,28 +136,6 @@ stopifnot(isTRUE(attr(feats_us, "used_snapshot")) || lab_cluster_usable_feature_
 res_off <- lab_run_stock_clustering(feats_us, k_clusters = 4L, locale = "en", seed = 3L)
 stopifnot(identical(as.integer(res_off$k), 4L), nrow(res_off$data) >= 4L)
 
-# #region agent log
-tryCatch({
-  .dbg <- list(
-    sessionId = "ef0f33",
-    runId = "cluster-snap-verify",
-    hypothesisId = "H_offline",
-    location = "tests/test_lab_clustering.R",
-    message = "offline_snapshot_ok",
-    timestamp = as.numeric(Sys.time()) * 1000,
-    data = list(
-      snap_n = nrow(snap_all),
-      us_ok = lab_cluster_usable_feature_rows(feats_us),
-      tw_ok = lab_cluster_usable_feature_rows(feats_tw),
-      clustered = nrow(res_off$data)
-    )
-  )
-  cat(jsonlite::toJSON(.dbg, auto_unbox = TRUE, null = "null"), "\n",
-      file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-ef0f33.log",
-      append = TRUE)
-}, error = function(e) invisible(NULL))
-# #endregion
-
 # Session ticker matching (TW suffix / BRK.B↔BRK-B)
 stopifnot(identical(lab_cluster_match_ticker(c("AAPL", "MSFT"), "aapl"), "AAPL"))
 stopifnot(identical(lab_cluster_match_ticker(c("2330.TW", "2317.TW"), "2330"), "2330.TW"))

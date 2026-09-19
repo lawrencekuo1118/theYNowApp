@@ -646,7 +646,10 @@ server <- function(input, output, session) {
                 sh_res$method
               )
             }
-            showNotification(msg, type = "message", duration = 8)
+            showNotification(
+              msg, type = "message", duration = 8,
+              id = "ynow_shares_adr_note"
+            )
           }
         }, error = function(e) NULL)
 
@@ -3281,38 +3284,6 @@ server <- function(input, output, session) {
       xs <- sort(c(band$bear, band$base, band$bull))
       band$bear <- xs[1]; band$base <- xs[2]; band$bull <- xs[3]
     }
-    # #region agent log
-    tryCatch({
-      .dbg <- list(
-        sessionId = "ef0f33",
-        runId = "pre",
-        hypothesisId = "H1",
-        location = "ynow_server.R:primary_valuation_band",
-        message = "primary_band_computed",
-        timestamp = as.numeric(Sys.time()) * 1000,
-        data = list(
-          sidebar_tabs = as.character(isolate(input$sidebar_tabs) %||% NA_character_)[1],
-          prim = prim,
-          sec = as.character(rec$secondary %||% "")[1],
-          bear = band$bear, base = band$base, bull = band$bull,
-          label = as.character(band$label %||% ""),
-          wacc_gordon = suppressWarnings(as.numeric(isolate(input$wacc_gordon))[1]),
-          sgr = suppressWarnings(as.numeric(isolate(input$sgr))[1]),
-          stock_est = suppressWarnings(as.numeric(isolate(stock_price_estimate_val()))[1]),
-          dcf_live = tryCatch(.dcf_price_at(0, 0, 1), error = function(e) NA_real_),
-          nav_mid = tryCatch({
-            b <- nav_scenario_band(); b$base
-          }, error = function(e) NA_real_),
-          pb_mid = tryCatch({
-            b <- pb_scenario_band(); b$base
-          }, error = function(e) NA_real_)
-        )
-      )
-      cat(jsonlite::toJSON(.dbg, auto_unbox = TRUE, null = "null"), "\n",
-          file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-ef0f33.log",
-          append = TRUE)
-    }, error = function(e) invisible(NULL))
-    # #endregion
     band
   })
 
@@ -10609,7 +10580,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.29"),
+      paste0("- **App：** The YNow App v17.30"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

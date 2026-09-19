@@ -217,9 +217,7 @@ nav_module_server <- function(id,
       )
       if (is.finite(navps)) {
         updateNumericInput(session, "navps", value = round(navps, 2))
-        if (isTRUE(auto_adj) && !is.null(sh_adj$note) && nzchar(sh_adj$note)) {
-          showNotification(sh_adj$note, type = "message", duration = 8)
-        }
+        # ADR／股數級距 toast 僅由 Search 發出一次；此處只更新頁內 shares_resolve_note
       }
       invisible(NULL)
     }

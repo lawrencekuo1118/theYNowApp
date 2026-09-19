@@ -386,9 +386,7 @@ pb_asset_module_server <- function(id,
           if (is.finite(tbvps)) updateNumericInput(session, "tbvps", value = round(tbvps, 2))
           nav_shares(shares)
           sync_navps(df_bs, shares, share_method = sh_adj$method %||% "balance_sheet")
-          if (isTRUE(auto_adj) && !is.null(sh_adj$note) && nzchar(sh_adj$note)) {
-            showNotification(sh_adj$note, type = "message", duration = 8)
-          }
+          # ADR／股數級距 toast 僅由 Search 發出一次；此處只更新頁內 shares_resolve_note
         } else {
           showNotification("無法從財報推算 BVPS（匯率／ADR 股數未對齊）", type = "warning", duration = 6)
         }
