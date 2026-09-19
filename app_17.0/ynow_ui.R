@@ -75,7 +75,7 @@
       tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
       tags$p(
         class = "ynow-about-lead",
-        "The YNow App (v17.06) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合了即時財報抓取、多維度估值模型與動態回測引擎，將繁雜的市場資料轉化為直覺、科學的投資決策。"
+        "The YNow App (v17.07) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合了即時財報抓取、多維度估值模型與動態回測引擎，將繁雜的市場資料轉化為直覺、科學的投資決策。"
       ),
       tags$p(
         class = "ynow-about-method",
@@ -91,7 +91,7 @@
       tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
       tags$p(
         class = "ynow-about-lead",
-        "The YNow App (v17.06) is a comprehensive quantitative financial analysis and valuation decision system designed for professional investors and analysts. It seamlessly integrates real-time financial data parsing, multi-dimensional valuation models, and a dynamic backtesting engine to transform complex market data into actionable, scientific investment insights."
+        "The YNow App (v17.07) is a comprehensive quantitative financial analysis and valuation decision system designed for professional investors and analysts. It seamlessly integrates real-time financial data parsing, multi-dimensional valuation models, and a dynamic backtesting engine to transform complex market data into actionable, scientific investment insights."
       ),
       tags$p(
         class = "ynow-about-method",
@@ -834,7 +834,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.06</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.07</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -1854,10 +1854,15 @@ ui <- dashboardPage(
         @media (max-width: 767px) {
           .ynow-hdr-subband {
             max-width: calc(100% - 120px);
-            margin-top: -40px;
+            /* Do not pull into fixed black header (was -40px → covered when header stacked to 100px) */
+            margin-top: 4px;
+            margin-bottom: 8px;
           }
           .ynow-hdr-subband .ynow-credit-text {
             font-size: 11px;
+          }
+          .content-wrapper > .content {
+            padding-top: 40px;
           }
         }
         /* Compact composite valuation status (replaces KPI row on model pages) */
@@ -2182,6 +2187,27 @@ ui <- dashboardPage(
             market.style.left = leftPx + 'px';
             market.style.marginLeft = '0';
             market.style.paddingLeft = '0';
+            placeMobileAppTitle();
+          }
+          /* Mobile: app title between 美股/台股 and right logo, vertically centered */
+          function placeMobileAppTitle() {
+            var logo = document.querySelector('.main-header .logo');
+            if (!logo) return;
+            if (window.innerWidth > 767) {
+              logo.style.left = '';
+              logo.style.right = '';
+              return;
+            }
+            var mkt = document.getElementById('ynow-market-header');
+            var custom = document.querySelector('.main-header .navbar-custom-menu');
+            if (!mkt || !custom) return;
+            var gap = 6;
+            var leftPx = Math.round(mkt.getBoundingClientRect().right + gap);
+            var rightPx = Math.round(window.innerWidth - custom.getBoundingClientRect().left + gap);
+            if (!(leftPx > 0)) leftPx = 90;
+            if (!(rightPx > 0)) rightPx = 110;
+            logo.style.left = leftPx + 'px';
+            logo.style.right = rightPx + 'px';
           }
           function bindMarketModeButtons() {
             placeMarketHeaderByToggle();
@@ -2235,6 +2261,10 @@ ui <- dashboardPage(
           }
           [0, 250, 1000, 2500].forEach(function (ms) {
             setTimeout(placeMarketHeaderByToggle, ms);
+          });
+          window.addEventListener('resize', function () {
+            placeMarketHeaderByToggle();
+            placeMobileAppTitle();
           });
           if (window.jQuery) {
             jQuery(document).on('shiny:connected shiny:sessioninitialized', placeMarketHeaderByToggle);
@@ -3621,12 +3651,54 @@ ui <- dashboardPage(
           filter: drop-shadow(0 0 2px rgba(0,0,0,0.35));
         }
 
-        /* 手機：右上 繁中／EN＋logo 與左上漢堡垂直置中；幣別仍貼頁首下緣
+        /* 手機：單列頁首 — 標題與右上小 logo 垂直置中，夾在美股／台股與 logo 之間
            （黑色頁首置頂固定見全域 .main-header） */
         @media (max-width: 767px) {
+          .main-header {
+            min-height: 50px !important;
+            max-height: 50px !important;
+            height: 50px !important;
+          }
+          /* Collapse AdminLTE stacked logo+navbar (was ~100px) into one 50px bar */
+          .main-header .logo,
+          .skin-black .main-header .logo,
+          .skin-black .main-header .logo:hover {
+            position: absolute !important;
+            top: 0 !important;
+            left: 90px !important; /* fallback; JS sets between market & custom-menu */
+            right: 110px !important;
+            width: auto !important;
+            max-width: none !important;
+            height: 50px !important;
+            min-height: 50px !important;
+            line-height: 50px !important;
+            padding: 0 4px !important;
+            margin: 0 !important;
+            float: none !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            text-align: center !important;
+            background-color: transparent !important;
+            background-image: none !important;
+            z-index: 1045 !important;
+            overflow: hidden;
+            pointer-events: none;
+          }
+          .main-header .logo .ynow-app-title {
+            font-size: 12px !important;
+            line-height: 1.15 !important;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+            height: auto !important;
+          }
           .main-header .navbar {
             min-height: 50px !important;
             height: 50px;
+            width: 100% !important;
+            margin-left: 0 !important;
             display: flex !important;
             align-items: center !important;
             overflow: visible !important;
