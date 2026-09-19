@@ -156,7 +156,7 @@ lab_fetch_summary_metrics <- function(ticker) {
 }
 
 #' 評估檔數（明細列數）："all"／"全部" → 不設上限；空／自訂未填 → 預設 25
-lab_parse_im_max_n <- function(x, default_n = 100L) {
+lab_parse_im_max_n <- function(x, default_n = 25L) {
   default_n <- max(1L, as.integer(default_n)[1])
   if (is.null(x) || !length(x) || (length(x) == 1L && is.na(x))) {
     return(list(n = default_n, label = as.character(default_n), unlimited = FALSE))
@@ -180,8 +180,8 @@ lab_im_max_n_label <- function(x) {
 }
 
 #' 相容舊呼叫：回傳整數上限，或 Inf 表示全部
-lab_clamp_im_max_n <- function(x, default = 100L, lo = 1L, hi = NULL) {
-  def_n <- if (is.finite(default)) as.integer(default)[1] else 100L
+lab_clamp_im_max_n <- function(x, default = 25L, lo = 1L, hi = NULL) {
+  def_n <- if (is.finite(default)) as.integer(default)[1] else 25L
   parsed <- lab_parse_im_max_n(x, default_n = def_n)
   n <- parsed$n
   if (!is.finite(n)) return(Inf)
@@ -207,9 +207,9 @@ lab_im_max_n_select_choices <- function() {
 lab_resolve_im_max_n <- function(sel, custom = NULL, lo = 1L, hi = 500L) {
   s <- if (is.null(sel) || !length(sel)) "" else trimws(as.character(sel)[1])
   if (identical(s, "custom") || identical(s, "自訂")) {
-    return(lab_clamp_im_max_n(custom, default = 100L, lo = lo, hi = hi))
+    return(lab_clamp_im_max_n(custom, default = 25L, lo = lo, hi = hi))
   }
-  lab_clamp_im_max_n(sel, default = 100L, lo = lo, hi = hi)
+  lab_clamp_im_max_n(sel, default = 25L, lo = lo, hi = hi)
 }
 
 lab_resolve_im_max_n_label <- function(sel, custom = NULL) {

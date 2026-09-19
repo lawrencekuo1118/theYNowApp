@@ -9963,10 +9963,14 @@ server <- function(input, output, session) {
       lo = 1L,
       hi = 500L
     )
-    session_tk <- tryCatch(
-      toupper(trimws(as.character(current_ticker() %||% "")[1])),
-      error = function(e) ""
-    )
+    # Radar focus seed = Search / main ticker input (session stock)
+    session_tk <- tryCatch({
+      tk <- current_ticker()
+      if (is.null(tk) || !nzchar(trimws(as.character(tk)[1]))) tk <- input$sc
+      normalize_ticker_for_market(tk, market_mode())
+    }, error = function(e) "")
+    if (is.null(session_tk) || is.na(session_tk)) session_tk <- ""
+    session_tk <- toupper(trimws(as.character(session_tk)[1]))
 
     result <- withProgress(
       message = if (identical(normalize_ui_locale(loc), "zh-TW")) {
@@ -10085,6 +10089,20 @@ server <- function(input, output, session) {
       type = "message",
       duration = 6
     )
+  }, ignoreInit = TRUE)
+
+  # Keep radar focus on the session Search ticker when it appears in current clusters
+  observeEvent(current_ticker(), {
+    res <- lab_cluster_result()
+    if (!isTRUE(tryCatch(lab_cluster_has_result(res), error = function(e) FALSE))) return()
+    tk <- current_ticker()
+    if (is.null(tk) || !nzchar(trimws(as.character(tk)[1]))) return()
+    matched <- lab_cluster_match_ticker(res$data$ticker, tk)
+    if (is.na(matched) || !nzchar(matched)) return()
+    cur_focus <- as.character(isolate(input$lab_cluster_focus) %||% "")[1]
+    if (identical(cur_focus, matched)) return()
+    choices <- stats::setNames(res$data$ticker, paste0(res$data$ticker, " · ", res$data$Cluster_Label))
+    updateSelectInput(session, "lab_cluster_focus", choices = choices, selected = matched)
   }, ignoreInit = TRUE)
 
   # Dynamic hosts: idle → placeholder (no plotly/DT node); live → recreate outputs
@@ -10431,7 +10449,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.17"),
+      paste0("- **App：** The YNow App v17.18"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

@@ -28,7 +28,7 @@ check("all -> unlimited", isTRUE(all_p$unlimited) && is.infinite(all_p$n))
 check("all label 全部", identical(all_p$label, "全部"))
 
 null_p <- lab_parse_im_max_n(NULL)
-check("NULL defaults to 100", identical(null_p$n, 100L) && !null_p$unlimited)
+check("NULL defaults to 25", identical(null_p$n, 25L) && !null_p$unlimited)
 
 n25 <- lab_parse_im_max_n("25")
 check("25 parsed", identical(n25$n, 25L) && !n25$unlimited)

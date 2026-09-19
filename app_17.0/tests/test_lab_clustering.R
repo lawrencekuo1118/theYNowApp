@@ -158,5 +158,11 @@ tryCatch({
 }, error = function(e) invisible(NULL))
 # #endregion
 
+# Session ticker matching (TW suffix / BRK.B↔BRK-B)
+stopifnot(identical(lab_cluster_match_ticker(c("AAPL", "MSFT"), "aapl"), "AAPL"))
+stopifnot(identical(lab_cluster_match_ticker(c("2330.TW", "2317.TW"), "2330"), "2330.TW"))
+stopifnot(identical(lab_cluster_match_ticker(c("BRK-B", "AAPL"), "BRK.B"), "BRK-B"))
+stopifnot(is.na(lab_cluster_match_ticker(c("AAPL"), "MSFT")))
+
 cat("PASS lab_clustering\n")
 
