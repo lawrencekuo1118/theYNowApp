@@ -211,6 +211,100 @@ ynow_param_diff_df <- function(baseline, current, locale = "en") {
   out
 }
 
+
+# Locale maps for adjustment-report section / label (zh-TW); English uses registry text
+.ynow_param_audit_section_zh <- c(
+  "Basic Setup" = "基本設定",
+  "DCF" = "DCF",
+  "SGR" = "SGR",
+  "CAPM" = "CAPM",
+  "Beta" = "Beta",
+  "WACC" = "WACC",
+  "FCF" = "FCF",
+  "DDM" = "DDM",
+  "RI" = "RI",
+  "P/B" = "P/B",
+  "NAV" = "NAV"
+)
+
+.ynow_param_audit_label_zh <- c(
+  "Industry" = "產業",
+  "Forecast years n" = "預測年數 n",
+  "DCF mode" = "DCF 模式",
+  "Cash-flow claim" = "採用現金流",
+  "Revenue growth method" = "營收成長估計法",
+  "Custom near-term g (%)" = "自訂短中期 g (%)",
+  "Terminal g method" = "終值 g 方法",
+  "Lifecycle stage" = "生命週期階段",
+  "SGR / terminal g (%)" = "SGR／終值 g (%)",
+  "Gordon WACC (%)" = "Gordon WACC (%)",
+  "Stage-1 years" = "高速期年數",
+  "Stage-1 g1 (%)" = "高速期 g1 (%)",
+  "Stage-1 WACC (%)" = "高速期 WACC (%)",
+  "Stage-2 WACC (%)" = "穩定期 WACC (%)",
+  "Rf (%)" = "Rf (%)",
+  "Beta" = "Beta",
+  "Rm (%)" = "Rm (%)",
+  "Sync Basic Setup β" = "與基本設定同步 β",
+  "Beta purpose" = "Beta 用途",
+  "Unlever β_L source" = "Unlever β_L 來源",
+  "β apply source" = "β 套用來源",
+  "Manual β" = "手動 β",
+  "Bottom-up agg" = "Bottom-Up 聚合",
+  "Rolling lookback (mo)" = "Rolling 回溯月數",
+  "Rolling min obs" = "Rolling 最少觀測",
+  "Re (%)" = "Re (%)",
+  "Use CAPM Re" = "使用 CAPM Re",
+  "rᵈ (%)" = "rᵈ (%)",
+  "Use estimated rᵈ" = "使用估算 rᵈ",
+  "rᵈ min (%)" = "rᵈ 下限 (%)",
+  "rᵈ max (%)" = "rᵈ 上限 (%)",
+  "Tax T (%)" = "稅率 T (%)",
+  "Interest expense" = "利息費用",
+  "Interest-bearing debt" = "有息負債",
+  "CapEx spike smooth" = "CapEx 暴衝平滑",
+  "CapEx spike mult" = "暴衝倍數閾值",
+  "CapEx spike avg years" = "均值年數",
+  "D0" = "D0",
+  "Dividend g (%)" = "股利成長 g (%)",
+  "Sync g with SGR" = "與 SGR 同步 g",
+  "DDM mode" = "DDM 模式",
+  "DDM stage-1 g1 (%)" = "DDM 高速期 g1 (%)",
+  "DDM stage-1 years" = "DDM 高速期年數",
+  "Ke (%)" = "Ke (%)",
+  "RI years" = "RI 年數",
+  "RI Ke (%)" = "RI Ke (%)",
+  "RI g (%)" = "RI g (%)",
+  "Starting ROE (%)" = "起始 ROE (%)",
+  "Payout (%)" = "配息率 (%)",
+  "ROE method" = "ROE 方法",
+  "BVPS" = "BVPS",
+  "TBVPS" = "TBVPS",
+  "NAVPS" = "NAVPS",
+  "P/B basis" = "P/B 基礎",
+  "Holdco discount (%)" = "控股折價 (%)",
+  "Use industry P/B" = "使用產業 P/B",
+  "P/B low" = "P/B 低",
+  "P/B mid" = "P/B 中",
+  "P/B high" = "P/B 高",
+  "Target mode" = "目標模式",
+  "NAV low" = "NAV 低",
+  "NAV mid" = "NAV 中",
+  "NAV high" = "NAV 高"
+)
+
+ynow_param_audit_localize_row <- function(section, label, locale = "en") {
+  loc <- as.character(locale %||% "en")[1]
+  use_zh <- grepl("^zh", loc, ignore.case = TRUE)
+  sec <- as.character(section %||% "")[1]
+  lab <- as.character(label %||% "")[1]
+  if (isTRUE(use_zh)) {
+    if (sec %in% names(.ynow_param_audit_section_zh)) sec <- unname(.ynow_param_audit_section_zh[[sec]])
+    if (lab %in% names(.ynow_param_audit_label_zh)) lab <- unname(.ynow_param_audit_label_zh[[lab]])
+  }
+  list(section = sec, label = lab)
+}
+
 #' Build structured visual report UI (cards by section)
 ynow_param_audit_report_ui <- function(diff_df, eval_summary = NULL,
                                        baseline_at = NULL, locale = "en",
@@ -218,11 +312,7 @@ ynow_param_audit_report_ui <- function(diff_df, eval_summary = NULL,
   loc <- as.character(locale %||% "en")[1]
   use_zh <- grepl("^zh", loc, ignore.case = TRUE)
   if (is.null(diff_df) || !is.data.frame(diff_df) || nrow(diff_df) == 0) {
-    msg <- empty_message %||% if (use_zh) {
-      "尚無相對 Search 後基準的手改參數。載入財報後若手動覆寫，變更會列於此。"
-    } else {
-      "No manual adjustments vs the post-Search baseline yet. Edits after load appear here."
-    }
+    msg <- empty_message %||% ui_str("param_audit_empty_no_changes", loc)
     return(htmltools::tags$p(
       style = "color:#666; font-size:13px; margin:8px 0;",
       msg
@@ -236,11 +326,7 @@ ynow_param_audit_report_ui <- function(diff_df, eval_summary = NULL,
   }
   hdr <- htmltools::tags$p(
     style = "font-size:12.5px; color:#555; margin:0 0 10px 0;",
-    if (use_zh) {
-      sprintf("基準時間（Search 後自動帶入）：%s · 手改參數 %d 項", ts_txt, nrow(diff_df))
-    } else {
-      sprintf("Baseline (post-Search auto-fill): %s · %d adjusted parameter(s)", ts_txt, nrow(diff_df))
-    }
+    sprintf(ui_str("param_audit_baseline_hdr", loc), ts_txt, nrow(diff_df))
   )
 
   eval_box <- NULL
@@ -248,7 +334,7 @@ ynow_param_audit_report_ui <- function(diff_df, eval_summary = NULL,
     eval_box <- htmltools::tags$div(
       class = "ynow-param-audit-eval",
       style = "margin:0 0 12px 0; padding:10px 12px; background:#f7f9fc; border-left:4px solid #3c8dbc; border-radius:4px; font-size:13px; line-height:1.45;",
-      htmltools::tags$b(if (use_zh) "目前評估結果（摘要）" else "Current evaluation summary"),
+      htmltools::tags$b(ui_str("param_audit_eval_title", loc)),
       htmltools::tags$div(style = "margin-top:4px; color:#333;", htmltools::HTML(as.character(eval_summary)[1]))
     )
   }
@@ -256,20 +342,22 @@ ynow_param_audit_report_ui <- function(diff_df, eval_summary = NULL,
   sections <- unique(as.character(diff_df$section))
   cards <- lapply(sections, function(sec) {
     sub <- diff_df[diff_df$section == sec, , drop = FALSE]
+    sec_disp <- ynow_param_audit_localize_row(sec, "", loc)$section
     rows <- lapply(seq_len(nrow(sub)), function(i) {
+      loc_row <- ynow_param_audit_localize_row(sub$section[[i]], sub$label[[i]], loc)
       htmltools::tags$div(
         class = "ynow-param-audit-row",
         style = "display:flex; flex-wrap:wrap; gap:8px 14px; align-items:baseline; padding:8px 0; border-bottom:1px solid #eee;",
         htmltools::tags$div(
           style = "flex:1 1 160px; font-weight:600; color:#222;",
-          sub$label[[i]]
+          loc_row$label
         ),
         htmltools::tags$div(
           style = "flex:1 1 220px; font-size:12.5px; color:#555;",
-          htmltools::tags$span(style = "color:#888;", if (use_zh) "基準 " else "Baseline "),
+          htmltools::tags$span(style = "color:#888;", ui_str("param_audit_baseline_lbl", loc)),
           htmltools::tags$code(sub$baseline[[i]]),
           htmltools::tags$span(style = "margin:0 6px; color:#aaa;", "→"),
-          htmltools::tags$span(style = "color:#888;", if (use_zh) "現值 " else "Now "),
+          htmltools::tags$span(style = "color:#888;", ui_str("param_audit_now_lbl", loc)),
           htmltools::tags$code(style = "color:#b85c00; font-weight:700;", sub$current[[i]])
         ),
         htmltools::tags$button(
@@ -278,7 +366,7 @@ ynow_param_audit_report_ui <- function(diff_df, eval_summary = NULL,
           `data-tab` = sub$tab[[i]],
           `data-input-id` = sub$input_id[[i]],
           style = "flex:0 0 auto;",
-          if (use_zh) "前往並框選" else "Go & highlight"
+          ui_str("param_audit_goto_btn", loc)
         )
       )
     })
@@ -287,7 +375,7 @@ ynow_param_audit_report_ui <- function(diff_df, eval_summary = NULL,
       style = "margin:0 0 14px 0; padding:12px 14px; background:#fff; border:1px solid #e5e5e5; border-radius:6px; border-top:3px solid #222;",
       htmltools::tags$div(
         style = "font-size:14px; font-weight:700; margin:0 0 6px 0;",
-        sec
+        sec_disp
       ),
       rows
     )

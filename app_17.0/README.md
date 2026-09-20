@@ -1,6 +1,10 @@
-# The YNow App v17.60 — Valuation Methodology
+# The YNow App v17.61 — Valuation Methodology
 
 先分類，再選模型；先推導，再校正；先給區間，再給單點；先做基本面估值。
+
+## v17.61 重點
+- **i18n**：補齊 Snapshot／HFV／市場切換／param audit 報告等 en-US＋zh-TW；Defaults 下載與還原檔選擇鈕隨語言切換；修正「基本設定」PDF 頁籤譯文
+- **目錄**：`app_17.0/`；顯示版號 **v17.61**
 
 ## v17.60 重點
 - **Snapshot**：移除頁籤區塊右側無關 chrome 標題（曾誤顯 SUSTAINABLE GROWTH RATE）；locale 標題改為精確比對

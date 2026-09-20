@@ -933,7 +933,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.60</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.61</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -941,18 +941,20 @@ ui <- dashboardPage(
       tags$div(
         class = "ynow-market-stack",
         role = "group",
-        `aria-label` = "市場",
+        `aria-label` = "Market",
         tags$button(
           type = "button",
           class = "ynow-mkt-btn active",
+          id = "ynow_mkt_btn_us",
           `data-value` = "US",
-          "美股"
+          "US"
         ),
         tags$button(
           type = "button",
           class = "ynow-mkt-btn",
+          id = "ynow_mkt_btn_tw",
           `data-value` = "TW",
-          "台股"
+          "TW"
         )
       )
     ),
@@ -2974,6 +2976,44 @@ ui <- dashboardPage(
             if (restoreFileLab && s.param_restore_file_label) restoreFileLab.textContent = s.param_restore_file_label;
             var restoreBtn = document.getElementById('ynow_param_restore_btn');
             if (restoreBtn && s.param_restore_btn) restoreBtn.textContent = s.param_restore_btn;
+            var dlDefaultsBtn = document.getElementById('ynow_download_defaults_btn');
+            if (dlDefaultsBtn && s.download_defaults_btn) dlDefaultsBtn.textContent = s.download_defaults_btn;
+            var restoreBrowseRoot = document.getElementById('param_restore_file');
+            if (restoreBrowseRoot) {
+              var restoreBrowse = restoreBrowseRoot.closest('.form-group, .shiny-input-container');
+              if (restoreBrowse) {
+                var browseBtn = restoreBrowse.querySelector('.btn-file, .input-group-btn label, .input-group-btn .btn');
+                if (browseBtn && s.param_restore_browse_btn) {
+                  var onlyText = true;
+                  browseBtn.childNodes.forEach(function (n) {
+                    if (n.nodeType === 3 && String(n.textContent || '').trim()) {
+                      n.textContent = ' ' + s.param_restore_browse_btn + ' ';
+                      onlyText = false;
+                    }
+                  });
+                  if (onlyText && !browseBtn.querySelector('i')) browseBtn.textContent = s.param_restore_browse_btn;
+                }
+                var ph = restoreBrowse.querySelector('input[type=\"text\"]');
+                if (ph && s.param_restore_placeholder) {
+                  ph.setAttribute('placeholder', s.param_restore_placeholder);
+                  ph.placeholder = s.param_restore_placeholder;
+                }
+              }
+            }
+            var mktUs = document.getElementById('ynow_mkt_btn_us');
+            if (mktUs && s.market_us) mktUs.textContent = s.market_us;
+            var mktTw = document.getElementById('ynow_mkt_btn_tw');
+            if (mktTw && s.market_tw) mktTw.textContent = s.market_tw;
+            var mktStack = document.querySelector('#ynow-market-header .ynow-market-stack');
+            if (mktStack && s.market_hint) mktStack.setAttribute('aria-label', s.market_hint);
+            var langStack = document.querySelector('.ynow-lang-header .ynow-hdr-toggle-stack');
+            if (langStack && s.hdr_lang_label) langStack.setAttribute('aria-label', s.hdr_lang_label);
+            var ccyFloat = document.querySelector('.ynow-ccy-float');
+            if (ccyFloat && s.hdr_ccy_label) ccyFloat.setAttribute('aria-label', s.hdr_ccy_label);
+            var hfvBenchLab = document.getElementById('ynow_hfv_show_bench_label');
+            if (hfvBenchLab && s.hfv_show_bench) hfvBenchLab.textContent = s.hfv_show_bench;
+            var convLab = document.querySelector('label[for=\"bt_fv_conv_window\"]');
+            if (convLab && s.hfv_conv_window_label) convLab.textContent = s.hfv_conv_window_label;
             var paHelp = document.getElementById('ynow_param_audit_help');
             if (paHelp && s.param_audit_help) paHelp.textContent = s.param_audit_help;
             var paPdfTitle = document.getElementById('ynow_param_audit_pdf_title');
@@ -5285,7 +5325,7 @@ ui <- dashboardPage(
           tabPanel(
             title = tagList(
               icon("sliders-h"),
-              tags$span(id = "ynow_snapshot_tab_defaults", "系統預設參數（APP_DEFAULTS）")
+              tags$span(id = "ynow_snapshot_tab_defaults", "System defaults (APP_DEFAULTS)")
             ),
             value = "snap_defaults",
             div(
@@ -5293,9 +5333,16 @@ ui <- dashboardPage(
               tags$span(
                 id = "ynow_snapshot_defaults_help",
                 style = "font-size:12.5px; color:#666; line-height:1.45;",
-                "App 啟動時寫入的預設值（含依預設產業／Rf 動態估出的項目）。與「目前參數」可能不同；欄位仍可在各分頁覆寫。"
+                paste0(
+                  "Defaults written at App start (including items estimated from the default industry / Rf). ",
+                  "May differ from Current App Parameter Snapshot; fields can still be overridden on each page."
+                )
               ),
-              downloadButton("download_defaults", "下載 Defaults CSV", icon = icon("download"))
+              downloadButton(
+                "download_defaults",
+                tags$span(id = "ynow_download_defaults_btn", "Download Defaults CSV"),
+                icon = icon("download")
+              )
             ),
             dataTableOutput("defaults_table")
           )
@@ -6384,10 +6431,14 @@ ui <- dashboardPage(
         fluidRow(
           column(
             width = 12,
-            h2(tags$b(id = "ynow_hfv_page_title", "歷史基本面驗證")),
+            h2(tags$b(id = "ynow_hfv_page_title", "Historical Fundamental Validation")),
             p(
               id = "ynow_hfv_page_sub",
-              "市價下期漲跌機率、相對理論 FV 位置／幅度，以及歷史情境分類（價值錯位／基本面動能／價格動能）。這不是交易策略回測；量化回測請至側邊底部「測試」。"
+              paste0(
+                "Next-period up/down odds, position vs theoretical FV, and historical scenario taxonomy ",
+                "(mispricing / fundamental momentum / price momentum). This is not a trading backtest; ",
+                "quant backtests are under Testing at the sidebar foot."
+              )
             ),
             tags$hr()
           )
@@ -6396,7 +6447,7 @@ ui <- dashboardPage(
         # 1) 折現比較圖：合理價 vs 實際股價 vs 大盤
         fluidRow(
           box(
-            title = tagList(icon("balance-scale"), "折現比較（合理價 vs 實際股價）"),
+            title = tagList(icon("balance-scale"), "FV vs Market Price"),
             width = 12, status = "primary", solidHeader = TRUE,
             tags$div(
               class = "ynow-bt-hfv-wrap",
@@ -6405,13 +6456,17 @@ ui <- dashboardPage(
                 class = "ynow-bt-hfv-controls",
                 tags$div(
                   class = "ynow-bt-hfv-bench",
-                  checkboxInput("bt_hfv_show_bench", "顯示大盤", value = TRUE)
+                  checkboxInput(
+                    "bt_hfv_show_bench",
+                    tags$span(id = "ynow_hfv_show_bench_label", "Show benchmark"),
+                    value = TRUE
+                  )
                 ),
                 tags$div(
                   class = "ynow-bt-hfv-models",
                   checkboxGroupInput(
                     "bt_fv_models",
-                    "圖表模型（可複選疊圖）",
+                    "Chart models (multi-select overlay)",
                     inline = TRUE,
                     choices = c(
                       "DCF" = "dcf",
@@ -6433,7 +6488,7 @@ ui <- dashboardPage(
         # 2) 歷史基本面驗證：市價下期漲跌與相對 FV
         fluidRow(
           box(
-            title = tagList(icon("balance-scale"), "歷史基本面驗證：漲跌機率、相對 FV 與情境分類"),
+            title = tagList(icon("balance-scale"), "Historical Fundamental Validation: Odds, vs FV & Scenario Taxonomy"),
             width = 12, status = "warning", solidHeader = TRUE,
             collapsible = TRUE, collapsed = FALSE,
 
@@ -6444,30 +6499,50 @@ ui <- dashboardPage(
               tags$h5(
                 id = "ynow_hfv_sec_method",
                 style = "margin:0 0 8px 0;font-weight:700;",
-                "說明"
+                "How to read this panel"
               ),
               tags$p(
                 id = "ynow_hfv_method_body",
                 style = "font-size:12.5px;color:#444;line-height:1.55;margin:0 0 8px 0;",
-                "不是交易策略回測，也不是券商下單指令。驗證樣本上有三層口徑：（1）市價下期漲跌 R 與下期上漲頻率 P(up)，以及 MOS 分組展望；（2）相對復盤模型 FV 之上／之下與幅度；（3）歷史情境分類（價值錯位／基本面動能／價格動能 → A–D 或 other）。圖表可複選疊圖；機率／幅度／情境／P(up) 僅依復盤模型單選。"
+                paste0(
+                  "Not a trading backtest or broker order ticket. Validation samples have three scopes: ",
+                  "(1) next-period return R and P(up), plus MOS-bucket outlook; ",
+                  "(2) above/below Replay-model FV and magnitude; ",
+                  "(3) historical scenario taxonomy (mispricing / fundamental momentum / price momentum → A–D or other). ",
+                  "Charts allow multi-select overlay; odds / magnitude / scenarios / P(up) use the Replay model only."
+                )
               ),
               tags$p(
                 id = "ynow_hfv_sum_scenario_matrix",
                 style = "font-size:12px;color:#555;line-height:1.5;margin:0 0 8px 0;",
-                "A 錯殺黃金坑：FV↑、Price↓、Price ≪ FV · B 戴維斯雙擊：FV↑、Price↑、Price ≈ FV · C 價值陷阱：FV↓、Price↓、Price < FV · D 泡沫炒作：FV≤持平、Price 強升、Price ≫ FV · other＝未歸類（不硬套 A–D 結論）。"
+                paste0(
+                  "A Golden pit: FV↑, Price↓, Price ≪ FV · ",
+                  "B Davis double: FV↑, Price↑, Price ≈ FV · ",
+                  "C Value trap: FV↓, Price↓, Price < FV · ",
+                  "D Bubble hype: FV≤flat, Price strong↑, Price ≫ FV · ",
+                  "other = unmatched (no A–D conclusion applied)."
+                )
               ),
               tags$p(
                 id = "ynow_hfv_scenario_thresh_note",
                 style = "font-size:11.5px;color:#666;line-height:1.45;margin:0 0 8px 0;",
-                "情境帶寬啟發式（工程預設，非學術標準）：動能持平 |Δ|/前期 ≤ 2%；Price ≈ FV 當 |MOS| ≤ 10%；Price ≪ FV 當 MOS ≥ 20%；Price ≫ FV 當 MOS ≤ −20%；情境 D 另要求價格動能 ≥ +5%。FV 垃圾進會誤分類；市場可長期非理性且仍可能需催化劑。"
+                paste0(
+                  "Scenario bandwidth heuristics (engineering defaults, not academic standards): ",
+                  "flat momentum |Δ|/prior ≤ 2%; Price ≈ FV when |MOS| ≤ 10%; Price ≪ FV when MOS ≥ 20%; ",
+                  "Price ≫ FV when MOS ≤ −20%; scenario D also requires price momentum ≥ +5%. ",
+                  "Garbage-in FV misclassifies; markets can stay irrational and still need a catalyst."
+                )
               ),
               tags$p(
                 style = "font-size:11.5px;color:#888;line-height:1.45;margin:0;",
                 id = "ynow_hfv_method_data_note",
-                "資料注意：Yahoo 年報可能為重編；PIT 採嚴格申報滯後（財報期末＋約 90 日；無期末日則該列不採用，不作軟性 bypass）。",
-                "歷史點近期末成長 g 與終值 SGR 分開；缺 CapEx／ΔNWC 時不捏造為 0（margin DCF 改不可用／幾何 FCF 僅在有觀測 FCF 時）。",
-                "台股上櫃／興櫃 Yahoo 空時可補櫃買財務資料簡報（IS／BS；不捏造 CF）。上市櫃 MOPS／美股 SEC as-filed 仍待後續接入。",
-                "小樣本（n＜5）僅供參考，非預測保證。"
+                paste0(
+                  "Data note: Yahoo annuals may be restated; PIT uses a strict filing lag ",
+                  "(fiscal period end + ~90 days; rows without period end are dropped, no soft bypass). ",
+                  "Near-term g and terminal SGR are separate; missing CapEx/ΔNWC is not invented as 0. ",
+                  "TW TPEx/emerging may backfill TPEx financial summaries (IS/BS; CF not invented). ",
+                  "Small samples (n<5) are illustrative only — not a forecast guarantee."
+                )
               )
             ),
 
@@ -6478,11 +6553,11 @@ ui <- dashboardPage(
               tags$h5(
                 id = "ynow_hfv_sec_settings",
                 style = "margin:0 0 10px 0;font-weight:700;",
-                "設定"
+                "Settings"
               ),
               radioButtons(
                 "bt_fv_replay_model",
-                "復盤模型（單選；機率／幅度／情境／下期上漲頻率依此模型）",
+                "Replay model (single; odds / magnitude / scenarios / next-period up frequency)",
                 inline = TRUE,
                 choices = c(
                   "DCF" = "dcf",
@@ -6495,13 +6570,13 @@ ui <- dashboardPage(
               ),
               radioButtons(
                 "bt_fv_conv_window",
-                "統計期間（依估值日 Date_t）",
+                "Sample window (by valuation date Date_t)",
                 inline = TRUE,
                 choices = c(
-                  "全部" = "all",
-                  "近1年" = "1y",
-                  "近3年" = "3y",
-                  "近5年" = "5y",
+                  "All" = "all",
+                  "1Y" = "1y",
+                  "3Y" = "3y",
+                  "5Y" = "5y",
                   "自訂" = "custom"
                 ),
                 selected = "all"

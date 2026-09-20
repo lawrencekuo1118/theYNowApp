@@ -221,6 +221,32 @@ server <- function(input, output, session) {
         selected = oos_sel
       )
     }, error = function(e) NULL)
+    # HFV: show-benchmark + sample window
+    tryCatch({
+      updateCheckboxInput(
+        session, "bt_hfv_show_bench",
+        label = ui_str("hfv_show_bench", loc)
+      )
+    }, error = function(e) NULL)
+    tryCatch({
+      win_sel <- isolate(input$bt_fv_conv_window)
+      if (is.null(win_sel) || !win_sel %in% c("all", "1y", "3y", "5y")) win_sel <- "all"
+      updateRadioButtons(
+        session,
+        "bt_fv_conv_window",
+        label = ui_str("hfv_conv_window_label", loc),
+        choices = stats::setNames(
+          c("all", "1y", "3y", "5y"),
+          c(
+            ui_str("hfv_win_all", loc),
+            ui_str("hfv_win_1y", loc),
+            ui_str("hfv_win_3y", loc),
+            ui_str("hfv_win_5y", loc)
+          )
+        ),
+        selected = win_sel
+      )
+    }, error = function(e) NULL)
     # DDM 模型選項：標籤隨 locale（值不變）
     tryCatch({
       ddm_sel <- isolate(input[["mod_ddm-ddm_mode"]])
@@ -2064,7 +2090,7 @@ server <- function(input, output, session) {
         done = ui_str("param_audit_pdf_done", loc),
         err = ui_str("param_audit_pdf_err", loc),
         need_pages = ui_str("param_audit_pdf_need_pages", loc),
-        summary = if (grepl("^zh", loc, ignore.case = TRUE)) "手改參數一覽：" else "Adjusted parameters:",
+        summary = ui_str("param_audit_pdf_summary", loc),
         no_changes = ui_str("param_audit_empty_no_changes", loc)
       )
     ))
@@ -10932,7 +10958,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.60"),
+      paste0("- **App：** The YNow App v17.61"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {
