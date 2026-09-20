@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12580869
+bundleId=12580983
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=94aac70
-commit=94aac70406bbb3d31099a9c047e58d482f176c24
-short=94aac70
-message=Center mobile header title and scale it to clear chrome (v17.67).
-captured_at=2026-09-20T16:41:59Z
+aligned_git=3802c04
+commit=3802c04691ea3d6a229047de0eefb135ce495f23
+short=3802c04
+message=fix(ui): collapse mobile industry snapshot picker gap (v17.68)
+captured_at=2026-09-20T17:20:07Z
 source_branch=master
-display_version=v17.67
-note=Canonical live line is app_17.0. Bundle 12580869 = tip v17.67 mobile black header centered title with proportional font scale (no chrome cover / no ellipsis). Deploy via scripts/deploy_app_17.R.
+display_version=v17.68
+note=Canonical live line is app_17.0. Bundle 12580983 = tip v17.68 mobile industry snapshot picker gap fix (container=body + closed-menu CSS). Deploy via scripts/deploy_app_17.R.
