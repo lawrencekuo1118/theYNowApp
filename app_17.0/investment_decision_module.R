@@ -28,26 +28,19 @@ decision_ui <- function(id) {
       uiOutput(ns("vbox_fraud"))
     ),
     fluidRow(
-      box(
-        title = tags$span(
-          id = "ynow_funnel_box_title",
-          "Smart Decision Matrix — The Decision Funnel"
-        ),
-        width = 12, status = "primary", solidHeader = TRUE,
-        # Verdict on top; F-Score checklist below
-        column(
-          width = 12,
-          uiOutput(ns("ui_recommendation"))
-        ),
-        column(
-          width = 12,
-          style = "margin-top: 12px;",
-          h4(tags$span(
-            id = "ynow_funnel_fscore_list_title",
-            "F-Score quality checklist"
-          )),
-          tableOutput(ns("table_checklist"))
-        )
+      # Verdict on top; F-Score checklist below (no outer box chrome / title)
+      column(
+        width = 12,
+        uiOutput(ns("ui_recommendation"))
+      ),
+      column(
+        width = 12,
+        style = "margin-top: 12px;",
+        h4(tags$span(
+          id = "ynow_funnel_fscore_list_title",
+          "F-Score quality checklist"
+        )),
+        tableOutput(ns("table_checklist"))
       )
     ),
     fluidRow(

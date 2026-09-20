@@ -1,6 +1,10 @@
-# The YNow App v17.64 — Valuation Methodology
+# The YNow App v17.65 — Valuation Methodology
 
 先分類，再選模型；先推導，再校正；先給區間，再給單點；先做基本面估值。
+
+## v17.65 重點
+- **Decision Funnel：** 移除「Smart Decision Matrix — The Decision Funnel」外層黑色框／標題；內層 valueBoxes、判決、F-Score checklist、動能面板不變
+- **目錄**：`app_17.0/`；顯示版號 **v17.65**
 
 ## v17.64 重點
 - **i18n：** CAPM／Get Started（Rf／Rm／β／Rolling／同業去槓桿）detail labels、Decision Funnel 判決／動能文案、高流量 `showNotification` 全面進 `ui_locale.R`（en-US + zh-TW）並經 locale helpers 切換

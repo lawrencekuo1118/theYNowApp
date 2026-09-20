@@ -509,7 +509,6 @@ locale_for_market <- function(mode = get_market_mode()) {
       "editing here also switches the source to manual and syncs."
     ),
     # --- Decision Funnel ---
-    funnel_box_title = "Smart Decision Matrix — The Decision Funnel",
     funnel_fscore_list_title = "F-Score quality checklist",
     funnel_vbox_fscore = "Quality filter (F-Score)",
     funnel_vbox_mos = "Margin of Safety (vs Base)",
@@ -1308,7 +1307,6 @@ locale_for_market <- function(mode = get_market_mode()) {
       "在此修改數值時也會自動改選手動來源並同步。"
     ),
     # --- Decision Funnel ---
-    funnel_box_title = "智慧決策矩陣 The Decision Funnel",
     funnel_fscore_list_title = "F-Score 體質檢核清單",
     funnel_vbox_fscore = "體質過濾 (F-Score)",
     funnel_vbox_mos = "安全邊際 (vs Base)",

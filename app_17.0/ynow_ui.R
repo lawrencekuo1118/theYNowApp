@@ -954,7 +954,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.64</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.65</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -2992,8 +2992,6 @@ ui <- dashboardPage(
             if (manHead && s.beta_manual_heading) manHead.textContent = s.beta_manual_heading;
             var manHelp = document.getElementById('ynow_beta_manual_help');
             if (manHelp && s.beta_manual_help) manHelp.textContent = s.beta_manual_help;
-            var funnelTitle = document.getElementById('ynow_funnel_box_title');
-            if (funnelTitle && s.funnel_box_title) funnelTitle.textContent = s.funnel_box_title;
             var funnelFs = document.getElementById('ynow_funnel_fscore_list_title');
             if (funnelFs && s.funnel_fscore_list_title) funnelFs.textContent = s.funnel_fscore_list_title;
             var funnelMomTitle = document.getElementById('ynow_funnel_mom_box_title');
