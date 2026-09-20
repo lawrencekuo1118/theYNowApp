@@ -537,7 +537,7 @@ search_ticker_choices <- function(query, max_results = 12L, market = NULL) {
   local_hits <- presets[preset_keep]
 
   # TW：CJK／公司名／純數字 → 上市／上櫃／興櫃宇宙（Yahoo typeahead 常對中文弱）
-  # US：公司名／代號 → S&P 500 宇宙（確保 Nasdaq + NYSE 成分可離線命中）
+  # US：公司名／代號 → 美股主要上市宇宙（離線命中 Nasdaq／NYSE）
   cjk_hits <- character(0)
   if (identical(mode, "TW") && exists("search_tw_universe_by_name", mode = "function")) {
     cjk_hits <- tryCatch(

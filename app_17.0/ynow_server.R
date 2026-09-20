@@ -9522,13 +9522,16 @@ server <- function(input, output, session) {
         )
       }
     } else {
-      meta <- tryCatch(lab_sp500_universe_meta(), error = function(e) NULL)
+      meta <- tryCatch(lab_us_universe_meta(), error = function(e) NULL)
+      if (is.null(meta) || as.integer(meta$n %||% 0L) < 1L) {
+        meta <- tryCatch(lab_sp500_universe_meta(), error = function(e) NULL)
+      }
       n_nas <- if (is.null(meta)) 0L else as.integer(meta$n_nasdaq %||% 0L)
       n_ny <- if (is.null(meta)) 0L else as.integer(meta$n_nyse %||% 0L)
       if (n_nas > 0L || n_ny > 0L) {
-        label <- sprintf("S&P 500（Nasdaq %d／NYSE %d）", n_nas, n_ny)
+        label <- sprintf("美股主要上市（Nasdaq %d／NYSE %d）", n_nas, n_ny)
       } else {
-        label <- "S&P 500（Nasdaq＋NYSE 成分）"
+        label <- "美股主要上市（Nasdaq＋NYSE）"
       }
     }
     n <- if (is.null(meta)) 0L else as.integer(meta$n %||% 0L)
@@ -9550,14 +9553,14 @@ server <- function(input, output, session) {
 
   observeEvent(input$lab_im_refresh_universe, {
     mode <- market_mode()
-    msg <- if (identical(mode, "TW")) "更新台股上市／上櫃／興櫃名單…" else "更新 S&P 500 名單…"
+    msg <- if (identical(mode, "TW")) "更新台股上市／上櫃／興櫃名單…" else "更新美股主要上市名單…"
     fetched <- withProgress(
       message = msg,
       value = 0.4, {
         out <- if (identical(mode, "TW")) {
           tryCatch(lab_refresh_tw_universe(), error = function(e) NULL)
         } else {
-          tryCatch(lab_refresh_sp500_universe(), error = function(e) NULL)
+          tryCatch(lab_refresh_us_universe(), error = function(e) NULL)
         }
         incProgress(0.5)
         out
@@ -9580,13 +9583,13 @@ server <- function(input, output, session) {
     stale <- if (identical(mode, "TW")) {
       tryCatch(lab_tw_is_stale(), error = function(e) FALSE)
     } else {
-      tryCatch(lab_sp500_is_stale(), error = function(e) FALSE)
+      tryCatch(lab_us_is_stale(), error = function(e) FALSE)
     }
     if (!isTRUE(stale)) return()
     fetched <- if (identical(mode, "TW")) {
       tryCatch(lab_refresh_tw_universe(), error = function(e) NULL)
     } else {
-      tryCatch(lab_refresh_sp500_universe(), error = function(e) NULL)
+      tryCatch(lab_refresh_us_universe(), error = function(e) NULL)
     }
     if (is.data.frame(fetched) && nrow(fetched) > 0) {
       lab_im_catalog_nonce(isolate(lab_im_catalog_nonce()) + 1L)
@@ -10061,13 +10064,16 @@ server <- function(input, output, session) {
     filename = function() {
       ts <- format(Sys.time(), "%Y%m%d_%H%M%S")
       if (isTRUE(lab_lab_report_use_zip())) {
-        paste0("YNow_Lab_SP500_", ts, ".zip")
+        paste0("YNow_Lab_US_", ts, ".zip")
       } else {
-        paste0("YNow_Lab_SP500_", ts, ".md")
+        paste0("YNow_Lab_US_", ts, ".md")
       }
     },
     content = function(file) {
-      meta <- tryCatch(lab_sp500_universe_meta(), error = function(e) NULL)
+      meta <- tryCatch(lab_us_universe_meta(), error = function(e) NULL)
+      if (is.null(meta) || as.integer(meta$n %||% 0L) < 1L) {
+        meta <- tryCatch(lab_sp500_universe_meta(), error = function(e) NULL)
+      }
       n_uni <- if (is.null(meta)) 0L else as.integer(meta$n %||% 0L)
       fetched <- if (is.null(meta)) "—" else lab_format_fetched_at(meta$fetched_at)
       src <- if (is.null(meta)) "" else as.character(meta$source %||% "")[1]
@@ -10140,7 +10146,7 @@ server <- function(input, output, session) {
         "# Blue Chip 美股績優篩選 — 本頁報告",
         "",
         sprintf("- 匯出時間：%s", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z")),
-        sprintf("- 宇宙：S&P 500 · %d 檔 · 更新於 %s%s",
+        sprintf("- 宇宙：美股主要上市 · %d 檔 · 更新於 %s%s",
                 n_uni, fetched,
                 if (nzchar(src)) paste0(" · 來源 ", src) else ""),
         sprintf("- 未對應產業：%d 檔", n_un),
@@ -10155,16 +10161,16 @@ server <- function(input, output, session) {
         "",
         if (is.finite(max_n)) {
           paste0(
-            "宇宙依市場模式（美股 S&P 500／台股上市＋上櫃；搜尋另含興櫃但不納入績優）。",
-            "候選多於 N 時依「候選截斷邏輯」取 N（市值／概念股／近一年漲幅／隨機；市值缺值則改依代號排序）；",
+            "宇宙依市場模式（美股 Nasdaq／NYSE 主要上市／台股上市＋上櫃；搜尋另含興櫃但不納入績優）。",
+            "候選多於 N 時依「候選截斷邏輯」取 N（市值／概念股／近一年漲幅／隨機；市值缺值則改依代號排序；全市場過大時先預篩再截斷）；",
             "明細＝該批（＝評估檔數 N）；排行榜＝同一批合格者最多 Top 10",
             if (gate_on) "（目前 Piotroski 高門檻開：F-Score≥7）" else "（目前不設 F 門檻）",
             "；合格不足 10 時不湊滿。"
           )
         } else {
           paste0(
-            "宇宙依市場模式（美股 S&P 500／台股上市＋上櫃；搜尋另含興櫃但不納入績優）。",
-            "本次選「全部」：評估篩選後全部候選；明細＝該批（＝評估檔數）；排行榜＝同一批合格者最多 Top 10",
+            "宇宙依市場模式（美股 Nasdaq／NYSE 主要上市／台股上市＋上櫃；搜尋另含興櫃但不納入績優）。",
+            "本次選「全部」：評估篩選後全部候選（全市場過大時先預篩）；明細＝該批（＝評估檔數）；排行榜＝同一批合格者最多 Top 10",
             if (gate_on) "（目前 Piotroski 高門檻開：F-Score≥7）" else "（目前不設 F 門檻）",
             "；合格不足 10 時不湊滿。"
           )
@@ -10836,7 +10842,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.57"),
+      paste0("- **App：** The YNow App v17.58"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

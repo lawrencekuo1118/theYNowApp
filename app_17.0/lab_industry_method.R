@@ -1,7 +1,7 @@
 # ==========================================
 # lab_industry_method.R — 實驗區：產業 × 評價方法 × 績優候選
 #
-# 宇宙依市場模式：美股＝S&P 500（Nasdaq＋NYSE；lab_sp500_universe.R）；台股＝上市／上櫃／興櫃（lab_tw_universe.R；績優候選不含興櫃）。
+# 宇宙依市場模式：美股＝Nasdaq／NYSE 主要上市（lab_us_universe.R；S&P GICS 疊加）；台股＝上市／上櫃／興櫃（lab_tw_universe.R；績優候選不含興櫃）。
 # 績優原則：在 Piotroski 高門檻（F-Score≥7；不含盈餘品質）後，選「模型合理價相對現價」、
 # 並依 App 預設預測年數 n（APP_DEFAULTS$years）換算年化漲幅最大者。
 # 「評估檔數（明細列數）」（lab_im_max_n；預設 25）＝本次 Yahoo 評估檔數＝明細列數。
@@ -106,8 +106,9 @@ lab_company_display_name <- function(ticker, yahoo_name = NULL) {
   if (is.na(yn)) yn <- ""
   if (nzchar(yn) && !identical(toupper(yn), tk)) return(yn)
   sp <- tryCatch(lab_sp500_company_name(tk), error = function(e) NA_character_)
-  sp <- trimws(as.character(sp %||% "")[1])
-  if (nzchar(sp) && !identical(sp, "NA")) return(sp)
+  if (is.character(sp) && length(sp) && nzchar(sp[1]) && !is.na(sp[1])) return(sp[1])
+  us <- tryCatch(lab_us_company_name(tk), error = function(e) NA_character_)
+  if (is.character(us) && length(us) && nzchar(us[1]) && !is.na(us[1])) return(us[1])
   nm <- unname(LAB_TICKER_NAMES[tk])
   if (!is.na(nm) && nzchar(nm)) return(as.character(nm)[1])
   if (nzchar(yn)) return(yn)
@@ -435,6 +436,20 @@ lab_select_eval_pool <- function(pool, max_n = 25L, mode = "mcap",
     }
   }
 
+  # US full-market pools can be thousands of names — pre-screen before Yahoo mcap/1Y fetch
+  if ((identical(mode, "mcap") || identical(mode, "ret_1y")) &&
+      exists("lab_us_prescreen_eval_pool", mode = "function")) {
+    pre_n <- if (exists("LAB_US_EVAL_PRESCREEN", inherits = TRUE)) {
+      as.integer(LAB_US_EVAL_PRESCREEN)[1]
+    } else {
+      800L
+    }
+    if (is.finite(pre_n) && nrow(pool) > pre_n) {
+      pool <- lab_us_prescreen_eval_pool(pool, max_n = pre_n)
+      note <- paste0(as.character(note)[1], ";prescreen=", nrow(pool))
+    }
+  }
+
   if (identical(mode, "random")) {
     if (is.finite(max_n) && nrow(pool) > max_n) {
       if (!is.null(seed) && is.finite(as.numeric(seed)[1])) {
@@ -496,8 +511,9 @@ lab_normalize_multi_filter <- function(x) {
   v
 }
 
-# S&P 500 宇宙（可更新快取）；須在候選目錄／名稱查詢之前載入
+# S&P 500（GICS）＋美股全市場主要上市宇宙；須在候選目錄／名稱查詢之前載入
 source("lab_sp500_universe.R", local = TRUE, encoding = "UTF-8")
+source("lab_us_universe.R", local = TRUE, encoding = "UTF-8")
 source("lab_tw_universe.R", local = TRUE, encoding = "UTF-8")
 source("lab_concept_groups.R", local = TRUE, encoding = "UTF-8")
 
@@ -818,10 +834,13 @@ lab_industry_method_defaults <- function() {
   df[order(df$primary, df$industry_label), , drop = FALSE]
 }
 
-#' 各產業美股績優候選（S&P 500 宇宙；一檔對一產業，不重抓財報）
+#' 各產業美股績優候選（US primary listings 宇宙；一檔對一產業，不重抓財報）
 #' @return named list: industry_key → character vector of US tickers
 lab_us_quality_candidates <- function() {
-  u <- tryCatch(lab_get_sp500_universe(FALSE), error = function(e) NULL)
+  u <- tryCatch(lab_get_us_universe(FALSE), error = function(e) NULL)
+  if (is.null(u) || !is.data.frame(u) || nrow(u) == 0L) {
+    u <- tryCatch(lab_get_sp500_universe(FALSE), error = function(e) NULL)
+  }
   if (is.null(u) || !is.data.frame(u) || nrow(u) == 0L) return(list())
   tks <- as.character(u$ticker)
   keys <- as.character(u$industry_key)
@@ -829,14 +848,14 @@ lab_us_quality_candidates <- function() {
   tks <- tks[keep]
   keys <- keys[keep]
   drop <- grepl("\\.TW$|\\.TWO$|-TW$|-TWO$", tks, ignore.case = TRUE) |
-    tks %in% c("SPY", "QQQ", "DIA", "IWM")
+    tks %in% c("SPY", "QQQ", "DIA", "IWM", "VOO", "IVV", "VTI", "QQQM")
   tks <- tks[!drop]
   keys <- keys[!drop]
   if (!length(tks)) return(list())
   split(tks, keys)
 }
 
-#' 依市場模式回傳績優候選（美股 S&P／台股上市＋上櫃；不含興櫃）
+#' 依市場模式回傳績優候選（美股主要上市／台股上市＋上櫃；不含興櫃）
 lab_quality_candidates_for_market <- function(mode = get_market_mode()) {
   mode <- if (exists("normalize_market_mode", mode = "function")) {
     normalize_market_mode(mode)

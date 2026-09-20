@@ -96,11 +96,11 @@ market_profile <- function(mode = get_market_mode()) {
       bluechip_title = "Blue Chip Ranking (US)",
       # Intro copy lives in ui_locale.R (bluechip_blurb_us); kept for profile completeness
       bluechip_blurb = paste0(
-        "Screen US blue-chip candidates from the S&P 500 constituent list ",
-        "(Nasdaq and NYSE listings): ",
+        "Screen US blue-chip candidates from Nasdaq and NYSE primary listings ",
+        "(full market catalog; evaluation still truncated to N): ",
         "industry × valuation-model filters, then Piotroski F-Score≥7 and implied annualized valuation appreciation."
       ),
-      universe_label = "S&P 500 (Nasdaq + NYSE)",
+      universe_label = "US primary listings (Nasdaq + NYSE)",
       ticker_presets = c(
         "AMZN — Amazon.com" = "AMZN",
         "AAPL — Apple" = "AAPL",
@@ -412,7 +412,7 @@ search_tw_universe_by_name <- function(query, max_results = 12L) {
   stats::setNames(hits, labs)
 }
 
-#' Search S&P 500 universe by ticker / company name (offline; Nasdaq + NYSE constituents)
+#' Search US primary-listing universe by ticker / company name (offline; Nasdaq + NYSE)
 #' @return named character：names = 「代號 — 名稱」, values = Yahoo fetch symbol
 search_us_universe_by_name <- function(query, max_results = 12L) {
   q <- trimws(as.character(query %||% "")[1])
@@ -420,7 +420,9 @@ search_us_universe_by_name <- function(query, max_results = 12L) {
   max_results <- max(1L, as.integer(max_results)[1])
 
   u <- tryCatch({
-    if (exists("lab_get_sp500_universe", mode = "function")) {
+    if (exists("lab_get_us_universe", mode = "function")) {
+      lab_get_us_universe(FALSE)
+    } else if (exists("lab_get_sp500_universe", mode = "function")) {
       lab_get_sp500_universe(FALSE)
     } else {
       NULL
