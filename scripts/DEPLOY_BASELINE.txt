@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12580829
+bundleId=12580842
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=06a9488
-commit=06a9488ad9a6b9b75da32db0c01b385bb65fe872
-short=06a9488
-message=Remove Decision Funnel outer box chrome and title (v17.65).
-captured_at=2026-09-20T16:26:09Z
+aligned_git=478a449
+commit=478a449
+short=478a449
+message=Fix Lifecycle SGR tier criteria and surface objective evidence (v17.66).
+captured_at=2026-09-20T16:30:00Z
 source_branch=master
-display_version=v17.65
-note=Canonical live line is app_17.0. Bundle 12580829 = tip v17.65 (Decision Funnel outer box/title removed; inner content kept). Deploy via scripts/deploy_app_17.R.
+display_version=v17.66
+note=Canonical live line is app_17.0. Bundle 12580842 = tip v17.66 Lifecycle SGR objective tier evidence + CAGR-before-tech auto-class. Deploy via scripts/deploy_app_17.R.
