@@ -19,7 +19,7 @@ ynow_param_audit_pdf_pages <- function() {
   )
 }
 
-#' Tracked valuation / setup inputs for the adjustment report
+#' Tracked valuation / setup inputs for the adjustment report + restore CSV
 ynow_tracked_param_registry <- function() {
   data.frame(
     input_id = c(
@@ -33,7 +33,7 @@ ynow_tracked_param_registry <- function() {
       "wacc_re", "use_estimated_re", "wacc_rd", "use_estimated_rd",
       "wacc_rd_min", "wacc_rd_max", "wacc_tax",
       "rd_interest_expense", "rd_interest_bearing_debt",
-      "apply_capex_spike_smooth", "capex_spike_mult", "capex_spike_avg_years",
+      "mod_fcf-apply_capex_spike_smooth", "mod_fcf-capex_spike_mult", "mod_fcf-capex_spike_avg_years",
       "mod_ddm-d0", "mod_ddm-g", "mod_ddm-sync_g", "mod_ddm-ddm_mode",
       "mod_ddm-g_stage1", "mod_ddm-yr_stage1", "mod_ddm-ke",
       "mod_ri-ri_years", "mod_ri-ri_ke", "mod_ri-ri_g", "mod_ri-ri_roe",
@@ -45,7 +45,7 @@ ynow_tracked_param_registry <- function() {
       "mod_nav-nav_low", "mod_nav-nav_mid", "mod_nav-nav_high"
     ),
     section = c(
-      "Basic Setup", "DCF", "DCF", "DCF", "DCF",
+      "Basic Setup", "DCF", "DCF", "DCF",
       "DCF", "DCF",
       "SGR", "SGR", "SGR",
       "DCF", "DCF", "DCF", "DCF", "DCF",
@@ -67,7 +67,7 @@ ynow_tracked_param_registry <- function() {
       "NAV", "NAV", "NAV"
     ),
     label = c(
-      "Industry", "Forecast years n", "DCF mode", "Cash-flow claim", "Chart mode",
+      "Industry", "Forecast years n", "DCF mode", "Cash-flow claim",
       "Revenue growth method", "Custom near-term g (%)",
       "Terminal g method", "Lifecycle stage", "SGR / terminal g (%)",
       "Gordon WACC (%)", "Stage-1 years", "Stage-1 g1 (%)", "Stage-1 WACC (%)", "Stage-2 WACC (%)",
@@ -89,7 +89,7 @@ ynow_tracked_param_registry <- function() {
       "NAV low", "NAV mid", "NAV high"
     ),
     tab = c(
-      "get_started", "dcf_calculator", "dcf_calculator", "dcf_calculator", "dcf_calculator",
+      "get_started", "dcf_calculator", "dcf_calculator", "dcf_calculator",
       "dcf_calculator", "dcf_calculator",
       "get_started", "get_started", "get_started",
       "dcf_calculator", "dcf_calculator", "dcf_calculator", "dcf_calculator", "dcf_calculator",
@@ -109,6 +109,28 @@ ynow_tracked_param_registry <- function() {
       "pb_calculator", "pb_calculator", "pb_calculator", "pb_calculator",
       "nav_calculator", "nav_calculator",
       "nav_calculator", "nav_calculator", "nav_calculator"
+    ),
+    input_type = c(
+      "select", "numeric", "radio", "radio",
+      "select", "numeric",
+      "select", "select", "numeric",
+      "numeric", "numeric", "numeric", "numeric", "numeric",
+      "numeric", "numeric", "numeric", "checkbox",
+      "radio", "radio", "radio", "numeric",
+      "radio", "numeric", "numeric",
+      "numeric", "checkbox", "numeric", "checkbox",
+      "numeric", "numeric", "numeric",
+      "numeric", "numeric",
+      "checkbox", "numeric", "numeric",
+      "numeric", "numeric", "checkbox", "radio",
+      "numeric", "numeric", "numeric",
+      "numeric", "numeric", "numeric", "numeric",
+      "numeric", "select",
+      "numeric", "numeric", "numeric", "select",
+      "numeric", "checkbox",
+      "numeric", "numeric", "numeric", "select",
+      "numeric", "numeric",
+      "numeric", "numeric", "numeric"
     ),
     stringsAsFactors = FALSE
   )
@@ -272,4 +294,216 @@ ynow_param_audit_report_ui <- function(diff_df, eval_summary = NULL,
   })
 
   htmltools::tagList(hdr, eval_box, cards)
+}
+
+# ---------------------------------------------------------------------------
+# Parameter restore pack (Snapshot upload / download)
+# ---------------------------------------------------------------------------
+
+.ynow_param_restore_legacy_id_map <- function() {
+  c(
+    "apply_capex_spike_smooth" = "mod_fcf-apply_capex_spike_smooth",
+    "capex_spike_mult" = "mod_fcf-capex_spike_mult",
+    "capex_spike_avg_years" = "mod_fcf-capex_spike_avg_years"
+  )
+}
+
+#' Build a machine-readable restore dataframe from current Shiny inputs
+#' @param input Shiny input
+#' @param ticker optional ticker string for meta
+#' @param market_mode optional US/TW
+#' @return data.frame with InputId, Section, Label, Value, Type
+ynow_param_restore_export_df <- function(input, ticker = NULL, market_mode = NULL) {
+  reg <- ynow_tracked_param_registry()
+  vals <- vapply(seq_len(nrow(reg)), function(i) {
+    id <- reg$input_id[[i]]
+    ynow_param_norm_value(tryCatch(input[[id]], error = function(e) NULL))
+  }, character(1))
+  df <- data.frame(
+    InputId = reg$input_id,
+    Section = reg$section,
+    Label = reg$label,
+    Value = vals,
+    Type = reg$input_type,
+    stringsAsFactors = FALSE
+  )
+  meta <- data.frame(
+    InputId = c("_meta.format", "_meta.exported_at", "_meta.ticker", "_meta.market_mode"),
+    Section = rep("Meta", 4L),
+    Label = c("Format", "Exported At", "Ticker", "Market"),
+    Value = c(
+      "ynow_param_restore_v1",
+      format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"),
+      as.character(ticker %||% "")[1],
+      as.character(market_mode %||% "")[1]
+    ),
+    Type = rep("meta", 4L),
+    stringsAsFactors = FALSE
+  )
+  rbind(meta, df)
+}
+
+.ynow_param_restore_pick_col <- function(nms, candidates) {
+  low <- tolower(gsub("[^a-z0-9]", "", nms))
+  cand_low <- tolower(gsub("[^a-z0-9]", "", candidates))
+  for (cnd in cand_low) {
+    hit <- which(low == cnd)
+    if (length(hit)) return(nms[[hit[[1]]]])
+  }
+  NA_character_
+}
+
+#' Parse an uploaded restore / snapshot CSV into InputId + Value rows
+#' @param path file path
+#' @return list(ok, error, rows=data.frame(input_id,value,type), meta=list)
+ynow_param_restore_parse_file <- function(path) {
+  if (is.null(path) || !nzchar(as.character(path)[1]) || !file.exists(path)) {
+    return(list(ok = FALSE, error = "missing_file", rows = NULL, meta = list()))
+  }
+  raw <- tryCatch(
+    utils::read.csv(path, stringsAsFactors = FALSE, check.names = FALSE, fileEncoding = "UTF-8"),
+    error = function(e) {
+      tryCatch(
+        utils::read.csv(path, stringsAsFactors = FALSE, check.names = FALSE),
+        error = function(e2) NULL
+      )
+    }
+  )
+  if (is.null(raw) || !is.data.frame(raw) || !nrow(raw)) {
+    return(list(ok = FALSE, error = "unreadable", rows = NULL, meta = list()))
+  }
+  # Strip UTF-8 BOM from first column name if present
+  names(raw) <- sub("^\ufeff", "", names(raw))
+  nms <- names(raw)
+  id_col <- .ynow_param_restore_pick_col(nms, c("InputId", "input_id", "Input_Id", "id"))
+  val_col <- .ynow_param_restore_pick_col(
+    nms, c("Value", "Current Value", "CurrentValue", "current", "baseline")
+  )
+  type_col <- .ynow_param_restore_pick_col(nms, c("Type", "input_type"))
+  label_col <- .ynow_param_restore_pick_col(nms, c("Label", "Parameter", "parameter"))
+
+  reg <- ynow_tracked_param_registry()
+  legacy <- .ynow_param_restore_legacy_id_map()
+  meta <- list()
+  out_ids <- character(0)
+  out_vals <- character(0)
+  out_types <- character(0)
+
+  if (!is.na(id_col) && !is.na(val_col)) {
+    for (i in seq_len(nrow(raw))) {
+      id <- trimws(as.character(raw[[id_col]][[i]] %||% ""))
+      val <- ynow_param_norm_value(raw[[val_col]][[i]])
+      if (!nzchar(id)) next
+      if (startsWith(id, "_meta.")) {
+        key <- sub("^_meta\\.", "", id)
+        meta[[key]] <- if (is.na(val)) "" else val
+        next
+      }
+      if (id %in% names(legacy)) id <- unname(legacy[[id]])
+      if (!(id %in% reg$input_id)) next
+      if (is.na(val) || !nzchar(val)) next
+      typ <- if (!is.na(type_col)) {
+        trimws(as.character(raw[[type_col]][[i]] %||% ""))
+      } else {
+        reg$input_type[match(id, reg$input_id)]
+      }
+      if (!nzchar(typ) || is.na(typ)) {
+        typ <- reg$input_type[match(id, reg$input_id)]
+      }
+      out_ids <- c(out_ids, id)
+      out_vals <- c(out_vals, val)
+      out_types <- c(out_types, typ)
+    }
+  } else if (!is.na(label_col) && !is.na(val_col)) {
+    # Human Snapshot CSV fallback: match Parameter / Label text
+    for (i in seq_len(nrow(raw))) {
+      lab <- trimws(as.character(raw[[label_col]][[i]] %||% ""))
+      val <- ynow_param_norm_value(raw[[val_col]][[i]])
+      if (!nzchar(lab) || is.na(val) || !nzchar(val)) next
+      hit <- which(tolower(reg$label) == tolower(lab))
+      if (!length(hit)) next
+      id <- reg$input_id[[hit[[1]]]]
+      out_ids <- c(out_ids, id)
+      out_vals <- c(out_vals, val)
+      out_types <- c(out_types, reg$input_type[[hit[[1]]]])
+    }
+    # Ticker from Meta section if present
+    sec_col <- .ynow_param_restore_pick_col(nms, c("Section", "section"))
+    if (!is.na(sec_col)) {
+      for (i in seq_len(nrow(raw))) {
+        sec <- trimws(as.character(raw[[sec_col]][[i]] %||% ""))
+        lab <- trimws(as.character(raw[[label_col]][[i]] %||% ""))
+        val <- ynow_param_norm_value(raw[[val_col]][[i]])
+        if (identical(tolower(sec), "meta") && grepl("^ticker$", lab, ignore.case = TRUE)) {
+          meta$ticker <- if (is.na(val)) "" else val
+        }
+      }
+    }
+  } else {
+    return(list(ok = FALSE, error = "bad_columns", rows = NULL, meta = list()))
+  }
+
+  if (!length(out_ids)) {
+    return(list(ok = FALSE, error = "no_params", rows = NULL, meta = meta))
+  }
+  # Deduplicate: last wins
+  keep <- !duplicated(out_ids, fromLast = TRUE)
+  rows <- data.frame(
+    input_id = out_ids[keep],
+    value = out_vals[keep],
+    type = out_types[keep],
+    stringsAsFactors = FALSE
+  )
+  list(ok = TRUE, error = NULL, rows = rows, meta = meta)
+}
+
+.ynow_param_restore_parse_logical <- function(x) {
+  s <- tolower(trimws(as.character(x %||% "")[1]))
+  if (s %in% c("true", "t", "1", "yes", "y", "on")) return(TRUE)
+  if (s %in% c("false", "f", "0", "no", "n", "off")) return(FALSE)
+  NA
+}
+
+#' Apply parsed restore rows to a Shiny session
+#' @return list(applied=integer, skipped=integer, ticker=character|NULL)
+ynow_param_restore_apply <- function(session, rows) {
+  if (is.null(rows) || !is.data.frame(rows) || !nrow(rows)) {
+    return(list(applied = 0L, skipped = 0L))
+  }
+  reg <- ynow_tracked_param_registry()
+  type_map <- stats::setNames(reg$input_type, reg$input_id)
+
+  # Apply non-checkbox first so auto-sync toggles do not immediately overwrite values
+  is_cb <- tolower(as.character(rows$type)) == "checkbox"
+  ord <- c(which(!is_cb), which(is_cb))
+  applied <- 0L
+  skipped <- 0L
+
+  for (i in ord) {
+    id <- as.character(rows$input_id[[i]])[1]
+    raw_val <- rows$value[[i]]
+    typ <- tolower(as.character(rows$type[[i]] %||% type_map[[id]] %||% "numeric")[1])
+    if (!nzchar(id) || !(id %in% reg$input_id)) {
+      skipped <- skipped + 1L
+      next
+    }
+    ok <- tryCatch({
+      if (identical(typ, "checkbox")) {
+        lv <- .ynow_param_restore_parse_logical(raw_val)
+        if (is.na(lv)) return(FALSE)
+        shiny::updateCheckboxInput(session, id, value = lv)
+      } else if (identical(typ, "radio")) {
+        shiny::updateRadioButtons(session, id, selected = as.character(raw_val)[1])
+      } else if (identical(typ, "select")) {
+        shiny::updateSelectInput(session, id, selected = as.character(raw_val)[1])
+      } else {
+        num <- suppressWarnings(as.numeric(raw_val)[1])
+        if (!is.finite(num)) return(FALSE)
+        shiny::updateNumericInput(session, id, value = num)
+      }
+      TRUE
+    }, error = function(e) FALSE)
+    if (isTRUE(ok)) applied <- applied + 1L else skipped <- skipped + 1L
+  }
+  list(applied = applied, skipped = skipped)
 }

@@ -48,7 +48,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     snapshot_page_title = "Snapshot",
     snapshot_page_help = paste0(
       "Three tabs: manual adjustments vs the post-Search baseline (with annotated PDF); ",
-      "current live parameters; and APP_DEFAULTS. CSV download available on the last two tabs."
+      "current live parameters (download / upload restore CSV); and APP_DEFAULTS."
     ),
     snapshot_tab_audit = "Manual adjustments (vs post-Search baseline)",
     snapshot_tab_current = "Current App Parameter Snapshot",
@@ -57,6 +57,26 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Defaults written at App start (including items estimated from the default industry / Rf). ",
       "May differ from Current App Parameter Snapshot; fields can still be overridden on each page."
     ),
+    download_snapshot_btn = "Download Snapshot CSV",
+    download_param_restore_btn = "Download restore CSV",
+    param_restore_title = "Restore parameters from file",
+    param_restore_help = paste0(
+      "Download a restore CSV to save your current valuation inputs. ",
+      "Later, upload that file and click Restore to write the values back into the App, ",
+      "then continue DCF / DDM / RI / P/B / NAV analysis. ",
+      "Prefer Search (load statements) first when the ticker differs."
+    ),
+    param_restore_file_label = "Upload restore CSV",
+    param_restore_btn = "Restore parameters",
+    param_restore_need_file = "Choose a restore CSV first.",
+    param_restore_err_missing_file = "Choose a restore CSV first.",
+    param_restore_err_unreadable = "Could not read that file. Use a restore CSV downloaded from this App.",
+    param_restore_err_bad_columns = "CSV columns not recognized. Need InputId + Value (or Parameter + Current Value).",
+    param_restore_err_no_params = "No restorable parameters found in the file.",
+    param_restore_ok = "Restored {n} parameter(s).",
+    param_restore_ok_with_ticker = "Restored {n} parameter(s) for {ticker}.",
+    param_restore_skipped = "Skipped {n} row(s).",
+    param_restore_search_hint = "If statements are not loaded yet, press Search before continuing analysis.",
     param_audit_title = "Manual adjustments (vs post-Search baseline)",
     param_audit_help = paste0(
       "Baseline locks after Search and statement auto-fill. ",
@@ -624,7 +644,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     snapshot_page_title = "快照 Snapshot",
     snapshot_page_help = paste0(
       "三個小頁籤：相對 Search 後基準的手改參數（含標記截圖 PDF）；",
-      "目前 App 執行中參數；系統載入時 APP_DEFAULTS。後兩者可下載 CSV。"
+      "目前 App 執行中參數（可下載／上傳還原 CSV）；系統載入時 APP_DEFAULTS。"
     ),
     snapshot_tab_audit = "手改參數（相對 Search 後基準）",
     snapshot_tab_current = "目前 App 參數 Snapshot",
@@ -633,6 +653,25 @@ locale_for_market <- function(mode = get_market_mode()) {
       "App 啟動時寫入的預設值（含依預設產業／Rf 動態估出的項目）。",
       "與「目前參數」可能不同；欄位仍可在各分頁覆寫。"
     ),
+    download_snapshot_btn = "下載 Snapshot CSV",
+    download_param_restore_btn = "下載還原 CSV",
+    param_restore_title = "從檔案還原參數",
+    param_restore_help = paste0(
+      "可下載還原 CSV 保存目前估值輸入。之後上傳該檔並按「還原參數」，",
+      "即可把設定寫回 App，繼續 DCF／DDM／RI／P/B／NAV 分析。",
+      "若代號不同，建議先 Search 載入財報再還原。"
+    ),
+    param_restore_file_label = "上傳還原 CSV",
+    param_restore_btn = "還原參數",
+    param_restore_need_file = "請先選擇還原 CSV。",
+    param_restore_err_missing_file = "請先選擇還原 CSV。",
+    param_restore_err_unreadable = "無法讀取該檔。請使用本 App 下載的還原 CSV。",
+    param_restore_err_bad_columns = "無法辨識 CSV 欄位。需有 InputId + Value（或 Parameter + Current Value）。",
+    param_restore_err_no_params = "檔案中找不到可還原的參數。",
+    param_restore_ok = "已還原 {n} 項參數。",
+    param_restore_ok_with_ticker = "已為 {ticker} 還原 {n} 項參數。",
+    param_restore_skipped = "略過 {n} 列。",
+    param_restore_search_hint = "若尚未載入財報，請先按 Search 再繼續分析。",
     param_audit_title = "手改參數（相對 Search 後基準）",
     param_audit_help = paste0(
       "基準在按下 Search 且財報自動帶入後鎖定。之後你手動覆寫的參數會分頁列出；",

@@ -1,6 +1,10 @@
-# The YNow App v17.58 — Valuation Methodology
+# The YNow App v17.59 — Valuation Methodology
 
 先分類，再選模型；先推導，再校正；先給區間，再給單點；先做基本面估值。
+
+## v17.59 重點
+- **Snapshot 參數還原**：於「目前 App 參數」可下載還原 CSV，並上傳以寫回估值輸入（DCF／DDM／RI／P/B／NAV 等），方便接續分析
+- **目錄**：`app_17.0/`；顯示版號 **v17.59**
 
 ## v17.58 重點
 - **美股宇宙**：Search／Blue Chip 改用 SEC 主要上市全市場目錄（Nasdaq／NYSE；排除 OTC）；評估仍以 N＋截斷，過大時先預篩；S&P GICS 疊加產業鍵

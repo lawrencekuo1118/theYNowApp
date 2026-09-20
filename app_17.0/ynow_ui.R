@@ -933,7 +933,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.58</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.59</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -2960,6 +2960,18 @@ ui <- dashboardPage(
             if (snapTabDefaults && s.snapshot_tab_defaults) snapTabDefaults.textContent = s.snapshot_tab_defaults;
             var snapDefaultsHelp = document.getElementById('ynow_snapshot_defaults_help');
             if (snapDefaultsHelp && s.snapshot_defaults_help) snapDefaultsHelp.textContent = s.snapshot_defaults_help;
+            var dlSnapBtn = document.getElementById('ynow_download_snapshot_btn');
+            if (dlSnapBtn && s.download_snapshot_btn) dlSnapBtn.textContent = s.download_snapshot_btn;
+            var dlRestoreBtn = document.getElementById('ynow_download_param_restore_btn');
+            if (dlRestoreBtn && s.download_param_restore_btn) dlRestoreBtn.textContent = s.download_param_restore_btn;
+            var restoreTitle = document.getElementById('ynow_param_restore_title');
+            if (restoreTitle && s.param_restore_title) restoreTitle.textContent = s.param_restore_title;
+            var restoreHelp = document.getElementById('ynow_param_restore_help');
+            if (restoreHelp && s.param_restore_help) restoreHelp.textContent = s.param_restore_help;
+            var restoreFileLab = document.getElementById('ynow_param_restore_file_label');
+            if (restoreFileLab && s.param_restore_file_label) restoreFileLab.textContent = s.param_restore_file_label;
+            var restoreBtn = document.getElementById('ynow_param_restore_btn');
+            if (restoreBtn && s.param_restore_btn) restoreBtn.textContent = s.param_restore_btn;
             var paHelp = document.getElementById('ynow_param_audit_help');
             if (paHelp && s.param_audit_help) paHelp.textContent = s.param_audit_help;
             var paPdfTitle = document.getElementById('ynow_param_audit_pdf_title');
@@ -5117,7 +5129,7 @@ ui <- dashboardPage(
           id = "ynow_snapshot_page_help",
           paste0(
             "Three tabs: manual adjustments vs the post-Search baseline (with annotated PDF); ",
-            "current live parameters; and APP_DEFAULTS. CSV download available on the last two tabs."
+            "current live parameters (download / upload restore CSV); and APP_DEFAULTS."
           )
         ),
         tabBox(
@@ -5197,10 +5209,73 @@ ui <- dashboardPage(
               tags$span(id = "ynow_snapshot_tab_current", "Current App Parameter Snapshot")
             ),
             value = "snap_current",
+            tags$p(
+              id = "ynow_param_restore_help",
+              style = "font-size:12.5px; color:#666; line-height:1.45; margin:0 0 10px 0;",
+              paste0(
+                "Download a restore CSV to save your current valuation inputs. ",
+                "Later, upload that file and click Restore to write the values back into the App, ",
+                "then continue DCF / DDM / RI / P/B / NAV analysis. ",
+                "Prefer Search (load statements) first when the ticker differs."
+              )
+            ),
             div(
-              style = "display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:10px;",
+              style = "display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px; margin-bottom:10px;",
               uiOutput("snapshot_timestamp"),
-              downloadButton("download_snapshot", "下載 Snapshot CSV", icon = icon("download"))
+              div(
+                style = "display:flex; flex-wrap:wrap; gap:8px; align-items:center;",
+                downloadButton(
+                  "download_snapshot",
+                  tags$span(id = "ynow_download_snapshot_btn", "Download Snapshot CSV"),
+                  icon = icon("download")
+                ),
+                downloadButton(
+                  "download_param_restore",
+                  tags$span(id = "ynow_download_param_restore_btn", "Download restore CSV"),
+                  icon = icon("save"),
+                  class = "btn-primary"
+                )
+              )
+            ),
+            tags$div(
+              class = "ynow-param-restore-box",
+              style = "margin:0 0 14px 0; padding:12px 14px; background:#f7f9fc; border:1px solid #e2e8f0; border-radius:6px; border-left:4px solid #3c8dbc;",
+              tags$h4(
+                id = "ynow_param_restore_title",
+                style = "margin:0 0 8px 0; font-size:15px; font-weight:700;",
+                "Restore parameters from file"
+              ),
+              fluidRow(
+                column(
+                  width = 7,
+                  fileInput(
+                    "param_restore_file",
+                    label = tags$span(id = "ynow_param_restore_file_label", "Upload restore CSV"),
+                    accept = c(".csv", "text/csv", "text/comma-separated-values"),
+                    buttonLabel = "Browse…",
+                    placeholder = "No file selected"
+                  )
+                ),
+                column(
+                  width = 5,
+                  tags$div(
+                    style = "margin-top:24px;",
+                    actionButton(
+                      "param_restore_go",
+                      tagList(
+                        icon("upload"),
+                        tags$span(id = "ynow_param_restore_btn", "Restore parameters")
+                      ),
+                      class = "btn-success"
+                    )
+                  )
+                )
+              ),
+              tags$span(
+                id = "ynow_param_restore_status",
+                style = "font-size:12.5px; color:#555;"
+              ),
+              uiOutput("param_restore_status_ui")
             ),
             dataTableOutput("snapshot_table")
           ),

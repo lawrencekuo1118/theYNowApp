@@ -1733,6 +1733,96 @@ server <- function(input, output, session) {
     }
   )
 
+  output$download_param_restore <- downloadHandler(
+    filename = function() {
+      ticker <- gsub("[^A-Za-z0-9._-]", "_", current_ticker() %||% APP_DEFAULTS$stock_code)
+      paste0("YNow_param_restore_", ticker, "_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".csv")
+    },
+    content = function(file) {
+      df <- ynow_param_restore_export_df(
+        input,
+        ticker = display_ticker_for_market(
+          current_ticker() %||% APP_DEFAULTS$stock_code,
+          market_mode()
+        ),
+        market_mode = market_mode()
+      )
+      write.csv(df, file, row.names = FALSE, fileEncoding = "UTF-8")
+    }
+  )
+
+  param_restore_status <- reactiveVal(NULL)
+
+  output$param_restore_status_ui <- renderUI({
+    st <- param_restore_status()
+    if (is.null(st) || !nzchar(as.character(st$message %||% "")[1])) return(NULL)
+    col <- if (isTRUE(st$ok)) "#1e7e34" else "#a94442"
+    tags$p(style = paste0("margin:6px 0 0 0; font-size:12.5px; color:", col, ";"), st$message)
+  })
+
+  observeEvent(input$param_restore_go, {
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
+    f <- input$param_restore_file
+    if (is.null(f) || !nzchar(as.character(f$datapath %||% "")[1])) {
+      msg <- ui_str("param_restore_need_file", loc)
+      param_restore_status(list(ok = FALSE, message = msg))
+      showNotification(msg, type = "warning", duration = 6)
+      return()
+    }
+    parsed <- ynow_param_restore_parse_file(f$datapath)
+    if (!isTRUE(parsed$ok)) {
+      err_key <- paste0("param_restore_err_", parsed$error %||% "unreadable")
+      msg <- ui_str(err_key, loc)
+      if (identical(msg, err_key) || !nzchar(msg)) {
+        msg <- ui_str("param_restore_err_unreadable", loc)
+      }
+      param_restore_status(list(ok = FALSE, message = msg))
+      showNotification(msg, type = "error", duration = 8)
+      return()
+    }
+
+    meta_tk <- trimws(as.character(parsed$meta$ticker %||% "")[1])
+    if (nzchar(meta_tk)) {
+      updateTextInput(session, "sc", value = meta_tk)
+    }
+    meta_mkt <- toupper(trimws(as.character(parsed$meta$market_mode %||% "")[1]))
+    if (nzchar(meta_mkt) && meta_mkt %in% c("US", "TW")) {
+      tryCatch({
+        shinyjs::runjs(sprintf(
+          paste0(
+            "(function(){",
+            "var stack=document.querySelector('#ynow-market-header .ynow-market-stack');",
+            "if(stack){stack.querySelectorAll('.ynow-mkt-btn').forEach(function(b){",
+            "b.classList.toggle('active', b.getAttribute('data-value')===%s);});}",
+            "if(window.Shiny&&Shiny.setInputValue){",
+            "Shiny.setInputValue('market_mode_pick', %s, {priority:'event'});}",
+            "})();"
+          ),
+          jsonlite::toJSON(meta_mkt, auto_unbox = TRUE),
+          jsonlite::toJSON(meta_mkt, auto_unbox = TRUE)
+        ))
+      }, error = function(e) invisible(NULL))
+    }
+
+    res <- ynow_param_restore_apply(session, parsed$rows)
+    tip <- if (nzchar(meta_tk)) {
+      ui_str("param_restore_ok_with_ticker", loc)
+    } else {
+      ui_str("param_restore_ok", loc)
+    }
+    tip <- gsub("\\{n\\}", as.character(res$applied), tip, fixed = TRUE)
+    tip <- gsub("\\{ticker\\}", meta_tk, tip, fixed = TRUE)
+    if (isTRUE(res$skipped > 0L)) {
+      tip <- paste0(tip, " ", gsub("\\{n\\}", as.character(res$skipped),
+                                   ui_str("param_restore_skipped", loc), fixed = TRUE))
+    }
+    if (nzchar(meta_tk)) {
+      tip <- paste0(tip, " ", ui_str("param_restore_search_hint", loc))
+    }
+    param_restore_status(list(ok = TRUE, message = tip))
+    showNotification(tip, type = "message", duration = 10)
+  })
+
   .format_default_value <- function(x) {
     if (is.null(x) || length(x) == 0) return(NA_character_)
     if (length(x) == 1 && isTRUE(is.na(x))) return(NA_character_)
@@ -10842,7 +10932,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.58"),
+      paste0("- **App：** The YNow App v17.59"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {
