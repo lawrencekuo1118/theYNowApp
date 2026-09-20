@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12580366
+bundleId=12580389
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=acaa3e7
-commit=acaa3e7685cd3277ba4b8ab4ddbadc1683ccd27a
-short=acaa3e7
-message=Expand US Search/Blue Chip universe to SEC Nasdaq/NYSE primary listings (v17.58).
-captured_at=2026-09-20T13:38:25Z
+aligned_git=f7939ad
+commit=f7939ada57e85e59390218140f758fbeb6235f11
+short=f7939ad
+message=Add Snapshot parameter restore CSV upload/download (v17.59).
+captured_at=2026-09-20T13:49:57Z
 source_branch=master
-display_version=v17.58
-note=Canonical live line is app_17.0. Bundle 12580366 = tip v17.58 (US primary listings universe). Deploy via scripts/deploy_app_17.R.
+display_version=v17.59
+note=Canonical live line is app_17.0. Bundle 12580389 = tip v17.59 (Snapshot param restore). Deploy via scripts/deploy_app_17.R.
