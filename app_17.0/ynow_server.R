@@ -163,6 +163,22 @@ server <- function(input, output, session) {
   # ==========================================
   ui_locale <- reactiveVal("en")
 
+  .ui_msg <- function(key, ..., loc = NULL) {
+    if (is.null(loc)) {
+      loc <- tryCatch(isolate(ui_locale()), error = function(e) "en")
+    }
+    loc <- normalize_ui_locale(loc)
+    msg <- ui_str(key, loc)
+    dots <- list(...)
+    if (length(dots)) {
+      for (nm in names(dots)) {
+        msg <- gsub(paste0("{", nm, "}"), as.character(dots[[nm]] %||% ""), msg, fixed = TRUE)
+      }
+    }
+    msg
+  }
+
+
   .push_ui_locale <- function(locale, sync_picker = TRUE) {
     loc <- normalize_ui_locale(locale)
     ui_locale(loc)
@@ -268,6 +284,84 @@ server <- function(input, output, session) {
         selected = ddm_sel
       )
     }, error = function(e) NULL)
+    # CAPM Rf / Rm labels (β label is owned by smart-tag observer)
+    tryCatch({
+      updateNumericInput(session, "capm_rf", label = ui_str("capm_rf_label", loc))
+      updateNumericInput(session, "capm_rm", label = ui_str("capm_rm_label", loc))
+      updateNumericInput(session, "ddm_capm_rf", label = ui_str("capm_rf_label", loc))
+      updateNumericInput(session, "ddm_capm_rm", label = ui_str("capm_rm_label", loc))
+    }, error = function(e) NULL)
+    tryCatch({
+      updateCheckboxInput(
+        session, "use_estimated_re",
+        label = ui_str("use_estimated_re_label", loc)
+      )
+    }, error = function(e) NULL)
+    tryCatch({
+      updateCheckboxInput(
+        session, "ddm_use_estimated_re",
+        label = ui_str("ddm_use_estimated_ke_label", loc)
+      )
+    }, error = function(e) NULL)
+    # Rolling lookback choices + Bottom-Up aggregation
+    tryCatch({
+      lb_sel <- as.character(isolate(input$beta_lookback_months) %||% APP_DEFAULTS$beta_lookback_months)[1]
+      if (!lb_sel %in% c("12", "24", "60")) lb_sel <- "60"
+      updateSelectInput(
+        session,
+        "beta_lookback_months",
+        label = ui_str("beta_lookback_label", loc),
+        choices = stats::setNames(
+          c(12, 24, 60),
+          c(
+            ui_str("beta_lookback_1y", loc),
+            ui_str("beta_lookback_2y", loc),
+            ui_str("beta_lookback_5y", loc)
+          )
+        ),
+        selected = lb_sel
+      )
+    }, error = function(e) NULL)
+    tryCatch({
+      updateSelectizeInput(
+        session, "beta_bench",
+        label = ui_str("beta_bench_label", loc),
+        options = list(
+          create = TRUE,
+          placeholder = ui_str("beta_bench_placeholder", loc),
+          maxItems = 1
+        )
+      )
+    }, error = function(e) NULL)
+    tryCatch({
+      agg_sel <- as.character(isolate(input$beta_bottomup_agg) %||% APP_DEFAULTS$beta_bottomup_agg)[1]
+      if (!agg_sel %in% c("mean", "median")) agg_sel <- "mean"
+      updateRadioButtons(
+        session,
+        "beta_bottomup_agg",
+        label = ui_str("beta_bottomup_agg_label", loc),
+        choices = stats::setNames(
+          c("mean", "median"),
+          c(
+            ui_str("beta_bottomup_agg_mean", loc),
+            ui_str("beta_bottomup_agg_median", loc)
+          )
+        ),
+        selected = agg_sel
+      )
+    }, error = function(e) NULL)
+    tryCatch({
+      updateSelectizeInput(
+        session, "beta_peers",
+        label = ui_str("beta_peers_label", loc),
+        options = list(
+          create = TRUE,
+          placeholder = ui_str("beta_peers_placeholder", loc),
+          plugins = list("remove_button"),
+          maxItems = 15
+        )
+      )
+    }, error = function(e) NULL)
   }
 
   # 語言控制：只改 UI locale，不碰顯示幣別
@@ -349,10 +443,12 @@ server <- function(input, output, session) {
     }
 
     showNotification(
-      paste0(
-        "已切換至", prof$label_zh, "模式（預設 ", disp,
-        "；Rf：", prof$rf_label_zh, "；顯示幣別 ",
-        prof$session_currency, "；語言不變）"
+      .ui_msg(
+        "notif_market_switched",
+        market = prof$label_zh %||% as.character(mode),
+        ticker = disp,
+        rf = prof$rf_label_zh %||% "",
+        ccy = prof$session_currency
       ),
       type = "message", duration = 8
     )
@@ -535,7 +631,7 @@ server <- function(input, output, session) {
         if (!identical(q_ccy, f_ccy) || !identical(sess, q_ccy)) {
           if (!is.finite(fx_now) || fx_now <= 0) {
             showNotification(
-              "無法取得即期 USD/TWD 匯率，已拒絕換匯（金額維持原幣或不顯示）。請稍後再試。",
+              .ui_msg("notif_fx_usd_twd_fail_keep"),
               type = "warning", duration = 10
             )
           }
@@ -642,10 +738,9 @@ server <- function(input, output, session) {
             tpex_used <- TRUE
             tw_tpex_fs_fallback(TRUE)
             showNotification(
-              paste0(
-                "Yahoo 尚無完整年報，已改用櫃買「財務資料簡報」補齊部分 IS／BS（",
-                if (identical(fb$meta$board %||% "", "ESB")) "興櫃" else "上櫃",
-                "）。此為截至當季累計摘要，非完整三表；CF／CapEx／FCF 等未提供項目不會捏造。"
+              .ui_msg(
+                "notif_data_gap_yahoo_tpex",
+                board = if (identical(fb$meta$board %||% "", "ESB")) "ESB" else "OTC"
               ),
               type = "message", duration = 12, id = "ynow_tpex_fs_fallback"
             )
@@ -668,10 +763,7 @@ server <- function(input, output, session) {
         fs_all_empty(empty_fs)
         if (isTRUE(empty_fs)) {
           showNotification(
-            paste0(
-              "Yahoo 尚無年報（IS／BS／CF 皆空），且櫃買季報彙總亦無可用摘要，",
-              "基本面模型不可用。完整財報請至公開資訊觀測站（MOPS）／櫃買中心查詢。"
-            ),
+            .ui_msg("notif_data_gap_empty"),
             type = "warning", duration = 12, id = "ynow_fs_empty_gap"
           )
         } else if (isTRUE(tpex_used)) {
@@ -680,10 +772,7 @@ server <- function(input, output, session) {
         }
         if (isTRUE(tw_is_esb())) {
           showNotification(
-            paste0(
-              "興櫃（ESB）：可估，但 Yahoo Summary β 常缺；Blue Chip 不納興櫃。",
-              "建議改用產業／手動／Rolling β（工程啟發式）。"
-            ),
+            .ui_msg("notif_esb_beta_hint"),
             type = "message", duration = 10, id = "ynow_esb_board_note"
           )
         }
@@ -741,7 +830,7 @@ server <- function(input, output, session) {
         fs_all_empty(FALSE)
         # 興櫃旗標若已偵測仍保留短註（Summary 失敗也可能是興櫃）
         showNotification(
-          paste("❌ 取得資料失敗，請確認代號。錯誤:", e$message),
+          .ui_msg("notif_fetch_fail", err = e$message),
           type = "error",
           duration = 12
         )
@@ -759,7 +848,7 @@ server <- function(input, output, session) {
     if (!stale) return(invisible(fx_usd_twd()))
     fx_now <- tryCatch(cached_get_usd_twd_fx(), error = function(e) NA_real_)
     if (!is.finite(fx_now) || fx_now <= 0) {
-      showNotification("無法取得即期 USD/TWD 匯率，已拒絕換匯。", type = "warning", duration = 8)
+      showNotification(.ui_msg("notif_fx_usd_twd_fail"), type = "warning", duration = 8)
       return(invisible(fx_usd_twd()))
     }
     fx_usd_twd(fx_now)
@@ -780,7 +869,7 @@ server <- function(input, output, session) {
     if (!is.finite(fx_now) || fx_now <= 0) {
       q <- quote_currency(); f <- statement_currency()
       if (!identical(sc, q) || !identical(sc, f) || !identical(q, f)) {
-        showNotification("無法取得即期匯率，已拒絕 USD↔TWD 換匯。", type = "warning", duration = 8)
+        showNotification(.ui_msg("notif_fx_convert_fail"), type = "warning", duration = 8)
       }
     }
     session_currency(sc)
@@ -1156,14 +1245,14 @@ server <- function(input, output, session) {
     st0 <- bt_filter_state()
     if (!is.null(st0)) {
       bt_filter_state(NULL)
-      showNotification("已取消回測濾鏡。", type = "message", duration = 4)
+      showNotification(.ui_msg("notif_bt_filter_cancel"), type = "message", duration = 4)
       return()
     }
     is_df <- tryCatch(d_income_statement(), error = function(e) NULL)
     cf_df <- tryCatch(d_cash_flow(), error = function(e) NULL)
     if (is.null(is_df) || is.null(cf_df)) {
       bt_filter_state(list(status = "empty", message = "尚無財報資料，請先搜尋並載入公司。"))
-      showNotification("尚無財報，無法評估回測濾鏡。", type = "warning", duration = 6)
+      showNotification(.ui_msg("notif_bt_filter_no_fs"), type = "warning", duration = 6)
       return()
     }
     metrics <- tryCatch(
@@ -1172,7 +1261,7 @@ server <- function(input, output, session) {
     )
     if (is.null(metrics)) {
       bt_filter_state(list(status = "empty", message = "指標計算失敗。"))
-      showNotification("回測濾鏡計算失敗。", type = "error", duration = 6)
+      showNotification(.ui_msg("notif_bt_filter_fail"), type = "error", duration = 6)
       return()
     }
     thr <- list(
@@ -1189,8 +1278,8 @@ server <- function(input, output, session) {
       ticker = current_ticker() %||% ""
     ))
     showNotification(
-      if (isTRUE(ev$overall)) "✅ 回測濾鏡：達標（再點一次可取消）"
-      else "⚠️ 回測濾鏡：未達標（再點一次可取消）",
+      if (isTRUE(ev$overall)) .ui_msg("notif_bt_filter_pass")
+      else .ui_msg("notif_bt_filter_fail_soft"),
       type = if (isTRUE(ev$overall)) "message" else "warning",
       duration = 7
     )
@@ -1462,7 +1551,7 @@ server <- function(input, output, session) {
     if (!isTRUE(rec$suggest_two_stage)) return()
     if (identical(input$dcf_mode, "two_stage")) return()
     showNotification(
-      "模型建議：高成長標的可考慮切換為「二階段成長法」，目前預設仍為明確預測 + Gordon 終值。",
+      .ui_msg("notif_suggest_two_stage"),
       type = "message", duration = 6, id = "ynow_suggest_two_stage"
     )
   }, ignoreInit = TRUE)
@@ -2976,7 +3065,7 @@ server <- function(input, output, session) {
       updateSelectInput(session, "lifecycle_stage", selected = "auto")
     }
     showNotification(
-      paste0("已切換 SGR 估計法為「", est$recommend_label %||% rec, "」（未改寫演算法，僅換方法）。"),
+      .ui_msg("notif_sgr_method_switched", label = est$recommend_label %||% rec),
       type = "message", duration = 5, id = "ynow_apply_sgr_method"
     )
   })
@@ -2997,7 +3086,7 @@ server <- function(input, output, session) {
       # 不再自動切換 dcf_mode（維持 Gordon 預設）；僅同步 g1 供使用者改 Two-Stage 時使用
       if (isTRUE(notify_two_stage) && !identical(input$dcf_mode, "two_stage")) {
         showNotification(
-          "Lifecycle：高速→成熟。終值 g 已收斂；若要改用 Two-Stage，請在 DCF 模型手動切換。",
+          .ui_msg("notif_lifecycle_two_stage"),
           type = "message", duration = 6, id = "ynow_lifecycle_two_stage"
         )
       }
@@ -3731,7 +3820,7 @@ server <- function(input, output, session) {
     updateNumericInput(session, "wacc_rd", value = round(rd, 2))
     if (isTRUE(notify)) {
       showNotification(
-        glue::glue("📌 已估算 rᵈ = {round(rd, 2)}%（利息費用／有息負債）"),
+        .ui_msg("notif_rd_estimated", rd = round(rd, 2)),
         type = "message",
         duration = 5
       )
@@ -3998,31 +4087,43 @@ server <- function(input, output, session) {
 
   # 智慧標籤：與基礎設定來源鎖步（或 WACC 獨立）
   .capm_beta_label_html <- function(beta) {
+    loc <- tryCatch(isolate(ui_locale()), error = function(e) "en")
     src <- as.character(input$beta_u_apply_source %||% "summary")[1]
     gs_tag <- switch(
       src,
-      "summary" = "基礎設定｜Summary β",
-      "industry" = "基礎設定｜產業預設 β",
-      "bottomup" = "基礎設定｜Bottom-Up βᵤ",
-      "unlever_firm" = "基礎設定｜去槓桿化 βᵤ",
-      "manual" = "基礎設定｜手動 β",
-      "基礎設定｜β"
+      "summary" = ui_str("capm_beta_src_summary", loc),
+      "industry" = ui_str("capm_beta_src_industry", loc),
+      "bottomup" = ui_str("capm_beta_src_bottomup", loc),
+      "unlever_firm" = ui_str("capm_beta_src_unlever", loc),
+      "manual" = ui_str("capm_beta_src_manual", loc),
+      ui_str("capm_beta_src_generic", loc)
     )
+    base <- ui_str("capm_beta_label_base", loc)
     if (identical(src, "rolling")) {
-      HTML("Beta (β) <span style='color: #c0392b; font-size: 12px;'>[Rolling 已排除｜請改其他來源]</span>")
+      HTML(paste0(
+        base, " <span style='color: #c0392b; font-size: 12px;'>",
+        htmltools::htmlEscape(ui_str("capm_beta_tag_rolling_excluded", loc)),
+        "</span>"
+      ))
     } else if (isTRUE(input$sync_gs_beta)) {
+      tag <- gsub("{src}", gs_tag, ui_str("capm_beta_tag_synced", loc), fixed = TRUE)
       HTML(sprintf(
-        "Beta (β) <span style='color: #27ae60; font-size: 12px;'>[%s]</span>",
-        gs_tag
+        "%s <span style='color: #27ae60; font-size: 12px;'>%s</span>",
+        base, htmltools::htmlEscape(tag)
       ))
     } else {
-      HTML("Beta (β) <span style='color: #e67e22; font-size: 12px;'>[WACC 獨立]</span>")
+      HTML(paste0(
+        base, " <span style='color: #e67e22; font-size: 12px;'>",
+        htmltools::htmlEscape(ui_str("capm_beta_tag_wacc_indep", loc)),
+        "</span>"
+      ))
     }
   }
 
   observeEvent(list(
     input$capm_beta, input$industry_choice, input$sync_gs_beta,
-    input$beta_u_apply_source, summary_data(), beta_capm_driver()
+    input$beta_u_apply_source, summary_data(), beta_capm_driver(),
+    ui_locale()
   ), {
     beta <- suppressWarnings(as.numeric(input$capm_beta)[1])
     if (length(beta) < 1L || !is.finite(beta)) return()
@@ -4301,12 +4402,12 @@ server <- function(input, output, session) {
     beta_est_result(res)
     if (isTRUE(res$ok)) {
       showNotification(
-        glue::glue("✅ Rolling β = {res$beta}（{res$method}，n={res$n_obs}，基準 {res$bench}）"),
+        .ui_msg("notif_rolling_beta_ok", beta = res$beta, method = res$method, n = res$n_obs, bench = res$bench),
         type = "message", duration = 6
       )
       # Rolling 僅對照：估計後不寫入 CAPM
     } else {
-      showNotification(paste0("❌ ", res$reason %||% "估計失敗"), type = "error", duration = 8)
+      showNotification(.ui_msg("notif_est_failed", reason = res$reason %||% .ui_msg("notif_est_failed_default")), type = "error", duration = 8)
     }
   })
 
@@ -4314,7 +4415,7 @@ server <- function(input, output, session) {
     # 已排除：Rolling β 含市場情緒／短窗噪音，不得寫入 CAPM／Ke／WACC
     if (!isTRUE(silent)) {
       showNotification(
-        "Rolling β 只供對照，不能寫入 CAPM。請改用 Bottom-Up (βᵤ→βe)。",
+        .ui_msg("notif_rolling_no_write_capm"),
         type = "warning", duration = 8
       )
     }
@@ -4567,7 +4668,7 @@ server <- function(input, output, session) {
           ok = FALSE,
           reason = "未指定同業，且產業基準無法去槓桿（缺 β 或負債比）。請輸入同業代號後再算。"
         ))
-        showNotification("Bottom-Up：請先輸入同業代號，或確認已選產業。", type = "warning", duration = 7)
+        showNotification(.ui_msg("notif_bottomup_need_peers"), type = "warning", duration = 7)
         return(invisible(NULL))
       }
       tgt <- .target_relever_de()
@@ -4587,7 +4688,7 @@ server <- function(input, output, session) {
         )
       ))
       showNotification(
-        glue::glue("Bottom-Up（產業參考）βᵤ ≈ {round(proxy$beta_u, 3)}"),
+        .ui_msg("notif_bottomup_industry_proxy", beta = round(proxy$beta_u, 3)),
         type = "message", duration = 6
       )
       return(invisible(NULL))
@@ -4634,7 +4735,7 @@ server <- function(input, output, session) {
         reason = "同業皆無法去槓桿（缺 Yahoo β 或 D/E）。",
         peers_df = peers_df
       ))
-      showNotification("Bottom-Up 失敗：同業資料不足。", type = "error", duration = 8)
+      showNotification(.ui_msg("notif_bottomup_fail"), type = "error", duration = 8)
       return(invisible(NULL))
     }
     agg <- as.character(input$beta_bottomup_agg %||% "mean")[1]
@@ -4654,7 +4755,7 @@ server <- function(input, output, session) {
       peers_df = peers_df
     ))
     showNotification(
-      glue::glue("✅ Bottom-Up βᵤ = {round(bu_avg, 3)}（n={length(ok_u)}）"),
+      .ui_msg("notif_bottomup_ok", beta = round(bu_avg, 3), n = length(ok_u)),
       type = "message", duration = 6
     )
   }
@@ -4773,7 +4874,7 @@ server <- function(input, output, session) {
     .auto_recalc_capm_wacc(notify = !isTRUE(silent), wacc_too = TRUE)
     if (!isTRUE(silent)) {
       showNotification(
-        glue::glue("已套用 {got$label}={beta_val} 至 CAPM β（供 Ke／WACC）。"),
+        .ui_msg("notif_beta_applied", label = got$label, beta = beta_val),
         type = "message", duration = 7
       )
     }
@@ -5205,17 +5306,17 @@ server <- function(input, output, session) {
     rec <- .beta_decision_recommend()
     src <- as.character(rec$source %||% "")[1]
     if (!nzchar(src)) {
-      showNotification("決策樹尚無可用建議來源。", type = "warning", duration = 6)
+      showNotification(.ui_msg("notif_decision_tree_no_src"), type = "warning", duration = 6)
       return()
     }
     # 估值且建議 Bottom-Up 但未算完：提示先算
     if (identical(src, "bottomup") && !isTRUE(rec$ready)) {
-      showNotification(rec$next_steps %||% "請先計算 Bottom-Up βᵤ。", type = "warning", duration = 8)
+      showNotification(rec$next_steps %||% .ui_msg("notif_need_bottomup_first"), type = "warning", duration = 8)
       .set_beta_u_apply_source_all("bottomup")
       return()
     }
     if (identical(src, "rolling")) {
-      showNotification("Rolling 估計不可寫入 CAPM，改建議 Summary／產業／Bottom-Up／去槓桿化來源。", type = "warning", duration = 7)
+      showNotification(.ui_msg("notif_rolling_rewrite_src"), type = "warning", duration = 7)
       src <- "summary"
     }
     cur <- as.character(input$beta_u_apply_source %||% "")[1]
@@ -5226,7 +5327,7 @@ server <- function(input, output, session) {
       .apply_selected_beta_u_to_capm(silent = FALSE, force = TRUE)
     }
     showNotification(
-      glue::glue("已依決策樹選擇「{rec$title}」。"),
+      .ui_msg("notif_decision_tree_picked", title = rec$title),
       type = "message", duration = 6
     )
   })
@@ -6062,7 +6163,7 @@ server <- function(input, output, session) {
     if (!isTRUE(wacc_too)) {
       if (isTRUE(notify) && !is.null(estimated_re())) {
         showNotification(
-          glue::glue("📌 已估算 rₑ = {round(estimated_re() * 100, 2)}%"),
+          .ui_msg("notif_re_estimated", re = round(estimated_re() * 100, 2)),
           type = "message"
         )
       }
@@ -6134,7 +6235,7 @@ server <- function(input, output, session) {
 
     if (isTRUE(notify)) {
       showNotification(
-        glue::glue("📌 已自動估算並套用 WACC {wacc_percent}%（含 CAPM rₑ）"),
+        .ui_msg("notif_wacc_auto", wacc = wacc_percent),
         type = "message",
         duration = 5
       )
@@ -6389,7 +6490,7 @@ server <- function(input, output, session) {
     future_fcfs <- extract_fcff_series(proj_df)
     
     if (length(future_fcfs) != n) {
-      showNotification("⚠️ 預測年數與 FCFF 表格不符，請重新計算", type = "error")
+      showNotification(.ui_msg("notif_dcf_n_mismatch"), type = "error")
       return(NULL)
     }
     
@@ -6403,7 +6504,7 @@ server <- function(input, output, session) {
       r2 <- r1 
       
       if (!identical(claim_pre, "fcfe") && !is.na(r2) && g_terminal >= r2) { 
-        showNotification("❌ 成長率 g 必須嚴格小於折現率 WACC", type = "error")
+        showNotification(.ui_msg("notif_g_ge_wacc"), type = "error")
         return(NULL) 
       }
       discount_factors <- cumprod(1 + rep(r1, n))
@@ -6415,13 +6516,13 @@ server <- function(input, output, session) {
       r2 <- input$wacc_stage2 / 100
       
       if (!identical(claim_pre, "fcfe") && g_terminal >= r2) { 
-        showNotification("❌ 永續成長率 g2 必須小於第二階段折現率 WACC2", type = "error")
+        showNotification(.ui_msg("notif_g2_ge_wacc2"), type = "error")
         return(NULL) 
       }
       
       yr1 <- clamp_yr_stage1(n, input$yr_stage1, APP_DEFAULTS$yr_stage1)
       if (yr1 <= 0 || yr1 >= n) {
-        showNotification("⚠️ 第一階段年數無效 (需大於 0 且小於預測總年數 n)", type = "error")
+        showNotification(.ui_msg("notif_yr1_invalid"), type = "error")
         return(NULL) 
       }
       
@@ -6479,7 +6580,7 @@ server <- function(input, output, session) {
       }
       if (!is.finite(ke) || ke <= 0) ke <- r2
       if (!is.finite(ke) || g_terminal >= ke) {
-        showNotification("❌ FCFE：永續 g 必須嚴格小於 Ke", type = "error")
+        showNotification(.ui_msg("notif_fcfe_g_ge_ke"), type = "error")
         return(NULL)
       }
       rd <- suppressWarnings(as.numeric(input$wacc_rd)[1]) / 100
@@ -6508,18 +6609,18 @@ server <- function(input, output, session) {
       stock_price_estimate_val(px)
       sh_note <- sh_info$note
       if (!is.null(sh_note) && nzchar(sh_note)) {
-        showNotification(paste0("DCF 股數：", sh_note), type = "message", duration = 6)
+        showNotification(.ui_msg("notif_dcf_shares_note", note = sh_note), type = "message", duration = 6)
       }
     } else {
       stock_price_estimate_val(NULL)
       showNotification(
-        "無法計算每股合理價：缺少匯率／ADR 約當股數，或財報幣與報價幣未對齊。",
+        .ui_msg("notif_dcf_no_per_share"),
         type = "warning"
       )
     }
     
     showNotification(
-      glue::glue("✅ 估值更新：已套入 {if (identical(claim, 'fcfe')) 'FCFE／Ke' else 'FCFF／WACC'} 運算"),
+      .ui_msg("notif_dcf_updated", claim = if (identical(claim, "fcfe")) .ui_msg("notif_dcf_claim_fcfe") else .ui_msg("notif_dcf_claim_fcff")),
       type = "message"
     )
     invisible(TRUE)
@@ -7484,9 +7585,9 @@ server <- function(input, output, session) {
   observeEvent(input$bt_refresh_params, {
     tryCatch({
       refresh_bt_params(fetch_hist = TRUE)
-      showNotification("✅ 已依目前公司重算一次（門檻／權重）", type = "message")
+      showNotification(.ui_msg("notif_params_recalc_ok"), type = "message")
     }, error = function(e) {
-      showNotification(paste("參數重算失敗：", e$message), type = "error")
+      showNotification(.ui_msg("notif_params_recalc_fail", err = e$message), type = "error")
     })
   })
 
@@ -7565,7 +7666,7 @@ server <- function(input, output, session) {
       .bt_refresh_hfv_fv(),
       error = function(e) {
         bt_fv_visible(FALSE)
-        showNotification(paste("❌ 基本面價值計算失敗：", e$message), type = "error", duration = 8)
+        showNotification(.ui_msg("notif_fv_fail", err = e$message), type = "error", duration = 8)
       }
     )
   }, ignoreInit = TRUE, ignoreNULL = FALSE)
@@ -7629,7 +7730,7 @@ server <- function(input, output, session) {
         bt_fv_visible(TRUE)
       })
     }, error = function(e) {
-      showNotification(paste("❌ 依分析頻率重建失敗：", e$message), type = "error", duration = 8)
+      showNotification(.ui_msg("notif_freq_rebuild_fail", err = e$message), type = "error", duration = 8)
     })
   }, ignoreInit = TRUE)
 
@@ -7648,7 +7749,7 @@ server <- function(input, output, session) {
     updateSliderInput(session, "bt_max_exp", value = 1)
     updateSliderInput(session, "bt_min_exp_pass", value = 0.4)
     updateSliderInput(session, "bt_w_vg", value = 0.35)
-    showNotification("✅ 已套用「貼近買進持有」：max=100%、min=40%、w_vg=0.35。請重新啟動回測。",
+    showNotification(.ui_msg("notif_bh_preset"),
                      type = "message", duration = 8)
   })
 
@@ -7752,7 +7853,7 @@ server <- function(input, output, session) {
       })
     }, error = function(e) {
       bt_run_msg(paste("失敗：", e$message))
-      showNotification(paste("❌ 回測失敗：", e$message), type = "error", duration = 12)
+      showNotification(.ui_msg("notif_bt_fail", err = e$message), type = "error", duration = 12)
     })
   })
 
@@ -9367,7 +9468,7 @@ server <- function(input, output, session) {
     } else {
       .push_perpetual_g(est, notify_two_stage = FALSE)
     }
-    showNotification("🔁 DCF 參數已回復預設", type = "message")
+    showNotification(.ui_msg("notif_dcf_defaults"), type = "message")
   })
   
   output$download_report <- downloadHandler(
@@ -9378,7 +9479,7 @@ server <- function(input, output, session) {
     },
     content = function(file) {
       tryCatch({
-        showNotification("正在產出 PDF 投資意見報告，請稍候...", type = "message", duration = 8)
+        showNotification(.ui_msg("notif_pdf_busy"), type = "message", duration = 8)
         tempReport <- file.path(tempdir(), "report_template.Rmd")
         file.copy("report_template.Rmd", tempReport, overwrite = TRUE)
 
@@ -9572,9 +9673,9 @@ server <- function(input, output, session) {
         )
 
         render_report_pdf(tmp_html, file)
-        showNotification("✅ PDF 投資意見報告已產出", type = "message")
+        showNotification(.ui_msg("notif_pdf_ok"), type = "message")
       }, error = function(e) {
-        showNotification(paste("報告產出失敗:", e$message), type = "error", duration = 12)
+        showNotification(.ui_msg("notif_pdf_fail", err = e$message), type = "error", duration = 12)
         # 寫入最小錯誤 PDF 避免下載 handler 空檔
         tryCatch({
           grDevices::pdf(file, width = 8.27, height = 11.69)
@@ -9594,7 +9695,7 @@ server <- function(input, output, session) {
 
   # 側邊欄「測試」：開啟 Testing（量化回測）
   observeEvent(input$sidebar_test_click, {
-    showNotification("已開啟測試（量化回測）", type = "message", duration = 3)
+    showNotification(.ui_msg("notif_test_opened"), type = "message", duration = 3)
   }, ignoreInit = TRUE)
 
   # ------------------------------------------
@@ -9604,7 +9705,7 @@ server <- function(input, output, session) {
     lab_im_catalog_nonce()
     mode <- market_mode()
     tryCatch(lab_build_industry_method_catalog(market_mode = mode), error = function(e) {
-      showNotification(paste("產業目錄載入失敗:", e$message), type = "error")
+      showNotification(.ui_msg("notif_industry_catalog_fail", err = e$message), type = "error")
       data.frame()
     })
   })
@@ -9689,7 +9790,7 @@ server <- function(input, output, session) {
         type = "message", duration = 6
       )
     } else {
-      showNotification("更新失敗，沿用上次快取／內建快照。", type = "warning", duration = 8)
+      showNotification(.ui_msg("notif_update_cache_fallback"), type = "warning", duration = 8)
     }
   })
 
@@ -9739,7 +9840,7 @@ server <- function(input, output, session) {
     )
     pool <- lab_dedupe_eval_pool(pool)
     if (is.null(pool) || nrow(pool) == 0L) {
-      showNotification("目前篩選下沒有可評估的候選。", type = "warning")
+      showNotification(.ui_msg("notif_no_candidates"), type = "warning")
       return()
     }
     max_n <- lab_resolve_im_max_n(input$lab_im_max_n, input$lab_im_max_n_custom)
@@ -9777,7 +9878,7 @@ server <- function(input, output, session) {
         mode_used <- as.character(attr(pool, "pool_rank_mode") %||% rank_mode)[1]
         note <- as.character(attr(pool, "pool_rank_note") %||% "")[1]
         if (nrow(pool) == 0L) {
-          showNotification("產業×模型篩選後沒有可評估的候選。", type = "warning")
+          showNotification(.ui_msg("notif_no_candidates_ind_model"), type = "warning")
           return(NULL)
         }
         if (is.finite(max_n) && n_filtered > nrow(pool)) {
@@ -10828,7 +10929,7 @@ server <- function(input, output, session) {
     tk <- lab_ticker()
     form <- input$lab_sec_form %||% "10-K"
     if (!nzchar(tk)) {
-      showNotification("主頁尚未設定 Ticker / Stock Code", type = "warning")
+      showNotification(.ui_msg("notif_need_ticker"), type = "warning")
       return()
     }
     res <- withProgress(
@@ -11010,7 +11111,7 @@ server <- function(input, output, session) {
   # 💬 意見區：表單 → GitHub Issues
   # ==========================================
   observeEvent(input$sidebar_feedback_click, {
-    showNotification("已開啟意見區 — 歡迎回報問題或優化建議", type = "message", duration = 3)
+    showNotification(.ui_msg("notif_feedback_opened"), type = "message", duration = 3)
   }, ignoreInit = TRUE)
 
   output$feedback_status <- renderUI({
@@ -11037,11 +11138,11 @@ server <- function(input, output, session) {
     body_raw <- trimws(as.character(input$feedback_body %||% "")[1])
     contact <- trimws(as.character(input$feedback_contact %||% "")[1])
     if (!nzchar(title_raw)) {
-      showNotification("請填寫標題。", type = "warning")
+      showNotification(.ui_msg("notif_feedback_need_title"), type = "warning")
       return()
     }
     if (!nzchar(body_raw) || nchar(body_raw) < 8) {
-      showNotification("請再補充說明內容（至少約 8 字）。", type = "warning")
+      showNotification(.ui_msg("notif_feedback_need_body"), type = "warning")
       return()
     }
     cat_label <- switch(
@@ -11065,7 +11166,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.63"),
+      paste0("- **App：** The YNow App v17.64"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {
@@ -11124,7 +11225,7 @@ server <- function(input, output, session) {
       updateTextInput(session, "feedback_title", value = "")
       updateTextAreaInput(session, "feedback_body", value = "")
     } else {
-      showNotification(paste0("送出失敗：", res$message %||% "unknown"), type = "error", duration = 10)
+      showNotification(.ui_msg("notif_feedback_fail", err = res$message %||% "unknown"), type = "error", duration = 10)
       output$feedback_status <- renderUI({
         tags$div(
           class = "alert alert-danger", style = "margin-top:12px;",

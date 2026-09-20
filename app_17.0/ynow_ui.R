@@ -176,7 +176,7 @@
 #' @param sync_label_id DOM id for sync-checkbox label
 #' @param rf_note_id uiOutput id for Rf source note
 #' @param btn_label actionButton label (locale may overwrite)
-capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
+capm_beta_settings_ui <- function(title = "CAPM Estimate rₑ",
                                   calc_id = "calc_capm",
                                   result_id = "capm_result",
                                   width = 6,
@@ -184,23 +184,23 @@ capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
                                   box_title_id = "ynow_capm_box_title",
                                   sync_label_id = "ynow_sync_gs_beta_label",
                                   rf_note_id = "capm_rf_source_note",
-                                  btn_label = "估算 rₑ（CAPM）") {
+                                  btn_label = "Estimate rₑ (CAPM)") {
   pid <- function(x) {
     if (nzchar(as.character(id_prefix %||% "")[1])) paste0(id_prefix, x) else x
   }
   box(
     width = width,
     h4(title, id = box_title_id),
-    numericInput(pid("capm_rf"), "無風險利率 Rf (%)", value = APP_DEFAULTS$capm_rf, step = 0.01),
+    numericInput(pid("capm_rf"), "Risk-free rate Rf (%)", value = APP_DEFAULTS$capm_rf, step = 0.01),
     uiOutput(rf_note_id),
-    numericInput(pid("capm_rm"), "市場報酬率 Rm (%)", value = APP_DEFAULTS$capm_rm, step = 0.01),
+    numericInput(pid("capm_rm"), "Market return Rm (%)", value = APP_DEFAULTS$capm_rm, step = 0.01),
     numericInput(pid("capm_beta"), "Beta (β)", value = APP_DEFAULTS$capm_beta, step = 0.01),
     checkboxInput(
       pid("sync_gs_beta"),
-      tags$span(id = sync_label_id, style = "font-weight: bold;", "與基礎設定同步"),
+      tags$span(id = sync_label_id, style = "font-weight: bold;", "Sync with Basic Setup"),
       value = isTRUE(APP_DEFAULTS$sync_gs_beta)
     ),
-    actionButton(calc_id, btn_label, class = "btn-primary"),
+    actionButton(calc_id, btn_label, class = "btn-primary ynow-btn-calc-capm"),
     tags$br(), htmlOutput(result_id)
   )
 }
@@ -209,21 +209,21 @@ capm_beta_settings_ui <- function(title = "CAPM 估算 rₑ",
 ddm_ke_bridge_settings_ui <- function(width = 6) {
   box(
     width = width,
-    h4("Ke 與中央 rₑ", id = "ynow_ddm_ke_bridge_title"),
+    h4("Ke and central rₑ", id = "ynow_ddm_ke_bridge_title"),
     tags$p(
       id = "ynow_ddm_ke_bridge_help",
       style = "margin:0 0 10px 0;color:#666;font-size:12px;line-height:1.55;",
       paste0(
-        "DDM 折現率為股權成本 Ke，與 DCF→WACC 的 rₑ 同源（central Ke）。",
-        "勾選「採用估算 Ke」時跟隨 CAPM；取消後可手動覆寫，並與 WACC 分頁 rₑ 雙向同步。",
-        "β 來源請至同模型的 Beta (β) 分頁選擇。"
+        "DDM discounts at equity cost Ke, the same central Ke as DCF→WACC rₑ. ",
+        "When \"Use estimated Ke\" is checked, Ke follows CAPM; uncheck to override and keep bidirectional sync with WACC rₑ. ",
+        "Choose β source on this model's Beta (β) tab."
       )
     ),
     tags$div(
       style = "padding:8px;border-left:4px solid #222222;background:#f5f5f5;font-size:13px;margin-bottom:10px;",
       tags$b("CAPM："), " Ke = Rf + β × (Rm − Rf)",
       tags$br(),
-      tags$span(style = "color:#666;font-size:12px;", "ERP = Rm − Rf（市場風險溢酬）")
+      tags$span(style = "color:#666;font-size:12px;", "ERP = Rm − Rf (equity risk premium)")
     ),
     htmlOutput("ddm_ke_bridge_status")
   )
@@ -303,18 +303,18 @@ beta_source_picker_ui <- function(input_id,
     tags$p(
       class = "ynow-beta-source-heading",
       style = "font-weight:600; margin:0 0 10px 0;",
-      "β 來源（預設寫入 CAPM）"
+      "Beta source (default writes into CAPM)"
     ),
     # choiceNames／choiceValues 由 server 動態覆寫（數字粗體 + 各選項旁說明）
     radioButtons(
       input_id,
       label = NULL,
       choiceNames = list(
-        HTML("Yahoo Finance Summary β <b>n/a</b> <span style='color:#666;font-size:12px;'>— Yahoo Finance Summary「Beta (5Y Monthly)」；預設寫入 CAPM。</span>"),
-        HTML("產業預設 β <b>n/a</b> <span style='color:#666;font-size:12px;'>— 所選產業結構 β。</span>"),
-        HTML("自選公司平均 Bottom-Up (βᵤ→βe) <b>n/a</b> <span style='color:#666;font-size:12px;'>— 可比公司去槓桿平均／中位 βᵤ。</span>"),
-        HTML("去槓桿化 βᵤ <b>n/a</b> <span style='color:#666;font-size:12px;'>— Hamada βᵤ = β_L / (1+(1−T)·D/E)。</span>"),
-        HTML("手動定義 βe <b>n/a</b>")
+        HTML("Yahoo Finance Summary β <b>n/a</b> <span style='color:#666;font-size:12px;'>— Yahoo Finance Summary \"Beta (5Y Monthly)\"; default writes into CAPM.</span>"),
+        HTML("Industry default β <b>n/a</b> <span style='color:#666;font-size:12px;'>— Structural β for the selected industry.</span>"),
+        HTML("Peer-average Bottom-Up (βᵤ→βe) <b>n/a</b> <span style='color:#666;font-size:12px;'>— Unlevered mean / median βᵤ of peer companies.</span>"),
+        HTML("Unlevered βᵤ <b>n/a</b> <span style='color:#666;font-size:12px;'>— Hamada βᵤ = β_L / (1+(1−T)·D/E).</span>"),
+        HTML("Manual βe <b>n/a</b>")
       ),
       choiceValues = list("summary", "industry", "bottomup", "unlever_firm", "manual"),
       selected = default_selected,
@@ -334,11 +334,11 @@ beta_source_picker_ui <- function(input_id,
     tags$p(
       class = "ynow-beta-rolling-help help-block",
       style = "margin-top:0;",
-      "Rolling 估計僅供對照，不寫入 CAPM（故不列於上列選項）。"
+      "Rolling estimates are for cross-check only and are not written into CAPM (hence omitted above)."
     ),
     actionButton(
       apply_btn_id,
-      "立即同步所選 β",
+      "Sync selected β now",
       class = "btn-success ynow-btn-sync-selected-beta",
       icon = icon("check")
     ),
@@ -390,40 +390,43 @@ beta_overview_section_ui <- function() {
   )
 }
 
-#' 同業去槓桿：Bottom-Up 同業平均（左）＋本公司 Hamada／手動 βe（右）
+#' Peer unlever: Bottom-Up peer average (left) + firm Hamada / manual βe (right)
 beta_unlever_section_ui <- function() {
   tagList(
     fluidRow(
       box(
         width = 7, status = "warning", solidHeader = FALSE,
-        tags$h5(style = "margin-top:0;", "Bottom-Up 同業平均（估值主估計）"),
+        tags$h5(id = "ynow_beta_bottomup_heading", style = "margin-top:0;", "Bottom-Up peer average (primary valuation estimate)"),
         selectizeInput(
           "beta_peers",
-          "同業／競爭對手代號（可多選或自行輸入）",
+          "Peer / competitor tickers (multi-select or type)",
           choices = NULL,
           selected = NULL,
           multiple = TRUE,
           options = list(
             create = TRUE,
-            placeholder = "例如 INTC, AMD, AVGO …",
+            placeholder = "e.g. INTC, AMD, AVGO …",
             plugins = list("remove_button"),
             maxItems = 15
           )
         ),
         radioButtons(
           "beta_bottomup_agg",
-          "βᵤ 彙總",
-          choices = c("平均（Mean）" = "mean", "中位數（Median）" = "median"),
+          "βᵤ aggregation",
+          choices = c("Mean" = "mean", "Median" = "median"),
           selected = APP_DEFAULTS$beta_bottomup_agg,
           inline = TRUE
         ),
         helpText(
-          "流程：可比公司股權 β → 去槓桿 → 平均／中位數 βᵤ。",
-          "未填同業時，改以產業基準 β 與產業負債比作參考值（資料不足備援）。"
+          id = "ynow_beta_bottomup_help",
+          paste0(
+            "Flow: peer equity β → unlever → mean / median βᵤ. ",
+            "If peers are empty, fall back to industry β and industry leverage (data-limited proxy)."
+          )
         ),
         actionButton(
-          "calc_beta_bottomup", "計算 Bottom-Up βᵤ",
-          class = "btn-primary", icon = icon("calculator")
+          "calc_beta_bottomup", "Calculate Bottom-Up βᵤ",
+          class = "btn-primary ynow-btn-calc-beta-bottomup", icon = icon("calculator")
         ),
         tags$br(), tags$br(),
         htmlOutput("beta_bottomup_result"),
@@ -432,15 +435,15 @@ beta_unlever_section_ui <- function() {
       ),
       box(
         width = 5, status = "warning", solidHeader = FALSE,
-        tags$h5(style = "margin-top:0;", "去槓桿化 βᵤ（Hamada）"),
+        tags$h5(id = "ynow_beta_unlever_heading", style = "margin-top:0;", "Unlevered βᵤ (Hamada)"),
         tags$div(
           style = "display:none;",
           radioButtons(
-            "beta_bl_source", "槓桿 Beta（β_L）來源",
+            "beta_bl_source", "Levered Beta (β_L) source",
             choices = c(
-              "Finance Summary（Yahoo 5Y Monthly）" = "summary",
-              "Rolling 估計（需先於 Rolling 分頁估計）" = "rolling",
-              "自動（Summary → Rolling）" = "auto"
+              "Finance Summary (Yahoo 5Y Monthly)" = "summary",
+              "Rolling estimate (run Rolling tab first)" = "rolling",
+              "Auto (Summary → Rolling)" = "auto"
             ),
             selected = APP_DEFAULTS$beta_bl_source,
             inline = FALSE
@@ -454,13 +457,16 @@ beta_unlever_section_ui <- function() {
           numericInput("beta_target_de", NULL, value = NA, min = 0, max = 10, step = 0.01)
         ),
         helpText(
-          "Hamada（假設債務 β≈0）：βᵤ = β_L / (1+(1−T)·D/E)。",
-          "β_L 預設 Yahoo Finance Summary「Beta (5Y Monthly)」；T 取自 WACC；D/E = Total Debt ÷ 股權市值。",
-          "可於 β 來源選「去槓桿化 βᵤ」寫入 CAPM；槓桿 β_L 本身仍不直接寫入 CAPM。"
+          id = "ynow_beta_unlever_help",
+          paste0(
+            "Hamada (debt β≈0): βᵤ = β_L / (1+(1−T)·D/E). ",
+            "β_L defaults to Yahoo Finance Summary \"Beta (5Y Monthly)\"; T from WACC; D/E = Total Debt ÷ equity market value. ",
+            "Pick \"Unlevered βᵤ\" as β source to write into CAPM; levered β_L itself is not written into CAPM."
+          )
         ),
         htmlOutput("beta_unlever_firm_result"),
         tags$hr(),
-        tags$h5("手動定義 βe"),
+        tags$h5(id = "ynow_beta_manual_heading", "Manual βe"),
         numericInput(
           "beta_u_manual",
           NULL,
@@ -468,38 +474,44 @@ beta_unlever_section_ui <- function() {
           min = 0, max = 5, step = 0.01
         ),
         helpText(
-          "於 β 來源選「手動定義 βe」後，此值會直接寫入 CAPM；",
-          "在此修改數值時也會自動改選手動來源並同步。"
+          id = "ynow_beta_manual_help",
+          paste0(
+            "After selecting \"Manual βe\" as β source, this value writes into CAPM; ",
+            "editing here also switches the source to manual and syncs."
+          )
         )
       )
     )
   )
 }
 
-#' Rolling β 預估（基礎設定）
-#' 僅交叉檢驗：對照估值用 β，不寫入 CAPM。
+#' Rolling β estimate (Basic Setup)
+#' Cross-check only: compare vs valuation β; do not write into CAPM.
 beta_rolling_section_ui <- function() {
   tagList(
     fluidRow(
       box(
         width = 5, status = "primary", solidHeader = TRUE,
-        title = tagList(icon("sliders-h"), "預估設定（僅交叉檢驗）"),
+        title = tagList(
+          icon("sliders-h"),
+          tags$span(id = "ynow_beta_rolling_settings_title", "Estimate settings (cross-check only)")
+        ),
         selectizeInput(
-          "beta_bench", "基準指數（Benchmark）",
+          "beta_bench", "Benchmark index",
           choices = market_profile("US")$beta_bench_choices,
           selected = APP_DEFAULTS$beta_bench,
           options = list(
             create = TRUE,
-            placeholder = "選常見指數，或自行輸入代號…",
+            placeholder = "Pick a common index, or enter a ticker…",
             maxItems = 1
           )
         ),
         selectInput(
-          "beta_lookback_months", "回溯期間（對照用）",
+          "beta_lookback_months", "Lookback window (cross-check)",
           choices = c(
-            "1 年（12 個月）" = 12,
-            "2 年（24 個月）" = 24,
-            "5 年（60 個月，對齊 Yahoo）" = 60
+            "1Y (12 months)" = 12,
+            "2Y (24 months)" = 24,
+            "5Y (60 months, Yahoo-aligned)" = 60
           ),
           selected = as.character(APP_DEFAULTS$beta_lookback_months)
         ),
@@ -507,23 +519,32 @@ beta_rolling_section_ui <- function() {
         tags$div(
           style = "display:none;",
           numericInput(
-            "beta_min_obs", "最少觀測月數",
+            "beta_min_obs", "Min observation months",
             value = APP_DEFAULTS$beta_min_obs,
             min = 12, max = 60, step = 1
           )
         ),
         helpText(
-          "Rolling β 看的是股價對大盤的近期敏感度，容易夾帶市場情緒。",
-          "這裡只拿來和估值 β 對照，不會寫入 CAPM／Ke／WACC。",
-          "β = Cov(Rᵢ, Rₘ) / Var(Rₘ)；可同時看 1Y／2Y／5Y。"
+          id = "ynow_beta_rolling_help_body",
+          paste0(
+            "Rolling β measures recent equity sensitivity to the market and often embeds sentiment. ",
+            "Use it only to cross-check valuation β — it is not written into CAPM / Ke / WACC. ",
+            "β = Cov(Rᵢ, Rₘ) / Var(Rₘ); compare 1Y / 2Y / 5Y windows."
+          )
         ),
-        actionButton("calc_beta_est", "估計 Rolling β（對照用）", class = "btn-primary", icon = icon("calculator")),
+        actionButton(
+          "calc_beta_est", "Estimate Rolling β (cross-check)",
+          class = "btn-primary ynow-btn-calc-beta-est", icon = icon("calculator")
+        ),
         tags$br(), tags$br(),
         htmlOutput("beta_est_result")
       ),
       box(
         width = 7, status = "info", solidHeader = TRUE,
-        title = tagList(icon("exchange-alt"), "期間比較"),
+        title = tagList(
+          icon("exchange-alt"),
+          tags$span(id = "ynow_beta_rolling_compare_title", "Window comparison")
+        ),
         tableOutput("beta_window_table"),
         tags$hr(),
         plotOutput("plt_beta_scatter", height = "280px")
@@ -933,7 +954,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.63</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.64</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -2918,6 +2939,83 @@ ui <- dashboardPage(
               var ic = el.querySelector('i');
               el.innerHTML = (ic ? ic.outerHTML + ' ' : '') + s.btn_sync_selected_beta;
             });
+            setBtnLabel('calc_capm', s.btn_calc_capm);
+            setBtnLabel('calc_ddm_capm', s.btn_calc_ddm_capm || s.btn_calc_capm);
+            document.querySelectorAll('.ynow-btn-calc-capm').forEach(function (el) {
+              if (!s.btn_calc_capm) return;
+              var ic = el.querySelector('i');
+              /* Keep DDM CAPM button on its own key when present */
+              var lab = (el.id === 'calc_ddm_capm' && s.btn_calc_ddm_capm) ? s.btn_calc_ddm_capm : s.btn_calc_capm;
+              el.innerHTML = (ic ? ic.outerHTML + ' ' : '') + lab;
+            });
+            var rfLab = document.querySelector('label[for=\"capm_rf\"]');
+            if (rfLab && s.capm_rf_label) rfLab.textContent = s.capm_rf_label;
+            var rmLab = document.querySelector('label[for=\"capm_rm\"]');
+            if (rmLab && s.capm_rm_label) rmLab.textContent = s.capm_rm_label;
+            var ddmRfLab = document.querySelector('label[for=\"ddm_capm_rf\"]');
+            if (ddmRfLab && s.capm_rf_label) ddmRfLab.textContent = s.capm_rf_label;
+            var ddmRmLab = document.querySelector('label[for=\"ddm_capm_rm\"]');
+            if (ddmRmLab && s.capm_rm_label) ddmRmLab.textContent = s.capm_rm_label;
+            var useEstRe = document.getElementById('ynow_use_estimated_re_label');
+            if (useEstRe && s.use_estimated_re_label) useEstRe.textContent = s.use_estimated_re_label;
+            var gsModelSel = document.getElementById('ynow_gs_model_selector_title');
+            if (gsModelSel && s.gs_model_selector_title) gsModelSel.textContent = s.gs_model_selector_title;
+            var gsBetaOv = document.getElementById('ynow_gs_beta_overview_help');
+            if (gsBetaOv && s.gs_beta_overview_help) gsBetaOv.textContent = s.gs_beta_overview_help;
+            var gsPeer = document.getElementById('ynow_gs_peer_unlever_help');
+            if (gsPeer && s.gs_peer_unlever_help) gsPeer.textContent = s.gs_peer_unlever_help;
+            var gsRoll = document.getElementById('ynow_gs_rolling_help');
+            if (gsRoll && s.gs_rolling_help) gsRoll.textContent = s.gs_rolling_help;
+            var rollSetTitle = document.getElementById('ynow_beta_rolling_settings_title');
+            if (rollSetTitle && s.beta_rolling_settings_title) rollSetTitle.textContent = s.beta_rolling_settings_title;
+            var rollCmpTitle = document.getElementById('ynow_beta_rolling_compare_title');
+            if (rollCmpTitle && s.beta_rolling_compare_title) rollCmpTitle.textContent = s.beta_rolling_compare_title;
+            var rollHelpBody = document.getElementById('ynow_beta_rolling_help_body');
+            if (rollHelpBody && s.beta_rolling_help_body) rollHelpBody.textContent = s.beta_rolling_help_body;
+            var benchLab = document.querySelector('label[for=\"beta_bench\"]');
+            if (benchLab && s.beta_bench_label) benchLab.textContent = s.beta_bench_label;
+            var lookLab = document.querySelector('label[for=\"beta_lookback_months\"]');
+            if (lookLab && s.beta_lookback_label) lookLab.textContent = s.beta_lookback_label;
+            setBtnLabel('calc_beta_est', s.btn_calc_beta_est);
+            var buHead = document.getElementById('ynow_beta_bottomup_heading');
+            if (buHead && s.beta_bottomup_heading) buHead.textContent = s.beta_bottomup_heading;
+            var peersLab = document.querySelector('label[for=\"beta_peers\"]');
+            if (peersLab && s.beta_peers_label) peersLab.textContent = s.beta_peers_label;
+            var buHelp = document.getElementById('ynow_beta_bottomup_help');
+            if (buHelp && s.beta_bottomup_help) buHelp.textContent = s.beta_bottomup_help;
+            setBtnLabel('calc_beta_bottomup', s.btn_calc_beta_bottomup);
+            var unlHead = document.getElementById('ynow_beta_unlever_heading');
+            if (unlHead && s.beta_unlever_heading) unlHead.textContent = s.beta_unlever_heading;
+            var unlHelp = document.getElementById('ynow_beta_unlever_help');
+            if (unlHelp && s.beta_unlever_help) unlHelp.textContent = s.beta_unlever_help;
+            var manHead = document.getElementById('ynow_beta_manual_heading');
+            if (manHead && s.beta_manual_heading) manHead.textContent = s.beta_manual_heading;
+            var manHelp = document.getElementById('ynow_beta_manual_help');
+            if (manHelp && s.beta_manual_help) manHelp.textContent = s.beta_manual_help;
+            var funnelTitle = document.getElementById('ynow_funnel_box_title');
+            if (funnelTitle && s.funnel_box_title) funnelTitle.textContent = s.funnel_box_title;
+            var funnelFs = document.getElementById('ynow_funnel_fscore_list_title');
+            if (funnelFs && s.funnel_fscore_list_title) funnelFs.textContent = s.funnel_fscore_list_title;
+            var funnelMomTitle = document.getElementById('ynow_funnel_mom_box_title');
+            if (funnelMomTitle && s.funnel_mom_box_title) funnelMomTitle.textContent = s.funnel_mom_box_title;
+            var funnelMomIntro = document.getElementById('ynow_funnel_mom_intro');
+            if (funnelMomIntro && s.funnel_mom_intro) funnelMomIntro.textContent = s.funnel_mom_intro;
+            var funnelMomLogic = document.getElementById('ynow_funnel_mom_logic_title');
+            if (funnelMomLogic && s.funnel_mom_logic_title) funnelMomLogic.textContent = s.funnel_mom_logic_title;
+            var funnelMomCond1 = document.getElementById('ynow_funnel_mom_cond1');
+            if (funnelMomCond1 && s.funnel_mom_cond1) funnelMomCond1.textContent = s.funnel_mom_cond1;
+            var funnelMomCond2 = document.getElementById('ynow_funnel_mom_cond2');
+            if (funnelMomCond2 && s.funnel_mom_cond2) funnelMomCond2.textContent = s.funnel_mom_cond2;
+            var funnelMomBull = document.getElementById('ynow_funnel_mom_bull_rule');
+            if (funnelMomBull && s.funnel_mom_bull_rule) funnelMomBull.textContent = s.funnel_mom_bull_rule;
+            var funnelMomData = document.getElementById('ynow_funnel_mom_data_title');
+            if (funnelMomData && s.funnel_mom_data_title) funnelMomData.textContent = s.funnel_mom_data_title;
+            var funnelMomD1 = document.getElementById('ynow_funnel_mom_data_1');
+            if (funnelMomD1 && s.funnel_mom_data_1) funnelMomD1.textContent = s.funnel_mom_data_1;
+            var funnelMomD2 = document.getElementById('ynow_funnel_mom_data_2');
+            if (funnelMomD2 && s.funnel_mom_data_2) funnelMomD2.textContent = s.funnel_mom_data_2;
+            var funnelMomD3 = document.getElementById('ynow_funnel_mom_data_3');
+            if (funnelMomD3 && s.funnel_mom_data_3) funnelMomD3.textContent = s.funnel_mom_data_3;
             var kpiBlue = document.getElementById('ynow_kpi_legend_blue');
             if (kpiBlue && s.kpi_legend_blue) kpiBlue.textContent = s.kpi_legend_blue;
             var kpiRed = document.getElementById('ynow_kpi_legend_red');
@@ -5119,7 +5217,10 @@ ui <- dashboardPage(
         tabName = "get_started",
         fluidRow(
           box(
-            title = tagList(icon("route"), "Model Selector｜估值模型推薦"),
+            title = tagList(
+              icon("route"),
+              tags$span(id = "ynow_gs_model_selector_title", "Model Selector｜Valuation model recommendation")
+            ),
             width = 12, status = "primary", solidHeader = TRUE,
             uiOutput("get_started_model_selector")
           )
@@ -5136,18 +5237,26 @@ ui <- dashboardPage(
               "Beta Overview",
               icon = icon("th-large"),
               helpText(
-                "內在價值路徑：預設把 Summary β 寫入 CAPM；可改選產業／Bottom-Up／去槓桿化／手動。",
-                "Rolling 估計僅供對照，不寫入 CAPM。"
+                id = "ynow_gs_beta_overview_help",
+                paste0(
+                  "Intrinsic-value path: Summary β is written into CAPM by default; ",
+                  "you can switch to industry / Bottom-Up / unlevered / manual. ",
+                  "Rolling estimates are for cross-check only and are not written into CAPM."
+                )
               ),
               beta_overview_section_ui()
             ),
             tabPanel(
-              "同業去槓桿",
+              "Peer Unlever",
               value = "peer_unlever",
               icon = icon("users"),
               helpText(
-                "左側先填同業、去槓桿後平均（Bottom-Up）。右側為本公司 Hamada 去槓桿與手動 βe。",
-                "寫入 CAPM：到 Beta Overview 或 DCF → Beta 分頁選對應 β 來源。"
+                id = "ynow_gs_peer_unlever_help",
+                paste0(
+                  "Left: enter peers, unlever, then average (Bottom-Up). ",
+                  "Right: this firm's Hamada unlever and manual βe. ",
+                  "To write into CAPM: pick the matching β source on Beta Overview or DCF → Beta."
+                )
               ),
               beta_unlever_section_ui()
             ),
@@ -5155,8 +5264,12 @@ ui <- dashboardPage(
               "Rolling β",
               icon = icon("chart-area"),
               helpText(
-                "用 Rolling β 對照估值結果（含情緒／事件噪音）。",
-                "不會寫入 CAPM；若與 Bottom-Up βᵤ 差距過大，請檢查同業、資本結構、事件與流動性。"
+                id = "ynow_gs_rolling_help",
+                paste0(
+                  "Use Rolling β to cross-check valuation β (includes sentiment / event noise). ",
+                  "It is not written into CAPM; if it diverges sharply from Bottom-Up βᵤ, ",
+                  "review peers, capital structure, events, and liquidity."
+                )
               ),
               beta_rolling_section_ui()
             )
@@ -5815,7 +5928,7 @@ ui <- dashboardPage(
                              "ddm_use_estimated_re",
                              tags$span(
                                id = "ynow_ddm_use_estimated_ke_label",
-                               "採用估算 Ke（來自 CAPM）"
+                               "Use estimated Ke (from CAPM)"
                              ),
                              value = isTRUE(APP_DEFAULTS$use_est_re)
                            ),
@@ -5823,8 +5936,8 @@ ui <- dashboardPage(
                              id = "ynow_ddm_ke_help",
                              style = "margin:0 0 8px 0;color:#666;font-size:12px;",
                              paste0(
-                               "Ke = Rf + β × (Rm − Rf)。與 DCF→WACC「採用估算 rₑ」及 rₑ 數值雙向同步；",
-                               "勾選時 Ke 跟隨 CAPM，取消後可手動覆寫。"
+                               "Ke = Rf + β × (Rm − Rf). Bidirectionally synced with DCF→WACC \"Use estimated rₑ\" and the rₑ value; ",
+                               "when checked, Ke follows CAPM; uncheck to override manually."
                              )
                            ),
                            actionButton("calc_ddm_ke", "計算 Ke（CAPM）", class = "btn-primary"),
@@ -5834,7 +5947,7 @@ ui <- dashboardPage(
                        fluidRow(
                          ddm_ke_bridge_settings_ui(width = 6),
                          capm_beta_settings_ui(
-                           title = "CAPM 估算 Ke",
+                           title = "CAPM Estimate Ke",
                            calc_id = "calc_ddm_capm",
                            result_id = "ddm_capm_result",
                            width = 6,
@@ -5842,7 +5955,7 @@ ui <- dashboardPage(
                            box_title_id = "ynow_ddm_capm_box_title",
                            sync_label_id = "ynow_ddm_sync_gs_beta_label",
                            rf_note_id = "ddm_capm_rf_source_note",
-                           btn_label = "估算 Ke（CAPM）"
+                           btn_label = "Estimate Ke (CAPM)"
                          )
                        )
                      ),
@@ -5989,7 +6102,7 @@ ui <- dashboardPage(
                                   ),
                                   checkboxInput(
                                     "use_estimated_re",
-                                    "採用估算 rₑ（來自 CAPM）",
+                                    tags$span(id = "ynow_use_estimated_re_label", "Use estimated rₑ (from CAPM)"),
                                     value = APP_DEFAULTS$use_est_re
                                   ),
                                   uiOutput("wacc_tax_source_note"),
@@ -6005,7 +6118,7 @@ ui <- dashboardPage(
                               fluidRow(
                                 rd_estimate_settings_ui(width = 6),
                                 capm_beta_settings_ui(
-                                  title = "CAPM 估算 rₑ",
+                                  title = "CAPM Estimate rₑ",
                                   calc_id = "calc_capm",
                                   result_id = "capm_result",
                                   width = 6

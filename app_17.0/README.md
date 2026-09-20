@@ -1,6 +1,10 @@
-# The YNow App v17.63 — Valuation Methodology
+# The YNow App v17.64 — Valuation Methodology
 
 先分類，再選模型；先推導，再校正；先給區間，再給單點；先做基本面估值。
+
+## v17.64 重點
+- **i18n：** CAPM／Get Started（Rf／Rm／β／Rolling／同業去槓桿）detail labels、Decision Funnel 判決／動能文案、高流量 `showNotification` 全面進 `ui_locale.R`（en-US + zh-TW）並經 locale helpers 切換
+- **目錄**：`app_17.0/`；顯示版號 **v17.64**
 
 ## v17.63 重點
 - **Clustering**：分群分析宇宙與結果表遵循共用候選截斷邏輯；Radar focus／Search 代號置頂，其餘依截斷欄位（市值／近一年漲幅等）排序

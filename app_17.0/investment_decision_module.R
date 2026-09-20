@@ -1,6 +1,7 @@
 # =========================================================================
-# 投資決策權威模組 (Investment Decision Scorecard) - v14.0
-# 維度：財務質量 (Quality) -> 估值區間 (Value) -> 回歸動能 (Timing, 輔助)
+# Investment Decision Scorecard — Decision Funnel + composite valuation
+# Dimensions: Quality (F-Score) -> Value (MOS) -> Timing (momentum, aid)
+# Funnel copy: ui_str / funnel_* keys (en-US + zh-TW)
 # =========================================================================
 
 library(shiny)
@@ -9,7 +10,7 @@ library(TTR)
 library(glue)
 
 # -------------------------------------------
-# 1. UI 模組：視覺化決策看板
+# 1. UI：Decision Funnel + momentum panel
 # -------------------------------------------
 #' Shared composite valuation block (main/sub model, Bear–Base–Bull, status bar).
 #' Mount once in the model-page header — not on Basic Setup.
@@ -28,8 +29,12 @@ decision_ui <- function(id) {
     ),
     fluidRow(
       box(
-        title = "智慧決策矩陣 The Decision Funnel", width = 12, status = "primary", solidHeader = TRUE,
-        # 建議結論（如「估值偏高且動能轉弱」）在上；F-Score 清單在下
+        title = tags$span(
+          id = "ynow_funnel_box_title",
+          "Smart Decision Matrix — The Decision Funnel"
+        ),
+        width = 12, status = "primary", solidHeader = TRUE,
+        # Verdict on top; F-Score checklist below
         column(
           width = 12,
           uiOutput(ns("ui_recommendation"))
@@ -37,7 +42,10 @@ decision_ui <- function(id) {
         column(
           width = 12,
           style = "margin-top: 12px;",
-          h4("F-Score 體質檢核清單"),
+          h4(tags$span(
+            id = "ynow_funnel_fscore_list_title",
+            "F-Score quality checklist"
+          )),
           tableOutput(ns("table_checklist"))
         )
       )
@@ -52,17 +60,27 @@ decision_ui <- function(id) {
   )
 }
 
-#' 趨勢動能說明＋狀態（置於回測驗證 MOS／FV 正下方；與 decision_server 同 id）
+#' Momentum explanation + status (below backtest MOS/FV; same id as decision_server)
 decision_momentum_panel_ui <- function(id) {
   ns <- NS(id)
   fluidRow(
     box(
-      title = tagList(icon("chart-line"), "趨勢動能（交易輔助）"),
+      title = tagList(
+        icon("chart-line"),
+        tags$span(id = "ynow_funnel_mom_box_title", "Trend momentum (trading aid)")
+      ),
       width = 12, status = "success", solidHeader = TRUE,
       collapsible = TRUE, collapsed = FALSE,
       tags$p(
         style = "margin: 0 0 12px 0; font-size: 12.5px; color: #555; line-height: 1.5;",
-        "技術面 Timing 輔助，不決定合理價。決策漏斗以 F-Score／安全邊際為主；此處僅回答「短中期趨勢是否轉多」，供布局節奏參考。"
+        tags$span(
+          id = "ynow_funnel_mom_intro",
+          paste0(
+            "Technical Timing aid only — it does not set fair value. ",
+            "The Decision Funnel prioritizes F-Score / MOS; this panel only asks whether ",
+            "near-term trend has turned bullish, for sizing rhythm."
+          )
+        )
       ),
       fluidRow(
         valueBoxOutput(ns("vbox_momentum"), width = 4),
@@ -72,35 +90,55 @@ decision_momentum_panel_ui <- function(id) {
         )
       ),
       tags$hr(style = "margin: 8px 0 12px 0; border-top: 1px solid #dfe6e9;"),
-      tags$h5(tags$b("判斷邏輯與條件")),
+      tags$h5(tags$b(tags$span(id = "ynow_funnel_mom_logic_title", "Logic & conditions"))),
       tags$ul(
         style = "font-size: 13px; line-height: 1.55; color: #333; margin-bottom: 10px;",
         tags$li(
-          tags$b("Cond1："),
-          "最新收盤價 > SMA(20) 且 > SMA(60)"
+          tags$b("Cond1: "),
+          tags$span(
+            id = "ynow_funnel_mom_cond1",
+            "Latest close > SMA(20) and > SMA(60)"
+          )
         ),
         tags$li(
-          tags$b("Cond2："),
-          "SMA(20) > SMA(60)（短均在長均之上）"
+          tags$b("Cond2: "),
+          tags$span(
+            id = "ynow_funnel_mom_cond2",
+            "SMA(20) > SMA(60) (short MA above long MA)"
+          )
         ),
         tags$li(
-          tags$b("多頭確認："),
-          "Cond1 與 Cond2 同時成立；否則為「盤整/偏空」。"
+          tags$span(
+            id = "ynow_funnel_mom_bull_rule",
+            "Bullish confirmed when Cond1 and Cond2 both hold; otherwise \"Range / bearish bias\"."
+          )
         )
       ),
-      tags$h5(tags$b("資料來源")),
+      tags$h5(tags$b(tags$span(id = "ynow_funnel_mom_data_title", "Data sources"))),
       tags$ul(
         style = "font-size: 13px; line-height: 1.55; color: #333; margin-bottom: 6px;",
-        tags$li("日收盤價：Yahoo Finance（優先 yfinance；失敗時 quantmod／Yahoo）。"),
-        tags$li("先抓約 1 年歷史，決策使用近約 180 個交易日；均線以 R 套件 TTR::SMA 計算。"),
-        tags$li("與回測「情緒策略」的動能／RSI 疊加不同：此處僅雙均線確認，供 YNOW 決策漏斗 Timing。")
+        tags$li(tags$span(
+          id = "ynow_funnel_mom_data_1",
+          "Daily closes: Yahoo Finance (prefer yfinance; fallback quantmod / Yahoo)."
+        )),
+        tags$li(tags$span(
+          id = "ynow_funnel_mom_data_2",
+          "Fetch ~1Y history; decision uses ~180 trading days; MAs via TTR::SMA."
+        )),
+        tags$li(tags$span(
+          id = "ynow_funnel_mom_data_3",
+          paste0(
+            "Unlike Testing \"sentiment strategy\" momentum / RSI overlays, ",
+            "this panel is dual-MA confirmation only for YNOW Funnel Timing."
+          )
+        ))
       )
     )
   )
 }
 
 # -------------------------------------------
-# 2. Server：主模型區間 + 副模型檢核 + 可信度
+# 2. Server：primary band + secondary check + confidence
 # -------------------------------------------
 decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_val_ddm, current_price, hist_price_data, industry_text,
                             intrinsic_val_pb = reactive(NA),
@@ -125,6 +163,24 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "en")
     }
 
+    .str <- function(key, ...) {
+      msg <- ui_str(key, .ui_loc())
+      dots <- list(...)
+      nms <- names(dots)
+      if (length(dots) && !is.null(nms)) {
+        for (nm in nms) {
+          if (!nzchar(nm)) next
+          msg <- gsub(
+            paste0("{", nm, "}"),
+            as.character(dots[[nm]] %||% ""),
+            msg,
+            fixed = TRUE
+          )
+        }
+      }
+      msg
+    }
+
     .collect_model_points <- function() {
       pts <- tryCatch(model_points(), error = function(e) NULL)
       if (is.list(pts) && length(pts)) {
@@ -146,7 +202,7 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
     f_score_eval <- reactive({
       req(d_is(), d_bs(), d_cf())
       res <- compute_report_f_score(d_is(), d_bs(), d_cf())
-      # UI 表格仍以 1/0 轉成 ✅/❌
+      # Checklist table still uses 1/0 → pass/fail labels
       if (is.data.frame(res$checklist) && nrow(res$checklist) > 0 &&
           is.character(res$checklist$`得分`)) {
         res$checklist$`得分` <- ifelse(res$checklist$`得分` == "通過", 1, 0)
@@ -163,7 +219,7 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
           bear = .pick_num(band$bear),
           base = .pick_num(band$base),
           bull = .pick_num(band$bull),
-          label = as.character(band$label %||% "主模型")
+          label = as.character(band$label %||% .str("funnel_primary_fallback"))
         ))
       }
       rec <- tryCatch(model_rec(), error = function(e) NULL)
@@ -212,52 +268,82 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
     })
 
     final_recommendation <- reactive({
+      .ui_loc() # locale toggle refreshes verdict
       f_score <- f_score_eval()$total
       f_quality <- f_score_eval()$quality_flag
       mos <- mos_calc()
       mom <- mom_status()
       if (f_score < 4 || f_quality == 0) {
-        return(list(class = "alert-danger", icon = "skull-crossbones", title = "價值陷阱警訊",
-                    text = "財務品質偏弱，或營業現金流難以支撐帳面獲利。即便估值看似便宜，亦不宜貿然抄底。"))
+        return(list(
+          class = "alert-danger", icon = "skull-crossbones",
+          title = .str("funnel_v_trap_title"),
+          text = .str("funnel_v_trap_text")
+        ))
       }
       if (!is.na(mos) && mos < 0) {
         if (mom$triggered) {
-          return(list(class = "alert-warning", icon = "fire", title = "動能強勁但估值偏高",
-                      text = "趨勢動能仍佳，惟市價已高於主模型基準內在價值。若已持有可續抱；空手者不宜此時追高。"))
+          return(list(
+            class = "alert-warning", icon = "fire",
+            title = .str("funnel_v_hot_over_title"),
+            text = .str("funnel_v_hot_over_text")
+          ))
         }
-        return(list(class = "alert-warning", icon = "hourglass-half", title = "估值偏高且動能轉弱",
-                    text = "體質通過檢核，但市價已高於基準合理價，且趨勢尚未轉強。建議耐心等待拉回再評估。"))
+        return(list(
+          class = "alert-warning", icon = "hourglass-half",
+          title = .str("funnel_v_over_weak_title"),
+          text = .str("funnel_v_over_weak_text")
+        ))
       }
       if (!is.na(mos) && mos >= 0.2) {
         if (mom$triggered) {
-          return(list(class = "alert-success", icon = "rocket", title = "戴維斯雙擊區",
-                      text = "估值具安全邊際、體質佳，且技術動能已確認。可分批布局，惟仍應控制部位與風險。"))
+          return(list(
+            class = "alert-success", icon = "rocket",
+            title = .str("funnel_v_davis_title"),
+            text = .str("funnel_v_davis_text")
+          ))
         }
-        return(list(class = "alert-info", icon = "anchor", title = "價值突出、等待趨勢",
-                    text = "基本面價值突出，惟市場資金尚未顯著關注。可分批布局，待趨勢轉折後再考慮加碼。"))
+        return(list(
+          class = "alert-info", icon = "anchor",
+          title = .str("funnel_v_value_wait_title"),
+          text = .str("funnel_v_value_wait_text")
+        ))
       }
-      list(class = "alert-secondary", icon = "balance-scale", title = "觀望中立",
-           text = "市價約在主模型合理區間附近，體質穩健。可依資產配置彈性決定是否介入。")
+      list(
+        class = "alert-secondary", icon = "balance-scale",
+        title = .str("funnel_v_neutral_title"),
+        text = .str("funnel_v_neutral_text")
+      )
     })
 
     output$vbox_fscore <- renderValueBox({
+      .ui_loc()
       score <- f_score_eval()$total
       color <- if (score >= 7) "green" else if (score >= 4) "yellow" else "red"
-      valueBox(paste0(score, " / 9"), "體質過濾 (F-Score)", icon = icon("gem"), color = color)
+      valueBox(
+        paste0(score, " / 9"),
+        .str("funnel_vbox_fscore"),
+        icon = icon("gem"),
+        color = color
+      )
     })
 
     output$vbox_mos <- renderUI({
+      .ui_loc()
       val <- tryCatch(mos_calc(), error = function(e) NA_real_)
       if (length(val) != 1L || is.null(val) || is.na(val) || !is.finite(val)) {
         return(NULL)
       }
       conf <- tryCatch(confidence(), error = function(e) NULL)
-      conf_lab <- if (is.list(conf) && !is.null(conf$level)) paste0("｜可信度", conf$level) else ""
+      conf_lab <- if (is.list(conf) && !is.null(conf$level)) {
+        .str("funnel_vbox_mos_conf", level = conf$level)
+      } else {
+        ""
+      }
       v_pct <- round(as.numeric(val) * 100, 1)
       color <- if (v_pct >= 20) "green" else if (v_pct >= 0) "yellow" else "red"
       valueBox(
         paste0(v_pct, "%"),
-        paste0("安全邊際 (vs Base)", conf_lab),
+        paste0(.str("funnel_vbox_mos"), conf_lab),
         icon = icon("shield-halved"),
         color = color,
         width = 4
@@ -265,13 +351,14 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
     })
 
     shen_eval <- reactive({
+      .ui_loc()
       is_df <- tryCatch(d_is(), error = function(e) NULL)
       bs_df <- tryCatch(d_bs(), error = function(e) NULL)
       cf_df <- tryCatch(d_cf(), error = function(e) NULL)
       key <- tryCatch(industry_key(), error = function(e) NULL)
       tryCatch(
         evaluate_shenanigans(is_df, bs_df, cf_df, industry_key = key),
-        error = function(e) .empty_shenanigans(ok = FALSE, message = "自動判讀略過。")
+        error = function(e) .empty_shenanigans(ok = FALSE, message = .str("funnel_shen_skip"))
       )
     })
 
@@ -282,12 +369,13 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
     })
 
     output$vbox_fraud <- renderUI({
+      .ui_loc()
       n <- tryCatch(fraud_flag_n(), error = function(e) NA_integer_)
       if (length(n) != 1L || is.null(n) || is.na(n) || !is.finite(n)) return(NULL)
       n <- as.integer(n)
       valueBox(
-        paste0(n, " 項"),
-        "財報警訊",
+        .str("funnel_fraud_items", n = n),
+        .str("funnel_vbox_fraud"),
         icon = icon("exclamation-triangle"),
         color = if (n > 0L) "red" else "green",
         width = 4
@@ -300,19 +388,21 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
     })
 
     output$vbox_momentum <- renderValueBox({
+      .ui_loc()
       status <- tryCatch(mom_status(), error = function(e) NULL)
       triggered <- is.list(status) && isTRUE(status$triggered)
       color <- if (triggered) "green" else "teal"
-      txt <- if (triggered) "多頭確認" else "盤整/偏空"
-      valueBox(txt, "趨勢動能（交易輔助）", icon = icon("chart-line"), color = color)
+      txt <- if (triggered) .str("funnel_mom_bull") else .str("funnel_mom_sideways")
+      valueBox(txt, .str("funnel_mom_box_title"), icon = icon("chart-line"), color = color)
     })
 
     output$ui_momentum_detail <- renderUI({
+      .ui_loc()
       status <- tryCatch(mom_status(), error = function(e) NULL)
       if (is.null(status) || !is.list(status)) {
         return(tags$p(
           style = "color:#888; font-size:13px; margin-top:8px;",
-          "搜尋股票並載入約 180 日收盤價後，將顯示均線與條件狀態。"
+          .str("funnel_mom_waiting")
         ))
       }
       fmt_px <- function(x) {
@@ -328,19 +418,24 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
         style = "font-size: 13px; line-height: 1.6; color: #333; padding-top: 4px;",
         tags$p(
           style = "margin: 0 0 8px 0;",
-          tags$b("即時讀數："),
-          sprintf(
-            "收盤 %s｜SMA20 %s｜SMA60 %s｜相對 SMA20 %s（n≈%s）",
-            fmt_px(status$price), fmt_px(status$ma20), fmt_px(status$ma60),
-            fmt_pct(status$dist_to_ma20),
-            if (is.finite(status$n_obs)) as.integer(status$n_obs) else "—"
+          tags$b(.str("funnel_mom_readings")),
+          .str(
+            "funnel_mom_readings_fmt",
+            p = fmt_px(status$price),
+            ma20 = fmt_px(status$ma20),
+            ma60 = fmt_px(status$ma60),
+            dist = fmt_pct(status$dist_to_ma20),
+            n = if (is.finite(status$n_obs)) as.integer(status$n_obs) else "—"
           )
         ),
         tags$p(
           style = "margin: 0;",
-          sprintf("%s Cond1（價 > 雙均）　%s Cond2（SMA20 > SMA60）　→　",
-                  mark(status$cond1), mark(status$cond2)),
-          tags$b(if (isTRUE(status$triggered)) "多頭確認" else "盤整/偏空")
+          .str(
+            "funnel_mom_cond_line",
+            c1 = mark(status$cond1),
+            c2 = mark(status$cond2)
+          ),
+          tags$b(if (isTRUE(status$triggered)) .str("funnel_mom_bull") else .str("funnel_mom_sideways"))
         )
       )
     })
@@ -353,9 +448,10 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
     })
 
     output$table_checklist <- renderTable({
+      .ui_loc()
       df <- f_score_eval()$checklist
       if (nrow(df) > 0) {
-        df$`得分` <- ifelse(df$`得分` == 1, "✅ 通過", "❌ 未達標")
+        df$`得分` <- ifelse(df$`得分` == 1, .str("funnel_pass"), .str("funnel_fail"))
       }
       df
     }, striped = TRUE, hover = TRUE, width = "100%")
