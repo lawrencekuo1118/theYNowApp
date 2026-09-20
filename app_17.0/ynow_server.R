@@ -10205,7 +10205,9 @@ server <- function(input, output, session) {
         }, character(1))
         paste(labs, collapse = "、")
       }
-      meth_sel <- lab_normalize_multi_filter(isolate(input$lab_im_methods))
+      meth_sel <- lab_order_methods_like_sidebar(
+        lab_normalize_multi_filter(isolate(input$lab_im_methods))
+      )
       meth_txt <- if (!length(meth_sel)) {
         "不過濾"
       } else {
@@ -10958,7 +10960,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.61"),
+      paste0("- **App：** The YNow App v17.62"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

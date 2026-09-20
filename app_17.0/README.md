@@ -1,6 +1,10 @@
-# The YNow App v17.61 — Valuation Methodology
+# The YNow App v17.62 — Valuation Methodology
 
 先分類，再選模型；先推導，再校正；先給區間，再給單點；先做基本面估值。
+
+## v17.62 重點
+- **Blue Chip「建議評價方法」**：摘要表列順序改為與側欄估值選單一致（上→下：NAV → DCF → DDM → RI → P/B）
+- **目錄**：`app_17.0/`；顯示版號 **v17.62**
 
 ## v17.61 重點
 - **i18n**：補齊 Snapshot／HFV／市場切換／param audit 報告等 en-US＋zh-TW；Defaults 下載與還原檔選擇鈕隨語言切換；修正「基本設定」PDF 頁籤譯文

@@ -11,13 +11,31 @@
 # 產業建議方法對齊 recommend_valuation_models 的產業層規則（簡化估值）。
 # ==========================================
 
+# Canonical sidebar valuation order (top → bottom in ynow_ui.R):
+# Asset-Based NAV → Income/Cashflow DCF → DDM → RI → Relative P/B
+LAB_SIDEBAR_METHOD_ORDER <- c("nav", "dcf", "ddm", "ri", "pb")
+
 LAB_METHOD_LABELS <- c(
+  nav = "NAV（帳面控股淨資產）",
   dcf = "DCF（現金流折現）",
   ddm = "DDM（股利折現）",
-  pb  = "P/B（相對估值／倍數）",
   ri  = "RI（剩餘收益）",
-  nav = "NAV（帳面控股淨資產）"
+  pb  = "P/B（相對估值／倍數）"
 )
+
+#' Sort method keys to sidebar top→bottom order; unknown keys last (stable by name).
+lab_order_methods_like_sidebar <- function(methods) {
+  methods <- unique(as.character(methods %||% character(0)))
+  methods <- methods[nzchar(methods) & !is.na(methods)]
+  if (!length(methods)) return(character(0))
+  ord <- match(methods, LAB_SIDEBAR_METHOD_ORDER)
+  unknown <- is.na(ord)
+  if (any(unknown)) {
+    ord[unknown] <- length(LAB_SIDEBAR_METHOD_ORDER) +
+      rank(methods[unknown], ties.method = "first")
+  }
+  methods[order(ord)]
+}
 
 # 目錄代碼 → 公司全稱（評估前即可顯示；Yahoo 名稱可覆寫）
 LAB_TICKER_NAMES <- c(
@@ -1338,6 +1356,7 @@ lab_quality_leaderboard <- function(merged_df, top_n = 10L, eq_only = FALSE,
 }
 
 #' 顯示用摘要：依主方法分組的產業數／候選檔數
+#' Row order follows sidebar model order (NAV → DCF → DDM → RI → P/B), not catalog appearance.
 lab_method_group_summary <- function(catalog) {
   if (is.null(catalog) || !nrow(catalog)) {
     return(data.frame(
@@ -1348,7 +1367,7 @@ lab_method_group_summary <- function(catalog) {
       stringsAsFactors = FALSE
     ))
   }
-  methods <- unique(as.character(catalog$primary))
+  methods <- lab_order_methods_like_sidebar(catalog$primary)
   do.call(rbind, lapply(methods, function(m) {
     sub <- catalog[catalog$primary == m, , drop = FALSE]
     data.frame(

@@ -933,7 +933,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.61</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.62</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -6216,14 +6216,15 @@ ui <- dashboardPage(
                       class = "ynow-lab-im-methods",
                       checkboxGroupInput(
                         "lab_im_methods", "模型",
+                        # Same top→bottom order as sidebar valuation menus
                         choices = c(
+                          "NAV" = "nav",
                           "DCF" = "dcf",
                           "DDM" = "ddm",
-                          "P/B" = "pb",
                           "RI" = "ri",
-                          "NAV" = "nav"
+                          "P/B" = "pb"
                         ),
-                        selected = c("dcf", "ddm", "pb", "ri", "nav"),
+                        selected = c("nav", "dcf", "ddm", "ri", "pb"),
                         inline = TRUE
                       )
                     )
