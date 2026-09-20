@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12580272
+bundleId=12580317
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=da9013e
-commit=da9013ebc0ed82da7d75ede7bd3bde55a5dcdc8e
-short=da9013e
-message=Split Snapshot into three sub-tabs: audit, live params, APP_DEFAULTS (v17.56).
-captured_at=2026-09-20T13:02:08Z
+aligned_git=1a4ff0c
+commit=1a4ff0c7469629e258e51a8c7027633c73ac26df
+short=1a4ff0c
+message=DCF Overview: drop chart-mode selector; always show yearly PV ex-TV (v17.57).
+captured_at=2026-09-20T13:17:16Z
 source_branch=master
-display_version=v17.56
-note=Canonical live line is app_17.0. Bundle 12580272 = tip v17.56 (Snapshot three sub-tabs). Deploy via scripts/deploy_app_17.R.
+display_version=v17.57
+note=Canonical live line is app_17.0. Bundle 12580317 = tip v17.57 (DCF Overview fixed to yearly PV). Deploy via scripts/deploy_app_17.R.
