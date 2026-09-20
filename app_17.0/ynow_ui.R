@@ -933,7 +933,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.55</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.56</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -2950,8 +2950,16 @@ ui <- dashboardPage(
             if (snapTitle && s.snapshot_page_title) snapTitle.textContent = s.snapshot_page_title;
             var snapHelp = document.getElementById('ynow_snapshot_page_help');
             if (snapHelp && s.snapshot_page_help) snapHelp.textContent = s.snapshot_page_help;
-            var paTitle = document.getElementById('ynow_param_audit_title');
-            if (paTitle && s.param_audit_title) paTitle.textContent = s.param_audit_title;
+            var snapTabAudit = document.getElementById('ynow_snapshot_tab_audit');
+            if (snapTabAudit && (s.snapshot_tab_audit || s.param_audit_title)) {
+              snapTabAudit.textContent = s.snapshot_tab_audit || s.param_audit_title;
+            }
+            var snapTabCurrent = document.getElementById('ynow_snapshot_tab_current');
+            if (snapTabCurrent && s.snapshot_tab_current) snapTabCurrent.textContent = s.snapshot_tab_current;
+            var snapTabDefaults = document.getElementById('ynow_snapshot_tab_defaults');
+            if (snapTabDefaults && s.snapshot_tab_defaults) snapTabDefaults.textContent = s.snapshot_tab_defaults;
+            var snapDefaultsHelp = document.getElementById('ynow_snapshot_defaults_help');
+            if (snapDefaultsHelp && s.snapshot_defaults_help) snapDefaultsHelp.textContent = s.snapshot_defaults_help;
             var paHelp = document.getElementById('ynow_param_audit_help');
             if (paHelp && s.param_audit_help) paHelp.textContent = s.param_audit_help;
             var paPdfTitle = document.getElementById('ynow_param_audit_pdf_title');
@@ -5108,18 +5116,21 @@ ui <- dashboardPage(
         helpText(
           id = "ynow_snapshot_page_help",
           paste0(
-            "Top: manual adjustments vs the post-Search baseline; ",
-            "annotated PDF screenshots of selected pages; ",
-            "then current live parameters and APP_DEFAULTS. CSV download available."
+            "Three tabs: manual adjustments vs the post-Search baseline (with annotated PDF); ",
+            "current live parameters; and APP_DEFAULTS. CSV download available on the last two tabs."
           )
         ),
-        fluidRow(
-          box(
+        tabBox(
+          title = "SNAPSHOT",
+          id = "snapshot_report",
+          width = "auto",
+
+          tabPanel(
             title = tagList(
               icon("user-edit"),
-              tags$span(id = "ynow_param_audit_title", "Manual adjustments (vs post-Search baseline)")
+              tags$span(id = "ynow_snapshot_tab_audit", "Manual adjustments (vs post-Search baseline)")
             ),
-            width = 12, status = "success", solidHeader = TRUE,
+            value = "snap_audit",
             tags$p(
               id = "ynow_param_audit_help",
               style = "font-size:12.5px; color:#666; line-height:1.45; margin:0 0 10px 0;",
@@ -5178,28 +5189,34 @@ ui <- dashboardPage(
                 style = "font-size:12.5px; color:#555;"
               )
             )
-          )
-        ),
-        fluidRow(
-          box(
-            title = tagList(icon("camera"), "Current App Parameter Snapshot"),
-            width = 12, status = "info", solidHeader = TRUE,
-            div(style = "display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:10px;",
-                uiOutput("snapshot_timestamp"),
-                downloadButton("download_snapshot", "下載 Snapshot CSV", icon = icon("download"))
+          ),
+
+          tabPanel(
+            title = tagList(
+              icon("camera"),
+              tags$span(id = "ynow_snapshot_tab_current", "Current App Parameter Snapshot")
+            ),
+            value = "snap_current",
+            div(
+              style = "display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:10px;",
+              uiOutput("snapshot_timestamp"),
+              downloadButton("download_snapshot", "下載 Snapshot CSV", icon = icon("download"))
             ),
             dataTableOutput("snapshot_table")
-          )
-        ),
-        fluidRow(
-          box(
-            title = tagList(icon("sliders-h"), "系統預設參數（APP_DEFAULTS）"),
-            width = 12, status = "warning", solidHeader = TRUE,
+          ),
+
+          tabPanel(
+            title = tagList(
+              icon("sliders-h"),
+              tags$span(id = "ynow_snapshot_tab_defaults", "系統預設參數（APP_DEFAULTS）")
+            ),
+            value = "snap_defaults",
             div(
               style = "display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:10px; flex-wrap:wrap;",
               tags$span(
+                id = "ynow_snapshot_defaults_help",
                 style = "font-size:12.5px; color:#666; line-height:1.45;",
-                "App 啟動時寫入的預設值（含依預設產業／Rf 動態估出的項目）。與上方「目前參數」可能不同；欄位仍可在各分頁覆寫。"
+                "App 啟動時寫入的預設值（含依預設產業／Rf 動態估出的項目）。與「目前參數」可能不同；欄位仍可在各分頁覆寫。"
               ),
               downloadButton("download_defaults", "下載 Defaults CSV", icon = icon("download"))
             ),

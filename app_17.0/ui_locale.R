@@ -47,9 +47,15 @@ locale_for_market <- function(mode = get_market_mode()) {
     snapshot_link = " Snapshot",
     snapshot_page_title = "Snapshot",
     snapshot_page_help = paste0(
-      "Top: manual adjustments vs the post-Search baseline; ",
-      "annotated PDF screenshots of selected pages; ",
-      "then current live parameters and APP_DEFAULTS. CSV download available."
+      "Three tabs: manual adjustments vs the post-Search baseline (with annotated PDF); ",
+      "current live parameters; and APP_DEFAULTS. CSV download available on the last two tabs."
+    ),
+    snapshot_tab_audit = "Manual adjustments (vs post-Search baseline)",
+    snapshot_tab_current = "Current App Parameter Snapshot",
+    snapshot_tab_defaults = "System defaults (APP_DEFAULTS)",
+    snapshot_defaults_help = paste0(
+      "Defaults written at App start (including items estimated from the default industry / Rf). ",
+      "May differ from Current App Parameter Snapshot; fields can still be overridden on each page."
     ),
     param_audit_title = "Manual adjustments (vs post-Search baseline)",
     param_audit_help = paste0(
@@ -617,8 +623,15 @@ locale_for_market <- function(mode = get_market_mode()) {
     snapshot_link = " 快照",
     snapshot_page_title = "快照 Snapshot",
     snapshot_page_help = paste0(
-      "上方：相對 Search 後基準的手改參數與標記截圖 PDF；",
-      "中：目前 App 執行中參數；下：系統載入時 APP_DEFAULTS。CSV 可下載。"
+      "三個小頁籤：相對 Search 後基準的手改參數（含標記截圖 PDF）；",
+      "目前 App 執行中參數；系統載入時 APP_DEFAULTS。後兩者可下載 CSV。"
+    ),
+    snapshot_tab_audit = "手改參數（相對 Search 後基準）",
+    snapshot_tab_current = "目前 App 參數 Snapshot",
+    snapshot_tab_defaults = "系統預設參數（APP_DEFAULTS）",
+    snapshot_defaults_help = paste0(
+      "App 啟動時寫入的預設值（含依預設產業／Rf 動態估出的項目）。",
+      "與「目前參數」可能不同；欄位仍可在各分頁覆寫。"
     ),
     param_audit_title = "手改參數（相對 Search 後基準）",
     param_audit_help = paste0(
