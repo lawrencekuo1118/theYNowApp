@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12579644
+bundleId=12579799
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=bd1d5ce
-commit=bd1d5ce61f8a10bfb36c4616f82ba6b30f3d5f1c
-short=bd1d5ce
-message=Remove Process & Guardrails sub-tab from Valuation Methodology (v17.52).
-captured_at=2026-09-20T08:35:26Z
+aligned_git=a580314
+commit=a580314422167f59d57c3e42845fb9742baca5ae
+short=a580314
+message=Restore Blue Chip Candidate truncate rule for Search → Rankings Top 10 (v17.53).
+captured_at=2026-09-20T09:46:48Z
 source_branch=master
-display_version=v17.52
-note=Canonical live line is app_17.0. Bundle 12579644 = tip v17.52 (removed Process & Guardrails sub-tab). Deploy via scripts/deploy_app_17.R.
+display_version=v17.53
+note=Canonical live line is app_17.0. Bundle 12579799 = tip v17.53 (Search Blue Chip uses Evaluation count + Candidate truncate → Rankings Top 10). Deploy via scripts/deploy_app_17.R.
