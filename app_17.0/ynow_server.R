@@ -10346,6 +10346,9 @@ server <- function(input, output, session) {
     }, error = function(e) "")
     if (is.null(session_tk) || is.na(session_tk)) session_tk <- ""
     session_tk <- toupper(trimws(as.character(session_tk)[1]))
+    rank_mode_run <- lab_normalize_pool_rank_mode(
+      isolate(input$lab_im_pool_rank %||% "mcap")
+    )
 
     result <- withProgress(
       message = if (identical(normalize_ui_locale(loc), "zh-TW")) {
@@ -10362,7 +10365,7 @@ server <- function(input, output, session) {
             method_filter = input$lab_im_methods,
             max_n = max_n,
             ensure_ticker = session_tk,
-            rank_mode = isolate(input$lab_im_pool_rank %||% "mcap"),
+            rank_mode = rank_mode_run,
             concept_keys = isolate(input$lab_im_concepts),
             market_mode = tryCatch(isolate(market_mode()), error = function(e) "US")
           ),
@@ -10377,6 +10380,47 @@ server <- function(input, output, session) {
             type = "warning"
           )
           return(NULL)
+        }
+        mode_used <- as.character(attr(pool, "pool_rank_mode") %||% rank_mode_run)[1]
+        pool_ord <- as.character(pool$ticker)
+        # Notify when truncate shrinks the candidate universe (same as Detail / rankings)
+        n_filtered <- suppressWarnings(as.integer(attr(pool, "n_filtered") %||% nrow(pool))[1])
+        if (is.finite(n_filtered) && n_filtered > nrow(pool)) {
+          how <- switch(
+            mode_used,
+            ret_1y = if (identical(normalize_ui_locale(loc), "zh-TW")) {
+              "依近一年股價漲幅"
+            } else {
+              "by 1Y price return"
+            },
+            random = if (identical(normalize_ui_locale(loc), "zh-TW")) {
+              "系統隨機"
+            } else {
+              "system random"
+            },
+            concept = if (identical(normalize_ui_locale(loc), "zh-TW")) {
+              "所選概念股（必要時再依市值）"
+            } else {
+              "selected concept groups (mcap within if needed)"
+            },
+            if (identical(normalize_ui_locale(loc), "zh-TW")) {
+              "依市值由大到小"
+            } else {
+              "by market cap (largest first)"
+            }
+          )
+          showNotification(
+            if (identical(normalize_ui_locale(loc), "zh-TW")) {
+              paste0("篩選後 ", n_filtered, " 檔，", how, "分群宇宙 ", nrow(pool), " 檔。")
+            } else {
+              paste0(
+                "After filters: ", n_filtered, " names; clustering universe ",
+                nrow(pool), " via ", how, "."
+              )
+            },
+            type = "message",
+            duration = 6
+          )
         }
         incProgress(0.25, detail = sprintf("Features (%d)", nrow(pool)))
         feats <- tryCatch(
@@ -10400,6 +10444,24 @@ server <- function(input, output, session) {
             lab_cluster_priority_refill_features(feats, session_tk),
             error = function(e) feats
           )
+        }
+        # Carry truncate sort keys from the shared candidate pool onto features
+        if (!is.null(feats) && is.data.frame(feats) && nrow(feats) > 0L) {
+          hit <- match(toupper(trimws(as.character(feats$ticker))),
+                       toupper(trimws(as.character(pool$ticker))))
+          if ("market_cap" %in% names(pool)) {
+            pool_mcap <- suppressWarnings(as.numeric(pool$market_cap[hit]))
+            if (!"market_cap" %in% names(feats)) {
+              feats$market_cap <- pool_mcap
+            } else {
+              fm <- suppressWarnings(as.numeric(feats$market_cap))
+              miss <- !is.finite(fm) | fm <= 0
+              feats$market_cap[miss] <- pool_mcap[miss]
+            }
+          }
+          if ("ret_1y" %in% names(pool)) {
+            feats$ret_1y <- suppressWarnings(as.numeric(pool$ret_1y[hit]))
+          }
         }
         n_usable <- lab_cluster_usable_feature_rows(feats)
         if (is.null(feats) || n_usable < 2L) {
@@ -10442,7 +10504,7 @@ server <- function(input, output, session) {
           feats$industry_key <- pool$industry_key[match(feats$ticker, pool$ticker)]
         }
         incProgress(0.75, detail = "K-Means")
-        tryCatch(
+        clustered <- tryCatch(
           lab_run_stock_clustering(
             feats, k_clusters = k_eff, locale = loc,
             ensure_ticker = session_tk
@@ -10462,12 +10524,54 @@ server <- function(input, output, session) {
             NULL
           }
         )
+        if (is.null(clustered) || is.null(clustered$data) || nrow(clustered$data) == 0L) {
+          return(NULL)
+        }
+        # Merge truncate keys lost during k-means filter; pin focus; sort by truncate
+        if ("ret_1y" %in% names(feats) && !"ret_1y" %in% names(clustered$data)) {
+          clustered$data$ret_1y <- feats$ret_1y[
+            match(
+              toupper(trimws(as.character(clustered$data$ticker))),
+              toupper(trimws(as.character(feats$ticker)))
+            )
+          ]
+        }
+        if ("market_cap" %in% names(feats)) {
+          if (!"market_cap" %in% names(clustered$data)) {
+            clustered$data$market_cap <- feats$market_cap[
+              match(
+                toupper(trimws(as.character(clustered$data$ticker))),
+                toupper(trimws(as.character(feats$ticker)))
+              )
+            ]
+          } else {
+            cm <- suppressWarnings(as.numeric(clustered$data$market_cap))
+            miss <- !is.finite(cm) | cm <= 0
+            if (any(miss)) {
+              clustered$data$market_cap[miss] <- feats$market_cap[
+                match(
+                  toupper(trimws(as.character(clustered$data$ticker[miss]))),
+                  toupper(trimws(as.character(feats$ticker)))
+                )
+              ]
+            }
+          }
+        }
+        clustered$data <- lab_cluster_order_by_truncate(
+          clustered$data,
+          rank_mode = mode_used,
+          pin_ticker = session_tk,
+          pool_ticker_order = pool_ord
+        )
+        clustered$pool_rank_mode <- mode_used
+        clustered$n <- nrow(clustered$data)
+        clustered
       }
     )
     if (is.null(result) || is.null(result$data) || nrow(result$data) == 0L) return()
     lab_cluster_result(result)
     choices <- stats::setNames(result$data$ticker, paste0(result$data$ticker, " · ", result$data$Cluster_Label))
-    # Default radar focus = Search ticker (must be in Universe after ensure)
+    # Default radar focus = Search ticker (pinned first row when present)
     focus_default <- result$data$ticker[[1]]
     matched_focus <- lab_cluster_match_ticker(result$data$ticker, session_tk)
     if (!is.na(matched_focus) && nzchar(matched_focus)) {
@@ -10677,7 +10781,7 @@ server <- function(input, output, session) {
       c(
         "ticker", "name", cov_col, "Cluster_ID", "Cluster_Label", "industry_key",
         "ROE", "Operating_Margin", "Rev_YoY", "OpInc_YoY",
-        "Debt_Ratio", "PE_Ratio", "PB_Ratio", "market_cap", "n_finite"
+        "Debt_Ratio", "PE_Ratio", "PB_Ratio", "market_cap", "ret_1y", "n_finite"
       ),
       names(df)
     )
@@ -10685,10 +10789,11 @@ server <- function(input, output, session) {
     cols <- setdiff(cols, "n_finite")
     out <- lab_cluster_format_assignments_df(df[, cols, drop = FALSE])
     num_cols <- names(out)[vapply(out, is.numeric, logical(1)) & names(out) != "Cluster_ID"]
+    # Default row order already: Radar focus first, then truncate-logic sort
     dt <- DT::datatable(
       out,
       rownames = FALSE,
-      options = list(pageLength = 25, scrollX = TRUE, order = list(list(3, "asc")))
+      options = list(pageLength = 25, scrollX = TRUE, order = list())
     )
     if (length(num_cols)) {
       dt <- DT::formatRound(dt, columns = num_cols, digits = 2)
@@ -10960,7 +11065,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.62"),
+      paste0("- **App：** The YNow App v17.63"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

@@ -675,26 +675,57 @@ lab_cluster_match_ticker <- function(tickers, focus) {
   NA_character_
 }
 
-#' Force-include ensure_ticker in a capped pool (drop lowest mcap non-focus if over N).
+#' Drop excess rows while keeping focus, using the same truncate priority as
+#' lab_select_eval_pool (lowest mcap / lowest 1Y return / trailing random slots).
+lab_cluster_drop_excess_keeping_focus <- function(pool, keep_focus, max_n,
+                                                 rank_mode = "mcap") {
+  if (is.null(pool) || !is.data.frame(pool) || nrow(pool) == 0L) return(pool)
+  max_n <- lab_resolve_im_max_n(max_n, custom = NULL, lo = 1L, hi = 500L)
+  if (!is.finite(max_n) || nrow(pool) <= max_n) return(pool)
+  keep_focus <- as.integer(keep_focus)[1]
+  if (!is.finite(keep_focus) || keep_focus < 1L || keep_focus > nrow(pool)) {
+    keep_focus <- NA_integer_
+  }
+  drop_cand <- setdiff(seq_len(nrow(pool)), keep_focus)
+  n_drop <- nrow(pool) - as.integer(max_n)
+  if (!length(drop_cand) || n_drop <= 0L) return(pool)
+  mode <- lab_normalize_pool_rank_mode(rank_mode)
+  tk <- as.character(pool$ticker)
+  if (identical(mode, "ret_1y") && "ret_1y" %in% names(pool)) {
+    ret <- suppressWarnings(as.numeric(pool$ret_1y))
+    ret[!is.finite(ret)] <- -Inf
+    ord <- drop_cand[order(ret[drop_cand], tk[drop_cand], na.last = FALSE)]
+  } else if (identical(mode, "random")) {
+    # Prefer dropping trailing slots (preserve earlier random sample order)
+    ord <- rev(drop_cand)
+  } else {
+    # mcap / concept (mcap within): drop lowest market cap first; missing last
+    mcap <- suppressWarnings(as.numeric(pool$market_cap))
+    mcap[!is.finite(mcap)] <- Inf
+    ord <- drop_cand[order(mcap[drop_cand], tk[drop_cand])]
+  }
+  pool[-ord[seq_len(min(n_drop, length(ord)))], , drop = FALSE]
+}
+
+#' Force-include ensure_ticker in a capped pool (drop by truncate mode if over N).
 #' If the ticker is absent from catalog, inject a minimal row so Search stock still enters N.
-lab_cluster_ensure_ticker_in_pool <- function(pool, catalog, ensure_ticker, max_n) {
+lab_cluster_ensure_ticker_in_pool <- function(pool, catalog, ensure_ticker, max_n,
+                                              rank_mode = "mcap") {
   ensure_raw <- toupper(trimws(as.character(ensure_ticker %||% "")[1]))
   if (!nzchar(ensure_raw) || is.null(pool) || !is.data.frame(pool)) return(pool)
+  mode <- lab_normalize_pool_rank_mode(rank_mode)
   matched <- lab_cluster_match_ticker(pool$ticker, ensure_raw)
   if (!is.na(matched)) {
     # Already in pool — still enforce max_n without dropping the focus
     max_n <- lab_resolve_im_max_n(max_n, custom = NULL, lo = 1L, hi = 500L)
     if (is.finite(max_n) && nrow(pool) > max_n) {
       keep_focus <- which(toupper(trimws(as.character(pool$ticker))) == matched)[1]
-      if (!is.finite(keep_focus)) keep_focus <- which(!is.na(lab_cluster_match_ticker(pool$ticker, ensure_raw)))[1]
-      drop_cand <- setdiff(seq_len(nrow(pool)), keep_focus)
-      if (length(drop_cand) && length(drop_cand) >= (nrow(pool) - max_n)) {
-        mcap <- suppressWarnings(as.numeric(pool$market_cap))
-        mcap[!is.finite(mcap)] <- Inf
-        n_drop <- nrow(pool) - as.integer(max_n)
-        ord <- drop_cand[order(mcap[drop_cand], pool$ticker[drop_cand])]
-        pool <- pool[-ord[seq_len(min(n_drop, length(ord)))], , drop = FALSE]
+      if (!is.finite(keep_focus)) {
+        keep_focus <- which(!is.na(lab_cluster_match_ticker(pool$ticker, ensure_raw)))[1]
       }
+      pool <- lab_cluster_drop_excess_keeping_focus(
+        pool, keep_focus, max_n, rank_mode = mode
+      )
     }
     return(pool)
   }
@@ -722,7 +753,9 @@ lab_cluster_ensure_ticker_in_pool <- function(pool, catalog, ensure_ticker, max_
   } else {
     row <- src[src$ticker == matched, , drop = FALSE][1, , drop = FALSE]
   }
-  need_cols <- unique(c(names(pool), "ticker", "industry_key", "industry_label", "market_cap"))
+  need_cols <- unique(c(
+    names(pool), "ticker", "industry_key", "industry_label", "market_cap", "ret_1y"
+  ))
   for (nm in setdiff(need_cols, names(row))) row[[nm]] <- NA
   for (nm in setdiff(need_cols, names(pool))) {
     pool[[nm]] <- if (nm == "ticker") character(nrow(pool)) else NA
@@ -737,14 +770,9 @@ lab_cluster_ensure_ticker_in_pool <- function(pool, catalog, ensure_ticker, max_
         pool$ticker, function(t) lab_cluster_match_ticker(t, ensure_raw), character(1)
       )))[1]
     }
-    drop_cand <- setdiff(seq_len(nrow(pool)), keep_focus)
-    if (length(drop_cand)) {
-      mcap <- suppressWarnings(as.numeric(pool$market_cap))
-      mcap[!is.finite(mcap)] <- Inf
-      n_drop <- nrow(pool) - as.integer(max_n)
-      ord <- drop_cand[order(mcap[drop_cand], pool$ticker[drop_cand])]
-      pool <- pool[-ord[seq_len(min(n_drop, length(ord)))], , drop = FALSE]
-    }
+    pool <- lab_cluster_drop_excess_keeping_focus(
+      pool, keep_focus, max_n, rank_mode = mode
+    )
   }
   pool
 }
@@ -891,9 +919,24 @@ lab_cluster_build_pool <- function(catalog, industry_filter = NULL, method_filte
     market_mode = market_mode,
     seed = as.integer(Sys.time())
   )
-  pool <- lab_cluster_ensure_ticker_in_pool(pool, catalog, ensure_ticker, max_n = max_n)
-  cols <- intersect(c("ticker", "industry_key", "industry_label", "market_cap"), names(pool))
-  pool[, cols, drop = FALSE]
+  mode_used <- as.character(attr(pool, "pool_rank_mode") %||% mode)[1]
+  note_used <- as.character(attr(pool, "pool_rank_note") %||% "")[1]
+  n_filtered <- as.integer(attr(pool, "n_filtered") %||% nrow(pool))[1]
+  used_mcap <- isTRUE(attr(pool, "used_market_cap"))
+  pool <- lab_cluster_ensure_ticker_in_pool(
+    pool, catalog, ensure_ticker, max_n = max_n, rank_mode = mode_used
+  )
+  cols <- intersect(
+    c("ticker", "industry_key", "industry_label", "market_cap", "ret_1y", "primary"),
+    names(pool)
+  )
+  out <- pool[, cols, drop = FALSE]
+  attr(out, "pool_rank_mode") <- mode_used
+  attr(out, "pool_rank_note") <- note_used
+  attr(out, "n_filtered") <- n_filtered
+  attr(out, "used_market_cap") <- used_mcap
+  attr(out, "max_n") <- max_n
+  out
 }
 
 #' Semantic labels from cluster-center means (research labels, not buy signals)
@@ -1240,6 +1283,50 @@ lab_cluster_coverage_labels <- function(n_finite, tickers,
     }
   }
   as.character(out)
+}
+
+#' Order cluster assignment rows: Radar focus / Search ticker first, then
+#' truncate-logic sort (pool order when provided; else mcap / ret_1y / ticker).
+lab_cluster_order_by_truncate <- function(df, rank_mode = "mcap",
+                                          pin_ticker = NULL,
+                                          pool_ticker_order = NULL) {
+  if (is.null(df) || !is.data.frame(df) || nrow(df) == 0L) return(df)
+  mode <- lab_normalize_pool_rank_mode(rank_mode)
+  pin <- lab_cluster_match_ticker(df$ticker, pin_ticker)
+  is_pin <- !is.na(pin) & nzchar(pin) &
+    toupper(trimws(as.character(df$ticker))) == pin
+  pin_df <- df[is_pin, , drop = FALSE]
+  rest <- df[!is_pin, , drop = FALSE]
+
+  if (nrow(rest) > 0L) {
+    if (!is.null(pool_ticker_order) && length(pool_ticker_order)) {
+      po <- toupper(trimws(as.character(pool_ticker_order)))
+      po <- po[nzchar(po) & !is.na(po)]
+      idx <- match(toupper(trimws(as.character(rest$ticker))), po)
+      miss <- which(!is.finite(idx))
+      if (length(miss)) {
+        idx[miss] <- length(po) + seq_along(miss)
+      }
+      rest <- rest[order(idx, rest$ticker), , drop = FALSE]
+    } else if (identical(mode, "ret_1y") && "ret_1y" %in% names(rest)) {
+      ret <- suppressWarnings(as.numeric(rest$ret_1y))
+      missing <- is.na(ret) | !is.finite(ret)
+      o <- order(missing, -ifelse(missing, 0, ret), rest$ticker, na.last = TRUE)
+      rest <- rest[o, , drop = FALSE]
+    } else if (!identical(mode, "random") && "market_cap" %in% names(rest)) {
+      mcap <- suppressWarnings(as.numeric(rest$market_cap))
+      missing <- is.na(mcap) | !is.finite(mcap) | mcap <= 0
+      o <- order(missing, -ifelse(missing, 0, mcap), rest$ticker, na.last = TRUE)
+      rest <- rest[o, , drop = FALSE]
+    } else {
+      rest <- rest[order(rest$ticker), , drop = FALSE]
+    }
+  }
+
+  out <- rbind(pin_df, rest)
+  rownames(out) <- NULL
+  attr(out, "pool_rank_mode") <- mode
+  out
 }
 
 #' Round numeric columns in Cluster assignments table to 2 decimal places

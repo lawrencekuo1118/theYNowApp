@@ -171,6 +171,52 @@ pool_n <- lab_cluster_ensure_ticker_in_pool(pool_top, catlg, "EEE", max_n = 3L)
 stopifnot(nrow(pool_n) <= 3L)
 stopifnot(!is.na(lab_cluster_match_ticker(pool_n$ticker, "EEE")))
 
+# Truncate-aware pool build (mcap) + force-include Search ticker
+pool_built <- lab_cluster_build_pool(
+  catlg, max_n = 3L, ensure_ticker = "EEE", rank_mode = "mcap"
+)
+stopifnot(nrow(pool_built) <= 3L)
+stopifnot(!is.na(lab_cluster_match_ticker(pool_built$ticker, "EEE")))
+stopifnot(identical(as.character(attr(pool_built, "pool_rank_mode")), "mcap"))
+
+# Result order: pin focus first, then mcap desc for the rest
+ord_df <- data.frame(
+  ticker = c("AAA", "BBB", "CCC", "EEE"),
+  market_cap = c(5, 40, 10, 1) * 1e9,
+  Cluster_ID = 1:4,
+  stringsAsFactors = FALSE
+)
+ord_mcap <- lab_cluster_order_by_truncate(ord_df, rank_mode = "mcap", pin_ticker = "EEE")
+stopifnot(identical(as.character(ord_mcap$ticker[[1]]), "EEE"))
+stopifnot(identical(as.character(ord_mcap$ticker[-1]), c("BBB", "CCC", "AAA")))
+
+ord_ret <- ord_df
+ord_ret$ret_1y <- c(0.05, 0.40, 0.10, -0.20)
+ord_ret1 <- lab_cluster_order_by_truncate(ord_ret, rank_mode = "ret_1y", pin_ticker = "CCC")
+stopifnot(identical(as.character(ord_ret1$ticker[[1]]), "CCC"))
+stopifnot(identical(as.character(ord_ret1$ticker[-1]), c("BBB", "AAA", "EEE")))
+
+# Pool order preserved when provided (random / concept truncate order)
+ord_pool <- lab_cluster_order_by_truncate(
+  ord_df, rank_mode = "random", pin_ticker = "AAA",
+  pool_ticker_order = c("CCC", "EEE", "BBB", "AAA")
+)
+stopifnot(identical(as.character(ord_pool$ticker), c("AAA", "CCC", "EEE", "BBB")))
+
+# Force-include drop respects ret_1y truncate (drop lowest return, keep focus)
+pool_ret <- data.frame(
+  ticker = c("A", "B", "C", "D"),
+  ret_1y = c(0.5, 0.4, 0.1, 0.05),
+  market_cap = c(1, 2, 3, 4) * 1e9,
+  stringsAsFactors = FALSE
+)
+pool_ret_n <- lab_cluster_ensure_ticker_in_pool(
+  pool_ret[1:3, ], pool_ret, "D", max_n = 3L, rank_mode = "ret_1y"
+)
+stopifnot(nrow(pool_ret_n) == 3L)
+stopifnot(!is.na(lab_cluster_match_ticker(pool_ret_n$ticker, "D")))
+stopifnot(is.na(lab_cluster_match_ticker(pool_ret_n$ticker, "C")))
+
 feats_shell <- lab_cluster_ensure_ticker_in_features(df[1:8, ], "ZZZ")
 stopifnot(!is.na(lab_cluster_match_ticker(feats_shell$ticker, "ZZZ")))
 res_keep <- lab_run_stock_clustering(
@@ -181,16 +227,24 @@ stopifnot("n_finite" %in% names(res_keep$data))
 zz_i <- which(toupper(res_keep$data$ticker) == "ZZZ")[1]
 stopifnot(is.finite(zz_i), res_keep$data$n_finite[[zz_i]] < 2L)
 
+# Pin Search ticker as first assignment row after truncate order
+res_keep$data$market_cap <- seq_len(nrow(res_keep$data)) * 1e9
+res_keep$data <- lab_cluster_order_by_truncate(
+  res_keep$data, rank_mode = "mcap", pin_ticker = "ZZZ"
+)
+stopifnot(identical(toupper(as.character(res_keep$data$ticker[[1]])), "ZZZ"))
+
 cov_en <- lab_cluster_coverage_labels(
   res_keep$data$n_finite, res_keep$data$ticker,
   search_ticker = "ZZZ", search_is_fallback = TRUE, locale = "en"
 )
-stopifnot(identical(cov_en[[zz_i]], "Data-limited"))
+stopifnot(identical(cov_en[[1]], "Data-limited"))
 cov_zh <- lab_cluster_coverage_labels(
   res_keep$data$n_finite, res_keep$data$ticker,
   search_ticker = "ZZZ", search_is_fallback = FALSE, locale = "zh-TW"
 )
-stopifnot(identical(cov_zh[[zz_i]], "資料受限"))
+zz_i2 <- which(toupper(res_keep$data$ticker) == "ZZZ")[1]
+stopifnot(identical(cov_zh[[zz_i2]], "資料受限"))
 # Dense synthetic row stays OK when not search-fallback
 cov_ok <- lab_cluster_coverage_labels(
   res$data$n_finite, res$data$ticker, locale = "en"
