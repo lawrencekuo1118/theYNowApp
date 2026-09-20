@@ -145,14 +145,14 @@ locale_for_market <- function(mode = get_market_mode()) {
       "over the App default horizon of n=%d years. Main search keeps Nasdaq and NYSE primary listings ",
       "(Yahoo typeahead plus the S&P 500 name/ticker universe). Detail-row count equals the number of names evaluated, N."
     ),
-    lab_im_max_n_label = "Evaluation count (detail rows)",
+    lab_im_max_n_label = "Universe size (N)",
     lab_im_max_n_custom_label = "Custom count",
     lab_im_pool_rank_label = "Candidate truncate rule",
     lab_im_concepts_label = "Concept groups",
     lab_im_concepts_placeholder = "Select one or more concept groups…",
     lab_im_max_n_help = paste0(
-      "Evaluation count N (default 25) = how many names are evaluated this run.\n",
-      "• Evaluation pool: after filters, if candidates exceed N, apply the truncate rule ",
+      "Universe size N (default 25) = names evaluated by Search Blue Chips / Detail, and the Clustering universe size.\n",
+      "• Evaluation / cluster pool: after filters, if candidates exceed N, apply the truncate rule ",
       "(market cap / concept groups / 1Y return / random).\n",
       "• Market cap mode: Yahoo market cap descending; if caps are unavailable, fall back to ticker sort then take N.\n",
       "• Concept groups: intersection of selected themes with the filtered pool; if still > N, cap by market cap ",
@@ -176,7 +176,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     lab_im_detail_intro = paste0(
       "Detail of names evaluated this run (sorted by annualized valuation appreciation). ",
-      "Row count equals evaluation count N (or all remaining if fewer)."
+      "Row count equals Universe size (N) above (or all remaining if fewer)."
     ),
     lab_im_lb_mode_label = "Ranking view",
     lab_im_lb_mode_overall = "Overall Top 10",
@@ -557,11 +557,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     btn_lab_cluster_run = "Run clustering",
     lab_cluster_hint = paste0(
       "Uses the same industry/model filters as Rankings when set. ",
-      "When candidates exceed N, applies the same Candidate truncate rule as Detail ",
+      "Universe size (N) and Candidate truncate rule are the shared controls above BLUE CHIP ",
       "(market cap / concept groups / 1Y return / random; market-cap fallback = ticker sort). ",
       "The Search ticker is always force-included in Universe (N) and is the default radar focus. ",
-      "Fetches Yahoo ratios with a bundled offline snapshot fallback when Yahoo is blocked. ",
-      "N and truncate rule stay in sync with Detail (default N=25)."
+      "Fetches Yahoo ratios with a bundled offline snapshot fallback when Yahoo is blocked."
     ),
     lab_cluster_map_title = "Cluster map",
     lab_cluster_radar_title = "Same-cluster radar",
@@ -719,14 +718,14 @@ locale_for_market <- function(mode = get_market_mode()) {
       "最後依 App 預設 n＝%d 年之隱含年化估值漲幅排序。主搜尋保留 Nasdaq／NYSE 主要上市",
       "（Yahoo 建議列＋S&P 500 名稱／代號宇宙）。明細列數等於本次評估檔數 N。"
     ),
-    lab_im_max_n_label = "評估檔數（明細列數）",
+    lab_im_max_n_label = "宇宙檔數（N）",
     lab_im_max_n_custom_label = "自訂檔數",
     lab_im_pool_rank_label = "候選截斷邏輯",
     lab_im_concepts_label = "概念股群",
     lab_im_concepts_placeholder = "選擇一或多個概念股群…",
     lab_im_max_n_help = paste0(
-      "評估檔數 N（預設 25）＝本次要評估的檔數。\n",
-      "• 誰進評估池：篩選後若候選 > N，依「候選截斷邏輯」取 N（市值／概念股／近一年漲幅／隨機）。\n",
+      "宇宙檔數 N（預設 25）＝搜尋績優／明細評估檔數，亦為分群宇宙檔數。\n",
+      "• 誰進評估池／分群宇宙：篩選後若候選 > N，依「候選截斷邏輯」取 N（市值／概念股／近一年漲幅／隨機）。\n",
       "• 市值模式：Yahoo 市值由大到小；市值暫不可用時改依代號排序再取 N。\n",
       "• 概念股：取所選概念群聯集與目前篩選之交集；若仍 > N 再依市值截斷（市值缺值同代號排序後援）。\n",
       "• 明細／排行預設排序：以 n＝5 年換算的年化估值漲幅（upside_cagr_pct）降序。\n",
@@ -747,7 +746,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     lab_im_detail_intro = paste0(
       "本次已評估檔的明細（按年化估值漲幅排序）。",
-      "列數等於「評估檔數（明細列數）」N（不足則全列）。"
+      "列數等於上方「宇宙檔數（N）」（不足則全列）。"
     ),
     lab_im_lb_mode_label = "排行視角",
     lab_im_lb_mode_overall = "整體前十名",
@@ -1120,11 +1119,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     btn_lab_cluster_run = "執行分群",
     lab_cluster_hint = paste0(
       "沿用「排行」頁目前的產業／模型篩選（若有）。",
-      "候選 > N 時套用與「明細」相同的「候選截斷邏輯」",
+      "宇宙檔數 N 與候選截斷邏輯見區塊上方共用控制",
       "（市值／概念股／近一年漲幅／隨機；市值缺值則改依代號排序）。",
       "Search 後的代號一律強制納入宇宙（N），並作為雷達焦點預設。",
-      "抓取 Yahoo 比率特徵；若 Yahoo 受限則改用內建離線快照。",
-      "N 與截斷邏輯皆與「明細」同步（預設 N＝25）。"
+      "抓取 Yahoo 比率特徵；若 Yahoo 受限則改用內建離線快照。"
     ),
     lab_cluster_map_title = "分群星團圖",
     lab_cluster_radar_title = "同群雷達圖",

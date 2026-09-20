@@ -9835,7 +9835,6 @@ server <- function(input, output, session) {
     rank_choices <- lab_im_pool_rank_choices(loc)
     if (!rank_cur %in% unname(rank_choices)) rank_cur <- "mcap"
     updateSelectInput(session, "lab_im_pool_rank", choices = rank_choices, selected = rank_cur)
-    updateSelectInput(session, "lab_cluster_pool_rank", choices = rank_choices, selected = rank_cur)
 
     concept_choices <- lab_concept_group_choices(mm, loc)
     concept_cur <- isolate(input$lab_im_concepts)
@@ -9844,16 +9843,6 @@ server <- function(input, output, session) {
     updateSelectizeInput(
       session,
       "lab_im_concepts",
-      choices = concept_choices,
-      selected = concept_cur,
-      options = list(
-        placeholder = ui_str("lab_im_concepts_placeholder", loc),
-        plugins = list("remove_button")
-      )
-    )
-    updateSelectizeInput(
-      session,
-      "lab_cluster_concepts",
       choices = concept_choices,
       selected = concept_cur,
       options = list(
@@ -10179,7 +10168,7 @@ server <- function(input, output, session) {
         sprintf("- 模型：%s", meth_txt),
         sprintf("- 盈餘品質過濾：%s", if (eq_on) "開" else "關"),
         sprintf("- Piotroski 高門檻過濾（F-Score≥7）：%s", if (gate_on) "開" else "關"),
-        sprintf("- 評估檔數（明細列數）lab_im_max_n：%s", max_n_label),
+        sprintf("- 宇宙檔數（N）lab_im_max_n：%s", max_n_label),
         sprintf("- 評估狀態：%s", if (evaluated) sprintf("已評估 %d 檔", nrow(scores)) else "尚未評估"),
         sprintf("- 本頁代號數：%d", length(tks)),
         sprintf("- 本頁代號：%s", if (length(tks)) paste(tks, collapse = ", ") else "（無）"),
@@ -10215,90 +10204,7 @@ server <- function(input, output, session) {
   # ------------------------------------------
   # Lab：基本面 K-Means 分群（研究用；非買進訊號）
   # ------------------------------------------
-  # Detail Evaluation count ↔ Clustering Universe size (shared choice set)
-  .lab_max_n_syncing <- reactiveVal(FALSE)
-  # Detail ↔ Clustering truncate rule + concept groups
-  .lab_pool_rank_syncing <- reactiveVal(FALSE)
-
-  observeEvent(input$lab_im_max_n, {
-    if (isTRUE(.lab_max_n_syncing())) return()
-    new <- as.character(input$lab_im_max_n %||% "25")[1]
-    cur <- as.character(input$lab_cluster_max_n %||% "")[1]
-    if (identical(cur, new)) return()
-    .lab_max_n_syncing(TRUE)
-    on.exit(.lab_max_n_syncing(FALSE), add = TRUE)
-    updateSelectInput(session, "lab_cluster_max_n", selected = new)
-  }, ignoreInit = TRUE)
-
-  observeEvent(input$lab_cluster_max_n, {
-    if (isTRUE(.lab_max_n_syncing())) return()
-    new <- as.character(input$lab_cluster_max_n %||% "25")[1]
-    cur <- as.character(input$lab_im_max_n %||% "")[1]
-    if (identical(cur, new)) return()
-    .lab_max_n_syncing(TRUE)
-    on.exit(.lab_max_n_syncing(FALSE), add = TRUE)
-    updateSelectInput(session, "lab_im_max_n", selected = new)
-  }, ignoreInit = TRUE)
-
-  observeEvent(input$lab_im_max_n_custom, {
-    if (isTRUE(.lab_max_n_syncing())) return()
-    new <- suppressWarnings(as.numeric(input$lab_im_max_n_custom)[1])
-    cur <- suppressWarnings(as.numeric(input$lab_cluster_max_n_custom)[1])
-    if (!is.finite(new) || (is.finite(cur) && identical(as.integer(cur), as.integer(new)))) return()
-    .lab_max_n_syncing(TRUE)
-    on.exit(.lab_max_n_syncing(FALSE), add = TRUE)
-    updateNumericInput(session, "lab_cluster_max_n_custom", value = as.integer(new))
-  }, ignoreInit = TRUE)
-
-  observeEvent(input$lab_cluster_max_n_custom, {
-    if (isTRUE(.lab_max_n_syncing())) return()
-    new <- suppressWarnings(as.numeric(input$lab_cluster_max_n_custom)[1])
-    cur <- suppressWarnings(as.numeric(input$lab_im_max_n_custom)[1])
-    if (!is.finite(new) || (is.finite(cur) && identical(as.integer(cur), as.integer(new)))) return()
-    .lab_max_n_syncing(TRUE)
-    on.exit(.lab_max_n_syncing(FALSE), add = TRUE)
-    updateNumericInput(session, "lab_im_max_n_custom", value = as.integer(new))
-  }, ignoreInit = TRUE)
-
-  observeEvent(input$lab_im_pool_rank, {
-    if (isTRUE(.lab_pool_rank_syncing())) return()
-    new <- lab_normalize_pool_rank_mode(input$lab_im_pool_rank %||% "mcap")
-    cur <- lab_normalize_pool_rank_mode(input$lab_cluster_pool_rank %||% "mcap")
-    if (identical(cur, new)) return()
-    .lab_pool_rank_syncing(TRUE)
-    on.exit(.lab_pool_rank_syncing(FALSE), add = TRUE)
-    updateSelectInput(session, "lab_cluster_pool_rank", selected = new)
-  }, ignoreInit = TRUE)
-
-  observeEvent(input$lab_cluster_pool_rank, {
-    if (isTRUE(.lab_pool_rank_syncing())) return()
-    new <- lab_normalize_pool_rank_mode(input$lab_cluster_pool_rank %||% "mcap")
-    cur <- lab_normalize_pool_rank_mode(input$lab_im_pool_rank %||% "mcap")
-    if (identical(cur, new)) return()
-    .lab_pool_rank_syncing(TRUE)
-    on.exit(.lab_pool_rank_syncing(FALSE), add = TRUE)
-    updateSelectInput(session, "lab_im_pool_rank", selected = new)
-  }, ignoreInit = TRUE)
-
-  observeEvent(input$lab_im_concepts, {
-    if (isTRUE(.lab_pool_rank_syncing())) return()
-    new <- as.character(input$lab_im_concepts %||% character(0))
-    cur <- as.character(input$lab_cluster_concepts %||% character(0))
-    if (identical(sort(cur), sort(new))) return()
-    .lab_pool_rank_syncing(TRUE)
-    on.exit(.lab_pool_rank_syncing(FALSE), add = TRUE)
-    updateSelectizeInput(session, "lab_cluster_concepts", selected = new)
-  }, ignoreInit = TRUE, ignoreNULL = FALSE)
-
-  observeEvent(input$lab_cluster_concepts, {
-    if (isTRUE(.lab_pool_rank_syncing())) return()
-    new <- as.character(input$lab_cluster_concepts %||% character(0))
-    cur <- as.character(input$lab_im_concepts %||% character(0))
-    if (identical(sort(cur), sort(new))) return()
-    .lab_pool_rank_syncing(TRUE)
-    on.exit(.lab_pool_rank_syncing(FALSE), add = TRUE)
-    updateSelectizeInput(session, "lab_im_concepts", selected = new)
-  }, ignoreInit = TRUE, ignoreNULL = FALSE)
+  # Universe size (N) + Candidate truncate live above BLUE CHIP (shared lab_im_* inputs)
 
   # Plotly/DT htmlwidgets keep the last figure when validate() fails or when
   # renderPlotly returns plotly_empty — destroy outputs via renderUI instead.
@@ -10323,8 +10229,8 @@ server <- function(input, output, session) {
     if (!is.finite(k)) k <- 3L
     k <- max(2L, min(8L, k))
     max_n <- lab_resolve_im_max_n(
-      input$lab_cluster_max_n,
-      input$lab_cluster_max_n_custom,
+      input$lab_im_max_n,
+      input$lab_im_max_n_custom,
       lo = 1L,
       hi = 500L
     )
@@ -10352,12 +10258,8 @@ server <- function(input, output, session) {
             method_filter = input$lab_im_methods,
             max_n = max_n,
             ensure_ticker = session_tk,
-            rank_mode = isolate(input$lab_cluster_pool_rank %||% input$lab_im_pool_rank %||% "mcap"),
-            concept_keys = isolate({
-              ck <- input$lab_cluster_concepts
-              if (is.null(ck) || !length(ck)) ck <- input$lab_im_concepts
-              ck
-            }),
+            rank_mode = isolate(input$lab_im_pool_rank %||% "mcap"),
+            concept_keys = isolate(input$lab_im_concepts),
             market_mode = tryCatch(isolate(market_mode()), error = function(e) "US")
           ),
           error = function(e) {
@@ -10954,7 +10856,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.53"),
+      paste0("- **App：** The YNow App v17.54"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {
