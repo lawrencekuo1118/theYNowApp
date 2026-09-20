@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12580673
+bundleId=12580718
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=d8b3d25
-commit=d8b3d25f36c771bcfbb17ab9aec56ae7a8cbcb91
-short=d8b3d25
-message=i18n: complete Snapshot/HFV/market/param-audit en-US and zh-TW pairs (v17.61).
-captured_at=2026-09-20T15:36:41Z
+aligned_git=4634bbb
+commit=4634bbb4e4d644ad3eb7d2c69859a1df7ef9fa37
+short=4634bbb
+message=Align Blue Chip recommended-method table with sidebar model order (v17.62).
+captured_at=2026-09-20T15:52:20Z
 source_branch=master
-display_version=v17.61
-note=Canonical live line is app_17.0. Bundle 12580673 = tip v17.61 (i18n Snapshot/HFV/market/param-audit). Deploy via scripts/deploy_app_17.R.
+display_version=v17.62
+note=Canonical live line is app_17.0. Bundle 12580718 = tip v17.62 (建議評價方法 table order = sidebar NAV→DCF→DDM→RI→P/B). Deploy via scripts/deploy_app_17.R.
