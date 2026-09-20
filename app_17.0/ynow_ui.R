@@ -957,7 +957,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.66</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.67</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -2561,7 +2561,7 @@ ui <- dashboardPage(
             market.style.paddingLeft = '0';
             placeMobileAppTitle();
           }
-          /* Mobile: app title full-bleed and viewport-centered; max-width clears chrome. */
+          /* Mobile: app title viewport-centered in the gap; scale font to fit — never cover chrome. */
           function placeMobileAppTitle() {
             var logo = document.querySelector('.main-header .logo');
             if (!logo) return;
@@ -2569,20 +2569,36 @@ ui <- dashboardPage(
             if (window.innerWidth > 767) {
               logo.style.left = '';
               logo.style.right = '';
-              if (title) title.style.maxWidth = '';
+              if (title) {
+                title.style.maxWidth = '';
+                title.style.fontSize = '';
+              }
               return;
             }
             logo.style.left = '0px';
             logo.style.right = '0px';
+            if (!title) return;
             var mkt = document.getElementById('ynow-market-header');
             var custom = document.querySelector('.main-header .navbar-custom-menu');
-            var gap = 8;
+            var gap = 10;
             var leftClear = mkt ? Math.round(mkt.getBoundingClientRect().right) : 90;
             var rightClear = custom
               ? Math.round(window.innerWidth - custom.getBoundingClientRect().left)
               : 120;
-            var maxW = Math.max(80, window.innerWidth - leftClear - rightClear - gap * 2);
-            if (title) title.style.maxWidth = maxW + 'px';
+            var maxW = Math.max(64, window.innerWidth - leftClear - rightClear - gap * 2);
+            title.style.maxWidth = maxW + 'px';
+            title.style.overflow = 'visible';
+            title.style.textOverflow = 'clip';
+            /* Prefer readable size; shrink proportionally so full version string stays visible */
+            var base = 16;
+            var minFs = 9;
+            title.style.fontSize = base + 'px';
+            var guard = 0;
+            while (title.scrollWidth > maxW + 1 && base > minFs && guard < 24) {
+              base -= 0.5;
+              title.style.fontSize = base + 'px';
+              guard++;
+            }
           }
           window.placeMobileAppTitle = placeMobileAppTitle;
           function bindMarketModeButtons() {
@@ -4500,8 +4516,11 @@ ui <- dashboardPage(
             text-align: center !important;
             background-color: transparent !important;
             background-image: none !important;
-            z-index: 1045 !important;
-            overflow: hidden;
+            /* Below navbar chrome so hamburger / 美股台股 / 繁中EN / mark stay fully visible */
+            z-index: 1040 !important;
+            overflow: visible !important;
+            visibility: visible !important;
+            opacity: 1 !important;
             pointer-events: none;
           }
           /* Opaque ::before on full-bleed title was painting over hamburger / 繁中／EN / mark */
@@ -4515,32 +4534,37 @@ ui <- dashboardPage(
           .main-header .navbar,
           .skin-black .main-header .navbar {
             position: relative !important;
-            z-index: 1055 !important;
+            z-index: 1060 !important;
           }
           .main-header .logo .ynow-app-title {
-            /* Restore toward AdminLTE logo 20px; clamp so long version strings still fit */
-            font-size: 16px !important;
+            /* JS scales font into the center gap; no ellipsis — full version string stays */
+            font-size: 16px;
             line-height: 1.15 !important;
             white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            overflow: visible;
+            text-overflow: clip;
             max-width: min(100%, calc(100vw - 200px));
             height: auto !important;
+            visibility: visible !important;
+            opacity: 1 !important;
           }
           /* Keep 繁中／EN / mark / toggle above the absolute title band */
           .main-header .navbar-custom-menu .navbar-nav > li.ynow-lang-header {
             position: relative !important;
-            z-index: 1050 !important;
+            z-index: 1062 !important;
             flex-shrink: 0 !important;
           }
           .main-header .navbar-custom-menu .navbar-nav > li#ynow-header-logo.ynow-header-logo {
             position: relative !important;
-            z-index: 1050 !important;
+            z-index: 1062 !important;
             flex-shrink: 0 !important;
           }
           .main-header .navbar > .sidebar-toggle,
           .skin-black .main-header .navbar .sidebar-toggle {
-            z-index: 1056 !important;
+            z-index: 1063 !important;
+          }
+          .main-header .navbar #ynow-market-header.ynow-market-header {
+            z-index: 1062 !important;
           }
           /* Slightly compress 繁中／EN to free width for the centered title */
           .ynow-lang-header .btn-group-xs > .btn,
@@ -4595,7 +4619,7 @@ ui <- dashboardPage(
             align-items: center !important;
             overflow: visible !important;
             position: relative !important;
-            z-index: 1056 !important;
+            z-index: 1063 !important;
           }
           .main-header .navbar-custom-menu > .navbar-nav {
             display: flex !important;

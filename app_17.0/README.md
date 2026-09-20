@@ -1,6 +1,10 @@
-# The YNow App v17.66 — Valuation Methodology
+# The YNow App v17.67 — Valuation Methodology
 
 先分類，再選模型；先推導，再校正；先給區間，再給單點；先做基本面估值。
+
+## v17.67 重點
+- **手機頁首**：黑色置頂橫幅置中顯示 App 版號標題；不覆蓋漢堡／美股台股／繁中 EN／logo；過長則等比例縮小字級（不以省略號裁切）
+- **目錄**：`app_17.0/`；顯示版號 **v17.67**
 
 ## v17.66 重點
 - **Lifecycle SGR：** 修正自動分檔優先序（高成長科技改走 growth_to_mature，不再誤標成熟科技）；檔位標籤對齊客觀依據；估計法建議 UI 顯示自動檔位與客觀證據（en-US + zh-TW）
