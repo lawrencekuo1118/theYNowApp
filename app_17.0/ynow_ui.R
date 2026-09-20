@@ -957,7 +957,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.67</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.68</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -2219,21 +2219,71 @@ ui <- dashboardPage(
           .ynow-ind-overview-row {
             flex-direction: column;
             gap: 4px;
+            align-items: stretch;
           }
           .ynow-ind-overview-picker {
             max-width: none;
             width: 100%;
+            flex: 0 0 auto;
+            /* Keep closed picker to toggle height; menu is portaled via container=body */
+            position: relative;
+            z-index: 5;
+          }
+          .ynow-ind-overview-picker .form-group,
+          .ynow-ind-overview-picker .shiny-input-container {
+            margin-bottom: 0 !important;
           }
           .ynow-ind-overview-picker .bootstrap-select,
           .ynow-ind-overview-picker .btn-group.bootstrap-select {
             margin-bottom: 0 !important;
+            width: 100% !important;
+            position: relative;
+            /* Do not let an in-flow leftover menu stretch this cell (~size×row ≈ huge white gap) */
+            height: auto !important;
+            max-height: none;
+          }
+          /* Closed menu must never consume vertical layout (size=12 ≈ 1/3 viewport) */
+          .ynow-ind-overview-picker .bootstrap-select:not(.open):not(.show) > .dropdown-menu,
+          .ynow-ind-overview-picker .bootstrap-select:not(.open):not(.show) .dropdown-menu {
+            display: none !important;
+            height: 0 !important;
+            max-height: 0 !important;
+            min-height: 0 !important;
+            overflow: hidden !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+          }
+          /* If a menu remains inside the picker (no bs-container), keep it absolute */
+          .ynow-ind-overview-picker .bootstrap-select > .dropdown-menu {
+            position: absolute !important;
+            top: 100% !important;
+            left: 0 !important;
+            right: auto !important;
+            z-index: 1060 !important;
+          }
+          .ynow-ind-overview-picker select.selectpicker,
+          .ynow-ind-overview-picker select.bs-select-hidden {
+            display: none !important;
+            height: 0 !important;
+            max-height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: 0 !important;
+            position: absolute !important;
+            clip: rect(0, 0, 0, 0) !important;
           }
           .ynow-ind-overview-summary {
             margin: 0;
+            flex: 0 0 auto;
+            min-height: 0 !important;
           }
           .ynow-ind-overview-block .shiny-html-output,
           .ynow-ind-overview-block .shiny-bound-output {
             min-height: 0 !important;
+            height: auto !important;
           }
           .ynow-ind-overview-block .ynow-ind-yahoo-row {
             margin-top: 2px;
@@ -5648,7 +5698,13 @@ ui <- dashboardPage(
                       label = NULL,
                       choices = industry_picker_choices(),
                       selected = APP_DEFAULTS$industry_choice,
-                      options = list(`live-search` = TRUE, `size` = 12)
+                      # container=body: dropdown is portaled out of the picker cell so
+                      # data-size menu height cannot create a huge in-flow white gap on mobile.
+                      options = list(
+                        `live-search` = TRUE,
+                        size = 12,
+                        container = "body"
+                      )
                     )
                   ),
                   tags$div(
