@@ -780,11 +780,6 @@ lab_cluster_priority_refill_features <- function(feats, ticker) {
     feats <- lab_cluster_features_to_df(NULL)
   }
   n0 <- lab_cluster_n_finite_for_ticker(feats, ensure_raw)
-  # #region agent log
-  .lab_cluster_dbg_log("H1", "priority_refill_enter", list(
-    ticker = ensure_raw, n_finite_before = n0, nrow = nrow(feats)
-  ))
-  # #endregion
   if (n0 >= 2L) return(feats)
 
   # 1) Python solo
@@ -815,11 +810,6 @@ lab_cluster_priority_refill_features <- function(feats, ticker) {
   }
   n1 <- lab_cluster_n_finite_for_ticker(feats, ensure_raw)
   if (n1 >= 2L) {
-    # #region agent log
-    .lab_cluster_dbg_log("H1", "priority_refill_py_ok", list(
-      ticker = ensure_raw, n_finite = n1
-    ))
-    # #endregion
     return(feats)
   }
 
@@ -834,11 +824,6 @@ lab_cluster_priority_refill_features <- function(feats, ticker) {
   }
   n2 <- lab_cluster_n_finite_for_ticker(feats, ensure_raw)
   if (n2 >= 2L) {
-    # #region agent log
-    .lab_cluster_dbg_log("H2", "priority_refill_r_ok", list(
-      ticker = ensure_raw, n_finite = n2
-    ))
-    # #endregion
     return(feats)
   }
 
@@ -856,42 +841,7 @@ lab_cluster_priority_refill_features <- function(feats, ticker) {
       )
     }
   }
-  n3 <- lab_cluster_n_finite_for_ticker(feats, ensure_raw)
-  # #region agent log
-  .lab_cluster_dbg_log("H3", "priority_refill_exit", list(
-    ticker = ensure_raw, n_finite_after = n3, source = if (n3 >= 2L) "ok" else "still_sparse"
-  ))
-  # #endregion
   feats
-}
-
-#' Compact NDJSON debug logger for Clustering focus-feature path
-.lab_cluster_dbg_log <- function(hypothesis_id, message, data = list()) {
-  tryCatch({
-    payload <- list(
-      sessionId = "ef0f33",
-      runId = "cluster-focus",
-      hypothesisId = as.character(hypothesis_id)[1],
-      location = "lab_clustering.R",
-      message = as.character(message)[1],
-      data = data,
-      timestamp = as.numeric(Sys.time()) * 1000
-    )
-    line <- jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null")
-    paths <- c(
-      "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-ef0f33.log",
-      file.path(tempdir(), "debug-ef0f33.log")
-    )
-    for (p in paths) {
-      ok <- tryCatch({
-        dir.create(dirname(p), showWarnings = FALSE, recursive = TRUE)
-        cat(line, "\n", file = p, append = TRUE, sep = "")
-        TRUE
-      }, error = function(e) FALSE)
-      if (isTRUE(ok)) break
-    }
-  }, error = function(e) invisible(NULL))
-  invisible(NULL)
 }
 
 #' Build evaluation pool for clustering from Blue Chip catalog filters
@@ -1128,15 +1078,6 @@ lab_cluster_scatter_plotly <- function(result, x_feat = "ROE", y_feat = "PE_Rati
   df_rest <- df[!is_focus_row, , drop = FALSE]
   df_focus <- df[is_focus_row, , drop = FALSE]
 
-  # #region agent log
-  .lab_cluster_dbg_log("H_MAP", "scatter_focus_marker", list(
-    focus_raw = as.character(focus_ticker %||% "")[1],
-    focus_matched = if (is.na(focus)) NA_character_ else focus,
-    n_focus = nrow(df_focus),
-    n_rest = nrow(df_rest)
-  ))
-  # #endregion
-
   p <- NULL
   if (nrow(df_rest) > 0L) {
     p <- plotly::plot_ly(
@@ -1200,14 +1141,6 @@ lab_cluster_radar_plotly <- function(result, focus_ticker, peer_tickers = NULL,
     plotly::plotly_empty() %>%
       plotly::layout(annotations = list(list(text = msg, showarrow = FALSE)))
   }
-  # #region agent log
-  .lab_cluster_dbg_log("H_RADAR", "radar_focus_resolve", list(
-    focus_raw = focus_raw,
-    focus_matched = if (is.na(focus)) NA_character_ else focus,
-    in_data = !is.na(focus) && nzchar(focus),
-    n_finite = if (is.na(focus)) 0L else lab_cluster_n_finite_for_ticker(df, focus)
-  ))
-  # #endregion
   if (is.na(focus) || !nzchar(focus)) return(empty_msg("Select a focus ticker"))
   if (is.null(peer_tickers) || !length(peer_tickers)) {
     peer_tickers <- lab_cluster_radar_peers(result, focus, n_peers = 3L)
@@ -1259,14 +1192,6 @@ lab_cluster_radar_plotly <- function(result, focus_ticker, peer_tickers = NULL,
     }
   }
   if (is.null(p)) return(empty_msg("No peers"))
-  # #region agent log
-  .lab_cluster_dbg_log("H_RADAR", "radar_trace_built", list(
-    focus = focus,
-    n_traces = nrow(sub),
-    tickers = as.character(sub$ticker),
-    focus_r_mean = if (nrow(sub)) mean(as.numeric(scaled[1, ]), na.rm = TRUE) else NA_real_
-  ))
-  # #endregion
   p %>%
     plotly::layout(
       title = list(text = title, font = list(size = 14)),

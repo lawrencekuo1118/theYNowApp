@@ -502,39 +502,6 @@ def get_tw_10y_gov_bond_yield():
                 if yv < 0.5:
                     yv = yv * 100.0
                 _dbg(f"✅ TW 10Y gov bond yield {yv}% (tenor={tenor})")
-                # #region agent log
-                try:
-                    import json as _json
-                    import time as _time
-
-                    _payload = {
-                        "sessionId": "ef0f33",
-                        "hypothesisId": "TW_RF",
-                        "runId": "live-fetch",
-                        "location": "deep_scraper.py:get_tw_10y_gov_bond_yield",
-                        "message": "TW 10Y yield scraped from TPEx Curve XLS",
-                        "data": {
-                            "yield_pct": yv,
-                            "tenor": tenor,
-                            "xls": str(xls_rel),
-                            "asof_row0": str(rows[0][0]) if rows else None,
-                        },
-                        "timestamp": int(_time.time() * 1000),
-                    }
-                    for _p in (
-                        "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-ef0f33.log",
-                        os.path.join(tempfile.gettempdir(), "debug-ef0f33.log"),
-                    ):
-                        try:
-                            os.makedirs(os.path.dirname(_p), exist_ok=True)
-                            with open(_p, "a", encoding="utf-8") as _f:
-                                _f.write(_json.dumps(_payload, ensure_ascii=False) + "\n")
-                            break
-                        except Exception:
-                            continue
-                except Exception:
-                    pass
-                # #endregion
                 return float(yv)
             tenors.append(tenor)
     raise RuntimeError(f"10Y row not found in Curve XLS (tenors seen: {tenors[:8]})")
