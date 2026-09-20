@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12579100
+bundleId=12579462
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=6c9eb6d
-commit=6c9eb6d7dec9ec2b6d4bccc8aa58217033aad12a
-short=6c9eb6d
-message=Ship param-audit Snapshot report and fix mobile header chrome (v17.48).
-captured_at=2026-09-20T04:51:04Z
+aligned_git=361c1f8
+commit=361c1f87fd5f95af2acc60294490fce780f54548
+short=361c1f8
+message=Remove leftover agent debug NDJSON logs from clustering and scraper (v17.49).
+captured_at=2026-09-20T07:19:30Z
 source_branch=master
-display_version=v17.48
-note=Canonical live line is app_17.0. Bundle 12579100 = tip v17.48 (param-audit Snapshot + mobile header chrome). Deploy via scripts/deploy_app_17.R.
+display_version=v17.49
+note=Canonical live line is app_17.0. Bundle 12579462 = tip v17.49 (strip leftover agent debug logs). Deploy via scripts/deploy_app_17.R.
