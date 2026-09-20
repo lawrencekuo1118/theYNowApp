@@ -216,6 +216,46 @@ server <- function(input, output, session) {
         label = ui_str("sgr_custom_label", loc)
       )
     }, error = function(e) NULL)
+    # SGR 方法／Lifecycle 檔位選項隨 locale
+    tryCatch({
+      g_sel <- isolate(input$perpetual_g_method)
+      if (is.null(g_sel) || !g_sel %in% c("macro", "fundamental", "lifecycle")) {
+        g_sel <- APP_DEFAULTS$perpetual_g_method
+      }
+      updateSelectInput(
+        session,
+        "perpetual_g_method",
+        choices = stats::setNames(
+          c("macro", "fundamental", "lifecycle"),
+          c(
+            ui_str("sgr_method_opt_macro", loc),
+            ui_str("sgr_method_opt_fundamental", loc),
+            ui_str("sgr_method_opt_lifecycle", loc)
+          )
+        ),
+        selected = g_sel
+      )
+    }, error = function(e) NULL)
+    tryCatch({
+      life_sel <- isolate(input$lifecycle_stage)
+      life_vals <- c("auto", "mature_sunset", "mature_tech", "growth_to_mature", "mature_general")
+      if (is.null(life_sel) || !life_sel %in% life_vals) life_sel <- APP_DEFAULTS$lifecycle_stage
+      updateSelectInput(
+        session,
+        "lifecycle_stage",
+        choices = stats::setNames(
+          life_vals,
+          c(
+            ui_str("lifecycle_opt_auto", loc),
+            ui_str("lifecycle_opt_sunset", loc),
+            ui_str("lifecycle_opt_tech", loc),
+            ui_str("lifecycle_opt_growth", loc),
+            ui_str("lifecycle_opt_general", loc)
+          )
+        ),
+        selected = life_sel
+      )
+    }, error = function(e) NULL)
     # HFV 驗證樣本口徑：標籤／三選項隨 locale 更新（值不變）
     tryCatch({
       oos_sel <- isolate(input$bt_fv_oos_mode)
@@ -3017,36 +3057,58 @@ server <- function(input, output, session) {
 
   output$txt_perpetual_g_reason <- renderUI({
     est <- central_perpetual_g()
+    loc <- tryCatch(ui_locale(), error = function(e) "zh-TW")
     tags$div(
       style = "background:#f8f9fa; border-left:4px solid #e67e22; padding:8px 12px; margin-bottom:12px; font-size:13px; color:#333;",
-      tags$b("目前 g 估計："), est$reason %||% ""
+      tags$b(ui_str("sgr_estimate_reason_prefix", loc)), est$reason %||% ""
     )
   })
 
   output$txt_perpetual_g_method_suggest <- renderUI({
     est <- central_perpetual_g()
+    loc <- tryCatch(ui_locale(), error = function(e) "zh-TW")
     cur <- as.character(input$perpetual_g_method %||% APP_DEFAULTS$perpetual_g_method)[1]
     rec <- as.character(est$recommended_method %||% "")[1]
     if (!nzchar(rec)) return(NULL)
     same <- identical(cur, rec)
     tone_bd <- if (same) "#27ae60" else "#2980b9"
     tone_bg <- if (same) "#eafaf1" else "#ebf5fb"
+    evidence <- as.character(est$lifecycle_evidence %||% "")[1]
+    auto_tier <- as.character(est$auto_lifecycle %||% "")[1]
+    tier_lab <- tryCatch(
+      lifecycle_stage_label(auto_tier, locale = loc),
+      error = function(e) auto_tier
+    )
     tags$div(
       style = paste0(
         "background:", tone_bg, "; border-left:4px solid ", tone_bd,
         "; padding:8px 12px; margin:8px 0 10px 0; font-size:13px; color:#333; line-height:1.5;"
       ),
       tags$div(
-        tags$b(if (same) "估計法建議：已採用建議方法 — " else "估計法建議："),
+        tags$b(
+          if (same) ui_str("sgr_suggest_adopted", loc) else ui_str("sgr_suggest_pending", loc)
+        ),
         est$recommend_label %||% rec
       ),
       tags$div(style = "margin-top:4px; color:#555;", est$recommend_reason %||% ""),
+      if (nzchar(evidence) || nzchar(auto_tier)) {
+        tags$div(
+          style = "margin-top:6px; color:#444; font-size:12px;",
+          tags$b(ui_str("sgr_suggest_evidence_prefix", loc)),
+          if (nzchar(auto_tier)) {
+            paste0(ui_str("sgr_suggest_auto_tier", loc), tier_lab, "（", auto_tier, "）。")
+          } else {
+            NULL
+          },
+          if (nzchar(evidence)) evidence else NULL
+        )
+      },
       if (!same) {
         tags$div(
           style = "margin-top:8px;",
           actionButton(
             "btn_apply_sgr_method_suggest",
-            paste0("套用建議：", est$recommend_label %||% rec),
+            paste0(ui_str("sgr_suggest_apply", loc), est$recommend_label %||% rec),
             class = "btn-sm btn-primary",
             icon = icon("magic")
           )
@@ -11166,7 +11228,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.65"),
+      paste0("- **App：** The YNow App v17.66"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

@@ -363,14 +363,32 @@ locale_for_market <- function(mode = get_market_mode()) {
     # --- SGR tab (Basic Setup) ---
     sgr_method_title = "Terminal growth (SGR) method",
     lifecycle_stage_title = "Lifecycle tier",
-    lifecycle_stage_help = "Override auto-detection; affects the suggested terminal g range.",
+    lifecycle_stage_help = paste0(
+      "Override auto-detection. Auto rules: (1) financial/utility keywords → highly mature; ",
+      "(2) revenue CAGR > 8% → high growth→mature; (3) tech keywords → mature tech; ",
+      "(4) else → general mature."
+    ),
     sgr_method_help = paste0(
       "Macro: uses the live scraped market 10Y Treasury Rf ",
       "(US: Yahoo ^TNX; TW: TPEx government-bond Curve 10Y; ",
       "on failure, last successful value; fixed engineering fallback only as last resort, clearly labeled). ",
       "Fundamental: Retention×ROE (mature, stable firms only). ",
-      "Lifecycle: infer g from industry maturity; auto-class can be overridden."
+      "Lifecycle: terminal g from objective industry keywords + revenue CAGR tiers; override allowed."
     ),
+    sgr_method_opt_macro = "Macroeconomic Anchoring (Macro)",
+    sgr_method_opt_fundamental = "Fundamental formula (SGR)",
+    sgr_method_opt_lifecycle = "Industry Lifecycle",
+    lifecycle_opt_auto = "Auto-detect",
+    lifecycle_opt_sunset = "Highly mature / financial-utility (≈1.5–2%)",
+    lifecycle_opt_tech = "Mature tech industry (≈2.5–3%)",
+    lifecycle_opt_growth = "High growth → mature (terminal ≈2.5%; Two-Stage suggested)",
+    lifecycle_opt_general = "General mature (≈2.5%)",
+    sgr_suggest_adopted = "Method suggestion: already using recommended method — ",
+    sgr_suggest_pending = "Method suggestion: ",
+    sgr_suggest_evidence_prefix = "Objective evidence: ",
+    sgr_suggest_auto_tier = "Auto tier = ",
+    sgr_suggest_apply = "Apply suggestion: ",
+    sgr_estimate_reason_prefix = "Current g estimate: ",
     sgr_manual_help = "Can be estimated from the method above, or overridden manually.",
     sgr_custom_label = "Custom SGR (%)",
     industry_overview_title = "Current industry standard snapshot",
@@ -1165,14 +1183,31 @@ locale_for_market <- function(mode = get_market_mode()) {
     # --- SGR tab (Basic Setup) ---
     sgr_method_title = "終值永續成長率 (SGR) 評價方法",
     lifecycle_stage_title = "生命週期檔位",
-    lifecycle_stage_help = "可覆寫自動偵測結果；影響終值 g 建議區間。",
+    lifecycle_stage_help = paste0(
+      "可覆寫自動偵測。自動規則：①金融／公用關鍵字→高度成熟；",
+      "②營收 CAGR>8%→高速→成熟；③科技關鍵字→成熟科技；④其餘→一般成熟。"
+    ),
     sgr_method_help = paste0(
       "Macro：採用即時抓取的市場 10 年期公債 Rf",
       "（美股 Yahoo ^TNX；台股櫃買 TPEx 公債殖利率曲線 10 年期；",
       "失敗則最近成功值，再失敗才工程 fallback 並標明）。",
       "Fundamental：Retention×ROE（僅適合成熟穩健企業）。",
-      "Lifecycle：依產業成熟度反推 g，可手動覆寫自動分類。"
+      "Lifecycle：依產業關鍵字與營收 CAGR 客觀分檔反推終值 g，可手動覆寫。"
     ),
+    sgr_method_opt_macro = "總體經濟錨定（Macro）",
+    sgr_method_opt_fundamental = "基本面公式（Fundamental／SGR）",
+    sgr_method_opt_lifecycle = "產業生命週期（Lifecycle）",
+    lifecycle_opt_auto = "自動偵測",
+    lifecycle_opt_sunset = "高度成熟／金融公用（≈1.5–2%）",
+    lifecycle_opt_tech = "成熟科技產業（≈2.5–3%）",
+    lifecycle_opt_growth = "高速成長→成熟（終值≈2.5%，建議 Two-Stage）",
+    lifecycle_opt_general = "一般成熟（≈2.5%）",
+    sgr_suggest_adopted = "估計法建議：已採用建議方法 — ",
+    sgr_suggest_pending = "估計法建議：",
+    sgr_suggest_evidence_prefix = "客觀依據：",
+    sgr_suggest_auto_tier = "自動檔位＝",
+    sgr_suggest_apply = "套用建議：",
+    sgr_estimate_reason_prefix = "目前 g 估計：",
     sgr_manual_help = "可由上方方法自動估計，亦可手動覆寫。",
     sgr_custom_label = "自訂 SGR (%)",
     industry_overview_title = "目前產業標準快覽",

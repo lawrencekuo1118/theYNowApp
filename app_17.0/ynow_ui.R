@@ -815,14 +815,17 @@ beta_rolling_section_ui <- function() {
               NULL,
               choices = c(
                 "自動偵測" = "auto",
-                "夕陽／高度成熟（≈1.5–2%）" = "mature_sunset",
-                "成熟科技巨頭（≈2.5–3%）" = "mature_tech",
-                "高速成長→成熟（終值≈2.5%，建議 two-stage）" = "growth_to_mature",
+                "高度成熟／金融公用（≈1.5–2%）" = "mature_sunset",
+                "成熟科技產業（≈2.5–3%）" = "mature_tech",
+                "高速成長→成熟（終值≈2.5%，建議 Two-Stage）" = "growth_to_mature",
                 "一般成熟（≈2.5%）" = "mature_general"
               ),
               selected = APP_DEFAULTS$lifecycle_stage
             ),
-            helpText(id = "ynow_lifecycle_stage_help", "可覆寫自動偵測結果；影響終值 g 建議區間。")
+            helpText(
+              id = "ynow_lifecycle_stage_help",
+              "可覆寫自動偵測。自動規則：①金融／公用關鍵字→高度成熟；②營收 CAGR>8%→高速→成熟；③科技關鍵字→成熟科技；④其餘→一般成熟。"
+            )
           )
         )
       ),
@@ -830,7 +833,7 @@ beta_rolling_section_ui <- function() {
         id = "ynow_sgr_method_help",
         "Macro：採用即時抓取的市場 10 年期公債 Rf（美股 Yahoo ^TNX；台股櫃買 TPEx 公債殖利率曲線 10 年期；失敗則最近成功值，再失敗才工程 fallback 並標明）。",
         "Fundamental：Retention×ROE（僅適合成熟穩健企業）。",
-        "Lifecycle：依產業成熟度反推 g，可手動覆寫自動分類。"
+        "Lifecycle：依產業關鍵字與營收 CAGR 客觀分檔反推終值 g，可手動覆寫。"
       ),
       uiOutput("txt_perpetual_g_method_suggest"),
       tags$h5(tags$b("估計依據")),
@@ -954,7 +957,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.65</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.66</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",

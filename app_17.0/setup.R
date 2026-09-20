@@ -2111,30 +2111,151 @@ if (!exists("%||%", mode = "function")) {
   `%||%` <- function(x, y) if (is.null(x) || (length(x) == 1 && is.na(x))) y else x
 }
 
+# Lifecycle 檔位：客觀門檻與終值 g 點估計（區間中點；工程啟發式，可手動覆寫）
+.LIFECYCLE_GROWTH_CAGR_PCT <- 8       # 營收 CAGR（%）> 此值 → growth_to_mature
+.LIFECYCLE_TECH_FUND_SGR_PCT <- 6     # 方法建議：成熟科技且 Fundamental SGR > 此值 → Lifecycle
+.LIFECYCLE_G_PCT <- c(
+  mature_sunset = 1.75,      # UI 帶 1.5–2%
+  mature_tech = 2.75,        # UI 帶 2.5–3%
+  growth_to_mature = 2.5,    # 終值收斂點
+  mature_general = 2.5
+)
+# Yahoo Sector/Industry 字串（及 App 顯示「Sector: … | Industry: …」）
+.LIFECYCLE_SUNSET_RE <- paste0(
+  "Bank|Insurance|Utility|Utilities|Financial|Conglomerate|",
+  "Insurance Brokers|Gas Utilities|Electric Utilities"
+)
+.LIFECYCLE_TECH_RE <- paste0(
+  "Software|Internet|Semiconductors?|Consumer Electronics|",
+  "Information Technology|\\bTechnology\\b"
+)
+
 #' 依產業／營收成長自動分類生命週期檔位（不含個股白名單）
-#' @return one of mature_sunset | mature_tech | growth_to_mature | mature_general
-classify_lifecycle_stage <- function(industry_text = "", ticker = "", rev_cagr = NA_real_) {
+#'
+#' 優先序（客觀、可檢驗）：
+#' 1. 金融／公用／控股等高度成熟產業關鍵字 → mature_sunset
+#' 2. 營收 CAGR > 8% → growth_to_mature（含高成長科技；避免誤標「成熟科技」）
+#' 3. 科技產業關鍵字且非高成長 → mature_tech
+#' 4. 其餘 → mature_general
+#'
+#' @return character stage，或 detail=TRUE 時 list(stage, rule, rev_cagr, industry_hit, evidence_zh, evidence_en)
+classify_lifecycle_stage <- function(industry_text = "", ticker = "", rev_cagr = NA_real_,
+                                   detail = FALSE) {
   txt <- paste(industry_text %||% "", collapse = " ")
   # ticker kept for call-site compatibility; lifecycle is industry / CAGR / manual only.
+  rev_cagr <- suppressWarnings(as.numeric(rev_cagr)[1])
+  sunset_hit <- grepl(.LIFECYCLE_SUNSET_RE, txt, ignore.case = TRUE)
+  tech_hit <- grepl(.LIFECYCLE_TECH_RE, txt, ignore.case = TRUE)
+  high_growth <- is.finite(rev_cagr) && rev_cagr > .LIFECYCLE_GROWTH_CAGR_PCT
 
-  if (grepl(
-    "Bank|Insurance|Utility|Utilities|Financial|Conglomerate|fn\\.|Insurance Brokers|Gas Utilities|Electric Utilities",
-    txt, ignore.case = TRUE
-  )) {
-    return("mature_sunset")
+  stage <- "mature_general"
+  rule <- "default_mature_general"
+  industry_hit <- NA_character_
+
+  if (isTRUE(sunset_hit)) {
+    stage <- "mature_sunset"
+    rule <- "industry_sunset_keywords"
+    industry_hit <- "sunset"
+  } else if (isTRUE(high_growth)) {
+    stage <- "growth_to_mature"
+    rule <- "rev_cagr_gt_threshold"
+  } else if (isTRUE(tech_hit)) {
+    stage <- "mature_tech"
+    rule <- "industry_tech_keywords"
+    industry_hit <- "tech"
   }
 
-  if (grepl(
-    "Software|Internet|Semiconductors|Semiconductor|Consumer Electronics|Information Technology| technolo",
-    txt, ignore.case = TRUE
-  )) {
-    return("mature_tech")
-  }
+  evidence_zh <- switch(
+    rule,
+    "industry_sunset_keywords" = paste0(
+      "產業字串匹配金融／公用／控股等高度成熟關鍵字（",
+      .LIFECYCLE_SUNSET_RE, "）→ mature_sunset；終值 g 取 1.5–2% 中點 ",
+      .LIFECYCLE_G_PCT[["mature_sunset"]], "%。"
+    ),
+    "rev_cagr_gt_threshold" = paste0(
+      "營收 CAGR≈", round(rev_cagr, 1), "% > ", .LIFECYCLE_GROWTH_CAGR_PCT,
+      "% → growth_to_mature；終值 g≈", .LIFECYCLE_G_PCT[["growth_to_mature"]],
+      "%，並建議 Two-Stage。"
+    ),
+    "industry_tech_keywords" = paste0(
+      "產業字串匹配科技關鍵字（", .LIFECYCLE_TECH_RE,
+      "）且營收 CAGR 未逾 ", .LIFECYCLE_GROWTH_CAGR_PCT,
+      "% → mature_tech；終值 g 取 2.5–3% 中點 ",
+      .LIFECYCLE_G_PCT[["mature_tech"]], "%。"
+    ),
+    paste0(
+      "未命中高度成熟／科技產業關鍵字，且營收 CAGR 未逾 ",
+      .LIFECYCLE_GROWTH_CAGR_PCT, "%（或無法計算）→ mature_general；終值 g≈",
+      .LIFECYCLE_G_PCT[["mature_general"]], "%。"
+    )
+  )
+  evidence_en <- switch(
+    rule,
+    "industry_sunset_keywords" = paste0(
+      "Industry text matches highly mature / regulated keywords (",
+      .LIFECYCLE_SUNSET_RE, ") → mature_sunset; terminal g = midpoint of 1.5–2% = ",
+      .LIFECYCLE_G_PCT[["mature_sunset"]], "%."
+    ),
+    "rev_cagr_gt_threshold" = paste0(
+      "Revenue CAGR≈", round(rev_cagr, 1), "% > ", .LIFECYCLE_GROWTH_CAGR_PCT,
+      "% → growth_to_mature; terminal g≈", .LIFECYCLE_G_PCT[["growth_to_mature"]],
+      "%; Two-Stage suggested."
+    ),
+    "industry_tech_keywords" = paste0(
+      "Industry text matches tech keywords (", .LIFECYCLE_TECH_RE,
+      ") and revenue CAGR is not above ", .LIFECYCLE_GROWTH_CAGR_PCT,
+      "% → mature_tech; terminal g = midpoint of 2.5–3% = ",
+      .LIFECYCLE_G_PCT[["mature_tech"]], "%."
+    ),
+    paste0(
+      "No sunset/tech industry keyword hit, and revenue CAGR is not above ",
+      .LIFECYCLE_GROWTH_CAGR_PCT, "% (or unavailable) → mature_general; terminal g≈",
+      .LIFECYCLE_G_PCT[["mature_general"]], "%."
+    )
+  )
 
-  if (is.finite(rev_cagr) && rev_cagr > 8) {
-    return("growth_to_mature")
+  if (isTRUE(detail)) {
+    return(list(
+      stage = stage,
+      rule = rule,
+      rev_cagr = if (is.finite(rev_cagr)) rev_cagr else NA_real_,
+      industry_hit = industry_hit,
+      evidence_zh = evidence_zh,
+      evidence_en = evidence_en
+    ))
   }
-  "mature_general"
+  stage
+}
+
+#' Lifecycle 檔位顯示標籤（en / zh-TW）
+lifecycle_stage_label <- function(stage, locale = "zh-TW") {
+  en <- identical(tolower(as.character(locale %||% "")[1]), "en") ||
+    identical(as.character(locale %||% "")[1], "en-US")
+  switch(
+    as.character(stage %||% "")[1],
+    "mature_sunset" = if (en) {
+      "Highly mature / financial-utility (≈1.5–2%)"
+    } else {
+      "高度成熟／金融公用（≈1.5–2%）"
+    },
+    "mature_tech" = if (en) {
+      "Mature tech industry (≈2.5–3%)"
+    } else {
+      "成熟科技產業（≈2.5–3%）"
+    },
+    "growth_to_mature" = if (en) {
+      "High growth → mature (terminal ≈2.5%; Two-Stage suggested)"
+    } else {
+      "高速成長→成熟（終值≈2.5%，建議 Two-Stage）"
+    },
+    "mature_general" = if (en) {
+      "General mature (≈2.5%)"
+    } else {
+      "一般成熟（≈2.5%）"
+    },
+    "auto" = if (en) "Auto-detect" else "自動偵測",
+    as.character(stage %||% "")[1]
+  )
 }
 
 #' 基本面永續 g（%）= Retention Ratio × ROE
@@ -2168,7 +2289,7 @@ calc_fundamental_sgr_pct <- function(d_is, d_bs, d_cf) {
 }
 
 #' 建議永續成長率估計法（不改寫演算法數值；僅推薦 macro／fundamental／lifecycle）
-#' @return list(method, label, reason, fund_sgr_pct, auto_lifecycle)
+#' @return list(method, label, reason, fund_sgr_pct, auto_lifecycle, lifecycle_evidence, lifecycle_rule)
 recommend_perpetual_g_method <- function(rf_pct = NA_real_,
                                          d_is = NULL,
                                          d_bs = NULL,
@@ -2176,98 +2297,159 @@ recommend_perpetual_g_method <- function(rf_pct = NA_real_,
                                          industry_text = "",
                                          ticker = "",
                                          wacc_pct = NA_real_,
-                                         rev_cagr = NA_real_) {
+                                         rev_cagr = NA_real_,
+                                         locale = "zh-TW") {
   rf_pct <- suppressWarnings(as.numeric(rf_pct)[1])
   wacc_pct <- suppressWarnings(as.numeric(wacc_pct)[1])
+  en <- identical(tolower(as.character(locale %||% "")[1]), "en") ||
+    identical(as.character(locale %||% "")[1], "en-US")
   if (is.na(rev_cagr) || !is.finite(rev_cagr)) {
     rev_cagr <- tryCatch({
       get_avg_growth(select_clean_metric_row(d_is, "Total Revenue", include_ttm = FALSE))
     }, error = function(e) NA_real_)
   }
-  auto_stage <- classify_lifecycle_stage(industry_text, ticker, rev_cagr)
+  cls <- classify_lifecycle_stage(industry_text, ticker, rev_cagr, detail = TRUE)
+  auto_stage <- cls$stage
+  evidence <- if (en) cls$evidence_en else cls$evidence_zh
   fund_sgr <- calc_fundamental_sgr_pct(d_is, d_bs, d_cf)
+  tech_sgr_cut <- .LIFECYCLE_TECH_FUND_SGR_PCT
 
   label_of <- function(m) {
-    switch(
-      as.character(m)[1],
-      "macro" = "總體經濟錨定（Macro）",
-      "fundamental" = "基本面公式（Fundamental／SGR）",
-      "lifecycle" = "產業生命週期（Lifecycle）",
-      as.character(m)[1]
+    if (en) {
+      switch(
+        as.character(m)[1],
+        "macro" = "Macroeconomic Anchoring (Macro)",
+        "fundamental" = "Fundamental formula (SGR)",
+        "lifecycle" = "Industry Lifecycle",
+        as.character(m)[1]
+      )
+    } else {
+      switch(
+        as.character(m)[1],
+        "macro" = "總體經濟錨定（Macro）",
+        "fundamental" = "基本面公式（Fundamental／SGR）",
+        "lifecycle" = "產業生命週期（Lifecycle）",
+        as.character(m)[1]
+      )
+    }
+  }
+
+  pack <- function(method, reason) {
+    list(
+      method = method,
+      label = label_of(method),
+      reason = reason,
+      fund_sgr_pct = if (is.finite(fund_sgr)) fund_sgr else NA_real_,
+      auto_lifecycle = auto_stage,
+      lifecycle_evidence = evidence,
+      lifecycle_rule = cls$rule
     )
   }
 
   # 無法算 Retention×ROE → Macro
   if (!is.finite(fund_sgr)) {
-    return(list(
-      method = "macro",
-      label = label_of("macro"),
-      reason = "財報不足以計算 Retention×ROE，建議改用 Macro（錨定 Rf）。",
-      fund_sgr_pct = NA_real_,
-      auto_lifecycle = auto_stage
+    return(pack(
+      "macro",
+      if (en) {
+        "Statements insufficient for Retention×ROE; suggest Macro (anchor to Rf)."
+      } else {
+        "財報不足以計算 Retention×ROE，建議改用 Macro（錨定 Rf）。"
+      }
     ))
   }
 
-  # 成熟科技／高速成長：Fundamental SGR（≈ROE）常偏高，終值宜用 Lifecycle
-  if (identical(auto_stage, "mature_tech") && is.finite(fund_sgr) && fund_sgr > 6) {
-    return(list(
-      method = "lifecycle",
-      label = label_of("lifecycle"),
-      reason = paste0(
-        "目前 Fundamental／SGR≈", round(fund_sgr, 2),
-        "%（Retention×ROE），對成熟科技終值偏高；建議改用 Lifecycle（成熟科技約 2.5–3%）。演算法本身未改寫。"
-      ),
-      fund_sgr_pct = fund_sgr,
-      auto_lifecycle = auto_stage
+  # 成熟科技：Fundamental SGR（≈ROE）常偏高，終值宜用 Lifecycle
+  if (identical(auto_stage, "mature_tech") && is.finite(fund_sgr) && fund_sgr > tech_sgr_cut) {
+    return(pack(
+      "lifecycle",
+      if (en) {
+        paste0(
+          "Fundamental／SGR≈", round(fund_sgr, 2),
+          "% (Retention×ROE) is high for mature-tech terminal g; suggest Lifecycle (≈2.5–3%). ",
+          "Objective tier: ", evidence, " Algorithm unchanged."
+        )
+      } else {
+        paste0(
+          "目前 Fundamental／SGR≈", round(fund_sgr, 2),
+          "%（Retention×ROE），對成熟科技終值偏高；建議改用 Lifecycle（約 2.5–3%）。",
+          "客觀依據：", evidence, " 演算法本身未改寫。"
+        )
+      }
     ))
   }
   if (identical(auto_stage, "growth_to_mature")) {
-    return(list(
-      method = "lifecycle",
-      label = label_of("lifecycle"),
-      reason = paste0(
-        "營收仍偏高成長（自動分類 growth_to_mature）",
-        if (is.finite(rev_cagr)) paste0("，營收 CAGR≈", round(rev_cagr, 1), "%") else "",
-        "；終值建議 Lifecycle（≈2.5%），並可考慮 Two-Stage。演算法本身未改寫。"
-      ),
-      fund_sgr_pct = fund_sgr,
-      auto_lifecycle = auto_stage
+    return(pack(
+      "lifecycle",
+      if (en) {
+        paste0(
+          "High revenue growth auto-class growth_to_mature",
+          if (is.finite(rev_cagr)) paste0(" (revenue CAGR≈", round(rev_cagr, 1), "%)") else "",
+          "; suggest Lifecycle terminal g≈2.5% and consider Two-Stage. ",
+          "Objective tier: ", evidence, " Algorithm unchanged."
+        )
+      } else {
+        paste0(
+          "營收仍偏高成長（自動分類 growth_to_mature）",
+          if (is.finite(rev_cagr)) paste0("，營收 CAGR≈", round(rev_cagr, 1), "%") else "",
+          "；終值建議 Lifecycle（≈2.5%），並可考慮 Two-Stage。",
+          "客觀依據：", evidence, " 演算法本身未改寫。"
+        )
+      }
     ))
   }
   if (identical(auto_stage, "mature_sunset")) {
-    return(list(
-      method = "lifecycle",
-      label = label_of("lifecycle"),
-      reason = "金融／公用等高度成熟產業，終值建議 Lifecycle（夕陽檔≈1.5–2%）。演算法本身未改寫。",
-      fund_sgr_pct = fund_sgr,
-      auto_lifecycle = auto_stage
+    return(pack(
+      "lifecycle",
+      if (en) {
+        paste0(
+          "Highly mature financial/utility industry; suggest Lifecycle (≈1.5–2%). ",
+          "Objective tier: ", evidence, " Algorithm unchanged."
+        )
+      } else {
+        paste0(
+          "金融／公用等高度成熟產業，終值建議 Lifecycle（≈1.5–2%）。",
+          "客觀依據：", evidence, " 演算法本身未改寫。"
+        )
+      }
     ))
   }
 
   # Fundamental SGR 已逼近／超過 WACC → 建議 Lifecycle 或 Macro，避免終值失控
   if (is.finite(wacc_pct) && is.finite(fund_sgr) && fund_sgr >= (wacc_pct - 1)) {
-    return(list(
-      method = "lifecycle",
-      label = label_of("lifecycle"),
-      reason = paste0(
-        "Fundamental／SGR≈", round(fund_sgr, 2), "% 接近或高於 WACC（",
-        round(wacc_pct, 2), "%）；建議改用 Lifecycle 或 Macro，Fundamental SGR 作為終值 g 易使 TV 失控。"
-      ),
-      fund_sgr_pct = fund_sgr,
-      auto_lifecycle = auto_stage
+    return(pack(
+      "lifecycle",
+      if (en) {
+        paste0(
+          "Fundamental／SGR≈", round(fund_sgr, 2), "% is near/above WACC (",
+          round(wacc_pct, 2), "%); suggest Lifecycle or Macro — using Fundamental SGR as terminal g ",
+          "can blow up TV. Auto tier=", auto_stage, ". Objective tier: ", evidence
+        )
+      } else {
+        paste0(
+          "Fundamental／SGR≈", round(fund_sgr, 2), "% 接近或高於 WACC（",
+          round(wacc_pct, 2), "%）；建議改用 Lifecycle 或 Macro，Fundamental SGR 作為終值 g 易使 TV 失控。",
+          "自動檔位=", auto_stage, "。客觀依據：", evidence
+        )
+      }
     ))
   }
 
   # 一般成熟、SGR 合理 → Fundamental
-  list(
-    method = "fundamental",
-    label = label_of("fundamental"),
-    reason = paste0(
-      "財報可算 Retention×ROE≈", round(fund_sgr, 2),
-      "%，且生命週期非科技巨頭／高速成長；建議維持 Fundamental／SGR。"
-    ),
-    fund_sgr_pct = fund_sgr,
-    auto_lifecycle = auto_stage
+  pack(
+    "fundamental",
+    if (en) {
+      paste0(
+        "Retention×ROE≈", round(fund_sgr, 2),
+        "% is usable, and tier is not mature-tech / high-growth; keep Fundamental／SGR. ",
+        "Objective tier: ", evidence
+      )
+    } else {
+      paste0(
+        "財報可算 Retention×ROE≈", round(fund_sgr, 2),
+        "%，且生命週期非成熟科技／高速成長；建議維持 Fundamental／SGR。",
+        "客觀依據：", evidence
+      )
+    }
   )
 }
 
@@ -2275,9 +2457,10 @@ recommend_perpetual_g_method <- function(rf_pct = NA_real_,
 #' @param rf_pct CAPM／Macro 用 Rf（%，與 App 其餘處一致）
 #' @param rf_source "live" | "last_known" | "fallback" | "session"；影響 Macro 文案
 #' @param rf_label 公債來源標籤（如 Yahoo ^TNX）
-#' @param locale "en" / "zh-TW"（Macro 說明雙語）
+#' @param locale "en" / "zh-TW"（Macro／Lifecycle 說明雙語）
 #' @return list(g_pct, reason, lifecycle_stage, suggest_two_stage, g_stage1_pct, auto_lifecycle,
-#'   recommended_method, recommend_label, recommend_reason, rf_pct, rf_source)
+#'   recommended_method, recommend_label, recommend_reason, lifecycle_evidence, lifecycle_rule,
+#'   rf_pct, rf_source)
 estimate_perpetual_g <- function(method = "macro",
                                  rf_pct = NA_real_,
                                  d_is = NULL,
@@ -2296,13 +2479,17 @@ estimate_perpetual_g <- function(method = "macro",
   wacc_pct <- suppressWarnings(as.numeric(wacc_pct)[1])
   rf_source <- as.character(rf_source %||% "")[1]
   rf_label <- as.character(rf_label %||% "")[1]
+  en <- identical(tolower(as.character(locale %||% "")[1]), "en") ||
+    identical(as.character(locale %||% "")[1], "en-US")
   if (is.na(rev_cagr) || !is.finite(rev_cagr)) {
     rev_cagr <- tryCatch({
       get_avg_growth(select_clean_metric_row(d_is, "Total Revenue", include_ttm = FALSE))
     }, error = function(e) NA_real_)
   }
 
-  auto_stage <- classify_lifecycle_stage(industry_text, ticker, rev_cagr)
+  cls <- classify_lifecycle_stage(industry_text, ticker, rev_cagr, detail = TRUE)
+  auto_stage <- cls$stage
+  evidence <- if (en) cls$evidence_en else cls$evidence_zh
   stage <- as.character(lifecycle_stage %||% "auto")[1]
   if (!nzchar(stage) || identical(stage, "auto")) stage <- auto_stage
 
@@ -2323,33 +2510,76 @@ estimate_perpetual_g <- function(method = "macro",
         "Fundamental／SGR：財報不足以計算 Retention×ROE，已回退 Macro（Rf=",
         g_pct, "%）。僅適合成熟、財務結構穩定企業。"
       )
+      if (en) {
+        reason <- paste0(
+          "Fundamental／SGR: statements insufficient for Retention×ROE; fell back to Macro (Rf=",
+          g_pct, "%). Suitable only for mature, financially stable firms."
+        )
+      }
     } else {
       reason <- paste0(
         "Fundamental／SGR：g = Retention Ratio × ROE = ", g_pct,
         "%。應用限制：僅適合成熟、財務結構穩定企業。"
       )
+      if (en) {
+        reason <- paste0(
+          "Fundamental／SGR: g = Retention Ratio × ROE = ", g_pct,
+          "%. Limit: mature, financially stable firms only."
+        )
+      }
     }
   } else if (identical(method, "lifecycle")) {
     if (identical(stage, "mature_sunset")) {
-      g_pct <- 1.75
-      reason <- "Lifecycle：夕陽／高度成熟（金融、公用事業等）→ g≈1.75%（通膨附近 1.5–2%）。"
+      g_pct <- unname(.LIFECYCLE_G_PCT[["mature_sunset"]])
+      reason <- if (en) {
+        "Lifecycle: highly mature / financial-utility → g≈1.75% (band 1.5–2%)."
+      } else {
+        "Lifecycle：高度成熟／金融公用 → g≈1.75%（區間 1.5–2%）。"
+      }
     } else if (identical(stage, "mature_tech")) {
-      g_pct <- 2.75
-      reason <- "Lifecycle：成熟科技巨頭 → g≈2.75%（長期上限約 2.5–3%）。"
+      g_pct <- unname(.LIFECYCLE_G_PCT[["mature_tech"]])
+      reason <- if (en) {
+        "Lifecycle: mature tech industry → g≈2.75% (band 2.5–3%)."
+      } else {
+        "Lifecycle：成熟科技產業 → g≈2.75%（區間 2.5–3%）。"
+      }
     } else if (identical(stage, "growth_to_mature")) {
-      g_pct <- 2.5
+      g_pct <- unname(.LIFECYCLE_G_PCT[["growth_to_mature"]])
       suggest_two_stage <- TRUE
+      reason <- if (en) {
+        paste0(
+          "Lifecycle: high growth → mature → terminal g≈2.5%; Two-Stage suggested; ",
+          "near-term growth converges toward 2–3%",
+          if (is.finite(g_stage1_pct)) paste0(" (g1≈", g_stage1_pct, "%)") else "",
+          "."
+        )
+      } else {
+        paste0(
+          "Lifecycle：高速成長轉向成熟 → 終值 g≈2.5%；建議 Two-Stage，",
+          "前段成長向 2–3% 收斂",
+          if (is.finite(g_stage1_pct)) paste0("（g1≈", g_stage1_pct, "%）") else "",
+          "。"
+        )
+      }
+    } else {
+      g_pct <- unname(.LIFECYCLE_G_PCT[["mature_general"]])
+      reason <- if (en) {
+        "Lifecycle: general mature industry → g≈2.5%."
+      } else {
+        "Lifecycle：一般成熟產業 → g≈2.5%。"
+      }
+    }
+    if (en) {
       reason <- paste0(
-        "Lifecycle：高速成長轉向成熟 → 終值 g≈2.5%；建議 two-stage，",
-        "前段成長向 2–3% 收斂",
-        if (is.finite(g_stage1_pct)) paste0("（g1≈", g_stage1_pct, "%）") else "",
-        "。"
+        reason, " Auto-class=", auto_stage, "; applied=", stage, ". ",
+        "Objective evidence: ", evidence
       )
     } else {
-      g_pct <- 2.5
-      reason <- "Lifecycle：一般成熟產業 → g≈2.5%。"
+      reason <- paste0(
+        reason, " 自動分類=", auto_stage, "；目前採用=", stage, "。",
+        "客觀依據：", evidence
+      )
     }
-    reason <- paste0(reason, " 自動分類=", auto_stage, "；目前採用=", stage, "。")
   } else {
     # macro：錨定即時（或 last-known）10Y／市場 Rf；固定數僅為最後工程 fallback
     if (!is.finite(rf_pct)) {
@@ -2360,8 +2590,6 @@ estimate_perpetual_g <- function(method = "macro",
     # Always show two decimals so live ~4.998% is not mistaken for integer fallback "5%"
     g_txt <- sprintf("%.2f", g_pct)
     lab <- if (nzchar(rf_label)) rf_label else "10Y Treasury / 10 年期公債"
-    en <- identical(tolower(as.character(locale %||% "")[1]), "en") ||
-      identical(as.character(locale %||% "")[1], "en-US")
     if (identical(rf_source, "fallback")) {
       reason <- if (en) {
         paste0(
@@ -2411,8 +2639,18 @@ estimate_perpetual_g <- function(method = "macro",
 
   if (is.finite(wacc_pct) && is.finite(g_pct) && g_pct >= wacc_pct) {
     reason <- paste0(
-      reason, " ⚠ g≥WACC（", round(g_pct, 2), "% ≥ ", round(wacc_pct, 2),
-      "%），Gordon 終值分母≤0，DCF/RI 將無法計算。"
+      reason,
+      if (en) {
+        paste0(
+          " ⚠ g≥WACC (", round(g_pct, 2), "% ≥ ", round(wacc_pct, 2),
+          "%); Gordon terminal denominator ≤0 — DCF/RI cannot compute."
+        )
+      } else {
+        paste0(
+          " ⚠ g≥WACC（", round(g_pct, 2), "% ≥ ", round(wacc_pct, 2),
+          "%），Gordon 終值分母≤0，DCF/RI 將無法計算。"
+        )
+      }
     )
   }
 
@@ -2424,7 +2662,8 @@ estimate_perpetual_g <- function(method = "macro",
     industry_text = industry_text,
     ticker = ticker,
     wacc_pct = wacc_pct,
-    rev_cagr = rev_cagr
+    rev_cagr = rev_cagr,
+    locale = locale
   )
 
   list(
@@ -2432,6 +2671,8 @@ estimate_perpetual_g <- function(method = "macro",
     reason = reason,
     lifecycle_stage = stage,
     auto_lifecycle = auto_stage,
+    lifecycle_evidence = evidence,
+    lifecycle_rule = cls$rule,
     suggest_two_stage = isTRUE(suggest_two_stage),
     g_stage1_pct = g_stage1_pct,
     recommended_method = rec$method,

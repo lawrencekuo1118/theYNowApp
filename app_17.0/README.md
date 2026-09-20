@@ -1,6 +1,10 @@
-# The YNow App v17.65 — Valuation Methodology
+# The YNow App v17.66 — Valuation Methodology
 
 先分類，再選模型；先推導，再校正；先給區間，再給單點；先做基本面估值。
+
+## v17.66 重點
+- **Lifecycle SGR：** 修正自動分檔優先序（高成長科技改走 growth_to_mature，不再誤標成熟科技）；檔位標籤對齊客觀依據；估計法建議 UI 顯示自動檔位與客觀證據（en-US + zh-TW）
+- **目錄**：`app_17.0/`；顯示版號 **v17.66**
 
 ## v17.65 重點
 - **Decision Funnel：** 移除「Smart Decision Matrix — The Decision Funnel」外層黑色框／標題；內層 valueBoxes、判決、F-Score checklist、動能面板不變
