@@ -150,17 +150,6 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_pool_rank_label = "Candidate truncate rule",
     lab_im_concepts_label = "Concept groups",
     lab_im_concepts_placeholder = "Select one or more concept groups…",
-    lab_im_max_n_help = paste0(
-      "Universe size N (default 25) = names evaluated by Search Blue Chips / Detail, and the Clustering universe size.\n",
-      "• Evaluation / cluster pool: after filters, if candidates exceed N, apply the truncate rule ",
-      "(market cap / concept groups / 1Y return / random).\n",
-      "• Market cap mode: Yahoo market cap descending; if caps are unavailable, fall back to ticker sort then take N.\n",
-      "• Concept groups: intersection of selected themes with the filtered pool; if still > N, cap by market cap ",
-      "(same ticker-sort fallback when caps are missing).\n",
-      "• Detail / ranking default sort: implied annualized valuation appreciation over n=5 years (upside_cagr_pct), descending.\n",
-      "• Top 10 = at most 10 qualified names from the same batch (default F-Score≥7; uncheck Piotroski high gate to drop the F filter). ",
-      "N does not guarantee 10 rows; shortfalls are not padded, and the detail table is not shrunk."
-    ),
     lab_im_lb_status = paste0(
       "Top 10 shows %d/10 (qualified %d / evaluated %d). ",
       "N = detail rows; Top 10 takes at most 10 qualified names and does not pad to fill 10."
@@ -723,14 +712,6 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_pool_rank_label = "候選截斷邏輯",
     lab_im_concepts_label = "概念股群",
     lab_im_concepts_placeholder = "選擇一或多個概念股群…",
-    lab_im_max_n_help = paste0(
-      "宇宙檔數 N（預設 25）＝搜尋績優／明細評估檔數，亦為分群宇宙檔數。\n",
-      "• 誰進評估池／分群宇宙：篩選後若候選 > N，依「候選截斷邏輯」取 N（市值／概念股／近一年漲幅／隨機）。\n",
-      "• 市值模式：Yahoo 市值由大到小；市值暫不可用時改依代號排序再取 N。\n",
-      "• 概念股：取所選概念群聯集與目前篩選之交集；若仍 > N 再依市值截斷（市值缺值同代號排序後援）。\n",
-      "• 明細／排行預設排序：以 n＝5 年換算的年化估值漲幅（upside_cagr_pct）降序。\n",
-      "• 前十名＝同一批合格者最多 10 檔（預設 F-Score≥7；可取消「Piotroski 高門檻」）；N≠保證 10 列，合格不足時不會湊滿，也不縮減明細。"
-    ),
     lab_im_lb_status = paste0(
       "前十名顯示 %d／10（合格 %d／已評估 %d）。",
       "N＝明細列數；前十名只取合格者最多 10 檔，不會為湊滿 10 而另抽樣。"

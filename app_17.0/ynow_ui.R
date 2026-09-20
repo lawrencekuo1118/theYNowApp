@@ -933,7 +933,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.54</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.55</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -2990,8 +2990,6 @@ ui <- dashboardPage(
             if (labPoolRank && s.lab_im_pool_rank_label) labPoolRank.textContent = s.lab_im_pool_rank_label;
             var labConcepts = document.getElementById('ynow_lab_im_concepts_label');
             if (labConcepts && s.lab_im_concepts_label) labConcepts.textContent = s.lab_im_concepts_label;
-            var labMaxNHelp = document.getElementById('ynow_lab_im_max_n_help');
-            if (labMaxNHelp && s.lab_im_max_n_help) labMaxNHelp.textContent = s.lab_im_max_n_help;
             var labDetailIntro = document.getElementById('ynow_lab_im_detail_intro');
             if (labDetailIntro && s.lab_im_detail_intro) labDetailIntro.textContent = s.lab_im_detail_intro;
             var labLbMode = document.getElementById('ynow_lab_im_lb_mode_label');
@@ -5996,18 +5994,6 @@ ui <- dashboardPage(
                     width = "100%"
                   )
                 )
-              )
-            ),
-            tags$div(
-              id = "ynow_lab_im_max_n_help",
-              style = "color:#888; font-size:12px; line-height:1.45; white-space:pre-line; margin:-2px 0 0 0;",
-              paste0(
-                "宇宙檔數 N（預設 25）＝搜尋績優／明細評估檔數，亦為分群宇宙檔數。\n",
-                "• 誰進評估池／分群宇宙：篩選後若候選 > N，依「候選截斷邏輯」取 N（市值／概念股／近一年漲幅／隨機）。\n",
-                "• 市值模式：Yahoo 市值由大到小；市值暫不可用時改依代號排序再取 N。\n",
-                "• 概念股：取所選概念群聯集與目前篩選之交集；若仍 > N 再依市值截斷（市值缺值同代號排序後援）。\n",
-                "• 明細／排行預設排序：以 n＝5 年換算的年化估值漲幅（upside_cagr_pct）降序。\n",
-                "• 前十名＝同一批合格者最多 10 檔（預設 F-Score≥7；可取消「Piotroski 高門檻」）；N≠保證 10 列，合格不足時不會湊滿，也不縮減明細。"
               )
             )
           )
