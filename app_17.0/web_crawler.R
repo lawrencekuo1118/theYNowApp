@@ -293,9 +293,10 @@ get_risk_free_rate_detail <- function(market = NULL) {
 
   if (is.finite(live) && live > 0) {
     .rf_live_last[[mode]] <- list(rf = live, at = Sys.time())
-    .ynow_log(paste("✅ Rf (live):", live, "%"))
+    rf_rounded <- round(live, 2)
+    .ynow_log(paste("✅ Rf (live):", live, "% →", sprintf("%.2f", rf_rounded), "%"))
     return(list(
-      rf_pct = round(live, 2),
+      rf_pct = rf_rounded,
       source = "live",
       label = label,
       symbol = symbol,

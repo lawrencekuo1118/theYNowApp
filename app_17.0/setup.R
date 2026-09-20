@@ -2357,6 +2357,8 @@ estimate_perpetual_g <- function(method = "macro",
       if (!nzchar(rf_source)) rf_source <- "fallback"
     }
     g_pct <- round(rf_pct, 2)
+    # Always show two decimals so live ~4.998% is not mistaken for integer fallback "5%"
+    g_txt <- sprintf("%.2f", g_pct)
     lab <- if (nzchar(rf_label)) rf_label else "10Y Treasury / 10 年期公債"
     en <- identical(tolower(as.character(locale %||% "")[1]), "en") ||
       identical(as.character(locale %||% "")[1], "en-US")
@@ -2364,11 +2366,11 @@ estimate_perpetual_g <- function(method = "macro",
       reason <- if (en) {
         paste0(
           "Macroeconomic Anchoring: live Treasury fetch failed; engineering fallback Rf=",
-          g_pct, "% (not a live yield; prefer Yahoo-scraped ", lab, ")."
+          g_txt, "% (not a live yield; prefer Yahoo-scraped ", lab, ")."
         )
       } else {
         paste0(
-          "Macroeconomic Anchoring：即時公債抓取失敗，工程 fallback Rf=", g_pct,
+          "Macroeconomic Anchoring：即時公債抓取失敗，工程 fallback Rf=", g_txt,
           "%（非即時殖利率；優先應使用 Yahoo 抓取的 ", lab, "）。"
         )
       }
@@ -2376,18 +2378,18 @@ estimate_perpetual_g <- function(method = "macro",
       reason <- if (en) {
         paste0(
           "Macroeconomic Anchoring: live fetch failed; using last successful ",
-          lab, " Rf=", g_pct, "% (not a fixed default)."
+          lab, " Rf=", g_txt, "% (not a fixed default)."
         )
       } else {
         paste0(
           "Macroeconomic Anchoring：本次即時抓取失敗，改用最近一次成功的 ",
-          lab, " Rf=", g_pct, "%（非固定預設）。"
+          lab, " Rf=", g_txt, "%（非固定預設）。"
         )
       }
     } else {
       reason <- if (en) {
         paste0(
-          "Macroeconomic Anchoring: using ", lab, " Rf=", g_pct, "%",
+          "Macroeconomic Anchoring: using ", lab, " Rf=", g_txt, "%",
           if (identical(rf_source, "session")) {
             " (synced with CAPM Rf; live scrape or user override)."
           } else {
@@ -2396,7 +2398,7 @@ estimate_perpetual_g <- function(method = "macro",
         )
       } else {
         paste0(
-          "Macroeconomic Anchoring：採用", lab, " Rf=", g_pct, "%",
+          "Macroeconomic Anchoring：採用", lab, " Rf=", g_txt, "%",
           if (identical(rf_source, "session")) {
             "（與 CAPM Rf 同步；來源為即時抓取或使用者覆寫）。"
           } else {

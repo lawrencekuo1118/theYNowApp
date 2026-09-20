@@ -45,6 +45,18 @@ check("live Macro reason mentions live scrape", grepl("即時抓取", est_live$r
 check("live Macro reason includes Rf value", grepl("4\\.87", est_live$reason))
 check("live Macro rf_source echoed", identical(est_live$rf_source, "live"))
 
+# Near-integer live yield must keep two decimals (not look like fallback "5%")
+est_near5 <- estimate_perpetual_g(
+  method = "macro",
+  rf_pct = 4.998,
+  rf_source = "live",
+  rf_label = "美國 10 年期公債（Yahoo ^TNX，即時）",
+  locale = "en"
+)
+check("near-5 live rounds g to 5", approx_eq(est_near5$g_pct, 5))
+check("near-5 live reason shows 5.00 not bare 5%", grepl("Rf=5.00%", est_near5$reason, fixed = TRUE))
+check("near-5 live still says live scrape", grepl("(live scrape)", est_near5$reason, fixed = TRUE))
+
 est_fb <- estimate_perpetual_g(
   method = "macro",
   rf_pct = 5,
@@ -55,6 +67,7 @@ est_fb <- estimate_perpetual_g(
 check("fallback Macro labels engineering fallback", grepl("fallback", est_fb$reason, ignore.case = TRUE))
 check("fallback Macro says not live yield", grepl("not a live yield", est_fb$reason, fixed = TRUE))
 check("fallback Macro g is 5", approx_eq(est_fb$g_pct, 5))
+check("fallback Macro reason shows 5.00", grepl("Rf=5.00%", est_fb$reason, fixed = TRUE))
 
 est_lk <- estimate_perpetual_g(
   method = "macro",
