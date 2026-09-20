@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12578101
+bundleId=12579100
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=ad8c827
-commit=ad8c827
-short=ad8c827
-message=feat(lab): link Data-limited profile to Clustering coverage (v17.47)
-captured_at=2026-09-19T20:27:14Z
+aligned_git=6c9eb6d
+commit=6c9eb6d7dec9ec2b6d4bccc8aa58217033aad12a
+short=6c9eb6d
+message=Ship param-audit Snapshot report and fix mobile header chrome (v17.48).
+captured_at=2026-09-20T04:51:04Z
 source_branch=master
-display_version=v17.47
-note=Canonical live line is app_17.0. Bundle 12578101 = tip v17.47 (Clustering Coverage ↔ Data-limited). Deploy via scripts/deploy_app_17.R.
+display_version=v17.48
+note=Canonical live line is app_17.0. Bundle 12579100 = tip v17.48 (param-audit Snapshot + mobile header chrome). Deploy via scripts/deploy_app_17.R.
