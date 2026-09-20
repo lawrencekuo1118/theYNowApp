@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12580228
+bundleId=12580272
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=1d6181b
-commit=1d6181b230a40507a3f6cf3c471babdd8e344d58
-short=1d6181b
-message=Remove Blue Chip Universe size (N) help blurb above the tab box (v17.55).
-captured_at=2026-09-20T12:47:05Z
+aligned_git=da9013e
+commit=da9013ebc0ed82da7d75ede7bd3bde55a5dcdc8e
+short=da9013e
+message=Split Snapshot into three sub-tabs: audit, live params, APP_DEFAULTS (v17.56).
+captured_at=2026-09-20T13:02:08Z
 source_branch=master
-display_version=v17.55
-note=Canonical live line is app_17.0. Bundle 12580228 = tip v17.55 (removed Universe size N help blurb). Deploy via scripts/deploy_app_17.R.
+display_version=v17.56
+note=Canonical live line is app_17.0. Bundle 12580272 = tip v17.56 (Snapshot three sub-tabs). Deploy via scripts/deploy_app_17.R.
