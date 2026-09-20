@@ -1005,7 +1005,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.50</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.51</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -3026,6 +3026,18 @@ ui <- dashboardPage(
             if (paTitle && s.param_audit_title) paTitle.textContent = s.param_audit_title;
             var paHelp = document.getElementById('ynow_param_audit_help');
             if (paHelp && s.param_audit_help) paHelp.textContent = s.param_audit_help;
+            var paPdfTitle = document.getElementById('ynow_param_audit_pdf_title');
+            if (paPdfTitle && s.param_audit_pdf_title) paPdfTitle.textContent = s.param_audit_pdf_title;
+            var paPdfHelp = document.getElementById('ynow_param_audit_pdf_help');
+            if (paPdfHelp && s.param_audit_pdf_help) paPdfHelp.textContent = s.param_audit_pdf_help;
+            var paPdfPages = document.getElementById('ynow_param_audit_pdf_pages_label');
+            if (paPdfPages && s.param_audit_pdf_pages_label) paPdfPages.textContent = s.param_audit_pdf_pages_label;
+            var paPdfBtn = document.getElementById('ynow_param_audit_pdf_btn');
+            if (paPdfBtn && s.param_audit_pdf_btn) paPdfBtn.textContent = s.param_audit_pdf_btn;
+            document.querySelectorAll('.ynow-pdf-page-lab').forEach(function (el) {
+              var k = el.getAttribute('data-key');
+              if (k && s[k]) el.textContent = s[k];
+            });
             var testL = document.getElementById('ynow_test_link_label');
             if (testL && s.test_link) testL.textContent = s.test_link;
             var fb = document.getElementById('ynow_feedback_link_label');
@@ -3193,6 +3205,186 @@ ui <- dashboardPage(
             ev.preventDefault();
             ynowGotoAndHighlight(btn.getAttribute('data-tab'), btn.getAttribute('data-input-id'));
           });
+
+          /* ---- Param audit 2A: annotated page screenshots → PDF ---- */
+          function ynowLoadScriptOnce(src) {
+            return new Promise(function (resolve, reject) {
+              if (document.querySelector('script[data-ynow-src=\"' + src + '\"]')) {
+                resolve();
+                return;
+              }
+              var s = document.createElement('script');
+              s.src = src;
+              s.async = true;
+              s.setAttribute('data-ynow-src', src);
+              s.onload = function () { resolve(); };
+              s.onerror = function () { reject(new Error('load fail: ' + src)); };
+              document.head.appendChild(s);
+            });
+          }
+          function ynowEnsurePdfLibs() {
+            var h2c = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+            var jsp = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js';
+            return ynowLoadScriptOnce(h2c).then(function () { return ynowLoadScriptOnce(jsp); });
+          }
+          function ynowSleep(ms) {
+            return new Promise(function (r) { setTimeout(r, ms); });
+          }
+          function ynowActivateTab(tab) {
+            if (window.Shiny && Shiny.setInputValue) {
+              Shiny.setInputValue('sidebar_tabs', tab, {priority: 'event'});
+            }
+            var a = document.querySelector('.main-sidebar .sidebar-menu a[data-value=\"' + tab + '\"]') ||
+                    document.querySelector('.sidebar-menu a[data-value=\"' + tab + '\"]');
+            if (a) {
+              try { a.click(); } catch (e) {}
+            }
+          }
+          function ynowTabPane(tab) {
+            return document.getElementById('shiny-tab-' + tab) ||
+                   document.querySelector('.tab-pane[data-value=\"' + tab + '\"]') ||
+                   document.querySelector('.tab-content > .tab-pane.active');
+          }
+          function ynowFindInputBox(inputId) {
+            var el = ynowFindInputEl(inputId);
+            if (!el) return null;
+            return el.closest('.form-group, .shiny-input-container, .radio, .checkbox, .box') || el;
+          }
+          function ynowAnnotateCanvas(canvas, pane, changes) {
+            if (!canvas || !pane || !changes || !changes.length) return canvas;
+            var ctx = canvas.getContext('2d');
+            var paneRect = pane.getBoundingClientRect();
+            var sx = canvas.width / Math.max(pane.scrollWidth || pane.clientWidth || 1, 1);
+            var sy = canvas.height / Math.max(pane.scrollHeight || pane.clientHeight || 1, 1);
+            changes.forEach(function (ch) {
+              var box = ynowFindInputBox(ch.input_id);
+              if (!box) return;
+              var r = box.getBoundingClientRect();
+              var x = (r.left - paneRect.left + pane.scrollLeft) * sx;
+              var y = (r.top - paneRect.top + pane.scrollTop) * sy;
+              var w = Math.max(r.width * sx, 8);
+              var h = Math.max(r.height * sy, 8);
+              ctx.save();
+              ctx.strokeStyle = '#f39c12';
+              ctx.lineWidth = Math.max(2, 3 * sx);
+              ctx.strokeRect(x - 4 * sx, y - 4 * sy, w + 8 * sx, h + 8 * sy);
+              var label = (ch.label || ch.input_id) + ': ' + (ch.baseline || '—') + ' → ' + (ch.current || '—');
+              ctx.font = Math.max(11, Math.round(12 * sx)) + 'px sans-serif';
+              ctx.fillStyle = 'rgba(243,156,18,0.92)';
+              var tw = ctx.measureText(label).width + 10;
+              var ty = Math.max(0, y - 18 * sy);
+              ctx.fillRect(x - 4 * sx, ty, tw, 16 * sy);
+              ctx.fillStyle = '#111';
+              ctx.fillText(label, x, ty + 12 * sy);
+              ctx.restore();
+            });
+            return canvas;
+          }
+          function ynowAddCanvasToPdf(pdf, canvas, title) {
+            var pageW = pdf.internal.pageSize.getWidth();
+            var pageH = pdf.internal.pageSize.getHeight();
+            var margin = 28;
+            var maxW = pageW - margin * 2;
+            var maxH = pageH - margin * 2 - 24;
+            var imgW = maxW;
+            var imgH = canvas.height * (imgW / canvas.width);
+            if (imgH > maxH) {
+              imgH = maxH;
+              imgW = canvas.width * (imgH / canvas.height);
+            }
+            pdf.setFontSize(11);
+            pdf.setTextColor(40);
+            if (title) pdf.text(String(title), margin, margin - 8);
+            var data = canvas.toDataURL('image/jpeg', 0.92);
+            pdf.addImage(data, 'JPEG', margin, margin + 4, imgW, imgH);
+          }
+          async function ynowRunParamAuditPdf(payload) {
+            var status = document.getElementById('ynow_param_audit_pdf_status');
+            var setStatus = function (t) { if (status) status.textContent = t || ''; };
+            var strings = (payload && payload.strings) || {};
+            try {
+              setStatus(strings.busy || 'Capturing…');
+              await ynowEnsurePdfLibs();
+              var html2canvasFn = window.html2canvas;
+              var jsPDF = (window.jspdf && window.jspdf.jsPDF) ? window.jspdf.jsPDF : window.jsPDF;
+              if (!html2canvasFn || !jsPDF) throw new Error('libs missing');
+              var tabs = (payload && payload.tabs) || [];
+              var changes = (payload && payload.changes) || [];
+              var pageTitles = (payload && payload.page_titles) || {};
+              if (!tabs.length) {
+                setStatus(strings.need_pages || 'Select pages');
+                return;
+              }
+              var pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+              var margin = 40;
+              pdf.setFontSize(16);
+              pdf.text(payload.title || 'Parameter adjustments PDF', margin, 56);
+              pdf.setFontSize(11);
+              pdf.text((payload.ticker || '') + '  ·  ' + (payload.baseline_at || ''), margin, 78);
+              pdf.setFontSize(10);
+              var y = 100;
+              pdf.text(strings.summary || 'Adjusted parameters:', margin, y);
+              y += 16;
+              if (!changes.length) {
+                pdf.text(strings.no_changes || '(No manual adjustments vs baseline)', margin, y);
+              } else {
+                changes.forEach(function (ch) {
+                  var line = (ch.section || '') + ' / ' + (ch.label || ch.input_id) +
+                    ': ' + (ch.baseline || '—') + ' → ' + (ch.current || '—');
+                  var lines = pdf.splitTextToSize(line, pdf.internal.pageSize.getWidth() - margin * 2);
+                  if (y + lines.length * 12 > pdf.internal.pageSize.getHeight() - 40) {
+                    pdf.addPage();
+                    y = 48;
+                  }
+                  pdf.text(lines, margin, y);
+                  y += lines.length * 12 + 4;
+                });
+              }
+              for (var i = 0; i < tabs.length; i++) {
+                var tab = tabs[i];
+                setStatus((strings.busy || 'Capturing…') + ' (' + (i + 1) + '/' + tabs.length + ')');
+                ynowActivateTab(tab);
+                await ynowSleep(650);
+                var pane = ynowTabPane(tab);
+                if (!pane) continue;
+                try { pane.scrollTop = 0; } catch (e0) {}
+                var canvas = await html2canvasFn(pane, {
+                  scale: 1,
+                  useCORS: true,
+                  logging: false,
+                  backgroundColor: '#ffffff',
+                  windowWidth: Math.max(pane.scrollWidth, pane.clientWidth || 800),
+                  height: Math.min(pane.scrollHeight || pane.clientHeight || 800, 5000)
+                });
+                var tabChanges = changes.filter(function (c) { return c.tab === tab; });
+                ynowAnnotateCanvas(canvas, pane, tabChanges);
+                pdf.addPage();
+                ynowAddCanvasToPdf(pdf, canvas, pageTitles[tab] || tab);
+              }
+              ynowActivateTab('snapshot');
+              await ynowSleep(200);
+              var fname = (payload.filename || 'YNow_param_audit') + '.pdf';
+              pdf.save(fname);
+              setStatus(strings.done || 'PDF downloaded.');
+              if (window.Shiny && Shiny.setInputValue) {
+                Shiny.setInputValue('param_audit_pdf_done', Date.now(), {priority: 'event'});
+              }
+            } catch (err) {
+              console.error(err);
+              setStatus(strings.err || 'PDF capture failed.');
+              try { ynowActivateTab('snapshot'); } catch (e2) {}
+            }
+          }
+          function registerParamAuditPdfHandler() {
+            if (!window.Shiny || !Shiny.addCustomMessageHandler) {
+              setTimeout(registerParamAuditPdfHandler, 50);
+              return;
+            }
+            Shiny.addCustomMessageHandler('ynowParamAuditPdf', function (payload) {
+              ynowRunParamAuditPdf(payload || {});
+            });
+          }
+          registerParamAuditPdfHandler();
         })();
       ")),
       
@@ -4995,7 +5187,8 @@ ui <- dashboardPage(
           id = "ynow_snapshot_page_help",
           paste0(
             "Top: manual adjustments vs the post-Search baseline; ",
-            "middle: current live parameters; bottom: APP_DEFAULTS at load. CSV download available."
+            "annotated PDF screenshots of selected pages; ",
+            "then current live parameters and APP_DEFAULTS. CSV download available."
           )
         ),
         fluidRow(
@@ -5012,10 +5205,57 @@ ui <- dashboardPage(
                 "Baseline locks after Search and statement auto-fill. ",
                 "Later manual overrides are listed by page. ",
                 "Use Go & highlight to jump and frame the input. ",
-                "This is a structured visual report, not a screen capture."
+                "Below: select pages and generate an annotated screenshot PDF."
               )
             ),
-            uiOutput("param_audit_report")
+            uiOutput("param_audit_report"),
+            tags$hr(style = "margin:14px 0;"),
+            tags$h4(
+              id = "ynow_param_audit_pdf_title",
+              style = "margin:0 0 8px 0; font-size:15px; font-weight:700;",
+              "Annotated page screenshots (PDF)"
+            ),
+            tags$p(
+              id = "ynow_param_audit_pdf_help",
+              style = "font-size:12.5px; color:#666; line-height:1.45; margin:0 0 10px 0;",
+              paste0(
+                "Select main pages to include. The app switches to each page, captures the live layout, ",
+                "draws boxes on inputs you changed vs the post-Search baseline, and downloads one PDF."
+              )
+            ),
+            checkboxGroupInput(
+              "param_audit_pdf_pages",
+              label = tags$span(id = "ynow_param_audit_pdf_pages_label", "Pages to capture"),
+              choiceNames = list(
+                tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_basic",
+                          "Basic Setup (SGR / CAPM / WACC / Beta)"),
+                tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_dcf", "DCF"),
+                tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_ddm", "DDM"),
+                tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_ri", "RI"),
+                tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_pb", "P/B"),
+                tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_nav", "NAV")
+              ),
+              choiceValues = c(
+                "get_started", "dcf_calculator", "ddm_calculator",
+                "ri_calculator", "pb_calculator", "nav_calculator"
+              ),
+              selected = c(
+                "get_started", "dcf_calculator", "ddm_calculator",
+                "ri_calculator", "pb_calculator", "nav_calculator"
+              )
+            ),
+            div(
+              style = "display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:8px;",
+              actionButton(
+                "param_audit_pdf_go",
+                tagList(icon("file-pdf"), tags$span(id = "ynow_param_audit_pdf_btn", "Generate annotated PDF")),
+                class = "btn-success"
+              ),
+              tags$span(
+                id = "ynow_param_audit_pdf_status",
+                style = "font-size:12.5px; color:#555;"
+              )
+            )
           )
         ),
         fluidRow(

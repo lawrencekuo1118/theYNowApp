@@ -1917,6 +1917,68 @@ server <- function(input, output, session) {
       empty_message = empty_msg
     )
   })
+
+  observeEvent(input$param_audit_pdf_go, {
+    loc <- isolate(ui_locale())
+    tabs <- as.character(input$param_audit_pdf_pages %||% character(0))
+    tabs <- tabs[nzchar(tabs)]
+    if (!length(tabs)) {
+      showNotification(ui_str("param_audit_pdf_need_pages", loc), type = "warning", duration = 4)
+      return()
+    }
+    pages <- ynow_param_audit_pdf_pages()
+    page_titles <- stats::setNames(
+      vapply(pages$locale_key, function(k) ui_str(k, loc), character(1)),
+      pages$tab
+    )
+    baseline <- isolate(param_audit_baseline())
+    cur <- ynow_capture_tracked_params(input)
+    diff_df <- ynow_param_diff_df(baseline, cur, locale = loc)
+    changes <- list()
+    if (!is.null(diff_df) && nrow(diff_df) > 0) {
+      changes <- lapply(seq_len(nrow(diff_df)), function(i) {
+        list(
+          input_id = as.character(diff_df$input_id[[i]]),
+          tab = as.character(diff_df$tab[[i]]),
+          section = as.character(diff_df$section[[i]]),
+          label = as.character(diff_df$label[[i]]),
+          baseline = as.character(diff_df$baseline[[i]]),
+          current = as.character(diff_df$current[[i]])
+        )
+      })
+    }
+    tk <- display_ticker_for_market(
+      isolate(current_ticker()) %||% APP_DEFAULTS$stock_code,
+      isolate(market_mode())
+    )
+    baselined_at <- isolate(param_audit_baseline_at())
+    ts_txt <- if (!is.null(baselined_at)) {
+      tryCatch(format(baselined_at, "%Y-%m-%d %H:%M:%S"), error = function(e) as.character(baselined_at))
+    } else {
+      "—"
+    }
+    session$sendCustomMessage("ynowParamAuditPdf", list(
+      tabs = as.list(tabs),
+      changes = changes,
+      page_titles = as.list(page_titles),
+      ticker = as.character(tk)[1],
+      baseline_at = ts_txt,
+      title = ui_str("param_audit_pdf_title", loc),
+      filename = paste0(
+        "YNow_param_audit_",
+        gsub("[^A-Za-z0-9._-]", "_", as.character(tk)[1]),
+        "_", format(Sys.time(), "%Y%m%d_%H%M%S")
+      ),
+      strings = list(
+        busy = ui_str("param_audit_pdf_busy", loc),
+        done = ui_str("param_audit_pdf_done", loc),
+        err = ui_str("param_audit_pdf_err", loc),
+        need_pages = ui_str("param_audit_pdf_need_pages", loc),
+        summary = if (grepl("^zh", loc, ignore.case = TRUE)) "手改參數一覽：" else "Adjusted parameters:",
+        no_changes = ui_str("param_audit_empty_no_changes", loc)
+      )
+    ))
+  }, ignoreInit = TRUE)
   
   # 顯示層管線：FX →（台股）仟元 → 小數二位 → zh-TW 科目
   .prep_fs_statement_display <- function(df) {
@@ -10827,7 +10889,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.50"),
+      paste0("- **App：** The YNow App v17.51"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

@@ -48,14 +48,15 @@ locale_for_market <- function(mode = get_market_mode()) {
     snapshot_page_title = "Snapshot",
     snapshot_page_help = paste0(
       "Top: manual adjustments vs the post-Search baseline; ",
-      "middle: current live parameters; bottom: APP_DEFAULTS at load. CSV download available."
+      "annotated PDF screenshots of selected pages; ",
+      "then current live parameters and APP_DEFAULTS. CSV download available."
     ),
     param_audit_title = "Manual adjustments (vs post-Search baseline)",
     param_audit_help = paste0(
       "Baseline locks after Search and statement auto-fill. ",
       "Later manual overrides are listed by page. ",
       "Use Go & highlight to jump and frame the input. ",
-      "This is a structured visual report, not a screen capture."
+      "Below: select pages and generate an annotated screenshot PDF."
     ),
     param_audit_empty_no_baseline = paste0(
       "No post-Search baseline yet. Press Search and wait for statements to load; ",
@@ -65,6 +66,23 @@ locale_for_market <- function(mode = get_market_mode()) {
       "No manual adjustments vs the post-Search baseline yet. ",
       "Edits after load appear here."
     ),
+    param_audit_pdf_title = "Annotated page screenshots (PDF)",
+    param_audit_pdf_help = paste0(
+      "Select main pages to include. The app switches to each page, captures the live layout, ",
+      "draws boxes on inputs you changed vs the post-Search baseline, and downloads one PDF."
+    ),
+    param_audit_pdf_pages_label = "Pages to capture",
+    param_audit_pdf_page_basic = "Basic Setup (SGR / CAPM / WACC / Beta)",
+    param_audit_pdf_page_dcf = "DCF",
+    param_audit_pdf_page_ddm = "DDM",
+    param_audit_pdf_page_ri = "RI",
+    param_audit_pdf_page_pb = "P/B",
+    param_audit_pdf_page_nav = "NAV",
+    param_audit_pdf_btn = "Generate annotated PDF",
+    param_audit_pdf_busy = "Capturing pages… please wait (do not navigate).",
+    param_audit_pdf_done = "PDF downloaded.",
+    param_audit_pdf_err = "PDF capture failed. Try again after Search and a short wait.",
+    param_audit_pdf_need_pages = "Select at least one page.",
     test_link = " Testing",
     feedback_link = " Feedback",
     market_hint = "Market",
@@ -608,13 +626,13 @@ locale_for_market <- function(mode = get_market_mode()) {
     snapshot_link = " 快照",
     snapshot_page_title = "快照 Snapshot",
     snapshot_page_help = paste0(
-      "上方：相對 Search 後基準的手改參數報告；中：目前 App 執行中參數；",
-      "下：系統載入時 APP_DEFAULTS。CSV 可下載。"
+      "上方：相對 Search 後基準的手改參數與標記截圖 PDF；",
+      "中：目前 App 執行中參數；下：系統載入時 APP_DEFAULTS。CSV 可下載。"
     ),
     param_audit_title = "手改參數（相對 Search 後基準）",
     param_audit_help = paste0(
       "基準在按下 Search 且財報自動帶入後鎖定。之後你手動覆寫的參數會分頁列出；",
-      "按「前往並框選」可跳到該頁並高亮輸入框。這不是螢幕截圖，而是結構化視覺報告。"
+      "按「前往並框選」可跳到該頁並高亮輸入框。下方可勾選主要頁面，產生標記截圖 PDF。"
     ),
     param_audit_empty_no_baseline = paste0(
       "尚無 Search 後基準。請先按下 Search 並等待財報載入；",
@@ -623,6 +641,23 @@ locale_for_market <- function(mode = get_market_mode()) {
     param_audit_empty_no_changes = paste0(
       "尚無相對 Search 後基準的手改參數。載入財報後若手動覆寫，變更會列於此。"
     ),
+    param_audit_pdf_title = "頁面截圖＋手改標記（PDF）",
+    param_audit_pdf_help = paste0(
+      "勾選要納入的主要頁面。系統會依序切換到各頁、擷取目前版面，",
+      "並在相對 Search 後基準有手動覆寫的輸入框上畫框標註，最後下載一份 PDF。"
+    ),
+    param_audit_pdf_pages_label = "要擷取的頁面",
+    param_audit_pdf_page_basic = "Basic Setup（SGR／CAPM／WACC／Beta）",
+    param_audit_pdf_page_dcf = "DCF",
+    param_audit_pdf_page_ddm = "DDM",
+    param_audit_pdf_page_ri = "RI",
+    param_audit_pdf_page_pb = "P/B",
+    param_audit_pdf_page_nav = "NAV",
+    param_audit_pdf_btn = "產生標記 PDF",
+    param_audit_pdf_busy = "正在擷取頁面…請稍候（勿切換分頁）。",
+    param_audit_pdf_done = "PDF 已下載。",
+    param_audit_pdf_err = "PDF 擷取失敗。請先 Search 並稍候再試。",
+    param_audit_pdf_need_pages = "請至少勾選一個頁面。",
     test_link = " 測試",
     feedback_link = " 意見區",
     market_hint = "市場",

@@ -4,6 +4,21 @@
 # 2B：結構化視覺報告（非整頁螢幕截圖）
 # ==========================================
 
+#' Main pages available for annotated screenshot PDF (2A)
+ynow_param_audit_pdf_pages <- function() {
+  data.frame(
+    tab = c(
+      "get_started", "dcf_calculator", "ddm_calculator",
+      "ri_calculator", "pb_calculator", "nav_calculator"
+    ),
+    locale_key = c(
+      "param_audit_pdf_page_basic", "param_audit_pdf_page_dcf", "param_audit_pdf_page_ddm",
+      "param_audit_pdf_page_ri", "param_audit_pdf_page_pb", "param_audit_pdf_page_nav"
+    ),
+    stringsAsFactors = FALSE
+  )
+}
+
 #' Tracked valuation / setup inputs for the adjustment report
 ynow_tracked_param_registry <- function() {
   data.frame(
