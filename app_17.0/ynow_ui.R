@@ -933,7 +933,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.59</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.60</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -2692,13 +2692,15 @@ ui <- dashboardPage(
             if (!specs || !specs.length) return;
             document.querySelectorAll('.nav-tabs-custom > .nav-tabs > li.header').forEach(function (li) {
               var text = (li.textContent || '').replace(/\\s+/g, ' ').trim();
+              if (!text) return;
               for (var i = 0; i < specs.length; i++) {
                 var sp = specs[i] || {};
                 var aliases = sp.match || [];
                 var hit = false;
                 for (var j = 0; j < aliases.length; j++) {
                   var al = String(aliases[j] || '').replace(/\\s+/g, ' ').trim();
-                  if (al && (text === al || text.indexOf(al) >= 0)) { hit = true; break; }
+                  /* Exact match only — substring hits remapped unrelated titles (e.g. Snapshot). */
+                  if (al && text === al) { hit = true; break; }
                 }
                 if (!hit || !sp.label) continue;
                 var icon = li.querySelector('i');
@@ -5133,7 +5135,7 @@ ui <- dashboardPage(
           )
         ),
         tabBox(
-          title = "SNAPSHOT",
+          # No right-side chrome title (page h2 already says Snapshot; avoids wrong remaps)
           id = "snapshot_report",
           width = "auto",
 
