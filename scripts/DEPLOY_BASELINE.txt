@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12580718
+bundleId=12580785
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=4634bbb
-commit=4634bbb4e4d644ad3eb7d2c69859a1df7ef9fa37
-short=4634bbb
-message=Align Blue Chip recommended-method table with sidebar model order (v17.62).
-captured_at=2026-09-20T15:52:20Z
+aligned_git=13bcfd3
+commit=13bcfd3c8b3a223d71e703fb726f6625b7da43c0
+short=13bcfd3
+message=i18n: CAPM/Get Started, Decision Funnel, and high-traffic notifications (v17.64).
+captured_at=2026-09-20T16:10:26Z
 source_branch=master
-display_version=v17.62
-note=Canonical live line is app_17.0. Bundle 12580718 = tip v17.62 (建議評價方法 table order = sidebar NAV→DCF→DDM→RI→P/B). Deploy via scripts/deploy_app_17.R.
+display_version=v17.64
+note=Canonical live line is app_17.0. Bundle 12580785 = tip v17.64 (i18n CAPM/Get Started/Decision Funnel/notifications). Deploy via scripts/deploy_app_17.R.
