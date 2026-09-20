@@ -565,79 +565,7 @@ beta_rolling_section_ui <- function() {
         width = 12,
         side = "left",
 
-        # Tab 0: 流程與紀律（與 About 方法論對齊）
-        tabPanel(
-          "Process & Guardrails",
-          icon = icon("compass"),
-          fluidRow(
-            column(
-              width = 6,
-              h4(tags$b("流程與紀律（zh-TW）")),
-              tags$ul(
-                tags$li(
-                  tags$b("工作順序："),
-                  "先依產業／財報屬性分類並挑選主／副模型，再以財報推導參數，校正折現率與成長假設後，輸出 Bear／Base／Bull 區間，最後才給單點合理價。"
-                ),
-                tags$li(
-                  tags$b("四大引擎："),
-                  "DCF（FCFF＋WACC 或 FCFE＋Ke）、DDM（Gordon／SPM／二階段）、P/B（倍數法）與獨立純 NAV（帳面控股淨資產）、RI（剩餘收益）。側邊欄三分法：資產基礎（NAV）｜收益與現金流折現（DCF／DDM／RI）｜相對估值（P/B）。"
-                ),
-                tags$li(
-                  tags$b("Composite valuation："),
-                  "綜合估值軸僅疊加本工作階段已按過「試算／Run」（含主模型靜默自動試算）的模型 FV；未試算者不顯示，避免把未跑過的模型當成已定價。"
-                ),
-                tags$li(
-                  tags$b("決策工具："),
-                  "Decision Checklist（決策檢核）、安全邊際 MOS、Piotroski F-Score、Historical Fundamental Validation (HFV)。",
-                  tags$b(" HFV 僅作否決／情境教育工具，絕非買進訊號。")
-                ),
-                tags$li(
-                  tags$b("CapEx 暴衝平滑："),
-                  "當最新 CapEx／營收相對前期均值超過可調倍數閾值時，可改採近年均值投影。此為工程啟發式（非學術標準），參數可調整。"
-                ),
-                tags$li(
-                  tags$b("Blue Chip Lab／產業×方法："),
-                  "評估池、Clustering、候選截斷僅供同業比較與研究分群；",
-                  tags$b("非買進訊號。")
-                )
-              )
-            ),
-            column(
-              width = 6,
-              h4(tags$b("Process & Guardrails (en-US)")),
-              tags$ul(
-                tags$li(
-                  tags$b("Workflow: "),
-                  "Classify by industry/statement attributes and pick primary/secondary models; derive inputs from financials; calibrate discount rates and growth; publish Bear/Base/Bull ranges before any point target."
-                ),
-                tags$li(
-                  tags$b("Four engines: "),
-                  "DCF (FCFF+WACC or FCFE+Ke), DDM (Gordon / SPM / two-stage), P/B multiples plus a separate pure NAV (book holding NAV), and RI. Sidebar triad: asset-based (NAV) | income & cash-flow discounting (DCF/DDM/RI) | relative (P/B)."
-                ),
-                tags$li(
-                  tags$b("Composite valuation: "),
-                  "The current-price axis overlays FV markers only for models that have been run (試算/Run, including silent auto-run of the primary model) in this session. Unrun models stay off the axis."
-                ),
-                tags$li(
-                  tags$b("Decision tools: "),
-                  "Decision Checklist, Margin of Safety (MOS), Piotroski F-Score, and Historical Fundamental Validation (HFV). ",
-                  tags$b("HFV is a veto / educational scenario tool only—never a buy signal.")
-                ),
-                tags$li(
-                  tags$b("CapEx spike smoothing: "),
-                  "If latest CapEx/Revenue exceeds a tunable multiple of the prior-year average, projections may use a recent multi-year average. This is an engineering heuristic, not an academic standard; thresholds remain user-adjustable."
-                ),
-                tags$li(
-                  tags$b("Blue Chip Lab / industry × method: "),
-                  "Evaluation pools, Clustering, and truncate rules aid peer research—",
-                  tags$b("not buy signals.")
-                )
-              )
-            )
-          )
-        ),
-
-        # Tab 1: 方法論比較矩陣 (表格)
+        # Tab: 方法論比較矩陣 (表格)
         tabPanel(
           "Decision Matrix",
           icon = icon("table"),
@@ -773,7 +701,7 @@ beta_rolling_section_ui <- function() {
           "Discounted Cash Flow (DCF)",
           icon = icon("money-bill-wave"),
           h4(tags$b("自由現金流折現模型 (FCFF／FCFE)")),
-          p("DCF 關注企業造血能力。預設以 FCFF 用 WACC 折現得到企業價值，再橋接至股權價值。亦可切換 FCFE：將 FCFF 轉成股權現金流後以 Ke 折現，不再加減淨現金／負債。本 app 的「Gordon」模式為明確預測期加上 Gordon 終值，而非單期 EV = FCF₁/(WACC−g)。CapEx 暴衝平滑為可選工程啟發式，見 Process & Guardrails。"),
+          p("DCF 關注企業造血能力。預設以 FCFF 用 WACC 折現得到企業價值，再橋接至股權價值。亦可切換 FCFE：將 FCFF 轉成股權現金流後以 Ke 折現，不再加減淨現金／負債。本 app 的「Gordon」模式為明確預測期加上 Gordon 終值，而非單期 EV = FCF₁/(WACC−g)。CapEx 暴衝平滑為可選工程啟發式（可調倍數閾值／均值年數）。"),
           tags$ul(
             tags$li(tags$b("$$FCFF = NOPAT + D\\&A - \\Delta NWC - CapEx$$")),
             tags$li(tags$b("$$FCFE = FCFF - Interest\\times(1-T) + Net\\ Borrowing$$")),
@@ -1005,7 +933,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.51</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.52</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
