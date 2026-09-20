@@ -152,8 +152,11 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_concepts_placeholder = "Select one or more concept groups…",
     lab_im_max_n_help = paste0(
       "Evaluation count N (default 25) = how many names are evaluated this run.\n",
-      "• Evaluation pool: after filters, if candidates exceed N, take the N largest by market cap ",
-      "(ticker-sort fallback when caps are unavailable).\n",
+      "• Evaluation pool: after filters, if candidates exceed N, apply the truncate rule ",
+      "(market cap / concept groups / 1Y return / random).\n",
+      "• Market cap mode: Yahoo market cap descending; if caps are unavailable, fall back to ticker sort then take N.\n",
+      "• Concept groups: intersection of selected themes with the filtered pool; if still > N, cap by market cap ",
+      "(same ticker-sort fallback when caps are missing).\n",
       "• Detail / ranking default sort: implied annualized valuation appreciation over n=5 years (upside_cagr_pct), descending.\n",
       "• Top 10 = at most 10 qualified names from the same batch (default F-Score≥7; uncheck Piotroski high gate to drop the F filter). ",
       "N does not guarantee 10 rows; shortfalls are not padded, and the detail table is not shrunk."
@@ -554,11 +557,11 @@ locale_for_market <- function(mode = get_market_mode()) {
     btn_lab_cluster_run = "Run clustering",
     lab_cluster_hint = paste0(
       "Uses the same industry/model filters as Rankings when set. ",
-      "When candidates exceed N, applies the Candidate truncate rule on this tab ",
+      "When candidates exceed N, applies the same Candidate truncate rule as Detail ",
       "(market cap / concept groups / 1Y return / random; market-cap fallback = ticker sort). ",
       "The Search ticker is always force-included in Universe (N) and is the default radar focus. ",
       "Fetches Yahoo ratios with a bundled offline snapshot fallback when Yahoo is blocked. ",
-      "Universe size N stays in sync with Detail (default N=25)."
+      "N and truncate rule stay in sync with Detail (default N=25)."
     ),
     lab_cluster_map_title = "Cluster map",
     lab_cluster_radar_title = "Same-cluster radar",
@@ -723,7 +726,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_concepts_placeholder = "選擇一或多個概念股群…",
     lab_im_max_n_help = paste0(
       "評估檔數 N（預設 25）＝本次要評估的檔數。\n",
-      "• 誰進評估池：篩選後若候選 > N，依市值由大到小取 N（市值暫不可用時改依代號排序）。\n",
+      "• 誰進評估池：篩選後若候選 > N，依「候選截斷邏輯」取 N（市值／概念股／近一年漲幅／隨機）。\n",
+      "• 市值模式：Yahoo 市值由大到小；市值暫不可用時改依代號排序再取 N。\n",
+      "• 概念股：取所選概念群聯集與目前篩選之交集；若仍 > N 再依市值截斷（市值缺值同代號排序後援）。\n",
       "• 明細／排行預設排序：以 n＝5 年換算的年化估值漲幅（upside_cagr_pct）降序。\n",
       "• 前十名＝同一批合格者最多 10 檔（預設 F-Score≥7；可取消「Piotroski 高門檻」）；N≠保證 10 列，合格不足時不會湊滿，也不縮減明細。"
     ),
@@ -1115,11 +1120,11 @@ locale_for_market <- function(mode = get_market_mode()) {
     btn_lab_cluster_run = "執行分群",
     lab_cluster_hint = paste0(
       "沿用「排行」頁目前的產業／模型篩選（若有）。",
-      "候選 > N 時套用本頁「候選截斷邏輯」",
+      "候選 > N 時套用與「明細」相同的「候選截斷邏輯」",
       "（市值／概念股／近一年漲幅／隨機；市值缺值則改依代號排序）。",
       "Search 後的代號一律強制納入宇宙（N），並作為雷達焦點預設。",
       "抓取 Yahoo 比率特徵；若 Yahoo 受限則改用內建離線快照。",
-      "宇宙檔數 N 與「明細」同步（預設 N＝25）。"
+      "N 與截斷邏輯皆與「明細」同步（預設 N＝25）。"
     ),
     lab_cluster_map_title = "分群星團圖",
     lab_cluster_radar_title = "同群雷達圖",
