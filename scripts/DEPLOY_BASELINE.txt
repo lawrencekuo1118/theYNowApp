@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12580317
+bundleId=12580366
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=1a4ff0c
-commit=1a4ff0c7469629e258e51a8c7027633c73ac26df
-short=1a4ff0c
-message=DCF Overview: drop chart-mode selector; always show yearly PV ex-TV (v17.57).
-captured_at=2026-09-20T13:17:16Z
+aligned_git=acaa3e7
+commit=acaa3e7685cd3277ba4b8ab4ddbadc1683ccd27a
+short=acaa3e7
+message=Expand US Search/Blue Chip universe to SEC Nasdaq/NYSE primary listings (v17.58).
+captured_at=2026-09-20T13:38:25Z
 source_branch=master
-display_version=v17.57
-note=Canonical live line is app_17.0. Bundle 12580317 = tip v17.57 (DCF Overview fixed to yearly PV). Deploy via scripts/deploy_app_17.R.
+display_version=v17.58
+note=Canonical live line is app_17.0. Bundle 12580366 = tip v17.58 (US primary listings universe). Deploy via scripts/deploy_app_17.R.
