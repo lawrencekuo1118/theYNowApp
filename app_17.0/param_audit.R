@@ -23,7 +23,7 @@ ynow_param_audit_pdf_pages <- function() {
 ynow_tracked_param_registry <- function() {
   data.frame(
     input_id = c(
-      "industry_choice", "years", "dcf_mode", "dcf_claim", "dcf_chart_mode",
+      "industry_choice", "years", "dcf_mode", "dcf_claim",
       "g_growth_method", "custom_g",
       "perpetual_g_method", "lifecycle_stage", "sgr",
       "wacc_gordon", "yr_stage1", "g_stage1", "wacc_stage1", "wacc_stage2",

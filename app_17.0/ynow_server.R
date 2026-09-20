@@ -1628,7 +1628,7 @@ server <- function(input, output, session) {
       c("DCF", "Revenue Growth Method", .snapshot_value(input$g_growth_method), "FCFF trajectory near-term growth method"),
       c("DCF", "Custom Near-term g (%)", .snapshot_value(input$custom_g), "Used when growth method = custom"),
       c("Dashboard", "Cash Flow Series", paste(APP_DEFAULTS$cf_flow_series, collapse = "+"), "Always show OCF / ICF / Financing FCF line overlay"),
-      c("DCF", "Chart Mode", .snapshot_value(input$dcf_chart_mode), "simple = hist+forecast FCFF; with_dcf adds discounted line"),
+      c("DCF", "Chart Mode", "with_dcf", "Overview always shows hist+forecast CF plus yearly PV (ex-TV)"),
       c("Perpetual Growth", "Method", .snapshot_value(input$perpetual_g_method), "macro / fundamental / lifecycle"),
       c("Perpetual Growth", "Terminal g / SGR (%)", .snapshot_value(input$sgr), "DCF/RI terminal g; TV = FCF_n × (1+g) / (WACC-g)"),
       c("Perpetual Growth", "Estimated g (%)", if (!is.null(est_g)) .snapshot_value(est_g$g_pct) else NA_character_, "Selected perpetual-growth method output"),
@@ -1761,7 +1761,7 @@ server <- function(input, output, session) {
       ddm_yr_stage1 = c("DDM", "高速期年數 n1", "二階段前段年數"),
       dcf_mode = c("DCF", "DCF 模式", "gordon / two_stage"),
       dcf_claim = c("DCF", "採用現金流", "fcff / fcfe"),
-      dcf_chart_mode = c("DCF", "圖表模式", "simple / with_dcf"),
+      dcf_chart_mode = c("DCF", "圖表模式", "固定 with_dcf（各年 PV，不含終值）"),
       cf_flow_series = c("Dashboard", "Cash Flow 疊圖序列", "ocf / icf / fcf(融資)"),
       g_growth_method = c("DCF", "營收成長估計法", "fundamental / revenue CAGR 等"),
       custom_g = c("DCF", "自訂營收成長 g (%)", "封頂後的短中期營收成長"),
@@ -2600,16 +2600,6 @@ server <- function(input, output, session) {
   observeEvent(input$dcf_claim, {
     claim <- input$dcf_claim %||% "fcff"
     tag <- dcf_cf_tag(claim)
-    sel <- isolate(input$dcf_chart_mode)
-    if (is.null(sel) || !sel %in% c("simple", "with_dcf")) sel <- APP_DEFAULTS$dcf_chart_mode
-    updateRadioButtons(
-      session, "dcf_chart_mode",
-      choices = c(
-        setNames("simple", sprintf("單純模式（歷史＋預測 %s，無折現線）", tag)),
-        "顯示各年折現現金流（PV，不含終值）" = "with_dcf"
-      ),
-      selected = sel
-    )
     updateSelectInput(
       session, "g_growth_method",
       label = sprintf("預估營收成長率（驅動 %s 預測）", tag)
@@ -6082,7 +6072,7 @@ server <- function(input, output, session) {
       return()
     }
 
-    chart_mode <- input$dcf_chart_mode %||% "with_dcf"
+    # Overview 固定：歷史／預測 CF + 各年折現現值（PV，不含終值）
     n_years <- nrow(proj_df)
     claim <- input$dcf_claim %||% "fcff"
     hist_lab <- dcf_hist_cf_label(claim)
@@ -6151,19 +6141,17 @@ server <- function(input, output, session) {
       if (length(discount_factors) >= 1L) discount_factors[n_years] else NA_real_
     )
     tv_annotation <- ""
-    if (identical(chart_mode, "with_dcf")) {
-      if (is.finite(tv_pack$pv_tv)) {
-        tv_annotation <- paste0(
-          "紅線＝各年 ", tag, " 以 ", disc_tag, " 折現之現值（不含終值）。",
-          "永續終值現值 PV of TV: ", format_dollar_abbr(tv_pack$pv_tv),
-          "（未疊入第 ", n_years, " 年，以免壓扁走勢）"
-        )
-      } else {
-        tv_annotation <- paste0(
-          "紅線＝各年 ", tag, " 以 ", disc_tag, " 折現之現值（不含終值）。",
-          "終值未計（需 ", disc_tag, " > g）"
-        )
-      }
+    if (is.finite(tv_pack$pv_tv)) {
+      tv_annotation <- paste0(
+        "紅線＝各年 ", tag, " 以 ", disc_tag, " 折現之現值（不含終值）。",
+        "永續終值現值 PV of TV: ", format_dollar_abbr(tv_pack$pv_tv),
+        "（未疊入第 ", n_years, " 年，以免壓扁走勢）"
+      )
+    } else {
+      tv_annotation <- paste0(
+        "紅線＝各年 ", tag, " 以 ", disc_tag, " 折現之現值（不含終值）。",
+        "終值未計（需 ", disc_tag, " > g）"
+      )
     }
 
     forecast_cf <- data.frame(
@@ -6177,16 +6165,13 @@ server <- function(input, output, session) {
     plot_parts <- list()
     if (!is.null(hist_df) && nrow(hist_df) > 0) plot_parts <- c(plot_parts, list(hist_df))
     plot_parts <- c(plot_parts, list(forecast_cf))
-
-    if (identical(chart_mode, "with_dcf")) {
-      plot_parts <- c(plot_parts, list(data.frame(
-        Period = forecast_periods,
-        Value = as.numeric(dcf_vals),
-        Metric = pv_lab,
-        Segment = "Forecast",
-        stringsAsFactors = FALSE
-      )))
-    }
+    plot_parts <- c(plot_parts, list(data.frame(
+      Period = forecast_periods,
+      Value = as.numeric(dcf_vals),
+      Metric = pv_lab,
+      Segment = "Forecast",
+      stringsAsFactors = FALSE
+    )))
 
     plot_df <- do.call(rbind, plot_parts)
     plot_df <- plot_df[is.finite(plot_df$Value), , drop = FALSE]
@@ -6206,11 +6191,7 @@ server <- function(input, output, session) {
       levels = c(hist_lab, fcst_lab, pv_lab)
     )
 
-    title_txt <- if (identical(chart_mode, "simple")) {
-      paste0(current_ticker(), " - 歷史與預測 ", tag, "（單純模式）")
-    } else {
-      paste0(current_ticker(), " - 歷史／預測 ", tag, " vs 各年折現現值")
-    }
+    title_txt <- paste0(current_ticker(), " - 歷史／預測 ", tag, " vs 各年折現現值")
 
     color_map <- setNames(
       c("#3498db", "#95a5a6", "#e74c3c"),
@@ -6250,7 +6231,7 @@ server <- function(input, output, session) {
       theme_minimal(base_size = 14) +
       labs(
         title = title_txt,
-        subtitle = if (identical(chart_mode, "with_dcf")) tv_annotation else paste0("不含折現線；僅歷史與預測 ", tag),
+        subtitle = tv_annotation,
         x = "期間", y = paste0("金額 (", money_label(), ")")
       ) +
       theme(
@@ -9251,7 +9232,6 @@ server <- function(input, output, session) {
   observeEvent(input$reset_dcf, {
     updateRadioButtons(session, "dcf_mode", selected = APP_DEFAULTS$dcf_mode)
     updateRadioButtons(session, "dcf_claim", selected = APP_DEFAULTS$dcf_claim)
-    updateRadioButtons(session, "dcf_chart_mode", selected = APP_DEFAULTS$dcf_chart_mode)
     updateNumericInput(session, "years", value = APP_DEFAULTS$years)
     updateSelectInput(session, "perpetual_g_method", selected = APP_DEFAULTS$perpetual_g_method)
     updateSelectInput(session, "lifecycle_stage", selected = APP_DEFAULTS$lifecycle_stage)
@@ -10856,7 +10836,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.56"),
+      paste0("- **App：** The YNow App v17.57"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

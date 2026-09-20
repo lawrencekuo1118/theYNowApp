@@ -71,7 +71,7 @@ APP_DEFAULTS <- list(
   # --- 3. Gordon DCF ---
   dcf_mode        = "gordon",
   dcf_claim       = "fcff",             # fcff (WACC+EV 橋接) | fcfe (Ke 直接股權)
-  dcf_chart_mode  = "simple",
+  dcf_chart_mode  = "with_dcf",         # Overview 固定：歷史／預測 CF + 各年 PV（不含終值）
   # Dashboard Cash Flow：固定顯示營業／投資／融資三線疊圖（融資 FCF ≠ 自由現金流）
   cf_flow_series  = c("ocf", "icf", "fcf"),
   g_growth_method = "fundamental",

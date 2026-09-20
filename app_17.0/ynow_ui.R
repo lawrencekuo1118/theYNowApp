@@ -933,7 +933,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.56</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.57</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -5789,16 +5789,6 @@ ui <- dashboardPage(
                               ),
                               fluidRow(
                                 column(width = 12,
-                                       radioButtons(
-                                         "dcf_chart_mode",
-                                         "圖表顯示模式",
-                                         choices = c(
-                                           "單純模式（歷史＋預測 FCFF，無折現線）" = "simple",
-                                           "顯示各年折現現金流（PV，不含終值）" = "with_dcf"
-                                         ),
-                                         selected = APP_DEFAULTS$dcf_chart_mode,
-                                         inline = TRUE
-                                       ),
                                        plotOutput("plt_dcf_trajectory", height = "420px"),
                                        h6(uiOutput("dcf_chart_help")),
                                        fluidRow(
