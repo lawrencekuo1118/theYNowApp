@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12580815
+bundleId=12580829
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=13bcfd3
-commit=13bcfd3c8b3a223d71e703fb726f6625b7da43c0
-short=13bcfd3
-message=i18n: CAPM/Get Started, Decision Funnel, and high-traffic notifications (v17.64).
-captured_at=2026-09-20T16:19:37Z
+aligned_git=06a9488
+commit=06a9488ad9a6b9b75da32db0c01b385bb65fe872
+short=06a9488
+message=Remove Decision Funnel outer box chrome and title (v17.65).
+captured_at=2026-09-20T16:26:09Z
 source_branch=master
-display_version=v17.64
-note=Canonical live line is app_17.0. Bundle 12580815 = tip v17.64 (includes Clustering truncate/pin from 5f51632 v17.63 + i18n CAPM/Decision). Deploy via scripts/deploy_app_17.R.
+display_version=v17.65
+note=Canonical live line is app_17.0. Bundle 12580829 = tip v17.65 (Decision Funnel outer box/title removed; inner content kept). Deploy via scripts/deploy_app_17.R.
