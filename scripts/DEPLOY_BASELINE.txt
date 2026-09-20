@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12580389
+bundleId=12580404
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=f7939ad
-commit=f7939ada57e85e59390218140f758fbeb6235f11
-short=f7939ad
-message=Add Snapshot parameter restore CSV upload/download (v17.59).
-captured_at=2026-09-20T13:49:57Z
+aligned_git=0bf995e
+commit=0bf995e81be02ca0f0465fe2609c98303f633bb5
+short=0bf995e
+message=Remove Snapshot tabBox chrome title; exact-match box headers (v17.60).
+captured_at=2026-09-20T13:57:15Z
 source_branch=master
-display_version=v17.59
-note=Canonical live line is app_17.0. Bundle 12580389 = tip v17.59 (Snapshot param restore). Deploy via scripts/deploy_app_17.R.
+display_version=v17.60
+note=Canonical live line is app_17.0. Bundle 12580404 = tip v17.60 (Snapshot chrome title removed). Deploy via scripts/deploy_app_17.R.
