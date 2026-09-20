@@ -45,6 +45,26 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     download_report = "Download Report (PDF)",
     snapshot_link = " Snapshot",
+    snapshot_page_title = "Snapshot",
+    snapshot_page_help = paste0(
+      "Top: manual adjustments vs the post-Search baseline; ",
+      "middle: current live parameters; bottom: APP_DEFAULTS at load. CSV download available."
+    ),
+    param_audit_title = "Manual adjustments (vs post-Search baseline)",
+    param_audit_help = paste0(
+      "Baseline locks after Search and statement auto-fill. ",
+      "Later manual overrides are listed by page. ",
+      "Use Go & highlight to jump and frame the input. ",
+      "This is a structured visual report, not a screen capture."
+    ),
+    param_audit_empty_no_baseline = paste0(
+      "No post-Search baseline yet. Press Search and wait for statements to load; ",
+      "the baseline locks shortly after auto-fill."
+    ),
+    param_audit_empty_no_changes = paste0(
+      "No manual adjustments vs the post-Search baseline yet. ",
+      "Edits after load appear here."
+    ),
     test_link = " Testing",
     feedback_link = " Feedback",
     market_hint = "Market",
@@ -586,6 +606,23 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     download_report = "下載報告 (PDF)",
     snapshot_link = " 快照",
+    snapshot_page_title = "快照 Snapshot",
+    snapshot_page_help = paste0(
+      "上方：相對 Search 後基準的手改參數報告；中：目前 App 執行中參數；",
+      "下：系統載入時 APP_DEFAULTS。CSV 可下載。"
+    ),
+    param_audit_title = "手改參數（相對 Search 後基準）",
+    param_audit_help = paste0(
+      "基準在按下 Search 且財報自動帶入後鎖定。之後你手動覆寫的參數會分頁列出；",
+      "按「前往並框選」可跳到該頁並高亮輸入框。這不是螢幕截圖，而是結構化視覺報告。"
+    ),
+    param_audit_empty_no_baseline = paste0(
+      "尚無 Search 後基準。請先按下 Search 並等待財報載入；",
+      "自動帶入完成後會鎖定基準。"
+    ),
+    param_audit_empty_no_changes = paste0(
+      "尚無相對 Search 後基準的手改參數。載入財報後若手動覆寫，變更會列於此。"
+    ),
     test_link = " 測試",
     feedback_link = " 意見區",
     market_hint = "市場",

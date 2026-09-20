@@ -25,6 +25,34 @@ server <- function(input, output, session) {
   # 首次按下 Search 前：不標示模型推薦／側邊欄「推薦」
   user_has_searched <- reactiveVal(FALSE)
 
+  # 參數更動稽核（1A）：Search／財報自動帶入後鎖定基準
+  param_audit_baseline <- reactiveVal(NULL)
+  param_audit_baseline_at <- reactiveVal(NULL)
+  param_audit_baseline_ticker <- reactiveVal(NULL)
+  param_audit_capture_token <- reactiveVal(0L)
+
+  .capture_param_audit_baseline <- function(reason = "delay") {
+    if (!isTRUE(isolate(user_has_searched()))) return(invisible(FALSE))
+    tk <- isolate(current_ticker())
+    if (is.null(tk) || !nzchar(as.character(tk)[1])) return(invisible(FALSE))
+    vals <- tryCatch(ynow_capture_tracked_params(input), error = function(e) NULL)
+    if (is.null(vals) || !length(vals)) return(invisible(FALSE))
+    param_audit_baseline(vals)
+    param_audit_baseline_at(Sys.time())
+    param_audit_baseline_ticker(as.character(tk)[1])
+    invisible(TRUE)
+  }
+
+  .schedule_param_audit_baseline <- function(delay_ms = 2200L) {
+    tok <- isolate(param_audit_capture_token()) + 1L
+    param_audit_capture_token(tok)
+    shinyjs::delay(as.integer(delay_ms)[1], {
+      if (!identical(isolate(param_audit_capture_token()), tok)) return()
+      .capture_param_audit_baseline(reason = paste0("delay_", delay_ms))
+    })
+    invisible(tok)
+  }
+
   # Session 幣別：原生 quote/statement → 單一顯示／估值幣別
   quote_currency <- reactiveVal("USD")
   statement_currency <- reactiveVal("USD")
@@ -118,6 +146,11 @@ server <- function(input, output, session) {
   observeEvent(input$search, {
     req(input$sc)
     user_has_searched(TRUE)
+    # New Search: clear prior baseline until post-load capture settles
+    param_audit_baseline(NULL)
+    param_audit_baseline_at(NULL)
+    param_audit_baseline_ticker(NULL)
+    param_audit_capture_token(isolate(param_audit_capture_token()) + 1L)
     tk <- normalize_ticker_for_market(input$sc, market_mode())
     req(!is.na(tk), nzchar(tk))
     current_ticker(tk)
@@ -268,6 +301,10 @@ server <- function(input, output, session) {
 
     # 切換預設標的並重抓（輸入框顯示乾淨代號）
     user_has_searched(TRUE)
+    param_audit_baseline(NULL)
+    param_audit_baseline_at(NULL)
+    param_audit_baseline_ticker(NULL)
+    param_audit_capture_token(isolate(param_audit_capture_token()) + 1L)
     current_ticker(prof$default_ticker)
     disp <- display_ticker_for_market(prof$default_ticker, mode)
     tryCatch(updateTextInput(session, "sc", value = disp), error = function(e) NULL)
@@ -593,6 +630,11 @@ server <- function(input, output, session) {
           }
         }
         scraped_financials(res)
+
+        # 1A：財報寫入後延遲鎖定參數基準（等 WACC／SGR／模組自動帶入）
+        if (isTRUE(isolate(user_has_searched()))) {
+          .schedule_param_audit_baseline(2200L)
+        }
 
         # P0／P2：IS／BS／CF 全空 → 明確提示（勿以為算完）；導向 MOPS／櫃買
         empty_fs <- exists("financials_is_bs_cf_all_empty", mode = "function") &&
@@ -1831,6 +1873,50 @@ server <- function(input, output, session) {
       write.csv(df, file, row.names = FALSE, fileEncoding = "UTF-8")
     }
   )
+
+  .param_audit_eval_summary_html <- function() {
+    loc <- isolate(ui_locale())
+    use_zh <- grepl("^zh", loc, ignore.case = TRUE)
+    tk <- display_ticker_for_market(
+      current_ticker() %||% APP_DEFAULTS$stock_code,
+      market_mode()
+    )
+    px <- suppressWarnings(as.numeric(stock_price_estimate_val())[1])
+    wacc <- suppressWarnings(as.numeric(calculated_wacc())[1])
+    sgr <- suppressWarnings(as.numeric(input$sgr)[1])
+    parts <- c(
+      if (use_zh) paste0("Ticker：", tk) else paste0("Ticker: ", tk),
+      if (is.finite(px)) {
+        if (use_zh) paste0("DCF 每股估價 ≈ ", round(px, 2))
+        else paste0("DCF per-share ≈ ", round(px, 2))
+      } else {
+        if (use_zh) "DCF 每股估價：尚未試算" else "DCF per-share: not yet run"
+      },
+      if (is.finite(wacc)) paste0("WACC ", round(wacc * 100, 2), "%") else NULL,
+      if (is.finite(sgr)) paste0("SGR / terminal g ", round(sgr, 2), "%") else NULL
+    )
+    paste(parts[!vapply(parts, is.null, logical(1))], collapse = " · ")
+  }
+
+  output$param_audit_report <- renderUI({
+    loc <- ui_locale()
+    baseline <- param_audit_baseline()
+    baselined_at <- param_audit_baseline_at()
+    cur <- ynow_capture_tracked_params(input)
+    diff_df <- ynow_param_diff_df(baseline, cur, locale = loc)
+    empty_msg <- if (is.null(baseline)) {
+      ui_str("param_audit_empty_no_baseline", loc)
+    } else {
+      ui_str("param_audit_empty_no_changes", loc)
+    }
+    ynow_param_audit_report_ui(
+      diff_df,
+      eval_summary = .param_audit_eval_summary_html(),
+      baseline_at = baselined_at,
+      locale = loc,
+      empty_message = empty_msg
+    )
+  })
   
   # 顯示層管線：FX →（台股）仟元 → 小數二位 → zh-TW 科目
   .prep_fs_statement_display <- function(df) {
@@ -10741,7 +10827,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.47"),
+      paste0("- **App：** The YNow App v17.48"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

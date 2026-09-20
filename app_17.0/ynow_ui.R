@@ -1005,7 +1005,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.47</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.48</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -3018,6 +3018,14 @@ ui <- dashboardPage(
             }
             var snap = document.getElementById('ynow_snapshot_link_label');
             if (snap && s.snapshot_link) snap.textContent = s.snapshot_link;
+            var snapTitle = document.getElementById('ynow_snapshot_page_title');
+            if (snapTitle && s.snapshot_page_title) snapTitle.textContent = s.snapshot_page_title;
+            var snapHelp = document.getElementById('ynow_snapshot_page_help');
+            if (snapHelp && s.snapshot_page_help) snapHelp.textContent = s.snapshot_page_help;
+            var paTitle = document.getElementById('ynow_param_audit_title');
+            if (paTitle && s.param_audit_title) paTitle.textContent = s.param_audit_title;
+            var paHelp = document.getElementById('ynow_param_audit_help');
+            if (paHelp && s.param_audit_help) paHelp.textContent = s.param_audit_help;
             var testL = document.getElementById('ynow_test_link_label');
             if (testL && s.test_link) testL.textContent = s.test_link;
             var fb = document.getElementById('ynow_feedback_link_label');
@@ -3138,6 +3146,53 @@ ui <- dashboardPage(
             });
           }
           registerLocaleHandler();
+
+          /* ---- Param audit (1A+2B): go to tab + highlight input ---- */
+          function ynowClearParamHighlight() {
+            document.querySelectorAll('.ynow-param-highlight').forEach(function (el) {
+              el.classList.remove('ynow-param-highlight');
+            });
+          }
+          function ynowFindInputEl(inputId) {
+            if (!inputId) return null;
+            var id = String(inputId);
+            var el = document.getElementById(id);
+            if (el) return el;
+            el = document.querySelector('[id=\"' + id.replace(/\"/g, '') + '\"]');
+            if (el) return el;
+            var named = document.querySelectorAll('[name=\"' + id.replace(/\"/g, '') + '\"]');
+            if (named && named.length) {
+              return named[0].closest('.form-group, .shiny-input-container, .radio, .checkbox') || named[0];
+            }
+            return null;
+          }
+          function ynowGotoAndHighlight(tab, inputId) {
+            ynowClearParamHighlight();
+            if (tab && window.Shiny && Shiny.setInputValue) {
+              Shiny.setInputValue('sidebar_tabs', tab, {priority: 'event'});
+            }
+            var a = document.querySelector('.main-sidebar .sidebar-menu a[data-value=\"' + tab + '\"]') ||
+                    document.querySelector('.sidebar-menu a[data-value=\"' + tab + '\"]');
+            if (a) {
+              try { a.click(); } catch (e) {}
+            }
+            setTimeout(function () {
+              var el = ynowFindInputEl(inputId);
+              if (!el) return;
+              var box = el.closest('.form-group, .shiny-input-container, .box-body > div, .radio, .checkbox') || el;
+              box.classList.add('ynow-param-highlight');
+              try { box.scrollIntoView({behavior: 'smooth', block: 'center'}); } catch (e2) {
+                try { box.scrollIntoView(true); } catch (e3) {}
+              }
+              setTimeout(function () { box.classList.remove('ynow-param-highlight'); }, 4500);
+            }, 350);
+          }
+          document.addEventListener('click', function (ev) {
+            var btn = ev.target && ev.target.closest ? ev.target.closest('.ynow-param-goto') : null;
+            if (!btn) return;
+            ev.preventDefault();
+            ynowGotoAndHighlight(btn.getAttribute('data-tab'), btn.getAttribute('data-input-id'));
+          });
         })();
       ")),
       
@@ -3148,6 +3203,15 @@ ui <- dashboardPage(
         }
         .selectize-dropdown {
           max-height: 300px !important;
+        }
+
+        /* Param audit highlight pulse */
+        .ynow-param-highlight {
+          outline: 3px solid #f39c12 !important;
+          outline-offset: 3px;
+          box-shadow: 0 0 0 4px rgba(243, 156, 18, 0.35) !important;
+          border-radius: 4px;
+          transition: box-shadow 0.2s ease;
         }
 
         /* 主搜尋框預選清單：黑字白底 */
@@ -4165,6 +4229,19 @@ ui <- dashboardPage(
             overflow: hidden;
             pointer-events: none;
           }
+          /* Opaque ::before on full-bleed title was painting over hamburger / 繁中／EN / mark */
+          .skin-black .main-header .logo::before,
+          body.ynow-market-tw .skin-black .main-header .logo::before {
+            display: none !important;
+            content: none !important;
+            background: none !important;
+          }
+          /* Navbar (toggle + market + lang + mark) must stack ABOVE the absolute title band */
+          .main-header .navbar,
+          .skin-black .main-header .navbar {
+            position: relative !important;
+            z-index: 1055 !important;
+          }
           .main-header .logo .ynow-app-title {
             /* Restore toward AdminLTE logo 20px; clamp so long version strings still fit */
             font-size: 16px !important;
@@ -4175,7 +4252,7 @@ ui <- dashboardPage(
             max-width: min(100%, calc(100vw - 200px));
             height: auto !important;
           }
-          /* Keep 繁中／EN above the absolute title band */
+          /* Keep 繁中／EN / mark / toggle above the absolute title band */
           .main-header .navbar-custom-menu .navbar-nav > li.ynow-lang-header {
             position: relative !important;
             z-index: 1050 !important;
@@ -4185,6 +4262,10 @@ ui <- dashboardPage(
             position: relative !important;
             z-index: 1050 !important;
             flex-shrink: 0 !important;
+          }
+          .main-header .navbar > .sidebar-toggle,
+          .skin-black .main-header .navbar .sidebar-toggle {
+            z-index: 1056 !important;
           }
           /* Slightly compress 繁中／EN to free width for the centered title */
           .ynow-lang-header .btn-group-xs > .btn,
@@ -4238,6 +4319,8 @@ ui <- dashboardPage(
             display: flex !important;
             align-items: center !important;
             overflow: visible !important;
+            position: relative !important;
+            z-index: 1056 !important;
           }
           .main-header .navbar-custom-menu > .navbar-nav {
             display: flex !important;
@@ -4907,8 +4990,34 @@ ui <- dashboardPage(
 
       tabItem(
         tabName = "snapshot",
-        h2("Snapshot"),
-        helpText("上方：目前 App 執行中參數；下方：系統載入時的預設參數表（APP_DEFAULTS）。兩者皆可下載 CSV。"),
+        h2(tags$span(id = "ynow_snapshot_page_title", "Snapshot")),
+        helpText(
+          id = "ynow_snapshot_page_help",
+          paste0(
+            "Top: manual adjustments vs the post-Search baseline; ",
+            "middle: current live parameters; bottom: APP_DEFAULTS at load. CSV download available."
+          )
+        ),
+        fluidRow(
+          box(
+            title = tagList(
+              icon("user-edit"),
+              tags$span(id = "ynow_param_audit_title", "Manual adjustments (vs post-Search baseline)")
+            ),
+            width = 12, status = "success", solidHeader = TRUE,
+            tags$p(
+              id = "ynow_param_audit_help",
+              style = "font-size:12.5px; color:#666; line-height:1.45; margin:0 0 10px 0;",
+              paste0(
+                "Baseline locks after Search and statement auto-fill. ",
+                "Later manual overrides are listed by page. ",
+                "Use Go & highlight to jump and frame the input. ",
+                "This is a structured visual report, not a screen capture."
+              )
+            ),
+            uiOutput("param_audit_report")
+          )
+        ),
         fluidRow(
           box(
             title = tagList(icon("camera"), "Current App Parameter Snapshot"),

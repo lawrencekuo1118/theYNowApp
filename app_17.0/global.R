@@ -97,6 +97,7 @@ source("rebal_freq.R", local = TRUE, encoding = "UTF-8")
 source("backtest_module.R", local = TRUE, encoding = "UTF-8")
 source("backtest_validation.R", local = TRUE, encoding = "UTF-8")
 source("default_config.R", local = TRUE, encoding = "UTF-8")
+source("param_audit.R", local = TRUE, encoding = "UTF-8")
 source("lab_industry_method.R", local = TRUE, encoding = "UTF-8")
 source("lab_clustering.R", local = TRUE, encoding = "UTF-8")
 # debug_lab.R is not sourced here; set YNOW_DEBUG=1 and source it locally if needed.
