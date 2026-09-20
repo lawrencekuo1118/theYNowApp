@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12579511
+bundleId=12579644
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=d24368d
-commit=d24368db50df478a02977ba94148a07852adc436
-short=d24368d
-message=Show Macro Rf with two decimals so live ~4.998% is not bare 5% (v17.50).
-captured_at=2026-09-20T07:37:52Z
+aligned_git=bd1d5ce
+commit=bd1d5ce61f8a10bfb36c4616f82ba6b30f3d5f1c
+short=bd1d5ce
+message=Remove Process & Guardrails sub-tab from Valuation Methodology (v17.52).
+captured_at=2026-09-20T08:35:26Z
 source_branch=master
-display_version=v17.50
-note=Canonical live line is app_17.0. Bundle 12579511 = tip v17.50 (Macro Rf two-decimal display). Deploy via scripts/deploy_app_17.R.
+display_version=v17.52
+note=Canonical live line is app_17.0. Bundle 12579644 = tip v17.52 (removed Process & Guardrails sub-tab). Deploy via scripts/deploy_app_17.R.
