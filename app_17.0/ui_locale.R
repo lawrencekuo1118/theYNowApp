@@ -813,6 +813,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Uses the same industry/model filters as Rankings when set. ",
       "First set Candidate truncate rule, then Universe size (N) — shared controls above BLUE CHIP ",
       "(market cap / concept groups / 1Y return / random; market-cap fallback = ticker sort). ",
+      "In concept mode, Concept groups come first (highest priority), then truncate rule, then N. ",
       "The Search ticker is always force-included in Universe (N) and is the default radar focus. ",
       "Fetches Yahoo ratios with a bundled offline snapshot fallback when Yahoo is blocked."
     ),
@@ -1621,6 +1622,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "沿用「排行」頁目前的產業／模型篩選（若有）。",
       "請先選「候選截斷邏輯」，再選「宇宙檔數（N）」——見區塊上方共用控制",
       "（市值／概念股／近一年漲幅／隨機；市值缺值則改依代號排序）。",
+      "若為概念股模式，概念股群排最前（最高優先），再接截斷邏輯與 N。",
       "Search 後的代號一律強制納入宇宙（N），並作為雷達焦點預設。",
       "抓取 Yahoo 比率特徵；若 Yahoo 受限則改用內建離線快照。"
     ),

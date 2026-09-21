@@ -7,6 +7,7 @@
 # 「宇宙檔數（N）」（lab_im_max_n；預設 25）＝本次 Yahoo 評估檔數＝明細列數。
 # 盈餘品質／Piotroski 高門檻勾選只影響排行榜／摘要，不縮減明細列數。
 # 流程：先套用「候選截斷邏輯」（市值／概念股／近一年漲幅／隨機）排序／篩選，再依序取宇宙檔數 N。
+# 若選概念股：概念股群篩選最優先，再截斷至 N。
 # 排行榜＝同一批合格者的 Top 10（預設 F-Score≥7；gate_only=FALSE 時不設 F 門檻；不足 10 不湊滿）。
 # 產業建議方法對齊 recommend_valuation_models 的產業層規則（簡化估值）。
 # ==========================================
@@ -392,6 +393,8 @@ lab_rank_and_cap_eval_pool <- function(pool, max_n = 25L) {
 #' Select / truncate evaluation pool by user mode
 #'
 #' Order: apply Candidate truncate rule (rank / filter), then take Universe size N.
+#' When mode is concept, selected concept groups filter the pool first (highest priority),
+#' then rank/cap to N within that set.
 #'
 #' Modes:
 #' - mcap: largest market cap first (legacy)

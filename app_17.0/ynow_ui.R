@@ -957,7 +957,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.69</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.70</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -6263,13 +6263,31 @@ ui <- dashboardPage(
       # Blue Chip：美股績優篩選（版面節奏對齊 Dashboard FINANCIAL REPORT）
       tabItem(
         tabName = "bluechip",
-        # Shared Candidate truncate → Universe N — above BLUE CHIP (all sub-tabs)
+        # Shared pool controls above BLUE CHIP:
+        # - default: Candidate truncate → Universe N
+        # - concept mode: Concept groups (first) → Candidate truncate → Universe N
         fluidRow(
           column(
             width = 12,
             class = "ynow-lab-im-pool-controls",
             style = "margin: 0 0 14px 0;",
             fluidRow(
+              conditionalPanel(
+                condition = "input.lab_im_pool_rank == 'concept'",
+                class = "col-sm-4",
+                selectizeInput(
+                  "lab_im_concepts",
+                  tags$span(id = "ynow_lab_im_concepts_label", "概念股群"),
+                  choices = lab_concept_group_choices("US", "zh-TW"),
+                  selected = character(0),
+                  multiple = TRUE,
+                  options = list(
+                    placeholder = "選擇一或多個概念股群…",
+                    plugins = list("remove_button")
+                  ),
+                  width = "100%"
+                )
+              ),
               column(
                 width = 4,
                 selectInput(
@@ -6298,24 +6316,6 @@ ui <- dashboardPage(
                     min = 1,
                     max = 500,
                     step = 1,
-                    width = "100%"
-                  )
-                )
-              ),
-              column(
-                width = 4,
-                conditionalPanel(
-                  condition = "input.lab_im_pool_rank == 'concept'",
-                  selectizeInput(
-                    "lab_im_concepts",
-                    tags$span(id = "ynow_lab_im_concepts_label", "概念股群"),
-                    choices = lab_concept_group_choices("US", "zh-TW"),
-                    selected = character(0),
-                    multiple = TRUE,
-                    options = list(
-                      placeholder = "選擇一或多個概念股群…",
-                      plugins = list("remove_button")
-                    ),
                     width = "100%"
                   )
                 )
@@ -6588,7 +6588,7 @@ ui <- dashboardPage(
               style = "color:#888; font-size:12px;",
               paste0(
                 "沿用「排行」頁目前的產業／模型篩選（若有）。",
-                "先選候選截斷邏輯，再選宇宙檔數 N（見區塊上方共用控制：市值／概念股／近一年漲幅／隨機；市值缺值則改依代號排序）。",
+                "先選候選截斷邏輯，再選宇宙檔數 N；若為概念股，概念股群最優先（見區塊上方共用控制）。",
                 "Search 後的代號一律強制納入宇宙（N），並作為雷達焦點預設。",
                 "抓取 Yahoo 比率特徵；若 Yahoo 受限則改用內建離線快照。"
               )
