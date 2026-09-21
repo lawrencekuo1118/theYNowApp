@@ -90,6 +90,41 @@ check(
     (nrow(cp_n) == 2L && !("ZZZ" %in% cp_n$ticker) && identical(cp_n$ticker[1], "MSFT"))
 )
 
+# When market cap is unavailable: keep original universe order, then take N
+# (do NOT alphabetize by ticker before fetch / clustering).
+orig_attach <- if (exists("lab_attach_market_caps", mode = "function", inherits = TRUE)) {
+  get("lab_attach_market_caps", mode = "function", inherits = TRUE)
+} else {
+  NULL
+}
+assign("lab_attach_market_caps", function(pool, ...) {
+  if (!"market_cap" %in% names(pool)) pool$market_cap <- NA_real_
+  pool
+}, envir = .GlobalEnv)
+on.exit({
+  if (!is.null(orig_attach)) {
+    assign("lab_attach_market_caps", orig_attach, envir = .GlobalEnv)
+  } else if (exists("lab_attach_market_caps", envir = .GlobalEnv, inherits = FALSE)) {
+    rm("lab_attach_market_caps", envir = .GlobalEnv)
+  }
+}, add = TRUE)
+
+pool_na <- data.frame(
+  ticker = c("ZZZ", "MMM", "AAA", "QQQ"),
+  market_cap = c(NA_real_, NA_real_, NA_real_, NA_real_),
+  stringsAsFactors = FALSE
+)
+na_keep <- lab_select_eval_pool(pool_na, max_n = 2L, mode = "mcap")
+check(
+  "mcap unavailable keeps input order then N",
+  identical(as.character(na_keep$ticker), c("ZZZ", "MMM"))
+)
+check(
+  "mcap unavailable note",
+  grepl("mcap_unavailable_keep_order", as.character(attr(na_keep, "pool_rank_note")), fixed = TRUE)
+)
+check("mcap unavailable used_market_cap FALSE", isFALSE(attr(na_keep, "used_market_cap")))
+
 if (fail > 0L) {
   cat("FAILED ", fail, " checks\n", sep = "")
   quit(status = 1L)

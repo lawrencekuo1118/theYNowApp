@@ -690,11 +690,10 @@ lab_cluster_drop_excess_keeping_focus <- function(pool, keep_focus, max_n,
   n_drop <- nrow(pool) - as.integer(max_n)
   if (!length(drop_cand) || n_drop <= 0L) return(pool)
   mode <- lab_normalize_pool_rank_mode(rank_mode)
-  tk <- as.character(pool$ticker)
   if (identical(mode, "ret_1y") && "ret_1y" %in% names(pool)) {
     ret <- suppressWarnings(as.numeric(pool$ret_1y))
     ret[!is.finite(ret)] <- -Inf
-    ord <- drop_cand[order(ret[drop_cand], tk[drop_cand], na.last = FALSE)]
+    ord <- drop_cand[order(ret[drop_cand], drop_cand, na.last = FALSE)]
   } else if (identical(mode, "random")) {
     # Prefer dropping trailing slots (preserve earlier random sample order)
     ord <- rev(drop_cand)
@@ -702,7 +701,7 @@ lab_cluster_drop_excess_keeping_focus <- function(pool, keep_focus, max_n,
     # mcap / concept (mcap within): drop lowest market cap first; missing last
     mcap <- suppressWarnings(as.numeric(pool$market_cap))
     mcap[!is.finite(mcap)] <- Inf
-    ord <- drop_cand[order(mcap[drop_cand], tk[drop_cand])]
+    ord <- drop_cand[order(mcap[drop_cand], drop_cand)]
   }
   pool[-ord[seq_len(min(n_drop, length(ord)))], , drop = FALSE]
 }
@@ -1286,7 +1285,8 @@ lab_cluster_coverage_labels <- function(n_finite, tickers,
 }
 
 #' Order cluster assignment rows: Radar focus / Search ticker first, then
-#' truncate-logic sort (pool order when provided; else mcap / ret_1y / ticker).
+#' truncate-logic sort (pool order when provided; else mcap / ret_1y).
+#' Does not alphabetize by ticker before / after analysis.
 lab_cluster_order_by_truncate <- function(df, rank_mode = "mcap",
                                           pin_ticker = NULL,
                                           pool_ticker_order = NULL) {
@@ -1307,20 +1307,22 @@ lab_cluster_order_by_truncate <- function(df, rank_mode = "mcap",
       if (length(miss)) {
         idx[miss] <- length(po) + seq_along(miss)
       }
-      rest <- rest[order(idx, rest$ticker), , drop = FALSE]
+      rest <- rest[order(idx, seq_len(nrow(rest))), , drop = FALSE]
     } else if (identical(mode, "ret_1y") && "ret_1y" %in% names(rest)) {
       ret <- suppressWarnings(as.numeric(rest$ret_1y))
       missing <- is.na(ret) | !is.finite(ret)
-      o <- order(missing, -ifelse(missing, 0, ret), rest$ticker, na.last = TRUE)
+      o <- order(missing, -ifelse(missing, 0, ret), seq_len(nrow(rest)), na.last = TRUE)
       rest <- rest[o, , drop = FALSE]
     } else if (!identical(mode, "random") && "market_cap" %in% names(rest)) {
       mcap <- suppressWarnings(as.numeric(rest$market_cap))
       missing <- is.na(mcap) | !is.finite(mcap) | mcap <= 0
-      o <- order(missing, -ifelse(missing, 0, mcap), rest$ticker, na.last = TRUE)
-      rest <- rest[o, , drop = FALSE]
-    } else {
-      rest <- rest[order(rest$ticker), , drop = FALSE]
+      if (isTRUE(sum(!missing) > 0L)) {
+        o <- order(missing, -ifelse(missing, 0, mcap), seq_len(nrow(rest)), na.last = TRUE)
+        rest <- rest[o, , drop = FALSE]
+      }
+      # else: keep rest row order (no ticker A→Z fallback)
     }
+    # random / no sort keys: keep existing row order
   }
 
   out <- rbind(pin_df, rest)

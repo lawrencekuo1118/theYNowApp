@@ -203,6 +203,16 @@ ord_pool <- lab_cluster_order_by_truncate(
 )
 stopifnot(identical(as.character(ord_pool$ticker), c("AAA", "CCC", "EEE", "BBB")))
 
+# No market cap: keep existing row order (do not alphabetize by ticker)
+ord_na <- data.frame(
+  ticker = c("ZZZ", "MMM", "AAA"),
+  market_cap = c(NA_real_, NA_real_, NA_real_),
+  Cluster_ID = 1:3,
+  stringsAsFactors = FALSE
+)
+ord_na_out <- lab_cluster_order_by_truncate(ord_na, rank_mode = "mcap", pin_ticker = NULL)
+stopifnot(identical(as.character(ord_na_out$ticker), c("ZZZ", "MMM", "AAA")))
+
 # Force-include drop respects ret_1y truncate (drop lowest return, keep focus)
 pool_ret <- data.frame(
   ticker = c("A", "B", "C", "D"),
