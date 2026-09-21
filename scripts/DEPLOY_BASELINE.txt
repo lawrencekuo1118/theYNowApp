@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12584500
+bundleId=12584613
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=7be0f0b
-commit=7be0f0b
-short=7be0f0b
-message=fix(ui): remove Blue Chip Ranking industry dropdown (v17.74)
-captured_at=2026-09-21T13:15:00Z
-source_branch=cursor/remove-ranking-industry-f4a6
-display_version=v17.74
-note=Canonical live line is app_17.0. Bundle 12584500 ships v17.74: remove lab_im_lb_industry Ranking industry select; by-industry Top 10 lists all industries. Deploy via scripts/deploy_app_17.R. Supersedes 12584443 (v17.73).
+aligned_git=26f9486
+commit=26f9486
+short=26f9486
+message=fix(lab): Universe size N is post-analysis display cap (v17.75)
+captured_at=2026-09-21T13:45:00Z
+source_branch=cursor/universe-n-display-not-fetch-f4a6
+display_version=v17.75
+note=Canonical live line is app_17.0. Bundle 12584613 ships v17.75: Universe size (N) = post-analysis display cap (not Yahoo fetch count); eval via lab_resolve_im_eval_n; detail/leaderboard lab_cap_detail_display never pads when qualified names fall short. Deploy via scripts/deploy_app_17.R. Supersedes 12584500 (v17.74).
