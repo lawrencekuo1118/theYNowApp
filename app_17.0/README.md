@@ -1,6 +1,10 @@
-# The YNow App v17.73 — Valuation Methodology
+# The YNow App v17.74 — Valuation Methodology
 
 先分類，再選模型；先推導，再校正；先給區間，再給單點；先做基本面估值。
+
+## v17.74 重點
+- **Blue Chip 排行**：移除「排行產業／Ranking industry」下拉；依產業前十名一律列出各產業 Top 10
+- **目錄**：`app_17.0/`；顯示版號 **v17.74**
 
 ## v17.73 重點
 - **ADR 產業歸屬**：美股 ADR／外國發行人（TSM、SKHY、BABA、ASML…）載入宇宙後覆寫產業，不再落「未對應產業」

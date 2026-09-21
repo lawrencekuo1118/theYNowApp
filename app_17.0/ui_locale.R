@@ -221,11 +221,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_lb_mode_label = "Ranking view",
     lab_im_lb_mode_overall = "Overall Top 10",
     lab_im_lb_mode_by_industry = "Top 10 by industry",
-    lab_im_lb_industry_label = "Ranking industry",
-    lab_im_lb_industry_all = "All industries",
     lab_im_lb_scope_help = paste0(
       "Overall Top 10: cross-industry Top 10 by annualized valuation appreciation, with an Industry column. ",
-      "Top 10 by industry: list Top 10 within each industry (or the one industry you pick). ",
+      "Top 10 by industry: list Top 10 within each industry. ",
       "Top 10 takes at most 10 qualified names; shortfalls are not padded."
     ),
     lab_im_gate_hint = paste0(
@@ -1054,11 +1052,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_lb_mode_label = "排行視角",
     lab_im_lb_mode_overall = "整體前十名",
     lab_im_lb_mode_by_industry = "依產業前十名",
-    lab_im_lb_industry_label = "排行產業",
-    lab_im_lb_industry_all = "全部產業",
     lab_im_lb_scope_help = paste0(
       "整體前十名：跨產業依年化估值漲幅取 Top 10，並顯示產業欄。",
-      "依產業前十名：每個產業（或選定單一產業）各自列出 Top 10。",
+      "依產業前十名：每個產業各自列出 Top 10。",
       "前十名只從合格者取最多 10 檔；合格不足 10 時不會湊滿。"
     ),
     lab_im_gate_hint = paste0(

@@ -957,7 +957,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.72</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.74</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -3225,8 +3225,6 @@ ui <- dashboardPage(
             if (labLbOverall && s.lab_im_lb_mode_overall) labLbOverall.textContent = s.lab_im_lb_mode_overall;
             var labLbByInd = document.getElementById('ynow_lab_im_lb_mode_by_ind');
             if (labLbByInd && s.lab_im_lb_mode_by_industry) labLbByInd.textContent = s.lab_im_lb_mode_by_industry;
-            var labLbInd = document.getElementById('ynow_lab_im_lb_industry_label');
-            if (labLbInd && s.lab_im_lb_industry_label) labLbInd.textContent = s.lab_im_lb_industry_label;
             var labLbHelp = document.getElementById('ynow_lab_im_lb_scope_help');
             if (labLbHelp && s.lab_im_lb_scope_help) labLbHelp.textContent = s.lab_im_lb_scope_help;
             var labGateRoot = document.getElementById('lab_im_gate_only');
@@ -6354,19 +6352,12 @@ ui <- dashboardPage(
                     selected = "overall",
                     inline = TRUE
                   ),
-                  selectInput(
-                    "lab_im_lb_industry",
-                    tags$span(id = "ynow_lab_im_lb_industry_label", "排行產業"),
-                    choices = c("全部產業" = "__all__"),
-                    selected = "__all__",
-                    width = "100%"
-                  ),
                   tags$div(
                     id = "ynow_lab_im_lb_scope_help",
                     style = "color:#888; font-size:12px; line-height:1.45; margin:-4px 0 8px 0;",
                     paste0(
                       "整體前十名：跨產業依年化估值漲幅取 Top 10，並顯示產業欄。",
-                      "依產業前十名：每個產業（或選定單一產業）各自列出 Top 10。",
+                      "依產業前十名：每個產業各自列出 Top 10。",
                       "前十名只從合格者取最多 10 檔；合格不足 10 時不會湊滿。"
                     )
                   )

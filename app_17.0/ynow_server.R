@@ -10045,13 +10045,12 @@ server <- function(input, output, session) {
     max_n_label <- lab_resolve_im_max_n_label(input$lab_im_max_n, input$lab_im_max_n_custom)
     n_eval <- if (is.data.frame(scores) && nrow(scores) > 0) nrow(scores) else 0L
     scope <- as.character(input$lab_im_lb_mode %||% "overall")[1]
-    ind_f <- as.character(input$lab_im_lb_industry %||% "__all__")[1]
     gate_on <- isTRUE(input$lab_im_gate_only)
     eq_on <- isTRUE(input$lab_im_eq_only)
     scope_txt <- if (identical(scope, "by_industry")) {
-      if (identical(ind_f, "__all__")) "依產業各列 Top 10" else paste0("產業「", ind_f, "」內 Top 10")
+      "依產業各列 Top 10"
     } else {
-      if (identical(ind_f, "__all__")) "整體 Top 10（含產業欄）" else paste0("產業「", ind_f, "」內 Top 10")
+      "整體 Top 10（含產業欄）"
     }
     gate_txt <- paste0(
       if (gate_on) "F-Score≥7" else "不設 F 門檻",
@@ -10078,21 +10077,6 @@ server <- function(input, output, session) {
         n_eval, n, gate_txt, scope_txt
       )
     )
-  })
-
-  observe({
-    merged <- tryCatch(lab_im_merged(), error = function(e) NULL)
-    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) NULL)
-    all_lab <- if (!is.null(loc)) ui_str("lab_im_lb_industry_all", loc) else "全部產業"
-    choices <- lab_leaderboard_industry_choices(
-      merged,
-      eq_only = isTRUE(input$lab_im_eq_only),
-      gate_only = isTRUE(input$lab_im_gate_only),
-      all_label = all_lab
-    )
-    cur <- as.character(isolate(input$lab_im_lb_industry) %||% "__all__")[1]
-    if (!cur %in% unname(choices)) cur <- "__all__"
-    updateSelectInput(session, "lab_im_lb_industry", choices = choices, selected = cur)
   })
 
   # Refresh truncate-rule labels + concept groups when market / locale changes
@@ -10140,14 +10124,13 @@ server <- function(input, output, session) {
     }
     scope <- as.character(input$lab_im_lb_mode %||% "overall")[1]
     if (!scope %in% c("overall", "by_industry")) scope <- "overall"
-    ind_f <- as.character(input$lab_im_lb_industry %||% "__all__")[1]
     lb <- lab_quality_leaderboard(
       merged,
       top_n = 10L,
       eq_only = isTRUE(input$lab_im_eq_only),
       gate_only = isTRUE(input$lab_im_gate_only),
       scope = scope,
-      industry_filter = ind_f
+      industry_filter = "__all__"
     )
     if (nrow(lb) == 0) {
       pool <- lab_leaderboard_pool(
@@ -10186,11 +10169,10 @@ server <- function(input, output, session) {
     eq_on <- isTRUE(input$lab_im_eq_only)
     scope <- as.character(input$lab_im_lb_mode %||% "overall")[1]
     if (!scope %in% c("overall", "by_industry")) scope <- "overall"
-    ind_f <- as.character(input$lab_im_lb_industry %||% "__all__")[1]
     lb <- tryCatch(
       lab_quality_leaderboard(
         merged, top_n = 10L, eq_only = eq_on, gate_only = gate_on,
-        scope = scope, industry_filter = ind_f
+        scope = scope, industry_filter = "__all__"
       ),
       error = function(e) NULL
     )
@@ -10202,7 +10184,7 @@ server <- function(input, output, session) {
     n_qual <- if (is.data.frame(pool)) nrow(pool) else 0L
     n_eval <- nrow(merged)
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
-    if (identical(scope, "by_industry") && identical(ind_f, "__all__")) {
+    if (identical(scope, "by_industry")) {
       txt <- tryCatch(
         sprintf(
           ui_str("lab_im_lb_status_by_ind", loc),
@@ -10415,11 +10397,10 @@ server <- function(input, output, session) {
         if (is.data.frame(merged_lb) && nrow(merged_lb) > 0) {
           lb_scope <- as.character(isolate(input$lab_im_lb_mode) %||% "overall")[1]
           if (!lb_scope %in% c("overall", "by_industry")) lb_scope <- "overall"
-          lb_ind <- as.character(isolate(input$lab_im_lb_industry) %||% "__all__")[1]
           lb <- lab_quality_leaderboard(
             merged_lb, top_n = 10L, eq_only = eq_on,
             gate_only = isTRUE(isolate(input$lab_im_gate_only)),
-            scope = lb_scope, industry_filter = lb_ind
+            scope = lb_scope, industry_filter = "__all__"
           )
         }
         if (is.null(lb) || !nrow(lb)) {
@@ -11242,7 +11223,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.72"),
+      paste0("- **App：** The YNow App v17.74"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {
