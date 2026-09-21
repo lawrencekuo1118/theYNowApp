@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12584443
+bundleId=12584500
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=b802cf4
-commit=b802cf4
-short=b802cf4
-message=feat(lab): ADR industry map, Include ADRs filter, Search truncate semantics (v17.73)
-captured_at=2026-09-21T13:00:00Z
-source_branch=cursor/adr-filter-search-truncate-f4a6
-display_version=v17.73
-note=Canonical live line is app_17.0. Bundle 12584443 ships v17.73: ADR industry overlay (~522 flagged), Include ADRs checkbox (default on), Search Blue Chips = filter→truncate→N. Deploy via scripts/deploy_app_17.R. Supersedes 12583464 (v17.72).
+aligned_git=7be0f0b
+commit=7be0f0b
+short=7be0f0b
+message=fix(ui): remove Blue Chip Ranking industry dropdown (v17.74)
+captured_at=2026-09-21T13:15:00Z
+source_branch=cursor/remove-ranking-industry-f4a6
+display_version=v17.74
+note=Canonical live line is app_17.0. Bundle 12584500 ships v17.74: remove lab_im_lb_industry Ranking industry select; by-industry Top 10 lists all industries. Deploy via scripts/deploy_app_17.R. Supersedes 12584443 (v17.73).
