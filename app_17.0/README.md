@@ -1,6 +1,12 @@
-# The YNow App v17.72 — Valuation Methodology
+# The YNow App v17.73 — Valuation Methodology
 
 先分類，再選模型；先推導，再校正；先給區間，再給單點；先做基本面估值。
+
+## v17.73 重點
+- **ADR 產業歸屬**：美股 ADR／外國發行人（TSM、SKHY、BABA、ASML…）載入宇宙後覆寫產業，不再落「未對應產業」
+- **含 ADR 篩選**：Blue Chip 新增預設勾選「含 ADR」；取消則排除 ADR 後再套用候選截斷與宇宙檔數 N
+- **搜尋績優股語意**：產業×模型 →（可選）排除 ADR → 候選截斷（市值／概念股等）→ 取前 N 檔再評估
+- **目錄**：`app_17.0/`；顯示版號 **v17.73**
 
 ## v17.72 重點
 - **宇宙指標快照**：美股／台股離線補齊 `market_cap`（市值）、`ret_1y`（近一年漲跌幅）；台股另含 MOPS **實收資本額**（`paid_in_capital`）。Blue Chip／Clustering 截斷優先讀快照，缺口再打 Yahoo

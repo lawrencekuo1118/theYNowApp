@@ -182,17 +182,24 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     bluechip_blurb_us = paste0(
       "Screen US blue-chip candidates from Nasdaq and NYSE primary listings ",
-      "(full market catalog; evaluation truncated to Universe size N). ",
-      "First apply industry × valuation-model filters, then keep the leaderboard at a high Piotroski threshold ",
-      "(F-Score≥7; unrelated to earnings-quality metrics), and rank by implied annualized valuation appreciation ",
-      "over the App default horizon of n=%d years. Main search keeps Nasdaq and NYSE primary listings ",
-      "(Yahoo typeahead plus the offline US listing universe). Detail-row count equals the number of names evaluated, N."
+      "(full market catalog; ADRs included when “Include ADRs” is checked). ",
+      "Search Blue Chips order: industry × model filters → optional ADR filter → ",
+      "Candidate truncate rule on that pool (market cap / concept / 1Y return / random) → ",
+      "keep the first Universe size (N) names → evaluate. ",
+      "Leaderboard then applies a high Piotroski threshold (F-Score≥7) and ranks by implied ",
+      "annualized valuation appreciation over the App default horizon of n=%d years. ",
+      "Detail-row count equals the number of names evaluated, N."
     ),
     lab_im_max_n_label = "Universe size (N)",
     lab_im_max_n_custom_label = "Custom count",
     lab_im_pool_rank_label = "Candidate truncate rule",
     lab_im_concepts_label = "Concept groups",
     lab_im_concepts_placeholder = "Select one or more concept groups…",
+    lab_im_include_adr_label = "Include ADRs",
+    lab_im_include_adr_hint = paste0(
+      "Checked by default: keep US-listed ADRs / foreign issuers in the evaluation pool. ",
+      "Uncheck to exclude ADRs before Candidate truncate and Universe size (N)."
+    ),
     lab_im_lb_status = paste0(
       "Top 10 shows %d/10 (qualified %d / evaluated %d). ",
       "N = detail rows; Top 10 takes at most 10 qualified names and does not pad to fill 10."
@@ -1011,16 +1018,22 @@ locale_for_market <- function(mode = get_market_mode()) {
       "明細列數等於本次評估檔數 N。"
     ),
     bluechip_blurb_us = paste0(
-      "自 Nasdaq／NYSE 主要上市全市場目錄篩選美股績優候選（評估仍截斷至宇宙檔數 N）。",
-      "流程先依產業與適用評價模型進行條件篩選，再以 Piotroski 高門檻（F-Score≥7；與盈餘品質指標無涉）過濾排行榜，",
-      "最後依 App 預設 n＝%d 年之隱含年化估值漲幅排序。主搜尋保留 Nasdaq／NYSE 主要上市",
-      "（Yahoo 建議列＋離線美股上市宇宙）。明細列數等於本次評估檔數 N。"
+      "自 Nasdaq／NYSE 主要上市全市場目錄篩選美股績優候選（勾選「含 ADR」時納入 ADR／外國發行人）。",
+      "「搜尋績優股」順序：產業×模型篩選 →（可選）排除 ADR → 對該宇宙池套用候選截斷邏輯",
+      "（市值／概念股／近一年漲幅／隨機）→ 取宇宙檔數 N 的前 N 檔 → 再評估。",
+      "排行榜另以 Piotroski 高門檻（F-Score≥7）過濾，並依 App 預設 n＝%d 年之隱含年化估值漲幅排序。",
+      "明細列數等於本次評估檔數 N。"
     ),
     lab_im_max_n_label = "宇宙檔數（N）",
     lab_im_max_n_custom_label = "自訂檔數",
     lab_im_pool_rank_label = "候選截斷邏輯",
     lab_im_concepts_label = "概念股群",
     lab_im_concepts_placeholder = "選擇一或多個概念股群…",
+    lab_im_include_adr_label = "含 ADR",
+    lab_im_include_adr_hint = paste0(
+      "預設勾選：評估池含美股上市 ADR／外國發行人；",
+      "取消勾選則排除 ADR 後再套用候選截斷與宇宙檔數 N。"
+    ),
     lab_im_lb_status = paste0(
       "前十名顯示 %d／10（合格 %d／已評估 %d）。",
       "N＝明細列數；前十名只取合格者最多 10 檔，不會為湊滿 10 而另抽樣。"

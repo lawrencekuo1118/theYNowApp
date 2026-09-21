@@ -3235,6 +3235,10 @@ ui <- dashboardPage(
               var labGateHint = labGateBox ? labGateBox.querySelector('.ynow-lab-im-quality-hint') : null;
               if (labGateHint) labGateHint.textContent = s.lab_im_gate_hint;
             }
+            var labAdrLabel = document.getElementById('ynow_lab_im_include_adr_label');
+            if (labAdrLabel && s.lab_im_include_adr_label) labAdrLabel.textContent = s.lab_im_include_adr_label;
+            var labAdrHint = document.getElementById('ynow_lab_im_include_adr_hint');
+            if (labAdrHint && s.lab_im_include_adr_hint) labAdrHint.textContent = s.lab_im_include_adr_hint;
             var clusterBlurb = document.getElementById('ynow_lab_cluster_blurb');
             if (clusterBlurb && s.lab_cluster_blurb) clusterBlurb.textContent = s.lab_cluster_blurb;
             var clusterDisc = document.getElementById('ynow_lab_cluster_disclaimer');
@@ -6447,6 +6451,20 @@ ui <- dashboardPage(
                       tags$span(
                         class = "ynow-lab-im-quality-hint",
                         "預設勾選：前十名只列 F-Score≥7 者；取消勾選則不設 F 門檻。不影響明細列數；合格不足 10 時不會湊滿。"
+                      )
+                    ),
+                    tags$div(
+                      class = "ynow-lab-im-quality",
+                      style = "margin-top:12px;",
+                      checkboxInput(
+                        "lab_im_include_adr",
+                        tags$span(id = "ynow_lab_im_include_adr_label", "含 ADR"),
+                        value = TRUE
+                      ),
+                      tags$span(
+                        id = "ynow_lab_im_include_adr_hint",
+                        class = "ynow-lab-im-quality-hint",
+                        "預設勾選：評估池含美股上市 ADR／外國發行人；取消勾選則排除 ADR 後再套用候選截斷與宇宙檔數 N。"
                       )
                     )
                   )

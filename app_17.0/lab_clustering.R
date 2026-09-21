@@ -876,7 +876,7 @@ lab_cluster_priority_refill_features <- function(feats, ticker) {
 lab_cluster_build_pool <- function(catalog, industry_filter = NULL, method_filter = NULL,
                                    max_n = 50L, ensure_ticker = NULL,
                                    rank_mode = "mcap", concept_keys = NULL,
-                                   market_mode = "US") {
+                                   market_mode = "US", include_adr = TRUE) {
   empty <- data.frame(
     ticker = character(0),
     industry_key = character(0),
@@ -898,6 +898,9 @@ lab_cluster_build_pool <- function(catalog, industry_filter = NULL, method_filte
     gate_only = FALSE
   )
   pool <- lab_dedupe_eval_pool(pool)
+  if (exists("lab_filter_pool_adr", mode = "function")) {
+    pool <- lab_filter_pool_adr(pool, include_adr = include_adr)
+  }
   if (is.null(pool) || nrow(pool) == 0L) {
     # Filters emptied the pool — still try to seed with the session ticker alone
     pool <- lab_cluster_ensure_ticker_in_pool(empty, catalog, ensure_ticker, max_n = 1L)

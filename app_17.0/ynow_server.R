@@ -9891,7 +9891,7 @@ server <- function(input, output, session) {
   observeEvent(input$lab_im_run_fscore, {
     catlg <- lab_im_catalog()
     req(is.data.frame(catlg), nrow(catlg) > 0)
-    # 評估池：產業／模型複選；先套用候選截斷邏輯，再取宇宙檔數 N
+    # 評估池：產業／模型複選 →（可選）排除 ADR → 候選截斷邏輯排序／篩選 → 取宇宙檔數 N
     pool <- lab_merge_catalog_scores(
       catlg,
       scores = NULL,
@@ -9901,6 +9901,10 @@ server <- function(input, output, session) {
       gate_only = FALSE
     )
     pool <- lab_dedupe_eval_pool(pool)
+    include_adr <- isTRUE(input$lab_im_include_adr %||% TRUE)
+    if (exists("lab_filter_pool_adr", mode = "function")) {
+      pool <- lab_filter_pool_adr(pool, include_adr = include_adr)
+    }
     if (is.null(pool) || nrow(pool) == 0L) {
       showNotification(.ui_msg("notif_no_candidates"), type = "warning")
       return()
@@ -9920,13 +9924,14 @@ server <- function(input, output, session) {
             ret_1y = "取近一年漲幅（評估池排序）…",
             random = "系統隨機抽樣…",
             concept = "套用概念股群…",
-            "取 Yahoo 市值（評估池排序）…"
+            "取市值（評估池排序）…"
           )
           incProgress(0.08, detail = detail)
           if (identical(rank_mode, "mcap") || identical(rank_mode, "concept")) {
             pool <- lab_attach_market_caps(pool)
           }
         }
+        # 候選截斷優先：全市值排序／概念篩選／近一年漲幅／隨機 → 再取前 N
         pool <- lab_select_eval_pool(
           pool,
           max_n = max_n,
@@ -9949,13 +9954,14 @@ server <- function(input, output, session) {
             ret_1y = "依近一年股價漲幅",
             random = "系統隨機",
             concept = "所選概念股（必要時再依市值）",
-            if (used_mcap) "依市值由大到小" else "市值暫不可用，改依代號"
+            if (used_mcap) "依市值由大到小" else "市值暫不可用，維持原宇宙順序"
           )
           if (grepl("fallback_mcap", note, fixed = TRUE)) {
             how <- paste0(how, "；概念股無交集時改市值")
           }
+          adr_note <- if (!isTRUE(include_adr)) "；已排除 ADR" else ""
           showNotification(
-            paste0("篩選後 ", n_filtered, " 檔，", how, "評估 ", nrow(pool), " 檔。"),
+            paste0("篩選後 ", n_filtered, " 檔，", how, "評估 ", nrow(pool), " 檔", adr_note, "。"),
             type = "message", duration = 6
           )
         }
@@ -10537,7 +10543,8 @@ server <- function(input, output, session) {
             ensure_ticker = session_tk,
             rank_mode = rank_mode_run,
             concept_keys = isolate(input$lab_im_concepts),
-            market_mode = tryCatch(isolate(market_mode()), error = function(e) "US")
+            market_mode = tryCatch(isolate(market_mode()), error = function(e) "US"),
+            include_adr = isTRUE(isolate(input$lab_im_include_adr %||% TRUE))
           ),
           error = function(e) {
             showNotification(paste("Cluster pool failed:", e$message), type = "error")

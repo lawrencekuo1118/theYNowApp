@@ -704,6 +704,7 @@ lab_normalize_multi_filter <- function(x) {
 
 # S&P 500（GICS）＋美股全市場主要上市宇宙；須在候選目錄／名稱查詢之前載入
 source("lab_sp500_universe.R", local = TRUE, encoding = "UTF-8")
+source("lab_adr.R", local = TRUE, encoding = "UTF-8")
 source("lab_us_universe.R", local = TRUE, encoding = "UTF-8")
 source("lab_tw_universe.R", local = TRUE, encoding = "UTF-8")
 source("lab_concept_groups.R", local = TRUE, encoding = "UTF-8")
@@ -1120,7 +1121,36 @@ lab_build_industry_method_catalog <- function(market_mode = NULL) {
       }
     }
   }
-  do.call(rbind, rows)
+  out <- do.call(rbind, rows)
+  # Attach ADR flag from US universe (TW rows are never US ADR)
+  if (identical(mode, "US") && exists("lab_is_us_adr", mode = "function") &&
+      is.data.frame(out) && nrow(out) > 0L && "ticker" %in% names(out)) {
+    u <- tryCatch(lab_get_us_universe(FALSE), error = function(e) NULL)
+    if (!is.null(u) && is.data.frame(u) && "is_adr" %in% names(u)) {
+      idx <- match(
+        toupper(trimws(as.character(out$ticker))),
+        toupper(trimws(as.character(u$ticker)))
+      )
+      out$is_adr <- FALSE
+      hit <- which(is.finite(idx))
+      if (length(hit)) {
+        out$is_adr[hit] <- vapply(
+          idx[hit],
+          function(j) isTRUE(as.logical(u$is_adr[[j]])),
+          logical(1)
+        )
+      }
+    } else {
+      out$is_adr <- vapply(
+        as.character(out$ticker),
+        function(tk) isTRUE(lab_is_us_adr(tk, NULL)),
+        logical(1)
+      )
+    }
+  } else if (is.data.frame(out) && nrow(out) > 0L) {
+    out$is_adr <- FALSE
+  }
+  out
 }
 
 #' 是否通過舊版綜合品質門檻（F-Score≥7 且盈餘品質通過；保留供相容）
