@@ -172,13 +172,17 @@ lab_gics_sector_fallback <- function() {
   )
 }
 
-#' 比 GICS 更細的個股覆寫（僅 S&P 內、且 App 有對應鍵時）
+#' 比 GICS 更細的個股覆寫（App 有對應鍵時）
+#' 用於：S&P GICS 建表；以及美股宇宙載入時對仍為 lab.Unmapped 的 ADR／非 S&P 名稱。
 lab_ticker_industry_overrides <- function() {
   c(
     TSLA = "auto.Automotive_EV",
     RIVN = "auto.EV_Startups",
     LCID = "auto.EV_Startups",
     MU = "sc.Memory",
+    # ADR／非 S&P：與台股 2330（code 24→sc.Foundry）、記憶體同業 MU 對齊
+    TSM = "sc.Foundry",
+    SKHY = "sc.Memory",
     ENPH = "en.Renewables",
     FSLR = "en.Renewables"
   )

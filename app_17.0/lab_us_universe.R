@@ -79,24 +79,46 @@ lab_us_looks_like_etf_or_fund <- function(name) {
   )
 }
 
+#' Apply lab_ticker_industry_overrides to Unmapped US rows (ADR / non-S&P)
+lab_us_overlay_ticker_industry_overrides <- function(df) {
+  if (is.null(df) || !is.data.frame(df) || nrow(df) < 1L) return(df)
+  if (!("ticker" %in% names(df)) || !("industry_key" %in% names(df))) return(df)
+  if (!exists("lab_ticker_industry_overrides", mode = "function")) return(df)
+  ov <- lab_ticker_industry_overrides()
+  if (!length(ov)) return(df)
+  unmapped <- if (exists("LAB_UNMAPPED_KEY", inherits = TRUE)) LAB_UNMAPPED_KEY else "lab.Unmapped"
+  tks <- toupper(trimws(as.character(df$ticker)))
+  keys <- as.character(df$industry_key)
+  need <- which(
+    tks %in% names(ov) &
+      (is.na(keys) | !nzchar(keys) | keys == unmapped)
+  )
+  if (!length(need)) return(df)
+  df$industry_key[need] <- unname(ov[tks[need]])
+  df
+}
+
 #' Overlay S&P 500 industry_key / industry_raw when ticker matches
 lab_us_overlay_sp500_industry <- function(df) {
   if (is.null(df) || !is.data.frame(df) || nrow(df) < 1L) return(df)
   sp <- tryCatch({
     if (exists("lab_get_sp500_universe", mode = "function")) lab_get_sp500_universe(FALSE) else NULL
   }, error = function(e) NULL)
-  if (is.null(sp) || !is.data.frame(sp) || nrow(sp) < 1L) return(df)
-  if (!all(c("ticker", "industry_key") %in% names(sp))) return(df)
-  sp$ticker <- toupper(trimws(as.character(sp$ticker)))
-  idx <- match(toupper(trimws(as.character(df$ticker))), sp$ticker)
-  hit <- which(!is.na(idx))
-  if (!length(hit)) return(df)
-  df$industry_key[hit] <- as.character(sp$industry_key[idx[hit]])
-  if ("industry_raw" %in% names(sp)) {
-    if (!("industry_raw" %in% names(df))) df$industry_raw <- NA_character_
-    df$industry_raw[hit] <- as.character(sp$industry_raw[idx[hit]])
+  if (!is.null(sp) && is.data.frame(sp) && nrow(sp) >= 1L &&
+      all(c("ticker", "industry_key") %in% names(sp))) {
+    sp$ticker <- toupper(trimws(as.character(sp$ticker)))
+    idx <- match(toupper(trimws(as.character(df$ticker))), sp$ticker)
+    hit <- which(!is.na(idx))
+    if (length(hit)) {
+      df$industry_key[hit] <- as.character(sp$industry_key[idx[hit]])
+      if ("industry_raw" %in% names(sp)) {
+        if (!("industry_raw" %in% names(df))) df$industry_raw <- NA_character_
+        df$industry_raw[hit] <- as.character(sp$industry_raw[idx[hit]])
+      }
+    }
   }
-  df
+  # ADR／非 S&P：套用個股覆寫（TSM→Foundry、SKHY→Memory 等）
+  lab_us_overlay_ticker_industry_overrides(df)
 }
 
 lab_finalize_us_from_sec <- function(raw, fetched_at = NULL) {
