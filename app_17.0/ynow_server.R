@@ -9891,7 +9891,7 @@ server <- function(input, output, session) {
   observeEvent(input$lab_im_run_fscore, {
     catlg <- lab_im_catalog()
     req(is.data.frame(catlg), nrow(catlg) > 0)
-    # 評估池：產業／模型複選；候選 > N 時依使用者截斷邏輯取 N
+    # 評估池：產業／模型複選；先套用候選截斷邏輯，再取宇宙檔數 N
     pool <- lab_merge_catalog_scores(
       catlg,
       scores = NULL,
@@ -10380,6 +10380,12 @@ server <- function(input, output, session) {
       gate_on <- isTRUE(isolate(input$lab_im_gate_only))
       max_n <- lab_resolve_im_max_n(isolate(input$lab_im_max_n), isolate(input$lab_im_max_n_custom))
       max_n_label <- lab_resolve_im_max_n_label(isolate(input$lab_im_max_n), isolate(input$lab_im_max_n_custom))
+      rank_mode <- lab_normalize_pool_rank_mode(isolate(input$lab_im_pool_rank %||% "mcap"))
+      rank_choices <- lab_im_pool_rank_choices("zh-TW")
+      rank_mode_label <- {
+        hit <- names(rank_choices)[match(rank_mode, unname(rank_choices))]
+        if (length(hit) == 1L && !is.na(hit) && nzchar(hit)) hit else rank_mode
+      }
       scores <- lab_im_scores()
       evaluated <- is.data.frame(scores) && nrow(scores) > 0
       catlg <- tryCatch(lab_im_catalog(), error = function(e) NULL)
@@ -10435,6 +10441,7 @@ server <- function(input, output, session) {
         sprintf("- 模型：%s", meth_txt),
         sprintf("- 盈餘品質過濾：%s", if (eq_on) "開" else "關"),
         sprintf("- Piotroski 高門檻過濾（F-Score≥7）：%s", if (gate_on) "開" else "關"),
+        sprintf("- 候選截斷邏輯 lab_im_pool_rank：%s", rank_mode_label %||% rank_mode),
         sprintf("- 宇宙檔數（N）lab_im_max_n：%s", max_n_label),
         sprintf("- 評估狀態：%s", if (evaluated) sprintf("已評估 %d 檔", nrow(scores)) else "尚未評估"),
         sprintf("- 本頁代號數：%d", length(tks)),
@@ -10443,7 +10450,7 @@ server <- function(input, output, session) {
         if (is.finite(max_n)) {
           paste0(
             "宇宙依市場模式（美股 Nasdaq／NYSE 主要上市／台股上市＋上櫃；搜尋另含興櫃但不納入績優）。",
-            "候選多於 N 時依「候選截斷邏輯」取 N（市值／概念股／近一年漲幅／隨機；市值缺值則改依代號排序；全市場過大時先預篩再截斷）；",
+            "先對宇宙池套用「候選截斷邏輯」全市排序／篩選，再取宇宙檔數 N 的前 N 檔（市值／概念股／近一年漲幅／隨機；市值缺值則改依代號排序；近一年漲幅在全市場過大時可能先做 Yahoo 成本預篩）；",
             "明細＝該批（＝評估檔數 N）；排行榜＝同一批合格者最多 Top 10",
             if (gate_on) "（目前 Piotroski 高門檻開：F-Score≥7）" else "（目前不設 F 門檻）",
             "；合格不足 10 時不湊滿。"
@@ -10451,7 +10458,7 @@ server <- function(input, output, session) {
         } else {
           paste0(
             "宇宙依市場模式（美股 Nasdaq／NYSE 主要上市／台股上市＋上櫃；搜尋另含興櫃但不納入績優）。",
-            "本次選「全部」：評估篩選後全部候選（全市場過大時先預篩）；明細＝該批（＝評估檔數）；排行榜＝同一批合格者最多 Top 10",
+            "本次選「全部」：先套用候選截斷邏輯後評估篩選後全部候選（全市場過大時先預篩）；明細＝該批（＝評估檔數）；排行榜＝同一批合格者最多 Top 10",
             if (gate_on) "（目前 Piotroski 高門檻開：F-Score≥7）" else "（目前不設 F 門檻）",
             "；合格不足 10 時不湊滿。"
           )
@@ -11228,7 +11235,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.68"),
+      paste0("- **App：** The YNow App v17.71"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

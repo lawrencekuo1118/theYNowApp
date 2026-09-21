@@ -4,9 +4,11 @@
 # 宇宙依市場模式：美股＝Nasdaq／NYSE 主要上市（lab_us_universe.R；S&P GICS 疊加）；台股＝上市／上櫃／興櫃（lab_tw_universe.R；績優候選不含興櫃）。
 # 績優原則：在 Piotroski 高門檻（F-Score≥7；不含盈餘品質）後，選「模型合理價相對現價」、
 # 並依 App 預設預測年數 n（APP_DEFAULTS$years）換算年化漲幅最大者。
-# 「評估檔數（明細列數）」（lab_im_max_n；預設 25）＝本次 Yahoo 評估檔數＝明細列數。
+# 「宇宙檔數（N）」（lab_im_max_n；預設 25）＝本次 Yahoo 評估檔數＝明細列數。
 # 盈餘品質／Piotroski 高門檻勾選只影響排行榜／摘要，不縮減明細列數。
-# 候選 > N 時依使用者選的截斷邏輯（市值／概念股／近一年漲幅／隨機）取 N。
+# 流程：宇宙池先依「候選截斷邏輯」全市排序／篩選（市值／概念股／近一年漲幅／隨機），
+# 再取「宇宙檔數（N）」的前 N 檔。概念股模式：先篩出已選概念股，若仍 > N 再依市值取前 N。
+# 市值模式：對整池排序後再取 N（已有市值時不做 S&P 預篩，避免打亂排序）。
 # 排行榜＝同一批合格者的 Top 10（預設 F-Score≥7；gate_only=FALSE 時不設 F 門檻；不足 10 不湊滿）。
 # 產業建議方法對齊 recommend_valuation_models 的產業層規則（簡化估值）。
 # ==========================================
@@ -391,10 +393,15 @@ lab_rank_and_cap_eval_pool <- function(pool, max_n = 25L) {
 
 #' Select / truncate evaluation pool by user mode
 #'
+#' Semantic order (always):
+#' 1. Apply Candidate truncate rule on the full filtered universe pool
+#'    (sort by market cap / filter to selected concept groups / sort by 1Y return / random).
+#' 2. Then take the first Universe size (N) rows from that ordered / filtered result.
+#'
 #' Modes:
-#' - mcap: largest market cap first (legacy)
-#' - concept: keep only selected concept-group tickers; if still > N, mcap within
-#' - ret_1y: highest 1Y price return first
+#' - mcap: sort entire pool by market cap (largest first), then take N
+#' - concept: keep selected concept-group tickers first; if still > N, mcap within then take N
+#' - ret_1y: sort by 1Y price return (highest first), then take N
 #' - random: uniform random sample of N
 lab_select_eval_pool <- function(pool, max_n = 25L, mode = "mcap",
                                  concept_keys = NULL,
@@ -424,6 +431,13 @@ lab_select_eval_pool <- function(pool, max_n = 25L, mode = "mcap",
     }
   }, error = function(e) "US")
 
+  .pool_has_usable_mcap <- function(df) {
+    if (is.null(df) || !is.data.frame(df) || !"market_cap" %in% names(df)) return(FALSE)
+    caps <- suppressWarnings(as.numeric(df$market_cap))
+    isTRUE(sum(is.finite(caps) & caps > 0, na.rm = TRUE) > 0L)
+  }
+
+  # --- Step 1a: concept filter on the full pool (before any N cut) ---
   if (identical(mode, "concept")) {
     if (!exists("lab_concept_tickers", mode = "function")) {
       mode <- "mcap"
@@ -437,7 +451,6 @@ lab_select_eval_pool <- function(pool, max_n = 25L, mode = "mcap",
       } else {
         pool$ticker <- toupper(trimws(as.character(pool$ticker)))
         ctks_u <- unique(toupper(trimws(ctks)))
-        # Match TW bare / BRK.B variants lightly
         bare <- function(x) sub("\\.(TW|TWO)$", "", x, ignore.case = TRUE)
         keep <- pool$ticker %in% ctks_u |
           bare(pool$ticker) %in% bare(ctks_u) |
@@ -454,8 +467,9 @@ lab_select_eval_pool <- function(pool, max_n = 25L, mode = "mcap",
     }
   }
 
-  # US full-market pools can be thousands of names — pre-screen before Yahoo mcap/1Y fetch
-  if ((identical(mode, "mcap") || identical(mode, "ret_1y")) &&
+  # Soft Yahoo-cost guard for 1Y returns only. Never pre-cut a pool that already
+  # has market_cap (would break "sort all by mcap, then take N").
+  if (identical(mode, "ret_1y") &&
       exists("lab_us_prescreen_eval_pool", mode = "function")) {
     pre_n <- if (exists("LAB_US_EVAL_PRESCREEN", inherits = TRUE)) {
       as.integer(LAB_US_EVAL_PRESCREEN)[1]
@@ -485,11 +499,13 @@ lab_select_eval_pool <- function(pool, max_n = 25L, mode = "mcap",
   }
 
   if (identical(mode, "ret_1y")) {
+    # Step 1b: rank entire (post-filter) pool by 1Y return
     pool <- lab_attach_returns_1y(pool)
     ret <- suppressWarnings(as.numeric(pool$ret_1y))
     missing <- is.na(ret) | !is.finite(ret)
     o <- order(missing, -ifelse(missing, 0, ret), pool$ticker, na.last = TRUE)
     pool <- pool[o, , drop = FALSE]
+    # Step 2: take first N
     if (is.finite(max_n) && nrow(pool) > max_n) pool <- utils::head(pool, max_n)
     attr(pool, "n_filtered") <- as.integer(n_filtered)
     attr(pool, "max_n") <- max_n
@@ -499,12 +515,16 @@ lab_select_eval_pool <- function(pool, max_n = 25L, mode = "mcap",
     return(pool)
   }
 
-  # Default / fallback: market cap
-  if (!"market_cap" %in% names(pool) ||
-      !isTRUE(sum(is.finite(suppressWarnings(as.numeric(pool$market_cap))) &
-                    suppressWarnings(as.numeric(pool$market_cap)) > 0) > 0L)) {
+  # Default / concept-fallback / mcap-within-concept: market cap
+  # Step 1b: attach caps to the FULL remaining pool, then sort all (no S&P pre-cut)
+  if (!.pool_has_usable_mcap(pool)) {
     if (is.finite(max_n) && nrow(pool) > max_n) {
       pool <- lab_attach_market_caps(pool)
+    } else if (!is.finite(max_n) || nrow(pool) <= max_n) {
+      # Still attach when useful for display / stable ordering
+      if (nrow(pool) > 0L && nrow(pool) <= 800L) {
+        pool <- lab_attach_market_caps(pool)
+      }
     }
   }
   if (!"market_cap" %in% names(pool)) pool$market_cap <- NA_real_
@@ -513,6 +533,7 @@ lab_select_eval_pool <- function(pool, max_n = 25L, mode = "mcap",
   used_mcap <- isTRUE(sum(!missing) > 0L)
   o <- order(missing, -ifelse(missing, 0, mcap), pool$ticker, na.last = TRUE)
   pool <- pool[o, , drop = FALSE]
+  # Step 2: take first N from the sorted pool
   if (is.finite(max_n) && nrow(pool) > max_n) pool <- utils::head(pool, max_n)
   attr(pool, "n_filtered") <- as.integer(n_filtered)
   attr(pool, "max_n") <- max_n

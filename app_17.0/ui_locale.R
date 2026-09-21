@@ -208,7 +208,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     lab_im_detail_intro = paste0(
       "Detail of names evaluated this run (sorted by annualized valuation appreciation). ",
-      "Row count equals Universe size (N) above (or all remaining if fewer)."
+      "Row count equals Universe size (N): after Candidate truncate ranks/filters the full pool, ",
+      "the first N names are kept (or all remaining if fewer)."
     ),
     lab_im_lb_mode_label = "Ranking view",
     lab_im_lb_mode_overall = "Overall Top 10",
@@ -810,8 +811,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     btn_lab_cluster_run = "Run clustering",
     lab_cluster_hint = paste0(
       "Uses the same industry/model filters as Rankings when set. ",
-      "Universe size (N) and Candidate truncate rule are the shared controls above BLUE CHIP ",
-      "(market cap / concept groups / 1Y return / random; market-cap fallback = ticker sort). ",
+      "Shared controls above BLUE CHIP: first apply Candidate truncate rule to the full ",
+      "filtered universe (market cap sort / concept filter / 1Y return / random), ",
+      "then take the first Universe size (N) names. ",
       "The Search ticker is always force-included in Universe (N) and is the default radar focus. ",
       "Fetches Yahoo ratios with a bundled offline snapshot fallback when Yahoo is blocked."
     ),
@@ -1034,7 +1036,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     lab_im_detail_intro = paste0(
       "本次已評估檔的明細（按年化估值漲幅排序）。",
-      "列數等於上方「宇宙檔數（N）」（不足則全列）。"
+      "列數等於「宇宙檔數（N）」：先對宇宙池套用候選截斷邏輯排序／篩選，再取前 N 檔（不足則全列）。"
     ),
     lab_im_lb_mode_label = "排行視角",
     lab_im_lb_mode_overall = "整體前十名",
@@ -1618,8 +1620,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     btn_lab_cluster_run = "執行分群",
     lab_cluster_hint = paste0(
       "沿用「排行」頁目前的產業／模型篩選（若有）。",
-      "宇宙檔數 N 與候選截斷邏輯見區塊上方共用控制",
-      "（市值／概念股／近一年漲幅／隨機；市值缺值則改依代號排序）。",
+      "區塊上方共用控制語意：宇宙池先依「候選截斷邏輯」全市排序／篩選",
+      "（市值／概念股／近一年漲幅／隨機；市值缺值則改依代號排序），",
+      "再取「宇宙檔數（N）」的前 N 檔。",
       "Search 後的代號一律強制納入宇宙（N），並作為雷達焦點預設。",
       "抓取 Yahoo 比率特徵；若 Yahoo 受限則改用內建離線快照。"
     ),

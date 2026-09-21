@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12580983
+bundleId=12582910
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=3802c04
-commit=3802c04691ea3d6a229047de0eefb135ce495f23
-short=3802c04
-message=fix(ui): collapse mobile industry snapshot picker gap (v17.68)
-captured_at=2026-09-20T17:20:07Z
-source_branch=master
-display_version=v17.68
-note=Canonical live line is app_17.0. Bundle 12580983 = tip v17.68 mobile industry snapshot picker gap fix (container=body + closed-menu CSS). Deploy via scripts/deploy_app_17.R.
+aligned_git=a38c417
+commit=a38c417
+short=a38c417
+message=fix(lab): rank/filter full universe pool before taking N (v17.71)
+captured_at=2026-09-21T05:35:00Z
+source_branch=cursor/truncate-before-universe-n-f4a6
+display_version=v17.71
+note=Canonical live line is app_17.0. Bundle 12582910 ships v17.71: Candidate truncate ranks/filters full pool first, then Universe N takes leading names; skip S&P pre-screen when mcap present. Deploy via scripts/deploy_app_17.R. Supersedes 12582879 (v17.70).
