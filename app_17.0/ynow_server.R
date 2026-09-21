@@ -124,7 +124,7 @@ server <- function(input, output, session) {
     .clear_lab_cluster_result("market_mode")
   }, ignoreInit = TRUE)
 
-  # Valuation-model page accent (Model Selector hex); Basic Setup / other tabs clear theme
+  # Valuation-model / Blue Chip page accent; Basic Setup / other tabs clear theme
   observeEvent(input$sidebar_tabs, {
     tab <- as.character(input$sidebar_tabs %||% "")[1]
     session$sendCustomMessage("ynowModelTheme", list(tab = tab))
@@ -9891,7 +9891,7 @@ server <- function(input, output, session) {
   observeEvent(input$lab_im_run_fscore, {
     catlg <- lab_im_catalog()
     req(is.data.frame(catlg), nrow(catlg) > 0)
-    # 評估池：產業／模型複選；先套用候選截斷邏輯，再取宇宙檔數 N
+    # 評估池：產業／模型複選 →（可選）排除 ADR → 候選截斷邏輯排序／篩選 → 取 eval_n（≥ 顯示 N）
     pool <- lab_merge_catalog_scores(
       catlg,
       scores = NULL,
@@ -9901,11 +9901,16 @@ server <- function(input, output, session) {
       gate_only = FALSE
     )
     pool <- lab_dedupe_eval_pool(pool)
+    include_adr <- isTRUE(input$lab_im_include_adr %||% TRUE)
+    if (exists("lab_filter_pool_adr", mode = "function")) {
+      pool <- lab_filter_pool_adr(pool, include_adr = include_adr)
+    }
     if (is.null(pool) || nrow(pool) == 0L) {
       showNotification(.ui_msg("notif_no_candidates"), type = "warning")
       return()
     }
-    max_n <- lab_resolve_im_max_n(input$lab_im_max_n, input$lab_im_max_n_custom)
+    display_n <- lab_resolve_im_max_n(input$lab_im_max_n, input$lab_im_max_n_custom)
+    eval_n <- lab_resolve_im_eval_n(display_n)
     rank_mode <- lab_normalize_pool_rank_mode(input$lab_im_pool_rank %||% "mcap")
     concept_keys <- input$lab_im_concepts
     mm <- tryCatch(market_mode(), error = function(e) "US")
@@ -9914,22 +9919,23 @@ server <- function(input, output, session) {
       message = paste0("評估中（Piotroski 高門檻＋", n_yrs, " 年年化估值漲幅）…"),
       value = 0, {
         n_raw <- nrow(pool)
-        if (is.finite(max_n) && n_raw > max_n) {
+        if (is.finite(eval_n) && n_raw > eval_n) {
           detail <- switch(
             rank_mode,
             ret_1y = "取近一年漲幅（評估池排序）…",
             random = "系統隨機抽樣…",
             concept = "套用概念股群…",
-            "取 Yahoo 市值（評估池排序）…"
+            "取市值（評估池排序）…"
           )
           incProgress(0.08, detail = detail)
           if (identical(rank_mode, "mcap") || identical(rank_mode, "concept")) {
             pool <- lab_attach_market_caps(pool)
           }
         }
+        # 候選截斷優先：全市值排序／概念篩選／近一年漲幅／隨機 → 再取前 eval_n
         pool <- lab_select_eval_pool(
           pool,
-          max_n = max_n,
+          max_n = eval_n,
           mode = rank_mode,
           concept_keys = concept_keys,
           market_mode = mm,
@@ -9943,26 +9949,35 @@ server <- function(input, output, session) {
           showNotification(.ui_msg("notif_no_candidates_ind_model"), type = "warning")
           return(NULL)
         }
-        if (is.finite(max_n) && n_filtered > nrow(pool)) {
+        if (is.finite(eval_n) && n_filtered > nrow(pool)) {
           how <- switch(
             mode_used,
             ret_1y = "依近一年股價漲幅",
             random = "系統隨機",
             concept = "所選概念股（必要時再依市值）",
-            if (used_mcap) "依市值由大到小" else "市值暫不可用，改依代號"
+            if (used_mcap) "依市值由大到小" else "市值暫不可用，維持原宇宙順序"
           )
           if (grepl("fallback_mcap", note, fixed = TRUE)) {
             how <- paste0(how, "；概念股無交集時改市值")
           }
+          adr_note <- if (!isTRUE(include_adr)) "；已排除 ADR" else ""
+          disp_note <- if (is.finite(display_n) && is.finite(eval_n) && eval_n > display_n) {
+            paste0("（顯示上限 N＝", display_n, "；合格不足不湊滿）")
+          } else {
+            ""
+          }
           showNotification(
-            paste0("篩選後 ", n_filtered, " 檔，", how, "評估 ", nrow(pool), " 檔。"),
+            paste0(
+              "篩選後 ", n_filtered, " 檔，", how, "評估 ", nrow(pool), " 檔",
+              adr_note, disp_note, "。"
+            ),
             type = "message", duration = 6
           )
         }
         cols <- intersect(c("ticker", "industry_key", "primary"), names(pool))
         lab_screen_tickers_fscore(
           pool[, cols, drop = FALSE],
-          max_n = max_n,
+          max_n = eval_n,
           progress_cb = function(i, n, tk) {
             incProgress(0.92 / max(n, 1), detail = paste0(tk, " (", i, "/", n, ")"))
           }
@@ -9988,14 +10003,15 @@ server <- function(input, output, session) {
                      abs(scores$upside_cagr_pct - best) < 1e-9)
       if (length(hit) > 0) top_tk <- scores$ticker[hit[1]]
     }
+    disp_cap <- if (is.finite(display_n)) as.character(display_n) else "全部"
     msg <- paste0(
-      "完成 ", nrow(scores), " 檔；Piotroski 高門檻通過 ", n_q, " 檔",
+      "完成評估 ", nrow(scores), " 檔；Piotroski 高門檻通過 ", n_q, " 檔",
       if (is.finite(best) && nzchar(top_tk %||% "")) {
         sprintf("；績優首選 %s（%d 年年化估值漲幅 %+.1f%%）", top_tk, n_yrs, best)
       } else {
         ""
       },
-      "。"
+      "；明細最多顯示 ", disp_cap, " 檔合格列（不足不湊滿）。"
     )
     showNotification(msg, type = "message", duration = 10)
   })
@@ -10035,17 +10051,17 @@ server <- function(input, output, session) {
   output$lab_im_leader_note <- renderUI({
     scores <- lab_im_scores()
     n <- lab_model_horizon_years()
-    max_n <- lab_resolve_im_max_n(input$lab_im_max_n, input$lab_im_max_n_custom)
+    display_n <- lab_resolve_im_max_n(input$lab_im_max_n, input$lab_im_max_n_custom)
     max_n_label <- lab_resolve_im_max_n_label(input$lab_im_max_n, input$lab_im_max_n_custom)
+    eval_n <- lab_resolve_im_eval_n(display_n)
     n_eval <- if (is.data.frame(scores) && nrow(scores) > 0) nrow(scores) else 0L
     scope <- as.character(input$lab_im_lb_mode %||% "overall")[1]
-    ind_f <- as.character(input$lab_im_lb_industry %||% "__all__")[1]
     gate_on <- isTRUE(input$lab_im_gate_only)
     eq_on <- isTRUE(input$lab_im_eq_only)
     scope_txt <- if (identical(scope, "by_industry")) {
-      if (identical(ind_f, "__all__")) "依產業各列 Top 10" else paste0("產業「", ind_f, "」內 Top 10")
+      "依產業各列 Top 10"
     } else {
-      if (identical(ind_f, "__all__")) "整體 Top 10（含產業欄）" else paste0("產業「", ind_f, "」內 Top 10")
+      "整體 Top 10（含產業欄）"
     }
     gate_txt <- paste0(
       if (gate_on) "F-Score≥7" else "不設 F 門檻",
@@ -10053,10 +10069,13 @@ server <- function(input, output, session) {
       if (eq_on) "盈餘品質通過" else "不過濾盈餘品質"
     )
     if (n_eval == 0L) {
-      cap_txt <- if (is.finite(max_n)) {
-        paste0("將評估最多 ", tags$b(max_n_label), " 檔（明細列數相同）")
+      cap_txt <- if (is.finite(display_n)) {
+        paste0(
+          "將評估約 ", tags$b(as.character(eval_n)), " 檔；明細最多顯示 ",
+          tags$b(max_n_label), " 檔合格列（不足不湊滿）"
+        )
       } else {
-        paste0("將評估篩選後 ", tags$b("全部"), " 候選（明細列數相同）")
+        paste0("將評估篩選後 ", tags$b("全部"), " 候選；明細顯示全部合格列（不足不湊滿）")
       }
       return(tags$p(
         style = "color:#888; font-size:12.5px;",
@@ -10068,25 +10087,10 @@ server <- function(input, output, session) {
     tags$p(
       style = "color:#555; font-size:12.5px;",
       sprintf(
-        "本次已評估 %d 檔（＝明細列數）。排序鍵＝模型合理價相對現價，於 %d 年預測期換算之年化漲幅；前十名門檻＝%s；目前排行視角＝%s。",
-        n_eval, n, gate_txt, scope_txt
+        "本次已評估 %d 檔；顯示上限 N＝%s（合格不足不湊滿）。排序鍵＝模型合理價相對現價，於 %d 年預測期換算之年化漲幅；前十名門檻＝%s；目前排行視角＝%s。",
+        n_eval, max_n_label, n, gate_txt, scope_txt
       )
     )
-  })
-
-  observe({
-    merged <- tryCatch(lab_im_merged(), error = function(e) NULL)
-    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) NULL)
-    all_lab <- if (!is.null(loc)) ui_str("lab_im_lb_industry_all", loc) else "全部產業"
-    choices <- lab_leaderboard_industry_choices(
-      merged,
-      eq_only = isTRUE(input$lab_im_eq_only),
-      gate_only = isTRUE(input$lab_im_gate_only),
-      all_label = all_lab
-    )
-    cur <- as.character(isolate(input$lab_im_lb_industry) %||% "__all__")[1]
-    if (!cur %in% unname(choices)) cur <- "__all__"
-    updateSelectInput(session, "lab_im_lb_industry", choices = choices, selected = cur)
   })
 
   # Refresh truncate-rule labels + concept groups when market / locale changes
@@ -10134,14 +10138,13 @@ server <- function(input, output, session) {
     }
     scope <- as.character(input$lab_im_lb_mode %||% "overall")[1]
     if (!scope %in% c("overall", "by_industry")) scope <- "overall"
-    ind_f <- as.character(input$lab_im_lb_industry %||% "__all__")[1]
     lb <- lab_quality_leaderboard(
       merged,
       top_n = 10L,
       eq_only = isTRUE(input$lab_im_eq_only),
       gate_only = isTRUE(input$lab_im_gate_only),
       scope = scope,
-      industry_filter = ind_f
+      industry_filter = "__all__"
     )
     if (nrow(lb) == 0) {
       pool <- lab_leaderboard_pool(
@@ -10163,7 +10166,7 @@ server <- function(input, output, session) {
           " 檔；能量到年化漲幅 ", n_up,
           "；F-Score≥7 通過 ", n_f7,
           "；目前勾選條件下合格 ", nrow(pool),
-          "。說明：評估檔數 N 是明細列數，前十名只從「合格者」取最多 10 檔，不會補足到 10。"
+          "。說明：N 是分析後顯示上限；前十名只從「合格者」取最多 10 檔，不會補足到 10。"
         )
       )
       return(data.frame(訊息 = msg))
@@ -10180,11 +10183,10 @@ server <- function(input, output, session) {
     eq_on <- isTRUE(input$lab_im_eq_only)
     scope <- as.character(input$lab_im_lb_mode %||% "overall")[1]
     if (!scope %in% c("overall", "by_industry")) scope <- "overall"
-    ind_f <- as.character(input$lab_im_lb_industry %||% "__all__")[1]
     lb <- tryCatch(
       lab_quality_leaderboard(
         merged, top_n = 10L, eq_only = eq_on, gate_only = gate_on,
-        scope = scope, industry_filter = ind_f
+        scope = scope, industry_filter = "__all__"
       ),
       error = function(e) NULL
     )
@@ -10196,14 +10198,14 @@ server <- function(input, output, session) {
     n_qual <- if (is.data.frame(pool)) nrow(pool) else 0L
     n_eval <- nrow(merged)
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
-    if (identical(scope, "by_industry") && identical(ind_f, "__all__")) {
+    if (identical(scope, "by_industry")) {
       txt <- tryCatch(
         sprintf(
           ui_str("lab_im_lb_status_by_ind", loc),
           as.integer(n_show), as.integer(n_qual), as.integer(n_eval)
         ),
         error = function(e) sprintf(
-          "依產業前十名共顯示 %d 列（合格 %d／已評估 %d）。各產業各自最多 10 檔；N＝明細列數，不會為湊滿而另抽樣。",
+          "依產業前十名共顯示 %d 列（合格 %d／已評估 %d）。各產業各自最多 10 檔；N＝顯示上限，不會為湊滿而另抽樣。",
           as.integer(n_show), as.integer(n_qual), as.integer(n_eval)
         )
       )
@@ -10211,7 +10213,7 @@ server <- function(input, output, session) {
       txt <- tryCatch(
         sprintf(ui_str("lab_im_lb_status", loc), as.integer(n_show), as.integer(n_qual), as.integer(n_eval)),
         error = function(e) sprintf(
-          "前十名顯示 %d／10（合格 %d／已評估 %d）。N＝明細列數；前十名只取合格者最多 10 檔，不會為湊滿 10 而另抽樣。",
+          "前十名顯示 %d／10（合格 %d／已評估 %d）。N＝顯示上限；前十名只取合格者最多 10 檔，不會為湊滿 10 而另抽樣。",
           as.integer(n_show), as.integer(n_qual), as.integer(n_eval)
         )
       )
@@ -10226,7 +10228,7 @@ server <- function(input, output, session) {
   output$lab_im_table <- DT::renderDataTable({
     catlg <- lab_im_catalog()
     req(is.data.frame(catlg), nrow(catlg) > 0)
-    # 明細列數 ≡ 評估檔數 N：品質勾選不套用於明細
+    # 明細＝合格池取前 display_n（不足不湊滿）；品質勾選與排行榜同一合格定義
     merged <- lab_merge_catalog_scores(
       catlg,
       scores = lab_im_scores(),
@@ -10236,15 +10238,32 @@ server <- function(input, output, session) {
       gate_only = FALSE,
       evaluated_only = TRUE
     )
+    display_n <- lab_resolve_im_max_n(input$lab_im_max_n, input$lab_im_max_n_custom)
+    eq_on <- isTRUE(input$lab_im_eq_only)
+    gate_on <- isTRUE(input$lab_im_gate_only)
     if (nrow(merged) == 0) {
       scores <- lab_im_scores()
       msg <- if (is.null(scores) || !is.data.frame(scores) || nrow(scores) == 0) {
-        "尚未評估。請按「搜尋績優股」；明細列數將等於評估檔數 N（篩選後不足 N 則全列）。"
+        "尚未評估。請按「搜尋績優股」；明細最多顯示宇宙檔數 N 檔合格列（條件不足時不湊滿）。"
       } else {
         "沒有符合篩選的已評估列。可放寬產業／模型，或重新評估。"
       }
       return(DT::datatable(
         data.frame(訊息 = msg),
+        rownames = FALSE, options = list(dom = "t")
+      ))
+    }
+    merged <- lab_cap_detail_display(
+      merged,
+      display_n = display_n,
+      eq_only = eq_on,
+      gate_only = gate_on
+    )
+    if (is.null(merged) || nrow(merged) == 0L) {
+      return(DT::datatable(
+        data.frame(
+          訊息 = "目前勾選條件下尚無合格列可顯示（不會為湊滿 N 而另抽樣）。可取消「盈餘品質」或「Piotroski 高門檻」，或提高 N／放寬產業後再搜尋。"
+        ),
         rownames = FALSE, options = list(dom = "t")
       ))
     }
@@ -10309,6 +10328,19 @@ server <- function(input, output, session) {
     )
     if (nrow(merged) == 0) {
       return(data.frame(訊息 = "目前篩選下無已評估明細列（請先按「搜尋績優股」）"))
+    }
+    display_n <- lab_resolve_im_max_n(
+      isolate(input$lab_im_max_n),
+      isolate(input$lab_im_max_n_custom)
+    )
+    merged <- lab_cap_detail_display(
+      merged,
+      display_n = display_n,
+      eq_only = isTRUE(isolate(input$lab_im_eq_only)),
+      gate_only = isTRUE(isolate(input$lab_im_gate_only))
+    )
+    if (is.null(merged) || nrow(merged) == 0L) {
+      return(data.frame(訊息 = "目前勾選條件下尚無合格明細列（不足不湊滿）"))
     }
     yahoo_nm <- if ("company_name" %in% names(merged)) merged$company_name else NA_character_
     data.frame(
@@ -10380,6 +10412,7 @@ server <- function(input, output, session) {
       gate_on <- isTRUE(isolate(input$lab_im_gate_only))
       max_n <- lab_resolve_im_max_n(isolate(input$lab_im_max_n), isolate(input$lab_im_max_n_custom))
       max_n_label <- lab_resolve_im_max_n_label(isolate(input$lab_im_max_n), isolate(input$lab_im_max_n_custom))
+      eval_n <- lab_resolve_im_eval_n(max_n)
       rank_mode <- lab_normalize_pool_rank_mode(isolate(input$lab_im_pool_rank %||% "mcap"))
       rank_choices <- lab_im_pool_rank_choices("zh-TW")
       rank_mode_label <- {
@@ -10409,11 +10442,10 @@ server <- function(input, output, session) {
         if (is.data.frame(merged_lb) && nrow(merged_lb) > 0) {
           lb_scope <- as.character(isolate(input$lab_im_lb_mode) %||% "overall")[1]
           if (!lb_scope %in% c("overall", "by_industry")) lb_scope <- "overall"
-          lb_ind <- as.character(isolate(input$lab_im_lb_industry) %||% "__all__")[1]
           lb <- lab_quality_leaderboard(
             merged_lb, top_n = 10L, eq_only = eq_on,
             gate_only = isTRUE(isolate(input$lab_im_gate_only)),
-            scope = lb_scope, industry_filter = lb_ind
+            scope = lb_scope, industry_filter = "__all__"
           )
         }
         if (is.null(lb) || !nrow(lb)) {
@@ -10442,7 +10474,11 @@ server <- function(input, output, session) {
         sprintf("- 盈餘品質過濾：%s", if (eq_on) "開" else "關"),
         sprintf("- Piotroski 高門檻過濾（F-Score≥7）：%s", if (gate_on) "開" else "關"),
         sprintf("- 候選截斷邏輯 lab_im_pool_rank：%s", rank_mode_label %||% rank_mode),
-        sprintf("- 宇宙檔數（N）lab_im_max_n：%s", max_n_label),
+        sprintf("- 宇宙檔數（N／顯示上限）lab_im_max_n：%s", max_n_label),
+        sprintf(
+          "- 評估檔數（撈取）lab_resolve_im_eval_n：%s",
+          if (is.finite(eval_n)) as.character(eval_n) else "全部"
+        ),
         sprintf("- 評估狀態：%s", if (evaluated) sprintf("已評估 %d 檔", nrow(scores)) else "尚未評估"),
         sprintf("- 本頁代號數：%d", length(tks)),
         sprintf("- 本頁代號：%s", if (length(tks)) paste(tks, collapse = ", ") else "（無）"),
@@ -10450,15 +10486,15 @@ server <- function(input, output, session) {
         if (is.finite(max_n)) {
           paste0(
             "宇宙依市場模式（美股 Nasdaq／NYSE 主要上市／台股上市＋上櫃；搜尋另含興櫃但不納入績優）。",
-            "先對宇宙池套用「候選截斷邏輯」全市排序／篩選，再取宇宙檔數 N 的前 N 檔（市值／概念股／近一年漲幅／隨機；市值缺值則改依代號排序；近一年漲幅在全市場過大時可能先做 Yahoo 成本預篩）；",
-            "明細＝該批（＝評估檔數 N）；排行榜＝同一批合格者最多 Top 10",
+            "先對宇宙池套用「候選截斷邏輯」全市排序／篩選，再取評估檔數 eval_n 的前段（市值／概念股／近一年漲幅／隨機；市值缺值則改依代號排序；近一年漲幅在全市場過大時可能先做 Yahoo 成本預篩）；",
+            "N＝分析後顯示上限；明細／排行自合格池取至多 N 檔，條件不足時不湊滿；排行榜＝同一批合格者最多 Top 10",
             if (gate_on) "（目前 Piotroski 高門檻開：F-Score≥7）" else "（目前不設 F 門檻）",
             "；合格不足 10 時不湊滿。"
           )
         } else {
           paste0(
             "宇宙依市場模式（美股 Nasdaq／NYSE 主要上市／台股上市＋上櫃；搜尋另含興櫃但不納入績優）。",
-            "本次選「全部」：先套用候選截斷邏輯後評估篩選後全部候選（全市場過大時先預篩）；明細＝該批（＝評估檔數）；排行榜＝同一批合格者最多 Top 10",
+            "本次選「全部」：先套用候選截斷邏輯後評估篩選後全部候選（全市場過大時先預篩）；明細＝全部合格列；排行榜＝同一批合格者最多 Top 10",
             if (gate_on) "（目前 Piotroski 高門檻開：F-Score≥7）" else "（目前不設 F 門檻）",
             "；合格不足 10 時不湊滿。"
           )
@@ -10537,7 +10573,8 @@ server <- function(input, output, session) {
             ensure_ticker = session_tk,
             rank_mode = rank_mode_run,
             concept_keys = isolate(input$lab_im_concepts),
-            market_mode = tryCatch(isolate(market_mode()), error = function(e) "US")
+            market_mode = tryCatch(isolate(market_mode()), error = function(e) "US"),
+            include_adr = isTRUE(isolate(input$lab_im_include_adr %||% TRUE))
           ),
           error = function(e) {
             showNotification(paste("Cluster pool failed:", e$message), type = "error")
@@ -11235,7 +11272,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.72"),
+      paste0("- **App：** The YNow App v17.77"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

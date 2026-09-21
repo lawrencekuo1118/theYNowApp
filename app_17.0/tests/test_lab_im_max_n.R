@@ -50,6 +50,45 @@ check(
   identical(lab_resolve_im_max_n_label("custom", 42), "42")
 )
 
+check(
+  "eval_n for display 25 is 100",
+  identical(lab_resolve_im_eval_n(25L), 100L)
+)
+check(
+  "eval_n for display 50 is 200",
+  identical(lab_resolve_im_eval_n(50L), 200L)
+)
+check(
+  "eval_n for display 200 caps at 500",
+  identical(lab_resolve_im_eval_n(200L), 500L)
+)
+check(
+  "eval_n for Inf stays Inf",
+  is.infinite(lab_resolve_im_eval_n(Inf))
+)
+# 120*4=480 < 500
+check("eval_n 120 -> 480", identical(lab_resolve_im_eval_n(120L), 480L))
+
+scored <- data.frame(
+  ticker = c("A", "B", "C", "D", "E"),
+  upside_cagr_pct = c(40, 30, 20, NA, 10),
+  f_score = c(8, 7, 5, 9, 8),
+  quality_flag = c(1, 1, 1, 1, 0),
+  industry_label = rep("Tech", 5),
+  stringsAsFactors = FALSE
+)
+# gate on: A,B,E have F≥7 + upside → 3; display 2 → no pad beyond 2
+cap2 <- lab_cap_detail_display(scored, display_n = 2L, eq_only = FALSE, gate_only = TRUE)
+check("cap detail to 2 qualified", nrow(cap2) == 2L)
+check("cap picks highest upside first", identical(cap2$ticker, c("A", "B")))
+# only 3 qualify with gate; ask for 10 → return 3 (no pad)
+cap10 <- lab_cap_detail_display(scored, display_n = 10L, eq_only = FALSE, gate_only = TRUE)
+check("no pad when under N", nrow(cap10) == 3L)
+check("no pad tickers", identical(cap10$ticker, c("A", "B", "E")))
+# eq_only drops E (quality_flag 0)
+cap_eq <- lab_cap_detail_display(scored, display_n = 10L, eq_only = TRUE, gate_only = TRUE)
+check("eq gate drops E", identical(cap_eq$ticker, c("A", "B")))
+
 ch <- lab_im_max_n_select_choices()
 check(
   "shared N choice values",

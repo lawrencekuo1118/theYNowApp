@@ -175,55 +175,63 @@ locale_for_market <- function(mode = get_market_mode()) {
     bluechip_blurb_tw = paste0(
       "Screen Taiwan blue-chip candidates from TWSE and TPEx public listings ",
       "(listed and OTC only; emerging/ESB names are excluded because liquidity and Yahoo data coverage are less stable). ",
-      "First apply industry × valuation-model filters, then keep the leaderboard at a high Piotroski threshold ",
-      "(F-Score≥7; unrelated to earnings-quality metrics), and rank by implied annualized valuation appreciation ",
-      "over the App default horizon of n=%d years. Main search still covers listed, OTC, and ESB names by numeric ticker or Chinese company name. ",
-      "Detail-row count equals the number of names evaluated, N."
+      "Search Blue Chips: industry × model filters → Candidate truncate → evaluate a larger ordered pool → ",
+      "show at most Universe size (N) qualified names (shortfalls are not padded). ",
+      "Leaderboard uses a high Piotroski threshold (F-Score≥7; unrelated to earnings-quality metrics) ",
+      "and ranks by implied annualized valuation appreciation over the App default horizon of n=%d years. ",
+      "Main search still covers listed, OTC, and ESB names by numeric ticker or Chinese company name. ",
+      "N is the post-analysis display cap, not the Yahoo fetch count."
     ),
     bluechip_blurb_us = paste0(
       "Screen US blue-chip candidates from Nasdaq and NYSE primary listings ",
-      "(full market catalog; evaluation truncated to Universe size N). ",
-      "First apply industry × valuation-model filters, then keep the leaderboard at a high Piotroski threshold ",
-      "(F-Score≥7; unrelated to earnings-quality metrics), and rank by implied annualized valuation appreciation ",
-      "over the App default horizon of n=%d years. Main search keeps Nasdaq and NYSE primary listings ",
-      "(Yahoo typeahead plus the offline US listing universe). Detail-row count equals the number of names evaluated, N."
+      "(full market catalog; ADRs included when “Include ADRs” is checked). ",
+      "Search Blue Chips order: industry × model filters → optional ADR filter → ",
+      "Candidate truncate rule on that pool (market cap / concept / 1Y return / random) → ",
+      "evaluate a larger ordered pool → show at most Universe size (N) qualified names ",
+      "(shortfalls are not padded). ",
+      "Leaderboard then applies a high Piotroski threshold (F-Score≥7) and ranks by implied ",
+      "annualized valuation appreciation over the App default horizon of n=%d years. ",
+      "N is the post-analysis display cap, not the Yahoo fetch count."
     ),
     lab_im_max_n_label = "Universe size (N)",
     lab_im_max_n_custom_label = "Custom count",
     lab_im_pool_rank_label = "Candidate truncate rule",
     lab_im_concepts_label = "Concept groups",
     lab_im_concepts_placeholder = "Select one or more concept groups…",
+    lab_im_include_adr_label = "Include ADRs",
+    lab_im_include_adr_hint = paste0(
+      "Checked by default: keep US-listed ADRs / foreign issuers in the evaluation pool. ",
+      "Uncheck to exclude ADRs before Candidate truncate and evaluation."
+    ),
     lab_im_lb_status = paste0(
       "Top 10 shows %d/10 (qualified %d / evaluated %d). ",
-      "N = detail rows; Top 10 takes at most 10 qualified names and does not pad to fill 10."
+      "N = post-analysis display cap; Top 10 takes at most 10 qualified names and does not pad to fill 10."
     ),
     lab_im_lb_status_by_ind = paste0(
       "By-industry Top 10 shows %d rows (qualified %d / evaluated %d). ",
-      "Each industry lists at most 10; N = detail rows and shortfalls are not padded."
+      "Each industry lists at most 10; N = display cap and shortfalls are not padded."
     ),
     lab_im_lb_empty = paste0(
       "Top 10 has no rows. Evaluated %d; annualized upside available %d; F-Score≥7 pass %d; ",
-      "qualified under current checks %d. N is detail-row count; Top 10 only takes qualified names (max 10) and does not pad. ",
+      "qualified under current checks %d. N is the post-analysis display cap; Top 10 only takes qualified names (max 10) and does not pad. ",
       "Uncheck Earnings quality or Piotroski high gate, raise N, or widen industry filters, then search again."
     ),
     lab_im_detail_intro = paste0(
       "Detail of names evaluated this run (sorted by annualized valuation appreciation). ",
-      "Row count equals Universe size (N): after Candidate truncate ranks/filters the full pool, ",
-      "the first N names are kept (or all remaining if fewer)."
+      "Universe size (N) is the post-analysis display cap: after Candidate truncate and Yahoo scoring, ",
+      "at most N qualified names are shown; shortfalls are not padded."
     ),
     lab_im_lb_mode_label = "Ranking view",
     lab_im_lb_mode_overall = "Overall Top 10",
     lab_im_lb_mode_by_industry = "Top 10 by industry",
-    lab_im_lb_industry_label = "Ranking industry",
-    lab_im_lb_industry_all = "All industries",
     lab_im_lb_scope_help = paste0(
       "Overall Top 10: cross-industry Top 10 by annualized valuation appreciation, with an Industry column. ",
-      "Top 10 by industry: list Top 10 within each industry (or the one industry you pick). ",
+      "Top 10 by industry: list Top 10 within each industry. ",
       "Top 10 takes at most 10 qualified names; shortfalls are not padded."
     ),
     lab_im_gate_hint = paste0(
-      "Default on: Top 10 keeps only F-Score≥7. Uncheck to drop the F gate. ",
-      "Does not change detail-row count; shortfalls are not padded to 10."
+      "Default on: Top 10 and Detail keep only F-Score≥7. Uncheck to drop the F gate. ",
+      "Shortfalls are not padded to N or to 10."
     ),
     bt_analysis_freq = "Analysis frequency (valuation date Date_t)",
     bt_freq_monthly = "Monthly",
@@ -1006,51 +1014,58 @@ locale_for_market <- function(mode = get_market_mode()) {
     btn_lab_im_run = "搜尋績優股",
     bluechip_blurb_tw = paste0(
       "依據臺灣證券交易所與櫃買中心公開名單，篩選台股績優候選標的（範圍僅含上市與上櫃；不含興櫃，因其流動性與 Yahoo 資料覆蓋相對不穩）。",
-      "流程先依產業與適用評價模型進行條件篩選，再以 Piotroski 高門檻（F-Score≥7；與盈餘品質指標無涉）過濾排行榜，",
-      "最後依 App 預設 n＝%d 年之隱含年化估值漲幅排序。主搜尋支援上市／上櫃／興櫃查詢（純數字代號或中文名稱）。",
-      "明細列數等於本次評估檔數 N。"
+      "「搜尋績優股」先依產業與適用評價模型篩選，再以候選截斷邏輯取較大評估池後評分，",
+      "明細／排行最多顯示宇宙檔數 N 檔合格列（條件不足時不湊滿）。",
+      "排行榜另以 Piotroski 高門檻（F-Score≥7；與盈餘品質指標無涉）過濾，",
+      "並依 App 預設 n＝%d 年之隱含年化估值漲幅排序。主搜尋支援上市／上櫃／興櫃查詢（純數字代號或中文名稱）。",
+      "N＝分析後最終顯示上限，非 Yahoo 撈取檔數。"
     ),
     bluechip_blurb_us = paste0(
-      "自 Nasdaq／NYSE 主要上市全市場目錄篩選美股績優候選（評估仍截斷至宇宙檔數 N）。",
-      "流程先依產業與適用評價模型進行條件篩選，再以 Piotroski 高門檻（F-Score≥7；與盈餘品質指標無涉）過濾排行榜，",
-      "最後依 App 預設 n＝%d 年之隱含年化估值漲幅排序。主搜尋保留 Nasdaq／NYSE 主要上市",
-      "（Yahoo 建議列＋離線美股上市宇宙）。明細列數等於本次評估檔數 N。"
+      "自 Nasdaq／NYSE 主要上市全市場目錄篩選美股績優候選（勾選「含 ADR」時納入 ADR／外國發行人）。",
+      "「搜尋績優股」順序：產業×模型篩選 →（可選）排除 ADR → 對該宇宙池套用候選截斷邏輯",
+      "（市值／概念股／近一年漲幅／隨機）→ 取較大評估池評分 → 明細／排行最多顯示宇宙檔數 N 檔合格列（條件不足時不湊滿）。",
+      "排行榜另以 Piotroski 高門檻（F-Score≥7）過濾，並依 App 預設 n＝%d 年之隱含年化估值漲幅排序。",
+      "N＝分析後最終顯示上限，非 Yahoo 撈取檔數。"
     ),
     lab_im_max_n_label = "宇宙檔數（N）",
     lab_im_max_n_custom_label = "自訂檔數",
     lab_im_pool_rank_label = "候選截斷邏輯",
     lab_im_concepts_label = "概念股群",
     lab_im_concepts_placeholder = "選擇一或多個概念股群…",
+    lab_im_include_adr_label = "含 ADR",
+    lab_im_include_adr_hint = paste0(
+      "預設勾選：評估池含美股上市 ADR／外國發行人；",
+      "取消勾選則排除 ADR 後再套用候選截斷與評估。"
+    ),
     lab_im_lb_status = paste0(
       "前十名顯示 %d／10（合格 %d／已評估 %d）。",
-      "N＝明細列數；前十名只取合格者最多 10 檔，不會為湊滿 10 而另抽樣。"
+      "N＝分析後顯示上限；前十名只取合格者最多 10 檔，不會為湊滿 10 而另抽樣。"
     ),
     lab_im_lb_status_by_ind = paste0(
       "依產業前十名共顯示 %d 列（合格 %d／已評估 %d）。",
-      "各產業各自最多 10 檔；N＝明細列數，不會為湊滿而另抽樣。"
+      "各產業各自最多 10 檔；N＝顯示上限，不會為湊滿而另抽樣。"
     ),
     lab_im_lb_empty = paste0(
       "前十名尚無列可顯示。已評估 %d 檔；能量到年化漲幅 %d；F-Score≥7 通過 %d；目前勾選條件下合格 %d。",
-      "說明：評估檔數 N 是明細列數，前十名只從「合格者」取最多 10 檔，不會補足到 10。",
+      "說明：N 是分析後顯示上限，前十名只從「合格者」取最多 10 檔，不會補足到 10。",
       "可取消「盈餘品質」或「Piotroski 高門檻」，或提高 N／放寬產業後再搜尋。"
     ),
     lab_im_detail_intro = paste0(
       "本次已評估檔的明細（按年化估值漲幅排序）。",
-      "列數等於「宇宙檔數（N）」：先對宇宙池套用候選截斷邏輯排序／篩選，再取前 N 檔（不足則全列）。"
+      "宇宙檔數（N）＝分析後最終顯示上限：候選截斷與評分後，最多顯示 N 檔合格列；",
+      "條件不足時不湊滿。"
     ),
     lab_im_lb_mode_label = "排行視角",
     lab_im_lb_mode_overall = "整體前十名",
     lab_im_lb_mode_by_industry = "依產業前十名",
-    lab_im_lb_industry_label = "排行產業",
-    lab_im_lb_industry_all = "全部產業",
     lab_im_lb_scope_help = paste0(
       "整體前十名：跨產業依年化估值漲幅取 Top 10，並顯示產業欄。",
-      "依產業前十名：每個產業（或選定單一產業）各自列出 Top 10。",
+      "依產業前十名：每個產業各自列出 Top 10。",
       "前十名只從合格者取最多 10 檔；合格不足 10 時不會湊滿。"
     ),
     lab_im_gate_hint = paste0(
-      "預設勾選：前十名只列 F-Score≥7 者；取消勾選則不設 F 門檻。",
-      "不影響明細列數；合格不足 10 時不會湊滿。"
+      "預設勾選：前十名與明細只列 F-Score≥7 者；取消勾選則不設 F 門檻。",
+      "合格不足 N 或不足 10 時不會湊滿。"
     ),
     bt_analysis_freq = "分析頻率（估值日 Date_t）",
     bt_freq_monthly = "每月",

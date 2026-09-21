@@ -4,11 +4,12 @@
 # 宇宙依市場模式：美股＝Nasdaq／NYSE 主要上市（lab_us_universe.R；S&P GICS 疊加）；台股＝上市／上櫃／興櫃（lab_tw_universe.R；績優候選不含興櫃）。
 # 績優原則：在 Piotroski 高門檻（F-Score≥7；不含盈餘品質）後，選「模型合理價相對現價」、
 # 並依 App 預設預測年數 n（APP_DEFAULTS$years）換算年化漲幅最大者。
-# 「宇宙檔數（N）」（lab_im_max_n；預設 25）＝本次 Yahoo 評估檔數＝明細列數。
-# 盈餘品質／Piotroski 高門檻勾選只影響排行榜／摘要，不縮減明細列數。
+# 「宇宙檔數（N）」（lab_im_max_n；預設 25）＝分析後明細／排行最終顯示上限（非 Yahoo 撈取檔數）。
+# 撈取／評估檔數＝lab_resolve_im_eval_n(N)（通常大於 N）；明細＝合格池取前 N，不足不湊滿。
+# 盈餘品質／Piotroski 高門檻勾選套用於排行榜與明細顯示池（同一合格定義）。
 # 流程：宇宙池先依「候選截斷邏輯」全市排序／篩選（市值／概念股／近一年漲幅／隨機），
-# 再取「宇宙檔數（N）」的前 N 檔。概念股模式：先篩出已選概念股，若仍 > N 再依市值取前 N。
-# 市值模式：對整池排序後再取 N（已有市值時不做 S&P 預篩，避免打亂排序）。
+# 再取評估檔數 eval_n 的前段 → Yahoo 評估 → 合格者最多顯示 N 檔。
+# 市值模式：對整池排序後再取 eval_n（已有市值時不做 S&P 預篩，避免打亂排序）。
 # 排行榜＝同一批合格者的 Top 10（預設 F-Score≥7；gate_only=FALSE 時不設 F 門檻；不足 10 不湊滿）。
 # 產業建議方法對齊 recommend_valuation_models 的產業層規則（簡化估值）。
 # ==========================================
@@ -241,6 +242,45 @@ lab_resolve_im_max_n_label <- function(sel, custom = NULL) {
     return(if (is.finite(n)) as.character(n) else "全部")
   }
   lab_im_max_n_label(sel)
+}
+
+#' Resolve Yahoo evaluation pool size from display N
+#'
+#' Universe size (N) is the **post-analysis display cap** (qualified rows), not
+#' the fetch/eval count. Evaluation uses a larger ordered pool so enough names
+#' may pass quality gates; detail/leaderboard then show at most N without padding.
+#'
+#' @param display_n finite integer or Inf ("全部")
+#' @return Inf when display_n is unlimited; otherwise max(display_n, min(hi, max(display_n * 4, 100)))
+lab_resolve_im_eval_n <- function(display_n, lo = 1L, hi = 500L) {
+  if (is.null(display_n) || length(display_n) < 1L) return(100L)
+  d <- suppressWarnings(as.numeric(display_n)[1])
+  if (!is.finite(d)) return(Inf)
+  d <- as.integer(max(as.integer(lo)[1], d))
+  hi_i <- as.integer(hi)[1]
+  if (!is.finite(hi_i) || hi_i < 1L) hi_i <- 500L
+  eval_n <- max(d * 4L, 100L)
+  eval_n <- max(d, min(hi_i, eval_n))
+  as.integer(eval_n)
+}
+
+#' Cap detail rows from the qualified pool — never pad to fill display_n
+#'
+#' Qualified = lab_leaderboard_pool (finite annualized upside; optional F≥7 / EQ).
+#' Returns at most display_n rows; if fewer qualify, returns that shorter set.
+lab_cap_detail_display <- function(merged_df, display_n,
+                                   eq_only = FALSE, gate_only = TRUE) {
+  pool <- lab_leaderboard_pool(
+    merged_df,
+    eq_only = eq_only,
+    gate_only = gate_only
+  )
+  if (is.null(pool) || !is.data.frame(pool) || nrow(pool) == 0L) {
+    return(pool)
+  }
+  d <- suppressWarnings(as.numeric(display_n)[1])
+  if (!is.finite(d) || d < 1) return(pool)
+  utils::head(pool, as.integer(d))
 }
 
 lab_dedupe_eval_pool <- function(pool) {
@@ -537,7 +577,7 @@ lab_attach_returns_1y <- function(pool) {
 }
 
 #' 依市值降序取最多 max_n 檔（無市值置後，再依代碼）
-#' 評估檔數 N：截斷只影響評估池／明細列數；排行榜另取合格者 Top 10（預設 F≥7），不縮減明細、不足不湊滿。
+#' 顯示檔數 N：截斷評估池用 eval_n；明細／排行自合格池取至多 N，不足不湊滿。
 #' 不做市值分級／規模篩選。
 lab_rank_and_cap_eval_pool <- function(pool, max_n = 25L) {
   lab_select_eval_pool(pool, max_n = max_n, mode = "mcap")
@@ -548,13 +588,14 @@ lab_rank_and_cap_eval_pool <- function(pool, max_n = 25L) {
 #' Semantic order (always):
 #' 1. Apply Candidate truncate rule on the full filtered universe pool
 #'    (sort by market cap / filter to selected concept groups / sort by 1Y return / random).
-#' 2. Then take the first Universe size (N) rows from that ordered / filtered result.
+#' 2. Then take the first evaluation-count (eval_n) rows — typically larger than
+#'    display N so enough names may pass quality gates after Yahoo scoring.
 #'
 #' Modes:
-#' - mcap: sort entire pool by market cap (largest first), then take N
-#' - concept: keep selected concept-group tickers first; if still > N, mcap within then take N
-#' - ret_1y: sort by 1Y price return (highest first), then take N
-#' - random: uniform random sample of N
+#' - mcap: sort entire pool by market cap (largest first), then take eval_n
+#' - concept: keep selected concept-group tickers first; if still > eval_n, mcap within then take eval_n
+#' - ret_1y: sort by 1Y price return (highest first), then take eval_n
+#' - random: uniform random sample of eval_n
 lab_select_eval_pool <- function(pool, max_n = 25L, mode = "mcap",
                                  concept_keys = NULL,
                                  market_mode = "US",
@@ -704,6 +745,7 @@ lab_normalize_multi_filter <- function(x) {
 
 # S&P 500（GICS）＋美股全市場主要上市宇宙；須在候選目錄／名稱查詢之前載入
 source("lab_sp500_universe.R", local = TRUE, encoding = "UTF-8")
+source("lab_adr.R", local = TRUE, encoding = "UTF-8")
 source("lab_us_universe.R", local = TRUE, encoding = "UTF-8")
 source("lab_tw_universe.R", local = TRUE, encoding = "UTF-8")
 source("lab_concept_groups.R", local = TRUE, encoding = "UTF-8")
@@ -1120,7 +1162,36 @@ lab_build_industry_method_catalog <- function(market_mode = NULL) {
       }
     }
   }
-  do.call(rbind, rows)
+  out <- do.call(rbind, rows)
+  # Attach ADR flag from US universe (TW rows are never US ADR)
+  if (identical(mode, "US") && exists("lab_is_us_adr", mode = "function") &&
+      is.data.frame(out) && nrow(out) > 0L && "ticker" %in% names(out)) {
+    u <- tryCatch(lab_get_us_universe(FALSE), error = function(e) NULL)
+    if (!is.null(u) && is.data.frame(u) && "is_adr" %in% names(u)) {
+      idx <- match(
+        toupper(trimws(as.character(out$ticker))),
+        toupper(trimws(as.character(u$ticker)))
+      )
+      out$is_adr <- FALSE
+      hit <- which(is.finite(idx))
+      if (length(hit)) {
+        out$is_adr[hit] <- vapply(
+          idx[hit],
+          function(j) isTRUE(as.logical(u$is_adr[[j]])),
+          logical(1)
+        )
+      }
+    } else {
+      out$is_adr <- vapply(
+        as.character(out$ticker),
+        function(tk) isTRUE(lab_is_us_adr(tk, NULL)),
+        logical(1)
+      )
+    }
+  } else if (is.data.frame(out) && nrow(out) > 0L) {
+    out$is_adr <- FALSE
+  }
+  out
 }
 
 #' 是否通過舊版綜合品質門檻（F-Score≥7 且盈餘品質通過；保留供相容）

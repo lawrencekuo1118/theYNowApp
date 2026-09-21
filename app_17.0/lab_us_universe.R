@@ -79,24 +79,64 @@ lab_us_looks_like_etf_or_fund <- function(name) {
   )
 }
 
+#' Apply lab_ticker_industry_overrides + ADR map to Unmapped US rows
+lab_us_overlay_ticker_industry_overrides <- function(df) {
+  if (is.null(df) || !is.data.frame(df) || nrow(df) < 1L) return(df)
+  if (!("ticker" %in% names(df)) || !("industry_key" %in% names(df))) return(df)
+  unmapped <- if (exists("LAB_UNMAPPED_KEY", inherits = TRUE)) LAB_UNMAPPED_KEY else "lab.Unmapped"
+  tks <- toupper(trimws(as.character(df$ticker)))
+  keys <- as.character(df$industry_key)
+  ov <- c()
+  if (exists("lab_ticker_industry_overrides", mode = "function")) {
+    ov <- c(ov, lab_ticker_industry_overrides())
+  }
+  if (exists("lab_adr_industry_map", mode = "function")) {
+    ov <- c(ov, lab_adr_industry_map())
+  }
+  if (!length(ov)) return(df)
+  # Later entries win for duplicate names (ADR map may refine)
+  ov <- ov[!duplicated(names(ov), fromLast = TRUE)]
+  need <- which(
+    tks %in% names(ov) &
+      (is.na(keys) | !nzchar(keys) | keys == unmapped)
+  )
+  if (length(need)) {
+    df$industry_key[need] <- unname(ov[tks[need]])
+  }
+  if (exists("lab_us_overlay_adr_industry", mode = "function")) {
+    df <- lab_us_overlay_adr_industry(df)
+  } else if (!("is_adr" %in% names(df)) && exists("lab_is_us_adr", mode = "function")) {
+    nms <- if ("name" %in% names(df)) as.character(df$name) else rep("", nrow(df))
+    df$is_adr <- vapply(
+      seq_len(nrow(df)),
+      function(i) isTRUE(lab_is_us_adr(tks[[i]], nms[[i]])),
+      logical(1)
+    )
+  }
+  df
+}
+
 #' Overlay S&P 500 industry_key / industry_raw when ticker matches
 lab_us_overlay_sp500_industry <- function(df) {
   if (is.null(df) || !is.data.frame(df) || nrow(df) < 1L) return(df)
   sp <- tryCatch({
     if (exists("lab_get_sp500_universe", mode = "function")) lab_get_sp500_universe(FALSE) else NULL
   }, error = function(e) NULL)
-  if (is.null(sp) || !is.data.frame(sp) || nrow(sp) < 1L) return(df)
-  if (!all(c("ticker", "industry_key") %in% names(sp))) return(df)
-  sp$ticker <- toupper(trimws(as.character(sp$ticker)))
-  idx <- match(toupper(trimws(as.character(df$ticker))), sp$ticker)
-  hit <- which(!is.na(idx))
-  if (!length(hit)) return(df)
-  df$industry_key[hit] <- as.character(sp$industry_key[idx[hit]])
-  if ("industry_raw" %in% names(sp)) {
-    if (!("industry_raw" %in% names(df))) df$industry_raw <- NA_character_
-    df$industry_raw[hit] <- as.character(sp$industry_raw[idx[hit]])
+  if (!is.null(sp) && is.data.frame(sp) && nrow(sp) >= 1L &&
+      all(c("ticker", "industry_key") %in% names(sp))) {
+    sp$ticker <- toupper(trimws(as.character(sp$ticker)))
+    idx <- match(toupper(trimws(as.character(df$ticker))), sp$ticker)
+    hit <- which(!is.na(idx))
+    if (length(hit)) {
+      df$industry_key[hit] <- as.character(sp$industry_key[idx[hit]])
+      if ("industry_raw" %in% names(sp)) {
+        if (!("industry_raw" %in% names(df))) df$industry_raw <- NA_character_
+        df$industry_raw[hit] <- as.character(sp$industry_raw[idx[hit]])
+      }
+    }
   }
-  df
+  # ADR／非 S&P：個股覆寫＋ is_adr 標記
+  lab_us_overlay_ticker_industry_overrides(df)
 }
 
 lab_finalize_us_from_sec <- function(raw, fetched_at = NULL) {

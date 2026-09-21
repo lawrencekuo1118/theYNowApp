@@ -1,6 +1,28 @@
-# The YNow App v17.72 — Valuation Methodology
+# The YNow App v17.77 — Valuation Methodology
 
 先分類，再選模型；先推導，再校正；先給區間，再給單點；先做基本面估值。
+
+## v17.77 重點
+- **標題載入條**：`The YNow App v17.xx` 字樣本身作為載入進度條，隨開頁／Shiny busy／`withProgress` 填滿金色
+- **目錄**：`app_17.0/`；顯示版號 **v17.77**
+
+## v17.76 重點
+- **Blue Chip Ranking 色系**：分頁 box／tab 頂條改用 logo 藍 `#0C5484`（`--ynow-logo-blue`）
+- **目錄**：`app_17.0/`；顯示版號 **v17.76**
+
+## v17.75 重點
+- **宇宙檔數（N）語意**：N＝分析後明細／排行最終顯示上限（非 Yahoo 撈取檔數）；評估用較大 `eval_n`；合格不足時不湊滿
+- **目錄**：`app_17.0/`；顯示版號 **v17.75**
+
+## v17.74 重點
+- **Blue Chip 排行**：移除「排行產業／Ranking industry」下拉；依產業前十名一律列出各產業 Top 10
+- **目錄**：`app_17.0/`；顯示版號 **v17.74**
+
+## v17.73 重點
+- **ADR 產業歸屬**：美股 ADR／外國發行人（TSM、SKHY、BABA、ASML…）載入宇宙後覆寫產業，不再落「未對應產業」
+- **含 ADR 篩選**：Blue Chip 新增預設勾選「含 ADR」；取消則排除 ADR 後再套用候選截斷與宇宙檔數 N
+- **搜尋績優股語意**：產業×模型 →（可選）排除 ADR → 候選截斷（市值／概念股等）→ 取前 N 檔再評估
+- **目錄**：`app_17.0/`；顯示版號 **v17.73**
 
 ## v17.72 重點
 - **宇宙指標快照**：美股／台股離線補齊 `market_cap`（市值）、`ret_1y`（近一年漲跌幅）；台股另含 MOPS **實收資本額**（`paid_in_capital`）。Blue Chip／Clustering 截斷優先讀快照，缺口再打 Yahoo

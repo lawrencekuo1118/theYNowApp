@@ -172,9 +172,9 @@ lab_gics_sector_fallback <- function() {
   )
 }
 
-#' 比 GICS 更細的個股覆寫（僅 S&P 內、且 App 有對應鍵時）
+#' 比 GICS 更細的個股覆寫（S&P 與非 S&P／ADR 共用）
 lab_ticker_industry_overrides <- function() {
-  c(
+  base <- c(
     TSLA = "auto.Automotive_EV",
     RIVN = "auto.EV_Startups",
     LCID = "auto.EV_Startups",
@@ -182,6 +182,11 @@ lab_ticker_industry_overrides <- function() {
     ENPH = "en.Renewables",
     FSLR = "en.Renewables"
   )
+  if (exists("lab_adr_industry_map", mode = "function")) {
+    base <- c(base, lab_adr_industry_map())
+    base <- base[!duplicated(names(base), fromLast = TRUE)]
+  }
+  base
 }
 
 lab_map_gics_to_industry_key <- function(sector, sub_industry, ticker = "") {
