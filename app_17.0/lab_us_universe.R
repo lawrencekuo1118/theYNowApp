@@ -93,45 +93,8 @@ lab_us_overlay_ticker_industry_overrides <- function(df) {
     tks %in% names(ov) &
       (is.na(keys) | !nzchar(keys) | keys == unmapped)
   )
-  # #region agent log
-  tryCatch({
-    probe <- c("TSM", "SKHY", "MU", "NVDA")
-    pre <- setNames(keys[match(probe, tks)], probe)
-    applied <- character(0)
-    if (length(need)) {
-      applied <- unique(tks[need])
-    }
-    payload <- sprintf(
-      paste0(
-        '{"hypothesisId":"fix","runId":"post-fix","location":"lab_us_universe.R:lab_us_overlay_ticker_industry_overrides",',
-        '"message":"ticker override overlay","data":{"n_need":%d,"applied":[%s],"pre_keys":{%s}},',
-        '"timestamp":%s}\n'
-      ),
-      length(need),
-      paste(sprintf('"%s"', applied), collapse = ","),
-      paste(sprintf('"%s":"%s"', names(pre), gsub('"', "", as.character(pre))), collapse = ","),
-      format(as.numeric(Sys.time()) * 1000, scientific = FALSE)
-    )
-    cat(payload, file = "/opt/cursor/logs/debug.log", append = TRUE)
-  }, error = function(e) invisible(NULL))
-  # #endregion
   if (!length(need)) return(df)
   df$industry_key[need] <- unname(ov[tks[need]])
-  # #region agent log
-  tryCatch({
-    probe <- c("TSM", "SKHY", "MU", "NVDA")
-    post <- setNames(as.character(df$industry_key[match(probe, tks)]), probe)
-    payload <- sprintf(
-      paste0(
-        '{"hypothesisId":"fix","runId":"post-fix","location":"lab_us_universe.R:lab_us_overlay_ticker_industry_overrides:after",',
-        '"message":"keys after ticker override overlay","data":{"post_keys":{%s}},"timestamp":%s}\n'
-      ),
-      paste(sprintf('"%s":"%s"', names(post), gsub('"', "", as.character(post))), collapse = ","),
-      format(as.numeric(Sys.time()) * 1000, scientific = FALSE)
-    )
-    cat(payload, file = "/opt/cursor/logs/debug.log", append = TRUE)
-  }, error = function(e) invisible(NULL))
-  # #endregion
   df
 }
 
@@ -146,26 +109,6 @@ lab_us_overlay_sp500_industry <- function(df) {
     sp$ticker <- toupper(trimws(as.character(sp$ticker)))
     idx <- match(toupper(trimws(as.character(df$ticker))), sp$ticker)
     hit <- which(!is.na(idx))
-    # #region agent log
-    tryCatch({
-      probe <- c("TSM", "SKHY", "MU", "NVDA")
-      df_tk <- toupper(trimws(as.character(df$ticker)))
-      pre_keys <- setNames(as.character(df$industry_key[match(probe, df_tk)]), probe)
-      sp_hit <- setNames(!is.na(match(probe, sp$ticker)), probe)
-      payload <- sprintf(
-        paste0(
-          '{"hypothesisId":"B","location":"lab_us_universe.R:lab_us_overlay_sp500_industry",',
-          '"message":"SP500 overlay probe","data":{"n_df":%d,"n_sp":%d,"n_hit":%d,',
-          '"pre_keys":{%s},"in_sp500":{%s}},"timestamp":%s}\n'
-        ),
-        nrow(df), nrow(sp), length(hit),
-        paste(sprintf('"%s":"%s"', names(pre_keys), gsub('"', "", as.character(pre_keys))), collapse = ","),
-        paste(sprintf('"%s":%s', names(sp_hit), ifelse(sp_hit, "true", "false")), collapse = ","),
-        format(as.numeric(Sys.time()) * 1000, scientific = FALSE)
-      )
-      cat(payload, file = "/opt/cursor/logs/debug.log", append = TRUE)
-    }, error = function(e) invisible(NULL))
-    # #endregion
     if (length(hit)) {
       df$industry_key[hit] <- as.character(sp$industry_key[idx[hit]])
       if ("industry_raw" %in% names(sp)) {
@@ -173,22 +116,6 @@ lab_us_overlay_sp500_industry <- function(df) {
         df$industry_raw[hit] <- as.character(sp$industry_raw[idx[hit]])
       }
     }
-    # #region agent log
-    tryCatch({
-      probe <- c("TSM", "SKHY", "MU", "NVDA")
-      df_tk <- toupper(trimws(as.character(df$ticker)))
-      post_keys <- setNames(as.character(df$industry_key[match(probe, df_tk)]), probe)
-      payload <- sprintf(
-        paste0(
-          '{"hypothesisId":"A","location":"lab_us_universe.R:lab_us_overlay_sp500_industry:after",',
-          '"message":"keys after SP500 overlay","data":{"post_keys":{%s}},"timestamp":%s}\n'
-        ),
-        paste(sprintf('"%s":"%s"', names(post_keys), gsub('"', "", as.character(post_keys))), collapse = ","),
-        format(as.numeric(Sys.time()) * 1000, scientific = FALSE)
-      )
-      cat(payload, file = "/opt/cursor/logs/debug.log", append = TRUE)
-    }, error = function(e) invisible(NULL))
-    # #endregion
   }
   # ADR／非 S&P：套用個股覆寫（TSM→Foundry、SKHY→Memory 等）
   lab_us_overlay_ticker_industry_overrides(df)
@@ -246,26 +173,6 @@ lab_finalize_us_from_sec <- function(raw, fetched_at = NULL) {
   }
   if (!length(rows)) return(empty)
   df <- do.call(rbind, rows)
-  # #region agent log
-  tryCatch({
-    probe <- c("TSM", "SKHY")
-    df_tk <- toupper(trimws(as.character(df$ticker)))
-    pre <- setNames(as.character(df$industry_key[match(probe, df_tk)]), probe)
-    names_p <- setNames(as.character(df$name[match(probe, df_tk)]), probe)
-    payload <- sprintf(
-      paste0(
-        '{"hypothesisId":"A","location":"lab_us_universe.R:lab_finalize_us_from_sec",',
-        '"message":"SEC default keys before overlay","data":{"default_unmapped":"%s",',
-        '"pre_keys":{%s},"names":{%s}},"timestamp":%s}\n'
-      ),
-      unmapped,
-      paste(sprintf('"%s":"%s"', names(pre), gsub('"', "", as.character(pre))), collapse = ","),
-      paste(sprintf('"%s":"%s"', names(names_p), gsub('["\\\\]', "", as.character(names_p))), collapse = ","),
-      as.integer(as.numeric(Sys.time()) * 1000)
-    )
-    cat(payload, file = "/opt/cursor/logs/debug.log", append = TRUE)
-  }, error = function(e) invisible(NULL))
-  # #endregion
   lab_us_overlay_sp500_industry(df)
 }
 
@@ -300,24 +207,6 @@ lab_read_us_csv <- function(path) {
   d$ticker <- toupper(trimws(as.character(d$ticker)))
   d <- d[nzchar(d$ticker) & !is.na(d$ticker), , drop = FALSE]
   d <- d[!duplicated(d$ticker), , drop = FALSE]
-  # #region agent log
-  tryCatch({
-    probe <- c("TSM", "SKHY", "MU", "NVDA")
-    pre <- setNames(as.character(d$industry_key[match(probe, d$ticker)]), probe)
-    payload <- sprintf(
-      paste0(
-        '{"hypothesisId":"A","location":"lab_us_universe.R:lab_read_us_csv",',
-        '"message":"CSV keys before overlay","data":{"path":"%s","n":%d,"pre_keys":{%s}},',
-        '"timestamp":%s}\n'
-      ),
-      gsub('"', "", as.character(path)[1]),
-      nrow(d),
-      paste(sprintf('"%s":"%s"', names(pre), gsub('"', "", as.character(pre))), collapse = ","),
-      as.integer(as.numeric(Sys.time()) * 1000)
-    )
-    cat(payload, file = "/opt/cursor/logs/debug.log", append = TRUE)
-  }, error = function(e) invisible(NULL))
-  # #endregion
   lab_us_overlay_sp500_industry(d)
 }
 

@@ -191,44 +191,13 @@ lab_ticker_industry_overrides <- function() {
 lab_map_gics_to_industry_key <- function(sector, sub_industry, ticker = "") {
   tk <- lab_yahoo_symbol(ticker)
   ov <- lab_ticker_industry_overrides()
-  if (!is.na(tk) && nzchar(tk) && tk %in% names(ov)) {
-    # #region agent log
-    tryCatch({
-      if (tk %in% c("TSM", "SKHY", "MU")) {
-        cat(sprintf(
-          paste0(
-            '{"hypothesisId":"C","location":"lab_sp500_universe.R:lab_map_gics_to_industry_key",',
-            '"message":"ticker override hit","data":{"ticker":"%s","key":"%s"},"timestamp":%s}\n'
-          ),
-          tk, unname(ov[[tk]]), as.integer(as.numeric(Sys.time()) * 1000)
-        ), file = "/opt/cursor/logs/debug.log", append = TRUE)
-      }
-    }, error = function(e) invisible(NULL))
-    # #endregion
-    return(unname(ov[[tk]]))
-  }
+  if (!is.na(tk) && nzchar(tk) && tk %in% names(ov)) return(unname(ov[[tk]]))
   sub <- trimws(as.character(sub_industry %||% "")[1])
   smap <- lab_gics_subindustry_map()
   if (nzchar(sub) && sub %in% names(smap)) return(unname(smap[[sub]]))
   sec <- trimws(as.character(sector %||% "")[1])
   fmap <- lab_gics_sector_fallback()
   if (nzchar(sec) && sec %in% names(fmap)) return(unname(fmap[[sec]]))
-  # #region agent log
-  tryCatch({
-    if (!is.na(tk) && tk %in% c("TSM", "SKHY")) {
-      cat(sprintf(
-        paste0(
-          '{"hypothesisId":"C","location":"lab_sp500_universe.R:lab_map_gics_to_industry_key",',
-          '"message":"GICS map fell through to Unmapped","data":{"ticker":"%s","sector":"%s",',
-          '"sub":"%s","in_overrides":%s},"timestamp":%s}\n'
-        ),
-        tk, gsub('"', "", sec), gsub('"', "", sub),
-        ifelse(tk %in% names(ov), "true", "false"),
-        as.integer(as.numeric(Sys.time()) * 1000)
-      ), file = "/opt/cursor/logs/debug.log", append = TRUE)
-    }
-  }, error = function(e) invisible(NULL))
-  # #endregion
   LAB_UNMAPPED_KEY
 }
 
