@@ -957,7 +957,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.75</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.76</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -1667,6 +1667,57 @@ ui <- dashboardPage(
           border-color: #6c757d !important;
           color: #ffffff !important;
         }
+
+        /* --- Blue Chip Ranking：色系對齊 logo 藍 #0C5484 --- */
+        body.ynow-theme-bluechip {
+          --ynow-bluechip-accent: var(--ynow-logo-blue);
+        }
+        body.ynow-theme-bluechip .content-wrapper .box.box-primary,
+        body.ynow-theme-bluechip .content-wrapper .box.box-info,
+        body.ynow-theme-bluechip .content-wrapper .box.box-success,
+        body.ynow-theme-bluechip .content-wrapper .box.box-warning {
+          border-top-color: var(--ynow-bluechip-accent) !important;
+        }
+        body.ynow-theme-bluechip .content-wrapper .box.box-solid.box-primary,
+        body.ynow-theme-bluechip .content-wrapper .box.box-solid.box-info,
+        body.ynow-theme-bluechip .content-wrapper .box.box-solid.box-success,
+        body.ynow-theme-bluechip .content-wrapper .box.box-solid.box-warning {
+          border: 1px solid var(--ynow-bluechip-accent) !important;
+        }
+        body.ynow-theme-bluechip .content-wrapper .box.box-solid.box-primary > .box-header,
+        body.ynow-theme-bluechip .content-wrapper .box.box-solid.box-info > .box-header,
+        body.ynow-theme-bluechip .content-wrapper .box.box-solid.box-success > .box-header,
+        body.ynow-theme-bluechip .content-wrapper .box.box-solid.box-warning > .box-header {
+          color: #fff !important;
+          background: var(--ynow-bluechip-accent) !important;
+          background-color: var(--ynow-bluechip-accent) !important;
+        }
+        body.ynow-theme-bluechip .content-wrapper .box.box-solid.box-primary > .box-header a,
+        body.ynow-theme-bluechip .content-wrapper .box.box-solid.box-primary > .box-header .btn,
+        body.ynow-theme-bluechip .content-wrapper .box.box-solid.box-info > .box-header a,
+        body.ynow-theme-bluechip .content-wrapper .box.box-solid.box-info > .box-header .btn,
+        body.ynow-theme-bluechip .content-wrapper .box.box-solid.box-success > .box-header a,
+        body.ynow-theme-bluechip .content-wrapper .box.box-solid.box-success > .box-header .btn,
+        body.ynow-theme-bluechip .content-wrapper .box.box-solid.box-warning > .box-header a,
+        body.ynow-theme-bluechip .content-wrapper .box.box-solid.box-warning > .box-header .btn {
+          color: #fff !important;
+        }
+        body.ynow-theme-bluechip .content-wrapper .nav-tabs-custom > .nav-tabs > li.active {
+          border-top-color: var(--ynow-bluechip-accent) !important;
+        }
+        body.ynow-theme-bluechip .content-wrapper .nav-tabs-custom > .nav-tabs > li.active > a,
+        body.ynow-theme-bluechip .content-wrapper .nav-tabs-custom > .nav-tabs > li.active:hover > a {
+          color: var(--ynow-bluechip-accent) !important;
+        }
+        body.ynow-theme-bluechip .content-wrapper .nav-tabs-custom > .nav-tabs > li > a > .fa,
+        body.ynow-theme-bluechip .content-wrapper .nav-tabs-custom > .nav-tabs > li > a > .fas {
+          color: var(--ynow-bluechip-accent);
+        }
+        body.ynow-theme-bluechip .content-wrapper .ynow-lab-im-pool-controls {
+          border-left: 4px solid var(--ynow-bluechip-accent);
+          padding-left: 10px;
+        }
+        /* 搜尋績優股維持 logo 綠（與估值「試算」一致） */
 
         /* Dashboard 損益表／現金流量表：圖標與選取頂條對齊 logo 金 */
         #dashboard_fin_report > .nav-tabs > li > a[data-value="Income Statement"] > .fa,
@@ -3306,6 +3357,7 @@ ui <- dashboardPage(
                 document.body.classList.toggle('ynow-theme-' + k, k === key);
               });
               document.body.classList.toggle('ynow-theme-model', !!key);
+              document.body.classList.toggle('ynow-theme-bluechip', tab === 'bluechip');
             });
           }
           registerLocaleHandler();
