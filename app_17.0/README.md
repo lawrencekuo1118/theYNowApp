@@ -1,6 +1,10 @@
-# The YNow App v17.72 — Valuation Methodology
+# The YNow App v17.73 — Valuation Methodology
 
 先分類，再選模型；先推導，再校正；先給區間，再給單點；先做基本面估值。
+
+## v17.73 重點
+- **Blue Chip 產業歸屬**：非 S&P ADR（如 TSM、SKHY）不再落在「未對應產業」；載入美股宇宙後套用個股覆寫（TSM→晶圓代工、SKHY→記憶體）
+- **目錄**：`app_17.0/`；顯示版號 **v17.73**
 
 ## v17.72 重點
 - **宇宙指標快照**：美股／台股離線補齊 `market_cap`（市值）、`ret_1y`（近一年漲跌幅）；台股另含 MOPS **實收資本額**（`paid_in_capital`）。Blue Chip／Clustering 截斷優先讀快照，缺口再打 Yahoo
