@@ -60,6 +60,36 @@ cp <- lab_select_eval_pool(
 )
 check("concept filters ZZZ", !("ZZZ" %in% cp$ticker) && all(cp$ticker %in% c("AAPL", "MSFT")))
 
+# Rank entire pool by mcap first, then take N — even when pool is huge (no S&P pre-cut)
+big <- data.frame(
+  ticker = paste0("T", seq_len(900L)),
+  market_cap = as.numeric(900:1),
+  stringsAsFactors = FALSE
+)
+# Mock / stub: if lab_us_prescreen exists it must not drop the true top-cap names
+# when market_cap is already present.
+big_top <- lab_select_eval_pool(big, max_n = 3L, mode = "mcap")
+check(
+  "mcap sort-all-then-N on large pool",
+  identical(as.character(big_top$ticker), c("T1", "T2", "T3"))
+)
+
+# Concept filter first, then mcap within, then N
+pool3 <- data.frame(
+  ticker = c("AAPL", "MSFT", "GOOGL", "ZZZ"),
+  market_cap = c(50, 200, 100, 9999),
+  stringsAsFactors = FALSE
+)
+cp_n <- lab_select_eval_pool(
+  pool3, max_n = 2L, mode = "concept",
+  concept_keys = "mag7", market_mode = "US"
+)
+check(
+  "concept then mcap then N",
+  identical(as.character(cp_n$ticker), c("MSFT", "GOOGL")) ||
+    (nrow(cp_n) == 2L && !("ZZZ" %in% cp_n$ticker) && identical(cp_n$ticker[1], "MSFT"))
+)
+
 if (fail > 0L) {
   cat("FAILED ", fail, " checks\n", sep = "")
   quit(status = 1L)

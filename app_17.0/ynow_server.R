@@ -10450,7 +10450,7 @@ server <- function(input, output, session) {
         if (is.finite(max_n)) {
           paste0(
             "宇宙依市場模式（美股 Nasdaq／NYSE 主要上市／台股上市＋上櫃；搜尋另含興櫃但不納入績優）。",
-            "先套用「候選截斷邏輯」排序／篩選，再依序取宇宙檔數 N（市值／概念股／近一年漲幅／隨機；市值缺值則改依代號排序；全市場過大時先預篩再截斷）；",
+            "先對宇宙池套用「候選截斷邏輯」全市排序／篩選，再取宇宙檔數 N 的前 N 檔（市值／概念股／近一年漲幅／隨機；市值缺值則改依代號排序；近一年漲幅在全市場過大時可能先做 Yahoo 成本預篩）；",
             "明細＝該批（＝評估檔數 N）；排行榜＝同一批合格者最多 Top 10",
             if (gate_on) "（目前 Piotroski 高門檻開：F-Score≥7）" else "（目前不設 F 門檻）",
             "；合格不足 10 時不湊滿。"
@@ -11235,7 +11235,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.70"),
+      paste0("- **App：** The YNow App v17.71"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

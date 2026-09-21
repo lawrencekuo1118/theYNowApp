@@ -957,7 +957,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.70</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.71</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -6263,15 +6263,24 @@ ui <- dashboardPage(
       # Blue Chip：美股績優篩選（版面節奏對齊 Dashboard FINANCIAL REPORT）
       tabItem(
         tabName = "bluechip",
-        # Shared pool controls above BLUE CHIP:
-        # - default: Candidate truncate → Universe N
-        # - concept mode: Concept groups (first) → Candidate truncate → Universe N
+        # Shared pool controls above BLUE CHIP (semantic: truncate rule → then take N)
+        # Concept groups appear beside truncate when mode is concept.
         fluidRow(
           column(
             width = 12,
             class = "ynow-lab-im-pool-controls",
             style = "margin: 0 0 14px 0;",
             fluidRow(
+              column(
+                width = 4,
+                selectInput(
+                  "lab_im_pool_rank",
+                  tags$span(id = "ynow_lab_im_pool_rank_label", "候選截斷邏輯"),
+                  choices = lab_im_pool_rank_choices(),
+                  selected = "mcap",
+                  width = "100%"
+                )
+              ),
               conditionalPanel(
                 condition = "input.lab_im_pool_rank == 'concept'",
                 class = "col-sm-4",
@@ -6285,16 +6294,6 @@ ui <- dashboardPage(
                     placeholder = "選擇一或多個概念股群…",
                     plugins = list("remove_button")
                   ),
-                  width = "100%"
-                )
-              ),
-              column(
-                width = 4,
-                selectInput(
-                  "lab_im_pool_rank",
-                  tags$span(id = "ynow_lab_im_pool_rank_label", "候選截斷邏輯"),
-                  choices = lab_im_pool_rank_choices(),
-                  selected = "mcap",
                   width = "100%"
                 )
               ),
@@ -6486,7 +6485,7 @@ ui <- dashboardPage(
             icon = icon("list"),
             p(
               id = "ynow_lab_im_detail_intro",
-              "本次已評估檔的明細（按年化估值漲幅排序）。列數等於上方「宇宙檔數（N）」（不足則全列；先依候選截斷邏輯排序／篩選後再取 N）。"
+              "本次已評估檔的明細（按年化估值漲幅排序）。列數等於「宇宙檔數（N）」：先對宇宙池套用候選截斷邏輯排序／篩選，再取前 N 檔（不足則全列）。"
             ),
             tags$hr(),
             fluidRow(
@@ -6588,7 +6587,7 @@ ui <- dashboardPage(
               style = "color:#888; font-size:12px;",
               paste0(
                 "沿用「排行」頁目前的產業／模型篩選（若有）。",
-                "先選候選截斷邏輯，再選宇宙檔數 N；若為概念股，概念股群最優先（見區塊上方共用控制）。",
+                "流程：宇宙池先依「候選截斷邏輯」全市排序／篩選（市值／概念股／近一年漲幅／隨機），再取「宇宙檔數（N）」的前 N 檔。",
                 "Search 後的代號一律強制納入宇宙（N），並作為雷達焦點預設。",
                 "抓取 Yahoo 比率特徵；若 Yahoo 受限則改用內建離線快照。"
               )
