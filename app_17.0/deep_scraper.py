@@ -283,14 +283,15 @@ def get_market_caps_batch(tickers):
     if got_any and n_ok:
         _dbg(f"✅ market caps {n_ok}/{len(cleaned)}")
     else:
-        _dbg("⚠️ market cap batch empty; Lab will fall back to ticker order")
+        _dbg("⚠️ market cap batch empty; Lab uses offline snapshot / keep universe order")
     return out
 
 
 def get_returns_1y_batch(tickers):
-    """1Y total return (fraction) for many tickers via yfinance history.
+    """1Y total return (fraction) for many tickers via yfinance multi-download.
 
     Returns {SYMBOL: float|None}. Used by Lab pool ranking (ret_1y mode).
+    Prefer multi-ticker download batches over serial history() for speed.
     """
     cleaned = []
     seen = set()
@@ -304,28 +305,80 @@ def get_returns_1y_batch(tickers):
     if not cleaned:
         return out
 
-    def _one(sym):
+    def _ret_from_close(closes):
         try:
-            hist = yf.Ticker(sym).history(period="1y", auto_adjust=True)
-            if hist is None or hist.empty or "Close" not in hist.columns:
+            s = closes.dropna()
+            if len(s) < 2:
                 return None
-            closes = hist["Close"].dropna()
-            if len(closes) < 2:
-                return None
-            a = float(closes.iloc[0])
-            b = float(closes.iloc[-1])
+            a = float(s.iloc[0])
+            b = float(s.iloc[-1])
             if a <= 0 or b <= 0:
                 return None
             return (b / a) - 1.0
-        except Exception as e:  # noqa: BLE001
-            _dbg(f"⚠️ ret_1y {sym}: {e}")
+        except Exception:  # noqa: BLE001
             return None
 
-    # Serial with light pause — avoids Yahoo 429 on large N
-    for i, sym in enumerate(cleaned):
-        if i and i % 15 == 0:
+    batch = 50
+    for i in range(0, len(cleaned), batch):
+        chunk = cleaned[i : i + batch]
+        try:
+            data = yf.download(
+                tickers=" ".join(chunk),
+                period="1y",
+                group_by="ticker",
+                auto_adjust=True,
+                threads=True,
+                progress=False,
+            )
+        except Exception as e:  # noqa: BLE001
+            _dbg(f"⚠️ ret_1y download batch: {e}")
+            # Fallback: serial history for this chunk
+            for sym in chunk:
+                try:
+                    hist = yf.Ticker(sym).history(period="1y", auto_adjust=True)
+                    if hist is not None and not hist.empty and "Close" in hist.columns:
+                        out[sym] = _ret_from_close(hist["Close"])
+                except Exception as e2:  # noqa: BLE001
+                    _dbg(f"⚠️ ret_1y {sym}: {e2}")
             time.sleep(0.35)
-        out[sym] = _one(sym)
+            continue
+
+        if data is None or getattr(data, "empty", True):
+            time.sleep(0.25)
+            continue
+
+        if len(chunk) == 1:
+            sym = chunk[0]
+            if "Close" in getattr(data, "columns", []):
+                out[sym] = _ret_from_close(data["Close"])
+        else:
+            cols = data.columns
+            if getattr(cols, "nlevels", 1) >= 2:
+                level0 = set(str(x) for x in cols.get_level_values(0))
+                if any(t in level0 for t in chunk):
+                    for sym in chunk:
+                        try:
+                            if sym in data.columns.get_level_values(0):
+                                sub = data[sym]
+                                if "Close" in sub.columns:
+                                    out[sym] = _ret_from_close(sub["Close"])
+                        except Exception:  # noqa: BLE001
+                            pass
+                else:
+                    for sym in chunk:
+                        try:
+                            if ("Close", sym) in data.columns:
+                                out[sym] = _ret_from_close(data[("Close", sym)])
+                            elif (sym, "Close") in data.columns:
+                                out[sym] = _ret_from_close(data[(sym, "Close")])
+                        except Exception:  # noqa: BLE001
+                            pass
+
+        if i and i % 200 == 0:
+            time.sleep(0.5)
+        else:
+            time.sleep(0.2)
+
     n_ok = sum(1 for v in out.values() if v is not None)
     _dbg(f"✅ returns 1y {n_ok}/{len(cleaned)}")
     return out

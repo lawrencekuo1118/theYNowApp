@@ -255,13 +255,121 @@ lab_dedupe_eval_pool <- function(pool) {
 }
 
 .lab_mcap_cache <- new.env(parent = emptyenv())
+.lab_ret1y_cache <- new.env(parent = emptyenv())
+.lab_universe_metrics_cache <- new.env(parent = emptyenv())
 
-#' 批次 Yahoo 市值（USD）；失敗則全 NA（呼叫端改依代碼排序）
+#' Path to bundled offline universe metrics (market_cap / ret_1y / paid_in_capital)
+lab_universe_metrics_snapshot_path <- function() {
+  opt <- getOption("ynow.universe_metrics_snapshot", default = NULL)
+  if (!is.null(opt) && length(opt) >= 1L) {
+    p <- as.character(opt)[1]
+    if (nzchar(p) && file.exists(p)) {
+      return(normalizePath(p, winslash = "/", mustWork = FALSE))
+    }
+  }
+  candidates <- c(
+    file.path("data", "universe_metrics_snapshot.csv"),
+    file.path("app_17.0", "data", "universe_metrics_snapshot.csv")
+  )
+  for (p in candidates) {
+    if (file.exists(p)) return(normalizePath(p, winslash = "/", mustWork = FALSE))
+  }
+  NA_character_
+}
+
+#' Load offline universe metrics snapshot once per session
+lab_load_universe_metrics_snapshot <- function(force = FALSE) {
+  if (!isTRUE(force) &&
+      exists("df", envir = .lab_universe_metrics_cache, inherits = FALSE)) {
+    return(get("df", envir = .lab_universe_metrics_cache, inherits = FALSE))
+  }
+  path <- lab_universe_metrics_snapshot_path()
+  empty <- data.frame(
+    ticker = character(0),
+    market_cap = numeric(0),
+    ret_1y = numeric(0),
+    paid_in_capital = numeric(0),
+    stringsAsFactors = FALSE
+  )
+  if (!nzchar(path) || is.na(path) || !file.exists(path)) {
+    assign("df", empty, envir = .lab_universe_metrics_cache)
+    attr(empty, "snapshot_source") <- "missing"
+    return(empty)
+  }
+  raw <- tryCatch(
+    utils::read.csv(path, stringsAsFactors = FALSE, check.names = FALSE, fileEncoding = "UTF-8"),
+    error = function(e) NULL
+  )
+  if (is.null(raw) || !is.data.frame(raw) || nrow(raw) == 0L || !"ticker" %in% names(raw)) {
+    assign("df", empty, envir = .lab_universe_metrics_cache)
+    attr(empty, "snapshot_source") <- "empty"
+    return(empty)
+  }
+  df <- data.frame(
+    ticker = toupper(trimws(as.character(raw$ticker))),
+    market_cap = if ("market_cap" %in% names(raw)) {
+      suppressWarnings(as.numeric(raw$market_cap))
+    } else {
+      NA_real_
+    },
+    ret_1y = if ("ret_1y" %in% names(raw)) {
+      suppressWarnings(as.numeric(raw$ret_1y))
+    } else {
+      NA_real_
+    },
+    paid_in_capital = if ("paid_in_capital" %in% names(raw)) {
+      suppressWarnings(as.numeric(raw$paid_in_capital))
+    } else {
+      NA_real_
+    },
+    stringsAsFactors = FALSE
+  )
+  df <- df[nzchar(df$ticker) & !is.na(df$ticker), , drop = FALSE]
+  df <- df[!duplicated(df$ticker), , drop = FALSE]
+  rownames(df) <- NULL
+  attr(df, "snapshot_source") <- path
+  if ("snapshot_at" %in% names(raw)) {
+    attr(df, "snapshot_at") <- as.character(raw$snapshot_at[[1]])
+  }
+  assign("df", df, envir = .lab_universe_metrics_cache)
+  df
+}
+
+.lab_lookup_metric_vec <- function(tickers, col) {
+  tks <- unique(toupper(trimws(as.character(tickers))))
+  tks <- tks[nzchar(tks) & !is.na(tks)]
+  out <- stats::setNames(rep(NA_real_, length(tks)), tks)
+  if (!length(tks)) return(out)
+  snap <- tryCatch(lab_load_universe_metrics_snapshot(), error = function(e) NULL)
+  if (is.null(snap) || !is.data.frame(snap) || nrow(snap) == 0L || !col %in% names(snap)) {
+    return(out)
+  }
+  idx <- match(tks, snap$ticker)
+  hit <- which(is.finite(idx))
+  if (!length(hit)) return(out)
+  vals <- suppressWarnings(as.numeric(snap[[col]][idx[hit]]))
+  out[tks[hit]] <- vals
+  # BRK.B / BRK-B style alts
+  miss <- tks[is.na(out) | !is.finite(out)]
+  if (length(miss)) {
+    alts <- gsub("\\.", "-", miss)
+    idx2 <- match(alts, gsub("\\.", "-", snap$ticker))
+    hit2 <- which(is.finite(idx2))
+    if (length(hit2)) {
+      out[miss[hit2]] <- suppressWarnings(as.numeric(snap[[col]][idx2[hit2]]))
+    }
+  }
+  out
+}
+
+#' 批次市值：離線快照優先，缺口再打 Yahoo；仍缺則 NA（呼叫端維持原宇宙順序）
 lab_fetch_market_caps_usd <- function(tickers) {
   tks <- unique(toupper(trimws(as.character(tickers))))
   tks <- tks[nzchar(tks) & !is.na(tks)]
   out <- stats::setNames(rep(NA_real_, length(tks)), tks)
   if (!length(tks)) return(out)
+
+  # 1) session cache
   need <- character(0)
   for (tk in tks) {
     if (exists(tk, envir = .lab_mcap_cache, inherits = FALSE)) {
@@ -270,7 +378,23 @@ lab_fetch_market_caps_usd <- function(tickers) {
       need <- c(need, tk)
     }
   }
+
+  # 2) bundled offline snapshot (full US/TW universe when shipped)
+  if (length(need)) {
+    snap_caps <- .lab_lookup_metric_vec(need, "market_cap")
+    for (tk in need) {
+      v <- suppressWarnings(as.numeric(snap_caps[[tk]])[1])
+      if (is.finite(v) && v > 0) {
+        out[[tk]] <- v
+        assign(tk, v, envir = .lab_mcap_cache)
+      }
+    }
+    need <- need[!(is.finite(out[need]) & out[need] > 0)]
+  }
+
   if (!length(need)) return(out)
+
+  # 3) live Yahoo batch for remaining gaps
   fetched <- NULL
   if (exists(".ensure_python_scraper", mode = "function") &&
       isTRUE(.ensure_python_scraper()) &&
@@ -288,7 +412,6 @@ lab_fetch_market_caps_usd <- function(tickers) {
         if (is.finite(v) && v > 0) {
           out[[key]] <- v
           assign(key, v, envir = .lab_mcap_cache)
-          # 對齊 BRK.B / BRK-B
           alt <- gsub("\\.", "-", key)
           if (!identical(alt, key) && alt %in% names(out) && !is.finite(out[[alt]])) {
             out[[alt]] <- v
@@ -307,6 +430,9 @@ lab_attach_market_caps <- function(pool) {
   if (is.null(pool) || nrow(pool) == 0L) return(pool)
   caps <- lab_fetch_market_caps_usd(pool$ticker)
   pool$market_cap <- unname(caps[pool$ticker])
+  # TW 實收資本額（資本額）；不作為市值排序代理
+  paid <- .lab_lookup_metric_vec(pool$ticker, "paid_in_capital")
+  pool$paid_in_capital <- unname(paid[pool$ticker])
   pool
 }
 
@@ -345,17 +471,41 @@ lab_normalize_pool_rank_mode <- function(x, default = "mcap") {
   default
 }
 
-#' Batch 1Y total return (fraction); Yahoo via Python when available
+#' Batch 1Y total return (fraction): offline snapshot first, then Yahoo
 lab_fetch_returns_1y <- function(tickers) {
   tks <- unique(toupper(trimws(as.character(tickers))))
   tks <- tks[nzchar(tks) & !is.na(tks)]
   out <- stats::setNames(rep(NA_real_, length(tks)), tks)
   if (!length(tks)) return(out)
+
+  need <- character(0)
+  for (tk in tks) {
+    if (exists(tk, envir = .lab_ret1y_cache, inherits = FALSE)) {
+      out[[tk]] <- suppressWarnings(as.numeric(get(tk, envir = .lab_ret1y_cache, inherits = FALSE))[1])
+    } else {
+      need <- c(need, tk)
+    }
+  }
+
+  if (length(need)) {
+    snap_rets <- .lab_lookup_metric_vec(need, "ret_1y")
+    for (tk in need) {
+      v <- suppressWarnings(as.numeric(snap_rets[[tk]])[1])
+      if (is.finite(v)) {
+        out[[tk]] <- v
+        assign(tk, v, envir = .lab_ret1y_cache)
+      }
+    }
+    need <- need[!(is.finite(out[need]))]
+  }
+
+  if (!length(need)) return(out)
+
   fetched <- NULL
   if (exists(".ensure_python_scraper", mode = "function") &&
       isTRUE(.ensure_python_scraper()) &&
       exists("get_returns_1y_batch", mode = "function")) {
-    fetched <- tryCatch(get_returns_1y_batch(tks), error = function(e) NULL)
+    fetched <- tryCatch(get_returns_1y_batch(need), error = function(e) NULL)
   }
   if (!is.null(fetched) && (is.list(fetched) || is.numeric(fetched))) {
     nms <- toupper(trimws(as.character(names(fetched))))
@@ -366,9 +516,11 @@ lab_fetch_returns_1y <- function(tickers) {
         v <- vals[[i]]
         if (!nzchar(key) || !is.finite(v)) next
         out[[key]] <- v
+        assign(key, v, envir = .lab_ret1y_cache)
         alt <- gsub("\\.", "-", key)
         if (!identical(alt, key) && alt %in% names(out) && !is.finite(out[[alt]])) {
           out[[alt]] <- v
+          assign(alt, v, envir = .lab_ret1y_cache)
         }
       }
     }

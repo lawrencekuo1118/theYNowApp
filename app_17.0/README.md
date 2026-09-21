@@ -1,6 +1,10 @@
-# The YNow App v17.71 — Valuation Methodology
+# The YNow App v17.72 — Valuation Methodology
 
 先分類，再選模型；先推導，再校正；先給區間，再給單點；先做基本面估值。
+
+## v17.72 重點
+- **宇宙指標快照**：美股／台股離線補齊 `market_cap`（市值）、`ret_1y`（近一年漲跌幅）；台股另含 MOPS **實收資本額**（`paid_in_capital`）。Blue Chip／Clustering 截斷優先讀快照，缺口再打 Yahoo
+- **目錄**：`app_17.0/`；顯示版號 **v17.72**
 
 ## v17.71 重點
 - **Blue Chip 評估池語意**：宇宙池先依「候選截斷邏輯」全市排序／篩選（市值／概念股等），再取「宇宙檔數（N）」前 N 檔；市值模式在已有市值時不再做 S&P 預篩打亂排序
