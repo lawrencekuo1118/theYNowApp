@@ -1,6 +1,10 @@
-# The YNow App v17.76 — Valuation Methodology
+# The YNow App v17.77 — Valuation Methodology
 
 先分類，再選模型；先推導，再校正；先給區間，再給單點；先做基本面估值。
+
+## v17.77 重點
+- **標題載入條**：`The YNow App v17.xx` 字樣本身作為載入進度條，隨開頁／Shiny busy／`withProgress` 填滿金色
+- **目錄**：`app_17.0/`；顯示版號 **v17.77**
 
 ## v17.76 重點
 - **Blue Chip Ranking 色系**：分頁 box／tab 頂條改用 logo 藍 `#0C5484`（`--ynow-logo-blue`）

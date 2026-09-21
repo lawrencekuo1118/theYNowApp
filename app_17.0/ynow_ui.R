@@ -957,7 +957,15 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.76</span>'),
+                title = HTML(paste0(
+                  '<span class="ynow-app-title" id="ynow_app_title" ',
+                  'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
+                  'aria-label="The YNow App loading">',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v17.77</span>',
+                  '<span class="ynow-app-title-fill" aria-hidden="true">',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v17.77</span>',
+                  '</span></span>'
+                )),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -1202,7 +1210,7 @@ ui <- dashboardPage(
           50% { background-position: 100% 50%; }
         }
 
-        /* 標題金色箔面：漸層＋clip 只套在內層 .ynow-app-title（header／favicon 暫不嵌圓標） */
+        /* 標題＝載入進度條：底層淡金軌道 + 金色填滿層（隨 --ynow-load-pct） */
         .main-header .logo,
         .main-header .logo:hover {
           position: relative;
@@ -1214,8 +1222,42 @@ ui <- dashboardPage(
           filter: none !important;
         }
         .main-header .logo .ynow-app-title {
+          --ynow-load-pct: 0%;
+          position: relative;
           display: inline-block;
           font-weight: bold;
+          color: transparent !important;
+          background-image: none !important;
+          -webkit-text-fill-color: transparent;
+          animation: none;
+          filter: none !important;
+          line-height: 1.15;
+          vertical-align: middle;
+        }
+        .main-header .logo .ynow-app-title-base {
+          display: inline-block;
+          font-weight: bold;
+          white-space: nowrap;
+          color: rgba(245, 197, 24, 0.32) !important;
+          -webkit-text-fill-color: rgba(245, 197, 24, 0.32);
+          text-shadow: none;
+        }
+        .main-header .logo .ynow-app-title-fill {
+          position: absolute;
+          left: 0;
+          top: 0;
+          bottom: 0;
+          width: var(--ynow-load-pct, 0%);
+          max-width: 100%;
+          overflow: hidden;
+          white-space: nowrap;
+          pointer-events: none;
+          transition: width 0.28s ease-out;
+        }
+        .main-header .logo .ynow-app-title-fill-inner {
+          display: inline-block;
+          font-weight: bold;
+          white-space: nowrap;
           color: #FFD700 !important;
           background-color: transparent !important;
           background-image: var(--ynow-gold-gradient) !important;
@@ -1224,11 +1266,20 @@ ui <- dashboardPage(
           -webkit-background-clip: text;
           background-clip: text;
           -webkit-text-fill-color: transparent;
-          animation: ynow-gold-shine 2.6s ease-in-out infinite;
           filter: none !important;
         }
+        .main-header .logo .ynow-app-title.is-loading .ynow-app-title-fill-inner {
+          animation: none;
+        }
+        .main-header .logo .ynow-app-title.is-complete .ynow-app-title-fill {
+          width: 100%;
+          transition: width 0.2s ease-out;
+        }
+        .main-header .logo .ynow-app-title.is-complete .ynow-app-title-fill-inner {
+          animation: ynow-gold-shine 2.6s ease-in-out infinite;
+        }
         @supports not ((-webkit-background-clip: text) or (background-clip: text)) {
-          .main-header .logo .ynow-app-title {
+          .main-header .logo .ynow-app-title-fill-inner {
             -webkit-text-fill-color: #FFD700 !important;
             color: #FFD700 !important;
             background-image: none !important;
@@ -1236,6 +1287,10 @@ ui <- dashboardPage(
               0 0 6px rgba(255, 230, 120, 0.85),
               0 0 14px rgba(255, 200, 40, 0.45),
               0 1px 2px rgba(0, 0, 0, 0.85);
+          }
+          .main-header .logo .ynow-app-title-base {
+            color: rgba(255, 215, 0, 0.35) !important;
+            -webkit-text-fill-color: rgba(255, 215, 0, 0.35);
           }
         }
         /* 美股：logo 區塊黑底（容器層，不影響內層文字漸層） */
@@ -1493,8 +1548,11 @@ ui <- dashboardPage(
         body.ynow-market-tw .main-header .logo:hover {
           filter: none !important;
         }
-        body.ynow-market-tw .main-header .logo .ynow-app-title {
+        body.ynow-market-tw .main-header .logo .ynow-app-title,
+        body.ynow-market-tw .main-header .logo .ynow-app-title-fill-inner {
           filter: none !important;
+        }
+        body.ynow-market-tw .main-header .logo .ynow-app-title-fill-inner {
           text-shadow: 0 1px 3px rgba(0, 0, 0, 0.65);
         }
         body.ynow-market-tw .main-header .navbar .nav > li > a,
@@ -2667,6 +2725,8 @@ ui <- dashboardPage(
             var logo = document.querySelector('.main-header .logo');
             if (!logo) return;
             var title = logo.querySelector('.ynow-app-title');
+            var base = title ? title.querySelector('.ynow-app-title-base') : null;
+            var fillInner = title ? title.querySelector('.ynow-app-title-fill-inner') : null;
             if (window.innerWidth > 767) {
               logo.style.left = '';
               logo.style.right = '';
@@ -2674,11 +2734,13 @@ ui <- dashboardPage(
                 title.style.maxWidth = '';
                 title.style.fontSize = '';
               }
+              if (base) base.style.fontSize = '';
+              if (fillInner) fillInner.style.fontSize = '';
               return;
             }
             logo.style.left = '0px';
             logo.style.right = '0px';
-            if (!title) return;
+            if (!title || !base) return;
             var mkt = document.getElementById('ynow-market-header');
             var custom = document.querySelector('.main-header .navbar-custom-menu');
             var gap = 10;
@@ -2691,17 +2753,156 @@ ui <- dashboardPage(
             title.style.overflow = 'visible';
             title.style.textOverflow = 'clip';
             /* Prefer readable size; shrink proportionally so full version string stays visible */
-            var base = 16;
+            var fs = 16;
             var minFs = 9;
-            title.style.fontSize = base + 'px';
+            base.style.fontSize = fs + 'px';
+            if (fillInner) fillInner.style.fontSize = fs + 'px';
+            title.style.fontSize = fs + 'px';
             var guard = 0;
-            while (title.scrollWidth > maxW + 1 && base > minFs && guard < 24) {
-              base -= 0.5;
-              title.style.fontSize = base + 'px';
+            while (base.scrollWidth > maxW + 1 && fs > minFs && guard < 24) {
+              fs -= 0.5;
+              base.style.fontSize = fs + 'px';
+              if (fillInner) fillInner.style.fontSize = fs + 'px';
+              title.style.fontSize = fs + 'px';
               guard++;
             }
           }
           window.placeMobileAppTitle = placeMobileAppTitle;
+
+          /* Header title = load progress bar (fills with boot / Shiny busy / withProgress) */
+          (function initYnowTitleLoadBar() {
+            var pct = 0;
+            var firstIdleDone = false;
+            var busyTimer = null;
+            var completeTimer = null;
+            function titleEl() {
+              return document.getElementById('ynow_app_title') ||
+                document.querySelector('.main-header .logo .ynow-app-title');
+            }
+            function setPct(n, opts) {
+              opts = opts || {};
+              n = Math.max(0, Math.min(100, Number(n) || 0));
+              if (!opts.force && n < pct && pct >= 100 && firstIdleDone && !opts.busy) {
+                return;
+              }
+              if (!opts.force && n < pct && !opts.busy) {
+                /* allow only forward during boot; busy may reset */
+                if (!(opts.allowDrop)) return;
+              }
+              pct = n;
+              var el = titleEl();
+              if (!el) return;
+              el.style.setProperty('--ynow-load-pct', pct + '%');
+              el.setAttribute('aria-valuenow', String(Math.round(pct)));
+              if (pct < 100) {
+                el.classList.add('is-loading');
+                el.classList.remove('is-complete');
+              }
+            }
+            function markComplete() {
+              setPct(100, { force: true });
+              var el = titleEl();
+              if (!el) return;
+              el.classList.remove('is-loading');
+              el.classList.add('is-complete');
+              el.setAttribute('aria-valuenow', '100');
+              firstIdleDone = true;
+            }
+            function readShinyProgressPct() {
+              var bar = document.querySelector('.shiny-progress .progress-bar');
+              if (!bar) return null;
+              var styleW = bar.style.width || '';
+              var m = String(styleW).match(/([0-9.]+)[ ]*%/);
+              if (m) return Math.max(0, Math.min(100, parseFloat(m[1])));
+              try {
+                var parent = bar.parentElement;
+                if (parent && parent.clientWidth > 0) {
+                  return Math.max(0, Math.min(100, (bar.clientWidth / parent.clientWidth) * 100));
+                }
+              } catch (e) {}
+              return null;
+            }
+            function onBusy() {
+              if (completeTimer) {
+                clearTimeout(completeTimer);
+                completeTimer = null;
+              }
+              var el = titleEl();
+              if (el) {
+                el.classList.add('is-loading');
+                el.classList.remove('is-complete');
+              }
+              var sp = readShinyProgressPct();
+              if (sp != null) {
+                setPct(Math.max(8, sp), { force: true, busy: true, allowDrop: true });
+              } else {
+                setPct(Math.max(pct < 100 ? pct : 12, 12), { force: true, busy: true, allowDrop: true });
+              }
+              if (busyTimer) clearInterval(busyTimer);
+              busyTimer = setInterval(function () {
+                var p = readShinyProgressPct();
+                if (p != null) {
+                  setPct(Math.max(8, Math.min(98, p)), { force: true, busy: true, allowDrop: true });
+                  return;
+                }
+                if (pct < 90) setPct(pct + 1.2, { force: true, busy: true });
+              }, 180);
+            }
+            function onIdle() {
+              if (busyTimer) {
+                clearInterval(busyTimer);
+                busyTimer = null;
+              }
+              setPct(100, { force: true });
+              if (completeTimer) clearTimeout(completeTimer);
+              completeTimer = setTimeout(markComplete, 320);
+            }
+            setPct(6, { force: true });
+            function onDomReady() { setPct(28); }
+            function onWinLoad() { setPct(48); }
+            if (document.readyState === 'loading') {
+              document.addEventListener('DOMContentLoaded', onDomReady);
+            } else {
+              onDomReady();
+            }
+            if (document.readyState === 'complete') {
+              onWinLoad();
+            } else {
+              window.addEventListener('load', onWinLoad);
+            }
+            function bindShinyLoad() {
+              if (!window.jQuery) {
+                setTimeout(bindShinyLoad, 40);
+                return;
+              }
+              var $doc = jQuery(document);
+              $doc.on('shiny:connected', function () { setPct(66); });
+              $doc.on('shiny:sessioninitialized', function () { setPct(82); });
+              $doc.on('shiny:busy', onBusy);
+              $doc.on('shiny:idle', onIdle);
+              /* If already idle after connect, complete */
+              setTimeout(function () {
+                if (!firstIdleDone && pct >= 66) onIdle();
+              }, 1800);
+            }
+            bindShinyLoad();
+            if (typeof MutationObserver !== 'undefined') {
+              var obs = new MutationObserver(function () {
+                var p = readShinyProgressPct();
+                if (p == null) return;
+                var el = titleEl();
+                if (el && el.classList.contains('is-loading')) {
+                  setPct(Math.max(8, Math.min(99, p)), { force: true, busy: true, allowDrop: true });
+                }
+              });
+              obs.observe(document.documentElement, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['style', 'class']
+              });
+            }
+          })();
           function bindMarketModeButtons() {
             placeMarketHeaderByToggle();
             var stack = document.querySelector('#ynow-market-header .ynow-market-stack');
@@ -4651,6 +4852,11 @@ ui <- dashboardPage(
             height: auto !important;
             visibility: visible !important;
             opacity: 1 !important;
+          }
+          .main-header .logo .ynow-app-title-base,
+          .main-header .logo .ynow-app-title-fill-inner {
+            font-size: inherit;
+            line-height: inherit;
           }
           /* Keep 繁中／EN / mark / toggle above the absolute title band */
           .main-header .navbar-custom-menu .navbar-nav > li.ynow-lang-header {
