@@ -1033,6 +1033,62 @@ lab_us_quality_candidates <- function() {
     u <- tryCatch(lab_get_sp500_universe(FALSE), error = function(e) NULL)
   }
   if (is.null(u) || !is.data.frame(u) || nrow(u) == 0L) return(list())
+  # #region agent log
+  tryCatch({
+    probe <- c("TSM", "SKHY", "MU", "NVDA")
+    u_tk <- toupper(trimws(as.character(u$ticker)))
+    keys <- setNames(as.character(u$industry_key[match(probe, u_tk)]), probe)
+    names_p <- setNames(as.character(u$name[match(probe, u_tk)]), probe)
+    unmapped <- if (exists("LAB_UNMAPPED_KEY", inherits = TRUE)) LAB_UNMAPPED_KEY else "lab.Unmapped"
+    label_fn <- function(k) {
+      if (identical(k, unmapped) && exists("LAB_UNMAPPED_LABEL", inherits = TRUE)) {
+        return(LAB_UNMAPPED_LABEL)
+      }
+      if (exists("industry_labels", inherits = TRUE) && k %in% names(industry_labels)) {
+        return(as.character(industry_labels[[k]]))
+      }
+      as.character(k)
+    }
+    labs <- setNames(vapply(keys, label_fn, character(1)), probe)
+    # Hyp D: would name/Yahoo heuristics map if applied?
+    yahoo_hyp <- character(0)
+    if (exists("map_yahoo_industry_to_key", mode = "function")) {
+      yahoo_hyp <- c(
+        TSM = map_yahoo_industry_to_key("Technology", "Semiconductors"),
+        SKHY = map_yahoo_industry_to_key("", "Semiconductors — Memory"),
+        name_TSM = map_yahoo_industry_to_key("", as.character(names_p[["TSM"]])),
+        name_SKHY = map_yahoo_industry_to_key("", as.character(names_p[["SKHY"]]))
+      )
+    }
+    # Hyp E: concept group membership does not set industry_key
+    in_ai <- FALSE
+    if (exists("lab_concept_tickers", mode = "function")) {
+      ct <- tryCatch(lab_concept_tickers("ai_foundry", "US"), error = function(e) character(0))
+      in_ai <- "TSM" %in% toupper(as.character(ct))
+    }
+    # Hyp: TW local 2330 remap
+    tw2330 <- NA_character_
+    if (exists("lab_map_tw_industry_to_key", mode = "function")) {
+      tw2330 <- lab_map_tw_industry_to_key("24")
+    }
+    payload <- sprintf(
+      paste0(
+        '{"hypothesisId":"D","location":"lab_industry_method.R:lab_us_quality_candidates",',
+        '"message":"quality candidate industry probe","data":{"keys":{%s},"labels":{%s},',
+        '"yahoo_hyp":{%s},"TSM_in_ai_foundry":%s,"tw_code24":"%s","n_universe":%d},',
+        '"timestamp":%s}\n'
+      ),
+      paste(sprintf('"%s":"%s"', names(keys), gsub('"', "", as.character(keys))), collapse = ","),
+      paste(sprintf('"%s":"%s"', names(labs), gsub('"', "", as.character(labs))), collapse = ","),
+      paste(sprintf('"%s":"%s"', names(yahoo_hyp), gsub('"', "", as.character(yahoo_hyp))), collapse = ","),
+      ifelse(in_ai, "true", "false"),
+      gsub('"', "", as.character(tw2330)[1]),
+      nrow(u),
+      as.integer(as.numeric(Sys.time()) * 1000)
+    )
+    cat(payload, file = "/opt/cursor/logs/debug.log", append = TRUE)
+  }, error = function(e) invisible(NULL))
+  # #endregion
   tks <- as.character(u$ticker)
   keys <- as.character(u$industry_key)
   keep <- nzchar(tks) & !is.na(tks) & nzchar(keys) & !is.na(keys)
