@@ -961,9 +961,9 @@ ui <- dashboardPage(
                   '<span class="ynow-app-title" id="ynow_app_title" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v17.78</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v17.79</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v17.78</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v17.79</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -1058,6 +1058,11 @@ ui <- dashboardPage(
            sidebarMenu(
              id = "sidebar_tabs",
              menuItem("Dashboard", tabName = "dashboard", icon = icon("chart-line")),
+             menuItem(
+               text = tags$span(id = "ynow_menu_smart", "Smart Analysis"),
+               tabName = "smart_analysis",
+               icon = icon("magic")
+             ),
              menuItem("Basic Setup", tabName = "get_started", icon = icon("play-circle")),
              menuItem(
                text = tags$span(id = "ynow_menu_cat_asset", "Asset-Based Appr."),
@@ -1104,11 +1109,24 @@ ui <- dashboardPage(
     column(width = 12,
            tags$div(
              class = "ynow-sidebar-brand",
-             tags$img(
-               class = "ynow-sidebar-logo-full",
-               src = "ynow-logo-full-480.png",
-               alt = "YNow — WH.Y VALUE NOW",
-               title = "YNow — WH.Y VALUE NOW"
+             id = "ynow_lite_toggle",
+             role = "button",
+             tabindex = "0",
+             `aria-pressed` = "false",
+             `aria-label` = "Toggle Lite mode",
+             title = "Click to switch Lite / Full",
+             tags$div(
+               class = "ynow-sidebar-brand-inner",
+               tags$img(
+                 class = "ynow-sidebar-logo-full",
+                 src = "ynow-logo-full-480.png",
+                 alt = "YNow — WH.Y VALUE NOW"
+               ),
+               tags$span(
+                 class = "ynow-lite-badge",
+                 id = "ynow_lite_badge",
+                 "LITE"
+               )
              )
            ),
            div(class = "ynow-sidebar-download-wrap",
@@ -2027,14 +2045,125 @@ ui <- dashboardPage(
           justify-content: center;
           align-items: center;
           padding: 8px 10px 6px 10px;
+          cursor: pointer;
+          user-select: none;
+          outline: none;
+        }
+        .ynow-sidebar-brand:hover .ynow-sidebar-logo-full {
+          opacity: 1;
+        }
+        .ynow-sidebar-brand:focus-visible {
+          box-shadow: inset 0 0 0 2px rgba(255,255,255,0.35);
+          border-radius: 4px;
+        }
+        .ynow-sidebar-brand-inner {
+          position: relative;
+          display: inline-flex;
+          justify-content: center;
+          align-items: center;
+          width: min(200px, 92%);
+          max-width: 100%;
         }
         .ynow-sidebar-logo-full {
-          width: min(200px, 92%);
+          width: 100%;
           height: auto;
           max-width: 100%;
           object-fit: contain;
           display: block;
           opacity: 0.98;
+        }
+        .ynow-lite-badge {
+          display: none;
+          position: absolute;
+          right: 2px;
+          bottom: 2px;
+          font-size: 9px;
+          font-weight: 700;
+          letter-spacing: 0.06em;
+          line-height: 1;
+          padding: 2px 4px;
+          color: #1a1a1a;
+          background: #f0c14b;
+          border-radius: 2px;
+          box-shadow: 0 0 0 1px rgba(0,0,0,0.25);
+          pointer-events: none;
+        }
+        body.ynow-lite .ynow-lite-badge {
+          display: inline-block;
+        }
+        /* ---- Lite mode: hide Full-only chrome; show Smart Analysis ---- */
+        .sidebar-menu a[data-value="smart_analysis"],
+        .sidebar-menu li:has(> a[data-value="smart_analysis"]) {
+          display: none !important;
+        }
+        body.ynow-lite .sidebar-menu a[data-value="smart_analysis"],
+        body.ynow-lite .sidebar-menu li:has(> a[data-value="smart_analysis"]) {
+          display: block !important;
+        }
+        body.ynow-lite .sidebar-menu a[data-value="get_started"],
+        body.ynow-lite .sidebar-menu li:has(> a[data-value="get_started"]),
+        body.ynow-lite .sidebar-menu li:has(a[data-value="nav_calculator"]),
+        body.ynow-lite .sidebar-menu li:has(a[data-value="dcf_calculator"]),
+        body.ynow-lite .sidebar-menu li:has(a[data-value="pb_calculator"]),
+        body.ynow-lite .sidebar-menu a[data-value="hfv"],
+        body.ynow-lite .sidebar-menu li:has(> a[data-value="hfv"]),
+        body.ynow-lite .sidebar-menu a[data-value="decision_checklist"],
+        body.ynow-lite .sidebar-menu li:has(> a[data-value="decision_checklist"]) {
+          display: none !important;
+        }
+        body.ynow-lite .ynow-full-only {
+          display: none !important;
+        }
+        body.ynow-lite li:has(#ynow_lab_im_detail_tab) {
+          display: none !important;
+        }
+        body.ynow-lite li:has(#ynow_dash_annotation_tab) {
+          display: none !important;
+        }
+        .ynow-lite-only {
+          display: none !important;
+        }
+        body.ynow-lite .ynow-lite-only {
+          display: block !important;
+        }
+        .ynow-smart-card-row {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 12px;
+          margin: 0 0 14px 0;
+        }
+        .ynow-smart-card {
+          flex: 1 1 220px;
+          border: 1px solid #ddd;
+          border-radius: 6px;
+          padding: 12px 14px;
+          background: #fff;
+          min-height: 96px;
+        }
+        .ynow-smart-card-kicker {
+          font-size: 11px;
+          color: #777;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+          margin: 0 0 4px 0;
+        }
+        .ynow-smart-card-title {
+          font-size: 16px;
+          font-weight: 700;
+          margin: 0 0 6px 0;
+          color: #222;
+        }
+        .ynow-smart-card-value {
+          font-size: 22px;
+          font-weight: 700;
+          color: #111;
+          margin: 0;
+        }
+        .ynow-smart-card-meta {
+          font-size: 12px;
+          color: #666;
+          margin: 6px 0 0 0;
+          line-height: 1.4;
         }
         /* 側邊欄 PDF 下載：換行／縮放，避免長標籤撐破側欄 */
         .ynow-sidebar-download-wrap {
@@ -3064,6 +3193,7 @@ ui <- dashboardPage(
             var s = (payload && payload.strings) || {};
             var menu = {
               dashboard: s.menu_dashboard,
+              smart_analysis: s.menu_smart_analysis,
               get_started: s.menu_get_started,
               dcf_calculator: s.menu_dcf,
               ddm_calculator: s.menu_ddm,
@@ -3079,12 +3209,23 @@ ui <- dashboardPage(
             Object.keys(menu).forEach(function (k) {
               if (menu[k]) setMenuLabel(k, menu[k]);
             });
+            var smartLab = document.getElementById('ynow_menu_smart');
+            if (smartLab && s.menu_smart_analysis) smartLab.textContent = s.menu_smart_analysis;
             var catAsset = document.getElementById('ynow_menu_cat_asset');
             if (catAsset && s.menu_cat_asset) catAsset.textContent = s.menu_cat_asset;
             var catIncome = document.getElementById('ynow_menu_cat_income');
             if (catIncome && s.menu_cat_income) catIncome.textContent = s.menu_cat_income;
             var catRel = document.getElementById('ynow_menu_cat_relative');
             if (catRel && s.menu_cat_relative) catRel.textContent = s.menu_cat_relative;
+            var smartTitle = document.getElementById('ynow_smart_page_title');
+            if (smartTitle && s.smart_page_title) smartTitle.textContent = s.smart_page_title;
+            var smartSub = document.getElementById('ynow_smart_page_sub');
+            if (smartSub && s.smart_page_sub) smartSub.textContent = s.smart_page_sub;
+            var smartChart = document.getElementById('ynow_smart_chart_title');
+            if (smartChart && s.smart_chart_title) smartChart.textContent = s.smart_chart_title;
+            var liteToggle = document.getElementById('ynow_lite_toggle');
+            if (liteToggle && s.lite_toggle_title) liteToggle.setAttribute('title', s.lite_toggle_title);
+            if (liteToggle && s.lite_toggle_aria) liteToggle.setAttribute('aria-label', s.lite_toggle_aria);
             if (LAST_BADGE_MAP) {
               LAST_BADGE_MAP.labels = {
                 primary: s.menu_badge_primary || (LAST_BADGE_MAP.labels && LAST_BADGE_MAP.labels.primary) || '推薦',
@@ -3562,6 +3703,88 @@ ui <- dashboardPage(
             });
           }
           registerLocaleHandler();
+
+          /* ---- Lite mode: sidebar logo click toggles body.ynow-lite + LITE badge ---- */
+          (function () {
+            var FULL_ONLY_TABS = [
+              'get_started', 'nav_calculator', 'dcf_calculator', 'ddm_calculator',
+              'ri_calculator', 'pb_calculator', 'hfv', 'decision_checklist'
+            ];
+            function currentSidebarTab() {
+              var active = document.querySelector('.sidebar-menu li.active > a[data-value]');
+              if (active) return active.getAttribute('data-value') || '';
+              return '';
+            }
+            function gotoTab(tab) {
+              if (!tab) return;
+              if (window.Shiny && Shiny.setInputValue) {
+                Shiny.setInputValue('sidebar_tabs', tab, {priority: 'event'});
+              }
+              var a = document.querySelector('.sidebar-menu a[data-value=\"' + tab + '\"]');
+              if (a) {
+                try { a.click(); } catch (e) {}
+              }
+            }
+            function applyLiteMode(on, opts) {
+              opts = opts || {};
+              var enabled = !!on;
+              document.body.classList.toggle('ynow-lite', enabled);
+              var brand = document.getElementById('ynow_lite_toggle');
+              if (brand) brand.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+              try {
+                window.sessionStorage.setItem('ynow_lite_mode', enabled ? '1' : '0');
+              } catch (e0) {}
+              if (window.Shiny && Shiny.setInputValue) {
+                Shiny.setInputValue('ynow_lite_mode', enabled, {priority: 'event'});
+              }
+              if (opts.navigate === false) return;
+              var tab = currentSidebarTab();
+              if (enabled) {
+                if (FULL_ONLY_TABS.indexOf(tab) >= 0) gotoTab('smart_analysis');
+              } else if (tab === 'smart_analysis') {
+                gotoTab('dashboard');
+              }
+            }
+            function toggleLite() {
+              applyLiteMode(!document.body.classList.contains('ynow-lite'));
+            }
+            function bindLiteToggle() {
+              var brand = document.getElementById('ynow_lite_toggle');
+              if (!brand || brand.getAttribute('data-ynow-lite-bound') === '1') return;
+              brand.setAttribute('data-ynow-lite-bound', '1');
+              brand.addEventListener('click', function (ev) {
+                ev.preventDefault();
+                toggleLite();
+              });
+              brand.addEventListener('keydown', function (ev) {
+                if (ev.key === 'Enter' || ev.key === ' ' || ev.keyCode === 13 || ev.keyCode === 32) {
+                  ev.preventDefault();
+                  toggleLite();
+                }
+              });
+            }
+            function restoreLiteFromStorage() {
+              var saved = null;
+              try { saved = window.sessionStorage.getItem('ynow_lite_mode'); } catch (e1) {}
+              applyLiteMode(saved === '1', {navigate: false});
+            }
+            if (document.readyState === 'loading') {
+              document.addEventListener('DOMContentLoaded', function () {
+                bindLiteToggle();
+                restoreLiteFromStorage();
+              });
+            } else {
+              bindLiteToggle();
+              restoreLiteFromStorage();
+            }
+            if (window.jQuery) {
+              jQuery(document).on('shiny:connected shiny:sessioninitialized', function () {
+                bindLiteToggle();
+                restoreLiteFromStorage();
+              });
+            }
+            window.__ynowApplyLiteMode = applyLiteMode;
+          })();
 
           /* ---- Param audit (1A+2B): go to tab + highlight input ---- */
           function ynowClearParamHighlight() {
@@ -5440,9 +5663,9 @@ ui <- dashboardPage(
       br()
     ),
     
-    # Header KPIs: Dashboard only (Previous Close / Market Cap / EPS TTM)
+    # Header KPIs: Dashboard + Smart Analysis (Previous Close / Market Cap / EPS TTM)
     conditionalPanel(
-      condition = "input.sidebar_tabs == 'dashboard'",
+      condition = "input.sidebar_tabs == 'dashboard' || input.sidebar_tabs == 'smart_analysis'",
       fluidRow(
         class = "ynow-header-kpi-row",
         column(
@@ -5462,9 +5685,10 @@ ui <- dashboardPage(
         )
       )
     ),
-    # Model pages: full composite valuation block (shared output) + forecast years
+    # Model pages + Smart Analysis: full composite valuation block (shared output) + forecast years
     conditionalPanel(
       condition = paste(
+        "input.sidebar_tabs == 'smart_analysis' ||",
         "input.sidebar_tabs == 'dcf_calculator' ||",
         "input.sidebar_tabs == 'ddm_calculator' ||",
         "input.sidebar_tabs == 'pb_calculator' ||",
@@ -5799,6 +6023,8 @@ ui <- dashboardPage(
 
       tabItem(tabName = "dashboard",
 
+              tags$div(
+                class = "ynow-full-only",
               tabBox(title = "FINANCIAL REPORT",
                      id = "dashboard_fin_report",
                      width = "auto",
@@ -5940,6 +6166,7 @@ ui <- dashboardPage(
                          )
                        )
                      )
+              )
               ),
               
               tags$div(
@@ -6017,7 +6244,7 @@ ui <- dashboardPage(
                      )),
                      
                      tabPanel(
-                       "Annotation",
+                       title = tags$span(id = "ynow_dash_annotation_tab", "Annotation"),
                        fluidRow(
                          column(
                            width = 12,
@@ -6048,6 +6275,36 @@ ui <- dashboardPage(
                        )
                      )
               )
+      ),
+
+      # ==========================================
+      # Smart Analysis（Lite）：自動主／副模型＋預設參數試算與圖表
+      # ==========================================
+      tabItem(
+        tabName = "smart_analysis",
+        fluidRow(
+          column(
+            width = 12,
+            h2(tags$b(id = "ynow_smart_page_title", "Smart Analysis")),
+            p(
+              id = "ynow_smart_page_sub",
+              paste0(
+                "Auto-selects primary and secondary valuation models from the ticker profile, ",
+                "applies App defaults, and shows fair-value charts. No manual model settings."
+              )
+            ),
+            tags$hr()
+          )
+        ),
+        uiOutput("smart_analysis_summary"),
+        fluidRow(
+          box(
+            width = 12, status = "primary", solidHeader = TRUE,
+            title = tags$span(id = "ynow_smart_chart_title", "Fair value comparison"),
+            plotlyOutput("smart_analysis_chart", height = "360px") %>% shinycssloaders::withSpinner()
+          )
+        ),
+        uiOutput("smart_analysis_reason")
       ),
       
       # ==========================================
@@ -6642,6 +6899,7 @@ ui <- dashboardPage(
                 fluidRow(
                   column(
                     width = 6,
+                    class = "ynow-full-only",
                     shinyWidgets::pickerInput(
                       "lab_im_industries", "產業",
                       choices = lab_industry_picker_choices(),
@@ -6690,7 +6948,7 @@ ui <- dashboardPage(
                       )
                     ),
                     tags$div(
-                      class = "ynow-lab-im-quality",
+                      class = "ynow-lab-im-quality ynow-full-only",
                       style = "margin-top:12px;",
                       checkboxInput(
                         "lab_im_gate_only",
@@ -6719,7 +6977,7 @@ ui <- dashboardPage(
                   )
                 ),
                 tags$div(
-                  class = "ynow-lab-im-method-summary",
+                  class = "ynow-lab-im-method-summary ynow-full-only",
                   style = "margin: 0 0 12px 0;",
                   tableOutput("lab_im_summary")
                 ),
@@ -6747,7 +7005,7 @@ ui <- dashboardPage(
           ),
 
           tabPanel(
-            title = "明細",
+            title = tags$span(id = "ynow_lab_im_detail_tab", "明細"),
             value = "im_detail",
             icon = icon("list"),
             p(
