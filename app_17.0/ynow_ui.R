@@ -957,7 +957,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.74</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.75</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -6428,7 +6428,7 @@ ui <- dashboardPage(
                       ),
                       tags$span(
                         class = "ynow-lab-im-quality-hint",
-                        "預設勾選：排行榜／摘要只列盈餘品質通過者；取消勾選則不過濾。不影響明細列數。"
+                        "預設勾選：排行榜／明細只列盈餘品質通過者；取消勾選則不過濾。合格不足 N 時不湊滿。"
                       )
                     ),
                     tags$div(
@@ -6441,7 +6441,7 @@ ui <- dashboardPage(
                       ),
                       tags$span(
                         class = "ynow-lab-im-quality-hint",
-                        "預設勾選：前十名只列 F-Score≥7 者；取消勾選則不設 F 門檻。不影響明細列數；合格不足 10 時不會湊滿。"
+                        "預設勾選：前十名與明細只列 F-Score≥7 者；取消勾選則不設 F 門檻。合格不足 N 或不足 10 時不會湊滿。"
                       )
                     ),
                     tags$div(
@@ -6494,7 +6494,7 @@ ui <- dashboardPage(
             icon = icon("list"),
             p(
               id = "ynow_lab_im_detail_intro",
-              "本次已評估檔的明細（按年化估值漲幅排序）。列數等於「宇宙檔數（N）」：先對宇宙池套用候選截斷邏輯排序／篩選，再取前 N 檔（不足則全列）。"
+              "本次已評估檔的明細（按年化估值漲幅排序）。宇宙檔數（N）＝分析後最終顯示上限：候選截斷與評分後，最多顯示 N 檔合格列；條件不足時不湊滿。"
             ),
             tags$hr(),
             fluidRow(

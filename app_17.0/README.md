@@ -1,6 +1,10 @@
-# The YNow App v17.74 — Valuation Methodology
+# The YNow App v17.75 — Valuation Methodology
 
 先分類，再選模型；先推導，再校正；先給區間，再給單點；先做基本面估值。
+
+## v17.75 重點
+- **宇宙檔數（N）語意**：N＝分析後明細／排行最終顯示上限（非 Yahoo 撈取檔數）；評估用較大 `eval_n`；合格不足時不湊滿
+- **目錄**：`app_17.0/`；顯示版號 **v17.75**
 
 ## v17.74 重點
 - **Blue Chip 排行**：移除「排行產業／Ranking industry」下拉；依產業前十名一律列出各產業 Top 10
