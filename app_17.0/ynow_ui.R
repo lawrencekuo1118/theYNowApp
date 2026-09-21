@@ -5744,27 +5744,37 @@ ui <- dashboardPage(
         )
       ),
       # 預測年數 n（左）與 DCF claim 建議（右）— 與上列同寬欄位靠左對齊
-      fluidRow(
-        class = "ynow-header-years-suggest-row",
-        column(
-          width = 6,
-          class = "col-xs-12 col-sm-6",
-          tags$div(
-            class = "ynow-header-years",
-            numericInput(
-              "years", "預測年數 n",
-              value = APP_DEFAULTS$years, min = 1, max = 30
-            )
-          )
+      # Lite Smart Analysis：不顯示手動模型參數（含預測年數）
+      conditionalPanel(
+        condition = paste(
+          "input.sidebar_tabs == 'dcf_calculator' ||",
+          "input.sidebar_tabs == 'ddm_calculator' ||",
+          "input.sidebar_tabs == 'pb_calculator' ||",
+          "input.sidebar_tabs == 'ri_calculator' ||",
+          "input.sidebar_tabs == 'nav_calculator'"
         ),
-        column(
-          width = 6,
-          class = "col-xs-12 col-sm-6",
-          conditionalPanel(
-            condition = "input.sidebar_tabs == 'dcf_calculator'",
+        fluidRow(
+          class = "ynow-header-years-suggest-row",
+          column(
+            width = 6,
+            class = "col-xs-12 col-sm-6",
             tags$div(
-              class = "ynow-dcf-claim-suggest-wrap",
-              uiOutput("dcf_claim_suggest")
+              class = "ynow-header-years",
+              numericInput(
+                "years", "預測年數 n",
+                value = APP_DEFAULTS$years, min = 1, max = 30
+              )
+            )
+          ),
+          column(
+            width = 6,
+            class = "col-xs-12 col-sm-6",
+            conditionalPanel(
+              condition = "input.sidebar_tabs == 'dcf_calculator'",
+              tags$div(
+                class = "ynow-dcf-claim-suggest-wrap",
+                uiOutput("dcf_claim_suggest")
+              )
             )
           )
         )
