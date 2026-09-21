@@ -812,7 +812,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_cluster_hint = paste0(
       "Uses the same industry/model filters as Rankings when set. ",
       "Shared controls above BLUE CHIP: first apply Candidate truncate rule to the full ",
-      "filtered universe (market cap sort / concept filter / 1Y return / random), ",
+      "filtered universe (market cap / concept / 1Y return / random; ",
+      "if market cap is unavailable, keep original universe order), ",
       "then take the first Universe size (N) names. ",
       "The Search ticker is always force-included in Universe (N) and is the default radar focus. ",
       "Fetches Yahoo ratios with a bundled offline snapshot fallback when Yahoo is blocked."
@@ -1621,7 +1622,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_cluster_hint = paste0(
       "沿用「排行」頁目前的產業／模型篩選（若有）。",
       "區塊上方共用控制語意：宇宙池先依「候選截斷邏輯」全市排序／篩選",
-      "（市值／概念股／近一年漲幅／隨機；市值缺值則改依代號排序），",
+      "（市值／概念股／近一年漲幅／隨機；市值缺值則維持原宇宙順序），",
       "再取「宇宙檔數（N）」的前 N 檔。",
       "Search 後的代號一律強制納入宇宙（N），並作為雷達焦點預設。",
       "抓取 Yahoo 比率特徵；若 Yahoo 受限則改用內建離線快照。"

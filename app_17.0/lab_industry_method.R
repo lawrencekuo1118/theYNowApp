@@ -488,7 +488,7 @@ lab_select_eval_pool <- function(pool, max_n = 25L, mode = "mcap",
         set.seed(as.integer(seed)[1])
       }
       pool <- pool[sample.int(nrow(pool), size = as.integer(max_n)), , drop = FALSE]
-      pool <- pool[order(pool$ticker), , drop = FALSE]
+      # Keep sample order (do not alphabetize by ticker before fetch / analysis)
     }
     attr(pool, "n_filtered") <- as.integer(n_filtered)
     attr(pool, "max_n") <- max_n
@@ -503,7 +503,8 @@ lab_select_eval_pool <- function(pool, max_n = 25L, mode = "mcap",
     pool <- lab_attach_returns_1y(pool)
     ret <- suppressWarnings(as.numeric(pool$ret_1y))
     missing <- is.na(ret) | !is.finite(ret)
-    o <- order(missing, -ifelse(missing, 0, ret), pool$ticker, na.last = TRUE)
+    # No ticker alphabetical fallback — missing returns stay at end in input order
+    o <- order(missing, -ifelse(missing, 0, ret), seq_len(nrow(pool)), na.last = TRUE)
     pool <- pool[o, , drop = FALSE]
     # Step 2: take first N
     if (is.finite(max_n) && nrow(pool) > max_n) pool <- utils::head(pool, max_n)
@@ -531,9 +532,16 @@ lab_select_eval_pool <- function(pool, max_n = 25L, mode = "mcap",
   mcap <- suppressWarnings(as.numeric(pool$market_cap))
   missing <- is.na(mcap) | !is.finite(mcap) | mcap <= 0
   used_mcap <- isTRUE(sum(!missing) > 0L)
-  o <- order(missing, -ifelse(missing, 0, mcap), pool$ticker, na.last = TRUE)
-  pool <- pool[o, , drop = FALSE]
-  # Step 2: take first N from the sorted pool
+  if (isTRUE(used_mcap)) {
+    # Sort by market cap; equal caps keep relative input order (seq_len), never ticker A→Z
+    o <- order(missing, -ifelse(missing, 0, mcap), seq_len(nrow(pool)), na.last = TRUE)
+    pool <- pool[o, , drop = FALSE]
+  } else {
+    # No usable caps: keep universe input order, then take N (do NOT alphabetize by ticker
+    # before feature fetch / F-Score / clustering).
+    note <- paste0(as.character(note)[1], ";mcap_unavailable_keep_order")
+  }
+  # Step 2: take first N from the sorted / original-order pool
   if (is.finite(max_n) && nrow(pool) > max_n) pool <- utils::head(pool, max_n)
   attr(pool, "n_filtered") <- as.integer(n_filtered)
   attr(pool, "max_n") <- max_n
