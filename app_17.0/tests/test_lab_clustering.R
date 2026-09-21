@@ -179,6 +179,20 @@ stopifnot(nrow(pool_built) <= 3L)
 stopifnot(!is.na(lab_cluster_match_ticker(pool_built$ticker, "EEE")))
 stopifnot(identical(as.character(attr(pool_built, "pool_rank_mode")), "mcap"))
 
+# Selected N (not hardcoded 25/50): pool size follows max_n; Inf keeps all
+pool_n100 <- lab_cluster_build_pool(catlg, max_n = 100L, rank_mode = "mcap")
+stopifnot(nrow(pool_n100) == min(100L, nrow(catlg)))
+stopifnot(identical(as.integer(attr(pool_n100, "max_n")), 100L))
+pool_n50 <- lab_cluster_build_pool(catlg, max_n = 50L, rank_mode = "mcap")
+stopifnot(nrow(pool_n50) == min(50L, nrow(catlg)))
+# Re-resolve Inf must not collapse to default 25
+pool_all <- lab_cluster_build_pool(
+  catlg, max_n = lab_resolve_im_max_n("all", NULL), rank_mode = "mcap"
+)
+stopifnot(nrow(pool_all) == nrow(lab_dedupe_eval_pool(catlg)) ||
+            nrow(pool_all) >= nrow(pool_n100))
+stopifnot(is.infinite(attr(pool_all, "max_n")))
+
 # Result order: pin focus first, then mcap desc for the rest
 ord_df <- data.frame(
   ticker = c("AAA", "BBB", "CCC", "EEE"),

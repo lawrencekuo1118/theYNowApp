@@ -178,17 +178,30 @@ lab_fetch_summary_metrics <- function(ticker) {
   out
 }
 
-#' 評估檔數（明細列數）："all"／"全部" → 不設上限；空／自訂未填 → 預設 25
+#' 宇宙檔數 N："all"／"全部" → 不設上限；空／自訂未填 → 預設 25
+#' 已解析的數值（含 Inf）原樣保留，避免二次 clamp 把 Inf 誤判成預設 25。
 lab_parse_im_max_n <- function(x, default_n = 25L) {
   default_n <- max(1L, as.integer(default_n)[1])
   if (is.null(x) || !length(x) || (length(x) == 1L && is.na(x))) {
     return(list(n = default_n, label = as.character(default_n), unlimited = FALSE))
   }
+  # Already-resolved numeric from a prior lab_resolve / lab_clamp call
+  if (is.numeric(x) && !is.factor(x)) {
+    n0 <- suppressWarnings(as.numeric(x)[1])
+    if (length(n0) == 1L && !is.na(n0) && !is.finite(n0)) {
+      return(list(n = Inf, label = "全部", unlimited = TRUE))
+    }
+    if (is.finite(n0) && n0 >= 1) {
+      n_i <- as.integer(round(n0))
+      return(list(n = n_i, label = as.character(n_i), unlimited = FALSE))
+    }
+  }
   s <- trimws(as.character(x)[1])
   if (!nzchar(s) || identical(s, "custom") || identical(s, "自訂")) {
     return(list(n = default_n, label = as.character(default_n), unlimited = FALSE))
   }
-  if (identical(s, "all") || identical(s, "全部")) {
+  if (identical(s, "all") || identical(s, "全部") ||
+      identical(s, "Inf") || identical(tolower(s), "inf")) {
     return(list(n = Inf, label = "全部", unlimited = TRUE))
   }
   n <- suppressWarnings(as.integer(s)[1])

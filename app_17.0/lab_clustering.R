@@ -872,9 +872,10 @@ lab_cluster_priority_refill_features <- function(feats, ticker) {
   feats
 }
 
-#' Build evaluation pool for clustering from Blue Chip catalog filters
+#' Build evaluation pool for clustering from Blue Chip catalog filters.
+#' Analysis universe size = selected Universe size (N), not a hardcoded default.
 lab_cluster_build_pool <- function(catalog, industry_filter = NULL, method_filter = NULL,
-                                   max_n = 50L, ensure_ticker = NULL,
+                                   max_n = 25L, ensure_ticker = NULL,
                                    rank_mode = "mcap", concept_keys = NULL,
                                    market_mode = "US", include_adr = TRUE) {
   empty <- data.frame(

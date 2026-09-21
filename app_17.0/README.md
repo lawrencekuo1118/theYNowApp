@@ -1,6 +1,10 @@
-# The YNow App v17.77 — Valuation Methodology
+# The YNow App v17.78 — Valuation Methodology
 
 先分類，再選模型；先推導，再校正；先給區間，再給單點；先做基本面估值。
+
+## v17.78 重點
+- **分群宇宙 N**：依所選「宇宙檔數（N）」分析（含自訂／全部）；修正 Inf 二次 clamp 誤回預設 25
+- **目錄**：`app_17.0/`；顯示版號 **v17.78**
 
 ## v17.77 重點
 - **標題載入條**：`The YNow App v17.xx` 字樣本身作為載入進度條，隨開頁／Shiny busy／`withProgress` 填滿金色

@@ -10538,11 +10538,16 @@ server <- function(input, output, session) {
     k <- suppressWarnings(as.integer(input$lab_cluster_k %||% 3L)[1])
     if (!is.finite(k)) k <- 3L
     k <- max(2L, min(8L, k))
+    # 分群分析宇宙＝所選宇宙檔數 N（非固定預設 25／50）
     max_n <- lab_resolve_im_max_n(
       input$lab_im_max_n,
       input$lab_im_max_n_custom,
       lo = 1L,
       hi = 500L
+    )
+    max_n_label <- lab_resolve_im_max_n_label(
+      input$lab_im_max_n,
+      input$lab_im_max_n_custom
     )
     # Radar focus seed = Search / main ticker input (session stock)
     session_tk <- tryCatch({
@@ -10618,11 +10623,14 @@ server <- function(input, output, session) {
           )
           showNotification(
             if (identical(normalize_ui_locale(loc), "zh-TW")) {
-              paste0("篩選後 ", n_filtered, " 檔，", how, "分群宇宙 ", nrow(pool), " 檔。")
+              paste0(
+                "篩選後 ", n_filtered, " 檔，", how, "分群宇宙 ", nrow(pool),
+                " 檔（所選 N＝", max_n_label, "）。"
+              )
             } else {
               paste0(
                 "After filters: ", n_filtered, " names; clustering universe ",
-                nrow(pool), " via ", how, "."
+                nrow(pool), " via ", how, " (selected N=", max_n_label, ")."
               )
             },
             type = "message",
@@ -11272,7 +11280,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.77"),
+      paste0("- **App：** The YNow App v17.78"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

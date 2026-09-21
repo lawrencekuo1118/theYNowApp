@@ -69,6 +69,22 @@ check(
 # 120*4=480 < 500
 check("eval_n 120 -> 480", identical(lab_resolve_im_eval_n(120L), 480L))
 
+# Re-clamp must preserve Inf / finite ints (clustering passes resolved max_n again)
+check("parse Inf numeric stays unlimited", isTRUE(lab_parse_im_max_n(Inf)$unlimited))
+check("clamp Inf stays Inf", is.infinite(lab_clamp_im_max_n(Inf)))
+check(
+  "resolve all then clamp keeps Inf",
+  is.infinite(lab_clamp_im_max_n(lab_resolve_im_max_n("all", NULL)))
+)
+check(
+  "resolve 100 then clamp keeps 100",
+  identical(lab_clamp_im_max_n(lab_resolve_im_max_n("100", NULL)), 100L)
+)
+check(
+  "resolve custom 80 then clamp keeps 80",
+  identical(lab_clamp_im_max_n(lab_resolve_im_max_n("custom", 80)), 80L)
+)
+
 scored <- data.frame(
   ticker = c("A", "B", "C", "D", "E"),
   upside_cagr_pct = c(40, 30, 20, NA, 10),
