@@ -961,9 +961,9 @@ ui <- dashboardPage(
                   '<span class="ynow-app-title" id="ynow_app_title" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v17.77</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v17.78</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v17.77</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v17.78</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -6854,7 +6854,8 @@ ui <- dashboardPage(
               style = "color:#888; font-size:12px;",
               paste0(
                 "沿用「排行」頁目前的產業／模型篩選（若有）。",
-                "流程：宇宙池先依「候選截斷邏輯」全市排序／篩選（市值／概念股／近一年漲幅／隨機），再取「宇宙檔數（N）」的前 N 檔。",
+                "流程：宇宙池先依「候選截斷邏輯」全市排序／篩選（市值／概念股／近一年漲幅／隨機），",
+                "再依所選「宇宙檔數（N）」作分群分析（非固定預設檔數）。",
                 "Search 後的代號一律強制納入宇宙（N），並作為雷達焦點預設。",
                 "抓取 Yahoo 比率特徵；若 Yahoo 受限則改用內建離線快照。"
               )
