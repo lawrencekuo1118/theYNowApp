@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12584613
+bundleId=12584841
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=26f9486
-commit=26f9486
-short=26f9486
-message=fix(lab): Universe size N is post-analysis display cap (v17.75)
-captured_at=2026-09-21T13:45:00Z
-source_branch=cursor/universe-n-display-not-fetch-f4a6
-display_version=v17.75
-note=Canonical live line is app_17.0. Bundle 12584613 ships v17.75: Universe size (N) = post-analysis display cap (not Yahoo fetch count); eval via lab_resolve_im_eval_n; detail/leaderboard lab_cap_detail_display never pads when qualified names fall short. Deploy via scripts/deploy_app_17.R. Supersedes 12584500 (v17.74).
+aligned_git=277b746
+commit=277b746
+short=277b746
+message=fix(ui): Blue Chip Ranking chrome uses logo blue (v17.76)
+captured_at=2026-09-21T14:30:00Z
+source_branch=cursor/bluechip-logo-blue-f4a6
+display_version=v17.76
+note=Canonical live line is app_17.0. Bundle 12584841 ships v17.76: Blue Chip Ranking box headers / tab accents use --ynow-logo-blue (#0C5484) via body.ynow-theme-bluechip. Deploy via scripts/deploy_app_17.R. Supersedes 12584613 (v17.75).

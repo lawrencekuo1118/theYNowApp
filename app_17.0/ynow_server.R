@@ -124,7 +124,7 @@ server <- function(input, output, session) {
     .clear_lab_cluster_result("market_mode")
   }, ignoreInit = TRUE)
 
-  # Valuation-model page accent (Model Selector hex); Basic Setup / other tabs clear theme
+  # Valuation-model / Blue Chip page accent; Basic Setup / other tabs clear theme
   observeEvent(input$sidebar_tabs, {
     tab <- as.character(input$sidebar_tabs %||% "")[1]
     session$sendCustomMessage("ynowModelTheme", list(tab = tab))
