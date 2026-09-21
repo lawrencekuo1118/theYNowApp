@@ -957,7 +957,7 @@ ui <- dashboardPage(
   skin = "black",
   
   dashboardHeader(
-                title = HTML('<span class="ynow-app-title">The YNow App v17.68</span>'),
+                title = HTML('<span class="ynow-app-title">The YNow App v17.69</span>'),
     titleWidth = 250,
     tags$li(
       id = "ynow-market-header",
@@ -6263,13 +6263,23 @@ ui <- dashboardPage(
       # Blue Chip：美股績優篩選（版面節奏對齊 Dashboard FINANCIAL REPORT）
       tabItem(
         tabName = "bluechip",
-        # Shared Universe N + Candidate truncate — above BLUE CHIP tabBox (all sub-tabs)
+        # Shared Candidate truncate → Universe N — above BLUE CHIP (all sub-tabs)
         fluidRow(
           column(
             width = 12,
             class = "ynow-lab-im-pool-controls",
             style = "margin: 0 0 14px 0;",
             fluidRow(
+              column(
+                width = 4,
+                selectInput(
+                  "lab_im_pool_rank",
+                  tags$span(id = "ynow_lab_im_pool_rank_label", "候選截斷邏輯"),
+                  choices = lab_im_pool_rank_choices(),
+                  selected = "mcap",
+                  width = "100%"
+                )
+              ),
               column(
                 width = 4,
                 selectInput(
@@ -6290,16 +6300,6 @@ ui <- dashboardPage(
                     step = 1,
                     width = "100%"
                   )
-                )
-              ),
-              column(
-                width = 4,
-                selectInput(
-                  "lab_im_pool_rank",
-                  tags$span(id = "ynow_lab_im_pool_rank_label", "候選截斷邏輯"),
-                  choices = lab_im_pool_rank_choices(),
-                  selected = "mcap",
-                  width = "100%"
                 )
               ),
               column(
@@ -6486,7 +6486,7 @@ ui <- dashboardPage(
             icon = icon("list"),
             p(
               id = "ynow_lab_im_detail_intro",
-              "本次已評估檔的明細（按年化估值漲幅排序）。列數等於上方「宇宙檔數（N）」（不足則全列）。"
+              "本次已評估檔的明細（按年化估值漲幅排序）。列數等於上方「宇宙檔數（N）」（不足則全列；先依候選截斷邏輯排序／篩選後再取 N）。"
             ),
             tags$hr(),
             fluidRow(
@@ -6588,7 +6588,7 @@ ui <- dashboardPage(
               style = "color:#888; font-size:12px;",
               paste0(
                 "沿用「排行」頁目前的產業／模型篩選（若有）。",
-                "宇宙檔數 N 與候選截斷邏輯見區塊上方共用控制（市值／概念股／近一年漲幅／隨機；市值缺值則改依代號排序）。",
+                "先選候選截斷邏輯，再選宇宙檔數 N（見區塊上方共用控制：市值／概念股／近一年漲幅／隨機；市值缺值則改依代號排序）。",
                 "Search 後的代號一律強制納入宇宙（N），並作為雷達焦點預設。",
                 "抓取 Yahoo 比率特徵；若 Yahoo 受限則改用內建離線快照。"
               )

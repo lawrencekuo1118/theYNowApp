@@ -4,9 +4,9 @@
 # 宇宙依市場模式：美股＝Nasdaq／NYSE 主要上市（lab_us_universe.R；S&P GICS 疊加）；台股＝上市／上櫃／興櫃（lab_tw_universe.R；績優候選不含興櫃）。
 # 績優原則：在 Piotroski 高門檻（F-Score≥7；不含盈餘品質）後，選「模型合理價相對現價」、
 # 並依 App 預設預測年數 n（APP_DEFAULTS$years）換算年化漲幅最大者。
-# 「評估檔數（明細列數）」（lab_im_max_n；預設 25）＝本次 Yahoo 評估檔數＝明細列數。
+# 「宇宙檔數（N）」（lab_im_max_n；預設 25）＝本次 Yahoo 評估檔數＝明細列數。
 # 盈餘品質／Piotroski 高門檻勾選只影響排行榜／摘要，不縮減明細列數。
-# 候選 > N 時依使用者選的截斷邏輯（市值／概念股／近一年漲幅／隨機）取 N。
+# 流程：先套用「候選截斷邏輯」（市值／概念股／近一年漲幅／隨機）排序／篩選，再依序取宇宙檔數 N。
 # 排行榜＝同一批合格者的 Top 10（預設 F-Score≥7；gate_only=FALSE 時不設 F 門檻；不足 10 不湊滿）。
 # 產業建議方法對齊 recommend_valuation_models 的產業層規則（簡化估值）。
 # ==========================================
@@ -390,6 +390,8 @@ lab_rank_and_cap_eval_pool <- function(pool, max_n = 25L) {
 }
 
 #' Select / truncate evaluation pool by user mode
+#'
+#' Order: apply Candidate truncate rule (rank / filter), then take Universe size N.
 #'
 #' Modes:
 #' - mcap: largest market cap first (legacy)

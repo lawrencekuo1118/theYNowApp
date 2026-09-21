@@ -1,6 +1,10 @@
-# The YNow App v17.68 — Valuation Methodology
+# The YNow App v17.69 — Valuation Methodology
 
 先分類，再選模型；先推導，再校正；先給區間，再給單點；先做基本面估值。
+
+## v17.69 重點
+- **Blue Chip**：共用控制改為先「候選截斷邏輯」、再「宇宙檔數（N）」；評估池語意同步（先排序／篩選，再取 N）
+- **目錄**：`app_17.0/`；顯示版號 **v17.69**
 
 ## v17.68 重點
 - **產業標準快覽（手機）**：修正 picker 與產業名／KPI 之間過大空白；`pickerInput` 下拉改 `container=body`，並收斂 closed menu 佔高
