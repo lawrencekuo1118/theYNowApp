@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12583464
+bundleId=12584443
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=3106d9f
-commit=3106d9f
-short=3106d9f
-message=feat(lab): ship US/TW market_cap, 1Y return, TW paid-in capital snapshot (v17.72)
-captured_at=2026-09-21T08:15:00Z
-source_branch=cursor/universe-mcap-ret-snapshot-f4a6
-display_version=v17.72
-note=Canonical live line is app_17.0. Bundle 12583464 ships v17.72: offline universe_metrics_snapshot.csv (market_cap / ret_1y / TW paid_in_capital) used before Yahoo for Blue Chip truncate. Deploy via scripts/deploy_app_17.R. Supersedes 12582910 (v17.71).
+aligned_git=b802cf4
+commit=b802cf4
+short=b802cf4
+message=feat(lab): ADR industry map, Include ADRs filter, Search truncate semantics (v17.73)
+captured_at=2026-09-21T13:00:00Z
+source_branch=cursor/adr-filter-search-truncate-f4a6
+display_version=v17.73
+note=Canonical live line is app_17.0. Bundle 12584443 ships v17.73: ADR industry overlay (~522 flagged), Include ADRs checkbox (default on), Search Blue Chips = filter→truncate→N. Deploy via scripts/deploy_app_17.R. Supersedes 12583464 (v17.72).
