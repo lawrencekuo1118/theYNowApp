@@ -6691,6 +6691,7 @@ server <- function(input, output, session) {
   observeEvent(input$calc, { .execute_dcf_calc() })
 
   # Search 後：推薦主模型靜默自動試算（美股／台股；參數未就緒則略過）
+  # Lite 模式另對副模型自動試算（共用同一套公式／脈衝）
   observeEvent(current_ticker(), {
     # Clear prior-ticker DCF so Composite does not keep stale run-state overlays
     stock_price_estimate_val(NULL)
@@ -6701,6 +6702,10 @@ server <- function(input, output, session) {
     auto_calc_nav_pulse(0L)
     auto_calc_ri_pulse(0L)
   }, ignoreNULL = TRUE, ignoreInit = TRUE)
+
+  lite_mode <- reactive({
+    isTRUE(input$ynow_lite_mode)
+  })
 
   .auto_calc_primary_ready <- function(prim) {
     prim <- as.character(prim %||% "")[1]
@@ -6779,14 +6784,169 @@ server <- function(input, output, session) {
     req(nzchar(tk))
     rec <- model_sidebar_rec()
     prim <- as.character(rec$primary %||% "")[1]
+    sec <- as.character(rec$secondary %||% "")[1]
     req(nzchar(prim), prim %in% c("dcf", "ddm", "pb", "ri", "nav"))
 
-    sig <- paste(tk, prim, sep = "|")
-    if (identical(auto_calc_primary_sig(), sig)) return()
     if (!isTRUE(.auto_calc_primary_ready(prim))) return()
+    keys <- prim
+    if (isTRUE(lite_mode()) && nzchar(sec) && sec %in% c("dcf", "ddm", "pb", "ri", "nav") &&
+        !identical(sec, prim) && isTRUE(.auto_calc_primary_ready(sec))) {
+      keys <- c(prim, sec)
+    }
+    # Signature includes only models actually fired so Lite can retry when
+    # secondary inputs settle after primary.
+    sig <- paste(c(tk, keys, if (isTRUE(lite_mode())) "L" else "F"), collapse = "|")
+    if (identical(auto_calc_primary_sig(), sig)) return()
 
     auto_calc_primary_sig(sig)
-    .fire_auto_calc_primary(prim)
+    for (k in keys) .fire_auto_calc_primary(k)
+  })
+
+  # ==========================================
+  # Smart Analysis（Lite）：主／副模型摘要與合理價圖
+  # ==========================================
+  output$smart_analysis_summary <- renderUI({
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
+    if (!isTRUE(user_has_searched())) {
+      return(tags$p(class = "ynow-smart-card-meta", ui_str("smart_waiting", loc)))
+    }
+    rec <- tryCatch(model_sidebar_rec(), error = function(e) NULL)
+    if (is.null(rec)) {
+      return(tags$p(class = "ynow-smart-card-meta", ui_str("smart_calc_pending", loc)))
+    }
+    prim <- as.character(rec$primary %||% "")[1]
+    sec <- as.character(rec$secondary %||% "")[1]
+    band <- tryCatch(primary_valuation_band(), error = function(e) NULL)
+    sec_pt <- tryCatch(secondary_valuation_point(), error = function(e) NA_real_)
+    cur <- tryCatch(scraped_market_cap()$price, error = function(e) NA_real_)
+    cur <- suppressWarnings(as.numeric(cur)[1])
+    base <- if (!is.null(band)) suppressWarnings(as.numeric(band$base)[1]) else NA_real_
+    bear <- if (!is.null(band)) suppressWarnings(as.numeric(band$bear)[1]) else NA_real_
+    bull <- if (!is.null(band)) suppressWarnings(as.numeric(band$bull)[1]) else NA_real_
+    mos <- if (is.finite(base) && base != 0 && is.finite(cur)) {
+      (base - cur) / base * 100
+    } else {
+      NA_real_
+    }
+    fmt_px <- function(x) {
+      if (!is.finite(x)) return("—")
+      paste0(money_prefix(), format(round(x, 2), nsmall = 2, big.mark = ","))
+    }
+    fmt_pct <- function(x) {
+      if (!is.finite(x)) return("—")
+      paste0(sprintf("%+.1f", x), "%")
+    }
+    prim_meta <- if (is.finite(bear) && is.finite(bull)) {
+      paste0("Bear ", fmt_px(bear), " · Bull ", fmt_px(bull))
+    } else {
+      ui_str("smart_calc_pending", loc)
+    }
+    tags$div(
+      class = "ynow-smart-card-row",
+      tags$div(
+        class = "ynow-smart-card",
+        tags$p(class = "ynow-smart-card-kicker", ui_str("smart_primary_kicker", loc)),
+        tags$p(class = "ynow-smart-card-title", .model_label(prim)),
+        tags$p(class = "ynow-smart-card-value", fmt_px(base)),
+        tags$p(class = "ynow-smart-card-meta", prim_meta)
+      ),
+      tags$div(
+        class = "ynow-smart-card",
+        tags$p(class = "ynow-smart-card-kicker", ui_str("smart_secondary_kicker", loc)),
+        tags$p(
+          class = "ynow-smart-card-title",
+          if (nzchar(sec)) .model_label(sec) else "—"
+        ),
+        tags$p(class = "ynow-smart-card-value", if (nzchar(sec)) fmt_px(sec_pt) else "—"),
+        tags$p(class = "ynow-smart-card-meta", if (nzchar(sec)) ui_str("composite_secondary_check", loc) else "")
+      ),
+      tags$div(
+        class = "ynow-smart-card",
+        tags$p(class = "ynow-smart-card-kicker", ui_str("smart_price_kicker", loc)),
+        tags$p(class = "ynow-smart-card-title", " "),
+        tags$p(class = "ynow-smart-card-value", fmt_px(cur)),
+        tags$p(class = "ynow-smart-card-meta", " ")
+      ),
+      tags$div(
+        class = "ynow-smart-card",
+        tags$p(class = "ynow-smart-card-kicker", ui_str("smart_mos_kicker", loc)),
+        tags$p(class = "ynow-smart-card-title", " "),
+        tags$p(class = "ynow-smart-card-value", fmt_pct(mos)),
+        tags$p(class = "ynow-smart-card-meta", " ")
+      )
+    )
+  })
+
+  output$smart_analysis_reason <- renderUI({
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
+    if (!isTRUE(user_has_searched())) return(NULL)
+    rec <- tryCatch(model_sidebar_rec(), error = function(e) NULL)
+    if (is.null(rec)) return(NULL)
+    reason <- as.character(rec$reason %||% "")[1]
+    if (!nzchar(reason)) return(NULL)
+    tags$div(
+      style = "margin: 8px 0 18px 0; padding: 12px 14px; background: #f7f8fa; border: 1px solid #e5e7eb; border-radius: 6px;",
+      tags$b(ui_str("smart_reason_title", loc)),
+      tags$p(style = "margin: 6px 0 0 0; color: #555; line-height: 1.45;", reason)
+    )
+  })
+
+  output$smart_analysis_chart <- plotly::renderPlotly({
+    empty <- plotly::plotly_empty(type = "bar") %>%
+      plotly::layout(
+        title = list(text = "", font = list(size = 12)),
+        xaxis = list(visible = FALSE),
+        yaxis = list(visible = FALSE)
+      )
+    if (!isTRUE(user_has_searched())) return(empty)
+
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
+    rec <- tryCatch(model_sidebar_rec(), error = function(e) NULL)
+    band <- tryCatch(primary_valuation_band(), error = function(e) NULL)
+    sec_pt <- tryCatch(secondary_valuation_point(), error = function(e) NA_real_)
+    cur <- suppressWarnings(as.numeric(tryCatch(scraped_market_cap()$price, error = function(e) NA_real_))[1])
+    prim <- as.character(rec$primary %||% "")[1]
+    sec <- as.character(rec$secondary %||% "")[1]
+    base <- if (!is.null(band)) suppressWarnings(as.numeric(band$base)[1]) else NA_real_
+    bear <- if (!is.null(band)) suppressWarnings(as.numeric(band$bear)[1]) else NA_real_
+    bull <- if (!is.null(band)) suppressWarnings(as.numeric(band$bull)[1]) else NA_real_
+
+    labs <- c(
+      ui_str("smart_price_kicker", loc),
+      paste0(.model_label(prim), " Bear"),
+      paste0(.model_label(prim), " Base"),
+      paste0(.model_label(prim), " Bull")
+    )
+    vals <- c(cur, bear, base, bull)
+    cols <- c("#333333", "#9aa0a6", "#0C5484", "#5b8def")
+    if (nzchar(sec) && is.finite(sec_pt)) {
+      labs <- c(labs, paste0(.model_label(sec), " FV"))
+      vals <- c(vals, sec_pt)
+      cols <- c(cols, "#888888")
+    }
+    ok <- is.finite(vals)
+    if (!any(ok)) return(empty)
+    labs <- labs[ok]
+    vals <- vals[ok]
+    cols <- cols[ok]
+
+    plotly::plot_ly(
+      x = labs,
+      y = vals,
+      type = "bar",
+      marker = list(color = cols),
+      text = round(vals, 2),
+      textposition = "outside",
+      hovertemplate = "%{x}<br>%{y:.2f}<extra></extra>"
+    ) %>%
+      plotly::layout(
+        margin = list(l = 48, r = 16, t = 24, b = 64),
+        yaxis = list(title = paste0("Price (", money_prefix(), ")"), zeroline = FALSE),
+        xaxis = list(title = "", tickangle = -20),
+        showlegend = FALSE,
+        paper_bgcolor = "rgba(0,0,0,0)",
+        plot_bgcolor = "rgba(0,0,0,0)"
+      )
   })
 
   # ==========================================
