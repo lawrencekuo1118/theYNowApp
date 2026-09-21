@@ -1120,7 +1120,8 @@ ui <- dashboardPage(
                tags$img(
                  class = "ynow-sidebar-logo-full",
                  src = "ynow-logo-full-480.png",
-                 alt = "YNow — WH.Y VALUE NOW"
+                 alt = "YNow — WH.Y VALUE NOW",
+                 draggable = "false"
                ),
                tags$span(
                  class = "ynow-lite-badge",
@@ -2114,10 +2115,13 @@ ui <- dashboardPage(
         body.ynow-lite .ynow-full-only {
           display: none !important;
         }
-        body.ynow-lite li:has(#ynow_lab_im_detail_tab) {
+        /* Prefer data-value: locale applyTabLabels may strip title span ids */
+        body.ynow-lite #bluechip_im_report > li:has(> a[data-value="im_detail"]),
+        body.ynow-lite .nav-tabs > li:has(> a[data-value="im_detail"]) {
           display: none !important;
         }
-        body.ynow-lite li:has(#ynow_dash_annotation_tab) {
+        body.ynow-lite #dashboard_fin_report .nav-tabs > li:has(#ynow_dash_annotation_tab),
+        body.ynow-lite #dashboard_fin_report .nav-tabs > li:has(> a[data-value="Annotation"]) {
           display: none !important;
         }
         .ynow-lite-only {
@@ -3749,19 +3753,23 @@ ui <- dashboardPage(
               applyLiteMode(!document.body.classList.contains('ynow-lite'));
             }
             function bindLiteToggle() {
-              var brand = document.getElementById('ynow_lite_toggle');
-              if (!brand || brand.getAttribute('data-ynow-lite-bound') === '1') return;
-              brand.setAttribute('data-ynow-lite-bound', '1');
-              brand.addEventListener('click', function (ev) {
+              if (document.documentElement.getAttribute('data-ynow-lite-delegated') === '1') return;
+              document.documentElement.setAttribute('data-ynow-lite-delegated', '1');
+              document.addEventListener('click', function (ev) {
+                var brand = ev.target && ev.target.closest ? ev.target.closest('#ynow_lite_toggle') : null;
+                if (!brand) return;
                 ev.preventDefault();
+                ev.stopPropagation();
                 toggleLite();
-              });
-              brand.addEventListener('keydown', function (ev) {
+              }, true);
+              document.addEventListener('keydown', function (ev) {
+                var brand = ev.target && ev.target.closest ? ev.target.closest('#ynow_lite_toggle') : null;
+                if (!brand) return;
                 if (ev.key === 'Enter' || ev.key === ' ' || ev.keyCode === 13 || ev.keyCode === 32) {
                   ev.preventDefault();
                   toggleLite();
                 }
-              });
+              }, true);
             }
             function restoreLiteFromStorage() {
               var saved = null;
