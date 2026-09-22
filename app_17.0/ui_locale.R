@@ -405,7 +405,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     smart_page_title = "Smart Analysis",
     smart_page_sub = paste0(
       "Auto-selects primary and secondary valuation models from the ticker profile, ",
-      "applies App defaults, and shows fair-value charts. No manual model settings."
+      "detects the best parameter scenario (Two-Stage vs Gordon, SGR method, claim), ",
+      "applies those defaults, and shows fair-value charts. No manual model settings."
     ),
     smart_chart_title = "Fair value comparison",
     smart_primary_kicker = "Primary model",
@@ -413,9 +414,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     smart_price_kicker = "Current price",
     smart_mos_kicker = "MOS (vs primary Base)",
     smart_waiting = "Search a ticker first to run Smart Analysis.",
-    smart_calc_pending = "Applying defaults and calculating…",
+    smart_calc_pending = "Detecting scenario and calculating…",
     smart_reason_title = "Why these models",
-    smart_scenario_title = "Applied defaults:",
+    smart_scenario_title = "Applied scenario:",
     smart_scenario_two_stage = "Two-Stage DCF",
     smart_scenario_gordon = "Gordon DCF",
     smart_scenario_sgr = "SGR method=",
@@ -1252,8 +1253,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     industry_overview_title = "目前產業標準快覽",
     smart_page_title = "智慧分析",
     smart_page_sub = paste0(
-      "依股票性質自動判別主／副模型，套用 App 預設參數試算，",
-      "並顯示合理價相關圖表；不開放手動模型設定。"
+      "依股票性質自動判別主／副模型，辨識參數情境（Two-Stage／Gordon、SGR 法、claim），",
+      "套用最合理預設後試算並顯示合理價圖表；不開放手動模型設定。"
     ),
     smart_chart_title = "合理價比較",
     smart_primary_kicker = "主模型",
@@ -1261,9 +1262,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     smart_price_kicker = "目前市價",
     smart_mos_kicker = "MOS（相對主模型 Base）",
     smart_waiting = "請先搜尋股票代號，以啟動智慧分析。",
-    smart_calc_pending = "正在套用預設並計算…",
+    smart_calc_pending = "正在辨識參數情境並計算…",
     smart_reason_title = "模型判別理由",
-    smart_scenario_title = "已套用預設：",
+    smart_scenario_title = "已套用參數情境：",
     smart_scenario_two_stage = "Two-Stage DCF",
     smart_scenario_gordon = "Gordon DCF",
     smart_scenario_sgr = "SGR 估計法＝",

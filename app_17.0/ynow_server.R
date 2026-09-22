@@ -136,6 +136,8 @@ server <- function(input, output, session) {
   }, ignoreInit = TRUE)
   auto_calc_primary_sig <- reactiveVal("")
   lite_scenario_applied_sig <- reactiveVal("")
+  # Lite Smart Analysis: silent DCF auto-calc (heal g≥discount; no error toasts)
+  lite_dcf_silent <- reactiveVal(FALSE)
   auto_calc_ddm_pulse <- reactiveVal(0L)
   auto_calc_pb_pulse <- reactiveVal(0L)
   auto_calc_nav_pulse <- reactiveVal(0L)
@@ -6545,51 +6547,71 @@ server <- function(input, output, session) {
   # 💰 8. DCF 計算核心與企業估值 (對接 FCFF 預測序列)
   # ==========================================
   .execute_dcf_calc <- function() {
-    req(current_ticker(), input$dcf_mode, input$years, fcf_results$df_fcf()) 
-    
+    req(current_ticker(), input$dcf_mode, input$years, fcf_results$df_fcf())
+    silent <- isTRUE(isolate(lite_dcf_silent()))
+
     n <- as.numeric(input$years)
     if (is.na(n) || n <= 0) return(NULL)
-    
+
     proj_df <- fcf_results$df_fcf()
     future_fcfs <- extract_fcff_series(proj_df)
-    
+
     if (length(future_fcfs) != n) {
-      showNotification(.ui_msg("notif_dcf_n_mismatch"), type = "error")
+      if (!silent) showNotification(.ui_msg("notif_dcf_n_mismatch"), type = "error")
       return(NULL)
     }
-    
+
     dcf_value <- NA
-    g_terminal <- input$sgr / 100
-    
+    g_terminal <- suppressWarnings(as.numeric(input$sgr)[1]) / 100
+    if (!is.finite(g_terminal)) g_terminal <- NA_real_
+
+    # Lite: last-chance heal so updateNumericInput lag cannot trip g ≥ discount
+    .heal_g_vs_rate <- function(g_dec, rate_dec) {
+      if (!is.finite(g_dec) || !is.finite(rate_dec) || rate_dec <= 0) return(g_dec)
+      if (g_dec < rate_dec - 1e-9) return(g_dec)
+      g_ok_pct <- .clamp_g_below_rate(g_dec * 100, rate_dec * 100, margin = 0.5)
+      if (!is.finite(g_ok_pct)) return(g_dec)
+      updateNumericInput(session, "sgr", value = round(g_ok_pct, 2))
+      g_ok_pct / 100
+    }
+
     claim_pre <- as.character(input$dcf_claim %||% "fcff")[1]
     if (isTRUE(identical(input$dcf_mode, "gordon"))) {
       req(input$sgr, input$wacc_gordon)
       r1 <- input$wacc_gordon / 100
-      r2 <- r1 
-      
-      if (!identical(claim_pre, "fcfe") && !is.na(r2) && g_terminal >= r2) { 
-        showNotification(.ui_msg("notif_g_ge_wacc"), type = "error")
-        return(NULL) 
+      r2 <- r1
+
+      if (!identical(claim_pre, "fcfe") && is.finite(r2) && is.finite(g_terminal) && g_terminal >= r2) {
+        if (silent) {
+          g_terminal <- .heal_g_vs_rate(g_terminal, r2)
+        } else {
+          showNotification(.ui_msg("notif_g_ge_wacc"), type = "error")
+          return(NULL)
+        }
       }
       discount_factors <- cumprod(1 + rep(r1, n))
-      
+
     } else {
       req(input$g_stage1, input$sgr, input$yr_stage1, input$wacc_stage1, input$wacc_stage2)
-      
+
       r1 <- input$wacc_stage1 / 100
       r2 <- input$wacc_stage2 / 100
-      
-      if (!identical(claim_pre, "fcfe") && g_terminal >= r2) { 
-        showNotification(.ui_msg("notif_g2_ge_wacc2"), type = "error")
-        return(NULL) 
+
+      if (!identical(claim_pre, "fcfe") && is.finite(r2) && is.finite(g_terminal) && g_terminal >= r2) {
+        if (silent) {
+          g_terminal <- .heal_g_vs_rate(g_terminal, r2)
+        } else {
+          showNotification(.ui_msg("notif_g2_ge_wacc2"), type = "error")
+          return(NULL)
+        }
       }
-      
+
       yr1 <- clamp_yr_stage1(n, input$yr_stage1, APP_DEFAULTS$yr_stage1)
       if (yr1 <= 0 || yr1 >= n) {
-        showNotification(.ui_msg("notif_yr1_invalid"), type = "error")
-        return(NULL) 
+        if (!silent) showNotification(.ui_msg("notif_yr1_invalid"), type = "error")
+        return(NULL)
       }
-      
+
       wacc_sequence <- c(rep(r1, min(yr1, n)), rep(r2, max(0, n - yr1)))
       discount_factors <- cumprod(1 + wacc_sequence)
     }
@@ -6643,9 +6665,13 @@ server <- function(input, output, session) {
         suppressWarnings(as.numeric(input$wacc_re)[1]) / 100
       }
       if (!is.finite(ke) || ke <= 0) ke <- r2
-      if (!is.finite(ke) || g_terminal >= ke) {
-        showNotification(.ui_msg("notif_fcfe_g_ge_ke"), type = "error")
-        return(NULL)
+      if (!is.finite(ke) || (is.finite(g_terminal) && g_terminal >= ke)) {
+        if (silent && is.finite(ke) && ke > 0) {
+          g_terminal <- .heal_g_vs_rate(g_terminal, ke)
+        } else {
+          if (!silent) showNotification(.ui_msg("notif_fcfe_g_ge_ke"), type = "error")
+          return(NULL)
+        }
       }
       rd <- suppressWarnings(as.numeric(input$wacc_rd)[1]) / 100
       if (!is.finite(rd) || rd < 0) rd <- 0
@@ -6665,28 +6691,32 @@ server <- function(input, output, session) {
       # 企業價值 (EV) 轉 股權價值 (Equity Value)
       equity_value <- as.numeric(dcf_value)[1] + latest_cash - latest_debt
     }
-    
+
     # 計算每股目標價並防呆（報價幣；拒絕 TWD／普通股標成 USD／ADR）
     sh_info <- tryCatch(.valuation_shares(), error = function(e) NULL)
     px <- if (!is.null(sh_info)) .dcf_per_share(equity_value, sh_info) else NA_real_
     if (is.finite(px)) {
       stock_price_estimate_val(px)
       sh_note <- sh_info$note
-      if (!is.null(sh_note) && nzchar(sh_note)) {
+      if (!silent && !is.null(sh_note) && nzchar(sh_note)) {
         showNotification(.ui_msg("notif_dcf_shares_note", note = sh_note), type = "message", duration = 6)
       }
     } else {
       stock_price_estimate_val(NULL)
+      if (!silent) {
+        showNotification(
+          .ui_msg("notif_dcf_no_per_share"),
+          type = "warning"
+        )
+      }
+    }
+
+    if (!silent) {
       showNotification(
-        .ui_msg("notif_dcf_no_per_share"),
-        type = "warning"
+        .ui_msg("notif_dcf_updated", claim = if (identical(claim, "fcfe")) .ui_msg("notif_dcf_claim_fcfe") else .ui_msg("notif_dcf_claim_fcff")),
+        type = "message"
       )
     }
-    
-    showNotification(
-      .ui_msg("notif_dcf_updated", claim = if (identical(claim, "fcfe")) .ui_msg("notif_dcf_claim_fcfe") else .ui_msg("notif_dcf_claim_fcff")),
-      type = "message"
-    )
     invisible(TRUE)
   }
 
@@ -6701,6 +6731,7 @@ server <- function(input, output, session) {
     dcf_value_result(NULL)
     auto_calc_primary_sig("")
     lite_scenario_applied_sig("")
+    lite_dcf_silent(FALSE)
     auto_calc_ddm_pulse(0L)
     auto_calc_pb_pulse(0L)
     auto_calc_nav_pulse(0L)
@@ -6850,6 +6881,66 @@ server <- function(input, output, session) {
     invisible(des)
   }
 
+  # After first scenario apply: keep WACC / terminal g consistent as calculated_wacc settles
+  .lite_resync_discount_consistency <- function(des = NULL) {
+    w <- suppressWarnings(as.numeric(calculated_wacc())[1])
+    if (!is.finite(w) || w <= 0) return(invisible(FALSE))
+    wp <- round(w * 100, 2)
+    two <- if (!is.null(des)) {
+      isTRUE(des$two_stage)
+    } else {
+      identical(as.character(input$dcf_mode %||% "")[1], "two_stage")
+    }
+    if (isTRUE(two)) {
+      w1 <- suppressWarnings(as.numeric(input$wacc_stage1)[1])
+      w2 <- suppressWarnings(as.numeric(input$wacc_stage2)[1])
+      if (!is.finite(w1) || abs(w1 - wp) > 0.05) {
+        updateNumericInput(session, "wacc_stage1", value = wp)
+      }
+      if (!is.finite(w2) || abs(w2 - wp) > 0.05) {
+        updateNumericInput(session, "wacc_stage2", value = wp)
+      }
+      r2 <- wp
+    } else {
+      wg <- suppressWarnings(as.numeric(input$wacc_gordon)[1])
+      if (!is.finite(wg) || abs(wg - wp) > 0.05) {
+        updateNumericInput(session, "wacc_gordon", value = wp)
+      }
+      r2 <- wp
+    }
+    claim <- as.character(input$dcf_claim %||% (des$claim %||% "fcff"))[1]
+    if (identical(claim, "fcfe")) {
+      ke <- if (isTRUE(input$use_estimated_re) && !is.null(estimated_re()) &&
+                is.finite(as.numeric(estimated_re())[1])) {
+        as.numeric(estimated_re())[1] * 100
+      } else {
+        suppressWarnings(as.numeric(input$wacc_re)[1])
+      }
+      if (is.finite(ke) && ke > 0) r2 <- ke
+    }
+    g_now <- suppressWarnings(as.numeric(input$sgr)[1])
+    g_ok <- .clamp_g_below_rate(g_now, r2, margin = 0.5)
+    if (is.finite(g_ok) && is.finite(g_now) && abs(g_ok - g_now) > 1e-4) {
+      updateNumericInput(session, "sgr", value = round(g_ok, 2))
+      if (isTRUE(input[["mod_ddm-sync_g"]] %||% TRUE)) {
+        updateNumericInput(session, "mod_ddm-g", value = round(g_ok, 2))
+      }
+      updateNumericInput(session, "mod_ri-ri_g", value = round(g_ok, 2))
+    }
+    for (pair in list(
+      list(g = "mod_ddm-g", ke = "mod_ddm-ke"),
+      list(g = "mod_ri-ri_g", ke = "mod_ri-ri_ke")
+    )) {
+      g0 <- suppressWarnings(as.numeric(input[[pair$g]])[1])
+      ke0 <- suppressWarnings(as.numeric(input[[pair$ke]])[1])
+      g1 <- .clamp_g_below_rate(g0, ke0, margin = 0.5)
+      if (is.finite(g1) && is.finite(g0) && abs(g1 - g0) > 1e-4) {
+        updateNumericInput(session, pair$g, value = round(g1, 2))
+      }
+    }
+    invisible(TRUE)
+  }
+
   .lite_scenario_matches_ui <- function(des) {
     mode_ok <- if (isTRUE(des$two_stage)) {
       identical(as.character(input$dcf_mode %||% "")[1], "two_stage")
@@ -6907,6 +6998,8 @@ server <- function(input, output, session) {
         if (!is.finite(w1) || w1 <= 0 || !is.finite(w2) || w2 <= 0) return(FALSE)
         r2 <- w2
       }
+      # Wait until UI WACC reflects calculated (avoid firing on stale APP_DEFAULTS)
+      if (abs(r2 - w_calc * 100) > 0.15) return(FALSE)
       sgr <- suppressWarnings(as.numeric(input$sgr)[1])
       if (!is.finite(sgr)) return(FALSE)
       claim <- as.character(input$dcf_claim %||% "fcff")[1]
@@ -6958,6 +7051,11 @@ server <- function(input, output, session) {
   .fire_auto_calc_primary <- function(prim) {
     prim <- as.character(prim %||% "")[1]
     if (identical(prim, "dcf")) {
+      was_silent <- isTRUE(isolate(lite_dcf_silent()))
+      if (isTRUE(isolate(lite_mode()))) {
+        lite_dcf_silent(TRUE)
+        on.exit(lite_dcf_silent(was_silent), add = TRUE)
+      }
       tryCatch(.execute_dcf_calc(), error = function(e) invisible(NULL))
     } else if (identical(prim, "ddm")) {
       auto_calc_ddm_pulse(isolate(auto_calc_ddm_pulse()) + 1L)
@@ -6996,6 +7094,8 @@ server <- function(input, output, session) {
         return()
       }
       if (!isTRUE(.lite_scenario_matches_ui(des))) return()
+      # Re-sync WACC / g after UI lag or late calculated_wacc settle
+      .lite_resync_discount_consistency(des)
     }
 
     if (!isTRUE(.auto_calc_primary_ready(prim))) return()
