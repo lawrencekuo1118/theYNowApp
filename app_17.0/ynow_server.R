@@ -10409,7 +10409,7 @@ server <- function(input, output, session) {
   # ==========================================
   lab_sec_result <- reactiveVal(NULL)
 
-  # 側邊欄「量化回測實驗室」捷徑通知（舊 Testing 連結已移入主選單；此 observer 保留相容）
+  # 側邊欄「Testing」小按鈕（完整版；Lite 隱藏）
   observeEvent(input$sidebar_test_click, {
     showNotification(.ui_msg("notif_test_opened"), type = "message", duration = 3)
   }, ignoreInit = TRUE)

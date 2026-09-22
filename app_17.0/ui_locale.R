@@ -137,6 +137,16 @@ locale_for_market <- function(mode = get_market_mode()) {
     param_audit_pdf_err = "PDF capture failed. Try again after Search and a short wait.",
     param_audit_pdf_need_pages = "Select at least one page.",
     test_link = " Testing",
+    testing_page_title = "Testing",
+    testing_page_sub = paste0(
+      "Full-only sandbox for upcoming experiments and feature trials. ",
+      "Quant Backtest Lab remains on the main sidebar. Lite mode hides this entry."
+    ),
+    testing_box_title = "Sandbox",
+    testing_box_body = paste0(
+      "Reserved space for temporary UI / valuation experiments before they graduate ",
+      "into Dashboard, Smart Analysis, or Quant Backtest Lab."
+    ),
     feedback_link = " Feedback",
     market_hint = "Market",
     hdr_lang_label = "Language",
@@ -909,7 +919,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     notif_pdf_busy = "Generating PDF investment report — please wait…",
     notif_pdf_ok = "✅ PDF investment report ready",
     notif_pdf_fail = "Report generation failed: {err}",
-    notif_test_opened = "Opened Quant Backtest Lab",
+    notif_test_opened = "Opened Testing",
     notif_industry_catalog_fail = "Industry catalog load failed: {err}",
     notif_update_cache_fallback = "Update failed; using last cache / built-in snapshot.",
     notif_no_candidates = "No evaluable candidates under the current filters.",
@@ -1238,6 +1248,15 @@ locale_for_market <- function(mode = get_market_mode()) {
     param_audit_pdf_err = "PDF 擷取失敗。請先 Search 並稍候再試。",
     param_audit_pdf_need_pages = "請至少勾選一個頁面。",
     test_link = " 測試",
+    testing_page_title = "Testing",
+    testing_page_sub = paste0(
+      "完整版專用實驗區，供後續功能試用與驗證。",
+      "量化回測實驗室仍在主選單；簡化版不顯示此入口。"
+    ),
+    testing_box_title = "實驗沙盒",
+    testing_box_body = paste0(
+      "保留給暫時的 UI／估值實驗；成熟後再移入 Dashboard、智慧分析或量化回測實驗室。"
+    ),
     feedback_link = " 意見區",
     market_hint = "市場",
     hdr_lang_label = "語言",
@@ -1978,7 +1997,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     notif_pdf_busy = "正在產出 PDF 投資意見報告，請稍候...",
     notif_pdf_ok = "✅ PDF 投資意見報告已產出",
     notif_pdf_fail = "報告產出失敗: {err}",
-    notif_test_opened = "已開啟量化回測實驗室",
+    notif_test_opened = "已開啟 Testing",
     notif_industry_catalog_fail = "產業目錄載入失敗: {err}",
     notif_update_cache_fallback = "更新失敗，沿用上次快取／內建快照。",
     notif_no_candidates = "目前篩選下沒有可評估的候選。",
