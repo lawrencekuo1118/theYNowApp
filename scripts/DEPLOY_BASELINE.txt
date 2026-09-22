@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12590247
+bundleId=12590349
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=ba9c6d429ebed0eb3340e7d18e9471e1999cae64
-commit=ba9c6d429ebed0eb3340e7d18e9471e1999cae64
-short=ba9c6d4
-message=Restyle Testing Quantitative Backtest as a report-style layout (v17.89).
-captured_at=2026-09-22T15:04:34Z
+aligned_git=24ab7718bc2e91f4cf77327eae551f29459f45fa
+commit=24ab7718bc2e91f4cf77327eae551f29459f45fa
+short=24ab771
+message=Promote Quant Backtest Lab to a Full-only sidebar tab and rename Blue Chip Leaderboard (v17.90).
+captured_at=2026-09-22T15:26:32Z
 source_branch=master
-display_version=v17.89
-note=Canonical live line is app_17.0. Bundle 12590247 = tip v17.89 Testing Quantitative Backtest report-style chapters (performance → NAV → exposure → MOS/FV → appendix). Deploy via scripts/deploy_app_17.R.
+display_version=v17.90
+note=Canonical live line is app_17.0. Bundle 12590349 = tip v17.90 Quant Backtest Lab as Full-only main sidebar tab (after YNOW); chapter-linked default-collapsed controls; Blue Chip Leaderboard rename; Lite hides lab. Deploy via scripts/deploy_app_17.R.
