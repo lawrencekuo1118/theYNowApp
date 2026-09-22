@@ -1,10 +1,4 @@
-# The YNow App v17.91 — Valuation Methodology
-
-## v17.91 重點
-- **部署連線穩定性（best-effort）**：`session$allowReconnect("force")` + 軟化 disconnect／自動重試；隱藏 shinyapps「僅 Reload」對話框；延長 reconnect backoff
-- **選用「重新整理」**：偵測到新版本時，於側邊欄意見區右側顯示按鈕；由使用者決定何時套用，並以 sessionStorage 還原代號／分頁／市場／語言／主要輸入後再 Search
-- **誠實邊界**：shinyapps 部署會銷毀舊 instance，無法保證既有 R session 零中斷；重連為新 session；硬重新整理無法保留伺服器端 reactiveVal／已抓財報本體（需再 Search）
-- **目錄**：`app_17.0/`；顯示版號 **v17.91**
+# The YNow App v17.90 — Valuation Methodology
 
 ## v17.90 重點
 - **量化回測實驗室**：自底部「測試」捷徑提升為主選單獨立分頁（HFV／YNOW 之後）；Lite（簡化版）不顯示此功能

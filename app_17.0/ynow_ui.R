@@ -2,10 +2,6 @@
 # ui.R - 前端介面設計
 # ==========================================
 
-if (!exists("YNOW_DISPLAY_VERSION", inherits = TRUE) || !nzchar(as.character(YNOW_DISPLAY_VERSION)[1])) {
-  YNOW_DISPLAY_VERSION <- "v17.91"
-}
-
 # Backtest Zone：欄位下方小字說明
 .bt_hint <- function(text) {
   tags$p(
@@ -89,7 +85,7 @@ if (!exists("YNOW_DISPLAY_VERSION", inherits = TRUE) || !nzchar(as.character(YNO
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v17.91) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報抓取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v17.90) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報抓取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -105,7 +101,7 @@ if (!exists("YNOW_DISPLAY_VERSION", inherits = TRUE) || !nzchar(as.character(YNO
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v17.91) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v17.90) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -204,7 +200,7 @@ if (!exists("YNOW_DISPLAY_VERSION", inherits = TRUE) || !nzchar(as.character(YNO
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v17.91）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v17.90）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -221,7 +217,7 @@ if (!exists("YNOW_DISPLAY_VERSION", inherits = TRUE) || !nzchar(as.character(YNO
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v17.91) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v17.90) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -1082,9 +1078,9 @@ ui <- dashboardPage(
                   '<span class="ynow-app-title" id="ynow_app_title" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v17.91</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v17.90</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v17.91</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v17.90</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -1298,18 +1294,6 @@ ui <- dashboardPage(
         onclick = "Shiny.setInputValue('sidebar_tabs', 'feedback', {priority: 'event'}); Shiny.setInputValue('sidebar_feedback_click', (window.__ynowFeedbackClicks=(window.__ynowFeedbackClicks||0)+1), {priority: 'event'}); return false;",
         icon("comment-dots", class = "fa-fw"),
         tags$span(id = "ynow_feedback_link_label", " 意見區")
-      ),
-      # 有新版本時才顯示：使用者自行決定何時套用（右側、與意見區垂直置中）
-      tags$a(
-        id = "ynow_sidebar_refresh_btn",
-        href = "#",
-        class = "ynow-sidebar-snapshot-link ynow-sidebar-refresh-link",
-        title = "有新版本，可於方便時套用",
-        `aria-label` = "重新整理",
-        style = "display: none;",
-        onclick = "try { if (window.ynowApplyAppUpdate) window.ynowApplyAppUpdate(); } catch (e) {} return false;",
-        icon("sync-alt", class = "fa-fw"),
-        tags$span(id = "ynow_refresh_link_label", " 重新整理")
       )
     )
   ),
@@ -1319,10 +1303,6 @@ ui <- dashboardPage(
     withMathJax(),
     
     tags$head(
-      tags$script(HTML(paste0(
-        "window.__YNOW_PAGE_BUILD=", jsonlite::toJSON(as.character(YNOW_DISPLAY_VERSION), auto_unbox = TRUE), ";"
-      ))),
-      tags$meta(name = "ynow-build", content = as.character(YNOW_DISPLAY_VERSION)),
       tags$style(HTML('
         /* YNOW monochrome chrome: black/white (keep KPI bg-blue / Schilit red-green) */
         :root {
@@ -2152,14 +2132,9 @@ ui <- dashboardPage(
           margin-bottom: 10px !important;
           padding: 0 10px !important;
           text-align: left !important;
-          display: flex !important;
-          flex-wrap: wrap;
-          align-items: center;
-          gap: 0;
         }
         .ynow-sidebar-snapshot-link {
-          display: inline-flex;
-          align-items: center;
+          display: inline-block;
           font-size: 11px !important;
           font-weight: 400 !important;
           color: rgba(255,255,255,0.45) !important;
@@ -2168,7 +2143,6 @@ ui <- dashboardPage(
           border-radius: 3px;
           opacity: 0.75;
           line-height: 1.2;
-          vertical-align: middle;
         }
         .ynow-sidebar-snapshot-link:hover {
           color: rgba(255,255,255,0.85) !important;
@@ -2176,20 +2150,7 @@ ui <- dashboardPage(
           background: rgba(255,255,255,0.06);
         }
         .ynow-sidebar-feedback-link { margin-left: 8px; }
-        .ynow-sidebar-refresh-link {
-          margin-left: 8px;
-          display: none !important;
-        }
-        .ynow-sidebar-refresh-link.is-visible {
-          display: inline-flex !important;
-          align-items: center;
-          color: rgba(245, 197, 24, 0.85) !important;
-          opacity: 1;
-        }
-        .ynow-sidebar-refresh-link.is-visible:hover {
-          color: #FFD700 !important;
-          background: rgba(245, 197, 24, 0.12);
-        }
+        .ynow-sidebar-feedback-link { margin-left: 8px; }
         /* 側欄完整 LOGO：Recent Search 橫線下、Download Report 正上方；等比例放大 */
         .ynow-sidebar-brand {
           display: flex;
@@ -3059,44 +3020,6 @@ ui <- dashboardPage(
           margin: 0;
           padding-left: 20px;
         }
-
-        /* Soft disconnect / reconnect (best-effort; shinyapps still kills old workers) */
-        #shiny-disconnected-overlay {
-          background-color: rgba(26, 26, 26, 0.28) !important;
-          opacity: 1 !important;
-          pointer-events: none;
-        }
-        #shiny-disconnected-overlay.reloading {
-          pointer-events: auto;
-        }
-        #ss-connect-dialog,
-        #ss-overlay {
-          display: none !important;
-        }
-        #ynow-reconnect-banner {
-          position: fixed;
-          left: 50%;
-          top: 72px;
-          transform: translateX(-50%);
-          z-index: 100000;
-          max-width: min(520px, 92vw);
-          padding: 10px 14px;
-          border-radius: 6px;
-          background: #fff;
-          color: #1a1a1a;
-          border: 1px solid #d0d0d0;
-          box-shadow: 0 4px 18px rgba(0, 0, 0, 0.18);
-          font-size: 13px;
-          line-height: 1.4;
-          text-align: center;
-          display: none;
-        }
-        #ynow-reconnect-banner.is-visible {
-          display: block;
-        }
-        #shiny-notification-reconnect {
-          border-left-color: #C9A227 !important;
-        }
       ')),
       tags$script(HTML("
         (function () {
@@ -3108,330 +3031,6 @@ ui <- dashboardPage(
             pb_calculator: 'ynow_menu_cat_relative'
           };
           var LAST_BADGE_MAP = null;
-          var YNOW_LOCALE_STRINGS = {};
-          var ynowHadShinyConnection = false;
-          var ynowReconnectBannerEl = null;
-
-          function ynowReconnectStrings() {
-            return YNOW_LOCALE_STRINGS || {};
-          }
-
-          function ynowEnsureReconnectBanner() {
-            if (ynowReconnectBannerEl && document.body.contains(ynowReconnectBannerEl)) {
-              return ynowReconnectBannerEl;
-            }
-            var el = document.getElementById('ynow-reconnect-banner');
-            if (!el) {
-              el = document.createElement('div');
-              el.id = 'ynow-reconnect-banner';
-              el.setAttribute('role', 'status');
-              el.setAttribute('aria-live', 'polite');
-              document.body.appendChild(el);
-            }
-            ynowReconnectBannerEl = el;
-            return el;
-          }
-
-          function ynowLocalizeReconnectUi() {
-            var s = ynowReconnectStrings();
-            var t = document.getElementById('shiny-reconnect-text');
-            if (t && s.reconnect_attempting) t.textContent = s.reconnect_attempting;
-            var a = document.getElementById('shiny-reconnect-now');
-            if (a && s.reconnect_try_now) a.textContent = s.reconnect_try_now;
-            var banner = ynowEnsureReconnectBanner();
-            if (banner && s.reconnect_banner) banner.textContent = s.reconnect_banner;
-          }
-
-          function ynowHidePlatformReloadDialog() {
-            var dlg = document.getElementById('ss-connect-dialog');
-            if (dlg) dlg.style.display = 'none';
-            var ov = document.getElementById('ss-overlay');
-            if (ov) ov.style.display = 'none';
-          }
-
-          function ynowShowReconnectBanner(visible) {
-            var banner = ynowEnsureReconnectBanner();
-            ynowLocalizeReconnectUi();
-            if (visible) banner.classList.add('is-visible');
-            else banner.classList.remove('is-visible');
-          }
-
-          /* Longer backoff so redeploy cold-start can finish before giving up. */
-          function ynowInstallReconnectBackoff() {
-            if (!window.Shiny || !Shiny.shinyapp || !Shiny.shinyapp.reconnectDelay) return false;
-            if (Shiny.shinyapp.__ynowReconnectPatched) return true;
-            var attempts = 0;
-            var delays = [1500, 1500, 2500, 2500, 5500, 5500, 10500, 15000, 20000, 30000, 30000];
-            Shiny.shinyapp.reconnectDelay = {
-              next: function () {
-                var i = attempts;
-                if (i >= delays.length) i = delays.length - 1;
-                attempts++;
-                return delays[i];
-              },
-              reset: function () { attempts = 0; }
-            };
-            Shiny.shinyapp.__ynowReconnectPatched = true;
-            return true;
-          }
-
-          function ynowBindReconnectHandlers() {
-            if (!window.jQuery) return;
-            if (window.__ynowReconnectBound) return;
-            window.__ynowReconnectBound = true;
-            ynowInstallReconnectBackoff();
-            jQuery(document).on('shiny:disconnected', function () {
-              ynowHidePlatformReloadDialog();
-              ynowInstallReconnectBackoff();
-              ynowShowReconnectBanner(true);
-              ynowLocalizeReconnectUi();
-              /* If force reconnect was set by server, Shiny schedules retries;
-                 also nudge once after a beat in case the platform dialog raced us. */
-              setTimeout(function () {
-                ynowHidePlatformReloadDialog();
-                try {
-                  if (window.Shiny && Shiny.shinyapp && typeof Shiny.shinyapp.reconnect === 'function') {
-                    if (!Shiny.shinyapp.scheduledReconnect) Shiny.shinyapp.reconnect();
-                  }
-                } catch (e1) {}
-              }, 400);
-            });
-            jQuery(document).on('shiny:connected', function () {
-              ynowShowReconnectBanner(false);
-              ynowHidePlatformReloadDialog();
-              if (ynowHadShinyConnection) {
-                try {
-                  if (window.Shiny && Shiny.setInputValue) {
-                    Shiny.setInputValue('ynow_client_reconnected', Date.now(), {priority: 'event'});
-                  }
-                } catch (e2) {}
-              }
-              ynowHadShinyConnection = true;
-            });
-            jQuery(document).on('shiny:sessioninitialized', function () {
-              ynowInstallReconnectBackoff();
-              ynowHidePlatformReloadDialog();
-            });
-            /* Platform may inject Reload dialog asynchronously after disconnect. */
-            if (window.MutationObserver) {
-              var mo = new MutationObserver(function () {
-                ynowHidePlatformReloadDialog();
-                ynowLocalizeReconnectUi();
-              });
-              mo.observe(document.documentElement, { childList: true, subtree: true });
-            }
-          }
-
-          if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', ynowBindReconnectHandlers);
-          } else {
-            ynowBindReconnectHandlers();
-          }
-          setTimeout(ynowBindReconnectHandlers, 0);
-          setTimeout(ynowBindReconnectHandlers, 500);
-
-          /* ---- Optional Refresh when a newer deploy is available ----
-             Detection: compare page-baked __YNOW_PAGE_BUILD vs (a) server
-             custom message ynowBuildInfo and/or (b) polled www/ynow_build.json.
-             Apply: snapshot critical Shiny inputs to sessionStorage, reload,
-             then restore. Hard limit: server reactiveVals / scraped FS cannot
-             survive a page reload — Search re-runs when ticker was present. */
-          var YNOW_SOFT_RELOAD_KEY = 'ynow_soft_reload_state';
-          var YNOW_SERVER_BUILD = null;
-          var YNOW_REMOTE_BUILD = null;
-          var ynowBuildPollTimer = null;
-
-          function ynowNormBuild(v) {
-            return String(v == null ? '' : v).replace(/^\\s+|\\s+$/g, '');
-          }
-
-          function ynowPageBuild() {
-            return ynowNormBuild(window.__YNOW_PAGE_BUILD || '');
-          }
-
-          function ynowEffectiveRemoteBuild() {
-            return ynowNormBuild(YNOW_REMOTE_BUILD || YNOW_SERVER_BUILD || '');
-          }
-
-          function ynowUpdateRefreshVisibility() {
-            var btn = document.getElementById('ynow_sidebar_refresh_btn');
-            if (!btn) return;
-            var page = ynowPageBuild();
-            var remote = ynowEffectiveRemoteBuild();
-            var need = !!(page && remote && page !== remote);
-            if (need) btn.classList.add('is-visible');
-            else btn.classList.remove('is-visible');
-            btn.style.display = need ? '' : 'none';
-          }
-
-          function ynowApplyRefreshLocale(s) {
-            s = s || ynowReconnectStrings();
-            var lab = document.getElementById('ynow_refresh_link_label');
-            if (lab && s.refresh_link) lab.textContent = s.refresh_link;
-            var btn = document.getElementById('ynow_sidebar_refresh_btn');
-            if (btn) {
-              if (s.refresh_title) {
-                btn.setAttribute('title', s.refresh_title);
-                btn.setAttribute('aria-label', (s.refresh_link || 'Refresh').replace(/^\\s+/, ''));
-              }
-            }
-          }
-
-          function ynowCaptureWorkspaceState() {
-            var inputs = {};
-            try {
-              if (window.Shiny && Shiny.shinyapp && Shiny.shinyapp.$inputValues) {
-                var iv = Shiny.shinyapp.$inputValues;
-                Object.keys(iv).forEach(function (k) {
-                  if (!k || k.charAt(0) === '.') return;
-                  var v = iv[k];
-                  if (typeof FileList !== 'undefined' && v instanceof FileList) return;
-                  if (typeof Blob !== 'undefined' && v instanceof Blob) return;
-                  try { JSON.stringify(v); inputs[k] = v; } catch (e0) {}
-                });
-              }
-            } catch (e1) {}
-            var lite = null;
-            try { lite = window.sessionStorage.getItem('ynow_lite_mode'); } catch (e2) {}
-            var scEl = document.getElementById('sc');
-            if (scEl && scEl.value && !inputs.sc) inputs.sc = scEl.value;
-            return {
-              v: 1,
-              savedAt: Date.now(),
-              pageBuild: ynowPageBuild(),
-              remoteBuild: ynowEffectiveRemoteBuild(),
-              lite: lite,
-              hadSearch: !!(inputs.search && Number(inputs.search) > 0),
-              inputs: inputs
-            };
-          }
-
-          function ynowApplyAppUpdate() {
-            var state = ynowCaptureWorkspaceState();
-            try {
-              window.sessionStorage.setItem(YNOW_SOFT_RELOAD_KEY, JSON.stringify(state));
-            } catch (e1) {}
-            window.location.reload();
-          }
-          window.ynowApplyAppUpdate = ynowApplyAppUpdate;
-
-          function ynowRestoreWorkspaceState() {
-            var raw = null;
-            try { raw = window.sessionStorage.getItem(YNOW_SOFT_RELOAD_KEY); } catch (e1) {}
-            if (!raw) return;
-            try { window.sessionStorage.removeItem(YNOW_SOFT_RELOAD_KEY); } catch (e2) {}
-            var state = null;
-            try { state = JSON.parse(raw); } catch (e3) { return; }
-            if (!state || !state.inputs) return;
-            if (window.__ynowSoftRestoreDone) return;
-            window.__ynowSoftRestoreDone = true;
-            var inputs = state.inputs || {};
-            function setIn(id, val) {
-              if (val === undefined || val === null) return;
-              try {
-                if (window.Shiny && Shiny.setInputValue) {
-                  Shiny.setInputValue(id, val, {priority: 'event'});
-                }
-              } catch (e4) {}
-            }
-            function isActionLike(k) {
-              return /^(search|run_|lab_.*run|feedback_|sidebar_feedback|ynow_client|ynow_soft|ynow_sidebar_badges|param_audit_pdf|lab_cluster_clear|auto_calc|_pulse|_tick|_nonce|_done|_click)/i.test(k) ||
-                /(_click|_pulse|_tick|_nonce|_done)$/i.test(k);
-            }
-            /* Market / locale / lite first so downstream observers see them. */
-            if (inputs.market_mode_pick) setIn('market_mode_pick', inputs.market_mode_pick);
-            if (inputs.ui_locale_pick) setIn('ui_locale_pick', inputs.ui_locale_pick);
-            if (state.lite === '1' && window.__ynowApplyLiteMode) {
-              try { window.__ynowApplyLiteMode(true, {navigate: false}); } catch (e5) {}
-            } else if (state.lite === '0' && window.__ynowApplyLiteMode) {
-              try { window.__ynowApplyLiteMode(false, {navigate: false}); } catch (e6) {}
-            }
-            if (inputs.sidebar_tabs) setIn('sidebar_tabs', inputs.sidebar_tabs);
-            var core = [
-              'sc', 'industry_choice', 'perpetual_g_method', 'lifecycle_stage',
-              'ddm_mode', 'ynow_lite_mode'
-            ];
-            core.forEach(function (k) {
-              if (inputs[k] !== undefined) setIn(k, inputs[k]);
-            });
-            Object.keys(inputs).forEach(function (k) {
-              if (core.indexOf(k) >= 0) return;
-              if (isActionLike(k)) return;
-              setIn(k, inputs[k]);
-            });
-            var scVal = inputs.sc;
-            if (scVal) {
-              var scEl = document.getElementById('sc');
-              if (scEl) {
-                scEl.value = scVal;
-                try { if (window.jQuery) jQuery(scEl).trigger('change'); } catch (e7) {}
-              }
-              setIn('sc', scVal);
-            }
-            var shouldSearch = !!(scVal && (state.hadSearch || (inputs.search && Number(inputs.search) > 0)));
-            if (shouldSearch) {
-              setTimeout(function () {
-                try {
-                  var btn = document.getElementById('search');
-                  if (btn) btn.click();
-                } catch (e8) {}
-              }, 700);
-            }
-            setTimeout(function () {
-              try {
-                if (window.Shiny && Shiny.setInputValue) {
-                  Shiny.setInputValue('ynow_soft_reload_done', Date.now(), {priority: 'event'});
-                }
-              } catch (e9) {}
-            }, 900);
-          }
-
-          function ynowOnBuildInfo(payload) {
-            if (!payload) return;
-            if (payload.version) YNOW_SERVER_BUILD = ynowNormBuild(payload.version);
-            ynowUpdateRefreshVisibility();
-          }
-
-          function ynowPollRemoteBuild() {
-            var url = 'ynow_build.json?_=' + Date.now();
-            try {
-              fetch(url, { cache: 'no-store', credentials: 'same-origin' })
-                .then(function (r) { return r.ok ? r.json() : null; })
-                .then(function (j) {
-                  if (j && j.version) {
-                    YNOW_REMOTE_BUILD = ynowNormBuild(j.version);
-                    ynowUpdateRefreshVisibility();
-                  }
-                })
-                .catch(function () {});
-            } catch (e1) {}
-          }
-
-          function ynowBindBuildWatch() {
-            if (window.__ynowBuildWatchBound) return;
-            window.__ynowBuildWatchBound = true;
-            if (window.Shiny && Shiny.addCustomMessageHandler) {
-              Shiny.addCustomMessageHandler('ynowBuildInfo', ynowOnBuildInfo);
-            }
-            if (window.jQuery) {
-              jQuery(document).on('shiny:connected shiny:sessioninitialized', function () {
-                ynowPollRemoteBuild();
-                setTimeout(ynowRestoreWorkspaceState, 200);
-                setTimeout(ynowRestoreWorkspaceState, 800);
-              });
-            }
-            ynowPollRemoteBuild();
-            if (!ynowBuildPollTimer) {
-              ynowBuildPollTimer = setInterval(ynowPollRemoteBuild, 45000);
-            }
-          }
-          if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', ynowBindBuildWatch);
-          } else {
-            ynowBindBuildWatch();
-          }
-          setTimeout(ynowBindBuildWatch, 0);
-          setTimeout(ynowBindBuildWatch, 500);
 
           function clearRecBadges(a) {
             if (!a) return;
@@ -3929,9 +3528,6 @@ ui <- dashboardPage(
 
           function applyUiLocale(payload) {
             var s = (payload && payload.strings) || {};
-            YNOW_LOCALE_STRINGS = s;
-            ynowLocalizeReconnectUi();
-            ynowApplyRefreshLocale(s);
             var menu = {
               dashboard: s.menu_dashboard,
               smart_analysis: s.menu_smart_analysis,
@@ -4447,7 +4043,6 @@ ui <- dashboardPage(
             });
             var fb = document.getElementById('ynow_feedback_link_label');
             if (fb && s.feedback_link) fb.textContent = s.feedback_link;
-            ynowApplyRefreshLocale(s);
             var runBt = document.getElementById('run_bt');
             if (runBt && s.btn_run_bt) {
               var runIcon = runBt.querySelector('i');
