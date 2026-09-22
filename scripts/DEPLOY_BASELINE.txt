@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12589849
+bundleId=12589964
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=d7e3692
-commit=d7e3692
-short=d7e3692
-message=Merge pull request #92 from lawrencekuo1118/cursor/lite-about-rewrite-f4a6
-captured_at=2026-09-22T13:35:00Z
+aligned_git=6707ca6
+commit=6707ca669ed2b6f2745268acddee30f07508b115
+short=6707ca6
+message=Redesign HFV as a report-style layout with responsive controls (v17.85).
+captured_at=2026-09-22T14:04:00Z
 source_branch=master
-display_version=v17.83
-note=Canonical live line is app_17.0. Bundle 12589849 ships v17.83: Lite About rewrite + hide Valuation Methodology (Full-only); Smart Analysis scenario wording in About. Deploy via scripts/deploy_app_17.R. Supersedes 12587944.
+display_version=v17.84
+note=Canonical live line is app_17.0. Bundle 12589964 = tip v17.84 Lite Data Source/Snapshot defaults slim + Smart Analysis drops Previous Close/Market Cap/EPS KPI strip (Dashboard keeps them). Includes snap_defaults quote escape. Deploy via scripts/deploy_app_17.R. Supersedes 12589941 (broken JS) and 12589849.
