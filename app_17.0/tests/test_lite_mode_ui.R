@@ -37,7 +37,14 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl('tabName = "smart_analysis"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-full-only", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_lab_im_detail_tab", txt, fixed = TRUE))
-  testthat::expect_true(grepl("The YNow App v17.79", txt, fixed = TRUE))
+  testthat::expect_true(grepl("The YNow App v17.80", txt, fixed = TRUE))
+  testthat::expect_true(grepl("about_lite_intro_ui", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-lite-only", txt, fixed = TRUE))
+  # Lite About must not mount methodology outside ynow-full-only
+  testthat::expect_true(grepl(
+    "ynow-full-only[\\s\\S]*valuation_methodology_section_ui",
+    txt
+  ))
 })
 
 testthat::test_that("ynow_server wires Lite auto-calc and Smart Analysis outputs", {
