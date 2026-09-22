@@ -173,8 +173,8 @@ decision_momentum_panel_ui <- function(id) {
         icon("chart-line"),
         tags$span(id = "ynow_funnel_mom_box_title", "Trend momentum (trading aid)")
       ),
-      width = 12, status = "success", solidHeader = TRUE,
-      collapsible = TRUE, collapsed = FALSE,
+      width = 12, status = "success", solidHeader = FALSE,
+      collapsible = TRUE, collapsed = TRUE,
       tags$p(
         style = "margin: 0 0 12px 0; font-size: 12.5px; color: #555; line-height: 1.5;",
         tags$span(

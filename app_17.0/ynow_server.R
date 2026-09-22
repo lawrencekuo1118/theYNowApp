@@ -316,6 +316,52 @@ server <- function(input, output, session) {
         language = if (identical(loc, "en")) "en" else "zh-TW"
       )
     }, error = function(e) NULL)
+    # Backtest: NAV window chips + holding / strategy control labels
+    tryCatch({
+      nav_sel <- isolate(input$bt_nav_window)
+      if (is.null(nav_sel) || !nav_sel %in% c("all", "1y", "3y", "5y", "custom")) {
+        nav_sel <- "all"
+      }
+      updateRadioButtons(
+        session,
+        "bt_nav_window",
+        label = ui_str("bt_nav_window_label", loc),
+        choices = stats::setNames(
+          c("all", "1y", "3y", "5y", "custom"),
+          c(
+            ui_str("hfv_win_all", loc),
+            ui_str("hfv_win_1y", loc),
+            ui_str("hfv_win_3y", loc),
+            ui_str("hfv_win_5y", loc),
+            ui_str("hfv_win_custom", loc)
+          )
+        ),
+        selected = nav_sel
+      )
+    }, error = function(e) NULL)
+    tryCatch({
+      updateDateRangeInput(
+        session,
+        "bt_nav_custom",
+        language = if (identical(loc, "en")) "en" else "zh-TW"
+      )
+    }, error = function(e) NULL)
+    tryCatch({
+      updateNumericInput(session, "bt_net_margin", label = ui_str("bt_net_margin_label", loc))
+      updateNumericInput(session, "bt_rev_growth", label = ui_str("bt_rev_growth_label", loc))
+      updateNumericInput(session, "bt_eps_growth", label = ui_str("bt_eps_growth_label", loc))
+      updateNumericInput(session, "bt_fcf_cv", label = ui_str("bt_fcf_cv_label", loc))
+    }, error = function(e) NULL)
+    tryCatch({
+      updateCheckboxInput(session, "bt_param_auto", label = ui_str("bt_param_auto_label", loc))
+    }, error = function(e) NULL)
+    tryCatch({
+      updateSliderInput(session, "bt_w_vg", label = ui_str("bt_w_vg_label", loc))
+      updateSliderInput(session, "bt_w_mom", label = ui_str("bt_w_mom_label", loc))
+      updateSliderInput(session, "bt_w_rsi", label = ui_str("bt_w_rsi_label", loc))
+      updateSliderInput(session, "bt_max_exp", label = ui_str("bt_max_exp_label", loc))
+      updateSliderInput(session, "bt_min_exp_pass", label = ui_str("bt_min_exp_label", loc))
+    }, error = function(e) NULL)
     # DDM 模型選項：標籤隨 locale（值不變）
     tryCatch({
       ddm_sel <- isolate(input[["mod_ddm-ddm_mode"]])
@@ -11888,7 +11934,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.88"),
+      paste0("- **App：** The YNow App v17.89"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

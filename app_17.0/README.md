@@ -1,4 +1,8 @@
-# The YNow App v17.88 — Valuation Methodology
+# The YNow App v17.89 — Valuation Methodology
+
+## v17.89 重點
+- **Testing — Quantitative Backtest**：改為報告式版面（績效 → 策略淨值工具列 → 部位／相對 B&H → MOS／FV 驗證 → 收合附錄），與 HFV／YNOW 相同閱讀動線
+- **目錄**：`app_17.0/`；顯示版號 **v17.89**
 
 ## v17.88 重點
 - **i18n**：HFV／YNOW 報告內文與 Cond 標籤補齊 en-US＋zh-TW（估值摘要 KPI、時間軸圖例、驗證統計／明細表、分析頻率提示）

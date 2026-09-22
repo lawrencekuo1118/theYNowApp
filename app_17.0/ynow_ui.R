@@ -85,7 +85,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v17.88) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報抓取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v17.89) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報抓取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -101,7 +101,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v17.88) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v17.89) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -200,7 +200,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v17.88）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v17.89）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -217,7 +217,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v17.88) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v17.89) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -1078,9 +1078,9 @@ ui <- dashboardPage(
                   '<span class="ynow-app-title" id="ynow_app_title" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v17.88</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v17.89</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v17.88</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v17.89</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -3640,6 +3640,64 @@ ui <- dashboardPage(
             if (labSub && s.lab_notes_sub) labSub.textContent = s.lab_notes_sub;
             var btZone = document.getElementById('ynow_bt_zone_title');
             if (btZone && s.bt_zone_title) btZone.textContent = s.bt_zone_title;
+            var btToolbar = document.getElementById('ynow_bt_toolbar') || document.querySelector('.ynow-backtest-toolbar');
+            if (btToolbar && s.bt_toolbar_aria) btToolbar.setAttribute('aria-label', s.bt_toolbar_aria);
+            var navWinLab = document.querySelector('label[for=\"bt_nav_window\"]');
+            if (navWinLab && s.bt_nav_window_label) navWinLab.textContent = s.bt_nav_window_label;
+            function setBtText(id, key) {
+              var el = document.getElementById(id);
+              if (el && s[key]) el.textContent = s[key];
+            }
+            setBtText('ynow_bt_ch1_kicker', 'bt_ch1_kicker');
+            setBtText('ynow_bt_ch1_title', 'bt_ch1_title');
+            setBtText('ynow_bt_ch2_kicker', 'bt_ch2_kicker');
+            setBtText('ynow_bt_ch2_title', 'bt_ch2_title');
+            setBtText('ynow_bt_ch2_lead', 'bt_ch2_lead');
+            setBtText('ynow_bt_ch3_kicker', 'bt_ch3_kicker');
+            setBtText('ynow_bt_ch3_title', 'bt_ch3_title');
+            setBtText('ynow_bt_ch4_kicker', 'bt_ch4_kicker');
+            setBtText('ynow_bt_ch4_title', 'bt_ch4_title');
+            setBtText('ynow_bt_ch4_lead', 'bt_ch4_lead');
+            setBtText('ynow_bt_exposure_title', 'bt_exposure_title');
+            setBtText('ynow_bt_bh_gap_title', 'bt_bh_gap_title');
+            setBtText('ynow_bt_mos_eff_title', 'bt_mos_eff_title');
+            setBtText('ynow_bt_mos_eff_hint', 'bt_mos_eff_hint');
+            setBtText('ynow_bt_fv_edge_title', 'bt_fv_edge_title');
+            setBtText('ynow_bt_leg_fund_label', 'bt_leg_fund_label');
+            setBtText('ynow_bt_leg_fund_body', 'bt_leg_fund_body');
+            setBtText('ynow_bt_leg_sent_label', 'bt_leg_sent_label');
+            setBtText('ynow_bt_leg_sent_body', 'bt_leg_sent_body');
+            setBtText('ynow_bt_leg_bh_label', 'bt_leg_bh_label');
+            setBtText('ynow_bt_leg_bh_body', 'bt_leg_bh_body');
+            setBtText('ynow_bt_leg_bench_label', 'bt_leg_bench_label');
+            setBtText('ynow_bt_leg_bench_body', 'bt_leg_bench_body');
+            setBtText('ynow_bt_leg_hfv_note', 'bt_leg_hfv_note');
+            setBtText('ynow_bt_sec_hold_gate', 'bt_sec_hold_gate');
+            setBtText('ynow_bt_hold_gate_intro', 'bt_hold_gate_intro');
+            setBtText('ynow_bt_kpi_filter_label', 'bt_kpi_filter_label');
+            setBtText('ynow_bt_kpi_filter_hint', 'bt_kpi_filter_hint');
+            setBtText('ynow_bt_sec_run_controls', 'bt_sec_run_controls');
+            setBtText('ynow_bt_param_auto_hint', 'bt_param_auto_hint');
+            setBtText('ynow_bt_refresh_params_hint', 'bt_refresh_params_hint');
+            setBtText('ynow_bt_run_note', 'bt_run_note');
+            setBtText('ynow_bt_sec_strategy_params', 'bt_sec_strategy_params');
+            setBtText('ynow_bt_params_gate_note', 'bt_params_gate_note');
+            setBtText('ynow_bt_tab_fundamental', 'bt_tab_fundamental');
+            setBtText('ynow_bt_tab_sentiment', 'bt_tab_sentiment');
+            setBtText('ynow_bt_fund_intro', 'bt_fund_intro');
+            setBtText('ynow_bt_w_vg_hint', 'bt_w_vg_hint');
+            setBtText('ynow_bt_mos_ladder_title', 'bt_mos_ladder_title');
+            setBtText('ynow_bt_mos_ladder_body', 'bt_mos_ladder_body');
+            setBtText('ynow_bt_sent_intro', 'bt_sent_intro');
+            setBtText('ynow_bt_w_mom_hint', 'bt_w_mom_hint');
+            setBtText('ynow_bt_w_rsi_hint', 'bt_w_rsi_hint');
+            setBtText('ynow_bt_max_exp_hint', 'bt_max_exp_hint');
+            setBtText('ynow_bt_min_exp_hint', 'bt_min_exp_hint');
+            setBtText('ynow_bt_fit_bh_hint', 'bt_fit_bh_hint');
+            setBtText('ynow_bt_sec_methodology', 'bt_sec_methodology');
+            setBtText('ynow_bt_sec_other', 'bt_sec_other');
+            setBtText('ynow_bt_other_item1', 'bt_other_item1');
+            setBtText('ynow_bt_other_item2', 'bt_other_item2');
             var recent = document.getElementById('ynow_recent_search_label');
             if (recent && s.recent_search) recent.textContent = s.recent_search;
             var scLab = document.querySelector('label[for=\"sc\"]');
@@ -3991,6 +4049,9 @@ ui <- dashboardPage(
               var runIconHtml = runIcon ? runIcon.outerHTML + ' ' : '';
               runBt.innerHTML = runIconHtml + s.btn_run_bt;
             }
+            setBtnLabel('bt_kpi_filter', s.btn_bt_kpi_filter);
+            setBtnLabel('bt_refresh_params', s.btn_bt_refresh_params);
+            setBtnLabel('bt_fit_bh_preset', s.btn_bt_fit_bh);
             var labImRun = document.getElementById('lab_im_run_fscore');
             if (labImRun && s.btn_lab_im_run) {
               var labIcon = labImRun.querySelector('i');
@@ -5352,6 +5413,242 @@ ui <- dashboardPage(
             padding: 12px;
           }
           .ynow-funnel-report__masthead {
+            padding-bottom: 12px;
+          }
+        }
+
+        /* Testing — Quantitative Backtest — report shell (same logic as HFV / YNOW) */
+        .ynow-backtest-report {
+          max-width: 1200px;
+          margin: 0 auto 24px auto;
+        }
+        .ynow-backtest-report__masthead {
+          margin: 0 0 16px 0;
+          padding: 4px 2px 14px 2px;
+          border-bottom: 2px solid #1a1a1a;
+        }
+        .ynow-backtest-report__masthead h2 {
+          margin: 0 0 8px 0;
+          font-size: clamp(20px, 2.6vw, 28px);
+          font-weight: 700;
+          letter-spacing: -0.01em;
+          color: #1a1a1a;
+        }
+        .ynow-backtest-report__lead {
+          margin: 0;
+          max-width: 58em;
+          font-size: 13.5px;
+          line-height: 1.55;
+          color: #555;
+        }
+        .ynow-backtest-toolbar {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+          gap: 12px 14px;
+          margin: 0 0 18px 0;
+          padding: 14px 16px;
+          background: #fafafa;
+          border: 1px solid #e4e4e4;
+          border-radius: 8px;
+          box-sizing: border-box;
+        }
+        .ynow-backtest-toolbar__group {
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        .ynow-backtest-toolbar__group--wide {
+          grid-column: 1 / -1;
+        }
+        .ynow-backtest-toolbar__group--run {
+          flex-direction: row;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 10px 14px;
+        }
+        .ynow-backtest-toolbar__label {
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+          color: #666;
+          line-height: 1.35;
+        }
+        .ynow-backtest-toolbar__group .form-group {
+          margin: 0;
+        }
+        .ynow-backtest-toolbar__group > label.control-label,
+        .ynow-backtest-toolbar .shiny-input-radiogroup > label.control-label {
+          display: block;
+          margin: 0 0 6px 0;
+          padding: 0;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+          color: #666;
+          line-height: 1.35;
+        }
+        .ynow-backtest-toolbar .shiny-options-group {
+          display: flex !important;
+          flex-wrap: wrap !important;
+          align-items: stretch;
+          gap: 6px;
+          margin: 0;
+          padding: 0;
+          clear: none;
+        }
+        .ynow-backtest-toolbar .radio,
+        .ynow-backtest-toolbar .radio-inline {
+          float: none !important;
+          display: inline-flex !important;
+          align-items: center;
+          margin: 0 !important;
+          padding: 0 !important;
+          min-height: 0;
+        }
+        .ynow-backtest-toolbar .radio > label,
+        .ynow-backtest-toolbar .radio-inline,
+        .ynow-backtest-toolbar .radio-inline > label {
+          margin: 0 !important;
+          padding: 7px 12px 7px 28px !important;
+          border: 1px solid #d0d0d0;
+          border-radius: 999px;
+          background: #fff;
+          font-size: 12.5px;
+          font-weight: 500;
+          line-height: 1.25;
+          color: #222;
+          white-space: nowrap;
+          cursor: pointer;
+          transition: border-color .12s ease, background .12s ease, box-shadow .12s ease;
+        }
+        .ynow-backtest-toolbar .radio input[type='radio'],
+        .ynow-backtest-toolbar .radio-inline input[type='radio'] {
+          position: absolute;
+          margin-left: -20px;
+          margin-top: 1px;
+        }
+        .ynow-backtest-toolbar .radio > label:hover,
+        .ynow-backtest-toolbar .radio-inline:hover {
+          border-color: #999;
+          background: #fff;
+        }
+        .ynow-backtest-toolbar .radio:has(input:checked) > label,
+        .ynow-backtest-toolbar .radio-inline:has(input:checked) {
+          border-color: #1a1a1a;
+          background: #1a1a1a;
+          color: #fff;
+          box-shadow: 0 1px 2px rgba(0,0,0,0.12);
+        }
+        .ynow-backtest-chapter {
+          margin: 0 0 18px 0;
+          padding: 0;
+          background: #fff;
+          border: 1px solid #e6e6e6;
+          border-radius: 8px;
+          overflow: hidden;
+        }
+        .ynow-backtest-chapter__head {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: baseline;
+          gap: 6px 12px;
+          padding: 12px 16px;
+          background: #fff;
+          border-bottom: 1px solid #ececec;
+        }
+        .ynow-backtest-chapter__kicker {
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          color: #888;
+        }
+        .ynow-backtest-chapter__title {
+          margin: 0;
+          font-size: 16px;
+          font-weight: 700;
+          color: #1a1a1a;
+          line-height: 1.35;
+        }
+        .ynow-backtest-chapter__body {
+          padding: 14px 16px 16px 16px;
+        }
+        .ynow-backtest-chapter__lead {
+          margin: 0 0 12px 0;
+          font-size: 12.5px;
+          line-height: 1.5;
+          color: #666;
+        }
+        .ynow-backtest-subhead {
+          margin: 0 0 10px 0;
+          font-size: 13px;
+          font-weight: 700;
+          color: #333;
+        }
+        .ynow-backtest-legend {
+          margin: 12px 0 0 0;
+          padding-left: 18px;
+          font-size: 12px;
+          color: #666;
+          line-height: 1.55;
+        }
+        .ynow-backtest-inline-hint {
+          margin: -4px 0 12px 0;
+          font-size: 11.5px;
+          line-height: 1.45;
+          color: #777;
+        }
+        .ynow-backtest-callout {
+          margin-top: 8px;
+          padding: 12px;
+          background: #f5f5f5;
+          border: 1px solid #d0d0d0;
+          border-radius: 5px;
+          font-size: 12px;
+          color: #444;
+          line-height: 1.55;
+        }
+        .ynow-backtest-report > .box,
+        .ynow-backtest-report > .row > .col-sm-12 > .box,
+        .ynow-backtest-report > .fluid-row > .col-sm-12 > .box {
+          margin-bottom: 14px;
+          border-radius: 8px;
+          box-shadow: none;
+          border: 1px solid #e6e6e6;
+        }
+        .ynow-backtest-report > .box > .box-header,
+        .ynow-backtest-report .box > .box-header {
+          padding: 10px 14px;
+        }
+        .ynow-backtest-report > .box > .box-body,
+        .ynow-backtest-report .box > .box-body {
+          padding: 12px 14px 14px 14px;
+        }
+        .ynow-backtest-report .ynow-bt-params .nav-tabs-custom {
+          margin-bottom: 0;
+          box-shadow: none;
+        }
+        @media (max-width: 767px) {
+          .ynow-backtest-toolbar {
+            grid-template-columns: 1fr;
+            padding: 12px;
+            gap: 14px;
+          }
+          .ynow-backtest-toolbar__group--wide {
+            grid-column: auto;
+          }
+          .ynow-backtest-toolbar .radio > label,
+          .ynow-backtest-toolbar .radio-inline {
+            white-space: normal;
+            max-width: 100%;
+          }
+          .ynow-backtest-chapter__body {
+            padding: 12px;
+          }
+          .ynow-backtest-report__masthead {
             padding-bottom: 12px;
           }
         }
@@ -8006,248 +8303,506 @@ ui <- dashboardPage(
       decision_checklist_tab_ui(),
 
       # ==========================================
-      # 🧪 實驗區 (Lab)／量化回測：規劃／測試新功能
+      # Testing — Quantitative Backtest（報告式版面，與 HFV／YNOW 同邏輯）
       # ==========================================
       tabItem(
         tabName = "lab_notes",
         withMathJax(),
-        fluidRow(
-          column(
-            width = 12,
-            h2(tags$b(id = "ynow_lab_notes_title", "測試 — Testing（量化回測）")),
+        tags$div(
+          class = "ynow-backtest-report",
+
+          # --- Masthead ---
+          tags$div(
+            class = "ynow-backtest-report__masthead",
+            h2(tags$b(id = "ynow_lab_notes_title", "Testing — Quantitative Backtest")),
             p(
               id = "ynow_lab_notes_sub",
-              "量化回測（策略淨值／績效／參數）與持倉閘門在此。歷史基本面驗證（理論估值 vs 實際市值）請至側邊「歷史基本面驗證」。美股績優篩選請至側邊「績優股排行」。SEC 財報附註在 Dashboard → FINANCIAL REPORT →「財報附註 (SEC)」。"
-            ),
-            tags$hr()
-          )
-        ),
-        fluidRow(
-          column(
-            width = 12,
-            box(
-              width = 12, status = "warning", solidHeader = TRUE,
-              title = tagList(icon("filter"), "要不要持股：持倉回測條件"),
-              .bt_section_intro(
-                "再平衡日（依所選分析頻率：每月／每季／每年）四項皆過才允許持倉；否則本頁基本面／情緒策略皆空手（Exp_A＝Exp_B＝0）。門檻仍供回測引擎與「回測濾鏡」共用。"
-              ),
-              fluidRow(
-                column(3, tipify(numericInput("bt_net_margin", "淨利率門檻 (%)", 5),
-                                 "自動模式取該公司歷史淨利率約一半。", placement = "top")),
-                column(3, tipify(numericInput("bt_rev_growth", "營收成長門檻 (%)", 25),
-                                 "自動模式取歷史營收成長約一半。", placement = "top")),
-                column(3, tipify(numericInput("bt_eps_growth", "EPS／淨利成長門檻 (%)", 15),
-                                 "自動模式取淨利成長約一半。", placement = "top")),
-                column(3, tipify(numericInput("bt_fcf_cv", "FCF 變異係數上限 (%)", 20),
-                                 "自動模式取 FCF CV × 1.25。", placement = "top"))
-              ),
-              tags$hr(),
-              tags$div(
-                style = "display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px;",
-                tags$span(style = "font-size:13px; font-weight:600;", "回測濾鏡"),
-                actionButton(
-                  "bt_kpi_filter", "比對目前公司",
-                  icon = icon("filter"),
-                  class = "btn-sm",
-                  style = "background-color: #222222; color: #ffffff; border: 1px solid #111111; font-size: 12px; padding: 6px 14px; border-radius: 4px; font-weight: 600;"
-                ),
-                uiOutput("bt_filter_badge")
-              ),
-              tags$p(
-                style = "margin: 0 0 8px 0; font-size: 12px; color: #666;",
-                "用 Dashboard 已載入公司的 KPI 對照上列門檻（與回測 Great Filter 同一套）。"
-              ),
-              uiOutput("bt_filter_detail")
+              class = "ynow-backtest-report__lead",
+              paste0(
+                "Point-in-time strategy NAV and holding gates: read performance and the wealth-index chart first, ",
+                "then exposure versus buy-and-hold. Holding filters and strategy parameters sit in the appendix. ",
+                "This is a quantitative backtest report—not Historical Fundamental Validation (see Hist. FV Validation)."
+              )
             )
-          )
-        ),
-
-        tags$hr(),
-        tags$div(
-          class = "ynow-bt-lab-title-row",
-          style = "display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin: 4px 0 12px 0;",
-          h3(
-            tags$b(id = "ynow_bt_zone_title", "量化回測實驗室 (Backtest Zone)"),
-            style = "margin:0; flex:1 1 auto; min-width: 12rem;"
           ),
-          actionButton(
-            "run_bt", "執行回測",
-            icon = icon("play"),
-            class = "btn-warning",
-            style = "margin:0; white-space:nowrap; font-weight:600;"
-          )
-        ),
 
-        # 1) 績效指標
-        fluidRow(
-          box(
-            title = tagList(icon("trophy"), "回測績效指標"),
-            width = 12, status = "success", solidHeader = TRUE, collapsible = TRUE, collapsed = FALSE,
-            uiOutput("perf_metrics")
-          )
-        ),
-
-        # 3) 淨值圖 + 執行面板
-        fluidRow(
-          box(
-            title = tagList(icon("chart-area"), "策略淨值（累積財富，起始＝1）"),
-            width = 8, status = "info", solidHeader = TRUE,
+          # --- Chapter I: Performance KPIs ---
+          tags$section(
+            class = "ynow-backtest-chapter",
             tags$div(
-              style = "margin: 0 0 10px 0; padding: 10px 12px; background: #f5f5f5; border-left: 4px solid #222222; font-size: 12px; color: #444; line-height: 1.55;",
-              tags$b("這是財富指數，不是每股價格。"),
-              "兩者共用持倉條件閘門，部位路徑不同——",
-              tags$b("基本面策略淨值"), "＝Exp_A×日報酬累積；",
-              tags$b("情緒策略淨值"), "＝Exp_B×日報酬累積（Exp_A 混入動能／RSI）。",
-              "折現圖（側邊「歷史基本面驗證」）上的實際股價與本圖無對應關係。"
-            ),
-            radioButtons(
-              "bt_nav_window",
-              "累積區間（各序列在區間起點重設為 1）",
-              inline = TRUE,
-              choices = c(
-                "全部" = "all",
-                "近1年" = "1y",
-                "近3年" = "3y",
-                "近5年" = "5y",
-                "自訂" = "custom"
+              class = "ynow-backtest-chapter__head",
+              tags$span(
+                class = "ynow-backtest-chapter__kicker",
+                id = "ynow_bt_ch1_kicker",
+                "Section I"
               ),
-              selected = "all"
-            ),
-            conditionalPanel(
-              condition = "input.bt_nav_window == 'custom'",
-              dateRangeInput(
-                "bt_nav_custom",
-                NULL,
-                start = Sys.Date() - 365,
-                end = Sys.Date(),
-                language = "zh-TW"
+              tags$h3(
+                class = "ynow-backtest-chapter__title",
+                id = "ynow_bt_ch1_title",
+                "Performance summary"
               )
             ),
-            plotlyOutput("bt_equity_plot", height = "400px") %>% withSpinner(),
-            tags$ul(
-              style = "margin: 10px 0 0 0; padding-left: 18px; font-size: 12px; color: #666; line-height: 1.55;",
-              tags$li(tags$b("基本面策略淨值"), "（橘線）＝持倉條件＋MOS 部位 × 日報酬，從 1 起算。"),
-              tags$li(tags$b("情緒策略淨值"), "（藍線）＝在 Exp_A 上混入動能／RSI；參數見「情緒策略」標籤。"),
-              tags$li(tags$b("該股買進持有"), "（綠）全程 100% 的財富指數；", tags$b("大盤"), "（灰虛）依市場模式為 SPY 或 0050.TW 財富指數。"),
-              tags$li("每股合理價 vs 實際股價見側邊「歷史基本面驗證」折現圖，勿與本圖混比。")
+            tags$div(
+              class = "ynow-backtest-chapter__body",
+              uiOutput("perf_metrics")
             )
           ),
-          box(
-            title = tagList(icon("play-circle"), "執行面板"),
-            width = 4, status = "warning", solidHeader = TRUE,
-            class = "ynow-bt-run-panel",
-            checkboxInput(
-              "bt_param_auto",
-              "自動同步參數（換股時依財報推導）",
-              value = TRUE
-            ),
-            .bt_hint(
-              "模式開關：勾選後，搜尋／載入新公司時會自動覆寫持倉門檻、曝險／情緒權重，並對齊「歷史基本面驗證」推薦估值模型。手動改參數會自動取消勾選。"
-            ),
-            actionButton(
-              "bt_refresh_params", "立即依目前公司重算一次",
-              icon = icon("sync"), class = "btn-default btn-block",
-              style = "margin-bottom: 10px;"
-            ),
-            .bt_hint(
-              "單次動作：立刻用目前公司財報重算門檻／權重（可在取消自動後使用，不想持續自動覆寫時按一次即可）。"
+
+          # --- Report controls (toolbar): Run + NAV window ---
+          tags$div(
+            class = "ynow-backtest-toolbar",
+            role = "group",
+            `aria-label` = "Backtest report controls",
+            id = "ynow_bt_toolbar",
+            tags$div(
+              class = "ynow-backtest-toolbar__group ynow-backtest-toolbar__group--run",
+              tags$span(
+                class = "ynow-backtest-toolbar__label",
+                id = "ynow_bt_zone_title",
+                "Backtest Zone"
+              ),
+              actionButton(
+                "run_bt", "Run Backtest",
+                icon = icon("play"),
+                class = "btn-warning",
+                style = "margin:0; white-space:nowrap; font-weight:600;"
+              ),
+              uiOutput("bt_run_status")
             ),
             tags$div(
-              class = "ynow-bt-run-note",
-              "執行回測請按上方標題列右側「執行回測」。依分析頻率再平衡 · 當年 Rf／已實現 Rm／市值結構 · Rolling β · 「歷史基本面驗證」復盤模型（單選）PIT。"
-            ),
-            uiOutput("bt_run_status")
-          )
-        ),
-
-        # 4) 策略參數設定（持倉閘門見本頁上方「要不要持股」；此處只留部位／情緒）
-        fluidRow(column(width = 12, uiOutput("bt_param_notes"))),
-        tags$p(
-          style = "margin: 0 15px 8px 15px; font-size: 12.5px; color: #555;",
-          tags$b("要不要持股"),
-          "（淨利率／營收成長／EPS 成長／FCF 波動，未過則 Exp_A＝0）見本頁上方持倉回測條件。此處只調部位與情緒權重。"
-        ),
-
-        fluidRow(
-          tags$div(
-            class = "ynow-bt-params",
-            tabBox(
-              title = tagList(icon("sliders-h"), "Strategy Parameters"),
-              width = 12,
-              tabPanel(
-                title = tagList(icon("balance-scale"), "基本面策略"),
-                value = "bt_fundamental",
-                .bt_section_intro(
-                  "模式 A：Exp_A → 淨值圖橘線。依 MOS 分級決定部位；MOS 來自「歷史基本面驗證」復盤模型（單選）合理價。"
+              class = "ynow-backtest-toolbar__group ynow-backtest-toolbar__group--wide",
+              radioButtons(
+                "bt_nav_window",
+                "NAV window (each series resets to 1 at the window start)",
+                inline = TRUE,
+                choices = c(
+                  "All" = "all",
+                  "1Y" = "1y",
+                  "3Y" = "3y",
+                  "5Y" = "5y",
+                  "Custom" = "custom"
                 ),
+                selected = "all"
+              ),
+              conditionalPanel(
+                condition = "input.bt_nav_window == 'custom'",
+                dateRangeInput(
+                  "bt_nav_custom",
+                  NULL,
+                  start = Sys.Date() - 365,
+                  end = Sys.Date(),
+                  language = "zh-TW"
+                )
+              )
+            )
+          ),
+
+          # --- Chapter II: Strategy NAV ---
+          tags$section(
+            class = "ynow-backtest-chapter",
+            tags$div(
+              class = "ynow-backtest-chapter__head",
+              tags$span(
+                class = "ynow-backtest-chapter__kicker",
+                id = "ynow_bt_ch2_kicker",
+                "Section II"
+              ),
+              tags$h3(
+                class = "ynow-backtest-chapter__title",
+                id = "ynow_bt_ch2_title",
+                "Strategy NAV (wealth index, start = 1)"
+              )
+            ),
+            tags$div(
+              class = "ynow-backtest-chapter__body",
+              tags$p(
+                id = "ynow_bt_ch2_lead",
+                class = "ynow-backtest-chapter__lead",
+                paste0(
+                  "This is a wealth index, not a share price. Both strategies share the holding gate; ",
+                  "paths differ—Fundamental NAV = Exp_A × daily returns; Sentiment NAV = Exp_B × daily returns ",
+                  "(Exp_A mixed with momentum / RSI). Actual price on the HFV discount chart is not comparable here."
+                )
+              ),
+              plotlyOutput("bt_equity_plot", height = "400px") %>% withSpinner(),
+              tags$ul(
+                id = "ynow_bt_equity_legend",
+                class = "ynow-backtest-legend",
+                tags$li(
+                  tags$b(id = "ynow_bt_leg_fund_label", "Fundamental NAV"),
+                  tags$span(
+                    id = "ynow_bt_leg_fund_body",
+                    " (orange) = holding gate + MOS sizing × daily returns, from 1."
+                  )
+                ),
+                tags$li(
+                  tags$b(id = "ynow_bt_leg_sent_label", "Sentiment NAV"),
+                  tags$span(
+                    id = "ynow_bt_leg_sent_body",
+                    " (blue) = Exp_A mixed with momentum / RSI; see Sentiment Parameters in the appendix."
+                  )
+                ),
+                tags$li(
+                  tags$b(id = "ynow_bt_leg_bh_label", "Stock buy-and-hold"),
+                  tags$span(
+                    id = "ynow_bt_leg_bh_body",
+                    " (green) = 100% wealth index; "
+                  ),
+                  tags$b(id = "ynow_bt_leg_bench_label", "Benchmark"),
+                  tags$span(
+                    id = "ynow_bt_leg_bench_body",
+                    " (gray dashed) = SPY or 0050.TW wealth index by market mode."
+                  )
+                ),
+                tags$li(
+                  id = "ynow_bt_leg_hfv_note",
+                  "Per-share FV vs actual price: Hist. FV Validation sidebar — do not mix with this chart."
+                )
+              )
+            )
+          ),
+
+          # --- Chapter III: Exposure & vs B&H ---
+          tags$section(
+            class = "ynow-backtest-chapter",
+            tags$div(
+              class = "ynow-backtest-chapter__head",
+              tags$span(
+                class = "ynow-backtest-chapter__kicker",
+                id = "ynow_bt_ch3_kicker",
+                "Section III"
+              ),
+              tags$h3(
+                class = "ynow-backtest-chapter__title",
+                id = "ynow_bt_ch3_title",
+                "Exposure paths & vs buy-and-hold"
+              )
+            ),
+            tags$div(
+              class = "ynow-backtest-chapter__body",
+              fluidRow(
+                column(
+                  width = 6,
+                  tags$h5(
+                    class = "ynow-backtest-subhead",
+                    id = "ynow_bt_exposure_title",
+                    "Two-mode exposure paths"
+                  ),
+                  uiOutput("bt_exposure_stats"),
+                  plotlyOutput("bt_exposure_plot", height = "260px") %>% withSpinner()
+                ),
+                column(
+                  width = 6,
+                  tags$h5(
+                    class = "ynow-backtest-subhead",
+                    id = "ynow_bt_bh_gap_title",
+                    "Relative to buy-and-hold"
+                  ),
+                  uiOutput("bt_bh_gap")
+                )
+              )
+            )
+          ),
+
+          # --- Chapter IV: MOS / FV signal validation ---
+          tags$section(
+            class = "ynow-backtest-chapter",
+            tags$div(
+              class = "ynow-backtest-chapter__head",
+              tags$span(
+                class = "ynow-backtest-chapter__kicker",
+                id = "ynow_bt_ch4_kicker",
+                "Section IV"
+              ),
+              tags$h3(
+                class = "ynow-backtest-chapter__title",
+                id = "ynow_bt_ch4_title",
+                "Signal validation: MOS & Fair Value"
+              )
+            ),
+            tags$div(
+              class = "ynow-backtest-chapter__body",
+              tags$p(
+                id = "ynow_bt_ch4_lead",
+                class = "ynow-backtest-chapter__lead",
+                paste0(
+                  "Checks whether undervaluation coincides with better forward returns—the core test of whether ",
+                  "the backtest signal can stand. Parameter sensitivity belongs on the YNOW tab (WACC×g matrix)."
+                )
+              ),
+              tags$div(
+                class = "ynow-bt-validate",
                 fluidRow(
                   column(
                     6,
-                    sliderInput("bt_w_vg", "MOS／Value Gap 權重（曝險）", 0, 1, 0.7, step = 0.01),
-                    .bt_hint("越大越依 MOS 分級減碼；越小越接近固定中性部位。")
+                    tags$div(
+                      class = "ynow-bt-validate-col",
+                      tags$div(
+                        class = "ynow-bt-validate-panel",
+                        tags$h5(tags$b(id = "ynow_bt_mos_eff_title", "MOS effectiveness")),
+                        tags$p(
+                          id = "ynow_bt_mos_eff_hint",
+                          class = "ynow-backtest-inline-hint",
+                          "Forward 1Y / 3Y / 5Y returns by MOS bucket: do higher MOS buckets earn more?"
+                        ),
+                        tags$div(style = "overflow-x:auto;", tableOutput("bt_mos_table"))
+                      )
+                    )
                   ),
                   column(
                     6,
                     tags$div(
-                      style = "margin-top: 8px; padding: 12px; background: #f5f5f5; border: 1px solid #d0d0d0; border-radius: 5px; font-size: 12px; color: #444444; line-height: 1.55;",
-                      tags$b("MOS 滯後曝險（基準圖）"), tags$br(),
-                      "MOS≥30%→接近最大持股；≥10%→約 72%×上限；≥0%→約 44%×上限；≥−10%→約 17%×上限；否則空手。",
-                      "（最大／最低持股與「貼近買進持有」在「情緒策略」標籤。）"
+                      class = "ynow-bt-validate-col",
+                      tags$div(
+                        class = "ynow-bt-validate-panel",
+                        tags$h5(tags$b(id = "ynow_bt_fv_edge_title", "Fair Value predictive edge")),
+                        uiOutput("bt_fv_edge"),
+                        tags$div(style = "overflow-x:auto;", tableOutput("bt_fv_table"))
+                      )
                     )
                   )
                 )
+              )
+            )
+          ),
+
+          # --- Appendix: holding gate ---
+          box(
+            title = tagList(
+              icon("filter"),
+              tags$span(id = "ynow_bt_sec_hold_gate", "Holding gate: position filters")
+            ),
+            width = NULL,
+            status = "warning",
+            solidHeader = FALSE,
+            collapsible = TRUE,
+            collapsed = TRUE,
+            tags$p(
+              id = "ynow_bt_hold_gate_intro",
+              class = "ynow-backtest-chapter__lead",
+              paste0(
+                "On each rebalance date (monthly / quarterly / yearly by analysis frequency), all four filters must pass ",
+                "to allow a position; otherwise both Fundamental and Sentiment strategies stay flat (Exp_A = Exp_B = 0). ",
+                "Thresholds are shared with the backtest engine and the KPI filter."
+              )
+            ),
+            fluidRow(
+              column(3, tipify(numericInput("bt_net_margin", "Net margin threshold (%)", 5),
+                               "Auto mode uses about half of the company's historical net margin.", placement = "top")),
+              column(3, tipify(numericInput("bt_rev_growth", "Revenue growth threshold (%)", 25),
+                               "Auto mode uses about half of historical revenue growth.", placement = "top")),
+              column(3, tipify(numericInput("bt_eps_growth", "EPS / net income growth threshold (%)", 15),
+                               "Auto mode uses about half of net income growth.", placement = "top")),
+              column(3, tipify(numericInput("bt_fcf_cv", "FCF CV ceiling (%)", 20),
+                               "Auto mode uses FCF CV × 1.25.", placement = "top"))
+            ),
+            tags$hr(),
+            tags$div(
+              style = "display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px;",
+              tags$span(
+                style = "font-size:13px; font-weight:600;",
+                id = "ynow_bt_kpi_filter_label",
+                "KPI filter"
               ),
-              tabPanel(
-                title = tagList(icon("bolt"), "情緒策略"),
-                value = "bt_sentiment",
-                tags$div(
-                  class = "ynow-bt-mode-b",
-                  .bt_section_intro(
-                    "模式 B：在 Exp_A 上混入動能／RSI（熱→偏滿持股、冷→偏保守），藍線為情緒策略淨值（從 1 起算）。與折現圖的實際股價無關。"
+              actionButton(
+                "bt_kpi_filter", "Match current company",
+                icon = icon("filter"),
+                class = "btn-sm",
+                style = "background-color: #222222; color: #ffffff; border: 1px solid #111111; font-size: 12px; padding: 6px 14px; border-radius: 4px; font-weight: 600;"
+              ),
+              uiOutput("bt_filter_badge")
+            ),
+            tags$p(
+              id = "ynow_bt_kpi_filter_hint",
+              style = "margin: 0 0 8px 0; font-size: 12px; color: #666;",
+              "Compare Dashboard-loaded company KPIs to the thresholds above (same Great Filter as the backtest)."
+            ),
+            uiOutput("bt_filter_detail")
+          ),
+
+          # --- Appendix: run / auto-sync controls ---
+          box(
+            title = tagList(
+              icon("play-circle"),
+              tags$span(id = "ynow_bt_sec_run_controls", "Run controls & parameter sync")
+            ),
+            width = NULL,
+            status = "warning",
+            solidHeader = FALSE,
+            collapsible = TRUE,
+            collapsed = TRUE,
+            class = "ynow-bt-run-panel",
+            checkboxInput(
+              "bt_param_auto",
+              "Auto-sync parameters (derive from statements on ticker change)",
+              value = TRUE
+            ),
+            tags$p(
+              id = "ynow_bt_param_auto_hint",
+              class = "ynow-backtest-inline-hint",
+              paste0(
+                "When on, searching / loading a new company overwrites holding thresholds, exposure / sentiment weights, ",
+                "and aligns the HFV recommended valuation model. Manual edits turn this off."
+              )
+            ),
+            actionButton(
+              "bt_refresh_params", "Recompute once for current company",
+              icon = icon("sync"), class = "btn-default btn-block",
+              style = "margin-bottom: 10px;"
+            ),
+            tags$p(
+              id = "ynow_bt_refresh_params_hint",
+              class = "ynow-backtest-inline-hint",
+              "One-shot: recompute thresholds / weights from current statements (use after turning auto-sync off)."
+            ),
+            tags$div(
+              class = "ynow-bt-run-note",
+              id = "ynow_bt_run_note",
+              paste0(
+                "Use \"Run Backtest\" in the toolbar above. Rebalances by analysis frequency · year Rf / realized Rm / ",
+                "market-cap structure · Rolling β · HFV Replay model (single select) PIT."
+              )
+            )
+          ),
+
+          # --- Appendix: strategy parameters ---
+          box(
+            title = tagList(
+              icon("sliders-h"),
+              tags$span(id = "ynow_bt_sec_strategy_params", "Strategy parameters")
+            ),
+            width = NULL,
+            status = "primary",
+            solidHeader = FALSE,
+            collapsible = TRUE,
+            collapsed = TRUE,
+            uiOutput("bt_param_notes"),
+            tags$p(
+              id = "ynow_bt_params_gate_note",
+              class = "ynow-backtest-chapter__lead",
+              paste0(
+                "Holding gate (net margin / revenue growth / EPS growth / FCF volatility — fail → Exp_A = 0) ",
+                "is in the Holding gate appendix above. Here adjust sizing and sentiment weights only."
+              )
+            ),
+            tags$div(
+              class = "ynow-bt-params",
+              tabBox(
+                title = NULL,
+                width = 12,
+                tabPanel(
+                  title = tagList(
+                    icon("balance-scale"),
+                    tags$span(id = "ynow_bt_tab_fundamental", "Fundamental")
                   ),
-                  # 寬螢幕四參數一列：動能 / RSI / 最大持股 / 最低持股
-                  tags$div(
-                    class = "ynow-bt-mode-b-grid",
-                    fluidRow(
-                      column(
-                        3,
-                        sliderInput("bt_w_mom", "動能相對權重", 0, 1, 0.4, step = 0.01),
-                        .bt_hint("與 RSI 組成情緒分數，再與 Exp_A 混合。")
-                      ),
-                      column(
-                        3,
-                        sliderInput("bt_w_rsi", "RSI 相對權重", 0, 1, 0.3, step = 0.01),
-                        .bt_hint("過熱降低情緒目標；超賣提高。")
-                      ),
-                      column(
-                        3,
-                        sliderInput("bt_max_exp", "最大持股上限", 0.5, 1, 0.9, step = 0.01),
-                        .bt_hint("拉到 1.00 可消除結構性少倉，利於貼近買進持有。")
-                      ),
-                      column(
-                        3,
-                        sliderInput("bt_min_exp_pass", "通過條件後最低持股", 0, 0.4, 0, step = 0.01),
-                        .bt_hint("持倉條件通過且非極度高估時的地板部位。")
+                  value = "bt_fundamental",
+                  tags$p(
+                    id = "ynow_bt_fund_intro",
+                    class = "ynow-backtest-chapter__lead",
+                    "Mode A: Exp_A → orange NAV line. MOS buckets set sizing; MOS uses HFV Replay-model fair value."
+                  ),
+                  fluidRow(
+                    column(
+                      6,
+                      sliderInput("bt_w_vg", "MOS / Value Gap weight (exposure)", 0, 1, 0.7, step = 0.01),
+                      tags$p(
+                        id = "ynow_bt_w_vg_hint",
+                        class = "ynow-backtest-inline-hint",
+                        "Higher = more MOS-bucket de-risking; lower ≈ fixed neutral size."
+                      )
+                    ),
+                    column(
+                      6,
+                      tags$div(
+                        class = "ynow-backtest-callout",
+                        tags$b(id = "ynow_bt_mos_ladder_title", "MOS lag exposure (baseline map)"),
+                        tags$br(),
+                        tags$span(
+                          id = "ynow_bt_mos_ladder_body",
+                          paste0(
+                            "MOS≥30%→near max holding; ≥10%→~72%×cap; ≥0%→~44%×cap; ≥−10%→~17%×cap; else flat. ",
+                            "(Max / floor holding and \"Closer to buy-and-hold\" are under Sentiment.)"
+                          )
+                        )
                       )
                     )
+                  )
+                ),
+                tabPanel(
+                  title = tagList(
+                    icon("bolt"),
+                    tags$span(id = "ynow_bt_tab_sentiment", "Sentiment")
                   ),
-                  # 按鈕獨立一列（不與滑桿並排）
+                  value = "bt_sentiment",
                   tags$div(
-                    class = "ynow-bt-fit-row",
-                    fluidRow(
-                      column(
-                        12,
-                        tags$div(
-                          class = "ynow-bt-fit-panel",
-                          actionButton(
-                            "bt_fit_bh_preset", "貼近買進持有",
-                            icon = icon("chart-line"),
-                            class = "btn-success",
-                            style = "font-weight:600;"
-                          ),
+                    class = "ynow-bt-mode-b",
+                    tags$p(
+                      id = "ynow_bt_sent_intro",
+                      class = "ynow-backtest-chapter__lead",
+                      paste0(
+                        "Mode B: mix momentum / RSI onto Exp_A (hot→fuller, cold→conservative). ",
+                        "Blue line = Sentiment NAV from 1. Unrelated to HFV actual price."
+                      )
+                    ),
+                    tags$div(
+                      class = "ynow-bt-mode-b-grid",
+                      fluidRow(
+                        column(
+                          3,
+                          sliderInput("bt_w_mom", "Momentum relative weight", 0, 1, 0.4, step = 0.01),
+                          tags$p(
+                            id = "ynow_bt_w_mom_hint",
+                            class = "ynow-backtest-inline-hint",
+                            "With RSI forms the sentiment score, then mixes with Exp_A."
+                          )
+                        ),
+                        column(
+                          3,
+                          sliderInput("bt_w_rsi", "RSI relative weight", 0, 1, 0.3, step = 0.01),
+                          tags$p(
+                            id = "ynow_bt_w_rsi_hint",
+                            class = "ynow-backtest-inline-hint",
+                            "Overbought lowers the sentiment target; oversold raises it."
+                          )
+                        ),
+                        column(
+                          3,
+                          sliderInput("bt_max_exp", "Max holding cap", 0.5, 1, 0.9, step = 0.01),
+                          tags$p(
+                            id = "ynow_bt_max_exp_hint",
+                            class = "ynow-backtest-inline-hint",
+                            "Set to 1.00 to remove structural underweight vs buy-and-hold."
+                          )
+                        ),
+                        column(
+                          3,
+                          sliderInput("bt_min_exp_pass", "Min holding after gate pass", 0, 0.4, 0, step = 0.01),
+                          tags$p(
+                            id = "ynow_bt_min_exp_hint",
+                            class = "ynow-backtest-inline-hint",
+                            "Floor size when the gate passes and valuation is not extremely rich."
+                          )
+                        )
+                      )
+                    ),
+                    tags$div(
+                      class = "ynow-bt-fit-row",
+                      fluidRow(
+                        column(
+                          12,
                           tags$div(
-                            style = "margin-top:8px;font-size:11px;color:#666;",
-                            "一鍵：最大持股=100%、最低持股=40%、w_vg=0.35（弱化減碼）。會關閉自動同步。"
+                            class = "ynow-bt-fit-panel",
+                            actionButton(
+                              "bt_fit_bh_preset", "Closer to buy-and-hold",
+                              icon = icon("chart-line"),
+                              class = "btn-success",
+                              style = "font-weight:600;"
+                            ),
+                            tags$div(
+                              id = "ynow_bt_fit_bh_hint",
+                              style = "margin-top:8px;font-size:11px;color:#666;",
+                              "One-click: max=100%, min=40%, w_vg=0.35 (weaker de-risking). Turns auto-sync off."
+                            )
                           )
                         )
                       )
@@ -8256,87 +8811,40 @@ ui <- dashboardPage(
                 )
               )
             )
-          )
-        ),
-
-        fluidRow(
-          box(
-            title = tagList(icon("percentage"), "兩模式部位軌跡（Exposure）"),
-            width = 6, status = "danger", solidHeader = TRUE, collapsible = TRUE,
-            uiOutput("bt_exposure_stats"),
-            plotlyOutput("bt_exposure_plot", height = "260px") %>% withSpinner()
           ),
+
+          # --- Appendix: trend momentum (timing aid) ---
+          decision_momentum_panel_ui("main_decision"),
+
+          # --- Appendix: methodology ---
           box(
-            title = tagList(icon("search-dollar"), "相對 Buy & Hold"),
-            width = 6, status = "warning", solidHeader = TRUE, collapsible = TRUE,
-            uiOutput("bt_bh_gap")
-          )
-        ),
-
-        # 5) 回測驗證：保留 MOS／FV（策略訊號是否有效）；參數高原已移出（與 Sensitivity 重疊）
-        fluidRow(
-          tags$div(
-            class = "ynow-bt-validate",
-            box(
-              title = tagList(icon("flask"), "回測驗證：MOS 與 Fair Value"),
-              width = 12, status = "info", solidHeader = TRUE, collapsible = TRUE, collapsed = TRUE,
-              .bt_section_intro(
-                "用來檢查「低估是否伴隨較佳前瞻報酬」——這是回測策略能否成立的核心。參數敏感度請改看 YNOW 分頁（WACC×g 矩陣）。"
-              ),
-              fluidRow(
-                column(
-                  6,
-                  tags$div(
-                    class = "ynow-bt-validate-col",
-                    tags$div(
-                      class = "ynow-bt-validate-panel",
-                      tags$h5(tags$b("MOS 有效性")),
-                      .bt_hint("依 MOS 分組統計 1Y／3Y／5Y 前瞻報酬：MOS 愈高是否報酬愈好？"),
-                      tags$div(style = "overflow-x:auto;", tableOutput("bt_mos_table"))
-                    )
-                  )
-                ),
-                column(
-                  6,
-                  tags$div(
-                    class = "ynow-bt-validate-col",
-                    tags$div(
-                      class = "ynow-bt-validate-panel",
-                      tags$h5(tags$b("Fair Value 預測能力")),
-                      uiOutput("bt_fv_edge"),
-                      tags$div(style = "overflow-x:auto;", tableOutput("bt_fv_table"))
-                    )
-                  )
-                )
-              )
-            )
-          )
-        ),
-
-        # 5b) 趨勢動能：自 Sensitivity 決策看板移至此（MOS／FV 驗證正下方）
-        decision_momentum_panel_ui("main_decision"),
-
-        # 6) 方法論
-        fluidRow(
-          box(
-            title = tagList(icon("book"), "回測資料來源與計算過程（方法論註解）"),
-            width = 12, status = "primary", solidHeader = TRUE,
-            collapsible = TRUE, collapsed = TRUE,
+            title = tagList(
+              icon("book-open"),
+              tags$span(id = "ynow_bt_sec_methodology", "Data sources & methodology notes")
+            ),
+            width = NULL,
+            status = "primary",
+            solidHeader = FALSE,
+            collapsible = TRUE,
+            collapsed = TRUE,
             uiOutput("bt_methodology_notes")
-          )
-        ),
+          ),
 
-        fluidRow(
-          column(
-            width = 12,
-            box(
-              width = 12, status = "warning", solidHeader = TRUE, collapsible = TRUE, collapsed = TRUE,
-              title = tagList(icon("lightbulb"), "其他規劃中"),
-              tags$ul(
-                style = "color:#555; margin-bottom:0;",
-                tags$li("成熟股 P/E · EV 引擎（規劃中 14.1+）"),
-                tags$li("其他尚未定案的實驗性工具")
-              )
+          # --- Appendix: other planned ---
+          box(
+            title = tagList(
+              icon("lightbulb"),
+              tags$span(id = "ynow_bt_sec_other", "Other (planned)")
+            ),
+            width = NULL,
+            status = "warning",
+            solidHeader = FALSE,
+            collapsible = TRUE,
+            collapsed = TRUE,
+            tags$ul(
+              style = "color:#555; margin-bottom:0;",
+              tags$li(id = "ynow_bt_other_item1", "Mature-stock P/E · EV engine (planned 14.1+)"),
+              tags$li(id = "ynow_bt_other_item2", "Other experimental tools not yet finalized")
             )
           )
         )
