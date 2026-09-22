@@ -1078,9 +1078,9 @@ ui <- dashboardPage(
                   '<span class="ynow-app-title" id="ynow_app_title" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v17.85</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v17.86</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v17.85</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v17.86</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -7640,6 +7640,26 @@ ui <- dashboardPage(
             )
           ),
 
+          # --- Chapter I: FV vs market ---
+          tags$section(
+            class = "ynow-hfv-chapter",
+            tags$div(
+              class = "ynow-hfv-chapter__head",
+              tags$span(class = "ynow-hfv-chapter__kicker", id = "ynow_hfv_ch1_kicker", "Section I"),
+              tags$h3(
+                class = "ynow-hfv-chapter__title",
+                id = "ynow_hfv_ch1_title",
+                "Fair value vs market price"
+              )
+            ),
+            tags$div(
+              class = "ynow-hfv-chapter__body",
+              uiOutput("bt_valuation_summary"),
+              plotlyOutput("bt_hfv_timeline", height = "420px") %>% withSpinner(),
+              uiOutput("bt_session_params")
+            )
+          ),
+
           # --- Report controls (toolbar) ---
           tags$div(
             class = "ynow-hfv-toolbar",
@@ -7725,26 +7745,6 @@ ui <- dashboardPage(
                 tags$span(id = "ynow_hfv_show_bench_label", "Show benchmark"),
                 value = TRUE
               )
-            )
-          ),
-
-          # --- Chapter I: FV vs market ---
-          tags$section(
-            class = "ynow-hfv-chapter",
-            tags$div(
-              class = "ynow-hfv-chapter__head",
-              tags$span(class = "ynow-hfv-chapter__kicker", id = "ynow_hfv_ch1_kicker", "Section I"),
-              tags$h3(
-                class = "ynow-hfv-chapter__title",
-                id = "ynow_hfv_ch1_title",
-                "Fair value vs market price"
-              )
-            ),
-            tags$div(
-              class = "ynow-hfv-chapter__body",
-              uiOutput("bt_valuation_summary"),
-              plotlyOutput("bt_hfv_timeline", height = "420px") %>% withSpinner(),
-              uiOutput("bt_session_params")
             )
           ),
 
