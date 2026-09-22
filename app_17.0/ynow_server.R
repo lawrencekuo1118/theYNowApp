@@ -3,6 +3,18 @@
 # ==========================================
 
 server <- function(input, output, session) {
+
+  # ---- Session reconnect (best-effort across shinyapps redeploys) ----
+  # shinyapps.io replaces instances on deploy — not true zero-downtime; old
+  # WebSockets die when workers are destroyed. Shiny's client auto-retries only
+  # when allowReconnect is TRUE *and* the socket advertises allowReconnect
+  # (Shiny Server / Connect), OR when the value is "force". shinyapps sockets
+  # typically do not advertise that flag, so "force" is required for the
+  # browser to show "Attempting to reconnect" and retry instead of only Reload.
+  # Tradeoff: a successful reconnect starts a *new* R session; input widgets
+  # are restored from the client, but server-side reactiveVals (scraped FS,
+  # valuation caches, etc.) rebuild when Search / other inputs re-fire.
+  tryCatch(session$allowReconnect("force"), error = function(e) NULL)
   
   # ==========================================
   # 🗄️ 全域資料容器 (儲存爬蟲結果與跨模組變數)
@@ -180,6 +192,56 @@ server <- function(input, output, session) {
     }
     msg
   }
+
+  # Client signals after a disconnect→reconnect (new session). Soft notice only;
+  # restored inputs (incl. Search click count) normally re-drive the workflow.
+  observeEvent(input$ynow_client_reconnected, {
+    tryCatch(
+      showNotification(
+        .ui_msg("reconnect_restored"),
+        type = "message",
+        duration = 4
+      ),
+      error = function(e) NULL
+    )
+    # After reconnect, server build may be newer than the still-loaded HTML.
+    tryCatch(
+      session$sendCustomMessage(
+        "ynowBuildInfo",
+        list(version = as.character(YNOW_DISPLAY_VERSION), ts = as.numeric(Sys.time()))
+      ),
+      error = function(e) NULL
+    )
+  }, ignoreInit = TRUE, ignoreNULL = TRUE)
+
+  # Push display version so stale client HTML can offer optional Refresh.
+  .ynow_push_build_info <- function() {
+    tryCatch(
+      session$sendCustomMessage(
+        "ynowBuildInfo",
+        list(version = as.character(YNOW_DISPLAY_VERSION), ts = as.numeric(Sys.time()))
+      ),
+      error = function(e) NULL
+    )
+  }
+  session$onFlushed(function() {
+    .ynow_push_build_info()
+  }, once = TRUE)
+  observe({
+    invalidateLater(60 * 1000, session)
+    .ynow_push_build_info()
+  })
+
+  observeEvent(input$ynow_soft_reload_done, {
+    tryCatch(
+      showNotification(
+        .ui_msg("refresh_applied"),
+        type = "message",
+        duration = 5
+      ),
+      error = function(e) NULL
+    )
+  }, ignoreInit = TRUE, ignoreNULL = TRUE)
 
 
   .push_ui_locale <- function(locale, sync_picker = TRUE) {
@@ -11934,7 +11996,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.90"),
+      paste0("- **App：** The YNow App ", YNOW_DISPLAY_VERSION),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

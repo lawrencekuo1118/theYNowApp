@@ -3,6 +3,10 @@
 # 說明：統一管理 UI 與 Server 的初始數值，並動態綁定產業 KPI
 # ==========================================
 
+# Display version (UI header / About / build check). Bump +0.01 on each ship.
+# Live folder may stay app_17.0/ while this advances (v17.91, v17.92, …).
+YNOW_DISPLAY_VERSION <- "v17.91"
+
 # 預設產業：半導體｜晶圓代工（與 demo TSM 對齊）
 DEFAULT_IND <- "sc.Foundry"
 ind_kpi <- industry_standards[[DEFAULT_IND]]

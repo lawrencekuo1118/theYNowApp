@@ -7,6 +7,14 @@
 # Optional:
 #   SHINYAPPS_APP_NAME (default TheYNowApp)
 #   SHINYAPPS_APP_ID   (default 10907657)
+#
+# Deploy continuity note (shinyapps.io):
+#   A new deploy builds a new image and starts new instances, then destroys the
+#   old ones. There is no rolling/zero-downtime guarantee. Active WebSockets on
+#   old workers disconnect. The app enables session$allowReconnect("force") so
+#   browsers auto-retry a *new* session (inputs restored; server reactiveVals
+#   rebuild) instead of only showing Reload. Not seamless existing-session
+#   continuity.
 
 if (!requireNamespace("rsconnect", quietly = TRUE)) {
   install.packages("rsconnect", repos = "https://cloud.r-project.org")
