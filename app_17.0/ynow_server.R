@@ -10081,7 +10081,7 @@ server <- function(input, output, session) {
         style = "margin-top:0;",
         tags$b("折現圖 vs 淨值圖："),
         "折現圖（側邊「歷史基本面驗證」）是每股合理價 vs 實際股價；策略 MOS／部位用「復盤模型」單選。",
-        "淨值圖（本頁「測試」）是部位×日報酬的累積財富（起始＝1）——",
+        "淨值圖（本頁「量化回測實驗室」）是部位×日報酬的累積財富（起始＝1）——",
         tags$b("基本面策略淨值"), "＝Exp_A；",
         tags$b("情緒策略淨值"), "＝Exp_B（Exp_A 混入動能／RSI）。兩圖標籤不可互換。"
       ),
@@ -10409,7 +10409,7 @@ server <- function(input, output, session) {
   # ==========================================
   lab_sec_result <- reactiveVal(NULL)
 
-  # 側邊欄「測試」：開啟 Testing（量化回測）
+  # 側邊欄「量化回測實驗室」捷徑通知（舊 Testing 連結已移入主選單；此 observer 保留相容）
   observeEvent(input$sidebar_test_click, {
     showNotification(.ui_msg("notif_test_opened"), type = "message", duration = 3)
   }, ignoreInit = TRUE)
@@ -11934,7 +11934,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.89"),
+      paste0("- **App：** The YNow App v17.90"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

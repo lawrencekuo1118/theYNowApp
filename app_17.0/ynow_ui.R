@@ -85,7 +85,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v17.89) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報抓取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v17.90) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報抓取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -101,7 +101,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v17.89) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v17.90) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -158,7 +158,7 @@
       "維持完整版相同的決策漏斗與敏感度檢視（含 MOS／F-Score 等），作為簡化流程下的決策輔助。"
     ),
     tags$li(
-      tags$b("績優股排行（Blue Chip）："),
+      tags$b("績優股排行榜（Blue Chip）："),
       "保留候選截斷邏輯與宇宙檔數（N）、盈餘品質與 ADR 篩選，以及分群研究；隱藏明細小頁籤與其餘進階查詢條件。"
     )
   )
@@ -183,7 +183,7 @@
       "Same decision funnel and sensitivity views as Full (including MOS / F-Score), as decision support inside the Lite flow."
     ),
     tags$li(
-      tags$b("Blue Chip Ranking: "),
+      tags$b("Blue Chip Leaderboard: "),
       "Keeps Candidate truncate rules and Universe size (N), Earnings Quality and ADR filters, plus Clustering. Hides the Detail sub-tab and other advanced Ranking filters."
     )
   )
@@ -200,7 +200,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v17.89）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v17.90）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -217,7 +217,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v17.89) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v17.90) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -1078,9 +1078,9 @@ ui <- dashboardPage(
                   '<span class="ynow-app-title" id="ynow_app_title" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v17.89</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v17.90</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v17.89</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v17.90</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -1208,9 +1208,14 @@ ui <- dashboardPage(
              # 歷史基本面驗證（HFV）：理論估值 vs 實際市值 — 非策略回測
              menuItem("Hist. FV Validation", tabName = "hfv", icon = icon("balance-scale")),
              menuItem("YNOW", tabName = "sensitivity", icon = icon("sliders-h")),
-             menuItem("Blue Chip Ranking", tabName = "bluechip", icon = icon("star")),
+             # 量化回測實驗室：主選單（完整版）；Lite 以 CSS 隱藏，不進簡化版
+             menuItem(
+               text = tags$span(id = "ynow_menu_backtest", "Quant Backtest Lab"),
+               tabName = "lab_notes",
+               icon = icon("flask")
+             ),
+             menuItem("Blue Chip Leaderboard", tabName = "bluechip", icon = icon("star")),
              menuItem("Decision Checklist", tabName = "decision_checklist", icon = icon("clipboard-check")),
-             # 量化回測報表在底部「測試」；實驗區不放主選單
              menuItem("About", tabName = "about", icon = icon("info-circle"))
              # Snapshot 不放主選單（避免巢狀 li 被瀏覽器抬出隱藏）；改由底部捷徑切換
            ),
@@ -1278,17 +1283,6 @@ ui <- dashboardPage(
         onclick = "Shiny.setInputValue('sidebar_tabs', 'snapshot', {priority: 'event'}); setTimeout(function(){ try { if (window.ensureLiteSnapshotDefaultsTab) window.ensureLiteSnapshotDefaultsTab(); } catch (e) {} }, 0); return false;",
         icon("camera", class = "fa-fw"),
         tags$span(id = "ynow_snapshot_link_label", " Snapshot")
-      ),
-      # 測試按鈕：Snapshot 旁的捷徑，開啟 Testing（量化回測／策略實驗）
-      tags$a(
-        id = "ynow_sidebar_test_btn",
-        href = "#shiny-tab-lab_notes",
-        `data-toggle` = "tab",
-        `data-value` = "lab_notes",
-        class = "ynow-sidebar-snapshot-link ynow-sidebar-test-link",
-        onclick = "Shiny.setInputValue('sidebar_tabs', 'lab_notes', {priority: 'event'}); Shiny.setInputValue('sidebar_test_click', (window.__ynowTestClicks=(window.__ynowTestClicks||0)+1), {priority: 'event'}); return false;",
-        icon("flask", class = "fa-fw"),
-        tags$span(id = "ynow_test_link_label", " 測試")
       ),
       # 意見區：收集使用者回饋，系統性開 GitHub Issue
       tags$a(
@@ -2155,7 +2149,7 @@ ui <- dashboardPage(
           opacity: 1;
           background: rgba(255,255,255,0.06);
         }
-        .ynow-sidebar-test-link { margin-left: 8px; }
+        .ynow-sidebar-feedback-link { margin-left: 8px; }
         .ynow-sidebar-feedback-link { margin-left: 8px; }
         /* 側欄完整 LOGO：Recent Search 橫線下、Download Report 正上方；等比例放大 */
         .ynow-sidebar-brand {
@@ -2241,8 +2235,10 @@ ui <- dashboardPage(
         body.ynow-lite #dashboard_fin_report .nav-tabs > li:has(> a[data-value="Annotation"]) {
           display: none !important;
         }
-        /* Lite: under Data Source keep Snapshot + Feedback only (hide Testing) */
-        body.ynow-lite .ynow-sidebar-test-link {
+        /* Lite: under Data Source keep Snapshot + Feedback only;
+           Quant Backtest Lab stays Full-only (same policy as former Testing link) */
+        body.ynow-lite .sidebar-menu a[data-value="lab_notes"],
+        body.ynow-lite .sidebar-menu li:has(> a[data-value="lab_notes"]) {
           display: none !important;
         }
         /* Lite Snapshot: only System defaults tab */
@@ -3542,6 +3538,7 @@ ui <- dashboardPage(
               ri_calculator: s.menu_ri,
               nav_calculator: s.menu_nav,
               sensitivity: s.menu_ynow,
+              lab_notes: s.menu_backtest,
               bluechip: s.menu_bluechip,
               hfv: s.menu_hfv,
               decision_checklist: s.menu_decision_checklist,
@@ -3552,6 +3549,8 @@ ui <- dashboardPage(
             });
             var smartLab = document.getElementById('ynow_menu_smart');
             if (smartLab && s.menu_smart_analysis) smartLab.textContent = s.menu_smart_analysis;
+            var menuBt = document.getElementById('ynow_menu_backtest');
+            if (menuBt && s.menu_backtest) menuBt.textContent = s.menu_backtest;
             var catAsset = document.getElementById('ynow_menu_cat_asset');
             if (catAsset && s.menu_cat_asset) catAsset.textContent = s.menu_cat_asset;
             var catIncome = document.getElementById('ynow_menu_cat_income');
@@ -3642,6 +3641,8 @@ ui <- dashboardPage(
             if (btZone && s.bt_zone_title) btZone.textContent = s.bt_zone_title;
             var btToolbar = document.getElementById('ynow_bt_toolbar') || document.querySelector('.ynow-backtest-toolbar');
             if (btToolbar && s.bt_toolbar_aria) btToolbar.setAttribute('aria-label', s.bt_toolbar_aria);
+            var btNavCtl = document.getElementById('ynow_bt_nav_controls');
+            if (btNavCtl && s.bt_nav_controls_aria) btNavCtl.setAttribute('aria-label', s.bt_nav_controls_aria);
             var navWinLab = document.querySelector('label[for=\"bt_nav_window\"]');
             if (navWinLab && s.bt_nav_window_label) navWinLab.textContent = s.bt_nav_window_label;
             function setBtText(id, key) {
@@ -3677,6 +3678,7 @@ ui <- dashboardPage(
             setBtText('ynow_bt_kpi_filter_label', 'bt_kpi_filter_label');
             setBtText('ynow_bt_kpi_filter_hint', 'bt_kpi_filter_hint');
             setBtText('ynow_bt_sec_run_controls', 'bt_sec_run_controls');
+            setBtText('ynow_bt_sec_nav_controls', 'bt_sec_nav_controls');
             setBtText('ynow_bt_param_auto_hint', 'bt_param_auto_hint');
             setBtText('ynow_bt_refresh_params_hint', 'bt_refresh_params_hint');
             setBtText('ynow_bt_run_note', 'bt_run_note');
@@ -4039,8 +4041,6 @@ ui <- dashboardPage(
               var k = el.getAttribute('data-key');
               if (k && s[k]) el.textContent = s[k];
             });
-            var testL = document.getElementById('ynow_test_link_label');
-            if (testL && s.test_link) testL.textContent = s.test_link;
             var fb = document.getElementById('ynow_feedback_link_label');
             if (fb && s.feedback_link) fb.textContent = s.feedback_link;
             var runBt = document.getElementById('run_bt');
@@ -8063,7 +8063,7 @@ ui <- dashboardPage(
               paste0(
                 "A point-in-time review of theoretical fair value versus market price: ",
                 "next-period odds, position vs FV, and historical scenario taxonomy. ",
-                "This is a validation report—not a trading backtest (see Testing)."
+                "This is a validation report—not a trading backtest (see Quant Backtest Lab)."
               )
             )
           ),
@@ -8303,7 +8303,7 @@ ui <- dashboardPage(
       decision_checklist_tab_ui(),
 
       # ==========================================
-      # Testing — Quantitative Backtest（報告式版面，與 HFV／YNOW 同邏輯）
+      # Quant Backtest Lab（報告式版面；章節內容後接預設收合之控制區）
       # ==========================================
       tabItem(
         tabName = "lab_notes",
@@ -8314,13 +8314,13 @@ ui <- dashboardPage(
           # --- Masthead ---
           tags$div(
             class = "ynow-backtest-report__masthead",
-            h2(tags$b(id = "ynow_lab_notes_title", "Testing — Quantitative Backtest")),
+            h2(tags$b(id = "ynow_lab_notes_title", "Quantitative Backtest Lab")),
             p(
               id = "ynow_lab_notes_sub",
               class = "ynow-backtest-report__lead",
               paste0(
                 "Point-in-time strategy NAV and holding gates: read performance and the wealth-index chart first, ",
-                "then exposure versus buy-and-hold. Holding filters and strategy parameters sit in the appendix. ",
+                "then exposure versus buy-and-hold. Related controls sit under each chapter (collapsed by default). ",
                 "This is a quantitative backtest report—not Historical Fundamental Validation (see Hist. FV Validation)."
               )
             )
@@ -8348,51 +8348,69 @@ ui <- dashboardPage(
             )
           ),
 
-          # --- Report controls (toolbar): Run + NAV window ---
-          tags$div(
-            class = "ynow-backtest-toolbar",
-            role = "group",
-            `aria-label` = "Backtest report controls",
-            id = "ynow_bt_toolbar",
+          # --- Ch I controls: Run + parameter sync (default collapsed) ---
+          box(
+            title = tagList(
+              icon("play-circle"),
+              tags$span(id = "ynow_bt_sec_run_controls", "Run controls & parameter sync")
+            ),
+            width = NULL,
+            status = "warning",
+            solidHeader = FALSE,
+            collapsible = TRUE,
+            collapsed = TRUE,
+            class = "ynow-bt-run-panel",
             tags$div(
-              class = "ynow-backtest-toolbar__group ynow-backtest-toolbar__group--run",
-              tags$span(
-                class = "ynow-backtest-toolbar__label",
-                id = "ynow_bt_zone_title",
-                "Backtest Zone"
-              ),
-              actionButton(
-                "run_bt", "Run Backtest",
-                icon = icon("play"),
-                class = "btn-warning",
-                style = "margin:0; white-space:nowrap; font-weight:600;"
-              ),
-              uiOutput("bt_run_status")
+              class = "ynow-backtest-toolbar ynow-backtest-toolbar--chapter",
+              role = "group",
+              `aria-label` = "Backtest run controls",
+              id = "ynow_bt_toolbar",
+              tags$div(
+                class = "ynow-backtest-toolbar__group ynow-backtest-toolbar__group--run",
+                tags$span(
+                  class = "ynow-backtest-toolbar__label",
+                  id = "ynow_bt_zone_title",
+                  "Backtest Zone"
+                ),
+                actionButton(
+                  "run_bt", "Run Backtest",
+                  icon = icon("play"),
+                  class = "btn-warning",
+                  style = "margin:0; white-space:nowrap; font-weight:600;"
+                ),
+                uiOutput("bt_run_status")
+              )
+            ),
+            tags$hr(style = "margin:12px 0;"),
+            checkboxInput(
+              "bt_param_auto",
+              "Auto-sync parameters (derive from statements on ticker change)",
+              value = TRUE
+            ),
+            tags$p(
+              id = "ynow_bt_param_auto_hint",
+              class = "ynow-backtest-inline-hint",
+              paste0(
+                "When on, searching / loading a new company overwrites holding thresholds, exposure / sentiment weights, ",
+                "and aligns the HFV recommended valuation model. Manual edits turn this off."
+              )
+            ),
+            actionButton(
+              "bt_refresh_params", "Recompute once for current company",
+              icon = icon("sync"), class = "btn-default btn-block",
+              style = "margin-bottom: 10px;"
+            ),
+            tags$p(
+              id = "ynow_bt_refresh_params_hint",
+              class = "ynow-backtest-inline-hint",
+              "One-shot: recompute thresholds / weights from current statements (use after turning auto-sync off)."
             ),
             tags$div(
-              class = "ynow-backtest-toolbar__group ynow-backtest-toolbar__group--wide",
-              radioButtons(
-                "bt_nav_window",
-                "NAV window (each series resets to 1 at the window start)",
-                inline = TRUE,
-                choices = c(
-                  "All" = "all",
-                  "1Y" = "1y",
-                  "3Y" = "3y",
-                  "5Y" = "5y",
-                  "Custom" = "custom"
-                ),
-                selected = "all"
-              ),
-              conditionalPanel(
-                condition = "input.bt_nav_window == 'custom'",
-                dateRangeInput(
-                  "bt_nav_custom",
-                  NULL,
-                  start = Sys.Date() - 365,
-                  end = Sys.Date(),
-                  language = "zh-TW"
-                )
+              class = "ynow-bt-run-note",
+              id = "ynow_bt_run_note",
+              paste0(
+                "Expand this section and click \"Run Backtest\". Rebalances by analysis frequency · year Rf / realized Rm / ",
+                "market-cap structure · Rolling β · HFV Replay model (single select) PIT."
               )
             )
           ),
@@ -8439,7 +8457,7 @@ ui <- dashboardPage(
                   tags$b(id = "ynow_bt_leg_sent_label", "Sentiment NAV"),
                   tags$span(
                     id = "ynow_bt_leg_sent_body",
-                    " (blue) = Exp_A mixed with momentum / RSI; see Sentiment Parameters in the appendix."
+                    " (blue) = Exp_A mixed with momentum / RSI; see Sentiment Parameters under Chapter IV."
                   )
                 ),
                 tags$li(
@@ -8457,6 +8475,51 @@ ui <- dashboardPage(
                 tags$li(
                   id = "ynow_bt_leg_hfv_note",
                   "Per-share FV vs actual price: Hist. FV Validation sidebar — do not mix with this chart."
+                )
+              )
+            )
+          ),
+
+          # --- Ch II controls: NAV window (default collapsed) ---
+          box(
+            title = tagList(
+              icon("calendar-alt"),
+              tags$span(id = "ynow_bt_sec_nav_controls", "NAV window & chart controls")
+            ),
+            width = NULL,
+            status = "warning",
+            solidHeader = FALSE,
+            collapsible = TRUE,
+            collapsed = TRUE,
+            tags$div(
+              class = "ynow-backtest-toolbar ynow-backtest-toolbar--chapter",
+              role = "group",
+              `aria-label` = "NAV window controls",
+              id = "ynow_bt_nav_controls",
+              tags$div(
+                class = "ynow-backtest-toolbar__group ynow-backtest-toolbar__group--wide",
+                radioButtons(
+                  "bt_nav_window",
+                  "NAV window (each series resets to 1 at the window start)",
+                  inline = TRUE,
+                  choices = c(
+                    "All" = "all",
+                    "1Y" = "1y",
+                    "3Y" = "3y",
+                    "5Y" = "5y",
+                    "Custom" = "custom"
+                  ),
+                  selected = "all"
+                ),
+                conditionalPanel(
+                  condition = "input.bt_nav_window == 'custom'",
+                  dateRangeInput(
+                    "bt_nav_custom",
+                    NULL,
+                    start = Sys.Date() - 365,
+                    end = Sys.Date(),
+                    language = "zh-TW"
+                  )
                 )
               )
             )
@@ -8502,6 +8565,60 @@ ui <- dashboardPage(
                 )
               )
             )
+          ),
+
+          # --- Ch III controls: Holding gate (default collapsed) ---
+          box(
+            title = tagList(
+              icon("filter"),
+              tags$span(id = "ynow_bt_sec_hold_gate", "Holding gate: position filters")
+            ),
+            width = NULL,
+            status = "warning",
+            solidHeader = FALSE,
+            collapsible = TRUE,
+            collapsed = TRUE,
+            tags$p(
+              id = "ynow_bt_hold_gate_intro",
+              class = "ynow-backtest-chapter__lead",
+              paste0(
+                "On each rebalance date (monthly / quarterly / yearly by analysis frequency), all four filters must pass ",
+                "to allow a position; otherwise both Fundamental and Sentiment strategies stay flat (Exp_A = Exp_B = 0). ",
+                "Thresholds are shared with the backtest engine and the KPI filter."
+              )
+            ),
+            fluidRow(
+              column(3, tipify(numericInput("bt_net_margin", "Net margin threshold (%)", 5),
+                               "Auto mode uses about half of the company's historical net margin.", placement = "top")),
+              column(3, tipify(numericInput("bt_rev_growth", "Revenue growth threshold (%)", 25),
+                               "Auto mode uses about half of historical revenue growth.", placement = "top")),
+              column(3, tipify(numericInput("bt_eps_growth", "EPS / net income growth threshold (%)", 15),
+                               "Auto mode uses about half of net income growth.", placement = "top")),
+              column(3, tipify(numericInput("bt_fcf_cv", "FCF CV ceiling (%)", 20),
+                               "Auto mode uses FCF CV × 1.25.", placement = "top"))
+            ),
+            tags$hr(),
+            tags$div(
+              style = "display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px;",
+              tags$span(
+                style = "font-size:13px; font-weight:600;",
+                id = "ynow_bt_kpi_filter_label",
+                "KPI filter"
+              ),
+              actionButton(
+                "bt_kpi_filter", "Match current company",
+                icon = icon("filter"),
+                class = "btn-sm",
+                style = "background-color: #222222; color: #ffffff; border: 1px solid #111111; font-size: 12px; padding: 6px 14px; border-radius: 4px; font-weight: 600;"
+              ),
+              uiOutput("bt_filter_badge")
+            ),
+            tags$p(
+              id = "ynow_bt_kpi_filter_hint",
+              style = "margin: 0 0 8px 0; font-size: 12px; color: #666;",
+              "Compare Dashboard-loaded company KPIs to the thresholds above (same Great Filter as the backtest)."
+            ),
+            uiOutput("bt_filter_detail")
           ),
 
           # --- Chapter IV: MOS / FV signal validation ---
@@ -8566,106 +8683,7 @@ ui <- dashboardPage(
             )
           ),
 
-          # --- Appendix: holding gate ---
-          box(
-            title = tagList(
-              icon("filter"),
-              tags$span(id = "ynow_bt_sec_hold_gate", "Holding gate: position filters")
-            ),
-            width = NULL,
-            status = "warning",
-            solidHeader = FALSE,
-            collapsible = TRUE,
-            collapsed = TRUE,
-            tags$p(
-              id = "ynow_bt_hold_gate_intro",
-              class = "ynow-backtest-chapter__lead",
-              paste0(
-                "On each rebalance date (monthly / quarterly / yearly by analysis frequency), all four filters must pass ",
-                "to allow a position; otherwise both Fundamental and Sentiment strategies stay flat (Exp_A = Exp_B = 0). ",
-                "Thresholds are shared with the backtest engine and the KPI filter."
-              )
-            ),
-            fluidRow(
-              column(3, tipify(numericInput("bt_net_margin", "Net margin threshold (%)", 5),
-                               "Auto mode uses about half of the company's historical net margin.", placement = "top")),
-              column(3, tipify(numericInput("bt_rev_growth", "Revenue growth threshold (%)", 25),
-                               "Auto mode uses about half of historical revenue growth.", placement = "top")),
-              column(3, tipify(numericInput("bt_eps_growth", "EPS / net income growth threshold (%)", 15),
-                               "Auto mode uses about half of net income growth.", placement = "top")),
-              column(3, tipify(numericInput("bt_fcf_cv", "FCF CV ceiling (%)", 20),
-                               "Auto mode uses FCF CV × 1.25.", placement = "top"))
-            ),
-            tags$hr(),
-            tags$div(
-              style = "display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px;",
-              tags$span(
-                style = "font-size:13px; font-weight:600;",
-                id = "ynow_bt_kpi_filter_label",
-                "KPI filter"
-              ),
-              actionButton(
-                "bt_kpi_filter", "Match current company",
-                icon = icon("filter"),
-                class = "btn-sm",
-                style = "background-color: #222222; color: #ffffff; border: 1px solid #111111; font-size: 12px; padding: 6px 14px; border-radius: 4px; font-weight: 600;"
-              ),
-              uiOutput("bt_filter_badge")
-            ),
-            tags$p(
-              id = "ynow_bt_kpi_filter_hint",
-              style = "margin: 0 0 8px 0; font-size: 12px; color: #666;",
-              "Compare Dashboard-loaded company KPIs to the thresholds above (same Great Filter as the backtest)."
-            ),
-            uiOutput("bt_filter_detail")
-          ),
-
-          # --- Appendix: run / auto-sync controls ---
-          box(
-            title = tagList(
-              icon("play-circle"),
-              tags$span(id = "ynow_bt_sec_run_controls", "Run controls & parameter sync")
-            ),
-            width = NULL,
-            status = "warning",
-            solidHeader = FALSE,
-            collapsible = TRUE,
-            collapsed = TRUE,
-            class = "ynow-bt-run-panel",
-            checkboxInput(
-              "bt_param_auto",
-              "Auto-sync parameters (derive from statements on ticker change)",
-              value = TRUE
-            ),
-            tags$p(
-              id = "ynow_bt_param_auto_hint",
-              class = "ynow-backtest-inline-hint",
-              paste0(
-                "When on, searching / loading a new company overwrites holding thresholds, exposure / sentiment weights, ",
-                "and aligns the HFV recommended valuation model. Manual edits turn this off."
-              )
-            ),
-            actionButton(
-              "bt_refresh_params", "Recompute once for current company",
-              icon = icon("sync"), class = "btn-default btn-block",
-              style = "margin-bottom: 10px;"
-            ),
-            tags$p(
-              id = "ynow_bt_refresh_params_hint",
-              class = "ynow-backtest-inline-hint",
-              "One-shot: recompute thresholds / weights from current statements (use after turning auto-sync off)."
-            ),
-            tags$div(
-              class = "ynow-bt-run-note",
-              id = "ynow_bt_run_note",
-              paste0(
-                "Use \"Run Backtest\" in the toolbar above. Rebalances by analysis frequency · year Rf / realized Rm / ",
-                "market-cap structure · Rolling β · HFV Replay model (single select) PIT."
-              )
-            )
-          ),
-
-          # --- Appendix: strategy parameters ---
+          # --- Ch IV controls: Strategy parameters (default collapsed) ---
           box(
             title = tagList(
               icon("sliders-h"),
@@ -8682,7 +8700,7 @@ ui <- dashboardPage(
               class = "ynow-backtest-chapter__lead",
               paste0(
                 "Holding gate (net margin / revenue growth / EPS growth / FCF volatility — fail → Exp_A = 0) ",
-                "is in the Holding gate appendix above. Here adjust sizing and sentiment weights only."
+                "is under Chapter III. Here adjust sizing and sentiment weights only."
               )
             ),
             tags$div(

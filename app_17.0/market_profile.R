@@ -44,7 +44,7 @@ market_profile <- function(mode = get_market_mode()) {
       ),
       backtest_bench = "0050.TW",
       show_sec_lab = FALSE,
-      bluechip_title = "績優股排行（台股）",
+      bluechip_title = "績優股排行榜（台股）",
       # Intro copy lives in ui_locale.R (bluechip_blurb_tw); kept for profile completeness
       bluechip_blurb = paste0(
         "依據臺灣證券交易所與櫃買中心公開名單，篩選台股績優候選標的（範圍僅含上市與上櫃；不含興櫃）。",
@@ -93,7 +93,7 @@ market_profile <- function(mode = get_market_mode()) {
       ),
       backtest_bench = "SPY",
       show_sec_lab = TRUE,
-      bluechip_title = "Blue Chip Ranking (US)",
+      bluechip_title = "Blue Chip Leaderboard (US)",
       # Intro copy lives in ui_locale.R (bluechip_blurb_us); kept for profile completeness
       bluechip_blurb = paste0(
         "Screen US blue-chip candidates from Nasdaq and NYSE primary listings ",

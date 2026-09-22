@@ -34,7 +34,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     menu_badge_primary = "Recommend",
     menu_badge_secondary = "Secondary",
     menu_ynow = "YNOW",
-    menu_bluechip = "Blue Chip Ranking",
+    menu_backtest = "Quant Backtest Lab",
+    menu_bluechip = "Blue Chip Leaderboard",
     menu_hfv = "Hist. FV Validation",
     menu_decision_checklist = "Decision Checklist",
     menu_about = "About",
@@ -263,7 +264,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_page_sub = paste0(
       "A point-in-time review of theoretical fair value versus market price: ",
       "next-period odds, position vs FV, and historical scenario taxonomy. ",
-      "This is a validation report—not a trading backtest (see Testing)."
+      "This is a validation report—not a trading backtest (see Quant Backtest Lab)."
     ),
     hfv_ch1_kicker = "Section I",
     hfv_ch1_title = "Fair value vs market price",
@@ -305,15 +306,17 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_replay_model_label = "Replay model",
     hfv_session_params_title = "Session parameters (now)",
     hfv_data_sources_label = "Fundamentals sources (this run)",
-    lab_notes_title = "Testing — Quantitative Backtest",
+    lab_notes_title = "Quantitative Backtest Lab",
     lab_notes_sub = paste0(
       "Point-in-time strategy NAV and holding gates: read performance and the wealth-index chart first, ",
-      "then exposure versus buy-and-hold. Holding filters and strategy parameters sit in the appendix. ",
+      "then exposure versus buy-and-hold. Related controls sit under each chapter (collapsed by default). ",
       "This is a quantitative backtest report—not Historical Fundamental Validation (see Hist. FV Validation)."
     ),
     bt_zone_title = "Backtest Zone",
-    bt_toolbar_aria = "Backtest report controls",
+    bt_toolbar_aria = "Backtest run controls",
+    bt_nav_controls_aria = "NAV window controls",
     bt_nav_window_label = "NAV window (each series resets to 1 at the window start)",
+    bt_sec_nav_controls = "NAV window & chart controls",
     bt_ch1_kicker = "Section I",
     bt_ch1_title = "Performance summary",
     bt_ch2_kicker = "Section II",
@@ -339,7 +342,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     bt_leg_fund_label = "Fundamental NAV",
     bt_leg_fund_body = " (orange) = holding gate + MOS sizing × daily returns, from 1.",
     bt_leg_sent_label = "Sentiment NAV",
-    bt_leg_sent_body = " (blue) = Exp_A mixed with momentum / RSI; see Sentiment Parameters in the appendix.",
+    bt_leg_sent_body = " (blue) = Exp_A mixed with momentum / RSI; see Sentiment Parameters under Chapter IV.",
     bt_leg_bh_label = "Stock buy-and-hold",
     bt_leg_bh_body = " (green) = 100% wealth index; ",
     bt_leg_bench_label = "Benchmark",
@@ -367,13 +370,13 @@ locale_for_market <- function(mode = get_market_mode()) {
     btn_bt_refresh_params = "Recompute once for current company",
     bt_refresh_params_hint = "One-shot: recompute thresholds / weights from current statements (use after turning auto-sync off).",
     bt_run_note = paste0(
-      "Use \"Run Backtest\" in the toolbar above. Rebalances by analysis frequency · year Rf / realized Rm / ",
+      "Expand this section and click \"Run Backtest\". Rebalances by analysis frequency · year Rf / realized Rm / ",
       "market-cap structure · Rolling β · HFV Replay model (single select) PIT."
     ),
     bt_sec_strategy_params = "Strategy parameters",
     bt_params_gate_note = paste0(
       "Holding gate (net margin / revenue growth / EPS growth / FCF volatility — fail → Exp_A = 0) ",
-      "is in the Holding gate appendix above. Here adjust sizing and sentiment weights only."
+      "is under Chapter III. Here adjust sizing and sentiment weights only."
     ),
     bt_tab_fundamental = "Fundamental",
     bt_tab_sentiment = "Sentiment",
@@ -571,7 +574,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     box_residual_income = "RESIDUAL INCOME",
     box_pb_asset = "P/B & ASSET VALUE",
     box_nav = "NET ASSET VALUE",
-    box_blue_chip = "BLUE CHIP RANKING",
+    box_blue_chip = "BLUE CHIP LEADERBOARD",
     box_beta = "BETA",
     box_sgr = "SUSTAINABLE GROWTH RATE",
     box_model_guide = "Model Selection Guide",
@@ -787,7 +790,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     funnel_sec_method = "How to read this report",
     funnel_method_body = paste0(
       "Reading order: Quality (F-Score) → Value (MOS vs Base) → Statement alerts. ",
-      "The verdict combines these layers into a scenario label; trend momentum (Timing) lives under Testing ",
+      "The verdict combines these layers into a scenario label; trend momentum (Timing) lives under Quant Backtest Lab ",
       "and does not set fair value."
     ),
     funnel_method_caveat = paste0(
@@ -847,7 +850,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     funnel_mom_data_1 = "Daily closes: Yahoo Finance (prefer yfinance; fallback quantmod / Yahoo).",
     funnel_mom_data_2 = "Fetch ~1Y history; decision uses ~180 trading days; MAs via TTR::SMA.",
     funnel_mom_data_3 = paste0(
-      "Unlike Testing \"sentiment strategy\" momentum / RSI overlays, ",
+      "Unlike Quant Backtest Lab \"sentiment strategy\" momentum / RSI overlays, ",
       "this panel is dual-MA confirmation only for YNOW Funnel Timing."
     ),
     funnel_mom_bull = "Bullish confirmed",
@@ -906,7 +909,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     notif_pdf_busy = "Generating PDF investment report — please wait…",
     notif_pdf_ok = "✅ PDF investment report ready",
     notif_pdf_fail = "Report generation failed: {err}",
-    notif_test_opened = "Opened Testing (quant backtest)",
+    notif_test_opened = "Opened Quant Backtest Lab",
     notif_industry_catalog_fail = "Industry catalog load failed: {err}",
     notif_update_cache_fallback = "Update failed; using last cache / built-in snapshot.",
     notif_no_candidates = "No evaluable candidates under the current filters.",
@@ -1136,7 +1139,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     menu_badge_primary = "推薦",
     menu_badge_secondary = "備選",
     menu_ynow = "YNOW",
-    menu_bluechip = "績優股排行",
+    menu_backtest = "量化回測實驗室",
+    menu_bluechip = "績優股排行榜",
     menu_hfv = "歷史基本面驗證",
     menu_decision_checklist = "決策檢核",
     menu_about = "關於",
@@ -1354,7 +1358,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_page_title = "歷史基本面驗證",
     hfv_page_sub = paste0(
       "以時點還原的理論合理價對照實際市價：下期漲跌機率、相對 FV 位置／幅度，以及歷史情境分類。",
-      "這是一份驗證報告，不是交易策略回測（量化回測請至「測試」）。"
+      "這是一份驗證報告，不是交易策略回測（量化回測請至「量化回測實驗室」）。"
     ),
     hfv_ch1_kicker = "第一章",
     hfv_ch1_title = "合理價與市價",
@@ -1391,14 +1395,16 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_replay_model_label = "復盤模型",
     hfv_session_params_title = "此刻參數（Session）",
     hfv_data_sources_label = "本次基本面資料來源",
-    lab_notes_title = "測試 — Testing（量化回測）",
+    lab_notes_title = "量化回測實驗室",
     lab_notes_sub = paste0(
       "點對點（PIT）策略淨值與持倉閘門：先看績效與財富指數圖，再看部位軌跡與相對買進持有。",
-      "持倉條件與策略參數收在附錄。此為量化回測報告，非歷史基本面驗證（請至「歷史基本面驗證」）。"
+      "各章節相關控制收在章節下方（預設收合）。此為量化回測報告，非歷史基本面驗證（請至「歷史基本面驗證」）。"
     ),
     bt_zone_title = "量化回測實驗室",
-    bt_toolbar_aria = "量化回測報告控制列",
+    bt_toolbar_aria = "量化回測執行控制",
+    bt_nav_controls_aria = "累積區間控制",
     bt_nav_window_label = "累積區間（各序列在區間起點重設為 1）",
+    bt_sec_nav_controls = "累積區間與圖表控制",
     bt_ch1_kicker = "第一章",
     bt_ch1_title = "績效摘要",
     bt_ch2_kicker = "第二章",
@@ -1424,7 +1430,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     bt_leg_fund_label = "基本面策略淨值",
     bt_leg_fund_body = "（橘線）＝持倉條件＋MOS 部位 × 日報酬，從 1 起算。",
     bt_leg_sent_label = "情緒策略淨值",
-    bt_leg_sent_body = "（藍線）＝在 Exp_A 上混入動能／RSI；參數見附錄「情緒策略」。",
+    bt_leg_sent_body = "（藍線）＝在 Exp_A 上混入動能／RSI；參數見第四章「情緒策略」。",
     bt_leg_bh_label = "該股買進持有",
     bt_leg_bh_body = "（綠）全程 100% 的財富指數；",
     bt_leg_bench_label = "大盤",
@@ -1451,12 +1457,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     btn_bt_refresh_params = "立即依目前公司重算一次",
     bt_refresh_params_hint = "單次動作：立刻用目前公司財報重算門檻／權重（可在取消自動後使用）。",
     bt_run_note = paste0(
-      "請按上方工具列「執行回測」。依分析頻率再平衡 · 當年 Rf／已實現 Rm／市值結構 · ",
+      "請展開本區並按「執行回測」。依分析頻率再平衡 · 當年 Rf／已實現 Rm／市值結構 · ",
       "Rolling β · 「歷史基本面驗證」復盤模型（單選）PIT。"
     ),
     bt_sec_strategy_params = "策略參數",
     bt_params_gate_note = paste0(
-      "持倉閘門（淨利率／營收成長／EPS 成長／FCF 波動，未過則 Exp_A＝0）見上方附錄。",
+      "持倉閘門（淨利率／營收成長／EPS 成長／FCF 波動，未過則 Exp_A＝0）見第三章。",
       "此處只調部位與情緒權重。"
     ),
     bt_tab_fundamental = "基本面策略",
@@ -1654,7 +1660,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     box_residual_income = "剩餘收益 RI",
     box_pb_asset = "P/B 與相對估值",
     box_nav = "NET ASSET VALUE",
-    box_blue_chip = "績優股排行",
+    box_blue_chip = "績優股排行榜",
     box_beta = "Beta β",
     box_sgr = "SUSTAINABLE GROWTH RATE",
     box_model_guide = "模型選擇決策指南",
@@ -1861,7 +1867,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     funnel_sec_method = "如何閱讀本報告",
     funnel_method_body = paste0(
       "閱讀順序：品質（F-Score）→ 價值（相對 Base 的 MOS）→ 財報警訊。",
-      "結論區綜合這三層給出情境標籤；趨勢動能（Timing）輔助在「測試」分頁，不決定合理價。"
+      "結論區綜合這三層給出情境標籤；趨勢動能（Timing）輔助在「量化回測實驗室」分頁，不決定合理價。"
     ),
     funnel_method_caveat = "標籤與分數僅供研究／決策輔助，不是券商下單指令；HFV 情境僅作否決語境，不作看漲依據。",
     funnel_fscore_list_title = "F-Score 體質檢核清單",
@@ -1972,7 +1978,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     notif_pdf_busy = "正在產出 PDF 投資意見報告，請稍候...",
     notif_pdf_ok = "✅ PDF 投資意見報告已產出",
     notif_pdf_fail = "報告產出失敗: {err}",
-    notif_test_opened = "已開啟測試（量化回測）",
+    notif_test_opened = "已開啟量化回測實驗室",
     notif_industry_catalog_fail = "產業目錄載入失敗: {err}",
     notif_update_cache_fallback = "更新失敗，沿用上次快取／內建快照。",
     notif_no_candidates = "目前篩選下沒有可評估的候選。",
@@ -2033,7 +2039,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     dc_label_fscore = "F-Score／資料完整度下限",
     dc_hint_fscore = "勾選後：Piotroski F-Score 須達下限——體質偏弱即使 MOS 看似便宜也不通過。",
     dc_label_no_rank_chase = "不得僅因排行年化漲幅而下單",
-    dc_hint_no_rank_chase = "勾選後：自我紀律提醒——績優股排行的年化上漲空間本身不是下單單據。",
+    dc_hint_no_rank_chase = "勾選後：自我紀律提醒——績優股排行榜的年化上漲空間本身不是下單單據。",
     dc_cond_bear_mos_floor = "Bear MOS 下限（%）",
     dc_cond_base_mos_floor = "Base MOS 下限（%）",
     dc_cond_g_sgr_gap_min = "近端 g 與 SGR 最小差距（百分點）",
@@ -2251,8 +2257,10 @@ locale_for_market <- function(mode = get_market_mode()) {
   "NET ASSET VALUE" = "box_nav",
   "BLUE CHIP" = "box_blue_chip",
   "BLUE CHIP RANKING" = "box_blue_chip",
+  "BLUE CHIP LEADERBOARD" = "box_blue_chip",
   "Blue Chip 績優" = "box_blue_chip",
   "績優股排行" = "box_blue_chip",
+  "績優股排行榜" = "box_blue_chip",
   "BETA" = "box_beta",
   "SUSTAINABLE GROWTH RATE" = "box_sgr",
   "模型選擇決策指南" = "box_model_guide",

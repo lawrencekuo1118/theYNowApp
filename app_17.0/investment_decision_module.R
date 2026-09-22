@@ -150,7 +150,7 @@ decision_ui <- function(id) {
             style = "font-size:12.5px;color:#444;line-height:1.55;margin:0 0 10px 0;",
             paste0(
               "閱讀順序：品質（F-Score）→ 價值（相對 Base 的 MOS）→ 財報警訊。",
-              "結論區綜合這三層給出情境標籤；趨勢動能（Timing）輔助在「測試」分頁，不決定合理價。"
+              "結論區綜合這三層給出情境標籤；趨勢動能（Timing）輔助在「量化回測實驗室」分頁，不決定合理價。"
             )
           ),
           tags$p(
@@ -232,7 +232,7 @@ decision_momentum_panel_ui <- function(id) {
         tags$li(tags$span(
           id = "ynow_funnel_mom_data_3",
           paste0(
-            "Unlike Testing \"sentiment strategy\" momentum / RSI overlays, ",
+            "Unlike Quant Backtest Lab \"sentiment strategy\" momentum / RSI overlays, ",
             "this panel is dual-MA confirmation only for YNOW Funnel Timing."
           )
         ))

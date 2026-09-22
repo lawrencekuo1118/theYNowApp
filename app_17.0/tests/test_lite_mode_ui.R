@@ -50,7 +50,7 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl('tabName = "smart_analysis"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-full-only", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_lab_im_detail_tab", txt, fixed = TRUE))
-  testthat::expect_true(grepl("The YNow App v17.89", txt, fixed = TRUE))
+  testthat::expect_true(grepl("The YNow App v17.90", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-report", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-toolbar", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-chapter", txt, fixed = TRUE))
@@ -59,14 +59,18 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl("ynow-backtest-toolbar", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-backtest-chapter", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_bt_ch1_title", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow_bt_sec_nav_controls", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow_menu_backtest", txt, fixed = TRUE))
+  testthat::expect_true(grepl('tabName = "lab_notes"', txt, fixed = TRUE))
   testthat::expect_true(grepl("about_lite_intro_ui", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-lite-only", txt, fixed = TRUE))
-  testthat::expect_true(grepl("ynow-sidebar-test-link", txt, fixed = TRUE))
+  testthat::expect_false(grepl("ynow-sidebar-test-link", txt, fixed = TRUE))
   testthat::expect_true(grepl("ensureLiteSnapshotDefaultsTab", txt, fixed = TRUE))
   testthat::expect_true(grepl('value = "snap_defaults"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_snapshot_page_help_lite", txt, fixed = TRUE))
+  # Lite must hide Quant Backtest Lab sidebar (Full-only; no Testing foot link)
   testthat::expect_true(grepl(
-    "body\\.ynow-lite[\\s\\S]*ynow-sidebar-test-link",
+    "body\\.ynow-lite[\\s\\S]*data-value=\"lab_notes\"",
     txt,
     perl = TRUE
   ))

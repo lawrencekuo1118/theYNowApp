@@ -1,4 +1,10 @@
-# The YNow App v17.89 — Valuation Methodology
+# The YNow App v17.90 — Valuation Methodology
+
+## v17.90 重點
+- **量化回測實驗室**：自底部「測試」捷徑提升為主選單獨立分頁（HFV／YNOW 之後）；Lite（簡化版）不顯示此功能
+- **章節控制**：執行／累積區間／持倉閘門／策略參數改掛於對應章節下方，**預設收合**
+- **側邊欄更名**：績優股排行 → 績優股排行榜（en: Blue Chip Leaderboard）
+- **目錄**：`app_17.0/`；顯示版號 **v17.90**
 
 ## v17.89 重點
 - **Testing — Quantitative Backtest**：改為報告式版面（績效 → 策略淨值工具列 → 部位／相對 B&H → MOS／FV 驗證 → 收合附錄），與 HFV／YNOW 相同閱讀動線
@@ -24,7 +30,7 @@
 - **目錄**：`app_17.0/`；顯示版號 **v17.85**
 
 ## v17.84 重點
-- **Lite 資料來源列**：僅保留「快照」與「意見區」（隱藏「測試」）；快照頁僅「系統預設參數」，並過濾與簡化版無關的 APP_DEFAULTS
+- **Lite 資料來源列**：僅保留「快照」與「意見區」；主選單「量化回測實驗室」於簡化版隱藏（完整版可見）
 - **智慧分析**：移除 Previous Close／Market Cap／EPS (TTM) 三個 header KPI（Dashboard 完整版仍保留）
 - **目錄**：`app_17.0/`；顯示版號 **v17.84**
 
