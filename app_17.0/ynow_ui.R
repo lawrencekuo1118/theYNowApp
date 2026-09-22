@@ -3892,7 +3892,7 @@ ui <- dashboardPage(
             }
             function ensureLiteSnapshotDefaultsTab() {
               if (!document.body.classList.contains('ynow-lite')) return;
-              var a = document.querySelector('#snapshot_report a[data-value="snap_defaults"]');
+              var a = document.querySelector('#snapshot_report a[data-value=\"snap_defaults\"]');
               if (!a) return;
               try {
                 if (window.jQuery) window.jQuery(a).tab('show');
