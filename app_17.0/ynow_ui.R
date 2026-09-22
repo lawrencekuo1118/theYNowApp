@@ -4796,7 +4796,7 @@ ui <- dashboardPage(
           margin-left: -8px;
           margin-right: -8px;
         }
-        .ynow-lab-im-eq-adr-row > [class*="col-"] {
+        .ynow-lab-im-eq-adr-row > [class*='col-'] {
           padding-left: 8px;
           padding-right: 8px;
         }
