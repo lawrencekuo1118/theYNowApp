@@ -54,6 +54,12 @@ When unsure: use the **English term** + brief Taiwan Chinese gloss on first ment
 - Run targeted tests under `app_17.0/tests/` when changing valuation or FCF logic.
 - Non-trivial UI changes: manual/browser verification when the environment supports it.
 
+## Cursor Cloud specific instructions
+
+- **No extra DEMO / walkthrough verification** in Cursor Cloud agent runs: do **not** produce demo videos, UI walkthrough recordings, mockup screenshots, or similar “proof artifacts” unless the user explicitly asks for them.
+- Prefer automated tests under `app_16.0/tests/` plus targeted shell／R／Python checks as evidence.
+- Still ship per auto-deploy rules when `app_16.0/` behavior changes are verified; docs／AGENTS／rules-only → commit + push only (no shinyapps deploy, no version +0.01).
+
 ## Git & deploy
 
 See `.cursor/rules/auto-deploy-after-optimize.mdc` and `.cursor/rules/dual-workspace-sync.mdc` for ship workflow and workspace sync.
