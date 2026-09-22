@@ -309,6 +309,13 @@ server <- function(input, output, session) {
         selected = win_sel
       )
     }, error = function(e) NULL)
+    tryCatch({
+      updateDateRangeInput(
+        session,
+        "bt_fv_conv_custom",
+        language = if (identical(loc, "en")) "en" else "zh-TW"
+      )
+    }, error = function(e) NULL)
     # DDM 模型選項：標籤隨 locale（值不變）
     tryCatch({
       ddm_sel <- isolate(input[["mod_ddm-ddm_mode"]])
@@ -7823,12 +7830,14 @@ server <- function(input, output, session) {
     "quarterly"
   }
 
-  .bt_rebal_freq_label <- function(freq) {
-    if (exists(".rebal_freq_label_zh", mode = "function")) {
-      return(.rebal_freq_label_zh(freq))
-    }
-    switch(.bt_normalize_rebal_freq(freq),
-      monthly = "每月", yearly = "每年", "每季")
+  .bt_rebal_freq_label <- function(freq, loc = NULL) {
+    loc <- loc %||% tryCatch(isolate(ui_locale()), error = function(e) "zh-TW")
+    switch(
+      .bt_normalize_rebal_freq(freq),
+      monthly = ui_str("bt_freq_monthly", loc),
+      yearly = ui_str("bt_freq_yearly", loc),
+      ui_str("bt_freq_quarterly", loc)
+    )
   }
 
   .bt_selected_rebal_freq <- reactive({
@@ -8304,9 +8313,10 @@ server <- function(input, output, session) {
       if (!identical(res_freq, freq)) {
         bt_result(NULL)
         bt_validation(NULL)
+        loc_freq <- tryCatch(isolate(ui_locale()), error = function(e) "zh-TW")
         bt_run_msg(sprintf(
-          "已切換為%s分析頻率；策略淨值需重新「執行回測」（Date_t 再平衡日已變更）。",
-          .bt_rebal_freq_label(freq)
+          ui_str("hfv_freq_switched_msg", loc_freq),
+          .bt_rebal_freq_label(freq, loc_freq)
         ))
       }
     }
@@ -8322,7 +8332,10 @@ server <- function(input, output, session) {
     }
     tryCatch({
       mp <- bt_current_model_params()
-      withProgress(message = sprintf("以%s頻率重建基本面價值…", .bt_rebal_freq_label(freq)), value = 0.2, {
+      loc_freq <- tryCatch(isolate(ui_locale()), error = function(e) "zh-TW")
+      withProgress(
+        message = sprintf(ui_str("hfv_freq_rebuild_progress", loc_freq), .bt_rebal_freq_label(freq, loc_freq)),
+        value = 0.2, {
         fv_res <- compute_fair_value_timeline(
           ticker = current_ticker(),
           d_is = d_income_statement(),
@@ -8571,17 +8584,18 @@ server <- function(input, output, session) {
   }
 
   output$bt_valuation_summary <- renderUI({
+    loc <- tryCatch(isolate(ui_locale()), error = function(e) "zh-TW")
     src <- .bt_hfv_chart_source()
     if (is.null(src)) {
       return(tags$p(
         style = "color:#888;font-size:12.5px;",
-        "搜尋股票後將預先顯示股價與大盤；勾選「圖表模型」可疊合理價線；「復盤模型」單選驅動下方驗證統計與策略 FV／MOS。"
+        ui_str("hfv_val_hint_search", loc)
       ))
     }
     if (!isTRUE(src$show_fv)) {
       return(tags$p(
         style = "color:#888;font-size:12.5px;",
-        "已顯示實際股價與大盤。勾選「圖表模型」以疊合理價線；驗證機率／幅度依「復盤模型」單選（非圖表平均）。"
+        ui_str("hfv_val_hint_price_only", loc)
       ))
     }
     m <- if (!is.null(bt_result()) && !is.null(bt_result()$metrics)) {
@@ -8593,7 +8607,7 @@ server <- function(input, output, session) {
     }
     mp <- src$mp
     if (is.null(m) || is.null(mp)) {
-      return(tags$p(style = "color:#888;font-size:12.5px;", "尚無估值摘要。"))
+      return(tags$p(style = "color:#888;font-size:12.5px;", ui_str("hfv_val_hint_no_summary", loc)))
     }
     bias <- as.character(m$market_pricing_bias %||% "—")
     bias_col <- if (grepl("低估", bias, fixed = TRUE)) {
@@ -8610,41 +8624,59 @@ server <- function(input, output, session) {
     } else {
       "#fafafa"
     }
-    bias_val <- bias
+    bias_val <- if (grepl("低估", bias, fixed = TRUE)) {
+      ui_str("hfv_bias_undervalued", loc)
+    } else if (grepl("高估", bias, fixed = TRUE)) {
+      ui_str("hfv_bias_overvalued", loc)
+    } else if (grepl("資料不足", bias, fixed = TRUE) || grepl("Insufficient", bias, fixed = TRUE)) {
+      ui_str("hfv_bias_na", loc)
+    } else {
+      bias
+    }
     pct_under <- m$pct_market_under %||% m$pct_value_over
     last_sig <- as.character(m$last_signal %||% "—")
-    sig_col <- if (grepl("便宜", last_sig, fixed = TRUE)) {
+    sig_col <- if (grepl("便宜", last_sig, fixed = TRUE) || grepl("Cheap", last_sig, fixed = TRUE)) {
       "#00a65a"
-    } else if (grepl("偏貴", last_sig, fixed = TRUE)) {
+    } else if (grepl("偏貴", last_sig, fixed = TRUE) || grepl("Rich", last_sig, fixed = TRUE)) {
       "#d9534f"
     } else {
       "#666"
+    }
+    last_sig_disp <- if (grepl("便宜", last_sig, fixed = TRUE) || grepl("Cheap", last_sig, fixed = TRUE)) {
+      ui_str("hfv_sig_cheap", loc)
+    } else if (grepl("偏貴", last_sig, fixed = TRUE) || grepl("Rich", last_sig, fixed = TRUE)) {
+      ui_str("hfv_sig_expensive", loc)
+    } else if (grepl("資料不足", last_sig, fixed = TRUE) || grepl("Insufficient", last_sig, fixed = TRUE)) {
+      ui_str("hfv_sig_na", loc)
+    } else {
+      last_sig
     }
     tags$div(
       style = "display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px;",
       tags$div(style = paste0("flex:1;min-width:120px;padding:8px 10px;background:", bias_bg,
                               ";border-left:4px solid ", bias_col, ";"),
-               tags$div(class = "ynow-kpi-stat-label", "歷史市場定價"),
+               tags$div(class = "ynow-kpi-stat-label", ui_str("hfv_kpi_hist_pricing", loc)),
                tags$div(class = "ynow-kpi-stat-value", style = paste0("color:", bias_col, ";"), bias_val)),
       tags$div(style = "flex:1;min-width:120px;padding:8px 10px;background:#f7fbf8;border-left:4px solid #00a65a;",
-               tags$div(class = "ynow-kpi-stat-label", "市場低估率"),
+               tags$div(class = "ynow-kpi-stat-label", ui_str("hfv_kpi_under_rate", loc)),
                tags$div(class = "ynow-kpi-stat-value", style = "color:#00a65a;",
                         .fmt_pct(pct_under, 0)),
                tags$div(class = "ynow-kpi-stat-note",
-                        "股價低於模型合理價的再平衡日佔比")),
+                        ui_str("hfv_kpi_under_note", loc))),
       tags$div(style = "flex:1;min-width:120px;padding:8px 10px;background:#fff;",
-               tags$div(class = "ynow-kpi-stat-label", "最近訊號"),
-               tags$div(class = "ynow-kpi-stat-value", style = paste0("color:", sig_col, ";"), last_sig),
+               tags$div(class = "ynow-kpi-stat-label", ui_str("hfv_kpi_last_signal", loc)),
+               tags$div(class = "ynow-kpi-stat-value", style = paste0("color:", sig_col, ";"), last_sig_disp),
                tags$div(class = "ynow-kpi-stat-note",
-                        "便宜（P<FV）＝市價低於模型；偏貴（P>FV）＝市價高於模型")),
+                        ui_str("hfv_kpi_signal_note", loc))),
       tags$div(style = "flex:1;min-width:120px;padding:8px 10px;background:#f5f5f5;border-left:4px solid #222222;",
-               tags$div(class = "ynow-kpi-stat-label", "平均 MOS"),
+               tags$div(class = "ynow-kpi-stat-label", ui_str("hfv_kpi_mean_mos", loc)),
                tags$div(class = "ynow-kpi-stat-value", style = "color:#222222;", .fmt_pct(m$mean_hist_mos)))
     )
   })
 
   # 折現比較圖正下方：此刻 Session 參數（全寬鍵值網格）
   output$bt_session_params <- renderUI({
+    loc <- tryCatch(ui_locale(), error = function(e) "zh-TW")
     src <- .bt_hfv_chart_source()
     if (is.null(src) || !isTRUE(src$show_fv) || is.null(src$mp)) return(NULL)
     mp <- src$mp
@@ -8676,12 +8708,12 @@ server <- function(input, output, session) {
       )
     }
     items <- list(
-      .item("圖表模型", chart_m),
-      .item("復盤模型", replay_m[1]),
+      .item(ui_str("hfv_param_chart_models", loc), chart_m),
+      .item(ui_str("hfv_param_replay_model", loc), replay_m[1]),
       .item("WACC", .fmt_pct2(mp$wacc)),
       .item("Ke", .fmt_pct2(mp$ke)),
       .item("SGR", .fmt_pct2(mp$sgr)),
-      .item("n（年）", as.character(mp$n_years %||% "—")),
+      .item(ui_str("hfv_param_n_years", loc), as.character(mp$n_years %||% "—")),
       .item("PB mid", .fmt_num2(mp$pb_mid)),
       .item("DCF claim", claim)
     )
@@ -8710,7 +8742,6 @@ server <- function(input, output, session) {
         )
       )
     }
-    loc <- tryCatch(ui_locale(), error = function(e) "zh-TW")
     title_txt <- ui_str("hfv_session_params_title", loc)
     tags$div(
       class = "ynow-hfv-session-params",
@@ -8724,6 +8755,7 @@ server <- function(input, output, session) {
   })
 
   output$bt_hfv_timeline <- renderPlotly({
+    loc <- tryCatch(isolate(ui_locale()), error = function(e) "zh-TW")
     .hfv_empty <- function(msg) {
       plotly::plotly_empty() %>%
         plotly::layout(annotations = list(list(
@@ -8735,13 +8767,15 @@ server <- function(input, output, session) {
     tryCatch({
       src <- .bt_hfv_chart_source()
       if (is.null(src) || is.null(src$ed) || !is.data.frame(src$ed) || nrow(src$ed) < 1) {
-        return(.hfv_empty("請先搜尋股票以載入歷史股價"))
+        return(.hfv_empty(ui_str("hfv_empty_need_search", loc)))
       }
       ed <- src$ed
       if (!("Date" %in% names(ed)) || !("Close" %in% names(ed))) {
-        return(.hfv_empty("歷史股價欄位不足，請重新搜尋"))
+        return(.hfv_empty(ui_str("hfv_empty_price_cols", loc)))
       }
       has_bench <- "Bench" %in% names(ed)
+      price_lab <- ui_str("hfv_series_price", loc)
+      bench_lab <- ui_str("hfv_series_bench", loc)
 
       p <- plotly::plot_ly()
       if (isTRUE(src$show_fv)) {
@@ -8760,19 +8794,19 @@ server <- function(input, output, session) {
         }
       }
       p <- plotly::add_trace(
-        p, x = ed$Date, y = ed$Close, name = "實際股價",
+        p, x = ed$Date, y = ed$Close, name = price_lab,
         type = "scatter", mode = "lines", inherit = FALSE,
         line = list(color = "#2c3e50", width = 2),
-        hovertemplate = "實際股價: %{y:$.2f}<extra></extra>"
+        hovertemplate = paste0(price_lab, ": %{y:$.2f}<extra></extra>")
       )
       show_bench <- !isFALSE(input$bt_hfv_show_bench) && has_bench && any(is.finite(ed$Bench))
       if (show_bench) {
         p <- plotly::add_trace(
-          p, x = ed$Date, y = ed$Bench, name = "大盤",
+          p, x = ed$Date, y = ed$Bench, name = bench_lab,
           type = "scatter", mode = "lines", inherit = FALSE,
           line = list(color = "#7f8c8d", width = 1.6, dash = "dot"),
           yaxis = "y2",
-          hovertemplate = "大盤: %{y:$.2f}<extra></extra>"
+          hovertemplate = paste0(bench_lab, ": %{y:$.2f}<extra></extra>")
         )
       }
       vd <- src$vd
@@ -8799,7 +8833,7 @@ server <- function(input, output, session) {
           if (length(win) != n_vd) win <- rep(as.character(win[1] %||% "—"), n_vd)
           win[!nzchar(win) | is.na(win)] <- "—"
           ht <- paste0(
-            "再平衡 ", format(as.Date(vd$Date), "%Y-%m-%d"),
+            ui_str("hfv_hover_rebal", loc), " ", format(as.Date(vd$Date), "%Y-%m-%d"),
             "<br>FV ", fmt_h(vd[[marker_col]], 2),
             if ("rolling_beta" %in% names(vd)) paste0("<br>β ", fmt_h(vd$rolling_beta, 2)) else "",
             if ("rf_pit" %in% names(vd)) paste0("<br>Rf ", fmt_h(vd$rf_pit, 1, pct = TRUE)) else "",
@@ -8810,7 +8844,7 @@ server <- function(input, output, session) {
             p,
             x = vd$Date,
             y = vd[[marker_col]],
-            name = "季再平衡 FV",
+            name = ui_str("hfv_marker_rebal_fv", loc),
             type = "scatter",
             mode = "markers",
             inherit = FALSE,
@@ -8821,15 +8855,15 @@ server <- function(input, output, session) {
         }
       }
       title_txt <- if (isTRUE(src$show_fv)) {
-        "折現比較（合理價 vs 實際股價）"
+        ui_str("hfv_chart_title_fv", loc)
       } else if (show_bench) {
-        "折現比較（實際股價 vs 大盤）"
+        ui_str("hfv_chart_title_bench", loc)
       } else {
-        "折現比較（實際股價）"
+        ui_str("hfv_chart_title_price", loc)
       }
       qc <- tryCatch(quote_currency(), error = function(e) "USD")
       y1 <- list(
-        title = paste0("每股（", money_label(qc), " · 報價幣，未換算）"),
+        title = .ui_msg("hfv_yaxis_per_share", ccy = money_label(qc), loc = loc),
         tickprefix = money_prefix(qc), side = "left"
       )
       if (show_bench) {
@@ -8839,7 +8873,7 @@ server <- function(input, output, session) {
           legend = list(orientation = "h", y = -0.18),
           yaxis = y1,
           yaxis2 = list(
-            title = "大盤價格", overlaying = "y", side = "right",
+            title = ui_str("hfv_yaxis_bench", loc), overlaying = "y", side = "right",
             showgrid = FALSE, tickprefix = money_prefix(qc)
           ),
           xaxis = list(title = NULL),
@@ -8858,7 +8892,7 @@ server <- function(input, output, session) {
         )
       }
     }, error = function(e) {
-      .hfv_empty(paste0("折現比較暫無法繪製：", conditionMessage(e)))
+      .hfv_empty(.ui_msg("hfv_empty_plot_fail", err = conditionMessage(e), loc = loc))
     })
   })
 
@@ -9186,13 +9220,12 @@ server <- function(input, output, session) {
     border <- if (isTRUE(s$small_sample) || isTRUE(s$no_strategy_fv)) "#f39c12" else "#00a65a"
     period_txt <- {
       if (!is.null(s$from) || !is.null(s$to)) {
-        paste0(
-          "統計期間：",
+        sprintf(
+          ui_str("hfv_period_range_fmt", loc),
           if (is.null(s$from)) "…" else format(s$from, "%Y-%m-%d"),
-          " ～ ",
           if (is.null(s$to)) "…" else format(s$to, "%Y-%m-%d")
         )
-      } else "統計期間：全部估值日配對"
+      } else ui_str("hfv_period_all", loc)
     }
     oos_lab <- switch(
       as.character(s$oos_mode %||% "realized")[1],
@@ -9255,20 +9288,20 @@ server <- function(input, output, session) {
         tags$ul(
           style = "margin:6px 0 0 0;padding-left:18px;",
           tags$li(sprintf(
-            "目前安全邊際（MOS）＝%+.1f%% → 分組「%s」（n＝%d%s）",
+            ui_str("hfv_mos_now_fmt", loc),
             100 * mo$mos_now,
             mo$bucket %||% "—",
             mo$n %||% 0L,
-            if (isTRUE(mo$small_sample)) "，小樣本" else ""
+            if (isTRUE(mo$small_sample)) ui_str("hfv_mos_small_sample", loc) else ""
           )),
           tags$li(sprintf(
-            "該分組歷史下期：上漲機率 %s · 下跌 %s · 報酬中位 %s、平均 %s",
+            ui_str("hfv_mos_bucket_hist_fmt", loc),
             pct(mo$p_up), pct(mo$p_down),
             gap_pct(mo$median_ret), gap_pct(mo$mean_ret)
           ))
         )
       } else {
-        tags$div(style = "margin-top:6px;color:#888;font-size:12px;", "目前無可用的 MOS 分組展望。")
+        tags$div(style = "margin-top:6px;color:#888;font-size:12px;", ui_str("hfv_mos_outlook_empty", loc))
       }
     }
 
@@ -9283,20 +9316,20 @@ server <- function(input, output, session) {
       tags$p(style = "margin:6px 0 0 0;color:#555;font-size:12px;", period_txt),
       tags$ul(
         style = "margin:6px 0 0 0;padding-left:18px;",
-        tags$li(sprintf("配對數 n＝%d", s$n %||% 0L)),
+        tags$li(sprintf(ui_str("hfv_pair_n_fmt", loc), s$n %||% 0L)),
         tags$li(sprintf(
-          "上漲機率 %s（%d）· 下跌 %s（%d）· 持平 %s（%d）",
+          ui_str("hfv_price_odds_fmt", loc),
           pct(s$p_up), s$n_up %||% 0L,
           pct(s$p_down), s$n_down %||% 0L,
           pct(s$p_flat_price), s$n_flat_price %||% 0L
         )),
         tags$li(sprintf(
-          "下期報酬：中位 %s、平均 %s",
+          ui_str("hfv_next_ret_fmt", loc),
           gap_pct(s$median_ret), gap_pct(s$mean_ret)
         )),
         if (identical(s$oos_mode, "expanding") && is.finite(s$oos_dir_hit_rate)) {
           tags$li(sprintf(
-            "擴張窗漲跌方向命中率 %s（n＝%d）",
+            ui_str("hfv_oos_dir_hit_fmt", loc),
             pct(s$oos_dir_hit_rate), s$oos_dir_n %||% 0L
           ))
         } else NULL
@@ -9317,22 +9350,22 @@ server <- function(input, output, session) {
       tags$p(style = "margin:6px 0 0 0;color:#555;font-size:12px;", period_txt),
       tags$ul(
         style = "margin:6px 0 0 0;padding-left:18px;",
-        tags$li(sprintf("配對數 n＝%d", s$n %||% 0L)),
+        tags$li(sprintf(ui_str("hfv_pair_n_fmt", loc), s$n %||% 0L)),
         tags$li(sprintf(
-          "之上機率 %s（%d）· 之下 %s（%d）· 持平 %s（%d）",
+          ui_str("hfv_fv_odds_fmt", loc),
           pct(s$p_above), s$n_above %||% 0L,
           pct(s$p_below), s$n_below %||% 0L,
           pct(s$p_flat_vs), s$n_flat_vs %||% 0L
         )),
         tags$li(sprintf(
-          "幅度 (P−FV)/FV：全體中位 %s、平均 %s；之上中位 %s；之下中位 %s；|幅度|中位 %s",
+          ui_str("hfv_gap_stats_fmt", loc),
           gap_pct(s$median_gap), gap_pct(s$mean_gap),
           gap_pct(s$median_gap_above), gap_pct(s$median_gap_below),
           gap_pct(s$median_abs_gap)
         )),
         if (identical(s$oos_mode, "expanding") && is.finite(s$oos_hit_rate)) {
           tags$li(sprintf(
-            "擴張窗相對 FV 命中率 %s（n＝%d）",
+            ui_str("hfv_oos_fv_hit_fmt", loc),
             pct(s$oos_hit_rate), s$oos_n %||% 0L
           ))
         } else NULL
@@ -9694,8 +9727,8 @@ server <- function(input, output, session) {
       tags$div(
         style = "margin:0 0 8px 0;font-size:13px;",
         tags$b(ui_str("hfv_sum_title", loc)),
-        if (isTRUE(s$small_sample)) tags$span(style = "color:#c27d0e;margin-left:8px;", "（小樣本）"),
-        if (isTRUE(s$no_strategy_fv)) tags$span(style = "color:#c27d0e;margin-left:8px;", "（無策略 FV）")
+        if (isTRUE(s$small_sample)) tags$span(style = "color:#c27d0e;margin-left:8px;", ui_str("hfv_badge_small_sample", loc)),
+        if (isTRUE(s$no_strategy_fv)) tags$span(style = "color:#c27d0e;margin-left:8px;", ui_str("hfv_badge_no_strategy_fv", loc))
       ),
       fluidRow(
         column(6, style = "margin-bottom:10px;", price_card),
@@ -9721,9 +9754,9 @@ server <- function(input, output, session) {
     shiny::validate(shiny::need(
       !is.null(s) && !is.null(s$pairs) && nrow(s$pairs) > 0,
       if (isTRUE(s$no_strategy_fv)) {
-        "無復盤理論 FV：請先選擇復盤模型（結果僅依單選模型）"
+        ui_str("hfv_table_need_replay", loc)
       } else {
-        "選定期間內無配對資料"
+        ui_str("hfv_table_no_pairs", loc)
       }
     ))
     pp <- s$pairs
@@ -9739,6 +9772,13 @@ server <- function(input, output, session) {
       ifelse(!is.finite(retv), NA_character_,
              ifelse(retv > 0, "漲", ifelse(retv < 0, "跌", "平")))
     }
+    dir_disp <- vapply(as.character(dirp), function(x) {
+      if (is.na(x) || !nzchar(x)) return("—")
+      if (identical(x, "漲")) return(ui_str("hfv_dir_up", loc))
+      if (identical(x, "跌")) return(ui_str("hfv_dir_down", loc))
+      if (identical(x, "平")) return(ui_str("hfv_dir_flat", loc))
+      x
+    }, character(1))
     fb_lab <- if ("fallback_keys" %in% names(pp)) {
       ifelse(is.na(pp$fallback_keys) | !nzchar(pp$fallback_keys), "—", pp$fallback_keys)
     } else {
@@ -9769,28 +9809,50 @@ server <- function(input, output, session) {
       )
       ui_str(key, loc)
     }, character(1))
-    data.frame(
-      估值日 = format(pp$Date, "%Y-%m-%d"),
-      下期日 = format(pp$Date_next, "%Y-%m-%d"),
-      當期市價 = round(pp$price, 2),
-      理論FV = round(pp$fair_value, 2),
-      下期市價 = round(pp$price_next, 2),
-      `下期報酬` = paste0(sprintf("%+.1f", 100 * retv), "%"),
-      市價漲跌 = dirp,
-      `幅度(P−FV)/FV` = paste0(sprintf("%+.1f", 100 * gapv), "%"),
-      相對FV = pp$vs_fv,
-      歷史情境 = sc_lab,
-      `預設／fallback` = fb_lab,
+    vs_disp <- vapply(as.character(pp$vs_fv), function(x) {
+      if (is.na(x) || !nzchar(x)) return("—")
+      if (identical(x, "之上")) return(ui_str("hfv_vs_above", loc))
+      if (identical(x, "之下")) return(ui_str("hfv_vs_below", loc))
+      if (identical(x, "持平")) return(ui_str("hfv_vs_flat", loc))
+      x
+    }, character(1))
+    out <- data.frame(
+      col1 = format(pp$Date, "%Y-%m-%d"),
+      col2 = format(pp$Date_next, "%Y-%m-%d"),
+      col3 = round(pp$price, 2),
+      col4 = round(pp$fair_value, 2),
+      col5 = round(pp$price_next, 2),
+      col6 = paste0(sprintf("%+.1f", 100 * retv), "%"),
+      col7 = dir_disp,
+      col8 = paste0(sprintf("%+.1f", 100 * gapv), "%"),
+      col9 = vs_disp,
+      col10 = sc_lab,
+      col11 = fb_lab,
       stringsAsFactors = FALSE,
       check.names = FALSE
     )
+    names(out) <- c(
+      ui_str("hfv_col_date", loc),
+      ui_str("hfv_col_next_date", loc),
+      ui_str("hfv_col_price", loc),
+      ui_str("hfv_col_fv", loc),
+      ui_str("hfv_col_next_price", loc),
+      ui_str("hfv_col_next_ret", loc),
+      ui_str("hfv_col_dir", loc),
+      ui_str("hfv_col_gap", loc),
+      ui_str("hfv_col_vs_fv", loc),
+      ui_str("hfv_col_scenario", loc),
+      ui_str("hfv_col_fallback", loc)
+    )
+    out
   }, striped = TRUE, bordered = TRUE, spacing = "s", width = "100%")
 
   output$bt_fv_conv_plot <- renderPlotly({
     s <- bt_fv_conv()
+    loc <- tryCatch(isolate(ui_locale()), error = function(e) "zh-TW")
     empty <- plotly::plotly_empty() %>%
       plotly::layout(annotations = list(list(
-        text = "請先載入標的並完成估值驗證", showarrow = FALSE, font = list(size = 14, color = "#888")
+        text = ui_str("hfv_plot_need_data", loc), showarrow = FALSE, font = list(size = 14, color = "#888")
       )))
     if (is.null(s) || is.null(s$pairs) || nrow(s$pairs) < 1) return(empty)
     pp <- s$pairs
@@ -11826,7 +11888,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.87"),
+      paste0("- **App：** The YNow App v17.88"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

@@ -198,14 +198,14 @@ decision_momentum_panel_ui <- function(id) {
       tags$ul(
         style = "font-size: 13px; line-height: 1.55; color: #333; margin-bottom: 10px;",
         tags$li(
-          tags$b("Cond1: "),
+          tags$b(id = "ynow_funnel_mom_cond1_label", "Cond1: "),
           tags$span(
             id = "ynow_funnel_mom_cond1",
             "Latest close > SMA(20) and > SMA(60)"
           )
         ),
         tags$li(
-          tags$b("Cond2: "),
+          tags$b(id = "ynow_funnel_mom_cond2_label", "Cond2: "),
           tags$span(
             id = "ynow_funnel_mom_cond2",
             "SMA(20) > SMA(60) (short MA above long MA)"

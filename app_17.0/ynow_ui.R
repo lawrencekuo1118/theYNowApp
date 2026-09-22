@@ -85,7 +85,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v17.80) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報抓取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v17.88) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報抓取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -101,7 +101,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v17.80) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v17.88) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -200,7 +200,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v17.80）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v17.88）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -217,7 +217,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v17.80) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v17.88) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -1078,9 +1078,9 @@ ui <- dashboardPage(
                   '<span class="ynow-app-title" id="ynow_app_title" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v17.87</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v17.88</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v17.87</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v17.88</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -3624,6 +3624,8 @@ ui <- dashboardPage(
             if (fsCfHead && s.tab_cash_flow) fsCfHead.textContent = s.tab_cash_flow;
             var hfvSessTitle = document.getElementById('ynow_hfv_session_params_title');
             if (hfvSessTitle && s.hfv_session_params_title) hfvSessTitle.textContent = s.hfv_session_params_title;
+            var hfvToolbar = document.getElementById('ynow_hfv_toolbar') || document.querySelector('.ynow-hfv-toolbar');
+            if (hfvToolbar && s.hfv_toolbar_aria) hfvToolbar.setAttribute('aria-label', s.hfv_toolbar_aria);
             var chartModelsLab = document.querySelector('label[for=\"bt_fv_models\"]');
             if (chartModelsLab && s.hfv_chart_models_label) chartModelsLab.textContent = s.hfv_chart_models_label;
             var replayLab = document.querySelector('label[for=\"bt_fv_replay_model\"]');
@@ -3847,8 +3849,12 @@ ui <- dashboardPage(
             if (funnelMomLogic && s.funnel_mom_logic_title) funnelMomLogic.textContent = s.funnel_mom_logic_title;
             var funnelMomCond1 = document.getElementById('ynow_funnel_mom_cond1');
             if (funnelMomCond1 && s.funnel_mom_cond1) funnelMomCond1.textContent = s.funnel_mom_cond1;
+            var funnelMomCond1Lab = document.getElementById('ynow_funnel_mom_cond1_label');
+            if (funnelMomCond1Lab && s.funnel_mom_cond1_label) funnelMomCond1Lab.textContent = s.funnel_mom_cond1_label;
             var funnelMomCond2 = document.getElementById('ynow_funnel_mom_cond2');
             if (funnelMomCond2 && s.funnel_mom_cond2) funnelMomCond2.textContent = s.funnel_mom_cond2;
+            var funnelMomCond2Lab = document.getElementById('ynow_funnel_mom_cond2_label');
+            if (funnelMomCond2Lab && s.funnel_mom_cond2_label) funnelMomCond2Lab.textContent = s.funnel_mom_cond2_label;
             var funnelMomBull = document.getElementById('ynow_funnel_mom_bull_rule');
             if (funnelMomBull && s.funnel_mom_bull_rule) funnelMomBull.textContent = s.funnel_mom_bull_rule;
             var funnelMomData = document.getElementById('ynow_funnel_mom_data_title');
@@ -7790,6 +7796,7 @@ ui <- dashboardPage(
             class = "ynow-hfv-toolbar",
             role = "group",
             `aria-label` = "HFV report controls",
+            id = "ynow_hfv_toolbar",
             tags$div(
               class = "ynow-hfv-toolbar__group",
               radioButtons(

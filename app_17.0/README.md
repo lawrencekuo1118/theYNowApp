@@ -1,4 +1,9 @@
-# The YNow App v17.87 — Valuation Methodology
+# The YNow App v17.88 — Valuation Methodology
+
+## v17.88 重點
+- **i18n**：HFV／YNOW 報告內文與 Cond 標籤補齊 en-US＋zh-TW（估值摘要 KPI、時間軸圖例、驗證統計／明細表、分析頻率提示）
+- **目錄**：`app_17.0/`；顯示版號 **v17.88**
+
 
 先分類，再選模型；先推導，再校正；先給區間，再給單點；先做基本面估值。
 
