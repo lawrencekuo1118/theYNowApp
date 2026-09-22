@@ -289,18 +289,21 @@ server <- function(input, output, session) {
     }, error = function(e) NULL)
     tryCatch({
       win_sel <- isolate(input$bt_fv_conv_window)
-      if (is.null(win_sel) || !win_sel %in% c("all", "1y", "3y", "5y")) win_sel <- "all"
+      if (is.null(win_sel) || !win_sel %in% c("all", "1y", "3y", "5y", "custom")) {
+        win_sel <- "all"
+      }
       updateRadioButtons(
         session,
         "bt_fv_conv_window",
         label = ui_str("hfv_conv_window_label", loc),
         choices = stats::setNames(
-          c("all", "1y", "3y", "5y"),
+          c("all", "1y", "3y", "5y", "custom"),
           c(
             ui_str("hfv_win_all", loc),
             ui_str("hfv_win_1y", loc),
             ui_str("hfv_win_3y", loc),
-            ui_str("hfv_win_5y", loc)
+            ui_str("hfv_win_5y", loc),
+            ui_str("hfv_win_custom", loc)
           )
         ),
         selected = win_sel
@@ -7875,15 +7878,22 @@ server <- function(input, output, session) {
   })
 
   output$bt_fv_analysis_freq_ui <- renderUI({
+    loc <- tryCatch(isolate(ui_locale()), error = function(e) "zh-TW")
     freqs <- .bt_supported_analysis_freqs()
     choices <- c()
-    if ("monthly" %in% freqs) choices <- c(choices, "每月" = "monthly")
-    if ("quarterly" %in% freqs) choices <- c(choices, "每季" = "quarterly")
-    if ("yearly" %in% freqs) choices <- c(choices, "每年" = "yearly")
+    if ("monthly" %in% freqs) {
+      choices <- c(choices, setNames("monthly", ui_str("bt_freq_monthly", loc)))
+    }
+    if ("quarterly" %in% freqs) {
+      choices <- c(choices, setNames("quarterly", ui_str("bt_freq_quarterly", loc)))
+    }
+    if ("yearly" %in% freqs) {
+      choices <- c(choices, setNames("yearly", ui_str("bt_freq_yearly", loc)))
+    }
     if (length(choices) < 1L) {
       return(tags$p(
-        style = "font-size:12px;color:#888;margin:4px 0 8px 0;",
-        "股價歷史不足，尚無可用分析頻率（需較完整之月／季／年序列）。"
+        class = "ynow-hfv-toolbar__hint",
+        ui_str("bt_freq_insufficient", loc)
       ))
     }
     cur <- isolate(input$bt_fv_analysis_freq)
@@ -7893,15 +7903,14 @@ server <- function(input, output, session) {
     tagList(
       radioButtons(
         "bt_fv_analysis_freq",
-        "分析頻率（估值日 Date_t）",
+        ui_str("hfv_analysis_freq_label", loc),
         inline = TRUE,
         choices = choices,
         selected = cur
       ),
       tags$p(
-        style = "font-size:11.5px;color:#888;margin:-4px 0 8px 0;line-height:1.45;",
-        "僅顯示資料可支持之頻率：有完整每月序列才顯示「每月」；僅有季頻則只顯示「每季」。",
-        "切換頻率會以該頻率重建 Date_t／FV（每月＝月頻再平衡）。美股／台股相同。"
+        class = "ynow-hfv-toolbar__hint",
+        ui_str("bt_freq_hint", loc)
       )
     )
   })
@@ -11817,7 +11826,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.84"),
+      paste0("- **App：** The YNow App v17.85"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

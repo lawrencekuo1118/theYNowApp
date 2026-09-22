@@ -50,12 +50,16 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl('tabName = "smart_analysis"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-full-only", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_lab_im_detail_tab", txt, fixed = TRUE))
-  testthat::expect_true(grepl("The YNow App v17.84", txt, fixed = TRUE))
+  testthat::expect_true(grepl("The YNow App v17.85", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-hfv-report", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-hfv-toolbar", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-hfv-chapter", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow_hfv_ch1_title", txt, fixed = TRUE))
   testthat::expect_true(grepl("about_lite_intro_ui", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-lite-only", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-sidebar-test-link", txt, fixed = TRUE))
   testthat::expect_true(grepl("ensureLiteSnapshotDefaultsTab", txt, fixed = TRUE))
-  testthat::expect_true(grepl('data-value="snap_defaults"', txt, fixed = TRUE))
+  testthat::expect_true(grepl('value = "snap_defaults"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_snapshot_page_help_lite", txt, fixed = TRUE))
   testthat::expect_true(grepl(
     "body\\.ynow-lite[\\s\\S]*ynow-sidebar-test-link",

@@ -98,7 +98,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     param_audit_goto_btn = "Go & highlight",
     param_audit_pdf_summary = "Adjusted parameters:",
     hfv_show_bench = "Show benchmark",
-    hfv_conv_window_label = "Sample window (by valuation date Date_t)",
+    hfv_conv_window_label = "Sample window",
     hfv_win_all = "All",
     hfv_win_1y = "1Y",
     hfv_win_3y = "3Y",
@@ -261,9 +261,21 @@ locale_for_market <- function(mode = get_market_mode()) {
     bt_freq_insufficient = "Price history is too short for analysis-frequency options.",
     hfv_page_title = "Historical Fundamental Validation",
     hfv_page_sub = paste0(
-      "Next-period price odds, position vs theoretical FV, and historical scenario taxonomy ",
-      "(mispricing / FV momentum / price momentum). Not a trading-strategy backtest — that lives under Testing."
+      "A point-in-time review of theoretical fair value versus market price: ",
+      "next-period odds, position vs FV, and historical scenario taxonomy. ",
+      "This is a validation report—not a trading backtest (see Testing)."
     ),
+    hfv_ch1_kicker = "Section I",
+    hfv_ch1_title = "Fair value vs market price",
+    hfv_ch2_kicker = "Section II",
+    hfv_ch2_title = "Validation findings",
+    hfv_param_inv_title = "US Valuation Replay Inventory (Live vs Hist PIT)",
+    hfv_param_inv_help = paste0(
+      "Historical theoretical values are rebuilt from then-available data; ",
+      "hist DCF prefers NOPAT / D&A / CapEx / ΔNWC margin path, else Gordon geometry FCF0×(1+g)^t; ",
+      "not the Live DCF page revenue→NOPAT / CapEx / ΔNWC forecast table."
+    ),
+    hfv_analysis_freq_label = "Analysis frequency",
     hfv_method_data_note = paste0(
       "Data notes: Yahoo annuals may be restated. PIT uses a strict filing lag (period_end + ~90 days; ",
       "rows without period_end are excluded — no soft bypass). Near-term growth g and terminal SGR are separate. ",
@@ -289,8 +301,8 @@ locale_for_market <- function(mode = get_market_mode()) {
       "scenario D also requires price momentum ≥ +5%. ",
       "Garbage-in FV misclassifies; markets can stay irrational without a catalyst."
     ),
-    hfv_chart_models_label = "Chart models (multi-select overlay)",
-    hfv_replay_model_label = "Replay model (single; odds / magnitude / scenarios / next-period up frequency)",
+    hfv_chart_models_label = "Chart overlay models",
+    hfv_replay_model_label = "Replay model",
     hfv_session_params_title = "Session parameters (now)",
     hfv_data_sources_label = "Fundamentals sources (this run)",
     lab_notes_title = "Testing — Quantitative Backtest",
@@ -365,15 +377,16 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_scenario_concl_note = "Reading of the most-frequent and/or latest classified scenario — not a brokerage order ticket. FV quality and timing still matter (see method notes).",
     hfv_sum_empty = "After Search and selecting a Replay model, next-period up/down odds, vs-FV stats, and scenario taxonomy appear here. Replay results use the selected Replay model only (not chart multi-select).",
     hfv_sum_notes = "Result notes",
-    hfv_sec_method = "How to read this panel",
-    hfv_sec_settings = "Settings",
-    hfv_sec_results = "Results",
+    hfv_sec_method = "How to read this report",
+    hfv_sec_settings = "Report controls",
+    hfv_sec_results = "Executive summary",
     hfv_chart_gap = "Magnitude (P_next − FV) / FV",
     hfv_table_detail = "Period detail",
     hfv_oos_mode_label = "Validation sample scope",
     hfv_oos_realized = "Realized next period only (default)",
     hfv_oos_expanding = "Expanding-window out-of-sample hits",
     hfv_oos_insample = "Include unrealized next period (in-sample)",
+    hfv_win_custom = "Custom",
 
     # --- tabBox headers ---
     box_financial_report = "FINANCIAL REPORT",
@@ -982,7 +995,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     param_audit_goto_btn = "前往並框選",
     param_audit_pdf_summary = "手改參數一覽：",
     hfv_show_bench = "顯示大盤",
-    hfv_conv_window_label = "統計期間（依估值日 Date_t）",
+    hfv_conv_window_label = "統計期間",
     hfv_win_all = "全部",
     hfv_win_1y = "近1年",
     hfv_win_3y = "近3年",
@@ -1136,9 +1149,20 @@ locale_for_market <- function(mode = get_market_mode()) {
     bt_freq_insufficient = "股價歷史不足，尚無可用分析頻率。",
     hfv_page_title = "歷史基本面驗證",
     hfv_page_sub = paste0(
-      "市價下期漲跌機率、相對理論 FV 位置／幅度，以及歷史情境分類（價值錯位／基本面動能／價格動能）。",
-      "這不是交易策略回測；量化回測請至側邊底部「測試」。"
+      "以時點還原的理論合理價對照實際市價：下期漲跌機率、相對 FV 位置／幅度，以及歷史情境分類。",
+      "這是一份驗證報告，不是交易策略回測（量化回測請至「測試」）。"
     ),
+    hfv_ch1_kicker = "第一章",
+    hfv_ch1_title = "合理價與市價",
+    hfv_ch2_kicker = "第二章",
+    hfv_ch2_title = "驗證發現",
+    hfv_param_inv_title = "美股估值復盤參數盤點（Live vs Hist PIT）",
+    hfv_param_inv_help = paste0(
+      "歷史點理論估值使用當時可得資料重建；",
+      "hist DCF 優先 NOPAT／D&A／CapEx／ΔNWC 邊際路徑，否則退回 Gordon 幾何 FCF0×(1+g)^t；",
+      "不是 Live DCF 分頁的營收→NOPAT／CapEx／ΔNWC 預測表。"
+    ),
+    hfv_analysis_freq_label = "分析頻率",
     hfv_method_data_note = paste0(
       "資料注意：Yahoo 年報可能為重編；PIT 採嚴格申報滯後（財報期末＋約 90 日；無期末日則該列不採用，不作軟性 bypass）。",
       "歷史點近期末成長 g 與終值 SGR 分開；缺 CapEx／ΔNWC 時不捏造為 0（margin DCF 改不可用／幾何 FCF 僅在有觀測 FCF 時）。",
@@ -1159,8 +1183,8 @@ locale_for_market <- function(mode = get_market_mode()) {
       "情境 D 另要求價格動能 ≥ +5%。",
       "FV 垃圾進會誤分類；市場可長期非理性且仍可能需催化劑。"
     ),
-    hfv_chart_models_label = "圖表模型（可複選疊圖）",
-    hfv_replay_model_label = "復盤模型（單選；機率／幅度／情境／下期上漲頻率依此模型）",
+    hfv_chart_models_label = "圖表疊加模型",
+    hfv_replay_model_label = "復盤模型",
     hfv_session_params_title = "此刻參數（Session）",
     hfv_data_sources_label = "本次基本面資料來源",
     lab_notes_title = "測試 — Testing（量化回測）",
@@ -1234,15 +1258,16 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_scenario_concl_note = "此為樣本最常見與／或最近一期已分類情境的解讀，不是券商下單指令。FV 品質與時機仍需自行判斷（見上方說明）。",
     hfv_sum_empty = "載入標的並選擇復盤模型後，將顯示市價下期漲跌機率、相對 FV 統計與情境分類。復盤結果僅依所選單一復盤模型（非圖表複選）。",
     hfv_sum_notes = "結果附註",
-    hfv_sec_method = "說明",
-    hfv_sec_settings = "設定",
-    hfv_sec_results = "結果",
+    hfv_sec_method = "如何閱讀本報告",
+    hfv_sec_settings = "報告條件",
+    hfv_sec_results = "摘要結論",
     hfv_chart_gap = "幅度 (P下一期 − FV) / FV",
     hfv_table_detail = "逐期明細",
     hfv_oos_mode_label = "驗證樣本口徑",
     hfv_oos_realized = "僅計已實現下期（預設）",
     hfv_oos_expanding = "擴張視窗樣本外命中",
     hfv_oos_insample = "含未實現下期（樣本內）",
+    hfv_win_custom = "自訂",
 
     # --- tabBox headers ---
     box_financial_report = "財務報表",

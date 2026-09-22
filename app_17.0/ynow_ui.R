@@ -1078,9 +1078,9 @@ ui <- dashboardPage(
                   '<span class="ynow-app-title" id="ynow_app_title" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v17.84</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v17.85</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v17.84</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v17.85</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -2766,6 +2766,217 @@ ui <- dashboardPage(
           }
         }
 
+        /* HFV report shell: narrative chapters + responsive control toolbar */
+        .ynow-hfv-report {
+          max-width: 1200px;
+          margin: 0 auto 24px auto;
+        }
+        .ynow-hfv-report__masthead {
+          margin: 0 0 16px 0;
+          padding: 4px 2px 14px 2px;
+          border-bottom: 2px solid #1a1a1a;
+        }
+        .ynow-hfv-report__masthead h2 {
+          margin: 0 0 8px 0;
+          font-size: clamp(20px, 2.6vw, 28px);
+          font-weight: 700;
+          letter-spacing: -0.01em;
+          color: #1a1a1a;
+        }
+        .ynow-hfv-report__lead {
+          margin: 0;
+          max-width: 58em;
+          font-size: 13.5px;
+          line-height: 1.55;
+          color: #555;
+        }
+        .ynow-hfv-toolbar {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+          gap: 12px 14px;
+          margin: 0 0 18px 0;
+          padding: 14px 16px;
+          background: #fafafa;
+          border: 1px solid #e4e4e4;
+          border-radius: 8px;
+          box-sizing: border-box;
+        }
+        .ynow-hfv-toolbar__group {
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        .ynow-hfv-toolbar__group--wide {
+          grid-column: 1 / -1;
+        }
+        .ynow-hfv-toolbar__group .form-group {
+          margin: 0;
+        }
+        .ynow-hfv-toolbar__group > label.control-label,
+        .ynow-hfv-toolbar .shiny-input-radiogroup > label.control-label,
+        .ynow-hfv-toolbar .shiny-input-checkboxgroup > label.control-label {
+          display: block;
+          margin: 0 0 6px 0;
+          padding: 0;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+          color: #666;
+          line-height: 1.35;
+        }
+        .ynow-hfv-toolbar .shiny-options-group {
+          display: flex !important;
+          flex-wrap: wrap !important;
+          align-items: stretch;
+          gap: 6px;
+          margin: 0;
+          padding: 0;
+          clear: none;
+        }
+        .ynow-hfv-toolbar .radio,
+        .ynow-hfv-toolbar .radio-inline,
+        .ynow-hfv-toolbar .checkbox,
+        .ynow-hfv-toolbar .checkbox-inline {
+          float: none !important;
+          display: inline-flex !important;
+          align-items: center;
+          margin: 0 !important;
+          padding: 0 !important;
+          min-height: 0;
+        }
+        .ynow-hfv-toolbar .radio > label,
+        .ynow-hfv-toolbar .radio-inline,
+        .ynow-hfv-toolbar .radio-inline > label,
+        .ynow-hfv-toolbar .checkbox > label,
+        .ynow-hfv-toolbar .checkbox-inline,
+        .ynow-hfv-toolbar .checkbox-inline > label {
+          margin: 0 !important;
+          padding: 7px 12px 7px 28px !important;
+          border: 1px solid #d0d0d0;
+          border-radius: 999px;
+          background: #fff;
+          font-size: 12.5px;
+          font-weight: 500;
+          line-height: 1.25;
+          color: #222;
+          white-space: nowrap;
+          cursor: pointer;
+          transition: border-color .12s ease, background .12s ease, box-shadow .12s ease;
+        }
+        .ynow-hfv-toolbar .radio input[type="radio"],
+        .ynow-hfv-toolbar .radio-inline input[type="radio"],
+        .ynow-hfv-toolbar .checkbox input[type="checkbox"],
+        .ynow-hfv-toolbar .checkbox-inline input[type="checkbox"] {
+          position: absolute;
+          margin-left: -20px;
+          margin-top: 1px;
+        }
+        .ynow-hfv-toolbar .radio > label:hover,
+        .ynow-hfv-toolbar .radio-inline:hover,
+        .ynow-hfv-toolbar .checkbox > label:hover,
+        .ynow-hfv-toolbar .checkbox-inline:hover {
+          border-color: #999;
+          background: #fff;
+        }
+        .ynow-hfv-toolbar .radio:has(input:checked) > label,
+        .ynow-hfv-toolbar .radio-inline:has(input:checked),
+        .ynow-hfv-toolbar .checkbox:has(input:checked) > label,
+        .ynow-hfv-toolbar .checkbox-inline:has(input:checked) {
+          border-color: #1a1a1a;
+          background: #1a1a1a;
+          color: #fff;
+          box-shadow: 0 1px 2px rgba(0,0,0,0.12);
+        }
+        .ynow-hfv-toolbar__hint {
+          margin: 2px 0 0 0;
+          font-size: 11px;
+          line-height: 1.45;
+          color: #888;
+        }
+        .ynow-hfv-chapter {
+          margin: 0 0 18px 0;
+          padding: 0;
+          background: #fff;
+          border: 1px solid #e6e6e6;
+          border-radius: 8px;
+          overflow: hidden;
+        }
+        .ynow-hfv-chapter__head {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: baseline;
+          gap: 6px 12px;
+          padding: 12px 16px;
+          background: #fff;
+          border-bottom: 1px solid #ececec;
+        }
+        .ynow-hfv-chapter__kicker {
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          color: #888;
+        }
+        .ynow-hfv-chapter__title {
+          margin: 0;
+          font-size: 16px;
+          font-weight: 700;
+          color: #1a1a1a;
+          line-height: 1.35;
+        }
+        .ynow-hfv-chapter__body {
+          padding: 14px 16px 16px 16px;
+        }
+        .ynow-hfv-chapter--appendix .ynow-hfv-chapter__body {
+          background: #fafafa;
+        }
+        .ynow-hfv-report > .box {
+          margin-bottom: 14px;
+          border-radius: 8px;
+          box-shadow: none;
+          border: 1px solid #e6e6e6;
+        }
+        .ynow-hfv-report > .box > .box-header {
+          padding: 10px 14px;
+        }
+        .ynow-hfv-report > .box > .box-body {
+          padding: 12px 14px 14px 14px;
+        }
+        .ynow-hfv-findings-block:last-child {
+          margin-bottom: 0;
+        }
+        .ynow-hfv-findings-block > h5 {
+          margin: 0 0 10px 0;
+          font-size: 13px;
+          font-weight: 700;
+          color: #333;
+        }
+        @media (max-width: 767px) {
+          .ynow-hfv-toolbar {
+            grid-template-columns: 1fr;
+            padding: 12px;
+            gap: 14px;
+          }
+          .ynow-hfv-toolbar__group--wide {
+            grid-column: auto;
+          }
+          .ynow-hfv-toolbar .radio > label,
+          .ynow-hfv-toolbar .radio-inline,
+          .ynow-hfv-toolbar .checkbox > label,
+          .ynow-hfv-toolbar .checkbox-inline {
+            white-space: normal;
+            max-width: 100%;
+          }
+          .ynow-hfv-chapter__body {
+            padding: 12px;
+          }
+          .ynow-hfv-report__masthead {
+            padding-bottom: 12px;
+          }
+        }
+
         /* HFV 設定：統計期間／驗證樣本口徑共用 label→選項間距與區塊節奏 */
         .ynow-hfv-settings .shiny-input-radiogroup {
           margin-top: 0;
@@ -2784,8 +2995,8 @@ ui <- dashboardPage(
           padding-top: 0;
           padding-left: 0;
         }
-        /* 驗證樣本口徑：直向靠左；選項間距緊湊，不另加大 label gap */
-        #bt_fv_oos_mode .shiny-options-group {
+        /* 驗證樣本口徑：工具列內改為橫向 chip；舊直排規則僅保留於非 toolbar */
+        .ynow-hfv-settings #bt_fv_oos_mode .shiny-options-group {
           display: flex !important;
           flex-direction: column !important;
           flex-wrap: nowrap !important;
@@ -2794,7 +3005,7 @@ ui <- dashboardPage(
           row-gap: 4px;
           text-align: left;
         }
-        #bt_fv_oos_mode .radio {
+        .ynow-hfv-settings #bt_fv_oos_mode .radio {
           display: block !important;
           float: none !important;
           width: auto;
@@ -2805,7 +3016,7 @@ ui <- dashboardPage(
           padding-left: 0;
           text-align: left;
         }
-        #bt_fv_oos_mode .radio > label {
+        .ynow-hfv-settings #bt_fv_oos_mode .radio > label {
           display: inline-block;
           text-align: left;
           white-space: normal;
@@ -3379,10 +3590,22 @@ ui <- dashboardPage(
             if (dcBoxSum && s.dc_box_summary) dcBoxSum.textContent = s.dc_box_summary;
             var hfvMethod = document.getElementById('ynow_hfv_sec_method');
             if (hfvMethod && s.hfv_sec_method) hfvMethod.textContent = s.hfv_sec_method;
-            var hfvSettings = document.getElementById('ynow_hfv_sec_settings');
-            if (hfvSettings && s.hfv_sec_settings) hfvSettings.textContent = s.hfv_sec_settings;
             var hfvResults = document.getElementById('ynow_hfv_sec_results');
             if (hfvResults && s.hfv_sec_results) hfvResults.textContent = s.hfv_sec_results;
+            var hfvCh1K = document.getElementById('ynow_hfv_ch1_kicker');
+            if (hfvCh1K && s.hfv_ch1_kicker) hfvCh1K.textContent = s.hfv_ch1_kicker;
+            var hfvCh1T = document.getElementById('ynow_hfv_ch1_title');
+            if (hfvCh1T && s.hfv_ch1_title) hfvCh1T.textContent = s.hfv_ch1_title;
+            var hfvCh2K = document.getElementById('ynow_hfv_ch2_kicker');
+            if (hfvCh2K && s.hfv_ch2_kicker) hfvCh2K.textContent = s.hfv_ch2_kicker;
+            var hfvCh2T = document.getElementById('ynow_hfv_ch2_title');
+            if (hfvCh2T && s.hfv_ch2_title) hfvCh2T.textContent = s.hfv_ch2_title;
+            var hfvParamInv = document.getElementById('ynow_hfv_param_inv_title');
+            if (hfvParamInv && (s.hfv_param_inv_title || s.box_hfv_param_inventory)) {
+              hfvParamInv.textContent = s.hfv_param_inv_title || s.box_hfv_param_inventory;
+            }
+            var hfvParamHelp = document.getElementById('ynow_hfv_param_inv_help');
+            if (hfvParamHelp && s.hfv_param_inv_help) hfvParamHelp.textContent = s.hfv_param_inv_help;
             var hfvChart = document.getElementById('ynow_hfv_chart_gap');
             if (hfvChart && s.hfv_chart_gap) hfvChart.textContent = s.hfv_chart_gap;
             var hfvTable = document.getElementById('ynow_hfv_table_detail');
@@ -3405,6 +3628,10 @@ ui <- dashboardPage(
             if (chartModelsLab && s.hfv_chart_models_label) chartModelsLab.textContent = s.hfv_chart_models_label;
             var replayLab = document.querySelector('label[for=\"bt_fv_replay_model\"]');
             if (replayLab && s.hfv_replay_model_label) replayLab.textContent = s.hfv_replay_model_label;
+            var oosLab = document.querySelector('label[for=\"bt_fv_oos_mode\"]');
+            if (oosLab && s.hfv_oos_mode_label) oosLab.textContent = s.hfv_oos_mode_label;
+            var freqLab = document.querySelector('label[for=\"bt_fv_analysis_freq\"]');
+            if (freqLab && s.hfv_analysis_freq_label) freqLab.textContent = s.hfv_analysis_freq_label;
             var labTitle = document.getElementById('ynow_lab_notes_title');
             if (labTitle && s.lab_notes_title) labTitle.textContent = s.lab_notes_title;
             var labSub = document.getElementById('ynow_lab_notes_sub');
@@ -7390,87 +7617,189 @@ ui <- dashboardPage(
       ),
       
       # ==========================================
-      # 歷史基本面驗證（HFV）：理論估值 vs 實際市值 — 非策略回測
+      # 歷史基本面驗證（HFV）：報告式版面 — 理論估值 vs 實際市值（非策略回測）
       # ==========================================
       tabItem(
         tabName = "hfv",
         withMathJax(),
-        fluidRow(
-          column(
-            width = 12,
+        tags$div(
+          class = "ynow-hfv-report",
+
+          # --- Masthead ---
+          tags$div(
+            class = "ynow-hfv-report__masthead",
             h2(tags$b(id = "ynow_hfv_page_title", "Historical Fundamental Validation")),
             p(
               id = "ynow_hfv_page_sub",
+              class = "ynow-hfv-report__lead",
               paste0(
-                "Next-period up/down odds, position vs theoretical FV, and historical scenario taxonomy ",
-                "(mispricing / fundamental momentum / price momentum). This is not a trading backtest; ",
-                "quant backtests are under Testing at the sidebar foot."
+                "A point-in-time review of theoretical fair value versus market price: ",
+                "next-period odds, position vs FV, and historical scenario taxonomy. ",
+                "This is a validation report—not a trading backtest (see Testing)."
+              )
+            )
+          ),
+
+          # --- Report controls (toolbar) ---
+          tags$div(
+            class = "ynow-hfv-toolbar",
+            role = "group",
+            `aria-label` = "HFV report controls",
+            tags$div(
+              class = "ynow-hfv-toolbar__group",
+              radioButtons(
+                "bt_fv_replay_model",
+                "Replay model",
+                inline = TRUE,
+                choices = c(
+                  "DCF" = "dcf",
+                  "DDM" = "ddm",
+                  "RI" = "ri",
+                  "P/B" = "pb",
+                  "NAV" = "nav"
+                ),
+                selected = "dcf"
               )
             ),
-            tags$hr()
-          )
-        ),
-
-        # 1) 折現比較圖：合理價 vs 實際股價 vs 大盤
-        fluidRow(
-          box(
-            title = tagList(icon("balance-scale"), "FV vs Market Price"),
-            width = 12, status = "primary", solidHeader = TRUE,
             tags$div(
-              class = "ynow-bt-hfv-wrap",
-              uiOutput("bt_valuation_summary"),
-              tags$div(
-                class = "ynow-bt-hfv-controls",
-                tags$div(
-                  class = "ynow-bt-hfv-bench",
-                  checkboxInput(
-                    "bt_hfv_show_bench",
-                    tags$span(id = "ynow_hfv_show_bench_label", "Show benchmark"),
-                    value = TRUE
-                  )
+              class = "ynow-hfv-toolbar__group",
+              radioButtons(
+                "bt_fv_conv_window",
+                "Sample window",
+                inline = TRUE,
+                choices = c(
+                  "All" = "all",
+                  "1Y" = "1y",
+                  "3Y" = "3y",
+                  "5Y" = "5y",
+                  "Custom" = "custom"
                 ),
-                tags$div(
-                  class = "ynow-bt-hfv-models",
-                  checkboxGroupInput(
-                    "bt_fv_models",
-                    "Chart models (multi-select overlay)",
-                    inline = TRUE,
-                    choices = c(
-                      "DCF" = "dcf",
-                      "DDM" = "ddm",
-                      "RI" = "ri",
-                      "P/B" = "pb",
-                      "NAV" = "nav"
-                    ),
-                    selected = character(0)
-                  )
-                )
+                selected = "all"
               ),
+              conditionalPanel(
+                condition = "input.bt_fv_conv_window == 'custom'",
+                dateRangeInput(
+                  "bt_fv_conv_custom",
+                  NULL,
+                  start = Sys.Date() - 365 * 3,
+                  end = Sys.Date(),
+                  language = "zh-TW"
+                )
+              )
+            ),
+            tags$div(
+              class = "ynow-hfv-toolbar__group",
+              uiOutput("bt_fv_analysis_freq_ui")
+            ),
+            tags$div(
+              class = "ynow-hfv-toolbar__group ynow-hfv-toolbar__group--wide",
+              radioButtons(
+                "bt_fv_oos_mode",
+                "Validation sample scope",
+                inline = TRUE,
+                choices = c(
+                  "Realized next period only (default)" = "realized",
+                  "Expanding-window out-of-sample hits" = "expanding",
+                  "Include unrealized next period (in-sample)" = "insample"
+                ),
+                selected = "realized"
+              )
+            ),
+            tags$div(
+              class = "ynow-hfv-toolbar__group ynow-hfv-toolbar__group--wide",
+              checkboxGroupInput(
+                "bt_fv_models",
+                "Chart overlay models",
+                inline = TRUE,
+                choices = c(
+                  "DCF" = "dcf",
+                  "DDM" = "ddm",
+                  "RI" = "ri",
+                  "P/B" = "pb",
+                  "NAV" = "nav"
+                ),
+                selected = character(0)
+              ),
+              checkboxInput(
+                "bt_hfv_show_bench",
+                tags$span(id = "ynow_hfv_show_bench_label", "Show benchmark"),
+                value = TRUE
+              )
+            )
+          ),
+
+          # --- Chapter I: FV vs market ---
+          tags$section(
+            class = "ynow-hfv-chapter",
+            tags$div(
+              class = "ynow-hfv-chapter__head",
+              tags$span(class = "ynow-hfv-chapter__kicker", id = "ynow_hfv_ch1_kicker", "Section I"),
+              tags$h3(
+                class = "ynow-hfv-chapter__title",
+                id = "ynow_hfv_ch1_title",
+                "Fair value vs market price"
+              )
+            ),
+            tags$div(
+              class = "ynow-hfv-chapter__body",
+              uiOutput("bt_valuation_summary"),
               plotlyOutput("bt_hfv_timeline", height = "420px") %>% withSpinner(),
               uiOutput("bt_session_params")
             )
-          )
-        ),
+          ),
 
-        # 2) 歷史基本面驗證：市價下期漲跌與相對 FV
-        fluidRow(
+          # --- Chapter II: Findings ---
+          tags$section(
+            class = "ynow-hfv-chapter",
+            tags$div(
+              class = "ynow-hfv-chapter__head",
+              tags$span(class = "ynow-hfv-chapter__kicker", id = "ynow_hfv_ch2_kicker", "Section II"),
+              tags$h3(
+                class = "ynow-hfv-chapter__title",
+                id = "ynow_hfv_ch2_title",
+                "Validation findings"
+              )
+            ),
+            tags$div(
+              class = "ynow-hfv-chapter__body",
+              tags$div(
+                class = "ynow-hfv-findings-block",
+                tags$h5(id = "ynow_hfv_sec_results", "Executive summary"),
+                uiOutput("bt_fv_conv_summary")
+              ),
+              tags$div(
+                class = "ynow-hfv-findings-block",
+                tags$h5(id = "ynow_hfv_chart_gap", "Magnitude (P_next − FV) / FV"),
+                plotlyOutput("bt_fv_conv_plot", height = "280px") %>% withSpinner()
+              ),
+              tags$div(
+                class = "ynow-hfv-findings-block",
+                tags$h5(id = "ynow_hfv_table_detail", "Period detail"),
+                tags$div(
+                  style = "overflow-x:auto; width:100%;",
+                  tags$style(HTML("#bt_fv_conv_table table { width: 100% !important; }")),
+                  tableOutput("bt_fv_conv_table")
+                )
+              )
+            )
+          ),
+
+          # --- Appendix: method notes ---
           box(
-            title = tagList(icon("balance-scale"), "Historical Fundamental Validation: Odds, vs FV & Scenario Taxonomy"),
-            width = 12, status = "warning", solidHeader = TRUE,
-            collapsible = TRUE, collapsed = FALSE,
-
-            # --- 說明（與結果分開）---
+            title = tagList(
+              icon("book-open"),
+              tags$span(id = "ynow_hfv_sec_method", "How to read this report")
+            ),
+            width = NULL,
+            status = "primary",
+            solidHeader = FALSE,
+            collapsible = TRUE,
+            collapsed = TRUE,
             tags$div(
               class = "ynow-hfv-method",
-              style = "margin:0 0 14px 0;padding:12px 14px;background:#f7f7f7;border:1px solid #e5e5e5;border-radius:4px;",
-              tags$h5(
-                id = "ynow_hfv_sec_method",
-                style = "margin:0 0 8px 0;font-weight:700;",
-                "How to read this panel"
-              ),
               tags$p(
                 id = "ynow_hfv_method_body",
-                style = "font-size:12.5px;color:#444;line-height:1.55;margin:0 0 8px 0;",
+                style = "font-size:12.5px;color:#444;line-height:1.55;margin:0 0 10px 0;",
                 paste0(
                   "Not a trading backtest or broker order ticket. Validation samples have three scopes: ",
                   "(1) next-period return R and P(up), plus MOS-bucket outlook; ",
@@ -7511,110 +7840,28 @@ ui <- dashboardPage(
                   "Small samples (n<5) are illustrative only — not a forecast guarantee."
                 )
               )
-            ),
-
-            # --- 設定 ---
-            tags$div(
-              class = "ynow-hfv-settings",
-              style = "margin:0 0 16px 0;padding:12px 14px;background:#fff;border:1px solid #e8e8e8;border-radius:4px;",
-              tags$h5(
-                id = "ynow_hfv_sec_settings",
-                style = "margin:0 0 10px 0;font-weight:700;",
-                "Settings"
-              ),
-              radioButtons(
-                "bt_fv_replay_model",
-                "Replay model (single; odds / magnitude / scenarios / next-period up frequency)",
-                inline = TRUE,
-                choices = c(
-                  "DCF" = "dcf",
-                  "DDM" = "ddm",
-                  "RI" = "ri",
-                  "P/B" = "pb",
-                  "NAV" = "nav"
-                ),
-                selected = "dcf"
-              ),
-              radioButtons(
-                "bt_fv_conv_window",
-                "Sample window (by valuation date Date_t)",
-                inline = TRUE,
-                choices = c(
-                  "All" = "all",
-                  "1Y" = "1y",
-                  "3Y" = "3y",
-                  "5Y" = "5y",
-                  "自訂" = "custom"
-                ),
-                selected = "all"
-              ),
-              uiOutput("bt_fv_analysis_freq_ui"),
-              conditionalPanel(
-                condition = "input.bt_fv_conv_window == 'custom'",
-                dateRangeInput(
-                  "bt_fv_conv_custom",
-                  NULL,
-                  start = Sys.Date() - 365 * 3,
-                  end = Sys.Date(),
-                  language = "zh-TW"
-                )
-              ),
-              radioButtons(
-                "bt_fv_oos_mode",
-                "驗證樣本口徑",
-                inline = FALSE,
-                choices = c(
-                  "僅計已實現下期（預設）" = "realized",
-                  "擴張視窗樣本外命中" = "expanding",
-                  "含未實現下期（樣本內）" = "insample"
-                ),
-                selected = "realized"
-              )
-            ),
-
-            # --- 結果（數字／圖／表；不含長文說明）---
-            tags$div(
-              class = "ynow-hfv-results",
-              style = "margin:0;padding:12px 14px;background:#fffdf8;border:1px solid #f0e0b8;border-radius:4px;",
-              tags$h5(
-                id = "ynow_hfv_sec_results",
-                style = "margin:0 0 10px 0;font-weight:700;",
-                "結果"
-              ),
-              uiOutput("bt_fv_conv_summary"),
-              tags$h5(
-                id = "ynow_hfv_chart_gap",
-                style = "margin-top: 14px; font-weight: 700;",
-                "幅度 (P下一期 − FV) / FV"
-              ),
-              plotlyOutput("bt_fv_conv_plot", height = "280px") %>% withSpinner(),
-              tags$h5(
-                id = "ynow_hfv_table_detail",
-                style = "margin-top: 14px; font-weight: 700;",
-                "逐期明細"
-              ),
-              tags$div(
-                style = "overflow-x:auto; width:100%;",
-                tags$style(HTML("#bt_fv_conv_table table { width: 100% !important; }")),
-                tableOutput("bt_fv_conv_table")
-              )
             )
-          )
-        ),
+          ),
 
-        # 3) 參數盤點（Live vs Hist PIT）— 歷史估值重建相關
-        fluidRow(
+          # --- Appendix: param inventory ---
           box(
-            title = tagList(icon("table"), "美股估值復盤參數盤點（Live vs Hist PIT）"),
-            width = 12, status = "primary", solidHeader = TRUE,
-            collapsible = TRUE, collapsed = TRUE,
+            title = tagList(
+              icon("table"),
+              tags$span(id = "ynow_hfv_param_inv_title", "US Valuation Replay Inventory (Live vs Hist PIT)")
+            ),
+            width = NULL,
+            status = "primary",
+            solidHeader = FALSE,
+            collapsible = TRUE,
+            collapsed = TRUE,
             tags$p(
+              id = "ynow_hfv_param_inv_help",
               style = "font-size:12.5px;color:#444;line-height:1.55;",
-              "歷史點理論估值使用當時可得資料重建；",
-              tags$b("hist DCF 優先 NOPAT／D&A／CapEx／ΔNWC 邊際路徑"),
-              "，否則退回 Gordon 幾何 ", tags$code("FCF0×(1+g)^t"), "；",
-              tags$b("不是"),
-              " Live DCF 分頁的營收→NOPAT／CapEx／ΔNWC 預測表。"
+              "Historical theoretical values are rebuilt from then-available data; ",
+              tags$b("hist DCF prefers NOPAT / D&A / CapEx / ΔNWC margin path"),
+              ", else falls back to Gordon geometry ", tags$code("FCF0×(1+g)^t"), "; ",
+              tags$b("not"),
+              " the Live DCF page revenue→NOPAT / CapEx / ΔNWC forecast table."
             ),
             tags$div(style = "overflow-x:auto;", tableOutput("bt_param_inventory"))
           )
