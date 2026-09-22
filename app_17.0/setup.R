@@ -2716,16 +2716,610 @@ trim_report_table <- function(df, max_rows = 18, max_cols = 7) {
 }
 
 # DCF 模式顯示名稱
-.report_dcf_mode_label <- function(mode) {
+.report_dcf_mode_label <- function(mode, locale = "zh-TW") {
   m <- if (is.null(mode) || length(mode) == 0 || is.na(mode[1])) "" else as.character(mode[1])
-  if (identical(m, "gordon")) return("明確預測期 + Gordon 終值")
-  if (identical(m, "two_stage")) return("兩階段成長")
+  en <- identical(as.character(locale)[1], "en")
+  if (identical(m, "gordon")) {
+    return(if (en) "Explicit forecast + Gordon Terminal Value" else "明確預測期 + Gordon 終值")
+  }
+  if (identical(m, "two_stage")) {
+    return(if (en) "Two-Stage DCF" else "兩階段成長（Two-Stage DCF）")
+  }
   if (!nzchar(m)) return("N/A")
   m
 }
 
+# 報告用：自財報推估每股 EPS／每股淨值（BVPS）
+.report_eps_bvps <- function(summary_df, d_is = NULL, d_bs = NULL) {
+  eps <- NA_real_
+  bvps <- NA_real_
+  eps_src <- extract_summary_item(summary_df, "EPS \\(TTM\\)|Trailing EPS|^EPS$", default = NA_character_)
+  if (!is.na(eps_src) && !identical(eps_src, "N/A")) {
+    eps <- suppressWarnings(as.numeric(gsub("[^0-9.-]", "", as.character(eps_src))))
+  }
+  if (!is.finite(eps) && !is.null(d_is) && is.data.frame(d_is) && nrow(d_is) > 0) {
+    ni <- tryCatch(
+      select_current_metric(d_is, "Net Income Common Stockholders|Net Income$", "flow"),
+      error = function(e) NA_real_
+    )
+    sh <- tryCatch(
+      select_current_metric(
+        d_bs, "Ordinary Shares Number|Share Issued|Total Shares Outstanding", "stock"
+      ),
+      error = function(e) NA_real_
+    )
+    if (is.finite(ni) && is.finite(sh) && sh > 0) eps <- ni / sh
+  }
+  bv_src <- extract_summary_item(
+    summary_df, "Book Value Per Share|Book Value/Share|每股淨值", default = NA_character_
+  )
+  if (!is.na(bv_src) && !identical(bv_src, "N/A")) {
+    bvps <- suppressWarnings(as.numeric(gsub("[^0-9.-]", "", as.character(bv_src))))
+  }
+  if (!is.finite(bvps) && !is.null(d_bs) && is.data.frame(d_bs) && nrow(d_bs) > 0) {
+    eq <- tryCatch(
+      select_current_metric(d_bs, "Stockholders Equity|Total Equity Gross Minority Interest|Common Stock Equity", "stock"),
+      error = function(e) NA_real_
+    )
+    sh <- tryCatch(
+      select_current_metric(
+        d_bs, "Ordinary Shares Number|Share Issued|Total Shares Outstanding", "stock"
+      ),
+      error = function(e) NA_real_
+    )
+    if (is.finite(eq) && is.finite(sh) && sh > 0) bvps <- eq / sh
+  }
+  list(eps = .report_num(eps), bvps = .report_num(bvps))
+}
+
+# CapEx／營收比與歷史均值（工程啟發式填表，非學術標準）
+.report_capex_revenue_ratio <- function(d_is, d_cf, lookback = 5L) {
+  empty <- list(ratio_pct = NA_real_, avg_pct = NA_real_, n_years = 0L)
+  if (is.null(d_is) || is.null(d_cf) || !is.data.frame(d_is) || !is.data.frame(d_cf)) {
+    return(empty)
+  }
+  rev <- tryCatch(
+    select_clean_metric_row(d_is, "Total Revenue", include_ttm = FALSE),
+    error = function(e) NULL
+  )
+  capex <- tryCatch(
+    select_clean_metric_row(
+      d_cf, "Capital Expenditure|Purchase Of PPE|Net PPE Purchase And Sale",
+      include_ttm = FALSE
+    ),
+    error = function(e) NULL
+  )
+  if (is.null(rev) || is.null(capex) || length(rev) < 1L || length(capex) < 1L) {
+    return(empty)
+  }
+  n <- min(as.integer(lookback), length(rev), length(capex))
+  if (n < 1L) return(empty)
+  ratios <- abs(suppressWarnings(as.numeric(capex[seq_len(n)]))) /
+    abs(suppressWarnings(as.numeric(rev[seq_len(n)])))
+  ratios <- ratios[is.finite(ratios) & ratios > 0]
+  if (length(ratios) < 1L) return(empty)
+  list(
+    ratio_pct = ratios[1] * 100,
+    avg_pct = mean(ratios) * 100,
+    n_years = length(ratios)
+  )
+}
+
+# 敏感度矩陣 → 可 kable 的 data.frame（列名保留）
+.report_sensitivity_df <- function(mat) {
+  if (is.null(mat) || !is.matrix(mat) || length(mat) < 1L) return(NULL)
+  df <- as.data.frame(mat, stringsAsFactors = FALSE, check.names = FALSE)
+  rn <- rownames(mat)
+  if (!is.null(rn) && length(rn) == nrow(df)) {
+    df <- cbind(` ` = rn, df, stringsAsFactors = FALSE)
+  }
+  for (j in seq_along(df)) {
+    if (is.numeric(df[[j]])) df[[j]] <- round(df[[j]], 2)
+  }
+  df
+}
+
+#' 組裝個股 PDF 報告公式欄與章節文案（僅標的本身；不含同業排名／Lab 宇宙）
+build_ticker_report_copy <- function(
+    locale = "zh-TW",
+    stock_code = NA,
+    company_name = NA,
+    sector = NA,
+    industry = NA,
+    current_price = NA,
+    target_price = NA,
+    primary_method = NA,
+    method_rationale = NA,
+    margin_of_safety = NA,
+    upside_pct = NA,
+    dcf_price = NA,
+    ddm_value = NA,
+    pb_value = NA,
+    ri_value = NA,
+    primary_bear = NA,
+    primary_base = NA,
+    primary_bull = NA,
+    secondary_point = NA,
+    secondary_label = NA,
+    confidence_level = NA,
+    confidence_score = NA,
+    wacc = NA,
+    terminal_growth = NA,
+    forecast_years = NA,
+    dcf_mode = NA,
+    eps = NA,
+    bvps = NA,
+    pe_ratio = NA,
+    market_cap = NA,
+    beta = NA,
+    dividend_yield = NA,
+    roe_pct = NA,
+    rev_growth_pct = NA,
+    capex_rev_pct = NA,
+    capex_avg_pct = NA,
+    capex_n_years = NA,
+    fscore_total = NA,
+    money_prefix = "$"
+) {
+  en <- identical(as.character(locale)[1], "en")
+  px <- function(x) {
+    n <- suppressWarnings(as.numeric(x)[1])
+    if (!is.finite(n)) return("N/A")
+    paste0(money_prefix, format(round(n, 2), nsmall = 2, big.mark = ","))
+  }
+  pct <- function(x, signed = FALSE) {
+    n <- suppressWarnings(as.numeric(x)[1])
+    if (!is.finite(n)) return("N/A")
+    paste0(if (signed && n > 0) "+" else "", sprintf("%.1f", n), "%")
+  }
+  sc <- function(x, default = "N/A") {
+    if (is.null(x) || length(x) < 1L || (length(x) == 1L && is.na(x))) return(default)
+    s <- trimws(as.character(x[[1]]))
+    if (!nzchar(s) || identical(s, "NA")) default else s
+  }
+
+  tgt <- suppressWarnings(as.numeric(target_price)[1])
+  cur <- suppressWarnings(as.numeric(current_price)[1])
+  bv <- suppressWarnings(as.numeric(bvps)[1])
+  ep <- suppressWarnings(as.numeric(eps)[1])
+  implied_pb <- if (is.finite(tgt) && is.finite(bv) && bv > 0) tgt / bv else NA_real_
+  implied_pe <- if (is.finite(tgt) && is.finite(ep) && ep != 0) tgt / ep else NA_real_
+  spot_pb <- if (is.finite(cur) && is.finite(bv) && bv > 0) cur / bv else NA_real_
+  spot_pe <- if (is.finite(cur) && is.finite(ep) && ep != 0) cur / ep else NA_real_
+
+  if (en) {
+    target_formula <- sprintf(
+      "Target (primary Base) = %s  via %s",
+      px(tgt), sc(primary_method)
+    )
+    if (is.finite(implied_pb)) {
+      target_formula <- paste0(
+        target_formula,
+        sprintf("  ·  implied P/B ≈ %.2f× on BVPS %s", implied_pb, px(bv))
+      )
+    }
+    if (is.finite(implied_pe)) {
+      target_formula <- paste0(
+        target_formula,
+        sprintf("  ·  implied P/E ≈ %.2f× on EPS %s", implied_pe, px(ep))
+      )
+    }
+    ref_formula <- sprintf("Reference (last) = %s", px(cur))
+    if (is.finite(spot_pb)) {
+      ref_formula <- paste0(ref_formula, sprintf("  ·  %.2f× BVPS", spot_pb))
+    }
+    if (is.finite(spot_pe)) {
+      ref_formula <- paste0(ref_formula, sprintf("  ·  %.2f× EPS", spot_pe))
+    }
+    mos_formula <- sprintf(
+      "MOS = (FV − Price) / FV = (%s − %s) / %s = %s",
+      px(tgt), px(cur), px(tgt), pct(margin_of_safety)
+    )
+    upside_formula <- sprintf(
+      "Upside = (FV − Price) / Price = %s",
+      pct(upside_pct, signed = TRUE)
+    )
+  } else {
+    target_formula <- sprintf(
+      "目標價（主模型 Base）＝ %s｜方法：%s",
+      px(tgt), sc(primary_method)
+    )
+    if (is.finite(implied_pb)) {
+      target_formula <- paste0(
+        target_formula,
+        sprintf("｜隱含 P/B ≈ %.2f×（BVPS %s）", implied_pb, px(bv))
+      )
+    }
+    if (is.finite(implied_pe)) {
+      target_formula <- paste0(
+        target_formula,
+        sprintf("｜隱含 P/E ≈ %.2f×（EPS %s）", implied_pe, px(ep))
+      )
+    }
+    ref_formula <- sprintf("參考價（現價）＝ %s", px(cur))
+    if (is.finite(spot_pb)) {
+      ref_formula <- paste0(ref_formula, sprintf("｜%.2f× BVPS", spot_pb))
+    }
+    if (is.finite(spot_pe)) {
+      ref_formula <- paste0(ref_formula, sprintf("｜%.2f× EPS", spot_pe))
+    }
+    mos_formula <- sprintf(
+      "安全邊際 MOS＝(FV−Price)/FV＝(%s−%s)/%s＝%s",
+      px(tgt), px(cur), px(tgt), pct(margin_of_safety)
+    )
+    upside_formula <- sprintf(
+      "潛在報酬＝(FV−Price)/Price＝%s",
+      pct(upside_pct, signed = TRUE)
+    )
+  }
+
+  bullets <- character(0)
+  bullets <- c(bullets, mos_formula, upside_formula)
+  if (is.finite(suppressWarnings(as.numeric(dcf_price)[1]))) {
+    bullets <- c(bullets, if (en) {
+      sprintf("DCF fair value / share = %s (WACC %s; terminal g %s; %s; horizon %s yrs).",
+              px(dcf_price), sc(wacc), sc(terminal_growth), sc(dcf_mode), sc(forecast_years))
+    } else {
+      sprintf("DCF 每股合理價＝%s（WACC %s；終值 g %s；%s；預測 %s 年）。",
+              px(dcf_price), sc(wacc), sc(terminal_growth), sc(dcf_mode), sc(forecast_years))
+    })
+  }
+  if (is.finite(suppressWarnings(as.numeric(ddm_value)[1]))) {
+    bullets <- c(bullets, if (en) sprintf("DDM fair value / share = %s.", px(ddm_value))
+                 else sprintf("DDM 每股合理價＝%s。", px(ddm_value)))
+  }
+  if (is.finite(suppressWarnings(as.numeric(ri_value)[1]))) {
+    bullets <- c(bullets, if (en) sprintf("RI fair value / share = %s.", px(ri_value))
+                 else sprintf("RI 每股合理價＝%s。", px(ri_value)))
+  }
+  if (is.finite(suppressWarnings(as.numeric(pb_value)[1]))) {
+    bullets <- c(bullets, if (en) sprintf("P/B fair value / share = %s.", px(pb_value))
+                 else sprintf("P/B 每股合理價＝%s。", px(pb_value)))
+  }
+  bear <- suppressWarnings(as.numeric(primary_bear)[1])
+  base <- suppressWarnings(as.numeric(primary_base)[1])
+  bull <- suppressWarnings(as.numeric(primary_bull)[1])
+  if (is.finite(bear) && is.finite(base) && is.finite(bull)) {
+    bullets <- c(bullets, if (en) {
+      sprintf("Primary scenario band Bear / Base / Bull = %s / %s / %s.",
+              px(bear), px(base), px(bull))
+    } else {
+      sprintf("主模型情境區間 Bear／Base／Bull＝%s／%s／%s。",
+              px(bear), px(base), px(bull))
+    })
+  }
+  sec <- suppressWarnings(as.numeric(secondary_point)[1])
+  if (is.finite(sec)) {
+    bullets <- c(bullets, if (en) {
+      sprintf("Secondary check (%s) = %s.", sc(secondary_label, "secondary"), px(sec))
+    } else {
+      sprintf("副模型檢核（%s）＝%s。", sc(secondary_label, "副模型"), px(sec))
+    })
+  }
+  conf_lv <- sc(confidence_level, "")
+  if (nzchar(conf_lv) && !identical(conf_lv, "N/A")) {
+    sc_n <- suppressWarnings(as.numeric(confidence_score)[1])
+    bullets <- c(bullets, if (en) {
+      if (is.finite(sc_n)) sprintf("Valuation confidence = %s (%s).", conf_lv, sc_n)
+      else sprintf("Valuation confidence = %s.", conf_lv)
+    } else {
+      if (is.finite(sc_n)) sprintf("估值可信度＝%s（%s）。", conf_lv, sc_n)
+      else sprintf("估值可信度＝%s。", conf_lv)
+    })
+  }
+  rat <- sc(method_rationale, "")
+  if (nzchar(rat) && !identical(rat, "N/A")) {
+    bullets <- c(bullets, rat)
+  }
+  fs <- suppressWarnings(as.numeric(fscore_total)[1])
+  if (is.finite(fs)) {
+    bullets <- c(bullets, if (en) {
+      sprintf("Piotroski F-Score = %d / 9 (ticker fundamentals gate; not a buy signal).", as.integer(fs))
+    } else {
+      sprintf("Piotroski F-Score＝%d／9（個股體質檢核；非買進訊號）。", as.integer(fs))
+    })
+  }
+
+  growth_bullets <- character(0)
+  if (is.finite(suppressWarnings(as.numeric(roe_pct)[1]))) {
+    growth_bullets <- c(growth_bullets, if (en) {
+      sprintf("ROE (recent avg) ≈ %s.", pct(roe_pct))
+    } else {
+      sprintf("股東權益報酬率 ROE（近期均）≈ %s。", pct(roe_pct))
+    })
+  }
+  if (is.finite(suppressWarnings(as.numeric(rev_growth_pct)[1]))) {
+    growth_bullets <- c(growth_bullets, if (en) {
+      sprintf("Revenue growth (avg YoY) ≈ %s.", pct(rev_growth_pct, signed = TRUE))
+    } else {
+      sprintf("營收成長率（年均 YoY）≈ %s。", pct(rev_growth_pct, signed = TRUE))
+    })
+  }
+  if (is.finite(suppressWarnings(as.numeric(capex_avg_pct)[1]))) {
+    n_cx <- suppressWarnings(as.integer(capex_n_years)[1])
+    n_cx_txt <- if (is.finite(n_cx) && n_cx > 0L) as.character(n_cx) else "—"
+    growth_bullets <- c(growth_bullets, if (en) {
+      sprintf(
+        "CapEx / Revenue ≈ %s (latest) · avg %s over %s yrs (engineering heuristic).",
+        pct(capex_rev_pct), pct(capex_avg_pct), n_cx_txt
+      )
+    } else {
+      sprintf(
+        "資本支出 CapEx／營收 ≈ %s（最新）· 均值 %s（%s 年；工程啟發式）。",
+        pct(capex_rev_pct), pct(capex_avg_pct), n_cx_txt
+      )
+    })
+  }
+  growth_bullets <- c(growth_bullets, if (en) {
+    sprintf(
+      "Discount / Terminal: WACC %s · terminal g %s · mode %s · years %s.",
+      sc(wacc), sc(terminal_growth), sc(dcf_mode), sc(forecast_years)
+    )
+  } else {
+    sprintf(
+      "折現／終值假設：WACC %s · 永續成長率 g %s · 模式 %s · 預測年數 %s。",
+      sc(wacc), sc(terminal_growth), sc(dcf_mode), sc(forecast_years)
+    )
+  })
+
+  # Broker-style numbered 分析說明 paragraphs (investment view / methodology)
+  analysis_paragraphs <- list()
+  if (en) {
+    analysis_paragraphs <- list(
+      list(
+        title = "Stance & target",
+        body = sprintf(
+          paste0(
+            "Using primary Base fair value %s via %s versus last price %s, ",
+            "MOS is %s and upside is %s. The in-app stance label reflects MOS / price gap only — ",
+            "it is not a broker Buy/Hold/Reduce gate and must not be read as a buy signal."
+          ),
+          px(tgt), sc(primary_method), px(cur), pct(margin_of_safety), pct(upside_pct, signed = TRUE)
+        )
+      ),
+      list(
+        title = "Primary methodology",
+        body = {
+          rat <- sc(method_rationale, "")
+          meth <- sprintf(
+            "The ticker report anchors on %s (primary). Target price equals primary Base; Bear / Bull bands frame scenario risk.",
+            sc(primary_method)
+          )
+          if (nzchar(rat) && !identical(rat, "N/A")) paste0(meth, " Rationale: ", rat) else meth
+        }
+      ),
+      list(
+        title = "Multi-model cross-check",
+        body = paste(
+          sprintf("DCF / share %s", px(dcf_price)),
+          sprintf("DDM / share %s", px(ddm_value)),
+          sprintf("RI / share %s", px(ri_value)),
+          sprintf("P/B / share %s", px(pb_value)),
+          if (is.finite(sec)) sprintf("Secondary check (%s) %s", sc(secondary_label, "secondary"), px(sec)) else NULL,
+          if (nzchar(conf_lv) && !identical(conf_lv, "N/A")) {
+            sc_n <- suppressWarnings(as.numeric(confidence_score)[1])
+            if (is.finite(sc_n)) sprintf("confidence %s (%s)", conf_lv, sc_n) else sprintf("confidence %s", conf_lv)
+          } else NULL,
+          sep = "; "
+        )
+      ),
+      list(
+        title = "Discount, terminal g & CapEx",
+        body = paste(
+          sprintf(
+            "Discount / Terminal assumptions: WACC %s · terminal g %s · mode %s · forecast %s yrs.",
+            sc(wacc), sc(terminal_growth), sc(dcf_mode), sc(forecast_years)
+          ),
+          if (is.finite(suppressWarnings(as.numeric(capex_avg_pct)[1]))) {
+            n_cx <- suppressWarnings(as.integer(capex_n_years)[1])
+            sprintf(
+              " CapEx / Revenue ≈ %s latest · avg %s over %s yrs (engineering heuristic, user-adjustable in-app).",
+              pct(capex_rev_pct), pct(capex_avg_pct),
+              if (is.finite(n_cx) && n_cx > 0L) as.character(n_cx) else "—"
+            )
+          } else "",
+          sep = ""
+        )
+      ),
+      list(
+        title = "Scenario & sensitivity",
+        body = {
+          if (is.finite(bear) && is.finite(base) && is.finite(bull)) {
+            sprintf(
+              "Primary scenario band Bear / Base / Bull = %s / %s / %s. Review the WACC × terminal g sensitivity table when a DCF／DDM path is active.",
+              px(bear), px(base), px(bull)
+            )
+          } else {
+            "Scenario band incomplete — run the primary valuation path, then re-download for Bear / Base / Bull and sensitivity."
+          }
+        }
+      ),
+      list(
+        title = "Fundamentals gate & scope",
+        body = {
+          fs_txt <- if (is.finite(fs)) {
+            sprintf("Piotroski F-Score = %d / 9 (fundamentals gate only; never a buy signal). ", as.integer(fs))
+          } else ""
+          paste0(
+            fs_txt,
+            "Scope is ticker-only: peer rankings, industry screens, and lab-universe narratives are excluded. ",
+            "For research / education only — not investment advice."
+          )
+        }
+      )
+    )
+  } else {
+    analysis_paragraphs <- list(
+      list(
+        title = "投資立場與目標價",
+        body = sprintf(
+          paste0(
+            "依主模型「%s」Base 公允價值 %s 對照現價 %s，安全邊際 MOS 為 %s、潛在報酬為 %s。",
+            "App 內評等標籤僅反映 MOS／價差，不作券商買進／持有／減持門檻，亦非買進訊號。"
+          ),
+          sc(primary_method), px(tgt), px(cur), pct(margin_of_safety), pct(upside_pct, signed = TRUE)
+        )
+      ),
+      list(
+        title = "主模型方法論",
+        body = {
+          rat <- sc(method_rationale, "")
+          meth <- sprintf(
+            "本報告以「%s」為主模型錨點；目標價取自主模型 Base，Bear／Bull 區間用於情境風險框架。",
+            sc(primary_method)
+          )
+          if (nzchar(rat) && !identical(rat, "N/A")) paste0(meth, "方法說明：", rat) else meth
+        }
+      ),
+      list(
+        title = "多模型交叉檢核",
+        body = paste(
+          sprintf("DCF 每股合理價 %s", px(dcf_price)),
+          sprintf("DDM 每股合理價 %s", px(ddm_value)),
+          sprintf("RI 每股合理價 %s", px(ri_value)),
+          sprintf("P/B 每股合理價 %s", px(pb_value)),
+          if (is.finite(sec)) sprintf("副模型檢核（%s）%s", sc(secondary_label, "副模型"), px(sec)) else NULL,
+          if (nzchar(conf_lv) && !identical(conf_lv, "N/A")) {
+            sc_n <- suppressWarnings(as.numeric(confidence_score)[1])
+            if (is.finite(sc_n)) sprintf("估值可信度 %s（%s）", conf_lv, sc_n) else sprintf("估值可信度 %s", conf_lv)
+          } else NULL,
+          sep = "；"
+        )
+      ),
+      list(
+        title = "折現、終值 g 與 CapEx",
+        body = paste(
+          sprintf(
+            "折現／終值假設：WACC %s · 永續成長率 g %s · 模式 %s · 預測 %s 年。",
+            sc(wacc), sc(terminal_growth), sc(dcf_mode), sc(forecast_years)
+          ),
+          if (is.finite(suppressWarnings(as.numeric(capex_avg_pct)[1]))) {
+            n_cx <- suppressWarnings(as.integer(capex_n_years)[1])
+            sprintf(
+              "資本支出 CapEx／營收 ≈ %s（最新）· 均值 %s（%s 年；工程啟發式，可於 App 調整）。",
+              pct(capex_rev_pct), pct(capex_avg_pct),
+              if (is.finite(n_cx) && n_cx > 0L) as.character(n_cx) else "—"
+            )
+          } else "",
+          sep = ""
+        )
+      ),
+      list(
+        title = "情境區間與敏感度",
+        body = {
+          if (is.finite(bear) && is.finite(base) && is.finite(bull)) {
+            sprintf(
+              "主模型情境區間 Bear／Base／Bull＝%s／%s／%s。若已跑出 DCF／DDM 路徑，請一併參閱 WACC × 終值 g 敏感度表。",
+              px(bear), px(base), px(bull)
+            )
+          } else {
+            "情境區間尚未齊備——請先完成主模型試算後再下載，以帶出 Bear／Base／Bull 與敏感度。"
+          }
+        }
+      ),
+      list(
+        title = "體質檢核與報告範圍",
+        body = {
+          fs_txt <- if (is.finite(fs)) {
+            sprintf("Piotroski F-Score＝%d／9（僅作體質檢核閘門，絕非買進訊號）。", as.integer(fs))
+          } else ""
+          paste0(
+            fs_txt,
+            "本報告範圍僅限搜尋標的之個股分析：已排除同業排名、產業宇宙篩選與 Lab 敘事。",
+            "僅供研究／教育參考，不構成投資建議或要約。"
+          )
+        }
+      )
+    )
+  }
+
+  titles <- if (en) {
+    list(
+      doc_kicker = "Company Report",
+      doc_title = "Ticker Investment Report",
+      rating_label = "Stance (MOS / gap only)",
+      target_label = "Target price",
+      ref_label = "Reference price",
+      section1 = "I. Investment view",
+      section2 = "II. Company snapshot",
+      section3 = "III. Earnings & growth drivers",
+      section4 = "IV. Scenario & risk",
+      appendix = "Appendix — Financial statements (ticker)",
+      company_intro = "Company profile",
+      ops_outlook = "Operating & valuation snapshot",
+      growth_est = "Growth / CapEx / discount assumptions",
+      scenario = "Bear / Base / Bull & sensitivity",
+      fscore = "F-Score health check",
+      warnings = "Financial-statement alerts",
+      analysis_heading = "Analysis notes (numbered)",
+      lite_appendix_note = "Lite condensed PDF omits statement extracts — open Full mode for the appendix.",
+      disclaimer = paste0(
+        "This report is auto-generated by The YNow App for research and education only. ",
+        "It is not investment advice. Ratings show MOS / price gap only (not broker Buy/Sell gates). ",
+        "Peer rankings, industry screens, and lab-universe narratives are excluded — ticker-only analysis."
+      ),
+      no_kpi = "Insufficient financials for KPI table. Search a ticker first.",
+      no_fcf = "No FCFF path chart yet — run DCF on the valuation tab, then download again.",
+      no_sens = "No WACC × g sensitivity matrix yet (needs an active DCF / DDM path).",
+      no_warn = "No material statement alerts detected (still review footnotes / news).",
+      warn_title = "Detected statement alerts:",
+      basic_info = "Basic information",
+      multi_model = "Multi-model fair values"
+    )
+  } else {
+    list(
+      doc_kicker = "個股報告",
+      doc_title = "投資意見報告",
+      rating_label = "投資立場（僅列 MOS／價差）",
+      target_label = "目標價位",
+      ref_label = "參考價位",
+      section1 = "壹、投資建議",
+      section2 = "貳、公司概況",
+      section3 = "參、獲利及成長動能預估",
+      section4 = "肆、財務情境評估",
+      appendix = "附錄：財務簡表（個股）",
+      company_intro = "一、公司簡介",
+      ops_outlook = "二、營運與評價快覽",
+      growth_est = "一、成長／CapEx／折現假設",
+      scenario = "一、Bear／Base／Bull 與敏感度",
+      fscore = "二、F-Score 體質檢核",
+      warnings = "三、財報警訊",
+      analysis_heading = "分析說明（編號段落）",
+      lite_appendix_note = "Lite 精簡版省略財報附錄；完整附錄請改用 Full 模式下載。",
+      disclaimer = paste0(
+        "本報告由 The YNow App 自動產出，僅供研究與教育參考，不構成任何投資建議或要約。",
+        "評等僅列安全邊際 MOS／價差，不作券商買進／減持門檻。",
+        "已排除同業排名、產業宇宙篩選與 Lab 敘事——僅保留搜尋標的之個股分析。"
+      ),
+      no_kpi = "尚無足夠財報資料計算 KPI。請先搜尋股票並載入財報。",
+      no_fcf = "尚無 FCFF 預測圖。請於 DCF 分頁完成試算後再下載報告。",
+      no_sens = "尚無 WACC × g 敏感度矩陣（需已跑出 DCF／DDM 路徑）。",
+      no_warn = "系統未偵測到明顯財報警訊（仍請自行查核附註與新聞）。",
+      warn_title = "檢測到以下財報警訊：",
+      basic_info = "公司基本資訊",
+      multi_model = "多模型每股合理價"
+    )
+  }
+
+  list(
+    target_formula = target_formula,
+    ref_formula = ref_formula,
+    mos_formula = mos_formula,
+    upside_formula = upside_formula,
+    investment_bullets = bullets,
+    growth_bullets = growth_bullets,
+    analysis_paragraphs = analysis_paragraphs,
+    titles = titles,
+    implied_pb = implied_pb,
+    implied_pe = implied_pe,
+    spot_pb = spot_pb,
+    spot_pe = spot_pe
+  )
+}
+
 # HTML → PDF（shinyapps／本機容器常用 --no-sandbox）
 render_report_pdf <- function(html_path, pdf_path) {
+
   if (!requireNamespace("pagedown", quietly = TRUE)) {
     stop("需要 pagedown 套件以產出 PDF")
   }

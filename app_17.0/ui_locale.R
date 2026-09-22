@@ -46,6 +46,11 @@ locale_for_market <- function(mode = get_market_mode()) {
       "and API resources, applying comprehensive models for valuation."
     ),
     download_report = "Download Report (PDF)",
+    download_report_about = paste0(
+      "One-Click Investment Reports: Compiles ticker-only valuation (DCF／DDM／RI／P/B), ",
+      "KPIs, MOS, F-Score, and WACC×g sensitivity into a broker-style PDF — ",
+      "no peer ranking or lab-universe narrative."
+    ),
     snapshot_link = " Snapshot",
     snapshot_page_title = "Snapshot",
     snapshot_page_help = paste0(
@@ -916,8 +921,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     notif_bh_preset = "✅ Applied \"closer to buy-and-hold\": max=100%, min=40%, w_vg=0.35. Please restart the backtest.",
     notif_bt_fail = "❌ Backtest failed: {err}",
     notif_dcf_defaults = "🔁 DCF parameters reset to defaults",
-    notif_pdf_busy = "Generating PDF investment report — please wait…",
-    notif_pdf_ok = "✅ PDF investment report ready",
+    notif_pdf_busy = "Generating ticker PDF investment report — please wait…",
+    notif_pdf_ok = "✅ Ticker PDF investment report ready",
     notif_pdf_fail = "Report generation failed: {err}",
     notif_test_opened = "Opened Testing",
     notif_industry_catalog_fail = "Industry catalog load failed: {err}",
@@ -1161,6 +1166,10 @@ locale_for_market <- function(mode = get_market_mode()) {
       "並套用完整估值模型。"
     ),
     download_report = "下載報告 (PDF)",
+    download_report_about = paste0(
+      "一鍵投資意見報告：彙整個股估值（DCF／DDM／RI／P/B）、KPI、MOS、F-Score ",
+      "與 WACC×g 敏感度為券商風格 PDF——不含同業排名或 Lab 宇宙敘事。"
+    ),
     snapshot_link = " 快照",
     snapshot_page_title = "快照 Snapshot",
     snapshot_page_help = paste0(
@@ -1994,8 +2003,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     notif_bh_preset = "✅ 已套用「貼近買進持有」：max=100%、min=40%、w_vg=0.35。請重新啟動回測。",
     notif_bt_fail = "❌ 回測失敗：{err}",
     notif_dcf_defaults = "🔁 DCF 參數已回復預設",
-    notif_pdf_busy = "正在產出 PDF 投資意見報告，請稍候...",
-    notif_pdf_ok = "✅ PDF 投資意見報告已產出",
+    notif_pdf_busy = "正在產出個股 PDF 投資意見報告，請稍候…",
+    notif_pdf_ok = "✅ 個股 PDF 投資意見報告已產出",
     notif_pdf_fail = "報告產出失敗: {err}",
     notif_test_opened = "已開啟 Testing",
     notif_industry_catalog_fail = "產業目錄載入失敗: {err}",
