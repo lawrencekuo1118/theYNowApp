@@ -10191,7 +10191,8 @@ server <- function(input, output, session) {
     filename = function() {
       tk <- tryCatch(current_ticker(), error = function(e) "NA")
       if (is.null(tk) || !nzchar(as.character(tk))) tk <- "NA"
-      paste0("YNow_Report_", tk, "_", Sys.Date(), ".pdf")
+      lite_tag <- if (isTRUE(tryCatch(isolate(lite_mode()), error = function(e) FALSE))) "_Lite" else ""
+      paste0("YNow_Report", lite_tag, "_", tk, "_", Sys.Date(), ".pdf")
     },
     content = function(file) {
       tryCatch({
@@ -10233,7 +10234,7 @@ server <- function(input, output, session) {
         sec_pt <- .report_num(tryCatch(isolate(secondary_valuation_point()), error = function(e) NA))
         conf <- tryCatch(isolate(valuation_confidence()), error = function(e) NULL)
 
-        # 目標價＝主模型 Base；缺則依 primary key 回退
+        # 目標價＝主模型 Base；缺則依 primary key 回退（僅個股模型，不含同業／Lab）
         rating_anchor <- {
           if (!is.null(band) && is.finite(suppressWarnings(as.numeric(band$base)[1]))) {
             as.numeric(band$base)[1]
@@ -10268,8 +10269,13 @@ server <- function(input, output, session) {
           if (length(parts) > 1) industry_str <- trimws(sub("Industry:\\s*", "", parts[2]))
         }
 
+        rep_loc <- tryCatch(isolate(ui_locale()), error = function(e) "zh-TW")
+        if (!identical(as.character(rep_loc)[1], "en")) rep_loc <- "zh-TW"
+
         wacc_str <- if (identical(isolate(input$dcf_mode), "gordon")) {
           paste0(isolate(input$wacc_gordon), "%")
+        } else if (identical(rep_loc, "en")) {
+          paste0(isolate(input$wacc_stage1), "% / ", isolate(input$wacc_stage2), "% (Two-Stage)")
         } else {
           paste0(isolate(input$wacc_stage1), "% / ", isolate(input$wacc_stage2), "% (兩階段)")
         }
@@ -10282,37 +10288,89 @@ server <- function(input, output, session) {
           isolate(d_income_statement()), isolate(d_balance_sheet()), isolate(d_cash_flow())
         )
 
-        highlights <- c()
+        eps_bv <- .report_eps_bvps(
+          sum_df, isolate(d_income_statement()), isolate(d_balance_sheet())
+        )
+        # P/B 模組 BVPS 優先（已依股數／幣別對齊）
+        pb_bvps_in <- .report_num(tryCatch(isolate(input[["mod_pb-bvps"]]), error = function(e) NA))
+        if (is.finite(pb_bvps_in) && pb_bvps_in > 0) eps_bv$bvps <- pb_bvps_in
+
+        kpi_df <- build_report_kpi_df(
+          isolate(d_income_statement()), isolate(d_balance_sheet()), isolate(d_cash_flow())
+        )
+        roe_pct <- NA_real_
+        rev_g_pct <- NA_real_
+        if (!is.null(kpi_df) && is.data.frame(kpi_df) && nrow(kpi_df) > 0) {
+          roe_row <- grep("^ROE$", kpi_df[[1]], ignore.case = TRUE)
+          if (length(roe_row) >= 1L) {
+            roe_pct <- suppressWarnings(as.numeric(gsub("%", "", kpi_df[[2]][roe_row[1]])))
+          }
+          rg_row <- grep("營收成長|Revenue growth", kpi_df[[1]], ignore.case = TRUE)
+          if (length(rg_row) >= 1L) {
+            rev_g_pct <- suppressWarnings(as.numeric(gsub("%", "", kpi_df[[2]][rg_row[1]])))
+          }
+        }
+        capex_info <- .report_capex_revenue_ratio(
+          isolate(d_income_statement()), isolate(d_cash_flow())
+        )
+
+        sens_df <- tryCatch({
+          st <- isolate(sensitivity_state())
+          mat <- if (is.list(st) && is.list(st$built)) st$built$matrix else NULL
+          .report_sensitivity_df(mat)
+        }, error = function(e) NULL)
+
         px <- money_prefix()
-        if (is.finite(rating_info$upside_pct)) {
-          highlights <- c(highlights, sprintf(
-            "依主模型「%s」Base 評價，目標價 %s，潛在報酬 %+.1f%%，評等「%s」。",
-            val_method$method,
-            ifelse(is.finite(rating_anchor), paste0(px, round(rating_anchor, 2)), "N/A"),
-            rating_info$upside_pct, rating_info$rating
-          ))
+        dcf_mode_lab <- .report_dcf_mode_label(isolate(input$dcf_mode), locale = rep_loc)
+        sec_lab <- if (!is.null(rec_full$secondary)) {
+          tryCatch(.model_label(rec_full$secondary), error = function(e) as.character(rec_full$secondary))
+        } else {
+          NA_character_
         }
-        if (!is.null(band) && is.finite(band$bear) && is.finite(band$bull)) {
-          highlights <- c(highlights, sprintf(
-            "主模型區間 Bear/Base/Bull：%s%.2f / %s%.2f / %s%.2f。",
-            px, band$bear, px, band$base, px, band$bull
-          ))
-        }
-        if (is.finite(sec_pt) && !is.null(rec_full$secondary)) {
-          highlights <- c(highlights, sprintf(
-            "副模型（%s）檢核點：%s%.2f。",
-            .model_label(rec_full$secondary), px, sec_pt
-          ))
-        }
-        if (is.list(conf) && !is.null(conf$level)) {
-          highlights <- c(highlights, sprintf("估值可信度：%s（%s）。", conf$level, conf$score %||% "—"))
-        }
-        if (is.finite(dcf_price)) highlights <- c(highlights, paste0("DCF 每股合理價：", px, round(dcf_price, 2), "。"))
-        if (is.finite(ev_val)) highlights <- c(highlights, paste0("DCF 企業價值 (EV)：", format_dollar_abbr(ev_val), "。"))
-        if (is.finite(ddm_val)) highlights <- c(highlights, paste0("DDM 每股合理價：", px, round(ddm_val, 2), "。"))
-        if (is.finite(ri_val)) highlights <- c(highlights, paste0("RI 每股合理價：", px, round(ri_val, 2), "。"))
-        if (is.finite(pb_val)) highlights <- c(highlights, paste0("P/B 每股合理價：", px, round(pb_val, 2), "。"))
-        highlights <- c(highlights, val_method$rationale)
+
+        report_copy <- build_ticker_report_copy(
+          locale = rep_loc,
+          stock_code = display_ticker_for_market(
+            isolate(current_ticker()), isolate(market_mode())
+          ),
+          company_name = co_name,
+          sector = sector_str,
+          industry = industry_str,
+          current_price = cur_price,
+          target_price = rating_anchor,
+          primary_method = val_method$method,
+          method_rationale = val_method$rationale,
+          margin_of_safety = rating_info$margin_of_safety,
+          upside_pct = rating_info$upside_pct,
+          dcf_price = dcf_price,
+          ddm_value = ddm_val,
+          pb_value = pb_val,
+          ri_value = ri_val,
+          primary_bear = if (!is.null(band)) .report_num(band$bear) else NA_real_,
+          primary_base = if (!is.null(band)) .report_num(band$base) else rating_anchor,
+          primary_bull = if (!is.null(band)) .report_num(band$bull) else NA_real_,
+          secondary_point = sec_pt,
+          secondary_label = sec_lab,
+          confidence_level = if (is.list(conf)) conf$level else NA_character_,
+          confidence_score = if (is.list(conf)) conf$score else NA_real_,
+          wacc = wacc_str,
+          terminal_growth = paste0(isolate(input$sgr), "%"),
+          forecast_years = isolate(input$years),
+          dcf_mode = dcf_mode_lab,
+          eps = eps_bv$eps,
+          bvps = eps_bv$bvps,
+          pe_ratio = extract_summary_item(sum_df, "PE Ratio|Trailing P/E"),
+          market_cap = extract_summary_item(sum_df, "Market Cap"),
+          beta = extract_summary_item(sum_df, "^Beta"),
+          dividend_yield = extract_summary_item(sum_df, "Yield|Dividend"),
+          roe_pct = roe_pct,
+          rev_growth_pct = rev_g_pct,
+          capex_rev_pct = capex_info$ratio_pct,
+          capex_avg_pct = capex_info$avg_pct,
+          capex_n_years = capex_info$n_years,
+          fscore_total = fscore_info$total,
+          money_prefix = px
+        )
 
         tmp_html <- tempfile(fileext = ".html")
         rmarkdown::render(
@@ -10353,22 +10411,27 @@ server <- function(input, output, session) {
             wacc = wacc_str,
             terminal_growth = paste0(isolate(input$sgr), "%"),
             forecast_years = isolate(input$years),
-            dcf_mode = .report_dcf_mode_label(isolate(input$dcf_mode)),
+            dcf_mode = dcf_mode_lab,
             market_cap = extract_summary_item(sum_df, "Market Cap"),
             pe_ratio = extract_summary_item(sum_df, "PE Ratio|Trailing P/E"),
             beta = extract_summary_item(sum_df, "^Beta"),
             dividend_yield = extract_summary_item(sum_df, "Yield|Dividend"),
-            kpi_df = build_report_kpi_df(
-              isolate(d_income_statement()), isolate(d_balance_sheet()), isolate(d_cash_flow())
-            ),
+            eps = eps_bv$eps,
+            bvps = eps_bv$bvps,
+            kpi_df = kpi_df,
             fcf_plot_path = plot_path,
             warnings = if (length(warn_msgs) > 0) paste(warn_msgs, collapse = "\n") else "",
             fscore_total = fscore_info$total,
             fscore_quality = fscore_info$quality_flag,
             fscore_checklist = fscore_info$checklist,
-            investment_highlights = highlights,
+            investment_highlights = report_copy$investment_bullets,
             session_currency = isolate(session_currency()),
             fx_usd_twd = isolate(fx_usd_twd()),
+            report_locale = rep_loc,
+            report_copy = report_copy,
+            sensitivity_df = sens_df,
+            app_version = "v17.92",
+            report_condensed = isTRUE(isolate(lite_mode())),
             summary_df = {
               sd <- sum_df
               if (!is.null(sd) && is.data.frame(sd) && nrow(sd) > 0) {
@@ -11934,7 +11997,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.90"),
+      paste0("- **App：** The YNow App v17.92"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {
