@@ -51,12 +51,20 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Three tabs: manual adjustments vs the post-Search baseline (with annotated PDF); ",
       "current live parameters (download / upload restore CSV); and APP_DEFAULTS."
     ),
+    snapshot_page_help_lite = paste0(
+      "Lite shows System defaults (APP_DEFAULTS) used by Smart Analysis / Dashboard / Blue Chip. ",
+      "Full-only parameter tools (manual audit, live snapshot restore) stay in Full mode."
+    ),
     snapshot_tab_audit = "Manual adjustments (vs post-Search baseline)",
     snapshot_tab_current = "Current App Parameter Snapshot",
     snapshot_tab_defaults = "System defaults (APP_DEFAULTS)",
     snapshot_defaults_help = paste0(
       "Defaults written at App start (including items estimated from the default industry / Rf). ",
       "May differ from Current App Parameter Snapshot; fields can still be overridden on each page."
+    ),
+    snapshot_defaults_help_lite = paste0(
+      "Lite-relevant APP_DEFAULTS only (Smart Analysis engines, Dashboard / industry, Blue Chip). ",
+      "Rolling β, Backtest / HFV, and other Full-only seeds are hidden here."
     ),
     download_snapshot_btn = "Download Snapshot CSV",
     download_param_restore_btn = "Download restore CSV",
@@ -928,12 +936,20 @@ locale_for_market <- function(mode = get_market_mode()) {
       "三個小頁籤：相對 Search 後基準的手改參數（含標記截圖 PDF）；",
       "目前 App 執行中參數（可下載／上傳還原 CSV）；系統載入時 APP_DEFAULTS。"
     ),
+    snapshot_page_help_lite = paste0(
+      "簡化版僅顯示智慧分析／Dashboard／績優股排行會用到的系統預設參數（APP_DEFAULTS）。",
+      "手改稽核與即時參數還原等完整版工具請切回完整版。"
+    ),
     snapshot_tab_audit = "手改參數（相對 Search 後基準）",
     snapshot_tab_current = "目前 App 參數 Snapshot",
     snapshot_tab_defaults = "系統預設參數（APP_DEFAULTS）",
     snapshot_defaults_help = paste0(
       "App 啟動時寫入的預設值（含依預設產業／Rf 動態估出的項目）。",
       "與「目前參數」可能不同；欄位仍可在各分頁覆寫。"
+    ),
+    snapshot_defaults_help_lite = paste0(
+      "僅列出與簡化版相關的 APP_DEFAULTS（智慧分析引擎、Dashboard／產業、績優股排行）。",
+      "Rolling β、Backtest／HFV 等完整版種子參數於此隱藏。"
     ),
     download_snapshot_btn = "下載 Snapshot CSV",
     download_param_restore_btn = "下載還原 CSV",

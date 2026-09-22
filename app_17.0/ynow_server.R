@@ -2070,7 +2070,29 @@ server <- function(input, output, session) {
       capex_spike_prior_years = c("FCF", "暴衝判定前期年數", "不含最新年的前期均值窗口")
     )
 
+    # Lite Snapshot defaults: engines used by Smart Analysis / Dashboard / Blue Chip.
+    # Hide Full-only seeds (Rolling β UI, statement CF overlay, Backtest / HFV, legacy).
+    lite_default_keys <- c(
+      "stock_code", "industry_choice",
+      "years", "dcf_mode", "dcf_claim", "dcf_chart_mode", "g_growth_method", "custom_g",
+      "perpetual_g_method", "lifecycle_stage", "sgr", "wacc_gordon",
+      "yr_stage1", "g_stage1", "g_stage2", "wacc_stage1", "wacc_stage2",
+      "wacc_re", "wacc_rd", "wacc_rd_min", "wacc_rd_max", "use_est_rd", "wacc_tax", "use_est_re",
+      "capm_rf", "capm_beta", "sync_gs_beta", "capm_rm",
+      "beta_bl_source", "beta_bottomup_agg", "beta_u_apply_source", "beta_u_manual", "beta_peers",
+      "ddm_d0", "ddm_g", "ddm_ke", "ddm_sync_central_g", "ddm_mode", "ddm_g_stage1", "ddm_yr_stage1",
+      "ri_years", "ri_roe", "ri_payout", "roe_method",
+      "pb_bvps", "pb_tbvps", "pb_low", "pb_mid", "pb_high", "pb_basis",
+      "pb_use_industry", "pb_holdco_discount", "pb_target_mode",
+      "nav_holdco_discount", "nav_low", "nav_mid", "nav_high",
+      "apply_capex_spike_smooth", "capex_spike_mult", "capex_spike_avg_years", "capex_spike_prior_years"
+    )
+    lite_extra_keys <- c("roe_industry")
+
     keys <- names(APP_DEFAULTS)
+    if (isTRUE(input$ynow_lite_mode)) {
+      keys <- intersect(keys, lite_default_keys)
+    }
     rows <- lapply(keys, function(k) {
       meta <- label_map[[k]]
       if (is.null(meta)) {
@@ -2097,6 +2119,9 @@ server <- function(input, output, session) {
       c("Backtest", "圖表模型勾選", "bt_fv_models", "(none)", "HFV 圖預設不勾選，勾選才疊圖"),
       c("Backtest", "復盤模型單選", "bt_fv_replay_model", "dcf", "HFV 復盤／策略 FV 預設 DCF")
     )
+    if (isTRUE(input$ynow_lite_mode)) {
+      extra <- Filter(function(r) as.character(r[[3]])[1] %in% lite_extra_keys, extra)
+    }
     rows <- c(rows, extra)
 
     df <- as.data.frame(do.call(rbind, rows), stringsAsFactors = FALSE)
@@ -11792,7 +11817,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.78"),
+      paste0("- **App：** The YNow App v17.84"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

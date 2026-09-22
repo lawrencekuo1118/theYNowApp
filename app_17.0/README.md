@@ -1,6 +1,11 @@
-# The YNow App v17.78 — Valuation Methodology
+# The YNow App v17.84 — Valuation Methodology
 
 先分類，再選模型；先推導，再校正；先給區間，再給單點；先做基本面估值。
+
+## v17.84 重點
+- **Lite 資料來源列**：僅保留「快照」與「意見區」（隱藏「測試」）；快照頁僅「系統預設參數」，並過濾與簡化版無關的 APP_DEFAULTS
+- **智慧分析**：移除 Previous Close／Market Cap／EPS (TTM) 三個 header KPI（Dashboard 完整版仍保留）
+- **目錄**：`app_17.0/`；顯示版號 **v17.84**
 
 ## v17.78 重點
 - **分群宇宙 N**：依所選「宇宙檔數（N）」分析（含自訂／全部）；修正 Inf 二次 clamp 誤回預設 25

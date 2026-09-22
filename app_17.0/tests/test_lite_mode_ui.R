@@ -21,7 +21,8 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
     "lab_im_eq_label", "lab_im_eq_hint",
     "lab_im_eq_explain_title", "lab_im_eq_explain_body",
     "lab_im_include_adr_label", "lab_im_include_adr_hint",
-    "lite_toggle_title", "lite_toggle_aria"
+    "lite_toggle_title", "lite_toggle_aria",
+    "snapshot_page_help_lite", "snapshot_defaults_help_lite"
   )
   for (k in keys) {
     en <- .UI_STRINGS$en[[k]]
@@ -49,9 +50,39 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl('tabName = "smart_analysis"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-full-only", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_lab_im_detail_tab", txt, fixed = TRUE))
-  testthat::expect_true(grepl("The YNow App v17.83", txt, fixed = TRUE))
+  testthat::expect_true(grepl("The YNow App v17.84", txt, fixed = TRUE))
   testthat::expect_true(grepl("about_lite_intro_ui", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-lite-only", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-sidebar-test-link", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ensureLiteSnapshotDefaultsTab", txt, fixed = TRUE))
+  testthat::expect_true(grepl('data-value="snap_defaults"', txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow_snapshot_page_help_lite", txt, fixed = TRUE))
+  testthat::expect_true(grepl(
+    "body\\.ynow-lite[\\s\\S]*ynow-sidebar-test-link",
+    txt,
+    perl = TRUE
+  ))
+  testthat::expect_true(grepl(
+    "body\\.ynow-lite[\\s\\S]*snap_audit",
+    txt,
+    perl = TRUE
+  ))
+  # Header quote KPIs are Dashboard-only (not Smart Analysis)
+  testthat::expect_true(grepl(
+    "Header KPIs: Dashboard only",
+    txt,
+    fixed = TRUE
+  ))
+  testthat::expect_true(grepl(
+    'condition = "input.sidebar_tabs == \'dashboard\'"',
+    txt,
+    fixed = TRUE
+  ))
+  testthat::expect_false(grepl(
+    "input.sidebar_tabs == 'dashboard' || input.sidebar_tabs == 'smart_analysis'",
+    txt,
+    fixed = TRUE
+  ))
   # Lite About must not mount methodology outside ynow-full-only
   testthat::expect_true(grepl(
     "ynow-full-only[\\s\\S]*valuation_methodology_section_ui",
@@ -81,6 +112,7 @@ testthat::test_that("ynow_server wires Lite auto-calc and Smart Analysis outputs
   srv_path <- file.path("..", "ynow_server.R")
   txt <- paste(readLines(srv_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   testthat::expect_true(grepl("lite_mode <- reactive", txt, fixed = TRUE))
+  testthat::expect_true(grepl("lite_default_keys", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_lite_mode", txt, fixed = TRUE))
   testthat::expect_true(grepl("output$smart_analysis_summary", txt, fixed = TRUE))
   testthat::expect_true(grepl("output$smart_analysis_chart", txt, fixed = TRUE))

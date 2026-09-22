@@ -1078,9 +1078,9 @@ ui <- dashboardPage(
                   '<span class="ynow-app-title" id="ynow_app_title" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v17.83</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v17.84</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v17.83</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v17.84</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -1275,7 +1275,7 @@ ui <- dashboardPage(
         `data-toggle` = "tab",
         `data-value` = "snapshot",
         class = "ynow-sidebar-snapshot-link",
-        onclick = "Shiny.setInputValue('sidebar_tabs', 'snapshot', {priority: 'event'}); return false;",
+        onclick = "Shiny.setInputValue('sidebar_tabs', 'snapshot', {priority: 'event'}); setTimeout(function(){ try { if (window.ensureLiteSnapshotDefaultsTab) window.ensureLiteSnapshotDefaultsTab(); } catch (e) {} }, 0); return false;",
         icon("camera", class = "fa-fw"),
         tags$span(id = "ynow_snapshot_link_label", " Snapshot")
       ),
@@ -2239,6 +2239,15 @@ ui <- dashboardPage(
         }
         body.ynow-lite #dashboard_fin_report .nav-tabs > li:has(#ynow_dash_annotation_tab),
         body.ynow-lite #dashboard_fin_report .nav-tabs > li:has(> a[data-value="Annotation"]) {
+          display: none !important;
+        }
+        /* Lite: under Data Source keep Snapshot + Feedback only (hide Testing) */
+        body.ynow-lite .ynow-sidebar-test-link {
+          display: none !important;
+        }
+        /* Lite Snapshot: only System defaults tab */
+        body.ynow-lite #snapshot_report > .nav-tabs > li:has(> a[data-value="snap_audit"]),
+        body.ynow-lite #snapshot_report > .nav-tabs > li:has(> a[data-value="snap_current"]) {
           display: none !important;
         }
         .ynow-lite-only {
@@ -3633,6 +3642,12 @@ ui <- dashboardPage(
             if (snapTitle && s.snapshot_page_title) snapTitle.textContent = s.snapshot_page_title;
             var snapHelp = document.getElementById('ynow_snapshot_page_help');
             if (snapHelp && s.snapshot_page_help) snapHelp.textContent = s.snapshot_page_help;
+            var snapHelpLite = document.getElementById('ynow_snapshot_page_help_lite');
+            if (snapHelpLite && s.snapshot_page_help_lite) snapHelpLite.textContent = s.snapshot_page_help_lite;
+            var snapDefaultsHelpLite = document.getElementById('ynow_snapshot_defaults_help_lite');
+            if (snapDefaultsHelpLite && s.snapshot_defaults_help_lite) {
+              snapDefaultsHelpLite.textContent = s.snapshot_defaults_help_lite;
+            }
             var snapTabAudit = document.getElementById('ynow_snapshot_tab_audit');
             if (snapTabAudit && (s.snapshot_tab_audit || s.param_audit_title)) {
               snapTabAudit.textContent = s.snapshot_tab_audit || s.param_audit_title;
@@ -3866,6 +3881,7 @@ ui <- dashboardPage(
               if (window.Shiny && Shiny.setInputValue) {
                 Shiny.setInputValue('ynow_lite_mode', enabled, {priority: 'event'});
               }
+              if (enabled) ensureLiteSnapshotDefaultsTab();
               if (opts.navigate === false) return;
               var tab = currentSidebarTab();
               if (enabled) {
@@ -3874,6 +3890,16 @@ ui <- dashboardPage(
                 gotoTab('dashboard');
               }
             }
+            function ensureLiteSnapshotDefaultsTab() {
+              if (!document.body.classList.contains('ynow-lite')) return;
+              var a = document.querySelector('#snapshot_report a[data-value="snap_defaults"]');
+              if (!a) return;
+              try {
+                if (window.jQuery) window.jQuery(a).tab('show');
+                else if (typeof a.click === 'function') a.click();
+              } catch (eSnap) {}
+            }
+            window.ensureLiteSnapshotDefaultsTab = ensureLiteSnapshotDefaultsTab;
             function toggleLite() {
               applyLiteMode(!document.body.classList.contains('ynow-lite'));
             }
@@ -5823,9 +5849,10 @@ ui <- dashboardPage(
       br()
     ),
     
-    # Header KPIs: Dashboard + Smart Analysis (Previous Close / Market Cap / EPS TTM)
+    # Header KPIs: Dashboard only (Previous Close / Market Cap / EPS TTM).
+    # Smart Analysis (Lite) uses its own fair-value cards — no quote KPI strip.
     conditionalPanel(
-      condition = "input.sidebar_tabs == 'dashboard' || input.sidebar_tabs == 'smart_analysis'",
+      condition = "input.sidebar_tabs == 'dashboard'",
       fluidRow(
         class = "ynow-header-kpi-row",
         column(
@@ -6009,11 +6036,20 @@ ui <- dashboardPage(
       tabItem(
         tabName = "snapshot",
         h2(tags$span(id = "ynow_snapshot_page_title", "Snapshot")),
-        helpText(
+        tags$p(
           id = "ynow_snapshot_page_help",
+          class = "help-block ynow-full-only",
           paste0(
             "Three tabs: manual adjustments vs the post-Search baseline (with annotated PDF); ",
             "current live parameters (download / upload restore CSV); and APP_DEFAULTS."
+          )
+        ),
+        tags$p(
+          id = "ynow_snapshot_page_help_lite",
+          class = "help-block ynow-lite-only",
+          paste0(
+            "Lite shows System defaults (APP_DEFAULTS) used by Smart Analysis / Dashboard / Blue Chip. ",
+            "Full-only parameter tools (manual audit, live snapshot restore) stay in Full mode."
           )
         ),
         tabBox(
@@ -6174,10 +6210,20 @@ ui <- dashboardPage(
               style = "display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:10px; flex-wrap:wrap;",
               tags$span(
                 id = "ynow_snapshot_defaults_help",
+                class = "ynow-full-only",
                 style = "font-size:12.5px; color:#666; line-height:1.45;",
                 paste0(
                   "Defaults written at App start (including items estimated from the default industry / Rf). ",
                   "May differ from Current App Parameter Snapshot; fields can still be overridden on each page."
+                )
+              ),
+              tags$span(
+                id = "ynow_snapshot_defaults_help_lite",
+                class = "ynow-lite-only",
+                style = "font-size:12.5px; color:#666; line-height:1.45;",
+                paste0(
+                  "Lite-relevant APP_DEFAULTS only (Smart Analysis engines, Dashboard / industry, Blue Chip). ",
+                  "Rolling β, Backtest / HFV, and other Full-only seeds are hidden here."
                 )
               ),
               downloadButton(
