@@ -590,6 +590,36 @@ locale_for_market <- function(mode = get_market_mode()) {
       "editing here also switches the source to manual and syncs."
     ),
     # --- Decision Funnel ---
+    funnel_page_title = "YNOW Decision Funnel",
+    funnel_page_sub = paste0(
+      "Read Quality (F-Score) → Value (MOS) → Statement alerts in that order: ",
+      "start with the verdict and scorecards, then the checklist and accounting alerts. ",
+      "This is a decision-support report—not an order ticket."
+    ),
+    funnel_ch1_kicker = "Section I",
+    funnel_ch1_title = "Decision verdict",
+    funnel_ch2_kicker = "Section II",
+    funnel_ch2_title = "Quality checklist (F-Score)",
+    funnel_ch2_lead = paste0(
+      "Piotroski F-Score nine-item quality detail; pass/fail is a quality screen only—",
+      "not a standalone buy reason."
+    ),
+    funnel_ch3_kicker = "Section III",
+    funnel_ch3_title = "Statement alerts",
+    funnel_ch3_lead = paste0(
+      "Schilit-style automatic statement screening: alerts/watch items expand first; ",
+      "passes and missing-data items stay collapsed. Veto / risk context only—not a buy signal."
+    ),
+    funnel_sec_method = "How to read this report",
+    funnel_method_body = paste0(
+      "Reading order: Quality (F-Score) → Value (MOS vs Base) → Statement alerts. ",
+      "The verdict combines these layers into a scenario label; trend momentum (Timing) lives under Testing ",
+      "and does not set fair value."
+    ),
+    funnel_method_caveat = paste0(
+      "Labels and scores are research / decision support only—not brokerage order tickets. ",
+      "HFV scenarios are veto context only, never a bullish cue."
+    ),
     funnel_fscore_list_title = "F-Score quality checklist",
     funnel_vbox_fscore = "Quality filter (F-Score)",
     funnel_vbox_mos = "Margin of Safety (vs Base)",
@@ -1465,6 +1495,29 @@ locale_for_market <- function(mode = get_market_mode()) {
       "在此修改數值時也會自動改選手動來源並同步。"
     ),
     # --- Decision Funnel ---
+    funnel_page_title = "YNOW 決策漏斗",
+    funnel_page_sub = paste0(
+      "以品質（F-Score）→ 價值（MOS）→ 警訊（財報）的順序閱讀：",
+      "先看決策結論與分數卡，再檢視檢核明細與財報警訊。",
+      "這是決策輔助報告，不是下單指令。"
+    ),
+    funnel_ch1_kicker = "第一章",
+    funnel_ch1_title = "決策結論",
+    funnel_ch2_kicker = "第二章",
+    funnel_ch2_title = "品質檢核（F-Score）",
+    funnel_ch2_lead = "Piotroski F-Score 九項品質檢核明細；通過／未通過僅供體質篩選，不單獨構成買進理由。",
+    funnel_ch3_kicker = "第三章",
+    funnel_ch3_title = "財報警訊",
+    funnel_ch3_lead = paste0(
+      "Schilit 財報詭計自動判讀：警示／觀察優先展開；通過與資料不足項摺疊。",
+      "屬否決／風險提示，非買進訊號。"
+    ),
+    funnel_sec_method = "如何閱讀本報告",
+    funnel_method_body = paste0(
+      "閱讀順序：品質（F-Score）→ 價值（相對 Base 的 MOS）→ 財報警訊。",
+      "結論區綜合這三層給出情境標籤；趨勢動能（Timing）輔助在「測試」分頁，不決定合理價。"
+    ),
+    funnel_method_caveat = "標籤與分數僅供研究／決策輔助，不是券商下單指令；HFV 情境僅作否決語境，不作看漲依據。",
     funnel_fscore_list_title = "F-Score 體質檢核清單",
     funnel_vbox_fscore = "體質過濾 (F-Score)",
     funnel_vbox_mos = "安全邊際 (vs Base)",

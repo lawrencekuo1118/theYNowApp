@@ -22,32 +22,143 @@ decision_valuation_compare_ui <- function(id) {
 decision_ui <- function(id) {
   ns <- NS(id)
   tagList(
-    fluidRow(
-      valueBoxOutput(ns("vbox_fscore"), width = 4),
-      uiOutput(ns("vbox_mos")),
-      uiOutput(ns("vbox_fraud"))
-    ),
-    fluidRow(
-      # Verdict on top; F-Score checklist below (no outer box chrome / title)
-      column(
-        width = 12,
-        uiOutput(ns("ui_recommendation"))
+    tags$div(
+      class = "ynow-funnel-report",
+
+      # --- Masthead ---
+      tags$div(
+        class = "ynow-funnel-report__masthead",
+        h2(tags$b(id = "ynow_funnel_page_title", "YNOW 決策漏斗")),
+        p(
+          id = "ynow_funnel_page_sub",
+          class = "ynow-funnel-report__lead",
+          paste0(
+            "以品質（F-Score）→ 價值（MOS）→ 警訊（財報）的順序閱讀：",
+            "先看決策結論與分數卡，再檢視檢核明細與財報警訊。",
+            "這是決策輔助報告，不是下單指令。"
+          )
+        )
       ),
-      column(
-        width = 12,
-        style = "margin-top: 12px;",
-        h4(tags$span(
-          id = "ynow_funnel_fscore_list_title",
-          "F-Score quality checklist"
-        )),
-        tableOutput(ns("table_checklist"))
-      )
-    ),
-    fluidRow(
-      column(
-        width = 12,
-        style = "padding: 0 15px 8px 15px;",
-        uiOutput(ns("shenanigans_panel"))
+
+      # --- Chapter I: Verdict first (like HFV chart above controls) ---
+      tags$section(
+        class = "ynow-funnel-chapter",
+        tags$div(
+          class = "ynow-funnel-chapter__head",
+          tags$span(
+            class = "ynow-funnel-chapter__kicker",
+            id = "ynow_funnel_ch1_kicker",
+            "第一章"
+          ),
+          tags$h3(
+            class = "ynow-funnel-chapter__title",
+            id = "ynow_funnel_ch1_title",
+            "決策結論"
+          )
+        ),
+        tags$div(
+          class = "ynow-funnel-chapter__body",
+          fluidRow(
+            class = "ynow-funnel-scorecards",
+            valueBoxOutput(ns("vbox_fscore"), width = 4),
+            uiOutput(ns("vbox_mos")),
+            uiOutput(ns("vbox_fraud"))
+          ),
+          uiOutput(ns("ui_recommendation"))
+        )
+      ),
+
+      # --- Chapter II: F-Score evidence ---
+      tags$section(
+        class = "ynow-funnel-chapter",
+        tags$div(
+          class = "ynow-funnel-chapter__head",
+          tags$span(
+            class = "ynow-funnel-chapter__kicker",
+            id = "ynow_funnel_ch2_kicker",
+            "第二章"
+          ),
+          tags$h3(
+            class = "ynow-funnel-chapter__title",
+            id = "ynow_funnel_ch2_title",
+            "品質檢核（F-Score）"
+          )
+        ),
+        tags$div(
+          class = "ynow-funnel-chapter__body",
+          tags$p(
+            id = "ynow_funnel_ch2_lead",
+            class = "ynow-funnel-chapter__lead",
+            "Piotroski F-Score 九項品質檢核明細；通過／未通過僅供體質篩選，不單獨構成買進理由。"
+          ),
+          h4(
+            style = "display:none;",
+            tags$span(
+              id = "ynow_funnel_fscore_list_title",
+              "F-Score quality checklist"
+            )
+          ),
+          tags$div(
+            class = "ynow-funnel-table-wrap",
+            tableOutput(ns("table_checklist"))
+          )
+        )
+      ),
+
+      # --- Chapter III: Statement alerts ---
+      tags$section(
+        class = "ynow-funnel-chapter",
+        tags$div(
+          class = "ynow-funnel-chapter__head",
+          tags$span(
+            class = "ynow-funnel-chapter__kicker",
+            id = "ynow_funnel_ch3_kicker",
+            "第三章"
+          ),
+          tags$h3(
+            class = "ynow-funnel-chapter__title",
+            id = "ynow_funnel_ch3_title",
+            "財報警訊"
+          )
+        ),
+        tags$div(
+          class = "ynow-funnel-chapter__body",
+          tags$p(
+            id = "ynow_funnel_ch3_lead",
+            class = "ynow-funnel-chapter__lead",
+            "Schilit 財報詭計自動判讀：警示／觀察優先展開；通過與資料不足項摺疊。屬否決／風險提示，非買進訊號。"
+          ),
+          uiOutput(ns("shenanigans_panel"))
+        )
+      ),
+
+      # --- Appendix: how to read ---
+      box(
+        title = tagList(
+          icon("book-open"),
+          tags$span(id = "ynow_funnel_sec_method", "如何閱讀本報告")
+        ),
+        width = NULL,
+        status = "primary",
+        solidHeader = FALSE,
+        collapsible = TRUE,
+        collapsed = TRUE,
+        tags$div(
+          class = "ynow-funnel-method",
+          tags$p(
+            id = "ynow_funnel_method_body",
+            style = "font-size:12.5px;color:#444;line-height:1.55;margin:0 0 10px 0;",
+            paste0(
+              "閱讀順序：品質（F-Score）→ 價值（相對 Base 的 MOS）→ 財報警訊。",
+              "結論區綜合這三層給出情境標籤；趨勢動能（Timing）輔助在「測試」分頁，不決定合理價。"
+            )
+          ),
+          tags$p(
+            id = "ynow_funnel_method_caveat",
+            style = "font-size:11.5px;color:#888;line-height:1.45;margin:0;",
+            "標籤與分數僅供研究／決策輔助，不是券商下單指令；HFV 情境僅作否決語境，不作看漲依據。"
+          )
+        )
       )
     )
   )

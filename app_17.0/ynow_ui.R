@@ -1078,9 +1078,9 @@ ui <- dashboardPage(
                   '<span class="ynow-app-title" id="ynow_app_title" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v17.86</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v17.87</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v17.86</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v17.87</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -3811,6 +3811,32 @@ ui <- dashboardPage(
             if (manHead && s.beta_manual_heading) manHead.textContent = s.beta_manual_heading;
             var manHelp = document.getElementById('ynow_beta_manual_help');
             if (manHelp && s.beta_manual_help) manHelp.textContent = s.beta_manual_help;
+            var funnelPageTitle = document.getElementById('ynow_funnel_page_title');
+            if (funnelPageTitle && s.funnel_page_title) funnelPageTitle.textContent = s.funnel_page_title;
+            var funnelPageSub = document.getElementById('ynow_funnel_page_sub');
+            if (funnelPageSub && s.funnel_page_sub) funnelPageSub.textContent = s.funnel_page_sub;
+            var funnelCh1K = document.getElementById('ynow_funnel_ch1_kicker');
+            if (funnelCh1K && s.funnel_ch1_kicker) funnelCh1K.textContent = s.funnel_ch1_kicker;
+            var funnelCh1T = document.getElementById('ynow_funnel_ch1_title');
+            if (funnelCh1T && s.funnel_ch1_title) funnelCh1T.textContent = s.funnel_ch1_title;
+            var funnelCh2K = document.getElementById('ynow_funnel_ch2_kicker');
+            if (funnelCh2K && s.funnel_ch2_kicker) funnelCh2K.textContent = s.funnel_ch2_kicker;
+            var funnelCh2T = document.getElementById('ynow_funnel_ch2_title');
+            if (funnelCh2T && s.funnel_ch2_title) funnelCh2T.textContent = s.funnel_ch2_title;
+            var funnelCh2Lead = document.getElementById('ynow_funnel_ch2_lead');
+            if (funnelCh2Lead && s.funnel_ch2_lead) funnelCh2Lead.textContent = s.funnel_ch2_lead;
+            var funnelCh3K = document.getElementById('ynow_funnel_ch3_kicker');
+            if (funnelCh3K && s.funnel_ch3_kicker) funnelCh3K.textContent = s.funnel_ch3_kicker;
+            var funnelCh3T = document.getElementById('ynow_funnel_ch3_title');
+            if (funnelCh3T && s.funnel_ch3_title) funnelCh3T.textContent = s.funnel_ch3_title;
+            var funnelCh3Lead = document.getElementById('ynow_funnel_ch3_lead');
+            if (funnelCh3Lead && s.funnel_ch3_lead) funnelCh3Lead.textContent = s.funnel_ch3_lead;
+            var funnelSecMethod = document.getElementById('ynow_funnel_sec_method');
+            if (funnelSecMethod && s.funnel_sec_method) funnelSecMethod.textContent = s.funnel_sec_method;
+            var funnelMethodBody = document.getElementById('ynow_funnel_method_body');
+            if (funnelMethodBody && s.funnel_method_body) funnelMethodBody.textContent = s.funnel_method_body;
+            var funnelMethodCaveat = document.getElementById('ynow_funnel_method_caveat');
+            if (funnelMethodCaveat && s.funnel_method_caveat) funnelMethodCaveat.textContent = s.funnel_method_caveat;
             var funnelFs = document.getElementById('ynow_funnel_fscore_list_title');
             if (funnelFs && s.funnel_fscore_list_title) funnelFs.textContent = s.funnel_fscore_list_title;
             var funnelMomTitle = document.getElementById('ynow_funnel_mom_box_title');
@@ -5223,6 +5249,105 @@ ui <- dashboardPage(
           color: #999;
           border: 1px solid #e5e5e5;
           font-weight: 600;
+        }
+
+        /* YNOW Decision Funnel — report shell (same logic as HFV) */
+        .ynow-funnel-report {
+          max-width: 1200px;
+          margin: 0 auto 24px auto;
+        }
+        .ynow-funnel-report__masthead {
+          margin: 0 0 16px 0;
+          padding: 4px 2px 14px 2px;
+          border-bottom: 2px solid #1a1a1a;
+        }
+        .ynow-funnel-report__masthead h2 {
+          margin: 0 0 8px 0;
+          font-size: clamp(20px, 2.6vw, 28px);
+          font-weight: 700;
+          letter-spacing: -0.01em;
+          color: #1a1a1a;
+        }
+        .ynow-funnel-report__lead {
+          margin: 0;
+          max-width: 58em;
+          font-size: 13.5px;
+          line-height: 1.55;
+          color: #555;
+        }
+        .ynow-funnel-chapter {
+          margin: 0 0 18px 0;
+          padding: 0;
+          background: #fff;
+          border: 1px solid #e6e6e6;
+          border-radius: 8px;
+          overflow: hidden;
+        }
+        .ynow-funnel-chapter__head {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: baseline;
+          gap: 6px 12px;
+          padding: 12px 16px;
+          background: #fff;
+          border-bottom: 1px solid #ececec;
+        }
+        .ynow-funnel-chapter__kicker {
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          color: #888;
+        }
+        .ynow-funnel-chapter__title {
+          margin: 0;
+          font-size: 16px;
+          font-weight: 700;
+          color: #1a1a1a;
+          line-height: 1.35;
+        }
+        .ynow-funnel-chapter__body {
+          padding: 14px 16px 16px 16px;
+        }
+        .ynow-funnel-chapter__lead {
+          margin: 0 0 12px 0;
+          font-size: 12.5px;
+          line-height: 1.5;
+          color: #666;
+        }
+        .ynow-funnel-scorecards {
+          margin: 0 0 4px 0;
+        }
+        .ynow-funnel-scorecards .info-box,
+        .ynow-funnel-scorecards .small-box {
+          margin-bottom: 12px;
+        }
+        .ynow-funnel-table-wrap {
+          overflow-x: auto;
+          width: 100%;
+        }
+        .ynow-funnel-table-wrap table {
+          width: 100% !important;
+        }
+        .ynow-funnel-report > .box {
+          margin-bottom: 14px;
+          border-radius: 8px;
+          box-shadow: none;
+          border: 1px solid #e6e6e6;
+        }
+        .ynow-funnel-report > .box > .box-header {
+          padding: 10px 14px;
+        }
+        .ynow-funnel-report > .box > .box-body {
+          padding: 12px 14px 14px 14px;
+        }
+        @media (max-width: 767px) {
+          .ynow-funnel-chapter__body {
+            padding: 12px;
+          }
+          .ynow-funnel-report__masthead {
+            padding-bottom: 12px;
+          }
         }
 
         /* YNOW：Schilit 自動判讀 */
