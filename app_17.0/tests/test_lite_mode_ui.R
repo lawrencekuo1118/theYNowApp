@@ -18,6 +18,9 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
     "smart_calc_pending", "smart_reason_title",
     "smart_scenario_title", "smart_scenario_two_stage", "smart_scenario_gordon",
     "smart_scenario_sgr", "smart_scenario_claim",
+    "lab_im_eq_label", "lab_im_eq_hint",
+    "lab_im_eq_explain_title", "lab_im_eq_explain_body",
+    "lab_im_include_adr_label", "lab_im_include_adr_hint",
     "lite_toggle_title", "lite_toggle_aria"
   )
   for (k in keys) {
@@ -31,6 +34,10 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
   testthat::expect_true(grepl("參數情境", .UI_STRINGS$`zh-TW`$smart_page_sub, fixed = TRUE))
   testthat::expect_true(grepl("parameter scenario", .UI_STRINGS$en$smart_page_sub, fixed = TRUE))
   testthat::expect_identical(.UI_STRINGS$`zh-TW`$smart_scenario_title, "已套用參數情境：")
+  testthat::expect_identical(.UI_STRINGS$`zh-TW`$lab_im_eq_label, "盈餘品質")
+  testthat::expect_identical(.UI_STRINGS$en$lab_im_eq_label, "Earnings quality")
+  testthat::expect_identical(.UI_STRINGS$`zh-TW`$lab_im_eq_explain_title, "盈餘品質：")
+  testthat::expect_true(grepl("OCF", .UI_STRINGS$`zh-TW`$lab_im_eq_explain_body, fixed = TRUE))
 })
 
 testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hooks", {
@@ -42,7 +49,10 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl('tabName = "smart_analysis"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-full-only", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_lab_im_detail_tab", txt, fixed = TRUE))
-  testthat::expect_true(grepl("The YNow App v17.81", txt, fixed = TRUE))
+  testthat::expect_true(grepl("The YNow App v17.82", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-lab-im-eq-adr-row", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow_lab_im_eq_explain", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-lab-im-eq-explain ynow-lite-only", txt, fixed = TRUE))
 })
 
 testthat::test_that("ynow_server wires Lite scenario apply before auto-calc", {

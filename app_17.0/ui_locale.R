@@ -204,6 +204,17 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Checked by default: keep US-listed ADRs / foreign issuers in the evaluation pool. ",
       "Uncheck to exclude ADRs before Candidate truncate and evaluation."
     ),
+    lab_im_eq_label = "Earnings quality",
+    lab_im_eq_hint = paste0(
+      "Checked by default: Top 10 and Detail keep only names that pass earnings-quality checks. ",
+      "Uncheck to skip that filter. Shortfalls are not padded to N."
+    ),
+    lab_im_eq_explain_title = "Earnings quality:",
+    lab_im_eq_explain_body = paste0(
+      "When checked (default), the leaderboard keeps only names that pass earnings-quality checks ",
+      "(OCF vs operating earnings — helps flag cash-flow vs reported-profit gaps). ",
+      "Uncheck to skip that filter. Shortfalls are not padded to N."
+    ),
     lab_im_lb_status = paste0(
       "Top 10 shows %d/10 (qualified %d / evaluated %d). ",
       "N = post-analysis display cap; Top 10 takes at most 10 qualified names and does not pad to fill 10."
@@ -1059,6 +1070,17 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_include_adr_hint = paste0(
       "預設勾選：評估池含美股上市 ADR／外國發行人；",
       "取消勾選則排除 ADR 後再套用候選截斷與評估。"
+    ),
+    lab_im_eq_label = "盈餘品質",
+    lab_im_eq_hint = paste0(
+      "預設勾選：排行榜／明細只列盈餘品質通過者；",
+      "取消勾選則不過濾。合格不足 N 時不湊滿。"
+    ),
+    lab_im_eq_explain_title = "盈餘品質：",
+    lab_im_eq_explain_body = paste0(
+      "預設勾選時，排行榜只列通過盈餘品質檢核者（OCF 與營運獲利交叉比對，",
+      "協助排除現金流與帳面獲利落差過大的標的）；取消勾選則不過濾。",
+      "合格不足 N 時不湊滿。"
     ),
     lab_im_lb_status = paste0(
       "前十名顯示 %d／10（合格 %d／已評估 %d）。",
