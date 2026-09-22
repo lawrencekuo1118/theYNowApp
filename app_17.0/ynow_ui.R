@@ -1078,9 +1078,9 @@ ui <- dashboardPage(
                   '<span class="ynow-app-title" id="ynow_app_title" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v17.90</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v17.91</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v17.90</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v17.91</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -1283,6 +1283,17 @@ ui <- dashboardPage(
         onclick = "Shiny.setInputValue('sidebar_tabs', 'snapshot', {priority: 'event'}); setTimeout(function(){ try { if (window.ensureLiteSnapshotDefaultsTab) window.ensureLiteSnapshotDefaultsTab(); } catch (e) {} }, 0); return false;",
         icon("camera", class = "fa-fw"),
         tags$span(id = "ynow_snapshot_link_label", " Snapshot")
+      ),
+      # Testing：側邊欄小按鈕（完整版）；供後續實驗／測試功能入口；Lite 隱藏
+      tags$a(
+        id = "ynow_sidebar_test_btn",
+        href = "#shiny-tab-testing",
+        `data-toggle` = "tab",
+        `data-value` = "testing",
+        class = "ynow-sidebar-snapshot-link ynow-sidebar-test-link ynow-full-only",
+        onclick = "Shiny.setInputValue('sidebar_tabs', 'testing', {priority: 'event'}); Shiny.setInputValue('sidebar_test_click', (window.__ynowTestClicks=(window.__ynowTestClicks||0)+1), {priority: 'event'}); return false;",
+        icon("flask", class = "fa-fw"),
+        tags$span(id = "ynow_test_link_label", " Testing")
       ),
       # 意見區：收集使用者回饋，系統性開 GitHub Issue
       tags$a(
@@ -2151,6 +2162,7 @@ ui <- dashboardPage(
         }
         .ynow-sidebar-feedback-link { margin-left: 8px; }
         .ynow-sidebar-feedback-link { margin-left: 8px; }
+        .ynow-sidebar-test-link { margin-left: 8px; }
         /* 側欄完整 LOGO：Recent Search 橫線下、Download Report 正上方；等比例放大 */
         .ynow-sidebar-brand {
           display: flex;
@@ -2236,9 +2248,12 @@ ui <- dashboardPage(
           display: none !important;
         }
         /* Lite: under Data Source keep Snapshot + Feedback only;
-           Quant Backtest Lab stays Full-only (same policy as former Testing link) */
+           Quant Backtest Lab + Testing foot link stay Full-only */
         body.ynow-lite .sidebar-menu a[data-value="lab_notes"],
         body.ynow-lite .sidebar-menu li:has(> a[data-value="lab_notes"]) {
+          display: none !important;
+        }
+        body.ynow-lite .ynow-sidebar-test-link {
           display: none !important;
         }
         /* Lite Snapshot: only System defaults tab */
@@ -4041,8 +4056,18 @@ ui <- dashboardPage(
               var k = el.getAttribute('data-key');
               if (k && s[k]) el.textContent = s[k];
             });
+            var testL = document.getElementById('ynow_test_link_label');
+            if (testL && s.test_link) testL.textContent = s.test_link;
             var fb = document.getElementById('ynow_feedback_link_label');
             if (fb && s.feedback_link) fb.textContent = s.feedback_link;
+            var testTitle = document.getElementById('ynow_testing_page_title');
+            if (testTitle && s.testing_page_title) testTitle.textContent = s.testing_page_title;
+            var testSub = document.getElementById('ynow_testing_page_sub');
+            if (testSub && s.testing_page_sub) testSub.textContent = s.testing_page_sub;
+            var testBoxTitle = document.getElementById('ynow_testing_box_title');
+            if (testBoxTitle && s.testing_box_title) testBoxTitle.textContent = s.testing_box_title;
+            var testBoxBody = document.getElementById('ynow_testing_box_body');
+            if (testBoxBody && s.testing_box_body) testBoxBody.textContent = s.testing_box_body;
             var runBt = document.getElementById('run_bt');
             if (runBt && s.btn_run_bt) {
               var runIcon = runBt.querySelector('i');
@@ -4172,7 +4197,8 @@ ui <- dashboardPage(
           (function () {
             var FULL_ONLY_TABS = [
               'get_started', 'nav_calculator', 'dcf_calculator', 'ddm_calculator',
-              'ri_calculator', 'pb_calculator', 'hfv', 'decision_checklist'
+              'ri_calculator', 'pb_calculator', 'hfv', 'decision_checklist',
+              'lab_notes', 'testing'
             ];
             function currentSidebarTab() {
               var active = document.querySelector('.sidebar-menu li.active > a[data-value]');
@@ -8863,6 +8889,41 @@ ui <- dashboardPage(
               style = "color:#555; margin-bottom:0;",
               tags$li(id = "ynow_bt_other_item1", "Mature-stock P/E · EV engine (planned 14.1+)"),
               tags$li(id = "ynow_bt_other_item2", "Other experimental tools not yet finalized")
+            )
+          )
+        )
+      ),
+
+      # ==========================================
+      # 🧪 Testing：完整版側邊欄小按鈕入口（供後續實驗／測試功能）
+      # ==========================================
+      tabItem(
+        tabName = "testing",
+        fluidRow(
+          column(
+            width = 12,
+            h2(tags$b(id = "ynow_testing_page_title", "Testing")),
+            p(
+              id = "ynow_testing_page_sub",
+              paste0(
+                "Full-only sandbox for upcoming experiments and feature trials. ",
+                "Quant Backtest Lab remains on the main sidebar. Lite mode hides this entry."
+              )
+            ),
+            tags$hr()
+          )
+        ),
+        fluidRow(
+          box(
+            width = 12, status = "info", solidHeader = TRUE,
+            title = tagList(icon("flask"), tags$span(id = "ynow_testing_box_title", "Sandbox")),
+            tags$p(
+              id = "ynow_testing_box_body",
+              style = "color:#555; line-height:1.5; margin:0;",
+              paste0(
+                "Reserved space for temporary UI / valuation experiments before they graduate ",
+                "into Dashboard, Smart Analysis, or Quant Backtest Lab."
+              )
             )
           )
         )

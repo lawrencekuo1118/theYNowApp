@@ -22,7 +22,9 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
     "lab_im_eq_explain_title", "lab_im_eq_explain_body",
     "lab_im_include_adr_label", "lab_im_include_adr_hint",
     "lite_toggle_title", "lite_toggle_aria",
-    "snapshot_page_help_lite", "snapshot_defaults_help_lite"
+    "snapshot_page_help_lite", "snapshot_defaults_help_lite",
+    "test_link", "testing_page_title", "testing_page_sub",
+    "testing_box_title", "testing_box_body"
   )
   for (k in keys) {
     en <- .UI_STRINGS$en[[k]]
@@ -50,7 +52,7 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl('tabName = "smart_analysis"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-full-only", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_lab_im_detail_tab", txt, fixed = TRUE))
-  testthat::expect_true(grepl("The YNow App v17.90", txt, fixed = TRUE))
+  testthat::expect_true(grepl("The YNow App v17.91", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-report", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-toolbar", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-chapter", txt, fixed = TRUE))
@@ -64,16 +66,24 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl('tabName = "lab_notes"', txt, fixed = TRUE))
   testthat::expect_true(grepl("about_lite_intro_ui", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-lite-only", txt, fixed = TRUE))
-  testthat::expect_false(grepl("ynow-sidebar-test-link", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-sidebar-test-link", txt, fixed = TRUE))
+  testthat::expect_true(grepl('tabName = "testing"', txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow_sidebar_test_btn", txt, fixed = TRUE))
   testthat::expect_true(grepl("ensureLiteSnapshotDefaultsTab", txt, fixed = TRUE))
   testthat::expect_true(grepl('value = "snap_defaults"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_snapshot_page_help_lite", txt, fixed = TRUE))
-  # Lite must hide Quant Backtest Lab sidebar (Full-only; no Testing foot link)
+  # Lite must hide Quant Backtest Lab sidebar and Testing foot link (Full-only)
   testthat::expect_true(grepl(
     "body\\.ynow-lite[\\s\\S]*data-value=\"lab_notes\"",
     txt,
     perl = TRUE
   ))
+  testthat::expect_true(grepl(
+    "body\\.ynow-lite[\\s\\S]*ynow-sidebar-test-link",
+    txt,
+    perl = TRUE
+  ))
+
   testthat::expect_true(grepl(
     "body\\.ynow-lite[\\s\\S]*snap_audit",
     txt,
