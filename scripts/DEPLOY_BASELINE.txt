@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12590349
+bundleId=12590436
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=24ab7718bc2e91f4cf77327eae551f29459f45fa
-commit=24ab7718bc2e91f4cf77327eae551f29459f45fa
-short=24ab771
-message=Promote Quant Backtest Lab to a Full-only sidebar tab and rename Blue Chip Leaderboard (v17.90).
-captured_at=2026-09-22T15:26:32Z
+aligned_git=3fa16c17f0260be5028d8ddc468d6f7a869a0eda
+commit=3fa16c17f0260be5028d8ddc468d6f7a869a0eda
+short=3fa16c1
+message=Improve deploy session continuity with auto-reconnect and optional Refresh (v17.91).
+captured_at=2026-09-22T15:44:07Z
 source_branch=master
-display_version=v17.90
-note=Canonical live line is app_17.0. Bundle 12590349 = tip v17.90 Quant Backtest Lab as Full-only main sidebar tab (after YNOW); chapter-linked default-collapsed controls; Blue Chip Leaderboard rename; Lite hides lab. Deploy via scripts/deploy_app_17.R.
+display_version=v17.91
+note=Canonical live line is app_17.0. Bundle 12590436 = tip v17.91 deploy continuity: allowReconnect(force), softer disconnect/auto-retry, optional Feedback-adjacent Refresh when newer build detected with sessionStorage workspace restore. Deploy via scripts/deploy_app_17.R.
