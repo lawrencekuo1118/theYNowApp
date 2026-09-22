@@ -55,7 +55,8 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   # Lite About must not mount methodology outside ynow-full-only
   testthat::expect_true(grepl(
     "ynow-full-only[\\s\\S]*valuation_methodology_section_ui",
-    txt
+    txt,
+    perl = TRUE
   ))
   testthat::expect_true(grepl("ynow-lab-im-eq-adr-row", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_lab_im_eq_explain", txt, fixed = TRUE))
