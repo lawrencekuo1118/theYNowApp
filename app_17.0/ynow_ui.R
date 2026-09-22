@@ -85,7 +85,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v17.29) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報抓取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v17.80) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報抓取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -101,7 +101,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v17.29) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v17.80) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -109,6 +109,123 @@
           tags$b("\"Classify before selecting models; derive before calibrating; provide valuation ranges before absolute price targets.\"")
         ),
         tags$h4(class = "ynow-about-feat-h", tags$b("Core Features:")),
+        en_features
+      )
+    ),
+    tags$p(
+      class = "ynow-about-github",
+      tags$span("GitHub："),
+      tags$a(
+        href = github_url,
+        target = "_blank",
+        rel = "noopener noreferrer",
+        github_url
+      )
+    )
+  )
+}
+
+#' About 分頁（Lite）：對齊簡化版可見功能，不含完整方法論手冊
+.about_lite_intro_ui <- function() {
+  brand <- tags$div(
+    class = "ynow-about-brand",
+    tags$img(
+      class = "ynow-about-logo-full",
+      src = "ynow-logo-full-480.png",
+      alt = "YNow — WH.Y VALUE NOW",
+      width = 240,
+      height = 240
+    )
+  )
+  zh_features <- tags$ul(
+    class = "ynow-about-feat",
+    tags$li(
+      tags$b("簡化版切換："),
+      "點擊側邊欄底部 logo 即可在 Lite／完整版之間切換；Lite 時 logo 右下角顯示 LITE 角標。"
+    ),
+    tags$li(
+      tags$b("Dashboard："),
+      "輸入股票代號、檢視產業標準快覽與 KPI 色碼框格，並使用市場／語言／幣別等切換 UI；精簡財報明細與模型參數頁。"
+    ),
+    tags$li(
+      tags$b("智慧分析："),
+      "依股票性質自動判別主／副估值模型（DCF、DDM、RI、P/B、NAV），",
+      "辨識參數情境（Two-Stage／Gordon、SGR 法、claim）並套用最合理預設後試算，",
+      "顯示合理價比較圖與 MOS；不開放手動模型設定。"
+    ),
+    tags$li(
+      tags$b("YNOW："),
+      "維持完整版相同的決策漏斗與敏感度檢視（含 MOS／F-Score 等），作為簡化流程下的決策輔助。"
+    ),
+    tags$li(
+      tags$b("績優股排行（Blue Chip）："),
+      "保留候選截斷邏輯與宇宙檔數（N）、盈餘品質與 ADR 篩選，以及分群研究；隱藏明細小頁籤與其餘進階查詢條件。"
+    )
+  )
+  en_features <- tags$ul(
+    class = "ynow-about-feat",
+    tags$li(
+      tags$b("Lite toggle: "),
+      "Click the sidebar bottom logo to switch between Lite and Full. In Lite, a LITE badge appears at the logo corner."
+    ),
+    tags$li(
+      tags$b("Dashboard: "),
+      "Enter a ticker, review the industry standard snapshot and KPI color boxes, and use market / language / currency switches. Statement detail tabs and manual model pages are hidden."
+    ),
+    tags$li(
+      tags$b("Smart Analysis: "),
+      "Auto-selects primary and secondary valuation models (DCF, DDM, RI, P/B, NAV) from the ticker profile, ",
+      "detects the best parameter scenario (Two-Stage vs Gordon, SGR method, claim), applies those defaults, ",
+      "and shows fair-value comparison charts plus MOS—no manual model settings."
+    ),
+    tags$li(
+      tags$b("YNOW: "),
+      "Same decision funnel and sensitivity views as Full (including MOS / F-Score), as decision support inside the Lite flow."
+    ),
+    tags$li(
+      tags$b("Blue Chip Ranking: "),
+      "Keeps Candidate truncate rules and Universe size (N), Earnings Quality and ADR filters, plus Clustering. Hides the Detail sub-tab and other advanced Ranking filters."
+    )
+  )
+
+  github_url <- "https://github.com/lawrencekuo1118/theYNowApp"
+
+  tagList(
+    brand,
+    fluidRow(
+      class = "ynow-about-bilingual",
+      column(
+        width = 6,
+        class = "ynow-about-col ynow-about-col--zh",
+        tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
+        tags$p(
+          class = "ynow-about-lead",
+          "The YNow App Lite（v17.80）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
+        ),
+        tags$p(
+          class = "ynow-about-method",
+          "簡化版原則：",
+          tags$b("「先看結果，再開參數；共用引擎，不另開爬蟲。」")
+        ),
+        tags$h4(class = "ynow-about-feat-h", tags$b("簡化版可見功能：")),
+        zh_features
+      ),
+      column(
+        width = 6,
+        class = "ynow-about-col ynow-about-col--en",
+        tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
+        tags$p(
+          class = "ynow-about-lead",
+          "The YNow App Lite (v17.80) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
+        ),
+        tags$p(
+          class = "ynow-about-method",
+          "Lite principle: ",
+          tags$b("\"Results first, parameters later; shared engines—no separate scrapers.\"")
+        ),
+        tags$h4(class = "ynow-about-feat-h", tags$b("What Lite shows:")),
         en_features
       )
     ),
@@ -961,9 +1078,9 @@ ui <- dashboardPage(
                   '<span class="ynow-app-title" id="ynow_app_title" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v17.82</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v17.83</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v17.82</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v17.83</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -7902,12 +8019,20 @@ ui <- dashboardPage(
       ),
 
       # ==========================================
-      # ℹ️ About 分頁 (系統介紹與評價方法論)
+      # ℹ️ About 分頁 (系統介紹／Lite 簡介；完整評價方法論僅 Full)
       # ==========================================
-      tabItem(tabName = "about",
-              .about_bilingual_intro_ui(),
-              tags$hr(style = "margin: 8px 0 20px 0; border-color: #e5e8eb;"),
-              .valuation_methodology_section_ui(collapsible = FALSE, collapsed = FALSE)
+      tabItem(
+        tabName = "about",
+        tags$div(
+          class = "ynow-full-only",
+          .about_bilingual_intro_ui(),
+          tags$hr(style = "margin: 8px 0 20px 0; border-color: #e5e8eb;"),
+          .valuation_methodology_section_ui(collapsible = FALSE, collapsed = FALSE)
+        ),
+        tags$div(
+          class = "ynow-lite-only",
+          .about_lite_intro_ui()
+        )
       )
     )
   )
