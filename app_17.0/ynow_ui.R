@@ -961,9 +961,9 @@ ui <- dashboardPage(
                   '<span class="ynow-app-title" id="ynow_app_title" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v17.79</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v17.80</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v17.79</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v17.80</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,

@@ -135,6 +135,7 @@ server <- function(input, output, session) {
     .clear_lab_cluster_result("clear_tick")
   }, ignoreInit = TRUE)
   auto_calc_primary_sig <- reactiveVal("")
+  lite_scenario_applied_sig <- reactiveVal("")
   auto_calc_ddm_pulse <- reactiveVal(0L)
   auto_calc_pb_pulse <- reactiveVal(0L)
   auto_calc_nav_pulse <- reactiveVal(0L)
@@ -1585,8 +1586,9 @@ server <- function(input, output, session) {
     }, once = TRUE)
   }, ignoreInit = TRUE)
 
-  # Growth classification → 僅提示 Two-Stage（不再強制覆寫；預設維持 Gordon）
+  # Growth classification → Full：僅提示 Two-Stage；Lite 由智慧分析自動套用
   observeEvent(model_sidebar_rec(), {
+    if (isTRUE(isolate(lite_mode()))) return()
     rec <- model_sidebar_rec()
     if (!isTRUE(rec$suggest_two_stage)) return()
     if (identical(input$dcf_mode, "two_stage")) return()
@@ -6691,12 +6693,14 @@ server <- function(input, output, session) {
   observeEvent(input$calc, { .execute_dcf_calc() })
 
   # Search 後：推薦主模型靜默自動試算（美股／台股；參數未就緒則略過）
-  # Lite 模式另對副模型自動試算（共用同一套公式／脈衝）
+  # Lite 智慧分析：先套用推薦參數情境（Two-Stage／SGR 法／claim／折現一致性），
+  # 再對主／副模型試算——避免「參數假設錯誤無法計算」。
   observeEvent(current_ticker(), {
     # Clear prior-ticker DCF so Composite does not keep stale run-state overlays
     stock_price_estimate_val(NULL)
     dcf_value_result(NULL)
     auto_calc_primary_sig("")
+    lite_scenario_applied_sig("")
     auto_calc_ddm_pulse(0L)
     auto_calc_pb_pulse(0L)
     auto_calc_nav_pulse(0L)
@@ -6707,6 +6711,173 @@ server <- function(input, output, session) {
     isTRUE(input$ynow_lite_mode)
   })
 
+  .clamp_g_below_rate <- function(g_pct, rate_pct, margin = 0.5) {
+    g_pct <- suppressWarnings(as.numeric(g_pct)[1])
+    rate_pct <- suppressWarnings(as.numeric(rate_pct)[1])
+    if (!is.finite(g_pct)) return(NA_real_)
+    if (!is.finite(rate_pct) || rate_pct <= 0) return(g_pct)
+    if (g_pct < rate_pct - 1e-6) return(g_pct)
+    max(rate_pct - margin, 0)
+  }
+
+  .lite_desired_scenario <- function(rec) {
+    est <- tryCatch(central_perpetual_g(), error = function(e) NULL)
+    want_two <- isTRUE(rec$suggest_two_stage) ||
+      isTRUE(!is.null(est) && isTRUE(est$suggest_two_stage))
+    method <- as.character(
+      if (!is.null(est) && nzchar(as.character(est$recommended_method %||% "")[1])) {
+        est$recommended_method
+      } else {
+        input$perpetual_g_method %||% "fundamental"
+      }
+    )[1]
+    # Claim recommendation (prefer stays FCFF unless clearly FCFF-required reasons)
+    fcf_hist <- tryCatch(
+      select_clean_metric_row(d_cash_flow(), "Free Cash Flow", include_ttm = FALSE),
+      error = function(e) NULL
+    )
+    fcf_hist <- suppressWarnings(as.numeric(fcf_hist))
+    last_fcff <- NA_real_
+    if (length(fcf_hist)) {
+      hit <- which(is.finite(fcf_hist))
+      if (length(hit)) last_fcff <- fcf_hist[hit[1]]
+    }
+    br <- tryCatch(.dcf_fcfe_bridge(), error = function(e) list(iat = NA_real_, debt = NA_real_))
+    last_fcfe <- tryCatch(
+      fcff_to_fcfe(last_fcff, interest_after_tax = br$iat, debt0 = br$debt, g_path = 0)[1],
+      error = function(e) NA_real_
+    )
+    claim_rec <- tryCatch(
+      recommend_dcf_claim(
+        d_bs = d_balance_sheet(),
+        fcff = last_fcff,
+        fcfe = last_fcfe
+      ),
+      error = function(e) list(prefer = "fcff")
+    )
+    claim <- as.character(claim_rec$prefer %||% "fcff")[1]
+    if (!claim %in% c("fcff", "fcfe")) claim <- "fcff"
+    list(
+      two_stage = want_two,
+      method = method,
+      claim = claim,
+      est = est,
+      claim_rec = claim_rec
+    )
+  }
+
+  .apply_lite_recommended_scenario <- function(rec) {
+    des <- .lite_desired_scenario(rec)
+    # DCF mode
+    if (isTRUE(des$two_stage)) {
+      if (!identical(as.character(input$dcf_mode %||% "")[1], "two_stage")) {
+        updateRadioButtons(session, "dcf_mode", selected = "two_stage")
+      }
+    } else if (!identical(as.character(input$dcf_mode %||% "")[1], "gordon")) {
+      updateRadioButtons(session, "dcf_mode", selected = "gordon")
+    }
+    # SGR method (+ lifecycle auto tier)
+    cur_method <- as.character(input$perpetual_g_method %||% "")[1]
+    if (nzchar(des$method) && !identical(cur_method, des$method)) {
+      updateSelectInput(session, "perpetual_g_method", selected = des$method)
+      if (identical(des$method, "lifecycle")) {
+        updateSelectInput(session, "lifecycle_stage", selected = "auto")
+      }
+    }
+    # Push terminal g / g1 using the *desired* SGR method (not the stale UI method)
+    rf_det <- tryCatch(.current_rf_detail(), error = function(e) list(rf_pct = NA_real_, source = "", label = ""))
+    loc <- tryCatch(ui_locale(), error = function(e) "zh-TW")
+    est_forced <- tryCatch(
+      estimate_perpetual_g(
+        method = des$method %||% "fundamental",
+        rf_pct = rf_det$rf_pct,
+        rf_source = rf_det$source,
+        rf_label = rf_det$label,
+        locale = loc,
+        d_is = tryCatch(d_income_statement(), error = function(e) NULL),
+        d_bs = tryCatch(d_balance_sheet(), error = function(e) NULL),
+        d_cf = tryCatch(d_cash_flow(), error = function(e) NULL),
+        industry_text = corp_industry_text() %||% "",
+        ticker = current_ticker() %||% APP_DEFAULTS$stock_code,
+        lifecycle_stage = if (identical(des$method, "lifecycle")) "auto" else (input$lifecycle_stage %||% "auto"),
+        wacc_pct = .current_wacc_pct()
+      ),
+      error = function(e) des$est
+    )
+    if (!is.null(est_forced)) {
+      .push_perpetual_g(est_forced, notify_two_stage = FALSE)
+    }
+    # Cash-flow claim
+    if (!identical(as.character(input$dcf_claim %||% "fcff")[1], des$claim)) {
+      updateRadioButtons(session, "dcf_claim", selected = des$claim)
+    }
+    # Sync WACC inputs from calculated WACC when available
+    w <- suppressWarnings(as.numeric(calculated_wacc())[1])
+    if (is.finite(w) && w > 0) {
+      wp <- round(w * 100, 2)
+      if (isTRUE(des$two_stage) || identical(as.character(input$dcf_mode %||% "")[1], "two_stage")) {
+        updateNumericInput(session, "wacc_stage1", value = wp)
+        updateNumericInput(session, "wacc_stage2", value = wp)
+      } else {
+        updateNumericInput(session, "wacc_gordon", value = wp)
+      }
+      # Keep terminal g strictly below discount rate (Gordon / stage-2 / Ke)
+      g_now <- suppressWarnings(as.numeric(input$sgr)[1])
+      if (!is.finite(g_now) && !is.null(des$est)) {
+        g_now <- suppressWarnings(as.numeric(des$est$g_pct)[1])
+      }
+      g_ok <- .clamp_g_below_rate(g_now, wp, margin = 0.5)
+      if (is.finite(g_ok) && (!is.finite(g_now) || abs(g_ok - g_now) > 1e-4)) {
+        updateNumericInput(session, "sgr", value = round(g_ok, 2))
+        if (isTRUE(input[["mod_ddm-sync_g"]] %||% TRUE)) {
+          updateNumericInput(session, "mod_ddm-g", value = round(g_ok, 2))
+        }
+        updateNumericInput(session, "mod_ri-ri_g", value = round(g_ok, 2))
+      }
+    }
+    # DDM / RI: ensure g < Ke with a small margin
+    for (pair in list(
+      list(g = "mod_ddm-g", ke = "mod_ddm-ke"),
+      list(g = "mod_ri-ri_g", ke = "mod_ri-ri_ke")
+    )) {
+      g0 <- suppressWarnings(as.numeric(input[[pair$g]])[1])
+      ke0 <- suppressWarnings(as.numeric(input[[pair$ke]])[1])
+      g1 <- .clamp_g_below_rate(g0, ke0, margin = 0.5)
+      if (is.finite(g1) && is.finite(g0) && abs(g1 - g0) > 1e-4) {
+        updateNumericInput(session, pair$g, value = round(g1, 2))
+      }
+    }
+    invisible(des)
+  }
+
+  .lite_scenario_matches_ui <- function(des) {
+    mode_ok <- if (isTRUE(des$two_stage)) {
+      identical(as.character(input$dcf_mode %||% "")[1], "two_stage")
+    } else {
+      identical(as.character(input$dcf_mode %||% "gordon")[1], "gordon")
+    }
+    method_ok <- identical(
+      as.character(input$perpetual_g_method %||% "")[1],
+      as.character(des$method %||% "")[1]
+    )
+    claim_ok <- identical(
+      as.character(input$dcf_claim %||% "fcff")[1],
+      as.character(des$claim %||% "fcff")[1]
+    )
+    isTRUE(mode_ok && method_ok && claim_ok)
+  }
+
+  .auto_calc_shares_ready <- function() {
+    sh <- tryCatch(.valuation_shares(), error = function(e) NULL)
+    if (is.null(sh)) return(FALSE)
+    shares <- suppressWarnings(as.numeric(sh$shares)[1])
+    if (!is.finite(shares) || shares <= 0) return(FALSE)
+    if (statement_quote_units_differ(statement_currency(), quote_currency())) {
+      return(isTRUE(shares_auto_adjust_method(sh$method)))
+    }
+    TRUE
+  }
+
   .auto_calc_primary_ready <- function(prim) {
     prim <- as.character(prim %||% "")[1]
     if (!nzchar(prim)) return(FALSE)
@@ -6714,29 +6885,49 @@ server <- function(input, output, session) {
       b0 <- suppressWarnings(as.numeric(input[["mod_ri-b0"]])[1])
       ke <- suppressWarnings(as.numeric(input[["mod_ri-ri_ke"]])[1])
       g <- suppressWarnings(as.numeric(input[["mod_ri-ri_g"]])[1])
-      return(is.finite(b0) && is.finite(ke) && ke > 0 && is.finite(g) && g < ke)
+      if (!(is.finite(b0) && is.finite(ke) && ke > 0 && is.finite(g) && g < ke)) return(FALSE)
+      return(isTRUE(.auto_calc_shares_ready()))
     }
     if (identical(prim, "dcf")) {
       proj <- tryCatch(fcf_results$df_fcf(), error = function(e) NULL)
       n <- suppressWarnings(as.numeric(input$years)[1])
       if (is.null(proj) || !is.data.frame(proj) || nrow(proj) < 1L) return(FALSE)
       if (!is.finite(n) || n <= 0L || nrow(proj) != as.integer(n)) return(FALSE)
+      # Prefer settled estimated WACC over placeholder APP_DEFAULTS seed
+      w_calc <- suppressWarnings(as.numeric(calculated_wacc())[1])
+      if (!is.finite(w_calc) || w_calc <= 0) return(FALSE)
       mode <- as.character(input$dcf_mode %||% "gordon")[1]
       if (identical(mode, "gordon")) {
         w <- suppressWarnings(as.numeric(input$wacc_gordon)[1])
         if (!is.finite(w) || w <= 0) return(FALSE)
+        r2 <- w
       } else {
         w1 <- suppressWarnings(as.numeric(input$wacc_stage1)[1])
         w2 <- suppressWarnings(as.numeric(input$wacc_stage2)[1])
         if (!is.finite(w1) || w1 <= 0 || !is.finite(w2) || w2 <= 0) return(FALSE)
+        r2 <- w2
       }
       sgr <- suppressWarnings(as.numeric(input$sgr)[1])
-      return(is.finite(sgr))
+      if (!is.finite(sgr)) return(FALSE)
+      claim <- as.character(input$dcf_claim %||% "fcff")[1]
+      if (identical(claim, "fcfe")) {
+        ke <- if (isTRUE(input$use_estimated_re) && !is.null(estimated_re()) &&
+                  is.finite(as.numeric(estimated_re())[1])) {
+          as.numeric(estimated_re())[1] * 100
+        } else {
+          suppressWarnings(as.numeric(input$wacc_re)[1])
+        }
+        if (!is.finite(ke) || ke <= 0 || sgr >= ke) return(FALSE)
+      } else if (sgr >= r2) {
+        return(FALSE)
+      }
+      return(isTRUE(.auto_calc_shares_ready()))
     }
     if (identical(prim, "ddm")) {
       g <- suppressWarnings(as.numeric(input[["mod_ddm-g"]])[1])
       ke <- suppressWarnings(as.numeric(input[["mod_ddm-ke"]])[1])
-      return(is.finite(g) && is.finite(ke) && ke > 0)
+      if (!(is.finite(g) && is.finite(ke) && ke > 0 && g < ke)) return(FALSE)
+      return(TRUE)
     }
     if (identical(prim, "pb")) {
       bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
@@ -6749,15 +6940,17 @@ server <- function(input, output, session) {
       lo <- suppressWarnings(as.numeric(input[["mod_pb-pb_low"]])[1])
       mid <- suppressWarnings(as.numeric(input[["mod_pb-pb_mid"]])[1])
       hi <- suppressWarnings(as.numeric(input[["mod_pb-pb_high"]])[1])
-      return(is.finite(lo) && is.finite(mid) && is.finite(hi) &&
-        lo > 0 && mid > 0 && hi > 0)
+      if (!(is.finite(lo) && is.finite(mid) && is.finite(hi) &&
+            lo > 0 && mid > 0 && hi > 0)) return(FALSE)
+      return(isTRUE(.auto_calc_shares_ready()))
     }
     if (identical(prim, "nav")) {
       bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
       if (is.null(bs) || !is.data.frame(bs) || nrow(bs) == 0L) return(FALSE)
       navps <- suppressWarnings(as.numeric(input[["mod_nav-navps"]])[1])
       mid <- suppressWarnings(as.numeric(input[["mod_nav-nav_mid"]])[1])
-      return(is.finite(navps) && navps > 0 && is.finite(mid) && mid > 0)
+      if (!(is.finite(navps) && navps > 0 && is.finite(mid) && mid > 0)) return(FALSE)
+      return(isTRUE(.auto_calc_shares_ready()))
     }
     FALSE
   }
@@ -6787,15 +6980,47 @@ server <- function(input, output, session) {
     sec <- as.character(rec$secondary %||% "")[1]
     req(nzchar(prim), prim %in% c("dcf", "ddm", "pb", "ri", "nav"))
 
+    # Lite: apply recommended scenario, then wait until UI matches before firing
+    if (isTRUE(lite_mode())) {
+      des <- .lite_desired_scenario(rec)
+      want_sig <- paste(
+        tk,
+        if (isTRUE(des$two_stage)) "two_stage" else "gordon",
+        des$method %||% "",
+        des$claim %||% "fcff",
+        sep = "|"
+      )
+      if (!identical(lite_scenario_applied_sig(), want_sig)) {
+        .apply_lite_recommended_scenario(rec)
+        lite_scenario_applied_sig(want_sig)
+        return()
+      }
+      if (!isTRUE(.lite_scenario_matches_ui(des))) return()
+    }
+
     if (!isTRUE(.auto_calc_primary_ready(prim))) return()
     keys <- prim
     if (isTRUE(lite_mode()) && nzchar(sec) && sec %in% c("dcf", "ddm", "pb", "ri", "nav") &&
         !identical(sec, prim) && isTRUE(.auto_calc_primary_ready(sec))) {
       keys <- c(prim, sec)
     }
-    # Signature includes only models actually fired so Lite can retry when
-    # secondary inputs settle after primary.
-    sig <- paste(c(tk, keys, if (isTRUE(lite_mode())) "L" else "F"), collapse = "|")
+    mode <- as.character(input$dcf_mode %||% "gordon")[1]
+    claim <- as.character(input$dcf_claim %||% "fcff")[1]
+    w_calc <- suppressWarnings(as.numeric(calculated_wacc())[1])
+    sgr <- suppressWarnings(as.numeric(input$sgr)[1])
+    sh_m <- tryCatch(.valuation_shares()$method, error = function(e) "none")
+    # Wider signature: retry once params settle (WACC / SGR / shares / scenario)
+    sig <- paste(
+      c(
+        tk, keys,
+        if (isTRUE(lite_mode())) "L" else "F",
+        mode, claim,
+        if (is.finite(w_calc)) round(w_calc * 100, 2) else "NA",
+        if (is.finite(sgr)) round(sgr, 2) else "NA",
+        sh_m %||% "none"
+      ),
+      collapse = "|"
+    )
     if (identical(auto_calc_primary_sig(), sig)) return()
 
     auto_calc_primary_sig(sig)
@@ -6883,11 +7108,38 @@ server <- function(input, output, session) {
     rec <- tryCatch(model_sidebar_rec(), error = function(e) NULL)
     if (is.null(rec)) return(NULL)
     reason <- as.character(rec$reason %||% "")[1]
-    if (!nzchar(reason)) return(NULL)
+    des <- tryCatch(.lite_desired_scenario(rec), error = function(e) NULL)
+    scenario_bits <- character(0)
+    if (!is.null(des)) {
+      scenario_bits <- c(
+        scenario_bits,
+        if (isTRUE(des$two_stage)) {
+          ui_str("smart_scenario_two_stage", loc)
+        } else {
+          ui_str("smart_scenario_gordon", loc)
+        },
+        paste0(
+          ui_str("smart_scenario_sgr", loc),
+          as.character(des$method %||% "")
+        ),
+        paste0(
+          ui_str("smart_scenario_claim", loc),
+          toupper(as.character(des$claim %||% "fcff"))
+        )
+      )
+    }
     tags$div(
       style = "margin: 8px 0 18px 0; padding: 12px 14px; background: #f7f8fa; border: 1px solid #e5e7eb; border-radius: 6px;",
-      tags$b(ui_str("smart_reason_title", loc)),
-      tags$p(style = "margin: 6px 0 0 0; color: #555; line-height: 1.45;", reason)
+      if (length(scenario_bits)) tags$p(
+        style = "margin: 0 0 8px 0; color: #333; line-height: 1.45;",
+        tags$b(ui_str("smart_scenario_title", loc)),
+        " ",
+        paste(scenario_bits, collapse = " · ")
+      ),
+      if (nzchar(reason)) tagList(
+        tags$b(ui_str("smart_reason_title", loc)),
+        tags$p(style = "margin: 6px 0 0 0; color: #555; line-height: 1.45;", reason)
+      )
     )
   })
 

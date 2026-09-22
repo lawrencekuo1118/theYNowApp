@@ -37,7 +37,18 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl('tabName = "smart_analysis"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-full-only", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_lab_im_detail_tab", txt, fixed = TRUE))
-  testthat::expect_true(grepl("The YNow App v17.79", txt, fixed = TRUE))
+  testthat::expect_true(grepl("The YNow App v17.80", txt, fixed = TRUE))
+})
+
+testthat::test_that("ynow_server wires Lite scenario apply before auto-calc", {
+  srv_path <- file.path("..", "ynow_server.R")
+  txt <- paste(readLines(srv_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  testthat::expect_true(grepl(".apply_lite_recommended_scenario", txt, fixed = TRUE))
+  testthat::expect_true(grepl(".lite_desired_scenario", txt, fixed = TRUE))
+  testthat::expect_true(grepl(".clamp_g_below_rate", txt, fixed = TRUE))
+  testthat::expect_true(grepl(".auto_calc_shares_ready", txt, fixed = TRUE))
+  testthat::expect_true(grepl("lite_scenario_applied_sig", txt, fixed = TRUE))
+  testthat::expect_true(grepl("calculated_wacc()", txt, fixed = TRUE))
 })
 
 testthat::test_that("ynow_server wires Lite auto-calc and Smart Analysis outputs", {
