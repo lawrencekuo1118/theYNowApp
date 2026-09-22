@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12590025
+bundleId=12590062
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=6707ca6
-commit=6707ca669ed2b6f2745268acddee30f07508b115
-short=6707ca6
-message=Redesign HFV as a report-style layout with responsive controls (v17.85).
-captured_at=2026-09-22T14:15:00Z
+aligned_git=f476cab
+commit=f476cab
+short=f476cab
+message=Move HFV fair-value chart above the report controls toolbar (v17.86).
+captured_at=2026-09-22T14:20:00Z
 source_branch=master
-display_version=v17.85
-note=Canonical live line is app_17.0. Bundle 12590025 = tip v17.85 HFV report layout + v17.84 Lite Data Source/Snapshot slim + Smart Analysis without Previous Close/Market Cap/EPS KPIs (f3fa7fb/21ca099). Deploy via scripts/deploy_app_17.R. Supersedes 12589964/12589993.
+display_version=v17.86
+note=Canonical live line is app_17.0. Bundle 12590062 = tip v17.86 HFV Section I chart above controls toolbar. Deploy via scripts/deploy_app_17.R.
