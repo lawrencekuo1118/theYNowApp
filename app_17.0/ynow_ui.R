@@ -961,9 +961,9 @@ ui <- dashboardPage(
                   '<span class="ynow-app-title" id="ynow_app_title" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v17.79</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v17.82</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v17.79</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v17.82</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -3634,6 +3634,14 @@ ui <- dashboardPage(
             if (labAdrLabel && s.lab_im_include_adr_label) labAdrLabel.textContent = s.lab_im_include_adr_label;
             var labAdrHint = document.getElementById('ynow_lab_im_include_adr_hint');
             if (labAdrHint && s.lab_im_include_adr_hint) labAdrHint.textContent = s.lab_im_include_adr_hint;
+            var labEqLabel = document.getElementById('ynow_lab_im_eq_label');
+            if (labEqLabel && s.lab_im_eq_label) labEqLabel.textContent = s.lab_im_eq_label;
+            var labEqHint = document.getElementById('ynow_lab_im_eq_hint');
+            if (labEqHint && s.lab_im_eq_hint) labEqHint.textContent = s.lab_im_eq_hint;
+            var labEqExplainTitle = document.getElementById('ynow_lab_im_eq_explain_title');
+            if (labEqExplainTitle && s.lab_im_eq_explain_title) labEqExplainTitle.textContent = s.lab_im_eq_explain_title;
+            var labEqExplainBody = document.getElementById('ynow_lab_im_eq_explain_body');
+            if (labEqExplainBody && s.lab_im_eq_explain_body) labEqExplainBody.textContent = s.lab_im_eq_explain_body;
             var clusterBlurb = document.getElementById('ynow_lab_cluster_blurb');
             if (clusterBlurb && s.lab_cluster_blurb) clusterBlurb.textContent = s.lab_cluster_blurb;
             var clusterDisc = document.getElementById('ynow_lab_cluster_disclaimer');
@@ -4778,6 +4786,33 @@ ui <- dashboardPage(
           line-height: 1.35;
           display: block;
           margin: -2px 0 0 0;
+        }
+        /* Lite：產業／模型欄隱藏後，篩選欄拉滿；盈餘品質與 ADR 同列 */
+        body.ynow-lite .ynow-lab-im-filter-col {
+          width: 100% !important;
+          max-width: 100%;
+        }
+        .ynow-lab-im-eq-adr-row {
+          margin-left: -8px;
+          margin-right: -8px;
+        }
+        .ynow-lab-im-eq-adr-row > [class*='col-'] {
+          padding-left: 8px;
+          padding-right: 8px;
+        }
+        .ynow-lab-im-eq-explain {
+          margin: 2px 0 14px 0;
+          padding: 8px 10px;
+          color: #555;
+          font-size: 12.5px;
+          line-height: 1.5;
+          background: #f7f8fa;
+          border: 1px solid #e5e7eb;
+          border-radius: 4px;
+        }
+        .ynow-lab-im-eq-explain b {
+          color: #222;
+          margin-right: 4px;
         }
         .ynow-lab-pill {
           display: inline-block;
@@ -6953,16 +6988,47 @@ ui <- dashboardPage(
                   ),
                   column(
                     width = 6,
+                    class = "ynow-lab-im-filter-col",
+                    # 盈餘品質｜含 ADR 同列並排（Lite／Full 皆同）
                     tags$div(
-                      class = "ynow-lab-im-quality",
-                      checkboxInput(
-                        "lab_im_eq_only",
-                        "盈餘品質",
-                        value = TRUE
+                      class = "row ynow-lab-im-eq-adr-row",
+                      column(
+                        width = 6,
+                        tags$div(
+                          class = "ynow-lab-im-quality",
+                          checkboxInput(
+                            "lab_im_eq_only",
+                            tags$span(id = "ynow_lab_im_eq_label", "盈餘品質"),
+                            value = TRUE
+                          ),
+                          tags$span(
+                            id = "ynow_lab_im_eq_hint",
+                            class = "ynow-lab-im-quality-hint ynow-full-only",
+                            paste0(
+                              "預設勾選：排行榜／明細只列盈餘品質通過者；",
+                              "取消勾選則不過濾。合格不足 N 時不湊滿。"
+                            )
+                          )
+                        )
                       ),
-                      tags$span(
-                        class = "ynow-lab-im-quality-hint",
-                        "預設勾選：排行榜／明細只列盈餘品質通過者；取消勾選則不過濾。合格不足 N 時不湊滿。"
+                      column(
+                        width = 6,
+                        tags$div(
+                          class = "ynow-lab-im-quality",
+                          checkboxInput(
+                            "lab_im_include_adr",
+                            tags$span(id = "ynow_lab_im_include_adr_label", "含 ADR"),
+                            value = TRUE
+                          ),
+                          tags$span(
+                            id = "ynow_lab_im_include_adr_hint",
+                            class = "ynow-lab-im-quality-hint ynow-full-only",
+                            paste0(
+                              "預設勾選：評估池含美股上市 ADR／外國發行人；",
+                              "取消勾選則排除 ADR 後再套用候選截斷與宇宙檔數 N。"
+                            )
+                          )
+                        )
                       )
                     ),
                     tags$div(
@@ -6976,20 +7042,6 @@ ui <- dashboardPage(
                       tags$span(
                         class = "ynow-lab-im-quality-hint",
                         "預設勾選：前十名與明細只列 F-Score≥7 者；取消勾選則不設 F 門檻。合格不足 N 或不足 10 時不會湊滿。"
-                      )
-                    ),
-                    tags$div(
-                      class = "ynow-lab-im-quality",
-                      style = "margin-top:12px;",
-                      checkboxInput(
-                        "lab_im_include_adr",
-                        tags$span(id = "ynow_lab_im_include_adr_label", "含 ADR"),
-                        value = TRUE
-                      ),
-                      tags$span(
-                        id = "ynow_lab_im_include_adr_hint",
-                        class = "ynow-lab-im-quality-hint",
-                        "預設勾選：評估池含美股上市 ADR／外國發行人；取消勾選則排除 ADR 後再套用候選截斷與宇宙檔數 N。"
                       )
                     )
                   )
@@ -7017,6 +7069,20 @@ ui <- dashboardPage(
                 tags$p(
                   style = "margin-top:10px; color:#888; font-size:12px;",
                   "提示：評估需逐檔抓 Yahoo 財報與估值，檔數愈多愈久。"
+                )
+              )
+            ),
+            # Lite：查詢條件區塊外正下方 — 盈餘品質說明
+            tags$div(
+              id = "ynow_lab_im_eq_explain",
+              class = "ynow-lab-im-eq-explain ynow-lite-only",
+              tags$b(id = "ynow_lab_im_eq_explain_title", "盈餘品質："),
+              tags$span(
+                id = "ynow_lab_im_eq_explain_body",
+                paste0(
+                  "預設勾選時，排行榜只列通過盈餘品質檢核者（OCF 與營運獲利交叉比對，",
+                  "協助排除現金流與帳面獲利落差過大的標的）；取消勾選則不過濾。",
+                  "合格不足 N 時不湊滿。"
                 )
               )
             )

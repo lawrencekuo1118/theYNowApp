@@ -204,6 +204,17 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Checked by default: keep US-listed ADRs / foreign issuers in the evaluation pool. ",
       "Uncheck to exclude ADRs before Candidate truncate and evaluation."
     ),
+    lab_im_eq_label = "Earnings quality",
+    lab_im_eq_hint = paste0(
+      "Checked by default: Top 10 and Detail keep only names that pass earnings-quality checks. ",
+      "Uncheck to skip that filter. Shortfalls are not padded to N."
+    ),
+    lab_im_eq_explain_title = "Earnings quality:",
+    lab_im_eq_explain_body = paste0(
+      "When checked (default), the leaderboard keeps only names that pass earnings-quality checks ",
+      "(OCF vs operating earnings — helps flag cash-flow vs reported-profit gaps). ",
+      "Uncheck to skip that filter. Shortfalls are not padded to N."
+    ),
     lab_im_lb_status = paste0(
       "Top 10 shows %d/10 (qualified %d / evaluated %d). ",
       "N = post-analysis display cap; Top 10 takes at most 10 qualified names and does not pad to fill 10."
@@ -405,7 +416,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     smart_page_title = "Smart Analysis",
     smart_page_sub = paste0(
       "Auto-selects primary and secondary valuation models from the ticker profile, ",
-      "applies App defaults, and shows fair-value charts. No manual model settings."
+      "detects the best parameter scenario (Two-Stage vs Gordon, SGR method, claim), ",
+      "applies those defaults, and shows fair-value charts. No manual model settings."
     ),
     smart_chart_title = "Fair value comparison",
     smart_primary_kicker = "Primary model",
@@ -413,8 +425,13 @@ locale_for_market <- function(mode = get_market_mode()) {
     smart_price_kicker = "Current price",
     smart_mos_kicker = "MOS (vs primary Base)",
     smart_waiting = "Search a ticker first to run Smart Analysis.",
-    smart_calc_pending = "Applying defaults and calculating…",
+    smart_calc_pending = "Detecting scenario and calculating…",
     smart_reason_title = "Why these models",
+    smart_scenario_title = "Applied scenario:",
+    smart_scenario_two_stage = "Two-Stage DCF",
+    smart_scenario_gordon = "Gordon DCF",
+    smart_scenario_sgr = "SGR method=",
+    smart_scenario_claim = "Claim=",
     lite_toggle_title = "Click to switch Lite / Full",
     lite_toggle_aria = "Toggle Lite mode",
     composite_status_prefix = "Composite valuation status: ",
@@ -1054,6 +1071,17 @@ locale_for_market <- function(mode = get_market_mode()) {
       "預設勾選：評估池含美股上市 ADR／外國發行人；",
       "取消勾選則排除 ADR 後再套用候選截斷與評估。"
     ),
+    lab_im_eq_label = "盈餘品質",
+    lab_im_eq_hint = paste0(
+      "預設勾選：排行榜／明細只列盈餘品質通過者；",
+      "取消勾選則不過濾。合格不足 N 時不湊滿。"
+    ),
+    lab_im_eq_explain_title = "盈餘品質：",
+    lab_im_eq_explain_body = paste0(
+      "預設勾選時，排行榜只列通過盈餘品質檢核者（OCF 與營運獲利交叉比對，",
+      "協助排除現金流與帳面獲利落差過大的標的）；取消勾選則不過濾。",
+      "合格不足 N 時不湊滿。"
+    ),
     lab_im_lb_status = paste0(
       "前十名顯示 %d／10（合格 %d／已評估 %d）。",
       "N＝分析後顯示上限；前十名只取合格者最多 10 檔，不會為湊滿 10 而另抽樣。"
@@ -1247,8 +1275,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     industry_overview_title = "目前產業標準快覽",
     smart_page_title = "智慧分析",
     smart_page_sub = paste0(
-      "依股票性質自動判別主／副模型，套用 App 預設參數試算，",
-      "並顯示合理價相關圖表；不開放手動模型設定。"
+      "依股票性質自動判別主／副模型，辨識參數情境（Two-Stage／Gordon、SGR 法、claim），",
+      "套用最合理預設後試算並顯示合理價圖表；不開放手動模型設定。"
     ),
     smart_chart_title = "合理價比較",
     smart_primary_kicker = "主模型",
@@ -1256,8 +1284,13 @@ locale_for_market <- function(mode = get_market_mode()) {
     smart_price_kicker = "目前市價",
     smart_mos_kicker = "MOS（相對主模型 Base）",
     smart_waiting = "請先搜尋股票代號，以啟動智慧分析。",
-    smart_calc_pending = "正在套用預設並計算…",
+    smart_calc_pending = "正在辨識參數情境並計算…",
     smart_reason_title = "模型判別理由",
+    smart_scenario_title = "已套用參數情境：",
+    smart_scenario_two_stage = "Two-Stage DCF",
+    smart_scenario_gordon = "Gordon DCF",
+    smart_scenario_sgr = "SGR 估計法＝",
+    smart_scenario_claim = "現金流＝",
     lite_toggle_title = "點擊切換簡化版／完整版",
     lite_toggle_aria = "切換簡化版",
     composite_status_prefix = "綜合估值狀態：",
