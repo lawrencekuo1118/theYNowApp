@@ -18,6 +18,7 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
     "smart_calc_pending", "smart_reason_title",
     "smart_scenario_title", "smart_scenario_two_stage", "smart_scenario_gordon",
     "smart_scenario_sgr", "smart_scenario_claim",
+    "ddm_formula_gordon", "ddm_d0_label", "ddm_r_ke_label",
     "lab_im_eq_label", "lab_im_eq_hint",
     "lab_im_eq_explain_title", "lab_im_eq_explain_body",
     "lab_im_include_adr_label", "lab_im_include_adr_hint",
@@ -52,7 +53,7 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl('tabName = "smart_analysis"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-full-only", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_lab_im_detail_tab", txt, fixed = TRUE))
-  testthat::expect_true(grepl("The YNow App v17.93", txt, fixed = TRUE))
+  testthat::expect_true(grepl("The YNow App v17.94", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-report", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-toolbar", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-chapter", txt, fixed = TRUE))
@@ -128,6 +129,8 @@ testthat::test_that("ynow_server wires Lite scenario apply before auto-calc", {
   testthat::expect_true(grepl(".auto_calc_shares_ready", txt, fixed = TRUE))
   testthat::expect_true(grepl("lite_scenario_applied_sig", txt, fixed = TRUE))
   testthat::expect_true(grepl("calculated_wacc()", txt, fixed = TRUE))
+  testthat::expect_true(grepl("Do not block on .lite_scenario_matches_ui", txt, fixed = TRUE))
+  testthat::expect_true(grepl("Lite Smart Analysis must not hang", txt, fixed = TRUE))
 })
 
 testthat::test_that("ynow_server wires Lite auto-calc and Smart Analysis outputs", {

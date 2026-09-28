@@ -1254,49 +1254,50 @@ dcf_gordon_tv_pv <- function(last_cf, g, r, discount_factor_n) {
   rows
 }
 
-#' Canonical Gordon DDM price from formula parameters only (unit D0).
-#' P0 = D0(1+g)/(Ke−g). Independent of ticker price, shares, and dividend dollars.
-#' Rates are decimals (e.g. 0.08 not 8).
-.ddm_formula_p0 <- function(d0 = 1, g, ke) {
+#' Canonical Gordon DDM (StockFeel / CFA): V0 = D1 / (r − g), D1 = D0 × (1+g).
+#' `r` is the equity required return (CAPM Ke). `ke` is accepted as an alias for `r`.
+#' Independent of ticker price, shares, and dividend dollars. Rates are decimals.
+.ddm_formula_p0 <- function(d0 = 1, g, r = NULL, ke = NULL) {
   d0 <- suppressWarnings(as.numeric(d0)[1])
   g <- suppressWarnings(as.numeric(g)[1])
-  ke <- suppressWarnings(as.numeric(ke)[1])
-  if (!is.finite(d0) || !is.finite(g) || !is.finite(ke) || ke <= g) return(NA_real_)
-  d0 * (1 + g) / (ke - g)
+  r <- suppressWarnings(as.numeric(r %||% ke)[1])
+  if (!is.finite(d0) || !is.finite(g) || !is.finite(r) || r <= g) return(NA_real_)
+  d0 * (1 + g) / (r - g)
 }
 
 #' Sum of Perpetuities Method (SPM; Brown & Abraham 2012).
-#' P0 = (E × g) / Ke² + D / Ke.
+#' V0 = (E × g) / r² + D / r, with r = Ke (CAPM).
 #' Separates capitalized sticky dividend from PV of earnings growth via retention.
-#' Does not require Ke > g (unlike Gordon); only Ke > 0. Rates are decimals.
-#' When ROE = Ke and g = ROE × retention, SPM equals forward-D Gordon P = D/(Ke−g).
-.ddm_formula_spm <- function(eps, d, g, ke) {
+#' Does not require r > g (unlike Gordon); only r > 0. Rates are decimals.
+#' When ROE = r and g = ROE × retention, SPM equals forward-D Gordon V0 = D/(r−g).
+.ddm_formula_spm <- function(eps, d, g, r = NULL, ke = NULL) {
   eps <- suppressWarnings(as.numeric(eps)[1])
   d <- suppressWarnings(as.numeric(d)[1])
   g <- suppressWarnings(as.numeric(g)[1])
-  ke <- suppressWarnings(as.numeric(ke)[1])
-  if (!is.finite(eps) || !is.finite(d) || !is.finite(g) || !is.finite(ke)) return(NA_real_)
-  if (ke <= 0) return(NA_real_)
+  r <- suppressWarnings(as.numeric(r %||% ke)[1])
+  if (!is.finite(eps) || !is.finite(d) || !is.finite(g) || !is.finite(r)) return(NA_real_)
+  if (r <= 0) return(NA_real_)
   if (d < 0) d <- 0
-  (eps * g) / (ke * ke) + d / ke
+  (eps * g) / (r * r) + d / r
 }
 
 #' Two-stage DDM: high-growth g1 for n years, then Gordon at g2.
-#' D_t = D0(1+g1)^t for t=1..n; TV = D_n(1+g2)/(Ke−g2); P0 = Σ PV(D_t) + PV(TV).
-.ddm_formula_two_stage <- function(d0 = 1, g1, n, g2, ke) {
+#' D_t = D0(1+g1)^t for t=1..n; Pn = D_n(1+g2)/(r−g2); V0 = Σ Dt/(1+r)^t + Pn/(1+r)^n.
+#' `r` is the equity required return (CAPM Ke); `ke` is an alias.
+.ddm_formula_two_stage <- function(d0 = 1, g1, n, g2, r = NULL, ke = NULL) {
   d0 <- suppressWarnings(as.numeric(d0)[1])
   g1 <- suppressWarnings(as.numeric(g1)[1])
   g2 <- suppressWarnings(as.numeric(g2)[1])
-  ke <- suppressWarnings(as.numeric(ke)[1])
+  r <- suppressWarnings(as.numeric(r %||% ke)[1])
   n <- suppressWarnings(as.integer(round(as.numeric(n)[1])))
-  if (!is.finite(d0) || !is.finite(g1) || !is.finite(g2) || !is.finite(ke)) return(NA_real_)
-  if (!is.finite(n) || n < 1L) return(.ddm_formula_p0(d0 = d0, g = g2, ke = ke))
-  if (ke <= g2) return(NA_real_)
+  if (!is.finite(d0) || !is.finite(g1) || !is.finite(g2) || !is.finite(r)) return(NA_real_)
+  if (!is.finite(n) || n < 1L) return(.ddm_formula_p0(d0 = d0, g = g2, r = r))
+  if (r <= g2) return(NA_real_)
   dts <- d0 * (1 + g1)^seq_len(n)
-  dfs <- (1 + ke)^seq_len(n)
+  dfs <- (1 + r)^seq_len(n)
   pv_div <- sum(dts / dfs)
-  tv <- dts[n] * (1 + g2) / (ke - g2)
-  pv_div + tv / dfs[n]
+  pn <- dts[n] * (1 + g2) / (r - g2)
+  pv_div + pn / dfs[n]
 }
 
 #' True when DCF cash-flow claim is FCFE (Ke, equity) rather than FCFF (WACC, EV).

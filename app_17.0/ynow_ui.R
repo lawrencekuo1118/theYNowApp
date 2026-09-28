@@ -85,7 +85,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v17.93) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報抓取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v17.94) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報抓取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -101,7 +101,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v17.93) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v17.94) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -200,7 +200,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v17.93）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v17.94）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -217,7 +217,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v17.93) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v17.94) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -1005,7 +1005,7 @@ beta_rolling_section_ui <- function() {
       width = 12, status = "warning", solidHeader = TRUE,
       tags$p(style = "margin: 0 0 6px 0; font-size: 12.5px; color: #555;", tags$b("第一階段｜高速成長")),
       numericInput(
-        "mod_ddm-yr_stage1", "年數 n1",
+        "mod_ddm-yr_stage1", "年數 n",
         value = APP_DEFAULTS$ddm_yr_stage1, min = 1, max = 30, step = 1
       ),
       numericInput(
@@ -1013,7 +1013,7 @@ beta_rolling_section_ui <- function() {
         value = APP_DEFAULTS$ddm_g_stage1, step = 0.1
       ),
       tags$p(style = "margin: 10px 0 6px 0; font-size: 12.5px; color: #555;", tags$b("第二階段｜永續成長")),
-      helpText("第二階段股利成長率採用 Overview 的永續 g（可與基礎設定 SGR 同步）；折現率採用 Ke 分頁。終值約束：g2 < Ke。")
+      helpText(id = "ynow_ddm_two_stage_help", "第二階段股利成長率採用 Overview 的永續 g（g₂）；折現率 r＝Ke（CAPM）。終值約束：g₂ < r。")
     )
   )
 }
@@ -1023,21 +1023,24 @@ beta_rolling_section_ui <- function() {
     conditionalPanel(
       condition = "input['mod_ddm-ddm_mode'] == 'gordon' || input['mod_ddm-ddm_mode'] == null || input['mod_ddm-ddm_mode'] == ''",
       div(
-        "P₀ = D₁ / (Ke − g)　｜　D₁ = D₀ × (1 + g)",
+        id = "ynow_ddm_formula_gordon",
+        "V₀ = D₁ / (r − g)　｜　D₁ = D₀ × (1 + g)　｜　r = Ke (CAPM)",
         style = "font-size: 18px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
       )
     ),
     conditionalPanel(
       condition = "input['mod_ddm-ddm_mode'] == 'spm'",
       div(
-        "P₀ = (E × g) / Ke² + D / Ke　｜　SPM（Sum of Perpetuities）",
+        id = "ynow_ddm_formula_spm",
+        "V₀ = (E × g) / r² + D / r　｜　r = Ke (CAPM)　｜　SPM",
         style = "font-size: 16px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
       )
     ),
     conditionalPanel(
       condition = "input['mod_ddm-ddm_mode'] == 'two_stage'",
       div(
-        "P₀ = Σ Dₜ / (1+Ke)ᵗ + TV / (1+Ke)ⁿ¹　｜　TV = Dₙ₁ × (1+g₂) / (Ke − g₂)",
+        id = "ynow_ddm_formula_two_stage",
+        "V₀ = Σ Dₜ / (1+r)ᵗ + Pₙ / (1+r)ⁿ　｜　Pₙ = Dₙ × (1+g₂) / (r − g₂)",
         style = "font-size: 16px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
       )
     )
@@ -1079,9 +1082,9 @@ ui <- dashboardPage(
                   '<span class="ynow-app-title" id="ynow_app_title" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v17.93</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v17.94</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v17.93</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v17.94</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -3751,6 +3754,18 @@ ui <- dashboardPage(
             if (ddmGSyncHelp && s.ddm_g_sync_help) ddmGSyncHelp.textContent = s.ddm_g_sync_help;
             var ddmSpmGNote = document.getElementById('ynow_ddm_spm_g_note');
             if (ddmSpmGNote && s.ddm_spm_g_note) ddmSpmGNote.textContent = s.ddm_spm_g_note;
+            var ddmFormulaGordon = document.getElementById('ynow_ddm_formula_gordon');
+            if (ddmFormulaGordon && s.ddm_formula_gordon) ddmFormulaGordon.textContent = s.ddm_formula_gordon;
+            var ddmFormulaSpm = document.getElementById('ynow_ddm_formula_spm');
+            if (ddmFormulaSpm && s.ddm_formula_spm) ddmFormulaSpm.textContent = s.ddm_formula_spm;
+            var ddmFormulaTwo = document.getElementById('ynow_ddm_formula_two_stage');
+            if (ddmFormulaTwo && s.ddm_formula_two_stage) ddmFormulaTwo.textContent = s.ddm_formula_two_stage;
+            var ddmOverviewHint = document.getElementById('ynow_ddm_overview_hint');
+            if (ddmOverviewHint && s.ddm_overview_hint) ddmOverviewHint.textContent = s.ddm_overview_hint;
+            var ddmD0Banner = document.getElementById('ynow_ddm_d0_banner');
+            if (ddmD0Banner && s.ddm_d0_banner) ddmD0Banner.textContent = s.ddm_d0_banner;
+            var ddmTwoStageHelp = document.getElementById('ynow_ddm_two_stage_help');
+            if (ddmTwoStageHelp && s.ddm_two_stage_help) ddmTwoStageHelp.textContent = s.ddm_two_stage_help;
             var waccBoxTitle = document.getElementById('ynow_wacc_box_title');
             if (waccBoxTitle && s.wacc_box_title) waccBoxTitle.textContent = s.wacc_box_title;
             var waccHelp = document.getElementById('ynow_wacc_help');
@@ -7227,14 +7242,14 @@ ui <- dashboardPage(
                                   tags$p(
                                     id = "ynow_ddm_mode_help",
                                     class = "help-block",
-                                    "Gordon (GGM)：固定配息率。SPM：定額股利永續 + 保留盈餘成長（P = E·g/Ke² + D/Ke）。二階段：g1 後接 Gordon 終值。"
+                                    "Gordon (GGM)：V0 = D1/(r−g)。SPM：定額股利永續 + 保留盈餘成長（V0 = E·g/r² + D/r）。二階段：g1 後接 Gordon 終值 Pn。折現率 r = Ke（CAPM）。"
                                   )
                                 ),
                                 column(
                                   width = 6,
                                   numericInput(
                                     "mod_ddm-d0",
-                                    "今年發放股利 (D0)",
+                                    "剛配股利 D0",
                                     value = APP_DEFAULTS$ddm_d0
                                   ),
                                   tags$p(
@@ -7273,7 +7288,7 @@ ui <- dashboardPage(
                            width = 12,
                            .ddm_formula_banner(),
                            uiOutput("mod_ddm-ui_ddm_result"),
-                           h6(helpText("提示：D0 在上方模式列；g／二階段在下方 Overview；Ke 在 Ke 分頁。自訂參數後請再點試算。")),
+                           h6(helpText(id = "ynow_ddm_overview_hint", "提示：D0 在上方模式列；g／二階段在下方 Overview；折現率 r＝Ke 在 Ke 分頁。自訂參數後請再點試算。")),
                            fluidRow(
                              column(
                                width = 6,
@@ -7350,7 +7365,8 @@ ui <- dashboardPage(
                          column(
                            width = 12,
                            div(
-                             "D0 = 現金股利（現金流量表）÷ 股數（或 EPS × 配息率）",
+                             id = "ynow_ddm_d0_banner",
+                             "D0 = 現金股利（現金流量表）÷ 股數（或 EPS × 配息率）　｜　D1 = D0 × (1 + g)",
                              style = "font-size: 18px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
                            )
                          ),
@@ -7401,7 +7417,7 @@ ui <- dashboardPage(
                              column(
                                4,
                                numericInput(
-                                 "mod_ddm-ke", "股權成本 Ke (%)",
+                                 "mod_ddm-ke", "折現率 r＝Ke (%)",
                                  value = APP_DEFAULTS$ddm_ke, min = 0, step = 0.01
                                )
                              ),

@@ -26,36 +26,38 @@ approx_eq <- function(a, b, tol = 1e-8) {
   is.finite(a) && is.finite(b) && abs(a - b) <= tol
 }
 
-# Gordon DDM: P0 = D0(1+g)/(Ke−g)
-p_ddm <- .ddm_formula_p0(d0 = 1, g = 0.05, ke = 0.10)
-check("DDM Gordon", approx_eq(p_ddm, 1.05 / 0.05))
+# Gordon DDM: V0 = D1/(r−g), D1 = D0(1+g). StockFeel example: D0=1, g=5%, r=10% → 21
+p_ddm <- .ddm_formula_p0(d0 = 1, g = 0.05, r = 0.10)
+check("DDM Gordon V0 = D1/(r-g)", approx_eq(p_ddm, 1.05 / 0.05))
+check("DDM Gordon StockFeel example", approx_eq(p_ddm, 21))
+check("DDM Gordon ke alias equals r", approx_eq(.ddm_formula_p0(d0 = 1, g = 0.05, ke = 0.10), p_ddm))
 
-# SPM (Brown & Abraham): P0 = E·g/Ke² + D/Ke
-p_spm <- .ddm_formula_spm(eps = 2, d = 1, g = 0.05, ke = 0.10)
+# SPM (Brown & Abraham): V0 = E·g/r² + D/r
+p_spm <- .ddm_formula_spm(eps = 2, d = 1, g = 0.05, r = 0.10)
 check("DDM SPM closed form", approx_eq(p_spm, 2 * 0.05 / 0.01 + 1 / 0.10))
 
-# When ROE = Ke and g = ROE × retention, SPM = forward-D Gordon D/(Ke−g)
-eps0 <- 2; d_fwd <- 1; ke0 <- 0.10; b <- 1 - d_fwd / eps0; g_eq <- ke0 * b
-p_spm_eq <- .ddm_formula_spm(eps = eps0, d = d_fwd, g = g_eq, ke = ke0)
-p_ggm_fwd <- d_fwd / (ke0 - g_eq)
-check("DDM SPM equals forward Gordon when ROE=Ke", approx_eq(p_spm_eq, p_ggm_fwd, 1e-10))
-check("DDM SPM equals E/Ke when ROE=Ke", approx_eq(p_spm_eq, eps0 / ke0, 1e-10))
+# When ROE = r and g = ROE × retention, SPM = forward-D Gordon D/(r−g)
+eps0 <- 2; d_fwd <- 1; r0 <- 0.10; b <- 1 - d_fwd / eps0; g_eq <- r0 * b
+p_spm_eq <- .ddm_formula_spm(eps = eps0, d = d_fwd, g = g_eq, r = r0)
+p_ggm_fwd <- d_fwd / (r0 - g_eq)
+check("DDM SPM equals forward Gordon when ROE=r", approx_eq(p_spm_eq, p_ggm_fwd, 1e-10))
+check("DDM SPM equals E/r when ROE=r", approx_eq(p_spm_eq, eps0 / r0, 1e-10))
 
-# SPM allows Ke <= g mathematically (no Ke−g denominator)
-check("DDM SPM finite when Ke < g", is.finite(.ddm_formula_spm(eps = 2, d = 1, g = 0.12, ke = 0.10)))
-check("DDM SPM NA when Ke <= 0", !is.finite(.ddm_formula_spm(eps = 2, d = 1, g = 0.05, ke = 0)))
+# SPM allows r <= g mathematically (no r−g denominator)
+check("DDM SPM finite when r < g", is.finite(.ddm_formula_spm(eps = 2, d = 1, g = 0.12, r = 0.10)))
+check("DDM SPM NA when r <= 0", !is.finite(.ddm_formula_spm(eps = 2, d = 1, g = 0.05, r = 0)))
 
 # Two-stage DDM with g1 = g2 equals Gordon for any n
-p_ts_eq <- .ddm_formula_two_stage(d0 = 1, g1 = 0.05, n = 5, g2 = 0.05, ke = 0.10)
+p_ts_eq <- .ddm_formula_two_stage(d0 = 1, g1 = 0.05, n = 5, g2 = 0.05, r = 0.10)
 check("DDM two-stage g1=g2 equals Gordon", approx_eq(p_ts_eq, p_ddm, 1e-10))
 
-# Two-stage closed form: n=2, g1=8%, g2=4%, Ke=10%
-d0 <- 1; g1 <- 0.08; n1 <- 2L; g2 <- 0.04; ke <- 0.10
+# Two-stage: V0 = Σ Dt/(1+r)^t + Pn/(1+r)^n ; Pn = Dn(1+g2)/(r−g2)
+d0 <- 1; g1 <- 0.08; n1 <- 2L; g2 <- 0.04; r <- 0.10
 d1 <- d0 * (1 + g1)
 d2 <- d0 * (1 + g1)^2
-tv <- d2 * (1 + g2) / (ke - g2)
-p_ts_closed <- d1 / (1 + ke) + (d2 + tv) / (1 + ke)^2
-p_ts <- .ddm_formula_two_stage(d0 = d0, g1 = g1, n = n1, g2 = g2, ke = ke)
+pn <- d2 * (1 + g2) / (r - g2)
+p_ts_closed <- d1 / (1 + r) + (d2 + pn) / (1 + r)^2
+p_ts <- .ddm_formula_two_stage(d0 = d0, g1 = g1, n = n1, g2 = g2, r = r)
 check("DDM two-stage n=2 closed form", approx_eq(p_ts, p_ts_closed, 1e-10))
 
 # P/B: P = BVPS × target

@@ -15,9 +15,15 @@ ddm_module_server <- function(id, auto_calc_pulse = reactive(0L),
                               capm_rf = reactive(NA),
                               capm_beta = reactive(NA),
                               capm_rm = reactive(NA),
-                              use_estimated_re = reactive(FALSE)) {
+                              use_estimated_re = reactive(FALSE),
+                              ui_locale = reactive("zh-TW")) {
   
   moduleServer(id, function(input, output, session) {
+
+    .ddm_loc <- function() {
+      tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    }
+    .ddm_str <- function(key) ui_str(key, .ddm_loc())
     
     .ddm_quote_shares <- function() {
       q_ccy <- tryCatch(quote_currency(), error = function(e) NULL)
@@ -135,7 +141,7 @@ ddm_module_server <- function(id, auto_calc_pulse = reactive(0L),
       updateNumericInput(session, "g_stage1", value = APP_DEFAULTS$ddm_g_stage1)
       updateNumericInput(session, "yr_stage1", value = APP_DEFAULTS$ddm_yr_stage1)
       sync_ddm_to_financials()
-      showNotification("🔁 DDM 參數已回復預設", type = "message")
+      showNotification(.ddm_str("ddm_reset_msg"), type = "message")
     })
     
     .ddm_calc_requested <- function() {
@@ -164,12 +170,12 @@ ddm_module_server <- function(id, auto_calc_pulse = reactive(0L),
         if (!is.finite(g1)) g1 <- g_dec
         if (!is.finite(n1) || n1 < 1L) n1 <- 5L
         if (ke_dec <= g_dec) {
-          return(list(status = "error", message = "計算無效：Ke 必須嚴格大於永續股利成長率 g2！"))
+          return(list(status = "error", message = .ddm_str("ddm_err_r_le_g2")))
         }
-        p0 <- .ddm_formula_two_stage(d0 = d0, g1 = g1, n = n1, g2 = g_dec, ke = ke_dec)
+        p0 <- .ddm_formula_two_stage(d0 = d0, g1 = g1, n = n1, g2 = g_dec, r = ke_dec)
         d1 <- d0 * (1 + g1)
         if (!is.finite(p0)) {
-          return(list(status = "error", message = "二階段 DDM 無法計算，請檢查 g1／g2／Ke／年數。"))
+          return(list(status = "error", message = .ddm_str("ddm_err_two_stage")))
         }
         return(list(status = "success", value = round(p0, 2), d1 = round(d1, 2), mode = "two_stage"))
       }
@@ -177,14 +183,14 @@ ddm_module_server <- function(id, auto_calc_pulse = reactive(0L),
       if (identical(mode, "spm")) {
         eps <- suppressWarnings(as.numeric(input$est_eps)[1])
         if (!is.finite(eps)) {
-          return(list(status = "error", message = "SPM 需要有效 EPS：請至 D0 分頁填入預估／最新 EPS。"))
+          return(list(status = "error", message = .ddm_str("ddm_err_spm_eps")))
         }
         if (ke_dec <= 0) {
-          return(list(status = "error", message = "計算無效：要求報酬率 (Ke) 必須大於 0！"))
+          return(list(status = "error", message = .ddm_str("ddm_err_r_le_0")))
         }
-        p0 <- .ddm_formula_spm(eps = eps, d = d0, g = g_dec, ke = ke_dec)
+        p0 <- .ddm_formula_spm(eps = eps, d = d0, g = g_dec, r = ke_dec)
         if (!is.finite(p0)) {
-          return(list(status = "error", message = "SPM 無法計算，請檢查 EPS／D0／g／Ke。"))
+          return(list(status = "error", message = .ddm_str("ddm_err_spm")))
         }
         return(list(
           status = "success", value = round(p0, 2), d1 = round(d0, 2),
@@ -193,7 +199,7 @@ ddm_module_server <- function(id, auto_calc_pulse = reactive(0L),
       }
 
       if (ke_dec <= g_dec) {
-        return(list(status = "error", message = "計算無效：要求報酬率 (Ke) 必須嚴格大於股利成長率 g！"))
+        return(list(status = "error", message = .ddm_str("ddm_err_r_le_g")))
       }
       d1 <- d0 * (1 + g_dec)
       p0 <- d1 / (ke_dec - g_dec)
@@ -266,13 +272,13 @@ ddm_module_server <- function(id, auto_calc_pulse = reactive(0L),
       d0_txt <- if (is.finite(d0)) paste0(money_prefix(), round(d0, 2)) else "—"
       g_txt <- if (is.finite(g)) paste0(g, "%") else "—"
       ke_txt <- if (is.finite(ke)) paste0(ke, "%") else "—"
-      d_label <- if (identical(mode, "spm")) "股利 D（定額永續）" else "今年股利 D0"
+      d_label <- if (identical(mode, "spm")) "股利 D（定額永續）" else "剛配股利 D0"
       g_label <- if (identical(mode, "spm")) "盈餘／股利成長 g" else "永續股利成長 g"
       HTML(glue::glue("<div style='padding: 15px; background: #fcfcfc; border: 1px solid #eee; font-size: 14px;'>
                   <b>評價模式：</b> {mode_lab} <br/>
                   {extra}<b>{d_label}：</b> {d0_txt} <br/>
                   <b>{g_label}：</b> {g_txt} <br/>
-                  <b>折現率 Ke：</b> {ke_txt}</div>"))
+                  <b>折現率 r（Ke）：</b> {ke_txt}</div>"))
     })
 
     # DDM：Gordon／SPM／二階段；單位 D0（SPM 另含 EPS）
@@ -290,35 +296,35 @@ ddm_module_server <- function(id, auto_calc_pulse = reactive(0L),
       .p <- function(d0u = 1, g_pct = g0, ke_pct = ke0, g1_pct = g1_0, n1 = n1_0, eps_u = eps0) {
         if (identical(mode, "two_stage")) {
           .ddm_formula_two_stage(
-            d0 = d0u, g1 = g1_pct / 100, n = n1, g2 = g_pct / 100, ke = ke_pct / 100
+            d0 = d0u, g1 = g1_pct / 100, n = n1, g2 = g_pct / 100, r = ke_pct / 100
           )
         } else if (identical(mode, "spm")) {
           .ddm_formula_spm(
-            eps = eps_u, d = d0u, g = g_pct / 100, ke = ke_pct / 100
+            eps = eps_u, d = d0u, g = g_pct / 100, r = ke_pct / 100
           )
         } else {
-          .ddm_formula_p0(d0 = d0u, g = g_pct / 100, ke = ke_pct / 100)
+          .ddm_formula_p0(d0 = d0u, g = g_pct / 100, r = ke_pct / 100)
         }
       }
       v0 <- if (identical(mode, "spm")) .p(d0u = if (is.finite(d0)) d0 else 0) else .p()
       validate(need(
         is.finite(v0),
         if (identical(mode, "spm")) {
-          "基準公式尚未就緒：請確認 EPS、D、g、Ke（Ke > 0）。"
+          "基準公式尚未就緒：請確認 EPS、D、g、r（r > 0）。"
         } else {
-          "基準公式尚未就緒：請確認 g、Ke（且 Ke > g）。"
+          "基準公式尚未就緒：請確認 g、r（且 r > g）。"
         }
       ))
       .rel <- function(x, sign = -1) .param_rel_shock(x, sign = sign, shock = shock_pct)
       d0_show <- if (is.finite(d0)) d0 else 1
       d0_unit <- if (is.finite(d0)) money_prefix() else "x"
-      d0_label <- if (identical(mode, "spm")) "股利 D（定額）" else "今年股利 D0"
+      d0_label <- if (identical(mode, "spm")) "股利 D（定額）" else "剛配股利 D0"
       rows <- list(
         .param_sensitivity_infl_row(
           d0_label, d0_show, d0_unit, v0,
           if (identical(mode, "spm")) .p(d0u = d0_show * (1 - shock_pct)) else .p(d0u = 1 - shock_pct),
           if (identical(mode, "spm")) .p(d0u = d0_show * (1 + shock_pct)) else .p(d0u = 1 + shock_pct),
-          if (identical(mode, "spm")) "SPM：P 含 D/Ke 項" else "P0 ∝ D0 ⇒ |ε|=1（公式；與股利金額／股價無關）"
+          if (identical(mode, "spm")) "SPM：V0 含 D/r 項" else "V0 ∝ D0 ⇒ |ε|=1（公式；與股利金額／股價無關）"
         )
       )
       if (identical(mode, "spm") && .param_sensitivity_rel_ok(eps0)) {
@@ -326,7 +332,7 @@ ddm_module_server <- function(id, auto_calc_pulse = reactive(0L),
           "EPS (E)", eps0, money_prefix(), v0,
           .p(eps_u = .rel(eps0, -1)),
           .p(eps_u = .rel(eps0, +1)),
-          "SPM：成長項 ∝ E × g / Ke²"
+          "SPM：成長項 ∝ E × g / r²"
         )
       }
       if (identical(mode, "two_stage") && .param_sensitivity_rel_ok(g1_0)) {
@@ -350,23 +356,23 @@ ddm_module_server <- function(id, auto_calc_pulse = reactive(0L),
           .p(g_pct = .rel(g0, -1)),
           .p(g_pct = .rel(g0, +1)),
           if (identical(mode, "two_stage")) {
-            "終值 Gordon：g2 < Ke"
+            "終值 Gordon：g2 < r"
           } else if (identical(mode, "spm")) {
-            "SPM：成長項 ∝ g（無需 Ke > g）"
+            "SPM：成長項 ∝ g（無需 r > g）"
           } else {
-            "ε = g/(1+g)+g/(Ke−g)（取決於 Ke、g）"
+            "ε = g/(1+g)+g/(r−g)（取決於 r、g）"
           }
         )
       }
       if (.param_sensitivity_rel_ok(ke0)) {
         rows[[length(rows) + 1]] <- .param_sensitivity_infl_row(
-          "要求報酬率 Ke", ke0, "%", v0,
+          "折現率 r（Ke）", ke0, "%", v0,
           .p(ke_pct = .rel(ke0, -1)),
           .p(ke_pct = .rel(ke0, +1)),
           if (identical(mode, "spm")) {
-            "SPM：對 Ke 敏感度通常低於 Gordon"
+            "SPM：對 r 敏感度通常低於 Gordon"
           } else {
-            "ε = −Ke/(Ke−g)（取決於 Ke、g）"
+            "ε = −r/(r−g)（取決於 r、g）"
           }
         )
       }
