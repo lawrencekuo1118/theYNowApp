@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12590866
+bundleId=12617188
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=166965f80a665c58eee1ed563dfc5fae533d11f7
-commit=166965f80a665c58eee1ed563dfc5fae533d11f7
-short=166965f
-message=Merge branch 'cursor/pdf-report-redesign-f4a6': logo-palette ticker PDF (v17.92)
-captured_at=2026-09-22T17:08:00Z
+aligned_git=c562fbf
+commit=c562fbf
+short=c562fbf
+message=Fix DCF FCFF identity, EV-to-equity bridge, and negative-FCF guards (v17.93).
+captured_at=2026-09-28T15:29:05Z
 source_branch=master
-display_version=v17.92
-note=Canonical live line is app_17.0. Bundle 12590866 ships broker-style ticker PDF report (壹–肆 sections, formula-filled MOS/WACC/g/Bear-Base-Bull, logo palette, Lite condensed appendix omit). Deploy via scripts/deploy_app_17.R. Supersedes 12590795.
+display_version=v17.93
+note=Canonical live line is app_17.0. Bundle 12617188 = v17.93 DCF: historical FCFF from CFO+Interest×(1−T)−CapEx, EV+cash−debt equity bridge, skip Gordon TV on negative terminal CF (prefer RI when NI>0), g<WACC guard. Deploy via scripts/deploy_app_17.R. Supersedes 12590866.
