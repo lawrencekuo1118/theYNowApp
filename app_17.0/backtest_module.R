@@ -224,9 +224,15 @@ estimate_hist_dcf <- function(fcf0, cash, debt, shares,
     }
   }
 
-  # --- Fallback: geometric Free Cash Flow (requires observed FCF0; no CapEx invent) ---
+  # --- Fallback: geometric Free Cash Flow (Yahoo FCF is levered; unlever for FCFF) ---
   fcf0 <- .safe_num(fcf0, NA_real_)
   if (is.na(fcf0)) return(.dcf_out(NA_real_, "na"))
+  if (!identical(as.character(claim)[1], "fcfe")) {
+    rd0 <- .safe_num(rd, 0)
+    tax0 <- .safe_num(tax, .default_statutory_tax_ratio())
+    iat0 <- max(0, debt) * max(0, rd0) * (1 - max(0, min(tax0, 0.5)))
+    if (is.finite(iat0) && iat0 > 0) fcf0 <- fcf0 + iat0
+  }
   fcfs <- fcf0 * (1 + g_explicit) ^ seq_len(n_years)
 
   if (identical(as.character(claim)[1], "fcfe")) {
@@ -245,7 +251,14 @@ estimate_hist_dcf <- function(fcf0, cash, debt, shares,
     if (any(!is.finite(cfs))) return(.dcf_out(NA_real_, "na"))
     dfs <- cumprod(rep(1 + ke, n_years))
     pv <- sum(cfs / dfs)
-    tv <- cfs[n_years] * (1 + sgr) / (ke - sgr)
+    tv <- if (exists("dcf_gordon_tv", mode = "function")) {
+      dcf_gordon_tv(cfs[n_years], sgr, ke)
+    } else if (is.finite(cfs[n_years]) && cfs[n_years] > 0 && ke > sgr) {
+      cfs[n_years] * (1 + sgr) / (ke - sgr)
+    } else {
+      NA_real_
+    }
+    if (!is.finite(tv)) return(.dcf_out(NA_real_, "na"))
     fv <- (pv + tv / dfs[n_years]) / shares
     return(.dcf_out(fv, "geometric"))
   }
@@ -255,10 +268,21 @@ estimate_hist_dcf <- function(fcf0, cash, debt, shares,
   if (sgr >= wacc) return(.dcf_out(NA_real_, "na"))
   dfs <- cumprod(rep(1 + wacc, n_years))
   pv_fcf <- sum(fcfs / dfs)
-  tv <- fcfs[n_years] * (1 + sgr) / (wacc - sgr)
+  tv <- if (exists("dcf_gordon_tv", mode = "function")) {
+    dcf_gordon_tv(fcfs[n_years], sgr, wacc)
+  } else if (is.finite(fcfs[n_years]) && fcfs[n_years] > 0) {
+    fcfs[n_years] * (1 + sgr) / (wacc - sgr)
+  } else {
+    NA_real_
+  }
+  if (!is.finite(tv)) return(.dcf_out(NA_real_, "na"))
   pv_tv <- tv / dfs[n_years]
   ev <- pv_fcf + pv_tv
-  equity <- ev + cash - debt
+  equity <- if (exists("dcf_ev_to_equity", mode = "function")) {
+    dcf_ev_to_equity(ev, cash, debt)
+  } else {
+    ev + cash - debt
+  }
   fv <- equity / shares
   .dcf_out(fv, "geometric")
 }

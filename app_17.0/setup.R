@@ -188,6 +188,40 @@ after_tax_interest <- function(debt, rd, tax) {
   max(0, debt) * rd * (1 - tax)
 }
 
+#' Normalize a tax input that may be 0.21 or 21 (%).
+.norm_tax_ratio <- function(tax, fallback = 0.21) {
+  t <- suppressWarnings(as.numeric(tax)[1])
+  if (!is.finite(t)) t <- suppressWarnings(as.numeric(fallback)[1])
+  if (!is.finite(t)) t <- 0.21
+  if (t > 1) t <- t / 100
+  if (!is.finite(t) || t < 0 || t >= 1) t <- 0.21
+  t
+}
+
+#' Effective tax from IS (Income Tax Expense / Pretax Income), clamped 0–50%.
+effective_tax_ratio_from_is <- function(d_is, fallback = 0.21) {
+  fb <- .norm_tax_ratio(fallback, fallback = 0.21)
+  if (is.null(d_is) || !is.data.frame(d_is) || nrow(d_is) < 1L) return(fb)
+  pre <- tryCatch(
+    select_clean_metric_row(d_is, "Pretax Income", include_ttm = FALSE),
+    error = function(e) NULL
+  )
+  tx <- tryCatch(
+    select_clean_metric_row(d_is, "Income Tax Expense", include_ttm = FALSE),
+    error = function(e) NULL
+  )
+  pre <- suppressWarnings(as.numeric(pre))
+  tx <- suppressWarnings(as.numeric(tx))
+  n <- min(length(pre), length(tx))
+  if (n < 1L) return(fb)
+  ratios <- tx[seq_len(n)] / pre[seq_len(n)]
+  ok <- is.finite(pre[seq_len(n)]) & pre[seq_len(n)] != 0 & is.finite(ratios)
+  ratios <- ratios[ok]
+  if (!length(ratios)) return(fb)
+  t <- mean(pmax(0, pmin(0.5, ratios)), na.rm = TRUE)
+  if (!is.finite(t)) fb else t
+}
+
 money_to_session <- function(x, from_ccy, session_ccy = NULL, usd_twd = NULL) {
   nums <- suppressWarnings(as.numeric(x))
   mult <- fx_factor(from_ccy, session_ccy %||% .ynow_ccy_ctx$session_currency, usd_twd)
@@ -563,6 +597,13 @@ INTEREST_PAID_PATTERNS <- c(
   "^Interest Paid$",
   "Cash Interest Paid",
   "Interest Paid"
+)
+CAPEX_PATTERNS <- c(
+  "^Capital Expenditure$",
+  "^Capital Expenditures$",
+  "Purchase Of PPE",
+  "Net PPE Purchase And Sale",
+  "Capital Expenditure"
 )
 
 EQUITY_PATTERNS <- c(
@@ -1281,9 +1322,9 @@ dcf_cf_full_zh <- function(claim) {
 #' Projection-tab formula banner (FCFF identity, or FCFE conversion + FCFF identity).
 dcf_formula_banner_txt <- function(claim) {
   if (dcf_claim_is_fcfe(claim)) {
-    "FCFE = FCFF − Interest×(1−T) + Net Borrowing　｜　FCFF = NOPAT + D&A − ΔNWC − CapEx"
+    "FCFE = FCFF − Interest×(1−T) + Net Borrowing　｜　FCFF = CFO + Interest×(1−T) − CapEx ＝ NOPAT + D&A − ΔNWC − CapEx"
   } else {
-    "FCFF = NOPAT + D&A - ΔNWC - CapEx"
+    "FCFF = CFO + Interest×(1−T) − CapEx  ＝  NOPAT + D&A − ΔNWC − CapEx"
   }
 }
 
@@ -1297,6 +1338,125 @@ dcf_fcst_cf_label <- function(claim) {
 
 dcf_yearly_pv_label <- function(claim) {
   sprintf("各年折現現金流 (PV／%s)", dcf_disc_tag(claim))
+}
+
+#' Reconstruct unlevered FCFF from statements (CFA / Damodaran CFO identity).
+#' Yahoo "Free Cash Flow" is typically CFO − |CapEx| (after interest) ≈ levered FCF.
+#' FCFF_t = CFO_t + Interest_t × (1−T) − |CapEx_t|.
+#' Fallback: Yahoo FCF + after-tax interest when CFO or CapEx is missing.
+reconstruct_hist_fcff <- function(d_cf, d_is = NULL, tax = NULL) {
+  empty <- list(
+    fcff = numeric(0), source = "none",
+    cfo = numeric(0), capex = numeric(0), interest = numeric(0),
+    iat = numeric(0), yahoo_fcf = numeric(0), tax = NA_real_
+  )
+  if (is.null(d_cf) || !is.data.frame(d_cf) || nrow(d_cf) < 1L) return(empty)
+  t <- if (!is.null(tax) && is.finite(suppressWarnings(as.numeric(tax)[1]))) {
+    .norm_tax_ratio(tax)
+  } else {
+    effective_tax_ratio_from_is(d_is, fallback = 0.21)
+  }
+  cfo <- tryCatch(
+    select_clean_metric_row(d_cf, "Operating Cash Flow", include_ttm = FALSE),
+    error = function(e) NA_real_
+  )
+  cap <- tryCatch(
+    select_clean_metric_row_any(d_cf, CAPEX_PATTERNS, include_ttm = FALSE),
+    error = function(e) NA_real_
+  )
+  yfcf <- tryCatch(
+    select_clean_metric_row(d_cf, "^Free Cash Flow$", include_ttm = FALSE),
+    error = function(e) NA_real_
+  )
+  if (length(yfcf) < 1L || all(is.na(yfcf))) {
+    yfcf <- tryCatch(
+      select_clean_metric_row(d_cf, "Free Cash Flow", include_ttm = FALSE),
+      error = function(e) NA_real_
+    )
+  }
+  inte <- tryCatch(
+    select_clean_metric_row_any(d_is, INTEREST_EXPENSE_PATTERNS, include_ttm = FALSE),
+    error = function(e) NA_real_
+  )
+  if (length(inte) < 1L || all(is.na(inte))) {
+    inte <- tryCatch(
+      select_clean_metric_row_any(d_cf, INTEREST_PAID_PATTERNS, include_ttm = FALSE),
+      error = function(e) NA_real_
+    )
+  }
+  n <- max(length(cfo), length(cap), length(yfcf), length(inte), 0L)
+  if (n < 1L) return(empty)
+  pad <- function(x) {
+    x <- suppressWarnings(as.numeric(x))
+    if (!length(x)) x <- NA_real_
+    if (length(x) < n) x <- c(x, rep(NA_real_, n - length(x)))
+    x[seq_len(n)]
+  }
+  cfo <- pad(cfo)
+  cap <- pad(cap)
+  yfcf <- pad(yfcf)
+  inte <- pad(inte)
+  cap_out <- ifelse(is.finite(cap), abs(cap), NA_real_)
+  int_abs <- ifelse(is.finite(inte), abs(inte), 0)
+  iat <- int_abs * (1 - t)
+  fcff <- cfo + iat - cap_out
+  src <- "cfo_identity"
+  miss <- !is.finite(fcff)
+  fb <- yfcf + iat
+  use_fb <- miss & is.finite(fb)
+  fcff[use_fb] <- fb[use_fb]
+  cfo_ok <- any(is.finite(cfo) & is.finite(cap_out))
+  if (!isTRUE(cfo_ok) && any(is.finite(fb))) {
+    src <- if (any(is.finite(iat) & iat > 0)) "yahoo_fcf_plus_iat" else "yahoo_fcf"
+  } else if (any(use_fb)) {
+    src <- "cfo_identity_with_yahoo_fallback"
+  }
+  list(
+    fcff = fcff, source = src, cfo = cfo, capex = cap_out,
+    interest = int_abs, iat = iat, yahoo_fcf = yfcf, tax = t
+  )
+}
+
+latest_hist_fcff <- function(d_cf, d_is = NULL, tax = NULL) {
+  rec <- reconstruct_hist_fcff(d_cf, d_is = d_is, tax = tax)
+  hit <- which(is.finite(rec$fcff))
+  if (!length(hit)) return(NA_real_)
+  rec$fcff[hit[1]]
+}
+
+hist_fcff_period_df <- function(d_cf, d_is = NULL, tax = NULL) {
+  rec <- reconstruct_hist_fcff(d_cf, d_is = d_is, tax = tax)
+  if (is.null(d_cf) || !is.data.frame(d_cf) || ncol(d_cf) < 2L) return(NULL)
+  period_cols <- colnames(d_cf)[-1]
+  period_cols <- period_cols[!grepl("^ttm$", period_cols, ignore.case = TRUE)]
+  n <- min(length(rec$fcff), length(period_cols))
+  if (n < 1L) return(NULL)
+  data.frame(
+    Period = as.character(period_cols[seq_len(n)]),
+    Value = as.numeric(rec$fcff[seq_len(n)]),
+    stringsAsFactors = FALSE
+  )
+}
+
+#' Gordon TV; NA when r ≤ g or last CF is negative (do not perpetuate a cash drain).
+dcf_gordon_tv <- function(last_fcf, g, r) {
+  last_fcf <- suppressWarnings(as.numeric(last_fcf)[1])
+  g <- suppressWarnings(as.numeric(g)[1])
+  r <- suppressWarnings(as.numeric(r)[1])
+  if (!is.finite(last_fcf) || !is.finite(g) || !is.finite(r) || r <= g) return(NA_real_)
+  if (last_fcf < 0) return(NA_real_)
+  last_fcf * (1 + g) / (r - g)
+}
+
+#' EV → equity bridge: Equity = EV + Cash − Debt.
+dcf_ev_to_equity <- function(ev, cash = 0, debt = 0) {
+  ev <- suppressWarnings(as.numeric(ev)[1])
+  cash <- suppressWarnings(as.numeric(cash)[1])
+  debt <- suppressWarnings(as.numeric(debt)[1])
+  if (!is.finite(ev)) return(NA_real_)
+  if (!is.finite(cash)) cash <- 0
+  if (!is.finite(debt)) debt <- 0
+  ev + cash - debt
 }
 
 #' Convert FCFF path to FCFE with conversion components.
@@ -1729,10 +1889,17 @@ recommend_valuation_models <- function(d_cf, industry_text = "", d_is = NULL, d_
   )
   if (is.null(d_cf) || !is.data.frame(d_cf) || nrow(d_cf) == 0) return(empty)
 
-  fcf_seq <- tryCatch(
-    select_clean_metric_row(d_cf, "Free Cash Flow", include_ttm = FALSE),
+  rec_fcff <- tryCatch(
+    reconstruct_hist_fcff(d_cf, d_is = d_is),
     error = function(e) NULL
   )
+  fcf_seq <- if (!is.null(rec_fcff)) rec_fcff$fcff else NULL
+  if (is.null(fcf_seq) || !length(fcf_seq) || all(!is.finite(fcf_seq))) {
+    fcf_seq <- tryCatch(
+      select_clean_metric_row(d_cf, "Free Cash Flow", include_ttm = FALSE),
+      error = function(e) NULL
+    )
+  }
   div_seq <- tryCatch(
     select_clean_metric_row(d_cf, "Cash Dividends Paid", include_ttm = FALSE),
     error = function(e) NULL
@@ -1782,6 +1949,11 @@ recommend_valuation_models <- function(d_cf, industry_text = "", d_is = NULL, d_
   ni <- tryCatch(select_current_metric_any(d_is, NET_INCOME_PATTERNS, "flow"), error = function(e) NA_real_)
   equity <- tryCatch(select_current_metric_any(d_bs, EQUITY_PATTERNS, "stock"), error = function(e) NA_real_)
   roe <- if (!is.na(ni) && !is.na(equity) && equity > 0) ni / equity * 100 else NA_real_
+  last_fcff <- NA_real_
+  if (length(fcf_seq)) {
+    hit <- which(is.finite(suppressWarnings(as.numeric(fcf_seq))))
+    if (length(hit)) last_fcff <- suppressWarnings(as.numeric(fcf_seq)[hit[1]])
+  }
 
   conf_in <- list(
     fcf_cv = fcf_cv,
@@ -1846,9 +2018,20 @@ recommend_valuation_models <- function(d_cf, industry_text = "", d_is = NULL, d_
     ))
   }
 
+  # 2.5) NI > 0 but unlevered FCFF < 0 — do not Gordon-perpetuity a cash drain
+  if (is.finite(ni) && ni > 0 && is.finite(last_fcff) && last_fcff < 0 &&
+      is.finite(roe) && roe > 0) {
+    return(.pack(
+      "ni_pos_fcff_neg", "ri", "dcf",
+      "RI（剩餘收益）",
+      "帳面淨利為正但 FCFF 為負：Gordon 永續會把負現金流放大成無意義的負企業價值。建議改用 RI（看超額盈餘，不看現金流）；DCF 僅作交叉驗證，且不對負終值作永續成長。",
+      suggest_two_stage = TRUE
+    ))
+  }
+
   # 3) Growth — two-stage DCF primary
   is_growth <- (is.finite(rev_g) && rev_g > 12 && isTRUE(is_fcf_pos)) ||
-    (is.finite(rev_g) && rev_g > 15) ||
+    (is.finite(rev_g) && rev_g > 15 && isTRUE(is_fcf_pos)) ||
     (isTRUE(is_fcf_pos) && !isTRUE(is_fcf_stable) && is.finite(rev_g) && rev_g > 8)
   if (isTRUE(is_growth)) {
     sec <- if (isTRUE(is.finite(roe) && roe > 8)) "ri" else "pb"

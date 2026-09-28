@@ -208,8 +208,13 @@ classify_fundamental_profile <- function(d_cf = NULL, d_is = NULL, d_bs = NULL,
   if (!isTRUE(has_is) && !isTRUE(has_cf)) return(empty)
 
   fcf_seq <- if (isTRUE(has_cf)) {
-    tryCatch(select_clean_metric_row(d_cf, "Free Cash Flow", include_ttm = FALSE),
-             error = function(e) NULL)
+    rec <- tryCatch(reconstruct_hist_fcff(d_cf, d_is = d_is), error = function(e) NULL)
+    if (!is.null(rec) && length(rec$fcff) && any(is.finite(rec$fcff))) {
+      rec$fcff
+    } else {
+      tryCatch(select_clean_metric_row(d_cf, "Free Cash Flow", include_ttm = FALSE),
+               error = function(e) NULL)
+    }
   } else {
     NULL
   }

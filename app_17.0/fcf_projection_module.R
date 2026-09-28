@@ -376,7 +376,15 @@ fcf_projection_module_server <- function(
       df_proj <- proj_table_data()
       if (is.null(df_proj) || nrow(df_proj) < 1) return(NULL)
       
-      latest_fcf <- select_current_metric(d_cash_flow(), "Free Cash Flow", "flow")
+      latest_fcf <- latest_hist_fcff(d_cash_flow(), d_is = d_income_statement())
+      if (isTRUE(claim_fcfe())) {
+        latest_fcf <- fcff_to_fcfe(
+          latest_fcf,
+          interest_after_tax = fcfe_interest_after_tax(),
+          debt0 = fcfe_debt0(),
+          g_path = 0
+        )[1]
+      }
       if (!is.null(input_manual_fcf()) && !is.na(input_manual_fcf())) {
         latest_fcf <- input_manual_fcf()
       }

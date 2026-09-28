@@ -907,7 +907,7 @@ lab_estimate_fv_per_share <- function(method, industry_key, d_is, d_bs, d_cf,
   } else {
     # DCF：n 年顯式 FCF 成長＋終值（用 Ke 近似折現；實驗區簡化）
     fcf <- tryCatch(
-      select_current_metric(d_cf, "Free Cash Flow", "flow"),
+      latest_hist_fcff(d_cf, d_is = d_is),
       error = function(e) NA_real_
     )
     fcf <- suppressWarnings(as.numeric(fcf)[1])

@@ -85,7 +85,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v17.92) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報抓取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v17.93) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報抓取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -101,7 +101,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v17.92) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v17.93) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -200,7 +200,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v17.92）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v17.93）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -217,7 +217,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v17.92) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v17.93) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -839,8 +839,9 @@ beta_rolling_section_ui <- function() {
           "Discounted Cash Flow (DCF)",
           icon = icon("money-bill-wave"),
           h4(tags$b("自由現金流折現模型 (FCFF／FCFE)")),
-          p("DCF 關注企業造血能力。預設以 FCFF 用 WACC 折現得到企業價值，再橋接至股權價值。亦可切換 FCFE：將 FCFF 轉成股權現金流後以 Ke 折現，不再加減淨現金／負債。本 app 的「Gordon」模式為明確預測期加上 Gordon 終值，而非單期 EV = FCF₁/(WACC−g)。CapEx 暴衝平滑為可選工程啟發式（可調倍數閾值／均值年數）。"),
+          p("DCF 關注企業造血能力。預設以 FCFF 用 WACC 折現得到企業價值（EV），再加現金、減負債橋接至股權價值後才除以流通股數。歷史現金流以 CFO＋稅後利息−|CapEx| 重建（Yahoo Free Cash Flow 為稅後、近 FCFE，不可直接配 WACC）。亦可切換 FCFE：將 FCFF 轉成股權現金流後以 Ke 折現，不再加減淨現金／負債。本 app 的「Gordon」模式為明確預測期加上 Gordon 終值，而非單期 EV = FCF₁/(WACC−g)。若末期 FCFF 為負則略過永續終值，並建議改用 RI。CapEx 暴衝平滑為可選工程啟發式（可調倍數閾值／均值年數）。"),
           tags$ul(
+            tags$li(tags$b("$$FCFF = CFO + Interest\\times(1-T) - CapEx$$")),
             tags$li(tags$b("$$FCFF = NOPAT + D\\&A - \\Delta NWC - CapEx$$")),
             tags$li(tags$b("$$FCFE = FCFF - Interest\\times(1-T) + Net\\ Borrowing$$")),
             tags$li(tags$b("FCFF："), tags$b("$$Enterprise\\ Value = \\sum \\frac{FCFF_t}{(1+WACC)^t} + \\frac{TV}{(1+WACC)^n}$$")),
@@ -1078,9 +1079,9 @@ ui <- dashboardPage(
                   '<span class="ynow-app-title" id="ynow_app_title" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v17.92</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v17.93</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v17.92</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v17.93</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,

@@ -1,4 +1,12 @@
-# The YNow App v17.92 — Valuation Methodology
+# The YNow App v17.93 — Valuation Methodology
+
+## v17.93 重點
+
+- **DCF／FCFF**：歷史現金流改以 `CFO + Interest×(1−T) − |CapEx|` 重建（Yahoo Free Cash Flow 為稅後近 FCFE，不可直接配 WACC）
+- **EV→股權橋接**：FCFF／WACC 結果一律加現金、減負債後才除以流通股數
+- **負 FCFF**：末期現金流為負時略過 Gordon 永續；淨利為正時模型推薦改以 RI 為主
+- **g < WACC**：輸入端與運算端防呆；負股權價值不顯示為每股合理價
+- **目錄**：`app_17.0/`；顯示版號 **v17.93**
 
 ## v17.92 重點
 

@@ -208,6 +208,54 @@ check("claim suggest FCFF when leverage swings", identical(r_swing$prefer, "fcff
 r_ok <- recommend_dcf_claim(mk_bs_de(c(25, 27), c(75, 73)), fcff = 10, fcfe = 6)
 check("claim FCFE ok when leverage stable", isTRUE(r_ok$fcfe_ok) && identical(r_ok$prefer, "fcff"))
 
+# CFO identity: FCFF = CFO + Interest×(1−T) − |CapEx|  (Yahoo FCF = 60 is levered)
+d_cf_fcff <- data.frame(
+  Metric = c("Operating Cash Flow", "Capital Expenditure", "Free Cash Flow"),
+  `2024` = c(100, -40, 60),
+  `2023` = c(90, -30, 60),
+  check.names = FALSE,
+  stringsAsFactors = FALSE
+)
+d_is_fcff <- data.frame(
+  Metric = c("Interest Expense", "Net Income", "Total Revenue", "Pretax Income", "Income Tax Expense"),
+  `2024` = c(10, 50, 200, 63.29, 13.29),
+  `2023` = c(8, 40, 180, 50, 10.5),
+  check.names = FALSE,
+  stringsAsFactors = FALSE
+)
+rec_h <- reconstruct_hist_fcff(d_cf_fcff, d_is = d_is_fcff, tax = 0.21)
+check("hist FCFF unlevered vs Yahoo FCF", approx_eq(rec_h$fcff[1], 100 + 10 * 0.79 - 40, 1e-8))
+check("hist FCFF exceeds Yahoo FCF by IAT", approx_eq(rec_h$fcff[1] - rec_h$yahoo_fcf[1], 10 * 0.79, 1e-8))
+check("EV to equity bridge", approx_eq(dcf_ev_to_equity(1000, cash = 80, debt = 300), 780))
+check("Gordon TV blocked when g>=WACC", !is.finite(dcf_gordon_tv(100, 0.10, 0.10)))
+check("Gordon TV blocked when last FCFF negative", !is.finite(dcf_gordon_tv(-50, 0.03, 0.10)))
+check("Gordon TV finite when g<WACC and CF>0", approx_eq(dcf_gordon_tv(100, 0.03, 0.10), 100 * 1.03 / 0.07))
+
+d_bs_ri <- data.frame(
+  Metric = "Common Stock Equity",
+  `2024` = 400,
+  `2023` = 350,
+  check.names = FALSE,
+  stringsAsFactors = FALSE
+)
+d_cf_neg <- data.frame(
+  Metric = c("Operating Cash Flow", "Capital Expenditure", "Free Cash Flow"),
+  `2024` = c(80, -200, -120),
+  `2023` = c(70, -180, -110),
+  check.names = FALSE,
+  stringsAsFactors = FALSE
+)
+d_is_neg <- data.frame(
+  Metric = c("Net Income", "Total Revenue", "Interest Expense", "Pretax Income", "Income Tax Expense"),
+  `2024` = c(50, 130, 5, 60, 12),
+  `2023` = c(40, 100, 4, 50, 10),
+  check.names = FALSE,
+  stringsAsFactors = FALSE
+)
+rec_ri <- recommend_valuation_models(d_cf_neg, d_is = d_is_neg, d_bs = d_bs_ri)
+check("NI>0 FCFF<0 recommends RI", identical(rec_ri$primary, "ri"))
+check("NI>0 FCFF<0 keeps DCF secondary", identical(rec_ri$secondary, "dcf"))
+
 if (fail > 0L) {
   cat(fail, " formula check(s) failed.\n", sep = "")
   quit(status = 1L)
