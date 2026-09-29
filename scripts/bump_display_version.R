@@ -161,7 +161,11 @@ ynow_git_commit_paths <- function(root, paths, message, must = TRUE) {
   if (!length(repo) || !identical(repo[[1]], "true")) return(invisible(FALSE))
 
   rel <- substring(normalizePath(paths, mustWork = TRUE), nchar(normalizePath(root, mustWork = TRUE)) + 2L)
-  status <- system2("git", c("-C", root, "commit", "-m", message, "--", rel))
+  # A host git wrapper splits an unquoted -m message on spaces (":" starts a new token).
+  msg_file <- tempfile(pattern = "ynow-commit-", fileext = ".txt")
+  on.exit(unlink(msg_file), add = TRUE)
+  ynow_write_lines(msg_file, message)
+  status <- system2("git", c("-C", root, "commit", "-F", msg_file, "--", rel))
   if (!identical(status, 0L)) {
     if (must) stop("git commit failed (status ", status, "): ", message)
     message("git commit failed (status ", status, "): ", message)

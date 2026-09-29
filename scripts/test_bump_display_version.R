@@ -67,6 +67,26 @@ writeLines(
   file.path(tmp, "app_17.0", "tests", "test_lite_mode_ui.R")
 )
 
+git_tmp <- tempfile("ynow-git-")
+dir.create(git_tmp)
+writeLines("hello", file.path(git_tmp, "note.txt"))
+system2("git", c("-C", git_tmp, "init", "-q"))
+init_msg <- tempfile(pattern = "ynow-init-", fileext = ".txt")
+writeLines("init", init_msg)
+system2("git", c("-C", git_tmp, "add", "note.txt"))
+system2("git", c("-C", git_tmp, "commit", "-q", "-F", init_msg))
+writeLines("hello v2", file.path(git_tmp, "note.txt"))
+commit_ok <- ynow_git_commit_paths(
+  git_tmp,
+  file.path(git_tmp, "note.txt"),
+  "chore: bump display version to v17.95",
+  must = FALSE
+)
+logged <- system2("git", c("-C", git_tmp, "log", "-1", "--format=%s"), stdout = TRUE)
+check("commit message keeps spaces", isTRUE(commit_ok) && identical(logged[[1]], "chore: bump display version to v17.95"))
+unlink(git_tmp, recursive = TRUE)
+unlink(init_msg)
+
 Sys.setenv(YNOW_VERSION_BUMP_NO_COMMIT = "1")
 on.exit(Sys.unsetenv("YNOW_VERSION_BUMP_NO_COMMIT"), add = TRUE)
 out <- ynow_prepare_deploy_version(tmp, commit = TRUE)
