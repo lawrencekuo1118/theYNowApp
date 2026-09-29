@@ -7,6 +7,10 @@
 # Optional:
 #   SHINYAPPS_APP_NAME (default TheYNowApp)
 #   SHINYAPPS_APP_ID   (default 10907657)
+#   YNOW_SKIP_VERSION_BUMP=1 or --no-bump
+#       ship the tree as-is (retry). Default: +0.01 display version, then upload.
+#   YNOW_VERSION_BUMP_NO_COMMIT=1
+#       rewrite version files but do not git commit them.
 
 if (!requireNamespace("rsconnect", quietly = TRUE)) {
   install.packages("rsconnect", repos = "https://cloud.r-project.org")
@@ -46,6 +50,18 @@ if (!dir.exists(app_dir) || !file.exists(file.path(app_dir, "app.R"))) {
   stop("app_17.0/app.R not found under ", root)
 }
 
+user_args <- commandArgs(trailingOnly = TRUE)
+skip_bump <- "--no-bump" %in% user_args || identical(Sys.getenv("YNOW_SKIP_VERSION_BUMP"), "1")
+bump_path <- file.path(root, "scripts", "bump_display_version.R")
+if (!skip_bump) {
+  if (!file.exists(bump_path)) stop("Missing ", bump_path)
+  source(bump_path, local = FALSE)
+  ver <- ynow_prepare_deploy_version(root, commit = TRUE)
+  message("Shipping display version ", ver$version)
+} else {
+  message("YNOW_SKIP_VERSION_BUMP: shipping display version without +0.01")
+}
+
 app_name <- Sys.getenv("SHINYAPPS_APP_NAME", "TheYNowApp")
 app_id <- suppressWarnings(as.integer(Sys.getenv("SHINYAPPS_APP_ID", "10907657")))
 
@@ -70,4 +86,11 @@ res <- rsconnect::deployApp(
 
 message("Deploy finished.")
 print(res)
+if (!skip_bump && exists("ver") && nzchar(ver$version)) {
+  ynow_record_shipped_version(root, ver$version)
+  message(
+    "Deploy complete. Display version is ", ver$version,
+    " (+0.01 from the previous shipped version when a bump was applied)."
+  )
+}
 invisible(res)

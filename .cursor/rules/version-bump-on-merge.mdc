@@ -34,6 +34,12 @@ Do **not** invent a second version number; one display version for the live line
 
 ## When to bump
 
-- Yes: merge to master, auto-deploy after optimization, explicit「部署／推送」of app changes.
-- No: docs-only / rules-only, exploratory WIP, or commits the user says not to ship.
+- Yes: every **completed deploy** of the live line. `Rscript scripts/deploy_app_17.R` does this itself: it advances the display version by **+0.01**, commits that bump, then uploads. The bundle that finishes deploying is the incremented version.
+- If the working tree is already exactly **+0.01** ahead of `scripts/DEPLOY_BASELINE.txt` `display_version`, the script ships that bump and does **not** add another 0.01 (so a retry is not a double bump).
+- Skip only with `--no-bump` or `YNOW_SKIP_VERSION_BUMP=1`.
+- No: docs-only / rules-only, exploratory WIP, or commits the user says not to ship. Do not bump by hand before calling the deploy script.
 - This rule records policy only; do not bump “just because” the rule file was edited.
+
+## Automatic step
+
+Agents do not hand-edit `v17.xx` strings before deploy. The deploy script owns the +0.01 step (`scripts/bump_display_version.R`). Surfaces it rewrites: header / About / Lite copy in `ynow_ui.R`, `report_template.Rmd` `app_version`, the README title line, `www/ynow_build.json`, and a hardcoded header expectation in `tests/test_lite_mode_ui.R` when present. README history sections stay on their original version numbers. The app directory stays `app_17.0/` until the user asks for a full +1 cut.
