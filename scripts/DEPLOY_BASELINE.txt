@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12621764
+bundleId=12622578
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=c712ef28046dc7bd90cd50670eaf2e0c8ef83fb3
-commit=c712ef28046dc7bd90cd50670eaf2e0c8ef83fb3
-short=c712ef2
-message=Lite Snapshot defaults show only Lite-configurable parameters (v17.97).
-captured_at=2026-09-29T11:36:09Z
-source_branch=cursor/restore-ynow-server-3fb1
-display_version=v17.97
-note=Canonical live line is app_17.0. Bundle 12621764 = v17.97 Lite Snapshot defaults show only Lite-configurable params (Dashboard industry/currency/ticker + Blue Chip ranking/Clustering). Registry full_only aligned. Supersedes 12621724.
+aligned_git=a3f0c14328fb46adf322de2eeb48802f619cb3eb
+commit=a3f0c14328fb46adf322de2eeb48802f619cb3eb
+short=a3f0c14
+message=feat: cut live line to v18 / app_18.0 and restore Yahoo industry info
+captured_at=2026-09-29T14:23:45Z
+source_branch=master
+display_version=v18
+note=Canonical live line is app_18.0. Bundle 12622578 = v18 full +1 cut (app_17.0→app_18.0) + Yahoo industry info ensure/Python fallback + en-US/zh-TW label. Deploy via scripts/deploy_app_18.R --no-bump. Supersedes 12621764.
