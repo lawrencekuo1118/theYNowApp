@@ -8,5 +8,5 @@ short=bb9fa3a
 message=chore: bump display version to v18.04
 captured_at=2026-09-29T15:03:46Z
 source_branch=master
-display_version=v18.04
+display_version=v18.05
 note=Canonical live line is app_18.0. Bundle 12622783 = v18.04 Macro & Market Trends first sidebar tab (US/TW toggle, indices, Rf, theme overlay, display-only Rolling β, no FX). Deploy via scripts/deploy_app_18.R. Supersedes 12622707.
