@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12622866
+bundleId=12622893
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=e8e8c801b442d0a11f0f71250e4f06aaa03b7430
-commit=e8e8c801b442d0a11f0f71250e4f06aaa03b7430
-short=e8e8c80
-message=chore: bump display version to v18.05
-captured_at=2026-09-29T15:18:46Z
+aligned_git=9e031b3dec874f13ae108e3e5ac596d5dc51a602
+commit=9e031b3dec874f13ae108e3e5ac596d5dc51a602
+short=9e031b3
+message=chore: bump display version to v18.06
+captured_at=2026-09-29T15:25:59Z
 source_branch=master
 display_version=v18.06
-note=Canonical live line is app_18.0. Bundle 12622866 = v18.05 removed Macro page Market mode badge strip. Deploy via scripts/deploy_app_18.R. Supersedes 12622783.
+note=Canonical live line is app_18.0. Bundle 12622893 = v18.06 hide TW business-cycle card on US Macro page. Deploy via scripts/deploy_app_18.R. Supersedes 12622866.
