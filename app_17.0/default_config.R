@@ -189,6 +189,8 @@ APP_DEFAULTS <- list(
   bt_nav_window = "all",
 
   # --- 12. Blue Chip Lab ---
+  lab_im_pool_rank = "mcap",
+  lab_im_concepts = character(0),
   lab_im_lb_mode = "overall",
   lab_im_max_n = "25",
   lab_im_max_n_custom = 25L,

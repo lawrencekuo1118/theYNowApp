@@ -1,4 +1,9 @@
-# The YNow App v17.96 — Valuation Methodology
+# The YNow App v17.97 — Valuation Methodology
+
+## v17.97 重點
+
+- **簡化版 Snapshot 預設**：僅列出 Lite 介面可設定參數（Dashboard 產業／幣別／預設代號、績優股排行與分群）；智慧分析引擎與完整版模型種子隱藏
+- **目錄**：`app_17.0/`；顯示版號 **v17.97**
 
 ## v17.96 重點
 

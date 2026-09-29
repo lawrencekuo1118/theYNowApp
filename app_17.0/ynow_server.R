@@ -2082,6 +2082,8 @@ server <- function(input, output, session) {
       bt_fv_analysis_freq = c("Backtest", "Analysis frequency", "monthly / quarterly / yearly"),
       bt_hfv_show_bench = c("Backtest", "Show benchmark", "HFV 圖顯示基準"),
       bt_nav_window = c("Backtest", "NAV window", "Strategy NAV 視窗"),
+      lab_im_pool_rank = c("Lab", "候選截斷邏輯", "市值／概念股／近一年漲幅／隨機"),
+      lab_im_concepts = c("Lab", "概念股群", "pool = concept 時"),
       lab_im_lb_mode = c("Lab", "Leaderboard mode", "overall / by_industry"),
       lab_im_max_n = c("Lab", "Universe size N", "顯示上限"),
       lab_im_max_n_custom = c("Lab", "Custom universe N", "N = custom 時"),
@@ -2095,25 +2097,18 @@ server <- function(input, output, session) {
       lab_sec_important_only = c("Lab", "Important notes only", "SEC 附註過濾")
     )
 
-    # Lite Snapshot defaults: engines used by Smart Analysis / Dashboard / Blue Chip.
-    # Hide Full-only seeds (Rolling β UI, Backtest / HFV, Decision Checklist, Lab).
+    # Lite Snapshot defaults: only inputs Lite users can set in the UI
+    # (header currency, Dashboard industry / default ticker, Blue Chip + Clustering).
+    # Smart Analysis engines and Full-only model pages are auto / hidden — omit here.
     lite_default_keys <- c(
       "stock_code", "industry_choice", "session_ccy",
-      "years", "dcf_mode", "dcf_claim", "dcf_chart_mode", "g_growth_method", "custom_g",
-      "perpetual_g_method", "lifecycle_stage", "sgr", "wacc_gordon",
-      "yr_stage1", "g_stage1", "g_stage2", "wacc_stage1", "wacc_stage2",
-      "wacc_re", "wacc_rd", "wacc_rd_min", "wacc_rd_max", "use_est_rd", "wacc_tax", "use_est_re",
-      "capm_rf", "capm_beta", "sync_gs_beta", "capm_rm",
-      "beta_bl_source", "beta_bottomup_agg", "beta_u_apply_source", "beta_u_manual", "beta_peers",
-      "ddm_d0", "ddm_g", "ddm_ke", "ddm_sync_central_g", "ddm_mode", "ddm_g_stage1", "ddm_yr_stage1",
-      "ri_years", "ri_roe", "ri_payout", "roe_method",
-      "pb_bvps", "pb_tbvps", "pb_low", "pb_mid", "pb_high", "pb_basis",
-      "pb_use_industry", "pb_holdco_discount", "pb_target_mode",
-      "nav_holdco_discount", "nav_low", "nav_mid", "nav_high",
-      "apply_capex_spike_smooth", "capex_spike_mult", "capex_spike_avg_years", "capex_spike_prior_years",
-      "apply_g_ceiling"
+      "lab_im_pool_rank", "lab_im_concepts",
+      "lab_im_lb_mode", "lab_im_max_n", "lab_im_max_n_custom",
+      "lab_im_eq_only", "lab_im_include_adr",
+      "lab_cluster_k", "lab_cluster_x", "lab_cluster_y"
     )
-    lite_extra_keys <- c("roe_industry")
+    # Lite has no module extras outside APP_DEFAULTS (RI industry ROE is Full-only).
+    lite_extra_keys <- character(0)
 
     keys <- names(APP_DEFAULTS)
     if (isTRUE(input$ynow_lite_mode)) {
