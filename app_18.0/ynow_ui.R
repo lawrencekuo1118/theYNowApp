@@ -3726,7 +3726,6 @@ ui <- dashboardPage(
             setBtText('ynow_bt_sec_run_controls', 'bt_sec_run_controls');
             setBtText('ynow_bt_param_auto_hint', 'bt_param_auto_hint');
             setBtText('ynow_bt_refresh_params_hint', 'bt_refresh_params_hint');
-            setBtText('ynow_bt_run_note', 'bt_run_note');
             setBtText('ynow_bt_sec_strategy_params', 'bt_sec_strategy_params');
             setBtText('ynow_bt_params_gate_note', 'bt_params_gate_note');
             setBtText('ynow_bt_tab_fundamental', 'bt_tab_fundamental');
@@ -5978,20 +5977,6 @@ ui <- dashboardPage(
         .ynow-metric-card--amber .ynow-metric-card__value { color: #8a5a12; }
         /* 執行面板：避免 btn-block 蓋住下方說明文字 */
         .ynow-bt-run-panel .btn-block { margin-left: 0; margin-right: 0; }
-        .ynow-bt-run-panel .ynow-bt-run-note {
-          clear: both;
-          display: block;
-          position: relative;
-          z-index: 1;
-          margin: 12px 0 0 0;
-          padding: 8px 10px;
-          background: #fff8e8;
-          border: 1px solid #f0e0b2;
-          border-radius: 4px;
-          font-size: 11.5px;
-          line-height: 1.45;
-          color: #6b5a2e;
-        }
         .ynow-metric-card__body {
           padding: 14px 16px 12px 16px;
           display: flex;
@@ -8612,15 +8597,6 @@ ui <- dashboardPage(
             collapsible = TRUE,
             collapsed = TRUE,
             class = "ynow-bt-run-panel",
-            tags$div(
-              class = "ynow-bt-run-note",
-              id = "ynow_bt_run_note",
-              paste0(
-                "Use \"Run Backtest\" in the Backtest Zone band above. Rebalances by analysis frequency · year Rf / realized Rm / ",
-                "market-cap structure · Rolling β · HFV Replay model (single select) PIT."
-              )
-            ),
-            tags$hr(style = "margin:12px 0;"),
             checkboxInput(
               "bt_param_auto",
               "Auto-sync parameters (derive from statements on ticker change)",
