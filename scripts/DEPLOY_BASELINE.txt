@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12622667
+bundleId=12622707
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=c566ecfed052a84909c4a7c96238ab767c14a07d
-commit=c566ecfed052a84909c4a7c96238ab767c14a07d
-short=c566ecf
-message=chore: bump display version to v18.02
-captured_at=2026-09-29T14:41:13Z
+aligned_git=2a6973a1a6950ab1c8466199d6e8203f3a546f8e
+commit=2a6973a1a6950ab1c8466199d6e8203f3a546f8e
+short=2a6973a
+message=chore: bump display version to v18.03
+captured_at=2026-09-29T14:48:50Z
 source_branch=master
 display_version=v18.03
-note=Canonical live line is app_18.0. Bundle 12622667 = v18.02 Backtest Zone band: lab intro + Run controls in one light-gray 4:1 row. Deploy via scripts/deploy_app_18.R. Supersedes 12622632.
+note=Canonical live line is app_18.0. Bundle 12622707 = v18.03 removed Other (planned) appendix box from Quant Backtest Lab. Deploy via scripts/deploy_app_18.R. Supersedes 12622667.
