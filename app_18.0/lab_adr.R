@@ -208,7 +208,7 @@ lab_us_overlay_adr_industry <- function(df) {
 lab_adr_industry_snapshot_path <- function() {
   candidates <- c(
     file.path("data", "us_adr_industry_snapshot.csv"),
-    file.path("app_17.0", "data", "us_adr_industry_snapshot.csv")
+    file.path("app_18.0", "data", "us_adr_industry_snapshot.csv")
   )
   for (p in candidates) {
     if (file.exists(p)) return(normalizePath(p, winslash = "/", mustWork = FALSE))

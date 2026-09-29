@@ -474,7 +474,7 @@ lab_fetch_cluster_features_r <- function(tickers, timeout_sec = 12) {
 lab_cluster_features_snapshot_path <- function() {
   candidates <- c(
     file.path("data", "cluster_features_snapshot.csv"),
-    file.path("app_17.0", "data", "cluster_features_snapshot.csv")
+    file.path("app_18.0", "data", "cluster_features_snapshot.csv")
   )
   for (p in candidates) {
     if (file.exists(p)) return(normalizePath(p, winslash = "/", mustWork = FALSE))

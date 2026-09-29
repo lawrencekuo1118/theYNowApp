@@ -322,7 +322,7 @@ lab_universe_metrics_snapshot_path <- function() {
   }
   candidates <- c(
     file.path("data", "universe_metrics_snapshot.csv"),
-    file.path("app_17.0", "data", "universe_metrics_snapshot.csv")
+    file.path("app_18.0", "data", "universe_metrics_snapshot.csv")
   )
   for (p in candidates) {
     if (file.exists(p)) return(normalizePath(p, winslash = "/", mustWork = FALSE))

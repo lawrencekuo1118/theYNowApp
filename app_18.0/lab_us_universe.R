@@ -57,7 +57,7 @@ lab_us_cache_paths <- function() {
   unique(c(
     LAB_US_CACHE_REL,
     file.path(getwd(), LAB_US_CACHE_REL),
-    file.path("app_17.0", LAB_US_CACHE_REL)
+    file.path("app_18.0", LAB_US_CACHE_REL)
   ))
 }
 

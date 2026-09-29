@@ -99,6 +99,11 @@ get_yahoo_industry <- function(stock_code) {
   .ynow_log(paste("🔍 正在透過 yfinance 抓取公司與產業資訊:", stock_code))
 
   result <- tryCatch({
+    # 啟動期可能延遲載入 deep_scraper；與財報路徑一樣先 ensure，否則 Sector/Industry 會一直 N/A
+    if (!isTRUE(.ensure_python_scraper()) ||
+        !exists("fast_get_company_info", envir = .py_scraper_env, inherits = FALSE, mode = "function")) {
+      stop("fast_get_company_info 未載入（Python / reticulate 失敗）")
+    }
     info <- fast_get_company_info(stock_code)
     sector <- info$sector
     industry <- info$industry
@@ -130,7 +135,8 @@ get_summary_data <- function(stock_code) {
   .ynow_log(paste("🌐 正在讀取 Summary (yfinance):", stock_code))
 
   tryCatch({
-    if (!exists("get_summary_quote", mode = "function")) {
+    if (!isTRUE(.ensure_python_scraper()) ||
+        !exists("get_summary_quote", envir = .py_scraper_env, inherits = FALSE, mode = "function")) {
       stop("get_summary_quote 未載入（請確認 deep_scraper.py / requirements.txt）")
     }
     res <- get_summary_quote(stock_code)

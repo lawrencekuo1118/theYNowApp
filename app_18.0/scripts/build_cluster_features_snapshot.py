@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build offline Clustering feature snapshot (S&P 500 + TWSE/TPEX).
 
-Writes data/cluster_features_snapshot.csv for app_17.0 so Clustering works
+Writes data/cluster_features_snapshot.csv for app_18.0 so Clustering works
 when Yahoo crumb/quoteSummary is rate-limited on shinyapps.
 """
 from __future__ import annotations

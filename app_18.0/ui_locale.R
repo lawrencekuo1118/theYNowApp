@@ -40,6 +40,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     menu_decision_checklist = "Decision Checklist",
     menu_about = "About",
     ticker_label = "Ticker / Stock Code",
+    industry_info_yahoo = "industry info from Yahoo",
     data_source_title = "Data Source:",
     data_source_body = paste0(
       "This application integrates real-time financial data via web parsing ",
@@ -1225,6 +1226,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     menu_decision_checklist = "決策檢核",
     menu_about = "關於",
     ticker_label = "Ticker／股票代號",
+    industry_info_yahoo = "Yahoo 產業資訊",
     data_source_title = "資料來源：",
     data_source_body = paste0(
       "本應用程式整合即時財務資料（網頁解析與 API），",

@@ -1,8 +1,8 @@
 #!/usr/bin/env Rscript
-# Display-version bump for the live line (app_17.0).
+# Display-version bump for the live line (app_18.0).
 #
-# Each successful deploy_app_17.R run advances the display version by +0.01
-# and ships that version. Folder name stays app_17.0/ until a full +1 cut.
+# Each successful deploy_app_18.R run advances the display version by +0.01
+# and ships that version. Folder name stays app_18.0/ until a full +1 cut.
 #
 #   Rscript scripts/bump_display_version.R --dry-run
 #   Rscript scripts/bump_display_version.R
@@ -83,7 +83,7 @@ ynow_write_lines <- function(path, lines) {
 }
 
 ynow_apply_display_version <- function(root, old_label, new_label) {
-  app_dir <- file.path(root, "app_17.0")
+  app_dir <- file.path(root, "app_18.0")
   changed <- character(0)
 
   ui_path <- file.path(app_dir, "ynow_ui.R")
@@ -204,7 +204,7 @@ ynow_record_shipped_version <- function(root, version) {
 }
 
 ynow_prepare_deploy_version <- function(root, commit = TRUE) {
-  app_dir <- file.path(root, "app_17.0")
+  app_dir <- file.path(root, "app_18.0")
   current <- ynow_read_display_version(app_dir)
   baseline <- ynow_read_baseline_version(root)
   pending <- !is.na(baseline) && nzchar(baseline) && identical(current, ynow_bump_display_label(baseline))
@@ -232,7 +232,7 @@ ynow_bump_cli <- function() {
   args <- commandArgs(trailingOnly = TRUE)
   dry <- "--dry-run" %in% args
   root <- ynow_repo_root_from_script()
-  app_dir <- file.path(root, "app_17.0")
+  app_dir <- file.path(root, "app_18.0")
   current <- ynow_read_display_version(app_dir)
   baseline <- ynow_read_baseline_version(root)
   new_label <- ynow_bump_display_label(current)

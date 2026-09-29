@@ -1,4 +1,11 @@
-# The YNow App v17.97 — Valuation Methodology
+# The YNow App v18 — Valuation Methodology
+
+
+## v18 重點
+
+- **整階 +1**：活動線目錄 `app_17.0/` → `app_18.0/`；顯示版號 **v18**
+- **Yahoo 產業資訊**：`get_yahoo_industry` 改為延遲載入 Python 後再抓；`fast_get_company_info` 補強 `get_info`／sectorDisp 備援；UI 雙語標籤「industry info from Yahoo」／「Yahoo 產業資訊」
+- **目錄**：`app_18.0/`；顯示版號 **v18**
 
 ## v17.97 重點
 

@@ -18,7 +18,7 @@ root <- NULL
 for (cand in c(
   normalizePath("..", mustWork = FALSE),
   normalizePath(getwd(), mustWork = FALSE),
-  "/Users/lawrencekuo/coding/theYNowApp/app_17.0",
+  "/Users/lawrencekuo/coding/theYNowApp/app_18.0",
   normalizePath(file.path("..", ".."), mustWork = FALSE)
 )) {
   if (nzchar(cand) && file.exists(file.path(cand, "setup.R"))) {
@@ -26,7 +26,7 @@ for (cand in c(
     break
   }
 }
-if (is.null(root)) stop("Cannot locate app_17.0/setup.R")
+if (is.null(root)) stop("Cannot locate app_18.0/setup.R")
 
 
 `%||%` <- function(x, y) if (is.null(x) || (length(x) == 1 && is.na(x))) y else x

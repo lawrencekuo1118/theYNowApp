@@ -51,19 +51,42 @@ def _best_company_name(info, ticker=""):
 
 
 def fast_get_company_info(ticker="AMZN"):
+    """Yahoo Sector / Industry via yfinance (no browser). Used by UI 「industry info from Yahoo」."""
     _dbg(f"⚡ 使用高速 API 獲取 {ticker} 公司與產業資訊...")
     try:
         stock = yf.Ticker(ticker)
-        info = stock.info
+        info = {}
+        try:
+            info = stock.info or {}
+        except Exception as e:
+            _dbg(f"⚠️ stock.info failed: {e}")
+            info = {}
+        # Newer yfinance: get_info() can succeed when .info is empty / rate-limited
+        if not info.get("sector") and not info.get("industry"):
+            try:
+                gi = getattr(stock, "get_info", None)
+                if callable(gi):
+                    info2 = gi() or {}
+                    if isinstance(info2, dict) and info2:
+                        info = {**info, **info2}
+            except Exception as e2:
+                _dbg(f"⚠️ get_info fallback failed: {e2}")
+
+        if not isinstance(info, dict):
+            info = {}
 
         comp_name = _best_company_name(info, ticker)
-        sector = info.get("sector", "Unknown Sector")
-        industry = info.get("industry", "Unknown Industry")
+        sector = info.get("sector") or info.get("sectorDisp") or "Unknown Sector"
+        industry = info.get("industry") or info.get("industryDisp") or "Unknown Industry"
+        if not str(sector).strip():
+            sector = "Unknown Sector"
+        if not str(industry).strip():
+            industry = "Unknown Industry"
 
         return {
             "company_name": comp_name,
-            "sector": sector,
-            "industry": industry,
+            "sector": str(sector).strip(),
+            "industry": str(industry).strip(),
         }
     except Exception as e:
         _dbg(f"⚠️ 獲取公司資訊失敗: {e}")

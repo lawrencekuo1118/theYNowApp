@@ -28,8 +28,8 @@ check("v17.99 -> v18.00", identical(ynow_bump_display_label("v17.99"), "v18.00")
 check("v17.9 -> v17.91", identical(ynow_bump_display_label("v17.9"), "v17.91"))
 
 tmp <- tempfile("ynow-bump-")
-dir.create(file.path(tmp, "app_17.0", "www"), recursive = TRUE)
-dir.create(file.path(tmp, "app_17.0", "tests"), recursive = TRUE)
+dir.create(file.path(tmp, "app_18.0", "www"), recursive = TRUE)
+dir.create(file.path(tmp, "app_18.0", "tests"), recursive = TRUE)
 dir.create(file.path(tmp, "scripts"), recursive = TRUE)
 writeLines(
   c(
@@ -37,20 +37,20 @@ writeLines(
     "about The YNow App (v17.94) stays",
     "lite The YNow App Lite (v17.94) stays"
   ),
-  file.path(tmp, "app_17.0", "ynow_ui.R")
+  file.path(tmp, "app_18.0", "ynow_ui.R")
 )
 writeLines(
   c("---", "  app_version: \"v17.94\"", "---"),
-  file.path(tmp, "app_17.0", "report_template.Rmd")
+  file.path(tmp, "app_18.0", "report_template.Rmd")
 )
 writeLines(
   c(
     "# The YNow App v17.94 — Valuation Methodology",
     "",
     "## v17.94 重點",
-    "- **目錄**：`app_17.0/`；顯示版號 **v17.94**"
+    "- **目錄**：`app_18.0/`；顯示版號 **v17.94**"
   ),
-  file.path(tmp, "app_17.0", "README.md")
+  file.path(tmp, "app_18.0", "README.md")
 )
 writeLines(
   "display_version=v17.94\n",
@@ -58,13 +58,13 @@ writeLines(
 )
 jsonlite::write_json(
   list(version = "v17.91", note = "keep"),
-  file.path(tmp, "app_17.0", "www", "ynow_build.json"),
+  file.path(tmp, "app_18.0", "www", "ynow_build.json"),
   auto_unbox = TRUE,
   pretty = TRUE
 )
 writeLines(
   "testthat::expect_true(grepl(\"The YNow App v17.94\", txt, fixed = TRUE))",
-  file.path(tmp, "app_17.0", "tests", "test_lite_mode_ui.R")
+  file.path(tmp, "app_18.0", "tests", "test_lite_mode_ui.R")
 )
 
 git_tmp <- tempfile("ynow-git-")
@@ -91,16 +91,16 @@ Sys.setenv(YNOW_VERSION_BUMP_NO_COMMIT = "1")
 on.exit(Sys.unsetenv("YNOW_VERSION_BUMP_NO_COMMIT"), add = TRUE)
 out <- ynow_prepare_deploy_version(tmp, commit = TRUE)
 check("prepare bumps once", isTRUE(out$bumped) && identical(out$version, "v17.95"))
-ui <- paste(readLines(file.path(tmp, "app_17.0", "ynow_ui.R")), collapse = "\n")
+ui <- paste(readLines(file.path(tmp, "app_18.0", "ynow_ui.R")), collapse = "\n")
 check("ui rewritten", grepl("v17.95", ui, fixed = TRUE) && !grepl("v17.94", ui, fixed = TRUE))
-readme <- readLines(file.path(tmp, "app_17.0", "README.md"))
+readme <- readLines(file.path(tmp, "app_18.0", "README.md"))
 check("readme title bumped", grepl("v17.95", readme[[1]], fixed = TRUE))
 check("readme history kept", grepl("v17.94", readme[[3]], fixed = TRUE) && grepl("v17.94", readme[[4]], fixed = TRUE))
-rmd <- paste(readLines(file.path(tmp, "app_17.0", "report_template.Rmd")), collapse = "\n")
+rmd <- paste(readLines(file.path(tmp, "app_18.0", "report_template.Rmd")), collapse = "\n")
 check("report app_version bumped", grepl("v17.95", rmd, fixed = TRUE))
-build <- jsonlite::fromJSON(file.path(tmp, "app_17.0", "www", "ynow_build.json"))
+build <- jsonlite::fromJSON(file.path(tmp, "app_18.0", "www", "ynow_build.json"))
 check("build json synced", identical(build$version, "v17.95") && identical(build$note, "keep"))
-test_txt <- paste(readLines(file.path(tmp, "app_17.0", "tests", "test_lite_mode_ui.R")), collapse = "\n")
+test_txt <- paste(readLines(file.path(tmp, "app_18.0", "tests", "test_lite_mode_ui.R")), collapse = "\n")
 check("lite test expectation bumped", grepl("v17.95", test_txt, fixed = TRUE))
 
 out2 <- ynow_prepare_deploy_version(tmp, commit = TRUE)

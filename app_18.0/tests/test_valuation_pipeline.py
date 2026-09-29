@@ -2,7 +2,7 @@
 Offline unit tests for valuation_pipeline (no network required).
 
 Run:
-  cd app_17.0 && python -m pytest tests/test_valuation_pipeline.py -q
+  cd app_18.0 && python -m pytest tests/test_valuation_pipeline.py -q
   # or:
   python tests/test_valuation_pipeline.py
 """

@@ -1,12 +1,13 @@
 #!/usr/bin/env Rscript
-# Compatibility shim: live line is app_17.0 — forwards to deploy_app_17.R
-message("Note: live line is app_17.0; forwarding to scripts/deploy_app_17.R")
+# Compatibility shim: live line is app_18.0 — forwards to deploy_app_18.R
+message("Note: live line is app_18.0; forwarding to scripts/deploy_app_18.R")
 cmd_args <- commandArgs(trailingOnly = FALSE)
 file_arg <- sub("^--file=", "", cmd_args[grep("^--file=", cmd_args)])
-root <- if (length(file_arg) == 1L && nzchar(file_arg)) {
-  normalizePath(file.path(dirname(file_arg), ".."), mustWork = TRUE)
+if (length(file_arg) == 1L && nzchar(file_arg)) {
+  root <- normalizePath(file.path(dirname(file_arg), ".."), mustWork = TRUE)
 } else {
-  normalizePath(getwd(), mustWork = TRUE)
+  root <- normalizePath(getwd(), mustWork = TRUE)
 }
-status <- system2("Rscript", file.path(root, "scripts", "deploy_app_17.R"))
-quit(status = if (is.na(status)) 1L else as.integer(status))
+user_args <- commandArgs(trailingOnly = TRUE)
+status <- system2("Rscript", c(file.path(root, "scripts", "deploy_app_18.R"), user_args))
+quit(status = if (is.null(status)) 0L else status)
