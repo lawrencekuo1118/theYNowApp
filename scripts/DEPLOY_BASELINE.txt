@@ -8,5 +8,5 @@ short=e8e8c80
 message=chore: bump display version to v18.05
 captured_at=2026-09-29T15:18:46Z
 source_branch=master
-display_version=v18.05
+display_version=v18.06
 note=Canonical live line is app_18.0. Bundle 12622866 = v18.05 removed Macro page Market mode badge strip. Deploy via scripts/deploy_app_18.R. Supersedes 12622783.
