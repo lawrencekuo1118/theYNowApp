@@ -711,24 +711,8 @@ resolve_shares_for_price <- function(shares_bs,
     NA_real_
   }
 
-  # Berkshire Class B = 1/1500 economic interest of Class A
-  if (grepl("^BRK-B$", ticker) && is.finite(shares_bs) && shares_bs > 0) {
-    if (is.finite(shares_implied) && (shares_implied / shares_bs) > 100) {
-      return(list(
-        shares = shares_implied,
-        method = "market_cap_per_price",
-        note = "BRK-B 雙重股權：財報股數偏 A 級，已改用 市值÷股價 作為 B 級約當股數",
-        ratio = shares_implied / shares_bs
-      ))
-    }
-    return(list(
-      shares = shares_bs * 1500,
-      method = "brk_b_x1500",
-      note = "BRK-B：以 Class A 股數 × 1500 換算 B 級約當股數",
-      ratio = 1500
-    ))
-  }
-
+  # Dual-class and ADR gaps use the same market-cap / price ratio test.
+  # No ticker is assigned a fixed share multiplier.
   if (is.finite(shares_implied) && is.finite(shares_bs) && shares_bs > 0) {
     ratio <- shares_implied / shares_bs
     thr <- if (isTRUE(adr_fx)) SHARE_UNIT_MISMATCH_RATIO_ADR else SHARE_UNIT_MISMATCH_RATIO
@@ -814,7 +798,7 @@ shares_auto_adjust_method <- function(method) {
 
 #' 將年度 fundamentals 的股數對齊報價股數（折現比較／回測 PIT）
 #'
-#' 以最新財年財報股數 vs Summary 市值÷股價（或 BRK-B 規則）得固定倍率，
+#' 以最新財年財報股數 vs Summary 市值÷股價得固定倍率，
 #' 套用到所有財年股數，使 DCF／DDM／BVPS／We 與 ADR 收盤價同一級距。
 #' @return fund data.frame；attr(fund, "share_align") = list(method, scale, note, ...)
 align_fundamentals_shares_to_quote <- function(fund,
@@ -1077,7 +1061,8 @@ PARAM_SENSITIVITY_SHOCK <- 0.01
 #' Independent of ticker cash, debt, shares, market price, and FCFF dollar level.
 #' Rates are decimals (e.g. 0.08 not 8).
 .dcf_formula_ev <- function(n, r1, g_term, g_near = 0, r2 = NULL,
-                            yr_stage1 = NULL, g_stage2 = NULL, f0 = 1) {
+                            yr_stage1 = NULL, g_stage2 = NULL, f0 = 1,
+                            yr_stage2 = NULL) {
   n <- suppressWarnings(as.integer(round(as.numeric(n)[1])))
   if (!is.finite(n) || n < 1L) return(NA_real_)
   r1 <- suppressWarnings(as.numeric(r1)[1])
@@ -1091,13 +1076,13 @@ PARAM_SENSITIVITY_SHOCK <- 0.01
 
   two_stage <- !is.null(yr_stage1) && is.finite(as.numeric(yr_stage1)[1]) && n > 1L
   if (two_stage) {
-    y1 <- max(1L, min(n, as.integer(round(as.numeric(yr_stage1)[1]))))
+    if (!exists("validate_stage_years", mode = "function")) return(NA_real_)
+    st <- validate_stage_years(n, yr_stage1, yr_stage2, g2 = g_stage2, g_term = g_term)
+    if (!isTRUE(st$ok)) return(NA_real_)
+    if (is.null(g_stage2) || !is.finite(as.numeric(g_stage2)[1])) return(NA_real_)
+    y1 <- st$yr_stage1
     rs <- c(rep(r1, min(y1, n)), rep(r2, max(0L, n - y1)))
-    g2 <- if (!is.null(g_stage2) && is.finite(as.numeric(g_stage2)[1])) {
-      as.numeric(g_stage2)[1]
-    } else {
-      g_near
-    }
+    g2 <- as.numeric(g_stage2)[1]
     gs <- c(rep(g_near, max(0L, y1 - 1L)), rep(g2, max(0L, n - y1)))
     if (length(gs) < n - 1L) {
       pad <- if (length(gs) == 0L) g_near else gs[length(gs)]
@@ -1118,6 +1103,7 @@ PARAM_SENSITIVITY_SHOCK <- 0.01
   }
   disc <- cumprod(1 + rs)
   if (any(!is.finite(disc)) || any(abs(disc) < 1e-15)) return(NA_real_)
+  if (!is.finite(f[n]) || f[n] < 0) return(NA_real_)
   pv <- sum(f / disc)
   tv <- f[n] * (1 + g_term) / (r2 - g_term)
   pv + tv / disc[n]
@@ -1128,22 +1114,27 @@ PARAM_SENSITIVITY_SHOCK <- 0.01
 #' Independent of dollar scale. Growth rates and margins are decimals.
 .dcf_unit_fcff_path <- function(n, g_near = 0, g_stage2 = NULL, yr_stage1 = NULL,
                                 nopat_m = 0, depre_m = 0, capex_m = 0, nwc_m = 0,
-                                two_stage = FALSE) {
+                                two_stage = FALSE, yr_stage2 = NULL) {
   n <- suppressWarnings(as.integer(round(as.numeric(n)[1])))
   if (!is.finite(n) || n < 1L) return(numeric(0))
   g_near <- suppressWarnings(as.numeric(g_near)[1])
   if (!is.finite(g_near)) g_near <- 0
   g2 <- if (!is.null(g_stage2) && is.finite(as.numeric(g_stage2)[1])) {
     as.numeric(g_stage2)[1]
-  } else {
+  } else if (!isTRUE(two_stage)) {
     g_near
+  } else {
+    NA_real_
   }
   nopat_m <- suppressWarnings(as.numeric(nopat_m)[1]); if (!is.finite(nopat_m)) nopat_m <- 0
   depre_m <- suppressWarnings(as.numeric(depre_m)[1]); if (!is.finite(depre_m)) depre_m <- 0
   capex_m <- suppressWarnings(as.numeric(capex_m)[1]); if (!is.finite(capex_m)) capex_m <- 0
   nwc_m <- suppressWarnings(as.numeric(nwc_m)[1]); if (!is.finite(nwc_m)) nwc_m <- 0
   if (isTRUE(two_stage) && !is.null(yr_stage1) && is.finite(as.numeric(yr_stage1)[1]) && n > 1L) {
-    y1 <- max(1L, min(n, as.integer(round(as.numeric(yr_stage1)[1]))))
+    if (!exists("validate_stage_years", mode = "function")) return(numeric(0))
+    st <- validate_stage_years(n, yr_stage1, yr_stage2, g2 = g2, g_term = NA)
+    if (!isTRUE(st$ok) || !is.finite(g2)) return(numeric(0))
+    y1 <- st$yr_stage1
     g_path <- ifelse(seq_len(n) <= y1, g_near, g2)
   } else {
     g_path <- rep(g_near, n)
@@ -1160,7 +1151,8 @@ PARAM_SENSITIVITY_SHOCK <- 0.01
 }
 
 #' Discount an explicit FCFF path with the same WACC / Gordon TV as `.dcf_formula_ev`.
-.dcf_formula_ev_from_fcff <- function(fcff, r1, g_term, r2 = NULL, yr_stage1 = NULL) {
+.dcf_formula_ev_from_fcff <- function(fcff, r1, g_term, r2 = NULL, yr_stage1 = NULL,
+                                    yr_stage2 = NULL) {
   fcff <- suppressWarnings(as.numeric(fcff))
   n <- length(fcff)
   if (n < 1L || any(!is.finite(fcff))) return(NA_real_)
@@ -1169,9 +1161,13 @@ PARAM_SENSITIVITY_SHOCK <- 0.01
   g_term <- suppressWarnings(as.numeric(g_term)[1])
   if (!is.finite(r1) || !is.finite(r2) || !is.finite(g_term)) return(NA_real_)
   if (r1 <= -0.999 || r2 <= -0.999 || g_term >= r2) return(NA_real_)
+  if (!is.finite(fcff[n]) || fcff[n] < 0) return(NA_real_)
   two_stage <- !is.null(yr_stage1) && is.finite(as.numeric(yr_stage1)[1]) && n > 1L
   if (two_stage) {
-    y1 <- max(1L, min(n, as.integer(round(as.numeric(yr_stage1)[1]))))
+    if (!exists("validate_stage_years", mode = "function")) return(NA_real_)
+    st <- validate_stage_years(n, yr_stage1, yr_stage2)
+    if (!isTRUE(st$ok)) return(NA_real_)
+    y1 <- st$yr_stage1
     rs <- c(rep(r1, min(y1, n)), rep(r2, max(0L, n - y1)))
   } else {
     rs <- rep(r1, n)
@@ -1184,18 +1180,26 @@ PARAM_SENSITIVITY_SHOCK <- 0.01
 }
 
 #' Present value of each explicit-period cash flow (no terminal value mixed in).
-#' `rates` are decimals (WACC or Ke); length 1 is recycled. Invalid rates fall back to 10%.
+#' `rates` are decimals (WACC or Ke); length 1 is recycled.
+#' Invalid rates stay NA. They are not replaced with 10%.
 dcf_yearly_cf_pv <- function(cf, rates) {
   cf <- suppressWarnings(as.numeric(cf))
   n <- length(cf)
   if (n < 1L) return(numeric(0))
   rates <- suppressWarnings(as.numeric(rates))
-  if (length(rates) < 1L) rates <- 0.1
+  if (length(rates) < 1L || all(!is.finite(rates))) {
+    out <- rep(NA_real_, n)
+    attr(out, "invalid_rate") <- TRUE
+    return(out)
+  }
   if (length(rates) == 1L) rates <- rep(rates, n)
   if (length(rates) < n) rates <- c(rates, rep(tail(rates, 1), n - length(rates)))
   rates <- rates[seq_len(n)]
-  rates[!is.finite(rates) | rates <= -0.999] <- 0.1
-  cf / cumprod(1 + rates)
+  bad <- !is.finite(rates) | rates <= -0.999
+  rates[bad] <- NA_real_
+  out <- cf / cumprod(1 + rates)
+  attr(out, "invalid_rate") <- bad
+  out
 }
 
 #' Gordon terminal value at year n and its t=0 present value (kept off the yearly PV series).
@@ -1681,26 +1685,38 @@ extract_dcf_claim_series <- function(df, claim = "fcff",
 }
 
 # 依 DCF 模式決定各預測年的營收成長率 (%)
+# 0% is a real input. NA is not replaced with another stage's growth.
 revenue_growth_pct_for_year <- function(year_idx, mode, g_est, g_stage1, g_stage2, yr_stage1) {
-  g_est <- safe_num(g_est)
-  g_stage1 <- safe_num(g_stage1)
-  g_stage2 <- safe_num(g_stage2)
-  yr_stage1 <- max(1L, as.integer(safe_num(yr_stage1)))
-  if (identical(mode, "two_stage") && year_idx <= yr_stage1) return(g_stage1)
-  if (identical(mode, "two_stage")) return(g_stage2)
-  if (!is.null(g_est) && !is.na(g_est) && g_est != 0) return(g_est)
-  g_stage2
+  num <- function(x) {
+    x <- suppressWarnings(as.numeric(x)[1])
+    if (!is.finite(x)) NA_real_ else x
+  }
+  g_est <- num(g_est)
+  g_stage1 <- num(g_stage1)
+  g_stage2 <- num(g_stage2)
+  yr_stage1 <- suppressWarnings(as.integer(round(as.numeric(yr_stage1)[1])))
+  if (identical(mode, "two_stage")) {
+    if (!is.finite(yr_stage1) || yr_stage1 < 1L) return(NA_real_)
+    if (year_idx <= yr_stage1) return(g_stage1)
+    return(g_stage2)
+  }
+  if (is.finite(g_est)) return(g_est)
+  NA_real_
 }
 
-# 確保第一階段年數有效：0 < yr_stage1 < n
+# Stage 1 years must already satisfy 0 < yr_stage1 < n.
+# Out-of-range input is NA. default_yr is retained for call compatibility and is not applied.
 clamp_yr_stage1 <- function(n_years, yr_stage1, default_yr = 3L) {
-  n_years <- as.integer(safe_num(n_years))
-  yr_stage1 <- as.integer(safe_num(yr_stage1))
-  if (n_years <= 1) return(1L)
-  if (is.na(yr_stage1) || yr_stage1 <= 0 || yr_stage1 >= n_years) {
-    return(max(1L, min(as.integer(default_yr), n_years - 1L)))
+  n_years <- suppressWarnings(as.integer(round(as.numeric(n_years)[1])))
+  yr <- suppressWarnings(as.integer(round(as.numeric(yr_stage1)[1])))
+  valid <- is.finite(n_years) && n_years > 1L && is.finite(yr) && yr > 0L && yr < n_years
+  if (!valid) {
+    out <- NA_integer_
+    attr(out, "ynow_adjusted") <- FALSE
+    attr(out, "ignored_default") <- default_yr
+    return(out)
   }
-  yr_stage1
+  yr
 }
 
 # =========================================================
@@ -1873,22 +1889,9 @@ derive_valuation_method <- function(d_cf, industry_text = "", d_is = NULL, d_bs 
 #'   tags, summary_method, reason, suggest_two_stage, confidence_inputs
 recommend_valuation_models <- function(d_cf, industry_text = "", d_is = NULL, d_bs = NULL,
                                        industry_choice = NULL) {
-  empty <- list(
-    company_type = "fallback",
-    primary = "pb",
-    secondary = NULL,
-    ddm = FALSE, dcf = FALSE, pb = TRUE, ri = FALSE, nav = FALSE,
-    tags = "pb",
-    summary_method = "P/B／相對估值",
-    reason = "資料不足，暫以 P/B 定位。",
-    suggest_two_stage = FALSE,
-    confidence_inputs = list(
-      fcf_cv = NA_real_, div_cv = NA_real_,
-      has_fcf = FALSE, has_div = FALSE, has_roe = FALSE,
-      data_complete = FALSE
-    )
-  )
-  if (is.null(d_cf) || !is.data.frame(d_cf) || nrow(d_cf) == 0) return(empty)
+  if (is.null(d_cf) || !is.data.frame(d_cf) || nrow(d_cf) == 0) {
+    return(assemble_model_recommendation(data_missing = TRUE))
+  }
 
   rec_fcff <- tryCatch(
     reconstruct_hist_fcff(d_cf, d_is = d_is),
@@ -1927,21 +1930,6 @@ recommend_valuation_models <- function(d_cf, industry_text = "", d_is = NULL, d_
 
   ind_txt <- as.character(industry_text %||% "")
   ind_key <- as.character(industry_choice %||% "")
-  is_financial <- grepl(
-    "Bank|Insurance|Financial|Conglomerate|fn\\.|Insurance Brokers",
-    ind_txt,
-    ignore.case = TRUE
-  ) || grepl("^fn\\.", ind_key)
-  is_holding <- grepl(
-    "Conglomerate|Holding|Berkshire|fn\\.Conglomerate",
-    paste(ind_txt, ind_key),
-    ignore.case = TRUE
-  ) || grepl("^fn\\.Conglomerate", ind_key)
-  asset_or_book_driven <- isTRUE(is_financial) || grepl(
-    "REIT|Real Estate|Asset|Bank|Insurance|Utility|Utilities",
-    ind_txt,
-    ignore.case = TRUE
-  )
 
   rev_g <- tryCatch(
     get_avg_growth(select_clean_metric_row(d_is, "Total Revenue", include_ttm = FALSE)),
@@ -1965,109 +1953,42 @@ recommend_valuation_models <- function(d_cf, industry_text = "", d_is = NULL, d_
     data_complete = isTRUE(!is.null(d_is) && !is.null(d_bs) && isTRUE(is_fcf_pos || is_div))
   )
 
-  .pack <- function(company_type, primary, secondary, summary_method, reason,
-                    suggest_two_stage = FALSE) {
-    flags <- list(ddm = FALSE, dcf = FALSE, pb = FALSE, ri = FALSE, nav = FALSE)
-    flags[[primary]] <- TRUE
-    if (!is.null(secondary) && nzchar(as.character(secondary))) {
-      flags[[as.character(secondary)]] <- TRUE
-    }
-    tags <- unique(c(primary, if (!is.null(secondary)) as.character(secondary)))
-    tags <- tags[nzchar(tags)]
-    list(
-      company_type = company_type,
-      primary = primary,
-      secondary = secondary,
-      ddm = isTRUE(flags$ddm),
-      dcf = isTRUE(flags$dcf),
-      pb = isTRUE(flags$pb),
-      ri = isTRUE(flags$ri),
-      nav = isTRUE(flags$nav),
-      tags = tags,
-      summary_method = summary_method,
-      reason = reason,
-      suggest_two_stage = isTRUE(suggest_two_stage),
-      confidence_inputs = conf_in
-    )
-  }
-
-  # 1) Holding / conglomerate — 純 NAV 主模型；P/B 或 RI 交叉驗證
-  if (isTRUE(is_holding)) {
-    sec <- if (isTRUE(is.finite(roe) && roe > 0)) "ri" else "pb"
-    return(.pack(
-      "holding_asset", "nav", sec,
-      "NAV（帳面控股淨資產）",
-      "控股／綜合企業以帳面淨資產為錨：主模型純 NAV（可設控股折價；非市場 SOTP）；副模型以 RI（ROE>0）或 P/B 倍數交叉驗證。"
-    ))
-  }
-
-  # 2) Financial / book-driven — 仍以 P/B 倍數為主；資產型可副選 NAV
-  if (isTRUE(asset_or_book_driven) || isTRUE(is_financial)) {
-    sec <- if (isTRUE(is.finite(roe) && roe > 0)) {
-      "ri"
-    } else if (grepl("REIT|Real Estate|Asset|Conglomerate|Holding", ind_txt, ignore.case = TRUE)) {
-      "nav"
-    } else if (isTRUE(is_div_stable)) {
-      "ddm"
-    } else {
-      NULL
-    }
-    return(.pack(
-      "financial", "pb", sec,
-      "P/B（本淨比／相對估值）",
-      "金融／保險／公用／資產驅動：資本與淨值為尺；主模型 P/B 倍數；副模型以 RI（ROE>0）、純 NAV（資產／控股傾向）或穩定配息時的 DDM 交叉驗證。"
-    ))
-  }
-
-  # 2.5) NI > 0 but unlevered FCFF < 0 — do not Gordon-perpetuity a cash drain
-  if (is.finite(ni) && ni > 0 && is.finite(last_fcff) && last_fcff < 0 &&
-      is.finite(roe) && roe > 0) {
-    return(.pack(
-      "ni_pos_fcff_neg", "ri", "dcf",
-      "RI（剩餘收益）",
-      "帳面淨利為正但 FCFF 為負：Gordon 永續會把負現金流放大成無意義的負企業價值。建議改用 RI（看超額盈餘，不看現金流）；DCF 僅作交叉驗證，且不對負終值作永續成長。",
-      suggest_two_stage = TRUE
-    ))
-  }
-
-  # 3) Growth — two-stage DCF primary
-  is_growth <- (is.finite(rev_g) && rev_g > 12 && isTRUE(is_fcf_pos)) ||
-    (is.finite(rev_g) && rev_g > 15 && isTRUE(is_fcf_pos)) ||
-    (isTRUE(is_fcf_pos) && !isTRUE(is_fcf_stable) && is.finite(rev_g) && rev_g > 8)
-  if (isTRUE(is_growth)) {
-    sec <- if (isTRUE(is.finite(roe) && roe > 8)) "ri" else "pb"
-    return(.pack(
-      "growth", "dcf", sec,
-      "DCF（Two-Stage）",
-      "高成長或 FCF 仍波動：主模型兩階段 DCF 反映成長收斂；副模型以 RI／P/B 交叉驗證。",
-      suggest_two_stage = TRUE
-    ))
-  }
-
-  # 4) Div-stable, weak FCF → DDM primary
-  if (isTRUE(is_div_stable) && !isTRUE(is_fcf_stable)) {
-    return(.pack(
-      "mature", "ddm", "pb",
-      "DDM（股利折現）",
-      "股利穩定度高於自由現金流；主模型 DDM，副模型 P/B 作資產底線。"
-    ))
-  }
-
-  # 5) Mature + stable FCF → DCF primary
-  if (isTRUE(is_fcf_stable)) {
-    sec <- if (isTRUE(is_div_stable)) "ddm" else if (isTRUE(is.finite(roe) && roe > 8)) "ri" else "pb"
-    return(.pack(
-      "mature", "dcf", sec,
-      if (identical(sec, "ddm")) "DCF + DDM 交叉驗證" else "DCF（自由現金流折現）",
-      "自由現金流為正且波動可控：主模型 DCF；副模型依配息／ROE 選 DDM 或 RI。"
-    ))
-  }
-
-  # 6) Fallback
-  .pack(
-    "fallback", "pb", if (isTRUE(is.finite(roe) && roe > 0)) "ri" else NULL,
-    "P/B／相對估值",
-    "配息與 FCF 穩定性不足，折現輸入可信度偏低；先以 P/B 定位，ROE 為正時以 RI 檢查超額報酬。"
+  goodwill <- tryCatch(select_current_metric(d_bs, "^Goodwill$", "stock"), error = function(e) NA_real_)
+  intang <- tryCatch(
+    select_current_metric(d_bs, "Goodwill And Other Intangible Assets|Other Intangible Assets", "stock"),
+    error = function(e) NA_real_
+  )
+  assets <- tryCatch(select_current_metric(d_bs, "^Total Assets$", "stock"), error = function(e) NA_real_)
+  rd_exp <- tryCatch(
+    select_current_metric(d_is, "Research And Development|Research & Development", "flow"),
+    error = function(e) NA_real_
+  )
+  revenue_now <- tryCatch(
+    select_current_metric(d_is, "^Total Revenue$", "flow"),
+    error = function(e) NA_real_
+  )
+  n_fcff <- sum(is.finite(suppressWarnings(as.numeric(fcf_seq))))
+  assemble_model_recommendation(
+    data_missing = FALSE,
+    conf_in = conf_in,
+    is_fcf_pos = is_fcf_pos,
+    is_fcf_stable = is_fcf_stable,
+    fcf_cv = fcf_cv,
+    is_div_stable = is_div_stable,
+    ind_txt = ind_txt,
+    ind_key = ind_key,
+    rev_g = rev_g,
+    ni = ni,
+    equity = equity,
+    roe = roe,
+    last_fcff = last_fcff,
+    fcff_source = if (!is.null(rec_fcff)) rec_fcff$source else "unknown",
+    n_fcff = n_fcff,
+    goodwill = goodwill,
+    intangibles = intang,
+    assets = assets,
+    rd_expense = rd_exp,
+    revenue = revenue_now
   )
 }
 
@@ -2085,103 +2006,197 @@ derive_pb_targets <- function(roe_pct = NA_real_, ke_pct = NA_real_, g_pct = NA_
                               clamp = c(0.3, 6),
                               include_justified = TRUE,
                               include_industry = TRUE,
-                              include_history = TRUE) {
-  lo_c <- clamp[1]; hi_c <- clamp[2]
-  .clamp <- function(x) {
+                              include_history = TRUE,
+                              book_equity = NA_real_,
+                              industry_key_valid = TRUE,
+                              peer_n = NA_real_,
+                              locale = "zh-TW") {
+  # `clamp` is accepted for compatibility and is not applied.
+  num <- function(x) {
     x <- suppressWarnings(as.numeric(x)[1])
-    if (!is.finite(x)) return(NA_real_)
-    max(lo_c, min(hi_c, x))
+    if (!is.finite(x)) NA_real_ else x
+  }
+  en <- identical(normalize_ui_locale_safe(locale), "en")
+  diags <- list()
+  eq <- num(book_equity)
+  blocked <- is.finite(eq) && eq <= 0
+  if (blocked) {
+    diags[[length(diags) + 1L]] <- valuation_diagnostic(
+      "fatal", "val_diag_neg_equity", "equity", current_value = eq,
+      expected_rule = "Negative common equity does not support an ordinary P/B",
+      impact = "No blended P/B fair-value multiple",
+      auto_corrected = FALSE, adopted_value = NA
+    )
   }
 
-  # Industry prior
   ind_lo <- ind_mid <- ind_hi <- NA_real_
-  if (isTRUE(include_industry) && !is.null(industry_band)) {
+  industry_usable <- isTRUE(include_industry) && isTRUE(industry_key_valid) && !blocked
+  peers <- num(peer_n)
+  if (is.finite(peers) && peers < 3) {
+    industry_usable <- FALSE
+    diags[[length(diags) + 1L]] <- valuation_diagnostic(
+      "material", "val_diag_thin_peers", "peer_n", current_value = peers,
+      expected_rule = "Fewer than 3 peers cannot support a high-confidence industry P/B",
+      impact = "Industry multiple is shown separately and excluded from the blend",
+      auto_corrected = FALSE, adopted_value = NA
+    )
+  }
+  if (!isTRUE(industry_key_valid) && isTRUE(include_industry)) {
+    diags[[length(diags) + 1L]] <- valuation_diagnostic(
+      "material", "val_diag_industry_pb_blocked", "industry_key",
+      current_value = NA,
+      expected_rule = "Industry P/B requires a validated taxonomy key",
+      impact = "Passed industry band is ignored",
+      auto_corrected = FALSE, adopted_value = NA
+    )
+  }
+  if (isTRUE(industry_usable) && !is.null(industry_band)) {
     if (is.list(industry_band)) {
-      ind_lo <- suppressWarnings(as.numeric(industry_band$low %||% industry_band[[1]])[1])
-      ind_hi <- suppressWarnings(as.numeric(industry_band$high %||% industry_band[[2]])[1])
-      ind_mid <- suppressWarnings(as.numeric(
-        industry_band$mid %||% (if (length(industry_band) >= 3) industry_band[[3]] else mean(c(ind_lo, ind_hi)))
-      )[1])
+      ind_lo <- num(industry_band$low %||% industry_band[[1]])
+      ind_hi <- num(industry_band$high %||% industry_band[[2]])
+      ind_mid <- num(industry_band$mid %||% (if (length(industry_band) >= 3) industry_band[[3]] else mean(c(ind_lo, ind_hi))))
     } else {
       b <- suppressWarnings(as.numeric(industry_band))
       if (length(b) >= 2) {
         ind_lo <- b[1]; ind_hi <- b[2]
-        ind_mid <- if (length(b) >= 3) b[3] else mean(c(ind_lo, ind_hi))
+        ind_mid <- if (length(b) >= 3 && is.finite(b[3])) b[3] else mean(c(ind_lo, ind_hi))
       }
     }
   }
 
-  # Justified P/B ≈ (ROE − g) / (Ke − g)  [levels, not percent]; needs SGR/g
   just <- NA_real_
-  if (isTRUE(include_justified)) {
-    roe <- suppressWarnings(as.numeric(roe_pct)[1]) / 100
-    ke  <- suppressWarnings(as.numeric(ke_pct)[1]) / 100
-    g   <- suppressWarnings(as.numeric(g_pct)[1]) / 100
-    if (is.finite(roe) && is.finite(ke) && is.finite(g) && ke > g) {
-      just <- .clamp((roe - g) / (ke - g))
+  just_usable <- FALSE
+  if (isTRUE(include_justified) && !blocked) {
+    roe <- num(roe_pct) / 100
+    ke <- num(ke_pct) / 100
+    g <- num(g_pct) / 100
+    if (is.finite(ke) && is.finite(g) && ke <= g) {
+      diags[[length(diags) + 1L]] <- valuation_diagnostic(
+        "fatal", "val_diag_wacc_gt_g", "Ke-g", current_value = ke - g,
+        expected_rule = "Justified P/B requires Ke > g",
+        impact = "Justified multiple is NA",
+        auto_corrected = FALSE, adopted_value = NA
+      )
+    } else if (is.finite(roe) && is.finite(ke) && is.finite(g)) {
+      just <- (roe - g) / (ke - g)
+      just_usable <- is.finite(just) && just > 0 && roe >= 0
+      if (!just_usable) {
+        diags[[length(diags) + 1L]] <- valuation_diagnostic(
+          "material", "val_diag_justified_pb", "justified_pb", current_value = just,
+          expected_rule = "Negative ROE or a non-positive justified P/B is disclosed, not clipped to a market-like multiple",
+          impact = "Justified P/B is excluded from the blend",
+          auto_corrected = FALSE, adopted_value = just
+        )
+      }
     }
   }
 
-  # History percentiles
   hist_lo <- hist_mid <- hist_hi <- NA_real_
-  if (isTRUE(include_history)) {
+  if (isTRUE(include_history) && !blocked) {
     hp <- suppressWarnings(as.numeric(hist_pb))
     hp <- hp[is.finite(hp) & hp > 0]
     if (length(hp) >= 4) {
       qs <- stats::quantile(hp, probs = c(0.25, 0.50, 0.75), names = FALSE, na.rm = TRUE)
-      hist_lo <- .clamp(qs[1]); hist_mid <- .clamp(qs[2]); hist_hi <- .clamp(qs[3])
+      hist_lo <- qs[1]; hist_mid <- qs[2]; hist_hi <- qs[3]
     }
   }
 
   sources <- list()
-  if (is.finite(just)) sources$justified <- just
-  if (is.finite(ind_mid)) sources$industry <- ind_mid
-  if (is.finite(hist_mid)) sources$history <- hist_mid
-
-  # Weights: justified 0.45, industry 0.35, history 0.20 (renormalize if missing)
-  wmap <- c(justified = 0.45, industry = 0.35, history = 0.20)
-  present <- names(sources)
-  if (!length(present)) {
-    # hard fallback
-    base <- if (is.finite(ind_mid)) ind_mid else 1.4
-    note_fb <- if (!isTRUE(include_justified) && isTRUE(include_industry)) {
-      "無可用產業／歷史來源，退回通用區間（本模式不使用 Justified／SGR）"
-    } else {
-      "無可用 Justified／產業／歷史來源，退回通用區間"
-    }
-    return(list(
-      low = .clamp(if (is.finite(ind_lo)) ind_lo else base * 0.75),
-      mid = .clamp(base),
-      high = .clamp(if (is.finite(ind_hi)) ind_hi else base * 1.25),
-      justified = just, industry_low = ind_lo, industry_mid = ind_mid, industry_high = ind_hi,
-      history_low = hist_lo, history_mid = hist_mid, history_high = hist_hi,
-      weights_used = character(0),
-      source_note = note_fb
-    ))
+  quality <- c()
+  if (isTRUE(just_usable)) {
+    sources$justified <- just
+    quality <- c(quality, justified = 0.70)
   }
-  ww <- wmap[present]
-  ww <- ww / sum(ww)
-  base <- sum(unlist(sources) * ww)
+  if (is.finite(ind_mid)) {
+    sources$industry <- ind_mid
+    q_ind <- if (is.finite(peers) && peers >= 8) 0.80 else 0.50
+    quality <- c(quality, industry = q_ind)
+  }
+  if (is.finite(hist_mid)) {
+    sources$history <- hist_mid
+    quality <- c(quality, history = 0.40)
+  }
 
-  lows <- c(just, ind_lo, hist_lo)
-  highs <- c(just, ind_hi, hist_hi)
+  note_parts <- character(0)
+  blended <- FALSE
+  base <- NA_real_
+  ww <- numeric(0)
+  if (!length(sources)) {
+    note_parts <- if (en) {
+      "No usable justified, industry, or history P/B. No generic multiple is substituted."
+    } else {
+      "沒有可用的 Justified、產業或歷史 P/B，不代入通用倍數。"
+    }
+  } else if (length(sources) == 1L) {
+    base <- unname(unlist(sources)[1])
+    ww <- stats::setNames(1, names(sources))
+    blended <- FALSE
+    note_parts <- if (en) {
+      paste0("Single source ", names(sources)[1], " = ", sprintf("%.2f", base), ". Not a blend.")
+    } else {
+      paste0("單一來源 ", names(sources)[1], "＝", sprintf("%.2f", base), "，未與其他方法平均。")
+    }
+  } else {
+    vals <- unlist(sources)
+    rel <- (max(vals) - min(vals)) / max(abs(vals))
+    if (is.finite(rel) && rel > 0.50) {
+      note_parts <- if (en) {
+        "Justified and industry or history P/B differ by more than half the larger multiple. They stay separate and are not averaged."
+      } else {
+        "Justified 與產業或歷史 P/B 差距過大，分開列示，不平均。"
+      }
+      diags[[length(diags) + 1L]] <- valuation_diagnostic(
+        "material", "val_diag_pb_gap", "pb_sources", current_value = rel,
+        expected_rule = "Do not average P/B methods when the relative gap exceeds 0.50",
+        impact = "Blended mid is NA", auto_corrected = FALSE, adopted_value = NA
+      )
+    } else {
+      ww <- quality[names(sources)]
+      ww <- ww / sum(ww)
+      base <- sum(vals * ww[names(vals)])
+      blended <- TRUE
+      note_parts <- if (en) {
+        paste0("Blend weights follow source quality: ", paste(sprintf("%s=%.0f%%", names(ww), ww * 100), collapse = ", "), ".")
+      } else {
+        paste0("權重依來源品質：", paste(sprintf("%s=%.0f%%", names(ww), ww * 100), collapse = ", "), "。")
+      }
+    }
+  }
+
+  lows <- c(if (just_usable) just else NA_real_, ind_lo, hist_lo)
+  highs <- c(if (just_usable) just else NA_real_, ind_hi, hist_hi)
   lows <- lows[is.finite(lows)]
   highs <- highs[is.finite(highs)]
-  bear <- if (length(lows)) min(lows) else base * 0.8
-  bull <- if (length(highs)) max(highs) else base * 1.2
-  # ensure order
-  bear <- min(bear, base); bull <- max(bull, base)
+  bear <- if (is.finite(base) && length(lows)) min(c(base, lows)) else if (length(lows) && length(sources) == 1L) min(lows) else NA_real_
+  bull <- if (is.finite(base) && length(highs)) max(c(base, highs)) else if (length(highs) && length(sources) == 1L) max(highs) else NA_real_
+  if (is.finite(base)) {
+    if (is.finite(bear)) bear <- min(bear, base)
+    if (is.finite(bull)) bull <- max(bull, base)
+  }
 
   list(
-    low = .clamp(bear),
-    mid = .clamp(base),
-    high = .clamp(bull),
+    low = if (blocked) NA_real_ else bear,
+    mid = if (blocked) NA_real_ else base,
+    high = if (blocked) NA_real_ else bull,
     justified = just,
+    justified_usable = just_usable,
     industry_low = ind_lo, industry_mid = ind_mid, industry_high = ind_hi,
+    industry_usable = is.finite(ind_mid),
     history_low = hist_lo, history_mid = hist_mid, history_high = hist_hi,
-    weights_used = paste(sprintf("%s=%.0f%%", names(ww), ww * 100), collapse = ", "),
-    source_note = paste0("來源權重：", paste(sprintf("%s=%.0f%%", names(ww), ww * 100), collapse = ", "))
+    weights_used = if (!length(ww)) character(0) else paste(sprintf("%s=%.0f%%", names(ww), ww * 100), collapse = ", "),
+    source_note = paste(note_parts, collapse = " "),
+    blended = blended,
+    clamp_applied = FALSE,
+    pb_blocked = blocked,
+    diagnostics = diags
   )
+}
+
+normalize_ui_locale_safe <- function(locale) {
+  if (exists("normalize_ui_locale", mode = "function")) return(normalize_ui_locale(locale))
+  loc <- tolower(trimws(as.character(locale %||% "en")[1]))
+  if (loc %in% c("zh", "zh-tw", "zhtw", "tw", "taiwan")) return("zh-TW")
+  "en"
 }
 
 #' Valuation confidence label from fundamentals quality signals (v13)
@@ -3793,3 +3808,17 @@ ynow_calc_btn <- function(input_id, label, block = TRUE) {
     style = "padding: 12px; font-weight: bold; font-size: 16px;"
   )
 }
+
+.ynow_setup_dir <- (function() {
+  frames <- sys.nframe()
+  if (frames >= 1L) {
+    for (i in rev(seq_len(frames))) {
+      o <- tryCatch(get("ofile", envir = sys.frame(i), inherits = FALSE), error = function(e) NULL)
+      if (is.character(o) && length(o) == 1L && grepl("setup\\.R$", o)) {
+        return(dirname(normalizePath(o, winslash = "/", mustWork = FALSE)))
+      }
+    }
+  }
+  getwd()
+})()
+source(file.path(.ynow_setup_dir, "valuation_guard.R"), local = TRUE, encoding = "UTF-8")

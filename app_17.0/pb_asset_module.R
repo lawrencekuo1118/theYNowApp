@@ -207,10 +207,6 @@ pb_asset_module_server <- function(id,
         mid <- if (length(std$pb_band) >= 3) std$pb_band[3] else mean(c(lo, hi))
         return(list(low = lo, mid = mid, high = hi))
       }
-      txt <- paste(ind, industry_text(), collapse = " ")
-      if (grepl("Insurance|Bank|Financial|fn\\.", txt, ignore.case = TRUE)) {
-        return(list(low = 1.0, mid = 1.35, high = 1.7))
-      }
       NULL
     })
 
@@ -235,7 +231,10 @@ pb_asset_module_server <- function(id,
     })
 
     pb_targets_derived <- reactive({
-      ind_band <- if (isTRUE(input$use_industry_pb)) industry_pb_band() else NULL
+      key_status <- tryCatch(validate_industry_key(industry_choice()), error = function(e) list(ok = FALSE))
+      ind_band <- if (isTRUE(input$use_industry_pb) && isTRUE(key_status$ok)) industry_pb_band() else NULL
+      d_bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
+      eq <- tryCatch(select_current_metric_any(d_bs, EQUITY_PATTERNS, "stock"), error = function(e) NA_real_)
       use_just <- identical(as.character(input$target_mode %||% "justified")[1], "justified")
       derive_pb_targets(
         roe_pct = if (isTRUE(use_just)) current_roe_pct() else NA_real_,
@@ -245,7 +244,10 @@ pb_asset_module_server <- function(id,
         hist_pb = hist_pb_series(),
         include_justified = isTRUE(use_just),
         include_industry = isTRUE(input$use_industry_pb),
-        include_history = TRUE
+        include_history = TRUE,
+        book_equity = eq,
+        industry_key_valid = isTRUE(key_status$ok),
+        locale = .loc()
       )
     })
 
@@ -266,36 +268,17 @@ pb_asset_module_server <- function(id,
       d <- tryCatch(pb_targets_derived(), error = function(e) NULL)
       note <- pb_source_note()
       mode <- as.character(input$target_mode %||% "justified")[1]
-      if (is.null(d) || !is.finite(suppressWarnings(as.numeric(d$mid)[1]))) {
-        if (is.null(note) || !nzchar(note)) return(NULL)
-        return(tags$div(
-          style = "margin: 0 0 10px 0; padding: 8px 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; color: #475569; font-size: 12px;",
-          note
-        ))
-      }
-      fmt <- function(x) {
-        x <- suppressWarnings(as.numeric(x)[1])
-        if (!is.finite(x)) "—" else sprintf("%.2f", x)
-      }
-      head_line <- if (identical(mode, "multiples")) {
-        sprintf(
-          "P/B 來源：產業中位 <b>%s</b>｜歷史中位 <b>%s</b>（不含 Justified／SGR）→ 建議 Bear/Base/Bull = <b>%.2f / %.2f / %.2f</b>",
-          fmt(d$industry_mid), fmt(d$history_mid),
-          as.numeric(d$low), as.numeric(d$mid), as.numeric(d$high)
-        )
-      } else {
-        sprintf(
-          "P/B 來源：Justified <b>%s</b>（ROE/Ke/g）｜產業中位 <b>%s</b>｜歷史中位 <b>%s</b> → 建議 Bear/Base/Bull = <b>%.2f / %.2f / %.2f</b>",
-          fmt(d$justified), fmt(d$industry_mid), fmt(d$history_mid),
-          as.numeric(d$low), as.numeric(d$mid), as.numeric(d$high)
-        )
-      }
+      body <- if (!is.null(d)) format_pb_targets_note(d, locale = .loc(), mode = mode) else ""
+      if (nzchar(note %||% "")) body <- paste(c(body, note), collapse = "\n")
+      if (!nzchar(body)) return(NULL)
+      blocked <- is.null(d) || !is.finite(suppressWarnings(as.numeric(d$mid)[1]))
       tags$div(
-        style = "margin: 0 0 10px 0; padding: 8px 10px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; color: #1e3a8a; font-size: 12px;",
-        HTML(paste0(
-          head_line,
-          if (nzchar(d$source_note %||% "")) paste0("<br/>", htmltools::htmlEscape(d$source_note)) else ""
-        ))
+        style = if (blocked) {
+          "margin: 0 0 10px 0; padding: 8px 10px; background: #fff7ed; border: 1px solid #fdba74; border-radius: 8px; color: #9a3412; font-size: 12px; white-space: pre-wrap;"
+        } else {
+          "margin: 0 0 10px 0; padding: 8px 10px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; color: #1e3a8a; font-size: 12px; white-space: pre-wrap;"
+        },
+        body
       )
     })
     
