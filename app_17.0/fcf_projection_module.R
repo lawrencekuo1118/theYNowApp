@@ -334,7 +334,8 @@ fcf_projection_module_server <- function(
       non_debt_cl <- curr_liab - st_debt
       nwc <- non_cash_ca - non_debt_cl
       
-      tax_rate <- ifelse(is.na(pre_tax) | pre_tax == 0, 0.21, income_tax / pre_tax)
+      tax_missing <- is.na(pre_tax) | pre_tax == 0 | is.na(income_tax)
+      tax_rate <- ifelse(tax_missing, 0.21, income_tax / pre_tax)
       tax_rate <- pmax(0, pmin(tax_rate, 0.5)) 
       
       net_capex <- abs(capex) - depre_val
@@ -349,9 +350,11 @@ fcf_projection_module_server <- function(
       calc_tax <- mean(tax_rate, na.rm = TRUE)
       calc_net_capex <- mean(net_capex_margin[1:2], na.rm = TRUE) 
       calc_nwc <- mean(nwc_margin[1:2], na.rm = TRUE)
+      tax_fallback <- is.nan(calc_tax) || isTRUE(any(tax_missing))
       
       return(list(
-        tax_rate         = if(is.nan(calc_tax)) 0.21 else calc_tax,
+        tax_rate         = if (is.nan(calc_tax)) 0.21 else calc_tax,
+        tax_rate_source  = if (tax_fallback) "statutory_fallback_0.21" else "effective_tax",
         net_capex_margin = if(is.nan(calc_net_capex)) 0 else calc_net_capex, 
         nwc_margin       = if(is.nan(calc_nwc)) 0 else calc_nwc
       ))

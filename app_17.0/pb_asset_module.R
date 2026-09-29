@@ -207,10 +207,6 @@ pb_asset_module_server <- function(id,
         mid <- if (length(std$pb_band) >= 3) std$pb_band[3] else mean(c(lo, hi))
         return(list(low = lo, mid = mid, high = hi))
       }
-      txt <- paste(ind, industry_text(), collapse = " ")
-      if (grepl("Insurance|Bank|Financial|fn\\.", txt, ignore.case = TRUE)) {
-        return(list(low = 1.0, mid = 1.35, high = 1.7))
-      }
       NULL
     })
 
@@ -235,7 +231,10 @@ pb_asset_module_server <- function(id,
     })
 
     pb_targets_derived <- reactive({
-      ind_band <- if (isTRUE(input$use_industry_pb)) industry_pb_band() else NULL
+      key_status <- tryCatch(validate_industry_key(industry_choice()), error = function(e) list(ok = FALSE))
+      ind_band <- if (isTRUE(input$use_industry_pb) && isTRUE(key_status$ok)) industry_pb_band() else NULL
+      d_bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
+      eq <- tryCatch(select_current_metric_any(d_bs, EQUITY_PATTERNS, "stock"), error = function(e) NA_real_)
       use_just <- identical(as.character(input$target_mode %||% "justified")[1], "justified")
       derive_pb_targets(
         roe_pct = if (isTRUE(use_just)) current_roe_pct() else NA_real_,
@@ -245,7 +244,10 @@ pb_asset_module_server <- function(id,
         hist_pb = hist_pb_series(),
         include_justified = isTRUE(use_just),
         include_industry = isTRUE(input$use_industry_pb),
-        include_history = TRUE
+        include_history = TRUE,
+        book_equity = eq,
+        industry_key_valid = isTRUE(key_status$ok),
+        locale = .loc()
       )
     })
 

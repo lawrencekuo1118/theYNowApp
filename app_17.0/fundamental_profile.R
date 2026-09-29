@@ -249,7 +249,7 @@ classify_fundamental_profile <- function(d_cf = NULL, d_is = NULL, d_bs = NULL,
     ind_txt, ignore.case = TRUE
   ) || grepl("^fn\\.", ind_key)
   is_holding <- grepl(
-    "Conglomerate|Holding|Berkshire|fn\\.Conglomerate",
+    "Conglomerate|Holding|fn\\.Conglomerate",
     paste(ind_txt, ind_key), ignore.case = TRUE
   ) || grepl("^fn\\.Conglomerate", ind_key)
   asset_or_book_driven <- isTRUE(is_financial) || grepl(
