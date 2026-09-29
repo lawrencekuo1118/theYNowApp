@@ -85,7 +85,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v17.95) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報抓取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v17.96) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報抓取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -101,7 +101,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v17.95) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v17.96) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -200,7 +200,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v17.95）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v17.96）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -217,7 +217,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v17.95) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v17.96) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -1082,9 +1082,9 @@ ui <- dashboardPage(
                   '<span class="ynow-app-title" id="ynow_app_title" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v17.95</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v17.96</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v17.95</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v17.96</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -1150,7 +1150,7 @@ ui <- dashboardPage(
           inputId = "session_ccy_pick",
           label = NULL,
           choices = c("USD", "TWD"),
-          selected = "USD",
+          selected = APP_DEFAULTS$session_ccy,
           status = "default",
           size = "xs",
           individual = TRUE
@@ -7040,7 +7040,7 @@ ui <- dashboardPage(
                                selected = "10-K", inline = TRUE
                              ),
                              checkboxInput(
-                               "lab_sec_important_only", "只顯示重要附註", value = TRUE
+                               "lab_sec_important_only", "只顯示重要附註", value = isTRUE(APP_DEFAULTS$lab_sec_important_only)
                              ),
                              textInput(
                                "lab_sec_keyword", "關鍵字搜尋",
@@ -7734,7 +7734,7 @@ ui <- dashboardPage(
                   "lab_im_max_n",
                   tags$span(id = "ynow_lab_im_max_n_label", "宇宙檔數（N）"),
                   choices = lab_im_max_n_select_choices(),
-                  selected = "25",
+                  selected = APP_DEFAULTS$lab_im_max_n,
                   width = "100%"
                 ),
                 conditionalPanel(
@@ -7778,7 +7778,7 @@ ui <- dashboardPage(
                       tags$span(id = "ynow_lab_im_lb_mode_by_ind", "依產業前十名")
                     ),
                     choiceValues = list("overall", "by_industry"),
-                    selected = "overall",
+                    selected = APP_DEFAULTS$lab_im_lb_mode,
                     inline = TRUE
                   ),
                   tags$div(
@@ -7842,7 +7842,7 @@ ui <- dashboardPage(
                           "RI" = "ri",
                           "P/B" = "pb"
                         ),
-                        selected = c("nav", "dcf", "ddm", "ri", "pb"),
+                        selected = APP_DEFAULTS$lab_im_methods,
                         inline = TRUE
                       )
                     )
@@ -7860,7 +7860,7 @@ ui <- dashboardPage(
                           checkboxInput(
                             "lab_im_eq_only",
                             tags$span(id = "ynow_lab_im_eq_label", "盈餘品質"),
-                            value = TRUE
+                            value = isTRUE(APP_DEFAULTS$lab_im_eq_only)
                           ),
                           tags$span(
                             id = "ynow_lab_im_eq_hint",
@@ -7879,7 +7879,7 @@ ui <- dashboardPage(
                           checkboxInput(
                             "lab_im_include_adr",
                             tags$span(id = "ynow_lab_im_include_adr_label", "含 ADR"),
-                            value = TRUE
+                            value = isTRUE(APP_DEFAULTS$lab_im_include_adr)
                           ),
                           tags$span(
                             id = "ynow_lab_im_include_adr_hint",
@@ -7898,7 +7898,7 @@ ui <- dashboardPage(
                       checkboxInput(
                         "lab_im_gate_only",
                         "Piotroski 高門檻",
-                        value = TRUE
+                        value = isTRUE(APP_DEFAULTS$lab_im_gate_only)
                       ),
                       tags$span(
                         class = "ynow-lab-im-quality-hint",
@@ -7990,7 +7990,7 @@ ui <- dashboardPage(
                 numericInput(
                   "lab_cluster_k",
                   tags$span(id = "ynow_lab_cluster_k_label", "群數（k）"),
-                  value = 3, min = 2, max = 8, step = 1, width = "100%"
+                  value = APP_DEFAULTS$lab_cluster_k, min = 2, max = 8, step = 1, width = "100%"
                 )
               ),
               column(
@@ -8007,7 +8007,7 @@ ui <- dashboardPage(
                     "Trailing P/E" = "PE_Ratio",
                     "P/B" = "PB_Ratio"
                   ),
-                  selected = "ROE",
+                  selected = APP_DEFAULTS$lab_cluster_x,
                   width = "100%"
                 )
               ),
@@ -8025,7 +8025,7 @@ ui <- dashboardPage(
                     "Trailing P/E" = "PE_Ratio",
                     "P/B" = "PB_Ratio"
                   ),
-                  selected = "PE_Ratio",
+                  selected = APP_DEFAULTS$lab_cluster_y,
                   width = "100%"
                 )
               ),
@@ -8150,7 +8150,7 @@ ui <- dashboardPage(
                   "P/B" = "pb",
                   "NAV" = "nav"
                 ),
-                selected = "dcf"
+                selected = APP_DEFAULTS$bt_fv_replay_model
               )
             ),
             tags$div(
@@ -8166,7 +8166,7 @@ ui <- dashboardPage(
                   "5Y" = "5y",
                   "Custom" = "custom"
                 ),
-                selected = "all"
+                selected = APP_DEFAULTS$bt_fv_conv_window
               ),
               conditionalPanel(
                 condition = "input.bt_fv_conv_window == 'custom'",
@@ -8194,7 +8194,7 @@ ui <- dashboardPage(
                   "Expanding-window out-of-sample hits" = "expanding",
                   "Include unrealized next period (in-sample)" = "insample"
                 ),
-                selected = "realized"
+                selected = APP_DEFAULTS$bt_fv_oos_mode
               )
             ),
             tags$div(
@@ -8210,12 +8210,12 @@ ui <- dashboardPage(
                   "P/B" = "pb",
                   "NAV" = "nav"
                 ),
-                selected = character(0)
+                selected = APP_DEFAULTS$bt_fv_models
               ),
               checkboxInput(
                 "bt_hfv_show_bench",
                 tags$span(id = "ynow_hfv_show_bench_label", "Show benchmark"),
-                value = TRUE
+                value = isTRUE(APP_DEFAULTS$bt_hfv_show_bench)
               )
             )
           ),
@@ -8428,7 +8428,7 @@ ui <- dashboardPage(
             checkboxInput(
               "bt_param_auto",
               "Auto-sync parameters (derive from statements on ticker change)",
-              value = TRUE
+              value = isTRUE(APP_DEFAULTS$bt_param_auto)
             ),
             tags$p(
               id = "ynow_bt_param_auto_hint",
@@ -8552,7 +8552,7 @@ ui <- dashboardPage(
                     "5Y" = "5y",
                     "Custom" = "custom"
                   ),
-                  selected = "all"
+                  selected = APP_DEFAULTS$bt_nav_window
                 ),
                 conditionalPanel(
                   condition = "input.bt_nav_window == 'custom'",
@@ -8631,13 +8631,13 @@ ui <- dashboardPage(
               )
             ),
             fluidRow(
-              column(3, tipify(numericInput("bt_net_margin", "Net margin threshold (%)", 5),
+              column(3, tipify(numericInput("bt_net_margin", "Net margin threshold (%)", APP_DEFAULTS$bt_net_margin),
                                "Auto mode uses about half of the company's historical net margin.", placement = "top")),
-              column(3, tipify(numericInput("bt_rev_growth", "Revenue growth threshold (%)", 25),
+              column(3, tipify(numericInput("bt_rev_growth", "Revenue growth threshold (%)", APP_DEFAULTS$bt_rev_growth),
                                "Auto mode uses about half of historical revenue growth.", placement = "top")),
-              column(3, tipify(numericInput("bt_eps_growth", "EPS / net income growth threshold (%)", 15),
+              column(3, tipify(numericInput("bt_eps_growth", "EPS / net income growth threshold (%)", APP_DEFAULTS$bt_eps_growth),
                                "Auto mode uses about half of net income growth.", placement = "top")),
-              column(3, tipify(numericInput("bt_fcf_cv", "FCF CV ceiling (%)", 20),
+              column(3, tipify(numericInput("bt_fcf_cv", "FCF CV ceiling (%)", APP_DEFAULTS$bt_fcf_cv),
                                "Auto mode uses FCF CV × 1.25.", placement = "top"))
             ),
             tags$hr(),
@@ -8765,7 +8765,7 @@ ui <- dashboardPage(
                   fluidRow(
                     column(
                       6,
-                      sliderInput("bt_w_vg", "MOS / Value Gap weight (exposure)", 0, 1, 0.7, step = 0.01),
+                      sliderInput("bt_w_vg", "MOS / Value Gap weight (exposure)", 0, 1, APP_DEFAULTS$bt_w_vg, step = 0.01),
                       tags$p(
                         id = "ynow_bt_w_vg_hint",
                         class = "ynow-backtest-inline-hint",
@@ -8810,7 +8810,7 @@ ui <- dashboardPage(
                       fluidRow(
                         column(
                           3,
-                          sliderInput("bt_w_mom", "Momentum relative weight", 0, 1, 0.4, step = 0.01),
+                          sliderInput("bt_w_mom", "Momentum relative weight", 0, 1, APP_DEFAULTS$bt_w_mom, step = 0.01),
                           tags$p(
                             id = "ynow_bt_w_mom_hint",
                             class = "ynow-backtest-inline-hint",
@@ -8819,7 +8819,7 @@ ui <- dashboardPage(
                         ),
                         column(
                           3,
-                          sliderInput("bt_w_rsi", "RSI relative weight", 0, 1, 0.3, step = 0.01),
+                          sliderInput("bt_w_rsi", "RSI relative weight", 0, 1, APP_DEFAULTS$bt_w_rsi, step = 0.01),
                           tags$p(
                             id = "ynow_bt_w_rsi_hint",
                             class = "ynow-backtest-inline-hint",
@@ -8828,7 +8828,7 @@ ui <- dashboardPage(
                         ),
                         column(
                           3,
-                          sliderInput("bt_max_exp", "Max holding cap", 0.5, 1, 0.9, step = 0.01),
+                          sliderInput("bt_max_exp", "Max holding cap", 0.5, 1, APP_DEFAULTS$bt_max_exp, step = 0.01),
                           tags$p(
                             id = "ynow_bt_max_exp_hint",
                             class = "ynow-backtest-inline-hint",
@@ -8837,7 +8837,7 @@ ui <- dashboardPage(
                         ),
                         column(
                           3,
-                          sliderInput("bt_min_exp_pass", "Min holding after gate pass", 0, 0.4, 0, step = 0.01),
+                          sliderInput("bt_min_exp_pass", "Min holding after gate pass", 0, 0.4, APP_DEFAULTS$bt_min_exp_pass, step = 0.01),
                           tags$p(
                             id = "ynow_bt_min_exp_hint",
                             class = "ynow-backtest-inline-hint",

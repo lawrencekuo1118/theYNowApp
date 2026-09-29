@@ -147,5 +147,57 @@ APP_DEFAULTS <- list(
   apply_capex_spike_smooth = TRUE,       # 是否啟用「暴衝 → N 年均值」
   capex_spike_mult = 1.35,              # 最新 CapEx/Rev > mult × 前期均值 → 暴衝
   capex_spike_avg_years = 3L,           # 暴衝時投影採最近 N 年 CapEx/Rev 均值
-  capex_spike_prior_years = 2L          # 暴衝判定：前期均值窗口（不含最新年）
+  capex_spike_prior_years = 2L,         # 暴衝判定：前期均值窗口（不含最新年）
+  apply_g_ceiling = TRUE,               # 近端成長率 25% 天花板防呆
+
+  # --- 9. Session / display ---
+  session_ccy = "USD",
+
+  # --- 10. Decision Checklist（啟發式門檻；HFV 僅否決）---
+  chk_bear_base = TRUE,
+  cond_bear_base_bear_mos_floor = -10,
+  chk_base_mos = TRUE,
+  cond_base_mos_base_mos_floor = 15,
+  chk_g_sgr = TRUE,
+  cond_g_sgr_g_sgr_gap_min = 0.5,
+  cond_g_sgr_sgr_wacc_buffer = 2,
+  chk_model_align = TRUE,
+  dc_user_primary = "dcf",
+  chk_hfv_veto = TRUE,
+  cond_hfv_veto_max_c_freq = 35,
+  chk_fscore = TRUE,
+  cond_fscore_fscore_min = 5,
+  chk_no_rank_chase = TRUE,
+
+  # --- 11. Backtest / HFV ---
+  bt_net_margin = 5,
+  bt_rev_growth = 25,
+  bt_eps_growth = 15,
+  bt_fcf_cv = 20,
+  bt_w_vg = 0.7,
+  bt_w_mom = 0.4,
+  bt_w_rsi = 0.3,
+  bt_max_exp = 0.9,
+  bt_min_exp_pass = 0,
+  bt_param_auto = TRUE,
+  bt_fv_replay_model = "dcf",
+  bt_fv_models = character(0),
+  bt_fv_conv_window = "all",
+  bt_fv_oos_mode = "realized",
+  bt_fv_analysis_freq = "quarterly",
+  bt_hfv_show_bench = TRUE,
+  bt_nav_window = "all",
+
+  # --- 12. Blue Chip Lab ---
+  lab_im_lb_mode = "overall",
+  lab_im_max_n = "25",
+  lab_im_max_n_custom = 25L,
+  lab_im_eq_only = TRUE,
+  lab_im_include_adr = TRUE,
+  lab_im_gate_only = TRUE,
+  lab_im_methods = c("nav", "dcf", "ddm", "ri", "pb"),
+  lab_cluster_k = 3L,
+  lab_cluster_x = "ROE",
+  lab_cluster_y = "PE_Ratio",
+  lab_sec_important_only = TRUE
 )

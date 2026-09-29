@@ -65,13 +65,7 @@ fcf_projection_module_ui <- function(id) {
                        style = "color: #d35400; font-weight: bold;",
                        "啟用 25% 成長率天花板防呆 (建議)"
                      ),
-                     value = TRUE
-                   )
-                 )
-               )
-             )
-           ),
-           uiOutput(ns("fcf_help_growth")),
+                     value = isTRUE(APP_DEFAULTS$apply_g_ceiling)
 
            # 成長率選單正下方、六個輸入格正上方：參數拆解說明
            div(
