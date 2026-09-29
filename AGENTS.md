@@ -53,6 +53,17 @@ When unsure: use the **English term** + brief Taiwan Chinese gloss on first ment
 
 - Run targeted tests under `app_17.0/tests/` when changing valuation or FCF logic.
 - Non-trivial UI changes: manual/browser verification when the environment supports it.
+- Offline valuation check (no network): `cd app_17.0/tests && Rscript test_valuation_formulas.R`
+- Set `YNOW_DEBUG_SKIP_PY=1` when a unit test should source R helpers without initializing reticulate.
+
+## Cursor Cloud specific instructions
+
+- Bootstrap (idempotent): `bash scripts/cloud-agent-install.sh`
+  - CRAN R (Ubuntu `noble-cran40`) plus [r2u](https://eddelbuettel.github.io/r2u/) binary packages for the `pacman::p_load` set in `app_17.0/global.R`, plus `httr`, `quantmod`, `testthat`, and `rsconnect`.
+  - Python virtualenv: `app_17.0/.ynow_venv` from `app_17.0/requirements.txt`. `global.R` uses this venv when it exists and the process is not on shinyapps.io.
+- Shiny dev server (from `app_17.0/`): `Rscript -e 'shiny::runApp(host="0.0.0.0", port=3838, launch.browser=FALSE)'`
+- `app_17.0/ynow_server.R` is not in the git tree (removed in `c562fbf` while `app.R` still `source()`s it). A clean checkout cannot boot Shiny until that file is restored. Module-level tests that do not source the server still run.
+- This environment does not provision shinyapps.io credentials. Do not deploy from a Cloud Agent unless those secrets are present and a deploy was requested. Environment / docs-only commits do not bump the display version and do not deploy.
 
 ## Git & deploy
 
@@ -60,6 +71,8 @@ See `.cursor/rules/auto-deploy-after-optimize.mdc` and `.cursor/rules/dual-works
 
 **Auto deploy：** 每次在活動線 `app_17.0/` **完成開發並驗證後**，一律自動 commit → push → `Rscript scripts/deploy_app_17.R` → 更新 `DEPLOY_BASELINE.txt`，無需等候使用者再說「部署／推送」。僅文件／規則／未完成 WIP 或使用者明確要求不部署時略過。
 
+**部署完成自動 +0.01：** `scripts/deploy_app_17.R` 在上傳前把顯示版號 **+0.01**（`scripts/bump_display_version.R`）、commit，再部署該版。線上 bundle 就是加過的版號。工作區若已比 `DEPLOY_BASELINE.txt` 的 `display_version` 正好多 0.01，腳本不再加一次。不要在呼叫部署腳本前手動改版號。略過僅限 `--no-bump` 或 `YNOW_SKIP_VERSION_BUMP=1`。
+
 **i18n before ship：** 功能收尾時先完成 en-US + zh-TW（`ui_locale.R` + locale push）。**僅規則／AGENTS／文件**變更 → commit + push，**不** shinyapps 部署、**不**版號 +0.01。
 
-**Version bump：** 每次 merge／ship 將 UI／header 等顯示版號 **+0.01**（如 `v15.01`、`v15.02`）；目錄可維持 `app_17.0/`，僅在使用者要求整階 **+1** 時才改名。詳見 `.cursor/rules/version-bump-on-merge.mdc`。
+**Version bump：** 每次部署完成由 `scripts/deploy_app_17.R` 將 UI／header 等顯示版號 **+0.01**（如 `v17.94` → `v17.95`）；目錄可維持 `app_17.0/`，僅在使用者要求整階 **+1** 時才改名。詳見 `.cursor/rules/version-bump-on-merge.mdc`。
