@@ -5,6 +5,7 @@
 
 - **整階 +1**：活動線目錄 `app_17.0/` → `app_18.0/`；顯示版號 **v18**
 - **Yahoo 產業資訊**：`get_yahoo_industry` 改為延遲載入 Python 後再抓；`fast_get_company_info` 補強 `get_info`／sectorDisp 備援；UI 雙語標籤「industry info from Yahoo」／「Yahoo 產業資訊」
+- **量化回測**：累積區間（`bt_nav_window`）控制列併入「策略淨值（財富指數，起始＝1）」區塊內、圖表正上方（不再獨立收合 box）
 - **目錄**：`app_18.0/`；顯示版號 **v18**
 
 ## v17.97 重點

@@ -3697,7 +3697,6 @@ ui <- dashboardPage(
             setBtText('ynow_bt_kpi_filter_label', 'bt_kpi_filter_label');
             setBtText('ynow_bt_kpi_filter_hint', 'bt_kpi_filter_hint');
             setBtText('ynow_bt_sec_run_controls', 'bt_sec_run_controls');
-            setBtText('ynow_bt_sec_nav_controls', 'bt_sec_nav_controls');
             setBtText('ynow_bt_param_auto_hint', 'bt_param_auto_hint');
             setBtText('ynow_bt_refresh_params_hint', 'bt_refresh_params_hint');
             setBtText('ynow_bt_run_note', 'bt_run_note');
@@ -5495,6 +5494,9 @@ ui <- dashboardPage(
           border: 1px solid #e4e4e4;
           border-radius: 8px;
           box-sizing: border-box;
+        }
+        .ynow-backtest-toolbar--above-chart {
+          margin: 4px 0 12px 0;
         }
         .ynow-backtest-toolbar__group {
           min-width: 0;
@@ -8490,6 +8492,39 @@ ui <- dashboardPage(
                   "(Exp_A mixed with momentum / RSI). Actual price on the HFV discount chart is not comparable here."
                 )
               ),
+              # NAV window controls sit directly above the wealth-index chart
+              tags$div(
+                class = "ynow-backtest-toolbar ynow-backtest-toolbar--chapter ynow-backtest-toolbar--above-chart",
+                role = "group",
+                `aria-label` = "NAV window controls",
+                id = "ynow_bt_nav_controls",
+                tags$div(
+                  class = "ynow-backtest-toolbar__group ynow-backtest-toolbar__group--wide",
+                  radioButtons(
+                    "bt_nav_window",
+                    "NAV window (each series resets to 1 at the window start)",
+                    inline = TRUE,
+                    choices = c(
+                      "All" = "all",
+                      "1Y" = "1y",
+                      "3Y" = "3y",
+                      "5Y" = "5y",
+                      "Custom" = "custom"
+                    ),
+                    selected = APP_DEFAULTS$bt_nav_window
+                  ),
+                  conditionalPanel(
+                    condition = "input.bt_nav_window == 'custom'",
+                    dateRangeInput(
+                      "bt_nav_custom",
+                      NULL,
+                      start = Sys.Date() - 365,
+                      end = Sys.Date(),
+                      language = "zh-TW"
+                    )
+                  )
+                )
+              ),
               plotlyOutput("bt_equity_plot", height = "400px") %>% withSpinner(),
               tags$ul(
                 id = "ynow_bt_equity_legend",
@@ -8523,51 +8558,6 @@ ui <- dashboardPage(
                 tags$li(
                   id = "ynow_bt_leg_hfv_note",
                   "Per-share FV vs actual price: Hist. FV Validation sidebar — do not mix with this chart."
-                )
-              )
-            )
-          ),
-
-          # --- Ch II controls: NAV window (default collapsed) ---
-          box(
-            title = tagList(
-              icon("calendar-alt"),
-              tags$span(id = "ynow_bt_sec_nav_controls", "NAV window & chart controls")
-            ),
-            width = NULL,
-            status = "warning",
-            solidHeader = FALSE,
-            collapsible = TRUE,
-            collapsed = TRUE,
-            tags$div(
-              class = "ynow-backtest-toolbar ynow-backtest-toolbar--chapter",
-              role = "group",
-              `aria-label` = "NAV window controls",
-              id = "ynow_bt_nav_controls",
-              tags$div(
-                class = "ynow-backtest-toolbar__group ynow-backtest-toolbar__group--wide",
-                radioButtons(
-                  "bt_nav_window",
-                  "NAV window (each series resets to 1 at the window start)",
-                  inline = TRUE,
-                  choices = c(
-                    "All" = "all",
-                    "1Y" = "1y",
-                    "3Y" = "3y",
-                    "5Y" = "5y",
-                    "Custom" = "custom"
-                  ),
-                  selected = APP_DEFAULTS$bt_nav_window
-                ),
-                conditionalPanel(
-                  condition = "input.bt_nav_window == 'custom'",
-                  dateRangeInput(
-                    "bt_nav_custom",
-                    NULL,
-                    start = Sys.Date() - 365,
-                    end = Sys.Date(),
-                    language = "zh-TW"
-                  )
                 )
               )
             )
