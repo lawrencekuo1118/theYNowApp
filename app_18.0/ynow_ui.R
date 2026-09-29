@@ -6588,9 +6588,9 @@ ui <- dashboardPage(
         tags$span(class = "ynow-credit-text", "a lawrence kuo shiny app")
       )
     ),
-    # Ticker search + Yahoo industry chrome: hide on About (inputs kept via CSS display)
+    # Ticker search + Yahoo industry chrome: hide on About and Macro & Market Trends
     conditionalPanel(
-      condition = "input.sidebar_tabs != 'about'",
+      condition = "input.sidebar_tabs != 'about' && input.sidebar_tabs != 'macro_market'",
       fluidRow(
         column(width = 12,
                div(

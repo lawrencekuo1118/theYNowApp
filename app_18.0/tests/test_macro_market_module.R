@@ -52,5 +52,9 @@ check("sidebar first macro", grepl('tabName = "macro_market"', ui_src, fixed = T
 pos_macro <- regexpr('tabName = "macro_market"', ui_src, fixed = TRUE)[1]
 pos_dash <- regexpr('tabName = "dashboard"', ui_src, fixed = TRUE)[1]
 check("macro before dashboard in UI", is.finite(pos_macro) && pos_macro > 0 && pos_macro < pos_dash)
+check(
+  "hide ticker chrome on macro",
+  grepl("input.sidebar_tabs != 'about' && input.sidebar_tabs != 'macro_market'", ui_src, fixed = TRUE)
+)
 
 cat("All macro market module checks passed.\n")
