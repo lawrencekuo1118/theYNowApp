@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12622707
+bundleId=12622783
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=2a6973a1a6950ab1c8466199d6e8203f3a546f8e
-commit=2a6973a1a6950ab1c8466199d6e8203f3a546f8e
-short=2a6973a
-message=chore: bump display version to v18.03
-captured_at=2026-09-29T14:48:50Z
+aligned_git=bb9fa3a1e93b378f317b7cb4254026d3012b21b8
+commit=bb9fa3a1e93b378f317b7cb4254026d3012b21b8
+short=bb9fa3a
+message=chore: bump display version to v18.04
+captured_at=2026-09-29T15:03:46Z
 source_branch=master
 display_version=v18.04
-note=Canonical live line is app_18.0. Bundle 12622707 = v18.03 removed Other (planned) appendix box from Quant Backtest Lab. Deploy via scripts/deploy_app_18.R. Supersedes 12622667.
+note=Canonical live line is app_18.0. Bundle 12622783 = v18.04 Macro & Market Trends first sidebar tab (US/TW toggle, indices, Rf, theme overlay, display-only Rolling β, no FX). Deploy via scripts/deploy_app_18.R. Supersedes 12622707.
