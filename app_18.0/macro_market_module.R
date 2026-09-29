@@ -218,11 +218,6 @@ macro_market_ui <- function(id = "macro") {
         )
       )
     ),
-    tags$div(
-      class = "ynow-macro-callout ynow-macro-callout--mode",
-      tags$span(id = "ynow_macro_mode_label", class = "ynow-macro-kicker", "Market mode"),
-      uiOutput(ns("mode_badge"))
-    ),
     fluidRow(
       column(width = 12, uiOutput(ns("index_kpi_row")))
     ),
@@ -362,15 +357,6 @@ macro_market_server <- function(id = "macro",
         sel <- unname(ch)[1]
       }
       updateSelectInput(session, "theme_key", choices = ch, selected = sel)
-    })
-
-    output$mode_badge <- renderUI({
-      mode <- .mode()
-      lab <- if (identical(mode, "TW")) .ui("macro_mode_tw") else .ui("macro_mode_us")
-      tags$span(
-        class = paste0("ynow-macro-badge ynow-macro-badge--", tolower(mode)),
-        lab
-      )
     })
 
     index_quotes <- reactive({

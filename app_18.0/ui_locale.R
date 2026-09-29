@@ -1206,7 +1206,6 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Follows the global US / TW market toggle. Index and theme price series stay in Yahoo’s native quote currency—",
       "no historical FX conversion. Rolling β here is a cross-check only and never feeds CAPM / Ke / WACC."
     ),
-    macro_mode_label = "Market mode",
     macro_mode_us = "US Market",
     macro_mode_tw = "TW Market",
     macro_rf_title = "Risk-free rate Rf (10Y)",
@@ -2392,7 +2391,6 @@ locale_for_market <- function(mode = get_market_mode()) {
       "依循全域美股／台股切換。指數與板塊歷史序列維持 Yahoo 原始報價幣別，不做歷史匯率換算。",
       "本頁 Rolling β 僅供交叉檢驗，絕不會寫入 CAPM／Ke／WACC。"
     ),
-    macro_mode_label = "市場模式",
     macro_mode_us = "美股模式",
     macro_mode_tw = "台股模式",
     macro_rf_title = "無風險利率 Rf（10 年期）",

@@ -3580,7 +3580,6 @@ ui <- dashboardPage(
             if (menuBt && s.menu_backtest) menuBt.textContent = s.menu_backtest;
             setBtText('ynow_macro_page_title', 'macro_page_title');
             setBtText('ynow_macro_page_sub', 'macro_page_sub');
-            setBtText('ynow_macro_mode_label', 'macro_mode_label');
             setBtText('ynow_macro_rf_title', 'macro_rf_title');
             setBtText('ynow_macro_rf_note', 'macro_rf_note');
             setBtText('ynow_macro_tw_signal_title', 'macro_tw_signal_title');
