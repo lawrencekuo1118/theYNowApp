@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12622783
+bundleId=12622866
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=bb9fa3a1e93b378f317b7cb4254026d3012b21b8
-commit=bb9fa3a1e93b378f317b7cb4254026d3012b21b8
-short=bb9fa3a
-message=chore: bump display version to v18.04
-captured_at=2026-09-29T15:03:46Z
+aligned_git=e8e8c801b442d0a11f0f71250e4f06aaa03b7430
+commit=e8e8c801b442d0a11f0f71250e4f06aaa03b7430
+short=e8e8c80
+message=chore: bump display version to v18.05
+captured_at=2026-09-29T15:18:46Z
 source_branch=master
 display_version=v18.05
-note=Canonical live line is app_18.0. Bundle 12622783 = v18.04 Macro & Market Trends first sidebar tab (US/TW toggle, indices, Rf, theme overlay, display-only Rolling β, no FX). Deploy via scripts/deploy_app_18.R. Supersedes 12622707.
+note=Canonical live line is app_18.0. Bundle 12622866 = v18.05 removed Macro page Market mode badge strip. Deploy via scripts/deploy_app_18.R. Supersedes 12622783.
