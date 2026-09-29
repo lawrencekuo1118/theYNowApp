@@ -8,5 +8,5 @@ short=c566ecf
 message=chore: bump display version to v18.02
 captured_at=2026-09-29T14:41:13Z
 source_branch=master
-display_version=v18.02
+display_version=v18.03
 note=Canonical live line is app_18.0. Bundle 12622667 = v18.02 Backtest Zone band: lab intro + Run controls in one light-gray 4:1 row. Deploy via scripts/deploy_app_18.R. Supersedes 12622632.
