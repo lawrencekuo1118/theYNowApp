@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12617436
+bundleId=12621559
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=2213f73a811fc7625f9e284595ae28d9262ca920
-commit=2213f73a811fc7625f9e284595ae28d9262ca920
-short=2213f73
-message=Fix Lite Smart Analysis hanging on waiting copy, and align DDM symbols (v17.94).
-captured_at=2026-09-28T16:15:08Z
+aligned_git=005f00cabbd05bfec3f74ccd0a82ee8017a92517
+commit=005f00cabbd05bfec3f74ccd0a82ee8017a92517
+short=005f00c
+message=Restore ynow_server.R so the Shiny app can start.
+captured_at=2026-09-29T10:51:11Z
 source_branch=master
 display_version=v17.95
-note=Canonical live line is app_17.0. Bundle 12617436 = v17.94 Lite Smart Analysis auto-calc (no hang on hidden DCF radios / NA WACC) + DDM V0=D1/(r−g), r=Ke. Deploy via scripts/deploy_app_17.R. Supersedes 12617188.
+note=Canonical live line is app_17.0. Bundle 12621559 = v17.95 (DCF/P/B fail-closed scoring). ynow_server.R is restored so the app listens; Lite auto-calc does not wait on hidden DCF radios or NA calculated WACC. HTTP 200, image ready, status=running. Deploy via scripts/deploy_app_17.R. Supersedes 12617436.
