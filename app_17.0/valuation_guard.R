@@ -80,6 +80,46 @@ valuation_diagnostic <- function(level = c("fatal", "material", "info"),
   )
 }
 
+#' Plain-text P/B source note. A missing blend still returns the reason and diagnostics.
+format_pb_targets_note <- function(d, locale = "zh-TW", mode = "justified") {
+  if (is.null(d)) return("")
+  loc <- if (exists("normalize_ui_locale_safe", mode = "function")) {
+    normalize_ui_locale_safe(locale)
+  } else {
+    locale
+  }
+  fmt <- function(x) {
+    x <- suppressWarnings(as.numeric(x)[1])
+    if (!is.finite(x)) "—" else sprintf("%.2f", x)
+  }
+  diags <- d$diagnostics
+  diag_txt <- if (is.null(diags) || !length(diags)) {
+    ""
+  } else {
+    paste(vapply(diags, function(one) format_valuation_diagnostic(one, loc), character(1)), collapse = "\n")
+  }
+  say <- function(key) {
+    if (exists("ui_str", mode = "function")) ui_str(key, loc) else key
+  }
+  mid <- suppressWarnings(as.numeric(d$mid)[1])
+  if (!is.finite(mid)) {
+    head <- say("pb_note_no_blend")
+  } else if (identical(as.character(mode)[1], "multiples")) {
+    head <- sprintf(
+      say("pb_note_multiples"),
+      fmt(d$industry_mid), fmt(d$history_mid), fmt(d$low), fmt(d$mid), fmt(d$high)
+    )
+  } else {
+    head <- sprintf(
+      say("pb_note_justified"),
+      fmt(d$justified), fmt(d$industry_mid), fmt(d$history_mid), fmt(d$low), fmt(d$mid), fmt(d$high)
+    )
+  }
+  extra <- c(d$source_note, diag_txt)
+  extra <- extra[nzchar(extra %||% "")]
+  paste(c(head, extra), collapse = "\n")
+}
+
 format_valuation_diagnostic <- function(d, locale = "zh-TW") {
   if (is.null(d)) return("")
   title <- d$code

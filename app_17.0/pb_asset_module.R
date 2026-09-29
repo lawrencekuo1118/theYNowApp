@@ -268,36 +268,17 @@ pb_asset_module_server <- function(id,
       d <- tryCatch(pb_targets_derived(), error = function(e) NULL)
       note <- pb_source_note()
       mode <- as.character(input$target_mode %||% "justified")[1]
-      if (is.null(d) || !is.finite(suppressWarnings(as.numeric(d$mid)[1]))) {
-        if (is.null(note) || !nzchar(note)) return(NULL)
-        return(tags$div(
-          style = "margin: 0 0 10px 0; padding: 8px 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; color: #475569; font-size: 12px;",
-          note
-        ))
-      }
-      fmt <- function(x) {
-        x <- suppressWarnings(as.numeric(x)[1])
-        if (!is.finite(x)) "—" else sprintf("%.2f", x)
-      }
-      head_line <- if (identical(mode, "multiples")) {
-        sprintf(
-          "P/B 來源：產業中位 <b>%s</b>｜歷史中位 <b>%s</b>（不含 Justified／SGR）→ 建議 Bear/Base/Bull = <b>%.2f / %.2f / %.2f</b>",
-          fmt(d$industry_mid), fmt(d$history_mid),
-          as.numeric(d$low), as.numeric(d$mid), as.numeric(d$high)
-        )
-      } else {
-        sprintf(
-          "P/B 來源：Justified <b>%s</b>（ROE/Ke/g）｜產業中位 <b>%s</b>｜歷史中位 <b>%s</b> → 建議 Bear/Base/Bull = <b>%.2f / %.2f / %.2f</b>",
-          fmt(d$justified), fmt(d$industry_mid), fmt(d$history_mid),
-          as.numeric(d$low), as.numeric(d$mid), as.numeric(d$high)
-        )
-      }
+      body <- if (!is.null(d)) format_pb_targets_note(d, locale = .loc(), mode = mode) else ""
+      if (nzchar(note %||% "")) body <- paste(c(body, note), collapse = "\n")
+      if (!nzchar(body)) return(NULL)
+      blocked <- is.null(d) || !is.finite(suppressWarnings(as.numeric(d$mid)[1]))
       tags$div(
-        style = "margin: 0 0 10px 0; padding: 8px 10px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; color: #1e3a8a; font-size: 12px;",
-        HTML(paste0(
-          head_line,
-          if (nzchar(d$source_note %||% "")) paste0("<br/>", htmltools::htmlEscape(d$source_note)) else ""
-        ))
+        style = if (blocked) {
+          "margin: 0 0 10px 0; padding: 8px 10px; background: #fff7ed; border: 1px solid #fdba74; border-radius: 8px; color: #9a3412; font-size: 12px; white-space: pre-wrap;"
+        } else {
+          "margin: 0 0 10px 0; padding: 8px 10px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; color: #1e3a8a; font-size: 12px; white-space: pre-wrap;"
+        },
+        body
       )
     })
     

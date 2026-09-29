@@ -1157,6 +1157,9 @@ locale_for_market <- function(mode = get_market_mode()) {
       "%d names have sparse ratios (Data-limited); table/radar values may include median imputation — ",
       "cross-read statements."
     ),
+    pb_note_no_blend = "No blended P/B multiple. Justified, industry, and history stay separate.",
+    pb_note_multiples = "P/B sources: industry median %s | history median %s (Justified / SGR not used) → Bear/Base/Bull = %s / %s / %s",
+    pb_note_justified = "P/B sources: Justified %s (ROE/Ke/g) | industry median %s | history median %s → Bear/Base/Bull = %s / %s / %s",
     val_diag_wacc_na = "Calculated WACC is missing. The previous manual or prior-company value is not reused.",
     val_diag_wacc_tax = "The tax rate must be a ratio between 0 and 1.",
     val_diag_wacc_weights = "Equity and debt weights must sum to about 100%.",
@@ -2296,6 +2299,9 @@ locale_for_market <- function(mode = get_market_mode()) {
       "宇宙中有 %d 檔比率特徵不足（資料受限）；",
       "表內／雷達數值可能含中位數補值，請交叉閱讀財報。"
     ),
+    pb_note_no_blend = "沒有合成後的 P/B 倍數。Justified、產業與歷史分開列示。",
+    pb_note_multiples = "P/B 來源：產業中位 %s｜歷史中位 %s（不含 Justified／SGR）→ Bear/Base/Bull = %s / %s / %s",
+    pb_note_justified = "P/B 來源：Justified %s（ROE/Ke/g）｜產業中位 %s｜歷史中位 %s → Bear/Base/Bull = %s / %s / %s",
     val_diag_wacc_na = "計算出的 WACC 為 NA，不沿用先前的手動值或前一檔參數。",
     val_diag_wacc_tax = "稅率必須是 0 到 1 的比率。",
     val_diag_wacc_weights = "股權與負債權重合計須接近 100%。",

@@ -114,6 +114,10 @@ check("net cash bridge", abs(eq6 - 1350) < 1e-8)
 pb7 <- derive_pb_targets(roe_pct = 15, ke_pct = 10, g_pct = 3, book_equity = -20,
                          industry_band = list(low = 1, mid = 1.4, high = 1.8))
 check("negative equity no pb mid", !is.finite(pb7$mid) && isTRUE(pb7$pb_blocked))
+note7 <- format_pb_targets_note(pb7, locale = "zh-TW")
+check("negative equity note stays visible", nzchar(note7) && grepl("沒有合成", note7, fixed = TRUE))
+note7en <- format_pb_targets_note(pb7, locale = "en")
+check("negative equity note en", grepl("No blended P/B", note7en, fixed = TRUE))
 
 # 8 high goodwill lowers applicability
 pb8 <- assess_pb_applicability(equity = 100, goodwill = 80, assets = 120, roe = 10,
