@@ -1857,6 +1857,12 @@ ui <- dashboardPage(
           padding-left: 6px;
           margin-left: 0;
         }
+        /* Waiting for valuation…：底色跟隨目前評價模型分頁主題色 */
+        body.ynow-theme-model .ynow-header-composite-row .ynow-waiting-val.alert {
+          background-color: var(--ynow-model-accent) !important;
+          border-color: var(--ynow-model-accent) !important;
+          color: #ffffff !important;
+        }
         /* 明確排除：試算／回復預設按鈕色不變 */
         body.ynow-theme-model .btn.ynow-btn-calc,
         body.ynow-theme-model .btn.ynow-btn-calc:hover,

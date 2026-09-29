@@ -588,7 +588,7 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       has_any_model_fv <- length(model_vals) > 0L || !is.na(sec_pt)
 
       if (!has_primary_base && !has_any_model_fv) {
-        return(div(class = "alert alert-info", str("composite_waiting_val")))
+        return(div(class = "alert alert-info ynow-waiting-val", str("composite_waiting_val")))
       }
 
       rec_title <- paste0(
@@ -608,7 +608,7 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
 
       all_vals <- stats::na.omit(c(p_curr, bear, base, bull, sec_pt, model_vals))
       if (!length(all_vals)) {
-        return(div(class = "alert alert-info", str("composite_waiting_val")))
+        return(div(class = "alert alert-info ynow-waiting-val", str("composite_waiting_val")))
       }
       min_val <- min(all_vals) * 0.85
       max_val <- max(all_vals) * 1.15
