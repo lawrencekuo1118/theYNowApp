@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12622893
+bundleId=12622937
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=9e031b3dec874f13ae108e3e5ac596d5dc51a602
-commit=9e031b3dec874f13ae108e3e5ac596d5dc51a602
-short=9e031b3
-message=chore: bump display version to v18.06
-captured_at=2026-09-29T15:25:59Z
+aligned_git=0351a6d9f6d1d2abead8c1357ad8113826996382
+commit=0351a6d9f6d1d2abead8c1357ad8113826996382
+short=0351a6d
+message=chore: bump display version to v18.07
+captured_at=2026-09-29T15:35:02Z
 source_branch=master
 display_version=v18.07
-note=Canonical live line is app_18.0. Bundle 12622893 = v18.06 hide TW business-cycle card on US Macro page. Deploy via scripts/deploy_app_18.R. Supersedes 12622866.
+note=Canonical live line is app_18.0. Bundle 12622937 = v18.07 remove Run Backtest note from Run controls. Deploy via scripts/deploy_app_18.R. Supersedes 12622893.
