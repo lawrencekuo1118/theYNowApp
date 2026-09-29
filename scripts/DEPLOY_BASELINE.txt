@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12623226
+bundleId=12623292
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=a6a36b82110922133a4f7a6b7775e1bb5cf65428
-commit=a6a36b82110922133a4f7a6b7775e1bb5cf65428
-short=a6a36b8
-message=chore: bump display version to v18.11
-captured_at=2026-09-29T16:28:54Z
+aligned_git=e7aaac231bdc7f4128421cb56e599f5643c10f04
+commit=e7aaac231bdc7f4128421cb56e599f5643c10f04
+short=e7aaac2
+message=chore: bump display version to v18.13
+captured_at=2026-09-29T16:42:08Z
 source_branch=master
 display_version=v18.13
-note=Canonical live line is app_18.0. Bundle 12623226 = v18.11 Macro bubble & concentration panel. Deploy via scripts/deploy_app_18.R. Supersedes 12623142.
+note=Canonical live line is app_18.0. Bundle 12623292 = v18.13 Macro logo blue-green theme + black/gold KPIs. Deploy via scripts/deploy_app_18.R. Supersedes 12623271.
