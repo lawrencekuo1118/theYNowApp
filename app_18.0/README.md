@@ -7,6 +7,7 @@
 - **Yahoo 產業資訊**：`get_yahoo_industry` 改為延遲載入 Python 後再抓；`fast_get_company_info` 補強 `get_info`／sectorDisp 備援；UI 雙語標籤「industry info from Yahoo」／「Yahoo 產業資訊」
 - **量化回測**：累積區間（`bt_nav_window`）控制列併入「策略淨值（財富指數，起始＝1）」區塊內、圖表正上方（不再獨立收合 box）
 - **量化回測 masthead**：說明段落與「Backtest Zone」＋執行按鈕同列於淺灰帶（寬度 4:1、垂直置中）
+- **總體經濟與大盤趨勢**：側邊欄首位分頁；訂閱 US／TW 全域切換；指數 KPI、10Y Rf、產業／概念 vs 大盤（右軸灰虛線）、Rolling β（僅交叉檢驗，不寫入 CAPM）；歷史序列不做 FX 換算
 - **目錄**：`app_18.0/`；顯示版號 **v18**
 
 ## v17.97 重點

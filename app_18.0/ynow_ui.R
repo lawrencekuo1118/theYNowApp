@@ -1178,6 +1178,11 @@ ui <- dashboardPage(
     column(width = 12,
            sidebarMenu(
              id = "sidebar_tabs",
+             menuItem(
+               text = tags$span(id = "ynow_menu_macro", "Macro & Market Trends"),
+               tabName = "macro_market",
+               icon = icon("globe-asia")
+             ),
              menuItem("Dashboard", tabName = "dashboard", icon = icon("chart-line")),
              menuItem(
                text = tags$span(id = "ynow_menu_smart", "Smart Analysis"),
@@ -3548,6 +3553,7 @@ ui <- dashboardPage(
           function applyUiLocale(payload) {
             var s = (payload && payload.strings) || {};
             var menu = {
+              macro_market: s.menu_macro_market,
               dashboard: s.menu_dashboard,
               smart_analysis: s.menu_smart_analysis,
               get_started: s.menu_get_started,
@@ -3566,10 +3572,32 @@ ui <- dashboardPage(
             Object.keys(menu).forEach(function (k) {
               if (menu[k]) setMenuLabel(k, menu[k]);
             });
+            var menuMacro = document.getElementById('ynow_menu_macro');
+            if (menuMacro && s.menu_macro_market) menuMacro.textContent = s.menu_macro_market;
             var smartLab = document.getElementById('ynow_menu_smart');
             if (smartLab && s.menu_smart_analysis) smartLab.textContent = s.menu_smart_analysis;
             var menuBt = document.getElementById('ynow_menu_backtest');
             if (menuBt && s.menu_backtest) menuBt.textContent = s.menu_backtest;
+            setBtText('ynow_macro_page_title', 'macro_page_title');
+            setBtText('ynow_macro_page_sub', 'macro_page_sub');
+            setBtText('ynow_macro_mode_label', 'macro_mode_label');
+            setBtText('ynow_macro_rf_title', 'macro_rf_title');
+            setBtText('ynow_macro_rf_note', 'macro_rf_note');
+            setBtText('ynow_macro_tw_signal_title', 'macro_tw_signal_title');
+            setBtText('ynow_macro_theme_title', 'macro_theme_title');
+            setBtText('ynow_macro_theme_help', 'macro_theme_help');
+            setBtText('ynow_macro_theme_label', 'macro_theme_label');
+            setBtText('ynow_macro_period_label', 'macro_period_label');
+            setBtText('ynow_macro_fx_lock', 'macro_fx_lock');
+            setBtText('ynow_macro_beta_title', 'macro_beta_title');
+            setBtText('ynow_macro_beta_warn_title', 'macro_beta_warn_title');
+            setBtText('ynow_macro_beta_warn_body', 'macro_beta_warn_body');
+            var macroRefresh = document.getElementById('macro-refresh');
+            if (macroRefresh && s.btn_macro_refresh) {
+              var ri = macroRefresh.querySelector('i');
+              var runIconHtml = ri ? ri.outerHTML + ' ' : '';
+              macroRefresh.innerHTML = runIconHtml + s.btn_macro_refresh;
+            }
             var catAsset = document.getElementById('ynow_menu_cat_asset');
             if (catAsset && s.menu_cat_asset) catAsset.textContent = s.menu_cat_asset;
             var catIncome = document.getElementById('ynow_menu_cat_income');
@@ -5458,6 +5486,116 @@ ui <- dashboardPage(
         }
 
         /* Testing — Quantitative Backtest — report shell (same logic as HFV / YNOW) */
+        .ynow-macro-report {
+          max-width: 1200px;
+          margin: 0 auto 24px auto;
+        }
+        .ynow-macro-report__masthead {
+          margin: 0 0 14px 0;
+          padding: 4px 2px 12px 2px;
+          border-bottom: 2px solid #1a1a1a;
+        }
+        .ynow-macro-report__masthead h2 {
+          margin: 0 0 8px 0;
+          font-size: clamp(20px, 2.6vw, 28px);
+          font-weight: 700;
+          color: #1a1a1a;
+        }
+        .ynow-macro-report__lead {
+          margin: 0;
+          font-size: 13.5px;
+          line-height: 1.55;
+          color: #555;
+          max-width: 72em;
+        }
+        .ynow-macro-chapter {
+          margin: 18px 0 22px 0;
+        }
+        .ynow-macro-chapter h3 {
+          margin: 0 0 8px 0;
+          font-size: 16px;
+          font-weight: 700;
+        }
+        .ynow-macro-card {
+          background: #fafafa;
+          border: 1px solid #e4e4e4;
+          border-radius: 8px;
+          padding: 12px 14px;
+          margin-bottom: 12px;
+          min-height: 110px;
+        }
+        .ynow-macro-card h4 {
+          margin: 0 0 8px 0;
+          font-size: 13px;
+          font-weight: 700;
+        }
+        .ynow-macro-kpi {
+          background: #fff;
+          border: 1px solid #e8e8e8;
+          border-radius: 8px;
+          padding: 10px 12px;
+          margin-bottom: 10px;
+        }
+        .ynow-macro-kpi__label {
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.03em;
+          text-transform: uppercase;
+          color: #666;
+        }
+        .ynow-macro-kpi__value {
+          font-size: 22px;
+          font-weight: 700;
+          color: #1a1a1a;
+          line-height: 1.2;
+          margin: 4px 0;
+        }
+        .ynow-macro-kpi__chg { font-size: 12.5px; font-weight: 600; }
+        .ynow-macro-kpi__sym { font-size: 11px; color: #999; }
+        .ynow-macro-up { color: #1e7e34; }
+        .ynow-macro-down { color: #c0392b; }
+        .ynow-macro-rf__value {
+          font-size: 28px;
+          font-weight: 700;
+          color: #1a1a1a;
+        }
+        .ynow-macro-hint {
+          margin: 6px 0 0 0;
+          font-size: 12px;
+          line-height: 1.45;
+          color: #666;
+        }
+        .ynow-macro-callout {
+          border-radius: 8px;
+          padding: 10px 12px;
+          margin: 0 0 14px 0;
+        }
+        .ynow-macro-callout--mode {
+          background: #f5f7fa;
+          border: 1px solid #dde3ea;
+        }
+        .ynow-macro-callout--warn {
+          background: #fff8e6;
+          border: 1px solid #f0d78c;
+        }
+        .ynow-macro-kicker {
+          display: block;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+          color: #777;
+          margin-bottom: 4px;
+        }
+        .ynow-macro-badge {
+          display: inline-block;
+          font-size: 13px;
+          font-weight: 700;
+          padding: 3px 10px;
+          border-radius: 4px;
+        }
+        .ynow-macro-badge--us { background: #1a1a1a; color: #fff; }
+        .ynow-macro-badge--tw { background: #0b5cab; color: #fff; }
         .ynow-backtest-report {
           max-width: 1200px;
           margin: 0 auto 24px auto;
@@ -6973,6 +7111,11 @@ ui <- dashboardPage(
             dataTableOutput("defaults_table")
           )
         )
+      ),
+
+      tabItem(
+        tabName = "macro_market",
+        macro_market_ui("macro")
       ),
 
       tabItem(tabName = "dashboard",

@@ -458,6 +458,47 @@ def get_price_history(ticker="AMZN", period="5y"):
     return {"Date": dates, "Close": closes, "Volume": vols}
 
 
+def get_last_quotes(tickers=None):
+    """
+    Last closes for macro index KPI strip (native Yahoo currency; no FX).
+    Returns parallel lists for reticulate: Symbol, Last, PrevClose, ChangePct.
+    """
+    if tickers is None:
+        tickers = ["^GSPC", "^IXIC", "^DJI", "^SOX"]
+    if isinstance(tickers, str):
+        tickers = [tickers]
+    syms, lasts, prevs, chgs = [], [], [], []
+    for raw in list(tickers):
+        sym = str(raw or "").strip()
+        if not sym:
+            continue
+        last = None
+        prev = None
+        try:
+            hist = yf.Ticker(sym).history(period="10d", auto_adjust=True)
+            if hist is not None and not hist.empty and "Close" in hist.columns:
+                closes = [float(x) for x in hist["Close"].tolist() if pd.notna(x)]
+                if closes:
+                    last = closes[-1]
+                    if len(closes) >= 2:
+                        prev = closes[-2]
+        except Exception as e:
+            _dbg(f"⚠️ get_last_quotes {sym}: {e}")
+        chg = None
+        if last is not None and prev is not None and prev != 0:
+            chg = 100.0 * (last / prev - 1.0)
+        syms.append(sym)
+        lasts.append(last)
+        prevs.append(prev)
+        chgs.append(chg)
+    return {
+        "Symbol": syms,
+        "Last": lasts,
+        "PrevClose": prevs,
+        "ChangePct": chgs,
+    }
+
+
 def get_tw_10y_gov_bond_yield():
     """
     Latest Taiwan 10Y government bond yield (%) from TPEx daily Curve XLS.

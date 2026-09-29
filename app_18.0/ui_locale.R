@@ -21,6 +21,7 @@ locale_for_market <- function(mode = get_market_mode()) {
   en = list(
     recent_search = "Recent Search:",
     menu_dashboard = "Dashboard",
+    menu_macro_market = "Macro & Market Trends",
     menu_smart_analysis = "Smart Analysis",
     menu_get_started = "Basic Setup",
     menu_dcf = "DCF-Model",
@@ -1199,11 +1200,57 @@ locale_for_market <- function(mode = get_market_mode()) {
     val_diag_justified_pb = "Justified P/B is not clipped into a market-like range.",
     val_diag_pb_gap = "The P/B methods differ too much to average.",
     val_diag_no_primary = "No model passes the applicability threshold.",
-    val_diag_no_secondary = "No applicable secondary model."
+    val_diag_no_secondary = "No applicable secondary model.",
+    macro_page_title = "Macro & Market Trends",
+    macro_page_sub = paste0(
+      "Follows the global US / TW market toggle. Index and theme price series stay in Yahoo’s native quote currency—",
+      "no historical FX conversion. Rolling β here is a cross-check only and never feeds CAPM / Ke / WACC."
+    ),
+    macro_mode_label = "Market mode",
+    macro_mode_us = "US Market",
+    macro_mode_tw = "TW Market",
+    macro_rf_title = "Risk-free rate Rf (10Y)",
+    macro_rf_note = "Same live Rf path as CAPM (US: Yahoo ^TNX; TW: TPEx 10Y curve). Display only on this page.",
+    macro_rf_source_fallback = "Rf source unavailable",
+    macro_rf_src_live = "live",
+    macro_rf_src_last = "last known live",
+    macro_rf_src_fallback = "engineering fallback",
+    macro_tw_signal_title = "TW business-cycle signal",
+    macro_tw_signal_us_only = "Shown in TW Market mode (NDC business-cycle monitor). Switch the global market toggle to TW to view.",
+    macro_tw_signal_body = paste0(
+      "Taiwan’s business-cycle signaling (景氣對策信號) is published by the National Development Council. ",
+      "This page focuses on Yahoo index quotes and Rf; open the NDC monitor for the official monthly signal."
+    ),
+    macro_tw_signal_link = "Open NDC business-cycle index",
+    macro_theme_title = "Industry / concept vs benchmark",
+    macro_theme_help = paste0(
+      "Pick a GICS sector ETF (US) or a concept basket. Benchmark is gray dashed on the right axis ",
+      "(rebased = 100 at window start; native currency, no FX)."
+    ),
+    macro_theme_label = "Theme",
+    macro_period_label = "Window",
+    macro_fx_lock = "Currency lock: historical index / theme series are never converted by the session USD⇄TWD toggle.",
+    macro_beta_title = "Theme Rolling β vs benchmark",
+    macro_beta_warn_title = "Cross-check only — not a CAPM input",
+    macro_beta_warn_body = paste0(
+      "Rolling β embeds market sentiment and event noise. Use it to sanity-check sensitivity; ",
+      "do not paste it into DCF / RI discount rates. Core Ke / WACC keep Bottom-Up or manual β."
+    ),
+    macro_series_theme = "Theme (rebased)",
+    macro_series_bench = "Benchmark",
+    macro_overlay_title = "Relative performance (start = 100)",
+    macro_plot_need_theme = "Could not load theme prices",
+    macro_plot_need_bench = "Could not load benchmark prices",
+    macro_beta_latest = "Latest Rolling β",
+    macro_beta_kpi_hint = "Display-only · not written to CAPM",
+    macro_beta_need_data = "Not enough history for Rolling β",
+    macro_beta_chart_title = "Rolling β path (month-end)",
+    btn_macro_refresh = "Refresh"
   ),
   `zh-TW` = list(
     recent_search = "最近搜尋：",
     menu_dashboard = "總覽 Dashboard",
+    menu_macro_market = "總體經濟與大盤趨勢",
     menu_smart_analysis = "智慧分析",
     menu_get_started = "基礎設定",
     menu_dcf = "DCF 模型",
@@ -2339,7 +2386,52 @@ locale_for_market <- function(mode = get_market_mode()) {
     val_diag_justified_pb = "Justified P/B 不會被截成看似合理的市場倍數。",
     val_diag_pb_gap = "P/B 方法差距過大，不進行平均。",
     val_diag_no_primary = "沒有模型通過適用門檻。",
-    val_diag_no_secondary = "無適用副模型。"
+    val_diag_no_secondary = "無適用副模型。",
+    macro_page_title = "總體經濟與大盤趨勢",
+    macro_page_sub = paste0(
+      "依循全域美股／台股切換。指數與板塊歷史序列維持 Yahoo 原始報價幣別，不做歷史匯率換算。",
+      "本頁 Rolling β 僅供交叉檢驗，絕不會寫入 CAPM／Ke／WACC。"
+    ),
+    macro_mode_label = "市場模式",
+    macro_mode_us = "美股模式",
+    macro_mode_tw = "台股模式",
+    macro_rf_title = "無風險利率 Rf（10 年期）",
+    macro_rf_note = "與 CAPM 相同的即時 Rf 路徑（美股 Yahoo ^TNX；台股櫃買 10 年期曲線）。本頁僅顯示。",
+    macro_rf_source_fallback = "無法取得 Rf 來源",
+    macro_rf_src_live = "即時",
+    macro_rf_src_last = "最近成功抓取",
+    macro_rf_src_fallback = "工程 fallback",
+    macro_tw_signal_title = "台灣景氣對策信號",
+    macro_tw_signal_us_only = "台股模式下顯示（國發會景氣對策信號）。請將全域市場切換至台股。",
+    macro_tw_signal_body = paste0(
+      "景氣對策信號由國家發展委員會發布。本頁聚焦 Yahoo 指數報價與 Rf；",
+      "正式月度信號請至國發會網站查閱。"
+    ),
+    macro_tw_signal_link = "開啟國發會景氣指標",
+    macro_theme_title = "產業／概念股 vs 大盤",
+    macro_theme_help = paste0(
+      "美股可選 GICS 板塊 ETF，或概念股籃子。大盤基準以灰虛線、右軸顯示",
+      "（區間起點重設為 100；原始幣別，無 FX）。"
+    ),
+    macro_theme_label = "主題",
+    macro_period_label = "區間",
+    macro_fx_lock = "幣別鎖定：指數／板塊歷史序列不會因頂部 USD⇄TWD 切換而換算。",
+    macro_beta_title = "主題相對大盤的 Rolling β",
+    macro_beta_warn_title = "僅供交叉檢驗 — 非 CAPM 輸入",
+    macro_beta_warn_body = paste0(
+      "Rolling β 易夾帶市場情緒與事件噪音，只適合做敏感度對照；",
+      "請勿貼入 DCF／RI 折現率。核心 Ke／WACC 應保留 Bottom-Up 或手動 β。"
+    ),
+    macro_series_theme = "主題（重設）",
+    macro_series_bench = "大盤基準",
+    macro_overlay_title = "相對績效（起點＝100）",
+    macro_plot_need_theme = "無法載入主題價格",
+    macro_plot_need_bench = "無法載入大盤價格",
+    macro_beta_latest = "最新 Rolling β",
+    macro_beta_kpi_hint = "僅顯示 · 不寫入 CAPM",
+    macro_beta_need_data = "歷史不足，無法計算 Rolling β",
+    macro_beta_chart_title = "Rolling β 路徑（月末）",
+    btn_macro_refresh = "重新整理"
   )
 )
 

@@ -50,6 +50,14 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl("ynow_lite_toggle", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-lite-badge", txt, fixed = TRUE))
   testthat::expect_true(grepl("body.ynow-lite", txt, fixed = TRUE))
+  testthat::expect_true(grepl('tabName = "macro_market"', txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow_menu_macro", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-macro-report", txt, fixed = TRUE))
+  # Macro tab must appear before Dashboard in sidebar markup
+  testthat::expect_true(
+    regexpr('tabName = "macro_market"', txt, fixed = TRUE)[1] <
+      regexpr('tabName = "dashboard"', txt, fixed = TRUE)[1]
+  )
   testthat::expect_true(grepl('tabName = "smart_analysis"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-full-only", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_lab_im_detail_tab", txt, fixed = TRUE))

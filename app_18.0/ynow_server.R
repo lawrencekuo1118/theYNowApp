@@ -2719,6 +2719,13 @@ server <- function(input, output, session) {
     reactive(input$industry_choice),
     fundamental_profile = fundamental_profile_rec
   )
+
+  # 總體經濟與大盤趨勢：訂閱 market_mode／locale；Rolling β 不寫入 CAPM
+  macro_market_server(
+    "macro",
+    market_mode_rv = market_mode,
+    ui_locale_rv = ui_locale
+  )
   
   run_calc_trigger <- reactiveVal(0)
   observeEvent(input$calc, { run_calc_trigger(run_calc_trigger() + 1) })
