@@ -3,7 +3,13 @@
 # Installs CRAN R, r2u binary packages, and the app Python virtualenv.
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Cloud Agent runs this from the repository root (/workspace).
+# Also allow `bash scripts/cloud-agent-install.sh` from that root.
+if [[ -f app_17.0/requirements.txt ]]; then
+  ROOT="$(pwd)"
+else
+  ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+fi
 export DEBIAN_FRONTEND=noninteractive
 
 if [[ "$(id -u)" -eq 0 ]]; then
