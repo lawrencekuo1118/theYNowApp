@@ -53,6 +53,17 @@ When unsure: use the **English term** + brief Taiwan Chinese gloss on first ment
 
 - Run targeted tests under `app_17.0/tests/` when changing valuation or FCF logic.
 - Non-trivial UI changes: manual/browser verification when the environment supports it.
+- Offline valuation check (no network): `cd app_17.0/tests && Rscript test_valuation_formulas.R`
+- Set `YNOW_DEBUG_SKIP_PY=1` when a unit test should source R helpers without initializing reticulate.
+
+## Cursor Cloud specific instructions
+
+- Bootstrap (idempotent): `bash scripts/cloud-agent-install.sh`
+  - CRAN R (Ubuntu `noble-cran40`) plus [r2u](https://eddelbuettel.github.io/r2u/) binary packages for the `pacman::p_load` set in `app_17.0/global.R`, plus `httr`, `quantmod`, `testthat`, and `rsconnect`.
+  - Python virtualenv: `app_17.0/.ynow_venv` from `app_17.0/requirements.txt`. `global.R` uses this venv when it exists and the process is not on shinyapps.io.
+- Shiny dev server (from `app_17.0/`): `Rscript -e 'shiny::runApp(host="0.0.0.0", port=3838, launch.browser=FALSE)'`
+- `app_17.0/ynow_server.R` is not in the git tree (removed in `c562fbf` while `app.R` still `source()`s it). A clean checkout cannot boot Shiny until that file is restored. Module-level tests that do not source the server still run.
+- This environment does not provision shinyapps.io credentials. Do not deploy from a Cloud Agent unless those secrets are present and a deploy was requested. Environment / docs-only commits do not bump the display version and do not deploy.
 
 ## Git & deploy
 
