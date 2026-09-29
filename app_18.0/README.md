@@ -1,4 +1,4 @@
-# The YNow App v18.06 — Valuation Methodology
+# The YNow App v18.07 — Valuation Methodology
 
 
 ## v18 重點
