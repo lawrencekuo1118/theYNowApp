@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12623023
+bundleId=12623142
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=37d1532887ded0a08ef0f5aa6323c671d846b8bf
-commit=37d1532887ded0a08ef0f5aa6323c671d846b8bf
-short=37d1532
-message=chore: bump display version to v18.09
-captured_at=2026-09-29T15:49:37Z
+aligned_git=8c78cac1a21eaed2c4837371c6c64b268cc7faeb
+commit=8c78cac1a21eaed2c4837371c6c64b268cc7faeb
+short=8c78cac
+message=chore: bump display version to v18.10
+captured_at=2026-09-29T16:11:41Z
 source_branch=master
 display_version=v18.10
-note=Canonical live line is app_18.0. Bundle 12623023 = v18.09 Waiting for valuation uses model theme accent. Deploy via scripts/deploy_app_18.R. Supersedes 12622982.
+note=Canonical live line is app_18.0. Bundle 12623142 = v18.10 US primary-listings industry overlay + copy. Deploy via scripts/deploy_app_18.R. Supersedes 12623023.
