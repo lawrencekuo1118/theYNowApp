@@ -406,7 +406,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     btn_bt_refresh_params = "Recompute once for current company",
     bt_refresh_params_hint = "One-shot: recompute thresholds / weights from current statements (use after turning auto-sync off).",
     bt_run_note = paste0(
-      "Expand this section and click \"Run Backtest\". Rebalances by analysis frequency · year Rf / realized Rm / ",
+      "Use \"Run Backtest\" in the Backtest Zone band above. Rebalances by analysis frequency · year Rf / realized Rm / ",
       "market-cap structure · Rolling β · HFV Replay model (single select) PIT."
     ),
     bt_sec_strategy_params = "Strategy parameters",
@@ -1570,7 +1570,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     btn_bt_refresh_params = "立即依目前公司重算一次",
     bt_refresh_params_hint = "單次動作：立刻用目前公司財報重算門檻／權重（可在取消自動後使用）。",
     bt_run_note = paste0(
-      "請展開本區並按「執行回測」。依分析頻率再平衡 · 當年 Rf／已實現 Rm／市值結構 · ",
+      "請在上方 Backtest Zone（量化回測實驗室）列按「執行回測」。依分析頻率再平衡 · 當年 Rf／已實現 Rm／市值結構 · ",
       "Rolling β · 「歷史基本面驗證」復盤模型（單選）PIT。"
     ),
     bt_sec_strategy_params = "策略參數",

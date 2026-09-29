@@ -60,6 +60,7 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl("ynow_hfv_ch1_title", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-backtest-report", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-backtest-toolbar", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-backtest-zone-band", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-backtest-chapter", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_bt_ch1_title", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_bt_nav_controls", txt, fixed = TRUE))

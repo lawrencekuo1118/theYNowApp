@@ -5466,12 +5466,12 @@ ui <- dashboardPage(
           margin: 0 auto 24px auto;
         }
         .ynow-backtest-report__masthead {
-          margin: 0 0 16px 0;
-          padding: 4px 2px 14px 2px;
+          margin: 0 0 12px 0;
+          padding: 4px 2px 10px 2px;
           border-bottom: 2px solid #1a1a1a;
         }
         .ynow-backtest-report__masthead h2 {
-          margin: 0 0 8px 0;
+          margin: 0;
           font-size: clamp(20px, 2.6vw, 28px);
           font-weight: 700;
           letter-spacing: -0.01em;
@@ -5479,10 +5479,40 @@ ui <- dashboardPage(
         }
         .ynow-backtest-report__lead {
           margin: 0;
-          max-width: 58em;
+          max-width: none;
           font-size: 13.5px;
           line-height: 1.55;
           color: #555;
+        }
+        /* Masthead intro + Run: one light-gray band, 4:1, vertically centered */
+        .ynow-backtest-zone-band {
+          display: grid;
+          grid-template-columns: 4fr 1fr;
+          gap: 14px 18px;
+          align-items: center;
+          margin: 0 0 18px 0;
+          padding: 14px 16px;
+          background: #fafafa;
+          border: 1px solid #e4e4e4;
+          border-radius: 8px;
+          box-sizing: border-box;
+        }
+        .ynow-backtest-zone-band__lead {
+          min-width: 0;
+        }
+        .ynow-backtest-zone-band__run {
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          align-items: stretch;
+          justify-content: center;
+          gap: 8px;
+        }
+        .ynow-backtest-zone-band__run .ynow-backtest-toolbar__label {
+          text-align: center;
+        }
+        .ynow-backtest-zone-band__run .btn {
+          width: 100%;
         }
         .ynow-backtest-toolbar {
           display: grid;
@@ -5678,6 +5708,13 @@ ui <- dashboardPage(
           box-shadow: none;
         }
         @media (max-width: 767px) {
+          .ynow-backtest-zone-band {
+            grid-template-columns: 1fr;
+            align-items: stretch;
+          }
+          .ynow-backtest-zone-band__run .ynow-backtest-toolbar__label {
+            text-align: left;
+          }
           .ynow-backtest-toolbar {
             grid-template-columns: 1fr;
             padding: 12px;
@@ -5695,7 +5732,7 @@ ui <- dashboardPage(
             padding: 12px;
           }
           .ynow-backtest-report__masthead {
-            padding-bottom: 12px;
+            padding-bottom: 10px;
           }
         }
 
@@ -8364,15 +8401,41 @@ ui <- dashboardPage(
           # --- Masthead ---
           tags$div(
             class = "ynow-backtest-report__masthead",
-            h2(tags$b(id = "ynow_lab_notes_title", "Quantitative Backtest Lab")),
-            p(
-              id = "ynow_lab_notes_sub",
-              class = "ynow-backtest-report__lead",
-              paste0(
-                "Point-in-time strategy NAV and holding gates: read performance and the wealth-index chart first, ",
-                "then exposure versus buy-and-hold. Related controls sit under each chapter (collapsed by default). ",
-                "This is a quantitative backtest report—not Historical Fundamental Validation (see Hist. FV Validation)."
+            h2(tags$b(id = "ynow_lab_notes_title", "Quantitative Backtest Lab"))
+          ),
+
+          # --- Intro + Backtest Zone run (4:1, vertically centered, light-gray band) ---
+          tags$div(
+            class = "ynow-backtest-zone-band",
+            role = "group",
+            `aria-label` = "Backtest run controls",
+            id = "ynow_bt_toolbar",
+            tags$div(
+              class = "ynow-backtest-zone-band__lead",
+              p(
+                id = "ynow_lab_notes_sub",
+                class = "ynow-backtest-report__lead",
+                paste0(
+                  "Point-in-time strategy NAV and holding gates: read performance and the wealth-index chart first, ",
+                  "then exposure versus buy-and-hold. Related controls sit under each chapter (collapsed by default). ",
+                  "This is a quantitative backtest report—not Historical Fundamental Validation (see Hist. FV Validation)."
+                )
               )
+            ),
+            tags$div(
+              class = "ynow-backtest-zone-band__run",
+              tags$span(
+                class = "ynow-backtest-toolbar__label",
+                id = "ynow_bt_zone_title",
+                "Backtest Zone"
+              ),
+              actionButton(
+                "run_bt", "Run Backtest",
+                icon = icon("play"),
+                class = "btn-warning",
+                style = "margin:0; white-space:nowrap; font-weight:600;"
+              ),
+              uiOutput("bt_run_status")
             )
           ),
 
@@ -8398,7 +8461,7 @@ ui <- dashboardPage(
             )
           ),
 
-          # --- Ch I controls: Run + parameter sync (default collapsed) ---
+          # --- Ch I controls: parameter sync (default collapsed); Run lives in zone band above ---
           box(
             title = tagList(
               icon("play-circle"),
@@ -8411,24 +8474,11 @@ ui <- dashboardPage(
             collapsed = TRUE,
             class = "ynow-bt-run-panel",
             tags$div(
-              class = "ynow-backtest-toolbar ynow-backtest-toolbar--chapter",
-              role = "group",
-              `aria-label` = "Backtest run controls",
-              id = "ynow_bt_toolbar",
-              tags$div(
-                class = "ynow-backtest-toolbar__group ynow-backtest-toolbar__group--run",
-                tags$span(
-                  class = "ynow-backtest-toolbar__label",
-                  id = "ynow_bt_zone_title",
-                  "Backtest Zone"
-                ),
-                actionButton(
-                  "run_bt", "Run Backtest",
-                  icon = icon("play"),
-                  class = "btn-warning",
-                  style = "margin:0; white-space:nowrap; font-weight:600;"
-                ),
-                uiOutput("bt_run_status")
+              class = "ynow-bt-run-note",
+              id = "ynow_bt_run_note",
+              paste0(
+                "Use \"Run Backtest\" in the Backtest Zone band above. Rebalances by analysis frequency · year Rf / realized Rm / ",
+                "market-cap structure · Rolling β · HFV Replay model (single select) PIT."
               )
             ),
             tags$hr(style = "margin:12px 0;"),
@@ -8454,14 +8504,6 @@ ui <- dashboardPage(
               id = "ynow_bt_refresh_params_hint",
               class = "ynow-backtest-inline-hint",
               "One-shot: recompute thresholds / weights from current statements (use after turning auto-sync off)."
-            ),
-            tags$div(
-              class = "ynow-bt-run-note",
-              id = "ynow_bt_run_note",
-              paste0(
-                "Expand this section and click \"Run Backtest\". Rebalances by analysis frequency · year Rf / realized Rm / ",
-                "market-cap structure · Rolling β · HFV Replay model (single select) PIT."
-              )
             )
           ),
 
