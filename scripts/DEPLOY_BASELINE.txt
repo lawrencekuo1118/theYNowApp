@@ -8,5 +8,5 @@ short=a3f0c14
 message=feat: cut live line to v18 / app_18.0 and restore Yahoo industry info
 captured_at=2026-09-29T14:23:45Z
 source_branch=master
-display_version=v18
+display_version=v18.01
 note=Canonical live line is app_18.0. Bundle 12622578 = v18 full +1 cut (app_17.0→app_18.0) + Yahoo industry info ensure/Python fallback + en-US/zh-TW label. Deploy via scripts/deploy_app_18.R --no-bump. Supersedes 12621764.
