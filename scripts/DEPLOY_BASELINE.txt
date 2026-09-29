@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12621724
+bundleId=12621764
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=c7375c394cfab4f24c8f4dd3eeacc59f40295904
-commit=c7375c394cfab4f24c8f4dd3eeacc59f40295904
-short=c7375c3
-message=Fix fcf_projection_module.R syntax after CapEx ceiling default wiring.
-captured_at=2026-09-29T11:27:32Z
+aligned_git=c712ef28046dc7bd90cd50670eaf2e0c8ef83fb3
+commit=c712ef28046dc7bd90cd50670eaf2e0c8ef83fb3
+short=c712ef2
+message=Lite Snapshot defaults show only Lite-configurable parameters (v17.97).
+captured_at=2026-09-29T11:45:00Z
 source_branch=cursor/restore-ynow-server-3fb1
-display_version=v17.96
-note=Canonical live line is app_17.0. Bundle 12621724 = v17.96 complete Snapshot/Param Restore registry (valuation+FCF CapEx spike+Checklist+Backtest/HFV+Lab) + expanded APP_DEFAULTS. Includes fcf_projection_module syntax fix. Supersedes 12621576 / 12621701.
+display_version=v17.97
+note=Canonical live line is app_17.0. Bundle 12621764 = v17.97 Lite Snapshot defaults show only Lite-configurable params (Dashboard industry/currency/ticker + Blue Chip ranking/Clustering). Registry full_only aligned. Supersedes 12621724.
