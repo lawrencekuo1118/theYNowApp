@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12622982
+bundleId=12623023
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=ed85fe1d66a2eab340605d338c938b01b7e60e85
-commit=ed85fe1d66a2eab340605d338c938b01b7e60e85
-short=ed85fe1
-message=chore: bump display version to v18.08
-captured_at=2026-09-29T15:42:24Z
+aligned_git=37d1532887ded0a08ef0f5aa6323c671d846b8bf
+commit=37d1532887ded0a08ef0f5aa6323c671d846b8bf
+short=37d1532
+message=chore: bump display version to v18.09
+captured_at=2026-09-29T15:49:37Z
 source_branch=master
 display_version=v18.09
-note=Canonical live line is app_18.0. Bundle 12622982 = v18.08 hide ticker/Yahoo industry on Macro tab. Deploy via scripts/deploy_app_18.R. Supersedes 12622937.
+note=Canonical live line is app_18.0. Bundle 12623023 = v18.09 Waiting for valuation uses model theme accent. Deploy via scripts/deploy_app_18.R. Supersedes 12622982.
