@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12622632
+bundleId=12622667
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=8fd61cce1e5df2a9cbdea2190191767e0b980c77
-commit=8fd61cce1e5df2a9cbdea2190191767e0b980c77
-short=8fd61cc
-message=chore: bump display version to v18.01
-captured_at=2026-09-29T14:33:26Z
+aligned_git=c566ecfed052a84909c4a7c96238ab767c14a07d
+commit=c566ecfed052a84909c4a7c96238ab767c14a07d
+short=c566ecf
+message=chore: bump display version to v18.02
+captured_at=2026-09-29T14:41:13Z
 source_branch=master
 display_version=v18.02
-note=Canonical live line is app_18.0. Bundle 12622632 = v18.01 NAV window controls moved into Strategy NAV chapter above the wealth-index chart. Deploy via scripts/deploy_app_18.R. Supersedes 12622578.
+note=Canonical live line is app_18.0. Bundle 12622667 = v18.02 Backtest Zone band: lab intro + Run controls in one light-gray 4:1 row. Deploy via scripts/deploy_app_18.R. Supersedes 12622632.
