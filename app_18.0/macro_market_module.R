@@ -221,29 +221,7 @@ macro_market_ui <- function(id = "macro") {
     fluidRow(
       column(width = 12, uiOutput(ns("index_kpi_row")))
     ),
-    fluidRow(
-      column(
-        width = 4,
-        tags$div(
-          class = "ynow-macro-card",
-          tags$h4(id = "ynow_macro_rf_title", "Risk-free rate Rf (10Y)"),
-          uiOutput(ns("rf_box")),
-          tags$p(
-            id = "ynow_macro_rf_note",
-            class = "ynow-macro-hint",
-            "Same live Rf path as CAPM (US: Yahoo ^TNX; TW: TPEx 10Y curve). Display only on this page."
-          )
-        )
-      ),
-      column(
-        width = 8,
-        tags$div(
-          class = "ynow-macro-card",
-          tags$h4(id = "ynow_macro_tw_signal_title", "TW business-cycle signal"),
-          uiOutput(ns("tw_signal_box"))
-        )
-      )
-    ),
+    uiOutput(ns("rf_signal_row")),
     tags$section(
       class = "ynow-macro-chapter",
       tags$h3(id = "ynow_macro_theme_title", "Industry / concept vs benchmark"),
@@ -433,24 +411,45 @@ macro_market_server <- function(id = "macro",
       )
     })
 
-    output$tw_signal_box <- renderUI({
+    # TW business-cycle card only when market_mode == TW (hidden on US)
+    output$rf_signal_row <- renderUI({
       mode <- .mode()
+      rf_col_w <- if (identical(mode, "TW")) 4L else 12L
+      rf_col <- column(
+        width = rf_col_w,
+        tags$div(
+          class = "ynow-macro-card",
+          tags$h4(id = "ynow_macro_rf_title", .ui("macro_rf_title")),
+          uiOutput(ns("rf_box")),
+          tags$p(
+            id = "ynow_macro_rf_note",
+            class = "ynow-macro-hint",
+            .ui("macro_rf_note")
+          )
+        )
+      )
       if (!identical(mode, "TW")) {
-        return(tags$p(
-          class = "ynow-macro-hint",
-          id = "ynow_macro_tw_signal_us_note",
-          .ui("macro_tw_signal_us_only")
-        ))
+        return(fluidRow(rf_col))
       }
-      tags$div(
-        class = "ynow-macro-hint",
-        tags$p(.ui("macro_tw_signal_body")),
-        tags$p(
-          tags$a(
-            href = "https://index.ndc.gov.tw/",
-            target = "_blank",
-            rel = "noopener noreferrer",
-            .ui("macro_tw_signal_link")
+      fluidRow(
+        rf_col,
+        column(
+          width = 8,
+          tags$div(
+            class = "ynow-macro-card",
+            tags$h4(id = "ynow_macro_tw_signal_title", .ui("macro_tw_signal_title")),
+            tags$div(
+              class = "ynow-macro-hint",
+              tags$p(.ui("macro_tw_signal_body")),
+              tags$p(
+                tags$a(
+                  href = "https://index.ndc.gov.tw/",
+                  target = "_blank",
+                  rel = "noopener noreferrer",
+                  .ui("macro_tw_signal_link")
+                )
+              )
+            )
           )
         )
       )

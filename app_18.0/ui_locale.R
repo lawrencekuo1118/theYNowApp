@@ -1215,7 +1215,6 @@ locale_for_market <- function(mode = get_market_mode()) {
     macro_rf_src_last = "last known live",
     macro_rf_src_fallback = "engineering fallback",
     macro_tw_signal_title = "TW business-cycle signal",
-    macro_tw_signal_us_only = "Shown in TW Market mode (NDC business-cycle monitor). Switch the global market toggle to TW to view.",
     macro_tw_signal_body = paste0(
       "Taiwan’s business-cycle signaling (景氣對策信號) is published by the National Development Council. ",
       "This page focuses on Yahoo index quotes and Rf; open the NDC monitor for the official monthly signal."
@@ -2400,7 +2399,6 @@ locale_for_market <- function(mode = get_market_mode()) {
     macro_rf_src_last = "最近成功抓取",
     macro_rf_src_fallback = "工程 fallback",
     macro_tw_signal_title = "台灣景氣對策信號",
-    macro_tw_signal_us_only = "台股模式下顯示（國發會景氣對策信號）。請將全域市場切換至台股。",
     macro_tw_signal_body = paste0(
       "景氣對策信號由國家發展委員會發布。本頁聚焦 Yahoo 指數報價與 Rf；",
       "正式月度信號請至國發會網站查閱。"
