@@ -8,5 +8,5 @@ short=2213f73
 message=Fix Lite Smart Analysis hanging on waiting copy, and align DDM symbols (v17.94).
 captured_at=2026-09-28T16:15:08Z
 source_branch=master
-display_version=v17.94
+display_version=v17.95
 note=Canonical live line is app_17.0. Bundle 12617436 = v17.94 Lite Smart Analysis auto-calc (no hang on hidden DCF radios / NA WACC) + DDM V0=D1/(r−g), r=Ke. Deploy via scripts/deploy_app_17.R. Supersedes 12617188.
