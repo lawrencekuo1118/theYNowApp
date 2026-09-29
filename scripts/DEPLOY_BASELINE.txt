@@ -8,5 +8,5 @@ short=9e031b3
 message=chore: bump display version to v18.06
 captured_at=2026-09-29T15:25:59Z
 source_branch=master
-display_version=v18.06
+display_version=v18.07
 note=Canonical live line is app_18.0. Bundle 12622893 = v18.06 hide TW business-cycle card on US Macro page. Deploy via scripts/deploy_app_18.R. Supersedes 12622866.
