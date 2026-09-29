@@ -1,10 +1,10 @@
-# The YNow App v17.94 — Valuation Methodology
+# The YNow App v17.95 — Valuation Methodology
 
-## v17.94 重點
+## v17.95 重點
 
 - **Lite 智慧分析**：美股＋繁中不再卡在「等待估值結果…」。自動試算不再死等隱藏 DCF 控制項對齊，且 `calculated_wacc` 為 NA 時改用畫面 WACC／副模型，讓 Base／FV 能自動寫入
 - **DDM 參數代號**：對齊常用符號 V0、D0／D1、g、r（r＝Ke／CAPM）；Gordon 為 V0＝D1/(r−g)，D1＝D0×(1+g)
-- **目錄**：`app_17.0/`；顯示版號 **v17.94**
+- **目錄**：`app_17.0/`；顯示版號 **v17.95**
 
 ## v17.93 重點
 
