@@ -1,13 +1,15 @@
 # ==========================================
 # lab_us_universe.R — Lab 宇宙：美股主要上市（Nasdaq／NYSE／NYSE American）
 # 來源：SEC company_tickers_exchange.json（過濾 primary listing；排除 OTC／CBOE／None）
-# 產業鍵：優先套用 S&P 500 GICS 對應（lab_sp500_universe.R）；其餘 → lab.Unmapped
+# 產業鍵：S&P 500 GICS 疊加 → data/us_industry_overlay.csv（Yahoo Sector/Industry）
+#          → ADR／個股覆寫；其餘 → lab.Unmapped
 # 快取 data/us_universe.csv；過期約 7 天可背景更新。
 # Blue Chip／Search 用此宇宙；評估仍以 N＋候選截斷，不全掃數千檔 Yahoo。
 # ==========================================
 
 LAB_US_STALE_DAYS <- 7
 LAB_US_CACHE_REL <- file.path("data", "us_universe.csv")
+LAB_US_INDUSTRY_OVERLAY_REL <- file.path("data", "us_industry_overlay.csv")
 LAB_US_SEC_EXCHANGE_URL <- "https://www.sec.gov/files/company_tickers_exchange.json"
 # 評估前若候選過大，先預篩至此再做市值／漲幅截斷（避免一次抓數千檔市值）
 LAB_US_EVAL_PRESCREEN <- 800L
@@ -135,8 +137,97 @@ lab_us_overlay_sp500_industry <- function(df) {
       }
     }
   }
+  # Bundled Yahoo Sector/Industry overlay for non–S&P primary listings
+  df <- lab_us_apply_industry_overlay(df)
   # ADR／非 S&P：個股覆寫＋ is_adr 標記
   lab_us_overlay_ticker_industry_overrides(df)
+}
+
+lab_us_industry_overlay_paths <- function() {
+  unique(c(
+    LAB_US_INDUSTRY_OVERLAY_REL,
+    file.path(getwd(), LAB_US_INDUSTRY_OVERLAY_REL),
+    file.path("app_18.0", LAB_US_INDUSTRY_OVERLAY_REL)
+  ))
+}
+
+lab_us_existing_industry_overlay <- function() {
+  hits <- lab_us_industry_overlay_paths()
+  hits <- hits[file.exists(hits)]
+  if (!length(hits)) return(NA_character_)
+  normalizePath(hits[[1]], mustWork = FALSE)
+}
+
+#' Load optional Yahoo Sector/Industry overlay (ticker → sector/industry → industry_key)
+lab_us_load_industry_overlay <- function() {
+  p <- lab_us_existing_industry_overlay()
+  if (is.na(p)) return(NULL)
+  d <- tryCatch(
+    utils::read.csv(p, stringsAsFactors = FALSE, encoding = "UTF-8"),
+    error = function(e) NULL
+  )
+  if (is.null(d) || !nrow(d) || !("ticker" %in% names(d))) return(NULL)
+  d$ticker <- toupper(trimws(as.character(d$ticker)))
+  d <- d[nzchar(d$ticker) & !is.na(d$ticker), , drop = FALSE]
+  d <- d[!duplicated(d$ticker), , drop = FALSE]
+  if (!("sector" %in% names(d))) d$sector <- NA_character_
+  if (!("industry" %in% names(d))) d$industry <- NA_character_
+  if (!("industry_key" %in% names(d))) d$industry_key <- NA_character_
+  if (!("industry_raw" %in% names(d))) d$industry_raw <- NA_character_
+  d
+}
+
+#' Apply overlay keys onto Unmapped US rows (S&P / ADR overlays win when already set)
+lab_us_apply_industry_overlay <- function(df) {
+  if (is.null(df) || !is.data.frame(df) || nrow(df) < 1L) return(df)
+  if (!all(c("ticker", "industry_key") %in% names(df))) return(df)
+  ov <- lab_us_load_industry_overlay()
+  if (is.null(ov) || !nrow(ov)) return(df)
+  unmapped <- if (exists("LAB_UNMAPPED_KEY", inherits = TRUE)) LAB_UNMAPPED_KEY else "lab.Unmapped"
+  tks <- toupper(trimws(as.character(df$ticker)))
+  keys <- as.character(df$industry_key)
+  idx <- match(tks, ov$ticker)
+  need <- which(
+    !is.na(idx) &
+      (is.na(keys) | !nzchar(keys) | keys == unmapped)
+  )
+  if (!length(need)) return(df)
+
+  for (i in need) {
+    j <- idx[[i]]
+    key <- as.character(ov$industry_key[[j]] %||% "")[1]
+    if (!nzchar(key) && exists("resolve_industry_key_from_yahoo", mode = "function")) {
+      key <- tryCatch(
+        resolve_industry_key_from_yahoo(
+          sector = as.character(ov$sector[[j]] %||% ""),
+          industry = as.character(ov$industry[[j]] %||% "")
+        ),
+        error = function(e) ""
+      )
+      key <- as.character(key %||% "")[1]
+    }
+    if (!nzchar(key)) next
+    if (exists("industry_standards", inherits = TRUE) &&
+        is.list(industry_standards) &&
+        !(key %in% names(industry_standards)) &&
+        !identical(key, unmapped)) {
+      next
+    }
+    df$industry_key[[i]] <- key
+    raw <- as.character(ov$industry_raw[[j]] %||% "")[1]
+    if (!nzchar(raw)) {
+      sec <- trimws(as.character(ov$sector[[j]] %||% ""))
+      ind <- trimws(as.character(ov$industry[[j]] %||% ""))
+      if (nzchar(sec) || nzchar(ind)) {
+        raw <- paste0("Sector: ", sec, " | Industry: ", ind)
+      }
+    }
+    if (nzchar(raw)) {
+      if (!("industry_raw" %in% names(df))) df$industry_raw <- NA_character_
+      df$industry_raw[[i]] <- raw
+    }
+  }
+  df
 }
 
 lab_finalize_us_from_sec <- function(raw, fetched_at = NULL) {

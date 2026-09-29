@@ -393,7 +393,7 @@
 - **Blue Chip 分群 Lab**：K-Means 對比率／成長率特徵分群（星團圖＋同群雷達；預設 N＝25、批次 quote＋快取）；研究用，非買進訊號
 - **財報屬性分群**：依三大報表規則標示 KPI／FS 金色點（與產業同業色碼正交）；產業快覽 Yahoo Sector/Industry 列右側顯示屬性標籤
 - **頁首置頂固定**：網頁／手機共用 `.main-header { position: fixed }`，捲動不滑掉
-- **美股宇宙**：S&P 500 成分同時涵蓋 **Nasdaq** 與 **NYSE** 上市股票（搜尋／Blue Chip；v17.58 起改為全市場主要上市目錄）
+- **美股宇宙**：Search／Blue Chip 使用 **Nasdaq＋NYSE＋NYSE American 主要上市全市場目錄**（`lab_us_universe.R`／SEC；評估仍以 N＋候選截斷，不全掃數千檔）。S&P 500 CSV 僅作 GICS 產業疊加與 Clustering 離線快照子集。
 - **HFV 情境分類**：相鄰估值日復盤 FV＋市價 → 價值錯位／基本面動能／價格動能 → 教育用 A–D 情境（非下單訊號）
 
 Mature-stock P/E·EV 引擎仍非本版範圍。

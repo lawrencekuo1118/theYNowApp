@@ -230,8 +230,8 @@ locale_for_market <- function(mode = get_market_mode()) {
       "N is the post-analysis display cap, not the Yahoo fetch count."
     ),
     bluechip_blurb_us = paste0(
-      "Screen US blue-chip candidates from Nasdaq and NYSE primary listings ",
-      "(full market catalog; ADRs included when “Include ADRs” is checked). ",
+      "Screen US blue-chip candidates from Nasdaq, NYSE, and NYSE American primary listings ",
+      "(full market catalog—not S&P 500 only; ADRs included when “Include ADRs” is checked). ",
       "Search Blue Chips order: industry × model filters → optional ADR filter → ",
       "Candidate truncate rule on that pool (market cap / concept / 1Y return / random) → ",
       "evaluate a larger ordered pool → show at most Universe size (N) qualified names ",
@@ -1116,7 +1116,8 @@ locale_for_market <- function(mode = get_market_mode()) {
       "filtered universe (market cap sort / concept filter / 1Y return / random), ",
       "then analyze the selected Universe size (N) names — not a fixed default count. ",
       "The Search ticker is always force-included in Universe (N) and is the default radar focus. ",
-      "Fetches Yahoo ratios with a bundled offline snapshot fallback when Yahoo is blocked."
+      "Fetches Yahoo ratios with a bundled offline snapshot fallback when Yahoo is blocked ",
+      "(snapshot covers S&P 500 + TW listings; other US primary names use live Yahoo when available)."
     ),
     lab_cluster_map_title = "Cluster map",
     lab_cluster_radar_title = "Same-cluster radar",
@@ -1443,7 +1444,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "N＝分析後最終顯示上限，非 Yahoo 撈取檔數。"
     ),
     bluechip_blurb_us = paste0(
-      "自 Nasdaq／NYSE 主要上市全市場目錄篩選美股績優候選（勾選「含 ADR」時納入 ADR／外國發行人）。",
+      "自 Nasdaq／NYSE／NYSE American 主要上市全市場目錄篩選美股績優候選（非僅限 S&P 500；勾選「含 ADR」時納入 ADR／外國發行人）。",
       "「搜尋績優股」順序：產業×模型篩選 →（可選）排除 ADR → 對該宇宙池套用候選截斷邏輯",
       "（市值／概念股／近一年漲幅／隨機）→ 取較大評估池評分 → 明細／排行最多顯示宇宙檔數 N 檔合格列（條件不足時不湊滿）。",
       "排行榜另以 Piotroski 高門檻（F-Score≥7）過濾，並依 App 預設 n＝%d 年之隱含年化估值漲幅排序。",
@@ -2296,7 +2297,8 @@ locale_for_market <- function(mode = get_market_mode()) {
       "（市值／概念股／近一年漲幅／隨機；市值缺值則改依代號排序），",
       "再依所選「宇宙檔數（N）」作分群分析（非固定預設檔數）。",
       "Search 後的代號一律強制納入宇宙（N），並作為雷達焦點預設。",
-      "抓取 Yahoo 比率特徵；若 Yahoo 受限則改用內建離線快照。"
+      "抓取 Yahoo 比率特徵；若 Yahoo 受限則改用內建離線快照",
+      "（快照涵蓋 S&P 500＋台股上市／上櫃；其他美股主要上市檔以即時 Yahoo 為主）。"
     ),
     lab_cluster_map_title = "分群星團圖",
     lab_cluster_radar_title = "同群雷達圖",

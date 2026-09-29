@@ -10603,9 +10603,9 @@ server <- function(input, output, session) {
       n_nas <- if (is.null(meta)) 0L else as.integer(meta$n_nasdaq %||% 0L)
       n_ny <- if (is.null(meta)) 0L else as.integer(meta$n_nyse %||% 0L)
       if (n_nas > 0L || n_ny > 0L) {
-        label <- sprintf("美股主要上市（Nasdaq %d／NYSE %d）", n_nas, n_ny)
+        label <- sprintf("美股主要上市（Nasdaq %d／NYSE %d；含 NYSE American）", n_nas, n_ny)
       } else {
-        label <- "美股主要上市（Nasdaq＋NYSE）"
+        label <- "美股主要上市（Nasdaq＋NYSE＋NYSE American）"
       }
     }
     n <- if (is.null(meta)) 0L else as.integer(meta$n %||% 0L)
