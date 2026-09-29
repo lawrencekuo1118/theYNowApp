@@ -8,5 +8,5 @@ short=8c78cac
 message=chore: bump display version to v18.10
 captured_at=2026-09-29T16:11:41Z
 source_branch=master
-display_version=v18.10
+display_version=v18.11
 note=Canonical live line is app_18.0. Bundle 12623142 = v18.10 US primary-listings industry overlay + copy. Deploy via scripts/deploy_app_18.R. Supersedes 12623023.
