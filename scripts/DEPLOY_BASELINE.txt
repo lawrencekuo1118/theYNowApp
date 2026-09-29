@@ -8,5 +8,5 @@ short=ed85fe1
 message=chore: bump display version to v18.08
 captured_at=2026-09-29T15:42:24Z
 source_branch=master
-display_version=v18.08
+display_version=v18.09
 note=Canonical live line is app_18.0. Bundle 12622982 = v18.08 hide ticker/Yahoo industry on Macro tab. Deploy via scripts/deploy_app_18.R. Supersedes 12622937.
