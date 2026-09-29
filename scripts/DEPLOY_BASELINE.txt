@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12622578
+bundleId=12622632
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=a3f0c14328fb46adf322de2eeb48802f619cb3eb
-commit=a3f0c14328fb46adf322de2eeb48802f619cb3eb
-short=a3f0c14
-message=feat: cut live line to v18 / app_18.0 and restore Yahoo industry info
-captured_at=2026-09-29T14:23:45Z
+aligned_git=8fd61cce1e5df2a9cbdea2190191767e0b980c77
+commit=8fd61cce1e5df2a9cbdea2190191767e0b980c77
+short=8fd61cc
+message=chore: bump display version to v18.01
+captured_at=2026-09-29T14:33:26Z
 source_branch=master
 display_version=v18.01
-note=Canonical live line is app_18.0. Bundle 12622578 = v18 full +1 cut (app_17.0→app_18.0) + Yahoo industry info ensure/Python fallback + en-US/zh-TW label. Deploy via scripts/deploy_app_18.R --no-bump. Supersedes 12621764.
+note=Canonical live line is app_18.0. Bundle 12622632 = v18.01 NAV window controls moved into Strategy NAV chapter above the wealth-index chart. Deploy via scripts/deploy_app_18.R. Supersedes 12622578.
