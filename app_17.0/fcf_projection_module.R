@@ -65,7 +65,7 @@ fcf_projection_module_ui <- function(id) {
                        style = "color: #d35400; font-weight: bold;",
                        "啟用 25% 成長率天花板防呆 (建議)"
                      ),
-                     value = TRUE
+                     value = isTRUE(APP_DEFAULTS$apply_g_ceiling)
                    )
                  )
                )

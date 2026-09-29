@@ -53,7 +53,7 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl('tabName = "smart_analysis"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-full-only", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_lab_im_detail_tab", txt, fixed = TRUE))
-  testthat::expect_true(grepl("The YNow App v[0-9]+\\.[0-9]{2}", txt))
+  testthat::expect_true(grepl("The YNow App v17.97", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-report", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-toolbar", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-chapter", txt, fixed = TRUE))
@@ -142,6 +142,40 @@ testthat::test_that("ynow_server wires Lite auto-calc and Smart Analysis outputs
   testthat::expect_true(grepl("output$smart_analysis_summary", txt, fixed = TRUE))
   testthat::expect_true(grepl("output$smart_analysis_chart", txt, fixed = TRUE))
   testthat::expect_true(grepl("output$smart_analysis_reason", txt, fixed = TRUE))
+  # Lite defaults allowlist = UI-configurable only (not Smart Analysis engines)
+  testthat::expect_true(grepl('"lab_im_eq_only"', txt, fixed = TRUE))
+  testthat::expect_true(grepl('"lab_im_pool_rank"', txt, fixed = TRUE))
+  testthat::expect_true(grepl('"lab_cluster_k"', txt, fixed = TRUE))
+  # Extract lite_default_keys vector body and assert engines are excluded
+  m <- regmatches(txt, regexpr(
+    "lite_default_keys <- c\\([\\s\\S]*?\\)\\n\\s*# Lite has no module extras",
+    txt,
+    perl = TRUE
+  ))
+  testthat::expect_true(length(m) == 1L && nzchar(m))
+  testthat::expect_false(grepl('"years"', m, fixed = TRUE))
+  testthat::expect_false(grepl('"dcf_mode"', m, fixed = TRUE))
+  testthat::expect_false(grepl('"wacc_gordon"', m, fixed = TRUE))
+  testthat::expect_false(grepl('"apply_capex_spike_smooth"', m, fixed = TRUE))
+})
+
+testthat::test_that("Lite defaults help copy mentions configurable-only filter", {
+  source(file.path("..", "ui_locale.R"), local = TRUE)
+  testthat::expect_true(grepl(
+    "parameters Lite can set",
+    .UI_STRINGS$en$snapshot_defaults_help_lite,
+    fixed = TRUE
+  ))
+  testthat::expect_true(grepl(
+    "簡化版介面可設定",
+    .UI_STRINGS$`zh-TW`$snapshot_defaults_help_lite,
+    fixed = TRUE
+  ))
+  testthat::expect_false(grepl(
+    "Smart Analysis engines, Dashboard",
+    .UI_STRINGS$en$snapshot_defaults_help_lite,
+    fixed = TRUE
+  ))
 })
 
 testthat::test_that("clamp_g_below_rate keeps g strictly below discount", {

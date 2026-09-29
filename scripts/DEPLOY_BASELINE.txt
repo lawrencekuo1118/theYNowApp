@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12621559
+bundleId=12621764
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=1f3b4e3b1dd069ed593ac5368743424c6b1d2e0a
-commit=1f3b4e3b1dd069ed593ac5368743424c6b1d2e0a
-short=1f3b4e3
-message=Restore ynow_server.R so the Shiny app can start.
-captured_at=2026-09-29T10:51:11Z
-source_branch=master
-display_version=v17.95
-note=Canonical live line is app_17.0. Bundle 12621559 = v17.95 (DCF/P/B fail-closed scoring). ynow_server.R is restored so the app listens; Lite auto-calc does not wait on hidden DCF radios or NA calculated WACC. HTTP 200, image ready, status=running. Deploy via scripts/deploy_app_17.R. Supersedes 12617436.
+aligned_git=c712ef28046dc7bd90cd50670eaf2e0c8ef83fb3
+commit=c712ef28046dc7bd90cd50670eaf2e0c8ef83fb3
+short=c712ef2
+message=Lite Snapshot defaults show only Lite-configurable parameters (v17.97).
+captured_at=2026-09-29T11:36:09Z
+source_branch=cursor/restore-ynow-server-3fb1
+display_version=v17.97
+note=Canonical live line is app_17.0. Bundle 12621764 = v17.97 Lite Snapshot defaults show only Lite-configurable params (Dashboard industry/currency/ticker + Blue Chip ranking/Clustering). Registry full_only aligned. Supersedes 12621724.

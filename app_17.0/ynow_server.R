@@ -136,6 +136,8 @@ server <- function(input, output, session) {
   }, ignoreInit = TRUE)
   auto_calc_primary_sig <- reactiveVal("")
   lite_scenario_applied_sig <- reactiveVal("")
+  # Desired Lite scenario (survives hidden DCF radio lag after updateRadioButtons)
+  lite_desired_des <- reactiveVal(NULL)
   # Lite Smart Analysis: silent DCF auto-calc (heal g≥discount; no error toasts)
   lite_dcf_silent <- reactiveVal(FALSE)
   auto_calc_ddm_pulse <- reactiveVal(0L)
@@ -1815,10 +1817,7 @@ server <- function(input, output, session) {
   })
 
   .snapshot_value <- function(x) {
-    if (is.null(x) || length(x) == 0) return(NA_character_)
-    if (length(x) > 1) x <- x[1]
-    if (isTRUE(is.na(x))) return(NA_character_)
-    as.character(x)
+    ynow_param_norm_value(x)
   }
 
   snapshot_rows <- reactive({
@@ -1830,102 +1829,28 @@ server <- function(input, output, session) {
     rec <- tryCatch(model_sidebar_rec(), error = function(e) NULL)
     wacc_pct <- if (!is.null(calculated_wacc())) round(calculated_wacc() * 100, 2) else NA_real_
     est_g <- tryCatch(central_perpetual_g(), error = function(e) NULL)
+    lite <- isTRUE(input$ynow_lite_mode)
 
-    rows <- list(
+    extras <- list(
       c("Meta", "Downloaded At", ts, "Timestamp at download/render"),
-      c("Meta", "Ticker", ticker, "Selected ticker"),
-      c("Meta", "Industry", .snapshot_value(input$industry_choice), "Basic Setup industry_standards key"),
-      c("Meta", "Session Currency", .snapshot_value(input$session_ccy_pick), "USD / TWD display conversion"),
-      c("Model Selector", "Recommended Method", .snapshot_value(rec$summary_method), "Rule-based model ranking"),
-      c("DCF", "DCF Mode", .snapshot_value(input$dcf_mode), "Gordon or Two-Stage DCF"),
-      c("DCF", "Cash-flow claim", .snapshot_value(input$dcf_claim), "fcff = WACC+EV bridge; fcfe = Ke equity CF"),
-      c("DCF", "Forecast Years (n)", .snapshot_value(input$years), "n"),
-      c("DCF", "Revenue Growth Method", .snapshot_value(input$g_growth_method), "FCFF trajectory near-term growth method"),
-      c("DCF", "Custom Near-term g (%)", .snapshot_value(input$custom_g), "Used when growth method = custom"),
-      c("Dashboard", "Cash Flow Series", paste(APP_DEFAULTS$cf_flow_series, collapse = "+"), "Always show OCF / ICF / Financing FCF line overlay"),
-      c("DCF", "Chart Mode", "with_dcf", "Overview always shows hist+forecast CF plus yearly PV (ex-TV)"),
-      c("Perpetual Growth", "Method", .snapshot_value(input$perpetual_g_method), "macro / fundamental / lifecycle"),
-      c("Perpetual Growth", "Terminal g / SGR (%)", .snapshot_value(input$sgr), "DCF/RI terminal g; TV = FCF_n × (1+g) / (WACC-g)"),
-      c("Perpetual Growth", "Estimated g (%)", if (!is.null(est_g)) .snapshot_value(est_g$g_pct) else NA_character_, "Selected perpetual-growth method output"),
-      c("Perpetual Growth", "Lifecycle Stage", .snapshot_value(input$lifecycle_stage), "Lifecycle classification used when method = lifecycle"),
-      c("DCF - Explicit+Gordon TV", "WACC (%)", .snapshot_value(input$wacc_gordon), "EV = Σ PV(FCFF) + PV(TV); not single-period Gordon"),
-      c("DCF - Two Stage", "Stage 1 Years", .snapshot_value(input$yr_stage1), "Explicit high-growth period"),
-      c("DCF - Two Stage", "g1 (%)", .snapshot_value(input$g_stage1), "FCFF_t = FCFF_(t-1) × (1+g1)"),
-      c("DCF - Two Stage", "g2 (%)", .snapshot_value(input$sgr), "Stage-2 / stable growth (synced to central SGR; no separate UI)"),
-      c("DCF - Two Stage", "WACC1 (%)", .snapshot_value(input$wacc_stage1), "PV stage 1 = FCFF_t / (1+WACC1)^t"),
-      c("DCF - Two Stage", "WACC2 (%)", .snapshot_value(input$wacc_stage2), "Terminal discount rate"),
-      c("DCF - WACC", "Calculated WACC (%)", .snapshot_value(wacc_pct), "System CAPM/WACC estimate (also synced into WACC inputs)"),
-      c("CAPM", "Rf (%)", .snapshot_value(input$capm_rf), "Ke = Rf + Beta × (Rm-Rf)"),
-      c("CAPM", "Beta", .snapshot_value(input$capm_beta), "Systematic risk coefficient"),
-      c("CAPM", "Sync Basic Setup β", .snapshot_value(input$sync_gs_beta), "TRUE = WACC β follows Basic Setup β source"),
-      c("CAPM", "Rm (%)", .snapshot_value(input$capm_rm), "Expected market return"),
-      c("Beta", "Purpose", .snapshot_value(input$beta_purpose), "valuation; Rolling blocked from CAPM"),
-      c("Beta", "Unlever β_L source", .snapshot_value(input$beta_bl_source), "feeds 去槓桿化 βᵤ (Hamada)"),
-      c("Beta", "Bottom-Up agg", .snapshot_value(input$beta_bottomup_agg), "mean / median"),
-      c("Beta", "β apply source", .snapshot_value(input$beta_u_apply_source), "summary / industry / bottomup / unlever_firm / manual (rolling blocked)"),
-      c("Beta", "Manual β", .snapshot_value(input$beta_u_manual), "Manual β when apply source = manual"),
-      c("Beta", "Bottom-up peers", .snapshot_value(paste(input$beta_peers, collapse = ",")), "Peer tickers for industry unlevered β"),
-      c("Beta", "Rolling Benchmark", .snapshot_value(input$beta_bench), "Cross-check only; not written to CAPM"),
-      c("Beta", "Rolling Lookback (months)", .snapshot_value(input$beta_lookback_months), "Cross-check window; default 60 ≈ Yahoo 5Y"),
-      c("Beta", "Rolling Min Observations", .snapshot_value(input$beta_min_obs), "Minimum months required for Rolling β"),
-      c("WACC", "Calculated WACC (%)", .snapshot_value(wacc_pct), "WACC = E/(E+D)×rₑ + D/(E+D)×rᵈ×(1-T)"),
-      c("WACC", "Re (%)", .snapshot_value(input$wacc_re), "Cost of equity"),
-      c("WACC", "Use CAPM Re", .snapshot_value(input$use_estimated_re), "TRUE uses CAPM-estimated Re"),
-      c("WACC", "rᵈ (%)", .snapshot_value(input$wacc_rd), "Cost of debt; NA until Interest/Interest-bearing Debt"),
-      c("WACC", "rᵈ Interest Expense", .snapshot_value(input$rd_interest_expense), "Numerator for pre-tax rᵈ"),
-      c("WACC", "rᵈ Interest-bearing Debt", .snapshot_value(input$rd_interest_bearing_debt), "Denominator for pre-tax rᵈ (有息負債)"),
-      c("WACC", "rᵈ min (%)", .snapshot_value(input$wacc_rd_min), "Clamp floor for estimated rᵈ"),
-      c("WACC", "rᵈ max (%)", .snapshot_value(input$wacc_rd_max), "Clamp ceiling for estimated rᵈ"),
-      c("WACC", "Use estimated rᵈ", .snapshot_value(input$use_estimated_rd), "TRUE uses Interest/Debt rᵈ"),
-      c("WACC", "Tax Rate T (%)", .snapshot_value(input$wacc_tax), "After-tax debt cost = rᵈ×(1-T)"),
-      c("DDM", "D0", .snapshot_value(input[["mod_ddm-d0"]]), "P0 = D1 / (Ke-g); D1 = D0×(1+g)"),
-      c("DDM", "g (%)", .snapshot_value(input[["mod_ddm-g"]]), "Dividend growth; optional sync with central SGR"),
-      c("DDM", "Sync g with SGR", .snapshot_value(input[["mod_ddm-sync_g"]]), "If TRUE, DDM g follows Basic Setup SGR"),
-      c("DDM", "DDM Mode", .snapshot_value(input[["mod_ddm-ddm_mode"]]), "gordon / spm / two_stage"),
-      c("DDM", "Stage 1 g1 (%)", .snapshot_value(input[["mod_ddm-g_stage1"]]), "Two-stage high-growth dividend g"),
-      c("DDM", "Stage 1 years", .snapshot_value(input[["mod_ddm-yr_stage1"]]), "Two-stage high-growth years n1"),
-      c("DDM", "Ke (%)", .snapshot_value(input[["mod_ddm-ke"]]), "Equity required return (CAPM)"),
-      c("RI", "Years (n)", .snapshot_value(input[["mod_ri-ri_years"]]), "Explicit RI forecast horizon"),
-      c("RI", "Ke (%)", .snapshot_value(input[["mod_ri-ri_ke"]]), "Equity required return"),
-      c("RI", "RI g (%)", .snapshot_value(input[["mod_ri-ri_g"]]), "RI terminal growth"),
-      c("RI", "Starting ROE (%)", .snapshot_value(input[["mod_ri-ri_roe"]]), "Residual income driver"),
-      c("RI", "Payout (%)", .snapshot_value(input[["mod_ri-ri_payout"]]), "Affects book-value compounding"),
-      c("RI", "ROE Method", .snapshot_value(input[["mod_ri-roe_method"]]), "constant / linear / industry / custom"),
-      c("P/B", "BVPS", .snapshot_value(input[["mod_pb-bvps"]]), "Book value per share basis"),
-      c("P/B", "TBVPS", .snapshot_value(input[["mod_pb-tbvps"]]), "Tangible book value per share"),
-      c("P/B", "NAVPS", .snapshot_value(input[["mod_pb-navps"]]), "NAV per share = (Equity − discount×investments) / shares"),
-      c("P/B", "Basis", .snapshot_value(input[["mod_pb-basis"]]), "bvps / tbvps / navps"),
-      c("P/B", "Holdco discount (%)", .snapshot_value(input[["mod_pb-holdco_discount"]]), "Applied to identified investment lines"),
-      c("P/B", "Use Industry P/B", .snapshot_value(input[["mod_pb-use_industry_pb"]]), "TRUE = follow industry band"),
-      c("P/B", "P/B Low", .snapshot_value(input[["mod_pb-pb_low"]]), "Price = BVPS × P/B"),
-      c("P/B", "P/B Mid", .snapshot_value(input[["mod_pb-pb_mid"]]), "Price = BVPS × P/B"),
-      c("P/B", "P/B High", .snapshot_value(input[["mod_pb-pb_high"]]), "Price = BVPS × P/B"),
-      c("P/B", "Target mode", .snapshot_value(input[["mod_pb-target_mode"]]), "multiples | justified"),
-      c("NAV", "NAVPS", .snapshot_value(input[["mod_nav-navps"]]), "Book holdco NAV per share"),
-      c("NAV", "Holdco discount (%)", .snapshot_value(input[["mod_nav-holdco_discount"]]), "Applied to identified investment lines"),
-      c("NAV", "NAV Low / Mid / High", paste(
-        .snapshot_value(input[["mod_nav-nav_low"]]),
-        .snapshot_value(input[["mod_nav-nav_mid"]]),
-        .snapshot_value(input[["mod_nav-nav_high"]]),
-        sep = " / "
-      ), "Price = NAVPS × NAV multiple"),
-      c("Backtest", "Net Margin Threshold (%)", .snapshot_value(input$bt_net_margin), "持倉回測條件: Net Margin >= threshold"),
-      c("Backtest", "Revenue Growth Threshold (%)", .snapshot_value(input$bt_rev_growth), "持倉回測條件: Revenue Growth >= threshold"),
-      c("Backtest", "EPS / NI Growth Threshold (%)", .snapshot_value(input$bt_eps_growth), "持倉回測條件: EPS/NI Growth >= threshold"),
-      c("Backtest", "FCF CV Ceiling (%)", .snapshot_value(input$bt_fcf_cv), "持倉回測條件: FCF CV <= ceiling"),
-      c("Backtest", "Max Exposure (bt_max_exp)", .snapshot_value(input$bt_max_exp), "Mode A ceiling; 1.0 can fit Buy&Hold"),
-      c("Backtest", "Min Exp After Pass (bt_min_exp_pass)", .snapshot_value(input$bt_min_exp_pass), "Floor when filter passes & MOS >= -10%"),
-      c("Backtest", "Auto Derive Params", .snapshot_value(input$bt_param_auto), "TRUE = sync thresholds/weights/model on ticker load"),
-      c("Backtest", "圖表模型", paste(.snapshot_value(input$bt_fv_models), collapse = ", "), "Multi-select chart FV overlay"),
-      c("Backtest", "復盤模型", paste(.snapshot_value(input$bt_fv_replay_model), collapse = ", "), "Single-select replay FV for odds/magnitude/MOS"),
-      c("Backtest", "MOS / VG Weight (bt_w_vg)", .snapshot_value(input$bt_w_vg), "Exposure diagnostic blend; not FV path"),
-      c("Backtest", "Momentum Weight (bt_w_mom)", .snapshot_value(input$bt_w_mom), "Sentiment overlay relative weight"),
-      c("Backtest", "RSI Weight (bt_w_rsi)", .snapshot_value(input$bt_w_rsi), "Sentiment overlay relative weight"),
-      c("Backtest", "Hist Discount Beta", "Rolling β (≈5Y monthly vs SPY)", "PIT Ke/WACC at each rebalance; not fixed session β")
+      c("Meta", "Ticker", .snapshot_value(ticker), "Selected ticker"),
+      c(
+        "Model Selector", "Recommended Method",
+        .snapshot_value(rec$summary_method),
+        "Rule-based model ranking (derived)"
+      ),
+      c(
+        "WACC", "Calculated WACC (%)",
+        .snapshot_value(wacc_pct),
+        "System CAPM/WACC estimate (derived; also synced into WACC inputs)"
+      ),
+      c(
+        "SGR", "Estimated g (%)",
+        if (!is.null(est_g)) .snapshot_value(est_g$g_pct) else NA_character_,
+        "Selected perpetual-growth method output (derived)"
+      )
     )
-    df <- as.data.frame(do.call(rbind, rows), stringsAsFactors = FALSE)
-    names(df) <- c("Section", "Parameter", "Current Value", "Formula")
-    df
+    ynow_snapshot_registry_rows(input, lite = lite, extras = extras)
   })
 
   output$snapshot_timestamp <- renderUI({
@@ -2123,27 +2048,67 @@ server <- function(input, output, session) {
       apply_capex_spike_smooth = c("FCF", "啟用 CapEx 暴衝平滑", "TRUE = 暴衝時改採均值"),
       capex_spike_mult = c("FCF", "暴衝倍數閾值", "最新 CapEx/Rev > mult × 前期均值"),
       capex_spike_avg_years = c("FCF", "暴衝均值年數", "暴衝時投影採最近 N 年均值"),
-      capex_spike_prior_years = c("FCF", "暴衝判定前期年數", "不含最新年的前期均值窗口")
+      capex_spike_prior_years = c("FCF", "暴衝判定前期年數", "不含最新年的前期均值窗口"),
+      apply_g_ceiling = c("FCF", "啟用成長率天花板", "近端 g 25% 防呆"),
+      session_ccy = c("Meta", "Session Currency", "USD / TWD 顯示幣別"),
+      chk_bear_base = c("Decision Checklist", "Gate: Bear vs Base", "啟發式；預設開啟"),
+      cond_bear_base_bear_mos_floor = c("Decision Checklist", "Bear MOS floor (%)", "Bear FV 最低 MOS"),
+      chk_base_mos = c("Decision Checklist", "Gate: Base MOS", "啟發式；預設開啟"),
+      cond_base_mos_base_mos_floor = c("Decision Checklist", "Base MOS floor (%)", "Base FV 最低 MOS"),
+      chk_g_sgr = c("Decision Checklist", "Gate: g vs SGR", "啟發式；預設開啟"),
+      cond_g_sgr_g_sgr_gap_min = c("Decision Checklist", "g−SGR gap min (pp)", "成長與 SGR 最小差距"),
+      cond_g_sgr_sgr_wacc_buffer = c("Decision Checklist", "SGR–WACC buffer (pp)", "SGR 須低於 WACC 的緩衝"),
+      chk_model_align = c("Decision Checklist", "Gate: Model align", "主模型對齊"),
+      dc_user_primary = c("Decision Checklist", "Adopted primary model", "使用者採用主模型"),
+      chk_hfv_veto = c("Decision Checklist", "Gate: HFV veto", "HFV 僅否決，不作買訊"),
+      cond_hfv_veto_max_c_freq = c("Decision Checklist", "HFV max C-freq (%)", "歷史 C 頻率上限"),
+      chk_fscore = c("Decision Checklist", "Gate: F-Score", "F-Score 門檻"),
+      cond_fscore_fscore_min = c("Decision Checklist", "F-Score min", "最低 F-Score"),
+      chk_no_rank_chase = c("Decision Checklist", "Gate: No rank chase", "不追排行榜"),
+      bt_net_margin = c("Backtest", "Net margin threshold (%)", "持倉門檻"),
+      bt_rev_growth = c("Backtest", "Revenue growth threshold (%)", "持倉門檻"),
+      bt_eps_growth = c("Backtest", "EPS / NI growth threshold (%)", "持倉門檻"),
+      bt_fcf_cv = c("Backtest", "FCF CV ceiling (%)", "持倉門檻"),
+      bt_w_vg = c("Backtest", "MOS / VG weight", "曝險診斷權重"),
+      bt_w_mom = c("Backtest", "Momentum weight", "情緒相對權重"),
+      bt_w_rsi = c("Backtest", "RSI weight", "情緒相對權重"),
+      bt_max_exp = c("Backtest", "Max exposure", "持倉上限"),
+      bt_min_exp_pass = c("Backtest", "Min exp after pass", "通過閘門後下限"),
+      bt_param_auto = c("Backtest", "Auto derive params", "Ticker 載入時自動推導"),
+      bt_fv_replay_model = c("Backtest", "Replay model", "HFV 復盤單選模型"),
+      bt_fv_models = c("Backtest", "Chart overlay models", "HFV 圖疊加；預設不勾選"),
+      bt_fv_conv_window = c("Backtest", "Sample window", "all / 1y / 3y / 5y / custom"),
+      bt_fv_oos_mode = c("Backtest", "Validation sample scope", "realized / expanding / insample"),
+      bt_fv_analysis_freq = c("Backtest", "Analysis frequency", "monthly / quarterly / yearly"),
+      bt_hfv_show_bench = c("Backtest", "Show benchmark", "HFV 圖顯示基準"),
+      bt_nav_window = c("Backtest", "NAV window", "Strategy NAV 視窗"),
+      lab_im_pool_rank = c("Lab", "候選截斷邏輯", "市值／概念股／近一年漲幅／隨機"),
+      lab_im_concepts = c("Lab", "概念股群", "pool = concept 時"),
+      lab_im_lb_mode = c("Lab", "Leaderboard mode", "overall / by_industry"),
+      lab_im_max_n = c("Lab", "Universe size N", "顯示上限"),
+      lab_im_max_n_custom = c("Lab", "Custom universe N", "N = custom 時"),
+      lab_im_eq_only = c("Lab", "Earnings quality only", "僅盈餘品質通過"),
+      lab_im_include_adr = c("Lab", "Include ADRs", "含 ADR"),
+      lab_im_gate_only = c("Lab", "Gate only", "Piotroski 高門檻"),
+      lab_im_methods = c("Lab", "Valuation models", "Lab 計分模型"),
+      lab_cluster_k = c("Lab", "Cluster k", "群數"),
+      lab_cluster_x = c("Lab", "Cluster scatter X", "散點 X"),
+      lab_cluster_y = c("Lab", "Cluster scatter Y", "散點 Y"),
+      lab_sec_important_only = c("Lab", "Important notes only", "SEC 附註過濾")
     )
 
-    # Lite Snapshot defaults: engines used by Smart Analysis / Dashboard / Blue Chip.
-    # Hide Full-only seeds (Rolling β UI, statement CF overlay, Backtest / HFV, legacy).
+    # Lite Snapshot defaults: only inputs Lite users can set in the UI
+    # (header currency, Dashboard industry / default ticker, Blue Chip + Clustering).
+    # Smart Analysis engines and Full-only model pages are auto / hidden — omit here.
     lite_default_keys <- c(
-      "stock_code", "industry_choice",
-      "years", "dcf_mode", "dcf_claim", "dcf_chart_mode", "g_growth_method", "custom_g",
-      "perpetual_g_method", "lifecycle_stage", "sgr", "wacc_gordon",
-      "yr_stage1", "g_stage1", "g_stage2", "wacc_stage1", "wacc_stage2",
-      "wacc_re", "wacc_rd", "wacc_rd_min", "wacc_rd_max", "use_est_rd", "wacc_tax", "use_est_re",
-      "capm_rf", "capm_beta", "sync_gs_beta", "capm_rm",
-      "beta_bl_source", "beta_bottomup_agg", "beta_u_apply_source", "beta_u_manual", "beta_peers",
-      "ddm_d0", "ddm_g", "ddm_ke", "ddm_sync_central_g", "ddm_mode", "ddm_g_stage1", "ddm_yr_stage1",
-      "ri_years", "ri_roe", "ri_payout", "roe_method",
-      "pb_bvps", "pb_tbvps", "pb_low", "pb_mid", "pb_high", "pb_basis",
-      "pb_use_industry", "pb_holdco_discount", "pb_target_mode",
-      "nav_holdco_discount", "nav_low", "nav_mid", "nav_high",
-      "apply_capex_spike_smooth", "capex_spike_mult", "capex_spike_avg_years", "capex_spike_prior_years"
+      "stock_code", "industry_choice", "session_ccy",
+      "lab_im_pool_rank", "lab_im_concepts",
+      "lab_im_lb_mode", "lab_im_max_n", "lab_im_max_n_custom",
+      "lab_im_eq_only", "lab_im_include_adr",
+      "lab_cluster_k", "lab_cluster_x", "lab_cluster_y"
     )
-    lite_extra_keys <- c("roe_industry")
+    # Lite has no module extras outside APP_DEFAULTS (RI industry ROE is Full-only).
+    lite_extra_keys <- character(0)
 
     keys <- names(APP_DEFAULTS)
     if (isTRUE(input$ynow_lite_mode)) {
@@ -2171,9 +2136,7 @@ server <- function(input, output, session) {
         "依預設產業 ROE 區間中位；可編輯（非 APP_DEFAULTS 鍵）"),
       c("彈性表", "參數相對衝擊", "PARAM_SENSITIVITY_SHOCK",
         if (exists("PARAM_SENSITIVITY_SHOCK", inherits = TRUE)) as.character(PARAM_SENSITIVITY_SHOCK) else "0.01",
-        "setup.R：公式參數彈性相對 ±1%（與個股價格無關）"),
-      c("Backtest", "圖表模型勾選", "bt_fv_models", "(none)", "HFV 圖預設不勾選，勾選才疊圖"),
-      c("Backtest", "復盤模型單選", "bt_fv_replay_model", "dcf", "HFV 復盤／策略 FV 預設 DCF")
+        "setup.R：公式參數彈性相對 ±1%（與個股價格無關）")
     )
     if (isTRUE(input$ynow_lite_mode)) {
       extra <- Filter(function(r) as.character(r[[3]])[1] %in% lite_extra_keys, extra)
@@ -6628,8 +6591,20 @@ server <- function(input, output, session) {
   # 💰 8. DCF 計算核心與企業估值 (對接 FCFF 預測序列)
   # ==========================================
   .execute_dcf_calc <- function() {
-    req(current_ticker(), input$dcf_mode, input$years, fcf_results$df_fcf())
     silent <- isTRUE(isolate(lite_dcf_silent()))
+    des <- if (silent) tryCatch(isolate(lite_desired_des()), error = function(e) NULL) else NULL
+    dcf_mode_eff <- as.character(input$dcf_mode %||% "")[1]
+    if (!nzchar(dcf_mode_eff) && !is.null(des)) {
+      dcf_mode_eff <- if (isTRUE(des$two_stage)) "two_stage" else "gordon"
+    }
+    if (!nzchar(dcf_mode_eff)) dcf_mode_eff <- "gordon"
+    if (silent) {
+      # Avoid req() abort on hidden radios that have not echoed yet
+      if (is.null(current_ticker()) || !nzchar(as.character(current_ticker())[1])) return(NULL)
+      if (is.null(input$years) || is.null(fcf_results$df_fcf())) return(NULL)
+    } else {
+      req(current_ticker(), input$dcf_mode, input$years, fcf_results$df_fcf())
+    }
 
     n <- as.numeric(input$years)
     if (is.na(n) || n <= 0) return(NULL)
@@ -6657,9 +6632,17 @@ server <- function(input, output, session) {
     }
 
     claim_pre <- as.character(input$dcf_claim %||% "fcff")[1]
-    if (isTRUE(identical(input$dcf_mode, "gordon"))) {
-      req(input$sgr, input$wacc_gordon)
-      r1 <- input$wacc_gordon / 100
+    if (silent && !is.null(des) && nzchar(as.character(des$claim %||% "")[1])) {
+      claim_pre <- as.character(des$claim)[1]
+    }
+    if (identical(dcf_mode_eff, "gordon")) {
+      w_g <- suppressWarnings(as.numeric(input$wacc_gordon)[1])
+      if (!is.finite(w_g) || w_g <= 0) {
+        w_c <- suppressWarnings(as.numeric(calculated_wacc())[1])
+        w_g <- if (is.finite(w_c) && w_c > 0) w_c * 100 else APP_DEFAULTS$wacc_gordon
+      }
+      if (!silent) req(input$sgr, input$wacc_gordon)
+      r1 <- w_g / 100
       r2 <- r1
 
       if (!identical(claim_pre, "fcfe") && is.finite(r2) && is.finite(g_terminal) && g_terminal >= r2) {
@@ -6673,10 +6656,16 @@ server <- function(input, output, session) {
       discount_factors <- cumprod(1 + rep(r1, n))
 
     } else {
-      req(input$g_stage1, input$sgr, input$yr_stage1, input$wacc_stage1, input$wacc_stage2)
+      w1_in <- suppressWarnings(as.numeric(input$wacc_stage1)[1])
+      w2_in <- suppressWarnings(as.numeric(input$wacc_stage2)[1])
+      w_c <- suppressWarnings(as.numeric(calculated_wacc())[1])
+      w_fb <- if (is.finite(w_c) && w_c > 0) w_c * 100 else APP_DEFAULTS$wacc_gordon
+      if (!is.finite(w1_in) || w1_in <= 0) w1_in <- w_fb
+      if (!is.finite(w2_in) || w2_in <= 0) w2_in <- w_fb
+      if (!silent) req(input$g_stage1, input$sgr, input$yr_stage1, input$wacc_stage1, input$wacc_stage2)
 
-      r1 <- input$wacc_stage1 / 100
-      r2 <- input$wacc_stage2 / 100
+      r1 <- w1_in / 100
+      r2 <- w2_in / 100
 
       if (!identical(claim_pre, "fcfe") && is.finite(r2) && is.finite(g_terminal) && g_terminal >= r2) {
         if (silent) {
@@ -6700,10 +6689,16 @@ server <- function(input, output, session) {
     if (!identical(claim_pre, "fcfe")) {
       pv_forecast <- sum(future_fcfs / discount_factors)
       last_fcf <- future_fcfs[n]
-      tv <- (last_fcf * (1 + g_terminal)) / (r2 - g_terminal)
-      pv_tv <- tv / discount_factors[n]
+      tv <- if (exists("dcf_gordon_tv", mode = "function")) {
+        dcf_gordon_tv(last_fcf, g_terminal, r2)
+      } else if (is.finite(last_fcf) && is.finite(g_terminal) && is.finite(r2) && r2 > g_terminal) {
+        (last_fcf * (1 + g_terminal)) / (r2 - g_terminal)
+      } else {
+        NA_real_
+      }
+      pv_tv <- if (is.finite(tv)) tv / discount_factors[n] else NA_real_
       
-      dcf_value <- pv_forecast + pv_tv
+      dcf_value <- if (is.finite(pv_forecast) && is.finite(pv_tv)) pv_forecast + pv_tv else NA_real_
       dcf_value_result(dcf_value)
     }
     
@@ -6739,6 +6734,9 @@ server <- function(input, output, session) {
     })
 
     claim <- as.character(input$dcf_claim %||% "fcff")[1]
+    if (silent && !is.null(des) && nzchar(as.character(des$claim %||% "")[1])) {
+      claim <- as.character(des$claim)[1]
+    }
     if (identical(claim, "fcfe")) {
       ke <- if (isTRUE(input$use_estimated_re) && !is.null(estimated_re())) {
         as.numeric(estimated_re())[1]
@@ -6763,14 +6761,24 @@ server <- function(input, output, session) {
       ke_dfs <- cumprod(rep(1 + ke, n))
       pv_forecast <- sum(fcfe / ke_dfs)
       last_fcf <- fcfe[n]
-      tv <- (last_fcf * (1 + g_terminal)) / (ke - g_terminal)
-      pv_tv <- tv / ke_dfs[n]
-      dcf_value <- pv_forecast + pv_tv
+      tv <- if (exists("dcf_gordon_tv", mode = "function")) {
+        dcf_gordon_tv(last_fcf, g_terminal, ke)
+      } else if (is.finite(last_fcf) && is.finite(g_terminal) && is.finite(ke) && ke > g_terminal) {
+        (last_fcf * (1 + g_terminal)) / (ke - g_terminal)
+      } else {
+        NA_real_
+      }
+      pv_tv <- if (is.finite(tv)) tv / ke_dfs[n] else NA_real_
+      dcf_value <- if (is.finite(pv_forecast) && is.finite(pv_tv)) pv_forecast + pv_tv else NA_real_
       dcf_value_result(dcf_value)
       equity_value <- as.numeric(dcf_value)[1]
     } else {
       # 企業價值 (EV) 轉 股權價值 (Equity Value)
-      equity_value <- as.numeric(dcf_value)[1] + latest_cash - latest_debt
+      equity_value <- if (exists("dcf_ev_to_equity", mode = "function")) {
+        dcf_ev_to_equity(dcf_value, cash = latest_cash, debt = latest_debt)
+      } else {
+        as.numeric(dcf_value)[1] + latest_cash - latest_debt
+      }
     }
 
     # 計算每股目標價並防呆（報價幣；拒絕 TWD／普通股標成 USD／ADR）
@@ -6812,6 +6820,7 @@ server <- function(input, output, session) {
     dcf_value_result(NULL)
     auto_calc_primary_sig("")
     lite_scenario_applied_sig("")
+    lite_desired_des(NULL)
     lite_dcf_silent(FALSE)
     auto_calc_ddm_pulse(0L)
     auto_calc_pb_pulse(0L)
@@ -6844,15 +6853,22 @@ server <- function(input, output, session) {
       }
     )[1]
     # Claim recommendation (prefer stays FCFF unless clearly FCFF-required reasons)
-    fcf_hist <- tryCatch(
-      select_clean_metric_row(d_cash_flow(), "Free Cash Flow", include_ttm = FALSE),
-      error = function(e) NULL
+    # Prefer CFA FCFF identity (CFO + after-tax interest − CapEx); fall back to Yahoo FCF.
+    last_fcff <- tryCatch(
+      latest_hist_fcff(d_cash_flow(), d_is = d_income_statement()),
+      error = function(e) NA_real_
     )
-    fcf_hist <- suppressWarnings(as.numeric(fcf_hist))
-    last_fcff <- NA_real_
-    if (length(fcf_hist)) {
-      hit <- which(is.finite(fcf_hist))
-      if (length(hit)) last_fcff <- fcf_hist[hit[1]]
+    if (!is.finite(suppressWarnings(as.numeric(last_fcff)[1]))) {
+      fcf_hist <- tryCatch(
+        select_clean_metric_row(d_cash_flow(), "Free Cash Flow", include_ttm = FALSE),
+        error = function(e) NULL
+      )
+      fcf_hist <- suppressWarnings(as.numeric(fcf_hist))
+      last_fcff <- NA_real_
+      if (length(fcf_hist)) {
+        hit <- which(is.finite(fcf_hist))
+        if (length(hit)) last_fcff <- fcf_hist[hit[1]]
+      }
     }
     br <- tryCatch(.dcf_fcfe_bridge(), error = function(e) list(iat = NA_real_, debt = NA_real_))
     last_fcfe <- tryCatch(
@@ -6880,6 +6896,7 @@ server <- function(input, output, session) {
 
   .apply_lite_recommended_scenario <- function(rec) {
     des <- .lite_desired_scenario(rec)
+    lite_desired_des(des)
     # DCF mode
     if (isTRUE(des$two_stage)) {
       if (!identical(as.character(input$dcf_mode %||% "")[1], "two_stage")) {
@@ -7065,26 +7082,66 @@ server <- function(input, output, session) {
       n <- suppressWarnings(as.numeric(input$years)[1])
       if (is.null(proj) || !is.data.frame(proj) || nrow(proj) < 1L) return(FALSE)
       if (!is.finite(n) || n <= 0L || nrow(proj) != as.integer(n)) return(FALSE)
-      # Prefer settled estimated WACC, but NA calculated WACC must not stall Lite.
-      # Lite Smart Analysis must not hang waiting for a calculated rate.
+      # Prefer settled estimated WACC over placeholder APP_DEFAULTS seed
       w_calc <- suppressWarnings(as.numeric(calculated_wacc())[1])
+      lite <- isTRUE(isolate(lite_mode()))
+      des <- if (lite) tryCatch(isolate(lite_desired_des()), error = function(e) NULL) else NULL
+      # Lite Smart Analysis must not hang when calculated WACC is still NA:
+      # fall back to UI / App-default WACC so auto-calc can fire.
+      if ((!is.finite(w_calc) || w_calc <= 0) && isTRUE(lite)) {
+        wg <- suppressWarnings(as.numeric(input$wacc_gordon)[1])
+        w1 <- suppressWarnings(as.numeric(input$wacc_stage1)[1])
+        w2 <- suppressWarnings(as.numeric(input$wacc_stage2)[1])
+        fallback <- if (isTRUE(des$two_stage)) {
+          if (is.finite(w2) && w2 > 0) w2 else if (is.finite(w1) && w1 > 0) w1 else NA_real_
+        } else {
+          if (is.finite(wg) && wg > 0) wg else NA_real_
+        }
+        if (!is.finite(fallback) || fallback <= 0) {
+          fallback <- suppressWarnings(as.numeric(APP_DEFAULTS$wacc_gordon)[1])
+        }
+        if (!is.finite(fallback) || fallback <= 0) return(FALSE)
+        w_calc <- fallback / 100
+      } else if (!is.finite(w_calc) || w_calc <= 0) {
+        return(FALSE)
+      }
       mode <- as.character(input$dcf_mode %||% "gordon")[1]
+      # Prefer stored Lite desired mode when hidden radios have not echoed yet
+      if (isTRUE(lite) && !is.null(des)) {
+        mode <- if (isTRUE(des$two_stage)) "two_stage" else "gordon"
+      }
       if (identical(mode, "gordon")) {
         w <- suppressWarnings(as.numeric(input$wacc_gordon)[1])
-        if (!is.finite(w) || w <= 0) return(FALSE)
+        if (!is.finite(w) || w <= 0) {
+          if (isTRUE(lite)) w <- w_calc * 100 else return(FALSE)
+        }
         r2 <- w
       } else {
         w1 <- suppressWarnings(as.numeric(input$wacc_stage1)[1])
         w2 <- suppressWarnings(as.numeric(input$wacc_stage2)[1])
-        if (!is.finite(w1) || w1 <= 0 || !is.finite(w2) || w2 <= 0) return(FALSE)
+        if (!is.finite(w1) || w1 <= 0 || !is.finite(w2) || w2 <= 0) {
+          if (isTRUE(lite)) {
+            w1 <- if (is.finite(w1) && w1 > 0) w1 else w_calc * 100
+            w2 <- if (is.finite(w2) && w2 > 0) w2 else w_calc * 100
+          } else {
+            return(FALSE)
+          }
+        }
         r2 <- w2
       }
-      # When calculated WACC is finite, wait until the UI rate matches it.
-      # A missing calculated WACC uses the UI rate instead of blocking forever.
-      if (is.finite(w_calc) && w_calc > 0 && abs(r2 - w_calc * 100) > 0.15) return(FALSE)
+      # Wait until UI WACC reflects calculated (avoid firing on stale APP_DEFAULTS).
+      # In Lite, skip strict match when we already fell back to UI/default WACC.
+      if (!isTRUE(lite) && abs(r2 - w_calc * 100) > 0.15) return(FALSE)
+      if (isTRUE(lite) && is.finite(w_calc) && abs(r2 - w_calc * 100) > 0.15) {
+        # Allow mismatch: updateNumericInput may lag under Lite; silent heal covers g.
+        r2 <- w_calc * 100
+      }
       sgr <- suppressWarnings(as.numeric(input$sgr)[1])
       if (!is.finite(sgr)) return(FALSE)
       claim <- as.character(input$dcf_claim %||% "fcff")[1]
+      if (isTRUE(lite) && !is.null(des) && nzchar(as.character(des$claim %||% "")[1])) {
+        claim <- as.character(des$claim)[1]
+      }
       if (identical(claim, "fcfe")) {
         ke <- if (isTRUE(input$use_estimated_re) && !is.null(estimated_re()) &&
                   is.finite(as.numeric(estimated_re())[1])) {
@@ -7092,9 +7149,18 @@ server <- function(input, output, session) {
         } else {
           suppressWarnings(as.numeric(input$wacc_re)[1])
         }
-        if (!is.finite(ke) || ke <= 0 || sgr >= ke) return(FALSE)
+        if (!is.finite(ke) || ke <= 0 || sgr >= ke) {
+          if (isTRUE(lite) && is.finite(ke) && ke > 0 && sgr >= ke) {
+            # Silent path will heal g; treat as ready
+          } else if (!is.finite(ke) || ke <= 0) {
+            return(FALSE)
+          } else if (!isTRUE(lite)) {
+            return(FALSE)
+          }
+        }
       } else if (sgr >= r2) {
-        return(FALSE)
+        if (!isTRUE(lite)) return(FALSE)
+        # Lite: heal in .execute_dcf_calc; do not block readiness
       }
       return(isTRUE(.auto_calc_shares_ready()))
     }
@@ -7160,7 +7226,11 @@ server <- function(input, output, session) {
     sec <- as.character(rec$secondary %||% "")[1]
     req(nzchar(prim), prim %in% c("dcf", "ddm", "pb", "ri", "nav"))
 
-    # Lite: apply recommended scenario, then wait until UI matches before firing
+    # Lite: apply recommended scenario once, then proceed without waiting on hidden radios.
+    # Do not block on .lite_scenario_matches_ui — CSS-hidden DCF radios in Lite may
+    # lag or never echo updateRadioButtons, which left Smart Analysis on waiting copy.
+    # Lite Smart Analysis must not hang on NA calculated WACC either; readiness falls
+    # back to UI / App-default WACC and silent heal covers g ≥ discount.
     if (isTRUE(lite_mode())) {
       des <- .lite_desired_scenario(rec)
       want_sig <- paste(
@@ -7175,8 +7245,7 @@ server <- function(input, output, session) {
         lite_scenario_applied_sig(want_sig)
         return()
       }
-      # Do not block on .lite_scenario_matches_ui: Lite hides the DCF radios,
-      # so they may never echo the applied selection. Lite Smart Analysis must not hang.
+      # Re-sync WACC / g after UI lag or late calculated_wacc settle
       .lite_resync_discount_consistency(des)
     }
 
@@ -7954,7 +8023,8 @@ server <- function(input, output, session) {
     }
     cur <- isolate(input$bt_fv_analysis_freq)
     if (is.null(cur) || !(as.character(cur)[1] %in% unname(choices))) {
-      cur <- if ("quarterly" %in% unname(choices)) "quarterly" else unname(choices)[[1]]
+      pref <- as.character(APP_DEFAULTS$bt_fv_analysis_freq %||% "quarterly")[1]
+      cur <- if (pref %in% unname(choices)) pref else if ("quarterly" %in% unname(choices)) "quarterly" else unname(choices)[[1]]
     }
     tagList(
       radioButtons(
@@ -10431,7 +10501,7 @@ server <- function(input, output, session) {
             report_locale = rep_loc,
             report_copy = report_copy,
             sensitivity_df = sens_df,
-            app_version = "v17.92",
+            app_version = "v17.95",
             report_condensed = isTRUE(isolate(lite_mode())),
             summary_df = {
               sd <- sum_df
@@ -11998,7 +12068,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v17.92"),
+      paste0("- **App：** The YNow App v17.95"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

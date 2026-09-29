@@ -1,10 +1,21 @@
-# The YNow App v17.95 — Valuation Methodology
+# The YNow App v17.97 — Valuation Methodology
 
-## v17.94 重點
+## v17.97 重點
 
-- **Lite 智慧分析**：美股＋繁中不再卡在「等待估值結果…」。自動試算不再死等隱藏 DCF 控制項對齊，且 `calculated_wacc` 為 NA 時改用畫面 WACC／副模型，讓 Base／FV 能自動寫入
-- **DDM 參數代號**：對齊常用符號 V0、D0／D1、g、r（r＝Ke／CAPM）；Gordon 為 V0＝D1/(r−g)，D1＝D0×(1+g)
-- **目錄**：`app_17.0/`；顯示版號 **v17.94**
+- **簡化版 Snapshot 預設**：僅列出 Lite 介面可設定參數（Dashboard 產業／幣別／預設代號、績優股排行與分群）；智慧分析引擎與完整版模型種子隱藏
+- **目錄**：`app_17.0/`；顯示版號 **v17.97**
+
+## v17.96 重點
+
+- **Snapshot／Param Restore**：`ynow_tracked_param_registry` 單一來源，涵蓋估值、FCF／CapEx 暴衝、Decision Checklist、Backtest／HFV、Blue Chip Lab；人讀 Snapshot 與可還原 CSV 對齊
+- **預設值表**：`APP_DEFAULTS` 補齊 Session Currency、Checklist、Backtest、Lab、FCF 天花板等，並與 UI 初始值綁定
+- **目錄**：`app_17.0/`；顯示版號 **v17.96**
+
+## v17.95 重點
+
+- **還原 `ynow_server.R`**：修復 v17.93 誤刪導致乾淨 checkout 無法啟動
+- **Lite 智慧分析**：不再卡在「等待估值結果…」（隱藏 DCF radios／NA WACC）
+- **目錄**：`app_17.0/`；顯示版號 **v17.95**
 
 ## v17.93 重點
 
