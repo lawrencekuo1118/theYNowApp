@@ -5579,7 +5579,7 @@ ui <- dashboardPage(
           margin-left: -8px;
           margin-right: -8px;
         }
-        .ynow-macro-kpi-row > [class*="col-"] {
+        .ynow-macro-kpi-row > [class*='col-'] {
           display: flex;
           flex-direction: column;
           padding-left: 8px;
@@ -5702,7 +5702,7 @@ ui <- dashboardPage(
           margin-left: -8px;
           margin-right: -8px;
         }
-        .ynow-macro-chart-row > [class*="col-"] {
+        .ynow-macro-chart-row > [class*='col-'] {
           padding-left: 8px;
           padding-right: 8px;
           margin-bottom: 12px;
@@ -5714,7 +5714,7 @@ ui <- dashboardPage(
           margin-left: -8px;
           margin-right: -8px;
         }
-        .ynow-macro-rf-row > [class*="col-"] {
+        .ynow-macro-rf-row > [class*='col-'] {
           display: flex;
           flex-direction: column;
           padding-left: 8px;
@@ -5726,7 +5726,7 @@ ui <- dashboardPage(
           width: 100%;
         }
         @media (max-width: 991px) {
-          .ynow-macro-kpi-row > [class*="col-"] {
+          .ynow-macro-kpi-row > [class*='col-'] {
             width: 50%;
             float: none;
           }
@@ -5743,7 +5743,7 @@ ui <- dashboardPage(
             padding: 10px 8px 12px 8px;
             margin: 12px 0 14px 0;
           }
-          .ynow-macro-kpi-row > [class*="col-"] {
+          .ynow-macro-kpi-row > [class*='col-'] {
             width: 50%;
           }
           .ynow-macro-kpi,
@@ -5751,11 +5751,11 @@ ui <- dashboardPage(
             min-height: 100px;
             padding: 10px 11px;
           }
-          .ynow-macro-rf-row > [class*="col-"] {
+          .ynow-macro-rf-row > [class*='col-'] {
             width: 100%;
             float: none;
           }
-          .ynow-macro-chart-row > [class*="col-"] {
+          .ynow-macro-chart-row > [class*='col-'] {
             width: 100%;
             float: none;
           }
