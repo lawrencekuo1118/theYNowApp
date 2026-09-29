@@ -446,8 +446,10 @@ macro_bubble_chapter_ui <- function(ns) {
       )
     ),
     fluidRow(
+      class = "ynow-macro-chart-row",
       column(
         width = 6,
+        class = "col-xs-12 col-sm-12 col-md-6",
         tags$h4(id = "ynow_macro_bubble_conc_title", "Market-cap concentration"),
         plotlyOutput(ns("bubble_conc_plot"), height = "300px") %>%
           shinycssloaders::withSpinner(),
@@ -455,6 +457,7 @@ macro_bubble_chapter_ui <- function(ns) {
       ),
       column(
         width = 6,
+        class = "col-xs-12 col-sm-12 col-md-6",
         tags$h4(id = "ynow_macro_bubble_attr_title", "Return attribution"),
         plotlyOutput(ns("bubble_attr_plot"), height = "300px") %>%
           shinycssloaders::withSpinner(),
@@ -464,9 +467,15 @@ macro_bubble_chapter_ui <- function(ns) {
     tags$hr(),
     tags$h4(id = "ynow_macro_bubble_buffett_title", "Buffett Indicator (market cap / GDP)"),
     fluidRow(
-      column(width = 3, uiOutput(ns("bubble_buffett_light"))),
+      class = "ynow-macro-kpi-row",
+      column(
+        width = 3,
+        class = "col-xs-12 col-sm-4 col-md-3",
+        uiOutput(ns("bubble_buffett_light"))
+      ),
       column(
         width = 5,
+        class = "col-xs-12 col-sm-8 col-md-5",
         sliderInput(
           ns("bubble_buffett_asof"),
           label = tags$span(id = "ynow_macro_bubble_asof_label", "As-of year (playback)"),
@@ -480,6 +489,7 @@ macro_bubble_chapter_ui <- function(ns) {
       ),
       column(
         width = 4,
+        class = "col-xs-12 col-sm-12 col-md-4",
         tags$div(
           style = "margin-top: 24px;",
           actionButton(

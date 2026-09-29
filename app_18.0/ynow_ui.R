@@ -5501,84 +5501,146 @@ ui <- dashboardPage(
         }
 
         /* Testing — Quantitative Backtest — report shell (same logic as HFV / YNOW) */
+        /* Macro & Market Trends — logo 藍綠主題；數字 KPI＝黑底金字；同列等高；手機響應式 */
         .ynow-macro-report {
+          --ynow-macro-blue: var(--ynow-logo-blue, #0C5484);
+          --ynow-macro-green: var(--ynow-logo-green, #249C60);
+          --ynow-macro-gold: var(--ynow-gold, #F5C518);
+          --ynow-macro-gold-deep: var(--ynow-gold-deep, #C9A227);
+          --ynow-macro-ink: #0b1220;
           max-width: 1200px;
           margin: 0 auto 24px auto;
+          padding: 0 2px;
         }
         .ynow-macro-report__masthead {
           margin: 0 0 14px 0;
-          padding: 4px 2px 12px 2px;
-          border-bottom: 2px solid #1a1a1a;
+          padding: 8px 12px 14px 12px;
+          border-bottom: 3px solid var(--ynow-macro-green);
+          border-radius: 0 0 8px 8px;
+          background: linear-gradient(
+            105deg,
+            rgba(12, 84, 132, 0.10) 0%,
+            rgba(36, 156, 96, 0.08) 55%,
+            rgba(12, 84, 132, 0.04) 100%
+          );
         }
         .ynow-macro-report__masthead h2 {
           margin: 0 0 8px 0;
           font-size: clamp(20px, 2.6vw, 28px);
           font-weight: 700;
-          color: #1a1a1a;
+          color: var(--ynow-macro-blue);
         }
         .ynow-macro-report__lead {
           margin: 0;
           font-size: 13.5px;
           line-height: 1.55;
-          color: #555;
+          color: #3d4f5f;
           max-width: 72em;
         }
         .ynow-macro-chapter {
           margin: 18px 0 22px 0;
+          padding: 12px 12px 14px 12px;
+          border: 1px solid rgba(12, 84, 132, 0.18);
+          border-left: 4px solid var(--ynow-macro-green);
+          border-radius: 8px;
+          background: rgba(12, 84, 132, 0.03);
         }
-        .ynow-macro-chapter h3 {
+        .ynow-macro-chapter h3,
+        .ynow-macro-chapter h4 {
           margin: 0 0 8px 0;
           font-size: 16px;
           font-weight: 700;
+          color: var(--ynow-macro-blue);
+        }
+        .ynow-macro-chapter h4 {
+          font-size: 14px;
+          color: var(--ynow-macro-green);
         }
         .ynow-macro-card {
-          background: #fafafa;
-          border: 1px solid #e4e4e4;
+          background: #fff;
+          border: 1px solid rgba(12, 84, 132, 0.22);
+          border-top: 3px solid var(--ynow-macro-blue);
           border-radius: 8px;
           padding: 12px 14px;
           margin-bottom: 12px;
           min-height: 110px;
+          height: 100%;
         }
         .ynow-macro-card h4 {
           margin: 0 0 8px 0;
           font-size: 13px;
           font-weight: 700;
+          color: var(--ynow-macro-blue);
         }
-        .ynow-macro-kpi {
-          background: #fff;
-          border: 1px solid #e8e8e8;
+        /* KPI 列：同列等高（flex） */
+        .ynow-macro-kpi-row {
+          display: flex;
+          flex-wrap: wrap;
+          margin-left: -8px;
+          margin-right: -8px;
+        }
+        .ynow-macro-kpi-row > [class*="col-"] {
+          display: flex;
+          flex-direction: column;
+          padding-left: 8px;
+          padding-right: 8px;
+          margin-bottom: 12px;
+        }
+        .ynow-macro-kpi,
+        .ynow-macro-rf {
+          background: var(--ynow-macro-ink);
+          border: 1px solid rgba(201, 162, 39, 0.45);
           border-radius: 8px;
-          padding: 10px 12px;
-          margin-bottom: 10px;
+          padding: 12px 14px;
+          margin-bottom: 0;
+          flex: 1 1 auto;
+          width: 100%;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          min-height: 112px;
+          box-shadow: 0 2px 8px rgba(12, 84, 132, 0.12);
         }
         .ynow-macro-kpi__label {
           font-size: 11px;
           font-weight: 700;
-          letter-spacing: 0.03em;
+          letter-spacing: 0.04em;
           text-transform: uppercase;
-          color: #666;
+          color: var(--ynow-macro-gold-deep);
         }
-        .ynow-macro-kpi__value {
-          font-size: 22px;
+        .ynow-macro-kpi__value,
+        .ynow-macro-rf__value {
+          font-size: clamp(18px, 4.2vw, 26px);
           font-weight: 700;
-          color: #1a1a1a;
+          color: var(--ynow-macro-gold);
           line-height: 1.2;
-          margin: 4px 0;
+          margin: 6px 0;
+          word-break: break-word;
+        }
+        .ynow-macro-rf__value {
+          font-size: clamp(22px, 5vw, 30px);
         }
         .ynow-macro-kpi__chg { font-size: 12.5px; font-weight: 600; }
-        .ynow-macro-kpi__sym { font-size: 11px; color: #999; }
-        .ynow-macro-up { color: #1e7e34; }
-        .ynow-macro-down { color: #c0392b; }
-        .ynow-macro-rf__value {
-          font-size: 28px;
-          font-weight: 700;
-          color: #1a1a1a;
+        .ynow-macro-kpi__sym {
+          font-size: 11px;
+          color: rgba(245, 197, 24, 0.55);
+          margin-top: auto;
         }
+        .ynow-macro-kpi .ynow-macro-up,
+        .ynow-macro-rf .ynow-macro-up { color: var(--ynow-macro-green); }
+        .ynow-macro-kpi .ynow-macro-down,
+        .ynow-macro-rf .ynow-macro-down { color: #ff7a70; }
+        .ynow-macro-up { color: var(--ynow-macro-green); }
+        .ynow-macro-down { color: #c0392b; }
         .ynow-macro-hint {
           margin: 6px 0 0 0;
           font-size: 12px;
           line-height: 1.45;
-          color: #666;
+          color: #4a5d6c;
+        }
+        .ynow-macro-kpi .ynow-macro-hint,
+        .ynow-macro-rf .ynow-macro-hint {
+          color: rgba(245, 197, 24, 0.72);
         }
         .ynow-macro-callout {
           border-radius: 8px;
@@ -5586,12 +5648,13 @@ ui <- dashboardPage(
           margin: 0 0 14px 0;
         }
         .ynow-macro-callout--mode {
-          background: #f5f7fa;
-          border: 1px solid #dde3ea;
+          background: rgba(12, 84, 132, 0.08);
+          border: 1px solid rgba(12, 84, 132, 0.22);
         }
         .ynow-macro-callout--warn {
-          background: #fff8e6;
-          border: 1px solid #f0d78c;
+          background: rgba(36, 156, 96, 0.08);
+          border: 1px solid rgba(36, 156, 96, 0.35);
+          color: #1a3d2c;
         }
         .ynow-macro-kicker {
           display: block;
@@ -5599,7 +5662,7 @@ ui <- dashboardPage(
           font-weight: 700;
           letter-spacing: 0.04em;
           text-transform: uppercase;
-          color: #777;
+          color: var(--ynow-macro-blue);
           margin-bottom: 4px;
         }
         .ynow-macro-badge {
@@ -5609,8 +5672,94 @@ ui <- dashboardPage(
           padding: 3px 10px;
           border-radius: 4px;
         }
-        .ynow-macro-badge--us { background: #1a1a1a; color: #fff; }
-        .ynow-macro-badge--tw { background: #0b5cab; color: #fff; }
+        .ynow-macro-badge--us {
+          background: var(--ynow-macro-blue);
+          color: #fff;
+        }
+        .ynow-macro-badge--tw {
+          background: var(--ynow-macro-green);
+          color: #fff;
+        }
+        .ynow-macro-report .btn.btn-default {
+          border-color: var(--ynow-macro-blue);
+          color: var(--ynow-macro-blue);
+        }
+        .ynow-macro-report .btn.btn-default:hover {
+          background: var(--ynow-macro-blue);
+          color: #fff;
+        }
+        .ynow-macro-report .form-control:focus {
+          border-color: var(--ynow-macro-green);
+          box-shadow: 0 0 0 2px rgba(36, 156, 96, 0.2);
+        }
+        .ynow-macro-report .selectize-input.focus {
+          border-color: var(--ynow-macro-green);
+          box-shadow: 0 0 0 2px rgba(36, 156, 96, 0.2);
+        }
+        .ynow-macro-chart-row {
+          display: flex;
+          flex-wrap: wrap;
+          margin-left: -8px;
+          margin-right: -8px;
+        }
+        .ynow-macro-chart-row > [class*="col-"] {
+          padding-left: 8px;
+          padding-right: 8px;
+          margin-bottom: 12px;
+        }
+        /* Rf / alert 列也等高 */
+        .ynow-macro-rf-row {
+          display: flex;
+          flex-wrap: wrap;
+          margin-left: -8px;
+          margin-right: -8px;
+        }
+        .ynow-macro-rf-row > [class*="col-"] {
+          display: flex;
+          flex-direction: column;
+          padding-left: 8px;
+          padding-right: 8px;
+          margin-bottom: 12px;
+        }
+        .ynow-macro-rf-row .ynow-macro-card {
+          flex: 1 1 auto;
+          width: 100%;
+        }
+        @media (max-width: 991px) {
+          .ynow-macro-kpi-row > [class*="col-"] {
+            width: 50%;
+            float: none;
+          }
+        }
+        @media (max-width: 575px) {
+          .ynow-macro-report {
+            margin-bottom: 16px;
+            padding: 0;
+          }
+          .ynow-macro-report__masthead {
+            padding: 8px 10px 12px 10px;
+          }
+          .ynow-macro-chapter {
+            padding: 10px 8px 12px 8px;
+            margin: 12px 0 14px 0;
+          }
+          .ynow-macro-kpi-row > [class*="col-"] {
+            width: 50%;
+          }
+          .ynow-macro-kpi,
+          .ynow-macro-rf {
+            min-height: 100px;
+            padding: 10px 11px;
+          }
+          .ynow-macro-rf-row > [class*="col-"] {
+            width: 100%;
+            float: none;
+          }
+          .ynow-macro-chart-row > [class*="col-"] {
+            width: 100%;
+            float: none;
+          }
+        }
         .ynow-backtest-report {
           max-width: 1200px;
           margin: 0 auto 24px auto;

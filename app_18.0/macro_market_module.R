@@ -286,8 +286,17 @@ macro_market_ui <- function(id = "macro") {
         )
       ),
       fluidRow(
-        column(width = 3, uiOutput(ns("beta_kpi"))),
-        column(width = 9, plotlyOutput(ns("beta_plot"), height = "280px") %>% shinycssloaders::withSpinner())
+        class = "ynow-macro-kpi-row",
+        column(
+          width = 3,
+          class = "col-xs-12 col-sm-4 col-md-3",
+          uiOutput(ns("beta_kpi"))
+        ),
+        column(
+          width = 9,
+          class = "col-xs-12 col-sm-8 col-md-9",
+          plotlyOutput(ns("beta_plot"), height = "280px") %>% shinycssloaders::withSpinner()
+        )
       )
     )
   )
@@ -368,6 +377,7 @@ macro_market_server <- function(id = "macro",
         col_cls <- if (is.finite(r$chg_pct) && r$chg_pct >= 0) "ynow-macro-up" else "ynow-macro-down"
         column(
           width = 3,
+          class = "col-xs-6 col-sm-6 col-md-3",
           tags$div(
             class = "ynow-macro-kpi",
             tags$div(class = "ynow-macro-kpi__label", r$label),
@@ -377,7 +387,7 @@ macro_market_server <- function(id = "macro",
           )
         )
       })
-      do.call(fluidRow, cols)
+      do.call(fluidRow, c(list(class = "ynow-macro-kpi-row"), cols))
     })
 
     output$rf_box <- renderUI({
@@ -401,9 +411,8 @@ macro_market_server <- function(id = "macro",
         .ui("macro_rf_source_fallback")
       )
       tags$div(
-        class = "ynow-macro-rf",
         tags$div(
-          class = "ynow-macro-rf__value",
+          class = "ynow-macro-kpi__value ynow-macro-rf__value",
           if (is.finite(rf)) sprintf("%.2f%%", rf) else "—"
         ),
         tags$div(
@@ -419,9 +428,14 @@ macro_market_server <- function(id = "macro",
       rf_col_w <- if (identical(mode, "TW")) 4L else 12L
       rf_col <- column(
         width = rf_col_w,
+        class = if (identical(mode, "TW")) "col-xs-12 col-sm-12 col-md-4" else "col-xs-12",
         tags$div(
-          class = "ynow-macro-card",
-          tags$h4(id = "ynow_macro_rf_title", .ui("macro_rf_title")),
+          class = "ynow-macro-kpi ynow-macro-kpi--rf",
+          tags$div(
+            class = "ynow-macro-kpi__label",
+            id = "ynow_macro_rf_title",
+            .ui("macro_rf_title")
+          ),
           uiOutput(ns("rf_box")),
           tags$p(
             id = "ynow_macro_rf_note",
@@ -431,12 +445,14 @@ macro_market_server <- function(id = "macro",
         )
       )
       if (!identical(mode, "TW")) {
-        return(fluidRow(rf_col))
+        return(fluidRow(class = "ynow-macro-kpi-row", rf_col))
       }
       fluidRow(
+        class = "ynow-macro-rf-row",
         rf_col,
         column(
           width = 8,
+          class = "col-xs-12 col-sm-12 col-md-8",
           tags$div(
             class = "ynow-macro-card",
             tags$h4(id = "ynow_macro_tw_signal_title", .ui("macro_tw_signal_title")),
