@@ -8,5 +8,5 @@ short=a6a36b8
 message=chore: bump display version to v18.11
 captured_at=2026-09-29T16:28:54Z
 source_branch=master
-display_version=v18.11
+display_version=v18.12
 note=Canonical live line is app_18.0. Bundle 12623226 = v18.11 Macro bubble & concentration panel. Deploy via scripts/deploy_app_18.R. Supersedes 12623142.
