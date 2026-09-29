@@ -8,5 +8,5 @@ short=37d1532
 message=chore: bump display version to v18.09
 captured_at=2026-09-29T15:49:37Z
 source_branch=master
-display_version=v18.09
+display_version=v18.10
 note=Canonical live line is app_18.0. Bundle 12623023 = v18.09 Waiting for valuation uses model theme accent. Deploy via scripts/deploy_app_18.R. Supersedes 12622982.
