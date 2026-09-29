@@ -269,6 +269,8 @@ macro_market_ui <- function(id = "macro") {
         "Currency lock: historical index / theme series are never converted by the session USD⇄TWD toggle."
       )
     ),
+    # Dynamic bubble & concentration (isolated from CAPM / valuation engines)
+    macro_bubble_chapter_ui(ns),
     tags$section(
       class = "ynow-macro-chapter",
       tags$h3(id = "ynow_macro_beta_title", "Theme Rolling β vs benchmark"),
@@ -607,6 +609,263 @@ macro_market_server <- function(id = "macro",
         yaxis = list(title = "β", zeroline = TRUE),
         margin = list(l = 50, r = 20, t = 40, b = 40),
         showlegend = FALSE
+      )
+    })
+
+    # ---- Bubble & concentration (isolated; display-only) ----
+    bubble_data <- reactive({
+      refresh_token()
+      theme_key <- as.character(input$theme_key %||% "")[1]
+      req(nzchar(theme_key))
+      top_n <- suppressWarnings(as.integer(input$bubble_top_n %||% 5L)[1])
+      if (!is.finite(top_n)) top_n <- 5L
+      attr_p <- as.character(input$bubble_attr_period %||% "1y")[1]
+      macro_bubble_concentration(
+        theme_key = theme_key,
+        mode = .mode(),
+        top_n = top_n,
+        attr_period = attr_p
+      )
+    })
+
+    output$bubble_alert_box <- renderUI({
+      bd <- tryCatch(bubble_data(), error = function(e) NULL)
+      if (is.null(bd) || !length(bd$alerts)) return(NULL)
+      msgs <- character(0)
+      if ("top1_gt_50" %in% bd$alerts) msgs <- c(msgs, .ui("macro_bubble_alert_top1"))
+      if ("topn_gt_70" %in% bd$alerts) msgs <- c(msgs, .ui("macro_bubble_alert_topn"))
+      if ("narrow_breadth" %in% bd$alerts) msgs <- c(msgs, .ui("macro_bubble_alert_breadth"))
+      if (!length(msgs)) return(NULL)
+      tags$div(
+        class = "ynow-macro-callout ynow-macro-callout--warn",
+        tags$b(.ui("macro_bubble_alert_title")),
+        tags$ul(lapply(msgs, tags$li))
+      )
+    })
+
+    output$bubble_conc_kpi <- renderUI({
+      bd <- tryCatch(bubble_data(), error = function(e) NULL)
+      if (is.null(bd) || !nrow(bd$pool)) {
+        return(tags$p(class = "ynow-macro-hint", .ui("macro_bubble_need_theme")))
+      }
+      tags$p(
+        class = "ynow-macro-hint",
+        sprintf(
+          .ui("macro_bubble_conc_kpi"),
+          as.integer(bd$top_n),
+          if (is.finite(bd$top_share)) 100 * bd$top_share else NA_real_,
+          if (is.finite(bd$top1_weight)) 100 * bd$top1_weight else NA_real_,
+          nrow(bd$pool)
+        )
+      )
+    })
+
+    output$bubble_conc_plot <- plotly::renderPlotly({
+      bd <- bubble_data()
+      shiny::validate(shiny::need(nrow(bd$pool) >= 1L, .ui("macro_bubble_need_theme")))
+      top_n <- bd$top_n
+      top_share <- if (is.finite(bd$top_share)) bd$top_share else 0
+      rest <- max(0, 1 - top_share)
+      pie_df <- data.frame(
+        part = c(sprintf("Top %d", top_n), .ui("macro_bubble_rest")),
+        w = c(top_share, rest),
+        stringsAsFactors = FALSE
+      )
+      fig <- plotly::plot_ly(
+        pie_df,
+        labels = ~part,
+        values = ~w,
+        type = "pie",
+        hole = 0.45,
+        textinfo = "label+percent",
+        marker = list(colors = c("#e67e22", "#bdc3c7"))
+      )
+      plotly::layout(
+        fig,
+        showlegend = TRUE,
+        margin = list(l = 10, r = 10, t = 10, b = 10),
+        title = list(text = "", font = list(size = 12))
+      )
+    })
+
+    output$bubble_attr_kpi <- renderUI({
+      bd <- tryCatch(bubble_data(), error = function(e) NULL)
+      if (is.null(bd)) return(NULL)
+      att <- bd$attribution
+      tags$p(
+        class = "ynow-macro-hint",
+        sprintf(
+          .ui("macro_bubble_attr_kpi"),
+          att$period,
+          if (is.finite(att$basket_ret)) 100 * att$basket_ret else NA_real_,
+          if (is.finite(att$top_contrib)) 100 * att$top_contrib else NA_real_,
+          if (is.finite(att$rest_contrib)) 100 * att$rest_contrib else NA_real_
+        )
+      )
+    })
+
+    output$bubble_attr_plot <- plotly::renderPlotly({
+      bd <- bubble_data()
+      shiny::validate(shiny::need(nrow(bd$pool) >= 1L, .ui("macro_bubble_need_theme")))
+      att <- bd$attribution
+      top_c <- if (is.finite(att$top_contrib)) att$top_contrib else 0
+      rest_c <- if (is.finite(att$rest_contrib)) att$rest_contrib else 0
+      df <- data.frame(
+        part = c(sprintf("Top %d", bd$top_n), .ui("macro_bubble_rest")),
+        contrib = c(top_c, rest_c) * 100,
+        stringsAsFactors = FALSE
+      )
+      fig <- plotly::plot_ly(
+        df,
+        x = ~contrib,
+        y = ~part,
+        type = "bar",
+        orientation = "h",
+        marker = list(color = c("#e67e22", "#7f8c8d"))
+      )
+      plotly::layout(
+        fig,
+        xaxis = list(title = .ui("macro_bubble_attr_axis")),
+        yaxis = list(title = ""),
+        margin = list(l = 80, r = 20, t = 10, b = 40),
+        showlegend = FALSE
+      )
+    })
+
+    buffett_series <- reactive({
+      refresh_token()
+      macro_bubble_buffett_series(.mode())
+    })
+
+    observe({
+      ser <- buffett_series()
+      if (is.null(ser) || !nrow(ser)) return()
+      yrs <- as.integer(format(ser$date, "%Y"))
+      yrs <- yrs[is.finite(yrs)]
+      if (!length(yrs)) return()
+      updateSliderInput(
+        session, "bubble_buffett_asof",
+        min = min(yrs), max = max(yrs),
+        value = max(yrs)
+      )
+    })
+
+    buffett_play_on <- reactiveVal(FALSE)
+    observeEvent(input$bubble_buffett_play, {
+      buffett_play_on(TRUE)
+    }, ignoreInit = TRUE)
+    observeEvent(input$bubble_buffett_pause, {
+      buffett_play_on(FALSE)
+    }, ignoreInit = TRUE)
+
+    observe({
+      if (!isTRUE(buffett_play_on())) return()
+      shiny::invalidateLater(700, session)
+      ser <- isolate(buffett_series())
+      if (is.null(ser) || !nrow(ser)) {
+        buffett_play_on(FALSE)
+        return()
+      }
+      yrs <- sort(unique(as.integer(format(ser$date, "%Y"))))
+      cur <- isolate(as.integer(input$bubble_buffett_asof %||% max(yrs))[1])
+      if (!is.finite(cur)) cur <- max(yrs)
+      nxt <- yrs[yrs > cur]
+      if (!length(nxt)) {
+        buffett_play_on(FALSE)
+        updateSliderInput(session, "bubble_buffett_asof", value = max(yrs))
+        return()
+      }
+      updateSliderInput(session, "bubble_buffett_asof", value = nxt[[1]])
+    })
+
+    output$bubble_buffett_light <- renderUI({
+      ser <- buffett_series()
+      asof <- suppressWarnings(as.integer(input$bubble_buffett_asof)[1])
+      if (is.finite(asof) && is.data.frame(ser) && nrow(ser)) {
+        ser <- ser[as.integer(format(ser$date, "%Y")) <= asof, , drop = FALSE]
+      }
+      lt <- macro_bubble_buffett_light(ser)
+      tags$div(
+        class = "ynow-macro-kpi",
+        style = sprintf(
+          "border-left: 6px solid %s; padding-left: 10px;",
+          lt$color
+        ),
+        tags$div(
+          class = "ynow-macro-kpi__label",
+          .ui("macro_bubble_buffett_level")
+        ),
+        tags$div(
+          class = "ynow-macro-kpi__value",
+          style = sprintf("color: %s;", lt$color),
+          .ui(lt$label_key)
+        ),
+        tags$div(
+          class = "ynow-macro-hint",
+          if (is.finite(lt$current)) {
+            sprintf(.ui("macro_bubble_buffett_kpi"), lt$current, as.character(lt$as_of))
+          } else {
+            .ui("macro_bubble_buffett_unknown")
+          }
+        )
+      )
+    })
+
+    output$bubble_buffett_plot <- plotly::renderPlotly({
+      ser <- buffett_series()
+      shiny::validate(shiny::need(is.data.frame(ser) && nrow(ser) >= 3L, .ui("macro_bubble_buffett_need")))
+      asof <- suppressWarnings(as.integer(input$bubble_buffett_asof)[1])
+      if (is.finite(asof)) {
+        ser <- ser[as.integer(format(ser$date, "%Y")) <= asof, , drop = FALSE]
+      }
+      shiny::validate(shiny::need(nrow(ser) >= 2L, .ui("macro_bubble_buffett_need")))
+      lt <- macro_bubble_buffett_light(ser)
+      fig <- plotly::plot_ly(
+        ser, x = ~date, y = ~ratio_pct,
+        type = "scatter", mode = "lines+markers",
+        name = .ui("macro_bubble_buffett_series"),
+        line = list(color = "#2c3e50", width = 2),
+        marker = list(size = 5)
+      )
+      if (is.finite(lt$mean)) {
+        fig <- plotly::add_trace(
+          fig,
+          x = ser$date,
+          y = rep(lt$mean, nrow(ser)),
+          type = "scatter", mode = "lines",
+          name = .ui("macro_bubble_buffett_mean"),
+          line = list(color = "#7f8c8d", dash = "dot", width = 1),
+          inherit = FALSE
+        )
+      }
+      if (is.finite(lt$lo) && is.finite(lt$hi)) {
+        fig <- plotly::add_trace(
+          fig,
+          x = ser$date,
+          y = rep(lt$hi, nrow(ser)),
+          type = "scatter", mode = "lines",
+          name = "+0.75σ",
+          line = list(color = "#d9534f", dash = "dash", width = 1),
+          inherit = FALSE
+        )
+        fig <- plotly::add_trace(
+          fig,
+          x = ser$date,
+          y = rep(lt$lo, nrow(ser)),
+          type = "scatter", mode = "lines",
+          name = "−0.75σ",
+          line = list(color = "#00a65a", dash = "dash", width = 1),
+          inherit = FALSE
+        )
+      }
+      plotly::layout(
+        fig,
+        title = list(text = .ui("macro_bubble_buffett_chart"), font = list(size = 13)),
+        xaxis = list(title = ""),
+        yaxis = list(title = .ui("macro_bubble_buffett_axis")),
+        legend = list(orientation = "h", y = 1.12),
+        margin = list(l = 50, r = 20, t = 50, b = 40),
+        hovermode = "x unified"
       )
     })
   })
