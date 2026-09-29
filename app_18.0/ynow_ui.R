@@ -3715,9 +3715,6 @@ ui <- dashboardPage(
             setBtText('ynow_bt_min_exp_hint', 'bt_min_exp_hint');
             setBtText('ynow_bt_fit_bh_hint', 'bt_fit_bh_hint');
             setBtText('ynow_bt_sec_methodology', 'bt_sec_methodology');
-            setBtText('ynow_bt_sec_other', 'bt_sec_other');
-            setBtText('ynow_bt_other_item1', 'bt_other_item1');
-            setBtText('ynow_bt_other_item2', 'bt_other_item2');
             var recent = document.getElementById('ynow_recent_search_label');
             if (recent && s.recent_search) recent.textContent = s.recent_search;
             var scLab = document.querySelector('label[for=\"sc\"]');
@@ -8926,24 +8923,6 @@ ui <- dashboardPage(
             collapsible = TRUE,
             collapsed = TRUE,
             uiOutput("bt_methodology_notes")
-          ),
-
-          # --- Appendix: other planned ---
-          box(
-            title = tagList(
-              icon("lightbulb"),
-              tags$span(id = "ynow_bt_sec_other", "Other (planned)")
-            ),
-            width = NULL,
-            status = "warning",
-            solidHeader = FALSE,
-            collapsible = TRUE,
-            collapsed = TRUE,
-            tags$ul(
-              style = "color:#555; margin-bottom:0;",
-              tags$li(id = "ynow_bt_other_item1", "Mature-stock P/E · EV engine (planned 14.1+)"),
-              tags$li(id = "ynow_bt_other_item2", "Other experimental tools not yet finalized")
-            )
           )
         )
       ),
