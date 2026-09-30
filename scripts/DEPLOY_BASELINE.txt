@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12625565
+bundleId=12625600
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=76401b6f16e3373c2ea50564cc489513a869c662
-commit=76401b6f16e3373c2ea50564cc489513a869c662
-short=76401b6
-message=chore: bump display version to v19.03
-captured_at=2026-09-30T03:15:44Z
+aligned_git=aafdc3ffeb47000a52b15e25edbe143d245f2f23
+commit=aafdc3ffeb47000a52b15e25edbe143d245f2f23
+short=aafdc3f
+message=Require FX and ADR conversion only when currencies or share classes actually differ.
+captured_at=2026-09-30T03:27:17Z
 source_branch=cursor/lifecycle-v19-3fb1
 display_version=v19.04
-note=Canonical live line is app_19.0. Bundle 12625565 = v19.03 Macro tab Theme Rolling β vs benchmark UI removed (engine kept). Deploy via scripts/deploy_app_19.R. Supersedes 12625507.
+note=Canonical live line is app_19.0. Bundle 12625600 = v19.04 conditional FX/ADR alignment (classify_per_share_alignment_failure; FX only when ccy differ; ADR only for ADR vs ordinary; failure-specific toasts). Deploy via scripts/deploy_app_19.R. Supersedes 12625583 / 12625565.
