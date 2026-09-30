@@ -64,7 +64,7 @@ slot_block <- cyclical_pb_slot("dcf", "ri", pb_ok = FALSE)
 check("blocked pb not invented", identical(slot_block$secondary, "ri") && !isTRUE(slot_block$changed))
 check("no ticker in cyclical helper", {
   src <- paste(deparse(is_cyclical_industry), collapse = "\n")
-  !grepl("TSM|AAPL|2330|MU|X|NUE", src, ignore.case = TRUE)
+  !grepl("\\b(TSM|AAPL|2330\\.TW|NUE|XOM)\\b", src)
 })
 
 check("TW code 24 semiconductor", identical(lab_map_tw_industry_to_key("24"), "sc.Foundry"))

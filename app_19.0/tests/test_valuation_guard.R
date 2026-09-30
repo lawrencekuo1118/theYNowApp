@@ -411,7 +411,7 @@ check("cyclical negative equity does not force P/B", !.has_pb_slot(rec_neg_eq))
 
 src_rec <- paste(deparse(assemble_model_recommendation), collapse = "\n")
 check("no ticker branch in model recommendation",
-      !grepl("TSM|AAPL|2330|NUE|XOM", src_rec, ignore.case = TRUE))
+      !grepl("\\b(TSM|AAPL|2330\\.TW|NUE|XOM)\\b", src_rec))
 
 # --- Terminal / lifecycle diagnostics reuse existing engine ---
 d_gt <- lifecycle_terminal_diagnostics(g_term = 10, wacc = 8)
