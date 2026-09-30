@@ -158,7 +158,7 @@ business_breakdown_lab_ui <- function(id = "bblab") {
     fluidRow(
       box(
         title = tagList(icon("sitemap"), tags$span(id = "ynow_bblab_shared_title", "Shared and Corporate Items")),
-        width = 12, status = "default", solidHeader = TRUE, collapsible = TRUE, collapsed = TRUE,
+        width = 12, status = "info", solidHeader = TRUE, collapsible = TRUE, collapsed = TRUE,
         uiOutput(ns("shared"))
       )
     ),

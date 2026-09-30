@@ -522,6 +522,20 @@ check("toasts are specific", {
     "business_cards" %in% t[[1]]$remaining_outputs
 })
 check("notes helper used", grepl("ynow_notes_block", mod_src, fixed = TRUE))
+check("no invalid shinydashboard box status default",
+      !grepl("status\\s*=\\s*[\"']default[\"']", mod_src))
+if (requireNamespace("shiny", quietly = TRUE) &&
+    requireNamespace("shinydashboard", quietly = TRUE)) {
+  suppressPackageStartupMessages({
+    library(shiny)
+    library(shinydashboard)
+  })
+  ui_err <- tryCatch({
+    business_breakdown_lab_ui("bblab")
+    NULL
+  }, error = function(e) conditionMessage(e))
+  check("lab UI constructs at startup", is.null(ui_err))
+}
 check("experimental badge locale keys",
       grepl("ynow_bblab_experimental_badge", ui_src, fixed = TRUE) &&
         grepl("bblab_experimental_badge", ui_src, fixed = TRUE))
