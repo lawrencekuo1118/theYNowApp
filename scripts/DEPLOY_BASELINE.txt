@@ -8,5 +8,5 @@ short=9c0034c
 message=Stop Lab Search from treating a missing amount column as a hard failure.
 captured_at=2026-09-30T11:41:03Z
 source_branch=cursor/bblab-subscript-oob-3fb1
-display_version=v19.31
+display_version=v19.32
 note=Canonical live line is app_19.0. Bundle 12627312 = v19.31 Lab Search no longer throws subscript out of bounds on a one-column income statement; malformed note tables are skipped; expanded statements are coerced like Dashboard; toast no longer leaks R internals. Keeps v19.30 in-session Search and unnumbered chapter titles. Deploy via scripts/deploy_app_19.R. Supersedes 12627150 / 12627127 / 12627082 / 12627038 / 12626909 / 12626822 / 12626810 / 12626794 / 12626772 / 12626690 / 12626668 / 12626547 / 12626454 / 12626418 / 12626362 / 12626262 / 12626032 / 12625997 / 12625985 / 12625973 / 12625956 / 12625916 / 12625890 / 12625810 / 12625762 / 12625733 / 12625709 / 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
