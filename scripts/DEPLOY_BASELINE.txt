@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12627127
+bundleId=12627150
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=ddbb82abf0e2492b90e10e7c68e97a458b1f1b14
-commit=ddbb82abf0e2492b90e10e7c68e97a458b1f1b14
-short=ddbb82a
-message=Keep Lab Search from dropping the Shiny session on iOS Reload.
-captured_at=2026-09-30T10:56:47Z
-source_branch=cursor/bblab-search-no-reload-3fb1
+aligned_git=c383ff32ceb281257e4efb59db3bce21b00eca06
+commit=c383ff32ceb281257e4efb59db3bce21b00eca06
+short=c383ff3
+message=Fix duplicate Lab chapter numbers by keeping the badge only.
+captured_at=2026-09-30T11:02:56Z
+source_branch=master
 display_version=v19.30
-note=Canonical live line is app_19.0. Bundle 12627127 = v19.29 Lab Search stays in-session on iOS: segment-only EDGAR notes with an 18s budget (does not download every 10-K/20-F note); session$allowReconnect("force"); tryCatch around Search. Also keeps type=button / Enter preventDefault and hides Dashboard Search chrome on Testing. Same 7-chapter walkthrough. Deploy via scripts/deploy_app_19.R. Supersedes 12627082 / 12627038 / 12626909 / 12626822 / 12626810 / 12626794 / 12626772 / 12626690 / 12626668 / 12626547 / 12626454 / 12626418 / 12626362 / 12626262 / 12626032 / 12625997 / 12625985 / 12625973 / 12625956 / 12625916 / 12625890 / 12625810 / 12625762 / 12625733 / 12625709 / 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
+note=Canonical live line is app_19.0. Bundle 12627150 = v19.30 on master: Lab chapter titles no longer repeat the badge number; Lab Search stays in-session (segment-only EDGAR notes, 18s budget, allowReconnect force, type=button / Enter preventDefault, header Search hidden on Testing). Same 7-chapter walkthrough. Deploy via scripts/deploy_app_19.R. Supersedes 12627127 / 12627082 / 12627038 / 12626909 / 12626822 / 12626810 / 12626794 / 12626772 / 12626690 / 12626668 / 12626547 / 12626454 / 12626418 / 12626362 / 12626262 / 12626032 / 12625997 / 12625985 / 12625973 / 12625956 / 12625916 / 12625890 / 12625810 / 12625762 / 12625733 / 12625709 / 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
