@@ -33,7 +33,7 @@ decision_ui <- function(id) {
           id = "ynow_funnel_page_sub",
           class = "ynow-funnel-report__lead",
           paste0(
-            "三個區塊由上而下：品質檢核（F-Score）→ 財報警訊 → 動態產業泡沫與權重集中度。",
+            "三個區塊由上而下：財報體質（F-Score）→ 財報警訊 → 動態產業泡沫與權重集中度。",
             "各區結論／指標框格置於對應區塊內、表格上方。",
             "這是決策輔助報告，不是下單指令。"
           )
@@ -54,7 +54,7 @@ decision_ui <- function(id) {
           tags$h3(
             class = "ynow-funnel-chapter__title",
             id = "ynow_funnel_ch1_title",
-            "品質檢核（F-Score）"
+            "財報體質"
           )
         ),
         tags$div(

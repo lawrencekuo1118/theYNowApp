@@ -851,7 +851,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     funnel_sec_method = "How to read this report",
     funnel_method_body = paste0(
-      "Reading order: quality screen (F-Score) → statement alerts → ",
+      "Reading order: statement quality (F-Score) → statement alerts → ",
       "dynamic industry bubble and weight concentration. ",
       "Trend momentum (Timing) lives under Quant Backtest Lab and does not set fair value."
     ),
@@ -2141,7 +2141,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     funnel_sec_method = "如何閱讀本報告",
     funnel_method_body = paste0(
-      "閱讀順序：品質檢核（F-Score）→ 財報警訊 → 動態產業泡沫與權重集中度。",
+      "閱讀順序：財報體質（F-Score）→ 財報警訊 → 動態產業泡沫與權重集中度。",
       "趨勢動能（Timing）輔助在「量化回測實驗室」分頁，不決定合理價。"
     ),
     funnel_method_caveat = "標籤與分數僅供研究／決策輔助，不是券商下單指令；HFV 情境僅作否決語境，不作看漲依據。",
