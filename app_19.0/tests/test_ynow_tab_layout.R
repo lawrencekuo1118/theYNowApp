@@ -86,13 +86,13 @@ pos_ch1_title <- regexpr("ynow_funnel_ch1_title", ui_fn, fixed = TRUE)[1]
 pos_mos <- regexpr("vbox_mos", ui_fn, fixed = TRUE)[1]
 pos_fs <- regexpr("vbox_fscore", ui_fn, fixed = TRUE)[1]
 pos_fraud <- regexpr("vbox_fraud", ui_fn, fixed = TRUE)[1]
-pos_tbl <- regexpr("table_checklist", ui_fn, fixed = TRUE)[1]
+pos_tbl <- regexpr("fscore_panel", ui_fn, fixed = TRUE)[1]
 pos_shen <- regexpr("shenanigans_panel", ui_fn, fixed = TRUE)[1]
 check("MOS card before F-Score", pos_mos > 0 && pos_fs > pos_mos)
 check("F-Score card before alerts", pos_fs > 0 && pos_fraud > pos_fs)
 check("KPI row before Section I heading", pos_fraud > 0 && pos_ch1_title > pos_fraud && pos_ch1_id > pos_fraud)
 check("Section I heading not in KPI row", pos_ch1_title > pos_ch1_id && pos_ch1_id > pos_fraud)
-check("table still in Section I", pos_tbl > pos_q && pos_tbl < pos_a)
+check("F-Score boxes still in Section I", pos_tbl > pos_q && pos_tbl < pos_a)
 check("shenanigans still in Section II", pos_shen > pos_a && pos_shen < pos_b)
 
 ch1_body <- if (pos_q > 0 && pos_a > pos_q) substr(ui_fn, pos_q, pos_a) else ""
@@ -166,8 +166,10 @@ check("ch2 lead wrapped", grepl("ynow_notes_block", ch2_body, fixed = TRUE) &&
 }
 ch1_notes <- .notes_call(ch1_body)
 ch2_notes <- .notes_call(ch2_body)
-check("table not inside ch1 notes call", grepl("ynow_funnel_ch1_lead", ch1_notes, fixed = TRUE) &&
+check("F-Score boxes not inside ch1 notes call", grepl("ynow_funnel_ch1_lead", ch1_notes, fixed = TRUE) &&
+        !grepl("fscore_panel", ch1_notes, fixed = TRUE) &&
         !grepl("table_checklist", ch1_notes, fixed = TRUE))
+check("F-Score panel output in ch1", grepl("fscore_panel", ch1_body, fixed = TRUE))
 check("alerts panel not inside ch2 notes call", grepl("ynow_funnel_ch2_lead", ch2_notes, fixed = TRUE) &&
         !grepl("shenanigans_panel", ch2_notes, fixed = TRUE))
 
@@ -191,6 +193,9 @@ check("applyUiLocale notes titles", grepl("ynow-notes__title", ui, fixed = TRUE)
         grepl("s.notes_title", ui, fixed = TRUE))
 check("notes CSS details", grepl(".ynow-notes", ui, fixed = TRUE) &&
         grepl(".ynow-notes__summary", ui, fixed = TRUE))
+check("F-Score card CSS", grepl(".ynow-fscore-card", ui, fixed = TRUE) &&
+        grepl(".ynow-fscore-wrap", ui, fixed = TRUE) &&
+        grepl(".ynow-fscore-grid", ui, fixed = TRUE))
 check("applyUiLocale page title", grepl("ynow_funnel_page_title", ui, fixed = TRUE))
 check("applyUiLocale kpi jump aria", grepl("ynow_kpi_jump_mos", ui, fixed = TRUE) &&
         grepl("funnel_kpi_jump_mos_aria", ui, fixed = TRUE))

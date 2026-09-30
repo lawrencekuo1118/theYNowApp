@@ -103,12 +103,30 @@ masthead <- if (pos_mh > 0 && pos_kpi > pos_mh) substr(ui_fn, pos_mh, pos_kpi) e
 check("page sub in masthead chrome", grepl("ynow_funnel_page_sub", masthead, fixed = TRUE))
 check("masthead has no notes wrapper", !grepl("ynow_notes_block", masthead, fixed = TRUE))
 check("KPI row outside notes", grepl("ynow-funnel-kpi-jump-row", ui_fn, fixed = TRUE))
-check("F-Score table outside notes wrapper", {
-  # table_checklist sits after the ch1 notes_block, not as its child
-  pos_tbl <- regexpr("table_checklist", ui_fn, fixed = TRUE)[1]
+check("F-Score boxes outside notes wrapper", {
+  pos_box <- regexpr("fscore_panel", ui_fn, fixed = TRUE)[1]
   pos_lead <- regexpr("ynow_funnel_ch1_lead", ui_fn, fixed = TRUE)[1]
-  pos_tbl > pos_lead
+  pos_box > pos_lead && !any(grepl("fscore_panel", notes_calls, fixed = TRUE))
 })
+if (exists("fscore_results_ui", mode = "function") && requireNamespace("htmltools", quietly = TRUE)) {
+  empty_html <- paste(as.character(fscore_results_ui(NULL, "en")), collapse = "")
+  check("empty F-Score wrap visible", grepl("ynow-fscore-wrap", empty_html, fixed = TRUE))
+  check("empty F-Score not in details", !grepl("<details", empty_html, fixed = TRUE))
+  check("empty F-Score waiting copy", grepl("Waiting for statements", empty_html, fixed = TRUE))
+  demo <- data.frame(
+    `檢驗維度` = c("獲利性 (ROA > 0)", "獲利性 (OCF > 0)"),
+    `得分` = c("通過", "未達標"),
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
+  cards_html <- paste(as.character(fscore_results_ui(demo, "en")), collapse = "")
+  check("F-Score cards class", grepl("ynow-fscore-card", cards_html, fixed = TRUE))
+  check("F-Score cards not in details", !grepl("<details", cards_html, fixed = TRUE))
+  check("F-Score pass box", grepl("ynow-fscore-pass", cards_html, fixed = TRUE))
+  check("F-Score fail box", grepl("ynow-fscore-fail", cards_html, fixed = TRUE))
+} else {
+  check("fscore_results_ui available", FALSE)
+}
 
 dc <- paste(readLines("decision_checklist_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("DC hint wrapped", grepl("ynow_notes_block", dc, fixed = TRUE) &&

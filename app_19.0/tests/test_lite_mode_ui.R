@@ -377,7 +377,7 @@ testthat::test_that("YNOW page title and three-block order are shared by Lite an
   pos_fs <- regexpr("vbox_fscore", ui_fn, fixed = TRUE)[1]
   pos_fraud <- regexpr("vbox_fraud", ui_fn, fixed = TRUE)[1]
   pos_ch1_title <- regexpr("ynow_funnel_ch1_title", ui_fn, fixed = TRUE)[1]
-  pos_tbl <- regexpr("table_checklist", ui_fn, fixed = TRUE)[1]
+  pos_tbl <- regexpr("fscore_panel", ui_fn, fixed = TRUE)[1]
   pos_shen <- regexpr("shenanigans_panel", ui_fn, fixed = TRUE)[1]
   testthat::expect_true(pos_mos > 0 && pos_fs > pos_mos && pos_fraud > pos_fs)
   testthat::expect_true(pos_ch1_title > pos_fraud)

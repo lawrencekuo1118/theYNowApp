@@ -6276,6 +6276,36 @@ ui <- dashboardPage(
         .ynow-shen-fold { margin: 8px 0 0 0; font-size: 12.5px; color: #666; }
         .ynow-shen-fold summary { cursor: pointer; font-weight: 600; }
 
+        /* YNOW：F-Score quality-screen cards (default visible, like Statement alerts) */
+        .ynow-fscore-wrap { margin: 0 0 16px 0; }
+        .ynow-fscore-count { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px 0; }
+        .ynow-fscore-st {
+          display: inline-block; font-size: 11.5px; font-weight: 700;
+          padding: 2px 8px; border-radius: 4px;
+        }
+        .ynow-fscore-pass { background: #e8f6ee; color: #1e7a45; }
+        .ynow-fscore-fail { background: #faf0ef; color: #c0392b; }
+        .ynow-fscore-waiting { color: #777; font-size: 13px; margin: 0; }
+        .ynow-fscore-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 8px;
+        }
+        @media (max-width: 767px) {
+          .ynow-fscore-grid { grid-template-columns: 1fr; }
+        }
+        .ynow-fscore-card {
+          border: 1px solid #e4e8ec; border-radius: 6px;
+          padding: 8px 10px; background: #fff; margin: 0;
+        }
+        .ynow-fscore-card.ynow-fscore-pass { border-left: 4px solid #27ae60; }
+        .ynow-fscore-card.ynow-fscore-fail { border-left: 4px solid #c0392b; }
+        .ynow-fscore-card-h {
+          display: flex; justify-content: space-between; align-items: flex-start;
+          gap: 8px;
+        }
+        .ynow-fscore-item { font-weight: 600; font-size: 12.5px; color: #222; line-height: 1.4; }
+
         /* Backtest：績效指標卡片（軟色調 + 左側色條，避免實心色塊） */
         .ynow-metric-grid {
           --ynow-metric-green: #2d8a57;

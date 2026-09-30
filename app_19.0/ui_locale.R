@@ -895,6 +895,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     funnel_fraud_items = "{n} item(s)",
     funnel_pass = "✅ Pass",
     funnel_fail = "❌ Fail",
+    funnel_fscore_waiting = "Waiting for statements…",
+    funnel_fscore_n_pass = "Pass {n}",
+    funnel_fscore_n_fail = "Fail {n}",
     funnel_primary_fallback = "Primary model",
     funnel_v_trap_title = "Value-trap warning",
     funnel_v_trap_text = paste0(
@@ -2202,6 +2205,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     funnel_fraud_items = "{n} 項",
     funnel_pass = "✅ 通過",
     funnel_fail = "❌ 未達標",
+    funnel_fscore_waiting = "等待財報…",
+    funnel_fscore_n_pass = "通過 {n} 項",
+    funnel_fscore_n_fail = "未達標 {n} 項",
     funnel_primary_fallback = "主模型",
     funnel_v_trap_title = "價值陷阱警訊",
     funnel_v_trap_text = paste0(
@@ -2846,6 +2852,94 @@ localize_fscore_checklist <- function(df, locale = "zh-TW") {
   names(out)[names(out) == item_col] <- ui_str("fscore_col_item", loc)
   names(out)[names(out) == score_col] <- ui_str("fscore_col_score", loc)
   out
+}
+
+.ynow_fmt_str <- function(msg, ...) {
+  dots <- list(...)
+  nms <- names(dots)
+  if (!length(dots) || is.null(nms)) return(msg)
+  for (nm in nms) {
+    if (!nzchar(nm)) next
+    val <- dots[[nm]]
+    if (is.null(val)) val <- ""
+    msg <- gsub(
+      paste0("{", nm, "}"),
+      as.character(val),
+      msg,
+      fixed = TRUE
+    )
+  }
+  msg
+}
+
+.fscore_token_pass <- function(x, locale = "zh-TW") {
+  loc <- tryCatch(normalize_ui_locale(locale), error = function(e) "zh-TW")
+  x <- as.character(x)
+  pass_tokens <- unique(c(
+    "通過", "Pass", "1", "1.0",
+    "✅ Pass", "✅ 通過",
+    ui_str("fscore_result_pass", loc),
+    ui_str("funnel_pass", loc)
+  ))
+  x %in% pass_tokens
+}
+
+#' F-Score quality-screen result cards. Always outside Notes; never a buy signal.
+#' Mirrors Statement alerts: framed boxes visible without expanding <details>.
+fscore_results_ui <- function(df, locale = "zh-TW") {
+  loc <- tryCatch(normalize_ui_locale(locale), error = function(e) "zh-TW")
+  if (is.null(df) || !is.data.frame(df) || nrow(df) < 1L) {
+    return(htmltools::tags$div(
+      class = "ynow-fscore-wrap",
+      htmltools::tags$p(
+        class = "ynow-fscore-waiting",
+        ui_str("funnel_fscore_waiting", loc)
+      )
+    ))
+  }
+  loc_df <- localize_fscore_checklist(df, loc)
+  item_col <- names(loc_df)[1]
+  score_col <- names(loc_df)[min(2L, ncol(loc_df))]
+  passed <- .fscore_token_pass(loc_df[[score_col]], loc)
+  n_pass <- as.integer(sum(passed, na.rm = TRUE))
+  n_fail <- as.integer(nrow(loc_df) - n_pass)
+  pass_lab <- ui_str("funnel_pass", loc)
+  fail_lab <- ui_str("funnel_fail", loc)
+  cards <- lapply(seq_len(nrow(loc_df)), function(i) {
+    ok <- isTRUE(passed[[i]])
+    htmltools::tags$div(
+      class = paste(
+        "ynow-fscore-card",
+        if (ok) "ynow-fscore-pass" else "ynow-fscore-fail"
+      ),
+      htmltools::tags$div(
+        class = "ynow-fscore-card-h",
+        htmltools::tags$span(class = "ynow-fscore-item", loc_df[[item_col]][i]),
+        htmltools::tags$span(
+          class = paste(
+            "ynow-fscore-st",
+            if (ok) "ynow-fscore-pass" else "ynow-fscore-fail"
+          ),
+          if (ok) pass_lab else fail_lab
+        )
+      )
+    )
+  })
+  htmltools::tags$div(
+    class = "ynow-fscore-wrap",
+    htmltools::tags$p(
+      class = "ynow-fscore-count",
+      htmltools::tags$span(
+        class = "ynow-fscore-st ynow-fscore-pass",
+        .ynow_fmt_str(ui_str("funnel_fscore_n_pass", loc), n = n_pass)
+      ),
+      htmltools::tags$span(
+        class = "ynow-fscore-st ynow-fscore-fail",
+        .ynow_fmt_str(ui_str("funnel_fscore_n_fail", loc), n = n_fail)
+      )
+    ),
+    htmltools::tags$div(class = "ynow-fscore-grid", cards)
+  )
 }
 
 #' Collapsible Notes / 附註 chrome. Default collapsed (investor view: KPIs first).

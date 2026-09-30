@@ -27,6 +27,7 @@ keys <- c(
   "lab_im_gate_label", "lab_im_gate_hint", "lab_im_run_title",
   "lab_im_progress", "lab_im_done_gate", "lab_im_gate_on", "lab_im_gate_off",
   "fscore_col_item", "fscore_col_score", "fscore_result_pass", "fscore_result_fail",
+  "funnel_fscore_waiting", "funnel_fscore_n_pass", "funnel_fscore_n_fail",
   "fscore_item_roa_pos", "fscore_item_ocf_pos", "fscore_item_roa_up", "fscore_item_earn_quality",
   "fscore_item_leverage", "fscore_item_liquidity", "fscore_item_dilution",
   "fscore_item_margin", "fscore_item_turnover",
@@ -75,6 +76,10 @@ check("en labels avoid health check / completeness", !grepl("health check|comple
 
 # localize helper
 check("localize helper exists", exists("localize_fscore_checklist", mode = "function"))
+check("fscore cards helper exists", exists("fscore_results_ui", mode = "function"))
+check("waiting en not buy", !grepl("buy", ui_str("funnel_fscore_waiting", "en"), ignore.case = TRUE))
+check("waiting zh 財報", grepl("財報", ui_str("funnel_fscore_waiting", "zh-TW"), fixed = TRUE))
+check("waiting zh not 数据", !grepl("数据", ui_str("funnel_fscore_waiting", "zh-TW"), fixed = TRUE))
 df <- data.frame(
   `檢驗維度` = "獲利性 (ROA > 0)",
   `得分` = "通過",
@@ -88,6 +93,14 @@ check("en checklist Pass", identical(unname(en_df[[2]][1]), "Pass"))
 check("en item ROA", grepl("ROA > 0", en_df[[1]][1], fixed = TRUE))
 check("zh checklist 檢驗維度", "檢驗維度" %in% names(zh_df))
 check("zh checklist 通過", identical(unname(zh_df[[2]][1]), "通過"))
+
+if (requireNamespace("htmltools", quietly = TRUE)) {
+  cards <- fscore_results_ui(df, "en")
+  cards_html <- paste(as.character(cards), collapse = "")
+  check("cards wrap", grepl("ynow-fscore-wrap", cards_html, fixed = TRUE))
+  check("cards not details", !grepl("<details", cards_html, fixed = TRUE))
+  check("cards keep F-Score English result Pass", grepl("Pass", cards_html, fixed = TRUE))
+}
 
 # nine-item key parity
 item_keys <- grep("^fscore_item_", names(.UI_STRINGS$en), value = TRUE)

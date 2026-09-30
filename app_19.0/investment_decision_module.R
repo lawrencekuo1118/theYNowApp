@@ -119,7 +119,7 @@ decision_ui <- function(id) {
           tags$div(
             class = "ynow-funnel-table-wrap",
             id = "ynow_funnel_fscore",
-            tableOutput(ns("table_checklist"))
+            uiOutput(ns("fscore_panel"))
           )
         )
       ),
@@ -336,15 +336,33 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
     }
 
     f_score_eval <- reactive({
-      req(d_is(), d_bs(), d_cf())
-      res <- compute_report_f_score(d_is(), d_bs(), d_cf())
-      # Checklist table still uses 1/0 → pass/fail labels
+      empty <- list(
+        total = NA_real_,
+        quality_flag = NA_real_,
+        checklist = data.frame(
+          `檢驗維度` = character(0),
+          `得分` = character(0),
+          check.names = FALSE,
+          stringsAsFactors = FALSE
+        )
+      )
+      is_df <- tryCatch(d_is(), error = function(e) NULL)
+      bs_df <- tryCatch(d_bs(), error = function(e) NULL)
+      cf_df <- tryCatch(d_cf(), error = function(e) NULL)
+      res <- tryCatch(
+        compute_report_f_score(is_df, bs_df, cf_df),
+        error = function(e) empty
+      )
+      if (!is.list(res)) res <- empty
+      # Checklist still uses 1/0 → pass/fail labels for localize_fscore_checklist
       if (is.data.frame(res$checklist) && nrow(res$checklist) > 0 &&
           is.character(res$checklist$`得分`)) {
         res$checklist$`得分` <- ifelse(res$checklist$`得分` == "通過", 1, 0)
       }
-      if (!is.finite(res$total)) res$total <- 0
-      if (!is.finite(res$quality_flag)) res$quality_flag <- 0
+      if (length(res$total) != 1L || !is.finite(res$total)) res$total <- NA_real_
+      if (length(res$quality_flag) != 1L || !is.finite(res$quality_flag)) {
+        res$quality_flag <- NA_real_
+      }
       res
     })
 
@@ -405,8 +423,10 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
 
     final_recommendation <- reactive({
       .ui_loc() # locale toggle refreshes verdict
-      f_score <- f_score_eval()$total
-      f_quality <- f_score_eval()$quality_flag
+      ev <- tryCatch(f_score_eval(), error = function(e) NULL)
+      f_score <- if (is.list(ev)) ev$total else NA_real_
+      f_quality <- if (is.list(ev)) ev$quality_flag else NA_real_
+      if (!is.finite(f_score) || !is.finite(f_quality)) return(NULL)
       mos <- mos_calc()
       mom <- mom_status()
       if (f_score < 4 || f_quality == 0) {
@@ -453,7 +473,15 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
 
     output$vbox_fscore <- renderValueBox({
       .ui_loc()
-      score <- f_score_eval()$total
+      score <- tryCatch(f_score_eval()$total, error = function(e) NA_real_)
+      if (length(score) != 1L || is.null(score) || is.na(score) || !is.finite(score)) {
+        return(valueBox(
+          "—",
+          .str("funnel_vbox_fscore"),
+          icon = icon("gem"),
+          color = "light-blue"
+        ))
+      }
       color <- if (score >= 7) "green" else if (score >= 4) "yellow" else "red"
       valueBox(
         paste0(score, " / 9"),
@@ -593,30 +621,18 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
 
     output$ui_recommendation <- renderUI({
       rec <- final_recommendation()
+      if (is.null(rec) || !is.list(rec)) return(NULL)
       div(class = paste("alert", rec$class),
           h4(icon(rec$icon), " ", rec$title),
           p(rec$text))
     })
 
-    output$table_checklist <- renderTable({
+    output$fscore_panel <- renderUI({
       loc <- .ui_loc()
-      df <- f_score_eval()$checklist
-      if (nrow(df) > 0 && exists("localize_fscore_checklist", mode = "function")) {
-        df <- localize_fscore_checklist(df, loc)
-        score_col <- intersect(c("得分", "Result", ui_str("fscore_col_score", loc)), names(df))[1]
-        if (!is.na(score_col) && nzchar(score_col)) {
-          pass_tok <- ui_str("fscore_result_pass", loc)
-          df[[score_col]] <- ifelse(
-            df[[score_col]] == pass_tok,
-            .str("funnel_pass"),
-            .str("funnel_fail")
-          )
-        }
-      } else if (nrow(df) > 0) {
-        df$`得分` <- ifelse(df$`得分` == 1, .str("funnel_pass"), .str("funnel_fail"))
-      }
-      df
-    }, striped = TRUE, hover = TRUE, width = "100%")
+      ev <- tryCatch(f_score_eval(), error = function(e) NULL)
+      df <- if (is.list(ev)) ev$checklist else NULL
+      fscore_results_ui(df, loc)
+    })
 
     output$ui_valuation_compare <- renderUI({
       loc <- .ui_loc()
