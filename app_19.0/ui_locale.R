@@ -825,13 +825,13 @@ locale_for_market <- function(mode = get_market_mode()) {
     # --- YNOW page (three stacked blocks) ---
     funnel_page_title = "YNOW",
     funnel_page_sub = paste0(
-      "Three stacked screens: statement quality (F-Score) → statement alerts → ",
+      "Three stacked screens: quality screen (F-Score) → statement alerts → ",
       "dynamic industry bubble and weight concentration. ",
       "Conclusion cards sit in each block, above that block’s table. ",
       "This is a decision-support report—not an order ticket."
     ),
     funnel_ch1_kicker = "Section I",
-    funnel_ch1_title = "Statement quality",
+    funnel_ch1_title = "Quality screen (F-Score)",
     funnel_ch1_lead = paste0(
       "Piotroski F-Score nine-item quality screen and related quality items; ",
       "Pass / Fail is a quality screen only—not a standalone buy reason."
@@ -2117,12 +2117,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     # --- YNOW 頁（三個直向區塊） ---
     funnel_page_title = "YNOW",
     funnel_page_sub = paste0(
-      "三個區塊由上而下：財報體質（F-Score）→ 財報警訊 → 動態產業泡沫與權重集中度。",
+      "三個區塊由上而下：品質檢核（F-Score）→ 財報警訊 → 動態產業泡沫與權重集中度。",
       "各區結論／指標框格置於對應區塊內、表格上方。",
       "這是決策輔助報告，不是下單指令。"
     ),
     funnel_ch1_kicker = "第一章",
-    funnel_ch1_title = "財報體質",
+    funnel_ch1_title = "品質檢核（F-Score）",
     funnel_ch1_lead = paste0(
       "Piotroski F-Score 九項品質檢核與相關品質項目；",
       "通過／未達標僅供品質檢核，不單獨構成買進理由。"
