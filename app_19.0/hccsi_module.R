@@ -28,9 +28,9 @@ hccsi_fmt_score <- function(x, digits = 1) {
 
 hccsi_alert_class <- function(alert) {
   a <- tolower(as.character(alert %||% "")[1])
-  if (identical(a, "critical")) return("ynow-hccsi-alert--critical")
-  if (identical(a, "warning")) return("ynow-hccsi-alert--warning")
-  if (identical(a, "watch")) return("ynow-hccsi-alert--watch")
+  if (a %in% c("critical", "contracting")) return("ynow-hccsi-alert--critical")
+  if (a %in% c("warning", "cooling")) return("ynow-hccsi-alert--warning")
+  if (a %in% c("watch", "steady")) return("ynow-hccsi-alert--watch")
   if (identical(a, "unavailable") || identical(a, "na") || !nzchar(a)) return("ynow-hccsi-alert--unavailable")
   "ynow-hccsi-alert--normal"
 }
@@ -96,10 +96,14 @@ hccsi_kpi_box <- function(result, lite = FALSE, locale = "en", ns = NULL, select
 .hccsi_four_boxes <- function(result, locale = "en") {
   idx <- result$indices %||% list()
   items <- list(
-    list(id = "health", key = "hccsi_index_health", gloss = "hccsi_index_health_gloss", val = idx$systems_health),
-    list(id = "stress", key = "hccsi_index_stress", gloss = "hccsi_index_stress_gloss", val = idx$systemic_stress),
-    list(id = "fragility", key = "hccsi_index_fragility", gloss = "hccsi_index_fragility_gloss", val = idx$concentration_fragility),
-    list(id = "market", key = "hccsi_index_market", gloss = "hccsi_index_market_gloss", val = idx$market_observation)
+    list(id = "health", key = "hccsi_index_health", gloss = "hccsi_index_health_gloss",
+         val = idx$statement_development %||% idx$systems_health),
+    list(id = "market", key = "hccsi_index_market", gloss = "hccsi_index_market_gloss",
+         val = idx$market_vs_benchmark %||% idx$market_observation),
+    list(id = "fragility", key = "hccsi_index_fragility", gloss = "hccsi_index_fragility_gloss",
+         val = idx$influence_vs_market %||% idx$concentration_fragility),
+    list(id = "stress", key = "hccsi_index_stress", gloss = "hccsi_index_stress_gloss",
+         val = idx$trajectory_vs_history %||% idx$systemic_stress)
   )
   cols <- lapply(items, function(it) {
     column(width = 3, class = "col-xs-6 col-sm-6 col-md-3",
@@ -173,8 +177,12 @@ hccsi_kpi_box <- function(result, lite = FALSE, locale = "en", ns = NULL, select
       tags$td(sprintf("%.1f%%", 100 * as.numeric(r$weight)[1])),
       tags$td(if (.finite1(r$ret_1m)) sprintf("%+.1f%%", 100 * r$ret_1m) else "—"),
       tags$td(hccsi_fmt_score(r$beta_60d)),
-      tags$td(if (.finite1(r$max_dd)) sprintf("%.1f%%", 100 * r$max_dd) else "—"),
-      tags$td(paste(hccsi_fmt_score(r$financial_resilience), "/", hccsi_fmt_score(r$operational_continuity))),
+      tags$td(if (.finite1(r$excess_1y)) sprintf("%+.1f%%", 100 * r$excess_1y) else if (.finite1(r$abnormal_return)) sprintf("%+.1f%%", 100 * r$abnormal_return) else "—"),
+      tags$td(paste(
+        if (.finite1(r$rev_yoy)) sprintf("%+.1f%%", 100 * r$rev_yoy) else "—",
+        "/",
+        if (.finite1(r$gm_latest)) sprintf("%.1f%%", 100 * r$gm_latest) else "—"
+      )),
       tags$td(r$substitutes), tags$td(hccsi_fmt_score(r$data_confidence, 0)))
   })
   tags$div(class = "ynow-hccsi-table-wrap",

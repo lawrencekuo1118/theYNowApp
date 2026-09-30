@@ -98,51 +98,47 @@ check("9 ADR missing st", identical(hccsi_classify_alignment(NA, "USD", instrume
   underlying_share_comparison_required = TRUE, usd_twd = 32, statement_currency = NA),
   "STATEMENT_CURRENCY_UNAVAILABLE"))
 
-# 10 single outage != Critical
+# 10 one weak name != stack contracting path
 inp10 <- lapply(stats::setNames(nm = ids), function(id) list(
-  financial_resilience = 75, operational_continuity = 75, supply_chain_resilience = 75,
-  market_stability = 75, data_confidence = 70, ops_incident = FALSE, stress_duration_days = 0))
-inp10$ASML$ops_incident <- TRUE; inp10$ASML$ops_incident_persistent <- FALSE
-inp10$ASML$ops_incident_stress <- 50; inp10$ASML$stress_duration_days <- 1; inp10$ASML$operational_continuity <- 55
+  rev_yoy = 0.08, gm_delta = 0.01, capex_vs_own = 0.01, data_confidence = 90,
+  excess_1y = 0.05, ret_1y = 0.10, beta_60d = 1.05, price_vs_hist = 0.20, rev_yoy_vs_own = 0.02))
+inp10$ASML$rev_yoy <- -0.25; inp10$ASML$excess_1y <- -0.20; inp10$ASML$price_vs_hist <- -0.15
 sc10 <- hccsi_score(inp10, cfg)
-check("10 not Critical", !identical(sc10$alert, "Critical"))
+check("10 not Contracting", !identical(sc10$alert, "Contracting"))
 check("10 no channel", identical(length(sc10$contagion$channels), 0L))
 
-# 11 persistent connected stress
+# 11 linked stages cooling together
 inp11 <- inp10
 for (id in c("ASML", "TSM")) {
-  inp11[[id]]$ops_incident <- TRUE; inp11[[id]]$ops_incident_persistent <- TRUE
-  inp11[[id]]$ops_incident_stress <- 80; inp11[[id]]$supply_disruption <- 80
-  inp11[[id]]$issuer_stress <- 80; inp11[[id]]$stress_duration_days <- 25
-  inp11[[id]]$operational_continuity <- 30
+  inp11[[id]]$rev_yoy <- -0.28; inp11[[id]]$gm_delta <- -0.08; inp11[[id]]$capex_vs_own <- -0.04
+  inp11[[id]]$excess_1y <- -0.35; inp11[[id]]$ret_1y <- -0.25; inp11[[id]]$beta_60d <- 0.6
+  inp11[[id]]$price_vs_hist <- -0.40; inp11[[id]]$rev_yoy_vs_own <- -0.15
 }
 sc11 <- hccsi_score(inp11, cfg)
-check("11 contagion", length(sc11$contagion$channels) >= 1L)
+check("11 cooling path", length(sc11$contagion$channels) >= 1L)
 check("11 litho_foundry", "litho_foundry" %in% sc11$contagion$channels)
 check("11 penalty", is.finite(sc11$contagion$penalty) && sc11$contagion$penalty > 0)
 
-# 12 price decline = market stress only
-n <- 80L; px_down <- 120 - seq_len(n) * 0.6
-inp12 <- lapply(stats::setNames(nm = ids), function(id) list(
-  financial_resilience = 75, operational_continuity = 75, supply_chain_resilience = 75,
-  market_stability = 75, data_confidence = 70, closes = px_down, dates = dates, volume = rep(1e6, n)))
-inp12b <- lapply(stats::setNames(nm = ids), function(id) list(
-  financial_resilience = 75, operational_continuity = 75, supply_chain_resilience = 75,
-  market_stability = 75, data_confidence = 70, closes = rep(100, n), dates = dates, volume = rep(1e6, n)))
-sc12 <- hccsi_score(inp12, cfg); sc12b <- hccsi_score(inp12b, cfg)
-check("12 health stable", abs(sc12$indices$systems_health - sc12b$indices$systems_health) < 1.5)
-check("12 market lower", is.finite(sc12$indices$market_observation) && sc12$indices$market_observation < sc12b$indices$market_observation)
-check("12 not Critical", !identical(sc12$alert, "Critical"))
-
-# 13 higher prices do not raise Systems Health
+# 12/13 price path vs benchmark lifts Market and can lift composite
+n <- 80L
+dates <- seq.Date(as.Date("2024-01-02"), by = "day", length.out = n)
+px_down <- 120 - seq_len(n) * 0.6
+px_flat <- rep(100, n)
 px_up <- 80 + seq_len(n) * 0.8
-inp13 <- lapply(stats::setNames(nm = ids), function(id) list(
-  financial_resilience = 75, operational_continuity = 75, supply_chain_resilience = 75,
-  market_stability = 75, data_confidence = 70, closes = px_up, dates = dates, volume = rep(1e6, n)))
-sc13 <- hccsi_score(inp13, cfg)
-check("13 health unchanged", abs(sc13$indices$systems_health - sc12b$indices$systems_health) < 1.5)
-check("13 market higher", is.finite(sc13$indices$market_observation) && sc13$indices$market_observation > sc12b$indices$market_observation)
-check("13 composite not lifted", is.finite(sc13$composite) && sc13$composite <= sc12b$composite + 0.75)
+bench <- 100 + seq_len(n) * 0.05
+.mk_px_bench <- function(px) lapply(stats::setNames(nm = ids), function(id) list(
+  closes = px, dates = dates, volume = rep(1e6, n),
+  bench_df = data.frame(Date = dates, Close = bench)))
+sc12 <- hccsi_score(.mk_px_bench(px_down), cfg)
+sc12b <- hccsi_score(.mk_px_bench(px_flat), cfg)
+sc13 <- hccsi_score(.mk_px_bench(px_up), cfg)
+check("12 market lower when down", is.finite(sc12$indices$market_observation) &&
+  is.finite(sc12b$indices$market_observation) &&
+  sc12$indices$market_observation < sc12b$indices$market_observation)
+check("13 market higher when up", is.finite(sc13$indices$market_observation) &&
+  sc13$indices$market_observation > sc12b$indices$market_observation)
+check("13 composite can rise with outperformance", is.finite(sc13$composite) && is.finite(sc12b$composite) &&
+  sc13$composite > sc12b$composite)
 
 # 14 caps
 raw <- hccsi_raw_weights(cfg); wt <- hccsi_constrain_weights(raw, cfg)
@@ -169,28 +165,32 @@ check("14 NVDA raw high", raw2[["NVDA"]] > 0.12)
 check("14 NVDA capped", wt2$constrained[["NVDA"]] <= 0.12 + 1e-8)
 
 # 15 reproducible
-sc15a <- hccsi_score(inp12, cfg); sc15b <- hccsi_score(inp12, cfg)
+sc15a <- hccsi_score(.mk_px_bench(px_down), cfg); sc15b <- hccsi_score(.mk_px_bench(px_down), cfg)
 check("15 composite", identical(sc15a$composite, sc15b$composite))
 check("15 indices", identical(sc15a$indices, sc15b$indices))
-check("15 formula", grepl("0.40", sc15a$formula, fixed = TRUE) && grepl("M*", sc15a$formula, fixed = TRUE))
-check("15 role", identical(sc15a$role, "systemic_risk_observation"))
+check("15 formula", grepl("0.30", sc15a$formula, fixed = TRUE) && grepl("Stmt", sc15a$formula, fixed = TRUE))
+check("15 role", identical(sc15a$role, "tech_development_expectation"))
 
-# Dynamism: changing an input must change the output; no placeholder composite.
-px_quiet <- 100 + seq_len(n) * 0.02
-px_wild <- 100 + 12 * sin(seq_len(n) / 1.7)
-.mk_full <- function(px) lapply(stats::setNames(nm = ids), function(id) list(
-  financial_resilience = 75, operational_continuity = 75, supply_chain_resilience = 75,
-  market_stability = 75, data_confidence = 70, closes = px, dates = dates, volume = rep(1e6, n)))
-sc_q <- hccsi_score(.mk_full(px_quiet), cfg)
-sc_w <- hccsi_score(.mk_full(px_wild), cfg)
-check("vol up stress up", is.finite(sc_w$indices$systemic_stress) && is.finite(sc_q$indices$systemic_stress) &&
-  sc_w$indices$systemic_stress > sc_q$indices$systemic_stress)
+check("stmt grows with revenue", {
+  hi <- inp10; lo <- inp10
+  for (id in ids) { hi[[id]]$rev_yoy <- 0.20; lo[[id]]$rev_yoy <- -0.10 }
+  shi <- hccsi_score(hi, cfg); slo <- hccsi_score(lo, cfg)
+  is.finite(shi$indices$statement_development) && is.finite(slo$indices$statement_development) &&
+    shi$indices$statement_development > slo$indices$statement_development
+})
+check("beta lifts influence", {
+  hi <- inp10; lo <- inp10
+  for (id in ids) { hi[[id]]$beta_60d <- 1.6; lo[[id]]$beta_60d <- 0.7 }
+  shi <- hccsi_score(hi, cfg); slo <- hccsi_score(lo, cfg)
+  is.finite(shi$indices$influence_vs_market) && is.finite(slo$indices$influence_vs_market) &&
+    shi$indices$influence_vs_market > slo$indices$influence_vs_market
+})
 
 .mk_px <- function(px) lapply(stats::setNames(nm = ids), function(id) list(
   closes = px, dates = dates, volume = rep(1e6, n)))
 sc_po_up <- hccsi_score(.mk_px(px_up), cfg)
 sc_po_flat <- hccsi_score(.mk_px(rep(100, n)), cfg)
-check("price-only H not auto-up", {
+check("price-only statement not from price", {
   hu <- sc_po_up$indices$systems_health; hf <- sc_po_flat$indices$systems_health
   (!is.finite(hu) && !is.finite(hf)) ||
     (is.finite(hu) && is.finite(hf) && abs(hu - hf) < 1e-8)
@@ -198,6 +198,8 @@ check("price-only H not auto-up", {
 check("price-only M moves", is.finite(sc_po_up$indices$market_observation) &&
   is.finite(sc_po_flat$indices$market_observation) &&
   sc_po_up$indices$market_observation > sc_po_flat$indices$market_observation)
+check("price-only composite can rise", is.finite(sc_po_up$composite) && is.finite(sc_po_flat$composite) &&
+  sc_po_up$composite > sc_po_flat$composite)
 
 sc0 <- hccsi_score(NULL, cfg)
 check("missing history no composite", !is.finite(sc0$composite))
@@ -212,16 +214,16 @@ check("prior not used as H", isTRUE(sc0$issuers$ASML$criticality_prior == 95) &&
 
 c_fill <- hccsi_composite(70, 40, 50, 50, cfg)
 c_omit <- hccsi_composite(70, 40, 50, NA, cfg)
-check("renorm omits M", is.finite(c_omit) &&
-  abs(as.numeric(c_omit)[1] - (0.4 * 70 + 0.3 * 60 + 0.2 * 50) / 0.9) < 1e-8)
-check("renorm != M=50 fill", abs(as.numeric(c_omit)[1] - as.numeric(c_fill)[1]) > 1e-6)
-check("renorm dropped M", isTRUE("market_observation_neutral" %in% attr(c_omit, "dropped")))
+check("renorm omits Traj", is.finite(c_omit) &&
+  abs(as.numeric(c_omit)[1] - (0.30 * 70 + 0.25 * 40 + 0.25 * 50) / 0.80) < 1e-8)
+check("renorm != fill", abs(as.numeric(c_omit)[1] - as.numeric(c_fill)[1]) > 1e-6)
+check("renorm dropped Traj", isTRUE("trajectory_vs_history" %in% attr(c_omit, "dropped")))
 
-inp_short <- inp11
-inp_short$ASML$stress_duration_days <- 2
-inp_short$TSM$stress_duration_days <- 2
-sc_short <- hccsi_score(inp_short, cfg)
-check("brief stress no contagion", !isTRUE("litho_foundry" %in% sc_short$contagion$channels))
+inp_one <- inp11
+inp_one$TSM$rev_yoy <- 0.10; inp_one$TSM$excess_1y <- 0.08; inp_one$TSM$price_vs_hist <- 0.12
+inp_one$TSM$gm_delta <- 0.01; inp_one$TSM$beta_60d <- 1.1; inp_one$TSM$rev_yoy_vs_own <- 0.02
+sc_short <- hccsi_score(inp_one, cfg)
+check("one cooler no litho path", !isTRUE("litho_foundry" %in% sc_short$contagion$channels))
 
 live0 <- hccsi_live_inputs_from_prices(NULL, NULL, cfg)
 check("live no dc default", is.null(live0$AAPL$data_confidence) || !is.finite(live0$AAPL$data_confidence))
@@ -234,6 +236,8 @@ ui_txt <- paste(readLines("ynow_ui.R", warn = FALSE), collapse = "\n")
 mod_txt <- paste(readLines("hccsi_module.R", warn = FALSE), collapse = "\n")
 check("no lazy default score", !grepl("want_px", macro_txt, fixed = TRUE))
 check("always fetch history", grepl("Always attempt live Yahoo/history", macro_txt, fixed = TRUE))
+check("live fetches statements", grepl("cached_scrape_financials", macro_txt, fixed = TRUE))
+check("live 5y window", grepl("fetch_price_history_df(tk, \"5y\")", macro_txt, fixed = TRUE))
 check("UI flow helper", grepl("ynow-hccsi-flow", mod_txt, fixed = TRUE) && grepl("hccsi_score_span", mod_txt, fixed = TRUE))
 check("UI Rf not flow", grepl("ynow-macro-rf__value", macro_txt, fixed = TRUE) &&
   !grepl("ynow-macro-rf__value ynow-hccsi-flow", macro_txt, fixed = TRUE))
@@ -288,16 +292,16 @@ for (k in c("hccsi_title", "hccsi_disclosure", "hccsi_index_health", "hccsi_inde
   check(paste("en", k), nzchar(ui_str(k, "en")))
   check(paste("zh", k), nzchar(ui_str(k, "zh-TW")))
 }
-check("en name", identical(ui_str("hccsi_index_health", "en"), "Systems Health Index"))
-check("zh name EN", identical(ui_str("hccsi_index_health", "zh-TW"), "Systems Health Index"))
-check("zh gloss", grepl("系統健康", ui_str("hccsi_index_health_gloss", "zh-TW"), fixed = TRUE))
+check("en name", identical(ui_str("hccsi_index_health", "en"), "Statement Development"))
+check("zh name EN", identical(ui_str("hccsi_index_health", "zh-TW"), "Statement Development"))
+check("zh gloss", grepl("財報發展", ui_str("hccsi_index_health_gloss", "zh-TW"), fixed = TRUE))
 check("zh no simplified", !grepl("默认|参数|数据|用户", ui_str("hccsi_disclosure", "zh-TW")))
 hccsi_copy_keys <- grep("^hccsi_", names(.UI_STRINGS$en), value = TRUE)
 check("hccsi keys in zh-TW", all(hccsi_copy_keys %in% names(.UI_STRINGS$`zh-TW`)))
 check("zh stage is 環節", identical(ui_str("hccsi_col_layer", "zh-TW"), "環節"))
-check("zh knock-on path", identical(ui_str("hccsi_contagion_paths", "zh-TW"), "連鎖路徑"))
+check("zh knock-on path", identical(ui_str("hccsi_contagion_paths", "zh-TW"), "連鎖降溫路徑"))
 check("en stage not layer", identical(ui_str("hccsi_col_layer", "en"), "Stage"))
-check("en knock-on path", identical(ui_str("hccsi_contagion_paths", "en"), "Knock-on paths"))
+check("en knock-on path", identical(ui_str("hccsi_contagion_paths", "en"), "Linked stages cooling together"))
 check("zh expand avoids 傳染/濾鏡", {
   blob <- paste(vapply(
     c("hccsi_disclosure", "hccsi_index_stress_gloss", "hccsi_network_note",
@@ -328,7 +332,7 @@ if (requireNamespace("htmltools", quietly = TRUE) && requireNamespace("shiny", q
   if (!is.null(exp_zh)) {
     html_zh <- paste(as.character(exp_zh), collapse = " ")
     check("expand zh uses 企業資料庫", grepl("企業資料庫", html_zh, fixed = TRUE))
-    check("expand zh uses 連鎖路徑", grepl("連鎖路徑", html_zh, fixed = TRUE))
+    check("expand zh uses 連鎖降溫路徑", grepl("連鎖降溫路徑", html_zh, fixed = TRUE))
     check("expand zh uses 環節", grepl("環節", html_zh, fixed = TRUE))
     check("expand zh no raw enterprise_dbs cell", !grepl(">enterprise_dbs<", html_zh, fixed = TRUE))
   }

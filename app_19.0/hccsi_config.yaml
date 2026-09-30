@@ -1,12 +1,11 @@
 # Human Civilization Critical Systems Index (HCCSI)
-# Editable observation-tool config — not a recommendation engine,
-# extinction model, collapse forecast, or market-cap-weighted index.
-# Higher prices do not mean healthier systems.
+# Tech-stack development expectation from statements + market vs benchmark
+# and vs each name’s own history. Not a buy signal.
 
 meta:
   id: HCCSI
   name: Human Civilization Critical Systems Index
-  role: systemic_risk_observation
+  role: tech_development_expectation
   not:
     - buy_signal
     - extinction_probability
@@ -40,31 +39,16 @@ weighting:
   normalize_to: 1.0
 
 composite:
-  systems_health: 0.40
-  systemic_stress_inverted: 0.30
-  concentration_fragility_inverted: 0.20
-  market_observation_neutral: 0.10
-
-systems_health_weights:
-  financial_resilience: 0.25
-  operational_continuity: 0.25
-  supply_chain_resilience: 0.20
-  market_stability: 0.15
-  data_confidence: 0.15
-
-systemic_stress_weights:
-  abnormal_vol: 0.20
-  drawdowns: 0.20
-  operational_incidents: 0.15
-  financial_deterioration: 0.15
-  supply_chain_disruption: 0.15
-  contagion: 0.15
+  statement_development: 0.30
+  market_vs_benchmark: 0.25
+  influence_vs_market: 0.25
+  trajectory_vs_history: 0.20
 
 alerts:
-  normal_min: 70
-  watch_min: 55
-  warning_min: 40
-  persist_stress_threshold: 65
+  expanding_min: 70
+  steady_min: 55
+  cooling_min: 40
+  cooling_score: 45
   persist_days: 20
 
 layers:

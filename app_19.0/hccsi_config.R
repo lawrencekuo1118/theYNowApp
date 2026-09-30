@@ -35,7 +35,7 @@ HCCSI_DEFAULT_CONFIG <- list(
   meta = list(
     id = "HCCSI",
     name = "Human Civilization Critical Systems Index",
-    role = "systemic_risk_observation",
+    role = "tech_development_expectation",
     not = c("buy_signal", "extinction_probability", "collapse_prediction", "ordinary_market_cap_index"),
     governance = list(
       rebalance = "quarterly", constituent_review = "annual",
@@ -56,19 +56,18 @@ HCCSI_DEFAULT_CONFIG <- list(
     liquidity_adj_max = 0.20, normalize_to = 1.0
   ),
   composite = c(
-    systems_health = 0.40, systemic_stress_inverted = 0.30,
-    concentration_fragility_inverted = 0.20, market_observation_neutral = 0.10
+    statement_development = 0.30, market_vs_benchmark = 0.25,
+    influence_vs_market = 0.25, trajectory_vs_history = 0.20
   ),
-  systems_health_weights = c(
-    financial_resilience = 0.25, operational_continuity = 0.25,
-    supply_chain_resilience = 0.20, market_stability = 0.15, data_confidence = 0.15
-  ),
-  systemic_stress_weights = c(
-    abnormal_vol = 0.20, drawdowns = 0.20, operational_incidents = 0.15,
-    financial_deterioration = 0.15, supply_chain_disruption = 0.15, contagion = 0.15
-  ),
-  alerts = list(normal_min = 70, watch_min = 55, warning_min = 40,
-                persist_stress_threshold = 65, persist_days = 20),
+  statement_weights = c(rev_yoy = 0.45, gm_delta = 0.25, capex_vs_own = 0.30),
+  market_weights = c(excess = 0.60, absolute = 0.40),
+  influence_weights = c(beta = 0.55, excess = 0.45),
+  trajectory_weights = c(price_vs_hist = 0.55, rev_yoy_vs_own = 0.45),
+  score_scales = list(rev_yoy = 0.20, gm_delta = 0.10, capex_vs_own = 0.05,
+                      excess = 0.30, absolute = 0.30, price_vs_hist = 0.50,
+                      rev_yoy_vs_own = 0.10),
+  alerts = list(expanding_min = 70, steady_min = 55, cooling_min = 40,
+                cooling_score = 45, persist_days = 20),
   layers = list(
     lithography = "ASML", foundries = "TSM", eda = c("SNPS", "CDNS"),
     semiconductors = c("TSM", "AVGO", "NVDA"), cloud = c("MSFT", "AMZN", "GOOGL"),

@@ -683,20 +683,30 @@ macro_market_server <- function(id = "macro",
       refresh_token()
       cfg <- if (exists("hccsi_load_config", mode = "function")) hccsi_load_config() else NULL
       price_map <- list(); bench_df <- NULL
-      # Always attempt live Yahoo/history. Never score from config placeholders.
+      # Always attempt live Yahoo/history and statements. Never score from config placeholders.
       if (exists("fetch_price_history_df", mode = "function") &&
           exists("hccsi_issuers", mode = "function")) {
         for (iss in hccsi_issuers(cfg)) {
           tk <- as.character(iss$tickers[[1]] %||% "")[1]
           if (!nzchar(tk)) next
-          pdf <- tryCatch(fetch_price_history_df(tk, "1y"), error = function(e) NULL)
+          pdf <- tryCatch(fetch_price_history_df(tk, "5y"), error = function(e) NULL)
           if (!is.null(pdf) && is.data.frame(pdf) && nrow(pdf) >= 2L) price_map[[tk]] <- pdf
         }
         bench_tk <- tryCatch(macro_bench_ticker(.mode()), error = function(e) "^GSPC")
-        bench_df <- tryCatch(fetch_price_history_df(bench_tk, "1y"), error = function(e) NULL)
+        bench_df <- tryCatch(fetch_price_history_df(bench_tk, "5y"), error = function(e) NULL)
+      }
+      fs_map <- list()
+      if (exists("cached_scrape_financials", mode = "function") &&
+          exists("hccsi_issuers", mode = "function")) {
+        for (iss in hccsi_issuers(cfg)) {
+          tk <- as.character(iss$tickers[[1]] %||% "")[1]
+          if (!nzchar(tk)) next
+          fs <- tryCatch(cached_scrape_financials(tk), error = function(e) NULL)
+          if (!is.null(fs)) fs_map[[tk]] <- fs
+        }
       }
       inputs <- if (exists("hccsi_live_inputs_from_prices", mode = "function")) {
-        hccsi_live_inputs_from_prices(price_map, bench_df, cfg)
+        hccsi_live_inputs_from_prices(price_map, bench_df, cfg, fs_map)
       } else NULL
       if (exists("hccsi_score", mode = "function")) tryCatch(hccsi_score(inputs, cfg), error = function(e) NULL) else NULL
     })
