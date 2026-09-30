@@ -31,6 +31,23 @@ check <- function(label, ok) {
 check("US bench", identical(macro_bench_ticker("US"), "^GSPC"))
 check("TW bench", identical(macro_bench_ticker("TW"), "^TWII"))
 
+click_us <- macro_click_index_specs("US")
+click_tw <- macro_click_index_specs("TW")
+check("click specs same in US and TW", identical(click_us, click_tw))
+check(
+  "click specs four Yahoo symbols",
+  identical(names(click_us), c("^GSPC", "^IXIC", "^DJI", "^SOX"))
+)
+check(
+  "click specs four labels",
+  identical(unname(click_us), c("S&P 500", "Nasdaq", "Dow Jones", "SOX (semis)"))
+)
+check("box id GSPC", identical(macro_index_box_id("^GSPC"), "ynow_macro_idx_gspc"))
+check("box id IXIC", identical(macro_index_box_id("^IXIC"), "ynow_macro_idx_ixic"))
+check("box id DJI", identical(macro_index_box_id("^DJI"), "ynow_macro_idx_dji"))
+check("box id SOX", identical(macro_index_box_id("^SOX"), "ynow_macro_idx_sox"))
+check("name key GSPC", identical(macro_index_name_key("^GSPC"), "macro_index_name_gspc"))
+
 ch_us <- macro_theme_choices("US", "en")
 ch_tw <- macro_theme_choices("TW", "zh-TW")
 ind_us <- macro_industry_choices("US", "en")
@@ -65,7 +82,10 @@ for (k in c(
   "menu_macro_market", "macro_fx_lock", "macro_page_title", "macro_theme_title",
   "macro_industry_label", "macro_concept_label", "macro_none_option",
   "macro_plot_need_pick", "macro_series_industry", "macro_series_concept",
-  "macro_series_rebased", "macro_bubble_theme_label"
+  "macro_series_rebased", "macro_bubble_theme_label",
+  "macro_index_name_gspc", "macro_index_name_ixic", "macro_index_name_dji",
+  "macro_index_name_sox", "macro_index_chart_hint", "macro_index_chart_empty",
+  "macro_index_chart_error"
 )) {
   check(paste("en", k), nzchar(ui_str(k, "en")))
   check(paste("zh", k), nzchar(ui_str(k, "zh-TW")))
@@ -78,6 +98,12 @@ check("zh concept label", identical(ui_str("macro_concept_label", "zh-TW"), "概
 check("en title not combined", !grepl("Industry / concept vs benchmark", ui_str("macro_theme_title", "en"), fixed = TRUE))
 check("zh title not combined", !grepl("產業／概念股 vs 大盤", ui_str("macro_theme_title", "zh-TW"), fixed = TRUE))
 check("zh none is 不選", identical(ui_str("macro_none_option", "zh-TW"), "不選"))
+check("en index names stay English", identical(ui_str("macro_index_name_gspc", "en"), "S&P 500"))
+check("zh index names stay English", identical(ui_str("macro_index_name_gspc", "zh-TW"), "S&P 500"))
+check("en SOX name", identical(ui_str("macro_index_name_sox", "en"), "SOX (semis)"))
+check("zh SOX name", identical(ui_str("macro_index_name_sox", "zh-TW"), "SOX (semis)"))
+check("en chart hint", grepl("Click an index box", ui_str("macro_index_chart_hint", "en"), fixed = TRUE))
+check("zh chart hint", grepl("點選指數方塊", ui_str("macro_index_chart_hint", "zh-TW"), fixed = TRUE))
 
 for (k in c(
   "macro_beta_title", "macro_beta_warn_title", "macro_beta_warn_body",
@@ -133,5 +159,33 @@ check("industry vs benchmark first paint", grepl("Industry vs benchmark", txt, f
 check("concept vs benchmark first paint", grepl("Concept vs benchmark", txt, fixed = TRUE))
 check("empty none default", grepl("industry_key", txt, fixed = TRUE) && grepl('selected = ""', txt, fixed = TRUE))
 check("no Lite-only combined menu", !grepl("ynow-lite-only", txt, fixed = TRUE))
+check("click specs helper", grepl("macro_click_index_specs", txt, fixed = TRUE))
+check("KPI uses click specs not TW catalog", grepl("macro_click_index_specs(.mode())", txt, fixed = TRUE))
+check("clickable box id GSPC", grepl("ynow_macro_idx_gspc", txt, fixed = TRUE))
+check("clickable box id IXIC", grepl("ynow_macro_idx_ixic", txt, fixed = TRUE))
+check("clickable box id DJI", grepl("ynow_macro_idx_dji", txt, fixed = TRUE))
+check("clickable box id SOX", grepl("ynow_macro_idx_sox", txt, fixed = TRUE))
+check("index click input", grepl("index_click", txt, fixed = TRUE))
+check("index hist plot output", grepl("index_hist_plot", txt, fixed = TRUE))
+check("index hist panel above Rf", {
+  pos_hist <- regexpr("ynow_macro_index_hist", txt, fixed = TRUE)[1]
+  pos_rf <- regexpr("rf_signal_row", txt, fixed = TRUE)[1]
+  is.finite(pos_hist) && pos_hist > 0 && is.finite(pos_rf) && pos_hist < pos_rf
+})
+check("hint above Rf", {
+  pos_hint <- regexpr("ynow_macro_index_hint", txt, fixed = TRUE)[1]
+  pos_rf <- regexpr("rf_signal_row", txt, fixed = TRUE)[1]
+  is.finite(pos_hint) && pos_hint > 0 && pos_hint < pos_rf
+})
+check("chart slot is full-only", grepl("ynow-macro-index-hist ynow-full-only", txt, fixed = TRUE))
+check("hint is full-only", grepl("ynow-macro-hint ynow-full-only", txt, fixed = TRUE))
+check("lite gate on click", grepl(".is_lite", txt, fixed = TRUE) && grepl("lite_mode_rv", txt, fixed = TRUE))
+check("keeps showing on same box", !grepl("selected_index(\"\")", txt, fixed = TRUE))
+check("no Theme Rolling beta return", !grepl("Theme Rolling β vs benchmark", txt, fixed = TRUE))
+
+ui_css <- ui_src
+check("lite CSS hides chart slot", grepl("body.ynow-lite #ynow_macro_index_hist", ui_css, fixed = TRUE))
+check("lite CSS disables clickable boxes", grepl("body.ynow-lite .ynow-macro-kpi--clickable", ui_css, fixed = TRUE))
+check("locale wires index hint", grepl("ynow_macro_index_hint", ui_css, fixed = TRUE))
 
 cat("All macro market module checks passed.\n")

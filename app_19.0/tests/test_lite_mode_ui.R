@@ -28,7 +28,10 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
     "testing_box_title", "testing_box_body",
     "hfv_chart_overlay_aria", "hfv_chart_models_label",
     "lab_im_gate_label", "funnel_ch1_title", "dc_label_fscore",
-    "notes_title", "notes_toggle_aria"
+    "notes_title", "notes_toggle_aria",
+    "macro_index_name_gspc", "macro_index_name_ixic", "macro_index_name_dji",
+    "macro_index_name_sox", "macro_index_chart_hint", "macro_index_chart_empty",
+    "macro_index_chart_error"
   )
   for (k in keys) {
     en <- .UI_STRINGS$en[[k]]
@@ -72,6 +75,22 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_false(grepl('ns("theme_key")', macro_txt, fixed = TRUE))
   testthat::expect_false(grepl("Industry / concept vs benchmark", macro_txt, fixed = TRUE))
   testthat::expect_false(grepl("ynow-lite-only", macro_txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow_macro_idx_gspc", macro_txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow_macro_idx_ixic", macro_txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow_macro_idx_dji", macro_txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow_macro_idx_sox", macro_txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow_macro_index_hist", macro_txt, fixed = TRUE))
+  testthat::expect_true(grepl("index_hist_plot", macro_txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-full-only", macro_txt, fixed = TRUE))
+  testthat::expect_true(
+    regexpr("ynow_macro_index_hist", macro_txt, fixed = TRUE)[1] <
+      regexpr("rf_signal_row", macro_txt, fixed = TRUE)[1]
+  )
+  testthat::expect_true(grepl("macro_click_index_specs", macro_txt, fixed = TRUE))
+  testthat::expect_true(grepl("lite_mode_rv", macro_txt, fixed = TRUE))
+  testthat::expect_true(grepl("body.ynow-lite #ynow_macro_index_hist", txt, fixed = TRUE))
+  testthat::expect_true(grepl("body.ynow-lite .ynow-macro-kpi--clickable", txt, fixed = TRUE))
+  testthat::expect_true(grepl("body.ynow-lite #ynow_macro_index_hint", txt, fixed = TRUE))
   # Macro tab must appear before Dashboard in sidebar markup
   testthat::expect_true(
     regexpr('tabName = "macro_market"', txt, fixed = TRUE)[1] <

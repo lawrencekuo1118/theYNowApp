@@ -76,6 +76,39 @@ macro_index_specs <- function(mode = get_market_mode()) {
   if (identical(normalize_market_mode(mode), "TW")) .MACRO_TW_INDICES else .MACRO_US_INDICES
 }
 
+# Click-to-chart KPI strip: same four US / semis series in US and TW market modes.
+.MACRO_CLICK_INDEX_BOX_IDS <- c(
+  "^GSPC" = "ynow_macro_idx_gspc",
+  "^IXIC" = "ynow_macro_idx_ixic",
+  "^DJI" = "ynow_macro_idx_dji",
+  "^SOX" = "ynow_macro_idx_sox"
+)
+.MACRO_CLICK_INDEX_NAME_KEYS <- c(
+  "^GSPC" = "macro_index_name_gspc",
+  "^IXIC" = "macro_index_name_ixic",
+  "^DJI" = "macro_index_name_dji",
+  "^SOX" = "macro_index_name_sox"
+)
+
+macro_click_index_specs <- function(mode = NULL) {
+  # mode is accepted so callers can pass US/TW; the catalog does not switch.
+  .MACRO_US_INDICES
+}
+
+macro_index_box_id <- function(symbol) {
+  sym <- as.character(symbol %||% "")[1]
+  id <- unname(.MACRO_CLICK_INDEX_BOX_IDS[[sym]])
+  if (length(id) && !is.na(id) && nzchar(id)) return(id)
+  paste0("ynow_macro_idx_", gsub("[^A-Za-z0-9]+", "", tolower(sym)))
+}
+
+macro_index_name_key <- function(symbol) {
+  sym <- as.character(symbol %||% "")[1]
+  key <- unname(.MACRO_CLICK_INDEX_NAME_KEYS[[sym]])
+  if (length(key) && !is.na(key) && nzchar(key)) return(key)
+  "macro_index_chart_empty"
+}
+
 macro_none_choice <- function(locale = "en") {
   loc <- if (exists("normalize_ui_locale", mode = "function")) {
     normalize_ui_locale(locale)
@@ -282,6 +315,16 @@ macro_market_ui <- function(id = "macro") {
     fluidRow(
       column(width = 12, uiOutput(ns("index_kpi_row")))
     ),
+    tags$p(
+      id = "ynow_macro_index_hint",
+      class = "ynow-macro-hint ynow-full-only",
+      "Click an index box to show its historical line chart."
+    ),
+    tags$div(
+      id = "ynow_macro_index_hist",
+      class = "ynow-macro-index-hist ynow-full-only",
+      uiOutput(ns("index_hist_panel"))
+    ),
     uiOutput(ns("rf_signal_row")),
     tags$section(
       class = "ynow-macro-chapter",
@@ -356,7 +399,8 @@ macro_market_ui <- function(id = "macro") {
 #' @param ui_locale_rv reactive returning locale id
 macro_market_server <- function(id = "macro",
                                 market_mode_rv,
-                                ui_locale_rv = reactive("en")) {
+                                ui_locale_rv = reactive("en"),
+                                lite_mode_rv = NULL) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     `%||%` <- function(a, b) if (is.null(a)) b else a
@@ -367,6 +411,12 @@ macro_market_server <- function(id = "macro",
     .mode <- function() {
       tryCatch(normalize_market_mode(market_mode_rv()), error = function(e) "US")
     }
+    .is_lite <- function() {
+      if (!is.null(lite_mode_rv)) {
+        return(isTRUE(tryCatch(lite_mode_rv(), error = function(e) FALSE)))
+      }
+      tryCatch(isTRUE(session$rootScope()$input$ynow_lite_mode), error = function(e) FALSE)
+    }
     .ui <- function(key, ...) {
       if (exists("ui_str", mode = "function")) {
         tryCatch(ui_str(key, .loc(), ...), error = function(e) key)
@@ -376,8 +426,17 @@ macro_market_server <- function(id = "macro",
     }
 
     refresh_token <- reactiveVal(0L)
+    selected_index <- reactiveVal("")
     observeEvent(input$refresh, {
       refresh_token(isolate(refresh_token()) + 1L)
+    }, ignoreInit = TRUE)
+    observeEvent(input$index_click, {
+      if (.is_lite()) return()
+      sym <- as.character(input$index_click %||% "")[1]
+      specs <- macro_click_index_specs()
+      if (nzchar(sym) && sym %in% names(specs)) {
+        selected_index(sym)
+      }
     }, ignoreInit = TRUE)
     observeEvent(input$bubble_refresh, {
       refresh_token(isolate(refresh_token()) + 1L)
@@ -412,8 +471,7 @@ macro_market_server <- function(id = "macro",
 
     index_quotes <- reactive({
       refresh_token()
-      mode <- .mode()
-      specs <- macro_index_specs(mode)
+      specs <- macro_click_index_specs(.mode())
       rows <- lapply(names(specs), function(sym) {
         df <- tryCatch(fetch_price_history_df(sym, "5d"), error = function(e) NULL)
         last <- if (!is.null(df) && nrow(df)) {
@@ -433,23 +491,126 @@ macro_market_server <- function(id = "macro",
 
     output$index_kpi_row <- renderUI({
       rows <- index_quotes()
+      lite <- .is_lite()
+      sel <- as.character(selected_index() %||% "")[1]
       cols <- lapply(rows, function(r) {
         last_txt <- if (is.finite(r$last)) format(round(r$last, 2), big.mark = ",") else "—"
         chg_txt <- if (is.finite(r$chg_pct)) sprintf("%+.2f%%", r$chg_pct) else "—"
         col_cls <- if (is.finite(r$chg_pct) && r$chg_pct >= 0) "ynow-macro-up" else "ynow-macro-down"
+        box_id <- macro_index_box_id(r$symbol)
+        loc_lab <- .ui(macro_index_name_key(r$symbol))
+        lab <- if (nzchar(loc_lab) && !identical(loc_lab, macro_index_name_key(r$symbol))) {
+          loc_lab
+        } else {
+          r$label
+        }
+        kpi_cls <- "ynow-macro-kpi"
+        extra <- NULL
+        if (!isTRUE(lite)) {
+          kpi_cls <- paste(kpi_cls, "ynow-macro-kpi--clickable")
+          if (nzchar(sel) && identical(sel, r$symbol)) {
+            kpi_cls <- paste(kpi_cls, "ynow-macro-kpi--selected")
+          }
+          extra <- list(
+            role = "button",
+            tabindex = "0",
+            onclick = sprintf(
+              paste0(
+                "if (document.body && document.body.classList.contains('ynow-lite')) return; ",
+                "if (window.Shiny && Shiny.setInputValue) {",
+                " Shiny.setInputValue('%s', '%s', {priority: 'event'}); }"
+              ),
+              ns("index_click"),
+              r$symbol
+            )
+          )
+        }
         column(
           width = 3,
           class = "col-xs-6 col-sm-6 col-md-3",
-          tags$div(
-            class = "ynow-macro-kpi",
-            tags$div(class = "ynow-macro-kpi__label", r$label),
-            tags$div(class = "ynow-macro-kpi__value", last_txt),
-            tags$div(class = paste("ynow-macro-kpi__chg", col_cls), chg_txt),
-            tags$div(class = "ynow-macro-kpi__sym", r$symbol)
+          do.call(
+            tags$div,
+            c(
+              list(
+                id = box_id,
+                class = kpi_cls,
+                `data-macro-index` = r$symbol,
+                tags$div(class = "ynow-macro-kpi__label", lab),
+                tags$div(class = "ynow-macro-kpi__value", last_txt),
+                tags$div(class = paste("ynow-macro-kpi__chg", col_cls), chg_txt),
+                tags$div(class = "ynow-macro-kpi__sym", r$symbol)
+              ),
+              extra
+            )
           )
         )
       })
       do.call(fluidRow, c(list(class = "ynow-macro-kpi-row"), cols))
+    })
+
+    index_hist_data <- reactive({
+      refresh_token()
+      if (.is_lite()) return(NULL)
+      sym <- as.character(selected_index() %||% "")[1]
+      if (!nzchar(sym)) return(NULL)
+      period <- as.character(input$hist_period %||% "1y")[1]
+      if (!nzchar(period) || is.na(period)) period <- "1y"
+      tryCatch(fetch_price_history_df(sym, period), error = function(e) NULL)
+    })
+
+    output$index_hist_panel <- renderUI({
+      if (.is_lite()) return(NULL)
+      sym <- as.character(selected_index() %||% "")[1]
+      if (!nzchar(sym)) return(NULL)
+      dat <- index_hist_data()
+      title <- .ui(macro_index_name_key(sym))
+      body <- if (is.null(dat)) {
+        tags$p(
+          id = "ynow_macro_index_empty",
+          class = "ynow-macro-hint",
+          .ui("macro_index_chart_error")
+        )
+      } else if (!is.data.frame(dat) || nrow(dat) < 2L) {
+        tags$p(
+          id = "ynow_macro_index_empty",
+          class = "ynow-macro-hint",
+          .ui("macro_index_chart_empty")
+        )
+      } else {
+        plotlyOutput(ns("index_hist_plot"), height = "320px", width = "100%")
+      }
+      tags$div(
+        class = "ynow-macro-card ynow-macro-index-hist__card",
+        tags$h4(id = "ynow_macro_index_hist_title", title),
+        body
+      )
+    })
+
+    output$index_hist_plot <- plotly::renderPlotly({
+      if (.is_lite()) {
+        return(plotly::plotly_empty(type = "scatter", mode = "lines"))
+      }
+      dat <- index_hist_data()
+      shiny::validate(shiny::need(
+        is.data.frame(dat) && nrow(dat) >= 2L,
+        .ui("macro_index_chart_empty")
+      ))
+      title <- .ui(macro_index_name_key(selected_index()))
+      fig <- plotly::plot_ly(
+        dat, x = ~Date, y = ~Close,
+        type = "scatter", mode = "lines",
+        name = title,
+        line = list(color = "#0c5484", width = 2)
+      )
+      plotly::layout(
+        fig,
+        title = list(text = title, font = list(size = 14)),
+        xaxis = list(title = ""),
+        yaxis = list(title = title, showgrid = TRUE),
+        margin = list(l = 50, r = 20, t = 50, b = 40),
+        hovermode = "x unified",
+        showlegend = FALSE
+      )
     })
 
     output$rf_box <- renderUI({

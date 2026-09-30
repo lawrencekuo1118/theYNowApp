@@ -2254,6 +2254,14 @@ ui <- dashboardPage(
         body.ynow-lite .ynow-full-only {
           display: none !important;
         }
+        body.ynow-lite .ynow-macro-kpi--clickable {
+          cursor: default !important;
+          pointer-events: none;
+        }
+        body.ynow-lite #ynow_macro_index_hist,
+        body.ynow-lite #ynow_macro_index_hint {
+          display: none !important;
+        }
         /* Prefer data-value: locale applyTabLabels may strip title span ids */
         body.ynow-lite #bluechip_im_report > li:has(> a[data-value="im_detail"]),
         body.ynow-lite .nav-tabs > li:has(> a[data-value="im_detail"]) {
@@ -3591,6 +3599,7 @@ ui <- dashboardPage(
             setBtText('ynow_macro_page_title', 'macro_page_title');
             setBtText('ynow_macro_page_sub', 'macro_page_sub');
             setBtText('ynow_macro_rf_title', 'macro_rf_title');
+            setBtText('ynow_macro_index_hint', 'macro_index_chart_hint');
             setBtText('ynow_macro_rf_note', 'macro_rf_note');
             setBtText('ynow_macro_tw_signal_title', 'macro_tw_signal_title');
             setBtText('ynow_macro_theme_title', 'macro_theme_title');
@@ -5792,6 +5801,26 @@ ui <- dashboardPage(
           font-size: 11px;
           color: rgba(245, 197, 24, 0.55);
           margin-top: auto;
+        }
+        .ynow-macro-kpi--clickable {
+          cursor: pointer;
+          transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .ynow-macro-kpi--clickable:hover {
+          border-color: rgba(201, 162, 39, 0.85);
+        }
+        .ynow-macro-kpi--selected {
+          border-color: var(--ynow-macro-gold);
+          box-shadow: 0 0 0 2px rgba(201, 162, 39, 0.45);
+        }
+        .ynow-macro-index-hist {
+          width: 100%;
+          max-width: 100%;
+          margin: 0 0 12px 0;
+        }
+        .ynow-macro-index-hist__card {
+          width: 100%;
+          min-height: 0;
         }
         .ynow-macro-kpi .ynow-macro-up,
         .ynow-macro-rf .ynow-macro-up { color: var(--ynow-macro-green); }

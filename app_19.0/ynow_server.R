@@ -2758,7 +2758,8 @@ server <- function(input, output, session) {
   macro_market_server(
     "macro",
     market_mode_rv = market_mode,
-    ui_locale_rv = ui_locale
+    ui_locale_rv = ui_locale,
+    lite_mode_rv = reactive(isTRUE(input$ynow_lite_mode))
   )
   
   run_calc_trigger <- reactiveVal(0)
