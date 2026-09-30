@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12626032
+bundleId=12626262
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=2b508fd3248987e99cc3da7ae940799f95ced853
-commit=2b508fd3248987e99cc3da7ae940799f95ced853
-short=2b508fd
-message=Replace TW Macro industry sub-index boards with 0050 so the KPI row is TAIEX, TPEx, and Yuanta Taiwan 50 only.
-captured_at=2026-09-30T05:16:24Z
+aligned_git=f1acc4bd7ca53fbb71590fd56efd421ebca24485
+commit=f1acc4bd7ca53fbb71590fd56efd421ebca24485
+short=f1acc4b
+message=Stop filling HCCSI with placeholder scores so the composite moves with the stated rules.
+captured_at=2026-09-30T06:39:24Z
 source_branch=cursor/lifecycle-v19-3fb1
 display_version=v19.17
-note=Canonical live line is app_19.0. Bundle 12626032 = v19.16 TW Macro top KPI row is three boards only: TAIEX ^TWII / TPEx ^TWOII / 0050.TW (Yuanta Taiwan 50). Electronics ^TELI and Finance ^TFNI removed. US stays four (S&P 500 / Nasdaq / Dow Jones / SOX). HCCSI composite still 1:1 beside Rf. Full click-to-chart includes 0050; Lite hides the chart. Also keeps v19.15 HCCSI, v19.13 Rf Notes removal, v19.12 relative-perf help outside Notes, v19.11 F-Score boxes default-visible, page-lead outside Notes, v19.10 Lite Smart Analysis blurb, v19.09 Full-only Macro KPI click-to-chart, collapsible Notes, and YNOW KPI jump row. Deploy via scripts/deploy_app_19.R. Supersedes 12625997 / 12625985 / 12625973 / 12625956 / 12625916 / 12625890 / 12625810 / 12625762 / 12625733 / 12625709 / 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
+note=Canonical live line is app_19.0. Bundle 12626262 = v19.17 HCCSI audit: no placeholder/default composite (omit missing H/S/F/M and renormalize); live Yahoo/history required or Unavailable; logo teal/cyan animated flow fill on HCCSI numerals only. Also keeps v19.16 TW three boards (TAIEX/TPEx/0050), v19.15 HCCSI 1:1 beside Rf, v19.13 Rf Notes removal, v19.12 relative-perf help outside Notes, v19.11 F-Score boxes default-visible, page-lead outside Notes, v19.10 Lite Smart Analysis blurb, v19.09 Full-only Macro KPI click-to-chart, collapsible Notes, and YNOW KPI jump row. Deploy via scripts/deploy_app_19.R. Supersedes 12626032 / 12625997 / 12625985 / 12625973 / 12625956 / 12625916 / 12625890 / 12625810 / 12625762 / 12625733 / 12625709 / 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
