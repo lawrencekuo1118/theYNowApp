@@ -62,6 +62,21 @@ sm2 <- lab_method_group_summary(
 )
 check("partial summary order", identical(sm2$method_key, c("nav", "ri", "pb")))
 
+defaults <- lab_industry_method_defaults()
+cyc_keys <- intersect(CYCLICAL_INDUSTRY_KEYS, defaults$industry_key)
+check("lab defaults cover cyclical keys", length(cyc_keys) == length(CYCLICAL_INDUSTRY_KEYS))
+cyc_rows <- defaults[defaults$industry_key %in% CYCLICAL_INDUSTRY_KEYS, , drop = FALSE]
+check(
+  "lab cyclical rows keep P/B as primary or secondary",
+  nrow(cyc_rows) > 0L &&
+    all(cyc_rows$primary == "pb" | cyc_rows$secondary == "pb")
+)
+staples <- defaults[defaults$industry_key %in% c("fmcg.Food_Beverages", "fmcg.Household_Personal"), , drop = FALSE]
+check(
+  "lab staples not forced to P/B",
+  nrow(staples) == 2L && !any(staples$primary == "pb" | staples$secondary == "pb")
+)
+
 if (fail > 0L) {
   cat("FAILED ", fail, " check(s)\n", sep = "")
   quit(status = 1L)

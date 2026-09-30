@@ -356,6 +356,63 @@ check("low lifecycle confidence is forwarded",
       is.finite(rec_low$confidence_inputs$lifecycle_confidence) &&
         rec_low$confidence_inputs$lifecycle_confidence < 0.45)
 
+# --- Cyclical industries must keep P/B as primary or secondary ---
+.has_pb_slot <- function(rec) {
+  identical(as.character(rec$primary %||% ""), "pb") ||
+    identical(as.character(rec$secondary %||% ""), "pb")
+}
+cyc_cases <- list(
+  list("Steel", "mat.Metals_Mining"),
+  list("Marine Shipping", "tr.Logistics_Shipping"),
+  list("Specialty Chemicals", "mat.Chemicals"),
+  list("Semiconductors - Memory", "sc.Memory"),
+  list("Semiconductor Foundry", "sc.Foundry"),
+  list("Auto Manufacturers", "auto.Vehicle_Manufacturing"),
+  list("Paper & Packaging", "mat.Paper_Packaging"),
+  list("Airlines", "tr.Airlines"),
+  list("Oil & Gas Integrated", "en.Energy_OilGas")
+)
+for (cc in cyc_cases) {
+  rec_c <- recommend_valuation_models(
+    base_cf(), cc[[1]], base_is(), base_bs(), industry_choice = cc[[2]]
+  )
+  check(paste0("cyclical ", cc[[2]], " has P/B slot"), .has_pb_slot(rec_c))
+  check(paste0("cyclical ", cc[[2]], " tagged"), isTRUE(rec_c$confidence_inputs$cyclical_industry))
+  check(paste0("cyclical ", cc[[2]], " mentions P/B rule"), {
+    grepl("景氣循環", rec_c$reason %||% "") && grepl("P/B", rec_c$reason_en %||% "")
+  })
+}
+rec_steel_txt <- recommend_valuation_models(
+  base_cf(), "Steel", base_is(), base_bs(), industry_choice = ""
+)
+check("text-only steel still gets P/B slot", .has_pb_slot(rec_steel_txt))
+
+rec_foods <- recommend_valuation_models(
+  base_cf(), "Packaged Foods", base_is(), base_bs(),
+  industry_choice = "fmcg.Food_Beverages"
+)
+check("staples not forced to P/B", !isTRUE(rec_foods$confidence_inputs$cyclical_industry))
+
+rec_saas <- recommend_valuation_models(
+  base_cf(), "Software - Application", base_is(), base_bs(),
+  industry_choice = "saas.SaaS_Cloud"
+)
+check("saas not cyclical", !isTRUE(rec_saas$confidence_inputs$cyclical_industry))
+check("saas not forced to P/B", !.has_pb_slot(rec_saas))
+
+rec_neg_eq <- recommend_valuation_models(
+  base_cf(),
+  "Steel",
+  base_is(),
+  base_bs(equity = c(-40, -38)),
+  industry_choice = "mat.Metals_Mining"
+)
+check("cyclical negative equity does not force P/B", !.has_pb_slot(rec_neg_eq))
+
+src_rec <- paste(deparse(assemble_model_recommendation), collapse = "\n")
+check("no ticker branch in model recommendation",
+      !grepl("TSM|AAPL|2330|NUE|XOM", src_rec, ignore.case = TRUE))
+
 # --- Terminal / lifecycle diagnostics reuse existing engine ---
 d_gt <- lifecycle_terminal_diagnostics(g_term = 10, wacc = 8)
 check("g > WACC fatal", any(vapply(d_gt, function(x) identical(x$code, "val_diag_wacc_gt_g") && identical(x$level, "fatal"), logical(1))))

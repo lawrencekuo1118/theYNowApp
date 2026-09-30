@@ -1071,3 +1071,91 @@ industry_standard_snapshot_ui <- function(industry_key,
   )
 }
 
+# ---------------------------------------------------------------------------
+# 景氣循環產業（台灣投資界常用分類）→ 評價建議
+# Industry-class only. No ticker-specific formula branches.
+# Typical: steel, shipping, commodity chemicals, DRAM / foundry, auto, paper,
+# airlines, oil & gas, textiles, panels, construction, machinery.
+# ---------------------------------------------------------------------------
+
+CYCLICAL_INDUSTRY_KEYS <- c(
+  "mat.Metals_Mining",
+  "mat.Chemicals",
+  "mat.Paper_Packaging",
+  "mat.Textiles",
+  "mat.Glass_Ceramics",
+  "tr.Logistics_Shipping",
+  "tr.Airlines",
+  "auto.Vehicle_Manufacturing",
+  "auto.Parts_Suppliers",
+  "sc.Memory",
+  "sc.Foundry",
+  "sc.Packaging",
+  "sc.Equipment",
+  "en.Energy_OilGas",
+  "hosp.Hotels_Travel",
+  "tech.Optoelectronics",
+  "ind.Construction",
+  "ind.Machinery",
+  "cons.Discretionary"
+)
+
+# Auxiliary Yahoo / TW industry text when the taxonomy key is missing.
+# Do not match utilities, staples, software, or banks.
+CYCLICAL_INDUSTRY_RE <- paste0(
+  "Steel|Copper|Aluminum|Metals[[:space:]&].*Mining|\\bMining\\b|",
+  "Marine[[:space:]].*Shipping|\\bShipping\\b|Airlines?|",
+  "Paper[[:space:]&].*Packag|Specialty Chemicals?|Commodity Chemicals?|",
+  "\\bTextiles?\\b|\\bDRAM\\b|\\bNAND\\b|Semiconductor Memory|Memory Semiconductors?|",
+  "\\bFoundry\\b|Semiconductor Manufacturing|Auto Manufacturers?|Auto Parts|",
+  "Oil[[:space:]&]+Gas|Integrated Oil|Hotels?[[:space:]&].*Resorts?|",
+  "Building Materials|Construction[[:space:]&].*Engineering|Industrial Machinery|",
+  "Display Panels?|Optoelectronics?|",
+  "鋼鐵|航運|海運|化學工業|商品化學|造紙|紡織纖維|記憶體|晶圓代工|",
+  "汽車工業|整車|石油天然氣|航空運輸|面板|營建|水泥|機械設備"
+)
+
+#' Tag a profile as 景氣循環 from industry taxonomy (never from ticker).
+#' A known non-cyclical catalog key wins over free-text (utilities / staples stay out).
+is_cyclical_industry <- function(industry_key = "", industry_text = "") {
+  key <- trimws(as.character(industry_key)[1])
+  if (length(key) != 1L || is.na(key)) key <- ""
+  if (nzchar(key) && key %in% CYCLICAL_INDUSTRY_KEYS) return(TRUE)
+  catalog <- character(0)
+  if (exists("industry_standards", inherits = TRUE) &&
+      is.list(industry_standards)) {
+    catalog <- names(industry_standards)
+  }
+  if (nzchar(key) && key %in% catalog && !key %in% CYCLICAL_INDUSTRY_KEYS) {
+    return(FALSE)
+  }
+  txt <- paste(as.character(industry_text), collapse = " ")
+  txt <- trimws(txt)
+  if (!nzchar(txt)) return(FALSE)
+  grepl(CYCLICAL_INDUSTRY_RE, txt, ignore.case = TRUE, perl = TRUE)
+}
+
+#' Keep P/B as primary or secondary when the cyclical rule applies.
+#' Does not invent a primary when none exists, and does not override pb_ok = FALSE.
+cyclical_pb_slot <- function(primary, secondary, pb_ok = TRUE) {
+  prim <- as.character(primary)[1]
+  sec <- as.character(secondary)[1]
+  if (length(prim) != 1L || is.na(prim)) prim <- ""
+  if (length(sec) != 1L || is.na(sec)) sec <- ""
+  if (!isTRUE(pb_ok) || !nzchar(prim)) {
+    return(list(
+      primary = if (nzchar(prim)) prim else NULL,
+      secondary = if (nzchar(sec)) sec else NULL,
+      changed = FALSE
+    ))
+  }
+  if (identical(prim, "pb") || identical(sec, "pb")) {
+    return(list(
+      primary = prim,
+      secondary = if (nzchar(sec)) sec else NULL,
+      changed = FALSE
+    ))
+  }
+  list(primary = prim, secondary = "pb", changed = TRUE)
+}
+

@@ -1212,6 +1212,10 @@ assemble_model_recommendation <- function(data_missing = FALSE,
   is_holding <- grepl("Conglomerate|Holding|fn\\.Conglomerate", txt, ignore.case = TRUE)
   is_book <- isTRUE(pb_view$book_biz)
   is_intang <- isTRUE(pb_view$intangible_biz)
+  # 景氣循環 is an industry-class tag (industry_standards.R), not a lifecycle stage.
+  is_cyc <- exists("is_cyclical_industry", mode = "function") &&
+    isTRUE(is_cyclical_industry(ind_key, ind_txt))
+  conf_in$cyclical_industry <- isTRUE(is_cyc)
   rev_g <- .vg_num(rev_g); ni <- .vg_num(ni); equity <- .vg_num(equity)
   roe <- .vg_num(roe); last_fcff <- .vg_num(last_fcff); fcf_cv <- .vg_num(fcf_cv)
   gordon_blocked <- is.finite(last_fcff) && last_fcff < 0
@@ -1270,15 +1274,32 @@ assemble_model_recommendation <- function(data_missing = FALSE,
     )
   )
   pb_app <- if (isTRUE(pb_view$blocked)) 0 else pb_view$score
-  pb_ind <- if (!isTRUE(pb_view$industry_pb_ok)) 25 else if (is_book) 90 else if (is_intang) 30 else 55
+  if (isTRUE(is_cyc) && !isTRUE(pb_view$blocked)) pb_app <- min(100, pb_app + 15)
+  pb_ind <- if (!isTRUE(pb_view$industry_pb_ok)) {
+    25
+  } else if (is_book) {
+    90
+  } else if (isTRUE(is_cyc)) {
+    80
+  } else if (is_intang) {
+    30
+  } else {
+    55
+  }
   rows[[length(rows) + 1L]] <- .vg_score_row(
     "pb", pb_app,
     data_quality = if (is.finite(equity) && equity > 0) 70 else 10,
     stability = if (is.finite(roe)) 60 else 30,
-    accounting = if (is_intang) 30 else if (is_book) 85 else 55,
+    accounting = if (is_intang) 30 else if (is_book) 85 else if (isTRUE(is_cyc)) 70 else 55,
     forecast = if (is.finite(roe) && roe > 0) 60 else 25,
     industry = pb_ind,
-    notes = if (isTRUE(pb_view$blocked)) "P/B blocked" else "P/B applicability"
+    notes = if (isTRUE(pb_view$blocked)) {
+      "P/B blocked"
+    } else if (isTRUE(is_cyc)) {
+      "P/B applicability; cyclical industry prefers book through the cycle"
+    } else {
+      "P/B applicability"
+    }
   )
   ri_app <- if (is.finite(ni) && ni > 0 && is.finite(equity) && equity > 0 && is.finite(roe) && roe > 0) 80 else 15
   if (gordon_blocked && ri_app >= 80) ri_app <- ri_app + 10
@@ -1361,6 +1382,38 @@ assemble_model_recommendation <- function(data_missing = FALSE,
       wp <- 1 - ws
     }
   }
+  # Cyclical industries: P/B must be primary or secondary when it is applicable.
+  # Score ranking can otherwise fill the pair with DCF + RI and omit P/B.
+  if (isTRUE(is_cyc) && !identical(primary, "pb") && !identical(as.character(secondary %||% ""), "pb")) {
+    pb_row <- scores[scores$model == "pb", , drop = FALSE]
+    pb_ok <- nrow(pb_row) == 1L &&
+      !isTRUE(pb_view$blocked) &&
+      pb_row$applicability[1] >= .VG_CROSS_APP
+    slot <- if (exists("cyclical_pb_slot", mode = "function")) {
+      cyclical_pb_slot(primary, secondary, pb_ok = pb_ok)
+    } else if (isTRUE(pb_ok)) {
+      list(primary = primary, secondary = "pb", changed = TRUE)
+    } else {
+      list(primary = primary, secondary = secondary, changed = FALSE)
+    }
+    if (isTRUE(slot$changed) && identical(as.character(slot$secondary %||% ""), "pb")) {
+      primary <- as.character(slot$primary)
+      secondary <- "pb"
+      primary_row <- scores[scores$model == primary, , drop = FALSE]
+      sp <- primary_row$overall[1]
+      ss <- scores$overall[scores$model == secondary][1]
+      role <- if (pb_row$applicability[1] >= .VG_MIN_APP) "valuation" else "cross_check"
+      if (!is.finite(ss)) {
+        wp <- 1; ws <- 0; role <- "none"
+      } else if (identical(role, "cross_check")) {
+        ws <- min(0.25, ss / (sp + ss))
+        wp <- 1 - ws
+      } else {
+        wp <- sp / (sp + ss)
+        ws <- 1 - wp
+      }
+    }
+  }
   suggest_two <- identical(primary, "dcf") && (
     (is.finite(rev_g) && rev_g > 8) ||
       !isTRUE(is_fcf_stable) ||
@@ -1383,6 +1436,18 @@ assemble_model_recommendation <- function(data_missing = FALSE,
   } else {
     ""
   }
+  cyc_note <- if (isTRUE(is_cyc) &&
+                    (identical(primary, "pb") || identical(as.character(secondary %||% ""), "pb"))) {
+    " 景氣循環產業：P/B 必為主模型或副模型之一。"
+  } else {
+    ""
+  }
+  cyc_note_en <- if (isTRUE(is_cyc) &&
+                      (identical(primary, "pb") || identical(as.character(secondary %||% ""), "pb"))) {
+    " Cyclical industry: P/B is required as primary or secondary."
+  } else {
+    ""
+  }
   reason <- paste0(
     "主模型 ", primary, "（綜合信心 ", round(sp, 1),
     "）。權重隨信心分數，不預設等權。",
@@ -1390,6 +1455,7 @@ assemble_model_recommendation <- function(data_missing = FALSE,
       " 副模型 ", secondary, " 角色=", role, "，建議權重 ",
       round(100 * ws, 1), "% / ", round(100 * wp, 1), "%。"
     ),
+    cyc_note,
     life_note
   )
   reason_en <- paste0(
@@ -1399,6 +1465,7 @@ assemble_model_recommendation <- function(data_missing = FALSE,
       "Secondary model ", secondary, " role=", role, ", suggested weights ",
       round(100 * ws, 1), "% / ", round(100 * wp, 1), "%."
     ),
+    cyc_note_en,
     life_note
   )
   pack(

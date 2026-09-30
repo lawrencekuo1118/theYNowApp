@@ -987,7 +987,7 @@ lab_industry_method_defaults <- function() {
 
     # 半導體／硬體
     list("sc.IC_Design", "dcf", "pb", TRUE, "IC 設計常具成長與 FCF → DCF"),
-    list("sc.Foundry", "dcf", "ri", FALSE, "晶圓代工成熟資本密集 → DCF"),
+    list("sc.Foundry", "dcf", "pb", FALSE, "晶圓代工資本密集／景氣循環 → DCF；P/B 為副模型"),
     list("sc.Packaging", "dcf", "pb", FALSE, "封測循環／FCF → DCF"),
     list("sc.Memory", "dcf", "pb", FALSE, "記憶體循環股 → DCF（波動大）"),
     list("sc.Equipment", "dcf", "pb", TRUE, "設備材料成長循環 → DCF"),
@@ -1016,7 +1016,7 @@ lab_industry_method_defaults <- function() {
     list("ind.Construction", "dcf", "pb", FALSE, "營建工程 → DCF"),
     list("mat.Chemicals", "dcf", "pb", FALSE, "化學循環 → DCF"),
     list("mat.Metals_Mining", "dcf", "pb", FALSE, "金屬礦業循環 → DCF"),
-    list("en.Energy_OilGas", "dcf", "ddm", FALSE, "油氣巨頭 FCF／配息 → DCF"),
+    list("en.Energy_OilGas", "dcf", "pb", FALSE, "油氣循環／FCF → DCF；P/B 為副模型"),
     list("tel.Telecom", "ddm", "dcf", FALSE, "電信高配息 → DDM；穩健 FCF 輔 DCF"),
     list("tr.Logistics_Shipping", "dcf", "pb", FALSE, "物流運輸 → DCF"),
     list("tr.Airlines", "dcf", "pb", FALSE, "航空循環／資本密集 → DCF"),
@@ -1065,6 +1065,18 @@ lab_industry_method_defaults <- function() {
         stringsAsFactors = FALSE
       )
     )
+  }
+  # Same cyclical source of truth as recommend_valuation_models / industry_standards.R
+  if (exists("is_cyclical_industry", mode = "function") &&
+      exists("cyclical_pb_slot", mode = "function")) {
+    for (i in seq_len(nrow(df))) {
+      if (!isTRUE(is_cyclical_industry(df$industry_key[[i]], ""))) next
+      slot <- cyclical_pb_slot(df$primary[[i]], df$secondary[[i]], pb_ok = TRUE)
+      if (isTRUE(slot$changed)) {
+        df$secondary[[i]] <- slot$secondary
+        df$rationale[[i]] <- paste0(df$rationale[[i]], "；景氣循環 → P/B 為主或副模型")
+      }
+    }
   }
   df$industry_label <- ifelse(
     exists("LAB_UNMAPPED_KEY", inherits = TRUE) & df$industry_key == LAB_UNMAPPED_KEY,
