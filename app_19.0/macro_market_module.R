@@ -6,6 +6,10 @@
 # Theme vs benchmark overlay 與泡沫／集中度僅供研究顯示，絕不可寫入 CAPM／Ke／WACC。
 # ==========================================
 
+if (!exists("%||%", mode = "function")) {
+  `%||%` <- function(a, b) if (is.null(a)) b else a
+}
+
 # ---- Catalogs (no FX; Yahoo native quotes) ----
 
 .MACRO_US_INDICES <- c(
@@ -72,8 +76,27 @@ macro_index_specs <- function(mode = get_market_mode()) {
   if (identical(normalize_market_mode(mode), "TW")) .MACRO_TW_INDICES else .MACRO_US_INDICES
 }
 
-#' Theme picker choices: GICS ETFs + concept groups for US; TW concept groups.
-macro_theme_choices <- function(mode = get_market_mode(), locale = "en") {
+macro_none_choice <- function(locale = "en") {
+  loc <- if (exists("normalize_ui_locale", mode = "function")) {
+    normalize_ui_locale(locale)
+  } else {
+    as.character(locale)[1]
+  }
+  lab <- if (exists("ui_str", mode = "function")) {
+    tryCatch(ui_str("macro_none_option", loc), error = function(e) "—")
+  } else {
+    "—"
+  }
+  if (!nzchar(as.character(lab)[1])) lab <- "—"
+  stats::setNames("", as.character(lab)[1])
+}
+
+macro_choices_with_none <- function(choices, locale = "en") {
+  c(macro_none_choice(locale), choices)
+}
+
+#' Industry picker: GICS sector ETFs (US). TW has no sector-ETF catalog here.
+macro_industry_choices <- function(mode = get_market_mode(), locale = "en") {
   mode <- normalize_market_mode(mode)
   loc <- if (exists("normalize_ui_locale", mode = "function")) {
     normalize_ui_locale(locale)
@@ -81,14 +104,20 @@ macro_theme_choices <- function(mode = get_market_mode(), locale = "en") {
     as.character(locale)[1]
   }
   is_zh <- grepl("^zh", tolower(loc), perl = TRUE)
+  if (!identical(mode, "US")) return(character(0))
+  labs <- if (is_zh) .MACRO_US_GICS_LABELS_ZH else .MACRO_US_GICS_LABELS_EN
+  stats::setNames(names(.MACRO_US_GICS), as.character(labs[names(.MACRO_US_GICS)]))
+}
 
-  out <- character(0)
-  if (identical(mode, "US")) {
-    labs <- if (is_zh) .MACRO_US_GICS_LABELS_ZH else .MACRO_US_GICS_LABELS_EN
-    gics <- setNames(names(.MACRO_US_GICS), as.character(labs[names(.MACRO_US_GICS)]))
-    out <- c(out, gics)
+#' Concept-stock picker: lab_concept_groups keys (US / TW).
+macro_concept_choices <- function(mode = get_market_mode(), locale = "en") {
+  mode <- normalize_market_mode(mode)
+  loc <- if (exists("normalize_ui_locale", mode = "function")) {
+    normalize_ui_locale(locale)
+  } else {
+    as.character(locale)[1]
   }
-
+  out <- character(0)
   if (exists("LAB_CONCEPT_GROUPS", inherits = TRUE) &&
       !is.null(LAB_CONCEPT_GROUPS[[mode]])) {
     keys <- names(LAB_CONCEPT_GROUPS[[mode]])
@@ -99,10 +128,15 @@ macro_theme_choices <- function(mode = get_market_mode(), locale = "en") {
         k
       }
       prefix <- if (identical(mode, "US")) "concept_" else "tw_"
-      out <- c(out, setNames(paste0(prefix, k), lab))
+      out <- c(out, stats::setNames(paste0(prefix, k), lab))
     }
   }
   out
+}
+
+#' Combined catalog (bubble / backward compat): industry then concept.
+macro_theme_choices <- function(mode = get_market_mode(), locale = "en") {
+  c(macro_industry_choices(mode, locale), macro_concept_choices(mode, locale))
 }
 
 #' Resolve theme key → Yahoo tickers (equal-weight basket or single ETF).
@@ -160,6 +194,33 @@ macro_equal_weight_rebased <- function(tickers, period = "1y", max_n = 10L) {
   out <- out[is.finite(out$Theme), , drop = FALSE]
   if (nrow(out) < 10L) return(NULL)
   out
+}
+
+#' Rebased overlay series for one industry or concept key. NULL if empty / unloadable.
+macro_rebased_theme_df <- function(theme_key, mode = get_market_mode(), period = "1y") {
+  key <- as.character(theme_key %||% "")[1]
+  if (!nzchar(key)) return(NULL)
+  tickers <- macro_theme_tickers(key, mode)
+  if (!length(tickers)) return(NULL)
+  if (length(tickers) == 1L) {
+    raw <- tryCatch(fetch_price_history_df(tickers[[1]], period), error = function(e) NULL)
+    if (is.null(raw) || nrow(raw) < 20L) return(NULL)
+    raw <- raw[order(raw$Date), , drop = FALSE]
+    base <- raw$Close[which(is.finite(raw$Close))[1]]
+    if (!is.finite(base) || base <= 0) return(NULL)
+    return(data.frame(
+      Date = raw$Date,
+      Theme = 100 * raw$Close / base,
+      Close = raw$Close,
+      stringsAsFactors = FALSE
+    ))
+  }
+  ew <- macro_equal_weight_rebased(tickers, period = period, max_n = 10L)
+  if (is.null(ew)) return(NULL)
+  data.frame(
+    Date = ew$Date, Theme = ew$Theme, Close = ew$Theme,
+    stringsAsFactors = FALSE
+  )
 }
 
 #' Rolling β path (month-end) for theme vs bench. Display-only; never writes CAPM.
@@ -224,24 +285,36 @@ macro_market_ui <- function(id = "macro") {
     uiOutput(ns("rf_signal_row")),
     tags$section(
       class = "ynow-macro-chapter",
-      tags$h3(id = "ynow_macro_theme_title", "Industry / concept vs benchmark"),
+      tags$h3(id = "ynow_macro_theme_title", "Relative performance vs benchmark"),
       tags$p(
         id = "ynow_macro_theme_help",
         class = "ynow-macro-hint",
-        "Pick a GICS sector ETF (US) or a concept basket. Benchmark is gray dashed on the right axis (rebased = 100 at window start; native currency, no FX)."
+        paste0(
+          "Pick industry and concept independently (either, both, or neither). ",
+          "Benchmark is gray dashed on the right axis (rebased = 100 at window start; native currency, no FX)."
+        )
       ),
       fluidRow(
         column(
-          width = 5,
+          width = 3,
           selectInput(
-            ns("theme_key"),
-            label = tags$span(id = "ynow_macro_theme_label", "Theme"),
+            ns("industry_key"),
+            label = tags$span(id = "ynow_macro_industry_label", "Industry vs benchmark"),
             choices = c("—" = ""),
             selected = ""
           )
         ),
         column(
           width = 3,
+          selectInput(
+            ns("concept_key"),
+            label = tags$span(id = "ynow_macro_concept_label", "Concept vs benchmark"),
+            choices = c("—" = ""),
+            selected = ""
+          )
+        ),
+        column(
+          width = 2,
           selectInput(
             ns("hist_period"),
             label = tags$span(id = "ynow_macro_period_label", "Window"),
@@ -306,26 +379,31 @@ macro_market_server <- function(id = "macro",
       refresh_token(isolate(refresh_token()) + 1L)
     }, ignoreInit = TRUE)
 
-    # Theme menu follows market + locale (Macro overlay + YNOW bubble)
+    # Industry + concept menus follow market + locale; empty/none is valid.
+    # Bubble keeps a combined catalog (one concentration universe).
     observe({
       mode <- .mode()
       loc <- .loc()
-      ch <- macro_theme_choices(mode, loc)
-      if (!length(ch)) {
-        updateSelectInput(session, "theme_key", choices = c("—" = ""), selected = "")
-        updateSelectInput(session, "bubble_theme_key", choices = c("—" = ""), selected = "")
-        return()
+      ind_ch <- macro_choices_with_none(macro_industry_choices(mode, loc), loc)
+      con_ch <- macro_choices_with_none(macro_concept_choices(mode, loc), loc)
+      bub_ch <- macro_choices_with_none(macro_theme_choices(mode, loc), loc)
+
+      isel <- isolate(as.character(input$industry_key %||% "")[1])
+      if (is.null(isel) || !nzchar(isel) || !(isel %in% unname(ind_ch))) {
+        isel <- ""
       }
-      sel <- isolate(input$theme_key)
-      if (is.null(sel) || !nzchar(sel) || !(sel %in% unname(ch))) {
-        sel <- unname(ch)[1]
+      csel <- isolate(as.character(input$concept_key %||% "")[1])
+      if (is.null(csel) || !nzchar(csel) || !(csel %in% unname(con_ch))) {
+        csel <- ""
       }
-      updateSelectInput(session, "theme_key", choices = ch, selected = sel)
-      bsel <- isolate(input$bubble_theme_key)
-      if (is.null(bsel) || !nzchar(bsel) || !(bsel %in% unname(ch))) {
-        bsel <- sel
+      updateSelectInput(session, "industry_key", choices = ind_ch, selected = isel)
+      updateSelectInput(session, "concept_key", choices = con_ch, selected = csel)
+
+      bsel <- isolate(as.character(input$bubble_theme_key %||% "")[1])
+      if (is.null(bsel) || !nzchar(bsel) || !(bsel %in% unname(bub_ch))) {
+        bsel <- ""
       }
-      updateSelectInput(session, "bubble_theme_key", choices = ch, selected = bsel)
+      updateSelectInput(session, "bubble_theme_key", choices = bub_ch, selected = bsel)
     })
 
     index_quotes <- reactive({
@@ -457,83 +535,108 @@ macro_market_server <- function(id = "macro",
       refresh_token()
       mode <- .mode()
       period <- as.character(input$hist_period %||% "1y")[1]
-      theme_key <- as.character(input$theme_key %||% "")[1]
-      req(nzchar(theme_key))
+      industry_key <- as.character(input$industry_key %||% "")[1]
+      concept_key <- as.character(input$concept_key %||% "")[1]
+      if (is.na(industry_key)) industry_key <- ""
+      if (is.na(concept_key)) concept_key <- ""
 
-      tickers <- macro_theme_tickers(theme_key, mode)
-      theme <- NULL
-      if (length(tickers) == 1L) {
-        raw <- tryCatch(fetch_price_history_df(tickers[[1]], period), error = function(e) NULL)
-        if (!is.null(raw) && nrow(raw) >= 20L) {
-          raw <- raw[order(raw$Date), , drop = FALSE]
-          base <- raw$Close[which(is.finite(raw$Close))[1]]
-          if (is.finite(base) && base > 0) {
-            theme <- data.frame(
-              Date = raw$Date,
-              Theme = 100 * raw$Close / base,
-              Close = raw$Close,
+      industry <- NULL
+      concept <- NULL
+      if (nzchar(industry_key)) {
+        industry <- tryCatch(
+          macro_rebased_theme_df(industry_key, mode, period),
+          error = function(e) NULL
+        )
+      }
+      if (nzchar(concept_key)) {
+        concept <- tryCatch(
+          macro_rebased_theme_df(concept_key, mode, period),
+          error = function(e) NULL
+        )
+      }
+
+      bench_tk <- macro_bench_ticker(mode)
+      bench <- NULL
+      if (nzchar(industry_key) || nzchar(concept_key)) {
+        bench_raw <- tryCatch(fetch_price_history_df(bench_tk, period), error = function(e) NULL)
+        if (!is.null(bench_raw) && nrow(bench_raw) >= 20L) {
+          bench_raw <- bench_raw[order(bench_raw$Date), , drop = FALSE]
+          base_b <- bench_raw$Close[which(is.finite(bench_raw$Close))[1]]
+          if (is.finite(base_b) && base_b > 0) {
+            bench <- data.frame(
+              Date = bench_raw$Date,
+              Bench = 100 * bench_raw$Close / base_b,
+              Close = bench_raw$Close,
               stringsAsFactors = FALSE
             )
           }
         }
-      } else {
-        ew <- macro_equal_weight_rebased(tickers, period = period, max_n = 10L)
-        if (!is.null(ew)) {
-          theme <- data.frame(
-            Date = ew$Date, Theme = ew$Theme, Close = ew$Theme,
-            stringsAsFactors = FALSE
-          )
-        }
-      }
-
-      bench_tk <- macro_bench_ticker(mode)
-      bench_raw <- tryCatch(fetch_price_history_df(bench_tk, period), error = function(e) NULL)
-      bench <- NULL
-      if (!is.null(bench_raw) && nrow(bench_raw) >= 20L) {
-        bench_raw <- bench_raw[order(bench_raw$Date), , drop = FALSE]
-        base_b <- bench_raw$Close[which(is.finite(bench_raw$Close))[1]]
-        if (is.finite(base_b) && base_b > 0) {
-          bench <- data.frame(
-            Date = bench_raw$Date,
-            Bench = 100 * bench_raw$Close / base_b,
-            Close = bench_raw$Close,
-            stringsAsFactors = FALSE
-          )
-        }
       }
       list(
-        theme = theme,
+        industry = industry,
+        concept = concept,
         bench = bench,
         bench_ticker = bench_tk,
-        theme_key = theme_key,
-        tickers = tickers
+        industry_key = industry_key,
+        concept_key = concept_key
       )
     })
 
     output$overlay_plot <- plotly::renderPlotly({
       od <- overlay_data()
-      shiny::validate(shiny::need(!is.null(od$theme), .ui("macro_plot_need_theme")))
+      has_ind_key <- nzchar(od$industry_key %||% "")
+      has_con_key <- nzchar(od$concept_key %||% "")
+      shiny::validate(shiny::need(
+        has_ind_key || has_con_key,
+        .ui("macro_plot_need_pick")
+      ))
+      shiny::validate(shiny::need(
+        !is.null(od$industry) || !is.null(od$concept),
+        .ui("macro_plot_need_theme")
+      ))
       shiny::validate(shiny::need(!is.null(od$bench), .ui("macro_plot_need_bench")))
 
-      th <- od$theme
       bh <- od$bench
-      # Align dates for dual-axis readability
-      common <- intersect(th$Date, bh$Date)
-      th <- th[th$Date %in% common, , drop = FALSE]
+      common <- bh$Date
+      if (!is.null(od$industry)) common <- intersect(common, od$industry$Date)
+      if (!is.null(od$concept)) common <- intersect(common, od$concept$Date)
+      shiny::validate(shiny::need(length(common) >= 5L, .ui("macro_plot_need_theme")))
       bh <- bh[bh$Date %in% common, , drop = FALSE]
 
-      theme_lab <- .ui("macro_series_theme")
+      industry_lab <- .ui("macro_series_industry")
+      concept_lab <- .ui("macro_series_concept")
+      left_lab <- if (!is.null(od$industry) && !is.null(od$concept)) {
+        .ui("macro_series_rebased")
+      } else if (!is.null(od$industry)) {
+        industry_lab
+      } else {
+        concept_lab
+      }
       bench_lab <- paste0(.ui("macro_series_bench"), " (", od$bench_ticker, ")")
 
       fig <- plotly::plot_ly()
-      fig <- plotly::add_trace(
-        fig,
-        x = th$Date, y = th$Theme,
-        type = "scatter", mode = "lines",
-        name = theme_lab,
-        line = list(color = "#e67e22", width = 2),
-        yaxis = "y"
-      )
+      if (!is.null(od$industry)) {
+        th <- od$industry[od$industry$Date %in% common, , drop = FALSE]
+        fig <- plotly::add_trace(
+          fig,
+          x = th$Date, y = th$Theme,
+          type = "scatter", mode = "lines",
+          name = industry_lab,
+          line = list(color = "#e67e22", width = 2),
+          yaxis = "y"
+        )
+      }
+      if (!is.null(od$concept)) {
+        th <- od$concept[od$concept$Date %in% common, , drop = FALSE]
+        fig <- plotly::add_trace(
+          fig,
+          x = th$Date, y = th$Theme,
+          type = "scatter", mode = "lines",
+          name = concept_lab,
+          line = list(color = "#2980b9", width = 2),
+          yaxis = "y"
+        )
+      }
       fig <- plotly::add_trace(
         fig,
         x = bh$Date, y = bh$Bench,
@@ -546,7 +649,7 @@ macro_market_server <- function(id = "macro",
         fig,
         title = list(text = .ui("macro_overlay_title"), font = list(size = 14)),
         xaxis = list(title = ""),
-        yaxis = list(title = theme_lab, side = "left", showgrid = TRUE),
+        yaxis = list(title = left_lab, side = "left", showgrid = TRUE),
         yaxis2 = list(
           title = bench_lab,
           overlaying = "y",
@@ -566,7 +669,7 @@ macro_market_server <- function(id = "macro",
     # ---- Bubble & concentration (isolated; display-only) ----
     bubble_data <- reactive({
       refresh_token()
-      theme_key <- as.character(input$bubble_theme_key %||% input$theme_key %||% "")[1]
+      theme_key <- as.character(input$bubble_theme_key %||% "")[1]
       req(nzchar(theme_key))
       top_n <- suppressWarnings(as.integer(input$bubble_top_n %||% 5L)[1])
       if (!is.finite(top_n)) top_n <- 5L

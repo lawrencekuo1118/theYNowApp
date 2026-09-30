@@ -148,7 +148,7 @@ decision_ui <- function(id) {
             id = "ynow_funnel_ch3_lead",
             class = "ynow-funnel-chapter__lead",
             paste0(
-              "主題集中度以所選產業／概念股籃的市值權重計算（GICS 對應 S&P 500 同業）。",
+              "主題集中度以所選產業別或概念股籃的市值權重計算（GICS 對應 S&P 500 同業）。",
               "巴菲特指標為市場層級總市值／GDP（僅供研究顯示，絕不寫入 CAPM／Ke／WACC）。"
             )
           ),

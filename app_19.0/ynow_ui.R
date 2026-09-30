@@ -3595,11 +3595,13 @@ ui <- dashboardPage(
             setBtText('ynow_macro_tw_signal_title', 'macro_tw_signal_title');
             setBtText('ynow_macro_theme_title', 'macro_theme_title');
             setBtText('ynow_macro_theme_help', 'macro_theme_help');
-            setBtText('ynow_macro_theme_label', 'macro_theme_label');
+            setBtText('ynow_macro_industry_label', 'macro_industry_label');
+            setBtText('ynow_macro_concept_label', 'macro_concept_label');
             setBtText('ynow_macro_period_label', 'macro_period_label');
             setBtText('ynow_macro_fx_lock', 'macro_fx_lock');
             setBtText('ynow_macro_bubble_title', 'macro_bubble_title');
             setBtText('ynow_macro_bubble_sub', 'macro_bubble_sub');
+            setBtText('ynow_macro_bubble_theme_label', 'macro_bubble_theme_label');
             setBtText('ynow_macro_bubble_topn_label', 'macro_bubble_topn_label');
             setBtText('ynow_macro_bubble_attr_label', 'macro_bubble_attr_label');
             setBtText('ynow_macro_bubble_conc_title', 'macro_bubble_conc_title');

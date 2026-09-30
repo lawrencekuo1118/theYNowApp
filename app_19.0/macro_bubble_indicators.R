@@ -2,7 +2,7 @@
 # macro_bubble_indicators.R — 動態產業泡沫與權重集中度
 #
 # 獨立於 CAPM／Ke／WACC／個股估值引擎。
-# 訂閱全域 market_mode 與 Macro 頁 theme_key；不寫回任何折現率輸入。
+# 訂閱全域 market_mode 與 YNOW bubble_theme_key；不寫回任何折現率輸入。
 # ==========================================
 
 if (!exists("%||%", mode = "function")) {
@@ -418,7 +418,7 @@ macro_bubble_chapter_ui <- function(ns) {
           class = "col-xs-12 col-sm-6 col-md-3",
           selectInput(
             ns("bubble_theme_key"),
-            label = tags$span(id = "ynow_macro_bubble_theme_label", "Theme"),
+            label = tags$span(id = "ynow_macro_bubble_theme_label", "Industry or concept"),
             choices = c("—" = ""),
             selected = ""
           )

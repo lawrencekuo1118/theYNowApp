@@ -83,6 +83,9 @@ check("first-paint F-Score list title zh", grepl("F-Score 品質檢核清單", d
 
 macro <- paste(readLines("macro_market_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("bubble left Macro", !grepl("macro_bubble_chapter_ui", macro, fixed = TRUE))
+check("split industry picker", grepl('ns("industry_key")', macro, fixed = TRUE))
+check("split concept picker", grepl('ns("concept_key")', macro, fixed = TRUE))
+check("YNOW first-paint uses 產業別或概念股", grepl("產業別或概念股籃", dec, fixed = TRUE))
 
 if (fail > 0L) {
   stop(sprintf("%d YNOW layout check(s) failed", fail), call. = FALSE)

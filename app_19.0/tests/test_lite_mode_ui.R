@@ -66,6 +66,11 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_false(grepl("output$beta_plot", macro_txt, fixed = TRUE))
   testthat::expect_false(grepl("output$beta_kpi", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("macro_rolling_beta_path", macro_txt, fixed = TRUE))
+  testthat::expect_true(grepl('ns("industry_key")', macro_txt, fixed = TRUE))
+  testthat::expect_true(grepl('ns("concept_key")', macro_txt, fixed = TRUE))
+  testthat::expect_false(grepl('ns("theme_key")', macro_txt, fixed = TRUE))
+  testthat::expect_false(grepl("Industry / concept vs benchmark", macro_txt, fixed = TRUE))
+  testthat::expect_false(grepl("ynow-lite-only", macro_txt, fixed = TRUE))
   # Macro tab must appear before Dashboard in sidebar markup
   testthat::expect_true(
     regexpr('tabName = "macro_market"', txt, fixed = TRUE)[1] <
