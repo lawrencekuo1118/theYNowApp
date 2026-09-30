@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12623292
+bundleId=12625224
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=e7aaac231bdc7f4128421cb56e599f5643c10f04
-commit=e7aaac231bdc7f4128421cb56e599f5643c10f04
-short=e7aaac2
-message=chore: bump display version to v18.13
-captured_at=2026-09-29T16:42:08Z
-source_branch=master
+aligned_git=91c89640c53a7b8019707d8579ad9cf97672ea56
+commit=91c89640c53a7b8019707d8579ad9cf97672ea56
+short=91c8964
+message=chore: bump display version to v18.14
+captured_at=2026-09-30T01:15:33Z
+source_branch=cursor/lite-hide-macro-snapshot-3fb1
 display_version=v18.14
-note=Canonical live line is app_18.0. Bundle 12623292 = v18.13 Macro logo blue-green theme + black/gold KPIs. Deploy via scripts/deploy_app_18.R. Supersedes 12623271.
+note=Canonical live line is app_18.0. Bundle 12625224 = v18.14 Lite hides Macro sidebar; Macro theme/window/bubble params in Snapshot registry (full_only) + APP_DEFAULTS. Deploy via scripts/deploy_app_18.R. Supersedes 12623292.
