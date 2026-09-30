@@ -2093,7 +2093,7 @@ server <- function(input, output, session) {
       dc_user_primary = c("Decision Checklist", "Adopted primary model", "使用者採用主模型"),
       chk_hfv_veto = c("Decision Checklist", "Gate: HFV veto", "HFV 僅否決，不作買訊"),
       cond_hfv_veto_max_c_freq = c("Decision Checklist", "HFV max C-freq (%)", "歷史 C 頻率上限"),
-      chk_fscore = c("Decision Checklist", "Gate: F-Score", "F-Score 門檻"),
+      chk_fscore = c("Decision Checklist", "Gate: F-Score quality screen", "F-Score 品質檢核"),
       cond_fscore_fscore_min = c("Decision Checklist", "F-Score min", "最低 F-Score"),
       chk_no_rank_chase = c("Decision Checklist", "Gate: No rank chase", "不追排行榜"),
       bt_net_margin = c("Backtest", "Net margin threshold (%)", "持倉門檻"),
@@ -10545,6 +10545,10 @@ server <- function(input, output, session) {
         fscore_info <- compute_report_f_score(
           isolate(d_income_statement()), isolate(d_balance_sheet()), isolate(d_cash_flow())
         )
+        if (is.list(fscore_info) && is.data.frame(fscore_info$checklist) &&
+            exists("localize_fscore_checklist", mode = "function")) {
+          fscore_info$checklist <- localize_fscore_checklist(fscore_info$checklist, rep_loc)
+        }
 
         eps_bv <- .report_eps_bvps(
           sum_df, isolate(d_income_statement()), isolate(d_balance_sheet())
@@ -10891,7 +10895,7 @@ server <- function(input, output, session) {
     mm <- tryCatch(market_mode(), error = function(e) "US")
     n_yrs <- lab_model_horizon_years()
     scores <- withProgress(
-      message = paste0("評估中（Piotroski 高門檻＋", n_yrs, " 年年化估值漲幅）…"),
+      message = .ui_msg("lab_im_progress", n = n_yrs),
       value = 0, {
         n_raw <- nrow(pool)
         if (is.finite(eval_n) && n_raw > eval_n) {
@@ -10980,7 +10984,7 @@ server <- function(input, output, session) {
     }
     disp_cap <- if (is.finite(display_n)) as.character(display_n) else "全部"
     msg <- paste0(
-      "完成評估 ", nrow(scores), " 檔；Piotroski 高門檻通過 ", n_q, " 檔",
+      .ui_msg("lab_im_done_gate", n = nrow(scores), q = n_q),
       if (is.finite(best) && nzchar(top_tk %||% "")) {
         sprintf("；績優首選 %s（%d 年年化估值漲幅 %+.1f%%）", top_tk, n_yrs, best)
       } else {
@@ -11039,7 +11043,7 @@ server <- function(input, output, session) {
       "整體 Top 10（含產業欄）"
     }
     gate_txt <- paste0(
-      if (gate_on) "F-Score≥7" else "不設 F 門檻",
+      if (gate_on) tryCatch(ui_str("lab_im_gate_on", isolate(ui_locale())), error = function(e) "F-Score≥7") else tryCatch(ui_str("lab_im_gate_off", isolate(ui_locale())), error = function(e) "不設 F-Score 門檻"),
       "／",
       if (eq_on) "盈餘品質通過" else "不過濾盈餘品質"
     )
@@ -11463,14 +11467,14 @@ server <- function(input, output, session) {
             "宇宙依市場模式（美股 Nasdaq／NYSE 主要上市／台股上市＋上櫃；搜尋另含興櫃但不納入績優）。",
             "先對宇宙池套用「候選截斷邏輯」全市排序／篩選，再取評估檔數 eval_n 的前段（市值／概念股／近一年漲幅／隨機；市值缺值則改依代號排序；近一年漲幅在全市場過大時可能先做 Yahoo 成本預篩）；",
             "N＝分析後顯示上限；明細／排行自合格池取至多 N 檔，條件不足時不湊滿；排行榜＝同一批合格者最多 Top 10",
-            if (gate_on) "（目前 Piotroski 高門檻開：F-Score≥7）" else "（目前不設 F 門檻）",
+            if (gate_on) "（目前 Piotroski 高門檻開：F-Score≥7）" else "（目前不設 F-Score 門檻）",
             "；合格不足 10 時不湊滿。"
           )
         } else {
           paste0(
             "宇宙依市場模式（美股 Nasdaq／NYSE 主要上市／台股上市＋上櫃；搜尋另含興櫃但不納入績優）。",
             "本次選「全部」：先套用候選截斷邏輯後評估篩選後全部候選（全市場過大時先預篩）；明細＝全部合格列；排行榜＝同一批合格者最多 Top 10",
-            if (gate_on) "（目前 Piotroski 高門檻開：F-Score≥7）" else "（目前不設 F 門檻）",
+            if (gate_on) "（目前 Piotroski 高門檻開：F-Score≥7）" else "（目前不設 F-Score 門檻）",
             "；合格不足 10 時不湊滿。"
           )
         }

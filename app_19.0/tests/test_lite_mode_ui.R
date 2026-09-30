@@ -26,7 +26,8 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
     "snapshot_page_help_lite", "snapshot_defaults_help_lite",
     "test_link", "testing_page_title", "testing_page_sub",
     "testing_box_title", "testing_box_body",
-    "hfv_chart_overlay_aria", "hfv_chart_models_label"
+    "hfv_chart_overlay_aria", "hfv_chart_models_label",
+    "lab_im_gate_label", "funnel_ch1_title", "dc_label_fscore"
   )
   for (k in keys) {
     en <- .UI_STRINGS$en[[k]]

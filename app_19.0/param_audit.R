@@ -127,7 +127,7 @@ ynow_tracked_param_registry <- function() {
     c("dc_user_primary", "Decision Checklist", "Adopted primary model", "decision_checklist", "select", "TRUE", "User-adopted primary model"),
     c("chk_hfv_veto", "Decision Checklist", "Gate: HFV veto", "decision_checklist", "checkbox", "TRUE", "HFV is veto-only, never a buy signal"),
     c("cond_hfv_veto_max_c_freq", "Decision Checklist", "HFV max C-freq (%)", "decision_checklist", "numeric", "TRUE", "Max historical C-frequency before veto"),
-    c("chk_fscore", "Decision Checklist", "Gate: F-Score", "decision_checklist", "checkbox", "TRUE", "Include F-Score gate"),
+    c("chk_fscore", "Decision Checklist", "Gate: F-Score quality screen", "decision_checklist", "checkbox", "TRUE", "Include F-Score quality-screen gate"),
     c("cond_fscore_fscore_min", "Decision Checklist", "F-Score min", "decision_checklist", "numeric", "TRUE", "Minimum F-Score"),
     c("chk_no_rank_chase", "Decision Checklist", "Gate: No rank chase", "decision_checklist", "checkbox", "TRUE", "Avoid chasing leaderboard ranks"),
     # ---- Backtest / HFV ----

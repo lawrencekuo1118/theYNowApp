@@ -38,7 +38,7 @@
     ),
     tags$li(
       tags$b("智慧決策與量化回測："),
-      "結合 Piotroski F-Score、安全邊際 (MOS)、決策檢核（Decision Checklist）、Historical Fundamental Validation (HFV)，以及 Point-in-Time (PIT) 回測引擎，提供貼近實戰的策略驗證。"
+      "結合 Piotroski F-Score（品質檢核）、安全邊際 (MOS)、決策檢核（Decision Checklist）、Historical Fundamental Validation (HFV)，以及 Point-in-Time (PIT) 回測引擎，提供貼近實戰的策略驗證。"
     ),
     tags$li(
       tags$b("Blue Chip Lab："),
@@ -61,7 +61,7 @@
     ),
     tags$li(
       tags$b("Smart Decision Matrix & Backtesting: "),
-      "Combines the Piotroski F-Score, Margin of Safety (MOS), Decision Checklist, Historical Fundamental Validation (HFV), and an institutional-grade Point-in-Time (PIT) backtesting engine for real-world strategy checks."
+      "Combines the Piotroski F-Score (quality screen), Margin of Safety (MOS), Decision Checklist, Historical Fundamental Validation (HFV), and an institutional-grade Point-in-Time (PIT) backtesting engine for real-world strategy checks."
     ),
     tags$li(
       tags$b("Blue Chip Lab: "),
@@ -155,7 +155,7 @@
     ),
     tags$li(
       tags$b("YNOW："),
-      "維持完整版相同的決策漏斗與敏感度檢視（含 MOS／F-Score 等），作為簡化流程下的決策輔助。"
+      "與完整版相同的三區塊版面：品質檢核（F-Score）、財報警訊、動態產業泡沫與權重集中度，作為簡化流程下的決策輔助。"
     ),
     tags$li(
       tags$b("績優股排行榜（Blue Chip）："),
@@ -180,7 +180,7 @@
     ),
     tags$li(
       tags$b("YNOW: "),
-      "Same decision funnel and sensitivity views as Full (including MOS / F-Score), as decision support inside the Lite flow."
+      "Same three-block YNOW page as Full: quality screen (F-Score), statement alerts, and dynamic industry bubble & weight concentration, as decision support inside the Lite flow."
     ),
     tags$li(
       tags$b("Blue Chip Leaderboard: "),
@@ -3956,6 +3956,8 @@ ui <- dashboardPage(
             if (funnelCh1K && s.funnel_ch1_kicker) funnelCh1K.textContent = s.funnel_ch1_kicker;
             var funnelCh1T = document.getElementById('ynow_funnel_ch1_title');
             if (funnelCh1T && s.funnel_ch1_title) funnelCh1T.textContent = s.funnel_ch1_title;
+            var funnelCh1Lead = document.getElementById('ynow_funnel_ch1_lead');
+            if (funnelCh1Lead && s.funnel_ch1_lead) funnelCh1Lead.textContent = s.funnel_ch1_lead;
             var funnelCh2K = document.getElementById('ynow_funnel_ch2_kicker');
             if (funnelCh2K && s.funnel_ch2_kicker) funnelCh2K.textContent = s.funnel_ch2_kicker;
             var funnelCh2T = document.getElementById('ynow_funnel_ch2_title');
@@ -4161,12 +4163,14 @@ ui <- dashboardPage(
             if (labLbByInd && s.lab_im_lb_mode_by_industry) labLbByInd.textContent = s.lab_im_lb_mode_by_industry;
             var labLbHelp = document.getElementById('ynow_lab_im_lb_scope_help');
             if (labLbHelp && s.lab_im_lb_scope_help) labLbHelp.textContent = s.lab_im_lb_scope_help;
-            var labGateRoot = document.getElementById('lab_im_gate_only');
-            if (labGateRoot && s.lab_im_gate_hint) {
-              var labGateBox = labGateRoot.closest('.ynow-lab-im-quality');
-              var labGateHint = labGateBox ? labGateBox.querySelector('.ynow-lab-im-quality-hint') : null;
-              if (labGateHint) labGateHint.textContent = s.lab_im_gate_hint;
-            }
+            var labGateLabel = document.getElementById('ynow_lab_im_gate_label');
+            if (labGateLabel && s.lab_im_gate_label) labGateLabel.textContent = s.lab_im_gate_label;
+            var labGateHint = document.getElementById('ynow_lab_im_gate_hint');
+            if (labGateHint && s.lab_im_gate_hint) labGateHint.textContent = s.lab_im_gate_hint;
+            var labImRunTitle = document.getElementById('lab_im_run_fscore');
+            if (labImRunTitle && s.lab_im_run_title) labImRunTitle.setAttribute('title', s.lab_im_run_title);
+            var annFs = document.getElementById('ynow_ann_fscore_crossref');
+            if (annFs && s.ann_fscore_crossref) annFs.textContent = s.ann_fscore_crossref;
             var labAdrLabel = document.getElementById('ynow_lab_im_include_adr_label');
             if (labAdrLabel && s.lab_im_include_adr_label) labAdrLabel.textContent = s.lab_im_include_adr_label;
             var labAdrHint = document.getElementById('ynow_lab_im_include_adr_hint');
@@ -5404,7 +5408,7 @@ ui <- dashboardPage(
           font-weight: 600;
         }
 
-        /* YNOW Decision Funnel — report shell (same logic as HFV) */
+        /* YNOW page — three stacked blocks (same chapter chrome as HFV) */
         .ynow-funnel-report {
           max-width: 1200px;
           margin: 0 auto 24px auto;
@@ -5467,6 +5471,24 @@ ui <- dashboardPage(
           font-size: 12.5px;
           line-height: 1.5;
           color: #666;
+        }
+        .ynow-funnel-toolbar {
+          margin: 0 0 14px 0;
+        }
+        .ynow-funnel-toolbar .form-group {
+          margin-bottom: 8px;
+        }
+        .ynow-funnel-kpi-row {
+          margin: 0 0 12px 0;
+        }
+        .ynow-funnel-chapter .ynow-macro-bubble h4 {
+          margin: 0 0 8px 0;
+          font-size: 14px;
+          font-weight: 700;
+          color: #1a1a1a;
+        }
+        .ynow-funnel-chapter .ynow-macro-hint {
+          margin: 0 0 10px 0;
         }
         .ynow-funnel-scorecards {
           margin: 0 0 4px 0;
@@ -7517,9 +7539,10 @@ ui <- dashboardPage(
                            tags$h4("指標群組解讀穩定度", class = "ynow-ann-h"),
                            tableOutput("annotation_stability_table"),
                            tags$p(
+                             id = "ynow_ann_fscore_crossref",
                              style = "margin-top:10px; font-size:12px; color:#888;",
                              "提示：資產週轉率、OCF／淨利無同業區間時固定為白；",
-                             "現金品質另可對照決策漏斗／F-Score 的盈餘品質檢核。"
+                             "現金品質另可對照 YNOW／F-Score 品質檢核中的盈餘品質項。"
                            )
                          )
                        )
@@ -8234,12 +8257,13 @@ ui <- dashboardPage(
                       style = "margin-top:12px;",
                       checkboxInput(
                         "lab_im_gate_only",
-                        "Piotroski 高門檻",
+                        tags$span(id = "ynow_lab_im_gate_label", "Piotroski 高門檻"),
                         value = isTRUE(APP_DEFAULTS$lab_im_gate_only)
                       ),
                       tags$span(
+                        id = "ynow_lab_im_gate_hint",
                         class = "ynow-lab-im-quality-hint",
-                        "預設勾選：前十名與明細只列 F-Score≥7 者；取消勾選則不設 F 門檻。合格不足 N 或不足 10 時不會湊滿。"
+                        "預設勾選：前十名與明細只列 Piotroski F-Score≥7（品質檢核）者；取消勾選則不設 F-Score 門檻。合格不足 N 或不足 10 時不會湊滿。"
                       )
                     )
                   )

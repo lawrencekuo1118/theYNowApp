@@ -71,6 +71,28 @@ check("analysis excludes buy-signal wording misuse", {
   !any(grepl("建議買進|強力買進|Buy now", bodies, ignore.case = TRUE)) &&
     any(grepl("非買進訊號|never a buy signal|不作券商", bodies))
 })
+check("zh F-Score quality screen section", identical(pack_zh$titles$fscore, "二、F-Score 品質檢核"))
+check("zh F-Score bullet uses 品質檢核", any(grepl("品質檢核", pack_zh$investment_bullets)))
+check("zh analysis title 品質檢核", {
+  titles <- vapply(pack_zh$analysis_paragraphs, function(p) p$title, character(1))
+  any(grepl("品質檢核", titles, fixed = TRUE))
+})
+check("zh no 體質檢核 label", {
+  titles <- vapply(pack_zh$analysis_paragraphs, function(p) p$title, character(1))
+  !any(grepl("體質檢核", titles, fixed = TRUE)) &&
+    !grepl("體質檢核", pack_zh$titles$fscore, fixed = TRUE)
+})
+check("zh F-Score quality screen section", identical(pack_zh$titles$fscore, "二、F-Score 品質檢核"))
+check("zh F-Score bullet uses 品質檢核", any(grepl("品質檢核", pack_zh$investment_bullets)))
+check("zh analysis title 品質檢核", {
+  titles <- vapply(pack_zh$analysis_paragraphs, function(p) p$title, character(1))
+  any(grepl("品質檢核", titles, fixed = TRUE))
+})
+check("zh no 體質檢核 label", {
+  titles <- vapply(pack_zh$analysis_paragraphs, function(p) p$title, character(1))
+  !any(grepl("體質檢核", titles, fixed = TRUE)) &&
+    !grepl("體質檢核", pack_zh$titles$fscore, fixed = TRUE)
+})
 
 pack_en <- build_ticker_report_copy(
   locale = "en",
@@ -85,6 +107,32 @@ check("en section1 title", identical(pack_en$titles$section1, "I. Investment vie
 check("en disclaimer mentions peer exclusion", grepl("peer ranking|lab-universe", pack_en$titles$disclaimer, ignore.case = TRUE))
 check("en analysis paragraphs >= 6", length(pack_en$analysis_paragraphs) >= 6L)
 check("en analysis heading key", identical(pack_en$titles$analysis_heading, "Analysis notes (numbered)"))
+pack_en_fs <- build_ticker_report_copy(
+  locale = "en",
+  current_price = 50,
+  target_price = 40,
+  primary_method = "P/B",
+  margin_of_safety = (40 - 50) / 40 * 100,
+  upside_pct = -20,
+  fscore_total = 6,
+  money_prefix = "$"
+)
+check("en F-Score quality screen section", identical(pack_en_fs$titles$fscore, "F-Score quality screen"))
+check("en F-Score not health check", !grepl("health check", pack_en_fs$titles$fscore, ignore.case = TRUE))
+check("en F-Score bullet quality screen", any(grepl("quality screen", pack_en_fs$investment_bullets, ignore.case = TRUE)))
+pack_en_fs <- build_ticker_report_copy(
+  locale = "en",
+  current_price = 50,
+  target_price = 40,
+  primary_method = "P/B",
+  margin_of_safety = (40 - 50) / 40 * 100,
+  upside_pct = -20,
+  fscore_total = 6,
+  money_prefix = "$"
+)
+check("en F-Score quality screen section", identical(pack_en_fs$titles$fscore, "F-Score quality screen"))
+check("en F-Score not health check", !grepl("health check", pack_en_fs$titles$fscore, ignore.case = TRUE))
+check("en F-Score bullet quality screen", any(grepl("quality screen", pack_en_fs$investment_bullets, ignore.case = TRUE)))
 
 m <- matrix(
   c(100, 110, 120, 105, 115, 125),

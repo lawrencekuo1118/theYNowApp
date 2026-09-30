@@ -57,7 +57,12 @@ label_chart_number <- function(prefix = "") {
 
 normalize_ccy <- function(x) {
   s <- toupper(trimws(as.character(x %||% "")[1]))
-  if (!nzchar(s) || identical(s, "NA")) return(NA_character_)
+  # N/A / unknown markers are not ISO codes — treat separately from a real ccy.
+  if (!nzchar(s) || s %in% c(
+    "NA", "N/A", "N.A.", "N.A", "NONE", "NULL", "UNKNOWN", "UNK", "-", "--"
+  )) {
+    return(NA_character_)
+  }
   if (s %in% c("USD", "USDT", "US$")) return("USD")
   if (s %in% c("TWD", "NTD", "NT$", "NT")) return("TWD")
   s
@@ -128,6 +133,34 @@ statement_quote_units_differ <- function(statement_ccy, quote_ccy) {
   !identical(st, q)
 }
 
+#' TRUE only when both currencies are known and they differ.
+#' Unknown / N/A is not "conversion required" by itself (see classifier).
+fx_conversion_required <- function(from_ccy, to_ccy) {
+  fr <- normalize_ccy(from_ccy)
+  to <- normalize_ccy(to_ccy)
+  if (is.na(fr) || is.na(to)) return(FALSE)
+  !identical(fr, to)
+}
+
+#' USD↔TWD rate usability: "ok" / "missing" / "invalid".
+#' Unsupported pairs are handled by the classifier as REQUIRED_FX_RATE_MISSING.
+.usd_twd_rate_status <- function(usd_twd) {
+  if (is.null(usd_twd) || length(usd_twd) < 1L) return("missing")
+  num <- suppressWarnings(as.numeric(usd_twd)[1])
+  if (length(num) != 1L || is.na(num)) return("missing")
+  if (!is.finite(num) || num <= 0) return("invalid")
+  "ok"
+}
+
+.fx_pair_supported <- function(from_ccy, to_ccy) {
+  fr <- normalize_ccy(from_ccy)
+  to <- normalize_ccy(to_ccy)
+  if (is.na(fr) || is.na(to)) return(FALSE)
+  if (identical(fr, to)) return(TRUE)
+  (identical(fr, "USD") && identical(to, "TWD")) ||
+    (identical(fr, "TWD") && identical(to, "USD"))
+}
+
 #' Per-share in `to_ccy` from an equity total.
 #' Damodaran: cash flows, discount rate, and price in the same currency.
 #' CFA / 20-F: divide by shares of the quoted security (ADR), not local common.
@@ -147,15 +180,23 @@ per_share_in_quote <- function(equity,
   st <- infer_statement_currency(statement_ccy, to_ccy, share_method)
   eq_ccy <- normalize_ccy(equity_ccy)
   if (is.na(eq_ccy)) eq_ccy <- st
-  need_align <- statement_quote_units_differ(st, to_ccy)
   aligned <- if (!is.null(shares_aligned)) {
     isTRUE(shares_aligned)
   } else {
     shares_auto_adjust_method(share_method)
   }
-  if (isTRUE(need_align) && !isTRUE(aligned)) return(NA_real_)
+  # ADR ratio only when quote vs ordinary share-class actually needs it.
+  need_adr <- adr_conversion_required(st, to_ccy, share_method)
+  if (isTRUE(need_adr) && !isTRUE(aligned)) return(NA_real_)
   if (!is.finite(eq) || !is.finite(sh) || sh <= 0) return(NA_real_)
-  fx <- fx_factor(eq_ccy, to_ccy, usd_twd)
+  src <- normalize_ccy(eq_ccy)
+  tgt <- normalize_ccy(to_ccy)
+  # Same-currency (incl. inferred-same): no USD/TWD required.
+  # One side unknown after infer: refuse (ADR must not copy quote as USD).
+  if (is.na(src) && is.na(tgt)) return(eq / sh)
+  if (is.na(src) || is.na(tgt)) return(NA_real_)
+  if (identical(src, tgt)) return(eq / sh)
+  fx <- fx_factor(src, tgt, usd_twd)
   if (!is.finite(fx)) return(NA_real_)
   eq * fx / sh
 }
@@ -810,22 +851,184 @@ infer_statement_currency <- function(statement_ccy, quote_ccy, share_method = NU
   q
 }
 
-#' TRUE when per-share in quote currency can be computed (FX + ADR bridge).
+#' ADR vs ordinary conversion is needed when share classes actually differ.
+#' Same-currency local listings / 1:1 dual-listed names do not require a ratio.
+adr_conversion_required <- function(statement_ccy, quote_ccy, share_method = NULL) {
+  if (isTRUE(shares_auto_adjust_method(share_method))) return(TRUE)
+  st <- infer_statement_currency(statement_ccy, quote_ccy, share_method)
+  q <- normalize_ccy(quote_ccy)
+  if (is.na(st) || is.na(q)) return(FALSE)
+  !identical(st, q)
+}
+
+PER_SHARE_ALIGNMENT_CODES <- c(
+  "STATEMENT_CURRENCY_UNAVAILABLE",
+  "REQUIRED_FX_RATE_MISSING",
+  "REQUIRED_FX_RATE_INVALID",
+  "APPLICABLE_ADR_RATIO_MISSING",
+  "APPLICABLE_ADR_RATIO_INVALID",
+  "REQUIRED_PER_SHARE_VALUE_NON_FINITE"
+)
+
+#' Per-share inputs the selected valuation method actually needs.
+#' Unused names in `required_per_share` are ignored when `method` is set.
+.valuation_method_per_share_keys <- function(method) {
+  m <- tolower(gsub("[^a-z0-9]+", "", as.character(method %||% "")[1]))
+  if (!nzchar(m)) return(character(0))
+  switch(
+    m,
+    dcf = c("dcf", "equity", "fv"),
+    ri = c("b0", "bvps"),
+    ddm = c("d0"),
+    pb = c("bvps"),
+    pbbvps = c("bvps"),
+    pbtbvps = c("tbvps"),
+    pbnavps = c("navps"),
+    nav = c("navps"),
+    character(0)
+  )
+}
+
+.required_per_share_values_for_method <- function(required_per_share, method) {
+  if (is.null(required_per_share)) return(numeric(0))
+  vals <- unlist(required_per_share, use.names = TRUE)
+  if (is.null(vals) || length(vals) < 1L) return(numeric(0))
+  nms <- names(vals)
+  unnamed <- is.null(nms) || !any(nzchar(nms))
+  if (unnamed) return(unname(vals))
+  keys <- .valuation_method_per_share_keys(method)
+  if (!length(keys)) return(unname(vals))
+  keep <- nms %in% keys
+  if (!any(keep)) return(numeric(0))
+  unname(vals[keep])
+}
+
+#' Map an internal alignment code to a ui_locale toast key (or NA if OK).
+per_share_alignment_toast_key <- function(code) {
+  cde <- as.character(code %||% "")[1]
+  if (!nzchar(cde) || is.na(cde)) return(NA_character_)
+  switch(
+    cde,
+    STATEMENT_CURRENCY_UNAVAILABLE = "notif_dcf_statement_ccy_unavailable",
+    REQUIRED_FX_RATE_MISSING = "notif_dcf_fx_rate_missing",
+    REQUIRED_FX_RATE_INVALID = "notif_dcf_fx_rate_invalid",
+    APPLICABLE_ADR_RATIO_MISSING = "notif_dcf_adr_ratio_missing",
+    APPLICABLE_ADR_RATIO_INVALID = "notif_dcf_adr_ratio_invalid",
+    REQUIRED_PER_SHARE_VALUE_NON_FINITE = "notif_dcf_per_share_non_finite",
+    NA_character_
+  )
+}
+
+#' Classify why per-share fair value cannot be computed, or NULL when OK.
+#'
+#' FX is required only when source and target currencies are known and differ.
+#' ADR ratio is required only for ADR vs ordinary (or auto-adjust share-class)
+#' comparisons. N/A reporting ccy is not an error unless conversion is needed.
+classify_per_share_alignment_failure <- function(statement_ccy,
+                                                 quote_ccy,
+                                                 usd_twd = NULL,
+                                                 share_method = NULL,
+                                                 equity_ccy = NULL,
+                                                 shares = NULL,
+                                                 adr_ratio = NULL,
+                                                 required_per_share = NULL,
+                                                 method = NULL) {
+  q <- normalize_ccy(quote_ccy)
+  st <- infer_statement_currency(statement_ccy, q, share_method)
+  eq <- normalize_ccy(equity_ccy)
+  if (is.na(eq)) eq <- st
+  src <- eq
+  tgt <- q
+  adr_needed <- adr_conversion_required(st, q, share_method)
+  aligned <- shares_auto_adjust_method(share_method)
+
+  # Conversion needed but reporting/source ccy cannot be determined.
+  src_unknown <- is.na(src)
+  tgt_unknown <- is.na(tgt)
+  if (isTRUE(adr_needed) && src_unknown && !tgt_unknown) {
+    return("STATEMENT_CURRENCY_UNAVAILABLE")
+  }
+  if (src_unknown && tgt_unknown) {
+    src <- NA_character_
+  } else if (src_unknown && !tgt_unknown && !isTRUE(adr_needed)) {
+    # Ordinary + N/A: infer quote (already in `st` / skip FX).
+    src <- tgt
+  } else if (!src_unknown && tgt_unknown) {
+    return("STATEMENT_CURRENCY_UNAVAILABLE")
+  }
+
+  need_fx <- isTRUE(fx_conversion_required(src, tgt))
+  if (isTRUE(need_fx)) {
+    if (is.na(src) || is.na(tgt)) {
+      return("STATEMENT_CURRENCY_UNAVAILABLE")
+    }
+    if (!isTRUE(.fx_pair_supported(src, tgt))) {
+      return("REQUIRED_FX_RATE_MISSING")
+    }
+    stt <- .usd_twd_rate_status(usd_twd)
+    if (identical(stt, "missing")) return("REQUIRED_FX_RATE_MISSING")
+    if (identical(stt, "invalid")) return("REQUIRED_FX_RATE_INVALID")
+  }
+
+  if (isTRUE(adr_needed)) {
+    ratio_num <- if (is.null(adr_ratio) || length(adr_ratio) < 1L) {
+      NA_real_
+    } else {
+      suppressWarnings(as.numeric(adr_ratio)[1])
+    }
+    ratio_given <- !is.null(adr_ratio) && length(adr_ratio) >= 1L &&
+      !is.na(ratio_num)
+    if (isTRUE(ratio_given) && (!is.finite(ratio_num) || ratio_num <= 0)) {
+      return("APPLICABLE_ADR_RATIO_INVALID")
+    }
+    sh_num <- if (is.null(shares) || length(shares) < 1L) {
+      NA_real_
+    } else {
+      suppressWarnings(as.numeric(shares)[1])
+    }
+    shares_given <- !is.null(shares) && length(shares) >= 1L && !is.na(sh_num)
+    if (isTRUE(shares_given) && (!is.finite(sh_num) || sh_num <= 0)) {
+      return("APPLICABLE_ADR_RATIO_INVALID")
+    }
+    if (!isTRUE(aligned)) {
+      return("APPLICABLE_ADR_RATIO_MISSING")
+    }
+    # Auto-adjust method but neither a usable ratio nor implied shares.
+    if (!isTRUE(ratio_given) && !isTRUE(shares_given)) {
+      return("APPLICABLE_ADR_RATIO_MISSING")
+    }
+  }
+
+  req_vals <- .required_per_share_values_for_method(required_per_share, method)
+  if (length(req_vals)) {
+    bad <- vapply(req_vals, function(v) {
+      num <- suppressWarnings(as.numeric(v)[1])
+      length(num) != 1L || is.na(num) || !is.finite(num)
+    }, logical(1))
+    if (any(bad)) return("REQUIRED_PER_SHARE_VALUE_NON_FINITE")
+  }
+
+  NULL
+}
+
+#' TRUE when per-share in quote currency can be computed (conditional FX + ADR).
 per_share_bridge_ready <- function(statement_ccy,
                                    quote_ccy,
                                    usd_twd = NULL,
                                    share_method = NULL,
-                                   equity_ccy = NULL) {
-  q <- normalize_ccy(quote_ccy)
-  if (is.na(q)) return(FALSE)
-  st <- infer_statement_currency(statement_ccy, q, share_method)
-  eq <- normalize_ccy(equity_ccy)
-  if (is.na(eq)) eq <- st
-  if (statement_quote_units_differ(st, q) &&
-      !isTRUE(shares_auto_adjust_method(share_method))) {
-    return(FALSE)
-  }
-  is.finite(fx_factor(eq, q, usd_twd))
+                                   equity_ccy = NULL,
+                                   shares = NULL,
+                                   adr_ratio = NULL) {
+  code <- classify_per_share_alignment_failure(
+    statement_ccy = statement_ccy,
+    quote_ccy = quote_ccy,
+    usd_twd = usd_twd,
+    share_method = share_method,
+    equity_ccy = equity_ccy,
+    shares = shares,
+    adr_ratio = adr_ratio
+  )
+  is.null(code)
 }
 
 #' 將年度 fundamentals 的股數對齊報價股數（折現比較／回測 PIT）
@@ -2286,10 +2489,10 @@ score_valuation_confidence <- function(confidence_inputs = list(),
   if (is.finite(fs)) {
     if (fs >= 7) {
       score <- score + 12
-      reasons <- c(reasons, "F-Score 偏強")
+      reasons <- c(reasons, if (exists("ui_str", mode = "function")) ui_str("conf_fscore_strong", "zh-TW") else "F-Score 偏強（品質檢核）")
     } else if (fs < 4) {
       score <- score - 12
-      reasons <- c(reasons, "F-Score 偏弱")
+      reasons <- c(reasons, if (exists("ui_str", mode = "function")) ui_str("conf_fscore_weak", "zh-TW") else "F-Score 偏弱（品質檢核）")
     }
   }
 
@@ -3224,9 +3427,9 @@ build_ticker_report_copy <- function(
   fs <- suppressWarnings(as.numeric(fscore_total)[1])
   if (is.finite(fs)) {
     bullets <- c(bullets, if (en) {
-      sprintf("Piotroski F-Score = %d / 9 (ticker fundamentals gate; not a buy signal).", as.integer(fs))
+      sprintf("Piotroski F-Score = %d / 9 (quality screen only; not a buy signal).", as.integer(fs))
     } else {
-      sprintf("Piotroski F-Score＝%d／9（個股體質檢核；非買進訊號）。", as.integer(fs))
+      sprintf("Piotroski F-Score＝%d／9（個股品質檢核；非買進訊號）。", as.integer(fs))
     })
   }
 
@@ -3345,10 +3548,10 @@ build_ticker_report_copy <- function(
         }
       ),
       list(
-        title = "Fundamentals gate & scope",
+        title = "Quality screen & scope",
         body = {
           fs_txt <- if (is.finite(fs)) {
-            sprintf("Piotroski F-Score = %d / 9 (fundamentals gate only; never a buy signal). ", as.integer(fs))
+            sprintf("Piotroski F-Score = %d / 9 (quality screen only; never a buy signal). ", as.integer(fs))
           } else ""
           paste0(
             fs_txt,
@@ -3428,10 +3631,10 @@ build_ticker_report_copy <- function(
         }
       ),
       list(
-        title = "體質檢核與報告範圍",
+        title = "品質檢核與報告範圍",
         body = {
           fs_txt <- if (is.finite(fs)) {
-            sprintf("Piotroski F-Score＝%d／9（僅作體質檢核閘門，絕非買進訊號）。", as.integer(fs))
+            sprintf("Piotroski F-Score＝%d／9（僅作品質檢核閘門，絕非買進訊號）。", as.integer(fs))
           } else ""
           paste0(
             fs_txt,
@@ -3459,7 +3662,7 @@ build_ticker_report_copy <- function(
       ops_outlook = "Operating & valuation snapshot",
       growth_est = "Growth / CapEx / discount assumptions",
       scenario = "Bear / Base / Bull & sensitivity",
-      fscore = "F-Score health check",
+      fscore = "F-Score quality screen",
       warnings = "Financial-statement alerts",
       analysis_heading = "Analysis notes (numbered)",
       lite_appendix_note = "Lite condensed PDF omits statement extracts — open Full mode for the appendix.",
@@ -3492,7 +3695,7 @@ build_ticker_report_copy <- function(
       ops_outlook = "二、營運與評價快覽",
       growth_est = "一、成長／CapEx／折現假設",
       scenario = "一、Bear／Base／Bull 與敏感度",
-      fscore = "二、F-Score 體質檢核",
+      fscore = "二、F-Score 品質檢核",
       warnings = "三、財報警訊",
       analysis_heading = "分析說明（編號段落）",
       lite_appendix_note = "Lite 精簡版省略財報附錄；完整附錄請改用 Full 模式下載。",

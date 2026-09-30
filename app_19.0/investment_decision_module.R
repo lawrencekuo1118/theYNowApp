@@ -1,7 +1,8 @@
 # =========================================================================
-# Investment Decision Scorecard — Decision Funnel + composite valuation
-# Dimensions: Quality (F-Score) -> Value (MOS) -> Timing (momentum, aid)
-# Funnel copy: ui_str / funnel_* keys (en-US + zh-TW)
+# Investment Decision Scorecard — YNOW page + composite valuation
+# Three stacked blocks: statement quality (F-Score) → statement alerts →
+# dynamic industry bubble & weight concentration. Same markup for Lite/Full.
+# Copy: ui_str / funnel_* keys (en-US + zh-TW)
 # =========================================================================
 
 library(shiny)
@@ -10,7 +11,7 @@ library(TTR)
 library(glue)
 
 # -------------------------------------------
-# 1. UI：Decision Funnel + momentum panel
+# 1. UI：YNOW three-block page + momentum panel
 # -------------------------------------------
 #' Shared composite valuation block (main/sub model, Bear–Base–Bull, status bar).
 #' Mount once in the model-page header — not on Basic Setup.
@@ -23,26 +24,26 @@ decision_ui <- function(id) {
   ns <- NS(id)
   tagList(
     tags$div(
-      class = "ynow-funnel-report",
+      class = "ynow-funnel-report ynow-ynow-page",
 
-      # --- Masthead ---
       tags$div(
         class = "ynow-funnel-report__masthead",
-        h2(tags$b(id = "ynow_funnel_page_title", "YNOW 決策漏斗")),
+        h2(tags$b(id = "ynow_funnel_page_title", "YNOW")),
         p(
           id = "ynow_funnel_page_sub",
           class = "ynow-funnel-report__lead",
           paste0(
-            "以品質（F-Score）→ 價值（MOS）→ 警訊（財報）的順序閱讀：",
-            "先看決策結論與分數卡，再檢視檢核明細與財報警訊。",
+            "三個區塊由上而下：品質檢核（F-Score）→ 財報警訊 → 動態產業泡沫與權重集中度。",
+            "各區結論／指標框格置於對應區塊內、表格上方。",
             "這是決策輔助報告，不是下單指令。"
           )
         )
       ),
 
-      # --- Chapter I: Verdict first (like HFV chart above controls) ---
       tags$section(
         class = "ynow-funnel-chapter",
+        id = "ynow_ynow_block_quality",
+        `data-ynow-block` = "quality",
         tags$div(
           class = "ynow-funnel-chapter__head",
           tags$span(
@@ -53,24 +54,43 @@ decision_ui <- function(id) {
           tags$h3(
             class = "ynow-funnel-chapter__title",
             id = "ynow_funnel_ch1_title",
-            "決策結論"
+            "品質檢核（F-Score）"
           )
         ),
         tags$div(
           class = "ynow-funnel-chapter__body",
+          tags$p(
+            id = "ynow_funnel_ch1_lead",
+            class = "ynow-funnel-chapter__lead",
+            paste0(
+              "Piotroski F-Score 九項品質檢核與相關品質項目；",
+              "通過／未達標僅供品質檢核，不單獨構成買進理由。"
+            )
+          ),
           fluidRow(
             class = "ynow-funnel-scorecards",
             valueBoxOutput(ns("vbox_fscore"), width = 4),
-            uiOutput(ns("vbox_mos")),
-            uiOutput(ns("vbox_fraud"))
+            uiOutput(ns("vbox_mos"))
           ),
-          uiOutput(ns("ui_recommendation"))
+          uiOutput(ns("ui_recommendation")),
+          h4(
+            style = "display:none;",
+            tags$span(
+              id = "ynow_funnel_fscore_list_title",
+              "F-Score quality screen"
+            )
+          ),
+          tags$div(
+            class = "ynow-funnel-table-wrap",
+            tableOutput(ns("table_checklist"))
+          )
         )
       ),
 
-      # --- Chapter II: F-Score evidence ---
       tags$section(
         class = "ynow-funnel-chapter",
+        id = "ynow_ynow_block_alerts",
+        `data-ynow-block` = "alerts",
         tags$div(
           class = "ynow-funnel-chapter__head",
           tags$span(
@@ -81,7 +101,7 @@ decision_ui <- function(id) {
           tags$h3(
             class = "ynow-funnel-chapter__title",
             id = "ynow_funnel_ch2_title",
-            "品質檢核（F-Score）"
+            "財報警訊"
           )
         ),
         tags$div(
@@ -89,25 +109,26 @@ decision_ui <- function(id) {
           tags$p(
             id = "ynow_funnel_ch2_lead",
             class = "ynow-funnel-chapter__lead",
-            "Piotroski F-Score 九項品質檢核明細；通過／未通過僅供體質篩選，不單獨構成買進理由。"
-          ),
-          h4(
-            style = "display:none;",
-            tags$span(
-              id = "ynow_funnel_fscore_list_title",
-              "F-Score quality checklist"
+            paste0(
+              "Schilit 財報詭計自動判讀：警示／觀察優先展開；通過與資料不足項摺疊。",
+              "屬否決／風險提示，非買進訊號。"
             )
+          ),
+          fluidRow(
+            class = "ynow-funnel-scorecards",
+            uiOutput(ns("vbox_fraud"))
           ),
           tags$div(
             class = "ynow-funnel-table-wrap",
-            tableOutput(ns("table_checklist"))
+            uiOutput(ns("shenanigans_panel"))
           )
         )
       ),
 
-      # --- Chapter III: Statement alerts ---
       tags$section(
         class = "ynow-funnel-chapter",
+        id = "ynow_ynow_block_bubble",
+        `data-ynow-block` = "bubble",
         tags$div(
           class = "ynow-funnel-chapter__head",
           tags$span(
@@ -118,7 +139,7 @@ decision_ui <- function(id) {
           tags$h3(
             class = "ynow-funnel-chapter__title",
             id = "ynow_funnel_ch3_title",
-            "財報警訊"
+            "動態產業泡沫與權重集中度"
           )
         ),
         tags$div(
@@ -126,38 +147,12 @@ decision_ui <- function(id) {
           tags$p(
             id = "ynow_funnel_ch3_lead",
             class = "ynow-funnel-chapter__lead",
-            "Schilit 財報詭計自動判讀：警示／觀察優先展開；通過與資料不足項摺疊。屬否決／風險提示，非買進訊號。"
-          ),
-          uiOutput(ns("shenanigans_panel"))
-        )
-      ),
-
-      # --- Appendix: how to read ---
-      box(
-        title = tagList(
-          icon("book-open"),
-          tags$span(id = "ynow_funnel_sec_method", "如何閱讀本報告")
-        ),
-        width = NULL,
-        status = "primary",
-        solidHeader = FALSE,
-        collapsible = TRUE,
-        collapsed = TRUE,
-        tags$div(
-          class = "ynow-funnel-method",
-          tags$p(
-            id = "ynow_funnel_method_body",
-            style = "font-size:12.5px;color:#444;line-height:1.55;margin:0 0 10px 0;",
             paste0(
-              "閱讀順序：品質（F-Score）→ 價值（相對 Base 的 MOS）→ 財報警訊。",
-              "結論區綜合這三層給出情境標籤；趨勢動能（Timing）輔助在「量化回測實驗室」分頁，不決定合理價。"
+              "主題集中度以所選產業／概念股籃的市值權重計算（GICS 對應 S&P 500 同業）。",
+              "巴菲特指標為市場層級總市值／GDP（僅供研究顯示，絕不寫入 CAPM／Ke／WACC）。"
             )
           ),
-          tags$p(
-            id = "ynow_funnel_method_caveat",
-            style = "font-size:11.5px;color:#888;line-height:1.45;margin:0;",
-            "標籤與分數僅供研究／決策輔助，不是券商下單指令；HFV 情境僅作否決語境，不作看漲依據。"
-          )
+          macro_bubble_chapter_ui(NS("macro"))
         )
       )
     )
@@ -552,9 +547,20 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
     })
 
     output$table_checklist <- renderTable({
-      .ui_loc()
+      loc <- .ui_loc()
       df <- f_score_eval()$checklist
-      if (nrow(df) > 0) {
+      if (nrow(df) > 0 && exists("localize_fscore_checklist", mode = "function")) {
+        df <- localize_fscore_checklist(df, loc)
+        score_col <- intersect(c("得分", "Result", ui_str("fscore_col_score", loc)), names(df))[1]
+        if (!is.na(score_col) && nzchar(score_col)) {
+          pass_tok <- ui_str("fscore_result_pass", loc)
+          df[[score_col]] <- ifelse(
+            df[[score_col]] == pass_tok,
+            .str("funnel_pass"),
+            .str("funnel_fail")
+          )
+        }
+      } else if (nrow(df) > 0) {
         df$`得分` <- ifelse(df$`得分` == 1, .str("funnel_pass"), .str("funnel_fail"))
       }
       df

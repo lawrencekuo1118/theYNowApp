@@ -272,7 +272,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_lb_empty = paste0(
       "Top 10 has no rows. Evaluated %d; annualized upside available %d; F-Score≥7 pass %d; ",
       "qualified under current checks %d. N is the post-analysis display cap; Top 10 only takes qualified names (max 10) and does not pad. ",
-      "Uncheck Earnings quality or Piotroski high gate, raise N, or widen industry filters, then search again."
+      "Uncheck Earnings quality or Piotroski high gate (F-Score≥7), raise N, or widen industry filters, then search again."
     ),
     lab_im_detail_intro = paste0(
       "Detail of names evaluated this run (sorted by annualized valuation appreciation). ",
@@ -287,10 +287,16 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Top 10 by industry: list Top 10 within each industry. ",
       "Top 10 takes at most 10 qualified names; shortfalls are not padded."
     ),
+    lab_im_gate_label = "Piotroski high gate",
     lab_im_gate_hint = paste0(
-      "Default on: Top 10 and Detail keep only F-Score≥7. Uncheck to drop the F gate. ",
-      "Shortfalls are not padded to N or to 10."
+      "Default on: Top 10 and Detail keep only Piotroski F-Score≥7 (quality screen). ",
+      "Uncheck to drop the F-Score gate. Shortfalls are not padded to N or to 10."
     ),
+    lab_im_run_title = "Piotroski high gate (F-Score≥7) + rank by annualized valuation appreciation",
+    lab_im_progress = "Evaluating (Piotroski high gate + {n}-year annualized valuation appreciation)…",
+    lab_im_done_gate = "Evaluated {n} names; Piotroski high gate pass {q}",
+    lab_im_gate_on = "F-Score≥7",
+    lab_im_gate_off = "No F-Score gate",
     bt_analysis_freq = "Analysis frequency (valuation date Date_t)",
     bt_freq_monthly = "Monthly",
     bt_freq_quarterly = "Quarterly",
@@ -816,39 +822,67 @@ locale_for_market <- function(mode = get_market_mode()) {
       "After selecting \"Manual βe\" as β source, this value writes into CAPM; ",
       "editing here also switches the source to manual and syncs."
     ),
-    # --- Decision Funnel ---
-    funnel_page_title = "YNOW Decision Funnel",
+    # --- YNOW page (three stacked blocks) ---
+    funnel_page_title = "YNOW",
     funnel_page_sub = paste0(
-      "Read Quality (F-Score) → Value (MOS) → Statement alerts in that order: ",
-      "start with the verdict and scorecards, then the checklist and accounting alerts. ",
+      "Three stacked screens: statement quality (F-Score) → statement alerts → ",
+      "dynamic industry bubble and weight concentration. ",
+      "Conclusion cards sit in each block, above that block’s table. ",
       "This is a decision-support report—not an order ticket."
     ),
     funnel_ch1_kicker = "Section I",
-    funnel_ch1_title = "Decision verdict",
-    funnel_ch2_kicker = "Section II",
-    funnel_ch2_title = "Quality checklist (F-Score)",
-    funnel_ch2_lead = paste0(
-      "Piotroski F-Score nine-item quality detail; pass/fail is a quality screen only—",
-      "not a standalone buy reason."
+    funnel_ch1_title = "Statement quality",
+    funnel_ch1_lead = paste0(
+      "Piotroski F-Score nine-item quality screen and related quality items; ",
+      "Pass / Fail is a quality screen only—not a standalone buy reason."
     ),
-    funnel_ch3_kicker = "Section III",
-    funnel_ch3_title = "Statement alerts",
-    funnel_ch3_lead = paste0(
+    funnel_ch2_kicker = "Section II",
+    funnel_ch2_title = "Statement alerts",
+    funnel_ch2_lead = paste0(
       "Schilit-style automatic statement screening: alerts/watch items expand first; ",
       "passes and missing-data items stay collapsed. Veto / risk context only—not a buy signal."
     ),
+    funnel_ch3_kicker = "Section III",
+    funnel_ch3_title = "Dynamic industry bubble & weight concentration",
+    funnel_ch3_lead = paste0(
+      "Theme concentration uses market-cap weights on the selected industry / concept basket ",
+      "(GICS maps to S&P 500 sector peers). Buffett Indicator is market-level market-cap / GDP ",
+      "(research display only — never feeds CAPM / Ke / WACC)."
+    ),
     funnel_sec_method = "How to read this report",
     funnel_method_body = paste0(
-      "Reading order: Quality (F-Score) → Value (MOS vs Base) → Statement alerts. ",
-      "The verdict combines these layers into a scenario label; trend momentum (Timing) lives under Quant Backtest Lab ",
-      "and does not set fair value."
+      "Reading order: quality screen (F-Score) → statement alerts → ",
+      "dynamic industry bubble and weight concentration. ",
+      "Trend momentum (Timing) lives under Quant Backtest Lab and does not set fair value."
     ),
     funnel_method_caveat = paste0(
       "Labels and scores are research / decision support only—not brokerage order tickets. ",
       "HFV scenarios are veto context only, never a bullish cue."
     ),
-    funnel_fscore_list_title = "F-Score quality checklist",
-    funnel_vbox_fscore = "Quality filter (F-Score)",
+    funnel_fscore_list_title = "F-Score quality screen",
+    funnel_vbox_fscore = "Quality screen (F-Score)",
+    fscore_col_item = "Quality item",
+    fscore_col_score = "Result",
+    fscore_result_pass = "Pass",
+    fscore_result_fail = "Fail",
+    fscore_item_roa_pos = "Profitability (ROA > 0)",
+    fscore_item_ocf_pos = "Profitability (OCF > 0)",
+    fscore_item_roa_up = "Profitability (ROA rising)",
+    fscore_item_earn_quality = "Profitability (earnings quality: OCF > operating earnings)",
+    fscore_item_leverage = "Safety (leverage down)",
+    fscore_item_liquidity = "Safety (current ratio up)",
+    fscore_item_dilution = "Safety (no material share issuance)",
+    fscore_item_margin = "Efficiency (gross margin up)",
+    fscore_item_turnover = "Efficiency (asset turnover up)",
+    conf_fscore_strong = "F-Score stronger (quality screen)",
+    conf_fscore_weak = "F-Score weaker (quality screen)",
+    ann_fscore_crossref = paste0(
+      "Tip: asset turnover and OCF / net income stay uncolored without a peer band; ",
+      "cash quality can also be read against the YNOW F-Score quality screen ",
+      "(earnings-quality item)."
+    ),
+    lab_im_gate_on = "F-Score≥7",
+    lab_im_gate_off = "No F-Score gate",
     funnel_vbox_mos = "Margin of Safety (vs Base)",
     funnel_vbox_mos_conf = "｜Reliability {level}",
     funnel_vbox_fraud = "Statement alerts",
@@ -1022,8 +1056,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     dc_hint_model_align = "If checked: your chosen primary model must match the sidebar recommendation — reduces model shopping.",
     dc_label_hfv_veto = "HFV veto only — reject Value Trap (C) dominance",
     dc_hint_hfv_veto = "If checked: HFV is used only to veto (e.g. scenario C / Value Trap dominance). Never treat HFV as a buy signal.",
-    dc_label_fscore = "F-Score / fundamentals completeness floor",
-    dc_hint_fscore = "If checked: Piotroski F-Score must meet your minimum — weak quality fails the gate even if MOS looks cheap.",
+    dc_label_fscore = "F-Score quality-screen floor",
+    dc_hint_fscore = "If checked: Piotroski F-Score must meet your minimum — a weak quality screen fails the gate even if MOS looks cheap.",
     dc_label_no_rank_chase = "Do not order solely on ranking annualized upside",
     dc_hint_no_rank_chase = "If checked: self-discipline reminder — Blue Chip ranking CAGR alone is not an order ticket.",
     dc_cond_bear_mos_floor = "Bear MOS floor (%)",
@@ -1538,7 +1572,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_lb_empty = paste0(
       "前十名尚無列可顯示。已評估 %d 檔；能量到年化漲幅 %d；F-Score≥7 通過 %d；目前勾選條件下合格 %d。",
       "說明：N 是分析後顯示上限，前十名只從「合格者」取最多 10 檔，不會補足到 10。",
-      "可取消「盈餘品質」或「Piotroski 高門檻」，或提高 N／放寬產業後再搜尋。"
+      "可取消「盈餘品質」或「Piotroski 高門檻」（F-Score≥7），或提高 N／放寬產業後再搜尋。"
     ),
     lab_im_detail_intro = paste0(
       "本次已評估檔的明細（按年化估值漲幅排序）。",
@@ -1553,10 +1587,16 @@ locale_for_market <- function(mode = get_market_mode()) {
       "依產業前十名：每個產業各自列出 Top 10。",
       "前十名只從合格者取最多 10 檔；合格不足 10 時不會湊滿。"
     ),
+    lab_im_gate_label = "Piotroski 高門檻",
     lab_im_gate_hint = paste0(
-      "預設勾選：前十名與明細只列 F-Score≥7 者；取消勾選則不設 F 門檻。",
-      "合格不足 N 或不足 10 時不會湊滿。"
+      "預設勾選：前十名與明細只列 Piotroski F-Score≥7（品質檢核）者；",
+      "取消勾選則不設 F-Score 門檻。合格不足 N 或不足 10 時不會湊滿。"
     ),
+    lab_im_run_title = "Piotroski 高門檻（F-Score≥7）＋年化估值漲幅排序",
+    lab_im_progress = "評估中（Piotroski 高門檻＋{n} 年年化估值漲幅）…",
+    lab_im_done_gate = "完成評估 {n} 檔；Piotroski 高門檻通過 {q} 檔",
+    lab_im_gate_on = "F-Score≥7",
+    lab_im_gate_off = "不設 F-Score 門檻",
     bt_analysis_freq = "分析頻率（估值日 Date_t）",
     bt_freq_monthly = "每月",
     bt_freq_quarterly = "每季",
@@ -2068,32 +2108,60 @@ locale_for_market <- function(mode = get_market_mode()) {
       "於 β 來源選「手動定義 βe」後，此值會直接寫入 CAPM；",
       "在此修改數值時也會自動改選手動來源並同步。"
     ),
-    # --- Decision Funnel ---
-    funnel_page_title = "YNOW 決策漏斗",
+    # --- YNOW 頁（三個直向區塊） ---
+    funnel_page_title = "YNOW",
     funnel_page_sub = paste0(
-      "以品質（F-Score）→ 價值（MOS）→ 警訊（財報）的順序閱讀：",
-      "先看決策結論與分數卡，再檢視檢核明細與財報警訊。",
+      "三個區塊由上而下：財報體質（F-Score）→ 財報警訊 → 動態產業泡沫與權重集中度。",
+      "各區結論／指標框格置於對應區塊內、表格上方。",
       "這是決策輔助報告，不是下單指令。"
     ),
     funnel_ch1_kicker = "第一章",
-    funnel_ch1_title = "決策結論",
+    funnel_ch1_title = "財報體質",
+    funnel_ch1_lead = paste0(
+      "Piotroski F-Score 九項品質檢核與相關品質項目；",
+      "通過／未達標僅供品質檢核，不單獨構成買進理由。"
+    ),
     funnel_ch2_kicker = "第二章",
-    funnel_ch2_title = "品質檢核（F-Score）",
-    funnel_ch2_lead = "Piotroski F-Score 九項品質檢核明細；通過／未通過僅供體質篩選，不單獨構成買進理由。",
-    funnel_ch3_kicker = "第三章",
-    funnel_ch3_title = "財報警訊",
-    funnel_ch3_lead = paste0(
+    funnel_ch2_title = "財報警訊",
+    funnel_ch2_lead = paste0(
       "Schilit 財報詭計自動判讀：警示／觀察優先展開；通過與資料不足項摺疊。",
       "屬否決／風險提示，非買進訊號。"
     ),
+    funnel_ch3_kicker = "第三章",
+    funnel_ch3_title = "動態產業泡沫與權重集中度",
+    funnel_ch3_lead = paste0(
+      "主題集中度以所選產業／概念股籃的市值權重計算（GICS 對應 S&P 500 同業）。",
+      "巴菲特指標為市場層級總市值／GDP（僅供研究顯示，絕不寫入 CAPM／Ke／WACC）。"
+    ),
     funnel_sec_method = "如何閱讀本報告",
     funnel_method_body = paste0(
-      "閱讀順序：品質（F-Score）→ 價值（相對 Base 的 MOS）→ 財報警訊。",
-      "結論區綜合這三層給出情境標籤；趨勢動能（Timing）輔助在「量化回測實驗室」分頁，不決定合理價。"
+      "閱讀順序：財報體質（F-Score）→ 財報警訊 → 動態產業泡沫與權重集中度。",
+      "趨勢動能（Timing）輔助在「量化回測實驗室」分頁，不決定合理價。"
     ),
     funnel_method_caveat = "標籤與分數僅供研究／決策輔助，不是券商下單指令；HFV 情境僅作否決語境，不作看漲依據。",
-    funnel_fscore_list_title = "F-Score 體質檢核清單",
-    funnel_vbox_fscore = "體質過濾 (F-Score)",
+    funnel_fscore_list_title = "F-Score 品質檢核清單",
+    funnel_vbox_fscore = "品質檢核 (F-Score)",
+    fscore_col_item = "檢驗維度",
+    fscore_col_score = "得分",
+    fscore_result_pass = "通過",
+    fscore_result_fail = "未達標",
+    fscore_item_roa_pos = "獲利性 (ROA > 0)",
+    fscore_item_ocf_pos = "獲利性 (OCF > 0)",
+    fscore_item_roa_up = "獲利性 (ROA 成長)",
+    fscore_item_earn_quality = "獲利性 (盈餘品質：OCF > 營業利益)",
+    fscore_item_leverage = "安全性 (槓桿下降)",
+    fscore_item_liquidity = "安全性 (流動比提升)",
+    fscore_item_dilution = "安全性 (未大幅增資)",
+    fscore_item_margin = "效率 (毛利率提升)",
+    fscore_item_turnover = "效率 (資產週轉率提升)",
+    conf_fscore_strong = "F-Score 偏強（品質檢核）",
+    conf_fscore_weak = "F-Score 偏弱（品質檢核）",
+    ann_fscore_crossref = paste0(
+      "提示：資產週轉率、OCF／淨利無同業區間時固定為白；",
+      "現金品質另可對照 YNOW／F-Score 品質檢核中的盈餘品質項。"
+    ),
+    lab_im_gate_on = "F-Score≥7",
+    lab_im_gate_off = "不設 F-Score 門檻",
     funnel_vbox_mos = "安全邊際 (vs Base)",
     funnel_vbox_mos_conf = "｜可信度{level}",
     funnel_vbox_fraud = "財報警訊",
@@ -2113,7 +2181,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     funnel_v_over_weak_title = "估值偏高且動能轉弱",
     funnel_v_over_weak_text = paste0(
-      "體質通過檢核，但市價已高於基準合理價，且趨勢尚未轉強。",
+      "品質檢核通過，但市價已高於基準合理價，且趨勢尚未轉強。",
       "建議耐心等待拉回再評估。"
     ),
     funnel_v_davis_title = "戴維斯雙擊區",
@@ -2260,8 +2328,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     dc_hint_model_align = "勾選後：你採用的主模型須與側邊欄推薦一致，減少任意換模購物。",
     dc_label_hfv_veto = "HFV 僅作否決：排除價值陷阱（C）主導",
     dc_hint_hfv_veto = "勾選後：HFV 只用來否決（例如情境 C／價值陷阱主導）。絕不可把 HFV 當成看漲或下單依據。",
-    dc_label_fscore = "F-Score／資料完整度下限",
-    dc_hint_fscore = "勾選後：Piotroski F-Score 須達下限——體質偏弱即使 MOS 看似便宜也不通過。",
+    dc_label_fscore = "F-Score 品質檢核下限",
+    dc_hint_fscore = "勾選後：Piotroski F-Score 須達下限——品質檢核偏弱即使 MOS 看似便宜也不通過。",
     dc_label_no_rank_chase = "不得僅因排行年化漲幅而下單",
     dc_hint_no_rank_chase = "勾選後：自我紀律提醒——績優股排行榜的年化上漲空間本身不是下單單據。",
     dc_cond_bear_mos_floor = "Bear MOS 下限（%）",
@@ -2663,3 +2731,64 @@ ui_box_header_specs <- function(locale = "en") {
     list(match = as.character(aliases), label = ui_str(k, loc))
   })
 }
+
+# Canonical F-Score item labels from compute_report_f_score (zh-TW keys; copy only)
+.FSCORE_ITEM_KEYS <- c(
+  "獲利性 (ROA > 0)" = "fscore_item_roa_pos",
+  "獲利性 (OCF > 0)" = "fscore_item_ocf_pos",
+  "獲利性 (ROA 成長)" = "fscore_item_roa_up",
+  "獲利性 (盈餘品質：OCF > 營業利益)" = "fscore_item_earn_quality",
+  "安全性 (槓桿下降)" = "fscore_item_leverage",
+  "安全性 (流動比提升)" = "fscore_item_liquidity",
+  "安全性 (未大幅增資)" = "fscore_item_dilution",
+  "效率 (毛利率提升)" = "fscore_item_margin",
+  "效率 (資產週轉率提升)" = "fscore_item_turnover"
+)
+
+#' Localize F-Score quality-screen table (items + Pass/Fail + headers).
+#' Does not change scores — display copy only.
+localize_fscore_checklist <- function(df, locale = "zh-TW") {
+  if (is.null(df) || !is.data.frame(df) || nrow(df) < 1L) return(df)
+  loc <- normalize_ui_locale(locale)
+  out <- df
+  item_col <- intersect(c("檢驗維度", "Quality item", "Item"), names(out))[1]
+  score_col <- intersect(c("得分", "Result", "Score"), names(out))[1]
+  if (!is.na(item_col) && nzchar(item_col)) {
+    raw <- as.character(out[[item_col]])
+    keys <- unname(.FSCORE_ITEM_KEYS[raw])
+    mapped <- ifelse(
+      !is.na(keys) & nzchar(keys),
+      vapply(keys, function(k) ui_str(k, loc), character(1)),
+      raw
+    )
+    out[[item_col]] <- mapped
+  }
+  if (!is.na(score_col) && nzchar(score_col)) {
+    sc <- out[[score_col]]
+    if (is.character(sc) || is.factor(sc)) {
+      sc <- as.character(sc)
+      pass_tokens <- c("通過", "Pass", "✅ Pass", "✅ 通過")
+      fail_tokens <- c("未達標", "未通過", "Fail", "❌ Fail", "❌ 未達標")
+      sc <- ifelse(
+        sc %in% pass_tokens | sc %in% c("1", "1.0"),
+        ui_str("fscore_result_pass", loc),
+        ifelse(
+          sc %in% fail_tokens | sc %in% c("0", "0.0"),
+          ui_str("fscore_result_fail", loc),
+          sc
+        )
+      )
+      out[[score_col]] <- sc
+    } else if (is.numeric(sc)) {
+      out[[score_col]] <- ifelse(
+        sc == 1,
+        ui_str("fscore_result_pass", loc),
+        ui_str("fscore_result_fail", loc)
+      )
+    }
+  }
+  names(out)[names(out) == item_col] <- ui_str("fscore_col_item", loc)
+  names(out)[names(out) == score_col] <- ui_str("fscore_col_score", loc)
+  out
+}
+
