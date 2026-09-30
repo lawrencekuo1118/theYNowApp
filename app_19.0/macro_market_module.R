@@ -269,8 +269,7 @@ macro_market_ui <- function(id = "macro") {
         "Currency lock: historical index / theme series are never converted by the session USD⇄TWD toggle."
       )
     ),
-    # Dynamic bubble & concentration (isolated from CAPM / valuation engines)
-    macro_bubble_chapter_ui(ns)
+    # Bubble & concentration lives on the YNOW tab (decision_ui), not here.
   )
 }
 
@@ -303,14 +302,18 @@ macro_market_server <- function(id = "macro",
     observeEvent(input$refresh, {
       refresh_token(isolate(refresh_token()) + 1L)
     }, ignoreInit = TRUE)
+    observeEvent(input$bubble_refresh, {
+      refresh_token(isolate(refresh_token()) + 1L)
+    }, ignoreInit = TRUE)
 
-    # Theme menu follows market + locale
+    # Theme menu follows market + locale (Macro overlay + YNOW bubble)
     observe({
       mode <- .mode()
       loc <- .loc()
       ch <- macro_theme_choices(mode, loc)
       if (!length(ch)) {
         updateSelectInput(session, "theme_key", choices = c("—" = ""), selected = "")
+        updateSelectInput(session, "bubble_theme_key", choices = c("—" = ""), selected = "")
         return()
       }
       sel <- isolate(input$theme_key)
@@ -318,6 +321,11 @@ macro_market_server <- function(id = "macro",
         sel <- unname(ch)[1]
       }
       updateSelectInput(session, "theme_key", choices = ch, selected = sel)
+      bsel <- isolate(input$bubble_theme_key)
+      if (is.null(bsel) || !nzchar(bsel) || !(bsel %in% unname(ch))) {
+        bsel <- sel
+      }
+      updateSelectInput(session, "bubble_theme_key", choices = ch, selected = bsel)
     })
 
     index_quotes <- reactive({
@@ -558,7 +566,7 @@ macro_market_server <- function(id = "macro",
     # ---- Bubble & concentration (isolated; display-only) ----
     bubble_data <- reactive({
       refresh_token()
-      theme_key <- as.character(input$theme_key %||% "")[1]
+      theme_key <- as.character(input$bubble_theme_key %||% input$theme_key %||% "")[1]
       req(nzchar(theme_key))
       top_n <- suppressWarnings(as.integer(input$bubble_top_n %||% 5L)[1])
       if (!is.finite(top_n)) top_n <- 5L

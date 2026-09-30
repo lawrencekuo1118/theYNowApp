@@ -401,73 +401,87 @@ macro_bubble_buffett_light <- function(series) {
   )
 }
 
-#' UI chapter: bubble & concentration (inserted under overlay chart)
+#' UI body: bubble & concentration (mounted on the YNOW tab, not Macro).
+#' Parent supplies chapter kicker + title; KPIs sit above charts.
 macro_bubble_chapter_ui <- function(ns) {
-  tags$section(
-    class = "ynow-macro-chapter ynow-macro-bubble",
-    tags$h3(
-      id = "ynow_macro_bubble_title",
-      "Bubble & concentration indicators"
-    ),
-    tags$p(
-      id = "ynow_macro_bubble_sub",
-      class = "ynow-macro-hint",
-      paste0(
-        "Theme concentration uses market-cap weights on the selected industry / concept basket ",
-        "(GICS maps to S&P 500 sector peers). Buffett Indicator is market-level market-cap / GDP ",
-        "(research display only — never feeds CAPM / Ke / WACC)."
+  tags$div(
+    class = "ynow-macro-bubble ynow-funnel-bubble-body",
+    tags$span(id = "ynow_macro_bubble_title", style = "display:none;", "Dynamic industry bubble & weight concentration"),
+    tags$span(id = "ynow_macro_bubble_sub", style = "display:none;", ""),
+    tags$div(
+      class = "ynow-funnel-toolbar",
+      role = "group",
+      `aria-label` = "YNOW bubble controls",
+      fluidRow(
+        column(
+          width = 3,
+          class = "col-xs-12 col-sm-6 col-md-3",
+          selectInput(
+            ns("bubble_theme_key"),
+            label = tags$span(id = "ynow_macro_bubble_theme_label", "Theme"),
+            choices = c("—" = ""),
+            selected = ""
+          )
+        ),
+        column(
+          width = 3,
+          class = "col-xs-12 col-sm-6 col-md-3",
+          selectInput(
+            ns("bubble_top_n"),
+            label = tags$span(id = "ynow_macro_bubble_topn_label", "Top N by market cap"),
+            choices = c("Top 3" = "3", "Top 5" = "5"),
+            selected = "5"
+          )
+        ),
+        column(
+          width = 3,
+          class = "col-xs-12 col-sm-6 col-md-3",
+          selectInput(
+            ns("bubble_attr_period"),
+            label = tags$span(id = "ynow_macro_bubble_attr_label", "Attribution window"),
+            choices = c("1M" = "1mo", "3M" = "3mo", "1Y" = "1y"),
+            selected = "1y"
+          )
+        ),
+        column(
+          width = 3,
+          class = "col-xs-12 col-sm-6 col-md-3",
+          tags$div(
+            style = "margin-top: 24px;",
+            actionButton(
+              ns("bubble_refresh"),
+              label = tags$span(id = "ynow_macro_bubble_refresh", "Refresh"),
+              icon = icon("sync"),
+              class = "btn-default"
+            )
+          )
+        )
       )
     ),
-    fluidRow(
-      column(
-        width = 3,
-        selectInput(
-          ns("bubble_top_n"),
-          label = tags$span(id = "ynow_macro_bubble_topn_label", "Top N by market cap"),
-          choices = c("Top 3" = "3", "Top 5" = "5"),
-          selected = "5"
-        )
-      ),
-      column(
-        width = 3,
-        selectInput(
-          ns("bubble_attr_period"),
-          label = tags$span(id = "ynow_macro_bubble_attr_label", "Attribution window"),
-          choices = c("1M" = "1mo", "3M" = "3mo", "1Y" = "1y"),
-          selected = "1y"
-        )
-      ),
-      column(
-        width = 6,
-        tags$div(
-          style = "margin-top: 28px;",
-          uiOutput(ns("bubble_alert_box"))
-        )
-      )
-    ),
+    uiOutput(ns("bubble_alert_box")),
     fluidRow(
       class = "ynow-macro-chart-row",
       column(
         width = 6,
         class = "col-xs-12 col-sm-12 col-md-6",
         tags$h4(id = "ynow_macro_bubble_conc_title", "Market-cap concentration"),
+        uiOutput(ns("bubble_conc_kpi")),
         plotlyOutput(ns("bubble_conc_plot"), height = "300px") %>%
-          shinycssloaders::withSpinner(),
-        uiOutput(ns("bubble_conc_kpi"))
+          shinycssloaders::withSpinner()
       ),
       column(
         width = 6,
         class = "col-xs-12 col-sm-12 col-md-6",
         tags$h4(id = "ynow_macro_bubble_attr_title", "Return attribution"),
+        uiOutput(ns("bubble_attr_kpi")),
         plotlyOutput(ns("bubble_attr_plot"), height = "300px") %>%
-          shinycssloaders::withSpinner(),
-        uiOutput(ns("bubble_attr_kpi"))
+          shinycssloaders::withSpinner()
       )
     ),
     tags$hr(),
     tags$h4(id = "ynow_macro_bubble_buffett_title", "Buffett Indicator (market cap / GDP)"),
     fluidRow(
-      class = "ynow-macro-kpi-row",
+      class = "ynow-macro-kpi-row ynow-funnel-kpi-row",
       column(
         width = 3,
         class = "col-xs-12 col-sm-4 col-md-3",

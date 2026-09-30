@@ -976,9 +976,9 @@ classify_per_share_alignment_failure <- function(statement_ccy,
     } else {
       suppressWarnings(as.numeric(adr_ratio)[1])
     }
-    ratio_given <- !is.null(adr_ratio) && length(adr_ratio) >= 1L &&
-      !is.na(ratio_num)
-    if (isTRUE(ratio_given) && (!is.finite(ratio_num) || ratio_num <= 0)) {
+    # Explicit non-NA ratio that is unusable.
+    if (!is.null(adr_ratio) && length(adr_ratio) >= 1L &&
+        !is.na(ratio_num) && (!is.finite(ratio_num) || ratio_num <= 0)) {
       return("APPLICABLE_ADR_RATIO_INVALID")
     }
     sh_num <- if (is.null(shares) || length(shares) < 1L) {
@@ -986,15 +986,12 @@ classify_per_share_alignment_failure <- function(statement_ccy,
     } else {
       suppressWarnings(as.numeric(shares)[1])
     }
-    shares_given <- !is.null(shares) && length(shares) >= 1L && !is.na(sh_num)
-    if (isTRUE(shares_given) && (!is.finite(sh_num) || sh_num <= 0)) {
+    if (!is.null(shares) && length(shares) >= 1L &&
+        !is.na(sh_num) && (!is.finite(sh_num) || sh_num <= 0)) {
       return("APPLICABLE_ADR_RATIO_INVALID")
     }
+    # Currencies / share-class differ but resolve did not auto-adjust.
     if (!isTRUE(aligned)) {
-      return("APPLICABLE_ADR_RATIO_MISSING")
-    }
-    # Auto-adjust method but neither a usable ratio nor implied shares.
-    if (!isTRUE(ratio_given) && !isTRUE(shares_given)) {
       return("APPLICABLE_ADR_RATIO_MISSING")
     }
   }

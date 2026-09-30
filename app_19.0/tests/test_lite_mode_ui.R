@@ -240,3 +240,59 @@ testthat::test_that("clamp_g_below_rate keeps g strictly below discount", {
   testthat::expect_equal(clamp_g_below_rate(12, 9), 8.5)
   testthat::expect_true(clamp_g_below_rate(10, 8) < 8)
 })
+
+testthat::test_that("YNOW page title and three-block order are shared by Lite and Full", {
+  source(file.path("..", "ui_locale.R"), local = TRUE)
+  testthat::expect_identical(.UI_STRINGS$en$funnel_page_title, "YNOW")
+  testthat::expect_identical(.UI_STRINGS$`zh-TW`$funnel_page_title, "YNOW")
+  testthat::expect_identical(.UI_STRINGS$en$funnel_ch1_title, "Statement quality")
+  testthat::expect_identical(.UI_STRINGS$`zh-TW`$funnel_ch1_title, "財報體質")
+  testthat::expect_identical(.UI_STRINGS$en$funnel_ch2_title, "Statement alerts")
+  testthat::expect_identical(.UI_STRINGS$`zh-TW`$funnel_ch2_title, "財報警訊")
+  testthat::expect_identical(
+    .UI_STRINGS$en$funnel_ch3_title,
+    "Dynamic industry bubble & weight concentration"
+  )
+  testthat::expect_identical(
+    .UI_STRINGS$`zh-TW`$funnel_ch3_title,
+    "動態產業泡沫與權重集中度"
+  )
+  testthat::expect_false(grepl("Decision Funnel", .UI_STRINGS$en$funnel_page_title, fixed = TRUE))
+  testthat::expect_false(grepl("決策漏斗", .UI_STRINGS$`zh-TW`$funnel_page_title, fixed = TRUE))
+
+  dec <- paste(
+    readLines(file.path("..", "investment_decision_module.R"), warn = FALSE, encoding = "UTF-8"),
+    collapse = "\n"
+  )
+  pos_q <- regexpr('data-ynow-block = "quality"', dec, fixed = TRUE)[1]
+  pos_a <- regexpr('data-ynow-block = "alerts"', dec, fixed = TRUE)[1]
+  pos_b <- regexpr('data-ynow-block = "bubble"', dec, fixed = TRUE)[1]
+  testthat::expect_true(is.finite(pos_q) && pos_q > 0)
+  testthat::expect_true(is.finite(pos_a) && pos_a > pos_q)
+  testthat::expect_true(is.finite(pos_b) && pos_b > pos_a)
+
+  pos_fs <- regexpr("vbox_fscore", dec, fixed = TRUE)[1]
+  pos_tbl <- regexpr("table_checklist", dec, fixed = TRUE)[1]
+  testthat::expect_true(pos_fs > pos_q && pos_fs < pos_tbl && pos_tbl < pos_a)
+
+  pos_fraud <- regexpr("vbox_fraud", dec, fixed = TRUE)[1]
+  pos_shen <- regexpr("shenanigans_panel", dec, fixed = TRUE)[1]
+  testthat::expect_true(pos_fraud > pos_a && pos_fraud < pos_shen && pos_shen < pos_b)
+
+  testthat::expect_true(grepl("macro_bubble_chapter_ui", dec, fixed = TRUE))
+  testthat::expect_false(grepl("ynow-lite-only", dec, fixed = TRUE))
+  testthat::expect_false(grepl("ynow-full-only", dec, fixed = TRUE))
+
+  ui <- paste(
+    readLines(file.path("..", "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"),
+    collapse = "\n"
+  )
+  testthat::expect_true(grepl('tabName = "sensitivity"', ui, fixed = TRUE))
+  testthat::expect_true(grepl('decision_ui("main_decision")', ui, fixed = TRUE))
+
+  macro <- paste(
+    readLines(file.path("..", "macro_market_module.R"), warn = FALSE, encoding = "UTF-8"),
+    collapse = "\n"
+  )
+  testthat::expect_false(grepl("macro_bubble_chapter_ui", macro, fixed = TRUE))
+})

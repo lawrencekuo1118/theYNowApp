@@ -736,7 +736,8 @@ server <- function(input, output, session) {
         fx_usd_twd(fx_now)
         fx_fetched_at(Sys.time())
         set_ynow_currency_context(sess, fx_now, q_ccy, f_ccy)
-        if (!identical(q_ccy, f_ccy) || !identical(sess, q_ccy)) {
+        if (isTRUE(fx_conversion_required(q_ccy, f_ccy)) ||
+            isTRUE(fx_conversion_required(sess, q_ccy))) {
           if (!is.finite(fx_now) || fx_now <= 0) {
             showNotification(
               .ui_msg("notif_fx_usd_twd_fail_keep"),
@@ -997,7 +998,9 @@ server <- function(input, output, session) {
     fx_now <- tryCatch(.refresh_fx_if_stale(), error = function(e) fx_usd_twd())
     if (!is.finite(fx_now) || fx_now <= 0) {
       q <- quote_currency(); f <- statement_currency()
-      if (!identical(sc, q) || !identical(sc, f) || !identical(q, f)) {
+      if (isTRUE(fx_conversion_required(sc, q)) ||
+          isTRUE(fx_conversion_required(sc, f)) ||
+          isTRUE(fx_conversion_required(q, f))) {
         showNotification(.ui_msg("notif_fx_convert_fail"), type = "warning", duration = 8)
       }
     }
@@ -3491,35 +3494,47 @@ server <- function(input, output, session) {
       error = function(e) list(shares = NA_real_, method = "none", note = NULL, shares_bs = NA_real_)
     )
     raw_shares <- suppressWarnings(as.numeric(sh$shares_bs)[1])
+    sh_ratio <- suppressWarnings(as.numeric(sh$ratio)[1])
     # ADR／雙重股權：一律自動套用約當股數（與 P/B／RI／回測一致）
     if (shares_auto_adjust_method(sh$method) && is.finite(sh$shares) && sh$shares > 0) {
-      return(list(shares = sh$shares, note = sh$note, method = sh$method))
+      return(list(
+        shares = sh$shares, note = sh$note, method = sh$method, ratio = sh_ratio
+      ))
     }
     # Missing reporting ccy + not ADR → treat as quote (AAPL-like). ADR keeps NA.
     st_eff <- infer_statement_currency(
       statement_currency(), quote_currency(), sh$method
     )
     # Statement ≠ quote and not ADR-aligned: refuse common-share fallback (never label as ADR).
-    if (statement_quote_units_differ(st_eff, quote_currency())) {
+    if (isTRUE(fx_conversion_required(st_eff, quote_currency())) ||
+        isTRUE(adr_conversion_required(st_eff, quote_currency(), sh$method))) {
       return(list(
         shares = NA_real_,
         note = sh$note %||% "報價幣≠財報幣且無法約當 ADR 股數，不顯示每股",
-        method = "none"
+        method = sh$method %||% "none",
+        ratio = sh_ratio
       ))
     }
     if (is.finite(raw_shares) && raw_shares > 0) {
-      return(list(shares = raw_shares, note = NULL, method = "balance_sheet"))
+      return(list(
+        shares = raw_shares, note = NULL, method = "balance_sheet", ratio = sh_ratio
+      ))
     }
     list(
       shares = if (is.finite(sh$shares) && sh$shares > 0) sh$shares else NA_real_,
       note = sh$note %||% "缺少流通在外股數，不顯示每股",
-      method = sh$method %||% "none"
+      method = sh$method %||% "none",
+      ratio = sh_ratio
     )
   })
 
   .dcf_per_share <- function(equity_value, sh = NULL) {
     if (is.null(sh)) sh <- tryCatch(.valuation_shares(), error = function(e) NULL)
-    if (is.null(sh)) return(NA_real_)
+    if (is.null(sh)) {
+      out <- NA_real_
+      attr(out, "alignment_failure") <- "REQUIRED_PER_SHARE_VALUE_NON_FINITE"
+      return(out)
+    }
     st_eff <- infer_statement_currency(
       statement_currency(), quote_currency(), sh$method
     )
@@ -3528,7 +3543,7 @@ server <- function(input, output, session) {
       error = function(e) normalize_ccy(session_currency())
     )
     if (is.na(normalize_ccy(eq_ccy))) eq_ccy <- st_eff
-    per_share_in_quote(
+    px <- per_share_in_quote(
       equity_value,
       sh$shares,
       equity_ccy = eq_ccy,
@@ -3537,6 +3552,19 @@ server <- function(input, output, session) {
       share_method = sh$method,
       statement_ccy = st_eff
     )
+    code <- classify_per_share_alignment_failure(
+      statement_ccy = statement_currency(),
+      quote_ccy = quote_currency(),
+      usd_twd = fx_usd_twd(),
+      share_method = sh$method,
+      equity_ccy = eq_ccy,
+      shares = sh$shares,
+      adr_ratio = sh$ratio,
+      required_per_share = c(dcf = px),
+      method = "dcf"
+    )
+    attr(px, "alignment_failure") <- code
+    px
   }
 
   # ==========================================
@@ -6953,15 +6981,39 @@ server <- function(input, output, session) {
       stock_price_estimate_val(NULL)
       if (show_toast) {
         eq_now <- suppressWarnings(as.numeric(equity_value)[1])
-        sh_now <- suppressWarnings(as.numeric(sh_info$shares)[1])
         msg <- if (is.finite(eq_now) && eq_now < 0) {
           .ui_msg("notif_dcf_neg_equity")
         } else if (!is.finite(eq_now)) {
           NULL
-        } else if (!is.finite(sh_now) || sh_now <= 0) {
-          .ui_msg("notif_dcf_no_per_share")
         } else {
-          .ui_msg("notif_dcf_no_per_share")
+          code <- tryCatch(
+            attr(px, "alignment_failure"),
+            error = function(e) NULL
+          )
+          if (is.null(code) || (is.character(code) && !nzchar(code[1])) ||
+              (length(code) == 1L && is.na(code))) {
+            st_eff <- infer_statement_currency(
+              statement_currency(), quote_currency(),
+              if (!is.null(sh_info)) sh_info$method else NULL
+            )
+            eq_ccy <- tryCatch(
+              equity_money_ccy(d_balance_sheet(), session_currency(), st_eff),
+              error = function(e) st_eff
+            )
+            code <- classify_per_share_alignment_failure(
+              statement_ccy = statement_currency(),
+              quote_ccy = quote_currency(),
+              usd_twd = fx_usd_twd(),
+              share_method = if (!is.null(sh_info)) sh_info$method else NULL,
+              equity_ccy = eq_ccy,
+              shares = if (!is.null(sh_info)) sh_info$shares else NULL,
+              adr_ratio = if (!is.null(sh_info)) sh_info$ratio else NULL,
+              required_per_share = c(dcf = px),
+              method = "dcf"
+            )
+          }
+          toast_key <- per_share_alignment_toast_key(code)
+          if (!is.na(toast_key) && nzchar(toast_key)) .ui_msg(toast_key) else NULL
         }
         if (!is.null(msg) && nzchar(msg)) {
           showNotification(msg, type = "warning")

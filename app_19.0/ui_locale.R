@@ -825,13 +825,13 @@ locale_for_market <- function(mode = get_market_mode()) {
     # --- YNOW page (three stacked blocks) ---
     funnel_page_title = "YNOW",
     funnel_page_sub = paste0(
-      "Three stacked screens: statement quality (F-Score) → statement alerts → ",
+      "Three stacked screens: quality screen (F-Score) → statement alerts → ",
       "dynamic industry bubble and weight concentration. ",
       "Conclusion cards sit in each block, above that block’s table. ",
       "This is a decision-support report—not an order ticket."
     ),
     funnel_ch1_kicker = "Section I",
-    funnel_ch1_title = "Statement quality",
+    funnel_ch1_title = "Quality screen (F-Score)",
     funnel_ch1_lead = paste0(
       "Piotroski F-Score nine-item quality screen and related quality items; ",
       "Pass / Fail is a quality screen only—not a standalone buy reason."
@@ -980,6 +980,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     notif_fcfe_g_ge_ke = "❌ FCFE: terminal g must be strictly below Ke",
     notif_dcf_shares_note = "DCF shares: {note}",
     notif_dcf_no_per_share = "Cannot compute per-share fair value: missing FX / ADR share bridge, or statement vs quote currency not aligned.",
+    notif_dcf_statement_ccy_unavailable = "Cannot compute per-share fair value: FX conversion is required, but the reporting/statement currency is N/A or cannot be determined.",
+    notif_dcf_fx_rate_missing = "Cannot compute per-share fair value: statement and quote currencies differ, and no usable USD/TWD (or supported) FX rate is available.",
+    notif_dcf_fx_rate_invalid = "Cannot compute per-share fair value: an FX rate is present but invalid (non-finite or ≤ 0).",
+    notif_dcf_adr_ratio_missing = "Cannot compute per-share fair value: this comparison needs an ADR vs ordinary-share conversion, but no ratio or implied ADR shares are available.",
+    notif_dcf_adr_ratio_invalid = "Cannot compute per-share fair value: the ADR conversion ratio is present but invalid (non-finite or ≤ 0).",
+    notif_dcf_per_share_non_finite = "Cannot compute per-share fair value: a per-share input required by the selected method is not finite.",
     notif_dcf_updated = "✅ Valuation updated: applied {claim} engine",
     notif_dcf_claim_fcfe = "FCFE／Ke",
     notif_dcf_claim_fcff = "FCFF／WACC",
@@ -2111,12 +2117,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     # --- YNOW 頁（三個直向區塊） ---
     funnel_page_title = "YNOW",
     funnel_page_sub = paste0(
-      "三個區塊由上而下：財報體質（F-Score）→ 財報警訊 → 動態產業泡沫與權重集中度。",
+      "三個區塊由上而下：品質檢核（F-Score）→ 財報警訊 → 動態產業泡沫與權重集中度。",
       "各區結論／指標框格置於對應區塊內、表格上方。",
       "這是決策輔助報告，不是下單指令。"
     ),
     funnel_ch1_kicker = "第一章",
-    funnel_ch1_title = "財報體質",
+    funnel_ch1_title = "品質檢核（F-Score）",
     funnel_ch1_lead = paste0(
       "Piotroski F-Score 九項品質檢核與相關品質項目；",
       "通過／未達標僅供品質檢核，不單獨構成買進理由。"
@@ -2135,7 +2141,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     funnel_sec_method = "如何閱讀本報告",
     funnel_method_body = paste0(
-      "閱讀順序：財報體質（F-Score）→ 財報警訊 → 動態產業泡沫與權重集中度。",
+      "閱讀順序：品質檢核（F-Score）→ 財報警訊 → 動態產業泡沫與權重集中度。",
       "趨勢動能（Timing）輔助在「量化回測實驗室」分頁，不決定合理價。"
     ),
     funnel_method_caveat = "標籤與分數僅供研究／決策輔助，不是券商下單指令；HFV 情境僅作否決語境，不作看漲依據。",
@@ -2255,6 +2261,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     notif_fcfe_g_ge_ke = "❌ FCFE：永續 g 必須嚴格小於 Ke",
     notif_dcf_shares_note = "DCF 股數：{note}",
     notif_dcf_no_per_share = "無法計算每股合理價：缺少匯率／ADR 約當股數，或財報幣與報價幣未對齊。",
+    notif_dcf_statement_ccy_unavailable = "無法計算每股合理價：此次比較需要匯率換算，但財報／來源幣別為 N/A 或無法判定。",
+    notif_dcf_fx_rate_missing = "無法計算每股合理價：財報幣與報價幣不同，且沒有可用的 USD/TWD（或支援的）匯率。",
+    notif_dcf_fx_rate_invalid = "無法計算每股合理價：匯率存在但無效（非有限值或 ≤ 0）。",
+    notif_dcf_adr_ratio_missing = "無法計算每股合理價：此次比較需要 ADR 與普通股換算，但缺少比率或約當 ADR 股數。",
+    notif_dcf_adr_ratio_invalid = "無法計算每股合理價：ADR 換算比率存在但無效（非有限值或 ≤ 0）。",
+    notif_dcf_per_share_non_finite = "無法計算每股合理價：目前選用模型所需的每股輸入不是有限值。",
     notif_dcf_updated = "✅ 估值更新：已套入 {claim} 運算",
     notif_dcf_claim_fcfe = "FCFE／Ke",
     notif_dcf_claim_fcff = "FCFF／WACC",

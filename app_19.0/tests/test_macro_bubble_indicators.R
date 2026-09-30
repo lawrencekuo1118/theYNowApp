@@ -81,9 +81,11 @@ for (k in c(
   check(paste("zh", k), nzchar(ui_str(k, "zh-TW")))
 }
 
-# UI mounts chapter
-ui_src <- paste(readLines("macro_market_module.R", warn = FALSE), collapse = "\n")
-check("ui calls bubble chapter", grepl("macro_bubble_chapter_ui", ui_src, fixed = TRUE))
+# UI mounts chapter on the YNOW tab (not Macro)
+dec_src <- paste(readLines("investment_decision_module.R", warn = FALSE), collapse = "\n")
+check("YNOW tab calls bubble chapter", grepl("macro_bubble_chapter_ui", dec_src, fixed = TRUE))
+macro_src <- paste(readLines("macro_market_module.R", warn = FALSE), collapse = "\n")
+check("Macro tab no longer mounts bubble chapter", !grepl("macro_bubble_chapter_ui", macro_src, fixed = TRUE))
 check("no CAPM write in bubble file", {
   bt <- paste(readLines("macro_bubble_indicators.R", warn = FALSE), collapse = "\n")
   !grepl("updateNumericInput", bt, fixed = TRUE)
