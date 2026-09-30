@@ -27,8 +27,8 @@ check <- function(label, cond) {
 
 check("en title YNOW", identical(.UI_STRINGS$en$funnel_page_title, "YNOW"))
 check("zh title YNOW", identical(.UI_STRINGS$`zh-TW`$funnel_page_title, "YNOW"))
-check("en ch1 Statement quality", identical(.UI_STRINGS$en$funnel_ch1_title, "Statement quality"))
-check("zh ch1 財報體質", identical(.UI_STRINGS$`zh-TW`$funnel_ch1_title, "財報體質"))
+check("en ch1 Quality screen (F-Score)", identical(.UI_STRINGS$en$funnel_ch1_title, "Quality screen (F-Score)"))
+check("zh ch1 品質檢核（F-Score）", identical(.UI_STRINGS$`zh-TW`$funnel_ch1_title, "品質檢核（F-Score）"))
 check("en ch2 alerts", identical(.UI_STRINGS$en$funnel_ch2_title, "Statement alerts"))
 check("zh ch2 財報警訊", identical(.UI_STRINGS$`zh-TW`$funnel_ch2_title, "財報警訊"))
 check(
@@ -45,9 +45,9 @@ check("no Decision Funnel title", !grepl("Decision Funnel", .UI_STRINGS$en$funne
 check("no 決策漏斗 title", !grepl("決策漏斗", .UI_STRINGS$`zh-TW`$funnel_page_title, fixed = TRUE))
 
 dec <- paste(readLines("investment_decision_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-pos_q <- regexpr('data-ynow-block = "quality"', dec, fixed = TRUE)[1]
-pos_a <- regexpr('data-ynow-block = "alerts"', dec, fixed = TRUE)[1]
-pos_b <- regexpr('data-ynow-block = "bubble"', dec, fixed = TRUE)[1]
+pos_q <- regexpr('`data-ynow-block` = "quality"', dec, fixed = TRUE)[1]
+pos_a <- regexpr('`data-ynow-block` = "alerts"', dec, fixed = TRUE)[1]
+pos_b <- regexpr('`data-ynow-block` = "bubble"', dec, fixed = TRUE)[1]
 check("quality block present", is.finite(pos_q) && pos_q > 0)
 check("order 體質 → 警訊", is.finite(pos_a) && pos_a > pos_q)
 check("order 警訊 → 泡沫", is.finite(pos_b) && pos_b > pos_a)

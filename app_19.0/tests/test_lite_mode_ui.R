@@ -172,6 +172,7 @@ testthat::test_that("ynow_server wires Lite scenario apply before auto-calc", {
   testthat::expect_true(grepl(".auto_calc_shares_ready", txt, fixed = TRUE))
   testthat::expect_true(grepl("per_share_bridge_ready", txt, fixed = TRUE))
   testthat::expect_true(grepl("infer_statement_currency", txt, fixed = TRUE))
+  testthat::expect_true(grepl("classify_per_share_alignment_failure", txt, fixed = TRUE))
   testthat::expect_true(grepl(".execute_dcf_calc(notify = FALSE)", txt, fixed = TRUE))
   testthat::expect_true(grepl("notif_dcf_neg_equity", txt, fixed = TRUE))
   testthat::expect_true(grepl("lite_scenario_applied_sig", txt, fixed = TRUE))
@@ -245,8 +246,8 @@ testthat::test_that("YNOW page title and three-block order are shared by Lite an
   source(file.path("..", "ui_locale.R"), local = TRUE)
   testthat::expect_identical(.UI_STRINGS$en$funnel_page_title, "YNOW")
   testthat::expect_identical(.UI_STRINGS$`zh-TW`$funnel_page_title, "YNOW")
-  testthat::expect_identical(.UI_STRINGS$en$funnel_ch1_title, "Statement quality")
-  testthat::expect_identical(.UI_STRINGS$`zh-TW`$funnel_ch1_title, "財報體質")
+  testthat::expect_identical(.UI_STRINGS$en$funnel_ch1_title, "Quality screen (F-Score)")
+  testthat::expect_identical(.UI_STRINGS$`zh-TW`$funnel_ch1_title, "品質檢核（F-Score）")
   testthat::expect_identical(.UI_STRINGS$en$funnel_ch2_title, "Statement alerts")
   testthat::expect_identical(.UI_STRINGS$`zh-TW`$funnel_ch2_title, "財報警訊")
   testthat::expect_identical(
@@ -264,9 +265,9 @@ testthat::test_that("YNOW page title and three-block order are shared by Lite an
     readLines(file.path("..", "investment_decision_module.R"), warn = FALSE, encoding = "UTF-8"),
     collapse = "\n"
   )
-  pos_q <- regexpr('data-ynow-block = "quality"', dec, fixed = TRUE)[1]
-  pos_a <- regexpr('data-ynow-block = "alerts"', dec, fixed = TRUE)[1]
-  pos_b <- regexpr('data-ynow-block = "bubble"', dec, fixed = TRUE)[1]
+  pos_q <- regexpr('`data-ynow-block` = "quality"', dec, fixed = TRUE)[1]
+  pos_a <- regexpr('`data-ynow-block` = "alerts"', dec, fixed = TRUE)[1]
+  pos_b <- regexpr('`data-ynow-block` = "bubble"', dec, fixed = TRUE)[1]
   testthat::expect_true(is.finite(pos_q) && pos_q > 0)
   testthat::expect_true(is.finite(pos_a) && pos_a > pos_q)
   testthat::expect_true(is.finite(pos_b) && pos_b > pos_a)
