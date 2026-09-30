@@ -416,7 +416,8 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
         return(list(shares = sh$shares, method = sh$method))
       }
       f_eff <- infer_statement_currency(f_ccy, q_ccy, sh$method)
-      if (statement_quote_units_differ(f_eff, q_ccy)) {
+      if (isTRUE(adr_conversion_required(f_eff, q_ccy, sh$method)) ||
+          isTRUE(fx_conversion_required(f_eff, q_ccy))) {
         return(list(shares = NA_real_, method = "none"))
       }
       if (is.finite(raw_shares) && raw_shares > 0) {

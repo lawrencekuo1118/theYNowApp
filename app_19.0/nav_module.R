@@ -185,9 +185,11 @@ nav_module_server <- function(id,
       if (isTRUE(auto_adj) && is.finite(sh_adj$shares) && sh_adj$shares > 0) {
         shares <- sh_adj$shares
         shares_resolve_note(sh_adj$note)
-      } else if (statement_quote_units_differ(
+      } else if (isTRUE(adr_conversion_required(
+        infer_statement_currency(f_ccy0, q_ccy0, sh_adj$method), q_ccy0, sh_adj$method
+      )) || isTRUE(fx_conversion_required(
         infer_statement_currency(f_ccy0, q_ccy0, sh_adj$method), q_ccy0
-      )) {
+      ))) {
         shares <- NA_real_
         shares_resolve_note("報價幣≠財報幣且無法約當 ADR 股數，不顯示每股淨資產")
       } else {

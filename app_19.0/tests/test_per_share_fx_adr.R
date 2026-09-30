@@ -42,6 +42,16 @@ px_cny <- per_share_in_quote(
   share_method = "market_cap_per_price", statement_ccy = "CNY"
 )
 check("refuse CNY equity as USD ADR", !is.finite(px_cny))
+check(
+  "CNY ADR → REQUIRED_FX_RATE_MISSING",
+  identical(
+    classify_per_share_alignment_failure(
+      "CNY", "USD", usd_twd = 32,
+      share_method = "market_cap_per_price", equity_ccy = "CNY"
+    ),
+    "REQUIRED_FX_RATE_MISSING"
+  )
+)
 
 # TSM 20-F: Equity_TWD / FX / ADR == NT$ per common × 5 / FX
 equity_twd <- 250920e8  # ~NT$25,092bn in absolute units as in CSV rebuild
@@ -68,6 +78,17 @@ bad <- per_share_in_quote(
   share_method = "balance_sheet", statement_ccy = "TWD"
 )
 check("refuse common as ADR", !is.finite(bad))
+check(
+  "common as ADR → APPLICABLE_ADR_RATIO_MISSING",
+  identical(
+    classify_per_share_alignment_failure(
+      "TWD", "USD", usd_twd = fx,
+      share_method = "balance_sheet", equity_ccy = "TWD",
+      shares = common
+    ),
+    "APPLICABLE_ADR_RATIO_MISSING"
+  )
+)
 
 # Refuse: missing FX even with ADR shares
 nofx <- per_share_in_quote(
@@ -143,6 +164,28 @@ df <- data.frame(Breakdown = "Cash", `2024` = "100", check.names = FALSE, string
 out <- scale_financial_df_money(df, "TWD", "USD", usd_twd = NA_real_)
 check("scale refuse FX", isFALSE(attr(out, "money_scaled")))
 check("scale keep TWD tag", identical(attr(out, "money_ccy"), "TWD"))
+
+# 2330-like TWD/TWD ordinary: no FX, no ADR metadata
+px_2330 <- per_share_in_quote(
+  1e12, 25.9e9,
+  equity_ccy = "TWD", to_ccy = "TWD", usd_twd = NA_real_,
+  share_method = "balance_sheet", statement_ccy = "TWD"
+)
+check("2330 TWD/TWD prices without FX", is.finite(px_2330) && abs(px_2330 - 1e12 / 25.9e9) < 1e-6)
+check(
+  "2330 classifier OK with FX=NA",
+  is.null(classify_per_share_alignment_failure(
+    "TWD", "TWD", usd_twd = NA_real_,
+    share_method = "balance_sheet", equity_ccy = "TWD"
+  ))
+)
+check(
+  "AAPL N/A statement classifier OK",
+  is.null(classify_per_share_alignment_failure(
+    "N/A", "USD", usd_twd = NA_real_,
+    share_method = "balance_sheet"
+  ))
+)
 
 if (fail > 0L) {
   cat("\n", fail, " failure(s)\n", sep = "")
