@@ -175,9 +175,92 @@ check("15 indices", identical(sc15a$indices, sc15b$indices))
 check("15 formula", grepl("0.40", sc15a$formula, fixed = TRUE) && grepl("M*", sc15a$formula, fixed = TRUE))
 check("15 role", identical(sc15a$role, "systemic_risk_observation"))
 
+# Dynamism: changing an input must change the output; no placeholder composite.
+px_quiet <- 100 + seq_len(n) * 0.02
+px_wild <- 100 + 12 * sin(seq_len(n) / 1.7)
+.mk_full <- function(px) lapply(stats::setNames(nm = ids), function(id) list(
+  financial_resilience = 75, operational_continuity = 75, supply_chain_resilience = 75,
+  market_stability = 75, data_confidence = 70, closes = px, dates = dates, volume = rep(1e6, n)))
+sc_q <- hccsi_score(.mk_full(px_quiet), cfg)
+sc_w <- hccsi_score(.mk_full(px_wild), cfg)
+check("vol up stress up", is.finite(sc_w$indices$systemic_stress) && is.finite(sc_q$indices$systemic_stress) &&
+  sc_w$indices$systemic_stress > sc_q$indices$systemic_stress)
+
+.mk_px <- function(px) lapply(stats::setNames(nm = ids), function(id) list(
+  closes = px, dates = dates, volume = rep(1e6, n)))
+sc_po_up <- hccsi_score(.mk_px(px_up), cfg)
+sc_po_flat <- hccsi_score(.mk_px(rep(100, n)), cfg)
+check("price-only H not auto-up", {
+  hu <- sc_po_up$indices$systems_health; hf <- sc_po_flat$indices$systems_health
+  (!is.finite(hu) && !is.finite(hf)) ||
+    (is.finite(hu) && is.finite(hf) && abs(hu - hf) < 1e-8)
+})
+check("price-only M moves", is.finite(sc_po_up$indices$market_observation) &&
+  is.finite(sc_po_flat$indices$market_observation) &&
+  sc_po_up$indices$market_observation > sc_po_flat$indices$market_observation)
+
+sc0 <- hccsi_score(NULL, cfg)
+check("missing history no composite", !is.finite(sc0$composite))
+check("missing history not placeholder", !isTRUE(sc0$composite %in% c(0, 50, 100, 70, 72)))
+check("missing history unavailable", identical(sc0$alert, "Unavailable"))
+check("missing history H NA", !is.finite(sc0$indices$systems_health))
+check("missing history S NA", !is.finite(sc0$indices$systemic_stress))
+check("missing history M NA", !is.finite(sc0$indices$market_observation))
+check("missing history code", identical(sc0$failures$composite, "SOURCE_HISTORY_UNAVAILABLE"))
+check("prior not used as H", isTRUE(sc0$issuers$ASML$criticality_prior == 95) &&
+  !is.finite(sc0$issuer_health[["ASML"]]))
+
+c_fill <- hccsi_composite(70, 40, 50, 50, cfg)
+c_omit <- hccsi_composite(70, 40, 50, NA, cfg)
+check("renorm omits M", is.finite(c_omit) &&
+  abs(as.numeric(c_omit)[1] - (0.4 * 70 + 0.3 * 60 + 0.2 * 50) / 0.9) < 1e-8)
+check("renorm != M=50 fill", abs(as.numeric(c_omit)[1] - as.numeric(c_fill)[1]) > 1e-6)
+check("renorm dropped M", isTRUE("market_observation_neutral" %in% attr(c_omit, "dropped")))
+
+inp_short <- inp11
+inp_short$ASML$stress_duration_days <- 2
+inp_short$TSM$stress_duration_days <- 2
+sc_short <- hccsi_score(inp_short, cfg)
+check("brief stress no contagion", !isTRUE("litho_foundry" %in% sc_short$contagion$channels))
+
+live0 <- hccsi_live_inputs_from_prices(NULL, NULL, cfg)
+check("live no dc default", is.null(live0$AAPL$data_confidence) || !is.finite(live0$AAPL$data_confidence))
+toast_h <- hccsi_failure_toast("SOURCE_HISTORY_UNAVAILABLE", "composite", c("fragility"), "en")
+check("history toast specific", grepl("default|withheld|unavailable", toast_h, ignore.case = TRUE) &&
+  !grepl("Something went wrong", toast_h, ignore.case = TRUE))
+
 macro_txt <- paste(readLines("macro_market_module.R", warn = FALSE), collapse = "\n")
 ui_txt <- paste(readLines("ynow_ui.R", warn = FALSE), collapse = "\n")
 mod_txt <- paste(readLines("hccsi_module.R", warn = FALSE), collapse = "\n")
+check("no lazy default score", !grepl("want_px", macro_txt, fixed = TRUE))
+check("always fetch history", grepl("Always attempt live Yahoo/history", macro_txt, fixed = TRUE))
+check("UI flow helper", grepl("ynow-hccsi-flow", mod_txt, fixed = TRUE) && grepl("hccsi_score_span", mod_txt, fixed = TRUE))
+check("UI Rf not flow", grepl("ynow-macro-rf__value", macro_txt, fixed = TRUE) &&
+  !grepl("ynow-macro-rf__value ynow-hccsi-flow", macro_txt, fixed = TRUE))
+check("CSS logo flow stops", grepl("ynow-logo-flow", ui_txt, fixed = TRUE) &&
+  grepl("#0C5484", ui_txt, fixed = TRUE) && grepl("#249C60", ui_txt, fixed = TRUE) &&
+  grepl("#1AA8B8", ui_txt, fixed = TRUE) && grepl("ynow-hccsi-flow", ui_txt, fixed = TRUE))
+
+if (!exists("tags", inherits = TRUE) && requireNamespace("htmltools", quietly = TRUE)) {
+  tags <- htmltools::tags
+}
+box_ok <- tryCatch(hccsi_kpi_box(sc13, lite = TRUE, locale = "en"), error = function(e) NULL)
+if (!is.null(box_ok)) {
+  html_ok <- paste(as.character(box_ok), collapse = " ")
+  check("KPI numeral flow class", grepl("ynow-hccsi-flow", html_ok, fixed = TRUE))
+  check("KPI numeral not unavailable", !grepl("ynow-hccsi-unavailable", html_ok, fixed = TRUE))
+}
+box_na <- tryCatch(hccsi_kpi_box(sc0, lite = TRUE, locale = "en"), error = function(e) NULL)
+if (!is.null(box_na)) {
+  html_na <- paste(as.character(box_na), collapse = " ")
+  check("KPI unavailable class", grepl("ynow-hccsi-unavailable", html_na, fixed = TRUE))
+  check("KPI unavailable no flow", !grepl("ynow-hccsi-flow", html_na, fixed = TRUE))
+}
+four <- tryCatch(.hccsi_four_boxes(sc13, "en"), error = function(e) NULL)
+if (!is.null(four)) {
+  html_four <- paste(as.character(four), collapse = " ")
+  check("four-index flow class", grepl("ynow-hccsi-flow", html_four, fixed = TRUE))
+}
 check("UI beside Rf", grepl("ynow-macro-kpi--hccsi", macro_txt, fixed = TRUE) && grepl("ynow-macro-kpi--rf", macro_txt, fixed = TRUE))
 check("UI same row", grepl("hccsi_col", macro_txt, fixed = TRUE) && grepl("rf_col", macro_txt, fixed = TRUE))
 check("UI 1:1", grepl("kpi_w <- if (is_tw) 4L else 6L", macro_txt, fixed = TRUE))
@@ -191,10 +274,14 @@ check("UI Full-only expand", grepl("ynow-macro-hccsi-expand ynow-full-only", mac
 check("UI Lite no click", grepl("if (!isTRUE(lite))", mod_txt, fixed = TRUE))
 check("UI Lite CSS", grepl("body.ynow-lite #ynow_macro_hccsi_expand", ui_txt, fixed = TRUE))
 check("UI four indices", grepl("hccsi-four", mod_txt, fixed = TRUE))
+check("four-index uses flow span", grepl("hccsi_score_span(it$val)", mod_txt, fixed = TRUE))
+check("layer table uses flow span", grepl("hccsi_score_span(h)", mod_txt, fixed = TRUE))
 check("Rf not full-only", !grepl("ynow-macro-kpi--rf[^\\n]*ynow-full-only", macro_txt))
 
 for (k in c("hccsi_title", "hccsi_disclosure", "hccsi_index_health", "hccsi_index_stress",
-            "hccsi_index_fragility", "hccsi_index_market", "notif_hccsi_fx_missing")) {
+            "hccsi_index_fragility", "hccsi_index_market", "notif_hccsi_fx_missing",
+            "hccsi_unavailable", "hccsi_dropped", "hccsi_dropped_none",
+            "hccsi_alert_unavailable", "notif_hccsi_history_missing")) {
   check(paste("en", k), nzchar(ui_str(k, "en")))
   check(paste("zh", k), nzchar(ui_str(k, "zh-TW")))
 }

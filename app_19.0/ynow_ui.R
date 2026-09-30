@@ -1339,6 +1339,16 @@ ui <- dashboardPage(
           /* logo 圖檔主色（藍／綠）— 現金流序列等資料色 */
           --ynow-logo-blue: #0C5484;
           --ynow-logo-green: #249C60;
+          --ynow-logo-cyan: #1AA8B8;
+          --ynow-logo-flow-gradient: linear-gradient(
+            105deg,
+            #0C5484 0%,
+            #1578A0 16%,
+            #1AA8B8 32%,
+            #249C60 50%,
+            #1AA8B8 68%,
+            #0C5484 100%
+          );
           /* Model Selector｜估值模型推薦 色系（各模型頁主題） */
           --ynow-model-nav: #d81b60;
           --ynow-model-dcf: #00a65a;
@@ -1357,6 +1367,10 @@ ui <- dashboardPage(
         }
 
         @keyframes ynow-gold-shine {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+        @keyframes ynow-logo-flow {
           0%, 100% { background-position: 0% 50%; }
           50% { background-position: 100% 50%; }
         }
@@ -3611,7 +3625,11 @@ ui <- dashboardPage(
             setBtText('ynow_macro_page_sub', 'macro_page_sub');
             setBtText('ynow_macro_rf_title', 'macro_rf_title');
             setBtText('ynow_macro_hccsi_title', 'hccsi_title');
-            if (document.body && document.body.classList.contains('ynow-lite')) {
+            var hccsiBox = document.getElementById('ynow_macro_hccsi_box');
+            var hccsiAlert = hccsiBox ? String(hccsiBox.getAttribute('data-hccsi-alert') || '') : '';
+            if (hccsiAlert.toLowerCase() === 'unavailable') {
+              setBtText('ynow_macro_hccsi_hint', 'hccsi_unavailable');
+            } else if (document.body && document.body.classList.contains('ynow-lite')) {
               setBtText('ynow_macro_hccsi_hint', 'hccsi_disclosure_short');
             } else {
               setBtText('ynow_macro_hccsi_hint', 'hccsi_click_hint');
@@ -5956,6 +5974,42 @@ ui <- dashboardPage(
         .ynow-macro-kpi--hccsi.ynow-hccsi-alert--critical {
           border-color: rgba(192, 57, 43, 0.95);
           box-shadow: 0 0 0 2px rgba(192, 57, 43, 0.25);
+        }
+        .ynow-macro-kpi--hccsi.ynow-hccsi-alert--unavailable {
+          border-color: rgba(12, 84, 132, 0.35);
+        }
+        .ynow-hccsi-flow {
+          background-image: var(--ynow-logo-flow-gradient, linear-gradient(105deg, #0C5484 0%, #1AA8B8 50%, #249C60 100%));
+          background-size: 220% 100%;
+          background-repeat: no-repeat;
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+          color: transparent;
+          animation: ynow-logo-flow 2.6s ease-in-out infinite;
+          font-weight: 700;
+        }
+        .ynow-hccsi-unavailable {
+          color: #6b7c8a;
+          -webkit-text-fill-color: #6b7c8a;
+          font-weight: 600;
+        }
+        .ynow-macro-kpi--rf .ynow-hccsi-flow,
+        .ynow-macro-rf__value.ynow-hccsi-flow {
+          animation: none;
+          background-image: none;
+          -webkit-text-fill-color: inherit;
+          color: inherit;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .ynow-hccsi-flow { animation: none; background-position: 0% 50%; }
+        }
+        @supports not ((-webkit-background-clip: text) or (background-clip: text)) {
+          .ynow-hccsi-flow {
+            background-image: none !important;
+            -webkit-text-fill-color: #0C5484 !important;
+            color: #0C5484 !important;
+          }
         }
         .ynow-macro-hccsi-expand { width: 100%; margin: 0 0 12px 0; }
         .ynow-hccsi-expand__card h4 { margin: 12px 0 6px 0; font-size: 14px; }

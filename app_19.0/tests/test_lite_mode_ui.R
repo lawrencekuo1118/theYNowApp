@@ -36,7 +36,8 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
     "macro_index_chart_error",
     "hccsi_title", "hccsi_disclosure", "hccsi_click_hint",
     "hccsi_index_health", "hccsi_index_stress",
-    "hccsi_index_fragility", "hccsi_index_market"
+    "hccsi_index_fragility", "hccsi_index_market",
+    "hccsi_unavailable", "hccsi_dropped", "hccsi_dropped_none"
   )
   for (k in keys) {
     en <- .UI_STRINGS$en[[k]]

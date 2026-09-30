@@ -31,7 +31,14 @@ hccsi_alert_class <- function(alert) {
   if (identical(a, "critical")) return("ynow-hccsi-alert--critical")
   if (identical(a, "warning")) return("ynow-hccsi-alert--warning")
   if (identical(a, "watch")) return("ynow-hccsi-alert--watch")
+  if (identical(a, "unavailable") || identical(a, "na") || !nzchar(a)) return("ynow-hccsi-alert--unavailable")
   "ynow-hccsi-alert--normal"
+}
+
+hccsi_score_span <- function(x, digits = 1, extra_class = NULL) {
+  finite <- .finite1(x)
+  cls <- c("ynow-hccsi-num", if (isTRUE(finite)) "ynow-hccsi-flow" else "ynow-hccsi-unavailable", extra_class)
+  tags$span(class = paste(cls, collapse = " "), hccsi_fmt_score(x, digits))
 }
 
 .hccsi_ui <- function(key, locale = "en") {
@@ -40,7 +47,8 @@ hccsi_alert_class <- function(alert) {
 
 hccsi_kpi_box <- function(result, lite = FALSE, locale = "en", ns = NULL, selected = FALSE) {
   score <- if (is.null(result)) NA_real_ else result$composite
-  alert <- if (is.null(result)) "Watch" else (result$alert %||% "Watch")
+  unavailable <- is.null(result) || !.finite1(score) || identical(result$availability, "unavailable")
+  alert <- if (isTRUE(unavailable)) "Unavailable" else (result$alert %||% "Unavailable")
   cls <- c("ynow-macro-kpi", "ynow-macro-kpi--hccsi", hccsi_alert_class(alert))
   extra <- NULL
   if (!isTRUE(lite)) {
@@ -58,13 +66,19 @@ hccsi_kpi_box <- function(result, lite = FALSE, locale = "en", ns = NULL, select
       )
     )
   }
-  hint <- if (isTRUE(lite)) .hccsi_ui("hccsi_disclosure_short", locale) else .hccsi_ui("hccsi_click_hint", locale)
+  hint <- if (isTRUE(unavailable)) {
+    .hccsi_ui("hccsi_unavailable", locale)
+  } else if (isTRUE(lite)) {
+    .hccsi_ui("hccsi_disclosure_short", locale)
+  } else {
+    .hccsi_ui("hccsi_click_hint", locale)
+  }
   do.call(tags$div, c(list(
     id = "ynow_macro_hccsi_box",
     class = paste(cls, collapse = " "),
     `data-hccsi-alert` = alert,
     tags$div(class = "ynow-macro-kpi__label", id = "ynow_macro_hccsi_title", .hccsi_ui("hccsi_title", locale)),
-    tags$div(class = "ynow-macro-kpi__value ynow-hccsi__value", hccsi_fmt_score(score)),
+    tags$div(class = "ynow-macro-kpi__value ynow-hccsi__value", hccsi_score_span(score)),
     tags$div(class = paste("ynow-macro-kpi__chg", hccsi_alert_class(alert)), id = "ynow_macro_hccsi_alert",
              paste(.hccsi_ui("hccsi_alert_label", locale), alert)),
     tags$div(class = "ynow-macro-hint", id = "ynow_macro_hccsi_hint", hint)
@@ -83,7 +97,7 @@ hccsi_kpi_box <- function(result, lite = FALSE, locale = "en", ns = NULL, select
     column(width = 3, class = "col-xs-6 col-sm-6 col-md-3",
            tags$div(class = paste("ynow-macro-kpi ynow-hccsi-sub", paste0("ynow-hccsi-sub--", it$id)),
                     tags$div(class = "ynow-macro-kpi__label", .hccsi_ui(it$key, locale)),
-                    tags$div(class = "ynow-macro-kpi__value", hccsi_fmt_score(it$val)),
+                    tags$div(class = "ynow-macro-kpi__value", hccsi_score_span(it$val)),
                     tags$div(class = "ynow-macro-hint", .hccsi_ui(it$gloss, locale))))
   })
   do.call(fluidRow, c(list(class = "ynow-macro-kpi-row ynow-hccsi-four"), cols))
@@ -108,8 +122,8 @@ hccsi_kpi_box <- function(result, lite = FALSE, locale = "en", ns = NULL, select
     w <- sum(vapply(mem, function(id) as.numeric(rows[[id]]$weight)[1], numeric(1)), na.rm = TRUE)
     subs <- paste(unique(vapply(mem, function(id) as.character(rows[[id]]$substitutes)[1], character(1))), collapse = "; ")
     repl <- mean(vapply(mem, function(id) as.numeric(rows[[id]]$replacement_time_years)[1], numeric(1)), na.rm = TRUE)
-    tags$tr(tags$td(ly), tags$td(hccsi_fmt_score(h)), tags$td(hccsi_fmt_score(s)),
-            tags$td(sprintf("%.1f%%", 100 * w)), tags$td(hccsi_fmt_score(result$layer_stress[[ly]])),
+    tags$tr(tags$td(ly), tags$td(hccsi_score_span(h)), tags$td(hccsi_score_span(s)),
+            tags$td(sprintf("%.1f%%", 100 * w)), tags$td(hccsi_score_span(result$layer_stress[[ly]])),
             tags$td(subs), tags$td(if (is.finite(repl)) sprintf("%.1f", repl) else "—"))
   })
   tags$div(class = "ynow-hccsi-table-wrap",
@@ -171,14 +185,19 @@ hccsi_methodology_notes <- function(locale = "en") {
 
 hccsi_expand_ui <- function(result, locale = "en") {
   if (is.null(result)) return(tags$p(class = "ynow-macro-hint", .hccsi_ui("hccsi_empty", locale)))
+  dropped <- result$dropped_terms %||% character(0)
+  dropped_txt <- if (length(dropped)) {
+    gsub("{terms}", paste(dropped, collapse = ", "), .hccsi_ui("hccsi_dropped", locale), fixed = TRUE)
+  } else .hccsi_ui("hccsi_dropped_none", locale)
   tags$div(
     class = "ynow-macro-card ynow-hccsi-expand__card",
     tags$h4(id = "ynow_macro_hccsi_overview_title", .hccsi_ui("hccsi_overview_title", locale)),
     tags$p(class = "ynow-macro-hint", id = "ynow_macro_hccsi_disclosure", .hccsi_ui("hccsi_disclosure", locale)),
-    tags$p(tags$b(.hccsi_ui("hccsi_alert_label", locale)), ": ", result$alert, " · ",
+    tags$p(tags$b(.hccsi_ui("hccsi_alert_label", locale)), ": ", result$alert %||% "Unavailable", " · ",
            tags$b(.hccsi_ui("hccsi_highest_risk_layer", locale)), ": ", result$highest_risk_layer %||% "—", " · ",
            tags$b(.hccsi_ui("hccsi_top_contributors", locale)), ": ",
            paste(result$top_contributors %||% character(0), collapse = ", ")),
+    tags$p(class = "ynow-macro-hint", id = "ynow_macro_hccsi_dropped", dropped_txt),
     tags$p(class = "ynow-macro-hint", result$formula %||% ""),
     .hccsi_four_boxes(result, locale),
     tags$h4(id = "ynow_macro_hccsi_layer_title", .hccsi_ui("hccsi_layer_title", locale)),

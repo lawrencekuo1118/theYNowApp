@@ -117,7 +117,8 @@ for (k in c(
   "macro_index_chart_hint", "macro_index_chart_empty",
   "macro_index_chart_error",
   "hccsi_title", "hccsi_disclosure", "hccsi_index_health",
-  "hccsi_index_stress", "hccsi_index_fragility", "hccsi_index_market"
+  "hccsi_index_stress", "hccsi_index_fragility", "hccsi_index_market",
+  "hccsi_unavailable", "notif_hccsi_history_missing"
 )) {
   check(paste("en", k), nzchar(ui_str(k, "en")))
   check(paste("zh", k), nzchar(ui_str(k, "zh-TW")))

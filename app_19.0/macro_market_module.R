@@ -681,11 +681,10 @@ macro_market_server <- function(id = "macro",
 
     hccsi_result <- reactive({
       refresh_token()
-      expanded <- isTRUE(hccsi_expanded())
       cfg <- if (exists("hccsi_load_config", mode = "function")) hccsi_load_config() else NULL
       price_map <- list(); bench_df <- NULL
-      want_px <- isTRUE(expanded) || isolate(refresh_token()) > 0L
-      if (isTRUE(want_px) && exists("fetch_price_history_df", mode = "function") &&
+      # Always attempt live Yahoo/history. Never score from config placeholders.
+      if (exists("fetch_price_history_df", mode = "function") &&
           exists("hccsi_issuers", mode = "function")) {
         for (iss in hccsi_issuers(cfg)) {
           tk <- as.character(iss$tickers[[1]] %||% "")[1]

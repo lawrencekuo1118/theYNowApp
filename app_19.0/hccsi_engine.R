@@ -10,9 +10,10 @@ HCCSI_ERROR_CODES <- c(
   "REQUIRED_FX_RATE_INVALID", "FX_DATE_MISMATCH",
   "APPLICABLE_ADR_RATIO_MISSING", "APPLICABLE_ADR_RATIO_INVALID",
   "REQUIRED_PER_SHARE_VALUE_NON_FINITE", "BENCHMARK_DATA_MISSING",
-  "INSUFFICIENT_ROLLING_WINDOW", "STALE_SOURCE_DATA", "DUPLICATE_ECONOMIC_ISSUER"
+  "INSUFFICIENT_ROLLING_WINDOW", "STALE_SOURCE_DATA", "DUPLICATE_ECONOMIC_ISSUER",
+  "SOURCE_HISTORY_UNAVAILABLE"
 )
-HCCSI_ALERT_LEVELS <- c("Normal", "Watch", "Warning", "Critical")
+HCCSI_ALERT_LEVELS <- c("Normal", "Watch", "Warning", "Critical", "Unavailable")
 .HCCSI_CALC_LABELS <- c(
   per_share = "per-share alignment", returns = "return / volume",
   vol = "realized volatility", drawdown = "max drawdown", beta = "rolling beta",
@@ -38,6 +39,11 @@ HCCSI_ALERT_LEVELS <- c("Normal", "Watch", "Warning", "Critical")
   sum(v[ok] * w[ok]) / sum(w[ok])
 }
 .hccsi_pillar <- function(value) if (.finite1(value)) .hccsi_clip(value, 0, 100) else NA_real_
+# Optional numeric: missing stays NA (never fill 0/50/100/72). Explicit 0 is kept.
+.hccsi_opt <- function(x) {
+  if (is.null(x) || length(x) == 0L) return(NA_real_)
+  suppressWarnings(as.numeric(x)[1])
+}
 
 hccsi_classify_alignment <- function(source_currency, target_currency,
                                      instrument_type = "ordinary",
@@ -114,6 +120,7 @@ hccsi_toast_key <- function(code) {
     INSUFFICIENT_ROLLING_WINDOW = "notif_hccsi_window",
     STALE_SOURCE_DATA = "notif_hccsi_stale",
     DUPLICATE_ECONOMIC_ISSUER = "notif_hccsi_dup_issuer",
+    SOURCE_HISTORY_UNAVAILABLE = "notif_hccsi_history_missing",
     NA_character_)
 }
 
@@ -258,9 +265,12 @@ hccsi_raw_weights <- function(cfg = NULL, liquidity_adj = NULL) {
   ids <- vapply(issuers, function(x) x$id, character(1))
   pri <- vapply(issuers, function(x) as.numeric(x$criticality_prior)[1], numeric(1))
   pri[!is.finite(pri) | pri < 0] <- NA_real_
-  raw <- if (!any(is.finite(pri))) rep(1 / length(ids), length(ids)) else {
-    pri[!is.finite(pri)] <- mean(pri, na.rm = TRUE); pri / sum(pri)
+  # Missing priors are omitted (weight 0), never mean-filled or equal-weighted as a live score.
+  if (!any(is.finite(pri)) || sum(pri, na.rm = TRUE) <= 0) {
+    raw <- rep(NA_real_, length(ids)); names(raw) <- ids; return(raw)
   }
+  pri[!is.finite(pri)] <- 0
+  raw <- pri / sum(pri)
   names(raw) <- ids
   cap <- cfg$weighting$liquidity_adj_max %||% 0.20
   if (!is.null(liquidity_adj)) {
@@ -278,7 +288,13 @@ hccsi_constrain_weights <- function(raw, cfg = NULL) {
   if (is.null(ids) || !length(ids)) { ids <- hccsi_issuer_ids(cfg); raw <- hccsi_raw_weights(cfg) }
   names(raw) <- ids
   raw[!is.finite(raw) | raw < 0] <- 0
-  if (sum(raw) <= 0) raw[] <- 1 / length(raw)
+  if (sum(raw) <= 0) {
+    w <- raw; w[] <- NA_real_
+    issuers0 <- hccsi_issuers(cfg)
+    layer_of0 <- stats::setNames(vapply(issuers0, function(x) as.character(x$layer)[1], character(1)),
+                                 vapply(issuers0, function(x) x$id, character(1)))
+    return(list(raw = raw, constrained = w, layer = layer_of0[ids]))
+  }
   raw <- raw / sum(raw)
   issuer_cap <- cfg$weighting$issuer_cap %||% 0.12
   exceptions <- cfg$weighting$issuer_cap_exceptions %||% numeric(0)
@@ -378,7 +394,42 @@ hccsi_composite <- function(health, stress, fragility, market, cfg = NULL) {
     concentration_fragility_inverted = if (.finite1(fragility)) 100 - as.numeric(fragility)[1] else NA_real_,
     market_observation_neutral = hccsi_market_neutral(market)
   )
-  .hccsi_mean_excl_na(vals, w[names(vals)])
+  dropped <- names(vals)[!is.finite(vals)]
+  used <- names(vals)[is.finite(vals)]
+  ww <- if (length(used)) w[used] else numeric(0)
+  if (length(ww) && sum(ww, na.rm = TRUE) > 0) ww <- ww / sum(ww)
+  out <- .hccsi_mean_excl_na(vals, w[names(vals)])
+  attr(out, "dropped") <- dropped
+  attr(out, "used") <- used
+  attr(out, "used_weights") <- ww
+  attr(out, "terms") <- vals
+  out
+}
+
+.hccsi_formula_text <- function(comp) {
+  base <- "HCCSI = 0.40·H + 0.30·(100−S) + 0.20·(100−F) + 0.10·M*, M* = 100 − 2·|M − 50| (price is not health)"
+  dropped <- attr(comp, "dropped")
+  used_w <- attr(comp, "used_weights")
+  extra <- " Missing terms are omitted and remaining weights renormalized; no 0/50/100 fill."
+  if (length(dropped)) {
+    bits <- paste(dropped, collapse = ", ")
+    wtxt <- if (length(used_w)) paste(sprintf("%s=%.3f", names(used_w), as.numeric(used_w)), collapse = ", ") else ""
+    paste0(base, extra, " Dropped: ", bits, if (nzchar(wtxt)) paste0("; renormalized weights ", wtxt) else "", ".")
+  } else paste0(base, extra, " All four terms available.")
+}
+
+.hccsi_has_live_observation <- function(rows) {
+  if (is.null(rows) || !length(rows)) return(FALSE)
+  any(vapply(rows, function(r) {
+    .finite1(r$financial_resilience) || .finite1(r$operational_continuity) ||
+      .finite1(r$supply_chain_resilience) || .finite1(r$market_stability) ||
+      .finite1(r$data_confidence) || .finite1(r$abnormal_vol) ||
+      .finite1(r$drawdown_stress) || .finite1(r$ops_incident_stress) ||
+      .finite1(r$financial_deterioration) || .finite1(r$supply_disruption) ||
+      .finite1(r$ret_1d) || .finite1(r$ret_1m) || .finite1(r$ret_ytd) ||
+      .finite1(r$vol_20d) || .finite1(r$vol_60d) || .finite1(r$max_dd) ||
+      isTRUE(r$ops_incident) || isTRUE(r$ops_incident_persistent)
+  }, logical(1)))
 }
 
 hccsi_issuer_persistent <- function(row, cfg = NULL) {
@@ -391,8 +442,8 @@ hccsi_issuer_persistent <- function(row, cfg = NULL) {
                                    .hccsi_pillar(row$supply_disruption),
                                    .hccsi_pillar(row$financial_deterioration)))
   }
-  dur <- suppressWarnings(as.numeric(row$stress_duration_days)[1]); if (!is.finite(dur)) dur <- 0
-  is.finite(stress) && stress >= thr && dur >= days_need
+  dur <- suppressWarnings(as.numeric(row$stress_duration_days)[1])
+  is.finite(stress) && is.finite(dur) && stress >= thr && dur >= days_need
 }
 
 hccsi_contagion <- function(issuer_rows, cfg = NULL) {
@@ -400,6 +451,20 @@ hccsi_contagion <- function(issuer_rows, cfg = NULL) {
   rows <- issuer_rows
   names(rows) <- vapply(rows, function(r) r$id, character(1))
   persist <- vapply(rows, function(r) isTRUE(hccsi_issuer_persistent(r, cfg)), logical(1))
+  evaluable <- vapply(rows, function(r) {
+    st <- r$issuer_stress
+    if (!.finite1(st)) {
+      st <- .hccsi_mean_excl_na(c(.hccsi_pillar(r$ops_incident_stress),
+                                  .hccsi_pillar(r$supply_disruption),
+                                  .hccsi_pillar(r$financial_deterioration)))
+    }
+    dur <- suppressWarnings(as.numeric(r$stress_duration_days)[1])
+    is.finite(st) && is.finite(dur)
+  }, logical(1))
+  if (!any(evaluable)) {
+    return(list(penalty = NA_real_, channels = character(0), persistent_issuers = character(0),
+                system_critical_ok = FALSE, unevaluated = TRUE))
+  }
   channels_hit <- character(0); penalty <- 0
   for (ch in cfg$contagion_channels) {
     ids <- ch$issuers
@@ -411,13 +476,14 @@ hccsi_contagion <- function(issuer_rows, cfg = NULL) {
     }
   }
   list(penalty = .hccsi_clip(penalty, 0, 100), channels = unique(channels_hit),
-       persistent_issuers = names(persist)[persist], system_critical_ok = length(channels_hit) > 0)
+       persistent_issuers = names(persist)[persist], system_critical_ok = length(channels_hit) > 0,
+       unevaluated = FALSE)
 }
 
 hccsi_alert_level <- function(composite, contagion, cfg = NULL) {
   cfg <- hccsi_load_config(cfg)
   cscore <- suppressWarnings(as.numeric(composite)[1])
-  if (!is.finite(cscore)) return("Watch")
+  if (!is.finite(cscore)) return("Unavailable")
   crit_ok <- isTRUE(contagion$system_critical_ok)
   if (cscore < (cfg$alerts$warning_min %||% 40) && isTRUE(crit_ok)) return("Critical")
   if (cscore < (cfg$alerts$warning_min %||% 40)) return("Warning")
@@ -426,41 +492,59 @@ hccsi_alert_level <- function(composite, contagion, cfg = NULL) {
   "Normal"
 }
 
-.hccsi_default_row <- function(iss, weight, input = NULL) {
+# Issuer row: structural config fields (criticality, replacement, buffer) stay;
+# live H/S/M pillars are NA until an input or derived market statistic exists.
+.hccsi_issuer_row <- function(iss, weight, input = NULL) {
   inp <- input %||% list()
-  fin <- inp$financial_resilience %||% 72; ops <- inp$operational_continuity %||% 72
-  if (isTRUE(inp$ops_incident) && !isTRUE(inp$ops_incident_persistent)) ops <- min(as.numeric(ops)[1], 55)
-  if (isTRUE(inp$ops_incident_persistent)) ops <- min(as.numeric(ops)[1], 35)
-  supply_h <- inp$supply_chain_resilience %||% 70
-  vol_s <- inp$abnormal_vol
-  if (is.null(vol_s) && .finite1(inp$vol_20d)) vol_s <- .hccsi_clip((as.numeric(inp$vol_20d)[1] / 0.35) * 50, 0, 100)
-  dd_s <- inp$drawdown_stress
-  if (is.null(dd_s) && .finite1(inp$max_dd)) dd_s <- .hccsi_clip(abs(as.numeric(inp$max_dd)[1]) * 200, 0, 100)
-  ops_s <- inp$ops_incident_stress
-  if (is.null(ops_s)) ops_s <- if (isTRUE(inp$ops_incident_persistent)) 80 else if (isTRUE(inp$ops_incident)) 45 else 10
-  fin_d <- inp$financial_deterioration
-  if (is.null(fin_d) && .finite1(inp$financial_resilience)) fin_d <- .hccsi_clip(100 - as.numeric(inp$financial_resilience)[1], 0, 100)
-  if (is.null(fin_d)) fin_d <- 20
-  sup_d <- inp$supply_disruption %||% if (.finite1(supply_h)) 100 - as.numeric(supply_h)[1] else 20
+  fin <- .hccsi_opt(inp$financial_resilience)
+  ops <- .hccsi_opt(inp$operational_continuity)
+  if (isTRUE(inp$ops_incident_persistent)) {
+    ops <- if (.finite1(ops)) min(as.numeric(ops)[1], 35) else 35
+  } else if (isTRUE(inp$ops_incident)) {
+    ops <- if (.finite1(ops)) min(as.numeric(ops)[1], 55) else 55
+  }
+  supply_h <- .hccsi_opt(inp$supply_chain_resilience)
+  vol_s <- .hccsi_opt(inp$abnormal_vol)
+  if (!.finite1(vol_s) && .finite1(inp$vol_20d)) {
+    vol_s <- .hccsi_clip((as.numeric(inp$vol_20d)[1] / 0.35) * 50, 0, 100)
+  }
+  dd_s <- .hccsi_opt(inp$drawdown_stress)
+  if (!.finite1(dd_s) && .finite1(inp$max_dd)) {
+    dd_s <- .hccsi_clip(abs(as.numeric(inp$max_dd)[1]) * 200, 0, 100)
+  }
+  ops_s <- .hccsi_opt(inp$ops_incident_stress)
+  if (!.finite1(ops_s)) {
+    if (isTRUE(inp$ops_incident_persistent)) ops_s <- 80
+    else if (isTRUE(inp$ops_incident)) ops_s <- 45
+  }
+  fin_d <- .hccsi_opt(inp$financial_deterioration)
+  if (!.finite1(fin_d) && .finite1(fin)) fin_d <- .hccsi_clip(100 - as.numeric(fin)[1], 0, 100)
+  sup_d <- .hccsi_opt(inp$supply_disruption)
+  if (!.finite1(sup_d) && .finite1(supply_h)) sup_d <- .hccsi_clip(100 - as.numeric(supply_h)[1], 0, 100)
+  sub_s <- .hccsi_opt(inp$substitute_scarcity)
+  if (!.finite1(sub_s)) sub_s <- .hccsi_opt(iss$switching_difficulty)
   list(
     id = iss$id, tickers = iss$tickers, economic_issuer = iss$economic_issuer,
     function_id = iss$function_id, layer = iss$layer, criticality_prior = iss$criticality_prior,
     weight_raw = NA_real_, weight = weight, substitutes = iss$substitutes,
     replacement_time_years = iss$replacement_time_years, switching_difficulty = iss$switching_difficulty,
     buffer = iss$buffer, financial_resilience = fin, operational_continuity = ops,
-    supply_chain_resilience = supply_h, market_stability = inp$market_stability %||% 70,
-    data_confidence = inp$data_confidence %||% 60, abnormal_vol = vol_s, drawdown_stress = dd_s,
+    supply_chain_resilience = supply_h, market_stability = .hccsi_opt(inp$market_stability),
+    data_confidence = .hccsi_opt(inp$data_confidence), abnormal_vol = vol_s, drawdown_stress = dd_s,
     ops_incident_stress = ops_s, ops_incident = isTRUE(inp$ops_incident),
     ops_incident_persistent = isTRUE(inp$ops_incident_persistent),
     financial_deterioration = fin_d, supply_disruption = sup_d,
-    substitute_scarcity = inp$substitute_scarcity %||% (iss$switching_difficulty %||% 70),
-    ret_1d = inp$ret_1d %||% NA_real_, ret_1m = inp$ret_1m %||% NA_real_, ret_ytd = inp$ret_ytd %||% NA_real_,
-    vol_20d = inp$vol_20d %||% NA_real_, vol_60d = inp$vol_60d %||% NA_real_,
-    max_dd = inp$max_dd %||% NA_real_, dd_duration = inp$dd_duration %||% NA_integer_,
-    beta_60d = inp$beta_60d %||% NA_real_, beta_252d = inp$beta_252d %||% NA_real_,
-    beta_instability = inp$beta_instability %||% NA_real_, abnormal_return = inp$abnormal_return %||% NA_real_,
-    volume_z = inp$volume_z %||% NA_real_, stress_duration_days = inp$stress_duration_days %||% 0,
-    issuer_stress = inp$issuer_stress %||% NA_real_, failures = inp$failures %||% list(),
+    substitute_scarcity = sub_s,
+    ret_1d = .hccsi_opt(inp$ret_1d), ret_1m = .hccsi_opt(inp$ret_1m), ret_ytd = .hccsi_opt(inp$ret_ytd),
+    vol_20d = .hccsi_opt(inp$vol_20d), vol_60d = .hccsi_opt(inp$vol_60d),
+    max_dd = .hccsi_opt(inp$max_dd), dd_duration = {
+      d <- suppressWarnings(as.integer(inp$dd_duration)[1])
+      if (length(d) != 1L || !is.finite(d)) NA_integer_ else d
+    },
+    beta_60d = .hccsi_opt(inp$beta_60d), beta_252d = .hccsi_opt(inp$beta_252d),
+    beta_instability = .hccsi_opt(inp$beta_instability), abnormal_return = .hccsi_opt(inp$abnormal_return),
+    volume_z = .hccsi_opt(inp$volume_z), stress_duration_days = .hccsi_opt(inp$stress_duration_days),
+    issuer_stress = .hccsi_opt(inp$issuer_stress), failures = inp$failures %||% list(),
     quote_currency = iss$quote_currency, statement_currency = iss$statement_currency,
     instrument_type = iss$instrument_type, alignment_code = inp$alignment_code %||% NULL
   )
@@ -479,7 +563,7 @@ hccsi_score <- function(issuer_inputs = NULL, cfg = NULL, liquidity_adj = NULL) 
     if (is.null(inp) && !is.null(issuer_inputs)) {
       for (tk in iss$tickers) if (!is.null(issuer_inputs[[tk]])) { inp <- issuer_inputs[[tk]]; break }
     }
-    row <- .hccsi_default_row(iss, wt$constrained[[iss$id]], inp)
+    row <- .hccsi_issuer_row(iss, wt$constrained[[iss$id]], inp)
     row$weight_raw <- wt$raw[[iss$id]]
     if (!is.null(inp$price_df) || !is.null(inp$closes)) {
       pdf <- inp$price_df
@@ -514,6 +598,20 @@ hccsi_score <- function(issuer_inputs = NULL, cfg = NULL, liquidity_adj = NULL) 
   frag <- hccsi_concentration_fragility(rows, cfg)
   mkt <- hccsi_market_observation(rows)
   comp <- hccsi_composite(health$index, stress$index, frag$index, mkt$index, cfg)
+  live_ok <- isTRUE(.hccsi_has_live_observation(rows)) &&
+    any(is.finite(c(health$index, stress$index, mkt$index)))
+  if (!isTRUE(live_ok)) {
+    failures$composite <- "SOURCE_HISTORY_UNAVAILABLE"
+    dropped <- unique(c(attr(comp, "dropped"), c("systems_health", "systemic_stress_inverted",
+                                                 "market_observation_neutral")))
+    used_w <- attr(comp, "used_weights")
+    comp <- NA_real_
+    attr(comp, "dropped") <- dropped
+    attr(comp, "used") <- character(0)
+    attr(comp, "used_weights") <- numeric(0)
+    attr(comp, "reason") <- "SOURCE_HISTORY_UNAVAILABLE"
+    attr(comp, "used_weights_pre_gate") <- used_w
+  }
   alert <- hccsi_alert_level(comp, contagion, cfg)
   layer_stress <- list()
   for (ly in names(cfg$layers)) {
@@ -534,7 +632,10 @@ hccsi_score <- function(issuer_inputs = NULL, cfg = NULL, liquidity_adj = NULL) 
   names(contrib) <- ids
   top <- names(sort(contrib, decreasing = TRUE, na.last = TRUE))
   list(
-    composite = comp, alert = alert,
+    composite = unname(as.numeric(comp)[1]), alert = alert,
+    availability = if (isTRUE(live_ok)) "ok" else "unavailable",
+    dropped_terms = attr(comp, "dropped") %||% character(0),
+    used_weights = attr(comp, "used_weights") %||% numeric(0),
     indices = list(systems_health = health$index, systemic_stress = stress$index,
                    concentration_fragility = frag$index, market_observation = mkt$index,
                    market_observation_neutral = hccsi_market_neutral(mkt$index)),
@@ -545,7 +646,7 @@ hccsi_score <- function(issuer_inputs = NULL, cfg = NULL, liquidity_adj = NULL) 
     issuer_market = stats::setNames(mkt$issuer, ids),
     contagion = contagion, highest_risk_layer = highest_layer, layer_stress = layer_stress,
     top_contributors = top[seq_len(min(5L, length(top)))], failures = failures,
-    formula = "HCCSI = 0.40·H + 0.30·(100−S) + 0.20·(100−F) + 0.10·M*, M* = 100 − 2·|M − 50| (price is not health)",
+    formula = .hccsi_formula_text(comp),
     role = "systemic_risk_observation"
   )
 }
@@ -555,8 +656,14 @@ hccsi_live_inputs_from_prices <- function(price_map = NULL, bench_df = NULL, cfg
   for (iss in hccsi_issuers(cfg)) {
     pdf <- NULL
     for (tk in iss$tickers) if (!is.null(price_map[[tk]])) { pdf <- price_map[[tk]]; break }
-    inp <- list(bench_df = bench_df, data_confidence = if (is.null(pdf)) 35 else 70)
-    if (!is.null(pdf)) inp$price_df <- pdf
+    inp <- list(bench_df = bench_df)
+    if (!is.null(pdf) && is.data.frame(pdf) && nrow(pdf) >= 2L && ("Close" %in% names(pdf))) {
+      inp$price_df <- pdf
+      ok <- mean(is.finite(suppressWarnings(as.numeric(pdf$Close))))
+      if (is.finite(ok)) inp$data_confidence <- .hccsi_clip(100 * ok, 0, 100)
+    } else {
+      inp$failures <- list(history = "SOURCE_HISTORY_UNAVAILABLE")
+    }
     out[[iss$id]] <- inp
   }
   out

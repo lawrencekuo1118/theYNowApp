@@ -1006,6 +1006,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     notif_hccsi_window = "HCCSI rolling window is shorter than required; the affected market-risk statistic is withheld.",
     notif_hccsi_stale = "HCCSI source prices are stale relative to the as-of date; market statistics that need a fresh print are withheld.",
     notif_hccsi_dup_issuer = "HCCSI dropped a duplicate listing of the same economic issuer (for example GOOGL/GOOG) so the issuer is not double-counted.",
+    notif_hccsi_history_missing = "HCCSI composite is withheld: constituent Yahoo/history is unavailable. No default score is substituted.",
     notif_hccsi_why_required = "The missing input is required only for the blocked calculation — not for the rest of HCCSI.",
     notif_hccsi_blocked = "Blocked: {calc}.",
     notif_hccsi_available = "Still available: {calcs}.",
@@ -1310,6 +1311,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     hccsi_alert_watch = "Watch",
     hccsi_alert_warning = "Warning",
     hccsi_alert_critical = "Critical",
+    hccsi_alert_unavailable = "Unavailable",
+    hccsi_unavailable = "HCCSI is unavailable — live market history is missing, so no default score is shown.",
+    hccsi_dropped = "Dropped terms (weights renormalized over the remaining terms): {terms}",
+    hccsi_dropped_none = "All four composite terms are available.",
     hccsi_index_health = "Systems Health Index",
     hccsi_index_health_gloss = "Financial, ops, supply-chain, market functioning, data confidence — not price level.",
     hccsi_index_stress = "Systemic Stress Index",
@@ -1357,7 +1362,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     hccsi_method_scoring = paste0(
       "Scoring: Systems Health, Systemic Stress, Concentration and Fragility, and Market Observation ",
       "are computed separately. Composite HCCSI = 0.40·H + 0.30·(100−S) + 0.20·(100−F) + 0.10·M*, ",
-      "where M* = 100 − 2·|M − 50|. Price rallies raise M but not H and not the composite."
+      "where M* = 100 − 2·|M − 50|. When a term cannot be computed it is omitted and remaining weights ",
+      "are renormalized — H, S, F, and M are never filled with 0, 50, or 100. ",
+      "Price rallies raise M but not H and not the composite."
     ),
     hccsi_method_weighting = paste0(
       "Weighting is criticality-based (not cap-only). Layer cap 25%, issuer cap 12% ",
@@ -1369,7 +1376,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     hccsi_method_missing = paste0(
       "Missing optional data are excluded — never coerced to 0 unless the economic value is actually 0. ",
-      "A failed optional per-share input does not block return or volatility."
+      "A failed optional per-share input does not block return or volatility. ",
+      "If live Yahoo/history is unavailable, HCCSI shows Unavailable rather than a placeholder composite."
     ),
     hccsi_method_fx_adr = paste0(
       "FX applies only when sourceCurrency ≠ targetCurrency. ADR applies only when instrumentType is ADR ",
@@ -1379,7 +1387,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     hccsi_method_limits = paste0(
       "Limitations: HCCSI observes systemic concentration and stress. It is not an extinction model, ",
       "collapse forecast, or buy signal. Rolling β is a market-risk signal, not a criticality prior. ",
-      "Alert levels are Normal / Watch / Warning / Critical."
+      "Alert levels are Normal / Watch / Warning / Critical / Unavailable."
     ),
     macro_index_name_gspc = "S&P 500",
     macro_index_name_ixic = "Nasdaq",
@@ -2412,6 +2420,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     notif_hccsi_window = "HCCSI 滾動視窗不足，受影響的市場風險統計已略過。",
     notif_hccsi_stale = "HCCSI 來源價格相對基準日過舊，需即時報價的市場統計已略過。",
     notif_hccsi_dup_issuer = "HCCSI 已排除同一經濟發行人的重複上市（例如 GOOGL/GOOG），避免雙重計入。",
+    notif_hccsi_history_missing = "HCCSI 綜合分數已略過：成分股 Yahoo／歷史資料不可用，不會改用預設分數。",
     notif_hccsi_why_required = "缺漏輸入僅為被擋下的計算所需，不影響 HCCSI 其餘可算項目。",
     notif_hccsi_blocked = "已擋下：{calc}。",
     notif_hccsi_available = "仍可計算：{calcs}。",
@@ -2712,6 +2721,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     hccsi_alert_watch = "Watch",
     hccsi_alert_warning = "Warning",
     hccsi_alert_critical = "Critical",
+    hccsi_alert_unavailable = "Unavailable",
+    hccsi_unavailable = "目前無法計算 HCCSI：缺少即時市場歷史，因此不顯示預設分數。",
+    hccsi_dropped = "已略過並依剩餘項重新正規化權重：{terms}",
+    hccsi_dropped_none = "四項綜合項皆可計算。",
     hccsi_index_health = "Systems Health Index",
     hccsi_index_health_gloss = "系統健康：財務韌性、營運延續、供應鏈、市場運作與資料信心——不是股價高低。",
     hccsi_index_stress = "Systemic Stress Index",
@@ -2758,6 +2771,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     hccsi_method_scoring = paste0(
       "計分：Systems Health、Systemic Stress、Concentration and Fragility、Market Observation 分開計算。",
       "綜合 HCCSI = 0.40·H + 0.30·(100−S) + 0.20·(100−F) + 0.10·M*，其中 M* = 100 − 2·|M − 50|。",
+      "某一項無法計算時予以略過，並依剩餘項重新正規化權重——H、S、F、M 不會填入 0、50 或 100。",
       "價格上漲會提高 M，但不會提高 H，也不會自動提高綜合分數。"
     ),
     hccsi_method_weighting = paste0(
@@ -2769,7 +2783,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     hccsi_method_missing = paste0(
       "缺漏的選擇性資料予以排除，不會偷偷改成 0（除非經濟上本來就是 0）。",
-      "選擇性每股資料失敗，不阻擋報酬或波動率。"
+      "選擇性每股資料失敗，不阻擋報酬或波動率。",
+      "若即時 Yahoo／歷史資料不可用，HCCSI 顯示 Unavailable，不代入預設綜合分數。"
     ),
     hccsi_method_fx_adr = paste0(
       "僅在 sourceCurrency ≠ targetCurrency 時套用 FX。僅在 instrumentType 為 ADR 且 ",
@@ -2778,7 +2793,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     hccsi_method_limits = paste0(
       "限制：HCCSI 觀察系統集中度與壓力，不是滅絕模型、崩潰預測或買進訊號。",
-      "Rolling β 是市場風險訊號，不是關鍵性先驗。警示層級為 Normal／Watch／Warning／Critical。"
+      "Rolling β 是市場風險訊號，不是關鍵性先驗。警示層級為 Normal／Watch／Warning／Critical／Unavailable。"
     ),
     macro_index_name_gspc = "S&P 500",
     macro_index_name_ixic = "Nasdaq",
