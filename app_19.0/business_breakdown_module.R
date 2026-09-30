@@ -81,12 +81,14 @@ business_breakdown_lab_ui <- function(id = "bblab") {
       )
     ),
 
-    # 1 Search
+    # 1 Search — div (not <form>); actionButton type=button so click/Enter never native-submits.
     fluidRow(
       box(
         title = tagList(icon("search"), tags$span(id = "ynow_bblab_search_title", "Search")),
         width = 12, status = "primary", solidHeader = TRUE,
-        fluidRow(
+        tags$div(
+          class = "ynow-bblab-search-controls",
+          fluidRow(
           column(
             width = 3,
             textInput(ns("ticker"), label = tags$span(id = "ynow_bblab_ticker_label", "Ticker"),
@@ -95,7 +97,7 @@ business_breakdown_lab_ui <- function(id = "bblab") {
           column(
             width = 2, style = "padding-top: 25px;",
             actionButton(ns("search"), "Search", icon = icon("search"),
-                         class = "btn-primary", width = "100%")
+                         class = "btn-primary ynow-bblab-search-btn", width = "100%")
           ),
           column(
             width = 3,
@@ -113,7 +115,32 @@ business_breakdown_lab_ui <- function(id = "bblab") {
             width = 2,
             uiOutput(ns("statement_ccy"))
           )
+        )
         ),
+        tags$script(HTML(sprintf(
+          paste0(
+            "(function(){",
+            "if(window.__ynowBblabSearchGuard) return; window.__ynowBblabSearchGuard=1;",
+            "var tickerId=%s, btnId=%s;",
+            "document.addEventListener('keydown',function(ev){",
+            "var t=ev.target; if(!t||t.id!==tickerId) return;",
+            "if(ev.key!=='Enter'&&ev.keyCode!==13) return;",
+            "ev.preventDefault(); ev.stopPropagation();",
+            "var btn=document.getElementById(btnId);",
+            "if(btn&&typeof btn.click==='function') btn.click();",
+            "},true);",
+            "document.addEventListener('submit',function(ev){",
+            "var root=document.querySelector('.ynow-bblab');",
+            "if(!root||!ev.target) return;",
+            "if(root===ev.target||root.contains(ev.target)){",
+            "ev.preventDefault(); ev.stopPropagation();",
+            "}",
+            "},true);",
+            "})();"
+          ),
+          paste0('"', ns("ticker"), '"'),
+          paste0('"', ns("search"), '"')
+        ))),
         uiOutput(ns("source_status")),
         uiOutput(ns("listed_scope")),
         tags$div(
@@ -366,6 +393,7 @@ business_breakdown_lab_server <- function(id = "bblab",
       }
     })
 
+    # In-session only: Search updates reactives; do not remount the page.
     observeEvent(input$search, {
       raw <- trimws(as.character(input$ticker %||% "")[1])
       req(nzchar(raw))

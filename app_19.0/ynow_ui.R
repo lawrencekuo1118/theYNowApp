@@ -7271,9 +7271,10 @@ ui <- dashboardPage(
         tags$span(class = "ynow-credit-text", "a lawrence kuo shiny app")
       )
     ),
-    # Ticker search + Yahoo industry chrome: hide on About and Macro & Market Trends
+    # Ticker search + Yahoo industry chrome: hide on About, Macro, and Testing
+    # (Testing hosts Business Breakdown Lab, which has its own in-session Search).
     conditionalPanel(
-      condition = "input.sidebar_tabs != 'about' && input.sidebar_tabs != 'macro_market'",
+      condition = "input.sidebar_tabs != 'about' && input.sidebar_tabs != 'macro_market' && input.sidebar_tabs != 'testing'",
       fluidRow(
         column(width = 12,
                div(

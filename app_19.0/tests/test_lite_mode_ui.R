@@ -233,6 +233,7 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl("business_breakdown_lab_ui", txt, fixed = TRUE))
   testthat::expect_true(grepl("body.ynow-lite .ynow-testing-bblab", txt, fixed = TRUE))
   testthat::expect_true(grepl("body.ynow-lite .ynow-bblab", txt, fixed = TRUE))
+  testthat::expect_true(grepl("input.sidebar_tabs != 'testing'", txt, fixed = TRUE))
   testthat::expect_true(grepl("remapLegacyTab", txt, fixed = TRUE))
   testthat::expect_true(grepl("'testing'", txt, fixed = TRUE))
   testing_idx <- regexpr('tabName = "testing"', txt, fixed = TRUE)[1]

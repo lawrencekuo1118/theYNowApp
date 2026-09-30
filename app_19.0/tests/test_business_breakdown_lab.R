@@ -737,6 +737,26 @@ if (requireNamespace("shiny", quietly = TRUE) &&
           grepl("ynow_bblab_experimental_badge", lab_ui_html, fixed = TRUE) &&
           !grepl("ynow_notes_block", lab_ui_html, fixed = TRUE) &&
           !grepl("ynow-notes", lab_ui_html, fixed = TRUE))
+  btn_m <- regexpr("<button[^>]*id=\"bblab-search\"[^>]*>", lab_ui_html)
+  btn_html <- if (btn_m < 1L) "" else {
+    substr(lab_ui_html, as.integer(btn_m),
+           as.integer(btn_m) + as.integer(attr(btn_m, "match.length")) - 1L)
+  }
+  pre_btn <- if (btn_m < 1L) "" else substr(lab_ui_html, 1L, as.integer(btn_m))
+  check("lab Search is type=button, not type=submit, and not inside <form>",
+        nzchar(btn_html) &&
+          grepl("type=\"button\"", btn_html, fixed = TRUE) &&
+          !grepl("type=\"submit\"", btn_html, fixed = TRUE) &&
+          !grepl("<form", lab_ui_html, ignore.case = TRUE) &&
+          !grepl("<form", pre_btn, ignore.case = TRUE) &&
+          grepl("ynow-bblab-search-controls", lab_ui_html, fixed = TRUE) &&
+          grepl("ynow-bblab-search-btn", lab_ui_html, fixed = TRUE))
+  check("lab Search Enter/submit guards prevent native navigation",
+        grepl("ev.preventDefault()", lab_ui_html, fixed = TRUE) &&
+          grepl("bblab-ticker", lab_ui_html, fixed = TRUE) &&
+          grepl("bblab-search", lab_ui_html, fixed = TRUE) &&
+          grepl("addEventListener('submit'", lab_ui_html, fixed = TRUE) &&
+          grepl("addEventListener('keydown'", lab_ui_html, fixed = TRUE))
 }
 check("experimental badge locale keys",
       grepl("ynow_bblab_experimental_badge", ui_src, fixed = TRUE) &&
@@ -1348,6 +1368,29 @@ check("out-of-scope ticker does not req-stop Lab Search",
         grepl("bblab_clearly_not_listed_tw_us", mod_src, fixed = TRUE) &&
         !grepl("req(!bblab_clearly_not_listed_tw_us", mod_src, fixed = TRUE) &&
         grepl("lab_ticker(tk)", mod_src, fixed = TRUE))
+check("Lab Search observeEvent never session$reload", {
+  start <- regexpr("observeEvent(input$search", mod_src, fixed = TRUE)[1]
+  next_obs <- if (start < 1L) -1L else {
+    rest <- substr(mod_src, start + 20L, nchar(mod_src))
+    m2 <- gregexpr("observeEvent(", rest, fixed = TRUE)[[1]][1]
+    if (is.na(m2) || m2 < 1L) nchar(mod_src) else start + 20L + as.integer(m2) - 2L
+  }
+  chunk <- if (start < 1L) "" else substr(mod_src, start, next_obs)
+  nzchar(chunk) &&
+    !grepl("session$reload", chunk, fixed = TRUE) &&
+    !grepl("location.reload", chunk, fixed = TRUE) &&
+    !grepl("updateQueryString", chunk, fixed = TRUE) &&
+    !grepl("session$reload", mod_src, fixed = TRUE)
+})
+check("Lab Search UI is a div not a native form",
+      grepl("ynow-bblab-search-controls", mod_src, fixed = TRUE) &&
+        !grepl("type = \"submit\"", mod_src, fixed = TRUE) &&
+        !grepl("tags$form", mod_src, fixed = TRUE) &&
+        grepl("preventDefault", mod_src, fixed = TRUE))
+check("global ticker chrome hidden on Testing so Lab Search stays in-session",
+      grepl("input.sidebar_tabs != 'testing'", ui_src, fixed = TRUE) &&
+        grepl("input.sidebar_tabs != 'about'", ui_src, fixed = TRUE) &&
+        grepl("input.sidebar_tabs != 'macro_market'", ui_src, fixed = TRUE))
 
 if (fail > 0L) {
   cat("FAILED ", fail, " checks\n", sep = "")
