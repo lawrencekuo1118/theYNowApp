@@ -637,6 +637,46 @@ resolve_industry_key_from_yahoo <- function(display_text = "", sector = "", indu
   map_yahoo_industry_to_key(sector, industry)
 }
 
+#' 依搜尋代號自動對應產業標準鍵（台股宇宙／美股 overlay·S&P／Yahoo heuristic）。
+#' 未知回傳 ""（呼叫端保留原選擇）。不做個股公式分支。
+resolve_industry_key_for_ticker <- function(ticker,
+                                           market_mode = NULL,
+                                           sector = "",
+                                           industry = "",
+                                           display_text = "") {
+  tk <- toupper(trimws(as.character(ticker %||% "")[1]))
+  if (!nzchar(tk) || identical(tk, "NA")) return("")
+  mode <- tryCatch({
+    if (exists("normalize_market_mode", mode = "function")) {
+      normalize_market_mode(market_mode %||% get_market_mode())
+    } else {
+      toupper(as.character(market_mode %||% "US")[1])
+    }
+  }, error = function(e) "US")
+  is_tw <- identical(mode, "TW") || grepl("\\.(TW|TWO)$", tk, ignore.case = TRUE)
+
+  if (is_tw && exists("lookup_tw_universe_industry_key", mode = "function")) {
+    key <- tryCatch(
+      as.character(lookup_tw_universe_industry_key(tk) %||% "")[1],
+      error = function(e) ""
+    )
+    if (nzchar(key)) return(key)
+  }
+  if (!is_tw && exists("lookup_us_ticker_industry_key", mode = "function")) {
+    key <- tryCatch(
+      as.character(lookup_us_ticker_industry_key(tk) %||% "")[1],
+      error = function(e) ""
+    )
+    if (nzchar(key)) return(key)
+  }
+
+  resolve_industry_key_from_yahoo(
+    display_text = display_text,
+    sector = sector,
+    industry = industry
+  )
+}
+
 # 🎨 KPI 顏色判定（只取區間前兩碼 low/high；與 industry_standards 一致）
 # 回傳 AdminLTE color：black／red／blue，或缺區間／N/A 時回傳 "none"（白；由 kpi_band_value_box 渲染）
 get_box_color <- function(industry_choice, metric_name, val) {

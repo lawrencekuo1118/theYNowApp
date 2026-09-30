@@ -230,6 +230,63 @@ lab_us_apply_industry_overlay <- function(df) {
   df
 }
 
+#' 自美股 overlay／宇宙查產業標準鍵；未命中／未對應／lab.Unmapped 回傳 ""
+lookup_us_ticker_industry_key <- function(ticker) {
+  unmapped <- if (exists("LAB_UNMAPPED_KEY", inherits = TRUE)) {
+    LAB_UNMAPPED_KEY
+  } else {
+    "lab.Unmapped"
+  }
+  tk <- toupper(trimws(as.character(ticker %||% "")[1]))
+  if (!nzchar(tk) || identical(tk, "NA")) return("")
+  tk <- gsub("\\.", "-", gsub("/", "-", tk))
+
+  .valid_key <- function(key) {
+    key <- trimws(as.character(key %||% "")[1])
+    if (!nzchar(key) || identical(key, unmapped)) return("")
+    if (exists("industry_standards", inherits = TRUE) &&
+        is.list(industry_standards) &&
+        !(key %in% names(industry_standards))) {
+      return("")
+    }
+    key
+  }
+
+  ov <- tryCatch(lab_us_load_industry_overlay(), error = function(e) NULL)
+  if (is.data.frame(ov) && nrow(ov) && "ticker" %in% names(ov)) {
+    j <- match(tk, toupper(trimws(as.character(ov$ticker))))
+    if (!is.na(j)) {
+      key <- ""
+      if ("industry_key" %in% names(ov)) {
+        key <- .valid_key(ov$industry_key[[j]])
+      }
+      if (!nzchar(key) &&
+          exists("resolve_industry_key_from_yahoo", mode = "function")) {
+        key <- .valid_key(tryCatch(
+          resolve_industry_key_from_yahoo(
+            sector = if ("sector" %in% names(ov)) ov$sector[[j]] else "",
+            industry = if ("industry" %in% names(ov)) ov$industry[[j]] else ""
+          ),
+          error = function(e) ""
+        ))
+      }
+      if (nzchar(key)) return(key)
+    }
+  }
+
+  u <- tryCatch(lab_get_us_universe(FALSE), error = function(e) NULL)
+  if (is.data.frame(u) && nrow(u) &&
+      all(c("ticker", "industry_key") %in% names(u))) {
+    j <- match(tk, toupper(trimws(as.character(u$ticker))))
+    if (!is.na(j)) {
+      key <- .valid_key(u$industry_key[[j]])
+      if (nzchar(key)) return(key)
+    }
+  }
+
+  ""
+}
+
 lab_finalize_us_from_sec <- function(raw, fetched_at = NULL) {
   empty <- lab_empty_us()
   if (is.null(raw) || !is.list(raw) || is.null(raw$data)) return(empty)

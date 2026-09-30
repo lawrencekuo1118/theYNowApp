@@ -750,25 +750,46 @@ server <- function(input, output, session) {
 
         ind_info <- get_yahoo_industry(stock_code)
         if (!is.null(ind_info)) {
-          corp_industry_text(ind_info$display_text)
-          # Soft-suggest Industry Standard from Yahoo sector/industry（未知則保留原選）
-          mapped <- tryCatch(
-            resolve_industry_key_from_yahoo(
-              display_text = ind_info$display_text,
-              sector = ind_info$sector,
-              industry = ind_info$industry
-            ),
-            error = function(e) ""
-          )
-          if (nzchar(as.character(mapped %||% "")[1]) &&
-              mapped %in% names(industry_standards)) {
-            tryCatch(
-              shinyWidgets::updatePickerInput(
-                session, "industry_choice", selected = mapped
-              ),
-              error = function(e) NULL
+          disp <- as.character(ind_info$display_text %||% "")[1]
+          # TW: if Yahoo Sector/Industry is empty, fall back to exchange industry label
+          if (identical(market_mode(), "TW") &&
+              (is.null(disp) || !nzchar(disp) || grepl("N/A", disp, fixed = TRUE)) &&
+              exists("lookup_tw_universe_industry_raw", mode = "function")) {
+            tw_raw <- tryCatch(
+              lookup_tw_universe_industry_raw(stock_code),
+              error = function(e) ""
             )
+            if (nzchar(as.character(tw_raw %||% "")[1])) {
+              disp <- paste0("TW industry: ", tw_raw)
+              ind_info$display_text <- disp
+              if (!nzchar(as.character(ind_info$industry %||% "")[1]) ||
+                  identical(as.character(ind_info$industry)[1], "N/A")) {
+                ind_info$industry <- tw_raw
+              }
+            }
           }
+          corp_industry_text(disp)
+        }
+        # Always sync Dashboard「目前產業標準快覽」to the searched ticker's industry
+        # (TW universe / US overlay·S&P / Yahoo heuristic). Unknown → keep prior pick.
+        mapped <- tryCatch(
+          resolve_industry_key_for_ticker(
+            ticker = stock_code,
+            market_mode = market_mode(),
+            display_text = if (!is.null(ind_info)) ind_info$display_text else "",
+            sector = if (!is.null(ind_info)) ind_info$sector else "",
+            industry = if (!is.null(ind_info)) ind_info$industry else ""
+          ),
+          error = function(e) ""
+        )
+        mapped <- as.character(mapped %||% "")[1]
+        if (nzchar(mapped) && mapped %in% names(industry_standards)) {
+          tryCatch(
+            shinyWidgets::updatePickerInput(
+              session, "industry_choice", selected = mapped
+            ),
+            error = function(e) NULL
+          )
         }
 
         # Prefer full legal/display name from Summary or industry lookup (not ticker alone).

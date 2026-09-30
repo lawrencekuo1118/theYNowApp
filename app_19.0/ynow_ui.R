@@ -2828,6 +2828,9 @@ ui <- dashboardPage(
           border-radius: 8px;
           box-sizing: border-box;
         }
+        .ynow-hfv-toolbar--above-chart {
+          margin: 8px 0 12px 0;
+        }
         .ynow-hfv-toolbar__group {
           min-width: 0;
           display: flex;
@@ -3689,6 +3692,8 @@ ui <- dashboardPage(
             if (hfvSessTitle && s.hfv_session_params_title) hfvSessTitle.textContent = s.hfv_session_params_title;
             var hfvToolbar = document.getElementById('ynow_hfv_toolbar') || document.querySelector('.ynow-hfv-toolbar');
             if (hfvToolbar && s.hfv_toolbar_aria) hfvToolbar.setAttribute('aria-label', s.hfv_toolbar_aria);
+            var hfvOverlayCtl = document.getElementById('ynow_hfv_chart_overlay_controls');
+            if (hfvOverlayCtl && s.hfv_chart_overlay_aria) hfvOverlayCtl.setAttribute('aria-label', s.hfv_chart_overlay_aria);
             var chartModelsLab = document.querySelector('label[for=\"bt_fv_models\"]');
             if (chartModelsLab && s.hfv_chart_models_label) chartModelsLab.textContent = s.hfv_chart_models_label;
             var replayLab = document.querySelector('label[for=\"bt_fv_replay_model\"]');
@@ -8461,6 +8466,34 @@ ui <- dashboardPage(
             tags$div(
               class = "ynow-hfv-chapter__body",
               uiOutput("bt_valuation_summary"),
+              # Chart overlay controls sit directly above the FV vs price chart
+              tags$div(
+                class = "ynow-hfv-toolbar ynow-hfv-toolbar--above-chart",
+                role = "group",
+                `aria-label` = "HFV chart overlay controls",
+                id = "ynow_hfv_chart_overlay_controls",
+                tags$div(
+                  class = "ynow-hfv-toolbar__group ynow-hfv-toolbar__group--wide",
+                  checkboxGroupInput(
+                    "bt_fv_models",
+                    "Chart overlay models",
+                    inline = TRUE,
+                    choices = c(
+                      "DCF" = "dcf",
+                      "DDM" = "ddm",
+                      "RI" = "ri",
+                      "P/B" = "pb",
+                      "NAV" = "nav"
+                    ),
+                    selected = APP_DEFAULTS$bt_fv_models
+                  ),
+                  checkboxInput(
+                    "bt_hfv_show_bench",
+                    tags$span(id = "ynow_hfv_show_bench_label", "Show benchmark"),
+                    value = isTRUE(APP_DEFAULTS$bt_hfv_show_bench)
+                  )
+                )
+              ),
               plotlyOutput("bt_hfv_timeline", height = "420px") %>% withSpinner(),
               uiOutput("bt_session_params")
             )
@@ -8530,27 +8563,6 @@ ui <- dashboardPage(
                   "Include unrealized next period (in-sample)" = "insample"
                 ),
                 selected = APP_DEFAULTS$bt_fv_oos_mode
-              )
-            ),
-            tags$div(
-              class = "ynow-hfv-toolbar__group ynow-hfv-toolbar__group--wide",
-              checkboxGroupInput(
-                "bt_fv_models",
-                "Chart overlay models",
-                inline = TRUE,
-                choices = c(
-                  "DCF" = "dcf",
-                  "DDM" = "ddm",
-                  "RI" = "ri",
-                  "P/B" = "pb",
-                  "NAV" = "nav"
-                ),
-                selected = APP_DEFAULTS$bt_fv_models
-              ),
-              checkboxInput(
-                "bt_hfv_show_bench",
-                tags$span(id = "ynow_hfv_show_bench_label", "Show benchmark"),
-                value = isTRUE(APP_DEFAULTS$bt_hfv_show_bench)
               )
             )
           ),

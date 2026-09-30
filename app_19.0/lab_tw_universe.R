@@ -712,6 +712,47 @@ lab_tw_universe_meta <- function() {
   list(u = u, idx = hit, ticker = tk)
 }
 
+#' 自宇宙查產業標準鍵；未命中／未對應／lab.Unmapped 回傳 ""
+lookup_tw_universe_industry_key <- function(ticker) {
+  unmapped <- if (exists("LAB_UNMAPPED_KEY", inherits = TRUE)) {
+    LAB_UNMAPPED_KEY
+  } else {
+    "lab.Unmapped"
+  }
+  hit <- .lookup_tw_universe_row(ticker)
+  if (is.null(hit$u) || !length(hit$idx)) return("")
+  i <- hit$idx[[1]]
+  key <- ""
+  if ("industry_key" %in% names(hit$u)) {
+    key <- trimws(as.character(hit$u$industry_key[[i]] %||% "")[1])
+  }
+  if ((!nzchar(key) || identical(key, unmapped)) &&
+      "industry_raw" %in% names(hit$u) &&
+      exists("lab_map_tw_industry_to_key", mode = "function")) {
+    key <- as.character(
+      lab_map_tw_industry_to_key(hit$u$industry_raw[[i]]) %||% ""
+    )[1]
+  }
+  if (!nzchar(key) || identical(key, unmapped)) return("")
+  if (exists("industry_standards", inherits = TRUE) &&
+      is.list(industry_standards) &&
+      !(key %in% names(industry_standards))) {
+    return("")
+  }
+  key
+}
+
+#' 自宇宙查產業原文（證交所產業別代碼／名稱）；未命中回傳 ""
+lookup_tw_universe_industry_raw <- function(ticker) {
+  hit <- .lookup_tw_universe_row(ticker)
+  if (is.null(hit$u) || !length(hit$idx) || !"industry_raw" %in% names(hit$u)) {
+    return("")
+  }
+  raw <- trimws(as.character(hit$u$industry_raw[[hit$idx[[1]]]] %||% "")[1])
+  if (!nzchar(raw) || identical(raw, "NA")) return("")
+  raw
+}
+
 #' 自上市／上櫃／興櫃宇宙查公司中文全稱（依 Yahoo 代號，如 2330.TW／6488.TWO）
 lookup_tw_universe_company_name <- function(ticker) {
   hit <- .lookup_tw_universe_row(ticker)
