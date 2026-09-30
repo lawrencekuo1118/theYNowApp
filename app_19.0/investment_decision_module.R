@@ -30,15 +30,14 @@ decision_ui <- function(id) {
       tags$div(
         class = "ynow-funnel-report__masthead",
         h2(tags$b(id = "ynow_funnel_page_title", "YNOW")),
-        ynow_notes_block(
-          tags$p(
-            id = "ynow_funnel_page_sub",
-            class = "ynow-funnel-report__lead",
-            paste0(
-              "點選 MOS／Reliability、品質檢核 (F-Score)、財報警訊框格可捲動至對應區塊。",
-              "三個區塊由上而下：財報體質（F-Score）→ 財報警訊 → 動態產業泡沫與權重集中度。",
-              "這是決策輔助報告，不是下單指令。"
-            )
+        # Always-visible page chrome — not Notes / 附註. True footnotes stay collapsed.
+        tags$p(
+          id = "ynow_funnel_page_sub",
+          class = "ynow-funnel-report__lead",
+          paste0(
+            "點選 MOS／Reliability、品質檢核 (F-Score)、財報警訊框格可捲動至對應區塊。",
+            "三個區塊由上而下：財報體質（F-Score）→ 財報警訊 → 動態產業泡沫與權重集中度。",
+            "這是決策輔助報告，不是下單指令。"
           )
         )
       ),

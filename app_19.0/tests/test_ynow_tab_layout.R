@@ -110,7 +110,40 @@ check("jump id F-Score", grepl("ynow_kpi_jump_fscore", ui_fn, fixed = TRUE))
 check("jump id alerts", grepl("ynow_kpi_jump_alerts", ui_fn, fixed = TRUE))
 check("role=button on jump cards", grepl('role = "button"', dec, fixed = TRUE))
 check("fscore table id", grepl('id = "ynow_funnel_fscore"', ui_fn, fixed = TRUE))
-check("YNOW notes blocks", length(gregexpr("ynow_notes_block(", ui_fn, fixed = TRUE)[[1]]) >= 4L)
+.notes_calls <- function(txt) {
+  calls <- character(0)
+  remaining <- txt
+  repeat {
+    m <- regexpr("ynow_notes_block\\s*\\(", remaining)
+    if (m < 1L) break
+    start <- as.integer(m)
+    depth <- 0L
+    end <- nchar(remaining)
+    for (i in seq.int(start, nchar(remaining))) {
+      ch <- substr(remaining, i, i)
+      if (identical(ch, "(")) depth <- depth + 1L
+      if (identical(ch, ")")) {
+        depth <- depth - 1L
+        if (depth <= 0L) {
+          end <- i
+          break
+        }
+      }
+    }
+    calls <- c(calls, substr(remaining, start, end))
+    remaining <- substr(remaining, end + 1L, nchar(remaining))
+  }
+  calls
+}
+notes_calls <- .notes_calls(ui_fn)
+check("YNOW chapter notes remain", length(notes_calls) >= 3L)
+check("page sub present", grepl("ynow_funnel_page_sub", ui_fn, fixed = TRUE))
+check("page sub outside notes", !any(grepl("ynow_funnel_page_sub", notes_calls, fixed = TRUE)))
+pos_mh <- regexpr("ynow-funnel-report__masthead", ui_fn, fixed = TRUE)[1]
+pos_kpi <- regexpr("ynow-funnel-kpi-jump-row", ui_fn, fixed = TRUE)[1]
+masthead <- if (pos_mh > 0 && pos_kpi > pos_mh) substr(ui_fn, pos_mh, pos_kpi) else ""
+check("page sub in masthead chrome", grepl("ynow_funnel_page_sub", masthead, fixed = TRUE))
+check("masthead has no notes wrapper", !grepl("ynow_notes_block", masthead, fixed = TRUE))
 check("YNOW notes default collapsed", !grepl("ynow_notes_block\\([^)]*open\\s*=\\s*TRUE", ui_fn))
 check("ch1 lead wrapped", grepl("ynow_notes_block", ch1_body, fixed = TRUE) &&
         grepl("ynow_funnel_ch1_lead", ch1_body, fixed = TRUE))

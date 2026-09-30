@@ -393,7 +393,40 @@ testthat::test_that("YNOW page title and three-block order are shared by Lite an
   testthat::expect_true(grepl("ynow-funnel-kpi-jump-row", ui_fn, fixed = TRUE))
   testthat::expect_identical(.UI_STRINGS$en$notes_title, "Notes")
   testthat::expect_identical(.UI_STRINGS$`zh-TW`$notes_title, "附註")
-  testthat::expect_true(length(gregexpr("ynow_notes_block(", ui_fn, fixed = TRUE)[[1]]) >= 4L)
+  .notes_calls <- function(txt) {
+    calls <- character(0)
+    remaining <- txt
+    repeat {
+      m <- regexpr("ynow_notes_block\\s*\\(", remaining)
+      if (m < 1L) break
+      start <- as.integer(m)
+      depth <- 0L
+      end <- nchar(remaining)
+      for (i in seq.int(start, nchar(remaining))) {
+        ch <- substr(remaining, i, i)
+        if (identical(ch, "(")) depth <- depth + 1L
+        if (identical(ch, ")")) {
+          depth <- depth - 1L
+          if (depth <= 0L) {
+            end <- i
+            break
+          }
+        }
+      }
+      calls <- c(calls, substr(remaining, start, end))
+      remaining <- substr(remaining, end + 1L, nchar(remaining))
+    }
+    calls
+  }
+  notes_calls <- .notes_calls(ui_fn)
+  testthat::expect_true(length(notes_calls) >= 3L)
+  testthat::expect_true(grepl("ynow_funnel_page_sub", ui_fn, fixed = TRUE))
+  testthat::expect_false(any(grepl("ynow_funnel_page_sub", notes_calls, fixed = TRUE)))
+  pos_mh <- regexpr("ynow-funnel-report__masthead", ui_fn, fixed = TRUE)[1]
+  pos_kpi <- regexpr("ynow-funnel-kpi-jump-row", ui_fn, fixed = TRUE)[1]
+  masthead <- if (pos_mh > 0 && pos_kpi > pos_mh) substr(ui_fn, pos_mh, pos_kpi) else ""
+  testthat::expect_true(grepl("ynow_funnel_page_sub", masthead, fixed = TRUE))
+  testthat::expect_false(grepl("ynow_notes_block", masthead, fixed = TRUE))
   testthat::expect_false(grepl("ynow_notes_block\\([^)]*open\\s*=\\s*TRUE", ui_fn))
 
   testthat::expect_true(grepl("macro_bubble_chapter_ui", dec, fixed = TRUE))

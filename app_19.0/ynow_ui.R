@@ -5582,12 +5582,9 @@ ui <- dashboardPage(
         .ynow-funnel-chapter__body > .ynow-notes .ynow-funnel-chapter__lead {
           margin: 0;
         }
-        .ynow-funnel-report__masthead > .ynow-notes {
-          margin-top: 8px;
+        .ynow-funnel-report__masthead > .ynow-funnel-report__lead {
+          margin-top: 0;
           margin-bottom: 0;
-        }
-        .ynow-funnel-report__masthead > .ynow-notes .ynow-funnel-report__lead {
-          margin: 0;
         }
         .ynow-dc-item > .ynow-notes,
         .ynow-dc-live > .ynow-notes,

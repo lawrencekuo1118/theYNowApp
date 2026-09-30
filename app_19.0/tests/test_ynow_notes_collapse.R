@@ -67,9 +67,41 @@ ui_end <- regexpr("decision_momentum_panel_ui", dec, fixed = TRUE)[1]
 ui_fn <- if (ui_start > 0 && ui_end > ui_start) substr(dec, ui_start, ui_end) else dec
 check("Lite=Full no lite-only", !grepl("ynow-lite-only", ui_fn, fixed = TRUE))
 check("Lite=Full no full-only", !grepl("ynow-full-only", ui_fn, fixed = TRUE))
-n_notes <- length(gregexpr("ynow_notes_block(", ui_fn, fixed = TRUE)[[1]])
-check("YNOW has four notes blocks", n_notes >= 4L)
-check("page sub wrapped", grepl("ynow_funnel_page_sub", ui_fn, fixed = TRUE))
+.notes_calls <- function(txt) {
+  calls <- character(0)
+  remaining <- txt
+  repeat {
+    m <- regexpr("ynow_notes_block\\s*\\(", remaining)
+    if (m < 1L) break
+    start <- as.integer(m)
+    depth <- 0L
+    end <- nchar(remaining)
+    for (i in seq.int(start, nchar(remaining))) {
+      ch <- substr(remaining, i, i)
+      if (identical(ch, "(")) depth <- depth + 1L
+      if (identical(ch, ")")) {
+        depth <- depth - 1L
+        if (depth <= 0L) {
+          end <- i
+          break
+        }
+      }
+    }
+    calls <- c(calls, substr(remaining, start, end))
+    remaining <- substr(remaining, end + 1L, nchar(remaining))
+  }
+  calls
+}
+notes_calls <- .notes_calls(ui_fn)
+n_notes <- length(notes_calls)
+check("YNOW has three chapter notes", n_notes >= 3L)
+check("page sub present", grepl("ynow_funnel_page_sub", ui_fn, fixed = TRUE))
+check("page sub outside notes", !any(grepl("ynow_funnel_page_sub", notes_calls, fixed = TRUE)))
+pos_mh <- regexpr("ynow-funnel-report__masthead", ui_fn, fixed = TRUE)[1]
+pos_kpi <- regexpr("ynow-funnel-kpi-jump-row", ui_fn, fixed = TRUE)[1]
+masthead <- if (pos_mh > 0 && pos_kpi > pos_mh) substr(ui_fn, pos_mh, pos_kpi) else ""
+check("page sub in masthead chrome", grepl("ynow_funnel_page_sub", masthead, fixed = TRUE))
+check("masthead has no notes wrapper", !grepl("ynow_notes_block", masthead, fixed = TRUE))
 check("KPI row outside notes", grepl("ynow-funnel-kpi-jump-row", ui_fn, fixed = TRUE))
 check("F-Score table outside notes wrapper", {
   # table_checklist sits after the ch1 notes_block, not as its child
