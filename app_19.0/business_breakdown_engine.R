@@ -323,7 +323,11 @@ bblab_assign_cost <- function(rev_pack, consolidated, cfg = NULL,
       method <- "reported_cor"
       status <- "REPORTED"
       conf <- "HIGH"
-    } else if (.bblab_finite(comp$gp) && .bblab_finite(comp$revenue)) {
+    } else if (.bblab_finite(comp$gp) && .bblab_finite(comp$revenue) &&
+               !( .bblab_finite(comp$operating_income) &&
+                  !isTRUE(comp$gp_reported) &&
+                  abs(as.numeric(comp$gp)[1] - as.numeric(comp$operating_income)[1]) < 1e-8)) {
+      # Reported Gross Profit only. Operating income is never a GP stand-in.
       gp <- as.numeric(comp$gp)[1]
       cor <- as.numeric(comp$revenue)[1] - gp
       method <- "reported_gp"
@@ -637,6 +641,7 @@ bblab_chart_eligibility <- function(pack, consolidated, cfg = NULL, level = NULL
   if (n_valid < 2L) {
     codes <- c(codes, if (n_valid <= 1L) "BUSINESS_CHART_SINGLE_COMPONENT" else "BUSINESS_CHART_INSUFFICIENT_COMPONENTS")
   }
+  # Finite 0.0%-rounded shares (display) never fail eligibility.
   if (!is.finite(cons_rev) || cons_rev == 0) codes <- c(codes, "BUSINESS_CHART_CONSOLIDATED_REVENUE_MISSING")
   if (length(period) > 1L) codes <- c(codes, "BUSINESS_CHART_PERIOD_MISMATCH")
   if (length(ccy) > 1L) codes <- c(codes, "BUSINESS_CHART_CURRENCY_MISMATCH")
@@ -1037,28 +1042,151 @@ bblab_toast_payload <- function(codes, recon_pass = NULL, allocation_used = FALS
   NA_integer_
 }
 
-.bblab_table_scale <- function(blob, amounts, cons_rev, explicit = NA_real_) {
-  if (.bblab_finite(explicit) && as.numeric(explicit)[1] > 1) {
-    return(as.numeric(explicit)[1])
-  }
-  blob <- .bblab_chr(blob)
-  scale <- 1
-  if (grepl("in\\s+billions|\\$\\s*billion", blob, ignore.case = TRUE)) scale <- 1e9
-  else if (grepl("in\\s+millions|\\$\\s*million|nt\\$\\s*million|\\$\\s*in\\s+millions",
-                 blob, ignore.case = TRUE)) scale <- 1e6
-  else if (grepl("in\\s+thousands|\\$\\s*thousand", blob, ignore.case = TRUE)) scale <- 1e3
+.bblab_rel_diff <- function(a, b) {
+  if (!is.finite(a) || !is.finite(b) || b == 0) return(Inf)
+  abs(a - b) / abs(b)
+}
+
+#' Pick a multiplier that puts `amounts` into the same units as reported consolidated revenue.
+#' Drops a table total/consolidated row (largest amount ≈ sum of the rest) so millions
+#' vs unscaled dollars is not misread as "no matching scale" and 0.0% shares.
+.bblab_infer_amount_scale <- function(amounts, cons_rev, prior = 1, rel_tol = 0.05) {
   amts <- as.numeric(amounts)
-  amts <- amts[is.finite(amts)]
-  if (length(amts) >= 2L && is.finite(cons_rev) && cons_rev != 0) {
-    sm <- sum(amts)
-    if (is.finite(sm) && sm != 0) {
-      rel <- function(x) abs(x - cons_rev) / abs(cons_rev)
-      cands <- unique(c(scale, 1, 1e3, 1e6, 1e9))
-      ok <- vapply(cands, function(m) rel(sm * m) <= 0.05, logical(1))
-      if (any(ok)) return(cands[which(ok)[1]])
+  amts <- amts[is.finite(amts) & amts != 0]
+  prior <- if (.bblab_finite(prior) && as.numeric(prior)[1] > 0) as.numeric(prior)[1] else 1
+  if (!length(amts) || !is.finite(cons_rev) || cons_rev == 0) return(prior)
+  cands <- unique(c(prior, 1, 1e3, 1e6, 1e9, 1e-3, 1e-6, 1e-9))
+  pick <- function(sm) {
+    if (!is.finite(sm) || sm == 0) return(NA_real_)
+    ok <- vapply(cands, function(m) .bblab_rel_diff(sm * m, cons_rev) <= rel_tol, logical(1))
+    if (!any(ok)) return(NA_real_)
+    cands[which(ok)[1]]
+  }
+  mx <- max(abs(amts))
+  rest <- amts[abs(abs(amts) - mx) / mx > 0.02]
+  sum_rest <- if (length(rest)) sum(rest) else NA_real_
+  looks_total <- length(rest) >= 2L && is.finite(sum_rest) &&
+    .bblab_rel_diff(abs(sum_rest), mx) <= rel_tol
+  parts <- if (isTRUE(looks_total)) rest else amts
+  m_parts <- if (length(parts) >= 1L) pick(sum(parts)) else NA_real_
+  m_max <- pick(mx)
+  m_all <- pick(sum(amts))
+  for (m in c(m_parts, m_max, m_all, prior)) {
+    if (is.finite(m) && m > 0) return(m)
+  }
+  prior
+}
+
+.bblab_money_fields <- c(
+  "revenue", "cor", "gp", "operating_income", "operating_expenses",
+  "mapped_product_revenue", "operational_driver_revenue",
+  "company_allocated_cor", "observable_driver_cor", "justified_proxy_cor"
+)
+
+.bblab_scale_one_comp <- function(comp, m) {
+  if (is.null(comp) || !is.finite(m) || abs(m - 1) < 1e-15) return(comp)
+  for (nm in .bblab_money_fields) {
+    if (.bblab_finite(comp[[nm]])) comp[[nm]] <- as.numeric(comp[[nm]])[1] * m
+  }
+  if (is.list(comp$extra)) {
+    for (nm in names(comp$extra)) {
+      if (nm %in% .bblab_money_fields && .bblab_finite(comp$extra[[nm]])) {
+        comp$extra[[nm]] <- as.numeric(comp$extra[[nm]])[1] * m
+      }
     }
   }
-  scale
+  if (is.list(comp$members)) {
+    comp$members <- lapply(comp$members, function(x) .bblab_scale_one_comp(x, m))
+  }
+  comp
+}
+
+#' Align disclosed component money amounts to reported consolidated units.
+.bblab_align_component_units <- function(comps, cons, prior = 1) {
+  cons_rev <- .bblab_num(cons$revenue)
+  if (!length(comps) || !is.finite(cons_rev) || cons_rev == 0) return(comps)
+  special <- vapply(comps, function(c) {
+    identical(c$classification, "UNALLOCATED") ||
+      identical(c$classification, "ELIMINATION") ||
+      identical(c$classification, "ROUNDING") ||
+      identical(c$classification, "SHARED_CORPORATE") ||
+      identical(c$classification, "RECONCILIATION")
+  }, logical(1))
+  work <- if (any(!special)) comps[!special] else comps
+  revs <- vapply(work, function(c) .bblab_num(c$revenue), numeric(1))
+  m <- .bblab_infer_amount_scale(revs, cons_rev, prior = prior)
+  if (!is.finite(m) || abs(m - 1) < 1e-15) return(comps)
+  lapply(comps, function(c) .bblab_scale_one_comp(c, m))
+}
+
+#' Copy CoR / GP from another disclosure only when the business name matches.
+#' Never invents a cost and never treats Operating income as Gross Profit.
+.bblab_map_cor_from_disclosures <- function(comps, dims, primary_id) {
+  if (!length(comps) || !length(dims)) return(comps)
+  by_name <- list()
+  for (d in dims) {
+    if (identical(.bblab_chr(d$id), .bblab_chr(primary_id))) next
+    for (c in d$components %||% list()) {
+      key <- .bblab_norm_label(c$name)
+      if (!nzchar(key)) next
+      if (.bblab_finite(c$cor) || isTRUE(c$gp_reported) && .bblab_finite(c$gp)) {
+        by_name[[key]] <- c
+      }
+    }
+  }
+  if (!length(by_name)) return(comps)
+  lapply(comps, function(comp) {
+    if (.bblab_finite(comp$cor) || isTRUE(comp$gp_reported)) return(comp)
+    hit <- by_name[[.bblab_norm_label(comp$name)]]
+    if (is.null(hit)) return(comp)
+    if (.bblab_finite(hit$cor) && !.bblab_finite(comp$cor)) {
+      comp$cor <- as.numeric(hit$cor)[1]
+      comp$cor_mapped_from <- hit$id
+    }
+    if (isTRUE(hit$gp_reported) && .bblab_finite(hit$gp) && !.bblab_finite(comp$gp)) {
+      comp$gp <- as.numeric(hit$gp)[1]
+      comp$gp_reported <- TRUE
+    }
+    comp
+  })
+}
+
+.bblab_table_scale <- function(blob, amounts, cons_rev, explicit = NA_real_) {
+  blob <- .bblab_chr(blob)
+  text_scale <- 1
+  if (grepl("in\\s+billions|\\$\\s*billion", blob, ignore.case = TRUE)) text_scale <- 1e9
+  else if (grepl("in\\s+millions|\\$\\s*million|nt\\$\\s*million|\\$\\s*in\\s+millions",
+                 blob, ignore.case = TRUE)) text_scale <- 1e6
+  else if (grepl("in\\s+thousands|\\$\\s*thousand", blob, ignore.case = TRUE)) text_scale <- 1e3
+  prior <- if (.bblab_finite(explicit) && as.numeric(explicit)[1] > 1) {
+    as.numeric(explicit)[1]
+  } else text_scale
+  .bblab_infer_amount_scale(amounts, cons_rev, prior = prior)
+}
+
+.bblab_segment_year <- function(segment_tables, notes = NULL) {
+  tables <- .bblab_coerce_segment_tables(segment_tables, notes)
+  yrs <- integer(0)
+  for (tbl in tables) {
+    h <- as.character(tbl$headers %||% tbl$header %||% character(0))
+    if (!length(h)) next
+    y <- suppressWarnings(as.integer(sub(".*?((?:19|20)\\d{2}).*", "\\1", h)))
+    yrs <- c(yrs, y[is.finite(y) & y >= 1900L & y <= 2100L])
+  }
+  if (!length(yrs)) return(NA_integer_)
+  as.integer(max(yrs))
+}
+
+.bblab_df_metric_for_year <- function(df, patterns, year) {
+  if (!is.data.frame(df) || !nrow(df) || !is.finite(year)) return(NA_real_)
+  lab <- as.character(df[[1]])
+  hit <- grepl(paste(patterns, collapse = "|"), lab, ignore.case = TRUE)
+  if (!any(hit)) return(NA_real_)
+  cols <- colnames(df)[-1]
+  ystr <- as.character(as.integer(year))
+  col <- which(grepl(ystr, cols, fixed = TRUE))
+  if (!length(col)) return(NA_real_)
+  .bblab_parse_amount(df[which(hit)[1], cols[col[1]]])
 }
 
 .bblab_kind_from_label <- function(label) {
@@ -1595,6 +1723,8 @@ bblab_analyze <- function(payload, options = list(), cfg = NULL) {
     return(out)
   }
   mark("identify_businesses")
+  dim$components <- .bblab_align_component_units(dim$components, cons)
+  dim$components <- .bblab_map_cor_from_disclosures(dim$components, dims, dim$id)
   ident <- bblab_identify_major(dim$components, cons, cfg)
   if (isTRUE(ident$single) || length(ident$major) <= 1L) {
     limitations <- unique(c(limitations, "no_multi_business_split"))
@@ -1705,7 +1835,19 @@ bblab_payload_from_statements <- function(d_is, ticker = "", entity_name = "",
                                           instrument_type = "ordinary", adr_ratio = NA_real_,
                                           usd_twd = NULL, display_currency = NULL,
                                           notes = NULL, segment_tables = NULL) {
+  seg_year <- .bblab_segment_year(segment_tables, notes)
+  if (!nzchar(.bblab_chr(period))) {
+    if (is.finite(seg_year)) {
+      period <- as.character(seg_year)
+    } else if (is.data.frame(d_is)) {
+      period <- .bblab_df_period(d_is)
+    }
+  }
   grab <- function(patterns) {
+    if (is.finite(seg_year) && is.data.frame(d_is)) {
+      yv <- .bblab_df_metric_for_year(d_is, patterns, seg_year)
+      if (.bblab_finite(yv)) return(as.numeric(yv)[1])
+    }
     if (exists("select_current_metric_any", mode = "function") && is.data.frame(d_is)) {
       v <- tryCatch(select_current_metric_any(d_is, patterns, "flow"), error = function(e) NA_real_)
       if (.bblab_finite(v)) return(as.numeric(v)[1])
@@ -1716,9 +1858,6 @@ bblab_payload_from_statements <- function(d_is, ticker = "", entity_name = "",
     if (!any(hit)) return(NA_real_)
     nums <- .bblab_parse_amount(d_is[which(hit)[1], 2])
     if (.bblab_finite(nums)) as.numeric(nums)[1] else NA_real_
-  }
-  if (!nzchar(.bblab_chr(period)) && is.data.frame(d_is)) {
-    period <- .bblab_df_period(d_is)
   }
   rev <- grab(c("^Total Revenue$", "Total Revenue", "Operating Revenue", "^Revenue$"))
   gp <- grab(c("^Gross Profit$", "Gross Profit"))

@@ -875,6 +875,124 @@ check("dollar-cell grouped rows still parse", {
     abs(packed$components[[1]]$revenue - 426305e6) < 1
 })
 
+# ---- Units: millions vs unscaled consolidated must not yield 0.0% or a recon-donut ----
+unscaled_tbl <- k10_opseg
+unscaled_tbl$scale <- NULL
+unscaled_tbl$caption <- NULL
+unscaled_is <- data.frame(
+  Breakdown = c("Total Revenue", "Cost Of Revenue", "Gross Profit"),
+  TTM = c(as.character(k10_cons_rev), as.character(k10_cons_rev * 0.72),
+          as.character(k10_cons_rev * 0.28)),
+  `12/31/2025` = c(as.character(k10_cons_rev), as.character(k10_cons_rev * 0.72),
+                   as.character(k10_cons_rev * 0.28)),
+  check.names = FALSE, stringsAsFactors = FALSE
+)
+unscaled_pl <- bblab_payload_from_statements(
+  unscaled_is, ticker = "FIXT", entity_name = "Unscaled millions fixture",
+  statement_currency = "USD",
+  segment_tables = list(unscaled_tbl)
+)
+runscaled <- bblab_analyze(unscaled_pl)
+unscaled_shares <- vapply(runscaled$businesses, function(c) c$revenue_pct, numeric(1))
+unscaled_revs <- vapply(runscaled$businesses, function(c) c$revenue, numeric(1))
+slice_classes <- vapply(runscaled$chart$slices, function(s) s$classification, character(1))
+check("scaled millions vs consolidated share is not 0.0%",
+      isTRUE(runscaled$ok) &&
+        length(runscaled$businesses) >= 2L &&
+        all(is.finite(unscaled_shares)) &&
+        all(unscaled_shares > 0.05) &&
+        all(unscaled_revs > 1e9) &&
+        abs(sum(unscaled_revs) - k10_cons_rev) / k10_cons_rev < 0.05)
+check("pie eligible after unit alignment; slices not recon-dominated",
+      isTRUE(runscaled$chart$eligible) &&
+        length(runscaled$chart$slices) >= 2L &&
+        abs(runscaled$chart$denominator - k10_cons_rev) / k10_cons_rev < 0.05 &&
+        !any(slice_classes == "RECONCILIATION") &&
+        all(abs(vapply(runscaled$chart$slices, function(s) s$share, numeric(1)) -
+                  vapply(runscaled$chart$slices, function(s) s$revenue / k10_cons_rev, numeric(1))) < 1e-8))
+check("table scale infers 1e6 when totals would double the sum", {
+  raw <- c(387497, 142906, 107556, 637959)
+  abs(.bblab_infer_amount_scale(raw, 637959e6, prior = 1) - 1e6) < 1
+})
+
+card_200046 <- list(
+  ticker = "FIXT", entity = list(name = "200046-scale fixture"),
+  statement_currency = "USD", period = "2024",
+  consolidated = bblab_consolidated(500000e6, 300000e6, 200000e6, "USD", "2024"),
+  dimensions = list(bblab_dimension(
+    "opseg", "operating_segment",
+    list(
+      bblab_component("a", "Alpha", revenue = 200046, operating_income = 6878,
+                      is_reported_segment = TRUE, period = "2024", currency = "USD"),
+      bblab_component("b", "Beta", revenue = 299954, operating_income = 9000,
+                      is_reported_segment = TRUE, period = "2024", currency = "USD")
+    ),
+    mutually_exclusive = TRUE, filed_audited = TRUE,
+    flags = c("separate_revenue", "relevant", "mutually_exclusive", "filed_audited",
+              "distinct_economics", "management_major"),
+    period = "2024", currency = "USD"
+  ))
+)
+r200 <- bblab_analyze(card_200046)
+check("200046-scale card share and pie use consolidated units",
+      abs(r200$businesses[[1]]$revenue - 200046e6) < 1 &&
+        abs(r200$businesses[[1]]$revenue_pct - 200046 / 500000) < 1e-8 &&
+        isTRUE(r200$chart$eligible) &&
+        all(vapply(r200$businesses, function(c) c$revenue_pct > 0.05, logical(1))))
+check("OI present does not become GP",
+      all(vapply(r200$businesses, function(c) {
+        is.finite(c$operating_income) &&
+          identical(c$gp_display, "Not reliably estimable") &&
+          !is.finite(c$cor) && !is.finite(c$gp) &&
+          identical(c$gm_display, "Not reliably estimable")
+      }, logical(1))) &&
+        identical(r200$level, "C") &&
+        abs(r200$businesses[[1]]$operating_income - 6878e6) < 1)
+check("reval UNAVAILABLE still shows Rev % and cards",
+      "BUSINESS_REVALUATION_UNAVAILABLE" %in% r200$codes &&
+        isTRUE(!isTRUE(r200$revaluation_available)) &&
+        length(r200$businesses) == 2L &&
+        all(vapply(r200$businesses, function(c) {
+          is.finite(c$revenue) && is.finite(c$revenue_pct) && c$revenue_pct > 0
+        }, logical(1))) &&
+        isTRUE(r200$ok))
+if (requireNamespace("shiny", quietly = TRUE)) {
+  html200 <- paste(as.character(.bblab_card_html(r200$businesses[[1]], "en", FALSE,
+                                                 r200$consolidated$revenue)),
+                   collapse = " ")
+  check("card HTML shows non-zero share and keeps OI when CoR unestimable",
+        grepl("Revenue:", html200, fixed = TRUE) &&
+          grepl("40.0%", html200, fixed = TRUE) &&
+          grepl("Operating income:", html200, fixed = TRUE) &&
+          grepl("Not reliably estimable", html200, fixed = TRUE) &&
+          grepl("Revaluation ratio unavailable", html200, fixed = TRUE))
+}
+
+mapped <- two_seg_level_a()
+mapped$dimensions <- list(
+  mapped$dimensions[[1]],
+  bblab_dimension(
+    "prod", "product_service",
+    list(
+      bblab_component("a", "Business A", revenue = 120, cor = 40, gp = 80,
+                      gp_reported = TRUE, period = "2024", currency = "USD"),
+      bblab_component("b", "Business B", revenue = 80, cor = 40, gp = 40,
+                      gp_reported = TRUE, period = "2024", currency = "USD")
+    ),
+    flags = c("separate_revenue")
+  )
+)
+mapped$dimensions[[1]]$components <- list(
+  bblab_component("a", "Business A", revenue = 120, is_reported_segment = TRUE,
+                  period = "2024", currency = "USD"),
+  bblab_component("b", "Business B", revenue = 80, is_reported_segment = TRUE,
+                  period = "2024", currency = "USD")
+)
+rmap <- bblab_analyze(mapped)
+check("name-matched product CoR maps; OI is not required",
+      identical(rmap$level, "A") &&
+        all(vapply(rmap$businesses, function(c) is.finite(c$cor) && is.finite(c$gp), logical(1))))
+
 if (fail > 0L) {
   cat("FAILED ", fail, " checks\n", sep = "")
   quit(status = 1)
