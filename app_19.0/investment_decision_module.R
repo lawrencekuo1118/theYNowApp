@@ -1,6 +1,7 @@
 # =========================================================================
 # Investment Decision Scorecard — YNOW page + composite valuation
-# Three stacked blocks: statement quality (F-Score) → statement alerts →
+# Click-to-scroll KPI row (MOS | Reliability → F-Score → Statement alerts)
+# sits above three stacked blocks: statement quality → statement alerts →
 # dynamic industry bubble & weight concentration. Same markup for Lite/Full.
 # Copy: ui_str / funnel_* keys (en-US + zh-TW)
 # =========================================================================
@@ -33,16 +34,53 @@ decision_ui <- function(id) {
           id = "ynow_funnel_page_sub",
           class = "ynow-funnel-report__lead",
           paste0(
+            "點選 MOS／Reliability、品質檢核 (F-Score)、財報警訊框格可捲動至對應區塊。",
             "三個區塊由上而下：財報體質（F-Score）→ 財報警訊 → 動態產業泡沫與權重集中度。",
-            "各區結論／指標框格置於對應區塊內、表格上方。",
             "這是決策輔助報告，不是下單指令。"
+          )
+        )
+      ),
+
+      fluidRow(
+        class = "ynow-funnel-scorecards ynow-funnel-kpi-jump-row",
+        column(
+          width = 4,
+          tags$a(
+            href = "#ynow_funnel_ch1",
+            class = "ynow-funnel-kpi-jump",
+            id = "ynow_kpi_jump_mos",
+            role = "button",
+            `aria-label` = "跳至第一章財報體質（MOS 與 Reliability）",
+            uiOutput(ns("vbox_mos"))
+          )
+        ),
+        column(
+          width = 4,
+          tags$a(
+            href = "#ynow_funnel_fscore",
+            class = "ynow-funnel-kpi-jump",
+            id = "ynow_kpi_jump_fscore",
+            role = "button",
+            `aria-label` = "跳至品質檢核 (F-Score) 清單",
+            valueBoxOutput(ns("vbox_fscore"), width = NULL)
+          )
+        ),
+        column(
+          width = 4,
+          tags$a(
+            href = "#ynow_funnel_ch2",
+            class = "ynow-funnel-kpi-jump",
+            id = "ynow_kpi_jump_alerts",
+            role = "button",
+            `aria-label` = "跳至第二章財報警訊",
+            uiOutput(ns("vbox_fraud"))
           )
         )
       ),
 
       tags$section(
         class = "ynow-funnel-chapter",
-        id = "ynow_ynow_block_quality",
+        id = "ynow_funnel_ch1",
         `data-ynow-block` = "quality",
         tags$div(
           class = "ynow-funnel-chapter__head",
@@ -67,11 +105,6 @@ decision_ui <- function(id) {
               "通過／未達標僅供品質檢核，不單獨構成買進理由。"
             )
           ),
-          fluidRow(
-            class = "ynow-funnel-scorecards",
-            valueBoxOutput(ns("vbox_fscore"), width = 4),
-            uiOutput(ns("vbox_mos"))
-          ),
           uiOutput(ns("ui_recommendation")),
           h4(
             style = "display:none;",
@@ -82,6 +115,7 @@ decision_ui <- function(id) {
           ),
           tags$div(
             class = "ynow-funnel-table-wrap",
+            id = "ynow_funnel_fscore",
             tableOutput(ns("table_checklist"))
           )
         )
@@ -89,7 +123,7 @@ decision_ui <- function(id) {
 
       tags$section(
         class = "ynow-funnel-chapter",
-        id = "ynow_ynow_block_alerts",
+        id = "ynow_funnel_ch2",
         `data-ynow-block` = "alerts",
         tags$div(
           class = "ynow-funnel-chapter__head",
@@ -114,10 +148,6 @@ decision_ui <- function(id) {
               "屬否決／風險提示，非買進訊號。"
             )
           ),
-          fluidRow(
-            class = "ynow-funnel-scorecards",
-            uiOutput(ns("vbox_fraud"))
-          ),
           tags$div(
             class = "ynow-funnel-table-wrap",
             uiOutput(ns("shenanigans_panel"))
@@ -127,7 +157,7 @@ decision_ui <- function(id) {
 
       tags$section(
         class = "ynow-funnel-chapter",
-        id = "ynow_ynow_block_bubble",
+        id = "ynow_funnel_ch3",
         `data-ynow-block` = "bubble",
         tags$div(
           class = "ynow-funnel-chapter__head",
@@ -429,23 +459,30 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
     output$vbox_mos <- renderUI({
       .ui_loc()
       val <- tryCatch(mos_calc(), error = function(e) NA_real_)
-      if (length(val) != 1L || is.null(val) || is.na(val) || !is.finite(val)) {
-        return(NULL)
-      }
       conf <- tryCatch(confidence(), error = function(e) NULL)
       conf_lab <- if (is.list(conf) && !is.null(conf$level)) {
         .str("funnel_vbox_mos_conf", level = conf$level)
       } else {
         ""
       }
+      subtitle <- paste0(.str("funnel_vbox_mos"), conf_lab)
+      if (length(val) != 1L || is.null(val) || is.na(val) || !is.finite(val)) {
+        return(valueBox(
+          "—",
+          subtitle,
+          icon = icon("shield-halved"),
+          color = "light-blue",
+          width = NULL
+        ))
+      }
       v_pct <- round(as.numeric(val) * 100, 1)
       color <- if (v_pct >= 20) "green" else if (v_pct >= 0) "yellow" else "red"
       valueBox(
         paste0(v_pct, "%"),
-        paste0(.str("funnel_vbox_mos"), conf_lab),
+        subtitle,
         icon = icon("shield-halved"),
         color = color,
-        width = 4
+        width = NULL
       )
     })
 
@@ -470,14 +507,22 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
     output$vbox_fraud <- renderUI({
       .ui_loc()
       n <- tryCatch(fraud_flag_n(), error = function(e) NA_integer_)
-      if (length(n) != 1L || is.null(n) || is.na(n) || !is.finite(n)) return(NULL)
+      if (length(n) != 1L || is.null(n) || is.na(n) || !is.finite(n)) {
+        return(valueBox(
+          "—",
+          .str("funnel_vbox_fraud"),
+          icon = icon("exclamation-triangle"),
+          color = "light-blue",
+          width = NULL
+        ))
+      }
       n <- as.integer(n)
       valueBox(
         .str("funnel_fraud_items", n = n),
         .str("funnel_vbox_fraud"),
         icon = icon("exclamation-triangle"),
         color = if (n > 0L) "red" else "green",
-        width = 4
+        width = NULL
       )
     })
 

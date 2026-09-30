@@ -270,20 +270,35 @@ testthat::test_that("YNOW page title and three-block order are shared by Lite an
     readLines(file.path("..", "investment_decision_module.R"), warn = FALSE, encoding = "UTF-8"),
     collapse = "\n"
   )
-  pos_q <- regexpr('`data-ynow-block` = "quality"', dec, fixed = TRUE)[1]
-  pos_a <- regexpr('`data-ynow-block` = "alerts"', dec, fixed = TRUE)[1]
-  pos_b <- regexpr('`data-ynow-block` = "bubble"', dec, fixed = TRUE)[1]
+  ui_start <- regexpr("decision_ui <- function", dec, fixed = TRUE)[1]
+  ui_end <- regexpr("decision_momentum_panel_ui", dec, fixed = TRUE)[1]
+  testthat::expect_true(is.finite(ui_start) && ui_start > 0 && ui_end > ui_start)
+  ui_fn <- substr(dec, ui_start, ui_end)
+  pos_q <- regexpr('`data-ynow-block` = "quality"', ui_fn, fixed = TRUE)[1]
+  pos_a <- regexpr('`data-ynow-block` = "alerts"', ui_fn, fixed = TRUE)[1]
+  pos_b <- regexpr('`data-ynow-block` = "bubble"', ui_fn, fixed = TRUE)[1]
   testthat::expect_true(is.finite(pos_q) && pos_q > 0)
   testthat::expect_true(is.finite(pos_a) && pos_a > pos_q)
   testthat::expect_true(is.finite(pos_b) && pos_b > pos_a)
 
-  pos_fs <- regexpr("vbox_fscore", dec, fixed = TRUE)[1]
-  pos_tbl <- regexpr("table_checklist", dec, fixed = TRUE)[1]
-  testthat::expect_true(pos_fs > pos_q && pos_fs < pos_tbl && pos_tbl < pos_a)
-
-  pos_fraud <- regexpr("vbox_fraud", dec, fixed = TRUE)[1]
-  pos_shen <- regexpr("shenanigans_panel", dec, fixed = TRUE)[1]
-  testthat::expect_true(pos_fraud > pos_a && pos_fraud < pos_shen && pos_shen < pos_b)
+  pos_mos <- regexpr("vbox_mos", ui_fn, fixed = TRUE)[1]
+  pos_fs <- regexpr("vbox_fscore", ui_fn, fixed = TRUE)[1]
+  pos_fraud <- regexpr("vbox_fraud", ui_fn, fixed = TRUE)[1]
+  pos_ch1_title <- regexpr("ynow_funnel_ch1_title", ui_fn, fixed = TRUE)[1]
+  pos_tbl <- regexpr("table_checklist", ui_fn, fixed = TRUE)[1]
+  pos_shen <- regexpr("shenanigans_panel", ui_fn, fixed = TRUE)[1]
+  testthat::expect_true(pos_mos > 0 && pos_fs > pos_mos && pos_fraud > pos_fs)
+  testthat::expect_true(pos_ch1_title > pos_fraud)
+  testthat::expect_true(pos_tbl > pos_q && pos_tbl < pos_a)
+  testthat::expect_true(pos_shen > pos_a && pos_shen < pos_b)
+  ch1_body <- substr(ui_fn, pos_q, pos_a)
+  ch2_body <- substr(ui_fn, pos_a, pos_b)
+  testthat::expect_false(grepl("vbox_fscore", ch1_body, fixed = TRUE))
+  testthat::expect_false(grepl("vbox_mos", ch1_body, fixed = TRUE))
+  testthat::expect_false(grepl("vbox_fraud", ch2_body, fixed = TRUE))
+  testthat::expect_true(grepl('href = "#ynow_funnel_ch1"', ui_fn, fixed = TRUE))
+  testthat::expect_true(grepl('href = "#ynow_funnel_ch2"', ui_fn, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-funnel-kpi-jump-row", ui_fn, fixed = TRUE))
 
   testthat::expect_true(grepl("macro_bubble_chapter_ui", dec, fixed = TRUE))
   testthat::expect_false(grepl("ynow-lite-only", dec, fixed = TRUE))

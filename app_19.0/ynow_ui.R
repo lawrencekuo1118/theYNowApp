@@ -3972,6 +3972,12 @@ ui <- dashboardPage(
             if (funnelCh3T && s.funnel_ch3_title) funnelCh3T.textContent = s.funnel_ch3_title;
             var funnelCh3Lead = document.getElementById('ynow_funnel_ch3_lead');
             if (funnelCh3Lead && s.funnel_ch3_lead) funnelCh3Lead.textContent = s.funnel_ch3_lead;
+            var kpiJumpMos = document.getElementById('ynow_kpi_jump_mos');
+            if (kpiJumpMos && s.funnel_kpi_jump_mos_aria) kpiJumpMos.setAttribute('aria-label', s.funnel_kpi_jump_mos_aria);
+            var kpiJumpFs = document.getElementById('ynow_kpi_jump_fscore');
+            if (kpiJumpFs && s.funnel_kpi_jump_fscore_aria) kpiJumpFs.setAttribute('aria-label', s.funnel_kpi_jump_fscore_aria);
+            var kpiJumpAl = document.getElementById('ynow_kpi_jump_alerts');
+            if (kpiJumpAl && s.funnel_kpi_jump_alerts_aria) kpiJumpAl.setAttribute('aria-label', s.funnel_kpi_jump_alerts_aria);
             var funnelSecMethod = document.getElementById('ynow_funnel_sec_method');
             if (funnelSecMethod && s.funnel_sec_method) funnelSecMethod.textContent = s.funnel_sec_method;
             var funnelMethodBody = document.getElementById('ynow_funnel_method_body');
@@ -4258,6 +4264,36 @@ ui <- dashboardPage(
             });
           }
           registerLocaleHandler();
+
+          /* ---- YNOW KPI cards: click / keyboard scroll to chapter anchors ---- */
+          function ynowScrollFunnelAnchor(id) {
+            if (!id) return false;
+            var el = document.getElementById(id);
+            if (!el) return false;
+            try { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+            catch (e) { try { el.scrollIntoView(true); } catch (e2) {} }
+            return true;
+          }
+          function ynowOnFunnelKpiJump(ev) {
+            var a = ev.target && ev.target.closest ? ev.target.closest('a.ynow-funnel-kpi-jump') : null;
+            if (!a) return;
+            var href = a.getAttribute('href') || '';
+            if (href.charAt(0) !== '#') return;
+            var id = href.slice(1);
+            if (!ynowScrollFunnelAnchor(id)) return;
+            ev.preventDefault();
+            if (window.history && history.replaceState) {
+              try { history.replaceState(null, '', href); } catch (e3) {}
+            }
+          }
+          document.addEventListener('click', ynowOnFunnelKpiJump);
+          document.addEventListener('keydown', function (ev) {
+            if (ev.key !== ' ' && ev.key !== 'Spacebar') return;
+            var a = ev.target && ev.target.closest ? ev.target.closest('a.ynow-funnel-kpi-jump') : null;
+            if (!a) return;
+            ev.preventDefault();
+            a.click();
+          });
 
           /* ---- Lite mode: sidebar logo click toggles body.ynow-lite + LITE badge ---- */
           (function () {
@@ -5498,6 +5534,44 @@ ui <- dashboardPage(
         .ynow-funnel-scorecards .info-box,
         .ynow-funnel-scorecards .small-box {
           margin-bottom: 12px;
+        }
+        .ynow-funnel-kpi-jump-row {
+          margin: 0 0 16px 0;
+        }
+        .ynow-funnel-kpi-jump-row > .col-sm-4 {
+          margin-bottom: 0;
+        }
+        a.ynow-funnel-kpi-jump {
+          display: block;
+          color: inherit;
+          text-decoration: none !important;
+          cursor: pointer;
+          border-radius: 8px;
+        }
+        a.ynow-funnel-kpi-jump:hover,
+        a.ynow-funnel-kpi-jump:focus {
+          text-decoration: none !important;
+          color: inherit;
+        }
+        a.ynow-funnel-kpi-jump:focus {
+          outline: 2px solid #1a1a1a;
+          outline-offset: 3px;
+        }
+        a.ynow-funnel-kpi-jump .small-box,
+        a.ynow-funnel-kpi-jump .info-box {
+          margin-bottom: 0;
+          width: 100%;
+          border-radius: 8px;
+          box-shadow: none;
+          border: 1px solid #e6e6e6;
+          min-height: 108px;
+          cursor: pointer;
+        }
+        #ynow_funnel_ch1,
+        #ynow_funnel_ch2,
+        #ynow_funnel_ch3,
+        #ynow_funnel_fscore {
+          scroll-margin-top: 72px;
         }
         .ynow-funnel-table-wrap {
           overflow-x: auto;

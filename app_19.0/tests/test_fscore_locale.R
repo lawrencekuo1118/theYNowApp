@@ -22,6 +22,7 @@ check <- function(label, cond) {
 
 keys <- c(
   "funnel_ch1_title", "funnel_ch1_lead", "funnel_fscore_list_title", "funnel_vbox_fscore",
+  "funnel_kpi_jump_mos_aria", "funnel_kpi_jump_fscore_aria", "funnel_kpi_jump_alerts_aria",
   "dc_label_fscore", "dc_hint_fscore", "dc_cond_fscore_min",
   "lab_im_gate_label", "lab_im_gate_hint", "lab_im_run_title",
   "lab_im_progress", "lab_im_done_gate", "lab_im_gate_on", "lab_im_gate_off",

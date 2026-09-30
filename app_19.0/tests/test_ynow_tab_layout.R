@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# YNOW tab: title, three-block order, conclusion cards above tables, Lite=Full
+# YNOW tab: title, KPI jump row above Section I, three-block order, Lite=Full
 # Run: cd app_19.0 && Rscript tests/test_ynow_tab_layout.R
 
 root <- if (file.exists("investment_decision_module.R")) {
@@ -43,22 +43,63 @@ check("ch1_lead en", nzchar(ui_str("funnel_ch1_lead", "en")))
 check("ch1_lead zh", nzchar(ui_str("funnel_ch1_lead", "zh-TW")))
 check("no Decision Funnel title", !grepl("Decision Funnel", .UI_STRINGS$en$funnel_page_title, fixed = TRUE))
 check("no 決策漏斗 title", !grepl("決策漏斗", .UI_STRINGS$`zh-TW`$funnel_page_title, fixed = TRUE))
+check("page_sub click MOS", grepl("Click MOS / Reliability", .UI_STRINGS$en$funnel_page_sub, fixed = TRUE))
+check("page_sub zh 點選", grepl("點選 MOS／Reliability", .UI_STRINGS$`zh-TW`$funnel_page_sub, fixed = TRUE))
+check(
+  "jump aria keys",
+  nzchar(ui_str("funnel_kpi_jump_mos_aria", "en")) &&
+    nzchar(ui_str("funnel_kpi_jump_fscore_aria", "en")) &&
+    nzchar(ui_str("funnel_kpi_jump_alerts_aria", "en")) &&
+    nzchar(ui_str("funnel_kpi_jump_mos_aria", "zh-TW")) &&
+    nzchar(ui_str("funnel_kpi_jump_fscore_aria", "zh-TW")) &&
+    nzchar(ui_str("funnel_kpi_jump_alerts_aria", "zh-TW"))
+)
+check("en aria keeps F-Score", grepl("F-Score", ui_str("funnel_kpi_jump_fscore_aria", "en"), fixed = TRUE))
+check("zh aria keeps F-Score", grepl("F-Score", ui_str("funnel_kpi_jump_fscore_aria", "zh-TW"), fixed = TRUE))
+check("zh aria keeps MOS", grepl("MOS", ui_str("funnel_kpi_jump_mos_aria", "zh-TW"), fixed = TRUE))
 
 dec <- paste(readLines("investment_decision_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-pos_q <- regexpr('`data-ynow-block` = "quality"', dec, fixed = TRUE)[1]
-pos_a <- regexpr('`data-ynow-block` = "alerts"', dec, fixed = TRUE)[1]
-pos_b <- regexpr('`data-ynow-block` = "bubble"', dec, fixed = TRUE)[1]
+ui_start <- regexpr("decision_ui <- function", dec, fixed = TRUE)[1]
+ui_end <- regexpr("decision_momentum_panel_ui", dec, fixed = TRUE)[1]
+check("decision_ui slice", is.finite(ui_start) && ui_start > 0 && ui_end > ui_start)
+ui_fn <- if (ui_start > 0 && ui_end > ui_start) substr(dec, ui_start, ui_end) else dec
+
+pos_q <- regexpr('`data-ynow-block` = "quality"', ui_fn, fixed = TRUE)[1]
+pos_a <- regexpr('`data-ynow-block` = "alerts"', ui_fn, fixed = TRUE)[1]
+pos_b <- regexpr('`data-ynow-block` = "bubble"', ui_fn, fixed = TRUE)[1]
 check("quality block present", is.finite(pos_q) && pos_q > 0)
 check("order 體質 → 警訊", is.finite(pos_a) && pos_a > pos_q)
 check("order 警訊 → 泡沫", is.finite(pos_b) && pos_b > pos_a)
 
-pos_fs <- regexpr("vbox_fscore", dec, fixed = TRUE)[1]
-pos_tbl <- regexpr("table_checklist", dec, fixed = TRUE)[1]
-check("F-Score box above table", pos_fs > pos_q && pos_fs < pos_tbl && pos_tbl < pos_a)
+pos_ch1_id <- regexpr('id = "ynow_funnel_ch1"', ui_fn, fixed = TRUE)[1]
+pos_ch1_title <- regexpr("ynow_funnel_ch1_title", ui_fn, fixed = TRUE)[1]
+pos_mos <- regexpr("vbox_mos", ui_fn, fixed = TRUE)[1]
+pos_fs <- regexpr("vbox_fscore", ui_fn, fixed = TRUE)[1]
+pos_fraud <- regexpr("vbox_fraud", ui_fn, fixed = TRUE)[1]
+pos_tbl <- regexpr("table_checklist", ui_fn, fixed = TRUE)[1]
+pos_shen <- regexpr("shenanigans_panel", ui_fn, fixed = TRUE)[1]
+check("MOS card before F-Score", pos_mos > 0 && pos_fs > pos_mos)
+check("F-Score card before alerts", pos_fs > 0 && pos_fraud > pos_fs)
+check("KPI row before Section I heading", pos_fraud > 0 && pos_ch1_title > pos_fraud && pos_ch1_id > pos_fraud)
+check("Section I heading not in KPI row", pos_ch1_title > pos_ch1_id && pos_ch1_id > pos_fraud)
+check("table still in Section I", pos_tbl > pos_q && pos_tbl < pos_a)
+check("shenanigans still in Section II", pos_shen > pos_a && pos_shen < pos_b)
 
-pos_fraud <- regexpr("vbox_fraud", dec, fixed = TRUE)[1]
-pos_shen <- regexpr("shenanigans_panel", dec, fixed = TRUE)[1]
-check("alert box above shenanigans", pos_fraud > pos_a && pos_fraud < pos_shen && pos_shen < pos_b)
+ch1_body <- if (pos_q > 0 && pos_a > pos_q) substr(ui_fn, pos_q, pos_a) else ""
+ch2_body <- if (pos_a > 0 && pos_b > pos_a) substr(ui_fn, pos_a, pos_b) else ""
+check("no vbox_mos inside ch1", !grepl("vbox_mos", ch1_body, fixed = TRUE))
+check("no vbox_fscore inside ch1", !grepl("vbox_fscore", ch1_body, fixed = TRUE))
+check("no vbox_fraud inside ch1", !grepl("vbox_fraud", ch1_body, fixed = TRUE))
+check("no vbox_fraud inside ch2", !grepl("vbox_fraud", ch2_body, fixed = TRUE))
+check("no vbox_fscore inside ch2", !grepl("vbox_fscore", ch2_body, fixed = TRUE))
+check("href MOS → ch1", grepl('href = "#ynow_funnel_ch1"', ui_fn, fixed = TRUE))
+check("href F-Score → fscore", grepl('href = "#ynow_funnel_fscore"', ui_fn, fixed = TRUE))
+check("href alerts → ch2", grepl('href = "#ynow_funnel_ch2"', ui_fn, fixed = TRUE))
+check("jump id MOS", grepl("ynow_kpi_jump_mos", ui_fn, fixed = TRUE))
+check("jump id F-Score", grepl("ynow_kpi_jump_fscore", ui_fn, fixed = TRUE))
+check("jump id alerts", grepl("ynow_kpi_jump_alerts", ui_fn, fixed = TRUE))
+check("role=button on jump cards", grepl('role = "button"', dec, fixed = TRUE))
+check("fscore table id", grepl('id = "ynow_funnel_fscore"', ui_fn, fixed = TRUE))
 
 bt <- paste(readLines("macro_bubble_indicators.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 pos_conc <- regexpr("bubble_conc_kpi", bt, fixed = TRUE)[1]
@@ -77,6 +118,11 @@ check(
 )
 check("applyUiLocale ch1 lead", grepl("ynow_funnel_ch1_lead", ui, fixed = TRUE))
 check("applyUiLocale page title", grepl("ynow_funnel_page_title", ui, fixed = TRUE))
+check("applyUiLocale kpi jump aria", grepl("ynow_kpi_jump_mos", ui, fixed = TRUE) &&
+        grepl("funnel_kpi_jump_mos_aria", ui, fixed = TRUE))
+check("click handler scrollIntoView", grepl("ynowOnFunnelKpiJump", ui, fixed = TRUE) &&
+        grepl("ynowScrollFunnelAnchor", ui, fixed = TRUE) &&
+        grepl("scrollIntoView", ui, fixed = TRUE))
 check("Lite About uses 財報體質 block name", grepl("財報體質（F-Score）、財報警訊、動態產業泡沫與權重集中度", ui, fixed = TRUE))
 check("Lite About EN uses statement quality", grepl("statement quality (F-Score), statement alerts", ui, fixed = TRUE))
 check("first-paint F-Score list title zh", grepl("F-Score 品質檢核清單", dec, fixed = TRUE))
