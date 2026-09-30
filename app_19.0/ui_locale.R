@@ -1499,19 +1499,19 @@ locale_for_market <- function(mode = get_market_mode()) {
       "the lab will not fabricate a second business."
     ),
     bblab_source_unavailable = "Statements could not be retrieved. Source-currency analysis is blocked until filings load.",
-    bblab_ch1_title = "1. Consolidated statement snapshot",
+    bblab_ch1_title = "Consolidated statement snapshot",
     bblab_ch1_help = paste0(
       "Reported consolidated totals in statement currency. This is the whole firm, ",
       "before any business split."
     ),
-    bblab_ch2_title = "2. How the statements split the business",
+    bblab_ch2_title = "How the statements split the business",
     bblab_ch2_help = paste0(
       "One primary reporting dimension is selected. Geography that only describes ",
       "customer location is never the business split. Overlapping dimensions are never added together."
     ),
-    bblab_ch3_title = "3. Current revenue mix",
+    bblab_ch3_title = "Current revenue mix",
     bblab_ch3_help = "Each slice is a share of reported consolidated revenue for the current period.",
-    bblab_ch4_title = "4. Five-year mix evolution",
+    bblab_ch4_title = "Five-year mix evolution",
     bblab_ch4_help = paste0(
       "Revenue share by business for up to five fiscal years, using the same reporting dimension. ",
       "Years that cannot be mapped are omitted; shares are never fabricated or filled with 0."
@@ -1520,9 +1520,9 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Fewer than two fiscal years of comparable revenue shares are available; ",
       "a five-year mix series is not shown."
     ),
-    bblab_ch5_title = "5. Business cards",
-    bblab_ch6_title = "6. Reconciliation",
-    bblab_ch7_title = "7. Sources",
+    bblab_ch5_title = "Business cards",
+    bblab_ch6_title = "Reconciliation",
+    bblab_ch7_title = "Sources",
     bblab_geo_veto_why = paste0(
       "Geography that only describes customer location is not the primary business split; ",
       "it does not explain distinct economics."
@@ -1539,7 +1539,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_kpi_cor = "Cost of Revenue",
     bblab_kpi_gp = "Gross Profit",
     bblab_kpi_gm = "Gross Margin",
-    bblab_summary_title = "2. How the statements split the business",
+    bblab_summary_title = "How the statements split the business",
     bblab_dimension_label = "Primary dimension",
     bblab_count_label = "Business count",
     bblab_level_label = "Decomposition level",
@@ -1548,10 +1548,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_cor_recon_label = "Cost of Revenue reconciliation",
     bblab_reval_avail_label = "Revaluation availability",
     bblab_limitations_label = "Limitations",
-    bblab_chart_title = "3. Current revenue mix",
-    bblab_cards_title = "5. Business cards",
-    bblab_recon_title = "6. Reconciliation",
-    bblab_sources_title = "7. Sources",
+    bblab_chart_title = "Current revenue mix",
+    bblab_cards_title = "Business cards",
+    bblab_recon_title = "Reconciliation",
+    bblab_sources_title = "Sources",
     bblab_sources_chrome = paste0(
       "Disclosure priority: operating segments → segment notes → product/service revenue → ",
       "revenue disaggregation → MD&A → earnings → IR decks → official descriptions. ",
@@ -3113,24 +3113,24 @@ locale_for_market <- function(mode = get_market_mode()) {
       "本實驗室不會虛構第二個事業。"
     ),
     bblab_source_unavailable = "無法取得財報。在申報資料載入前，來源幣別分析會被阻擋。",
-    bblab_ch1_title = "1. 合併財報總覽",
+    bblab_ch1_title = "合併財報總覽",
     bblab_ch1_help = "以財報幣別呈現的合併數。這是整家公司，尚未依業務切分。",
-    bblab_ch2_title = "2. 財報如何切分業務",
+    bblab_ch2_title = "財報如何切分業務",
     bblab_ch2_help = paste0(
       "只選一個主要申報維度。僅描述客戶所在地的地區別不會被當作業務切分。",
       "重疊的申報維度不會加總合併。"
     ),
-    bblab_ch3_title = "3. 當期營收組成",
+    bblab_ch3_title = "當期營收組成",
     bblab_ch3_help = "各切片為當期已申報合併營收的占比。",
-    bblab_ch4_title = "4. 五年結構占比演進",
+    bblab_ch4_title = "五年結構占比演進",
     bblab_ch4_help = paste0(
       "同一申報維度下，最多五個會計年度的事業營收占比。",
       "無法對應的年度會略過，不會虛構占比或補 0。"
     ),
     bblab_ch4_limited = "可比較的營收占比不足兩個會計年度，因此不呈現五年結構占比序列。",
-    bblab_ch5_title = "5. 各事業簡化財報",
-    bblab_ch6_title = "6. 對帳",
-    bblab_ch7_title = "7. 來源與方法",
+    bblab_ch5_title = "各事業簡化財報",
+    bblab_ch6_title = "對帳",
+    bblab_ch7_title = "來源與方法",
     bblab_geo_veto_why = paste0(
       "僅描述客戶所在地的地區別，不會被選為主要業務切分；",
       "它無法說明不同事業的經濟本質。"
@@ -3147,7 +3147,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_kpi_cor = "Cost of Revenue",
     bblab_kpi_gp = "Gross Profit",
     bblab_kpi_gm = "Gross Margin",
-    bblab_summary_title = "2. 財報如何切分業務",
+    bblab_summary_title = "財報如何切分業務",
     bblab_dimension_label = "主要維度",
     bblab_count_label = "事業數量",
     bblab_level_label = "拆解層級",
@@ -3156,10 +3156,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_cor_recon_label = "Cost of Revenue 調節",
     bblab_reval_avail_label = "重估可用性",
     bblab_limitations_label = "限制",
-    bblab_chart_title = "3. 當期營收組成",
-    bblab_cards_title = "5. 各事業簡化財報",
-    bblab_recon_title = "6. 對帳",
-    bblab_sources_title = "7. 來源與方法",
+    bblab_chart_title = "當期營收組成",
+    bblab_cards_title = "各事業簡化財報",
+    bblab_recon_title = "對帳",
+    bblab_sources_title = "來源與方法",
     bblab_sources_chrome = paste0(
       "揭露優先序：營運部門 → 部門附註 → 產品／勞務收入 → 收入拆解 → MD&A → 法說 → IR 簡報 → 官方說明。",
       "優先採用已申報／經查核來源。本頁為實驗功能，不會寫入估值。"

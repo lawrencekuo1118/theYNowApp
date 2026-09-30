@@ -138,7 +138,7 @@ business_breakdown_lab_ui <- function(id = "bblab") {
         title = tagList(
           tags$span(class = "ynow-bblab-chapter__num", "1"),
             icon("building"),
-          tags$span(id = "ynow_bblab_ch1_title", "1. Consolidated statement snapshot")
+          tags$span(id = "ynow_bblab_ch1_title", "Consolidated statement snapshot")
         ),
         width = 12, status = "info", solidHeader = TRUE,
         `data-bblab-chapter` = "1",
@@ -154,7 +154,7 @@ business_breakdown_lab_ui <- function(id = "bblab") {
         title = tagList(
           tags$span(class = "ynow-bblab-chapter__num", "2"),
           icon("sitemap"),
-          tags$span(id = "ynow_bblab_ch2_title", "2. How the statements split the business")
+          tags$span(id = "ynow_bblab_ch2_title", "How the statements split the business")
         ),
         width = 12, status = "info", solidHeader = TRUE,
         `data-bblab-chapter` = "2",
@@ -173,7 +173,7 @@ business_breakdown_lab_ui <- function(id = "bblab") {
         title = tagList(
           tags$span(class = "ynow-bblab-chapter__num", "3"),
           icon("chart-pie"),
-          tags$span(id = "ynow_bblab_ch3_title", "3. Current revenue mix")
+          tags$span(id = "ynow_bblab_ch3_title", "Current revenue mix")
         ),
         width = 12, status = "info", solidHeader = TRUE, collapsible = TRUE,
         `data-bblab-chapter` = "3",
@@ -206,7 +206,7 @@ business_breakdown_lab_ui <- function(id = "bblab") {
         title = tagList(
           tags$span(class = "ynow-bblab-chapter__num", "4"),
           icon("chart-area"),
-          tags$span(id = "ynow_bblab_ch4_title", "4. Five-year mix evolution")
+          tags$span(id = "ynow_bblab_ch4_title", "Five-year mix evolution")
         ),
         width = 12, status = "info", solidHeader = TRUE, collapsible = TRUE,
         `data-bblab-chapter` = "4",
@@ -226,7 +226,7 @@ business_breakdown_lab_ui <- function(id = "bblab") {
         title = tagList(
           tags$span(class = "ynow-bblab-chapter__num", "5"),
           icon("th-large"),
-          tags$span(id = "ynow_bblab_ch5_title", "5. Business cards")
+          tags$span(id = "ynow_bblab_ch5_title", "Business cards")
         ),
         width = 12, status = "primary", solidHeader = TRUE,
         `data-bblab-chapter` = "5",
@@ -240,7 +240,7 @@ business_breakdown_lab_ui <- function(id = "bblab") {
         title = tagList(
           tags$span(class = "ynow-bblab-chapter__num", "6"),
           icon("balance-scale"),
-          tags$span(id = "ynow_bblab_ch6_title", "6. Reconciliation")
+          tags$span(id = "ynow_bblab_ch6_title", "Reconciliation")
         ),
         width = 12, status = "warning", solidHeader = TRUE,
         `data-bblab-chapter` = "6",
@@ -263,7 +263,7 @@ business_breakdown_lab_ui <- function(id = "bblab") {
         title = tagList(
           tags$span(class = "ynow-bblab-chapter__num", "7"),
           icon("book"),
-          tags$span(id = "ynow_bblab_ch7_title", "7. Sources")
+          tags$span(id = "ynow_bblab_ch7_title", "Sources")
         ),
         width = 12, status = "info", solidHeader = TRUE,
         `data-bblab-chapter` = "7",

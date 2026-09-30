@@ -546,20 +546,20 @@ for (k in c("menu_business_breakdown_lab", "bblab_experimental_badge", "bblab_pa
   check(paste("i18n", k), is.character(en) && nzchar(en[1]) && is.character(zh) && nzchar(zh[1]))
 }
 check("i18n chapter titles en + zh-TW", {
-  identical(.UI_STRINGS$en$bblab_ch1_title, "1. Consolidated statement snapshot") &&
-    identical(.UI_STRINGS$`zh-TW`$bblab_ch1_title, "1. 合併財報總覽") &&
-    identical(.UI_STRINGS$en$bblab_ch2_title, "2. How the statements split the business") &&
-    identical(.UI_STRINGS$`zh-TW`$bblab_ch2_title, "2. 財報如何切分業務") &&
-    identical(.UI_STRINGS$en$bblab_ch3_title, "3. Current revenue mix") &&
-    identical(.UI_STRINGS$`zh-TW`$bblab_ch3_title, "3. 當期營收組成") &&
-    identical(.UI_STRINGS$en$bblab_ch4_title, "4. Five-year mix evolution") &&
-    identical(.UI_STRINGS$`zh-TW`$bblab_ch4_title, "4. 五年結構占比演進") &&
-    identical(.UI_STRINGS$en$bblab_ch5_title, "5. Business cards") &&
-    identical(.UI_STRINGS$`zh-TW`$bblab_ch5_title, "5. 各事業簡化財報") &&
-    identical(.UI_STRINGS$en$bblab_ch6_title, "6. Reconciliation") &&
-    identical(.UI_STRINGS$`zh-TW`$bblab_ch6_title, "6. 對帳") &&
-    identical(.UI_STRINGS$en$bblab_ch7_title, "7. Sources") &&
-    identical(.UI_STRINGS$`zh-TW`$bblab_ch7_title, "7. 來源與方法") &&
+  identical(.UI_STRINGS$en$bblab_ch1_title, "Consolidated statement snapshot") &&
+    identical(.UI_STRINGS$`zh-TW`$bblab_ch1_title, "合併財報總覽") &&
+    identical(.UI_STRINGS$en$bblab_ch2_title, "How the statements split the business") &&
+    identical(.UI_STRINGS$`zh-TW`$bblab_ch2_title, "財報如何切分業務") &&
+    identical(.UI_STRINGS$en$bblab_ch3_title, "Current revenue mix") &&
+    identical(.UI_STRINGS$`zh-TW`$bblab_ch3_title, "當期營收組成") &&
+    identical(.UI_STRINGS$en$bblab_ch4_title, "Five-year mix evolution") &&
+    identical(.UI_STRINGS$`zh-TW`$bblab_ch4_title, "五年結構占比演進") &&
+    identical(.UI_STRINGS$en$bblab_ch5_title, "Business cards") &&
+    identical(.UI_STRINGS$`zh-TW`$bblab_ch5_title, "各事業簡化財報") &&
+    identical(.UI_STRINGS$en$bblab_ch6_title, "Reconciliation") &&
+    identical(.UI_STRINGS$`zh-TW`$bblab_ch6_title, "對帳") &&
+    identical(.UI_STRINGS$en$bblab_ch7_title, "Sources") &&
+    identical(.UI_STRINGS$`zh-TW`$bblab_ch7_title, "來源與方法") &&
     grepl("不足兩個會計年度", .UI_STRINGS$`zh-TW`$bblab_ch4_limited, fixed = TRUE) &&
     !grepl("默认|参数|数据|用户", paste(
       .UI_STRINGS$`zh-TW`$bblab_ch1_title, .UI_STRINGS$`zh-TW`$bblab_ch2_help,
@@ -572,6 +572,15 @@ check("applyUiLocale wires chapter titles", {
     grepl("setBtText('ynow_bblab_ch4_title', 'bblab_ch4_title')", ui_src, fixed = TRUE) &&
     grepl("setBtText('ynow_bblab_ch4_limited', 'bblab_ch4_limited')", ui_src, fixed = TRUE) &&
     grepl("setBtText('ynow_bblab_ch7_title', 'bblab_ch7_title')", ui_src, fixed = TRUE)
+})
+check("chapter titles do not repeat badge numbering", {
+  keys <- paste0("bblab_ch", 1:7, "_title")
+  aliases <- c("bblab_summary_title", "bblab_chart_title", "bblab_cards_title",
+               "bblab_recon_title", "bblab_sources_title")
+  all_keys <- c(keys, aliases)
+  en_ok <- all(!grepl("^[0-9]+\\.\\s", vapply(all_keys, function(k) .UI_STRINGS$en[[k]], character(1))))
+  zh_ok <- all(!grepl("^[0-9]+\\.\\s", vapply(all_keys, function(k) .UI_STRINGS$`zh-TW`[[k]], character(1))))
+  en_ok && zh_ok && grepl("ynow-bblab-chapter__num", mod_src, fixed = TRUE)
 })
 check("i18n experimental both locales",
       identical(.UI_STRINGS$en$bblab_experimental_badge, "Experimental Feature") &&
@@ -724,6 +733,11 @@ if (requireNamespace("shiny", quietly = TRUE) &&
     }, integer(1))
     all(pos > 0L) && all(diff(pos) > 0L)
   })
+  check("lab titles keep badge numbers without repeating them in the heading",
+        grepl("ynow-bblab-chapter__num", lab_ui_html, fixed = TRUE) &&
+          !grepl(">1\\. Consolidated", lab_ui_html) &&
+          !grepl(">2\\. How the statements", lab_ui_html) &&
+          grepl(">Consolidated statement snapshot<", lab_ui_html, fixed = TRUE))
   check("lab UI HTML has no Progress 9/9 or nine stage labels",
         !grepl("bblab-progress", lab_ui_html, fixed = TRUE) &&
           !grepl("ynow-bblab-progress", lab_ui_html, fixed = TRUE) &&
