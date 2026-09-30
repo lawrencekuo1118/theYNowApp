@@ -8,5 +8,5 @@ short=58ac5c0
 message=chore: bump display version to v19.01
 captured_at=2026-09-30T02:24:11Z
 source_branch=cursor/lifecycle-v19-3fb1
-display_version=v19.01
+display_version=v19.02
 note=Canonical live line is app_19.0. Bundle 12625403 = v19.01 industry snapshot auto-detect (TW universe / US overlay·S&P / Yahoo) plus Full-app HFV Chart overlay models above Section I chart. Deploy via scripts/deploy_app_19.R. Supersedes 12625332.
