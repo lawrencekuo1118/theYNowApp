@@ -53,10 +53,12 @@
 .dc_checks_ui <- function() {
   items <- names(.DC_ITEM_DEFS)
   tagList(
-    tags$p(
-      id = "ynow_dc_panel_hint",
-      class = "ynow-dc-panel-hint",
-      "Check items to include them in the gate. Condition inputs appear only after the parent box is checked."
+    ynow_notes_block(
+      tags$p(
+        id = "ynow_dc_panel_hint",
+        class = "ynow-dc-panel-hint",
+        "Check items to include them in the gate. Condition inputs appear only after the parent box is checked."
+      )
     ),
     lapply(items, function(item) {
       def <- .DC_ITEM_DEFS[[item]]
@@ -464,9 +466,13 @@ decision_checklist_server <- function(
         tags$li(sprintf(ui_str("dc_live_mos_base", loc), fmt_mos(ctx$mos_base))),
         tags$li(hfv_line)
       ),
-      tags$p(
-        style = "margin:8px 0 0 0;font-size:11.5px;color:#6c757d;line-height:1.45;",
-        ui_str("dc_live_hfv_note", loc)
+      ynow_notes_block(
+        locale = loc,
+        tags$p(
+          class = "ynow-dc-hfv-note",
+          style = "margin:0;font-size:11.5px;color:#6c757d;line-height:1.45;",
+          ui_str("dc_live_hfv_note", loc)
+        )
       )
     )
   })

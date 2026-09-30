@@ -13,6 +13,9 @@ root <- if (file.exists("investment_decision_module.R")) {
 }
 setwd(root)
 
+if (!exists("%||%", mode = "function")) {
+  `%||%` <- function(a, b) if (is.null(a)) b else a
+}
 source("ui_locale.R", local = TRUE, encoding = "UTF-8")
 
 fail <- 0L
@@ -41,6 +44,13 @@ check(
 )
 check("ch1_lead en", nzchar(ui_str("funnel_ch1_lead", "en")))
 check("ch1_lead zh", nzchar(ui_str("funnel_ch1_lead", "zh-TW")))
+check("notes_title en", identical(ui_str("notes_title", "en"), "Notes"))
+check("notes_title zh", identical(ui_str("notes_title", "zh-TW"), "附註"))
+check("notes_title not 备注", !grepl("备注", ui_str("notes_title", "zh-TW"), fixed = TRUE))
+check("notes_title not 注释", !grepl("注释", ui_str("notes_title", "zh-TW"), fixed = TRUE))
+check("notes_toggle_aria en", nzchar(ui_str("notes_toggle_aria", "en")))
+check("notes_toggle_aria zh", nzchar(ui_str("notes_toggle_aria", "zh-TW")))
+check("notes helper exists", exists("ynow_notes_block", mode = "function"))
 check("no Decision Funnel title", !grepl("Decision Funnel", .UI_STRINGS$en$funnel_page_title, fixed = TRUE))
 check("no 決策漏斗 title", !grepl("決策漏斗", .UI_STRINGS$`zh-TW`$funnel_page_title, fixed = TRUE))
 check("page_sub click MOS", grepl("Click MOS / Reliability", .UI_STRINGS$en$funnel_page_sub, fixed = TRUE))
@@ -100,6 +110,33 @@ check("jump id F-Score", grepl("ynow_kpi_jump_fscore", ui_fn, fixed = TRUE))
 check("jump id alerts", grepl("ynow_kpi_jump_alerts", ui_fn, fixed = TRUE))
 check("role=button on jump cards", grepl('role = "button"', dec, fixed = TRUE))
 check("fscore table id", grepl('id = "ynow_funnel_fscore"', ui_fn, fixed = TRUE))
+check("YNOW notes blocks", length(gregexpr("ynow_notes_block(", ui_fn, fixed = TRUE)[[1]]) >= 4L)
+check("YNOW notes default collapsed", !grepl("ynow_notes_block\\([^)]*open\\s*=\\s*TRUE", ui_fn))
+check("ch1 lead wrapped", grepl("ynow_notes_block", ch1_body, fixed = TRUE) &&
+        grepl("ynow_funnel_ch1_lead", ch1_body, fixed = TRUE))
+check("ch2 lead wrapped", grepl("ynow_notes_block", ch2_body, fixed = TRUE) &&
+        grepl("ynow_funnel_ch2_lead", ch2_body, fixed = TRUE))
+.notes_call <- function(txt) {
+  m <- regexpr("ynow_notes_block\\s*\\(", txt)
+  if (m < 1L) return("")
+  start <- as.integer(m)
+  depth <- 0L
+  for (i in seq.int(start, nchar(txt))) {
+    ch <- substr(txt, i, i)
+    if (identical(ch, "(")) depth <- depth + 1L
+    if (identical(ch, ")")) {
+      depth <- depth - 1L
+      if (depth <= 0L) return(substr(txt, start, i))
+    }
+  }
+  substr(txt, start, nchar(txt))
+}
+ch1_notes <- .notes_call(ch1_body)
+ch2_notes <- .notes_call(ch2_body)
+check("table not inside ch1 notes call", grepl("ynow_funnel_ch1_lead", ch1_notes, fixed = TRUE) &&
+        !grepl("table_checklist", ch1_notes, fixed = TRUE))
+check("alerts panel not inside ch2 notes call", grepl("ynow_funnel_ch2_lead", ch2_notes, fixed = TRUE) &&
+        !grepl("shenanigans_panel", ch2_notes, fixed = TRUE))
 
 bt <- paste(readLines("macro_bubble_indicators.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 pos_conc <- regexpr("bubble_conc_kpi", bt, fixed = TRUE)[1]
@@ -117,6 +154,10 @@ check(
     grepl('decision_ui("main_decision")', ui, fixed = TRUE)
 )
 check("applyUiLocale ch1 lead", grepl("ynow_funnel_ch1_lead", ui, fixed = TRUE))
+check("applyUiLocale notes titles", grepl("ynow-notes__title", ui, fixed = TRUE) &&
+        grepl("s.notes_title", ui, fixed = TRUE))
+check("notes CSS details", grepl(".ynow-notes", ui, fixed = TRUE) &&
+        grepl(".ynow-notes__summary", ui, fixed = TRUE))
 check("applyUiLocale page title", grepl("ynow_funnel_page_title", ui, fixed = TRUE))
 check("applyUiLocale kpi jump aria", grepl("ynow_kpi_jump_mos", ui, fixed = TRUE) &&
         grepl("funnel_kpi_jump_mos_aria", ui, fixed = TRUE))

@@ -3972,6 +3972,17 @@ ui <- dashboardPage(
             if (funnelCh3T && s.funnel_ch3_title) funnelCh3T.textContent = s.funnel_ch3_title;
             var funnelCh3Lead = document.getElementById('ynow_funnel_ch3_lead');
             if (funnelCh3Lead && s.funnel_ch3_lead) funnelCh3Lead.textContent = s.funnel_ch3_lead;
+            if (s.notes_title) {
+              document.querySelectorAll('.ynow-notes__title').forEach(function (el) {
+                el.textContent = s.notes_title;
+              });
+            }
+            if (s.notes_toggle_aria) {
+              document.querySelectorAll('.ynow-notes__summary').forEach(function (el) {
+                el.setAttribute('title', s.notes_toggle_aria);
+                el.setAttribute('aria-label', s.notes_toggle_aria);
+              });
+            }
             var kpiJumpMos = document.getElementById('ynow_kpi_jump_mos');
             if (kpiJumpMos && s.funnel_kpi_jump_mos_aria) kpiJumpMos.setAttribute('aria-label', s.funnel_kpi_jump_mos_aria);
             var kpiJumpFs = document.getElementById('ynow_kpi_jump_fscore');
@@ -5509,6 +5520,61 @@ ui <- dashboardPage(
           font-size: 12.5px;
           line-height: 1.5;
           color: #666;
+        }
+        /* Notes / 附註 — collapsible annotation chrome (YNOW + siblings) */
+        .ynow-notes {
+          margin: 0 0 12px 0;
+          border: 1px solid #ececec;
+          border-radius: 6px;
+          background: #fafafa;
+        }
+        .ynow-notes > .ynow-notes__summary {
+          cursor: pointer;
+          list-style: none;
+          padding: 8px 12px;
+          font-size: 12.5px;
+          font-weight: 700;
+          letter-spacing: 0.02em;
+          color: #444;
+          user-select: none;
+        }
+        .ynow-notes > .ynow-notes__summary::-webkit-details-marker {
+          display: none;
+        }
+        .ynow-notes > .ynow-notes__summary::marker {
+          content: '';
+        }
+        .ynow-notes > .ynow-notes__summary::before {
+          content: '\\25B8';
+          display: inline-block;
+          width: 1.1em;
+          color: #888;
+          font-weight: 700;
+        }
+        .ynow-notes[open] > .ynow-notes__summary::before {
+          content: '\\25BE';
+        }
+        .ynow-notes__body {
+          padding: 0 12px 10px 12px;
+        }
+        .ynow-notes__body > :last-child {
+          margin-bottom: 0;
+        }
+        .ynow-funnel-chapter__body > .ynow-notes .ynow-funnel-chapter__lead {
+          margin: 0;
+        }
+        .ynow-funnel-report__masthead > .ynow-notes {
+          margin-top: 8px;
+          margin-bottom: 0;
+        }
+        .ynow-funnel-report__masthead > .ynow-notes .ynow-funnel-report__lead {
+          margin: 0;
+        }
+        .ynow-dc-item > .ynow-notes,
+        .ynow-dc-live > .ynow-notes,
+        .ynow-macro-kpi > .ynow-notes {
+          margin-top: 8px;
+          margin-bottom: 0;
         }
         .ynow-funnel-toolbar {
           margin: 0 0 14px 0;

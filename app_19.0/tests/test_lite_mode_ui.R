@@ -27,7 +27,8 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
     "test_link", "testing_page_title", "testing_page_sub",
     "testing_box_title", "testing_box_body",
     "hfv_chart_overlay_aria", "hfv_chart_models_label",
-    "lab_im_gate_label", "funnel_ch1_title", "dc_label_fscore"
+    "lab_im_gate_label", "funnel_ch1_title", "dc_label_fscore",
+    "notes_title", "notes_toggle_aria"
   )
   for (k in keys) {
     en <- .UI_STRINGS$en[[k]]
@@ -299,6 +300,10 @@ testthat::test_that("YNOW page title and three-block order are shared by Lite an
   testthat::expect_true(grepl('href = "#ynow_funnel_ch1"', ui_fn, fixed = TRUE))
   testthat::expect_true(grepl('href = "#ynow_funnel_ch2"', ui_fn, fixed = TRUE))
   testthat::expect_true(grepl("ynow-funnel-kpi-jump-row", ui_fn, fixed = TRUE))
+  testthat::expect_identical(.UI_STRINGS$en$notes_title, "Notes")
+  testthat::expect_identical(.UI_STRINGS$`zh-TW`$notes_title, "附註")
+  testthat::expect_true(length(gregexpr("ynow_notes_block(", ui_fn, fixed = TRUE)[[1]]) >= 4L)
+  testthat::expect_false(grepl("ynow_notes_block\\([^)]*open\\s*=\\s*TRUE", ui_fn))
 
   testthat::expect_true(grepl("macro_bubble_chapter_ui", dec, fixed = TRUE))
   testthat::expect_false(grepl("ynow-lite-only", dec, fixed = TRUE))

@@ -1,0 +1,99 @@
+#!/usr/bin/env Rscript
+# Collapsible Notes / 附註 chrome: details markup, default collapsed, locales, Lite=Full
+# Run: cd app_19.0 && Rscript tests/test_ynow_notes_collapse.R
+
+root <- if (file.exists("ui_locale.R")) {
+  normalizePath(".")
+} else if (file.exists("../ui_locale.R")) {
+  normalizePath("..")
+} else if (dir.exists("app_19.0") && file.exists("app_19.0/ui_locale.R")) {
+  normalizePath("app_19.0")
+} else {
+  stop("Cannot locate app_19.0")
+}
+setwd(root)
+
+if (!exists("%||%", mode = "function")) {
+  `%||%` <- function(a, b) if (is.null(a)) b else a
+}
+source("ui_locale.R", local = TRUE, encoding = "UTF-8")
+
+fail <- 0L
+check <- function(label, cond) {
+  if (isTRUE(cond)) {
+    cat("OK ", label, "\n", sep = "")
+  } else {
+    cat("FAIL ", label, "\n", sep = "")
+    fail <<- fail + 1L
+  }
+}
+
+check("en Notes", identical(.UI_STRINGS$en$notes_title, "Notes"))
+check("zh 附註", identical(.UI_STRINGS$`zh-TW`$notes_title, "附註"))
+check("no 备注", !grepl("备注", .UI_STRINGS$`zh-TW`$notes_title, fixed = TRUE))
+check("no 注释", !grepl("注释", .UI_STRINGS$`zh-TW`$notes_title, fixed = TRUE))
+check("aria both locales", nzchar(ui_str("notes_toggle_aria", "en")) &&
+        nzchar(ui_str("notes_toggle_aria", "zh-TW")))
+check("helper exists", exists("ynow_notes_block", mode = "function"))
+
+if (requireNamespace("htmltools", quietly = TRUE)) {
+  collapsed <- ynow_notes_block(htmltools::tags$p(id = "demo_lead", "annotation only"))
+  html <- paste(as.character(collapsed), collapse = "")
+  check("markup details", grepl("<details", html, fixed = TRUE))
+  check("markup class ynow-notes", grepl("ynow-notes", html, fixed = TRUE))
+  check("markup summary", grepl("<summary", html, fixed = TRUE))
+  check("markup body", grepl("ynow-notes__body", html, fixed = TRUE))
+  check("default collapsed no open attr", !grepl("\\sopen(|=|>|\\s)", html))
+  check("first-paint 附註", grepl("附註", html, fixed = TRUE))
+  check("body keeps annotation", grepl("annotation only", html, fixed = TRUE))
+  check("body keeps lead id", grepl("demo_lead", html, fixed = TRUE))
+
+  opened <- ynow_notes_block(
+    locale = "en",
+    open = TRUE,
+    htmltools::tags$p("opened")
+  )
+  html_open <- paste(as.character(opened), collapse = "")
+  check("open=TRUE sets open", grepl("\\sopen", html_open))
+  check("en title Notes", grepl(">Notes<", html_open, fixed = TRUE) ||
+          grepl("Notes</span>", html_open, fixed = TRUE))
+} else {
+  check("htmltools available", FALSE)
+}
+
+dec <- paste(readLines("investment_decision_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+ui_start <- regexpr("decision_ui <- function", dec, fixed = TRUE)[1]
+ui_end <- regexpr("decision_momentum_panel_ui", dec, fixed = TRUE)[1]
+ui_fn <- if (ui_start > 0 && ui_end > ui_start) substr(dec, ui_start, ui_end) else dec
+check("Lite=Full no lite-only", !grepl("ynow-lite-only", ui_fn, fixed = TRUE))
+check("Lite=Full no full-only", !grepl("ynow-full-only", ui_fn, fixed = TRUE))
+n_notes <- length(gregexpr("ynow_notes_block(", ui_fn, fixed = TRUE)[[1]])
+check("YNOW has four notes blocks", n_notes >= 4L)
+check("page sub wrapped", grepl("ynow_funnel_page_sub", ui_fn, fixed = TRUE))
+check("KPI row outside notes", grepl("ynow-funnel-kpi-jump-row", ui_fn, fixed = TRUE))
+check("F-Score table outside notes wrapper", {
+  # table_checklist sits after the ch1 notes_block, not as its child
+  pos_tbl <- regexpr("table_checklist", ui_fn, fixed = TRUE)[1]
+  pos_lead <- regexpr("ynow_funnel_ch1_lead", ui_fn, fixed = TRUE)[1]
+  pos_tbl > pos_lead
+})
+
+dc <- paste(readLines("decision_checklist_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check("DC hint wrapped", grepl("ynow_notes_block", dc, fixed = TRUE) &&
+        grepl("ynow_dc_panel_hint", dc, fixed = TRUE))
+check("DC HFV footnote wrapped", grepl("dc_live_hfv_note", dc, fixed = TRUE) &&
+        grepl("ynow_notes_block", dc, fixed = TRUE))
+
+macro <- paste(readLines("macro_market_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check("Macro leftover notes", grepl("ynow_notes_block", macro, fixed = TRUE) &&
+        grepl("ynow_macro_theme_help", macro, fixed = TRUE) &&
+        grepl("ynow_macro_fx_lock", macro, fixed = TRUE))
+
+ui <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check("applyUiLocale notes_title", grepl("ynow-notes__title", ui, fixed = TRUE))
+check("applyUiLocale notes aria", grepl("notes_toggle_aria", ui, fixed = TRUE))
+
+if (fail > 0L) {
+  stop(sprintf("%d notes-collapse check(s) failed", fail), call. = FALSE)
+}
+cat("PASS ynow_notes_collapse\n")

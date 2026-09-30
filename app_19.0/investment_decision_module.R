@@ -30,13 +30,15 @@ decision_ui <- function(id) {
       tags$div(
         class = "ynow-funnel-report__masthead",
         h2(tags$b(id = "ynow_funnel_page_title", "YNOW")),
-        p(
-          id = "ynow_funnel_page_sub",
-          class = "ynow-funnel-report__lead",
-          paste0(
-            "點選 MOS／Reliability、品質檢核 (F-Score)、財報警訊框格可捲動至對應區塊。",
-            "三個區塊由上而下：財報體質（F-Score）→ 財報警訊 → 動態產業泡沫與權重集中度。",
-            "這是決策輔助報告，不是下單指令。"
+        ynow_notes_block(
+          tags$p(
+            id = "ynow_funnel_page_sub",
+            class = "ynow-funnel-report__lead",
+            paste0(
+              "點選 MOS／Reliability、品質檢核 (F-Score)、財報警訊框格可捲動至對應區塊。",
+              "三個區塊由上而下：財報體質（F-Score）→ 財報警訊 → 動態產業泡沫與權重集中度。",
+              "這是決策輔助報告，不是下單指令。"
+            )
           )
         )
       ),
@@ -97,12 +99,14 @@ decision_ui <- function(id) {
         ),
         tags$div(
           class = "ynow-funnel-chapter__body",
-          tags$p(
-            id = "ynow_funnel_ch1_lead",
-            class = "ynow-funnel-chapter__lead",
-            paste0(
-              "Piotroski F-Score 九項品質檢核與相關品質項目；",
-              "通過／未達標僅供品質檢核，不單獨構成買進理由。"
+          ynow_notes_block(
+            tags$p(
+              id = "ynow_funnel_ch1_lead",
+              class = "ynow-funnel-chapter__lead",
+              paste0(
+                "Piotroski F-Score 九項品質檢核與相關品質項目；",
+                "通過／未達標僅供品質檢核，不單獨構成買進理由。"
+              )
             )
           ),
           uiOutput(ns("ui_recommendation")),
@@ -140,12 +144,14 @@ decision_ui <- function(id) {
         ),
         tags$div(
           class = "ynow-funnel-chapter__body",
-          tags$p(
-            id = "ynow_funnel_ch2_lead",
-            class = "ynow-funnel-chapter__lead",
-            paste0(
-              "Schilit 財報詭計自動判讀：警示／觀察優先展開；通過與資料不足項摺疊。",
-              "屬否決／風險提示，非買進訊號。"
+          ynow_notes_block(
+            tags$p(
+              id = "ynow_funnel_ch2_lead",
+              class = "ynow-funnel-chapter__lead",
+              paste0(
+                "Schilit 財報詭計自動判讀：警示／觀察優先展開；通過與資料不足項摺疊。",
+                "屬否決／風險提示，非買進訊號。"
+              )
             )
           ),
           tags$div(
@@ -174,12 +180,14 @@ decision_ui <- function(id) {
         ),
         tags$div(
           class = "ynow-funnel-chapter__body",
-          tags$p(
-            id = "ynow_funnel_ch3_lead",
-            class = "ynow-funnel-chapter__lead",
-            paste0(
-              "主題集中度以所選產業別或概念股籃的市值權重計算（GICS 對應 S&P 500 同業）。",
-              "巴菲特指標為市場層級總市值／GDP（僅供研究顯示，絕不寫入 CAPM／Ke／WACC）。"
+          ynow_notes_block(
+            tags$p(
+              id = "ynow_funnel_ch3_lead",
+              class = "ynow-funnel-chapter__lead",
+              paste0(
+                "主題集中度以所選產業別或概念股籃的市值權重計算（GICS 對應 S&P 500 同業）。",
+                "巴菲特指標為市場層級總市值／GDP（僅供研究顯示，絕不寫入 CAPM／Ke／WACC）。"
+              )
             )
           ),
           macro_bubble_chapter_ui(NS("macro"))

@@ -114,6 +114,17 @@ check("locale wires industry label", grepl("ynow_macro_industry_label", ui_src, 
 check("locale wires concept label", grepl("ynow_macro_concept_label", ui_src, fixed = TRUE))
 check("locale dropped combined theme label", !grepl("ynow_macro_theme_label", ui_src, fixed = TRUE))
 
+check("leftover theme help is notes", grepl("ynow_notes_block", txt, fixed = TRUE) &&
+        grepl("ynow_macro_theme_help", txt, fixed = TRUE))
+check("leftover fx lock is notes", grepl("ynow_macro_fx_lock", txt, fixed = TRUE))
+check("overlay plot not inside leftover notes", {
+  m <- regexpr("ynow_notes_block\\s*\\(", txt)
+  if (m < 1L) FALSE else {
+    chunk <- substr(txt, as.integer(m), as.integer(m) + 420L)
+    grepl("ynow_macro_theme_help", chunk, fixed = TRUE) &&
+      !grepl("overlay_plot", chunk, fixed = TRUE)
+  }
+})
 check("overlay industry input", grepl('ns("industry_key")', txt, fixed = TRUE))
 check("overlay concept input", grepl('ns("concept_key")', txt, fixed = TRUE))
 check("combined overlay theme_key gone", !grepl('ns("theme_key")', txt, fixed = TRUE))

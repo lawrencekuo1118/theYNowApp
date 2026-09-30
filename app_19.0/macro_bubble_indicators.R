@@ -523,12 +523,14 @@ macro_bubble_chapter_ui <- function(ns) {
     ),
     plotlyOutput(ns("bubble_buffett_plot"), height = "320px") %>%
       shinycssloaders::withSpinner(),
-    tags$p(
-      id = "ynow_macro_bubble_buffett_note",
-      class = "ynow-macro-hint",
-      paste0(
-        "Series: World Bank market capitalization of listed domestic companies (% of GDP) when reachable; ",
-        "otherwise the bundled CSV snapshot. Traffic light uses each market’s own mean ± 0.75·sd."
+    ynow_notes_block(
+      tags$p(
+        id = "ynow_macro_bubble_buffett_note",
+        class = "ynow-macro-hint",
+        paste0(
+          "Series: World Bank market capitalization of listed domestic companies (% of GDP) when reachable; ",
+          "otherwise the bundled CSV snapshot. Traffic light uses each market’s own mean ± 0.75·sd."
+        )
       )
     )
   )

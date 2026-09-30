@@ -286,12 +286,14 @@ macro_market_ui <- function(id = "macro") {
     tags$section(
       class = "ynow-macro-chapter",
       tags$h3(id = "ynow_macro_theme_title", "Relative performance vs benchmark"),
-      tags$p(
-        id = "ynow_macro_theme_help",
-        class = "ynow-macro-hint",
-        paste0(
-          "Pick industry and concept independently (either, both, or neither). ",
-          "Benchmark is gray dashed on the right axis (rebased = 100 at window start; native currency, no FX)."
+      ynow_notes_block(
+        tags$p(
+          id = "ynow_macro_theme_help",
+          class = "ynow-macro-hint",
+          paste0(
+            "Pick industry and concept independently (either, both, or neither). ",
+            "Benchmark is gray dashed on the right axis (rebased = 100 at window start; native currency, no FX)."
+          )
         )
       ),
       fluidRow(
@@ -336,10 +338,12 @@ macro_market_ui <- function(id = "macro") {
         )
       ),
       plotlyOutput(ns("overlay_plot"), height = "380px") %>% shinycssloaders::withSpinner(),
-      tags$p(
-        id = "ynow_macro_fx_lock",
-        class = "ynow-macro-hint",
-        "Currency lock: historical index / theme series are never converted by the session USD⇄TWD toggle."
+      ynow_notes_block(
+        tags$p(
+          id = "ynow_macro_fx_lock",
+          class = "ynow-macro-hint",
+          "Currency lock: historical index / theme series are never converted by the session USD⇄TWD toggle."
+        )
       )
     ),
     # Bubble & concentration lives on the YNOW tab (decision_ui), not here.
@@ -495,10 +499,13 @@ macro_market_server <- function(id = "macro",
             .ui("macro_rf_title")
           ),
           uiOutput(ns("rf_box")),
-          tags$p(
-            id = "ynow_macro_rf_note",
-            class = "ynow-macro-hint",
-            .ui("macro_rf_note")
+          ynow_notes_block(
+            locale = .loc(),
+            tags$p(
+              id = "ynow_macro_rf_note",
+              class = "ynow-macro-hint",
+              .ui("macro_rf_note")
+            )
           )
         )
       )

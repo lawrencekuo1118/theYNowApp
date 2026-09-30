@@ -852,6 +852,8 @@ locale_for_market <- function(mode = get_market_mode()) {
       "(GICS maps to S&P 500 sector peers). Buffett Indicator is market-level market-cap / GDP ",
       "(research display only — never feeds CAPM / Ke / WACC)."
     ),
+    notes_title = "Notes",
+    notes_toggle_aria = "Show or hide notes",
     funnel_sec_method = "How to read this report",
     funnel_method_body = paste0(
       "Reading order: click MOS / Reliability, Quality screen (F-Score), then Statement alerts, ",
@@ -2155,6 +2157,8 @@ locale_for_market <- function(mode = get_market_mode()) {
       "主題集中度以所選產業別或概念股籃的市值權重計算（GICS 對應 S&P 500 同業）。",
       "巴菲特指標為市場層級總市值／GDP（僅供研究顯示，絕不寫入 CAPM／Ke／WACC）。"
     ),
+    notes_title = "附註",
+    notes_toggle_aria = "展開或收合附註",
     funnel_sec_method = "如何閱讀本報告",
     funnel_method_body = paste0(
       "閱讀順序：先點 MOS／Reliability、品質檢核 (F-Score)、財報警訊框格，",
@@ -2828,5 +2832,28 @@ localize_fscore_checklist <- function(df, locale = "zh-TW") {
   names(out)[names(out) == item_col] <- ui_str("fscore_col_item", loc)
   names(out)[names(out) == score_col] <- ui_str("fscore_col_score", loc)
   out
+}
+
+#' Collapsible Notes / 附註 chrome. Default collapsed (investor view: KPIs first).
+#' Pass annotation / footnote prose only — never required KPIs or tables.
+#' @param ... annotation nodes (typically a single <p>)
+#' @param locale first-paint or renderUI locale (`en` / `zh-TW`)
+#' @param open TRUE only when the caller wants the body expanded
+ynow_notes_block <- function(..., locale = "zh-TW", open = FALSE) {
+  loc <- tryCatch(normalize_ui_locale(locale), error = function(e) "zh-TW")
+  title <- ui_str("notes_title", loc)
+  aria <- ui_str("notes_toggle_aria", loc)
+  summary <- htmltools::tags$summary(
+    class = "ynow-notes__summary",
+    title = aria,
+    `aria-label` = aria,
+    htmltools::tags$span(class = "ynow-notes__title", title)
+  )
+  body <- htmltools::tags$div(class = "ynow-notes__body", ...)
+  if (isTRUE(open)) {
+    htmltools::tags$details(class = "ynow-notes", open = NA, summary, body)
+  } else {
+    htmltools::tags$details(class = "ynow-notes", summary, body)
+  }
 }
 
