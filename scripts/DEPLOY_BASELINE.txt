@@ -8,5 +8,5 @@ short=ae9c0c3
 message=Keep Macro relative-performance Industry/Concept help always visible.
 captured_at=2026-09-30T04:43:09Z
 source_branch=cursor/lifecycle-v19-3fb1
-display_version=v19.12
+display_version=v19.13
 note=Canonical live line is app_19.0. Bundle 12625956 = v19.12 Macro Relative performance vs benchmark: Industry/Concept picker help is always-visible chapter chrome (outside Notes / 附註). Only the bottom currency-lock Notes fold remains under the chart. Lite + Full, US + TW. Also includes v19.11 F-Score boxes default-visible, page-lead outside Notes, v19.10 Lite Smart Analysis blurb, v19.09 Full-only Macro KPI click-to-chart, collapsible Notes, and YNOW KPI jump row. Deploy via scripts/deploy_app_19.R. Supersedes 12625916 / 12625890 / 12625810 / 12625762 / 12625733 / 12625709 / 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
