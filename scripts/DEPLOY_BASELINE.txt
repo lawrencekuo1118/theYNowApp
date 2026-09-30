@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12625762
+bundleId=12625810
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=7eaf85bac595c2f0376d18c600a723d9f8a3ee7b
-commit=7eaf85bac595c2f0376d18c600a723d9f8a3ee7b
-short=7eaf85b
-message=chore: bump display version to v19.09
-captured_at=2026-09-30T04:04:03Z
+aligned_git=300cf518c82efb48e6752055bbc8b1fb55af28c9
+commit=300cf518c82efb48e6752055bbc8b1fb55af28c9
+short=300cf51
+message=chore: bump display version to v19.10
+captured_at=2026-09-30T04:10:56Z
 source_branch=cursor/lifecycle-v19-3fb1
 display_version=v19.10
-note=Canonical live line is app_19.0. Bundle 12625762 = v19.09 Full-only Macro KPI click-to-chart (S&P 500 / Nasdaq / Dow Jones / SOX → Yahoo ^GSPC ^IXIC ^DJI ^SOX history above Rf (10Y), both market modes). Also includes collapsible Notes and YNOW KPI jump row. Deploy via scripts/deploy_app_19.R. Supersedes 12625733 / 12625709 / 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
+note=Canonical live line is app_19.0. Bundle 12625810 = v19.10 Lite-only: Smart Analysis blurb sits immediately above Composite valuation status; page heading removed. Full model-page header unchanged. Also includes v19.09 Full-only Macro KPI click-to-chart, collapsible Notes, and YNOW KPI jump row. Deploy via scripts/deploy_app_19.R. Supersedes 12625762 / 12625733 / 12625709 / 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
