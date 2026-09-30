@@ -1,4 +1,4 @@
-# The YNow App v19.28 — Valuation Methodology
+# The YNow App v19.29 — Valuation Methodology
 
 
 ## v19 重點
