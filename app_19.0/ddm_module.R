@@ -41,10 +41,13 @@ ddm_module_server <- function(id, auto_calc_pulse = reactive(0L),
       if (!is.null(sh) && is.finite(sh$shares) && sh$shares > 0) {
         # ADR／雙重股權：用約當報價股；報價幣≠財報幣且未約當 → 拒絕普通股 fallback
         if (shares_auto_adjust_method(sh$method)) return(sh$shares)
-        if (statement_quote_units_differ(f_ccy, q_ccy)) return(NA_real_)
+        f_eff <- infer_statement_currency(f_ccy, q_ccy, sh$method)
+        if (statement_quote_units_differ(f_eff, q_ccy)) return(NA_real_)
         return(sh$shares)
       }
-      if (statement_quote_units_differ(f_ccy, q_ccy)) return(NA_real_)
+      if (statement_quote_units_differ(
+        infer_statement_currency(f_ccy, q_ccy, NULL), q_ccy
+      )) return(NA_real_)
       select_current_metric_any(d_balance_sheet(), SHARE_PATTERNS, "stock")
     }
 

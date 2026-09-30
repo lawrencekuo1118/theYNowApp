@@ -196,10 +196,11 @@ get_summary_data <- function(stock_code) {
 # ==========================================
 get_usd_twd_fx <- function() {
   tryCatch({
-    if (!.ensure_python_scraper() || !exists("get_usd_twd_rate", mode = "function")) {
+    if (!isTRUE(.ensure_python_scraper()) ||
+        !exists("get_usd_twd_rate", envir = .py_scraper_env, inherits = FALSE, mode = "function")) {
       return(NA_real_)
     }
-    px <- suppressWarnings(as.numeric(get_usd_twd_rate())[1])
+    px <- suppressWarnings(as.numeric(.py_scraper_env$get_usd_twd_rate())[1])
     if (is.finite(px) && px > 0) return(px)
     NA_real_
   }, error = function(e) {

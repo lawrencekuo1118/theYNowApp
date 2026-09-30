@@ -144,7 +144,10 @@ per_share_in_quote <- function(equity,
                                shares_aligned = NULL) {
   eq <- suppressWarnings(as.numeric(equity)[1])
   sh <- suppressWarnings(as.numeric(shares)[1])
-  need_align <- statement_quote_units_differ(statement_ccy, to_ccy)
+  st <- infer_statement_currency(statement_ccy, to_ccy, share_method)
+  eq_ccy <- normalize_ccy(equity_ccy)
+  if (is.na(eq_ccy)) eq_ccy <- st
+  need_align <- statement_quote_units_differ(st, to_ccy)
   aligned <- if (!is.null(shares_aligned)) {
     isTRUE(shares_aligned)
   } else {
@@ -152,7 +155,7 @@ per_share_in_quote <- function(equity,
   }
   if (isTRUE(need_align) && !isTRUE(aligned)) return(NA_real_)
   if (!is.finite(eq) || !is.finite(sh) || sh <= 0) return(NA_real_)
-  fx <- fx_factor(equity_ccy, to_ccy, usd_twd)
+  fx <- fx_factor(eq_ccy, to_ccy, usd_twd)
   if (!is.finite(fx)) return(NA_real_)
   eq * fx / sh
 }
@@ -794,6 +797,35 @@ resolve_valuation_shares <- function(d_bs,
 #' 是否應自動套用約當股數（ADR／雙重股權等）
 shares_auto_adjust_method <- function(method) {
   identical(method, "market_cap_per_price") || identical(method, "brk_b_x1500")
+}
+
+#' Fill a missing reporting currency only when the share class is not ADR-aligned.
+#' ADR / dual-class must not copy quote (that would label TWD common as USD/ADR).
+infer_statement_currency <- function(statement_ccy, quote_ccy, share_method = NULL) {
+  st <- normalize_ccy(statement_ccy)
+  if (!is.na(st)) return(st)
+  q <- normalize_ccy(quote_ccy)
+  if (is.na(q)) return(NA_character_)
+  if (isTRUE(shares_auto_adjust_method(share_method))) return(NA_character_)
+  q
+}
+
+#' TRUE when per-share in quote currency can be computed (FX + ADR bridge).
+per_share_bridge_ready <- function(statement_ccy,
+                                   quote_ccy,
+                                   usd_twd = NULL,
+                                   share_method = NULL,
+                                   equity_ccy = NULL) {
+  q <- normalize_ccy(quote_ccy)
+  if (is.na(q)) return(FALSE)
+  st <- infer_statement_currency(statement_ccy, q, share_method)
+  eq <- normalize_ccy(equity_ccy)
+  if (is.na(eq)) eq <- st
+  if (statement_quote_units_differ(st, q) &&
+      !isTRUE(shares_auto_adjust_method(share_method))) {
+    return(FALSE)
+  }
+  is.finite(fx_factor(eq, q, usd_twd))
 }
 
 #' 將年度 fundamentals 的股數對齊報價股數（折現比較／回測 PIT）

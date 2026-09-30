@@ -315,7 +315,9 @@ pb_asset_module_server <- function(id,
       if (isTRUE(auto_adj) && is.finite(sh_adj$shares) && sh_adj$shares > 0) {
         shares <- sh_adj$shares
         shares_resolve_note(sh_adj$note)
-      } else if (statement_quote_units_differ(f_ccy0, q_ccy0)) {
+      } else if (statement_quote_units_differ(
+        infer_statement_currency(f_ccy0, q_ccy0, sh_adj$method), q_ccy0
+      )) {
         shares <- NA_real_
         shares_resolve_note("報價幣≠財報幣且無法約當 ADR 股數，不顯示每股淨值")
       } else {

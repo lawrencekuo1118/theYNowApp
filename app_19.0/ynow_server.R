@@ -3495,8 +3495,12 @@ server <- function(input, output, session) {
     if (shares_auto_adjust_method(sh$method) && is.finite(sh$shares) && sh$shares > 0) {
       return(list(shares = sh$shares, note = sh$note, method = sh$method))
     }
+    # Missing reporting ccy + not ADR → treat as quote (AAPL-like). ADR keeps NA.
+    st_eff <- infer_statement_currency(
+      statement_currency(), quote_currency(), sh$method
+    )
     # Statement ≠ quote and not ADR-aligned: refuse common-share fallback (never label as ADR).
-    if (statement_quote_units_differ(statement_currency(), quote_currency())) {
+    if (statement_quote_units_differ(st_eff, quote_currency())) {
       return(list(
         shares = NA_real_,
         note = sh$note %||% "報價幣≠財報幣且無法約當 ADR 股數，不顯示每股",
@@ -3516,10 +3520,14 @@ server <- function(input, output, session) {
   .dcf_per_share <- function(equity_value, sh = NULL) {
     if (is.null(sh)) sh <- tryCatch(.valuation_shares(), error = function(e) NULL)
     if (is.null(sh)) return(NA_real_)
+    st_eff <- infer_statement_currency(
+      statement_currency(), quote_currency(), sh$method
+    )
     eq_ccy <- tryCatch(
-      equity_money_ccy(d_balance_sheet(), session_currency(), statement_currency()),
+      equity_money_ccy(d_balance_sheet(), session_currency(), st_eff),
       error = function(e) normalize_ccy(session_currency())
     )
+    if (is.na(normalize_ccy(eq_ccy))) eq_ccy <- st_eff
     per_share_in_quote(
       equity_value,
       sh$shares,
@@ -3527,7 +3535,7 @@ server <- function(input, output, session) {
       to_ccy = quote_currency(),
       usd_twd = fx_usd_twd(),
       share_method = sh$method,
-      statement_ccy = statement_currency()
+      statement_ccy = st_eff
     )
   }
 
@@ -6740,8 +6748,9 @@ server <- function(input, output, session) {
   # ==========================================
   # 💰 8. DCF 計算核心與企業估值 (對接 FCFF 預測序列)
   # ==========================================
-  .execute_dcf_calc <- function() {
+  .execute_dcf_calc <- function(notify = NULL) {
     silent <- isTRUE(isolate(lite_dcf_silent()))
+    show_toast <- if (is.null(notify)) !silent else isTRUE(notify)
     des <- if (silent) tryCatch(isolate(lite_desired_des()), error = function(e) NULL) else NULL
     dcf_mode_eff <- as.character(input$dcf_mode %||% "")[1]
     if (!nzchar(dcf_mode_eff) && !is.null(des)) {
@@ -6937,16 +6946,26 @@ server <- function(input, output, session) {
     if (is.finite(px)) {
       stock_price_estimate_val(px)
       sh_note <- sh_info$note
-      if (!silent && !is.null(sh_note) && nzchar(sh_note)) {
+      if (show_toast && !is.null(sh_note) && nzchar(sh_note)) {
         showNotification(.ui_msg("notif_dcf_shares_note", note = sh_note), type = "message", duration = 6)
       }
     } else {
       stock_price_estimate_val(NULL)
-      if (!silent) {
-        showNotification(
-          .ui_msg("notif_dcf_no_per_share"),
-          type = "warning"
-        )
+      if (show_toast) {
+        eq_now <- suppressWarnings(as.numeric(equity_value)[1])
+        sh_now <- suppressWarnings(as.numeric(sh_info$shares)[1])
+        msg <- if (is.finite(eq_now) && eq_now < 0) {
+          .ui_msg("notif_dcf_neg_equity")
+        } else if (!is.finite(eq_now)) {
+          NULL
+        } else if (!is.finite(sh_now) || sh_now <= 0) {
+          .ui_msg("notif_dcf_no_per_share")
+        } else {
+          .ui_msg("notif_dcf_no_per_share")
+        }
+        if (!is.null(msg) && nzchar(msg)) {
+          showNotification(msg, type = "warning")
+        }
       }
     }
 
@@ -6959,7 +6978,7 @@ server <- function(input, output, session) {
     invisible(TRUE)
   }
 
-  observeEvent(input$calc, { .execute_dcf_calc() })
+  observeEvent(input$calc, { .execute_dcf_calc(notify = TRUE) })
 
   # Search 後：推薦主模型靜默自動試算（美股／台股；參數未就緒則略過）
   # Lite 智慧分析：先套用推薦參數情境（Two-Stage／SGR 法／claim／折現一致性），
@@ -7211,10 +7230,21 @@ server <- function(input, output, session) {
     if (is.null(sh)) return(FALSE)
     shares <- suppressWarnings(as.numeric(sh$shares)[1])
     if (!is.finite(shares) || shares <= 0) return(FALSE)
-    if (statement_quote_units_differ(statement_currency(), quote_currency())) {
-      return(isTRUE(shares_auto_adjust_method(sh$method)))
-    }
-    TRUE
+    eq_ccy <- tryCatch(
+      equity_money_ccy(
+        d_balance_sheet(),
+        session_currency(),
+        infer_statement_currency(statement_currency(), quote_currency(), sh$method)
+      ),
+      error = function(e) NA_character_
+    )
+    isTRUE(per_share_bridge_ready(
+      statement_currency(),
+      quote_currency(),
+      usd_twd = fx_usd_twd(),
+      share_method = sh$method,
+      equity_ccy = eq_ccy
+    ))
   }
 
   .auto_calc_primary_ready <- function(prim) {
@@ -7354,7 +7384,9 @@ server <- function(input, output, session) {
         lite_dcf_silent(TRUE)
         on.exit(lite_dcf_silent(was_silent), add = TRUE)
       }
-      tryCatch(.execute_dcf_calc(), error = function(e) invisible(NULL))
+      # Auto-calc (Full or Lite): do not toast FX/ADR per-share refusal.
+      # Manual Run DCF still notifies.
+      tryCatch(.execute_dcf_calc(notify = FALSE), error = function(e) invisible(NULL))
     } else if (identical(prim, "ddm")) {
       auto_calc_ddm_pulse(isolate(auto_calc_ddm_pulse()) + 1L)
     } else if (identical(prim, "pb")) {
@@ -7410,7 +7442,8 @@ server <- function(input, output, session) {
     w_calc <- suppressWarnings(as.numeric(calculated_wacc())[1])
     sgr <- suppressWarnings(as.numeric(input$sgr)[1])
     sh_m <- tryCatch(.valuation_shares()$method, error = function(e) "none")
-    # Wider signature: retry once params settle (WACC / SGR / shares / scenario)
+    fx_now <- suppressWarnings(as.numeric(fx_usd_twd())[1])
+    # Wider signature: retry once params settle (WACC / SGR / shares / FX / scenario)
     sig <- paste(
       c(
         tk, keys,
@@ -7418,7 +7451,8 @@ server <- function(input, output, session) {
         mode, claim,
         if (is.finite(w_calc)) round(w_calc * 100, 2) else "NA",
         if (is.finite(sgr)) round(sgr, 2) else "NA",
-        sh_m %||% "none"
+        sh_m %||% "none",
+        if (is.finite(fx_now) && fx_now > 0) round(fx_now, 2) else "NA"
       ),
       collapse = "|"
     )

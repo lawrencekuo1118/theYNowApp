@@ -415,7 +415,8 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
       if (shares_auto_adjust_method(sh$method) && is.finite(sh$shares) && sh$shares > 0) {
         return(list(shares = sh$shares, method = sh$method))
       }
-      if (statement_quote_units_differ(f_ccy, q_ccy)) {
+      f_eff <- infer_statement_currency(f_ccy, q_ccy, sh$method)
+      if (statement_quote_units_differ(f_eff, q_ccy)) {
         return(list(shares = NA_real_, method = "none"))
       }
       if (is.finite(raw_shares) && raw_shares > 0) {

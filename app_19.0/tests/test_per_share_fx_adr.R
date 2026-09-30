@@ -90,6 +90,54 @@ wrong_label <- equity_twd / common  # ~967.6 "as USD"
 check("wrong label ~968", abs(wrong_label - 967.6) < 1)
 check("wrong/correct ≈ 6.4", abs(wrong_label / px - 32 / 5) < 0.05)
 
+# Missing reporting ccy: copy quote only when shares are not ADR-aligned
+check(
+  "infer NA statement + common → quote",
+  identical(infer_statement_currency(NA, "USD", "balance_sheet"), "USD")
+)
+check(
+  "infer NA statement + ADR → keep NA",
+  identical(infer_statement_currency(NA, "USD", "market_cap_per_price"), NA_character_)
+)
+check(
+  "infer known TWD stays TWD",
+  identical(infer_statement_currency("TWD", "USD", "balance_sheet"), "TWD")
+)
+
+# AAPL-like: missing financialCurrency must still yield a USD per-share
+px_aapl <- per_share_in_quote(
+  3.5e12, 1.5e10,
+  equity_ccy = NA, to_ccy = "USD", usd_twd = NA_real_,
+  share_method = "balance_sheet", statement_ccy = NA
+)
+check("AAPL NA statement still prices", is.finite(px_aapl) && abs(px_aapl - 3.5e12 / 1.5e10) < 1e-6)
+
+check(
+  "bridge ready AAPL NA statement",
+  isTRUE(per_share_bridge_ready(NA, "USD", usd_twd = NA_real_, share_method = "balance_sheet"))
+)
+check(
+  "bridge not ready TSM no FX",
+  !isTRUE(per_share_bridge_ready(
+    "TWD", "USD", usd_twd = NA_real_,
+    share_method = "market_cap_per_price", equity_ccy = "TWD"
+  ))
+)
+check(
+  "bridge ready TSM with FX",
+  isTRUE(per_share_bridge_ready(
+    "TWD", "USD", usd_twd = 32,
+    share_method = "market_cap_per_price", equity_ccy = "TWD"
+  ))
+)
+check(
+  "bridge not ready CNY ADR",
+  !isTRUE(per_share_bridge_ready(
+    "CNY", "USD", usd_twd = 32,
+    share_method = "market_cap_per_price", equity_ccy = "CNY"
+  ))
+)
+
 # scale_financial_df_money refuses when FX missing
 df <- data.frame(Breakdown = "Cash", `2024` = "100", check.names = FALSE, stringsAsFactors = FALSE)
 out <- scale_financial_df_money(df, "TWD", "USD", usd_twd = NA_real_)
