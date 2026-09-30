@@ -2,11 +2,11 @@ source=shinyapps.io TheYNowApp
 bundleId=12626822
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=78d6025af893e3ece78fe09feb37e4fc14c7d949
-commit=78d6025af893e3ece78fe09feb37e4fc14c7d949
-short=78d6025
-message=Drop default-off parenthetical from Lab Gross Margin fallback label.
-captured_at=2026-09-30T09:30:36Z
+aligned_git=4ba77b5fe2c56bca7cb629f0b6ffbe18163731a7
+commit=4ba77b5fe2c56bca7cb629f0b6ffbe18163731a7
+short=4ba77b5
+message=Always show the Lab revenue composition donut for one supportable business.
+captured_at=2026-09-30T09:30:42Z
 source_branch=cursor/bblab-into-testing-3fb1
 display_version=v19.26
-note=Canonical live line is app_19.0. Bundle 12626822 = v19.26 Lab GM fallback checkbox label without 「（預設關閉）」 / “(off by default)” (control stays unchecked); listed-stock-only Testing notice (Taiwan and U.S. exchanges) outside Notes; Data-limited / 資料受限 uses the same HCCSI logo-flow fill. Also keeps v19.25 Lab cards with segment/consolidated unit alignment (no 0.0% / recon-dominated pie), single-business donut still renders; v19.24 Lab Testing UI without the 9-step Progress stepper; v19.23 Lab Search maps filed 10-K operating-segment tables to multiple business cards; v19.22 Lab nested inside Testing (no sidebar BBL item); v19.21 reval-unavailable scoped degradation. Deploy via scripts/deploy_app_19.R. Supersedes 12626810 / 12626794 / 12626772 / 12626690 / 12626668 / 12626547 / 12626454 / 12626418 / 12626362 / 12626262 / 12626032 / 12625997 / 12625985 / 12625973 / 12625956 / 12625916 / 12625890 / 12625810 / 12625762 / 12625733 / 12625709 / 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
+note=Canonical live line is app_19.0. Bundle 12626822 = v19.26 Lab composition chart is eligible with one supportable business (single 100% slice, or that business plus Other / Unallocated / Rounding recon items). Component count is not a failure; BUSINESS_CHART_SINGLE_COMPONENT / BUSINESS_CHART_INSUFFICIENT_COMPONENTS no longer hide a valid recon donut. Other gates stay (consolidated revenue, period, currency, dimension, recon pass, Level D). Denominator remains reported consolidated revenue. Also keeps listed-stock-only Testing masthead, GM fallback label without default-off parenthetical, HCCSI Data-limited fill, v19.25 unit alignment (no 0.0% pie), v19.24 no Progress 9/9, v19.23 10-K operating-segment cards, v19.22 Lab nested inside Testing. Deploy via scripts/deploy_app_19.R. Supersedes 12626810 / 12626794 / 12626772 / 12626690 / 12626668 / 12626547 / 12626454 / 12626418 / 12626362 / 12626262 / 12626032 / 12625997 / 12625985 / 12625973 / 12625956 / 12625916 / 12625890 / 12625810 / 12625762 / 12625733 / 12625709 / 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
