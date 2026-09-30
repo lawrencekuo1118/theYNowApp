@@ -77,6 +77,9 @@ check(
 )
 check("applyUiLocale ch1 lead", grepl("ynow_funnel_ch1_lead", ui, fixed = TRUE))
 check("applyUiLocale page title", grepl("ynow_funnel_page_title", ui, fixed = TRUE))
+check("Lite About uses 財報體質 block name", grepl("財報體質（F-Score）、財報警訊、動態產業泡沫與權重集中度", ui, fixed = TRUE))
+check("Lite About EN uses statement quality", grepl("statement quality (F-Score), statement alerts", ui, fixed = TRUE))
+check("first-paint F-Score list title zh", grepl("F-Score 品質檢核清單", dec, fixed = TRUE))
 
 macro <- paste(readLines("macro_market_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("bubble left Macro", !grepl("macro_bubble_chapter_ui", macro, fixed = TRUE))

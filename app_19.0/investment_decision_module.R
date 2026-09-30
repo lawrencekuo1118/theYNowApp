@@ -77,7 +77,7 @@ decision_ui <- function(id) {
             style = "display:none;",
             tags$span(
               id = "ynow_funnel_fscore_list_title",
-              "F-Score quality screen"
+              "F-Score 品質檢核清單"
             )
           ),
           tags$div(

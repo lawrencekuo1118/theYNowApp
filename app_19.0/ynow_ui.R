@@ -155,7 +155,7 @@
     ),
     tags$li(
       tags$b("YNOW："),
-      "與完整版相同的三區塊版面：品質檢核（F-Score）、財報警訊、動態產業泡沫與權重集中度，作為簡化流程下的決策輔助。"
+      "與完整版相同的三區塊版面：財報體質（F-Score）、財報警訊、動態產業泡沫與權重集中度，作為簡化流程下的決策輔助。"
     ),
     tags$li(
       tags$b("績優股排行榜（Blue Chip）："),
@@ -180,7 +180,7 @@
     ),
     tags$li(
       tags$b("YNOW: "),
-      "Same three-block YNOW page as Full: quality screen (F-Score), statement alerts, and dynamic industry bubble & weight concentration, as decision support inside the Lite flow."
+      "Same three-block YNOW page as Full: statement quality (F-Score), statement alerts, and dynamic industry bubble & weight concentration, as decision support inside the Lite flow."
     ),
     tags$li(
       tags$b("Blue Chip Leaderboard: "),

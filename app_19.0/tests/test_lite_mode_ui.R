@@ -290,6 +290,9 @@ testthat::test_that("YNOW page title and three-block order are shared by Lite an
   )
   testthat::expect_true(grepl('tabName = "sensitivity"', ui, fixed = TRUE))
   testthat::expect_true(grepl('decision_ui("main_decision")', ui, fixed = TRUE))
+  testthat::expect_true(grepl("財報體質（F-Score）、財報警訊、動態產業泡沫與權重集中度", ui, fixed = TRUE))
+  testthat::expect_true(grepl("statement quality (F-Score), statement alerts", ui, fixed = TRUE))
+  testthat::expect_false(grepl("三區塊版面：品質檢核（F-Score）", ui, fixed = TRUE))
 
   macro <- paste(
     readLines(file.path("..", "macro_market_module.R"), warn = FALSE, encoding = "UTF-8"),
