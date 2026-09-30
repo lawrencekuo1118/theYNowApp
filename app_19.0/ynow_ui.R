@@ -3846,9 +3846,13 @@ ui <- dashboardPage(
             }
             setBtText('ynow_macro_hccsi_disclosure', 'hccsi_disclosure');
             setBtText('ynow_macro_hccsi_overview_title', 'hccsi_overview_title');
+            setBtText('ynow_macro_hccsi_formula', 'hccsi_formula_eq');
+            setBtText('ynow_macro_hccsi_formula_parts', 'hccsi_formula_parts');
             setBtText('ynow_macro_hccsi_layer_title', 'hccsi_layer_title');
             setBtText('ynow_macro_hccsi_network_title', 'hccsi_network_title');
-            setBtText('ynow_macro_hccsi_constituent_title', 'hccsi_constituent_title');
+            setBtText('ynow_macro_hccsi_in_title', 'hccsi_in_composite_title');
+            setBtText('ynow_macro_hccsi_out_title', 'hccsi_out_composite_title');
+            setBtText('ynow_macro_hccsi_out_note', 'hccsi_out_composite_note');
             setBtText('ynow_macro_hccsi_method_title', 'hccsi_method_title');
             setBtText('ynow_macro_index_hint', 'macro_index_chart_hint');
             setBtText('ynow_macro_tw_signal_title', 'macro_tw_signal_title');
@@ -6275,6 +6279,15 @@ ui <- dashboardPage(
         .ynow-hccsi-expand__card h4 { margin: 12px 0 6px 0; font-size: 14px; }
         .ynow-hccsi-table-wrap { overflow-x: auto; margin: 0 0 10px 0; }
         .ynow-hccsi-table { font-size: 12px; margin-bottom: 0; }
+        .ynow-hccsi-formula-banner { margin: 8px 0 14px 0; }
+        .ynow-hccsi-formula-banner__eq {
+          font-size: 18px; font-weight: bold; color: #2C3E50; text-align: center;
+          margin: 0 0 8px 0; padding: 10px; background-color: #F2F4F4; border-radius: 8px;
+        }
+        .ynow-hccsi-formula-banner__parts {
+          font-size: 13px; color: #555; text-align: center; margin: 0 0 8px 0;
+        }
+        .ynow-hccsi-pair { margin: 0 0 10px 0; }
         .ynow-hccsi-sub .ynow-macro-kpi__value { font-size: clamp(16px, 3.6vw, 22px); }
         @media (max-width: 991px) {
           .ynow-macro-kpi-row > [class*='col-'] {

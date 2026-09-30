@@ -292,8 +292,17 @@ layer_src <- if (length(ly_i) && length(nw_i) && nw_i[[1]] > ly_i[[1]]) {
 check("layer table no substitutes header", !grepl("hccsi_col_substitutes", layer_src, fixed = TRUE))
 check("layer table no replacement header", !grepl("hccsi_col_replacement", layer_src, fixed = TRUE))
 check("layer table no rebuild-year mean", !grepl("replacement_time_years", layer_src, fixed = TRUE))
-check("constituent keeps substitutes", grepl("hccsi_col_substitutes", mod_txt, fixed = TRUE) &&
-  grepl(".hccsi_constituent_table", mod_txt, fixed = TRUE))
+check("issuer pair not single constituent table", grepl(".hccsi_issuer_pair", mod_txt, fixed = TRUE) &&
+  !grepl(".hccsi_constituent_table", mod_txt, fixed = TRUE))
+check("in-composite table has live inputs", grepl("hccsi_col_rev_yoy", mod_txt, fixed = TRUE) &&
+  grepl("hccsi_col_gm_delta", mod_txt, fixed = TRUE) && grepl("hccsi_col_capex_own", mod_txt, fixed = TRUE) &&
+  grepl("hccsi_col_price_hist", mod_txt, fixed = TRUE))
+check("issuer tables drop cap theater", !grepl("hccsi_col_criticality", mod_txt, fixed = TRUE) &&
+  !grepl("hccsi_col_weight_raw", mod_txt, fixed = TRUE) &&
+  !grepl("hccsi_col_substitutes", mod_txt, fixed = TRUE) &&
+  !grepl("hccsi_col_confidence", mod_txt, fixed = TRUE))
+check("formula banner like WACC", grepl("ynow-hccsi-formula-banner", mod_txt, fixed = TRUE) &&
+  grepl("hccsi_formula_eq", mod_txt, fixed = TRUE))
 check("Rf not full-only", !grepl("ynow-macro-kpi--rf[^\\n]*ynow-full-only", macro_txt))
 
 for (k in c("hccsi_title", "hccsi_disclosure", "hccsi_index_health", "hccsi_index_stress",
@@ -323,7 +332,8 @@ check("zh expand avoids 傳染/濾鏡", {
 })
 check("copy has no ticker examples", {
   keys <- c("hccsi_method_selection", "hccsi_method_weighting", "hccsi_method_fx_adr",
-            "hccsi_network_note", "hccsi_disclosure", "notif_hccsi_dup_issuer")
+            "hccsi_network_note", "hccsi_disclosure", "notif_hccsi_dup_issuer",
+            "hccsi_formula_parts", "hccsi_out_composite_note")
   blob <- paste(c(vapply(keys, function(k) ui_str(k, "en"), character(1)),
                   vapply(keys, function(k) ui_str(k, "zh-TW"), character(1))), collapse = " ")
   !grepl("GOOGL", blob, fixed = TRUE) && !grepl("GOOG", blob, fixed = TRUE) &&
@@ -346,10 +356,19 @@ if (requireNamespace("htmltools", quietly = TRUE) && requireNamespace("shiny", q
     check("expand zh uses 連鎖降溫路徑", grepl("連鎖降溫路徑", html_zh, fixed = TRUE))
     check("expand zh uses 環節", grepl("環節", html_zh, fixed = TRUE))
     check("expand zh no raw enterprise_dbs cell", !grepl(">enterprise_dbs<", html_zh, fixed = TRUE))
+    check("expand zh formula banner", grepl("HCCSI = 0.30", html_zh, fixed = TRUE))
+    check("expand zh in-composite title", grepl("進入複合分數", html_zh, fixed = TRUE))
+    check("expand zh out-composite title", grepl("不進入複合分數", html_zh, fixed = TRUE))
+    check("expand zh no Criticality header", !grepl(">Criticality<", html_zh, fixed = TRUE))
+    check("expand zh no 可替代對象 header", !grepl(">可替代對象<", html_zh, fixed = TRUE))
+    check("expand zh no 未受限權重", !grepl("未受限權重", html_zh, fixed = TRUE))
   }
   layer_en <- tryCatch(.hccsi_layer_table(sc13, "en"), error = function(e) NULL)
   layer_zh <- tryCatch(.hccsi_layer_table(sc13, "zh-TW"), error = function(e) NULL)
-  cons_en <- tryCatch(.hccsi_constituent_table(sc13, "en"), error = function(e) NULL)
+  in_en <- tryCatch(.hccsi_in_composite_table(sc13, "en"), error = function(e) NULL)
+  out_en <- tryCatch(.hccsi_out_composite_table(sc13, "en"), error = function(e) NULL)
+  pair_en <- tryCatch(.hccsi_issuer_pair(sc13, "en"), error = function(e) NULL)
+  banner_en <- tryCatch(.hccsi_formula_banner(sc13, "en"), error = function(e) NULL)
   if (!is.null(layer_en)) {
     html_ly <- paste(as.character(layer_en), collapse = " ")
     check("layer HTML no substitutes col", !grepl("What can replace it", html_ly, fixed = TRUE))
@@ -360,9 +379,30 @@ if (requireNamespace("htmltools", quietly = TRUE) && requireNamespace("shiny", q
     check("layer zh HTML no 可替代對象", !grepl("可替代對象", html_ly_zh, fixed = TRUE))
     check("layer zh HTML no 重建年數", !grepl("重建年數", html_ly_zh, fixed = TRUE))
   }
-  if (!is.null(cons_en)) {
-    html_cons <- paste(as.character(cons_en), collapse = " ")
-    check("constituent HTML keeps substitutes", grepl("What can replace it", html_cons, fixed = TRUE))
+  if (!is.null(in_en)) {
+    html_in <- paste(as.character(in_en), collapse = " ")
+    check("in-composite has Rev YoY", grepl("Rev YoY", html_in, fixed = TRUE))
+    check("in-composite has ΔGM", grepl("ΔGM", html_in, fixed = TRUE))
+    check("in-composite has CapEx vs own", grepl("CapEx vs own", html_in, fixed = TRUE))
+    check("in-composite no substitutes", !grepl("What can replace it", html_in, fixed = TRUE))
+    check("in-composite no Uncapped", !grepl("Uncapped weight", html_in, fixed = TRUE))
+    check("in-composite no Criticality", !grepl("Criticality", html_in, fixed = TRUE))
+  }
+  if (!is.null(out_en)) {
+    html_out <- paste(as.character(out_en), collapse = " ")
+    check("out-composite has role", grepl("Role in the chain", html_out, fixed = TRUE))
+    check("out-composite no Rev YoY header", !grepl("Rev YoY", html_out, fixed = TRUE))
+    check("out-composite no substitutes", !grepl("What can replace it", html_out, fixed = TRUE))
+  }
+  if (!is.null(pair_en)) {
+    html_pair <- paste(as.character(pair_en), collapse = " ")
+    check("pair is side by side", grepl("ynow-hccsi-pair", html_pair, fixed = TRUE) &&
+      grepl("col-md-6", html_pair, fixed = TRUE))
+  }
+  if (!is.null(banner_en)) {
+    html_bn <- paste(as.character(banner_en), collapse = " ")
+    check("banner equation", grepl("HCCSI = 0.30·Stmt + 0.25·Mkt + 0.25·Inf + 0.20·Traj", html_bn, fixed = TRUE))
+    check("banner WACC-like class", grepl("ynow-hccsi-formula-banner__eq", html_bn, fixed = TRUE))
   }
 }
 

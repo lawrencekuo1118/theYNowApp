@@ -1330,6 +1330,20 @@ locale_for_market <- function(mode = get_market_mode()) {
     hccsi_layer_title = "Function stages",
     hccsi_network_title = "Linked-stage cooling",
     hccsi_constituent_title = "Each listed node",
+    hccsi_in_composite_title = "In the composite",
+    hccsi_out_composite_title = "Not in the composite",
+    hccsi_out_composite_note = paste0(
+      "Config priors with no filing or published source — Criticality, rebuild years, substitutes, ",
+      "weight caps, and series completeness — are withheld. They are engineering heuristics, not measured inputs."
+    ),
+    hccsi_formula_eq = "HCCSI = 0.30·Stmt + 0.25·Mkt + 0.25·Inf + 0.20·Traj",
+    hccsi_formula_parts = paste0(
+      "Stmt = Rev YoY, ΔGM, CapEx vs own. ",
+      "Mkt = excess and return versus the benchmark. ",
+      "Inf = Rolling β and excess versus the market. ",
+      "Traj = price and Rev YoY versus the issuer’s own history. ",
+      "A missing term is omitted and leftover weights are scaled up — never filled with 0, 50, or 100."
+    ),
     hccsi_method_title = "Methodology",
     hccsi_highest_risk_layer = "Weakest stage",
     hccsi_top_contributors = "Names lifting the reading",
@@ -1356,6 +1370,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     hccsi_col_perf = "1M",
     hccsi_col_beta = "Rolling β (60d)",
     hccsi_col_dd = "Excess vs mkt",
+    hccsi_col_ret = "Return",
+    hccsi_col_rev_yoy = "Rev YoY",
+    hccsi_col_gm_delta = "ΔGM",
+    hccsi_col_capex_own = "CapEx vs own",
+    hccsi_col_price_hist = "Price vs hist",
+    hccsi_col_rev_vs_own = "Rev YoY vs own",
     hccsi_col_fin_ops = "Rev YoY / GM",
     hccsi_col_confidence = "Series completeness",
     hccsi_method_selection = paste0(
@@ -1365,14 +1385,14 @@ locale_for_market <- function(mode = get_market_mode()) {
     hccsi_method_scoring = paste0(
       "Four readings, all oriented so higher means stronger development expectation: ",
       "Statement Development, Market vs Benchmark, Influence vs Market, Trajectory vs History. ",
-      "Composite HCCSI = 0.30·Stmt + 0.25·Mkt + 0.25·Inf + 0.20·Traj. ",
-      "When a term cannot be scored it is omitted and leftover weights are scaled up — never filled with 0, 50, or 100. ",
+      "The composite identity is the formula banner above. ",
       "Outperformance versus the benchmark raises Market and Influence and can raise the composite."
     ),
     hccsi_method_weighting = paste0(
-      "Aggregation weights follow how irreplaceable a node is, not market cap alone. No stage may exceed 25%, ",
-      "and no issuer may exceed 12% unless the config allows a 15% exception. Liquidity may nudge a weight ",
-      "by at most ±20%. Both the uncapped and the capped weights are shown. Influence itself is scored from β and excess return."
+      "Each listed name’s live readings are averaged into Stmt / Mkt / Inf / Traj. ",
+      "Influence itself is scored from Rolling β and excess return. ",
+      "Criticality scores, rebuild years, substitutes, and issuer/stage caps are unpublished engineering heuristics ",
+      "with no filing source, so they are not shown as if they were measured inputs."
     ),
     hccsi_method_rebalance = paste0(
       "Reviewed every quarter; the name list every year. A merger, delist, bankruptcy, structural split, ",
@@ -2982,6 +3002,20 @@ locale_for_market <- function(mode = get_market_mode()) {
     hccsi_layer_title = "功能環節",
     hccsi_network_title = "連鎖降溫",
     hccsi_constituent_title = "各發行人明細",
+    hccsi_in_composite_title = "進入複合分數",
+    hccsi_out_composite_title = "不進入複合分數",
+    hccsi_out_composite_note = paste0(
+      "沒有財報或公開文獻依據的設定檔假設——Criticality、重建年數、可替代對象、權重上限、序列完整度——不予顯示。",
+      "那些是工程啟發式，不是觀測值。"
+    ),
+    hccsi_formula_eq = "HCCSI = 0.30·Stmt + 0.25·Mkt + 0.25·Inf + 0.20·Traj",
+    hccsi_formula_parts = paste0(
+      "Stmt＝營收 YoY、ΔGM、CapEx vs 自身。",
+      "Mkt＝相對大盤的超額與報酬。",
+      "Inf＝Rolling β 與相對大盤超額。",
+      "Traj＝股價與營收 YoY 對照該發行人自身歷史。",
+      "缺項略過並把剩餘權重放大——不會填入 0、50 或 100。"
+    ),
     hccsi_method_title = "方法論",
     hccsi_highest_risk_layer = "發展最弱的環節",
     hccsi_top_contributors = "最拉高讀數的發行人",
@@ -3007,6 +3041,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     hccsi_col_perf = "1M",
     hccsi_col_beta = "Rolling β（60 日）",
     hccsi_col_dd = "超額 vs 大盤",
+    hccsi_col_ret = "報酬",
+    hccsi_col_rev_yoy = "營收 YoY",
+    hccsi_col_gm_delta = "ΔGM",
+    hccsi_col_capex_own = "CapEx vs 自身",
+    hccsi_col_price_hist = "股價 vs 歷史",
+    hccsi_col_rev_vs_own = "營收 YoY vs 自身",
     hccsi_col_fin_ops = "營收 YoY／GM",
     hccsi_col_confidence = "序列完整度",
     hccsi_method_selection = paste0(
@@ -3016,13 +3056,14 @@ locale_for_market <- function(mode = get_market_mode()) {
     hccsi_method_scoring = paste0(
       "四項讀數皆為「越高＝發展預期越強」：Statement Development、Market vs Benchmark、",
       "Influence vs Market、Trajectory vs History。",
-      "綜合 HCCSI = 0.30·Stmt + 0.25·Mkt + 0.25·Inf + 0.20·Traj。",
-      "某一項算不出來就略過，並用剩下項目重新分配權重——不會填入 0、50 或 100。",
+      "綜合分數的恆等式見上方公式橫幅。",
       "跑贏大盤會提高 Market 與 Influence，也可以提高綜合分數。"
     ),
     hccsi_method_weighting = paste0(
-      "加總權重依「換不換得掉」，不是純市值。任一環節上限 25%，單一發行人上限 12%（設定檔允許時可至 15%）。",
-      "流動性最多加減 20%。未受限與受限後權重一併揭露。影響力本身由 β 與超額報酬計分。"
+      "各發行人的即時讀數再平均成 Stmt／Mkt／Inf／Traj。",
+      "影響力本身由 Rolling β 與超額報酬計分。",
+      "Criticality、重建年數、可替代對象與發行人／環節上限是沒有財報依據的工程啟發式，",
+      "因此不當作觀測值列出。"
     ),
     hccsi_method_rebalance = paste0(
       "每季檢討權重；每年檢討名單。合併、下市、破產、結構性分割或經確認的關鍵基礎設施中斷時啟動非常檢討。"

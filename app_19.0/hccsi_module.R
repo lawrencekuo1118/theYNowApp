@@ -41,6 +41,20 @@ hccsi_score_span <- function(x, digits = 1, extra_class = NULL) {
   tags$span(class = paste(cls, collapse = " "), hccsi_fmt_score(x, digits))
 }
 
+.hccsi_fmt_signed_pct <- function(x) {
+  if (!.finite1(x)) return("—")
+  sprintf("%+.1f%%", 100 * as.numeric(x)[1])
+}
+
+.hccsi_issuer_label <- function(r) {
+  paste(r$id, paste(r$tickers, collapse = "/"))
+}
+
+.hccsi_html_table <- function(header, body) {
+  tags$div(class = "ynow-hccsi-table-wrap",
+           tags$table(class = "table table-condensed ynow-hccsi-table", tags$thead(header), tags$tbody(body)))
+}
+
 .hccsi_ui <- function(key, locale = "en") {
   if (exists("ui_str", mode = "function")) tryCatch(ui_str(key, locale), error = function(e) key) else key
 }
@@ -154,35 +168,66 @@ hccsi_kpi_box <- function(result, lite = FALSE, locale = "en", ns = NULL, select
   )
 }
 
-.hccsi_constituent_table <- function(result, locale = "en") {
+.hccsi_in_composite_table <- function(result, locale = "en") {
   rows <- result$issuers
   if (is.null(rows) || !length(rows)) return(tags$p(class = "ynow-macro-hint", .hccsi_ui("hccsi_empty", locale)))
   header <- tags$tr(
-    tags$th(.hccsi_ui("hccsi_col_issuer", locale)), tags$th(.hccsi_ui("hccsi_col_function", locale)),
-    tags$th(.hccsi_ui("hccsi_col_criticality", locale)), tags$th(.hccsi_ui("hccsi_col_weight_raw", locale)),
-    tags$th(.hccsi_ui("hccsi_col_weight", locale)), tags$th(.hccsi_ui("hccsi_col_perf", locale)),
-    tags$th(.hccsi_ui("hccsi_col_beta", locale)), tags$th(.hccsi_ui("hccsi_col_dd", locale)),
-    tags$th(.hccsi_ui("hccsi_col_fin_ops", locale)), tags$th(.hccsi_ui("hccsi_col_substitutes", locale)),
-    tags$th(.hccsi_ui("hccsi_col_confidence", locale)))
+    tags$th(.hccsi_ui("hccsi_col_issuer", locale)),
+    tags$th(.hccsi_ui("hccsi_col_rev_yoy", locale)),
+    tags$th(.hccsi_ui("hccsi_col_gm_delta", locale)),
+    tags$th(.hccsi_ui("hccsi_col_capex_own", locale)),
+    tags$th(.hccsi_ui("hccsi_col_dd", locale)),
+    tags$th(.hccsi_ui("hccsi_col_ret", locale)),
+    tags$th(.hccsi_ui("hccsi_col_beta", locale)),
+    tags$th(.hccsi_ui("hccsi_col_price_hist", locale)),
+    tags$th(.hccsi_ui("hccsi_col_rev_vs_own", locale)))
+  body <- lapply(rows, function(r) {
+    ret <- if (.finite1(r$ret_1y)) r$ret_1y else r$ret_1m
+    ex <- if (.finite1(r$excess_1y)) r$excess_1y else r$abnormal_return
+    tags$tr(
+      tags$td(.hccsi_issuer_label(r)),
+      tags$td(.hccsi_fmt_signed_pct(r$rev_yoy)),
+      tags$td(.hccsi_fmt_signed_pct(r$gm_delta)),
+      tags$td(.hccsi_fmt_signed_pct(r$capex_vs_own)),
+      tags$td(.hccsi_fmt_signed_pct(ex)),
+      tags$td(.hccsi_fmt_signed_pct(ret)),
+      tags$td(hccsi_fmt_score(r$beta_60d)),
+      tags$td(.hccsi_fmt_signed_pct(r$price_vs_hist)),
+      tags$td(.hccsi_fmt_signed_pct(r$rev_yoy_vs_own)))
+  })
+  .hccsi_html_table(header, body)
+}
+
+.hccsi_out_composite_table <- function(result, locale = "en") {
+  rows <- result$issuers
+  if (is.null(rows) || !length(rows)) return(tags$p(class = "ynow-macro-hint", .hccsi_ui("hccsi_empty", locale)))
+  header <- tags$tr(
+    tags$th(.hccsi_ui("hccsi_col_issuer", locale)),
+    tags$th(.hccsi_ui("hccsi_col_function", locale)))
   body <- lapply(rows, function(r) {
     tags$tr(
-      tags$td(paste(r$id, paste(r$tickers, collapse = "/"))),
-      tags$td(.hccsi_named("fn", r$function_id, locale)),
-      tags$td(hccsi_fmt_score(r$criticality_prior, 0)),
-      tags$td(sprintf("%.1f%%", 100 * as.numeric(r$weight_raw)[1])),
-      tags$td(sprintf("%.1f%%", 100 * as.numeric(r$weight)[1])),
-      tags$td(if (.finite1(r$ret_1m)) sprintf("%+.1f%%", 100 * r$ret_1m) else "—"),
-      tags$td(hccsi_fmt_score(r$beta_60d)),
-      tags$td(if (.finite1(r$excess_1y)) sprintf("%+.1f%%", 100 * r$excess_1y) else if (.finite1(r$abnormal_return)) sprintf("%+.1f%%", 100 * r$abnormal_return) else "—"),
-      tags$td(paste(
-        if (.finite1(r$rev_yoy)) sprintf("%+.1f%%", 100 * r$rev_yoy) else "—",
-        "/",
-        if (.finite1(r$gm_latest)) sprintf("%.1f%%", 100 * r$gm_latest) else "—"
-      )),
-      tags$td(r$substitutes), tags$td(hccsi_fmt_score(r$data_confidence, 0)))
+      tags$td(.hccsi_issuer_label(r)),
+      tags$td(.hccsi_named("fn", r$function_id, locale)))
   })
-  tags$div(class = "ynow-hccsi-table-wrap",
-           tags$table(class = "table table-condensed ynow-hccsi-table", tags$thead(header), tags$tbody(body)))
+  .hccsi_html_table(header, body)
+}
+
+.hccsi_issuer_pair <- function(result, locale = "en") {
+  fluidRow(
+    class = "ynow-hccsi-pair",
+    column(
+      width = 6, class = "col-xs-12 col-sm-12 col-md-6",
+      tags$h4(id = "ynow_macro_hccsi_in_title", .hccsi_ui("hccsi_in_composite_title", locale)),
+      .hccsi_in_composite_table(result, locale)
+    ),
+    column(
+      width = 6, class = "col-xs-12 col-sm-12 col-md-6",
+      tags$h4(id = "ynow_macro_hccsi_out_title", .hccsi_ui("hccsi_out_composite_title", locale)),
+      .hccsi_out_composite_table(result, locale),
+      tags$p(class = "ynow-macro-hint", id = "ynow_macro_hccsi_out_note",
+             .hccsi_ui("hccsi_out_composite_note", locale))
+    )
+  )
 }
 
 hccsi_methodology_notes <- function(locale = "en") {
@@ -199,30 +244,39 @@ hccsi_methodology_notes <- function(locale = "en") {
   if (exists("ynow_notes_block", mode = "function")) ynow_notes_block(body, locale = locale) else body
 }
 
-hccsi_expand_ui <- function(result, locale = "en") {
-  if (is.null(result)) return(tags$p(class = "ynow-macro-hint", .hccsi_ui("hccsi_empty", locale)))
+.hccsi_formula_banner <- function(result, locale = "en") {
   dropped <- result$dropped_terms %||% character(0)
   dropped_txt <- if (length(dropped)) {
     gsub("{terms}", paste(dropped, collapse = ", "), .hccsi_ui("hccsi_dropped", locale), fixed = TRUE)
   } else .hccsi_ui("hccsi_dropped_none", locale)
   tags$div(
+    class = "ynow-hccsi-formula-banner",
+    tags$div(id = "ynow_macro_hccsi_formula", class = "ynow-hccsi-formula-banner__eq",
+             .hccsi_ui("hccsi_formula_eq", locale)),
+    tags$div(id = "ynow_macro_hccsi_formula_parts", class = "ynow-hccsi-formula-banner__parts",
+             .hccsi_ui("hccsi_formula_parts", locale)),
+    tags$p(class = "ynow-macro-hint", id = "ynow_macro_hccsi_dropped", dropped_txt)
+  )
+}
+
+hccsi_expand_ui <- function(result, locale = "en") {
+  if (is.null(result)) return(tags$p(class = "ynow-macro-hint", .hccsi_ui("hccsi_empty", locale)))
+  tags$div(
     class = "ynow-macro-card ynow-hccsi-expand__card",
     tags$h4(id = "ynow_macro_hccsi_overview_title", .hccsi_ui("hccsi_overview_title", locale)),
     tags$p(class = "ynow-macro-hint", id = "ynow_macro_hccsi_disclosure", .hccsi_ui("hccsi_disclosure", locale)),
+    .hccsi_formula_banner(result, locale),
     tags$p(tags$b(.hccsi_ui("hccsi_alert_label", locale)), ": ", result$alert %||% "Unavailable", " · ",
            tags$b(.hccsi_ui("hccsi_highest_risk_layer", locale)), ": ",
            .hccsi_named("ly", result$highest_risk_layer, locale), " · ",
            tags$b(.hccsi_ui("hccsi_top_contributors", locale)), ": ",
            paste(result$top_contributors %||% character(0), collapse = ", ")),
-    tags$p(class = "ynow-macro-hint", id = "ynow_macro_hccsi_dropped", dropped_txt),
-    tags$p(class = "ynow-macro-hint", result$formula %||% ""),
     .hccsi_four_boxes(result, locale),
     tags$h4(id = "ynow_macro_hccsi_layer_title", .hccsi_ui("hccsi_layer_title", locale)),
     .hccsi_layer_table(result, locale),
     tags$h4(id = "ynow_macro_hccsi_network_title", .hccsi_ui("hccsi_network_title", locale)),
     .hccsi_network_ui(result, locale),
-    tags$h4(id = "ynow_macro_hccsi_constituent_title", .hccsi_ui("hccsi_constituent_title", locale)),
-    .hccsi_constituent_table(result, locale),
+    .hccsi_issuer_pair(result, locale),
     tags$h4(id = "ynow_macro_hccsi_method_title", .hccsi_ui("hccsi_method_title", locale)),
     hccsi_methodology_notes(locale)
   )
