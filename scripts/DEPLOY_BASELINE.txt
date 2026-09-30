@@ -8,5 +8,5 @@ short=23e32b9
 message=chore: bump display version to v19.08
 captured_at=2026-09-30T03:56:21Z
 source_branch=cursor/lifecycle-v19-3fb1
-display_version=v19.08
+display_version=v19.09
 note=Canonical live line is app_19.0. Bundle 12625733 = v19.08 collapsible Notes / 附註 (details/summary, default collapsed) on YNOW chapter leads plus Decision Checklist / bubble / Macro leftover annotation. KPI cards and tables stay visible. Deploy via scripts/deploy_app_19.R. Supersedes 12625709 / 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
