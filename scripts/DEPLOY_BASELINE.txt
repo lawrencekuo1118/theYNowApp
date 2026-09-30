@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12626909
+bundleId=12627038
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=52835eca234aa8dfee688415c6f9617da2b6a7b9
-commit=52835eca234aa8dfee688415c6f9617da2b6a7b9
-short=52835ec
-message=Restack Business Breakdown Lab as a numbered statement walkthrough with a best-effort five-year revenue-share chart.
-captured_at=2026-09-30T09:58:37Z
-source_branch=cursor/bblab-into-testing-3fb1
+aligned_git=50faf5f9d1cb9f6fffe004e67836bdb2a53c86ed
+commit=50faf5f9d1cb9f6fffe004e67836bdb2a53c86ed
+short=50faf5f
+message=Fix duplicate Lab chapter numbers by keeping the badge only.
+captured_at=2026-09-30T10:32:28Z
+source_branch=cursor/dedupe-chapter-titles-3fb1
 display_version=v19.28
-note=Canonical live line is app_19.0. Bundle 12626909 = v19.27 investor-facing numbered walkthrough (7 chapters) plus best-effort five-year revenue-share evolution (omit unmappable years, never fill 0). Same company-agnostic engine; units aligned as v19.25. Also keeps Data-limited / 資料受限 HCCSI flow; Lab donut eligible with one supportable business; listed-stock-only Testing masthead; GM fallback label without default-off parenthetical; v19.24 no Progress 9/9; v19.23 10-K operating-segment cards; v19.22 Lab nested inside Testing. Deploy via scripts/deploy_app_19.R. Supersedes 12626822 / 12626810 / 12626794 / 12626772 / 12626690 / 12626668 / 12626547 / 12626454 / 12626418 / 12626362 / 12626262 / 12626032 / 12625997 / 12625985 / 12625973 / 12625956 / 12625916 / 12625890 / 12625810 / 12625762 / 12625733 / 12625709 / 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
+note=Canonical live line is app_19.0. Bundle 12627038 = v19.28: Lab chapter boxes keep the circular number chip and drop the duplicate "1. …" prefix in titles (en-US + zh-TW). YNOW/HFV kickers were already unnumbered headings. Same 7-chapter walkthrough and company-agnostic engine as v19.27. Deploy via scripts/deploy_app_19.R. Supersedes 12626909 / 12626822 / 12626810 / 12626794 / 12626772 / 12626690 / 12626668 / 12626547 / 12626454 / 12626418 / 12626362 / 12626262 / 12626032 / 12625997 / 12625985 / 12625973 / 12625956 / 12625916 / 12625890 / 12625810 / 12625762 / 12625733 / 12625709 / 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
