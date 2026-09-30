@@ -246,7 +246,11 @@ macro_market_ui <- function(id = "macro") {
             ns("hist_period"),
             label = tags$span(id = "ynow_macro_period_label", "Window"),
             choices = c("6M" = "6mo", "1Y" = "1y", "3Y" = "3y", "5Y" = "5y"),
-            selected = "1y"
+            selected = if (exists("APP_DEFAULTS") && !is.null(APP_DEFAULTS$macro_hist_period)) {
+              APP_DEFAULTS$macro_hist_period
+            } else {
+              "1y"
+            }
           )
         ),
         column(

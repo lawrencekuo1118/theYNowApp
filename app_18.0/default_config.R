@@ -201,5 +201,10 @@ APP_DEFAULTS <- list(
   lab_cluster_k = 3L,
   lab_cluster_x = "ROE",
   lab_cluster_y = "PE_Ratio",
-  lab_sec_important_only = TRUE
+  lab_sec_important_only = TRUE,
+
+  # --- 13. Macro & Market Trends（完整版；不寫入 CAPM／Ke／WACC）---
+  macro_hist_period = "1y",
+  macro_bubble_top_n = "5",
+  macro_bubble_attr_period = "1y"
 )

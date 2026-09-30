@@ -95,6 +95,17 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
     txt,
     perl = TRUE
   ))
+  # Lite must hide Macro & Market Trends (Full-only; not in Lite About feature list)
+  testthat::expect_true(grepl(
+    "body\\.ynow-lite[\\s\\S]*data-value=\"macro_market\"",
+    txt,
+    perl = TRUE
+  ))
+  testthat::expect_true(grepl(
+    'body\\.ynow-lite \\.sidebar-menu a\\[data-value="macro_market"\\]',
+    txt,
+    perl = TRUE
+  ))
 
   testthat::expect_true(grepl(
     "body\\.ynow-lite[\\s\\S]*snap_audit",

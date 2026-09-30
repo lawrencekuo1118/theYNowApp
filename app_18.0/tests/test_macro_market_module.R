@@ -56,5 +56,9 @@ check(
   "hide ticker chrome on macro",
   grepl("input.sidebar_tabs != 'about' && input.sidebar_tabs != 'macro_market'", ui_src, fixed = TRUE)
 )
+check(
+  "Lite CSS hides macro sidebar",
+  grepl('body.ynow-lite .sidebar-menu a[data-value="macro_market"]', ui_src, fixed = TRUE)
+)
 
 cat("All macro market module checks passed.\n")

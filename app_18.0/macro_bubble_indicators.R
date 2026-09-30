@@ -425,7 +425,11 @@ macro_bubble_chapter_ui <- function(ns) {
           ns("bubble_top_n"),
           label = tags$span(id = "ynow_macro_bubble_topn_label", "Top N by market cap"),
           choices = c("Top 3" = "3", "Top 5" = "5"),
-          selected = "5"
+          selected = if (exists("APP_DEFAULTS") && !is.null(APP_DEFAULTS$macro_bubble_top_n)) {
+            APP_DEFAULTS$macro_bubble_top_n
+          } else {
+            "5"
+          }
         )
       ),
       column(
@@ -434,7 +438,11 @@ macro_bubble_chapter_ui <- function(ns) {
           ns("bubble_attr_period"),
           label = tags$span(id = "ynow_macro_bubble_attr_label", "Attribution window"),
           choices = c("1M" = "1mo", "3M" = "3mo", "1Y" = "1y"),
-          selected = "1y"
+          selected = if (exists("APP_DEFAULTS") && !is.null(APP_DEFAULTS$macro_bubble_attr_period)) {
+            APP_DEFAULTS$macro_bubble_attr_period
+          } else {
+            "1y"
+          }
         )
       ),
       column(

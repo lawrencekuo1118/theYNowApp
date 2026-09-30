@@ -2094,7 +2094,10 @@ server <- function(input, output, session) {
       lab_cluster_k = c("Lab", "Cluster k", "群數"),
       lab_cluster_x = c("Lab", "Cluster scatter X", "散點 X"),
       lab_cluster_y = c("Lab", "Cluster scatter Y", "散點 Y"),
-      lab_sec_important_only = c("Lab", "Important notes only", "SEC 附註過濾")
+      lab_sec_important_only = c("Lab", "Important notes only", "SEC 附註過濾"),
+      macro_hist_period = c("Macro", "Overlay window", "6mo / 1y / 3y / 5y；不寫入 CAPM"),
+      macro_bubble_top_n = c("Macro", "Bubble Top N", "主題市值前 N"),
+      macro_bubble_attr_period = c("Macro", "Attribution window", "1mo / 3mo / 1y")
     )
 
     # Lite Snapshot defaults: only inputs Lite users can set in the UI

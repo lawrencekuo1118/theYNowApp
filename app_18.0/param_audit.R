@@ -167,7 +167,13 @@ ynow_tracked_param_registry <- function() {
     c("lab_cluster_focus", "Lab", "Cluster focus ticker", "bluechip_lab", "select", "FALSE", "Highlight ticker in cluster map"),
     c("lab_sec_form", "Lab", "SEC form type", "bluechip_lab", "select", "TRUE", "10-K / 10-Q etc."),
     c("lab_sec_important_only", "Lab", "Important notes only", "bluechip_lab", "checkbox", "TRUE", "Filter SEC notes"),
-    c("lab_sec_keyword", "Lab", "SEC keyword", "bluechip_lab", "text", "TRUE", "Keyword search in notes")
+    c("lab_sec_keyword", "Lab", "SEC keyword", "bluechip_lab", "text", "TRUE", "Keyword search in notes"),
+    # ---- Macro & Market Trends (Full-only; never feeds CAPM / Ke / WACC) ----
+    c("macro-theme_key", "Macro", "Theme", "macro_market", "select", "TRUE", "GICS sector ETF / concept basket"),
+    c("macro-hist_period", "Macro", "Overlay window", "macro_market", "select", "TRUE", "6mo / 1y / 3y / 5y"),
+    c("macro-bubble_top_n", "Macro", "Bubble Top N", "macro_market", "select", "TRUE", "Top N by market cap in theme"),
+    c("macro-bubble_attr_period", "Macro", "Attribution window", "macro_market", "select", "TRUE", "1mo / 3mo / 1y return attribution"),
+    c("macro-bubble_buffett_asof", "Macro", "Buffett as-of year", "macro_market", "slider", "TRUE", "Buffett Indicator playback year")
   )
   mat <- do.call(rbind, rows)
   data.frame(

@@ -13,8 +13,14 @@ stopifnot(!anyDuplicated(reg$input_id))
 stopifnot(all(grepl("^mod_fcf-", reg$input_id[reg$section == "FCF"])))
 stopifnot(all(c(
   "mod_fcf-apply_capex_spike_smooth", "mod_fcf-capex_spike_mult", "mod_fcf-capex_spike_avg_years",
-  "mod_fcf-apply_g_ceiling", "bt_net_margin", "chk_hfv_veto", "lab_im_eq_only", "session_ccy_pick"
+  "mod_fcf-apply_g_ceiling", "bt_net_margin", "chk_hfv_veto", "lab_im_eq_only", "session_ccy_pick",
+  "macro-hist_period", "macro-bubble_top_n", "macro-bubble_attr_period", "macro-theme_key",
+  "macro-bubble_buffett_asof"
 ) %in% reg$input_id))
+stopifnot(all(reg$full_only[reg$input_id %in% c(
+  "macro-theme_key", "macro-hist_period", "macro-bubble_top_n",
+  "macro-bubble_attr_period", "macro-bubble_buffett_asof"
+)]))
 
 inp <- setNames(as.list(rep(2.5, nrow(reg))), reg$input_id)
 for (i in seq_len(nrow(reg))) {
@@ -130,6 +136,9 @@ stopifnot(!"SGR / terminal g (%)" %in% snap_lite$Parameter)
 stopifnot("Earnings quality only" %in% snap_lite$Parameter)
 stopifnot("Pool rank logic" %in% snap_lite$Parameter)
 stopifnot("Session Currency" %in% snap_lite$Parameter)
+stopifnot(!"Overlay window" %in% snap_lite$Parameter)
+stopifnot(!"Bubble Top N" %in% snap_lite$Parameter)
+stopifnot("Overlay window" %in% snap$Parameter)
 stopifnot(all(reg$input_id[!reg$full_only] %in% c(
   "session_ccy_pick", "industry_choice",
   "lab_im_pool_rank", "lab_im_concepts", "lab_im_max_n", "lab_im_max_n_custom",
@@ -141,5 +150,7 @@ stopifnot(all(reg$input_id[!reg$full_only] %in% c(
 cfg_txt <- paste(readLines(file.path("..", "default_config.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 stopifnot(grepl("lab_im_pool_rank\\s*=\\s*\"mcap\"", cfg_txt))
 stopifnot(grepl("lab_im_concepts\\s*=\\s*character\\(0\\)", cfg_txt))
+stopifnot(grepl("macro_hist_period\\s*=\\s*\"1y\"", cfg_txt))
+stopifnot(grepl("macro_bubble_top_n\\s*=\\s*\"5\"", cfg_txt))
 
 cat("test_param_restore.R: OK\n")

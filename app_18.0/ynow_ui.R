@@ -2239,6 +2239,8 @@ ui <- dashboardPage(
         body.ynow-lite .sidebar-menu li:has(> a[data-value="smart_analysis"]) {
           display: block !important;
         }
+        body.ynow-lite .sidebar-menu a[data-value="macro_market"],
+        body.ynow-lite .sidebar-menu li:has(> a[data-value="macro_market"]),
         body.ynow-lite .sidebar-menu a[data-value="get_started"],
         body.ynow-lite .sidebar-menu li:has(> a[data-value="get_started"]),
         body.ynow-lite .sidebar-menu li:has(a[data-value="nav_calculator"]),
