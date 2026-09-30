@@ -2291,6 +2291,16 @@ ui <- dashboardPage(
         body.ynow-lite .ynow-lite-only {
           display: block !important;
         }
+        /* Lite Smart Analysis: lead blurb above composite status (no page heading) */
+        .ynow-smart-lite-blurb-wrap {
+          margin: 0 0 10px 0;
+        }
+        .ynow-smart-lite-blurb {
+          margin: 0;
+          font-size: 14px;
+          line-height: 1.55;
+          color: #444;
+        }
         .ynow-smart-card-row {
           display: flex;
           flex-wrap: wrap;
@@ -7093,6 +7103,7 @@ ui <- dashboardPage(
       )
     ),
     # Model pages + Smart Analysis: full composite valuation block (shared output) + forecast years
+    # Lite Smart Analysis: explanatory blurb sits immediately above composite status (no page heading).
     conditionalPanel(
       condition = paste(
         "input.sidebar_tabs == 'smart_analysis' ||",
@@ -7101,6 +7112,21 @@ ui <- dashboardPage(
         "input.sidebar_tabs == 'pb_calculator' ||",
         "input.sidebar_tabs == 'ri_calculator' ||",
         "input.sidebar_tabs == 'nav_calculator'"
+      ),
+      conditionalPanel(
+        condition = "input.sidebar_tabs == 'smart_analysis'",
+        tags$div(
+          class = "ynow-lite-only ynow-smart-lite-blurb-wrap",
+          tags$p(
+            id = "ynow_smart_page_sub",
+            class = "ynow-smart-lite-blurb",
+            paste0(
+              "Auto-selects primary and secondary valuation models from the ticker profile, ",
+              "detects the best parameter scenario (Two-Stage vs Gordon, SGR method, claim), ",
+              "applies those defaults, and shows fair-value charts. No manual model settings."
+            )
+          )
+        )
       ),
       fluidRow(
         class = "ynow-header-composite-row",
@@ -7726,20 +7752,7 @@ ui <- dashboardPage(
       # ==========================================
       tabItem(
         tabName = "smart_analysis",
-        fluidRow(
-          column(
-            width = 12,
-            h2(tags$b(id = "ynow_smart_page_title", "Smart Analysis")),
-            p(
-              id = "ynow_smart_page_sub",
-              paste0(
-                "Auto-selects primary and secondary valuation models from the ticker profile, ",
-                "applies App defaults, and shows fair-value charts. No manual model settings."
-              )
-            ),
-            tags$hr()
-          )
-        ),
+        # Page heading removed (Lite): blurb lives immediately above composite status in the header.
         uiOutput("smart_analysis_summary"),
         fluidRow(
           box(

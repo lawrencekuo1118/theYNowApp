@@ -185,6 +185,78 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl("ynow-lab-im-eq-explain ynow-lite-only", txt, fixed = TRUE))
 })
 
+testthat::test_that("Lite Smart Analysis blurb sits above composite status without a page heading", {
+  ui_path <- file.path("..", "ynow_ui.R")
+  txt <- paste(readLines(ui_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+
+  pos_sub <- regexpr('id = "ynow_smart_page_sub"', txt, fixed = TRUE)[1]
+  pos_comp <- regexpr('class = "ynow-header-composite-row"', txt, fixed = TRUE)[1]
+  pos_compare <- regexpr('decision_valuation_compare_ui("main_decision")', txt, fixed = TRUE)[1]
+  testthat::expect_true(is.finite(pos_sub) && pos_sub > 0)
+  testthat::expect_true(is.finite(pos_comp) && pos_comp > pos_sub)
+  testthat::expect_true(is.finite(pos_compare) && pos_compare > pos_comp)
+  # Blurb is the last Lite-only node immediately before the composite status box
+  between <- substr(txt, pos_sub, pos_comp)
+  testthat::expect_false(grepl("smart_analysis_summary", between, fixed = TRUE))
+  testthat::expect_false(grepl("smart_analysis_chart", between, fixed = TRUE))
+  testthat::expect_false(grepl("ynow-header-years-suggest-row", between, fixed = TRUE))
+  wrap <- substr(txt, max(1L, pos_sub - 500L), pos_comp)
+  testthat::expect_true(grepl("ynow-lite-only", wrap, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-smart-lite-blurb", wrap, fixed = TRUE))
+  testthat::expect_true(grepl(
+    'condition = "input.sidebar_tabs == \'smart_analysis\'"',
+    wrap,
+    fixed = TRUE
+  ))
+
+  # Heading element removed; locale key / JS lookup may remain
+  testthat::expect_false(grepl(
+    'id = "ynow_smart_page_title", "Smart Analysis"',
+    txt,
+    fixed = TRUE
+  ))
+  testthat::expect_false(grepl(
+    "h2(tags$b(id = \"ynow_smart_page_title\"",
+    txt,
+    fixed = TRUE
+  ))
+
+  smart_tab <- regmatches(
+    txt,
+    regexpr(
+      'tabItem\\(\\s*tabName = "smart_analysis",[\\s\\S]*?tabItem\\(tabName = "ddm_calculator"',
+      txt,
+      perl = TRUE
+    )
+  )
+  testthat::expect_true(length(smart_tab) == 1L && nzchar(smart_tab))
+  testthat::expect_false(grepl("ynow_smart_page_title", smart_tab, fixed = TRUE))
+  testthat::expect_false(grepl("ynow_smart_page_sub", smart_tab, fixed = TRUE))
+  testthat::expect_false(grepl("h2(", smart_tab, fixed = TRUE))
+
+  # Full model pages still share the same composite header; blurb is Lite / Smart Analysis only
+  testthat::expect_true(grepl(
+    "input.sidebar_tabs == 'dcf_calculator' ||",
+    txt,
+    fixed = TRUE
+  ))
+  testthat::expect_true(grepl(
+    "input.sidebar_tabs == 'nav_calculator'",
+    txt,
+    fixed = TRUE
+  ))
+  years_cond <- regmatches(
+    txt,
+    regexpr(
+      "# Lite Smart Analysis：不顯示手動模型參數[\\s\\S]*?ynow-header-years-suggest-row",
+      txt,
+      perl = TRUE
+    )
+  )
+  testthat::expect_true(length(years_cond) == 1L && nzchar(years_cond))
+  testthat::expect_false(grepl("smart_analysis", years_cond, fixed = TRUE))
+})
+
 testthat::test_that("ynow_server wires Lite scenario apply before auto-calc", {
   srv_path <- file.path("..", "ynow_server.R")
   txt <- paste(readLines(srv_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
