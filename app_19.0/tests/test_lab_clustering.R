@@ -266,5 +266,31 @@ cov_ok <- lab_cluster_coverage_labels(
 stopifnot(all(cov_ok == "OK"))
 stopifnot("n_finite" %in% names(res$data))
 
+flow_en <- lab_cluster_coverage_flow_html(c("Data-limited", "OK"))
+stopifnot(grepl("ynow-hccsi-flow", flow_en[[1]], fixed = TRUE))
+stopifnot(grepl("Data-limited", flow_en[[1]], fixed = TRUE))
+stopifnot(!grepl("ynow-hccsi-flow", flow_en[[2]], fixed = TRUE))
+stopifnot(identical(flow_en[[2]], "OK"))
+flow_zh <- lab_cluster_coverage_flow_html("資料受限")
+stopifnot(grepl("ynow-hccsi-flow", flow_zh[[1]], fixed = TRUE))
+stopifnot(grepl("資料受限", flow_zh[[1]], fixed = TRUE))
+
+parsed_cluster <- tryCatch({
+  parse("lab_clustering.R", keep.source = FALSE)
+  TRUE
+}, error = function(e) {
+  cat("PARSE lab_clustering.R: ", e$message, "\n")
+  FALSE
+})
+stopifnot(isTRUE(parsed_cluster))
+parsed_server <- tryCatch({
+  parse("ynow_server.R", keep.source = FALSE)
+  TRUE
+}, error = function(e) {
+  cat("PARSE ynow_server.R: ", e$message, "\n")
+  FALSE
+})
+stopifnot(isTRUE(parsed_server))
+
 cat("PASS lab_clustering\n")
 

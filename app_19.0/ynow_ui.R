@@ -5202,7 +5202,7 @@ ui <- dashboardPage(
           flex: 1 1 auto;
         }
 
-        /* 財報屬性標籤：黑底＋標題同款金字金框，無圓點（High growth／資料受限等一律） */
+        /* 財報屬性標籤：黑底＋標題同款金字金框，無圓點（High growth 等） */
         .ynow-fund-profile-badge {
           display: inline-flex;
           align-items: center;
@@ -5217,6 +5217,11 @@ ui <- dashboardPage(
           font-weight: 700;
           white-space: nowrap;
           line-height: 1.2;
+        }
+        /* Data-limited / 資料受限: same logo-flow fill as HCCSI numerals (shared class). */
+        .ynow-fund-profile-badge .ynow-hccsi-flow {
+          color: transparent !important;
+          -webkit-text-fill-color: transparent !important;
         }
         .ynow-fund-profile-badge .ynow-focus-metric-dot {
           display: none !important;
@@ -6131,7 +6136,8 @@ ui <- dashboardPage(
           .ynow-hccsi-flow { animation: none; background-position: 0% 50%; }
         }
         @supports not ((-webkit-background-clip: text) or (background-clip: text)) {
-          .ynow-hccsi-flow {
+          .ynow-hccsi-flow,
+          .ynow-fund-profile-badge .ynow-hccsi-flow {
             background-image: none !important;
             -webkit-text-fill-color: #0C5484 !important;
             color: #0C5484 !important;

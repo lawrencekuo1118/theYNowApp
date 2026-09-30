@@ -159,6 +159,22 @@ fs_item_to_focus_metric <- function(item) {
   )
 }
 
+#' TRUE when the visible token is Data-limited / 資料受限 (or profile id fallback).
+.ynow_is_data_limited_token <- function(x) {
+  t <- as.character(x %||% "")[1]
+  identical(t, "fallback") || identical(t, "Data-limited") || identical(t, "資料受限")
+}
+
+#' Wrap Data-limited / 資料受限 in the shared HCCSI logo-flow class (no second animation).
+.ynow_data_limited_flow_span <- function(lab, force = FALSE) {
+  txt <- as.character(lab %||% "")[1]
+  if (isTRUE(force) || .ynow_is_data_limited_token(txt)) {
+    tags$span(class = "ynow-hccsi-flow", txt)
+  } else {
+    txt
+  }
+}
+
 #' 財報屬性標籤（產業快覽 Yahoo Sector/Industry 列右側）
 #' @param profile_id 屬性 id
 #' @param profile_label 顯示名稱
@@ -177,12 +193,14 @@ fs_item_to_focus_metric <- function(item) {
     }
   }
   tip <- as.character(title %||% "")[1]
+  # Data-limited / 資料受限 uses HCCSI numeral teal flow fill; others stay gold-on-black.
+  inner_cls <- if (identical(pid, "fallback")) "ynow-hccsi-flow" else NULL
   tags$span(
     class = "ynow-fund-profile-badge",
     title = if (nzchar(tip)) tip else lab,
-    # 一律黑底金框金字、無圓點（含 High growth／Data-limited 等）
     tags$span(
       id = "ynow_fund_profile_badge_text",
+      class = inner_cls,
       `data-profile-id` = pid,
       lab
     )

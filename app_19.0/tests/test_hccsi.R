@@ -240,6 +240,9 @@ check("UI Rf not flow", grepl("ynow-macro-rf__value", macro_txt, fixed = TRUE) &
 check("CSS logo flow stops", grepl("ynow-logo-flow", ui_txt, fixed = TRUE) &&
   grepl("#0C5484", ui_txt, fixed = TRUE) && grepl("#249C60", ui_txt, fixed = TRUE) &&
   grepl("#1AA8B8", ui_txt, fixed = TRUE) && grepl("ynow-hccsi-flow", ui_txt, fixed = TRUE))
+kf <- gregexpr("@keyframes ynow-logo-flow", ui_txt, fixed = TRUE)[[1]]
+check("single logo-flow keyframes", length(kf) == 1L && kf[[1]] > 0)
+check("Data-limited reuses flow class", grepl(".ynow-fund-profile-badge .ynow-hccsi-flow", ui_txt, fixed = TRUE))
 
 if (!exists("tags", inherits = TRUE) && requireNamespace("htmltools", quietly = TRUE)) {
   tags <- htmltools::tags

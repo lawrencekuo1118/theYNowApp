@@ -1823,7 +1823,12 @@ server <- function(input, output, session) {
       ")),
       tags$div(
         class = "ynow-model-selector-summary",
-        tags$b("公司分類："), type_lab,
+        tags$b("公司分類："),
+        if (exists(".ynow_data_limited_flow_span", mode = "function")) {
+          .ynow_data_limited_flow_span(type_lab)
+        } else {
+          type_lab
+        },
         if (mark_roles) tagList(
           tags$span(style = "margin:0 8px; color:#bbb;", "|"),
           tags$b("主模型："), .model_label(prim),
@@ -1836,7 +1841,12 @@ server <- function(input, output, session) {
           tags$b("主模型："), "尚未標示"
         ),
         tags$br(),
-        tags$b(id = "ynow_fund_profile_label", "財報屬性："), fp_lab,
+        tags$b(id = "ynow_fund_profile_label", "財報屬性："),
+        if (exists(".ynow_data_limited_flow_span", mode = "function")) {
+          .ynow_data_limited_flow_span(fp_lab, force = identical(fp_id, "fallback"))
+        } else {
+          fp_lab
+        },
         tags$span(style = "margin:0 8px; color:#bbb;", "|"),
         tags$span(style = "color:#555;", fp_why),
         tags$br(),
@@ -12047,11 +12057,16 @@ server <- function(input, output, session) {
     # Keep n_finite out of display; Coverage is enough
     cols <- setdiff(cols, "n_finite")
     out <- lab_cluster_format_assignments_df(df[, cols, drop = FALSE])
+    cov_idx <- match(cov_col, names(out))
+    if (is.finite(cov_idx) && exists("lab_cluster_coverage_flow_html", mode = "function")) {
+      out[[cov_col]] <- lab_cluster_coverage_flow_html(out[[cov_col]])
+    }
     num_cols <- names(out)[vapply(out, is.numeric, logical(1)) & names(out) != "Cluster_ID"]
     # Default row order already: Radar focus first, then truncate-logic sort
     dt <- DT::datatable(
       out,
       rownames = FALSE,
+      escape = if (is.finite(cov_idx)) -as.integer(cov_idx) else TRUE,
       options = list(pageLength = 25, scrollX = TRUE, order = list())
     )
     if (length(num_cols)) {
