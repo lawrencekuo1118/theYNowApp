@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12625985
+bundleId=12625997
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=60703bc477a3c9037dc7f7d4a5d1fc007719a0af
-commit=60703bc477a3c9037dc7f7d4a5d1fc007719a0af
-short=60703bc
-message=Show Taiwan boards on Macro KPI cards when market is TW.
-captured_at=2026-09-30T04:55:40Z
+aligned_git=9f56b91a7604861dfb29b38632013d472c952f68
+commit=9f56b91a7604861dfb29b38632013d472c952f68
+short=9f56b91
+message=Add HCCSI composite on the Macro Rf row as a systemic-risk observation tool.
+captured_at=2026-09-30T05:01:31Z
 source_branch=cursor/lifecycle-v19-3fb1
 display_version=v19.15
-note=Canonical live line is app_19.0. Bundle 12625985 = v19.14 Macro TW market KPI cards and Full click-to-chart use Taiwan boards (^TWII TAIEX, ^TWOII TPEx, ^TELI Electronics, ^TFNI Finance) instead of S&P 500 / Nasdaq / Dow / SOX. US mode stays the US four. Lite hides the chart slot. Also includes v19.13 Rf Notes removal, v19.12 relative-perf help outside Notes, v19.11 F-Score boxes default-visible, page-lead outside Notes, v19.10 Lite Smart Analysis blurb, v19.09 Full-only Macro KPI click-to-chart, collapsible Notes, and YNOW KPI jump row. Deploy via scripts/deploy_app_19.R. Supersedes 12625973 / 12625956 / 12625916 / 12625890 / 12625810 / 12625762 / 12625733 / 12625709 / 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
+note=Canonical live line is app_19.0. Bundle 12625997 = v19.15 HCCSI composite KPI sits 1:1 beside Rf (10Y) on Macro & Market Trends (TW and US, Lite and Full). Full click expands four indices (Systems Health / Systemic Stress / Concentration and Fragility / Market Observation) below the row; Lite shows the single number only. Observation tool, not a buy signal. Also keeps TW board KPI cards, v19.13 Rf Notes removal, v19.12 relative-perf help outside Notes, v19.11 F-Score boxes default-visible, page-lead outside Notes, v19.10 Lite Smart Analysis blurb, v19.09 Full-only Macro KPI click-to-chart, collapsible Notes, and YNOW KPI jump row. Deploy via scripts/deploy_app_19.R. Supersedes 12625985 / 12625973 / 12625956 / 12625916 / 12625890 / 12625810 / 12625762 / 12625733 / 12625709 / 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
