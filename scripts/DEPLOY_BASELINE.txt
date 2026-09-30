@@ -8,5 +8,5 @@ short=e57f96b
 message=chore: record shinyapps baseline bundle 12625600 (app_19.0)
 captured_at=2026-09-30T03:34:20Z
 source_branch=cursor/lifecycle-v19-3fb1
-display_version=v19.05
+display_version=v19.06
 note=Canonical live line is app_19.0. Bundle 12625616 = v19.05 YNOW tab restack (財報體質 → 財報警訊 → 動態產業泡沫與權重集中度; title YNOW; Lite=Full). Deploy via scripts/deploy_app_19.R. Supersedes 12625600 / 12625583 / 12625565.
