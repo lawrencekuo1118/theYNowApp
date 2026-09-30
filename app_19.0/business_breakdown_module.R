@@ -194,18 +194,27 @@ business_breakdown_lab_ui <- function(id = "bblab") {
       )
     ),
 
-    # 3 Current revenue mix
+    # 3 Revenue mix (current donut + five-year evolution)
     fluidRow(
       box(
         title = tagList(
           tags$span(class = "ynow-bblab-chapter__num", "3"),
           icon("chart-pie"),
-          tags$span(id = "ynow_bblab_ch3_title", "Current revenue mix")
+          tags$span(id = "ynow_bblab_ch3_title", "Revenue mix")
         ),
         width = 12, status = "info", solidHeader = TRUE, collapsible = TRUE,
         `data-bblab-chapter` = "3",
         tags$p(id = "ynow_bblab_ch3_help", class = "help-block",
-               "Each slice is a share of reported consolidated revenue for the current period."),
+               paste0(
+                 "Current-period slices are shares of reported consolidated revenue. ",
+                 "Below, revenue share by business for up to five fiscal years on the same reporting dimension. ",
+                 "Years that cannot be mapped are omitted; shares are never fabricated or filled with 0."
+               )),
+        tags$h4(
+          class = "ynow-bblab-subhead",
+          id = "ynow_bblab_ch3_current_label",
+          "Current period"
+        ),
         fluidRow(
           column(width = 3, radioButtons(ns("chart_mode"), NULL,
                                          choices = c("Share %" = "pct", "Amount" = "amount"),
@@ -223,20 +232,12 @@ business_breakdown_lab_ui <- function(id = "bblab") {
           )
         ),
         uiOutput(ns("chart_status")),
-        plotly::plotlyOutput(ns("donut"), height = "420px")
-      )
-    ),
-
-    # 4 Five-year mix evolution
-    fluidRow(
-      box(
-        title = tagList(
-          tags$span(class = "ynow-bblab-chapter__num", "4"),
-          icon("chart-area"),
-          tags$span(id = "ynow_bblab_ch4_title", "Five-year mix evolution")
+        plotly::plotlyOutput(ns("donut"), height = "420px"),
+        tags$h4(
+          class = "ynow-bblab-subhead",
+          id = "ynow_bblab_ch4_title",
+          "Five-year mix evolution"
         ),
-        width = 12, status = "info", solidHeader = TRUE, collapsible = TRUE,
-        `data-bblab-chapter` = "4",
         tags$p(id = "ynow_bblab_ch4_help", class = "help-block",
                paste0(
                  "Revenue share by business for up to five fiscal years, using the same reporting dimension. ",
@@ -247,30 +248,30 @@ business_breakdown_lab_ui <- function(id = "bblab") {
       )
     ),
 
-    # 5 Business cards
+    # 4 Business cards
     fluidRow(
       box(
         title = tagList(
-          tags$span(class = "ynow-bblab-chapter__num", "5"),
+          tags$span(class = "ynow-bblab-chapter__num", "4"),
           icon("th-large"),
           tags$span(id = "ynow_bblab_ch5_title", "Business cards")
         ),
         width = 12, status = "primary", solidHeader = TRUE,
-        `data-bblab-chapter` = "5",
+        `data-bblab-chapter` = "4",
         uiOutput(ns("cards"))
       )
     ),
 
-    # 6 Reconciliation
+    # 5 Reconciliation
     fluidRow(
       box(
         title = tagList(
-          tags$span(class = "ynow-bblab-chapter__num", "6"),
+          tags$span(class = "ynow-bblab-chapter__num", "5"),
           icon("balance-scale"),
           tags$span(id = "ynow_bblab_ch6_title", "Reconciliation")
         ),
         width = 12, status = "warning", solidHeader = TRUE,
-        `data-bblab-chapter` = "6",
+        `data-bblab-chapter` = "5",
         uiOutput(ns("recon"))
       )
     ),
@@ -284,16 +285,16 @@ business_breakdown_lab_ui <- function(id = "bblab") {
       )
     ),
 
-    # 7 Sources — Notes collapsed; chapter header stays visible
+    # 6 Sources — Notes collapsed; chapter header stays visible
     fluidRow(
       box(
         title = tagList(
-          tags$span(class = "ynow-bblab-chapter__num", "7"),
+          tags$span(class = "ynow-bblab-chapter__num", "6"),
           icon("book"),
           tags$span(id = "ynow_bblab_ch7_title", "Sources")
         ),
         width = 12, status = "info", solidHeader = TRUE,
-        `data-bblab-chapter` = "7",
+        `data-bblab-chapter` = "6",
         tags$p(
           id = "ynow_bblab_sources_chrome",
           class = "help-block",

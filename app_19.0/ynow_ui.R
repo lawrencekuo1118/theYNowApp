@@ -2314,6 +2314,12 @@ ui <- dashboardPage(
           border-radius: 50%;
           vertical-align: middle;
         }
+        .ynow-bblab-subhead {
+          margin: 18px 0 6px 0;
+          font-size: 15px;
+          font-weight: 700;
+          color: #0C5484;
+        }
         .ynow-bblab-kpis {
           display: flex;
           flex-wrap: wrap;
@@ -3745,6 +3751,7 @@ ui <- dashboardPage(
             setBtText('ynow_bblab_ch2_help', 'bblab_ch2_help');
             setBtText('ynow_bblab_ch3_title', 'bblab_ch3_title');
             setBtText('ynow_bblab_ch3_help', 'bblab_ch3_help');
+            setBtText('ynow_bblab_ch3_current_label', 'bblab_ch3_current_label');
             setBtText('ynow_bblab_ch4_title', 'bblab_ch4_title');
             setBtText('ynow_bblab_ch4_help', 'bblab_ch4_help');
             setBtText('ynow_bblab_ch4_limited', 'bblab_ch4_limited');

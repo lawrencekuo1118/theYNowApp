@@ -1476,8 +1476,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_experimental_badge = "Experimental Feature",
     bblab_page_sub = paste0(
       "Walk through the company's financial structure from the statement viewpoint: ",
-      "consolidated totals, how the filer splits the business, current mix, ",
-      "five-year share evolution, and per-business cards. Experimental; not a valuation engine."
+      "consolidated totals, how the filer splits the business, revenue mix ",
+      "(current period and five-year share evolution), and per-business cards. ",
+      "Experimental; not a valuation engine."
     ),
     bblab_listed_only_notice = "Listed stocks only (Taiwan and U.S. exchanges).",
     bblab_listed_only_scope = paste0(
@@ -1509,8 +1510,13 @@ locale_for_market <- function(mode = get_market_mode()) {
       "One primary reporting dimension is selected. Geography that only describes ",
       "customer location is never the business split. Overlapping dimensions are never added together."
     ),
-    bblab_ch3_title = "Current revenue mix",
-    bblab_ch3_help = "Each slice is a share of reported consolidated revenue for the current period.",
+    bblab_ch3_title = "Revenue mix",
+    bblab_ch3_help = paste0(
+      "Current-period slices are shares of reported consolidated revenue. ",
+      "Below, revenue share by business for up to five fiscal years on the same reporting dimension. ",
+      "Years that cannot be mapped are omitted; shares are never fabricated or filled with 0."
+    ),
+    bblab_ch3_current_label = "Current period",
     bblab_ch4_title = "Five-year mix evolution",
     bblab_ch4_help = paste0(
       "Revenue share by business for up to five fiscal years, using the same reporting dimension. ",
@@ -1548,7 +1554,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_cor_recon_label = "Cost of Revenue reconciliation",
     bblab_reval_avail_label = "Revaluation availability",
     bblab_limitations_label = "Limitations",
-    bblab_chart_title = "Current revenue mix",
+    bblab_chart_title = "Revenue mix",
     bblab_cards_title = "Business cards",
     bblab_recon_title = "Reconciliation",
     bblab_sources_title = "Sources",
@@ -3090,8 +3096,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_page_title = "業務拆解實驗室",
     bblab_experimental_badge = "實驗功能",
     bblab_page_sub = paste0(
-      "以財報觀點逐步拆解公司財務結構：合併總覽、業務切分方式、當期組成、",
-      "五年占比演進，以及各事業簡化財報。實驗功能，並非估值引擎。"
+      "以財報觀點逐步拆解公司財務結構：合併總覽、業務切分方式、",
+      "營收組成（當期與五年占比演進），以及各事業簡化財報。實驗功能，並非估值引擎。"
     ),
     bblab_listed_only_notice = "僅支援上市個股分析（台股、美股）。",
     bblab_listed_only_scope = paste0(
@@ -3120,8 +3126,13 @@ locale_for_market <- function(mode = get_market_mode()) {
       "只選一個主要申報維度。僅描述客戶所在地的地區別不會被當作業務切分。",
       "重疊的申報維度不會加總合併。"
     ),
-    bblab_ch3_title = "當期營收組成",
-    bblab_ch3_help = "各切片為當期已申報合併營收的占比。",
+    bblab_ch3_title = "營收組成",
+    bblab_ch3_help = paste0(
+      "各切片為當期已申報合併營收的占比。",
+      "下方以同一申報維度呈現最多五個會計年度的事業營收占比。",
+      "無法對應的年度會略過，不會虛構占比或補 0。"
+    ),
+    bblab_ch3_current_label = "當期",
     bblab_ch4_title = "五年結構占比演進",
     bblab_ch4_help = paste0(
       "同一申報維度下，最多五個會計年度的事業營收占比。",
@@ -3156,7 +3167,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_cor_recon_label = "Cost of Revenue 調節",
     bblab_reval_avail_label = "重估可用性",
     bblab_limitations_label = "限制",
-    bblab_chart_title = "當期營收組成",
+    bblab_chart_title = "營收組成",
     bblab_cards_title = "各事業簡化財報",
     bblab_recon_title = "對帳",
     bblab_sources_title = "來源與方法",

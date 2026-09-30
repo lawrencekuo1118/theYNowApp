@@ -535,7 +535,8 @@ for (k in c("menu_business_breakdown_lab", "bblab_experimental_badge", "bblab_pa
             "bblab_fallback_gm_label",
             "bblab_ch1_title", "bblab_ch2_title", "bblab_ch3_title", "bblab_ch4_title",
             "bblab_ch5_title", "bblab_ch6_title", "bblab_ch7_title",
-            "bblab_ch1_help", "bblab_ch2_help", "bblab_ch3_help", "bblab_ch4_help",
+            "bblab_ch1_help", "bblab_ch2_help", "bblab_ch3_help", "bblab_ch3_current_label",
+            "bblab_ch4_help",
             "bblab_ch4_limited", "bblab_geo_veto_why", "bblab_overlap_why",
             "bblab_history_yaxis", "bblab_kpi_revenue", "bblab_kpi_cor", "bblab_kpi_gp",
             "bblab_kpi_gm",
@@ -550,8 +551,10 @@ check("i18n chapter titles en + zh-TW", {
     identical(.UI_STRINGS$`zh-TW`$bblab_ch1_title, "合併財報總覽") &&
     identical(.UI_STRINGS$en$bblab_ch2_title, "How the statements split the business") &&
     identical(.UI_STRINGS$`zh-TW`$bblab_ch2_title, "財報如何切分業務") &&
-    identical(.UI_STRINGS$en$bblab_ch3_title, "Current revenue mix") &&
-    identical(.UI_STRINGS$`zh-TW`$bblab_ch3_title, "當期營收組成") &&
+    identical(.UI_STRINGS$en$bblab_ch3_title, "Revenue mix") &&
+    identical(.UI_STRINGS$`zh-TW`$bblab_ch3_title, "營收組成") &&
+    identical(.UI_STRINGS$en$bblab_ch3_current_label, "Current period") &&
+    identical(.UI_STRINGS$`zh-TW`$bblab_ch3_current_label, "當期") &&
     identical(.UI_STRINGS$en$bblab_ch4_title, "Five-year mix evolution") &&
     identical(.UI_STRINGS$`zh-TW`$bblab_ch4_title, "五年結構占比演進") &&
     identical(.UI_STRINGS$en$bblab_ch5_title, "Business cards") &&
@@ -569,9 +572,25 @@ check("i18n chapter titles en + zh-TW", {
 })
 check("applyUiLocale wires chapter titles", {
   grepl("setBtText('ynow_bblab_ch1_title', 'bblab_ch1_title')", ui_src, fixed = TRUE) &&
+    grepl("setBtText('ynow_bblab_ch3_current_label', 'bblab_ch3_current_label')", ui_src, fixed = TRUE) &&
     grepl("setBtText('ynow_bblab_ch4_title', 'bblab_ch4_title')", ui_src, fixed = TRUE) &&
     grepl("setBtText('ynow_bblab_ch4_limited', 'bblab_ch4_limited')", ui_src, fixed = TRUE) &&
     grepl("setBtText('ynow_bblab_ch7_title', 'bblab_ch7_title')", ui_src, fixed = TRUE)
+})
+check("mix chapters are one numbered box with six badges", {
+  grepl("Revenue mix", mod_src, fixed = TRUE) &&
+    grepl("ynow_bblab_ch3_current_label", mod_src, fixed = TRUE) &&
+    grepl("ynow-bblab-subhead", mod_src, fixed = TRUE) &&
+    grepl("plotlyOutput(ns(\"donut\")", mod_src, fixed = TRUE) &&
+    grepl("plotlyOutput(ns(\"history\")", mod_src, fixed = TRUE) &&
+    grepl("`data-bblab-chapter` = \"6\"", mod_src, fixed = TRUE) &&
+    !grepl("`data-bblab-chapter` = \"7\"", mod_src, fixed = TRUE) &&
+    !grepl('ynow-bblab-chapter__num", "7"', mod_src, fixed = TRUE) &&
+    grepl('ynow-bblab-chapter__num", "6"', mod_src, fixed = TRUE) &&
+    grepl("current period and five-year share evolution",
+          paste(.UI_STRINGS$en$bblab_page_sub, collapse = " "), fixed = TRUE) &&
+    grepl("當期與五年占比演進",
+          paste(.UI_STRINGS$`zh-TW`$bblab_page_sub, collapse = " "), fixed = TRUE)
 })
 check("chapter titles do not repeat badge numbering", {
   keys <- paste0("bblab_ch", 1:7, "_title")
@@ -718,14 +737,26 @@ if (requireNamespace("shiny", quietly = TRUE) &&
           grepl("ynow_bblab_ch1_title", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_ch2_title", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_ch3_title", lab_ui_html, fixed = TRUE) &&
+          grepl("ynow_bblab_ch3_current_label", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_ch4_title", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_ch5_title", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_ch6_title", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_ch7_title", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_fallback_gm_label", lab_ui_html, fixed = TRUE))
+  check("lab UI HTML merges mix charts under chapter 3", {
+    grepl("ynow-bblab-subhead", lab_ui_html, fixed = TRUE) &&
+      grepl(">Revenue mix<", lab_ui_html, fixed = TRUE) &&
+      grepl(">Current period<", lab_ui_html, fixed = TRUE) &&
+      grepl(">Five-year mix evolution<", lab_ui_html, fixed = TRUE) &&
+      grepl("data-bblab-chapter=\"3\"", lab_ui_html, fixed = TRUE) &&
+      grepl("data-bblab-chapter=\"6\"", lab_ui_html, fixed = TRUE) &&
+      !grepl("data-bblab-chapter=\"7\"", lab_ui_html, fixed = TRUE) &&
+      !grepl(">Current revenue mix<", lab_ui_html, fixed = TRUE)
+  })
   check("chapter order in Testing Lab markup", {
     ids <- c("ynow_bblab_search_title",
              "ynow_bblab_ch1_title", "ynow_bblab_ch2_title", "ynow_bblab_ch3_title",
+             "ynow_bblab_ch3_current_label",
              "ynow_bblab_ch4_title", "ynow_bblab_ch5_title", "ynow_bblab_ch6_title",
              "ynow_bblab_ch7_title")
     pos <- vapply(ids, function(id) {

@@ -41,7 +41,8 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
     "menu_business_breakdown_lab", "bblab_experimental_badge", "bblab_page_sub",
     "bblab_page_title", "bblab_gm_unestimable", "bblab_reval_unavailable",
     "bblab_listed_only_notice", "bblab_listed_only_scope",
-    "bblab_ch1_title", "bblab_ch4_title", "bblab_ch4_limited", "bblab_ch7_title"
+    "bblab_ch1_title", "bblab_ch3_title", "bblab_ch3_current_label",
+    "bblab_ch4_title", "bblab_ch4_limited", "bblab_ch7_title"
   )
   for (k in keys) {
     en <- .UI_STRINGS$en[[k]]
