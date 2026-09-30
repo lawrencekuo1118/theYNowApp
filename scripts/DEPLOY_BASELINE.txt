@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12626810
+bundleId=12626822
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=dfa6a02eb9491909931f24c60388996e428d280b
-commit=dfa6a02eb9491909931f24c60388996e428d280b
-short=dfa6a02
-message=Add a visible listed-stock-only notice to Business Breakdown Lab.
-captured_at=2026-09-30T09:27:13Z
+aligned_git=78d6025af893e3ece78fe09feb37e4fc14c7d949
+commit=78d6025af893e3ece78fe09feb37e4fc14c7d949
+short=78d6025
+message=Drop default-off parenthetical from Lab Gross Margin fallback label.
+captured_at=2026-09-30T09:30:36Z
 source_branch=cursor/bblab-into-testing-3fb1
 display_version=v19.26
-note=Canonical live line is app_19.0. Bundle 12626810 = v19.26 Lab Testing masthead always shows listed-stock-only copy (en-US: Listed stocks only (Taiwan and U.S. exchanges). / zh-TW: 僅支援上市個股分析（台股、美股）。) outside collapsed Notes; Experimental Feature badge kept; scoped Search hint for clearly non-listed names does not block valid TW/US listings. Also keeps v19.25 Lab cards with segment/consolidated unit alignment (no 0.0% / recon-dominated pie), single-business donut still renders, GM fallback label without default-off parenthetical; v19.24 Lab Testing UI without the 9-step Progress stepper; v19.23 Lab Search maps filed 10-K operating-segment tables to multiple business cards; v19.22 Lab nested inside Testing (no sidebar BBL item); v19.21 reval-unavailable scoped degradation. Deploy via scripts/deploy_app_19.R. Supersedes 12626794 / 12626772 / 12626690 / 12626668 / 12626547 / 12626454 / 12626418 / 12626362 / 12626262 / 12626032 / 12625997 / 12625985 / 12625973 / 12625956 / 12625916 / 12625890 / 12625810 / 12625762 / 12625733 / 12625709 / 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
+note=Canonical live line is app_19.0. Bundle 12626822 = v19.26 Lab GM fallback checkbox label without 「（預設關閉）」 / “(off by default)” (control stays unchecked); listed-stock-only Testing notice (Taiwan and U.S. exchanges) outside Notes; Data-limited / 資料受限 uses the same HCCSI logo-flow fill. Also keeps v19.25 Lab cards with segment/consolidated unit alignment (no 0.0% / recon-dominated pie), single-business donut still renders; v19.24 Lab Testing UI without the 9-step Progress stepper; v19.23 Lab Search maps filed 10-K operating-segment tables to multiple business cards; v19.22 Lab nested inside Testing (no sidebar BBL item); v19.21 reval-unavailable scoped degradation. Deploy via scripts/deploy_app_19.R. Supersedes 12626810 / 12626794 / 12626772 / 12626690 / 12626668 / 12626547 / 12626454 / 12626418 / 12626362 / 12626262 / 12626032 / 12625997 / 12625985 / 12625973 / 12625956 / 12625916 / 12625890 / 12625810 / 12625762 / 12625733 / 12625709 / 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
