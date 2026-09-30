@@ -2283,8 +2283,6 @@ ui <- dashboardPage(
         }
         .ynow-bblab-recon--pass { color: #1e7a46; font-weight: 700; }
         .ynow-bblab-recon--fail { color: #b33b3b; font-weight: 700; }
-        .ynow-bblab-progress__list { font-size: 12px; color: #666; padding-left: 1.2em; }
-        .ynow-bblab-progress__list li.done { color: #1e7a46; }
         /* ---- Lite mode: hide Full-only chrome; show Smart Analysis ---- */
         .sidebar-menu a[data-value="smart_analysis"],
         .sidebar-menu li:has(> a[data-value="smart_analysis"]) {

@@ -542,7 +542,32 @@ for (pf in parse_files) {
   check(paste("parse", pf), isTRUE(okp))
 }
 
-check("progress stages 1-9", identical(length(BBLAB_PROGRESS_STAGES), 9L))
+nine_stage_labels <- c(
+  "1 Resolve issuer", "2 Retrieve statements", "3 Parse disclosures",
+  "4 Detect primary dimension", "5 Identify major businesses",
+  "6 Assign revenue", "7 Assign Cost of Revenue / Gross Profit",
+  "8 Reconcile and revalue", "9 Chart and cards"
+)
+check("Lab markup has no 9-step Progress UI", {
+  hay <- paste(mod_src, ui_src, collapse = "\n")
+  !grepl("ynow-bblab-progress", hay, fixed = TRUE) &&
+    !grepl('uiOutput(ns("progress"))', mod_src, fixed = TRUE) &&
+    !grepl("output$progress", mod_src, fixed = TRUE) &&
+    !grepl("%s / 9", mod_src, fixed = TRUE) &&
+    !grepl("Progress 9", hay, fixed = TRUE) &&
+    !any(vapply(nine_stage_labels, function(s) grepl(s, hay, fixed = TRUE), logical(1))) &&
+    is.null(.UI_STRINGS$en$bblab_progress_label) &&
+    is.null(.UI_STRINGS$en$bblab_stage_resolve_issuer) &&
+    is.null(.UI_STRINGS$en$bblab_stage_chart_cards) &&
+    is.null(.UI_STRINGS$`zh-TW`$bblab_progress_label) &&
+    is.null(.UI_STRINGS$`zh-TW`$bblab_stage_resolve_issuer) &&
+    is.null(.UI_STRINGS$`zh-TW`$bblab_stage_chart_cards)
+})
+check("engine still tracks internal stage for scoped errors", {
+  is.list(rt$progress) &&
+    is.character(rt$progress$stage) &&
+    nzchar(rt$progress$stage[1])
+})
 check("FX missing blocks display only", {
   fxm <- bblab_classify_fx_adr("TWD", "USD", usd_twd = NA_real_)
   "REQUIRED_FX_RATE_MISSING" %in% fxm$codes && isTRUE(fxm$fx_required)
@@ -561,11 +586,25 @@ if (requireNamespace("shiny", quietly = TRUE) &&
     library(shiny)
     library(shinydashboard)
   })
-  ui_err <- tryCatch({
-    business_breakdown_lab_ui("bblab")
-    NULL
-  }, error = function(e) conditionMessage(e))
-  check("lab UI constructs at startup", is.null(ui_err))
+  lab_ui_html <- tryCatch({
+    paste(as.character(business_breakdown_lab_ui("bblab")), collapse = " ")
+  }, error = function(e) {
+    attr(e, "msg") <- conditionMessage(e)
+    ""
+  })
+  check("lab UI constructs at startup", nzchar(lab_ui_html))
+  check("lab UI keeps Search/analysis/cards/chart/recon",
+        grepl("ynow_bblab_search_title", lab_ui_html, fixed = TRUE) &&
+          grepl("ynow_bblab_summary_title", lab_ui_html, fixed = TRUE) &&
+          grepl("ynow_bblab_chart_title", lab_ui_html, fixed = TRUE) &&
+          grepl("ynow_bblab_cards_title", lab_ui_html, fixed = TRUE) &&
+          grepl("ynow_bblab_recon_title", lab_ui_html, fixed = TRUE))
+  check("lab UI HTML has no Progress 9/9 or nine stage labels",
+        !grepl("bblab-progress", lab_ui_html, fixed = TRUE) &&
+          !grepl("ynow-bblab-progress", lab_ui_html, fixed = TRUE) &&
+          !grepl("Progress 9", lab_ui_html, fixed = TRUE) &&
+          !grepl(" / 9", lab_ui_html, fixed = TRUE) &&
+          !any(vapply(nine_stage_labels, function(s) grepl(s, lab_ui_html, fixed = TRUE), logical(1))))
 }
 check("experimental badge locale keys",
       grepl("ynow_bblab_experimental_badge", ui_src, fixed = TRUE) &&

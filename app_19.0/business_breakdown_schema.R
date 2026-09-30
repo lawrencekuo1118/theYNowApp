@@ -20,17 +20,6 @@ BBLAB_DIMENSION_KINDS <- c(
   "revenue_disaggregation", "mda", "earnings", "ir_deck",
   "official_description", "geography", "technology", "platform"
 )
-BBLAB_PROGRESS_STAGES <- c(
-  "resolve_issuer",
-  "retrieve_statements",
-  "parse_disclosures",
-  "detect_dimension",
-  "identify_businesses",
-  "assign_revenue",
-  "assign_cost_gp",
-  "reconcile_revalue",
-  "chart_cards"
-)
 BBLAB_ERROR_CODES <- c(
   "REQUIRED_FX_RATE_MISSING",
   "REQUIRED_FX_RATE_INVALID",

@@ -98,7 +98,6 @@ business_breakdown_lab_ui <- function(id = "bblab") {
       )
     ),
 
-    uiOutput(ns("progress")),
     uiOutput(ns("toasts_slot")),
 
     # 2 Analysis summary
@@ -236,7 +235,6 @@ business_breakdown_lab_server <- function(id = "bblab",
     lab_entity <- reactiveVal("")
     lab_payload <- reactiveVal(NULL)
     lab_result <- reactiveVal(NULL)
-    lab_stage <- reactiveVal(NULL)
     lab_codes <- reactiveVal(character(0))
     focus_id <- reactiveVal(NULL)
     source_status <- reactiveVal("idle")
@@ -284,7 +282,6 @@ business_breakdown_lab_server <- function(id = "bblab",
 
       withProgress(message = ui_msg("bblab_progress_running"), value = 0, {
         incProgress(0.1, detail = ui_msg("bblab_stage_resolve"))
-        lab_stage("resolve_issuer")
         entity_name <- tk
         f_ccy <- NA_character_
         q_ccy <- NA_character_
@@ -295,7 +292,6 @@ business_breakdown_lab_server <- function(id = "bblab",
         sum_df <- NULL
 
         incProgress(0.25, detail = ui_msg("bblab_stage_retrieve"))
-        lab_stage("retrieve_statements")
         if (exists("get_summary_data", mode = "function")) {
           sum_df <- tryCatch(get_summary_data(tk), error = function(e) NULL)
         }
@@ -335,7 +331,6 @@ business_breakdown_lab_server <- function(id = "bblab",
         }
 
         incProgress(0.45, detail = ui_msg("bblab_stage_parse"))
-        lab_stage("parse_disclosures")
         extra_disc <- NULL
         if (is.function(disclosures_provider)) {
           extra_disc <- tryCatch(disclosures_provider(tk, d_is), error = function(e) NULL)
@@ -382,7 +377,6 @@ business_breakdown_lab_server <- function(id = "bblab",
         )
         lab_result(result)
         lab_codes(result$codes %||% character(0))
-        lab_stage(result$progress$stage %||% "chart_cards")
         incProgress(1, detail = ui_msg("bblab_stage_done"))
 
         for (tst in result$toasts %||% list()) {
@@ -451,23 +445,6 @@ business_breakdown_lab_server <- function(id = "bblab",
                     statements_unavailable = "bblab_source_unavailable",
                     "bblab_source_idle")
       tags$p(class = "help-block", id = "ynow_bblab_source_status", ui_msg(key))
-    })
-
-    output$progress <- renderUI({
-      stage <- lab_stage()
-      if (is.null(stage)) return(NULL)
-      idx <- bblab_progress_index(stage)
-      tags$div(
-        class = "ynow-bblab-progress",
-        tags$span(ui_msg("bblab_progress_label"), sprintf("%s / 9", idx)),
-        tags$ol(
-          class = "ynow-bblab-progress__list",
-          lapply(seq_along(BBLAB_PROGRESS_STAGES), function(i) {
-            tags$li(class = if (i <= idx) "done" else NULL,
-                    ui_msg(paste0("bblab_stage_", BBLAB_PROGRESS_STAGES[[i]])))
-          })
-        )
-      )
     })
 
     output$summary <- renderUI({

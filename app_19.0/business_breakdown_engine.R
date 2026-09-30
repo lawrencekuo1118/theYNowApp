@@ -1775,8 +1775,3 @@ bblab_payload_from_statements <- function(d_is, ticker = "", entity_name = "",
     income_statement = if (is.data.frame(d_is)) d_is else NULL
   )
 }
-
-bblab_progress_index <- function(stage) {
-  i <- match(stage, BBLAB_PROGRESS_STAGES)
-  if (is.na(i)) 0L else as.integer(i)
-}
