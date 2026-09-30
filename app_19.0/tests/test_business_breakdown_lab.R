@@ -551,6 +551,133 @@ check("TSM fixture is data-only", {
     identical(rt$primary_dimension$kind, "revenue_disaggregation")
 })
 
+# ---- Search path: auto-detect from fixture statements; reval does not block cards ----
+yahoo_two_product_is <- function() {
+  data.frame(
+    Breakdown = c("Total Revenue", "Widgets", "Gadgets", "Cost Of Revenue", "Gross Profit",
+                  "Research And Development", "Selling General And Administration"),
+    `12/31/2024` = c("200", "120", "80", "80", "120", "11", "7"),
+    check.names = FALSE, stringsAsFactors = FALSE
+  )
+}
+yahoo_consol_only_is <- function() {
+  data.frame(
+    Breakdown = c("Total Revenue", "Operating Revenue", "Cost Of Revenue", "Gross Profit"),
+    `12/31/2024` = c("1000", "1000", "420", "580"),
+    check.names = FALSE, stringsAsFactors = FALSE
+  )
+}
+
+search_two <- bblab_payload_from_statements(
+  yahoo_two_product_is(), ticker = "FIXT", entity_name = "Two-product fixture",
+  statement_currency = "USD", period = "12/31/2024"
+)
+check("Search auto-detects product lines from statements",
+      length(search_two$dimensions) >= 1L &&
+        identical(search_two$dimensions[[1]]$kind, "product_service") &&
+        length(search_two$dimensions[[1]]$components) == 2L)
+rsrch <- bblab_analyze(search_two)
+check("Search analysis keeps reported Rev cards when reval UNAVAILABLE",
+      isTRUE(rsrch$ok) &&
+        "BUSINESS_REVALUATION_UNAVAILABLE" %in% rsrch$codes &&
+        isTRUE(!isTRUE(rsrch$revaluation_available)) &&
+        length(rsrch$businesses) == 2L &&
+        all(vapply(rsrch$businesses, function(c) is.finite(c$revenue) && c$revenue > 0, logical(1))) &&
+        abs(sum(vapply(rsrch$businesses, function(c) c$revenue, numeric(1))) - 200) < 1e-6)
+check("reval toast does not block Rev/CoR/GP", {
+  t <- bblab_toast_payload("BUSINESS_REVALUATION_UNAVAILABLE", recon_pass = TRUE,
+                           chart_eligible = TRUE)
+  identical(t[[1]]$blocked_outputs, "revaluation_ratio") &&
+    isTRUE(!isTRUE(t[[1]]$page_error)) &&
+    all(c("business_cards", "revenue", "cost_of_revenue", "gross_profit") %in% t[[1]]$remaining_outputs)
+})
+
+consol_pl <- bblab_payload_from_statements(
+  yahoo_consol_only_is(), ticker = "ONE", entity_name = "Consolidated-only fixture",
+  statement_currency = "USD"
+)
+rconsol <- bblab_analyze(consol_pl)
+check("no fabricated split from consolidated-only IS",
+      length(consol_pl$dimensions) == 0L &&
+        length(rconsol$businesses) == 1L &&
+        is.finite(rconsol$businesses[[1]]$revenue) &&
+        is.finite(rconsol$businesses[[1]]$cor) &&
+        is.finite(rconsol$businesses[[1]]$gp) &&
+        "BUSINESS_REVALUATION_UNAVAILABLE" %in% rconsol$codes &&
+        isTRUE(rconsol$ok))
+
+if (requireNamespace("shiny", quietly = TRUE)) {
+  card_html <- paste(as.character(.bblab_card_html(rconsol$businesses[[1]], "en", FALSE, 1000)),
+                     collapse = " ")
+  check("card HTML keeps Revenue/CoR/GP when reval unavailable",
+        grepl("Revenue:", card_html, fixed = TRUE) &&
+          grepl("Cost of Revenue:", card_html, fixed = TRUE) &&
+          grepl("Gross Profit:", card_html, fixed = TRUE) &&
+          grepl("1,000", card_html, fixed = TRUE) &&
+          grepl("Revaluation ratio unavailable", card_html, fixed = TRUE))
+}
+
+note_tbl <- list(list(
+  short_name = "Segment Information",
+  kind = "operating_segment",
+  headers = c("Segment", "Revenue", "Cost of Revenue"),
+  rows = list(
+    c("Business A", "120", "40"),
+    c("Business B", "80", "40"),
+    c("Total", "200", "80")
+  )
+))
+note_pl <- bblab_payload_from_statements(
+  data.frame(
+    Breakdown = c("Total Revenue", "Cost Of Revenue", "Gross Profit"),
+    `12/31/2024` = c("200", "80", "120"),
+    check.names = FALSE, stringsAsFactors = FALSE
+  ),
+  ticker = "FIXT", entity_name = "Note fixture",
+  statement_currency = "USD", period = "12/31/2024",
+  segment_tables = note_tbl
+)
+rnote <- bblab_analyze(note_pl)
+check("filed segment note tables become businesses",
+      identical(rnote$primary_dimension$kind, "operating_segment") &&
+        identical(rnote$level, "A") &&
+        length(rnote$businesses) == 2L &&
+        all(vapply(rnote$businesses, function(c) is.finite(c$revenue) && is.finite(c$cor) &&
+                     is.finite(c$gp), logical(1))) &&
+        "BUSINESS_REVALUATION_UNAVAILABLE" %in% rnote$codes)
+
+geo_only_payload <- list(
+  ticker = "GEO", entity = list(name = "Geo only"),
+  statement_currency = "USD", period = "2024",
+  consolidated = bblab_consolidated(200, 80, 120, "USD", "2024"),
+  dimensions = list(bblab_dimension(
+    "geo", "geography",
+    list(
+      bblab_component("us", "United States", revenue = 140, period = "2024", currency = "USD"),
+      bblab_component("eu", "Europe", revenue = 60, period = "2024", currency = "USD")
+    ),
+    is_customer_location_only = TRUE, flags = c("separate_revenue")
+  ))
+)
+rgeo <- bblab_analyze(geo_only_payload)
+check("vetoed geography does not hide reported cards",
+      isTRUE(rgeo$ok) &&
+        length(rgeo$businesses) == 1L &&
+        is.finite(rgeo$businesses[[1]]$revenue) &&
+        abs(rgeo$businesses[[1]]$revenue - 200) < 1e-9 &&
+        "BUSINESS_GEOGRAPHY_CUSTOMER_LOCATION_ONLY" %in% rgeo$codes)
+
+engine_src2 <- paste(readLines("business_breakdown_engine.R", warn = FALSE, encoding = "UTF-8"),
+                     collapse = "\n")
+check("engine still has no ticker branches after extract helpers",
+      !grepl("TSM|2330|N3|N5|N7|HPC", engine_src2))
+check("shared opex from IS not on GP cards",
+      is.finite(search_two$shared_corporate$rd) &&
+        all(vapply(rsrch$businesses, function(c) is.null(c$rd) && is.null(c$ga), logical(1))))
+check("module skips reval unavailable page toast",
+      grepl("BUSINESS_REVALUATION_UNAVAILABLE", mod_src, fixed = TRUE) &&
+        grepl("Scoped degradation", mod_src, fixed = TRUE))
+
 if (fail > 0L) {
   cat("FAILED ", fail, " checks\n", sep = "")
   quit(status = 1)

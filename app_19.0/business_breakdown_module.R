@@ -337,21 +337,33 @@ business_breakdown_lab_server <- function(id = "bblab",
         if (is.function(disclosures_provider)) {
           extra_disc <- tryCatch(disclosures_provider(tk, d_is), error = function(e) NULL)
         }
+        notes <- NULL
+        if (is.null(extra_disc) || !length(extra_disc)) {
+          us_edgar <- !grepl("\\.(TW|TWO)$", tk, ignore.case = TRUE)
+          if (isTRUE(us_edgar) && exists("cached_fetch_sec_report_notes", mode = "function")) {
+            notes <- tryCatch(cached_fetch_sec_report_notes(tk, "10-K"), error = function(e) NULL)
+          }
+        }
         payload <- bblab_payload_from_statements(
           d_is, ticker = tk, entity_name = entity_name,
           statement_currency = f_ccy, period = NA_character_,
           frequency = isolate(input$frequency) %||% "annual",
           disclosures = extra_disc,
+          notes = notes,
           instrument_type = inst, adr_ratio = adr, usd_twd = usd_twd,
           display_currency = f_ccy
         )
         lab_payload(payload)
+        extracted <- length(payload$dimensions %||% list()) >= 1L &&
+          !all(vapply(payload$dimensions, function(d) {
+            identical(d$kind %||% "", "official_description")
+          }, logical(1)))
         if (is.null(d_is) && !length(extra_disc) && !.bblab_finite(payload$consolidated$revenue)) {
           source_status("statements_unavailable")
-        } else if (!length(extra_disc)) {
-          source_status("statements_no_segment")
-        } else {
+        } else if (isTRUE(extracted)) {
           source_status("ok")
+        } else {
+          source_status("statements_no_segment")
         }
 
         incProgress(0.7, detail = ui_msg("bblab_stage_analyze"))
@@ -371,6 +383,11 @@ business_breakdown_lab_server <- function(id = "bblab",
         incProgress(1, detail = ui_msg("bblab_stage_done"))
 
         for (tst in result$toasts %||% list()) {
+          # Scoped degradation: missing reval / overlapping dims are not Search errors.
+          if (identical(tst$code, "BUSINESS_REVALUATION_UNAVAILABLE") ||
+              identical(tst$code, "BUSINESS_OVERLAPPING_DIMENSIONS_BLOCKED")) {
+            next
+          }
           msg <- ui_msg(paste0("notif_bblab_", tolower(tst$code)))
           if (identical(msg, paste0("notif_bblab_", tolower(tst$code)))) {
             msg <- paste0(
@@ -380,10 +397,13 @@ business_breakdown_lab_server <- function(id = "bblab",
               "; recon ", if (isTRUE(tst$recon_pass)) "pass" else "fail"
             )
           }
-          if (length(tst$blocked_outputs) || !identical(tst$code, "BUSINESS_OVERLAPPING_DIMENSIONS_BLOCKED")) {
-            showNotification(msg, type = if (grepl("FAIL|MISSING|UNAVAILABLE", tst$code)) "warning" else "message",
-                             duration = 8)
-          }
+          is_page <- identical(tst$code, "BUSINESS_STATEMENTS_UNAVAILABLE") ||
+            identical(tst$code, "BUSINESS_ISSUER_UNRESOLVED")
+          showNotification(
+            msg,
+            type = if (isTRUE(is_page) || grepl("FAIL|MISSING", tst$code)) "warning" else "message",
+            duration = 8
+          )
         }
       })
     })
@@ -549,6 +569,7 @@ business_breakdown_lab_server <- function(id = "bblab",
     output$cards <- renderUI({
       res <- lab_result()
       if (is.null(res)) return(tags$p(class = "help-block", ui_msg("bblab_waiting")))
+      # Missing revaluation never withholds reported / derived Rev, CoR, GP cards.
       cons_rev <- .bblab_num(res$consolidated$revenue)
       cards <- lapply(res$businesses %||% list(), function(c) {
         column(width = 4, .bblab_card_html(c, loc(), identical(focus_id(), c$id), cons_rev))

@@ -841,6 +841,7 @@ bblab_toast_payload <- function(codes, recon_pass = NULL, allocation_used = FALS
       remain <- unique(c(remain, "revenue"))
     } else if (identical(code, "BUSINESS_REVALUATION_UNAVAILABLE") ||
                identical(code, "BUSINESS_REVALUATION_CONSOLIDATED_PROXY")) {
+      # Revaluation never hides reported / derived Rev, CoR, or GP cards.
       blocked <- "revaluation_ratio"
     } else if (identical(code, "REQUIRED_FX_RATE_MISSING") ||
                identical(code, "REQUIRED_FX_RATE_INVALID")) {
@@ -857,6 +858,11 @@ bblab_toast_payload <- function(codes, recon_pass = NULL, allocation_used = FALS
       blocked <- c("business_cards", "composition_chart", "reconciliation_table")
       remain <- "search"
     }
+    if (identical(code, "BUSINESS_REVALUATION_UNAVAILABLE") ||
+        identical(code, "BUSINESS_REVALUATION_CONSOLIDATED_PROXY")) {
+      remain <- unique(c(remain, "revenue", "cost_of_revenue", "gross_profit",
+                         "business_cards", "composition_chart", "search"))
+    }
     list(
       code = code,
       failed = code,
@@ -865,9 +871,407 @@ bblab_toast_payload <- function(codes, recon_pass = NULL, allocation_used = FALS
       allocation_or_proxy_used = isTRUE(allocation_used) ||
         code %in% c("BUSINESS_COST_ALLOCATED_LOW_CONFIDENCE", "BUSINESS_REVALUATION_CONSOLIDATED_PROXY"),
       recon_pass = isTRUE(recon_pass),
-      chart_eligible = isTRUE(chart_eligible)
+      chart_eligible = isTRUE(chart_eligible),
+      page_error = FALSE
     )
   })
+}
+
+.bblab_parse_amount <- function(x) {
+  if (is.null(x) || length(x) < 1L || (is.atomic(x) && is.na(x[1]))) return(NA_real_)
+  if (is.numeric(x) && is.finite(x[1])) return(as.numeric(x)[1])
+  raw <- trimws(as.character(x)[1])
+  if (!nzchar(raw) || raw %in% c("—", "-", "--", "n/a", "N/A", "NA", "nm", "NM")) {
+    return(NA_real_)
+  }
+  paren <- grepl("^\\(.*\\)$", gsub("\\s", "", raw))
+  if (exists("parse_financial_number", mode = "function")) {
+    n <- parse_financial_number(gsub("[()]", "", raw))[1]
+  } else {
+    s <- gsub("[, $£€¥]", "", raw)
+    s <- gsub("%", "", s)
+    n <- suppressWarnings(as.numeric(s)[1])
+  }
+  if (!is.finite(n)) return(NA_real_)
+  if (isTRUE(paren) && n > 0) n <- -n
+  n
+}
+
+.bblab_slug <- function(name, prefix = "biz") {
+  s <- tolower(gsub("[^A-Za-z0-9]+", "_", .bblab_chr(name, "component")))
+  s <- gsub("^_+|_+$", "", s)
+  if (!nzchar(s)) s <- "component"
+  paste0(prefix, "_", substr(s, 1L, 48L))
+}
+
+.bblab_norm_label <- function(lab) {
+  s <- tolower(trimws(.bblab_chr(lab)))
+  s <- gsub("&", " and ", s)
+  s <- gsub("[^a-z0-9]+", " ", s)
+  trimws(gsub("\\s+", " ", s))
+}
+
+# Standard consolidated IS lines — never treat as a separate business.
+.bblab_is_standard_is_line <- function(lab) {
+  s <- .bblab_norm_label(lab)
+  skip <- c(
+    "total revenue", "operating revenue", "net sales", "net revenue",
+    "total net sales", "total net revenue", "revenue", "sales",
+    "total operating revenue", "total sales",
+    "cost of revenue", "cost of goods sold", "cost of sales",
+    "cost of goods", "reconciled cost of revenue",
+    "gross profit", "gross margin", "gross profit ratio",
+    "operating expense", "operating expenses", "operating income",
+    "operating profit", "operating earnings",
+    "research and development", "selling general and administration",
+    "selling general administrative", "general and administrative",
+    "selling and marketing", "selling marketing",
+    "ebit", "ebitda", "normalized ebitda", "normalized ebit",
+    "pretax income", "tax provision", "net income",
+    "net income common stockholders", "net income continuous operations",
+    "diluted ni availto com stockholders", "diluted average shares",
+    "basic average shares", "diluted eps", "basic eps",
+    "interest expense", "interest income", "net interest income",
+    "net non operating interest income expense",
+    "other income expense", "other non operating income expenses",
+    "total expenses", "total unusual items",
+    "reconciled depreciation", "depreciation and amortization",
+    "special income charges", "other special charges",
+    "tax effect of unusual items", "tax rate for calcs",
+    "normalized income", "net income including noncontrolling interests",
+    "net income from continuing operation net minority interest",
+    "net income from continuing and discontinued operation",
+    "total unusual items excluding goodwill"
+  )
+  s %in% skip || grepl("^(diluted|basic) (eps|ni|average)", s) ||
+    grepl("^tax (effect|rate)", s) || grepl("^ebitda|^ebit$", s)
+}
+
+.bblab_is_total_or_recon_name <- function(lab) {
+  s <- .bblab_norm_label(lab)
+  grepl("^(total|sum|subtotal|grand total)\\b", s) ||
+    grepl("\\b(eliminations?|elimination of intersegment|reconcil|unallocated|corporate and other|adjustments?)\\b", s) ||
+    identical(s, "total revenue") || identical(s, "net sales") ||
+    identical(s, "total net sales") || identical(s, "consolidated")
+}
+
+.bblab_df_current_amount <- function(df, i) {
+  if (!is.data.frame(df) || i < 1L || i > nrow(df) || ncol(df) < 2L) return(NA_real_)
+  period_cols <- colnames(df)[-1]
+  ttm <- grepl("^ttm$", period_cols, ignore.case = TRUE)
+  order_idx <- if (any(ttm)) c(which(ttm), which(!ttm)) else seq_along(period_cols)
+  for (j in order_idx) {
+    v <- .bblab_parse_amount(df[i, period_cols[j]])
+    if (is.finite(v)) return(v)
+  }
+  NA_real_
+}
+
+.bblab_df_period <- function(df) {
+  if (!is.data.frame(df) || ncol(df) < 2L) return(NA_character_)
+  period_cols <- colnames(df)[-1]
+  ttm <- grepl("^ttm$", period_cols, ignore.case = TRUE)
+  hit <- if (any(ttm)) period_cols[which(ttm)[1]] else period_cols[1]
+  .bblab_chr(hit, NA_character_)
+}
+
+.bblab_single_entity_dimension <- function(cons, entity = list(), payload = list()) {
+  nm <- .bblab_chr(entity$name %||% payload$entity_name, "Reporting entity")
+  single <- bblab_component(
+    "consolidated_entity", nm, "MAJOR",
+    revenue = cons$revenue, cor = cons$cor, gp = cons$gp,
+    is_principal_activity = TRUE,
+    period = cons$period, currency = cons$currency,
+    source_type = "consolidated_statements"
+  )
+  bblab_dimension(
+    "entity", "official_description", list(single),
+    mutually_exclusive = TRUE, filed_audited = TRUE,
+    period = cons$period, currency = cons$currency,
+    flags = c("relevant", "reconciles", "mutually_exclusive", "separate_revenue",
+              if (.bblab_finite(cons$cor) || .bblab_finite(cons$gp)) "attributable_cor_gp" else NULL,
+              "filed_audited")
+  )
+}
+
+.bblab_header_col <- function(headers, patterns, exclude = NULL) {
+  h <- as.character(headers %||% character(0))
+  if (!length(h)) return(NA_integer_)
+  for (p in patterns) {
+    hit <- grepl(p, h, ignore.case = TRUE)
+    if (!is.null(exclude) && nzchar(exclude)) {
+      hit <- hit & !grepl(exclude, h, ignore.case = TRUE)
+    }
+    if (any(hit)) return(which(hit)[1])
+  }
+  NA_integer_
+}
+
+.bblab_table_scale <- function(blob, amounts, cons_rev) {
+  blob <- .bblab_chr(blob)
+  scale <- 1
+  if (grepl("in\\s+billions|\\$\\s*billion", blob, ignore.case = TRUE)) scale <- 1e9
+  else if (grepl("in\\s+millions|\\$\\s*million|nt\\$\\s*million", blob, ignore.case = TRUE)) scale <- 1e6
+  else if (grepl("in\\s+thousands|\\$\\s*thousand", blob, ignore.case = TRUE)) scale <- 1e3
+  amts <- as.numeric(amounts)
+  amts <- amts[is.finite(amts)]
+  if (scale == 1 && length(amts) >= 2L && is.finite(cons_rev) && cons_rev != 0) {
+    sm <- sum(amts)
+    if (is.finite(sm) && sm != 0) {
+      rel <- function(x) abs(x - cons_rev) / abs(cons_rev)
+      cands <- c(1, 1e3, 1e6, 1e9)
+      ok <- vapply(cands, function(m) rel(sm * m) <= 0.05, logical(1))
+      if (any(ok)) scale <- cands[which(ok)[1]]
+    }
+  }
+  scale
+}
+
+.bblab_kind_from_label <- function(label) {
+  s <- tolower(.bblab_chr(label))
+  if (grepl("geograph|by country|by region|customer location", s)) return("geography")
+  if (grepl("disaggregat|revenue by|net sales by|net revenue by|platform", s)) {
+    return("revenue_disaggregation")
+  }
+  if (grepl("product|service", s)) return("product_service")
+  if (grepl("segment", s)) return("operating_segment")
+  if (grepl("m\\s*and\\s*a|md&a|management.s discussion", s)) return("mda")
+  NA_character_
+}
+
+#' Map already-retrieved income-statement child rows into a disclosure dimension.
+bblab_extract_dimension_from_income_statement <- function(d_is, consolidated = NULL,
+                                                         period = NA_character_,
+                                                         currency = NA_character_) {
+  if (!is.data.frame(d_is) || nrow(d_is) < 3L) return(NULL)
+  labs <- trimws(as.character(d_is[[1]]))
+  cons_rev <- .bblab_num(consolidated$revenue)
+  stop_re <- paste(
+    "cost of revenue", "cost of goods", "gross profit",
+    "operating expense", "operating income", "operating profit",
+    sep = "|"
+  )
+  start_i <- NA_integer_
+  end_i <- nrow(d_is)
+  for (i in seq_along(labs)) {
+    n <- .bblab_norm_label(labs[[i]])
+    if (is.na(start_i) && grepl("revenue|net sales", n) && .bblab_is_standard_is_line(labs[[i]])) {
+      start_i <- i
+    }
+    if (!is.na(start_i) && i > start_i && grepl(stop_re, n)) {
+      end_i <- i - 1L
+      break
+    }
+  }
+  if (is.na(start_i) || end_i <= start_i) return(NULL)
+  comps <- list()
+  seen <- character(0)
+  for (i in seq.int(start_i, end_i)) {
+    lab <- labs[[i]]
+    if (!nzchar(lab) || .bblab_is_standard_is_line(lab) || .bblab_is_total_or_recon_name(lab)) {
+      next
+    }
+    amt <- .bblab_df_current_amount(d_is, i)
+    if (!is.finite(amt) || amt == 0) next
+    id <- .bblab_slug(lab, "is")
+    if (id %in% seen) id <- paste0(id, "_", i)
+    seen <- c(seen, id)
+    cls <- if (grepl("eliminat", .bblab_norm_label(lab))) "ELIMINATION" else "MAJOR"
+    comps[[length(comps) + 1L]] <- bblab_component(
+      id, lab, cls, revenue = amt,
+      is_reported_segment = FALSE,
+      separately_disclosed_revenue = TRUE,
+      distinct_economics = TRUE,
+      period = period %||% .bblab_df_period(d_is),
+      currency = currency,
+      source_type = "income_statement"
+    )
+  }
+  if (length(comps) < 2L) return(NULL)
+  flags <- c("separate_revenue", "relevant", "mutually_exclusive")
+  if (is.finite(cons_rev) && cons_rev != 0) {
+    sm <- sum(vapply(comps, function(c) .bblab_num(c$revenue, 0), numeric(1)))
+    if (abs(sm - cons_rev) <= max(1, abs(cons_rev) * 0.05)) {
+      flags <- c(flags, "reconciles")
+    }
+  }
+  bblab_dimension(
+    "is_product_service", "product_service", comps,
+    mutually_exclusive = TRUE, filed_audited = TRUE,
+    period = period %||% .bblab_df_period(d_is),
+    currency = currency,
+    flags = flags,
+    label = "Income statement product / service revenue"
+  )
+}
+
+.bblab_components_from_table <- function(tbl, cons = NULL, period = NA_character_,
+                                         currency = NA_character_, kind = "segment_note",
+                                         source_label = "") {
+  headers <- tbl$headers %||% tbl$header %||% character(0)
+  rows <- tbl$rows %||% tbl$data %||% list()
+  if (is.data.frame(rows)) {
+    if (!length(headers)) headers <- colnames(rows)
+    rows <- lapply(seq_len(nrow(rows)), function(i) as.character(unlist(rows[i, ], use.names = FALSE)))
+  }
+  if (!length(rows)) return(NULL)
+  if (!length(headers) && length(rows[[1]])) {
+    headers <- paste0("c", seq_along(rows[[1]]))
+  }
+  name_i <- .bblab_header_col(headers, c("segment", "product", "business", "description",
+                                        "platform", "category", "line"))
+  if (is.na(name_i)) name_i <- 1L
+  rev_i <- .bblab_header_col(
+    headers,
+    c("net sales", "net revenue", "total revenue", "(^|\\b)revenue($|\\b)", "(^|\\b)sales($|\\b)"),
+    exclude = "cost|percent|%|margin|expense"
+  )
+  if (is.na(rev_i)) {
+    # First numeric-looking column after the name.
+    probe <- rows[[1]]
+    for (j in seq_along(probe)) {
+      if (j == name_i) next
+      if (is.finite(.bblab_parse_amount(probe[[j]]))) {
+        rev_i <- j
+        break
+      }
+    }
+  }
+  if (is.na(rev_i)) return(NULL)
+  cor_i <- .bblab_header_col(headers, c("cost of revenue", "cost of sales", "cost of goods",
+                                       "cost of good"))
+  gp_i <- .bblab_header_col(headers, c("gross profit"), exclude = "margin|%")
+  pct_i <- .bblab_header_col(headers, c("% of", "percent of", "percentage of", "% of net",
+                                       "% of total"))
+  raw_amts <- vapply(rows, function(r) {
+    if (length(r) < rev_i) return(NA_real_)
+    .bblab_parse_amount(r[[rev_i]])
+  }, numeric(1))
+  blob <- paste(c(source_label, headers, tbl$caption %||% ""), collapse = " ")
+  scale <- .bblab_table_scale(blob, raw_amts, .bblab_num(cons$revenue))
+  comps <- list()
+  seen <- character(0)
+  for (k in seq_along(rows)) {
+    r <- as.character(rows[[k]])
+    if (length(r) < max(name_i, rev_i)) next
+    nm <- trimws(r[[name_i]])
+    if (!nzchar(nm) || .bblab_is_total_or_recon_name(nm)) {
+      cls_guess <- if (grepl("eliminat", .bblab_norm_label(nm))) "ELIMINATION" else
+        if (grepl("unallocated|corporate", .bblab_norm_label(nm))) "UNALLOCATED" else NA_character_
+      if (is.na(cls_guess)) next
+    } else {
+      cls_guess <- "MAJOR"
+    }
+    amt <- .bblab_parse_amount(r[[rev_i]])
+    pct <- if (!is.na(pct_i) && length(r) >= pct_i) {
+      p <- .bblab_parse_amount(r[[pct_i]])
+      if (is.finite(p) && grepl("%", r[[pct_i]])) p / 100 else if (is.finite(p) && p > 1) p / 100 else p
+    } else NA_real_
+    if (!is.finite(amt) && is.finite(pct) && .bblab_finite(cons$revenue)) {
+      amt <- pct * as.numeric(cons$revenue)[1]
+    }
+    if (is.finite(amt)) amt <- amt * scale
+    if (!is.finite(amt) && !is.finite(pct)) next
+    if (is.finite(amt) && amt == 0 && !is.finite(pct)) next
+    cor <- if (!is.na(cor_i) && length(r) >= cor_i) .bblab_parse_amount(r[[cor_i]]) * scale else NA_real_
+    gp <- if (!is.na(gp_i) && length(r) >= gp_i) .bblab_parse_amount(r[[gp_i]]) * scale else NA_real_
+    id <- .bblab_slug(nm, "note")
+    if (id %in% seen) id <- paste0(id, "_", k)
+    seen <- c(seen, id)
+    comps[[length(comps) + 1L]] <- bblab_component(
+      id, nm, cls_guess %||% "MAJOR",
+      revenue = amt, cor = cor, gp = gp, revenue_pct = pct,
+      is_reported_segment = identical(kind, "operating_segment") || identical(kind, "segment_note"),
+      separately_disclosed_revenue = TRUE,
+      distinct_economics = TRUE,
+      period = period, currency = currency,
+      source_type = kind
+    )
+  }
+  if (length(comps) < 2L) return(NULL)
+  flags <- c("separate_revenue", "relevant", "mutually_exclusive", "filed_audited")
+  if (any(vapply(comps, function(c) .bblab_finite(c$cor) || .bblab_finite(c$gp), logical(1)))) {
+    flags <- c(flags, "attributable_cor_gp")
+  }
+  geo_only <- identical(kind, "geography") ||
+    grepl("customer location|by country|by region", blob, ignore.case = TRUE)
+  list(components = comps, flags = flags, is_customer_location_only = isTRUE(geo_only))
+}
+
+.bblab_coerce_segment_tables <- function(segment_tables, notes = NULL) {
+  tables <- list()
+  if (is.list(segment_tables) && length(segment_tables)) {
+    tables <- segment_tables
+  }
+  if (!length(tables) && is.list(notes)) {
+    js <- notes$segment_tables_json %||% notes$segment_tables
+    if (is.character(js) && nzchar(js[1])) {
+      parsed <- tryCatch(jsonlite::fromJSON(js[1], simplifyVector = FALSE),
+                         error = function(e) NULL)
+      if (is.list(parsed) && length(parsed)) tables <- parsed
+    } else if (is.list(js) && length(js)) {
+      tables <- js
+    }
+  }
+  if (!is.null(names(tables)) && !is.list(tables[[1]]) && !is.null(tables$headers)) {
+    tables <- list(tables)
+  }
+  tables
+}
+
+#' Company-agnostic extraction from already-retrieved statements / filed notes.
+#' Never invents amounts. Empty result means "do not fabricate a second business".
+bblab_extract_dimensions_from_filings <- function(d_is = NULL, notes = NULL,
+                                                 segment_tables = NULL,
+                                                 consolidated = NULL,
+                                                 period = NA_character_,
+                                                 currency = NA_character_) {
+  dims <- list()
+  is_dim <- bblab_extract_dimension_from_income_statement(
+    d_is, consolidated, period, currency
+  )
+  if (!is.null(is_dim)) dims[[length(dims) + 1L]] <- is_dim
+  tables <- .bblab_coerce_segment_tables(segment_tables, notes)
+  for (tbl in tables) {
+    if (!is.list(tbl)) next
+    lab <- .bblab_chr(tbl$short_name %||% tbl$label %||% tbl$caption, "segment_note")
+    kind <- .bblab_chr(tbl$kind %||% .bblab_kind_from_label(lab), "segment_note")
+    if (!kind %in% BBLAB_DIMENSION_KINDS) kind <- "segment_note"
+    packed <- .bblab_components_from_table(
+      tbl, cons = consolidated, period = period, currency = currency,
+      kind = kind, source_label = lab
+    )
+    if (is.null(packed) || length(packed$components) < 2L) next
+    dims[[length(dims) + 1L]] <- bblab_dimension(
+      .bblab_slug(lab, "dim"), kind, packed$components,
+      mutually_exclusive = TRUE,
+      is_customer_location_only = isTRUE(packed$is_customer_location_only),
+      flags = packed$flags,
+      filed_audited = TRUE,
+      period = period, currency = currency,
+      label = lab
+    )
+  }
+  dims
+}
+
+.bblab_shared_from_is <- function(d_is) {
+  if (!is.data.frame(d_is) || !nrow(d_is)) return(list())
+  grab <- function(patterns) {
+    if (exists("select_current_metric_any", mode = "function")) {
+      v <- tryCatch(select_current_metric_any(d_is, patterns, "flow"), error = function(e) NA_real_)
+      if (.bblab_finite(v)) return(as.numeric(v)[1])
+    }
+    NA_real_
+  }
+  out <- list(
+    rd = grab(c("^Research And Development$", "Research And Development", "Research & Development")),
+    ga = grab(c("Selling General And Administration", "General And Administrative")),
+    sm = grab(c("^Selling And Marketing$", "Selling And Marketing")),
+    opex = grab(c("^Operating Expense$", "Operating Expense"))
+  )
+  out <- out[vapply(out, function(v) .bblab_finite(v), logical(1))]
+  out
 }
 
 #' Main entry. Payload is generic; no issuer-specific branches.
@@ -905,23 +1309,22 @@ bblab_analyze <- function(payload, options = list(), cfg = NULL) {
   codes <- unique(c(codes, fx$codes))
   mark("parse_disclosures")
   dims <- payload$dimensions %||% list()
-  if (!length(dims) && .bblab_finite(cons$revenue)) {
-    single <- bblab_component(
-      "consolidated_entity",
-      .bblab_chr(entity$name %||% payload$entity_name, "Reporting entity"),
-      "MAJOR",
-      revenue = cons$revenue, cor = cons$cor, gp = cons$gp,
-      is_principal_activity = TRUE,
-      period = cons$period, currency = cons$currency,
-      source_type = "consolidated_statements"
+  if (!length(dims)) {
+    dims <- bblab_extract_dimensions_from_filings(
+      payload$income_statement %||% payload$d_is,
+      notes = payload$notes,
+      segment_tables = payload$segment_tables,
+      consolidated = cons,
+      period = payload$period %||% cons$period,
+      currency = payload$statement_currency %||% cons$currency
     )
-    dims <- list(bblab_dimension(
-      "entity", "official_description", list(single),
-      mutually_exclusive = TRUE, filed_audited = TRUE,
-      period = cons$period, currency = cons$currency,
-      flags = c("relevant", "reconciles", "mutually_exclusive", "separate_revenue",
-                "attributable_cor_gp", "filed_audited")
-    ))
+  }
+  entity_dim <- NULL
+  if (.bblab_finite(cons$revenue)) {
+    entity_dim <- .bblab_single_entity_dimension(cons, entity, payload)
+  }
+  if (!length(dims) && !is.null(entity_dim)) {
+    dims <- list(entity_dim)
     limitations <- c(limitations, "no_multi_business_split")
   }
   mark("detect_dimension")
@@ -930,6 +1333,11 @@ bblab_analyze <- function(payload, options = list(), cfg = NULL) {
   )
   codes <- unique(c(codes, sel$codes))
   dim <- sel$dimension
+  if (is.null(dim) && !is.null(entity_dim)) {
+    # Vetoed geography (or other non-eligible dims) must not hide reported cards.
+    dim <- entity_dim
+    limitations <- unique(c(limitations, "no_multi_business_split", "no_primary_dimension"))
+  }
   if (is.null(dim)) {
     out <- bblab_empty_result(unique(c(codes, "BUSINESS_DISCLOSURE_INSUFFICIENT")),
                               c(limitations, "no_primary_dimension"))
@@ -937,6 +1345,7 @@ bblab_analyze <- function(payload, options = list(), cfg = NULL) {
     out$consolidated <- cons
     out$toasts <- bblab_toast_payload(out$codes)
     out$fx <- fx
+    out$ok <- FALSE
     return(out)
   }
   mark("identify_businesses")
@@ -1041,12 +1450,15 @@ bblab_analyze <- function(payload, options = list(), cfg = NULL) {
 }
 
 #' Pull consolidated IS totals into a generic payload. Optional disclosures attached as-is.
+#' When disclosures are omitted, auto-detect product / segment / disaggregation rows
+#' from the already-retrieved statement and any filed note tables (no invented amounts).
 bblab_payload_from_statements <- function(d_is, ticker = "", entity_name = "",
                                           statement_currency = NA_character_,
                                           period = NA_character_, frequency = "annual",
                                           disclosures = NULL, shared_corporate = NULL,
                                           instrument_type = "ordinary", adr_ratio = NA_real_,
-                                          usd_twd = NULL, display_currency = NULL) {
+                                          usd_twd = NULL, display_currency = NULL,
+                                          notes = NULL, segment_tables = NULL) {
   grab <- function(patterns) {
     if (exists("select_current_metric_any", mode = "function") && is.data.frame(d_is)) {
       v <- tryCatch(select_current_metric_any(d_is, patterns, "flow"), error = function(e) NA_real_)
@@ -1056,8 +1468,11 @@ bblab_payload_from_statements <- function(d_is, ticker = "", entity_name = "",
     lab <- as.character(d_is[[1]])
     hit <- grepl(paste(patterns, collapse = "|"), lab, ignore.case = TRUE)
     if (!any(hit)) return(NA_real_)
-    nums <- suppressWarnings(as.numeric(d_is[which(hit)[1], 2]))
+    nums <- .bblab_parse_amount(d_is[which(hit)[1], 2])
     if (.bblab_finite(nums)) as.numeric(nums)[1] else NA_real_
+  }
+  if (!nzchar(.bblab_chr(period)) && is.data.frame(d_is)) {
+    period <- .bblab_df_period(d_is)
   }
   rev <- grab(c("^Total Revenue$", "Total Revenue", "Operating Revenue", "^Revenue$"))
   gp <- grab(c("^Gross Profit$", "Gross Profit"))
@@ -1065,6 +1480,7 @@ bblab_payload_from_statements <- function(d_is, ticker = "", entity_name = "",
   if (!.bblab_finite(cor) && .bblab_finite(rev) && .bblab_finite(gp)) cor <- rev - gp
   if (!.bblab_finite(gp) && .bblab_finite(rev) && .bblab_finite(cor)) gp <- rev - cor
   ni <- grab(c("^Net Income$", "Net Income Common Stockholders", "Net Income"))
+  cons <- bblab_consolidated(rev, cor, gp, statement_currency, period, ni = ni)
   dims <- list()
   if (is.list(disclosures) && length(disclosures)) {
     dims <- lapply(disclosures, function(d) {
@@ -1086,7 +1502,14 @@ bblab_payload_from_statements <- function(d_is, ticker = "", entity_name = "",
         )
       }
     })
+  } else {
+    dims <- bblab_extract_dimensions_from_filings(
+      d_is, notes = notes, segment_tables = segment_tables,
+      consolidated = cons, period = period, currency = statement_currency
+    )
   }
+  shared <- shared_corporate
+  if (is.null(shared) || !length(shared)) shared <- .bblab_shared_from_is(d_is)
   list(
     ticker = ticker,
     entity = list(name = entity_name),
@@ -1097,10 +1520,13 @@ bblab_payload_from_statements <- function(d_is, ticker = "", entity_name = "",
     instrument_type = instrument_type,
     adr_ratio = adr_ratio,
     usd_twd = usd_twd,
-    consolidated = bblab_consolidated(rev, cor, gp, statement_currency, period, ni = ni),
+    consolidated = cons,
     dimensions = dims,
-    shared_corporate = shared_corporate %||% list(),
-    revaluation_inputs = list()
+    shared_corporate = shared %||% list(),
+    revaluation_inputs = list(),
+    notes = notes,
+    segment_tables = segment_tables,
+    income_statement = if (is.data.frame(d_is)) d_is else NULL
   )
 }
 

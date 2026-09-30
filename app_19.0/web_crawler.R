@@ -656,7 +656,7 @@ fetch_sec_report_notes <- function(ticker, form = "10-K", max_chars = 1500L) {
     filing_date = "", report_date = "", accession = "", primary_doc_url = "",
     short_names = character(0), urls = character(0), important = logical(0),
     char_counts = integer(0), excerpts = character(0), full_texts = character(0),
-    summaries = list()
+    summaries = list(), segment_tables_json = "[]"
   )
   if (!nzchar(tk)) {
     empty$error <- "請輸入美股代號"

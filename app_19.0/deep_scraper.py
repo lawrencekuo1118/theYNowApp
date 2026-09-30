@@ -1240,6 +1240,7 @@ def _sec_empty_result(error=""):
         "primary_doc_url": "", "short_names": [], "urls": [],
         "important": [], "char_counts": [], "excerpts": [], "full_texts": [],
         "summaries": [],
+        "segment_tables_json": "[]",
     }
 
 
@@ -1259,6 +1260,73 @@ _SEC_MATERIAL_FORMS = frozenset({"8-K", "8-K/A", "6-K", "6-K/A"})
 
 def _sec_is_material_form(form):
     return str(form or "") in _SEC_MATERIAL_FORMS
+
+
+def _sec_segment_kind(short_name):
+    """Map a filing-note title to a generic disclosure kind. None = skip tables."""
+    s = (short_name or "").lower()
+    if any(h in s for h in ("insider trading", "cybersecurity")):
+        return None
+    if any(k in s for k in ("geograph", "by country", "by region", "customer location")):
+        return "geography"
+    if any(k in s for k in ("disaggregat", "revenue by", "net sales by", "net revenue by")):
+        return "revenue_disaggregation"
+    if "product" in s or "service" in s:
+        return "product_service"
+    if "segment" in s:
+        return "operating_segment"
+    return None
+
+
+def _sec_html_tables(raw):
+    """Preserve filed HTML tables (amounts) that get_text() would otherwise flatten."""
+    from bs4 import BeautifulSoup
+    try:
+        soup = BeautifulSoup(raw or "", "lxml")
+    except Exception:
+        soup = BeautifulSoup(raw or "", "html.parser")
+    out = []
+    for table in soup.find_all("table"):
+        rows = []
+        for tr in table.find_all("tr"):
+            cells = [c.get_text(" ", strip=True) for c in tr.find_all(["th", "td"])]
+            cells = [c for c in cells if c is not None]
+            if any(str(c).strip() for c in cells):
+                rows.append([str(c).strip() for c in cells])
+        if len(rows) < 2:
+            continue
+        headers = rows[0]
+        body = rows[1:]
+        if not any(body):
+            continue
+        out.append({"headers": headers, "rows": body})
+    return out
+
+
+def _sec_append_segment_tables(result, short_name, raw_html):
+    kind = _sec_segment_kind(short_name)
+    if not kind:
+        return
+    tables = _sec_html_tables(raw_html)
+    if not tables:
+        return
+    try:
+        import json
+        existing = json.loads(result.get("segment_tables_json") or "[]")
+    except Exception:
+        existing = []
+    for tbl in tables:
+        existing.append({
+            "short_name": str(short_name or ""),
+            "kind": kind,
+            "headers": tbl.get("headers") or [],
+            "rows": tbl.get("rows") or [],
+        })
+    try:
+        import json
+        result["segment_tables_json"] = json.dumps(existing)
+    except Exception:
+        pass
 
 
 def _sec_append_text_item(result, short_name, url, text, max_chars, important=True):
@@ -1303,14 +1371,18 @@ def _sec_extract_notes_from_summary(session, folder, result, max_chars):
         short = _find(rep, "ShortName")
         short_name = short.text if short else ""
         url = f"{folder}/{htmf.text}"
+        raw_html = ""
         try:
-            text = _sec_clean_note_text(_sec_get(session, url))
+            raw_html = _sec_get(session, url)
+            text = _sec_clean_note_text(raw_html)
         except Exception as e:  # noqa: BLE001
             text = f"(failed to fetch note: {e})"
         _sec_append_text_item(
             result, short_name, url, text, max_chars,
             important=bool(_sec_is_important(short_name)),
         )
+        if raw_html:
+            _sec_append_segment_tables(result, short_name, raw_html)
         found = True
         time.sleep(0.12)
     return found
