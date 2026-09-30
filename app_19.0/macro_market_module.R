@@ -19,13 +19,12 @@ if (!exists("%||%", mode = "function")) {
   "^SOX" = "SOX (semis)"
 )
 
-# Taiwan boards (Yahoo native TWD). ^TWIT is not a Yahoo symbol;
-# 電子 = TAIEX Electronics Subindex ^TELI; 金融 = TAIEX Finance Subindex ^TFNI.
+# Taiwan boards (Yahoo native TWD): TAIEX, TPEx, and Yuanta Taiwan 50 (0050.TW).
+# Industry sub-indices (Electronics / Finance) are not Macro 大盤指標.
 .MACRO_TW_INDICES <- c(
   "^TWII" = "TAIEX",
   "^TWOII" = "TPEx",
-  "^TELI" = "Electronics",
-  "^TFNI" = "Finance"
+  "0050.TW" = "0050"
 )
 
 # GICS-ish US sector ETFs (11 SPDR sectors)
@@ -79,7 +78,7 @@ macro_index_specs <- function(mode = get_market_mode()) {
   if (identical(normalize_market_mode(mode), "TW")) .MACRO_TW_INDICES else .MACRO_US_INDICES
 }
 
-# Click-to-chart KPI strip: US four or TW four, by market mode.
+# Click-to-chart KPI strip: US four or TW three (TAIEX / TPEx / 0050), by market mode.
 .MACRO_CLICK_INDEX_BOX_IDS <- c(
   "^GSPC" = "ynow_macro_idx_gspc",
   "^IXIC" = "ynow_macro_idx_ixic",
@@ -87,8 +86,7 @@ macro_index_specs <- function(mode = get_market_mode()) {
   "^SOX" = "ynow_macro_idx_sox",
   "^TWII" = "ynow_macro_idx_twii",
   "^TWOII" = "ynow_macro_idx_twoii",
-  "^TELI" = "ynow_macro_idx_teli",
-  "^TFNI" = "ynow_macro_idx_tfni"
+  "0050.TW" = "ynow_macro_idx_0050"
 )
 .MACRO_CLICK_INDEX_NAME_KEYS <- c(
   "^GSPC" = "macro_index_name_gspc",
@@ -97,8 +95,7 @@ macro_index_specs <- function(mode = get_market_mode()) {
   "^SOX" = "macro_index_name_sox",
   "^TWII" = "macro_index_name_twii",
   "^TWOII" = "macro_index_name_twoii",
-  "^TELI" = "macro_index_name_teli",
-  "^TFNI" = "macro_index_name_tfni"
+  "0050.TW" = "macro_index_name_0050"
 )
 
 macro_click_index_specs <- function(mode = get_market_mode()) {
@@ -522,6 +519,14 @@ macro_market_server <- function(id = "macro",
       rows <- index_quotes()
       lite <- .is_lite()
       sel <- as.character(selected_index() %||% "")[1]
+      n_idx <- length(rows)
+      # TW three boards = col-4 / 1:1:1; US four boards stay col-3. No empty fourth slot.
+      idx_col_w <- if (identical(n_idx, 3L)) 4L else 3L
+      idx_col_cls <- if (identical(n_idx, 3L)) {
+        "col-xs-12 col-sm-4 col-md-4"
+      } else {
+        "col-xs-6 col-sm-6 col-md-3"
+      }
       cols <- lapply(rows, function(r) {
         last_txt <- if (is.finite(r$last)) format(round(r$last, 2), big.mark = ",") else "—"
         chg_txt <- if (is.finite(r$chg_pct)) sprintf("%+.2f%%", r$chg_pct) else "—"
@@ -555,8 +560,8 @@ macro_market_server <- function(id = "macro",
           )
         }
         column(
-          width = 3,
-          class = "col-xs-6 col-sm-6 col-md-3",
+          width = idx_col_w,
+          class = idx_col_cls,
           do.call(
             tags$div,
             c(

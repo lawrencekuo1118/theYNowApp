@@ -31,7 +31,7 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
     "notes_title", "notes_toggle_aria",
     "macro_index_name_gspc", "macro_index_name_ixic", "macro_index_name_dji",
     "macro_index_name_sox", "macro_index_name_twii", "macro_index_name_twoii",
-    "macro_index_name_teli", "macro_index_name_tfni",
+    "macro_index_name_0050",
     "macro_index_chart_hint", "macro_index_chart_empty",
     "macro_index_chart_error",
     "hccsi_title", "hccsi_disclosure", "hccsi_click_hint",
@@ -135,13 +135,15 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl("ynow_macro_idx_sox", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_macro_idx_twii", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_macro_idx_twoii", macro_txt, fixed = TRUE))
-  testthat::expect_true(grepl("ynow_macro_idx_teli", macro_txt, fixed = TRUE))
-  testthat::expect_true(grepl("ynow_macro_idx_tfni", macro_txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow_macro_idx_0050", macro_txt, fixed = TRUE))
+  testthat::expect_false(grepl("ynow_macro_idx_teli", macro_txt, fixed = TRUE))
+  testthat::expect_false(grepl("ynow_macro_idx_tfni", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("^TWII", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("^TWOII", macro_txt, fixed = TRUE))
-  testthat::expect_true(grepl("^TELI", macro_txt, fixed = TRUE))
-  testthat::expect_true(grepl("^TFNI", macro_txt, fixed = TRUE))
-  testthat::expect_false(grepl('"0050.TW" = "0050"', macro_txt, fixed = TRUE))
+  testthat::expect_false(grepl("^TELI", macro_txt, fixed = TRUE))
+  testthat::expect_false(grepl("^TFNI", macro_txt, fixed = TRUE))
+  testthat::expect_true(grepl('"0050.TW" = "0050"', macro_txt, fixed = TRUE))
+  testthat::expect_true(grepl("idx_col_w <- if (identical(n_idx, 3L)) 4L else 3L", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_macro_index_hist", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("index_hist_plot", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-full-only", macro_txt, fixed = TRUE))
