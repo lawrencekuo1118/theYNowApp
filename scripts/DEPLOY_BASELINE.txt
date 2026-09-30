@@ -8,5 +8,5 @@ short=60703bc
 message=Show Taiwan boards on Macro KPI cards when market is TW.
 captured_at=2026-09-30T04:55:40Z
 source_branch=cursor/lifecycle-v19-3fb1
-display_version=v19.14
+display_version=v19.15
 note=Canonical live line is app_19.0. Bundle 12625985 = v19.14 Macro TW market KPI cards and Full click-to-chart use Taiwan boards (^TWII TAIEX, ^TWOII TPEx, ^TELI Electronics, ^TFNI Finance) instead of S&P 500 / Nasdaq / Dow / SOX. US mode stays the US four. Lite hides the chart slot. Also includes v19.13 Rf Notes removal, v19.12 relative-perf help outside Notes, v19.11 F-Score boxes default-visible, page-lead outside Notes, v19.10 Lite Smart Analysis blurb, v19.09 Full-only Macro KPI click-to-chart, collapsible Notes, and YNOW KPI jump row. Deploy via scripts/deploy_app_19.R. Supersedes 12625973 / 12625956 / 12625916 / 12625890 / 12625810 / 12625762 / 12625733 / 12625709 / 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
