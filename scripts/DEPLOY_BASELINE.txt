@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12627610
+bundleId=12627644
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=49238afe0b9e145c4e112d714e52401a01381b7e
-commit=49238afe0b9e145c4e112d714e52401a01381b7e
-short=49238af
-message=Hide the five-year mix subsection when no comparable series exists.
-captured_at=2026-09-30T12:55:15Z
-source_branch=cursor/bblab-hide-empty-history-3fb1
+aligned_git=134ee3be2e6632c9ddcad977387d3382c1e105d0
+commit=134ee3be2e6632c9ddcad977387d3382c1e105d0
+short=134ee3b
+message=Show the Lab consolidated snapshot as a vertical Income Statement.
+captured_at=2026-09-30T13:06:46Z
+source_branch=cursor/bblab-snapshot-is-format-3fb1
 display_version=v19.35
-note=Canonical live line is app_19.0. Bundle 12627610 = v19.34 Lab hides Five-year mix evolution (title, help, empty chart) when fewer than two comparable fiscal years of shares exist. Keeps v19.33 history year-mismatch unblock. Deploy via scripts/deploy_app_19.R. Supersedes 12627556 / 12627405 / 12627312 / 12627150 / 12627127 / 12627082 / 12627038 / 12626909 / 12626822 / 12626810 / 12626794 / 12626772 / 12626690 / 12626668 / 12626547 / 12626454 / 12626418 / 12626362 / 12626262 / 12626032 / 12625997 / 12625985 / 12625973 / 12625956 / 12625916 / 12625890 / 12625810 / 12625762 / 12625733 / 12625709 / 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
+note=Canonical live line is app_19.0. Bundle 12627644 = v19.35 Lab Chapter 1 Consolidated statement snapshot is a vertical Income Statement identity (Revenue − Cost of Revenue = Gross Profit; Gross Margin = Gross Profit / Revenue), not KPI chips. Keeps v19.34 hide-empty-history. Deploy via scripts/deploy_app_19.R. Supersedes 12627610 / 12627556 / 12627405 / 12627312 / 12627150 / 12627127 / 12627082 / 12627038 / 12626909 / 12626822 / 12626810 / 12626794 / 12626772 / 12626690 / 12626668 / 12626547 / 12626454 / 12626418 / 12626362 / 12626262 / 12626032 / 12625997 / 12625985 / 12625973 / 12625956 / 12625916 / 12625890 / 12625810 / 12625762 / 12625733 / 12625709 / 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
