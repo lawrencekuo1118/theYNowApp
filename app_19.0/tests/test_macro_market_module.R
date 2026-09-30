@@ -114,7 +114,9 @@ for (k in c(
   "macro_index_name_sox", "macro_index_name_twii", "macro_index_name_twoii",
   "macro_index_name_teli", "macro_index_name_tfni",
   "macro_index_chart_hint", "macro_index_chart_empty",
-  "macro_index_chart_error"
+  "macro_index_chart_error",
+  "hccsi_title", "hccsi_disclosure", "hccsi_index_health",
+  "hccsi_index_stress", "hccsi_index_fragility", "hccsi_index_market"
 )) {
   check(paste("en", k), nzchar(ui_str(k, "en")))
   check(paste("zh", k), nzchar(ui_str(k, "zh-TW")))
@@ -353,5 +355,16 @@ ui_css <- ui_src
 check("lite CSS hides chart slot", grepl("body.ynow-lite #ynow_macro_index_hist", ui_css, fixed = TRUE))
 check("lite CSS disables clickable boxes", grepl("body.ynow-lite .ynow-macro-kpi--clickable", ui_css, fixed = TRUE))
 check("locale wires index hint", grepl("ynow_macro_index_hint", ui_css, fixed = TRUE))
+check("HCCSI box on Rf row", grepl("ynow-macro-kpi--hccsi", txt, fixed = TRUE))
+check("HCCSI expand Full-only", grepl("ynow-macro-hccsi-expand ynow-full-only", txt, fixed = TRUE))
+check("HCCSI expand below Rf row", {
+  pos_rf <- regexpr("rf_signal_row", txt, fixed = TRUE)[1]
+  pos_ex <- regexpr("ynow_macro_hccsi_expand", txt, fixed = TRUE)[1]
+  is.finite(pos_rf) && is.finite(pos_ex) && pos_ex > pos_rf
+})
+check("HCCSI 1:1 width helper", grepl("kpi_w <- if (is_tw) 4L else 6L", txt, fixed = TRUE))
+check("lite CSS hides HCCSI expand", grepl("body.ynow-lite #ynow_macro_hccsi_expand", ui_css, fixed = TRUE))
+check("en HCCSI title", identical(ui_str("hccsi_title", "en"), "HCCSI"))
+check("zh HCCSI title stays English", identical(ui_str("hccsi_title", "zh-TW"), "HCCSI"))
 
 cat("All macro market module checks passed.\n")

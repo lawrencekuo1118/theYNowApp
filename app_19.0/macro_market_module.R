@@ -336,6 +336,11 @@ macro_market_ui <- function(id = "macro") {
       uiOutput(ns("index_hist_panel"))
     ),
     uiOutput(ns("rf_signal_row")),
+    tags$div(
+      id = "ynow_macro_hccsi_expand",
+      class = "ynow-macro-hccsi-expand ynow-full-only",
+      uiOutput(ns("hccsi_expand_panel"))
+    ),
     tags$section(
       class = "ynow-macro-chapter",
       tags$h3(id = "ynow_macro_theme_title", "Relative performance vs benchmark"),
@@ -437,8 +442,13 @@ macro_market_server <- function(id = "macro",
 
     refresh_token <- reactiveVal(0L)
     selected_index <- reactiveVal("")
+    hccsi_expanded <- reactiveVal(FALSE)
     observeEvent(input$refresh, {
       refresh_token(isolate(refresh_token()) + 1L)
+    }, ignoreInit = TRUE)
+    observeEvent(input$hccsi_click, {
+      if (.is_lite()) return()
+      hccsi_expanded(!isolate(hccsi_expanded()))
     }, ignoreInit = TRUE)
     observeEvent(input$index_click, {
       if (.is_lite()) return()
@@ -664,50 +674,78 @@ macro_market_server <- function(id = "macro",
       )
     })
 
-    # TW business-cycle card only when market_mode == TW (hidden on US)
+    hccsi_result <- reactive({
+      refresh_token()
+      expanded <- isTRUE(hccsi_expanded())
+      cfg <- if (exists("hccsi_load_config", mode = "function")) hccsi_load_config() else NULL
+      price_map <- list(); bench_df <- NULL
+      want_px <- isTRUE(expanded) || isolate(refresh_token()) > 0L
+      if (isTRUE(want_px) && exists("fetch_price_history_df", mode = "function") &&
+          exists("hccsi_issuers", mode = "function")) {
+        for (iss in hccsi_issuers(cfg)) {
+          tk <- as.character(iss$tickers[[1]] %||% "")[1]
+          if (!nzchar(tk)) next
+          pdf <- tryCatch(fetch_price_history_df(tk, "1y"), error = function(e) NULL)
+          if (!is.null(pdf) && is.data.frame(pdf) && nrow(pdf) >= 2L) price_map[[tk]] <- pdf
+        }
+        bench_tk <- tryCatch(macro_bench_ticker(.mode()), error = function(e) "^GSPC")
+        bench_df <- tryCatch(fetch_price_history_df(bench_tk, "1y"), error = function(e) NULL)
+      }
+      inputs <- if (exists("hccsi_live_inputs_from_prices", mode = "function")) {
+        hccsi_live_inputs_from_prices(price_map, bench_df, cfg)
+      } else NULL
+      if (exists("hccsi_score", mode = "function")) tryCatch(hccsi_score(inputs, cfg), error = function(e) NULL) else NULL
+    })
+
+    output$hccsi_expand_panel <- renderUI({
+      if (.is_lite() || !isTRUE(hccsi_expanded())) return(NULL)
+      res <- hccsi_result()
+      if (exists("hccsi_expand_ui", mode = "function")) hccsi_expand_ui(res, .loc()) else NULL
+    })
+
+    # Rf + HCCSI share one row at 1:1 width (TW and US, Lite and Full).
+    # TW NDC card stays on that row. Four-index expand is Full-only, below.
     output$rf_signal_row <- renderUI({
       mode <- .mode()
-      rf_col_w <- if (identical(mode, "TW")) 4L else 12L
+      lite <- .is_lite()
+      is_tw <- identical(mode, "TW")
+      kpi_w <- if (is_tw) 4L else 6L
+      kpi_cls <- if (is_tw) "col-xs-12 col-sm-6 col-md-4" else "col-xs-12 col-sm-6 col-md-6"
+      res <- tryCatch(hccsi_result(), error = function(e) NULL)
       rf_col <- column(
-        width = rf_col_w,
-        class = if (identical(mode, "TW")) "col-xs-12 col-sm-12 col-md-4" else "col-xs-12",
+        width = kpi_w, class = kpi_cls,
         tags$div(
           class = "ynow-macro-kpi ynow-macro-kpi--rf",
-          tags$div(
-            class = "ynow-macro-kpi__label",
-            id = "ynow_macro_rf_title",
-            .ui("macro_rf_title")
-          ),
+          tags$div(class = "ynow-macro-kpi__label", id = "ynow_macro_rf_title", .ui("macro_rf_title")),
           uiOutput(ns("rf_box"))
         )
       )
-      if (!identical(mode, "TW")) {
-        return(fluidRow(class = "ynow-macro-kpi-row", rf_col))
-      }
-      fluidRow(
-        class = "ynow-macro-rf-row",
-        rf_col,
-        column(
-          width = 8,
-          class = "col-xs-12 col-sm-12 col-md-8",
+      hccsi_col <- column(
+        width = kpi_w, class = kpi_cls,
+        if (exists("hccsi_kpi_box", mode = "function")) {
+          hccsi_kpi_box(res, lite = lite, locale = .loc(), ns = ns,
+                        selected = isTRUE(hccsi_expanded()) && !isTRUE(lite))
+        } else {
+          tags$div(class = "ynow-macro-kpi ynow-macro-kpi--hccsi", "HCCSI")
+        }
+      )
+      cols <- list(rf_col, hccsi_col)
+      if (is_tw) {
+        cols <- c(cols, list(column(
+          width = 4, class = "col-xs-12 col-sm-12 col-md-4",
           tags$div(
             class = "ynow-macro-card",
             tags$h4(id = "ynow_macro_tw_signal_title", .ui("macro_tw_signal_title")),
             tags$div(
               class = "ynow-macro-hint",
               tags$p(.ui("macro_tw_signal_body")),
-              tags$p(
-                tags$a(
-                  href = "https://index.ndc.gov.tw/",
-                  target = "_blank",
-                  rel = "noopener noreferrer",
-                  .ui("macro_tw_signal_link")
-                )
-              )
+              tags$p(tags$a(href = "https://index.ndc.gov.tw/", target = "_blank",
+                            rel = "noopener noreferrer", .ui("macro_tw_signal_link")))
             )
           )
-        )
-      )
+        )))
+      }
+      do.call(fluidRow, c(list(class = "ynow-macro-rf-row ynow-macro-kpi-row"), cols))
     })
 
     overlay_data <- reactive({

@@ -2259,7 +2259,8 @@ ui <- dashboardPage(
           pointer-events: none;
         }
         body.ynow-lite #ynow_macro_index_hist,
-        body.ynow-lite #ynow_macro_index_hint {
+        body.ynow-lite #ynow_macro_index_hint,
+        body.ynow-lite #ynow_macro_hccsi_expand {
           display: none !important;
         }
         /* Prefer data-value: locale applyTabLabels may strip title span ids */
@@ -3609,6 +3610,18 @@ ui <- dashboardPage(
             setBtText('ynow_macro_page_title', 'macro_page_title');
             setBtText('ynow_macro_page_sub', 'macro_page_sub');
             setBtText('ynow_macro_rf_title', 'macro_rf_title');
+            setBtText('ynow_macro_hccsi_title', 'hccsi_title');
+            if (document.body && document.body.classList.contains('ynow-lite')) {
+              setBtText('ynow_macro_hccsi_hint', 'hccsi_disclosure_short');
+            } else {
+              setBtText('ynow_macro_hccsi_hint', 'hccsi_click_hint');
+            }
+            setBtText('ynow_macro_hccsi_disclosure', 'hccsi_disclosure');
+            setBtText('ynow_macro_hccsi_overview_title', 'hccsi_overview_title');
+            setBtText('ynow_macro_hccsi_layer_title', 'hccsi_layer_title');
+            setBtText('ynow_macro_hccsi_network_title', 'hccsi_network_title');
+            setBtText('ynow_macro_hccsi_constituent_title', 'hccsi_constituent_title');
+            setBtText('ynow_macro_hccsi_method_title', 'hccsi_method_title');
             setBtText('ynow_macro_index_hint', 'macro_index_chart_hint');
             setBtText('ynow_macro_tw_signal_title', 'macro_tw_signal_title');
             setBtText('ynow_macro_theme_title', 'macro_theme_title');
@@ -5934,6 +5947,21 @@ ui <- dashboardPage(
           flex: 1 1 auto;
           width: 100%;
         }
+        .ynow-macro-kpi--hccsi.ynow-hccsi-alert--watch {
+          border-color: rgba(230, 168, 23, 0.85);
+        }
+        .ynow-macro-kpi--hccsi.ynow-hccsi-alert--warning {
+          border-color: rgba(211, 84, 0, 0.9);
+        }
+        .ynow-macro-kpi--hccsi.ynow-hccsi-alert--critical {
+          border-color: rgba(192, 57, 43, 0.95);
+          box-shadow: 0 0 0 2px rgba(192, 57, 43, 0.25);
+        }
+        .ynow-macro-hccsi-expand { width: 100%; margin: 0 0 12px 0; }
+        .ynow-hccsi-expand__card h4 { margin: 12px 0 6px 0; font-size: 14px; }
+        .ynow-hccsi-table-wrap { overflow-x: auto; margin: 0 0 10px 0; }
+        .ynow-hccsi-table { font-size: 12px; margin-bottom: 0; }
+        .ynow-hccsi-sub .ynow-macro-kpi__value { font-size: clamp(16px, 3.6vw, 22px); }
         @media (max-width: 991px) {
           .ynow-macro-kpi-row > [class*='col-'] {
             width: 50%;

@@ -33,7 +33,10 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
     "macro_index_name_sox", "macro_index_name_twii", "macro_index_name_twoii",
     "macro_index_name_teli", "macro_index_name_tfni",
     "macro_index_chart_hint", "macro_index_chart_empty",
-    "macro_index_chart_error"
+    "macro_index_chart_error",
+    "hccsi_title", "hccsi_disclosure", "hccsi_click_hint",
+    "hccsi_index_health", "hccsi_index_stress",
+    "hccsi_index_fragility", "hccsi_index_market"
   )
   for (k in keys) {
     en <- .UI_STRINGS$en[[k]]
@@ -157,6 +160,10 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl("body.ynow-lite #ynow_macro_index_hist", txt, fixed = TRUE))
   testthat::expect_true(grepl("body.ynow-lite .ynow-macro-kpi--clickable", txt, fixed = TRUE))
   testthat::expect_true(grepl("body.ynow-lite #ynow_macro_index_hint", txt, fixed = TRUE))
+  testthat::expect_true(grepl("body.ynow-lite #ynow_macro_hccsi_expand", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-macro-kpi--hccsi", macro_txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-macro-hccsi-expand ynow-full-only", macro_txt, fixed = TRUE))
+  testthat::expect_false(grepl("ynow-macro-kpi--hccsi[^\\n]*ynow-full-only", macro_txt))
   # Macro tab must appear before Dashboard in sidebar markup
   testthat::expect_true(
     regexpr('tabName = "macro_market"', txt, fixed = TRUE)[1] <
