@@ -166,6 +166,17 @@ check("Macro Notes below chart", {
   pos_notes <- regexpr("ynow_notes_block", theme_sec, fixed = TRUE)[1]
   pos_plot > 0 && pos_notes > pos_plot
 })
+check("Macro Rf note id gone", !grepl("ynow_macro_rf_note", macro, fixed = TRUE))
+check("Macro Rf CAPM sentence gone", !grepl("Same live Rf path as CAPM", macro, fixed = TRUE))
+check("Macro Rf no Notes wrapper", {
+  pos <- regexpr("output$rf_signal_row", macro, fixed = TRUE)[1]
+  pos2 <- regexpr("overlay_data <- reactive", macro, fixed = TRUE)[1]
+  chunk <- if (pos > 0 && pos2 > pos) substr(macro, pos, pos2) else ""
+  nzchar(chunk) && !grepl("ynow_notes_block", chunk, fixed = TRUE) &&
+    grepl("rf_box", chunk, fixed = TRUE)
+})
+check("macro_rf_note locale gone", is.null(.UI_STRINGS$en$macro_rf_note) &&
+        is.null(.UI_STRINGS$`zh-TW`$macro_rf_note))
 
 ui <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("applyUiLocale notes_title", grepl("ynow-notes__title", ui, fixed = TRUE))

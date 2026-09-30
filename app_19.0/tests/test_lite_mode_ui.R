@@ -48,6 +48,8 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
   testthat::expect_identical(.UI_STRINGS$en$lab_im_eq_label, "Earnings quality")
   testthat::expect_identical(.UI_STRINGS$`zh-TW`$lab_im_eq_explain_title, "盈餘品質：")
   testthat::expect_true(grepl("OCF", .UI_STRINGS$`zh-TW`$lab_im_eq_explain_body, fixed = TRUE))
+  testthat::expect_null(.UI_STRINGS$en$macro_rf_note)
+  testthat::expect_null(.UI_STRINGS$`zh-TW`$macro_rf_note)
 })
 
 testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hooks", {
@@ -133,6 +135,12 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
     regexpr("ynow_macro_index_hist", macro_txt, fixed = TRUE)[1] <
       regexpr("rf_signal_row", macro_txt, fixed = TRUE)[1]
   )
+  testthat::expect_false(grepl("ynow_macro_rf_note", macro_txt, fixed = TRUE))
+  testthat::expect_false(grepl("Same live Rf path as CAPM", macro_txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-macro-kpi--rf", macro_txt, fixed = TRUE))
+  testthat::expect_true(grepl("rf_box", macro_txt, fixed = TRUE))
+  testthat::expect_true(grepl("cached_get_risk_free_rate", macro_txt, fixed = TRUE))
+  testthat::expect_false(grepl("ynow-macro-kpi--rf[^\\n]*ynow-full-only", macro_txt))
   testthat::expect_true(grepl("macro_click_index_specs", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("lite_mode_rv", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("body.ynow-lite #ynow_macro_index_hist", txt, fixed = TRUE))

@@ -108,7 +108,7 @@ check("zh chart hint", grepl("點選指數方塊", ui_str("macro_index_chart_hin
 for (k in c(
   "macro_beta_title", "macro_beta_warn_title", "macro_beta_warn_body",
   "macro_beta_latest", "macro_beta_kpi_hint", "macro_beta_need_data",
-  "macro_beta_chart_title"
+  "macro_beta_chart_title", "macro_rf_note"
 )) {
   check(paste("en orphan", k), is.null(.UI_STRINGS$en[[k]]))
   check(paste("zh orphan", k), is.null(.UI_STRINGS$`zh-TW`[[k]]))
@@ -273,6 +273,20 @@ check("hint is full-only", grepl("ynow-macro-hint ynow-full-only", txt, fixed = 
 check("lite gate on click", grepl(".is_lite", txt, fixed = TRUE) && grepl("lite_mode_rv", txt, fixed = TRUE))
 check("keeps showing on same box", !grepl("selected_index(\"\")", txt, fixed = TRUE))
 check("no Theme Rolling beta return", !grepl("Theme Rolling β vs benchmark", txt, fixed = TRUE))
+check("Rf CAPM note sentence gone", !grepl("Same live Rf path as CAPM", txt, fixed = TRUE))
+check("Rf note id gone", !grepl("ynow_macro_rf_note", txt, fixed = TRUE))
+check("Rf KPI kept", grepl("ynow-macro-kpi--rf", txt, fixed = TRUE))
+check("Rf box kept", grepl("rf_box", txt, fixed = TRUE))
+check("live CAPM Rf path kept", grepl("cached_get_risk_free_rate", txt, fixed = TRUE))
+check("Rf row has no Notes wrapper", {
+  pos <- regexpr("output$rf_signal_row", txt, fixed = TRUE)[1]
+  pos2 <- regexpr("overlay_data <- reactive", txt, fixed = TRUE)[1]
+  chunk <- if (pos > 0 && pos2 > pos) substr(txt, pos, pos2) else ""
+  nzchar(chunk) && !grepl("ynow_notes_block", chunk, fixed = TRUE) &&
+    grepl("rf_box", chunk, fixed = TRUE) && grepl("macro_rf_title", chunk, fixed = TRUE)
+})
+check("locale dropped rf note wiring", !grepl("ynow_macro_rf_note", ui_src, fixed = TRUE))
+check("locale dropped rf note sentence", !grepl("Same live Rf path as CAPM", ui_src, fixed = TRUE))
 
 ui_css <- ui_src
 check("lite CSS hides chart slot", grepl("body.ynow-lite #ynow_macro_index_hist", ui_css, fixed = TRUE))
