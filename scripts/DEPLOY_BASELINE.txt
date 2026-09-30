@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12625616
+bundleId=12625675
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=e57f96b4b0e9c45240ee86d15dadbe884b30b9b1
-commit=e57f96b4b0e9c45240ee86d15dadbe884b30b9b1
-short=e57f96b
-message=chore: record shinyapps baseline bundle 12625600 (app_19.0)
-captured_at=2026-09-30T03:34:20Z
+aligned_git=528534a7377ef1f597d24d003a32d1354ba38899
+commit=528534a7377ef1f597d24d003a32d1354ba38899
+short=528534a
+message=chore: bump display version to v19.06
+captured_at=2026-09-30T03:46:34Z
 source_branch=cursor/lifecycle-v19-3fb1
 display_version=v19.06
-note=Canonical live line is app_19.0. Bundle 12625616 = v19.05 YNOW tab restack (財報體質 → 財報警訊 → 動態產業泡沫與權重集中度; title YNOW; Lite=Full). Deploy via scripts/deploy_app_19.R. Supersedes 12625600 / 12625583 / 12625565.
+note=Canonical live line is app_19.0. Bundle 12625675 = v19.06 independent Industry vs benchmark and Concept vs benchmark menus on Macro (empty/none allowed; both overlay vs bench). Deploy via scripts/deploy_app_19.R. Supersedes 12625616 / 12625600 / 12625583 / 12625565.
