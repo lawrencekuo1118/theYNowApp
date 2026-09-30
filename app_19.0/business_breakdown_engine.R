@@ -1705,7 +1705,7 @@ bblab_toast_payload <- function(codes, recon_pass = NULL, allocation_used = FALS
 }
 
 .bblab_df_metric_for_year <- function(df, patterns, year) {
-  if (!is.data.frame(df) || !nrow(df) || !is.finite(year)) return(NA_real_)
+  if (!is.data.frame(df) || !nrow(df) || ncol(df) < 2L || !is.finite(year)) return(NA_real_)
   lab <- as.character(df[[1]])
   hit <- grepl(paste(patterns, collapse = "|"), lab, ignore.case = TRUE)
   if (!any(hit)) return(NA_real_)
@@ -1792,7 +1792,7 @@ bblab_toast_payload <- function(codes, recon_pass = NULL, allocation_used = FALS
 bblab_extract_dimension_from_income_statement <- function(d_is, consolidated = NULL,
                                                          period = NA_character_,
                                                          currency = NA_character_) {
-  if (!is.data.frame(d_is) || nrow(d_is) < 3L) return(NULL)
+  if (!is.data.frame(d_is) || nrow(d_is) < 3L || ncol(d_is) < 2L) return(NULL)
   labs <- trimws(as.character(d_is[[1]]))
   cons_rev <- .bblab_num(consolidated$revenue)
   stop_re <- paste(
@@ -2102,7 +2102,8 @@ bblab_extract_dimension_from_income_statement <- function(d_is, consolidated = N
       tables <- js
     }
   }
-  if (!is.null(names(tables)) && !is.list(tables[[1]]) && !is.null(tables$headers)) {
+  if (length(tables) && !is.null(names(tables)) &&
+      !is.list(tables[[1]]) && !is.null(tables$headers)) {
     tables <- list(tables)
   }
   tables
@@ -2127,9 +2128,12 @@ bblab_extract_dimensions_from_filings <- function(d_is = NULL, notes = NULL,
     lab <- .bblab_chr(tbl$short_name %||% tbl$label %||% tbl$caption, "segment_note")
     kind <- .bblab_chr(tbl$kind %||% .bblab_kind_from_label(lab), "segment_note")
     if (!kind %in% BBLAB_DIMENSION_KINDS) kind <- "segment_note"
-    packed <- .bblab_components_from_table(
-      tbl, cons = consolidated, period = period, currency = currency,
-      kind = kind, source_label = lab
+    packed <- tryCatch(
+      .bblab_components_from_table(
+        tbl, cons = consolidated, period = period, currency = currency,
+        kind = kind, source_label = lab
+      ),
+      error = function(e) NULL
     )
     if (is.null(packed) || length(packed$components) < 2L) next
     kind <- .bblab_chr(packed$kind %||% kind, kind)
@@ -2378,14 +2382,15 @@ bblab_payload_from_statements <- function(d_is, ticker = "", entity_name = "",
   }
   grab <- function(patterns) {
     if (is.finite(seg_year) && is.data.frame(d_is)) {
-      yv <- .bblab_df_metric_for_year(d_is, patterns, seg_year)
+      yv <- tryCatch(.bblab_df_metric_for_year(d_is, patterns, seg_year),
+                     error = function(e) NA_real_)
       if (.bblab_finite(yv)) return(as.numeric(yv)[1])
     }
     if (exists("select_current_metric_any", mode = "function") && is.data.frame(d_is)) {
       v <- tryCatch(select_current_metric_any(d_is, patterns, "flow"), error = function(e) NA_real_)
       if (.bblab_finite(v)) return(as.numeric(v)[1])
     }
-    if (!is.data.frame(d_is) || !nrow(d_is)) return(NA_real_)
+    if (!is.data.frame(d_is) || !nrow(d_is) || ncol(d_is) < 2L) return(NA_real_)
     lab <- as.character(d_is[[1]])
     hit <- grepl(paste(patterns, collapse = "|"), lab, ignore.case = TRUE)
     if (!any(hit)) return(NA_real_)

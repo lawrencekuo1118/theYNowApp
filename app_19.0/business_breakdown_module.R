@@ -450,7 +450,15 @@ business_breakdown_lab_server <- function(id = "bblab",
             if (exists("normalize_all_financials", mode = "function")) normalize_all_financials(raw_fs) else raw_fs
           }, error = function(e) NULL)
           if (!is.null(res) && !is.null(res[["Income Statement"]])) {
-            d_is <- tryCatch(res[["Income Statement"]]$expanded, error = function(e) NULL)
+            d_is <- tryCatch({
+              exp <- res[["Income Statement"]]$expanded
+              if (exists("reorder_financial_columns", mode = "function")) {
+                reorder_financial_columns(exp)
+              } else if (exists("coerce_financial_df", mode = "function")) {
+                coerce_financial_df(exp)
+              } else exp
+            }, error = function(e) NULL)
+            if (!is.null(d_is) && !is.data.frame(d_is)) d_is <- NULL
             meta_fc <- attr(res, "financialCurrency")
             if (!is.null(meta_fc) && exists("normalize_ccy", mode = "function")) {
               mc <- normalize_ccy(meta_fc)
@@ -542,7 +550,7 @@ business_breakdown_lab_server <- function(id = "bblab",
       }, error = function(e) {
         source_status("statements_unavailable")
         showNotification(
-          paste0(ui_msg("bblab_source_unavailable"), " ", conditionMessage(e)),
+          ui_msg("bblab_source_unavailable"),
           type = "warning",
           duration = 8
         )

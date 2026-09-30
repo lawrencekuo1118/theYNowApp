@@ -803,6 +803,53 @@ yahoo_consol_only_is <- function() {
     check.names = FALSE, stringsAsFactors = FALSE
   )
 }
+label_only_is <- function() {
+  data.frame(
+    Breakdown = c("Total Revenue", "Cost Of Revenue", "Gross Profit", "Net Income"),
+    stringsAsFactors = FALSE
+  )
+}
+
+check("one-column IS does not throw subscript out of bounds", {
+  p1 <- tryCatch(
+    bblab_payload_from_statements(
+      label_only_is(), ticker = "TSM", entity_name = "TSMC",
+      statement_currency = "TWD"
+    ),
+    error = function(e) e
+  )
+  r1 <- if (is.list(p1) && !inherits(p1, "error")) {
+    tryCatch(bblab_analyze(p1), error = function(e) e)
+  } else p1
+  is.list(p1) && !inherits(p1, "error") &&
+    is.list(r1) && !inherits(r1, "error") &&
+    !isTRUE(.bblab_finite(p1$consolidated$revenue))
+})
+check("malformed note table is skipped, not a Search crash", {
+  messy <- list(
+    short_name = "Segment Information",
+    kind = "operating_segment",
+    headers = list(),
+    rows = list(list())
+  )
+  p2 <- tryCatch(
+    bblab_payload_from_statements(
+      yahoo_consol_only_is(), ticker = "TSM", entity_name = "TSMC",
+      statement_currency = "TWD", notes = list(segment_tables = list(messy))
+    ),
+    error = function(e) e
+  )
+  r2 <- if (is.list(p2) && !inherits(p2, "error")) {
+    tryCatch(bblab_analyze(p2), error = function(e) e)
+  } else p2
+  is.list(p2) && !inherits(p2, "error") &&
+    is.list(r2) && !inherits(r2, "error") &&
+    isTRUE(.bblab_finite(p2$consolidated$revenue))
+})
+check("Search toast does not leak R subscript errors",
+      !grepl("conditionMessage\\(e\\)", mod_src, fixed = TRUE) &&
+        grepl("ui_msg(\"bblab_source_unavailable\")", mod_src, fixed = TRUE) &&
+        grepl("reorder_financial_columns", mod_src, fixed = TRUE))
 
 search_two <- bblab_payload_from_statements(
   yahoo_two_product_is(), ticker = "FIXT", entity_name = "Two-product fixture",
