@@ -8,5 +8,5 @@ short=0a62f5d
 message=chore: bump display version to v19.07
 captured_at=2026-09-30T03:51:14Z
 source_branch=cursor/lifecycle-v19-3fb1
-display_version=v19.07
+display_version=v19.08
 note=Canonical live line is app_19.0. Bundle 12625709 = v19.07 YNOW KPI jump row (MOS | Reliability → Quality screen (F-Score) → Statement alerts) above Section I; click-to-scroll anchors #ynow_funnel_ch1 / #ynow_funnel_fscore / #ynow_funnel_ch2. Also includes independent Industry/Concept menus. Deploy via scripts/deploy_app_19.R. Supersedes 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
