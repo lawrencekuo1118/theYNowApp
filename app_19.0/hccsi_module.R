@@ -47,7 +47,26 @@ hccsi_score_span <- function(x, digits = 1, extra_class = NULL) {
 }
 
 .hccsi_issuer_label <- function(r) {
-  paste(r$id, paste(r$tickers, collapse = "/"))
+  id <- as.character(r$id %||% "")[1]
+  if (is.na(id)) id <- ""
+  tks <- unique(as.character(r$tickers %||% character(0)))
+  tks <- tks[!is.na(tks) & nzchar(tks)]
+  codes <- unique(c(if (nzchar(id)) id else character(0), tks))
+  if (!length(codes)) return("—")
+  paste(codes, collapse = "/")
+}
+
+.hccsi_issuer_stages <- function(id, cfg, locale = "en") {
+  raw <- as.character(id %||% "")[1]
+  lys <- character(0)
+  for (ly in names(cfg$layers %||% list())) {
+    mem <- as.character(cfg$layers[[ly]])
+    if (raw %in% mem) lys <- c(lys, .hccsi_named("ly", ly, locale))
+  }
+  lys <- unique(lys[nzchar(lys)])
+  if (!length(lys)) return("—")
+  sep <- if (identical(as.character(locale)[1], "zh-TW")) "；" else "; "
+  paste(lys, collapse = sep)
 }
 
 .hccsi_html_table <- function(header, body) {
@@ -134,22 +153,38 @@ hccsi_kpi_box <- function(result, lite = FALSE, locale = "en", ns = NULL, select
   if (is.null(rows) || !length(rows)) return(tags$p(class = "ynow-macro-hint", .hccsi_ui("hccsi_empty", locale)))
   cfg <- hccsi_load_config()
   header <- tags$tr(
-    tags$th(.hccsi_ui("hccsi_col_layer", locale)), tags$th(.hccsi_ui("hccsi_col_health", locale)),
-    tags$th(.hccsi_ui("hccsi_col_stress", locale)), tags$th(.hccsi_ui("hccsi_col_weight", locale)),
+    tags$th(.hccsi_ui("hccsi_col_layer", locale)),
+    tags$th(.hccsi_ui("hccsi_col_issuer", locale)),
+    tags$th(.hccsi_ui("hccsi_col_function", locale)),
+    tags$th(.hccsi_ui("hccsi_col_health", locale)),
+    tags$th(.hccsi_ui("hccsi_col_stress", locale)),
+    tags$th(.hccsi_ui("hccsi_col_weight", locale)),
     tags$th(.hccsi_ui("hccsi_col_concentration", locale)))
-  body <- lapply(names(cfg$layers), function(ly) {
+  seen <- character(0)
+  order_ids <- character(0)
+  for (ly in names(cfg$layers %||% list())) {
     mem <- intersect(as.character(cfg$layers[[ly]]), names(rows))
-    if (!length(mem)) return(NULL)
-    h <- .hccsi_mean_excl_na(vapply(mem, function(id) result$issuer_health[[id]], numeric(1)),
-                             vapply(mem, function(id) rows[[id]]$weight, numeric(1)))
-    s <- .hccsi_mean_excl_na(vapply(mem, function(id) result$issuer_stress[[id]], numeric(1)),
-                             vapply(mem, function(id) rows[[id]]$weight, numeric(1)))
-    w <- sum(vapply(mem, function(id) as.numeric(rows[[id]]$weight)[1], numeric(1)), na.rm = TRUE)
-    tags$tr(tags$td(.hccsi_named("ly", ly, locale)), tags$td(hccsi_score_span(h)), tags$td(hccsi_score_span(s)),
-            tags$td(sprintf("%.1f%%", 100 * w)), tags$td(hccsi_score_span(result$layer_stress[[ly]])))
+    for (id in mem) {
+      if (!id %in% seen) {
+        seen <- c(seen, id)
+        order_ids <- c(order_ids, id)
+      }
+    }
+  }
+  order_ids <- c(order_ids, setdiff(names(rows), order_ids))
+  body <- lapply(order_ids, function(id) {
+    r <- rows[[id]]
+    w <- suppressWarnings(as.numeric(r$weight)[1])
+    tags$tr(
+      tags$td(.hccsi_issuer_stages(id, cfg, locale)),
+      tags$td(.hccsi_issuer_label(r)),
+      tags$td(.hccsi_named("fn", r$function_id, locale)),
+      tags$td(hccsi_score_span(result$issuer_health[[id]])),
+      tags$td(hccsi_score_span(result$issuer_stress[[id]])),
+      tags$td(if (is.finite(w)) sprintf("%.1f%%", 100 * w) else "—"),
+      tags$td(hccsi_score_span(r$inf_score)))
   })
-  tags$div(class = "ynow-hccsi-table-wrap",
-           tags$table(class = "table table-condensed ynow-hccsi-table", tags$thead(header), tags$tbody(body)))
+  .hccsi_html_table(header, body)
 }
 
 .hccsi_network_ui <- function(result, locale = "en") {
@@ -198,35 +233,10 @@ hccsi_kpi_box <- function(result, lite = FALSE, locale = "en", ns = NULL, select
   .hccsi_html_table(header, body)
 }
 
-.hccsi_out_composite_table <- function(result, locale = "en") {
-  rows <- result$issuers
-  if (is.null(rows) || !length(rows)) return(tags$p(class = "ynow-macro-hint", .hccsi_ui("hccsi_empty", locale)))
-  header <- tags$tr(
-    tags$th(.hccsi_ui("hccsi_col_issuer", locale)),
-    tags$th(.hccsi_ui("hccsi_col_function", locale)))
-  body <- lapply(rows, function(r) {
-    tags$tr(
-      tags$td(.hccsi_issuer_label(r)),
-      tags$td(.hccsi_named("fn", r$function_id, locale)))
-  })
-  .hccsi_html_table(header, body)
-}
-
-.hccsi_issuer_pair <- function(result, locale = "en") {
-  fluidRow(
-    class = "ynow-hccsi-pair",
-    column(
-      width = 6, class = "col-xs-12 col-sm-12 col-md-6",
-      tags$h4(id = "ynow_macro_hccsi_in_title", .hccsi_ui("hccsi_in_composite_title", locale)),
-      .hccsi_in_composite_table(result, locale)
-    ),
-    column(
-      width = 6, class = "col-xs-12 col-sm-12 col-md-6",
-      tags$h4(id = "ynow_macro_hccsi_out_title", .hccsi_ui("hccsi_out_composite_title", locale)),
-      .hccsi_out_composite_table(result, locale),
-      tags$p(class = "ynow-macro-hint", id = "ynow_macro_hccsi_out_note",
-             .hccsi_ui("hccsi_out_composite_note", locale))
-    )
+.hccsi_in_composite_block <- function(result, locale = "en") {
+  tags$div(
+    tags$h4(id = "ynow_macro_hccsi_in_title", .hccsi_ui("hccsi_in_composite_title", locale)),
+    .hccsi_in_composite_table(result, locale)
   )
 }
 
@@ -276,7 +286,7 @@ hccsi_expand_ui <- function(result, locale = "en") {
     .hccsi_layer_table(result, locale),
     tags$h4(id = "ynow_macro_hccsi_network_title", .hccsi_ui("hccsi_network_title", locale)),
     .hccsi_network_ui(result, locale),
-    .hccsi_issuer_pair(result, locale),
+    .hccsi_in_composite_block(result, locale),
     tags$h4(id = "ynow_macro_hccsi_method_title", .hccsi_ui("hccsi_method_title", locale)),
     hccsi_methodology_notes(locale)
   )

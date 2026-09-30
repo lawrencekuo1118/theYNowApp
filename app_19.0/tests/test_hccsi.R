@@ -282,7 +282,7 @@ check("UI Lite no click", grepl("if (!isTRUE(lite))", mod_txt, fixed = TRUE))
 check("UI Lite CSS", grepl("body.ynow-lite #ynow_macro_hccsi_expand", ui_txt, fixed = TRUE))
 check("UI four indices", grepl("hccsi-four", mod_txt, fixed = TRUE))
 check("four-index uses flow span", grepl("hccsi_score_span(it$val)", mod_txt, fixed = TRUE))
-check("layer table uses flow span", grepl("hccsi_score_span(h)", mod_txt, fixed = TRUE))
+check("layer table uses flow span", grepl("hccsi_score_span(result$issuer_health[[id]])", mod_txt, fixed = TRUE))
 mod_lines <- strsplit(mod_txt, "\n", fixed = TRUE)[[1]]
 ly_i <- grep("^\\.hccsi_layer_table <- function", mod_lines)
 nw_i <- grep("^\\.hccsi_network_ui <- function", mod_lines)
@@ -292,11 +292,15 @@ layer_src <- if (length(ly_i) && length(nw_i) && nw_i[[1]] > ly_i[[1]]) {
 check("layer table no substitutes header", !grepl("hccsi_col_substitutes", layer_src, fixed = TRUE))
 check("layer table no replacement header", !grepl("hccsi_col_replacement", layer_src, fixed = TRUE))
 check("layer table no rebuild-year mean", !grepl("replacement_time_years", layer_src, fixed = TRUE))
-check("issuer pair not single constituent table", grepl(".hccsi_issuer_pair", mod_txt, fixed = TRUE) &&
-  !grepl(".hccsi_constituent_table", mod_txt, fixed = TRUE))
+check("issuer pair not single constituent table", grepl(".hccsi_in_composite_block", mod_txt, fixed = TRUE) &&
+  !grepl(".hccsi_constituent_table", mod_txt, fixed = TRUE) &&
+  !grepl(".hccsi_issuer_pair", mod_txt, fixed = TRUE) &&
+  !grepl(".hccsi_out_composite_table", mod_txt, fixed = TRUE))
 check("in-composite table has live inputs", grepl("hccsi_col_rev_yoy", mod_txt, fixed = TRUE) &&
   grepl("hccsi_col_gm_delta", mod_txt, fixed = TRUE) && grepl("hccsi_col_capex_own", mod_txt, fixed = TRUE) &&
   grepl("hccsi_col_price_hist", mod_txt, fixed = TRUE))
+check("stage table carries issuer role", grepl("hccsi_col_function", layer_src, fixed = TRUE) &&
+  grepl("hccsi_col_issuer", layer_src, fixed = TRUE))
 check("issuer tables drop cap theater", !grepl("hccsi_col_criticality", mod_txt, fixed = TRUE) &&
   !grepl("hccsi_col_weight_raw", mod_txt, fixed = TRUE) &&
   !grepl("hccsi_col_substitutes", mod_txt, fixed = TRUE) &&
@@ -358,7 +362,8 @@ if (requireNamespace("htmltools", quietly = TRUE) && requireNamespace("shiny", q
     check("expand zh no raw enterprise_dbs cell", !grepl(">enterprise_dbs<", html_zh, fixed = TRUE))
     check("expand zh formula banner", grepl("HCCSI = 0.30", html_zh, fixed = TRUE))
     check("expand zh in-composite title", grepl("進入複合分數", html_zh, fixed = TRUE))
-    check("expand zh out-composite title", grepl("不進入複合分數", html_zh, fixed = TRUE))
+    check("expand zh no out-composite title", !grepl("不進入複合分數", html_zh, fixed = TRUE))
+    check("expand zh role in stages", grepl("在鏈上的角色", html_zh, fixed = TRUE))
     check("expand zh no Criticality header", !grepl(">Criticality<", html_zh, fixed = TRUE))
     check("expand zh no 可替代對象 header", !grepl(">可替代對象<", html_zh, fixed = TRUE))
     check("expand zh no 未受限權重", !grepl("未受限權重", html_zh, fixed = TRUE))
@@ -366,18 +371,24 @@ if (requireNamespace("htmltools", quietly = TRUE) && requireNamespace("shiny", q
   layer_en <- tryCatch(.hccsi_layer_table(sc13, "en"), error = function(e) NULL)
   layer_zh <- tryCatch(.hccsi_layer_table(sc13, "zh-TW"), error = function(e) NULL)
   in_en <- tryCatch(.hccsi_in_composite_table(sc13, "en"), error = function(e) NULL)
-  out_en <- tryCatch(.hccsi_out_composite_table(sc13, "en"), error = function(e) NULL)
-  pair_en <- tryCatch(.hccsi_issuer_pair(sc13, "en"), error = function(e) NULL)
   banner_en <- tryCatch(.hccsi_formula_banner(sc13, "en"), error = function(e) NULL)
+  check("issuer label drops dup ticker", identical(.hccsi_issuer_label(sc13$issuers$ASML), "ASML"))
+  check("issuer label keeps extra class", identical(.hccsi_issuer_label(sc13$issuers$GOOGL), "GOOGL/GOOG"))
   if (!is.null(layer_en)) {
     html_ly <- paste(as.character(layer_en), collapse = " ")
     check("layer HTML no substitutes col", !grepl("What can replace it", html_ly, fixed = TRUE))
     check("layer HTML no rebuild col", !grepl("Years to rebuild", html_ly, fixed = TRUE))
+    check("layer HTML has issuer", grepl("Issuer", html_ly, fixed = TRUE))
+    check("layer HTML has role", grepl("Role in the chain", html_ly, fixed = TRUE))
+    check("layer HTML no spaced dup ticker", !grepl("ASML ASML", html_ly, fixed = TRUE) &&
+      !grepl("GOOGL GOOGL", html_ly, fixed = TRUE))
   }
   if (!is.null(layer_zh)) {
     html_ly_zh <- paste(as.character(layer_zh), collapse = " ")
     check("layer zh HTML no 可替代對象", !grepl("可替代對象", html_ly_zh, fixed = TRUE))
     check("layer zh HTML no 重建年數", !grepl("重建年數", html_ly_zh, fixed = TRUE))
+    check("layer zh HTML has 發行人", grepl("發行人", html_ly_zh, fixed = TRUE))
+    check("layer zh HTML has 在鏈上的角色", grepl("在鏈上的角色", html_ly_zh, fixed = TRUE))
   }
   if (!is.null(in_en)) {
     html_in <- paste(as.character(in_en), collapse = " ")
@@ -387,17 +398,8 @@ if (requireNamespace("htmltools", quietly = TRUE) && requireNamespace("shiny", q
     check("in-composite no substitutes", !grepl("What can replace it", html_in, fixed = TRUE))
     check("in-composite no Uncapped", !grepl("Uncapped weight", html_in, fixed = TRUE))
     check("in-composite no Criticality", !grepl("Criticality", html_in, fixed = TRUE))
-  }
-  if (!is.null(out_en)) {
-    html_out <- paste(as.character(out_en), collapse = " ")
-    check("out-composite has role", grepl("Role in the chain", html_out, fixed = TRUE))
-    check("out-composite no Rev YoY header", !grepl("Rev YoY", html_out, fixed = TRUE))
-    check("out-composite no substitutes", !grepl("What can replace it", html_out, fixed = TRUE))
-  }
-  if (!is.null(pair_en)) {
-    html_pair <- paste(as.character(pair_en), collapse = " ")
-    check("pair is side by side", grepl("ynow-hccsi-pair", html_pair, fixed = TRUE) &&
-      grepl("col-md-6", html_pair, fixed = TRUE))
+    check("in-composite no spaced dup ticker", !grepl("ASML ASML", html_in, fixed = TRUE) &&
+      !grepl("GOOGL GOOGL", html_in, fixed = TRUE))
   }
   if (!is.null(banner_en)) {
     html_bn <- paste(as.character(banner_en), collapse = " ")

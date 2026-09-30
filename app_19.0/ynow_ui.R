@@ -3851,8 +3851,6 @@ ui <- dashboardPage(
             setBtText('ynow_macro_hccsi_layer_title', 'hccsi_layer_title');
             setBtText('ynow_macro_hccsi_network_title', 'hccsi_network_title');
             setBtText('ynow_macro_hccsi_in_title', 'hccsi_in_composite_title');
-            setBtText('ynow_macro_hccsi_out_title', 'hccsi_out_composite_title');
-            setBtText('ynow_macro_hccsi_out_note', 'hccsi_out_composite_note');
             setBtText('ynow_macro_hccsi_method_title', 'hccsi_method_title');
             setBtText('ynow_macro_index_hint', 'macro_index_chart_hint');
             setBtText('ynow_macro_tw_signal_title', 'macro_tw_signal_title');
