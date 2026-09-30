@@ -45,6 +45,14 @@ hccsi_score_span <- function(x, digits = 1, extra_class = NULL) {
   if (exists("ui_str", mode = "function")) tryCatch(ui_str(key, locale), error = function(e) key) else key
 }
 
+.hccsi_named <- function(kind, id, locale = "en") {
+  raw <- as.character(id %||% "")[1]
+  if (!nzchar(raw) || is.na(raw)) return("—")
+  key <- paste0("hccsi_", kind, "_", raw)
+  lab <- .hccsi_ui(key, locale)
+  if (!nzchar(lab) || identical(lab, key)) raw else lab
+}
+
 hccsi_kpi_box <- function(result, lite = FALSE, locale = "en", ns = NULL, selected = FALSE) {
   score <- if (is.null(result)) NA_real_ else result$composite
   unavailable <- is.null(result) || !.finite1(score) || identical(result$availability, "unavailable")
@@ -122,7 +130,7 @@ hccsi_kpi_box <- function(result, lite = FALSE, locale = "en", ns = NULL, select
     w <- sum(vapply(mem, function(id) as.numeric(rows[[id]]$weight)[1], numeric(1)), na.rm = TRUE)
     subs <- paste(unique(vapply(mem, function(id) as.character(rows[[id]]$substitutes)[1], character(1))), collapse = "; ")
     repl <- mean(vapply(mem, function(id) as.numeric(rows[[id]]$replacement_time_years)[1], numeric(1)), na.rm = TRUE)
-    tags$tr(tags$td(ly), tags$td(hccsi_score_span(h)), tags$td(hccsi_score_span(s)),
+    tags$tr(tags$td(.hccsi_named("ly", ly, locale)), tags$td(hccsi_score_span(h)), tags$td(hccsi_score_span(s)),
             tags$td(sprintf("%.1f%%", 100 * w)), tags$td(hccsi_score_span(result$layer_stress[[ly]])),
             tags$td(subs), tags$td(if (is.finite(repl)) sprintf("%.1f", repl) else "—"))
   })
@@ -136,7 +144,10 @@ hccsi_kpi_box <- function(result, lite = FALSE, locale = "en", ns = NULL, select
   tags$div(
     class = "ynow-hccsi-network",
     tags$p(tags$b(.hccsi_ui("hccsi_contagion_paths", locale)), ": ",
-           if (length(ch)) paste(ch, collapse = ", ") else .hccsi_ui("hccsi_contagion_none", locale)),
+           if (length(ch)) {
+             sep <- if (identical(as.character(locale)[1], "zh-TW")) "；" else ", "
+             paste(vapply(ch, function(id) .hccsi_named("ch", id, locale), character(1)), collapse = sep)
+           } else .hccsi_ui("hccsi_contagion_none", locale)),
     tags$p(tags$b(.hccsi_ui("hccsi_persistent_issuers", locale)), ": ",
            if (length(persist)) paste(persist, collapse = ", ") else "—"),
     tags$p(class = "ynow-macro-hint", .hccsi_ui("hccsi_network_note", locale))
@@ -155,7 +166,8 @@ hccsi_kpi_box <- function(result, lite = FALSE, locale = "en", ns = NULL, select
     tags$th(.hccsi_ui("hccsi_col_confidence", locale)))
   body <- lapply(rows, function(r) {
     tags$tr(
-      tags$td(paste(r$id, paste(r$tickers, collapse = "/"))), tags$td(r$function_id),
+      tags$td(paste(r$id, paste(r$tickers, collapse = "/"))),
+      tags$td(.hccsi_named("fn", r$function_id, locale)),
       tags$td(hccsi_fmt_score(r$criticality_prior, 0)),
       tags$td(sprintf("%.1f%%", 100 * as.numeric(r$weight_raw)[1])),
       tags$td(sprintf("%.1f%%", 100 * as.numeric(r$weight)[1])),
@@ -194,7 +206,8 @@ hccsi_expand_ui <- function(result, locale = "en") {
     tags$h4(id = "ynow_macro_hccsi_overview_title", .hccsi_ui("hccsi_overview_title", locale)),
     tags$p(class = "ynow-macro-hint", id = "ynow_macro_hccsi_disclosure", .hccsi_ui("hccsi_disclosure", locale)),
     tags$p(tags$b(.hccsi_ui("hccsi_alert_label", locale)), ": ", result$alert %||% "Unavailable", " · ",
-           tags$b(.hccsi_ui("hccsi_highest_risk_layer", locale)), ": ", result$highest_risk_layer %||% "—", " · ",
+           tags$b(.hccsi_ui("hccsi_highest_risk_layer", locale)), ": ",
+           .hccsi_named("ly", result$highest_risk_layer, locale), " · ",
            tags$b(.hccsi_ui("hccsi_top_contributors", locale)), ": ",
            paste(result$top_contributors %||% character(0), collapse = ", ")),
     tags$p(class = "ynow-macro-hint", id = "ynow_macro_hccsi_dropped", dropped_txt),

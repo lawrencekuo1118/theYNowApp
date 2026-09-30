@@ -292,6 +292,47 @@ check("en name", identical(ui_str("hccsi_index_health", "en"), "Systems Health I
 check("zh name EN", identical(ui_str("hccsi_index_health", "zh-TW"), "Systems Health Index"))
 check("zh gloss", grepl("系統健康", ui_str("hccsi_index_health_gloss", "zh-TW"), fixed = TRUE))
 check("zh no simplified", !grepl("默认|参数|数据|用户", ui_str("hccsi_disclosure", "zh-TW")))
+hccsi_copy_keys <- grep("^hccsi_", names(.UI_STRINGS$en), value = TRUE)
+check("hccsi keys in zh-TW", all(hccsi_copy_keys %in% names(.UI_STRINGS$`zh-TW`)))
+check("zh stage is 環節", identical(ui_str("hccsi_col_layer", "zh-TW"), "環節"))
+check("zh knock-on path", identical(ui_str("hccsi_contagion_paths", "zh-TW"), "連鎖路徑"))
+check("en stage not layer", identical(ui_str("hccsi_col_layer", "en"), "Stage"))
+check("en knock-on path", identical(ui_str("hccsi_contagion_paths", "en"), "Knock-on paths"))
+check("zh expand avoids 傳染/濾鏡", {
+  blob <- paste(vapply(
+    c("hccsi_disclosure", "hccsi_index_stress_gloss", "hccsi_network_note",
+      "hccsi_contagion_paths", "hccsi_contagion_none", "hccsi_layer_title",
+      "hccsi_highest_risk_layer", "hccsi_network_title", "hccsi_method_limits"),
+    function(k) ui_str(k, "zh-TW"), character(1)), collapse = " ")
+  !grepl("傳染", blob, fixed = TRUE) && !grepl("濾鏡", blob, fixed = TRUE)
+})
+check("copy has no ticker examples", {
+  keys <- c("hccsi_method_selection", "hccsi_method_weighting", "hccsi_method_fx_adr",
+            "hccsi_network_note", "hccsi_disclosure", "notif_hccsi_dup_issuer")
+  blob <- paste(c(vapply(keys, function(k) ui_str(k, "en"), character(1)),
+                  vapply(keys, function(k) ui_str(k, "zh-TW"), character(1))), collapse = " ")
+  !grepl("GOOGL", blob, fixed = TRUE) && !grepl("GOOG", blob, fixed = TRUE) &&
+    !grepl("ASML", blob, fixed = TRUE) && !grepl("2330", blob, fixed = TRUE) &&
+    !grepl("TSM", blob, fixed = TRUE)
+})
+check("ly enterprise_dbs zh", identical(ui_str("hccsi_ly_enterprise_dbs", "zh-TW"), "企業資料庫"))
+check("named helper zh", identical(.hccsi_named("ly", "enterprise_dbs", "zh-TW"), "企業資料庫"))
+if (requireNamespace("htmltools", quietly = TRUE) && requireNamespace("shiny", quietly = TRUE)) {
+  if (!exists("tags", inherits = TRUE)) tags <- htmltools::tags
+  if (!exists("column", inherits = TRUE)) column <- shiny::column
+  if (!exists("fluidRow", inherits = TRUE)) fluidRow <- shiny::fluidRow
+  exp_zh <- tryCatch(hccsi_expand_ui(sc13, "zh-TW"), error = function(e) {
+    cat("EXPAND ERR ", e$message, "\n", sep = ""); NULL
+  })
+  check("expand zh renders", !is.null(exp_zh))
+  if (!is.null(exp_zh)) {
+    html_zh <- paste(as.character(exp_zh), collapse = " ")
+    check("expand zh uses 企業資料庫", grepl("企業資料庫", html_zh, fixed = TRUE))
+    check("expand zh uses 連鎖路徑", grepl("連鎖路徑", html_zh, fixed = TRUE))
+    check("expand zh uses 環節", grepl("環節", html_zh, fixed = TRUE))
+    check("expand zh no raw enterprise_dbs cell", !grepl(">enterprise_dbs<", html_zh, fixed = TRUE))
+  }
+}
 
 for (fn in c("hccsi_config.R", "hccsi_engine.R", "hccsi_module.R", "macro_market_module.R", "global.R", "ui_locale.R")) {
   parsed <- tryCatch({ parse(fn, keep.source = FALSE); TRUE }, error = function(e) { cat("PARSE ", fn, ": ", e$message, "\n"); FALSE })

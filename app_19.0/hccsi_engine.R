@@ -407,15 +407,15 @@ hccsi_composite <- function(health, stress, fragility, market, cfg = NULL) {
 }
 
 .hccsi_formula_text <- function(comp) {
-  base <- "HCCSI = 0.40·H + 0.30·(100−S) + 0.20·(100−F) + 0.10·M*, M* = 100 − 2·|M − 50| (price is not health)"
+  base <- "HCCSI = 0.40·H + 0.30·(100−S) + 0.20·(100−F) + 0.10·M*, M* = 100 − 2·|M − 50|. A price rally raises Market Observation, not Systems Health."
   dropped <- attr(comp, "dropped")
   used_w <- attr(comp, "used_weights")
-  extra <- " Missing terms are omitted and remaining weights renormalized; no 0/50/100 fill."
+  extra <- " Unscored terms are omitted and leftover weights scaled up; no 0/50/100 fill."
   if (length(dropped)) {
     bits <- paste(dropped, collapse = ", ")
     wtxt <- if (length(used_w)) paste(sprintf("%s=%.3f", names(used_w), as.numeric(used_w)), collapse = ", ") else ""
-    paste0(base, extra, " Dropped: ", bits, if (nzchar(wtxt)) paste0("; renormalized weights ", wtxt) else "", ".")
-  } else paste0(base, extra, " All four terms available.")
+    paste0(base, extra, " Dropped: ", bits, if (nzchar(wtxt)) paste0("; leftover weights ", wtxt) else "", ".")
+  } else paste0(base, extra, " Health, Stress, Fragility, and Market can all be scored.")
 }
 
 .hccsi_has_live_observation <- function(rows) {
