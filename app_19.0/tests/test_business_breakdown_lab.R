@@ -462,18 +462,42 @@ check("25 shared fabs not on GP cards",
         all(vapply(rt$businesses, function(c) is.null(c$rd), logical(1))))
 
 # =====================================================================
-# 26 Lite hides Full-only tab
+# 26 Lab lives under Testing; no sidebar menu; Lite still hides
 # =====================================================================
-check("26 tab id business_breakdown_lab",
-      grepl('tabName = "business_breakdown_lab"', ui_src, fixed = TRUE) &&
-        grepl("ynow_menu_bblab", ui_src, fixed = TRUE) &&
+testing_block <- {
+  m <- regexpr('tabName = "testing"[\\s\\S]*?tabName = "', ui_src, perl = TRUE)
+  if (m < 1L) {
+    character(0)
+  } else {
+    start <- as.integer(m)
+    len <- as.integer(attr(m, "match.length"))
+    substr(ui_src, start, start + len - 1L)
+  }
+}
+check("26 no sidebar menu for BBL",
+      !grepl('tabName = "business_breakdown_lab"', ui_src, fixed = TRUE) &&
+        !grepl("ynow_menu_bblab", ui_src, fixed = TRUE) &&
+        !grepl("menuItem(", paste(grep("Business Breakdown Lab",
+                                       strsplit(ui_src, "\n", fixed = TRUE)[[1]],
+                                       value = TRUE, fixed = TRUE), collapse = "\n"),
+              fixed = TRUE) &&
         grepl("Experimental Feature", mod_src, fixed = TRUE) &&
         grepl("business_breakdown_lab_ui", ui_src, fixed = TRUE))
-check("26 Lite CSS hide",
-      grepl('data-value="business_breakdown_lab"', ui_src, fixed = TRUE) &&
-        grepl("body.ynow-lite .sidebar-menu a\\[data-value=\"business_breakdown_lab\"\\]", ui_src) &&
-        grepl("'business_breakdown_lab'", ui_src, fixed = TRUE) &&
-        grepl("ynow-full-only", mod_src, fixed = TRUE))
+check("26 Lab markup lives under Testing tab",
+      grepl('tabName = "testing"', ui_src, fixed = TRUE) &&
+        nzchar(testing_block) &&
+        grepl("ynow-testing-bblab", testing_block, fixed = TRUE) &&
+        grepl("business_breakdown_lab_ui", testing_block, fixed = TRUE) &&
+        grepl('id = "ynow_testing_bblab"', testing_block, fixed = TRUE))
+check("26 Lite CSS hide + remap to Testing",
+      grepl("body.ynow-lite .ynow-testing-bblab", ui_src, fixed = TRUE) &&
+        grepl("body.ynow-lite .ynow-bblab", ui_src, fixed = TRUE) &&
+        grepl("ynow-sidebar-test-link", ui_src, fixed = TRUE) &&
+        grepl("'testing'", ui_src, fixed = TRUE) &&
+        grepl("ynow-full-only", mod_src, fixed = TRUE) &&
+        grepl("remapLegacyTab", ui_src, fixed = TRUE) &&
+        grepl("business_breakdown_lab", ui_src, fixed = TRUE) &&
+        !grepl("body.ynow-lite .sidebar-menu a\\[data-value=\"business_breakdown_lab\"\\]", ui_src))
 
 # ---- extras: i18n, parse, valuation isolation, toast specificity ----
 for (k in c("menu_business_breakdown_lab", "bblab_experimental_badge", "bblab_page_sub",
@@ -503,9 +527,14 @@ check("valuation files unchanged (no bblab wiring)", !any(val_hit))
 check("server only mounts lab module",
       grepl("business_breakdown_lab_server", server_src, fixed = TRUE) &&
         !grepl("bblab_analyze\\(", server_src))
+check("server remaps legacy BBL tab to Testing",
+      grepl('identical(tab, "business_breakdown_lab")', server_src, fixed = TRUE) &&
+        grepl("ynowGotoTab", server_src, fixed = TRUE) &&
+        grepl('tab = "testing"', server_src, fixed = TRUE))
 
 parse_files <- c("business_breakdown_schema.R", "business_breakdown_engine.R",
-                 "business_breakdown_module.R", "global.R", "ui_locale.R")
+                 "business_breakdown_module.R", "global.R", "ui_locale.R",
+                 "ynow_ui.R", "ynow_server.R")
 for (pf in parse_files) {
   okp <- inherits(tryCatch(parse(pf, encoding = "UTF-8"), error = function(e) e), "expression")
   check(paste("parse", pf), isTRUE(okp))

@@ -1224,11 +1224,6 @@ ui <- dashboardPage(
                tabName = "lab_notes",
                icon = icon("flask")
              ),
-             menuItem(
-               text = tags$span(id = "ynow_menu_bblab", "Business Breakdown Lab"),
-               tabName = "business_breakdown_lab",
-               icon = icon("sitemap")
-             ),
              menuItem("Blue Chip Leaderboard", tabName = "bluechip", icon = icon("star")),
              menuItem("Decision Checklist", tabName = "decision_checklist", icon = icon("clipboard-check")),
              menuItem("About", tabName = "about", icon = icon("info-circle"))
@@ -2332,14 +2327,15 @@ ui <- dashboardPage(
           display: none !important;
         }
         /* Lite: under Data Source keep Snapshot + Feedback only;
-           Quant Backtest Lab + Testing foot link stay Full-only */
+           Quant Backtest Lab + Testing foot link stay Full-only.
+           Business Breakdown Lab is nested inside Testing (no sidebar item). */
         body.ynow-lite .sidebar-menu a[data-value="lab_notes"],
-        body.ynow-lite .sidebar-menu li:has(> a[data-value="lab_notes"]),
-        body.ynow-lite .sidebar-menu a[data-value="business_breakdown_lab"],
-        body.ynow-lite .sidebar-menu li:has(> a[data-value="business_breakdown_lab"]) {
+        body.ynow-lite .sidebar-menu li:has(> a[data-value="lab_notes"]) {
           display: none !important;
         }
-        body.ynow-lite .ynow-sidebar-test-link {
+        body.ynow-lite .ynow-sidebar-test-link,
+        body.ynow-lite .ynow-testing-bblab,
+        body.ynow-lite .ynow-bblab {
           display: none !important;
         }
         /* Lite Snapshot: only System defaults tab */
@@ -3654,7 +3650,6 @@ ui <- dashboardPage(
               nav_calculator: s.menu_nav,
               sensitivity: s.menu_ynow,
               lab_notes: s.menu_backtest,
-              business_breakdown_lab: s.menu_business_breakdown_lab,
               bluechip: s.menu_bluechip,
               hfv: s.menu_hfv,
               decision_checklist: s.menu_decision_checklist,
@@ -3669,8 +3664,6 @@ ui <- dashboardPage(
             if (smartLab && s.menu_smart_analysis) smartLab.textContent = s.menu_smart_analysis;
             var menuBt = document.getElementById('ynow_menu_backtest');
             if (menuBt && s.menu_backtest) menuBt.textContent = s.menu_backtest;
-            var menuBblab = document.getElementById('ynow_menu_bblab');
-            if (menuBblab && s.menu_business_breakdown_lab) menuBblab.textContent = s.menu_business_breakdown_lab;
             setBtText('ynow_bblab_page_title', 'bblab_page_title');
             setBtText('ynow_bblab_experimental_badge', 'bblab_experimental_badge');
             setBtText('ynow_bblab_page_sub', 'bblab_page_sub');
@@ -4432,23 +4425,61 @@ ui <- dashboardPage(
             var FULL_ONLY_TABS = [
               'get_started', 'nav_calculator', 'dcf_calculator', 'ddm_calculator',
               'ri_calculator', 'pb_calculator', 'hfv', 'decision_checklist',
-              'lab_notes', 'business_breakdown_lab', 'testing'
+              'lab_notes', 'testing'
             ];
+            function remapLegacyTab(tab) {
+              tab = String(tab || '');
+              if (tab === 'business_breakdown_lab') return 'testing';
+              return tab;
+            }
+            window.ynowRemapLegacyTab = remapLegacyTab;
+            function ynowTabAnchor(tab) {
+              return document.querySelector('.sidebar-menu a[data-value=\"' + tab + '\"]') ||
+                     document.querySelector('a[data-value=\"' + tab + '\"]');
+            }
             function currentSidebarTab() {
               var active = document.querySelector('.sidebar-menu li.active > a[data-value]');
-              if (active) return active.getAttribute('data-value') || '';
+              if (active) return remapLegacyTab(active.getAttribute('data-value') || '');
+              var pane = document.querySelector('.tab-content > .tab-pane.active');
+              if (pane) {
+                var id = pane.id || '';
+                if (id.indexOf('shiny-tab-') === 0) {
+                  return remapLegacyTab(id.slice('shiny-tab-'.length));
+                }
+                return remapLegacyTab(pane.getAttribute('data-value') || '');
+              }
               return '';
             }
             function gotoTab(tab) {
+              tab = remapLegacyTab(tab);
               if (!tab) return;
               if (window.Shiny && Shiny.setInputValue) {
                 Shiny.setInputValue('sidebar_tabs', tab, {priority: 'event'});
               }
-              var a = document.querySelector('.sidebar-menu a[data-value=\"' + tab + '\"]');
+              var a = ynowTabAnchor(tab);
               if (a) {
                 try { a.click(); } catch (e) {}
               }
             }
+            function remapLegacyHash() {
+              var h = String(location.hash || '');
+              if (h === '#shiny-tab-business_breakdown_lab') {
+                gotoTab('testing');
+                try { history.replaceState(null, '', '#shiny-tab-testing'); } catch (eH) {}
+              }
+            }
+            function registerGotoTabHandler() {
+              if (!window.Shiny || !Shiny.addCustomMessageHandler) {
+                setTimeout(registerGotoTabHandler, 50);
+                return;
+              }
+              Shiny.addCustomMessageHandler('ynowGotoTab', function (payload) {
+                var tab = payload && payload.tab;
+                if (tab) gotoTab(tab);
+              });
+            }
+            registerGotoTabHandler();
+            window.addEventListener('hashchange', remapLegacyHash);
             function applyLiteMode(on, opts) {
               opts = opts || {};
               var enabled = !!on;
@@ -4462,6 +4493,7 @@ ui <- dashboardPage(
                 Shiny.setInputValue('ynow_lite_mode', enabled, {priority: 'event'});
               }
               if (enabled) ensureLiteSnapshotDefaultsTab();
+              remapLegacyHash();
               if (opts.navigate === false) return;
               var tab = currentSidebarTab();
               if (enabled) {
@@ -4506,6 +4538,7 @@ ui <- dashboardPage(
               var saved = null;
               try { saved = window.sessionStorage.getItem('ynow_lite_mode'); } catch (e1) {}
               applyLiteMode(saved === '1', {navigate: false});
+              remapLegacyHash();
             }
             if (document.readyState === 'loading') {
               document.addEventListener('DOMContentLoaded', function () {
@@ -4546,11 +4579,13 @@ ui <- dashboardPage(
           }
           function ynowGotoAndHighlight(tab, inputId) {
             ynowClearParamHighlight();
+            tab = window.ynowRemapLegacyTab ? window.ynowRemapLegacyTab(tab) : tab;
             if (tab && window.Shiny && Shiny.setInputValue) {
               Shiny.setInputValue('sidebar_tabs', tab, {priority: 'event'});
             }
             var a = document.querySelector('.main-sidebar .sidebar-menu a[data-value=\"' + tab + '\"]') ||
-                    document.querySelector('.sidebar-menu a[data-value=\"' + tab + '\"]');
+                    document.querySelector('.sidebar-menu a[data-value=\"' + tab + '\"]') ||
+                    document.querySelector('a[data-value=\"' + tab + '\"]');
             if (a) {
               try { a.click(); } catch (e) {}
             }
@@ -4597,11 +4632,13 @@ ui <- dashboardPage(
             return new Promise(function (r) { setTimeout(r, ms); });
           }
           function ynowActivateTab(tab) {
+            tab = window.ynowRemapLegacyTab ? window.ynowRemapLegacyTab(tab) : tab;
             if (window.Shiny && Shiny.setInputValue) {
               Shiny.setInputValue('sidebar_tabs', tab, {priority: 'event'});
             }
             var a = document.querySelector('.main-sidebar .sidebar-menu a[data-value=\"' + tab + '\"]') ||
-                    document.querySelector('.sidebar-menu a[data-value=\"' + tab + '\"]');
+                    document.querySelector('.sidebar-menu a[data-value=\"' + tab + '\"]') ||
+                    document.querySelector('a[data-value=\"' + tab + '\"]');
             if (a) {
               try { a.click(); } catch (e) {}
             }
@@ -9629,6 +9666,7 @@ ui <- dashboardPage(
               id = "ynow_testing_page_sub",
               paste0(
                 "Full-only sandbox for upcoming experiments and feature trials. ",
+                "Business Breakdown Lab lives on this page. ",
                 "Quant Backtest Lab remains on the main sidebar. Lite mode hides this entry."
               )
             ),
@@ -9648,6 +9686,11 @@ ui <- dashboardPage(
               )
             )
           )
+        ),
+        tags$div(
+          class = "ynow-full-only ynow-testing-bblab",
+          id = "ynow_testing_bblab",
+          business_breakdown_lab_ui("bblab")
         )
       ),
 
@@ -9749,14 +9792,6 @@ ui <- dashboardPage(
               )
             )
           )
-        )
-      ),
-
-      tabItem(
-        tabName = "business_breakdown_lab",
-        tags$div(
-          class = "ynow-full-only",
-          business_breakdown_lab_ui("bblab")
         )
       ),
 

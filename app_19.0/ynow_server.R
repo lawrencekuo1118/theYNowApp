@@ -127,6 +127,10 @@ server <- function(input, output, session) {
   # Valuation-model / Blue Chip page accent; Basic Setup / other tabs clear theme
   observeEvent(input$sidebar_tabs, {
     tab <- as.character(input$sidebar_tabs %||% "")[1]
+    if (identical(tab, "business_breakdown_lab")) {
+      session$sendCustomMessage("ynowGotoTab", list(tab = "testing"))
+      tab <- "testing"
+    }
     session$sendCustomMessage("ynowModelTheme", list(tab = tab))
   }, ignoreNULL = FALSE, ignoreInit = FALSE)
 

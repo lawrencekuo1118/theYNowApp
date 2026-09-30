@@ -225,13 +225,19 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
     txt,
     perl = TRUE
   ))
-  testthat::expect_true(grepl(
-    "body\\.ynow-lite[\\s\\S]*data-value=\"business_breakdown_lab\"",
-    txt,
-    perl = TRUE
-  ))
-  testthat::expect_true(grepl('tabName = "business_breakdown_lab"', txt, fixed = TRUE))
-  testthat::expect_true(grepl("'business_breakdown_lab'", txt, fixed = TRUE))
+  testthat::expect_false(grepl('tabName = "business_breakdown_lab"', txt, fixed = TRUE))
+  testthat::expect_false(grepl("ynow_menu_bblab", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-testing-bblab", txt, fixed = TRUE))
+  testthat::expect_true(grepl("business_breakdown_lab_ui", txt, fixed = TRUE))
+  testthat::expect_true(grepl("body.ynow-lite .ynow-testing-bblab", txt, fixed = TRUE))
+  testthat::expect_true(grepl("body.ynow-lite .ynow-bblab", txt, fixed = TRUE))
+  testthat::expect_true(grepl("remapLegacyTab", txt, fixed = TRUE))
+  testthat::expect_true(grepl("'testing'", txt, fixed = TRUE))
+  testing_idx <- regexpr('tabName = "testing"', txt, fixed = TRUE)[1]
+  lab_ui_idx <- regexpr('business_breakdown_lab_ui("bblab")', txt, fixed = TRUE)[1]
+  next_tab_idx <- regexpr('tabName = "feedback"', txt, fixed = TRUE)[1]
+  testthat::expect_true(testing_idx > 0 && lab_ui_idx > testing_idx &&
+                          next_tab_idx > lab_ui_idx)
   testthat::expect_true(grepl(
     "body\\.ynow-lite[\\s\\S]*ynow-sidebar-test-link",
     txt,

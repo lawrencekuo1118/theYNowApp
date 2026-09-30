@@ -150,6 +150,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     testing_page_title = "Testing",
     testing_page_sub = paste0(
       "Full-only sandbox for upcoming experiments and feature trials. ",
+      "Business Breakdown Lab lives on this page. ",
       "Quant Backtest Lab remains on the main sidebar. Lite mode hides this entry."
     ),
     testing_box_title = "Sandbox",
@@ -1760,6 +1761,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     testing_page_title = "Testing",
     testing_page_sub = paste0(
       "完整版專用實驗區，供後續功能試用與驗證。",
+      "業務拆解實驗室置於此頁。",
       "量化回測實驗室仍在主選單；簡化版不顯示此入口。"
     ),
     testing_box_title = "實驗沙盒",
