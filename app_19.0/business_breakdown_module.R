@@ -549,12 +549,22 @@ business_breakdown_lab_server <- function(id = "bblab",
         }
       })
       }, error = function(e) {
-        source_status("statements_unavailable")
-        showNotification(
-          ui_msg("bblab_source_unavailable"),
-          type = "warning",
-          duration = 8
-        )
+        pl <- tryCatch(isolate(lab_payload()), error = function(e2) NULL)
+        has_stmt <- is.list(pl) && .bblab_finite(pl$consolidated$revenue)
+        if (isTRUE(has_stmt)) {
+          extracted <- length(pl$dimensions %||% list()) >= 1L &&
+            !all(vapply(pl$dimensions, function(d) {
+              identical(d$kind %||% "", "official_description")
+            }, logical(1)))
+          source_status(if (isTRUE(extracted)) "ok" else "statements_no_segment")
+        } else {
+          source_status("statements_unavailable")
+          showNotification(
+            ui_msg("bblab_source_unavailable"),
+            type = "warning",
+            duration = 8
+          )
+        }
       })
     })
 

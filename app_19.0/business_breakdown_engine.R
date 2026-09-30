@@ -9,6 +9,16 @@ if (!exists("%||%", mode = "function")) {
   name %in% as.character(flags %||% character(0))
 }
 
+# Named atomic vectors throw on [[missing]]; lists return NULL. History years
+# from the income statement can outrun a filed note table.
+.bblab_named_get <- function(x, key) {
+  key <- as.character(key)[1]
+  if (is.null(x) || !nzchar(key) || is.na(key)) return(NULL)
+  nms <- names(x)
+  if (is.null(nms) || !key %in% nms) return(NULL)
+  x[[key]]
+}
+
 .bblab_kind_rank <- function(kind, cfg) {
   pri <- cfg$disclosure_priority %||% BBLAB_DEFAULT_CONFIG$disclosure_priority
   i <- match(kind, pri)
@@ -1125,7 +1135,7 @@ bblab_history_shares <- function(payload, primary_dim, pack, consolidated,
       for (c in current) {
         hit <- best$businesses[[c$key]]
         if (is.null(hit)) next
-        amt <- hit$amounts[[ys]]
+        amt <- .bblab_named_get(hit$amounts, ys)
         if (.bblab_finite(amt) && amt > 0) raw[[c$id]] <- amt
       }
     }
@@ -1233,11 +1243,11 @@ bblab_history_shares <- function(payload, primary_dim, pack, consolidated,
   }
   series <- lapply(current, function(c) {
     sh <- vapply(years_ok, function(ys) {
-      v <- year_rows[[ys]]$shares[[c$id]]
+      v <- .bblab_named_get(year_rows[[ys]]$shares, c$id)
       if (.bblab_finite(v) && v > 0) as.numeric(v)[1] else NA_real_
     }, numeric(1))
     rv <- vapply(years_ok, function(ys) {
-      v <- year_rows[[ys]]$revenues[[c$id]]
+      v <- .bblab_named_get(year_rows[[ys]]$revenues, c$id)
       if (.bblab_finite(v) && v > 0) as.numeric(v)[1] else NA_real_
     }, numeric(1))
     names(sh) <- years_ok
@@ -2293,7 +2303,10 @@ bblab_analyze <- function(payload, options = list(), cfg = NULL) {
   elig <- bblab_chart_eligibility(pack, cons, cfg, level = level)
   chart <- bblab_chart_slices(pack, cons, cfg, elig)
   codes <- unique(c(codes, elig$codes))
-  history <- bblab_history_shares(payload, dim, pack, cons, cfg)
+  history <- tryCatch(
+    bblab_history_shares(payload, dim, pack, cons, cfg),
+    error = function(e) .bblab_history_empty()
+  )
   if (!isTRUE(history$eligible)) {
     codes <- unique(c(codes, history$codes %||% "BUSINESS_HISTORY_INSUFFICIENT_YEARS"))
     limitations <- unique(c(limitations, history$limitations %||% "history_insufficient_years"))

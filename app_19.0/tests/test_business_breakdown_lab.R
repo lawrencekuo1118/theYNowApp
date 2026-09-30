@@ -881,6 +881,11 @@ check("Search toast does not leak R subscript errors",
       !grepl("conditionMessage\\(e\\)", mod_src, fixed = TRUE) &&
         grepl("ui_msg(\"bblab_source_unavailable\")", mod_src, fixed = TRUE) &&
         grepl("reorder_financial_columns", mod_src, fixed = TRUE))
+check("Search catch-all does not wipe a loaded statement payload",
+      grepl("isolate(lab_payload())", mod_src, fixed = TRUE) &&
+        grepl("has_stmt", mod_src, fixed = TRUE) &&
+        grepl("bblab_history_shares", engine_src, fixed = TRUE) &&
+        grepl(".bblab_named_get(hit$amounts, ys)", engine_src, fixed = TRUE))
 
 search_two <- bblab_payload_from_statements(
   yahoo_two_product_is(), ticker = "FIXT", entity_name = "Two-product fixture",
@@ -1187,6 +1192,35 @@ check("two comparable years still plot; never pad to fake five", {
     length(hm$years) == 2L &&
     length(hm$years) < 5L &&
     all(as.character(hm$years) %in% c("2023", "2025"))
+})
+check("named year lookup misses without throwing", {
+  miss <- tryCatch(
+    .bblab_named_get(setNames(c(1, 2), c("2023", "2024")), "2021"),
+    error = function(e) e
+  )
+  hit <- .bblab_named_get(setNames(c(10, 20), c("2023", "2024")), "2024")
+  is.null(miss) && !inherits(miss, "error") && identical(as.numeric(hit)[1], 20)
+})
+check("IS years beyond note years do not abort analysis", {
+  k10_is_extra <- k10_is
+  k10_is_extra[["12/31/2022"]] <- k10_is[[2]]
+  k10_is_extra[["12/31/2021"]] <- k10_is[[2]]
+  extra_pl <- tryCatch(
+    bblab_payload_from_statements(
+      k10_is_extra, ticker = "FIXT", entity_name = "Longer IS than note table",
+      statement_currency = "USD", period = "12/31/2025",
+      segment_tables = list(k10_opseg, k10_product, k10_geo)
+    ),
+    error = function(e) e
+  )
+  extra_r <- if (is.list(extra_pl) && !inherits(extra_pl, "error")) {
+    tryCatch(bblab_analyze(extra_pl), error = function(e) e)
+  } else extra_pl
+  is.list(extra_pl) && !inherits(extra_pl, "error") &&
+    is.list(extra_r) && !inherits(extra_r, "error") &&
+    isTRUE(extra_r$ok) &&
+    isTRUE(.bblab_finite(extra_r$consolidated$revenue)) &&
+    length(extra_r$businesses) >= 2L
 })
 
 is_hist <- data.frame(
