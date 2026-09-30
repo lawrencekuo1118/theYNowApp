@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12625507
+bundleId=12625565
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=403ae667838f57fda0d3a9ef9b212a89006176f6
-commit=403ae667838f57fda0d3a9ef9b212a89006176f6
-short=403ae66
-message=chore: bump display version to v19.02
-captured_at=2026-09-30T02:58:31Z
+aligned_git=76401b6f16e3373c2ea50564cc489513a869c662
+commit=76401b6f16e3373c2ea50564cc489513a869c662
+short=76401b6
+message=chore: bump display version to v19.03
+captured_at=2026-09-30T03:15:44Z
 source_branch=cursor/lifecycle-v19-3fb1
 display_version=v19.03
-note=Canonical live line is app_19.0. Bundle 12625507 = v19.02 per-share FX/ADR fix (infer missing reporting ccy for non-ADR, wait for USD/TWD, no Search auto-toast). Deploy via scripts/deploy_app_19.R. Supersedes 12625403.
+note=Canonical live line is app_19.0. Bundle 12625565 = v19.03 Macro tab Theme Rolling β vs benchmark UI removed (engine kept). Deploy via scripts/deploy_app_19.R. Supersedes 12625507.
