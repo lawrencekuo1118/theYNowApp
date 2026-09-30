@@ -39,7 +39,8 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
     "hccsi_index_fragility", "hccsi_index_market",
     "hccsi_unavailable", "hccsi_dropped", "hccsi_dropped_none",
     "menu_business_breakdown_lab", "bblab_experimental_badge", "bblab_page_sub",
-    "bblab_page_title", "bblab_gm_unestimable", "bblab_reval_unavailable"
+    "bblab_page_title", "bblab_gm_unestimable", "bblab_reval_unavailable",
+    "bblab_listed_only_notice", "bblab_listed_only_scope"
   )
   for (k in keys) {
     en <- .UI_STRINGS$en[[k]]
@@ -177,7 +178,7 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl('tabName = "smart_analysis"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-full-only", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_lab_im_detail_tab", txt, fixed = TRUE))
-  testthat::expect_true(grepl("The YNow App v19.24", txt, fixed = TRUE))
+  testthat::expect_true(grepl("The YNow App v19.25", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-report", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-toolbar", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-chapter", txt, fixed = TRUE))

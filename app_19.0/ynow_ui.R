@@ -85,7 +85,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v19.24) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報抓取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v19.25) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報抓取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -101,7 +101,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v19.24) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v19.25) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -200,7 +200,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v19.24）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v19.25）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -217,7 +217,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v19.24) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v19.25) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -1083,9 +1083,9 @@ ui <- dashboardPage(
                   '<span class="ynow-app-title" id="ynow_app_title" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v19.24</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v19.25</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v19.24</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v19.25</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -2261,6 +2261,23 @@ ui <- dashboardPage(
         }
         .ynow-bblab__title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
         .ynow-bblab__lead { color: #555; margin: 4px 0 12px 0; }
+        .ynow-bblab__listed-notice {
+          margin: 0 0 14px 0;
+          padding: 8px 12px;
+          font-size: 13px;
+          font-weight: 600;
+          line-height: 1.45;
+          color: #1b3a4b;
+          background: #eef6f8;
+          border: 1px solid #1AA8B8;
+          border-left-width: 4px;
+          border-radius: 3px;
+        }
+        .ynow-bblab__listed-scope {
+          margin: 8px 0 0 0;
+          font-weight: 600;
+          color: #1b3a4b;
+        }
         .ynow-bblab-card {
           border: 1px solid #d9dee3;
           border-radius: 6px;
@@ -3665,6 +3682,8 @@ ui <- dashboardPage(
             setBtText('ynow_bblab_page_title', 'bblab_page_title');
             setBtText('ynow_bblab_experimental_badge', 'bblab_experimental_badge');
             setBtText('ynow_bblab_page_sub', 'bblab_page_sub');
+            setBtText('ynow_bblab_listed_only_notice', 'bblab_listed_only_notice');
+            setBtText('ynow_bblab_listed_only_scope', 'bblab_listed_only_scope');
             setBtText('ynow_bblab_search_title', 'bblab_search_title');
             setBtText('ynow_bblab_ticker_label', 'bblab_ticker_label');
             setBtText('ynow_bblab_company_label', 'bblab_company_label');
