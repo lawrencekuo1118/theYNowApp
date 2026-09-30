@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12625956
+bundleId=12625973
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=ae9c0c30118d580e614e5dc51eb47029eab85495
-commit=ae9c0c30118d580e614e5dc51eb47029eab85495
-short=ae9c0c3
-message=Keep Macro relative-performance Industry/Concept help always visible.
-captured_at=2026-09-30T04:43:09Z
+aligned_git=fa3c55c6b8a51ffea36c8a15597b9bfd3533536c
+commit=fa3c55c6b8a51ffea36c8a15597b9bfd3533536c
+short=fa3c55c
+message=Remove unused Macro Rf Notes copy after the fold was deleted.
+captured_at=2026-09-30T04:50:24Z
 source_branch=cursor/lifecycle-v19-3fb1
 display_version=v19.13
-note=Canonical live line is app_19.0. Bundle 12625956 = v19.12 Macro Relative performance vs benchmark: Industry/Concept picker help is always-visible chapter chrome (outside Notes / 附註). Only the bottom currency-lock Notes fold remains under the chart. Lite + Full, US + TW. Also includes v19.11 F-Score boxes default-visible, page-lead outside Notes, v19.10 Lite Smart Analysis blurb, v19.09 Full-only Macro KPI click-to-chart, collapsible Notes, and YNOW KPI jump row. Deploy via scripts/deploy_app_19.R. Supersedes 12625916 / 12625890 / 12625810 / 12625762 / 12625733 / 12625709 / 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
+note=Canonical live line is app_19.0. Bundle 12625973 = v19.13 Macro Rf Notes sentence removed (no empty Notes / 附註 fold on the Rf KPI). Rf (10Y) KPI, live CAPM Rf path (US: Yahoo ^TNX; TW: TPEx 10Y), and relative-performance always-visible Industry/Concept help plus bottom currency-lock Notes are kept. Lite + Full, US + TW. Also includes v19.12 relative-perf Notes unwrap, v19.11 F-Score boxes default-visible, page-lead outside Notes, v19.10 Lite Smart Analysis blurb, v19.09 Full-only Macro KPI click-to-chart, collapsible Notes, and YNOW KPI jump row. Deploy via scripts/deploy_app_19.R. Supersedes 12625956 / 12625916 / 12625890 / 12625810 / 12625762 / 12625733 / 12625709 / 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
