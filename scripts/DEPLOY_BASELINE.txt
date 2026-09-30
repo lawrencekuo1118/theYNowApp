@@ -8,5 +8,5 @@ short=e7aaac2
 message=chore: bump display version to v18.13
 captured_at=2026-09-29T16:42:08Z
 source_branch=master
-display_version=v18.13
+display_version=v18.14
 note=Canonical live line is app_18.0. Bundle 12623292 = v18.13 Macro logo blue-green theme + black/gold KPIs. Deploy via scripts/deploy_app_18.R. Supersedes 12623271.
