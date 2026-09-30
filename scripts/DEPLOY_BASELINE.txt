@@ -8,5 +8,5 @@ short=67547fb
 message=feat: v19 Lifecycle Classification with single-source scoring
 captured_at=2026-09-30T01:58:38Z
 source_branch=cursor/lifecycle-v19-3fb1
-display_version=v19
+display_version=v19.01
 note=Canonical live line is app_19.0. Bundle 12625332 = v19 Lifecycle Classification (multi-factor scoring, existing recommendation + valuation_guard). Deploy via scripts/deploy_app_19.R. Supersedes 12623292.
