@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12627644
+bundleId=12627846
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=134ee3be2e6632c9ddcad977387d3382c1e105d0
-commit=134ee3be2e6632c9ddcad977387d3382c1e105d0
-short=134ee3b
-message=Show the Lab consolidated snapshot as a vertical Income Statement.
-captured_at=2026-09-30T13:06:46Z
-source_branch=cursor/bblab-snapshot-is-format-3fb1
+aligned_git=348bf74891ddee690e2e77e71edad87a3c867453
+commit=348bf74891ddee690e2e77e71edad87a3c867453
+short=348bf74
+message=Make HCCSI expand copy concrete: stages and knock-on paths, no examples.
+captured_at=2026-09-30T13:50:20Z
+source_branch=cursor/hccsi-concrete-copy-3fb1
 display_version=v19.36
-note=Canonical live line is app_19.0. Bundle 12627644 = v19.35 Lab Chapter 1 Consolidated statement snapshot is a vertical Income Statement identity (Revenue − Cost of Revenue = Gross Profit; Gross Margin = Gross Profit / Revenue), not KPI chips. Keeps v19.34 hide-empty-history. Deploy via scripts/deploy_app_19.R. Supersedes 12627610 / 12627556 / 12627405 / 12627312 / 12627150 / 12627127 / 12627082 / 12627038 / 12626909 / 12626822 / 12626810 / 12626794 / 12626772 / 12626690 / 12626668 / 12626547 / 12626454 / 12626418 / 12626362 / 12626262 / 12626032 / 12625997 / 12625985 / 12625973 / 12625956 / 12625916 / 12625890 / 12625810 / 12625762 / 12625733 / 12625709 / 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
+note=Canonical live line is app_19.0. Bundle 12627846 = v19.36 HCCSI expand uses concrete stage/knock-on wording (環節／連鎖) and named labels instead of config ids; no ticker examples in copy. Keeps v19.35 vertical IS snapshot. Deploy via scripts/deploy_app_19.R. Supersedes 12627644 / 12627610 / 12627556 / 12627405 / 12627312 / 12627150 / 12627127 / 12627082 / 12627038 / 12626909 / 12626822 / 12626810 / 12626794 / 12626772 / 12626690 / 12626668 / 12626547 / 12626454 / 12626418 / 12626362 / 12626262 / 12626032 / 12625997 / 12625985 / 12625973 / 12625956 / 12625916 / 12625890 / 12625810 / 12625762 / 12625733 / 12625709 / 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
