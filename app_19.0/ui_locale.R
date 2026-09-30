@@ -1477,6 +1477,11 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_page_sub = paste0(
       "Experimental analysis of business-level revenue, cost, Gross Profit, and revaluation assumptions."
     ),
+    bblab_listed_only_notice = "Listed stocks only (Taiwan and U.S. exchanges).",
+    bblab_listed_only_scope = paste0(
+      "This ticker does not look like a listed Taiwan or U.S. stock. ",
+      "The Lab only supports listed stocks (Taiwan and U.S. exchanges)."
+    ),
     bblab_search_title = "Search",
     bblab_ticker_label = "Ticker",
     bblab_search_btn = "Search",
@@ -3035,6 +3040,11 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_page_title = "業務拆解實驗室",
     bblab_experimental_badge = "實驗功能",
     bblab_page_sub = "針對事業別營收、成本、Gross Profit 與重估假設的實驗性分析。",
+    bblab_listed_only_notice = "僅支援上市個股分析（台股、美股）。",
+    bblab_listed_only_scope = paste0(
+      "此 Ticker 看起來不是上市個股（台股、美股）。",
+      "業務拆解實驗室僅支援上市個股分析（台股、美股）。"
+    ),
     bblab_search_title = "搜尋",
     bblab_ticker_label = "Ticker",
     bblab_search_btn = "搜尋",
@@ -3081,7 +3091,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_reval_unavailable = "Revaluation ratio unavailable",
     bblab_reval_label = "Revaluation",
     bblab_single_business_note = "僅有一個可支持的事業揭露；不進行多事業拆分，也不顯示組成圖。",
-    bblab_fallback_gm_label = "以合併 Gross Margin 作為低信心後援（預設關閉）",
+    bblab_fallback_gm_label = "以合併 Gross Margin 作為低信心後援",
     bblab_allocated_notice = "Cost of Revenue 為分攤／估計（非事業別申報）。",
     bblab_rev_share_cost_notice = paste0(
       "Cost of Revenue 以營收占比作為最終後援分攤（ALLOCATED_LOW_CONFIDENCE）。",

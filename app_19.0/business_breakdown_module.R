@@ -28,6 +28,27 @@ if (!exists("%||%", mode = "function")) {
   classification %in% c("OTHER", "UNALLOCATED", "RECONCILIATION", "ROUNDING")
 }
 
+#' TRUE only when Search input is clearly not a listed Taiwan or U.S. name.
+#' Ambiguous symbols stay FALSE so valid TW/US listings are never blocked.
+#' Company-agnostic: no ticker-specific formula branches.
+bblab_clearly_not_listed_tw_us <- function(ticker) {
+  raw <- toupper(trimws(as.character(ticker %||% "")[1]))
+  raw <- sub("\\s+[—\\-–].*$", "", raw)
+  raw <- gsub("\\s+", "", raw)
+  if (!nzchar(raw) || identical(raw, "NA")) return(FALSE)
+  if (grepl("^\\^", raw)) return(TRUE)
+  if (grepl("=(X|F)$", raw)) return(TRUE)
+  if (grepl("-(USD|USDT|USDC|BTC|ETH)$", raw)) return(TRUE)
+  # TW listed: 4–6 digit codes, optional board letter, .TW / .TWO
+  if (grepl("^[0-9]{4,6}[A-Z]?(\\.(TW|TWO))?$", raw)) return(FALSE)
+  # US listed: 1–5 letters, optional share class (BRK.B / BRK-B)
+  if (grepl("^[A-Z]{1,5}([.-][A-Z])?$", raw)) return(FALSE)
+  if (grepl("\\.(HK|L|T|SS|SZ|KS|AX|TO|PA|DE|F|SW|MI|MC|SA|MX|NS|BO|JK|SI|NZ|OL|ST|CO|HE|BR|IR|IC|AS|VI|PK|OB)$", raw)) {
+    return(TRUE)
+  }
+  FALSE
+}
+
 business_breakdown_lab_ui <- function(id = "bblab") {
   ns <- NS(id)
   tags$div(
@@ -47,6 +68,12 @@ business_breakdown_lab_ui <- function(id = "bblab") {
         id = "ynow_bblab_page_sub",
         class = "ynow-bblab__lead",
         "Experimental analysis of business-level revenue, cost, gross profit, and revaluation assumptions."
+      ),
+      tags$p(
+        id = "ynow_bblab_listed_only_notice",
+        class = "ynow-bblab__listed-notice",
+        role = "note",
+        "Listed stocks only (Taiwan and U.S. exchanges)."
       )
     ),
 
@@ -84,6 +111,7 @@ business_breakdown_lab_ui <- function(id = "bblab") {
           )
         ),
         uiOutput(ns("source_status")),
+        uiOutput(ns("listed_scope")),
         tags$div(
           style = "margin-top:8px;",
           checkboxInput(
@@ -238,6 +266,7 @@ business_breakdown_lab_server <- function(id = "bblab",
     lab_codes <- reactiveVal(character(0))
     focus_id <- reactiveVal(NULL)
     source_status <- reactiveVal("idle")
+    listed_scope_on <- reactiveVal(FALSE)
 
     loc <- function() {
       if (is.reactive(ui_locale_rv)) {
@@ -274,6 +303,11 @@ business_breakdown_lab_server <- function(id = "bblab",
       tk <- if (exists("normalize_ticker_for_market", mode = "function")) {
         normalize_ticker_for_market(raw, mode)
       } else raw
+      # Scoped notice only; never req-stop Search for valid TW/US listings.
+      listed_scope_on(
+        isTRUE(bblab_clearly_not_listed_tw_us(raw)) ||
+          isTRUE(bblab_clearly_not_listed_tw_us(tk))
+      )
       lab_ticker(tk)
       lab_result(NULL)
       lab_codes(character(0))
@@ -445,6 +479,14 @@ business_breakdown_lab_server <- function(id = "bblab",
                     statements_unavailable = "bblab_source_unavailable",
                     "bblab_source_idle")
       tags$p(class = "help-block", id = "ynow_bblab_source_status", ui_msg(key))
+    })
+    output$listed_scope <- renderUI({
+      if (!isTRUE(listed_scope_on())) return(NULL)
+      tags$p(
+        id = "ynow_bblab_listed_only_scope",
+        class = "ynow-bblab__listed-scope help-block",
+        ui_msg("bblab_listed_only_scope")
+      )
     })
 
     output$summary <- renderUI({

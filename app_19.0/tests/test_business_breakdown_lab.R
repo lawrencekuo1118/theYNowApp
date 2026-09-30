@@ -503,7 +503,9 @@ check("26 Lite CSS hide + remap to Testing",
 
 # ---- extras: i18n, parse, valuation isolation, toast specificity ----
 for (k in c("menu_business_breakdown_lab", "bblab_experimental_badge", "bblab_page_sub",
+            "bblab_listed_only_notice", "bblab_listed_only_scope",
             "bblab_gm_unestimable", "bblab_reval_unavailable", "bblab_single_business_note",
+            "bblab_fallback_gm_label",
             "notif_bblab_required_fx_rate_missing", "notif_bblab_business_chart_single_component")) {
   en <- .UI_STRINGS$en[[k]]
   zh <- .UI_STRINGS$`zh-TW`[[k]]
@@ -513,11 +515,35 @@ check("i18n experimental both locales",
       identical(.UI_STRINGS$en$bblab_experimental_badge, "Experimental Feature") &&
         identical(.UI_STRINGS$`zh-TW`$bblab_experimental_badge, "實驗功能") &&
         identical(.UI_STRINGS$en$menu_business_breakdown_lab, "Business Breakdown Lab"))
+check("i18n fallback GM label has no default-off parenthetical", {
+  en <- .UI_STRINGS$en$bblab_fallback_gm_label
+  zh <- .UI_STRINGS$`zh-TW`$bblab_fallback_gm_label
+  identical(en, "Use consolidated Gross Margin as low-confidence fallback") &&
+    identical(zh, "以合併 Gross Margin 作為低信心後援") &&
+    grepl("Gross Margin", zh, fixed = TRUE) &&
+    !grepl("（預設關閉）", zh, fixed = TRUE) &&
+    !grepl("預設關閉", zh, fixed = TRUE) &&
+    !grepl("off by default", en, ignore.case = TRUE) &&
+    !grepl("default off", en, ignore.case = TRUE)
+})
+check("applyUiLocale wires fallback GM label",
+      grepl("setBtText('ynow_bblab_fallback_gm_label', 'bblab_fallback_gm_label')",
+            ui_src, fixed = TRUE) &&
+        grepl('id = "ynow_bblab_fallback_gm_label"', mod_src, fixed = TRUE))
+check("GM fallback checkbox remains unchecked by default", {
+  m <- regexpr("checkboxInput\\([\\s\\S]*?use_gm_fallback[\\s\\S]*?value\\s*=\\s*FALSE",
+               mod_src, perl = TRUE)
+  m > 0L &&
+    !grepl("use_consolidated_gm_fallback\\s*=\\s*TRUE", engine_src)
+})
 check("i18n zh-TW uses 預設 not 默认",
-      grepl("預設", .UI_STRINGS$`zh-TW`$bblab_fallback_gm_label, fixed = TRUE) &&
+      grepl("預設", .UI_STRINGS$`zh-TW`$notif_bblab_business_revaluation_consolidated_proxy,
+            fixed = TRUE) &&
         !grepl("默认|参数|数据|用户", paste(.UI_STRINGS$`zh-TW`$bblab_page_sub,
                                          .UI_STRINGS$`zh-TW`$bblab_notes_body,
-                                         .UI_STRINGS$`zh-TW`$bblab_fallback_gm_label, sep = " ")))
+                                         .UI_STRINGS$`zh-TW`$bblab_fallback_gm_label,
+                                         .UI_STRINGS$`zh-TW`$bblab_listed_only_notice,
+                                         .UI_STRINGS$`zh-TW`$bblab_listed_only_scope, sep = " ")))
 
 val_files <- c("valuation_guard.R", "investment_decision_module.R", "fcf_projection_module.R",
                "ddm_module.R", "ri_module.R", "pb_asset_module.R")
@@ -605,6 +631,13 @@ if (requireNamespace("shiny", quietly = TRUE) &&
           !grepl("Progress 9", lab_ui_html, fixed = TRUE) &&
           !grepl(" / 9", lab_ui_html, fixed = TRUE) &&
           !any(vapply(nine_stage_labels, function(s) grepl(s, lab_ui_html, fixed = TRUE), logical(1))))
+  check("lab UI HTML shows listed-stock notice outside Notes",
+        grepl("ynow_bblab_listed_only_notice", lab_ui_html, fixed = TRUE) &&
+          grepl("Listed stocks only (Taiwan and U.S. exchanges).", lab_ui_html, fixed = TRUE) &&
+          grepl("ynow-bblab__listed-notice", lab_ui_html, fixed = TRUE) &&
+          grepl("ynow_bblab_experimental_badge", lab_ui_html, fixed = TRUE) &&
+          !grepl("ynow_notes_block", lab_ui_html, fixed = TRUE) &&
+          !grepl("ynow-notes", lab_ui_html, fixed = TRUE))
 }
 check("experimental badge locale keys",
       grepl("ynow_bblab_experimental_badge", ui_src, fixed = TRUE) &&
@@ -992,6 +1025,70 @@ rmap <- bblab_analyze(mapped)
 check("name-matched product CoR maps; OI is not required",
       identical(rmap$level, "A") &&
         all(vapply(rmap$businesses, function(c) is.finite(c$cor) && is.finite(c$gp), logical(1))))
+
+# ---- Listed TW/US disclaimer (always visible; not inside Notes) ----
+ui_fn_src <- {
+  start <- regexpr("business_breakdown_lab_ui <- function", mod_src, fixed = TRUE)[1]
+  stop_at <- regexpr(".bblab_card_html <- function", mod_src, fixed = TRUE)[1]
+  if (start < 1L || stop_at < 1L) "" else substr(mod_src, start, stop_at - 1L)
+}
+notes_fn_src <- {
+  start <- regexpr("output$notes <- renderUI", mod_src, fixed = TRUE)[1]
+  if (start < 1L) "" else substr(mod_src, start, nchar(mod_src))
+}
+check("listed-only notice is in Testing Lab UI function, not Notes",
+      nzchar(ui_fn_src) &&
+        grepl("ynow_bblab_listed_only_notice", ui_fn_src, fixed = TRUE) &&
+        grepl("ynow-bblab__listed-notice", ui_fn_src, fixed = TRUE) &&
+        grepl("ynow_bblab_experimental_badge", ui_fn_src, fixed = TRUE) &&
+        !grepl("ynow_notes_block", ui_fn_src, fixed = TRUE) &&
+        grepl("ynow_notes_block", notes_fn_src, fixed = TRUE) &&
+        !grepl("ynow_bblab_listed_only_notice", notes_fn_src, fixed = TRUE))
+check("listed-only notice is not a shinydashboard default box",
+      !grepl("status\\s*=\\s*[\"']default[\"']", ui_fn_src) &&
+        !grepl("box\\([^)]*ynow_bblab_listed_only_notice", ui_fn_src, perl = TRUE))
+check("applyUiLocale wires listed-only notice",
+      grepl("setBtText('ynow_bblab_listed_only_notice', 'bblab_listed_only_notice')",
+            ui_src, fixed = TRUE) &&
+        grepl("setBtText('ynow_bblab_listed_only_scope', 'bblab_listed_only_scope')",
+              ui_src, fixed = TRUE))
+check("i18n listed-only copy en + zh-TW",
+      identical(.UI_STRINGS$en$bblab_listed_only_notice,
+                "Listed stocks only (Taiwan and U.S. exchanges).") &&
+        identical(.UI_STRINGS$`zh-TW`$bblab_listed_only_notice,
+                  "僅支援上市個股分析（台股、美股）。") &&
+        identical(.UI_STRINGS$en$bblab_listed_only_scope,
+                  paste0(
+                    "This ticker does not look like a listed Taiwan or U.S. stock. ",
+                    "The Lab only supports listed stocks (Taiwan and U.S. exchanges)."
+                  )) &&
+        identical(.UI_STRINGS$`zh-TW`$bblab_listed_only_scope,
+                  paste0(
+                    "此 Ticker 看起來不是上市個股（台股、美股）。",
+                    "業務拆解實驗室僅支援上市個股分析（台股、美股）。"
+                  )) &&
+        !grepl("默认|参数|数据|用户|简", .UI_STRINGS$`zh-TW`$bblab_listed_only_notice) &&
+        !grepl("默认|参数|数据|用户|简", .UI_STRINGS$`zh-TW`$bblab_listed_only_scope))
+check("heuristic allows listed TW/US names",
+      isTRUE(!bblab_clearly_not_listed_tw_us("AAPL")) &&
+        isTRUE(!bblab_clearly_not_listed_tw_us("2330")) &&
+        isTRUE(!bblab_clearly_not_listed_tw_us("2330.TW")) &&
+        isTRUE(!bblab_clearly_not_listed_tw_us("6488.TWO")) &&
+        isTRUE(!bblab_clearly_not_listed_tw_us("BRK.B")) &&
+        isTRUE(!bblab_clearly_not_listed_tw_us("BRK-B")) &&
+        isTRUE(!bblab_clearly_not_listed_tw_us("AMZN")) &&
+        isTRUE(!bblab_clearly_not_listed_tw_us("")))
+check("heuristic flags clearly non-listed TW/US names",
+      isTRUE(bblab_clearly_not_listed_tw_us("^GSPC")) &&
+        isTRUE(bblab_clearly_not_listed_tw_us("0700.HK")) &&
+        isTRUE(bblab_clearly_not_listed_tw_us("BTC-USD")) &&
+        isTRUE(bblab_clearly_not_listed_tw_us("7203.T")) &&
+        isTRUE(bblab_clearly_not_listed_tw_us("TWD=X")))
+check("out-of-scope ticker does not req-stop Lab Search",
+      grepl("listed_scope_on(", mod_src, fixed = TRUE) &&
+        grepl("bblab_clearly_not_listed_tw_us", mod_src, fixed = TRUE) &&
+        !grepl("req(!bblab_clearly_not_listed_tw_us", mod_src, fixed = TRUE) &&
+        grepl("lab_ticker(tk)", mod_src, fixed = TRUE))
 
 if (fail > 0L) {
   cat("FAILED ", fail, " checks\n", sep = "")
