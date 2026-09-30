@@ -33,20 +33,47 @@ check("TW bench", identical(macro_bench_ticker("TW"), "^TWII"))
 
 click_us <- macro_click_index_specs("US")
 click_tw <- macro_click_index_specs("TW")
-check("click specs same in US and TW", identical(click_us, click_tw))
+check("click specs follow market", identical(click_us, macro_index_specs("US")))
+check("TW click specs follow TW catalog", identical(click_tw, macro_index_specs("TW")))
+check("US and TW click catalogs differ", !identical(click_us, click_tw))
 check(
-  "click specs four Yahoo symbols",
+  "US click specs four Yahoo symbols",
   identical(names(click_us), c("^GSPC", "^IXIC", "^DJI", "^SOX"))
 )
 check(
-  "click specs four labels",
+  "US click specs four labels",
   identical(unname(click_us), c("S&P 500", "Nasdaq", "Dow Jones", "SOX (semis)"))
 )
+check(
+  "TW click specs four Yahoo symbols",
+  identical(names(click_tw), c("^TWII", "^TWOII", "^TELI", "^TFNI"))
+)
+check(
+  "TW click specs four labels",
+  identical(unname(click_tw), c("TAIEX", "TPEx", "Electronics", "Finance"))
+)
+check("TW catalog has no US boards", !any(names(click_tw) %in% c("^GSPC", "^IXIC", "^DJI", "^SOX")))
+check("US catalog has no TW boards", !any(names(click_us) %in% c("^TWII", "^TWOII", "^TELI", "^TFNI")))
 check("box id GSPC", identical(macro_index_box_id("^GSPC"), "ynow_macro_idx_gspc"))
 check("box id IXIC", identical(macro_index_box_id("^IXIC"), "ynow_macro_idx_ixic"))
 check("box id DJI", identical(macro_index_box_id("^DJI"), "ynow_macro_idx_dji"))
 check("box id SOX", identical(macro_index_box_id("^SOX"), "ynow_macro_idx_sox"))
+check("box id TWII", identical(macro_index_box_id("^TWII"), "ynow_macro_idx_twii"))
+check("box id TWOII", identical(macro_index_box_id("^TWOII"), "ynow_macro_idx_twoii"))
+check("box id TELI", identical(macro_index_box_id("^TELI"), "ynow_macro_idx_teli"))
+check("box id TFNI", identical(macro_index_box_id("^TFNI"), "ynow_macro_idx_tfni"))
 check("name key GSPC", identical(macro_index_name_key("^GSPC"), "macro_index_name_gspc"))
+check("name key TWII", identical(macro_index_name_key("^TWII"), "macro_index_name_twii"))
+check("name key TWOII", identical(macro_index_name_key("^TWOII"), "macro_index_name_twoii"))
+check("name key TELI", identical(macro_index_name_key("^TELI"), "macro_index_name_teli"))
+check("name key TFNI", identical(macro_index_name_key("^TFNI"), "macro_index_name_tfni"))
+for (sym in names(click_tw)) {
+  check(
+    paste("TW click maps", sym),
+    identical(as.character(sym), names(click_tw)[match(sym, names(click_tw))]) &&
+      grepl("^ynow_macro_idx_", macro_index_box_id(sym))
+  )
+}
 
 ch_us <- macro_theme_choices("US", "en")
 ch_tw <- macro_theme_choices("TW", "zh-TW")
@@ -84,7 +111,9 @@ for (k in c(
   "macro_plot_need_pick", "macro_series_industry", "macro_series_concept",
   "macro_series_rebased", "macro_bubble_theme_label",
   "macro_index_name_gspc", "macro_index_name_ixic", "macro_index_name_dji",
-  "macro_index_name_sox", "macro_index_chart_hint", "macro_index_chart_empty",
+  "macro_index_name_sox", "macro_index_name_twii", "macro_index_name_twoii",
+  "macro_index_name_teli", "macro_index_name_tfni",
+  "macro_index_chart_hint", "macro_index_chart_empty",
   "macro_index_chart_error"
 )) {
   check(paste("en", k), nzchar(ui_str(k, "en")))
@@ -102,6 +131,24 @@ check("en index names stay English", identical(ui_str("macro_index_name_gspc", "
 check("zh index names stay English", identical(ui_str("macro_index_name_gspc", "zh-TW"), "S&P 500"))
 check("en SOX name", identical(ui_str("macro_index_name_sox", "en"), "SOX (semis)"))
 check("zh SOX name", identical(ui_str("macro_index_name_sox", "zh-TW"), "SOX (semis)"))
+check("en TAIEX name", identical(ui_str("macro_index_name_twii", "en"), "TAIEX"))
+check("zh TAIEX name", identical(ui_str("macro_index_name_twii", "zh-TW"), "加權（TAIEX）"))
+check("en TPEx name", identical(ui_str("macro_index_name_twoii", "en"), "TPEx"))
+check("zh TPEx name", identical(ui_str("macro_index_name_twoii", "zh-TW"), "櫃買（TPEx）"))
+check("en electronics name", identical(ui_str("macro_index_name_teli", "en"), "Electronics"))
+check("zh electronics name", identical(ui_str("macro_index_name_teli", "zh-TW"), "電子"))
+check("en finance name", identical(ui_str("macro_index_name_tfni", "en"), "Finance"))
+check("zh finance name", identical(ui_str("macro_index_name_tfni", "zh-TW"), "金融"))
+check("zh TW labels no simplified", {
+  tw_labs <- paste(
+    ui_str("macro_index_name_twii", "zh-TW"),
+    ui_str("macro_index_name_twoii", "zh-TW"),
+    ui_str("macro_index_name_teli", "zh-TW"),
+    ui_str("macro_index_name_tfni", "zh-TW"),
+    collapse = " "
+  )
+  !grepl("加权|柜买|电子|金融保险类|默认|数据", tw_labs)
+})
 check("en chart hint", grepl("Click an index box", ui_str("macro_index_chart_hint", "en"), fixed = TRUE))
 check("zh chart hint", grepl("點選指數方塊", ui_str("macro_index_chart_hint", "zh-TW"), fixed = TRUE))
 
@@ -251,11 +298,19 @@ check("concept vs benchmark first paint", grepl("Concept vs benchmark", txt, fix
 check("empty none default", grepl("industry_key", txt, fixed = TRUE) && grepl('selected = ""', txt, fixed = TRUE))
 check("no Lite-only combined menu", !grepl("ynow-lite-only", txt, fixed = TRUE))
 check("click specs helper", grepl("macro_click_index_specs", txt, fixed = TRUE))
-check("KPI uses click specs not TW catalog", grepl("macro_click_index_specs(.mode())", txt, fixed = TRUE))
+check("KPI uses click specs by market", grepl("macro_click_index_specs(.mode())", txt, fixed = TRUE))
+check("click validates against market catalog", grepl("macro_click_index_specs(.mode())", txt, fixed = TRUE))
 check("clickable box id GSPC", grepl("ynow_macro_idx_gspc", txt, fixed = TRUE))
 check("clickable box id IXIC", grepl("ynow_macro_idx_ixic", txt, fixed = TRUE))
 check("clickable box id DJI", grepl("ynow_macro_idx_dji", txt, fixed = TRUE))
 check("clickable box id SOX", grepl("ynow_macro_idx_sox", txt, fixed = TRUE))
+check("clickable box id TWII", grepl("ynow_macro_idx_twii", txt, fixed = TRUE))
+check("clickable box id TWOII", grepl("ynow_macro_idx_twoii", txt, fixed = TRUE))
+check("clickable box id TELI", grepl("ynow_macro_idx_teli", txt, fixed = TRUE))
+check("clickable box id TFNI", grepl("ynow_macro_idx_tfni", txt, fixed = TRUE))
+check("TW electronics Yahoo is TELI", grepl('"^TELI"', txt, fixed = TRUE) || grepl("'^TELI'", txt, fixed = TRUE) || grepl("^TELI", txt, fixed = TRUE))
+check("TW finance Yahoo is TFNI", grepl("^TFNI", txt, fixed = TRUE))
+check("TW catalog dropped 0050 KPI", !grepl('"0050.TW" = "0050"', txt, fixed = TRUE))
 check("index click input", grepl("index_click", txt, fixed = TRUE))
 check("index hist plot output", grepl("index_hist_plot", txt, fixed = TRUE))
 check("index hist panel above Rf", {
@@ -271,7 +326,13 @@ check("hint above Rf", {
 check("chart slot is full-only", grepl("ynow-macro-index-hist ynow-full-only", txt, fixed = TRUE))
 check("hint is full-only", grepl("ynow-macro-hint ynow-full-only", txt, fixed = TRUE))
 check("lite gate on click", grepl(".is_lite", txt, fixed = TRUE) && grepl("lite_mode_rv", txt, fixed = TRUE))
-check("keeps showing on same box", !grepl("selected_index(\"\")", txt, fixed = TRUE))
+check("click handler does not blank selection", {
+  start <- regexpr("observeEvent(input$index_click", txt, fixed = TRUE)[1]
+  rest <- if (start > 0) substr(txt, start, start + 420L) else ""
+  grepl("macro_click_index_specs(.mode())", rest, fixed = TRUE) &&
+    !grepl("selected_index(\"\")", rest, fixed = TRUE)
+})
+check("market switch clears foreign board", grepl("selected_index(\"\")", txt, fixed = TRUE))
 check("no Theme Rolling beta return", !grepl("Theme Rolling β vs benchmark", txt, fixed = TRUE))
 check("Rf CAPM note sentence gone", !grepl("Same live Rf path as CAPM", txt, fixed = TRUE))
 check("Rf note id gone", !grepl("ynow_macro_rf_note", txt, fixed = TRUE))
