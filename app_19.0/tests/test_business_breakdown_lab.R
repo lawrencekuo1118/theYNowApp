@@ -583,6 +583,7 @@ check("mix chapters are one numbered box with six badges", {
     grepl("ynow-bblab-subhead", mod_src, fixed = TRUE) &&
     grepl("plotlyOutput(ns(\"donut\")", mod_src, fixed = TRUE) &&
     grepl("plotlyOutput(ns(\"history\")", mod_src, fixed = TRUE) &&
+    grepl('uiOutput(ns("history_panel"))', mod_src, fixed = TRUE) &&
     grepl("`data-bblab-chapter` = \"6\"", mod_src, fixed = TRUE) &&
     !grepl("`data-bblab-chapter` = \"7\"", mod_src, fixed = TRUE) &&
     !grepl('ynow-bblab-chapter__num", "7"', mod_src, fixed = TRUE) &&
@@ -738,7 +739,7 @@ if (requireNamespace("shiny", quietly = TRUE) &&
           grepl("ynow_bblab_ch2_title", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_ch3_title", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_ch3_current_label", lab_ui_html, fixed = TRUE) &&
-          grepl("ynow_bblab_ch4_title", lab_ui_html, fixed = TRUE) &&
+          grepl("history_panel", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_ch5_title", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_ch6_title", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_ch7_title", lab_ui_html, fixed = TRUE) &&
@@ -747,7 +748,8 @@ if (requireNamespace("shiny", quietly = TRUE) &&
     grepl("ynow-bblab-subhead", lab_ui_html, fixed = TRUE) &&
       grepl(">Revenue mix<", lab_ui_html, fixed = TRUE) &&
       grepl(">Current period<", lab_ui_html, fixed = TRUE) &&
-      grepl(">Five-year mix evolution<", lab_ui_html, fixed = TRUE) &&
+      grepl("history_panel", lab_ui_html, fixed = TRUE) &&
+      !grepl(">Five-year mix evolution<", lab_ui_html, fixed = TRUE) &&
       grepl("data-bblab-chapter=\"3\"", lab_ui_html, fixed = TRUE) &&
       grepl("data-bblab-chapter=\"6\"", lab_ui_html, fixed = TRUE) &&
       !grepl("data-bblab-chapter=\"7\"", lab_ui_html, fixed = TRUE) &&
@@ -757,7 +759,7 @@ if (requireNamespace("shiny", quietly = TRUE) &&
     ids <- c("ynow_bblab_search_title",
              "ynow_bblab_ch1_title", "ynow_bblab_ch2_title", "ynow_bblab_ch3_title",
              "ynow_bblab_ch3_current_label",
-             "ynow_bblab_ch4_title", "ynow_bblab_ch5_title", "ynow_bblab_ch6_title",
+             "ynow_bblab_ch5_title", "ynow_bblab_ch6_title",
              "ynow_bblab_ch7_title")
     pos <- vapply(ids, function(id) {
       as.integer(regexpr(id, lab_ui_html, fixed = TRUE)[1])
@@ -1145,7 +1147,15 @@ check("single-period fixture does not fabricate a 5-year series", {
     "BUSINESS_HISTORY_INSUFFICIENT_YEARS" %in% r2$codes &&
     isTRUE(r2$ok) &&
     length(r2$businesses) == 2L &&
-    isTRUE(r2$chart$eligible)
+    isTRUE(r2$chart$eligible) &&
+    isTRUE(!.bblab_history_visible(r2))
+})
+check("five-year mix panel shows only when a series is eligible", {
+  isTRUE(.bblab_history_visible(rk10)) &&
+    isTRUE(!.bblab_history_visible(NULL)) &&
+    grepl(".bblab_history_visible", mod_src, fixed = TRUE) &&
+    grepl("history_panel", mod_src, fixed = TRUE) &&
+    !grepl("history_status", mod_src, fixed = TRUE)
 })
 check("history insufficient toast does not block cards or donut", {
   t <- bblab_toast_payload("BUSINESS_HISTORY_INSUFFICIENT_YEARS", recon_pass = TRUE,

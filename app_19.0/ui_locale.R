@@ -1511,11 +1511,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "customer location is never the business split. Overlapping dimensions are never added together."
     ),
     bblab_ch3_title = "Revenue mix",
-    bblab_ch3_help = paste0(
-      "Current-period slices are shares of reported consolidated revenue. ",
-      "Below, revenue share by business for up to five fiscal years on the same reporting dimension. ",
-      "Years that cannot be mapped are omitted; shares are never fabricated or filled with 0."
-    ),
+    bblab_ch3_help = "Current-period slices are shares of reported consolidated revenue.",
     bblab_ch3_current_label = "Current period",
     bblab_ch4_title = "Five-year mix evolution",
     bblab_ch4_help = paste0(
@@ -3127,11 +3123,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "重疊的申報維度不會加總合併。"
     ),
     bblab_ch3_title = "營收組成",
-    bblab_ch3_help = paste0(
-      "各切片為當期已申報合併營收的占比。",
-      "下方以同一申報維度呈現最多五個會計年度的事業營收占比。",
-      "無法對應的年度會略過，不會虛構占比或補 0。"
-    ),
+    bblab_ch3_help = "各切片為當期已申報合併營收的占比。",
     bblab_ch3_current_label = "當期",
     bblab_ch4_title = "五年結構占比演進",
     bblab_ch4_help = paste0(

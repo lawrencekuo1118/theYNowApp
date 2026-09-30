@@ -11,6 +11,12 @@ if (!exists("%||%", mode = "function")) {
   } else key
 }
 
+.bblab_history_visible <- function(res) {
+  if (is.null(res) || !is.list(res)) return(FALSE)
+  hist <- res$history
+  isTRUE(hist$eligible) && length(hist$years) >= 2L && length(hist$series) >= 1L
+}
+
 .bblab_fmt_amt <- function(x, digits = 0) {
   num <- suppressWarnings(as.numeric(x)[1])
   if (!is.finite(num)) return("—")
@@ -205,11 +211,7 @@ business_breakdown_lab_ui <- function(id = "bblab") {
         width = 12, status = "info", solidHeader = TRUE, collapsible = TRUE,
         `data-bblab-chapter` = "3",
         tags$p(id = "ynow_bblab_ch3_help", class = "help-block",
-               paste0(
-                 "Current-period slices are shares of reported consolidated revenue. ",
-                 "Below, revenue share by business for up to five fiscal years on the same reporting dimension. ",
-                 "Years that cannot be mapped are omitted; shares are never fabricated or filled with 0."
-               )),
+               "Current-period slices are shares of reported consolidated revenue."),
         tags$h4(
           class = "ynow-bblab-subhead",
           id = "ynow_bblab_ch3_current_label",
@@ -233,18 +235,7 @@ business_breakdown_lab_ui <- function(id = "bblab") {
         ),
         uiOutput(ns("chart_status")),
         plotly::plotlyOutput(ns("donut"), height = "420px"),
-        tags$h4(
-          class = "ynow-bblab-subhead",
-          id = "ynow_bblab_ch4_title",
-          "Five-year mix evolution"
-        ),
-        tags$p(id = "ynow_bblab_ch4_help", class = "help-block",
-               paste0(
-                 "Revenue share by business for up to five fiscal years, using the same reporting dimension. ",
-                 "Years that cannot be mapped are omitted; shares are never fabricated or filled with 0."
-               )),
-        uiOutput(ns("history_status")),
-        plotly::plotlyOutput(ns("history"), height = "420px")
+        uiOutput(ns("history_panel"))
       )
     ),
 
@@ -753,15 +744,21 @@ business_breakdown_lab_server <- function(id = "bblab",
       plotly::layout(fig, showlegend = TRUE, margin = list(b = 60))
     })
 
-    output$history_status <- renderUI({
+    output$history_panel <- renderUI({
       res <- lab_result()
-      if (is.null(res)) return(NULL)
-      hist <- res$history
-      if (isTRUE(hist$eligible) && length(hist$years) >= 2L) return(NULL)
-      tags$p(
-        id = "ynow_bblab_ch4_limited",
-        class = "help-block",
-        ui_msg("bblab_ch4_limited")
+      if (!isTRUE(.bblab_history_visible(res))) return(NULL)
+      tagList(
+        tags$h4(
+          class = "ynow-bblab-subhead",
+          id = "ynow_bblab_ch4_title",
+          ui_msg("bblab_ch4_title")
+        ),
+        tags$p(
+          id = "ynow_bblab_ch4_help",
+          class = "help-block",
+          ui_msg("bblab_ch4_help")
+        ),
+        plotly::plotlyOutput(ns("history"), height = "420px")
       )
     })
 
@@ -773,8 +770,7 @@ business_breakdown_lab_server <- function(id = "bblab",
       )
       res <- lab_result()
       hist <- res$history
-      if (is.null(res) || !isTRUE(hist$eligible) || length(hist$years) < 2L ||
-          !length(hist$series)) {
+      if (!isTRUE(.bblab_history_visible(res))) {
         return(empty)
       }
       years <- as.character(hist$years)
