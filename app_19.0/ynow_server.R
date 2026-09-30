@@ -2761,6 +2761,14 @@ server <- function(input, output, session) {
     ui_locale_rv = ui_locale,
     lite_mode_rv = reactive(isTRUE(input$ynow_lite_mode))
   )
+
+  # Experimental Business Breakdown Lab: independent of valuation / CV / production FS.
+  business_breakdown_lab_server(
+    "bblab",
+    market_mode_rv = market_mode,
+    ui_locale_rv = ui_locale,
+    current_ticker_rv = current_ticker
+  )
   
   run_calc_trigger <- reactiveVal(0)
   observeEvent(input$calc, { run_calc_trigger(run_calc_trigger() + 1) })

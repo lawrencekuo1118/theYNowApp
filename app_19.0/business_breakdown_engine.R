@@ -1,0 +1,1110 @@
+# Business Breakdown Lab engine — company-agnostic decomposition.
+# No ticker, issuer name, platform, node, or statement-layout branches.
+
+if (!exists("%||%", mode = "function")) {
+  `%||%` <- function(a, b) if (is.null(a)) b else a
+}
+
+.bblab_has <- function(flags, name) {
+  name %in% as.character(flags %||% character(0))
+}
+
+.bblab_kind_rank <- function(kind, cfg) {
+  pri <- cfg$disclosure_priority %||% BBLAB_DEFAULT_CONFIG$disclosure_priority
+  i <- match(kind, pri)
+  if (is.na(i)) length(pri) + 8L else as.integer(i)
+}
+
+#' Score one disclosure dimension. Geography that is only customer location is vetoed.
+bblab_score_dimension <- function(dim, consolidated = NULL, cfg = NULL) {
+  cfg <- cfg %||% bblab_load_config()
+  w <- cfg$dimension_score_weights
+  flags <- unique(c(as.character(dim$flags %||% character(0))))
+  comps <- dim$components %||% list()
+  n_rev <- sum(vapply(comps, function(c) .bblab_finite(c$revenue), logical(1)))
+  n_cor <- sum(vapply(comps, function(c) .bblab_finite(c$cor) || .bblab_finite(c$gp), logical(1)))
+  cons_rev <- .bblab_num(consolidated$revenue)
+  sum_rev <- sum(vapply(comps, function(c) {
+    v <- .bblab_num(c$revenue, 0)
+    if (is.finite(v) && v > 0) v else 0
+  }, numeric(1)))
+  recon_ok <- is.finite(cons_rev) && cons_rev != 0 && is.finite(sum_rev) &&
+    abs(sum_rev - cons_rev) <= max(cfg$thresholds$reconciliation_abs_tol,
+                                   abs(cons_rev) * cfg$thresholds$reconciliation_rel_tol)
+  auto_flags <- c(
+    if (isTRUE(dim$mutually_exclusive)) "mutually_exclusive",
+    if (n_rev >= 1L) "separate_revenue",
+    if (n_cor >= 1L) "attributable_cor_gp",
+    if (isTRUE(recon_ok) || .bblab_has(flags, "reconciles")) "reconciles",
+    if (isTRUE(dim$filed_audited)) "filed_audited"
+  )
+  flags <- unique(c(flags, auto_flags))
+  veto <- isTRUE(cfg$flags$geography_customer_location_only_veto) &&
+    (identical(dim$kind, "geography") && isTRUE(dim$is_customer_location_only))
+  if (isTRUE(veto)) {
+    return(list(score = -Inf, veto = TRUE, flags = flags,
+                code = "BUSINESS_GEOGRAPHY_CUSTOMER_LOCATION_ONLY",
+                kind_rank = .bblab_kind_rank(dim$kind, cfg)))
+  }
+  score <- 0
+  for (nm in names(w)) {
+    if (.bblab_has(flags, nm)) score <- score + as.numeric(w[[nm]])
+  }
+  score <- score + (length(BBLAB_DIMENSION_KINDS) - .bblab_kind_rank(dim$kind, cfg)) * 0.15
+  if (n_rev >= 2L) score <- score + 0.4
+  list(score = score, veto = FALSE, flags = flags, code = NA_character_,
+       kind_rank = .bblab_kind_rank(dim$kind, cfg), n_rev = n_rev, n_cor = n_cor)
+}
+
+#' Pick exactly one primary dimension. Never combine overlapping dimensions.
+bblab_select_primary_dimension <- function(dimensions, consolidated = NULL, cfg = NULL,
+                                           override_id = NULL) {
+  cfg <- cfg %||% bblab_load_config()
+  if (!length(dimensions)) {
+    return(list(dimension = NULL, scores = list(),
+                codes = "BUSINESS_DISCLOSURE_INSUFFICIENT"))
+  }
+  dims <- dimensions
+  if (!is.null(names(dims)) && !is.list(dims[[1]])) dims <- list(dims)
+  scores <- lapply(seq_along(dims), function(i) {
+    sc <- bblab_score_dimension(dims[[i]], consolidated, cfg)
+    sc$id <- dims[[i]]$id
+    sc$index <- i
+    sc$overlaps_with <- as.character(dims[[i]]$overlaps_with %||% character(0))
+    sc
+  })
+  codes <- unique(unlist(lapply(scores, function(s) if (isTRUE(s$veto)) s$code else NULL)))
+  ov_ids <- unique(unlist(lapply(scores, function(s) s$overlaps_with)))
+  if (length(ov_ids) && isTRUE(cfg$flags$never_combine_overlapping_dimensions)) {
+    codes <- unique(c(codes, "BUSINESS_OVERLAPPING_DIMENSIONS_BLOCKED"))
+  }
+  if (!is.null(override_id) && nzchar(.bblab_chr(override_id))) {
+    hit <- which(vapply(dims, function(d) identical(d$id, .bblab_chr(override_id)), logical(1)))
+    if (length(hit) == 1L && !isTRUE(scores[[hit]]$veto)) {
+      return(list(dimension = dims[[hit]], scores = scores, codes = codes, override = TRUE))
+    }
+  }
+  eligible <- which(vapply(scores, function(s) !isTRUE(s$veto) && is.finite(s$score), logical(1)))
+  if (!length(eligible)) {
+    return(list(dimension = NULL, scores = scores,
+                codes = unique(c(codes, "BUSINESS_DISCLOSURE_INSUFFICIENT"))))
+  }
+  ord <- eligible[order(
+    -vapply(scores[eligible], function(s) s$score, numeric(1)),
+    vapply(scores[eligible], function(s) s$kind_rank, numeric(1))
+  )]
+  chosen <- dims[[ord[1]]]
+  list(dimension = chosen, scores = scores, codes = codes, override = FALSE)
+}
+
+.bblab_is_major <- function(comp, cons_rev, cfg) {
+  if (isTRUE(comp$qualitative_only)) return(FALSE)
+  share <- NA_real_
+  if (.bblab_finite(comp$revenue_pct)) {
+    share <- as.numeric(comp$revenue_pct)[1]
+    if (is.finite(share) && share > 1) share <- share / 100
+  }
+  if (!is.finite(share) && .bblab_finite(comp$revenue) && .bblab_finite(cons_rev) && cons_rev != 0) {
+    share <- as.numeric(comp$revenue)[1] / as.numeric(cons_rev)[1]
+  }
+  isTRUE(comp$is_reported_segment) ||
+    (is.finite(share) && share >= cfg$thresholds$major_share) ||
+    isTRUE(comp$is_principal_activity) ||
+    isTRUE(comp$needed_to_explain_material_share) ||
+    (isTRUE(comp$distinct_economics) &&
+       (isTRUE(comp$distinct_customers) || isTRUE(comp$distinct_production)) &&
+       is.finite(share) && share >= cfg$thresholds$major_share / 2)
+}
+
+#' Identify 2–6 major businesses (or 1). Immaterial → Other Businesses. Never fabricate.
+bblab_identify_major <- function(components, consolidated, cfg = NULL) {
+  cfg <- cfg %||% bblab_load_config()
+  cons_rev <- .bblab_num(consolidated$revenue)
+  comps <- components %||% list()
+  if (!length(comps)) {
+    return(list(major = list(), other = list(), leftover = list(),
+                single = FALSE, fabricated = FALSE))
+  }
+  special <- vapply(comps, function(c) {
+    c$classification %in% c("UNALLOCATED", "ELIMINATION", "ROUNDING", "SHARED_CORPORATE", "RECONCILIATION")
+  }, logical(1))
+  work <- comps[!special]
+  leftover_special <- comps[special]
+  major_idx <- which(vapply(work, function(c) .bblab_is_major(c, cons_rev, cfg), logical(1)))
+  if (!length(major_idx) && length(work) >= 1L &&
+      all(vapply(work, function(c) isTRUE(c$qualitative_only), logical(1)))) {
+    major_idx <- seq_along(work)
+  }
+  if (!length(major_idx) && length(work) == 1L && !isTRUE(work[[1]]$qualitative_only)) {
+    major_idx <- 1L
+  }
+  max_n <- as.integer(cfg$thresholds$max_major_businesses)
+  if (length(major_idx) > max_n) {
+    shares <- vapply(work[major_idx], function(c) {
+      if (.bblab_finite(c$revenue)) as.numeric(c$revenue)[1] else if (.bblab_finite(c$revenue_pct)) {
+        p <- as.numeric(c$revenue_pct)[1]; if (p > 1) p <- p / 100
+        p * (if (is.finite(cons_rev)) cons_rev else 0)
+      } else 0
+    }, numeric(1))
+    keep <- major_idx[order(-shares)][seq_len(max_n)]
+    major_idx <- sort(keep)
+  }
+  other_idx <- setdiff(seq_along(work), major_idx)
+  major <- work[major_idx]
+  for (i in seq_along(major)) major[[i]]$classification <- "MAJOR"
+  other_items <- work[other_idx]
+  list(
+    major = major,
+    other = other_items,
+    leftover = leftover_special,
+    single = length(major) == 1L && !length(other_items),
+    fabricated = FALSE
+  )
+}
+
+.bblab_status_rank <- function(method) {
+  switch(as.character(method %||% ""),
+    reported = 1L, percent_times_consolidated = 2L, mapped_product = 3L,
+    operational_driver = 4L, unallocated = 5L,
+    reported_cor = 1L, reported_gp = 2L, company_allocation = 3L,
+    observable_driver = 4L, justified_proxy = 5L, unallocated_cost = 6L,
+    revenue_share = 7L,
+    9L
+  )
+}
+
+#' Assign revenue. Rounding stays an explicit line; disclosed % is never silently rewritten.
+bblab_assign_revenue <- function(businesses, other_items, leftover, consolidated,
+                                 cfg = NULL, period = NA_character_, currency = NA_character_) {
+  cfg <- cfg %||% bblab_load_config()
+  cons_rev <- .bblab_num(consolidated$revenue)
+  apply_one <- function(comp) {
+    ev_notes <- NA_character_
+    method <- "unallocated"
+    status <- "UNALLOCATED"
+    conf <- "UNAVAILABLE"
+    amt <- NA_real_
+    pct <- .bblab_num(comp$revenue_pct)
+    if (is.finite(pct) && pct > 1) pct <- pct / 100
+    if (.bblab_finite(comp$revenue)) {
+      amt <- as.numeric(comp$revenue)[1]
+      method <- "reported"
+      status <- "REPORTED"
+      conf <- "HIGH"
+    } else if (is.finite(pct) && is.finite(cons_rev)) {
+      amt <- pct * cons_rev
+      method <- "percent_times_consolidated"
+      status <- "DERIVED"
+      conf <- "MEDIUM"
+      ev_notes <- "Revenue derived as disclosed percentage times consolidated revenue; disclosed % unchanged."
+    } else if (.bblab_finite(comp$mapped_product_revenue)) {
+      amt <- as.numeric(comp$mapped_product_revenue)[1]
+      method <- "mapped_product"
+      status <- "DERIVED"
+      conf <- "MEDIUM"
+    } else if (.bblab_finite(comp$operational_driver_revenue)) {
+      amt <- as.numeric(comp$operational_driver_revenue)[1]
+      method <- "operational_driver"
+      status <- "ESTIMATED"
+      conf <- "LOW"
+    }
+    comp$revenue <- amt
+    if (!is.finite(pct) && is.finite(amt) && is.finite(cons_rev) && cons_rev != 0) {
+      pct <- amt / cons_rev
+    }
+    comp$revenue_pct <- pct
+    comp$revenue_method <- method
+    comp$revenue_evidence <- bblab_evidence(
+      comp$id, "revenue", amt, currency, period, status, conf,
+      source_type = comp$source_type, allocation_method = method,
+      notes = ev_notes, recon_role = comp$classification
+    )
+    comp
+  }
+  businesses <- lapply(businesses, apply_one)
+  other_items <- lapply(other_items, apply_one)
+  other <- NULL
+  if (length(other_items)) {
+    o_rev <- sum(vapply(other_items, function(c) .bblab_num(c$revenue, 0), numeric(1)))
+    other <- bblab_component(
+      "other_businesses", "Other Businesses", "OTHER",
+      revenue = if (is.finite(o_rev)) o_rev else NA_real_,
+      period = period, currency = currency
+    )
+    other$members <- other_items
+    other$revenue_method <- "derived_sum"
+    other$revenue_evidence <- bblab_evidence(
+      "other_businesses", "revenue", other$revenue, currency, period,
+      "DERIVED", "MEDIUM", recon_role = "OTHER"
+    )
+  }
+  assigned <- sum(vapply(businesses, function(c) .bblab_num(c$revenue, 0), numeric(1)))
+  if (!is.null(other) && .bblab_finite(other$revenue)) assigned <- assigned + other$revenue
+  elim <- Filter(function(c) identical(c$classification, "ELIMINATION"), leftover)
+  rnd_in <- Filter(function(c) identical(c$classification, "ROUNDING"), leftover)
+  una_in <- Filter(function(c) identical(c$classification, "UNALLOCATED"), leftover)
+  elim_rev <- if (length(elim)) sum(vapply(elim, function(c) .bblab_num(c$revenue, 0), numeric(1))) else 0
+  una_rev <- if (length(una_in)) sum(vapply(una_in, function(c) .bblab_num(c$revenue, 0), numeric(1))) else NA_real_
+  rounding_amt <- if (length(rnd_in)) {
+    sum(vapply(rnd_in, function(c) .bblab_num(c$revenue, 0), numeric(1)))
+  } else if (is.finite(cons_rev) && is.finite(assigned)) {
+    cons_rev - assigned - (if (is.finite(elim_rev)) elim_rev else 0) -
+      (if (is.finite(una_rev)) una_rev else 0)
+  } else NA_real_
+  rounding <- NULL
+  # Only tiny residuals become an explicit rounding line. Material leftover is
+  # left for reconciliation (Unallocated / Reconciliation Amount) — never spread.
+  rnd_cap <- if (is.finite(cons_rev)) {
+    max(cfg$thresholds$reconciliation_abs_tol, abs(cons_rev) * cfg$thresholds$reconciliation_rel_tol)
+  } else cfg$thresholds$reconciliation_abs_tol
+  if (is.finite(rounding_amt) && abs(rounding_amt) > 0 && abs(rounding_amt) <= rnd_cap) {
+    rounding <- bblab_component(
+      "revenue_rounding_adjustment", "Revenue Rounding Adjustment", "ROUNDING",
+      revenue = rounding_amt, period = period, currency = currency
+    )
+    rounding$revenue_evidence <- bblab_evidence(
+      "revenue_rounding_adjustment", "revenue", rounding_amt, currency, period,
+      "DERIVED", "HIGH", notes = "Explicit rounding line; disclosed percentages were not rewritten.",
+      recon_role = "ROUNDING"
+    )
+  }
+  unallocated <- NULL
+  if (length(una_in) || (is.finite(cons_rev) && is.finite(assigned) &&
+                         is.finite(una_rev) && abs(una_rev) > 0)) {
+    amt <- if (is.finite(una_rev)) una_rev else NA_real_
+    unallocated <- bblab_component(
+      "unallocated", "Unallocated", "UNALLOCATED",
+      revenue = amt, period = period, currency = currency
+    )
+    unallocated$revenue_evidence <- bblab_evidence(
+      "unallocated", "revenue", amt, currency, period, "UNALLOCATED", "LOW",
+      recon_role = "UNALLOCATED"
+    )
+  }
+  eliminations <- NULL
+  if (length(elim)) {
+    eliminations <- bblab_component(
+      "eliminations", "Eliminations", "ELIMINATION",
+      revenue = elim_rev, period = period, currency = currency
+    )
+    eliminations$revenue_evidence <- bblab_evidence(
+      "eliminations", "revenue", elim_rev, currency, period, "REPORTED", "HIGH",
+      recon_role = "ELIMINATION"
+    )
+  }
+  list(
+    businesses = businesses, other = other, unallocated = unallocated,
+    eliminations = eliminations, rounding = rounding
+  )
+}
+
+#' Assign Cost of Revenue. Revenue-share is the final fallback only.
+bblab_assign_cost <- function(rev_pack, consolidated, cfg = NULL,
+                              use_consolidated_gm_fallback = FALSE,
+                              period = NA_character_, currency = NA_character_) {
+  cfg <- cfg %||% bblab_load_config()
+  cons_rev <- .bblab_num(consolidated$revenue)
+  cons_cor <- .bblab_num(consolidated$cor)
+  cons_gp <- .bblab_num(consolidated$gp)
+  cons_gm <- if (is.finite(cons_rev) && cons_rev != 0 && is.finite(cons_gp)) cons_gp / cons_rev else NA_real_
+  codes <- character(0)
+  notices <- character(0)
+  apply_one <- function(comp) {
+    if (is.null(comp) || isTRUE(comp$qualitative_only)) return(comp)
+    method <- "unallocated_cost"
+    status <- "UNALLOCATED"
+    conf <- "UNAVAILABLE"
+    cor <- NA_real_
+    gp <- NA_real_
+    note <- NA_character_
+    if (.bblab_finite(comp$cor)) {
+      cor <- as.numeric(comp$cor)[1]
+      method <- "reported_cor"
+      status <- "REPORTED"
+      conf <- "HIGH"
+    } else if (.bblab_finite(comp$gp) && .bblab_finite(comp$revenue)) {
+      gp <- as.numeric(comp$gp)[1]
+      cor <- as.numeric(comp$revenue)[1] - gp
+      method <- "reported_gp"
+      status <- "DERIVED"
+      conf <- "HIGH"
+      note <- "Cost of Revenue derived from reported Gross Profit."
+    } else if (.bblab_finite(comp$company_allocated_cor)) {
+      cor <- as.numeric(comp$company_allocated_cor)[1]
+      method <- "company_allocation"
+      status <- "ALLOCATED"
+      conf <- "MEDIUM"
+      note <- "Cost of Revenue is a company allocation / estimate."
+      codes <<- unique(c(codes, "BUSINESS_COST_ALLOCATED_LOW_CONFIDENCE"))
+    } else if (.bblab_finite(comp$observable_driver_cor)) {
+      cor <- as.numeric(comp$observable_driver_cor)[1]
+      method <- "observable_driver"
+      status <- "ESTIMATED"
+      conf <- "MEDIUM"
+    } else if (.bblab_finite(comp$justified_proxy_cor)) {
+      cor <- as.numeric(comp$justified_proxy_cor)[1]
+      method <- "justified_proxy"
+      status <- "ESTIMATED"
+      conf <- "LOW"
+    } else if (isTRUE(use_consolidated_gm_fallback) && is.finite(cons_gm) &&
+               .bblab_finite(comp$revenue)) {
+      gp <- as.numeric(comp$revenue)[1] * cons_gm
+      cor <- as.numeric(comp$revenue)[1] - gp
+      method <- "consolidated_gm_fallback"
+      status <- "CONSOLIDATED_PROXY"
+      conf <- "LOW"
+      note <- "Low-confidence fallback: consolidated Gross Margin applied by user opt-in."
+      codes <<- unique(c(codes, "BUSINESS_COST_NOT_RELIABLY_ESTIMABLE"))
+    } else if (isTRUE(use_consolidated_gm_fallback) &&
+               isTRUE(cfg$flags$revenue_share_cost_is_final_fallback) &&
+               .bblab_finite(comp$revenue) && is.finite(cons_rev) && cons_rev != 0 &&
+               is.finite(cons_cor)) {
+      cor <- as.numeric(comp$revenue)[1] / cons_rev * cons_cor
+      method <- "revenue_share"
+      status <- "ALLOCATED"
+      conf <- "LOW"
+      note <- "ALLOCATED_LOW_CONFIDENCE: Cost of Revenue uses revenue-share as a final fallback. This is not a reported business cost."
+      codes <<- unique(c(codes, "BUSINESS_COST_ALLOCATED_LOW_CONFIDENCE"))
+      notices <<- unique(c(notices, "rev_share_cost"))
+    } else {
+      codes <<- unique(c(codes, "BUSINESS_COST_NOT_RELIABLY_ESTIMABLE"))
+    }
+    comp$cor <- cor
+    comp$cor_method <- method
+    comp$cor_evidence <- bblab_evidence(
+      comp$id, "cor", cor, currency, period, status, conf,
+      allocation_method = method, notes = note, recon_role = comp$classification
+    )
+    if (identical(status, "ALLOCATED") && identical(conf, "LOW")) {
+      comp$cor_label <- "ALLOCATED_LOW_CONFIDENCE"
+    } else if (status %in% c("ALLOCATED", "ESTIMATED", "CONSOLIDATED_PROXY")) {
+      comp$cor_label <- "allocated/estimated"
+    } else {
+      comp$cor_label <- status
+    }
+    comp
+  }
+  pack <- rev_pack
+  pack$businesses <- lapply(pack$businesses, apply_one)
+  if (!is.null(pack$other)) {
+    if (is.list(pack$other$members)) {
+      pack$other$members <- lapply(pack$other$members, apply_one)
+      pack$other$cor <- sum(vapply(pack$other$members, function(c) .bblab_num(c$cor, 0), numeric(1)))
+    }
+    pack$other <- apply_one(pack$other)
+  }
+  for (nm in c("unallocated", "eliminations", "rounding")) {
+    if (!is.null(pack[[nm]])) pack[[nm]] <- apply_one(pack[[nm]])
+  }
+  pack$cost_codes <- unique(codes)
+  pack$cost_notices <- unique(notices)
+  pack
+}
+
+#' GP = Rev − CoR; GM = GP / Rev. Shared opex never enters GP cards.
+bblab_compute_gp <- function(pack, level_hint = NULL) {
+  apply_one <- function(comp) {
+    if (is.null(comp)) return(comp)
+    rev <- .bblab_num(comp$revenue)
+    cor <- .bblab_num(comp$cor)
+    if (.bblab_finite(comp$gp) && identical(comp$cor_method %||% "", "reported_cor") == FALSE &&
+        isTRUE(comp$gp_reported)) {
+      gp <- as.numeric(comp$gp)[1]
+    } else if (is.finite(rev) && is.finite(cor)) {
+      gp <- rev - cor
+    } else {
+      gp <- NA_real_
+    }
+    gm <- if (is.finite(gp) && is.finite(rev) && rev != 0) gp / rev else NA_real_
+    unestimable <- !is.finite(cor) && is.finite(rev)
+    comp$gp <- gp
+    comp$gm <- gm
+    if (isTRUE(unestimable)) {
+      comp$gp_display <- "Not reliably estimable"
+      comp$gm_display <- "Not reliably estimable"
+      comp$gp_evidence <- bblab_evidence(
+        comp$id, "gp", NA_real_, comp$currency, comp$period, "UNAVAILABLE", "UNAVAILABLE",
+        notes = "Cost of Revenue not reliably estimable; Gross Profit / Gross Margin withheld."
+      )
+    } else {
+      st <- if (is.finite(gp) && identical(comp$cor_method %||% "", "reported_cor")) "DERIVED" else
+        if (is.finite(gp) && identical(comp$revenue_method %||% "", "reported") &&
+            identical(comp$cor_method %||% "", "reported_gp")) "REPORTED" else
+          if (is.finite(gp)) "DERIVED" else "UNAVAILABLE"
+      cf <- if (!is.null(comp$cor_evidence)) comp$cor_evidence$confidence else "UNAVAILABLE"
+      if (identical(comp$revenue_method, "reported") && identical(comp$cor_method, "reported_cor")) cf <- "HIGH"
+      comp$gp_evidence <- bblab_evidence(
+        comp$id, "gp", gp, comp$currency, comp$period, st, cf, recon_role = comp$classification
+      )
+    }
+    comp
+  }
+  pack$businesses <- lapply(pack$businesses, apply_one)
+  if (!is.null(pack$other)) pack$other <- apply_one(pack$other)
+  for (nm in c("unallocated", "eliminations", "rounding")) {
+    if (!is.null(pack[[nm]])) pack[[nm]] <- apply_one(pack[[nm]])
+  }
+  pack
+}
+
+#' Levels A–D from the weakest major-business evidence.
+bblab_classify_level <- function(pack) {
+  comps <- pack$businesses %||% list()
+  if (!length(comps)) return("D")
+  if (all(vapply(comps, function(c) isTRUE(c$qualitative_only), logical(1)))) return("D")
+  levels <- vapply(comps, function(c) {
+    if (isTRUE(c$qualitative_only)) return("D")
+    rev_ok <- identical(c$revenue_method %||% "", "reported") ||
+      identical(c$revenue_evidence$status %||% "", "REPORTED")
+    cor_rep <- identical(c$cor_method %||% "", "reported_cor") ||
+      identical(c$cor_method %||% "", "reported_gp")
+    cor_alloc <- (c$cor_method %||% "") %in% c(
+      "company_allocation", "observable_driver", "justified_proxy",
+      "revenue_share", "consolidated_gm_fallback"
+    )
+    if (isTRUE(rev_ok) && isTRUE(cor_rep)) return("A")
+    if (isTRUE(rev_ok) && isTRUE(cor_alloc) && .bblab_finite(c$cor)) return("B")
+    if (isTRUE(rev_ok) || .bblab_finite(c$revenue)) return("C")
+    "D"
+  }, character(1))
+  if (any(levels == "D") && all(levels %in% c("D"))) return("D")
+  if (any(levels == "C")) return("C")
+  if (any(levels == "B")) return("B")
+  "A"
+}
+
+.bblab_line_sum <- function(pack, field) {
+  bits <- c(pack$businesses, list(pack$other, pack$unallocated, pack$eliminations,
+                                  pack$rounding, pack$recon_amount))
+  bits <- Filter(Negate(is.null), bits)
+  sum(vapply(bits, function(c) .bblab_num(c[[field]], 0), numeric(1)))
+}
+
+#' Reconcile to reported consolidated. Do not spread unexplained diffs. Do not plug NI.
+bblab_reconcile <- function(pack, consolidated, cfg = NULL) {
+  cfg <- cfg %||% bblab_load_config()
+  tol_rel <- cfg$thresholds$reconciliation_rel_tol
+  tol_abs <- cfg$thresholds$reconciliation_abs_tol
+  check_one <- function(field, reported) {
+    recast <- .bblab_line_sum(pack, field)
+    ok <- is.finite(reported) && is.finite(recast) &&
+      abs(recast - reported) <= max(tol_abs, abs(reported) * tol_rel)
+    leftover <- if (is.finite(reported) && is.finite(recast)) reported - recast else NA_real_
+    list(field = field, reported = reported, recast = recast, leftover = leftover,
+         pass = isTRUE(ok), tolerance = max(tol_abs, if (is.finite(reported)) abs(reported) * tol_rel else tol_abs))
+  }
+  rev <- check_one("revenue", .bblab_num(consolidated$revenue))
+  cor <- check_one("cor", .bblab_num(consolidated$cor))
+  gp <- check_one("gp", .bblab_num(consolidated$gp))
+  codes <- character(0)
+  # Unexplained leftover → Unallocated or Reconciliation Amount. Never spread, never NI.
+  apply_leftover <- function(chk, field) {
+    if (isTRUE(chk$pass) || !is.finite(chk$leftover) || abs(chk$leftover) < 1e-12) return(chk)
+    # Leftover is booked once as Reconciliation Amount (not spread, not NI).
+    if (is.null(pack$recon_amount)) {
+      pack$recon_amount <<- bblab_component(
+        "reconciliation_amount", "Reconciliation Amount", "RECONCILIATION"
+      )
+    }
+    pack$recon_amount[[field]] <<- chk$leftover
+    check_one(field, chk$reported)
+  }
+  # Do not auto-spread: expose leftover as Unallocated / Reconciliation Amount then re-check.
+  if (!isTRUE(rev$pass) && is.finite(rev$leftover) && abs(rev$leftover) > 0) {
+    rev <- apply_leftover(rev, "revenue")
+  }
+  if (!isTRUE(cor$pass) && is.finite(cor$leftover) && abs(cor$leftover) > 0) {
+    cor <- apply_leftover(cor, "cor")
+  }
+  if (!isTRUE(gp$pass) && is.finite(gp$leftover) && abs(gp$leftover) > 0) {
+    gp <- apply_leftover(gp, "gp")
+  }
+  # Recompute after leftover booking
+  rev <- check_one("revenue", .bblab_num(consolidated$revenue))
+  cor <- check_one("cor", .bblab_num(consolidated$cor))
+  gp <- check_one("gp", .bblab_num(consolidated$gp))
+  pass <- isTRUE(rev$pass) && (isTRUE(cor$pass) || !is.finite(.bblab_num(consolidated$cor))) &&
+    (isTRUE(gp$pass) || !is.finite(.bblab_num(consolidated$gp)))
+  if (!isTRUE(pass)) codes <- "BUSINESS_RECONCILIATION_FAIL"
+  pack$reconciliation <- list(
+    pass = isTRUE(pass),
+    revenue = rev, cor = cor, gp = gp,
+    used_ni_plug = FALSE
+  )
+  pack$recon_codes <- codes
+  pack
+}
+
+#' Revaluation ratio. Never fabricate. Default view is Reported.
+bblab_revaluation <- function(pack, inputs = NULL, cfg = NULL) {
+  cfg <- cfg %||% bblab_load_config()
+  inputs <- inputs %||% list()
+  by_id <- if (length(inputs)) {
+    stats::setNames(inputs, vapply(inputs, function(x) .bblab_chr(x$component_id %||% x$id), character(1)))
+  } else list()
+  apply_one <- function(comp) {
+    if (is.null(comp)) return(comp)
+    inp <- by_id[[comp$id]]
+    reported_basis <- .bblab_num(inp$reported_basis %||% inp$reportedBasis %||% comp$revenue)
+    adjusted_basis <- .bblab_num(inp$adjusted_basis %||% inp$adjustedBasis)
+    method <- .bblab_chr(inp$method, NA_character_)
+    reason <- .bblab_chr(inp$reason, NA_character_)
+    src_date <- .bblab_chr(inp$source_date %||% inp$sourceDate, NA_character_)
+    user_ov <- isTRUE(inp$user_override %||% inp$userOverride)
+    is_est <- isTRUE(inp$is_estimated %||% inp$isEstimated)
+    status <- "UNAVAILABLE"
+    conf <- "UNAVAILABLE"
+    ratio <- NA_real_
+    pct <- NA_real_
+    if (is.finite(reported_basis) && is.finite(adjusted_basis) && abs(reported_basis) > 0) {
+      ratio <- adjusted_basis / reported_basis
+      pct <- ratio - 1
+      status <- if (!is.null(inp$status) && toupper(.bblab_chr(inp$status)) %in% BBLAB_VALUE_STATUS) {
+        toupper(.bblab_chr(inp$status))
+      } else if (isTRUE(user_ov)) {
+        "REPORTED"
+      } else if (identical(toupper(method), "CONSOLIDATED_PROXY")) {
+        "CONSOLIDATED_PROXY"
+      } else if (isTRUE(is_est)) {
+        "ESTIMATED"
+      } else {
+        "DERIVED"
+      }
+      conf <- if (identical(status, "CONSOLIDATED_PROXY")) "LOW" else
+        if (identical(status, "ESTIMATED") || identical(status, "ALLOCATED")) "LOW" else
+          if (identical(status, "REPORTED")) "HIGH" else "MEDIUM"
+    } else if (identical(toupper(method), "CONSOLIDATED_PROXY") && is.finite(reported_basis)) {
+      status <- "CONSOLIDATED_PROXY"
+      conf <- "LOW"
+    }
+    if (!is.finite(ratio)) {
+      status <- "UNAVAILABLE"
+      conf <- "UNAVAILABLE"
+    }
+    changes_prod <- isTRUE(inp$changes_production_costs_or_da)
+    comp$revaluation <- list(
+      reportedBasis = reported_basis,
+      adjustedBasis = adjusted_basis,
+      revaluationRatio = ratio,
+      revaluationPercentage = pct,
+      method = method,
+      reason = reason,
+      confidence = conf,
+      sourceDate = src_date,
+      userOverride = user_ov,
+      isEstimated = is_est,
+      status = status,
+      changesProductionCostsOrDA = changes_prod
+    )
+    comp$revaluation_available <- is.finite(ratio)
+    comp
+  }
+  pack$businesses <- lapply(pack$businesses, apply_one)
+  if (!is.null(pack$other)) pack$other <- apply_one(pack$other)
+  any_avail <- any(vapply(pack$businesses, function(c) isTRUE(c$revaluation_available), logical(1)))
+  any_proxy <- any(vapply(pack$businesses, function(c) {
+    identical(c$revaluation$status %||% "", "CONSOLIDATED_PROXY")
+  }, logical(1)))
+  codes <- character(0)
+  if (!isTRUE(any_avail)) codes <- c(codes, "BUSINESS_REVALUATION_UNAVAILABLE")
+  if (isTRUE(any_proxy)) codes <- c(codes, "BUSINESS_REVALUATION_CONSOLIDATED_PROXY")
+  pack$reval_codes <- unique(codes)
+  pack$reval_any <- isTRUE(any_avail)
+  pack
+}
+
+#' Chart eligibility. Failures never block statement cards.
+bblab_chart_eligibility <- function(pack, consolidated, cfg = NULL, level = NULL) {
+  cfg <- cfg %||% bblab_load_config()
+  codes <- character(0)
+  cons_rev <- .bblab_num(consolidated$revenue)
+  period <- unique(na.omit(c(
+    consolidated$period,
+    vapply(pack$businesses %||% list(), function(c) .bblab_chr(c$period, NA_character_), character(1))
+  )))
+  ccy <- unique(na.omit(c(
+    consolidated$currency,
+    vapply(pack$businesses %||% list(), function(c) .bblab_chr(c$currency, NA_character_), character(1))
+  )))
+  n_valid <- sum(vapply(pack$businesses %||% list(), function(c) {
+    .bblab_finite(c$revenue) && !isTRUE(c$qualitative_only)
+  }, logical(1)))
+  if (!is.null(pack$other) && .bblab_finite(pack$other$revenue) && abs(pack$other$revenue) > 0) {
+    n_valid <- n_valid + 1L
+  }
+  if (identical(level, "D")) codes <- c(codes, "BUSINESS_CHART_LEVEL_D")
+  if (n_valid < 2L) {
+    codes <- c(codes, if (n_valid <= 1L) "BUSINESS_CHART_SINGLE_COMPONENT" else "BUSINESS_CHART_INSUFFICIENT_COMPONENTS")
+  }
+  if (!is.finite(cons_rev) || cons_rev == 0) codes <- c(codes, "BUSINESS_CHART_CONSOLIDATED_REVENUE_MISSING")
+  if (length(period) > 1L) codes <- c(codes, "BUSINESS_CHART_PERIOD_MISMATCH")
+  if (length(ccy) > 1L) codes <- c(codes, "BUSINESS_CHART_CURRENCY_MISMATCH")
+  if (!isTRUE(pack$reconciliation$pass)) codes <- c(codes, "BUSINESS_CHART_RECONCILIATION_FAIL")
+  eligible <- !length(codes)
+  list(eligible = isTRUE(eligible), codes = unique(codes),
+       n_valid = n_valid, consolidated_revenue = cons_rev)
+}
+
+#' Donut slices. Share denominator = reported consolidated revenue.
+#' Negative eliminations stay in the legend/bridge, never as positive slices.
+#' minDisplayPercentage groups tiny non-material items for display only.
+bblab_chart_slices <- function(pack, consolidated, cfg = NULL, elig = NULL) {
+  cfg <- cfg %||% bblab_load_config()
+  elig <- elig %||% bblab_chart_eligibility(pack, consolidated, cfg)
+  cons_rev <- .bblab_num(consolidated$revenue)
+  min_p <- cfg$thresholds$min_display_percentage
+  major_p <- cfg$thresholds$major_share
+  rows <- list()
+  add_row <- function(id, name, amt, classification, confidence, period, currency,
+                      is_reported_segment = FALSE, source_keep = TRUE, display_group = FALSE) {
+    rows[[length(rows) + 1L]] <<- list(
+      id = id, name = name, revenue = amt,
+      share = if (is.finite(cons_rev) && cons_rev != 0 && is.finite(amt)) amt / cons_rev else NA_real_,
+      classification = classification,
+      confidence = confidence,
+      period = period, currency = currency,
+      is_reported_segment = isTRUE(is_reported_segment),
+      source_keep = isTRUE(source_keep),
+      display_group = isTRUE(display_group),
+      negative_elim = is.finite(amt) && amt < 0 && identical(classification, "ELIMINATION")
+    )
+  }
+  for (c in pack$businesses %||% list()) {
+    add_row(c$id, c$name, .bblab_num(c$revenue), c$classification,
+            c$revenue_evidence$confidence %||% "UNAVAILABLE",
+            c$period, c$currency, isTRUE(c$is_reported_segment))
+  }
+  if (!is.null(pack$other) && .bblab_finite(pack$other$revenue)) {
+    add_row(pack$other$id, pack$other$name, pack$other$revenue, "OTHER",
+            pack$other$revenue_evidence$confidence %||% "MEDIUM",
+            pack$other$period, pack$other$currency)
+  }
+  if (!is.null(pack$unallocated) && .bblab_finite(pack$unallocated$revenue) &&
+      abs(pack$unallocated$revenue) > 0) {
+    add_row(pack$unallocated$id, pack$unallocated$name, pack$unallocated$revenue, "UNALLOCATED",
+            "LOW", pack$unallocated$period, pack$unallocated$currency)
+  }
+  if (!is.null(pack$rounding) && .bblab_finite(pack$rounding$revenue) &&
+      abs(pack$rounding$revenue) > 0) {
+    add_row(pack$rounding$id, pack$rounding$name, pack$rounding$revenue, "ROUNDING",
+            "HIGH", pack$rounding$period, pack$rounding$currency)
+  }
+  if (!is.null(pack$recon_amount) && .bblab_finite(pack$recon_amount$revenue) &&
+      abs(pack$recon_amount$revenue) > 0) {
+    add_row(pack$recon_amount$id, pack$recon_amount$name, pack$recon_amount$revenue,
+            "RECONCILIATION", "LOW", NA_character_, consolidated$currency)
+  }
+  elim_legend <- NULL
+  if (!is.null(pack$eliminations) && .bblab_finite(pack$eliminations$revenue)) {
+    elim_legend <- list(
+      id = pack$eliminations$id, name = pack$eliminations$name,
+      revenue = pack$eliminations$revenue, classification = "ELIMINATION",
+      in_pie = FALSE
+    )
+  }
+  source_rows <- rows
+  pie_rows <- Filter(function(r) {
+    is.finite(r$revenue) && r$revenue > 0 && !isTRUE(r$negative_elim)
+  }, rows)
+  grouped <- list()
+  display <- list()
+  for (r in pie_rows) {
+    tiny <- is.finite(r$share) && r$share < min_p
+    material <- isTRUE(r$is_reported_segment) || (is.finite(r$share) && r$share >= major_p) ||
+      identical(r$classification, "MAJOR")
+    if (isTRUE(tiny) && !isTRUE(material)) {
+      grouped[[length(grouped) + 1L]] <- r
+    } else {
+      display[[length(display) + 1L]] <- r
+    }
+  }
+  if (length(grouped)) {
+    g_amt <- sum(vapply(grouped, function(r) r$revenue, numeric(1)))
+    display[[length(display) + 1L]] <- list(
+      id = "display_other_group",
+      name = "Other (display grouping)",
+      revenue = g_amt,
+      share = if (is.finite(cons_rev) && cons_rev != 0) g_amt / cons_rev else NA_real_,
+      classification = "OTHER",
+      confidence = "MEDIUM",
+      display_group = TRUE,
+      source_keep = FALSE,
+      grouped_ids = vapply(grouped, function(r) r$id, character(1))
+    )
+  }
+  list(
+    eligible = isTRUE(elig$eligible),
+    codes = elig$codes,
+    denominator = cons_rev,
+    slices = if (isTRUE(elig$eligible)) display else list(),
+    source_rows = source_rows,
+    eliminations_legend = elim_legend,
+    grouped_source = grouped
+  )
+}
+
+.bblab_overall_confidence <- function(pack, level, recon_pass) {
+  if (identical(level, "D")) return("UNAVAILABLE")
+  bits <- c(
+    vapply(pack$businesses %||% list(), function(c) c$revenue_evidence$confidence %||% "UNAVAILABLE", character(1)),
+    vapply(pack$businesses %||% list(), function(c) c$cor_evidence$confidence %||% "UNAVAILABLE", character(1))
+  )
+  if (!isTRUE(recon_pass)) return("LOW")
+  if (identical(level, "A") && all(bits %in% c("HIGH", "MEDIUM"))) return("HIGH")
+  if (identical(level, "B")) return("MEDIUM")
+  if (identical(level, "C")) return("LOW")
+  "MEDIUM"
+}
+
+.bblab_shared_only <- function(items) {
+  items <- items %||% list()
+  keep <- c("sm", "ga", "rd", "opex", "interest", "tax", "ni", "assets", "liabilities",
+            "selling_marketing", "general_admin", "central_rd", "shared_opex")
+  nms <- names(items)
+  if (is.null(nms)) return(list())
+  items[intersect(nms, keep)]
+}
+
+#' FX / ADR classifiers for the lab. ADR never blocks statement-currency GP cards.
+bblab_classify_fx_adr <- function(statement_currency, display_currency,
+                                  usd_twd = NULL, instrument_type = "ordinary",
+                                  adr_ratio = NULL, per_adr_display = FALSE) {
+  codes <- character(0)
+  st <- if (exists("normalize_ccy", mode = "function")) {
+    normalize_ccy(statement_currency)
+  } else toupper(.bblab_chr(statement_currency, NA_character_))
+  disp <- if (exists("normalize_ccy", mode = "function")) {
+    normalize_ccy(display_currency)
+  } else toupper(.bblab_chr(display_currency, NA_character_))
+  need_fx <- if (exists("fx_conversion_required", mode = "function")) {
+    isTRUE(fx_conversion_required(st, disp))
+  } else {
+    !is.na(st) && !is.na(disp) && !identical(st, disp)
+  }
+  if (isTRUE(need_fx)) {
+    if (is.na(st) || !nzchar(.bblab_chr(st))) {
+      codes <- c(codes, "STATEMENT_CURRENCY_UNAVAILABLE")
+    } else {
+      fx <- suppressWarnings(as.numeric(usd_twd)[1])
+      if (!is.finite(fx) || fx <= 0) codes <- c(codes, "REQUIRED_FX_RATE_MISSING")
+    }
+  }
+  need_adr <- isTRUE(per_adr_display) &&
+    identical(toupper(.bblab_chr(instrument_type, "ordinary")), "ADR")
+  if (isTRUE(need_adr)) {
+    ar <- suppressWarnings(as.numeric(adr_ratio)[1])
+    if (!is.finite(ar) || ar <= 0) codes <- c(codes, "APPLICABLE_ADR_RATIO_MISSING",
+                                             "BUSINESS_ADR_MISSING_NONBLOCKING")
+  }
+  list(
+    codes = unique(codes),
+    decompose_currency = st,
+    display_currency = disp,
+    fx_required = isTRUE(need_fx),
+    adr_required = isTRUE(need_adr),
+    adr_blocks_business_gp = FALSE
+  )
+}
+
+bblab_convert_amount <- function(amount, from_ccy, to_ccy, usd_twd = NULL) {
+  amt <- .bblab_num(amount)
+  if (!is.finite(amt)) return(amt)
+  if (exists("fx_factor", mode = "function")) {
+    mult <- fx_factor(from_ccy, to_ccy, usd_twd)
+    if (is.finite(mult)) return(amt * mult)
+  }
+  fr <- toupper(.bblab_chr(from_ccy))
+  to <- toupper(.bblab_chr(to_ccy))
+  fx <- suppressWarnings(as.numeric(usd_twd)[1])
+  if (identical(fr, to) || !nzchar(fr) || !nzchar(to)) return(amt)
+  if (!is.finite(fx) || fx <= 0) {
+    attr(amt, "alignment_failure") <- "REQUIRED_FX_RATE_MISSING"
+    return(amt)
+  }
+  if (identical(fr, "USD") && identical(to, "TWD")) return(amt * fx)
+  if (identical(fr, "TWD") && identical(to, "USD")) return(amt / fx)
+  amt
+}
+
+#' Specific toast payload: what failed, what is blocked, what remains.
+bblab_toast_payload <- function(codes, recon_pass = NULL, allocation_used = FALSE,
+                                chart_eligible = FALSE) {
+  codes <- unique(as.character(codes %||% character(0)))
+  lapply(codes, function(code) {
+    blocked <- character(0)
+    remain <- c("business_cards", "analysis_summary", "reconciliation_table")
+    if (grepl("^BUSINESS_CHART_", code)) {
+      blocked <- "composition_chart"
+    } else if (identical(code, "BUSINESS_COST_NOT_RELIABLY_ESTIMABLE") ||
+               identical(code, "BUSINESS_COST_ALLOCATED_LOW_CONFIDENCE")) {
+      blocked <- character(0)
+      remain <- unique(c(remain, "revenue"))
+    } else if (identical(code, "BUSINESS_REVALUATION_UNAVAILABLE") ||
+               identical(code, "BUSINESS_REVALUATION_CONSOLIDATED_PROXY")) {
+      blocked <- "revaluation_ratio"
+    } else if (identical(code, "REQUIRED_FX_RATE_MISSING") ||
+               identical(code, "REQUIRED_FX_RATE_INVALID")) {
+      blocked <- "display_currency_conversion"
+      remain <- unique(c(remain, "statement_currency_analysis"))
+    } else if (identical(code, "BUSINESS_ADR_MISSING_NONBLOCKING") ||
+               identical(code, "APPLICABLE_ADR_RATIO_MISSING")) {
+      blocked <- "per_adr_display"
+      remain <- unique(c(remain, "statement_currency_analysis", "business_cards"))
+    } else if (identical(code, "BUSINESS_RECONCILIATION_FAIL")) {
+      blocked <- "recast_totals"
+      remain <- unique(c(remain, "reported_consolidated_totals"))
+    } else if (identical(code, "BUSINESS_STATEMENTS_UNAVAILABLE")) {
+      blocked <- c("business_cards", "composition_chart", "reconciliation_table")
+      remain <- "search"
+    }
+    list(
+      code = code,
+      failed = code,
+      blocked_outputs = blocked,
+      remaining_outputs = remain,
+      allocation_or_proxy_used = isTRUE(allocation_used) ||
+        code %in% c("BUSINESS_COST_ALLOCATED_LOW_CONFIDENCE", "BUSINESS_REVALUATION_CONSOLIDATED_PROXY"),
+      recon_pass = isTRUE(recon_pass),
+      chart_eligible = isTRUE(chart_eligible)
+    )
+  })
+}
+
+#' Main entry. Payload is generic; no issuer-specific branches.
+bblab_analyze <- function(payload, options = list(), cfg = NULL) {
+  cfg <- cfg %||% bblab_load_config()
+  opt <- options %||% list()
+  progress <- character(0)
+  mark <- function(s) { progress <<- unique(c(progress, s)); s }
+  codes <- character(0)
+  limitations <- character(0)
+  mark("resolve_issuer")
+  entity <- payload$entity %||% payload$issuer %||% list()
+  if (is.null(payload) || (!nzchar(.bblab_chr(payload$ticker)) &&
+                           !nzchar(.bblab_chr(entity$name)) &&
+                           is.null(payload$consolidated) &&
+                           !length(payload$dimensions))) {
+    out <- bblab_empty_result("BUSINESS_ISSUER_UNRESOLVED")
+    out$progress <- list(stage = "resolve_issuer", completed = progress)
+    out$toasts <- bblab_toast_payload(out$codes)
+    return(out)
+  }
+  mark("retrieve_statements")
+  cons <- payload$consolidated
+  if (is.null(cons) || (!.bblab_finite(cons$revenue) && !length(payload$dimensions))) {
+    codes <- c(codes, "BUSINESS_STATEMENTS_UNAVAILABLE")
+  }
+  fx <- bblab_classify_fx_adr(
+    payload$statement_currency %||% cons$currency,
+    opt$display_currency %||% payload$display_currency %||% payload$statement_currency,
+    usd_twd = opt$usd_twd %||% payload$usd_twd,
+    instrument_type = payload$instrument_type %||% "ordinary",
+    adr_ratio = payload$adr_ratio,
+    per_adr_display = isTRUE(opt$per_adr_display)
+  )
+  codes <- unique(c(codes, fx$codes))
+  mark("parse_disclosures")
+  dims <- payload$dimensions %||% list()
+  if (!length(dims) && .bblab_finite(cons$revenue)) {
+    single <- bblab_component(
+      "consolidated_entity",
+      .bblab_chr(entity$name %||% payload$entity_name, "Reporting entity"),
+      "MAJOR",
+      revenue = cons$revenue, cor = cons$cor, gp = cons$gp,
+      is_principal_activity = TRUE,
+      period = cons$period, currency = cons$currency,
+      source_type = "consolidated_statements"
+    )
+    dims <- list(bblab_dimension(
+      "entity", "official_description", list(single),
+      mutually_exclusive = TRUE, filed_audited = TRUE,
+      period = cons$period, currency = cons$currency,
+      flags = c("relevant", "reconciles", "mutually_exclusive", "separate_revenue",
+                "attributable_cor_gp", "filed_audited")
+    ))
+    limitations <- c(limitations, "no_multi_business_split")
+  }
+  mark("detect_dimension")
+  sel <- bblab_select_primary_dimension(
+    dims, cons, cfg, override_id = opt$dimension_override
+  )
+  codes <- unique(c(codes, sel$codes))
+  dim <- sel$dimension
+  if (is.null(dim)) {
+    out <- bblab_empty_result(unique(c(codes, "BUSINESS_DISCLOSURE_INSUFFICIENT")),
+                              c(limitations, "no_primary_dimension"))
+    out$progress <- list(stage = "detect_dimension", completed = progress)
+    out$consolidated <- cons
+    out$toasts <- bblab_toast_payload(out$codes)
+    out$fx <- fx
+    return(out)
+  }
+  mark("identify_businesses")
+  ident <- bblab_identify_major(dim$components, cons, cfg)
+  if (isTRUE(ident$single) || length(ident$major) <= 1L) {
+    limitations <- unique(c(limitations, "no_multi_business_split"))
+  }
+  mark("assign_revenue")
+  pack <- bblab_assign_revenue(
+    ident$major, ident$other, ident$leftover, cons, cfg,
+    period = cons$period %||% dim$period,
+    currency = cons$currency %||% dim$currency
+  )
+  mark("assign_cost_gp")
+  use_fb <- isTRUE(opt$use_consolidated_gm_fallback)
+  pack <- bblab_assign_cost(
+    pack, cons, cfg, use_consolidated_gm_fallback = use_fb,
+    period = cons$period, currency = cons$currency
+  )
+  pack <- bblab_compute_gp(pack)
+  shared <- .bblab_shared_only(payload$shared_corporate %||% payload$shared %||% list())
+  pack$shared_corporate <- shared
+  level <- bblab_classify_level(pack)
+  if (identical(level, "D")) {
+    for (i in seq_along(pack$businesses)) {
+      pack$businesses[[i]]$revenue <- NA_real_
+      pack$businesses[[i]]$cor <- NA_real_
+      pack$businesses[[i]]$gp <- NA_real_
+      pack$businesses[[i]]$gm <- NA_real_
+    }
+    limitations <- unique(c(limitations, "level_d_qualitative_only"))
+  }
+  mark("reconcile_revalue")
+  pack <- bblab_reconcile(pack, cons, cfg)
+  pack <- bblab_revaluation(pack, payload$revaluation_inputs %||% opt$revaluation_inputs, cfg)
+  codes <- unique(c(codes, pack$cost_codes, pack$recon_codes, pack$reval_codes))
+  mark("chart_cards")
+  elig <- bblab_chart_eligibility(pack, cons, cfg, level = level)
+  chart <- bblab_chart_slices(pack, cons, cfg, elig)
+  codes <- unique(c(codes, elig$codes))
+  overall <- .bblab_overall_confidence(pack, level, pack$reconciliation$pass)
+  view <- if (identical(.bblab_chr(opt$view, cfg$flags$default_view), "adjusted")) "adjusted" else "reported"
+  fold_adj <- identical(view, "adjusted") &&
+    any(vapply(pack$businesses, function(c) isTRUE(c$revaluation$changesProductionCostsOrDA), logical(1)))
+  if (!isTRUE(fold_adj)) {
+    # Reported view never overwrites reported Rev/CoR/GP with revaluation.
+    view <- if (identical(view, "adjusted") && !isTRUE(fold_adj)) "reported_keep_production" else view
+  }
+  toasts <- bblab_toast_payload(
+    codes,
+    recon_pass = pack$reconciliation$pass,
+    allocation_used = "rev_share_cost" %in% (pack$cost_notices %||% character(0)),
+    chart_eligible = chart$eligible
+  )
+  list(
+    ok = TRUE,
+    level = level,
+    primary_dimension = list(
+      id = dim$id, kind = dim$kind, label = dim$label,
+      source_priority = dim$source_priority, filed_audited = dim$filed_audited
+    ),
+    dimension_scores = sel$scores,
+    businesses = pack$businesses,
+    other = pack$other,
+    unallocated = pack$unallocated,
+    eliminations = pack$eliminations,
+    rounding = pack$rounding,
+    recon_amount = pack$recon_amount,
+    shared_corporate = shared,
+    reconciliation = pack$reconciliation,
+    revaluation_available = isTRUE(pack$reval_any),
+    chart = chart,
+    evidence = lapply(pack$businesses, function(c) {
+      list(revenue = c$revenue_evidence, cor = c$cor_evidence, gp = c$gp_evidence,
+           revaluation = c$revaluation)
+    }),
+    confidence = list(
+      identification = if (length(pack$businesses) >= 1L) "HIGH" else "UNAVAILABLE",
+      revenue = if (identical(level, "D")) "UNAVAILABLE" else if (identical(level, "A")) "HIGH" else "MEDIUM",
+      cost = if (level %in% c("C", "D")) "UNAVAILABLE" else if (identical(level, "A")) "HIGH" else "LOW",
+      gp = if (level %in% c("C", "D")) "UNAVAILABLE" else if (identical(level, "A")) "HIGH" else "LOW",
+      revaluation = if (isTRUE(pack$reval_any)) "MEDIUM" else "UNAVAILABLE",
+      recon = if (isTRUE(pack$reconciliation$pass)) "HIGH" else "LOW",
+      overall = overall
+    ),
+    progress = list(stage = "chart_cards", completed = progress),
+    codes = codes,
+    toasts = toasts,
+    limitations = unique(limitations),
+    view = cfg$flags$default_view,
+    view_requested = opt$view %||% cfg$flags$default_view,
+    fold_revaluation_into_gp = isTRUE(fold_adj),
+    consolidated = cons,
+    fx = fx,
+    cost_notices = pack$cost_notices %||% character(0),
+    entity = entity,
+    ticker = .bblab_chr(payload$ticker, NA_character_),
+    statement_currency = payload$statement_currency %||% cons$currency,
+    period = payload$period %||% cons$period,
+    frequency = payload$frequency %||% "annual"
+  )
+}
+
+#' Pull consolidated IS totals into a generic payload. Optional disclosures attached as-is.
+bblab_payload_from_statements <- function(d_is, ticker = "", entity_name = "",
+                                          statement_currency = NA_character_,
+                                          period = NA_character_, frequency = "annual",
+                                          disclosures = NULL, shared_corporate = NULL,
+                                          instrument_type = "ordinary", adr_ratio = NA_real_,
+                                          usd_twd = NULL, display_currency = NULL) {
+  grab <- function(patterns) {
+    if (exists("select_current_metric_any", mode = "function") && is.data.frame(d_is)) {
+      v <- tryCatch(select_current_metric_any(d_is, patterns, "flow"), error = function(e) NA_real_)
+      if (.bblab_finite(v)) return(as.numeric(v)[1])
+    }
+    if (!is.data.frame(d_is) || !nrow(d_is)) return(NA_real_)
+    lab <- as.character(d_is[[1]])
+    hit <- grepl(paste(patterns, collapse = "|"), lab, ignore.case = TRUE)
+    if (!any(hit)) return(NA_real_)
+    nums <- suppressWarnings(as.numeric(d_is[which(hit)[1], 2]))
+    if (.bblab_finite(nums)) as.numeric(nums)[1] else NA_real_
+  }
+  rev <- grab(c("^Total Revenue$", "Total Revenue", "Operating Revenue", "^Revenue$"))
+  gp <- grab(c("^Gross Profit$", "Gross Profit"))
+  cor <- grab(c("^Cost Of Revenue$", "Cost of Revenue", "Cost Of Goods", "Cost of Goods Sold"))
+  if (!.bblab_finite(cor) && .bblab_finite(rev) && .bblab_finite(gp)) cor <- rev - gp
+  if (!.bblab_finite(gp) && .bblab_finite(rev) && .bblab_finite(cor)) gp <- rev - cor
+  ni <- grab(c("^Net Income$", "Net Income Common Stockholders", "Net Income"))
+  dims <- list()
+  if (is.list(disclosures) && length(disclosures)) {
+    dims <- lapply(disclosures, function(d) {
+      if (is.null(d$kind)) d else {
+        comps <- lapply(d$components %||% list(), function(c) {
+          if (inherits(c, "list") && !is.null(c$id)) c else do.call(bblab_component, c)
+        })
+        bblab_dimension(
+          d$id %||% d$kind, d$kind, comps,
+          mutually_exclusive = isTRUE(d$mutually_exclusive %||% TRUE),
+          is_customer_location_only = isTRUE(d$is_customer_location_only),
+          overlaps_with = d$overlaps_with %||% character(0),
+          flags = d$flags %||% character(0),
+          source_priority = d$source_priority,
+          filed_audited = isTRUE(d$filed_audited),
+          period = d$period %||% period,
+          currency = d$currency %||% statement_currency,
+          label = d$label
+        )
+      }
+    })
+  }
+  list(
+    ticker = ticker,
+    entity = list(name = entity_name),
+    statement_currency = statement_currency,
+    display_currency = display_currency %||% statement_currency,
+    period = period,
+    frequency = frequency,
+    instrument_type = instrument_type,
+    adr_ratio = adr_ratio,
+    usd_twd = usd_twd,
+    consolidated = bblab_consolidated(rev, cor, gp, statement_currency, period, ni = ni),
+    dimensions = dims,
+    shared_corporate = shared_corporate %||% list(),
+    revaluation_inputs = list()
+  )
+}
+
+bblab_progress_index <- function(stage) {
+  i <- match(stage, BBLAB_PROGRESS_STAGES)
+  if (is.na(i)) 0L else as.integer(i)
+}

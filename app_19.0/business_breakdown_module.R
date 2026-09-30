@@ -1,0 +1,650 @@
+# Business Breakdown Lab — standalone experimental Shiny module.
+# Not wired into valuation, CV, company overview, or production FS pages.
+
+if (!exists("%||%", mode = "function")) {
+  `%||%` <- function(a, b) if (is.null(a)) b else a
+}
+
+.bblab_ui <- function(key, locale = "en") {
+  if (exists("ui_str", mode = "function")) {
+    tryCatch(ui_str(key, locale), error = function(e) key)
+  } else key
+}
+
+.bblab_fmt_amt <- function(x, digits = 0) {
+  num <- suppressWarnings(as.numeric(x)[1])
+  if (!is.finite(num)) return("—")
+  prettyNum(round(num, digits), big.mark = ",", scientific = FALSE)
+}
+
+.bblab_fmt_pct <- function(x) {
+  num <- suppressWarnings(as.numeric(x)[1])
+  if (!is.finite(num)) return("—")
+  if (abs(num) <= 1.0000001) num <- num * 100
+  sprintf("%.1f%%", num)
+}
+
+.bblab_neutral_class <- function(classification) {
+  classification %in% c("OTHER", "UNALLOCATED", "RECONCILIATION", "ROUNDING")
+}
+
+business_breakdown_lab_ui <- function(id = "bblab") {
+  ns <- NS(id)
+  tags$div(
+    class = "ynow-bblab ynow-full-only",
+    tags$div(
+      class = "ynow-bblab__masthead",
+      tags$div(
+        class = "ynow-bblab__title-row",
+        h2(tags$b(id = "ynow_bblab_page_title", "Business Breakdown Lab")),
+        tags$span(
+          id = "ynow_bblab_experimental_badge",
+          class = "ynow-bblab-badge",
+          "Experimental Feature"
+        )
+      ),
+      tags$p(
+        id = "ynow_bblab_page_sub",
+        class = "ynow-bblab__lead",
+        "Experimental analysis of business-level revenue, cost, gross profit, and revaluation assumptions."
+      )
+    ),
+
+    # 1 Search
+    fluidRow(
+      box(
+        title = tagList(icon("search"), tags$span(id = "ynow_bblab_search_title", "Search")),
+        width = 12, status = "primary", solidHeader = TRUE,
+        fluidRow(
+          column(
+            width = 3,
+            textInput(ns("ticker"), label = tags$span(id = "ynow_bblab_ticker_label", "Ticker"),
+                      placeholder = "AAPL / 2330")
+          ),
+          column(
+            width = 2, style = "padding-top: 25px;",
+            actionButton(ns("search"), "Search", icon = icon("search"),
+                         class = "btn-primary", width = "100%")
+          ),
+          column(
+            width = 3,
+            tags$div(class = "ynow-bblab-meta",
+                     tags$div(id = "ynow_bblab_company_label", class = "ynow-bblab-meta__lab", "Company"),
+                     uiOutput(ns("company_name")))
+          ),
+          column(
+            width = 2,
+            selectInput(ns("frequency"), label = tags$span(id = "ynow_bblab_period_label", "Period"),
+                        choices = c("Annual" = "annual", "Quarter" = "quarter"),
+                        selected = "annual")
+          ),
+          column(
+            width = 2,
+            uiOutput(ns("statement_ccy"))
+          )
+        ),
+        uiOutput(ns("source_status")),
+        tags$div(
+          style = "margin-top:8px;",
+          checkboxInput(
+            ns("use_gm_fallback"),
+            label = tags$span(
+              id = "ynow_bblab_fallback_gm_label",
+              "Use consolidated Gross Margin as low-confidence fallback"
+            ),
+            value = FALSE
+          )
+        )
+      )
+    ),
+
+    uiOutput(ns("progress")),
+    uiOutput(ns("toasts_slot")),
+
+    # 2 Analysis summary
+    fluidRow(
+      box(
+        title = tagList(icon("clipboard-list"), tags$span(id = "ynow_bblab_summary_title", "Analysis summary")),
+        width = 12, status = "info", solidHeader = TRUE,
+        uiOutput(ns("summary"))
+      )
+    ),
+
+    # 3 Composition chart
+    fluidRow(
+      box(
+        title = tagList(icon("chart-pie"), tags$span(id = "ynow_bblab_chart_title", "Revenue composition")),
+        width = 12, status = "info", solidHeader = TRUE, collapsible = TRUE,
+        fluidRow(
+          column(width = 3, radioButtons(ns("chart_mode"), NULL,
+                                         choices = c("Share %" = "pct", "Amount" = "amount"),
+                                         selected = "pct", inline = TRUE)),
+          column(width = 3, radioButtons(ns("view_mode"), NULL,
+                                         choices = c("Reported" = "reported", "Adjusted" = "adjusted"),
+                                         selected = "reported", inline = TRUE)),
+          column(width = 3, checkboxInput(ns("expand_other"),
+                                          label = tags$span(id = "ynow_bblab_expand_other", "Expand Other"),
+                                          value = FALSE)),
+          column(
+            width = 3,
+            downloadButton(ns("export_data"), "Export data", class = "btn-sm"),
+            downloadButton(ns("export_chart"), "Export chart", class = "btn-sm")
+          )
+        ),
+        uiOutput(ns("chart_status")),
+        plotly::plotlyOutput(ns("donut"), height = "420px")
+      )
+    ),
+
+    # 4 Business cards
+    fluidRow(
+      box(
+        title = tagList(icon("th-large"), tags$span(id = "ynow_bblab_cards_title", "Business cards")),
+        width = 12, status = "primary", solidHeader = TRUE,
+        uiOutput(ns("cards"))
+      )
+    ),
+
+    # 5 Reconciliation
+    fluidRow(
+      box(
+        title = tagList(icon("balance-scale"), tags$span(id = "ynow_bblab_recon_title", "Reconciliation")),
+        width = 12, status = "warning", solidHeader = TRUE,
+        uiOutput(ns("recon"))
+      )
+    ),
+
+    # Shared / corporate (collapsed)
+    fluidRow(
+      box(
+        title = tagList(icon("sitemap"), tags$span(id = "ynow_bblab_shared_title", "Shared and Corporate Items")),
+        width = 12, status = "default", solidHeader = TRUE, collapsible = TRUE, collapsed = TRUE,
+        uiOutput(ns("shared"))
+      )
+    ),
+
+    # 6 Sources and methodology — Notes collapsed; chrome stays visible
+    fluidRow(
+      box(
+        title = tagList(icon("book"), tags$span(id = "ynow_bblab_sources_title", "Sources and methodology")),
+        width = 12, status = "info", solidHeader = TRUE,
+        tags$p(
+          id = "ynow_bblab_sources_chrome",
+          class = "help-block",
+          paste0(
+            "Disclosure priority: operating segments → segment notes → product/service revenue → ",
+            "revenue disaggregation → MD&A → earnings → IR decks → official descriptions. ",
+            "Filed / audited sources are preferred. This page is experimental and does not write into valuation."
+          )
+        ),
+        uiOutput(ns("notes"))
+      )
+    )
+  )
+}
+
+.bblab_card_html <- function(comp, locale = "en", focused = FALSE, cons_rev = NA_real_) {
+  if (is.null(comp)) return(NULL)
+  share <- if (.bblab_finite(comp$revenue_pct)) comp$revenue_pct else
+    if (.bblab_finite(comp$revenue) && .bblab_finite(cons_rev) && cons_rev != 0) comp$revenue / cons_rev else NA_real_
+  gp_txt <- if (!is.null(comp$gp_display) && nzchar(comp$gp_display)) comp$gp_display else .bblab_fmt_amt(comp$gp)
+  gm_txt <- if (!is.null(comp$gm_display) && nzchar(comp$gm_display)) comp$gm_display else .bblab_fmt_pct(comp$gm)
+  reval <- comp$revaluation
+  reval_txt <- if (is.null(reval) || identical(reval$status, "UNAVAILABLE") || !is.finite(reval$revaluationRatio)) {
+    .bblab_ui("bblab_reval_unavailable", locale)
+  } else {
+    sprintf("%s  %.3f  (%s)", reval$status, reval$revaluationRatio, .bblab_fmt_pct(reval$revaluationPercentage))
+  }
+  cls <- c("ynow-bblab-card", paste0("ynow-bblab-card--", tolower(comp$classification %||% "major")))
+  if (isTRUE(focused)) cls <- c(cls, "ynow-bblab-card--focus")
+  if (.bblab_neutral_class(comp$classification)) cls <- c(cls, "ynow-bblab-card--neutral")
+  tags$div(
+    class = paste(cls, collapse = " "),
+    `data-component-id` = comp$id,
+    tags$h4(comp$name),
+    tags$p(class = "ynow-bblab-card__class", paste(comp$classification, "·",
+                                                   comp$revenue_evidence$confidence %||% "UNAVAILABLE")),
+    tags$ul(
+      class = "ynow-bblab-card__metrics",
+      tags$li(tags$b("Revenue: "), .bblab_fmt_amt(comp$revenue),
+              "  ", tags$span(class = "muted", paste0("(", .bblab_fmt_pct(share), ")"))),
+      tags$li(tags$b("Cost of Revenue: "),
+              if (.bblab_finite(comp$cor)) .bblab_fmt_amt(comp$cor) else .bblab_ui("bblab_gm_unestimable", locale),
+              if (!is.null(comp$cor_label) && !identical(comp$cor_label, "REPORTED"))
+                tags$span(class = "ynow-bblab-tag", comp$cor_label) else NULL),
+      tags$li(tags$b("Gross Profit: "), gp_txt),
+      tags$li(tags$b("Gross Margin: "), gm_txt),
+      tags$li(tags$b(.bblab_ui("bblab_reval_label", locale), ": "), reval_txt)
+    ),
+    if (isTRUE(comp$qualitative_only) && nzchar(comp$description %||% "")) {
+      tags$p(class = "muted", comp$description)
+    } else NULL
+  )
+}
+
+business_breakdown_lab_server <- function(id = "bblab",
+                                          market_mode_rv = NULL,
+                                          ui_locale_rv = NULL,
+                                          current_ticker_rv = NULL,
+                                          disclosures_provider = NULL) {
+  moduleServer(id, function(input, output, session) {
+    ns <- session$ns
+    lab_ticker <- reactiveVal(NULL)
+    lab_entity <- reactiveVal("")
+    lab_payload <- reactiveVal(NULL)
+    lab_result <- reactiveVal(NULL)
+    lab_stage <- reactiveVal(NULL)
+    lab_codes <- reactiveVal(character(0))
+    focus_id <- reactiveVal(NULL)
+    source_status <- reactiveVal("idle")
+
+    loc <- function() {
+      if (is.reactive(ui_locale_rv)) {
+        tryCatch(normalize_ui_locale(ui_locale_rv()), error = function(e) "en")
+      } else "en"
+    }
+    ui_msg <- function(key, ...) {
+      msg <- .bblab_ui(key, loc())
+      dots <- list(...)
+      if (length(dots)) {
+        for (nm in names(dots)) {
+          msg <- gsub(paste0("{", nm, "}"), as.character(dots[[nm]] %||% ""), msg, fixed = TRUE)
+        }
+      }
+      msg
+    }
+
+    observe({
+      if (is.reactive(current_ticker_rv)) {
+        tk <- tryCatch(current_ticker_rv(), error = function(e) NULL)
+        if (!is.null(tk) && nzchar(as.character(tk)[1]) &&
+            (is.null(isolate(input$ticker)) || !nzchar(isolate(input$ticker)))) {
+          tryCatch(updateTextInput(session, "ticker", value = as.character(tk)[1]), error = function(e) NULL)
+        }
+      }
+    })
+
+    observeEvent(input$search, {
+      raw <- trimws(as.character(input$ticker %||% "")[1])
+      req(nzchar(raw))
+      mode <- if (is.reactive(market_mode_rv)) {
+        tryCatch(market_mode_rv(), error = function(e) "US")
+      } else "US"
+      tk <- if (exists("normalize_ticker_for_market", mode = "function")) {
+        normalize_ticker_for_market(raw, mode)
+      } else raw
+      lab_ticker(tk)
+      lab_result(NULL)
+      lab_codes(character(0))
+      source_status("running")
+      focus_id(NULL)
+
+      withProgress(message = ui_msg("bblab_progress_running"), value = 0, {
+        incProgress(0.1, detail = ui_msg("bblab_stage_resolve"))
+        lab_stage("resolve_issuer")
+        entity_name <- tk
+        f_ccy <- NA_character_
+        q_ccy <- NA_character_
+        usd_twd <- NA_real_
+        inst <- "ordinary"
+        adr <- NA_real_
+        d_is <- NULL
+        sum_df <- NULL
+
+        incProgress(0.25, detail = ui_msg("bblab_stage_retrieve"))
+        lab_stage("retrieve_statements")
+        if (exists("get_summary_data", mode = "function")) {
+          sum_df <- tryCatch(get_summary_data(tk), error = function(e) NULL)
+        }
+        if (is.data.frame(sum_df) && nrow(sum_df) > 0) {
+          entity_name <- as.character(sum_df$Name[1] %||% sum_df$shortName[1] %||% tk)
+          if (exists("normalize_ccy", mode = "function")) {
+            q_ccy <- normalize_ccy(attr(sum_df, "currency") %||% "")
+            f_ccy <- normalize_ccy(attr(sum_df, "financialCurrency") %||% "")
+          }
+        }
+        if (exists("get_yahoo_industry", mode = "function")) {
+          inf <- tryCatch(get_yahoo_industry(tk), error = function(e) NULL)
+          if (!is.null(inf) && nzchar(as.character(inf$company_name %||% "")[1])) {
+            entity_name <- as.character(inf$company_name)[1]
+          }
+        }
+        lab_entity(entity_name)
+        if (exists("cached_scrape_financials", mode = "function")) {
+          res <- tryCatch({
+            raw_fs <- cached_scrape_financials(tk)
+            if (exists("normalize_all_financials", mode = "function")) normalize_all_financials(raw_fs) else raw_fs
+          }, error = function(e) NULL)
+          if (!is.null(res) && !is.null(res[["Income Statement"]])) {
+            d_is <- tryCatch(res[["Income Statement"]]$expanded, error = function(e) NULL)
+            meta_fc <- attr(res, "financialCurrency")
+            if (!is.null(meta_fc) && exists("normalize_ccy", mode = "function")) {
+              mc <- normalize_ccy(meta_fc)
+              if (!is.na(mc)) f_ccy <- mc
+            }
+          }
+        }
+        if (is.na(f_ccy) || !nzchar(.bblab_chr(f_ccy))) {
+          if (grepl("\\.(TW|TWO)$", tk, ignore.case = TRUE)) f_ccy <- "TWD"
+        }
+        if (exists("cached_get_usd_twd_fx", mode = "function")) {
+          usd_twd <- tryCatch(cached_get_usd_twd_fx(), error = function(e) NA_real_)
+        }
+
+        incProgress(0.45, detail = ui_msg("bblab_stage_parse"))
+        lab_stage("parse_disclosures")
+        extra_disc <- NULL
+        if (is.function(disclosures_provider)) {
+          extra_disc <- tryCatch(disclosures_provider(tk, d_is), error = function(e) NULL)
+        }
+        payload <- bblab_payload_from_statements(
+          d_is, ticker = tk, entity_name = entity_name,
+          statement_currency = f_ccy, period = NA_character_,
+          frequency = isolate(input$frequency) %||% "annual",
+          disclosures = extra_disc,
+          instrument_type = inst, adr_ratio = adr, usd_twd = usd_twd,
+          display_currency = f_ccy
+        )
+        lab_payload(payload)
+        if (is.null(d_is) && !length(extra_disc) && !.bblab_finite(payload$consolidated$revenue)) {
+          source_status("statements_unavailable")
+        } else if (!length(extra_disc)) {
+          source_status("statements_no_segment")
+        } else {
+          source_status("ok")
+        }
+
+        incProgress(0.7, detail = ui_msg("bblab_stage_analyze"))
+        result <- bblab_analyze(
+          payload,
+          options = list(
+            use_consolidated_gm_fallback = isTRUE(isolate(input$use_gm_fallback)),
+            view = isolate(input$view_mode) %||% "reported",
+            usd_twd = usd_twd,
+            display_currency = f_ccy,
+            per_adr_display = FALSE
+          )
+        )
+        lab_result(result)
+        lab_codes(result$codes %||% character(0))
+        lab_stage(result$progress$stage %||% "chart_cards")
+        incProgress(1, detail = ui_msg("bblab_stage_done"))
+
+        for (tst in result$toasts %||% list()) {
+          msg <- ui_msg(paste0("notif_bblab_", tolower(tst$code)))
+          if (identical(msg, paste0("notif_bblab_", tolower(tst$code)))) {
+            msg <- paste0(
+              tst$code, " — blocked: ",
+              paste(tst$blocked_outputs, collapse = ", "),
+              "; remaining: ", paste(tst$remaining_outputs, collapse = ", "),
+              "; recon ", if (isTRUE(tst$recon_pass)) "pass" else "fail"
+            )
+          }
+          if (length(tst$blocked_outputs) || !identical(tst$code, "BUSINESS_OVERLAPPING_DIMENSIONS_BLOCKED")) {
+            showNotification(msg, type = if (grepl("FAIL|MISSING|UNAVAILABLE", tst$code)) "warning" else "message",
+                             duration = 8)
+          }
+        }
+      })
+    })
+
+    observeEvent(list(input$use_gm_fallback, input$view_mode), {
+      payload <- lab_payload()
+      if (is.null(payload)) return()
+      result <- bblab_analyze(
+        payload,
+        options = list(
+          use_consolidated_gm_fallback = isTRUE(input$use_gm_fallback),
+          view = input$view_mode %||% "reported",
+          usd_twd = payload$usd_twd,
+          display_currency = payload$display_currency,
+          per_adr_display = FALSE
+        )
+      )
+      lab_result(result)
+      lab_codes(result$codes %||% character(0))
+    }, ignoreInit = TRUE)
+
+    output$company_name <- renderUI({
+      nm <- lab_entity()
+      tags$div(class = "ynow-bblab-meta__val", if (nzchar(nm)) nm else "—")
+    })
+    output$statement_ccy <- renderUI({
+      payload <- lab_payload()
+      ccy <- payload$statement_currency %||% "—"
+      tagList(
+        tags$label(id = "ynow_bblab_statement_ccy_label", class = "control-label",
+                   ui_msg("bblab_statement_ccy_label")),
+        tags$div(class = "ynow-bblab-meta__val", ccy)
+      )
+    })
+    output$source_status <- renderUI({
+      st <- source_status()
+      key <- switch(st,
+                    idle = "bblab_source_idle",
+                    running = "bblab_source_running",
+                    ok = "bblab_source_ok",
+                    statements_no_segment = "bblab_source_no_segment",
+                    statements_unavailable = "bblab_source_unavailable",
+                    "bblab_source_idle")
+      tags$p(class = "help-block", id = "ynow_bblab_source_status", ui_msg(key))
+    })
+
+    output$progress <- renderUI({
+      stage <- lab_stage()
+      if (is.null(stage)) return(NULL)
+      idx <- bblab_progress_index(stage)
+      tags$div(
+        class = "ynow-bblab-progress",
+        tags$span(ui_msg("bblab_progress_label"), sprintf("%s / 9", idx)),
+        tags$ol(
+          class = "ynow-bblab-progress__list",
+          lapply(seq_along(BBLAB_PROGRESS_STAGES), function(i) {
+            tags$li(class = if (i <= idx) "done" else NULL,
+                    ui_msg(paste0("bblab_stage_", BBLAB_PROGRESS_STAGES[[i]])))
+          })
+        )
+      )
+    })
+
+    output$summary <- renderUI({
+      res <- lab_result()
+      if (is.null(res)) {
+        return(tags$p(class = "help-block", ui_msg("bblab_waiting")))
+      }
+      dim_lab <- res$primary_dimension$kind %||% "—"
+      n_biz <- length(res$businesses %||% list())
+      recon <- res$reconciliation
+      tags$div(
+        class = "ynow-bblab-summary",
+        tags$ul(
+          tags$li(tags$b(ui_msg("bblab_dimension_label"), ": "), dim_lab),
+          tags$li(tags$b(ui_msg("bblab_count_label"), ": "), n_biz),
+          tags$li(tags$b(ui_msg("bblab_level_label"), ": "), res$level %||% "—"),
+          tags$li(tags$b(ui_msg("bblab_confidence_label"), ": "), res$confidence$overall %||% "UNAVAILABLE"),
+          tags$li(tags$b(ui_msg("bblab_rev_recon_label"), ": "),
+                  if (isTRUE(recon$revenue$pass)) ui_msg("bblab_pass") else ui_msg("bblab_fail")),
+          tags$li(tags$b(ui_msg("bblab_cor_recon_label"), ": "),
+                  if (isTRUE(recon$cor$pass) || is.null(recon$cor)) ui_msg("bblab_pass") else ui_msg("bblab_fail")),
+          tags$li(tags$b(ui_msg("bblab_reval_avail_label"), ": "),
+                  if (isTRUE(res$revaluation_available)) ui_msg("bblab_available") else ui_msg("bblab_reval_unavailable")),
+          tags$li(tags$b(ui_msg("bblab_limitations_label"), ": "),
+                  if (length(res$limitations)) paste(res$limitations, collapse = "; ") else "—")
+        ),
+        if ("no_multi_business_split" %in% (res$limitations %||% character(0))) {
+          tags$p(class = "help-block", ui_msg("bblab_single_business_note"))
+        } else NULL
+      )
+    })
+
+    output$chart_status <- renderUI({
+      res <- lab_result()
+      if (is.null(res) || isTRUE(res$chart$eligible)) return(NULL)
+      tags$p(class = "help-block", paste(res$chart$codes, collapse = "; "))
+    })
+
+    output$donut <- plotly::renderPlotly({
+      res <- lab_result()
+      empty <- plotly::layout(plotly::plot_ly(type = "pie"), showlegend = FALSE, title = NULL)
+      if (is.null(res) || !isTRUE(res$chart$eligible) || !length(res$chart$slices)) {
+        return(empty)
+      }
+      slices <- res$chart$slices
+      if (isTRUE(input$expand_other) && !is.null(res$other$members)) {
+        slices <- Filter(function(s) !identical(s$id, "other_businesses") && !isTRUE(s$display_group), slices)
+        for (m in res$other$members) {
+          slices[[length(slices) + 1L]] <- list(
+            id = m$id, name = m$name, revenue = m$revenue,
+            share = m$revenue_pct, classification = m$classification %||% "OTHER",
+            confidence = m$revenue_evidence$confidence %||% "MEDIUM",
+            period = res$period, currency = res$statement_currency
+          )
+        }
+      }
+      labels <- vapply(slices, function(s) s$name, character(1))
+      values <- vapply(slices, function(s) {
+        if (identical(input$chart_mode, "amount")) .bblab_num(s$revenue, 0) else {
+          sh <- .bblab_num(s$share, 0)
+          if (is.finite(sh)) abs(sh) else 0
+        }
+      }, numeric(1))
+      pal <- c("#0C5484", "#1AA8B8", "#249C60", "#E8A838", "#8E6BB5", "#D96B5F")
+      col <- vapply(seq_along(slices), function(i) {
+        if (.bblab_neutral_class(slices[[i]]$classification)) "#9AA3AB"
+        else pal[((i - 1L) %% length(pal)) + 1L]
+      }, character(1))
+      hover <- vapply(slices, function(s) {
+        paste0(
+          s$name, "<br>Revenue: ", .bblab_fmt_amt(s$revenue),
+          "<br>Share: ", .bblab_fmt_pct(s$share),
+          "<br>", s$classification, " · ", s$confidence %||% "",
+          "<br>", res$period %||% "", " · ", res$statement_currency %||% "",
+          "<br>Recon: ", if (isTRUE(res$reconciliation$pass)) "pass" else "fail"
+        )
+      }, character(1))
+      fig <- plotly::plot_ly(
+        labels = labels, values = pmax(values, 0), type = "pie", hole = 0.45,
+        customdata = vapply(slices, function(s) s$id, character(1)),
+        textinfo = "label+percent",
+        hovertext = hover, hoverinfo = "text",
+        marker = list(colors = col, line = list(color = "#ffffff", width = 1)),
+        source = ns("donut")
+      )
+      if (!is.null(res$chart$eliminations_legend)) {
+        el <- res$chart$eliminations_legend
+        fig <- plotly::add_annotations(
+          fig,
+          text = paste0(el$name, ": ", .bblab_fmt_amt(el$revenue), " (not a pie slice)"),
+          x = 0.5, y = -0.12, showarrow = FALSE, xref = "paper", yref = "paper"
+        )
+      }
+      plotly::layout(fig, showlegend = TRUE, margin = list(b = 60))
+    })
+
+    observeEvent(plotly::event_data("plotly_click", source = ns("donut")), {
+      ev <- plotly::event_data("plotly_click", source = ns("donut"))
+      if (!is.null(ev) && !is.null(ev$customdata)) focus_id(as.character(ev$customdata)[1])
+    }, ignoreNULL = TRUE)
+
+    output$cards <- renderUI({
+      res <- lab_result()
+      if (is.null(res)) return(tags$p(class = "help-block", ui_msg("bblab_waiting")))
+      cons_rev <- .bblab_num(res$consolidated$revenue)
+      cards <- lapply(res$businesses %||% list(), function(c) {
+        column(width = 4, .bblab_card_html(c, loc(), identical(focus_id(), c$id), cons_rev))
+      })
+      extra <- list()
+      if (!is.null(res$other)) extra[[length(extra) + 1L]] <- column(width = 4, .bblab_card_html(res$other, loc(), FALSE, cons_rev))
+      tagList(fluidRow(cards), if (length(extra)) fluidRow(extra) else NULL)
+    })
+
+    output$recon <- renderUI({
+      res <- lab_result()
+      if (is.null(res) || is.null(res$reconciliation)) {
+        return(tags$p(class = "help-block", ui_msg("bblab_waiting")))
+      }
+      rec <- res$reconciliation
+      badge <- if (isTRUE(rec$pass)) {
+        tags$span(class = "ynow-bblab-recon ynow-bblab-recon--pass", ui_msg("bblab_pass"))
+      } else {
+        tags$span(class = "ynow-bblab-recon ynow-bblab-recon--fail", ui_msg("bblab_fail"))
+      }
+      row <- function(label, chk) {
+        if (is.null(chk)) return(NULL)
+        tags$tr(
+          tags$td(label),
+          tags$td(.bblab_fmt_amt(chk$reported)),
+          tags$td(.bblab_fmt_amt(chk$recast)),
+          tags$td(.bblab_fmt_amt(chk$leftover)),
+          tags$td(if (isTRUE(chk$pass)) ui_msg("bblab_pass") else ui_msg("bblab_fail"))
+        )
+      }
+      tags$div(
+        badge,
+        tags$table(
+          class = "table table-condensed ynow-bblab-recon-table",
+          tags$thead(tags$tr(tags$th(""), tags$th("Reported"), tags$th("Recast"),
+                             tags$th("Leftover"), tags$th("Status"))),
+          tags$tbody(
+            row("Revenue", rec$revenue),
+            row("Cost of Revenue", rec$cor),
+            row("Gross Profit", rec$gp)
+          )
+        )
+      )
+    })
+
+    output$shared <- renderUI({
+      res <- lab_result()
+      items <- res$shared_corporate %||% list()
+      if (!length(items)) return(tags$p(class = "help-block", ui_msg("bblab_shared_empty")))
+      tags$ul(lapply(names(items), function(nm) tags$li(tags$b(nm), ": ", .bblab_fmt_amt(items[[nm]]))))
+    })
+
+    output$notes <- renderUI({
+      res <- lab_result()
+      body <- tagList(
+        tags$p(ui_msg("bblab_notes_body")),
+        if (!is.null(res) && length(res$codes)) tags$p(paste("Codes:", paste(res$codes, collapse = ", "))) else NULL,
+        if (!is.null(res) && "rev_share_cost" %in% (res$cost_notices %||% character(0))) {
+          tags$p(ui_msg("bblab_rev_share_cost_notice"))
+        } else NULL
+      )
+      if (exists("ynow_notes_block", mode = "function")) {
+        ynow_notes_block(body, locale = loc())
+      } else body
+    })
+
+    output$export_data <- downloadHandler(
+      filename = function() {
+        paste0("business_breakdown_", lab_ticker() %||% "lab", "_", Sys.Date(), ".csv")
+      },
+      content = function(file) {
+        res <- lab_result()
+        rows <- lapply(res$businesses %||% list(), function(c) {
+          data.frame(
+            id = c$id, name = c$name, classification = c$classification,
+            revenue = c$revenue %||% NA_real_, cor = c$cor %||% NA_real_,
+            gp = c$gp %||% NA_real_, gm = c$gm %||% NA_real_,
+            status_rev = c$revenue_evidence$status %||% NA_character_,
+            status_cor = c$cor_evidence$status %||% NA_character_,
+            stringsAsFactors = FALSE
+          )
+        })
+        df <- if (length(rows)) do.call(rbind, rows) else data.frame()
+        utils::write.csv(df, file, row.names = FALSE)
+      }
+    )
+    output$export_chart <- downloadHandler(
+      filename = function() paste0("business_breakdown_chart_", Sys.Date(), ".html"),
+      content = function(file) {
+        res <- lab_result()
+        if (is.null(res) || !isTRUE(res$chart$eligible)) {
+          writeLines("<html><body>Chart not eligible</body></html>", file)
+          return()
+        }
+        htmlwidgets::saveWidget(plotly::last_plot(), file, selfcontained = TRUE)
+      }
+    )
+  })
+}

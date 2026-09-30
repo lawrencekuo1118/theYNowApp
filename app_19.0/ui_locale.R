@@ -40,6 +40,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     menu_hfv = "Hist. FV Validation",
     menu_decision_checklist = "Decision Checklist",
     menu_about = "About",
+    menu_business_breakdown_lab = "Business Breakdown Lab",
     ticker_label = "Ticker / Stock Code",
     industry_info_yahoo = "industry info from Yahoo",
     data_source_title = "Data Source:",
@@ -1469,7 +1470,170 @@ locale_for_market <- function(mode = get_market_mode()) {
     macro_bubble_buffett_mean = "Series mean",
     macro_bubble_buffett_chart = "Buffett Indicator history",
     macro_bubble_buffett_axis = "% of GDP",
-    btn_macro_refresh = "Refresh"
+    btn_macro_refresh = "Refresh",
+    bblab_page_title = "Business Breakdown Lab",
+    bblab_experimental_badge = "Experimental Feature",
+    bblab_page_sub = paste0(
+      "Experimental analysis of business-level revenue, cost, Gross Profit, and revaluation assumptions."
+    ),
+    bblab_search_title = "Search",
+    bblab_ticker_label = "Ticker",
+    bblab_search_btn = "Search",
+    bblab_company_label = "Company",
+    bblab_period_label = "Period",
+    bblab_statement_ccy_label = "Statement currency",
+    bblab_source_status_label = "Source status",
+    bblab_source_idle = "Search a ticker to load the latest annual / quarter statements and any segment notes.",
+    bblab_source_running = "Retrieving issuer, statements, and disclosures…",
+    bblab_source_ok = "Statements and business-dimension disclosures loaded.",
+    bblab_source_no_segment = paste0(
+      "Consolidated statements loaded. No operating-segment / product / revenue-disaggregation notes were attached; ",
+      "the lab will not fabricate a second business."
+    ),
+    bblab_source_unavailable = "Statements could not be retrieved. Source-currency analysis is blocked until filings load.",
+    bblab_summary_title = "Analysis summary",
+    bblab_dimension_label = "Primary dimension",
+    bblab_count_label = "Business count",
+    bblab_level_label = "Decomposition level",
+    bblab_confidence_label = "Overall confidence",
+    bblab_rev_recon_label = "Revenue reconciliation",
+    bblab_cor_recon_label = "Cost of Revenue reconciliation",
+    bblab_reval_avail_label = "Revaluation availability",
+    bblab_limitations_label = "Limitations",
+    bblab_chart_title = "Revenue composition",
+    bblab_cards_title = "Business cards",
+    bblab_recon_title = "Reconciliation",
+    bblab_sources_title = "Sources and methodology",
+    bblab_sources_chrome = paste0(
+      "Disclosure priority: operating segments → segment notes → product/service revenue → ",
+      "revenue disaggregation → MD&A → earnings → IR decks → official descriptions. ",
+      "Filed / audited sources are preferred. This page is experimental and does not write into valuation."
+    ),
+    bblab_shared_title = "Shared and Corporate Items",
+    bblab_shared_empty = "No shared Selling & Marketing, G&A, central R&D, or corporate items were assigned to business Gross Profit cards.",
+    bblab_other_businesses = "Other Businesses",
+    bblab_unallocated = "Unallocated",
+    bblab_eliminations = "Eliminations",
+    bblab_rounding = "Revenue Rounding Adjustment",
+    bblab_recon_amount = "Reconciliation Amount",
+    bblab_expand_other = "Expand Other",
+    bblab_export_chart = "Export chart",
+    bblab_export_data = "Export data",
+    bblab_gm_unestimable = "Not reliably estimable",
+    bblab_reval_unavailable = "Revaluation ratio unavailable",
+    bblab_reval_label = "Revaluation",
+    bblab_single_business_note = paste0(
+      "Only one supportable business is disclosed; no multi-business split is applied and no composition chart is shown."
+    ),
+    bblab_fallback_gm_label = "Use consolidated Gross Margin as low-confidence fallback",
+    bblab_allocated_notice = "Cost of Revenue is allocated / estimated (not reported by business).",
+    bblab_rev_share_cost_notice = paste0(
+      "Cost of Revenue uses revenue-share allocation as a final fallback (ALLOCATED_LOW_CONFIDENCE). ",
+      "This is not a reported business cost."
+    ),
+    bblab_waiting = "Search a ticker to run the experimental business breakdown.",
+    bblab_pass = "Pass",
+    bblab_fail = "Fail",
+    bblab_available = "Available",
+    bblab_progress_label = "Progress",
+    bblab_progress_running = "Business Breakdown Lab",
+    bblab_stage_resolve = "Resolving issuer / entity",
+    bblab_stage_retrieve = "Retrieving statements",
+    bblab_stage_parse = "Parsing segment and disaggregation notes",
+    bblab_stage_analyze = "Running company-agnostic decomposition",
+    bblab_stage_done = "Rendering cards and chart",
+    bblab_stage_resolve_issuer = "1 Resolve issuer",
+    bblab_stage_retrieve_statements = "2 Retrieve statements",
+    bblab_stage_parse_disclosures = "3 Parse disclosures",
+    bblab_stage_detect_dimension = "4 Detect primary dimension",
+    bblab_stage_identify_businesses = "5 Identify major businesses",
+    bblab_stage_assign_revenue = "6 Assign revenue",
+    bblab_stage_assign_cost_gp = "7 Assign Cost of Revenue / Gross Profit",
+    bblab_stage_reconcile_revalue = "8 Reconcile and revalue",
+    bblab_stage_chart_cards = "9 Chart and cards",
+    bblab_notes_body = paste0(
+      "Every amount carries REPORTED / DERIVED / ALLOCATED / ESTIMATED / UNALLOCATED / UNAVAILABLE evidence. ",
+      "Shared Selling & Marketing, G&A, central R&D, interest, tax, and Net Income are excluded from Gross Profit cards. ",
+      "FX applies only when display currency differs from statement currency. ADR applies only to per-ADR display; ",
+      "missing ADR does not block source-currency Revenue / Cost of Revenue / Gross Profit. ",
+      "Revaluation default view is Reported; Adjusted never overwrites reported production costs unless enabled ",
+      "and the adjustment actually changes production costs or D&A."
+    ),
+    notif_bblab_required_fx_rate_missing = paste0(
+      "Required FX rate is missing. Display-currency conversion is blocked; statement-currency Revenue, ",
+      "Cost of Revenue, Gross Profit, and shares remain. Reconciliation still uses reported consolidated totals."
+    ),
+    notif_bblab_required_fx_rate_invalid = paste0(
+      "Required FX rate is invalid. Display-currency conversion is blocked; statement-currency analysis remains."
+    ),
+    notif_bblab_statement_currency_unavailable = paste0(
+      "Statement currency is unavailable. FX conversion is blocked; issuer search and any source-currency amounts that do not need FX remain."
+    ),
+    notif_bblab_applicable_adr_ratio_missing = paste0(
+      "Applicable ADR ratio is missing. Per-ADR display is blocked; statement-currency business Revenue / Cost of Revenue / Gross Profit remain."
+    ),
+    notif_bblab_business_adr_missing_nonblocking = paste0(
+      "ADR metadata is missing. Per-ADR display is blocked; source-currency business analysis is not blocked."
+    ),
+    notif_bblab_business_issuer_unresolved = paste0(
+      "Issuer could not be resolved. Breakdown is blocked until Search returns a company."
+    ),
+    notif_bblab_business_statements_unavailable = paste0(
+      "Statements are unavailable. Business cards, composition chart, and recast reconciliation are blocked; Search remains."
+    ),
+    notif_bblab_business_disclosure_insufficient = paste0(
+      "Business-dimension disclosure is insufficient. The lab will not fabricate a second business. ",
+      "Consolidated totals still render when filings loaded."
+    ),
+    notif_bblab_business_overlapping_dimensions_blocked = paste0(
+      "Overlapping dimensions (for example product vs geography, or platform vs technology) were not combined. ",
+      "A single primary dimension was kept."
+    ),
+    notif_bblab_business_geography_customer_location_only = paste0(
+      "Geography that only describes customer location was not selected as the primary business dimension."
+    ),
+    notif_bblab_business_cost_not_reliably_estimable = paste0(
+      "Cost of Revenue is not reliably estimable for at least one business. Gross Profit / Gross Margin on that card are withheld. ",
+      "Revenue cards, reconciliation of reported consolidated totals, and any eligible chart remain."
+    ),
+    notif_bblab_business_cost_allocated_low_confidence = paste0(
+      "Cost of Revenue uses an allocation or estimate (ALLOCATED_LOW_CONFIDENCE). Revenue remains reported. ",
+      "Enable the consolidated Gross Margin fallback only if you accept low-confidence cost."
+    ),
+    notif_bblab_business_revaluation_unavailable = paste0(
+      "Revaluation ratio unavailable. Reported Revenue / Cost of Revenue / Gross Profit cards are not blocked."
+    ),
+    notif_bblab_business_revaluation_consolidated_proxy = paste0(
+      "Revaluation uses a CONSOLIDATED_PROXY (LOW confidence). User override is allowed. Reported view remains the default."
+    ),
+    notif_bblab_business_reconciliation_fail = paste0(
+      "Reconciliation failed. Recast totals are not forced to match. Reported consolidated Revenue, Cost of Revenue, ",
+      "and Gross Profit remain; unexplained leftover is Unallocated or Reconciliation Amount (Net Income is never a plug)."
+    ),
+    notif_bblab_business_chart_insufficient_components = paste0(
+      "Composition chart blocked (BUSINESS_CHART_INSUFFICIENT_COMPONENTS). Business cards and reconciliation still render."
+    ),
+    notif_bblab_business_chart_consolidated_revenue_missing = paste0(
+      "Composition chart blocked: reported consolidated revenue is missing. Business cards still render."
+    ),
+    notif_bblab_business_chart_period_mismatch = paste0(
+      "Composition chart blocked: period mismatch. Business cards still render."
+    ),
+    notif_bblab_business_chart_currency_mismatch = paste0(
+      "Composition chart blocked: currency mismatch. Statement-currency cards still render."
+    ),
+    notif_bblab_business_chart_dimension_mixed = paste0(
+      "Composition chart blocked: mixed dimensions. Overlapping cuts were not combined. Cards still render."
+    ),
+    notif_bblab_business_chart_reconciliation_fail = paste0(
+      "Composition chart blocked because reconciliation failed. Reported consolidated totals and business cards remain."
+    ),
+    notif_bblab_business_chart_single_component = paste0(
+      "Composition chart blocked: only one supportable business. The single card still renders; no pie is shown."
+    ),
+    notif_bblab_business_chart_level_d = paste0(
+      "Composition chart blocked (Level D qualitative only). Names and limitations still render; no amounts are fabricated."
+    )
   ),
   `zh-TW` = list(
     recent_search = "最近搜尋：",
@@ -1493,6 +1657,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     menu_hfv = "歷史基本面驗證",
     menu_decision_checklist = "決策檢核",
     menu_about = "關於",
+    menu_business_breakdown_lab = "業務拆解實驗室",
     ticker_label = "Ticker／股票代號",
     industry_info_yahoo = "Yahoo 產業資訊",
     data_source_title = "資料來源：",
@@ -2874,7 +3039,130 @@ locale_for_market <- function(mode = get_market_mode()) {
     macro_bubble_buffett_mean = "序列均值",
     macro_bubble_buffett_chart = "巴菲特指標歷史",
     macro_bubble_buffett_axis = "佔 GDP %%",
-    btn_macro_refresh = "重新整理"
+    btn_macro_refresh = "重新整理",
+    bblab_page_title = "業務拆解實驗室",
+    bblab_experimental_badge = "實驗功能",
+    bblab_page_sub = "針對事業別營收、成本、Gross Profit 與重估假設的實驗性分析。",
+    bblab_search_title = "搜尋",
+    bblab_ticker_label = "Ticker",
+    bblab_search_btn = "搜尋",
+    bblab_company_label = "公司",
+    bblab_period_label = "期間",
+    bblab_statement_ccy_label = "財報幣別",
+    bblab_source_status_label = "來源狀態",
+    bblab_source_idle = "請搜尋 Ticker，以載入最近一期年報／季報與任何部門附註。",
+    bblab_source_running = "正在解析發行人、財報與揭露…",
+    bblab_source_ok = "已載入財報與事業維度揭露。",
+    bblab_source_no_segment = paste0(
+      "已載入合併財報。未附上營運部門／產品／收入拆解附註；",
+      "本實驗室不會虛構第二個事業。"
+    ),
+    bblab_source_unavailable = "無法取得財報。在申報資料載入前，來源幣別分析會被阻擋。",
+    bblab_summary_title = "分析摘要",
+    bblab_dimension_label = "主要維度",
+    bblab_count_label = "事業數量",
+    bblab_level_label = "拆解層級",
+    bblab_confidence_label = "整體信心",
+    bblab_rev_recon_label = "Revenue 調節",
+    bblab_cor_recon_label = "Cost of Revenue 調節",
+    bblab_reval_avail_label = "重估可用性",
+    bblab_limitations_label = "限制",
+    bblab_chart_title = "營收組成",
+    bblab_cards_title = "事業卡片",
+    bblab_recon_title = "調節表",
+    bblab_sources_title = "來源與方法",
+    bblab_sources_chrome = paste0(
+      "揭露優先序：營運部門 → 部門附註 → 產品／勞務收入 → 收入拆解 → MD&A → 法說 → IR 簡報 → 官方說明。",
+      "優先採用已申報／經查核來源。本頁為實驗功能，不會寫入估值。"
+    ),
+    bblab_shared_title = "共用與總部項目",
+    bblab_shared_empty = "未將共用 Selling & Marketing、G&A、中央 R&D 或總部項目分攤進事業 Gross Profit 卡片。",
+    bblab_other_businesses = "其他事業",
+    bblab_unallocated = "未分攤",
+    bblab_eliminations = "銷除",
+    bblab_rounding = "Revenue Rounding Adjustment",
+    bblab_recon_amount = "調節差額",
+    bblab_expand_other = "展開其他",
+    bblab_export_chart = "匯出圖表",
+    bblab_export_data = "匯出資料",
+    bblab_gm_unestimable = "Not reliably estimable",
+    bblab_reval_unavailable = "Revaluation ratio unavailable",
+    bblab_reval_label = "Revaluation",
+    bblab_single_business_note = "僅有一個可支持的事業揭露；不進行多事業拆分，也不顯示組成圖。",
+    bblab_fallback_gm_label = "以合併 Gross Margin 作為低信心後援（預設關閉）",
+    bblab_allocated_notice = "Cost of Revenue 為分攤／估計（非事業別申報）。",
+    bblab_rev_share_cost_notice = paste0(
+      "Cost of Revenue 以營收占比作為最終後援分攤（ALLOCATED_LOW_CONFIDENCE）。",
+      "這不是申報的事業成本。"
+    ),
+    bblab_waiting = "請搜尋 Ticker 以執行實驗性業務拆解。",
+    bblab_pass = "通過",
+    bblab_fail = "未通過",
+    bblab_available = "可用",
+    bblab_progress_label = "進度",
+    bblab_progress_running = "業務拆解實驗室",
+    bblab_stage_resolve = "解析發行人／法律實體",
+    bblab_stage_retrieve = "擷取財報",
+    bblab_stage_parse = "解析部門與收入拆解附註",
+    bblab_stage_analyze = "執行公司中立拆解",
+    bblab_stage_done = "呈現卡片與圖表",
+    bblab_stage_resolve_issuer = "1 解析發行人",
+    bblab_stage_retrieve_statements = "2 擷取財報",
+    bblab_stage_parse_disclosures = "3 解析揭露",
+    bblab_stage_detect_dimension = "4 偵測主要維度",
+    bblab_stage_identify_businesses = "5 辨識主要事業",
+    bblab_stage_assign_revenue = "6 指派營收",
+    bblab_stage_assign_cost_gp = "7 指派 Cost of Revenue／Gross Profit",
+    bblab_stage_reconcile_revalue = "8 調節與重估",
+    bblab_stage_chart_cards = "9 圖表與卡片",
+    bblab_notes_body = paste0(
+      "每一數值都帶有 REPORTED／DERIVED／ALLOCATED／ESTIMATED／UNALLOCATED／UNAVAILABLE 證據。",
+      "共用 Selling & Marketing、G&A、中央 R&D、利息、稅與 Net Income 不進入 Gross Profit 卡片。",
+      "僅在顯示幣別與財報幣別不同時套用 FX。ADR 僅用於每單位 ADR 顯示；",
+      "缺少 ADR 不阻擋來源幣別的 Revenue／Cost of Revenue／Gross Profit。",
+      "重估預設檢視為 Reported；除非使用者開啟 Adjusted 且該調整確實改變生產成本或 D&A，否則不會覆寫已申報數字。"
+    ),
+    notif_bblab_required_fx_rate_missing = paste0(
+      "缺少必要 FX 匯率。顯示幣別換算已阻擋；財報幣別的 Revenue、Cost of Revenue、Gross Profit 與股權比重仍可用。",
+      "調節仍採用已申報合併總數。"
+    ),
+    notif_bblab_required_fx_rate_invalid = "FX 匯率無效。顯示幣別換算已阻擋；財報幣別分析仍保留。",
+    notif_bblab_statement_currency_unavailable = "無法判定財報幣別。FX 換算已阻擋；不需 FX 的發行人搜尋與來源幣別金額仍保留。",
+    notif_bblab_applicable_adr_ratio_missing = "缺少適用 ADR 比率。每單位 ADR 顯示已阻擋；財報幣別的事業 Revenue／Cost of Revenue／Gross Profit 仍保留。",
+    notif_bblab_business_adr_missing_nonblocking = "缺少 ADR 中繼資料。每單位 ADR 顯示已阻擋；來源幣別事業分析不被阻擋。",
+    notif_bblab_business_issuer_unresolved = "無法解析發行人。在 Search 回傳公司前，拆解會被阻擋。",
+    notif_bblab_business_statements_unavailable = "無法取得財報。事業卡片、組成圖與重編調節已阻擋；搜尋仍可用。",
+    notif_bblab_business_disclosure_insufficient = paste0(
+      "事業維度揭露不足。本實驗室不會虛構第二個事業。",
+      "若已載入申報，合併總數仍會呈現。"
+    ),
+    notif_bblab_business_overlapping_dimensions_blocked = paste0(
+      "重疊維度（例如產品 vs 地區，或平台 vs 製程技術）不會合併。",
+      "僅保留一個主要維度。"
+    ),
+    notif_bblab_business_geography_customer_location_only = "僅描述客戶所在地的地區別，不會被選為主要事業維度。",
+    notif_bblab_business_cost_not_reliably_estimable = paste0(
+      "至少一個事業的 Cost of Revenue 無法可靠估計。該卡片的 Gross Profit／Gross Margin 將予保留不顯示。",
+      "營收卡片、已申報合併總數調節，以及符合條件的圖表仍保留。"
+    ),
+    notif_bblab_business_cost_allocated_low_confidence = paste0(
+      "Cost of Revenue 使用分攤或估計（ALLOCATED_LOW_CONFIDENCE）。營收維持已申報。",
+      "僅在你接受低信心成本時，才開啟合併 Gross Margin 後援。"
+    ),
+    notif_bblab_business_revaluation_unavailable = "Revaluation ratio unavailable。已申報的 Revenue／Cost of Revenue／Gross Profit 卡片不被阻擋。",
+    notif_bblab_business_revaluation_consolidated_proxy = "重估使用 CONSOLIDATED_PROXY（LOW 信心）。允許使用者覆寫。預設檢視仍為 Reported。",
+    notif_bblab_business_reconciliation_fail = paste0(
+      "調節未通過。不會強行把重編總數湊平。已申報合併 Revenue、Cost of Revenue 與 Gross Profit 仍保留；",
+      "無法解釋的剩餘列入未分攤或調節差額（絕不以 Net Income 作為 plug）。"
+    ),
+    notif_bblab_business_chart_insufficient_components = "組成圖已阻擋（BUSINESS_CHART_INSUFFICIENT_COMPONENTS）。事業卡片與調節表仍呈現。",
+    notif_bblab_business_chart_consolidated_revenue_missing = "組成圖已阻擋：缺少已申報合併營收。事業卡片仍呈現。",
+    notif_bblab_business_chart_period_mismatch = "組成圖已阻擋：期間不一致。事業卡片仍呈現。",
+    notif_bblab_business_chart_currency_mismatch = "組成圖已阻擋：幣別不一致。財報幣別卡片仍呈現。",
+    notif_bblab_business_chart_dimension_mixed = "組成圖已阻擋：維度混用。重疊切面未合併。卡片仍呈現。",
+    notif_bblab_business_chart_reconciliation_fail = "因調節未通過，組成圖已阻擋。已申報合併總數與事業卡片仍保留。",
+    notif_bblab_business_chart_single_component = "組成圖已阻擋：僅有一個可支持的事業。單一卡片仍呈現，不顯示圓餅圖。",
+    notif_bblab_business_chart_level_d = "組成圖已阻擋（Level D 僅質性）。名稱與限制仍呈現；不會虛構金額。"
   )
 )
 

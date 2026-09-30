@@ -37,7 +37,9 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
     "hccsi_title", "hccsi_disclosure", "hccsi_click_hint",
     "hccsi_index_health", "hccsi_index_stress",
     "hccsi_index_fragility", "hccsi_index_market",
-    "hccsi_unavailable", "hccsi_dropped", "hccsi_dropped_none"
+    "hccsi_unavailable", "hccsi_dropped", "hccsi_dropped_none",
+    "menu_business_breakdown_lab", "bblab_experimental_badge", "bblab_page_sub",
+    "bblab_page_title", "bblab_gm_unestimable", "bblab_reval_unavailable"
   )
   for (k in keys) {
     en <- .UI_STRINGS$en[[k]]
@@ -223,6 +225,13 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
     txt,
     perl = TRUE
   ))
+  testthat::expect_true(grepl(
+    "body\\.ynow-lite[\\s\\S]*data-value=\"business_breakdown_lab\"",
+    txt,
+    perl = TRUE
+  ))
+  testthat::expect_true(grepl('tabName = "business_breakdown_lab"', txt, fixed = TRUE))
+  testthat::expect_true(grepl("'business_breakdown_lab'", txt, fixed = TRUE))
   testthat::expect_true(grepl(
     "body\\.ynow-lite[\\s\\S]*ynow-sidebar-test-link",
     txt,

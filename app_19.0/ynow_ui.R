@@ -1224,6 +1224,11 @@ ui <- dashboardPage(
                tabName = "lab_notes",
                icon = icon("flask")
              ),
+             menuItem(
+               text = tags$span(id = "ynow_menu_bblab", "Business Breakdown Lab"),
+               tabName = "business_breakdown_lab",
+               icon = icon("sitemap")
+             ),
              menuItem("Blue Chip Leaderboard", tabName = "bluechip", icon = icon("star")),
              menuItem("Decision Checklist", tabName = "decision_checklist", icon = icon("clipboard-check")),
              menuItem("About", tabName = "about", icon = icon("info-circle"))
@@ -2245,6 +2250,46 @@ ui <- dashboardPage(
         body.ynow-lite .ynow-lite-badge {
           display: inline-block;
         }
+        .ynow-bblab-badge {
+          display: inline-block;
+          margin-left: 10px;
+          padding: 2px 8px;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+          color: #1b3a4b;
+          background: #c8e8ef;
+          border: 1px solid #1AA8B8;
+          border-radius: 3px;
+          vertical-align: middle;
+        }
+        .ynow-bblab__title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+        .ynow-bblab__lead { color: #555; margin: 4px 0 12px 0; }
+        .ynow-bblab-card {
+          border: 1px solid #d9dee3;
+          border-radius: 6px;
+          padding: 10px 12px;
+          margin-bottom: 12px;
+          background: #fff;
+          min-height: 160px;
+        }
+        .ynow-bblab-card--focus { outline: 2px solid #1AA8B8; }
+        .ynow-bblab-card--neutral { background: #f4f6f7; border-color: #c5ccd1; }
+        .ynow-bblab-card__metrics { padding-left: 1.1em; margin: 8px 0 0 0; }
+        .ynow-bblab-tag {
+          display: inline-block;
+          margin-left: 6px;
+          font-size: 10px;
+          padding: 1px 6px;
+          border-radius: 2px;
+          background: #eef2f4;
+          color: #555;
+        }
+        .ynow-bblab-recon--pass { color: #1e7a46; font-weight: 700; }
+        .ynow-bblab-recon--fail { color: #b33b3b; font-weight: 700; }
+        .ynow-bblab-progress__list { font-size: 12px; color: #666; padding-left: 1.2em; }
+        .ynow-bblab-progress__list li.done { color: #1e7a46; }
         /* ---- Lite mode: hide Full-only chrome; show Smart Analysis ---- */
         .sidebar-menu a[data-value="smart_analysis"],
         .sidebar-menu li:has(> a[data-value="smart_analysis"]) {
@@ -2289,7 +2334,9 @@ ui <- dashboardPage(
         /* Lite: under Data Source keep Snapshot + Feedback only;
            Quant Backtest Lab + Testing foot link stay Full-only */
         body.ynow-lite .sidebar-menu a[data-value="lab_notes"],
-        body.ynow-lite .sidebar-menu li:has(> a[data-value="lab_notes"]) {
+        body.ynow-lite .sidebar-menu li:has(> a[data-value="lab_notes"]),
+        body.ynow-lite .sidebar-menu a[data-value="business_breakdown_lab"],
+        body.ynow-lite .sidebar-menu li:has(> a[data-value="business_breakdown_lab"]) {
           display: none !important;
         }
         body.ynow-lite .ynow-sidebar-test-link {
@@ -3607,6 +3654,7 @@ ui <- dashboardPage(
               nav_calculator: s.menu_nav,
               sensitivity: s.menu_ynow,
               lab_notes: s.menu_backtest,
+              business_breakdown_lab: s.menu_business_breakdown_lab,
               bluechip: s.menu_bluechip,
               hfv: s.menu_hfv,
               decision_checklist: s.menu_decision_checklist,
@@ -3621,6 +3669,30 @@ ui <- dashboardPage(
             if (smartLab && s.menu_smart_analysis) smartLab.textContent = s.menu_smart_analysis;
             var menuBt = document.getElementById('ynow_menu_backtest');
             if (menuBt && s.menu_backtest) menuBt.textContent = s.menu_backtest;
+            var menuBblab = document.getElementById('ynow_menu_bblab');
+            if (menuBblab && s.menu_business_breakdown_lab) menuBblab.textContent = s.menu_business_breakdown_lab;
+            setBtText('ynow_bblab_page_title', 'bblab_page_title');
+            setBtText('ynow_bblab_experimental_badge', 'bblab_experimental_badge');
+            setBtText('ynow_bblab_page_sub', 'bblab_page_sub');
+            setBtText('ynow_bblab_search_title', 'bblab_search_title');
+            setBtText('ynow_bblab_ticker_label', 'bblab_ticker_label');
+            setBtText('ynow_bblab_company_label', 'bblab_company_label');
+            setBtText('ynow_bblab_period_label', 'bblab_period_label');
+            setBtText('ynow_bblab_statement_ccy_label', 'bblab_statement_ccy_label');
+            setBtText('ynow_bblab_summary_title', 'bblab_summary_title');
+            setBtText('ynow_bblab_chart_title', 'bblab_chart_title');
+            setBtText('ynow_bblab_cards_title', 'bblab_cards_title');
+            setBtText('ynow_bblab_recon_title', 'bblab_recon_title');
+            setBtText('ynow_bblab_sources_title', 'bblab_sources_title');
+            setBtText('ynow_bblab_sources_chrome', 'bblab_sources_chrome');
+            setBtText('ynow_bblab_shared_title', 'bblab_shared_title');
+            setBtText('ynow_bblab_expand_other', 'bblab_expand_other');
+            setBtText('ynow_bblab_fallback_gm_label', 'bblab_fallback_gm_label');
+            var bblabSearch = document.getElementById('bblab-search');
+            if (bblabSearch && s.bblab_search_btn) {
+              var bsi = bblabSearch.querySelector('i');
+              bblabSearch.innerHTML = (bsi ? bsi.outerHTML + ' ' : '') + s.bblab_search_btn;
+            }
             setBtText('ynow_macro_page_title', 'macro_page_title');
             setBtText('ynow_macro_page_sub', 'macro_page_sub');
             setBtText('ynow_macro_rf_title', 'macro_rf_title');
@@ -4360,7 +4432,7 @@ ui <- dashboardPage(
             var FULL_ONLY_TABS = [
               'get_started', 'nav_calculator', 'dcf_calculator', 'ddm_calculator',
               'ri_calculator', 'pb_calculator', 'hfv', 'decision_checklist',
-              'lab_notes', 'testing'
+              'lab_notes', 'business_breakdown_lab', 'testing'
             ];
             function currentSidebarTab() {
               var active = document.querySelector('.sidebar-menu li.active > a[data-value]');
@@ -9677,6 +9749,14 @@ ui <- dashboardPage(
               )
             )
           )
+        )
+      ),
+
+      tabItem(
+        tabName = "business_breakdown_lab",
+        tags$div(
+          class = "ynow-full-only",
+          business_breakdown_lab_ui("bblab")
         )
       ),
 
