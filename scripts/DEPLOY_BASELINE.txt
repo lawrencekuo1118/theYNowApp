@@ -8,5 +8,5 @@ short=ddbb82a
 message=Keep Lab Search from dropping the Shiny session on iOS Reload.
 captured_at=2026-09-30T10:56:47Z
 source_branch=cursor/bblab-search-no-reload-3fb1
-display_version=v19.29
+display_version=v19.30
 note=Canonical live line is app_19.0. Bundle 12627127 = v19.29 Lab Search stays in-session on iOS: segment-only EDGAR notes with an 18s budget (does not download every 10-K/20-F note); session$allowReconnect("force"); tryCatch around Search. Also keeps type=button / Enter preventDefault and hides Dashboard Search chrome on Testing. Same 7-chapter walkthrough. Deploy via scripts/deploy_app_19.R. Supersedes 12627082 / 12627038 / 12626909 / 12626822 / 12626810 / 12626794 / 12626772 / 12626690 / 12626668 / 12626547 / 12626454 / 12626418 / 12626362 / 12626262 / 12626032 / 12625997 / 12625985 / 12625973 / 12625956 / 12625916 / 12625890 / 12625810 / 12625762 / 12625733 / 12625709 / 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
