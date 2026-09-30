@@ -680,3 +680,46 @@ fetch_sec_report_notes <- function(ticker, form = "10-K", max_chars = 1500L) {
 cached_fetch_sec_report_notes <- memoise::memoise(
   fetch_sec_report_notes, cache = my_cache
 )
+
+# Lab Search: segment / revenue-disaggregation notes only, wall-clock budget.
+# Full 10-K/20-F note download blocks the Shiny loop and forces iOS "Reload".
+fetch_sec_segment_notes <- function(ticker, form = "10-K", max_chars = 1500L,
+                                    max_seconds = 18) {
+  tk <- toupper(trimws(as.character(ticker %||% "")[1]))
+  form <- toupper(trimws(as.character(form %||% "10-K")[1]))
+  if (!form %in% c("10-K", "10-Q", "20-F", "40-F", "8-K", "6-K")) form <- "10-K"
+  empty <- list(
+    ok = FALSE, error = "", company = tk, form = form,
+    filing_date = "", report_date = "", accession = "", primary_doc_url = "",
+    short_names = character(0), urls = character(0), important = logical(0),
+    char_counts = integer(0), excerpts = character(0), full_texts = character(0),
+    summaries = list(), segment_tables_json = "[]"
+  )
+  if (!nzchar(tk)) {
+    empty$error <- "請輸入美股代號"
+    return(empty)
+  }
+  if (!isTRUE(.ensure_python_scraper()) || !exists("sec_report_notes", mode = "function")) {
+    empty$error <- "sec_report_notes 未載入（Python / reticulate 失敗）"
+    return(empty)
+  }
+  budget <- suppressWarnings(as.numeric(max_seconds)[1])
+  if (!is.finite(budget) || budget <= 0) budget <- 18
+  tryCatch({
+    res <- sec_report_notes(
+      tk, form, as.integer(max_chars),
+      note_filter = "segment",
+      max_seconds = budget
+    )
+    if (is.null(res)) return(empty)
+    res
+  }, error = function(e) {
+    .ynow_log("⚠️ fetch_sec_segment_notes(", tk, " ", form, "): ", e$message)
+    empty$error <- e$message
+    empty
+  })
+}
+
+cached_fetch_sec_segment_notes <- memoise::memoise(
+  fetch_sec_segment_notes, cache = my_cache
+)

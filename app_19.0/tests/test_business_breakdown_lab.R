@@ -1380,7 +1380,10 @@ check("Lab Search observeEvent never session$reload", {
     !grepl("session$reload", chunk, fixed = TRUE) &&
     !grepl("location.reload", chunk, fixed = TRUE) &&
     !grepl("updateQueryString", chunk, fixed = TRUE) &&
-    !grepl("session$reload", mod_src, fixed = TRUE)
+    !grepl("session$reload", mod_src, fixed = TRUE) &&
+    grepl("tryCatch", chunk, fixed = TRUE) &&
+    grepl("cached_fetch_sec_segment_notes", chunk, fixed = TRUE) &&
+    !grepl("cached_fetch_sec_report_notes", chunk, fixed = TRUE)
 })
 check("Lab Search UI is a div not a native form",
       grepl("ynow-bblab-search-controls", mod_src, fixed = TRUE) &&
@@ -1391,6 +1394,8 @@ check("global ticker chrome hidden on Testing so Lab Search stays in-session",
       grepl("input.sidebar_tabs != 'testing'", ui_src, fixed = TRUE) &&
         grepl("input.sidebar_tabs != 'about'", ui_src, fixed = TRUE) &&
         grepl("input.sidebar_tabs != 'macro_market'", ui_src, fixed = TRUE))
+check("Shiny reconnects in-session instead of forcing Reload overlay",
+      grepl('session$allowReconnect("force")', server_src, fixed = TRUE))
 
 if (fail > 0L) {
   cat("FAILED ", fail, " checks\n", sep = "")

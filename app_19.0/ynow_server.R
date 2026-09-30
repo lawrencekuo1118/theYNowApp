@@ -3,6 +3,9 @@
 # ==========================================
 
 server <- function(input, output, session) {
+  # iOS Safari drops the websocket during a long Lab Search; reconnect in-session
+  # instead of forcing the user onto the gray "Disconnected / Reload" overlay.
+  tryCatch(session$allowReconnect("force"), error = function(e) NULL)
   
   # ==========================================
   # 🗄️ 全域資料容器 (儲存爬蟲結果與跨模組變數)

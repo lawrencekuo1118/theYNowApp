@@ -13,6 +13,7 @@ from deep_scraper import (  # noqa: E402
     _sec_append_segment_tables,
     _sec_classify_extracted_table,
     _sec_html_tables,
+    _sec_note_matches_filter,
     _sec_segment_kind,
 )
 
@@ -158,8 +159,16 @@ def test_classify_and_append():
     check("P&L stays operating_segment", role and role["kind"] == "operating_segment")
 
 
+def test_segment_note_filter():
+    check("keeps Segment Information", _sec_note_matches_filter("Segment Information", "segment"))
+    check("keeps revenue disaggregation", _sec_note_matches_filter("Revenue from contracts with customers", "segment"))
+    check("skips Income Taxes", not _sec_note_matches_filter("Income Taxes", "segment"))
+    check("no filter keeps taxes", _sec_note_matches_filter("Income Taxes", None))
+
+
 if __name__ == "__main__":
     test_kinds()
     test_html_tables()
     test_classify_and_append()
+    test_segment_note_filter()
     print("All SEC segment-table checks passed.")

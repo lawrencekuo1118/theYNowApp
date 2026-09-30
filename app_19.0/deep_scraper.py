@@ -1115,12 +1115,14 @@ def _sec_session():
         return s
 
 
-def _sec_get(session, url, is_json=False, tries=3):
+def _sec_get(session, url, is_json=False, tries=3, timeout=30):
     import time
     last = None
-    for attempt in range(tries):
+    n_tries = max(1, int(tries or 1))
+    to = 30 if timeout is None else float(timeout)
+    for attempt in range(n_tries):
         try:
-            r = session.get(url, timeout=30)
+            r = session.get(url, timeout=to)
             if r.status_code == 200:
                 return r.json() if is_json else r.text
             last = f"HTTP {r.status_code}"
@@ -1150,6 +1152,25 @@ def _sec_is_important(short_name):
     if any(h in s for h in _SEC_NON_FINANCIAL_HINTS):
         return False
     return any(k in s for k in _SEC_IMPORTANT_KEYWORDS)
+
+
+# Lab Search only needs operating-segment / revenue-disaggregation notes.
+# Downloading every 10-K/20-F note blocks the Shiny event loop and drops iOS sessions.
+_SEC_SEGMENT_NOTE_HINTS = (
+    "segment", "disaggregat", "revenue from contract", "products and service",
+    "product revenue", "revenue by", "net sales by", "operating segment",
+    "revenues by", "sales by reportable",
+)
+
+
+def _sec_note_matches_filter(short_name, note_filter):
+    if not note_filter:
+        return True
+    kind = str(note_filter).strip().lower()
+    if kind in ("segment", "segments"):
+        s = (short_name or "").lower()
+        return any(h in s for h in _SEC_SEGMENT_NOTE_HINTS)
+    return True
 
 
 # Salient-sentence keywords for the lightweight extractive summary.
@@ -1691,12 +1712,17 @@ def _sec_append_text_item(result, short_name, url, text, max_chars, important=Tr
     result["summaries"].append(_sec_summarize(text) if important else [])
 
 
-def _sec_extract_notes_from_summary(session, folder, result, max_chars):
+def _sec_extract_notes_from_summary(session, folder, result, max_chars,
+                                    note_filter=None, deadline=None,
+                                    get_tries=3, get_timeout=30):
     """Fill result lists from FilingSummary.xml Notes; returns True if any note found."""
     import time
     from bs4 import BeautifulSoup
     try:
-        xml = _sec_get(session, f"{folder}/FilingSummary.xml")
+        xml = _sec_get(
+            session, f"{folder}/FilingSummary.xml",
+            tries=get_tries, timeout=get_timeout,
+        )
     except Exception:
         return False
     try:
@@ -1712,6 +1738,8 @@ def _sec_extract_notes_from_summary(session, folder, result, max_chars):
     reports = soup.find_all("Report") or soup.find_all("report")
     found = False
     for rep in reports:
+        if deadline is not None and time.monotonic() >= float(deadline):
+            break
         cat = _find(rep, "MenuCategory")
         if not cat or (cat.text or "").strip().lower() != "notes":
             continue
@@ -1720,10 +1748,14 @@ def _sec_extract_notes_from_summary(session, folder, result, max_chars):
             continue
         short = _find(rep, "ShortName")
         short_name = short.text if short else ""
+        if not _sec_note_matches_filter(short_name, note_filter):
+            continue
         url = f"{folder}/{htmf.text}"
         raw_html = ""
         try:
-            raw_html = _sec_get(session, url)
+            raw_html = _sec_get(
+                session, url, tries=get_tries, timeout=get_timeout,
+            )
             text = _sec_clean_note_text(raw_html)
         except Exception as e:  # noqa: BLE001
             text = f"(failed to fetch note: {e})"
@@ -1753,17 +1785,35 @@ def _sec_extract_primary_body(session, folder, primary_doc, form, filing_date, r
     return bool(text) and not text.startswith("(failed to fetch")
 
 
-def sec_report_notes(ticker="AAPL", form="10-K", max_chars=1500):
+def sec_report_notes(ticker="AAPL", form="10-K", max_chars=1500,
+                     note_filter=None, max_seconds=None):
     """Fetch a US stock's latest annual (10-K/20-F/40-F), interim (10-Q), or
     material disclosures (8-K/6-K) from SEC EDGAR. Annual/interim extract Notes;
     material filings fall back to primary-document body text.
-    Returns a dict of parallel lists that reticulate converts cleanly to R."""
+    Returns a dict of parallel lists that reticulate converts cleanly to R.
+
+    note_filter='segment' downloads only segment / revenue-disaggregation notes
+    (used by Business Breakdown Lab Search so the Shiny session is not blocked).
+    max_seconds is a wall-clock budget; remaining notes are skipped.
+    """
+    import time
     tk = str(ticker or "").strip().upper()
     form = str(form or "10-K").strip().upper()
     try:
         max_chars = int(max_chars)
     except Exception:
         max_chars = 1500
+    deadline = None
+    if max_seconds is not None:
+        try:
+            budget = float(max_seconds)
+            if budget > 0:
+                deadline = time.monotonic() + budget
+        except Exception:
+            deadline = None
+    segment_fast = str(note_filter or "").strip().lower() in ("segment", "segments")
+    get_tries = 1 if segment_fast else 3
+    get_timeout = 12 if segment_fast else 30
     if not tk:
         return _sec_empty_result("empty ticker")
     if form not in _SEC_FORM_CANDIDATES:
@@ -1776,7 +1826,10 @@ def sec_report_notes(ticker="AAPL", form="10-K", max_chars=1500):
         session = _sec_session()
 
         # 1. ticker -> CIK
-        tickers = _sec_get(session, _SEC_TICKERS_URL, is_json=True)
+        tickers = _sec_get(
+            session, _SEC_TICKERS_URL, is_json=True,
+            tries=get_tries, timeout=get_timeout,
+        )
         cik = None
         company = tk
         for row in tickers.values():
@@ -1788,7 +1841,10 @@ def sec_report_notes(ticker="AAPL", form="10-K", max_chars=1500):
             return _sec_empty_result(f"ticker '{tk}' not found on SEC EDGAR (US filers only)")
 
         # 2. CIK -> latest filing among form candidates (keeps filing-date order)
-        sub = _sec_get(session, _SEC_SUBMISSIONS_URL.format(cik=cik), is_json=True)
+        sub = _sec_get(
+            session, _SEC_SUBMISSIONS_URL.format(cik=cik), is_json=True,
+            tries=get_tries, timeout=get_timeout,
+        )
         recent = sub["filings"]["recent"]
         forms = recent["form"]
         has_10q = any(f == "10-Q" or str(f).startswith("10-Q") for f in forms)
@@ -1824,9 +1880,16 @@ def sec_report_notes(ticker="AAPL", form="10-K", max_chars=1500):
             "accession": str(accession),
             "primary_doc_url": f"{folder}/{primary_doc}",
         })
-        has_notes = _sec_extract_notes_from_summary(session, folder, result, max_chars)
+        has_notes = _sec_extract_notes_from_summary(
+            session, folder, result, max_chars,
+            note_filter=note_filter, deadline=deadline,
+            get_tries=get_tries, get_timeout=get_timeout,
+        )
         if not has_notes:
-            if _sec_is_material_form(form):
+            if segment_fast:
+                # Yahoo statements still render; missing segment notes is not a hard fail.
+                result["ok"] = True
+            elif _sec_is_material_form(form):
                 ok_body = _sec_extract_primary_body(
                     session, folder, primary_doc, form, filing_date, result, max_chars
                 )

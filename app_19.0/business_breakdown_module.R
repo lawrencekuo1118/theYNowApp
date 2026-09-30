@@ -414,6 +414,7 @@ business_breakdown_lab_server <- function(id = "bblab",
       source_status("running")
       focus_id(NULL)
 
+      tryCatch({
       withProgress(message = ui_msg("bblab_progress_running"), value = 0, {
         incProgress(0.1, detail = ui_msg("bblab_stage_resolve"))
         entity_name <- tk
@@ -472,8 +473,8 @@ business_breakdown_lab_server <- function(id = "bblab",
         notes <- NULL
         if (is.null(extra_disc) || !length(extra_disc)) {
           us_edgar <- !grepl("\\.(TW|TWO)$", tk, ignore.case = TRUE)
-          if (isTRUE(us_edgar) && exists("cached_fetch_sec_report_notes", mode = "function")) {
-            notes <- tryCatch(cached_fetch_sec_report_notes(tk, "10-K"), error = function(e) NULL)
+          if (isTRUE(us_edgar) && exists("cached_fetch_sec_segment_notes", mode = "function")) {
+            notes <- tryCatch(cached_fetch_sec_segment_notes(tk, "10-K"), error = function(e) NULL)
           }
         }
         payload <- bblab_payload_from_statements(
@@ -537,6 +538,14 @@ business_breakdown_lab_server <- function(id = "bblab",
             duration = 8
           )
         }
+      })
+      }, error = function(e) {
+        source_status("statements_unavailable")
+        showNotification(
+          paste0(ui_msg("bblab_source_unavailable"), " ", conditionMessage(e)),
+          type = "warning",
+          duration = 8
+        )
       })
     })
 
