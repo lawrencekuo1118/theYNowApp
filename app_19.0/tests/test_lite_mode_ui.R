@@ -54,6 +54,17 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl('tabName = "macro_market"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_menu_macro", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-macro-report", txt, fixed = TRUE))
+  # Theme Rolling β vs benchmark is removed from Macro (Full and Lite)
+  testthat::expect_false(grepl("ynow_macro_beta_title", txt, fixed = TRUE))
+  testthat::expect_false(grepl("macro_beta_title", txt, fixed = TRUE))
+  testthat::expect_false(grepl("macro_beta_warn_title", txt, fixed = TRUE))
+  macro_path <- file.path("..", "macro_market_module.R")
+  macro_txt <- paste(readLines(macro_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  testthat::expect_false(grepl("Theme Rolling β vs benchmark", macro_txt, fixed = TRUE))
+  testthat::expect_false(grepl("ynow_macro_beta_title", macro_txt, fixed = TRUE))
+  testthat::expect_false(grepl("output$beta_plot", macro_txt, fixed = TRUE))
+  testthat::expect_false(grepl("output$beta_kpi", macro_txt, fixed = TRUE))
+  testthat::expect_true(grepl("macro_rolling_beta_path", macro_txt, fixed = TRUE))
   # Macro tab must appear before Dashboard in sidebar markup
   testthat::expect_true(
     regexpr('tabName = "macro_market"', txt, fixed = TRUE)[1] <

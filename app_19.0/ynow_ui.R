@@ -3598,9 +3598,6 @@ ui <- dashboardPage(
             setBtText('ynow_macro_theme_label', 'macro_theme_label');
             setBtText('ynow_macro_period_label', 'macro_period_label');
             setBtText('ynow_macro_fx_lock', 'macro_fx_lock');
-            setBtText('ynow_macro_beta_title', 'macro_beta_title');
-            setBtText('ynow_macro_beta_warn_title', 'macro_beta_warn_title');
-            setBtText('ynow_macro_beta_warn_body', 'macro_beta_warn_body');
             setBtText('ynow_macro_bubble_title', 'macro_bubble_title');
             setBtText('ynow_macro_bubble_sub', 'macro_bubble_sub');
             setBtText('ynow_macro_bubble_topn_label', 'macro_bubble_topn_label');

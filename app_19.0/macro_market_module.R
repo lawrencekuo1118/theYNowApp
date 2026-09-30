@@ -3,7 +3,7 @@
 #
 # 訂閱全域 market_mode（US／TW），不另建市場開關。
 # 指數／板塊歷史序列維持 Yahoo 原始報價幣別，不做歷史 FX 換算。
-# 本頁 Rolling β 僅供交叉檢驗，絕不可寫入 CAPM／Ke／WACC。
+# Theme vs benchmark overlay 與泡沫／集中度僅供研究顯示，絕不可寫入 CAPM／Ke／WACC。
 # ==========================================
 
 # ---- Catalogs (no FX; Yahoo native quotes) ----
@@ -214,7 +214,7 @@ macro_market_ui <- function(id = "macro") {
         class = "ynow-macro-report__lead",
         paste0(
           "Follows the global US / TW market toggle. Index and theme price series stay in Yahoo’s native quote currency—",
-          "no historical FX conversion. Rolling β here is a cross-check only and never feeds CAPM / Ke / WACC."
+          "no historical FX conversion."
         )
       )
     ),
@@ -270,35 +270,7 @@ macro_market_ui <- function(id = "macro") {
       )
     ),
     # Dynamic bubble & concentration (isolated from CAPM / valuation engines)
-    macro_bubble_chapter_ui(ns),
-    tags$section(
-      class = "ynow-macro-chapter",
-      tags$h3(id = "ynow_macro_beta_title", "Theme Rolling β vs benchmark"),
-      tags$div(
-        class = "ynow-macro-callout ynow-macro-callout--warn",
-        tags$b(id = "ynow_macro_beta_warn_title", "Cross-check only — not a CAPM input"),
-        tags$p(
-          id = "ynow_macro_beta_warn_body",
-          paste0(
-            "Rolling β embeds market sentiment and event noise. Use it to sanity-check sensitivity; ",
-            "do not paste it into DCF / RI discount rates. Core Ke / WACC keep Bottom-Up or manual β."
-          )
-        )
-      ),
-      fluidRow(
-        class = "ynow-macro-kpi-row",
-        column(
-          width = 3,
-          class = "col-xs-12 col-sm-4 col-md-3",
-          uiOutput(ns("beta_kpi"))
-        ),
-        column(
-          width = 9,
-          class = "col-xs-12 col-sm-8 col-md-9",
-          plotlyOutput(ns("beta_plot"), height = "280px") %>% shinycssloaders::withSpinner()
-        )
-      )
-    )
+    macro_bubble_chapter_ui(ns)
   )
 }
 
@@ -580,53 +552,8 @@ macro_market_server <- function(id = "macro",
       )
     })
 
-    beta_path <- reactive({
-      od <- overlay_data()
-      req(!is.null(od$theme), !is.null(od$bench))
-      th <- data.frame(Date = od$theme$Date, Close = od$theme$Close)
-      bh <- data.frame(Date = od$bench$Date, Close = od$bench$Close)
-      macro_rolling_beta_path(th, bh, lookback_months = 36L)
-    })
-
-    output$beta_kpi <- renderUI({
-      bp <- beta_path()
-      last_b <- if (!is.null(bp) && nrow(bp)) {
-        tail(bp$Beta[is.finite(bp$Beta)], 1)
-      } else {
-        NA_real_
-      }
-      tags$div(
-        class = "ynow-macro-kpi ynow-macro-kpi--beta",
-        tags$div(class = "ynow-macro-kpi__label", .ui("macro_beta_latest")),
-        tags$div(
-          class = "ynow-macro-kpi__value",
-          if (is.finite(last_b)) sprintf("%.2f", last_b) else "—"
-        ),
-        tags$div(
-          class = "ynow-macro-hint",
-          .ui("macro_beta_kpi_hint")
-        )
-      )
-    })
-
-    output$beta_plot <- plotly::renderPlotly({
-      bp <- beta_path()
-      shiny::validate(shiny::need(!is.null(bp) && nrow(bp) > 2L, .ui("macro_beta_need_data")))
-      fig <- plotly::plot_ly(
-        bp, x = ~Date, y = ~Beta,
-        type = "scatter", mode = "lines",
-        name = "Rolling β",
-        line = list(color = "#2980b9", width = 2)
-      )
-      plotly::layout(
-        fig,
-        title = list(text = .ui("macro_beta_chart_title"), font = list(size = 13)),
-        xaxis = list(title = ""),
-        yaxis = list(title = "β", zeroline = TRUE),
-        margin = list(l = 50, r = 20, t = 40, b = 40),
-        showlegend = FALSE
-      )
-    })
+    # Macro-page theme-vs-benchmark β chart is no longer rendered.
+    # Keep macro_rolling_beta_path() + estimate_rolling_beta() for CAPM / HFV / backtest.
 
     # ---- Bubble & concentration (isolated; display-only) ----
     bubble_data <- reactive({
