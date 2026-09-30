@@ -8,5 +8,5 @@ short=76401b6
 message=chore: bump display version to v19.03
 captured_at=2026-09-30T03:15:44Z
 source_branch=cursor/lifecycle-v19-3fb1
-display_version=v19.03
+display_version=v19.04
 note=Canonical live line is app_19.0. Bundle 12625565 = v19.03 Macro tab Theme Rolling β vs benchmark UI removed (engine kept). Deploy via scripts/deploy_app_19.R. Supersedes 12625507.
