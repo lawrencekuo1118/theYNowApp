@@ -66,6 +66,26 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl("ynow-hfv-toolbar", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-chapter", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_hfv_ch1_title", txt, fixed = TRUE))
+  # Chart overlay models sit in Section I body immediately above the timeline chart
+  testthat::expect_true(grepl("ynow_hfv_chart_overlay_controls", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-hfv-toolbar--above-chart", txt, fixed = TRUE))
+  pos_overlay <- regexpr("ynow_hfv_chart_overlay_controls", txt, fixed = TRUE)[1]
+  pos_chart <- regexpr('plotlyOutput\\(\"bt_hfv_timeline\"', txt, perl = TRUE)[1]
+  testthat::expect_true(is.finite(pos_overlay) && pos_overlay > 0)
+  testthat::expect_true(is.finite(pos_chart) && pos_chart > 0)
+  testthat::expect_true(pos_overlay < pos_chart)
+  # Overlay controls are no longer in the main report toolbar block after Section I
+  toolbar_block <- regmatches(
+    txt,
+    regexpr(
+      'id = \"ynow_hfv_toolbar\"[\\s\\S]*?id = \"ynow_hfv_ch2_kicker\"',
+      txt,
+      perl = TRUE
+    )
+  )
+  testthat::expect_true(length(toolbar_block) == 1L && nzchar(toolbar_block))
+  testthat::expect_false(grepl("bt_fv_models", toolbar_block, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-hfv-toolbar", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-backtest-report", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-backtest-toolbar", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-backtest-zone-band", txt, fixed = TRUE))
