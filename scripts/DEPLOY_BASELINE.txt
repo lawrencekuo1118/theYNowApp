@@ -8,5 +8,5 @@ short=5b056c1
 message=Rewrite HCCSI as a statement-and-market development composite.
 captured_at=2026-09-30T14:16:04Z
 source_branch=cursor/hccsi-tech-composite-3fb1
-display_version=v19.37
+display_version=v19.38
 note=Canonical live line is app_19.0. Bundle 12627966 = v19.37 HCCSI rewritten as tech-stack development expectation: Statement + Market vs benchmark + Influence (β/excess) + Trajectory vs own history. Outperformance can raise the composite. Deploy via scripts/deploy_app_19.R. Supersedes 12627846 / 12627644 / 12627610 / 12627556 / 12627405 / 12627312 / 12627150 / 12627127 / 12627082 / 12627038 / 12626909 / 12626822 / 12626810 / 12626794 / 12626772 / 12626690 / 12626668 / 12626547 / 12626454 / 12626418 / 12626362 / 12626262 / 12626032 / 12625997 / 12625985 / 12625973 / 12625956 / 12625916 / 12625890 / 12625810 / 12625762 / 12625733 / 12625709 / 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
