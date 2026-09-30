@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12623292
+bundleId=12625332
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=e7aaac231bdc7f4128421cb56e599f5643c10f04
-commit=e7aaac231bdc7f4128421cb56e599f5643c10f04
-short=e7aaac2
-message=chore: bump display version to v18.13
-captured_at=2026-09-29T16:42:08Z
-source_branch=master
-display_version=v18.13
-note=Canonical live line is app_18.0. Bundle 12623292 = v18.13 Macro logo blue-green theme + black/gold KPIs. Deploy via scripts/deploy_app_18.R. Supersedes 12623271.
+aligned_git=67547fbcd4027dad5ac5b7aa5fed0f95f9f368ae
+commit=67547fbcd4027dad5ac5b7aa5fed0f95f9f368ae
+short=67547fb
+message=feat: v19 Lifecycle Classification with single-source scoring
+captured_at=2026-09-30T01:58:38Z
+source_branch=cursor/lifecycle-v19-3fb1
+display_version=v19
+note=Canonical live line is app_19.0. Bundle 12625332 = v19 Lifecycle Classification (multi-factor scoring, existing recommendation + valuation_guard). Deploy via scripts/deploy_app_19.R. Supersedes 12623292.
