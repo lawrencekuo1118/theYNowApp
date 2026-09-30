@@ -8,5 +8,5 @@ short=b3957bb
 message=Align Lab card revenue units so pie shares are not 0.0%.
 captured_at=2026-09-30T09:20:43Z
 source_branch=cursor/bblab-into-testing-3fb1
-display_version=v19.25
+display_version=v19.26
 note=Canonical live line is app_19.0. Bundle 12626794 = v19.25 Lab business cards: segment millions are aligned to reported consolidated dollars so Revenue (x%) and the composition donut use the same units (no 0.0% / recon-dominated pie); Operating income stays supplemental and is never Gross Profit; CoR/GP/GM stay Not reliably estimable without a disclosed basis (name-matched product CoR maps; revenue-share remains opt-in LOW); reval UNAVAILABLE does not block cards, %, or chart. Also keeps v19.24 Lab Testing UI without the 9-step Progress stepper; v19.23 Lab Search maps filed 10-K operating-segment tables to multiple business cards; v19.22 Lab nested inside Testing (no sidebar BBL item); v19.21 reval-unavailable scoped degradation. Deploy via scripts/deploy_app_19.R. Supersedes 12626772 / 12626690 / 12626668 / 12626547 / 12626454 / 12626418 / 12626362 / 12626262 / 12626032 / 12625997 / 12625985 / 12625973 / 12625956 / 12625916 / 12625890 / 12625810 / 12625762 / 12625733 / 12625709 / 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
