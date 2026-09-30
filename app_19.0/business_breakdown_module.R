@@ -30,6 +30,62 @@ if (!exists("%||%", mode = "function")) {
   sprintf("%.1f%%", num)
 }
 
+.bblab_snapshot_is_html <- function(cons, locale = "en",
+                                    statement_currency = NA_character_,
+                                    period = NA_character_) {
+  if (is.null(cons) || !is.list(cons)) return(NULL)
+  msg <- function(k) .bblab_ui(k, locale)
+  gm <- if (.bblab_finite(cons$revenue) && .bblab_finite(cons$gp) && cons$revenue != 0) {
+    cons$gp / cons$revenue
+  } else NA_real_
+  ccy <- cons$currency %||% statement_currency
+  per <- cons$period %||% period
+  if (!nzchar(.bblab_chr(ccy))) ccy <- "—"
+  if (!nzchar(.bblab_chr(per))) per <- "—"
+  line <- function(op, lab, amt, formula = NULL, extra = NULL) {
+    tags$tr(
+      class = paste(c("ynow-bblab-is__row", extra), collapse = " "),
+      tags$td(class = "ynow-bblab-is__op", op),
+      tags$td(class = "ynow-bblab-is__lab", lab),
+      tags$td(class = "ynow-bblab-is__amt", amt),
+      tags$td(class = "ynow-bblab-is__fml", if (nzchar(formula %||% "")) formula else "")
+    )
+  }
+  rows <- list(
+    line("", msg("bblab_kpi_revenue"), .bblab_fmt_amt(cons$revenue)),
+    line("\u2212", msg("bblab_kpi_cor"), .bblab_fmt_amt(cons$cor)),
+    line("=", msg("bblab_kpi_gp"), .bblab_fmt_amt(cons$gp),
+         msg("bblab_formula_gp"), "ynow-bblab-is__row--total"),
+    line("", msg("bblab_kpi_gm"), .bblab_fmt_pct(gm),
+         msg("bblab_formula_gm"), "ynow-bblab-is__row--ratio")
+  )
+  if (.bblab_finite(cons$ni)) {
+    rows[[length(rows) + 1L]] <- line(
+      "", msg("bblab_kpi_ni"), .bblab_fmt_amt(cons$ni), extra = "ynow-bblab-is__row--ni"
+    )
+  }
+  tags$div(
+    class = "ynow-bblab-is",
+    tags$div(
+      class = "ynow-bblab-is__meta",
+      tags$span(
+        class = "ynow-bblab-is__meta-item",
+        tags$span(class = "ynow-bblab-is__meta-lab", msg("bblab_period_label")),
+        tags$span(class = "ynow-bblab-is__meta-val", per)
+      ),
+      tags$span(
+        class = "ynow-bblab-is__meta-item",
+        tags$span(class = "ynow-bblab-is__meta-lab", msg("bblab_statement_ccy_label")),
+        tags$span(class = "ynow-bblab-is__meta-val", ccy)
+      )
+    ),
+    tags$table(
+      class = "ynow-bblab-is__table",
+      tags$tbody(rows)
+    )
+  )
+}
+
 .bblab_neutral_class <- function(classification) {
   classification %in% c("OTHER", "UNALLOCATED", "RECONCILIATION", "ROUNDING")
 }
@@ -176,7 +232,10 @@ business_breakdown_lab_ui <- function(id = "bblab") {
         width = 12, status = "info", solidHeader = TRUE,
         `data-bblab-chapter` = "1",
         tags$p(id = "ynow_bblab_ch1_help", class = "help-block",
-               "Reported consolidated totals in statement currency. This is the whole firm, before any business split."),
+               paste0(
+                 "Reported consolidated Income Statement totals in statement currency. ",
+                 "Gross Profit = Revenue − Cost of Revenue. This is the whole firm, before any business split."
+               )),
         uiOutput(ns("snapshot"))
       )
     ),
@@ -614,26 +673,11 @@ business_breakdown_lab_server <- function(id = "bblab",
       if (is.null(res)) {
         return(tags$p(class = "help-block", ui_msg("bblab_waiting")))
       }
-      cons <- res$consolidated %||% list()
-      gm <- if (.bblab_finite(cons$revenue) && .bblab_finite(cons$gp) && cons$revenue != 0) {
-        cons$gp / cons$revenue
-      } else NA_real_
-      kpi <- function(lab, val, unit = NULL) {
-        tags$div(
-          class = "ynow-bblab-kpi",
-          tags$span(class = "ynow-bblab-kpi__lab", lab),
-          tags$span(class = "ynow-bblab-kpi__val", val),
-          if (!is.null(unit)) tags$span(class = "ynow-bblab-kpi__unit", unit) else NULL
-        )
-      }
-      tags$div(
-        class = "ynow-bblab-kpis",
-        kpi(ui_msg("bblab_kpi_revenue"), .bblab_fmt_amt(cons$revenue), cons$currency %||% res$statement_currency),
-        kpi(ui_msg("bblab_kpi_cor"), .bblab_fmt_amt(cons$cor), cons$currency %||% res$statement_currency),
-        kpi(ui_msg("bblab_kpi_gp"), .bblab_fmt_amt(cons$gp), cons$currency %||% res$statement_currency),
-        kpi(ui_msg("bblab_kpi_gm"), .bblab_fmt_pct(gm)),
-        kpi(ui_msg("bblab_period_label"), cons$period %||% res$period %||% "—"),
-        kpi(ui_msg("bblab_statement_ccy_label"), cons$currency %||% res$statement_currency %||% "—")
+      .bblab_snapshot_is_html(
+        res$consolidated %||% list(),
+        locale = loc(),
+        statement_currency = res$statement_currency,
+        period = res$period
       )
     })
 

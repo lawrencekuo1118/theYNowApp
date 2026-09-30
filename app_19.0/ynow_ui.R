@@ -2351,6 +2351,63 @@ ui <- dashboardPage(
           color: #666;
           margin-left: 4px;
         }
+        .ynow-bblab-is {
+          margin: 8px 0 4px 0;
+          max-width: 720px;
+        }
+        .ynow-bblab-is__meta {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 12px 28px;
+          margin: 0 0 10px 0;
+          color: #4a5b66;
+          font-size: 13px;
+        }
+        .ynow-bblab-is__meta-lab {
+          font-weight: 700;
+          margin-right: 6px;
+        }
+        .ynow-bblab-is__table {
+          width: 100%;
+          border-collapse: collapse;
+          font-variant-numeric: tabular-nums;
+        }
+        .ynow-bblab-is__row td {
+          padding: 5px 8px;
+          vertical-align: baseline;
+        }
+        .ynow-bblab-is__op {
+          width: 1.6em;
+          color: #0C5484;
+          font-weight: 700;
+          text-align: center;
+        }
+        .ynow-bblab-is__lab {
+          color: #1a1a1a;
+        }
+        .ynow-bblab-is__amt {
+          text-align: right;
+          font-weight: 700;
+          white-space: nowrap;
+        }
+        .ynow-bblab-is__fml {
+          padding-left: 14px;
+          color: #5b6b75;
+          font-size: 12px;
+          white-space: nowrap;
+        }
+        .ynow-bblab-is__row--total td {
+          border-top: 1px solid #0C5484;
+          padding-top: 8px;
+        }
+        .ynow-bblab-is__row--ratio td {
+          color: #4a5b66;
+          font-weight: 500;
+        }
+        .ynow-bblab-is__row--ni td {
+          border-top: 1px dotted #c5d0d6;
+          padding-top: 10px;
+        }
         .ynow-bblab-split {
           margin: 0;
           padding-left: 1.2em;

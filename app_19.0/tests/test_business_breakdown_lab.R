@@ -539,7 +539,7 @@ for (k in c("menu_business_breakdown_lab", "bblab_experimental_badge", "bblab_pa
             "bblab_ch4_help",
             "bblab_ch4_limited", "bblab_geo_veto_why", "bblab_overlap_why",
             "bblab_history_yaxis", "bblab_kpi_revenue", "bblab_kpi_cor", "bblab_kpi_gp",
-            "bblab_kpi_gm",
+            "bblab_kpi_gm", "bblab_kpi_ni", "bblab_formula_gp", "bblab_formula_gm",
             "notif_bblab_required_fx_rate_missing", "notif_bblab_business_chart_single_component",
             "notif_bblab_business_history_insufficient_years")) {
   en <- .UI_STRINGS$en[[k]]
@@ -943,6 +943,32 @@ if (requireNamespace("shiny", quietly = TRUE)) {
           grepl("Gross Profit:", card_html, fixed = TRUE) &&
           grepl("1,000", card_html, fixed = TRUE) &&
           grepl("Revaluation ratio unavailable", card_html, fixed = TRUE))
+  snap_html <- paste(as.character(.bblab_snapshot_is_html(
+    rconsol$consolidated, "en", statement_currency = "USD", period = "2024"
+  )), collapse = " ")
+  snap_zh <- paste(as.character(.bblab_snapshot_is_html(
+    rconsol$consolidated, "zh-TW", statement_currency = "USD", period = "2024"
+  )), collapse = " ")
+  check("snapshot uses vertical IS accounting layout", {
+    grepl("ynow-bblab-is__table", snap_html, fixed = TRUE) &&
+      !grepl("ynow-bblab-kpis", snap_html, fixed = TRUE) &&
+      grepl("Revenue − Cost of Revenue", snap_html, fixed = TRUE) &&
+      grepl("Gross Profit / Revenue", snap_html, fixed = TRUE) &&
+      grepl("ynow-bblab-is__row--total", snap_html, fixed = TRUE) &&
+      grepl("Gross Profit = Revenue", .UI_STRINGS$en$bblab_ch1_help, fixed = TRUE) &&
+      grepl("Gross Profit = Revenue", .UI_STRINGS$`zh-TW`$bblab_ch1_help, fixed = TRUE) &&
+      identical(.UI_STRINGS$en$bblab_formula_gp, "Revenue − Cost of Revenue") &&
+      identical(.UI_STRINGS$`zh-TW`$bblab_formula_gp, "Revenue − Cost of Revenue") &&
+      grepl("Revenue − Cost of Revenue", snap_zh, fixed = TRUE)
+  })
+  ni_html <- paste(as.character(.bblab_snapshot_is_html(
+    list(revenue = 200, cor = 80, gp = 120, ni = 40, currency = "USD", period = "2024"),
+    "en"
+  )), collapse = " ")
+  check("snapshot shows Net Income when reported",
+        grepl("Net Income", ni_html, fixed = TRUE) &&
+          grepl("ynow-bblab-is__row--ni", ni_html, fixed = TRUE) &&
+          grepl("40", ni_html, fixed = TRUE))
 }
 
 note_tbl <- list(list(

@@ -1502,8 +1502,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_source_unavailable = "Statements could not be retrieved. Source-currency analysis is blocked until filings load.",
     bblab_ch1_title = "Consolidated statement snapshot",
     bblab_ch1_help = paste0(
-      "Reported consolidated totals in statement currency. This is the whole firm, ",
-      "before any business split."
+      "Reported consolidated Income Statement totals in statement currency. ",
+      "Gross Profit = Revenue − Cost of Revenue. This is the whole firm, before any business split."
     ),
     bblab_ch2_title = "How the statements split the business",
     bblab_ch2_help = paste0(
@@ -1541,6 +1541,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_kpi_cor = "Cost of Revenue",
     bblab_kpi_gp = "Gross Profit",
     bblab_kpi_gm = "Gross Margin",
+    bblab_kpi_ni = "Net Income",
+    bblab_formula_gp = "Revenue − Cost of Revenue",
+    bblab_formula_gm = "Gross Profit / Revenue",
     bblab_summary_title = "How the statements split the business",
     bblab_dimension_label = "Primary dimension",
     bblab_count_label = "Business count",
@@ -3116,7 +3119,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     bblab_source_unavailable = "無法取得財報。在申報資料載入前，來源幣別分析會被阻擋。",
     bblab_ch1_title = "合併財報總覽",
-    bblab_ch1_help = "以財報幣別呈現的合併數。這是整家公司，尚未依業務切分。",
+    bblab_ch1_help = paste0(
+      "以財報幣別呈現的合併損益表合計。Gross Profit = Revenue − Cost of Revenue。",
+      "這是整家公司，尚未依業務切分。"
+    ),
     bblab_ch2_title = "財報如何切分業務",
     bblab_ch2_help = paste0(
       "只選一個主要申報維度。僅描述客戶所在地的地區別不會被當作業務切分。",
@@ -3150,6 +3156,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_kpi_cor = "Cost of Revenue",
     bblab_kpi_gp = "Gross Profit",
     bblab_kpi_gm = "Gross Margin",
+    bblab_kpi_ni = "Net Income",
+    bblab_formula_gp = "Revenue − Cost of Revenue",
+    bblab_formula_gm = "Gross Profit / Revenue",
     bblab_summary_title = "財報如何切分業務",
     bblab_dimension_label = "主要維度",
     bblab_count_label = "事業數量",
