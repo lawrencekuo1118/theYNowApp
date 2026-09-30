@@ -3610,7 +3610,6 @@ ui <- dashboardPage(
             setBtText('ynow_macro_page_sub', 'macro_page_sub');
             setBtText('ynow_macro_rf_title', 'macro_rf_title');
             setBtText('ynow_macro_index_hint', 'macro_index_chart_hint');
-            setBtText('ynow_macro_rf_note', 'macro_rf_note');
             setBtText('ynow_macro_tw_signal_title', 'macro_tw_signal_title');
             setBtText('ynow_macro_theme_title', 'macro_theme_title');
             setBtText('ynow_macro_theme_help', 'macro_theme_help');
@@ -5738,6 +5737,13 @@ ui <- dashboardPage(
         .ynow-macro-chapter h4 {
           font-size: 14px;
           color: var(--ynow-macro-green);
+        }
+        .ynow-macro-chapter__lead {
+          margin: 0 0 12px 0;
+          max-width: 72em;
+        }
+        .ynow-macro-chapter > .ynow-notes {
+          margin-top: 10px;
         }
         .ynow-macro-card {
           background: #fff;

@@ -75,6 +75,53 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_false(grepl('ns("theme_key")', macro_txt, fixed = TRUE))
   testthat::expect_false(grepl("Industry / concept vs benchmark", macro_txt, fixed = TRUE))
   testthat::expect_false(grepl("ynow-lite-only", macro_txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow_macro_theme_help", macro_txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-macro-chapter__lead", macro_txt, fixed = TRUE))
+  testthat::expect_true(grepl("Pick Industry and Concept independently", macro_txt, fixed = TRUE))
+  .notes_calls <- function(src) {
+    calls <- character(0)
+    remaining <- src
+    repeat {
+      m <- regexpr("ynow_notes_block\\s*\\(", remaining)
+      if (m < 1L) break
+      start <- as.integer(m)
+      depth <- 0L
+      end <- nchar(remaining)
+      for (i in seq.int(start, nchar(remaining))) {
+        ch <- substr(remaining, i, i)
+        if (identical(ch, "(")) depth <- depth + 1L
+        if (identical(ch, ")")) {
+          depth <- depth - 1L
+          if (depth <= 0L) {
+            end <- i
+            break
+          }
+        }
+      }
+      calls <- c(calls, substr(remaining, start, end))
+      remaining <- substr(remaining, end + 1L, nchar(remaining))
+    }
+    calls
+  }
+  ui_start <- regexpr("macro_market_ui <- function", macro_txt, fixed = TRUE)[1]
+  ui_end <- regexpr("# ---- Server ----", macro_txt, fixed = TRUE)[1]
+  theme_ui <- if (ui_start > 0 && ui_end > ui_start) substr(macro_txt, ui_start, ui_end) else macro_txt
+  theme_start <- regexpr("ynow_macro_theme_title", theme_ui, fixed = TRUE)[1]
+  theme_end <- regexpr("# Bubble & concentration", theme_ui, fixed = TRUE)[1]
+  theme_sec <- if (theme_start > 0 && theme_end > theme_start) {
+    substr(theme_ui, theme_start, theme_end)
+  } else {
+    theme_ui
+  }
+  theme_notes <- .notes_calls(theme_sec)
+  testthat::expect_false(any(grepl("ynow_macro_theme_help", theme_notes, fixed = TRUE)))
+  testthat::expect_true(length(theme_notes) == 1L)
+  testthat::expect_true(grepl("ynow_macro_fx_lock", theme_notes[[1]], fixed = TRUE))
+  testthat::expect_true(
+    regexpr("overlay_plot", theme_sec, fixed = TRUE)[1] <
+      regexpr("ynow_notes_block", theme_sec, fixed = TRUE)[1]
+  )
+  testthat::expect_false(grepl("ynow_macro_theme_help\"[^\n]*ynow-full-only", theme_sec))
   testthat::expect_true(grepl("ynow_macro_idx_gspc", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_macro_idx_ixic", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_macro_idx_dji", macro_txt, fixed = TRUE))

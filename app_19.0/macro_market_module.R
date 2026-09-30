@@ -329,14 +329,14 @@ macro_market_ui <- function(id = "macro") {
     tags$section(
       class = "ynow-macro-chapter",
       tags$h3(id = "ynow_macro_theme_title", "Relative performance vs benchmark"),
-      ynow_notes_block(
-        tags$p(
-          id = "ynow_macro_theme_help",
-          class = "ynow-macro-hint",
-          paste0(
-            "Pick industry and concept independently (either, both, or neither). ",
-            "Benchmark is gray dashed on the right axis (rebased = 100 at window start; native currency, no FX)."
-          )
+      # Always-visible block chrome — not Notes / 附註. Currency-lock footnote stays below.
+      tags$p(
+        id = "ynow_macro_theme_help",
+        class = "ynow-macro-hint ynow-macro-chapter__lead",
+        paste0(
+          "Pick Industry and Concept independently (either, both, or neither). ",
+          "US industry uses GICS sector ETFs; concept uses the concept-stock universe. ",
+          "Benchmark is gray dashed on the right axis (rebased = 100 at window start; native currency, no FX)."
         )
       ),
       fluidRow(
@@ -659,15 +659,7 @@ macro_market_server <- function(id = "macro",
             id = "ynow_macro_rf_title",
             .ui("macro_rf_title")
           ),
-          uiOutput(ns("rf_box")),
-          ynow_notes_block(
-            locale = .loc(),
-            tags$p(
-              id = "ynow_macro_rf_note",
-              class = "ynow-macro-hint",
-              .ui("macro_rf_note")
-            )
-          )
+          uiOutput(ns("rf_box"))
         )
       )
       if (!identical(mode, "TW")) {

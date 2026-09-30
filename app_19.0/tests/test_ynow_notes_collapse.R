@@ -135,9 +135,37 @@ check("DC HFV footnote wrapped", grepl("dc_live_hfv_note", dc, fixed = TRUE) &&
         grepl("ynow_notes_block", dc, fixed = TRUE))
 
 macro <- paste(readLines("macro_market_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-check("Macro leftover notes", grepl("ynow_notes_block", macro, fixed = TRUE) &&
-        grepl("ynow_macro_theme_help", macro, fixed = TRUE) &&
-        grepl("ynow_macro_fx_lock", macro, fixed = TRUE))
+macro_ui_start <- regexpr("macro_market_ui <- function", macro, fixed = TRUE)[1]
+macro_ui_end <- regexpr("# ---- Server ----", macro, fixed = TRUE)[1]
+macro_ui <- if (macro_ui_start > 0 && macro_ui_end > macro_ui_start) {
+  substr(macro, macro_ui_start, macro_ui_end)
+} else {
+  macro
+}
+theme_start <- regexpr("ynow_macro_theme_title", macro_ui, fixed = TRUE)[1]
+theme_end <- regexpr("# Bubble & concentration", macro_ui, fixed = TRUE)[1]
+theme_sec <- if (theme_start > 0 && theme_end > theme_start) {
+  substr(macro_ui, theme_start, theme_end)
+} else {
+  macro_ui
+}
+theme_notes <- .notes_calls(theme_sec)
+check("Macro theme help present", grepl("ynow_macro_theme_help", theme_sec, fixed = TRUE))
+check("Macro theme help outside Notes", !any(grepl("ynow_macro_theme_help", theme_notes, fixed = TRUE)))
+check("Macro bottom Notes is fx lock", {
+  length(theme_notes) == 1L && grepl("ynow_macro_fx_lock", theme_notes[[1]], fixed = TRUE)
+})
+check("Macro no empty top Notes", {
+  pos_pick <- regexpr("industry_key", theme_sec, fixed = TRUE)[1]
+  pos_help <- regexpr("ynow_macro_theme_help", theme_sec, fixed = TRUE)[1]
+  pos_help > 0 && pos_pick > pos_help &&
+    !grepl("ynow_notes_block", substr(theme_sec, 1L, pos_pick), fixed = TRUE)
+})
+check("Macro Notes below chart", {
+  pos_plot <- regexpr("overlay_plot", theme_sec, fixed = TRUE)[1]
+  pos_notes <- regexpr("ynow_notes_block", theme_sec, fixed = TRUE)[1]
+  pos_plot > 0 && pos_notes > pos_plot
+})
 
 ui <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("applyUiLocale notes_title", grepl("ynow-notes__title", ui, fixed = TRUE))

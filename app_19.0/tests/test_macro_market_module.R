@@ -140,17 +140,108 @@ check("locale wires industry label", grepl("ynow_macro_industry_label", ui_src, 
 check("locale wires concept label", grepl("ynow_macro_concept_label", ui_src, fixed = TRUE))
 check("locale dropped combined theme label", !grepl("ynow_macro_theme_label", ui_src, fixed = TRUE))
 
-check("leftover theme help is notes", grepl("ynow_notes_block", txt, fixed = TRUE) &&
-        grepl("ynow_macro_theme_help", txt, fixed = TRUE))
-check("leftover fx lock is notes", grepl("ynow_macro_fx_lock", txt, fixed = TRUE))
-check("overlay plot not inside leftover notes", {
-  m <- regexpr("ynow_notes_block\\s*\\(", txt)
-  if (m < 1L) FALSE else {
-    chunk <- substr(txt, as.integer(m), as.integer(m) + 420L)
-    grepl("ynow_macro_theme_help", chunk, fixed = TRUE) &&
-      !grepl("overlay_plot", chunk, fixed = TRUE)
+.notes_calls <- function(src) {
+  calls <- character(0)
+  remaining <- src
+  repeat {
+    m <- regexpr("ynow_notes_block\\s*\\(", remaining)
+    if (m < 1L) break
+    start <- as.integer(m)
+    depth <- 0L
+    end <- nchar(remaining)
+    for (i in seq.int(start, nchar(remaining))) {
+      ch <- substr(remaining, i, i)
+      if (identical(ch, "(")) depth <- depth + 1L
+      if (identical(ch, ")")) {
+        depth <- depth - 1L
+        if (depth <= 0L) {
+          end <- i
+          break
+        }
+      }
+    }
+    calls <- c(calls, substr(remaining, start, end))
+    remaining <- substr(remaining, end + 1L, nchar(remaining))
+  }
+  calls
+}
+ui_start <- regexpr("macro_market_ui <- function", txt, fixed = TRUE)[1]
+ui_end <- regexpr("# ---- Server ----", txt, fixed = TRUE)[1]
+ui_fn <- if (ui_start > 0 && ui_end > ui_start) substr(txt, ui_start, ui_end) else txt
+theme_sec_start <- regexpr("ynow_macro_theme_title", ui_fn, fixed = TRUE)[1]
+theme_sec_end <- regexpr("# Bubble & concentration", ui_fn, fixed = TRUE)[1]
+theme_sec <- if (theme_sec_start > 0 && theme_sec_end > theme_sec_start) {
+  substr(ui_fn, theme_sec_start, theme_sec_end)
+} else {
+  ui_fn
+}
+theme_notes <- .notes_calls(theme_sec)
+check("theme help present", grepl("ynow_macro_theme_help", theme_sec, fixed = TRUE))
+check("theme help is chapter chrome", grepl("ynow-macro-chapter__lead", theme_sec, fixed = TRUE))
+check("theme help not in Notes", !any(grepl("ynow_macro_theme_help", theme_notes, fixed = TRUE)))
+check("theme help first-paint GICS", grepl("GICS sector ETFs", theme_sec, fixed = TRUE))
+check("theme help first-paint pick independently",
+      grepl("Pick Industry and Concept independently", theme_sec, fixed = TRUE))
+check("no empty top Notes before pickers", {
+  pos_help <- regexpr("ynow_macro_theme_help", theme_sec, fixed = TRUE)[1]
+  pos_pick <- regexpr("industry_key", theme_sec, fixed = TRUE)[1]
+  if (!(pos_help > 0 && pos_pick > pos_help)) {
+    FALSE
+  } else {
+    head <- substr(theme_sec, 1L, pos_pick)
+    !grepl("ynow_notes_block", head, fixed = TRUE)
   }
 })
+check("bottom Notes is currency lock", {
+  length(theme_notes) == 1L &&
+    grepl("ynow_macro_fx_lock", theme_notes[[1]], fixed = TRUE) &&
+    !grepl("ynow_macro_theme_help", theme_notes[[1]], fixed = TRUE)
+})
+check("bottom Notes after chart", {
+  pos_plot <- regexpr("overlay_plot", theme_sec, fixed = TRUE)[1]
+  pos_notes <- regexpr("ynow_notes_block", theme_sec, fixed = TRUE)[1]
+  pos_fx <- regexpr("ynow_macro_fx_lock", theme_sec, fixed = TRUE)[1]
+  is.finite(pos_plot) && pos_plot > 0 && pos_notes > pos_plot && pos_fx > pos_notes
+})
+check("overlay plot not inside leftover notes", !any(grepl("overlay_plot", theme_notes, fixed = TRUE)))
+check("pickers not inside leftover notes", !any(grepl("industry_key", theme_notes, fixed = TRUE)))
+check("theme help not lite-hidden", !grepl("ynow_macro_theme_help\"[^\n]*ynow-full-only", theme_sec))
+check("en theme help GICS", grepl("GICS", ui_str("macro_theme_help", "en"), fixed = TRUE))
+check("zh theme help GICS", grepl("GICS", ui_str("macro_theme_help", "zh-TW"), fixed = TRUE))
+check("en theme help Industry", grepl("Pick Industry and Concept independently",
+                                     ui_str("macro_theme_help", "en"), fixed = TRUE))
+check("zh theme help 獨立選單", grepl("獨立選單", ui_str("macro_theme_help", "zh-TW"), fixed = TRUE))
+check("zh theme help no simplified", !grepl("独立|菜单|数据", ui_str("macro_theme_help", "zh-TW")))
+if (requireNamespace("htmltools", quietly = TRUE) && exists("macro_market_ui", mode = "function")) {
+  ui_html <- tryCatch({
+    paste(as.character(macro_market_ui()), collapse = "")
+  }, error = function(e) "")
+  if (nzchar(ui_html)) {
+    help_pos <- regexpr("id=\"ynow_macro_theme_help\"", ui_html, fixed = TRUE)[1]
+    details <- gregexpr("<details[^>]*class=\"[^\"]*ynow-notes", ui_html)[[1]]
+    fx_pos <- regexpr("id=\"ynow_macro_fx_lock\"", ui_html, fixed = TRUE)[1]
+    plot_pos <- regexpr("overlay_plot", ui_html, fixed = TRUE)[1]
+    check("rendered theme help exists", help_pos > 0)
+    check("rendered theme help outside details", {
+      if (help_pos < 1L) {
+        FALSE
+      } else if (length(details) == 0L || details[1] < 0L) {
+        TRUE
+      } else {
+        !any(details < help_pos & (details + 400L) > help_pos)
+      }
+    })
+    check("rendered bottom Notes after plot", {
+      fx_in_details <- grepl(
+        "<details[^>]*class=\"[^\"]*ynow-notes[\\s\\S]*?ynow_macro_fx_lock",
+        ui_html
+      )
+      plot_pos > 0 && fx_pos > plot_pos && fx_in_details
+    })
+  } else {
+    check("macro_market_ui render skipped", TRUE)
+  }
+}
 check("overlay industry input", grepl('ns("industry_key")', txt, fixed = TRUE))
 check("overlay concept input", grepl('ns("concept_key")', txt, fixed = TRUE))
 check("combined overlay theme_key gone", !grepl('ns("theme_key")', txt, fixed = TRUE))
