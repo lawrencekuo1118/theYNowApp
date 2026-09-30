@@ -1,4 +1,4 @@
 {
-  "version": "v19.10",
+  "version": "v19.11",
   "note": "Bumped with display version on each ship; clients poll this to detect a newer deploy while keeping the current page open."
 }
