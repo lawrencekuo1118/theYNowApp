@@ -246,8 +246,8 @@ testthat::test_that("YNOW page title and three-block order are shared by Lite an
   source(file.path("..", "ui_locale.R"), local = TRUE)
   testthat::expect_identical(.UI_STRINGS$en$funnel_page_title, "YNOW")
   testthat::expect_identical(.UI_STRINGS$`zh-TW`$funnel_page_title, "YNOW")
-  testthat::expect_identical(.UI_STRINGS$en$funnel_ch1_title, "Quality screen (F-Score)")
-  testthat::expect_identical(.UI_STRINGS$`zh-TW`$funnel_ch1_title, "品質檢核（F-Score）")
+  testthat::expect_identical(.UI_STRINGS$en$funnel_ch1_title, "Statement quality")
+  testthat::expect_identical(.UI_STRINGS$`zh-TW`$funnel_ch1_title, "財報體質")
   testthat::expect_identical(.UI_STRINGS$en$funnel_ch2_title, "Statement alerts")
   testthat::expect_identical(.UI_STRINGS$`zh-TW`$funnel_ch2_title, "財報警訊")
   testthat::expect_identical(

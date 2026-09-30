@@ -39,7 +39,9 @@ for (k in keys) {
 }
 
 check("en term F-Score", identical(ui_str("funnel_vbox_fscore", "en"), "Quality screen (F-Score)"))
-check("zh-TW term F-Score 品質檢核", identical(ui_str("funnel_ch1_title", "zh-TW"), "品質檢核（F-Score）"))
+check("zh-TW term F-Score 品質檢核", identical(ui_str("funnel_vbox_fscore", "zh-TW"), "品質檢核 (F-Score)"))
+check("zh-TW block 財報體質", identical(ui_str("funnel_ch1_title", "zh-TW"), "財報體質"))
+check("en block Statement quality", identical(ui_str("funnel_ch1_title", "en"), "Statement quality"))
 check("en first mention Piotroski", grepl("Piotroski F-Score", ui_str("funnel_ch1_lead", "en"), fixed = TRUE))
 check("zh first mention Piotroski", grepl("Piotroski F-Score", ui_str("funnel_ch1_lead", "zh-TW"), fixed = TRUE))
 check("en quality screen not buy", grepl("quality screen", ui_str("funnel_ch1_lead", "en"), ignore.case = TRUE) &&
@@ -56,14 +58,12 @@ check("lab gate off uses F-Score", grepl("F-Score", ui_str("lab_im_gate_off", "e
 
 # Banned competing glosses in F-Score *labels* (not HFV 體質 prose)
 label_blob_zh <- paste(
-  ui_str("funnel_ch1_title", "zh-TW"),
   ui_str("funnel_fscore_list_title", "zh-TW"),
   ui_str("funnel_vbox_fscore", "zh-TW"),
   ui_str("dc_label_fscore", "zh-TW"),
   collapse = " "
 )
 label_blob_en <- paste(
-  ui_str("funnel_ch1_title", "en"),
   ui_str("funnel_fscore_list_title", "en"),
   ui_str("funnel_vbox_fscore", "en"),
   ui_str("dc_label_fscore", "en"),
