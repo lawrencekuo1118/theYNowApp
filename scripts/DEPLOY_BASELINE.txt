@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12626262
+bundleId=12626362
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=f1acc4bd7ca53fbb71590fd56efd421ebca24485
-commit=f1acc4bd7ca53fbb71590fd56efd421ebca24485
-short=f1acc4b
-message=Stop filling HCCSI with placeholder scores so the composite moves with the stated rules.
-captured_at=2026-09-30T06:39:24Z
+aligned_git=1f14d568ce31a3da0319a04bb004645bdce24b8b
+commit=1f14d568ce31a3da0319a04bb004645bdce24b8b
+short=1f14d56
+message=Add experimental Business Breakdown Lab as a Full-only sidebar page.
+captured_at=2026-09-30T07:13:06Z
 source_branch=cursor/lifecycle-v19-3fb1
 display_version=v19.18
-note=Canonical live line is app_19.0. Bundle 12626262 = v19.17 HCCSI audit: no placeholder/default composite (omit missing H/S/F/M and renormalize); live Yahoo/history required or Unavailable; logo teal/cyan animated flow fill on HCCSI numerals only. Also keeps v19.16 TW three boards (TAIEX/TPEx/0050), v19.15 HCCSI 1:1 beside Rf, v19.13 Rf Notes removal, v19.12 relative-perf help outside Notes, v19.11 F-Score boxes default-visible, page-lead outside Notes, v19.10 Lite Smart Analysis blurb, v19.09 Full-only Macro KPI click-to-chart, collapsible Notes, and YNOW KPI jump row. Deploy via scripts/deploy_app_19.R. Supersedes 12626032 / 12625997 / 12625985 / 12625973 / 12625956 / 12625916 / 12625890 / 12625810 / 12625762 / 12625733 / 12625709 / 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
+note=Canonical live line is app_19.0. Bundle 12626362 = v19.18 experimental Business Breakdown Lab (Full-only sidebar tab; company-agnostic engine; not wired into valuation/CV/FS). Also keeps v19.17 HCCSI audit (no placeholder/default composite; logo teal flow fill), v19.16 TW three boards (TAIEX/TPEx/0050), v19.15 HCCSI 1:1 beside Rf, v19.13 Rf Notes removal, v19.12 relative-perf help outside Notes, v19.11 F-Score boxes default-visible, page-lead outside Notes, v19.10 Lite Smart Analysis blurb, v19.09 Full-only Macro KPI click-to-chart, collapsible Notes, and YNOW KPI jump row. Deploy via scripts/deploy_app_19.R. Supersedes 12626262 / 12626032 / 12625997 / 12625985 / 12625973 / 12625956 / 12625916 / 12625890 / 12625810 / 12625762 / 12625733 / 12625709 / 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
