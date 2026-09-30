@@ -189,16 +189,11 @@ hccsi_kpi_box <- function(result, lite = FALSE, locale = "en", ns = NULL, select
 
 .hccsi_network_ui <- function(result, locale = "en") {
   ch <- result$contagion$channels %||% character(0)
-  persist <- result$contagion$persistent_issuers %||% character(0)
+  sep <- if (identical(as.character(locale)[1], "zh-TW")) "；" else ", "
   tags$div(
     class = "ynow-hccsi-network",
     tags$p(tags$b(.hccsi_ui("hccsi_contagion_paths", locale)), ": ",
-           if (length(ch)) {
-             sep <- if (identical(as.character(locale)[1], "zh-TW")) "；" else ", "
-             paste(vapply(ch, function(id) .hccsi_named("ch", id, locale), character(1)), collapse = sep)
-           } else .hccsi_ui("hccsi_contagion_none", locale)),
-    tags$p(tags$b(.hccsi_ui("hccsi_persistent_issuers", locale)), ": ",
-           if (length(persist)) paste(persist, collapse = ", ") else "—"),
+           paste(vapply(ch, function(id) .hccsi_named("ch", id, locale), character(1)), collapse = sep)),
     tags$p(class = "ynow-macro-hint", .hccsi_ui("hccsi_network_note", locale))
   )
 }
@@ -271,6 +266,7 @@ hccsi_methodology_notes <- function(locale = "en") {
 
 hccsi_expand_ui <- function(result, locale = "en") {
   if (is.null(result)) return(tags$p(class = "ynow-macro-hint", .hccsi_ui("hccsi_empty", locale)))
+  ch <- result$contagion$channels %||% character(0)
   tags$div(
     class = "ynow-macro-card ynow-hccsi-expand__card",
     tags$h4(id = "ynow_macro_hccsi_overview_title", .hccsi_ui("hccsi_overview_title", locale)),
@@ -284,8 +280,10 @@ hccsi_expand_ui <- function(result, locale = "en") {
     .hccsi_four_boxes(result, locale),
     tags$h4(id = "ynow_macro_hccsi_layer_title", .hccsi_ui("hccsi_layer_title", locale)),
     .hccsi_layer_table(result, locale),
-    tags$h4(id = "ynow_macro_hccsi_network_title", .hccsi_ui("hccsi_network_title", locale)),
-    .hccsi_network_ui(result, locale),
+    if (length(ch)) htmltools::tagList(
+      tags$h4(id = "ynow_macro_hccsi_network_title", .hccsi_ui("hccsi_network_title", locale)),
+      .hccsi_network_ui(result, locale)
+    ),
     .hccsi_in_composite_block(result, locale),
     tags$h4(id = "ynow_macro_hccsi_method_title", .hccsi_ui("hccsi_method_title", locale)),
     hccsi_methodology_notes(locale)

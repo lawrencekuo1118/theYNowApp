@@ -357,7 +357,16 @@ if (requireNamespace("htmltools", quietly = TRUE) && requireNamespace("shiny", q
   if (!is.null(exp_zh)) {
     html_zh <- paste(as.character(exp_zh), collapse = " ")
     check("expand zh uses 企業資料庫", grepl("企業資料庫", html_zh, fixed = TRUE))
-    check("expand zh uses 連鎖降溫路徑", grepl("連鎖降溫路徑", html_zh, fixed = TRUE))
+    check("expand zh hides cooling when no path", !grepl("連鎖降溫", html_zh, fixed = TRUE) &&
+      !grepl("相對歷史仍在降溫", html_zh, fixed = TRUE) &&
+      !grepl("Issuers still cooling", html_zh, fixed = TRUE))
+    exp_path <- tryCatch(hccsi_expand_ui(sc11, "zh-TW"), error = function(e) NULL)
+    if (!is.null(exp_path)) {
+      html_path <- paste(as.character(exp_path), collapse = " ")
+      check("expand zh shows path when lit", grepl("連鎖降溫路徑", html_path, fixed = TRUE) &&
+        grepl("連鎖降溫", html_path, fixed = TRUE))
+      check("expand zh path omits issuer list", !grepl("相對歷史仍在降溫", html_path, fixed = TRUE))
+    } else check("expand zh shows path when lit", FALSE)
     check("expand zh uses 環節", grepl("環節", html_zh, fixed = TRUE))
     check("expand zh no raw enterprise_dbs cell", !grepl(">enterprise_dbs<", html_zh, fixed = TRUE))
     check("expand zh formula banner", grepl("HCCSI = 0.30", html_zh, fixed = TRUE))

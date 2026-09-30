@@ -1350,7 +1350,6 @@ locale_for_market <- function(mode = get_market_mode()) {
     hccsi_empty = "HCCSI is not available.",
     hccsi_contagion_paths = "Linked stages cooling together",
     hccsi_contagion_none = "No linked stages cooling together",
-    hccsi_persistent_issuers = "Issuers still cooling vs history",
     hccsi_network_note = paste0(
       "A path lights when enough linked stages are cooling at the same time ",
       "(combined statement / market / trajectory reading below the cooling line). ",
@@ -3022,7 +3021,6 @@ locale_for_market <- function(mode = get_market_mode()) {
     hccsi_empty = "目前無法計算 HCCSI。",
     hccsi_contagion_paths = "連鎖降溫路徑",
     hccsi_contagion_none = "沒有相鄰環節一起降溫",
-    hccsi_persistent_issuers = "相對歷史仍在降溫的發行人",
     hccsi_network_note = paste0(
       "路徑在「綁在一起的環節裡，夠多家同時低於降溫線」時才會點亮。",
       "單一發行人走弱，不代表整條鏈在收縮。"
