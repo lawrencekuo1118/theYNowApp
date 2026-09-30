@@ -8,5 +8,5 @@ short=7eaf85b
 message=chore: bump display version to v19.09
 captured_at=2026-09-30T04:04:03Z
 source_branch=cursor/lifecycle-v19-3fb1
-display_version=v19.09
+display_version=v19.10
 note=Canonical live line is app_19.0. Bundle 12625762 = v19.09 Full-only Macro KPI click-to-chart (S&P 500 / Nasdaq / Dow Jones / SOX → Yahoo ^GSPC ^IXIC ^DJI ^SOX history above Rf (10Y), both market modes). Also includes collapsible Notes and YNOW KPI jump row. Deploy via scripts/deploy_app_19.R. Supersedes 12625733 / 12625709 / 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
