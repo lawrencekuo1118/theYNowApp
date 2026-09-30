@@ -1263,13 +1263,30 @@ def _sec_is_material_form(form):
 
 
 def _sec_segment_kind(short_name):
-    """Map a filing-note title to a generic disclosure kind. None = skip tables."""
+    """Map a filing-note title to a generic disclosure kind. None = skip tables.
+
+    Geography footnotes (customer location / countries) are not ASC 280 operating
+    segments even when the XBRL title is nested under "Segment Information - …".
+    Non-revenue rollforwards (goodwill, PP&E, D&A) are skipped.
+    """
     s = (short_name or "").lower()
     if any(h in s for h in ("insider trading", "cybersecurity")):
         return None
-    if any(k in s for k in ("geograph", "by country", "by region", "customer location")):
+    if any(k in s for k in (
+        "goodwill", "intangible", "property and equipment",
+        "depreciation and amortization", "segment assets",
+        "net additions", "additional information",
+    )) and not any(k in s for k in ("net sales", "revenue", "operating income")):
+        return None
+    if any(k in s for k in (
+        "geograph", "by country", "by region", "customer location",
+        "attributed to countries", "countries representing",
+    )):
         return "geography"
-    if any(k in s for k in ("disaggregat", "revenue by", "net sales by", "net revenue by")):
+    if any(k in s for k in (
+        "disaggregat", "revenue by", "net sales by", "net revenue by",
+        "groups of similar",
+    )):
         return "revenue_disaggregation"
     if "product" in s or "service" in s:
         return "product_service"
@@ -1278,29 +1295,353 @@ def _sec_segment_kind(short_name):
     return None
 
 
+_SEC_YEAR_TOKEN = _re.compile(r"^(19|20)\d{2}$")
+_SEC_CURRENCY_TOKEN = _re.compile(r"^[\$€£¥]$")
+_SEC_COUNTRY_NAME = _re.compile(
+    r"\b(united states|u\.s\.a?\.?|usa|germany|united kingdom|u\.k\.|japan|"
+    r"china|france|canada|taiwan|korea|australia|india|brazil|mexico|italy|"
+    r"spain|netherlands|switzerland|sweden|ireland|singapore|hong kong|"
+    r"rest of( the)? world|other countries)\b",
+    _re.IGNORECASE,
+)
+
+
+def _sec_int_attr(el, *names, default=1):
+    for nm in names:
+        raw = el.get(nm) if el is not None else None
+        if raw is None:
+            continue
+        try:
+            return max(1, int(raw))
+        except (TypeError, ValueError):
+            continue
+    return default
+
+
+def _sec_direct_rows(table):
+    """<tr> of this table only (do not walk nested tables)."""
+    out = []
+    for child in getattr(table, "children", []):
+        name = getattr(child, "name", None)
+        if name == "tr":
+            out.append(child)
+        elif name in ("tbody", "thead", "tfoot"):
+            for gc in getattr(child, "children", []):
+                if getattr(gc, "name", None) == "tr":
+                    out.append(gc)
+    if out:
+        return out
+    return table.find_all("tr", recursive=False)
+
+
+def _sec_table_grid(table):
+    """Expand colspan/rowspan into a rectangular grid of cell texts."""
+    occupancy = {}
+    trs = _sec_direct_rows(table)
+    for ri, tr in enumerate(trs):
+        cells = [
+            c for c in getattr(tr, "children", [])
+            if getattr(c, "name", None) in ("td", "th")
+        ]
+        if not cells:
+            cells = tr.find_all(["td", "th"], recursive=False)
+        col = 0
+        for cell in cells:
+            while (ri, col) in occupancy:
+                col += 1
+            txt = cell.get_text(" ", strip=True) if cell is not None else ""
+            cs = _sec_int_attr(cell, "colspan", "colSpan")
+            rs = _sec_int_attr(cell, "rowspan", "rowSpan")
+            for dr in range(rs):
+                for dc in range(cs):
+                    key = (ri + dr, col + dc)
+                    if key in occupancy:
+                        continue
+                    occupancy[key] = txt if dr == 0 and dc == 0 else ""
+            col += cs
+    if not occupancy:
+        return []
+    n_r = max(r for r, _c in occupancy) + 1
+    n_c = max(c for _r, c in occupancy) + 1
+    return [
+        [occupancy.get((r, c), "") for c in range(n_c)]
+        for r in range(n_r)
+    ]
+
+
+def _sec_parse_cell_number(text):
+    t = (text or "").strip()
+    if not t or _SEC_CURRENCY_TOKEN.match(t) or t in {
+        "—", "–", "-", "--", "n/a", "N/A", "nm", "NM",
+    }:
+        return None
+    neg = t.startswith("(") and t.endswith(")")
+    s = t.strip("()")
+    s = s.replace("$", "").replace("€", "").replace("£", "").replace("¥", "")
+    s = s.replace(",", "").replace("\xa0", "").replace(" ", "")
+    if not s or not _re.match(r"^-?\d+(\.\d+)?$", s):
+        return None
+    try:
+        n = float(s)
+    except ValueError:
+        return None
+    if neg and n > 0:
+        n = -n
+    return n
+
+
+def _sec_row_label_nums(row):
+    """Split a grid row into (label, amount list, year list), ignoring $ cells."""
+    label_parts = []
+    nums = []
+    years = []
+    seen_num = False
+    for c in row or []:
+        t = (c or "").strip()
+        if not t or _SEC_CURRENCY_TOKEN.match(t):
+            continue
+        if _SEC_YEAR_TOKEN.match(t):
+            years.append(int(t))
+            seen_num = True
+            continue
+        n = _sec_parse_cell_number(t)
+        if n is not None:
+            nums.append(n)
+            seen_num = True
+            continue
+        if not seen_num:
+            label_parts.append(t)
+    label = _re.sub(r"\s+", " ", " ".join(label_parts)).strip()
+    return label, nums, years
+
+
+def _sec_fmt_num(n):
+    if n is None or not isinstance(n, (int, float)):
+        return ""
+    if n != n:  # NaN
+        return ""
+    if abs(n - round(n)) < 1e-9:
+        return str(int(round(n)))
+    return ("%f" % n).rstrip("0").rstrip(".")
+
+
+def _sec_is_junk_grid(grid):
+    if not grid:
+        return True
+    for row in grid[:4]:
+        for c in row:
+            t = (c or "").strip()
+            if len(t) > 400:
+                return True
+            low = t.lower()
+            if low.startswith("- definition") or "xbrli:" in low:
+                return True
+            if low in {"x"} and len(grid) <= 8:
+                # XBRL metadata stub tables start with a lone "X"
+                blob = " ".join((x or "") for r in grid[:2] for x in r).lower()
+                if "definition" in blob or "namespace prefix" in blob:
+                    return True
+    return False
+
+
+def _sec_normalize_financial_table(grid):
+    """Rebuild year-column tables from a colspan-expanded grid.
+
+    Filed 10-K notes often put '$' in its own cell and use colspans, so column
+    indexes do not line up across rows. Collect label + numeric tokens instead.
+    """
+    parsed = [_sec_row_label_nums(r) for r in (grid or [])]
+    parsed = [p for p in parsed if p[0] or p[1] or p[2]]
+    if len(parsed) < 2:
+        return None
+    if any(len(p[0]) > 400 for p in parsed):
+        return None
+    year_vals = None
+    for _lab, nums, years in parsed:
+        if len(years) >= 2 and not nums:
+            year_vals = years
+            break
+        if len(years) >= 2:
+            year_vals = years
+            break
+        if len(nums) >= 2 and all(1900 < n < 2100 and float(n).is_integer() for n in nums):
+            if _lab.lower() in ("", "year ended", "december 31", "year ended december 31"):
+                year_vals = [int(n) for n in nums]
+                break
+    if not year_vals:
+        return None
+    n_y = len(year_vals)
+    headers = [""] + [str(y) for y in year_vals]
+    rows = []
+    for lab, nums, years in parsed:
+        if years and not nums and (not lab or "year ended" in lab.lower() or "december" in lab.lower()):
+            continue
+        if not lab and not nums:
+            continue
+        if nums:
+            amt = list(nums[:n_y])
+            if len(amt) < n_y:
+                amt = amt + [None] * (n_y - len(amt))
+            rows.append([lab] + [_sec_fmt_num(a) for a in amt])
+        else:
+            rows.append([lab] + [""] * n_y)
+    if len(rows) < 2:
+        return None
+    return {"headers": headers, "rows": rows}
+
+
 def _sec_html_tables(raw):
-    """Preserve filed HTML tables (amounts) that get_text() would otherwise flatten."""
+    """Preserve filed HTML tables (amounts) that get_text() would otherwise flatten.
+
+    Expands colspan/rowspan, drops XBRL definition stubs and narrative wrappers,
+    and normalizes year-column amount tables so '$' cells do not shift amounts.
+    """
     from bs4 import BeautifulSoup
     try:
         soup = BeautifulSoup(raw or "", "lxml")
     except Exception:
         soup = BeautifulSoup(raw or "", "html.parser")
     out = []
+    seen = set()
     for table in soup.find_all("table"):
-        rows = []
-        for tr in table.find_all("tr"):
-            cells = [c.get_text(" ", strip=True) for c in tr.find_all(["th", "td"])]
-            cells = [c for c in cells if c is not None]
-            if any(str(c).strip() for c in cells):
-                rows.append([str(c).strip() for c in cells])
-        if len(rows) < 2:
+        # Skip tables nested inside a table we already walked via descendants
+        parent_table = table.find_parent("table")
+        grid = _sec_table_grid(table)
+        if not grid or _sec_is_junk_grid(grid):
             continue
-        headers = rows[0]
-        body = rows[1:]
+        nonempty = [r for r in grid if any(str(c).strip() for c in r)]
+        if len(nonempty) < 2:
+            continue
+        normalized = _sec_normalize_financial_table(nonempty)
+        if normalized is not None:
+            headers = normalized["headers"]
+            body = normalized["rows"]
+        else:
+            # Keep raw grid (currency tokens stripped) for simple name/metric tables.
+            stripped = []
+            for r in nonempty:
+                cells = [
+                    c for c in ((x or "").strip() for x in r)
+                    if c and not _SEC_CURRENCY_TOKEN.match(c)
+                ]
+                if cells:
+                    stripped.append(cells)
+            if len(stripped) < 2:
+                continue
+            headers = stripped[0]
+            body = stripped[1:]
         if not any(body):
             continue
-        out.append({"headers": headers, "rows": body})
+        sig = (
+            tuple(headers),
+            tuple(tuple(r[:6]) for r in body[:6]),
+        )
+        if sig in seen:
+            continue
+        seen.add(sig)
+        item = {"headers": headers, "rows": body}
+        if parent_table is not None and normalized is None:
+            # Nested metadata tables inside a parent note wrapper.
+            blob = " ".join(headers + [c for r in body[:2] for c in r]).lower()
+            if "namespace prefix" in blob or "xbrli:" in blob:
+                continue
+        out.append(item)
     return out
+
+
+def _sec_detect_scale(raw_html):
+    t = (raw_html or "").lower()
+    if "in billions" in t or "$ billion" in t:
+        return 1e9
+    if "in millions" in t or "$ million" in t or "$ in millions" in t:
+        return 1e6
+    if "in thousands" in t or "$ thousand" in t:
+        return 1e3
+    return 1.0
+
+
+def _sec_norm_label(text):
+    s = _re.sub(r"[^a-z0-9]+", " ", (text or "").lower())
+    return _re.sub(r"\s+", " ", s).strip()
+
+
+def _sec_classify_extracted_table(short_name, note_kind, headers, rows):
+    """Per-table kind. Operating-segment P&L is never tagged geography."""
+    labels = [(r[0] if r else "") for r in (rows or [])]
+    norms = [_sec_norm_label(l) for l in labels]
+    lab_blob = " ".join(norms)
+
+    def is_rev_label(n):
+        return n in (
+            "net sales", "net revenue", "revenue", "sales", "total revenue",
+            "total net sales", "total net revenue",
+        ) or n.startswith("net sales")
+
+    has_ns = any(is_rev_label(n) for n in norms)
+    has_oi = any("operating income" in n or "operating profit" in n for n in norms)
+    skip_if_no_rev = (
+        "goodwill" in lab_blob
+        or "depreciation and amortization" in lab_blob
+        or "property and equipment" in lab_blob
+        or "net additions" in lab_blob
+        or ("segment assets" in lab_blob or "total segment assets" in lab_blob)
+    )
+    if skip_if_no_rev and not has_ns:
+        return None
+    date_banner = any(
+        n.startswith("year ended") or n.startswith("december") for n in norms
+    )
+    country_hits_preview = sum(1 for n in norms if _SEC_COUNTRY_NAME.search(n))
+    has_corporate = any("corporate" == n or n.startswith("corporate ") for n in norms)
+    # Balance-sheet / capex / D&A tables keep a date banner and segment names
+    # but no Net sales. Do not skip country footnotes that share the same banner.
+    if date_banner and not has_ns and not has_oi and country_hits_preview < 2:
+        return None
+    if has_corporate and not has_ns:
+        return None
+
+    skip_names = {
+        "consolidated", "total", "net sales", "net revenue", "revenue", "sales",
+        "operating income", "operating income loss", "operating profit",
+        "operating expenses", "operating expense", "cost of sales",
+        "cost of revenue", "gross profit", "net sales",
+    }
+    data_names = [
+        n for n in norms
+        if n and n not in skip_names
+        and not n.startswith("year ended")
+        and "december" not in n
+    ]
+    # Filed ASC 280 P&L (segment header rows + Net sales / Operating income).
+    if has_ns and has_oi:
+        return {
+            "kind": "operating_segment",
+            "layout": "grouped_metrics",
+            "is_customer_location_only": False,
+        }
+    country_hits = sum(1 for n in data_names if _SEC_COUNTRY_NAME.search(n))
+    if data_names and country_hits >= max(2, int(0.8 * len(data_names) + 0.999)):
+        return {
+            "kind": "geography",
+            "layout": "stub",
+            "is_customer_location_only": True,
+        }
+    has_ns_banner = any(
+        _re.match(r"net sales:?$", (l or "").strip(), _re.IGNORECASE) for l in labels
+    )
+    if has_ns_banner and not has_oi and len(data_names) >= 2:
+        return {
+            "kind": "revenue_disaggregation",
+            "layout": "stub",
+            "is_customer_location_only": False,
+        }
+    if note_kind:
+        return {
+            "kind": note_kind,
+            "layout": "stub",
+            "is_customer_location_only": note_kind == "geography",
+        }
+    return None
 
 
 def _sec_append_segment_tables(result, short_name, raw_html):
@@ -1310,17 +1651,26 @@ def _sec_append_segment_tables(result, short_name, raw_html):
     tables = _sec_html_tables(raw_html)
     if not tables:
         return
+    scale = _sec_detect_scale(raw_html)
     try:
         import json
         existing = json.loads(result.get("segment_tables_json") or "[]")
     except Exception:
         existing = []
     for tbl in tables:
+        headers = tbl.get("headers") or []
+        rows = tbl.get("rows") or []
+        role = _sec_classify_extracted_table(short_name, kind, headers, rows)
+        if not role:
+            continue
         existing.append({
             "short_name": str(short_name or ""),
-            "kind": kind,
-            "headers": tbl.get("headers") or [],
-            "rows": tbl.get("rows") or [],
+            "kind": role.get("kind") or kind,
+            "layout": role.get("layout") or "",
+            "is_customer_location_only": bool(role.get("is_customer_location_only")),
+            "scale": scale,
+            "headers": headers,
+            "rows": rows,
         })
     try:
         import json

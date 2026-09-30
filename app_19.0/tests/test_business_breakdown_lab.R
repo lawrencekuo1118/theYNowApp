@@ -136,6 +136,8 @@ two_seg_level_a <- function() {
 # =====================================================================
 check("01 engine has no TSM ticker branch",
       !grepl("TSM|2330|N3|N5|N7|HPC", engine_src) && !grepl("TSM|2330", schema_src))
+check("01 engine has no AMZN ticker branch",
+      !grepl("AMZN|Amazon", engine_src) && !grepl("AMZN|Amazon", schema_src))
 check("01 yaml has no ticker list", {
   yml <- paste(readLines("business_breakdown_config.yaml", warn = FALSE), collapse = "\n")
   !grepl("tickers:", yml) && grepl("major_share: 0.10", yml) && grepl("min_display_percentage: 0.03", yml)
@@ -699,13 +701,140 @@ check("vetoed geography does not hide reported cards",
 engine_src2 <- paste(readLines("business_breakdown_engine.R", warn = FALSE, encoding = "UTF-8"),
                      collapse = "\n")
 check("engine still has no ticker branches after extract helpers",
-      !grepl("TSM|2330|N3|N5|N7|HPC", engine_src2))
+      !grepl("TSM|2330|N3|N5|N7|HPC|AMZN|Amazon", engine_src2))
 check("shared opex from IS not on GP cards",
       is.finite(search_two$shared_corporate$rd) &&
         all(vapply(rsrch$businesses, function(c) is.null(c$rd) && is.null(c$ga), logical(1))))
 check("module skips reval unavailable page toast",
       grepl("BUSINESS_REVALUATION_UNAVAILABLE", mod_src, fixed = TRUE) &&
         grepl("Scoped degradation", mod_src, fixed = TRUE))
+
+# ---- Recorded 10-K-like 3-segment table (names are fixture data, not engine branches)
+k10_cons_rev <- 716924e6
+k10_opseg <- list(
+  short_name = "Segment Information",
+  kind = "operating_segment",
+  layout = "grouped_metrics",
+  scale = 1e6,
+  headers = c("", "2023", "2024", "2025"),
+  rows = list(
+    c("North America", "", "", ""),
+    c("Net sales", "352828", "387497", "426305"),
+    c("Operating expenses", "337951", "362530", "396686"),
+    c("Operating income", "14877", "24967", "29619"),
+    c("International", "", "", ""),
+    c("Net sales", "131200", "142906", "161894"),
+    c("Operating expenses", "133856", "139114", "157144"),
+    c("Operating income (loss)", "-2656", "3792", "4750"),
+    c("AWS", "", "", ""),
+    c("Net sales", "90757", "107556", "128725"),
+    c("Operating expenses", "66126", "67722", "83119"),
+    c("Operating income", "24631", "39834", "45606"),
+    c("Consolidated", "", "", ""),
+    c("Net sales", "574785", "637959", "716924"),
+    c("Operating income", "36852", "68593", "79975")
+  )
+)
+k10_product <- list(
+  short_name = "Segment Information",
+  kind = "revenue_disaggregation",
+  layout = "stub",
+  scale = 1e6,
+  is_customer_location_only = FALSE,
+  headers = c("", "2023", "2024", "2025"),
+  rows = list(
+    c("Net Sales:", "", "", ""),
+    c("Online stores (1)", "231872", "247029", "269287"),
+    c("Physical stores (2)", "20030", "21215", "22561"),
+    c("Third-party seller services (3)", "140053", "156146", "172162"),
+    c("Advertising services (4)", "46906", "56214", "68635"),
+    c("Subscription services (5)", "40209", "44374", "49619"),
+    c("Cloud infrastructure", "90757", "107556", "128725"),
+    c("Other (6)", "4958", "5425", "5935"),
+    c("Consolidated", "574785", "637959", "716924")
+  )
+)
+k10_geo <- list(
+  short_name = "Segment Information - Net Sales Attributed to Countries",
+  kind = "geography",
+  layout = "stub",
+  scale = 1e6,
+  is_customer_location_only = TRUE,
+  headers = c("", "2023", "2024", "2025"),
+  rows = list(
+    c("United States", "395637", "438015", "489657"),
+    c("Germany", "37588", "40856", "45900"),
+    c("United Kingdom", "33591", "37855", "43212"),
+    c("Japan", "26002", "27401", "30688"),
+    c("Rest of world", "81967", "93832", "107467"),
+    c("Consolidated", "574785", "637959", "716924")
+  )
+)
+k10_is <- data.frame(
+  Breakdown = c("Total Revenue", "Cost Of Revenue", "Gross Profit"),
+  `12/31/2025` = c(as.character(k10_cons_rev), as.character(k10_cons_rev * 0.72),
+                   as.character(k10_cons_rev * 0.28)),
+  check.names = FALSE, stringsAsFactors = FALSE
+)
+k10_pl <- bblab_payload_from_statements(
+  k10_is, ticker = "FIXT", entity_name = "Three-segment 10-K fixture",
+  statement_currency = "USD", period = "12/31/2025",
+  segment_tables = list(k10_opseg, k10_product, k10_geo)
+)
+rk10 <- bblab_analyze(k10_pl)
+k10_names <- vapply(rk10$businesses, `[[`, "", "name")
+check("10-K 3-segment table yields >=2 cards",
+      isTRUE(rk10$ok) &&
+        identical(rk10$primary_dimension$kind, "operating_segment") &&
+        length(rk10$businesses) >= 2L &&
+        length(rk10$businesses) <= 6L)
+check("10-K operating-segment names kept; geo/product not mixed",
+      all(c("North America", "International", "AWS") %in% k10_names) &&
+        !any(grepl("United States|Germany|Online stores|Advertising", k10_names)) &&
+        abs(sum(vapply(rk10$businesses, function(c) c$revenue, numeric(1))) - k10_cons_rev) < 1 &&
+        "BUSINESS_REVALUATION_UNAVAILABLE" %in% rk10$codes)
+check("10-K overlapping geo/product not combined as primary",
+      identical(rk10$primary_dimension$kind, "operating_segment") &&
+        "BUSINESS_OVERLAPPING_DIMENSIONS_BLOCKED" %in% rk10$codes)
+check("filed operating-segment table is not geography-vetoed",
+      !"BUSINESS_GEOGRAPHY_CUSTOMER_LOCATION_ONLY" %in%
+        (if (is.null(rk10$primary_dimension)) character(0) else
+           unique(unlist(lapply(rk10$dimension_scores, function(s) {
+             if (identical(s$id, rk10$primary_dimension$id)) s$code else NULL
+           })))) &&
+        isTRUE(!isTRUE(k10_pl$dimensions[[1]]$is_customer_location_only)) &&
+        identical(k10_pl$dimensions[[1]]$kind, "operating_segment"))
+check("shared opex not copied onto 10-K GP cards",
+      all(vapply(rk10$businesses, function(c) {
+        is.null(c$operating_expenses) && !is.finite(c$cor)
+      }, logical(1))) &&
+        identical(rk10$level, "C"))
+check("dollar-cell grouped rows still parse", {
+  messy <- k10_opseg
+  messy$layout <- NULL
+  messy$headers <- c("", "Year Ended December 31,")
+  messy$rows <- list(
+    c("", "2023", "", "2024", "", "2025"),
+    c("North America", "", "", "", "", ""),
+    c("Net sales", "$", "352,828", "", "", "$", "387,497", "", "", "$", "426,305"),
+    c("Operating income", "$", "14,877", "", "", "$", "24,967", "", "", "$", "29,619"),
+    c("International", "", "", "", "", ""),
+    c("Net sales", "$", "131,200", "", "", "$", "142,906", "", "", "$", "161,894"),
+    c("Operating income (loss)", "$", "(2,656)", "", "", "$", "3,792", "", "", "$", "4,750"),
+    c("Cloud platform", "", "", "", "", ""),
+    c("Net sales", "$", "90,757", "", "", "$", "107,556", "", "", "$", "128,725"),
+    c("Operating income", "$", "24,631", "", "", "$", "39,834", "", "", "$", "45,606")
+  )
+  packed <- .bblab_components_from_table(
+    messy, cons = bblab_consolidated(k10_cons_rev, NA, NA, "USD", "2025"),
+    period = "2025", currency = "USD", kind = "operating_segment",
+    source_label = "Segment Information"
+  )
+  is.list(packed) && length(packed$components) >= 3L &&
+    isTRUE(!isTRUE(packed$is_customer_location_only)) &&
+    identical(packed$kind, "operating_segment") &&
+    abs(packed$components[[1]]$revenue - 426305e6) < 1
+})
 
 if (fail > 0L) {
   cat("FAILED ", fail, " checks\n", sep = "")

@@ -214,6 +214,9 @@ business_breakdown_lab_ui <- function(id = "bblab") {
                 tags$span(class = "ynow-bblab-tag", comp$cor_label) else NULL),
       tags$li(tags$b("Gross Profit: "), gp_txt),
       tags$li(tags$b("Gross Margin: "), gm_txt),
+      if (.bblab_finite(comp$operating_income)) {
+        tags$li(tags$b("Operating income: "), .bblab_fmt_amt(comp$operating_income))
+      } else NULL,
       tags$li(tags$b(.bblab_ui("bblab_reval_label", locale), ": "), reval_txt)
     ),
     if (isTRUE(comp$qualitative_only) && nzchar(comp$description %||% "")) {

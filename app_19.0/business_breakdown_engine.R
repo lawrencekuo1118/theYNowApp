@@ -40,7 +40,8 @@ bblab_score_dimension <- function(dim, consolidated = NULL, cfg = NULL) {
   )
   flags <- unique(c(flags, auto_flags))
   veto <- isTRUE(cfg$flags$geography_customer_location_only_veto) &&
-    (identical(dim$kind, "geography") && isTRUE(dim$is_customer_location_only))
+    identical(dim$kind, "geography") && isTRUE(dim$is_customer_location_only) &&
+    !identical(dim$kind, "operating_segment") && !identical(dim$kind, "segment_note")
   if (isTRUE(veto)) {
     return(list(score = -Inf, veto = TRUE, flags = flags,
                 code = "BUSINESS_GEOGRAPHY_CUSTOMER_LOCATION_ONLY",
@@ -949,10 +950,39 @@ bblab_toast_payload <- function(codes, recon_pass = NULL, allocation_used = FALS
 
 .bblab_is_total_or_recon_name <- function(lab) {
   s <- .bblab_norm_label(lab)
+  # "Net sales" is a metric label under a segment, not a recon line.
   grepl("^(total|sum|subtotal|grand total)\\b", s) ||
-    grepl("\\b(eliminations?|elimination of intersegment|reconcil|unallocated|corporate and other|adjustments?)\\b", s) ||
-    identical(s, "total revenue") || identical(s, "net sales") ||
-    identical(s, "total net sales") || identical(s, "consolidated")
+    grepl("\\b(eliminations?|elimination of intersegment|reconcil|unallocated|corporate and other)\\b", s) ||
+    identical(s, "consolidated") || identical(s, "total revenue") ||
+    identical(s, "total net sales") || identical(s, "total net revenue")
+}
+
+.bblab_metric_field <- function(lab) {
+  s <- .bblab_norm_label(lab)
+  if (!nzchar(s)) return(NA_character_)
+  if (grepl("gross profit", s) && !grepl("margin|%", s)) return("gp")
+  if (grepl("cost of (sales|revenue|goods)", s)) return("cor")
+  if (grepl("operating income|operating profit", s)) return("operating_income")
+  if (grepl("^operating expenses?$", s)) return("operating_expenses")
+  if (s %in% c("net sales", "net revenue", "revenue", "sales",
+               "total revenue", "total net sales", "total net revenue") ||
+      grepl("^net sales\\b", s)) {
+    return("revenue")
+  }
+  NA_character_
+}
+
+.bblab_looks_like_country_name <- function(lab) {
+  s <- .bblab_norm_label(lab)
+  grepl(paste(
+    "united states", "^u s a$", "^usa$", "^u s$",
+    "united kingdom", "^u k$", "great britain",
+    "germany", "japan", "china", "france", "canada", "taiwan",
+    "korea", "australia", "india", "brazil", "mexico", "italy", "spain",
+    "netherlands", "switzerland", "sweden", "ireland", "singapore",
+    "hong kong", "rest of world", "rest of the world", "other countries",
+    sep = "|"
+  ), s)
 }
 
 .bblab_df_current_amount <- function(df, i) {
@@ -1007,21 +1037,25 @@ bblab_toast_payload <- function(codes, recon_pass = NULL, allocation_used = FALS
   NA_integer_
 }
 
-.bblab_table_scale <- function(blob, amounts, cons_rev) {
+.bblab_table_scale <- function(blob, amounts, cons_rev, explicit = NA_real_) {
+  if (.bblab_finite(explicit) && as.numeric(explicit)[1] > 1) {
+    return(as.numeric(explicit)[1])
+  }
   blob <- .bblab_chr(blob)
   scale <- 1
   if (grepl("in\\s+billions|\\$\\s*billion", blob, ignore.case = TRUE)) scale <- 1e9
-  else if (grepl("in\\s+millions|\\$\\s*million|nt\\$\\s*million", blob, ignore.case = TRUE)) scale <- 1e6
+  else if (grepl("in\\s+millions|\\$\\s*million|nt\\$\\s*million|\\$\\s*in\\s+millions",
+                 blob, ignore.case = TRUE)) scale <- 1e6
   else if (grepl("in\\s+thousands|\\$\\s*thousand", blob, ignore.case = TRUE)) scale <- 1e3
   amts <- as.numeric(amounts)
   amts <- amts[is.finite(amts)]
-  if (scale == 1 && length(amts) >= 2L && is.finite(cons_rev) && cons_rev != 0) {
+  if (length(amts) >= 2L && is.finite(cons_rev) && cons_rev != 0) {
     sm <- sum(amts)
     if (is.finite(sm) && sm != 0) {
       rel <- function(x) abs(x - cons_rev) / abs(cons_rev)
-      cands <- c(1, 1e3, 1e6, 1e9)
+      cands <- unique(c(scale, 1, 1e3, 1e6, 1e9))
       ok <- vapply(cands, function(m) rel(sm * m) <= 0.05, logical(1))
-      if (any(ok)) scale <- cands[which(ok)[1]]
+      if (any(ok)) return(cands[which(ok)[1]])
     }
   }
   scale
@@ -1029,14 +1063,74 @@ bblab_toast_payload <- function(codes, recon_pass = NULL, allocation_used = FALS
 
 .bblab_kind_from_label <- function(label) {
   s <- tolower(.bblab_chr(label))
-  if (grepl("geograph|by country|by region|customer location", s)) return("geography")
-  if (grepl("disaggregat|revenue by|net sales by|net revenue by|platform", s)) {
+  # Country / customer-location footnotes, even when nested under a Segment title.
+  if (grepl("geograph|by country|by region|customer location|attributed to countries|countries representing", s)) {
+    return("geography")
+  }
+  if (grepl("disaggregat|revenue by|net sales by|net revenue by|groups of similar|platform", s)) {
     return("revenue_disaggregation")
   }
-  if (grepl("product|service", s)) return("product_service")
+  if (grepl("product|service", s) && !grepl("segment", s)) return("product_service")
   if (grepl("segment", s)) return("operating_segment")
   if (grepl("m\\s*and\\s*a|md&a|management.s discussion", s)) return("mda")
   NA_character_
+}
+
+.bblab_row_amounts <- function(r, skip_i = 1L) {
+  if (!length(r)) return(numeric(0))
+  out <- numeric(0)
+  idx <- seq_along(r)
+  if (is.finite(skip_i) && skip_i >= 1L && skip_i <= length(r)) {
+    idx <- idx[idx != skip_i]
+  }
+  for (j in idx) {
+    t <- trimws(as.character(r[[j]]))
+    if (!nzchar(t) || t %in% c("$", "€", "£", "¥")) next
+    if (grepl("^(19|20)\\d{2}$", t)) next
+    n <- .bblab_parse_amount(t)
+    if (is.finite(n)) out <- c(out, n)
+  }
+  out
+}
+
+.bblab_year_header_idx <- function(headers) {
+  h <- as.character(headers %||% character(0))
+  yrs <- suppressWarnings(as.integer(sub(".*?((?:19|20)\\d{2}).*", "\\1", h)))
+  hit <- which(is.finite(yrs) & yrs >= 1900L & yrs <= 2100L)
+  if (!length(hit)) return(integer(0))
+  hit[order(yrs[hit])]
+}
+
+.bblab_promote_year_header <- function(headers, rows) {
+  headers <- as.character(headers %||% character(0))
+  if (!length(rows)) return(list(headers = headers, rows = rows))
+  probe <- as.character(rows[[1]])
+  toks <- trimws(probe[nzchar(trimws(probe))])
+  toks <- toks[!toks %in% c("$", "€", "£", "¥")]
+  if (length(toks) >= 2L && all(grepl("^(19|20)\\d{2}$", toks))) {
+    headers <- c(if (length(headers)) headers[[1]] else "", toks)
+    rows <- rows[-1]
+  }
+  list(headers = headers, rows = rows)
+}
+
+.bblab_table_is_non_revenue <- function(headers, rows, source_label = "") {
+  labs <- vapply(rows, function(r) {
+    if (!length(r)) return("")
+    .bblab_norm_label(r[[1]])
+  }, character(1))
+  has_rev <- any(vapply(labs, function(s) identical(.bblab_metric_field(s), "revenue"), logical(1)))
+  if (isTRUE(has_rev)) return(FALSE)
+  blob <- paste(c(source_label, headers, labs), collapse = " ")
+  country_hits <- sum(vapply(labs, .bblab_looks_like_country_name, logical(1)))
+  date_banner <- any(grepl("^(year ended|december)\\b", labs))
+  has_corporate <- any(grepl("^corporate\\b", labs))
+  grepl("depreciation and amortization|property and equipment|goodwill|net additions to property|segment assets",
+        blob, ignore.case = TRUE) ||
+    (isTRUE(date_banner) && country_hits < 2L) ||
+    isTRUE(has_corporate) ||
+    (grepl("december", paste(headers, collapse = " "), ignore.case = TRUE) &&
+       !grepl("year ended", paste(headers, collapse = " "), ignore.case = TRUE))
 }
 
 #' Map already-retrieved income-statement child rows into a disclosure dimension.
@@ -1105,6 +1199,81 @@ bblab_extract_dimension_from_income_statement <- function(d_is, consolidated = N
   )
 }
 
+.bblab_pick_current_amount <- function(amts, year_i, headers, r) {
+  if (length(year_i) >= 1L) {
+    col <- year_i[length(year_i)]
+    if (length(r) >= col) {
+      v <- .bblab_parse_amount(r[[col]])
+      if (is.finite(v)) return(v)
+    }
+  }
+  if (length(amts) >= 1L) return(amts[length(amts)])
+  NA_real_
+}
+
+.bblab_components_from_grouped_metrics <- function(rows, name_i, year_i, headers,
+                                                   scale, kind, period, currency) {
+  comps <- list()
+  seen <- character(0)
+  current <- NULL
+  flush_current <- function() {
+    if (is.null(current) || !.bblab_finite(current$revenue)) return()
+    id <- .bblab_slug(current$name, "note")
+    if (id %in% seen) id <- paste0(id, "_", length(comps) + 1L)
+    seen <<- c(seen, id)
+    cls <- current$cls %||% "MAJOR"
+    comps[[length(comps) + 1L]] <<- bblab_component(
+      id, current$name, cls,
+      revenue = current$revenue, cor = current$cor, gp = current$gp,
+      is_reported_segment = identical(kind, "operating_segment") ||
+        identical(kind, "segment_note"),
+      separately_disclosed_revenue = TRUE,
+      distinct_economics = TRUE,
+      period = period, currency = currency,
+      source_type = kind,
+      extra = if (.bblab_finite(current$operating_income)) {
+        list(operating_income = current$operating_income)
+      } else NULL
+    )
+  }
+  for (k in seq_along(rows)) {
+    r <- as.character(rows[[k]])
+    if (!length(r) || length(r) < name_i) next
+    nm <- trimws(r[[name_i]])
+    amts <- .bblab_row_amounts(r, skip_i = name_i)
+    field <- .bblab_metric_field(nm)
+    if (!nzchar(nm)) next
+    if (grepl("^(year ended|december)\\b", .bblab_norm_label(nm))) next
+    if (is.na(field) && !length(amts)) {
+      flush_current()
+      cls <- if (.bblab_is_total_or_recon_name(nm)) {
+        if (grepl("eliminat", .bblab_norm_label(nm))) "ELIMINATION" else
+          if (grepl("unallocated|corporate", .bblab_norm_label(nm))) "UNALLOCATED" else NA_character_
+      } else "MAJOR"
+      if (is.na(cls) && .bblab_is_total_or_recon_name(nm)) {
+        current <- NULL
+        next
+      }
+      current <- list(name = nm, cls = cls %||% "MAJOR",
+                      revenue = NA_real_, cor = NA_real_, gp = NA_real_,
+                      operating_income = NA_real_)
+      next
+    }
+    if (is.na(field)) next
+    amt <- .bblab_pick_current_amount(amts, year_i, headers, r)
+    if (!is.finite(amt)) next
+    amt <- amt * scale
+    if (is.null(current)) next
+    if (identical(field, "revenue")) current$revenue <- amt
+    else if (identical(field, "cor")) current$cor <- amt
+    else if (identical(field, "gp")) current$gp <- amt
+    else if (identical(field, "operating_income")) current$operating_income <- amt
+    # operating_expenses: shared/full opex — never written onto GP cards.
+  }
+  flush_current()
+  comps
+}
+
 .bblab_components_from_table <- function(tbl, cons = NULL, period = NA_character_,
                                          currency = NA_character_, kind = "segment_note",
                                          source_label = "") {
@@ -1115,27 +1284,67 @@ bblab_extract_dimension_from_income_statement <- function(d_is, consolidated = N
     rows <- lapply(seq_len(nrow(rows)), function(i) as.character(unlist(rows[i, ], use.names = FALSE)))
   }
   if (!length(rows)) return(NULL)
+  promoted <- .bblab_promote_year_header(headers, rows)
+  headers <- promoted$headers
+  rows <- promoted$rows
+  if (!length(rows)) return(NULL)
   if (!length(headers) && length(rows[[1]])) {
     headers <- paste0("c", seq_along(rows[[1]]))
   }
+  if (isTRUE(.bblab_table_is_non_revenue(headers, rows, source_label))) return(NULL)
   name_i <- .bblab_header_col(headers, c("segment", "product", "business", "description",
                                         "platform", "category", "line"))
   if (is.na(name_i)) name_i <- 1L
+  year_i <- .bblab_year_header_idx(headers)
+  labs <- vapply(rows, function(r) {
+    if (length(r) < name_i) return("")
+    trimws(as.character(r[[name_i]]))
+  }, character(1))
+  fields <- vapply(labs, .bblab_metric_field, character(1))
+  grouped <- identical(.bblab_chr(tbl$layout), "grouped_metrics") ||
+    (any(fields == "revenue", na.rm = TRUE) &&
+       any(fields == "operating_income", na.rm = TRUE))
+  blob <- paste(c(source_label, headers, tbl$caption %||% ""), collapse = " ")
+  if (isTRUE(grouped)) {
+    raw_amts <- unlist(lapply(seq_along(rows), function(k) {
+      if (!identical(fields[[k]], "revenue")) return(numeric(0))
+      .bblab_pick_current_amount(.bblab_row_amounts(as.character(rows[[k]]), name_i),
+                                 year_i, headers, as.character(rows[[k]]))
+    }))
+    scale <- .bblab_table_scale(blob, raw_amts, .bblab_num(cons$revenue), tbl$scale)
+    comps <- .bblab_components_from_grouped_metrics(
+      rows, name_i, year_i, headers, scale, kind, period, currency
+    )
+    if (length(comps) < 2L) return(NULL)
+    flags <- c("separate_revenue", "relevant", "mutually_exclusive", "filed_audited",
+               "distinct_economics", "management_major")
+    if (any(vapply(comps, function(c) .bblab_finite(c$cor) || .bblab_finite(c$gp), logical(1)))) {
+      flags <- c(flags, "attributable_cor_gp")
+    }
+    return(list(components = comps, flags = flags, is_customer_location_only = FALSE,
+                kind = "operating_segment"))
+  }
   rev_i <- .bblab_header_col(
     headers,
     c("net sales", "net revenue", "total revenue", "(^|\\b)revenue($|\\b)", "(^|\\b)sales($|\\b)"),
     exclude = "cost|percent|%|margin|expense"
   )
+  if (is.na(rev_i) && length(year_i)) rev_i <- year_i[length(year_i)]
   if (is.na(rev_i)) {
-    # First numeric-looking column after the name.
     probe <- rows[[1]]
     for (j in seq_along(probe)) {
       if (j == name_i) next
-      if (is.finite(.bblab_parse_amount(probe[[j]]))) {
+      t <- trimws(as.character(probe[[j]]))
+      if (grepl("^(19|20)\\d{2}$", t)) next
+      if (is.finite(.bblab_parse_amount(t))) {
         rev_i <- j
         break
       }
     }
+  }
+  if (is.na(rev_i) && length(rows) >= 1L) {
+    amts <- .bblab_row_amounts(as.character(rows[[1]]), name_i)
+    if (length(amts)) rev_i <- name_i
   }
   if (is.na(rev_i)) return(NULL)
   cor_i <- .bblab_header_col(headers, c("cost of revenue", "cost of sales", "cost of goods",
@@ -1144,25 +1353,39 @@ bblab_extract_dimension_from_income_statement <- function(d_is, consolidated = N
   pct_i <- .bblab_header_col(headers, c("% of", "percent of", "percentage of", "% of net",
                                        "% of total"))
   raw_amts <- vapply(rows, function(r) {
-    if (length(r) < rev_i) return(NA_real_)
-    .bblab_parse_amount(r[[rev_i]])
+    r <- as.character(r)
+    if (length(year_i)) {
+      v <- .bblab_pick_current_amount(.bblab_row_amounts(r, name_i), year_i, headers, r)
+      if (is.finite(v)) return(v)
+    }
+    if (length(r) < rev_i) {
+      am <- .bblab_row_amounts(r, name_i)
+      return(if (length(am)) am[length(am)] else NA_real_)
+    }
+    v <- .bblab_parse_amount(r[[rev_i]])
+    if (is.finite(v)) v else {
+      am <- .bblab_row_amounts(r, name_i)
+      if (length(am)) am[length(am)] else NA_real_
+    }
   }, numeric(1))
-  blob <- paste(c(source_label, headers, tbl$caption %||% ""), collapse = " ")
-  scale <- .bblab_table_scale(blob, raw_amts, .bblab_num(cons$revenue))
+  scale <- .bblab_table_scale(blob, raw_amts, .bblab_num(cons$revenue), tbl$scale)
   comps <- list()
   seen <- character(0)
   for (k in seq_along(rows)) {
     r <- as.character(rows[[k]])
-    if (length(r) < max(name_i, rev_i)) next
+    if (!length(r) || length(r) < name_i) next
     nm <- trimws(r[[name_i]])
-    if (!nzchar(nm) || .bblab_is_total_or_recon_name(nm)) {
+    if (!nzchar(nm)) next
+    if (grepl("^(year ended|december)\\b", .bblab_norm_label(nm))) next
+    if (!is.na(.bblab_metric_field(nm))) next
+    if (.bblab_is_total_or_recon_name(nm)) {
       cls_guess <- if (grepl("eliminat", .bblab_norm_label(nm))) "ELIMINATION" else
         if (grepl("unallocated|corporate", .bblab_norm_label(nm))) "UNALLOCATED" else NA_character_
       if (is.na(cls_guess)) next
     } else {
       cls_guess <- "MAJOR"
     }
-    amt <- .bblab_parse_amount(r[[rev_i]])
+    amt <- raw_amts[[k]]
     pct <- if (!is.na(pct_i) && length(r) >= pct_i) {
       p <- .bblab_parse_amount(r[[pct_i]])
       if (is.finite(p) && grepl("%", r[[pct_i]])) p / 100 else if (is.finite(p) && p > 1) p / 100 else p
@@ -1193,9 +1416,20 @@ bblab_extract_dimension_from_income_statement <- function(d_is, consolidated = N
   if (any(vapply(comps, function(c) .bblab_finite(c$cor) || .bblab_finite(c$gp), logical(1)))) {
     flags <- c(flags, "attributable_cor_gp")
   }
-  geo_only <- identical(kind, "geography") ||
-    grepl("customer location|by country|by region", blob, ignore.case = TRUE)
-  list(components = comps, flags = flags, is_customer_location_only = isTRUE(geo_only))
+  nms <- vapply(comps, function(c) c$name, character(1))
+  keep <- vapply(comps, function(c) identical(c$classification, "MAJOR"), logical(1))
+  nms <- nms[keep]
+  geo_from_names <- length(nms) >= 2L &&
+    mean(vapply(nms, .bblab_looks_like_country_name, logical(1))) >= 0.8
+  geo_only <- isTRUE(tbl$is_customer_location_only) ||
+    identical(kind, "geography") ||
+    grepl("customer location|by country|by region|attributed to countries", blob, ignore.case = TRUE) ||
+    isTRUE(geo_from_names)
+  if (identical(kind, "operating_segment") || identical(kind, "segment_note")) {
+    geo_only <- FALSE
+  }
+  list(components = comps, flags = flags, is_customer_location_only = isTRUE(geo_only),
+       kind = if (isTRUE(geo_only)) "geography" else kind)
 }
 
 .bblab_coerce_segment_tables <- function(segment_tables, notes = NULL) {
@@ -1232,6 +1466,7 @@ bblab_extract_dimensions_from_filings <- function(d_is = NULL, notes = NULL,
   )
   if (!is.null(is_dim)) dims[[length(dims) + 1L]] <- is_dim
   tables <- .bblab_coerce_segment_tables(segment_tables, notes)
+  tbl_i <- 0L
   for (tbl in tables) {
     if (!is.list(tbl)) next
     lab <- .bblab_chr(tbl$short_name %||% tbl$label %||% tbl$caption, "segment_note")
@@ -1242,15 +1477,26 @@ bblab_extract_dimensions_from_filings <- function(d_is = NULL, notes = NULL,
       kind = kind, source_label = lab
     )
     if (is.null(packed) || length(packed$components) < 2L) next
+    kind <- .bblab_chr(packed$kind %||% kind, kind)
+    if (!kind %in% BBLAB_DIMENSION_KINDS) kind <- "segment_note"
+    geo_only <- isTRUE(packed$is_customer_location_only)
+    if (kind %in% c("operating_segment", "segment_note")) geo_only <- FALSE
+    tbl_i <- tbl_i + 1L
     dims[[length(dims) + 1L]] <- bblab_dimension(
-      .bblab_slug(lab, "dim"), kind, packed$components,
+      .bblab_slug(paste(lab, kind, tbl_i), "dim"), kind, packed$components,
       mutually_exclusive = TRUE,
-      is_customer_location_only = isTRUE(packed$is_customer_location_only),
+      is_customer_location_only = geo_only,
       flags = packed$flags,
       filed_audited = TRUE,
       period = period, currency = currency,
       label = lab
     )
+  }
+  if (length(dims) >= 2L) {
+    ids <- vapply(dims, function(d) d$id, character(1))
+    for (i in seq_along(dims)) {
+      dims[[i]]$overlaps_with <- unique(c(dims[[i]]$overlaps_with, ids[-i]))
+    }
   }
   dims
 }
