@@ -43,9 +43,10 @@ BBLAB_ERROR_CODES <- c(
   "BUSINESS_CHART_CURRENCY_MISMATCH",
   "BUSINESS_CHART_DIMENSION_MIXED",
   "BUSINESS_CHART_RECONCILIATION_FAIL",
-  "BUSINESS_CHART_SINGLE_COMPONENT", # non-blocking; one slice still renders
-  "BUSINESS_CHART_LEVEL_D",
-  "BUSINESS_ADR_MISSING_NONBLOCKING"
+    "BUSINESS_CHART_SINGLE_COMPONENT", # non-blocking; one slice still renders
+    "BUSINESS_CHART_LEVEL_D",
+    "BUSINESS_HISTORY_INSUFFICIENT_YEARS", # non-blocking; never fabricate a 5-year series
+    "BUSINESS_ADR_MISSING_NONBLOCKING"
 )
 
 BBLAB_DEFAULT_CONFIG <- list(
@@ -273,6 +274,12 @@ bblab_empty_result <- function(codes = character(0), limitations = character(0))
     reconciliation = list(pass = FALSE, revenue = NULL, cor = NULL, gp = NULL),
     revaluation = list(),
     chart = list(eligible = FALSE, codes = character(0), slices = list()),
+    history = list(
+      eligible = FALSE, years = character(0), series = list(),
+      denominator = numeric(0), codes = "BUSINESS_HISTORY_INSUFFICIENT_YEARS",
+      limitations = "history_insufficient_years", omitted_years = character(0),
+      source = NA_character_
+    ),
     evidence = list(),
     confidence = list(overall = "UNAVAILABLE"),
     progress = list(stage = NA_character_, completed = character(0)),

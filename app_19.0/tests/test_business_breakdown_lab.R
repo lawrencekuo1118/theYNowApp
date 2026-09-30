@@ -533,11 +533,46 @@ for (k in c("menu_business_breakdown_lab", "bblab_experimental_badge", "bblab_pa
             "bblab_listed_only_notice", "bblab_listed_only_scope",
             "bblab_gm_unestimable", "bblab_reval_unavailable", "bblab_single_business_note",
             "bblab_fallback_gm_label",
-            "notif_bblab_required_fx_rate_missing", "notif_bblab_business_chart_single_component")) {
+            "bblab_ch1_title", "bblab_ch2_title", "bblab_ch3_title", "bblab_ch4_title",
+            "bblab_ch5_title", "bblab_ch6_title", "bblab_ch7_title",
+            "bblab_ch1_help", "bblab_ch2_help", "bblab_ch3_help", "bblab_ch4_help",
+            "bblab_ch4_limited", "bblab_geo_veto_why", "bblab_overlap_why",
+            "bblab_history_yaxis", "bblab_kpi_revenue", "bblab_kpi_cor", "bblab_kpi_gp",
+            "bblab_kpi_gm",
+            "notif_bblab_required_fx_rate_missing", "notif_bblab_business_chart_single_component",
+            "notif_bblab_business_history_insufficient_years")) {
   en <- .UI_STRINGS$en[[k]]
   zh <- .UI_STRINGS$`zh-TW`[[k]]
   check(paste("i18n", k), is.character(en) && nzchar(en[1]) && is.character(zh) && nzchar(zh[1]))
 }
+check("i18n chapter titles en + zh-TW", {
+  identical(.UI_STRINGS$en$bblab_ch1_title, "1. Consolidated statement snapshot") &&
+    identical(.UI_STRINGS$`zh-TW`$bblab_ch1_title, "1. 合併財報總覽") &&
+    identical(.UI_STRINGS$en$bblab_ch2_title, "2. How the statements split the business") &&
+    identical(.UI_STRINGS$`zh-TW`$bblab_ch2_title, "2. 財報如何切分業務") &&
+    identical(.UI_STRINGS$en$bblab_ch3_title, "3. Current revenue mix") &&
+    identical(.UI_STRINGS$`zh-TW`$bblab_ch3_title, "3. 當期營收組成") &&
+    identical(.UI_STRINGS$en$bblab_ch4_title, "4. Five-year mix evolution") &&
+    identical(.UI_STRINGS$`zh-TW`$bblab_ch4_title, "4. 五年結構占比演進") &&
+    identical(.UI_STRINGS$en$bblab_ch5_title, "5. Business cards") &&
+    identical(.UI_STRINGS$`zh-TW`$bblab_ch5_title, "5. 各事業簡化財報") &&
+    identical(.UI_STRINGS$en$bblab_ch6_title, "6. Reconciliation") &&
+    identical(.UI_STRINGS$`zh-TW`$bblab_ch6_title, "6. 對帳") &&
+    identical(.UI_STRINGS$en$bblab_ch7_title, "7. Sources") &&
+    identical(.UI_STRINGS$`zh-TW`$bblab_ch7_title, "7. 來源與方法") &&
+    grepl("不足兩個會計年度", .UI_STRINGS$`zh-TW`$bblab_ch4_limited, fixed = TRUE) &&
+    !grepl("默认|参数|数据|用户", paste(
+      .UI_STRINGS$`zh-TW`$bblab_ch1_title, .UI_STRINGS$`zh-TW`$bblab_ch2_help,
+      .UI_STRINGS$`zh-TW`$bblab_ch4_limited, .UI_STRINGS$`zh-TW`$bblab_page_sub,
+      sep = " "
+    ))
+})
+check("applyUiLocale wires chapter titles", {
+  grepl("setBtText('ynow_bblab_ch1_title', 'bblab_ch1_title')", ui_src, fixed = TRUE) &&
+    grepl("setBtText('ynow_bblab_ch4_title', 'bblab_ch4_title')", ui_src, fixed = TRUE) &&
+    grepl("setBtText('ynow_bblab_ch4_limited', 'bblab_ch4_limited')", ui_src, fixed = TRUE) &&
+    grepl("setBtText('ynow_bblab_ch7_title', 'bblab_ch7_title')", ui_src, fixed = TRUE)
+})
 check("i18n experimental both locales",
       identical(.UI_STRINGS$en$bblab_experimental_badge, "Experimental Feature") &&
         identical(.UI_STRINGS$`zh-TW`$bblab_experimental_badge, "實驗功能") &&
@@ -651,6 +686,9 @@ check("engine does not gate chart on component count",
       !grepl("n_valid < 2", engine_src, fixed = TRUE) &&
         !grepl("if (n_valid < 2L)", engine_src, fixed = TRUE))
 check("notes helper used", grepl("ynow_notes_block", mod_src, fixed = TRUE))
+check("Lab numerals do not use HCCSI flow fill",
+      !grepl("ynow-hccsi-flow", mod_src, fixed = TRUE) &&
+        !grepl("ynow-hccsi-flow", engine_src, fixed = TRUE))
 check("no invalid shinydashboard box status default",
       !grepl("status\\s*=\\s*[\"']default[\"']", mod_src))
 if (requireNamespace("shiny", quietly = TRUE) &&
@@ -666,12 +704,26 @@ if (requireNamespace("shiny", quietly = TRUE) &&
     ""
   })
   check("lab UI constructs at startup", nzchar(lab_ui_html))
-  check("lab UI keeps Search/analysis/cards/chart/recon",
+  check("lab UI keeps Search and numbered chapters",
         grepl("ynow_bblab_search_title", lab_ui_html, fixed = TRUE) &&
-          grepl("ynow_bblab_summary_title", lab_ui_html, fixed = TRUE) &&
-          grepl("ynow_bblab_chart_title", lab_ui_html, fixed = TRUE) &&
-          grepl("ynow_bblab_cards_title", lab_ui_html, fixed = TRUE) &&
-          grepl("ynow_bblab_recon_title", lab_ui_html, fixed = TRUE))
+          grepl("ynow_bblab_ch1_title", lab_ui_html, fixed = TRUE) &&
+          grepl("ynow_bblab_ch2_title", lab_ui_html, fixed = TRUE) &&
+          grepl("ynow_bblab_ch3_title", lab_ui_html, fixed = TRUE) &&
+          grepl("ynow_bblab_ch4_title", lab_ui_html, fixed = TRUE) &&
+          grepl("ynow_bblab_ch5_title", lab_ui_html, fixed = TRUE) &&
+          grepl("ynow_bblab_ch6_title", lab_ui_html, fixed = TRUE) &&
+          grepl("ynow_bblab_ch7_title", lab_ui_html, fixed = TRUE) &&
+          grepl("ynow_bblab_fallback_gm_label", lab_ui_html, fixed = TRUE))
+  check("chapter order in Testing Lab markup", {
+    ids <- c("ynow_bblab_search_title",
+             "ynow_bblab_ch1_title", "ynow_bblab_ch2_title", "ynow_bblab_ch3_title",
+             "ynow_bblab_ch4_title", "ynow_bblab_ch5_title", "ynow_bblab_ch6_title",
+             "ynow_bblab_ch7_title")
+    pos <- vapply(ids, function(id) {
+      as.integer(regexpr(id, lab_ui_html, fixed = TRUE)[1])
+    }, integer(1))
+    all(pos > 0L) && all(diff(pos) > 0L)
+  })
   check("lab UI HTML has no Progress 9/9 or nine stage labels",
         !grepl("bblab-progress", lab_ui_html, fixed = TRUE) &&
           !grepl("ynow-bblab-progress", lab_ui_html, fixed = TRUE) &&
@@ -942,6 +994,152 @@ check("shared opex not copied onto 10-K GP cards",
         is.null(c$operating_expenses) && !is.finite(c$cor)
       }, logical(1))) &&
         identical(rk10$level, "C"))
+
+k10_hist <- rk10$history
+k10_hist_names <- if (length(k10_hist$series)) {
+  vapply(k10_hist$series, function(s) s$name, character(1))
+} else character(0)
+na_series <- Filter(function(s) identical(s$name, "North America"), k10_hist$series)
+na_s <- if (length(na_series)) na_series[[1]] else NULL
+check("10-K history has comparable shares across fiscal years", {
+  isTRUE(k10_hist$eligible) &&
+    identical(as.character(k10_hist$years), c("2023", "2024", "2025")) &&
+    all(c("North America", "International", "AWS") %in% k10_hist_names) &&
+    !is.null(na_s) &&
+    abs(na_s$shares[["2025"]] - 426305 / 716924) < 1e-6 &&
+    abs(na_s$shares[["2024"]] - 387497 / 637959) < 1e-6 &&
+    abs(na_s$shares[["2023"]] - 352828 / 574785) < 1e-6 &&
+    all(vapply(k10_hist$series, function(s) {
+      all(!is.finite(s$shares) | s$shares > 0)
+    }, logical(1)))
+})
+check("10-K history units aligned to consolidated dollars", {
+  isTRUE(k10_hist$eligible) &&
+    abs(k10_hist$denominator[["2025"]] - k10_cons_rev) / k10_cons_rev < 0.05 &&
+    !is.null(na_s) &&
+    na_s$revenues[["2025"]] > 1e9 &&
+    abs(na_s$revenues[["2025"]] - 426305e6) / 426305e6 < 0.05
+})
+check("single-period fixture does not fabricate a 5-year series", {
+  r2 <- bblab_analyze(two_seg_level_a())
+  !isTRUE(r2$history$eligible) &&
+    length(r2$history$years) == 0L &&
+    "history_insufficient_years" %in% r2$limitations &&
+    "BUSINESS_HISTORY_INSUFFICIENT_YEARS" %in% r2$codes &&
+    isTRUE(r2$ok) &&
+    length(r2$businesses) == 2L &&
+    isTRUE(r2$chart$eligible)
+})
+check("history insufficient toast does not block cards or donut", {
+  t <- bblab_toast_payload("BUSINESS_HISTORY_INSUFFICIENT_YEARS", recon_pass = TRUE,
+                           chart_eligible = TRUE)
+  !length(t[[1]]$blocked_outputs) &&
+    all(c("business_cards", "composition_chart") %in% t[[1]]$remaining_outputs)
+})
+
+drop_year_col <- function(tbl, year) {
+  h <- as.character(tbl$headers)
+  drop <- which(grepl(as.character(year), h, fixed = TRUE))
+  if (!length(drop)) return(tbl)
+  col <- drop[[1]]
+  tbl$headers <- h[-col]
+  tbl$rows <- lapply(tbl$rows, function(r) {
+    r <- as.character(r)
+    if (length(r) >= col) r[-col] else r
+  })
+  tbl
+}
+k10_miss <- drop_year_col(k10_opseg, "2024")
+k10_miss_pl <- bblab_payload_from_statements(
+  k10_is, ticker = "FIXT", entity_name = "Missing-year 10-K fixture",
+  statement_currency = "USD", period = "12/31/2025",
+  segment_tables = list(k10_miss, k10_product, k10_geo)
+)
+rk10_miss <- bblab_analyze(k10_miss_pl)
+hm <- rk10_miss$history
+hm_na <- Filter(function(s) identical(s$name, "North America"), hm$series)
+hm_na <- if (length(hm_na)) hm_na[[1]] else NULL
+check("missing year is omitted not zero-filled", {
+  isTRUE(hm$eligible) &&
+    identical(as.character(hm$years), c("2023", "2025")) &&
+    !"2024" %in% as.character(hm$years) &&
+    !is.null(hm_na) &&
+    !("2024" %in% names(hm_na$shares)) &&
+    !any(is.finite(hm_na$shares) & hm_na$shares == 0) &&
+    abs(hm_na$shares[["2025"]] - 426305 / 716924) < 1e-6 &&
+    abs(hm_na$shares[["2023"]] - 352828 / 574785) < 1e-6 &&
+    length(rk10_miss$businesses) >= 2L
+})
+check("two comparable years still plot; never pad to fake five", {
+  isTRUE(hm$eligible) &&
+    length(hm$years) == 2L &&
+    length(hm$years) < 5L &&
+    all(as.character(hm$years) %in% c("2023", "2025"))
+})
+
+is_hist <- data.frame(
+  Breakdown = c("Total Revenue", "Widgets", "Gadgets", "Cost Of Revenue", "Gross Profit"),
+  `12/31/2025` = c("220", "140", "80", "90", "130"),
+  `12/31/2024` = c("200", "120", "80", "80", "120"),
+  `12/31/2023` = c("180", "100", "80", "70", "110"),
+  check.names = FALSE, stringsAsFactors = FALSE
+)
+is_pl <- bblab_payload_from_statements(
+  is_hist, ticker = "FIXT", entity_name = "IS mix fixture",
+  statement_currency = "USD"
+)
+ris <- bblab_analyze(is_pl)
+ish <- ris$history
+w_s <- Filter(function(s) grepl("widget", s$name, ignore.case = TRUE), ish$series)
+w_s <- if (length(w_s)) w_s[[1]] else NULL
+check("Yahoo annual product mix becomes history shares", {
+  isTRUE(ris$ok) &&
+    length(ris$businesses) == 2L &&
+    isTRUE(ish$eligible) &&
+    identical(as.character(ish$years), c("2023", "2024", "2025")) &&
+    !is.null(w_s) &&
+    abs(w_s$shares[["2025"]] - 140 / 220) < 1e-8 &&
+    abs(w_s$shares[["2024"]] - 120 / 200) < 1e-8 &&
+    abs(w_s$shares[["2023"]] - 100 / 180) < 1e-8
+})
+
+one_is <- data.frame(
+  Breakdown = c("Total Revenue", "Cost Of Revenue", "Gross Profit"),
+  `12/31/2025` = c("1000", "420", "580"),
+  `12/31/2024` = c("900", "400", "500"),
+  `12/31/2023` = c("800", "380", "420"),
+  check.names = FALSE, stringsAsFactors = FALSE
+)
+one_pl <- bblab_payload_from_statements(
+  one_is, ticker = "ONE", entity_name = "Single-entity annuals",
+  statement_currency = "USD"
+)
+rone <- bblab_analyze(one_pl)
+check("one-business still shows donut; history is 100% when annuals exist", {
+  isTRUE(rone$chart$eligible) &&
+    length(rone$businesses) == 1L &&
+    abs(rone$chart$slices[[1]]$share - 1) < 1e-8 &&
+    isTRUE(rone$history$eligible) &&
+    length(rone$history$years) >= 2L &&
+    all(abs(rone$history$series[[1]]$shares - 1) < 1e-8)
+})
+
+one_yr <- data.frame(
+  Breakdown = c("Total Revenue", "Cost Of Revenue", "Gross Profit"),
+  `12/31/2025` = c("1000", "420", "580"),
+  check.names = FALSE, stringsAsFactors = FALSE
+)
+one_yr_pl <- bblab_payload_from_statements(
+  one_yr, ticker = "ONE", entity_name = "Single-year entity",
+  statement_currency = "USD"
+)
+r1y <- bblab_analyze(one_yr_pl)
+check("one fiscal year of shares shows limitation not a fake series", {
+  !isTRUE(r1y$history$eligible) &&
+    "history_insufficient_years" %in% r1y$limitations &&
+    isTRUE(r1y$chart$eligible) &&
+    length(r1y$businesses) == 1L
+})
 check("dollar-cell grouped rows still parse", {
   messy <- k10_opseg
   messy$layout <- NULL

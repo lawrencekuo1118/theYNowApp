@@ -751,6 +751,521 @@ bblab_chart_slices <- function(pack, consolidated, cfg = NULL, elig = NULL) {
   )
 }
 
+.bblab_year_from_label <- function(x) {
+  s <- trimws(.bblab_chr(x))
+  if (!nzchar(s) || grepl("^ttm$", s, ignore.case = TRUE) ||
+      grepl("trailing", s, ignore.case = TRUE)) {
+    return(NA_integer_)
+  }
+  if (!grepl("(19|20)\\d{2}", s)) return(NA_integer_)
+  y <- suppressWarnings(as.integer(sub(".*?((?:19|20)\\d{2}).*", "\\1", s)))
+  if (is.finite(y) && y >= 1990L && y <= 2100L) as.integer(y) else NA_integer_
+}
+
+.bblab_is_consolidated_total_name <- function(lab) {
+  s <- .bblab_norm_label(lab)
+  identical(s, "consolidated") ||
+    grepl("^total( (net )?(revenue|sales|net sales|net revenue))?$", s) ||
+    identical(s, "total net sales") || identical(s, "total net revenue") ||
+    identical(s, "total revenue") || identical(s, "total sales")
+}
+
+#' Zip a table row's numeric cells to fiscal-year headers. Never invents amounts.
+.bblab_row_year_amounts <- function(r, headers, year_i, name_i = 1L) {
+  years <- integer(0)
+  if (length(year_i)) {
+    yrs <- vapply(as.character(headers), .bblab_year_from_label, integer(1))
+    years <- as.integer(yrs[year_i])
+  }
+  out <- setNames(rep(NA_real_, length(years)), as.character(years))
+  if (!length(years)) return(out)
+  r <- as.character(r)
+  for (k in seq_along(year_i)) {
+    col <- year_i[[k]]
+    if (length(r) >= col) {
+      v <- .bblab_parse_amount(r[[col]])
+      if (is.finite(v)) out[[k]] <- v
+    }
+  }
+  if (all(!is.finite(out))) {
+    amts <- .bblab_row_amounts(r, skip_i = name_i)
+    if (length(amts) == length(years)) {
+      out[] <- amts
+    } else if (length(amts) > length(years) && length(years) > 0L) {
+      out[] <- amts[seq.int(length(amts) - length(years) + 1L, length(amts))]
+    } else if (length(amts) > 0L && length(amts) < length(years)) {
+      out[seq_along(amts)] <- amts
+    }
+  }
+  out
+}
+
+#' Per-year raw revenues from a filed note table (same dimension names).
+#' Consolidated / Total rows are the year denominator when present — not businesses.
+.bblab_table_revenue_matrix <- function(tbl) {
+  if (!is.list(tbl)) return(NULL)
+  headers <- tbl$headers %||% tbl$header %||% character(0)
+  rows <- tbl$rows %||% tbl$data %||% list()
+  if (is.data.frame(rows)) {
+    if (!length(headers)) headers <- colnames(rows)
+    rows <- lapply(seq_len(nrow(rows)), function(i) as.character(unlist(rows[i, ], use.names = FALSE)))
+  }
+  if (!length(rows)) return(NULL)
+  promoted <- .bblab_promote_year_header(headers, rows)
+  headers <- promoted$headers
+  rows <- promoted$rows
+  if (!length(rows)) return(NULL)
+  if (!length(headers) && length(rows[[1]])) {
+    headers <- paste0("c", seq_along(rows[[1]]))
+  }
+  if (isTRUE(.bblab_table_is_non_revenue(headers, rows, tbl$short_name %||% tbl$caption %||% ""))) {
+    return(NULL)
+  }
+  name_i <- .bblab_header_col(headers, c("segment", "product", "business", "description",
+                                        "platform", "category", "line"))
+  if (is.na(name_i)) name_i <- 1L
+  year_i <- .bblab_year_header_idx(headers)
+  if (!length(year_i)) return(NULL)
+  years <- vapply(as.character(headers)[year_i], .bblab_year_from_label, integer(1))
+  years <- as.integer(years[is.finite(years)])
+  if (!length(years)) return(NULL)
+  labs <- vapply(rows, function(r) {
+    if (length(r) < name_i) return("")
+    trimws(as.character(r[[name_i]]))
+  }, character(1))
+  fields <- vapply(labs, .bblab_metric_field, character(1))
+  grouped <- identical(.bblab_chr(tbl$layout), "grouped_metrics") ||
+    (any(fields == "revenue", na.rm = TRUE) &&
+       any(fields == "operating_income", na.rm = TRUE))
+  businesses <- list()
+  consolidated <- setNames(rep(NA_real_, length(years)), as.character(years))
+  if (isTRUE(grouped)) {
+    current_name <- NA_character_
+    current_is_cons <- FALSE
+    for (k in seq_along(rows)) {
+      r <- as.character(rows[[k]])
+      if (!length(r) || length(r) < name_i) next
+      nm <- trimws(r[[name_i]])
+      amts <- .bblab_row_year_amounts(r, headers, year_i, name_i)
+      field <- .bblab_metric_field(nm)
+      if (!nzchar(nm)) next
+      if (grepl("^(year ended|december)\\b", .bblab_norm_label(nm))) next
+      if (is.na(field) && !any(is.finite(amts))) {
+        current_name <- nm
+        current_is_cons <- .bblab_is_consolidated_total_name(nm)
+        if (.bblab_is_total_or_recon_name(nm) && !isTRUE(current_is_cons) &&
+            !grepl("eliminat|unallocated|corporate", .bblab_norm_label(nm))) {
+          current_name <- NA_character_
+        }
+        next
+      }
+      if (!identical(field, "revenue")) next
+      if (isTRUE(current_is_cons) || .bblab_is_consolidated_total_name(nm)) {
+        for (yi in names(amts)) {
+          if (is.finite(amts[[yi]])) consolidated[[yi]] <- amts[[yi]]
+        }
+        next
+      }
+      if (!nzchar(.bblab_chr(current_name)) || .bblab_is_total_or_recon_name(current_name)) next
+      key <- .bblab_norm_label(current_name)
+      if (!nzchar(key)) next
+      if (is.null(businesses[[key]])) {
+        businesses[[key]] <- list(
+          name = current_name,
+          amounts = setNames(rep(NA_real_, length(years)), as.character(years))
+        )
+      }
+      for (yi in names(amts)) {
+        if (is.finite(amts[[yi]])) businesses[[key]]$amounts[[yi]] <- amts[[yi]]
+      }
+    }
+  } else {
+    for (k in seq_along(rows)) {
+      r <- as.character(rows[[k]])
+      if (!length(r) || length(r) < name_i) next
+      nm <- trimws(r[[name_i]])
+      if (!nzchar(nm)) next
+      if (grepl("^(year ended|december)\\b", .bblab_norm_label(nm))) next
+      if (!is.na(.bblab_metric_field(nm))) next
+      amts <- .bblab_row_year_amounts(r, headers, year_i, name_i)
+      if (.bblab_is_consolidated_total_name(nm)) {
+        for (yi in names(amts)) {
+          if (is.finite(amts[[yi]])) consolidated[[yi]] <- amts[[yi]]
+        }
+        next
+      }
+      if (.bblab_is_total_or_recon_name(nm) &&
+          !grepl("eliminat|unallocated|corporate|other", .bblab_norm_label(nm))) {
+        next
+      }
+      key <- .bblab_norm_label(nm)
+      if (!nzchar(key)) next
+      businesses[[key]] <- list(
+        name = nm,
+        amounts = setNames(as.numeric(amts)[as.character(years)], as.character(years))
+      )
+      # Ensure all year names exist
+      for (yi in as.character(years)) {
+        if (!yi %in% names(businesses[[key]]$amounts)) {
+          businesses[[key]]$amounts[[yi]] <- NA_real_
+        }
+      }
+    }
+  }
+  blob <- paste(c(tbl$short_name %||% "", tbl$caption %||% "", headers), collapse = " ")
+  list(
+    years = years,
+    businesses = businesses,
+    consolidated = consolidated,
+    blob = blob,
+    scale_hint = tbl$scale,
+    kind = .bblab_chr(tbl$kind %||% .bblab_kind_from_label(tbl$short_name %||% tbl$label %||% ""),
+                      NA_character_),
+    label = .bblab_chr(tbl$short_name %||% tbl$label %||% tbl$caption, NA_character_)
+  )
+}
+
+#' Per-year product / service child rows from an already-fetched income statement.
+.bblab_is_revenue_matrix <- function(d_is) {
+  if (!is.data.frame(d_is) || nrow(d_is) < 2L || ncol(d_is) < 2L) return(NULL)
+  cols <- colnames(d_is)[-1]
+  years <- vapply(cols, .bblab_year_from_label, integer(1))
+  keep <- which(is.finite(years))
+  if (!length(keep)) return(NULL)
+  years <- as.integer(years[keep])
+  cols <- cols[keep]
+  labs <- trimws(as.character(d_is[[1]]))
+  cons <- setNames(rep(NA_real_, length(years)), as.character(years))
+  rev_hit <- which(vapply(labs, function(l) {
+    .bblab_norm_label(l) %in% c(
+      "total revenue", "operating revenue", "net sales", "net revenue",
+      "revenue", "total net sales", "total net revenue", "total sales"
+    )
+  }, logical(1)))
+  if (length(rev_hit)) {
+    for (k in seq_along(cols)) {
+      cons[[k]] <- .bblab_parse_amount(d_is[rev_hit[1], cols[k]])
+    }
+  }
+  stop_re <- paste(
+    "cost of revenue", "cost of goods", "gross profit",
+    "operating expense", "operating income", "operating profit",
+    sep = "|"
+  )
+  start_i <- if (length(rev_hit)) rev_hit[1] else NA_integer_
+  end_i <- nrow(d_is)
+  if (is.finite(start_i)) {
+    for (i in seq.int(start_i, nrow(d_is))) {
+      n <- .bblab_norm_label(labs[[i]])
+      if (i > start_i && grepl(stop_re, n)) {
+        end_i <- i - 1L
+        break
+      }
+    }
+  }
+  businesses <- list()
+  if (is.finite(start_i) && end_i > start_i) {
+    for (i in seq.int(start_i, end_i)) {
+      lab <- labs[[i]]
+      if (!nzchar(lab) || .bblab_is_standard_is_line(lab) || .bblab_is_total_or_recon_name(lab)) {
+        next
+      }
+      key <- .bblab_norm_label(lab)
+      if (!nzchar(key)) next
+      amts <- setNames(rep(NA_real_, length(years)), as.character(years))
+      for (k in seq_along(cols)) {
+        amts[[k]] <- .bblab_parse_amount(d_is[i, cols[k]])
+      }
+      if (!any(is.finite(amts))) next
+      businesses[[key]] <- list(name = lab, amounts = amts)
+    }
+  }
+  list(
+    years = years,
+    businesses = businesses,
+    consolidated = cons,
+    blob = "income_statement",
+    scale_hint = 1,
+    kind = "product_service",
+    label = "Income statement product / service revenue"
+  )
+}
+
+.bblab_history_empty <- function(codes = "BUSINESS_HISTORY_INSUFFICIENT_YEARS",
+                                 limitations = "history_insufficient_years",
+                                 omitted_years = character(0),
+                                 source = NA_character_) {
+  list(
+    eligible = FALSE,
+    years = character(0),
+    series = list(),
+    denominator = numeric(0),
+    codes = unique(as.character(codes)),
+    limitations = unique(as.character(limitations)),
+    omitted_years = unique(as.character(omitted_years)),
+    source = .bblab_chr(source, NA_character_)
+  )
+}
+
+.bblab_history_match_key <- function(name) {
+  .bblab_norm_label(name)
+}
+
+#' Best-effort fiscal-year revenue shares for the selected primary dimension.
+#' Same names across years; unmappable years omitted (never zero-filled).
+#' Share denominator = that year's reported consolidated revenue.
+#' Eligible only when at least two comparable years exist.
+bblab_history_shares <- function(payload, primary_dim, pack, consolidated,
+                                 cfg = NULL, max_years = 5L) {
+  cfg <- cfg %||% bblab_load_config()
+  max_years <- as.integer(max_years)[1]
+  if (!is.finite(max_years) || max_years < 2L) max_years <- 5L
+  current <- list()
+  for (c in pack$businesses %||% list()) {
+    if (isTRUE(c$qualitative_only)) next
+    current[[length(current) + 1L]] <- list(
+      id = c$id, name = c$name,
+      classification = c$classification %||% "MAJOR",
+      key = .bblab_history_match_key(c$name)
+    )
+  }
+  if (!is.null(pack$other) && .bblab_finite(pack$other$revenue)) {
+    current[[length(current) + 1L]] <- list(
+      id = pack$other$id %||% "other_businesses",
+      name = pack$other$name %||% "Other Businesses",
+      classification = "OTHER",
+      key = .bblab_history_match_key(pack$other$name %||% "other")
+    )
+  }
+  if (!length(current)) {
+    return(.bblab_history_empty())
+  }
+  matrices <- list()
+  tables <- .bblab_coerce_segment_tables(payload$segment_tables, payload$notes)
+  for (tbl in tables) {
+    mx <- tryCatch(.bblab_table_revenue_matrix(tbl), error = function(e) NULL)
+    if (!is.null(mx) && length(mx$years)) matrices[[length(matrices) + 1L]] <- mx
+  }
+  is_mx <- tryCatch(
+    .bblab_is_revenue_matrix(payload$income_statement %||% payload$d_is),
+    error = function(e) NULL
+  )
+  kind <- .bblab_chr(primary_dim$kind, NA_character_)
+  # Prefer the filed table that produced the primary dimension (same names).
+  keys <- unique(vapply(current, function(c) c$key, character(1)))
+  score_mx <- function(mx) {
+    if (is.null(mx)) return(-1)
+    nms <- names(mx$businesses)
+    overlap <- length(intersect(keys, nms))
+    kind_bonus <- if (!is.na(kind) && identical(.bblab_chr(mx$kind), kind)) 10 else 0
+    if (identical(kind, "official_description") && identical(mx$kind, "product_service") &&
+        !length(mx$businesses)) {
+      # Consolidated-only IS still supports a 100% single-entity series.
+      kind_bonus <- 1
+    }
+    overlap + kind_bonus
+  }
+  best <- NULL
+  best_score <- 0
+  for (mx in matrices) {
+    sc <- score_mx(mx)
+    if (sc > best_score) {
+      best_score <- sc
+      best <- mx
+    }
+  }
+  if (!is.null(is_mx)) {
+    sc_is <- score_mx(is_mx)
+    # Use IS when it matches names, or when no table matched and primary is
+    # product/official (Yahoo annuals / single-entity 100%).
+    if (sc_is > best_score ||
+        (best_score <= 0 && kind %in% c("product_service", "official_description",
+                                        "revenue_disaggregation"))) {
+      if (sc_is > 0 || kind %in% c("official_description") ||
+          (identical(kind, "product_service") && length(is_mx$businesses))) {
+        best <- is_mx
+        best_score <- max(sc_is, best_score)
+      }
+    }
+  }
+  # Single-entity: 100% of each year's reported consolidated revenue.
+  single <- identical(kind, "official_description") ||
+    (length(pack$businesses %||% list()) == 1L && is.null(pack$other) &&
+       identical(.bblab_chr(pack$businesses[[1]]$id), "consolidated_entity"))
+  candidate_years <- integer(0)
+  if (!is.null(best)) candidate_years <- c(candidate_years, as.integer(best$years))
+  if (!is.null(is_mx)) candidate_years <- c(candidate_years, as.integer(is_mx$years))
+  cur_y <- .bblab_year_from_label(consolidated$period %||% payload$period)
+  if (is.finite(cur_y)) candidate_years <- c(candidate_years, as.integer(cur_y))
+  candidate_years <- sort(unique(candidate_years[is.finite(candidate_years)]), decreasing = TRUE)
+  if (length(candidate_years) > max_years) candidate_years <- candidate_years[seq_len(max_years)]
+  if (!length(candidate_years)) {
+    return(.bblab_history_empty())
+  }
+  is_cons_for <- function(year) {
+    if (!is.null(is_mx) && as.character(year) %in% names(is_mx$consolidated)) {
+      v <- is_mx$consolidated[[as.character(year)]]
+      if (.bblab_finite(v) && v != 0) return(v)
+    }
+    yv <- .bblab_df_metric_for_year(
+      payload$income_statement %||% payload$d_is,
+      c("^Total Revenue$", "Total Revenue", "Operating Revenue", "^Revenue$",
+        "Net Sales", "Total Net Sales"),
+      year
+    )
+    if (.bblab_finite(yv) && yv != 0) return(yv)
+    NA_real_
+  }
+  year_rows <- list()
+  omitted <- character(0)
+  for (year in candidate_years) {
+    ys <- as.character(year)
+    raw <- setNames(rep(NA_real_, length(current)), vapply(current, function(c) c$id, character(1)))
+    if (!is.null(best) && length(best$businesses)) {
+      for (c in current) {
+        hit <- best$businesses[[c$key]]
+        if (is.null(hit)) next
+        amt <- hit$amounts[[ys]]
+        if (.bblab_finite(amt) && amt > 0) raw[[c$id]] <- amt
+      }
+    }
+    if (isTRUE(single) && !any(is.finite(raw))) {
+      # 100% of the firm that year — only when no multi-business split exists.
+      raw[[current[[1]]$id]] <- 1
+      table_cons <- NA_real_
+      is_cons <- is_cons_for(year)
+      if (!.bblab_finite(is_cons)) {
+        omitted <- c(omitted, ys)
+        next
+      }
+      shares <- setNames(rep(NA_real_, length(raw)), names(raw))
+      shares[[current[[1]]$id]] <- 1
+      revenues <- setNames(rep(NA_real_, length(raw)), names(raw))
+      revenues[[current[[1]]$id]] <- is_cons
+      year_rows[[ys]] <- list(
+        year = ys, denominator = is_cons, shares = shares, revenues = revenues
+      )
+      next
+    }
+    table_cons <- if (!is.null(best) && ys %in% names(best$consolidated)) {
+      v <- best$consolidated[[ys]]
+      if (.bblab_finite(v) && v != 0) v else NA_real_
+    } else NA_real_
+    is_cons <- is_cons_for(year)
+    mapped <- raw[is.finite(raw) & raw > 0]
+    if (!length(mapped)) {
+      omitted <- c(omitted, ys)
+      next
+    }
+    denom_raw <- if (.bblab_finite(table_cons)) table_cons else NA_real_
+    m <- 1
+    denom <- NA_real_
+    if (.bblab_finite(denom_raw)) {
+      shares_try <- mapped / denom_raw
+      if (any(!is.finite(shares_try)) || sum(shares_try) > 1.25 || sum(shares_try) <= 0) {
+        omitted <- c(omitted, ys)
+        next
+      }
+      if (.bblab_finite(is_cons)) {
+        m <- .bblab_infer_amount_scale(as.numeric(mapped), is_cons,
+                                       prior = .bblab_num(best$scale_hint, 1))
+        if (!is.finite(m) || m <= 0) m <- 1
+        # Prefer IS consolidated when scale lands on it; else keep table units.
+        aligned_sum <- sum(mapped) * m
+        if (.bblab_rel_diff(aligned_sum, is_cons) <= 0.08 ||
+            .bblab_rel_diff(denom_raw * m, is_cons) <= 0.08) {
+          denom <- is_cons
+        } else {
+          denom <- denom_raw * m
+        }
+      } else {
+        m <- .bblab_num(best$scale_hint, 1)
+        if (!is.finite(m) || m <= 0) m <- 1
+        denom <- denom_raw * m
+      }
+      shares <- setNames(rep(NA_real_, length(raw)), names(raw))
+      revenues <- setNames(rep(NA_real_, length(raw)), names(raw))
+      for (id in names(raw)) {
+        if (.bblab_finite(raw[[id]]) && raw[[id]] > 0) {
+          shares[[id]] <- raw[[id]] / denom_raw
+          revenues[[id]] <- raw[[id]] * m
+        }
+      }
+    } else if (.bblab_finite(is_cons)) {
+      m <- .bblab_infer_amount_scale(
+        as.numeric(mapped), is_cons,
+        prior = .bblab_num(if (!is.null(best)) best$scale_hint else 1, 1)
+      )
+      if (!is.finite(m) || m <= 0) m <- 1
+      aligned <- mapped * m
+      if (sum(aligned) / is_cons > 1.25 || sum(aligned) <= 0) {
+        omitted <- c(omitted, ys)
+        next
+      }
+      denom <- is_cons
+      shares <- setNames(rep(NA_real_, length(raw)), names(raw))
+      revenues <- setNames(rep(NA_real_, length(raw)), names(raw))
+      for (id in names(raw)) {
+        if (.bblab_finite(raw[[id]]) && raw[[id]] > 0) {
+          revenues[[id]] <- raw[[id]] * m
+          shares[[id]] <- revenues[[id]] / denom
+        }
+      }
+    } else {
+      omitted <- c(omitted, ys)
+      next
+    }
+    finite_shares <- shares[is.finite(shares) & shares > 0]
+    if (!length(finite_shares)) {
+      omitted <- c(omitted, ys)
+      next
+    }
+    year_rows[[ys]] <- list(
+      year = ys, denominator = denom, shares = shares, revenues = revenues
+    )
+  }
+  years_ok <- names(year_rows)
+  # Oldest → newest on the chart axis; never pad missing years with 0.
+  years_ok <- years_ok[order(as.integer(years_ok))]
+  if (length(years_ok) < 2L) {
+    return(.bblab_history_empty(omitted_years = omitted,
+                                source = if (!is.null(best)) best$label else NA_character_))
+  }
+  series <- lapply(current, function(c) {
+    sh <- vapply(years_ok, function(ys) {
+      v <- year_rows[[ys]]$shares[[c$id]]
+      if (.bblab_finite(v) && v > 0) as.numeric(v)[1] else NA_real_
+    }, numeric(1))
+    rv <- vapply(years_ok, function(ys) {
+      v <- year_rows[[ys]]$revenues[[c$id]]
+      if (.bblab_finite(v) && v > 0) as.numeric(v)[1] else NA_real_
+    }, numeric(1))
+    names(sh) <- years_ok
+    names(rv) <- years_ok
+    list(
+      id = c$id,
+      name = c$name,
+      classification = c$classification,
+      shares = sh,
+      revenues = rv
+    )
+  })
+  # Drop series that never mapped (all NA) — do not plot a fabricated 0 line.
+  series <- Filter(function(s) any(is.finite(s$shares) & s$shares > 0), series)
+  denom <- vapply(years_ok, function(ys) year_rows[[ys]]$denominator, numeric(1))
+  names(denom) <- years_ok
+  list(
+    eligible = TRUE,
+    years = years_ok,
+    series = series,
+    denominator = denom,
+    codes = character(0),
+    limitations = character(0),
+    omitted_years = unique(omitted),
+    source = if (!is.null(best)) best$label else "income_statement"
+  )
+}
+
 .bblab_overall_confidence <- function(pack, level, recon_pass) {
   if (identical(level, "D")) return("UNAVAILABLE")
   bits <- c(
@@ -871,6 +1386,10 @@ bblab_toast_payload <- function(codes, recon_pass = NULL, allocation_used = FALS
     } else if (identical(code, "BUSINESS_STATEMENTS_UNAVAILABLE")) {
       blocked <- c("business_cards", "composition_chart", "reconciliation_table")
       remain <- "search"
+    } else if (identical(code, "BUSINESS_HISTORY_INSUFFICIENT_YEARS")) {
+      blocked <- character(0)
+      remain <- unique(c(remain, "business_cards", "composition_chart",
+                         "reconciliation_table", "search"))
     }
     if (identical(code, "BUSINESS_REVALUATION_UNAVAILABLE") ||
         identical(code, "BUSINESS_REVALUATION_CONSOLIDATED_PROXY")) {
@@ -1770,6 +2289,11 @@ bblab_analyze <- function(payload, options = list(), cfg = NULL) {
   elig <- bblab_chart_eligibility(pack, cons, cfg, level = level)
   chart <- bblab_chart_slices(pack, cons, cfg, elig)
   codes <- unique(c(codes, elig$codes))
+  history <- bblab_history_shares(payload, dim, pack, cons, cfg)
+  if (!isTRUE(history$eligible)) {
+    codes <- unique(c(codes, history$codes %||% "BUSINESS_HISTORY_INSUFFICIENT_YEARS"))
+    limitations <- unique(c(limitations, history$limitations %||% "history_insufficient_years"))
+  }
   overall <- .bblab_overall_confidence(pack, level, pack$reconciliation$pass)
   view <- if (identical(.bblab_chr(opt$view, cfg$flags$default_view), "adjusted")) "adjusted" else "reported"
   fold_adj <- identical(view, "adjusted") &&
@@ -1802,6 +2326,7 @@ bblab_analyze <- function(payload, options = list(), cfg = NULL) {
     reconciliation = pack$reconciliation,
     revaluation_available = isTRUE(pack$reval_any),
     chart = chart,
+    history = history,
     evidence = lapply(pack$businesses, function(c) {
       list(revenue = c$revenue_evidence, cor = c$cor_evidence, gp = c$gp_evidence,
            revaluation = c$revaluation)

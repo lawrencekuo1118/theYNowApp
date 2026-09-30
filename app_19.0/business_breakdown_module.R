@@ -67,7 +67,11 @@ business_breakdown_lab_ui <- function(id = "bblab") {
       tags$p(
         id = "ynow_bblab_page_sub",
         class = "ynow-bblab__lead",
-        "Experimental analysis of business-level revenue, cost, gross profit, and revaluation assumptions."
+        paste0(
+          "Walk through the company's financial structure from the statement viewpoint: ",
+          "consolidated totals, how the filer splits the business, current mix, ",
+          "five-year share evolution, and per-business cards. Experimental; not a valuation engine."
+        )
       ),
       tags$p(
         id = "ynow_bblab_listed_only_notice",
@@ -128,20 +132,53 @@ business_breakdown_lab_ui <- function(id = "bblab") {
 
     uiOutput(ns("toasts_slot")),
 
-    # 2 Analysis summary
+    # 1 Consolidated statement snapshot
     fluidRow(
       box(
-        title = tagList(icon("clipboard-list"), tags$span(id = "ynow_bblab_summary_title", "Analysis summary")),
+        title = tagList(
+          tags$span(class = "ynow-bblab-chapter__num", "1"),
+            icon("building"),
+          tags$span(id = "ynow_bblab_ch1_title", "1. Consolidated statement snapshot")
+        ),
         width = 12, status = "info", solidHeader = TRUE,
+        `data-bblab-chapter` = "1",
+        tags$p(id = "ynow_bblab_ch1_help", class = "help-block",
+               "Reported consolidated totals in statement currency. This is the whole firm, before any business split."),
+        uiOutput(ns("snapshot"))
+      )
+    ),
+
+    # 2 How the statements split the business
+    fluidRow(
+      box(
+        title = tagList(
+          tags$span(class = "ynow-bblab-chapter__num", "2"),
+          icon("sitemap"),
+          tags$span(id = "ynow_bblab_ch2_title", "2. How the statements split the business")
+        ),
+        width = 12, status = "info", solidHeader = TRUE,
+        `data-bblab-chapter` = "2",
+        tags$p(id = "ynow_bblab_ch2_help", class = "help-block",
+               paste0(
+                 "One primary reporting dimension is selected. Geography that only describes ",
+                 "customer location is never the business split. Overlapping dimensions are never added together."
+               )),
         uiOutput(ns("summary"))
       )
     ),
 
-    # 3 Composition chart
+    # 3 Current revenue mix
     fluidRow(
       box(
-        title = tagList(icon("chart-pie"), tags$span(id = "ynow_bblab_chart_title", "Revenue composition")),
+        title = tagList(
+          tags$span(class = "ynow-bblab-chapter__num", "3"),
+          icon("chart-pie"),
+          tags$span(id = "ynow_bblab_ch3_title", "3. Current revenue mix")
+        ),
         width = 12, status = "info", solidHeader = TRUE, collapsible = TRUE,
+        `data-bblab-chapter` = "3",
+        tags$p(id = "ynow_bblab_ch3_help", class = "help-block",
+               "Each slice is a share of reported consolidated revenue for the current period."),
         fluidRow(
           column(width = 3, radioButtons(ns("chart_mode"), NULL,
                                          choices = c("Share %" = "pct", "Amount" = "amount"),
@@ -163,25 +200,55 @@ business_breakdown_lab_ui <- function(id = "bblab") {
       )
     ),
 
-    # 4 Business cards
+    # 4 Five-year mix evolution
     fluidRow(
       box(
-        title = tagList(icon("th-large"), tags$span(id = "ynow_bblab_cards_title", "Business cards")),
+        title = tagList(
+          tags$span(class = "ynow-bblab-chapter__num", "4"),
+          icon("chart-area"),
+          tags$span(id = "ynow_bblab_ch4_title", "4. Five-year mix evolution")
+        ),
+        width = 12, status = "info", solidHeader = TRUE, collapsible = TRUE,
+        `data-bblab-chapter` = "4",
+        tags$p(id = "ynow_bblab_ch4_help", class = "help-block",
+               paste0(
+                 "Revenue share by business for up to five fiscal years, using the same reporting dimension. ",
+                 "Years that cannot be mapped are omitted; shares are never fabricated or filled with 0."
+               )),
+        uiOutput(ns("history_status")),
+        plotly::plotlyOutput(ns("history"), height = "420px")
+      )
+    ),
+
+    # 5 Business cards
+    fluidRow(
+      box(
+        title = tagList(
+          tags$span(class = "ynow-bblab-chapter__num", "5"),
+          icon("th-large"),
+          tags$span(id = "ynow_bblab_ch5_title", "5. Business cards")
+        ),
         width = 12, status = "primary", solidHeader = TRUE,
+        `data-bblab-chapter` = "5",
         uiOutput(ns("cards"))
       )
     ),
 
-    # 5 Reconciliation
+    # 6 Reconciliation
     fluidRow(
       box(
-        title = tagList(icon("balance-scale"), tags$span(id = "ynow_bblab_recon_title", "Reconciliation")),
+        title = tagList(
+          tags$span(class = "ynow-bblab-chapter__num", "6"),
+          icon("balance-scale"),
+          tags$span(id = "ynow_bblab_ch6_title", "6. Reconciliation")
+        ),
         width = 12, status = "warning", solidHeader = TRUE,
+        `data-bblab-chapter` = "6",
         uiOutput(ns("recon"))
       )
     ),
 
-    # Shared / corporate (collapsed)
+    # Shared / corporate (collapsed; not a numbered chapter)
     fluidRow(
       box(
         title = tagList(icon("sitemap"), tags$span(id = "ynow_bblab_shared_title", "Shared and Corporate Items")),
@@ -190,11 +257,16 @@ business_breakdown_lab_ui <- function(id = "bblab") {
       )
     ),
 
-    # 6 Sources and methodology — Notes collapsed; chrome stays visible
+    # 7 Sources — Notes collapsed; chapter header stays visible
     fluidRow(
       box(
-        title = tagList(icon("book"), tags$span(id = "ynow_bblab_sources_title", "Sources and methodology")),
+        title = tagList(
+          tags$span(class = "ynow-bblab-chapter__num", "7"),
+          icon("book"),
+          tags$span(id = "ynow_bblab_ch7_title", "7. Sources")
+        ),
         width = 12, status = "info", solidHeader = TRUE,
+        `data-bblab-chapter` = "7",
         tags$p(
           id = "ynow_bblab_sources_chrome",
           class = "help-block",
@@ -416,7 +488,8 @@ business_breakdown_lab_server <- function(id = "bblab",
         for (tst in result$toasts %||% list()) {
           # Scoped degradation: missing reval / overlapping dims are not Search errors.
           if (identical(tst$code, "BUSINESS_REVALUATION_UNAVAILABLE") ||
-              identical(tst$code, "BUSINESS_OVERLAPPING_DIMENSIONS_BLOCKED")) {
+              identical(tst$code, "BUSINESS_OVERLAPPING_DIMENSIONS_BLOCKED") ||
+              identical(tst$code, "BUSINESS_HISTORY_INSUFFICIENT_YEARS")) {
             next
           }
           msg <- ui_msg(paste0("notif_bblab_", tolower(tst$code)))
@@ -489,17 +562,52 @@ business_breakdown_lab_server <- function(id = "bblab",
       )
     })
 
+    output$snapshot <- renderUI({
+      res <- lab_result()
+      if (is.null(res)) {
+        return(tags$p(class = "help-block", ui_msg("bblab_waiting")))
+      }
+      cons <- res$consolidated %||% list()
+      gm <- if (.bblab_finite(cons$revenue) && .bblab_finite(cons$gp) && cons$revenue != 0) {
+        cons$gp / cons$revenue
+      } else NA_real_
+      kpi <- function(lab, val, unit = NULL) {
+        tags$div(
+          class = "ynow-bblab-kpi",
+          tags$span(class = "ynow-bblab-kpi__lab", lab),
+          tags$span(class = "ynow-bblab-kpi__val", val),
+          if (!is.null(unit)) tags$span(class = "ynow-bblab-kpi__unit", unit) else NULL
+        )
+      }
+      tags$div(
+        class = "ynow-bblab-kpis",
+        kpi(ui_msg("bblab_kpi_revenue"), .bblab_fmt_amt(cons$revenue), cons$currency %||% res$statement_currency),
+        kpi(ui_msg("bblab_kpi_cor"), .bblab_fmt_amt(cons$cor), cons$currency %||% res$statement_currency),
+        kpi(ui_msg("bblab_kpi_gp"), .bblab_fmt_amt(cons$gp), cons$currency %||% res$statement_currency),
+        kpi(ui_msg("bblab_kpi_gm"), .bblab_fmt_pct(gm)),
+        kpi(ui_msg("bblab_period_label"), cons$period %||% res$period %||% "—"),
+        kpi(ui_msg("bblab_statement_ccy_label"), cons$currency %||% res$statement_currency %||% "—")
+      )
+    })
+
     output$summary <- renderUI({
       res <- lab_result()
       if (is.null(res)) {
         return(tags$p(class = "help-block", ui_msg("bblab_waiting")))
       }
-      dim_lab <- res$primary_dimension$kind %||% "—"
+      kind <- res$primary_dimension$kind %||% "—"
+      dim_key <- paste0("bblab_dim_", gsub("[^a-z_]", "", kind))
+      dim_lab <- {
+        mapped <- ui_msg(dim_key)
+        if (identical(mapped, dim_key)) kind else mapped
+      }
       n_biz <- length(res$businesses %||% list())
       recon <- res$reconciliation
+      codes <- res$codes %||% character(0)
       tags$div(
         class = "ynow-bblab-summary",
         tags$ul(
+          class = "ynow-bblab-split",
           tags$li(tags$b(ui_msg("bblab_dimension_label"), ": "), dim_lab),
           tags$li(tags$b(ui_msg("bblab_count_label"), ": "), n_biz),
           tags$li(tags$b(ui_msg("bblab_level_label"), ": "), res$level %||% "—"),
@@ -513,6 +621,12 @@ business_breakdown_lab_server <- function(id = "bblab",
           tags$li(tags$b(ui_msg("bblab_limitations_label"), ": "),
                   if (length(res$limitations)) paste(res$limitations, collapse = "; ") else "—")
         ),
+        if ("BUSINESS_GEOGRAPHY_CUSTOMER_LOCATION_ONLY" %in% codes) {
+          tags$p(id = "ynow_bblab_geo_veto_why", class = "help-block", ui_msg("bblab_geo_veto_why"))
+        } else NULL,
+        if ("BUSINESS_OVERLAPPING_DIMENSIONS_BLOCKED" %in% codes) {
+          tags$p(id = "ynow_bblab_overlap_why", class = "help-block", ui_msg("bblab_overlap_why"))
+        } else NULL,
         if ("no_multi_business_split" %in% (res$limitations %||% character(0))) {
           tags$p(class = "help-block", ui_msg("bblab_single_business_note"))
         } else NULL
@@ -581,6 +695,71 @@ business_breakdown_lab_server <- function(id = "bblab",
         )
       }
       plotly::layout(fig, showlegend = TRUE, margin = list(b = 60))
+    })
+
+    output$history_status <- renderUI({
+      res <- lab_result()
+      if (is.null(res)) return(NULL)
+      hist <- res$history
+      if (isTRUE(hist$eligible) && length(hist$years) >= 2L) return(NULL)
+      tags$p(
+        id = "ynow_bblab_ch4_limited",
+        class = "help-block",
+        ui_msg("bblab_ch4_limited")
+      )
+    })
+
+    output$history <- plotly::renderPlotly({
+      empty <- plotly::layout(
+        plotly::plot_ly(type = "bar"),
+        showlegend = FALSE, title = NULL,
+        xaxis = list(visible = FALSE), yaxis = list(visible = FALSE)
+      )
+      res <- lab_result()
+      hist <- res$history
+      if (is.null(res) || !isTRUE(hist$eligible) || length(hist$years) < 2L ||
+          !length(hist$series)) {
+        return(empty)
+      }
+      years <- as.character(hist$years)
+      pal <- c("#0C5484", "#1AA8B8", "#249C60", "#E8A838", "#8E6BB5", "#D96B5F")
+      fig <- plotly::plot_ly()
+      for (i in seq_along(hist$series)) {
+        s <- hist$series[[i]]
+        y <- vapply(years, function(ys) {
+          v <- s$shares[[ys]]
+          if (.bblab_finite(v) && v > 0) as.numeric(v)[1] * 100 else NA_real_
+        }, numeric(1))
+        col <- if (.bblab_neutral_class(s$classification)) "#9AA3AB"
+        else pal[((i - 1L) %% length(pal)) + 1L]
+        hover <- vapply(seq_along(years), function(j) {
+          sh <- s$shares[[years[[j]]]]
+          rv <- s$revenues[[years[[j]]]]
+          paste0(
+            s$name, "<br>", years[[j]],
+            "<br>Share: ", .bblab_fmt_pct(sh),
+            "<br>Revenue: ", .bblab_fmt_amt(rv),
+            "<br>Denom: ", .bblab_fmt_amt(hist$denominator[[years[[j]]]])
+          )
+        }, character(1))
+        fig <- plotly::add_trace(
+          fig,
+          x = years, y = y, name = s$name, type = "bar",
+          marker = list(color = col),
+          hovertext = hover, hoverinfo = "text"
+        )
+      }
+      plotly::layout(
+        fig,
+        barmode = "stack",
+        showlegend = TRUE,
+        xaxis = list(title = "", type = "category"),
+        yaxis = list(
+          title = ui_msg("bblab_history_yaxis"),
+          range = c(0, 100), ticksuffix = "%"
+        ),
+        margin = list(b = 40)
+      )
     })
 
     observeEvent(plotly::event_data("plotly_click", source = ns("donut")), {

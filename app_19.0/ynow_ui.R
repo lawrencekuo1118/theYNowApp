@@ -2300,6 +2300,56 @@ ui <- dashboardPage(
         }
         .ynow-bblab-recon--pass { color: #1e7a46; font-weight: 700; }
         .ynow-bblab-recon--fail { color: #b33b3b; font-weight: 700; }
+        .ynow-bblab-chapter__num {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 1.55em;
+          height: 1.55em;
+          margin-right: 8px;
+          font-size: 12px;
+          font-weight: 700;
+          color: #fff;
+          background: #0C5484;
+          border-radius: 50%;
+          vertical-align: middle;
+        }
+        .ynow-bblab-kpis {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px 14px;
+          margin: 8px 0 4px 0;
+        }
+        .ynow-bblab-kpi {
+          min-width: 140px;
+          padding: 8px 10px;
+          background: #f7fafb;
+          border: 1px solid #d5dee3;
+          border-radius: 4px;
+        }
+        .ynow-bblab-kpi__lab {
+          display: block;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.02em;
+          color: #4a5b66;
+          margin-bottom: 2px;
+        }
+        .ynow-bblab-kpi__val {
+          font-size: 16px;
+          font-weight: 700;
+          color: #1a1a1a;
+        }
+        .ynow-bblab-kpi__unit {
+          font-size: 11px;
+          color: #666;
+          margin-left: 4px;
+        }
+        .ynow-bblab-split {
+          margin: 0;
+          padding-left: 1.2em;
+        }
+        .ynow-bblab-split li { margin-bottom: 4px; }
         /* ---- Lite mode: hide Full-only chrome; show Smart Analysis ---- */
         .sidebar-menu a[data-value="smart_analysis"],
         .sidebar-menu li:has(> a[data-value="smart_analysis"]) {
@@ -3689,15 +3739,29 @@ ui <- dashboardPage(
             setBtText('ynow_bblab_company_label', 'bblab_company_label');
             setBtText('ynow_bblab_period_label', 'bblab_period_label');
             setBtText('ynow_bblab_statement_ccy_label', 'bblab_statement_ccy_label');
-            setBtText('ynow_bblab_summary_title', 'bblab_summary_title');
-            setBtText('ynow_bblab_chart_title', 'bblab_chart_title');
-            setBtText('ynow_bblab_cards_title', 'bblab_cards_title');
-            setBtText('ynow_bblab_recon_title', 'bblab_recon_title');
-            setBtText('ynow_bblab_sources_title', 'bblab_sources_title');
+            setBtText('ynow_bblab_ch1_title', 'bblab_ch1_title');
+            setBtText('ynow_bblab_ch1_help', 'bblab_ch1_help');
+            setBtText('ynow_bblab_ch2_title', 'bblab_ch2_title');
+            setBtText('ynow_bblab_ch2_help', 'bblab_ch2_help');
+            setBtText('ynow_bblab_ch3_title', 'bblab_ch3_title');
+            setBtText('ynow_bblab_ch3_help', 'bblab_ch3_help');
+            setBtText('ynow_bblab_ch4_title', 'bblab_ch4_title');
+            setBtText('ynow_bblab_ch4_help', 'bblab_ch4_help');
+            setBtText('ynow_bblab_ch4_limited', 'bblab_ch4_limited');
+            setBtText('ynow_bblab_ch5_title', 'bblab_ch5_title');
+            setBtText('ynow_bblab_ch6_title', 'bblab_ch6_title');
+            setBtText('ynow_bblab_ch7_title', 'bblab_ch7_title');
+            setBtText('ynow_bblab_summary_title', 'bblab_ch2_title');
+            setBtText('ynow_bblab_chart_title', 'bblab_ch3_title');
+            setBtText('ynow_bblab_cards_title', 'bblab_ch5_title');
+            setBtText('ynow_bblab_recon_title', 'bblab_ch6_title');
+            setBtText('ynow_bblab_sources_title', 'bblab_ch7_title');
             setBtText('ynow_bblab_sources_chrome', 'bblab_sources_chrome');
             setBtText('ynow_bblab_shared_title', 'bblab_shared_title');
             setBtText('ynow_bblab_expand_other', 'bblab_expand_other');
             setBtText('ynow_bblab_fallback_gm_label', 'bblab_fallback_gm_label');
+            setBtText('ynow_bblab_geo_veto_why', 'bblab_geo_veto_why');
+            setBtText('ynow_bblab_overlap_why', 'bblab_overlap_why');
             var bblabSearch = document.getElementById('bblab-search');
             if (bblabSearch && s.bblab_search_btn) {
               var bsi = bblabSearch.querySelector('i');
