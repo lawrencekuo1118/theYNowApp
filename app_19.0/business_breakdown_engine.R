@@ -619,6 +619,10 @@ bblab_revaluation <- function(pack, inputs = NULL, cfg = NULL) {
 }
 
 #' Chart eligibility. Failures never block statement cards.
+#' One supportable business is eligible (single slice at 100%, or that
+#' business plus Other / Unallocated / Rounding recon slices). Component
+#' count is never a gate: BUSINESS_CHART_SINGLE_COMPONENT and
+#' BUSINESS_CHART_INSUFFICIENT_COMPONENTS are not emitted.
 bblab_chart_eligibility <- function(pack, consolidated, cfg = NULL, level = NULL) {
   cfg <- cfg %||% bblab_load_config()
   codes <- character(0)
@@ -638,10 +642,8 @@ bblab_chart_eligibility <- function(pack, consolidated, cfg = NULL, level = NULL
     n_valid <- n_valid + 1L
   }
   if (identical(level, "D")) codes <- c(codes, "BUSINESS_CHART_LEVEL_D")
-  if (n_valid < 2L) {
-    codes <- c(codes, if (n_valid <= 1L) "BUSINESS_CHART_SINGLE_COMPONENT" else "BUSINESS_CHART_INSUFFICIENT_COMPONENTS")
-  }
   # Finite 0.0%-rounded shares (display) never fail eligibility.
+  # One component is not a failure; do not gate on n_valid.
   if (!is.finite(cons_rev) || cons_rev == 0) codes <- c(codes, "BUSINESS_CHART_CONSOLIDATED_REVENUE_MISSING")
   if (length(period) > 1L) codes <- c(codes, "BUSINESS_CHART_PERIOD_MISMATCH")
   if (length(ccy) > 1L) codes <- c(codes, "BUSINESS_CHART_CURRENCY_MISMATCH")
@@ -839,7 +841,13 @@ bblab_toast_payload <- function(codes, recon_pass = NULL, allocation_used = FALS
   lapply(codes, function(code) {
     blocked <- character(0)
     remain <- c("business_cards", "analysis_summary", "reconciliation_table")
-    if (grepl("^BUSINESS_CHART_", code)) {
+    chart_count_codes <- c("BUSINESS_CHART_SINGLE_COMPONENT",
+                           "BUSINESS_CHART_INSUFFICIENT_COMPONENTS")
+    if (code %in% chart_count_codes) {
+      # Repurposed: one / few components never hide a valid recon donut.
+      blocked <- character(0)
+      remain <- unique(c(remain, "composition_chart"))
+    } else if (grepl("^BUSINESS_CHART_", code)) {
       blocked <- "composition_chart"
     } else if (identical(code, "BUSINESS_COST_NOT_RELIABLY_ESTIMABLE") ||
                identical(code, "BUSINESS_COST_ALLOCATED_LOW_CONFIDENCE")) {

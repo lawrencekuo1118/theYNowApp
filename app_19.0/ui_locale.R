@@ -1529,7 +1529,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_reval_unavailable = "Revaluation ratio unavailable",
     bblab_reval_label = "Revaluation",
     bblab_single_business_note = paste0(
-      "Only one supportable business is disclosed; no multi-business split is applied and no composition chart is shown."
+      "Only one supportable business is disclosed; no multi-business split is applied. ",
+      "The revenue composition chart still renders (a single slice at 100%, or that business ",
+      "plus Other / Unallocated / Rounding when recon items exist)."
     ),
     bblab_fallback_gm_label = "Use consolidated Gross Margin as low-confidence fallback",
     bblab_allocated_notice = "Cost of Revenue is allocated / estimated (not reported by business).",
@@ -1607,7 +1609,8 @@ locale_for_market <- function(mode = get_market_mode()) {
       "and Gross Profit remain; unexplained leftover is Unallocated or Reconciliation Amount (Net Income is never a plug)."
     ),
     notif_bblab_business_chart_insufficient_components = paste0(
-      "Composition chart blocked (BUSINESS_CHART_INSUFFICIENT_COMPONENTS). Business cards and reconciliation still render."
+      "Fewer than two businesses does not block the composition chart. ",
+      "A single supportable recon still renders; business cards remain."
     ),
     notif_bblab_business_chart_consolidated_revenue_missing = paste0(
       "Composition chart blocked: reported consolidated revenue is missing. Business cards still render."
@@ -1625,7 +1628,8 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Composition chart blocked because reconciliation failed. Reported consolidated totals and business cards remain."
     ),
     notif_bblab_business_chart_single_component = paste0(
-      "Composition chart blocked: only one supportable business. The single card still renders; no pie is shown."
+      "Only one supportable business is disclosed. The composition chart still renders as a single slice (100%) ",
+      "or with recon items; the single card remains."
     ),
     notif_bblab_business_chart_level_d = paste0(
       "Composition chart blocked (Level D qualitative only). Names and limitations still render; no amounts are fabricated."
@@ -3090,7 +3094,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_gm_unestimable = "Not reliably estimable",
     bblab_reval_unavailable = "Revaluation ratio unavailable",
     bblab_reval_label = "Revaluation",
-    bblab_single_business_note = "僅有一個可支持的事業揭露；不進行多事業拆分，也不顯示組成圖。",
+    bblab_single_business_note = paste0(
+      "僅有一個可支持的事業揭露；不進行多事業拆分。",
+      "營收組成圖仍會呈現（單一切片為 100%，或該事業加上其他事業／未分攤／Rounding 等調節項目）。"
+    ),
     bblab_fallback_gm_label = "以合併 Gross Margin 作為低信心後援",
     bblab_allocated_notice = "Cost of Revenue 為分攤／估計（非事業別申報）。",
     bblab_rev_share_cost_notice = paste0(
@@ -3147,13 +3154,13 @@ locale_for_market <- function(mode = get_market_mode()) {
       "調節未通過。不會強行把重編總數湊平。已申報合併 Revenue、Cost of Revenue 與 Gross Profit 仍保留；",
       "無法解釋的剩餘列入未分攤或調節差額（絕不以 Net Income 作為 plug）。"
     ),
-    notif_bblab_business_chart_insufficient_components = "組成圖已阻擋（BUSINESS_CHART_INSUFFICIENT_COMPONENTS）。事業卡片與調節表仍呈現。",
+    notif_bblab_business_chart_insufficient_components = "事業少於兩個不會阻擋組成圖。單一可支持的調節仍會呈現；事業卡片仍保留。",
     notif_bblab_business_chart_consolidated_revenue_missing = "組成圖已阻擋：缺少已申報合併營收。事業卡片仍呈現。",
     notif_bblab_business_chart_period_mismatch = "組成圖已阻擋：期間不一致。事業卡片仍呈現。",
     notif_bblab_business_chart_currency_mismatch = "組成圖已阻擋：幣別不一致。財報幣別卡片仍呈現。",
     notif_bblab_business_chart_dimension_mixed = "組成圖已阻擋：維度混用。重疊切面未合併。卡片仍呈現。",
     notif_bblab_business_chart_reconciliation_fail = "因調節未通過，組成圖已阻擋。已申報合併總數與事業卡片仍保留。",
-    notif_bblab_business_chart_single_component = "組成圖已阻擋：僅有一個可支持的事業。單一卡片仍呈現，不顯示圓餅圖。",
+    notif_bblab_business_chart_single_component = "僅有一個可支持的事業揭露。組成圖仍會呈現（單一切片 100%，或加上調節項目）；單一事業卡片仍保留。",
     notif_bblab_business_chart_level_d = "組成圖已阻擋（Level D 僅質性）。名稱與限制仍呈現；不會虛構金額。"
   )
 )

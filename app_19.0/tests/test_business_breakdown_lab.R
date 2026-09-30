@@ -198,7 +198,7 @@ check("06 immaterial to Other", length(idn$other) == 1L && identical(idn$other[[
 check("07 count in 2-6", length(idn$major) >= 2L && length(idn$major) <= 6L)
 
 # =====================================================================
-# 8–9 Single business: one card, no pie, do not fabricate
+# 8–9 Single business: one card, still show donut, do not fabricate
 # =====================================================================
 one <- list(
   ticker = "ONE", entity = list(name = "Single"),
@@ -214,12 +214,33 @@ one <- list(
   ))
 )
 r1 <- bblab_analyze(one)
-check("08 single card no pie",
+r1_shares <- vapply(r1$chart$slices, function(s) s$share, numeric(1))
+check("08 single card still shows pie",
       length(r1$businesses) == 1L &&
-        !isTRUE(r1$chart$eligible) &&
-        "BUSINESS_CHART_SINGLE_COMPONENT" %in% r1$chart$codes &&
+        isTRUE(r1$chart$eligible) &&
+        !"BUSINESS_CHART_SINGLE_COMPONENT" %in% r1$chart$codes &&
+        !"BUSINESS_CHART_INSUFFICIENT_COMPONENTS" %in% r1$chart$codes &&
+        length(r1$chart$slices) >= 1L &&
+        abs(r1$chart$denominator - 90) < 1e-9 &&
+        abs(sum(r1_shares) - 1) < 1e-8 &&
+        all(is.finite(r1_shares)) &&
+        all(r1_shares > 0) &&
         "no_multi_business_split" %in% r1$limitations)
 check("09 no fabricated second business", length(r1$businesses) == 1L && is.null(r1$other))
+one_gap <- one
+one_gap$consolidated <- bblab_consolidated(100, 40, 60, "USD", "2024")
+r1g <- bblab_analyze(one_gap)
+r1g_cls <- vapply(r1g$chart$slices, function(s) s$classification, character(1))
+r1g_shares <- vapply(r1g$chart$slices, function(s) s$share, numeric(1))
+check("09b one business plus recon slices still donut",
+      length(r1g$businesses) == 1L &&
+        isTRUE(r1g$chart$eligible) &&
+        length(r1g$chart$slices) >= 2L &&
+        any(r1g_cls %in% c("OTHER", "UNALLOCATED", "ROUNDING", "RECONCILIATION")) &&
+        abs(r1g$chart$denominator - 100) < 1e-9 &&
+        abs(sum(r1g_shares) - 1) < 1e-8 &&
+        all(is.finite(r1g_shares)) &&
+        all(r1g_shares > 0))
 
 # =====================================================================
 # 10 Level A HIGH when Rev + CoR/GP reported
@@ -375,7 +396,7 @@ check("20 default reported view",
         abs(rpv$businesses[[1]]$revenue - 120) < 1e-9)
 
 # =====================================================================
-# 21 Chart: ≥2, same period/ccy/dimension, recon pass; denom = reported consolidated
+# 21 Chart: 1+ slices, same period/ccy/dimension, recon pass; denom = reported consolidated
 # =====================================================================
 check("21 chart eligible two segments",
       isTRUE(ra$chart$eligible) &&
@@ -443,8 +464,14 @@ check("24 missing cost keeps revenue",
         length(rc$businesses) == 2L)
 check("24 missing reval keeps statements",
       isTRUE(rvu$ok) && length(rvu$businesses) == 2L && isTRUE(rvu$reconciliation$pass))
+pm <- one
+pm$dimensions[[1]]$components[[1]]$period <- "2023"
+rpm <- bblab_analyze(pm)
 check("24 chart fail keeps cards",
-      !isTRUE(r1$chart$eligible) && length(r1$businesses) == 1L)
+      !isTRUE(rpm$chart$eligible) &&
+        "BUSINESS_CHART_PERIOD_MISMATCH" %in% rpm$chart$codes &&
+        length(rpm$businesses) == 1L &&
+        is.finite(rpm$businesses[[1]]$revenue))
 
 # =====================================================================
 # 25 TSM fixture: platforms as businesses; node/tech separate; TWD; no ADR required
@@ -599,10 +626,30 @@ check("FX missing blocks display only", {
   "REQUIRED_FX_RATE_MISSING" %in% fxm$codes && isTRUE(fxm$fx_required)
 })
 check("toasts are specific", {
-  t <- bblab_toast_payload("BUSINESS_CHART_SINGLE_COMPONENT", recon_pass = TRUE)
+  t <- bblab_toast_payload("BUSINESS_CHART_PERIOD_MISMATCH", recon_pass = TRUE)
   identical(t[[1]]$blocked_outputs, "composition_chart") &&
     "business_cards" %in% t[[1]]$remaining_outputs
 })
+check("count codes do not hide composition chart", {
+  t1 <- bblab_toast_payload("BUSINESS_CHART_SINGLE_COMPONENT", recon_pass = TRUE)
+  t2 <- bblab_toast_payload("BUSINESS_CHART_INSUFFICIENT_COMPONENTS", recon_pass = TRUE)
+  !length(t1[[1]]$blocked_outputs) &&
+    "composition_chart" %in% t1[[1]]$remaining_outputs &&
+    !length(t2[[1]]$blocked_outputs) &&
+    "composition_chart" %in% t2[[1]]$remaining_outputs
+})
+check("i18n single-business note still shows composition chart", {
+  en <- paste(.UI_STRINGS$en$bblab_single_business_note, collapse = " ")
+  zh <- paste(.UI_STRINGS$`zh-TW`$bblab_single_business_note, collapse = " ")
+  grepl("composition chart still renders", en, ignore.case = TRUE) &&
+    grepl("組成圖仍會呈現", zh, fixed = TRUE) &&
+    !grepl("no composition chart is shown", en, ignore.case = TRUE) &&
+    !grepl("也不顯示組成圖", zh, fixed = TRUE) &&
+    !grepl("不顯示圓餅圖", zh, fixed = TRUE)
+})
+check("engine does not gate chart on component count",
+      !grepl("n_valid < 2", engine_src, fixed = TRUE) &&
+        !grepl("if (n_valid < 2L)", engine_src, fixed = TRUE))
 check("notes helper used", grepl("ynow_notes_block", mod_src, fixed = TRUE))
 check("no invalid shinydashboard box status default",
       !grepl("status\\s*=\\s*[\"']default[\"']", mod_src))
@@ -708,6 +755,13 @@ check("no fabricated split from consolidated-only IS",
         is.finite(rconsol$businesses[[1]]$gp) &&
         "BUSINESS_REVALUATION_UNAVAILABLE" %in% rconsol$codes &&
         isTRUE(rconsol$ok))
+check("consolidated-only still renders 100% donut",
+      isTRUE(rconsol$chart$eligible) &&
+        length(rconsol$chart$slices) >= 1L &&
+        abs(rconsol$chart$slices[[1]]$share - 1) < 1e-6 &&
+        is.finite(rconsol$chart$slices[[1]]$share) &&
+        rconsol$chart$slices[[1]]$share > 0 &&
+        !"BUSINESS_CHART_SINGLE_COMPONENT" %in% rconsol$chart$codes)
 
 if (requireNamespace("shiny", quietly = TRUE)) {
   card_html <- paste(as.character(.bblab_card_html(rconsol$businesses[[1]], "en", FALSE, 1000)),
@@ -860,6 +914,13 @@ check("10-K 3-segment table yields >=2 cards",
         identical(rk10$primary_dimension$kind, "operating_segment") &&
         length(rk10$businesses) >= 2L &&
         length(rk10$businesses) <= 6L)
+check("10-K 3-segment pie still eligible",
+      isTRUE(rk10$chart$eligible) &&
+        length(rk10$chart$slices) >= 3L &&
+        abs(rk10$chart$denominator - k10_cons_rev) < 1 &&
+        all(vapply(rk10$chart$slices, function(s) {
+          is.finite(s$share) && s$share > 0
+        }, logical(1))))
 check("10-K operating-segment names kept; geo/product not mixed",
       all(c("North America", "International", "AWS") %in% k10_names) &&
         !any(grepl("United States|Germany|Online stores|Advertising", k10_names)) &&
