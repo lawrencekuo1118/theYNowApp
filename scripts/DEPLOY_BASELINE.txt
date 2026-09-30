@@ -8,5 +8,5 @@ short=300cf51
 message=chore: bump display version to v19.10
 captured_at=2026-09-30T04:10:56Z
 source_branch=cursor/lifecycle-v19-3fb1
-display_version=v19.10
+display_version=v19.11
 note=Canonical live line is app_19.0. Bundle 12625810 = v19.10 Lite-only: Smart Analysis blurb sits immediately above Composite valuation status; page heading removed. Full model-page header unchanged. Also includes v19.09 Full-only Macro KPI click-to-chart, collapsible Notes, and YNOW KPI jump row. Deploy via scripts/deploy_app_19.R. Supersedes 12625762 / 12625733 / 12625709 / 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
