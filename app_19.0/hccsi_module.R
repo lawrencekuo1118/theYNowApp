@@ -122,8 +122,7 @@ hccsi_kpi_box <- function(result, lite = FALSE, locale = "en", ns = NULL, select
   header <- tags$tr(
     tags$th(.hccsi_ui("hccsi_col_layer", locale)), tags$th(.hccsi_ui("hccsi_col_health", locale)),
     tags$th(.hccsi_ui("hccsi_col_stress", locale)), tags$th(.hccsi_ui("hccsi_col_weight", locale)),
-    tags$th(.hccsi_ui("hccsi_col_concentration", locale)), tags$th(.hccsi_ui("hccsi_col_substitutes", locale)),
-    tags$th(.hccsi_ui("hccsi_col_replacement", locale)))
+    tags$th(.hccsi_ui("hccsi_col_concentration", locale)))
   body <- lapply(names(cfg$layers), function(ly) {
     mem <- intersect(as.character(cfg$layers[[ly]]), names(rows))
     if (!length(mem)) return(NULL)
@@ -132,11 +131,8 @@ hccsi_kpi_box <- function(result, lite = FALSE, locale = "en", ns = NULL, select
     s <- .hccsi_mean_excl_na(vapply(mem, function(id) result$issuer_stress[[id]], numeric(1)),
                              vapply(mem, function(id) rows[[id]]$weight, numeric(1)))
     w <- sum(vapply(mem, function(id) as.numeric(rows[[id]]$weight)[1], numeric(1)), na.rm = TRUE)
-    subs <- paste(unique(vapply(mem, function(id) as.character(rows[[id]]$substitutes)[1], character(1))), collapse = "; ")
-    repl <- mean(vapply(mem, function(id) as.numeric(rows[[id]]$replacement_time_years)[1], numeric(1)), na.rm = TRUE)
     tags$tr(tags$td(.hccsi_named("ly", ly, locale)), tags$td(hccsi_score_span(h)), tags$td(hccsi_score_span(s)),
-            tags$td(sprintf("%.1f%%", 100 * w)), tags$td(hccsi_score_span(result$layer_stress[[ly]])),
-            tags$td(subs), tags$td(if (is.finite(repl)) sprintf("%.1f", repl) else "—"))
+            tags$td(sprintf("%.1f%%", 100 * w)), tags$td(hccsi_score_span(result$layer_stress[[ly]])))
   })
   tags$div(class = "ynow-hccsi-table-wrap",
            tags$table(class = "table table-condensed ynow-hccsi-table", tags$thead(header), tags$tbody(body)))

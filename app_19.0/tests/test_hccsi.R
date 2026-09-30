@@ -283,6 +283,17 @@ check("UI Lite CSS", grepl("body.ynow-lite #ynow_macro_hccsi_expand", ui_txt, fi
 check("UI four indices", grepl("hccsi-four", mod_txt, fixed = TRUE))
 check("four-index uses flow span", grepl("hccsi_score_span(it$val)", mod_txt, fixed = TRUE))
 check("layer table uses flow span", grepl("hccsi_score_span(h)", mod_txt, fixed = TRUE))
+mod_lines <- strsplit(mod_txt, "\n", fixed = TRUE)[[1]]
+ly_i <- grep("^\\.hccsi_layer_table <- function", mod_lines)
+nw_i <- grep("^\\.hccsi_network_ui <- function", mod_lines)
+layer_src <- if (length(ly_i) && length(nw_i) && nw_i[[1]] > ly_i[[1]]) {
+  paste(mod_lines[ly_i[[1]]:(nw_i[[1]] - 1L)], collapse = "\n")
+} else ""
+check("layer table no substitutes header", !grepl("hccsi_col_substitutes", layer_src, fixed = TRUE))
+check("layer table no replacement header", !grepl("hccsi_col_replacement", layer_src, fixed = TRUE))
+check("layer table no rebuild-year mean", !grepl("replacement_time_years", layer_src, fixed = TRUE))
+check("constituent keeps substitutes", grepl("hccsi_col_substitutes", mod_txt, fixed = TRUE) &&
+  grepl(".hccsi_constituent_table", mod_txt, fixed = TRUE))
 check("Rf not full-only", !grepl("ynow-macro-kpi--rf[^\\n]*ynow-full-only", macro_txt))
 
 for (k in c("hccsi_title", "hccsi_disclosure", "hccsi_index_health", "hccsi_index_stress",
@@ -335,6 +346,23 @@ if (requireNamespace("htmltools", quietly = TRUE) && requireNamespace("shiny", q
     check("expand zh uses 連鎖降溫路徑", grepl("連鎖降溫路徑", html_zh, fixed = TRUE))
     check("expand zh uses 環節", grepl("環節", html_zh, fixed = TRUE))
     check("expand zh no raw enterprise_dbs cell", !grepl(">enterprise_dbs<", html_zh, fixed = TRUE))
+  }
+  layer_en <- tryCatch(.hccsi_layer_table(sc13, "en"), error = function(e) NULL)
+  layer_zh <- tryCatch(.hccsi_layer_table(sc13, "zh-TW"), error = function(e) NULL)
+  cons_en <- tryCatch(.hccsi_constituent_table(sc13, "en"), error = function(e) NULL)
+  if (!is.null(layer_en)) {
+    html_ly <- paste(as.character(layer_en), collapse = " ")
+    check("layer HTML no substitutes col", !grepl("What can replace it", html_ly, fixed = TRUE))
+    check("layer HTML no rebuild col", !grepl("Years to rebuild", html_ly, fixed = TRUE))
+  }
+  if (!is.null(layer_zh)) {
+    html_ly_zh <- paste(as.character(layer_zh), collapse = " ")
+    check("layer zh HTML no 可替代對象", !grepl("可替代對象", html_ly_zh, fixed = TRUE))
+    check("layer zh HTML no 重建年數", !grepl("重建年數", html_ly_zh, fixed = TRUE))
+  }
+  if (!is.null(cons_en)) {
+    html_cons <- paste(as.character(cons_en), collapse = " ")
+    check("constituent HTML keeps substitutes", grepl("What can replace it", html_cons, fixed = TRUE))
   }
 }
 
