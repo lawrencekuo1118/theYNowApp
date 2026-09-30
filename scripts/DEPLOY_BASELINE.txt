@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12627405
+bundleId=12627556
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=70d62326b9cb0455d5cc850cc75d30bdf80374b4
-commit=70d62326b9cb0455d5cc850cc75d30bdf80374b4
-short=70d6232
-message=Merge Lab current mix and five-year evolution into one chapter.
-captured_at=2026-09-30T12:09:57Z
-source_branch=cursor/bblab-merge-mix-charts-3fb1
+aligned_git=43cd156e47b9f0cb9c607e0379a35018349957cd
+commit=43cd156e47b9f0cb9c607e0379a35018349957cd
+short=43cd156
+message=Stop Lab five-year history from aborting Search when note years and statement years differ.
+captured_at=2026-09-30T12:41:18Z
+source_branch=cursor/bblab-history-oob-3fb1
 display_version=v19.33
-note=Canonical live line is app_19.0. Bundle 12627405 = v19.32 Lab chapters 3 (current mix) and 4 (five-year evolution) are one numbered Revenue mix box; cards / reconciliation / sources are 4 / 5 / 6. Deploy via scripts/deploy_app_19.R. Supersedes 12627312 / 12627150 / 12627127 / 12627082 / 12627038 / 12626909 / 12626822 / 12626810 / 12626794 / 12626772 / 12626690 / 12626668 / 12626547 / 12626454 / 12626418 / 12626362 / 12626262 / 12626032 / 12625997 / 12625985 / 12625973 / 12625956 / 12625916 / 12625890 / 12625810 / 12625762 / 12625733 / 12625709 / 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
+note=Canonical live line is app_19.0. Bundle 12627556 = v19.33 Lab Search no longer treats a five-year history year mismatch as filings blocked; Yahoo statements still render when 20-F/10-K note years are a subset of the income statement years. Deploy via scripts/deploy_app_19.R. Supersedes 12627405 / 12627312 / 12627150 / 12627127 / 12627082 / 12627038 / 12626909 / 12626822 / 12626810 / 12626794 / 12626772 / 12626690 / 12626668 / 12626547 / 12626454 / 12626418 / 12626362 / 12626262 / 12626032 / 12625997 / 12625985 / 12625973 / 12625956 / 12625916 / 12625890 / 12625810 / 12625762 / 12625733 / 12625709 / 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
