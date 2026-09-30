@@ -8,5 +8,5 @@ short=1f8c3a3
 message=Keep Business Breakdown Lab Search in-session instead of a full-page reload.
 captured_at=2026-09-30T10:44:11Z
 source_branch=cursor/bblab-search-no-reload-3fb1
-display_version=v19.28
+display_version=v19.29
 note=Canonical live line is app_19.0. Bundle 12627082 = v19.28 Lab Search stays in-session (div not native form; Enter clicks Shiny actionButton; Dashboard Search chrome hidden on Testing). Same company-agnostic engine; 7-chapter walkthrough; five-year mix omit-unmappable; AMZN 10-K; unit alignment; always-donut; listed notice; GM label; Data-limited HCCSI flow; no Progress 9/9; box(status=info). Deploy via scripts/deploy_app_19.R. Supersedes 12626909 / 12626822 / 12626810 / 12626794 / 12626772 / 12626690 / 12626668 / 12626547 / 12626454 / 12626418 / 12626362 / 12626262 / 12626032 / 12625997 / 12625985 / 12625973 / 12625956 / 12625916 / 12625890 / 12625810 / 12625762 / 12625733 / 12625709 / 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
