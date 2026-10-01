@@ -1994,14 +1994,22 @@ compute_report_f_score <- function(d_is, d_bs, d_cf) {
     if (length(res) < 2) return(c(NA_real_, NA_real_))
     suppressWarnings(as.numeric(res[1:2]))
   }
+  # Piotroski 流動比率用流動資產合計／流動負債合計。Yahoo HTML 列名為
+  # Total Current *；yfinance 同一列是 Current Assets／Current Liabilities。
+  # 先取 Total*，再取未加 Total 的合計列。錨定比對，避免 Other Current Assets 搶先。
+  get_row2_any <- function(df, labels) {
+    res <- select_clean_metric_row_any(df, labels, include_ttm = FALSE)
+    if (length(res) < 2) return(c(NA_real_, NA_real_))
+    suppressWarnings(as.numeric(res[1:2]))
+  }
   tryCatch({
     net_inc  <- get_row2(d_is, "Net Income Common Stockholders|Net Income$")
     revenue  <- get_row2(d_is, "Total Revenue")
     gp       <- get_row2(d_is, "Gross Profit")
     assets   <- get_row2(d_bs, "Total Assets")
     lt_debt  <- get_row2(d_bs, "Long Term Debt|Total Non Current Liabilities")
-    cur_ast  <- get_row2(d_bs, "Total Current Assets")
-    cur_liab <- get_row2(d_bs, "Total Current Liabilities")
+    cur_ast  <- get_row2_any(d_bs, c("^Total Current Assets$", "^Current Assets$"))
+    cur_liab <- get_row2_any(d_bs, c("^Total Current Liabilities$", "^Current Liabilities$"))
     shares   <- get_row2(d_bs, "Ordinary Shares Number")
     ocf      <- get_row2(d_cf, "Operating Cash Flow")
     oe_row   <- get_operating_earnings_row(d_is, include_ttm = FALSE)
