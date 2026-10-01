@@ -6258,6 +6258,10 @@ ui <- dashboardPage(
           animation: ynow-logo-flow 2.6s ease-in-out infinite;
           font-weight: 700;
         }
+        .ynow-macro-own-index .ynow-macro-kpi__value.ynow-hccsi-flow {
+          color: transparent;
+          -webkit-text-fill-color: transparent;
+        }
         .ynow-hccsi-unavailable {
           color: #6b7c8a;
           -webkit-text-fill-color: #6b7c8a;

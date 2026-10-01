@@ -135,6 +135,12 @@ nm <- ynow_index_lookup_names("AAPL", "US")
 check("lookup name", identical(unname(nm[["AAPL"]]), "Apple Inc."))
 
 macro <- paste(readLines("macro_market_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check("own index at page bottom", {
+  pos_fx <- regexpr("ynow_macro_fx_lock", macro, fixed = TRUE)[1]
+  pos_own <- regexpr("id = \"ynow_own_index\"", macro, fixed = TRUE)[1]
+  pos_fx > 0 && pos_own > pos_fx
+})
+check("flow numeral", grepl("ynow-hccsi-flow", macro, fixed = TRUE))
 check("expand constituents", grepl("ynow_index_constituents", macro, fixed = TRUE))
 check("weight percent", grepl('sprintf("%.2f%%", 100 * w)', macro, fixed = TRUE))
 check("price recalc", grepl("ynow_index_series", macro, fixed = TRUE))
