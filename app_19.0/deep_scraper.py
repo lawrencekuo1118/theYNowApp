@@ -1,6 +1,5 @@
 """
-app_11.0 — cloud-compatible financials.
-Prefer yfinance API (works on shinyapps.io). Selenium is optional fallback for local only.
+Cloud-compatible financials via yfinance HTTP (no headless Chrome).
 """
 import os
 import time
@@ -12,21 +11,6 @@ def _dbg(*args, **kwargs):
     """Console traces only when YNOW_DEBUG=1 (inherited from R / the shell)."""
     if os.environ.get("YNOW_DEBUG", "").strip() in ("1", "true", "TRUE", "yes", "on"):
         print(*args, **kwargs)
-
-
-# Selenium is optional (usually unavailable on shinyapps.io)
-try:
-    from selenium import webdriver
-    from selenium.webdriver.chrome.service import Service
-    from selenium.webdriver.chrome.options import Options
-    from selenium.webdriver.common.by import By
-    from selenium.webdriver.support.ui import WebDriverWait
-    from selenium.webdriver.support import expected_conditions as EC
-    from webdriver_manager.chrome import ChromeDriverManager
-
-    SELENIUM_AVAILABLE = True
-except Exception:
-    SELENIUM_AVAILABLE = False
 
 
 def _best_company_name(info, ticker=""):
@@ -785,7 +769,7 @@ def _stmt_to_payload(df):
         data.append(cells)
 
     # yfinance 列序與 Yahoo 網頁相反（明細在上、營收在下）。
-    # 反轉成與本機 Selenium／trim_financial_table 相同：營收在上、裁切點在下。
+    # 反轉成與 trim_financial_table 相同：營收在上、裁切點在下。
     data = list(reversed(data))
 
     return {"columns": [str(c) for c in out.columns.tolist()], "data": data}
@@ -861,118 +845,14 @@ def scrape_all_financials_yf(ticker="AMZN"):
     }
 
 
-def scrape_all_financials_selenium(ticker="AMZN"):
-    chrome_options = Options()
-    chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument("--disable-blink-features=AutomationControlled")
-    chrome_options.add_argument(
-        "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    )
-
-    driver = webdriver.Chrome(
-        service=Service(ChromeDriverManager().install()), options=chrome_options
-    )
-
-    pages = {
-        "Income Statement": f"https://finance.yahoo.com/quote/{ticker}/financials/",
-        "Balance Sheet": f"https://finance.yahoo.com/quote/{ticker}/balance-sheet/",
-        "Cash Flow": f"https://finance.yahoo.com/quote/{ticker}/cash-flow/",
-    }
-
-    all_results = {}
-
-    try:
-        for name, url in pages.items():
-            _dbg(f"🌐 正在處理 {name}: {url}")
-            driver.get(url)
-            wait = WebDriverWait(driver, 15)
-
-            def extract_table():
-                wait.until(
-                    EC.presence_of_element_located(
-                        (By.XPATH, "//div[contains(@class, 'tableHeader')]")
-                    )
-                )
-                header_el = driver.find_element(
-                    By.XPATH,
-                    "//div[contains(@class, 'tableHeader')]//div[contains(@class, 'row')]",
-                )
-                headers = [
-                    col.text
-                    for col in header_el.find_elements(
-                        By.XPATH, ".//div[contains(@class, 'column')]"
-                    )
-                    if col.text
-                ]
-
-                rows_elements = driver.find_elements(
-                    By.XPATH,
-                    "//div[contains(@class, 'tableBody')]//div[contains(@class, 'row')]",
-                )
-                table_data = []
-                for row in rows_elements:
-                    cols = row.find_elements(
-                        By.XPATH, ".//div[contains(@class, 'column')]"
-                    )
-                    row_text = [c.text.strip() for c in cols]
-                    if row_text and row_text[0]:
-                        table_data.append(row_text)
-
-                df = pd.DataFrame(table_data)
-                if not df.empty and len(headers) == df.shape[1]:
-                    df.columns = headers
-                return df
-
-            _dbg(f"📄 抓取 {name} (未展開版本)...")
-            df_collapsed = extract_table()
-
-            try:
-                expand_btn = wait.until(
-                    EC.element_to_be_clickable(
-                        (
-                            By.XPATH,
-                            "//button[contains(text(), 'Expand All')] | "
-                            "//button[.//span[contains(text(), 'Expand All')]]",
-                        )
-                    )
-                )
-                driver.execute_script("arguments[0].click();", expand_btn)
-                _dbg("✅ 已成功點擊 Expand All")
-                wait.until(
-                    EC.presence_of_element_located(
-                        (
-                            By.XPATH,
-                            "//div[contains(@class, 'expanded-row-class-name') or @data-test='fin-row']",
-                        )
-                    )
-                )
-            except Exception:
-                _dbg("⚠️ 找不到 Expand All 按鈕或已是展開狀態")
-
-            _dbg(f"📄 抓取 {name} (已展開版本)...")
-            df_expanded = extract_table()
-
-            all_results[name] = {
-                "collapsed": df_collapsed,
-                "expanded": df_expanded,
-            }
-
-    except Exception as e:
-        _dbg(f"❌ 爬蟲發生錯誤: {e}")
-        raise
-    finally:
-        driver.quit()
-
-    return all_results
-
-
 def scrape_all_financials(ticker="AMZN"):
-    """Prefer yfinance (cloud-safe); optionally try Selenium locally."""
+    """Yahoo statements via yfinance HTTP only. Never launches a browser."""
     empty_payload = {"columns": ["Breakdown"], "data": []}
+    empty = {
+        "Income Statement": {"collapsed": empty_payload, "expanded": empty_payload},
+        "Balance Sheet": {"collapsed": empty_payload, "expanded": empty_payload},
+        "Cash Flow": {"collapsed": empty_payload, "expanded": empty_payload},
+    }
 
     def _has_rows(payload):
         try:
@@ -982,32 +862,16 @@ def scrape_all_financials(ticker="AMZN"):
 
     try:
         result = scrape_all_financials_yf(ticker)
-        has_data = any(_has_rows(result[k]["expanded"]) for k in result)
+        has_data = any(
+            _has_rows((result.get(k) or {}).get("expanded"))
+            for k in ("Income Statement", "Balance Sheet", "Cash Flow")
+        )
         if has_data:
             return result
-        _dbg("⚠️ yfinance 回傳空表，改試 Selenium（若可用）...")
+        _dbg("⚠️ yfinance 回傳空表（不啟動瀏覽器）")
     except Exception as e:
         _dbg(f"⚠️ yfinance 失敗: {e}")
-
-    if SELENIUM_AVAILABLE:
-        try:
-            raw = scrape_all_financials_selenium(ticker)
-            # Convert selenium DataFrames → plain payloads for R
-            out = {}
-            for name, stmt in raw.items():
-                out[name] = {
-                    "collapsed": _stmt_to_payload(stmt.get("collapsed")),
-                    "expanded": _stmt_to_payload(stmt.get("expanded")),
-                }
-            return out
-        except Exception as e:
-            _dbg(f"⚠️ Selenium 失敗: {e}")
-
-    return {
-        "Income Statement": {"collapsed": empty_payload, "expanded": empty_payload},
-        "Balance Sheet": {"collapsed": empty_payload, "expanded": empty_payload},
-        "Cash Flow": {"collapsed": empty_payload, "expanded": empty_payload},
-    }
+    return empty
 
 def search_tickers(query="", max_results=12):
     """
