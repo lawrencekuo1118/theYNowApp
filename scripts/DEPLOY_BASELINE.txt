@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12628920
+bundleId=12633785
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=88a67d882503c8a9e45d5db962820ffe46621a3f
-commit=88a67d882503c8a9e45d5db962820ffe46621a3f
-short=88a67d8
-message=Add a US YNOW index of the ten largest names with a perfect F-Score and no statement alerts.
-captured_at=2026-09-30T17:16:00Z
+aligned_git=1ad165e2450ecb21446ebb0e7f5e96c489ce1a8c
+commit=1ad165e2450ecb21446ebb0e7f5e96c489ce1a8c
+short=1ad165e
+message=Drop the Selenium headless-Chrome fallback for financial statements.
+captured_at=2026-10-01T15:31:38Z
 source_branch=master
 display_version=v19.43
-note=Canonical live line is app_19.0. Bundle 12628920 = v19.42. US YNOW index: top 10 by market cap with F-Score 9/9 and zero statement alerts, equal weight, monthly reconstitution, no industry screen. Deploy via scripts/deploy_app_19.R. Supersedes 12628661 / 12628377 / 12628295 / 12628184 / 12627966 / 12627846 / 12627644 / 12627610 / 12627556 / 12627405 / 12627312 / 12627150 / 12627127 / 12627082 / 12627038 / 12626909 / 12626822 / 12626810 / 12626794 / 12626772 / 12626690 / 12626668 / 12626547 / 12626454 / 12626418 / 12626362 / 12626262 / 12626032 / 12625997 / 12625985 / 12625973 / 12625956 / 12625916 / 12625890 / 12625810 / 12625762 / 12625733 / 12625709 / 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
+note=Canonical live line is app_19.0. Bundle 12633785 = v19.43. Financial statements use yfinance HTTP only; the Selenium headless-Chrome fallback is removed. PDF download still uses pagedown::chrome_print when a report is downloaded. Deploy via scripts/deploy_app_19.R. Supersedes 12628920 / 12628661 / 12628377 / 12628295 / 12628184 / 12627966 / 12627846 / 12627644 / 12627610 / 12627556 / 12627405 / 12627312 / 12627150 / 12627127 / 12627082 / 12627038 / 12626909 / 12626822 / 12626810 / 12626794 / 12626772 / 12626690 / 12626668 / 12626547 / 12626454 / 12626418 / 12626362 / 12626262 / 12626032 / 12625997 / 12625985 / 12625973 / 12625956 / 12625916 / 12625890 / 12625810 / 12625762 / 12625733 / 12625709 / 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
