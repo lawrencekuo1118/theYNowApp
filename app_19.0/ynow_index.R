@@ -1,17 +1,21 @@
-# YNOW index — US equal-weight 10
+# YNOW (US) and TYNOW (TW) — equal-weight 10
 #
-# Rank all US primary listings by market cap. Keep a name only when Piotroski
-# F-Score is 9/9 and Schilit screening has zero 警示. Take the first 10.
+# Rank primary listings by market cap. Keep a name only when Piotroski F-Score
+# is 8 or higher and Schilit screening has zero 警示. Take the first 10.
 # Equal weight. Reconstitute once per calendar month (Asia/Taipei).
-# No industry filter. Scan cap is an engineering limit, not a sector rule.
+# No industry filter. Scan caps are engineering limits, not sector rules.
+# US symbol YNOW. TW (上市／上櫃, no ETFs, no 興櫃) symbol TYNOW.
 
 if (!exists("%||%", mode = "function")) {
   `%||%` <- function(a, b) if (is.null(a)) b else a
 }
 
 YNOW_INDEX_N <- 10L
+YNOW_INDEX_MIN_FSCORE <- 8
 YNOW_INDEX_SCAN_CAP <- 80L
+YNOW_INDEX_SCAN_CAP_TW <- 200L
 YNOW_INDEX_SYMBOL <- "YNOW"
+TYNOW_INDEX_SYMBOL <- "TYNOW"
 
 .ynow_index_mem <- new.env(parent = emptyenv())
 
@@ -22,10 +26,29 @@ ynow_index_month_key <- function(as_of = Sys.time()) {
   format(as.POSIXlt(as_of, tz = "Asia/Taipei"), "%Y-%m")
 }
 
-ynow_index_passes <- function(f_score, n_alert) {
+ynow_index_passes <- function(f_score, n_alert, min_f = YNOW_INDEX_MIN_FSCORE) {
   fs <- suppressWarnings(as.numeric(f_score)[1])
   na_n <- suppressWarnings(as.numeric(n_alert)[1])
-  is.finite(fs) && fs >= 9 - 1e-8 && is.finite(na_n) && na_n == 0
+  floor_f <- suppressWarnings(as.numeric(min_f)[1])
+  if (!is.finite(floor_f)) floor_f <- 8
+  is.finite(fs) && fs >= floor_f - 1e-8 && is.finite(na_n) && na_n == 0
+}
+
+ynow_index_normalize_market <- function(market = "US") {
+  m <- toupper(trimws(as.character(market %||% "US")[1]))
+  if (m %in% c("TW", "TYNOW")) "TW" else "US"
+}
+
+ynow_index_symbol <- function(market = "US") {
+  if (identical(ynow_index_normalize_market(market), "TW")) TYNOW_INDEX_SYMBOL else YNOW_INDEX_SYMBOL
+}
+
+ynow_index_scan_cap <- function(market = "US") {
+  if (identical(ynow_index_normalize_market(market), "TW")) {
+    YNOW_INDEX_SCAN_CAP_TW
+  } else {
+    YNOW_INDEX_SCAN_CAP
+  }
 }
 
 ynow_index_screen_statements <- function(d_is, d_bs, d_cf, industry_key = NULL) {
@@ -133,9 +156,30 @@ ynow_index_snapshot_path <- function() {
   if (length(hit)) hit[[1]] else cands[[1]]
 }
 
-ynow_index_cache_path <- function() {
+ynow_index_cache_path <- function(market = "US") {
   snap <- ynow_index_snapshot_path()
-  file.path(dirname(snap), "ynow_index_basket.csv")
+  fn <- if (identical(ynow_index_normalize_market(market), "TW")) {
+    "tynow_index_basket.csv"
+  } else {
+    "ynow_index_basket.csv"
+  }
+  file.path(dirname(snap), fn)
+}
+
+#' 上市／上櫃普通股。排除 ETF（00 開頭）與興櫃。
+ynow_index_filter_tw_rows <- function(uni) {
+  if (!is.data.frame(uni) || !nrow(uni) || !"ticker" %in% names(uni)) {
+    return(uni[0, , drop = FALSE])
+  }
+  out <- uni
+  out$ticker <- toupper(trimws(as.character(out$ticker)))
+  out <- out[nzchar(out$ticker), , drop = FALSE]
+  if ("exchange" %in% names(out)) {
+    ex <- toupper(trimws(as.character(out$exchange)))
+    out <- out[!ex %in% c("ESB", "EMERGING", "TPEX_ESB"), , drop = FALSE]
+  }
+  code <- sub("\\.(TW|TWO)$", "", out$ticker)
+  out[!grepl("^00", code), , drop = FALSE]
 }
 
 ynow_index_us_ranked <- function(scan_cap = YNOW_INDEX_SCAN_CAP) {
@@ -157,6 +201,33 @@ ynow_index_us_ranked <- function(scan_cap = YNOW_INDEX_SCAN_CAP) {
       snap <- snap[snap$ticker %in% us, , drop = FALSE]
     }
   }
+  snap <- snap[order(-snap$market_cap, snap$ticker), , drop = FALSE]
+  snap <- snap[!duplicated(snap$ticker), , drop = FALSE]
+  utils::head(snap, max(1L, as.integer(scan_cap)[1]))
+}
+
+ynow_index_tw_ranked <- function(scan_cap = YNOW_INDEX_SCAN_CAP_TW) {
+  path <- ynow_index_snapshot_path()
+  empty <- data.frame(ticker = character(0), market_cap = numeric(0), stringsAsFactors = FALSE)
+  if (!file.exists(path)) return(empty)
+  snap <- utils::read.csv(path, stringsAsFactors = FALSE)
+  if (!all(c("ticker", "market_cap") %in% names(snap))) return(empty)
+  snap$ticker <- toupper(gsub("/", "-", trimws(as.character(snap$ticker))))
+  snap$market_cap <- suppressWarnings(as.numeric(snap$market_cap))
+  snap <- snap[nzchar(snap$ticker) & is.finite(snap$market_cap) & snap$market_cap > 0, , drop = FALSE]
+  uni <- NULL
+  if (exists("lab_get_tw_universe", mode = "function")) {
+    uni <- tryCatch(lab_get_tw_universe(FALSE), error = function(e) NULL)
+  }
+  if (!is.data.frame(uni) || !nrow(uni) || !"ticker" %in% names(uni)) {
+    csv <- file.path(dirname(path), "tw_universe.csv")
+    if (file.exists(csv)) {
+      uni <- tryCatch(utils::read.csv(csv, stringsAsFactors = FALSE), error = function(e) NULL)
+    }
+  }
+  uni <- ynow_index_filter_tw_rows(uni)
+  if (!is.data.frame(uni) || !nrow(uni)) return(empty)
+  snap <- snap[snap$ticker %in% uni$ticker, , drop = FALSE]
   snap <- snap[order(-snap$market_cap, snap$ticker), , drop = FALSE]
   snap <- snap[!duplicated(snap$ticker), , drop = FALSE]
   utils::head(snap, max(1L, as.integer(scan_cap)[1]))
@@ -249,22 +320,29 @@ ynow_index_live_screen <- function(ticker) {
     }
     df
   }
-  ind <- NULL
-  if (exists("lab_get_us_universe", mode = "function")) {
-    uni <- tryCatch(lab_get_us_universe(), error = function(e) NULL)
-    if (is.data.frame(uni) && all(c("ticker", "industry_key") %in% names(uni))) {
-      hit <- uni$industry_key[toupper(uni$ticker) == toupper(ticker)]
-      if (length(hit)) ind <- as.character(hit[1])
-    }
-  }
+  ind <- ynow_index_industry_key(ticker)
   ynow_index_screen_statements(pull("Income Statement"), pull("Balance Sheet"), pull("Cash Flow"), ind)
+}
+
+ynow_index_industry_key <- function(ticker) {
+  tk <- toupper(trimws(as.character(ticker)[1]))
+  tw <- grepl("\\.(TW|TWO)$", tk)
+  getter <- if (tw) "lab_get_tw_universe" else "lab_get_us_universe"
+  if (!exists(getter, mode = "function")) return(NULL)
+  uni <- tryCatch(get(getter)(), error = function(e) NULL)
+  if (tw) uni <- ynow_index_filter_tw_rows(uni)
+  if (!is.data.frame(uni) || !all(c("ticker", "industry_key") %in% names(uni))) return(NULL)
+  hit <- uni$industry_key[toupper(uni$ticker) == tk]
+  if (!length(hit)) return(NULL)
+  as.character(hit[1])
 }
 
 ynow_index_current <- function(as_of = Sys.time(), rebuild = FALSE,
                                screen_fn = NULL, ranked = NULL,
-                               cache_path = NULL) {
+                               cache_path = NULL, market = "US") {
+  market <- ynow_index_normalize_market(market)
   key <- ynow_index_month_key(as_of)
-  path <- cache_path %||% ynow_index_cache_path()
+  path <- cache_path %||% ynow_index_cache_path(market)
   mem_key <- paste0(key, "|", path)
   if (!isTRUE(rebuild) && exists(mem_key, envir = .ynow_index_mem, inherits = FALSE)) {
     return(get(mem_key, envir = .ynow_index_mem, inherits = FALSE))
@@ -276,7 +354,9 @@ ynow_index_current <- function(as_of = Sys.time(), rebuild = FALSE,
       return(disk)
     }
   }
-  if (is.null(ranked)) ranked <- ynow_index_us_ranked()
+  if (is.null(ranked)) {
+    ranked <- if (identical(market, "TW")) ynow_index_tw_ranked() else ynow_index_us_ranked()
+  }
   if (is.data.frame(ranked) && all(c("ticker", "market_cap") %in% names(ranked))) {
     ranked$market_cap <- suppressWarnings(as.numeric(ranked$market_cap))
     ranked <- ranked[order(-ranked$market_cap, ranked$ticker), , drop = FALSE]
@@ -287,8 +367,10 @@ ynow_index_current <- function(as_of = Sys.time(), rebuild = FALSE,
     caps <- stats::setNames(suppressWarnings(as.numeric(ranked$market_cap)), toupper(ranked$ticker))
   }
   fn <- screen_fn %||% ynow_index_live_screen
-  sel <- ynow_index_select(tks, fn, mcap = caps)
+  sel <- ynow_index_select(tks, fn, mcap = caps, scan_cap = ynow_index_scan_cap(market))
   sel$month <- key
+  sel$market <- market
+  sel$symbol <- ynow_index_symbol(market)
   sel$built_at <- format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
   ynow_index_write_cache(sel, path)
   assign(mem_key, sel, envir = .ynow_index_mem)

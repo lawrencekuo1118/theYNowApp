@@ -3853,9 +3853,12 @@ ui <- dashboardPage(
             setBtText('ynow_macro_hccsi_in_title', 'hccsi_in_composite_title');
             setBtText('ynow_macro_hccsi_method_title', 'hccsi_method_title');
             setBtText('ynow_macro_index_hint', 'macro_index_chart_hint');
-            setBtText('ynow_index_title', 'ynow_index_title');
-            setBtText('ynow_index_rule', 'ynow_index_rule');
-            setBtText('ynow_index_chart_note', 'ynow_index_chart_note');
+            ['ynow_index_title', 'ynow_index_rule', 'ynow_index_chart_note'].forEach(function(id) {
+              var el = document.getElementById(id);
+              if (!el) return;
+              var key = el.getAttribute('data-i18n') || id;
+              setBtText(id, key);
+            });
             setBtText('ynow_macro_tw_signal_title', 'macro_tw_signal_title');
             setBtText('ynow_macro_theme_title', 'macro_theme_title');
             setBtText('ynow_macro_theme_help', 'macro_theme_help');

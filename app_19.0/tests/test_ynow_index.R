@@ -24,10 +24,22 @@ check <- function(label, cond) {
   }
 }
 
+check("pass 8 and zero alerts", isTRUE(ynow_index_passes(8, 0)))
 check("pass 9 and zero alerts", isTRUE(ynow_index_passes(9, 0)))
-check("reject 8", !isTRUE(ynow_index_passes(8, 0)))
-check("reject alert", !isTRUE(ynow_index_passes(9, 1)))
-check("reject unknown alert", !isTRUE(ynow_index_passes(9, NA)))
+check("reject 7", !isTRUE(ynow_index_passes(7, 0)))
+check("reject alert", !isTRUE(ynow_index_passes(8, 1)))
+check("reject unknown alert", !isTRUE(ynow_index_passes(8, NA)))
+tw_uni <- data.frame(
+  ticker = c("2330.TW", "0050.TW", "6488.TWO", "3105.TWO"),
+  exchange = c("TWSE", "TWSE", "TPEX", "ESB"),
+  stringsAsFactors = FALSE
+)
+tw_keep <- ynow_index_filter_tw_rows(tw_uni)$ticker
+check("TW keeps listed and OTC", identical(sort(tw_keep), c("2330.TW", "6488.TWO")))
+check("TYNOW symbol", identical(ynow_index_symbol("TW"), "TYNOW"))
+check("YNOW symbol", identical(ynow_index_symbol("US"), "YNOW"))
+check("TW cache file", grepl("tynow_index_basket.csv", ynow_index_cache_path("TW"), fixed = TRUE))
+check("US cache file", grepl("ynow_index_basket.csv", ynow_index_cache_path("US"), fixed = TRUE))
 
 screen <- function(tk) {
   pass <- tk %in% c("BBB", "DDD", "FFF", "HHH", "III", "JJJ", "LLL", "NNN", "PPP", "RRR", "TTT", "ZZZ")
@@ -80,23 +92,49 @@ cur <- ynow_index_current(
 )
 check("current ranks by mcap", identical(vapply(cur$members, function(m) m$ticker, character(1)), c("BBB", "ZZZ")))
 check("month taipei", identical(cur$month, "2026-10"))
+check("current US symbol", identical(cur$symbol, "YNOW"))
+tw_cur <- ynow_index_current(
+  as_of = as.POSIXct("2026-10-15 12:00:00", tz = "Asia/Taipei"),
+  rebuild = TRUE,
+  market = "TW",
+  screen_fn = screen,
+  ranked = data.frame(
+    ticker = c("ZZZ", "BBB", "AAA"),
+    market_cap = c(1, 3, 9),
+    stringsAsFactors = FALSE
+  ),
+  cache_path = tempfile(fileext = ".csv")
+)
+check("current TW symbol", identical(tw_cur$symbol, "TYNOW") &&
+  identical(vapply(tw_cur$members, function(m) m$ticker, character(1)), c("BBB", "ZZZ")))
 
 check("en rule", grepl("equal weight", ui_str("ynow_index_rule", "en"), fixed = TRUE) &&
-  grepl("9/9", ui_str("ynow_index_rule", "en"), fixed = TRUE))
+  grepl("8 or higher", ui_str("ynow_index_rule", "en"), fixed = TRUE) &&
+  grepl("automatically", ui_str("ynow_index_rule", "en"), fixed = TRUE))
 check("zh rule", grepl("等權重", ui_str("ynow_index_rule", "zh-TW"), fixed = TRUE) &&
-  grepl("不依產業", ui_str("ynow_index_rule", "zh-TW"), fixed = TRUE))
+  grepl("不依產業", ui_str("ynow_index_rule", "zh-TW"), fixed = TRUE) &&
+  grepl("8 分以上", ui_str("ynow_index_rule", "zh-TW"), fixed = TRUE) &&
+  grepl("自動計算", ui_str("ynow_index_rule", "zh-TW"), fixed = TRUE))
 check("zh no simplified", !grepl("默认|参数|数据|用户", ui_str("ynow_index_rule", "zh-TW")))
+check("en TYNOW rule", grepl("TYNOW", ui_str("tynow_index_title", "en"), fixed = TRUE) &&
+  grepl("8 or higher", ui_str("tynow_index_rule", "en"), fixed = TRUE) &&
+  grepl("emerging-board", ui_str("tynow_index_rule", "en"), fixed = TRUE))
+check("zh TYNOW rule", grepl("上市與上櫃", ui_str("tynow_index_rule", "zh-TW"), fixed = TRUE) &&
+  grepl("興櫃", ui_str("tynow_index_rule", "zh-TW"), fixed = TRUE) &&
+  !grepl("默认|参数|数据|用户", ui_str("tynow_index_rule", "zh-TW")))
 keys <- c("ynow_index_title", "ynow_index_rule", "ynow_index_chart_note", "ynow_index_waiting",
-          "ynow_index_empty", "ynow_index_none", "ynow_index_build", "ynow_index_level",
-          "ynow_index_col_ticker", "ynow_index_col_weight", "ynow_index_col_mcap", "ynow_index_col_fscore")
+          "ynow_index_empty", "ynow_index_none", "ynow_index_level",
+          "ynow_index_col_ticker", "ynow_index_col_weight", "ynow_index_col_mcap", "ynow_index_col_fscore",
+          "tynow_index_title", "tynow_index_rule", "tynow_index_waiting", "tynow_index_empty", "tynow_index_none")
 check("keys both locales", all(vapply(keys, function(k) {
   nzchar(ui_str(k, "en")) && nzchar(ui_str(k, "zh-TW"))
 }, logical(1))))
 
 macro <- paste(readLines("macro_market_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("panel mounted", grepl("ynow_index_panel", macro, fixed = TRUE))
-check("build button", grepl("ynow_index_build", macro, fixed = TRUE))
-check("US only gate", grepl('!identical(.mode(), "US")', macro, fixed = TRUE))
+check("auto screen", grepl("ynow_index_current(market = mode)", macro, fixed = TRUE))
+check("no build button", !grepl("ynow_index_build", macro, fixed = TRUE))
+check("TW market", grepl("TYNOW", macro, fixed = TRUE))
 check("yahoo catalog untouched", !grepl('"YNOW" = "YNOW"', macro, fixed = TRUE))
 ui_src <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("locale wire", grepl("ynow_index_rule", ui_src, fixed = TRUE))

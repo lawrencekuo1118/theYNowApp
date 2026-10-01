@@ -649,21 +649,52 @@ macro_market_server <- function(id = "macro",
     })
 
     ynow_built <- reactiveVal(0L)
-    observeEvent(input$ynow_index_build, {
-      if (!identical(.mode(), "US")) return()
+    ynow_auto_guard <- reactiveVal(character(0))
+    .index_market <- function() {
+      mode <- toupper(as.character(.mode() %||% "")[1])
+      if (identical(mode, "TW")) "TW" else if (identical(mode, "US")) "US" else ""
+    }
+    .index_ui_key <- function(suffix) {
+      prefix <- if (identical(.index_market(), "TW")) "tynow_index_" else "ynow_index_"
+      key <- paste0(prefix, suffix)
+      if (nzchar(.ui(key))) key else paste0("ynow_index_", suffix)
+    }
+
+    observe({
+      mode <- .index_market()
+      .loc()
+      if (!nzchar(mode)) return()
       if (!exists("ynow_index_current", mode = "function")) return()
-      shiny::withProgress(message = .ui("ynow_index_waiting"), value = NULL, {
-        tryCatch(ynow_index_current(rebuild = TRUE), error = function(e) NULL)
+      if (!exists("ynow_index_month_key", mode = "function")) return()
+      month <- ynow_index_month_key()
+      guard <- paste(mode, month, sep = "|")
+      if (guard %in% isolate(ynow_auto_guard())) return()
+      path <- if (exists("ynow_index_cache_path", mode = "function")) {
+        ynow_index_cache_path(mode)
+      } else {
+        NULL
+      }
+      hit <- if (!is.null(path) && exists("ynow_index_read_cache", mode = "function")) {
+        tryCatch(ynow_index_read_cache(month, path), error = function(e) NULL)
+      } else {
+        NULL
+      }
+      if (!is.null(hit)) return()
+      ynow_auto_guard(c(isolate(ynow_auto_guard()), guard))
+      shiny::withProgress(message = .ui(.index_ui_key("waiting")), value = NULL, {
+        tryCatch(ynow_index_current(market = mode), error = function(e) NULL)
       })
       ynow_built(isolate(ynow_built()) + 1L)
-    }, ignoreInit = TRUE)
+    })
 
     ynow_basket <- reactive({
       ynow_built()
-      if (!identical(.mode(), "US")) return(NULL)
+      mode <- .index_market()
+      if (!nzchar(mode)) return(NULL)
       if (!exists("ynow_index_read_cache", mode = "function")) return(NULL)
       key <- if (exists("ynow_index_month_key", mode = "function")) ynow_index_month_key() else ""
-      tryCatch(ynow_index_read_cache(key), error = function(e) NULL)
+      path <- if (exists("ynow_index_cache_path", mode = "function")) ynow_index_cache_path(mode) else NULL
+      tryCatch(ynow_index_read_cache(key, path), error = function(e) NULL)
     })
 
     ynow_series <- reactive({
@@ -680,7 +711,7 @@ macro_market_server <- function(id = "macro",
     })
 
     output$ynow_index_plot <- plotly::renderPlotly({
-      if (.is_lite() || !identical(.mode(), "US")) {
+      if (.is_lite() || !nzchar(.index_market())) {
         return(plotly::plotly_empty(type = "scatter", mode = "lines"))
       }
       dat <- ynow_series()
@@ -691,7 +722,7 @@ macro_market_server <- function(id = "macro",
       fig <- plotly::plot_ly(
         dat, x = ~Date, y = ~Close,
         type = "scatter", mode = "lines",
-        name = .ui("ynow_index_title"),
+        name = .ui(.index_ui_key("title")),
         line = list(color = "#0C5484", width = 2)
       )
       plotly::layout(
@@ -706,7 +737,8 @@ macro_market_server <- function(id = "macro",
 
     output$ynow_index_panel <- renderUI({
       .loc()
-      if (!identical(.mode(), "US")) return(NULL)
+      mode <- .index_market()
+      if (!nzchar(mode)) return(NULL)
       raw <- ynow_basket()
       built <- !is.null(raw)
       b <- if (built) raw else list(members = list(), month = "")
@@ -752,12 +784,7 @@ macro_market_server <- function(id = "macro",
           tags$tbody(rows)
         )
       } else {
-        tags$p(class = "ynow-macro-hint", .ui(if (built) "ynow_index_none" else "ynow_index_empty"))
-      }
-      build_btn <- if (!built) {
-        actionButton(ns("ynow_index_build"), .ui("ynow_index_build"), class = "btn-primary")
-      } else {
-        NULL
+        tags$p(class = "ynow-macro-hint", .ui(.index_ui_key(if (built) "none" else "empty")))
       }
       chart <- if (.is_lite() || !length(mem)) {
         NULL
@@ -765,20 +792,32 @@ macro_market_server <- function(id = "macro",
         tags$div(
           class = "ynow-full-only",
           plotlyOutput(session$ns("ynow_index_plot"), height = "320px", width = "100%"),
-          tags$p(id = "ynow_index_chart_note", class = "ynow-macro-hint", .ui("ynow_index_chart_note"))
+          tags$p(
+            id = "ynow_index_chart_note",
+            `data-i18n` = "ynow_index_chart_note",
+            class = "ynow-macro-hint",
+            .ui("ynow_index_chart_note")
+          )
         )
       }
+      title_key <- .index_ui_key("title")
+      rule_key <- .index_ui_key("rule")
+      symbol <- if (exists("ynow_index_symbol", mode = "function")) ynow_index_symbol(mode) else if (identical(mode, "TW")) "TYNOW" else "YNOW"
       tags$section(
         class = "ynow-macro-chapter",
-        tags$h3(id = "ynow_index_title", .ui("ynow_index_title")),
-        tags$p(id = "ynow_index_rule", class = "ynow-macro-hint ynow-macro-chapter__lead", .ui("ynow_index_rule")),
-        build_btn,
+        tags$h3(id = "ynow_index_title", `data-i18n` = title_key, .ui(title_key)),
+        tags$p(
+          id = "ynow_index_rule",
+          `data-i18n` = rule_key,
+          class = "ynow-macro-hint ynow-macro-chapter__lead",
+          .ui(rule_key)
+        ),
         tags$div(
           class = "ynow-macro-kpi",
           tags$div(class = "ynow-macro-kpi__label", .ui("ynow_index_level")),
           tags$div(class = "ynow-macro-kpi__value", last_txt),
           tags$div(class = paste("ynow-macro-kpi__chg", chg_cls), chg_txt),
-          tags$div(class = "ynow-macro-kpi__sym", paste0("YNOW · ", b$month %||% ""))
+          tags$div(class = "ynow-macro-kpi__sym", paste0(symbol, " · ", b$month %||% ""))
         ),
         table,
         chart
