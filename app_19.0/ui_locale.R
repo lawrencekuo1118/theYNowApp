@@ -1446,20 +1446,21 @@ locale_for_market <- function(mode = get_market_mode()) {
     macro_index_name_0050 = "0050",
     ynow_index_title = "YNOW",
     ynow_index_rule = paste0(
-      "US primary listings, ranked by market cap, with no industry screen. ",
-      "A name is eligible only when F-Score is 8 or higher and the financial-statement screen has zero alerts. ",
-      "Hold the first 10 at equal weight. Reconstitute once each calendar month (Asia/Taipei). ",
-      "The basket is calculated automatically. ",
-      "Engineering limit: at most the 80 largest names are checked in a month; ",
-      "if fewer than 10 qualify, the index equal-weights those that do."
+      "Constituents stay fixed until the next monthly reconstitution (Asia/Taipei): ",
+      "the largest US primary listings with F-Score 8 or higher and zero statement alerts, equal weight. ",
+      "The index level is recalculated from those prices. The basket is not re-screened."
     ),
     ynow_index_chart_note = paste0(
-      "The line is the current basket’s equal-weight path, rebased to 100 at the start of the window. ",
-      "It is not a point-in-time backtest of prior monthly baskets."
+      "Equal-weight path of the fixed basket, rebased to 100. ",
+      "With ten names, each weight is 10%. The level follows price changes and does not re-screen names."
     ),
-    ynow_index_waiting = "Screening the largest US names for this month’s YNOW basket…",
-    ynow_index_empty = "This month’s YNOW basket is calculated automatically.",
-    ynow_index_none = "This month’s scan found no US name with F-Score 8 or higher and zero statement alerts.",
+    ynow_index_waiting = "Updating YNOW from constituent prices…",
+    ynow_index_empty = "No fixed YNOW constituents for this month.",
+    ynow_index_none = "This month’s YNOW basket has no constituents.",
+    ynow_index_constituents = "Constituents",
+    ynow_index_col_name = "Name",
+    ynow_index_col_last = "Last",
+    ynow_index_col_chg = "Change",
     ynow_index_build = "Build this month's basket",
     ynow_index_level = "Index level",
     ynow_index_col_ticker = "Ticker",
@@ -1468,18 +1469,15 @@ locale_for_market <- function(mode = get_market_mode()) {
     ynow_index_col_fscore = "F-Score",
     tynow_index_title = "TYNOW",
     tynow_index_rule = paste0(
-      "Taiwan listed and OTC common stocks, ranked by market cap, with no industry screen. ",
+      "Constituents stay fixed until the next monthly reconstitution (Asia/Taipei): ",
+      "the largest Taiwan listed and OTC common stocks with F-Score 8 or higher and zero statement alerts, equal weight. ",
       "ETFs and emerging-board names are excluded. ",
-      "A name is eligible only when F-Score is 8 or higher and the financial-statement screen has zero alerts. ",
-      "Hold the first 10 at equal weight. Reconstitute once each calendar month (Asia/Taipei). ",
-      "The basket is calculated automatically. ",
-      "Engineering limit: at most the 200 largest names are checked in a month; ",
-      "if fewer than 10 qualify, the index equal-weights those that do."
+      "The index level is recalculated from those prices. The basket is not re-screened."
     ),
-    tynow_index_waiting = "Screening the largest Taiwan names for this month’s TYNOW basket…",
-    tynow_index_empty = "This month’s TYNOW basket is calculated automatically.",
-    tynow_index_none = "This month’s scan found no Taiwan name with F-Score 8 or higher and zero statement alerts.",
-    macro_index_chart_hint = "Click an index box to show its historical line chart.",
+    tynow_index_waiting = "Updating TYNOW from constituent prices…",
+    tynow_index_empty = "No fixed TYNOW constituents for this month.",
+    tynow_index_none = "This month’s TYNOW basket has no constituents.",
+    macro_index_chart_hint = "Click an index box to show its historical line chart. YNOW and TYNOW also list constituent weights.",
     macro_index_chart_empty = "No price history for this index.",
     macro_index_chart_error = "Could not load this index history.",
     macro_rf_source_fallback = "Rf source unavailable",
@@ -3148,18 +3146,21 @@ locale_for_market <- function(mode = get_market_mode()) {
     macro_index_name_0050 = "0050（台灣50）",
     ynow_index_title = "YNOW",
     ynow_index_rule = paste0(
-      "全美主要上市股票依市值由大到小檢查，不依產業排除。",
-      "F-Score 8 分以上，且財報警訊沒有「警示」，才納入；取前 10 檔、等權重。",
-      "每個日曆月（台北時間）汰換一次。成分自動計算，無需手動觸發。",
-      "工程上限：單月最多檢查市值序前 80 檔；不足 10 檔時，以實際通過者等權。"
+      "成分在下次月汰換（台北時間）前固定：",
+      "F-Score 8 分以上且無財報警示的美股主要上市市值前段，等權重。",
+      "指數水位依這些成分股的價格重算，不重新篩選成分。"
     ),
     ynow_index_chart_note = paste0(
-      "走勢是目前這組成分自視窗起點的等權重路徑（起點＝100），",
-      "不是過去各月成分的歷史回測。"
+      "走勢是固定成分的等權重路徑（起點＝100）。",
+      "滿 10 檔時，每檔權重 10%。水位隨股價更新，不重新篩選成分。"
     ),
-    ynow_index_waiting = "正在依市值序檢查本月 YNOW 成分…",
-    ynow_index_empty = "本月 YNOW 成分會自動計算。",
-    ynow_index_none = "本月檢查範圍內，沒有 F-Score 8 分以上且無財報警示的美股。",
+    ynow_index_waiting = "正在依成分股價格更新 YNOW…",
+    ynow_index_empty = "本月尚無固定的 YNOW 成分。",
+    ynow_index_none = "本月 YNOW 沒有成分股。",
+    ynow_index_constituents = "成分股",
+    ynow_index_col_name = "名稱",
+    ynow_index_col_last = "現價",
+    ynow_index_col_chg = "漲跌幅",
     ynow_index_build = "建立本月成分",
     ynow_index_level = "指數水位",
     ynow_index_col_ticker = "代號",
@@ -3168,16 +3169,15 @@ locale_for_market <- function(mode = get_market_mode()) {
     ynow_index_col_fscore = "F-Score",
     tynow_index_title = "TYNOW",
     tynow_index_rule = paste0(
-      "台股上市與上櫃普通股依市值由大到小檢查，不依產業排除。",
+      "成分在下次月汰換（台北時間）前固定：",
+      "F-Score 8 分以上且無財報警示的上市與上櫃普通股市值前段，等權重。",
       "不含 ETF，也不含興櫃。",
-      "F-Score 8 分以上，且財報警訊沒有「警示」，才納入；取前 10 檔、等權重。",
-      "每個日曆月（台北時間）汰換一次。成分自動計算，無需手動觸發。",
-      "工程上限：單月最多檢查市值序前 200 檔；不足 10 檔時，以實際通過者等權。"
+      "指數水位依這些成分股的價格重算，不重新篩選成分。"
     ),
-    tynow_index_waiting = "正在依市值序檢查本月 TYNOW 成分…",
-    tynow_index_empty = "本月 TYNOW 成分會自動計算。",
-    tynow_index_none = "本月檢查範圍內，沒有 F-Score 8 分以上且無財報警示的台股。",
-    macro_index_chart_hint = "點選指數方塊即可顯示該指數的歷史走勢圖。",
+    tynow_index_waiting = "正在依成分股價格更新 TYNOW…",
+    tynow_index_empty = "本月尚無固定的 TYNOW 成分。",
+    tynow_index_none = "本月 TYNOW 沒有成分股。",
+    macro_index_chart_hint = "點選指數方塊即可顯示該指數的歷史走勢圖。YNOW 與 TYNOW 同時列出成分股權重。",
     macro_index_chart_empty = "此指數沒有歷史價格資料。",
     macro_index_chart_error = "無法載入此指數的歷史走勢。",
     macro_rf_source_fallback = "無法取得 Rf 來源",

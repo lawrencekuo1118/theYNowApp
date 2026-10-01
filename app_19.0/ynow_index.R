@@ -2,7 +2,8 @@
 #
 # Rank primary listings by market cap. Keep a name only when Piotroski F-Score
 # is 8 or higher and Schilit screening has zero 警示. Take the first 10.
-# Equal weight. Reconstitute once per calendar month (Asia/Taipei).
+# Equal weight. The stored basket stays fixed until the next monthly
+# reconstitution (Asia/Taipei). The index level follows those prices.
 # No industry filter. Scan caps are engineering limits, not sector rules.
 # US symbol YNOW. TW (上市／上櫃, no ETFs, no 興櫃) symbol TYNOW.
 
@@ -154,6 +155,24 @@ ynow_index_snapshot_path <- function() {
   )
   hit <- cands[file.exists(cands)]
   if (length(hit)) hit[[1]] else cands[[1]]
+}
+
+ynow_index_lookup_names <- function(tickers, market = "US") {
+  tks <- toupper(trimws(as.character(tickers)))
+  tks[is.na(tks)] <- ""
+  out <- stats::setNames(rep("", length(tks)), tks)
+  if (!length(tks)) return(out)
+  snap <- ynow_index_snapshot_path()
+  fn <- if (identical(ynow_index_normalize_market(market), "TW")) "tw_universe.csv" else "us_universe.csv"
+  csv <- file.path(dirname(snap), fn)
+  if (!file.exists(csv)) return(out)
+  df <- tryCatch(utils::read.csv(csv, stringsAsFactors = FALSE), error = function(e) NULL)
+  if (is.null(df) || !all(c("ticker", "name") %in% names(df))) return(out)
+  key <- toupper(trimws(as.character(df$ticker)))
+  hit <- match(tks, key)
+  ok <- !is.na(hit) & nzchar(tks)
+  out[ok] <- as.character(df$name)[hit[ok]]
+  out
 }
 
 ynow_index_cache_path <- function(market = "US") {

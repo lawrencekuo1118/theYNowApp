@@ -110,11 +110,10 @@ check("current TW symbol", identical(tw_cur$symbol, "TYNOW") &&
 
 check("en rule", grepl("equal weight", ui_str("ynow_index_rule", "en"), fixed = TRUE) &&
   grepl("8 or higher", ui_str("ynow_index_rule", "en"), fixed = TRUE) &&
-  grepl("automatically", ui_str("ynow_index_rule", "en"), fixed = TRUE))
+  grepl("not re-screened", ui_str("ynow_index_rule", "en"), fixed = TRUE))
 check("zh rule", grepl("等權重", ui_str("ynow_index_rule", "zh-TW"), fixed = TRUE) &&
-  grepl("不依產業", ui_str("ynow_index_rule", "zh-TW"), fixed = TRUE) &&
   grepl("8 分以上", ui_str("ynow_index_rule", "zh-TW"), fixed = TRUE) &&
-  grepl("自動計算", ui_str("ynow_index_rule", "zh-TW"), fixed = TRUE))
+  grepl("不重新篩選", ui_str("ynow_index_rule", "zh-TW"), fixed = TRUE))
 check("zh no simplified", !grepl("默认|参数|数据|用户", ui_str("ynow_index_rule", "zh-TW")))
 check("en TYNOW rule", grepl("TYNOW", ui_str("tynow_index_title", "en"), fixed = TRUE) &&
   grepl("8 or higher", ui_str("tynow_index_rule", "en"), fixed = TRUE) &&
@@ -123,16 +122,23 @@ check("zh TYNOW rule", grepl("上市與上櫃", ui_str("tynow_index_rule", "zh-T
   grepl("興櫃", ui_str("tynow_index_rule", "zh-TW"), fixed = TRUE) &&
   !grepl("默认|参数|数据|用户", ui_str("tynow_index_rule", "zh-TW")))
 keys <- c("ynow_index_title", "ynow_index_rule", "ynow_index_chart_note", "ynow_index_waiting",
-          "ynow_index_empty", "ynow_index_none", "ynow_index_level",
-          "ynow_index_col_ticker", "ynow_index_col_weight", "ynow_index_col_mcap", "ynow_index_col_fscore",
+          "ynow_index_empty", "ynow_index_none", "ynow_index_level", "ynow_index_constituents",
+          "ynow_index_col_ticker", "ynow_index_col_name", "ynow_index_col_weight",
+          "ynow_index_col_last", "ynow_index_col_chg",
+          "ynow_index_col_mcap", "ynow_index_col_fscore",
           "tynow_index_title", "tynow_index_rule", "tynow_index_waiting", "tynow_index_empty", "tynow_index_none")
 check("keys both locales", all(vapply(keys, function(k) {
   nzchar(ui_str(k, "en")) && nzchar(ui_str(k, "zh-TW"))
 }, logical(1))))
 
+nm <- ynow_index_lookup_names("AAPL", "US")
+check("lookup name", identical(unname(nm[["AAPL"]]), "Apple Inc."))
+
 macro <- paste(readLines("macro_market_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-check("panel mounted", grepl("ynow_index_panel", macro, fixed = TRUE))
-check("auto screen", grepl("ynow_index_current(market = mode)", macro, fixed = TRUE))
+check("expand constituents", grepl("ynow_index_constituents", macro, fixed = TRUE))
+check("weight percent", grepl('sprintf("%.2f%%", 100 * w)', macro, fixed = TRUE))
+check("price recalc", grepl("ynow_index_series", macro, fixed = TRUE))
+check("no live rescreen", !grepl("ynow_index_current(market = mode)", macro, fixed = TRUE))
 check("no build button", !grepl("ynow_index_build", macro, fixed = TRUE))
 check("TW market", grepl("TYNOW", macro, fixed = TRUE))
 check("yahoo catalog untouched", !grepl('"YNOW" = "YNOW"', macro, fixed = TRUE))

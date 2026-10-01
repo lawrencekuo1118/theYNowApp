@@ -3853,7 +3853,9 @@ ui <- dashboardPage(
             setBtText('ynow_macro_hccsi_in_title', 'hccsi_in_composite_title');
             setBtText('ynow_macro_hccsi_method_title', 'hccsi_method_title');
             setBtText('ynow_macro_index_hint', 'macro_index_chart_hint');
-            ['ynow_index_title', 'ynow_index_rule', 'ynow_index_chart_note'].forEach(function(id) {
+            ['ynow_index_title', 'ynow_index_rule', 'ynow_index_chart_note', 'ynow_index_constituents',
+             'ynow_index_col_ticker', 'ynow_index_col_name', 'ynow_index_col_weight',
+             'ynow_index_col_last', 'ynow_index_col_chg'].forEach(function(id) {
               var el = document.getElementById(id);
               if (!el) return;
               var key = el.getAttribute('data-i18n') || id;
