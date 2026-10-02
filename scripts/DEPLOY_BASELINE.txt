@@ -8,5 +8,5 @@ short=3674f7a
 message=Let the home logo toggle Lite the same way as the sidebar logo.
 captured_at=2026-10-02T14:24:41Z
 source_branch=master
-display_version=v19.61
+display_version=v19.62
 note=Canonical live line is app_19.0. Bundle 12638535 = v19.61. Home and sidebar logos both toggle Lite / Full; Lite shows a LITE badge on each. Deploy via scripts/deploy_app_19.R. Supersedes 12638399 / 12638310 / 12638256 / 12638128.
