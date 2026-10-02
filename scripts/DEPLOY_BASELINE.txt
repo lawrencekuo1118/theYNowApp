@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12638399
+bundleId=12638535
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=cb09afef21e14aa13d380db0f49cd8fc717a5076
-commit=cb09afef21e14aa13d380db0f49cd8fc717a5076
-short=cb09afe
-message=Make the home panel transparent and describe only Lite features on the Lite home.
-captured_at=2026-10-02T13:51:57Z
+aligned_git=3674f7a2ae094ceda8c978a55c4294f7c797e41f
+commit=3674f7a2ae094ceda8c978a55c4294f7c797e41f
+short=3674f7a
+message=Let the home logo toggle Lite the same way as the sidebar logo.
+captured_at=2026-10-02T14:24:41Z
 source_branch=master
-display_version=v19.60
-note=Canonical live line is app_19.0. Bundle 12638399 = v19.60. Home panel background is transparent; Lite home copy only describes Lite features (Smart Analysis, YNOW) and does not mention Decision Checklist. Deploy via scripts/deploy_app_19.R. Supersedes 12638310 / 12638256 / 12638128 / 12637379 / 12637118 / 12636939 / 12636900 / 12636796 / 12636741 / 12636727 / 12636713 / 12636675 / 12634651 / 12634379 / 12634241 / 12634182 / 12633785 / 12628920 / 12628661 / 12628377 / 12628295 / 12628184 / 12627966 / 12627846 / 12627644 / 12627610 / 12627556 / 12627405 / 12627312 / 12627150 / 12627127 / 12627082 / 12627038 / 12626909 / 12626822 / 12626810 / 12626794 / 12626772 / 12626690 / 12626668 / 12626547 / 12626454 / 12626418 / 12626362 / 12626262 / 12626032 / 12625997 / 12625985 / 12625973 / 12625956 / 12625916 / 12625890 / 12625810 / 12625762 / 12625733 / 12625709 / 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
+display_version=v19.61
+note=Canonical live line is app_19.0. Bundle 12638535 = v19.61. Home and sidebar logos both toggle Lite / Full; Lite shows a LITE badge on each. Deploy via scripts/deploy_app_19.R. Supersedes 12638399 / 12638310 / 12638256 / 12638128.
