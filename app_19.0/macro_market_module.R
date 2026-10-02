@@ -474,7 +474,27 @@ macro_market_ui <- function(id = "macro") {
       id = "ynow_own_index",
       class = "ynow-macro-own-index",
       uiOutput(ns("own_index_block"))
-    )
+    ),
+    tags$script(HTML("
+      (function () {
+        if (document.documentElement.getAttribute('data-ynow-idx-tap') === '1') return;
+        document.documentElement.setAttribute('data-ynow-idx-tap', '1');
+        function ynowIdxLog(hid, message, ev) {
+          var t = ev.target;
+          var card = t && t.closest ? t.closest('[data-macro-index]') : null;
+          var cs = t ? getComputedStyle(t) : null;
+          var rect = card ? card.getBoundingClientRect() : null;
+          var mid = rect ? document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2) : null;
+          fetch('http://127.0.0.1:7302/ingest/e3a0dcdf-71e1-4bba-855e-f942118bd315',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ef0f33'},body:JSON.stringify({sessionId:'ef0f33',runId:'pre-fix',hypothesisId:hid,location:'macro_market_module.R:index-tap',message:message,data:{index:card?card.getAttribute('data-macro-index'):'',targetCls:t&&t.className?String(t.className).slice(0,120):'',clip:cs?cs.webkitBackgroundClip:'',pe:cs?cs.pointerEvents:'',vw:window.innerWidth,lite:!!(document.body&&document.body.classList.contains('ynow-lite')),midCls:mid&&mid.className?String(mid.className).slice(0,120):'',cardW:rect?Math.round(rect.width):0},timestamp:Date.now()})}).catch(function(){});
+        }
+        document.addEventListener('touchend', function (ev) {
+          if (ev.target && ev.target.closest && ev.target.closest('[data-macro-index]')) ynowIdxLog('A', 'touchend on index card', ev);
+        }, true);
+        document.addEventListener('click', function (ev) {
+          if (ev.target && ev.target.closest && ev.target.closest('[data-macro-index]')) ynowIdxLog('A', 'click on index card', ev);
+        }, true);
+      })();
+    "))
     # Bubble & concentration lives on the YNOW tab (decision_ui), not here.
   )
 }
@@ -553,7 +573,15 @@ macro_market_server <- function(id = "macro",
       sym <- as.character(input$index_click %||% "")[1]
       specs <- macro_click_index_specs(.mode())
       own <- .own_index_symbol()
-      if (nzchar(sym) && (sym %in% names(specs) || identical(sym, own))) {
+      accepted <- nzchar(sym) && (sym %in% names(specs) || identical(sym, own))
+      # #region agent log
+      if (exists(".ynow_dbg_ef0f33", mode = "function")) {
+        .ynow_dbg_ef0f33("D", "macro_market_module.R:index_click", "index click received", list(
+          sym = sym, own = own, accepted = accepted, lite = .is_lite()
+        ))
+      }
+      # #endregion
+      if (accepted) {
         selected_index(sym)
       }
     }, ignoreInit = TRUE)
@@ -808,13 +836,8 @@ macro_market_server <- function(id = "macro",
       )
     })
 
-    output$own_index_block <- renderUI({
-      .loc()
-      own <- .own_index_symbol()
-      if (!nzchar(own)) return(NULL)
-      lite <- .is_lite()
-      sel <- as.character(selected_index() %||% "")[1]
-      selected_own <- !isTRUE(lite) && identical(sel, own)
+    own_level <- reactive({
+      refresh_token()
       b <- tryCatch(ynow_basket(), error = function(e) NULL)
       mem <- b$members %||% list()
       last <- NA_real_
@@ -826,6 +849,19 @@ macro_market_server <- function(id = "macro",
         last <- q$last
         chg <- q$chg
       }
+      list(members = mem, last = last, chg = chg)
+    })
+
+    output$own_index_block <- renderUI({
+      .loc()
+      own <- .own_index_symbol()
+      if (!nzchar(own)) return(NULL)
+      lite <- .is_lite()
+      sel <- as.character(selected_index() %||% "")[1]
+      selected_own <- !isTRUE(lite) && identical(sel, own)
+      lvl <- tryCatch(own_level(), error = function(e) list(last = NA_real_, chg = NA_real_))
+      last <- lvl$last
+      chg <- lvl$chg
       last_txt <- if (is.finite(last)) format(round(last, 2), big.mark = ",", nsmall = 2) else "—"
       chg_txt <- if (is.finite(chg)) sprintf("%+.2f%%", chg) else "—"
       chg_cls <- if (is.finite(chg) && chg >= 0) "ynow-macro-up" else "ynow-macro-down"
@@ -872,66 +908,20 @@ macro_market_server <- function(id = "macro",
       expand <- if (!selected_own) {
         NULL
       } else {
-        dat <- index_hist_data()
-        body <- if (is.null(dat)) {
-          tags$p(class = "ynow-macro-hint", .ui(.index_ui_key("empty")))
-        } else if (!is.data.frame(dat) || nrow(dat) < 2L) {
-          tags$p(class = "ynow-macro-hint", .ui(.index_ui_key("none")))
-        } else {
-          plotlyOutput(ns("index_hist_plot"), height = "320px", width = "100%")
+        # #region agent log
+        if (exists(".ynow_dbg_ef0f33", mode = "function")) {
+          .ynow_dbg_ef0f33("SHELL", "macro_market_module.R:own_index_block", "expand shell without member downloads", list(
+            own = own
+          ))
         }
-        quotes <- own_member_quotes()
-        mode <- if (identical(own, "TYNOW")) "TW" else "US"
-        names_v <- if (exists("ynow_index_lookup_names", mode = "function") && length(quotes)) {
-          ynow_index_lookup_names(vapply(quotes, function(m) m$ticker, character(1)), mode)
-        } else {
-          character(0)
-        }
-        rows <- lapply(quotes, function(m) {
-          w <- suppressWarnings(as.numeric(m$weight)[1])
-          w_txt <- if (is.finite(w)) sprintf("%.2f%%", 100 * w) else "—"
-          px_txt <- if (is.finite(m$last)) format(round(m$last, 2), big.mark = ",", nsmall = 2) else "—"
-          px_chg <- if (is.finite(m$chg)) sprintf("%+.2f%%", m$chg) else "—"
-          px_cls <- if (is.finite(m$chg) && m$chg >= 0) "ynow-macro-up" else "ynow-macro-down"
-          nm <- if (length(names_v) && nzchar(names_v[[m$ticker]] %||% "")) names_v[[m$ticker]] else "—"
-          tags$tr(
-            tags$td(m$ticker),
-            tags$td(nm),
-            tags$td(w_txt),
-            tags$td(px_txt),
-            tags$td(class = px_cls, px_chg)
-          )
-        })
-        table <- if (length(rows)) {
-          tags$table(
-            class = "table table-condensed ynow-hccsi-table",
-            tags$thead(tags$tr(
-              tags$th(id = "ynow_index_col_ticker", `data-i18n` = "ynow_index_col_ticker", .ui("ynow_index_col_ticker")),
-              tags$th(id = "ynow_index_col_name", `data-i18n` = "ynow_index_col_name", .ui("ynow_index_col_name")),
-              tags$th(id = "ynow_index_col_weight", `data-i18n` = "ynow_index_col_weight", .ui("ynow_index_col_weight")),
-              tags$th(id = "ynow_index_col_last", `data-i18n` = "ynow_index_col_last", .ui("ynow_index_col_last")),
-              tags$th(id = "ynow_index_col_chg", `data-i18n` = "ynow_index_col_chg", .ui("ynow_index_col_chg"))
-            )),
-            tags$tbody(rows)
-          )
-        } else {
-          NULL
-        }
+        # #endregion
         tags$div(
           class = "ynow-macro-card ynow-macro-index-hist__card",
-          body,
-          tags$h4(
-            id = "ynow_index_constituents",
-            `data-i18n` = "ynow_index_constituents",
-            .ui("ynow_index_constituents")
-          ),
-          table,
           tags$p(
-            id = "ynow_index_chart_note",
-            `data-i18n` = "ynow_index_chart_note",
-            class = "ynow-macro-hint",
-            .ui("ynow_index_chart_note")
-          )
+            class = "ynow-macro-hint ynow-index-pending",
+            .ui(.index_ui_key("waiting"))
+          ),
+          uiOutput(ns("own_index_detail"))
         )
       }
       tags$section(
@@ -945,6 +935,74 @@ macro_market_server <- function(id = "macro",
         ),
         fluidRow(class = "ynow-macro-kpi-row", card),
         expand
+      )
+    })
+
+    output$own_index_detail <- renderUI({
+      if (.is_lite()) return(NULL)
+      own <- .own_index_symbol()
+      sel <- as.character(selected_index() %||% "")[1]
+      if (!nzchar(own) || !identical(sel, own)) return(NULL)
+      dat <- index_hist_data()
+      body <- if (is.null(dat)) {
+        tags$p(class = "ynow-macro-hint", .ui(.index_ui_key("empty")))
+      } else if (!is.data.frame(dat) || nrow(dat) < 2L) {
+        tags$p(class = "ynow-macro-hint", .ui(.index_ui_key("none")))
+      } else {
+        plotlyOutput(ns("index_hist_plot"), height = "320px", width = "100%")
+      }
+      quotes <- own_member_quotes()
+      mode <- if (identical(own, "TYNOW")) "TW" else "US"
+      names_v <- if (exists("ynow_index_lookup_names", mode = "function") && length(quotes)) {
+        ynow_index_lookup_names(vapply(quotes, function(m) m$ticker, character(1)), mode)
+      } else {
+        character(0)
+      }
+      rows <- lapply(quotes, function(m) {
+        w <- suppressWarnings(as.numeric(m$weight)[1])
+        w_txt <- if (is.finite(w)) sprintf("%.2f%%", 100 * w) else "—"
+        px_txt <- if (is.finite(m$last)) format(round(m$last, 2), big.mark = ",", nsmall = 2) else "—"
+        px_chg <- if (is.finite(m$chg)) sprintf("%+.2f%%", m$chg) else "—"
+        px_cls <- if (is.finite(m$chg) && m$chg >= 0) "ynow-macro-up" else "ynow-macro-down"
+        nm <- if (length(names_v) && nzchar(names_v[[m$ticker]] %||% "")) names_v[[m$ticker]] else "—"
+        tags$tr(
+          tags$td(m$ticker),
+          tags$td(nm),
+          tags$td(w_txt),
+          tags$td(px_txt),
+          tags$td(class = px_cls, px_chg)
+        )
+      })
+      table <- if (length(rows)) {
+        tags$table(
+          class = "table table-condensed ynow-hccsi-table",
+          tags$thead(tags$tr(
+            tags$th(id = "ynow_index_col_ticker", `data-i18n` = "ynow_index_col_ticker", .ui("ynow_index_col_ticker")),
+            tags$th(id = "ynow_index_col_name", `data-i18n` = "ynow_index_col_name", .ui("ynow_index_col_name")),
+            tags$th(id = "ynow_index_col_weight", `data-i18n` = "ynow_index_col_weight", .ui("ynow_index_col_weight")),
+            tags$th(id = "ynow_index_col_last", `data-i18n` = "ynow_index_col_last", .ui("ynow_index_col_last")),
+            tags$th(id = "ynow_index_col_chg", `data-i18n` = "ynow_index_col_chg", .ui("ynow_index_col_chg"))
+          )),
+          tags$tbody(rows)
+        )
+      } else {
+        NULL
+      }
+      tags$div(
+        class = "ynow-index-detail-ready",
+        body,
+        tags$h4(
+          id = "ynow_index_constituents",
+          `data-i18n` = "ynow_index_constituents",
+          .ui("ynow_index_constituents")
+        ),
+        table,
+        tags$p(
+          id = "ynow_index_chart_note",
+          `data-i18n` = "ynow_index_chart_note",
+          class = "ynow-macro-hint",
+          .ui("ynow_index_chart_note")
+        )
       )
     })
 

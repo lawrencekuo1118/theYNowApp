@@ -6326,6 +6326,9 @@ ui <- dashboardPage(
           width: 100%;
           min-height: 0;
         }
+        .ynow-macro-index-hist__card:has(.ynow-index-detail-ready) .ynow-index-pending {
+          display: none;
+        }
         .ynow-macro-kpi .ynow-macro-up,
         .ynow-macro-rf .ynow-macro-up { color: var(--ynow-macro-green); }
         .ynow-macro-kpi .ynow-macro-down,
@@ -6494,6 +6497,10 @@ ui <- dashboardPage(
           .ynow-macro-kpi-row > [class*='col-'] {
             width: 50%;
             float: none;
+          }
+          /* YNOW / TYNOW is one card. A 50% column leaves the rest of the chapter dead to taps. */
+          .ynow-macro-own-index .ynow-macro-kpi-row > [class*='col-'] {
+            width: 100%;
           }
         }
         @media (max-width: 575px) {
