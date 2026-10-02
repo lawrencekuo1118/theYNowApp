@@ -8,5 +8,5 @@ short=be566b4
 message=Stop year-repeated segment columns from becoming duplicate business cards.
 captured_at=2026-10-02T14:43:10Z
 source_branch=master
-display_version=v19.63
+display_version=v19.64
 note=Canonical live line is app_19.0. Bundle 12638614 = v19.62. Column-oriented segment tables use the latest year only, so Business cards are not repeated once per fiscal year. Deploy via scripts/deploy_app_19.R. Supersedes 12638535 / 12638399 / 12638310 / 12638256.
