@@ -8,5 +8,5 @@ short=c98e0e1
 message=Place YNOW and TYNOW at the bottom of the macro page.
 captured_at=2026-10-01T18:50:02Z
 source_branch=master
-display_version=v19.47
+display_version=v19.48
 note=Canonical live line is app_19.0. Bundle 12634651 = v19.47. YNOW (US) and TYNOW (TW) sit at the bottom of Macro & Market Trends, one index per market. The level uses the flowing blue-green numeral and is recalculated from the fixed basket. Clicking expands constituent weights. Deploy via scripts/deploy_app_19.R. Supersedes 12634379 / 12634241 / 12634182 / 12633785 / 12628920 / 12628661 / 12628377 / 12628295 / 12628184 / 12627966 / 12627846 / 12627644 / 12627610 / 12627556 / 12627405 / 12627312 / 12627150 / 12627127 / 12627082 / 12627038 / 12626909 / 12626822 / 12626810 / 12626794 / 12626772 / 12626690 / 12626668 / 12626547 / 12626454 / 12626418 / 12626362 / 12626262 / 12626032 / 12625997 / 12625985 / 12625973 / 12625956 / 12625916 / 12625890 / 12625810 / 12625762 / 12625733 / 12625709 / 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
