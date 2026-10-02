@@ -3631,8 +3631,8 @@ server <- function(input, output, session) {
         future_fcfs <- c(future_fcfs, rep(last, pad_n))
       }
     }
-    # Same Lite anchor as silent auto-calc: don't Gordon-grow a negative NOPAT-build FCFF.
-    if (isTRUE(lite_mode()) && length(future_fcfs) >= 1L) {
+    # Don't Gordon-grow a negative NOPAT-build FCFF (Lite and Full share this band).
+    if (length(future_fcfs) >= 1L) {
       last_raw <- suppressWarnings(as.numeric(tail(future_fcfs, 1))[1])
       if (is.finite(last_raw) && last_raw < 0) {
         des_b <- tryCatch(lite_desired_des(), error = function(e) NULL)
@@ -6879,12 +6879,12 @@ server <- function(input, output, session) {
       return(NULL)
     }
 
-    # Lite: a loss-year NOPAT build can make every forecast FCFF negative even when
+    # A loss-year NOPAT build can make every forecast FCFF negative even when
     # trailing FCFF (CFO + after-tax interest − CapEx) is positive. Gordon then
-    # refuses TV and the second auto-calc wipes the per-share result. Anchor the
-    # silent path on that trailing FCFF so Smart Analysis keeps a value.
+    # refuses TV, Run DCF stores no price, and the success toast still fires.
+    # Anchor on that trailing FCFF for both Lite auto-calc and Full Run DCF.
     hist_anchor <- FALSE
-    if (silent && is.finite(future_fcfs[n]) && future_fcfs[n] < 0) {
+    if (is.finite(future_fcfs[n]) && future_fcfs[n] < 0) {
       anchored <- .lite_fcff_from_trailing(n, dcf_mode_eff)
       if (!is.null(anchored)) {
         future_fcfs <- anchored
@@ -7070,7 +7070,8 @@ server <- function(input, output, session) {
       eq = suppressWarnings(as.numeric(equity_value)[1]),
       px = suppressWarnings(as.numeric(px)[1]),
       cleared = !is.finite(suppressWarnings(as.numeric(px)[1])),
-      hist_anchor = isTRUE(hist_anchor)
+      hist_anchor = isTRUE(hist_anchor),
+      silent = isTRUE(silent)
     ))
     # #endregion
     if (is.finite(px)) {
@@ -7127,13 +7128,18 @@ server <- function(input, output, session) {
       }
     }
 
-    if (!silent) {
+    if (show_toast && is.finite(px)) {
       showNotification(
         .ui_msg("notif_dcf_updated", claim = if (identical(claim, "fcfe")) .ui_msg("notif_dcf_claim_fcfe") else .ui_msg("notif_dcf_claim_fcff")),
         type = "message"
       )
+      if (isTRUE(hist_anchor)) {
+        showNotification(.ui_msg("notif_dcf_hist_fcff_anchor"), type = "message", duration = 8)
+      }
+    } else if (show_toast && is.finite(future_fcfs[n]) && future_fcfs[n] < 0) {
+      showNotification(.ui_msg("notif_dcf_neg_fcff_skip_tv"), type = "warning", duration = 8)
     }
-    invisible(TRUE)
+    invisible(is.finite(px))
   }
 
   observeEvent(input$calc, { .execute_dcf_calc(notify = TRUE) })
