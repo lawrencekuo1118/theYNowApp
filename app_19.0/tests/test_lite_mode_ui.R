@@ -145,7 +145,7 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_false(grepl("ynow_macro_idx_teli", macro_txt, fixed = TRUE))
   testthat::expect_false(grepl("ynow_macro_idx_tfni", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("^TWII", macro_txt, fixed = TRUE))
-  testthat::expect_true(grepl("^TWOII", macro_txt, fixed = TRUE))
+  testthat::expect_true(grepl("IX0043.TWO", macro_txt, fixed = TRUE))
   testthat::expect_false(grepl("^TELI", macro_txt, fixed = TRUE))
   testthat::expect_false(grepl("^TFNI", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl('"0050.TW" = "0050"', macro_txt, fixed = TRUE))

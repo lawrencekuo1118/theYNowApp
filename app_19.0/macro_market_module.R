@@ -20,10 +20,11 @@ if (!exists("%||%", mode = "function")) {
 )
 
 # Taiwan boards (Yahoo native TWD): TAIEX, TPEx, and Yuanta Taiwan 50 (0050.TW).
+# TPEx cap-weighted index is IX0043.TWO. ^TWOII is delisted on Yahoo (404, empty history).
 # Industry sub-indices (Electronics / Finance) are not Macro 大盤指標.
 .MACRO_TW_INDICES <- c(
   "^TWII" = "TAIEX",
-  "^TWOII" = "TPEx",
+  "IX0043.TWO" = "TPEx",
   "0050.TW" = "0050"
 )
 
@@ -85,7 +86,7 @@ macro_index_specs <- function(mode = get_market_mode()) {
   "^DJI" = "ynow_macro_idx_dji",
   "^SOX" = "ynow_macro_idx_sox",
   "^TWII" = "ynow_macro_idx_twii",
-  "^TWOII" = "ynow_macro_idx_twoii",
+  "IX0043.TWO" = "ynow_macro_idx_twoii",
   "0050.TW" = "ynow_macro_idx_0050"
 )
 .MACRO_CLICK_INDEX_NAME_KEYS <- c(
@@ -94,7 +95,7 @@ macro_index_specs <- function(mode = get_market_mode()) {
   "^DJI" = "macro_index_name_dji",
   "^SOX" = "macro_index_name_sox",
   "^TWII" = "macro_index_name_twii",
-  "^TWOII" = "macro_index_name_twoii",
+  "IX0043.TWO" = "macro_index_name_twoii",
   "0050.TW" = "macro_index_name_0050"
 )
 
@@ -565,6 +566,14 @@ macro_market_server <- function(id = "macro",
       lapply(names(specs), function(sym) {
         df <- tryCatch(fetch_price_history_df(sym, "5d"), error = function(e) NULL)
         q <- .px_last_chg(df)
+        # #region agent log
+        if (exists(".ynow_dbg_ef0f33", mode = "function")) {
+          .ynow_dbg_ef0f33("E", "macro_market_module.R:index_quotes", "kpi quote", list(
+            symbol = sym, nrow = if (is.data.frame(df)) nrow(df) else 0L,
+            last = q$last, chg = q$chg, finite_last = is.finite(q$last)
+          ))
+        }
+        # #endregion
         list(symbol = sym, label = unname(specs[[sym]]), last = q$last, chg_pct = q$chg)
       })
     })

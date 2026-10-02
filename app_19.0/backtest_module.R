@@ -28,6 +28,35 @@ if (!exists(".ynow_log", mode = "function")) {
   .ynow_log <- function(...) invisible(NULL)
 }
 
+# #region agent log
+.ynow_dbg_ef0f33 <- function(hypothesisId, location, message, data = list()) {
+  parts <- character()
+  if (length(data)) {
+    parts <- vapply(names(data), function(k) {
+      v <- data[[k]]
+      val <- if (is.character(v)) {
+        paste0("\"", gsub("\"", "\\\\\"", as.character(v[1])), "\"")
+      } else if (is.logical(v)) {
+        if (is.na(v[1])) "null" else if (isTRUE(v[1])) "true" else "false"
+      } else if (is.null(v) || length(v) == 0L || is.na(v[1])) {
+        "null"
+      } else {
+        format(as.numeric(v)[1], scientific = FALSE, trim = TRUE)
+      }
+      paste0("\"", k, "\":", val)
+    }, character(1))
+  }
+  line <- paste0(
+    "{\"sessionId\":\"ef0f33\",\"runId\":\"pre-fix\",\"hypothesisId\":\"", hypothesisId,
+    "\",\"location\":\"", location, "\",\"message\":\"", gsub("\"", "'", message),
+    "\",\"data\":{", paste(parts, collapse = ","), "},\"timestamp\":",
+    format(as.numeric(Sys.time()) * 1000, scientific = FALSE, trim = TRUE), "}"
+  )
+  try(cat(line, "\n", file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-ef0f33.log", append = TRUE), silent = TRUE)
+  invisible(NULL)
+}
+# #endregion
+
 # ---------- small helpers ----------
 
 .clip01 <- function(x, lo = 0, hi = 1) {
@@ -1420,9 +1449,16 @@ enrich_hfv_statements_multisource <- function(ticker, d_is, d_bs, d_cf) {
 # ---------- price fetching ----------
 
 fetch_price_history_df <- function(ticker, period = "5y") {
-  ticker <- toupper(trimws(as.character(ticker)[1]))
+  raw_ticker <- as.character(ticker)[1]
+  ticker <- toupper(trimws(raw_ticker))
   if (!nzchar(ticker)) return(NULL)
+  # #region agent log
+  .ynow_dbg_ef0f33("C", "backtest_module.R:fetch_price_history_df", "ticker normalized", list(
+    raw = raw_ticker, ticker = ticker, period = as.character(period)[1]
+  ))
+  # #endregion
 
+  yfin_err <- ""
   df <- tryCatch({
     if (!exists("get_price_history", mode = "function")) stop("get_price_history missing")
     res <- get_price_history(ticker, period)
@@ -1438,24 +1474,66 @@ fetch_price_history_df <- function(ticker, period = "5y") {
       stringsAsFactors = FALSE
     )
   }, error = function(e) {
+    yfin_err <<- conditionMessage(e)
     .ynow_log("yfinance history failed (", ticker, "): ", e$message)
     NULL
   })
 
+  yfin_nrow <- if (is.data.frame(df)) nrow(df) else 0L
+  yfin_finite <- if (is.data.frame(df) && "Close" %in% names(df)) sum(is.finite(df$Close)) else 0L
+  # #region agent log
+  .ynow_dbg_ef0f33("B", "backtest_module.R:fetch_price_history_df", "yfinance history result", list(
+    ticker = ticker, yfin_nrow = yfin_nrow, yfin_finite = yfin_finite,
+    yfin_err = yfin_err, passed_30 = isTRUE(yfin_finite >= 30)
+  ))
+  # #endregion
+
+  short_df <- NULL
   if (!is.null(df)) {
     df <- df[is.finite(df$Close) & !is.na(df$Date), , drop = FALSE]
     df <- df[order(df$Date), , drop = FALSE]
-    if (nrow(df) >= 30) return(df)
+    if (nrow(df) >= 30) {
+      # #region agent log
+      .ynow_dbg_ef0f33("A", "backtest_module.R:fetch_price_history_df", "returned yfinance series", list(
+        ticker = ticker, nrow = nrow(df), last = tail(df$Close, 1)
+      ))
+      # #endregion
+      return(df)
+    }
+    if (nrow(df) >= 1L) short_df <- df
   }
 
-  tryCatch({
-    if (!requireNamespace("quantmod", quietly = TRUE)) return(NULL)
+  qm_err <- ""
+  qm_have <- requireNamespace("quantmod", quietly = TRUE)
+  out <- tryCatch({
+    if (!qm_have) stop("quantmod missing")
     xt <- quantmod::getSymbols(ticker, src = "yahoo", auto.assign = FALSE,
                                from = Sys.Date() - 365 * 5, to = Sys.Date())
     out <- data.frame(Date = zoo::index(xt), zoo::coredata(xt), stringsAsFactors = FALSE)
     names(out) <- c("Date", "Open", "High", "Low", "Close", "Volume", "Adjusted")
     out[, c("Date", "Close", "Volume")]
-  }, error = function(e) NULL)
+  }, error = function(e) {
+    qm_err <<- conditionMessage(e)
+    NULL
+  })
+  qm_nrow <- if (is.data.frame(out)) nrow(out) else 0L
+  qm_finite <- if (is.data.frame(out) && "Close" %in% names(out)) sum(is.finite(out$Close)) else 0L
+  qm_last <- if (qm_finite > 0L) tail(out$Close[is.finite(out$Close)], 1) else NA_real_
+  # #region agent log
+  .ynow_dbg_ef0f33("A", "backtest_module.R:fetch_price_history_df", "quantmod fallback result", list(
+    ticker = ticker, qm_have = qm_have, qm_nrow = qm_nrow, qm_finite = qm_finite,
+    qm_last = qm_last, qm_err = qm_err, returned_null = is.null(out)
+  ))
+  # #endregion
+  if ((is.null(out) || qm_finite < 1L) && is.data.frame(short_df) && nrow(short_df) >= 1L) {
+    # #region agent log
+    .ynow_dbg_ef0f33("A", "backtest_module.R:fetch_price_history_df", "kept short yfinance series after quantmod miss", list(
+      ticker = ticker, nrow = nrow(short_df), last = tail(short_df$Close, 1)
+    ))
+    # #endregion
+    return(short_df)
+  }
+  out
 }
 
 .calc_rsi <- function(closes, n = 14) {

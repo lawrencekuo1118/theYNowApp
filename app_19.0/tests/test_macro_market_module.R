@@ -46,7 +46,7 @@ check(
 )
 check(
   "TW click specs three Yahoo symbols",
-  identical(names(click_tw), c("^TWII", "^TWOII", "0050.TW"))
+  identical(names(click_tw), c("^TWII", "IX0043.TWO", "0050.TW"))
 )
 check("TW catalog length 3", length(click_tw) == 3L)
 check(
@@ -55,18 +55,18 @@ check(
 )
 check("TW catalog has no industry sub-indices", !any(names(click_tw) %in% c("^TELI", "^TFNI")))
 check("TW catalog has no US boards", !any(names(click_tw) %in% c("^GSPC", "^IXIC", "^DJI", "^SOX")))
-check("US catalog has no TW boards", !any(names(click_us) %in% c("^TWII", "^TWOII", "0050.TW", "^TELI", "^TFNI")))
+check("US catalog has no TW boards", !any(names(click_us) %in% c("^TWII", "IX0043.TWO", "0050.TW", "^TELI", "^TFNI")))
 check("US catalog still four", length(click_us) == 4L)
 check("box id GSPC", identical(macro_index_box_id("^GSPC"), "ynow_macro_idx_gspc"))
 check("box id IXIC", identical(macro_index_box_id("^IXIC"), "ynow_macro_idx_ixic"))
 check("box id DJI", identical(macro_index_box_id("^DJI"), "ynow_macro_idx_dji"))
 check("box id SOX", identical(macro_index_box_id("^SOX"), "ynow_macro_idx_sox"))
 check("box id TWII", identical(macro_index_box_id("^TWII"), "ynow_macro_idx_twii"))
-check("box id TWOII", identical(macro_index_box_id("^TWOII"), "ynow_macro_idx_twoii"))
+check("box id TWOII", identical(macro_index_box_id("IX0043.TWO"), "ynow_macro_idx_twoii"))
 check("box id 0050", identical(macro_index_box_id("0050.TW"), "ynow_macro_idx_0050"))
 check("name key GSPC", identical(macro_index_name_key("^GSPC"), "macro_index_name_gspc"))
 check("name key TWII", identical(macro_index_name_key("^TWII"), "macro_index_name_twii"))
-check("name key TWOII", identical(macro_index_name_key("^TWOII"), "macro_index_name_twoii"))
+check("name key TWOII", identical(macro_index_name_key("IX0043.TWO"), "macro_index_name_twoii"))
 check("name key 0050", identical(macro_index_name_key("0050.TW"), "macro_index_name_0050"))
 for (sym in names(click_tw)) {
   check(
