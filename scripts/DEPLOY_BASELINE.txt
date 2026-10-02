@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12636900
+bundleId=12636939
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=9b4bb7c4c300d72c1ad56290ea02f285e02ec0ee
-commit=9b4bb7c4c300d72c1ad56290ea02f285e02ec0ee
-short=9b4bb7c
-message=Default the Taiwan industry-versus-benchmark menu to Technology.
-captured_at=2026-10-02T06:26:23Z
+aligned_git=52a4706aa0238e5d64b6fcbfccee1fa3e7833961
+commit=52a4706aa0238e5d64b6fcbfccee1fa3e7833961
+short=52a4706
+message=Let the first screen paint before the heavy HCCSI downloads.
+captured_at=2026-10-02T06:38:30Z
 source_branch=master
-display_version=v19.53
-note=Canonical live line is app_19.0. Bundle 12636900 = v19.53. Taiwan Industry vs benchmark opens on 科技業 (0052.TW). US still opens on Technology (XLK). Concept stays unselected. An explicit 不選 stays. Deploy via scripts/deploy_app_19.R. Supersedes 12636796 / 12636741 / 12636727 / 12636713 / 12636675 / 12634651 / 12634379 / 12634241 / 12634182 / 12633785 / 12628920 / 12628661 / 12628377 / 12628295 / 12628184 / 12627966 / 12627846 / 12627644 / 12627610 / 12627556 / 12627405 / 12627312 / 12627150 / 12627127 / 12627082 / 12627038 / 12626909 / 12626822 / 12626810 / 12626794 / 12626772 / 12626690 / 12626668 / 12626547 / 12626454 / 12626418 / 12626362 / 12626262 / 12626032 / 12625997 / 12625985 / 12625973 / 12625956 / 12625916 / 12625890 / 12625810 / 12625762 / 12625733 / 12625709 / 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
+display_version=v19.54
+note=Canonical live line is app_19.0. Bundle 12636939 = v19.54. Index KPI quotes use the short Yahoo window instead of a 5-year download. HCCSI issuer history and statements start after the first paint and show 計算中 until the score arrives. Deploy via scripts/deploy_app_19.R. Supersedes 12636900 / 12636796 / 12636741 / 12636727 / 12636713 / 12636675 / 12634651 / 12634379 / 12634241 / 12634182 / 12633785 / 12628920 / 12628661 / 12628377 / 12628295 / 12628184 / 12627966 / 12627846 / 12627644 / 12627610 / 12627556 / 12627405 / 12627312 / 12627150 / 12627127 / 12627082 / 12627038 / 12626909 / 12626822 / 12626810 / 12626794 / 12626772 / 12626690 / 12626668 / 12626547 / 12626454 / 12626418 / 12626362 / 12626262 / 12626032 / 12625997 / 12625985 / 12625973 / 12625956 / 12625916 / 12625890 / 12625810 / 12625762 / 12625733 / 12625709 / 12625675 / 12625616 / 12625600 / 12625583 / 12625565.
