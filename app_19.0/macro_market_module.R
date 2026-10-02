@@ -71,18 +71,6 @@ if (!exists("%||%", mode = "function")) {
   gics_xlc = "通訊服務（XLC）"
 )
 
-# Taiwan industry vs benchmark. One sector ETF, parallel to US XLK.
-# 0052.TW is the listed technology ETF (富邦台灣科技); Yahoo history is usable.
-.MACRO_TW_INDUSTRY <- c(
-  tw_tech = "0052.TW"
-)
-.MACRO_TW_INDUSTRY_LABELS_EN <- c(
-  tw_tech = "Technology"
-)
-.MACRO_TW_INDUSTRY_LABELS_ZH <- c(
-  tw_tech = "科技業"
-)
-
 macro_bench_ticker <- function(mode = get_market_mode()) {
   if (identical(normalize_market_mode(mode), "TW")) "^TWII" else "^GSPC"
 }
@@ -156,7 +144,8 @@ macro_choices_with_none <- function(choices, locale = "en") {
   c(macro_none_choice(locale), choices)
 }
 
-#' Industry picker: US GICS sector ETFs, or TW technology (0052).
+#' Industry picker: US GICS sector ETFs, or the same industry-standard
+#' snapshot list as Dashboard「目前產業標準快覽」.
 macro_industry_choices <- function(mode = get_market_mode(), locale = "en") {
   mode <- normalize_market_mode(mode)
   loc <- if (exists("normalize_ui_locale", mode = "function")) {
@@ -166,17 +155,52 @@ macro_industry_choices <- function(mode = get_market_mode(), locale = "en") {
   }
   is_zh <- grepl("^zh", tolower(loc), perl = TRUE)
   if (identical(mode, "TW")) {
-    labs <- if (is_zh) .MACRO_TW_INDUSTRY_LABELS_ZH else .MACRO_TW_INDUSTRY_LABELS_EN
-    return(stats::setNames(names(.MACRO_TW_INDUSTRY), as.character(labs[names(.MACRO_TW_INDUSTRY)])))
+    if (!exists("industry_picker_choices", mode = "function")) return(character(0))
+    return(industry_picker_choices(if (is_zh) "zh-TW" else "en"))
   }
   if (!identical(mode, "US")) return(character(0))
   labs <- if (is_zh) .MACRO_US_GICS_LABELS_ZH else .MACRO_US_GICS_LABELS_EN
   stats::setNames(names(.MACRO_US_GICS), as.character(labs[names(.MACRO_US_GICS)]))
 }
 
-#' Industry-vs-benchmark default: US Technology (XLK), TW 科技業 (0052).
+#' Industry-vs-benchmark default: US Technology (XLK).
+#' TW uses the snapshot default (半導體｜晶圓代工 / sc.Foundry).
 macro_industry_default_key <- function(mode = get_market_mode()) {
-  if (identical(normalize_market_mode(mode), "TW")) "tw_tech" else "gics_xlk"
+  if (!identical(normalize_market_mode(mode), "TW")) return("gics_xlk")
+  key <- "sc.Foundry"
+  if (exists("APP_DEFAULTS", inherits = TRUE)) {
+    k <- as.character(APP_DEFAULTS$industry_choice %||% "")[1]
+    if (nzchar(k) && !is.na(k)) key <- k
+  }
+  key
+}
+
+#' TW constituents for one industry-standard key.
+#' Prefer the TWSE industry code (industry_raw). The stored industry_key
+#' column leaves many listings, including 2330, as Unmapped.
+macro_tw_industry_tickers <- function(industry_key) {
+  key <- as.character(industry_key %||% "")[1]
+  if (!nzchar(key) || !exists("lab_get_tw_universe", mode = "function")) return(character(0))
+  u <- tryCatch(lab_get_tw_universe(FALSE), error = function(e) NULL)
+  if (is.null(u) || !is.data.frame(u) || !nrow(u)) return(character(0))
+  need <- c("ticker", "industry_raw", "exchange")
+  if (!all(need %in% names(u))) return(character(0))
+  ex <- toupper(as.character(u$exchange))
+  u <- u[ex %in% c("TWSE", "TSE", "LISTED", "TPEX", "TWO", "OTC", "ROTC"), , drop = FALSE]
+  if (!nrow(u)) return(character(0))
+  mapped <- if (exists("lab_map_tw_industry_to_key", mode = "function")) {
+    vapply(u$industry_raw, lab_map_tw_industry_to_key, character(1))
+  } else if ("industry_key" %in% names(u)) {
+    as.character(u$industry_key)
+  } else {
+    return(character(0))
+  }
+  u <- u[mapped == key, , drop = FALSE]
+  if (!nrow(u)) return(character(0))
+  ex <- toupper(as.character(u$exchange))
+  listed <- ex %in% c("TWSE", "TSE", "LISTED")
+  u <- u[order(!listed, as.character(u$ticker)), , drop = FALSE]
+  unique(as.character(u$ticker[nzchar(u$ticker)]))
 }
 
 #' Concept-stock picker: lab_concept_groups keys (US / TW).
@@ -218,8 +242,19 @@ macro_theme_tickers <- function(theme_key, mode = get_market_mode()) {
   if (startsWith(key, "gics_") && key %in% names(.MACRO_US_GICS)) {
     return(as.character(.MACRO_US_GICS[[key]]))
   }
-  if (key %in% names(.MACRO_TW_INDUSTRY)) {
-    return(as.character(.MACRO_TW_INDUSTRY[[key]]))
+  if (identical(mode, "TW") && exists("industry_standards", inherits = TRUE) &&
+      key %in% names(industry_standards)) {
+    tks <- macro_tw_industry_tickers(key)
+    # #region agent log
+    try(cat(paste0(
+      "{\"sessionId\":\"ef0f33\",\"runId\":\"tw-ind-menu\",\"hypothesisId\":\"MENU\",",
+      "\"location\":\"macro_market_module.R:macro_theme_tickers\",\"message\":\"tw industry basket\",",
+      "\"data\":{\"key\":\"", gsub("\"", "", key), "\",\"n\":", length(tks),
+      ",\"has_2330\":", if ("2330.TW" %in% tks) "true" else "false", "},",
+      "\"timestamp\":", format(as.numeric(Sys.time()) * 1000, scientific = FALSE, trim = TRUE), "}\n"
+    ), file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-ef0f33.log", append = TRUE), silent = TRUE)
+    # #endregion
+    return(tks)
   }
   cg_key <- sub("^(concept_|tw_)", "", key)
   if (exists("LAB_CONCEPT_GROUPS", inherits = TRUE) &&
@@ -380,7 +415,7 @@ macro_market_ui <- function(id = "macro") {
         class = "ynow-macro-hint ynow-macro-chapter__lead",
         paste0(
           "Pick Industry and Concept independently (either, both, or neither). ",
-          "US industry uses GICS sector ETFs; Taiwan industry uses Technology (0052). ",
+          "US industry uses GICS sector ETFs; Taiwan industry uses the industry-standard snapshot. ",
           "Concept uses the concept-stock universe. ",
           "Benchmark is gray dashed on the right axis (rebased = 100 at window start; native currency, no FX)."
         )
@@ -545,7 +580,7 @@ macro_market_server <- function(id = "macro",
     }, ignoreInit = TRUE)
 
     # Industry + concept menus follow market + locale.
-    # Default is Technology until the user picks another row (US XLK, TW 科技業 / 0052).
+    # Default is Technology (XLK) on US, and the snapshot default (sc.Foundry) on TW.
     # An explicit None stays None. Bubble keeps a combined catalog.
     observe({
       mode <- .mode()
