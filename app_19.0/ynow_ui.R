@@ -1077,7 +1077,9 @@ beta_rolling_section_ui <- function() {
 
 ui <- dashboardPage(
   skin = "black",
-  
+  # Browser tab. Header logo stays the HTML progress title; do not let that markup become <title>.
+  title = "The YNow App",
+
   dashboardHeader(
                 title = HTML(paste0(
                   '<span class="ynow-app-title" id="ynow_app_title" ',
@@ -3474,6 +3476,7 @@ ui <- dashboardPage(
           window.placeMobileAppTitle = placeMobileAppTitle;
 
           /* Header title = load progress bar (fills with boot / Shiny busy / withProgress) */
+          document.title = "The YNow App";
           (function initYnowTitleLoadBar() {
             var pct = 0;
             var firstIdleDone = false;
