@@ -12,6 +12,8 @@ testthat::local_edition(3)
 testthat::test_that("Lite locale keys exist in en and zh-TW", {
   source(file.path("..", "ui_locale.R"), local = TRUE)
   keys <- c(
+    "menu_home", "home_lead", "home_method",
+    "home_market_k", "home_company_k", "home_value_k", "home_decide_k",
     "menu_smart_analysis", "smart_page_title", "smart_page_sub",
     "smart_chart_title", "smart_primary_kicker", "smart_secondary_kicker",
     "smart_price_kicker", "smart_mos_kicker", "smart_waiting",
@@ -70,6 +72,10 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl("ynow-lite-badge", txt, fixed = TRUE))
   testthat::expect_true(grepl("body.ynow-lite", txt, fixed = TRUE))
   testthat::expect_true(grepl('tabName = "macro_market"', txt, fixed = TRUE))
+  testthat::expect_true(grepl('tabName = "home"', txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow_menu_home", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-home-card", txt, fixed = TRUE))
+  testthat::expect_true(grepl("input.sidebar_tabs != 'home'", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_menu_macro", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-macro-report", txt, fixed = TRUE))
   # Theme Rolling β vs benchmark is removed from Macro (Full and Lite)

@@ -242,6 +242,103 @@
   )
 }
 
+#' 品牌首頁：一句用途 + 四個主要入口
+.home_brand_ui <- function() {
+  tagList(
+    tags$div(
+      class = "ynow-home",
+      tags$img(
+        class = "ynow-home-logo",
+        src = "ynow-logo-full-480.png",
+        alt = "YNow — WH.Y VALUE NOW",
+        width = 132
+      ),
+      tags$h2(id = "ynow_home_title", class = "ynow-home-title", "The YNow App"),
+      tags$p(
+        id = "ynow_home_lead",
+        class = "ynow-home-lead",
+        "A valuation desk for US and Taiwan equities."
+      ),
+      tags$p(
+        id = "ynow_home_method",
+        class = "ynow-home-method",
+        "Classify the business, choose the model, then decide."
+      ),
+      tags$div(
+        class = "ynow-home-grid",
+        role = "group",
+        `aria-labelledby` = "ynow_home_title",
+        tags$button(
+          type = "button",
+          class = "ynow-home-card",
+          `data-tab` = "macro_market",
+          tags$p(id = "ynow_home_market_k", class = "ynow-home-card-k", "Market"),
+          tags$p(
+            id = "ynow_home_market_d",
+            class = "ynow-home-card-d",
+            "Index levels, and industry performance versus the benchmark."
+          )
+        ),
+        tags$button(
+          type = "button",
+          class = "ynow-home-card",
+          `data-tab` = "dashboard",
+          tags$p(id = "ynow_home_company_k", class = "ynow-home-card-k", "Company"),
+          tags$p(
+            id = "ynow_home_company_d",
+            class = "ynow-home-card-d",
+            "Industry-standard snapshot, KPIs, and financial statements."
+          )
+        ),
+        tags$button(
+          type = "button",
+          class = "ynow-home-card",
+          `data-tab` = "get_started",
+          `data-tab-lite` = "smart_analysis",
+          tags$p(id = "ynow_home_value_k", class = "ynow-home-card-k", "Value"),
+          tags$p(
+            id = "ynow_home_value_d",
+            class = "ynow-home-card-d",
+            "Fair value and MOS across DCF, DDM, RI, and P/B."
+          )
+        ),
+        tags$button(
+          type = "button",
+          class = "ynow-home-card",
+          `data-tab` = "decision_checklist",
+          `data-tab-lite` = "sensitivity",
+          tags$p(id = "ynow_home_decide_k", class = "ynow-home-card-k", "Decide"),
+          tags$p(
+            id = "ynow_home_decide_d",
+            class = "ynow-home-card-d",
+            "F-Score, statement alerts, and the Decision Checklist."
+          )
+        )
+      )
+    ),
+    tags$script(HTML("
+      (function () {
+        if (document.documentElement.getAttribute('data-ynow-home') === '1') return;
+        document.documentElement.setAttribute('data-ynow-home', '1');
+        document.addEventListener('click', function (ev) {
+          var card = ev.target && ev.target.closest ? ev.target.closest('.ynow-home-card') : null;
+          if (!card) return;
+          ev.preventDefault();
+          var lite = document.body && document.body.classList.contains('ynow-lite');
+          var tab = card.getAttribute('data-tab');
+          if (lite) tab = card.getAttribute('data-tab-lite') || tab;
+          if (!tab) return;
+          if (window.Shiny && Shiny.setInputValue) {
+            Shiny.setInputValue('sidebar_tabs', tab, {priority: 'event'});
+          }
+          var a = document.querySelector('.sidebar-menu a[data-value=\"' + tab + '\"]');
+          if (a) { try { a.click(); } catch (e) {} }
+        });
+      })();
+    "))
+  )
+}
+
 #' KPI 色碼圖例：藍→紅→黑→白；金色屬性重視改一行文字註解（非 chip 框）
 .kpi_band_color_legend_ui <- function() {
   tags$div(
@@ -1181,6 +1278,12 @@ ui <- dashboardPage(
     column(width = 12,
            sidebarMenu(
              id = "sidebar_tabs",
+             menuItem(
+               text = tags$span(id = "ynow_menu_home", "Home"),
+               tabName = "home",
+               icon = icon("home"),
+               selected = TRUE
+             ),
              menuItem(
                text = tags$span(id = "ynow_menu_macro", "Macro & Market Trends"),
                tabName = "macro_market",
@@ -2479,6 +2582,80 @@ ui <- dashboardPage(
         body.ynow-lite .ynow-lite-only {
           display: block !important;
         }
+        /* Brand home: one screen, four doors */
+        .ynow-home {
+          max-width: 760px;
+          margin: 12px auto 28px;
+          padding: 36px 32px 28px;
+          background: #111;
+          color: #f4f4f4;
+          border-radius: 12px;
+          text-align: center;
+        }
+        .ynow-home-logo {
+          width: 132px;
+          height: auto;
+          display: block;
+          margin: 0 auto 18px;
+        }
+        .ynow-home-title {
+          margin: 0;
+          font-size: 26px;
+          font-weight: 600;
+          letter-spacing: -0.02em;
+          color: #fff;
+        }
+        .ynow-home-lead {
+          margin: 10px 0 0;
+          font-size: 16px;
+          line-height: 1.45;
+          color: #e8e8e8;
+        }
+        .ynow-home-method {
+          margin: 6px 0 22px;
+          font-size: 13px;
+          line-height: 1.45;
+          color: #9a9a9a;
+        }
+        .ynow-home-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
+          text-align: left;
+        }
+        .ynow-home-card {
+          display: block;
+          width: 100%;
+          margin: 0;
+          padding: 14px 14px 15px;
+          text-align: left;
+          color: #f4f4f4;
+          background: #1b1b1b;
+          border: 1px solid #2c2c2c;
+          border-radius: 8px;
+          cursor: pointer;
+        }
+        .ynow-home-card:hover,
+        .ynow-home-card:focus-visible {
+          border-color: #2f9e6b;
+          outline: none;
+        }
+        .ynow-home-card-k {
+          margin: 0 0 4px;
+          font-size: 14px;
+          font-weight: 650;
+          color: #fff;
+        }
+        .ynow-home-card-d {
+          margin: 0;
+          font-size: 12.5px;
+          line-height: 1.45;
+          color: #b5b5b5;
+        }
+        @media (max-width: 720px) {
+          .ynow-home { padding: 24px 16px 18px; }
+          .ynow-home-grid { grid-template-columns: 1fr; }
+        }
         /* Lite Smart Analysis: lead blurb above composite status (no page heading) */
         .ynow-smart-lite-blurb-wrap {
           margin: 0 0 10px 0;
@@ -3770,6 +3947,7 @@ ui <- dashboardPage(
           function applyUiLocale(payload) {
             var s = (payload && payload.strings) || {};
             var menu = {
+              home: s.menu_home,
               macro_market: s.menu_macro_market,
               dashboard: s.menu_dashboard,
               smart_analysis: s.menu_smart_analysis,
@@ -3989,6 +4167,16 @@ ui <- dashboardPage(
               var el = document.getElementById(id);
               if (el && s[key]) el.textContent = s[key];
             }
+            ['ynow_home_title', 'ynow_home_lead', 'ynow_home_method',
+             'ynow_home_market_k', 'ynow_home_market_d',
+             'ynow_home_company_k', 'ynow_home_company_d',
+             'ynow_home_value_k', 'ynow_home_value_d',
+             'ynow_home_decide_k', 'ynow_home_decide_d'].forEach(function (id) {
+              var el = document.getElementById(id);
+              if (!el) return;
+              var key = id.replace(/^ynow_/, '');
+              setBtText(id, key);
+            });
             setBtText('ynow_bt_ch1_kicker', 'bt_ch1_kicker');
             setBtText('ynow_bt_ch1_title', 'bt_ch1_title');
             setBtText('ynow_bt_ch2_kicker', 'bt_ch2_kicker');
@@ -7364,7 +7552,7 @@ ui <- dashboardPage(
     # Ticker search + Yahoo industry chrome: hide on About, Macro, and Testing
     # (Testing hosts Business Breakdown Lab, which has its own in-session Search).
     conditionalPanel(
-      condition = "input.sidebar_tabs != 'about' && input.sidebar_tabs != 'macro_market' && input.sidebar_tabs != 'testing'",
+      condition = "input.sidebar_tabs != 'about' && input.sidebar_tabs != 'macro_market' && input.sidebar_tabs != 'testing' && input.sidebar_tabs != 'home'",
       fluidRow(
         column(width = 12,
                div(
@@ -7617,6 +7805,10 @@ ui <- dashboardPage(
     ),
     
     tabItems(
+      tabItem(
+        tabName = "home",
+        .home_brand_ui()
+      ),
       tabItem(
         tabName = "get_started",
         fluidRow(
