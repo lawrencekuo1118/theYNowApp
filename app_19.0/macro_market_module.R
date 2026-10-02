@@ -71,6 +71,18 @@ if (!exists("%||%", mode = "function")) {
   gics_xlc = "通訊服務（XLC）"
 )
 
+# Taiwan industry vs benchmark. One sector ETF, parallel to US XLK.
+# 0052.TW is the listed technology ETF (富邦台灣科技); Yahoo history is usable.
+.MACRO_TW_INDUSTRY <- c(
+  tw_tech = "0052.TW"
+)
+.MACRO_TW_INDUSTRY_LABELS_EN <- c(
+  tw_tech = "Technology"
+)
+.MACRO_TW_INDUSTRY_LABELS_ZH <- c(
+  tw_tech = "科技業"
+)
+
 macro_bench_ticker <- function(mode = get_market_mode()) {
   if (identical(normalize_market_mode(mode), "TW")) "^TWII" else "^GSPC"
 }
@@ -144,7 +156,7 @@ macro_choices_with_none <- function(choices, locale = "en") {
   c(macro_none_choice(locale), choices)
 }
 
-#' Industry picker: GICS sector ETFs (US). TW has no sector-ETF catalog here.
+#' Industry picker: US GICS sector ETFs, or TW technology (0052).
 macro_industry_choices <- function(mode = get_market_mode(), locale = "en") {
   mode <- normalize_market_mode(mode)
   loc <- if (exists("normalize_ui_locale", mode = "function")) {
@@ -153,9 +165,18 @@ macro_industry_choices <- function(mode = get_market_mode(), locale = "en") {
     as.character(locale)[1]
   }
   is_zh <- grepl("^zh", tolower(loc), perl = TRUE)
+  if (identical(mode, "TW")) {
+    labs <- if (is_zh) .MACRO_TW_INDUSTRY_LABELS_ZH else .MACRO_TW_INDUSTRY_LABELS_EN
+    return(stats::setNames(names(.MACRO_TW_INDUSTRY), as.character(labs[names(.MACRO_TW_INDUSTRY)])))
+  }
   if (!identical(mode, "US")) return(character(0))
   labs <- if (is_zh) .MACRO_US_GICS_LABELS_ZH else .MACRO_US_GICS_LABELS_EN
   stats::setNames(names(.MACRO_US_GICS), as.character(labs[names(.MACRO_US_GICS)]))
+}
+
+#' Industry-vs-benchmark default: US Technology (XLK), TW 科技業 (0052).
+macro_industry_default_key <- function(mode = get_market_mode()) {
+  if (identical(normalize_market_mode(mode), "TW")) "tw_tech" else "gics_xlk"
 }
 
 #' Concept-stock picker: lab_concept_groups keys (US / TW).
@@ -196,6 +217,9 @@ macro_theme_tickers <- function(theme_key, mode = get_market_mode()) {
 
   if (startsWith(key, "gics_") && key %in% names(.MACRO_US_GICS)) {
     return(as.character(.MACRO_US_GICS[[key]]))
+  }
+  if (key %in% names(.MACRO_TW_INDUSTRY)) {
+    return(as.character(.MACRO_TW_INDUSTRY[[key]]))
   }
   cg_key <- sub("^(concept_|tw_)", "", key)
   if (exists("LAB_CONCEPT_GROUPS", inherits = TRUE) &&
@@ -356,7 +380,8 @@ macro_market_ui <- function(id = "macro") {
         class = "ynow-macro-hint ynow-macro-chapter__lead",
         paste0(
           "Pick Industry and Concept independently (either, both, or neither). ",
-          "US industry uses GICS sector ETFs; concept uses the concept-stock universe. ",
+          "US industry uses GICS sector ETFs; Taiwan industry uses Technology (0052). ",
+          "Concept uses the concept-stock universe. ",
           "Benchmark is gray dashed on the right axis (rebased = 100 at window start; native currency, no FX)."
         )
       ),
@@ -520,8 +545,8 @@ macro_market_server <- function(id = "macro",
     }, ignoreInit = TRUE)
 
     # Industry + concept menus follow market + locale.
-    # US default is Technology (XLK / 科技業) until the user picks another row.
-    # Bubble keeps a combined catalog (one concentration universe).
+    # Default is Technology until the user picks another row (US XLK, TW 科技業 / 0052).
+    # An explicit None stays None. Bubble keeps a combined catalog.
     observe({
       mode <- .mode()
       loc <- .loc()
@@ -531,9 +556,25 @@ macro_market_server <- function(id = "macro",
 
       isel <- isolate(as.character(input$industry_key %||% "")[1])
       in_menu <- isel %in% unname(ind_ch)
+      def_ind <- macro_industry_default_key(mode)
       if (!isTRUE(isolate(industry_touched())) || !in_menu) {
-        isel <- if ("gics_xlk" %in% unname(ind_ch)) "gics_xlk" else ""
+        isel <- if (def_ind %in% unname(ind_ch)) def_ind else ""
       }
+      # #region agent log
+      try({
+        line <- paste0(
+          "{\"sessionId\":\"ef0f33\",\"runId\":\"tw-industry\",\"hypothesisId\":\"TWDEF\",",
+          "\"location\":\"macro_market_module.R:industry_observe\",\"message\":\"industry default\",",
+          "\"data\":{\"mode\":\"", gsub("\"", "", as.character(mode)[1]),
+          "\",\"isel\":\"", gsub("\"", "", as.character(isel)[1]),
+          "\",\"def\":\"", def_ind,
+          "\",\"touched\":", if (isTRUE(isolate(industry_touched()))) "true" else "false",
+          ",\"in_menu\":", if (isTRUE(in_menu)) "true" else "false",
+          "},\"timestamp\":", format(as.numeric(Sys.time()) * 1000, scientific = FALSE, trim = TRUE), "}"
+        )
+        cat(line, "\n", file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-ef0f33.log", append = TRUE)
+      }, silent = TRUE)
+      # #endregion
       csel <- isolate(as.character(input$concept_key %||% "")[1])
       if (is.null(csel) || !nzchar(csel) || !(csel %in% unname(con_ch))) {
         csel <- ""

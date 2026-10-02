@@ -1493,7 +1493,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     macro_theme_title = "Relative performance vs benchmark",
     macro_theme_help = paste0(
       "Pick Industry and Concept independently (either, both, or neither). ",
-      "US industry uses GICS sector ETFs; concept uses the concept-stock universe. ",
+      "US industry uses GICS sector ETFs; Taiwan industry uses Technology (0052). ",
+      "Concept uses the concept-stock universe. ",
       "Benchmark is gray dashed on the right axis (rebased = 100 at window start; native currency, no FX)."
     ),
     macro_theme_label = "Theme",
@@ -3193,7 +3194,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     macro_theme_title = "相對績效 vs 大盤",
     macro_theme_help = paste0(
       "產業別與概念股別為兩個獨立選單，可單選、同時選、或不選。",
-      "美股產業別為 GICS 板塊 ETF；概念股別為既有概念股宇宙。大盤基準以灰虛線、右軸顯示",
+      "美股產業別為 GICS 板塊 ETF；台股產業別為科技業（0052）。概念股別為既有概念股宇宙。大盤基準以灰虛線、右軸顯示",
       "（區間起點重設為 100；原始幣別，無 FX）。"
     ),
     macro_theme_label = "主題",
