@@ -1556,6 +1556,28 @@ check("global ticker chrome hidden on Testing so Lab Search stays in-session",
       grepl("input.sidebar_tabs != 'testing'", ui_src, fixed = TRUE) &&
         grepl("input.sidebar_tabs != 'about'", ui_src, fixed = TRUE) &&
         grepl("input.sidebar_tabs != 'macro_market'", ui_src, fixed = TRUE))
+wide_year <- list(
+  headers = c("2025"),
+  rows = list(
+    c("Group", "Alpha", "Beta", "Total"),
+    c("Premiums earned", "100", "40", "140"),
+    c("Losses and LAE", "60", "20", "80"),
+    c("2024"),
+    c("Group", "Alpha", "Beta", "Total"),
+    c("Premiums earned", "90", "30", "120"),
+    c("Losses and LAE", "50", "15", "65")
+  ),
+  kind = "operating_segment",
+  short_name = "Segment earnings"
+)
+wide_packed <- .bblab_components_from_table(
+  wide_year, cons = list(revenue = 140e6), kind = "operating_segment",
+  source_label = "Segment earnings"
+)
+wide_names <- vapply(wide_packed$components, function(c) c$name, character(1))
+check("column segments keep one card per business, not one per year",
+      identical(sort(wide_names), c("Alpha", "Beta")) &&
+        !any(duplicated(.bblab_norm_label(wide_names))))
 check("Shiny reconnects in-session instead of forcing Reload overlay",
       grepl('session$allowReconnect("force")', server_src, fixed = TRUE))
 

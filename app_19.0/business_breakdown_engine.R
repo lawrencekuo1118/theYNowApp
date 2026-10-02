@@ -1939,6 +1939,104 @@ bblab_extract_dimension_from_income_statement <- function(d_is, consolidated = N
   comps
 }
 
+.bblab_row_cells <- function(r) {
+  trimws(as.character(r %||% character(0)))
+}
+
+.bblab_cell_is_label <- function(cell) {
+  cell <- trimws(.bblab_chr(cell))
+  if (!nzchar(cell) || cell %in% c("-", "—", "–")) return(FALSE)
+  grepl("[A-Za-z]", cell)
+}
+
+.bblab_is_year_banner_row <- function(r) {
+  cells <- .bblab_row_cells(r)
+  cells <- cells[nzchar(cells)]
+  length(cells) == 1L && grepl("^(19|20)\\d{2}$", cells)
+}
+
+#' Segment names across columns, metrics down the rows. A later year block
+#' repeats the same names and must not become a second set of cards.
+.bblab_row_is_segment_header <- function(r) {
+  cells <- .bblab_row_cells(r)
+  if (length(cells) < 3L) return(FALSE)
+  n_lab <- sum(vapply(cells, .bblab_cell_is_label, logical(1)))
+  n_amt <- sum(vapply(cells, function(c) is.finite(.bblab_parse_amount(c)), logical(1)))
+  n_lab >= 3L && n_lab > n_amt
+}
+
+.bblab_is_revenue_metric_label <- function(lab) {
+  field <- .bblab_metric_field(lab)
+  if (!is.na(field) && identical(field, "revenue")) return(TRUE)
+  s <- .bblab_norm_label(lab)
+  grepl("premiums earned|^revenues?$|^net sales\\b", s)
+}
+
+.bblab_components_from_column_segments <- function(rows, scale, kind, period, currency) {
+  blocks <- list()
+  cur <- NULL
+  flush <- function() {
+    if (!is.null(cur) && length(cur$rows)) {
+      blocks[[length(blocks) + 1L]] <<- cur
+    }
+  }
+  for (r in rows) {
+    if (.bblab_is_year_banner_row(r)) {
+      flush()
+      cur <<- list(rows = list())
+      next
+    }
+    if (is.null(cur)) cur <- list(rows = list())
+    cur$rows[[length(cur$rows) + 1L]] <- r
+  }
+  flush()
+  block <- NULL
+  for (b in blocks) {
+    if (any(vapply(b$rows, .bblab_row_is_segment_header, logical(1)))) {
+      block <- b
+      break
+    }
+  }
+  if (is.null(block)) return(NULL)
+  hdr_i <- which(vapply(block$rows, .bblab_row_is_segment_header, logical(1)))[1]
+  hdr <- .bblab_row_cells(block$rows[[hdr_i]])
+  rev_row <- NULL
+  for (r in block$rows) {
+    cells <- .bblab_row_cells(r)
+    if (!length(cells) || !.bblab_is_revenue_metric_label(cells[[1]])) next
+    rev_row <- cells
+    break
+  }
+  if (is.null(rev_row)) return(NULL)
+  if (!is.finite(scale) || scale <= 0) scale <- 1
+  comps <- list()
+  seen <- character(0)
+  for (j in seq_along(hdr)) {
+    nm <- hdr[[j]]
+    if (!nzchar(nm) || j > length(rev_row)) next
+    amt <- .bblab_parse_amount(rev_row[[j]])
+    if (!is.finite(amt)) next
+    if (.bblab_is_total_or_recon_name(nm)) next
+    if (!is.na(.bblab_metric_field(nm))) next
+    if (!.bblab_cell_is_label(nm)) next
+    key <- .bblab_norm_label(nm)
+    if (!nzchar(key) || key %in% seen) next
+    seen <- c(seen, key)
+    comps[[length(comps) + 1L]] <- bblab_component(
+      .bblab_slug(nm, "note"), nm, "MAJOR",
+      revenue = amt * scale,
+      is_reported_segment = identical(kind, "operating_segment") ||
+        identical(kind, "segment_note"),
+      separately_disclosed_revenue = TRUE,
+      distinct_economics = TRUE,
+      period = period, currency = currency,
+      source_type = kind
+    )
+  }
+  if (length(comps) < 2L) return(NULL)
+  comps
+}
+
 .bblab_components_from_table <- function(tbl, cons = NULL, period = NA_character_,
                                          currency = NA_character_, kind = "segment_note",
                                          source_label = "") {
@@ -2034,14 +2132,29 @@ bblab_extract_dimension_from_income_statement <- function(d_is, consolidated = N
     }
   }, numeric(1))
   scale <- .bblab_table_scale(blob, raw_amts, .bblab_num(cons$revenue), tbl$scale)
+  col_comps <- .bblab_components_from_column_segments(
+    rows, scale, kind, period, currency
+  )
+  if (length(col_comps) >= 2L) {
+    flags <- c("separate_revenue", "relevant", "mutually_exclusive", "filed_audited",
+               "distinct_economics", "management_major")
+    return(list(
+      components = col_comps, flags = flags, is_customer_location_only = FALSE,
+      kind = kind
+    ))
+  }
   comps <- list()
   seen <- character(0)
+  seen_names <- character(0)
   for (k in seq_along(rows)) {
     r <- as.character(rows[[k]])
     if (!length(r) || length(r) < name_i) next
     nm <- trimws(r[[name_i]])
     if (!nzchar(nm)) next
     if (grepl("^(year ended|december)\\b", .bblab_norm_label(nm))) next
+    if (grepl("^(19|20)\\d{2}$", nm)) next
+    name_key <- .bblab_norm_label(nm)
+    if (nzchar(name_key) && name_key %in% seen_names) next
     if (!is.na(.bblab_metric_field(nm))) next
     if (.bblab_is_total_or_recon_name(nm)) {
       cls_guess <- if (grepl("eliminat", .bblab_norm_label(nm))) "ELIMINATION" else
@@ -2066,6 +2179,7 @@ bblab_extract_dimension_from_income_statement <- function(d_is, consolidated = N
     id <- .bblab_slug(nm, "note")
     if (id %in% seen) id <- paste0(id, "_", k)
     seen <- c(seen, id)
+    if (nzchar(name_key)) seen_names <- c(seen_names, name_key)
     comps[[length(comps) + 1L]] <- bblab_component(
       id, nm, cls_guess %||% "MAJOR",
       revenue = amt, cor = cor, gp = gp, revenue_pct = pct,
