@@ -945,20 +945,27 @@ macro_market_server <- function(id = "macro",
       )
     })
 
-    hccsi_result <- reactive({
-      refresh_token()
+    # HCCSI pulls 5y prices and statements for every issuer. That work used to
+    # run inside the first paint. Queue it after the session flushes so the
+    # index cards and the rest of the page can appear first.
+    hccsi_val <- reactiveVal(NULL)
+    hccsi_job <- reactiveVal(0L)
+    .hccsi_compute <- function(mode) {
+      # Always attempt live Yahoo/history and statements. Never score from config placeholders.
       cfg <- if (exists("hccsi_load_config", mode = "function")) hccsi_load_config() else NULL
       price_map <- list(); bench_df <- NULL
-      # Always attempt live Yahoo/history and statements. Never score from config placeholders.
+      n_iss <- 0L
       if (exists("fetch_price_history_df", mode = "function") &&
           exists("hccsi_issuers", mode = "function")) {
-        for (iss in hccsi_issuers(cfg)) {
+        issuers <- hccsi_issuers(cfg)
+        n_iss <- length(issuers)
+        for (iss in issuers) {
           tk <- as.character(iss$tickers[[1]] %||% "")[1]
           if (!nzchar(tk)) next
           pdf <- tryCatch(fetch_price_history_df(tk, "5y"), error = function(e) NULL)
           if (!is.null(pdf) && is.data.frame(pdf) && nrow(pdf) >= 2L) price_map[[tk]] <- pdf
         }
-        bench_tk <- tryCatch(macro_bench_ticker(.mode()), error = function(e) "^GSPC")
+        bench_tk <- tryCatch(macro_bench_ticker(mode), error = function(e) "^GSPC")
         bench_df <- tryCatch(fetch_price_history_df(bench_tk, "5y"), error = function(e) NULL)
       }
       fs_map <- list()
@@ -974,8 +981,54 @@ macro_market_server <- function(id = "macro",
       inputs <- if (exists("hccsi_live_inputs_from_prices", mode = "function")) {
         hccsi_live_inputs_from_prices(price_map, bench_df, cfg, fs_map)
       } else NULL
-      if (exists("hccsi_score", mode = "function")) tryCatch(hccsi_score(inputs, cfg), error = function(e) NULL) else NULL
-    })
+      res <- if (exists("hccsi_score", mode = "function")) {
+        tryCatch(hccsi_score(inputs, cfg), error = function(e) NULL)
+      } else {
+        NULL
+      }
+      list(res = res, n_iss = n_iss, n_px = length(price_map), n_fs = length(fs_map))
+    }
+    .queue_hccsi <- function() {
+      mode <- isolate(.mode())
+      job <- isolate(hccsi_job()) + 1L
+      hccsi_job(job)
+      # #region agent log
+      try(cat(paste0(
+        "{\"sessionId\":\"ef0f33\",\"runId\":\"load\",\"hypothesisId\":\"HCCSI\",",
+        "\"location\":\"macro_market_module.R:queue_hccsi\",\"message\":\"hccsi queued after flush\",",
+        "\"data\":{\"job\":", job, ",\"mode\":\"", gsub("\"", "", as.character(mode)[1]), "\"},",
+        "\"timestamp\":", format(as.numeric(Sys.time()) * 1000, scientific = FALSE, trim = TRUE), "}\n"
+      ), file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-ef0f33.log", append = TRUE), silent = TRUE)
+      # #endregion
+      run_job <- function() {
+        if (!identical(isolate(hccsi_job()), job)) return()
+        t0 <- proc.time()[["elapsed"]]
+        out <- tryCatch(.hccsi_compute(mode), error = function(e) list(res = NULL, n_iss = 0L, n_px = 0L, n_fs = 0L))
+        if (!identical(isolate(hccsi_job()), job)) return()
+        # #region agent log
+        try(cat(paste0(
+          "{\"sessionId\":\"ef0f33\",\"runId\":\"load\",\"hypothesisId\":\"HCCSI\",",
+          "\"location\":\"macro_market_module.R:queue_hccsi\",\"message\":\"hccsi finished\",",
+          "\"data\":{\"job\":", job,
+          ",\"elapsed_s\":", format(proc.time()[["elapsed"]] - t0, scientific = FALSE, trim = TRUE, digits = 4),
+          ",\"n_iss\":", out$n_iss %||% 0L, ",\"n_px\":", out$n_px %||% 0L, ",\"n_fs\":", out$n_fs %||% 0L, "},",
+          "\"timestamp\":", format(as.numeric(Sys.time()) * 1000, scientific = FALSE, trim = TRUE), "}\n"
+        ), file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-ef0f33.log", append = TRUE), silent = TRUE)
+        # #endregion
+        hccsi_val(out$res %||% list(availability = "unavailable"))
+      }
+      if (requireNamespace("later", quietly = TRUE)) {
+        later::later(run_job, delay = 0)
+      } else {
+        run_job()
+      }
+    }
+    session$onFlushed(function() .queue_hccsi(), once = TRUE)
+    observeEvent(refresh_token(), {
+      hccsi_val(NULL)
+      .queue_hccsi()
+    }, ignoreInit = TRUE)
+    hccsi_result <- reactive(hccsi_val())
 
     output$hccsi_expand_panel <- renderUI({
       if (.is_lite() || !isTRUE(hccsi_expanded())) return(NULL)
@@ -992,6 +1045,7 @@ macro_market_server <- function(id = "macro",
       kpi_w <- if (is_tw) 4L else 6L
       kpi_cls <- if (is_tw) "col-xs-12 col-sm-6 col-md-4" else "col-xs-12 col-sm-6 col-md-6"
       res <- tryCatch(hccsi_result(), error = function(e) NULL)
+      if (is.null(res)) res <- list(availability = "loading")
       rf_col <- column(
         width = kpi_w, class = kpi_cls,
         tags$div(

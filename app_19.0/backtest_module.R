@@ -1489,6 +1489,8 @@ fetch_price_history_df <- function(ticker, period = "5y") {
   # #endregion
 
   short_df <- NULL
+  period_s <- tolower(trimws(as.character(period)[1]))
+  quote_window <- period_s %in% c("1d", "5d", "1wk", "1mo", "3mo")
   if (!is.null(df)) {
     df <- df[is.finite(df$Close) & !is.na(df$Date), , drop = FALSE]
     df <- df[order(df$Date), , drop = FALSE]
@@ -1496,6 +1498,14 @@ fetch_price_history_df <- function(ticker, period = "5y") {
       # #region agent log
       .ynow_dbg_ef0f33("A", "backtest_module.R:fetch_price_history_df", "returned yfinance series", list(
         ticker = ticker, nrow = nrow(df), last = tail(df$Close, 1)
+      ))
+      # #endregion
+      return(df)
+    }
+    if (isTRUE(quote_window) && nrow(df) >= 2L) {
+      # #region agent log
+      .ynow_dbg_ef0f33("LOAD", "backtest_module.R:fetch_price_history_df", "returned quote window without quantmod", list(
+        ticker = ticker, period = period_s, nrow = nrow(df), last = tail(df$Close, 1)
       ))
       # #endregion
       return(df)

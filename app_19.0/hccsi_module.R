@@ -88,8 +88,10 @@ hccsi_score_span <- function(x, digits = 1, extra_class = NULL) {
 
 hccsi_kpi_box <- function(result, lite = FALSE, locale = "en", ns = NULL, selected = FALSE) {
   score <- if (is.null(result)) NA_real_ else result$composite
-  unavailable <- is.null(result) || !.finite1(score) || identical(result$availability, "unavailable")
-  alert <- if (isTRUE(unavailable)) "Unavailable" else (result$alert %||% "Unavailable")
+  loading <- is.list(result) && identical(result$availability, "loading")
+  unavailable <- !loading && (is.null(result) || !.finite1(score) || identical(result$availability, "unavailable"))
+  alert <- if (isTRUE(loading) || isTRUE(unavailable)) "Unavailable" else (result$alert %||% "Unavailable")
+  alert_txt <- if (isTRUE(loading)) .hccsi_ui("hccsi_loading", locale) else alert
   cls <- c("ynow-macro-kpi", "ynow-macro-kpi--hccsi", hccsi_alert_class(alert))
   extra <- NULL
   if (!isTRUE(lite)) {
@@ -107,7 +109,9 @@ hccsi_kpi_box <- function(result, lite = FALSE, locale = "en", ns = NULL, select
       )
     )
   }
-  hint <- if (isTRUE(unavailable)) {
+  hint <- if (isTRUE(loading)) {
+    .hccsi_ui("hccsi_loading", locale)
+  } else if (isTRUE(unavailable)) {
     .hccsi_ui("hccsi_unavailable", locale)
   } else if (isTRUE(lite)) {
     .hccsi_ui("hccsi_disclosure_short", locale)
@@ -121,7 +125,7 @@ hccsi_kpi_box <- function(result, lite = FALSE, locale = "en", ns = NULL, select
     tags$div(class = "ynow-macro-kpi__label", id = "ynow_macro_hccsi_title", .hccsi_ui("hccsi_title", locale)),
     tags$div(class = "ynow-macro-kpi__value ynow-hccsi__value", hccsi_score_span(score)),
     tags$div(class = paste("ynow-macro-kpi__chg", hccsi_alert_class(alert)), id = "ynow_macro_hccsi_alert",
-             paste(.hccsi_ui("hccsi_alert_label", locale), alert)),
+             paste(.hccsi_ui("hccsi_alert_label", locale), alert_txt)),
     tags$div(class = "ynow-macro-hint", id = "ynow_macro_hccsi_hint", hint)
   ), extra))
 }
