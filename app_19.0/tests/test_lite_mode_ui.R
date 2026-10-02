@@ -12,8 +12,9 @@ testthat::local_edition(3)
 testthat::test_that("Lite locale keys exist in en and zh-TW", {
   source(file.path("..", "ui_locale.R"), local = TRUE)
   keys <- c(
-    "menu_home", "home_lead", "home_method",
-    "home_market_k", "home_company_k", "home_value_k", "home_decide_k",
+    "menu_home", "home_lead", "home_method", "home_method_lite",
+    "home_market_k", "home_company_k", "home_value_k", "home_value_d_lite",
+    "home_decide_k", "home_decide_k_lite", "home_decide_d_lite",
     "menu_smart_analysis", "smart_page_title", "smart_page_sub",
     "smart_chart_title", "smart_primary_kicker", "smart_secondary_kicker",
     "smart_price_kicker", "smart_mos_kicker", "smart_waiting",
@@ -54,6 +55,10 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
   }
   testthat::expect_identical(.UI_STRINGS$`zh-TW`$menu_smart_analysis, "智慧分析")
   testthat::expect_identical(.UI_STRINGS$en$menu_smart_analysis, "Smart Analysis")
+  testthat::expect_false(grepl("Decision Checklist", .UI_STRINGS$en$home_decide_d_lite, fixed = TRUE))
+  testthat::expect_false(grepl("決策檢核", .UI_STRINGS$`zh-TW`$home_decide_d_lite, fixed = TRUE))
+  testthat::expect_identical(.UI_STRINGS$en$home_decide_k_lite, "YNOW")
+  testthat::expect_identical(.UI_STRINGS$`zh-TW`$home_value_k_lite, "智慧分析")
   testthat::expect_true(grepl("參數情境", .UI_STRINGS$`zh-TW`$smart_page_sub, fixed = TRUE))
   testthat::expect_true(grepl("parameter scenario", .UI_STRINGS$en$smart_page_sub, fixed = TRUE))
   testthat::expect_identical(.UI_STRINGS$`zh-TW`$smart_scenario_title, "已套用參數情境：")

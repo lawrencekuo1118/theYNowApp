@@ -261,8 +261,13 @@
       ),
       tags$p(
         id = "ynow_home_method",
-        class = "ynow-home-method",
+        class = "ynow-home-method ynow-full-only",
         "Classify the business, choose the model, then decide."
+      ),
+      tags$p(
+        id = "ynow_home_method_lite",
+        class = "ynow-home-method ynow-lite-only",
+        "Classify the business, then read fair value and YNOW."
       ),
       tags$div(
         class = "ynow-home-grid",
@@ -295,11 +300,17 @@
           class = "ynow-home-card",
           `data-tab` = "get_started",
           `data-tab-lite` = "smart_analysis",
-          tags$p(id = "ynow_home_value_k", class = "ynow-home-card-k", "Value"),
+          tags$p(id = "ynow_home_value_k", class = "ynow-home-card-k ynow-full-only", "Value"),
+          tags$p(id = "ynow_home_value_k_lite", class = "ynow-home-card-k ynow-lite-only", "Smart Analysis"),
           tags$p(
             id = "ynow_home_value_d",
-            class = "ynow-home-card-d",
+            class = "ynow-home-card-d ynow-full-only",
             "Fair value and MOS across DCF, DDM, RI, and P/B."
+          ),
+          tags$p(
+            id = "ynow_home_value_d_lite",
+            class = "ynow-home-card-d ynow-lite-only",
+            "Fair value and MOS from the recommended model."
           )
         ),
         tags$button(
@@ -307,11 +318,17 @@
           class = "ynow-home-card",
           `data-tab` = "decision_checklist",
           `data-tab-lite` = "sensitivity",
-          tags$p(id = "ynow_home_decide_k", class = "ynow-home-card-k", "Decide"),
+          tags$p(id = "ynow_home_decide_k", class = "ynow-home-card-k ynow-full-only", "Decide"),
+          tags$p(id = "ynow_home_decide_k_lite", class = "ynow-home-card-k ynow-lite-only", "YNOW"),
           tags$p(
             id = "ynow_home_decide_d",
-            class = "ynow-home-card-d",
+            class = "ynow-home-card-d ynow-full-only",
             "F-Score, statement alerts, and the Decision Checklist."
+          ),
+          tags$p(
+            id = "ynow_home_decide_d_lite",
+            class = "ynow-home-card-d ynow-lite-only",
+            "F-Score and statement alerts. A quality screen, not a buy signal."
           )
         )
       )
@@ -334,6 +351,20 @@
           var a = document.querySelector('.sidebar-menu a[data-value=\"' + tab + '\"]');
           if (a) { try { a.click(); } catch (e) {} }
         });
+        // #region agent log
+        (function () {
+          var home = document.querySelector('.ynow-home');
+          var card = document.querySelector('.ynow-home-card');
+          var lite = document.body && document.body.classList.contains('ynow-lite');
+          var shown = function (id) {
+            var el = document.getElementById(id);
+            if (!el) return '';
+            return getComputedStyle(el).display === 'none' ? '' : (el.textContent || '').trim();
+          };
+          var decide = shown('ynow_home_decide_d') || shown('ynow_home_decide_d_lite');
+          fetch('http://127.0.0.1:7302/ingest/e3a0dcdf-71e1-4bba-855e-f942118bd315',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ef0f33'},body:JSON.stringify({sessionId:'ef0f33',runId:'post-fix',hypothesisId:'H',location:'ynow_ui.R:home',message:'home panel paint',data:{lite:!!lite,homeBg:home?getComputedStyle(home).backgroundColor:null,cardBg:card?getComputedStyle(card).backgroundColor:null,decide:decide,checklist:/(Decision Checklist|決策檢核)/.test(decide)},timestamp:Date.now()})}).catch(function(){});
+        })();
+        // #endregion
       })();
     "))
   )
@@ -2586,10 +2617,10 @@ ui <- dashboardPage(
         .ynow-home {
           max-width: 760px;
           margin: 12px auto 28px;
-          padding: 36px 32px 28px;
-          background: #111;
-          color: #f4f4f4;
-          border-radius: 12px;
+          padding: 28px 8px 8px;
+          background: transparent;
+          color: #222;
+          border-radius: 0;
           text-align: center;
         }
         .ynow-home-logo {
@@ -2603,19 +2634,19 @@ ui <- dashboardPage(
           font-size: 26px;
           font-weight: 600;
           letter-spacing: -0.02em;
-          color: #fff;
+          color: #1a1a1a;
         }
         .ynow-home-lead {
           margin: 10px 0 0;
           font-size: 16px;
           line-height: 1.45;
-          color: #e8e8e8;
+          color: #333;
         }
         .ynow-home-method {
           margin: 6px 0 22px;
           font-size: 13px;
           line-height: 1.45;
-          color: #9a9a9a;
+          color: #666;
         }
         .ynow-home-grid {
           display: grid;
@@ -2629,9 +2660,9 @@ ui <- dashboardPage(
           margin: 0;
           padding: 14px 14px 15px;
           text-align: left;
-          color: #f4f4f4;
-          background: #1b1b1b;
-          border: 1px solid #2c2c2c;
+          color: #222;
+          background: transparent;
+          border: 1px solid #d0d5da;
           border-radius: 8px;
           cursor: pointer;
         }
@@ -2644,13 +2675,13 @@ ui <- dashboardPage(
           margin: 0 0 4px;
           font-size: 14px;
           font-weight: 650;
-          color: #fff;
+          color: #111;
         }
         .ynow-home-card-d {
           margin: 0;
           font-size: 12.5px;
           line-height: 1.45;
-          color: #b5b5b5;
+          color: #555;
         }
         @media (max-width: 720px) {
           .ynow-home { padding: 24px 16px 18px; }
@@ -4167,11 +4198,13 @@ ui <- dashboardPage(
               var el = document.getElementById(id);
               if (el && s[key]) el.textContent = s[key];
             }
-            ['ynow_home_title', 'ynow_home_lead', 'ynow_home_method',
+            ['ynow_home_title', 'ynow_home_lead', 'ynow_home_method', 'ynow_home_method_lite',
              'ynow_home_market_k', 'ynow_home_market_d',
              'ynow_home_company_k', 'ynow_home_company_d',
              'ynow_home_value_k', 'ynow_home_value_d',
-             'ynow_home_decide_k', 'ynow_home_decide_d'].forEach(function (id) {
+             'ynow_home_value_k_lite', 'ynow_home_value_d_lite',
+             'ynow_home_decide_k', 'ynow_home_decide_d',
+             'ynow_home_decide_k_lite', 'ynow_home_decide_d_lite'].forEach(function (id) {
               var el = document.getElementById(id);
               if (!el) return;
               var key = id.replace(/^ynow_/, '');
