@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12638614
+bundleId=12639154
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=be566b4d1276ca8c899eea3982f3c15a096a3450
-commit=be566b4d1276ca8c899eea3982f3c15a096a3450
-short=be566b4
-message=Stop year-repeated segment columns from becoming duplicate business cards.
-captured_at=2026-10-02T14:43:10Z
+aligned_git=6528857d4e9a412cee4238a8271ec765d44480b2
+commit=6528857d4e9a412cee4238a8271ec765d44480b2
+short=6528857
+message=chore: bump display version to v19.64
+captured_at=2026-10-02T16:44:10Z
 source_branch=master
 display_version=v19.64
-note=Canonical live line is app_19.0. Bundle 12638614 = v19.62. Column-oriented segment tables use the latest year only, so Business cards are not repeated once per fiscal year. Deploy via scripts/deploy_app_19.R. Supersedes 12638535 / 12638399 / 12638310 / 12638256.
+note=Canonical live line is app_19.0. Bundle 12639154 = v19.64. CapEx/Revenue proj rate always reseeds from the loaded statement CapEx series on sync so a prior foundry-level ratio (e.g. TSM 37.07%) cannot stick onto fabless names. Deploy via scripts/deploy_app_19.R. Supersedes 12638614 / 12638535 / 12638399 / 12638310.
