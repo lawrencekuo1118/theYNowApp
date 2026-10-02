@@ -147,6 +147,8 @@ server <- function(input, output, session) {
   lite_desired_des <- reactiveVal(NULL)
   # Lite Smart Analysis: silent DCF auto-calc (heal g≥discount; no error toasts)
   lite_dcf_silent <- reactiveVal(FALSE)
+  # "" while calculating; "neg_terminal" when Gordon TV is refused and no anchor exists
+  lite_dcf_block <- reactiveVal("")
   auto_calc_ddm_pulse <- reactiveVal(0L)
   auto_calc_pb_pulse <- reactiveVal(0L)
   auto_calc_nav_pulse <- reactiveVal(0L)
@@ -3629,6 +3631,20 @@ server <- function(input, output, session) {
         future_fcfs <- c(future_fcfs, rep(last, pad_n))
       }
     }
+    # Same Lite anchor as silent auto-calc: don't Gordon-grow a negative NOPAT-build FCFF.
+    if (isTRUE(lite_mode()) && length(future_fcfs) >= 1L) {
+      last_raw <- suppressWarnings(as.numeric(tail(future_fcfs, 1))[1])
+      if (is.finite(last_raw) && last_raw < 0) {
+        des_b <- tryCatch(lite_desired_des(), error = function(e) NULL)
+        mode_b <- if (!is.null(des_b)) {
+          if (isTRUE(des_b$two_stage)) "two_stage" else "gordon"
+        } else {
+          as.character(input$dcf_mode %||% "gordon")[1]
+        }
+        anchored <- .lite_fcff_from_trailing(length(future_fcfs), mode_b)
+        if (!is.null(anchored)) future_fcfs <- anchored
+      }
+    }
     future_fcfs <- future_fcfs * fcf_mult
     if (isTRUE(near_g_mult != 1) && length(future_fcfs) >= 2) {
       base0 <- future_fcfs[1]
@@ -6802,12 +6818,45 @@ server <- function(input, output, session) {
   # ==========================================
   # 💰 8. DCF 計算核心與企業估值 (對接 FCFF 預測序列)
   # ==========================================
+  # Grow trailing FCFF (CFO identity) at the scenario g path. Used only when the
+  # NOPAT-margin forecast terminal year is negative.
+  .lite_fcff_from_trailing <- function(n, mode) {
+    base <- tryCatch(
+      latest_hist_fcff(d_cash_flow(), d_is = d_income_statement()),
+      error = function(e) NA_real_
+    )
+    base <- suppressWarnings(as.numeric(base)[1])
+    if (!is.finite(base) || base <= 0) return(NULL)
+    g2 <- suppressWarnings(as.numeric(input$sgr)[1]) / 100
+    g1 <- suppressWarnings(as.numeric(input$g_stage1)[1]) / 100
+    if (!is.finite(g2)) g2 <- 0
+    if (!is.finite(g1)) g1 <- g2
+    yr1 <- if (identical(mode, "two_stage")) {
+      clamp_yr_stage1(n, input$yr_stage1, APP_DEFAULTS$yr_stage1)
+    } else {
+      0L
+    }
+    out <- numeric(n)
+    level <- base
+    for (i in seq_len(n)) {
+      g <- if (yr1 > 0L && i <= yr1) g1 else g2
+      if (!is.finite(g)) g <- 0
+      level <- level * (1 + g)
+      out[i] <- level
+    }
+    if (!is.finite(out[n]) || out[n] <= 0) return(NULL)
+    out
+  }
+
   .execute_dcf_calc <- function(notify = NULL) {
     silent <- isTRUE(isolate(lite_dcf_silent()))
     show_toast <- if (is.null(notify)) !silent else isTRUE(notify)
     des <- if (silent) tryCatch(isolate(lite_desired_des()), error = function(e) NULL) else NULL
     dcf_mode_eff <- as.character(input$dcf_mode %||% "")[1]
-    if (!nzchar(dcf_mode_eff) && !is.null(des)) {
+    if (silent && !is.null(des)) {
+      # Hidden radios lag behind the recommended scenario; don't value the stale mode.
+      dcf_mode_eff <- if (isTRUE(des$two_stage)) "two_stage" else "gordon"
+    } else if (!nzchar(dcf_mode_eff) && !is.null(des)) {
       dcf_mode_eff <- if (isTRUE(des$two_stage)) "two_stage" else "gordon"
     }
     if (!nzchar(dcf_mode_eff)) dcf_mode_eff <- "gordon"
@@ -6828,6 +6877,19 @@ server <- function(input, output, session) {
     if (length(future_fcfs) != n) {
       if (!silent) showNotification(.ui_msg("notif_dcf_n_mismatch"), type = "error")
       return(NULL)
+    }
+
+    # Lite: a loss-year NOPAT build can make every forecast FCFF negative even when
+    # trailing FCFF (CFO + after-tax interest − CapEx) is positive. Gordon then
+    # refuses TV and the second auto-calc wipes the per-share result. Anchor the
+    # silent path on that trailing FCFF so Smart Analysis keeps a value.
+    hist_anchor <- FALSE
+    if (silent && is.finite(future_fcfs[n]) && future_fcfs[n] < 0) {
+      anchored <- .lite_fcff_from_trailing(n, dcf_mode_eff)
+      if (!is.null(anchored)) {
+        future_fcfs <- anchored
+        hist_anchor <- TRUE
+      }
     }
 
     dcf_value <- NA
@@ -6997,13 +7059,31 @@ server <- function(input, output, session) {
     # 計算每股目標價並防呆（報價幣；拒絕 TWD／普通股標成 USD／ADR）
     sh_info <- tryCatch(.valuation_shares(), error = function(e) NULL)
     px <- if (!is.null(sh_info)) .dcf_per_share(equity_value, sh_info) else NA_real_
+    # #region agent log
+    .ynow_dbg_ef0f33("D", "ynow_server.R:execute_dcf", "dcf per-share result", list(
+      mode = dcf_mode_eff,
+      claim = claim,
+      last_fcf = suppressWarnings(as.numeric(future_fcfs[n])[1]),
+      g = suppressWarnings(as.numeric(g_terminal)[1]),
+      r = suppressWarnings(as.numeric(r2)[1]),
+      ev = suppressWarnings(as.numeric(dcf_value)[1]),
+      eq = suppressWarnings(as.numeric(equity_value)[1]),
+      px = suppressWarnings(as.numeric(px)[1]),
+      cleared = !is.finite(suppressWarnings(as.numeric(px)[1])),
+      hist_anchor = isTRUE(hist_anchor)
+    ))
+    # #endregion
     if (is.finite(px)) {
+      lite_dcf_block("")
       stock_price_estimate_val(px)
       sh_note <- sh_info$note
       if (show_toast && !is.null(sh_note) && nzchar(sh_note)) {
         showNotification(.ui_msg("notif_dcf_shares_note", note = sh_note), type = "message", duration = 6)
       }
     } else {
+      if (silent && is.finite(future_fcfs[n]) && future_fcfs[n] < 0) {
+        lite_dcf_block("neg_terminal")
+      }
       stock_price_estimate_val(NULL)
       if (show_toast) {
         eq_now <- suppressWarnings(as.numeric(equity_value)[1])
@@ -7063,8 +7143,15 @@ server <- function(input, output, session) {
   # 再對主／副模型試算——避免「參數假設錯誤無法計算」。
   observeEvent(current_ticker(), {
     # Clear prior-ticker DCF so Composite does not keep stale run-state overlays
+    # #region agent log
+    .ynow_dbg_ef0f33("B", "ynow_server.R:ticker_clear", "cleared valuation on ticker", list(
+      tk = as.character(current_ticker() %||% "")[1],
+      prev_px = suppressWarnings(as.numeric(isolate(stock_price_estimate_val()))[1])
+    ))
+    # #endregion
     stock_price_estimate_val(NULL)
     dcf_value_result(NULL)
+    lite_dcf_block("")
     auto_calc_primary_sig("")
     lite_scenario_applied_sig("")
     lite_desired_des(NULL)
@@ -7340,6 +7427,20 @@ server <- function(input, output, session) {
       n <- suppressWarnings(as.numeric(input$years)[1])
       if (is.null(proj) || !is.data.frame(proj) || nrow(proj) < 1L) return(FALSE)
       if (!is.finite(n) || n <= 0L || nrow(proj) != as.integer(n)) return(FALSE)
+      # Don't value on the revenue=100 sandbox or a previous ticker's forecast.
+      if (isTRUE(isolate(lite_mode()))) {
+        rev_in <- suppressWarnings(as.numeric(input[["mod_fcf-fcf_revenue"]])[1])
+        rev_stmt <- tryCatch(
+          select_current_metric(d_income_statement(), "Total Revenue", "flow"),
+          error = function(e) NA_real_
+        )
+        if (is.finite(rev_stmt) && rev_stmt > 0 && is.finite(rev_in) && rev_in > 0) {
+          ratio <- rev_in / rev_stmt
+          if (ratio < 0.3 || ratio > 3) return(FALSE)
+        } else if (is.finite(rev_stmt) && rev_stmt > 1e6) {
+          return(FALSE)
+        }
+      }
       # Prefer settled estimated WACC over placeholder APP_DEFAULTS seed
       w_calc <- suppressWarnings(as.numeric(calculated_wacc())[1])
       lite <- isTRUE(isolate(lite_mode()))
@@ -7501,6 +7602,15 @@ server <- function(input, output, session) {
         sep = "|"
       )
       if (!identical(lite_scenario_applied_sig(), want_sig)) {
+        # #region agent log
+        .ynow_dbg_ef0f33("C", "ynow_server.R:lite_scenario", "applied lite scenario", list(
+          tk = tk,
+          two = isTRUE(des$two_stage),
+          method = as.character(des$method %||% "")[1],
+          claim = as.character(des$claim %||% "")[1],
+          prev = as.character(lite_scenario_applied_sig() %||% "")[1]
+        ))
+        # #endregion
         .apply_lite_recommended_scenario(rec)
         lite_scenario_applied_sig(want_sig)
         return()
@@ -7536,6 +7646,19 @@ server <- function(input, output, session) {
     )
     if (identical(auto_calc_primary_sig(), sig)) return()
 
+    # #region agent log
+    .ynow_dbg_ef0f33("A", "ynow_server.R:auto_calc", "firing auto calc", list(
+      sig = sig,
+      prim = prim,
+      sec = as.character(sec %||% "")[1],
+      mode = mode,
+      claim = claim,
+      w = if (is.finite(w_calc)) round(w_calc * 100, 2) else NA_real_,
+      sgr = if (is.finite(sgr)) round(sgr, 2) else NA_real_,
+      sh = as.character(sh_m %||% "")[1],
+      prev_px = suppressWarnings(as.numeric(isolate(stock_price_estimate_val()))[1])
+    ))
+    # #endregion
     auto_calc_primary_sig(sig)
     for (k in keys) .fire_auto_calc_primary(k)
   })
@@ -7574,8 +7697,11 @@ server <- function(input, output, session) {
       if (!is.finite(x)) return("—")
       paste0(sprintf("%+.1f", x), "%")
     }
+    block <- tryCatch(lite_dcf_block(), error = function(e) "")
     prim_meta <- if (is.finite(bear) && is.finite(bull)) {
       paste0("Bear ", fmt_px(bear), " · Bull ", fmt_px(bull))
+    } else if (identical(block, "neg_terminal")) {
+      ui_str("notif_dcf_neg_fcff_skip_tv", loc)
     } else {
       ui_str("smart_calc_pending", loc)
     }
