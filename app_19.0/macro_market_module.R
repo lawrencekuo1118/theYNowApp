@@ -366,7 +366,7 @@ macro_market_ui <- function(id = "macro") {
             ns("industry_key"),
             label = tags$span(id = "ynow_macro_industry_label", "Industry vs benchmark"),
             choices = c("—" = ""),
-            selected = ""
+            selected = "gics_xlk"
           )
         ),
         column(
@@ -477,6 +477,9 @@ macro_market_server <- function(id = "macro",
     refresh_token <- reactiveVal(0L)
     selected_index <- reactiveVal("")
     hccsi_expanded <- reactiveVal(FALSE)
+    # Until the user changes Industry vs benchmark, US opens on Technology (XLK).
+    industry_touched <- reactiveVal(FALSE)
+    industry_programmatic <- reactiveVal(FALSE)
     observeEvent(input$refresh, {
       refresh_token(isolate(refresh_token()) + 1L)
     }, ignoreInit = TRUE)
@@ -507,7 +510,16 @@ macro_market_server <- function(id = "macro",
       refresh_token(isolate(refresh_token()) + 1L)
     }, ignoreInit = TRUE)
 
-    # Industry + concept menus follow market + locale; empty/none is valid.
+    observeEvent(input$industry_key, {
+      if (isTRUE(isolate(industry_programmatic()))) {
+        industry_programmatic(FALSE)
+        return()
+      }
+      industry_touched(TRUE)
+    }, ignoreInit = TRUE)
+
+    # Industry + concept menus follow market + locale.
+    # US default is Technology (XLK / 科技業) until the user picks another row.
     # Bubble keeps a combined catalog (one concentration universe).
     observe({
       mode <- .mode()
@@ -517,13 +529,16 @@ macro_market_server <- function(id = "macro",
       bub_ch <- macro_choices_with_none(macro_theme_choices(mode, loc), loc)
 
       isel <- isolate(as.character(input$industry_key %||% "")[1])
-      if (is.null(isel) || !nzchar(isel) || !(isel %in% unname(ind_ch))) {
-        isel <- ""
+      in_menu <- isel %in% unname(ind_ch)
+      if (!isTRUE(isolate(industry_touched())) || !in_menu) {
+        isel <- if ("gics_xlk" %in% unname(ind_ch)) "gics_xlk" else ""
       }
       csel <- isolate(as.character(input$concept_key %||% "")[1])
       if (is.null(csel) || !nzchar(csel) || !(csel %in% unname(con_ch))) {
         csel <- ""
       }
+      cur_ind <- isolate(as.character(input$industry_key %||% "")[1])
+      if (!identical(cur_ind, isel)) industry_programmatic(TRUE)
       updateSelectInput(session, "industry_key", choices = ind_ch, selected = isel)
       updateSelectInput(session, "concept_key", choices = con_ch, selected = csel)
 
