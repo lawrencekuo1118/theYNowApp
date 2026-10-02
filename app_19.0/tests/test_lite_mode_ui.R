@@ -74,6 +74,8 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   ui_path <- file.path("..", "ynow_ui.R")
   txt <- paste(readLines(ui_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   testthat::expect_true(grepl("ynow_lite_toggle", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow_home_lite_toggle", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-lite-toggle", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-lite-badge", txt, fixed = TRUE))
   testthat::expect_true(grepl("body.ynow-lite", txt, fixed = TRUE))
   testthat::expect_true(grepl('tabName = "macro_market"', txt, fixed = TRUE))

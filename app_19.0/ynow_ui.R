@@ -141,7 +141,7 @@
     class = "ynow-about-feat",
     tags$li(
       tags$b("簡化版切換："),
-      "點擊側邊欄底部 logo 即可在 Lite／完整版之間切換；Lite 時 logo 右下角顯示 LITE 角標。"
+      "點擊首頁或側邊欄底部 logo 即可在 Lite／完整版之間切換；Lite 時兩處 logo 右下角都顯示 LITE 角標。"
     ),
     tags$li(
       tags$b("Dashboard："),
@@ -166,7 +166,7 @@
     class = "ynow-about-feat",
     tags$li(
       tags$b("Lite toggle: "),
-      "Click the sidebar bottom logo to switch between Lite and Full. In Lite, a LITE badge appears at the logo corner."
+      "Click the home logo or the sidebar bottom logo to switch between Lite and Full. In Lite, a LITE badge appears at both logo corners."
     ),
     tags$li(
       tags$b("Dashboard: "),
@@ -247,11 +247,26 @@
   tagList(
     tags$div(
       class = "ynow-home",
-      tags$img(
-        class = "ynow-home-logo",
-        src = "ynow-logo-full-480.png",
-        alt = "YNow — WH.Y VALUE NOW",
-        width = 132
+      tags$div(
+        class = "ynow-home-logo-wrap ynow-lite-toggle",
+        id = "ynow_home_lite_toggle",
+        role = "button",
+        tabindex = "0",
+        `aria-pressed` = "false",
+        `aria-label` = "Toggle Lite mode",
+        title = "Click to switch Lite / Full",
+        tags$img(
+          class = "ynow-home-logo",
+          src = "ynow-logo-full-480.png",
+          alt = "YNow — WH.Y VALUE NOW",
+          width = 132,
+          draggable = "false"
+        ),
+        tags$span(
+          class = "ynow-lite-badge",
+          id = "ynow_home_lite_badge",
+          "LITE"
+        )
       ),
       tags$h2(id = "ynow_home_title", class = "ynow-home-title", "The YNow App"),
       tags$p(
@@ -1376,7 +1391,7 @@ ui <- dashboardPage(
     
     column(width = 12,
            tags$div(
-             class = "ynow-sidebar-brand",
+             class = "ynow-sidebar-brand ynow-lite-toggle",
              id = "ynow_lite_toggle",
              role = "button",
              tabindex = "0",
@@ -2623,11 +2638,31 @@ ui <- dashboardPage(
           border-radius: 0;
           text-align: center;
         }
+        .ynow-home-logo-wrap {
+          position: relative;
+          display: inline-block;
+          margin: 0 0 18px;
+          padding: 0;
+          border: 0;
+          background: transparent;
+          cursor: pointer;
+          user-select: none;
+          outline: none;
+        }
+        .ynow-home-logo-wrap:focus-visible {
+          outline: 2px solid #2f9e6b;
+          outline-offset: 3px;
+          border-radius: 8px;
+        }
         .ynow-home-logo {
           width: 132px;
           height: auto;
           display: block;
-          margin: 0 auto 18px;
+          margin: 0;
+        }
+        .ynow-home-logo-wrap .ynow-lite-badge {
+          right: -30px;
+          bottom: 2px;
         }
         .ynow-home-title {
           margin: 0;
@@ -4110,9 +4145,10 @@ ui <- dashboardPage(
             if (smartSub && s.smart_page_sub) smartSub.textContent = s.smart_page_sub;
             var smartChart = document.getElementById('ynow_smart_chart_title');
             if (smartChart && s.smart_chart_title) smartChart.textContent = s.smart_chart_title;
-            var liteToggle = document.getElementById('ynow_lite_toggle');
-            if (liteToggle && s.lite_toggle_title) liteToggle.setAttribute('title', s.lite_toggle_title);
-            if (liteToggle && s.lite_toggle_aria) liteToggle.setAttribute('aria-label', s.lite_toggle_aria);
+            document.querySelectorAll('.ynow-lite-toggle').forEach(function (liteToggle) {
+              if (s.lite_toggle_title) liteToggle.setAttribute('title', s.lite_toggle_title);
+              if (s.lite_toggle_aria) liteToggle.setAttribute('aria-label', s.lite_toggle_aria);
+            });
             if (LAST_BADGE_MAP) {
               LAST_BADGE_MAP.labels = {
                 primary: s.menu_badge_primary || (LAST_BADGE_MAP.labels && LAST_BADGE_MAP.labels.primary) || '推薦',
@@ -4863,8 +4899,9 @@ ui <- dashboardPage(
               opts = opts || {};
               var enabled = !!on;
               document.body.classList.toggle('ynow-lite', enabled);
-              var brand = document.getElementById('ynow_lite_toggle');
-              if (brand) brand.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+              document.querySelectorAll('.ynow-lite-toggle').forEach(function (brand) {
+                brand.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+              });
               try {
                 window.sessionStorage.setItem('ynow_lite_mode', enabled ? '1' : '0');
               } catch (e0) {}
@@ -4898,14 +4935,14 @@ ui <- dashboardPage(
               if (document.documentElement.getAttribute('data-ynow-lite-delegated') === '1') return;
               document.documentElement.setAttribute('data-ynow-lite-delegated', '1');
               document.addEventListener('click', function (ev) {
-                var brand = ev.target && ev.target.closest ? ev.target.closest('#ynow_lite_toggle') : null;
+                var brand = ev.target && ev.target.closest ? ev.target.closest('.ynow-lite-toggle') : null;
                 if (!brand) return;
                 ev.preventDefault();
                 ev.stopPropagation();
                 toggleLite();
               }, true);
               document.addEventListener('keydown', function (ev) {
-                var brand = ev.target && ev.target.closest ? ev.target.closest('#ynow_lite_toggle') : null;
+                var brand = ev.target && ev.target.closest ? ev.target.closest('.ynow-lite-toggle') : null;
                 if (!brand) return;
                 if (ev.key === 'Enter' || ev.key === ' ' || ev.keyCode === 13 || ev.keyCode === 32) {
                   ev.preventDefault();
