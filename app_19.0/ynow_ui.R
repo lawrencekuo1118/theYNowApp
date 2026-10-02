@@ -144,7 +144,7 @@
       "點擊首頁或側邊欄底部 logo 即可在 Lite／完整版之間切換；Lite 時兩處 logo 右下角都顯示 LITE 角標。"
     ),
     tags$li(
-      tags$b("Dashboard："),
+      tags$b("個股："),
       "輸入股票代號、檢視產業標準快覽與 KPI 色碼框格，並使用市場／語言／幣別等切換 UI；精簡財報明細與模型參數頁。"
     ),
     tags$li(
@@ -169,7 +169,7 @@
       "Click the home logo or the sidebar bottom logo to switch between Lite and Full. In Lite, a LITE badge appears at both logo corners."
     ),
     tags$li(
-      tags$b("Dashboard: "),
+      tags$b("Company: "),
       "Enter a ticker, review the industry standard snapshot and KPI color boxes, and use market / language / currency switches. Statement detail tabs and manual model pages are hidden."
     ),
     tags$li(
@@ -1335,7 +1335,8 @@ ui <- dashboardPage(
                tabName = "macro_market",
                icon = icon("globe-asia")
              ),
-             menuItem("Dashboard", tabName = "dashboard", icon = icon("chart-line")),
+             menuItem("Company", tabName = "dashboard", icon = icon("chart-line")),
+             menuItem("YNOW", tabName = "sensitivity", icon = icon("sliders-h")),
              menuItem(
                text = tags$span(id = "ynow_menu_smart", "Smart Analysis"),
                tabName = "smart_analysis",
@@ -1368,7 +1369,6 @@ ui <- dashboardPage(
              ),
              # 歷史基本面驗證（HFV）：理論估值 vs 實際市值 — 非策略回測
              menuItem("Hist. FV Validation", tabName = "hfv", icon = icon("balance-scale")),
-             menuItem("YNOW", tabName = "sensitivity", icon = icon("sliders-h")),
              # 量化回測實驗室：主選單（完整版）；Lite 以 CSS 隱藏，不進簡化版
              menuItem(
                text = tags$span(id = "ynow_menu_backtest", "Quant Backtest Lab"),

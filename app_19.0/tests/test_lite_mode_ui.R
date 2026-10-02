@@ -68,6 +68,8 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
   testthat::expect_true(grepl("OCF", .UI_STRINGS$`zh-TW`$lab_im_eq_explain_body, fixed = TRUE))
   testthat::expect_null(.UI_STRINGS$en$macro_rf_note)
   testthat::expect_null(.UI_STRINGS$`zh-TW`$macro_rf_note)
+  testthat::expect_identical(.UI_STRINGS$en$menu_dashboard, "Company")
+  testthat::expect_identical(.UI_STRINGS$`zh-TW`$menu_dashboard, "個股")
 })
 
 testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hooks", {
@@ -185,10 +187,18 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl("ynow-macro-kpi--hccsi", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-macro-hccsi-expand ynow-full-only", macro_txt, fixed = TRUE))
   testthat::expect_false(grepl("ynow-macro-kpi--hccsi[^\\n]*ynow-full-only", macro_txt))
-  # Macro tab must appear before Dashboard in sidebar markup
+  # Macro, then Company (dashboard), then YNOW
   testthat::expect_true(
     regexpr('tabName = "macro_market"', txt, fixed = TRUE)[1] <
       regexpr('tabName = "dashboard"', txt, fixed = TRUE)[1]
+  )
+  testthat::expect_true(
+    regexpr('tabName = "dashboard"', txt, fixed = TRUE)[1] <
+      regexpr('tabName = "sensitivity"', txt, fixed = TRUE)[1]
+  )
+  testthat::expect_true(
+    regexpr('tabName = "sensitivity"', txt, fixed = TRUE)[1] <
+      regexpr('tabName = "smart_analysis"', txt, fixed = TRUE)[1]
   )
   testthat::expect_true(grepl('tabName = "smart_analysis"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-full-only", txt, fixed = TRUE))
