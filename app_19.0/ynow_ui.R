@@ -3476,7 +3476,7 @@ ui <- dashboardPage(
           window.placeMobileAppTitle = placeMobileAppTitle;
 
           /* Header title = load progress bar (fills with boot / Shiny busy / withProgress) */
-          document.title = "The YNow App";
+          document.title = 'The YNow App';
           (function initYnowTitleLoadBar() {
             var pct = 0;
             var firstIdleDone = false;
