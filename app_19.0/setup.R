@@ -1152,6 +1152,54 @@ ratio_spike_vs_prior <- function(num, den, prior_n = 2L, mult = 1.35) {
   isTRUE(latest > mult * prior)
 }
 
+#' CapEx / Revenue margin to seed FCF projection after statement sync.
+#'
+#' Always derived from the newly loaded CapEx and Revenue series (newest-first).
+#' Spike smoothing (engineering heuristic): when the newest ratio exceeds
+#' `mult` × the prior window, use the `avg_n`-year mean; otherwise use the
+#' latest year. Callers must overwrite any prior `proj_capex_rate` so a
+#' foundry-level ratio (e.g. TSM ~37%) cannot stick onto a fabless name.
+#'
+#' @param cap_hist CapEx series (newest first; signs ignored via abs)
+#' @param rev_hist Revenue series (newest first)
+#' @param settings list with enabled, mult, avg_n, prior_n (see FCF CapEx spike UI)
+#' @return list(margin, pct, spike, latest_pct, avg_pct, ok)
+fcf_sync_capex_revenue_margin <- function(cap_hist, rev_hist, settings = NULL) {
+  empty <- list(
+    margin = NA_real_, pct = NA_real_, spike = FALSE,
+    latest_pct = NA_real_, avg_pct = NA_real_, ok = FALSE
+  )
+  if (is.null(settings) || !is.list(settings)) {
+    settings <- list(enabled = TRUE, mult = 1.35, avg_n = 3L, prior_n = 2L)
+  }
+  cap_hist <- abs(suppressWarnings(as.numeric(cap_hist)))
+  rev_hist <- suppressWarnings(as.numeric(rev_hist))
+  if (length(cap_hist) < 1L || length(rev_hist) < 1L) return(empty)
+  latest_m <- cap_hist[1] / rev_hist[1]
+  if (!is.finite(latest_m) || !is.finite(rev_hist[1]) || rev_hist[1] == 0) {
+    return(empty)
+  }
+  avg_n <- suppressWarnings(as.integer(settings$avg_n)[1])
+  if (!is.finite(avg_n) || avg_n < 1L) avg_n <- 3L
+  prior_n <- suppressWarnings(as.integer(settings$prior_n)[1])
+  if (!is.finite(prior_n) || prior_n < 1L) prior_n <- 2L
+  mult <- suppressWarnings(as.numeric(settings$mult)[1])
+  if (!is.finite(mult) || mult <= 1) mult <- 1.35
+  avg_m <- avg_ratio_newest(cap_hist, rev_hist, n = avg_n)
+  spike <- isTRUE(settings$enabled) && ratio_spike_vs_prior(
+    cap_hist, rev_hist, prior_n = prior_n, mult = mult
+  )
+  margin <- if (isTRUE(spike) && is.finite(avg_m)) avg_m else latest_m
+  list(
+    margin = margin,
+    pct = if (is.finite(margin)) margin * 100 else NA_real_,
+    spike = spike,
+    latest_pct = latest_m * 100,
+    avg_pct = if (is.finite(avg_m)) avg_m * 100 else NA_real_,
+    ok = is.finite(margin) && margin > 0
+  )
+}
+
 # 裁切財務表格至指定科目（含該列）
 # Yahoo 網頁列序：營收在上、end_metric 在下 → 保留 1:idx
 # 若 end_metric 落在第 1 列（常見於未反轉的 yfinance），改取最後一個命中，避免只剩一列

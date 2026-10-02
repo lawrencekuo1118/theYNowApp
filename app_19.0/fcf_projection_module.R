@@ -545,7 +545,9 @@ fcf_projection_module_server <- function(
       updateNumericInput(session, "fcf_capex", value = cap)
       updateNumericInput(session, "fcf_invested_capital", value = asst - (liab - ifelse(is.na(debt), 0, debt)))
 
-      # CapEx／D&A 佔營收：預設寫入 3 年均值（單年 CapEx 暴衝時避免投影永遠負 FCFF）
+      # CapEx／D&A 佔營收：依目前財報重算前瞻 CapEx/Rev（暴衝時改採 N 年均值）。
+      # 必須覆寫既有 proj_capex_rate：若僅在欄位空白時寫入，前一檔（如 TSM ~37%）
+      # 會黏在 fabless／IC 設計名稱上，看起來像套用晶圓代工產業平均。
       rev_hist <- select_clean_metric_row(d_income_statement(), "Total Revenue", include_ttm = FALSE)
       cap_hist <- select_clean_metric_row(d_cash_flow(), "Capital Expenditure", include_ttm = FALSE)
       if (all(is.na(cap_hist))) {
@@ -553,13 +555,10 @@ fcf_projection_module_server <- function(
       }
       dep_hist <- select_clean_metric_row_any(d_cash_flow(), DA_PATTERNS, include_ttm = FALSE)
       spike_cfg <- .capex_spike_settings()
-      avg_cap_m <- avg_ratio_newest(abs(cap_hist), rev_hist, n = spike_cfg$avg_n)
       avg_dep_m <- avg_ratio_newest(dep_hist, rev_hist, n = 3L)
-      diag <- .capex_spike_diag(abs(cap_hist), rev_hist, spike_cfg)
-      if (is.finite(avg_cap_m) && avg_cap_m > 0) {
-        if (isTRUE(diag$use_avg) || !is.finite(suppressWarnings(as.numeric(input$proj_capex_rate)[1]))) {
-          updateNumericInput(session, "proj_capex_rate", value = round(100 * avg_cap_m, 2))
-        }
+      sync_cx <- fcf_sync_capex_revenue_margin(abs(cap_hist), rev_hist, spike_cfg)
+      if (isTRUE(sync_cx$ok)) {
+        updateNumericInput(session, "proj_capex_rate", value = round(sync_cx$pct, 2))
       }
       # D&A 無獨立覆寫欄；以 3 年均值重寫 fcf_depreciation 當最新年明顯偏低於均值（窄 Depreciation）
       if (is.finite(avg_dep_m) && is.finite(rev) && rev > 0 && is.finite(dep)) {
