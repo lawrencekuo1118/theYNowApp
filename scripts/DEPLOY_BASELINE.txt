@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12642190
+bundleId=12642203
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=91d6e8fb7f22c1d27f0aadde0b8e27cb4249dc58
-commit=91d6e8fb7f22c1d27f0aadde0b8e27cb4249dc58
-short=91d6e8f
-message=chore: bump display version to v19.78
-captured_at=2026-10-03T12:43:20Z
+aligned_git=5f6eb715703398ea77b66e1d147b2b727bd49df7
+commit=5f6eb715703398ea77b66e1d147b2b727bd49df7
+short=5f6eb71
+message=chore: bump display version to v19.79
+captured_at=2026-10-03T12:52:01Z
 source_branch=master
 display_version=v19.79
-note=Canonical live line is app_19.0. Bundle 12642190 = v19.78. HCCSI full name → Critical Tech Stack Index (ticker unchanged). Deploy via scripts/deploy_app_19.R. Supersedes 12642147 / 12642123.
+note=Canonical live line is app_19.0. Bundle 12642203 = v19.79. Merged cursor/refresh-us-universe (US equity universe snapshot). Deploy via scripts/deploy_app_19.R. Supersedes 12642190 / 12642147.
