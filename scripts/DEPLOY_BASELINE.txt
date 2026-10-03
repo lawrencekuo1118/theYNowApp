@@ -8,5 +8,5 @@ short=71d0e7a
 message=chore: bump display version to v19.80
 captured_at=2026-10-03T13:07:05Z
 source_branch=master
-display_version=v19.80
+display_version=v19.81
 note=Canonical live line is app_19.0. Bundle 12642262 = v19.80. Relative multiples P/E · Forward P/E · PEG · EV/FCF. Deploy via scripts/deploy_app_19.R. Supersedes 12642203 / 12642190.
