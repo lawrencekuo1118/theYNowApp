@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12642715
+bundleId=12642731
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=67a6dd6c851e42a73cf91cc9624ec4906db16d85
-commit=67a6dd6c851e42a73cf91cc9624ec4906db16d85
-short=67a6dd6
-message=chore: bump display version to v19.89
-captured_at=2026-10-03T15:50:48Z
+aligned_git=6d23fcead4978f1b385c00ae29dc706c0dcf4ee3
+commit=6d23fcead4978f1b385c00ae29dc706c0dcf4ee3
+short=6d23fce
+message=chore: bump display version to v19.90
+captured_at=2026-10-03T15:56:43Z
 source_branch=master
 display_version=v19.90
-note=Canonical live line is app_19.0. Bundle 12642715 = v19.89. Valuation Methodology moved to Basic Setup bottom (Lite still hides get_started); FV vs Multiples/SOTP tables refreshed. Deploy via scripts/deploy_app_19.R. Supersedes 12642512.
+note=Canonical live line is app_19.0. Bundle 12642731 = v19.90. Home legal disclaimer + About privacy link centered. Deploy via scripts/deploy_app_19.R. Supersedes 12642715.
