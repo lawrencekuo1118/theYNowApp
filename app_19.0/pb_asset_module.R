@@ -22,7 +22,7 @@ pb_asset_module_ui <- function(id) {
                             column(3, valueBoxOutput(ns("vbx_mkt_pb"), width = 12))
                           ),
                           fluidRow(
-                            div("Fair Price = (BVPS / TBVPS / NAVPS) × Target P/B　｜　純 NAV（無倍數）請用側邊「資產基礎法 → NAV」",
+                            div("Fair Price = (BVPS / TBVPS / NAVPS) × Target P/B",
                                 style = "font-size: 16px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;")
                           ),
                           fluidRow(
