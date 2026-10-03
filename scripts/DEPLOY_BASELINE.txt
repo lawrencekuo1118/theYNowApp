@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12642731
+bundleId=12642749
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=6d23fcead4978f1b385c00ae29dc706c0dcf4ee3
-commit=6d23fcead4978f1b385c00ae29dc706c0dcf4ee3
-short=6d23fce
-message=chore: bump display version to v19.90
-captured_at=2026-10-03T15:56:43Z
+aligned_git=4b5cc240d687453f3b5e055079a6aae8cb8e8dde
+commit=4b5cc240d687453f3b5e055079a6aae8cb8e8dde
+short=4b5cc24
+message=chore: bump display version to v19.91
+captured_at=2026-10-03T16:03:59Z
 source_branch=master
 display_version=v19.91
-note=Canonical live line is app_19.0. Bundle 12642731 = v19.90. Home legal disclaimer + About privacy link centered. Deploy via scripts/deploy_app_19.R. Supersedes 12642715.
+note=Canonical live line is app_19.0. Bundle 12642749 = v19.91. Blue Chip Leaderboard sidebar moved under Macro & Market Trends. Deploy via scripts/deploy_app_19.R. Supersedes 12642731.
