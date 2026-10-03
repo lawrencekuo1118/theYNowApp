@@ -142,6 +142,11 @@ APP_DEFAULTS <- list(
   nav_mid         = 1.00,
   nav_high        = 1.05,
 
+  # --- 7c. Relative multiples (Implied Price / PEG indicator; not Intrinsic Value) ---
+  rel_pe_multiple = 18,
+  rel_fwd_pe_multiple = 18,
+  rel_ev_fcf_multiple = 15,
+
   # --- 8. FCF 投影：CapEx 暴衝平滑（使用者可於 FCF 分頁覆寫）---
   # 預設為工程啟發式，非學術或監管標準；見 FCF 分頁說明。
   apply_capex_spike_smooth = TRUE,       # 是否啟用「暴衝 → N 年均值」

@@ -3553,6 +3553,37 @@ server <- function(input, output, session) {
   )
 
   # ==========================================
+  # Relative multiples: P/E · Forward P/E · PEG · EV/FCF
+  # ==========================================
+  rel_results <- relative_multiples_module_server(
+    id = "mod_rel",
+    summary_df = summary_data,
+    d_income_statement = d_income_statement,
+    d_balance_sheet = d_balance_sheet,
+    d_cash_flow = d_cash_flow,
+    current_price = reactive({
+      tryCatch(scraped_market_cap()$price, error = function(e) NA_real_)
+    }),
+    market_cap = reactive({
+      extract_quote_price_mcap(summary_data())$market_cap
+    }),
+    quote_price = reactive({
+      extract_quote_price_mcap(summary_data())$price
+    }),
+    current_ticker = current_ticker,
+    quote_currency = quote_currency,
+    financial_currency = statement_currency,
+    central_sgr_pct = reactive({
+      if (!is.null(input$sgr) && is.finite(as.numeric(input$sgr))) {
+        as.numeric(input$sgr)
+      } else {
+        APP_DEFAULTS$sgr
+      }
+    }),
+    ui_locale = ui_locale
+  )
+
+  # ==========================================
   # 呼叫純 NAV 模組
   # ==========================================
   nav_results <- nav_module_server(

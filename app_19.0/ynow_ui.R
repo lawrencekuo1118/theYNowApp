@@ -1429,7 +1429,12 @@ ui <- dashboardPage(
                text = tags$span(id = "ynow_menu_cat_relative", "Relative Valuation Appr."),
                icon = icon("percentage"),
                startExpanded = FALSE,
-               menuSubItem("P/B", tabName = "pb_calculator", icon = icon("landmark"))
+               menuSubItem("P/B", tabName = "pb_calculator", icon = icon("landmark")),
+               menuSubItem(
+                 text = tags$span(id = "ynow_menu_rel_multiples", "P/E · PEG · EV/FCF"),
+                 tabName = "rel_multiples_calculator",
+                 icon = icon("percentage")
+               )
              ),
              # 歷史基本面驗證（HFV）：理論估值 vs 實際市值 — 非策略回測
              menuItem("Hist. FV Validation", tabName = "hfv", icon = icon("balance-scale")),
@@ -2642,6 +2647,7 @@ ui <- dashboardPage(
         body.ynow-lite .sidebar-menu li:has(a[data-value="nav_calculator"]),
         body.ynow-lite .sidebar-menu li:has(a[data-value="dcf_calculator"]),
         body.ynow-lite .sidebar-menu li:has(a[data-value="pb_calculator"]),
+        body.ynow-lite .sidebar-menu li:has(a[data-value="rel_multiples_calculator"]),
         body.ynow-lite .sidebar-menu a[data-value="hfv"],
         body.ynow-lite .sidebar-menu li:has(> a[data-value="hfv"]),
         body.ynow-lite .sidebar-menu a[data-value="decision_checklist"],
@@ -3605,7 +3611,8 @@ ui <- dashboardPage(
             dcf_calculator: 'ynow_menu_cat_income',
             ddm_calculator: 'ynow_menu_cat_income',
             ri_calculator: 'ynow_menu_cat_income',
-            pb_calculator: 'ynow_menu_cat_relative'
+            pb_calculator: 'ynow_menu_cat_relative',
+            rel_multiples_calculator: 'ynow_menu_cat_relative'
           };
           var LAST_BADGE_MAP = null;
 
@@ -3705,7 +3712,7 @@ ui <- dashboardPage(
           function applySidebarBadges(map) {
             LAST_BADGE_MAP = map || null;
             var labels = (map && map.labels) || {};
-            var tabs = ['dcf_calculator', 'ddm_calculator', 'pb_calculator', 'ri_calculator', 'nav_calculator'];
+            var tabs = ['dcf_calculator', 'ddm_calculator', 'pb_calculator', 'rel_multiples_calculator', 'ri_calculator', 'nav_calculator'];
             tabs.forEach(function (t) {
               var role = (map && map[t] && map[t].role) ? String(map[t].role) : '';
               if (!role && map && map[t] && map[t].on) role = 'primary';
@@ -4115,6 +4122,7 @@ ui <- dashboardPage(
               dcf_calculator: s.menu_dcf,
               ddm_calculator: s.menu_ddm,
               pb_calculator: s.menu_pb,
+              rel_multiples_calculator: s.menu_rel_multiples,
               ri_calculator: s.menu_ri,
               nav_calculator: s.menu_nav,
               sensitivity: s.menu_ynow,
@@ -4233,6 +4241,21 @@ ui <- dashboardPage(
             if (catIncome && s.menu_cat_income) catIncome.textContent = s.menu_cat_income;
             var catRel = document.getElementById('ynow_menu_cat_relative');
             if (catRel && s.menu_cat_relative) catRel.textContent = s.menu_cat_relative;
+            var menuRel = document.getElementById('ynow_menu_rel_multiples');
+            if (menuRel && s.menu_rel_multiples) menuRel.textContent = s.menu_rel_multiples;
+            setBtText('ynow_rel_multiples_lead_title', 'rel_multiples_lead_title');
+            setBtText('ynow_rel_multiples_lead_body', 'rel_multiples_lead_body');
+            setBtText('ynow_rel_multiples_box_title', 'rel_multiples_box_title');
+            setBtText('ynow_rel_multiples_tab_overview', 'rel_multiples_tab_overview');
+            setBtText('ynow_rel_multiples_tab_inputs', 'rel_multiples_tab_inputs');
+            setBtText('ynow_rel_multiples_btn_calc', 'rel_multiples_btn_calc');
+            setBtText('ynow_rel_multiples_btn_sync', 'rel_multiples_btn_sync');
+            setBtText('ynow_rel_multiples_pe_heading', 'rel_multiples_pe_heading');
+            setBtText('ynow_rel_multiples_peg_heading', 'rel_multiples_peg_heading');
+            setBtText('ynow_rel_multiples_evfcf_heading', 'rel_multiples_evfcf_heading');
+            setBtText('ynow_rel_multiples_pe_help', 'rel_multiples_pe_help');
+            setBtText('ynow_rel_multiples_peg_help', 'rel_multiples_peg_help');
+            setBtText('ynow_rel_multiples_evfcf_help', 'rel_multiples_evfcf_help');
             var smartTitle = document.getElementById('ynow_smart_page_title');
             if (smartTitle && s.smart_page_title) smartTitle.textContent = s.smart_page_title;
             var smartSub = document.getElementById('ynow_smart_page_sub');
@@ -4888,7 +4911,8 @@ ui <- dashboardPage(
                 dcf_calculator: 'dcf',
                 ddm_calculator: 'ddm',
                 ri_calculator: 'ri',
-                pb_calculator: 'pb'
+                pb_calculator: 'pb',
+                rel_multiples_calculator: 'pb'
               };
               var key = map[tab] || null;
               ['nav', 'dcf', 'ddm', 'ri', 'pb'].forEach(function (k) {
@@ -4934,8 +4958,8 @@ ui <- dashboardPage(
           (function () {
             var FULL_ONLY_TABS = [
               'get_started', 'nav_calculator', 'dcf_calculator', 'ddm_calculator',
-              'ri_calculator', 'pb_calculator', 'hfv', 'decision_checklist',
-              'lab_notes', 'testing'
+              'ri_calculator', 'pb_calculator', 'rel_multiples_calculator', 'hfv',
+              'decision_checklist', 'lab_notes', 'testing'
             ];
             function remapLegacyTab(tab) {
               tab = String(tab || '');
@@ -7968,6 +7992,7 @@ ui <- dashboardPage(
         "input.sidebar_tabs == 'dcf_calculator' ||",
         "input.sidebar_tabs == 'ddm_calculator' ||",
         "input.sidebar_tabs == 'pb_calculator' ||",
+        "input.sidebar_tabs == 'rel_multiples_calculator' ||",
         "input.sidebar_tabs == 'ri_calculator' ||",
         "input.sidebar_tabs == 'nav_calculator'"
       ),
@@ -8041,6 +8066,7 @@ ui <- dashboardPage(
           "input.sidebar_tabs == 'dcf_calculator' ||",
           "input.sidebar_tabs == 'ddm_calculator' ||",
           "input.sidebar_tabs == 'pb_calculator' ||",
+          "input.sidebar_tabs == 'rel_multiples_calculator' ||",
           "input.sidebar_tabs == 'ri_calculator' ||",
           "input.sidebar_tabs == 'nav_calculator'"
         ),
@@ -9089,6 +9115,9 @@ ui <- dashboardPage(
       
       # 🌟 呼叫 P/B 相對估值分頁介面
       pb_asset_module_ui("mod_pb"),
+
+      # Relative multiples: P/E, Forward P/E, PEG, EV/FCF (Implied Price)
+      relative_multiples_module_ui("mod_rel"),
 
       # 🌟 呼叫純 NAV 分頁介面
       nav_module_ui("mod_nav"),
