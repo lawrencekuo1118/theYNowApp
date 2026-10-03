@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12642427
+bundleId=12642460
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=c7a1cf23de1f3d3551dd74c89cb93434184dd627
-commit=c7a1cf23de1f3d3551dd74c89cb93434184dd627
-short=c7a1cf2
-message=chore: bump display version to v19.84
-captured_at=2026-10-03T14:04:39Z
+aligned_git=3cef6c96c88b49d4aca221f1f1fe80afbd9cf8b3
+commit=3cef6c96c88b49d4aca221f1f1fe80afbd9cf8b3
+short=3cef6c9
+message=chore: bump display version to v19.85
+captured_at=2026-10-03T14:10:48Z
 source_branch=master
 display_version=v19.85
-note=Canonical live line is app_19.0. Bundle 12642427 = v19.84. Multiples/SOTP as Implied Price cross-checks in recommendation + Lab filters; HFV chart stays FV-only. Deploy via scripts/deploy_app_19.R. Supersedes 12642393.
+note=Canonical live line is app_19.0. Bundle 12642460 = v19.85. P/B overview banner shows Fair Price formula only (no sidebar NAV redirect). Deploy via scripts/deploy_app_19.R. Supersedes 12642427.
