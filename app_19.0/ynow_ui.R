@@ -8108,18 +8108,11 @@ ui <- dashboardPage(
           )
         )
       ),
-      # 預測年數 n（左）與 DCF claim 建議（右）— 與上列同寬欄位靠左對齊
+      # 預測年數 n：僅 DCF 明確預測期使用。
+      # DDM／RI 各自有 n1／ri_years；P/B／NAV／Multiples／SOTP 不涉及年數假設。
       # Lite Smart Analysis：不顯示手動模型參數（含預測年數）
       conditionalPanel(
-        condition = paste(
-          "input.sidebar_tabs == 'dcf_calculator' ||",
-          "input.sidebar_tabs == 'ddm_calculator' ||",
-          "input.sidebar_tabs == 'pb_calculator' ||",
-          "input.sidebar_tabs == 'rel_multiples_calculator' ||",
-          "input.sidebar_tabs == 'sotp_calculator' ||",
-          "input.sidebar_tabs == 'ri_calculator' ||",
-          "input.sidebar_tabs == 'nav_calculator'"
-        ),
+        condition = "input.sidebar_tabs == 'dcf_calculator'",
         fluidRow(
           class = "ynow-header-years-suggest-row",
           column(
@@ -8136,12 +8129,9 @@ ui <- dashboardPage(
           column(
             width = 6,
             class = "col-xs-12 col-sm-6",
-            conditionalPanel(
-              condition = "input.sidebar_tabs == 'dcf_calculator'",
-              tags$div(
-                class = "ynow-dcf-claim-suggest-wrap",
-                uiOutput("dcf_claim_suggest")
-              )
+            tags$div(
+              class = "ynow-dcf-claim-suggest-wrap",
+              uiOutput("dcf_claim_suggest")
             )
           )
         )

@@ -387,6 +387,18 @@ testthat::test_that("Lite Smart Analysis blurb sits above composite status witho
   )
   testthat::expect_true(length(years_cond) == 1L && nzchar(years_cond))
   testthat::expect_false(grepl("smart_analysis", years_cond, fixed = TRUE))
+  # Shared forecast years n is DCF-only (P/B · NAV · Multiples · SOTP have no year horizon)
+  testthat::expect_true(grepl(
+    'condition = "input.sidebar_tabs == \'dcf_calculator\'"',
+    years_cond,
+    fixed = TRUE
+  ))
+  testthat::expect_false(grepl("pb_calculator", years_cond, fixed = TRUE))
+  testthat::expect_false(grepl("nav_calculator", years_cond, fixed = TRUE))
+  testthat::expect_false(grepl("rel_multiples_calculator", years_cond, fixed = TRUE))
+  testthat::expect_false(grepl("sotp_calculator", years_cond, fixed = TRUE))
+  testthat::expect_false(grepl("ddm_calculator", years_cond, fixed = TRUE))
+  testthat::expect_false(grepl("ri_calculator", years_cond, fixed = TRUE))
 })
 
 testthat::test_that("ynow_server wires Lite scenario apply before auto-calc", {
