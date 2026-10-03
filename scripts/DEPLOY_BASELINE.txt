@@ -8,5 +8,5 @@ short=4b5cc24
 message=chore: bump display version to v19.91
 captured_at=2026-10-03T16:03:59Z
 source_branch=master
-display_version=v19.91
+display_version=v19.92
 note=Canonical live line is app_19.0. Bundle 12642749 = v19.91. Blue Chip Leaderboard sidebar moved under Macro & Market Trends. Deploy via scripts/deploy_app_19.R. Supersedes 12642731.
