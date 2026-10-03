@@ -1513,6 +1513,7 @@ ui <- dashboardPage(
                tabName = "macro_market",
                icon = icon("globe-asia")
              ),
+             menuItem("Blue Chip Leaderboard", tabName = "bluechip", icon = icon("star")),
              menuItem("Company", tabName = "dashboard", icon = icon("chart-line")),
              menuItem("YNOW", tabName = "sensitivity", icon = icon("sliders-h")),
              menuItem(
@@ -1563,7 +1564,6 @@ ui <- dashboardPage(
                tabName = "lab_notes",
                icon = icon("flask")
              ),
-             menuItem("Blue Chip Leaderboard", tabName = "bluechip", icon = icon("star")),
              menuItem("Decision Checklist", tabName = "decision_checklist", icon = icon("clipboard-check")),
              menuItem("About", tabName = "about", icon = icon("info-circle"))
              # Snapshot 不放主選單（避免巢狀 li 被瀏覽器抬出隱藏）；改由底部捷徑切換

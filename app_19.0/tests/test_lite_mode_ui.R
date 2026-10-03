@@ -198,9 +198,13 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl("rf_col, ynow_col, hccsi_col", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-macro-hccsi-expand ynow-full-only", macro_txt, fixed = TRUE))
   testthat::expect_false(grepl("ynow-macro-kpi--hccsi[^\\n]*ynow-full-only", macro_txt))
-  # Macro, then Company (dashboard), then YNOW
+  # Macro, then Blue Chip, then Company (dashboard), then YNOW
   testthat::expect_true(
     regexpr('tabName = "macro_market"', txt, fixed = TRUE)[1] <
+      regexpr('tabName = "bluechip"', txt, fixed = TRUE)[1]
+  )
+  testthat::expect_true(
+    regexpr('tabName = "bluechip"', txt, fixed = TRUE)[1] <
       regexpr('tabName = "dashboard"', txt, fixed = TRUE)[1]
   )
   testthat::expect_true(
