@@ -8,5 +8,5 @@ short=4ae5078
 message=chore: bump display version to v19.83
 captured_at=2026-10-03T13:52:00Z
 source_branch=master
-display_version=v19.83
+display_version=v19.84
 note=Canonical live line is app_19.0. Bundle 12642393 = v19.83. SOTP promoted to Relative sidebar; Multiples radio = Earnings/Enterprise/P/S; per-segment EV/Sales. Deploy via scripts/deploy_app_19.R. Supersedes 12642343.
