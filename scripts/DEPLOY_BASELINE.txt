@@ -8,5 +8,5 @@ short=6528857
 message=chore: bump display version to v19.64
 captured_at=2026-10-02T16:44:10Z
 source_branch=master
-display_version=v19.64
+display_version=v19.65
 note=Canonical live line is app_19.0. Bundle 12639154 = v19.64. CapEx/Revenue proj rate always reseeds from the loaded statement CapEx series on sync so a prior foundry-level ratio (e.g. TSM 37.07%) cannot stick onto fabless names. Deploy via scripts/deploy_app_19.R. Supersedes 12638614 / 12638535 / 12638399 / 12638310.
