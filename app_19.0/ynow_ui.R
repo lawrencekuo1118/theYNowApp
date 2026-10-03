@@ -333,7 +333,7 @@
           class = "ynow-home-card",
           `data-tab` = "decision_checklist",
           `data-tab-lite` = "sensitivity",
-          tags$p(id = "ynow_home_decide_k", class = "ynow-home-card-k ynow-full-only", "Decide"),
+          tags$p(id = "ynow_home_decide_k", class = "ynow-home-card-k ynow-full-only", "Action"),
           tags$p(id = "ynow_home_decide_k_lite", class = "ynow-home-card-k ynow-lite-only", "YNOW"),
           tags$p(
             id = "ynow_home_decide_d",
