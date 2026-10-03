@@ -4216,6 +4216,8 @@ ui <- dashboardPage(
             setBtText('ynow_macro_bubble_topn_label', 'macro_bubble_topn_label');
             setBtText('ynow_macro_bubble_attr_label', 'macro_bubble_attr_label');
             setBtText('ynow_macro_bubble_conc_title', 'macro_bubble_conc_title');
+            setBtText('ynow_macro_bubble_top_list_title', 'macro_bubble_top_list_title');
+            setBtText('ynow_macro_bubble_conc_note', 'macro_bubble_conc_note');
             setBtText('ynow_macro_bubble_attr_title', 'macro_bubble_attr_title');
             setBtText('ynow_macro_bubble_buffett_title', 'macro_bubble_buffett_title');
             setBtText('ynow_macro_bubble_buffett_note', 'macro_bubble_buffett_note');

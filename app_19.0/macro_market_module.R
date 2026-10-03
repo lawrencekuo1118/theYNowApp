@@ -1374,28 +1374,81 @@ macro_market_server <- function(id = "macro",
     output$bubble_conc_plot <- plotly::renderPlotly({
       bd <- bubble_data()
       shiny::validate(shiny::need(nrow(bd$pool) >= 1L, .ui("macro_bubble_need_theme")))
-      top_n <- bd$top_n
-      top_share <- if (is.finite(bd$top_share)) bd$top_share else 0
-      rest <- max(0, 1 - top_share)
-      pie_df <- data.frame(
-        part = c(sprintf("Top %d", top_n), .ui("macro_bubble_rest")),
-        w = c(top_share, rest),
-        stringsAsFactors = FALSE
+      hist <- bd$history
+      shiny::validate(shiny::need(
+        is.data.frame(hist) && nrow(hist) >= 2L,
+        .ui("macro_bubble_conc_need_hist")
+      ))
+      top_lab <- sprintf(.ui("macro_bubble_conc_topn_series"), as.integer(bd$top_n))
+      top1_lab <- .ui("macro_bubble_conc_top1_series")
+      fig <- plotly::plot_ly()
+      fig <- plotly::add_trace(
+        fig,
+        x = hist$date,
+        y = 100 * hist$top_n_share,
+        type = "scatter",
+        mode = "lines",
+        name = top_lab,
+        line = list(color = "#e67e22", width = 2.2)
       )
-      fig <- plotly::plot_ly(
-        pie_df,
-        labels = ~part,
-        values = ~w,
-        type = "pie",
-        hole = 0.45,
-        textinfo = "label+percent",
-        marker = list(colors = c("#e67e22", "#bdc3c7"))
+      fig <- plotly::add_trace(
+        fig,
+        x = hist$date,
+        y = 100 * hist$top1_share,
+        type = "scatter",
+        mode = "lines",
+        name = top1_lab,
+        line = list(color = "#2980b9", width = 1.6, dash = "dot")
       )
       plotly::layout(
         fig,
-        showlegend = TRUE,
-        margin = list(l = 10, r = 10, t = 10, b = 10),
-        title = list(text = "", font = list(size = 12))
+        xaxis = list(title = ""),
+        yaxis = list(
+          title = .ui("macro_bubble_conc_axis"),
+          ticksuffix = "%",
+          rangemode = "tozero"
+        ),
+        legend = list(orientation = "h", y = 1.12),
+        margin = list(l = 50, r = 20, t = 30, b = 40),
+        hovermode = "x unified"
+      )
+    })
+
+    output$bubble_conc_table <- renderUI({
+      bd <- tryCatch(bubble_data(), error = function(e) NULL)
+      if (is.null(bd) || !is.data.frame(bd$top) || !nrow(bd$top)) return(NULL)
+      top <- bd$top
+      names_v <- macro_bubble_top_names(top$ticker, .mode())
+      rows <- lapply(seq_len(nrow(top)), function(i) {
+        tk <- as.character(top$ticker[[i]])
+        nm <- if (length(names_v) && nzchar(names_v[[tk]] %||% "")) {
+          names_v[[tk]]
+        } else {
+          "—"
+        }
+        mcap <- suppressWarnings(as.numeric(top$market_cap[[i]]))
+        w <- suppressWarnings(as.numeric(top$weight[[i]]))
+        tags$tr(
+          tags$td(as.character(i)),
+          tags$td(tk),
+          tags$td(nm),
+          tags$td(macro_bubble_fmt_usd_level(mcap)),
+          tags$td(if (is.finite(w)) sprintf("%.1f%%", 100 * w) else "—")
+        )
+      })
+      tags$div(
+        class = "table-responsive",
+        tags$table(
+          class = "table table-condensed ynow-hccsi-table",
+          tags$thead(tags$tr(
+            tags$th("#"),
+            tags$th(.ui("macro_bubble_col_ticker")),
+            tags$th(.ui("macro_bubble_col_name")),
+            tags$th(.ui("macro_bubble_col_mcap")),
+            tags$th(.ui("macro_bubble_col_weight"))
+          )),
+          tags$tbody(rows)
+        )
       )
     })
 

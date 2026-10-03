@@ -180,25 +180,167 @@ macro_bubble_ticker_return <- function(ticker, period = "1y") {
   as.numeric(tail(px, 1) / px[[1]] - 1)
 }
 
+#' Fetch Close series for each ticker in a market-cap pool (named list).
+macro_bubble_fetch_pool_prices <- function(pool, period = "1y", fetch_px = NULL) {
+  period <- as.character(period %||% "1y")[1]
+  out <- list()
+  if (!is.data.frame(pool) || !nrow(pool) || !"ticker" %in% names(pool)) return(out)
+  if (is.null(fetch_px)) {
+    fetch_px <- if (exists("fetch_price_history_df", mode = "function")) {
+      fetch_price_history_df
+    } else {
+      function(...) NULL
+    }
+  }
+  for (tk in as.character(pool$ticker)) {
+    if (!nzchar(tk)) next
+    df <- tryCatch(fetch_px(tk, period), error = function(e) NULL)
+    if (is.null(df) || !is.data.frame(df) || nrow(df) < 2L) next
+    if (!all(c("Date", "Close") %in% names(df))) next
+    df <- df[order(as.Date(df$Date)), , drop = FALSE]
+    df <- df[is.finite(df$Close) & df$Close > 0, , drop = FALSE]
+    if (nrow(df) < 2L) next
+    out[[tk]] <- data.frame(
+      date = as.Date(df$Date),
+      close = as.numeric(df$Close),
+      stringsAsFactors = FALSE
+    )
+  }
+  out
+}
+
+#' Total return (fraction) from a Close series data.frame.
+macro_bubble_series_return <- function(ser) {
+  if (is.null(ser) || !is.data.frame(ser) || nrow(ser) < 2L) return(NA_real_)
+  if (!"close" %in% names(ser)) return(NA_real_)
+  px <- ser$close[is.finite(ser$close) & ser$close > 0]
+  if (length(px) < 2L) return(NA_real_)
+  as.numeric(tail(px, 1) / px[[1]] - 1)
+}
+
+#' Empty concentration history frame.
+.macro_bubble_conc_hist_empty <- function() {
+  data.frame(
+    date = as.Date(character(0)),
+    top_n_share = numeric(0),
+    top1_share = numeric(0),
+    stringsAsFactors = FALSE
+  )
+}
+
+#' Proxy Top-N / Top-1 market-cap share path for a fixed basket pool.
+#' Historical weights use current market cap × (Close_t / Close_last); Top-N is
+#' re-ranked each sample date within the snapshot pool (research proxy).
+macro_bubble_concentration_history <- function(pool,
+                                              top_n = 5L,
+                                              period = "1y",
+                                              prices = NULL,
+                                              fetch_px = NULL) {
+  top_n <- max(1L, min(10L, as.integer(top_n)[1]))
+  period <- as.character(period %||% "1y")[1]
+  empty <- .macro_bubble_conc_hist_empty()
+  if (!is.data.frame(pool) || !nrow(pool)) return(empty)
+  if (!all(c("ticker", "market_cap") %in% names(pool))) return(empty)
+  if (is.null(prices)) {
+    prices <- macro_bubble_fetch_pool_prices(pool, period = period, fetch_px = fetch_px)
+  }
+  if (!length(prices)) return(empty)
+
+  tks <- intersect(as.character(pool$ticker), names(prices))
+  if (!length(tks)) return(empty)
+  caps0 <- suppressWarnings(as.numeric(pool$market_cap[match(tks, pool$ticker)]))
+  names(caps0) <- tks
+  last_px <- vapply(tks, function(tk) {
+    x <- prices[[tk]]
+    as.numeric(tail(x$close, 1))
+  }, numeric(1))
+
+  all_dates <- sort(unique(do.call(c, lapply(prices[tks], function(x) x$date))))
+  if (!length(all_dates)) return(empty)
+  if (identical(period, "1mo")) {
+    step <- max(1L, as.integer(floor(length(all_dates) / 12)))
+    samp <- all_dates[seq(1L, length(all_dates), by = step)]
+  } else if (identical(period, "3mo")) {
+    step <- max(1L, as.integer(floor(length(all_dates) / 16)))
+    samp <- all_dates[seq(1L, length(all_dates), by = step)]
+  } else {
+    ym <- format(all_dates, "%Y-%m")
+    samp <- all_dates[!duplicated(ym, fromLast = TRUE)]
+  }
+  samp <- sort(unique(c(samp, max(all_dates))))
+
+  rows <- lapply(samp, function(d) {
+    mcaps <- vapply(tks, function(tk) {
+      x <- prices[[tk]]
+      hit <- x$close[x$date <= d]
+      if (!length(hit)) return(NA_real_)
+      px <- as.numeric(tail(hit, 1))
+      lp <- last_px[[tk]]
+      cap <- caps0[[tk]]
+      if (!is.finite(px) || px <= 0 || !is.finite(lp) || lp <= 0 || !is.finite(cap) || cap <= 0) {
+        return(NA_real_)
+      }
+      cap * (px / lp)
+    }, numeric(1))
+    ok <- is.finite(mcaps) & mcaps > 0
+    if (sum(ok) < 1L) return(NULL)
+    w <- sort(mcaps[ok] / sum(mcaps[ok]), decreasing = TRUE)
+    data.frame(
+      date = d,
+      top_n_share = sum(utils::head(w, top_n)),
+      top1_share = w[[1]],
+      stringsAsFactors = FALSE
+    )
+  })
+  out <- do.call(rbind, Filter(Negate(is.null), rows))
+  if (is.null(out) || !nrow(out)) return(empty)
+  rownames(out) <- NULL
+  out
+}
+
+#' Attach display names for Top-N table rows.
+macro_bubble_top_names <- function(tickers, mode = "US") {
+  tks <- as.character(tickers)
+  out <- stats::setNames(rep("", length(tks)), tks)
+  if (!length(tks)) return(out)
+  if (exists("ynow_index_lookup_names", mode = "function")) {
+    got <- tryCatch(ynow_index_lookup_names(tks, mode), error = function(e) NULL)
+    if (is.character(got) && length(got)) {
+      nm <- names(got)
+      if (!is.null(nm) && length(nm) == length(got)) {
+        idx <- match(toupper(trimws(tks)), toupper(trimws(nm)))
+        hit <- which(!is.na(idx))
+        if (length(hit)) out[hit] <- as.character(got[idx[hit]])
+      } else if (length(got) == length(tks)) {
+        out[] <- as.character(got)
+      }
+    }
+  }
+  out
+}
+
 #' Concentration + return attribution for a theme universe.
-#' @return list with weights table, alerts, attribution
+#' @return list with weights table, alerts, attribution, history
 macro_bubble_concentration <- function(theme_key,
                                        mode = get_market_mode(),
                                        top_n = 5L,
                                        attr_period = "1y") {
   top_n <- max(1L, min(10L, as.integer(top_n)[1]))
   attr_period <- as.character(attr_period %||% "1y")[1]
-  if (!attr_period %in% c("1mo", "3mo", "1y")) attr_period <- "1y"
+  if (!attr_period %in% c("1mo", "3mo", "1y", "2y")) attr_period <- "1y"
 
   uni <- macro_bubble_resolve_universe(theme_key, mode)
   pool <- macro_bubble_attach_caps(uni$tickers, max_n = .MACRO_BUBBLE_MAX_POOL)
+  empty_hist <- .macro_bubble_conc_hist_empty()
   empty <- list(
     universe = uni,
     pool = pool,
+    top = pool[0, , drop = FALSE],
     top_n = top_n,
     top_share = NA_real_,
     top1_weight = NA_real_,
     alerts = character(0),
+    history = empty_hist,
     attribution = list(
       period = attr_period,
       basket_ret = NA_real_,
@@ -217,8 +359,11 @@ macro_bubble_concentration <- function(theme_key,
   if (is.finite(top1) && top1 >= 0.50) alerts <- c(alerts, "top1_gt_50")
   if (is.finite(top_share) && top_share >= 0.70) alerts <- c(alerts, "topn_gt_70")
 
-  # Returns for attribution (cap-weighted)
-  rets <- vapply(pool$ticker, macro_bubble_ticker_return, numeric(1), period = attr_period)
+  # One price fetch for attribution returns + concentration path
+  prices <- macro_bubble_fetch_pool_prices(pool, period = attr_period)
+  rets <- vapply(pool$ticker, function(tk) {
+    macro_bubble_series_return(prices[[as.character(tk)]])
+  }, numeric(1))
   pool$ret <- as.numeric(rets)
   ok <- is.finite(pool$weight) & is.finite(pool$ret)
   basket_ret <- if (any(ok)) sum(pool$weight[ok] * pool$ret[ok]) else NA_real_
@@ -247,6 +392,13 @@ macro_bubble_concentration <- function(theme_key,
     }
   }
 
+  history <- macro_bubble_concentration_history(
+    pool = pool,
+    top_n = top_n,
+    period = attr_period,
+    prices = prices
+  )
+
   list(
     universe = uni,
     pool = pool,
@@ -255,6 +407,7 @@ macro_bubble_concentration <- function(theme_key,
     top_share = top_share,
     top1_weight = top1,
     alerts = unique(alerts),
+    history = history,
     attribution = list(
       period = attr_period,
       basket_ret = basket_ret,
@@ -540,8 +693,8 @@ macro_bubble_chapter_ui <- function(ns) {
           class = "col-xs-12 col-sm-6 col-md-3",
           selectInput(
             ns("bubble_attr_period"),
-            label = tags$span(id = "ynow_macro_bubble_attr_label", "Attribution window"),
-            choices = c("1M" = "1mo", "3M" = "3mo", "1Y" = "1y"),
+            label = tags$span(id = "ynow_macro_bubble_attr_label", "Analysis window"),
+            choices = c("1M" = "1mo", "3M" = "3mo", "1Y" = "1y", "2Y" = "2y"),
             selected = "1y"
           )
         ),
@@ -568,8 +721,22 @@ macro_bubble_chapter_ui <- function(ns) {
         class = "col-xs-12 col-sm-12 col-md-6",
         tags$h4(id = "ynow_macro_bubble_conc_title", "Market-cap concentration"),
         uiOutput(ns("bubble_conc_kpi")),
-        plotlyOutput(ns("bubble_conc_plot"), height = "300px") %>%
-          shinycssloaders::withSpinner()
+        plotlyOutput(ns("bubble_conc_plot"), height = "280px") %>%
+          shinycssloaders::withSpinner(),
+        tags$h5(
+          id = "ynow_macro_bubble_top_list_title",
+          style = "margin-top: 12px;",
+          "Top N by market cap"
+        ),
+        uiOutput(ns("bubble_conc_table")),
+        tags$p(
+          id = "ynow_macro_bubble_conc_note",
+          class = "ynow-macro-hint",
+          paste0(
+            "History uses current market cap × relative Close (research proxy); ",
+            "Top-N membership is re-ranked within today’s basket pool."
+          )
+        )
       ),
       column(
         width = 6,

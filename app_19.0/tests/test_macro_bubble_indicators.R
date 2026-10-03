@@ -54,6 +54,34 @@ toy <- data.frame(
 )
 check("top1 alert threshold", toy$weight[[1]] >= 0.50)
 
+# Concentration history from synthetic prices (no network)
+dates <- as.Date("2024-01-01") + c(0, 30, 60, 90)
+toy_prices <- list(
+  A = data.frame(date = dates, close = c(100, 110, 120, 130), stringsAsFactors = FALSE),
+  B = data.frame(date = dates, close = c(100, 100, 100, 100), stringsAsFactors = FALSE),
+  C = data.frame(date = dates, close = c(100, 90, 80, 70), stringsAsFactors = FALSE),
+  D = data.frame(date = dates, close = c(100, 100, 100, 100), stringsAsFactors = FALSE)
+)
+hist <- macro_bubble_concentration_history(
+  pool = toy,
+  top_n = 2L,
+  period = "3mo",
+  prices = toy_prices
+)
+check("conc history rows", is.data.frame(hist) && nrow(hist) >= 2L)
+check("conc history cols", all(c("date", "top_n_share", "top1_share") %in% names(hist)))
+check("conc history shares in (0,1]", {
+  all(is.finite(hist$top_n_share) & hist$top_n_share > 0 & hist$top_n_share <= 1 + 1e-9) &&
+    all(is.finite(hist$top1_share) & hist$top1_share > 0 & hist$top1_share <= 1 + 1e-9)
+})
+# At last date, proxy mcap equals current caps → Top-2 share = 0.8
+last <- hist[nrow(hist), , drop = FALSE]
+check("conc history last top2 ~0.8", abs(last$top_n_share - 0.8) < 1e-6)
+check("conc history last top1 ~0.6", abs(last$top1_share - 0.6) < 1e-6)
+check("series return from prices", {
+  abs(macro_bubble_series_return(toy_prices$A) - 0.30) < 1e-9
+})
+
 lt_over <- macro_bubble_buffett_light(data.frame(
   date = as.Date(c("2000-12-31", "2001-12-31", "2002-12-31", "2024-12-31")),
   ratio_pct = c(100, 100, 100, 200),
@@ -75,7 +103,9 @@ check("TW buffett csv loads", is.data.frame(ser_tw) && nrow(ser_tw) >= 10L)
 
 # Locale keys
 for (k in c(
-  "macro_bubble_title", "macro_bubble_buffett_over", "macro_bubble_alert_breadth"
+  "macro_bubble_title", "macro_bubble_buffett_over", "macro_bubble_alert_breadth",
+  "macro_bubble_conc_axis", "macro_bubble_top_list_title", "macro_bubble_conc_note",
+  "macro_bubble_col_ticker", "macro_bubble_col_mcap"
 )) {
   check(paste("en", k), nzchar(ui_str(k, "en")))
   check(paste("zh", k), nzchar(ui_str(k, "zh-TW")))
@@ -88,6 +118,12 @@ check("ch2 notes still present", grepl("ynow_notes_block", dec_src, fixed = TRUE
         grepl("ynow_funnel_ch2_lead", dec_src, fixed = TRUE))
 bt_src <- paste(readLines("macro_bubble_indicators.R", warn = FALSE), collapse = "\n")
 check("bubble theme first-paint Technology XLK", grepl('selected = "gics_xlk"', bt_src, fixed = TRUE))
+check("conc history UI mounts table", {
+  grepl("bubble_conc_table", bt_src, fixed = TRUE) &&
+    grepl("ynow_macro_bubble_top_list_title", bt_src, fixed = TRUE) &&
+    grepl("ynow_macro_bubble_conc_note", bt_src, fixed = TRUE)
+})
+check("analysis window includes 2y", grepl('"2Y" = "2y"', bt_src, fixed = TRUE))
 check("buffett companion KPI outputs", {
   grepl("bubble_buffett_mcap", bt_src, fixed = TRUE) &&
     grepl("bubble_buffett_gdp", bt_src, fixed = TRUE)
@@ -134,6 +170,17 @@ check("Macro tab mounts bubble chapter at bottom", {
   pos_own <- regexpr("ynow_own_index", macro_src, fixed = TRUE)[1]
   pos_bub <- regexpr("macro_bubble_chapter_ui", macro_src, fixed = TRUE)[1]
   is.finite(pos_own) && pos_own > 0 && is.finite(pos_bub) && pos_bub > pos_own
+})
+check("conc plot uses history series", {
+  grepl("bd$history", macro_src, fixed = TRUE) &&
+    grepl("macro_bubble_conc_topn_series", macro_src, fixed = TRUE) &&
+    grepl("output$bubble_conc_table", macro_src, fixed = TRUE)
+})
+check("tab layout still has KPI above conc plot", {
+  pos_kpi <- regexpr("bubble_conc_kpi", bt_src, fixed = TRUE)[1]
+  pos_plot <- regexpr("bubble_conc_plot", bt_src, fixed = TRUE)[1]
+  pos_tbl <- regexpr("bubble_conc_table", bt_src, fixed = TRUE)[1]
+  pos_kpi > 0 && pos_plot > pos_kpi && pos_tbl > pos_plot
 })
 check("no CAPM write in bubble file", {
   bt <- paste(readLines("macro_bubble_indicators.R", warn = FALSE), collapse = "\n")
