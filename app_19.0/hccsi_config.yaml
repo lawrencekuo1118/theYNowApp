@@ -1,10 +1,10 @@
-# Human Civilization Critical Systems Index (HCCSI)
+# Critical Tech Stack Index (HCCSI)
 # Tech-stack development expectation from statements + market vs benchmark
-# and vs each name’s own history. Not a buy signal.
+# and vs each name’s own history. Not a buy signal. Ticker stays HCCSI.
 
 meta:
   id: HCCSI
-  name: Human Civilization Critical Systems Index
+  name: Critical Tech Stack Index
   role: tech_development_expectation
   not:
     - buy_signal

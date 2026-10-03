@@ -34,7 +34,7 @@ if (!exists("%||%", mode = "function")) {
 HCCSI_DEFAULT_CONFIG <- list(
   meta = list(
     id = "HCCSI",
-    name = "Human Civilization Critical Systems Index",
+    name = "Critical Tech Stack Index",
     role = "tech_development_expectation",
     not = c("buy_signal", "extinction_probability", "collapse_prediction", "ordinary_market_cap_index"),
     governance = list(

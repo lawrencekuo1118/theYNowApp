@@ -1349,7 +1349,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     macro_mode_tw = "TW Market",
     macro_rf_title = "Risk-free rate Rf (10Y)",
     hccsi_title = "HCCSI",
-    hccsi_title_full = "Human Civilization Critical Systems Index (HCCSI)",
+    hccsi_title_full = "Critical Tech Stack Index (HCCSI)",
     hccsi_disclosure_short = "Tech-stack development reading — not a buy signal.",
     hccsi_disclosure = paste0(
       "HCCSI combines each listed node’s statements (Revenue growth, Gross Margin, CapEx vs its own past) ",
@@ -3116,7 +3116,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     macro_mode_tw = "台股模式",
     macro_rf_title = "無風險利率 Rf（10 年期）",
     hccsi_title = "HCCSI",
-    hccsi_title_full = "Human Civilization Critical Systems Index (HCCSI)",
+    hccsi_title_full = "關鍵科技堆疊指數（HCCSI）",
     hccsi_disclosure_short = "科技鏈發展讀數，不是買進訊號。",
     hccsi_disclosure = paste0(
       "HCCSI 把各發行人的財報（營收成長、Gross Margin、CapEx 相對自身歷史）",

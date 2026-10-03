@@ -312,13 +312,29 @@ check("formula banner like WACC", grepl("ynow-hccsi-formula-banner", mod_txt, fi
   grepl("hccsi_formula_eq", mod_txt, fixed = TRUE))
 check("Rf not full-only", !grepl("ynow-macro-kpi--rf[^\\n]*ynow-full-only", macro_txt))
 
-for (k in c("hccsi_title", "hccsi_disclosure", "hccsi_index_health", "hccsi_index_stress",
-            "hccsi_index_fragility", "hccsi_index_market", "notif_hccsi_fx_missing",
-            "hccsi_unavailable", "hccsi_dropped", "hccsi_dropped_none",
-            "hccsi_alert_unavailable", "notif_hccsi_history_missing")) {
+for (k in c("hccsi_title", "hccsi_title_full", "hccsi_disclosure", "hccsi_index_health",
+            "hccsi_index_stress", "hccsi_index_fragility", "hccsi_index_market",
+            "notif_hccsi_fx_missing", "hccsi_unavailable", "hccsi_dropped",
+            "hccsi_dropped_none", "hccsi_alert_unavailable", "notif_hccsi_history_missing")) {
   check(paste("en", k), nzchar(ui_str(k, "en")))
   check(paste("zh", k), nzchar(ui_str(k, "zh-TW")))
 }
+check("en full title shortened", {
+  identical(ui_str("hccsi_title_full", "en"), "Critical Tech Stack Index (HCCSI)") &&
+    identical(ui_str("hccsi_title", "en"), "HCCSI")
+})
+check("zh full title shortened", {
+  identical(ui_str("hccsi_title_full", "zh-TW"), "關鍵科技堆疊指數（HCCSI）") &&
+    identical(ui_str("hccsi_title", "zh-TW"), "HCCSI")
+})
+check("config display name", {
+  identical(HCCSI_DEFAULT_CONFIG$meta$id, "HCCSI") &&
+    identical(HCCSI_DEFAULT_CONFIG$meta$name, "Critical Tech Stack Index")
+})
+check("no civilization full name left", {
+  !grepl("Human Civilization", ui_str("hccsi_title_full", "en"), fixed = TRUE) &&
+    !grepl("Human Civilization", HCCSI_DEFAULT_CONFIG$meta$name, fixed = TRUE)
+})
 check("en name", identical(ui_str("hccsi_index_health", "en"), "Statement Development"))
 check("zh name EN", identical(ui_str("hccsi_index_health", "zh-TW"), "Statement Development"))
 check("zh gloss", grepl("財報發展", ui_str("hccsi_index_health_gloss", "zh-TW"), fixed = TRUE))
