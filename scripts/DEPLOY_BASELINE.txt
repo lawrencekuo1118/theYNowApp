@@ -8,5 +8,5 @@ short=3184150
 message=chore: bump display version to v19.96
 captured_at=2026-10-03T17:00:04Z
 source_branch=master
-display_version=v19.96
+display_version=v19.97
 note=Canonical live line is app_19.0. Bundle 12642872 = v19.96. Blue Chip detail table under Rankings; Detail sub-tab removed. Deploy via scripts/deploy_app_19.R. Supersedes 12642858.
