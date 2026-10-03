@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12639154
+bundleId=12641590
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=6528857d4e9a412cee4238a8271ec765d44480b2
-commit=6528857d4e9a412cee4238a8271ec765d44480b2
-short=6528857
-message=chore: bump display version to v19.64
-captured_at=2026-10-02T16:44:10Z
+aligned_git=198fc1ac9cea6405e03c8a47e7547a61cb969d58
+commit=198fc1ac9cea6405e03c8a47e7547a61cb969d58
+short=198fc1a
+message=chore: bump display version to v19.65
+captured_at=2026-10-03T08:32:10Z
 source_branch=master
 display_version=v19.65
-note=Canonical live line is app_19.0. Bundle 12639154 = v19.64. CapEx/Revenue proj rate always reseeds from the loaded statement CapEx series on sync so a prior foundry-level ratio (e.g. TSM 37.07%) cannot stick onto fabless names. Deploy via scripts/deploy_app_19.R. Supersedes 12638614 / 12638535 / 12638399 / 12638310.
+note=Canonical live line is app_19.0. Bundle 12641590 = v19.65. Company header KPI shows Yahoo last trade (Market Price) instead of Previous Close; same-ticker Search reloads statements. Deploy via scripts/deploy_app_19.R. Supersedes 12639154 / 12638614 / 12638535 / 12638399 / 12638310.
