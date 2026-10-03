@@ -8,5 +8,5 @@ short=c412d0f
 message=chore: bump display version to v19.66
 captured_at=2026-10-03T08:41:57Z
 source_branch=master
-display_version=v19.66
+display_version=v19.67
 note=Canonical live line is app_19.0. Bundle 12641615 = v19.66. Dynamic industry bubble & weight concentration is again the last chapter on Macro & Market Trends (removed from YNOW). Deploy via scripts/deploy_app_19.R. Supersedes 12641590 / 12639154.
