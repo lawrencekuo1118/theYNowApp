@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12642026
+bundleId=12642037
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=091bcdcc96ccdfe500bfcfdda52196dc3cbf07e8
-commit=091bcdcc96ccdfe500bfcfdda52196dc3cbf07e8
-short=091bcdc
-message=chore: bump display version to v19.72
-captured_at=2026-10-03T11:47:42Z
+aligned_git=ef5f32731c7c4de0f55267e289d6608e26c81c8d
+commit=ef5f32731c7c4de0f55267e289d6608e26c81c8d
+short=ef5f327
+message=chore: bump display version to v19.73
+captured_at=2026-10-03T11:53:43Z
 source_branch=master
 display_version=v19.73
-note=Canonical live line is app_19.0. Bundle 12642026 = v19.72. YNOW/TYNOW KPI click expands line chart in shared index hist panel (same as ^GSPC). Deploy via scripts/deploy_app_19.R. Supersedes 12642010 / 12641727.
+note=Canonical live line is app_19.0. Bundle 12642037 = v19.73. Macro bubble Industry-or-concept defaults to Technology (US XLK / TW Foundry). Deploy via scripts/deploy_app_19.R. Supersedes 12642026 / 12642010.
