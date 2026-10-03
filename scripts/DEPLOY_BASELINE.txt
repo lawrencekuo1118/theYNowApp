@@ -8,5 +8,5 @@ short=69696bf
 message=chore: bump display version to v19.81
 captured_at=2026-10-03T13:23:22Z
 source_branch=master
-display_version=v19.81
+display_version=v19.82
 note=Canonical live line is app_19.0. Bundle 12642308 = v19.81. Relative multiples P3 (EV/EBIT, EV/EBITDA, EV/Sales, P/S), EV/ARR (manual), revenue SOTP. Deploy via scripts/deploy_app_19.R. Supersedes 12642262.
