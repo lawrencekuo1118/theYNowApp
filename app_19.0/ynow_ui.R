@@ -337,6 +337,7 @@
         class = "ynow-home-grid",
         role = "group",
         `aria-labelledby` = "ynow_home_title",
+        # Order mirrors sidebar after Home: Macro → Blue Chip → Company → YNOW → Value → Action
         tags$button(
           type = "button",
           class = "ynow-home-card",
@@ -351,12 +352,34 @@
         tags$button(
           type = "button",
           class = "ynow-home-card",
+          `data-tab` = "bluechip",
+          tags$p(id = "ynow_home_bluechip_k", class = "ynow-home-card-k", "Blue Chip"),
+          tags$p(
+            id = "ynow_home_bluechip_d",
+            class = "ynow-home-card-d",
+            "Peer ranking pools, truncate rules, and clustering for research."
+          )
+        ),
+        tags$button(
+          type = "button",
+          class = "ynow-home-card",
           `data-tab` = "dashboard",
           tags$p(id = "ynow_home_company_k", class = "ynow-home-card-k", "Company"),
           tags$p(
             id = "ynow_home_company_d",
             class = "ynow-home-card-d",
             "Industry-standard snapshot, KPIs, and financial statements."
+          )
+        ),
+        tags$button(
+          type = "button",
+          class = "ynow-home-card",
+          `data-tab` = "sensitivity",
+          tags$p(id = "ynow_home_ynow_k", class = "ynow-home-card-k", "YNOW"),
+          tags$p(
+            id = "ynow_home_ynow_d",
+            class = "ynow-home-card-d",
+            "F-Score and statement alerts. A quality screen, not a buy signal."
           )
         ),
         tags$button(
@@ -379,20 +402,13 @@
         ),
         tags$button(
           type = "button",
-          class = "ynow-home-card",
+          class = "ynow-home-card ynow-full-only",
           `data-tab` = "decision_checklist",
-          `data-tab-lite` = "sensitivity",
-          tags$p(id = "ynow_home_decide_k", class = "ynow-home-card-k ynow-full-only", "Action"),
-          tags$p(id = "ynow_home_decide_k_lite", class = "ynow-home-card-k ynow-lite-only", "YNOW"),
+          tags$p(id = "ynow_home_decide_k", class = "ynow-home-card-k", "Action"),
           tags$p(
             id = "ynow_home_decide_d",
-            class = "ynow-home-card-d ynow-full-only",
+            class = "ynow-home-card-d",
             "F-Score, statement alerts, and the Decision Checklist."
-          ),
-          tags$p(
-            id = "ynow_home_decide_d_lite",
-            class = "ynow-home-card-d ynow-lite-only",
-            "F-Score and statement alerts. A quality screen, not a buy signal."
           )
         )
       ),
@@ -445,7 +461,7 @@
             if (!el) return '';
             return getComputedStyle(el).display === 'none' ? '' : (el.textContent || '').trim();
           };
-          var decide = shown('ynow_home_decide_d') || shown('ynow_home_decide_d_lite');
+          var decide = shown('ynow_home_decide_d') || shown('ynow_home_ynow_d');
           fetch('http://127.0.0.1:7302/ingest/e3a0dcdf-71e1-4bba-855e-f942118bd315',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ef0f33'},body:JSON.stringify({sessionId:'ef0f33',runId:'post-fix',hypothesisId:'H',location:'ynow_ui.R:home',message:'home panel paint',data:{lite:!!lite,homeBg:home?getComputedStyle(home).backgroundColor:null,cardBg:card?getComputedStyle(card).backgroundColor:null,decide:decide,checklist:/(Decision Checklist|決策檢核)/.test(decide)},timestamp:Date.now()})}).catch(function(){});
         })();
         // #endregion
@@ -2818,7 +2834,7 @@ ui <- dashboardPage(
         body.ynow-lite .ynow-lite-only {
           display: block !important;
         }
-        /* Brand home: one screen, four doors */
+        /* Brand home: sidebar-aligned doors (Macro → Blue Chip → Company → YNOW → Value → Action) */
         .ynow-home {
           max-width: 760px;
           margin: 12px auto 28px;
@@ -4512,11 +4528,12 @@ ui <- dashboardPage(
             }
             ['ynow_home_title', 'ynow_home_lead', 'ynow_home_method', 'ynow_home_method_lite',
              'ynow_home_market_k', 'ynow_home_market_d',
+             'ynow_home_bluechip_k', 'ynow_home_bluechip_d',
              'ynow_home_company_k', 'ynow_home_company_d',
+             'ynow_home_ynow_k', 'ynow_home_ynow_d',
              'ynow_home_value_k', 'ynow_home_value_d',
              'ynow_home_value_k_lite', 'ynow_home_value_d_lite',
              'ynow_home_decide_k', 'ynow_home_decide_d',
-             'ynow_home_decide_k_lite', 'ynow_home_decide_d_lite',
              'ynow_home_legal', 'ynow_home_legal_about'].forEach(function (id) {
               var el = document.getElementById(id);
               if (!el) return;

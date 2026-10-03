@@ -13,8 +13,10 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
   source(file.path("..", "ui_locale.R"), local = TRUE)
   keys <- c(
     "menu_home", "home_lead", "home_method", "home_method_lite",
-    "home_market_k", "home_company_k", "home_value_k", "home_value_d_lite",
-    "home_decide_k", "home_decide_k_lite", "home_decide_d_lite",
+    "home_market_k", "home_bluechip_k", "home_company_k",
+    "home_ynow_k", "home_ynow_d",
+    "home_value_k", "home_value_d_lite",
+    "home_decide_k", "home_decide_d",
     "home_legal", "home_legal_about",
     "legal_section_title", "legal_privacy_title", "legal_privacy_body",
     "legal_ip_title", "legal_ip_body", "legal_risk_title", "legal_risk_body",
@@ -58,9 +60,11 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
   }
   testthat::expect_identical(.UI_STRINGS$`zh-TW`$menu_smart_analysis, "智慧分析")
   testthat::expect_identical(.UI_STRINGS$en$menu_smart_analysis, "Smart Analysis")
-  testthat::expect_false(grepl("Decision Checklist", .UI_STRINGS$en$home_decide_d_lite, fixed = TRUE))
-  testthat::expect_false(grepl("決策檢核", .UI_STRINGS$`zh-TW`$home_decide_d_lite, fixed = TRUE))
-  testthat::expect_identical(.UI_STRINGS$en$home_decide_k_lite, "YNOW")
+  testthat::expect_false(grepl("Decision Checklist", .UI_STRINGS$en$home_ynow_d, fixed = TRUE))
+  testthat::expect_false(grepl("決策檢核", .UI_STRINGS$`zh-TW`$home_ynow_d, fixed = TRUE))
+  testthat::expect_identical(.UI_STRINGS$en$home_ynow_k, "YNOW")
+  testthat::expect_identical(.UI_STRINGS$en$home_bluechip_k, "Blue Chip")
+  testthat::expect_identical(.UI_STRINGS$`zh-TW`$home_bluechip_k, "績優股")
   testthat::expect_identical(.UI_STRINGS$`zh-TW`$home_value_k_lite, "智慧分析")
   testthat::expect_identical(.UI_STRINGS$en$legal_risk_title, "Investment risk")
   testthat::expect_identical(.UI_STRINGS$`zh-TW`$legal_risk_title, "投資自負風險聲明")
@@ -93,6 +97,29 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl('tabName = "home"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_menu_home", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-home-card", txt, fixed = TRUE))
+  # Home doors follow sidebar: Macro → Blue Chip → Company → YNOW → Value → Action
+  home_grid <- regmatches(
+    txt,
+    regexpr('class = "ynow-home-grid"[\\s\\S]*?class = "ynow-home-legal"', txt, perl = TRUE)
+  )
+  testthat::expect_true(length(home_grid) == 1L && nzchar(home_grid[[1]]))
+  home_tab_pat <- '`data-tab` = "([^"]+)"'
+  home_tab_m <- gregexpr(home_tab_pat, home_grid[[1]], perl = TRUE)[[1]]
+  home_tab_names <- if (home_tab_m[1] > 0) {
+    raw <- regmatches(home_grid[[1]], list(home_tab_m))[[1]]
+    sub('^`data-tab` = "([^"]+)"$', "\\1", raw)
+  } else {
+    character(0)
+  }
+  testthat::expect_identical(
+    home_tab_names,
+    c("macro_market", "bluechip", "dashboard", "sensitivity", "get_started", "decision_checklist")
+  )
+  testthat::expect_true(grepl(
+    'ynow-home-card ynow-full-only"[\\s\\S]*decision_checklist',
+    home_grid[[1]],
+    perl = TRUE
+  ))
   testthat::expect_true(grepl("input.sidebar_tabs != 'home'", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_menu_macro", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-macro-report", txt, fixed = TRUE))
