@@ -3198,7 +3198,7 @@ ui <- dashboardPage(
           min-height: 34px;
           text-align: left;
         }
-        /* Header KPI：Previous Close／Market Cap／EPS — logo 綠圖示；無金框 */
+        /* Header KPI：Last Price／Market Cap／EPS — logo 綠圖示；無金框 */
         .ynow-header-kpi-row .info-box {
           background: #ffffff;
           border: 1px solid rgba(26, 26, 26, 0.10);
@@ -7745,8 +7745,68 @@ ui <- dashboardPage(
       ),
       br()
     ),
+    tags$script(HTML("
+      (function () {
+        function dbg(hid, loc, msg, data) {
+          fetch('http://127.0.0.1:7302/ingest/e3a0dcdf-71e1-4bba-855e-f942118bd315', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-Debug-Session-Id': 'ef0f33'},
+            body: JSON.stringify({
+              sessionId: 'ef0f33', runId: 'pre-fix', hypothesisId: hid,
+              location: loc, message: msg, data: data || {}, timestamp: Date.now()
+            })
+          }).catch(function () {});
+        }
+        function searchSnap(extra) {
+          var btn = document.getElementById('search');
+          var row = document.querySelector('.ynow-sc-row');
+          var sc = document.getElementById('sc');
+          var tab = document.querySelector('.sidebar-menu li.active a');
+          var cs = btn ? getComputedStyle(btn) : null;
+          var rcs = row ? getComputedStyle(row) : null;
+          var rect = btn ? btn.getBoundingClientRect() : null;
+          var x = rect ? Math.round(rect.left + rect.width / 2) : 0;
+          var y = rect ? Math.round(rect.top + rect.height / 2) : 0;
+          var top = (x && y) ? document.elementFromPoint(x, y) : null;
+          return Object.assign({
+            hasBtn: !!btn,
+            hasRow: !!row,
+            sc: sc ? (sc.value || '') : '',
+            tab: tab ? (tab.getAttribute('data-value') || '') : '',
+            lite: !!(document.body && document.body.classList.contains('ynow-lite')),
+            btnDisp: cs ? cs.display : '',
+            btnPe: cs ? cs.pointerEvents : '',
+            rowDisp: rcs ? rcs.display : '',
+            vis: btn ? !!(rect && rect.width > 0 && rect.height > 0) : false,
+            topTag: top ? (top.id || top.className || top.tagName) : '',
+            disabled: btn ? !!btn.disabled : null
+          }, extra || {});
+        }
+        document.addEventListener('click', function (ev) {
+          var t = ev.target;
+          var onSearch = !!(t && t.closest && t.closest('#search, .ynow-search-btn, .ynow-sc-row'));
+          if (onSearch) {
+            dbg('B', 'ynow_ui.R:search-click', 'click on search chrome', searchSnap({
+              tgt: t && (t.id || t.className || t.tagName)
+            }));
+          }
+        }, true);
+        if (window.jQuery) {
+          $(document).on('shiny:inputchanged', function (e) {
+            if (e.name === 'search') {
+              dbg('A', 'ynow_ui.R:search-input', 'shiny search inputchanged', searchSnap({
+                value: e.value
+              }));
+            }
+          });
+          $(document).on('shiny:connected', function () {
+            dbg('H', 'ynow_ui.R:search-snap', 'connected search visibility', searchSnap({}));
+          });
+        }
+      })();
+    ")),
     
-    # Header KPIs: Dashboard only (Previous Close / Market Cap / EPS TTM).
+    # Header KPIs: Company (dashboard) only (Last Price / Market Cap / EPS TTM).
     # Smart Analysis (Lite) uses its own fair-value cards — no quote KPI strip.
     conditionalPanel(
       condition = "input.sidebar_tabs == 'dashboard'",

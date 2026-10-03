@@ -233,6 +233,7 @@
   "Net Foreign Currency Exchange Gain Loss" = "外幣兌換損益",
 
   # ---- Finance Summary（Yahoo quote；含常見別名）----
+  "Market Price" = "最新股價",
   "Previous Close" = "前一日收盤",
   "Open" = "開盤",
   "Bid" = "買價",

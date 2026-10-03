@@ -365,7 +365,7 @@ convert_summary_value_display <- function(item, value, from_ccy, session_ccy = N
   raw <- as.character(value %||% "")[1]
   if (!nzchar(raw) || identical(raw, "N/A")) return(raw)
   money_exact <- c(
-    "Previous Close", "Open", "Bid", "Ask", "Market Cap (intraday)",
+    "Market Price", "Previous Close", "Open", "Bid", "Ask", "Market Cap (intraday)",
     "EPS (TTM)", "Dividend", "Target Est"
   )
   if (it %in% money_exact) {
@@ -716,7 +716,10 @@ extract_quote_price_mcap <- function(summary_df) {
   if (!("Item" %in% names(summary_df)) || !("Value" %in% names(summary_df))) {
     return(list(price = price, market_cap = market_cap))
   }
-  px_row <- summary_df[grep("Previous Close|Market Price", summary_df$Item, ignore.case = TRUE), , drop = FALSE]
+  px_row <- summary_df[grepl("^Market Price$", summary_df$Item, ignore.case = TRUE), , drop = FALSE]
+  if (nrow(px_row) < 1) {
+    px_row <- summary_df[grep("Previous Close|Market Price", summary_df$Item, ignore.case = TRUE), , drop = FALSE]
+  }
   if (nrow(px_row) >= 1) {
     price <- parse_financial_number(px_row$Value[1])[1]
   }

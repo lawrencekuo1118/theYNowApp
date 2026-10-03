@@ -131,6 +131,8 @@ def get_summary_quote(ticker="AMZN"):
                         return default
                 info = {
                     "shortName": ticker,
+                    "currentPrice": _get("last_price") or _get("lastPrice") or _get("regular_market_price"),
+                    "regularMarketPrice": _get("last_price") or _get("regular_market_price"),
                     "previousClose": _get("previous_close") or _get("previousClose"),
                     "open": _get("open"),
                     "dayLow": _get("day_low") or _get("dayLow"),
@@ -166,12 +168,73 @@ def get_summary_quote(ticker="AMZN"):
     if not fin_ccy:
         fin_ccy = quote_ccy
 
-    # 若 info 幾乎為空，用 history 補 Previous Close
+    def _hist_last_close(period="5d", interval=None):
+        try:
+            kw = {"period": period, "auto_adjust": True}
+            if interval:
+                kw["interval"] = interval
+            hist = stock.history(**kw)
+            if hist is not None and not hist.empty and "Close" in hist.columns:
+                closes = hist["Close"].dropna()
+                if len(closes):
+                    return float(closes.iloc[-1])
+        except Exception as e:
+            _dbg(f"⚠️ history last close {period}/{interval}: {e}")
+        return None
+
+    def _fast_last_price():
+        try:
+            fi = getattr(stock, "fast_info", None)
+            if fi is None:
+                return None
+            for k in ("last_price", "lastPrice", "regular_market_price"):
+                try:
+                    v = fi[k] if hasattr(fi, "__getitem__") else getattr(fi, k, None)
+                except Exception:
+                    v = getattr(fi, k, None) if hasattr(fi, k) else None
+                if v is None:
+                    continue
+                fv = float(v)
+                if fv > 0:
+                    return fv
+        except Exception as e:
+            _dbg(f"⚠️ fast_info last_price: {e}")
+        return None
+
+    def _live_last_price():
+        for v in (
+            info.get("currentPrice"),
+            info.get("regularMarketPrice"),
+            info.get("regularMarketLastPrice"),
+            _fast_last_price(),
+        ):
+            try:
+                if v is None:
+                    continue
+                fv = float(v)
+                if fv > 0:
+                    return fv
+            except Exception:
+                pass
+        px_1m = _hist_last_close(period="1d", interval="1m")
+        if px_1m and px_1m > 0:
+            return px_1m
+        return _hist_last_close(period="5d")
+
+    last_px = _live_last_price()
+
+    # 若 info 幾乎為空，用 history 補 Previous Close / OHLC
     if info.get("previousClose") is None:
         try:
             hist = stock.history(period="5d")
             if hist is not None and not hist.empty:
-                info["previousClose"] = float(hist["Close"].dropna().iloc[-1])
+                closes = hist["Close"].dropna()
+                if last_px is None and len(closes):
+                    last_px = float(closes.iloc[-1])
+                if len(closes) >= 2:
+                    info["previousClose"] = float(closes.iloc[-2])
+                elif len(closes) == 1:
+                    info["previousClose"] = float(closes.iloc[-1])
                 if info.get("open") is None:
                     info["open"] = float(hist["Open"].dropna().iloc[-1])
                 if info.get("volume") is None:
@@ -191,6 +254,7 @@ def get_summary_quote(ticker="AMZN"):
     div_yield = info.get("dividendYield")
 
     rows = [
+        ("Market Price", _fmt_num(last_px if last_px is not None else info.get("regularMarketPrice"))),
         ("Previous Close", _fmt_num(info.get("previousClose"))),
         ("Open", _fmt_num(info.get("open"))),
         ("Bid", _fmt_num(info.get("bid"))),

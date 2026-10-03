@@ -25,6 +25,9 @@ server <- function(input, output, session) {
   
   # 初始值設為 NULL，避免一開啟 App 就自動執行爬蟲
   current_ticker <- reactiveVal(NULL)
+  # Search must re-fetch even when the symbol is unchanged (Shiny skips
+  # identical reactiveVal writes, so a second Search on TSM/NVDA was a no-op).
+  ticker_search_gen <- reactiveVal(0L)
   # 首次按下 Search 前：不標示模型推薦／側邊欄「推薦」
   user_has_searched <- reactiveVal(FALSE)
 
@@ -158,6 +161,16 @@ server <- function(input, output, session) {
   # 🚀 股票代號：僅主區 Ticker / Stock Code（sc + Search）
   # ==========================================
   observeEvent(input$search, {
+    sc_raw <- tryCatch(as.character(input$sc %||% "")[1], error = function(e) "")
+    tab_now <- tryCatch(as.character(input$sidebar_tabs %||% "")[1], error = function(e) "")
+    # #region agent log
+    .ynow_dbg_ef0f33("A", "ynow_server.R:input$search", "search click received", list(
+      sc = sc_raw,
+      tab = tab_now,
+      n = suppressWarnings(as.numeric(input$search)[1]),
+      mkt = tryCatch(as.character(market_mode())[1], error = function(e) "")
+    ))
+    # #endregion
     req(input$sc)
     user_has_searched(TRUE)
     # New Search: clear prior baseline until post-load capture settles
@@ -166,8 +179,17 @@ server <- function(input, output, session) {
     param_audit_baseline_ticker(NULL)
     param_audit_capture_token(isolate(param_audit_capture_token()) + 1L)
     tk <- normalize_ticker_for_market(input$sc, market_mode())
+    # #region agent log
+    .ynow_dbg_ef0f33("C", "ynow_server.R:input$search", "ticker after normalize", list(
+      sc = sc_raw,
+      tk = as.character(tk %||% "")[1],
+      ok = isTRUE(!is.na(tk) && nzchar(tk)),
+      gen = suppressWarnings(as.numeric(isolate(ticker_search_gen()))[1])
+    ))
+    # #endregion
     req(!is.na(tk), nzchar(tk))
     current_ticker(tk)
+    ticker_search_gen(isolate(ticker_search_gen()) + 1L)
     disp <- display_ticker_for_market(tk, market_mode())
     tryCatch(updateTextInput(session, "sc", value = disp), error = function(e) NULL)
   })
@@ -664,7 +686,7 @@ server <- function(input, output, session) {
   # TW：.TW 抓取失敗時一次性改試 .TWO，避免 observe 無限迴圈
   .tw_two_fallback_tried_for <- reactiveVal(NA_character_)
 
-  observeEvent(current_ticker(), {
+  observeEvent(list(current_ticker(), ticker_search_gen()), {
     req(current_ticker())
     # 換股票：回到基礎設定連動，讓新 Summary／Unlever 路徑可自動帶入 CAPM
     capm_beta_dirty(FALSE)
@@ -964,8 +986,21 @@ server <- function(input, output, session) {
         }, error = function(e) NULL)
 
         incProgress(0.9, detail = "資料同步完成！✅")
+        # #region agent log
+        .ynow_dbg_ef0f33("E", "ynow_server.R:ticker_fetch", "fetch completed", list(
+          tk = as.character(stock_code %||% "")[1],
+          nrow_sum = if (is.data.frame(sum_df)) nrow(sum_df) else -1,
+          gen = suppressWarnings(as.numeric(isolate(ticker_search_gen()))[1])
+        ))
+        # #endregion
 
       }, error = function(e) {
+        # #region agent log
+        .ynow_dbg_ef0f33("D", "ynow_server.R:ticker_fetch", "fetch failed", list(
+          tk = as.character(stock_code %||% "")[1],
+          err = as.character(e$message %||% "")[1]
+        ))
+        # #endregion
         fs_all_empty(FALSE)
         # 興櫃旗標若已偵測仍保留短註（Summary 失敗也可能是興櫃）
         showNotification(
@@ -1249,14 +1284,46 @@ server <- function(input, output, session) {
   
   output$ibx_stockprice <- renderInfoBox({
     df <- summary_data()
+    loc <- ui_locale()
     session_currency(); fx_usd_twd(); quote_currency()
-    val <- if (!is.null(df) && "Previous Close" %in% df$Item) {
+    items <- if (!is.null(df) && is.data.frame(df)) as.character(df$Item) else character()
+    pick_nm <- NA_character_
+    pick_raw <- NA_character_
+    for (nm in c("Market Price", "Last Price", "Previous Close")) {
+      hit <- which(items == nm)
+      if (!length(hit)) next
+      raw <- as.character(df$Value[hit[1]])[1]
+      if (nzchar(raw) && !identical(raw, "N/A")) {
+        pick_nm <- nm
+        pick_raw <- raw
+        break
+      }
+    }
+    val <- if (!is.na(pick_nm)) {
       convert_summary_value_display(
-        "Previous Close", df$Value[df$Item == "Previous Close"][1],
+        pick_nm, pick_raw,
         quote_currency(), session_currency(), fx_usd_twd()
       )
-    } else "N/A"
-    infoBox("Previous Close", val, icon = icon("chart-line"), color = "purple")
+    } else {
+      "N/A"
+    }
+    prev_raw <- if ("Previous Close" %in% items) as.character(df$Value[items == "Previous Close"][1])[1] else ""
+    # #region agent log
+    if (exists(".ynow_dbg_ef0f33", mode = "function")) {
+      .ynow_dbg_ef0f33("P", "ynow_server.R:ibx_stockprice", "header last price", list(
+        item = as.character(pick_nm %||% "")[1],
+        last = as.character(pick_raw %||% "")[1],
+        prev = as.character(prev_raw %||% "")[1],
+        shown = as.character(val %||% "")[1]
+      ))
+    }
+    # #endregion
+    infoBox(
+      ui_str("kpi_last_price", loc),
+      val,
+      icon = icon("chart-line"),
+      color = "purple"
+    )
   })
   
   output$ibx_marketcap <- renderInfoBox({
@@ -1293,7 +1360,7 @@ server <- function(input, output, session) {
 
     # 分組僅影響版面；所有 Item/Value 皆會輸出（未歸類者歸入 Other）
     groups <- list(
-      Price = c("Previous Close", "Open", "Bid", "Ask", "Day's Range", "52 Week Range"),
+      Price = c("Market Price", "Previous Close", "Open", "Bid", "Ask", "Day's Range", "52 Week Range"),
       Volume = c("Volume", "Avg. Volume"),
       Valuation = c("Market Cap (intraday)", "Beta (5Y Monthly)", "PE Ratio (TTM)", "EPS (TTM)", "Target Est"),
       Dividend = c("Dividend", "Yield")
@@ -7147,12 +7214,13 @@ server <- function(input, output, session) {
   # Search 後：推薦主模型靜默自動試算（美股／台股；參數未就緒則略過）
   # Lite 智慧分析：先套用推薦參數情境（Two-Stage／SGR 法／claim／折現一致性），
   # 再對主／副模型試算——避免「參數假設錯誤無法計算」。
-  observeEvent(current_ticker(), {
+  observeEvent(list(current_ticker(), ticker_search_gen()), {
     # Clear prior-ticker DCF so Composite does not keep stale run-state overlays
     # #region agent log
     .ynow_dbg_ef0f33("B", "ynow_server.R:ticker_clear", "cleared valuation on ticker", list(
       tk = as.character(current_ticker() %||% "")[1],
-      prev_px = suppressWarnings(as.numeric(isolate(stock_price_estimate_val()))[1])
+      prev_px = suppressWarnings(as.numeric(isolate(stock_price_estimate_val()))[1]),
+      gen = suppressWarnings(as.numeric(isolate(ticker_search_gen()))[1])
     ))
     # #endregion
     stock_price_estimate_val(NULL)
