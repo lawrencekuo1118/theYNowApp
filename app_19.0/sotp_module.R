@@ -3,7 +3,30 @@
 # Independent sidebar engine (not a Multiples radio family).
 # Reuses calc_sotp_revenue_implied / .rel_sotp_segments_from_is from
 # relative_multiples_module.R (sourced first in global.R).
+# Settings tabs mirror P/B: Overview + same-nature parameter pages.
 # =============================================================================
+
+.sotp_formula_banner <- function(id, text) {
+  div(
+    id = id,
+    text,
+    style = paste(
+      "font-size:16px; font-weight:bold; color:#2C3E50; text-align:center;",
+      "margin-bottom:15px; padding:10px; background-color:#F2F4F4; border-radius:8px;"
+    )
+  )
+}
+.sotp_settings_note <- function(id, text) {
+  div(
+    id = id,
+    text,
+    style = paste(
+      "font-size:14px; font-weight:bold; color:#2C3E50; text-align:left;",
+      "margin-bottom:10px; padding:10px; background-color:#F8F9F9;",
+      "border-left:4px solid #1a1a1a; border-radius:4px;"
+    )
+  )
+}
 
 sotp_module_ui <- function(id) {
   ns <- NS(id)
@@ -30,6 +53,8 @@ sotp_module_ui <- function(id) {
     tabBox(
       title = tags$span(id = "ynow_sotp_box_title", "SOTP"),
       width = "auto",
+
+      # --- Overview ---
       tabPanel(
         title = tags$span(id = "ynow_sotp_tab_overview", "Overview"),
         icon = icon("puzzle-piece"),
@@ -38,15 +63,36 @@ sotp_module_ui <- function(id) {
           column(4, valueBoxOutput(ns("vbx_sotp_ev"), width = 12)),
           column(4, valueBoxOutput(ns("vbx_sotp_n"), width = 12))
         ),
+        .sotp_formula_banner(
+          "ynow_sotp_formula_banner",
+          "Implied EV = Σ(Seg Rev × EV/Sales) + Non-op　｜　Equity = EV + Cash − Debt　｜　Price = Equity ÷ Shares"
+        ),
         fluidRow(
-          column(width = 6, ynow_calc_btn(ns("btn_calc_sotp"), label = tags$span(id = "ynow_sotp_btn_calc", "Run SOTP"))),
-          column(width = 6, ynow_reset_defaults_btn(ns("btn_reset_sotp")))
+          column(width = 4, ynow_calc_btn(ns("btn_calc_sotp"), label = tags$span(id = "ynow_sotp_btn_calc", "Run SOTP"))),
+          column(width = 4, ynow_reset_defaults_btn(ns("btn_reset_sotp"))),
+          column(
+            width = 4,
+            br(),
+            actionButton(
+              ns("btn_sync_sotp"),
+              label = tags$span(id = "ynow_sotp_btn_sync", "Sync from statements"),
+              icon = icon("sync"), class = "btn-sm",
+              style = "background-color:#1a1a1a;color:white;border:none;padding:8px 15px;font-weight:bold;border-radius:5px;margin-top:5px;width:100%;"
+            )
+          )
         ),
         fluidRow(column(12, uiOutput(ns("ui_sotp_result"))))
       ),
+
+      # --- Segments ---
       tabPanel(
         title = tags$span(id = "ynow_sotp_tab_segments", "Segments"),
         icon = icon("table"),
+        h4(tags$b(id = "ynow_sotp_segments_heading_ui", "Segment EV/Sales")),
+        .sotp_settings_note(
+          "ynow_sotp_settings_seg_note",
+          "Segment EV = Segment Revenue × Segment EV/Sales. Requires ≥2 positive segment revenues. Not segment-EBIT SOTP."
+        ),
         tags$p(
           id = "ynow_sotp_help",
           class = "help-block",
@@ -74,23 +120,28 @@ sotp_module_ui <- function(id) {
             value = 0, step = 1
           ))
         ),
-        uiOutput(ns("ui_segment_inputs")),
-        hr(),
+        tags$p(
+          id = "ynow_sotp_nonop_help",
+          class = "help-block",
+          "Non-operating assets are added to Σ(segment EV) before the Cash − Debt bridge."
+        ),
+        uiOutput(ns("ui_segment_inputs"))
+      ),
+
+      # --- Bridge ---
+      tabPanel(
+        title = tags$span(id = "ynow_sotp_tab_bridge", "Bridge"),
+        icon = icon("link"),
+        h4(tags$b(id = "ynow_sotp_bridge_heading", "Capital bridge & shares")),
+        .sotp_settings_note(
+          "ynow_sotp_settings_bridge_note",
+          "Equity = Implied EV + Cash − Debt (same bridge as DCF); Implied Price = Equity ÷ Shares."
+        ),
         uiOutput(ns("txt_shares_note")),
         fluidRow(
-          column(3, numericInput(ns("cash"), tags$span(id = "ynow_sotp_lbl_cash", "Cash"), value = NA, step = 1)),
-          column(3, numericInput(ns("debt"), tags$span(id = "ynow_sotp_lbl_debt", "Total Debt"), value = NA, step = 1)),
-          column(3, numericInput(ns("shares"), tags$span(id = "ynow_sotp_lbl_shares", "Shares (quote)"), value = NA, step = 1)),
-          column(
-            3,
-            br(),
-            actionButton(
-              ns("btn_sync_sotp"),
-              label = tags$span(id = "ynow_sotp_btn_sync", "Sync from statements"),
-              icon = icon("sync"), class = "btn-sm",
-              style = "background-color:#1a1a1a;color:white;border:none;padding:8px 15px;font-weight:bold;border-radius:5px;margin-top:5px;"
-            )
-          )
+          column(4, numericInput(ns("cash"), tags$span(id = "ynow_sotp_lbl_cash", "Cash"), value = NA, step = 1)),
+          column(4, numericInput(ns("debt"), tags$span(id = "ynow_sotp_lbl_debt", "Total Debt"), value = NA, step = 1)),
+          column(4, numericInput(ns("shares"), tags$span(id = "ynow_sotp_lbl_shares", "Shares (quote)"), value = NA, step = 1))
         ),
         tags$p(
           id = "ynow_sotp_bridge_help",

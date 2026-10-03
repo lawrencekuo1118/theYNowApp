@@ -137,7 +137,10 @@ for (k in c(
   "rel_multiples_growth_sgr", "rel_multiples_vbx_pe", "rel_multiples_vbx_evebit",
   "rel_multiples_status_arr", "rel_mode_label", "rel_mode_earnings", "rel_mode_enterprise",
   "rel_mode_ps", "rel_multiples_ev_heading", "rel_multiples_ps_heading",
-  "sotp_lead_title", "sotp_need_segments", "sotp_vbx_price", "sotp_col_multiple"
+  "rel_multiples_tab_earnings", "rel_multiples_tab_enterprise", "rel_multiples_tab_ps",
+  "rel_multiples_tab_bridge", "rel_formula_earnings", "rel_formula_enterprise", "rel_formula_ps",
+  "sotp_lead_title", "sotp_need_segments", "sotp_vbx_price", "sotp_col_multiple",
+  "sotp_tab_bridge", "sotp_formula_banner", "sotp_settings_seg_note"
 )) {
   check(paste("en", k), nzchar(ui_str(k, "en")))
   check(paste("zh", k), nzchar(ui_str(k, "zh-TW")))
@@ -153,10 +156,33 @@ check("mode radio in module", grepl('ns("rel_mode")', mod_src, fixed = TRUE))
 check("mode earnings family", grepl("earnings", mod_src, fixed = TRUE) && grepl("enterprise", mod_src, fixed = TRUE))
 check("mode conditional panels", grepl("mod_rel-rel_mode", mod_src, fixed = TRUE))
 check("multiples radio omits sotp choice", !grepl('= "sotp"', mod_src, fixed = TRUE))
+check("multiples earnings settings tab", grepl("ynow_rel_multiples_tab_earnings", mod_src, fixed = TRUE))
+check("multiples enterprise settings tab", grepl("ynow_rel_multiples_tab_enterprise", mod_src, fixed = TRUE))
+check("multiples ps settings tab", grepl("ynow_rel_multiples_tab_ps", mod_src, fixed = TRUE))
+check("multiples bridge settings tab", grepl("ynow_rel_multiples_tab_bridge", mod_src, fixed = TRUE))
+check("multiples formula banners", grepl("ynow_rel_formula_earnings", mod_src, fixed = TRUE) &&
+        grepl("ynow_rel_formula_enterprise", mod_src, fixed = TRUE) &&
+        grepl("ynow_rel_formula_ps", mod_src, fixed = TRUE))
+check("multiples earnings params", grepl('ns("trailing_eps")', mod_src, fixed = TRUE) &&
+        grepl('ns("pe_multiple")', mod_src, fixed = TRUE) &&
+        grepl('ns("peg_growth_pct")', mod_src, fixed = TRUE))
+check("multiples enterprise params", grepl('ns("fcff")', mod_src, fixed = TRUE) &&
+        grepl('ns("ev_fcf_multiple")', mod_src, fixed = TRUE) &&
+        grepl('ns("ev_arr_multiple")', mod_src, fixed = TRUE))
+check("multiples bridge params", grepl('ns("cash")', mod_src, fixed = TRUE) &&
+        grepl('ns("debt")', mod_src, fixed = TRUE) &&
+        grepl('ns("shares")', mod_src, fixed = TRUE))
 
 sotp_src <- paste(readLines("sotp_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("sotp module UI", grepl("sotp_module_ui", sotp_src, fixed = TRUE))
 check("sotp per-segment inputs", grepl("seg_mult_", sotp_src, fixed = TRUE))
+check("sotp bridge tab", grepl("ynow_sotp_tab_bridge", sotp_src, fixed = TRUE))
+check("sotp formula banner", grepl("ynow_sotp_formula_banner", sotp_src, fixed = TRUE))
+check("sotp segment params", grepl('ns("default_ev_sales")', sotp_src, fixed = TRUE) &&
+        grepl('ns("nonop")', sotp_src, fixed = TRUE))
+check("sotp bridge params", grepl('ns("cash")', sotp_src, fixed = TRUE) &&
+        grepl('ns("debt")', sotp_src, fixed = TRUE) &&
+        grepl('ns("shares")', sotp_src, fixed = TRUE))
 
 ui_src <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("sidebar mounts rel multiples", grepl("rel_multiples_calculator", ui_src, fixed = TRUE))

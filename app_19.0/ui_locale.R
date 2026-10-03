@@ -88,6 +88,37 @@ locale_for_market <- function(mode = get_market_mode()) {
     rel_multiples_box_title = "Multiples",
     rel_multiples_tab_overview = "Overview",
     rel_multiples_tab_inputs = "Inputs",
+    rel_multiples_tab_earnings = "Earnings",
+    rel_multiples_tab_enterprise = "Enterprise",
+    rel_multiples_tab_ps = "P/S",
+    rel_multiples_tab_bridge = "Bridge",
+    rel_formula_earnings = "Implied Price = EPS × P/E　｜　PEG = P/E ÷ growth(%)",
+    rel_formula_enterprise = paste0(
+      "Implied EV = Metric × Multiple　｜　Equity = EV + Cash − Debt　｜　Price = Equity ÷ Shares"
+    ),
+    rel_formula_ps = "Implied Equity = Revenue × P/S　｜　Implied Price = Equity ÷ Shares",
+    rel_settings_pe_note = paste0(
+      "Implied Price = Trailing EPS × Selected P/E; ",
+      "Forward Implied Price = Forward EPS × Selected Forward P/E."
+    ),
+    rel_settings_peg_note = "PEG = P/E ÷ growth(%). Relative indicator only — not a buy/sell threshold.",
+    rel_settings_ev_note = paste0(
+      "Implied EV = Metric × Multiple; Equity = EV + Cash − Debt; Implied Price = Equity ÷ Shares. ",
+      "Set Cash / Debt / Shares on the Bridge tab."
+    ),
+    rel_settings_ps_note = paste0(
+      "Implied Equity = Revenue × P/S; Implied Price = Equity ÷ Shares (no Cash−Debt bridge). ",
+      "Set Shares on the Bridge tab."
+    ),
+    rel_settings_bridge_note = paste0(
+      "Enterprise: Equity = EV + Cash − Debt; Implied Price = Equity ÷ Shares. ",
+      "P/S uses Shares only."
+    ),
+    rel_multiples_bridge_heading = "Capital bridge & shares",
+    rel_multiples_ps_rev_note = paste0(
+      "P/S Revenue syncs with Enterprise Revenue when you Sync from statements; ",
+      "you may override either field."
+    ),
     rel_mode_label = "Select multiples family:",
     rel_mode_earnings = "Earnings (P/E · Fwd P/E · PEG)",
     rel_mode_enterprise = "Enterprise (EV/FCF · EV/EBIT · EV/EBITDA · EV/Sales · EV/ARR)",
@@ -106,6 +137,21 @@ locale_for_market <- function(mode = get_market_mode()) {
     sotp_box_title = "SOTP",
     sotp_tab_overview = "Overview",
     sotp_tab_segments = "Segments",
+    sotp_tab_bridge = "Bridge",
+    sotp_formula_banner = paste0(
+      "Implied EV = Σ(Seg Rev × EV/Sales) + Non-op　｜　",
+      "Equity = EV + Cash − Debt　｜　Price = Equity ÷ Shares"
+    ),
+    sotp_settings_seg_note = paste0(
+      "Segment EV = Segment Revenue × Segment EV/Sales. ",
+      "Requires ≥2 positive segment revenues. Not segment-EBIT SOTP."
+    ),
+    sotp_settings_bridge_note = paste0(
+      "Equity = Implied EV + Cash − Debt (same bridge as DCF); ",
+      "Implied Price = Equity ÷ Shares."
+    ),
+    sotp_bridge_heading = "Capital bridge & shares",
+    sotp_nonop_help = "Non-operating assets are added to Σ(segment EV) before the Cash − Debt bridge.",
     sotp_btn_calc = "Run SOTP",
     sotp_btn_sync = "Sync from statements",
     sotp_btn_apply_mult = "Apply default to all segments",
@@ -160,7 +206,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Requires ≥2 positive segment revenues. Not segment-EBIT SOTP."
     ),
     rel_multiples_arr_help = "ARR is not in core statements — enter manually or leave blank (N/A).",
-    rel_multiples_bridge_help = "Cash / Debt used for EV→Equity bridge (Enterprise & SOTP). P/S uses shares only.",
+    rel_multiples_bridge_help = "Cash / Debt used for EV→Equity bridge (Enterprise). P/S uses shares only.",
     rel_multiples_vbx_pe = "P/E Implied Price",
     rel_multiples_vbx_fpe = "Forward P/E Implied Price",
     rel_multiples_vbx_peg = "PEG",
@@ -2040,6 +2086,37 @@ locale_for_market <- function(mode = get_market_mode()) {
     rel_multiples_box_title = "倍數法",
     rel_multiples_tab_overview = "總覽",
     rel_multiples_tab_inputs = "輸入",
+    rel_multiples_tab_earnings = "盈餘倍數",
+    rel_multiples_tab_enterprise = "企業倍數",
+    rel_multiples_tab_ps = "P/S",
+    rel_multiples_tab_bridge = "橋接",
+    rel_formula_earnings = "Implied Price = EPS × P/E　｜　PEG = P/E ÷ growth(%)",
+    rel_formula_enterprise = paste0(
+      "Implied EV = Metric × Multiple　｜　Equity = EV + Cash − Debt　｜　Price = Equity ÷ Shares"
+    ),
+    rel_formula_ps = "Implied Equity = Revenue × P/S　｜　Implied Price = Equity ÷ Shares",
+    rel_settings_pe_note = paste0(
+      "Implied Price = Trailing EPS × Selected P/E；",
+      "Forward Implied Price = Forward EPS × Selected Forward P/E。"
+    ),
+    rel_settings_peg_note = "PEG = P/E ÷ growth(%)。僅為相對指標，不作買／賣閾值。",
+    rel_settings_ev_note = paste0(
+      "Implied EV = Metric × Multiple；Equity = EV + Cash − Debt；Implied Price = Equity ÷ Shares。",
+      "Cash／Debt／Shares 請至「橋接」分頁設定。"
+    ),
+    rel_settings_ps_note = paste0(
+      "Implied Equity = Revenue × P/S；Implied Price = Equity ÷ Shares（無 Cash−Debt 橋接）。",
+      "Shares 請至「橋接」分頁設定。"
+    ),
+    rel_settings_bridge_note = paste0(
+      "Enterprise：Equity = EV + Cash − Debt；Implied Price = Equity ÷ Shares。",
+      "P/S 僅需 Shares。"
+    ),
+    rel_multiples_bridge_heading = "資本橋接與股數",
+    rel_multiples_ps_rev_note = paste0(
+      "自財報同步時，P/S 營收會與 Enterprise 營收一併帶入；",
+      "之後仍可各自覆寫。"
+    ),
     rel_mode_label = "選擇倍數家族：",
     rel_mode_earnings = "盈餘倍數（P/E · Fwd P/E · PEG）",
     rel_mode_enterprise = "企業倍數（EV/FCF · EV/EBIT · EV/EBITDA · EV/Sales · EV/ARR）",
@@ -2058,6 +2135,21 @@ locale_for_market <- function(mode = get_market_mode()) {
     sotp_box_title = "SOTP",
     sotp_tab_overview = "總覽",
     sotp_tab_segments = "部門",
+    sotp_tab_bridge = "橋接",
+    sotp_formula_banner = paste0(
+      "Implied EV = Σ(Seg Rev × EV/Sales) + Non-op　｜　",
+      "Equity = EV + Cash − Debt　｜　Price = Equity ÷ Shares"
+    ),
+    sotp_settings_seg_note = paste0(
+      "部門 EV = 部門營收 × 部門 EV/Sales。",
+      "需 ≥2 筆正值部門營收。非部門 EBIT SOTP。"
+    ),
+    sotp_settings_bridge_note = paste0(
+      "Equity = Implied EV + Cash − Debt（與 DCF 相同橋接）；",
+      "Implied Price = Equity ÷ Shares。"
+    ),
+    sotp_bridge_heading = "資本橋接與股數",
+    sotp_nonop_help = "非營業資產會加在 Σ(部門 EV) 之後、Cash − Debt 橋接之前。",
     sotp_btn_calc = "試算 SOTP",
     sotp_btn_sync = "自財報同步",
     sotp_btn_apply_mult = "套用預設倍數至全部門",
@@ -2112,7 +2204,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "需 ≥2 筆正值部門營收。非部門 EBIT SOTP。"
     ),
     rel_multiples_arr_help = "核心財報無 ARR——請手動輸入，或留空（N/A）。",
-    rel_multiples_bridge_help = "Cash／Debt 用於 EV→Equity 橋接（Enterprise 與 SOTP）。P/S 僅用股數。",
+    rel_multiples_bridge_help = "Cash／Debt 用於 EV→Equity 橋接（Enterprise）。P/S 僅用股數。",
     rel_multiples_vbx_pe = "P/E Implied Price",
     rel_multiples_vbx_fpe = "Forward P/E Implied Price",
     rel_multiples_vbx_peg = "PEG",
