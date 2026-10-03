@@ -121,6 +121,7 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
     perl = TRUE
   ))
   testthat::expect_true(grepl("input.sidebar_tabs != 'home'", txt, fixed = TRUE))
+  testthat::expect_true(grepl("input.sidebar_tabs != 'bluechip'", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_menu_macro", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-macro-report", txt, fixed = TRUE))
   # Theme Rolling β vs benchmark is removed from Macro (Full and Lite)
