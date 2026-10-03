@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12642512
+bundleId=12642715
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=aa81a9eb40fe7a5a9ace4c520636deea700fd628
-commit=aa81a9eb40fe7a5a9ace4c520636deea700fd628
-short=aa81a9e
-message=chore: bump display version to v19.88
-captured_at=2026-10-03T15:42:58Z
+aligned_git=67a6dd6c851e42a73cf91cc9624ec4906db16d85
+commit=67a6dd6c851e42a73cf91cc9624ec4906db16d85
+short=67a6dd6
+message=chore: bump display version to v19.89
+captured_at=2026-10-03T15:50:48Z
 source_branch=master
 display_version=v19.89
-note=Canonical live line is app_19.0. Bundle 12642512 = v19.88. Decision Checklist investor sections; only Default-ON items pre-checked; Lite still hides menu. Deploy via scripts/deploy_app_19.R. Supersedes 12642502.
+note=Canonical live line is app_19.0. Bundle 12642715 = v19.89. Valuation Methodology moved to Basic Setup bottom (Lite still hides get_started); FV vs Multiples/SOTP tables refreshed. Deploy via scripts/deploy_app_19.R. Supersedes 12642512.
