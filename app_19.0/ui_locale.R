@@ -503,6 +503,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Universe size (N) is the post-analysis display cap: after Candidate truncate and Yahoo scoring, ",
       "at most N qualified names are shown; shortfalls are not padded."
     ),
+    lab_im_detail_box_title = "Detail (sorted by annualized valuation appreciation)",
     lab_im_lb_mode_label = "Ranking view",
     lab_im_lb_mode_overall = "Overall Top 10",
     lab_im_lb_mode_by_industry = "Top 10 by industry",
@@ -2496,6 +2497,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "宇宙檔數（N）＝分析後最終顯示上限：候選截斷與評分後，最多顯示 N 檔合格列；",
       "條件不足時不湊滿。"
     ),
+    lab_im_detail_box_title = "明細（按年化估值漲幅排序）",
     lab_im_lb_mode_label = "排行視角",
     lab_im_lb_mode_overall = "整體前十名",
     lab_im_lb_mode_by_industry = "依產業前十名",

@@ -208,7 +208,7 @@
     ),
     tags$li(
       tags$b("績優股排行榜（Blue Chip）："),
-      "保留候選截斷邏輯與宇宙檔數（N）、盈餘品質與 ADR 篩選，以及分群研究；隱藏明細小頁籤與其餘進階查詢條件。"
+      "保留候選截斷邏輯與宇宙檔數（N）、盈餘品質與 ADR 篩選、排行頁底部明細表，以及分群研究；隱藏其餘進階查詢條件。"
     )
   )
   en_features <- tags$ul(
@@ -233,7 +233,7 @@
     ),
     tags$li(
       tags$b("Blue Chip Leaderboard: "),
-      "Keeps Candidate truncate rules and Universe size (N), Earnings Quality and ADR filters, plus Clustering. Hides the Detail sub-tab and other advanced Ranking filters."
+      "Keeps Candidate truncate rules and Universe size (N), Earnings Quality and ADR filters, the detail table at the bottom of Rankings, plus Clustering. Hides other advanced Ranking filters."
     )
   )
 
@@ -1680,22 +1680,20 @@ beta_rolling_section_ui <- function() {
                     "合格不足 N 時不湊滿。"
                   )
                 )
-              )
-            ),
-
-            tabPanel(
-              title = tags$span(id = "ynow_lab_im_detail_tab", "明細"),
-              value = "im_detail",
-              icon = icon("list"),
+              ),
+              # Detail table at bottom of Rankings (Detail sub-tab removed)
+              tags$hr(style = "margin: 18px 0 12px 0; border-color: #e5e8eb;"),
               p(
                 id = "ynow_lab_im_detail_intro",
                 "本次已評估檔的明細（按年化估值漲幅排序）。宇宙檔數（N）＝分析後最終顯示上限：候選截斷與評分後，最多顯示 N 檔合格列；條件不足時不湊滿。"
               ),
-              tags$hr(),
               fluidRow(
                 box(
                   width = 12, status = "info", solidHeader = TRUE,
-                  title = "明細（按年化估值漲幅排序）",
+                  title = tags$span(
+                    id = "ynow_lab_im_detail_box_title",
+                    "明細（按年化估值漲幅排序）"
+                  ),
                   DT::dataTableOutput("lab_im_table") %>% shinycssloaders::withSpinner()
                 )
               )
@@ -4055,10 +4053,6 @@ ui <- dashboardPage(
           display: none !important;
         }
         /* Prefer data-value: locale applyTabLabels may strip title span ids */
-        body.ynow-lite #bluechip_im_report > li:has(> a[data-value="im_detail"]),
-        body.ynow-lite .nav-tabs > li:has(> a[data-value="im_detail"]) {
-          display: none !important;
-        }
         body.ynow-lite #dashboard_fin_report .nav-tabs > li:has(#ynow_dash_annotation_tab),
         body.ynow-lite #dashboard_fin_report .nav-tabs > li:has(> a[data-value="Annotation"]) {
           display: none !important;
@@ -6251,6 +6245,7 @@ ui <- dashboardPage(
             if (labConcepts && s.lab_im_concepts_label) labConcepts.textContent = s.lab_im_concepts_label;
             var labDetailIntro = document.getElementById('ynow_lab_im_detail_intro');
             if (labDetailIntro && s.lab_im_detail_intro) labDetailIntro.textContent = s.lab_im_detail_intro;
+            setBtText('ynow_lab_im_detail_box_title', 'lab_im_detail_box_title');
             var labLbMode = document.getElementById('ynow_lab_im_lb_mode_label');
             if (labLbMode && s.lab_im_lb_mode_label) labLbMode.textContent = s.lab_im_lb_mode_label;
             var labLbOverall = document.getElementById('ynow_lab_im_lb_mode_overall');

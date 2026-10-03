@@ -259,7 +259,15 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   )
   testthat::expect_true(grepl('tabName = "smart_analysis"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-full-only", txt, fixed = TRUE))
-  testthat::expect_true(grepl("ynow_lab_im_detail_tab", txt, fixed = TRUE))
+  # Detail table lives at bottom of Rankings; Detail sub-tab removed
+  testthat::expect_false(grepl('value = "im_detail"', txt, fixed = TRUE))
+  testthat::expect_false(grepl("ynow_lab_im_detail_tab", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow_lab_im_detail_box_title", txt, fixed = TRUE))
+  testthat::expect_true(grepl(
+    'value = "im_filters"[\\s\\S]*lab_im_table[\\s\\S]*value = "im_cluster"',
+    txt,
+    perl = TRUE
+  ))
   testthat::expect_true(grepl("The YNow App v19.95", txt, fixed = TRUE))
   testthat::expect_true(grepl('title = "The YNow App"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-report", txt, fixed = TRUE))
