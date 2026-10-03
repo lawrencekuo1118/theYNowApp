@@ -8,5 +8,5 @@ short=add3825
 message=chore: bump display version to v19.75
 captured_at=2026-10-03T12:13:23Z
 source_branch=master
-display_version=v19.75
+display_version=v19.76
 note=Canonical live line is app_19.0. Bundle 12642106 = v19.75. Removed Buffett as-of year playback animation. Deploy via scripts/deploy_app_19.R. Supersedes 12642070 / 12642037.
