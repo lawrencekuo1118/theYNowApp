@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12642070
+bundleId=12642106
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=da8c5cd8efbb089635f33b5a4a392c0b7356cb7a
-commit=da8c5cd8efbb089635f33b5a4a392c0b7356cb7a
-short=da8c5cd
-message=chore: bump display version to v19.74
-captured_at=2026-10-03T12:03:43Z
+aligned_git=add3825b4e4f047004601f3636c9e490c92830a2
+commit=add3825b4e4f047004601f3636c9e490c92830a2
+short=add3825
+message=chore: bump display version to v19.75
+captured_at=2026-10-03T12:13:23Z
 source_branch=master
 display_version=v19.75
-note=Canonical live line is app_19.0. Bundle 12642070 = v19.74. Buffett Indicator companions: total market cap + GDP (World Bank). Deploy via scripts/deploy_app_19.R. Supersedes 12642037 / 12642026.
+note=Canonical live line is app_19.0. Bundle 12642106 = v19.75. Removed Buffett as-of year playback animation. Deploy via scripts/deploy_app_19.R. Supersedes 12642070 / 12642037.
