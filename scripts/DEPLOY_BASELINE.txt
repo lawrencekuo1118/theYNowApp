@@ -8,5 +8,5 @@ short=9c81d9e
 message=chore: bump display version to v19.67
 captured_at=2026-10-03T08:57:45Z
 source_branch=master
-display_version=v19.67
+display_version=v19.68
 note=Canonical live line is app_19.0. Bundle 12641647 = v19.67. Param-sensitivity boxes default collapsed; DCF sensitivity matrix row labels use WACC (corner stays Rate (%)). Deploy via scripts/deploy_app_19.R. Supersedes 12641615 / 12641590.
