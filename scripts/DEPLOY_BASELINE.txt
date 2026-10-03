@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12641590
+bundleId=12641615
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=198fc1ac9cea6405e03c8a47e7547a61cb969d58
-commit=198fc1ac9cea6405e03c8a47e7547a61cb969d58
-short=198fc1a
-message=chore: bump display version to v19.65
-captured_at=2026-10-03T08:32:10Z
+aligned_git=c412d0fab98dc8fd9cb1f3b5d3e3f263f9fbdea6
+commit=c412d0fab98dc8fd9cb1f3b5d3e3f263f9fbdea6
+short=c412d0f
+message=chore: bump display version to v19.66
+captured_at=2026-10-03T08:41:57Z
 source_branch=master
 display_version=v19.66
-note=Canonical live line is app_19.0. Bundle 12641590 = v19.65. Company header KPI shows Yahoo last trade (Market Price) instead of Previous Close; same-ticker Search reloads statements. Deploy via scripts/deploy_app_19.R. Supersedes 12639154 / 12638614 / 12638535 / 12638399 / 12638310.
+note=Canonical live line is app_19.0. Bundle 12641615 = v19.66. Dynamic industry bubble & weight concentration is again the last chapter on Macro & Market Trends (removed from YNOW). Deploy via scripts/deploy_app_19.R. Supersedes 12641590 / 12639154.
