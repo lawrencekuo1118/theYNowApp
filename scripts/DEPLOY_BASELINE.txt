@@ -6,7 +6,7 @@ aligned_git=fb83f0f90743818add64158ae7b8961c1104367d
 commit=fb83f0f90743818add64158ae7b8961c1104367d
 short=fb83f0f
 message=chore: bump display version to v19.69
-captured_at=fb83f0f90743818add64158ae7b8961c1104367d_TS
+captured_at=2026-10-03T09:30:41Z
 source_branch=master
 display_version=v19.69
 note=Canonical live line is app_19.0. Bundle 12641698 = v19.69. Home + About privacy / IP / investment-risk notices; PDF disclaimer points to About. Deploy via scripts/deploy_app_19.R. Supersedes 12641661 / 12641647.
