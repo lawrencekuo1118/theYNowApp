@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12641727
+bundleId=12642010
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=ad77317a26cc551fc96bd42aa0ccf2c834855882
-commit=ad77317a26cc551fc96bd42aa0ccf2c834855882
-short=ad77317
-message=chore: bump display version to v19.70
-captured_at=2026-10-03T09:37:26Z
+aligned_git=a98755f8a52c5354d10e0eda6cc3cecdbc0030b2
+commit=a98755f8a52c5354d10e0eda6cc3cecdbc0030b2
+short=a98755f
+message=chore: bump display version to v19.71
+captured_at=2026-10-03T11:41:25Z
 source_branch=master
 display_version=v19.71
-note=Canonical live line is app_19.0. Bundle 12641727 = v19.70. Macro Rf:YNOW:HCCSI = 2:1:1; TW NDC on next row. Deploy via scripts/deploy_app_19.R. Supersedes 12641698 / 12641661.
+note=Canonical live line is app_19.0. Bundle 12642010 = v19.71. Macro TW mode: red-up / green-down change colors. Deploy via scripts/deploy_app_19.R. Supersedes 12641727 / 12641698.
