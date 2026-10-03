@@ -8,5 +8,5 @@ short=a25897c
 message=chore: bump display version to v19.95
 captured_at=2026-10-03T16:51:40Z
 source_branch=master
-display_version=v19.95
+display_version=v19.96
 note=Canonical live line is app_19.0. Bundle 12642858 = v19.95. Radar focus ticker shares Stock Code typeahead. Deploy via scripts/deploy_app_19.R. Supersedes 12642847.
