@@ -166,20 +166,21 @@ APP_DEFAULTS <- list(
   session_ccy = "USD",
 
   # --- 10. Decision Checklist（啟發式門檻；HFV 僅否決）---
+  # Only Default-ON / mandatory_suggest items start checked (bear_base, hfv_veto).
   chk_bear_base = TRUE,
   cond_bear_base_bear_mos_floor = -10,
-  chk_base_mos = TRUE,
+  chk_base_mos = FALSE,
   cond_base_mos_base_mos_floor = 15,
-  chk_g_sgr = TRUE,
+  chk_g_sgr = FALSE,
   cond_g_sgr_g_sgr_gap_min = 0.5,
   cond_g_sgr_sgr_wacc_buffer = 2,
-  chk_model_align = TRUE,
+  chk_model_align = FALSE,
   dc_user_primary = "dcf",
   chk_hfv_veto = TRUE,
   cond_hfv_veto_max_c_freq = 35,
-  chk_fscore = TRUE,
+  chk_fscore = FALSE,
   cond_fscore_fscore_min = 5,
-  chk_no_rank_chase = TRUE,
+  chk_no_rank_chase = FALSE,
 
   # --- 11. Backtest / HFV ---
   bt_net_margin = 5,

@@ -4930,6 +4930,10 @@ ui <- dashboardPage(
             if (!payload) return;
             var hint = document.getElementById('ynow_dc_panel_hint');
             if (hint && payload.panel_hint) hint.textContent = payload.panel_hint;
+            (payload.sections || []).forEach(function (sec) {
+              var st = document.getElementById('ynow_dc_section_' + sec.id);
+              if (st && sec.title) st.textContent = sec.title;
+            });
             var items = payload.items || [];
             items.forEach(function (it) {
               var lab = document.getElementById('ynow_dc_label_' + it.id);
@@ -7652,16 +7656,35 @@ ui <- dashboardPage(
           font-size: 12px;
         }
 
-        /* Decision Checklist */
+        /* Decision Checklist — investor section layout */
+        .ynow-dc-section {
+          margin: 0 0 18px 0;
+        }
+        .ynow-dc-section:last-child {
+          margin-bottom: 0;
+        }
+        .ynow-dc-section-title {
+          margin: 0 0 10px 0;
+          padding: 0 0 6px 0;
+          border-bottom: 1px solid #dee2e6;
+          font-size: 13px;
+          font-weight: 700;
+          color: #1a1a1a;
+          letter-spacing: 0.02em;
+        }
         .ynow-dc-item {
-          margin: 0 0 14px 0;
+          margin: 0 0 10px 0;
           padding: 10px 12px;
           border: 1px solid #e9ecef;
           border-radius: 4px;
           background: #fff;
         }
+        .ynow-dc-item--default {
+          border-color: #b8dae0;
+          background: #f7fbfc;
+        }
         .ynow-dc-panel-hint {
-          margin: 0 0 12px 0;
+          margin: 0 0 14px 0;
           font-size: 12.5px;
           color: #555;
           line-height: 1.5;

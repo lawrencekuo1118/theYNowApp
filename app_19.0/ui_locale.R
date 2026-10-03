@@ -1304,17 +1304,24 @@ locale_for_market <- function(mode = get_market_mode()) {
     # --- Decision Checklist ---
     dc_page_title = "Decision Checklist",
     dc_page_sub = paste0(
-      "Pick checklist items that match your investment decision style, then set condition values. ",
+      "Investor gate order: quality → valuation → model → HFV veto → discipline. ",
+      "Only Default-ON items start checked; opt in to the rest. ",
       "Unchecked items hide their numeric conditions. Defaults are engineering heuristics (not academic standards). ",
       "HFV is a veto tool only — never a bullish buy signal."
     ),
     dc_box_checks = "Checklist & Conditions",
     dc_box_summary = "Pass / Fail Summary",
     dc_panel_hint = paste0(
-      "Check items to include them in the gate. Condition inputs appear only after the parent box is checked. ",
+      "Only Default-ON items start checked. Opt in to include other gates. ",
+      "Condition inputs appear only after the parent box is checked. ",
       "Session choices persist via Shiny inputs for this browser session."
     ),
     dc_badge_default_on = "Default ON",
+    dc_section_quality = "1 · Quality screen",
+    dc_section_valuation = "2 · Valuation & MOS",
+    dc_section_model = "3 · Model & assumptions",
+    dc_section_veto = "4 · Historical veto (HFV)",
+    dc_section_discipline = "5 · Order discipline",
     dc_label_bear_base = "Bear / Base cross-check (required hygiene)",
     dc_hint_bear_base = "If checked: require both Bear and Base FV/MOS so downside vs base case is compared before acting.",
     dc_label_base_mos = "Base MOS floor (%)",
@@ -3262,16 +3269,22 @@ locale_for_market <- function(mode = get_market_mode()) {
     # --- 決策檢核 ---
     dc_page_title = "決策檢核",
     dc_page_sub = paste0(
-      "依投資決策風格勾選檢核項並設定條件數值；未勾選則不顯示條件輸入。",
+      "投資人閘門順序：體質 → 估值 → 模型 → HFV 否決 → 紀律。",
+      "僅「預設勾選」項目開機已勾；其餘自行加選。未勾選則不顯示條件輸入。",
       "預設值為工程啟發式（非學術標準）。HFV 嚴格定位為否決工具，不作看漲／下單依據。"
     ),
     dc_box_checks = "檢核項目與條件",
     dc_box_summary = "通過／否決摘要",
     dc_panel_hint = paste0(
-      "勾選後才納入閘門；條件數值僅在父項勾選後出現。",
-      "本 Session 選擇由 Shiny inputs 保留（瀏覽器工作階段內）。"
+      "僅「預設勾選」項目開機已勾；其餘自行加選後才納入閘門。",
+      "條件數值僅在父項勾選後出現。本 Session 選擇由 Shiny inputs 保留（瀏覽器工作階段內）。"
     ),
     dc_badge_default_on = "預設勾選",
+    dc_section_quality = "1 · 財報體質",
+    dc_section_valuation = "2 · 估值與安全邊際",
+    dc_section_model = "3 · 模型與假設",
+    dc_section_veto = "4 · 歷史否決（HFV）",
+    dc_section_discipline = "5 · 下單紀律",
     dc_label_bear_base = "Bear／Base 對照（決策衛生・建議必勾）",
     dc_hint_bear_base = "勾選後：要求 Bear 與 Base 的 FV／MOS 皆可對照，避免只看樂觀基準就下決策。",
     dc_label_base_mos = "Base MOS 下限（%）",

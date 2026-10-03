@@ -1,10 +1,23 @@
 # =========================================================================
 # 投資決策通過檢核表（Decision Checklist）— 可自訂參數、通過／否決摘要
 # 啟發式預設；非學術標準。HFV 僅作否決工具，不作看漲依據。
+# 排版：投資人決策流程（體質 → 估值 → 模型 → 否決 → 紀律）。
+# 僅 mandatory_suggest（預設勾選）項目開機預勾；其餘 opt-in。
+# Lite：側欄隱藏（ynow_ui.R body.ynow-lite）。
 # =========================================================================
 
+# Investor-desk order (display + evaluation). default_on follows mandatory_suggest only.
 .DC_ITEM_DEFS <- list(
+  fscore = list(
+    section = "quality",
+    default_on = FALSE,
+    mandatory_suggest = FALSE,
+    conds = list(
+      fscore_min = list(default = 5, step = 1, min = 0, max = 9)
+    )
+  ),
   bear_base = list(
+    section = "valuation",
     default_on = TRUE,
     mandatory_suggest = TRUE,
     conds = list(
@@ -12,111 +25,138 @@
     )
   ),
   base_mos = list(
-    default_on = TRUE,
+    section = "valuation",
+    default_on = FALSE,
+    mandatory_suggest = FALSE,
     conds = list(
       base_mos_floor = list(default = 15, step = 1, min = -50, max = 80)
     )
   ),
+  model_align = list(
+    section = "model",
+    default_on = FALSE,
+    mandatory_suggest = FALSE,
+    conds = list()
+  ),
   g_sgr = list(
-    default_on = TRUE,
+    section = "model",
+    default_on = FALSE,
+    mandatory_suggest = FALSE,
     conds = list(
       g_sgr_gap_min = list(default = 0.5, step = 0.1, min = 0, max = 20),
       sgr_wacc_buffer = list(default = 2, step = 0.25, min = 0, max = 20)
     )
   ),
-  model_align = list(
-    default_on = TRUE,
-    conds = list()
-  ),
   hfv_veto = list(
+    section = "veto",
     default_on = TRUE,
     mandatory_suggest = TRUE,
     conds = list(
       max_c_freq = list(default = 35, step = 1, min = 0, max = 100)
     )
   ),
-  fscore = list(
-    default_on = TRUE,
-    conds = list(
-      fscore_min = list(default = 5, step = 1, min = 0, max = 9)
-    )
-  ),
   no_rank_chase = list(
-    default_on = TRUE,
+    section = "discipline",
+    default_on = FALSE,
+    mandatory_suggest = FALSE,
     conds = list()
   )
 )
 
+.DC_SECTION_ORDER <- c("quality", "valuation", "model", "veto", "discipline")
+
 .dc_chk_id <- function(item) paste0("chk_", item)
 .dc_cond_id <- function(item, cond) paste0("cond_", item, "_", cond)
 
+.dc_item_block <- function(item) {
+  def <- .DC_ITEM_DEFS[[item]]
+  chk <- .dc_chk_id(item)
+  cond_names <- names(def$conds)
+  tags$div(
+    class = paste0(
+      "ynow-dc-item",
+      if (isTRUE(def$mandatory_suggest)) " ynow-dc-item--default" else ""
+    ),
+    `data-dc-item` = item,
+    checkboxInput(
+      chk,
+      label = tags$span(
+        class = "ynow-dc-label-wrap",
+        tags$span(class = "ynow-dc-label", id = paste0("ynow_dc_label_", item), item),
+        if (isTRUE(def$mandatory_suggest)) {
+          tags$span(class = "ynow-dc-badge", id = paste0("ynow_dc_badge_", item), "Default ON")
+        } else {
+          NULL
+        }
+      ),
+      value = isTRUE(def$default_on)
+    ),
+    tags$p(class = "ynow-dc-hint", id = paste0("ynow_dc_hint_", item), ""),
+    if (length(cond_names) > 0L || identical(item, "model_align")) {
+      conditionalPanel(
+        condition = sprintf("input['%s'] == true", chk),
+        tags$div(
+          class = "ynow-dc-conds",
+          if (identical(item, "model_align")) {
+            selectInput(
+              "dc_user_primary",
+              "Adopted primary model",
+              # Fair Value primaries only — Multiples / SOTP are Implied Price cross-checks
+              choices = c(
+                "DCF" = "dcf", "DDM" = "ddm", "RI" = "ri", "P/B" = "pb", "NAV" = "nav"
+              ),
+              selected = "dcf",
+              width = "100%"
+            )
+          } else {
+            NULL
+          },
+          lapply(cond_names, function(cn) {
+            meta <- def$conds[[cn]]
+            numericInput(
+              .dc_cond_id(item, cn),
+              cn,
+              value = meta$default,
+              min = meta$min,
+              max = meta$max,
+              step = meta$step,
+              width = "100%"
+            )
+          })
+        )
+      )
+    } else {
+      NULL
+    }
+  )
+}
+
 .dc_checks_ui <- function() {
-  items <- names(.DC_ITEM_DEFS)
+  items_by_section <- lapply(.DC_SECTION_ORDER, function(sec) {
+    names(.DC_ITEM_DEFS)[vapply(.DC_ITEM_DEFS, function(d) identical(d$section, sec), logical(1))]
+  })
+  names(items_by_section) <- .DC_SECTION_ORDER
+
   tagList(
     ynow_notes_block(
       tags$p(
         id = "ynow_dc_panel_hint",
         class = "ynow-dc-panel-hint",
-        "Check items to include them in the gate. Condition inputs appear only after the parent box is checked."
+        "Only Default-ON items start checked. Opt in to the rest. Conditions appear after a parent is checked."
       )
     ),
-    lapply(items, function(item) {
-      def <- .DC_ITEM_DEFS[[item]]
-      chk <- .dc_chk_id(item)
-      cond_names <- names(def$conds)
-      tags$div(
-        class = "ynow-dc-item",
-        `data-dc-item` = item,
-        checkboxInput(
-          chk,
-          label = tags$span(
-            class = "ynow-dc-label-wrap",
-            tags$span(class = "ynow-dc-label", id = paste0("ynow_dc_label_", item), item),
-            if (isTRUE(def$mandatory_suggest)) {
-              tags$span(class = "ynow-dc-badge", id = paste0("ynow_dc_badge_", item), "Default ON")
-            } else {
-              NULL
-            }
-          ),
-          value = isTRUE(def$default_on)
+    lapply(.DC_SECTION_ORDER, function(sec) {
+      sec_items <- items_by_section[[sec]]
+      if (!length(sec_items)) return(NULL)
+      tags$section(
+        class = "ynow-dc-section",
+        `data-dc-section` = sec,
+        tags$h4(
+          class = "ynow-dc-section-title",
+          id = paste0("ynow_dc_section_", sec),
+          sec
         ),
-        tags$p(class = "ynow-dc-hint", id = paste0("ynow_dc_hint_", item), ""),
-        if (length(cond_names) > 0L || identical(item, "model_align")) {
-          conditionalPanel(
-            condition = sprintf("input['%s'] == true", chk),
-            tags$div(
-              class = "ynow-dc-conds",
-              if (identical(item, "model_align")) {
-                selectInput(
-                  "dc_user_primary",
-                  "Adopted primary model",
-                  # Fair Value primaries only — Multiples / SOTP are Implied Price cross-checks
-                  choices = c(
-                    "DCF" = "dcf", "DDM" = "ddm", "RI" = "ri", "P/B" = "pb", "NAV" = "nav"
-                  ),
-                  selected = "dcf",
-                  width = "100%"
-                )
-              } else {
-                NULL
-              },
-              lapply(cond_names, function(cn) {
-                meta <- def$conds[[cn]]
-                numericInput(
-                  .dc_cond_id(item, cn),
-                  cn,
-                  value = meta$default,
-                  min = meta$min,
-                  max = meta$max,
-                  step = meta$step,
-                  width = "100%"
-                )
-              })
-            )
-          )
-        } else {
-          NULL
-        }
+        lapply(sec_items, .dc_item_block)
       )
     })
   )
@@ -131,7 +171,7 @@ decision_checklist_tab_ui <- function() {
         h2(tags$b(id = "ynow_dc_page_title", "Decision Checklist")),
         p(
           id = "ynow_dc_page_sub",
-          "Pick checklist items that match your investment decision style, then set condition values."
+          "Investor gate order: quality → valuation → model → HFV veto → discipline. Only Default-ON items start checked."
         ),
         tags$hr()
       )
@@ -323,6 +363,12 @@ decision_checklist_server <- function(
       locale = loc,
       panel_hint = ui_str("dc_panel_hint", loc),
       badge = ui_str("dc_badge_default_on", loc),
+      sections = lapply(.DC_SECTION_ORDER, function(sec) {
+        list(
+          id = sec,
+          title = ui_str(paste0("dc_section_", sec), loc)
+        )
+      }),
       items = lapply(names(.DC_ITEM_DEFS), function(item) {
         def <- .DC_ITEM_DEFS[[item]]
         list(
