@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12641647
+bundleId=12641661
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=9c81d9e740c84a20b694f7b873f5ebaf35b5ac1d
-commit=9c81d9e740c84a20b694f7b873f5ebaf35b5ac1d
-short=9c81d9e
-message=chore: bump display version to v19.67
-captured_at=2026-10-03T08:57:45Z
+aligned_git=4d67103ee1d94294b088fdc347c7471facff0d32
+commit=4d67103ee1d94294b088fdc347c7471facff0d32
+short=4d67103
+message=chore: bump display version to v19.68
+captured_at=2026-10-03T09:05:09Z
 source_branch=master
 display_version=v19.68
-note=Canonical live line is app_19.0. Bundle 12641647 = v19.67. Param-sensitivity boxes default collapsed; DCF sensitivity matrix row labels use WACC (corner stays Rate (%)). Deploy via scripts/deploy_app_19.R. Supersedes 12641615 / 12641590.
+note=Canonical live line is app_19.0. Bundle 12641661 = v19.68. Homepage Full card label Decide→Action (zh-TW 行動). Deploy via scripts/deploy_app_19.R. Supersedes 12641647 / 12641615.
