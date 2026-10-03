@@ -8,5 +8,5 @@ short=183448d
 message=chore: bump display version to v19.86
 captured_at=2026-10-03T14:21:01Z
 source_branch=master
-display_version=v19.86
+display_version=v19.87
 note=Canonical live line is app_19.0. Bundle 12642482 = v19.86. Multiples/SOTP use P/B-style formula banners + settings tabs (Earnings/Enterprise/P/S/Bridge; Segments/Bridge). Deploy via scripts/deploy_app_19.R. Supersedes 12642460.
