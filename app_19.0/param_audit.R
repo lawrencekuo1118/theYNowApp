@@ -164,7 +164,7 @@ ynow_tracked_param_registry <- function() {
     c("lab_cluster_k", "Lab", "Cluster k", "bluechip_lab", "numeric", "FALSE", "Number of clusters"),
     c("lab_cluster_x", "Lab", "Cluster scatter X", "bluechip_lab", "select", "FALSE", "Scatter X metric"),
     c("lab_cluster_y", "Lab", "Cluster scatter Y", "bluechip_lab", "select", "FALSE", "Scatter Y metric"),
-    c("lab_cluster_focus", "Lab", "Cluster focus ticker", "bluechip_lab", "select", "FALSE", "Highlight ticker in cluster map"),
+    c("lab_cluster_focus", "Lab", "Cluster focus ticker", "bluechip_lab", "text", "FALSE", "Highlight ticker in cluster map"),
     c("lab_sec_form", "Lab", "SEC form type", "bluechip_lab", "select", "TRUE", "10-K / 10-Q etc."),
     c("lab_sec_important_only", "Lab", "Important notes only", "bluechip_lab", "checkbox", "TRUE", "Filter SEC notes"),
     c("lab_sec_keyword", "Lab", "SEC keyword", "bluechip_lab", "text", "TRUE", "Keyword search in notes")

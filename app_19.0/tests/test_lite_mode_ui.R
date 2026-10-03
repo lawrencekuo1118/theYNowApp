@@ -122,6 +122,20 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   ))
   testthat::expect_true(grepl("input.sidebar_tabs != 'home'", txt, fixed = TRUE))
   testthat::expect_true(grepl("input.sidebar_tabs != 'bluechip'", txt, fixed = TRUE))
+  # Radar focus ticker uses the same typeahead pattern as Ticker / Stock Code
+  testthat::expect_true(grepl("lab_cluster_focus_suggest_ui", txt, fixed = TRUE))
+  testthat::expect_true(grepl("data-ynow-ticker-typeahead", txt, fixed = TRUE))
+  testthat::expect_true(grepl("bindTypeahead('lab_cluster_focus')", txt, fixed = TRUE))
+  testthat::expect_true(grepl(
+    'textInput\\(\\s*"lab_cluster_focus"',
+    txt,
+    perl = TRUE
+  ))
+  testthat::expect_false(grepl(
+    'selectInput\\(\\s*"lab_cluster_focus"',
+    txt,
+    perl = TRUE
+  ))
   testthat::expect_true(grepl("ynow_menu_macro", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-macro-report", txt, fixed = TRUE))
   # Theme Rolling β vs benchmark is removed from Macro (Full and Lite)

@@ -106,11 +106,7 @@ server <- function(input, output, session) {
     # Always write NULL (even if already NULL) so renderUI hosts rebuild.
     lab_cluster_result(NULL)
     tryCatch(
-      updateSelectInput(
-        session, "lab_cluster_focus",
-        choices = c("—" = ""),
-        selected = ""
-      ),
+      updateTextInput(session, "lab_cluster_focus", value = ""),
       error = function(e) NULL
     )
     # Nuclear: strip any leftover htmlwidget hosts before idle placeholder paints.
@@ -657,19 +653,19 @@ server <- function(input, output, session) {
   }, ignoreInit = TRUE)
 
   # ==========================================
-  # 🔎 主搜尋框預選清單（Ticker／Stock Code；非側邊欄）
+  # 🔎 代號預選清單（Ticker／Stock Code + Radar focus ticker）
   # ==========================================
 
-  output$sc_ticker_suggest_ui <- renderUI({
-    ch <- sc_datalist_choices()
-    mode <- market_mode()
+  .ynow_ticker_suggest_div <- function(div_id, choices, mode) {
+    ch <- choices
     if (is.null(ch) || length(ch) == 0) ch <- ticker_presets_for_market(mode)
     labs <- names(ch)
     if (is.null(labs)) labs <- unname(ch)
     labs[!nzchar(labs)] <- unname(ch)[!nzchar(labs)]
     n <- min(length(ch), 12L)
     tags$div(
-      id = "sc_ticker_suggest",
+      id = div_id,
+      class = "ynow-ticker-suggest",
       role = "listbox",
       lapply(seq_len(n), function(i) {
         fetch_sym <- as.character(unname(ch)[[i]])
@@ -679,7 +675,7 @@ server <- function(input, output, session) {
         extra <- lab
         for (pat in unique(c(fetch_sym, disp_sym))) {
           if (!nzchar(pat)) next
-          # perl=TRUE：TRE 字元類不可含裸 {}，否則首頁 suggest UI 整段失敗
+          # perl=TRUE：TRE 字元類不可含裸 {}，否則 suggest UI 整段失敗
           esc <- gsub("([.\\^$|()\\[\\]{}*+?\\\\])", "\\\\\\1", pat, perl = TRUE)
           extra <- sub(paste0("^", esc, "(\\s|[—\\-–])+"), "", extra, perl = TRUE)
         }
@@ -697,6 +693,14 @@ server <- function(input, output, session) {
         )
       })
     )
+  }
+
+  output$sc_ticker_suggest_ui <- renderUI({
+    .ynow_ticker_suggest_div("sc_ticker_suggest", sc_datalist_choices(), market_mode())
+  })
+
+  output$lab_cluster_focus_suggest_ui <- renderUI({
+    .ynow_ticker_suggest_div("lab_cluster_focus_suggest", sc_datalist_choices(), market_mode())
   })
 
   session$onFlushed(function() {
@@ -12187,7 +12191,6 @@ server <- function(input, output, session) {
     )
     if (is.null(result) || is.null(result$data) || nrow(result$data) == 0L) return()
     lab_cluster_result(result)
-    choices <- stats::setNames(result$data$ticker, paste0(result$data$ticker, " · ", result$data$Cluster_Label))
     # Default radar focus = Search ticker (pinned first row when present)
     focus_default <- result$data$ticker[[1]]
     matched_focus <- lab_cluster_match_ticker(result$data$ticker, session_tk)
@@ -12208,7 +12211,11 @@ server <- function(input, output, session) {
         duration = 8
       )
     }
-    updateSelectInput(session, "lab_cluster_focus", choices = choices, selected = focus_default)
+    focus_disp <- tryCatch(
+      display_ticker_for_market(focus_default, market_mode()),
+      error = function(e) as.character(focus_default)[1]
+    )
+    updateTextInput(session, "lab_cluster_focus", value = focus_disp)
     showNotification(
       sprintf("Clustered %d names into %d groups.", result$n, result$k),
       type = "message",
@@ -12226,22 +12233,26 @@ server <- function(input, output, session) {
     if (is.null(tk) || is.na(tk)) tk <- ""
     tk <- toupper(trimws(as.character(tk)[1]))
     if (!nzchar(tk)) return()
+    mode <- tryCatch(market_mode(), error = function(e) "US")
+    disp <- tryCatch(display_ticker_for_market(tk, mode), error = function(e) tk)
     res <- lab_cluster_result()
     if (!isTRUE(tryCatch(lab_cluster_has_result(res), error = function(e) FALSE))) {
-      # Pre-seed focus dropdown to Search ticker before the first clustering run
-      updateSelectInput(
-        session, "lab_cluster_focus",
-        choices = stats::setNames(tk, paste0(tk, " · Search")),
-        selected = tk
-      )
+      # Pre-seed focus text field to Search ticker before the first clustering run
+      updateTextInput(session, "lab_cluster_focus", value = disp)
       return()
     }
     matched <- lab_cluster_match_ticker(res$data$ticker, tk)
     if (is.na(matched) || !nzchar(matched)) return()
     cur_focus <- as.character(isolate(input$lab_cluster_focus) %||% "")[1]
-    if (identical(cur_focus, matched)) return()
-    choices <- stats::setNames(res$data$ticker, paste0(res$data$ticker, " · ", res$data$Cluster_Label))
-    updateSelectInput(session, "lab_cluster_focus", choices = choices, selected = matched)
+    matched_disp <- tryCatch(
+      display_ticker_for_market(matched, mode),
+      error = function(e) matched
+    )
+    if (identical(toupper(trimws(cur_focus)), toupper(trimws(matched_disp))) ||
+        identical(toupper(trimws(cur_focus)), toupper(trimws(matched)))) {
+      return()
+    }
+    updateTextInput(session, "lab_cluster_focus", value = matched_disp)
   }, ignoreInit = TRUE)
 
   # Dynamic hosts: idle → placeholder (no plotly/DT node); live → recreate outputs
