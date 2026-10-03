@@ -144,6 +144,12 @@ check("flow numeral", grepl("ynow-hccsi-flow", macro, fixed = TRUE))
 check("YNOW KPI on Rf row", grepl(".own_index_kpi_card", macro, fixed = TRUE) &&
   grepl("ynow-macro-kpi--ynow", macro, fixed = TRUE) &&
   grepl("ynow_col", macro, fixed = TRUE))
+check("own chart expands in shared hist panel", {
+  pos_rf <- regexpr("rf_signal_row", macro, fixed = TRUE)[1]
+  pos_hist <- regexpr("ynow_macro_index_hist", macro, fixed = TRUE)[1]
+  pos_rf > 0 && pos_hist > pos_rf &&
+    grepl("YNOW / TYNOW use the same expand card", macro, fixed = TRUE)
+})
 check("expand constituents", grepl("ynow_index_constituents", macro, fixed = TRUE))
 check("weight percent", grepl('sprintf("%.2f%%", 100 * w)', macro, fixed = TRUE))
 check("price recalc", grepl("ynow_index_series", macro, fixed = TRUE))

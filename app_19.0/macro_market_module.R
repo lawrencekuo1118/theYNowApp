@@ -395,12 +395,13 @@ macro_market_ui <- function(id = "macro") {
       class = "ynow-macro-hint ynow-full-only",
       "Click an index box to show its historical line chart."
     ),
+    uiOutput(ns("rf_signal_row")),
+    # Shared expand slot for ^GSPC / boards and YNOW／TYNOW (same card style).
     tags$div(
       id = "ynow_macro_index_hist",
       class = "ynow-macro-index-hist ynow-full-only",
       uiOutput(ns("index_hist_panel"))
     ),
-    uiOutput(ns("rf_signal_row")),
     tags$div(
       id = "ynow_macro_hccsi_expand",
       class = "ynow-macro-hccsi-expand ynow-full-only",
@@ -797,20 +798,22 @@ macro_market_server <- function(id = "macro",
     output$index_hist_panel <- renderUI({
       if (.is_lite()) return(NULL)
       sym <- as.character(selected_index() %||% "")[1]
-      if (!nzchar(sym) || identical(sym, .own_index_symbol())) return(NULL)
+      if (!nzchar(sym)) return(NULL)
+      # YNOW / TYNOW use the same expand card as ^GSPC (click KPI → line chart).
+      own <- identical(sym, .own_index_symbol())
       dat <- index_hist_data()
-      title <- .ui(macro_index_name_key(sym))
+      title <- if (own) .ui(.index_ui_key("title")) else .ui(macro_index_name_key(sym))
       body <- if (is.null(dat)) {
         tags$p(
           id = "ynow_macro_index_empty",
           class = "ynow-macro-hint",
-          .ui("macro_index_chart_error")
+          if (own) .ui(.index_ui_key("empty")) else .ui("macro_index_chart_error")
         )
       } else if (!is.data.frame(dat) || nrow(dat) < 2L) {
         tags$p(
           id = "ynow_macro_index_empty",
           class = "ynow-macro-hint",
-          .ui("macro_index_chart_empty")
+          if (own) .ui(.index_ui_key("none")) else .ui("macro_index_chart_empty")
         )
       } else {
         plotlyOutput(ns("index_hist_plot"), height = "320px", width = "100%")
@@ -923,7 +926,7 @@ macro_market_server <- function(id = "macro",
       )
     }
 
-    # Chapter + expand only (KPI card lives on rf_signal_row).
+    # Chapter + constituents only. Line chart expands in index_hist_panel (same as ^GSPC).
     output$own_index_block <- renderUI({
       .loc()
       own <- .own_index_symbol()
@@ -938,19 +941,12 @@ macro_market_server <- function(id = "macro",
       } else {
         # #region agent log
         if (exists(".ynow_dbg_ef0f33", mode = "function")) {
-          .ynow_dbg_ef0f33("SHELL", "macro_market_module.R:own_index_block", "expand shell without member downloads", list(
+          .ynow_dbg_ef0f33("SHELL", "macro_market_module.R:own_index_block", "constituents expand (chart in index_hist_panel)", list(
             own = own
           ))
         }
         # #endregion
-        tags$div(
-          class = "ynow-macro-card ynow-macro-index-hist__card",
-          tags$p(
-            class = "ynow-macro-hint ynow-index-pending",
-            .ui(.index_ui_key("waiting"))
-          ),
-          uiOutput(ns("own_index_detail"))
-        )
+        uiOutput(ns("own_index_detail"))
       }
       tags$section(
         class = "ynow-macro-chapter",
@@ -974,14 +970,6 @@ macro_market_server <- function(id = "macro",
       own <- .own_index_symbol()
       sel <- as.character(selected_index() %||% "")[1]
       if (!nzchar(own) || !identical(sel, own)) return(NULL)
-      dat <- index_hist_data()
-      body <- if (is.null(dat)) {
-        tags$p(class = "ynow-macro-hint", .ui(.index_ui_key("empty")))
-      } else if (!is.data.frame(dat) || nrow(dat) < 2L) {
-        tags$p(class = "ynow-macro-hint", .ui(.index_ui_key("none")))
-      } else {
-        plotlyOutput(ns("index_hist_plot"), height = "320px", width = "100%")
-      }
       quotes <- own_member_quotes()
       mode <- if (identical(own, "TYNOW")) "TW" else "US"
       names_v <- if (exists("ynow_index_lookup_names", mode = "function") && length(quotes)) {
@@ -1017,11 +1005,10 @@ macro_market_server <- function(id = "macro",
           tags$tbody(rows)
         )
       } else {
-        NULL
+        tags$p(class = "ynow-macro-hint", .ui(.index_ui_key("waiting")))
       }
       tags$div(
         class = "ynow-index-detail-ready",
-        body,
         tags$h4(
           id = "ynow_index_constituents",
           `data-i18n` = "ynow_index_constituents",

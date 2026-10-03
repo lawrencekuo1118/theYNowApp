@@ -178,8 +178,8 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl("index_hist_plot", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-full-only", macro_txt, fixed = TRUE))
   testthat::expect_true(
-    regexpr("ynow_macro_index_hist", macro_txt, fixed = TRUE)[1] <
-      regexpr("rf_signal_row", macro_txt, fixed = TRUE)[1]
+    regexpr("rf_signal_row", macro_txt, fixed = TRUE)[1] <
+      regexpr("ynow_macro_index_hist", macro_txt, fixed = TRUE)[1]
   )
   testthat::expect_false(grepl("ynow_macro_rf_note", macro_txt, fixed = TRUE))
   testthat::expect_false(grepl("Same live Rf path as CAPM", macro_txt, fixed = TRUE))

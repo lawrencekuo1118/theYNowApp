@@ -332,10 +332,14 @@ check("US four-card index columns stay col-md-3", grepl("col-xs-6 col-sm-6 col-m
 check("TW three-card index columns are col-md-4", grepl("col-xs-12 col-sm-4 col-md-4", txt, fixed = TRUE))
 check("index click input", grepl("index_click", txt, fixed = TRUE))
 check("index hist plot output", grepl("index_hist_plot", txt, fixed = TRUE))
-check("index hist panel above Rf", {
+check("index hist panel below Rf (shared expand with YNOW/TYNOW)", {
   pos_hist <- regexpr("ynow_macro_index_hist", txt, fixed = TRUE)[1]
   pos_rf <- regexpr("rf_signal_row", txt, fixed = TRUE)[1]
-  is.finite(pos_hist) && pos_hist > 0 && is.finite(pos_rf) && pos_hist < pos_rf
+  is.finite(pos_hist) && pos_hist > 0 && is.finite(pos_rf) && pos_rf < pos_hist
+})
+check("own index chart uses shared hist panel", {
+  grepl("YNOW / TYNOW use the same expand card", txt, fixed = TRUE) &&
+    !grepl("identical(sym, .own_index_symbol())) return(NULL)", txt, fixed = TRUE)
 })
 check("hint above Rf", {
   pos_hint <- regexpr("ynow_macro_index_hint", txt, fixed = TRUE)[1]
