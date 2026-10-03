@@ -2916,7 +2916,7 @@ ui <- dashboardPage(
           margin: 18px 0 0 0;
           padding-top: 14px;
           border-top: 1px solid #e5e8eb;
-          text-align: left;
+          text-align: center;
         }
         .ynow-home-legal-text {
           margin: 0 0 8px 0;
