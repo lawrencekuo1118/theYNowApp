@@ -796,11 +796,68 @@ macro_market_server <- function(id = "macro",
       })
     })
 
+    .own_index_constituents_ui <- function() {
+      own <- .own_index_symbol()
+      if (!nzchar(own)) return(NULL)
+      quotes <- own_member_quotes()
+      mode <- if (identical(own, "TYNOW")) "TW" else "US"
+      names_v <- if (exists("ynow_index_lookup_names", mode = "function") && length(quotes)) {
+        ynow_index_lookup_names(vapply(quotes, function(m) m$ticker, character(1)), mode)
+      } else {
+        character(0)
+      }
+      rows <- lapply(quotes, function(m) {
+        w <- suppressWarnings(as.numeric(m$weight)[1])
+        w_txt <- if (is.finite(w)) sprintf("%.2f%%", 100 * w) else "—"
+        px_txt <- if (is.finite(m$last)) format(round(m$last, 2), big.mark = ",", nsmall = 2) else "—"
+        px_chg <- if (is.finite(m$chg)) sprintf("%+.2f%%", m$chg) else "—"
+        px_cls <- if (is.finite(m$chg) && m$chg >= 0) "ynow-macro-up" else "ynow-macro-down"
+        nm <- if (length(names_v) && nzchar(names_v[[m$ticker]] %||% "")) names_v[[m$ticker]] else "—"
+        tags$tr(
+          tags$td(m$ticker),
+          tags$td(nm),
+          tags$td(w_txt),
+          tags$td(px_txt),
+          tags$td(class = px_cls, px_chg)
+        )
+      })
+      table <- if (length(rows)) {
+        tags$table(
+          class = "table table-condensed ynow-hccsi-table",
+          tags$thead(tags$tr(
+            tags$th(id = "ynow_index_col_ticker", `data-i18n` = "ynow_index_col_ticker", .ui("ynow_index_col_ticker")),
+            tags$th(id = "ynow_index_col_name", `data-i18n` = "ynow_index_col_name", .ui("ynow_index_col_name")),
+            tags$th(id = "ynow_index_col_weight", `data-i18n` = "ynow_index_col_weight", .ui("ynow_index_col_weight")),
+            tags$th(id = "ynow_index_col_last", `data-i18n` = "ynow_index_col_last", .ui("ynow_index_col_last")),
+            tags$th(id = "ynow_index_col_chg", `data-i18n` = "ynow_index_col_chg", .ui("ynow_index_col_chg"))
+          )),
+          tags$tbody(rows)
+        )
+      } else {
+        tags$p(class = "ynow-macro-hint", .ui(.index_ui_key("waiting")))
+      }
+      tags$div(
+        class = "ynow-index-detail-ready",
+        tags$h4(
+          id = "ynow_index_constituents",
+          `data-i18n` = "ynow_index_constituents",
+          .ui("ynow_index_constituents")
+        ),
+        table,
+        tags$p(
+          id = "ynow_index_chart_note",
+          `data-i18n` = "ynow_index_chart_note",
+          class = "ynow-macro-hint",
+          .ui("ynow_index_chart_note")
+        )
+      )
+    }
+
     output$index_hist_panel <- renderUI({
       if (.is_lite()) return(NULL)
       sym <- as.character(selected_index() %||% "")[1]
       if (!nzchar(sym)) return(NULL)
-      # YNOW / TYNOW use the same expand card as ^GSPC (click KPI → line chart).
+      # YNOW / TYNOW: same expand card as ^GSPC, with constituents under the chart.
       own <- identical(sym, .own_index_symbol())
       dat <- index_hist_data()
       title <- if (own) .ui(.index_ui_key("title")) else .ui(macro_index_name_key(sym))
@@ -822,7 +879,8 @@ macro_market_server <- function(id = "macro",
       tags$div(
         class = "ynow-macro-card ynow-macro-index-hist__card",
         tags$h4(id = "ynow_macro_index_hist_title", title),
-        body
+        body,
+        if (own) .own_index_constituents_ui() else NULL
       )
     })
 
@@ -927,28 +985,13 @@ macro_market_server <- function(id = "macro",
       )
     }
 
-    # Chapter + constituents only. Line chart expands in index_hist_panel (same as ^GSPC).
+    # Chapter (rule only). Chart + constituents expand together in index_hist_panel.
     output$own_index_block <- renderUI({
       .loc()
       own <- .own_index_symbol()
       if (!nzchar(own)) return(NULL)
-      lite <- .is_lite()
-      sel <- as.character(selected_index() %||% "")[1]
-      selected_own <- !isTRUE(lite) && identical(sel, own)
       title_key <- .index_ui_key("title")
       rule_key <- .index_ui_key("rule")
-      expand <- if (!selected_own) {
-        NULL
-      } else {
-        # #region agent log
-        if (exists(".ynow_dbg_ef0f33", mode = "function")) {
-          .ynow_dbg_ef0f33("SHELL", "macro_market_module.R:own_index_block", "constituents expand (chart in index_hist_panel)", list(
-            own = own
-          ))
-        }
-        # #endregion
-        uiOutput(ns("own_index_detail"))
-      }
       tags$section(
         class = "ynow-macro-chapter",
         tags$h3(
@@ -961,66 +1004,6 @@ macro_market_server <- function(id = "macro",
           `data-i18n` = rule_key,
           class = "ynow-macro-hint ynow-macro-chapter__lead",
           .ui(rule_key)
-        ),
-        expand
-      )
-    })
-
-    output$own_index_detail <- renderUI({
-      if (.is_lite()) return(NULL)
-      own <- .own_index_symbol()
-      sel <- as.character(selected_index() %||% "")[1]
-      if (!nzchar(own) || !identical(sel, own)) return(NULL)
-      quotes <- own_member_quotes()
-      mode <- if (identical(own, "TYNOW")) "TW" else "US"
-      names_v <- if (exists("ynow_index_lookup_names", mode = "function") && length(quotes)) {
-        ynow_index_lookup_names(vapply(quotes, function(m) m$ticker, character(1)), mode)
-      } else {
-        character(0)
-      }
-      rows <- lapply(quotes, function(m) {
-        w <- suppressWarnings(as.numeric(m$weight)[1])
-        w_txt <- if (is.finite(w)) sprintf("%.2f%%", 100 * w) else "—"
-        px_txt <- if (is.finite(m$last)) format(round(m$last, 2), big.mark = ",", nsmall = 2) else "—"
-        px_chg <- if (is.finite(m$chg)) sprintf("%+.2f%%", m$chg) else "—"
-        px_cls <- if (is.finite(m$chg) && m$chg >= 0) "ynow-macro-up" else "ynow-macro-down"
-        nm <- if (length(names_v) && nzchar(names_v[[m$ticker]] %||% "")) names_v[[m$ticker]] else "—"
-        tags$tr(
-          tags$td(m$ticker),
-          tags$td(nm),
-          tags$td(w_txt),
-          tags$td(px_txt),
-          tags$td(class = px_cls, px_chg)
-        )
-      })
-      table <- if (length(rows)) {
-        tags$table(
-          class = "table table-condensed ynow-hccsi-table",
-          tags$thead(tags$tr(
-            tags$th(id = "ynow_index_col_ticker", `data-i18n` = "ynow_index_col_ticker", .ui("ynow_index_col_ticker")),
-            tags$th(id = "ynow_index_col_name", `data-i18n` = "ynow_index_col_name", .ui("ynow_index_col_name")),
-            tags$th(id = "ynow_index_col_weight", `data-i18n` = "ynow_index_col_weight", .ui("ynow_index_col_weight")),
-            tags$th(id = "ynow_index_col_last", `data-i18n` = "ynow_index_col_last", .ui("ynow_index_col_last")),
-            tags$th(id = "ynow_index_col_chg", `data-i18n` = "ynow_index_col_chg", .ui("ynow_index_col_chg"))
-          )),
-          tags$tbody(rows)
-        )
-      } else {
-        tags$p(class = "ynow-macro-hint", .ui(.index_ui_key("waiting")))
-      }
-      tags$div(
-        class = "ynow-index-detail-ready",
-        tags$h4(
-          id = "ynow_index_constituents",
-          `data-i18n` = "ynow_index_constituents",
-          .ui("ynow_index_constituents")
-        ),
-        table,
-        tags$p(
-          id = "ynow_index_chart_note",
-          `data-i18n` = "ynow_index_chart_note",
-          class = "ynow-macro-hint",
-          .ui("ynow_index_chart_note")
         )
       )
     })

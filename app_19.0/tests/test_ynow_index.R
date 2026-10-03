@@ -148,7 +148,12 @@ check("own chart expands in shared hist panel", {
   pos_rf <- regexpr("rf_signal_row", macro, fixed = TRUE)[1]
   pos_hist <- regexpr("ynow_macro_index_hist", macro, fixed = TRUE)[1]
   pos_rf > 0 && pos_hist > pos_rf &&
-    grepl("YNOW / TYNOW use the same expand card", macro, fixed = TRUE)
+    grepl("same expand card as ^GSPC", macro, fixed = TRUE)
+})
+check("constituents under hist chart", {
+  grepl(".own_index_constituents_ui", macro, fixed = TRUE) &&
+    grepl("if (own) .own_index_constituents_ui()", macro, fixed = TRUE) &&
+    !grepl("own_index_detail", macro, fixed = TRUE)
 })
 check("expand constituents", grepl("ynow_index_constituents", macro, fixed = TRUE))
 check("weight percent", grepl('sprintf("%.2f%%", 100 * w)', macro, fixed = TRUE))

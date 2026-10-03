@@ -343,7 +343,8 @@ check("index hist panel below Rf (shared expand with YNOW/TYNOW)", {
   is.finite(pos_hist) && pos_hist > 0 && is.finite(pos_rf) && pos_rf < pos_hist
 })
 check("own index chart uses shared hist panel", {
-  grepl("YNOW / TYNOW use the same expand card", txt, fixed = TRUE) &&
+  grepl("same expand card as ^GSPC", txt, fixed = TRUE) &&
+    grepl("if (own) .own_index_constituents_ui()", txt, fixed = TRUE) &&
     !grepl("identical(sym, .own_index_symbol())) return(NULL)", txt, fixed = TRUE)
 })
 check("hint above Rf", {
