@@ -8,5 +8,5 @@ short=5f6eb71
 message=chore: bump display version to v19.79
 captured_at=2026-10-03T12:52:01Z
 source_branch=master
-display_version=v19.79
+display_version=v19.80
 note=Canonical live line is app_19.0. Bundle 12642203 = v19.79. Merged cursor/refresh-us-universe (US equity universe snapshot). Deploy via scripts/deploy_app_19.R. Supersedes 12642190 / 12642147.
