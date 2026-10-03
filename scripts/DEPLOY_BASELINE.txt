@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12642106
+bundleId=12642123
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=add3825b4e4f047004601f3636c9e490c92830a2
-commit=add3825b4e4f047004601f3636c9e490c92830a2
-short=add3825
-message=chore: bump display version to v19.75
-captured_at=2026-10-03T12:13:23Z
+aligned_git=c190278ec5909640f8473f2d2d88709f18844fae
+commit=c190278ec5909640f8473f2d2d88709f18844fae
+short=c190278
+message=chore: bump display version to v19.76
+captured_at=2026-10-03T12:21:12Z
 source_branch=master
 display_version=v19.76
-note=Canonical live line is app_19.0. Bundle 12642106 = v19.75. Removed Buffett as-of year playback animation. Deploy via scripts/deploy_app_19.R. Supersedes 12642070 / 12642037.
+note=Canonical live line is app_19.0. Bundle 12642123 = v19.76. YNOW/TYNOW constituents table under shared hist chart expand. Deploy via scripts/deploy_app_19.R. Supersedes 12642106 / 12642070.
