@@ -522,6 +522,21 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Garbage-in FV misclassifies; markets can stay irrational without a catalyst."
     ),
     hfv_chart_models_label = "Chart overlay models",
+    hfv_rel_models_note = paste0(
+      "Multiples / SOTP are Implied Price engines (not historical Fair Value) — ",
+      "they are not available as HFV chart overlays."
+    ),
+    lab_im_methods_label = "Models",
+    ms_card_multiples_formula = "Implied Price: P/E · EV/* · P/S",
+    ms_card_multiples_notes = paste0(
+      "Market-multiple cross-check (not Intrinsic Value); ",
+      "often the secondary model for high-growth / intangible businesses."
+    ),
+    ms_card_sotp_formula = "Σ(segment revenue × EV/Sales) − Net Debt",
+    ms_card_sotp_notes = paste0(
+      "Structural sum-of-the-parts; often the NAV cross-check for holdings / conglomerates ",
+      "(needs multi-segment revenue)."
+    ),
     hfv_replay_model_label = "Replay model",
     hfv_session_params_title = "Session parameters (now)",
     hfv_data_sources_label = "Fundamentals sources (this run)",
@@ -2439,6 +2454,21 @@ locale_for_market <- function(mode = get_market_mode()) {
       "FV 垃圾進會誤分類；市場可長期非理性且仍可能需催化劑。"
     ),
     hfv_chart_models_label = "圖表疊加模型",
+    hfv_rel_models_note = paste0(
+      "Multiples／SOTP 為 Implied Price 引擎（非歷史 Fair Value）——",
+      "無法作為 HFV 圖表疊加。"
+    ),
+    lab_im_methods_label = "模型",
+    ms_card_multiples_formula = "Implied Price：P/E · EV/* · P/S",
+    ms_card_multiples_notes = paste0(
+      "市場倍數交叉檢核（非 Intrinsic Value）；",
+      "高成長／無形資產常作副模型。"
+    ),
+    ms_card_sotp_formula = "Σ(部門營收 × EV/Sales) − Net Debt",
+    ms_card_sotp_notes = paste0(
+      "結構型分部加總；控股／綜合常作 NAV 之交叉檢核",
+      "（需多部門營收）。"
+    ),
     hfv_replay_model_label = "復盤模型",
     hfv_session_params_title = "此刻參數（Session）",
     hfv_data_sources_label = "本次基本面資料來源",

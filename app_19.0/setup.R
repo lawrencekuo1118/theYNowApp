@@ -2585,6 +2585,8 @@ score_valuation_confidence <- function(confidence_inputs = list(),
     "pb" = "P/B",
     "ri" = "RI",
     "nav" = "NAV",
+    "multiples" = "Multiples",
+    "sotp" = "SOTP",
     as.character(key %||% "N/A")
   )
 }

@@ -836,6 +836,17 @@ relative_multiples_module_server <- function(id,
     return(list(
       pe_price = reactive({
         res <- last_result(); if (!is.null(res) && identical(res$pe$status, "ok")) res$pe$implied_price else NA_real_
+      }),
+      any_implied_price = reactive({
+        res <- last_result()
+        if (is.null(res)) return(NA_real_)
+        for (k in c("pe", "forward_pe", "ev_fcf", "ev_ebit", "ev_ebitda", "ev_sales", "ps", "ev_arr")) {
+          node <- res[[k]]
+          if (!is.null(node) && identical(node$status, "ok") && is.finite(node$implied_price)) {
+            return(node$implied_price)
+          }
+        }
+        NA_real_
       })
     ))
   })

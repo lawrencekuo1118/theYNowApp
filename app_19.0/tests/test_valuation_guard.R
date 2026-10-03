@@ -399,6 +399,25 @@ rec_saas <- recommend_valuation_models(
 )
 check("saas not cyclical", !isTRUE(rec_saas$confidence_inputs$cyclical_industry))
 check("saas not forced to P/B", !.has_pb_slot(rec_saas))
+check("saas secondary Multiples", identical(as.character(rec_saas$secondary %||% ""), "multiples"))
+check("saas never primary multiples", !identical(as.character(rec_saas$primary %||% ""), "multiples"))
+check("saas never primary sotp", !identical(as.character(rec_saas$primary %||% ""), "sotp"))
+check("saas multiples role cross_check", identical(as.character(rec_saas$secondary_role %||% ""), "cross_check"))
+
+rec_hold <- recommend_valuation_models(
+  base_cf(), "Conglomerate", base_is(), base_bs(),
+  industry_choice = "fn.Conglomerate_Holding"
+)
+check("holding prefers NAV primary when applicable", {
+  identical(as.character(rec_hold$primary %||% ""), "nav") ||
+    identical(as.character(rec_hold$company_type %||% ""), "holding_asset")
+})
+if (identical(as.character(rec_hold$primary %||% ""), "nav")) {
+  check("holding NAV secondary SOTP", identical(as.character(rec_hold$secondary %||% ""), "sotp"))
+  check("holding SOTP cross_check", identical(as.character(rec_hold$secondary_role %||% ""), "cross_check"))
+}
+check("holding never primary SOTP", !identical(as.character(rec_hold$primary %||% ""), "sotp"))
+check("holding never primary Multiples", !identical(as.character(rec_hold$primary %||% ""), "multiples"))
 
 rec_neg_eq <- recommend_valuation_models(
   base_cf(),

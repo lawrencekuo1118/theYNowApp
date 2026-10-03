@@ -23,12 +23,12 @@ check <- function(label, cond) {
   }
 }
 
-want <- c("nav", "dcf", "ddm", "ri", "pb")
+want <- c("nav", "dcf", "ddm", "ri", "pb", "multiples", "sotp")
 check("LAB_SIDEBAR_METHOD_ORDER", identical(LAB_SIDEBAR_METHOD_ORDER, want))
 check(
   "lab_order shuffles to sidebar",
   identical(
-    lab_order_methods_like_sidebar(c("pb", "dcf", "nav", "ri", "ddm")),
+    lab_order_methods_like_sidebar(c("sotp", "pb", "multiples", "dcf", "nav", "ri", "ddm")),
     want
   )
 )
@@ -45,9 +45,9 @@ check(
 )
 
 catlg <- data.frame(
-  primary = c("pb", "dcf", "nav", "dcf", "ri", "ddm"),
-  industry_key = c("a", "b", "c", "d", "e", "f"),
-  ticker = c("T1", "T2", "T3", "T4", "T5", "T6"),
+  primary = c("pb", "dcf", "nav", "dcf", "ri", "ddm", "multiples", "sotp"),
+  industry_key = c("a", "b", "c", "d", "e", "f", "g", "h"),
+  ticker = c("T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8"),
   stringsAsFactors = FALSE
 )
 sm <- lab_method_group_summary(catlg)
@@ -63,6 +63,20 @@ sm2 <- lab_method_group_summary(
 check("partial summary order", identical(sm2$method_key, c("nav", "ri", "pb")))
 
 defaults <- lab_industry_method_defaults()
+hold_def <- defaults[defaults$industry_key == "fn.Conglomerate_Holding", , drop = FALSE]
+check(
+  "lab holding defaults NAV + SOTP",
+  nrow(hold_def) == 1L &&
+    identical(hold_def$primary[1], "nav") &&
+    identical(hold_def$secondary[1], "sotp")
+)
+saas_def <- defaults[defaults$industry_key == "saas.SaaS_Cloud", , drop = FALSE]
+check(
+  "lab SaaS defaults DCF + Multiples",
+  nrow(saas_def) == 1L &&
+    identical(saas_def$primary[1], "dcf") &&
+    identical(saas_def$secondary[1], "multiples")
+)
 cyc_keys <- intersect(CYCLICAL_INDUSTRY_KEYS, defaults$industry_key)
 check("lab defaults cover cyclical keys", length(cyc_keys) == length(CYCLICAL_INDUSTRY_KEYS))
 cyc_rows <- defaults[defaults$industry_key %in% CYCLICAL_INDUSTRY_KEYS, , drop = FALSE]

@@ -90,7 +90,10 @@
                 selectInput(
                   "dc_user_primary",
                   "Adopted primary model",
-                  choices = c("DCF" = "dcf", "DDM" = "ddm", "RI" = "ri", "P/B" = "pb", "NAV" = "nav"),
+                  # Fair Value primaries only — Multiples / SOTP are Implied Price cross-checks
+                  choices = c(
+                    "DCF" = "dcf", "DDM" = "ddm", "RI" = "ri", "P/B" = "pb", "NAV" = "nav"
+                  ),
                   selected = "dcf",
                   width = "100%"
                 )

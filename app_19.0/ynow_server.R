@@ -1752,7 +1752,9 @@ server <- function(input, output, session) {
       ddm_calculator = list(role = role_of("ddm")),
       pb_calculator = list(role = role_of("pb")),
       ri_calculator = list(role = role_of("ri")),
-      nav_calculator = list(role = role_of("nav"))
+      nav_calculator = list(role = role_of("nav")),
+      rel_multiples_calculator = list(role = role_of("multiples")),
+      sotp_calculator = list(role = role_of("sotp"))
     )
     session$sendCustomMessage("ynowSidebarBadges", payload)
     invisible(TRUE)
@@ -1884,28 +1886,27 @@ server <- function(input, output, session) {
           margin-bottom: 14px; padding: 10px 12px; border-left: 4px solid #222222;
           background: #f5f5f5; color: #333; font-size: 13px; line-height: 1.5;
         }
-        /* 五卡等寬填滿列（Bootstrap 12 無法整除 5 → flex） */
+        /* 七卡：桌面可換行，小螢幕兩欄／單欄 */
         .ynow-model-selector-row {
           display: flex;
-          flex-wrap: nowrap;
+          flex-wrap: wrap;
           align-items: stretch;
           margin-left: -7.5px;
           margin-right: -7.5px;
         }
         .ynow-model-selector-row > .ynow-model-card-col {
-          flex: 1 1 0;
-          min-width: 0;
+          flex: 1 1 12%;
+          min-width: 120px;
           width: auto;
           float: none;
           padding-left: 7.5px;
           padding-right: 7.5px;
           box-sizing: border-box;
+          margin-bottom: 10px;
         }
         @media (max-width: 991px) {
-          .ynow-model-selector-row { flex-wrap: wrap; }
           .ynow-model-selector-row > .ynow-model-card-col {
             flex: 1 1 45%;
-            margin-bottom: 10px;
           }
         }
         @media (max-width: 767px) {
@@ -1945,14 +1946,24 @@ server <- function(input, output, session) {
         tags$br(),
         tags$span(rec$reason %||% "請先按下 Search 載入公司後產生推薦。")
       ),
-      # L→R 對齊側欄估值子分頁順序：NAV → DCF → DDM → RI → P/B
+      # L→R 對齊側欄：NAV → DCF → DDM → RI → P/B → Multiples → SOTP
       tags$div(
         class = "ynow-model-selector-row",
-        make_card("NAV", "nav", "sitemap", "#d81b60", "P = NAVPS × NAV multiple", "控股／綜合：帳面控股 NAV（非市場 SOTP）；無需 SGR。"),
+        make_card("NAV", "nav", "sitemap", "#d81b60", "P = NAVPS × NAV multiple", "控股／綜合：帳面控股 NAV；無需 SGR。"),
         make_card("DCF", "dcf", "calculator", "#00a65a", "FCFF／WACC 或 FCFE／Ke", "適合 FCF 為正且相對穩定的企業。"),
         make_card("DDM", "ddm", "hand-holding-usd", "#f39c12", "Gordon／SPM／二階段 P0 = PV(股利)", "適合持續且穩定配息的企業。"),
         make_card("RI", "ri", "gem", "#605ca8", "Value = Book Value + Σ Residual Income / (1+Ke)^t", "適合帳面價值與 ROE 具參考性的企業。"),
-        make_card("P/B", "pb", "landmark", "#3c8dbc", "P = (BVPS／TBVPS／NAVPS) × 目標 P/B", "相對估值：產業／歷史倍數，或 Justified（需 SGR）。")
+        make_card("P/B", "pb", "landmark", "#3c8dbc", "P = (BVPS／TBVPS／NAVPS) × 目標 P/B", "相對估值：產業／歷史倍數，或 Justified（需 SGR）。"),
+        make_card(
+          "Multiples", "multiples", "percentage", "#17a2b8",
+          ui_str("ms_card_multiples_formula", loc),
+          ui_str("ms_card_multiples_notes", loc)
+        ),
+        make_card(
+          "SOTP", "sotp", "puzzle-piece", "#343a40",
+          ui_str("ms_card_sotp_formula", loc),
+          ui_str("ms_card_sotp_notes", loc)
+        )
       )
     )
   })
@@ -3993,6 +4004,18 @@ server <- function(input, output, session) {
       "nav" = tryCatch({
         if (!is.null(nav_results$nav_price)) nav_results$nav_price() else NA_real_
       }, error = function(e) NA_real_),
+      "multiples" = tryCatch({
+        if (!is.null(rel_results$any_implied_price)) {
+          rel_results$any_implied_price()
+        } else if (!is.null(rel_results$pe_price)) {
+          rel_results$pe_price()
+        } else {
+          NA_real_
+        }
+      }, error = function(e) NA_real_),
+      "sotp" = tryCatch({
+        if (!is.null(sotp_results$sotp_price)) sotp_results$sotp_price() else NA_real_
+      }, error = function(e) NA_real_),
       NA_real_
     )
     is.finite(suppressWarnings(as.numeric(v)[1]))
@@ -4089,6 +4112,18 @@ server <- function(input, output, session) {
         b <- tryCatch(ri_scenario_band(), error = function(e) NULL)
         if (!is.null(b) && is.finite(b$base)) b$base else tryCatch(ri_results$ri_price(), error = function(e) NA_real_)
       },
+      "multiples" = tryCatch({
+        if (!is.null(rel_results$any_implied_price)) {
+          rel_results$any_implied_price()
+        } else if (!is.null(rel_results$pe_price)) {
+          rel_results$pe_price()
+        } else {
+          NA_real_
+        }
+      }, error = function(e) NA_real_),
+      "sotp" = tryCatch({
+        if (!is.null(sotp_results$sotp_price)) sotp_results$sotp_price() else NA_real_
+      }, error = function(e) NA_real_),
       NA_real_
     )
   }
@@ -4096,6 +4131,8 @@ server <- function(input, output, session) {
   primary_valuation_band <- reactive({
     rec <- model_sidebar_rec()
     prim <- as.character(rec$primary %||% "")
+    # Multiples / SOTP are Implied Price engines — never drive Bear–Base–Bull FV band.
+    if (identical(prim, "multiples") || identical(prim, "sotp")) prim <- "dcf"
     band <- switch(
       prim,
       "dcf" = dcf_scenario_band(),
@@ -4125,7 +4162,7 @@ server <- function(input, output, session) {
   # All model Base/FV points for composite Current-price axis overlays
   # (only models with a successful 試算 / Run in this session)
   all_model_valuation_points <- reactive({
-    keys <- c("dcf", "ddm", "ri", "pb", "nav")
+    keys <- c("dcf", "ddm", "ri", "pb", "nav", "multiples", "sotp")
     out <- lapply(keys, function(k) {
       if (!isTRUE(.model_has_run(k))) return(NA_real_)
       v <- suppressWarnings(as.numeric(tryCatch(.model_point(k), error = function(e) NA_real_))[1])
@@ -4144,6 +4181,8 @@ server <- function(input, output, session) {
       "ri_calculator" = "ri",
       "pb_calculator" = "pb",
       "nav_calculator" = "nav",
+      "rel_multiples_calculator" = "multiples",
+      "sotp_calculator" = "sotp",
       NA_character_
     )
   })

@@ -76,8 +76,8 @@
       "即時抓取三大報表，並內建「財報警訊」（三表對照），交叉比對現金流與獲利品質，自動偵測潛在地雷股與價值陷阱；支援美股與台股市場切換。"
     ),
     tags$li(
-      tags$b("四大估值引擎："),
-      "內建自由現金流 (DCF：FCFF／WACC 或 FCFE／Ke)、股利折現 (DDM：Gordon／SPM／二階段)、資產本淨比 (P/B＋NAV) 與剩餘收益 (RI) 模型；依產業屬性動態推薦路徑，並以 Composite valuation 並陳各模型相對現價位置。"
+      tags$b("估值引擎："),
+      "內建 Fair Value 引擎（DCF：FCFF／WACC 或 FCFE／Ke、DDM：Gordon／SPM／二階段、P/B＋NAV、RI）與 Implied Price 相對引擎（Multiples、SOTP）；依產業屬性動態推薦主／副路徑，並以 Composite valuation 並陳各模型相對現價位置。"
     ),
     tags$li(
       tags$b("智慧決策與量化回測："),
@@ -99,8 +99,8 @@
       "Fetches the three financial statements in real time and flags earnings-quality issues by cross-checking cash flow against reported profits, helping surface potential value traps. Supports US and TW market modes."
     ),
     tags$li(
-      tags$b("Four Valuation Engines: "),
-      "Discounted Cash Flow (DCF: FCFF/WACC or FCFE/Ke), Dividend Discount Model (DDM: Gordon / SPM / two-stage), Price-to-Book with holding NAV, and Residual Income (RI). The app recommends a path by industry attributes and overlays model fair values versus the current price on the Composite valuation axis."
+      tags$b("Valuation Engines: "),
+      "Fair Value engines (DCF: FCFF/WACC or FCFE/Ke; DDM: Gordon / SPM / two-stage; P/B with holding NAV; Residual Income) plus Implied Price relative engines (Multiples, SOTP). The app recommends a primary/secondary path by industry attributes and overlays model values versus the current price on the Composite valuation axis."
     ),
     tags$li(
       tags$b("Smart Decision Matrix & Backtesting: "),
@@ -192,7 +192,7 @@
     ),
     tags$li(
       tags$b("智慧分析："),
-      "依股票性質自動判別主／副估值模型（DCF、DDM、RI、P/B、NAV），",
+      "依股票性質自動判別主／副估值模型（DCF、DDM、RI、P/B、NAV；Multiples／SOTP 僅作 Implied Price 交叉檢核），",
       "辨識參數情境（Two-Stage／Gordon、SGR 法、claim）並套用最合理預設後試算，",
       "顯示合理價比較圖與 MOS；不開放手動模型設定。"
     ),
@@ -217,7 +217,7 @@
     ),
     tags$li(
       tags$b("Smart Analysis: "),
-      "Auto-selects primary and secondary valuation models (DCF, DDM, RI, P/B, NAV) from the ticker profile, ",
+      "Auto-selects primary and secondary valuation models (DCF, DDM, RI, P/B, NAV; Multiples / SOTP as Implied Price cross-checks only) from the ticker profile, ",
       "detects the best parameter scenario (Two-Stage vs Gordon, SGR method, claim), applies those defaults, ",
       "and shows fair-value comparison charts plus MOS—no manual model settings."
     ),
@@ -4792,6 +4792,8 @@ ui <- dashboardPage(
             if (langStack && s.hdr_lang_label) langStack.setAttribute('aria-label', s.hdr_lang_label);
             var ccyFloat = document.querySelector('.ynow-ccy-float');
             if (ccyFloat && s.hdr_ccy_label) ccyFloat.setAttribute('aria-label', s.hdr_ccy_label);
+            setBtText('ynow_hfv_rel_models_note', 'hfv_rel_models_note');
+            setBtText('ynow_lab_im_methods_label', 'lab_im_methods_label');
             var hfvBenchLab = document.getElementById('ynow_hfv_show_bench_label');
             if (hfvBenchLab && s.hfv_show_bench) hfvBenchLab.textContent = s.hfv_show_bench;
             var convLab = document.querySelector('label[for=\"bt_fv_conv_window\"]');
@@ -9300,14 +9302,17 @@ ui <- dashboardPage(
                     tags$div(
                       class = "ynow-lab-im-methods",
                       checkboxGroupInput(
-                        "lab_im_methods", "模型",
+                        "lab_im_methods",
+                        tags$span(id = "ynow_lab_im_methods_label", "模型"),
                         # Same top→bottom order as sidebar valuation menus
                         choices = c(
                           "NAV" = "nav",
                           "DCF" = "dcf",
                           "DDM" = "ddm",
                           "RI" = "ri",
-                          "P/B" = "pb"
+                          "P/B" = "pb",
+                          "Multiples" = "multiples",
+                          "SOTP" = "sotp"
                         ),
                         selected = APP_DEFAULTS$lab_im_methods,
                         inline = TRUE
@@ -9614,6 +9619,12 @@ ui <- dashboardPage(
                       "NAV" = "nav"
                     ),
                     selected = APP_DEFAULTS$bt_fv_models
+                  ),
+                  tags$p(
+                    id = "ynow_hfv_rel_models_note",
+                    class = "help-block",
+                    style = "margin:4px 0 0 0; font-size:12px;",
+                    "Multiples / SOTP are Implied Price engines (not historical Fair Value) — they are not available as HFV chart overlays."
                   ),
                   checkboxInput(
                     "bt_hfv_show_bench",

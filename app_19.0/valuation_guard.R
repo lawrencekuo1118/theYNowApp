@@ -1097,9 +1097,23 @@ assess_pb_applicability <- function(equity = NA, goodwill = NA, intangibles = NA
 # ---------------------------------------------------------------------------
 
 .vg_lens <- function(model) {
-  switch(model,
-         dcf = "cash_flow", ddm = "dividend", pb = "book",
-         ri = "residual_earnings", nav = "assets", "other")
+  switch(
+    model,
+    dcf = "cash_flow",
+    ddm = "dividend",
+    pb = "book",
+    ri = "residual_earnings",
+    nav = "assets",
+    # Implied Price relative engines — never Intrinsic Value / Fair Value primaries
+    multiples = "relative_multiples",
+    sotp = "relative_sotp",
+    "other"
+  )
+}
+
+.vg_is_relative_model <- function(model) {
+  identical(as.character(model %||% "")[1], "multiples") ||
+    identical(as.character(model %||% "")[1], "sotp")
 }
 
 .vg_score_row <- function(model, applicability, data_quality, stability, accounting,
@@ -1162,7 +1176,10 @@ assemble_model_recommendation <- function(data_missing = FALSE,
                    secondary_role = "none", weight_primary = NA_real_,
                    weight_secondary = NA_real_, inapplicable = character(0),
                    reason_en = NULL) {
-    flags <- list(ddm = FALSE, dcf = FALSE, pb = FALSE, ri = FALSE, nav = FALSE)
+    flags <- list(
+      ddm = FALSE, dcf = FALSE, pb = FALSE, ri = FALSE, nav = FALSE,
+      multiples = FALSE, sotp = FALSE
+    )
     if (!is.null(primary) && nzchar(as.character(primary))) flags[[as.character(primary)]] <- TRUE
     if (!is.null(secondary) && nzchar(as.character(secondary))) flags[[as.character(secondary)]] <- TRUE
     tags <- unique(c(
@@ -1180,6 +1197,7 @@ assemble_model_recommendation <- function(data_missing = FALSE,
       weight_secondary = weight_secondary,
       ddm = isTRUE(flags$ddm), dcf = isTRUE(flags$dcf), pb = isTRUE(flags$pb),
       ri = isTRUE(flags$ri), nav = isTRUE(flags$nav),
+      multiples = isTRUE(flags$multiples), sotp = isTRUE(flags$sotp),
       tags = tags,
       summary_method = summary_method,
       reason = reason,
@@ -1188,7 +1206,10 @@ assemble_model_recommendation <- function(data_missing = FALSE,
       confidence_inputs = conf_in,
       model_scores = scores,
       inapplicable = inapplicable,
-      dependency_note = "RI, DDM, and NAV formulas are unchanged; only selection scores are attached.",
+      dependency_note = paste0(
+        "RI, DDM, and NAV formulas are unchanged; only selection scores are attached. ",
+        "Multiples / SOTP are Implied Price relative engines (cross-check only), not Fair Value primaries."
+      ),
       lifecycle_result = lifecycle_result
     )
   }
@@ -1197,7 +1218,7 @@ assemble_model_recommendation <- function(data_missing = FALSE,
     return(pack(
       "insufficient", NULL, NULL, "無適用模型",
       "資料不足，沒有通過適用門檻的主模型，也不套用 P/B 作為靜默預設。",
-      inapplicable = c("dcf", "pb", "ri", "ddm", "nav")
+      inapplicable = c("dcf", "pb", "ri", "ddm", "nav", "multiples", "sotp")
     ))
   }
 
@@ -1320,10 +1341,57 @@ assemble_model_recommendation <- function(data_missing = FALSE,
     if (is_holding) 80 else 30, 40, if (is_holding) 85 else 25,
     notes = "NAV formula unchanged; score is selection only"
   )
+  # Trading multiples: Implied Price cross-check (EPS / EV multiples). Never Fair Value primary.
+  is_growth_ind <- grepl(
+    "saas\\.|tech\\.Internet|tech\\.Software|hc\\.Biotech|auto\\.Automotive_EV",
+    ind_key %||% "",
+    ignore.case = TRUE
+  )
+  mult_app <- 20
+  if (is_intang) mult_app <- mult_app + 30
+  if (isTRUE(is_growth_ind)) mult_app <- mult_app + 25
+  if (is.finite(rev_g) && rev_g > 12) mult_app <- mult_app + 20
+  if (is.finite(ni) && ni > 0) mult_app <- mult_app + 15
+  if (is_book) mult_app <- mult_app - 25
+  if (is_holding) mult_app <- mult_app - 10
+  if (identical(life_special, "FINANCIAL_INSTITUTION")) mult_app <- mult_app - 20
+  rows[[length(rows) + 1L]] <- .vg_score_row(
+    "multiples", mult_app,
+    data_quality = if (is.finite(ni) || is.finite(rev_g)) 55 else 20,
+    stability = if (is.finite(rev_g) && rev_g > 12) 45 else 50,
+    accounting = if (is_intang || isTRUE(is_growth_ind)) 40 else 55,
+    forecast = if (is.finite(rev_g)) 50 else 25,
+    industry = if (is_intang || isTRUE(is_growth_ind)) 80 else if (is_book) 25 else 55,
+    notes = "Implied Price multiples (P/E·EV/*·P/S); cross-check only, not Intrinsic Value"
+  )
+  # SOTP: structural revenue-segment framework. Preferred secondary for holdings / conglomerates.
+  sotp_app <- 15
+  if (is_holding) sotp_app <- sotp_app + 50
+  if (grepl("Conglomerate|Holding|fn\\.Conglomerate|ind\\.Conglomerate", txt, ignore.case = TRUE)) {
+    sotp_app <- sotp_app + 15
+  }
+  if (is.finite(equity) && equity > 0) sotp_app <- sotp_app + 10
+  if (is_book && !is_holding) sotp_app <- sotp_app - 15
+  rows[[length(rows) + 1L]] <- .vg_score_row(
+    "sotp", sotp_app,
+    data_quality = if (is_holding) 50 else 30,
+    stability = 45,
+    accounting = if (is_holding) 60 else 40,
+    forecast = 35,
+    industry = if (is_holding) 85 else 40,
+    notes = "Structural SOTP (segment revenue × EV/Sales); Implied Price; needs multi-segment data at run time"
+  )
   scores <- do.call(rbind, rows)
   rownames(scores) <- NULL
 
-  eligible <- scores[scores$applicability >= .VG_MIN_APP & scores$overall >= .VG_MIN_OVERALL, , drop = FALSE]
+  # Intrinsic / Fair Value engines only for primary eligibility
+  fv_models <- c("dcf", "ddm", "ri", "pb", "nav")
+  eligible <- scores[
+    scores$model %in% fv_models &
+      scores$applicability >= .VG_MIN_APP &
+      scores$overall >= .VG_MIN_OVERALL,
+    , drop = FALSE
+  ]
   inapplicable <- scores$model[scores$applicability < .VG_CROSS_APP]
   if (!nrow(eligible)) {
     return(pack(
@@ -1335,13 +1403,27 @@ assemble_model_recommendation <- function(data_missing = FALSE,
   eligible <- eligible[order(-eligible$overall, -eligible$applicability, eligible$model), , drop = FALSE]
   primary <- as.character(eligible$model[1])
   primary_row <- scores[scores$model == primary, , drop = FALSE]
-  rest <- scores[scores$lens != primary_row$lens[1] & scores$applicability >= .VG_CROSS_APP, , drop = FALSE]
+  rest <- scores[
+    scores$lens != primary_row$lens[1] &
+      scores$applicability >= .VG_CROSS_APP &
+      # Prefer a Fair Value secondary when available; relative engines may still win by score
+      TRUE,
+    , drop = FALSE
+  ]
   secondary <- NULL
   role <- "none"
   if (nrow(rest)) {
     rest <- rest[order(-rest$overall, -rest$applicability), , drop = FALSE]
     secondary <- as.character(rest$model[1])
-    role <- if (rest$applicability[1] >= .VG_MIN_APP && !isTRUE(rest$gordon_blocked[1])) "valuation" else "cross_check"
+    role <- if (
+      .vg_is_relative_model(secondary) ||
+        rest$applicability[1] < .VG_MIN_APP ||
+        isTRUE(rest$gordon_blocked[1])
+    ) {
+      "cross_check"
+    } else {
+      "valuation"
+    }
   }
   # When positive earnings and negative FCFF make RI primary, the cash-flow model
   # is the relevant cross-check. It is not an equal-weight valuation band.
@@ -1414,6 +1496,93 @@ assemble_model_recommendation <- function(data_missing = FALSE,
       }
     }
   }
+  # Holdings / conglomerates: NAV is the Fair Value primary when applicable;
+  # SOTP is the structural Implied Price cross-check (not an equal-weight FV band).
+  if (isTRUE(is_holding)) {
+    nav_row <- scores[scores$model == "nav", , drop = FALSE]
+    sotp_row <- scores[scores$model == "sotp", , drop = FALSE]
+    nav_ok <- nrow(nav_row) == 1L && nav_row$applicability[1] >= .VG_CROSS_APP
+    sotp_ok <- nrow(sotp_row) == 1L && sotp_row$applicability[1] >= .VG_CROSS_APP
+    if (isTRUE(nav_ok) && !identical(primary, "nav")) {
+      # Keep previous primary as secondary only if it is a different FV lens and
+      # SOTP will not take the secondary slot below.
+      prev <- primary
+      primary <- "nav"
+      if (!isTRUE(sotp_ok) && !identical(prev, "nav")) {
+        secondary <- prev
+        role <- "cross_check"
+      }
+    }
+    if (identical(primary, "nav") && isTRUE(sotp_ok)) {
+      secondary <- "sotp"
+      role <- "cross_check"
+    }
+    if (identical(primary, "nav")) {
+      primary_row <- scores[scores$model == primary, , drop = FALSE]
+      sp <- primary_row$overall[1]
+      ss <- if (!is.null(secondary)) scores$overall[scores$model == secondary][1] else NA_real_
+      if (!is.finite(ss)) {
+        wp <- 1; ws <- 0; if (is.null(secondary)) role <- "none"
+      } else {
+        role <- "cross_check"
+        ws <- min(0.25, ss / (sp + ss))
+        wp <- 1 - ws
+      }
+    }
+  }
+  # Intangible / high-growth / SaaS-like: Multiples is the market Implied Price
+  # cross-check (not an equal-weight FV band). Prefer it over same-family FV
+  # secondaries (RI / DDM / P/B) when Multiples clears the applicability floor.
+  if ((isTRUE(is_intang) || isTRUE(is_growth_ind) || (is.finite(rev_g) && rev_g > 12)) &&
+      !identical(primary, "multiples") &&
+      !identical(as.character(secondary %||% ""), "multiples") &&
+      !identical(as.character(secondary %||% ""), "sotp") &&
+      !isTRUE(is_cyc) &&
+      !isTRUE(is_holding)) {
+    mult_row <- scores[scores$model == "multiples", , drop = FALSE]
+    if (nrow(mult_row) == 1L && mult_row$applicability[1] >= .VG_CROSS_APP) {
+      sec <- as.character(secondary %||% "")[1]
+      sec_ok <- !nzchar(sec) || sec %in% c("pb", "ri", "ddm")
+      if (isTRUE(sec_ok)) {
+        secondary <- "multiples"
+        role <- "cross_check"
+        sp <- scores$overall[scores$model == primary][1]
+        ss <- mult_row$overall[1]
+        ws <- min(0.25, ss / (sp + ss))
+        wp <- 1 - ws
+      }
+    }
+  }
+  # Relative engines are always cross-checks (never equal-weight Fair Value bands).
+  if (.vg_is_relative_model(secondary)) {
+    role <- "cross_check"
+    sp <- scores$overall[scores$model == primary][1]
+    ss <- scores$overall[scores$model == secondary][1]
+    if (is.finite(sp) && is.finite(ss) && (sp + ss) > 0) {
+      ws <- min(0.25, ss / (sp + ss))
+      wp <- 1 - ws
+    } else {
+      wp <- 1; ws <- 0
+    }
+  }
+  # Safety: Multiples / SOTP must never be primary (Implied Price ≠ Fair Value).
+  if (.vg_is_relative_model(primary)) {
+    alt <- scores[
+      scores$model %in% fv_models & scores$applicability >= .VG_CROSS_APP,
+      , drop = FALSE
+    ]
+    if (nrow(alt)) {
+      alt <- alt[order(-alt$overall, -alt$applicability), , drop = FALSE]
+      demoted <- primary
+      primary <- as.character(alt$model[1])
+      if (is.null(secondary) || identical(secondary, primary)) secondary <- demoted
+      role <- "cross_check"
+      sp <- scores$overall[scores$model == primary][1]
+      ss <- scores$overall[scores$model == secondary][1]
+      ws <- min(0.25, ss / (sp + ss))
+      wp <- 1 - ws
+    }
+  }
   suggest_two <- identical(primary, "dcf") && (
     (is.finite(rev_g) && rev_g > 8) ||
       !isTRUE(is_fcf_stable) ||
@@ -1448,6 +1617,26 @@ assemble_model_recommendation <- function(data_missing = FALSE,
   } else {
     ""
   }
+  hold_note <- if (isTRUE(is_holding) && identical(primary, "nav")) {
+    " 控股／綜合：主模型 NAV（Fair Value）；SOTP 僅作結構 Implied Price 交叉檢核。"
+  } else {
+    ""
+  }
+  hold_note_en <- if (isTRUE(is_holding) && identical(primary, "nav")) {
+    " Holding/conglomerate: NAV is the Fair Value primary; SOTP is a structural Implied Price cross-check only."
+  } else {
+    ""
+  }
+  rel_note <- if (.vg_is_relative_model(secondary)) {
+    " Multiples／SOTP 為 Implied Price，不與 Fair Value 等權合成。"
+  } else {
+    ""
+  }
+  rel_note_en <- if (.vg_is_relative_model(secondary)) {
+    " Multiples / SOTP are Implied Price engines and are not equal-weighted with Fair Value."
+  } else {
+    ""
+  }
   reason <- paste0(
     "主模型 ", primary, "（綜合信心 ", round(sp, 1),
     "）。權重隨信心分數，不預設等權。",
@@ -1456,6 +1645,8 @@ assemble_model_recommendation <- function(data_missing = FALSE,
       round(100 * ws, 1), "% / ", round(100 * wp, 1), "%。"
     ),
     cyc_note,
+    hold_note,
+    rel_note,
     life_note
   )
   reason_en <- paste0(
@@ -1466,6 +1657,8 @@ assemble_model_recommendation <- function(data_missing = FALSE,
       round(100 * ws, 1), "% / ", round(100 * wp, 1), "%."
     ),
     cyc_note_en,
+    hold_note_en,
+    rel_note_en,
     life_note
   )
   pack(

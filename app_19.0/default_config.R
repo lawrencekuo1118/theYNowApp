@@ -209,7 +209,7 @@ APP_DEFAULTS <- list(
   lab_im_eq_only = TRUE,
   lab_im_include_adr = TRUE,
   lab_im_gate_only = TRUE,
-  lab_im_methods = c("nav", "dcf", "ddm", "ri", "pb"),
+  lab_im_methods = c("nav", "dcf", "ddm", "ri", "pb", "multiples", "sotp"),
   lab_cluster_k = 3L,
   lab_cluster_x = "ROE",
   lab_cluster_y = "PE_Ratio",

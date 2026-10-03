@@ -15,15 +15,17 @@
 # ==========================================
 
 # Canonical sidebar valuation order (top → bottom in ynow_ui.R):
-# Asset-Based NAV → Income/Cashflow DCF → DDM → RI → Relative P/B
-LAB_SIDEBAR_METHOD_ORDER <- c("nav", "dcf", "ddm", "ri", "pb")
+# Asset-Based NAV → Income/Cashflow DCF → DDM → RI → Relative P/B → Multiples → SOTP
+LAB_SIDEBAR_METHOD_ORDER <- c("nav", "dcf", "ddm", "ri", "pb", "multiples", "sotp")
 
 LAB_METHOD_LABELS <- c(
   nav = "NAV（帳面控股淨資產）",
   dcf = "DCF（現金流折現）",
   ddm = "DDM（股利折現）",
   ri  = "RI（剩餘收益）",
-  pb  = "P/B（相對估值／倍數）"
+  pb  = "P/B（相對估值／倍數）",
+  multiples = "Multiples（市場倍數 Implied Price）",
+  sotp = "SOTP（分部加總）"
 )
 
 #' Sort method keys to sidebar top→bottom order; unknown keys last (stable by name).
@@ -904,6 +906,63 @@ lab_estimate_fv_per_share <- function(method, industry_key, d_is, d_bs, d_cf,
       fv <- bvps * .pb_mid()
       note <- "NAV缺權益→P/B"
     }
+  } else if (identical(method, "multiples")) {
+    # Simplified trading multiple: Trailing EPS × selected/default P/E (Implied Price)
+    eps <- tryCatch(
+      select_current_metric(d_is, "Diluted EPS|Basic EPS|^EPS$", "flow"),
+      error = function(e) NA_real_
+    )
+    eps <- suppressWarnings(as.numeric(eps)[1])
+    if (!is.finite(eps) && is.finite(ni) && is.finite(shares) && shares > 0) eps <- ni / shares
+    pe_m <- suppressWarnings(as.numeric(APP_DEFAULTS$rel_pe_multiple %||% 18)[1])
+    if (!is.finite(pe_m) || pe_m <= 0) pe_m <- 18
+    if (is.finite(eps) && eps > 0) {
+      fv <- eps * pe_m
+      note <- paste0("Implied P/E×", sprintf("%.1f", pe_m))
+    } else {
+      rev <- tryCatch(
+        select_current_metric(d_is, "Total Revenue|^Revenue$|Operating Revenue", "flow"),
+        error = function(e) NA_real_
+      )
+      rev <- suppressWarnings(as.numeric(rev)[1])
+      ps_m <- suppressWarnings(as.numeric(APP_DEFAULTS$rel_ps_multiple %||% 3)[1])
+      if (!is.finite(ps_m) || ps_m <= 0) ps_m <- 3
+      if (is.finite(rev) && rev > 0 && is.finite(shares) && shares > 0) {
+        fv <- (rev * ps_m) / shares
+        note <- paste0("Implied P/S×", sprintf("%.1f", ps_m))
+      } else if (is.finite(bvps)) {
+        fv <- bvps * .pb_mid()
+        note <- "Multiples缺EPS→P/B"
+      }
+    }
+  } else if (identical(method, "sotp")) {
+    # Lab simplified SOTP proxy: total revenue × EV/Sales − net debt (not true multi-segment)
+    rev <- tryCatch(
+      select_current_metric(d_is, "Total Revenue|^Revenue$|Operating Revenue", "flow"),
+      error = function(e) NA_real_
+    )
+    rev <- suppressWarnings(as.numeric(rev)[1])
+    evs <- suppressWarnings(as.numeric(APP_DEFAULTS$rel_ev_sales_multiple %||% 3)[1])
+    if (!is.finite(evs) || evs <= 0) evs <- 3
+    debt <- tryCatch(
+      select_current_metric(d_bs, "^Total Debt$|Long Term Debt", "stock"),
+      error = function(e) NA_real_
+    )
+    cash <- tryCatch(
+      select_current_metric(d_bs, "Cash And Cash Equivalents|Cash Cash Equivalents And Short Term Investments", "stock"),
+      error = function(e) NA_real_
+    )
+    debt <- suppressWarnings(as.numeric(debt)[1])
+    cash <- suppressWarnings(as.numeric(cash)[1])
+    if (is.finite(rev) && rev > 0 && is.finite(shares) && shares > 0) {
+      ev <- rev * evs
+      eq <- ev + (if (is.finite(cash)) cash else 0) - (if (is.finite(debt)) debt else 0)
+      fv <- eq / shares
+      note <- paste0("SOTP proxy Rev×EV/Sales ", sprintf("%.1f", evs), "×")
+    } else if (is.finite(bvps)) {
+      fv <- bvps * .pb_mid()
+      note <- "SOTP缺營收→P/B"
+    }
   } else {
     # DCF：n 年顯式 FCF 成長＋終值（用 Ke 近似折現；實驗區簡化）
     fcf <- tryCatch(
@@ -957,7 +1016,7 @@ lab_industry_method_defaults <- function() {
     list("cons.Restaurants", "dcf", "ddm", FALSE, "餐飲現金流／成熟配息 → DCF"),
     list("cons.Home_Living", "dcf", "pb", FALSE, "居家生活消費 → DCF"),
     list("cons.Sports_Leisure", "dcf", "pb", FALSE, "運動休閒 → DCF"),
-    list("ind.Conglomerate", "nav", "pb", FALSE, "綜合／其他 → 純 NAV；P/B 交叉"),
+    list("ind.Conglomerate", "nav", "sotp", FALSE, "綜合／其他 → 純 NAV；SOTP 結構交叉"),
     list("mat.Textiles", "dcf", "pb", FALSE, "紡織纖維循環 → DCF"),
     list("mat.Paper_Packaging", "dcf", "pb", FALSE, "造紙包裝 → DCF"),
     list("mat.Glass_Ceramics", "dcf", "pb", FALSE, "玻璃陶瓷 → DCF"),
@@ -972,13 +1031,13 @@ lab_industry_method_defaults <- function() {
     list("fn.Insurance", "pb", "ri", FALSE, "保險／帳面導向 → P/B"),
     list("fn.Asset_Management", "pb", "nav", FALSE, "資產管理偏帳面 → P/B；副選純 NAV"),
     list("fn.Fintech", "dcf", "pb", TRUE, "成長型金融科技 → 兩階段 DCF"),
-    list("fn.Conglomerate_Holding", "nav", "ri", FALSE, "控股／綜合企業 → 純 NAV（+ RI）"),
+    list("fn.Conglomerate_Holding", "nav", "sotp", FALSE, "控股／綜合企業 → 純 NAV；SOTP 結構交叉"),
     list("re.REIT", "pb", "nav", FALSE, "REIT 簿價／殖利率 → P/B；副選純 NAV"),
     list("en.Utilities", "pb", "ddm", FALSE, "公用事業簿價／管制資產 → P/B；高配息輔 DDM"),
 
     # 高成長科技／生技／EV → DCF two-stage
-    list("saas.SaaS_Cloud", "dcf", "pb", TRUE, "SaaS／雲端成長 → 兩階段 DCF"),
-    list("tech.Internet_Platform", "dcf", "pb", TRUE, "網路平台成長 → 兩階段 DCF"),
+    list("saas.SaaS_Cloud", "dcf", "multiples", TRUE, "SaaS／雲端成長 → 兩階段 DCF；Multiples 交叉"),
+    list("tech.Internet_Platform", "dcf", "multiples", TRUE, "網路平台成長 → 兩階段 DCF；Multiples 交叉"),
     list("tech.Software", "dcf", "ri", TRUE, "軟體成長／穩健 FCF → DCF"),
     list("hc.Biotech", "dcf", "pb", TRUE, "生技早期成長 → 兩階段 DCF（風險高）"),
     list("auto.Automotive_EV", "dcf", "pb", TRUE, "電動車成長 → 兩階段 DCF"),
