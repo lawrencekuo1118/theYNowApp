@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12642460
+bundleId=12642482
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=3cef6c96c88b49d4aca221f1f1fe80afbd9cf8b3
-commit=3cef6c96c88b49d4aca221f1f1fe80afbd9cf8b3
-short=3cef6c9
-message=chore: bump display version to v19.85
-captured_at=2026-10-03T14:10:48Z
+aligned_git=183448dea40f80da36a6324c5604465d35893342
+commit=183448dea40f80da36a6324c5604465d35893342
+short=183448d
+message=chore: bump display version to v19.86
+captured_at=2026-10-03T14:21:01Z
 source_branch=master
-display_version=v19.85
-note=Canonical live line is app_19.0. Bundle 12642460 = v19.85. P/B overview banner shows Fair Price formula only (no sidebar NAV redirect). Deploy via scripts/deploy_app_19.R. Supersedes 12642427.
+display_version=v19.86
+note=Canonical live line is app_19.0. Bundle 12642482 = v19.86. Multiples/SOTP use P/B-style formula banners + settings tabs (Earnings/Enterprise/P/S/Bridge; Segments/Bridge). Deploy via scripts/deploy_app_19.R. Supersedes 12642460.
