@@ -4218,9 +4218,6 @@ ui <- dashboardPage(
             setBtText('ynow_macro_bubble_conc_title', 'macro_bubble_conc_title');
             setBtText('ynow_macro_bubble_attr_title', 'macro_bubble_attr_title');
             setBtText('ynow_macro_bubble_buffett_title', 'macro_bubble_buffett_title');
-            setBtText('ynow_macro_bubble_asof_label', 'macro_bubble_asof_label');
-            setBtText('ynow_macro_bubble_play', 'macro_bubble_play');
-            setBtText('ynow_macro_bubble_pause', 'macro_bubble_pause');
             setBtText('ynow_macro_bubble_buffett_note', 'macro_bubble_buffett_note');
             var macroRefresh = document.getElementById('macro-refresh');
             if (macroRefresh && s.btn_macro_refresh) {

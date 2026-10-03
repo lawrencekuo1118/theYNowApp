@@ -600,42 +600,6 @@ macro_bubble_chapter_ui <- function(ns) {
         uiOutput(ns("bubble_buffett_gdp"))
       )
     ),
-    fluidRow(
-      class = "ynow-macro-kpi-row",
-      column(
-        width = 8,
-        class = "col-xs-12 col-sm-8 col-md-8",
-        sliderInput(
-          ns("bubble_buffett_asof"),
-          label = tags$span(id = "ynow_macro_bubble_asof_label", "As-of year (playback)"),
-          min = 1995,
-          max = as.integer(format(Sys.Date(), "%Y")),
-          value = as.integer(format(Sys.Date(), "%Y")),
-          step = 1,
-          sep = "",
-          width = "100%"
-        )
-      ),
-      column(
-        width = 4,
-        class = "col-xs-12 col-sm-4 col-md-4",
-        tags$div(
-          style = "margin-top: 24px;",
-          actionButton(
-            ns("bubble_buffett_play"),
-            label = tags$span(id = "ynow_macro_bubble_play", "Play"),
-            icon = icon("play"),
-            class = "btn-default"
-          ),
-          actionButton(
-            ns("bubble_buffett_pause"),
-            label = tags$span(id = "ynow_macro_bubble_pause", "Pause"),
-            icon = icon("pause"),
-            class = "btn-default"
-          )
-        )
-      )
-    ),
     plotlyOutput(ns("bubble_buffett_plot"), height = "320px") %>%
       shinycssloaders::withSpinner(),
     ynow_notes_block(

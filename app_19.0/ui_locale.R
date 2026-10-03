@@ -1582,9 +1582,6 @@ locale_for_market <- function(mode = get_market_mode()) {
     macro_bubble_alert_topn = "Top-N share ≥ 70% of basket market cap — elevated concentration.",
     macro_bubble_alert_breadth = "Narrow leadership: Top-N accounts for ≥ 80% of the basket’s positive return (weak market breadth).",
     macro_bubble_buffett_title = "Buffett Indicator (market cap / GDP)",
-    macro_bubble_asof_label = "As-of year (playback)",
-    macro_bubble_play = "Play",
-    macro_bubble_pause = "Pause",
     macro_bubble_buffett_note = paste0(
       "Series: World Bank market capitalization of listed domestic companies (% of GDP) when reachable; ",
       "companion boxes use World Bank total market cap (CM.MKT.LCAP.CD) and GDP (NY.GDP.MKTP.CD) in current USD. ",
@@ -3333,9 +3330,6 @@ locale_for_market <- function(mode = get_market_mode()) {
     macro_bubble_alert_topn = "前 N 大合計市值權重 ≥ 70% — 集中度偏高。",
     macro_bubble_alert_breadth = "市場寬度偏弱：上漲期間前 N 大貢獻 ≥ 80% 的正報酬（少數權值股拉抬）。",
     macro_bubble_buffett_title = "巴菲特指標（總市值／GDP）",
-    macro_bubble_asof_label = "截至年份（回放）",
-    macro_bubble_play = "播放",
-    macro_bubble_pause = "暫停",
     macro_bubble_buffett_note = paste0(
       "序列優先取世界銀行「上市國內公司總市值佔 GDP%%」；",
       "旁側總市值／GDP 取世界銀行 CM.MKT.LCAP.CD 與 NY.GDP.MKTP.CD（當期美元）。",

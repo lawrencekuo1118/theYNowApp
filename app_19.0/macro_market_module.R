@@ -1470,53 +1470,8 @@ macro_market_server <- function(id = "macro",
       tryCatch(macro_bubble_buffett_abs_series(.mode()), error = function(e) NULL)
     })
 
-    observe({
-      ser <- buffett_series()
-      if (is.null(ser) || !nrow(ser)) return()
-      yrs <- as.integer(format(ser$date, "%Y"))
-      yrs <- yrs[is.finite(yrs)]
-      if (!length(yrs)) return()
-      updateSliderInput(
-        session, "bubble_buffett_asof",
-        min = min(yrs), max = max(yrs),
-        value = max(yrs)
-      )
-    })
-
-    buffett_play_on <- reactiveVal(FALSE)
-    observeEvent(input$bubble_buffett_play, {
-      buffett_play_on(TRUE)
-    }, ignoreInit = TRUE)
-    observeEvent(input$bubble_buffett_pause, {
-      buffett_play_on(FALSE)
-    }, ignoreInit = TRUE)
-
-    observe({
-      if (!isTRUE(buffett_play_on())) return()
-      shiny::invalidateLater(700, session)
-      ser <- isolate(buffett_series())
-      if (is.null(ser) || !nrow(ser)) {
-        buffett_play_on(FALSE)
-        return()
-      }
-      yrs <- sort(unique(as.integer(format(ser$date, "%Y"))))
-      cur <- isolate(as.integer(input$bubble_buffett_asof %||% max(yrs))[1])
-      if (!is.finite(cur)) cur <- max(yrs)
-      nxt <- yrs[yrs > cur]
-      if (!length(nxt)) {
-        buffett_play_on(FALSE)
-        updateSliderInput(session, "bubble_buffett_asof", value = max(yrs))
-        return()
-      }
-      updateSliderInput(session, "bubble_buffett_asof", value = nxt[[1]])
-    })
-
     output$bubble_buffett_light <- renderUI({
       ser <- buffett_series()
-      asof <- suppressWarnings(as.integer(input$bubble_buffett_asof)[1])
-      if (is.finite(asof) && is.data.frame(ser) && nrow(ser)) {
-        ser <- ser[as.integer(format(ser$date, "%Y")) <= asof, , drop = FALSE]
-      }
       lt <- macro_bubble_buffett_light(ser)
       tags$div(
         class = "ynow-macro-kpi",
@@ -1564,8 +1519,7 @@ macro_market_server <- function(id = "macro",
     output$bubble_buffett_mcap <- renderUI({
       .loc()
       abs_ser <- buffett_abs_series()
-      asof <- suppressWarnings(as.integer(input$bubble_buffett_asof)[1])
-      got <- macro_bubble_buffett_abs_asof(abs_ser, asof)
+      got <- macro_bubble_buffett_abs_asof(abs_ser, NA_integer_)
       val <- if (isTRUE(got$ok) && is.finite(got$market_cap_usd)) {
         macro_bubble_fmt_usd_level(got$market_cap_usd)
       } else {
@@ -1582,8 +1536,7 @@ macro_market_server <- function(id = "macro",
     output$bubble_buffett_gdp <- renderUI({
       .loc()
       abs_ser <- buffett_abs_series()
-      asof <- suppressWarnings(as.integer(input$bubble_buffett_asof)[1])
-      got <- macro_bubble_buffett_abs_asof(abs_ser, asof)
+      got <- macro_bubble_buffett_abs_asof(abs_ser, NA_integer_)
       val <- if (isTRUE(got$ok) && is.finite(got$gdp_usd)) {
         macro_bubble_fmt_usd_level(got$gdp_usd)
       } else {
@@ -1600,10 +1553,6 @@ macro_market_server <- function(id = "macro",
     output$bubble_buffett_plot <- plotly::renderPlotly({
       ser <- buffett_series()
       shiny::validate(shiny::need(is.data.frame(ser) && nrow(ser) >= 3L, .ui("macro_bubble_buffett_need")))
-      asof <- suppressWarnings(as.integer(input$bubble_buffett_asof)[1])
-      if (is.finite(asof)) {
-        ser <- ser[as.integer(format(ser$date, "%Y")) <= asof, , drop = FALSE]
-      }
       shiny::validate(shiny::need(nrow(ser) >= 2L, .ui("macro_bubble_buffett_need")))
       lt <- macro_bubble_buffett_light(ser)
       fig <- plotly::plot_ly(

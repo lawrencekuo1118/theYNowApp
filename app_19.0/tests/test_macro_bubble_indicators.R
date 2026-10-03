@@ -92,6 +92,17 @@ check("buffett companion KPI outputs", {
   grepl("bubble_buffett_mcap", bt_src, fixed = TRUE) &&
     grepl("bubble_buffett_gdp", bt_src, fixed = TRUE)
 })
+check("buffett playback removed", {
+  !grepl("bubble_buffett_play", bt_src, fixed = TRUE) &&
+    !grepl("bubble_buffett_pause", bt_src, fixed = TRUE) &&
+    !grepl("bubble_buffett_asof", bt_src, fixed = TRUE) &&
+    !grepl("playback", bt_src, ignore.case = TRUE)
+})
+macro_src2 <- paste(readLines("macro_market_module.R", warn = FALSE), collapse = "\n")
+check("buffett playback server removed", {
+  !grepl("buffett_play_on", macro_src2, fixed = TRUE) &&
+    !grepl("bubble_buffett_asof", macro_src2, fixed = TRUE)
+})
 check("USD level formatter", {
   identical(macro_bubble_fmt_usd_level(1.5e12), "$1.50T") &&
     identical(macro_bubble_fmt_usd_level(NA_real_), "—")
