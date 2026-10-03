@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12642872
+bundleId=12642899
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=318415084bbc54344612ee96e13dbfe3b13ddd63
-commit=318415084bbc54344612ee96e13dbfe3b13ddd63
-short=3184150
-message=chore: bump display version to v19.96
-captured_at=2026-10-03T17:00:04Z
+aligned_git=4fadca7e1efc21f54bcb1ea4c56ae13d83c0fa99
+commit=4fadca7e1efc21f54bcb1ea4c56ae13d83c0fa99
+short=4fadca7
+message=chore: bump display version to v19.97
+captured_at=2026-10-03T18:34:11Z
 source_branch=master
 display_version=v19.97
-note=Canonical live line is app_19.0. Bundle 12642872 = v19.96. Blue Chip detail table under Rankings; Detail sub-tab removed. Deploy via scripts/deploy_app_19.R. Supersedes 12642858.
+note=Canonical live line is app_19.0. Bundle 12642899 = v19.97. Blue Chip by-industry = Top 10 within selected industries. Deploy via scripts/deploy_app_19.R. Supersedes 12642872.
