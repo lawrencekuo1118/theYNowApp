@@ -1431,7 +1431,7 @@ ui <- dashboardPage(
                startExpanded = FALSE,
                menuSubItem("P/B", tabName = "pb_calculator", icon = icon("landmark")),
                menuSubItem(
-                 text = tags$span(id = "ynow_menu_rel_multiples", "P/E · PEG · EV/FCF"),
+                 text = tags$span(id = "ynow_menu_rel_multiples", "Multiples · SOTP"),
                  tabName = "rel_multiples_calculator",
                  icon = icon("percentage")
                )
@@ -4252,10 +4252,13 @@ ui <- dashboardPage(
             setBtText('ynow_rel_multiples_btn_sync', 'rel_multiples_btn_sync');
             setBtText('ynow_rel_multiples_pe_heading', 'rel_multiples_pe_heading');
             setBtText('ynow_rel_multiples_peg_heading', 'rel_multiples_peg_heading');
-            setBtText('ynow_rel_multiples_evfcf_heading', 'rel_multiples_evfcf_heading');
+            setBtText('ynow_rel_multiples_ev_heading', 'rel_multiples_ev_heading');
+            setBtText('ynow_rel_multiples_tab_sotp', 'rel_multiples_tab_sotp');
             setBtText('ynow_rel_multiples_pe_help', 'rel_multiples_pe_help');
             setBtText('ynow_rel_multiples_peg_help', 'rel_multiples_peg_help');
-            setBtText('ynow_rel_multiples_evfcf_help', 'rel_multiples_evfcf_help');
+            setBtText('ynow_rel_multiples_ev_help', 'rel_multiples_ev_help');
+            setBtText('ynow_rel_multiples_sotp_help', 'rel_multiples_sotp_help');
+            setBtText('ynow_rel_multiples_arr_help', 'rel_multiples_arr_help');
             var smartTitle = document.getElementById('ynow_smart_page_title');
             if (smartTitle && s.smart_page_title) smartTitle.textContent = s.smart_page_title;
             var smartSub = document.getElementById('ynow_smart_page_sub');
