@@ -1196,7 +1196,8 @@ beta_rolling_section_ui <- function() {
   fluidRow(
     box(
       title = tagList(icon("percentage"), title),
-      width = 12, status = "info", solidHeader = TRUE, collapsible = TRUE,
+      width = 12, status = "info", solidHeader = TRUE,
+      collapsible = TRUE, collapsed = TRUE,
       tags$div(
         style = "overflow-x:auto;",
         tableOutput(table_id)

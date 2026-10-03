@@ -8030,7 +8030,8 @@ server <- function(input, output, session) {
     wacc_range <- seq(base_wacc + 2, base_wacc - 2, length.out = 5)
     g_range <- seq(base_g - 1, base_g + 1, length.out = 5)
     claim <- as.character(input$dcf_claim %||% "fcff")[1]
-    rate_lab <- if (identical(claim, "fcfe")) "Ke " else "Rate "
+    # Row labels use WACC／Ke; table corner column stays "Rate (%)" for FCFF.
+    rate_lab <- if (identical(claim, "fcfe")) "Ke " else "WACC "
 
     sens_matrix <- matrix(
       NA, nrow = 5, ncol = 5,
