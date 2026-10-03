@@ -8,5 +8,5 @@ short=3a9779a
 message=chore: bump display version to v19.82
 captured_at=2026-10-03T13:36:32Z
 source_branch=master
-display_version=v19.82
+display_version=v19.83
 note=Canonical live line is app_19.0. Bundle 12642343 = v19.82. Relative Multiples DDM-style family modes (Earnings / Enterprise / P/S / SOTP); P/B stays separate. Deploy via scripts/deploy_app_19.R. Supersedes 12642308.
