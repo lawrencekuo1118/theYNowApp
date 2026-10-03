@@ -164,10 +164,12 @@ calc_ps_implied_price <- function(revenue, ps_multiple, shares) {
 }
 
 #' Revenue-multiple SOTP: Σ(segment revenue × EV/Sales) − Net Debt (+ non-op).
-#' Requires ≥2 positive reported segment revenues. Not market EBIT SOTP.
+#' Requires ≥2 positive reported segment revenues. Not segment-EBIT SOTP.
+#' If `segments$multiple` is present, each row uses its own EV/Sales; otherwise
+#' `ev_sales_multiple` is applied to every segment.
 calc_sotp_revenue_implied <- function(segments, ev_sales_multiple, cash, debt, shares,
                                       non_operating = 0) {
-  mult <- suppressWarnings(as.numeric(ev_sales_multiple)[1])
+  mult_default <- suppressWarnings(as.numeric(ev_sales_multiple)[1])
   cash <- suppressWarnings(as.numeric(cash)[1])
   debt <- suppressWarnings(as.numeric(debt)[1])
   shares <- suppressWarnings(as.numeric(shares)[1])
@@ -178,8 +180,8 @@ calc_sotp_revenue_implied <- function(segments, ev_sales_multiple, cash, debt, s
       status = "unavailable", reason = reason,
       implied_ev = NA_real_, equity_value = NA_real_, implied_price = NA_real_,
       n_segments = 0L, segments = data.frame(
-        name = character(0), revenue = numeric(0), value = numeric(0),
-        stringsAsFactors = FALSE
+        name = character(0), revenue = numeric(0), multiple = numeric(0),
+        value = numeric(0), stringsAsFactors = FALSE
       )
     )
   }
@@ -188,13 +190,23 @@ calc_sotp_revenue_implied <- function(segments, ev_sales_multiple, cash, debt, s
   seg <- segments
   seg$name <- as.character(seg$name)
   seg$revenue <- suppressWarnings(as.numeric(seg$revenue))
+  if ("multiple" %in% names(seg)) {
+    seg$multiple <- suppressWarnings(as.numeric(seg$multiple))
+  } else {
+    seg$multiple <- rep(mult_default, nrow(seg))
+  }
   seg <- seg[is.finite(seg$revenue) & seg$revenue > 0 & nzchar(seg$name), , drop = FALSE]
   if (nrow(seg) < 2L) return(empty("need_multi_segment"))
-  if (!is.finite(mult) || mult <= 0) return(empty("multiple_invalid"))
+  bad_m <- !is.finite(seg$multiple) | seg$multiple <= 0
+  if (any(bad_m)) {
+    if (!is.finite(mult_default) || mult_default <= 0) return(empty("multiple_invalid"))
+    seg$multiple[bad_m] <- mult_default
+  }
+  if (any(!is.finite(seg$multiple) | seg$multiple <= 0)) return(empty("multiple_invalid"))
   if (!is.finite(shares) || shares <= 0) return(empty("shares_missing"))
   if (!is.finite(cash)) cash <- 0
   if (!is.finite(debt)) debt <- 0
-  seg$value <- seg$revenue * mult
+  seg$value <- seg$revenue * seg$multiple
   ev <- sum(seg$value) + non_op
   eq <- if (exists("dcf_ev_to_equity", mode = "function")) {
     dcf_ev_to_equity(ev, cash = cash, debt = debt)
@@ -206,7 +218,8 @@ calc_sotp_revenue_implied <- function(segments, ev_sales_multiple, cash, debt, s
     status = "ok", reason = NA_character_,
     implied_ev = ev, equity_value = eq, implied_price = eq / shares,
     n_segments = nrow(seg), segments = seg,
-    multiple = mult, cash = cash, debt = debt, shares = shares,
+    multiple = if (length(unique(round(seg$multiple, 6))) == 1L) seg$multiple[[1]] else NA_real_,
+    cash = cash, debt = debt, shares = shares,
     non_operating = non_op
   )
 }
@@ -289,8 +302,8 @@ calc_sotp_revenue_implied <- function(segments, ev_sales_multiple, cash, debt, s
 # ==========================================
 # UI
 # ==========================================
-# Mode families (DDM-style radio): earnings | enterprise | ps | sotp
-# P/B stays a separate sidebar engine (BVPS × target / Justified).
+# Mode families (DDM-style radio): earnings | enterprise | ps
+# P/B and SOTP are separate sidebar engines.
 relative_multiples_module_ui <- function(id) {
   ns <- NS(id)
   # conditionalPanel needs the fully namespaced input id (module id = mod_rel).
@@ -310,8 +323,8 @@ relative_multiples_module_ui <- function(id) {
           tags$b(id = "ynow_rel_multiples_lead_title", "Relative valuation (multiples): "),
           tags$span(
             id = "ynow_rel_multiples_lead_body",
-            "Implied Price by model family — not Intrinsic Value / Fair Value. ",
-            "Switch Earnings / Enterprise / P/S / SOTP like DDM modes. P/B remains its own sidebar engine."
+            "Implied Price by trading-multiple family — not Intrinsic Value / Fair Value. ",
+            "Switch Earnings / Enterprise / P/S like DDM modes. P/B and SOTP are separate sidebar engines."
           )
         )
       )
@@ -330,8 +343,7 @@ relative_multiples_module_ui <- function(id) {
               choices = list(
                 "Earnings (P/E · Fwd P/E · PEG)" = "earnings",
                 "Enterprise (EV/FCF · EV/EBIT · EV/EBITDA · EV/Sales · EV/ARR)" = "enterprise",
-                "P/S (equity sales)" = "ps",
-                "SOTP (revenue segments)" = "sotp"
+                "P/S (equity sales)" = "ps"
               ),
               selected = APP_DEFAULTS$rel_mode %||% "earnings",
               inline = FALSE
@@ -339,7 +351,7 @@ relative_multiples_module_ui <- function(id) {
             tags$p(
               id = "ynow_rel_mode_help",
               class = "help-block",
-              "Earnings: equity EPS multiples (+ PEG indicator). Enterprise: EV × metric then Cash−Debt bridge. P/S: equity-side revenue (no debt bridge). SOTP: ≥2 segment revenues × EV/Sales."
+              "Earnings: equity EPS multiples (+ PEG indicator). Enterprise: EV × metric then Cash−Debt bridge. P/S: equity-side revenue (no debt bridge). SOTP is a separate sidebar framework."
             )
           )
         )
@@ -374,10 +386,6 @@ relative_multiples_module_ui <- function(id) {
         conditionalPanel(
           condition = .mode("ps"),
           fluidRow(column(4, valueBoxOutput(ns("vbx_ps"), width = 12)))
-        ),
-        conditionalPanel(
-          condition = .mode("sotp"),
-          fluidRow(column(4, valueBoxOutput(ns("vbx_sotp"), width = 12)))
         ),
         fluidRow(
           column(width = 6, ynow_calc_btn(ns("btn_calc_rel"), label = tags$span(id = "ynow_rel_multiples_btn_calc", "Run multiples"))),
@@ -459,34 +467,23 @@ relative_multiples_module_ui <- function(id) {
             column(4, numericInput(ns("revenue"), tags$span(id = "ynow_rel_lbl_revenue", "Revenue"), value = NA, step = 1))
           )
         ),
-        conditionalPanel(
-          condition = .mode("sotp"),
-          h4(tags$b(id = "ynow_rel_multiples_sotp_heading", "SOTP (revenue segments)")),
-          tags$p(id = "ynow_rel_multiples_sotp_help", class = "help-block",
-                 "Revenue-multiple SOTP: each reported segment revenue × EV/Sales, then Cash−Debt bridge. Requires ≥2 positive segment revenues. Not segment-EBIT SOTP."),
-          fluidRow(
-            column(4, numericInput(ns("sotp_ev_sales"), tags$span(id = "ynow_rel_lbl_sotp_mult", "SOTP EV/Sales multiple"), value = APP_DEFAULTS$rel_ev_sales_multiple %||% 3, min = 0.01, step = 0.1)),
-            column(4, numericInput(ns("sotp_nonop"), tags$span(id = "ynow_rel_lbl_sotp_nonop", "Non-operating assets"), value = 0, step = 1))
-          ),
-          uiOutput(ns("ui_sotp_segments"))
-        ),
         hr(),
-        # Shares for enterprise / P/S / SOTP; Cash−Debt only for EV bridge modes
+        # Shares for enterprise / P/S; Cash−Debt for Enterprise EV bridge
         conditionalPanel(
-          condition = "input['mod_rel-rel_mode'] == 'enterprise' || input['mod_rel-rel_mode'] == 'ps' || input['mod_rel-rel_mode'] == 'sotp'",
+          condition = "input['mod_rel-rel_mode'] == 'enterprise' || input['mod_rel-rel_mode'] == 'ps'",
           fluidRow(
             column(4, conditionalPanel(
-              condition = "input['mod_rel-rel_mode'] == 'enterprise' || input['mod_rel-rel_mode'] == 'sotp'",
+              condition = .mode("enterprise"),
               numericInput(ns("cash"), tags$span(id = "ynow_rel_lbl_cash", "Cash"), value = NA, step = 1)
             )),
             column(4, conditionalPanel(
-              condition = "input['mod_rel-rel_mode'] == 'enterprise' || input['mod_rel-rel_mode'] == 'sotp'",
+              condition = .mode("enterprise"),
               numericInput(ns("debt"), tags$span(id = "ynow_rel_lbl_debt", "Total Debt"), value = NA, step = 1)
             )),
             column(4, numericInput(ns("shares"), tags$span(id = "ynow_rel_lbl_shares", "Shares (quote)"), value = NA, step = 1))
           ),
           tags$p(id = "ynow_rel_multiples_bridge_help", class = "help-block",
-                 "Cash / Debt used for EV→Equity bridge (Enterprise & SOTP). P/S uses shares only.")
+                 "Cash / Debt used for EV→Equity bridge (Enterprise). P/S uses shares only.")
         ),
         fluidRow(
           column(
@@ -523,9 +520,6 @@ relative_multiples_module_server <- function(id,
                                             ui_locale = reactive("zh-TW")) {
   moduleServer(id, function(input, output, session) {
     shares_resolve_note <- reactiveVal(NULL)
-    sotp_segments <- reactiveVal(
-      data.frame(name = character(0), revenue = numeric(0), stringsAsFactors = FALSE)
-    )
     calc_token <- reactiveVal(0L)
     last_result <- reactiveVal(NULL)
 
@@ -635,9 +629,6 @@ relative_multiples_module_server <- function(id,
       updateNumericInput(session, "cash", value = if (is.finite(cash)) round(cash, 2) else NA)
       updateNumericInput(session, "debt", value = if (is.finite(debt)) round(debt, 2) else NA)
       updateNumericInput(session, "shares", value = if (is.finite(shares)) round(shares, 0) else NA)
-
-      segs <- .rel_sotp_segments_from_is(d_is, ticker = tk, statement_currency = f_ccy0)
-      sotp_segments(segs)
       invisible(NULL)
     }
 
@@ -671,8 +662,6 @@ relative_multiples_module_server <- function(id,
       updateNumericInput(session, "ev_sales_multiple", value = APP_DEFAULTS$rel_ev_sales_multiple %||% 3)
       updateNumericInput(session, "ps_multiple", value = APP_DEFAULTS$rel_ps_multiple %||% 3)
       updateNumericInput(session, "ev_arr_multiple", value = APP_DEFAULTS$rel_ev_arr_multiple %||% 10)
-      updateNumericInput(session, "sotp_ev_sales", value = APP_DEFAULTS$rel_ev_sales_multiple %||% 3)
-      updateNumericInput(session, "sotp_nonop", value = 0)
       updateSelectInput(session, "peg_growth_src", selected = "sgr")
       sync_from_statements()
       last_result(NULL)
@@ -701,18 +690,10 @@ relative_multiples_module_server <- function(id,
       ps <- calc_ps_implied_price(input$revenue, input$ps_multiple, shares)
       evarr <- calc_ev_metric_implied_price(input$arr, input$ev_arr_multiple, cash, debt, shares, "ARR")
       if (identical(evarr$reason, "metric_nonpositive")) evarr$reason <- "arr_unavailable"
-      sotp_mult <- suppressWarnings(as.numeric(input$sotp_ev_sales)[1])
-      if (!is.finite(sotp_mult) || sotp_mult <= 0) {
-        sotp_mult <- suppressWarnings(as.numeric(input$ev_sales_multiple)[1])
-      }
-      sotp <- calc_sotp_revenue_implied(
-        sotp_segments(), sotp_mult, cash, debt, shares,
-        non_operating = input$sotp_nonop
-      )
       list(
         pe = pe, forward_pe = fpe, peg = peg, ev_fcf = evf,
         ev_ebit = eve, ev_ebitda = eveda, ev_sales = evs, ps = ps,
-        ev_arr = evarr, sotp = sotp, ran_at = Sys.time()
+        ev_arr = evarr, ran_at = Sys.time()
       )
     }
 
@@ -731,32 +712,6 @@ relative_multiples_module_server <- function(id,
       note <- shares_resolve_note()
       if (!nzchar(note %||% "")) return(NULL)
       tags$p(class = "help-block", style = "color:#9a3412;", note)
-    })
-
-    output$ui_sotp_segments <- renderUI({
-      seg <- sotp_segments()
-      if (!is.data.frame(seg) || nrow(seg) < 2L) {
-        return(tags$div(
-          class = "ynow-macro-callout ynow-macro-callout--warn",
-          tags$p(.str("rel_multiples_sotp_need_segments"))
-        ))
-      }
-      tags$div(
-        class = "table-responsive",
-        tags$table(
-          class = "table table-condensed",
-          tags$thead(tags$tr(
-            tags$th(.str("rel_multiples_sotp_col_name")),
-            tags$th(.str("rel_multiples_sotp_col_rev"))
-          )),
-          tags$tbody(lapply(seq_len(nrow(seg)), function(i) {
-            tags$tr(
-              tags$td(seg$name[[i]]),
-              tags$td(format(round(seg$revenue[[i]], 0), big.mark = ","))
-            )
-          }))
-        )
-      )
     })
 
     .fmt_px <- function(x) {
@@ -784,7 +739,6 @@ relative_multiples_module_server <- function(id,
     output$vbx_evsales <- .vbx("ev_sales", "rel_multiples_vbx_evsales", "navy", "shopping-cart")
     output$vbx_ps <- .vbx("ps", "rel_multiples_vbx_ps", "olive", "tag")
     output$vbx_evarr <- .vbx("ev_arr", "rel_multiples_vbx_evarr", "maroon", "cloud")
-    output$vbx_sotp <- .vbx("sotp", "rel_multiples_vbx_sotp", "black", "puzzle-piece")
 
     .st_label <- function(node, special = NULL) {
       if (is.null(node)) return(.str("rel_multiples_status_na"))
@@ -800,9 +754,6 @@ relative_multiples_module_server <- function(id,
         if (identical(node$metric_name, "ARR") || identical(node$reason, "arr_unavailable")) {
           return(.str("rel_multiples_status_arr"))
         }
-      }
-      if (identical(node$reason, "no_segments") || identical(node$reason, "need_multi_segment")) {
-        return(.str("rel_multiples_status_sotp"))
       }
       .str("rel_multiples_status_na")
     }
@@ -830,19 +781,6 @@ relative_multiples_module_server <- function(id,
           if (is.finite(node$multiple)) node$multiple else NA_real_
         )
       }
-      sotp_detail <- if (identical(res$sotp$status, "ok")) {
-        sprintf(
-          "%s: %s · EV %s · Equity %s · segments %d · EV/Sales %.2f×",
-          .str("rel_multiples_implied_price"),
-          .fmt_px(res$sotp$implied_price),
-          .fmt_px(res$sotp$implied_ev),
-          .fmt_px(res$sotp$equity_value),
-          as.integer(res$sotp$n_segments),
-          if (is.finite(res$sotp$multiple)) res$sotp$multiple else NA_real_
-        )
-      } else {
-        .str("rel_multiples_sotp_need_segments")
-      }
       rows <- switch(
         mode,
         "enterprise" = tagList(
@@ -859,9 +797,6 @@ relative_multiples_module_server <- function(id,
                        .fmt_px(res$ps$implied_price), .fmt_px(res$ps$equity_value),
                        if (is.finite(res$ps$revenue)) format(round(res$ps$revenue, 0), big.mark = ",") else "—",
                        if (is.finite(res$ps$multiple)) res$ps$multiple else NA_real_))
-        ),
-        "sotp" = tagList(
-          .row(.str("rel_multiples_model_sotp"), .st_label(res$sotp), sotp_detail)
         ),
         # earnings (default)
         tagList(
@@ -901,9 +836,6 @@ relative_multiples_module_server <- function(id,
     return(list(
       pe_price = reactive({
         res <- last_result(); if (!is.null(res) && identical(res$pe$status, "ok")) res$pe$implied_price else NA_real_
-      }),
-      sotp_price = reactive({
-        res <- last_result(); if (!is.null(res) && identical(res$sotp$status, "ok")) res$sotp$implied_price else NA_real_
       })
     ))
   })

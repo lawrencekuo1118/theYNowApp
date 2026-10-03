@@ -1434,6 +1434,11 @@ ui <- dashboardPage(
                  text = tags$span(id = "ynow_menu_rel_multiples", "Multiples"),
                  tabName = "rel_multiples_calculator",
                  icon = icon("percentage")
+               ),
+               menuSubItem(
+                 text = tags$span(id = "ynow_menu_sotp", "SOTP"),
+                 tabName = "sotp_calculator",
+                 icon = icon("puzzle-piece")
                )
              ),
              # 歷史基本面驗證（HFV）：理論估值 vs 實際市值 — 非策略回測
@@ -2648,6 +2653,7 @@ ui <- dashboardPage(
         body.ynow-lite .sidebar-menu li:has(a[data-value="dcf_calculator"]),
         body.ynow-lite .sidebar-menu li:has(a[data-value="pb_calculator"]),
         body.ynow-lite .sidebar-menu li:has(a[data-value="rel_multiples_calculator"]),
+        body.ynow-lite .sidebar-menu li:has(a[data-value="sotp_calculator"]),
         body.ynow-lite .sidebar-menu a[data-value="hfv"],
         body.ynow-lite .sidebar-menu li:has(> a[data-value="hfv"]),
         body.ynow-lite .sidebar-menu a[data-value="decision_checklist"],
@@ -3612,7 +3618,8 @@ ui <- dashboardPage(
             ddm_calculator: 'ynow_menu_cat_income',
             ri_calculator: 'ynow_menu_cat_income',
             pb_calculator: 'ynow_menu_cat_relative',
-            rel_multiples_calculator: 'ynow_menu_cat_relative'
+            rel_multiples_calculator: 'ynow_menu_cat_relative',
+            sotp_calculator: 'ynow_menu_cat_relative'
           };
           var LAST_BADGE_MAP = null;
 
@@ -3712,7 +3719,7 @@ ui <- dashboardPage(
           function applySidebarBadges(map) {
             LAST_BADGE_MAP = map || null;
             var labels = (map && map.labels) || {};
-            var tabs = ['dcf_calculator', 'ddm_calculator', 'pb_calculator', 'rel_multiples_calculator', 'ri_calculator', 'nav_calculator'];
+            var tabs = ['dcf_calculator', 'ddm_calculator', 'pb_calculator', 'rel_multiples_calculator', 'sotp_calculator', 'ri_calculator', 'nav_calculator'];
             tabs.forEach(function (t) {
               var role = (map && map[t] && map[t].role) ? String(map[t].role) : '';
               if (!role && map && map[t] && map[t].on) role = 'primary';
@@ -4123,6 +4130,7 @@ ui <- dashboardPage(
               ddm_calculator: s.menu_ddm,
               pb_calculator: s.menu_pb,
               rel_multiples_calculator: s.menu_rel_multiples,
+              sotp_calculator: s.menu_sotp,
               ri_calculator: s.menu_ri,
               nav_calculator: s.menu_nav,
               sensitivity: s.menu_ynow,
@@ -4243,6 +4251,8 @@ ui <- dashboardPage(
             if (catRel && s.menu_cat_relative) catRel.textContent = s.menu_cat_relative;
             var menuRel = document.getElementById('ynow_menu_rel_multiples');
             if (menuRel && s.menu_rel_multiples) menuRel.textContent = s.menu_rel_multiples;
+            var menuSotp = document.getElementById('ynow_menu_sotp');
+            if (menuSotp && s.menu_sotp) menuSotp.textContent = s.menu_sotp;
             setBtText('ynow_rel_multiples_lead_title', 'rel_multiples_lead_title');
             setBtText('ynow_rel_multiples_lead_body', 'rel_multiples_lead_body');
             setBtText('ynow_rel_multiples_box_title', 'rel_multiples_box_title');
@@ -4256,14 +4266,22 @@ ui <- dashboardPage(
             setBtText('ynow_rel_multiples_peg_heading', 'rel_multiples_peg_heading');
             setBtText('ynow_rel_multiples_ev_heading', 'rel_multiples_ev_heading');
             setBtText('ynow_rel_multiples_ps_heading', 'rel_multiples_ps_heading');
-            setBtText('ynow_rel_multiples_sotp_heading', 'rel_multiples_sotp_heading');
             setBtText('ynow_rel_multiples_pe_help', 'rel_multiples_pe_help');
             setBtText('ynow_rel_multiples_peg_help', 'rel_multiples_peg_help');
             setBtText('ynow_rel_multiples_ev_help', 'rel_multiples_ev_help');
             setBtText('ynow_rel_multiples_ps_help', 'rel_multiples_ps_help');
-            setBtText('ynow_rel_multiples_sotp_help', 'rel_multiples_sotp_help');
             setBtText('ynow_rel_multiples_arr_help', 'rel_multiples_arr_help');
             setBtText('ynow_rel_multiples_bridge_help', 'rel_multiples_bridge_help');
+            setBtText('ynow_sotp_lead_title', 'sotp_lead_title');
+            setBtText('ynow_sotp_lead_body', 'sotp_lead_body');
+            setBtText('ynow_sotp_box_title', 'sotp_box_title');
+            setBtText('ynow_sotp_tab_overview', 'sotp_tab_overview');
+            setBtText('ynow_sotp_tab_segments', 'sotp_tab_segments');
+            setBtText('ynow_sotp_btn_calc', 'sotp_btn_calc');
+            setBtText('ynow_sotp_btn_sync', 'sotp_btn_sync');
+            setBtText('ynow_sotp_btn_apply_mult', 'sotp_btn_apply_mult');
+            setBtText('ynow_sotp_help', 'sotp_help');
+            setBtText('ynow_sotp_bridge_help', 'sotp_bridge_help');
             var smartTitle = document.getElementById('ynow_smart_page_title');
             if (smartTitle && s.smart_page_title) smartTitle.textContent = s.smart_page_title;
             var smartSub = document.getElementById('ynow_smart_page_sub');
@@ -4920,7 +4938,8 @@ ui <- dashboardPage(
                 ddm_calculator: 'ddm',
                 ri_calculator: 'ri',
                 pb_calculator: 'pb',
-                rel_multiples_calculator: 'pb'
+                rel_multiples_calculator: 'pb',
+                sotp_calculator: 'pb'
               };
               var key = map[tab] || null;
               ['nav', 'dcf', 'ddm', 'ri', 'pb'].forEach(function (k) {
@@ -4966,7 +4985,7 @@ ui <- dashboardPage(
           (function () {
             var FULL_ONLY_TABS = [
               'get_started', 'nav_calculator', 'dcf_calculator', 'ddm_calculator',
-              'ri_calculator', 'pb_calculator', 'rel_multiples_calculator', 'hfv',
+              'ri_calculator', 'pb_calculator', 'rel_multiples_calculator', 'sotp_calculator', 'hfv',
               'decision_checklist', 'lab_notes', 'testing'
             ];
             function remapLegacyTab(tab) {
@@ -8001,6 +8020,7 @@ ui <- dashboardPage(
         "input.sidebar_tabs == 'ddm_calculator' ||",
         "input.sidebar_tabs == 'pb_calculator' ||",
         "input.sidebar_tabs == 'rel_multiples_calculator' ||",
+        "input.sidebar_tabs == 'sotp_calculator' ||",
         "input.sidebar_tabs == 'ri_calculator' ||",
         "input.sidebar_tabs == 'nav_calculator'"
       ),
@@ -8075,6 +8095,7 @@ ui <- dashboardPage(
           "input.sidebar_tabs == 'ddm_calculator' ||",
           "input.sidebar_tabs == 'pb_calculator' ||",
           "input.sidebar_tabs == 'rel_multiples_calculator' ||",
+          "input.sidebar_tabs == 'sotp_calculator' ||",
           "input.sidebar_tabs == 'ri_calculator' ||",
           "input.sidebar_tabs == 'nav_calculator'"
         ),
@@ -9124,8 +9145,11 @@ ui <- dashboardPage(
       # 🌟 呼叫 P/B 相對估值分頁介面
       pb_asset_module_ui("mod_pb"),
 
-      # Relative multiples: P/E, Forward P/E, PEG, EV/FCF (Implied Price)
+      # Relative multiples: Earnings / Enterprise / P/S (Implied Price)
       relative_multiples_module_ui("mod_rel"),
+
+      # SOTP — structural Sum-of-the-Parts (separate sidebar)
+      sotp_module_ui("mod_sotp"),
 
       # 🌟 呼叫純 NAV 分頁介面
       nav_module_ui("mod_nav"),

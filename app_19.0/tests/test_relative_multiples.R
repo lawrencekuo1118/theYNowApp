@@ -124,41 +124,58 @@ check("SOTP empty N/A", identical(
 ))
 sotp_nonop <- calc_sotp_revenue_implied(segs2, 3, cash = 20, debt = 50, shares = 10, non_operating = 100)
 check("SOTP non-op", abs(sotp_nonop$implied_ev - 1000) < 1e-9)
+segs_pm <- data.frame(
+  name = c("A", "B"), revenue = c(100, 200), multiple = c(2, 4), stringsAsFactors = FALSE
+)
+sotp_pm <- calc_sotp_revenue_implied(segs_pm, 3, cash = 20, debt = 50, shares = 10)
+check("SOTP per-segment multiples", identical(sotp_pm$status, "ok"))
+check("SOTP per-segment EV", abs(sotp_pm$implied_ev - 1000) < 1e-9) # 100*2 + 200*4
 
 # --- Locale ---
 for (k in c(
-  "menu_rel_multiples", "rel_multiples_implied_price", "rel_multiples_disclaimer",
+  "menu_rel_multiples", "menu_sotp", "rel_multiples_implied_price", "rel_multiples_disclaimer",
   "rel_multiples_growth_sgr", "rel_multiples_vbx_pe", "rel_multiples_vbx_evebit",
-  "rel_multiples_vbx_sotp", "rel_multiples_status_arr", "rel_multiples_status_sotp",
-  "rel_mode_label", "rel_mode_earnings", "rel_mode_enterprise", "rel_mode_ps", "rel_mode_sotp",
-  "rel_multiples_ev_heading", "rel_multiples_ps_heading", "rel_multiples_sotp_need_segments"
+  "rel_multiples_status_arr", "rel_mode_label", "rel_mode_earnings", "rel_mode_enterprise",
+  "rel_mode_ps", "rel_multiples_ev_heading", "rel_multiples_ps_heading",
+  "sotp_lead_title", "sotp_need_segments", "sotp_vbx_price", "sotp_col_multiple"
 )) {
   check(paste("en", k), nzchar(ui_str(k, "en")))
   check(paste("zh", k), nzchar(ui_str(k, "zh-TW")))
 }
 check("zh no simplified", !grepl("默认|参数|数据|用户", ui_str("rel_multiples_lead_body", "zh-TW")))
 check("menu Multiples en", identical(ui_str("menu_rel_multiples", "en"), "Multiples"))
-check("menu Multiples zh", nzchar(ui_str("menu_rel_multiples", "zh-TW")))
+check("menu SOTP en", identical(ui_str("menu_sotp", "en"), "SOTP"))
+check("no sotp in multiples radio choices en", !grepl("SOTP", ui_str("rel_mode_earnings", "en"), fixed = TRUE))
 
 # --- UI mounts / mode radio ---
 mod_src <- paste(readLines("relative_multiples_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("mode radio in module", grepl('ns("rel_mode")', mod_src, fixed = TRUE))
 check("mode earnings family", grepl("earnings", mod_src, fixed = TRUE) && grepl("enterprise", mod_src, fixed = TRUE))
 check("mode conditional panels", grepl("mod_rel-rel_mode", mod_src, fixed = TRUE))
+check("multiples radio omits sotp choice", !grepl('= "sotp"', mod_src, fixed = TRUE))
+
+sotp_src <- paste(readLines("sotp_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check("sotp module UI", grepl("sotp_module_ui", sotp_src, fixed = TRUE))
+check("sotp per-segment inputs", grepl("seg_mult_", sotp_src, fixed = TRUE))
 
 ui_src <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("sidebar mounts rel multiples", grepl("rel_multiples_calculator", ui_src, fixed = TRUE))
+check("sidebar mounts sotp", grepl("sotp_calculator", ui_src, fixed = TRUE))
 check("module UI call", grepl('relative_multiples_module_ui("mod_rel")', ui_src, fixed = TRUE))
+check("sotp UI call", grepl('sotp_module_ui("mod_sotp")', ui_src, fixed = TRUE))
 check("lite hides rel multiples", grepl("rel_multiples_calculator", ui_src, fixed = TRUE) &&
         grepl("body.ynow-lite .sidebar-menu li:has(a[data-value=\"rel_multiples_calculator\"])", ui_src, fixed = TRUE))
+check("lite hides sotp", grepl('body.ynow-lite .sidebar-menu li:has(a[data-value="sotp_calculator"])', ui_src, fixed = TRUE))
 check("applyUiLocale mode help", grepl("ynow_rel_mode_help", ui_src, fixed = TRUE))
-check("applyUiLocale EV heading", grepl("ynow_rel_multiples_ev_heading", ui_src, fixed = TRUE))
+check("applyUiLocale sotp lead", grepl("ynow_sotp_lead_title", ui_src, fixed = TRUE))
 
 g_src <- paste(readLines("global.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("global sources module", grepl("relative_multiples_module.R", g_src, fixed = TRUE))
+check("global sources sotp", grepl("sotp_module.R", g_src, fixed = TRUE))
 
 srv <- paste(readLines("ynow_server.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("server mounts module", grepl("relative_multiples_module_server", srv, fixed = TRUE))
+check("server mounts sotp", grepl("sotp_module_server", srv, fixed = TRUE))
 
 # --- Defaults in config source ---
 cfg <- paste(readLines("default_config.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")

@@ -74,6 +74,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     menu_ddm = "DDM",
     menu_pb = "P/B",
     menu_rel_multiples = "Multiples",
+    menu_sotp = "SOTP",
     menu_ri = "RI-Model",
     menu_nav = "NAV",
     menu_cat_asset = "Asset-Based Appr.",
@@ -81,8 +82,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     menu_cat_relative = "Relative Valuation Appr.",
     rel_multiples_lead_title = "Relative valuation (multiples): ",
     rel_multiples_lead_body = paste0(
-      "Implied Price by model family — not Intrinsic Value / Fair Value. ",
-      "Switch Earnings / Enterprise / P/S / SOTP like DDM modes. P/B remains its own sidebar engine."
+      "Implied Price by trading-multiple family — not Intrinsic Value / Fair Value. ",
+      "Switch Earnings / Enterprise / P/S like DDM modes. P/B and SOTP are separate sidebar engines."
     ),
     rel_multiples_box_title = "Multiples",
     rel_multiples_tab_overview = "Overview",
@@ -91,12 +92,45 @@ locale_for_market <- function(mode = get_market_mode()) {
     rel_mode_earnings = "Earnings (P/E · Fwd P/E · PEG)",
     rel_mode_enterprise = "Enterprise (EV/FCF · EV/EBIT · EV/EBITDA · EV/Sales · EV/ARR)",
     rel_mode_ps = "P/S (equity sales)",
-    rel_mode_sotp = "SOTP (revenue segments)",
     rel_mode_help = paste0(
       "Earnings: equity EPS multiples (+ PEG indicator). ",
       "Enterprise: EV × metric then Cash−Debt bridge. ",
       "P/S: equity-side revenue (no debt bridge). ",
-      "SOTP: ≥2 segment revenues × EV/Sales."
+      "SOTP is a separate sidebar structural framework."
+    ),
+    sotp_lead_title = "SOTP (Sum of the Parts): ",
+    sotp_lead_body = paste0(
+      "Structural framework — decompose ≥2 segment revenues, apply an EV/Sales multiple per segment, ",
+      "sum enterprise values, then bridge Cash − Debt to Implied Price. Not a single trading multiple."
+    ),
+    sotp_box_title = "SOTP",
+    sotp_tab_overview = "Overview",
+    sotp_tab_segments = "Segments",
+    sotp_btn_calc = "Run SOTP",
+    sotp_btn_sync = "Sync from statements",
+    sotp_btn_apply_mult = "Apply default to all segments",
+    sotp_help = paste0(
+      "Each segment needs its own EV/Sales. Sync pulls multi-segment revenue from BB Lab when available. ",
+      "Not segment-EBIT SOTP."
+    ),
+    sotp_bridge_help = paste0(
+      "Implied EV = Σ(segment revenue × segment EV/Sales) + non-operating; ",
+      "Equity = EV + Cash − Debt (same bridge as DCF)."
+    ),
+    sotp_need_segments = "SOTP requires segment-level financial data (≥2 positive segment revenues).",
+    sotp_need_run = "Click Run SOTP to compute Implied Price.",
+    sotp_synced = "Synced segment revenues (when available), cash, debt, and shares from statements.",
+    sotp_segments_heading = "Segment EV/Sales",
+    sotp_col_name = "Segment",
+    sotp_col_rev = "Revenue",
+    sotp_col_multiple = "EV/Sales",
+    sotp_col_value = "Segment EV",
+    sotp_vbx_price = "SOTP Implied Price",
+    sotp_vbx_ev = "SOTP Implied EV",
+    sotp_vbx_n = "Segments",
+    sotp_disclaimer = paste0(
+      "Structural SOTP only — do not treat this Implied Price as Intrinsic Value, ",
+      "and do not average it with DCF / DDM / RI / P/B / trading multiples."
     ),
     rel_multiples_btn_calc = "Run multiples",
     rel_multiples_btn_sync = "Sync from statements",
@@ -162,7 +196,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Relative valuation only — do not treat these Implied Prices as Intrinsic Value, ",
       "and do not average them with DCF / DDM / RI / P/B."
     ),
-    rel_multiples_synced = "Synced EPS, FCFF, EBIT, EBITDA, Revenue, cash, debt, shares, and SOTP segments when available.",
+    rel_multiples_synced = "Synced EPS, FCFF, EBIT, EBITDA, Revenue, cash, debt, and shares from statements.",
     rel_multiples_shares_fx_block = "Quote currency ≠ statement currency and ADR/FX alignment failed — shares withheld.",
     rel_multiples_shares_basic = "Using Basic / statement shares (not auto-adjusted diluted quote shares).",
     rel_multiples_growth_sgr = "Central terminal SGR",
@@ -1977,6 +2011,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     menu_ddm = "DDM",
     menu_pb = "P/B",
     menu_rel_multiples = "倍數法",
+    menu_sotp = "SOTP",
     menu_ri = "RI 模型",
     menu_nav = "NAV",
     menu_cat_asset = "資產基礎法",
@@ -1984,8 +2019,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     menu_cat_relative = "相對估值法",
     rel_multiples_lead_title = "相對估值（倍數法）：",
     rel_multiples_lead_body = paste0(
-      "依模型家族得出 Implied Price——不是 Intrinsic Value／Fair Value。",
-      "以 Earnings／Enterprise／P/S／SOTP 切換（比照 DDM）。P/B 仍為側欄獨立引擎。"
+      "依市場倍數家族得出 Implied Price——不是 Intrinsic Value／Fair Value。",
+      "以 Earnings／Enterprise／P/S 切換（比照 DDM）。P/B 與 SOTP 為側欄獨立引擎。"
     ),
     rel_multiples_box_title = "倍數法",
     rel_multiples_tab_overview = "總覽",
@@ -1994,12 +2029,45 @@ locale_for_market <- function(mode = get_market_mode()) {
     rel_mode_earnings = "盈餘倍數（P/E · Fwd P/E · PEG）",
     rel_mode_enterprise = "企業倍數（EV/FCF · EV/EBIT · EV/EBITDA · EV/Sales · EV/ARR）",
     rel_mode_ps = "P/S（股權營收倍數）",
-    rel_mode_sotp = "SOTP（部門營收）",
     rel_mode_help = paste0(
       "盈餘：股權 EPS 倍數（含 PEG 相對指標）。",
       "企業：EV × 指標後加 Cash−Debt 橋接。",
       "P/S：股權面營收（無負債橋接）。",
-      "SOTP：≥2 筆部門營收 × EV/Sales。"
+      "SOTP 為側欄獨立的結構型估值框架。"
+    ),
+    sotp_lead_title = "SOTP（分部加總）：",
+    sotp_lead_body = paste0(
+      "結構型估值框架——拆解 ≥2 筆部門營收、各自套用 EV/Sales，",
+      "加總企業價值後再以 Cash − Debt 橋接至 Implied Price。不是單一交易倍數。"
+    ),
+    sotp_box_title = "SOTP",
+    sotp_tab_overview = "總覽",
+    sotp_tab_segments = "部門",
+    sotp_btn_calc = "試算 SOTP",
+    sotp_btn_sync = "自財報同步",
+    sotp_btn_apply_mult = "套用預設倍數至全部門",
+    sotp_help = paste0(
+      "各部門需各自設定 EV/Sales。同步時若 BB Lab 有多部門營收會帶入。",
+      "非部門 EBIT SOTP。"
+    ),
+    sotp_bridge_help = paste0(
+      "Implied EV = Σ(部門營收 × 部門 EV/Sales) + 非營業資產；",
+      "Equity = EV + Cash − Debt（與 DCF 相同橋接）。"
+    ),
+    sotp_need_segments = "SOTP 需部門層級財報資料（≥2 筆正值部門營收）。",
+    sotp_need_run = "請按「試算 SOTP」計算 Implied Price。",
+    sotp_synced = "已自財報同步部門營收（若有）、現金、負債與股數。",
+    sotp_segments_heading = "部門 EV/Sales",
+    sotp_col_name = "部門",
+    sotp_col_rev = "營收",
+    sotp_col_multiple = "EV/Sales",
+    sotp_col_value = "部門 EV",
+    sotp_vbx_price = "SOTP Implied Price",
+    sotp_vbx_ev = "SOTP Implied EV",
+    sotp_vbx_n = "部門數",
+    sotp_disclaimer = paste0(
+      "僅為結構型 SOTP——請勿將 Implied Price 視為 Intrinsic Value，",
+      "亦勿與 DCF／DDM／RI／P/B／交易倍數直接平均。"
     ),
     rel_multiples_btn_calc = "試算倍數",
     rel_multiples_btn_sync = "自財報同步",
@@ -2065,7 +2133,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "僅為相對估值——請勿將 Implied Price 視為 Intrinsic Value，",
       "亦勿與 DCF／DDM／RI／P/B 直接平均。"
     ),
-    rel_multiples_synced = "已自財報同步 EPS、FCFF、EBIT、EBITDA、營收、現金、負債、股數，以及可用之 SOTP 部門。",
+    rel_multiples_synced = "已自財報同步 EPS、FCFF、EBIT、EBITDA、營收、現金、負債與股數。",
     rel_multiples_shares_fx_block = "報價幣≠財報幣且 ADR／FX 無法約當，已拒用股數。",
     rel_multiples_shares_basic = "使用基本／財報股數（非自動約當之稀釋報價股）。",
     rel_multiples_growth_sgr = "中央終值 SGR",

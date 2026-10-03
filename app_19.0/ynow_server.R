@@ -426,7 +426,7 @@ server <- function(input, output, session) {
     # Relative multiples families: labels follow locale (values unchanged)
     tryCatch({
       rel_sel <- isolate(input[["mod_rel-rel_mode"]])
-      if (is.null(rel_sel) || !rel_sel %in% c("earnings", "enterprise", "ps", "sotp")) {
+      if (is.null(rel_sel) || !rel_sel %in% c("earnings", "enterprise", "ps")) {
         rel_sel <- APP_DEFAULTS$rel_mode %||% "earnings"
       }
       updateRadioButtons(
@@ -434,12 +434,11 @@ server <- function(input, output, session) {
         "mod_rel-rel_mode",
         label = ui_str("rel_mode_label", loc),
         choices = stats::setNames(
-          c("earnings", "enterprise", "ps", "sotp"),
+          c("earnings", "enterprise", "ps"),
           c(
             ui_str("rel_mode_earnings", loc),
             ui_str("rel_mode_enterprise", loc),
-            ui_str("rel_mode_ps", loc),
-            ui_str("rel_mode_sotp", loc)
+            ui_str("rel_mode_ps", loc)
           )
         ),
         selected = rel_sel
@@ -3602,6 +3601,28 @@ server <- function(input, output, session) {
         APP_DEFAULTS$sgr
       }
     }),
+    ui_locale = ui_locale
+  )
+
+  # ==========================================
+  # SOTP — structural Sum-of-the-Parts (separate from Multiples)
+  # ==========================================
+  sotp_results <- sotp_module_server(
+    id = "mod_sotp",
+    d_income_statement = d_income_statement,
+    d_balance_sheet = d_balance_sheet,
+    current_price = reactive({
+      tryCatch(scraped_market_cap()$price, error = function(e) NA_real_)
+    }),
+    market_cap = reactive({
+      extract_quote_price_mcap(summary_data())$market_cap
+    }),
+    quote_price = reactive({
+      extract_quote_price_mcap(summary_data())$price
+    }),
+    current_ticker = current_ticker,
+    quote_currency = quote_currency,
+    financial_currency = statement_currency,
     ui_locale = ui_locale
   )
 
