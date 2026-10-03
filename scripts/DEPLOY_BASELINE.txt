@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12641698
+bundleId=12641727
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=fb83f0f90743818add64158ae7b8961c1104367d
-commit=fb83f0f90743818add64158ae7b8961c1104367d
-short=fb83f0f
-message=chore: bump display version to v19.69
-captured_at=2026-10-03T09:30:41Z
+aligned_git=ad77317a26cc551fc96bd42aa0ccf2c834855882
+commit=ad77317a26cc551fc96bd42aa0ccf2c834855882
+short=ad77317
+message=chore: bump display version to v19.70
+captured_at=2026-10-03T09:37:26Z
 source_branch=master
 display_version=v19.70
-note=Canonical live line is app_19.0. Bundle 12641698 = v19.69. Home + About privacy / IP / investment-risk notices; PDF disclaimer points to About. Deploy via scripts/deploy_app_19.R. Supersedes 12641661 / 12641647.
+note=Canonical live line is app_19.0. Bundle 12641727 = v19.70. Macro Rf:YNOW:HCCSI = 2:1:1; TW NDC on next row. Deploy via scripts/deploy_app_19.R. Supersedes 12641698 / 12641661.
