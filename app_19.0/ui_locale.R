@@ -846,8 +846,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     funnel_page_title = "YNOW",
     funnel_page_sub = paste0(
       "Click MOS / Reliability, Quality screen (F-Score), and Statement alerts ",
-      "to scroll to each block. Three stacked screens: statement quality (F-Score) → ",
-      "statement alerts → dynamic industry bubble and weight concentration. ",
+      "to scroll to each block. Two stacked screens: statement quality (F-Score) → ",
+      "statement alerts. Dynamic industry bubble and weight concentration sit at the ",
+      "bottom of Macro & Market Trends. ",
       "This is a decision-support report—not an order ticket."
     ),
     funnel_kpi_jump_mos_aria = "Jump to Section I Statement quality (MOS and Reliability)",
@@ -877,8 +878,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     funnel_sec_method = "How to read this report",
     funnel_method_body = paste0(
       "Reading order: click MOS / Reliability, Quality screen (F-Score), then Statement alerts, ",
-      "then statement quality (F-Score) → statement alerts → ",
-      "dynamic industry bubble and weight concentration. ",
+      "then statement quality (F-Score) → statement alerts. ",
+      "Dynamic industry bubble and weight concentration sit at the bottom of Macro & Market Trends. ",
       "Trend momentum (Timing) lives under Quant Backtest Lab and does not set fair value."
     ),
     funnel_method_caveat = paste0(
@@ -1532,7 +1533,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     macro_plot_need_pick = "Select an industry and/or a concept basket to plot versus the benchmark.",
     macro_plot_need_theme = "Could not load industry or concept prices",
     macro_plot_need_bench = "Could not load benchmark prices",
-    macro_bubble_title = "Bubble & concentration indicators",
+    macro_bubble_title = "Dynamic industry bubble & weight concentration",
     macro_bubble_sub = paste0(
       "Theme concentration uses market-cap weights on the selected industry or concept basket ",
       "(GICS maps to S&P 500 sector peers). Buffett Indicator is market-level market-cap / GDP ",
@@ -2586,7 +2587,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     funnel_page_title = "YNOW",
     funnel_page_sub = paste0(
       "點選 MOS／Reliability、品質檢核 (F-Score)、財報警訊框格可捲動至對應區塊。",
-      "三個區塊由上而下：財報體質（F-Score）→ 財報警訊 → 動態產業泡沫與權重集中度。",
+      "兩個區塊由上而下：財報體質（F-Score）→ 財報警訊。",
+      "動態產業泡沫與權重集中度在「總體經濟與大盤趨勢」分頁最下方。",
       "這是決策輔助報告，不是下單指令。"
     ),
     funnel_kpi_jump_mos_aria = "跳至第一章財報體質（MOS 與 Reliability）",
@@ -2615,7 +2617,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     funnel_sec_method = "如何閱讀本報告",
     funnel_method_body = paste0(
       "閱讀順序：先點 MOS／Reliability、品質檢核 (F-Score)、財報警訊框格，",
-      "再依財報體質（F-Score）→ 財報警訊 → 動態產業泡沫與權重集中度。",
+      "再依財報體質（F-Score）→ 財報警訊。",
+      "動態產業泡沫與權重集中度在「總體經濟與大盤趨勢」分頁最下方。",
       "趨勢動能（Timing）輔助在「量化回測實驗室」分頁，不決定合理價。"
     ),
     funnel_method_caveat = "標籤與分數僅供研究／決策輔助，不是券商下單指令；HFV 情境僅作否決語境，不作看漲依據。",

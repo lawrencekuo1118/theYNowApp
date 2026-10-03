@@ -81,11 +81,11 @@ for (k in c(
   check(paste("zh", k), nzchar(ui_str(k, "zh-TW")))
 }
 
-# UI mounts chapter on the YNOW tab (not Macro)
+# UI mounts chapter on Macro (page bottom), not YNOW
 dec_src <- paste(readLines("investment_decision_module.R", warn = FALSE), collapse = "\n")
-check("YNOW tab calls bubble chapter", grepl("macro_bubble_chapter_ui", dec_src, fixed = TRUE))
-check("ch3 lead is notes", grepl("ynow_notes_block", dec_src, fixed = TRUE) &&
-        grepl("ynow_funnel_ch3_lead", dec_src, fixed = TRUE))
+check("YNOW tab does not call bubble chapter", !grepl("macro_bubble_chapter_ui", dec_src, fixed = TRUE))
+check("ch2 notes still present", grepl("ynow_notes_block", dec_src, fixed = TRUE) &&
+        grepl("ynow_funnel_ch2_lead", dec_src, fixed = TRUE))
 bt_src <- paste(readLines("macro_bubble_indicators.R", warn = FALSE), collapse = "\n")
 check("buffett note wrapped", grepl("ynow_notes_block", bt_src, fixed = TRUE) &&
         grepl("ynow_macro_bubble_buffett_note", bt_src, fixed = TRUE))
@@ -99,7 +99,11 @@ check("buffett KPI/plot not inside notes", {
   }
 })
 macro_src <- paste(readLines("macro_market_module.R", warn = FALSE), collapse = "\n")
-check("Macro tab no longer mounts bubble chapter", !grepl("macro_bubble_chapter_ui", macro_src, fixed = TRUE))
+check("Macro tab mounts bubble chapter at bottom", {
+  pos_own <- regexpr("ynow_own_index", macro_src, fixed = TRUE)[1]
+  pos_bub <- regexpr("macro_bubble_chapter_ui", macro_src, fixed = TRUE)[1]
+  is.finite(pos_own) && pos_own > 0 && is.finite(pos_bub) && pos_bub > pos_own
+})
 check("no CAPM write in bubble file", {
   bt <- paste(readLines("macro_bubble_indicators.R", warn = FALSE), collapse = "\n")
   !grepl("updateNumericInput", bt, fixed = TRUE)

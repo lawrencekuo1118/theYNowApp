@@ -277,9 +277,9 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
     txt,
     perl = TRUE
   ))
-  # Header quote KPIs are Dashboard-only (not Smart Analysis)
+  # Header quote KPIs are Company (dashboard) only (not Smart Analysis)
   testthat::expect_true(grepl(
-    "Header KPIs: Dashboard only",
+    "Header KPIs: Company (dashboard) only",
     txt,
     fixed = TRUE
   ))
@@ -458,7 +458,7 @@ testthat::test_that("clamp_g_below_rate keeps g strictly below discount", {
   testthat::expect_true(clamp_g_below_rate(10, 8) < 8)
 })
 
-testthat::test_that("YNOW page title and three-block order are shared by Lite and Full", {
+testthat::test_that("YNOW page title and two-block order are shared by Lite and Full", {
   source(file.path("..", "ui_locale.R"), local = TRUE)
   testthat::expect_identical(.UI_STRINGS$en$funnel_page_title, "YNOW")
   testthat::expect_identical(.UI_STRINGS$`zh-TW`$funnel_page_title, "YNOW")
@@ -490,7 +490,7 @@ testthat::test_that("YNOW page title and three-block order are shared by Lite an
   pos_b <- regexpr('`data-ynow-block` = "bubble"', ui_fn, fixed = TRUE)[1]
   testthat::expect_true(is.finite(pos_q) && pos_q > 0)
   testthat::expect_true(is.finite(pos_a) && pos_a > pos_q)
-  testthat::expect_true(is.finite(pos_b) && pos_b > pos_a)
+  testthat::expect_true(!is.finite(pos_b) || pos_b < 1)
 
   pos_mos <- regexpr("vbox_mos", ui_fn, fixed = TRUE)[1]
   pos_fs <- regexpr("vbox_fscore", ui_fn, fixed = TRUE)[1]
@@ -501,9 +501,9 @@ testthat::test_that("YNOW page title and three-block order are shared by Lite an
   testthat::expect_true(pos_mos > 0 && pos_fs > pos_mos && pos_fraud > pos_fs)
   testthat::expect_true(pos_ch1_title > pos_fraud)
   testthat::expect_true(pos_tbl > pos_q && pos_tbl < pos_a)
-  testthat::expect_true(pos_shen > pos_a && pos_shen < pos_b)
+  testthat::expect_true(pos_shen > pos_a)
   ch1_body <- substr(ui_fn, pos_q, pos_a)
-  ch2_body <- substr(ui_fn, pos_a, pos_b)
+  ch2_body <- substr(ui_fn, pos_a, nchar(ui_fn))
   testthat::expect_false(grepl("vbox_fscore", ch1_body, fixed = TRUE))
   testthat::expect_false(grepl("vbox_mos", ch1_body, fixed = TRUE))
   testthat::expect_false(grepl("vbox_fraud", ch2_body, fixed = TRUE))
@@ -538,7 +538,7 @@ testthat::test_that("YNOW page title and three-block order are shared by Lite an
     calls
   }
   notes_calls <- .notes_calls(ui_fn)
-  testthat::expect_true(length(notes_calls) >= 3L)
+  testthat::expect_true(length(notes_calls) >= 2L)
   testthat::expect_true(grepl("ynow_funnel_page_sub", ui_fn, fixed = TRUE))
   testthat::expect_false(any(grepl("ynow_funnel_page_sub", notes_calls, fixed = TRUE)))
   pos_mh <- regexpr("ynow-funnel-report__masthead", ui_fn, fixed = TRUE)[1]
@@ -548,7 +548,7 @@ testthat::test_that("YNOW page title and three-block order are shared by Lite an
   testthat::expect_false(grepl("ynow_notes_block", masthead, fixed = TRUE))
   testthat::expect_false(grepl("ynow_notes_block\\([^)]*open\\s*=\\s*TRUE", ui_fn))
 
-  testthat::expect_true(grepl("macro_bubble_chapter_ui", dec, fixed = TRUE))
+  testthat::expect_false(grepl("macro_bubble_chapter_ui", dec, fixed = TRUE))
   testthat::expect_false(grepl("ynow-lite-only", dec, fixed = TRUE))
   testthat::expect_false(grepl("ynow-full-only", dec, fixed = TRUE))
 
@@ -558,13 +558,13 @@ testthat::test_that("YNOW page title and three-block order are shared by Lite an
   )
   testthat::expect_true(grepl('tabName = "sensitivity"', ui, fixed = TRUE))
   testthat::expect_true(grepl('decision_ui("main_decision")', ui, fixed = TRUE))
-  testthat::expect_true(grepl("財報體質（F-Score）、財報警訊、動態產業泡沫與權重集中度", ui, fixed = TRUE))
-  testthat::expect_true(grepl("statement quality (F-Score), statement alerts", ui, fixed = TRUE))
+  testthat::expect_true(grepl("財報體質（F-Score）與財報警訊", ui, fixed = TRUE))
+  testthat::expect_true(grepl("statement quality (F-Score) and statement alerts", ui, fixed = TRUE))
   testthat::expect_false(grepl("三區塊版面：品質檢核（F-Score）", ui, fixed = TRUE))
 
   macro <- paste(
     readLines(file.path("..", "macro_market_module.R"), warn = FALSE, encoding = "UTF-8"),
     collapse = "\n"
   )
-  testthat::expect_false(grepl("macro_bubble_chapter_ui", macro, fixed = TRUE))
+  testthat::expect_true(grepl("macro_bubble_chapter_ui", macro, fixed = TRUE))
 })

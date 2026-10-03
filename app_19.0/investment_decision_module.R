@@ -1,8 +1,9 @@
 # =========================================================================
 # Investment Decision Scorecard — YNOW page + composite valuation
 # Click-to-scroll KPI row (MOS | Reliability → F-Score → Statement alerts)
-# sits above three stacked blocks: statement quality → statement alerts →
-# dynamic industry bubble & weight concentration. Same markup for Lite/Full.
+# sits above two stacked blocks: statement quality → statement alerts.
+# Dynamic industry bubble & weight concentration lives on Macro (page bottom).
+# Same markup for Lite/Full.
 # Copy: ui_str / funnel_* keys (en-US + zh-TW)
 # =========================================================================
 
@@ -12,7 +13,7 @@ library(TTR)
 library(glue)
 
 # -------------------------------------------
-# 1. UI：YNOW three-block page + momentum panel
+# 1. UI：YNOW two-block page + momentum panel
 # -------------------------------------------
 #' Shared composite valuation block (main/sub model, Bear–Base–Bull, status bar).
 #' Mount once in the model-page header — not on Basic Setup.
@@ -36,7 +37,8 @@ decision_ui <- function(id) {
           class = "ynow-funnel-report__lead",
           paste0(
             "點選 MOS／Reliability、品質檢核 (F-Score)、財報警訊框格可捲動至對應區塊。",
-            "三個區塊由上而下：財報體質（F-Score）→ 財報警訊 → 動態產業泡沫與權重集中度。",
+            "兩個區塊由上而下：財報體質（F-Score）→ 財報警訊。",
+            "動態產業泡沫與權重集中度在「總體經濟與大盤趨勢」分頁最下方。",
             "這是決策輔助報告，不是下單指令。"
           )
         )
@@ -157,39 +159,6 @@ decision_ui <- function(id) {
             class = "ynow-funnel-table-wrap",
             uiOutput(ns("shenanigans_panel"))
           )
-        )
-      ),
-
-      tags$section(
-        class = "ynow-funnel-chapter",
-        id = "ynow_funnel_ch3",
-        `data-ynow-block` = "bubble",
-        tags$div(
-          class = "ynow-funnel-chapter__head",
-          tags$span(
-            class = "ynow-funnel-chapter__kicker",
-            id = "ynow_funnel_ch3_kicker",
-            "第三章"
-          ),
-          tags$h3(
-            class = "ynow-funnel-chapter__title",
-            id = "ynow_funnel_ch3_title",
-            "動態產業泡沫與權重集中度"
-          )
-        ),
-        tags$div(
-          class = "ynow-funnel-chapter__body",
-          ynow_notes_block(
-            tags$p(
-              id = "ynow_funnel_ch3_lead",
-              class = "ynow-funnel-chapter__lead",
-              paste0(
-                "主題集中度以所選產業別或概念股籃的市值權重計算（GICS 對應 S&P 500 同業）。",
-                "巴菲特指標為市場層級總市值／GDP（僅供研究顯示，絕不寫入 CAPM／Ke／WACC）。"
-              )
-            )
-          ),
-          macro_bubble_chapter_ui(NS("macro"))
         )
       )
     )

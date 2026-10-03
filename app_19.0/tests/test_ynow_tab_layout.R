@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# YNOW tab: title, KPI jump row above Section I, three-block order, Lite=Full
+# YNOW tab: title, KPI jump row above Section I, two-block order, Lite=Full
 # Run: cd app_19.0 && Rscript tests/test_ynow_tab_layout.R
 
 root <- if (file.exists("investment_decision_module.R")) {
@@ -79,7 +79,7 @@ pos_a <- regexpr('`data-ynow-block` = "alerts"', ui_fn, fixed = TRUE)[1]
 pos_b <- regexpr('`data-ynow-block` = "bubble"', ui_fn, fixed = TRUE)[1]
 check("quality block present", is.finite(pos_q) && pos_q > 0)
 check("order 體質 → 警訊", is.finite(pos_a) && pos_a > pos_q)
-check("order 警訊 → 泡沫", is.finite(pos_b) && pos_b > pos_a)
+check("bubble not on YNOW", !is.finite(pos_b) || pos_b < 1)
 
 pos_ch1_id <- regexpr('id = "ynow_funnel_ch1"', ui_fn, fixed = TRUE)[1]
 pos_ch1_title <- regexpr("ynow_funnel_ch1_title", ui_fn, fixed = TRUE)[1]
@@ -93,10 +93,10 @@ check("F-Score card before alerts", pos_fs > 0 && pos_fraud > pos_fs)
 check("KPI row before Section I heading", pos_fraud > 0 && pos_ch1_title > pos_fraud && pos_ch1_id > pos_fraud)
 check("Section I heading not in KPI row", pos_ch1_title > pos_ch1_id && pos_ch1_id > pos_fraud)
 check("F-Score boxes still in Section I", pos_tbl > pos_q && pos_tbl < pos_a)
-check("shenanigans still in Section II", pos_shen > pos_a && pos_shen < pos_b)
+check("shenanigans still in Section II", pos_shen > pos_a)
 
 ch1_body <- if (pos_q > 0 && pos_a > pos_q) substr(ui_fn, pos_q, pos_a) else ""
-ch2_body <- if (pos_a > 0 && pos_b > pos_a) substr(ui_fn, pos_a, pos_b) else ""
+ch2_body <- if (pos_a > 0) substr(ui_fn, pos_a, nchar(ui_fn)) else ""
 check("no vbox_mos inside ch1", !grepl("vbox_mos", ch1_body, fixed = TRUE))
 check("no vbox_fscore inside ch1", !grepl("vbox_fscore", ch1_body, fixed = TRUE))
 check("no vbox_fraud inside ch1", !grepl("vbox_fraud", ch1_body, fixed = TRUE))
@@ -136,7 +136,7 @@ check("fscore table id", grepl('id = "ynow_funnel_fscore"', ui_fn, fixed = TRUE)
   calls
 }
 notes_calls <- .notes_calls(ui_fn)
-check("YNOW chapter notes remain", length(notes_calls) >= 3L)
+check("YNOW chapter notes remain", length(notes_calls) >= 2L)
 check("page sub present", grepl("ynow_funnel_page_sub", ui_fn, fixed = TRUE))
 check("page sub outside notes", !any(grepl("ynow_funnel_page_sub", notes_calls, fixed = TRUE)))
 pos_mh <- regexpr("ynow-funnel-report__masthead", ui_fn, fixed = TRUE)[1]
@@ -178,7 +178,6 @@ pos_conc <- regexpr("bubble_conc_kpi", bt, fixed = TRUE)[1]
 pos_plot <- regexpr("bubble_conc_plot", bt, fixed = TRUE)[1]
 check("bubble KPI above conc plot", pos_conc > 0 && pos_plot > pos_conc)
 
-check("bubble mounted on YNOW", grepl("macro_bubble_chapter_ui", dec, fixed = TRUE))
 check("no lite-only YNOW markup", !grepl("ynow-lite-only", dec, fixed = TRUE))
 check("no full-only YNOW markup", !grepl("ynow-full-only", dec, fixed = TRUE))
 
@@ -202,15 +201,19 @@ check("applyUiLocale kpi jump aria", grepl("ynow_kpi_jump_mos", ui, fixed = TRUE
 check("click handler scrollIntoView", grepl("ynowOnFunnelKpiJump", ui, fixed = TRUE) &&
         grepl("ynowScrollFunnelAnchor", ui, fixed = TRUE) &&
         grepl("scrollIntoView", ui, fixed = TRUE))
-check("Lite About uses 財報體質 block name", grepl("財報體質（F-Score）、財報警訊、動態產業泡沫與權重集中度", ui, fixed = TRUE))
-check("Lite About EN uses statement quality", grepl("statement quality (F-Score), statement alerts", ui, fixed = TRUE))
+check("Lite About YNOW keeps F-Score and 財報警訊", grepl("財報體質（F-Score）與財報警訊", ui, fixed = TRUE))
+check("Lite About EN uses statement quality", grepl("statement quality (F-Score) and statement alerts", ui, fixed = TRUE))
 check("first-paint F-Score list title zh", grepl("F-Score 品質檢核清單", dec, fixed = TRUE))
 
 macro <- paste(readLines("macro_market_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-check("bubble left Macro", !grepl("macro_bubble_chapter_ui", macro, fixed = TRUE))
+check("bubble at Macro bottom", {
+  pos_own <- regexpr("ynow_own_index", macro, fixed = TRUE)[1]
+  pos_bub <- regexpr("macro_bubble_chapter_ui", macro, fixed = TRUE)[1]
+  is.finite(pos_own) && pos_own > 0 && is.finite(pos_bub) && pos_bub > pos_own
+})
 check("split industry picker", grepl('ns("industry_key")', macro, fixed = TRUE))
 check("split concept picker", grepl('ns("concept_key")', macro, fixed = TRUE))
-check("YNOW first-paint uses 產業別或概念股", grepl("產業別或概念股籃", dec, fixed = TRUE))
+check("Macro first-paint bubble title", grepl("Dynamic industry bubble", macro, fixed = TRUE))
 
 if (fail > 0L) {
   stop(sprintf("%d YNOW layout check(s) failed", fail), call. = FALSE)

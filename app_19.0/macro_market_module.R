@@ -494,8 +494,24 @@ macro_market_ui <- function(id = "macro") {
           if (ev.target && ev.target.closest && ev.target.closest('[data-macro-index]')) ynowIdxLog('A', 'click on index card', ev);
         }, true);
       })();
-    "))
-    # Bubble & concentration lives on the YNOW tab (decision_ui), not here.
+    ")),
+    tags$section(
+      class = "ynow-macro-chapter ynow-macro-bubble-chapter",
+      tags$h3(
+        id = "ynow_macro_bubble_title",
+        "Dynamic industry bubble & weight concentration"
+      ),
+      tags$p(
+        id = "ynow_macro_bubble_sub",
+        class = "ynow-macro-hint ynow-macro-chapter__lead",
+        paste0(
+          "Theme concentration uses market-cap weights on the selected industry or concept basket ",
+          "(GICS maps to S&P 500 sector peers). Buffett Indicator is market-level market-cap / GDP ",
+          "(research display only — never feeds CAPM / Ke / WACC)."
+        )
+      ),
+      macro_bubble_chapter_ui(ns)
+    )
   )
 }
 

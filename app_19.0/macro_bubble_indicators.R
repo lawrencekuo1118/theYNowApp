@@ -401,17 +401,15 @@ macro_bubble_buffett_light <- function(series) {
   )
 }
 
-#' UI body: bubble & concentration (mounted on the YNOW tab, not Macro).
-#' Parent supplies chapter kicker + title; KPIs sit above charts.
+#' UI body: bubble & concentration (mounted at the bottom of Macro & Market Trends).
+#' Page supplies visible title + lead; KPIs sit above charts.
 macro_bubble_chapter_ui <- function(ns) {
   tags$div(
     class = "ynow-macro-bubble ynow-funnel-bubble-body",
-    tags$span(id = "ynow_macro_bubble_title", style = "display:none;", "Dynamic industry bubble & weight concentration"),
-    tags$span(id = "ynow_macro_bubble_sub", style = "display:none;", ""),
     tags$div(
       class = "ynow-funnel-toolbar",
       role = "group",
-      `aria-label` = "YNOW bubble controls",
+      `aria-label` = "Bubble and concentration controls",
       fluidRow(
         column(
           width = 3,
