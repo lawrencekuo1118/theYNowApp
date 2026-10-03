@@ -8,5 +8,5 @@ short=aa81a9e
 message=chore: bump display version to v19.88
 captured_at=2026-10-03T15:42:58Z
 source_branch=master
-display_version=v19.88
+display_version=v19.89
 note=Canonical live line is app_19.0. Bundle 12642512 = v19.88. Decision Checklist investor sections; only Default-ON items pre-checked; Lite still hides menu. Deploy via scripts/deploy_app_19.R. Supersedes 12642502.
