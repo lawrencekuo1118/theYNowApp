@@ -8,5 +8,5 @@ short=ac9b9b2
 message=chore: bump display version to v19.94
 captured_at=2026-10-03T16:42:50Z
 source_branch=master
-display_version=v19.94
+display_version=v19.95
 note=Canonical live line is app_19.0. Bundle 12642847 = v19.94. Hide global Ticker/Yahoo industry chrome on Blue Chip. Deploy via scripts/deploy_app_19.R. Supersedes 12642832.
