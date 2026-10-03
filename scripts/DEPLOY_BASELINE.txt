@@ -8,5 +8,5 @@ short=519ba58
 message=chore: bump display version to v19.77
 captured_at=2026-10-03T12:27:37Z
 source_branch=master
-display_version=v19.77
+display_version=v19.78
 note=Canonical live line is app_19.0. Bundle 12642147 = v19.77. Industry bubble market-cap concentration over time + Top-N company list. Deploy via scripts/deploy_app_19.R. Supersedes 12642123 / 12642106.
