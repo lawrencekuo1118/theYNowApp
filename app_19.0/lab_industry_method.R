@@ -1586,8 +1586,10 @@ lab_leaderboard_industry_choices <- function(merged_df, eq_only = FALSE,
 #' （只截斷顯示，不另抽樣；輸入應已是本次評估的 N 檔。）
 #' @param eq_only 若 TRUE，再只保留盈餘品質通過者（與 Piotroski 高門檻獨立）
 #' @param gate_only 若 TRUE，只列 F-Score≥7；FALSE＝不設 F 門檻
-#' @param scope `"overall"`＝整體前十（含產業欄）；`"by_industry"`＝各產業（或單一產業）前十
-#' @param industry_filter `NULL`／`""`／`"__all__"`＝不限單一產業；否則依 `industry_label` 篩選
+#' @param scope `"overall"`＝整體前十（跨產業、含產業欄）；
+#'   `"by_industry"`＝選定產業內前十（單一 Top-K，非每個產業各自一表）
+#' @param industry_filter 選定產業：`industry_key` 或 `industry_label` 字串向量；
+#'   `NULL`／空／`"__all__"`＝不另限產業（由呼叫端決定是否已篩過）
 lab_quality_leaderboard <- function(merged_df, top_n = 10L, eq_only = FALSE,
                                     gate_only = TRUE,
                                     scope = c("overall", "by_industry"),
@@ -1603,10 +1605,14 @@ lab_quality_leaderboard <- function(merged_df, top_n = 10L, eq_only = FALSE,
   df <- lab_leaderboard_pool(merged_df, eq_only = eq_only, gate_only = gate_only)
   if (nrow(df) == 0) return(empty)
 
-  ind_sel <- as.character(industry_filter %||% "__all__")[1]
-  if (!nzchar(ind_sel) || identical(ind_sel, "NULL")) ind_sel <- "__all__"
-  if (!identical(ind_sel, "__all__") && "industry_label" %in% names(df)) {
-    df <- df[as.character(df$industry_label) == ind_sel, , drop = FALSE]
+  indf <- as.character(industry_filter %||% character(0))
+  indf <- indf[!is.na(indf) & nzchar(indf)]
+  indf <- indf[!indf %in% c("__all__", "NULL", "null")]
+  if (length(indf) > 0L) {
+    ind_lab <- if ("industry_label" %in% names(df)) as.character(df$industry_label) else rep("", nrow(df))
+    ind_key <- if ("industry_key" %in% names(df)) as.character(df$industry_key) else rep("", nrow(df))
+    keep <- (ind_key %in% indf) | (ind_lab %in% indf)
+    df <- df[keep, , drop = FALSE]
   }
   if (nrow(df) == 0) return(empty)
 
@@ -1654,33 +1660,17 @@ lab_quality_leaderboard <- function(merged_df, top_n = 10L, eq_only = FALSE,
     out
   }
 
-  # 單一產業（無論整體／依產業視角）＝該產業 Top-K
-  if (!identical(ind_sel, "__all__")) {
-    df <- head(df, top_n)
-    return(.fmt_lb_rows(df, rank_col = if (identical(scope, "by_industry")) "產業內排名" else "排名"))
+  # overall／by_industry 皆為單一 Top-K（不再「每個產業各自一表」）
+  df <- head(df, top_n)
+  rank_col <- if (identical(scope, "by_industry")) "產業內排名" else "排名"
+  out <- .fmt_lb_rows(df, rank_col = rank_col)
+  if (is.null(out) || nrow(out) == 0) return(empty)
+  if (identical(scope, "by_industry") && "產業內排名" %in% names(out)) {
+    pref <- c("產業", "產業內排名")
+    rest <- setdiff(names(out), pref)
+    out <- out[, c(pref[pref %in% names(out)], rest), drop = FALSE]
   }
-
-  if (identical(scope, "overall")) {
-    df <- head(df, top_n)
-    return(.fmt_lb_rows(df, rank_col = "排名"))
-  }
-
-  # 依產業：每個產業各取 Top-K，產業標籤排序後串接
-  ind_labs <- as.character(df$industry_label)
-  ind_labs[is.na(ind_labs) | !nzchar(ind_labs)] <- "—"
-  parts <- lapply(sort(unique(ind_labs)), function(lab) {
-    sub <- df[ind_labs == lab, , drop = FALSE]
-    sub <- head(sub, top_n)
-    .fmt_lb_rows(sub, rank_col = "產業內排名")
-  })
-  parts <- Filter(Negate(is.null), parts)
-  if (!length(parts)) return(empty)
-  out <- do.call(rbind, parts)
-  rownames(out) <- NULL
-  # 依產業視角：產業欄置前，產業內排名次之
-  pref <- c("產業", "產業內排名")
-  rest <- setdiff(names(out), pref)
-  out[, c(pref[pref %in% names(out)], rest), drop = FALSE]
+  out
 }
 
 #' 顯示用摘要：依主方法分組的產業數／候選檔數

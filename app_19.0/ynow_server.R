@@ -11463,9 +11463,9 @@ server <- function(input, output, session) {
     gate_on <- isTRUE(input$lab_im_gate_only)
     eq_on <- isTRUE(input$lab_im_eq_only)
     scope_txt <- if (identical(scope, "by_industry")) {
-      "依產業各列 Top 10"
+      "選定產業內 Top 10"
     } else {
-      "整體 Top 10（含產業欄）"
+      "整體 Top 10（跨本次已評估產業）"
     }
     gate_txt <- paste0(
       if (gate_on) tryCatch(ui_str("lab_im_gate_on", isolate(ui_locale())), error = function(e) "F-Score≥7") else tryCatch(ui_str("lab_im_gate_off", isolate(ui_locale())), error = function(e) "不設 F-Score 門檻"),
@@ -11544,17 +11544,40 @@ server <- function(input, output, session) {
     }
     scope <- as.character(input$lab_im_lb_mode %||% "overall")[1]
     if (!scope %in% c("overall", "by_industry")) scope <- "overall"
+    # overall = Top 10 across all evaluated industries;
+    # by_industry = Top 10 within currently selected industries (one list)
+    lb_src <- merged
+    ind_filter <- character(0)
+    if (identical(scope, "overall")) {
+      catlg <- tryCatch(lab_im_catalog(), error = function(e) NULL)
+      if (is.data.frame(catlg) && nrow(catlg) > 0) {
+        lb_src <- tryCatch(
+          lab_merge_catalog_scores(
+            catlg,
+            scores = scores,
+            method_filter = input$lab_im_methods,
+            industry_filter = character(0),
+            eq_only = FALSE,
+            gate_only = FALSE,
+            evaluated_only = TRUE
+          ),
+          error = function(e) merged
+        )
+      }
+    } else {
+      ind_filter <- as.character(input$lab_im_industries %||% character(0))
+    }
     lb <- lab_quality_leaderboard(
-      merged,
+      lb_src,
       top_n = 10L,
       eq_only = isTRUE(input$lab_im_eq_only),
       gate_only = isTRUE(input$lab_im_gate_only),
       scope = scope,
-      industry_filter = "__all__"
+      industry_filter = ind_filter
     )
     if (nrow(lb) == 0) {
       pool <- lab_leaderboard_pool(
-        merged,
+        if (identical(scope, "by_industry")) merged else lb_src,
         eq_only = isTRUE(input$lab_im_eq_only),
         gate_only = isTRUE(input$lab_im_gate_only)
       )
@@ -11589,20 +11612,44 @@ server <- function(input, output, session) {
     eq_on <- isTRUE(input$lab_im_eq_only)
     scope <- as.character(input$lab_im_lb_mode %||% "overall")[1]
     if (!scope %in% c("overall", "by_industry")) scope <- "overall"
+    lb_src <- merged
+    ind_filter <- character(0)
+    if (identical(scope, "overall")) {
+      catlg <- tryCatch(lab_im_catalog(), error = function(e) NULL)
+      if (is.data.frame(catlg) && nrow(catlg) > 0) {
+        lb_src <- tryCatch(
+          lab_merge_catalog_scores(
+            catlg,
+            scores = scores,
+            method_filter = input$lab_im_methods,
+            industry_filter = character(0),
+            eq_only = FALSE,
+            gate_only = FALSE,
+            evaluated_only = TRUE
+          ),
+          error = function(e) merged
+        )
+      }
+    } else {
+      ind_filter <- as.character(input$lab_im_industries %||% character(0))
+    }
     lb <- tryCatch(
       lab_quality_leaderboard(
-        merged, top_n = 10L, eq_only = eq_on, gate_only = gate_on,
-        scope = scope, industry_filter = "__all__"
+        lb_src, top_n = 10L, eq_only = eq_on, gate_only = gate_on,
+        scope = scope, industry_filter = ind_filter
       ),
       error = function(e) NULL
     )
     pool <- tryCatch(
-      lab_leaderboard_pool(merged, eq_only = eq_on, gate_only = gate_on),
+      lab_leaderboard_pool(
+        if (identical(scope, "by_industry")) merged else lb_src,
+        eq_only = eq_on, gate_only = gate_on
+      ),
       error = function(e) NULL
     )
     n_show <- if (is.data.frame(lb)) nrow(lb) else 0L
     n_qual <- if (is.data.frame(pool)) nrow(pool) else 0L
-    n_eval <- nrow(merged)
+    n_eval <- nrow(if (identical(scope, "by_industry")) merged else lb_src)
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
     if (identical(scope, "by_industry")) {
       txt <- tryCatch(
@@ -11611,7 +11658,7 @@ server <- function(input, output, session) {
           as.integer(n_show), as.integer(n_qual), as.integer(n_eval)
         ),
         error = function(e) sprintf(
-          "依產業前十名共顯示 %d 列（合格 %d／已評估 %d）。各產業各自最多 10 檔；N＝顯示上限，不會為湊滿而另抽樣。",
+          "選定產業內前十名顯示 %d／10（合格 %d／已評估 %d）。僅在查詢條件所選產業內取最多 10 檔；不足不湊滿。",
           as.integer(n_show), as.integer(n_qual), as.integer(n_eval)
         )
       )
@@ -11848,10 +11895,28 @@ server <- function(input, output, session) {
         if (is.data.frame(merged_lb) && nrow(merged_lb) > 0) {
           lb_scope <- as.character(isolate(input$lab_im_lb_mode) %||% "overall")[1]
           if (!lb_scope %in% c("overall", "by_industry")) lb_scope <- "overall"
+          lb_src <- merged_lb
+          ind_filter <- character(0)
+          if (identical(lb_scope, "overall")) {
+            lb_src <- tryCatch(
+              lab_merge_catalog_scores(
+                catlg,
+                scores = scores,
+                method_filter = isolate(input$lab_im_methods),
+                industry_filter = character(0),
+                eq_only = FALSE,
+                gate_only = FALSE,
+                evaluated_only = TRUE
+              ),
+              error = function(e) merged_lb
+            )
+          } else {
+            ind_filter <- as.character(isolate(input$lab_im_industries) %||% character(0))
+          }
           lb <- lab_quality_leaderboard(
-            merged_lb, top_n = 10L, eq_only = eq_on,
+            lb_src, top_n = 10L, eq_only = eq_on,
             gate_only = isTRUE(isolate(input$lab_im_gate_only)),
-            scope = lb_scope, industry_filter = "__all__"
+            scope = lb_scope, industry_filter = ind_filter
           )
         }
         if (is.null(lb) || !nrow(lb)) {

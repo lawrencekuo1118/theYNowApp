@@ -490,8 +490,8 @@ locale_for_market <- function(mode = get_market_mode()) {
       "N = post-analysis display cap; Top 10 takes at most 10 qualified names and does not pad to fill 10."
     ),
     lab_im_lb_status_by_ind = paste0(
-      "By-industry Top 10 shows %d rows (qualified %d / evaluated %d). ",
-      "Each industry lists at most 10; N = display cap and shortfalls are not padded."
+      "Top 10 in selected industries shows %d/10 (qualified %d / evaluated %d). ",
+      "Ranks only within industries chosen in Rankings filters; shortfalls are not padded."
     ),
     lab_im_lb_empty = paste0(
       "Top 10 has no rows. Evaluated %d; annualized upside available %d; F-Score≥7 pass %d; ",
@@ -506,10 +506,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_detail_box_title = "Detail (sorted by annualized valuation appreciation)",
     lab_im_lb_mode_label = "Ranking view",
     lab_im_lb_mode_overall = "Overall Top 10",
-    lab_im_lb_mode_by_industry = "Top 10 by industry",
+    lab_im_lb_mode_by_industry = "Top 10 in selected industries",
     lab_im_lb_scope_help = paste0(
-      "Overall Top 10: cross-industry Top 10 by annualized valuation appreciation, with an Industry column. ",
-      "Top 10 by industry: list Top 10 within each industry. ",
+      "Overall Top 10: across industries from this evaluation run, by annualized valuation appreciation (Industry column shown). ",
+      "Top 10 in selected industries: one Top 10 list within the industries chosen in Rankings filters—not a separate Top 10 per industry. ",
       "Top 10 takes at most 10 qualified names; shortfalls are not padded."
     ),
     lab_im_gate_label = "Piotroski high gate",
@@ -2484,8 +2484,8 @@ locale_for_market <- function(mode = get_market_mode()) {
       "N＝分析後顯示上限；前十名只取合格者最多 10 檔，不會為湊滿 10 而另抽樣。"
     ),
     lab_im_lb_status_by_ind = paste0(
-      "依產業前十名共顯示 %d 列（合格 %d／已評估 %d）。",
-      "各產業各自最多 10 檔；N＝顯示上限，不會為湊滿而另抽樣。"
+      "選定產業內前十名顯示 %d／10（合格 %d／已評估 %d）。",
+      "僅在查詢條件所選產業內取最多 10 檔；不足不湊滿。"
     ),
     lab_im_lb_empty = paste0(
       "前十名尚無列可顯示。已評估 %d 檔；能量到年化漲幅 %d；F-Score≥7 通過 %d；目前勾選條件下合格 %d。",
@@ -2500,10 +2500,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_detail_box_title = "明細（按年化估值漲幅排序）",
     lab_im_lb_mode_label = "排行視角",
     lab_im_lb_mode_overall = "整體前十名",
-    lab_im_lb_mode_by_industry = "依產業前十名",
+    lab_im_lb_mode_by_industry = "選定產業前十名",
     lab_im_lb_scope_help = paste0(
-      "整體前十名：跨產業依年化估值漲幅取 Top 10，並顯示產業欄。",
-      "依產業前十名：每個產業各自列出 Top 10。",
+      "整體前十名：跨本次已評估產業依年化估值漲幅取 Top 10，並顯示產業欄。",
+      "選定產業前十名：僅在查詢條件所選產業內取 Top 10（單一榜，非每個產業各一表）。",
       "前十名只從合格者取最多 10 檔；合格不足 10 時不會湊滿。"
     ),
     lab_im_gate_label = "Piotroski 高門檻",

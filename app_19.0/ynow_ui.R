@@ -1505,7 +1505,7 @@ beta_rolling_section_ui <- function() {
                       tags$span(id = "ynow_lab_im_lb_mode_label", "排行視角"),
                       choiceNames = list(
                         tags$span(id = "ynow_lab_im_lb_mode_overall", "整體前十名"),
-                        tags$span(id = "ynow_lab_im_lb_mode_by_ind", "依產業前十名")
+                        tags$span(id = "ynow_lab_im_lb_mode_by_ind", "選定產業前十名")
                       ),
                       choiceValues = list("overall", "by_industry"),
                       selected = APP_DEFAULTS$lab_im_lb_mode,
@@ -1515,8 +1515,8 @@ beta_rolling_section_ui <- function() {
                       id = "ynow_lab_im_lb_scope_help",
                       style = "color:#888; font-size:12px; line-height:1.45; margin:-4px 0 8px 0;",
                       paste0(
-                        "整體前十名：跨產業依年化估值漲幅取 Top 10，並顯示產業欄。",
-                        "依產業前十名：每個產業各自列出 Top 10。",
+                        "整體前十名：跨本次已評估產業依年化估值漲幅取 Top 10，並顯示產業欄。",
+                        "選定產業前十名：僅在查詢條件所選產業內取 Top 10（單一榜，非每個產業各一表）。",
                         "前十名只從合格者取最多 10 檔；合格不足 10 時不會湊滿。"
                       )
                     )
