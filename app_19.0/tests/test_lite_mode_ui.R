@@ -15,6 +15,9 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
     "menu_home", "home_lead", "home_method", "home_method_lite",
     "home_market_k", "home_company_k", "home_value_k", "home_value_d_lite",
     "home_decide_k", "home_decide_k_lite", "home_decide_d_lite",
+    "home_legal", "home_legal_about",
+    "legal_section_title", "legal_privacy_title", "legal_privacy_body",
+    "legal_ip_title", "legal_ip_body", "legal_risk_title", "legal_risk_body",
     "menu_smart_analysis", "smart_page_title", "smart_page_sub",
     "smart_chart_title", "smart_primary_kicker", "smart_secondary_kicker",
     "smart_price_kicker", "smart_mos_kicker", "smart_waiting",
@@ -59,6 +62,12 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
   testthat::expect_false(grepl("決策檢核", .UI_STRINGS$`zh-TW`$home_decide_d_lite, fixed = TRUE))
   testthat::expect_identical(.UI_STRINGS$en$home_decide_k_lite, "YNOW")
   testthat::expect_identical(.UI_STRINGS$`zh-TW`$home_value_k_lite, "智慧分析")
+  testthat::expect_identical(.UI_STRINGS$en$legal_risk_title, "Investment risk")
+  testthat::expect_identical(.UI_STRINGS$`zh-TW`$legal_risk_title, "投資自負風險聲明")
+  testthat::expect_true(grepl("Privacy", .UI_STRINGS$en$legal_privacy_title, fixed = TRUE))
+  testthat::expect_true(grepl("隱私權", .UI_STRINGS$`zh-TW`$legal_privacy_title, fixed = TRUE))
+  testthat::expect_true(grepl("Intellectual property", .UI_STRINGS$en$legal_ip_title, fixed = TRUE))
+  testthat::expect_true(grepl("智慧財產權", .UI_STRINGS$`zh-TW`$legal_ip_title, fixed = TRUE))
   testthat::expect_true(grepl("參數情境", .UI_STRINGS$`zh-TW`$smart_page_sub, fixed = TRUE))
   testthat::expect_true(grepl("parameter scenario", .UI_STRINGS$en$smart_page_sub, fixed = TRUE))
   testthat::expect_identical(.UI_STRINGS$`zh-TW`$smart_scenario_title, "已套用參數情境：")
@@ -239,6 +248,8 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl("ynow_menu_backtest", txt, fixed = TRUE))
   testthat::expect_true(grepl('tabName = "lab_notes"', txt, fixed = TRUE))
   testthat::expect_true(grepl("about_lite_intro_ui", txt, fixed = TRUE))
+  testthat::expect_true(grepl("legal_notices_ui", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow_home_legal", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-lite-only", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-sidebar-test-link", txt, fixed = TRUE))
   testthat::expect_true(grepl('tabName = "testing"', txt, fixed = TRUE))

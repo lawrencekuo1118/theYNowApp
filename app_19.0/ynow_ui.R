@@ -14,6 +14,49 @@
   tags$p(style = "margin: 0 0 12px 0; font-size: 12.5px; color: #555; line-height: 1.5;", text)
 }
 
+#' Privacy / IP / investment-risk notices (About: bilingual zh-TW | en-US)
+.legal_notices_ui <- function() {
+  en <- tryCatch(.UI_STRINGS$en, error = function(e) NULL)
+  zh <- tryCatch(.UI_STRINGS$`zh-TW`, error = function(e) NULL)
+  if (is.null(en) || is.null(zh)) return(NULL)
+  .legal_pair <- function(title_zh, body_zh, title_en, body_en) {
+    fluidRow(
+      class = "ynow-legal-row",
+      column(
+        width = 6,
+        class = "ynow-about-col ynow-about-col--zh",
+        tags$h4(class = "ynow-legal-h", title_zh),
+        tags$p(class = "ynow-legal-body", body_zh)
+      ),
+      column(
+        width = 6,
+        class = "ynow-about-col ynow-about-col--en",
+        tags$h4(class = "ynow-legal-h", title_en),
+        tags$p(class = "ynow-legal-body", body_en)
+      )
+    )
+  }
+  tags$div(
+    class = "ynow-legal-notices",
+    tags$h3(
+      class = "ynow-about-section-title",
+      paste0(zh$legal_section_title, " / ", en$legal_section_title)
+    ),
+    .legal_pair(
+      zh$legal_privacy_title, zh$legal_privacy_body,
+      en$legal_privacy_title, en$legal_privacy_body
+    ),
+    .legal_pair(
+      zh$legal_ip_title, zh$legal_ip_body,
+      en$legal_ip_title, en$legal_ip_body
+    ),
+    .legal_pair(
+      zh$legal_risk_title, zh$legal_risk_body,
+      en$legal_risk_title, en$legal_risk_body
+    )
+  )
+}
+
 #' About 分頁：中英左右對照專案簡介
 .about_bilingual_intro_ui <- function() {
   brand <- tags$div(
@@ -346,6 +389,24 @@
             "F-Score and statement alerts. A quality screen, not a buy signal."
           )
         )
+      ),
+      tags$div(
+        class = "ynow-home-legal",
+        tags$p(
+          id = "ynow_home_legal",
+          class = "ynow-home-legal-text",
+          paste0(
+            "Research and education only — not investment advice. ",
+            "You alone bear all investment decisions and losses."
+          )
+        ),
+        tags$button(
+          type = "button",
+          id = "ynow_home_legal_about",
+          class = "ynow-home-legal-link",
+          `data-tab` = "about",
+          "About · Privacy, IP & risk"
+        )
       )
     ),
     tags$script(HTML("
@@ -353,7 +414,9 @@
         if (document.documentElement.getAttribute('data-ynow-home') === '1') return;
         document.documentElement.setAttribute('data-ynow-home', '1');
         document.addEventListener('click', function (ev) {
-          var card = ev.target && ev.target.closest ? ev.target.closest('.ynow-home-card') : null;
+          var card = ev.target && ev.target.closest
+            ? ev.target.closest('.ynow-home-card, .ynow-home-legal-link')
+            : null;
           if (!card) return;
           ev.preventDefault();
           var lite = document.body && document.body.classList.contains('ynow-lite');
@@ -2723,6 +2786,36 @@ ui <- dashboardPage(
           .ynow-home { padding: 24px 16px 18px; }
           .ynow-home-grid { grid-template-columns: 1fr; }
         }
+        .ynow-home-legal {
+          margin: 18px 0 0 0;
+          padding-top: 14px;
+          border-top: 1px solid #e5e8eb;
+          text-align: left;
+        }
+        .ynow-home-legal-text {
+          margin: 0 0 8px 0;
+          font-size: 11.5px;
+          line-height: 1.5;
+          color: #666;
+        }
+        .ynow-home-legal-link {
+          display: inline-block;
+          margin: 0;
+          padding: 0;
+          border: none;
+          background: transparent;
+          color: #0b57d0;
+          font-size: 12px;
+          line-height: 1.4;
+          cursor: pointer;
+          text-decoration: underline;
+          text-underline-offset: 2px;
+        }
+        .ynow-home-legal-link:hover,
+        .ynow-home-legal-link:focus-visible {
+          color: #0842a0;
+          outline: none;
+        }
         /* Lite Smart Analysis: lead blurb above composite status (no page heading) */
         .ynow-smart-lite-blurb-wrap {
           margin: 0 0 10px 0;
@@ -4241,7 +4334,8 @@ ui <- dashboardPage(
              'ynow_home_value_k', 'ynow_home_value_d',
              'ynow_home_value_k_lite', 'ynow_home_value_d_lite',
              'ynow_home_decide_k', 'ynow_home_decide_d',
-             'ynow_home_decide_k_lite', 'ynow_home_decide_d_lite'].forEach(function (id) {
+             'ynow_home_decide_k_lite', 'ynow_home_decide_d_lite',
+             'ynow_home_legal', 'ynow_home_legal_about'].forEach(function (id) {
               var el = document.getElementById(id);
               if (!el) return;
               var key = id.replace(/^ynow_/, '');
@@ -7360,6 +7454,31 @@ ui <- dashboardPage(
           color: #0b57d0;
           word-break: break-all;
         }
+        .ynow-legal-notices {
+          margin: 20px 0 8px 0;
+          padding-top: 8px;
+        }
+        .ynow-legal-notices .ynow-about-section-title {
+          margin: 0 0 14px 0;
+          font-size: 18px;
+          line-height: 1.35;
+          color: #1a1a1a;
+        }
+        .ynow-legal-row {
+          margin: 0 0 12px 0;
+        }
+        .ynow-legal-h {
+          margin: 0 0 6px 0;
+          font-size: 14px;
+          font-weight: 650;
+          color: #222;
+        }
+        .ynow-legal-body {
+          margin: 0 0 10px 0;
+          font-size: 12.5px;
+          line-height: 1.6;
+          color: #555;
+        }
         /* About 後續區塊：標題／內文與「關於 The YNow App」同左緣 */
         #shiny-tab-about .ynow-about-section-title,
         #shiny-tab-about .ynow-about-section-lead {
@@ -10317,7 +10436,9 @@ ui <- dashboardPage(
         tags$div(
           class = "ynow-lite-only",
           .about_lite_intro_ui()
-        )
+        ),
+        tags$hr(style = "margin: 20px 0 12px 0; border-color: #e5e8eb;"),
+        .legal_notices_ui()
       )
     )
   )

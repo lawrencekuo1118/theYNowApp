@@ -58,6 +58,8 @@ check("no peer/lab narrative in bullets", !any(grepl("同業排名|Lab 宇宙|pe
 check("CapEx growth bullet", any(grepl("CapEx", pack_zh$growth_bullets)))
 check("implied P/B = 30", is.finite(pack_zh$implied_pb) && abs(pack_zh$implied_pb - 30) < 1e-6)
 check("disclaimer excludes peers", grepl("同業排名|Lab", pack_zh$titles$disclaimer))
+check("zh disclaimer self-risk", grepl("自行承擔", pack_zh$titles$disclaimer, fixed = TRUE))
+check("zh disclaimer points to About", grepl("關於", pack_zh$titles$disclaimer, fixed = TRUE))
 check("analysis paragraphs count >= 6", length(pack_zh$analysis_paragraphs) >= 6L)
 check("analysis para1 has MOS", {
   p1 <- pack_zh$analysis_paragraphs[[1]]
@@ -105,6 +107,8 @@ pack_en <- build_ticker_report_copy(
 )
 check("en section1 title", identical(pack_en$titles$section1, "I. Investment view"))
 check("en disclaimer mentions peer exclusion", grepl("peer ranking|lab-universe", pack_en$titles$disclaimer, ignore.case = TRUE))
+check("en disclaimer self-risk", grepl("alone bear", pack_en$titles$disclaimer, ignore.case = TRUE))
+check("en disclaimer points to About", grepl("About page", pack_en$titles$disclaimer, fixed = TRUE))
 check("en analysis paragraphs >= 6", length(pack_en$analysis_paragraphs) >= 6L)
 check("en analysis heading key", identical(pack_en$titles$analysis_heading, "Analysis notes (numbered)"))
 pack_en_fs <- build_ticker_report_copy(

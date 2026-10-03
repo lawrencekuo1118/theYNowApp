@@ -37,6 +37,34 @@ locale_for_market <- function(mode = get_market_mode()) {
     home_decide_d = "F-Score, statement alerts, and the Decision Checklist.",
     home_decide_k_lite = "YNOW",
     home_decide_d_lite = "F-Score and statement alerts. A quality screen, not a buy signal.",
+    home_legal = paste0(
+      "Research and education only — not investment advice. ",
+      "You alone bear all investment decisions and losses."
+    ),
+    home_legal_about = "About · Privacy, IP & risk",
+    legal_section_title = "Legal notices",
+    legal_privacy_title = "Privacy",
+    legal_privacy_body = paste0(
+      "The YNow App is a research and analysis tool. Session inputs (ticker, parameters, ",
+      "and optional feedback text) are processed to run analysis and, when you submit feedback, ",
+      "to open a GitHub issue. We do not sell personal data. Market and financial data come from ",
+      "third-party providers (for example Yahoo Finance); their privacy terms also apply. ",
+      "Do not submit passwords, tokens, or other confidential credentials."
+    ),
+    legal_ip_title = "Intellectual property",
+    legal_ip_body = paste0(
+      "The YNow App software, user interface, documentation, logos, and original analysis frameworks ",
+      "are proprietary to the project authors unless otherwise noted. Third-party data, trademarks, ",
+      "and libraries remain the property of their respective owners. You may not copy, scrape, ",
+      "redistribute, or commercially resell the app or its branding without written permission."
+    ),
+    legal_risk_title = "Investment risk",
+    legal_risk_body = paste0(
+      "All outputs are for research and education only and are not investment advice, an offer, ",
+      "or a solicitation to buy or sell any security. Past performance and model results do not ",
+      "guarantee future outcomes. You alone bear all investment decisions and losses. ",
+      "HFV is a veto / risk screen, not a buy signal; F-Score is a quality screen, not a buy signal."
+    ),
     menu_dashboard = "Company",
     kpi_last_price = "Last Price",
     menu_macro_market = "Macro & Market Trends",
@@ -1806,6 +1834,31 @@ locale_for_market <- function(mode = get_market_mode()) {
     home_decide_d = "F-Score、財報警訊與決策檢核。",
     home_decide_k_lite = "YNOW",
     home_decide_d_lite = "F-Score 與財報警訊。品質檢核，不是買進訊號。",
+    home_legal = paste0(
+      "僅供研究與教育參考，不構成投資建議。",
+      "投資決策與損益一律由使用者自行承擔。"
+    ),
+    home_legal_about = "關於 · 隱私權／智慧財產權／投資風險",
+    legal_section_title = "法律與聲明",
+    legal_privacy_title = "隱私權聲明",
+    legal_privacy_body = paste0(
+      "The YNow App 為研究／分析工具。工作階段輸入（股票代號、參數，以及可選的意見回饋文字）",
+      "僅用於執行分析；若您送出意見回饋，則用於開啟 GitHub issue。我們不出售個人資料。",
+      "市場與財報資料來自第三方（例如 Yahoo Finance），亦受其隱私條款約束。",
+      "請勿提交密碼、token 或其他機密憑證。"
+    ),
+    legal_ip_title = "智慧財產權聲明",
+    legal_ip_body = paste0(
+      "The YNow App 之軟體、使用者介面、文件、標誌與原創分析架構，除另有註明外，權利歸專案作者所有。",
+      "第三方資料、商標與函式庫之權利仍屬其各自權利人。",
+      "未經書面許可，不得重製、爬取、再散布或商業轉售本 App 及其品牌識別。"
+    ),
+    legal_risk_title = "投資自負風險聲明",
+    legal_risk_body = paste0(
+      "所有輸出僅供研究與教育參考，不構成投資建議、要約或勸誘買賣任何有價證券。",
+      "過往績效與模型結果不保證未來表現。投資決策與損益一律由使用者自行承擔。",
+      "HFV 屬否決／風險提示，非買進訊號；F-Score 為品質檢核，非買進訊號。"
+    ),
     menu_dashboard = "個股",
     kpi_last_price = "最新股價",
     menu_macro_market = "總體經濟與大盤趨勢",
