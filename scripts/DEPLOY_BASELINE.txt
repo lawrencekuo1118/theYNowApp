@@ -8,5 +8,5 @@ short=c7a1cf2
 message=chore: bump display version to v19.84
 captured_at=2026-10-03T14:04:39Z
 source_branch=master
-display_version=v19.84
+display_version=v19.85
 note=Canonical live line is app_19.0. Bundle 12642427 = v19.84. Multiples/SOTP as Implied Price cross-checks in recommendation + Lab filters; HFV chart stays FV-only. Deploy via scripts/deploy_app_19.R. Supersedes 12642393.
