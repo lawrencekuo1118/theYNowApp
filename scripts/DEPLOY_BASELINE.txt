@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12642343
+bundleId=12642393
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=3a9779ae7019d36c1de5f189868efcba55dc82c6
-commit=3a9779ae7019d36c1de5f189868efcba55dc82c6
-short=3a9779a
-message=chore: bump display version to v19.82
-captured_at=2026-10-03T13:36:32Z
+aligned_git=4ae50780e29e4f507ab5e67e6a46e1b382748542
+commit=4ae50780e29e4f507ab5e67e6a46e1b382748542
+short=4ae5078
+message=chore: bump display version to v19.83
+captured_at=2026-10-03T13:52:00Z
 source_branch=master
 display_version=v19.83
-note=Canonical live line is app_19.0. Bundle 12642343 = v19.82. Relative Multiples DDM-style family modes (Earnings / Enterprise / P/S / SOTP); P/B stays separate. Deploy via scripts/deploy_app_19.R. Supersedes 12642308.
+note=Canonical live line is app_19.0. Bundle 12642393 = v19.83. SOTP promoted to Relative sidebar; Multiples radio = Earnings/Enterprise/P/S; per-segment EV/Sales. Deploy via scripts/deploy_app_19.R. Supersedes 12642343.
