@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12642807
+bundleId=12642832
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=aba3d0ac624c883401865774695dd95436904d54
-commit=aba3d0ac624c883401865774695dd95436904d54
-short=aba3d0a
-message=chore: bump display version to v19.92
-captured_at=2026-10-03T16:26:03Z
+aligned_git=f0fbbe9772af753de649f7ba4c023269e1643773
+commit=f0fbbe9772af753de649f7ba4c023269e1643773
+short=f0fbbe9
+message=chore: bump display version to v19.93
+captured_at=2026-10-03T16:36:49Z
 source_branch=master
 display_version=v19.93
-note=Canonical live line is app_19.0. Bundle 12642807 = v19.92. Home doors relaid to match sidebar (Macro → Blue Chip → Company → YNOW → Value → Action). Deploy via scripts/deploy_app_19.R. Supersedes 12642749.
+note=Canonical live line is app_19.0. Bundle 12642832 = v19.93. Lazy-mount heavy tabs once per session (Macro/Blue Chip/HFV/Backtest/Testing/DC). Deploy via scripts/deploy_app_19.R. Supersedes 12642807.
