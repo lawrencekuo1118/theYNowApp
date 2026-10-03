@@ -8,5 +8,5 @@ short=091bcdc
 message=chore: bump display version to v19.72
 captured_at=2026-10-03T11:47:42Z
 source_branch=master
-display_version=v19.72
+display_version=v19.73
 note=Canonical live line is app_19.0. Bundle 12642026 = v19.72. YNOW/TYNOW KPI click expands line chart in shared index hist panel (same as ^GSPC). Deploy via scripts/deploy_app_19.R. Supersedes 12642010 / 12641727.
