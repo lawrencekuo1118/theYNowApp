@@ -8,5 +8,5 @@ short=aba3d0a
 message=chore: bump display version to v19.92
 captured_at=2026-10-03T16:26:03Z
 source_branch=master
-display_version=v19.92
+display_version=v19.93
 note=Canonical live line is app_19.0. Bundle 12642807 = v19.92. Home doors relaid to match sidebar (Macro → Blue Chip → Company → YNOW → Value → Action). Deploy via scripts/deploy_app_19.R. Supersedes 12642749.
