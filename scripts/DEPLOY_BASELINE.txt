@@ -8,5 +8,5 @@ short=67a6dd6
 message=chore: bump display version to v19.89
 captured_at=2026-10-03T15:50:48Z
 source_branch=master
-display_version=v19.89
+display_version=v19.90
 note=Canonical live line is app_19.0. Bundle 12642715 = v19.89. Valuation Methodology moved to Basic Setup bottom (Lite still hides get_started); FV vs Multiples/SOTP tables refreshed. Deploy via scripts/deploy_app_19.R. Supersedes 12642512.
