@@ -87,6 +87,7 @@ check("YNOW tab does not call bubble chapter", !grepl("macro_bubble_chapter_ui",
 check("ch2 notes still present", grepl("ynow_notes_block", dec_src, fixed = TRUE) &&
         grepl("ynow_funnel_ch2_lead", dec_src, fixed = TRUE))
 bt_src <- paste(readLines("macro_bubble_indicators.R", warn = FALSE), collapse = "\n")
+check("bubble theme first-paint Technology XLK", grepl('selected = "gics_xlk"', bt_src, fixed = TRUE))
 check("buffett note wrapped", grepl("ynow_notes_block", bt_src, fixed = TRUE) &&
         grepl("ynow_macro_bubble_buffett_note", bt_src, fixed = TRUE))
 check("buffett KPI/plot not inside notes", {

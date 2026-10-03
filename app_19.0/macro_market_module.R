@@ -665,8 +665,9 @@ macro_market_server <- function(id = "macro",
       updateSelectInput(session, "concept_key", choices = con_ch, selected = csel)
 
       bsel <- isolate(as.character(input$bubble_theme_key %||% "")[1])
+      # Default Industry-or-concept to Technology (US XLK / TW Foundry).
       if (is.null(bsel) || !nzchar(bsel) || !(bsel %in% unname(bub_ch))) {
-        bsel <- ""
+        bsel <- if (def_ind %in% unname(bub_ch)) def_ind else ""
       }
       updateSelectInput(session, "bubble_theme_key", choices = bub_ch, selected = bsel)
     })

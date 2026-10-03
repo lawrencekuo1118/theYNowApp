@@ -418,7 +418,8 @@ macro_bubble_chapter_ui <- function(ns) {
             ns("bubble_theme_key"),
             label = tags$span(id = "ynow_macro_bubble_theme_label", "Industry or concept"),
             choices = c("—" = ""),
-            selected = ""
+            # First paint: US Technology (XLK); server rewrites TW → sc.Foundry.
+            selected = "gics_xlk"
           )
         ),
         column(

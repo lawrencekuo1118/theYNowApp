@@ -311,6 +311,11 @@ check("industry vs benchmark first paint", grepl("Industry vs benchmark", txt, f
 check("concept vs benchmark first paint", grepl("Concept vs benchmark", txt, fixed = TRUE))
 check("industry defaults to technology", grepl('selected = "gics_xlk"', txt, fixed = TRUE))
 check("industry server default follows market", grepl("macro_industry_default_key(mode)", txt, fixed = TRUE))
+check("bubble Industry-or-concept defaults to technology", {
+  grepl("Default Industry-or-concept to Technology", txt, fixed = TRUE) &&
+    grepl("bubble_theme_key", txt, fixed = TRUE) &&
+    grepl("def_ind %in% unname(bub_ch)", txt, fixed = TRUE)
+})
 check("no Lite-only combined menu", !grepl("ynow-lite-only", txt, fixed = TRUE))
 check("click specs helper", grepl("macro_click_index_specs", txt, fixed = TRUE))
 check("KPI uses click specs by market", grepl("macro_click_index_specs(.mode())", txt, fixed = TRUE))
