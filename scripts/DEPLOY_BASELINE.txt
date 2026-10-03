@@ -8,5 +8,5 @@ short=ef5f327
 message=chore: bump display version to v19.73
 captured_at=2026-10-03T11:53:43Z
 source_branch=master
-display_version=v19.73
+display_version=v19.74
 note=Canonical live line is app_19.0. Bundle 12642037 = v19.73. Macro bubble Industry-or-concept defaults to Technology (US XLK / TW Foundry). Deploy via scripts/deploy_app_19.R. Supersedes 12642026 / 12642010.
