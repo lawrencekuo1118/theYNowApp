@@ -1,0 +1,4245 @@
+# ==========================================
+# ui_locale.R — 主介面文案（en ｜ zh-TW）
+# 語言與顯示幣別為獨立控制；市場模式僅提供「初次」locale 預設，
+# 不可在切換市場／幣別時靜默覆寫使用者已選語言。
+# 財務專有名詞維持英文（WACC、FCFF、DCF…）。
+# ==========================================
+
+normalize_ui_locale <- function(locale) {
+  loc <- tolower(trimws(as.character(locale %||% "en")[1]))
+  loc <- gsub("_", "-", loc)
+  if (loc %in% c("zh", "zh-tw", "zhtw", "tw", "taiwan")) return("zh-TW")
+  "en"
+}
+
+#' 市場模式 → 初次載入用的預設 UI locale（非強制綁定）
+locale_for_market <- function(mode = get_market_mode()) {
+  if (identical(normalize_market_mode(mode), "TW")) "zh-TW" else "en"
+}
+
+.UI_STRINGS <- list(
+  en = list(
+    recent_search = "Recent Search:",
+    menu_home = "Home",
+    home_title = "The YNow App",
+    home_lead = "A valuation desk for US and Taiwan equities.",
+    home_method = "Classify the business, choose the model, then decide.",
+    home_method_lite = "Classify the business, then read fair value and YNOW.",
+    home_market_k = "Market",
+    home_market_d = "Index levels, and industry performance versus the benchmark.",
+    home_bluechip_k = "Blue Chip",
+    home_bluechip_d = "Peer ranking pools, truncate rules, and clustering for research.",
+    home_company_k = "Company",
+    home_company_d = "Industry-standard snapshot, KPIs, and financial statements.",
+    home_ynow_k = "YNOW",
+    home_ynow_d = "F-Score and statement alerts. A quality screen, not a buy signal.",
+    home_value_k = "Value",
+    home_value_d = "Fair value and MOS across DCF, DDM, RI, and P/B.",
+    home_value_k_lite = "Smart Analysis",
+    home_value_d_lite = "Fair value and MOS from the recommended model.",
+    home_decide_k = "Action",
+    home_decide_d = "F-Score, statement alerts, and the Decision Checklist.",
+    home_legal = paste0(
+      "Research and education only — not investment advice. ",
+      "You alone bear all investment decisions and losses."
+    ),
+    home_legal_about = "About · Privacy, IP & risk",
+    legal_section_title = "Legal notices",
+    legal_privacy_title = "Privacy",
+    legal_privacy_body = paste0(
+      "The YNow App is a research and analysis tool. Session inputs (ticker, parameters, ",
+      "and optional feedback text) are processed to run analysis and, when you submit feedback, ",
+      "to open a GitHub issue. We do not sell personal data. Market and financial data come from ",
+      "third-party providers (for example Yahoo Finance); their privacy terms also apply. ",
+      "Do not submit passwords, tokens, or other confidential credentials."
+    ),
+    legal_ip_title = "Intellectual property",
+    legal_ip_body = paste0(
+      "The YNow App software, user interface, documentation, logos, and original analysis frameworks ",
+      "are proprietary to the project authors unless otherwise noted. Third-party data, trademarks, ",
+      "and libraries remain the property of their respective owners. You may not copy, scrape, ",
+      "redistribute, or commercially resell the app or its branding without written permission."
+    ),
+    legal_risk_title = "Investment risk",
+    legal_risk_body = paste0(
+      "All outputs are for research and education only and are not investment advice, an offer, ",
+      "or a solicitation to buy or sell any security. Past performance and model results do not ",
+      "guarantee future outcomes. You alone bear all investment decisions and losses. ",
+      "HFV is a veto / risk screen, not a buy signal; F-Score is a quality screen, not a buy signal."
+    ),
+    menu_dashboard = "Company",
+    kpi_last_price = "Last Price",
+    menu_macro_market = "Macro & Market Trends",
+    menu_smart_analysis = "Smart Analysis",
+    menu_get_started = "Basic Setup",
+    menu_dcf = "DCF-Model",
+    menu_ddm = "DDM",
+    menu_pb = "P/B",
+    menu_rel_multiples = "Multiples",
+    menu_sotp = "SOTP",
+    menu_ri = "RI-Model",
+    menu_nav = "NAV",
+    menu_cat_asset = "Asset-Based Appr.",
+    menu_cat_income = "Income / Cashflow Appr.",
+    menu_cat_relative = "Relative Valuation Appr.",
+    rel_multiples_lead_title = "Relative valuation (multiples): ",
+    rel_multiples_lead_body = paste0(
+      "Implied Price by trading-multiple family — not Intrinsic Value / Fair Value. ",
+      "Switch Earnings / Enterprise / P/S like DDM modes. P/B and SOTP are separate sidebar engines."
+    ),
+    rel_multiples_box_title = "Multiples",
+    rel_multiples_tab_overview = "Overview",
+    rel_multiples_tab_inputs = "Inputs",
+    rel_multiples_tab_earnings = "Earnings",
+    rel_multiples_tab_enterprise = "Enterprise",
+    rel_multiples_tab_ps = "P/S",
+    rel_multiples_tab_bridge = "Bridge",
+    rel_formula_earnings = "Implied Price = EPS × P/E　｜　PEG = P/E ÷ growth(%)",
+    rel_formula_enterprise = paste0(
+      "Implied EV = Metric × Multiple　｜　Equity = EV + Cash − Debt　｜　Price = Equity ÷ Shares"
+    ),
+    rel_formula_ps = "Implied Equity = Revenue × P/S　｜　Implied Price = Equity ÷ Shares",
+    rel_settings_pe_note = paste0(
+      "Implied Price = Trailing EPS × Selected P/E; ",
+      "Forward Implied Price = Forward EPS × Selected Forward P/E."
+    ),
+    rel_settings_peg_note = "PEG = P/E ÷ growth(%). Relative indicator only — not a buy/sell threshold.",
+    rel_settings_ev_note = paste0(
+      "Implied EV = Metric × Multiple; Equity = EV + Cash − Debt; Implied Price = Equity ÷ Shares. ",
+      "Set Cash / Debt / Shares on the Bridge tab."
+    ),
+    rel_settings_ps_note = paste0(
+      "Implied Equity = Revenue × P/S; Implied Price = Equity ÷ Shares (no Cash−Debt bridge). ",
+      "Set Shares on the Bridge tab."
+    ),
+    rel_settings_bridge_note = paste0(
+      "Enterprise: Equity = EV + Cash − Debt; Implied Price = Equity ÷ Shares. ",
+      "P/S uses Shares only."
+    ),
+    rel_multiples_bridge_heading = "Capital bridge & shares",
+    rel_multiples_ps_rev_note = paste0(
+      "P/S Revenue syncs with Enterprise Revenue when you Sync from statements; ",
+      "you may override either field."
+    ),
+    rel_mode_label = "Select multiples family:",
+    rel_mode_earnings = "Earnings (P/E · Fwd P/E · PEG)",
+    rel_mode_enterprise = "Enterprise (EV/FCF · EV/EBIT · EV/EBITDA · EV/Sales · EV/ARR)",
+    rel_mode_ps = "P/S (equity sales)",
+    rel_mode_help = paste0(
+      "Earnings: equity EPS multiples (+ PEG indicator). ",
+      "Enterprise: EV × metric then Cash−Debt bridge. ",
+      "P/S: equity-side revenue (no debt bridge). ",
+      "SOTP is a separate sidebar structural framework."
+    ),
+    sotp_lead_title = "SOTP (Sum of the Parts): ",
+    sotp_lead_body = paste0(
+      "Structural framework — decompose ≥2 segment revenues, apply an EV/Sales multiple per segment, ",
+      "sum enterprise values, then bridge Cash − Debt to Implied Price. Not a single trading multiple."
+    ),
+    sotp_box_title = "SOTP",
+    sotp_tab_overview = "Overview",
+    sotp_tab_segments = "Segments",
+    sotp_tab_bridge = "Bridge",
+    sotp_formula_banner = paste0(
+      "Implied EV = Σ(Seg Rev × EV/Sales) + Non-op　｜　",
+      "Equity = EV + Cash − Debt　｜　Price = Equity ÷ Shares"
+    ),
+    sotp_settings_seg_note = paste0(
+      "Segment EV = Segment Revenue × Segment EV/Sales. ",
+      "Requires ≥2 positive segment revenues. Not segment-EBIT SOTP."
+    ),
+    sotp_settings_bridge_note = paste0(
+      "Equity = Implied EV + Cash − Debt (same bridge as DCF); ",
+      "Implied Price = Equity ÷ Shares."
+    ),
+    sotp_bridge_heading = "Capital bridge & shares",
+    sotp_nonop_help = "Non-operating assets are added to Σ(segment EV) before the Cash − Debt bridge.",
+    sotp_btn_calc = "Run SOTP",
+    sotp_btn_sync = "Sync from statements",
+    sotp_btn_apply_mult = "Apply default to all segments",
+    sotp_help = paste0(
+      "Each segment needs its own EV/Sales. Sync pulls multi-segment revenue from BB Lab when available. ",
+      "Not segment-EBIT SOTP."
+    ),
+    sotp_bridge_help = paste0(
+      "Implied EV = Σ(segment revenue × segment EV/Sales) + non-operating; ",
+      "Equity = EV + Cash − Debt (same bridge as DCF)."
+    ),
+    sotp_need_segments = "SOTP requires segment-level financial data (≥2 positive segment revenues).",
+    sotp_need_run = "Click Run SOTP to compute Implied Price.",
+    sotp_synced = "Synced segment revenues (when available), cash, debt, and shares from statements.",
+    sotp_segments_heading = "Segment EV/Sales",
+    sotp_col_name = "Segment",
+    sotp_col_rev = "Revenue",
+    sotp_col_multiple = "EV/Sales",
+    sotp_col_value = "Segment EV",
+    sotp_vbx_price = "SOTP Implied Price",
+    sotp_vbx_ev = "SOTP Implied EV",
+    sotp_vbx_n = "Segments",
+    sotp_disclaimer = paste0(
+      "Structural SOTP only — do not treat this Implied Price as Intrinsic Value, ",
+      "and do not average it with DCF / DDM / RI / P/B / trading multiples."
+    ),
+    rel_multiples_btn_calc = "Run multiples",
+    rel_multiples_btn_sync = "Sync from statements",
+    rel_multiples_pe_heading = "P/E & Forward P/E",
+    rel_multiples_peg_heading = "PEG (relative indicator)",
+    rel_multiples_ev_heading = "Enterprise multiples",
+    rel_multiples_ps_heading = "P/S (equity sales)",
+    rel_multiples_sotp_heading = "SOTP (revenue segments)",
+    rel_multiples_pe_help = paste0(
+      "Forward EPS is taken from Yahoo when available, else inverted from price ÷ Forward P/E. ",
+      "No forecasted EPS is invented. EPS ≤ 0 → P/E N/A."
+    ),
+    rel_multiples_peg_help = paste0(
+      "PEG = P/E ÷ growth(%). Growth period/definition are shown in results. ",
+      "Not a buy/sell threshold."
+    ),
+    rel_multiples_ev_help = paste0(
+      "Implied EV = metric × multiple; Equity = EV + Cash − Debt (same bridge as DCF); ",
+      "Implied Price = Equity ÷ shares. FCFE is not used for EV/FCF."
+    ),
+    rel_multiples_ps_help = paste0(
+      "Equity-side: Implied Equity = Revenue × P/S; Implied Price = Equity ÷ shares. ",
+      "No Cash−Debt bridge (unlike EV/Sales)."
+    ),
+    rel_multiples_sotp_help = paste0(
+      "Revenue-multiple SOTP: each reported segment revenue × EV/Sales, then Cash − Debt bridge. ",
+      "Requires ≥2 positive segment revenues. Not segment-EBIT SOTP."
+    ),
+    rel_multiples_arr_help = "ARR is not in core statements — enter manually or leave blank (N/A).",
+    rel_multiples_bridge_help = "Cash / Debt used for EV→Equity bridge (Enterprise). P/S uses shares only.",
+    rel_multiples_vbx_pe = "P/E Implied Price",
+    rel_multiples_vbx_fpe = "Forward P/E Implied Price",
+    rel_multiples_vbx_peg = "PEG",
+    rel_multiples_vbx_evfcf = "EV/FCF Implied Price",
+    rel_multiples_vbx_evebit = "EV/EBIT Implied Price",
+    rel_multiples_vbx_evebitda = "EV/EBITDA Implied Price",
+    rel_multiples_vbx_evsales = "EV/Sales Implied Price",
+    rel_multiples_vbx_ps = "P/S Implied Price",
+    rel_multiples_vbx_evarr = "EV/ARR Implied Price",
+    rel_multiples_vbx_sotp = "SOTP Implied Price",
+    rel_multiples_need_run = "Click Run multiples to compute Implied Prices.",
+    rel_multiples_status_ok = "OK",
+    rel_multiples_status_na = "N/A",
+    rel_multiples_status_fwd_eps = "Forward EPS unavailable",
+    rel_multiples_status_fcf = "FCFF ≤ 0 or missing",
+    rel_multiples_status_arr = "ARR unavailable (not in statements)",
+    rel_multiples_status_sotp = "SOTP needs multi-segment revenue",
+    rel_multiples_col_model = "Model",
+    rel_multiples_col_status = "Status",
+    rel_multiples_col_detail = "Assumption / Implied Value",
+    rel_multiples_model_pe = "Trailing P/E",
+    rel_multiples_model_fpe = "Forward P/E",
+    rel_multiples_model_peg = "PEG",
+    rel_multiples_model_evfcf = "EV/FCF",
+    rel_multiples_model_evebit = "EV/EBIT",
+    rel_multiples_model_evebitda = "EV/EBITDA",
+    rel_multiples_model_evsales = "EV/Sales",
+    rel_multiples_model_ps = "P/S",
+    rel_multiples_model_evarr = "EV/ARR",
+    rel_multiples_model_sotp = "SOTP (revenue)",
+    rel_multiples_implied_price = "Implied Price",
+    rel_multiples_disclaimer = paste0(
+      "Relative valuation only — do not treat these Implied Prices as Intrinsic Value, ",
+      "and do not average them with DCF / DDM / RI / P/B."
+    ),
+    rel_multiples_synced = "Synced EPS, FCFF, EBIT, EBITDA, Revenue, cash, debt, and shares from statements.",
+    rel_multiples_shares_fx_block = "Quote currency ≠ statement currency and ADR/FX alignment failed — shares withheld.",
+    rel_multiples_shares_basic = "Using Basic / statement shares (not auto-adjusted diluted quote shares).",
+    rel_multiples_growth_sgr = "Central terminal SGR",
+    rel_multiples_growth_rev_cagr = "Historical revenue CAGR",
+    rel_multiples_period_terminal_sgr = "Terminal / perpetual window (SGR)",
+    rel_multiples_period_hist_rev = "Multi-year revenue history (newest←oldest)",
+    rel_multiples_sotp_need_segments = "SOTP requires segment-level financial data (≥2 positive segment revenues).",
+    rel_multiples_sotp_col_name = "Segment",
+    rel_multiples_sotp_col_rev = "Revenue",
+    menu_badge_primary = "Recommend",
+    menu_badge_secondary = "Secondary",
+    menu_ynow = "YNOW",
+    menu_backtest = "Quant Backtest Lab",
+    menu_bluechip = "Blue Chip Leaderboard",
+    menu_hfv = "Hist. FV Validation",
+    menu_decision_checklist = "Decision Checklist",
+    menu_about = "About",
+    menu_business_breakdown_lab = "Business Breakdown Lab",
+    ticker_label = "Ticker / Stock Code",
+    industry_info_yahoo = "industry info from Yahoo",
+    data_source_title = "Data Source:",
+    data_source_body = paste0(
+      "This application integrates real-time financial data via web parsing ",
+      "and API resources, applying comprehensive models for valuation."
+    ),
+    download_report = "Download Report (PDF)",
+    download_report_about = paste0(
+      "One-Click Investment Reports: Compiles ticker-only valuation (DCF／DDM／RI／P/B), ",
+      "KPIs, MOS, F-Score, and WACC×g sensitivity into a broker-style PDF — ",
+      "no peer ranking or lab-universe narrative."
+    ),
+    snapshot_link = " Snapshot",
+    snapshot_page_title = "Snapshot",
+    snapshot_page_help = paste0(
+      "Three tabs: manual adjustments vs the post-Search baseline (with annotated PDF); ",
+      "current live parameters (download / upload restore CSV); and APP_DEFAULTS."
+    ),
+    snapshot_page_help_lite = paste0(
+      "Lite shows only System defaults for parameters you can set in Lite ",
+      "(Dashboard industry / currency / default ticker, Blue Chip ranking and Clustering). ",
+      "Manual audit and live snapshot restore stay in Full mode."
+    ),
+    snapshot_tab_audit = "Manual adjustments (vs post-Search baseline)",
+    snapshot_tab_current = "Current App Parameter Snapshot",
+    snapshot_tab_defaults = "System defaults (APP_DEFAULTS)",
+    snapshot_defaults_help = paste0(
+      "Defaults written at App start (including items estimated from the default industry / Rf). ",
+      "May differ from Current App Parameter Snapshot; fields can still be overridden on each page."
+    ),
+    snapshot_defaults_help_lite = paste0(
+      "Only parameters Lite can set (Dashboard industry / currency / default ticker, ",
+      "plus Blue Chip ranking and Clustering). Smart Analysis engine seeds and Full-only ",
+      "model parameters are hidden here."
+    ),
+    download_snapshot_btn = "Download Snapshot CSV",
+    download_param_restore_btn = "Download restore CSV",
+    param_restore_title = "Restore parameters from file",
+    param_restore_help = paste0(
+      "Download a restore CSV to save your current valuation inputs. ",
+      "Later, upload that file and click Restore to write the values back into the App, ",
+      "then continue DCF / DDM / RI / P/B / NAV analysis. ",
+      "Prefer Search (load statements) first when the ticker differs."
+    ),
+    param_restore_file_label = "Upload restore CSV",
+    param_restore_btn = "Restore parameters",
+    param_restore_need_file = "Choose a restore CSV first.",
+    param_restore_err_missing_file = "Choose a restore CSV first.",
+    param_restore_err_unreadable = "Could not read that file. Use a restore CSV downloaded from this App.",
+    param_restore_err_bad_columns = "CSV columns not recognized. Need InputId + Value (or Parameter + Current Value).",
+    param_restore_err_no_params = "No restorable parameters found in the file.",
+    param_restore_ok = "Restored {n} parameter(s).",
+    param_restore_ok_with_ticker = "Restored {n} parameter(s) for {ticker}.",
+    param_restore_skipped = "Skipped {n} row(s).",
+    param_restore_search_hint = "If statements are not loaded yet, press Search before continuing analysis.",
+    download_defaults_btn = "Download Defaults CSV",
+    param_restore_browse_btn = "Browse…",
+    param_restore_placeholder = "No file selected",
+    market_us = "US",
+    market_tw = "TW",
+    param_audit_baseline_hdr = "Baseline (post-Search auto-fill): %s · %d adjusted parameter(s)",
+    param_audit_eval_title = "Current evaluation summary",
+    param_audit_baseline_lbl = "Baseline ",
+    param_audit_now_lbl = "Now ",
+    param_audit_goto_btn = "Go & highlight",
+    param_audit_pdf_summary = "Adjusted parameters:",
+    hfv_show_bench = "Show benchmark",
+    hfv_conv_window_label = "Sample window",
+    hfv_win_all = "All",
+    hfv_win_1y = "1Y",
+    hfv_win_3y = "3Y",
+    hfv_win_5y = "5Y",
+    param_audit_title = "Manual adjustments (vs post-Search baseline)",
+    param_audit_help = paste0(
+      "Baseline locks after Search and statement auto-fill. ",
+      "Later manual overrides are listed by page. ",
+      "Use Go & highlight to jump and frame the input. ",
+      "Below: select pages and generate an annotated screenshot PDF."
+    ),
+    param_audit_empty_no_baseline = paste0(
+      "No post-Search baseline yet. Press Search and wait for statements to load; ",
+      "the baseline locks shortly after auto-fill."
+    ),
+    param_audit_empty_no_changes = paste0(
+      "No manual adjustments vs the post-Search baseline yet. ",
+      "Edits after load appear here."
+    ),
+    param_audit_pdf_title = "Annotated page screenshots (PDF)",
+    param_audit_pdf_help = paste0(
+      "Select main pages to include. The app switches to each page, captures the live layout, ",
+      "draws boxes on inputs you changed vs the post-Search baseline, and downloads one PDF."
+    ),
+    param_audit_pdf_pages_label = "Pages to capture",
+    param_audit_pdf_page_basic = "Basic Setup (SGR / CAPM / WACC / Beta)",
+    param_audit_pdf_page_dcf = "DCF",
+    param_audit_pdf_page_ddm = "DDM",
+    param_audit_pdf_page_ri = "RI",
+    param_audit_pdf_page_pb = "P/B",
+    param_audit_pdf_page_nav = "NAV",
+    param_audit_pdf_btn = "Generate annotated PDF",
+    param_audit_pdf_busy = "Capturing pages… please wait (do not navigate).",
+    param_audit_pdf_done = "PDF downloaded.",
+    param_audit_pdf_err = "PDF capture failed. Try again after Search and a short wait.",
+    param_audit_pdf_need_pages = "Select at least one page.",
+    test_link = " Testing",
+    testing_page_title = "Testing",
+    testing_page_sub = paste0(
+      "Full-only sandbox for upcoming experiments and feature trials. ",
+      "Business Breakdown Lab lives on this page. ",
+      "Quant Backtest Lab remains on the main sidebar. Lite mode hides this entry."
+    ),
+    testing_box_title = "Sandbox",
+    testing_box_body = paste0(
+      "Reserved space for temporary UI / valuation experiments before they graduate ",
+      "into Dashboard, Smart Analysis, or Quant Backtest Lab."
+    ),
+    feedback_link = " Feedback",
+    market_hint = "Market",
+    hdr_lang_label = "Language",
+    hdr_ccy_label = "Currency",
+    hdr_lang_zh = "ZH",
+    hdr_lang_en = "EN",
+    hdr_ccy_quote = "Quote",
+    hdr_ccy_stmt = "Statements",
+    hdr_ccy_display = "Display",
+    hdr_ccy_fx_missing = "FX unavailable (conversion refused)",
+    industry_standard = "Industry standard",
+    industry_picker_empty = "No comparison industry selected (use the industry picker above).",
+    kpi_legend_blue = "Blue · Better",
+    kpi_legend_red = "Red · Worse",
+    kpi_legend_black = "Black · In band",
+    kpi_legend_white = "White · N/A",
+    ddm_mode_label = "Select DDM model:",
+    ddm_mode_gordon = "Gordon Growth (GGM)",
+    ddm_mode_spm = "SPM (Sum of Perpetuities)",
+    ddm_mode_two_stage = "Two-Stage Growth",
+    ddm_mode_help = "Gordon (GGM): V0 = D1/(r−g). SPM: sticky dividend + retention growth (V0 = E·g/r² + D/r). Two-stage: g1 then Gordon terminal Pn. Discount rate r = Ke (CAPM).",
+    ddm_spm_tip = "SPM needs EPS on the D0 tab (E) and dividend D above.",
+    ddm_spm_g_note = "SPM also needs EPS (E): confirm Estimated/Latest EPS on the D0 tab. Growth g often uses ROE×retention or ROA×retention.",
+    ddm_d0_label = "Last paid DPS D0",
+    ddm_g_label = "Perpetual dividend growth g (%)",
+    ddm_r_ke_label = "Discount rate r = Ke (%)",
+    ddm_g1_label = "Stage-1 growth g1 (%)",
+    ddm_n1_label = "Stage-1 years n",
+    ddm_formula_gordon = "V₀ = D₁ / (r − g)  |  D₁ = D₀ × (1 + g)  |  r = Ke (CAPM)",
+    ddm_formula_spm = "V₀ = (E × g) / r² + D / r  |  r = Ke (CAPM)  |  SPM",
+    ddm_formula_two_stage = "V₀ = Σ Dₜ / (1+r)ᵗ + Pₙ / (1+r)ⁿ  |  Pₙ = Dₙ × (1+g₂) / (r − g₂)",
+    ddm_overview_hint = "D0 is in the model row above; g / two-stage are in Overview below; discount rate r = Ke is on the Ke tab. Re-run after edits.",
+    ddm_d0_banner = "D0 = cash dividends (cash flow) ÷ shares (or EPS × payout)  |  D1 = D0 × (1 + g)",
+    ddm_two_stage_help = "Stage-2 dividend growth uses Overview perpetual g (g₂). Discount rate r = Ke (CAPM). Terminal constraint: g₂ < r.",
+    ddm_d0_help = "Auto-filled trailing DPS: cash dividends ÷ shares when available (StockFeel D0 = last paid). Gordon then uses D1 = D0×(1+g). Override manually or via the D0 tab. Under SPM this is the sticky perpetual dividend D.",
+    ddm_g_sync_help = "When checked, follows central SGR; uncheck to override dividend growth g (need not equal FCFF terminal g). Two-stage: this is g₂; SPM: earnings growth g in the formula.",
+    ddm_err_r_le_g = "Invalid: discount rate r (Ke) must be strictly greater than dividend growth g.",
+    ddm_err_r_le_g2 = "Invalid: discount rate r (Ke) must be strictly greater than perpetual dividend growth g₂.",
+    ddm_err_r_le_0 = "Invalid: required return r (Ke) must be greater than 0.",
+    ddm_err_two_stage = "Two-stage DDM could not be computed. Check g1 / g2 / r / n.",
+    ddm_err_spm_eps = "SPM needs a valid EPS: enter Estimated/Latest EPS on the D0 tab.",
+    ddm_err_spm = "SPM could not be computed. Check EPS / D0 / g / r.",
+    ddm_reset_msg = "DDM inputs restored to defaults",
+    kpi_legend_focus_metric = "Gold · Fundamental-profile key metric",
+    fund_profile_label = "Fundamental profile",
+    fund_profile_holding_asset = "Holding / Asset-led",
+    fund_profile_financial_book = "Financial / Book-driven",
+    fund_profile_growth = "High growth",
+    fund_profile_capital_intensive = "Capital-intensive",
+    fund_profile_mature_dividend = "Mature dividend",
+    fund_profile_cyclical_volatile = "Cyclical / Volatile",
+    fund_profile_asset_light = "Asset-light / High margin",
+    fund_profile_fallback = "Data-limited",
+    fund_profile_why_holding_asset = "Anchor on book NAV and leverage; cross-read ROA/ROE.",
+    fund_profile_why_financial_book = "Capital and book value matter; prioritize ROE/ROA/leverage plus PE/Beta.",
+    fund_profile_why_growth = "Prioritize growth: revenue/GP growth, GPM, and operating CF growth.",
+    fund_profile_why_capital_intensive = "Heavy assets: ROA, asset turnover, cash quality, and GPM.",
+    fund_profile_why_mature_dividend = "Stable payout: NPM, ROE, OCF/NI, plus Yield/PE.",
+    fund_profile_why_cyclical_volatile = "High volatility: leverage and cash quality first, then margins/growth.",
+    fund_profile_why_asset_light = "Light assets: GPM, opex ratio, growth, and ROE.",
+    fund_profile_why_fallback = "Limited data; use the full Annotation guide, not a single number.",
+    btn_run_bt = "Run Backtest",
+    btn_lab_im_run = "Search Blue Chips",
+    bluechip_blurb_tw = paste0(
+      "Screen Taiwan blue-chip candidates from TWSE and TPEx public listings ",
+      "(listed and OTC only; emerging/ESB names are excluded because liquidity and Yahoo data coverage are less stable). ",
+      "Search Blue Chips: industry × model filters → Candidate truncate → evaluate a larger ordered pool → ",
+      "show at most Universe size (N) qualified names (shortfalls are not padded). ",
+      "Leaderboard uses a high Piotroski threshold (F-Score≥7; unrelated to earnings-quality metrics) ",
+      "and ranks by implied annualized valuation appreciation over the App default horizon of n=%d years. ",
+      "Main search still covers listed, OTC, and ESB names by numeric ticker or Chinese company name. ",
+      "N is the post-analysis display cap, not the Yahoo fetch count."
+    ),
+    bluechip_blurb_us = paste0(
+      "Screen US blue-chip candidates from Nasdaq, NYSE, and NYSE American primary listings ",
+      "(full market catalog—not S&P 500 only; ADRs included when “Include ADRs” is checked). ",
+      "Search Blue Chips order: industry × model filters → optional ADR filter → ",
+      "Candidate truncate rule on that pool (market cap / concept / 1Y return / random) → ",
+      "evaluate a larger ordered pool → show at most Universe size (N) qualified names ",
+      "(shortfalls are not padded). ",
+      "Leaderboard then applies a high Piotroski threshold (F-Score≥7) and ranks by implied ",
+      "annualized valuation appreciation over the App default horizon of n=%d years. ",
+      "N is the post-analysis display cap, not the Yahoo fetch count."
+    ),
+    lab_im_max_n_label = "Universe size (N)",
+    lab_im_max_n_custom_label = "Custom count",
+    lab_im_pool_rank_label = "Candidate truncate rule",
+    lab_im_concepts_label = "Concept groups",
+    lab_im_concepts_placeholder = "Select one or more concept groups…",
+    lab_im_include_adr_label = "Include ADRs",
+    lab_im_include_adr_hint = paste0(
+      "Checked by default: keep US-listed ADRs / foreign issuers in the evaluation pool. ",
+      "Uncheck to exclude ADRs before Candidate truncate and evaluation."
+    ),
+    lab_im_eq_label = "Earnings quality",
+    lab_im_eq_hint = paste0(
+      "Checked by default: Top 10 and Detail keep only names that pass earnings-quality checks. ",
+      "Uncheck to skip that filter. Shortfalls are not padded to N."
+    ),
+    lab_im_eq_explain_title = "Earnings quality:",
+    lab_im_eq_explain_body = paste0(
+      "When checked (default), the leaderboard keeps only names that pass earnings-quality checks ",
+      "(OCF vs operating earnings — helps flag cash-flow vs reported-profit gaps). ",
+      "Uncheck to skip that filter. Shortfalls are not padded to N."
+    ),
+    lab_im_lb_status = paste0(
+      "Top 10 shows %d/10 (qualified %d / evaluated %d). ",
+      "N = post-analysis display cap; Top 10 takes at most 10 qualified names and does not pad to fill 10."
+    ),
+    lab_im_lb_status_by_ind = paste0(
+      "By-industry Top 10 shows %d rows (qualified %d / evaluated %d). ",
+      "Each industry lists at most 10; N = display cap and shortfalls are not padded."
+    ),
+    lab_im_lb_empty = paste0(
+      "Top 10 has no rows. Evaluated %d; annualized upside available %d; F-Score≥7 pass %d; ",
+      "qualified under current checks %d. N is the post-analysis display cap; Top 10 only takes qualified names (max 10) and does not pad. ",
+      "Uncheck Earnings quality or Piotroski high gate (F-Score≥7), raise N, or widen industry filters, then search again."
+    ),
+    lab_im_detail_intro = paste0(
+      "Detail of names evaluated this run (sorted by annualized valuation appreciation). ",
+      "Universe size (N) is the post-analysis display cap: after Candidate truncate and Yahoo scoring, ",
+      "at most N qualified names are shown; shortfalls are not padded."
+    ),
+    lab_im_lb_mode_label = "Ranking view",
+    lab_im_lb_mode_overall = "Overall Top 10",
+    lab_im_lb_mode_by_industry = "Top 10 by industry",
+    lab_im_lb_scope_help = paste0(
+      "Overall Top 10: cross-industry Top 10 by annualized valuation appreciation, with an Industry column. ",
+      "Top 10 by industry: list Top 10 within each industry. ",
+      "Top 10 takes at most 10 qualified names; shortfalls are not padded."
+    ),
+    lab_im_gate_label = "Piotroski high gate",
+    lab_im_gate_hint = paste0(
+      "Default on: Top 10 and Detail keep only Piotroski F-Score≥7 (quality screen). ",
+      "Uncheck to drop the F-Score gate. Shortfalls are not padded to N or to 10."
+    ),
+    lab_im_run_title = "Piotroski high gate (F-Score≥7) + rank by annualized valuation appreciation",
+    lab_im_progress = "Evaluating (Piotroski high gate + {n}-year annualized valuation appreciation)…",
+    lab_im_done_gate = "Evaluated {n} names; Piotroski high gate pass {q}",
+    lab_im_gate_on = "F-Score≥7",
+    lab_im_gate_off = "No F-Score gate",
+    bt_analysis_freq = "Analysis frequency (valuation date Date_t)",
+    bt_freq_monthly = "Monthly",
+    bt_freq_quarterly = "Quarterly",
+    bt_freq_yearly = "Yearly",
+    bt_freq_hint = "Only frequencies supported by available data are shown. Monthly appears only when a full monthly series exists (or can be produced). US and TW use the same rule.",
+    bt_freq_insufficient = "Price history is too short for analysis-frequency options.",
+    hfv_page_title = "Historical Fundamental Validation",
+    hfv_page_sub = paste0(
+      "A point-in-time review of theoretical fair value versus market price: ",
+      "next-period odds, position vs FV, and historical scenario taxonomy. ",
+      "This is a validation report—not a trading backtest (see Quant Backtest Lab)."
+    ),
+    hfv_ch1_kicker = "Section I",
+    hfv_ch1_title = "Fair value vs market price",
+    hfv_ch2_kicker = "Section II",
+    hfv_ch2_title = "Validation findings",
+    hfv_param_inv_title = "US Valuation Replay Inventory (Live vs Hist PIT)",
+    hfv_param_inv_help = paste0(
+      "Historical theoretical values are rebuilt from then-available data; ",
+      "hist DCF prefers NOPAT / D&A / CapEx / ΔNWC margin path, else Gordon geometry FCF0×(1+g)^t; ",
+      "not the Live DCF page revenue→NOPAT / CapEx / ΔNWC forecast table."
+    ),
+    hfv_analysis_freq_label = "Analysis frequency",
+    hfv_method_data_note = paste0(
+      "Data notes: Yahoo annuals may be restated. PIT uses a strict filing lag (period_end + ~90 days; ",
+      "rows without period_end are excluded — no soft bypass). Near-term growth g and terminal SGR are separate. ",
+      "Missing CapEx/ΔNWC are not invented as 0 (margin DCF unavailable; geometric FCF only when FCF0 is observed). ",
+      "TW OTC/ESB: TPEx financial summary can fill IS/BS when Yahoo is thin (CF never invented). ",
+      "Listed TW MOPS / US SEC as-filed annuals are not yet on the HFV path. Small samples (n<5) are illustrative only."
+    ),
+    hfv_method_body = paste0(
+      "Not a trading-strategy backtest or a brokerage order ticket. Three layers on the validation sample: ",
+      "(1) next-period price move R=(P_{t+1}-P_t)/P_t — the share with R>0 is next-period up frequency P(up), ",
+      "plus MOS-bucket conditional outlook; ",
+      "(2) position vs theoretical FV_t from the single Replay model (not the chart multi-select average), ",
+      "plus magnitude (P_{t+1}-FV_t)/FV_t; ",
+      "(3) historical scenario taxonomy on successive dates using Replay FV + prices — three signals: ",
+      "mispricing = FV_curr−Price_curr (MOS), FV momentum = FV_curr−FV_prev, ",
+      "price momentum = Price_curr−Price_prev → scenarios A–D (or other if unmatched). ",
+      "Chart models may overlay multiple series; odds / magnitude / scenarios / P(up) use the Replay model only."
+    ),
+    hfv_scenario_thresh_note = paste0(
+      "Scenario band heuristics (engineering defaults, not academic standards): ",
+      "momentum flat |Δ|/prev ≤ 2%; Price ≈ FV when |MOS| ≤ 10%; ",
+      "Price ≪ FV when MOS ≥ 20%; Price ≫ FV when MOS ≤ −20%; ",
+      "scenario D also requires price momentum ≥ +5%. ",
+      "Garbage-in FV misclassifies; markets can stay irrational without a catalyst."
+    ),
+    hfv_chart_models_label = "Chart overlay models",
+    hfv_rel_models_note = paste0(
+      "Multiples / SOTP are Implied Price engines (not historical Fair Value) — ",
+      "they are not available as HFV chart overlays."
+    ),
+    lab_im_methods_label = "Models",
+    ms_card_multiples_formula = "Implied Price: P/E · EV/* · P/S",
+    ms_card_multiples_notes = paste0(
+      "Market-multiple cross-check (not Intrinsic Value); ",
+      "often the secondary model for high-growth / intangible businesses."
+    ),
+    ms_card_sotp_formula = "Σ(segment revenue × EV/Sales) − Net Debt",
+    ms_card_sotp_notes = paste0(
+      "Structural sum-of-the-parts; often the NAV cross-check for holdings / conglomerates ",
+      "(needs multi-segment revenue)."
+    ),
+    hfv_replay_model_label = "Replay model",
+    hfv_session_params_title = "Session parameters (now)",
+    hfv_data_sources_label = "Fundamentals sources (this run)",
+    lab_notes_title = "Quantitative Backtest Lab",
+    lab_notes_sub = paste0(
+      "Point-in-time strategy NAV and holding gates: read performance and the wealth-index chart first, ",
+      "then exposure versus buy-and-hold. Related controls sit under each chapter (collapsed by default). ",
+      "This is a quantitative backtest report—not Historical Fundamental Validation (see Hist. FV Validation)."
+    ),
+    bt_zone_title = "Backtest Zone",
+    bt_toolbar_aria = "Backtest run controls",
+    bt_nav_controls_aria = "NAV window controls",
+    bt_nav_window_label = "NAV window (each series resets to 1 at the window start)",
+    bt_sec_nav_controls = "NAV window & chart controls",
+    bt_ch1_kicker = "Section I",
+    bt_ch1_title = "Performance summary",
+    bt_ch2_kicker = "Section II",
+    bt_ch2_title = "Strategy NAV (wealth index, start = 1)",
+    bt_ch2_lead = paste0(
+      "This is a wealth index, not a share price. Both strategies share the holding gate; ",
+      "paths differ—Fundamental NAV = Exp_A × daily returns; Sentiment NAV = Exp_B × daily returns ",
+      "(Exp_A mixed with momentum / RSI). Actual price on the HFV discount chart is not comparable here."
+    ),
+    bt_ch3_kicker = "Section III",
+    bt_ch3_title = "Exposure paths & vs buy-and-hold",
+    bt_ch4_kicker = "Section IV",
+    bt_ch4_title = "Signal validation: MOS & Fair Value",
+    bt_ch4_lead = paste0(
+      "Checks whether undervaluation coincides with better forward returns—the core test of whether ",
+      "the backtest signal can stand. Parameter sensitivity belongs on the YNOW tab (WACC×g matrix)."
+    ),
+    bt_exposure_title = "Two-mode exposure paths",
+    bt_bh_gap_title = "Relative to buy-and-hold",
+    bt_mos_eff_title = "MOS effectiveness",
+    bt_mos_eff_hint = "Forward 1Y / 3Y / 5Y returns by MOS bucket: do higher MOS buckets earn more?",
+    bt_fv_edge_title = "Fair Value predictive edge",
+    bt_leg_fund_label = "Fundamental NAV",
+    bt_leg_fund_body = " (orange) = holding gate + MOS sizing × daily returns, from 1.",
+    bt_leg_sent_label = "Sentiment NAV",
+    bt_leg_sent_body = " (blue) = Exp_A mixed with momentum / RSI; see Sentiment Parameters under Chapter IV.",
+    bt_leg_bh_label = "Stock buy-and-hold",
+    bt_leg_bh_body = " (green) = 100% wealth index; ",
+    bt_leg_bench_label = "Benchmark",
+    bt_leg_bench_body = " (gray dashed) = SPY or 0050.TW wealth index by market mode.",
+    bt_leg_hfv_note = "Per-share FV vs actual price: Hist. FV Validation sidebar — do not mix with this chart.",
+    bt_sec_hold_gate = "Holding gate: position filters",
+    bt_hold_gate_intro = paste0(
+      "On each rebalance date (monthly / quarterly / yearly by analysis frequency), all four filters must pass ",
+      "to allow a position; otherwise both Fundamental and Sentiment strategies stay flat (Exp_A = Exp_B = 0). ",
+      "Thresholds are shared with the backtest engine and the KPI filter."
+    ),
+    bt_net_margin_label = "Net margin threshold (%)",
+    bt_rev_growth_label = "Revenue growth threshold (%)",
+    bt_eps_growth_label = "EPS / net income growth threshold (%)",
+    bt_fcf_cv_label = "FCF CV ceiling (%)",
+    bt_kpi_filter_label = "KPI filter",
+    btn_bt_kpi_filter = "Match current company",
+    bt_kpi_filter_hint = "Compare Dashboard-loaded company KPIs to the thresholds above (same Great Filter as the backtest).",
+    bt_sec_run_controls = "Run controls & parameter sync",
+    bt_param_auto_label = "Auto-sync parameters (derive from statements on ticker change)",
+    bt_param_auto_hint = paste0(
+      "When on, searching / loading a new company overwrites holding thresholds, exposure / sentiment weights, ",
+      "and aligns the HFV recommended valuation model. Manual edits turn this off."
+    ),
+    btn_bt_refresh_params = "Recompute once for current company",
+    bt_refresh_params_hint = "One-shot: recompute thresholds / weights from current statements (use after turning auto-sync off).",
+    bt_sec_strategy_params = "Strategy parameters",
+    bt_params_gate_note = paste0(
+      "Holding gate (net margin / revenue growth / EPS growth / FCF volatility — fail → Exp_A = 0) ",
+      "is under Chapter III. Here adjust sizing and sentiment weights only."
+    ),
+    bt_tab_fundamental = "Fundamental",
+    bt_tab_sentiment = "Sentiment",
+    bt_fund_intro = "Mode A: Exp_A → orange NAV line. MOS buckets set sizing; MOS uses HFV Replay-model fair value.",
+    bt_w_vg_label = "MOS / Value Gap weight (exposure)",
+    bt_w_vg_hint = "Higher = more MOS-bucket de-risking; lower ≈ fixed neutral size.",
+    bt_mos_ladder_title = "MOS lag exposure (baseline map)",
+    bt_mos_ladder_body = paste0(
+      "MOS≥30%→near max holding; ≥10%→~72%×cap; ≥0%→~44%×cap; ≥−10%→~17%×cap; else flat. ",
+      "(Max / floor holding and \"Closer to buy-and-hold\" are under Sentiment.)"
+    ),
+    bt_sent_intro = paste0(
+      "Mode B: mix momentum / RSI onto Exp_A (hot→fuller, cold→conservative). ",
+      "Blue line = Sentiment NAV from 1. Unrelated to HFV actual price."
+    ),
+    bt_w_mom_label = "Momentum relative weight",
+    bt_w_mom_hint = "With RSI forms the sentiment score, then mixes with Exp_A.",
+    bt_w_rsi_label = "RSI relative weight",
+    bt_w_rsi_hint = "Overbought lowers the sentiment target; oversold raises it.",
+    bt_max_exp_label = "Max holding cap",
+    bt_max_exp_hint = "Set to 1.00 to remove structural underweight vs buy-and-hold.",
+    bt_min_exp_label = "Min holding after gate pass",
+    bt_min_exp_hint = "Floor size when the gate passes and valuation is not extremely rich.",
+    btn_bt_fit_bh = "Closer to buy-and-hold",
+    bt_fit_bh_hint = "One-click: max=100%, min=40%, w_vg=0.35 (weaker de-risking). Turns auto-sync off.",
+    bt_sec_methodology = "Data sources & methodology notes",
+    box_hfv_discount = "FV vs Market Price",
+    box_hfv_validation = "Historical Fundamental Validation: Odds, vs FV & Scenario Taxonomy",
+    box_hfv_param_inventory = "US Valuation Replay Inventory (Live vs Hist PIT)",
+    hfv_fb_title = "Default / fallback notice",
+    hfv_fb_item_fmt = "%s — %s (~%d valuation points)",
+    hfv_sum_title = "Validation results",
+    hfv_sum_conclusion_label = "Conclusion",
+    hfv_sum_conclusion_fmt = "Next-period up frequency ≈ %s (n=%d)",
+    hfv_sum_conclusion_def = paste0(
+      "Definition: historical share of pairs with P_{t+1} > P_t, i.e. R=(P_next−P)/P > 0, ",
+      "under the current validation sample scope (same as Q1). ",
+      "Not P(toward FV) and not P(above FV)."
+    ),
+    hfv_sum_conclusion_caveat = "Descriptive frequency on this sample only — not a predictive guarantee for the next period.",
+    hfv_sum_conclusion_na = "No conclusion yet: need realized next-period pairs under the current validation sample scope (and a selected Replay model).",
+    hfv_sum_price_block = "Q1 · Next-period price move",
+    hfv_sum_price_formula = "R = (P_next − P) / P",
+    hfv_sum_mos_block = "MOS group outlook (same-ticker history)",
+    hfv_sum_fv_block = "Q2 · Position vs theoretical FV",
+    hfv_sum_fv_formula = "(P_next − FV) / FV — not the same as up/down",
+    hfv_sum_scenario_block = "Q3 · Historical scenario taxonomy",
+    hfv_sum_scenario_formula = "Signals: mispricing = FV_curr−Price_curr; FV momentum; price momentum — Replay model only",
+    hfv_sum_scenario_matrix = paste0(
+      "A Golden pit: FV↑, Price↓, Price ≪ FV · ",
+      "B Davis double: FV↑, Price↑, Price ≈ FV · ",
+      "C Value trap: FV↓, Price↓, Price < FV · ",
+      "D Bubble hype: FV≤flat, Price strong↑, Price ≫ FV · ",
+      "other = unmatched (no A–D conclusion applied)."
+    ),
+    hfv_sum_scenario_caveat = paste0(
+      "Taxonomy labels only — not Strong Buy / Strong Sell order tickets. ",
+      "See method notes above for thresholds, FV quality, and timing."
+    ),
+    hfv_sum_scenario_empty = "No classifiable successive-date pairs under the current sample scope.",
+    hfv_scenario_A = "A · Golden pit",
+    hfv_scenario_B = "B · Davis double",
+    hfv_scenario_C = "C · Value trap",
+    hfv_scenario_D = "D · Bubble hype",
+    hfv_scenario_other = "other · Unmatched",
+    hfv_scenario_cue_A = "FV↑ · Price↓ · Price ≪ FV",
+    hfv_scenario_cue_B = "FV↑ · Price↑ · Price ≈ FV",
+    hfv_scenario_cue_C = "FV↓ · Price↓ · Price < FV",
+    hfv_scenario_cue_D = "FV≤flat · Price↑↑ · Price ≫ FV",
+    hfv_scenario_stat_fmt = "%s · n=%d",
+    hfv_scenario_other_line = "Unmatched (other): %s (n=%d)",
+    hfv_scenario_lead_badge = "Most frequent",
+    hfv_scenario_concl_scope_lead = "Most frequent in sample",
+    hfv_scenario_concl_scope_latest = "Latest successive pair",
+    hfv_scenario_concl_lead_fmt = "Most frequent in sample (%s · n=%d)",
+    hfv_scenario_concl_latest_fmt = "Latest successive pair (%s → %s)",
+    hfv_scenario_concl_latest_nodate = "Latest successive pair",
+    hfv_scenario_concl_A_lead = "Strongly bullish.",
+    hfv_scenario_concl_A_body = "Fundamentals are improving, but the market has panicked and mispriced the name. This is an optimal left-side entry.",
+    hfv_scenario_concl_B_lead = "Trend bullish.",
+    hfv_scenario_concl_B_body = "Fundamentals are driving the price higher; the market is in a healthy price-discovery phase. Suitable for a right-side hold.",
+    hfv_scenario_concl_C_lead = "Bearish or range-bound.",
+    hfv_scenario_concl_C_body = "The stock looks cheap, but company fundamentals are deteriorating and smart money is exiting.",
+    hfv_scenario_concl_C_emph = "Do not buy.",
+    hfv_scenario_concl_D_lead = "Strongly bearish.",
+    hfv_scenario_concl_D_body = "Driven by liquidity or narrative hype without fundamental support. When heat fades, a sharp drop can follow — suited to short or take profits.",
+    hfv_scenario_concl_other = "This pair did not match A–D taxonomy bands. No A–D conclusion is applied — review mispricing / FV / price momentum against the threshold note above.",
+    hfv_scenario_concl_none_abcd = "No A–D scenario dominated the sample (all pairs unmatched or empty). No most-frequent A–D conclusion.",
+    hfv_scenario_concl_note = "Reading of the most-frequent and/or latest classified scenario — not a brokerage order ticket. FV quality and timing still matter (see method notes).",
+    hfv_sum_empty = "After Search and selecting a Replay model, next-period up/down odds, vs-FV stats, and scenario taxonomy appear here. Replay results use the selected Replay model only (not chart multi-select).",
+    hfv_sum_notes = "Result notes",
+    hfv_sec_method = "How to read this report",
+    hfv_sec_settings = "Report controls",
+    hfv_sec_results = "Executive summary",
+    hfv_chart_gap = "Magnitude (P_next − FV) / FV",
+    hfv_table_detail = "Period detail",
+    hfv_oos_mode_label = "Validation sample scope",
+    hfv_oos_realized = "Realized next period only (default)",
+    hfv_oos_expanding = "Expanding-window out-of-sample hits",
+    hfv_oos_insample = "Include unrealized next period (in-sample)",
+    hfv_win_custom = "Custom",
+    # --- HFV report body (chapter I/II findings) ---
+    hfv_val_hint_search = paste0(
+      "After you search a ticker, price and benchmark appear first. ",
+      "Check Chart overlay models to stack fair-value lines; Replay model (single-select) drives validation stats and strategy FV/MOS."
+    ),
+    hfv_val_hint_price_only = paste0(
+      "Actual price and benchmark are shown. Check Chart overlay models to stack fair-value lines; ",
+      "odds / magnitude follow the Replay model only (not the chart average)."
+    ),
+    hfv_val_hint_no_summary = "No valuation summary yet.",
+    hfv_kpi_hist_pricing = "Historical market pricing",
+    hfv_kpi_under_rate = "Market underpricing rate",
+    hfv_kpi_under_note = "Share of rebalance dates where price < model fair value",
+    hfv_kpi_last_signal = "Latest signal",
+    hfv_kpi_signal_note = "Cheap (P<FV) = price below model; Rich (P>FV) = price above model",
+    hfv_kpi_mean_mos = "Mean MOS",
+    hfv_bias_undervalued = "Value undervalued",
+    hfv_bias_overvalued = "Value overvalued",
+    hfv_bias_na = "Insufficient data",
+    hfv_sig_cheap = "Cheap (P<FV)",
+    hfv_sig_expensive = "Rich (P>FV)",
+    hfv_sig_na = "Insufficient data",
+    hfv_param_chart_models = "Chart models",
+    hfv_param_replay_model = "Replay model",
+    hfv_param_n_years = "n (years)",
+    hfv_empty_need_search = "Search a ticker to load historical prices",
+    hfv_empty_price_cols = "Historical price columns incomplete — search again",
+    hfv_series_price = "Actual price",
+    hfv_series_bench = "Benchmark",
+    hfv_marker_rebal_fv = "Rebalance FV",
+    hfv_hover_rebal = "Rebalance",
+    hfv_chart_title_fv = "FV vs actual price",
+    hfv_chart_title_bench = "Actual price vs benchmark",
+    hfv_chart_title_price = "Actual price",
+    hfv_yaxis_per_share = "Per share ({ccy} · quote currency, not FX-converted)",
+    hfv_yaxis_bench = "Benchmark price",
+    hfv_empty_plot_fail = "FV vs price chart unavailable: {err}",
+    hfv_period_range_fmt = "Sample window: %s – %s",
+    hfv_period_all = "Sample window: all valuation-date pairs",
+    hfv_mos_now_fmt = "Current MOS = %+.1f%% → bucket \"%s\" (n=%d%s)",
+    hfv_mos_small_sample = ", small sample",
+    hfv_mos_bucket_hist_fmt = "Bucket history next period: up %s · down %s · median return %s, mean %s",
+    hfv_mos_outlook_empty = "No MOS-bucket outlook available yet.",
+    hfv_pair_n_fmt = "Pairs n=%d",
+    hfv_price_odds_fmt = "Up %s (%d) · down %s (%d) · flat %s (%d)",
+    hfv_next_ret_fmt = "Next-period return: median %s, mean %s",
+    hfv_oos_dir_hit_fmt = "Expanding-window direction hit rate %s (n=%d)",
+    hfv_fv_odds_fmt = "Above %s (%d) · below %s (%d) · flat %s (%d)",
+    hfv_gap_stats_fmt = paste0(
+      "Magnitude (P−FV)/FV: overall median %s, mean %s; ",
+      "above median %s; below median %s; |magnitude| median %s"
+    ),
+    hfv_oos_fv_hit_fmt = "Expanding-window vs-FV hit rate %s (n=%d)",
+    hfv_badge_small_sample = "(small sample)",
+    hfv_badge_no_strategy_fv = "(no strategy FV)",
+    hfv_table_need_replay = "No Replay theoretical FV: select a Replay model first (results use that single model only).",
+    hfv_table_no_pairs = "No paired rows in the selected window.",
+    hfv_col_date = "Valuation date",
+    hfv_col_next_date = "Next date",
+    hfv_col_price = "Price (t)",
+    hfv_col_fv = "Theoretical FV",
+    hfv_col_next_price = "Price (t+1)",
+    hfv_col_next_ret = "Next return",
+    hfv_col_dir = "Price move",
+    hfv_col_gap = "Magnitude (P−FV)/FV",
+    hfv_col_vs_fv = "vs FV",
+    hfv_col_scenario = "Scenario",
+    hfv_col_fallback = "Default / fallback",
+    hfv_dir_up = "Up",
+    hfv_dir_down = "Down",
+    hfv_dir_flat = "Flat",
+    hfv_vs_above = "Above",
+    hfv_vs_below = "Below",
+    hfv_vs_flat = "Flat",
+    hfv_plot_need_data = "Load a ticker and complete FV validation first",
+    hfv_freq_switched_msg = paste0(
+      "Switched to %s analysis frequency; re-run strategy NAV via \"Run backtest\" ",
+      "(Date_t rebalance calendar changed)."
+    ),
+    hfv_freq_rebuild_progress = "Rebuilding fundamental value at %s frequency…",
+    hfv_toolbar_aria = "HFV report controls",
+    hfv_chart_overlay_aria = "HFV chart overlay controls",
+    funnel_mom_cond1_label = "Cond1: ",
+    funnel_mom_cond2_label = "Cond2: ",
+
+    # --- tabBox headers ---
+    box_financial_report = "FINANCIAL REPORT",
+    box_performance = "PERFORMANCE",
+    box_dividend_discount = "DIVIDEND DISCOUNT",
+    box_discounted_cf = "DISCOUNTED CASH FLOW",
+    box_sensitivity = "SENSITIVITY",
+    box_residual_income = "RESIDUAL INCOME",
+    box_pb_asset = "P/B & ASSET VALUE",
+    box_nav = "NET ASSET VALUE",
+    box_blue_chip = "BLUE CHIP LEADERBOARD",
+    box_beta = "BETA",
+    box_sgr = "SUSTAINABLE GROWTH RATE",
+    box_model_guide = "Model Selection Guide",
+    box_bt_params = "Strategy Parameters",
+    # --- SGR tab (Basic Setup) ---
+    sgr_method_title = "Terminal growth (SGR) method",
+    lifecycle_stage_title = "Lifecycle stage",
+    lifecycle_stage_help = paste0(
+      "Auto-detect uses multi-factor scoring (growth, margins, FCF, ROIC−WACC, reinvestment). ",
+      "Manual selection is kept. Labels do not embed a fixed Terminal Growth Rate."
+    ),
+    sgr_method_help = paste0(
+      "Macro: uses the live scraped market 10Y Treasury Rf ",
+      "(US: Yahoo ^TNX; TW: TPEx government-bond Curve 10Y; ",
+      "on failure, last successful value; fixed engineering fallback only as last resort, clearly labeled). ",
+      "Fundamental: Retention×ROE (mature, stable firms only). ",
+      "Lifecycle: economic-anchor terminal g; the stage does not write a fixed percentage."
+    ),
+    sgr_method_opt_macro = "Macroeconomic Anchoring (Macro)",
+    sgr_method_opt_fundamental = "Fundamental formula (SGR)",
+    sgr_method_opt_lifecycle = "Industry Lifecycle",
+    lifecycle_opt_auto = "Auto-detect",
+    lifecycle_opt_high_growth = "High Growth",
+    lifecycle_opt_growth_to_mature = "Growth-to-Mature",
+    lifecycle_opt_mature_growth = "Mature Growth",
+    lifecycle_opt_mature_stable = "Mature Stable",
+    lifecycle_opt_declining = "Declining / Finite Life",
+    lifecycle_opt_utility = "Regulated Utility",
+    lifecycle_opt_financial = "Financial Institution",
+    lifecycle_opt_sunset = "Legacy: highly mature / financial-utility",
+    lifecycle_opt_tech = "Legacy: mature tech industry",
+    lifecycle_opt_growth = "Growth-to-Mature",
+    lifecycle_opt_general = "Legacy: general mature",
+    lifecycle_auto_detected = "Auto-detected stage: ",
+    lifecycle_selected = "Selected stage: ",
+    lifecycle_secondary = "Secondary candidate: ",
+    lifecycle_confidence = "Confidence score: ",
+    lifecycle_completeness = "Data completeness: ",
+    lifecycle_reasons = "Classification reasons",
+    lifecycle_missing = "Missing inputs: ",
+    lifecycle_forecast_years = "Suggested explicit forecast years: ",
+    lifecycle_mode_auto = "Selection mode: auto",
+    lifecycle_mode_manual = "Selection mode: manual",
+    lifecycle_rec_adopted = "Valuation model in use: ",
+    lifecycle_rec_suggested = "Recommended model: ",
+    lifecycle_terminal_summary = "Terminal assumptions (economic anchor, not a stage-fixed g)",
+    sgr_suggest_adopted = "Method suggestion: already using recommended method — ",
+    sgr_suggest_pending = "Method suggestion: ",
+    sgr_suggest_evidence_prefix = "Objective evidence: ",
+    sgr_suggest_auto_tier = "Auto tier = ",
+    sgr_suggest_apply = "Apply suggestion: ",
+    sgr_estimate_reason_prefix = "Current g estimate: ",
+    sgr_manual_help = "Can be estimated from the method above, or overridden manually.",
+    sgr_custom_label = "Custom SGR (%)",
+    industry_overview_title = "Current industry standard snapshot",
+    smart_page_title = "Smart Analysis",
+    smart_page_sub = paste0(
+      "Auto-selects primary and secondary valuation models from the ticker profile, ",
+      "detects the best parameter scenario (Two-Stage vs Gordon, SGR method, claim), ",
+      "applies those defaults, and shows fair-value charts. No manual model settings."
+    ),
+    smart_chart_title = "Fair value comparison",
+    smart_primary_kicker = "Primary model",
+    smart_secondary_kicker = "Secondary model",
+    smart_price_kicker = "Current price",
+    smart_mos_kicker = "MOS (vs primary Base)",
+    smart_waiting = "Search a ticker first to run Smart Analysis.",
+    smart_calc_pending = "Detecting scenario and calculating…",
+    smart_reason_title = "Why these models",
+    smart_scenario_title = "Applied scenario:",
+    smart_scenario_two_stage = "Two-Stage DCF",
+    smart_scenario_gordon = "Gordon DCF",
+    smart_scenario_sgr = "SGR method=",
+    smart_scenario_claim = "Claim=",
+    lite_toggle_title = "Click to switch Lite / Full",
+    lite_toggle_aria = "Toggle Lite mode",
+    composite_status_prefix = "Composite valuation status: ",
+    composite_main_model = "Main model:",
+    composite_sub_model = "Sub-model:",
+    composite_confidence_prefix = "Reliability:",
+    composite_confidence_calculating = "Calculating",
+    composite_upside_prefix = "Potential return ",
+    composite_secondary_check = "Sub-model check",
+    composite_fair = "Fair value range",
+    composite_undervalued = "Undervalued (vs Base)",
+    composite_overvalued = "Overvalued (vs Base)",
+    composite_status_pending = "—",
+    composite_waiting_market = "Waiting for market data…",
+    composite_waiting_val = "Waiting for valuation…",
+    composite_current_price = "Current price",
+    composite_footer_note = "Blue band = main-model Bear–Bull; Base marker on top. Only models you have Run in this session appear as markers (same style as Current price; ★ main, ◇ sub-model).",
+    vbx_sgr_subtitle = "SGR",
+    vbx_session_g_subtitle = "Current configured g (near-term)",
+    g_stage1_help = paste0(
+      "Defaults to Estimated Revenue Growth; you can override. ",
+      "Terminal growth still uses SGR from Basic Setup."
+    ),
+    # --- WACC / rᵈ / CAPM ---
+    wacc_box_title = "WACC Estimate",
+    wacc_help = paste0(
+      "WACC = We×rₑ + Wd×rᵈ×(1−T). ",
+      "Pre-tax rᵈ can be estimated below from Interest Expense ÷ Interest-bearing Debt; ",
+      "the tax shield rᵈ×(1−T) is applied in WACC."
+    ),
+    rd_box_title = "Estimate rᵈ",
+    rd_interest_label = "Interest Expense",
+    rd_debt_label = "Interest-bearing Debt",
+    rd_min_label = "Estimated rᵈ floor (%)",
+    rd_max_label = "Estimated rᵈ ceiling (%)",
+    use_estimated_rd_label = "Use estimated rᵈ (Interest / Interest-bearing Debt)",
+    btn_calc_rd = "Estimate rᵈ",
+    btn_calc_wacc = "Calculate WACC",
+    capm_box_title = "CAPM Estimate rₑ",
+    ddm_ke_box_title = "Ke Estimate",
+    ddm_ke_help = paste0(
+      "Discount rate r = Ke = Rf + β × (Rm − Rf). Bidirectionally synced with DCF→WACC \"Use estimated rₑ\" and the rₑ value; ",
+      "when checked, r follows CAPM; uncheck to override manually."
+    ),
+    ddm_use_estimated_ke_label = "Use estimated Ke (from CAPM)",
+    btn_calc_ddm_ke = "Calculate Ke (CAPM)",
+    ddm_ke_bridge_title = "Ke and central rₑ",
+    ddm_ke_bridge_help = paste0(
+      "DDM discounts at r = equity cost Ke, the same central Ke as DCF→WACC rₑ. ",
+      "When \"Use estimated Ke\" is checked, r follows CAPM; uncheck to override and keep bidirectional sync with WACC rₑ. ",
+      "Choose β source on this model's Beta (β) tab."
+    ),
+    ddm_capm_box_title = "CAPM Estimate Ke",
+    btn_calc_ddm_capm = "Estimate Ke (CAPM)",
+    sync_gs_beta_label = "Sync with Basic Setup",
+    beta_source_heading = "Beta source (default writes into CAPM)",
+    beta_rolling_help = "Rolling estimates are for cross-check only and are not written into CAPM (hence omitted above).",
+    btn_sync_selected_beta = "Sync selected β now",
+    beta_opt_summary_title = "Yahoo Finance Summary β",
+    beta_opt_summary_help = "Yahoo Finance Summary \"Beta (5Y Monthly)\"; default writes into CAPM.",
+    beta_opt_industry_title = "Industry default β ({ind})",
+    beta_opt_industry_help = "Structural β for the selected industry.",
+    beta_opt_industry_none = "No industry selected",
+    beta_opt_bottomup_title = "Peer-average Bottom-Up (βᵤ→βe)",
+    beta_opt_bottomup_help = "Unlevered mean / median βᵤ of peer companies.",
+    beta_opt_unlever_title = "Unlevered βᵤ",
+    beta_opt_unlever_help = "Hamada βᵤ = β_L / (1+(1−T)·D/E).",
+    beta_opt_manual_title = "Manual βe",
+
+    # --- CAPM detail labels / Get Started Beta / Rolling ---
+    capm_rf_label = "Risk-free rate Rf (%)",
+    capm_rm_label = "Market return Rm (%)",
+    capm_beta_label_base = "Beta (β)",
+    btn_calc_capm = "Estimate rₑ (CAPM)",
+    use_estimated_re_label = "Use estimated rₑ (from CAPM)",
+    capm_beta_src_summary = "Basic Setup｜Summary β",
+    capm_beta_src_industry = "Basic Setup｜Industry default β",
+    capm_beta_src_bottomup = "Basic Setup｜Bottom-Up βᵤ",
+    capm_beta_src_unlever = "Basic Setup｜Unlevered βᵤ",
+    capm_beta_src_manual = "Basic Setup｜Manual β",
+    capm_beta_src_generic = "Basic Setup｜β",
+    capm_beta_tag_rolling_excluded = "[Rolling excluded｜pick another source]",
+    capm_beta_tag_synced = "[{src}]",
+    capm_beta_tag_wacc_indep = "[WACC independent]",
+    gs_model_selector_title = "Model Selector｜Valuation model recommendation",
+    gs_beta_overview_help = paste0(
+      "Intrinsic-value path: Summary β is written into CAPM by default; ",
+      "you can switch to industry / Bottom-Up / unlevered / manual. ",
+      "Rolling estimates are for cross-check only and are not written into CAPM."
+    ),
+    gs_peer_unlever_help = paste0(
+      "Left: enter peers, unlever, then average (Bottom-Up). ",
+      "Right: this firm's Hamada unlever and manual βe. ",
+      "To write into CAPM: pick the matching β source on Beta Overview or DCF → Beta."
+    ),
+    gs_rolling_help = paste0(
+      "Use Rolling β to cross-check valuation β (includes sentiment / event noise). ",
+      "It is not written into CAPM; if it diverges sharply from Bottom-Up βᵤ, ",
+      "review peers, capital structure, events, and liquidity."
+    ),
+    beta_rolling_settings_title = "Estimate settings (cross-check only)",
+    beta_rolling_compare_title = "Window comparison",
+    beta_bench_label = "Benchmark index",
+    beta_bench_placeholder = "Pick a common index, or enter a ticker…",
+    beta_lookback_label = "Lookback window (cross-check)",
+    beta_lookback_1y = "1Y (12 months)",
+    beta_lookback_2y = "2Y (24 months)",
+    beta_lookback_5y = "5Y (60 months, Yahoo-aligned)",
+    beta_rolling_help_body = paste0(
+      "Rolling β measures recent equity sensitivity to the market and often embeds sentiment. ",
+      "Use it only to cross-check valuation β — it is not written into CAPM / Ke / WACC. ",
+      "β = Cov(Rᵢ, Rₘ) / Var(Rₘ); compare 1Y / 2Y / 5Y windows."
+    ),
+    btn_calc_beta_est = "Estimate Rolling β (cross-check)",
+    beta_bottomup_heading = "Bottom-Up peer average (primary valuation estimate)",
+    beta_peers_label = "Peer / competitor tickers (multi-select or type)",
+    beta_peers_placeholder = "e.g. INTC, AMD, AVGO …",
+    beta_bottomup_agg_label = "βᵤ aggregation",
+    beta_bottomup_agg_mean = "Mean",
+    beta_bottomup_agg_median = "Median",
+    beta_bottomup_help = paste0(
+      "Flow: peer equity β → unlever → mean / median βᵤ. ",
+      "If peers are empty, fall back to industry β and industry leverage (data-limited proxy)."
+    ),
+    btn_calc_beta_bottomup = "Calculate Bottom-Up βᵤ",
+    beta_unlever_heading = "Unlevered βᵤ (Hamada)",
+    beta_unlever_help = paste0(
+      "Hamada (debt β≈0): βᵤ = β_L / (1+(1−T)·D/E). ",
+      "β_L defaults to Yahoo Finance Summary \"Beta (5Y Monthly)\"; T from WACC; D/E = Total Debt ÷ equity market value. ",
+      "Pick \"Unlevered βᵤ\" as β source to write into CAPM; levered β_L itself is not written into CAPM."
+    ),
+    beta_manual_heading = "Manual βe",
+    beta_manual_help = paste0(
+      "After selecting \"Manual βe\" as β source, this value writes into CAPM; ",
+      "editing here also switches the source to manual and syncs."
+    ),
+    # --- YNOW page (three stacked blocks) ---
+    funnel_page_title = "YNOW",
+    funnel_page_sub = paste0(
+      "Click MOS / Reliability, Quality screen (F-Score), and Statement alerts ",
+      "to scroll to each block. Two stacked screens: statement quality (F-Score) → ",
+      "statement alerts. Dynamic industry bubble and weight concentration sit at the ",
+      "bottom of Macro & Market Trends. ",
+      "This is a decision-support report—not an order ticket."
+    ),
+    funnel_kpi_jump_mos_aria = "Jump to Section I Statement quality (MOS and Reliability)",
+    funnel_kpi_jump_fscore_aria = "Jump to Quality screen (F-Score) checklist",
+    funnel_kpi_jump_alerts_aria = "Jump to Section II Statement alerts",
+    funnel_ch1_kicker = "Section I",
+    funnel_ch1_title = "Statement quality",
+    funnel_ch1_lead = paste0(
+      "Piotroski F-Score nine-item quality screen and related quality items; ",
+      "Pass / Fail is a quality screen only—not a standalone buy reason."
+    ),
+    funnel_ch2_kicker = "Section II",
+    funnel_ch2_title = "Statement alerts",
+    funnel_ch2_lead = paste0(
+      "Schilit-style automatic statement screening: alerts/watch items expand first; ",
+      "passes and missing-data items stay collapsed. Veto / risk context only—not a buy signal."
+    ),
+    funnel_ch3_kicker = "Section III",
+    funnel_ch3_title = "Dynamic industry bubble & weight concentration",
+    funnel_ch3_lead = paste0(
+      "Theme concentration uses market-cap weights on the selected industry or concept basket ",
+      "(GICS maps to S&P 500 sector peers). Buffett Indicator is market-level market-cap / GDP ",
+      "(research display only — never feeds CAPM / Ke / WACC)."
+    ),
+    notes_title = "Notes",
+    notes_toggle_aria = "Show or hide notes",
+    funnel_sec_method = "How to read this report",
+    funnel_method_body = paste0(
+      "Reading order: click MOS / Reliability, Quality screen (F-Score), then Statement alerts, ",
+      "then statement quality (F-Score) → statement alerts. ",
+      "Dynamic industry bubble and weight concentration sit at the bottom of Macro & Market Trends. ",
+      "Trend momentum (Timing) lives under Quant Backtest Lab and does not set fair value."
+    ),
+    funnel_method_caveat = paste0(
+      "Labels and scores are research / decision support only—not brokerage order tickets. ",
+      "HFV scenarios are veto context only, never a bullish cue."
+    ),
+    funnel_fscore_list_title = "F-Score quality screen",
+    funnel_vbox_fscore = "Quality screen (F-Score)",
+    fscore_col_item = "Quality item",
+    fscore_col_score = "Result",
+    fscore_result_pass = "Pass",
+    fscore_result_fail = "Fail",
+    fscore_item_roa_pos = "Profitability (ROA > 0)",
+    fscore_item_ocf_pos = "Profitability (OCF > 0)",
+    fscore_item_roa_up = "Profitability (ROA rising)",
+    fscore_item_earn_quality = "Profitability (earnings quality: OCF > operating earnings)",
+    fscore_item_leverage = "Safety (leverage down)",
+    fscore_item_liquidity = "Safety (current ratio up)",
+    fscore_item_dilution = "Safety (no material share issuance)",
+    fscore_item_margin = "Efficiency (gross margin up)",
+    fscore_item_turnover = "Efficiency (asset turnover up)",
+    conf_fscore_strong = "F-Score stronger (quality screen)",
+    conf_fscore_weak = "F-Score weaker (quality screen)",
+    ann_fscore_crossref = paste0(
+      "Tip: asset turnover and OCF / net income stay uncolored without a peer band; ",
+      "cash quality can also be read against the YNOW F-Score quality screen ",
+      "(earnings-quality item)."
+    ),
+    lab_im_gate_on = "F-Score≥7",
+    lab_im_gate_off = "No F-Score gate",
+    funnel_vbox_mos = "Margin of Safety (vs Base)",
+    funnel_vbox_mos_conf = "｜Reliability {level}",
+    funnel_vbox_fraud = "Statement alerts",
+    funnel_fraud_items = "{n} item(s)",
+    funnel_pass = "✅ Pass",
+    funnel_fail = "❌ Fail",
+    funnel_fscore_waiting = "Waiting for statements…",
+    funnel_fscore_n_pass = "Pass {n}",
+    funnel_fscore_n_fail = "Fail {n}",
+    funnel_primary_fallback = "Primary model",
+    funnel_v_trap_title = "Value-trap warning",
+    funnel_v_trap_text = paste0(
+      "Financial quality looks weak, or operating cash flow struggles to support reported earnings. ",
+      "Even if valuation looks cheap, do not rush a bottom-fish."
+    ),
+    funnel_v_hot_over_title = "Strong momentum, rich valuation",
+    funnel_v_hot_over_text = paste0(
+      "Trend momentum remains firm, but price is above the primary-model Base FV. ",
+      "Holders may stay; cash buyers should avoid chasing here."
+    ),
+    funnel_v_over_weak_title = "Rich valuation, softening momentum",
+    funnel_v_over_weak_text = paste0(
+      "Quality clears the screen, but price is above Base fair value and the trend is not yet strong. ",
+      "Wait patiently for a pullback before reassessing."
+    ),
+    funnel_v_davis_title = "Davis double-play zone",
+    funnel_v_davis_text = paste0(
+      "Valuation offers MOS, quality is solid, and technical momentum is confirmed. ",
+      "Scale in gradually and still size for risk."
+    ),
+    funnel_v_value_wait_title = "Value stands out — wait for trend",
+    funnel_v_value_wait_text = paste0(
+      "Fundamental value looks attractive, but market attention is still thin. ",
+      "Scale in gradually; consider adding after a trend turn."
+    ),
+    funnel_v_neutral_title = "Neutral / wait-and-see",
+    funnel_v_neutral_text = paste0(
+      "Price sits near the primary-model fair band with steady quality. ",
+      "Decide flexibly by asset allocation needs."
+    ),
+    funnel_mom_box_title = "Trend momentum (trading aid)",
+    funnel_mom_intro = paste0(
+      "Technical Timing aid only — it does not set fair value. ",
+      "The Decision Funnel prioritizes F-Score / MOS; this panel only asks whether ",
+      "near-term trend has turned bullish, for sizing rhythm."
+    ),
+    funnel_mom_logic_title = "Logic & conditions",
+    funnel_mom_cond1 = "Latest close > SMA(20) and > SMA(60)",
+    funnel_mom_cond2 = "SMA(20) > SMA(60) (short MA above long MA)",
+    funnel_mom_bull_rule = "Bullish confirmed when Cond1 and Cond2 both hold; otherwise \"Range / bearish bias\".",
+    funnel_mom_data_title = "Data sources",
+    funnel_mom_data_1 = "Daily closes: Yahoo Finance (prefer yfinance; fallback quantmod / Yahoo).",
+    funnel_mom_data_2 = "Fetch ~1Y history; decision uses ~180 trading days; MAs via TTR::SMA.",
+    funnel_mom_data_3 = paste0(
+      "Unlike Quant Backtest Lab \"sentiment strategy\" momentum / RSI overlays, ",
+      "this panel is dual-MA confirmation only for YNOW Funnel Timing."
+    ),
+    funnel_mom_bull = "Bullish confirmed",
+    funnel_mom_sideways = "Range / bearish bias",
+    funnel_mom_waiting = "After you search a ticker and load ~180 daily closes, MA and condition status appear here.",
+    funnel_mom_readings = "Live readings:",
+    funnel_mom_readings_fmt = "Close {p}｜SMA20 {ma20}｜SMA60 {ma60}｜vs SMA20 {dist} (n≈{n})",
+    funnel_mom_cond_line = "{c1} Cond1 (price > both MAs)　{c2} Cond2 (SMA20 > SMA60)　→　",
+    funnel_shen_skip = "Auto screen skipped.",
+    # --- High-traffic notifications (ynow_server) ---
+    notif_market_switched = "Switched to {market} mode (default {ticker}; Rf: {rf}; display currency {ccy}; language unchanged)",
+    notif_fx_usd_twd_fail = "Could not fetch spot USD/TWD; FX conversion refused.",
+    notif_fx_convert_fail = "Could not fetch spot FX; USD↔TWD conversion refused.",
+    notif_fx_usd_twd_fail_keep = "Could not fetch spot USD/TWD; FX conversion refused (amounts stay in original currency or are hidden). Try again later.",
+    notif_bt_filter_cancel = "Backtest filter cancelled.",
+    notif_bt_filter_no_fs = "No statements yet — cannot evaluate the backtest filter.",
+    notif_bt_filter_fail = "Backtest filter calculation failed.",
+    notif_bt_filter_pass = "✅ Backtest filter: pass (click again to cancel)",
+    notif_bt_filter_fail_soft = "⚠️ Backtest filter: fail (click again to cancel)",
+    notif_suggest_two_stage = "Model tip: high-growth names may fit Two-Stage Growth; default remains explicit forecast + Gordon TV.",
+    notif_sgr_method_switched = "Switched SGR method to \"{label}\" (algorithm unchanged — method only).",
+    notif_lifecycle_two_stage = "Lifecycle: high-growth or growth-to-mature. Terminal g is an economic anchor (not a stage-fixed rate); switch to Two-Stage manually on the DCF model if desired.",
+    notif_rd_estimated = "📌 Estimated rᵈ = {rd}% (Interest Expense / Interest-bearing Debt)",
+    notif_rolling_beta_ok = "✅ Rolling β = {beta} ({method}, n={n}, bench {bench})",
+    notif_est_failed = "❌ {reason}",
+    notif_est_failed_default = "Estimation failed",
+    notif_rolling_no_write_capm = "Rolling β is cross-check only and cannot write into CAPM. Use Bottom-Up (βᵤ→βe) instead.",
+    notif_bottomup_need_peers = "Bottom-Up: enter peer tickers first, or confirm an industry is selected.",
+    notif_bottomup_industry_proxy = "Bottom-Up (industry proxy) βᵤ ≈ {beta}",
+    notif_bottomup_fail = "Bottom-Up failed: insufficient peer data.",
+    notif_bottomup_ok = "✅ Bottom-Up βᵤ = {beta} (n={n})",
+    notif_beta_applied = "Applied {label}={beta} to CAPM β (for Ke / WACC).",
+    notif_decision_tree_no_src = "Decision tree has no usable recommended source yet.",
+    notif_need_bottomup_first = "Calculate Bottom-Up βᵤ first.",
+    notif_rolling_rewrite_src = "Rolling estimates cannot write into CAPM; suggesting Summary / industry / Bottom-Up / unlevered sources instead.",
+    notif_decision_tree_picked = "Selected \"{title}\" from the decision tree.",
+    notif_re_estimated = "📌 Estimated rₑ = {re}%",
+    notif_wacc_auto = "📌 Auto-estimated and applied WACC {wacc}% (includes CAPM rₑ)",
+    notif_dcf_n_mismatch = "⚠️ Forecast years do not match the FCFF table — please recalculate",
+    notif_g_ge_wacc = "❌ Growth g must be strictly below discount rate WACC",
+    notif_g2_ge_wacc2 = "❌ Terminal growth g2 must be below stage-2 discount rate WACC2",
+    notif_yr1_invalid = "⚠️ Stage-1 years invalid (must be > 0 and < total forecast years n)",
+    notif_fcfe_g_ge_ke = "❌ FCFE: terminal g must be strictly below Ke",
+    notif_dcf_shares_note = "DCF shares: {note}",
+    notif_dcf_no_per_share = "Cannot compute per-share fair value: missing FX / ADR share bridge, or statement vs quote currency not aligned.",
+    notif_dcf_statement_ccy_unavailable = "Cannot compute per-share fair value: FX conversion is required, but the reporting/statement currency is N/A or cannot be determined.",
+    notif_dcf_fx_rate_missing = "Cannot compute per-share fair value: statement and quote currencies differ, and no usable USD/TWD (or supported) FX rate is available.",
+    notif_dcf_fx_rate_invalid = "Cannot compute per-share fair value: an FX rate is present but invalid (non-finite or ≤ 0).",
+    notif_dcf_adr_ratio_missing = "Cannot compute per-share fair value: this comparison needs an ADR vs ordinary-share conversion, but no ratio or implied ADR shares are available.",
+    notif_dcf_adr_ratio_invalid = "Cannot compute per-share fair value: the ADR conversion ratio is present but invalid (non-finite or ≤ 0).",
+    notif_dcf_per_share_non_finite = "Cannot compute per-share fair value: a per-share input required by the selected method is not finite.",
+    notif_hccsi_statement_ccy = "HCCSI per-share alignment failed: statement currency is required because FX or ADR conversion is in force, but the reporting currency is N/A.",
+    notif_hccsi_fx_missing = "HCCSI per-share alignment failed: source and quote currencies differ, and no usable USD/TWD FX rate is available.",
+    notif_hccsi_fx_invalid = "HCCSI per-share alignment failed: an FX rate is present but invalid (non-finite or ≤ 0).",
+    notif_hccsi_fx_date = "HCCSI per-share alignment failed: the FX fixing date does not match the quote date.",
+    notif_hccsi_adr_missing = "HCCSI per-share alignment failed: this is an ADR vs ordinary comparison and no applicable ADR ratio is available.",
+    notif_hccsi_adr_invalid = "HCCSI per-share alignment failed: the ADR ratio is present but invalid (non-finite or ≤ 0).",
+    notif_hccsi_per_share_bad = "HCCSI per-share alignment failed: a required per-share value is not finite.",
+    notif_hccsi_bench_missing = "HCCSI rolling beta / abnormal return needs benchmark history; that series is missing.",
+    notif_hccsi_window = "HCCSI rolling window is shorter than required; the affected market-risk statistic is withheld.",
+    notif_hccsi_stale = "HCCSI source prices are stale relative to the as-of date; market statistics that need a fresh print are withheld.",
+    notif_hccsi_dup_issuer = "HCCSI dropped a duplicate listing of the same economic issuer so the issuer is not double-counted.",
+    notif_hccsi_history_missing = "HCCSI composite is withheld: constituent Yahoo/history is unavailable. No default score is substituted.",
+    notif_hccsi_why_required = "The missing input is required only for the blocked calculation — not for the rest of HCCSI.",
+    notif_hccsi_blocked = "Blocked: {calc}.",
+    notif_hccsi_available = "Still available: {calcs}.",
+    notif_dcf_updated = "✅ Valuation updated: applied {claim} engine",
+    notif_dcf_claim_fcfe = "FCFE／Ke",
+    notif_dcf_claim_fcff = "FCFF／WACC",
+    notif_dcf_neg_fcff_skip_tv = "Terminal FCFF is negative — Gordon perpetuity is skipped (it would explode a cash drain into a meaningless negative EV). Prefer Residual Income (RI) when net income is still positive.",
+    notif_dcf_hist_fcff_anchor = "The NOPAT-build terminal FCFF is negative, so this DCF uses trailing FCFF (CFO + after-tax interest − CapEx).",
+    notif_dcf_neg_equity = "After the EV→equity bridge (EV + cash − debt), equity value is negative. Not shown as a per-share fair value; consider RI.",
+    notif_params_recalc_ok = "✅ Recalculated once for the current company (thresholds / weights)",
+    notif_params_recalc_fail = "Parameter recalc failed: {err}",
+    notif_fv_fail = "❌ Fundamental value calculation failed: {err}",
+    notif_freq_rebuild_fail = "❌ Rebuild by analysis frequency failed: {err}",
+    notif_bh_preset = "✅ Applied \"closer to buy-and-hold\": max=100%, min=40%, w_vg=0.35. Please restart the backtest.",
+    notif_bt_fail = "❌ Backtest failed: {err}",
+    notif_dcf_defaults = "🔁 DCF parameters reset to defaults",
+    notif_pdf_busy = "Generating ticker PDF investment report — please wait…",
+    notif_pdf_ok = "✅ Ticker PDF investment report ready",
+    notif_pdf_fail = "Report generation failed: {err}",
+    notif_test_opened = "Opened Testing",
+    notif_industry_catalog_fail = "Industry catalog load failed: {err}",
+    notif_update_cache_fallback = "Update failed; using last cache / built-in snapshot.",
+    notif_no_candidates = "No evaluable candidates under the current filters.",
+    notif_no_candidates_ind_model = "No evaluable candidates after industry × model filters.",
+    notif_need_ticker = "Dashboard has no Ticker / Stock Code yet",
+    notif_feedback_opened = "Opened Feedback — issues and improvement ideas welcome",
+    notif_feedback_need_title = "Please enter a title.",
+    notif_feedback_need_body = "Please add a bit more detail (about 8+ characters).",
+    notif_feedback_fail = "Submit failed: {err}",
+    notif_fetch_fail = "❌ Data fetch failed — check the ticker. Error: {err}",
+    notif_data_gap_yahoo_tpex = paste0(
+      "Yahoo has no full annuals yet; filled partial IS／BS from TPEx financial summary ({board})."
+    ),
+    notif_data_gap_empty = paste0(
+      "Yahoo has no annuals (IS／BS／CF empty) and TPEx quarterly summary has no usable extract; ",
+      "fundamental models unavailable. Check MOPS / TPEx for full filings."
+    ),
+    notif_esb_beta_hint = paste0(
+      "ESB (emerging): estimable, but Yahoo Summary β is often missing; Blue Chip excludes ESB. ",
+      "Prefer industry / manual / Rolling β (engineering heuristic)."
+    ),
+    # Valuation-model trial buttons (canonical: Run {MODEL} / 試算 {MODEL})
+    btn_calc_dcf = "Run DCF",
+    btn_calc_ddm = "Run DDM",
+    btn_calc_ri = "Run RI",
+    btn_calc_pb = "Run P/B",
+    btn_calc_nav = "Run NAV",
+    btn_reset_defaults = "Reset to defaults",
+    ri_calc_hint = "Confirm RI Settings, then click Run RI. Auto-runs when RI is the recommended primary model.",
+    ri_settings_recalc_hint = "After changing parameters, return to Overview and click Run RI (or Reset to defaults, then run again).",
+    ri_idle_hint = "Not run yet: click Run RI.",
+    pb_settings_reset_hint = "Reset to defaults is on Overview, next to Run P/B.",
+    pb_idle_hint = "Confirm BVPS / TBVPS / NAVPS in P/B Settings and the target multiples tab, then click Run P/B.",
+    nav_settings_reset_hint = "Reset to defaults is on Overview, next to Run NAV.",
+    nav_idle_hint = "Confirm NAVPS and multiples in NAV Settings, then click Run NAV.",
+    dcf_idle_hint = "DCF has not been run yet. Confirm parameters, then click Run DCF.",
+    # --- Decision Checklist ---
+    dc_page_title = "Decision Checklist",
+    dc_page_sub = paste0(
+      "Investor gate order: quality → valuation → model → HFV veto → discipline. ",
+      "Only Default-ON items start checked; opt in to the rest. ",
+      "Unchecked items hide their numeric conditions. Defaults are engineering heuristics (not academic standards). ",
+      "HFV is a veto tool only — never a bullish buy signal."
+    ),
+    dc_box_checks = "Checklist & Conditions",
+    dc_box_summary = "Pass / Fail Summary",
+    dc_panel_hint = paste0(
+      "Only Default-ON items start checked. Opt in to include other gates. ",
+      "Condition inputs appear only after the parent box is checked. ",
+      "Session choices persist via Shiny inputs for this browser session."
+    ),
+    dc_badge_default_on = "Default ON",
+    dc_section_quality = "1 · Quality screen",
+    dc_section_valuation = "2 · Valuation & MOS",
+    dc_section_model = "3 · Model & assumptions",
+    dc_section_veto = "4 · Historical veto (HFV)",
+    dc_section_discipline = "5 · Order discipline",
+    dc_label_bear_base = "Bear / Base cross-check (required hygiene)",
+    dc_hint_bear_base = "If checked: require both Bear and Base FV/MOS so downside vs base case is compared before acting.",
+    dc_label_base_mos = "Base MOS floor (%)",
+    dc_hint_base_mos = "If checked: Base-case Margin of Safety must clear your floor — softens overpaying vs Base FV.",
+    dc_label_g_sgr = "Near-term g vs terminal SGR; SGR buffer under discount rate",
+    dc_hint_g_sgr = "If checked: keep near-term g distinct from terminal SGR, and keep SGR below WACC/Ke by your buffer (heuristic).",
+    dc_label_model_align = "Adopted primary model matches recommendation",
+    dc_hint_model_align = "If checked: your chosen primary model must match the sidebar recommendation — reduces model shopping.",
+    dc_label_hfv_veto = "HFV veto only — reject Value Trap (C) dominance",
+    dc_hint_hfv_veto = "If checked: HFV is used only to veto (e.g. scenario C / Value Trap dominance). Never treat HFV as a buy signal.",
+    dc_label_fscore = "F-Score quality-screen floor",
+    dc_hint_fscore = "If checked: Piotroski F-Score must meet your minimum — a weak quality screen fails the gate even if MOS looks cheap.",
+    dc_label_no_rank_chase = "Do not order solely on ranking annualized upside",
+    dc_hint_no_rank_chase = "If checked: self-discipline reminder — Blue Chip ranking CAGR alone is not an order ticket.",
+    dc_cond_bear_mos_floor = "Bear MOS floor (%)",
+    dc_cond_base_mos_floor = "Base MOS floor (%)",
+    dc_cond_g_sgr_gap_min = "Min |near-term g − SGR| (pp)",
+    dc_cond_sgr_wacc_buffer = "Min (discount rate − SGR) buffer (pp)",
+    dc_cond_max_c_freq = "Max HFV scenario C share (%)",
+    dc_cond_fscore_min = "Min F-Score (0–9)",
+    dc_cond_user_primary = "Adopted primary model",
+    dc_model_dcf = "DCF",
+    dc_model_ddm = "DDM",
+    dc_model_ri = "RI",
+    dc_model_pb = "P/B",
+    dc_model_nav = "NAV",
+    dc_na = "N/A",
+    dc_live_title = "Live inputs (read-only)",
+    dc_live_mos_bear = "MOS vs Bear FV: %s",
+    dc_live_mos_base = "MOS vs Base FV: %s",
+    dc_live_hfv_none = "HFV scenarios: no data / cannot check yet (run Hist. FV Validation first).",
+    dc_live_hfv_fmt = "HFV lead scenario: %s · C share: %s · n=%d (veto context only)",
+    dc_live_hfv_note = "HFV never justifies buying; a clean HFV sample only means “no veto from this gate,” not a bullish cue.",
+    dc_status_skip = "Not selected",
+    dc_status_no_data = "No data / cannot check",
+    dc_status_no_rec = "No model recommendation yet — search a ticker first",
+    dc_status_hfv_no_data = "No HFV scenario sample / cannot check",
+    dc_detail_bear_base_pass = "Bear MOS %+.1f%% · Base MOS %+.1f%% — both available; downside vs base compared.",
+    dc_detail_bear_base_order_fail = "Bear FV (%.2f) > Base FV (%.2f) — scenario order looks inconsistent; re-check inputs.",
+    dc_detail_bear_mos_fail = "Bear MOS %+.1f%% is below floor %.1f%%.",
+    dc_detail_base_mos_pass = "Base MOS %+.1f%% ≥ floor %.1f%%.",
+    dc_detail_base_mos_fail = "Base MOS %+.1f%% is below floor %.1f%%.",
+    dc_detail_g_sgr_pass = "Near-term g %.2f%% · SGR %.2f%% · |gap| %.2f pp · (r−SGR) %.2f pp.",
+    dc_detail_g_sgr_fail = paste0(
+      "Near-term g %.2f%% · SGR %.2f%% · |gap| %.2f pp (need ≥ %.2f) · ",
+      "discount %.2f%% · buffer need %.2f pp — fail."
+    ),
+    dc_detail_model_align_pass = "Adopted primary %s matches recommendation.",
+    dc_detail_model_align_fail = "Adopted %s ≠ recommended %s.",
+    dc_detail_hfv_veto_pass = "No C-dominance veto — lead %s · C share %.0f%% < max %.0f%% (still not a buy signal).",
+    dc_detail_hfv_c_lead_fail = "HFV veto: scenario C (Value Trap) leads (C share %.0f%%).",
+    dc_detail_hfv_c_freq_fail = "HFV veto: C share %.0f%% ≥ max %.0f%%.",
+    dc_detail_fscore_pass = "F-Score %.0f ≥ min %.0f.",
+    dc_detail_fscore_fail = "F-Score %.0f < min %.0f.",
+    dc_detail_no_rank_pass = "Reminder active: ranking annualized upside alone is not an order ticket.",
+    dc_badge_pass = "PASS",
+    dc_badge_fail = "FAIL",
+    dc_badge_na = "N/A",
+    dc_badge_skip = "OFF",
+    dc_overall_pass = "Gate: PASS",
+    dc_overall_fail = "Gate: FAIL (veto / miss)",
+    dc_overall_na = "Gate: cannot check (missing data)",
+    dc_overall_partial = "Gate: partial (some items lack data)",
+    dc_overall_idle = "Gate: idle (no items checked)",
+    dc_overall_counts = "pass %d · fail %d · n/a %d",
+    # --- nested / small tabs (keyed for JS; data-value match) ---
+    tab_finance_summary = "Finance Summary",
+    tab_income_statement = "Income Statement",
+    tab_balance_sheet = "Balance Sheet",
+    tab_cash_flow = "Cash Flow",
+    tab_sec_notes = "SEC Notes",
+    tab_kpi_by_sheet = "KPI by Sheet",
+    tab_crossover_kpis = "Crossover KPIs",
+    tab_annotation = "Annotation",
+    tab_ddm_overview = "DDM Overview",
+    tab_ddm_calc_details = "DDM Calculation Details",
+    tab_overview = "Overview",
+    tab_d0 = "D0",
+    tab_ke = "Ke",
+    tab_beta = "Beta (β)",
+    tab_sgr = "SGR",
+    tab_dcf_overview = "DCF Overview",
+    tab_dcf_calc_details = "DCF Calculation Details",
+    tab_wacc = "WACC",
+    tab_ri_overview = "RI Overview",
+    tab_ri_settings = "RI Settings",
+    tab_sensitivity_analysis = "Sensitivity Analysis",
+    tab_pb_overview = "P/B Overview",
+    tab_pb_settings = "P/B Settings",
+    tab_target_pb = "Target P/B",
+    tab_nav_overview = "NAV Overview",
+    tab_nav_settings = "NAV Settings",
+    tab_beta_overview = "Beta Overview",
+    tab_peer_unlever = "Peer Unlever",
+    tab_rolling_beta = "Rolling β",
+    tab_decision_matrix = "Decision Matrix",
+    tab_about_ddm = "Dividend Discount Model (DDM)",
+    tab_about_dcf = "Discounted Cash Flow (DCF)",
+    tab_about_ri = "Residual Income (RI)",
+    tab_about_pb = "Price-to-Book (P/B)",
+    tab_about_nav = "Net Asset Value (NAV)",
+    tab_im_filters = "Rankings",
+    tab_im_detail = "Detail",
+    tab_im_cluster = "Clustering",
+    tab_bt_fundamental = "Fundamental Strategy",
+    tab_bt_sentiment = "Sentiment Strategy",
+    lab_cluster_blurb = paste0(
+      "Research Clustering Lab: K-Means on ratio/growth features only (no dollar amounts), ",
+      "so firm size does not dominate distance. Winsorize (1%/99%) → standardize → cluster. ",
+      "Semantic labels are descriptive heuristics, not buy/sell signals."
+    ),
+    lab_cluster_k_label = "Clusters (k)",
+    lab_cluster_max_n_label = "Universe size (N)",
+    lab_cluster_max_n_custom_label = "Custom count",
+    lab_cluster_x_label = "Scatter X",
+    lab_cluster_y_label = "Scatter Y",
+    lab_cluster_focus_label = "Radar focus ticker",
+    btn_lab_cluster_run = "Run clustering",
+    lab_cluster_hint = paste0(
+      "Uses the same industry/model filters as Rankings when set. ",
+      "Shared controls above BLUE CHIP: first apply Candidate truncate rule to the full ",
+      "filtered universe (market cap sort / concept filter / 1Y return / random), ",
+      "then analyze the selected Universe size (N) names — not a fixed default count. ",
+      "The Search ticker is always force-included in Universe (N) and is the default radar focus. ",
+      "Fetches Yahoo ratios with a bundled offline snapshot fallback when Yahoo is blocked ",
+      "(snapshot covers S&P 500 + TW listings; other US primary names use live Yahoo when available)."
+    ),
+    lab_cluster_map_title = "Cluster map",
+    lab_cluster_radar_title = "Same-cluster radar",
+    lab_cluster_table_title = "Cluster assignments",
+    lab_cluster_disclaimer = "Research / education only — not investment advice or a buy signal.",
+    lab_cluster_idle_map = "Run clustering to see the map.",
+    lab_cluster_idle_radar = "Run clustering to see the radar.",
+    lab_cluster_idle_table = "Run clustering to see assignments.",
+    lab_cluster_idle_focus = "Pick a focus ticker for the radar.",
+    lab_cluster_focus_missing = paste0(
+      "Search ticker was not in the clustered set; radar focus fell back to the first name."
+    ),
+    lab_cluster_err_features = paste0(
+      "Ratio features unavailable for clustering. ",
+      "Live Yahoo ratios failed and the offline snapshot has too few matches for this universe. ",
+      "Retry later or lower Universe size (N)."
+    ),
+    lab_cluster_err_missing = paste0(
+      "Too few names with usable ratios after the missing-data filter. ",
+      "Each name needs at least 2 finite ratios. Retry later or lower N."
+    ),
+    lab_cluster_snapshot_note = paste0(
+      "Using bundled offline feature snapshot ",
+      "(live Yahoo ratios unavailable or incomplete on this host)."
+    ),
+    lab_cluster_partial_k = "Lowered cluster count k because fewer than k names have usable ratios.",
+    lab_cluster_coverage_col = "Coverage",
+    lab_cluster_coverage_ok = "OK",
+    lab_cluster_coverage_datalimited = "Data-limited",
+    lab_cluster_note_search_datalimited = paste0(
+      "Search ticker is Data-limited (fundamental profile and/or sparse cluster ratios): ",
+      "cross-read the full statements; do not rely on radar/cluster distance alone."
+    ),
+    lab_cluster_note_impute = paste0(
+      "%d names have sparse ratios (Data-limited); table/radar values may include median imputation — ",
+      "cross-read statements."
+    ),
+    pb_note_no_blend = "No blended P/B multiple. Justified, industry, and history stay separate.",
+    pb_note_multiples = "P/B sources: industry median %s | history median %s (Justified / SGR not used) → Bear/Base/Bull = %s / %s / %s",
+    pb_note_justified = "P/B sources: Justified %s (ROE/Ke/g) | industry median %s | history median %s → Bear/Base/Bull = %s / %s / %s",
+    val_diag_wacc_na = "Calculated WACC is missing. The previous manual or prior-company value is not reused.",
+    val_diag_wacc_tax = "The tax rate must be a ratio between 0 and 1.",
+    val_diag_wacc_weights = "Equity and debt weights must sum to about 100%.",
+    val_diag_wacc_bounds = "With only equity and debt, WACC must lie between Re and after-tax Rd.",
+    val_diag_wacc_other_capital = "Other capital claims are listed separately from equity and debt.",
+    val_diag_manual_wacc = "This WACC is a manual override, not a system-calculated value.",
+    val_diag_capm_inputs = "CAPM needs a finite Rf, levered beta, and either Rm or ERP.",
+    val_diag_erp_mismatch = "ERP must equal Rm minus Rf when both are supplied.",
+    val_diag_erp_range = "ERP is outside the usual 2%–12% explanation band. This is a warning, not a company-specific cap.",
+    val_diag_extra_premium = "The company-specific premium is shown separately from beta and WACC.",
+    val_diag_claim_mismatch = "FCFF must use WACC. FCFE must use Ke. Enterprise value is not divided by shares.",
+    val_diag_stage_years = "Stage 1 years plus Stage 2 years must equal the explicit forecast, and Stage 2 years must be supplied.",
+    val_diag_g2_equals_terminal = "Stage 2 growth equals terminal g, so Stage 2 does not change the growth path.",
+    val_diag_growth_custom_missing = "Custom growth is selected, but the input is missing. No other growth rate is substituted.",
+    val_diag_growth_fundamental = "Fundamental growth is in use. The custom growth input is ignored.",
+    val_diag_growth_fallback = "Fundamental growth is unavailable. The fallback source is disclosed.",
+    val_diag_growth_fundamental_missing = "Fundamental growth cannot be computed, and the custom input is not borrowed.",
+    val_diag_tv_weight = "Terminal value is a large share of enterprise value. Confidence cannot be high.",
+    val_diag_wacc_gt_g = "The discount rate must be above terminal g.",
+    val_diag_wacc_g_spread = "WACC and terminal g are very close. The result is highly sensitive.",
+    val_diag_terminal_g_above_econ = "Nominal terminal g is above the configured long-run economic cap.",
+    val_diag_terminal_roic_invalid = "Terminal ROIC is missing, zero, or invalid, so g / ROIC is not computed.",
+    val_diag_forecast_terminal_jump = "The last explicit year and the terminal year jump too far.",
+    val_diag_terminal_roic_fade = "Terminal ROIC is above WACC without an explicit fade period.",
+    val_diag_lifecycle_low_confidence = "Lifecycle classification confidence is low.",
+    val_diag_lifecycle_missing_inputs = "Lifecycle classification is missing inputs. Gaps are excluded, not treated as zero.",
+    val_diag_lifecycle_manual_mismatch = "The manual lifecycle stage differs from auto-detect. The user choice is kept.",
+    val_diag_lifecycle_legacy_migration = "A legacy lifecycle tier was migrated. The original value is retained.",
+    val_diag_fcf_missing = "The cash-flow path is missing.",
+    val_diag_shares = "Diluted shares must be a positive number.",
+    val_diag_negative_terminal_cf = "The final cash flow is negative, so Gordon growth is not applied.",
+    val_diag_share_split = "The share count jumped by a near-integer factor. Check a split before treating it as dilution.",
+    val_diag_stale_ticker = "Parameters from the previous ticker are still in the session.",
+    val_diag_industry_missing = "Industry classification is missing. Industry P/B is not used.",
+    val_diag_industry_invalid = "The industry key is not in the taxonomy. Industry P/B is not used.",
+    val_diag_industry_ok = "The industry key matches the taxonomy.",
+    val_diag_industry_pb_blocked = "Industry P/B is blocked because classification confidence is too low.",
+    val_diag_thin_peers = "The peer sample is too small for a high-confidence industry P/B.",
+    val_diag_neg_equity = "Common equity is not positive, so an ordinary P/B is not produced.",
+    val_diag_pb_equity_missing = "Common equity is missing, so P/B is not produced.",
+    val_diag_pb_intangible_biz = "Book value is a weak anchor for this business model. P/B is at most a low-weight cross-check.",
+    val_diag_pb_goodwill = "Goodwill is large relative to assets, so book value may be distorted.",
+    val_diag_pb_rd = "Expensed R&D may leave book equity below economic capital.",
+    val_diag_pb_buyback = "Buybacks have reduced book equity. P/B applicability is lower.",
+    val_diag_justified_pb = "Justified P/B is not clipped into a market-like range.",
+    val_diag_pb_gap = "The P/B methods differ too much to average.",
+    val_diag_no_primary = "No model passes the applicability threshold.",
+    val_diag_no_secondary = "No applicable secondary model.",
+    macro_page_title = "Macro & Market Trends",
+    macro_page_sub = paste0(
+      "Follows the global US / TW market toggle. Index and theme price series stay in Yahoo’s native quote currency—",
+      "no historical FX conversion."
+    ),
+    macro_mode_us = "US Market",
+    macro_mode_tw = "TW Market",
+    macro_rf_title = "Risk-free rate Rf (10Y)",
+    hccsi_title = "HCCSI",
+    hccsi_title_full = "Critical Tech Stack Index (HCCSI)",
+    hccsi_disclosure_short = "Tech-stack development reading — not a buy signal.",
+    hccsi_disclosure = paste0(
+      "HCCSI combines each listed node’s statements (Revenue growth, Gross Margin, CapEx vs its own past) ",
+      "with market performance versus the benchmark and versus its own history. ",
+      "It is a development-expectation reading for the critical-tech stack, not a recommendation engine or buy signal."
+    ),
+    hccsi_click_hint = "Click to open Statement, Market vs benchmark, Influence, and Trajectory readings.",
+    hccsi_alert_label = "Reading",
+    hccsi_alert_normal = "Expanding",
+    hccsi_alert_watch = "Steady",
+    hccsi_alert_warning = "Cooling",
+    hccsi_alert_critical = "Contracting",
+    hccsi_alert_unavailable = "Unavailable",
+    hccsi_unavailable = "HCCSI is unavailable — live market history is missing, so no default score is shown.",
+    hccsi_loading = "Loading",
+    hccsi_dropped = "These pieces could not be scored, so leftover weights were scaled up: {terms}",
+    hccsi_dropped_none = "Statement, Market, Influence, and Trajectory can all be scored.",
+    hccsi_index_health = "Statement Development",
+    hccsi_index_health_gloss = "Revenue YoY, Gross Margin change, and CapEx intensity versus the node’s own past. Above 50 is expanding; below 50 is contracting.",
+    hccsi_index_stress = "Trajectory vs History",
+    hccsi_index_stress_gloss = "Price versus the longer lookback in the same window, and whether Revenue growth is faster or slower than the node’s earlier years.",
+    hccsi_index_fragility = "Influence vs Market",
+    hccsi_index_fragility_gloss = "Rolling β versus 1, plus excess return versus the benchmark. Above 50: more influence / running ahead of the market.",
+    hccsi_index_market = "Market vs Benchmark",
+    hccsi_index_market_gloss = "Absolute return and excess return versus the market benchmark. Outperformance raises this reading and can raise the composite.",
+    hccsi_overview_title = "Overview",
+    hccsi_layer_title = "Function stages",
+    hccsi_network_title = "Linked-stage cooling",
+    hccsi_constituent_title = "Each listed node",
+    hccsi_in_composite_title = "In the composite",
+    hccsi_out_composite_title = "Not in the composite",
+    hccsi_out_composite_note = paste0(
+      "Config priors with no filing or published source — Criticality, rebuild years, substitutes, ",
+      "weight caps, and series completeness — are withheld. They are engineering heuristics, not measured inputs."
+    ),
+    hccsi_formula_eq = "HCCSI = 0.30·Stmt + 0.25·Mkt + 0.25·Inf + 0.20·Traj",
+    hccsi_formula_parts = paste0(
+      "Stmt = Rev YoY, ΔGM, CapEx vs own. ",
+      "Mkt = excess and return versus the benchmark. ",
+      "Inf = Rolling β and excess versus the market. ",
+      "Traj = price and Rev YoY versus the issuer’s own history. ",
+      "A missing term is omitted and leftover weights are scaled up — never filled with 0, 50, or 100."
+    ),
+    hccsi_method_title = "Methodology",
+    hccsi_highest_risk_layer = "Weakest stage",
+    hccsi_top_contributors = "Names lifting the reading",
+    hccsi_empty = "HCCSI is not available.",
+    hccsi_contagion_paths = "Linked stages cooling together",
+    hccsi_contagion_none = "No linked stages cooling together",
+    hccsi_network_note = paste0(
+      "A path lights when enough linked stages are cooling at the same time ",
+      "(combined statement / market / trajectory reading below the cooling line). ",
+      "One issuer down does not mean the whole stack is contracting."
+    ),
+    hccsi_col_layer = "Stage",
+    hccsi_col_health = "Stmt",
+    hccsi_col_stress = "Traj",
+    hccsi_col_weight = "Weight",
+    hccsi_col_concentration = "Influence",
+    hccsi_col_substitutes = "What can replace it",
+    hccsi_col_replacement = "Years to rebuild",
+    hccsi_col_issuer = "Issuer",
+    hccsi_col_function = "Role in the chain",
+    hccsi_col_criticality = "Criticality",
+    hccsi_col_weight_raw = "Uncapped weight",
+    hccsi_col_perf = "1M",
+    hccsi_col_beta = "Rolling β (60d)",
+    hccsi_col_dd = "Excess vs mkt",
+    hccsi_col_ret = "Return",
+    hccsi_col_rev_yoy = "Rev YoY",
+    hccsi_col_gm_delta = "ΔGM",
+    hccsi_col_capex_own = "CapEx vs own",
+    hccsi_col_price_hist = "Price vs hist",
+    hccsi_col_rev_vs_own = "Rev YoY vs own",
+    hccsi_col_fin_ops = "Rev YoY / GM",
+    hccsi_col_confidence = "Series completeness",
+    hccsi_method_selection = paste0(
+      "Names enter because the rest of the stack depends on them and they are hard to replace — not because they are large or popular. ",
+      "Dual listings of the same economic issuer are counted once. The universe is config-driven."
+    ),
+    hccsi_method_scoring = paste0(
+      "Four readings, all oriented so higher means stronger development expectation: ",
+      "Statement Development, Market vs Benchmark, Influence vs Market, Trajectory vs History. ",
+      "The composite identity is the formula banner above. ",
+      "Outperformance versus the benchmark raises Market and Influence and can raise the composite."
+    ),
+    hccsi_method_weighting = paste0(
+      "Each listed name’s live readings are averaged into Stmt / Mkt / Inf / Traj. ",
+      "Influence itself is scored from Rolling β and excess return. ",
+      "Criticality scores, rebuild years, substitutes, and issuer/stage caps are unpublished engineering heuristics ",
+      "with no filing source, so they are not shown as if they were measured inputs."
+    ),
+    hccsi_method_rebalance = paste0(
+      "Reviewed every quarter; the name list every year. A merger, delist, bankruptcy, structural split, ",
+      "or confirmed critical-infrastructure break triggers an extraordinary review."
+    ),
+    hccsi_method_missing = paste0(
+      "Missing optional inputs are skipped — never coerced to 0 unless the economic value is actually 0. ",
+      "A failed statement row does not block return or β. ",
+      "If live Yahoo/history is unavailable, HCCSI shows Unavailable rather than a placeholder composite."
+    ),
+    hccsi_method_fx_adr = paste0(
+      "FX is applied only when the source currency differs from the quote currency. ADR conversion is applied ",
+      "only when the instrument is an ADR and a local-ordinary comparison is required. ",
+      "Watching a US listing on its own does not require ADR metadata. Ordinary US names do not either."
+    ),
+    hccsi_method_limits = paste0(
+      "HCCSI is a stack development-expectation reading from statements and market series. ",
+      "It is not a buy signal, an extinction model, or an ordinary cap-weighted index. ",
+      "Readings are Expanding / Steady / Cooling / Contracting / Unavailable."
+    ),
+    hccsi_ly_lithography = "Lithography equipment",
+    hccsi_ly_foundries = "Advanced foundry",
+    hccsi_ly_eda = "Chip design software (EDA)",
+    hccsi_ly_semiconductors = "Semiconductors",
+    hccsi_ly_cloud = "Cloud infrastructure",
+    hccsi_ly_enterprise_identity = "Enterprise identity",
+    hccsi_ly_consumer_os_ecosystems = "Consumer OS ecosystems",
+    hccsi_ly_payment_networks = "Payment networks",
+    hccsi_ly_enterprise_dbs = "Enterprise databases",
+    hccsi_ly_dc_networking = "Data-center networking",
+    hccsi_ly_ai_computing = "AI computing",
+    hccsi_ch_litho_foundry = "Lithography tied to foundry",
+    hccsi_ch_foundry_eda = "Foundry tied to design software",
+    hccsi_ch_cloud_identity = "Cloud tied to identity",
+    hccsi_ch_payments = "Card networks tied together",
+    hccsi_ch_semi_cloud_pay = "Chips, cloud, and payments tied together",
+    hccsi_fn_semiconductor_equipment = "Lithography equipment",
+    hccsi_fn_advanced_foundry = "Advanced foundry",
+    hccsi_fn_enterprise_os_identity_cloud = "Enterprise OS, identity, and cloud",
+    hccsi_fn_cloud_internet_infrastructure = "Cloud and internet infrastructure",
+    hccsi_fn_consumer_digital_ecosystem = "Consumer digital ecosystem",
+    hccsi_fn_eda = "Chip design software (EDA)",
+    hccsi_fn_payment_networks = "Payment networks",
+    hccsi_fn_enterprise_data_virtualization = "Enterprise data and virtualization",
+    hccsi_fn_ai_accelerated_computing = "AI accelerated computing",
+    macro_index_name_gspc = "S&P 500",
+    macro_index_name_ixic = "Nasdaq",
+    macro_index_name_dji = "Dow Jones",
+    macro_index_name_sox = "SOX (semis)",
+    macro_index_name_twii = "TAIEX",
+    macro_index_name_twoii = "TPEx",
+    macro_index_name_0050 = "0050",
+    ynow_index_title = "YNOW",
+    ynow_index_rule = paste0(
+      "Constituents stay fixed until the next monthly reconstitution (Asia/Taipei): ",
+      "the largest US primary listings with F-Score 8 or higher and zero statement alerts, equal weight. ",
+      "The index level is recalculated from those prices. The basket is not re-screened."
+    ),
+    ynow_index_chart_note = paste0(
+      "Equal-weight path of the fixed basket, rebased to 100. ",
+      "With ten names, each weight is 10%. The level follows price changes and does not re-screen names."
+    ),
+    ynow_index_waiting = "Updating YNOW from constituent prices…",
+    ynow_index_empty = "No fixed YNOW constituents for this month.",
+    ynow_index_none = "This month’s YNOW basket has no constituents.",
+    ynow_index_constituents = "Constituents",
+    ynow_index_col_name = "Name",
+    ynow_index_col_last = "Last",
+    ynow_index_col_chg = "Change",
+    ynow_index_build = "Build this month's basket",
+    ynow_index_level = "Index level",
+    ynow_index_col_ticker = "Ticker",
+    ynow_index_col_weight = "Weight",
+    ynow_index_col_mcap = "Market cap",
+    ynow_index_col_fscore = "F-Score",
+    tynow_index_title = "TYNOW",
+    tynow_index_rule = paste0(
+      "Constituents stay fixed until the next monthly reconstitution (Asia/Taipei): ",
+      "the largest Taiwan listed and OTC common stocks with F-Score 8 or higher and zero statement alerts, equal weight. ",
+      "ETFs and emerging-board names are excluded. ",
+      "The index level is recalculated from those prices. The basket is not re-screened."
+    ),
+    tynow_index_waiting = "Updating TYNOW from constituent prices…",
+    tynow_index_empty = "No fixed TYNOW constituents for this month.",
+    tynow_index_none = "This month’s TYNOW basket has no constituents.",
+    macro_index_chart_hint = "Click an index box to show its historical line chart.",
+    macro_index_chart_empty = "No price history for this index.",
+    macro_index_chart_error = "Could not load this index history.",
+    macro_rf_source_fallback = "Rf source unavailable",
+    macro_rf_src_live = "live",
+    macro_rf_src_last = "last known live",
+    macro_rf_src_fallback = "engineering fallback",
+    macro_tw_signal_title = "TW business-cycle signal",
+    macro_tw_signal_body = paste0(
+      "Taiwan’s business-cycle signaling (景氣對策信號) is published by the National Development Council. ",
+      "This page focuses on Yahoo index quotes and Rf; open the NDC monitor for the official monthly signal."
+    ),
+    macro_tw_signal_link = "Open NDC business-cycle index",
+    macro_theme_title = "Relative performance vs benchmark",
+    macro_theme_help = paste0(
+      "Pick Industry and Concept independently (either, both, or neither). ",
+      "US industry uses GICS sector ETFs; Taiwan industry uses the industry-standard snapshot. ",
+      "Concept uses the concept-stock universe. ",
+      "Benchmark is gray dashed on the right axis (rebased = 100 at window start; native currency, no FX)."
+    ),
+    macro_theme_label = "Theme",
+    macro_industry_label = "Industry vs benchmark",
+    macro_concept_label = "Concept vs benchmark",
+    macro_none_option = "None",
+    macro_period_label = "Window",
+    macro_fx_lock = "Currency lock: historical index / theme series are never converted by the session USD⇄TWD toggle.",
+    macro_series_theme = "Theme (rebased)",
+    macro_series_industry = "Industry (rebased)",
+    macro_series_concept = "Concept (rebased)",
+    macro_series_rebased = "Rebased (start = 100)",
+    macro_series_bench = "Benchmark",
+    macro_overlay_title = "Relative performance (start = 100)",
+    macro_plot_need_pick = "Select an industry and/or a concept basket to plot versus the benchmark.",
+    macro_plot_need_theme = "Could not load industry or concept prices",
+    macro_plot_need_bench = "Could not load benchmark prices",
+    macro_bubble_title = "Dynamic industry bubble & weight concentration",
+    macro_bubble_sub = paste0(
+      "Theme concentration uses market-cap weights on the selected industry or concept basket ",
+      "(GICS maps to S&P 500 sector peers). Buffett Indicator is market-level market-cap / GDP ",
+      "(research display only — never feeds CAPM / Ke / WACC)."
+    ),
+    macro_bubble_theme_label = "Industry or concept",
+    macro_bubble_topn_label = "Top N by market cap",
+    macro_bubble_attr_label = "Analysis window",
+    macro_bubble_conc_title = "Market-cap concentration",
+    macro_bubble_attr_title = "Return attribution",
+    macro_bubble_rest = "Rest of basket",
+    macro_bubble_need_theme = "Select an industry or concept basket with resolvable constituents to compute concentration.",
+    macro_bubble_conc_kpi = "Top %d share: %.1f%% of basket mcap · Largest name: %.1f%% · Pool n=%d",
+    macro_bubble_conc_axis = "Share of basket mcap",
+    macro_bubble_conc_topn_series = "Top %d share",
+    macro_bubble_conc_top1_series = "Largest name",
+    macro_bubble_conc_need_hist = "Not enough price history to plot concentration over time.",
+    macro_bubble_top_list_title = "Top N by market cap",
+    macro_bubble_conc_note = paste0(
+      "History uses current market cap × relative Close (research proxy); ",
+      "Top-N membership is re-ranked within today’s basket pool."
+    ),
+    macro_bubble_col_ticker = "Ticker",
+    macro_bubble_col_name = "Company",
+    macro_bubble_col_mcap = "Market cap",
+    macro_bubble_col_weight = "Weight",
+    macro_bubble_attr_kpi = "Window %s · Basket return %.1f%% · Top-N contribution %.1f pp · Rest %.1f pp",
+    macro_bubble_attr_axis = "Contribution (pp)",
+    macro_bubble_alert_title = "Concentration / breadth watch",
+    macro_bubble_alert_top1 = "Largest name ≥ 50% of basket market cap — extreme single-name concentration.",
+    macro_bubble_alert_topn = "Top-N share ≥ 70% of basket market cap — elevated concentration.",
+    macro_bubble_alert_breadth = "Narrow leadership: Top-N accounts for ≥ 80% of the basket’s positive return (weak market breadth).",
+    macro_bubble_buffett_title = "Buffett Indicator (market cap / GDP)",
+    macro_bubble_buffett_note = paste0(
+      "Series: World Bank market capitalization of listed domestic companies (% of GDP) when reachable; ",
+      "companion boxes use World Bank total market cap (CM.MKT.LCAP.CD) and GDP (NY.GDP.MKTP.CD) in current USD. ",
+      "Otherwise the bundled CSV snapshot (ratio only). Traffic light uses each market’s own mean ± 0.75·sd."
+    ),
+    macro_bubble_buffett_level = "Valuation zone",
+    macro_bubble_buffett_over = "Significantly Overvalued",
+    macro_bubble_buffett_fair = "Fairly Valued",
+    macro_bubble_buffett_under = "Undervalued",
+    macro_bubble_buffett_unknown = "Waiting for Buffett series…",
+    macro_bubble_buffett_kpi = "Latest %.1f%% of GDP · as of %s",
+    macro_bubble_buffett_mcap_label = "Total market cap",
+    macro_bubble_buffett_mcap_hint = "Listed domestic companies · USD · as of %s",
+    macro_bubble_buffett_gdp_label = "GDP",
+    macro_bubble_buffett_gdp_hint = "Current USD · as of %s",
+    macro_bubble_buffett_need = "Buffett Indicator series unavailable.",
+    macro_bubble_buffett_series = "Market cap / GDP",
+    macro_bubble_buffett_mean = "Series mean",
+    macro_bubble_buffett_chart = "Buffett Indicator history",
+    macro_bubble_buffett_axis = "% of GDP",
+    btn_macro_refresh = "Refresh",
+    bblab_page_title = "Business Breakdown Lab",
+    bblab_experimental_badge = "Experimental Feature",
+    bblab_page_sub = paste0(
+      "Walk through the company's financial structure from the statement viewpoint: ",
+      "consolidated totals, how the filer splits the business, revenue mix ",
+      "(current period and five-year share evolution), and per-business cards. ",
+      "Experimental; not a valuation engine."
+    ),
+    bblab_listed_only_notice = "Listed stocks only (Taiwan and U.S. exchanges).",
+    bblab_listed_only_scope = paste0(
+      "This ticker does not look like a listed Taiwan or U.S. stock. ",
+      "The Lab only supports listed stocks (Taiwan and U.S. exchanges)."
+    ),
+    bblab_search_title = "Search",
+    bblab_ticker_label = "Ticker",
+    bblab_search_btn = "Search",
+    bblab_company_label = "Company",
+    bblab_period_label = "Period",
+    bblab_statement_ccy_label = "Statement currency",
+    bblab_source_status_label = "Source status",
+    bblab_source_idle = "Search a ticker to load the latest annual / quarter statements and any segment notes.",
+    bblab_source_running = "Retrieving issuer, statements, and disclosures…",
+    bblab_source_ok = "Statements and business-dimension disclosures loaded.",
+    bblab_source_no_segment = paste0(
+      "Consolidated statements loaded. No operating-segment / product / revenue-disaggregation notes were attached; ",
+      "the lab will not fabricate a second business."
+    ),
+    bblab_source_unavailable = "Statements could not be retrieved. Source-currency analysis is blocked until filings load.",
+    bblab_ch1_title = "Consolidated statement snapshot",
+    bblab_ch1_help = paste0(
+      "Reported consolidated Income Statement totals in statement currency. ",
+      "Gross Profit = Revenue − Cost of Revenue. This is the whole firm, before any business split."
+    ),
+    bblab_ch2_title = "How the statements split the business",
+    bblab_ch2_help = paste0(
+      "One primary reporting dimension is selected. Geography that only describes ",
+      "customer location is never the business split. Overlapping dimensions are never added together."
+    ),
+    bblab_ch3_title = "Revenue mix",
+    bblab_ch3_help = "Current-period slices are shares of reported consolidated revenue.",
+    bblab_ch3_current_label = "Current period",
+    bblab_ch4_title = "Five-year mix evolution",
+    bblab_ch4_help = paste0(
+      "Revenue share by business for up to five fiscal years, using the same reporting dimension. ",
+      "Years that cannot be mapped are omitted; shares are never fabricated or filled with 0."
+    ),
+    bblab_ch4_limited = paste0(
+      "Fewer than two fiscal years of comparable revenue shares are available; ",
+      "a five-year mix series is not shown."
+    ),
+    bblab_ch5_title = "Business cards",
+    bblab_ch6_title = "Reconciliation",
+    bblab_ch7_title = "Sources",
+    bblab_geo_veto_why = paste0(
+      "Geography that only describes customer location is not the primary business split; ",
+      "it does not explain distinct economics."
+    ),
+    bblab_overlap_why = "Overlapping reporting dimensions are never added together.",
+    bblab_history_yaxis = "Share of reported consolidated revenue (%)",
+    bblab_dim_operating_segment = "Operating segment (filed)",
+    bblab_dim_segment_note = "Segment note",
+    bblab_dim_product_service = "Product / service revenue lines",
+    bblab_dim_revenue_disaggregation = "Revenue disaggregation",
+    bblab_dim_official_description = "Reporting entity (no multi-business split)",
+    bblab_dim_geography = "Geography",
+    bblab_kpi_revenue = "Revenue",
+    bblab_kpi_cor = "Cost of Revenue",
+    bblab_kpi_gp = "Gross Profit",
+    bblab_kpi_gm = "Gross Margin",
+    bblab_kpi_ni = "Net Income",
+    bblab_formula_gp = "Revenue − Cost of Revenue",
+    bblab_formula_gm = "Gross Profit / Revenue",
+    bblab_summary_title = "How the statements split the business",
+    bblab_dimension_label = "Primary dimension",
+    bblab_count_label = "Business count",
+    bblab_level_label = "Decomposition level",
+    bblab_confidence_label = "Overall confidence",
+    bblab_rev_recon_label = "Revenue reconciliation",
+    bblab_cor_recon_label = "Cost of Revenue reconciliation",
+    bblab_reval_avail_label = "Revaluation availability",
+    bblab_limitations_label = "Limitations",
+    bblab_chart_title = "Revenue mix",
+    bblab_cards_title = "Business cards",
+    bblab_recon_title = "Reconciliation",
+    bblab_sources_title = "Sources",
+    bblab_sources_chrome = paste0(
+      "Disclosure priority: operating segments → segment notes → product/service revenue → ",
+      "revenue disaggregation → MD&A → earnings → IR decks → official descriptions. ",
+      "Filed / audited sources are preferred. This page is experimental and does not write into valuation."
+    ),
+    bblab_shared_title = "Shared and Corporate Items",
+    bblab_shared_empty = "No shared Selling & Marketing, G&A, central R&D, or corporate items were assigned to business Gross Profit cards.",
+    bblab_other_businesses = "Other Businesses",
+    bblab_unallocated = "Unallocated",
+    bblab_eliminations = "Eliminations",
+    bblab_rounding = "Revenue Rounding Adjustment",
+    bblab_recon_amount = "Reconciliation Amount",
+    bblab_expand_other = "Expand Other",
+    bblab_export_chart = "Export chart",
+    bblab_export_data = "Export data",
+    bblab_gm_unestimable = "Not reliably estimable",
+    bblab_reval_unavailable = "Revaluation ratio unavailable",
+    bblab_reval_label = "Revaluation",
+    bblab_single_business_note = paste0(
+      "Only one supportable business is disclosed; no multi-business split is applied. ",
+      "The revenue composition chart still renders (a single slice at 100%, or that business ",
+      "plus Other / Unallocated / Rounding when recon items exist)."
+    ),
+    bblab_fallback_gm_label = "Use consolidated Gross Margin as low-confidence fallback",
+    bblab_allocated_notice = "Cost of Revenue is allocated / estimated (not reported by business).",
+    bblab_rev_share_cost_notice = paste0(
+      "Cost of Revenue uses revenue-share allocation as a final fallback (ALLOCATED_LOW_CONFIDENCE). ",
+      "This is not a reported business cost."
+    ),
+    bblab_waiting = "Search a ticker to run the experimental business breakdown.",
+    bblab_pass = "Pass",
+    bblab_fail = "Fail",
+    bblab_available = "Available",
+    bblab_progress_running = "Business Breakdown Lab",
+    bblab_stage_resolve = "Resolving issuer / entity",
+    bblab_stage_retrieve = "Retrieving statements",
+    bblab_stage_parse = "Parsing segment and disaggregation notes",
+    bblab_stage_analyze = "Running company-agnostic decomposition",
+    bblab_stage_done = "Rendering cards and chart",
+    bblab_notes_body = paste0(
+      "Every amount carries REPORTED / DERIVED / ALLOCATED / ESTIMATED / UNALLOCATED / UNAVAILABLE evidence. ",
+      "Shared Selling & Marketing, G&A, central R&D, interest, tax, and Net Income are excluded from Gross Profit cards. ",
+      "FX applies only when display currency differs from statement currency. ADR applies only to per-ADR display; ",
+      "missing ADR does not block source-currency Revenue / Cost of Revenue / Gross Profit. ",
+      "Revaluation default view is Reported; Adjusted never overwrites reported production costs unless enabled ",
+      "and the adjustment actually changes production costs or D&A."
+    ),
+    notif_bblab_required_fx_rate_missing = paste0(
+      "Required FX rate is missing. Display-currency conversion is blocked; statement-currency Revenue, ",
+      "Cost of Revenue, Gross Profit, and shares remain. Reconciliation still uses reported consolidated totals."
+    ),
+    notif_bblab_required_fx_rate_invalid = paste0(
+      "Required FX rate is invalid. Display-currency conversion is blocked; statement-currency analysis remains."
+    ),
+    notif_bblab_statement_currency_unavailable = paste0(
+      "Statement currency is unavailable. FX conversion is blocked; issuer search and any source-currency amounts that do not need FX remain."
+    ),
+    notif_bblab_applicable_adr_ratio_missing = paste0(
+      "Applicable ADR ratio is missing. Per-ADR display is blocked; statement-currency business Revenue / Cost of Revenue / Gross Profit remain."
+    ),
+    notif_bblab_business_adr_missing_nonblocking = paste0(
+      "ADR metadata is missing. Per-ADR display is blocked; source-currency business analysis is not blocked."
+    ),
+    notif_bblab_business_issuer_unresolved = paste0(
+      "Issuer could not be resolved. Breakdown is blocked until Search returns a company."
+    ),
+    notif_bblab_business_statements_unavailable = paste0(
+      "Statements are unavailable. Business cards, composition chart, and recast reconciliation are blocked; Search remains."
+    ),
+    notif_bblab_business_disclosure_insufficient = paste0(
+      "Business-dimension disclosure is insufficient. The lab will not fabricate a second business. ",
+      "Consolidated totals still render when filings loaded."
+    ),
+    notif_bblab_business_overlapping_dimensions_blocked = paste0(
+      "Overlapping dimensions (for example product vs geography, or platform vs technology) were not combined. ",
+      "A single primary dimension was kept."
+    ),
+    notif_bblab_business_geography_customer_location_only = paste0(
+      "Geography that only describes customer location was not selected as the primary business dimension."
+    ),
+    notif_bblab_business_cost_not_reliably_estimable = paste0(
+      "Cost of Revenue is not reliably estimable for at least one business. Gross Profit / Gross Margin on that card are withheld. ",
+      "Revenue cards, reconciliation of reported consolidated totals, and any eligible chart remain."
+    ),
+    notif_bblab_business_cost_allocated_low_confidence = paste0(
+      "Cost of Revenue uses an allocation or estimate (ALLOCATED_LOW_CONFIDENCE). Revenue remains reported. ",
+      "Enable the consolidated Gross Margin fallback only if you accept low-confidence cost."
+    ),
+    notif_bblab_business_revaluation_unavailable = paste0(
+      "Revaluation ratio unavailable. Reported Revenue / Cost of Revenue / Gross Profit cards are not blocked."
+    ),
+    notif_bblab_business_revaluation_consolidated_proxy = paste0(
+      "Revaluation uses a CONSOLIDATED_PROXY (LOW confidence). User override is allowed. Reported view remains the default."
+    ),
+    notif_bblab_business_reconciliation_fail = paste0(
+      "Reconciliation failed. Recast totals are not forced to match. Reported consolidated Revenue, Cost of Revenue, ",
+      "and Gross Profit remain; unexplained leftover is Unallocated or Reconciliation Amount (Net Income is never a plug)."
+    ),
+    notif_bblab_business_chart_insufficient_components = paste0(
+      "Fewer than two businesses does not block the composition chart. ",
+      "A single supportable recon still renders; business cards remain."
+    ),
+    notif_bblab_business_chart_consolidated_revenue_missing = paste0(
+      "Composition chart blocked: reported consolidated revenue is missing. Business cards still render."
+    ),
+    notif_bblab_business_chart_period_mismatch = paste0(
+      "Composition chart blocked: period mismatch. Business cards still render."
+    ),
+    notif_bblab_business_chart_currency_mismatch = paste0(
+      "Composition chart blocked: currency mismatch. Statement-currency cards still render."
+    ),
+    notif_bblab_business_chart_dimension_mixed = paste0(
+      "Composition chart blocked: mixed dimensions. Overlapping cuts were not combined. Cards still render."
+    ),
+    notif_bblab_business_chart_reconciliation_fail = paste0(
+      "Composition chart blocked because reconciliation failed. Reported consolidated totals and business cards remain."
+    ),
+    notif_bblab_business_chart_single_component = paste0(
+      "Only one supportable business is disclosed. The composition chart still renders as a single slice (100%) ",
+      "or with recon items; the single card remains."
+    ),
+    notif_bblab_business_chart_level_d = paste0(
+      "Composition chart blocked (Level D qualitative only). Names and limitations still render; no amounts are fabricated."
+    ),
+    notif_bblab_business_history_insufficient_years = paste0(
+      "Fewer than two fiscal years of comparable revenue shares are available. ",
+      "The five-year mix series is omitted; current mix, cards, and reconciliation remain."
+    )
+  ),
+  `zh-TW` = list(
+    recent_search = "最近搜尋：",
+    menu_home = "首頁",
+    home_title = "The YNow App",
+    home_lead = "美股與台股的估值工作台。",
+    home_method = "先分類，再選模型，再做決策。",
+    home_method_lite = "先分類，再看合理價與 YNOW。",
+    home_market_k = "大盤",
+    home_market_d = "指數水位，以及產業相對大盤。",
+    home_bluechip_k = "績優股",
+    home_bluechip_d = "同業候選池、截斷規則與分群研究。",
+    home_company_k = "個股",
+    home_company_d = "產業標準快覽、KPI 與財報。",
+    home_ynow_k = "YNOW",
+    home_ynow_d = "F-Score 與財報警訊。品質檢核，不是買進訊號。",
+    home_value_k = "估值",
+    home_value_d = "合理價與 MOS：DCF、DDM、RI、P/B。",
+    home_value_k_lite = "智慧分析",
+    home_value_d_lite = "依推薦模型給出合理價與 MOS。",
+    home_decide_k = "行動",
+    home_decide_d = "F-Score、財報警訊與決策檢核。",
+    home_legal = paste0(
+      "僅供研究與教育參考，不構成投資建議。",
+      "投資決策與損益一律由使用者自行承擔。"
+    ),
+    home_legal_about = "關於 · 隱私權／智慧財產權／投資風險",
+    legal_section_title = "法律與聲明",
+    legal_privacy_title = "隱私權聲明",
+    legal_privacy_body = paste0(
+      "The YNow App 為研究／分析工具。工作階段輸入（股票代號、參數，以及可選的意見回饋文字）",
+      "僅用於執行分析；若您送出意見回饋，則用於開啟 GitHub issue。我們不出售個人資料。",
+      "市場與財報資料來自第三方（例如 Yahoo Finance），亦受其隱私條款約束。",
+      "請勿提交密碼、token 或其他機密憑證。"
+    ),
+    legal_ip_title = "智慧財產權聲明",
+    legal_ip_body = paste0(
+      "The YNow App 之軟體、使用者介面、文件、標誌與原創分析架構，除另有註明外，權利歸專案作者所有。",
+      "第三方資料、商標與函式庫之權利仍屬其各自權利人。",
+      "未經書面許可，不得重製、爬取、再散布或商業轉售本 App 及其品牌識別。"
+    ),
+    legal_risk_title = "投資自負風險聲明",
+    legal_risk_body = paste0(
+      "所有輸出僅供研究與教育參考，不構成投資建議、要約或勸誘買賣任何有價證券。",
+      "過往績效與模型結果不保證未來表現。投資決策與損益一律由使用者自行承擔。",
+      "HFV 屬否決／風險提示，非買進訊號；F-Score 為品質檢核，非買進訊號。"
+    ),
+    menu_dashboard = "個股",
+    kpi_last_price = "最新股價",
+    menu_macro_market = "總體經濟與大盤趨勢",
+    menu_smart_analysis = "智慧分析",
+    menu_get_started = "基礎設定",
+    menu_dcf = "DCF 模型",
+    menu_ddm = "DDM",
+    menu_pb = "P/B",
+    menu_rel_multiples = "倍數法",
+    menu_sotp = "SOTP",
+    menu_ri = "RI 模型",
+    menu_nav = "NAV",
+    menu_cat_asset = "資產基礎法",
+    menu_cat_income = "收益與現金流折現法",
+    menu_cat_relative = "相對估值法",
+    rel_multiples_lead_title = "相對估值（倍數法）：",
+    rel_multiples_lead_body = paste0(
+      "依市場倍數家族得出 Implied Price——不是 Intrinsic Value／Fair Value。",
+      "以 Earnings／Enterprise／P/S 切換（比照 DDM）。P/B 與 SOTP 為側欄獨立引擎。"
+    ),
+    rel_multiples_box_title = "倍數法",
+    rel_multiples_tab_overview = "總覽",
+    rel_multiples_tab_inputs = "輸入",
+    rel_multiples_tab_earnings = "盈餘倍數",
+    rel_multiples_tab_enterprise = "企業倍數",
+    rel_multiples_tab_ps = "P/S",
+    rel_multiples_tab_bridge = "橋接",
+    rel_formula_earnings = "Implied Price = EPS × P/E　｜　PEG = P/E ÷ growth(%)",
+    rel_formula_enterprise = paste0(
+      "Implied EV = Metric × Multiple　｜　Equity = EV + Cash − Debt　｜　Price = Equity ÷ Shares"
+    ),
+    rel_formula_ps = "Implied Equity = Revenue × P/S　｜　Implied Price = Equity ÷ Shares",
+    rel_settings_pe_note = paste0(
+      "Implied Price = Trailing EPS × Selected P/E；",
+      "Forward Implied Price = Forward EPS × Selected Forward P/E。"
+    ),
+    rel_settings_peg_note = "PEG = P/E ÷ growth(%)。僅為相對指標，不作買／賣閾值。",
+    rel_settings_ev_note = paste0(
+      "Implied EV = Metric × Multiple；Equity = EV + Cash − Debt；Implied Price = Equity ÷ Shares。",
+      "Cash／Debt／Shares 請至「橋接」分頁設定。"
+    ),
+    rel_settings_ps_note = paste0(
+      "Implied Equity = Revenue × P/S；Implied Price = Equity ÷ Shares（無 Cash−Debt 橋接）。",
+      "Shares 請至「橋接」分頁設定。"
+    ),
+    rel_settings_bridge_note = paste0(
+      "Enterprise：Equity = EV + Cash − Debt；Implied Price = Equity ÷ Shares。",
+      "P/S 僅需 Shares。"
+    ),
+    rel_multiples_bridge_heading = "資本橋接與股數",
+    rel_multiples_ps_rev_note = paste0(
+      "自財報同步時，P/S 營收會與 Enterprise 營收一併帶入；",
+      "之後仍可各自覆寫。"
+    ),
+    rel_mode_label = "選擇倍數家族：",
+    rel_mode_earnings = "盈餘倍數（P/E · Fwd P/E · PEG）",
+    rel_mode_enterprise = "企業倍數（EV/FCF · EV/EBIT · EV/EBITDA · EV/Sales · EV/ARR）",
+    rel_mode_ps = "P/S（股權營收倍數）",
+    rel_mode_help = paste0(
+      "盈餘：股權 EPS 倍數（含 PEG 相對指標）。",
+      "企業：EV × 指標後加 Cash−Debt 橋接。",
+      "P/S：股權面營收（無負債橋接）。",
+      "SOTP 為側欄獨立的結構型估值框架。"
+    ),
+    sotp_lead_title = "SOTP（分部加總）：",
+    sotp_lead_body = paste0(
+      "結構型估值框架——拆解 ≥2 筆部門營收、各自套用 EV/Sales，",
+      "加總企業價值後再以 Cash − Debt 橋接至 Implied Price。不是單一交易倍數。"
+    ),
+    sotp_box_title = "SOTP",
+    sotp_tab_overview = "總覽",
+    sotp_tab_segments = "部門",
+    sotp_tab_bridge = "橋接",
+    sotp_formula_banner = paste0(
+      "Implied EV = Σ(Seg Rev × EV/Sales) + Non-op　｜　",
+      "Equity = EV + Cash − Debt　｜　Price = Equity ÷ Shares"
+    ),
+    sotp_settings_seg_note = paste0(
+      "部門 EV = 部門營收 × 部門 EV/Sales。",
+      "需 ≥2 筆正值部門營收。非部門 EBIT SOTP。"
+    ),
+    sotp_settings_bridge_note = paste0(
+      "Equity = Implied EV + Cash − Debt（與 DCF 相同橋接）；",
+      "Implied Price = Equity ÷ Shares。"
+    ),
+    sotp_bridge_heading = "資本橋接與股數",
+    sotp_nonop_help = "非營業資產會加在 Σ(部門 EV) 之後、Cash − Debt 橋接之前。",
+    sotp_btn_calc = "試算 SOTP",
+    sotp_btn_sync = "自財報同步",
+    sotp_btn_apply_mult = "套用預設倍數至全部門",
+    sotp_help = paste0(
+      "各部門需各自設定 EV/Sales。同步時若 BB Lab 有多部門營收會帶入。",
+      "非部門 EBIT SOTP。"
+    ),
+    sotp_bridge_help = paste0(
+      "Implied EV = Σ(部門營收 × 部門 EV/Sales) + 非營業資產；",
+      "Equity = EV + Cash − Debt（與 DCF 相同橋接）。"
+    ),
+    sotp_need_segments = "SOTP 需部門層級財報資料（≥2 筆正值部門營收）。",
+    sotp_need_run = "請按「試算 SOTP」計算 Implied Price。",
+    sotp_synced = "已自財報同步部門營收（若有）、現金、負債與股數。",
+    sotp_segments_heading = "部門 EV/Sales",
+    sotp_col_name = "部門",
+    sotp_col_rev = "營收",
+    sotp_col_multiple = "EV/Sales",
+    sotp_col_value = "部門 EV",
+    sotp_vbx_price = "SOTP Implied Price",
+    sotp_vbx_ev = "SOTP Implied EV",
+    sotp_vbx_n = "部門數",
+    sotp_disclaimer = paste0(
+      "僅為結構型 SOTP——請勿將 Implied Price 視為 Intrinsic Value，",
+      "亦勿與 DCF／DDM／RI／P/B／交易倍數直接平均。"
+    ),
+    rel_multiples_btn_calc = "試算倍數",
+    rel_multiples_btn_sync = "自財報同步",
+    rel_multiples_pe_heading = "P/E 與 Forward P/E",
+    rel_multiples_peg_heading = "PEG（相對指標）",
+    rel_multiples_ev_heading = "企業倍數",
+    rel_multiples_ps_heading = "P/S（股權營收倍數）",
+    rel_multiples_sotp_heading = "SOTP（部門營收）",
+    rel_multiples_pe_help = paste0(
+      "Forward EPS 優先取 Yahoo；若無則以股價 ÷ Forward P/E 反推。",
+      "不自行預測 EPS。EPS ≤ 0 → P/E 為 N/A。"
+    ),
+    rel_multiples_peg_help = paste0(
+      "PEG = P/E ÷ 成長率（%）。結果會標示成長定義與期間。",
+      "不作買／賣閾值判斷。"
+    ),
+    rel_multiples_ev_help = paste0(
+      "Implied EV = 指標 × 倍數；Equity = EV + Cash − Debt（與 DCF 相同橋接）；",
+      "Implied Price = Equity ÷ 股數。EV/FCF 不用 FCFE。"
+    ),
+    rel_multiples_ps_help = paste0(
+      "股權面：Implied Equity = Revenue × P/S；Implied Price = Equity ÷ 股數。",
+      "無 Cash−Debt 橋接（與 EV/Sales 不同）。"
+    ),
+    rel_multiples_sotp_help = paste0(
+      "營收倍數 SOTP：各部門營收 × EV/Sales，再加 Cash − Debt 橋接。",
+      "需 ≥2 筆正值部門營收。非部門 EBIT SOTP。"
+    ),
+    rel_multiples_arr_help = "核心財報無 ARR——請手動輸入，或留空（N/A）。",
+    rel_multiples_bridge_help = "Cash／Debt 用於 EV→Equity 橋接（Enterprise）。P/S 僅用股數。",
+    rel_multiples_vbx_pe = "P/E Implied Price",
+    rel_multiples_vbx_fpe = "Forward P/E Implied Price",
+    rel_multiples_vbx_peg = "PEG",
+    rel_multiples_vbx_evfcf = "EV/FCF Implied Price",
+    rel_multiples_vbx_evebit = "EV/EBIT Implied Price",
+    rel_multiples_vbx_evebitda = "EV/EBITDA Implied Price",
+    rel_multiples_vbx_evsales = "EV/Sales Implied Price",
+    rel_multiples_vbx_ps = "P/S Implied Price",
+    rel_multiples_vbx_evarr = "EV/ARR Implied Price",
+    rel_multiples_vbx_sotp = "SOTP Implied Price",
+    rel_multiples_need_run = "請按「試算倍數」計算 Implied Price。",
+    rel_multiples_status_ok = "可用",
+    rel_multiples_status_na = "N/A",
+    rel_multiples_status_fwd_eps = "Forward EPS 無法取得",
+    rel_multiples_status_fcf = "FCFF ≤ 0 或缺失",
+    rel_multiples_status_arr = "ARR 無法取得（財報無此項）",
+    rel_multiples_status_sotp = "SOTP 需多部門營收",
+    rel_multiples_col_model = "模型",
+    rel_multiples_col_status = "狀態",
+    rel_multiples_col_detail = "假設／Implied Value",
+    rel_multiples_model_pe = "Trailing P/E",
+    rel_multiples_model_fpe = "Forward P/E",
+    rel_multiples_model_peg = "PEG",
+    rel_multiples_model_evfcf = "EV/FCF",
+    rel_multiples_model_evebit = "EV/EBIT",
+    rel_multiples_model_evebitda = "EV/EBITDA",
+    rel_multiples_model_evsales = "EV/Sales",
+    rel_multiples_model_ps = "P/S",
+    rel_multiples_model_evarr = "EV/ARR",
+    rel_multiples_model_sotp = "SOTP（營收）",
+    rel_multiples_implied_price = "Implied Price",
+    rel_multiples_disclaimer = paste0(
+      "僅為相對估值——請勿將 Implied Price 視為 Intrinsic Value，",
+      "亦勿與 DCF／DDM／RI／P/B 直接平均。"
+    ),
+    rel_multiples_synced = "已自財報同步 EPS、FCFF、EBIT、EBITDA、營收、現金、負債與股數。",
+    rel_multiples_shares_fx_block = "報價幣≠財報幣且 ADR／FX 無法約當，已拒用股數。",
+    rel_multiples_shares_basic = "使用基本／財報股數（非自動約當之稀釋報價股）。",
+    rel_multiples_growth_sgr = "中央終值 SGR",
+    rel_multiples_growth_rev_cagr = "歷史營收 CAGR",
+    rel_multiples_period_terminal_sgr = "終值／永續視窗（SGR）",
+    rel_multiples_period_hist_rev = "多年營收歷史（新←舊）",
+    rel_multiples_sotp_need_segments = "SOTP 需部門層級財報資料（≥2 筆正值部門營收）。",
+    rel_multiples_sotp_col_name = "部門",
+    rel_multiples_sotp_col_rev = "營收",
+    menu_badge_primary = "推薦",
+    menu_badge_secondary = "備選",
+    menu_ynow = "YNOW",
+    menu_backtest = "量化回測實驗室",
+    menu_bluechip = "績優股排行榜",
+    menu_hfv = "歷史基本面驗證",
+    menu_decision_checklist = "決策檢核",
+    menu_about = "關於",
+    menu_business_breakdown_lab = "業務拆解實驗室",
+    ticker_label = "Ticker／股票代號",
+    industry_info_yahoo = "Yahoo 產業資訊",
+    data_source_title = "資料來源：",
+    data_source_body = paste0(
+      "本應用程式整合即時財務資料（網頁解析與 API），",
+      "並套用完整估值模型。"
+    ),
+    download_report = "下載報告 (PDF)",
+    download_report_about = paste0(
+      "一鍵投資意見報告：彙整個股估值（DCF／DDM／RI／P/B）、KPI、MOS、F-Score ",
+      "與 WACC×g 敏感度為券商風格 PDF——不含同業排名或 Lab 宇宙敘事。"
+    ),
+    snapshot_link = " 快照",
+    snapshot_page_title = "快照 Snapshot",
+    snapshot_page_help = paste0(
+      "三個小頁籤：相對 Search 後基準的手改參數（含標記截圖 PDF）；",
+      "目前 App 執行中參數（可下載／上傳還原 CSV）；系統載入時 APP_DEFAULTS。"
+    ),
+    snapshot_page_help_lite = paste0(
+      "簡化版僅顯示目前介面可設定的系統預設參數（Dashboard 產業／幣別／預設代號，以及績優股排行與分群）。",
+      "手改稽核與即時參數還原等完整版工具請切回完整版。"
+    ),
+    snapshot_tab_audit = "手改參數（相對 Search 後基準）",
+    snapshot_tab_current = "目前 App 參數 Snapshot",
+    snapshot_tab_defaults = "系統預設參數（APP_DEFAULTS）",
+    snapshot_defaults_help = paste0(
+      "App 啟動時寫入的預設值（含依預設產業／Rf 動態估出的項目）。",
+      "與「目前參數」可能不同；欄位仍可在各分頁覆寫。"
+    ),
+    snapshot_defaults_help_lite = paste0(
+      "僅列出簡化版介面可設定的參數（Dashboard 產業／幣別／預設代號，以及績優股排行與分群）。",
+      "智慧分析引擎種子與完整版模型參數於此隱藏。"
+    ),
+    download_snapshot_btn = "下載 Snapshot CSV",
+    download_param_restore_btn = "下載還原 CSV",
+    param_restore_title = "從檔案還原參數",
+    param_restore_help = paste0(
+      "可下載還原 CSV 保存目前估值輸入。之後上傳該檔並按「還原參數」，",
+      "即可把設定寫回 App，繼續 DCF／DDM／RI／P/B／NAV 分析。",
+      "若代號不同，建議先 Search 載入財報再還原。"
+    ),
+    param_restore_file_label = "上傳還原 CSV",
+    param_restore_btn = "還原參數",
+    param_restore_need_file = "請先選擇還原 CSV。",
+    param_restore_err_missing_file = "請先選擇還原 CSV。",
+    param_restore_err_unreadable = "無法讀取該檔。請使用本 App 下載的還原 CSV。",
+    param_restore_err_bad_columns = "無法辨識 CSV 欄位。需有 InputId + Value（或 Parameter + Current Value）。",
+    param_restore_err_no_params = "檔案中找不到可還原的參數。",
+    param_restore_ok = "已還原 {n} 項參數。",
+    param_restore_ok_with_ticker = "已為 {ticker} 還原 {n} 項參數。",
+    param_restore_skipped = "略過 {n} 列。",
+    param_restore_search_hint = "若尚未載入財報，請先按 Search 再繼續分析。",
+    download_defaults_btn = "下載 Defaults CSV",
+    param_restore_browse_btn = "選擇檔案…",
+    param_restore_placeholder = "尚未選擇檔案",
+    market_us = "美股",
+    market_tw = "台股",
+    param_audit_baseline_hdr = "基準時間（Search 後自動帶入）：%s · 手改參數 %d 項",
+    param_audit_eval_title = "目前評估結果（摘要）",
+    param_audit_baseline_lbl = "基準 ",
+    param_audit_now_lbl = "現值 ",
+    param_audit_goto_btn = "前往並框選",
+    param_audit_pdf_summary = "手改參數一覽：",
+    hfv_show_bench = "顯示大盤",
+    hfv_conv_window_label = "統計期間",
+    hfv_win_all = "全部",
+    hfv_win_1y = "近1年",
+    hfv_win_3y = "近3年",
+    hfv_win_5y = "近5年",
+    param_audit_title = "手改參數（相對 Search 後基準）",
+    param_audit_help = paste0(
+      "基準在按下 Search 且財報自動帶入後鎖定。之後你手動覆寫的參數會分頁列出；",
+      "按「前往並框選」可跳到該頁並高亮輸入框。下方可勾選主要頁面，產生標記截圖 PDF。"
+    ),
+    param_audit_empty_no_baseline = paste0(
+      "尚無 Search 後基準。請先按下 Search 並等待財報載入；",
+      "自動帶入完成後會鎖定基準。"
+    ),
+    param_audit_empty_no_changes = paste0(
+      "尚無相對 Search 後基準的手改參數。載入財報後若手動覆寫，變更會列於此。"
+    ),
+    param_audit_pdf_title = "頁面截圖＋手改標記（PDF）",
+    param_audit_pdf_help = paste0(
+      "勾選要納入的主要頁面。系統會依序切換到各頁、擷取目前版面，",
+      "並在相對 Search 後基準有手動覆寫的輸入框上畫框標註，最後下載一份 PDF。"
+    ),
+    param_audit_pdf_pages_label = "要擷取的頁面",
+    param_audit_pdf_page_basic = "基本設定（SGR／CAPM／WACC／Beta）",
+    param_audit_pdf_page_dcf = "DCF",
+    param_audit_pdf_page_ddm = "DDM",
+    param_audit_pdf_page_ri = "RI",
+    param_audit_pdf_page_pb = "P/B",
+    param_audit_pdf_page_nav = "NAV",
+    param_audit_pdf_btn = "產生標記 PDF",
+    param_audit_pdf_busy = "正在擷取頁面…請稍候（勿切換分頁）。",
+    param_audit_pdf_done = "PDF 已下載。",
+    param_audit_pdf_err = "PDF 擷取失敗。請先 Search 並稍候再試。",
+    param_audit_pdf_need_pages = "請至少勾選一個頁面。",
+    test_link = " 測試",
+    testing_page_title = "Testing",
+    testing_page_sub = paste0(
+      "完整版專用實驗區，供後續功能試用與驗證。",
+      "業務拆解實驗室置於此頁。",
+      "量化回測實驗室仍在主選單；簡化版不顯示此入口。"
+    ),
+    testing_box_title = "實驗沙盒",
+    testing_box_body = paste0(
+      "保留給暫時的 UI／估值實驗；成熟後再移入 Dashboard、智慧分析或量化回測實驗室。"
+    ),
+    feedback_link = " 意見區",
+    market_hint = "市場",
+    hdr_lang_label = "語言",
+    hdr_ccy_label = "顯示幣別",
+    hdr_lang_zh = "繁中",
+    hdr_lang_en = "EN",
+    hdr_ccy_quote = "報價",
+    hdr_ccy_stmt = "財報",
+    hdr_ccy_display = "顯示",
+    hdr_ccy_fx_missing = "匯率未取得（已拒絕換匯）",
+    industry_standard = "產業標準",
+    industry_picker_empty = "尚未選擇比較產業（請於上方產業選單選取）。",
+    kpi_legend_blue = "藍 · 優於同業 (Better)",
+    kpi_legend_red = "紅 · 劣於同業 (Worse)",
+    kpi_legend_black = "黑 · 與同業一致 (In band)",
+    kpi_legend_white = "白 · 無法比較／N/A",
+    ddm_mode_label = "選擇 DDM 估值模型：",
+    ddm_mode_gordon = "Gordon 永續成長 (GGM)",
+    ddm_mode_spm = "SPM 永續和 (Sum of Perpetuities)",
+    ddm_mode_two_stage = "二階段成長法 (Two-Stage Model)",
+    ddm_mode_help = "Gordon (GGM)：V0 = D1/(r−g)。SPM：定額股利永續 + 保留盈餘成長（V0 = E·g/r² + D/r）。二階段：g1 後接 Gordon 終值 Pn。折現率 r = Ke（CAPM）。",
+    ddm_spm_tip = "SPM 請至 D0 分頁確認 EPS（E），上方股利為定額 D。",
+    ddm_spm_g_note = "SPM 另需 EPS（E）：請至 D0 分頁確認「預估／最新 EPS」。成長 g 常用 ROE×保留率或 ROA×保留率。",
+    ddm_d0_label = "剛配股利 D0",
+    ddm_g_label = "股利永續成長率 g (%)",
+    ddm_r_ke_label = "折現率 r＝Ke (%)",
+    ddm_g1_label = "高速期成長率 g1 (%)",
+    ddm_n1_label = "高速期年數 n",
+    ddm_formula_gordon = "V₀ = D₁ / (r − g)　｜　D₁ = D₀ × (1 + g)　｜　r = Ke (CAPM)",
+    ddm_formula_spm = "V₀ = (E × g) / r² + D / r　｜　r = Ke (CAPM)　｜　SPM",
+    ddm_formula_two_stage = "V₀ = Σ Dₜ / (1+r)ᵗ + Pₙ / (1+r)ⁿ　｜　Pₙ = Dₙ × (1+g₂) / (r − g₂)",
+    ddm_overview_hint = "提示：D0 在上方模式列；g／二階段在下方 Overview；折現率 r＝Ke 在 Ke 分頁。自訂參數後請再點試算。",
+    ddm_d0_banner = "D0 = 現金股利（現金流量表）÷ 股數（或 EPS × 配息率）　｜　D1 = D0 × (1 + g)",
+    ddm_two_stage_help = "第二階段股利成長率採用 Overview 的永續 g（g₂）；折現率 r＝Ke（CAPM）。終值約束：g₂ < r。",
+    ddm_d0_help = "由財報自動帶入剛配／最近一期 DPS：現金股利÷股數（股感 D0＝當年已配）。Gordon 再以 D1 = D0×(1+g) 成長一年。可手動覆寫，或至 D0 以配息率／歷史平均覆寫。SPM 模式下此值為定額永續股利 D。",
+    ddm_g_sync_help = "勾選時跟隨中央 SGR；取消勾選後可單獨覆寫股利成長率 g（不必等於 FCFF 終值 g）。二階段時此值即 g₂；SPM 時為公式中的盈餘成長 g。",
+    ddm_err_r_le_g = "計算無效：折現率 r（Ke）必須嚴格大於股利成長率 g。",
+    ddm_err_r_le_g2 = "計算無效：折現率 r（Ke）必須嚴格大於永續股利成長率 g₂。",
+    ddm_err_r_le_0 = "計算無效：折現率 r（Ke）必須大於 0。",
+    ddm_err_two_stage = "二階段 DDM 無法計算，請檢查 g1／g2／r／年數。",
+    ddm_err_spm_eps = "SPM 需要有效 EPS：請至 D0 分頁填入預估／最新 EPS。",
+    ddm_err_spm = "SPM 無法計算，請檢查 EPS／D0／g／r。",
+    ddm_reset_msg = "DDM 參數已回復預設",
+    kpi_legend_focus_metric = "金 · 本財報屬性關鍵指標",
+    fund_profile_label = "財報屬性",
+    fund_profile_holding_asset = "控股／資產導向",
+    fund_profile_financial_book = "金融／帳面驅動",
+    fund_profile_growth = "高成長",
+    fund_profile_capital_intensive = "資本密集",
+    fund_profile_mature_dividend = "成熟配息",
+    fund_profile_cyclical_volatile = "景氣循環／高波動",
+    fund_profile_asset_light = "輕資產高毛利",
+    fund_profile_fallback = "資料受限",
+    fund_profile_why_holding_asset = "以帳面淨資產與槓桿為錨；交叉閱讀 ROA／ROE。",
+    fund_profile_why_financial_book = "資本與淨值為尺；優先 ROE／ROA／槓桿，並對照 PE／Beta。",
+    fund_profile_why_growth = "成長動能優先：營收／毛利成長、毛利率與營業現金成長。",
+    fund_profile_why_capital_intensive = "重資產：看 ROA、資產週轉、現金品質與毛利率。",
+    fund_profile_why_mature_dividend = "配息穩定：淨利率、ROE、OCF／淨利與 Yield／PE。",
+    fund_profile_why_cyclical_volatile = "波動高：先看槓桿與現金品質，再讀毛利率與成長。",
+    fund_profile_why_asset_light = "輕資產：毛利率、費用比、成長與 ROE。",
+    fund_profile_why_fallback = "資料不足；請先讀完整 Annotation 表，勿僅依單一數字。",
+    btn_run_bt = "執行回測",
+    btn_lab_im_run = "搜尋績優股",
+    bluechip_blurb_tw = paste0(
+      "依據臺灣證券交易所與櫃買中心公開名單，篩選台股績優候選標的（範圍僅含上市與上櫃；不含興櫃，因其流動性與 Yahoo 資料覆蓋相對不穩）。",
+      "「搜尋績優股」先依產業與適用評價模型篩選，再以候選截斷邏輯取較大評估池後評分，",
+      "明細／排行最多顯示宇宙檔數 N 檔合格列（條件不足時不湊滿）。",
+      "排行榜另以 Piotroski 高門檻（F-Score≥7；與盈餘品質指標無涉）過濾，",
+      "並依 App 預設 n＝%d 年之隱含年化估值漲幅排序。主搜尋支援上市／上櫃／興櫃查詢（純數字代號或中文名稱）。",
+      "N＝分析後最終顯示上限，非 Yahoo 撈取檔數。"
+    ),
+    bluechip_blurb_us = paste0(
+      "自 Nasdaq／NYSE／NYSE American 主要上市全市場目錄篩選美股績優候選（非僅限 S&P 500；勾選「含 ADR」時納入 ADR／外國發行人）。",
+      "「搜尋績優股」順序：產業×模型篩選 →（可選）排除 ADR → 對該宇宙池套用候選截斷邏輯",
+      "（市值／概念股／近一年漲幅／隨機）→ 取較大評估池評分 → 明細／排行最多顯示宇宙檔數 N 檔合格列（條件不足時不湊滿）。",
+      "排行榜另以 Piotroski 高門檻（F-Score≥7）過濾，並依 App 預設 n＝%d 年之隱含年化估值漲幅排序。",
+      "N＝分析後最終顯示上限，非 Yahoo 撈取檔數。"
+    ),
+    lab_im_max_n_label = "宇宙檔數（N）",
+    lab_im_max_n_custom_label = "自訂檔數",
+    lab_im_pool_rank_label = "候選截斷邏輯",
+    lab_im_concepts_label = "概念股群",
+    lab_im_concepts_placeholder = "選擇一或多個概念股群…",
+    lab_im_include_adr_label = "含 ADR",
+    lab_im_include_adr_hint = paste0(
+      "預設勾選：評估池含美股上市 ADR／外國發行人；",
+      "取消勾選則排除 ADR 後再套用候選截斷與評估。"
+    ),
+    lab_im_eq_label = "盈餘品質",
+    lab_im_eq_hint = paste0(
+      "預設勾選：排行榜／明細只列盈餘品質通過者；",
+      "取消勾選則不過濾。合格不足 N 時不湊滿。"
+    ),
+    lab_im_eq_explain_title = "盈餘品質：",
+    lab_im_eq_explain_body = paste0(
+      "預設勾選時，排行榜只列通過盈餘品質檢核者（OCF 與營運獲利交叉比對，",
+      "協助排除現金流與帳面獲利落差過大的標的）；取消勾選則不過濾。",
+      "合格不足 N 時不湊滿。"
+    ),
+    lab_im_lb_status = paste0(
+      "前十名顯示 %d／10（合格 %d／已評估 %d）。",
+      "N＝分析後顯示上限；前十名只取合格者最多 10 檔，不會為湊滿 10 而另抽樣。"
+    ),
+    lab_im_lb_status_by_ind = paste0(
+      "依產業前十名共顯示 %d 列（合格 %d／已評估 %d）。",
+      "各產業各自最多 10 檔；N＝顯示上限，不會為湊滿而另抽樣。"
+    ),
+    lab_im_lb_empty = paste0(
+      "前十名尚無列可顯示。已評估 %d 檔；能量到年化漲幅 %d；F-Score≥7 通過 %d；目前勾選條件下合格 %d。",
+      "說明：N 是分析後顯示上限，前十名只從「合格者」取最多 10 檔，不會補足到 10。",
+      "可取消「盈餘品質」或「Piotroski 高門檻」（F-Score≥7），或提高 N／放寬產業後再搜尋。"
+    ),
+    lab_im_detail_intro = paste0(
+      "本次已評估檔的明細（按年化估值漲幅排序）。",
+      "宇宙檔數（N）＝分析後最終顯示上限：候選截斷與評分後，最多顯示 N 檔合格列；",
+      "條件不足時不湊滿。"
+    ),
+    lab_im_lb_mode_label = "排行視角",
+    lab_im_lb_mode_overall = "整體前十名",
+    lab_im_lb_mode_by_industry = "依產業前十名",
+    lab_im_lb_scope_help = paste0(
+      "整體前十名：跨產業依年化估值漲幅取 Top 10，並顯示產業欄。",
+      "依產業前十名：每個產業各自列出 Top 10。",
+      "前十名只從合格者取最多 10 檔；合格不足 10 時不會湊滿。"
+    ),
+    lab_im_gate_label = "Piotroski 高門檻",
+    lab_im_gate_hint = paste0(
+      "預設勾選：前十名與明細只列 Piotroski F-Score≥7（品質檢核）者；",
+      "取消勾選則不設 F-Score 門檻。合格不足 N 或不足 10 時不會湊滿。"
+    ),
+    lab_im_run_title = "Piotroski 高門檻（F-Score≥7）＋年化估值漲幅排序",
+    lab_im_progress = "評估中（Piotroski 高門檻＋{n} 年年化估值漲幅）…",
+    lab_im_done_gate = "完成評估 {n} 檔；Piotroski 高門檻通過 {q} 檔",
+    lab_im_gate_on = "F-Score≥7",
+    lab_im_gate_off = "不設 F-Score 門檻",
+    bt_analysis_freq = "分析頻率（估值日 Date_t）",
+    bt_freq_monthly = "每月",
+    bt_freq_quarterly = "每季",
+    bt_freq_yearly = "每年",
+    bt_freq_hint = "僅顯示資料可支持之頻率：有完整每月序列才顯示「每月」；僅有季頻則只顯示「每季」。美股／台股相同。",
+    bt_freq_insufficient = "股價歷史不足，尚無可用分析頻率。",
+    hfv_page_title = "歷史基本面驗證",
+    hfv_page_sub = paste0(
+      "以時點還原的理論合理價對照實際市價：下期漲跌機率、相對 FV 位置／幅度，以及歷史情境分類。",
+      "這是一份驗證報告，不是交易策略回測（量化回測請至「量化回測實驗室」）。"
+    ),
+    hfv_ch1_kicker = "第一章",
+    hfv_ch1_title = "合理價與市價",
+    hfv_ch2_kicker = "第二章",
+    hfv_ch2_title = "驗證發現",
+    hfv_param_inv_title = "美股估值復盤參數盤點（Live vs Hist PIT）",
+    hfv_param_inv_help = paste0(
+      "歷史點理論估值使用當時可得資料重建；",
+      "hist DCF 優先 NOPAT／D&A／CapEx／ΔNWC 邊際路徑，否則退回 Gordon 幾何 FCF0×(1+g)^t；",
+      "不是 Live DCF 分頁的營收→NOPAT／CapEx／ΔNWC 預測表。"
+    ),
+    hfv_analysis_freq_label = "分析頻率",
+    hfv_method_data_note = paste0(
+      "資料注意：Yahoo 年報可能為重編；PIT 採嚴格申報滯後（財報期末＋約 90 日；無期末日則該列不採用，不作軟性 bypass）。",
+      "歷史點近期末成長 g 與終值 SGR 分開；缺 CapEx／ΔNWC 時不捏造為 0（margin DCF 改不可用／幾何 FCF 僅在有觀測 FCF 時）。",
+      "台股上櫃／興櫃 Yahoo 空時可補櫃買財務資料簡報（IS／BS；不捏造 CF）。上市櫃 MOPS／美股 SEC as-filed 仍待後續接入。",
+      "小樣本（n＜5）僅供參考，非預測保證。"
+    ),
+    hfv_method_body = paste0(
+      "不是交易策略回測，也不是券商下單指令。驗證樣本上有三層口徑：",
+      "（1）市價下期漲跌 R=(P_{t+1}-P_t)/P_t ——其中 R>0 的比例即下期上漲頻率 P(up)，並以目前安全邊際（MOS）分組之條件機率作為展望；",
+      "（2）相對理論 FV_t（＝下方「復盤模型」單選之一；非圖表複選平均）落在之上／之下與幅度 (P_{t+1}-FV_t)/FV_t；",
+      "（3）歷史情境分類：相鄰估值日的復盤 FV＋市價 → 三訊號（價值錯位＝當期FV−當期市價／MOS、基本面動能＝當期FV−前期FV、價格動能＝當期市價−前期市價）→ 情境 A–D",
+      "（錯殺黃金坑／戴維斯雙擊／價值陷阱／泡沫炒作；未符合帶寬則為 other）。",
+      "圖表可複選疊多條模型線；機率／幅度／情境／P(up) 僅依復盤模型單選。"
+    ),
+    hfv_scenario_thresh_note = paste0(
+      "情境帶寬啟發式（工程預設，非學術標準）：動能持平 |Δ|/前期 ≤ 2%；",
+      "Price ≈ FV 當 |MOS| ≤ 10%；Price ≪ FV 當 MOS ≥ 20%；Price ≫ FV 當 MOS ≤ −20%；",
+      "情境 D 另要求價格動能 ≥ +5%。",
+      "FV 垃圾進會誤分類；市場可長期非理性且仍可能需催化劑。"
+    ),
+    hfv_chart_models_label = "圖表疊加模型",
+    hfv_rel_models_note = paste0(
+      "Multiples／SOTP 為 Implied Price 引擎（非歷史 Fair Value）——",
+      "無法作為 HFV 圖表疊加。"
+    ),
+    lab_im_methods_label = "模型",
+    ms_card_multiples_formula = "Implied Price：P/E · EV/* · P/S",
+    ms_card_multiples_notes = paste0(
+      "市場倍數交叉檢核（非 Intrinsic Value）；",
+      "高成長／無形資產常作副模型。"
+    ),
+    ms_card_sotp_formula = "Σ(部門營收 × EV/Sales) − Net Debt",
+    ms_card_sotp_notes = paste0(
+      "結構型分部加總；控股／綜合常作 NAV 之交叉檢核",
+      "（需多部門營收）。"
+    ),
+    hfv_replay_model_label = "復盤模型",
+    hfv_session_params_title = "此刻參數（Session）",
+    hfv_data_sources_label = "本次基本面資料來源",
+    lab_notes_title = "量化回測實驗室",
+    lab_notes_sub = paste0(
+      "點對點（PIT）策略淨值與持倉閘門：先看績效與財富指數圖，再看部位軌跡與相對買進持有。",
+      "各章節相關控制收在章節下方（預設收合）。此為量化回測報告，非歷史基本面驗證（請至「歷史基本面驗證」）。"
+    ),
+    bt_zone_title = "量化回測實驗室",
+    bt_toolbar_aria = "量化回測執行控制",
+    bt_nav_controls_aria = "累積區間控制",
+    bt_nav_window_label = "累積區間（各序列在區間起點重設為 1）",
+    bt_sec_nav_controls = "累積區間與圖表控制",
+    bt_ch1_kicker = "第一章",
+    bt_ch1_title = "績效摘要",
+    bt_ch2_kicker = "第二章",
+    bt_ch2_title = "策略淨值（財富指數，起始＝1）",
+    bt_ch2_lead = paste0(
+      "這是財富指數，不是每股價格。兩者共用持倉閘門，部位路徑不同——",
+      "基本面策略淨值＝Exp_A×日報酬；情緒策略淨值＝Exp_B×日報酬（Exp_A 混入動能／RSI）。",
+      "歷史基本面驗證折現圖上的實際股價與本圖無對應關係。"
+    ),
+    bt_ch3_kicker = "第三章",
+    bt_ch3_title = "部位軌跡與相對買進持有",
+    bt_ch4_kicker = "第四章",
+    bt_ch4_title = "訊號驗證：MOS 與 Fair Value",
+    bt_ch4_lead = paste0(
+      "檢查「低估是否伴隨較佳前瞻報酬」——回測訊號能否成立的核心。",
+      "參數敏感度請改看 YNOW 分頁（WACC×g 矩陣）。"
+    ),
+    bt_exposure_title = "兩模式部位軌跡（Exposure）",
+    bt_bh_gap_title = "相對買進持有",
+    bt_mos_eff_title = "MOS 有效性",
+    bt_mos_eff_hint = "依 MOS 分組統計 1Y／3Y／5Y 前瞻報酬：MOS 愈高是否報酬愈好？",
+    bt_fv_edge_title = "Fair Value 預測能力",
+    bt_leg_fund_label = "基本面策略淨值",
+    bt_leg_fund_body = "（橘線）＝持倉條件＋MOS 部位 × 日報酬，從 1 起算。",
+    bt_leg_sent_label = "情緒策略淨值",
+    bt_leg_sent_body = "（藍線）＝在 Exp_A 上混入動能／RSI；參數見第四章「情緒策略」。",
+    bt_leg_bh_label = "該股買進持有",
+    bt_leg_bh_body = "（綠）全程 100% 的財富指數；",
+    bt_leg_bench_label = "大盤",
+    bt_leg_bench_body = "（灰虛）依市場模式為 SPY 或 0050.TW 財富指數。",
+    bt_leg_hfv_note = "每股合理價 vs 實際股價見側邊「歷史基本面驗證」折現圖，勿與本圖混比。",
+    bt_sec_hold_gate = "持倉閘門：持倉回測條件",
+    bt_hold_gate_intro = paste0(
+      "再平衡日（依所選分析頻率：每月／每季／每年）四項皆過才允許持倉；",
+      "否則基本面／情緒策略皆空手（Exp_A＝Exp_B＝0）。門檻與回測引擎、「KPI 濾鏡」共用。"
+    ),
+    bt_net_margin_label = "淨利率門檻 (%)",
+    bt_rev_growth_label = "營收成長門檻 (%)",
+    bt_eps_growth_label = "EPS／淨利成長門檻 (%)",
+    bt_fcf_cv_label = "FCF 變異係數上限 (%)",
+    bt_kpi_filter_label = "KPI 濾鏡",
+    btn_bt_kpi_filter = "比對目前公司",
+    bt_kpi_filter_hint = "用 Dashboard 已載入公司的 KPI 對照上列門檻（與回測 Great Filter 同一套）。",
+    bt_sec_run_controls = "執行控制與參數同步",
+    bt_param_auto_label = "自動同步參數（換股時依財報推導）",
+    bt_param_auto_hint = paste0(
+      "勾選後，搜尋／載入新公司時會自動覆寫持倉門檻、曝險／情緒權重，",
+      "並對齊「歷史基本面驗證」推薦估值模型。手動改參數會自動取消勾選。"
+    ),
+    btn_bt_refresh_params = "立即依目前公司重算一次",
+    bt_refresh_params_hint = "單次動作：立刻用目前公司財報重算門檻／權重（可在取消自動後使用）。",
+    bt_sec_strategy_params = "策略參數",
+    bt_params_gate_note = paste0(
+      "持倉閘門（淨利率／營收成長／EPS 成長／FCF 波動，未過則 Exp_A＝0）見第三章。",
+      "此處只調部位與情緒權重。"
+    ),
+    bt_tab_fundamental = "基本面策略",
+    bt_tab_sentiment = "情緒策略",
+    bt_fund_intro = "模式 A：Exp_A → 淨值圖橘線。依 MOS 分級決定部位；MOS 來自「歷史基本面驗證」復盤模型合理價。",
+    bt_w_vg_label = "MOS／Value Gap 權重（曝險）",
+    bt_w_vg_hint = "越大越依 MOS 分級減碼；越小越接近固定中性部位。",
+    bt_mos_ladder_title = "MOS 滯後曝險（基準圖）",
+    bt_mos_ladder_body = paste0(
+      "MOS≥30%→接近最大持股；≥10%→約 72%×上限；≥0%→約 44%×上限；≥−10%→約 17%×上限；否則空手。",
+      "（最大／最低持股與「貼近買進持有」在「情緒策略」。）"
+    ),
+    bt_sent_intro = paste0(
+      "模式 B：在 Exp_A 上混入動能／RSI（熱→偏滿持股、冷→偏保守），",
+      "藍線為情緒策略淨值（從 1 起算）。與折現圖的實際股價無關。"
+    ),
+    bt_w_mom_label = "動能相對權重",
+    bt_w_mom_hint = "與 RSI 組成情緒分數，再與 Exp_A 混合。",
+    bt_w_rsi_label = "RSI 相對權重",
+    bt_w_rsi_hint = "過熱降低情緒目標；超賣提高。",
+    bt_max_exp_label = "最大持股上限",
+    bt_max_exp_hint = "拉到 1.00 可消除結構性少倉，利於貼近買進持有。",
+    bt_min_exp_label = "通過條件後最低持股",
+    bt_min_exp_hint = "持倉條件通過且非極度高估時的地板部位。",
+    btn_bt_fit_bh = "貼近買進持有",
+    bt_fit_bh_hint = "一鍵：最大持股=100%、最低持股=40%、w_vg=0.35（弱化減碼）。會關閉自動同步。",
+    bt_sec_methodology = "資料來源與方法論註解",
+    box_hfv_discount = "折現比較（合理價 vs 實際股價）",
+    box_hfv_validation = "歷史基本面驗證：漲跌機率、相對 FV 與情境分類",
+    box_hfv_param_inventory = "美股估值復盤參數盤點（Live vs Hist PIT）",
+    hfv_fb_title = "預設／fallback 提醒",
+    hfv_fb_item_fmt = "%s — %s（約 %d 個估值點）",
+    hfv_sum_title = "驗證結果",
+    hfv_sum_conclusion_label = "結論",
+    hfv_sum_conclusion_fmt = "下期上漲頻率 ≈ %s（n＝%d）",
+    hfv_sum_conclusion_def = paste0(
+      "定義：歷史配對中 P_{t+1} > P_t 的比例，即 R=(P下一期−P)/P > 0；",
+      "口徑＝目前「問題一」／驗證樣本口徑。不是趨近 FV，也不是落在 FV 之上。"
+    ),
+    hfv_sum_conclusion_caveat = "僅為本驗證樣本上的描述性頻率，非對下期的預測保證。",
+    hfv_sum_conclusion_na = "尚無結論：需在目前驗證樣本口徑下有已實現下期配對（並選擇復盤模型）。",
+    hfv_sum_price_block = "問題一・市價下期漲跌",
+    hfv_sum_price_formula = "R = (P下一期 − P) / P",
+    hfv_sum_mos_block = "安全邊際（MOS）分組展望（該股自身歷史）",
+    hfv_sum_fv_block = "問題二・相對理論 FV",
+    hfv_sum_fv_formula = "(P下一期 − FV) / FV — 與漲跌不同口徑",
+    hfv_sum_scenario_block = "問題三・歷史情境分類",
+    hfv_sum_scenario_formula = "三訊號：價值錯位＝當期FV−當期市價；基本面動能；價格動能 — 僅復盤模型",
+    hfv_sum_scenario_matrix = paste0(
+      "A 錯殺黃金坑：FV↑、Price↓、Price ≪ FV · ",
+      "B 戴維斯雙擊：FV↑、Price↑、Price ≈ FV · ",
+      "C 價值陷阱：FV↓、Price↓、Price < FV · ",
+      "D 泡沫炒作：FV≤持平、Price 強升、Price ≫ FV · ",
+      "other＝未歸類（不硬套 A–D 結論）。"
+    ),
+    hfv_sum_scenario_caveat = paste0(
+      "名稱是分類學標籤，不是 Strong Buy／Strong Sell 下單指令。",
+      "帶寬、FV 品質與時機請見上方說明。"
+    ),
+    hfv_sum_scenario_empty = "目前驗證樣本口徑下無可分類的相鄰估值日配對。",
+    hfv_scenario_A = "A · 錯殺黃金坑",
+    hfv_scenario_B = "B · 戴維斯雙擊",
+    hfv_scenario_C = "C · 價值陷阱",
+    hfv_scenario_D = "D · 泡沫炒作",
+    hfv_scenario_other = "other · 未歸類",
+    hfv_scenario_cue_A = "FV↑ · Price↓ · Price ≪ FV",
+    hfv_scenario_cue_B = "FV↑ · Price↑ · Price ≈ FV",
+    hfv_scenario_cue_C = "FV↓ · Price↓ · Price < FV",
+    hfv_scenario_cue_D = "FV≤flat · Price↑↑ · Price ≫ FV",
+    hfv_scenario_stat_fmt = "%s · n＝%d",
+    hfv_scenario_other_line = "未歸類（other）：%s（n＝%d）",
+    hfv_scenario_lead_badge = "出現最多",
+    hfv_scenario_concl_scope_lead = "樣本最常見",
+    hfv_scenario_concl_scope_latest = "最近一期情境",
+    hfv_scenario_concl_lead_fmt = "樣本最常見（%s · n＝%d）",
+    hfv_scenario_concl_latest_fmt = "最近一期情境（%s → %s）",
+    hfv_scenario_concl_latest_nodate = "最近一期情境",
+    hfv_scenario_concl_A_lead = "強烈看漲。",
+    hfv_scenario_concl_A_body = "體質正在變好，但市場恐慌錯殺。這是最佳的左側買點。",
+    hfv_scenario_concl_B_lead = "順勢看漲。",
+    hfv_scenario_concl_B_body = "基本面推動股價上漲，市場處於健康的「價格發現」階段。適合右側追價持有。",
+    hfv_scenario_concl_C_lead = "看跌或盤整。",
+    hfv_scenario_concl_C_body = "股價看起來很便宜，但其實是公司基本面正在爛掉，市場聰明錢正在逃跑。",
+    hfv_scenario_concl_C_emph = "絕對不要買。",
+    hfv_scenario_concl_D_lead = "強烈看跌。",
+    hfv_scenario_concl_D_body = "靠資金盤或題材炒作，沒有基本面支撐。一旦熱度消退，隨時面臨崩盤，適合放空或獲利了結。",
+    hfv_scenario_concl_other = "此配對未歸入 A–D 情境帶寬，不硬套 A–D 結論。請對照上方閾值說明，檢視價值錯位／基本面動能／價格動能。",
+    hfv_scenario_concl_none_abcd = "樣本中沒有出現最多的 A–D 情境（皆未歸類或為空），故不顯示「樣本最常見」結論。",
+    hfv_scenario_concl_note = "此為樣本最常見與／或最近一期已分類情境的解讀，不是券商下單指令。FV 品質與時機仍需自行判斷（見上方說明）。",
+    hfv_sum_empty = "載入標的並選擇復盤模型後，將顯示市價下期漲跌機率、相對 FV 統計與情境分類。復盤結果僅依所選單一復盤模型（非圖表複選）。",
+    hfv_sum_notes = "結果附註",
+    hfv_sec_method = "如何閱讀本報告",
+    hfv_sec_settings = "報告條件",
+    hfv_sec_results = "摘要結論",
+    hfv_chart_gap = "幅度 (P下一期 − FV) / FV",
+    hfv_table_detail = "逐期明細",
+    hfv_oos_mode_label = "驗證樣本口徑",
+    hfv_oos_realized = "僅計已實現下期（預設）",
+    hfv_oos_expanding = "擴張視窗樣本外命中",
+    hfv_oos_insample = "含未實現下期（樣本內）",
+    hfv_win_custom = "自訂",
+    # --- HFV 報告內文（第一／二章發現） ---
+    hfv_val_hint_search = paste0(
+      "搜尋股票後將預先顯示股價與大盤；勾選「圖表模型」可疊合理價線；",
+      "「復盤模型」單選驅動下方驗證統計與策略 FV／MOS。"
+    ),
+    hfv_val_hint_price_only = paste0(
+      "已顯示實際股價與大盤。勾選「圖表模型」以疊合理價線；",
+      "驗證機率／幅度依「復盤模型」單選（非圖表平均）。"
+    ),
+    hfv_val_hint_no_summary = "尚無估值摘要。",
+    hfv_kpi_hist_pricing = "歷史市場定價",
+    hfv_kpi_under_rate = "市場低估率",
+    hfv_kpi_under_note = "股價低於模型合理價的再平衡日佔比",
+    hfv_kpi_last_signal = "最近訊號",
+    hfv_kpi_signal_note = "便宜（P<FV）＝市價低於模型；偏貴（P>FV）＝市價高於模型",
+    hfv_kpi_mean_mos = "平均 MOS",
+    hfv_bias_undervalued = "價值被低估",
+    hfv_bias_overvalued = "價值被高估",
+    hfv_bias_na = "資料不足",
+    hfv_sig_cheap = "便宜（P<FV）",
+    hfv_sig_expensive = "偏貴（P>FV）",
+    hfv_sig_na = "資料不足",
+    hfv_param_chart_models = "圖表模型",
+    hfv_param_replay_model = "復盤模型",
+    hfv_param_n_years = "n（年）",
+    hfv_empty_need_search = "請先搜尋股票以載入歷史股價",
+    hfv_empty_price_cols = "歷史股價欄位不足，請重新搜尋",
+    hfv_series_price = "實際股價",
+    hfv_series_bench = "大盤",
+    hfv_marker_rebal_fv = "再平衡 FV",
+    hfv_hover_rebal = "再平衡",
+    hfv_chart_title_fv = "折現比較（合理價 vs 實際股價）",
+    hfv_chart_title_bench = "折現比較（實際股價 vs 大盤）",
+    hfv_chart_title_price = "折現比較（實際股價）",
+    hfv_yaxis_per_share = "每股（{ccy} · 報價幣，未換算）",
+    hfv_yaxis_bench = "大盤價格",
+    hfv_empty_plot_fail = "折現比較暫無法繪製：{err}",
+    hfv_period_range_fmt = "統計期間：%s ～ %s",
+    hfv_period_all = "統計期間：全部估值日配對",
+    hfv_mos_now_fmt = "目前安全邊際（MOS）＝%+.1f%% → 分組「%s」（n＝%d%s）",
+    hfv_mos_small_sample = "，小樣本",
+    hfv_mos_bucket_hist_fmt = "該分組歷史下期：上漲機率 %s · 下跌 %s · 報酬中位 %s、平均 %s",
+    hfv_mos_outlook_empty = "目前無可用的 MOS 分組展望。",
+    hfv_pair_n_fmt = "配對數 n＝%d",
+    hfv_price_odds_fmt = "上漲機率 %s（%d）· 下跌 %s（%d）· 持平 %s（%d）",
+    hfv_next_ret_fmt = "下期報酬：中位 %s、平均 %s",
+    hfv_oos_dir_hit_fmt = "擴張窗漲跌方向命中率 %s（n＝%d）",
+    hfv_fv_odds_fmt = "之上機率 %s（%d）· 之下 %s（%d）· 持平 %s（%d）",
+    hfv_gap_stats_fmt = paste0(
+      "幅度 (P−FV)/FV：全體中位 %s、平均 %s；",
+      "之上中位 %s；之下中位 %s；|幅度|中位 %s"
+    ),
+    hfv_oos_fv_hit_fmt = "擴張窗相對 FV 命中率 %s（n＝%d）",
+    hfv_badge_small_sample = "（小樣本）",
+    hfv_badge_no_strategy_fv = "（無策略 FV）",
+    hfv_table_need_replay = "無復盤理論 FV：請先選擇復盤模型（結果僅依單選模型）",
+    hfv_table_no_pairs = "選定期間內無配對資料",
+    hfv_col_date = "估值日",
+    hfv_col_next_date = "下期日",
+    hfv_col_price = "當期市價",
+    hfv_col_fv = "理論FV",
+    hfv_col_next_price = "下期市價",
+    hfv_col_next_ret = "下期報酬",
+    hfv_col_dir = "市價漲跌",
+    hfv_col_gap = "幅度(P−FV)/FV",
+    hfv_col_vs_fv = "相對FV",
+    hfv_col_scenario = "歷史情境",
+    hfv_col_fallback = "預設／fallback",
+    hfv_dir_up = "漲",
+    hfv_dir_down = "跌",
+    hfv_dir_flat = "平",
+    hfv_vs_above = "之上",
+    hfv_vs_below = "之下",
+    hfv_vs_flat = "持平",
+    hfv_plot_need_data = "請先載入標的並完成估值驗證",
+    hfv_freq_switched_msg = paste0(
+      "已切換為%s分析頻率；策略淨值需重新「執行回測」",
+      "（Date_t 再平衡日已變更）。"
+    ),
+    hfv_freq_rebuild_progress = "以%s頻率重建基本面價值…",
+    hfv_toolbar_aria = "HFV 報告條件",
+    hfv_chart_overlay_aria = "HFV 圖表疊加控制",
+    funnel_mom_cond1_label = "Cond1：",
+    funnel_mom_cond2_label = "Cond2：",
+
+    # --- tabBox headers ---
+    box_financial_report = "財務報表",
+    box_performance = "績效指標",
+    box_dividend_discount = "股利折現 DDM",
+    box_discounted_cf = "折現現金流 DCF",
+    box_sensitivity = "敏感度分析",
+    box_residual_income = "剩餘收益 RI",
+    box_pb_asset = "P/B 與相對估值",
+    box_nav = "NET ASSET VALUE",
+    box_blue_chip = "績優股排行榜",
+    box_beta = "Beta β",
+    box_sgr = "SUSTAINABLE GROWTH RATE",
+    box_model_guide = "模型選擇決策指南",
+    box_bt_params = "策略參數設定",
+    # --- SGR tab (Basic Setup) ---
+    sgr_method_title = "終值永續成長率 (SGR) 評價方法",
+    lifecycle_stage_title = "生命週期階段",
+    lifecycle_stage_help = paste0(
+      "自動偵測採多因子評分（成長、利潤率、FCF、ROIC−WACC、再投資）。",
+      "手動選擇不會被覆寫。選項名稱不含固定終值 g。"
+    ),
+    sgr_method_help = paste0(
+      "Macro：採用即時抓取的市場 10 年期公債 Rf",
+      "（美股 Yahoo ^TNX；台股櫃買 TPEx 公債殖利率曲線 10 年期；",
+      "失敗則最近成功值，再失敗才工程 fallback 並標明）。",
+      "Fundamental：Retention×ROE（僅適合成熟穩健企業）。",
+      "Lifecycle：以經濟錨定估計終值 g，生命週期檔位不寫入固定百分比。"
+    ),
+    sgr_method_opt_macro = "總體經濟錨定（Macro）",
+    sgr_method_opt_fundamental = "基本面公式（Fundamental／SGR）",
+    sgr_method_opt_lifecycle = "產業生命週期（Lifecycle）",
+    lifecycle_opt_auto = "自動偵測",
+    lifecycle_opt_high_growth = "High Growth",
+    lifecycle_opt_growth_to_mature = "Growth-to-Mature",
+    lifecycle_opt_mature_growth = "Mature Growth",
+    lifecycle_opt_mature_stable = "Mature Stable",
+    lifecycle_opt_declining = "Declining / Finite Life",
+    lifecycle_opt_utility = "Regulated Utility",
+    lifecycle_opt_financial = "Financial Institution",
+    lifecycle_opt_sunset = "舊版：高度成熟／金融公用",
+    lifecycle_opt_tech = "舊版：成熟科技產業",
+    lifecycle_opt_growth = "Growth-to-Mature",
+    lifecycle_opt_general = "舊版：一般成熟",
+    lifecycle_auto_detected = "自動偵測階段：",
+    lifecycle_selected = "目前採用階段：",
+    lifecycle_secondary = "第二候選：",
+    lifecycle_confidence = "信心分數：",
+    lifecycle_completeness = "資料完整度：",
+    lifecycle_reasons = "分類理由",
+    lifecycle_missing = "缺漏輸入：",
+    lifecycle_forecast_years = "建議明確預測年數：",
+    lifecycle_mode_auto = "選擇模式：自動",
+    lifecycle_mode_manual = "選擇模式：手動",
+    lifecycle_rec_adopted = "實際採用模型：",
+    lifecycle_rec_suggested = "推薦模型：",
+    lifecycle_terminal_summary = "終值假設（經濟錨定，非檔位固定 g）",
+    sgr_suggest_adopted = "估計法建議：已採用建議方法 — ",
+    sgr_suggest_pending = "估計法建議：",
+    sgr_suggest_evidence_prefix = "客觀依據：",
+    sgr_suggest_auto_tier = "自動檔位＝",
+    sgr_suggest_apply = "套用建議：",
+    sgr_estimate_reason_prefix = "目前 g 估計：",
+    sgr_manual_help = "可由上方方法自動估計，亦可手動覆寫。",
+    sgr_custom_label = "自訂 SGR (%)",
+    industry_overview_title = "目前產業標準快覽",
+    smart_page_title = "智慧分析",
+    smart_page_sub = paste0(
+      "依股票性質自動判別主／副模型，辨識參數情境（Two-Stage／Gordon、SGR 法、claim），",
+      "套用最合理預設後試算並顯示合理價圖表；不開放手動模型設定。"
+    ),
+    smart_chart_title = "合理價比較",
+    smart_primary_kicker = "主模型",
+    smart_secondary_kicker = "副模型",
+    smart_price_kicker = "目前市價",
+    smart_mos_kicker = "MOS（相對主模型 Base）",
+    smart_waiting = "請先搜尋股票代號，以啟動智慧分析。",
+    smart_calc_pending = "正在辨識參數情境並計算…",
+    smart_reason_title = "模型判別理由",
+    smart_scenario_title = "已套用參數情境：",
+    smart_scenario_two_stage = "Two-Stage DCF",
+    smart_scenario_gordon = "Gordon DCF",
+    smart_scenario_sgr = "SGR 估計法＝",
+    smart_scenario_claim = "現金流＝",
+    lite_toggle_title = "點擊切換簡化版／完整版",
+    lite_toggle_aria = "切換簡化版",
+    composite_status_prefix = "綜合估值狀態：",
+    composite_main_model = "主模型：",
+    composite_sub_model = "副模型：",
+    composite_confidence_prefix = "可信度：",
+    composite_confidence_calculating = "計算中",
+    composite_upside_prefix = "潛在報酬 ",
+    composite_secondary_check = "副模型檢核",
+    composite_fair = "合理區間",
+    composite_undervalued = "低估（相對 Base）",
+    composite_overvalued = "高估（相對 Base）",
+    composite_status_pending = "—",
+    composite_waiting_market = "正在等待市場資料…",
+    composite_waiting_val = "等待估值結果…",
+    composite_current_price = "目前市價",
+    composite_footer_note = "藍帶 = 主模型 Bear–Bull；上方點為 Base。僅顯示本工作階段已按過試算的模型標記（樣式與目前市價相同；★ 主模型、◇ 副模型）。",
+    vbx_sgr_subtitle = "SGR",
+    vbx_session_g_subtitle = "當前設定 g（近期末）",
+    g_stage1_help = paste0(
+      "預設帶入「預估營收成長率」；可手動覆寫。",
+      "終值成長率仍用基礎設定的 SGR。"
+    ),
+    # --- WACC / rᵈ / CAPM ---
+    wacc_box_title = "WACC 估算",
+    wacc_help = paste0(
+      "WACC = We×rₑ + Wd×rᵈ×(1−T)。",
+      "rᵈ 可由下方「估算 rᵈ」以利息費用／有息負債推估（稅前），再於此套用稅盾。"
+    ),
+    rd_box_title = "估算 rᵈ",
+    rd_interest_label = "利息費用",
+    rd_debt_label = "有息負債",
+    rd_min_label = "估算 rᵈ 下限 (%)",
+    rd_max_label = "估算 rᵈ 上限 (%)",
+    use_estimated_rd_label = "採用估算 rᵈ（利息／有息負債）",
+    btn_calc_rd = "估算 rᵈ",
+    btn_calc_wacc = "計算 WACC",
+    capm_box_title = "CAPM 估算 rₑ",
+    ddm_ke_box_title = "Ke 估算",
+    ddm_ke_help = paste0(
+      "折現率 r = Ke = Rf + β × (Rm − Rf)。與 DCF→WACC「採用估算 rₑ」及 rₑ 數值雙向同步；",
+      "勾選時 r 跟隨 CAPM，取消後可手動覆寫。"
+    ),
+    ddm_use_estimated_ke_label = "採用估算 Ke（來自 CAPM）",
+    btn_calc_ddm_ke = "計算 Ke（CAPM）",
+    ddm_ke_bridge_title = "Ke 與中央 rₑ",
+    ddm_ke_bridge_help = paste0(
+      "DDM 折現率 r＝股權成本 Ke，與 DCF→WACC 的 rₑ 同源（central Ke）。",
+      "勾選「採用估算 Ke」時跟隨 CAPM；取消後可手動覆寫，並與 WACC 分頁 rₑ 雙向同步。",
+      "β 來源請至同模型的 Beta (β) 分頁選擇。"
+    ),
+    ddm_capm_box_title = "CAPM 估算 Ke",
+    btn_calc_ddm_capm = "估算 Ke（CAPM）",
+    sync_gs_beta_label = "與基礎設定同步",
+    beta_source_heading = "β 來源（預設寫入 CAPM）",
+    beta_rolling_help = "Rolling 估計僅供對照，不寫入 CAPM（故不列於上列選項）。",
+    btn_sync_selected_beta = "立即同步所選 β",
+    beta_opt_summary_title = "Yahoo Finance Summary β",
+    beta_opt_summary_help = "Yahoo Finance Summary「Beta (5Y Monthly)」；預設寫入 CAPM。",
+    beta_opt_industry_title = "產業預設 β（{ind}）",
+    beta_opt_industry_help = "所選產業結構 β。",
+    beta_opt_industry_none = "未選產業",
+    beta_opt_bottomup_title = "自選公司平均 Bottom-Up (βᵤ→βe)",
+    beta_opt_bottomup_help = "可比公司去槓桿平均／中位 βᵤ。",
+    beta_opt_unlever_title = "去槓桿化 βᵤ",
+    beta_opt_unlever_help = "Hamada βᵤ = β_L / (1+(1−T)·D/E)。",
+    beta_opt_manual_title = "手動定義 βe",
+
+    # --- CAPM detail labels / Get Started Beta / Rolling ---
+    capm_rf_label = "無風險利率 Rf (%)",
+    capm_rm_label = "市場報酬率 Rm (%)",
+    capm_beta_label_base = "Beta (β)",
+    btn_calc_capm = "估算 rₑ（CAPM）",
+    use_estimated_re_label = "採用估算 rₑ（來自 CAPM）",
+    capm_beta_src_summary = "基礎設定｜Summary β",
+    capm_beta_src_industry = "基礎設定｜產業預設 β",
+    capm_beta_src_bottomup = "基礎設定｜Bottom-Up βᵤ",
+    capm_beta_src_unlever = "基礎設定｜去槓桿化 βᵤ",
+    capm_beta_src_manual = "基礎設定｜手動 β",
+    capm_beta_src_generic = "基礎設定｜β",
+    capm_beta_tag_rolling_excluded = "[Rolling 已排除｜請改其他來源]",
+    capm_beta_tag_synced = "[{src}]",
+    capm_beta_tag_wacc_indep = "[WACC 獨立]",
+    gs_model_selector_title = "Model Selector｜估值模型推薦",
+    gs_beta_overview_help = paste0(
+      "內在價值路徑：預設把 Summary β 寫入 CAPM；可改選產業／Bottom-Up／去槓桿化／手動。",
+      "Rolling 估計僅供對照，不寫入 CAPM。"
+    ),
+    gs_peer_unlever_help = paste0(
+      "左側先填同業、去槓桿後平均（Bottom-Up）。右側為本公司 Hamada 去槓桿與手動 βe。",
+      "寫入 CAPM：到 Beta Overview 或 DCF → Beta 分頁選對應 β 來源。"
+    ),
+    gs_rolling_help = paste0(
+      "用 Rolling β 對照估值結果（含情緒／事件噪音）。",
+      "不會寫入 CAPM；若與 Bottom-Up βᵤ 差距過大，請檢查同業、資本結構、事件與流動性。"
+    ),
+    beta_rolling_settings_title = "預估設定（僅交叉檢驗）",
+    beta_rolling_compare_title = "期間比較",
+    beta_bench_label = "基準指數（Benchmark）",
+    beta_bench_placeholder = "選常見指數，或自行輸入代號…",
+    beta_lookback_label = "回溯期間（對照用）",
+    beta_lookback_1y = "1 年（12 個月）",
+    beta_lookback_2y = "2 年（24 個月）",
+    beta_lookback_5y = "5 年（60 個月，對齊 Yahoo）",
+    beta_rolling_help_body = paste0(
+      "Rolling β 看的是股價對大盤的近期敏感度，容易夾帶市場情緒。",
+      "這裡只拿來和估值 β 對照，不會寫入 CAPM／Ke／WACC。",
+      "β = Cov(Rᵢ, Rₘ) / Var(Rₘ)；可同時看 1Y／2Y／5Y。"
+    ),
+    btn_calc_beta_est = "估計 Rolling β（對照用）",
+    beta_bottomup_heading = "Bottom-Up 同業平均（估值主估計）",
+    beta_peers_label = "同業／競爭對手代號（可多選或自行輸入）",
+    beta_peers_placeholder = "例如 INTC, AMD, AVGO …",
+    beta_bottomup_agg_label = "βᵤ 彙總",
+    beta_bottomup_agg_mean = "平均（Mean）",
+    beta_bottomup_agg_median = "中位數（Median）",
+    beta_bottomup_help = paste0(
+      "流程：可比公司股權 β → 去槓桿 → 平均／中位數 βᵤ。",
+      "未填同業時，改以產業基準 β 與產業負債比作參考值（資料不足備援）。"
+    ),
+    btn_calc_beta_bottomup = "計算 Bottom-Up βᵤ",
+    beta_unlever_heading = "去槓桿化 βᵤ（Hamada）",
+    beta_unlever_help = paste0(
+      "Hamada（假設債務 β≈0）：βᵤ = β_L / (1+(1−T)·D/E)。",
+      "β_L 預設 Yahoo Finance Summary「Beta (5Y Monthly)」；T 取自 WACC；D/E = Total Debt ÷ 股權市值。",
+      "可於 β 來源選「去槓桿化 βᵤ」寫入 CAPM；槓桿 β_L 本身仍不直接寫入 CAPM。"
+    ),
+    beta_manual_heading = "手動定義 βe",
+    beta_manual_help = paste0(
+      "於 β 來源選「手動定義 βe」後，此值會直接寫入 CAPM；",
+      "在此修改數值時也會自動改選手動來源並同步。"
+    ),
+    # --- YNOW 頁（三個直向區塊） ---
+    funnel_page_title = "YNOW",
+    funnel_page_sub = paste0(
+      "點選 MOS／Reliability、品質檢核 (F-Score)、財報警訊框格可捲動至對應區塊。",
+      "兩個區塊由上而下：財報體質（F-Score）→ 財報警訊。",
+      "動態產業泡沫與權重集中度在「總體經濟與大盤趨勢」分頁最下方。",
+      "這是決策輔助報告，不是下單指令。"
+    ),
+    funnel_kpi_jump_mos_aria = "跳至第一章財報體質（MOS 與 Reliability）",
+    funnel_kpi_jump_fscore_aria = "跳至品質檢核 (F-Score) 清單",
+    funnel_kpi_jump_alerts_aria = "跳至第二章財報警訊",
+    funnel_ch1_kicker = "第一章",
+    funnel_ch1_title = "財報體質",
+    funnel_ch1_lead = paste0(
+      "Piotroski F-Score 九項品質檢核與相關品質項目；",
+      "通過／未達標僅供品質檢核，不單獨構成買進理由。"
+    ),
+    funnel_ch2_kicker = "第二章",
+    funnel_ch2_title = "財報警訊",
+    funnel_ch2_lead = paste0(
+      "Schilit 財報詭計自動判讀：警示／觀察優先展開；通過與資料不足項摺疊。",
+      "屬否決／風險提示，非買進訊號。"
+    ),
+    funnel_ch3_kicker = "第三章",
+    funnel_ch3_title = "動態產業泡沫與權重集中度",
+    funnel_ch3_lead = paste0(
+      "主題集中度以所選產業別或概念股籃的市值權重計算（GICS 對應 S&P 500 同業）。",
+      "巴菲特指標為市場層級總市值／GDP（僅供研究顯示，絕不寫入 CAPM／Ke／WACC）。"
+    ),
+    notes_title = "附註",
+    notes_toggle_aria = "展開或收合附註",
+    funnel_sec_method = "如何閱讀本報告",
+    funnel_method_body = paste0(
+      "閱讀順序：先點 MOS／Reliability、品質檢核 (F-Score)、財報警訊框格，",
+      "再依財報體質（F-Score）→ 財報警訊。",
+      "動態產業泡沫與權重集中度在「總體經濟與大盤趨勢」分頁最下方。",
+      "趨勢動能（Timing）輔助在「量化回測實驗室」分頁，不決定合理價。"
+    ),
+    funnel_method_caveat = "標籤與分數僅供研究／決策輔助，不是券商下單指令；HFV 情境僅作否決語境，不作看漲依據。",
+    funnel_fscore_list_title = "F-Score 品質檢核清單",
+    funnel_vbox_fscore = "品質檢核 (F-Score)",
+    fscore_col_item = "檢驗維度",
+    fscore_col_score = "得分",
+    fscore_result_pass = "通過",
+    fscore_result_fail = "未達標",
+    fscore_item_roa_pos = "獲利性 (ROA > 0)",
+    fscore_item_ocf_pos = "獲利性 (OCF > 0)",
+    fscore_item_roa_up = "獲利性 (ROA 成長)",
+    fscore_item_earn_quality = "獲利性 (盈餘品質：OCF > 營業利益)",
+    fscore_item_leverage = "安全性 (槓桿下降)",
+    fscore_item_liquidity = "安全性 (流動比提升)",
+    fscore_item_dilution = "安全性 (未大幅增資)",
+    fscore_item_margin = "效率 (毛利率提升)",
+    fscore_item_turnover = "效率 (資產週轉率提升)",
+    conf_fscore_strong = "F-Score 偏強（品質檢核）",
+    conf_fscore_weak = "F-Score 偏弱（品質檢核）",
+    ann_fscore_crossref = paste0(
+      "提示：資產週轉率、OCF／淨利無同業區間時固定為白；",
+      "現金品質另可對照 YNOW／F-Score 品質檢核中的盈餘品質項。"
+    ),
+    lab_im_gate_on = "F-Score≥7",
+    lab_im_gate_off = "不設 F-Score 門檻",
+    funnel_vbox_mos = "安全邊際 (vs Base)",
+    funnel_vbox_mos_conf = "｜可信度{level}",
+    funnel_vbox_fraud = "財報警訊",
+    funnel_fraud_items = "{n} 項",
+    funnel_pass = "✅ 通過",
+    funnel_fail = "❌ 未達標",
+    funnel_fscore_waiting = "等待財報…",
+    funnel_fscore_n_pass = "通過 {n} 項",
+    funnel_fscore_n_fail = "未達標 {n} 項",
+    funnel_primary_fallback = "主模型",
+    funnel_v_trap_title = "價值陷阱警訊",
+    funnel_v_trap_text = paste0(
+      "財務品質偏弱，或營業現金流難以支撐帳面獲利。",
+      "即便估值看似便宜，亦不宜貿然抄底。"
+    ),
+    funnel_v_hot_over_title = "動能強勁但估值偏高",
+    funnel_v_hot_over_text = paste0(
+      "趨勢動能仍佳，惟市價已高於主模型基準內在價值。",
+      "若已持有可續抱；空手者不宜此時追高。"
+    ),
+    funnel_v_over_weak_title = "估值偏高且動能轉弱",
+    funnel_v_over_weak_text = paste0(
+      "品質檢核通過，但市價已高於基準合理價，且趨勢尚未轉強。",
+      "建議耐心等待拉回再評估。"
+    ),
+    funnel_v_davis_title = "戴維斯雙擊區",
+    funnel_v_davis_text = paste0(
+      "估值具安全邊際、體質佳，且技術動能已確認。",
+      "可分批布局，惟仍應控制部位與風險。"
+    ),
+    funnel_v_value_wait_title = "價值突出、等待趨勢",
+    funnel_v_value_wait_text = paste0(
+      "基本面價值突出，惟市場資金尚未顯著關注。",
+      "可分批布局，待趨勢轉折後再考慮加碼。"
+    ),
+    funnel_v_neutral_title = "觀望中立",
+    funnel_v_neutral_text = paste0(
+      "市價約在主模型合理區間附近，體質穩健。",
+      "可依資產配置彈性決定是否介入。"
+    ),
+    funnel_mom_box_title = "趨勢動能（交易輔助）",
+    funnel_mom_intro = paste0(
+      "技術面 Timing 輔助，不決定合理價。",
+      "決策漏斗以 F-Score／安全邊際為主；此處僅回答「短中期趨勢是否轉多」，供布局節奏參考。"
+    ),
+    funnel_mom_logic_title = "判斷邏輯與條件",
+    funnel_mom_cond1 = "最新收盤價 > SMA(20) 且 > SMA(60)",
+    funnel_mom_cond2 = "SMA(20) > SMA(60)（短均在長均之上）",
+    funnel_mom_bull_rule = "Cond1 與 Cond2 同時成立；否則為「盤整/偏空」。",
+    funnel_mom_data_title = "資料來源",
+    funnel_mom_data_1 = "日收盤價：Yahoo Finance（優先 yfinance；失敗時 quantmod／Yahoo）。",
+    funnel_mom_data_2 = "先抓約 1 年歷史，決策使用近約 180 個交易日；均線以 R 套件 TTR::SMA 計算。",
+    funnel_mom_data_3 = "與回測「情緒策略」的動能／RSI 疊加不同：此處僅雙均線確認，供 YNOW 決策漏斗 Timing。",
+    funnel_mom_bull = "多頭確認",
+    funnel_mom_sideways = "盤整/偏空",
+    funnel_mom_waiting = "搜尋股票並載入約 180 日收盤價後，將顯示均線與條件狀態。",
+    funnel_mom_readings = "即時讀數：",
+    funnel_mom_readings_fmt = "收盤 {p}｜SMA20 {ma20}｜SMA60 {ma60}｜相對 SMA20 {dist}（n≈{n}）",
+    funnel_mom_cond_line = "{c1} Cond1（價 > 雙均）　{c2} Cond2（SMA20 > SMA60）　→　",
+    funnel_shen_skip = "自動判讀略過。",
+    # --- High-traffic notifications (ynow_server) ---
+    notif_market_switched = "已切換至{market}模式（預設 {ticker}；Rf：{rf}；顯示幣別 {ccy}；語言不變）",
+    notif_fx_usd_twd_fail = "無法取得即期 USD/TWD 匯率，已拒絕換匯。",
+    notif_fx_convert_fail = "無法取得即期匯率，已拒絕 USD↔TWD 換匯。",
+    notif_fx_usd_twd_fail_keep = "無法取得即期 USD/TWD 匯率，已拒絕換匯（金額維持原幣或不顯示）。請稍後再試。",
+    notif_bt_filter_cancel = "已取消回測濾鏡。",
+    notif_bt_filter_no_fs = "尚無財報，無法評估回測濾鏡。",
+    notif_bt_filter_fail = "回測濾鏡計算失敗。",
+    notif_bt_filter_pass = "✅ 回測濾鏡：達標（再點一次可取消）",
+    notif_bt_filter_fail_soft = "⚠️ 回測濾鏡：未達標（再點一次可取消）",
+    notif_suggest_two_stage = "模型建議：高成長標的可考慮切換為「二階段成長法」，目前預設仍為明確預測 + Gordon 終值。",
+    notif_sgr_method_switched = "已切換 SGR 估計法為「{label}」（未改寫演算法，僅換方法）。",
+    notif_lifecycle_two_stage = "Lifecycle：高速成長或 Growth-to-Mature。終值 g 為經濟錨定（非檔位固定利率）；若要改用 Two-Stage，請在 DCF 模型手動切換。",
+    notif_rd_estimated = "📌 已估算 rᵈ = {rd}%（利息費用／有息負債）",
+    notif_rolling_beta_ok = "✅ Rolling β = {beta}（{method}，n={n}，基準 {bench}）",
+    notif_est_failed = "❌ {reason}",
+    notif_est_failed_default = "估計失敗",
+    notif_rolling_no_write_capm = "Rolling β 只供對照，不能寫入 CAPM。請改用 Bottom-Up (βᵤ→βe)。",
+    notif_bottomup_need_peers = "Bottom-Up：請先輸入同業代號，或確認已選產業。",
+    notif_bottomup_industry_proxy = "Bottom-Up（產業參考）βᵤ ≈ {beta}",
+    notif_bottomup_fail = "Bottom-Up 失敗：同業資料不足。",
+    notif_bottomup_ok = "✅ Bottom-Up βᵤ = {beta}（n={n}）",
+    notif_beta_applied = "已套用 {label}={beta} 至 CAPM β（供 Ke／WACC）。",
+    notif_decision_tree_no_src = "決策樹尚無可用建議來源。",
+    notif_need_bottomup_first = "請先計算 Bottom-Up βᵤ。",
+    notif_rolling_rewrite_src = "Rolling 估計不可寫入 CAPM，改建議 Summary／產業／Bottom-Up／去槓桿化來源。",
+    notif_decision_tree_picked = "已依決策樹選擇「{title}」。",
+    notif_re_estimated = "📌 已估算 rₑ = {re}%",
+    notif_wacc_auto = "📌 已自動估算並套用 WACC {wacc}%（含 CAPM rₑ）",
+    notif_dcf_n_mismatch = "⚠️ 預測年數與 FCFF 表格不符，請重新計算",
+    notif_g_ge_wacc = "❌ 成長率 g 必須嚴格小於折現率 WACC",
+    notif_g2_ge_wacc2 = "❌ 永續成長率 g2 必須小於第二階段折現率 WACC2",
+    notif_yr1_invalid = "⚠️ 第一階段年數無效 (需大於 0 且小於預測總年數 n)",
+    notif_fcfe_g_ge_ke = "❌ FCFE：永續 g 必須嚴格小於 Ke",
+    notif_dcf_shares_note = "DCF 股數：{note}",
+    notif_dcf_no_per_share = "無法計算每股合理價：缺少匯率／ADR 約當股數，或財報幣與報價幣未對齊。",
+    notif_dcf_statement_ccy_unavailable = "無法計算每股合理價：此次比較需要匯率換算，但財報／來源幣別為 N/A 或無法判定。",
+    notif_dcf_fx_rate_missing = "無法計算每股合理價：財報幣與報價幣不同，且沒有可用的 USD/TWD（或支援的）匯率。",
+    notif_dcf_fx_rate_invalid = "無法計算每股合理價：匯率存在但無效（非有限值或 ≤ 0）。",
+    notif_dcf_adr_ratio_missing = "無法計算每股合理價：此次比較需要 ADR 與普通股換算，但缺少比率或約當 ADR 股數。",
+    notif_dcf_adr_ratio_invalid = "無法計算每股合理價：ADR 換算比率存在但無效（非有限值或 ≤ 0）。",
+    notif_dcf_per_share_non_finite = "無法計算每股合理價：目前選用模型所需的每股輸入不是有限值。",
+    notif_hccsi_statement_ccy = "HCCSI 每股對齊失敗：此次需要 FX 或 ADR 換算，但財報／來源幣別為 N/A。",
+    notif_hccsi_fx_missing = "HCCSI 每股對齊失敗：來源幣與報價幣不同，且沒有可用的 USD/TWD 匯率。",
+    notif_hccsi_fx_invalid = "HCCSI 每股對齊失敗：匯率存在但無效（非有限值或 ≤ 0）。",
+    notif_hccsi_fx_date = "HCCSI 每股對齊失敗：匯率日期與報價日期不一致。",
+    notif_hccsi_adr_missing = "HCCSI 每股對齊失敗：此次為 ADR 對普通股比較，但缺少適用的 ADR 比率。",
+    notif_hccsi_adr_invalid = "HCCSI 每股對齊失敗：ADR 比率存在但無效（非有限值或 ≤ 0）。",
+    notif_hccsi_per_share_bad = "HCCSI 每股對齊失敗：所需的每股數值不是有限值。",
+    notif_hccsi_bench_missing = "HCCSI 的 Rolling β／異常報酬需要基準指數歷史，該序列缺失。",
+    notif_hccsi_window = "HCCSI 滾動視窗不足，受影響的市場風險統計已略過。",
+    notif_hccsi_stale = "HCCSI 來源價格相對基準日過舊，需即時報價的市場統計已略過。",
+    notif_hccsi_dup_issuer = "HCCSI 已排除同一經濟發行人的重複上市，避免雙重計入。",
+    notif_hccsi_history_missing = "HCCSI 綜合分數已略過：成分股 Yahoo／歷史資料不可用，不會改用預設分數。",
+    notif_hccsi_why_required = "缺漏輸入僅為被擋下的計算所需，不影響 HCCSI 其餘可算項目。",
+    notif_hccsi_blocked = "已擋下：{calc}。",
+    notif_hccsi_available = "仍可計算：{calcs}。",
+    notif_dcf_updated = "✅ 估值更新：已套入 {claim} 運算",
+    notif_dcf_claim_fcfe = "FCFE／Ke",
+    notif_dcf_claim_fcff = "FCFF／WACC",
+    notif_dcf_neg_fcff_skip_tv = "終值年度 FCFF 為負 — 已略過 Gordon 永續（否則會把現金流失放大成無意義的負企業價值）。若淨利仍為正，建議改用剩餘收益模型 (RI)。",
+    notif_dcf_hist_fcff_anchor = "NOPAT 推算的終值年度 FCFF 為負，本次 DCF 改以 trailing FCFF（CFO + 稅後利息 − CapEx）計價。",
+    notif_dcf_neg_equity = "經過 EV→股權橋接（EV＋現金−負債）後股權價值為負，不顯示為每股合理價；建議改看 RI。",
+    notif_params_recalc_ok = "✅ 已依目前公司重算一次（門檻／權重）",
+    notif_params_recalc_fail = "參數重算失敗：{err}",
+    notif_fv_fail = "❌ 基本面價值計算失敗：{err}",
+    notif_freq_rebuild_fail = "❌ 依分析頻率重建失敗：{err}",
+    notif_bh_preset = "✅ 已套用「貼近買進持有」：max=100%、min=40%、w_vg=0.35。請重新啟動回測。",
+    notif_bt_fail = "❌ 回測失敗：{err}",
+    notif_dcf_defaults = "🔁 DCF 參數已回復預設",
+    notif_pdf_busy = "正在產出個股 PDF 投資意見報告，請稍候…",
+    notif_pdf_ok = "✅ 個股 PDF 投資意見報告已產出",
+    notif_pdf_fail = "報告產出失敗: {err}",
+    notif_test_opened = "已開啟 Testing",
+    notif_industry_catalog_fail = "產業目錄載入失敗: {err}",
+    notif_update_cache_fallback = "更新失敗，沿用上次快取／內建快照。",
+    notif_no_candidates = "目前篩選下沒有可評估的候選。",
+    notif_no_candidates_ind_model = "產業×模型篩選後沒有可評估的候選。",
+    notif_need_ticker = "主頁尚未設定 Ticker / Stock Code",
+    notif_feedback_opened = "已開啟意見區 — 歡迎回報問題或優化建議",
+    notif_feedback_need_title = "請填寫標題。",
+    notif_feedback_need_body = "請再補充說明內容（至少約 8 字）。",
+    notif_feedback_fail = "送出失敗：{err}",
+    notif_fetch_fail = "❌ 取得資料失敗，請確認代號。錯誤: {err}",
+    notif_data_gap_yahoo_tpex = "Yahoo 尚無完整年報，已改用櫃買「財務資料簡報」補齊部分 IS／BS（{board}）。",
+    notif_data_gap_empty = paste0(
+      "Yahoo 尚無年報（IS／BS／CF 皆空），且櫃買季報彙總亦無可用摘要，",
+      "基本面模型不可用。完整財報請至公開資訊觀測站（MOPS）／櫃買中心查詢。"
+    ),
+    notif_esb_beta_hint = paste0(
+      "興櫃（ESB）：可估，但 Yahoo Summary β 常缺；Blue Chip 不納興櫃。",
+      "建議改用產業／手動／Rolling β（工程啟發式）。"
+    ),
+    # 評價模型試算按鈕（統一：試算 {MODEL} / Run {MODEL}）
+    btn_calc_dcf = "試算 DCF",
+    btn_calc_ddm = "試算 DDM",
+    btn_calc_ri = "試算 RI",
+    btn_calc_pb = "試算 P/B",
+    btn_calc_nav = "試算 NAV",
+    btn_reset_defaults = "回復預設",
+    ri_calc_hint = "請確認下方 RI Settings 參數後按「試算 RI」。搜尋後若 RI 為推薦主模型會自動試算。",
+    ri_settings_recalc_hint = "參數變更後請回 Overview 按「試算 RI」（或「回復預設」重設後再試算）。",
+    ri_idle_hint = "尚未試算：請按「試算 RI」。",
+    pb_settings_reset_hint = "「回復預設」在 Overview，與「試算 P/B」並排。",
+    pb_idle_hint = "請確認 P/B Settings 的 BVPS／TBVPS／NAVPS，以及「目標本淨比」分頁的倍數，然後按下「試算 P/B」。",
+    nav_settings_reset_hint = "「回復預設」在 Overview，與「試算 NAV」並排。",
+    nav_idle_hint = "請確認 NAV Settings 的 NAVPS 與倍數，然後按下「試算 NAV」。",
+    dcf_idle_hint = "尚未計算 DCF，請確認參數後按下「試算 DCF」。",
+    # --- 決策檢核 ---
+    dc_page_title = "決策檢核",
+    dc_page_sub = paste0(
+      "投資人閘門順序：體質 → 估值 → 模型 → HFV 否決 → 紀律。",
+      "僅「預設勾選」項目開機已勾；其餘自行加選。未勾選則不顯示條件輸入。",
+      "預設值為工程啟發式（非學術標準）。HFV 嚴格定位為否決工具，不作看漲／下單依據。"
+    ),
+    dc_box_checks = "檢核項目與條件",
+    dc_box_summary = "通過／否決摘要",
+    dc_panel_hint = paste0(
+      "僅「預設勾選」項目開機已勾；其餘自行加選後才納入閘門。",
+      "條件數值僅在父項勾選後出現。本 Session 選擇由 Shiny inputs 保留（瀏覽器工作階段內）。"
+    ),
+    dc_badge_default_on = "預設勾選",
+    dc_section_quality = "1 · 財報體質",
+    dc_section_valuation = "2 · 估值與安全邊際",
+    dc_section_model = "3 · 模型與假設",
+    dc_section_veto = "4 · 歷史否決（HFV）",
+    dc_section_discipline = "5 · 下單紀律",
+    dc_label_bear_base = "Bear／Base 對照（決策衛生・建議必勾）",
+    dc_hint_bear_base = "勾選後：要求 Bear 與 Base 的 FV／MOS 皆可對照，避免只看樂觀基準就下決策。",
+    dc_label_base_mos = "Base MOS 下限（%）",
+    dc_hint_base_mos = "勾選後：相對 Base FV 的安全邊際須達你的下限，降低相對基準偏貴仍出手的機率。",
+    dc_label_g_sgr = "近端 g 與終值 SGR 須分開；SGR 低於折現率緩衝",
+    dc_hint_g_sgr = "勾選後：近端成長與終值 SGR 分開，且 SGR 須低於 WACC／Ke 達你設定的緩衝（啟發式）。",
+    dc_label_model_align = "採用主模型與選模推薦一致",
+    dc_hint_model_align = "勾選後：你採用的主模型須與側邊欄推薦一致，減少任意換模購物。",
+    dc_label_hfv_veto = "HFV 僅作否決：排除價值陷阱（C）主導",
+    dc_hint_hfv_veto = "勾選後：HFV 只用來否決（例如情境 C／價值陷阱主導）。絕不可把 HFV 當成看漲或下單依據。",
+    dc_label_fscore = "F-Score 品質檢核下限",
+    dc_hint_fscore = "勾選後：Piotroski F-Score 須達下限——品質檢核偏弱即使 MOS 看似便宜也不通過。",
+    dc_label_no_rank_chase = "不得僅因排行年化漲幅而下單",
+    dc_hint_no_rank_chase = "勾選後：自我紀律提醒——績優股排行榜的年化上漲空間本身不是下單單據。",
+    dc_cond_bear_mos_floor = "Bear MOS 下限（%）",
+    dc_cond_base_mos_floor = "Base MOS 下限（%）",
+    dc_cond_g_sgr_gap_min = "近端 g 與 SGR 最小差距（百分點）",
+    dc_cond_sgr_wacc_buffer = "折現率相對 SGR 最小緩衝（百分點）",
+    dc_cond_max_c_freq = "HFV 情境 C 占比上限（%）",
+    dc_cond_fscore_min = "F-Score 下限（0–9）",
+    dc_cond_user_primary = "採用的主模型",
+    dc_model_dcf = "DCF",
+    dc_model_ddm = "DDM",
+    dc_model_ri = "RI",
+    dc_model_pb = "P/B",
+    dc_model_nav = "NAV",
+    dc_na = "尚無資料",
+    dc_live_title = "即時讀數（唯讀）",
+    dc_live_mos_bear = "MOS（相對 Bear FV）：%s",
+    dc_live_mos_base = "MOS（相對 Base FV）：%s",
+    dc_live_hfv_none = "HFV 情境：尚無資料／無法檢核（請先於「歷史基本面驗證」跑出樣本）。",
+    dc_live_hfv_fmt = "HFV 主導情境：%s · C 占比：%s · n=%d（僅供否決語境）",
+    dc_live_hfv_note = "HFV 從不構成買進理由；樣本乾淨只代表「此閘門未否決」，不是看漲訊號。",
+    dc_status_skip = "未勾選",
+    dc_status_no_data = "尚無資料／無法檢核",
+    dc_status_no_rec = "尚無選模推薦——請先搜尋股票",
+    dc_status_hfv_no_data = "尚無 HFV 情境樣本／無法檢核",
+    dc_detail_bear_base_pass = "Bear MOS %+.1f%% · Base MOS %+.1f%% — 兩者皆可對照。",
+    dc_detail_bear_base_order_fail = "Bear FV (%.2f) > Base FV (%.2f) — 情境排序異常，請重核輸入。",
+    dc_detail_bear_mos_fail = "Bear MOS %+.1f%% 低於下限 %.1f%%。",
+    dc_detail_base_mos_pass = "Base MOS %+.1f%% ≥ 下限 %.1f%%。",
+    dc_detail_base_mos_fail = "Base MOS %+.1f%% 低於下限 %.1f%%。",
+    dc_detail_g_sgr_pass = "近端 g %.2f%% · SGR %.2f%% · |差距| %.2f 百分點 · (r−SGR) %.2f 百分點。",
+    dc_detail_g_sgr_fail = paste0(
+      "近端 g %.2f%% · SGR %.2f%% · |差距| %.2f 百分點（需 ≥ %.2f）· ",
+      "折現率 %.2f%% · 緩衝需 %.2f 百分點 — 未通過。"
+    ),
+    dc_detail_model_align_pass = "採用主模型 %s 與推薦一致。",
+    dc_detail_model_align_fail = "採用 %s ≠ 推薦 %s。",
+    dc_detail_hfv_veto_pass = "未觸發 C 主導否決 — 主導 %s · C 占比 %.0f%% < 上限 %.0f%%（仍非看漲依據）。",
+    dc_detail_hfv_c_lead_fail = "HFV 否決：情境 C（價值陷阱）為主導（C 占比 %.0f%%）。",
+    dc_detail_hfv_c_freq_fail = "HFV 否決：C 占比 %.0f%% ≥ 上限 %.0f%%。",
+    dc_detail_fscore_pass = "F-Score %.0f ≥ 下限 %.0f。",
+    dc_detail_fscore_fail = "F-Score %.0f < 下限 %.0f。",
+    dc_detail_no_rank_pass = "提醒已啟用：不得僅依排行年化漲幅下單。",
+    dc_badge_pass = "通過",
+    dc_badge_fail = "否決",
+    dc_badge_na = "無法檢核",
+    dc_badge_skip = "未勾",
+    dc_overall_pass = "閘門：通過",
+    dc_overall_fail = "閘門：否決／未達標",
+    dc_overall_na = "閘門：尚無資料／無法檢核",
+    dc_overall_partial = "閘門：部分缺資料",
+    dc_overall_idle = "閘門：閒置（尚未勾選項目）",
+    dc_overall_counts = "通過 %d · 否決 %d · 無法檢核 %d",
+    # --- nested / small tabs ---
+    tab_finance_summary = "財務摘要",
+    tab_income_statement = "損益表",
+    tab_balance_sheet = "資產負債表",
+    tab_cash_flow = "現金流量表",
+    tab_sec_notes = "財報附註 (SEC)",
+    tab_kpi_by_sheet = "分表 KPI",
+    tab_crossover_kpis = "交叉 KPI",
+    tab_annotation = "註解說明",
+    tab_ddm_overview = "DDM 總覽",
+    tab_ddm_calc_details = "DDM 計算明細",
+    tab_overview = "總覽",
+    tab_d0 = "D0",
+    tab_ke = "Ke",
+    tab_beta = "Beta (β)",
+    tab_sgr = "SGR",
+    tab_dcf_overview = "DCF 總覽",
+    tab_dcf_calc_details = "DCF 計算明細",
+    tab_wacc = "WACC",
+    tab_ri_overview = "RI 總覽",
+    tab_ri_settings = "RI 設定",
+    tab_sensitivity_analysis = "敏感度分析",
+    tab_pb_overview = "P/B 總覽",
+    tab_pb_settings = "P/B 設定",
+    tab_target_pb = "目標本淨比",
+    tab_nav_overview = "NAV 總覽",
+    tab_nav_settings = "NAV 設定",
+    tab_beta_overview = "Beta 總覽",
+    tab_peer_unlever = "同業去槓桿",
+    tab_rolling_beta = "Rolling β",
+    tab_decision_matrix = "決策矩陣",
+    tab_about_ddm = "股利折現模型 (DDM)",
+    tab_about_dcf = "折現現金流模型 (DCF)",
+    tab_about_ri = "剩餘收益模型 (RI)",
+    tab_about_pb = "本淨比 (P/B)",
+    tab_about_nav = "淨資產價值 (NAV)",
+    tab_im_filters = "排行",
+    tab_im_detail = "明細",
+    tab_im_cluster = "分群",
+    tab_bt_fundamental = "基本面策略",
+    tab_bt_sentiment = "情緒策略",
+    lab_cluster_blurb = paste0(
+      "研究用分群 Lab：僅以比率／成長率做 K-Means（不把金額放入模型），",
+      "降低公司規模對距離的干擾。流程為 Winsorize（1%／99%）→ 標準化 → 分群。",
+      "語意標籤為描述性啟發式，非買進／賣出訊號。"
+    ),
+    lab_cluster_k_label = "群數（k）",
+    lab_cluster_max_n_label = "宇宙檔數（N）",
+    lab_cluster_max_n_custom_label = "自訂檔數",
+    lab_cluster_x_label = "散點 X",
+    lab_cluster_y_label = "散點 Y",
+    lab_cluster_focus_label = "雷達焦點代號",
+    btn_lab_cluster_run = "執行分群",
+    lab_cluster_hint = paste0(
+      "沿用「排行」頁目前的產業／模型篩選（若有）。",
+      "區塊上方共用控制語意：宇宙池先依「候選截斷邏輯」全市排序／篩選",
+      "（市值／概念股／近一年漲幅／隨機；市值缺值則改依代號排序），",
+      "再依所選「宇宙檔數（N）」作分群分析（非固定預設檔數）。",
+      "Search 後的代號一律強制納入宇宙（N），並作為雷達焦點預設。",
+      "抓取 Yahoo 比率特徵；若 Yahoo 受限則改用內建離線快照",
+      "（快照涵蓋 S&P 500＋台股上市／上櫃；其他美股主要上市檔以即時 Yahoo 為主）。"
+    ),
+    lab_cluster_map_title = "分群星團圖",
+    lab_cluster_radar_title = "同群雷達圖",
+    lab_cluster_table_title = "分群結果",
+    lab_cluster_disclaimer = "僅供研究／教育，非投資建議，亦非買進訊號。",
+    lab_cluster_idle_map = "請執行分群以顯示星團圖。",
+    lab_cluster_idle_radar = "請執行分群以顯示雷達圖。",
+    lab_cluster_idle_table = "請執行分群以顯示分群結果。",
+    lab_cluster_idle_focus = "請選擇雷達焦點代號。",
+    lab_cluster_focus_missing = paste0(
+      "Search 代號未進入分群結果，雷達焦點已改為清單第一檔。"
+    ),
+    lab_cluster_err_features = paste0(
+      "無法取得分群所需的比率特徵。",
+      "即時 Yahoo 失敗，且離線快照對此宇宙可用檔數不足。",
+      "請稍後再試，或調降宇宙檔數（N）。"
+    ),
+    lab_cluster_err_missing = paste0(
+      "缺值過濾後，可用比率特徵的檔數不足。",
+      "每一檔至少需要 2 個有效比率。請稍後再試，或調降 N。"
+    ),
+    lab_cluster_snapshot_note = paste0(
+      "目前使用內建離線特徵快照",
+      "（此主機無法取得完整即時 Yahoo 比率）。"
+    ),
+    lab_cluster_partial_k = "可用比率特徵的檔數少於群數 k，已自動調降 k。",
+    lab_cluster_coverage_col = "資料覆蓋",
+    lab_cluster_coverage_ok = "充足",
+    lab_cluster_coverage_datalimited = "資料受限",
+    lab_cluster_note_search_datalimited = paste0(
+      "Search 代號為資料受限（財報屬性或 Clustering 比率不足）：",
+      "請交叉閱讀完整財報，勿只依雷達／分群距離。"
+    ),
+    lab_cluster_note_impute = paste0(
+      "宇宙中有 %d 檔比率特徵不足（資料受限）；",
+      "表內／雷達數值可能含中位數補值，請交叉閱讀財報。"
+    ),
+    pb_note_no_blend = "沒有合成後的 P/B 倍數。Justified、產業與歷史分開列示。",
+    pb_note_multiples = "P/B 來源：產業中位 %s｜歷史中位 %s（不含 Justified／SGR）→ Bear/Base/Bull = %s / %s / %s",
+    pb_note_justified = "P/B 來源：Justified %s（ROE/Ke/g）｜產業中位 %s｜歷史中位 %s → Bear/Base/Bull = %s / %s / %s",
+    val_diag_wacc_na = "計算出的 WACC 為 NA，不沿用先前的手動值或前一檔參數。",
+    val_diag_wacc_tax = "稅率必須是 0 到 1 的比率。",
+    val_diag_wacc_weights = "股權與負債權重合計須接近 100%。",
+    val_diag_wacc_bounds = "只有股權與負債時，WACC 必須落在 Re 與稅後 Rd 之間。",
+    val_diag_wacc_other_capital = "優先股、租賃或其他資本來源已分開列示。",
+    val_diag_manual_wacc = "此 WACC 為手動覆寫，不是系統計算值。",
+    val_diag_capm_inputs = "CAPM 需要有限的 Rf、levered beta，以及 Rm 或 ERP。",
+    val_diag_erp_mismatch = "同時給定 Rm 與 ERP 時，ERP 必須等於 Rm − Rf。",
+    val_diag_erp_range = "ERP 落在一般 2%–12% 說明區間之外。這是警示，不是針對單一公司的上下限。",
+    val_diag_extra_premium = "公司特定風險溢酬獨立列示，不藏在 beta 或 WACC 裡。",
+    val_diag_claim_mismatch = "FCFF 必須搭配 WACC；FCFE 必須搭配 Ke。Enterprise Value 不可直接除以股數。",
+    val_diag_stage_years = "Stage 1 年數加 Stage 2 年數必須等於明確預測期，且 Stage 2 年數必須明確給定。",
+    val_diag_g2_equals_terminal = "g2 與 Terminal g 相同，Stage 2 沒有改變成長路徑。",
+    val_diag_growth_custom_missing = "已選 custom growth，但沒有輸入值。不會改用其他成長率。",
+    val_diag_growth_fundamental = "目前使用 fundamental growth，custom growth 不參與計算。",
+    val_diag_growth_fallback = "fundamental growth 無法計算，已揭露 fallback 來源。",
+    val_diag_growth_fundamental_missing = "fundamental growth 無法計算，也不借用 custom growth。",
+    val_diag_tv_weight = "Terminal Value 占 Enterprise Value 比例偏高，信心不得標為高。",
+    val_diag_wacc_gt_g = "折現率必須大於 Terminal g。",
+    val_diag_wacc_g_spread = "WACC 與 Terminal g 過於接近，估值高度敏感。",
+    val_diag_terminal_g_above_econ = "名目終值 g 高於設定的長期經濟成長上限。",
+    val_diag_terminal_roic_invalid = "終值 ROIC 缺漏、為零或無效，因此不計算 g / ROIC。",
+    val_diag_forecast_terminal_jump = "最後預測年度與終值年度跳躍過大。",
+    val_diag_terminal_roic_fade = "終值 ROIC 高於 WACC，但缺少明確的超額報酬消退年期。",
+    val_diag_lifecycle_low_confidence = "生命週期分類信心偏低。",
+    val_diag_lifecycle_missing_inputs = "生命週期分類資料缺漏；缺漏值已排除，不視為零。",
+    val_diag_lifecycle_manual_mismatch = "手動生命週期與自動偵測不一致；已保留使用者選擇。",
+    val_diag_lifecycle_legacy_migration = "已遷移舊版生命週期檔位，並保留原始值。",
+    val_diag_fcf_missing = "現金流路徑缺失。",
+    val_diag_shares = "稀釋股數必須是正數。",
+    val_diag_negative_terminal_cf = "最終年度現金流為負，不套用 Gordon 永續成長。",
+    val_diag_share_split = "股數出現接近整數倍的變動，請先檢查拆股或併股，不要直接當成經濟性稀釋。",
+    val_diag_stale_ticker = "工作階段仍留著前一檔的參數。",
+    val_diag_industry_missing = "沒有產業分類，不使用產業 P/B。",
+    val_diag_industry_invalid = "產業 key 不在標準 taxonomy，不使用產業 P/B。",
+    val_diag_industry_ok = "產業 key 對應標準 taxonomy。",
+    val_diag_industry_pb_blocked = "產業分類信心不足，產業 P/B 停用。",
+    val_diag_thin_peers = "同業樣本過少，不輸出高信心產業 P/B。",
+    val_diag_neg_equity = "普通股權益不是正數，不輸出一般 P/B。",
+    val_diag_pb_equity_missing = "缺少普通股權益，不計算 P/B。",
+    val_diag_pb_intangible_biz = "此商業模式的帳面價值錨點偏弱，P/B 最多作為低權重交叉檢查。",
+    val_diag_pb_goodwill = "商譽相對資產偏高，帳面價值可能失真。",
+    val_diag_pb_rd = "研發費用化可能使帳面權益低於經濟資本。",
+    val_diag_pb_buyback = "庫藏股或回購壓低帳面權益，P/B 適用性下降。",
+    val_diag_justified_pb = "Justified P/B 不會被截成看似合理的市場倍數。",
+    val_diag_pb_gap = "P/B 方法差距過大，不進行平均。",
+    val_diag_no_primary = "沒有模型通過適用門檻。",
+    val_diag_no_secondary = "無適用副模型。",
+    macro_page_title = "總體經濟與大盤趨勢",
+    macro_page_sub = paste0(
+      "依循全域美股／台股切換。指數與板塊歷史序列維持 Yahoo 原始報價幣別，不做歷史匯率換算。"
+    ),
+    macro_mode_us = "美股模式",
+    macro_mode_tw = "台股模式",
+    macro_rf_title = "無風險利率 Rf（10 年期）",
+    hccsi_title = "HCCSI",
+    hccsi_title_full = "關鍵科技堆疊指數（HCCSI）",
+    hccsi_disclosure_short = "科技鏈發展讀數，不是買進訊號。",
+    hccsi_disclosure = paste0(
+      "HCCSI 把各發行人的財報（營收成長、Gross Margin、CapEx 相對自身歷史）",
+      "與相對大盤、相對自身歷史的股市表現合成一條科技鏈發展預期讀數。",
+      "不是推薦引擎，也不是買進訊號。"
+    ),
+    hccsi_click_hint = "點選即可展開財報發展、相對大盤、影響力與相對歷史四項讀數。",
+    hccsi_alert_label = "讀數",
+    hccsi_alert_normal = "Expanding",
+    hccsi_alert_watch = "Steady",
+    hccsi_alert_warning = "Cooling",
+    hccsi_alert_critical = "Contracting",
+    hccsi_alert_unavailable = "Unavailable",
+    hccsi_unavailable = "目前無法計算 HCCSI：缺少即時市場歷史，因此不顯示預設分數。",
+    hccsi_loading = "計算中",
+    hccsi_dropped = "以下項目算不出來，已用剩下項目重新分配權重：{terms}",
+    hccsi_dropped_none = "財報、相對大盤、影響力與相對歷史四項都算得出來。",
+    hccsi_index_health = "Statement Development",
+    hccsi_index_health_gloss = "財報發展：營收 YoY、Gross Margin 變動、CapEx 強度相對該發行人自己的過去。高於 50 為擴張，低於 50 為收縮。",
+    hccsi_index_stress = "Trajectory vs History",
+    hccsi_index_stress_gloss = "相對歷史：股價對照同一窗口的較長回看，以及營收成長是否快過或慢過該發行人更早年度。",
+    hccsi_index_fragility = "Influence vs Market",
+    hccsi_index_fragility_gloss = "相對大盤影響力：Rolling β 對照 1，加上超額報酬。高於 50 代表影響力較大或跑贏大盤。",
+    hccsi_index_market = "Market vs Benchmark",
+    hccsi_index_market_gloss = "股市 vs 大盤：絕對報酬與超額報酬。跑贏大盤會提高此讀數，也可以提高綜合分數。",
+    hccsi_overview_title = "總覽",
+    hccsi_layer_title = "功能環節",
+    hccsi_network_title = "連鎖降溫",
+    hccsi_constituent_title = "各發行人明細",
+    hccsi_in_composite_title = "進入複合分數",
+    hccsi_out_composite_title = "不進入複合分數",
+    hccsi_out_composite_note = paste0(
+      "沒有財報或公開文獻依據的設定檔假設——Criticality、重建年數、可替代對象、權重上限、序列完整度——不予顯示。",
+      "那些是工程啟發式，不是觀測值。"
+    ),
+    hccsi_formula_eq = "HCCSI = 0.30·Stmt + 0.25·Mkt + 0.25·Inf + 0.20·Traj",
+    hccsi_formula_parts = paste0(
+      "Stmt＝營收 YoY、ΔGM、CapEx vs 自身。",
+      "Mkt＝相對大盤的超額與報酬。",
+      "Inf＝Rolling β 與相對大盤超額。",
+      "Traj＝股價與營收 YoY 對照該發行人自身歷史。",
+      "缺項略過並把剩餘權重放大——不會填入 0、50 或 100。"
+    ),
+    hccsi_method_title = "方法論",
+    hccsi_highest_risk_layer = "發展最弱的環節",
+    hccsi_top_contributors = "最拉高讀數的發行人",
+    hccsi_empty = "目前無法計算 HCCSI。",
+    hccsi_contagion_paths = "連鎖降溫路徑",
+    hccsi_contagion_none = "沒有相鄰環節一起降溫",
+    hccsi_network_note = paste0(
+      "路徑在「綁在一起的環節裡，夠多家同時低於降溫線」時才會點亮。",
+      "單一發行人走弱，不代表整條鏈在收縮。"
+    ),
+    hccsi_col_layer = "環節",
+    hccsi_col_health = "Stmt",
+    hccsi_col_stress = "Traj",
+    hccsi_col_weight = "權重",
+    hccsi_col_concentration = "影響力",
+    hccsi_col_substitutes = "可替代對象",
+    hccsi_col_replacement = "重建年數",
+    hccsi_col_issuer = "發行人",
+    hccsi_col_function = "在鏈上的角色",
+    hccsi_col_criticality = "Criticality",
+    hccsi_col_weight_raw = "未受限權重",
+    hccsi_col_perf = "1M",
+    hccsi_col_beta = "Rolling β（60 日）",
+    hccsi_col_dd = "超額 vs 大盤",
+    hccsi_col_ret = "報酬",
+    hccsi_col_rev_yoy = "營收 YoY",
+    hccsi_col_gm_delta = "ΔGM",
+    hccsi_col_capex_own = "CapEx vs 自身",
+    hccsi_col_price_hist = "股價 vs 歷史",
+    hccsi_col_rev_vs_own = "營收 YoY vs 自身",
+    hccsi_col_fin_ops = "營收 YoY／GM",
+    hccsi_col_confidence = "序列完整度",
+    hccsi_method_selection = paste0(
+      "納入是因為整條鏈離不開它、而且很難換掉——不是因為市值大或知名。",
+      "同一家公司的重複上市只計一次。宇宙由設定檔驅動。"
+    ),
+    hccsi_method_scoring = paste0(
+      "四項讀數皆為「越高＝發展預期越強」：Statement Development、Market vs Benchmark、",
+      "Influence vs Market、Trajectory vs History。",
+      "綜合分數的恆等式見上方公式橫幅。",
+      "跑贏大盤會提高 Market 與 Influence，也可以提高綜合分數。"
+    ),
+    hccsi_method_weighting = paste0(
+      "各發行人的即時讀數再平均成 Stmt／Mkt／Inf／Traj。",
+      "影響力本身由 Rolling β 與超額報酬計分。",
+      "Criticality、重建年數、可替代對象與發行人／環節上限是沒有財報依據的工程啟發式，",
+      "因此不當作觀測值列出。"
+    ),
+    hccsi_method_rebalance = paste0(
+      "每季檢討權重；每年檢討名單。合併、下市、破產、結構性分割或經確認的關鍵基礎設施中斷時啟動非常檢討。"
+    ),
+    hccsi_method_missing = paste0(
+      "缺漏的選擇性資料予以略過，不會偷偷改成 0（除非經濟上本來就是 0）。",
+      "財報列失敗不阻擋報酬或 β。",
+      "若即時 Yahoo／歷史資料不可用，HCCSI 顯示 Unavailable，不代入預設綜合分數。"
+    ),
+    hccsi_method_fx_adr = paste0(
+      "僅在來源幣與報價幣不同時套用 FX。僅在商品為 ADR、且需要與本地普通股對齊時套用 ADR。",
+      "單獨觀察美股上市不需要 ADR 中繼資料。一般美股普通股也不需要。"
+    ),
+    hccsi_method_limits = paste0(
+      "HCCSI 是科技鏈的發展預期讀數，來自財報與市場序列，不是買進訊號、滅絕模型或一般市值加權指數。",
+      "讀數為 Expanding／Steady／Cooling／Contracting／Unavailable。"
+    ),
+    hccsi_ly_lithography = "微影設備",
+    hccsi_ly_foundries = "先進晶圓代工",
+    hccsi_ly_eda = "晶片設計軟體（EDA）",
+    hccsi_ly_semiconductors = "半導體",
+    hccsi_ly_cloud = "雲端基礎設施",
+    hccsi_ly_enterprise_identity = "企業身分識別",
+    hccsi_ly_consumer_os_ecosystems = "消費端作業系統生態",
+    hccsi_ly_payment_networks = "支付網絡",
+    hccsi_ly_enterprise_dbs = "企業資料庫",
+    hccsi_ly_dc_networking = "資料中心網絡",
+    hccsi_ly_ai_computing = "AI 運算",
+    hccsi_ch_litho_foundry = "微影與晶圓代工綁在一起",
+    hccsi_ch_foundry_eda = "晶圓代工與設計軟體綁在一起",
+    hccsi_ch_cloud_identity = "雲端與身分識別綁在一起",
+    hccsi_ch_payments = "卡組織綁在一起",
+    hccsi_ch_semi_cloud_pay = "半導體、雲端與支付綁在一起",
+    hccsi_fn_semiconductor_equipment = "微影設備",
+    hccsi_fn_advanced_foundry = "先進晶圓代工",
+    hccsi_fn_enterprise_os_identity_cloud = "企業作業系統、身分識別與雲端",
+    hccsi_fn_cloud_internet_infrastructure = "雲端與網路基礎設施",
+    hccsi_fn_consumer_digital_ecosystem = "消費端數位生態",
+    hccsi_fn_eda = "晶片設計軟體（EDA）",
+    hccsi_fn_payment_networks = "支付網絡",
+    hccsi_fn_enterprise_data_virtualization = "企業資料與虛擬化",
+    hccsi_fn_ai_accelerated_computing = "AI 加速運算",
+    macro_index_name_gspc = "S&P 500",
+    macro_index_name_ixic = "Nasdaq",
+    macro_index_name_dji = "Dow Jones",
+    macro_index_name_sox = "SOX (semis)",
+    macro_index_name_twii = "加權（TAIEX）",
+    macro_index_name_twoii = "櫃買（TPEx）",
+    macro_index_name_0050 = "0050（台灣50）",
+    ynow_index_title = "YNOW",
+    ynow_index_rule = paste0(
+      "成分在下次月汰換（台北時間）前固定：",
+      "F-Score 8 分以上且無財報警示的美股主要上市市值前段，等權重。",
+      "指數水位依這些成分股的價格重算，不重新篩選成分。"
+    ),
+    ynow_index_chart_note = paste0(
+      "走勢是固定成分的等權重路徑（起點＝100）。",
+      "滿 10 檔時，每檔權重 10%。水位隨股價更新，不重新篩選成分。"
+    ),
+    ynow_index_waiting = "正在依成分股價格更新 YNOW…",
+    ynow_index_empty = "本月尚無固定的 YNOW 成分。",
+    ynow_index_none = "本月 YNOW 沒有成分股。",
+    ynow_index_constituents = "成分股",
+    ynow_index_col_name = "名稱",
+    ynow_index_col_last = "現價",
+    ynow_index_col_chg = "漲跌幅",
+    ynow_index_build = "建立本月成分",
+    ynow_index_level = "指數水位",
+    ynow_index_col_ticker = "代號",
+    ynow_index_col_weight = "權重",
+    ynow_index_col_mcap = "市值",
+    ynow_index_col_fscore = "F-Score",
+    tynow_index_title = "TYNOW",
+    tynow_index_rule = paste0(
+      "成分在下次月汰換（台北時間）前固定：",
+      "F-Score 8 分以上且無財報警示的上市與上櫃普通股市值前段，等權重。",
+      "不含 ETF，也不含興櫃。",
+      "指數水位依這些成分股的價格重算，不重新篩選成分。"
+    ),
+    tynow_index_waiting = "正在依成分股價格更新 TYNOW…",
+    tynow_index_empty = "本月尚無固定的 TYNOW 成分。",
+    tynow_index_none = "本月 TYNOW 沒有成分股。",
+    macro_index_chart_hint = "點選指數方塊即可顯示該指數的歷史走勢圖。",
+    macro_index_chart_empty = "此指數沒有歷史價格資料。",
+    macro_index_chart_error = "無法載入此指數的歷史走勢。",
+    macro_rf_source_fallback = "無法取得 Rf 來源",
+    macro_rf_src_live = "即時",
+    macro_rf_src_last = "最近成功抓取",
+    macro_rf_src_fallback = "工程 fallback",
+    macro_tw_signal_title = "台灣景氣對策信號",
+    macro_tw_signal_body = paste0(
+      "景氣對策信號由國家發展委員會發布。本頁聚焦 Yahoo 指數報價與 Rf；",
+      "正式月度信號請至國發會網站查閱。"
+    ),
+    macro_tw_signal_link = "開啟國發會景氣指標",
+    macro_theme_title = "相對績效 vs 大盤",
+    macro_theme_help = paste0(
+      "產業別與概念股別為兩個獨立選單，可單選、同時選、或不選。",
+      "美股產業別為 GICS 板塊 ETF；台股產業別與縱覽「目前產業標準快覽」相同。概念股別為既有概念股宇宙。大盤基準以灰虛線、右軸顯示",
+      "（區間起點重設為 100；原始幣別，無 FX）。"
+    ),
+    macro_theme_label = "主題",
+    macro_industry_label = "產業別 vs 大盤",
+    macro_concept_label = "概念股別 vs 大盤",
+    macro_none_option = "不選",
+    macro_period_label = "區間",
+    macro_fx_lock = "幣別鎖定：指數／板塊歷史序列不會因頂部 USD⇄TWD 切換而換算。",
+    macro_series_theme = "主題（重設）",
+    macro_series_industry = "產業別（重設）",
+    macro_series_concept = "概念股（重設）",
+    macro_series_rebased = "重設（起點＝100）",
+    macro_series_bench = "大盤基準",
+    macro_overlay_title = "相對績效（起點＝100）",
+    macro_plot_need_pick = "請選擇產業別與／或概念股別，以對照大盤。",
+    macro_plot_need_theme = "無法載入產業別或概念股價格",
+    macro_plot_need_bench = "無法載入大盤價格",
+    macro_bubble_title = "動態產業泡沫與權重集中度",
+    macro_bubble_sub = paste0(
+      "產業集中度依所選產業別或概念股籃（市值加權）計算；GICS 對應至 S&P 500 同產業成分。",
+      "巴菲特指標為大盤層級「總市值／GDP」（僅研究顯示，絕不寫入 CAPM／Ke／WACC）。"
+    ),
+    macro_bubble_theme_label = "產業別或概念股",
+    macro_bubble_topn_label = "市值前 N 大",
+    macro_bubble_attr_label = "分析視窗",
+    macro_bubble_conc_title = "市值權重集中度",
+    macro_bubble_attr_title = "漲幅貢獻拆解",
+    macro_bubble_rest = "其餘成分",
+    macro_bubble_need_theme = "請先選擇可解析成分的產業別或概念股，才能計算集中度。",
+    macro_bubble_conc_kpi = "前 %d 大佔籃內市值 %.1f%% · 最大單一 %.1f%% · 計算池 n=%d",
+    macro_bubble_conc_axis = "佔籃內市值比重",
+    macro_bubble_conc_topn_series = "前 %d 大合計",
+    macro_bubble_conc_top1_series = "最大單一",
+    macro_bubble_conc_need_hist = "價格歷史不足，無法繪製集中度時間序列。",
+    macro_bubble_top_list_title = "市值前 N 大公司",
+    macro_bubble_conc_note = paste0(
+      "歷史權重以當前市值 × 相對收盤價推估（研究用代理）；",
+      "各時點 Top-N 在今日籃內成分中重新排序。"
+    ),
+    macro_bubble_col_ticker = "代碼",
+    macro_bubble_col_name = "公司",
+    macro_bubble_col_mcap = "市值",
+    macro_bubble_col_weight = "權重",
+    macro_bubble_attr_kpi = "視窗 %s · 籃報酬 %.1f%% · 前 N 貢獻 %.1f 百分點 · 其餘 %.1f 百分點",
+    macro_bubble_attr_axis = "貢獻（百分點）",
+    macro_bubble_alert_title = "集中度／市場寬度警示",
+    macro_bubble_alert_top1 = "最大單一成分市值權重 ≥ 50% — 極端個股集中。",
+    macro_bubble_alert_topn = "前 N 大合計市值權重 ≥ 70% — 集中度偏高。",
+    macro_bubble_alert_breadth = "市場寬度偏弱：上漲期間前 N 大貢獻 ≥ 80% 的正報酬（少數權值股拉抬）。",
+    macro_bubble_buffett_title = "巴菲特指標（總市值／GDP）",
+    macro_bubble_buffett_note = paste0(
+      "序列優先取世界銀行「上市國內公司總市值佔 GDP%%」；",
+      "旁側總市值／GDP 取世界銀行 CM.MKT.LCAP.CD 與 NY.GDP.MKTP.CD（當期美元）。",
+      "連線失敗則用內建 CSV 快照（僅比率）。紅綠燈依該市場自身序列 mean ± 0.75·sd 判定。"
+    ),
+    macro_bubble_buffett_level = "估值水位",
+    macro_bubble_buffett_over = "嚴重高估（Significantly Overvalued）",
+    macro_bubble_buffett_fair = "合理（Fairly Valued）",
+    macro_bubble_buffett_under = "低估（Undervalued）",
+    macro_bubble_buffett_unknown = "等待巴菲特指標序列…",
+    macro_bubble_buffett_kpi = "最新 %.1f%% of GDP · 截至 %s",
+    macro_bubble_buffett_mcap_label = "總市值",
+    macro_bubble_buffett_mcap_hint = "上市國內公司 · 美元 · 截至 %s",
+    macro_bubble_buffett_gdp_label = "GDP",
+    macro_bubble_buffett_gdp_hint = "當期美元 · 截至 %s",
+    macro_bubble_buffett_need = "尚無巴菲特指標序列。",
+    macro_bubble_buffett_series = "總市值／GDP",
+    macro_bubble_buffett_mean = "序列均值",
+    macro_bubble_buffett_chart = "巴菲特指標歷史",
+    macro_bubble_buffett_axis = "佔 GDP %%",
+    btn_macro_refresh = "重新整理",
+    bblab_page_title = "業務拆解實驗室",
+    bblab_experimental_badge = "實驗功能",
+    bblab_page_sub = paste0(
+      "以財報觀點逐步拆解公司財務結構：合併總覽、業務切分方式、",
+      "營收組成（當期與五年占比演進），以及各事業簡化財報。實驗功能，並非估值引擎。"
+    ),
+    bblab_listed_only_notice = "僅支援上市個股分析（台股、美股）。",
+    bblab_listed_only_scope = paste0(
+      "此 Ticker 看起來不是上市個股（台股、美股）。",
+      "業務拆解實驗室僅支援上市個股分析（台股、美股）。"
+    ),
+    bblab_search_title = "搜尋",
+    bblab_ticker_label = "Ticker",
+    bblab_search_btn = "搜尋",
+    bblab_company_label = "公司",
+    bblab_period_label = "期間",
+    bblab_statement_ccy_label = "財報幣別",
+    bblab_source_status_label = "來源狀態",
+    bblab_source_idle = "請搜尋 Ticker，以載入最近一期年報／季報與任何部門附註。",
+    bblab_source_running = "正在解析發行人、財報與揭露…",
+    bblab_source_ok = "已載入財報與事業維度揭露。",
+    bblab_source_no_segment = paste0(
+      "已載入合併財報。未附上營運部門／產品／收入拆解附註；",
+      "本實驗室不會虛構第二個事業。"
+    ),
+    bblab_source_unavailable = "無法取得財報。在申報資料載入前，來源幣別分析會被阻擋。",
+    bblab_ch1_title = "合併財報總覽",
+    bblab_ch1_help = paste0(
+      "以財報幣別呈現的合併損益表合計。Gross Profit = Revenue − Cost of Revenue。",
+      "這是整家公司，尚未依業務切分。"
+    ),
+    bblab_ch2_title = "財報如何切分業務",
+    bblab_ch2_help = paste0(
+      "只選一個主要申報維度。僅描述客戶所在地的地區別不會被當作業務切分。",
+      "重疊的申報維度不會加總合併。"
+    ),
+    bblab_ch3_title = "營收組成",
+    bblab_ch3_help = "各切片為當期已申報合併營收的占比。",
+    bblab_ch3_current_label = "當期",
+    bblab_ch4_title = "五年結構占比演進",
+    bblab_ch4_help = paste0(
+      "同一申報維度下，最多五個會計年度的事業營收占比。",
+      "無法對應的年度會略過，不會虛構占比或補 0。"
+    ),
+    bblab_ch4_limited = "可比較的營收占比不足兩個會計年度，因此不呈現五年結構占比序列。",
+    bblab_ch5_title = "各事業簡化財報",
+    bblab_ch6_title = "對帳",
+    bblab_ch7_title = "來源與方法",
+    bblab_geo_veto_why = paste0(
+      "僅描述客戶所在地的地區別，不會被選為主要業務切分；",
+      "它無法說明不同事業的經濟本質。"
+    ),
+    bblab_overlap_why = "重疊的申報維度不會加總合併。",
+    bblab_history_yaxis = "佔當期已申報合併營收比重（%）",
+    bblab_dim_operating_segment = "營運部門（已申報）",
+    bblab_dim_segment_note = "部門附註",
+    bblab_dim_product_service = "產品／服務營收科目",
+    bblab_dim_revenue_disaggregation = "營收拆解",
+    bblab_dim_official_description = "申報個體（無多事業拆分）",
+    bblab_dim_geography = "地區別",
+    bblab_kpi_revenue = "Revenue",
+    bblab_kpi_cor = "Cost of Revenue",
+    bblab_kpi_gp = "Gross Profit",
+    bblab_kpi_gm = "Gross Margin",
+    bblab_kpi_ni = "Net Income",
+    bblab_formula_gp = "Revenue − Cost of Revenue",
+    bblab_formula_gm = "Gross Profit / Revenue",
+    bblab_summary_title = "財報如何切分業務",
+    bblab_dimension_label = "主要維度",
+    bblab_count_label = "事業數量",
+    bblab_level_label = "拆解層級",
+    bblab_confidence_label = "整體信心",
+    bblab_rev_recon_label = "Revenue 調節",
+    bblab_cor_recon_label = "Cost of Revenue 調節",
+    bblab_reval_avail_label = "重估可用性",
+    bblab_limitations_label = "限制",
+    bblab_chart_title = "營收組成",
+    bblab_cards_title = "各事業簡化財報",
+    bblab_recon_title = "對帳",
+    bblab_sources_title = "來源與方法",
+    bblab_sources_chrome = paste0(
+      "揭露優先序：營運部門 → 部門附註 → 產品／勞務收入 → 收入拆解 → MD&A → 法說 → IR 簡報 → 官方說明。",
+      "優先採用已申報／經查核來源。本頁為實驗功能，不會寫入估值。"
+    ),
+    bblab_shared_title = "共用與總部項目",
+    bblab_shared_empty = "未將共用 Selling & Marketing、G&A、中央 R&D 或總部項目分攤進事業 Gross Profit 卡片。",
+    bblab_other_businesses = "其他事業",
+    bblab_unallocated = "未分攤",
+    bblab_eliminations = "銷除",
+    bblab_rounding = "Revenue Rounding Adjustment",
+    bblab_recon_amount = "調節差額",
+    bblab_expand_other = "展開其他",
+    bblab_export_chart = "匯出圖表",
+    bblab_export_data = "匯出資料",
+    bblab_gm_unestimable = "Not reliably estimable",
+    bblab_reval_unavailable = "Revaluation ratio unavailable",
+    bblab_reval_label = "Revaluation",
+    bblab_single_business_note = paste0(
+      "僅有一個可支持的事業揭露；不進行多事業拆分。",
+      "營收組成圖仍會呈現（單一切片為 100%，或該事業加上其他事業／未分攤／Rounding 等調節項目）。"
+    ),
+    bblab_fallback_gm_label = "以合併 Gross Margin 作為低信心後援",
+    bblab_allocated_notice = "Cost of Revenue 為分攤／估計（非事業別申報）。",
+    bblab_rev_share_cost_notice = paste0(
+      "Cost of Revenue 以營收占比作為最終後援分攤（ALLOCATED_LOW_CONFIDENCE）。",
+      "這不是申報的事業成本。"
+    ),
+    bblab_waiting = "請搜尋 Ticker 以執行實驗性業務拆解。",
+    bblab_pass = "通過",
+    bblab_fail = "未通過",
+    bblab_available = "可用",
+    bblab_progress_running = "業務拆解實驗室",
+    bblab_stage_resolve = "解析發行人／法律實體",
+    bblab_stage_retrieve = "擷取財報",
+    bblab_stage_parse = "解析部門與收入拆解附註",
+    bblab_stage_analyze = "執行公司中立拆解",
+    bblab_stage_done = "呈現卡片與圖表",
+    bblab_notes_body = paste0(
+      "每一數值都帶有 REPORTED／DERIVED／ALLOCATED／ESTIMATED／UNALLOCATED／UNAVAILABLE 證據。",
+      "共用 Selling & Marketing、G&A、中央 R&D、利息、稅與 Net Income 不進入 Gross Profit 卡片。",
+      "僅在顯示幣別與財報幣別不同時套用 FX。ADR 僅用於每單位 ADR 顯示；",
+      "缺少 ADR 不阻擋來源幣別的 Revenue／Cost of Revenue／Gross Profit。",
+      "重估預設檢視為 Reported；除非使用者開啟 Adjusted 且該調整確實改變生產成本或 D&A，否則不會覆寫已申報數字。"
+    ),
+    notif_bblab_required_fx_rate_missing = paste0(
+      "缺少必要 FX 匯率。顯示幣別換算已阻擋；財報幣別的 Revenue、Cost of Revenue、Gross Profit 與股權比重仍可用。",
+      "調節仍採用已申報合併總數。"
+    ),
+    notif_bblab_required_fx_rate_invalid = "FX 匯率無效。顯示幣別換算已阻擋；財報幣別分析仍保留。",
+    notif_bblab_statement_currency_unavailable = "無法判定財報幣別。FX 換算已阻擋；不需 FX 的發行人搜尋與來源幣別金額仍保留。",
+    notif_bblab_applicable_adr_ratio_missing = "缺少適用 ADR 比率。每單位 ADR 顯示已阻擋；財報幣別的事業 Revenue／Cost of Revenue／Gross Profit 仍保留。",
+    notif_bblab_business_adr_missing_nonblocking = "缺少 ADR 中繼資料。每單位 ADR 顯示已阻擋；來源幣別事業分析不被阻擋。",
+    notif_bblab_business_issuer_unresolved = "無法解析發行人。在 Search 回傳公司前，拆解會被阻擋。",
+    notif_bblab_business_statements_unavailable = "無法取得財報。事業卡片、組成圖與重編調節已阻擋；搜尋仍可用。",
+    notif_bblab_business_disclosure_insufficient = paste0(
+      "事業維度揭露不足。本實驗室不會虛構第二個事業。",
+      "若已載入申報，合併總數仍會呈現。"
+    ),
+    notif_bblab_business_overlapping_dimensions_blocked = paste0(
+      "重疊維度（例如產品 vs 地區，或平台 vs 製程技術）不會合併。",
+      "僅保留一個主要維度。"
+    ),
+    notif_bblab_business_geography_customer_location_only = "僅描述客戶所在地的地區別，不會被選為主要事業維度。",
+    notif_bblab_business_cost_not_reliably_estimable = paste0(
+      "至少一個事業的 Cost of Revenue 無法可靠估計。該卡片的 Gross Profit／Gross Margin 將予保留不顯示。",
+      "營收卡片、已申報合併總數調節，以及符合條件的圖表仍保留。"
+    ),
+    notif_bblab_business_cost_allocated_low_confidence = paste0(
+      "Cost of Revenue 使用分攤或估計（ALLOCATED_LOW_CONFIDENCE）。營收維持已申報。",
+      "僅在你接受低信心成本時，才開啟合併 Gross Margin 後援。"
+    ),
+    notif_bblab_business_revaluation_unavailable = "Revaluation ratio unavailable。已申報的 Revenue／Cost of Revenue／Gross Profit 卡片不被阻擋。",
+    notif_bblab_business_revaluation_consolidated_proxy = "重估使用 CONSOLIDATED_PROXY（LOW 信心）。允許使用者覆寫。預設檢視仍為 Reported。",
+    notif_bblab_business_reconciliation_fail = paste0(
+      "調節未通過。不會強行把重編總數湊平。已申報合併 Revenue、Cost of Revenue 與 Gross Profit 仍保留；",
+      "無法解釋的剩餘列入未分攤或調節差額（絕不以 Net Income 作為 plug）。"
+    ),
+    notif_bblab_business_chart_insufficient_components = "事業少於兩個不會阻擋組成圖。單一可支持的調節仍會呈現；事業卡片仍保留。",
+    notif_bblab_business_chart_consolidated_revenue_missing = "組成圖已阻擋：缺少已申報合併營收。事業卡片仍呈現。",
+    notif_bblab_business_chart_period_mismatch = "組成圖已阻擋：期間不一致。事業卡片仍呈現。",
+    notif_bblab_business_chart_currency_mismatch = "組成圖已阻擋：幣別不一致。財報幣別卡片仍呈現。",
+    notif_bblab_business_chart_dimension_mixed = "組成圖已阻擋：維度混用。重疊切面未合併。卡片仍呈現。",
+    notif_bblab_business_chart_reconciliation_fail = "因調節未通過，組成圖已阻擋。已申報合併總數與事業卡片仍保留。",
+    notif_bblab_business_chart_single_component = "僅有一個可支持的事業揭露。組成圖仍會呈現（單一切片 100%，或加上調節項目）；單一事業卡片仍保留。",
+    notif_bblab_business_chart_level_d = "組成圖已阻擋（Level D 僅質性）。名稱與限制仍呈現；不會虛構金額。",
+    notif_bblab_business_history_insufficient_years = paste0(
+      "可比較的營收占比不足兩個會計年度，因此不呈現五年結構占比序列。",
+      "當期組成、事業卡片與對帳仍保留。"
+    )
+  )
+)
+
+# data-value attribute (as rendered) → ui_str key
+.UI_TAB_DATA_VALUE_KEYS <- c(
+  "Finance Summary" = "tab_finance_summary",
+  "Income Statement" = "tab_income_statement",
+  "Balance Sheet" = "tab_balance_sheet",
+  "Cash Flow" = "tab_cash_flow",
+  "sec_notes" = "tab_sec_notes",
+  "KPI by Sheet" = "tab_kpi_by_sheet",
+  "Crossover KPIs" = "tab_crossover_kpis",
+  "Annotation" = "tab_annotation",
+  "DDM Overview" = "tab_ddm_overview",
+  "DDM Calculation Details" = "tab_ddm_calc_details",
+  "Overview" = "tab_overview",
+  "D0" = "tab_d0",
+  "Ke" = "tab_ke",
+  "Beta (β)" = "tab_beta",
+  "DCF Overview" = "tab_dcf_overview",
+  "DCF Calculation Details" = "tab_dcf_calc_details",
+  "WACC" = "tab_wacc",
+  "RI Overview" = "tab_ri_overview",
+  "RI Settings" = "tab_ri_settings",
+  "Sensitivity Analysis" = "tab_sensitivity_analysis",
+  "P/B Overview" = "tab_pb_overview",
+  "P/B Settings" = "tab_pb_settings",
+  "target_pb" = "tab_target_pb",
+  "NAV Overview" = "tab_nav_overview",
+  "NAV Settings" = "tab_nav_settings",
+  "Beta Overview" = "tab_beta_overview",
+  "SGR" = "tab_sgr",
+  "peer_unlever" = "tab_peer_unlever",
+  "Rolling β" = "tab_rolling_beta",
+  "Decision Matrix" = "tab_decision_matrix",
+  "Dividend Discount Model (DDM)" = "tab_about_ddm",
+  "Discounted Cash Flow (DCF)" = "tab_about_dcf",
+  "Residual Income (RI)" = "tab_about_ri",
+  "Price-to-Book (P/B)" = "tab_about_pb",
+  "Net Asset Value (NAV)" = "tab_about_nav",
+  "im_filters" = "tab_im_filters",
+  "im_detail" = "tab_im_detail",
+  "im_cluster" = "tab_im_cluster",
+  "bt_fundamental" = "tab_bt_fundamental",
+  "bt_sentiment" = "tab_bt_sentiment",
+  # legacy Chinese data-value (pre-stable-value tabs) — still match if present
+  "同業去槓桿" = "tab_peer_unlever",
+  "目標本淨比" = "tab_target_pb",
+  "篩選條件" = "tab_im_filters",
+  "排行" = "tab_im_filters",
+  "明細" = "tab_im_detail",
+  "分群" = "tab_im_cluster",
+  "財報附註 (SEC)" = "tab_sec_notes"
+)
+
+# English (canonical) header text → ui_str key; aliases include both locales for rematch
+.UI_BOX_HEADER_KEYS <- c(
+  "FINANCIAL REPORT" = "box_financial_report",
+  "PERFORMANCE" = "box_performance",
+  "DIVIDEND DISCOUNT" = "box_dividend_discount",
+  "DISCOUNTED CASH FLOW" = "box_discounted_cf",
+  "SENSITIVITY" = "box_sensitivity",
+  "RESIDUAL INCOME" = "box_residual_income",
+  "P/B & ASSET VALUE" = "box_pb_asset",
+  "NAV (BOOK HOLDCO)" = "box_nav",
+  "NAV（帳面控股）" = "box_nav",
+  "NET ASSET VALUE" = "box_nav",
+  "BLUE CHIP" = "box_blue_chip",
+  "BLUE CHIP RANKING" = "box_blue_chip",
+  "BLUE CHIP LEADERBOARD" = "box_blue_chip",
+  "Blue Chip 績優" = "box_blue_chip",
+  "績優股排行" = "box_blue_chip",
+  "績優股排行榜" = "box_blue_chip",
+  "BETA" = "box_beta",
+  "SUSTAINABLE GROWTH RATE" = "box_sgr",
+  "模型選擇決策指南" = "box_model_guide",
+  "Model Selection Guide" = "box_model_guide",
+  "策略參數設定" = "box_bt_params",
+  "Strategy Parameters" = "box_bt_params",
+  "折現比較（合理價 vs 實際股價）" = "box_hfv_discount",
+  "FV vs Market Price" = "box_hfv_discount",
+  "歷史基本面驗證：市價下期漲跌與相對 FV" = "box_hfv_validation",
+  "Historical Fundamental Validation: Next-Period Up/Down & vs FV" = "box_hfv_validation",
+  "歷史基本面驗證：理論估值 vs 實際市值（漲跌機率／幅度）" = "box_hfv_validation",
+  "Historical Fundamental Validation: Theoretical FV vs Actual Market (odds & magnitude)" = "box_hfv_validation",
+  "歷史基本面驗證：漲跌機率、相對 FV 與情境分類" = "box_hfv_validation",
+  "Historical Fundamental Validation: Odds, vs FV & Scenario Taxonomy" = "box_hfv_validation",
+  "美股估值復盤參數盤點（Live vs Hist PIT）" = "box_hfv_param_inventory",
+  "US Valuation Replay Inventory (Live vs Hist PIT)" = "box_hfv_param_inventory"
+)
+
+#' 取單一 UI 字串
+ui_str <- function(key, locale = "en") {
+  loc <- normalize_ui_locale(locale)
+  bucket <- .UI_STRINGS[[loc]]
+  if (is.null(bucket)) bucket <- .UI_STRINGS$en
+  val <- bucket[[key]]
+  if (is.null(val) || !nzchar(as.character(val)[1])) {
+    val <- .UI_STRINGS$en[[key]]
+  }
+  as.character(val %||% key)[1]
+}
+
+#' 回傳目前 locale 的完整字串 map（給 JS chrome 更新）
+ui_locale_payload <- function(locale = "en") {
+  loc <- normalize_ui_locale(locale)
+  keys <- names(.UI_STRINGS$en)
+  stats::setNames(lapply(keys, function(k) ui_str(k, loc)), keys)
+}
+
+#' data-value → 目前 locale 標籤（小頁籤）
+ui_tab_label_map <- function(locale = "en") {
+  loc <- normalize_ui_locale(locale)
+  dvs <- names(.UI_TAB_DATA_VALUE_KEYS)
+  stats::setNames(
+    lapply(dvs, function(dv) ui_str(.UI_TAB_DATA_VALUE_KEYS[[dv]], loc)),
+    dvs
+  )
+}
+
+#' tabBox 標題：每組 aliases（en+zh）→ 目前 locale 標籤
+ui_box_header_specs <- function(locale = "en") {
+  loc <- normalize_ui_locale(locale)
+  keys <- unique(unname(.UI_BOX_HEADER_KEYS))
+  lapply(keys, function(k) {
+    aliases <- names(.UI_BOX_HEADER_KEYS)[.UI_BOX_HEADER_KEYS == k]
+    aliases <- unique(c(aliases, ui_str(k, "en"), ui_str(k, "zh-TW")))
+    list(match = as.character(aliases), label = ui_str(k, loc))
+  })
+}
+
+# Canonical F-Score item labels from compute_report_f_score (zh-TW keys; copy only)
+.FSCORE_ITEM_KEYS <- c(
+  "獲利性 (ROA > 0)" = "fscore_item_roa_pos",
+  "獲利性 (OCF > 0)" = "fscore_item_ocf_pos",
+  "獲利性 (ROA 成長)" = "fscore_item_roa_up",
+  "獲利性 (盈餘品質：OCF > 營業利益)" = "fscore_item_earn_quality",
+  "安全性 (槓桿下降)" = "fscore_item_leverage",
+  "安全性 (流動比提升)" = "fscore_item_liquidity",
+  "安全性 (未大幅增資)" = "fscore_item_dilution",
+  "效率 (毛利率提升)" = "fscore_item_margin",
+  "效率 (資產週轉率提升)" = "fscore_item_turnover"
+)
+
+#' Localize F-Score quality-screen table (items + Pass/Fail + headers).
+#' Does not change scores — display copy only.
+localize_fscore_checklist <- function(df, locale = "zh-TW") {
+  if (is.null(df) || !is.data.frame(df) || nrow(df) < 1L) return(df)
+  loc <- normalize_ui_locale(locale)
+  out <- df
+  item_col <- intersect(c("檢驗維度", "Quality item", "Item"), names(out))[1]
+  score_col <- intersect(c("得分", "Result", "Score"), names(out))[1]
+  if (!is.na(item_col) && nzchar(item_col)) {
+    raw <- as.character(out[[item_col]])
+    keys <- unname(.FSCORE_ITEM_KEYS[raw])
+    mapped <- ifelse(
+      !is.na(keys) & nzchar(keys),
+      vapply(keys, function(k) ui_str(k, loc), character(1)),
+      raw
+    )
+    out[[item_col]] <- mapped
+  }
+  if (!is.na(score_col) && nzchar(score_col)) {
+    sc <- out[[score_col]]
+    if (is.character(sc) || is.factor(sc)) {
+      sc <- as.character(sc)
+      pass_tokens <- c("通過", "Pass", "✅ Pass", "✅ 通過")
+      fail_tokens <- c("未達標", "未通過", "Fail", "❌ Fail", "❌ 未達標")
+      sc <- ifelse(
+        sc %in% pass_tokens | sc %in% c("1", "1.0"),
+        ui_str("fscore_result_pass", loc),
+        ifelse(
+          sc %in% fail_tokens | sc %in% c("0", "0.0"),
+          ui_str("fscore_result_fail", loc),
+          sc
+        )
+      )
+      out[[score_col]] <- sc
+    } else if (is.numeric(sc)) {
+      out[[score_col]] <- ifelse(
+        sc == 1,
+        ui_str("fscore_result_pass", loc),
+        ui_str("fscore_result_fail", loc)
+      )
+    }
+  }
+  names(out)[names(out) == item_col] <- ui_str("fscore_col_item", loc)
+  names(out)[names(out) == score_col] <- ui_str("fscore_col_score", loc)
+  out
+}
+
+.ynow_fmt_str <- function(msg, ...) {
+  dots <- list(...)
+  nms <- names(dots)
+  if (!length(dots) || is.null(nms)) return(msg)
+  for (nm in nms) {
+    if (!nzchar(nm)) next
+    val <- dots[[nm]]
+    if (is.null(val)) val <- ""
+    msg <- gsub(
+      paste0("{", nm, "}"),
+      as.character(val),
+      msg,
+      fixed = TRUE
+    )
+  }
+  msg
+}
+
+.fscore_token_pass <- function(x, locale = "zh-TW") {
+  loc <- tryCatch(normalize_ui_locale(locale), error = function(e) "zh-TW")
+  x <- as.character(x)
+  pass_tokens <- unique(c(
+    "通過", "Pass", "1", "1.0",
+    "✅ Pass", "✅ 通過",
+    ui_str("fscore_result_pass", loc),
+    ui_str("funnel_pass", loc)
+  ))
+  x %in% pass_tokens
+}
+
+#' F-Score quality-screen result cards. Always outside Notes; never a buy signal.
+#' Mirrors Statement alerts: framed boxes visible without expanding <details>.
+fscore_results_ui <- function(df, locale = "zh-TW") {
+  loc <- tryCatch(normalize_ui_locale(locale), error = function(e) "zh-TW")
+  if (is.null(df) || !is.data.frame(df) || nrow(df) < 1L) {
+    return(htmltools::tags$div(
+      class = "ynow-fscore-wrap",
+      htmltools::tags$p(
+        class = "ynow-fscore-waiting",
+        ui_str("funnel_fscore_waiting", loc)
+      )
+    ))
+  }
+  loc_df <- localize_fscore_checklist(df, loc)
+  item_col <- names(loc_df)[1]
+  score_col <- names(loc_df)[min(2L, ncol(loc_df))]
+  passed <- .fscore_token_pass(loc_df[[score_col]], loc)
+  n_pass <- as.integer(sum(passed, na.rm = TRUE))
+  n_fail <- as.integer(nrow(loc_df) - n_pass)
+  pass_lab <- ui_str("funnel_pass", loc)
+  fail_lab <- ui_str("funnel_fail", loc)
+  cards <- lapply(seq_len(nrow(loc_df)), function(i) {
+    ok <- isTRUE(passed[[i]])
+    htmltools::tags$div(
+      class = paste(
+        "ynow-fscore-card",
+        if (ok) "ynow-fscore-pass" else "ynow-fscore-fail"
+      ),
+      htmltools::tags$div(
+        class = "ynow-fscore-card-h",
+        htmltools::tags$span(class = "ynow-fscore-item", loc_df[[item_col]][i]),
+        htmltools::tags$span(
+          class = paste(
+            "ynow-fscore-st",
+            if (ok) "ynow-fscore-pass" else "ynow-fscore-fail"
+          ),
+          if (ok) pass_lab else fail_lab
+        )
+      )
+    )
+  })
+  htmltools::tags$div(
+    class = "ynow-fscore-wrap",
+    htmltools::tags$p(
+      class = "ynow-fscore-count",
+      htmltools::tags$span(
+        class = "ynow-fscore-st ynow-fscore-pass",
+        .ynow_fmt_str(ui_str("funnel_fscore_n_pass", loc), n = n_pass)
+      ),
+      htmltools::tags$span(
+        class = "ynow-fscore-st ynow-fscore-fail",
+        .ynow_fmt_str(ui_str("funnel_fscore_n_fail", loc), n = n_fail)
+      )
+    ),
+    htmltools::tags$div(class = "ynow-fscore-grid", cards)
+  )
+}
+
+#' Collapsible Notes / 附註 chrome. Default collapsed (investor view: KPIs first).
+#' Pass annotation / footnote prose only — never required KPIs or tables.
+#' @param ... annotation nodes (typically a single <p>)
+#' @param locale first-paint or renderUI locale (`en` / `zh-TW`)
+#' @param open TRUE only when the caller wants the body expanded
+ynow_notes_block <- function(..., locale = "zh-TW", open = FALSE) {
+  loc <- tryCatch(normalize_ui_locale(locale), error = function(e) "zh-TW")
+  title <- ui_str("notes_title", loc)
+  aria <- ui_str("notes_toggle_aria", loc)
+  summary <- htmltools::tags$summary(
+    class = "ynow-notes__summary",
+    title = aria,
+    `aria-label` = aria,
+    htmltools::tags$span(class = "ynow-notes__title", title)
+  )
+  body <- htmltools::tags$div(class = "ynow-notes__body", ...)
+  if (isTRUE(open)) {
+    htmltools::tags$details(class = "ynow-notes", open = NA, summary, body)
+  } else {
+    htmltools::tags$details(class = "ynow-notes", summary, body)
+  }
+}
+

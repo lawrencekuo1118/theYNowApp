@@ -1,0 +1,28 @@
+# R & Shiny
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+rsconnect/
+
+# Python
+venv/
+my_python_env/
+.ynow_venv
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project temp / large non-code
+768d5e73109a453b83a1975ad686c59e/
+*.tar.gz
+*.pdf
+.positai
+.cursor/
+
+# Local secrets — never commit
+.Renviron
+*.Renviron

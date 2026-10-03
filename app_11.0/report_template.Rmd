@@ -1,0 +1,340 @@
+---
+title: ""
+date: ""
+output:
+  html_document:
+    theme: cosmo
+    toc: true
+    toc_depth: 2
+    toc_float:
+      collapsed: false
+    number_sections: true
+    df_print: paged
+params:
+  stock_code: NA
+  company_name: NA
+  sector: NA
+  industry: NA
+  report_date: NA
+  rating: NA
+  rating_en: NA
+  rating_color: "#6c757d"
+  current_price: NA
+  target_price: NA
+  upside_pct: NA
+  ddm_value: NA
+  pb_value: NA
+  ev_value: NA
+  margin_of_safety: NA
+  primary_method: NA
+  method_rationale: NA
+  wacc: NA
+  terminal_growth: NA
+  forecast_years: NA
+  dcf_mode: NA
+  market_cap: NA
+  pe_ratio: NA
+  beta: NA
+  dividend_yield: NA
+  kpi_df: NA
+  fcf_plot_path: NA
+  warnings: NA
+  investment_highlights: NA
+  summary_df: NA
+  income_df: NA
+  balance_df: NA
+  cashflow_df: NA
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(knitr)
+
+fmt_price <- function(x) {
+  n <- suppressWarnings(as.numeric(x))
+  if (length(n) != 1 || is.na(n)) return("N/A")
+  paste0("$", format(round(n, 2), nsmall = 2, big.mark = ","))
+}
+
+fmt_pct <- function(x, signed = TRUE) {
+  n <- suppressWarnings(as.numeric(x))
+  if (length(n) != 1 || is.na(n)) return("N/A")
+  prefix <- if (signed && n > 0) "+" else ""
+  paste0(prefix, sprintf("%.1f", n), "%")
+}
+
+fmt_ev <- function(x) {
+  n <- suppressWarnings(as.numeric(x))
+  if (length(n) != 1 || is.na(n)) return("N/A")
+  if (abs(n) >= 1e9) paste0("$", round(n / 1e9, 2), "B")
+  else if (abs(n) >= 1e6) paste0("$", round(n / 1e6, 2), "M")
+  else paste0("$", format(round(n, 0), big.mark = ","))
+}
+
+safe_vec <- function(x) {
+  if (is.null(x) || length(x) == 0) return(NA_character_)
+  paste(x, collapse = "\n")
+}
+```
+
+<style>
+body { font-family: "Helvetica Neue", Arial, "PingFang TC", "Microsoft JhengHei", sans-serif; color: #1a1a2e; }
+.report-header {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%);
+  color: #fff; padding: 28px 32px; border-radius: 8px; margin-bottom: 28px;
+}
+.report-header h1 { margin: 0 0 6px 0; font-size: 1.75em; font-weight: 700; color: #fff; border: none; }
+.report-header .meta { opacity: 0.85; font-size: 0.95em; margin-bottom: 18px; }
+.rating-badge {
+  display: inline-block; padding: 8px 22px; border-radius: 4px;
+  font-size: 1.3em; font-weight: 800; letter-spacing: 0.05em;
+  color: #fff; margin-right: 12px;
+}
+.price-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 16px;
+}
+.price-card {
+  background: rgba(255,255,255,0.12); border-radius: 6px; padding: 12px 14px;
+}
+.price-card .label { font-size: 0.78em; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.04em; }
+.price-card .value { font-size: 1.35em; font-weight: 700; margin-top: 4px; }
+.snapshot-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.92em; }
+.snapshot-table th { background: #f0f4f8; text-align: left; padding: 8px 12px; border: 1px solid #dee2e6; width: 28%; }
+.snapshot-table td { padding: 8px 12px; border: 1px solid #dee2e6; }
+.valuation-table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+.valuation-table th { background: #0f3460; color: #fff; padding: 10px 14px; text-align: left; }
+.valuation-table td { padding: 9px 14px; border-bottom: 1px solid #e9ecef; }
+.valuation-table tr:nth-child(even) td { background: #f8f9fa; }
+.highlight-box {
+  background: #f0f7ff; border-left: 4px solid #0f3460;
+  padding: 16px 20px; border-radius: 0 6px 6px 0; margin: 16px 0;
+}
+.risk-box-warn {
+  background: #fff5f5; border-left: 4px solid #dc3545;
+  padding: 16px 20px; border-radius: 0 6px 6px 0;
+}
+.risk-box-ok {
+  background: #f0fdf4; border-left: 4px solid #198754;
+  padding: 16px 20px; border-radius: 0 6px 6px 0;
+}
+.disclaimer {
+  font-size: 0.78em; color: #6c757d; border-top: 1px solid #dee2e6;
+  padding-top: 16px; margin-top: 32px; line-height: 1.6;
+}
+.section-lead { color: #495057; font-size: 0.95em; margin-bottom: 16px; }
+</style>
+
+```{r report-header, results='asis'}
+cat(sprintf("
+<div class='report-header'>
+  <div class='meta'>%s &nbsp;|&nbsp; %s (%s) &nbsp;|&nbsp; 產業：%s / %s</div>
+  <h1>%s</h1>
+  <div style='margin-top:14px;'>
+    <span class='rating-badge' style='background:%s;'>%s</span>
+    <span style='font-size:0.9em; opacity:0.9;'>%s</span>
+  </div>
+  <div class='price-grid'>
+    <div class='price-card'><div class='label'>目標價 (Target)</div><div class='value'>%s</div></div>
+    <div class='price-card'><div class='label'>現價 (Current)</div><div class='value'>%s</div></div>
+    <div class='price-card'><div class='label'>潛在報酬 (Upside)</div><div class='value'>%s</div></div>
+    <div class='price-card'><div class='label'>安全邊際 (MoS)</div><div class='value'>%s</div></div>
+  </div>
+</div>",
+  params$report_date,
+  params$stock_code, params$company_name,
+  params$sector, params$industry,
+  paste0(params$company_name, " — 投資意見報告"),
+  params$rating_color, params$rating,
+  params$rating_en,
+  fmt_price(params$target_price),
+  fmt_price(params$current_price),
+  fmt_pct(params$upside_pct),
+  fmt_pct(params$margin_of_safety)
+))
+```
+
+# 投資摘要 {.unnumbered}
+
+<div class="section-lead">
+本報告採用券商研究報告慣用架構，整合基本面分析、現金流折現估值與風險評估，提供投資決策參考。
+</div>
+
+## 關鍵數據一覽
+
+```{r snapshot, results='asis'}
+snap <- data.frame(
+  項目 = c("股票代碼", "公司名稱", "市值", "本益比 (P/E)", "Beta", "股息殖利率",
+           "企業價值 (EV)", "DDM 合理價", "P/B 合理價", "建議估值方法", "報告日期"),
+  內容 = c(
+    params$stock_code, params$company_name,
+    params$market_cap, params$pe_ratio, params$beta, params$dividend_yield,
+    fmt_ev(params$ev_value), fmt_price(params$ddm_value), fmt_price(params$pb_value),
+    params$primary_method, as.character(params$report_date)
+  ),
+  stringsAsFactors = FALSE, check.names = FALSE
+)
+kable(snap, format = "html", table.attr = "class='snapshot-table'")
+```
+
+## 投資論點 (Investment Highlights)
+
+```{r highlights, results='asis'}
+hl <- params$investment_highlights
+if (!is.null(hl) && length(hl) > 0 && !all(is.na(hl))) {
+  cat("<div class='highlight-box'><ul style='margin:0; padding-left:20px;'>")
+  for (item in hl) cat(sprintf("<li style='margin-bottom:6px;'>%s</li>", item))
+  cat("</ul></div>")
+} else {
+  cat("<div class='highlight-box'><ul style='margin:0; padding-left:20px;'>")
+  cat(sprintf("<li>依 %s 模型估算，目標價 %s，較現價 %s 具 %s 空間。</li>",
+      params$primary_method, fmt_price(params$target_price),
+      fmt_price(params$current_price), fmt_pct(params$upside_pct)))
+  cat(sprintf("<li>企業價值 (EV) 估算為 %s，反映未來自由現金流折現結果。</li>", fmt_ev(params$ev_value)))
+  cat(sprintf("<li>估值方法說明：%s</li>", params$method_rationale))
+  cat("</ul></div>")
+}
+```
+
+# 估值分析與投資建議
+
+## 估值結論
+
+```{r valuation-summary, results='asis'}
+val_df <- data.frame(
+  估值項目 = c("DCF 目標價 (每股)", "DDM 合理價 (每股)", "P/B 基準合理價 (每股)", "目前市價",
+             "潛在報酬率", "安全邊際", "投資評等"),
+  數值 = c(
+    fmt_price(params$target_price), fmt_price(params$ddm_value), fmt_price(params$pb_value),
+    fmt_price(params$current_price),
+    fmt_pct(params$upside_pct), fmt_pct(params$margin_of_safety), params$rating
+  ),
+  stringsAsFactors = FALSE, check.names = FALSE
+)
+kable(val_df, format = "html", table.attr = "class='valuation-table'")
+```
+
+**評等邏輯（業界慣例）：** 潛在報酬 ≥ 15% 為「買進」；−10% ~ 15% 為「持有」；≤ −10% 為「減持」。安全邊際 = (目標價 − 現價) / 目標價。
+
+## 估值假設與方法
+
+```{r assumptions, results='asis'}
+assump <- data.frame(
+  假設項目 = c("主要估值方法", "DCF 模式", "預測年數", "WACC (折現率)", "永續成長率 g"),
+  設定值 = c(
+    params$primary_method,
+    params$dcf_mode,
+    if (!is.na(params$forecast_years)) paste0(params$forecast_years, " 年") else "N/A",
+    params$wacc,
+    params$terminal_growth
+  ),
+  stringsAsFactors = FALSE, check.names = FALSE
+)
+kable(assump, format = "html", table.attr = "class='snapshot-table'")
+cat(sprintf("<p class='section-lead'>%s</p>", params$method_rationale))
+```
+
+# 營運與財務分析
+
+## 核心財務指標
+
+```{r kpi-table}
+if (!is.null(params$kpi_df) && is.data.frame(params$kpi_df) && nrow(params$kpi_df) > 0) {
+  kable(params$kpi_df, format = "html",
+        table.attr = "class='table table-striped table-hover'")
+} else {
+  cat("尚無足夠財報資料計算 KPI。")
+}
+```
+
+## 自由現金流展望
+
+<div class="section-lead">
+現金流是衡量企業真實獲利與再投資能力的核心指標。下圖呈現 FCFF 歷史軌跡與模型預測路徑。
+</div>
+
+```{r fcf-plot, results='asis'}
+if (!is.na(params$fcf_plot_path) && file.exists(params$fcf_plot_path)) {
+  knitr::include_graphics(params$fcf_plot_path)
+} else {
+  cat("<em>尚無 FCF 預測圖表。請於 App 中完成 DCF 試算後再產出報告。</em>")
+}
+```
+
+# 風險評估
+
+## 財務體質與異常警訊
+
+```{r risks, results='asis'}
+warn_text <- safe_vec(params$warnings)
+if (!is.na(warn_text) && nchar(trimws(warn_text)) > 0) {
+  cat("<div class='risk-box-warn'>")
+  cat("<strong>檢測到以下風險因子：</strong><ul style='margin-top:10px;'>")
+  for (w in strsplit(warn_text, "\n", fixed = TRUE)[[1]]) {
+    if (nchar(trimws(w)) > 0) cat(sprintf("<li>%s</li>", trimws(w)))
+  }
+  cat("</ul></div>")
+} else {
+  cat("<div class='risk-box-ok'><strong>財務健康：</strong>系統未偵測到明顯財務舞弊或重大體質警訊。</div>")
+}
+```
+
+**主要風險類別（供投資人自行評估）：**
+
+- 總體經濟與利率變動對 WACC 及估值的影響
+- 產業競爭、技術替代與監管政策風險
+- 成長率與永續 g 假設偏離實際營運的可能
+- 會計估計、一次性項目對財報品質的影響
+
+# 附錄：財務報表摘要
+
+<div class="section-lead">
+以下為系統抓取之原始財報（欄位已標準化為 TTM / 最新期在左），供進階查核使用。
+</div>
+
+## A. 市場摘要 (Summary)
+
+```{r appendix-summary}
+if (!is.null(params$summary_df) && is.data.frame(params$summary_df) && nrow(params$summary_df) > 0) {
+  kable(params$summary_df, format = "html", row.names = FALSE,
+        table.attr = "class='table table-striped table-condensed'")
+}
+```
+
+## B. 損益表 (Income Statement)
+
+```{r appendix-is}
+if (!is.null(params$income_df) && is.data.frame(params$income_df)) {
+  kable(params$income_df, format = "html", row.names = FALSE,
+        table.attr = "class='table table-striped table-condensed'")
+}
+```
+
+## C. 現金流量表 (Cash Flow)
+
+```{r appendix-cf}
+if (!is.null(params$cashflow_df) && is.data.frame(params$cashflow_df)) {
+  kable(params$cashflow_df, format = "html", row.names = FALSE,
+        table.attr = "class='table table-striped table-condensed'")
+}
+```
+
+## D. 資產負債表 (Balance Sheet)
+
+```{r appendix-bs}
+if (!is.null(params$balance_df) && is.data.frame(params$balance_df)) {
+  kable(params$balance_df, format = "html", row.names = FALSE,
+        table.attr = "class='table table-striped table-condensed'")
+}
+```
+
+---
+
+<div class="disclaimer">
+
+**重要聲明 / Disclaimer**
+
+本報告由 YNow 估值系統自動產出，僅供研究與教育參考，**不構成任何投資建議或要約**。報告中的評等、目標價及財務預測係基於使用者輸入假設與公開財報資料，未經獨立審計。投資人應自行判斷並承擔投資風險。過去績效不代表未來表現。
+
+*報告產出時間：`r params$report_date`* &nbsp;|&nbsp; *系統版本：YNow App 9.0*
+
+</div>

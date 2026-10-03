@@ -1,0 +1,34 @@
+---
+description: After finishing development on the live line, always auto-deploy to shinyapps.io
+alwaysApply: true
+---
+
+# Auto deploy after development (always)
+
+When **development on the live line** (`app_19.0/`) is **finished and verified** in this session, **always** auto-deploy to shinyapps.io. Do **not** wait for the user to say「部署」or「推送」.
+
+Immediately run the full ship sequence from the **coding clone** (`/Users/lawrencekuo/coding/theYNowApp`):
+
+1. **Commit** the app changes without a hand-edited version bump (message: why, 1–2 sentences).  
+   - This repo’s Git may reject `git commit --trailer`; if so use `write-tree` → `commit-tree` → `update-ref`.
+2. **`git push origin HEAD`**
+3. **Deploy:** `Rscript scripts/deploy_app_19.R`  
+   - The script bumps the display version **+0.01**, commits `chore: bump display version to v…`, then uploads that tree. Do not bump again by hand.
+   - Confirm live bundle via rsconnect (`status=running`, new `bundleId`).  
+   - If local client dies (disk) but upload succeeded, poll until the new bundle is active before recording baseline.
+4. **Baseline:** update `scripts/DEPLOY_BASELINE.txt` (bundleId, aligned_git/commit/short, message, `captured_at`, `display_version` = the version just shipped), commit as `chore: record shinyapps baseline bundle <id> (app_19.0)`, push.
+5. Briefly report: app commit, version-bump commit, baseline commit, display version, bundleId, live URL.
+
+## Applies when (default = ship)
+
+- Any completed feature, fix, UI/logic change, optimization, or other **app behavior** work on `app_19.0/` that is verified in-session.
+- Explicit「部署／推送」is **not** required once development is complete.
+
+## Does **not** apply (ask or skip ship)
+
+- Exploratory Q&A, plans, or incomplete / broken work
+- Docs-only / chore-only / rules-only with **no** app behavior change (unless user asks to deploy)
+- User says not to deploy, or only wants a local/WIP commit
+- Secrets, `.Renviron`, or unrelated paths outside the agreed ship set
+
+Prefer coding-clone git ops; do not run git inside the OneDrive mirror. OneDrive sync is best-effort and may hang—do not block ship on it.
