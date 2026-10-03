@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12642847
+bundleId=12642858
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=ac9b9b2dfb00b886fcc4fb406bcef2186b944932
-commit=ac9b9b2dfb00b886fcc4fb406bcef2186b944932
-short=ac9b9b2
-message=chore: bump display version to v19.94
-captured_at=2026-10-03T16:42:50Z
+aligned_git=a25897c2b19beefb5d3b0f9c6c9bd8cf4229a15a
+commit=a25897c2b19beefb5d3b0f9c6c9bd8cf4229a15a
+short=a25897c
+message=chore: bump display version to v19.95
+captured_at=2026-10-03T16:51:40Z
 source_branch=master
 display_version=v19.95
-note=Canonical live line is app_19.0. Bundle 12642847 = v19.94. Hide global Ticker/Yahoo industry chrome on Blue Chip. Deploy via scripts/deploy_app_19.R. Supersedes 12642832.
+note=Canonical live line is app_19.0. Bundle 12642858 = v19.95. Radar focus ticker shares Stock Code typeahead. Deploy via scripts/deploy_app_19.R. Supersedes 12642847.
