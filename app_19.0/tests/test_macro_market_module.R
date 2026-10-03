@@ -371,6 +371,11 @@ check("locale dropped rf note sentence", !grepl("Same live Rf path as CAPM", ui_
 ui_css <- ui_src
 check("lite CSS hides chart slot", grepl("body.ynow-lite #ynow_macro_index_hist", ui_css, fixed = TRUE))
 check("lite CSS disables clickable boxes", grepl("body.ynow-lite .ynow-macro-kpi--clickable", ui_css, fixed = TRUE))
+check("TW market red-up green-down CSS", {
+  grepl("body.ynow-market-tw .ynow-macro-up", ui_css, fixed = TRUE) &&
+    grepl("body.ynow-market-tw .ynow-macro-down", ui_css, fixed = TRUE) &&
+    grepl("body.ynow-market-tw .ynow-macro-kpi .ynow-macro-up", ui_css, fixed = TRUE)
+})
 check("locale wires index hint", grepl("ynow_macro_index_hint", ui_css, fixed = TRUE))
 check("HCCSI box on Rf row", grepl("ynow-macro-kpi--hccsi", txt, fixed = TRUE))
 check("YNOW KPI on Rf row", grepl("ynow-macro-kpi--ynow", txt, fixed = TRUE) &&

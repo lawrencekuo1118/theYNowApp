@@ -6501,6 +6501,13 @@ ui <- dashboardPage(
         .ynow-macro-rf .ynow-macro-down { color: #ff7a70; }
         .ynow-macro-up { color: var(--ynow-macro-green); }
         .ynow-macro-down { color: #c0392b; }
+        /* TW market convention: red up / green down (opposite US) */
+        body.ynow-market-tw .ynow-macro-kpi .ynow-macro-up,
+        body.ynow-market-tw .ynow-macro-rf .ynow-macro-up,
+        body.ynow-market-tw .ynow-macro-up { color: #c0392b; }
+        body.ynow-market-tw .ynow-macro-kpi .ynow-macro-down,
+        body.ynow-market-tw .ynow-macro-rf .ynow-macro-down { color: var(--ynow-macro-green); }
+        body.ynow-market-tw .ynow-macro-down { color: var(--ynow-macro-green); }
         .ynow-macro-hint {
           margin: 6px 0 0 0;
           font-size: 12px;
