@@ -306,12 +306,32 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
     txt,
     fixed = TRUE
   ))
-  # Lite About must not mount methodology outside ynow-full-only
+  # Methodology on Basic Setup bottom (Full); Lite hides get_started; About must not mount it
   testthat::expect_true(grepl(
-    "ynow-full-only[\\s\\S]*valuation_methodology_section_ui",
+    'tabName = "get_started"[\\s\\S]*\\.valuation_methodology_section_ui\\(',
     txt,
     perl = TRUE
   ))
+  testthat::expect_true(grepl(
+    "ynow-full-only[\\s\\S]*\\.valuation_methodology_section_ui\\(",
+    txt,
+    perl = TRUE
+  ))
+  pos_about <- regexpr('tabName = "about"', txt, fixed = TRUE)[1]
+  about_slice <- substr(txt, pos_about, min(nchar(txt), pos_about + 2500L))
+  testthat::expect_false(grepl(
+    "\\.valuation_methodology_section_ui\\(",
+    about_slice,
+    perl = TRUE
+  ))
+  testthat::expect_true(grepl(
+    'body.ynow-lite .sidebar-menu a[data-value="get_started"]',
+    txt,
+    fixed = TRUE
+  ))
+  testthat::expect_true(grepl("Multiples（市場倍數）", txt, fixed = TRUE))
+  testthat::expect_true(grepl("SOTP（分部加總）", txt, fixed = TRUE))
+  testthat::expect_true(grepl('id = "ynow_method_section_title"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-lab-im-eq-adr-row", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_lab_im_eq_explain", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-lab-im-eq-explain ynow-lite-only", txt, fixed = TRUE))

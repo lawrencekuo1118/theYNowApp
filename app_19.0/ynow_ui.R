@@ -133,7 +133,10 @@
         tags$p(
           class = "ynow-about-method",
           "我們的核心方法論為：",
-          tags$b("「先分類，再選模型；先推導，再校正；先給區間，再給單點。」")
+          tags$b("「先分類，再選模型；先推導，再校正；先給區間，再給單點。」"),
+          " 完整「Valuation Methodology｜評價方法論」矩陣與公式說明見 ",
+          tags$b("Basic Setup"),
+          " 分頁最下方。"
         ),
         tags$h4(class = "ynow-about-feat-h", tags$b("核心功能亮點：")),
         zh_features
@@ -149,7 +152,10 @@
         tags$p(
           class = "ynow-about-method",
           "Our core methodology is: ",
-          tags$b("\"Classify before selecting models; derive before calibrating; provide valuation ranges before absolute price targets.\"")
+          tags$b("\"Classify before selecting models; derive before calibrating; provide valuation ranges before absolute price targets.\""),
+          " The full Valuation Methodology matrix and formulas sit at the bottom of ",
+          tags$b("Basic Setup"),
+          "."
         ),
         tags$h4(class = "ynow-about-feat-h", tags$b("Core Features:")),
         en_features
@@ -876,8 +882,8 @@ beta_rolling_section_ui <- function() {
   )
 }
 
-#' Valuation methodology guide (Decision Matrix + DCF/DDM/RI/P/B tabs)
-#' Outer shinydashboard box removed — heading + tabBox sit directly on About.
+#' Valuation methodology guide (Decision Matrix + model tabs).
+#' Mounted at the bottom of Basic Setup (Full only; Lite hides Basic Setup).
 #' Title/lead use column(12); tabBox keeps width=12 (shinydashboard always emits col-sm-N).
 .valuation_methodology_section_ui <- function(collapsible = TRUE, collapsed = FALSE) {
   # collapsible/collapsed kept for call-site compatibility (no outer box to collapse)
@@ -886,43 +892,57 @@ beta_rolling_section_ui <- function() {
       column(
         width = 12,
         class = "ynow-about-section",
-        h3(class = "ynow-about-section-title", tags$b("Valuation Methodology｜評價方法論")),
+        h3(
+          class = "ynow-about-section-title",
+          tags$b(id = "ynow_method_section_title", "Valuation Methodology｜評價方法論")
+        ),
         withMathJax(),
         p(
           class = "ynow-about-section-lead",
+          id = "ynow_method_lead_zh",
           tags$b("先分類，再選模型；先推導，再校正；先給區間，再給單點。"),
-          " 四大引擎：DCF（FCFF／WACC、FCFE／Ke）、DDM（Gordon／SPM／二階段）、P/B＋NAV、RI。",
+          " Fair Value 引擎：DCF（FCFF／WACC、FCFE／Ke）、DDM（Gordon／SPM／二階段）、RI、P/B、NAV。",
+          " Implied Price 相對引擎（僅交叉檢核、不作主模型）：Multiples、SOTP。",
           " 選對路徑與算對數字同等重要；以下說明流程紀律、適用場景與核心公式。"
         ),
         p(
           class = "ynow-about-section-lead",
+          id = "ynow_method_lead_en",
           style = "margin-top: -6px;",
           tags$b("Classify before models; derive before calibrating; ranges before point targets. "),
-          "Engines: DCF (FCFF/WACC, FCFE/Ke), DDM (Gordon / SPM / two-stage), P/B + NAV, and RI. ",
+          "Fair Value: DCF (FCFF/WACC, FCFE/Ke), DDM (Gordon / SPM / two-stage), RI, P/B, NAV. ",
+          "Implied Price cross-checks only (never Fair Value primary): Multiples, SOTP. ",
           "Path selection matters as much as the arithmetic—process, fit, and formulas below."
         )
       )
     ),
     fluidRow(
       tabBox(
-        title = "Model Selection Guide",
+        title = tags$span(id = "ynow_method_tabbox_title", "Model Selection Guide"),
         width = 12,
         side = "left",
 
-        # Tab: 方法論比較矩陣 (表格)
+        # Tab: 方法論比較矩陣
         tabPanel(
-          "Decision Matrix",
+          title = tags$span(id = "ynow_method_tab_matrix", "Decision Matrix"),
           icon = icon("table"),
+          tags$p(
+            id = "ynow_method_matrix_fv_note",
+            class = "help-block",
+            style = "margin:0 0 10px 0;",
+            "Fair Value engines (Intrinsic Value / Fair Value primaries)."
+          ),
           tags$div(
             style = "overflow-x: auto; margin-bottom: 18px;",
             HTML("<table class='table table-striped table-hover table-bordered' style='background-color: white;'>
                                  <thead style='background-color: #2C3E50; color: white;'>
                                    <tr>
                                      <th>對照項目</th>
-                                     <th>DDM（Gordon／SPM／二階段）</th>
-                                     <th>DCF（FCFF 或 FCFE）</th>
-                                     <th>RI（剩餘收益）</th>
-                                     <th>P/B＋NAV</th>
+                                     <th>DDM</th>
+                                     <th>DCF</th>
+                                     <th>RI</th>
+                                     <th>P/B</th>
+                                     <th>NAV</th>
                                    </tr>
                                  </thead>
                                  <tbody>
@@ -931,35 +951,85 @@ beta_rolling_section_ui <- function() {
                                      <td>每股股利 D（股權請求權）</td>
                                      <td>FCFF（企業）或 FCFE（股權）</td>
                                      <td>帳面淨值 + 超額盈餘</td>
-                                     <td>P/B：BVPS／TBVPS／控股 NAVPS × 倍數；純 NAV：帳面控股淨資產</td>
+                                     <td>BVPS／TBVPS／控股 NAVPS × 目標 P/B</td>
+                                     <td>帳面控股淨資產 NAVPS × 倍數</td>
                                    </tr>
                                    <tr>
                                      <td><b>折現率／倍數</b></td>
-                                     <td>Ke（CAPM 股權成本）</td>
+                                     <td>Ke（CAPM）</td>
                                      <td>FCFF：WACC；FCFE：Ke</td>
-                                     <td>Ke（CAPM 股權成本）</td>
-                                     <td>P/B：目標倍數（Justified／產業／歷史）；NAV：折價／溢價倍數</td>
+                                     <td>Ke（CAPM）</td>
+                                     <td>目標倍數（Justified／產業／歷史）</td>
+                                     <td>折價／溢價倍數（非 Justified）</td>
                                    </tr>
                                    <tr>
-                                     <td><b>成長率 g</b></td>
-                                     <td>股利永續 g；SPM 為盈餘成長 g；二階段另有高速期 g1</td>
-                                     <td>終值成長率 SGR（FCFF 相對 WACC；FCFE 相對 Ke）</td>
-                                     <td>剩餘收益終值成長率（相對 Ke）</td>
-                                     <td>Justified P/B 需 g；產業／歷史倍數與純 NAV 不強制 SGR</td>
+                                     <td><b>成長率 g／年數</b></td>
+                                     <td>股利永續 g；SPM 盈餘 g；二階段 g1／n1</td>
+                                     <td>明確預測年數 n；終值 SGR（相對 WACC／Ke）</td>
+                                     <td>RI 預測期；終值 g（相對 Ke）</td>
+                                     <td>Justified 需 g；產業／歷史倍數不強制 SGR</td>
+                                     <td>不涉及預測年數 n</td>
                                    </tr>
                                    <tr>
-                                     <td><b>核心公式含義</b></td>
-                                     <td>Gordon：P₀ = D₁/(Ke−g)；SPM：P₀ = E·g/Ke² + D/Ke；二階段：Σ PV(D_t)+PV(TV)</td>
-                                     <td>FCFF：EV＝Σ PV(FCFF)+PV(TV)；FCFE：Equity＝Σ PV(FCFE)+PV(TV)</td>
-                                     <td>V₀ = B₀ + Σ PV(RI) + PV(TV_RI)</td>
-                                     <td>P/B：P = (BVPS／TBVPS／NAVPS)×目標 P/B；NAV：P = NAVPS×倍數</td>
+                                     <td><b>核心公式</b></td>
+                                     <td>Gordon：P₀=D₁/(Ke−g)；SPM；二階段 ΣPV(D)+PV(TV)</td>
+                                     <td>EV＝ΣPV(FCFF)+PV(TV) 或 Equity＝ΣPV(FCFE)+PV(TV)</td>
+                                     <td>V₀=B₀+ΣPV(RI)+PV(TV_RI)</td>
+                                     <td>P=(BVPS／TBVPS／NAVPS)×Target P/B</td>
+                                     <td>P=NAVPS×NAV multiple</td>
                                    </tr>
                                    <tr>
-                                     <td><b>輸出</b></td>
-                                     <td>直接為每股合理價（可配 Bear／Base／Bull）</td>
-                                     <td>FCFF 先得 EV 再加減淨現金／負債；FCFE 直接為股權價值</td>
-                                     <td>直接為每股內在價值</td>
-                                     <td>Bear／Base／Bull 三檔合理價區間</td>
+                                     <td><b>輸出角色</b></td>
+                                     <td>Fair Value 每股合理價</td>
+                                     <td>Fair Value（FCFF 先 EV 再橋接）</td>
+                                     <td>Fair Value 每股內在價值</td>
+                                     <td>Fair Value 區間（Bear／Base／Bull）</td>
+                                     <td>Fair Value（控股／資產錨）</td>
+                                   </tr>
+                                 </tbody>
+                               </table>")
+          ),
+          tags$p(
+            id = "ynow_method_matrix_rel_note",
+            class = "help-block",
+            style = "margin:0 0 10px 0;",
+            "Implied Price relative engines — cross-check only; never Fair Value primary; not HFV overlays."
+          ),
+          tags$div(
+            style = "overflow-x: auto; margin-bottom: 18px;",
+            HTML("<table class='table table-striped table-hover table-bordered' style='background-color: white;'>
+                                 <thead style='background-color: #34495e; color: white;'>
+                                   <tr>
+                                     <th>對照項目</th>
+                                     <th>Multiples（市場倍數）</th>
+                                     <th>SOTP（分部加總）</th>
+                                   </tr>
+                                 </thead>
+                                 <tbody>
+                                   <tr>
+                                     <td><b>錨定</b></td>
+                                     <td>EPS／EBIT／EBITDA／FCFF／Revenue／ARR × 交易倍數</td>
+                                     <td>≥2 部門營收 × 各部門 EV/Sales（＋非營業資產）</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>橋接</b></td>
+                                     <td>Enterprise：EV→Equity＝EV+Cash−Debt；P/S：股權面、無負債橋接</td>
+                                     <td>Implied EV→Equity＝EV+Cash−Debt（同 DCF 橋接）</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>成長／年數</b></td>
+                                     <td>不涉及預測年數 n；PEG 用成長％作相對指標</td>
+                                     <td>不涉及預測年數 n</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>核心公式</b></td>
+                                     <td>Implied Price＝EPS×P/E；或 Equity＝(Metric×Multiple+Cash−Debt)÷Shares</td>
+                                     <td>Implied EV＝Σ(Seg Rev×EV/Sales)+Non-op；Price＝Equity÷Shares</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>輸出角色</b></td>
+                                     <td>Implied Price 交叉檢核（非 Intrinsic Value）</td>
+                                     <td>結構型 Implied Price 交叉檢核（控股／綜合常配 NAV）</td>
                                    </tr>
                                  </tbody>
                                </table>")
@@ -970,47 +1040,65 @@ beta_rolling_section_ui <- function() {
                                  <thead style='background-color: #2C3E50; color: white;'>
                                    <tr>
                                      <th>考慮維度</th>
-                                     <th>股利折現模型 (DDM)</th>
-                                     <th>自由現金流 (DCF)</th>
-                                     <th>剩餘收益模型 (RI)</th>
-                                     <th>本淨比 (P/B)／純 NAV</th>
+                                     <th>DDM</th>
+                                     <th>DCF</th>
+                                     <th>RI</th>
+                                     <th>P/B</th>
+                                     <th>NAV</th>
+                                     <th>Multiples</th>
+                                     <th>SOTP</th>
                                    </tr>
                                  </thead>
                                  <tbody>
                                    <tr>
                                      <td><b>主要資料來源</b></td>
-                                     <td>現金流量表（現金股利支付）</td>
-                                     <td>現金流量表（營運與資本支出）</td>
-                                     <td>損益表與資產負債表（淨利與權益）</td>
-                                     <td>資產負債表（權益／有形淨值／投資科目）</td>
+                                     <td>現金流量表（股利）</td>
+                                     <td>現金流量表（CFO／CapEx）</td>
+                                     <td>損益表＋資產負債表</td>
+                                     <td>資產負債表（權益／有形淨值）</td>
+                                     <td>資產負債表（權益／投資科目）</td>
+                                     <td>損益／現金流／營收；ARR 手動</td>
+                                     <td>多部門營收（BB Lab）＋Cash／Debt</td>
                                    </tr>
                                    <tr>
-                                     <td><b>投資人身分 / 觀點</b></td>
-                                     <td>小股東（無決策與控制權）</td>
-                                     <td>控股股東 / 併購者（有決策權）</td>
-                                     <td>皆可（尤其適用於負 FCF）</td>
-                                     <td>金融／保險／控股；資產為定價錨</td>
+                                     <td><b>投資人觀點</b></td>
+                                     <td>小股東（配息請求權）</td>
+                                     <td>控股／併購（造血能力）</td>
+                                     <td>皆可（尤其負 FCF）</td>
+                                     <td>金融／保險／帳面錨</td>
+                                     <td>控股／綜合企業</td>
+                                     <td>成長／無形資產交叉</td>
+                                     <td>多事業部結構交叉</td>
                                    </tr>
                                    <tr>
-                                     <td><b>企業發展階段</b></td>
-                                     <td>成熟期、穩健期（如公用事業）</td>
-                                     <td>成長期、擴張期（如科技股）</td>
-                                     <td>各階段皆可，尤其是資產密集型</td>
-                                     <td>銀行、保險、控股／綜合企業</td>
+                                     <td><b>典型適用</b></td>
+                                     <td>成熟穩健配息</td>
+                                     <td>成長／擴張、FCF 為正</td>
+                                     <td>資產密集、FCF 不穩</td>
+                                     <td>銀行、保險、REIT</td>
+                                     <td>控股／集團帳面</td>
+                                     <td>SaaS／平台／高成長</td>
+                                     <td>控股／綜合多部門</td>
                                    </tr>
                                    <tr>
-                                     <td><b>對配息政策依賴度</b></td>
+                                     <td><b>對配息依賴</b></td>
                                      <td><span class='label label-danger'>極高</span></td>
                                      <td><span class='label label-success'>低</span></td>
                                      <td><span class='label label-success'>極低</span></td>
+                                     <td><span class='label label-success'>低</span></td>
+                                     <td><span class='label label-success'>低</span></td>
+                                     <td><span class='label label-success'>低</span></td>
                                      <td><span class='label label-success'>低</span></td>
                                    </tr>
                                    <tr>
                                      <td><b>典型限制</b></td>
                                      <td>不配息／配息波動大時失效</td>
                                      <td>FCF 長期為負或高度循環時難估</td>
-                                     <td>帳面淨值失真／ROE 不可持續時偏誤</td>
-                                     <td>無形資產主導或帳面嚴重扭曲時失準；純 NAV 非市場法 SOTP</td>
+                                     <td>帳面／ROE 失真時偏誤</td>
+                                     <td>無形資產主導時失準</td>
+                                     <td>非市場法 SOTP；無投資科目時＝權益</td>
+                                     <td>倍數隨市場情緒；非 Fair Value</td>
+                                     <td>需 ≥2 正值部門營收；非 EBIT SOTP</td>
                                    </tr>
                                  </tbody>
                                </table>")
@@ -1095,6 +1183,32 @@ beta_rolling_section_ui <- function() {
             tags$li(tags$b("$$NAV = Equity - Holdco\\ Discount \\times Identified\\ Investments$$")),
             tags$li(tags$b("$$P = NAVPS \\times NAV\\ Multiple$$"))
           )
+        ),
+
+        tabPanel(
+          "Multiples",
+          icon = icon("percentage"),
+          h4(tags$b("市場倍數法（Implied Price）")),
+          p("相對估值：以交易倍數將盈餘／企業指標／營收換算為 Implied Price。屬交叉檢核，不是 Intrinsic Value／Fair Value 主模型；不可與 DCF／DDM／RI／P/B／NAV 等權平均，亦不可作為 HFV 歷史 Fair Value 疊加。"),
+          tags$ul(
+            tags$li(tags$b("Earnings："), tags$b("$$Implied\\ Price = EPS \\times P/E$$"), "；PEG = P/E ÷ growth(%)（相對指標，非買賣閾值）。"),
+            tags$li(tags$b("Enterprise："), tags$b("$$Implied\\ EV = Metric \\times Multiple$$"), "；", tags$b("$$Equity = EV + Cash - Debt$$"), "；Price = Equity ÷ Shares（同 DCF 橋接；EV/FCF 用 FCFF）。"),
+            tags$li(tags$b("P/S："), tags$b("$$Implied\\ Equity = Revenue \\times P/S$$"), "；Price = Equity ÷ Shares（無 Cash−Debt 橋接）。")
+          ),
+          p("設定分頁對齊 P/B：Earnings／Enterprise／P/S／Bridge。不涉及預測年數 n。")
+        ),
+
+        tabPanel(
+          "SOTP",
+          icon = icon("puzzle-piece"),
+          h4(tags$b("分部加總 SOTP（結構型 Implied Price）")),
+          p("側欄獨立引擎：拆解 ≥2 筆部門營收，各自套用 EV/Sales，加總後再 Cash−Debt 橋接。結構交叉檢核——控股／綜合常作 NAV 之副模型；不是單一交易倍數，亦非部門 EBIT SOTP。"),
+          tags$ul(
+            tags$li(tags$b("$$Segment\\ EV = Segment\\ Revenue \\times EV/Sales$$")),
+            tags$li(tags$b("$$Implied\\ EV = \\sum Segment\\ EV + Non\\text{-}operating$$")),
+            tags$li(tags$b("$$Equity = Implied\\ EV + Cash - Debt$$"), "；", tags$b("$$Price = Equity \\div Shares$$"))
+          ),
+          p("設定分頁：Segments（部門倍數／非營業資產）與 Bridge（Cash／Debt／Shares）。不涉及預測年數 n。")
         )
       )
     )
@@ -8227,6 +8341,13 @@ ui <- dashboardPage(
               beta_rolling_section_ui()
             )
           )
+        ),
+        # Valuation Methodology at bottom of Basic Setup (Full only; Lite hides get_started)
+        tags$div(
+          class = "ynow-full-only",
+          style = "margin-top: 20px;",
+          tags$hr(style = "margin: 8px 0 20px 0; border-color: #e5e8eb;"),
+          .valuation_methodology_section_ui(collapsible = FALSE, collapsed = FALSE)
         )
       ),
 
@@ -10538,15 +10659,13 @@ ui <- dashboardPage(
       ),
 
       # ==========================================
-      # ℹ️ About 分頁 (系統介紹／Lite 簡介；完整評價方法論僅 Full)
+      # ℹ️ About 分頁 (系統介紹／Lite 簡介；完整評價方法論在 Basic Setup 最下方)
       # ==========================================
       tabItem(
         tabName = "about",
         tags$div(
           class = "ynow-full-only",
-          .about_bilingual_intro_ui(),
-          tags$hr(style = "margin: 8px 0 20px 0; border-color: #e5e8eb;"),
-          .valuation_methodology_section_ui(collapsible = FALSE, collapsed = FALSE)
+          .about_bilingual_intro_ui()
         ),
         tags$div(
           class = "ynow-lite-only",
