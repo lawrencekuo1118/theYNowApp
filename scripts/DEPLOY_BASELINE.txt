@@ -8,5 +8,5 @@ short=91d6e8f
 message=chore: bump display version to v19.78
 captured_at=2026-10-03T12:43:20Z
 source_branch=master
-display_version=v19.78
+display_version=v19.79
 note=Canonical live line is app_19.0. Bundle 12642190 = v19.78. HCCSI full name → Critical Tech Stack Index (ticker unchanged). Deploy via scripts/deploy_app_19.R. Supersedes 12642147 / 12642123.
