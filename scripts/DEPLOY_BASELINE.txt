@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12642010
+bundleId=12642026
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=a98755f8a52c5354d10e0eda6cc3cecdbc0030b2
-commit=a98755f8a52c5354d10e0eda6cc3cecdbc0030b2
-short=a98755f
-message=chore: bump display version to v19.71
-captured_at=2026-10-03T11:41:25Z
+aligned_git=091bcdcc96ccdfe500bfcfdda52196dc3cbf07e8
+commit=091bcdcc96ccdfe500bfcfdda52196dc3cbf07e8
+short=091bcdc
+message=chore: bump display version to v19.72
+captured_at=2026-10-03T11:47:42Z
 source_branch=master
 display_version=v19.72
-note=Canonical live line is app_19.0. Bundle 12642010 = v19.71. Macro TW mode: red-up / green-down change colors. Deploy via scripts/deploy_app_19.R. Supersedes 12641727 / 12641698.
+note=Canonical live line is app_19.0. Bundle 12642026 = v19.72. YNOW/TYNOW KPI click expands line chart in shared index hist panel (same as ^GSPC). Deploy via scripts/deploy_app_19.R. Supersedes 12642010 / 12641727.
