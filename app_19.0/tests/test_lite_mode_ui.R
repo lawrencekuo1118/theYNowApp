@@ -245,7 +245,7 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl('tabName = "smart_analysis"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-full-only", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_lab_im_detail_tab", txt, fixed = TRUE))
-  testthat::expect_true(grepl("The YNow App v19.92", txt, fixed = TRUE))
+  testthat::expect_true(grepl("The YNow App v19.93", txt, fixed = TRUE))
   testthat::expect_true(grepl('title = "The YNow App"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-report", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-toolbar", txt, fixed = TRUE))
