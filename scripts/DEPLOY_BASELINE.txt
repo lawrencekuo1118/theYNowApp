@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12642858
+bundleId=12642872
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=a25897c2b19beefb5d3b0f9c6c9bd8cf4229a15a
-commit=a25897c2b19beefb5d3b0f9c6c9bd8cf4229a15a
-short=a25897c
-message=chore: bump display version to v19.95
-captured_at=2026-10-03T16:51:40Z
+aligned_git=318415084bbc54344612ee96e13dbfe3b13ddd63
+commit=318415084bbc54344612ee96e13dbfe3b13ddd63
+short=3184150
+message=chore: bump display version to v19.96
+captured_at=2026-10-03T17:00:04Z
 source_branch=master
 display_version=v19.96
-note=Canonical live line is app_19.0. Bundle 12642858 = v19.95. Radar focus ticker shares Stock Code typeahead. Deploy via scripts/deploy_app_19.R. Supersedes 12642847.
+note=Canonical live line is app_19.0. Bundle 12642872 = v19.96. Blue Chip detail table under Rankings; Detail sub-tab removed. Deploy via scripts/deploy_app_19.R. Supersedes 12642858.
