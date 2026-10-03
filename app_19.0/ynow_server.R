@@ -130,6 +130,9 @@ server <- function(input, output, session) {
     .clear_lab_cluster_result("market_mode")
   }, ignoreInit = TRUE)
 
+  # Lazy-mount nonce: bumped after each first-visit page mount (locale / input refresh)
+  lazy_mount_nonce <- reactiveVal(0L)
+
   # Valuation-model / Blue Chip page accent; Basic Setup / other tabs clear theme
   observeEvent(input$sidebar_tabs, {
     tab <- as.character(input$sidebar_tabs %||% "")[1]
@@ -523,6 +526,45 @@ server <- function(input, output, session) {
       )
     }, error = function(e) NULL)
   }
+
+  # Once-per-session lazy page mounts (heavy tabs). Revisit keeps mounted UI.
+  .ynow_lazy_tab_ctrl <- .ynow_register_lazy_tabs(
+    input, output, session,
+    builders = list(
+      macro_market = function() .ynow_page_ui_macro_market(),
+      bluechip = function() .ynow_page_ui_bluechip(),
+      hfv = function() .ynow_page_ui_hfv(),
+      lab_notes = function() .ynow_page_ui_lab_notes(),
+      testing = function() .ynow_page_ui_testing(),
+      decision_checklist = function() decision_checklist_tab_body_ui()
+    ),
+    on_first_mount = list(
+      macro_market = function() {
+        macro_market_server(
+          "macro",
+          market_mode_rv = market_mode,
+          ui_locale_rv = ui_locale,
+          lite_mode_rv = reactive(isTRUE(input$ynow_lite_mode))
+        )
+      },
+      testing = function() {
+        business_breakdown_lab_server(
+          "bblab",
+          market_mode_rv = market_mode,
+          ui_locale_rv = ui_locale,
+          current_ticker_rv = current_ticker
+        )
+      }
+    ),
+    after_mount = function(tab) {
+      lazy_mount_nonce(isolate(as.integer(lazy_mount_nonce()) %||% 0L) + 1L)
+      tryCatch(
+        .push_ui_locale(isolate(ui_locale()), sync_picker = FALSE),
+        error = function(e) NULL
+      )
+      invisible(tab)
+    }
+  )
 
   # 語言控制：只改 UI locale，不碰顯示幣別
   observeEvent(input$ui_locale_pick, {
@@ -2872,22 +2914,9 @@ server <- function(input, output, session) {
     fundamental_profile = fundamental_profile_rec
   )
 
-  # 總體經濟與大盤趨勢：訂閱 market_mode／locale；Rolling β 不寫入 CAPM
-  macro_market_server(
-    "macro",
-    market_mode_rv = market_mode,
-    ui_locale_rv = ui_locale,
-    lite_mode_rv = reactive(isTRUE(input$ynow_lite_mode))
-  )
-
-  # Experimental Business Breakdown Lab: independent of valuation / CV / production FS.
-  business_breakdown_lab_server(
-    "bblab",
-    market_mode_rv = market_mode,
-    ui_locale_rv = ui_locale,
-    current_ticker_rv = current_ticker
-  )
+  # macro_market_server / business_breakdown_lab_server: first visit only (lazy_tabs)
   
+
   run_calc_trigger <- reactiveVal(0)
   observeEvent(input$calc, { run_calc_trigger(run_calc_trigger() + 1) })
   observeEvent(d_cash_flow(), { 
@@ -11465,7 +11494,9 @@ server <- function(input, output, session) {
   })
 
   # Refresh truncate-rule labels + concept groups when market / locale changes
+  # (also after Blue Chip lazy mount so newly created inputs get locale choices)
   observe({
+    lazy_mount_nonce()
     mm <- tryCatch(market_mode(), error = function(e) "US")
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
     rank_cur <- as.character(isolate(input$lab_im_pool_rank) %||% "mcap")[1]

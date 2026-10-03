@@ -162,9 +162,8 @@
   )
 }
 
-decision_checklist_tab_ui <- function() {
-  tabItem(
-    tabName = "decision_checklist",
+decision_checklist_tab_body_ui <- function() {
+  tagList(
     fluidRow(
       column(
         width = 12,
@@ -196,6 +195,13 @@ decision_checklist_tab_ui <- function() {
         )
       )
     )
+  )
+}
+
+decision_checklist_tab_ui <- function() {
+  tabItem(
+    tabName = "decision_checklist",
+    uiOutput("ynow_lazy_host_decision_checklist")
   )
 }
 

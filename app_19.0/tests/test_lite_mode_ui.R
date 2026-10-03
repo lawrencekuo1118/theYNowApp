@@ -305,11 +305,16 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl("input.sidebar_tabs != 'testing'", txt, fixed = TRUE))
   testthat::expect_true(grepl("remapLegacyTab", txt, fixed = TRUE))
   testthat::expect_true(grepl("'testing'", txt, fixed = TRUE))
+  # Testing tab is a lazy host; BBLab body lives in .ynow_page_ui_testing
+  testthat::expect_true(grepl('uiOutput("ynow_lazy_host_testing")', txt, fixed = TRUE))
+  testthat::expect_true(grepl(
+    "\\.ynow_page_ui_testing\\s*<-\\s*function[\\s\\S]*business_breakdown_lab_ui\\(\"bblab\"\\)",
+    txt,
+    perl = TRUE
+  ))
   testing_idx <- regexpr('tabName = "testing"', txt, fixed = TRUE)[1]
-  lab_ui_idx <- regexpr('business_breakdown_lab_ui("bblab")', txt, fixed = TRUE)[1]
   next_tab_idx <- regexpr('tabName = "feedback"', txt, fixed = TRUE)[1]
-  testthat::expect_true(testing_idx > 0 && lab_ui_idx > testing_idx &&
-                          next_tab_idx > lab_ui_idx)
+  testthat::expect_true(testing_idx > 0 && next_tab_idx > testing_idx)
   testthat::expect_true(grepl(
     "body\\.ynow-lite[\\s\\S]*ynow-sidebar-test-link",
     txt,
