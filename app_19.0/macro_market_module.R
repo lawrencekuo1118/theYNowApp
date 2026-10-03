@@ -1465,6 +1465,11 @@ macro_market_server <- function(id = "macro",
       macro_bubble_buffett_series(.mode())
     })
 
+    buffett_abs_series <- reactive({
+      refresh_token()
+      tryCatch(macro_bubble_buffett_abs_series(.mode()), error = function(e) NULL)
+    })
+
     observe({
       ser <- buffett_series()
       if (is.null(ser) || !nrow(ser)) return()
@@ -1536,6 +1541,59 @@ macro_market_server <- function(id = "macro",
             .ui("macro_bubble_buffett_unknown")
           }
         )
+      )
+    })
+
+    .buffett_abs_kpi_box <- function(label_key, value_txt, as_of, hint_key) {
+      asof_txt <- if (inherits(as_of, "Date") && !is.na(as_of)) {
+        as.character(as_of)
+      } else {
+        "—"
+      }
+      tags$div(
+        class = "ynow-macro-kpi",
+        tags$div(class = "ynow-macro-kpi__label", .ui(label_key)),
+        tags$div(class = "ynow-macro-kpi__value", value_txt),
+        tags$div(
+          class = "ynow-macro-hint",
+          sprintf(.ui(hint_key), asof_txt)
+        )
+      )
+    }
+
+    output$bubble_buffett_mcap <- renderUI({
+      .loc()
+      abs_ser <- buffett_abs_series()
+      asof <- suppressWarnings(as.integer(input$bubble_buffett_asof)[1])
+      got <- macro_bubble_buffett_abs_asof(abs_ser, asof)
+      val <- if (isTRUE(got$ok) && is.finite(got$market_cap_usd)) {
+        macro_bubble_fmt_usd_level(got$market_cap_usd)
+      } else {
+        "—"
+      }
+      .buffett_abs_kpi_box(
+        "macro_bubble_buffett_mcap_label",
+        val,
+        got$as_of,
+        "macro_bubble_buffett_mcap_hint"
+      )
+    })
+
+    output$bubble_buffett_gdp <- renderUI({
+      .loc()
+      abs_ser <- buffett_abs_series()
+      asof <- suppressWarnings(as.integer(input$bubble_buffett_asof)[1])
+      got <- macro_bubble_buffett_abs_asof(abs_ser, asof)
+      val <- if (isTRUE(got$ok) && is.finite(got$gdp_usd)) {
+        macro_bubble_fmt_usd_level(got$gdp_usd)
+      } else {
+        "—"
+      }
+      .buffett_abs_kpi_box(
+        "macro_bubble_buffett_gdp_label",
+        val,
+        got$as_of,
+        "macro_bubble_buffett_gdp_hint"
       )
     })
 

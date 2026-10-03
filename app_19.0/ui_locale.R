@@ -1587,7 +1587,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     macro_bubble_pause = "Pause",
     macro_bubble_buffett_note = paste0(
       "Series: World Bank market capitalization of listed domestic companies (% of GDP) when reachable; ",
-      "otherwise the bundled CSV snapshot. Traffic light uses each market’s own mean ± 0.75·sd."
+      "companion boxes use World Bank total market cap (CM.MKT.LCAP.CD) and GDP (NY.GDP.MKTP.CD) in current USD. ",
+      "Otherwise the bundled CSV snapshot (ratio only). Traffic light uses each market’s own mean ± 0.75·sd."
     ),
     macro_bubble_buffett_level = "Valuation zone",
     macro_bubble_buffett_over = "Significantly Overvalued",
@@ -1595,6 +1596,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     macro_bubble_buffett_under = "Undervalued",
     macro_bubble_buffett_unknown = "Waiting for Buffett series…",
     macro_bubble_buffett_kpi = "Latest %.1f%% of GDP · as of %s",
+    macro_bubble_buffett_mcap_label = "Total market cap",
+    macro_bubble_buffett_mcap_hint = "Listed domestic companies · USD · as of %s",
+    macro_bubble_buffett_gdp_label = "GDP",
+    macro_bubble_buffett_gdp_hint = "Current USD · as of %s",
     macro_bubble_buffett_need = "Buffett Indicator series unavailable.",
     macro_bubble_buffett_series = "Market cap / GDP",
     macro_bubble_buffett_mean = "Series mean",
@@ -3332,8 +3337,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     macro_bubble_play = "播放",
     macro_bubble_pause = "暫停",
     macro_bubble_buffett_note = paste0(
-      "序列優先取世界銀行「上市國內公司總市值佔 GDP%%」；連線失敗則用內建 CSV 快照。",
-      "紅綠燈依該市場自身序列 mean ± 0.75·sd 判定。"
+      "序列優先取世界銀行「上市國內公司總市值佔 GDP%%」；",
+      "旁側總市值／GDP 取世界銀行 CM.MKT.LCAP.CD 與 NY.GDP.MKTP.CD（當期美元）。",
+      "連線失敗則用內建 CSV 快照（僅比率）。紅綠燈依該市場自身序列 mean ± 0.75·sd 判定。"
     ),
     macro_bubble_buffett_level = "估值水位",
     macro_bubble_buffett_over = "嚴重高估（Significantly Overvalued）",
@@ -3341,6 +3347,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     macro_bubble_buffett_under = "低估（Undervalued）",
     macro_bubble_buffett_unknown = "等待巴菲特指標序列…",
     macro_bubble_buffett_kpi = "最新 %.1f%% of GDP · 截至 %s",
+    macro_bubble_buffett_mcap_label = "總市值",
+    macro_bubble_buffett_mcap_hint = "上市國內公司 · 美元 · 截至 %s",
+    macro_bubble_buffett_gdp_label = "GDP",
+    macro_bubble_buffett_gdp_hint = "當期美元 · 截至 %s",
     macro_bubble_buffett_need = "尚無巴菲特指標序列。",
     macro_bubble_buffett_series = "總市值／GDP",
     macro_bubble_buffett_mean = "序列均值",

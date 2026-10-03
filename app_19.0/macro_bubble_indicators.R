@@ -284,21 +284,40 @@ macro_bubble_read_buffett_csv <- function(mode = "US") {
   d
 }
 
-#' Try World Bank CM.MKT.LCAP.GD.ZS; fall back to shipped CSV.
-macro_bubble_fetch_buffett_worldbank <- function(mode = "US", timeout_sec = 20) {
+.macro_bubble_wb_country <- function(mode = "US") {
   mode <- if (exists("normalize_market_mode", mode = "function")) {
     normalize_market_mode(mode)
   } else {
     toupper(as.character(mode)[1])
   }
-  code <- if (identical(mode, "TW")) "TWN" else "USA"
-  cache_key <- paste0("wb_", code)
+  if (identical(mode, "TW")) "TWN" else "USA"
+}
+
+#' Format World Bank current-USD levels (market cap / GDP) for KPI display.
+macro_bubble_fmt_usd_level <- function(x) {
+  x <- suppressWarnings(as.numeric(x)[1])
+  if (!is.finite(x)) return("—")
+  ax <- abs(x)
+  if (ax >= 1e12) return(sprintf("$%.2fT", x / 1e12))
+  if (ax >= 1e9) return(sprintf("$%.1fB", x / 1e9))
+  if (ax >= 1e6) return(sprintf("$%.1fM", x / 1e6))
+  sprintf("$%.0f", x)
+}
+
+#' World Bank indicator series → date / value (current USD or %).
+macro_bubble_fetch_wb_indicator <- function(mode = "US",
+                                            indicator = "CM.MKT.LCAP.GD.ZS",
+                                            timeout_sec = 20) {
+  code <- .macro_bubble_wb_country(mode)
+  ind <- as.character(indicator %||% "")[1]
+  if (!nzchar(ind)) return(NULL)
+  cache_key <- paste0("wb_", code, "_", ind)
   if (is.data.frame(.MACRO_BUBBLE_ENV[[cache_key]])) {
     return(.MACRO_BUBBLE_ENV[[cache_key]])
   }
   url <- sprintf(
-    "https://api.worldbank.org/v2/country/%s/indicator/CM.MKT.LCAP.GD.ZS?format=json&per_page=120",
-    code
+    "https://api.worldbank.org/v2/country/%s/indicator/%s?format=json&per_page=120",
+    code, ind
   )
   raw <- tryCatch({
     if (requireNamespace("httr", quietly = TRUE)) {
@@ -323,7 +342,7 @@ macro_bubble_fetch_buffett_worldbank <- function(mode = "US", timeout_sec = 20) 
     if (!is.finite(yr) || !is.finite(val)) return(NULL)
     data.frame(
       date = as.Date(sprintf("%d-12-31", yr)),
-      ratio_pct = val,
+      value = val,
       source = "worldbank",
       stringsAsFactors = FALSE
     )
@@ -334,6 +353,90 @@ macro_bubble_fetch_buffett_worldbank <- function(mode = "US", timeout_sec = 20) 
   df <- df[order(df$date), , drop = FALSE]
   .MACRO_BUBBLE_ENV[[cache_key]] <- df
   df
+}
+
+#' Try World Bank CM.MKT.LCAP.GD.ZS; fall back to shipped CSV.
+macro_bubble_fetch_buffett_worldbank <- function(mode = "US", timeout_sec = 20) {
+  ser <- macro_bubble_fetch_wb_indicator(
+    mode, "CM.MKT.LCAP.GD.ZS", timeout_sec = timeout_sec
+  )
+  if (!is.data.frame(ser) || !nrow(ser)) return(NULL)
+  data.frame(
+    date = ser$date,
+    ratio_pct = ser$value,
+    source = ser$source,
+    stringsAsFactors = FALSE
+  )
+}
+
+#' Absolute market-cap and GDP (current USD) for Buffett KPI companions.
+macro_bubble_buffett_abs_series <- function(mode = get_market_mode(), timeout_sec = 20) {
+  mcap <- tryCatch(
+    macro_bubble_fetch_wb_indicator(mode, "CM.MKT.LCAP.CD", timeout_sec = timeout_sec),
+    error = function(e) NULL
+  )
+  gdp <- tryCatch(
+    macro_bubble_fetch_wb_indicator(mode, "NY.GDP.MKTP.CD", timeout_sec = timeout_sec),
+    error = function(e) NULL
+  )
+  ratio <- tryCatch(
+    macro_bubble_fetch_wb_indicator(mode, "CM.MKT.LCAP.GD.ZS", timeout_sec = timeout_sec),
+    error = function(e) NULL
+  )
+  if (!is.data.frame(mcap) || !nrow(mcap)) mcap <- NULL
+  if (!is.data.frame(gdp) || !nrow(gdp)) gdp <- NULL
+  if (!is.data.frame(ratio) || !nrow(ratio)) ratio <- NULL
+  if (is.null(mcap) && is.null(gdp)) return(NULL)
+  dates <- sort(unique(c(
+    if (!is.null(mcap)) mcap$date else as.Date(character(0)),
+    if (!is.null(gdp)) gdp$date else as.Date(character(0)),
+    if (!is.null(ratio)) ratio$date else as.Date(character(0))
+  )))
+  if (!length(dates)) return(NULL)
+  mc <- if (!is.null(mcap)) mcap$value[match(dates, mcap$date)] else rep(NA_real_, length(dates))
+  gd <- if (!is.null(gdp)) gdp$value[match(dates, gdp$date)] else rep(NA_real_, length(dates))
+  rt <- if (!is.null(ratio)) ratio$value[match(dates, ratio$date)] else rep(NA_real_, length(dates))
+  # Fill gaps: Market cap ≈ GDP × (market cap / GDP).
+  miss_mc <- !is.finite(mc) & is.finite(gd) & is.finite(rt) & rt > 0
+  if (any(miss_mc)) mc[miss_mc] <- gd[miss_mc] * (rt[miss_mc] / 100)
+  data.frame(
+    date = dates,
+    market_cap_usd = as.numeric(mc),
+    gdp_usd = as.numeric(gd),
+    source = "worldbank",
+    stringsAsFactors = FALSE
+  )
+}
+
+#' Latest (as-of filtered) absolute levels for KPI boxes.
+macro_bubble_buffett_abs_asof <- function(series, asof_year = NA_integer_) {
+  empty <- list(
+    market_cap_usd = NA_real_,
+    gdp_usd = NA_real_,
+    as_of = as.Date(NA),
+    ok = FALSE
+  )
+  if (!is.data.frame(series) || !nrow(series)) return(empty)
+  ser <- series
+  yr <- suppressWarnings(as.integer(asof_year)[1])
+  if (is.finite(yr)) {
+    ser <- ser[as.integer(format(ser$date, "%Y")) <= yr, , drop = FALSE]
+  }
+  if (!nrow(ser)) return(empty)
+  # Prefer the newest row that has either level populated.
+  for (i in rev(seq_len(nrow(ser)))) {
+    mc <- suppressWarnings(as.numeric(ser$market_cap_usd[[i]])[1])
+    gd <- suppressWarnings(as.numeric(ser$gdp_usd[[i]])[1])
+    if (is.finite(mc) || is.finite(gd)) {
+      return(list(
+        market_cap_usd = mc,
+        gdp_usd = gd,
+        as_of = as.Date(ser$date[[i]]),
+        ok = TRUE
+      ))
+    }
+  }
+  empty
 }
 
 macro_bubble_buffett_series <- function(mode = get_market_mode()) {
@@ -482,13 +585,26 @@ macro_bubble_chapter_ui <- function(ns) {
     fluidRow(
       class = "ynow-macro-kpi-row ynow-funnel-kpi-row",
       column(
-        width = 3,
-        class = "col-xs-12 col-sm-4 col-md-3",
+        width = 4,
+        class = "col-xs-12 col-sm-4 col-md-4",
         uiOutput(ns("bubble_buffett_light"))
       ),
       column(
-        width = 5,
-        class = "col-xs-12 col-sm-8 col-md-5",
+        width = 4,
+        class = "col-xs-12 col-sm-4 col-md-4",
+        uiOutput(ns("bubble_buffett_mcap"))
+      ),
+      column(
+        width = 4,
+        class = "col-xs-12 col-sm-4 col-md-4",
+        uiOutput(ns("bubble_buffett_gdp"))
+      )
+    ),
+    fluidRow(
+      class = "ynow-macro-kpi-row",
+      column(
+        width = 8,
+        class = "col-xs-12 col-sm-8 col-md-8",
         sliderInput(
           ns("bubble_buffett_asof"),
           label = tags$span(id = "ynow_macro_bubble_asof_label", "As-of year (playback)"),
@@ -502,7 +618,7 @@ macro_bubble_chapter_ui <- function(ns) {
       ),
       column(
         width = 4,
-        class = "col-xs-12 col-sm-12 col-md-4",
+        class = "col-xs-12 col-sm-4 col-md-4",
         tags$div(
           style = "margin-top: 24px;",
           actionButton(
@@ -528,7 +644,8 @@ macro_bubble_chapter_ui <- function(ns) {
         class = "ynow-macro-hint",
         paste0(
           "Series: World Bank market capitalization of listed domestic companies (% of GDP) when reachable; ",
-          "otherwise the bundled CSV snapshot. Traffic light uses each market’s own mean ± 0.75·sd."
+          "companion boxes use World Bank total market cap (CM.MKT.LCAP.CD) and GDP (NY.GDP.MKTP.CD) in current USD. ",
+          "Otherwise the bundled CSV snapshot (ratio only). Traffic light uses each market’s own mean ± 0.75·sd."
         )
       )
     )

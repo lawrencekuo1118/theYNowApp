@@ -88,6 +88,25 @@ check("ch2 notes still present", grepl("ynow_notes_block", dec_src, fixed = TRUE
         grepl("ynow_funnel_ch2_lead", dec_src, fixed = TRUE))
 bt_src <- paste(readLines("macro_bubble_indicators.R", warn = FALSE), collapse = "\n")
 check("bubble theme first-paint Technology XLK", grepl('selected = "gics_xlk"', bt_src, fixed = TRUE))
+check("buffett companion KPI outputs", {
+  grepl("bubble_buffett_mcap", bt_src, fixed = TRUE) &&
+    grepl("bubble_buffett_gdp", bt_src, fixed = TRUE)
+})
+check("USD level formatter", {
+  identical(macro_bubble_fmt_usd_level(1.5e12), "$1.50T") &&
+    identical(macro_bubble_fmt_usd_level(NA_real_), "—")
+})
+check("abs asof picks latest finite", {
+  toy <- data.frame(
+    date = as.Date(c("2022-12-31", "2023-12-31", "2024-12-31")),
+    market_cap_usd = c(40e12, NA_real_, 50e12),
+    gdp_usd = c(20e12, 22e12, NA_real_),
+    stringsAsFactors = FALSE
+  )
+  got <- macro_bubble_buffett_abs_asof(toy, 2024L)
+  isTRUE(got$ok) && is.finite(got$market_cap_usd) &&
+    abs(got$market_cap_usd - 50e12) < 1 && identical(got$as_of, as.Date("2024-12-31"))
+})
 check("buffett note wrapped", grepl("ynow_notes_block", bt_src, fixed = TRUE) &&
         grepl("ynow_macro_bubble_buffett_note", bt_src, fixed = TRUE))
 check("buffett KPI/plot not inside notes", {
