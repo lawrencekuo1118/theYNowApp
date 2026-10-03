@@ -8,5 +8,5 @@ short=a98755f
 message=chore: bump display version to v19.71
 captured_at=2026-10-03T11:41:25Z
 source_branch=master
-display_version=v19.71
+display_version=v19.72
 note=Canonical live line is app_19.0. Bundle 12642010 = v19.71. Macro TW mode: red-up / green-down change colors. Deploy via scripts/deploy_app_19.R. Supersedes 12641727 / 12641698.
