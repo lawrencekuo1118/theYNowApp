@@ -8,5 +8,5 @@ short=fb83f0f
 message=chore: bump display version to v19.69
 captured_at=2026-10-03T09:30:41Z
 source_branch=master
-display_version=v19.69
+display_version=v19.70
 note=Canonical live line is app_19.0. Bundle 12641698 = v19.69. Home + About privacy / IP / investment-risk notices; PDF disclaimer points to About. Deploy via scripts/deploy_app_19.R. Supersedes 12641661 / 12641647.
