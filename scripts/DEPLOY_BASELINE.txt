@@ -8,5 +8,5 @@ short=198fc1a
 message=chore: bump display version to v19.65
 captured_at=2026-10-03T08:32:10Z
 source_branch=master
-display_version=v19.65
+display_version=v19.66
 note=Canonical live line is app_19.0. Bundle 12641590 = v19.65. Company header KPI shows Yahoo last trade (Market Price) instead of Previous Close; same-ticker Search reloads statements. Deploy via scripts/deploy_app_19.R. Supersedes 12639154 / 12638614 / 12638535 / 12638399 / 12638310.
