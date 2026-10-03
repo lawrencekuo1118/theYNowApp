@@ -4194,7 +4194,8 @@ ui <- dashboardPage(
             setBtText('ynow_macro_hccsi_in_title', 'hccsi_in_composite_title');
             setBtText('ynow_macro_hccsi_method_title', 'hccsi_method_title');
             setBtText('ynow_macro_index_hint', 'macro_index_chart_hint');
-            ['ynow_index_title', 'ynow_index_rule', 'ynow_index_chart_note', 'ynow_index_constituents',
+            ['ynow_index_title', 'ynow_index_chapter_title', 'ynow_index_rule',
+             'ynow_index_chart_note', 'ynow_index_constituents',
              'ynow_index_col_ticker', 'ynow_index_col_name', 'ynow_index_col_weight',
              'ynow_index_col_last', 'ynow_index_col_chg'].forEach(function(id) {
               var el = document.getElementById(id);
@@ -6617,7 +6618,8 @@ ui <- dashboardPage(
           animation: ynow-logo-flow 2.6s ease-in-out infinite;
           font-weight: 700;
         }
-        .ynow-macro-own-index .ynow-macro-kpi__value.ynow-hccsi-flow {
+        .ynow-macro-own-index .ynow-macro-kpi__value.ynow-hccsi-flow,
+        .ynow-macro-kpi--ynow .ynow-macro-kpi__value.ynow-hccsi-flow {
           color: transparent;
           -webkit-text-fill-color: transparent;
         }
@@ -6663,9 +6665,12 @@ ui <- dashboardPage(
             width: 50%;
             float: none;
           }
-          /* YNOW / TYNOW is one card. A 50% column leaves the rest of the chapter dead to taps. */
-          .ynow-macro-own-index .ynow-macro-kpi-row > [class*='col-'] {
+          /* Rf : YNOW : HCCSI → stack as Rf full, then YNOW|HCCSI half-half */
+          .ynow-macro-rf-row > .col-md-6 {
             width: 100%;
+          }
+          .ynow-macro-rf-row > .col-md-3 {
+            width: 50%;
           }
         }
         @media (max-width: 575px) {

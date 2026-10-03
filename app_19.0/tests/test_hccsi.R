@@ -269,9 +269,12 @@ if (!is.null(four)) {
   check("four-index flow class", grepl("ynow-hccsi-flow", html_four, fixed = TRUE))
 }
 check("UI beside Rf", grepl("ynow-macro-kpi--hccsi", macro_txt, fixed = TRUE) && grepl("ynow-macro-kpi--rf", macro_txt, fixed = TRUE))
-check("UI same row", grepl("hccsi_col", macro_txt, fixed = TRUE) && grepl("rf_col", macro_txt, fixed = TRUE))
-check("UI 1:1", grepl("kpi_w <- if (is_tw) 4L else 6L", macro_txt, fixed = TRUE))
-check("UI TW+US", grepl("cols <- list(rf_col, hccsi_col)", macro_txt, fixed = TRUE))
+check("UI same row", grepl("hccsi_col", macro_txt, fixed = TRUE) && grepl("rf_col", macro_txt, fixed = TRUE) &&
+  grepl("ynow_col", macro_txt, fixed = TRUE))
+check("UI 2:1:1", grepl("rf_col, ynow_col, hccsi_col", macro_txt, fixed = TRUE) &&
+  grepl("width = 6, class = \"col-xs-12 col-sm-6 col-md-6\"", macro_txt, fixed = TRUE) &&
+  grepl("width = 3, class = \"col-xs-12 col-sm-3 col-md-3\"", macro_txt, fixed = TRUE))
+check("UI TW+US", grepl("rf_col, ynow_col, hccsi_col", macro_txt, fixed = TRUE))
 check("UI expand below", {
   pos_row <- regexpr("rf_signal_row", macro_txt, fixed = TRUE)[1]
   pos_exp <- regexpr("ynow_macro_hccsi_expand", macro_txt, fixed = TRUE)[1]

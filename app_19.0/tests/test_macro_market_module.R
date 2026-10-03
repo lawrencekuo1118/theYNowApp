@@ -373,13 +373,18 @@ check("lite CSS hides chart slot", grepl("body.ynow-lite #ynow_macro_index_hist"
 check("lite CSS disables clickable boxes", grepl("body.ynow-lite .ynow-macro-kpi--clickable", ui_css, fixed = TRUE))
 check("locale wires index hint", grepl("ynow_macro_index_hint", ui_css, fixed = TRUE))
 check("HCCSI box on Rf row", grepl("ynow-macro-kpi--hccsi", txt, fixed = TRUE))
+check("YNOW KPI on Rf row", grepl("ynow-macro-kpi--ynow", txt, fixed = TRUE) &&
+  grepl(".own_index_kpi_card", txt, fixed = TRUE))
 check("HCCSI expand Full-only", grepl("ynow-macro-hccsi-expand ynow-full-only", txt, fixed = TRUE))
 check("HCCSI expand below Rf row", {
   pos_rf <- regexpr("rf_signal_row", txt, fixed = TRUE)[1]
   pos_ex <- regexpr("ynow_macro_hccsi_expand", txt, fixed = TRUE)[1]
   is.finite(pos_rf) && is.finite(pos_ex) && pos_ex > pos_rf
 })
-check("HCCSI 1:1 width helper", grepl("kpi_w <- if (is_tw) 4L else 6L", txt, fixed = TRUE))
+check("RF:YNOW:HCCSI 2:1:1 widths", grepl("width = 6, class = \"col-xs-12 col-sm-6 col-md-6\"", txt, fixed = TRUE) &&
+  grepl("width = 3, class = \"col-xs-12 col-sm-3 col-md-3\"", txt, fixed = TRUE) &&
+  grepl("rf_col, ynow_col, hccsi_col", txt, fixed = TRUE))
+check("TW NDC on next row", grepl("ynow-macro-ndc-row", txt, fixed = TRUE))
 check("lite CSS hides HCCSI expand", grepl("body.ynow-lite #ynow_macro_hccsi_expand", ui_css, fixed = TRUE))
 check("en HCCSI title", identical(ui_str("hccsi_title", "en"), "HCCSI"))
 check("zh HCCSI title stays English", identical(ui_str("hccsi_title", "zh-TW"), "HCCSI"))

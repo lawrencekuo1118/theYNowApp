@@ -194,6 +194,8 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl("body.ynow-lite #ynow_macro_index_hint", txt, fixed = TRUE))
   testthat::expect_true(grepl("body.ynow-lite #ynow_macro_hccsi_expand", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-macro-kpi--hccsi", macro_txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-macro-kpi--ynow", macro_txt, fixed = TRUE))
+  testthat::expect_true(grepl("rf_col, ynow_col, hccsi_col", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-macro-hccsi-expand ynow-full-only", macro_txt, fixed = TRUE))
   testthat::expect_false(grepl("ynow-macro-kpi--hccsi[^\\n]*ynow-full-only", macro_txt))
   # Macro, then Company (dashboard), then YNOW

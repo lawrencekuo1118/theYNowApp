@@ -868,8 +868,8 @@ macro_market_server <- function(id = "macro",
       list(members = mem, last = last, chg = chg)
     })
 
-    output$own_index_block <- renderUI({
-      .loc()
+    # YNOW / TYNOW KPI card (sits on Rf row at 2:1:1 with HCCSI).
+    .own_index_kpi_card <- function() {
       own <- .own_index_symbol()
       if (!nzchar(own)) return(NULL)
       lite <- .is_lite()
@@ -882,8 +882,7 @@ macro_market_server <- function(id = "macro",
       chg_txt <- if (is.finite(chg)) sprintf("%+.2f%%", chg) else "—"
       chg_cls <- if (is.finite(chg) && chg >= 0) "ynow-macro-up" else "ynow-macro-down"
       title_key <- .index_ui_key("title")
-      rule_key <- .index_ui_key("rule")
-      kpi_cls <- "ynow-macro-kpi"
+      kpi_cls <- "ynow-macro-kpi ynow-macro-kpi--ynow"
       extra <- NULL
       if (!isTRUE(lite)) {
         kpi_cls <- paste(kpi_cls, "ynow-macro-kpi--clickable")
@@ -902,25 +901,38 @@ macro_market_server <- function(id = "macro",
           )
         )
       }
-      card <- column(
-        width = 4,
-        class = "col-xs-12 col-sm-6 col-md-4",
-        do.call(
-          tags$div,
-          c(
-            list(
-              id = macro_index_box_id(own),
-              class = kpi_cls,
-              `data-macro-index` = own,
-              tags$div(class = "ynow-macro-kpi__label", .ui(title_key)),
-              tags$div(class = "ynow-macro-kpi__value ynow-hccsi-flow", last_txt),
-              tags$div(class = paste("ynow-macro-kpi__chg", chg_cls), chg_txt),
-              tags$div(class = "ynow-macro-kpi__sym", own)
+      do.call(
+        tags$div,
+        c(
+          list(
+            id = macro_index_box_id(own),
+            class = kpi_cls,
+            `data-macro-index` = own,
+            tags$div(
+              class = "ynow-macro-kpi__label",
+              id = "ynow_index_title",
+              `data-i18n` = title_key,
+              .ui(title_key)
             ),
-            extra
-          )
+            tags$div(class = "ynow-macro-kpi__value ynow-hccsi-flow", last_txt),
+            tags$div(class = paste("ynow-macro-kpi__chg", chg_cls), chg_txt),
+            tags$div(class = "ynow-macro-kpi__sym", own)
+          ),
+          extra
         )
       )
+    }
+
+    # Chapter + expand only (KPI card lives on rf_signal_row).
+    output$own_index_block <- renderUI({
+      .loc()
+      own <- .own_index_symbol()
+      if (!nzchar(own)) return(NULL)
+      lite <- .is_lite()
+      sel <- as.character(selected_index() %||% "")[1]
+      selected_own <- !isTRUE(lite) && identical(sel, own)
+      title_key <- .index_ui_key("title")
+      rule_key <- .index_ui_key("rule")
       expand <- if (!selected_own) {
         NULL
       } else {
@@ -942,14 +954,17 @@ macro_market_server <- function(id = "macro",
       }
       tags$section(
         class = "ynow-macro-chapter",
-        tags$h3(id = "ynow_index_title", `data-i18n` = title_key, .ui(title_key)),
+        tags$h3(
+          id = "ynow_index_chapter_title",
+          `data-i18n` = title_key,
+          .ui(title_key)
+        ),
         tags$p(
           id = "ynow_index_rule",
           `data-i18n` = rule_key,
           class = "ynow-macro-hint ynow-macro-chapter__lead",
           .ui(rule_key)
         ),
-        fluidRow(class = "ynow-macro-kpi-row", card),
         expand
       )
     })
@@ -1145,26 +1160,30 @@ macro_market_server <- function(id = "macro",
       if (exists("hccsi_expand_ui", mode = "function")) hccsi_expand_ui(res, .loc()) else NULL
     })
 
-    # Rf + HCCSI share one row at 1:1 width (TW and US, Lite and Full).
-    # TW NDC card stays on that row. Four-index expand is Full-only, below.
+    # Rf : YNOW/TYNOW : HCCSI = 2:1:1 (widths 6 / 3 / 3). TW NDC on the next row.
+    # HCCSI four-index expand stays Full-only, below this row.
     output$rf_signal_row <- renderUI({
+      .loc()
       mode <- .mode()
       lite <- .is_lite()
       is_tw <- identical(mode, "TW")
-      kpi_w <- if (is_tw) 4L else 6L
-      kpi_cls <- if (is_tw) "col-xs-12 col-sm-6 col-md-4" else "col-xs-12 col-sm-6 col-md-6"
       res <- tryCatch(hccsi_result(), error = function(e) NULL)
       if (is.null(res)) res <- list(availability = "loading")
+      ynow_card <- .own_index_kpi_card()
       rf_col <- column(
-        width = kpi_w, class = kpi_cls,
+        width = 6, class = "col-xs-12 col-sm-6 col-md-6",
         tags$div(
           class = "ynow-macro-kpi ynow-macro-kpi--rf",
           tags$div(class = "ynow-macro-kpi__label", id = "ynow_macro_rf_title", .ui("macro_rf_title")),
           uiOutput(ns("rf_box"))
         )
       )
+      ynow_col <- column(
+        width = 3, class = "col-xs-12 col-sm-3 col-md-3",
+        if (!is.null(ynow_card)) ynow_card else tags$div(class = "ynow-macro-kpi ynow-macro-kpi--ynow", "—")
+      )
       hccsi_col <- column(
-        width = kpi_w, class = kpi_cls,
+        width = 3, class = "col-xs-12 col-sm-3 col-md-3",
         if (exists("hccsi_kpi_box", mode = "function")) {
           hccsi_kpi_box(res, lite = lite, locale = .loc(), ns = ns,
                         selected = isTRUE(hccsi_expanded()) && !isTRUE(lite))
@@ -1172,23 +1191,30 @@ macro_market_server <- function(id = "macro",
           tags$div(class = "ynow-macro-kpi ynow-macro-kpi--hccsi", "HCCSI")
         }
       )
-      cols <- list(rf_col, hccsi_col)
-      if (is_tw) {
-        cols <- c(cols, list(column(
-          width = 4, class = "col-xs-12 col-sm-12 col-md-4",
+      main_row <- do.call(
+        fluidRow,
+        list(class = "ynow-macro-rf-row ynow-macro-kpi-row", rf_col, ynow_col, hccsi_col)
+      )
+      if (!is_tw) return(main_row)
+      ndc_row <- fluidRow(
+        class = "ynow-macro-rf-row ynow-macro-ndc-row",
+        column(
+          width = 12, class = "col-xs-12 col-sm-12 col-md-12",
           tags$div(
             class = "ynow-macro-card",
             tags$h4(id = "ynow_macro_tw_signal_title", .ui("macro_tw_signal_title")),
             tags$div(
               class = "ynow-macro-hint",
               tags$p(.ui("macro_tw_signal_body")),
-              tags$p(tags$a(href = "https://index.ndc.gov.tw/", target = "_blank",
-                            rel = "noopener noreferrer", .ui("macro_tw_signal_link")))
+              tags$p(tags$a(
+                href = "https://index.ndc.gov.tw/", target = "_blank",
+                rel = "noopener noreferrer", .ui("macro_tw_signal_link")
+              ))
             )
           )
-        )))
-      }
-      do.call(fluidRow, c(list(class = "ynow-macro-rf-row ynow-macro-kpi-row"), cols))
+        )
+      )
+      tagList(main_row, ndc_row)
     })
 
     overlay_data <- reactive({
