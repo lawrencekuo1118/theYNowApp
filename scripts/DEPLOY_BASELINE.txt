@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12641615
+bundleId=12641647
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=c412d0fab98dc8fd9cb1f3b5d3e3f263f9fbdea6
-commit=c412d0fab98dc8fd9cb1f3b5d3e3f263f9fbdea6
-short=c412d0f
-message=chore: bump display version to v19.66
-captured_at=2026-10-03T08:41:57Z
+aligned_git=9c81d9e740c84a20b694f7b873f5ebaf35b5ac1d
+commit=9c81d9e740c84a20b694f7b873f5ebaf35b5ac1d
+short=9c81d9e
+message=chore: bump display version to v19.67
+captured_at=2026-10-03T08:57:45Z
 source_branch=master
 display_version=v19.67
-note=Canonical live line is app_19.0. Bundle 12641615 = v19.66. Dynamic industry bubble & weight concentration is again the last chapter on Macro & Market Trends (removed from YNOW). Deploy via scripts/deploy_app_19.R. Supersedes 12641590 / 12639154.
+note=Canonical live line is app_19.0. Bundle 12641647 = v19.67. Param-sensitivity boxes default collapsed; DCF sensitivity matrix row labels use WACC (corner stays Rate (%)). Deploy via scripts/deploy_app_19.R. Supersedes 12641615 / 12641590.
