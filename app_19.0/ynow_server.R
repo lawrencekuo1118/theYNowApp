@@ -423,6 +423,28 @@ server <- function(input, output, session) {
         selected = ddm_sel
       )
     }, error = function(e) NULL)
+    # Relative multiples families: labels follow locale (values unchanged)
+    tryCatch({
+      rel_sel <- isolate(input[["mod_rel-rel_mode"]])
+      if (is.null(rel_sel) || !rel_sel %in% c("earnings", "enterprise", "ps", "sotp")) {
+        rel_sel <- APP_DEFAULTS$rel_mode %||% "earnings"
+      }
+      updateRadioButtons(
+        session,
+        "mod_rel-rel_mode",
+        label = ui_str("rel_mode_label", loc),
+        choices = stats::setNames(
+          c("earnings", "enterprise", "ps", "sotp"),
+          c(
+            ui_str("rel_mode_earnings", loc),
+            ui_str("rel_mode_enterprise", loc),
+            ui_str("rel_mode_ps", loc),
+            ui_str("rel_mode_sotp", loc)
+          )
+        ),
+        selected = rel_sel
+      )
+    }, error = function(e) NULL)
     # CAPM Rf / Rm labels (β label is owned by smart-tag observer)
     tryCatch({
       updateNumericInput(session, "capm_rf", label = ui_str("capm_rf_label", loc))

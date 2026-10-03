@@ -143,6 +143,8 @@ APP_DEFAULTS <- list(
   nav_high        = 1.05,
 
   # --- 7c. Relative multiples (Implied Price / PEG indicator; not Intrinsic Value) ---
+  # Mode families (DDM-style): earnings | enterprise | ps | sotp. P/B stays separate.
+  rel_mode = "earnings",
   rel_pe_multiple = 18,
   rel_fwd_pe_multiple = 18,
   rel_ev_fcf_multiple = 15,

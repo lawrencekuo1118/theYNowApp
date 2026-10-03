@@ -25,6 +25,7 @@ dcf_ev_to_equity <- function(ev, cash = 0, debt = 0) {
 
 source("ui_locale.R", local = TRUE, encoding = "UTF-8")
 APP_DEFAULTS <- list(
+  rel_mode = "earnings",
   rel_pe_multiple = 18,
   rel_fwd_pe_multiple = 18,
   rel_ev_fcf_multiple = 15,
@@ -129,22 +130,28 @@ for (k in c(
   "menu_rel_multiples", "rel_multiples_implied_price", "rel_multiples_disclaimer",
   "rel_multiples_growth_sgr", "rel_multiples_vbx_pe", "rel_multiples_vbx_evebit",
   "rel_multiples_vbx_sotp", "rel_multiples_status_arr", "rel_multiples_status_sotp",
-  "rel_multiples_tab_sotp", "rel_multiples_ev_heading", "rel_multiples_sotp_need_segments"
+  "rel_mode_label", "rel_mode_earnings", "rel_mode_enterprise", "rel_mode_ps", "rel_mode_sotp",
+  "rel_multiples_ev_heading", "rel_multiples_ps_heading", "rel_multiples_sotp_need_segments"
 )) {
   check(paste("en", k), nzchar(ui_str(k, "en")))
   check(paste("zh", k), nzchar(ui_str(k, "zh-TW")))
 }
 check("zh no simplified", !grepl("默认|参数|数据|用户", ui_str("rel_multiples_lead_body", "zh-TW")))
-check("menu Multiples SOTP en", grepl("SOTP", ui_str("menu_rel_multiples", "en"), fixed = TRUE))
-check("menu Multiples SOTP zh", grepl("SOTP", ui_str("menu_rel_multiples", "zh-TW"), fixed = TRUE))
+check("menu Multiples en", identical(ui_str("menu_rel_multiples", "en"), "Multiples"))
+check("menu Multiples zh", nzchar(ui_str("menu_rel_multiples", "zh-TW")))
 
-# --- UI mounts ---
+# --- UI mounts / mode radio ---
+mod_src <- paste(readLines("relative_multiples_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check("mode radio in module", grepl('ns("rel_mode")', mod_src, fixed = TRUE))
+check("mode earnings family", grepl("earnings", mod_src, fixed = TRUE) && grepl("enterprise", mod_src, fixed = TRUE))
+check("mode conditional panels", grepl("mod_rel-rel_mode", mod_src, fixed = TRUE))
+
 ui_src <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("sidebar mounts rel multiples", grepl("rel_multiples_calculator", ui_src, fixed = TRUE))
 check("module UI call", grepl('relative_multiples_module_ui("mod_rel")', ui_src, fixed = TRUE))
 check("lite hides rel multiples", grepl("rel_multiples_calculator", ui_src, fixed = TRUE) &&
         grepl("body.ynow-lite .sidebar-menu li:has(a[data-value=\"rel_multiples_calculator\"])", ui_src, fixed = TRUE))
-check("applyUiLocale SOTP tab", grepl("ynow_rel_multiples_tab_sotp", ui_src, fixed = TRUE))
+check("applyUiLocale mode help", grepl("ynow_rel_mode_help", ui_src, fixed = TRUE))
 check("applyUiLocale EV heading", grepl("ynow_rel_multiples_ev_heading", ui_src, fixed = TRUE))
 
 g_src <- paste(readLines("global.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
@@ -155,6 +162,7 @@ check("server mounts module", grepl("relative_multiples_module_server", srv, fix
 
 # --- Defaults in config source ---
 cfg <- paste(readLines("default_config.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check("default rel_mode in config", grepl("rel_mode", cfg, fixed = TRUE))
 check("default PE multiple in config", grepl("rel_pe_multiple", cfg, fixed = TRUE))
 check("default EV/FCF multiple in config", grepl("rel_ev_fcf_multiple", cfg, fixed = TRUE))
 check("default EV/EBIT multiple in config", grepl("rel_ev_ebit_multiple", cfg, fixed = TRUE))
@@ -162,5 +170,8 @@ check("default EV/Sales multiple in config", grepl("rel_ev_sales_multiple", cfg,
 check("default P/S multiple in config", grepl("rel_ps_multiple", cfg, fixed = TRUE))
 check("default EV/ARR multiple in config", grepl("rel_ev_arr_multiple", cfg, fixed = TRUE))
 check("dcf_ev_to_equity bridge", abs(dcf_ev_to_equity(100, 10, 30) - 80) < 1e-9)
+
+srv <- paste(readLines("ynow_server.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check("server locale-pushes rel_mode", grepl("mod_rel-rel_mode", srv, fixed = TRUE))
 
 cat("PASS relative_multiples\n")

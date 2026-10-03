@@ -73,7 +73,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     menu_dcf = "DCF-Model",
     menu_ddm = "DDM",
     menu_pb = "P/B",
-    menu_rel_multiples = "Multiples · SOTP",
+    menu_rel_multiples = "Multiples",
     menu_ri = "RI-Model",
     menu_nav = "NAV",
     menu_cat_asset = "Asset-Based Appr.",
@@ -81,18 +81,30 @@ locale_for_market <- function(mode = get_market_mode()) {
     menu_cat_relative = "Relative Valuation Appr.",
     rel_multiples_lead_title = "Relative valuation (multiples): ",
     rel_multiples_lead_body = paste0(
-      "Implied Price from selected multiples — not Intrinsic Value / Fair Value. ",
-      "PEG is a relative indicator only. SOTP uses segment revenue × EV/Sales when multi-segment data exists."
+      "Implied Price by model family — not Intrinsic Value / Fair Value. ",
+      "Switch Earnings / Enterprise / P/S / SOTP like DDM modes. P/B remains its own sidebar engine."
     ),
-    rel_multiples_box_title = "Multiples · SOTP",
+    rel_multiples_box_title = "Multiples",
     rel_multiples_tab_overview = "Overview",
     rel_multiples_tab_inputs = "Inputs",
-    rel_multiples_tab_sotp = "SOTP",
+    rel_mode_label = "Select multiples family:",
+    rel_mode_earnings = "Earnings (P/E · Fwd P/E · PEG)",
+    rel_mode_enterprise = "Enterprise (EV/FCF · EV/EBIT · EV/EBITDA · EV/Sales · EV/ARR)",
+    rel_mode_ps = "P/S (equity sales)",
+    rel_mode_sotp = "SOTP (revenue segments)",
+    rel_mode_help = paste0(
+      "Earnings: equity EPS multiples (+ PEG indicator). ",
+      "Enterprise: EV × metric then Cash−Debt bridge. ",
+      "P/S: equity-side revenue (no debt bridge). ",
+      "SOTP: ≥2 segment revenues × EV/Sales."
+    ),
     rel_multiples_btn_calc = "Run multiples",
     rel_multiples_btn_sync = "Sync from statements",
     rel_multiples_pe_heading = "P/E & Forward P/E",
     rel_multiples_peg_heading = "PEG (relative indicator)",
-    rel_multiples_ev_heading = "Enterprise & sales multiples",
+    rel_multiples_ev_heading = "Enterprise multiples",
+    rel_multiples_ps_heading = "P/S (equity sales)",
+    rel_multiples_sotp_heading = "SOTP (revenue segments)",
     rel_multiples_pe_help = paste0(
       "Forward EPS is taken from Yahoo when available, else inverted from price ÷ Forward P/E. ",
       "No forecasted EPS is invented. EPS ≤ 0 → P/E N/A."
@@ -102,14 +114,19 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Not a buy/sell threshold."
     ),
     rel_multiples_ev_help = paste0(
-      "EV multiples: Implied EV = metric × multiple; Equity = EV + Cash − Debt (same bridge as DCF); ",
-      "Implied Price = Equity ÷ shares. P/S is equity-side (no debt bridge). FCFE is not used for EV/FCF."
+      "Implied EV = metric × multiple; Equity = EV + Cash − Debt (same bridge as DCF); ",
+      "Implied Price = Equity ÷ shares. FCFE is not used for EV/FCF."
+    ),
+    rel_multiples_ps_help = paste0(
+      "Equity-side: Implied Equity = Revenue × P/S; Implied Price = Equity ÷ shares. ",
+      "No Cash−Debt bridge (unlike EV/Sales)."
     ),
     rel_multiples_sotp_help = paste0(
       "Revenue-multiple SOTP: each reported segment revenue × EV/Sales, then Cash − Debt bridge. ",
       "Requires ≥2 positive segment revenues. Not segment-EBIT SOTP."
     ),
     rel_multiples_arr_help = "ARR is not in core statements — enter manually or leave blank (N/A).",
+    rel_multiples_bridge_help = "Cash / Debt used for EV→Equity bridge (Enterprise & SOTP). P/S uses shares only.",
     rel_multiples_vbx_pe = "P/E Implied Price",
     rel_multiples_vbx_fpe = "Forward P/E Implied Price",
     rel_multiples_vbx_peg = "PEG",
@@ -1959,7 +1976,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     menu_dcf = "DCF 模型",
     menu_ddm = "DDM",
     menu_pb = "P/B",
-    menu_rel_multiples = "倍數 · SOTP",
+    menu_rel_multiples = "倍數法",
     menu_ri = "RI 模型",
     menu_nav = "NAV",
     menu_cat_asset = "資產基礎法",
@@ -1967,18 +1984,30 @@ locale_for_market <- function(mode = get_market_mode()) {
     menu_cat_relative = "相對估值法",
     rel_multiples_lead_title = "相對估值（倍數法）：",
     rel_multiples_lead_body = paste0(
-      "依選定倍數得出 Implied Price——不是 Intrinsic Value／Fair Value。",
-      "PEG 僅為相對指標。有多部門營收時，SOTP 以部門營收 × EV/Sales 試算。"
+      "依模型家族得出 Implied Price——不是 Intrinsic Value／Fair Value。",
+      "以 Earnings／Enterprise／P/S／SOTP 切換（比照 DDM）。P/B 仍為側欄獨立引擎。"
     ),
-    rel_multiples_box_title = "倍數 · SOTP",
+    rel_multiples_box_title = "倍數法",
     rel_multiples_tab_overview = "總覽",
     rel_multiples_tab_inputs = "輸入",
-    rel_multiples_tab_sotp = "SOTP",
+    rel_mode_label = "選擇倍數家族：",
+    rel_mode_earnings = "盈餘倍數（P/E · Fwd P/E · PEG）",
+    rel_mode_enterprise = "企業倍數（EV/FCF · EV/EBIT · EV/EBITDA · EV/Sales · EV/ARR）",
+    rel_mode_ps = "P/S（股權營收倍數）",
+    rel_mode_sotp = "SOTP（部門營收）",
+    rel_mode_help = paste0(
+      "盈餘：股權 EPS 倍數（含 PEG 相對指標）。",
+      "企業：EV × 指標後加 Cash−Debt 橋接。",
+      "P/S：股權面營收（無負債橋接）。",
+      "SOTP：≥2 筆部門營收 × EV/Sales。"
+    ),
     rel_multiples_btn_calc = "試算倍數",
     rel_multiples_btn_sync = "自財報同步",
     rel_multiples_pe_heading = "P/E 與 Forward P/E",
     rel_multiples_peg_heading = "PEG（相對指標）",
-    rel_multiples_ev_heading = "企業與營收倍數",
+    rel_multiples_ev_heading = "企業倍數",
+    rel_multiples_ps_heading = "P/S（股權營收倍數）",
+    rel_multiples_sotp_heading = "SOTP（部門營收）",
     rel_multiples_pe_help = paste0(
       "Forward EPS 優先取 Yahoo；若無則以股價 ÷ Forward P/E 反推。",
       "不自行預測 EPS。EPS ≤ 0 → P/E 為 N/A。"
@@ -1988,14 +2017,19 @@ locale_for_market <- function(mode = get_market_mode()) {
       "不作買／賣閾值判斷。"
     ),
     rel_multiples_ev_help = paste0(
-      "EV 倍數：Implied EV = 指標 × 倍數；Equity = EV + Cash − Debt（與 DCF 相同橋接）；",
-      "Implied Price = Equity ÷ 股數。P/S 為股權面（無負債橋接）。EV/FCF 不用 FCFE。"
+      "Implied EV = 指標 × 倍數；Equity = EV + Cash − Debt（與 DCF 相同橋接）；",
+      "Implied Price = Equity ÷ 股數。EV/FCF 不用 FCFE。"
+    ),
+    rel_multiples_ps_help = paste0(
+      "股權面：Implied Equity = Revenue × P/S；Implied Price = Equity ÷ 股數。",
+      "無 Cash−Debt 橋接（與 EV/Sales 不同）。"
     ),
     rel_multiples_sotp_help = paste0(
       "營收倍數 SOTP：各部門營收 × EV/Sales，再加 Cash − Debt 橋接。",
       "需 ≥2 筆正值部門營收。非部門 EBIT SOTP。"
     ),
     rel_multiples_arr_help = "核心財報無 ARR——請手動輸入，或留空（N/A）。",
+    rel_multiples_bridge_help = "Cash／Debt 用於 EV→Equity 橋接（Enterprise 與 SOTP）。P/S 僅用股數。",
     rel_multiples_vbx_pe = "P/E Implied Price",
     rel_multiples_vbx_fpe = "Forward P/E Implied Price",
     rel_multiples_vbx_peg = "PEG",
