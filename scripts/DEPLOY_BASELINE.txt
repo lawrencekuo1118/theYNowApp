@@ -8,5 +8,5 @@ short=f0fbbe9
 message=chore: bump display version to v19.93
 captured_at=2026-10-03T16:36:49Z
 source_branch=master
-display_version=v19.93
+display_version=v19.94
 note=Canonical live line is app_19.0. Bundle 12642832 = v19.93. Lazy-mount heavy tabs once per session (Macro/Blue Chip/HFV/Backtest/Testing/DC). Deploy via scripts/deploy_app_19.R. Supersedes 12642807.
