@@ -8,5 +8,5 @@ short=b2c46ef
 message=chore: bump display version to v20.23
 captured_at=2026-10-04T12:51:36Z
 source_branch=master
-display_version=v20.23
+display_version=v20.24
 note=Canonical live line is app_20.0. Bundle 12645518 aligns each valuation model tab theme with Model Selector card colors (incl. Multiples/SOTP). Deploy via scripts/deploy_app_20.R.
