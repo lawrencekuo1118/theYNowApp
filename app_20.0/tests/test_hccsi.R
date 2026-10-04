@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 # HCCSI engine + Macro placement (no network)
-# Run: cd app_19.0 && Rscript tests/test_hccsi.R
+# Run: cd app_20.0 && Rscript tests/test_hccsi.R
 
 Sys.setenv(YNOW_DEBUG_SKIP_PY = "1")
 args <- commandArgs(trailingOnly = FALSE)
@@ -10,8 +10,8 @@ root <- if (file.exists(file.path(test_dir, "..", "hccsi_engine.R"))) {
   normalizePath(file.path(test_dir, ".."))
 } else if (file.exists("hccsi_engine.R")) {
   normalizePath(".")
-} else if (dir.exists("app_19.0") && file.exists("app_19.0/hccsi_engine.R")) {
-  normalizePath("app_19.0")
+} else if (dir.exists("app_20.0") && file.exists("app_20.0/hccsi_engine.R")) {
+  normalizePath("app_20.0")
 } else stop("Cannot locate hccsi_engine.R")
 setwd(root)
 

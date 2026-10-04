@@ -1,13 +1,13 @@
 # Macro & Market Trends — catalog / isolation checks (no network)
-# Run: cd app_19.0 && Rscript tests/test_macro_market_module.R
+# Run: cd app_20.0 && Rscript tests/test_macro_market_module.R
 
 Sys.setenv(YNOW_DEBUG_SKIP_PY = "1")
 root <- if (file.exists("macro_market_module.R")) {
   normalizePath(".")
 } else if (file.exists("../macro_market_module.R")) {
   normalizePath("..")
-} else if (dir.exists("app_19.0") && file.exists("app_19.0/macro_market_module.R")) {
-  normalizePath("app_19.0")
+} else if (dir.exists("app_20.0") && file.exists("app_20.0/macro_market_module.R")) {
+  normalizePath("app_20.0")
 } else if (dir.exists("app_18.0") && file.exists("app_18.0/macro_market_module.R")) {
   normalizePath("app_18.0")
 } else {

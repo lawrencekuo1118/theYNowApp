@@ -165,8 +165,8 @@ server <- function(input, output, session) {
   observeEvent(input$sidebar_tabs, {
     tab <- as.character(input$sidebar_tabs %||% "")[1]
     if (identical(tab, "business_breakdown_lab")) {
-      session$sendCustomMessage("ynowGotoTab", list(tab = "testing"))
-      tab <- "testing"
+      session$sendCustomMessage("ynowGotoTab", list(tab = "dashboard"))
+      tab <- "dashboard"
     }
     session$sendCustomMessage("ynowModelTheme", list(tab = tab))
     .ynow_apply_pending_market_default_ticker(tab)
@@ -577,14 +577,6 @@ server <- function(input, output, session) {
           ui_locale_rv = ui_locale,
           lite_mode_rv = reactive(isTRUE(input$ynow_lite_mode))
         )
-      },
-      testing = function() {
-        business_breakdown_lab_server(
-          "bblab",
-          market_mode_rv = market_mode,
-          ui_locale_rv = ui_locale,
-          current_ticker_rv = current_ticker
-        )
       }
     ),
     after_mount = function(tab) {
@@ -595,6 +587,14 @@ server <- function(input, output, session) {
       )
       invisible(tab)
     }
+  )
+
+  # Business Breakdown Lab — mounted with Company (dashboard); not lazy Testing
+  business_breakdown_lab_server(
+    "bblab",
+    market_mode_rv = market_mode,
+    ui_locale_rv = ui_locale,
+    current_ticker_rv = current_ticker
   )
 
   # 語言控制：只改 UI locale，不碰顯示幣別
@@ -2978,7 +2978,7 @@ server <- function(input, output, session) {
     fundamental_profile = fundamental_profile_rec
   )
 
-  # macro_market_server / business_breakdown_lab_server: first visit only (lazy_tabs)
+  # macro_market_server: first visit only (lazy_tabs); BBLab mounts with Company
   
 
   run_calc_trigger <- reactiveVal(0)
@@ -11177,7 +11177,7 @@ server <- function(input, output, session) {
             report_locale = rep_loc,
             report_copy = report_copy,
             sensitivity_df = sens_df,
-            app_version = "v19",
+            app_version = "v20",
             report_condensed = isTRUE(isolate(lite_mode())),
             summary_df = {
               sd <- sum_df
@@ -12823,7 +12823,7 @@ server <- function(input, output, session) {
       "## 使用者回饋",
       "",
       paste0("- **類別：** ", cat_label, " (`", cat, "`)"),
-      paste0("- **App：** The YNow App v19"),
+      paste0("- **App：** The YNow App v20"),
       paste0("- **送出時間 (UTC)：** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"))
     )
     if (isTRUE(input$feedback_include_context)) {

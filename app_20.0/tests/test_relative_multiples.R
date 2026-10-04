@@ -1,12 +1,12 @@
 # Relative multiples: P/E, Fwd P/E, PEG, EV/* , P/S, EV/ARR, SOTP (offline)
-# Run: cd app_19.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_relative_multiples.R
+# Run: cd app_20.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_relative_multiples.R
 
 root <- if (file.exists("relative_multiples_module.R")) {
   getwd()
-} else if (file.exists("app_19.0/relative_multiples_module.R")) {
-  file.path(getwd(), "app_19.0")
+} else if (file.exists("app_20.0/relative_multiples_module.R")) {
+  file.path(getwd(), "app_20.0")
 } else {
-  stop("Run from repo root or app_19.0")
+  stop("Run from repo root or app_20.0")
 }
 setwd(root)
 

@@ -1,15 +1,15 @@
 #!/usr/bin/env Rscript
 # YNOW tab: title, KPI jump row above Section I, two-block order, Lite=Full
-# Run: cd app_19.0 && Rscript tests/test_ynow_tab_layout.R
+# Run: cd app_20.0 && Rscript tests/test_ynow_tab_layout.R
 
 root <- if (file.exists("investment_decision_module.R")) {
   normalizePath(".")
 } else if (file.exists("../investment_decision_module.R")) {
   normalizePath("..")
-} else if (dir.exists("app_19.0") && file.exists("app_19.0/investment_decision_module.R")) {
-  normalizePath("app_19.0")
+} else if (dir.exists("app_20.0") && file.exists("app_20.0/investment_decision_module.R")) {
+  normalizePath("app_20.0")
 } else {
-  stop("Cannot locate app_19.0")
+  stop("Cannot locate app_20.0")
 }
 setwd(root)
 

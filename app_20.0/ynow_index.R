@@ -151,7 +151,7 @@ ynow_index_bh_equal <- function(price_map) {
 ynow_index_snapshot_path <- function() {
   cands <- c(
     file.path("data", "universe_metrics_snapshot.csv"),
-    file.path("app_19.0", "data", "universe_metrics_snapshot.csv")
+    file.path("app_20.0", "data", "universe_metrics_snapshot.csv")
   )
   hit <- cands[file.exists(cands)]
   if (length(hit)) hit[[1]] else cands[[1]]

@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 # YNOW index selection + equal-weight path (no network)
-# Run: cd app_19.0 && Rscript tests/test_ynow_index.R
+# Run: cd app_20.0 && Rscript tests/test_ynow_index.R
 
 Sys.setenv(YNOW_DEBUG_SKIP_PY = "1")
 args <- commandArgs(trailingOnly = FALSE)

@@ -128,7 +128,7 @@ HCCSI_DEFAULT_CONFIG <- list(
 )
 
 hccsi_config_yaml_path <- function() {
-  candidates <- c("hccsi_config.yaml", file.path("app_19.0", "hccsi_config.yaml"))
+  candidates <- c("hccsi_config.yaml", file.path("app_20.0", "hccsi_config.yaml"))
   hit <- candidates[file.exists(candidates)]
   if (length(hit)) return(normalizePath(hit[[1]], mustWork = FALSE))
   NA_character_

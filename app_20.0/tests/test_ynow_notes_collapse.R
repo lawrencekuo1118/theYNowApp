@@ -1,15 +1,15 @@
 #!/usr/bin/env Rscript
 # Collapsible Notes / 附註 chrome: details markup, default collapsed, locales, Lite=Full
-# Run: cd app_19.0 && Rscript tests/test_ynow_notes_collapse.R
+# Run: cd app_20.0 && Rscript tests/test_ynow_notes_collapse.R
 
 root <- if (file.exists("ui_locale.R")) {
   normalizePath(".")
 } else if (file.exists("../ui_locale.R")) {
   normalizePath("..")
-} else if (dir.exists("app_19.0") && file.exists("app_19.0/ui_locale.R")) {
-  normalizePath("app_19.0")
+} else if (dir.exists("app_20.0") && file.exists("app_20.0/ui_locale.R")) {
+  normalizePath("app_20.0")
 } else {
-  stop("Cannot locate app_19.0")
+  stop("Cannot locate app_20.0")
 }
 setwd(root)
 

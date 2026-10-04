@@ -280,7 +280,7 @@ ynow_valuation_model_tabs <- function() {
 is_valuation_model_tab <- function(tab) {
   t <- trimws(as.character(tab %||% "")[1])
   if (!nzchar(t) || identical(toupper(t), "NA")) return(FALSE)
-  if (identical(t, "business_breakdown_lab")) t <- "testing"
+  if (identical(t, "business_breakdown_lab")) t <- "dashboard"
   t %in% ynow_valuation_model_tabs()
 }
 

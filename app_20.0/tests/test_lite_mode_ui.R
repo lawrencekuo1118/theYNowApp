@@ -268,7 +268,7 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
     txt,
     perl = TRUE
   ))
-  testthat::expect_true(grepl("The YNow App v19.98", txt, fixed = TRUE))
+  testthat::expect_true(grepl("The YNow App v20", txt, fixed = TRUE))
   testthat::expect_true(grepl('title = "The YNow App"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-report", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-toolbar", txt, fixed = TRUE))
@@ -319,26 +319,37 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
     txt,
     perl = TRUE
   ))
-  testthat::expect_false(grepl('tabName = "business_breakdown_lab"', txt, fixed = TRUE))
+    testthat::expect_false(grepl('tabName = "business_breakdown_lab"', txt, fixed = TRUE))
   testthat::expect_false(grepl("ynow_menu_bblab", txt, fixed = TRUE))
-  testthat::expect_true(grepl("ynow-testing-bblab", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-company-bblab", txt, fixed = TRUE))
   testthat::expect_true(grepl("business_breakdown_lab_ui", txt, fixed = TRUE))
-  testthat::expect_true(grepl("body.ynow-lite .ynow-testing-bblab", txt, fixed = TRUE))
+  testthat::expect_true(grepl("body.ynow-lite .ynow-company-bblab", txt, fixed = TRUE))
   testthat::expect_true(grepl("body.ynow-lite .ynow-bblab", txt, fixed = TRUE))
   testthat::expect_true(grepl("input.sidebar_tabs != 'testing'", txt, fixed = TRUE))
   testthat::expect_true(grepl("remapLegacyTab", txt, fixed = TRUE))
-  testthat::expect_true(grepl("'testing'", txt, fixed = TRUE))
-  # Testing tab is a lazy host; BBLab body lives in .ynow_page_ui_testing
+  testthat::expect_true(grepl("return 'dashboard'", txt, fixed = TRUE))
+  # Testing remains a lazy host; BBLab body lives at bottom of Company (dashboard)
   testthat::expect_true(grepl('uiOutput("ynow_lazy_host_testing")', txt, fixed = TRUE))
   testthat::expect_true(grepl(
-    "\\.ynow_page_ui_testing\\s*<-\\s*function[\\s\\S]*business_breakdown_lab_ui\\(\"bblab\"\\)",
+    'tabItem\\(tabName = "dashboard"[\\s\\S]*business_breakdown_lab_ui\\(\"bblab\"\\)[\\s\\S]*tabName = "smart_analysis"',
     txt,
     perl = TRUE
   ))
+  testing_fn <- {
+    m <- regexpr(
+      "\\.ynow_page_ui_testing\\s*<-\\s*function\\s*\\([^)]*\\)\\s*\\{[\\s\\S]*?\\n\\}",
+      txt,
+      perl = TRUE
+    )
+    if (m < 1L) "" else substr(txt, m, m + attr(m, "match.length") - 1L)
+  }
+  testthat::expect_true(nzchar(testing_fn))
+  testthat::expect_false(grepl("business_breakdown_lab_ui", testing_fn, fixed = TRUE))
+  testthat::expect_false(grepl("ynow-testing-bblab", txt, fixed = TRUE))
   testing_idx <- regexpr('tabName = "testing"', txt, fixed = TRUE)[1]
   next_tab_idx <- regexpr('tabName = "feedback"', txt, fixed = TRUE)[1]
   testthat::expect_true(testing_idx > 0 && next_tab_idx > testing_idx)
-  testthat::expect_true(grepl(
+testthat::expect_true(grepl(
     "body\\.ynow-lite[\\s\\S]*ynow-sidebar-test-link",
     txt,
     perl = TRUE

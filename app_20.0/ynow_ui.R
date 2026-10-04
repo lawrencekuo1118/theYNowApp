@@ -128,7 +128,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v19.98) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報抓取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v20) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報抓取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -147,7 +147,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v19.98) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v20) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -249,7 +249,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v19.98）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v20）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -266,7 +266,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v19.98) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v20) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -2632,7 +2632,7 @@ beta_rolling_section_ui <- function() {
                 id = "ynow_testing_page_sub",
                 paste0(
                   "Full-only sandbox for upcoming experiments and feature trials. ",
-                  "Business Breakdown Lab lives on this page. ",
+                  "Business Breakdown Lab lives at the bottom of Company. ",
                   "Quant Backtest Lab remains on the main sidebar. Lite mode hides this entry."
                 )
               ),
@@ -2652,11 +2652,6 @@ beta_rolling_section_ui <- function() {
                 )
               )
             )
-          ),
-          tags$div(
-            class = "ynow-full-only ynow-testing-bblab",
-            id = "ynow_testing_bblab",
-            business_breakdown_lab_ui("bblab")
           )
   )
 }
@@ -2671,9 +2666,9 @@ ui <- dashboardPage(
                   '<span class="ynow-app-title" id="ynow_app_title" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v19.98</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v20</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v19.98</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v20</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -4059,13 +4054,13 @@ ui <- dashboardPage(
         }
         /* Lite: under Data Source keep Snapshot + Feedback only;
            Quant Backtest Lab + Testing foot link stay Full-only.
-           Business Breakdown Lab is nested inside Testing (no sidebar item). */
+           Business Breakdown Lab sits at bottom of Company (no sidebar item). */
         body.ynow-lite .sidebar-menu a[data-value="lab_notes"],
         body.ynow-lite .sidebar-menu li:has(> a[data-value="lab_notes"]) {
           display: none !important;
         }
         body.ynow-lite .ynow-sidebar-test-link,
-        body.ynow-lite .ynow-testing-bblab,
+        body.ynow-lite .ynow-company-bblab,
         body.ynow-lite .ynow-bblab {
           display: none !important;
         }
@@ -6393,7 +6388,7 @@ ui <- dashboardPage(
             ];
             function remapLegacyTab(tab) {
               tab = String(tab || '');
-              if (tab === 'business_breakdown_lab') return 'testing';
+              if (tab === 'business_breakdown_lab') return 'dashboard';
               return tab;
             }
             window.ynowRemapLegacyTab = remapLegacyTab;
@@ -6428,8 +6423,8 @@ ui <- dashboardPage(
             function remapLegacyHash() {
               var h = String(location.hash || '');
               if (h === '#shiny-tab-business_breakdown_lab') {
-                gotoTab('testing');
-                try { history.replaceState(null, '', '#shiny-tab-testing'); } catch (eH) {}
+                gotoTab('dashboard');
+                try { history.replaceState(null, '', '#shiny-tab-dashboard'); } catch (eH) {}
               }
             }
             function registerGotoTabHandler() {
@@ -9243,7 +9238,7 @@ ui <- dashboardPage(
       )
     ),
     # Ticker search + Yahoo industry chrome: hide on Home, About, Macro, Blue Chip, Testing
-    # (Testing hosts Business Breakdown Lab, which has its own in-session Search;
+    # (Business Breakdown Lab on Company keeps its own in-session Search alongside global chrome;
     # Blue Chip uses its own universe Search, not the global ticker chrome).
     conditionalPanel(
       condition = "input.sidebar_tabs != 'about' && input.sidebar_tabs != 'macro_market' && input.sidebar_tabs != 'bluechip' && input.sidebar_tabs != 'testing' && input.sidebar_tabs != 'home'",
@@ -10107,6 +10102,12 @@ ui <- dashboardPage(
                          )
                        )
                      )
+              ),
+              # Business Breakdown Lab — Full-only; graduated from Testing (v20)
+              tags$div(
+                class = "ynow-full-only ynow-company-bblab",
+                id = "ynow_company_bblab",
+                business_breakdown_lab_ui("bblab")
               )
       ),
 

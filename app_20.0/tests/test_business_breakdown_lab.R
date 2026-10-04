@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 # Business Breakdown Lab — 26 spec tests + Lite hide / parse / no-valuation-wiring.
-# Run: cd app_19.0 && Rscript tests/test_business_breakdown_lab.R
+# Run: cd app_20.0 && Rscript tests/test_business_breakdown_lab.R
 
 Sys.setenv(YNOW_DEBUG_SKIP_PY = "1")
 args <- commandArgs(trailingOnly = FALSE)
@@ -10,8 +10,8 @@ root <- if (file.exists(file.path(test_dir, "..", "business_breakdown_engine.R")
   normalizePath(file.path(test_dir, ".."))
 } else if (file.exists("business_breakdown_engine.R")) {
   normalizePath(".")
-} else if (dir.exists("app_19.0") && file.exists("app_19.0/business_breakdown_engine.R")) {
-  normalizePath("app_19.0")
+} else if (dir.exists("app_20.0") && file.exists("app_20.0/business_breakdown_engine.R")) {
+  normalizePath("app_20.0")
 } else stop("Cannot locate business_breakdown_engine.R")
 setwd(root)
 
@@ -491,12 +491,30 @@ check("25 shared fabs not on GP cards",
         all(vapply(rt$businesses, function(c) is.null(c$rd), logical(1))))
 
 # =====================================================================
-# 26 Lab lives under Testing; no sidebar menu; Lite still hides
+# 26 Lab lives under Company (dashboard); no sidebar menu; Lite still hides
 # =====================================================================
-testing_block <- {
-  m <- regexpr('tabName = "testing"[\\s\\S]*?tabName = "', ui_src, perl = TRUE)
+dashboard_block <- {
+  m <- regexpr(
+    'tabItem\\(tabName = "dashboard"[\\s\\S]*?tabName = "smart_analysis"',
+    ui_src,
+    perl = TRUE
+  )
   if (m < 1L) {
-    character(0)
+    ""
+  } else {
+    start <- as.integer(m)
+    len <- as.integer(attr(m, "match.length"))
+    substr(ui_src, start, start + len - 1L)
+  }
+}
+testing_fn_src <- {
+  m <- regexpr(
+    "\\.ynow_page_ui_testing\\s*<-\\s*function\\s*\\([^)]*\\)\\s*\\{[\\s\\S]*?\\n\\}",
+    ui_src,
+    perl = TRUE
+  )
+  if (m < 1L) {
+    ""
   } else {
     start <- as.integer(m)
     len <- as.integer(attr(m, "match.length"))
@@ -512,20 +530,24 @@ check("26 no sidebar menu for BBL",
               fixed = TRUE) &&
         grepl("Experimental Feature", mod_src, fixed = TRUE) &&
         grepl("business_breakdown_lab_ui", ui_src, fixed = TRUE))
-check("26 Lab markup lives under Testing tab",
-      grepl('tabName = "testing"', ui_src, fixed = TRUE) &&
-        nzchar(testing_block) &&
-        grepl("ynow-testing-bblab", testing_block, fixed = TRUE) &&
-        grepl("business_breakdown_lab_ui", testing_block, fixed = TRUE) &&
-        grepl('id = "ynow_testing_bblab"', testing_block, fixed = TRUE))
-check("26 Lite CSS hide + remap to Testing",
-      grepl("body.ynow-lite .ynow-testing-bblab", ui_src, fixed = TRUE) &&
+check("26 Lab markup lives under Company tab",
+      grepl('tabName = "dashboard"', ui_src, fixed = TRUE) &&
+        nzchar(dashboard_block) &&
+        grepl("ynow-company-bblab", dashboard_block, fixed = TRUE) &&
+        grepl("business_breakdown_lab_ui", dashboard_block, fixed = TRUE) &&
+        grepl('id = "ynow_company_bblab"', dashboard_block, fixed = TRUE) &&
+        !grepl("business_breakdown_lab_ui", testing_fn_src, fixed = TRUE) &&
+        !grepl("ynow-testing-bblab", ui_src, fixed = TRUE) &&
+        grepl("ynow_testing_page_title", testing_fn_src, fixed = TRUE))
+check("26 Lite CSS hide + remap to Company",
+      grepl("body.ynow-lite .ynow-company-bblab", ui_src, fixed = TRUE) &&
         grepl("body.ynow-lite .ynow-bblab", ui_src, fixed = TRUE) &&
         grepl("ynow-sidebar-test-link", ui_src, fixed = TRUE) &&
-        grepl("'testing'", ui_src, fixed = TRUE) &&
+        grepl("'dashboard'", ui_src, fixed = TRUE) &&
         grepl("ynow-full-only", mod_src, fixed = TRUE) &&
         grepl("remapLegacyTab", ui_src, fixed = TRUE) &&
         grepl("business_breakdown_lab", ui_src, fixed = TRUE) &&
+        grepl("return 'dashboard'", ui_src, fixed = TRUE) &&
         !grepl("body.ynow-lite .sidebar-menu a\\[data-value=\"business_breakdown_lab\"\\]", ui_src))
 
 # ---- extras: i18n, parse, valuation isolation, toast specificity ----
@@ -646,10 +668,10 @@ check("valuation files unchanged (no bblab wiring)", !any(val_hit))
 check("server only mounts lab module",
       grepl("business_breakdown_lab_server", server_src, fixed = TRUE) &&
         !grepl("bblab_analyze\\(", server_src))
-check("server remaps legacy BBL tab to Testing",
+check("server remaps legacy BBL tab to Company",
       grepl('identical(tab, "business_breakdown_lab")', server_src, fixed = TRUE) &&
         grepl("ynowGotoTab", server_src, fixed = TRUE) &&
-        grepl('tab = "testing"', server_src, fixed = TRUE))
+        grepl('tab = "dashboard"', server_src, fixed = TRUE))
 
 parse_files <- c("business_breakdown_schema.R", "business_breakdown_engine.R",
                  "business_breakdown_module.R", "global.R", "ui_locale.R",
@@ -1552,10 +1574,12 @@ check("Lab Search UI is a div not a native form",
         !grepl("type = \"submit\"", mod_src, fixed = TRUE) &&
         !grepl("tags$form", mod_src, fixed = TRUE) &&
         grepl("preventDefault", mod_src, fixed = TRUE))
-check("global ticker chrome hidden on Testing so Lab Search stays in-session",
-      grepl("input.sidebar_tabs != 'testing'", ui_src, fixed = TRUE) &&
+check("Lab keeps in-session Search; Testing sandbox still hides global chrome",
+      grepl("ynow-bblab-search-controls", mod_src, fixed = TRUE) &&
+        grepl("input.sidebar_tabs != 'testing'", ui_src, fixed = TRUE) &&
         grepl("input.sidebar_tabs != 'about'", ui_src, fixed = TRUE) &&
-        grepl("input.sidebar_tabs != 'macro_market'", ui_src, fixed = TRUE))
+        grepl("input.sidebar_tabs != 'macro_market'", ui_src, fixed = TRUE) &&
+        grepl("ynow-company-bblab", ui_src, fixed = TRUE))
 wide_year <- list(
   headers = c("2025"),
   rows = list(

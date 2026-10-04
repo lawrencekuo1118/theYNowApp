@@ -9,4 +9,4 @@ message=chore: bump display version to v19.97
 captured_at=2026-10-03T18:34:11Z
 source_branch=master
 display_version=v19.97
-note=Canonical live line is app_19.0. Bundle 12642899 = v19.97. Blue Chip by-industry = Top 10 within selected industries. Deploy via scripts/deploy_app_19.R. Supersedes 12642872.
+note=Canonical live line is app_20.0. Bundle 12642899 = v19.97. Blue Chip by-industry = Top 10 within selected industries. Deploy via scripts/deploy_app_20.R. Supersedes 12642872.
