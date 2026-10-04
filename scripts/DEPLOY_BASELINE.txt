@@ -8,5 +8,5 @@ short=bbba147
 message=chore: bump display version to v20.25
 captured_at=2026-10-04T13:12:51Z
 source_branch=master
-display_version=v20.25
+display_version=v20.26
 note=Canonical live line is app_20.0. Bundle 12645578 adds optional major-index overlays on the YNOW/TYNOW chart (default off). Deploy via scripts/deploy_app_20.R.
