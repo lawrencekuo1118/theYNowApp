@@ -250,7 +250,15 @@ sotp_module_server <- function(id,
       }
 
       def <- .default_mult()
-      segs <- .rel_sotp_segments_from_is(d_is, ticker = tk, statement_currency = f_ccy0)
+      # Same BB Lab path as Business Breakdown: income statement + US SEC segment notes.
+      notes <- if (exists(".rel_sotp_fetch_segment_notes", mode = "function")) {
+        .rel_sotp_fetch_segment_notes(tk)
+      } else {
+        NULL
+      }
+      segs <- .rel_sotp_segments_from_is(
+        d_is, ticker = tk, statement_currency = f_ccy0, notes = notes
+      )
       if (is.data.frame(segs) && nrow(segs)) {
         segs$multiple <- def
       }
@@ -370,6 +378,19 @@ sotp_module_server <- function(id,
       valueBox(val, .str("sotp_vbx_n"), icon = icon("layer-group"), color = "teal")
     })
 
+    .sotp_unavailable_msg <- function(reason) {
+      key <- switch(
+        as.character(reason %||% "")[1],
+        no_segments = "sotp_need_segments",
+        need_multi_segment = "sotp_need_segments",
+        shares_missing = "sotp_status_shares_missing",
+        multiple_invalid = "sotp_status_multiple_invalid",
+        equity_invalid = "sotp_status_equity_invalid",
+        "sotp_status_unavailable"
+      )
+      .str(key)
+    }
+
     output$ui_sotp_result <- renderUI({
       calc_token()
       res <- last_result()
@@ -377,14 +398,9 @@ sotp_module_server <- function(id,
         return(tags$p(class = "ynow-macro-hint", .str("sotp_need_run")))
       }
       if (!identical(res$status, "ok")) {
-        reason <- if (identical(res$reason, "no_segments") || identical(res$reason, "need_multi_segment")) {
-          .str("sotp_need_segments")
-        } else {
-          .str("rel_multiples_status_na")
-        }
         return(tags$div(
           class = "ynow-macro-callout ynow-macro-callout--warn",
-          tags$p(reason)
+          tags$p(.sotp_unavailable_msg(res$reason))
         ))
       }
       seg <- res$segments

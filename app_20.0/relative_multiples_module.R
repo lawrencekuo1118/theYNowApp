@@ -263,8 +263,19 @@ calc_sotp_revenue_implied <- function(segments, ev_sales_multiple, cash, debt, s
   tryCatch(select_current_metric(d_is, patterns, "flow"), error = function(e) NA_real_)
 }
 
+#' US EDGAR segment notes for SOTP / BB Lab (same cached path as Business Breakdown).
+.rel_sotp_fetch_segment_notes <- function(ticker) {
+  tk <- as.character(ticker %||% "")[1]
+  if (!nzchar(tk) || grepl("\\.(TW|TWO)$", tk, ignore.case = TRUE)) return(NULL)
+  if (!exists("cached_fetch_sec_segment_notes", mode = "function")) return(NULL)
+  tryCatch(cached_fetch_sec_segment_notes(tk, "10-K"), error = function(e) NULL)
+}
+
 #' Pull ≥2 positive segment revenues via BB Lab when multi-business split exists.
-.rel_sotp_segments_from_is <- function(d_is, ticker = "", statement_currency = NA) {
+#' Prefers income-statement rows; when `notes` / `segment_tables` are supplied
+#' (e.g. SEC segment notes), those feed the same BB Lab payload path.
+.rel_sotp_segments_from_is <- function(d_is, ticker = "", statement_currency = NA,
+                                       notes = NULL, segment_tables = NULL) {
   empty <- data.frame(name = character(0), revenue = numeric(0), stringsAsFactors = FALSE)
   if (!exists("bblab_payload_from_statements", mode = "function") ||
       !exists("bblab_analyze", mode = "function")) {
@@ -275,7 +286,9 @@ calc_sotp_revenue_implied <- function(segments, ev_sales_multiple, cash, debt, s
     bblab_payload_from_statements(
       d_is,
       ticker = as.character(ticker %||% "")[1],
-      statement_currency = statement_currency
+      statement_currency = statement_currency,
+      notes = notes,
+      segment_tables = segment_tables
     ),
     error = function(e) NULL
   )

@@ -197,16 +197,32 @@ locale_for_market <- function(mode = get_market_mode()) {
     sotp_btn_sync = "Sync from statements",
     sotp_btn_apply_mult = "Apply default to all segments",
     sotp_help = paste0(
-      "Each segment needs its own EV/Sales. Sync pulls multi-segment revenue from BB Lab when available. ",
-      "Not segment-EBIT SOTP."
+      "Each segment needs its own EV/Sales. Sync pulls multi-segment revenue via BB Lab ",
+      "(income statement, plus US SEC segment notes when available). Not segment-EBIT SOTP."
     ),
     sotp_bridge_help = paste0(
       "Implied EV = Σ(segment revenue × segment EV/Sales) + non-operating; ",
       "Equity = EV + Cash − Debt (same bridge as DCF)."
     ),
     sotp_need_segments = "SOTP requires segment-level financial data (≥2 positive segment revenues).",
+    sotp_status_shares_missing = paste0(
+      "Cannot compute Implied Price: shares outstanding are missing or invalid. ",
+      "Sync from statements or enter Shares on the Bridge tab."
+    ),
+    sotp_status_multiple_invalid = paste0(
+      "Cannot compute Implied Price: EV/Sales multiples are missing or not positive. ",
+      "Set Default EV/Sales and apply to all segments."
+    ),
+    sotp_status_equity_invalid = paste0(
+      "Cannot compute Implied Price: equity bridge is invalid after Cash − Debt. ",
+      "Check Cash, Debt, and segment EV inputs."
+    ),
+    sotp_status_unavailable = "SOTP Implied Price unavailable with the current inputs.",
     sotp_need_run = "Click Run SOTP to compute Implied Price.",
-    sotp_synced = "Synced segment revenues (when available), cash, debt, and shares from statements.",
+    sotp_synced = paste0(
+      "Synced segment revenues (income statement and US SEC segment notes when available), ",
+      "cash, debt, and shares from statements."
+    ),
     sotp_segments_heading = "Segment EV/Sales",
     sotp_col_name = "Segment",
     sotp_col_rev = "Revenue",
@@ -2287,7 +2303,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     sotp_btn_sync = "自財報同步",
     sotp_btn_apply_mult = "套用預設倍數至全部門",
     sotp_help = paste0(
-      "各部門需各自設定 EV/Sales。同步時若 BB Lab 有多部門營收會帶入。",
+      "各部門需各自設定 EV/Sales。同步走 BB Lab 路徑：",
+      "損益表部門營收，美股另可併入 SEC segment notes（若有）。",
       "非部門 EBIT SOTP。"
     ),
     sotp_bridge_help = paste0(
@@ -2295,8 +2312,24 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Equity = EV + Cash − Debt（與 DCF 相同橋接）。"
     ),
     sotp_need_segments = "SOTP 需部門層級財報資料（≥2 筆正值部門營收）。",
+    sotp_status_shares_missing = paste0(
+      "無法計算 Implied Price：流通股數缺漏或無效。",
+      "請按「自財報同步」，或於 Bridge 分頁手動輸入 Shares。"
+    ),
+    sotp_status_multiple_invalid = paste0(
+      "無法計算 Implied Price：EV/Sales 倍數缺漏或非正值。",
+      "請設定預設 EV/Sales 並套用至全部門。"
+    ),
+    sotp_status_equity_invalid = paste0(
+      "無法計算 Implied Price：Cash − Debt 後的權益橋接無效。",
+      "請檢查 Cash、Debt 與部門 EV 輸入。"
+    ),
+    sotp_status_unavailable = "以目前輸入無法計算 SOTP Implied Price。",
     sotp_need_run = "請按「試算 SOTP」計算 Implied Price。",
-    sotp_synced = "已自財報同步部門營收（若有）、現金、負債與股數。",
+    sotp_synced = paste0(
+      "已自財報同步部門營收（損益表；美股另含 SEC segment notes，若有）、",
+      "現金、負債與股數。"
+    ),
     sotp_segments_heading = "部門 EV/Sales",
     sotp_col_name = "部門",
     sotp_col_rev = "營收",

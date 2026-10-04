@@ -140,11 +140,17 @@ for (k in c(
   "rel_multiples_tab_earnings", "rel_multiples_tab_enterprise", "rel_multiples_tab_ps",
   "rel_multiples_tab_bridge", "rel_formula_earnings", "rel_formula_enterprise", "rel_formula_ps",
   "sotp_lead_title", "sotp_need_segments", "sotp_vbx_price", "sotp_col_multiple",
-  "sotp_tab_bridge", "sotp_formula_banner", "sotp_settings_seg_note"
+  "sotp_tab_bridge", "sotp_formula_banner", "sotp_settings_seg_note",
+  "sotp_status_shares_missing", "sotp_status_multiple_invalid",
+  "sotp_status_equity_invalid", "sotp_status_unavailable"
 )) {
   check(paste("en", k), nzchar(ui_str(k, "en")))
   check(paste("zh", k), nzchar(ui_str(k, "zh-TW")))
 }
+check("shares missing not bare N/A", {
+  !identical(ui_str("sotp_status_shares_missing", "en"), "N/A") &&
+    grepl("shares", ui_str("sotp_status_shares_missing", "en"), ignore.case = TRUE)
+})
 check("zh no simplified", !grepl("默认|参数|数据|用户", ui_str("rel_multiples_lead_body", "zh-TW")))
 check("menu Multiples en", identical(ui_str("menu_rel_multiples", "en"), "Multiples"))
 check("menu SOTP en", identical(ui_str("menu_sotp", "en"), "SOTP"))
@@ -183,6 +189,52 @@ check("sotp segment params", grepl('ns("default_ev_sales")', sotp_src, fixed = T
 check("sotp bridge params", grepl('ns("cash")', sotp_src, fixed = TRUE) &&
         grepl('ns("debt")', sotp_src, fixed = TRUE) &&
         grepl('ns("shares")', sotp_src, fixed = TRUE))
+check("sotp sync uses segment notes", {
+  grepl(".rel_sotp_fetch_segment_notes", sotp_src, fixed = TRUE) &&
+    grepl("notes = notes", sotp_src, fixed = TRUE) &&
+    grepl(".sotp_unavailable_msg", sotp_src, fixed = TRUE)
+})
+check("sotp helper wires notes into BB Lab", {
+  grepl("notes = notes", mod_src, fixed = TRUE) &&
+    grepl("segment_tables = segment_tables", mod_src, fixed = TRUE) &&
+    grepl(".rel_sotp_fetch_segment_notes", mod_src, fixed = TRUE)
+})
+
+# Offline: segment_tables supply ≥2 revenues when IS has only consolidated rows
+source("business_breakdown_schema.R", local = TRUE, encoding = "UTF-8")
+source("business_breakdown_structure.R", local = TRUE, encoding = "UTF-8")
+source("business_breakdown_engine.R", local = TRUE, encoding = "UTF-8")
+note_tbl <- list(list(
+  short_name = "Segment Information",
+  kind = "operating_segment",
+  headers = c("Segment", "Revenue", "Cost of Revenue"),
+  rows = list(
+    c("Business A", "120", "40"),
+    c("Business B", "80", "40"),
+    c("Total", "200", "80")
+  )
+))
+is_consol <- data.frame(
+  Breakdown = c("Total Revenue", "Cost Of Revenue", "Gross Profit"),
+  `12/31/2024` = c("200", "80", "120"),
+  check.names = FALSE, stringsAsFactors = FALSE
+)
+segs_notes <- .rel_sotp_segments_from_is(
+  is_consol, ticker = "FIXT", statement_currency = "USD",
+  segment_tables = note_tbl
+)
+check(
+  "SOTP segments from BB Lab segment notes",
+  is.data.frame(segs_notes) && nrow(segs_notes) >= 2L &&
+    all(segs_notes$revenue > 0)
+)
+segs_no_notes <- .rel_sotp_segments_from_is(
+  is_consol, ticker = "FIXT", statement_currency = "USD"
+)
+check(
+  "SOTP without notes stays empty on consolidated-only IS",
+  is.data.frame(segs_no_notes) && nrow(segs_no_notes) == 0L
+)
 
 ui_src <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("sidebar mounts rel multiples", grepl("rel_multiples_calculator", ui_src, fixed = TRUE))
