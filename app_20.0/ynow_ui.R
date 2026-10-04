@@ -2719,12 +2719,16 @@ ui <- dashboardPage(
       id = "ynow-header-logo",
       class = "dropdown ynow-header-logo",
       tags$img(
+        id = "ynow_header_logo_home",
         class = "ynow-header-logo-mark",
         src = "ynow-logo-mark-40.png",
         width = 36,
         height = 36,
         alt = "YNow",
-        title = "YNow — WH.Y VALUE NOW"
+        role = "button",
+        tabindex = "0",
+        title = "Go to Home",
+        `aria-label` = "Go to Home"
       ),
       tags$div(
         class = "ynow-ccy-float",
@@ -5616,6 +5620,11 @@ ui <- dashboardPage(
             if (menuCompanyAdvance && s.menu_company_advance) {
               menuCompanyAdvance.textContent = s.menu_company_advance;
             }
+            var headerLogoHome = document.getElementById('ynow_header_logo_home');
+            if (headerLogoHome && s.header_logo_home_title) {
+              headerLogoHome.setAttribute('title', s.header_logo_home_title);
+              headerLogoHome.setAttribute('aria-label', s.header_logo_home_title);
+            }
             var smartLab = document.getElementById('ynow_menu_smart');
             if (smartLab && s.menu_smart_analysis) smartLab.textContent = s.menu_smart_analysis;
             var menuBt = document.getElementById('ynow_menu_backtest');
@@ -6520,6 +6529,28 @@ ui <- dashboardPage(
                 try { a.click(); } catch (e) {}
               }
             }
+            function bindHeaderLogoHome() {
+              if (document.documentElement.getAttribute('data-ynow-header-logo-home') === '1') return;
+              document.documentElement.setAttribute('data-ynow-header-logo-home', '1');
+              document.addEventListener('click', function (ev) {
+                var mark = ev.target && ev.target.closest
+                  ? ev.target.closest('#ynow_header_logo_home, .ynow-header-logo-mark')
+                  : null;
+                if (!mark) return;
+                // Currency controls sit under the same <li>; only the mark goes home.
+                if (ev.target && ev.target.closest && ev.target.closest('.ynow-ccy-float')) return;
+                ev.preventDefault();
+                gotoTab('home');
+              });
+              document.addEventListener('keydown', function (ev) {
+                var t = ev.target;
+                if (!t || t.id !== 'ynow_header_logo_home') return;
+                if (ev.key !== 'Enter' && ev.key !== ' ') return;
+                ev.preventDefault();
+                gotoTab('home');
+              });
+            }
+            bindHeaderLogoHome();
             function remapLegacyHash() {
               var h = String(location.hash || '');
               if (h === '#shiny-tab-business_breakdown_lab') {
@@ -8754,6 +8785,11 @@ ui <- dashboardPage(
           height: 36px;
           object-fit: contain;
           display: block;
+          cursor: pointer;
+        }
+        .ynow-header-logo-mark:focus {
+          outline: 2px solid rgba(255, 215, 0, 0.85);
+          outline-offset: 2px;
         }
         body.ynow-market-tw .ynow-header-logo-mark {
           filter: drop-shadow(0 0 2px rgba(0,0,0,0.35));

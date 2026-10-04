@@ -12,7 +12,7 @@ testthat::local_edition(3)
 testthat::test_that("Lite locale keys exist in en and zh-TW", {
   source(file.path("..", "ui_locale.R"), local = TRUE)
   keys <- c(
-    "menu_home", "home_lead", "home_method", "home_method_lite",
+    "menu_home", "header_logo_home_title", "home_lead", "home_method", "home_method_lite",
     "home_market_k", "home_bluechip_k", "home_company_k",
     "home_ynow_k", "home_ynow_d",
     "home_value_k", "home_value_d_lite",
@@ -84,6 +84,8 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
   testthat::expect_null(.UI_STRINGS$`zh-TW`$macro_rf_note)
   testthat::expect_identical(.UI_STRINGS$en$menu_dashboard, "Company")
   testthat::expect_identical(.UI_STRINGS$`zh-TW`$menu_dashboard, "個股")
+  testthat::expect_identical(.UI_STRINGS$en$header_logo_home_title, "Go to Home")
+  testthat::expect_identical(.UI_STRINGS$`zh-TW`$header_logo_home_title, "回到首頁")
 })
 
 testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hooks", {
@@ -323,6 +325,10 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
     testthat::expect_false(grepl('tabName = "business_breakdown_lab"', txt, fixed = TRUE))
   testthat::expect_true(grepl('tabName = "company_advance"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_menu_company_advance", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow_header_logo_home", txt, fixed = TRUE))
+  testthat::expect_true(grepl("bindHeaderLogoHome", txt, fixed = TRUE))
+  testthat::expect_true(grepl("gotoTab('home')", txt, fixed = TRUE))
+  testthat::expect_true(grepl("header_logo_home_title", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-company-advance-bblab", txt, fixed = TRUE))
   testthat::expect_true(grepl("business_breakdown_lab_ui", txt, fixed = TRUE))
   testthat::expect_true(grepl("body.ynow-lite .ynow-company-advance-bblab", txt, fixed = TRUE))
