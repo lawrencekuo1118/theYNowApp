@@ -3916,6 +3916,17 @@ ui <- dashboardPage(
           border-radius: 4px;
         }
         .ynow-bblab-report__toolbar-check { padding-top: 22px; }
+        /* Shiny defaults .shiny-input-container to 300px — too narrow for the GM fallback label. */
+        .ynow-bblab-report__toolbar-check .shiny-input-container,
+        .ynow-bblab-report__toolbar-check .checkbox,
+        .ynow-bblab-report__toolbar-check label {
+          width: auto !important;
+          max-width: 100% !important;
+        }
+        .ynow-bblab-report__toolbar-check label,
+        .ynow-bblab-report__toolbar-check #ynow_bblab_fallback_gm_label {
+          white-space: nowrap;
+        }
         .ynow-bblab-report__hint {
           margin: 0 0 6px 0;
           font-size: 12px;

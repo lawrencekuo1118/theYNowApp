@@ -260,9 +260,17 @@ business_breakdown_lab_ui <- function(id = "bblab") {
         ),
         tags$style(HTML(paste(
           ".ynow-bblab-struct-mix{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;}",
-          ".ynow-bblab-struct-mix__main{flex:1 1 54%;min-width:280px;}",
-          ".ynow-bblab-struct-mix__chart{flex:1 1 34%;min-width:260px;max-width:440px;}",
-          ".ynow-bblab-struct-mix__chart .plotly{width:100% !important;}",
+          ".ynow-bblab-struct-mix__main{flex:1 1 52%;min-width:280px;}",
+          ".ynow-bblab-struct-mix__chart{flex:1 1 40%;min-width:300px;max-width:520px;overflow:visible;}",
+          ".ynow-bblab-struct-mix__chart .plotly,",
+          ".ynow-bblab-struct-mix__chart .js-plotly-plot,",
+          ".ynow-bblab-struct-mix__chart .plot-container,",
+          ".ynow-bblab-struct-mix__chart .svg-container{width:100% !important;overflow:visible !important;}",
+          ".ynow-bblab-struct-table{table-layout:fixed;width:100%;}",
+          ".ynow-bblab-struct-table thead th{",
+          "vertical-align:bottom;min-height:3.25em;height:3.25em;",
+          "line-height:1.2;padding:8px 6px;white-space:normal;hyphens:auto;",
+          "}",
           ".ynow-bblab-struct-mix__controls{margin:0 0 8px 0;}",
           ".ynow-bblab-struct-mix__controls .shiny-input-container{margin-bottom:6px;}",
           ".ynow-bblab-struct-mix__exports{margin-top:4px;}",
@@ -914,12 +922,15 @@ business_breakdown_lab_server <- function(id = "bblab",
           "<br>Recon: ", if (isTRUE(res$reconciliation$pass)) "pass" else "fail"
         )
       }, character(1))
+      # Outside labels = percent only; full names stay in legend / hover (narrow side column).
       fig <- plotly::plot_ly(
         labels = labels, values = pmax(values, 0), type = "pie", hole = 0.45,
         customdata = vapply(slices, function(s) s$id, character(1)),
-        textinfo = "label+percent",
+        textinfo = "percent",
+        textposition = "outside",
         hovertext = hover, hoverinfo = "text",
         marker = list(colors = col, line = list(color = "#ffffff", width = 1)),
+        domain = list(x = c(0.15, 0.85), y = c(0.1, 0.85)),
         source = ns("donut")
       )
       if (!is.null(res$chart$eliminations_legend)) {
@@ -930,7 +941,13 @@ business_breakdown_lab_server <- function(id = "bblab",
           x = 0.5, y = -0.12, showarrow = FALSE, xref = "paper", yref = "paper"
         )
       }
-      plotly::layout(fig, showlegend = TRUE, margin = list(b = 60))
+      plotly::layout(
+        fig,
+        showlegend = TRUE,
+        margin = list(l = 70, r = 70, t = 50, b = 60),
+        legend = list(orientation = "h", y = 1.12, x = 0.5, xanchor = "center"),
+        uniformtext = list(minsize = 10, mode = "hide")
+      )
     })
 
     output$history_panel <- renderUI({
