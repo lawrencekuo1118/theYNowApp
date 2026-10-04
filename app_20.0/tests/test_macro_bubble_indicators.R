@@ -172,11 +172,19 @@ check("TW abs CSV readable", {
     all(c("market_cap_usd", "gdp_usd") %in% names(d)) &&
     any(is.finite(d$market_cap_usd)) && any(is.finite(d$gdp_usd))
 })
-check("TW abs series falls back to CSV when WB empty", {
-  # Offline path: read CSV directly; series helper uses it when live legs are empty.
-  csv <- macro_bubble_read_buffett_abs_csv("TW")
-  got <- macro_bubble_buffett_abs_asof(csv, NA_integer_)
-  isTRUE(got$ok) && is.finite(got$market_cap_usd) && is.finite(got$gdp_usd)
+check("TW abs series falls back to CSV when DGBAS empty", {
+  old_fn <- macro_bubble_fetch_buffett_dgbas
+  assign("macro_bubble_fetch_buffett_dgbas", function(...) NULL, envir = .GlobalEnv)
+  on.exit(assign("macro_bubble_fetch_buffett_dgbas", old_fn, envir = .GlobalEnv), add = TRUE)
+  if (exists(".MACRO_BUBBLE_ENV", mode = "environment")) {
+    .MACRO_BUBBLE_ENV$dgbas_buffett_tw_abs <- NULL
+  }
+  ser <- macro_bubble_buffett_abs_series("TW", timeout_sec = 1)
+  got <- macro_bubble_buffett_abs_asof(ser, NA_integer_)
+  is.data.frame(ser) && nrow(ser) >= 8L &&
+    all(c("market_cap_usd", "gdp_usd") %in% names(ser)) &&
+    any(grepl("seed-approx|csv", as.character(ser$source), ignore.case = TRUE)) &&
+    isTRUE(got$ok) && is.finite(got$market_cap_usd) && is.finite(got$gdp_usd)
 })
 check("TW DGBAS fetcher wired", {
   src <- paste(readLines("macro_bubble_indicators.R", warn = FALSE), collapse = "\n")

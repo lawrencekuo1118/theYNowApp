@@ -660,26 +660,15 @@ macro_bubble_fetch_wb_indicator <- function(mode = "US",
   if (!nzchar(ind)) return(NULL)
   cache_key <- paste0("wb_", code, "_", ind)
   if (is.data.frame(.MACRO_BUBBLE_ENV[[cache_key]])) {
-    # #region agent log
-    if (exists(".ynow_dbg_ef0f33", mode = "function")) {
-      .ynow_dbg_ef0f33("A", "macro_bubble_indicators.R:fetch_wb", "wb cache hit", list(
-        mode = as.character(mode)[1], code = code, indicator = ind,
-        nrow = nrow(.MACRO_BUBBLE_ENV[[cache_key]])
-      ))
-    }
-    # #endregion
     return(.MACRO_BUBBLE_ENV[[cache_key]])
   }
   url <- sprintf(
     "https://api.worldbank.org/v2/country/%s/indicator/%s?format=json&per_page=120",
     code, ind
   )
-  status <- NA_integer_
-  err_msg <- ""
   raw <- tryCatch({
     if (requireNamespace("httr", quietly = TRUE)) {
       resp <- httr::GET(url, httr::timeout(timeout_sec))
-      status <<- as.integer(httr::status_code(resp))[1]
       if (httr::status_code(resp) >= 400L) return(NULL)
       httr::content(resp, as = "text", encoding = "UTF-8")
     } else {
@@ -687,47 +676,12 @@ macro_bubble_fetch_wb_indicator <- function(mode = "US",
       on.exit(close(con), add = TRUE)
       paste(readLines(con, warn = FALSE), collapse = "\n")
     }
-  }, error = function(e) {
-    err_msg <<- as.character(conditionMessage(e))[1]
-    NULL
-  })
-  if (!nzchar(raw %||% "")) {
-    # #region agent log
-    if (exists(".ynow_dbg_ef0f33", mode = "function")) {
-      .ynow_dbg_ef0f33("A", "macro_bubble_indicators.R:fetch_wb", "wb empty raw", list(
-        mode = as.character(mode)[1], code = code, indicator = ind,
-        status = status, err = err_msg
-      ))
-    }
-    # #endregion
-    return(NULL)
-  }
+  }, error = function(e) NULL)
+  if (!nzchar(raw %||% "")) return(NULL)
   parsed <- tryCatch(jsonlite::fromJSON(raw, simplifyVector = FALSE), error = function(e) NULL)
-  if (!is.list(parsed) || length(parsed) < 2L) {
-    # #region agent log
-    if (exists(".ynow_dbg_ef0f33", mode = "function")) {
-      .ynow_dbg_ef0f33("A", "macro_bubble_indicators.R:fetch_wb", "wb parse fail / short", list(
-        mode = as.character(mode)[1], code = code, indicator = ind,
-        status = status, parsed_len = if (is.list(parsed)) length(parsed) else 0L,
-        raw_head = substr(raw, 1L, 160L)
-      ))
-    }
-    # #endregion
-    return(NULL)
-  }
+  if (!is.list(parsed) || length(parsed) < 2L) return(NULL)
   rows <- parsed[[2]]
-  if (!is.list(rows) || !length(rows)) {
-    # #region agent log
-    if (exists(".ynow_dbg_ef0f33", mode = "function")) {
-      meta_total <- tryCatch(as.numeric(parsed[[1]]$total %||% NA)[1], error = function(e) NA_real_)
-      .ynow_dbg_ef0f33("A", "macro_bubble_indicators.R:fetch_wb", "wb zero rows", list(
-        mode = as.character(mode)[1], code = code, indicator = ind,
-        status = status, meta_total = meta_total
-      ))
-    }
-    # #endregion
-    return(NULL)
-  }
+  if (!is.list(rows) || !length(rows)) return(NULL)
   out <- lapply(rows, function(r) {
     if (!is.list(r)) return(NULL)
     yr <- suppressWarnings(as.integer(r$date %||% NA))
@@ -741,28 +695,10 @@ macro_bubble_fetch_wb_indicator <- function(mode = "US",
     )
   })
   out <- Filter(Negate(is.null), out)
-  if (!length(out)) {
-    # #region agent log
-    if (exists(".ynow_dbg_ef0f33", mode = "function")) {
-      .ynow_dbg_ef0f33("D", "macro_bubble_indicators.R:fetch_wb", "wb rows all null values", list(
-        mode = as.character(mode)[1], code = code, indicator = ind,
-        raw_rows = length(rows)
-      ))
-    }
-    # #endregion
-    return(NULL)
-  }
+  if (!length(out)) return(NULL)
   df <- do.call(rbind, out)
   df <- df[order(df$date), , drop = FALSE]
   .MACRO_BUBBLE_ENV[[cache_key]] <- df
-  # #region agent log
-  if (exists(".ynow_dbg_ef0f33", mode = "function")) {
-    .ynow_dbg_ef0f33("A", "macro_bubble_indicators.R:fetch_wb", "wb ok", list(
-      mode = as.character(mode)[1], code = code, indicator = ind,
-      nrow = nrow(df), last_val = tail(df$value, 1)
-    ))
-  }
-  # #endregion
   df
 }
 

@@ -1794,18 +1794,6 @@ macro_market_server <- function(id = "macro",
       } else {
         "—"
       }
-      # #region agent log
-      if (exists(".ynow_dbg_ef0f33", mode = "function")) {
-        .ynow_dbg_ef0f33("C", "macro_market_module.R:bubble_buffett_mcap", "mcap KPI render", list(
-          mode = as.character(mode_now)[1],
-          abs_n = if (is.data.frame(abs_ser)) nrow(abs_ser) else 0L,
-          ok = isTRUE(got$ok),
-          mcap_finite = is.finite(got$market_cap_usd),
-          gdp_finite = is.finite(got$gdp_usd),
-          val = val
-        ))
-      }
-      # #endregion
       .buffett_abs_kpi_box(
         "macro_bubble_buffett_mcap_label",
         val,
@@ -1828,18 +1816,6 @@ macro_market_server <- function(id = "macro",
       } else {
         "—"
       }
-      # #region agent log
-      if (exists(".ynow_dbg_ef0f33", mode = "function")) {
-        .ynow_dbg_ef0f33("C", "macro_market_module.R:bubble_buffett_gdp", "gdp KPI render", list(
-          mode = as.character(mode_now)[1],
-          abs_n = if (is.data.frame(abs_ser)) nrow(abs_ser) else 0L,
-          ok = isTRUE(got$ok),
-          mcap_finite = is.finite(got$market_cap_usd),
-          gdp_finite = is.finite(got$gdp_usd),
-          val = val
-        ))
-      }
-      # #endregion
       .buffett_abs_kpi_box(
         "macro_bubble_buffett_gdp_label",
         val,
