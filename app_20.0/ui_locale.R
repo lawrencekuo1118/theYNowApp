@@ -1,7 +1,8 @@
 # ==========================================
 # ui_locale.R — 主介面文案（en ｜ zh-TW）
-# 語言與顯示幣別為獨立控制；市場模式僅提供「初次」locale 預設，
-# 不可在切換市場／幣別時靜默覆寫使用者已選語言。
+# 語言與顯示幣別為獨立控制。
+# 初次載入預設：瀏覽器／裝置語言（navigator.languages）→ en 或 zh-TW；
+# 市場模式不再覆寫語言（切換市場／幣別亦然）；手動 Language 選擇優先。
 # 財務專有名詞維持英文（WACC、FCFF、DCF…）。
 # ==========================================
 
@@ -12,7 +13,43 @@ normalize_ui_locale <- function(locale) {
   "en"
 }
 
-#' 市場模式 → 初次載入用的預設 UI locale（非強制綁定）
+#' Map browser/device BCP-47 language tag(s) → app UI locale (en | zh-TW).
+#'
+#' Preference follows the first matching tag. Accepts a character vector and/or
+#' comma/semicolon-separated strings (navigator.languages / Accept-Language style).
+#' - en / en-* / English → en
+#' - zh / zh-* / zh-Hant / Chinese → zh-TW
+#' - other / unknown → `default` (en)
+locale_from_device_language <- function(tags, default = "en") {
+  default <- normalize_ui_locale(default)
+  if (is.null(tags) || length(tags) == 0L) return(default)
+  raw <- unlist(lapply(tags, function(x) {
+    if (is.null(x) || length(x) == 0L || (length(x) == 1L && is.na(x))) {
+      return(character(0))
+    }
+    parts <- unlist(strsplit(as.character(x), "[,;]", perl = TRUE), use.names = FALSE)
+    trimws(parts)
+  }), use.names = FALSE)
+  raw <- raw[!is.na(raw) & nzchar(raw)]
+  if (!length(raw)) return(default)
+
+  for (tag in raw) {
+    t <- tolower(gsub("_", "-", trimws(as.character(tag)[1])))
+    t <- sub(";.*$", "", t) # strip ;q=…
+    if (!nzchar(t)) next
+    if (identical(t, "zh") || startsWith(t, "zh-") ||
+        identical(t, "chinese") || startsWith(t, "chinese-")) {
+      return("zh-TW")
+    }
+    if (identical(t, "en") || startsWith(t, "en-") ||
+        identical(t, "english") || startsWith(t, "english-")) {
+      return("en")
+    }
+  }
+  default
+}
+
+#' 市場模式 → 歷史用初次 locale 提示（非強制；裝置語言優先）
 locale_for_market <- function(mode = get_market_mode()) {
   if (identical(normalize_market_mode(mode), "TW")) "zh-TW" else "en"
 }

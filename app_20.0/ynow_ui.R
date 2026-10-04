@@ -6469,6 +6469,30 @@ ui <- dashboardPage(
           }
           registerLocaleHandler();
 
+          /* Device / browser language → initial UI locale (mapping done in R). */
+          function pushDeviceUiLocale() {
+            if (!(window.Shiny && Shiny.setInputValue)) {
+              setTimeout(pushDeviceUiLocale, 50);
+              return;
+            }
+            if (window.__ynowDeviceLocalePushed) return;
+            window.__ynowDeviceLocalePushed = true;
+            var tags = [];
+            try {
+              if (navigator.languages && navigator.languages.length) {
+                for (var i = 0; i < navigator.languages.length; i++) {
+                  var t = String(navigator.languages[i] || '').trim();
+                  if (t) tags.push(t);
+                }
+              } else if (navigator.language) {
+                var one = String(navigator.language || '').trim();
+                if (one) tags.push(one);
+              }
+            } catch (eLang) {}
+            Shiny.setInputValue('device_ui_locale', tags.join(','), {priority: 'event'});
+          }
+          pushDeviceUiLocale();
+
           /* ---- YNOW KPI cards: click / keyboard scroll to chapter anchors ---- */
           function ynowScrollFunnelAnchor(id) {
             if (!id) return false;

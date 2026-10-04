@@ -230,8 +230,11 @@ server <- function(input, output, session) {
 
   # ==========================================
   # UI locale（語言）與顯示幣別分開；市場切換不覆寫語言
+  # 初次預設：裝置／瀏覽器語言（device_ui_locale）；手動 Language 優先
   # ==========================================
   ui_locale <- reactiveVal("en")
+  ui_locale_user_picked <- reactiveVal(FALSE)
+  device_ui_locale_applied <- reactiveVal(FALSE)
 
   .ui_msg <- function(key, ..., loc = NULL) {
     if (is.null(loc)) {
@@ -597,11 +600,24 @@ server <- function(input, output, session) {
     current_ticker_rv = current_ticker
   )
 
-  # 語言控制：只改 UI locale，不碰顯示幣別
+  # 語言控制：只改 UI locale，不碰顯示幣別；手動選擇鎖定後不再套用裝置預設
   observeEvent(input$ui_locale_pick, {
     pick <- normalize_ui_locale(input$ui_locale_pick)
     if (identical(pick, isolate(ui_locale()))) return()
+    ui_locale_user_picked(TRUE)
     .push_ui_locale(pick, sync_picker = FALSE)
+  }, ignoreInit = TRUE)
+
+  # 裝置／瀏覽器語言 → 初次 UI locale（僅一次；不覆寫手動選擇）
+  observeEvent(input$device_ui_locale, {
+    if (isTRUE(isolate(ui_locale_user_picked())) ||
+        isTRUE(isolate(device_ui_locale_applied()))) {
+      return()
+    }
+    loc <- locale_from_device_language(input$device_ui_locale, default = "en")
+    device_ui_locale_applied(TRUE)
+    if (identical(loc, isolate(ui_locale()))) return()
+    .push_ui_locale(loc, sync_picker = TRUE)
   }, ignoreInit = TRUE)
 
   observeEvent(input$market_mode_pick, {
@@ -765,7 +781,9 @@ server <- function(input, output, session) {
 
   session$onFlushed(function() {
     sc_datalist_choices(TICKER_PRESETS)
-    .push_ui_locale(locale_for_market(isolate(market_mode())))
+    # Refresh chrome with current locale only — do NOT reset from market mode
+    # (device_ui_locale may refine language shortly after; market never owns language).
+    .push_ui_locale(isolate(ui_locale()), sync_picker = TRUE)
   }, once = TRUE)
 
   ticker_typeahead_q <- shiny::debounce(
