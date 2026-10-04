@@ -8,5 +8,5 @@ short=fad9930
 message=chore: bump display version to v20.17
 captured_at=2026-10-04T10:02:27Z
 source_branch=master
-display_version=v20.17
+display_version=v20.18
 note=Canonical live line is app_20.0. Bundle 12645071 links HCCSI Function stages to In the composite via shared Stmt/Mkt/Inf/Traj colors and grouped input headers. Deploy via scripts/deploy_app_20.R.
