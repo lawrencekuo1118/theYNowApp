@@ -177,6 +177,7 @@ server <- function(input, output, session) {
     .clear_lab_cluster_result("clear_tick")
   }, ignoreInit = TRUE)
   auto_calc_primary_sig <- reactiveVal("")
+  auto_calc_fail_sig <- reactiveVal("")
   lite_scenario_applied_sig <- reactiveVal("")
   # Desired Lite scenario (survives hidden DCF radio lag after updateRadioButtons)
   lite_desired_des <- reactiveVal(NULL)
@@ -4135,7 +4136,10 @@ server <- function(input, output, session) {
       key,
       "dcf" = suppressWarnings(as.numeric(stock_price_estimate_val())[1]),
       "ddm" = tryCatch({
-        if (!is.null(ddm_results$ddm_price)) ddm_results$ddm_price() else NA_real_
+        v <- if (!is.null(ddm_results$ddm_price)) ddm_results$ddm_price() else NA_real_
+        v <- suppressWarnings(as.numeric(v)[1])
+        # D0=0 Gordon used to return finite 0 — treat as not run / not usable
+        if (!is.finite(v) || v <= 0) NA_real_ else v
       }, error = function(e) NA_real_),
       "ri" = tryCatch({
         if (!is.null(ri_results$ri_price)) ri_results$ri_price() else NA_real_
@@ -7482,6 +7486,7 @@ server <- function(input, output, session) {
     dcf_value_result(NULL)
     lite_dcf_block("")
     auto_calc_primary_sig("")
+    auto_calc_fail_sig("")
     lite_scenario_applied_sig("")
     lite_desired_des(NULL)
     lite_dcf_silent(FALSE)
@@ -7853,10 +7858,17 @@ server <- function(input, output, session) {
       return(isTRUE(.auto_calc_shares_ready()))
     }
     if (identical(prim, "ddm")) {
+      d0 <- suppressWarnings(as.numeric(input[["mod_ddm-d0"]])[1])
       g <- suppressWarnings(as.numeric(input[["mod_ddm-g"]])[1])
       ke <- suppressWarnings(as.numeric(input[["mod_ddm-ke"]])[1])
+      mode <- as.character(input[["mod_ddm-ddm_mode"]] %||% "gordon")[1]
       if (!(is.finite(g) && is.finite(ke) && ke > 0 && g < ke)) return(FALSE)
-      return(TRUE)
+      # Gordon／二階段需要正 D0；SPM 可用 EPS + D（D 可為 0）
+      if (identical(mode, "spm")) {
+        eps <- suppressWarnings(as.numeric(input[["mod_ddm-est_eps"]])[1])
+        return(is.finite(eps))
+      }
+      return(is.finite(d0) && d0 > 0)
     }
     if (identical(prim, "pb")) {
       bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
@@ -7948,7 +7960,27 @@ server <- function(input, output, session) {
       .lite_resync_discount_consistency(des)
     }
 
-    if (!isTRUE(.auto_calc_primary_ready(prim))) return()
+    if (!isTRUE(.auto_calc_primary_ready(prim))) {
+      # Surface why primary cannot auto-calc (mobile Lite never opens model tabs)
+      if (identical(prim, "ddm")) {
+        d0 <- suppressWarnings(as.numeric(input[["mod_ddm-d0"]])[1])
+        mode <- as.character(input[["mod_ddm-ddm_mode"]] %||% "gordon")[1]
+        need_d0 <- !identical(mode, "spm")
+        if (isTRUE(need_d0) && !(is.finite(d0) && d0 > 0)) {
+          fail_sig <- paste(tk, "ddm_no_d0", sep = "|")
+          if (!identical(auto_calc_fail_sig(), fail_sig)) {
+            auto_calc_fail_sig(fail_sig)
+            showNotification(
+              .ui_msg("notif_ddm_no_d0"),
+              type = "warning",
+              duration = 10,
+              id = "ynow_ddm_no_d0"
+            )
+          }
+        }
+      }
+      return()
+    }
     keys <- prim
     if (isTRUE(lite_mode()) && nzchar(sec) && sec %in% c("dcf", "ddm", "pb", "ri", "nav") &&
         !identical(sec, prim) && isTRUE(.auto_calc_primary_ready(sec))) {
@@ -8031,6 +8063,16 @@ server <- function(input, output, session) {
       paste0("Bear ", fmt_px(bear), " · Bull ", fmt_px(bull))
     } else if (identical(block, "neg_terminal")) {
       ui_str("notif_dcf_neg_fcff_skip_tv", loc)
+    } else if (!is.finite(base) && identical(prim, "ddm")) {
+      d0_now <- suppressWarnings(as.numeric(input[["mod_ddm-d0"]])[1])
+      if (!(is.finite(d0_now) && d0_now > 0)) {
+        ui_str("smart_ddm_no_d0", loc)
+      } else {
+        ui_str("smart_calc_failed", loc)
+      }
+    } else if (!is.finite(base) && nzchar(prim) &&
+               identical(as.character(auto_calc_fail_sig() %||% "")[1], paste(current_ticker(), "ddm_no_d0", sep = "|"))) {
+      ui_str("smart_ddm_no_d0", loc)
     } else {
       ui_str("smart_calc_pending", loc)
     }

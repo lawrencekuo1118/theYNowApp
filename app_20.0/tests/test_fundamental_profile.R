@@ -112,6 +112,42 @@ r_m <- classify_fundamental_profile(cf_m, is_m, bs_m, industry_text = "Household
 check("mature_dividend", identical(r_m$profile, "mature_dividend"))
 check("mature focuses yield", "dividend_yield" %in% r_m$focus_metrics)
 
+# --- Single stale dividend year must NOT count as stable (1314-like) ---
+a_stale <- ynow_assess_dividends(
+  c(NA, NA, NA, -1513940000, NA),
+  div_current = NA_real_,
+  div_cv_max = 0.50,
+  min_years = 2L
+)
+check("stale single-year div is_div", isTRUE(a_stale$is_div))
+check("stale single-year not stable", !isTRUE(a_stale$is_div_stable))
+check("stale single-year no current", !isTRUE(a_stale$has_current_div))
+a_ok <- ynow_assess_dividends(
+  c(-10, -10.2, -9.8),
+  div_current = -10,
+  div_cv_max = 0.50,
+  min_years = 2L
+)
+check("multi-year current div stable", isTRUE(a_ok$is_div_stable))
+cf_stale <- .stack(
+  .mk_stmt("Free Cash Flow", c(-5, 2, 1)),
+  .mk_stmt("Capital Expenditure", c(-3, -3, -3)),
+  .mk_stmt("Cash Dividends Paid", c(NA, NA, -10))  # only oldest year
+)
+is_stale <- .stack(
+  .mk_stmt("Total Revenue", c(100, 106, 112)),  # shrinking / soft
+  .mk_stmt("Gross Profit", c(-4, 5, 8))
+)
+bs_stale <- .stack(
+  .mk_stmt("Total Assets", c(120, 118, 116)),
+  .mk_stmt("Stockholders Equity", c(60, 58, 56))
+)
+r_stale <- classify_fundamental_profile(
+  cf_stale, is_stale, bs_stale,
+  industry_text = "Specialty Chemicals", industry_choice = "chem.Specialty"
+)
+check("stale div not mature_dividend", !identical(r_stale$profile, "mature_dividend"))
+
 # --- Annotation column ---
 df_ann <- annotation_kpi_guide_df("sc.Foundry", profile_id = "growth")
 check("annotation has 屬性重視", "屬性重視" %in% names(df_ann))

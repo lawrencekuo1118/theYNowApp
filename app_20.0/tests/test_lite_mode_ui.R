@@ -23,7 +23,8 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
     "menu_smart_analysis", "smart_page_title", "smart_page_sub",
     "smart_chart_title", "smart_primary_kicker", "smart_secondary_kicker",
     "smart_price_kicker", "smart_mos_kicker", "smart_waiting",
-    "smart_calc_pending", "smart_reason_title",
+    "smart_calc_pending", "smart_calc_failed", "smart_ddm_no_d0", "smart_reason_title",
+    "ddm_err_d0", "ddm_err_inputs", "notif_ddm_no_d0",
     "smart_scenario_title", "smart_scenario_two_stage", "smart_scenario_gordon",
     "smart_scenario_sgr", "smart_scenario_claim",
     "ddm_formula_gordon", "ddm_d0_label", "ddm_r_ke_label",
@@ -521,6 +522,17 @@ testthat::test_that("ynow_server wires Lite scenario apply before auto-calc", {
   testthat::expect_true(grepl("calculated_wacc()", txt, fixed = TRUE))
   testthat::expect_true(grepl("Do not block on .lite_scenario_matches_ui", txt, fixed = TRUE))
   testthat::expect_true(grepl("Lite Smart Analysis must not hang", txt, fixed = TRUE))
+  testthat::expect_true(grepl("notif_ddm_no_d0", txt, fixed = TRUE))
+  testthat::expect_true(grepl("smart_ddm_no_d0", txt, fixed = TRUE))
+  testthat::expect_true(grepl("auto_calc_fail_sig", txt, fixed = TRUE))
+})
+
+testthat::test_that("mobile notification panel CSS stays visible", {
+  ui_path <- file.path("..", "ynow_ui.R")
+  txt <- paste(readLines(ui_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  testthat::expect_true(grepl("#shiny-notification-panel", txt, fixed = TRUE))
+  testthat::expect_true(grepl("z-index: 20000", txt, fixed = TRUE))
+  testthat::expect_true(grepl("bottom: 12px", txt, fixed = TRUE))
 })
 
 testthat::test_that("ynow_server wires Lite auto-calc and Smart Analysis outputs", {

@@ -2214,15 +2214,30 @@ recommend_valuation_models <- function(d_cf, industry_text = "", d_is = NULL, d_
   }
   is_fcf_stable <- isTRUE(is_fcf_pos) && (is.na(fcf_cv) || fcf_cv <= 0.75)
 
-  is_div <- length(div_seq) > 0 && !all(is.na(div_seq)) &&
-    isTRUE(mean(abs(div_seq), na.rm = TRUE) > 0)
-  div_vals <- abs(suppressWarnings(as.numeric(na.omit(div_seq))))
-  div_cv <- if (length(div_vals) >= 2 && mean(div_vals) > 0) {
-    stats::sd(div_vals) / max(abs(mean(div_vals)), 1e-9)
+  div_current <- tryCatch(
+    select_current_metric(d_cf, "Cash Dividends Paid", "flow"),
+    error = function(e) NA_real_
+  )
+  div_assess <- if (exists("ynow_assess_dividends", mode = "function")) {
+    ynow_assess_dividends(
+      div_seq,
+      div_current = div_current,
+      div_cv_max = 0.50,
+      min_years = 2L
+    )
   } else {
-    NA_real_
+    div_vals <- abs(suppressWarnings(as.numeric(na.omit(div_seq))))
+    div_vals <- div_vals[is.finite(div_vals) & div_vals > 0]
+    list(
+      is_div = length(div_vals) > 0L,
+      is_div_stable = FALSE,
+      div_cv = NA_real_,
+      has_current_div = is.finite(div_current) && abs(div_current) > 0
+    )
   }
-  is_div_stable <- isTRUE(is_div) && (is.na(div_cv) || div_cv <= 0.50)
+  is_div <- isTRUE(div_assess$is_div)
+  div_cv <- div_assess$div_cv
+  is_div_stable <- isTRUE(div_assess$is_div_stable)
 
   ind_txt <- as.character(industry_text %||% "")
   ind_key <- as.character(industry_choice %||% "")

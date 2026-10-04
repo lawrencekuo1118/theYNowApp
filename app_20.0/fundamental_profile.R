@@ -12,11 +12,50 @@
   fcf_cv_stable = 0.75,
   fcf_cv_volatile = 1.0,
   div_cv_stable = 0.50,
+  div_stable_min_years = 2L,  # single stale dividend year ≠ stable
   capex_rev_high = 0.12,      # CapEx / Revenue ratio
   capex_rev_low = 0.04,
   gpm_high = 40,              # % gross margin for asset_light
   asset_turnover_low = 0.55
 )
+
+#' Dividend presence / stability for profile + model recommendation.
+#'
+#' A single historical Cash Dividends Paid year with NA current DPS must **not**
+#' count as stable (e.g. 1314.TW: one FY dividend years ago, Dividend/Yield N/A now).
+#'
+#' @param div_seq Cash Dividends Paid row (numeric-like; NAs kept)
+#' @param div_current latest/current Cash Dividends Paid from `select_current_metric`
+#'   (do not invent from a stale finite year when current is NA)
+#' @param div_cv_max max CV for stable
+#' @param min_years minimum positive dividend years for stable
+#' @return list(is_div, is_div_stable, div_cv, n_div_years, has_current_div)
+ynow_assess_dividends <- function(div_seq,
+                                  div_current = NA_real_,
+                                  div_cv_max = 0.50,
+                                  min_years = 2L) {
+  div_raw <- suppressWarnings(as.numeric(div_seq))
+  div_vals <- abs(div_raw[is.finite(div_raw)])
+  div_vals <- div_vals[div_vals > 0]
+  is_div <- length(div_vals) > 0L
+  min_years <- max(2L, as.integer(min_years)[1])
+  div_cv <- if (length(div_vals) >= min_years) {
+    stats::sd(div_vals) / max(abs(mean(div_vals)), 1e-9)
+  } else {
+    NA_real_
+  }
+  cur <- suppressWarnings(as.numeric(div_current)[1])
+  has_current_div <- is.finite(cur) && abs(cur) > 0
+  is_div_stable <- isTRUE(is_div) && isTRUE(has_current_div) &&
+    length(div_vals) >= min_years && is.finite(div_cv) && div_cv <= div_cv_max
+  list(
+    is_div = is_div,
+    is_div_stable = is_div_stable,
+    div_cv = div_cv,
+    n_div_years = length(div_vals),
+    has_current_div = has_current_div
+  )
+}
 
 #' 屬性 → 有序重視指標（KPI／FS metric id）
 PROFILE_FOCUS_METRICS <- list(
@@ -251,14 +290,21 @@ classify_fundamental_profile <- function(d_cf = NULL, d_is = NULL, d_bs = NULL,
   is_fcf_pos <- length(fcf_vals) > 0 && isTRUE(mean(fcf_vals, na.rm = TRUE) > 0)
   is_fcf_stable <- isTRUE(is_fcf_pos) && (is.na(fcf_cv) || fcf_cv <= thr$fcf_cv_stable)
 
-  div_vals <- abs(suppressWarnings(as.numeric(na.omit(div_seq))))
-  div_cv <- if (length(div_vals) >= 2 && mean(div_vals) > 0) {
-    stats::sd(div_vals) / max(abs(mean(div_vals)), 1e-9)
+  div_current <- if (isTRUE(has_cf)) {
+    tryCatch(select_current_metric(d_cf, "Cash Dividends Paid", "flow"),
+             error = function(e) NA_real_)
   } else {
     NA_real_
   }
-  is_div <- length(div_vals) > 0 && isTRUE(mean(div_vals, na.rm = TRUE) > 0)
-  is_div_stable <- isTRUE(is_div) && (is.na(div_cv) || div_cv <= thr$div_cv_stable)
+  div_assess <- ynow_assess_dividends(
+    div_seq,
+    div_current = div_current,
+    div_cv_max = thr$div_cv_stable,
+    min_years = thr$div_stable_min_years %||% 2L
+  )
+  div_cv <- div_assess$div_cv
+  is_div <- isTRUE(div_assess$is_div)
+  is_div_stable <- isTRUE(div_assess$is_div_stable)
 
   ind_txt <- as.character(industry_text %||% "")[1]
   ind_key <- as.character(industry_choice %||% "")[1]

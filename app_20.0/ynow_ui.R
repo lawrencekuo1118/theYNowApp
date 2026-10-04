@@ -2992,6 +2992,34 @@ ui <- dashboardPage(
           50% { background-position: 100% 50%; }
         }
 
+        /* Shiny toasts: keep above AdminLTE chrome; mobile must not clip / bury them */
+        #shiny-notification-panel {
+          position: fixed !important;
+          z-index: 20000 !important;
+          pointer-events: none;
+        }
+        #shiny-notification-panel .shiny-notification {
+          pointer-events: auto;
+          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+        }
+        @media (max-width: 767px) {
+          #shiny-notification-panel {
+            top: auto !important;
+            bottom: 12px !important;
+            right: 8px !important;
+            left: 8px !important;
+            width: auto !important;
+            max-width: none !important;
+          }
+          #shiny-notification-panel .shiny-notification {
+            width: 100% !important;
+            max-width: none !important;
+            font-size: 13px;
+            line-height: 1.4;
+            margin: 0 0 8px 0 !important;
+          }
+        }
+
         /* 標題＝載入進度條：底層淡金軌道 + 金色填滿層（隨 --ynow-load-pct） */
         .main-header .logo,
         .main-header .logo:hover {

@@ -428,6 +428,22 @@ rec_neg_eq <- recommend_valuation_models(
 )
 check("cyclical negative equity does not force P/B", !.has_pb_slot(rec_neg_eq))
 
+# 1314-like: one historical dividend year, current DPS NA / FCF weak → must not pick DDM primary
+cf_1314 <- stmt(list(
+  "Operating Cash Flow" = c(20, 80, 60),
+  "Capital Expenditure" = c(-40, -30, -25),
+  "Free Cash Flow" = c(-20, 50, 35),
+  "Cash Dividends Paid" = c(NA, NA, -15)
+))
+is_1314 <- base_is(ni = c(-30, 10, 20), rev = c(190, 200, 210), pretax = c(-28, 12, 22), tax = c(0, 0, 0))
+bs_1314 <- base_bs(equity = c(760, 780, 800), assets = c(1200, 1180, 1160))
+rec_1314 <- recommend_valuation_models(
+  cf_1314, "Specialty Chemicals", is_1314, bs_1314,
+  industry_choice = "chem.Specialty"
+)
+check("stale-div ticker not DDM primary", !identical(as.character(rec_1314$primary %||% ""), "ddm"))
+check("stale-div ticker ddm flag off or low", !isTRUE(rec_1314$ddm) || identical(as.character(rec_1314$primary %||% ""), "pb"))
+
 src_rec <- paste(deparse(assemble_model_recommendation), collapse = "\n")
 check("no ticker branch in model recommendation",
       !grepl("\\b(TSM|AAPL|2330\\.TW|NUE|XOM)\\b", src_rec))

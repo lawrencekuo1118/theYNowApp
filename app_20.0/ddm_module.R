@@ -167,12 +167,17 @@ ddm_module_server <- function(id, auto_calc_pulse = reactive(0L),
       g_in <- suppressWarnings(as.numeric(input$g)[1])
       ke_in <- suppressWarnings(as.numeric(input$ke)[1])
       if (!is.finite(d0) || d0 < 0) d0 <- 0
-      req(is.finite(g_in), is.finite(ke_in))
+      if (!is.finite(g_in) || !is.finite(ke_in)) {
+        return(list(status = "error", message = .ddm_str("ddm_err_inputs")))
+      }
       g_dec <- g_in / 100
       ke_dec <- ke_in / 100
       mode <- as.character(input$ddm_mode %||% "gordon")[1]
 
       if (identical(mode, "two_stage")) {
+        if (!(is.finite(d0) && d0 > 0)) {
+          return(list(status = "error", message = .ddm_str("ddm_err_d0")))
+        }
         g1 <- suppressWarnings(as.numeric(input$g_stage1)[1]) / 100
         n1 <- suppressWarnings(as.integer(input$yr_stage1)[1])
         if (!is.finite(g1)) g1 <- g_dec
@@ -206,6 +211,10 @@ ddm_module_server <- function(id, auto_calc_pulse = reactive(0L),
         ))
       }
 
+      # Gordon: D0≤0 is not a usable fair value (would silently yield 0)
+      if (!(is.finite(d0) && d0 > 0)) {
+        return(list(status = "error", message = .ddm_str("ddm_err_d0")))
+      }
       if (ke_dec <= g_dec) {
         return(list(status = "error", message = .ddm_str("ddm_err_r_le_g")))
       }
@@ -213,6 +222,25 @@ ddm_module_server <- function(id, auto_calc_pulse = reactive(0L),
       p0 <- d1 / (ke_dec - g_dec)
       return(list(status = "success", value = round(p0, 2), d1 = round(d1, 2), mode = "gordon"))
     }, ignoreNULL = FALSE)
+
+    # Toast on DDM failure (mobile Lite never opens the DDM tab banner)
+    .ddm_fail_sig <- reactiveVal("")
+    observeEvent(list(input$btn_calc_ddm, auto_calc_pulse()), {
+      if (!isTRUE(.ddm_calc_requested())) return()
+      res <- tryCatch(ddm_calc(), error = function(e) NULL)
+      if (is.null(res) || !identical(res$status, "error")) return()
+      msg <- as.character(res$message %||% "")[1]
+      if (!nzchar(msg)) return()
+      sig <- paste(current_ticker() %||% "", msg, sep = "|")
+      if (identical(.ddm_fail_sig(), sig)) return()
+      .ddm_fail_sig(sig)
+      showNotification(
+        msg,
+        type = "error",
+        duration = 10,
+        id = "ynow_ddm_calc_fail"
+      )
+    }, ignoreInit = TRUE)
 
     .ddm_calc_snapshot <- function() {
       if (!isTRUE(.ddm_calc_requested())) return(NULL)
