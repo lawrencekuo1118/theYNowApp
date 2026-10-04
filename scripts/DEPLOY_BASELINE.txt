@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12644650
+bundleId=12644677
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=7453ef2
-commit=7453ef2
-short=7453ef2
-message=chore: bump display version to v20.06
-captured_at=2026-10-04T07:22:48Z
+aligned_git=293ae75
+commit=293ae75
+short=293ae75
+message=chore: bump display version to v20.07
+captured_at=2026-10-04T07:31:13Z
 source_branch=master
 display_version=v20.07
-note=Canonical live line is app_20.0. Bundle 12644650 = v20.06 (Business Breakdown structure+mix layout; header title/progress fill; sidebar rename). Deploy via scripts/deploy_app_20.R. Supersedes 12644614.
+note=Canonical live line is app_20.0. Bundle 12644677 = v20.07 (Business Breakdown structure+mix side-by-side with Business cards restored; header/home shortcuts). Deploy via scripts/deploy_app_20.R. Supersedes 12644650.
