@@ -36,13 +36,15 @@ check("TW alt helper", identical(tw_yahoo_alt_ticker("3105.TW"), "3105.TWO"))
 check("TW profile tax 20", identical(as.integer(market_profile("TW")$wacc_tax), 20L))
 check("US profile tax 21", identical(as.integer(market_profile("US")$wacc_tax), 21L))
 check(
-  "TW rf_label notes Rf fallback + T",
-  grepl("1\\.8", market_profile("TW")$rf_label_zh) &&
-    grepl("20%", market_profile("TW")$rf_label_zh, fixed = TRUE)
+  "TW rf_label is live TPEx curve (not fallback copy)",
+  grepl("TPEx|櫃買", market_profile("TW")$rf_label_zh) &&
+    !grepl("1\\.8", market_profile("TW")$rf_label_zh)
 )
 check(
-  "TW data_source_note mentions Yahoo",
-  grepl("Yahoo", market_profile("TW")$data_source_note_zh %||% "", fixed = TRUE)
+  "TW data_source_note mentions Yahoo + Rf fallback + T",
+  grepl("Yahoo", market_profile("TW")$data_source_note_zh %||% "", fixed = TRUE) &&
+    grepl("1\\.8", market_profile("TW")$data_source_note_zh %||% "") &&
+    grepl("20%", market_profile("TW")$data_source_note_zh %||% "", fixed = TRUE)
 )
 check("TW default ticker", identical(market_profile("TW")$default_ticker, "2330.TW"))
 check("TW hides SEC", isFALSE(market_profile("TW")$show_sec_lab))

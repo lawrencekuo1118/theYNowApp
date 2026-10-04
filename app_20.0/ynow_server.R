@@ -3181,7 +3181,13 @@ server <- function(input, output, session) {
     dcf_claim = reactive(input$dcf_claim %||% "fcff"),
     fcfe_interest_after_tax = reactive(.dcf_fcfe_bridge()$iat),
     fcfe_debt0 = reactive(.dcf_fcfe_bridge()$debt),
-    fcfe_g = reactive(.dcf_fcfe_bridge()$g)
+    fcfe_g = reactive(.dcf_fcfe_bridge()$g),
+    # Inline (not .session_tax_decimal): that helper is defined later in this file.
+    tax_ratio = reactive({
+      t <- suppressWarnings(as.numeric(input$wacc_tax)[1])
+      if (!is.finite(t)) t <- APP_DEFAULTS$wacc_tax
+      ias12_tax_ratio(t, from_pct = TRUE)
+    })
   )
   
   observeEvent({
@@ -7148,7 +7154,11 @@ server <- function(input, output, session) {
   # NOPAT-margin forecast terminal year is negative.
   .lite_fcff_from_trailing <- function(n, mode) {
     base <- tryCatch(
-      latest_hist_fcff(d_cash_flow(), d_is = d_income_statement()),
+      latest_hist_fcff(
+        d_cash_flow(),
+        d_is = d_income_statement(),
+        tax = .session_tax_decimal()
+      ),
       error = function(e) NA_real_
     )
     base <- suppressWarnings(as.numeric(base)[1])
@@ -7523,7 +7533,11 @@ server <- function(input, output, session) {
     # Claim recommendation (prefer stays FCFF unless clearly FCFF-required reasons)
     # Prefer CFA FCFF identity (CFO + after-tax interest − CapEx); fall back to Yahoo FCF.
     last_fcff <- tryCatch(
-      latest_hist_fcff(d_cash_flow(), d_is = d_income_statement()),
+      latest_hist_fcff(
+        d_cash_flow(),
+        d_is = d_income_statement(),
+        tax = .session_tax_decimal()
+      ),
       error = function(e) NA_real_
     )
     if (!is.finite(suppressWarnings(as.numeric(last_fcff)[1]))) {

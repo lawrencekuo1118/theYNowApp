@@ -56,10 +56,13 @@ lab_empty_us <- function() {
 }
 
 lab_us_cache_paths <- function() {
+  # Include parent of cwd so tests/ and nested shells still find app data/.
   unique(c(
     LAB_US_CACHE_REL,
     file.path(getwd(), LAB_US_CACHE_REL),
-    file.path("app_18.0", LAB_US_CACHE_REL)
+    file.path(dirname(getwd()), LAB_US_CACHE_REL),
+    file.path("app_18.0", LAB_US_CACHE_REL),
+    file.path("app_20.0", LAB_US_CACHE_REL)
   ))
 }
 

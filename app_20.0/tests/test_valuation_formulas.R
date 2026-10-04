@@ -9,6 +9,7 @@ test_dir <- if (length(file_arg) == 1L && nzchar(file_arg)) {
 }
 app_dir <- normalizePath(file.path(test_dir, ".."), mustWork = TRUE)
 source(file.path(app_dir, "setup.R"), local = FALSE)
+source(file.path(app_dir, "market_profile.R"), local = FALSE)
 source(file.path(app_dir, "ri_module.R"), local = FALSE)
 source(file.path(app_dir, "nav_module.R"), local = FALSE)
 source(file.path(app_dir, "backtest_module.R"), local = FALSE)
@@ -228,6 +229,32 @@ d_is_fcff <- data.frame(
 rec_h <- reconstruct_hist_fcff(d_cf_fcff, d_is = d_is_fcff, tax = 0.21)
 check("hist FCFF unlevered vs Yahoo FCF", approx_eq(rec_h$fcff[1], 100 + 10 * 0.79 - 40, 1e-8))
 check("hist FCFF exceeds Yahoo FCF by IAT", approx_eq(rec_h$fcff[1] - rec_h$yahoo_fcf[1], 10 * 0.79, 1e-8))
+
+# Market statutory T fallback when IS has no tax lines (TW 20% / US 21%)
+d_cf_taxfb <- data.frame(
+  Metric = c("Operating Cash Flow", "Capital Expenditure", "Free Cash Flow"),
+  `2024` = c(100, -40, 60),
+  check.names = FALSE,
+  stringsAsFactors = FALSE
+)
+d_is_notax <- data.frame(
+  Metric = "Interest Expense",
+  `2024` = 10,
+  check.names = FALSE,
+  stringsAsFactors = FALSE
+)
+if (exists("set_market_mode", mode = "function") && exists("statutory_tax_ratio", mode = "function")) {
+  set_market_mode("TW")
+  check("statutory_tax TW 20%", approx_eq(statutory_tax_ratio("TW"), 0.20))
+  rec_tw <- reconstruct_hist_fcff(d_cf_taxfb, d_is = d_is_notax)
+  check("hist FCFF TW statutory fallback", approx_eq(rec_tw$tax, 0.20) &&
+          approx_eq(rec_tw$fcff[1], 100 + 10 * 0.80 - 40, 1e-8))
+  set_market_mode("US")
+  check("statutory_tax US 21%", approx_eq(statutory_tax_ratio("US"), 0.21))
+  rec_us <- reconstruct_hist_fcff(d_cf_taxfb, d_is = d_is_notax)
+  check("hist FCFF US statutory fallback", approx_eq(rec_us$tax, 0.21) &&
+          approx_eq(rec_us$fcff[1], 100 + 10 * 0.79 - 40, 1e-8))
+}
 check("EV to equity bridge", approx_eq(dcf_ev_to_equity(1000, cash = 80, debt = 300), 780))
 check("Gordon TV blocked when g>=WACC", !is.finite(dcf_gordon_tv(100, 0.10, 0.10)))
 check("Gordon TV blocked when last FCFF negative", !is.finite(dcf_gordon_tv(-50, 0.03, 0.10)))

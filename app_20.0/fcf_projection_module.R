@@ -207,7 +207,8 @@ fcf_projection_module_server <- function(
     dcf_claim        = reactive("fcff"),
     fcfe_interest_after_tax = reactive(0),
     fcfe_debt0       = reactive(0),
-    fcfe_g           = reactive(0)
+    fcfe_g           = reactive(0),
+    tax_ratio        = reactive(NULL)
 ) {
   
   moduleServer(id, function(input, output, session) {
@@ -379,7 +380,12 @@ fcf_projection_module_server <- function(
       df_proj <- proj_table_data()
       if (is.null(df_proj) || nrow(df_proj) < 1) return(NULL)
       
-      latest_fcf <- latest_hist_fcff(d_cash_flow(), d_is = d_income_statement())
+      tax_use <- tryCatch(suppressWarnings(as.numeric(tax_ratio())[1]), error = function(e) NA_real_)
+      latest_fcf <- latest_hist_fcff(
+        d_cash_flow(),
+        d_is = d_income_statement(),
+        tax = if (is.finite(tax_use)) tax_use else NULL
+      )
       if (isTRUE(claim_fcfe())) {
         latest_fcf <- fcff_to_fcfe(
           latest_fcf,

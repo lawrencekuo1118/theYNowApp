@@ -232,19 +232,44 @@ after_tax_interest <- function(debt, rd, tax) {
   max(0, debt) * rd * (1 - tax)
 }
 
+#' Statutory corporate tax ratio for the active (or given) market mode.
+#' TW = 20%, US = 21%. Used when IS effective tax is unavailable and caller
+#' did not pass an explicit T. Soft-depends on market_profile (sourced after setup).
+statutory_tax_ratio <- function(mode = NULL) {
+  pct <- NA_real_
+  if (exists("market_profile", mode = "function")) {
+    m <- mode
+    if (is.null(m) && exists("get_market_mode", mode = "function")) {
+      m <- tryCatch(get_market_mode(), error = function(e) "US")
+    }
+    pct <- tryCatch(
+      suppressWarnings(as.numeric(market_profile(m)$wacc_tax)[1]),
+      error = function(e) NA_real_
+    )
+  }
+  if (!is.finite(pct)) pct <- 21
+  t <- pct / 100
+  if (!is.finite(t) || t < 0 || t >= 1) 0.21 else t
+}
+
 #' Normalize a tax input that may be 0.21 or 21 (%).
-.norm_tax_ratio <- function(tax, fallback = 0.21) {
+.norm_tax_ratio <- function(tax, fallback = NULL) {
+  if (is.null(fallback)) fallback <- statutory_tax_ratio()
   t <- suppressWarnings(as.numeric(tax)[1])
   if (!is.finite(t)) t <- suppressWarnings(as.numeric(fallback)[1])
-  if (!is.finite(t)) t <- 0.21
+  if (!is.finite(t)) t <- statutory_tax_ratio()
   if (t > 1) t <- t / 100
-  if (!is.finite(t) || t < 0 || t >= 1) t <- 0.21
+  if (!is.finite(t) || t < 0 || t >= 1) {
+    t <- statutory_tax_ratio()
+    if (!is.finite(t) || t < 0 || t >= 1) t <- 0.21
+  }
   t
 }
 
 #' Effective tax from IS (Income Tax Expense / Pretax Income), clamped 0–50%.
-effective_tax_ratio_from_is <- function(d_is, fallback = 0.21) {
-  fb <- .norm_tax_ratio(fallback, fallback = 0.21)
+effective_tax_ratio_from_is <- function(d_is, fallback = NULL) {
+  if (is.null(fallback)) fallback <- statutory_tax_ratio()
+  fb <- .norm_tax_ratio(fallback, fallback = statutory_tax_ratio())
   if (is.null(d_is) || !is.data.frame(d_is) || nrow(d_is) < 1L) return(fb)
   pre <- tryCatch(
     select_clean_metric_row(d_is, "Pretax Income", include_ttm = FALSE),
@@ -1642,7 +1667,8 @@ reconstruct_hist_fcff <- function(d_cf, d_is = NULL, tax = NULL) {
   t <- if (!is.null(tax) && is.finite(suppressWarnings(as.numeric(tax)[1]))) {
     .norm_tax_ratio(tax)
   } else {
-    effective_tax_ratio_from_is(d_is, fallback = 0.21)
+    # Prefer IS effective tax; else market statutory (TW 20% / US 21%), not a hard-coded US T.
+    effective_tax_ratio_from_is(d_is, fallback = statutory_tax_ratio())
   }
   cfo <- tryCatch(
     select_clean_metric_row(d_cf, "Operating Cash Flow", include_ttm = FALSE),

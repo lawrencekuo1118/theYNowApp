@@ -203,10 +203,13 @@ lab_map_gics_to_industry_key <- function(sector, sub_industry, ticker = "") {
 }
 
 lab_sp500_cache_paths <- function() {
+  # Include parent of cwd so tests/ and nested shells still find app data/.
   unique(c(
     LAB_SP500_CACHE_REL,
     file.path(getwd(), LAB_SP500_CACHE_REL),
-    file.path("app_14.0", LAB_SP500_CACHE_REL)
+    file.path(dirname(getwd()), LAB_SP500_CACHE_REL),
+    file.path("app_14.0", LAB_SP500_CACHE_REL),
+    file.path("app_20.0", LAB_SP500_CACHE_REL)
   ))
 }
 
