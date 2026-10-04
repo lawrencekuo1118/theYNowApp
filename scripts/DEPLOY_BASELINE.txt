@@ -8,5 +8,5 @@ short=9ecf2e7
 message=chore: bump display version to v20.33
 captured_at=2026-10-04T16:36:17Z
 source_branch=master
-display_version=v20.33
+display_version=v20.34
 note=Canonical live line is app_20.0. Bundle 12646048 uses market statutory tax (TW 20% / US 21%) for hist FCFF fallback when IS effective tax is missing. Deploy via scripts/deploy_app_20.R.
