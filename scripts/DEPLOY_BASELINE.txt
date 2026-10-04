@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12642899
+bundleId=12644326
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=4fadca7e1efc21f54bcb1ea4c56ae13d83c0fa99
-commit=4fadca7e1efc21f54bcb1ea4c56ae13d83c0fa99
-short=4fadca7
-message=chore: bump display version to v19.97
-captured_at=2026-10-03T18:34:11Z
+aligned_git=c6ea3a8f5d98ba260c5dc1b83638466a2f04934f
+commit=c6ea3a8f5d98ba260c5dc1b83638466a2f04934f
+short=c6ea3a8
+message=chore: bump display version to v20.01
+captured_at=2026-10-04T04:57:00Z
 source_branch=master
 display_version=v20.01
-note=Canonical live line is app_20.0. Bundle 12642899 = v19.97. Blue Chip by-industry = Top 10 within selected industries. Deploy via scripts/deploy_app_20.R. Supersedes 12642872.
+note=Canonical live line is app_20.0. Bundle 12644326 = v20.01 (includes YNOW/TYNOW Constituents Market Cap column). Deploy via scripts/deploy_app_20.R. Supersedes 12644304 / 12642899.
