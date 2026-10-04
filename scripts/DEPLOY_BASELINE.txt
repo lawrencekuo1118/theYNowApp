@@ -8,5 +8,5 @@ short=a02cb01
 message=chore: bump display version to v20.34
 captured_at=2026-10-04T16:42:00Z
 source_branch=master
-display_version=v20.34
+display_version=v20.35
 note=Canonical live line is app_20.0. Bundle 12646059 keeps YNOW/TYNOW overlay market-index checkboxes on one row. Deploy via scripts/deploy_app_20.R.
