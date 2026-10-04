@@ -1903,7 +1903,9 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Corporate, eliminations, reconciliation, non-operating, and accounting ",
       "adjustments are kept separate and are never treated as operating businesses. ",
       "Segment Operating Income is shown only when disclosed — never estimated. ",
-      "Revenue-mix slices (right) are shares of reported consolidated revenue."
+      "Main businesses and accounting adjustments span the full width; ",
+      "profit-structure conclusions sit beside the revenue-mix chart. ",
+      "Revenue-mix slices are shares of reported consolidated revenue."
     ),
     bblab_struct_biz_h = "Main businesses",
     bblab_struct_adj_h = "Accounting / consolidation adjustments",
@@ -3902,7 +3904,9 @@ locale_for_market <- function(mode = get_market_mode()) {
       "主要業務以公司申報的 Reportable Segment 為準。",
       "Corporate、內部交易抵銷、調節項目、非營業與會計調整會分開列示，",
       "不會被當成獨立營運業務。Segment Operating Income 僅在財報有揭露時顯示，絕不自行估算。",
-      "右側營收組成切片為當期已申報合併營收的占比。"
+      "「主要業務」與「會計／合併調整」採滿版寬度；",
+      "「獲利結構結論」與「營收組成」左右並排。",
+      "營收組成切片為當期已申報合併營收的占比。"
     ),
     bblab_struct_biz_h = "主要業務",
     bblab_struct_adj_h = "會計／合併調整",

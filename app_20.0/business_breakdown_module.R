@@ -158,18 +158,8 @@ if (!exists("%||%", mode = "function")) {
       }))
     )
   }
-  conc <- sa$conclusions %||% list()
-  conc_list <- tags$ol(
-    class = "ynow-bblab-struct-conclusions",
-    tags$li(tags$b(msg("bblab_struct_c1")), " ", conc$primary_revenue %||% nd),
-    tags$li(tags$b(msg("bblab_struct_c2")), " ", conc$primary_profit %||% nd),
-    tags$li(tags$b(msg("bblab_struct_c3")), " ", conc$high_revenue_low_profit %||% nd),
-    tags$li(tags$b(msg("bblab_struct_c4")), " ", conc$high_profit_low_revenue %||% nd),
-    tags$li(tags$b(msg("bblab_struct_c5")), " ", conc$corporate_consolidation %||% nd),
-    tags$li(tags$b(msg("bblab_struct_c6")), " ", conc$non_operating %||% nd)
-  )
   tags$div(
-    class = "ynow-bblab-struct",
+    class = "ynow-bblab-struct ynow-bblab-struct--tables",
     tags$h4(id = "ynow_bblab_struct_biz_h", class = "ynow-bblab-subhead",
             msg("bblab_struct_biz_h")),
     biz_table,
@@ -181,7 +171,26 @@ if (!exists("%||%", mode = "function")) {
     } else NULL,
     if (length(sa$missing)) {
       tags$p(class = "help-block", paste(sa$missing, collapse = " "))
-    } else NULL,
+    } else NULL
+  )
+}
+
+.bblab_structure_conclusions_html <- function(sa, locale = "en") {
+  if (is.null(sa)) return(NULL)
+  msg <- function(key) ui_str(key, locale)
+  nd <- msg("bblab_struct_not_disclosed")
+  conc <- sa$conclusions %||% list()
+  conc_list <- tags$ol(
+    class = "ynow-bblab-struct-conclusions",
+    tags$li(tags$b(msg("bblab_struct_c1")), " ", conc$primary_revenue %||% nd),
+    tags$li(tags$b(msg("bblab_struct_c2")), " ", conc$primary_profit %||% nd),
+    tags$li(tags$b(msg("bblab_struct_c3")), " ", conc$high_revenue_low_profit %||% nd),
+    tags$li(tags$b(msg("bblab_struct_c4")), " ", conc$high_profit_low_revenue %||% nd),
+    tags$li(tags$b(msg("bblab_struct_c5")), " ", conc$corporate_consolidation %||% nd),
+    tags$li(tags$b(msg("bblab_struct_c6")), " ", conc$non_operating %||% nd)
+  )
+  tags$div(
+    class = "ynow-bblab-struct ynow-bblab-struct--conclusions",
     tags$h4(id = "ynow_bblab_struct_conc_h", class = "ynow-bblab-subhead",
             msg("bblab_struct_conc_h")),
     conc_list,
@@ -259,9 +268,11 @@ business_breakdown_lab_ui <- function(id = "bblab") {
           )
         ),
         tags$style(HTML(paste(
-          ".ynow-bblab-struct-mix{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;}",
-          ".ynow-bblab-struct-mix__main{flex:1 1 52%;min-width:280px;}",
-          ".ynow-bblab-struct-mix__chart{flex:1 1 40%;min-width:300px;max-width:520px;overflow:visible;}",
+          ".ynow-bblab-struct--tables{width:100%;margin:0 0 16px 0;}",
+          ".ynow-bblab-struct--tables .ynow-bblab-struct-table{width:100%;}",
+          ".ynow-bblab-struct-mix{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;width:100%;}",
+          ".ynow-bblab-struct-mix__conc{flex:1 1 48%;min-width:280px;}",
+          ".ynow-bblab-struct-mix__chart{flex:1 1 44%;min-width:300px;max-width:560px;overflow:visible;}",
           ".ynow-bblab-struct-mix__chart .plotly,",
           ".ynow-bblab-struct-mix__chart .js-plotly-plot,",
           ".ynow-bblab-struct-mix__chart .plot-container,",
@@ -370,14 +381,17 @@ business_breakdown_lab_ui <- function(id = "bblab") {
           "Corporate, eliminations, reconciliation, non-operating, and accounting ",
           "adjustments are kept separate and are never treated as operating businesses. ",
           "Segment Operating Income is shown only when disclosed — never estimated. ",
-          "Revenue-mix slices (right) are shares of reported consolidated revenue."
+          "Main businesses and accounting adjustments span the full width; ",
+          "profit-structure conclusions sit beside the revenue-mix chart. ",
+          "Revenue-mix slices are shares of reported consolidated revenue."
         ),
         chapter = "3",
+        uiOutput(ns("structure_panel")),
         tags$div(
           class = "ynow-bblab-struct-mix",
           tags$div(
-            class = "ynow-bblab-struct-mix__main",
-            uiOutput(ns("structure_panel"))
+            class = "ynow-bblab-struct-mix__conc",
+            uiOutput(ns("structure_conclusions"))
           ),
           tags$div(
             class = "ynow-bblab-struct-mix__chart",
@@ -867,14 +881,26 @@ business_breakdown_lab_server <- function(id = "bblab",
       )
     })
 
-    output$structure_panel <- renderUI({
+    .structure_analysis_sa <- function() {
       res <- lab_result()
-      if (is.null(res)) return(tags$p(class = "help-block", ui_msg("bblab_waiting")))
+      if (is.null(res)) return(NULL)
       sa <- res$structure_analysis
       if (is.null(sa) && exists("bblab_build_structure_analysis", mode = "function")) {
         sa <- bblab_build_structure_analysis(res, locale = loc())
       }
-      .bblab_structure_panel_html(sa, loc())
+      sa
+    }
+
+    output$structure_panel <- renderUI({
+      res <- lab_result()
+      if (is.null(res)) return(tags$p(class = "help-block", ui_msg("bblab_waiting")))
+      .bblab_structure_panel_html(.structure_analysis_sa(), loc())
+    })
+
+    output$structure_conclusions <- renderUI({
+      res <- lab_result()
+      if (is.null(res)) return(NULL)
+      .bblab_structure_conclusions_html(.structure_analysis_sa(), loc())
     })
 
     output$chart_status <- renderUI({

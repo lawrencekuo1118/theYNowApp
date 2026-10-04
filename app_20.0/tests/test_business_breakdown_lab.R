@@ -626,7 +626,9 @@ check("mix chapters are one report section with history panel", {
     grepl("plotlyOutput(ns(\"history\")", mod_src, fixed = TRUE) &&
     grepl('uiOutput(ns("history_panel"))', mod_src, fixed = TRUE) &&
     grepl("ynow-bblab-struct-mix", mod_src, fixed = TRUE) &&
+    grepl("ynow-bblab-struct-mix__conc", mod_src, fixed = TRUE) &&
     grepl("ynow-bblab-struct-mix__chart", mod_src, fixed = TRUE) &&
+    grepl("ynow-bblab-struct--tables", mod_src, fixed = TRUE) &&
     grepl('chapter = "6"', mod_src, fixed = TRUE) &&
     !grepl('chapter = "7"', mod_src, fixed = TRUE) &&
     grepl("ynow-bblab-report__section", mod_src, fixed = TRUE) &&
@@ -799,9 +801,12 @@ if (requireNamespace("shiny", quietly = TRUE) &&
           grepl("ynow_bblab_ch5_help", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_ch6_title", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_ch7_title", lab_ui_html, fixed = TRUE))
-  check("lab UI HTML merges structure with revenue mix chart on the right", {
+  check("lab UI HTML: full-width tables; conclusions beside revenue mix", {
     grepl("ynow-bblab-struct-mix", lab_ui_html, fixed = TRUE) &&
+      grepl("ynow-bblab-struct-mix__conc", lab_ui_html, fixed = TRUE) &&
       grepl("ynow-bblab-struct-mix__chart", lab_ui_html, fixed = TRUE) &&
+      grepl("structure_panel", lab_ui_html, fixed = TRUE) &&
+      grepl("structure_conclusions", lab_ui_html, fixed = TRUE) &&
       grepl("ynow-bblab-subhead", lab_ui_html, fixed = TRUE) &&
       grepl(">Revenue mix<", lab_ui_html, fixed = TRUE) &&
       grepl(">Current period<", lab_ui_html, fixed = TRUE) &&
@@ -813,7 +818,8 @@ if (requireNamespace("shiny", quietly = TRUE) &&
       grepl("data-bblab-chapter=\"6\"", lab_ui_html, fixed = TRUE) &&
       !grepl("data-bblab-chapter=\"7\"", lab_ui_html, fixed = TRUE) &&
       !grepl("data-bblab-chapter=\"2b\"", lab_ui_html, fixed = TRUE) &&
-      !grepl(">Current revenue mix<", lab_ui_html, fixed = TRUE)
+      !grepl(">Current revenue mix<", lab_ui_html, fixed = TRUE) &&
+      !grepl("ynow-bblab-struct-mix__main", lab_ui_html, fixed = TRUE)
   })
   check("chapter order in report markup", {
     ids <- c("ynow_bblab_page_title",
@@ -1704,7 +1710,9 @@ check("structure summary separates businesses from adjustments",
         grepl("accounting / consolidation", sa$summary_sentence, fixed = TRUE))
 check("structure UI chapter wired in module",
       grepl("structure_panel", mod_src, fixed = TRUE) &&
+        grepl("structure_conclusions", mod_src, fixed = TRUE) &&
         grepl("ynow_bblab_struct_title", mod_src, fixed = TRUE) &&
+        grepl("ynow-bblab-struct-mix__conc", mod_src, fixed = TRUE) &&
         grepl("ynow-bblab-struct-mix__chart", mod_src, fixed = TRUE) &&
         grepl("bblab_build_structure_analysis", mod_src, fixed = TRUE) &&
         grepl("bblab_cards_empty", mod_src, fixed = TRUE) &&
