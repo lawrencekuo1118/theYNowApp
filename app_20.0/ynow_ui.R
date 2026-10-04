@@ -6528,6 +6528,8 @@ ui <- dashboardPage(
               (it.conds || []).forEach(function (c) {
                 var el = document.querySelector('label[for=\"' + c.input_id + '\"]');
                 if (el && c.label) el.textContent = c.label;
+                var ch = c.hint_id ? document.getElementById(c.hint_id) : null;
+                if (ch && c.hint) ch.textContent = c.hint;
               });
             });
           }
@@ -9629,6 +9631,15 @@ ui <- dashboardPage(
           color: #6c757d;
           line-height: 1.45;
         }
+        .ynow-dc-cond-hint {
+          margin: -4px 0 10px 0;
+          font-size: 11px;
+          color: #6c757d;
+          line-height: 1.4;
+        }
+        .ynow-dc-conds .form-group {
+          margin-bottom: 6px;
+        }
         .ynow-dc-badge {
           margin-left: 6px;
           padding: 1px 6px;
@@ -9655,6 +9666,7 @@ ui <- dashboardPage(
           }
           .ynow-dc-conds { margin-left: 0; max-width: 100%; }
           .ynow-dc-hint { margin-left: 0; }
+          .ynow-dc-cond-hint { margin-left: 0; }
         }
 
         .ynow-bt-hfv-wrap {

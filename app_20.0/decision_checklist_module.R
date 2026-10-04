@@ -68,10 +68,23 @@
 .dc_chk_id <- function(item) paste0("chk_", item)
 .dc_cond_id <- function(item, cond) paste0("cond_", item, "_", cond)
 
+.dc_str <- function(key, loc = "en") {
+  if (exists("ui_str", mode = "function")) {
+    tryCatch(ui_str(key, loc), error = function(e) key)
+  } else {
+    key
+  }
+}
+
 .dc_item_block <- function(item) {
   def <- .DC_ITEM_DEFS[[item]]
   chk <- .dc_chk_id(item)
   cond_names <- names(def$conds)
+  # Bake investor-facing copy into initial HTML (en defaults) so lazy-mounted
+  # Checklist & Conditions never flash code-style param ids like bear_mos_floor.
+  label0 <- .dc_str(paste0("dc_label_", item), "en")
+  hint0 <- .dc_str(paste0("dc_hint_", item), "en")
+  badge0 <- .dc_str("dc_badge_default_on", "en")
   tags$div(
     class = paste0(
       "ynow-dc-item",
@@ -82,45 +95,60 @@
       chk,
       label = tags$span(
         class = "ynow-dc-label-wrap",
-        tags$span(class = "ynow-dc-label", id = paste0("ynow_dc_label_", item), item),
+        tags$span(class = "ynow-dc-label", id = paste0("ynow_dc_label_", item), label0),
         if (isTRUE(def$mandatory_suggest)) {
-          tags$span(class = "ynow-dc-badge", id = paste0("ynow_dc_badge_", item), "Default ON")
+          tags$span(class = "ynow-dc-badge", id = paste0("ynow_dc_badge_", item), badge0)
         } else {
           NULL
         }
       ),
       value = isTRUE(def$default_on)
     ),
-    tags$p(class = "ynow-dc-hint", id = paste0("ynow_dc_hint_", item), ""),
+    tags$p(class = "ynow-dc-hint", id = paste0("ynow_dc_hint_", item), hint0),
     if (length(cond_names) > 0L || identical(item, "model_align")) {
       conditionalPanel(
         condition = sprintf("input['%s'] == true", chk),
         tags$div(
           class = "ynow-dc-conds",
           if (identical(item, "model_align")) {
-            selectInput(
-              "dc_user_primary",
-              "Adopted primary model",
-              # Fair Value primaries only — Multiples / SOTP are Implied Price cross-checks
-              choices = c(
-                "DCF" = "dcf", "DDM" = "ddm", "RI" = "ri", "P/B" = "pb", "NAV" = "nav"
+            tagList(
+              selectInput(
+                "dc_user_primary",
+                .dc_str("dc_cond_user_primary", "en"),
+                # Fair Value primaries only — Multiples / SOTP are Implied Price cross-checks
+                choices = c(
+                  "DCF" = "dcf", "DDM" = "ddm", "RI" = "ri", "P/B" = "pb", "NAV" = "nav"
+                ),
+                selected = "dcf",
+                width = "100%"
               ),
-              selected = "dcf",
-              width = "100%"
+              tags$p(
+                class = "ynow-dc-cond-hint",
+                id = "ynow_dc_cond_hint_user_primary",
+                .dc_str("dc_cond_hint_user_primary", "en")
+              )
             )
           } else {
             NULL
           },
           lapply(cond_names, function(cn) {
             meta <- def$conds[[cn]]
-            numericInput(
-              .dc_cond_id(item, cn),
-              cn,
-              value = meta$default,
-              min = meta$min,
-              max = meta$max,
-              step = meta$step,
-              width = "100%"
+            input_id <- .dc_cond_id(item, cn)
+            tagList(
+              numericInput(
+                input_id,
+                .dc_str(paste0("dc_cond_", cn), "en"),
+                value = meta$default,
+                min = meta$min,
+                max = meta$max,
+                step = meta$step,
+                width = "100%"
+              ),
+              tags$p(
+                class = "ynow-dc-cond-hint",
+                id = paste0("ynow_dc_cond_hint_", cn),
+                .dc_str(paste0("dc_cond_hint_", cn), "en")
+              )
             )
           })
         )
@@ -142,7 +170,7 @@
       tags$p(
         id = "ynow_dc_panel_hint",
         class = "ynow-dc-panel-hint",
-        "Only Default-ON items start checked. Opt in to the rest. Conditions appear after a parent is checked."
+        .dc_str("dc_panel_hint", "en")
       )
     ),
     lapply(.DC_SECTION_ORDER, function(sec) {
@@ -154,7 +182,7 @@
         tags$h4(
           class = "ynow-dc-section-title",
           id = paste0("ynow_dc_section_", sec),
-          sec
+          .dc_str(paste0("dc_section_", sec), "en")
         ),
         tags$div(
           class = "ynow-dc-section-items",
@@ -170,10 +198,10 @@ decision_checklist_tab_body_ui <- function() {
     fluidRow(
       column(
         width = 12,
-        h2(tags$b(id = "ynow_dc_page_title", "Decision Checklist")),
+        h2(tags$b(id = "ynow_dc_page_title", .dc_str("dc_page_title", "en"))),
         p(
           id = "ynow_dc_page_sub",
-          "Investor gate order: quality → valuation → model → HFV veto → discipline. Only Default-ON items start checked."
+          .dc_str("dc_page_sub", "en")
         ),
         tags$hr()
       )
@@ -183,7 +211,10 @@ decision_checklist_tab_body_ui <- function() {
         width = 12,
         box(
           width = 12, status = "success", solidHeader = TRUE,
-          title = tagList(icon("clipboard-check"), tags$span(id = "ynow_dc_box_summary", "Checklist Summary")),
+          title = tagList(
+            icon("clipboard-check"),
+            tags$span(id = "ynow_dc_box_summary", .dc_str("dc_box_summary", "en"))
+          ),
           tags$div(
             class = "ynow-dc-summary-top",
             uiOutput("dc_live_snapshot"),
@@ -198,7 +229,10 @@ decision_checklist_tab_body_ui <- function() {
         width = 12,
         box(
           width = 12, status = "primary", solidHeader = TRUE,
-          title = tagList(icon("tasks"), tags$span(id = "ynow_dc_box_checks", "Checklist & Conditions")),
+          title = tagList(
+            icon("tasks"),
+            tags$span(id = "ynow_dc_box_checks", .dc_str("dc_box_checks", "en"))
+          ),
           .dc_checks_ui()
         )
       )
@@ -373,6 +407,20 @@ decision_checklist_server <- function(
   }
 
   .dc_apply_locale_labels <- function(loc) {
+    # Server-side label updates (reliable after lazy mount) + client hint text.
+    for (item in names(.DC_ITEM_DEFS)) {
+      def <- .DC_ITEM_DEFS[[item]]
+      for (cn in names(def$conds)) {
+        tryCatch(
+          updateNumericInput(
+            session,
+            .dc_cond_id(item, cn),
+            label = ui_str(paste0("dc_cond_", cn), loc)
+          ),
+          error = function(e) NULL
+        )
+      }
+    }
     session$sendCustomMessage("ynowDcLocale", list(
       locale = loc,
       panel_hint = ui_str("dc_panel_hint", loc),
@@ -385,17 +433,31 @@ decision_checklist_server <- function(
       }),
       items = lapply(names(.DC_ITEM_DEFS), function(item) {
         def <- .DC_ITEM_DEFS[[item]]
+        conds <- lapply(names(def$conds), function(cn) {
+          list(
+            input_id = .dc_cond_id(item, cn),
+            label = ui_str(paste0("dc_cond_", cn), loc),
+            hint = ui_str(paste0("dc_cond_hint_", cn), loc),
+            hint_id = paste0("ynow_dc_cond_hint_", cn)
+          )
+        })
+        if (identical(item, "model_align")) {
+          conds <- c(
+            conds,
+            list(list(
+              input_id = "dc_user_primary",
+              label = ui_str("dc_cond_user_primary", loc),
+              hint = ui_str("dc_cond_hint_user_primary", loc),
+              hint_id = "ynow_dc_cond_hint_user_primary"
+            ))
+          )
+        }
         list(
           id = item,
           label = ui_str(paste0("dc_label_", item), loc),
           hint = ui_str(paste0("dc_hint_", item), loc),
           mandatory = isTRUE(def$mandatory_suggest),
-          conds = lapply(names(def$conds), function(cn) {
-            list(
-              input_id = .dc_cond_id(item, cn),
-              label = ui_str(paste0("dc_cond_", cn), loc)
-            )
-          })
+          conds = conds
         )
       })
     ))
@@ -405,6 +467,15 @@ decision_checklist_server <- function(
     loc <- tryCatch(ui_locale(), error = function(e) "en")
     .dc_apply_locale_labels(loc)
   })
+
+  # Lazy tab mount: re-apply investor copy once Checklist & Conditions is in the DOM.
+  observeEvent(input$sidebar_tabs, {
+    if (!identical(as.character(input$sidebar_tabs)[1], "decision_checklist")) return()
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
+    session$onFlushed(function() {
+      tryCatch(.dc_apply_locale_labels(loc), error = function(e) NULL)
+    }, once = TRUE)
+  }, ignoreInit = TRUE)
 
   observe({
     loc <- tryCatch(ui_locale(), error = function(e) "en")
