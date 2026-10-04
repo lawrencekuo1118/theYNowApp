@@ -59,7 +59,7 @@ params:
   report_locale: "zh-TW"
   report_copy: NA
   sensitivity_df: NA
-  app_version: "v20.16"
+  app_version: "v20.17"
   report_condensed: FALSE
 ---
 
