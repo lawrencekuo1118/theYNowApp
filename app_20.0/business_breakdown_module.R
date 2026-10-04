@@ -253,11 +253,22 @@ business_breakdown_lab_ui <- function(id = "bblab") {
           class = "ynow-bblab-report__deck",
           paste0(
             "Investment-report view of the filer's business and profitability structure: ",
-            "reportable segments, revenue and operating-income mix, and accounting / ",
-            "consolidation adjustments kept separate. Uses the global Ticker / Stock Code field. ",
-            "Not a valuation engine."
+            "reportable segments, revenue and operating-income mix, accounting / ",
+            "consolidation adjustments kept separate, and per-business cards. ",
+            "Uses the global Ticker / Stock Code field. Not a valuation engine."
           )
         ),
+        tags$style(HTML(paste(
+          ".ynow-bblab-struct-mix{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;}",
+          ".ynow-bblab-struct-mix__main{flex:1 1 54%;min-width:280px;}",
+          ".ynow-bblab-struct-mix__chart{flex:1 1 34%;min-width:260px;max-width:440px;}",
+          ".ynow-bblab-struct-mix__chart .plotly{width:100% !important;}",
+          ".ynow-bblab-struct-mix__controls{margin:0 0 8px 0;}",
+          ".ynow-bblab-struct-mix__controls .shiny-input-container{margin-bottom:6px;}",
+          ".ynow-bblab-struct-mix__exports{margin-top:4px;}",
+          ".ynow-bblab-struct-mix__exports .btn{margin:0 6px 6px 0;}",
+          sep = ""
+        ))),
         tags$p(
           id = "ynow_bblab_listed_only_notice",
           class = "ynow-bblab__listed-notice",
@@ -350,51 +361,70 @@ business_breakdown_lab_ui <- function(id = "bblab") {
           "Main businesses come from the filer's reportable segments. ",
           "Corporate, eliminations, reconciliation, non-operating, and accounting ",
           "adjustments are kept separate and are never treated as operating businesses. ",
-          "Segment Operating Income is shown only when disclosed — never estimated."
+          "Segment Operating Income is shown only when disclosed — never estimated. ",
+          "Revenue-mix slices (right) are shares of reported consolidated revenue."
         ),
-        chapter = "2b",
-        uiOutput(ns("structure_panel"))
-      ),
-
-      .bblab_report_section(
-        "IV", "ynow_bblab_ch3_title", "Revenue mix",
-        "ynow_bblab_ch3_help",
-        "Current-period slices are shares of reported consolidated revenue.",
         chapter = "3",
-        tags$h4(
-          class = "ynow-bblab-subhead",
-          id = "ynow_bblab_ch3_current_label",
-          "Current period"
-        ),
-        fluidRow(
-          column(width = 3, radioButtons(ns("chart_mode"), NULL,
-                                         choices = c("Share %" = "pct", "Amount" = "amount"),
-                                         selected = "pct", inline = TRUE)),
-          column(width = 3, radioButtons(ns("view_mode"), NULL,
-                                         choices = c("Reported" = "reported", "Adjusted" = "adjusted"),
-                                         selected = "reported", inline = TRUE)),
-          column(width = 3, checkboxInput(ns("expand_other"),
-                                          label = tags$span(id = "ynow_bblab_expand_other", "Expand Other"),
-                                          value = FALSE)),
-          column(
-            width = 3,
-            downloadButton(ns("export_data"), "Export data", class = "btn-sm"),
-            downloadButton(ns("export_chart"), "Export chart", class = "btn-sm")
+        tags$div(
+          class = "ynow-bblab-struct-mix",
+          tags$div(
+            class = "ynow-bblab-struct-mix__main",
+            uiOutput(ns("structure_panel"))
+          ),
+          tags$div(
+            class = "ynow-bblab-struct-mix__chart",
+            tags$h4(
+              class = "ynow-bblab-subhead",
+              id = "ynow_bblab_ch3_title",
+              "Revenue mix"
+            ),
+            tags$p(
+              id = "ynow_bblab_ch3_help",
+              class = "help-block",
+              "Current-period slices are shares of reported consolidated revenue."
+            ),
+            tags$h5(
+              class = "ynow-bblab-subhead",
+              id = "ynow_bblab_ch3_current_label",
+              "Current period"
+            ),
+            tags$div(
+              class = "ynow-bblab-struct-mix__controls",
+              radioButtons(ns("chart_mode"), NULL,
+                           choices = c("Share %" = "pct", "Amount" = "amount"),
+                           selected = "pct", inline = TRUE),
+              radioButtons(ns("view_mode"), NULL,
+                           choices = c("Reported" = "reported", "Adjusted" = "adjusted"),
+                           selected = "reported", inline = TRUE),
+              checkboxInput(ns("expand_other"),
+                            label = tags$span(id = "ynow_bblab_expand_other", "Expand Other"),
+                            value = FALSE),
+              tags$div(
+                class = "ynow-bblab-struct-mix__exports",
+                downloadButton(ns("export_data"), "Export data", class = "btn-sm"),
+                downloadButton(ns("export_chart"), "Export chart", class = "btn-sm")
+              )
+            ),
+            uiOutput(ns("chart_status")),
+            plotly::plotlyOutput(ns("donut"), height = "360px")
           )
         ),
-        uiOutput(ns("chart_status")),
-        plotly::plotlyOutput(ns("donut"), height = "420px"),
         uiOutput(ns("history_panel"))
       ),
 
       .bblab_report_section(
-        "V", "ynow_bblab_ch5_title", "Business cards",
+        "IV", "ynow_bblab_ch5_title", "Business cards",
+        "ynow_bblab_ch5_help",
+        paste0(
+          "One card per supportable business: reported Revenue, Cost of Revenue, ",
+          "Gross Profit, and Gross Margin when disclosed or derived. Click a donut slice to focus a card."
+        ),
         chapter = "4",
         uiOutput(ns("cards"))
       ),
 
       .bblab_report_section(
-        "VI", "ynow_bblab_ch6_title", "Reconciliation",
+        "V", "ynow_bblab_ch6_title", "Reconciliation",
         chapter = "5",
         uiOutput(ns("recon"))
       ),
@@ -413,7 +443,7 @@ business_breakdown_lab_ui <- function(id = "bblab") {
       ),
 
       .bblab_report_section(
-        "VII", "ynow_bblab_ch7_title", "Sources",
+        "VI", "ynow_bblab_ch7_title", "Sources",
         chapter = "6",
         tags$p(
           id = "ynow_bblab_sources_chrome",
@@ -982,12 +1012,20 @@ business_breakdown_lab_server <- function(id = "bblab",
       res <- lab_result()
       if (is.null(res)) return(tags$p(class = "help-block", ui_msg("bblab_waiting")))
       # Missing revaluation never withholds reported / derived Rev, CoR, GP cards.
+      biz <- res$businesses %||% list()
       cons_rev <- .bblab_num(res$consolidated$revenue)
-      cards <- lapply(res$businesses %||% list(), function(c) {
+      cards <- lapply(biz, function(c) {
         column(width = 4, .bblab_card_html(c, loc(), identical(focus_id(), c$id), cons_rev))
       })
       extra <- list()
-      if (!is.null(res$other)) extra[[length(extra) + 1L]] <- column(width = 4, .bblab_card_html(res$other, loc(), FALSE, cons_rev))
+      if (!is.null(res$other)) {
+        extra[[length(extra) + 1L]] <- column(
+          width = 4, .bblab_card_html(res$other, loc(), FALSE, cons_rev)
+        )
+      }
+      if (!length(cards) && !length(extra)) {
+        return(tags$p(class = "help-block", ui_msg("bblab_cards_empty")))
+      }
       tagList(fluidRow(cards), if (length(extra)) fluidRow(extra) else NULL)
     })
 

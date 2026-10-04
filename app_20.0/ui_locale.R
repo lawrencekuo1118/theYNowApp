@@ -1821,9 +1821,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_experimental_badge = "Report",
     bblab_page_sub = paste0(
       "Investment-report view of the filer's business and profitability structure: ",
-      "reportable segments, revenue and operating-income mix, and accounting / ",
-      "consolidation adjustments kept separate. Uses the global Ticker / Stock Code field. ",
-      "Not a valuation engine."
+      "reportable segments, revenue and operating-income mix, accounting / ",
+      "consolidation adjustments kept separate, and per-business cards. ",
+      "Uses the global Ticker / Stock Code field. Not a valuation engine."
     ),
     bblab_listed_only_notice = "Listed stocks only (Taiwan and U.S. exchanges).",
     bblab_listed_only_scope = paste0(
@@ -1863,7 +1863,8 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Main businesses come from the filer's reportable segments. ",
       "Corporate, eliminations, reconciliation, non-operating, and accounting ",
       "adjustments are kept separate and are never treated as operating businesses. ",
-      "Segment Operating Income is shown only when disclosed — never estimated."
+      "Segment Operating Income is shown only when disclosed — never estimated. ",
+      "Revenue-mix slices (right) are shares of reported consolidated revenue."
     ),
     bblab_struct_biz_h = "Main businesses",
     bblab_struct_adj_h = "Accounting / consolidation adjustments",
@@ -1900,6 +1901,14 @@ locale_for_market <- function(mode = get_market_mode()) {
       "a five-year mix series is not shown."
     ),
     bblab_ch5_title = "Business cards",
+    bblab_ch5_help = paste0(
+      "One card per supportable business: reported Revenue, Cost of Revenue, ",
+      "Gross Profit, and Gross Margin when disclosed or derived. Click a donut slice to focus a card."
+    ),
+    bblab_cards_empty = paste0(
+      "No supportable business cards yet. Load a listed ticker with segment or product revenue ",
+      "disclosures, or wait until statements finish retrieving."
+    ),
     bblab_ch6_title = "Reconciliation",
     bblab_ch7_title = "Sources",
     bblab_geo_veto_why = paste0(
@@ -3814,7 +3823,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_experimental_badge = "報告",
     bblab_page_sub = paste0(
       "以投資報告樣式呈現公司業務與獲利結構：Reportable Segment、營收與營業利益組成，",
-      "並將會計／合併調整分開列示。共用頁首「Ticker / Stock Code」輸入欄。並非估值引擎。"
+      "會計／合併調整分開列示，以及各事業簡化財報（Business cards）。",
+      "共用頁首「Ticker / Stock Code」輸入欄。並非估值引擎。"
     ),
     bblab_listed_only_notice = "僅支援上市個股分析（台股、美股）。",
     bblab_listed_only_scope = paste0(
@@ -3851,7 +3861,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_struct_help = paste0(
       "主要業務以公司申報的 Reportable Segment 為準。",
       "Corporate、內部交易抵銷、調節項目、非營業與會計調整會分開列示，",
-      "不會被當成獨立營運業務。Segment Operating Income 僅在財報有揭露時顯示，絕不自行估算。"
+      "不會被當成獨立營運業務。Segment Operating Income 僅在財報有揭露時顯示，絕不自行估算。",
+      "右側營收組成切片為當期已申報合併營收的占比。"
     ),
     bblab_struct_biz_h = "主要業務",
     bblab_struct_adj_h = "會計／合併調整",
@@ -3885,6 +3896,14 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     bblab_ch4_limited = "可比較的營收占比不足兩個會計年度，因此不呈現五年結構占比序列。",
     bblab_ch5_title = "各事業簡化財報",
+    bblab_ch5_help = paste0(
+      "每個可支持的事業一張卡：已申報的 Revenue、Cost of Revenue、",
+      "Gross Profit，以及可揭露或推得的 Gross Margin。點選右側圓環圖切片可聚焦對應卡片。"
+    ),
+    bblab_cards_empty = paste0(
+      "尚無可呈現的事業卡片。請載入具部門或產品營收揭露的上市個股，",
+      "或等待財報擷取完成。"
+    ),
     bblab_ch6_title = "對帳",
     bblab_ch7_title = "來源與方法",
     bblab_geo_veto_why = paste0(

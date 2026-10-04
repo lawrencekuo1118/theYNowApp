@@ -570,7 +570,8 @@ for (k in c("menu_business_breakdown_lab", "bblab_page_sub", "bblab_report_kicke
             "bblab_gm_unestimable", "bblab_reval_unavailable", "bblab_single_business_note",
             "bblab_fallback_gm_label",
             "bblab_ch1_title", "bblab_ch2_title", "bblab_ch3_title", "bblab_ch4_title",
-            "bblab_ch5_title", "bblab_ch6_title", "bblab_ch7_title",
+            "bblab_ch5_title", "bblab_ch5_help", "bblab_cards_empty",
+            "bblab_ch6_title", "bblab_ch7_title",
             "bblab_ch1_help", "bblab_ch2_help", "bblab_ch3_help", "bblab_ch3_current_label",
             "bblab_ch4_help",
             "bblab_ch4_limited", "bblab_geo_veto_why", "bblab_overlap_why",
@@ -614,6 +615,7 @@ check("applyUiLocale wires chapter titles", {
     grepl("setBtText('ynow_bblab_ch3_current_label', 'bblab_ch3_current_label')", ui_src, fixed = TRUE) &&
     grepl("setBtText('ynow_bblab_ch4_title', 'bblab_ch4_title')", ui_src, fixed = TRUE) &&
     grepl("setBtText('ynow_bblab_ch4_limited', 'bblab_ch4_limited')", ui_src, fixed = TRUE) &&
+    grepl("setBtText('ynow_bblab_ch5_help', 'bblab_ch5_help')", ui_src, fixed = TRUE) &&
     grepl("setBtText('ynow_bblab_ch7_title', 'bblab_ch7_title')", ui_src, fixed = TRUE)
 })
 check("mix chapters are one report section with history panel", {
@@ -623,12 +625,18 @@ check("mix chapters are one report section with history panel", {
     grepl("plotlyOutput(ns(\"donut\")", mod_src, fixed = TRUE) &&
     grepl("plotlyOutput(ns(\"history\")", mod_src, fixed = TRUE) &&
     grepl('uiOutput(ns("history_panel"))', mod_src, fixed = TRUE) &&
+    grepl("ynow-bblab-struct-mix", mod_src, fixed = TRUE) &&
+    grepl("ynow-bblab-struct-mix__chart", mod_src, fixed = TRUE) &&
     grepl('chapter = "6"', mod_src, fixed = TRUE) &&
     !grepl('chapter = "7"', mod_src, fixed = TRUE) &&
     grepl("ynow-bblab-report__section", mod_src, fixed = TRUE) &&
+    grepl("per-business cards",
+          paste(.UI_STRINGS$en$bblab_page_sub, collapse = " "), fixed = TRUE) &&
     grepl("Ticker / Stock Code",
           paste(.UI_STRINGS$en$bblab_page_sub, collapse = " "), fixed = TRUE) &&
     grepl("投資報告樣式",
+          paste(.UI_STRINGS$`zh-TW`$bblab_page_sub, collapse = " "), fixed = TRUE) &&
+    grepl("各事業簡化財報",
           paste(.UI_STRINGS$`zh-TW`$bblab_page_sub, collapse = " "), fixed = TRUE)
 })
 check("chapter titles do not repeat badge numbering", {
@@ -783,26 +791,34 @@ if (requireNamespace("shiny", quietly = TRUE) &&
           !grepl("id=\"bblab-ticker\"", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_ch1_title", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_ch2_title", lab_ui_html, fixed = TRUE) &&
+          grepl("ynow_bblab_struct_title", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_ch3_title", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_ch3_current_label", lab_ui_html, fixed = TRUE) &&
           grepl("history_panel", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_ch5_title", lab_ui_html, fixed = TRUE) &&
+          grepl("ynow_bblab_ch5_help", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_ch6_title", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_ch7_title", lab_ui_html, fixed = TRUE))
-  check("lab UI HTML merges mix charts under chapter 3", {
-    grepl("ynow-bblab-subhead", lab_ui_html, fixed = TRUE) &&
+  check("lab UI HTML merges structure with revenue mix chart on the right", {
+    grepl("ynow-bblab-struct-mix", lab_ui_html, fixed = TRUE) &&
+      grepl("ynow-bblab-struct-mix__chart", lab_ui_html, fixed = TRUE) &&
+      grepl("ynow-bblab-subhead", lab_ui_html, fixed = TRUE) &&
       grepl(">Revenue mix<", lab_ui_html, fixed = TRUE) &&
       grepl(">Current period<", lab_ui_html, fixed = TRUE) &&
+      grepl(">Business cards<", lab_ui_html, fixed = TRUE) &&
       grepl("history_panel", lab_ui_html, fixed = TRUE) &&
       !grepl(">Five-year mix evolution<", lab_ui_html, fixed = TRUE) &&
       grepl("data-bblab-chapter=\"3\"", lab_ui_html, fixed = TRUE) &&
+      grepl("data-bblab-chapter=\"4\"", lab_ui_html, fixed = TRUE) &&
       grepl("data-bblab-chapter=\"6\"", lab_ui_html, fixed = TRUE) &&
       !grepl("data-bblab-chapter=\"7\"", lab_ui_html, fixed = TRUE) &&
+      !grepl("data-bblab-chapter=\"2b\"", lab_ui_html, fixed = TRUE) &&
       !grepl(">Current revenue mix<", lab_ui_html, fixed = TRUE)
   })
   check("chapter order in report markup", {
     ids <- c("ynow_bblab_page_title",
-             "ynow_bblab_ch1_title", "ynow_bblab_ch2_title", "ynow_bblab_ch3_title",
+             "ynow_bblab_ch1_title", "ynow_bblab_ch2_title",
+             "ynow_bblab_struct_title", "ynow_bblab_ch3_title",
              "ynow_bblab_ch3_current_label",
              "ynow_bblab_ch5_title", "ynow_bblab_ch6_title",
              "ynow_bblab_ch7_title")
@@ -1689,7 +1705,10 @@ check("structure summary separates businesses from adjustments",
 check("structure UI chapter wired in module",
       grepl("structure_panel", mod_src, fixed = TRUE) &&
         grepl("ynow_bblab_struct_title", mod_src, fixed = TRUE) &&
-        grepl("bblab_build_structure_analysis", mod_src, fixed = TRUE))
+        grepl("ynow-bblab-struct-mix__chart", mod_src, fixed = TRUE) &&
+        grepl("bblab_build_structure_analysis", mod_src, fixed = TRUE) &&
+        grepl("bblab_cards_empty", mod_src, fixed = TRUE) &&
+        grepl("ynow_bblab_ch5_help", mod_src, fixed = TRUE))
 check("structure sourced from global.R",
       grepl("business_breakdown_structure.R",
             paste(readLines("global.R", warn = FALSE), collapse = "\n"), fixed = TRUE))

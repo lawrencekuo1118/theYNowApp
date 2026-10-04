@@ -5645,6 +5645,7 @@ ui <- dashboardPage(
             setBtText('ynow_bblab_ch4_help', 'bblab_ch4_help');
             setBtText('ynow_bblab_ch4_limited', 'bblab_ch4_limited');
             setBtText('ynow_bblab_ch5_title', 'bblab_ch5_title');
+            setBtText('ynow_bblab_ch5_help', 'bblab_ch5_help');
             setBtText('ynow_bblab_ch6_title', 'bblab_ch6_title');
             setBtText('ynow_bblab_ch7_title', 'bblab_ch7_title');
             setBtText('ynow_bblab_summary_title', 'bblab_ch2_title');
