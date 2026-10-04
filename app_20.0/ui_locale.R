@@ -1886,9 +1886,11 @@ locale_for_market <- function(mode = get_market_mode()) {
     macro_bubble_alert_breadth = "Narrow leadership: Top-N accounts for ≥ 80% of the basket’s positive return (weak market breadth).",
     macro_bubble_buffett_title = "Buffett Indicator (market cap / GDP)",
     macro_bubble_buffett_note = paste0(
-      "Series: World Bank market capitalization of listed domestic companies (% of GDP) when reachable; ",
+      "US: World Bank market capitalization of listed domestic companies (% of GDP) when reachable; ",
       "companion boxes use World Bank total market cap (CM.MKT.LCAP.CD) and GDP (NY.GDP.MKTP.CD) in current USD. ",
-      "Otherwise the bundled CSV snapshot (ratio only). Traffic light uses each market’s own mean ± 0.75·sd."
+      "Taiwan: DGBAS NSTAT — listed company market cap (A110101010) and nominal GDP in USD (A018101010), ",
+      "with TWD/USD FX from the same NI table; shipped CSV is fallback only. ",
+      "Traffic light uses each market’s own mean ± 0.75·sd."
     ),
     macro_bubble_buffett_level = "Valuation zone",
     macro_bubble_buffett_over = "Significantly Overvalued",
@@ -1898,8 +1900,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     macro_bubble_buffett_kpi = "Latest %.1f%% of GDP · as of %s",
     macro_bubble_buffett_mcap_label = "Total market cap",
     macro_bubble_buffett_mcap_hint = "Listed domestic companies · USD · as of %s",
+    macro_bubble_buffett_mcap_hint_tw = "TWSE listed companies · USD (DGBAS NSTAT) · as of %s",
     macro_bubble_buffett_gdp_label = "GDP",
     macro_bubble_buffett_gdp_hint = "Current USD · as of %s",
+    macro_bubble_buffett_gdp_hint_tw = "Nominal GDP · USD (DGBAS NSTAT) · as of %s",
     macro_bubble_buffett_need = "Buffett Indicator series unavailable.",
     macro_bubble_buffett_series = "Market cap / GDP",
     macro_bubble_buffett_mean = "Series mean",
@@ -3943,9 +3947,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     macro_bubble_alert_breadth = "市場寬度偏弱：上漲期間前 N 大貢獻 ≥ 80% 的正報酬（少數權值股拉抬）。",
     macro_bubble_buffett_title = "巴菲特指標（總市值／GDP）",
     macro_bubble_buffett_note = paste0(
-      "序列優先取世界銀行「上市國內公司總市值佔 GDP%%」；",
+      "美股：序列優先取世界銀行「上市國內公司總市值佔 GDP%%」；",
       "旁側總市值／GDP 取世界銀行 CM.MKT.LCAP.CD 與 NY.GDP.MKTP.CD（當期美元）。",
-      "連線失敗則用內建 CSV 快照（僅比率）。紅綠燈依該市場自身序列 mean ± 0.75·sd 判定。"
+      "台股：取行政院主計總處總體統計資料庫（DGBAS NSTAT）— ",
+      "上市公司市值（A110101010）與名目 GDP（百萬美元，A018101010），並以同表平均匯率換算；",
+      "僅在連線失敗時改用內建 seed CSV。",
+      "紅綠燈依該市場自身序列 mean ± 0.75·sd 判定。"
     ),
     macro_bubble_buffett_level = "估值水位",
     macro_bubble_buffett_over = "嚴重高估（Significantly Overvalued）",
@@ -3955,8 +3962,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     macro_bubble_buffett_kpi = "最新 %.1f%% of GDP · 截至 %s",
     macro_bubble_buffett_mcap_label = "總市值",
     macro_bubble_buffett_mcap_hint = "上市國內公司 · 美元 · 截至 %s",
+    macro_bubble_buffett_mcap_hint_tw = "上市（TWSE）公司 · 美元（主計總處 NSTAT）· 截至 %s",
     macro_bubble_buffett_gdp_label = "GDP",
     macro_bubble_buffett_gdp_hint = "當期美元 · 截至 %s",
+    macro_bubble_buffett_gdp_hint_tw = "名目 GDP · 美元（主計總處 NSTAT）· 截至 %s",
     macro_bubble_buffett_need = "尚無巴菲特指標序列。",
     macro_bubble_buffett_series = "總市值／GDP",
     macro_bubble_buffett_mean = "序列均值",

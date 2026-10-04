@@ -1786,6 +1786,7 @@ macro_market_server <- function(id = "macro",
 
     output$bubble_buffett_mcap <- renderUI({
       .loc()
+      mode_now <- .mode()
       abs_ser <- buffett_abs_series()
       got <- macro_bubble_buffett_abs_asof(abs_ser, NA_integer_)
       val <- if (isTRUE(got$ok) && is.finite(got$market_cap_usd)) {
@@ -1793,16 +1794,33 @@ macro_market_server <- function(id = "macro",
       } else {
         "—"
       }
+      # #region agent log
+      if (exists(".ynow_dbg_ef0f33", mode = "function")) {
+        .ynow_dbg_ef0f33("C", "macro_market_module.R:bubble_buffett_mcap", "mcap KPI render", list(
+          mode = as.character(mode_now)[1],
+          abs_n = if (is.data.frame(abs_ser)) nrow(abs_ser) else 0L,
+          ok = isTRUE(got$ok),
+          mcap_finite = is.finite(got$market_cap_usd),
+          gdp_finite = is.finite(got$gdp_usd),
+          val = val
+        ))
+      }
+      # #endregion
       .buffett_abs_kpi_box(
         "macro_bubble_buffett_mcap_label",
         val,
         got$as_of,
-        "macro_bubble_buffett_mcap_hint"
+        if (identical(mode_now, "TW")) {
+          "macro_bubble_buffett_mcap_hint_tw"
+        } else {
+          "macro_bubble_buffett_mcap_hint"
+        }
       )
     })
 
     output$bubble_buffett_gdp <- renderUI({
       .loc()
+      mode_now <- .mode()
       abs_ser <- buffett_abs_series()
       got <- macro_bubble_buffett_abs_asof(abs_ser, NA_integer_)
       val <- if (isTRUE(got$ok) && is.finite(got$gdp_usd)) {
@@ -1810,11 +1828,27 @@ macro_market_server <- function(id = "macro",
       } else {
         "—"
       }
+      # #region agent log
+      if (exists(".ynow_dbg_ef0f33", mode = "function")) {
+        .ynow_dbg_ef0f33("C", "macro_market_module.R:bubble_buffett_gdp", "gdp KPI render", list(
+          mode = as.character(mode_now)[1],
+          abs_n = if (is.data.frame(abs_ser)) nrow(abs_ser) else 0L,
+          ok = isTRUE(got$ok),
+          mcap_finite = is.finite(got$market_cap_usd),
+          gdp_finite = is.finite(got$gdp_usd),
+          val = val
+        ))
+      }
+      # #endregion
       .buffett_abs_kpi_box(
         "macro_bubble_buffett_gdp_label",
         val,
         got$as_of,
-        "macro_bubble_buffett_gdp_hint"
+        if (identical(mode_now, "TW")) {
+          "macro_bubble_buffett_gdp_hint_tw"
+        } else {
+          "macro_bubble_buffett_gdp_hint"
+        }
       )
     })
 

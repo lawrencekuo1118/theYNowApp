@@ -162,6 +162,41 @@ check("abs asof picks latest finite", {
   isTRUE(got$ok) && is.finite(got$market_cap_usd) &&
     abs(got$market_cap_usd - 50e12) < 1 && identical(got$as_of, as.Date("2024-12-31"))
 })
+check("TW abs CSV seed exists", {
+  p <- macro_bubble_buffett_abs_paths("TW")
+  any(file.exists(p))
+})
+check("TW abs CSV readable", {
+  d <- macro_bubble_read_buffett_abs_csv("TW")
+  is.data.frame(d) && nrow(d) >= 8L &&
+    all(c("market_cap_usd", "gdp_usd") %in% names(d)) &&
+    any(is.finite(d$market_cap_usd)) && any(is.finite(d$gdp_usd))
+})
+check("TW abs series falls back to CSV when WB empty", {
+  # Offline path: read CSV directly; series helper uses it when live legs are empty.
+  csv <- macro_bubble_read_buffett_abs_csv("TW")
+  got <- macro_bubble_buffett_abs_asof(csv, NA_integer_)
+  isTRUE(got$ok) && is.finite(got$market_cap_usd) && is.finite(got$gdp_usd)
+})
+check("TW DGBAS fetcher wired", {
+  src <- paste(readLines("macro_bubble_indicators.R", warn = FALSE), collapse = "\n")
+  grepl("macro_bubble_fetch_buffett_dgbas", src, fixed = TRUE) &&
+    grepl("nstatdb.dgbas.gov.tw", src, fixed = TRUE) &&
+    grepl("A110101010", src, fixed = TRUE) &&
+    grepl("A018101010", src, fixed = TRUE)
+})
+check("TW DGBAS live fetch (network)", {
+  dg <- tryCatch(macro_bubble_fetch_buffett_dgbas(timeout_sec = 30), error = function(e) NULL)
+  if (is.null(dg)) {
+    cat("SKIP TW DGBAS live fetch (offline / unreachable)\n")
+    TRUE
+  } else {
+    is.data.frame(dg) && nrow(dg) >= 8L &&
+      any(is.finite(dg$market_cap_usd)) && any(is.finite(dg$gdp_usd)) &&
+      any(is.finite(dg$ratio_pct)) &&
+      identical(unique(as.character(dg$source)), "dgbas")
+  }
+})
 check("buffett note wrapped", grepl("ynow_notes_block", bt_src, fixed = TRUE) &&
         grepl("ynow_macro_bubble_buffett_note", bt_src, fixed = TRUE))
 check("buffett KPI/plot not inside notes", {

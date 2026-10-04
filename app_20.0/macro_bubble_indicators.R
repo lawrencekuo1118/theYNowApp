@@ -40,6 +40,200 @@ macro_bubble_buffett_paths <- function(mode = "US") {
   unique(c(rel, file.path(getwd(), rel), file.path("app_18.0", rel)))
 }
 
+#' Absolute market-cap / GDP CSV paths (TW fallback when World Bank / DGBAS unavailable).
+macro_bubble_buffett_abs_paths <- function(mode = "US") {
+  mode <- if (exists("normalize_market_mode", mode = "function")) {
+    normalize_market_mode(mode)
+  } else {
+    toupper(as.character(mode)[1])
+  }
+  rel <- if (identical(mode, "TW")) {
+    file.path("data", "macro_buffett_tw_abs.csv")
+  } else {
+    file.path("data", "macro_buffett_us_abs.csv")
+  }
+  unique(c(rel, file.path(getwd(), rel), file.path("app_20.0", rel)))
+}
+
+# DGBAS NSTAT (行政院主計總處總體統計資料庫) — Taiwan macro Buffett legs.
+# Portal: https://nstatdb.dgbas.gov.tw/dgbasAll/webMain.aspx?sys=100&funid=dgmaind
+# SDMX filter uses 1-based field indices + empty 複分類 slots (trailing "..."), then A/M,
+# with startTime/endTime as YYYY-00 (annual) or YYYY-MM (monthly, zero-padded).
+.MACRO_DGBAS_BASE <- "https://nstatdb.dgbas.gov.tw/dgbasAll/webMain.aspx"
+# A110101010 公開發行公司股票發行概況 — field 4 = 上市公司-上市公司市值(十億元)
+.MACRO_DGBAS_MCAP_FUN <- "A110101010"
+.MACRO_DGBAS_MCAP_FLD <- 4L
+# A018101010 國民所得統計常用資料 — 2=平均匯率(元/美元), 5=GDP名目值(百萬美元)
+.MACRO_DGBAS_NI_FUN <- "A018101010"
+.MACRO_DGBAS_FX_FLD <- 2L
+.MACRO_DGBAS_GDP_USD_FLD <- 5L
+
+#' HTTP GET text (httr preferred).
+.macro_dgbas_http_get <- function(url, timeout_sec = 25) {
+  url <- as.character(url %||% "")[1]
+  if (!nzchar(url)) return(NULL)
+  tryCatch({
+    if (requireNamespace("httr", quietly = TRUE)) {
+      resp <- httr::GET(url, httr::timeout(timeout_sec))
+      if (httr::status_code(resp) >= 400L) return(NULL)
+      httr::content(resp, as = "text", encoding = "UTF-8")
+    } else {
+      con <- url(url, open = "rb")
+      on.exit(close(con), add = TRUE)
+      paste(readLines(con, warn = FALSE), collapse = "\n")
+    }
+  }, error = function(e) NULL)
+}
+
+#' Parse first non-empty SDMX series observations → named numeric by 0-based index.
+.macro_dgbas_obs_vec <- function(parsed) {
+  if (!is.list(parsed)) return(NULL)
+  sets <- tryCatch(parsed$data$dataSets, error = function(e) NULL)
+  if (!is.list(sets) || !length(sets)) return(NULL)
+  ser <- sets[[1]]$series
+  if (!is.list(ser) || !length(ser)) return(NULL)
+  for (nm in names(ser)) {
+    obs <- ser[[nm]]$observations
+    if (!is.list(obs) || !length(obs)) next
+    idx <- suppressWarnings(as.integer(names(obs)))
+    vals <- vapply(obs, function(x) {
+      if (is.list(x) && length(x) >= 1L) suppressWarnings(as.numeric(x[[1]])[1])
+      else suppressWarnings(as.numeric(x)[1])
+    }, numeric(1))
+    ok <- is.finite(idx) & is.finite(vals)
+    if (!any(ok)) next
+    out <- vals[ok]
+    names(out) <- as.character(idx[ok])
+    return(out)
+  }
+  NULL
+}
+
+#' Fetch one DGBAS annual series (field index) as date / value.
+macro_dgbas_fetch_annual_field <- function(funid,
+                                           field,
+                                           start_year = 1995L,
+                                           end_year = NA_integer_,
+                                           timeout_sec = 25) {
+  funid <- toupper(trimws(as.character(funid %||% "")[1]))
+  field <- suppressWarnings(as.integer(field)[1])
+  sy <- suppressWarnings(as.integer(start_year)[1])
+  ey <- suppressWarnings(as.integer(end_year)[1])
+  if (!nzchar(funid) || !is.finite(field) || field < 1L || !is.finite(sy)) return(NULL)
+  if (!is.finite(ey)) ey <- as.integer(format(Sys.Date(), "%Y"))
+  if (ey < sy) return(NULL)
+  cache_key <- sprintf("dgbas_%s_%d_%d_%d", funid, field, sy, ey)
+  if (is.data.frame(.MACRO_BUBBLE_ENV[[cache_key]])) {
+    return(.MACRO_BUBBLE_ENV[[cache_key]])
+  }
+  # Three dots after field: empty 複分類 slots required by the portal's SDMX builder.
+  q <- sprintf(
+    "sdmx/%s/%d...A&startTime=%d-00&endTime=%d-00",
+    funid, field, sy, ey
+  )
+  url <- paste0(.MACRO_DGBAS_BASE, "?", q)
+  raw <- .macro_dgbas_http_get(url, timeout_sec = timeout_sec)
+  if (!nzchar(raw %||% "") || !startsWith(trimws(raw), "{")) return(NULL)
+  parsed <- tryCatch(jsonlite::fromJSON(raw, simplifyVector = FALSE), error = function(e) NULL)
+  obs <- .macro_dgbas_obs_vec(parsed)
+  if (is.null(obs) || !length(obs)) return(NULL)
+  idx <- suppressWarnings(as.integer(names(obs)))
+  ord <- order(idx)
+  idx <- idx[ord]
+  val <- as.numeric(obs[ord])
+  # Observation 0 = start_year when structure is omitted (portal quick/API-JSON habit).
+  years <- sy + idx
+  df <- data.frame(
+    date = as.Date(sprintf("%d-12-31", years)),
+    value = val,
+    source = "dgbas",
+    stringsAsFactors = FALSE
+  )
+  df <- df[is.finite(df$value) & !is.na(df$date), , drop = FALSE]
+  if (!nrow(df)) return(NULL)
+  .MACRO_BUBBLE_ENV[[cache_key]] <- df
+  df
+}
+
+#' Taiwan Buffett abs + ratio from DGBAS NSTAT (listed market cap / GDP).
+#' Market cap: A110101010 field 4 (NT$ 十億元); GDP: A018101010 field 5 (US$ million);
+#' FX: A018101010 field 2 (TWD per USD) to convert market cap into USD.
+macro_bubble_fetch_buffett_dgbas <- function(timeout_sec = 25) {
+  cache_key <- "dgbas_buffett_tw_abs"
+  if (is.data.frame(.MACRO_BUBBLE_ENV[[cache_key]])) {
+    return(.MACRO_BUBBLE_ENV[[cache_key]])
+  }
+  ey <- as.integer(format(Sys.Date(), "%Y"))
+  mcap <- macro_dgbas_fetch_annual_field(
+    .MACRO_DGBAS_MCAP_FUN, .MACRO_DGBAS_MCAP_FLD,
+    start_year = 1995L, end_year = ey, timeout_sec = timeout_sec
+  )
+  gdp <- macro_dgbas_fetch_annual_field(
+    .MACRO_DGBAS_NI_FUN, .MACRO_DGBAS_GDP_USD_FLD,
+    start_year = 1995L, end_year = ey, timeout_sec = timeout_sec
+  )
+  fx <- macro_dgbas_fetch_annual_field(
+    .MACRO_DGBAS_NI_FUN, .MACRO_DGBAS_FX_FLD,
+    start_year = 1995L, end_year = ey, timeout_sec = timeout_sec
+  )
+  if (!is.data.frame(mcap) || !nrow(mcap) || !is.data.frame(gdp) || !nrow(gdp)) {
+    return(NULL)
+  }
+  dates <- sort(unique(c(mcap$date, gdp$date)))
+  mc_nt_bn <- mcap$value[match(dates, mcap$date)]
+  gd_mil <- gdp$value[match(dates, gdp$date)]
+  fx_v <- if (is.data.frame(fx) && nrow(fx)) fx$value[match(dates, fx$date)] else rep(NA_real_, length(dates))
+  # Forward/back fill FX gaps lightly (annual series is dense).
+  if (any(!is.finite(fx_v)) && any(is.finite(fx_v))) {
+    for (i in seq_along(fx_v)) {
+      if (!is.finite(fx_v[[i]]) && i > 1L && is.finite(fx_v[[i - 1L]])) fx_v[[i]] <- fx_v[[i - 1L]]
+    }
+    for (i in rev(seq_along(fx_v))) {
+      if (!is.finite(fx_v[[i]]) && i < length(fx_v) && is.finite(fx_v[[i + 1L]])) fx_v[[i]] <- fx_v[[i + 1L]]
+    }
+  }
+  gdp_usd <- gd_mil * 1e6
+  mcap_usd <- ifelse(is.finite(mc_nt_bn) & is.finite(fx_v) & fx_v > 0, mc_nt_bn * 1e9 / fx_v, NA_real_)
+  ratio_pct <- ifelse(is.finite(mcap_usd) & is.finite(gdp_usd) & gdp_usd > 0,
+                      100 * mcap_usd / gdp_usd, NA_real_)
+  df <- data.frame(
+    date = dates,
+    market_cap_usd = as.numeric(mcap_usd),
+    gdp_usd = as.numeric(gdp_usd),
+    ratio_pct = as.numeric(ratio_pct),
+    source = "dgbas",
+    stringsAsFactors = FALSE
+  )
+  # Drop placeholder / unpublished years (API may pad with 0).
+  keep <- (is.finite(df$market_cap_usd) & df$market_cap_usd > 0) |
+    (is.finite(df$gdp_usd) & df$gdp_usd > 0)
+  df <- df[keep, , drop = FALSE]
+  if (!nrow(df)) return(NULL)
+  .MACRO_BUBBLE_ENV[[cache_key]] <- df
+  df
+}
+
+macro_bubble_read_buffett_abs_csv <- function(mode = "US") {
+  paths <- macro_bubble_buffett_abs_paths(mode)
+  hit <- paths[file.exists(paths)]
+  if (!length(hit)) return(NULL)
+  d <- tryCatch(
+    utils::read.csv(hit[[1]], stringsAsFactors = FALSE, encoding = "UTF-8"),
+    error = function(e) NULL
+  )
+  if (is.null(d) || !nrow(d)) return(NULL)
+  need <- c("date", "market_cap_usd", "gdp_usd")
+  if (!all(need %in% names(d))) return(NULL)
+  d$date <- as.Date(d$date)
+  d$market_cap_usd <- suppressWarnings(as.numeric(d$market_cap_usd))
+  d$gdp_usd <- suppressWarnings(as.numeric(d$gdp_usd))
+  d <- d[(!is.na(d$date)) & (is.finite(d$market_cap_usd) | is.finite(d$gdp_usd)), , drop = FALSE]
+  d <- d[order(d$date), , drop = FALSE]
+  if (!("source" %in% names(d))) d$source <- "csv"
+  if (!nrow(d)) return(NULL)
+  d[, c("date", "market_cap_usd", "gdp_usd", "source"), drop = FALSE]
+}
+
 #' Resolve theme_key → ticker universe for concentration/attribution.
 macro_bubble_resolve_universe <- function(theme_key, mode = get_market_mode()) {
   mode <- if (exists("normalize_market_mode", mode = "function")) {
@@ -466,15 +660,26 @@ macro_bubble_fetch_wb_indicator <- function(mode = "US",
   if (!nzchar(ind)) return(NULL)
   cache_key <- paste0("wb_", code, "_", ind)
   if (is.data.frame(.MACRO_BUBBLE_ENV[[cache_key]])) {
+    # #region agent log
+    if (exists(".ynow_dbg_ef0f33", mode = "function")) {
+      .ynow_dbg_ef0f33("A", "macro_bubble_indicators.R:fetch_wb", "wb cache hit", list(
+        mode = as.character(mode)[1], code = code, indicator = ind,
+        nrow = nrow(.MACRO_BUBBLE_ENV[[cache_key]])
+      ))
+    }
+    # #endregion
     return(.MACRO_BUBBLE_ENV[[cache_key]])
   }
   url <- sprintf(
     "https://api.worldbank.org/v2/country/%s/indicator/%s?format=json&per_page=120",
     code, ind
   )
+  status <- NA_integer_
+  err_msg <- ""
   raw <- tryCatch({
     if (requireNamespace("httr", quietly = TRUE)) {
       resp <- httr::GET(url, httr::timeout(timeout_sec))
+      status <<- as.integer(httr::status_code(resp))[1]
       if (httr::status_code(resp) >= 400L) return(NULL)
       httr::content(resp, as = "text", encoding = "UTF-8")
     } else {
@@ -482,12 +687,47 @@ macro_bubble_fetch_wb_indicator <- function(mode = "US",
       on.exit(close(con), add = TRUE)
       paste(readLines(con, warn = FALSE), collapse = "\n")
     }
-  }, error = function(e) NULL)
-  if (!nzchar(raw %||% "")) return(NULL)
+  }, error = function(e) {
+    err_msg <<- as.character(conditionMessage(e))[1]
+    NULL
+  })
+  if (!nzchar(raw %||% "")) {
+    # #region agent log
+    if (exists(".ynow_dbg_ef0f33", mode = "function")) {
+      .ynow_dbg_ef0f33("A", "macro_bubble_indicators.R:fetch_wb", "wb empty raw", list(
+        mode = as.character(mode)[1], code = code, indicator = ind,
+        status = status, err = err_msg
+      ))
+    }
+    # #endregion
+    return(NULL)
+  }
   parsed <- tryCatch(jsonlite::fromJSON(raw, simplifyVector = FALSE), error = function(e) NULL)
-  if (!is.list(parsed) || length(parsed) < 2L) return(NULL)
+  if (!is.list(parsed) || length(parsed) < 2L) {
+    # #region agent log
+    if (exists(".ynow_dbg_ef0f33", mode = "function")) {
+      .ynow_dbg_ef0f33("A", "macro_bubble_indicators.R:fetch_wb", "wb parse fail / short", list(
+        mode = as.character(mode)[1], code = code, indicator = ind,
+        status = status, parsed_len = if (is.list(parsed)) length(parsed) else 0L,
+        raw_head = substr(raw, 1L, 160L)
+      ))
+    }
+    # #endregion
+    return(NULL)
+  }
   rows <- parsed[[2]]
-  if (!is.list(rows) || !length(rows)) return(NULL)
+  if (!is.list(rows) || !length(rows)) {
+    # #region agent log
+    if (exists(".ynow_dbg_ef0f33", mode = "function")) {
+      meta_total <- tryCatch(as.numeric(parsed[[1]]$total %||% NA)[1], error = function(e) NA_real_)
+      .ynow_dbg_ef0f33("A", "macro_bubble_indicators.R:fetch_wb", "wb zero rows", list(
+        mode = as.character(mode)[1], code = code, indicator = ind,
+        status = status, meta_total = meta_total
+      ))
+    }
+    # #endregion
+    return(NULL)
+  }
   out <- lapply(rows, function(r) {
     if (!is.list(r)) return(NULL)
     yr <- suppressWarnings(as.integer(r$date %||% NA))
@@ -501,10 +741,28 @@ macro_bubble_fetch_wb_indicator <- function(mode = "US",
     )
   })
   out <- Filter(Negate(is.null), out)
-  if (!length(out)) return(NULL)
+  if (!length(out)) {
+    # #region agent log
+    if (exists(".ynow_dbg_ef0f33", mode = "function")) {
+      .ynow_dbg_ef0f33("D", "macro_bubble_indicators.R:fetch_wb", "wb rows all null values", list(
+        mode = as.character(mode)[1], code = code, indicator = ind,
+        raw_rows = length(rows)
+      ))
+    }
+    # #endregion
+    return(NULL)
+  }
   df <- do.call(rbind, out)
   df <- df[order(df$date), , drop = FALSE]
   .MACRO_BUBBLE_ENV[[cache_key]] <- df
+  # #region agent log
+  if (exists(".ynow_dbg_ef0f33", mode = "function")) {
+    .ynow_dbg_ef0f33("A", "macro_bubble_indicators.R:fetch_wb", "wb ok", list(
+      mode = as.character(mode)[1], code = code, indicator = ind,
+      nrow = nrow(df), last_val = tail(df$value, 1)
+    ))
+  }
+  # #endregion
   df
 }
 
@@ -523,7 +781,22 @@ macro_bubble_fetch_buffett_worldbank <- function(mode = "US", timeout_sec = 20) 
 }
 
 #' Absolute market-cap and GDP (current USD) for Buffett KPI companions.
+#' TW: DGBAS NSTAT first, then shipped CSV. US: World Bank first, then CSV.
 macro_bubble_buffett_abs_series <- function(mode = get_market_mode(), timeout_sec = 20) {
+  mode <- if (exists("normalize_market_mode", mode = "function")) {
+    normalize_market_mode(mode)
+  } else {
+    toupper(as.character(mode)[1])
+  }
+  if (identical(mode, "TW")) {
+    dg <- tryCatch(macro_bubble_fetch_buffett_dgbas(timeout_sec = timeout_sec), error = function(e) NULL)
+    if (is.data.frame(dg) && nrow(dg) > 0L) {
+      return(dg[, c("date", "market_cap_usd", "gdp_usd", "source"), drop = FALSE])
+    }
+    csv <- tryCatch(macro_bubble_read_buffett_abs_csv(mode), error = function(e) NULL)
+    if (is.data.frame(csv) && nrow(csv) > 0L) return(csv)
+    return(NULL)
+  }
   mcap <- tryCatch(
     macro_bubble_fetch_wb_indicator(mode, "CM.MKT.LCAP.CD", timeout_sec = timeout_sec),
     error = function(e) NULL
@@ -539,7 +812,11 @@ macro_bubble_buffett_abs_series <- function(mode = get_market_mode(), timeout_se
   if (!is.data.frame(mcap) || !nrow(mcap)) mcap <- NULL
   if (!is.data.frame(gdp) || !nrow(gdp)) gdp <- NULL
   if (!is.data.frame(ratio) || !nrow(ratio)) ratio <- NULL
-  if (is.null(mcap) && is.null(gdp)) return(NULL)
+  if (is.null(mcap) && is.null(gdp)) {
+    csv <- tryCatch(macro_bubble_read_buffett_abs_csv(mode), error = function(e) NULL)
+    if (is.data.frame(csv) && nrow(csv) > 0L) return(csv)
+    return(NULL)
+  }
   dates <- sort(unique(c(
     if (!is.null(mcap)) mcap$date else as.Date(character(0)),
     if (!is.null(gdp)) gdp$date else as.Date(character(0)),
@@ -576,14 +853,16 @@ macro_bubble_buffett_abs_asof <- function(series, asof_year = NA_integer_) {
     ser <- ser[as.integer(format(ser$date, "%Y")) <= yr, , drop = FALSE]
   }
   if (!nrow(ser)) return(empty)
-  # Prefer the newest row that has either level populated.
+  # Prefer the newest row with a positive level (ignore 0 / placeholder pads).
   for (i in rev(seq_len(nrow(ser)))) {
     mc <- suppressWarnings(as.numeric(ser$market_cap_usd[[i]])[1])
     gd <- suppressWarnings(as.numeric(ser$gdp_usd[[i]])[1])
-    if (is.finite(mc) || is.finite(gd)) {
+    mc_ok <- is.finite(mc) && mc > 0
+    gd_ok <- is.finite(gd) && gd > 0
+    if (mc_ok || gd_ok) {
       return(list(
-        market_cap_usd = mc,
-        gdp_usd = gd,
+        market_cap_usd = if (mc_ok) mc else NA_real_,
+        gdp_usd = if (gd_ok) gd else NA_real_,
         as_of = as.Date(ser$date[[i]]),
         ok = TRUE
       ))
@@ -593,6 +872,24 @@ macro_bubble_buffett_abs_asof <- function(series, asof_year = NA_integer_) {
 }
 
 macro_bubble_buffett_series <- function(mode = get_market_mode()) {
+  mode <- if (exists("normalize_market_mode", mode = "function")) {
+    normalize_market_mode(mode)
+  } else {
+    toupper(as.character(mode)[1])
+  }
+  if (identical(mode, "TW")) {
+    dg <- tryCatch(macro_bubble_fetch_buffett_dgbas(), error = function(e) NULL)
+    if (is.data.frame(dg) && nrow(dg) >= 8L && any(is.finite(dg$ratio_pct))) {
+      out <- data.frame(
+        date = dg$date,
+        ratio_pct = dg$ratio_pct,
+        source = dg$source,
+        stringsAsFactors = FALSE
+      )
+      out <- out[is.finite(out$ratio_pct), , drop = FALSE]
+      if (nrow(out) >= 8L) return(out)
+    }
+  }
   live <- tryCatch(macro_bubble_fetch_buffett_worldbank(mode), error = function(e) NULL)
   if (is.data.frame(live) && nrow(live) >= 8L) return(live)
   csv <- macro_bubble_read_buffett_csv(mode)
