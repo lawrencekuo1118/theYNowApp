@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12644337
+bundleId=12644529
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=09e11ce085968d653f59a999c8824c6bcb435b27
-commit=09e11ce085968d653f59a999c8824c6bcb435b27
-short=09e11ce
-message=chore: bump display version to v20.02
-captured_at=2026-10-04T05:02:38Z
+aligned_git=dab3fd797ff28985d0ef275b7af9e79516a60bda
+commit=dab3fd797ff28985d0ef275b7af9e79516a60bda
+short=dab3fd7
+message=Promote Business Breakdown Lab to Company - Advance sidebar tab.
+captured_at=2026-10-04T06:33:56Z
 source_branch=master
 display_version=v20.03
-note=Canonical live line is app_20.0. Bundle 12644337 = v20.02 (Fundamental Value home locale + prior v20 cut / Constituents Market Cap / deferred TW preload). Deploy via scripts/deploy_app_20.R. Supersedes 12644326.
+note=Canonical live line is app_20.0. Bundle 12644529 = v20.03 (Company - Advance sidebar hosts Business Breakdown Lab + prior structure analysis). Deploy via scripts/deploy_app_20.R. Supersedes 12644337.
