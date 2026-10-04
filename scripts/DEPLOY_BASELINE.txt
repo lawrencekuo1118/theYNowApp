@@ -8,5 +8,5 @@ short=e372995
 message=chore: bump display version to v20.32
 captured_at=2026-10-04T16:25:59Z
 source_branch=master
-display_version=v20.32
+display_version=v20.33
 note=Canonical live line is app_20.0. Bundle 12646028 expands TW concept groups (optical/robotics/defense/passives/IPC) without theme duplicates. Deploy via scripts/deploy_app_20.R.
