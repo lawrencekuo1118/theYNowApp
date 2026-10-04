@@ -8,5 +8,5 @@ short=0ca35d2
 message=chore: bump display version to v20.15
 captured_at=2026-10-04T09:31:11Z
 source_branch=master
-display_version=v20.15
+display_version=v20.16
 note=Canonical live line is app_20.0. Bundle 12644990 ships Model Selector card click → model tab jump. Deploy via scripts/deploy_app_20.R.
