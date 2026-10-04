@@ -7104,27 +7104,28 @@ ui <- dashboardPage(
           box-sizing: border-box;
           overflow: hidden;
         }
-        /* Same-row KPI boxes stretch to equal height (valueBoxOutput nests col-sm-* on uiOutput). */
-        .content-wrapper .row:has(> [class*="col-"] .small-box),
-        .tab-content .row:has(> [class*="col-"] .small-box),
-        .tab-pane .row:has(> [class*="col-"] .small-box) {
+        /* Same-row KPI boxes stretch to equal height (valueBoxOutput nests col-sm-* on uiOutput).
+           Attr selectors use single quotes because this CSS block is inside a double-quoted HTML string. */
+        .content-wrapper .row:has(> [class*='col-'] .small-box),
+        .tab-content .row:has(> [class*='col-'] .small-box),
+        .tab-pane .row:has(> [class*='col-'] .small-box) {
           display: flex;
           flex-wrap: wrap;
           align-items: stretch;
         }
-        .content-wrapper .row:has(> [class*="col-"] .small-box) > [class*="col-"],
-        .tab-content .row:has(> [class*="col-"] .small-box) > [class*="col-"],
-        .tab-pane .row:has(> [class*="col-"] .small-box) > [class*="col-"] {
+        .content-wrapper .row:has(> [class*='col-'] .small-box) > [class*='col-'],
+        .tab-content .row:has(> [class*='col-'] .small-box) > [class*='col-'],
+        .tab-pane .row:has(> [class*='col-'] .small-box) > [class*='col-'] {
           display: flex;
           flex-direction: column;
           float: none;
         }
-        .content-wrapper .row:has(> [class*="col-"] .small-box) > [class*="col-"] > .shiny-html-output,
-        .tab-content .row:has(> [class*="col-"] .small-box) > [class*="col-"] > .shiny-html-output,
-        .tab-pane .row:has(> [class*="col-"] .small-box) > [class*="col-"] > .shiny-html-output,
-        .content-wrapper .row:has(> [class*="col-"] .small-box) > [class*="col-"] > [class*="col-"],
-        .tab-content .row:has(> [class*="col-"] .small-box) > [class*="col-"] > [class*="col-"],
-        .tab-pane .row:has(> [class*="col-"] .small-box) > [class*="col-"] > [class*="col-"] {
+        .content-wrapper .row:has(> [class*='col-'] .small-box) > [class*='col-'] > .shiny-html-output,
+        .tab-content .row:has(> [class*='col-'] .small-box) > [class*='col-'] > .shiny-html-output,
+        .tab-pane .row:has(> [class*='col-'] .small-box) > [class*='col-'] > .shiny-html-output,
+        .content-wrapper .row:has(> [class*='col-'] .small-box) > [class*='col-'] > [class*='col-'],
+        .tab-content .row:has(> [class*='col-'] .small-box) > [class*='col-'] > [class*='col-'],
+        .tab-pane .row:has(> [class*='col-'] .small-box) > [class*='col-'] > [class*='col-'] {
           flex: 1 1 auto;
           width: 100%;
           max-width: 100%;
@@ -7135,9 +7136,9 @@ ui <- dashboardPage(
           padding-left: 0;
           padding-right: 0;
         }
-        .content-wrapper .row:has(> [class*="col-"] .small-box) .small-box,
-        .tab-content .row:has(> [class*="col-"] .small-box) .small-box,
-        .tab-pane .row:has(> [class*="col-"] .small-box) .small-box {
+        .content-wrapper .row:has(> [class*='col-'] .small-box) .small-box,
+        .tab-content .row:has(> [class*='col-'] .small-box) .small-box,
+        .tab-pane .row:has(> [class*='col-'] .small-box) .small-box {
           flex: 1 1 auto;
           width: 100%;
           height: 100%;

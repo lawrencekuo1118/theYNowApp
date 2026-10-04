@@ -210,7 +210,7 @@ check("KPI valueBox numbers stay one line", {
     grepl("never orphan a trailing digit", ui, fixed = TRUE)
 })
 check("KPI valueBox equal row height", {
-  grepl('row:has(> [class*="col-"] .small-box)', ui, fixed = TRUE) &&
+  grepl("row:has(> [class*='col-'] .small-box)", ui, fixed = TRUE) &&
     grepl("align-items: stretch", ui, fixed = TRUE)
 })
 
