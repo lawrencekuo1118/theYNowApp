@@ -47,7 +47,7 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
     "hccsi_index_fragility", "hccsi_index_market",
     "hccsi_unavailable", "hccsi_dropped", "hccsi_dropped_none",
     "menu_business_breakdown_lab", "menu_company_advance",
-    "bblab_experimental_badge", "bblab_page_sub",
+    "bblab_page_sub", "bblab_report_kicker", "bblab_shared_ticker_hint",
     "bblab_page_title", "bblab_gm_unestimable", "bblab_reval_unavailable",
     "bblab_listed_only_notice", "bblab_listed_only_scope",
     "bblab_ch1_title", "bblab_ch3_title", "bblab_ch3_current_label",

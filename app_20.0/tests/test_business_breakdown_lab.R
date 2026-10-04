@@ -541,7 +541,8 @@ check("26 Company - Advance sidebar hosts BBL",
         grepl("ynow_menu_company_advance", ui_src, fixed = TRUE) &&
         grepl("Company - Advance", ui_src, fixed = TRUE) &&
         !grepl('tabName = "business_breakdown_lab"', ui_src, fixed = TRUE) &&
-        grepl("Experimental Feature", mod_src, fixed = TRUE) &&
+        grepl("ynow-bblab--report", mod_src, fixed = TRUE) &&
+        grepl("Business Breakdown", mod_src, fixed = TRUE) &&
         grepl("business_breakdown_lab_ui", ui_src, fixed = TRUE))
 check("26 Lab markup lives under Company - Advance tab",
       nzchar(advance_block) &&
@@ -563,7 +564,8 @@ check("26 Lite CSS hide + remap to Company - Advance",
         grepl("return 'company_advance'", ui_src, fixed = TRUE))
 
 # ---- extras: i18n, parse, valuation isolation, toast specificity ----
-for (k in c("menu_business_breakdown_lab", "bblab_experimental_badge", "bblab_page_sub",
+for (k in c("menu_business_breakdown_lab", "bblab_page_sub", "bblab_report_kicker",
+            "bblab_shared_ticker_hint",
             "bblab_listed_only_notice", "bblab_listed_only_scope",
             "bblab_gm_unestimable", "bblab_reval_unavailable", "bblab_single_business_note",
             "bblab_fallback_gm_label",
@@ -614,20 +616,19 @@ check("applyUiLocale wires chapter titles", {
     grepl("setBtText('ynow_bblab_ch4_limited', 'bblab_ch4_limited')", ui_src, fixed = TRUE) &&
     grepl("setBtText('ynow_bblab_ch7_title', 'bblab_ch7_title')", ui_src, fixed = TRUE)
 })
-check("mix chapters are one numbered box with six badges", {
+check("mix chapters are one report section with history panel", {
   grepl("Revenue mix", mod_src, fixed = TRUE) &&
     grepl("ynow_bblab_ch3_current_label", mod_src, fixed = TRUE) &&
     grepl("ynow-bblab-subhead", mod_src, fixed = TRUE) &&
     grepl("plotlyOutput(ns(\"donut\")", mod_src, fixed = TRUE) &&
     grepl("plotlyOutput(ns(\"history\")", mod_src, fixed = TRUE) &&
     grepl('uiOutput(ns("history_panel"))', mod_src, fixed = TRUE) &&
-    grepl("`data-bblab-chapter` = \"6\"", mod_src, fixed = TRUE) &&
-    !grepl("`data-bblab-chapter` = \"7\"", mod_src, fixed = TRUE) &&
-    !grepl('ynow-bblab-chapter__num", "7"', mod_src, fixed = TRUE) &&
-    grepl('ynow-bblab-chapter__num", "6"', mod_src, fixed = TRUE) &&
-    grepl("current period and five-year share evolution",
+    grepl('chapter = "6"', mod_src, fixed = TRUE) &&
+    !grepl('chapter = "7"', mod_src, fixed = TRUE) &&
+    grepl("ynow-bblab-report__section", mod_src, fixed = TRUE) &&
+    grepl("Ticker / Stock Code",
           paste(.UI_STRINGS$en$bblab_page_sub, collapse = " "), fixed = TRUE) &&
-    grepl("當期與五年占比演進",
+    grepl("投資報告樣式",
           paste(.UI_STRINGS$`zh-TW`$bblab_page_sub, collapse = " "), fixed = TRUE)
 })
 check("chapter titles do not repeat badge numbering", {
@@ -637,12 +638,13 @@ check("chapter titles do not repeat badge numbering", {
   all_keys <- c(keys, aliases)
   en_ok <- all(!grepl("^[0-9]+\\.\\s", vapply(all_keys, function(k) .UI_STRINGS$en[[k]], character(1))))
   zh_ok <- all(!grepl("^[0-9]+\\.\\s", vapply(all_keys, function(k) .UI_STRINGS$`zh-TW`[[k]], character(1))))
-  en_ok && zh_ok && grepl("ynow-bblab-chapter__num", mod_src, fixed = TRUE)
+  en_ok && zh_ok && grepl("ynow-bblab-report__section-num", mod_src, fixed = TRUE)
 })
-check("i18n experimental both locales",
-      identical(.UI_STRINGS$en$bblab_experimental_badge, "Experimental Feature") &&
-        identical(.UI_STRINGS$`zh-TW`$bblab_experimental_badge, "實驗功能") &&
-        identical(.UI_STRINGS$en$menu_business_breakdown_lab, "Business Breakdown Lab"))
+check("i18n Business Breakdown rename both locales",
+      identical(.UI_STRINGS$en$bblab_page_title, "Business Breakdown") &&
+        identical(.UI_STRINGS$`zh-TW`$bblab_page_title, "業務拆解") &&
+        identical(.UI_STRINGS$en$menu_business_breakdown_lab, "Business Breakdown") &&
+        identical(.UI_STRINGS$`zh-TW`$menu_business_breakdown_lab, "業務拆解"))
 check("i18n fallback GM label has no default-off parenthetical", {
   en <- .UI_STRINGS$en$bblab_fallback_gm_label
   zh <- .UI_STRINGS$`zh-TW`$bblab_fallback_gm_label
@@ -771,8 +773,14 @@ if (requireNamespace("shiny", quietly = TRUE) &&
     ""
   })
   check("lab UI constructs at startup", nzchar(lab_ui_html))
-  check("lab UI keeps Search and numbered chapters",
-        grepl("ynow_bblab_search_title", lab_ui_html, fixed = TRUE) &&
+  check("lab UI keeps report toolbar and numbered chapters",
+        grepl("ynow-bblab--report", lab_ui_html, fixed = TRUE) &&
+          grepl("ynow_bblab_period_label", lab_ui_html, fixed = TRUE) &&
+          grepl("ynow_bblab_fallback_gm_label", lab_ui_html, fixed = TRUE) &&
+          grepl("ynow_bblab_shared_ticker_hint", lab_ui_html, fixed = TRUE) &&
+          !grepl("ynow_bblab_search_title", lab_ui_html, fixed = TRUE) &&
+          !grepl("id=\"bblab-search\"", lab_ui_html, fixed = TRUE) &&
+          !grepl("id=\"bblab-ticker\"", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_ch1_title", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_ch2_title", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_ch3_title", lab_ui_html, fixed = TRUE) &&
@@ -780,8 +788,7 @@ if (requireNamespace("shiny", quietly = TRUE) &&
           grepl("history_panel", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_ch5_title", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_ch6_title", lab_ui_html, fixed = TRUE) &&
-          grepl("ynow_bblab_ch7_title", lab_ui_html, fixed = TRUE) &&
-          grepl("ynow_bblab_fallback_gm_label", lab_ui_html, fixed = TRUE))
+          grepl("ynow_bblab_ch7_title", lab_ui_html, fixed = TRUE))
   check("lab UI HTML merges mix charts under chapter 3", {
     grepl("ynow-bblab-subhead", lab_ui_html, fixed = TRUE) &&
       grepl(">Revenue mix<", lab_ui_html, fixed = TRUE) &&
@@ -793,8 +800,8 @@ if (requireNamespace("shiny", quietly = TRUE) &&
       !grepl("data-bblab-chapter=\"7\"", lab_ui_html, fixed = TRUE) &&
       !grepl(">Current revenue mix<", lab_ui_html, fixed = TRUE)
   })
-  check("chapter order in Testing Lab markup", {
-    ids <- c("ynow_bblab_search_title",
+  check("chapter order in report markup", {
+    ids <- c("ynow_bblab_page_title",
              "ynow_bblab_ch1_title", "ynow_bblab_ch2_title", "ynow_bblab_ch3_title",
              "ynow_bblab_ch3_current_label",
              "ynow_bblab_ch5_title", "ynow_bblab_ch6_title",
@@ -804,11 +811,12 @@ if (requireNamespace("shiny", quietly = TRUE) &&
     }, integer(1))
     all(pos > 0L) && all(diff(pos) > 0L)
   })
-  check("lab titles keep badge numbers without repeating them in the heading",
-        grepl("ynow-bblab-chapter__num", lab_ui_html, fixed = TRUE) &&
+  check("lab titles use report section numbers without repeating them in the heading",
+        grepl("ynow-bblab-report__section-num", lab_ui_html, fixed = TRUE) &&
           !grepl(">1\\. Consolidated", lab_ui_html) &&
           !grepl(">2\\. How the statements", lab_ui_html) &&
-          grepl(">Consolidated statement snapshot<", lab_ui_html, fixed = TRUE))
+          grepl(">Consolidated statement snapshot<", lab_ui_html, fixed = TRUE) &&
+          grepl(">Business Breakdown<", lab_ui_html, fixed = TRUE))
   check("lab UI HTML has no Progress 9/9 or nine stage labels",
         !grepl("bblab-progress", lab_ui_html, fixed = TRUE) &&
           !grepl("ynow-bblab-progress", lab_ui_html, fixed = TRUE) &&
@@ -819,33 +827,21 @@ if (requireNamespace("shiny", quietly = TRUE) &&
         grepl("ynow_bblab_listed_only_notice", lab_ui_html, fixed = TRUE) &&
           grepl("Listed stocks only (Taiwan and U.S. exchanges).", lab_ui_html, fixed = TRUE) &&
           grepl("ynow-bblab__listed-notice", lab_ui_html, fixed = TRUE) &&
-          grepl("ynow_bblab_experimental_badge", lab_ui_html, fixed = TRUE) &&
+          !grepl("ynow_bblab_experimental_badge", lab_ui_html, fixed = TRUE) &&
           !grepl("ynow_notes_block", lab_ui_html, fixed = TRUE) &&
           !grepl("ynow-notes", lab_ui_html, fixed = TRUE))
-  btn_m <- regexpr("<button[^>]*id=\"bblab-search\"[^>]*>", lab_ui_html)
-  btn_html <- if (btn_m < 1L) "" else {
-    substr(lab_ui_html, as.integer(btn_m),
-           as.integer(btn_m) + as.integer(attr(btn_m, "match.length")) - 1L)
-  }
-  pre_btn <- if (btn_m < 1L) "" else substr(lab_ui_html, 1L, as.integer(btn_m))
-  check("lab Search is type=button, not type=submit, and not inside <form>",
-        nzchar(btn_html) &&
-          grepl("type=\"button\"", btn_html, fixed = TRUE) &&
-          !grepl("type=\"submit\"", btn_html, fixed = TRUE) &&
-          !grepl("<form", lab_ui_html, ignore.case = TRUE) &&
-          !grepl("<form", pre_btn, ignore.case = TRUE) &&
-          grepl("ynow-bblab-search-controls", lab_ui_html, fixed = TRUE) &&
-          grepl("ynow-bblab-search-btn", lab_ui_html, fixed = TRUE))
-  check("lab Search Enter/submit guards prevent native navigation",
-        grepl("ev.preventDefault()", lab_ui_html, fixed = TRUE) &&
-          grepl("bblab-ticker", lab_ui_html, fixed = TRUE) &&
-          grepl("bblab-search", lab_ui_html, fixed = TRUE) &&
-          grepl("addEventListener('submit'", lab_ui_html, fixed = TRUE) &&
-          grepl("addEventListener('keydown'", lab_ui_html, fixed = TRUE))
+  check("lab has no in-page Search; Period and GM fallback remain",
+        !grepl("id=\"bblab-search\"", lab_ui_html, fixed = TRUE) &&
+          !grepl("ynow-bblab-search-controls", lab_ui_html, fixed = TRUE) &&
+          !grepl("__ynowBblabSearchGuard", lab_ui_html, fixed = TRUE) &&
+          grepl("ynow_bblab_period_label", lab_ui_html, fixed = TRUE) &&
+          grepl("ynow_bblab_fallback_gm_label", lab_ui_html, fixed = TRUE) &&
+          grepl("ynow-bblab-report__toolbar", lab_ui_html, fixed = TRUE))
 }
-check("experimental badge locale keys",
-      grepl("ynow_bblab_experimental_badge", ui_src, fixed = TRUE) &&
-        grepl("bblab_experimental_badge", ui_src, fixed = TRUE))
+check("report kicker locale wiring",
+      grepl("ynow_bblab_report_kicker", ui_src, fixed = TRUE) &&
+        grepl("bblab_report_kicker", ui_src, fixed = TRUE) &&
+        grepl("bblab_shared_ticker_hint", ui_src, fixed = TRUE))
 
 # Engine analyzes TSM fixture without any issuer-specific code path:
 check("TSM fixture is data-only", {
@@ -1515,11 +1511,11 @@ notes_fn_src <- {
   start <- regexpr("output$notes <- renderUI", mod_src, fixed = TRUE)[1]
   if (start < 1L) "" else substr(mod_src, start, nchar(mod_src))
 }
-check("listed-only notice is in Testing Lab UI function, not Notes",
+check("listed-only notice is in report UI function, not Notes",
       nzchar(ui_fn_src) &&
         grepl("ynow_bblab_listed_only_notice", ui_fn_src, fixed = TRUE) &&
         grepl("ynow-bblab__listed-notice", ui_fn_src, fixed = TRUE) &&
-        grepl("ynow_bblab_experimental_badge", ui_fn_src, fixed = TRUE) &&
+        grepl("ynow-bblab--report", ui_fn_src, fixed = TRUE) &&
         !grepl("ynow_notes_block", ui_fn_src, fixed = TRUE) &&
         grepl("ynow_notes_block", notes_fn_src, fixed = TRUE) &&
         !grepl("ynow_bblab_listed_only_notice", notes_fn_src, fixed = TRUE))
@@ -1539,12 +1535,12 @@ check("i18n listed-only copy en + zh-TW",
         identical(.UI_STRINGS$en$bblab_listed_only_scope,
                   paste0(
                     "This ticker does not look like a listed Taiwan or U.S. stock. ",
-                    "The Lab only supports listed stocks (Taiwan and U.S. exchanges)."
+                    "Business Breakdown only supports listed stocks (Taiwan and U.S. exchanges)."
                   )) &&
         identical(.UI_STRINGS$`zh-TW`$bblab_listed_only_scope,
                   paste0(
                     "此 Ticker 看起來不是上市個股（台股、美股）。",
-                    "業務拆解實驗室僅支援上市個股分析（台股、美股）。"
+                    "業務拆解僅支援上市個股分析（台股、美股）。"
                   )) &&
         !grepl("默认|参数|数据|用户|简", .UI_STRINGS$`zh-TW`$bblab_listed_only_notice) &&
         !grepl("默认|参数|数据|用户|简", .UI_STRINGS$`zh-TW`$bblab_listed_only_scope))
@@ -1563,17 +1559,21 @@ check("heuristic flags clearly non-listed TW/US names",
         isTRUE(bblab_clearly_not_listed_tw_us("BTC-USD")) &&
         isTRUE(bblab_clearly_not_listed_tw_us("7203.T")) &&
         isTRUE(bblab_clearly_not_listed_tw_us("TWD=X")))
-check("out-of-scope ticker does not req-stop Lab Search",
+check("out-of-scope ticker does not req-stop shared ticker load",
       grepl("listed_scope_on(", mod_src, fixed = TRUE) &&
         grepl("bblab_clearly_not_listed_tw_us", mod_src, fixed = TRUE) &&
         !grepl("req(!bblab_clearly_not_listed_tw_us", mod_src, fixed = TRUE) &&
         grepl("lab_ticker(tk)", mod_src, fixed = TRUE))
-check("Lab Search observeEvent never session$reload", {
-  start <- regexpr("observeEvent(input$search", mod_src, fixed = TRUE)[1]
+check("shared ticker observeEvent never session$reload", {
+  mark <- regexpr("Shared global Ticker", mod_src, fixed = TRUE)[1]
+  oe_rel <- if (mark < 1L) -1L else {
+    regexpr("observeEvent(", substr(mod_src, mark, nchar(mod_src)), fixed = TRUE)[1]
+  }
+  start <- if (mark < 1L || oe_rel < 1L) -1L else mark + oe_rel - 1L
   next_obs <- if (start < 1L) -1L else {
-    rest <- substr(mod_src, start + 20L, nchar(mod_src))
+    rest <- substr(mod_src, start + 13L, nchar(mod_src))
     m2 <- gregexpr("observeEvent(", rest, fixed = TRUE)[[1]][1]
-    if (is.na(m2) || m2 < 1L) nchar(mod_src) else start + 20L + as.integer(m2) - 2L
+    if (is.na(m2) || m2 < 1L) nchar(mod_src) else start + 13L + as.integer(m2) - 2L
   }
   chunk <- if (start < 1L) "" else substr(mod_src, start, next_obs)
   nzchar(chunk) &&
@@ -1583,15 +1583,17 @@ check("Lab Search observeEvent never session$reload", {
     !grepl("session$reload", mod_src, fixed = TRUE) &&
     grepl("tryCatch", chunk, fixed = TRUE) &&
     grepl("cached_fetch_sec_segment_notes", chunk, fixed = TRUE) &&
-    !grepl("cached_fetch_sec_report_notes", chunk, fixed = TRUE)
+    !grepl("cached_fetch_sec_report_notes", chunk, fixed = TRUE) &&
+    grepl("current_ticker_rv", chunk, fixed = TRUE)
 })
-check("Lab Search UI is a div not a native form",
-      grepl("ynow-bblab-search-controls", mod_src, fixed = TRUE) &&
+check("report UI has no native Search form",
+      !grepl("ynow-bblab-search-controls", mod_src, fixed = TRUE) &&
         !grepl("type = \"submit\"", mod_src, fixed = TRUE) &&
         !grepl("tags$form", mod_src, fixed = TRUE) &&
-        grepl("preventDefault", mod_src, fixed = TRUE))
-check("Lab keeps in-session Search; Testing sandbox still hides global chrome",
-      grepl("ynow-bblab-search-controls", mod_src, fixed = TRUE) &&
+        grepl("ynow-bblab-report__toolbar", mod_src, fixed = TRUE))
+check("report shares global ticker; Testing sandbox still hides global chrome",
+      grepl("current_ticker_rv", mod_src, fixed = TRUE) &&
+        grepl("ynow_bblab_shared_ticker_hint", mod_src, fixed = TRUE) &&
         grepl("input.sidebar_tabs != 'testing'", ui_src, fixed = TRUE) &&
         grepl("input.sidebar_tabs != 'about'", ui_src, fixed = TRUE) &&
         grepl("input.sidebar_tabs != 'macro_market'", ui_src, fixed = TRUE) &&

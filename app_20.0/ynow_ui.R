@@ -2632,7 +2632,7 @@ beta_rolling_section_ui <- function() {
                 id = "ynow_testing_page_sub",
                 paste0(
                   "Full-only sandbox for upcoming experiments and feature trials. ",
-                  "Business Breakdown Lab lives under Company - Advance. ",
+                  "Business Breakdown lives under Company - Advance. ",
                   "Quant Backtest Lab remains on the main sidebar. Lite mode hides this entry."
                 )
               ),
@@ -3850,22 +3850,110 @@ ui <- dashboardPage(
         body.ynow-lite .ynow-lite-badge {
           display: inline-block;
         }
-        .ynow-bblab-badge {
-          display: inline-block;
-          margin-left: 10px;
-          padding: 2px 8px;
+        .ynow-bblab--report {
+          max-width: 980px;
+          margin: 0 auto 36px;
+          padding: 8px 4px 24px;
+        }
+        .ynow-bblab-report__cover {
+          margin: 0 0 18px 0;
+          padding: 8px 0 18px 0;
+          border-bottom: 2px solid #0C5484;
+        }
+        .ynow-bblab-report__kicker {
+          margin: 0 0 6px 0;
+          font-size: 12px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: #0C5484;
+        }
+        .ynow-bblab-report__title {
+          margin: 0 0 10px 0;
+          font-size: 28px;
+          font-weight: 700;
+          line-height: 1.2;
+          color: #12263a;
+        }
+        .ynow-bblab-report__deck {
+          margin: 0 0 14px 0;
+          max-width: 46em;
+          font-size: 14px;
+          line-height: 1.55;
+          color: #4a5560;
+        }
+        .ynow-bblab-report__meta {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 16px 28px;
+          margin-top: 14px;
+        }
+        .ynow-bblab-report__meta-item { min-width: 140px; }
+        .ynow-bblab-report__meta-item--grow { flex: 1 1 220px; }
+        .ynow-bblab-report__meta-lab {
+          display: block;
           font-size: 11px;
           font-weight: 700;
-          letter-spacing: 0.04em;
+          letter-spacing: 0.06em;
           text-transform: uppercase;
-          color: #1b3a4b;
-          background: #c8e8ef;
-          border: 1px solid #1AA8B8;
-          border-radius: 3px;
-          vertical-align: middle;
+          color: #6a7680;
+          margin-bottom: 2px;
         }
-        .ynow-bblab__title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
-        .ynow-bblab__lead { color: #555; margin: 4px 0 12px 0; }
+        .ynow-bblab-report__meta-val {
+          font-size: 15px;
+          font-weight: 600;
+          color: #12263a;
+        }
+        .ynow-bblab-report__toolbar {
+          margin: 0 0 22px 0;
+          padding: 12px 14px 6px;
+          background: #f6f8fa;
+          border: 1px solid #d9dee3;
+          border-radius: 4px;
+        }
+        .ynow-bblab-report__toolbar-check { padding-top: 22px; }
+        .ynow-bblab-report__hint {
+          margin: 0 0 6px 0;
+          font-size: 12px;
+          color: #6a7680;
+        }
+        .ynow-bblab-report__section {
+          margin: 0 0 28px 0;
+          padding: 0 0 8px 0;
+        }
+        .ynow-bblab-report__section--muted {
+          padding: 12px 14px;
+          background: #fafbfc;
+          border: 1px solid #e4e8ec;
+          border-radius: 4px;
+        }
+        .ynow-bblab-report__section-head {
+          display: flex;
+          align-items: baseline;
+          gap: 10px;
+          margin: 0 0 8px 0;
+          padding-bottom: 6px;
+          border-bottom: 1px solid #d9dee3;
+        }
+        .ynow-bblab-report__section-num {
+          font-size: 13px;
+          font-weight: 700;
+          color: #0C5484;
+          min-width: 1.6em;
+        }
+        .ynow-bblab-report__section-title {
+          margin: 0;
+          font-size: 18px;
+          font-weight: 700;
+          color: #12263a;
+        }
+        .ynow-bblab-report__section-help {
+          margin: 0 0 12px 0;
+          font-size: 13px;
+          line-height: 1.5;
+          color: #5a6570;
+        }
+        .ynow-bblab-report__section-body { margin-top: 4px; }
         .ynow-bblab__listed-notice {
           margin: 0 0 14px 0;
           padding: 8px 12px;
@@ -4059,7 +4147,7 @@ ui <- dashboardPage(
         }
         /* Lite: under Data Source keep Snapshot + Feedback only;
            Quant Backtest Lab + Testing foot link stay Full-only.
-           Company - Advance (Business Breakdown Lab) is Full-only. */
+           Company - Advance (Business Breakdown) is Full-only. */
         body.ynow-lite .sidebar-menu a[data-value="lab_notes"],
         body.ynow-lite .sidebar-menu li:has(> a[data-value="lab_notes"]),
         body.ynow-lite .sidebar-menu a[data-value="company_advance"],
@@ -5533,12 +5621,11 @@ ui <- dashboardPage(
             var menuBt = document.getElementById('ynow_menu_backtest');
             if (menuBt && s.menu_backtest) menuBt.textContent = s.menu_backtest;
             setBtText('ynow_bblab_page_title', 'bblab_page_title');
-            setBtText('ynow_bblab_experimental_badge', 'bblab_experimental_badge');
+            setBtText('ynow_bblab_report_kicker', 'bblab_report_kicker');
             setBtText('ynow_bblab_page_sub', 'bblab_page_sub');
             setBtText('ynow_bblab_listed_only_notice', 'bblab_listed_only_notice');
             setBtText('ynow_bblab_listed_only_scope', 'bblab_listed_only_scope');
-            setBtText('ynow_bblab_search_title', 'bblab_search_title');
-            setBtText('ynow_bblab_ticker_label', 'bblab_ticker_label');
+            setBtText('ynow_bblab_shared_ticker_hint', 'bblab_shared_ticker_hint');
             setBtText('ynow_bblab_company_label', 'bblab_company_label');
             setBtText('ynow_bblab_period_label', 'bblab_period_label');
             setBtText('ynow_bblab_statement_ccy_label', 'bblab_statement_ccy_label');
@@ -5571,11 +5658,6 @@ ui <- dashboardPage(
             setBtText('ynow_bblab_fallback_gm_label', 'bblab_fallback_gm_label');
             setBtText('ynow_bblab_geo_veto_why', 'bblab_geo_veto_why');
             setBtText('ynow_bblab_overlap_why', 'bblab_overlap_why');
-            var bblabSearch = document.getElementById('bblab-search');
-            if (bblabSearch && s.bblab_search_btn) {
-              var bsi = bblabSearch.querySelector('i');
-              bblabSearch.innerHTML = (bsi ? bsi.outerHTML + ' ' : '') + s.bblab_search_btn;
-            }
             setBtText('ynow_macro_page_title', 'macro_page_title');
             setBtText('ynow_macro_page_sub', 'macro_page_sub');
             setBtText('ynow_macro_rf_title', 'macro_rf_title');
@@ -9255,7 +9337,7 @@ ui <- dashboardPage(
       )
     ),
     # Ticker search + Yahoo industry chrome: hide on Home, About, Macro, Blue Chip, Testing
-    # (Business Breakdown Lab on Company - Advance keeps its own in-session Search alongside global chrome;
+    # (Business Breakdown on Company - Advance shares global Ticker / Stock Code chrome;
     # Blue Chip uses its own universe Search, not the global ticker chrome).
     conditionalPanel(
       condition = "input.sidebar_tabs != 'about' && input.sidebar_tabs != 'macro_market' && input.sidebar_tabs != 'bluechip' && input.sidebar_tabs != 'testing' && input.sidebar_tabs != 'home'",
@@ -10123,7 +10205,7 @@ ui <- dashboardPage(
       ),
 
       # ==========================================
-      # Company - Advance：Business Breakdown Lab（Full-only）
+      # Company - Advance：Business Breakdown（Full-only）
       # ==========================================
       tabItem(
         tabName = "company_advance",

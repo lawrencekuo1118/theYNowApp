@@ -589,7 +589,7 @@ server <- function(input, output, session) {
     }
   )
 
-  # Business Breakdown Lab — Company - Advance sidebar tab (not lazy Testing)
+  # Business Breakdown — Company - Advance sidebar tab (shares global ticker)
   business_breakdown_lab_server(
     "bblab",
     market_mode_rv = market_mode,

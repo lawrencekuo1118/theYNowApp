@@ -263,7 +263,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     menu_hfv = "Hist. FV Validation",
     menu_decision_checklist = "Decision Checklist",
     menu_about = "About",
-    menu_business_breakdown_lab = "Business Breakdown Lab",
+    menu_business_breakdown_lab = "Business Breakdown",
     ticker_label = "Ticker / Stock Code",
     industry_info_yahoo = "industry info from Yahoo",
     data_source_title = "Data Source:",
@@ -373,7 +373,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     testing_page_title = "Testing",
     testing_page_sub = paste0(
       "Full-only sandbox for upcoming experiments and feature trials. ",
-      "Business Breakdown Lab lives under Company - Advance. ",
+      "Business Breakdown lives under Company - Advance. ",
       "Quant Backtest Lab remains on the main sidebar. Lite mode hides this entry."
     ),
     testing_box_title = "Sandbox",
@@ -1816,32 +1816,36 @@ locale_for_market <- function(mode = get_market_mode()) {
     macro_bubble_buffett_chart = "Buffett Indicator history",
     macro_bubble_buffett_axis = "% of GDP",
     btn_macro_refresh = "Refresh",
-    bblab_page_title = "Business Breakdown Lab",
-    bblab_experimental_badge = "Experimental Feature",
+    bblab_page_title = "Business Breakdown",
+    bblab_report_kicker = "Company - Advance",
+    bblab_experimental_badge = "Report",
     bblab_page_sub = paste0(
-      "Walk through the company's financial structure from the statement viewpoint: ",
-      "consolidated totals, reportable businesses vs accounting/consolidation adjustments, ",
-      "revenue and profit structure, revenue mix (current period and five-year share evolution), ",
-      "and per-business cards. Experimental; not a valuation engine."
+      "Investment-report view of the filer's business and profitability structure: ",
+      "reportable segments, revenue and operating-income mix, and accounting / ",
+      "consolidation adjustments kept separate. Uses the global Ticker / Stock Code field. ",
+      "Not a valuation engine."
     ),
     bblab_listed_only_notice = "Listed stocks only (Taiwan and U.S. exchanges).",
     bblab_listed_only_scope = paste0(
       "This ticker does not look like a listed Taiwan or U.S. stock. ",
-      "The Lab only supports listed stocks (Taiwan and U.S. exchanges)."
+      "Business Breakdown only supports listed stocks (Taiwan and U.S. exchanges)."
     ),
-    bblab_search_title = "Search",
-    bblab_ticker_label = "Ticker",
+    bblab_search_title = "Report controls",
+    bblab_ticker_label = "Ticker / Stock Code",
     bblab_search_btn = "Search",
+    bblab_shared_ticker_hint = paste0(
+      "Uses the header Ticker / Stock Code. Search there to load or refresh this report."
+    ),
     bblab_company_label = "Company",
     bblab_period_label = "Period",
     bblab_statement_ccy_label = "Statement currency",
     bblab_source_status_label = "Source status",
-    bblab_source_idle = "Search a ticker to load the latest annual / quarter statements and any segment notes.",
+    bblab_source_idle = "Enter a ticker in the header Ticker / Stock Code field and Search to load statements and segment notes.",
     bblab_source_running = "Retrieving issuer, statements, and disclosures…",
     bblab_source_ok = "Statements and business-dimension disclosures loaded.",
     bblab_source_no_segment = paste0(
       "Consolidated statements loaded. No operating-segment / product / revenue-disaggregation notes were attached; ",
-      "the lab will not fabricate a second business."
+      "this report will not fabricate a second business."
     ),
     bblab_source_unavailable = "Statements could not be retrieved. Source-currency analysis is blocked until filings load.",
     bblab_ch1_title = "Consolidated statement snapshot",
@@ -1959,11 +1963,11 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Cost of Revenue uses revenue-share allocation as a final fallback (ALLOCATED_LOW_CONFIDENCE). ",
       "This is not a reported business cost."
     ),
-    bblab_waiting = "Search a ticker to run the experimental business breakdown.",
+    bblab_waiting = "Use the header Ticker / Stock Code field to load this report.",
     bblab_pass = "Pass",
     bblab_fail = "Fail",
     bblab_available = "Available",
-    bblab_progress_running = "Business Breakdown Lab",
+    bblab_progress_running = "Business Breakdown",
     bblab_stage_resolve = "Resolving issuer / entity",
     bblab_stage_retrieve = "Retrieving statements",
     bblab_stage_parse = "Parsing segment and disaggregation notes",
@@ -2301,7 +2305,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     menu_hfv = "歷史基本面驗證",
     menu_decision_checklist = "決策檢核",
     menu_about = "關於",
-    menu_business_breakdown_lab = "業務拆解實驗室",
+    menu_business_breakdown_lab = "業務拆解",
     ticker_label = "Ticker／股票代號",
     industry_info_yahoo = "Yahoo 產業資訊",
     data_source_title = "資料來源：",
@@ -2404,7 +2408,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     testing_page_title = "Testing",
     testing_page_sub = paste0(
       "完整版專用實驗區，供後續功能試用與驗證。",
-      "業務拆解實驗室置於「個股 - 進階」（Company - Advance）。",
+      "業務拆解置於「個股 - 進階」（Company - Advance）。",
       "量化回測實驗室仍在主選單；簡化版不顯示此入口。"
     ),
     testing_box_title = "實驗沙盒",
@@ -3805,30 +3809,32 @@ locale_for_market <- function(mode = get_market_mode()) {
     macro_bubble_buffett_chart = "巴菲特指標歷史",
     macro_bubble_buffett_axis = "佔 GDP %%",
     btn_macro_refresh = "重新整理",
-    bblab_page_title = "業務拆解實驗室",
-    bblab_experimental_badge = "實驗功能",
+    bblab_page_title = "業務拆解",
+    bblab_report_kicker = "個股 - 進階",
+    bblab_experimental_badge = "報告",
     bblab_page_sub = paste0(
-      "以財報觀點逐步拆解公司財務結構：合併總覽、主要業務與會計／合併調整分離、",
-      "營收與獲利結構、營收組成（當期與五年占比演進），以及各事業簡化財報。實驗功能，並非估值引擎。"
+      "以投資報告樣式呈現公司業務與獲利結構：Reportable Segment、營收與營業利益組成，",
+      "並將會計／合併調整分開列示。共用頁首「Ticker / Stock Code」輸入欄。並非估值引擎。"
     ),
     bblab_listed_only_notice = "僅支援上市個股分析（台股、美股）。",
     bblab_listed_only_scope = paste0(
       "此 Ticker 看起來不是上市個股（台股、美股）。",
-      "業務拆解實驗室僅支援上市個股分析（台股、美股）。"
+      "業務拆解僅支援上市個股分析（台股、美股）。"
     ),
-    bblab_search_title = "搜尋",
-    bblab_ticker_label = "Ticker",
+    bblab_search_title = "報告控制項",
+    bblab_ticker_label = "Ticker / Stock Code",
     bblab_search_btn = "搜尋",
+    bblab_shared_ticker_hint = "沿用頁首「Ticker / Stock Code」；於頁首搜尋即可載入或更新本報告。",
     bblab_company_label = "公司",
     bblab_period_label = "期間",
     bblab_statement_ccy_label = "財報幣別",
     bblab_source_status_label = "來源狀態",
-    bblab_source_idle = "請搜尋 Ticker，以載入最近一期年報／季報與任何部門附註。",
+    bblab_source_idle = "請於頁首「Ticker / Stock Code」輸入並搜尋，以載入財報與部門附註。",
     bblab_source_running = "正在解析發行人、財報與揭露…",
     bblab_source_ok = "已載入財報與事業維度揭露。",
     bblab_source_no_segment = paste0(
       "已載入合併財報。未附上營運部門／產品／收入拆解附註；",
-      "本實驗室不會虛構第二個事業。"
+      "本報告不會虛構第二個事業。"
     ),
     bblab_source_unavailable = "無法取得財報。在申報資料載入前，來源幣別分析會被阻擋。",
     bblab_ch1_title = "合併財報總覽",
@@ -3940,11 +3946,11 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Cost of Revenue 以營收占比作為最終後援分攤（ALLOCATED_LOW_CONFIDENCE）。",
       "這不是申報的事業成本。"
     ),
-    bblab_waiting = "請搜尋 Ticker 以執行實驗性業務拆解。",
+    bblab_waiting = "請使用頁首「Ticker / Stock Code」載入本報告。",
     bblab_pass = "通過",
     bblab_fail = "未通過",
     bblab_available = "可用",
-    bblab_progress_running = "業務拆解實驗室",
+    bblab_progress_running = "業務拆解",
     bblab_stage_resolve = "解析發行人／法律實體",
     bblab_stage_retrieve = "擷取財報",
     bblab_stage_parse = "解析部門與收入拆解附註",

@@ -1,5 +1,5 @@
-# Business Breakdown Lab — standalone experimental Shiny module.
-# Not wired into valuation, CV, company overview, or production FS pages.
+# Business Breakdown — Company - Advance report module.
+# Shares the global Ticker / Stock Code field; not a valuation engine.
 
 if (!exists("%||%", mode = "function")) {
   `%||%` <- function(a, b) if (is.null(a)) b else a
@@ -213,190 +213,154 @@ bblab_clearly_not_listed_tw_us <- function(ticker) {
   FALSE
 }
 
+.bblab_report_section <- function(num, title_id, title_default, help_id = NULL,
+                                  help_default = NULL, chapter = NULL, ...) {
+  tags$section(
+    class = "ynow-bblab-report__section",
+    `data-bblab-chapter` = chapter %||% num,
+    tags$header(
+      class = "ynow-bblab-report__section-head",
+      tags$span(class = "ynow-bblab-report__section-num", num),
+      tags$h3(id = title_id, class = "ynow-bblab-report__section-title", title_default)
+    ),
+    if (!is.null(help_id)) {
+      tags$p(id = help_id, class = "ynow-bblab-report__section-help", help_default %||% "")
+    } else NULL,
+    tags$div(class = "ynow-bblab-report__section-body", ...)
+  )
+}
+
 business_breakdown_lab_ui <- function(id = "bblab") {
   ns <- NS(id)
   tags$div(
-    class = "ynow-bblab ynow-full-only",
-    tags$div(
-      class = "ynow-bblab__masthead",
-      tags$div(
-        class = "ynow-bblab__title-row",
-        h2(tags$b(id = "ynow_bblab_page_title", "Business Breakdown Lab")),
-        tags$span(
-          id = "ynow_bblab_experimental_badge",
-          class = "ynow-bblab-badge",
-          "Experimental Feature"
-        )
-      ),
-      tags$p(
-        id = "ynow_bblab_page_sub",
-        class = "ynow-bblab__lead",
-        paste0(
-          "Walk through the company's financial structure from the statement viewpoint: ",
-          "consolidated totals, how the filer splits the business, current mix, ",
-          "five-year share evolution, and per-business cards. Experimental; not a valuation engine."
-        )
-      ),
-      tags$p(
-        id = "ynow_bblab_listed_only_notice",
-        class = "ynow-bblab__listed-notice",
-        role = "note",
-        "Listed stocks only (Taiwan and U.S. exchanges)."
-      )
-    ),
-
-    # 1 Search — div (not <form>); actionButton type=button so click/Enter never native-submits.
-    fluidRow(
-      box(
-        title = tagList(icon("search"), tags$span(id = "ynow_bblab_search_title", "Search")),
-        width = 12, status = "primary", solidHeader = TRUE,
-        tags$div(
-          class = "ynow-bblab-search-controls",
-          fluidRow(
-          column(
-            width = 3,
-            textInput(ns("ticker"), label = tags$span(id = "ynow_bblab_ticker_label", "Ticker"),
-                      placeholder = "AAPL / 2330")
-          ),
-          column(
-            width = 2, style = "padding-top: 25px;",
-            actionButton(ns("search"), "Search", icon = icon("search"),
-                         class = "btn-primary ynow-bblab-search-btn", width = "100%")
-          ),
-          column(
-            width = 3,
-            tags$div(class = "ynow-bblab-meta",
-                     tags$div(id = "ynow_bblab_company_label", class = "ynow-bblab-meta__lab", "Company"),
-                     uiOutput(ns("company_name")))
-          ),
-          column(
-            width = 2,
-            selectInput(ns("frequency"), label = tags$span(id = "ynow_bblab_period_label", "Period"),
-                        choices = c("Annual" = "annual", "Quarter" = "quarter"),
-                        selected = "annual")
-          ),
-          column(
-            width = 2,
-            uiOutput(ns("statement_ccy"))
-          )
-        )
-        ),
-        tags$script(HTML(sprintf(
-          paste0(
-            "(function(){",
-            "if(window.__ynowBblabSearchGuard) return; window.__ynowBblabSearchGuard=1;",
-            "var tickerId=%s, btnId=%s;",
-            "document.addEventListener('keydown',function(ev){",
-            "var t=ev.target; if(!t||t.id!==tickerId) return;",
-            "if(ev.key!=='Enter'&&ev.keyCode!==13) return;",
-            "ev.preventDefault(); ev.stopPropagation();",
-            "var btn=document.getElementById(btnId);",
-            "if(btn&&typeof btn.click==='function') btn.click();",
-            "},true);",
-            "document.addEventListener('submit',function(ev){",
-            "var root=document.querySelector('.ynow-bblab');",
-            "if(!root||!ev.target) return;",
-            "if(root===ev.target||root.contains(ev.target)){",
-            "ev.preventDefault(); ev.stopPropagation();",
-            "}",
-            "},true);",
-            "})();"
-          ),
-          paste0('"', ns("ticker"), '"'),
-          paste0('"', ns("search"), '"')
-        ))),
-        uiOutput(ns("source_status")),
-        uiOutput(ns("listed_scope")),
-        tags$div(
-          style = "margin-top:8px;",
-          checkboxInput(
-            ns("use_gm_fallback"),
-            label = tags$span(
-              id = "ynow_bblab_fallback_gm_label",
-              "Use consolidated Gross Margin as low-confidence fallback"
-            ),
-            value = FALSE
-          )
-        )
-      )
-    ),
-
-    uiOutput(ns("toasts_slot")),
-
-    # 1 Consolidated statement snapshot
-    fluidRow(
-      box(
-        title = tagList(
-          tags$span(class = "ynow-bblab-chapter__num", "1"),
-            icon("building"),
-          tags$span(id = "ynow_bblab_ch1_title", "Consolidated statement snapshot")
-        ),
-        width = 12, status = "info", solidHeader = TRUE,
-        `data-bblab-chapter` = "1",
-        tags$p(id = "ynow_bblab_ch1_help", class = "help-block",
-               paste0(
-                 "Reported consolidated Income Statement totals in statement currency. ",
-                 "Gross Profit = Revenue − Cost of Revenue. This is the whole firm, before any business split."
-               )),
-        uiOutput(ns("snapshot"))
-      )
-    ),
-
-    # 2 How the statements split the business
-    fluidRow(
-      box(
-        title = tagList(
-          tags$span(class = "ynow-bblab-chapter__num", "2"),
-          icon("sitemap"),
-          tags$span(id = "ynow_bblab_ch2_title", "How the statements split the business")
-        ),
-        width = 12, status = "info", solidHeader = TRUE,
-        `data-bblab-chapter` = "2",
-        tags$p(id = "ynow_bblab_ch2_help", class = "help-block",
-               paste0(
-                 "One primary reporting dimension is selected. Geography that only describes ",
-                 "customer location is never the business split. Overlapping dimensions are never added together."
-               )),
-        uiOutput(ns("summary"))
-      )
-    ),
-
-    # 2b Business & profitability structure (core economic read)
-    fluidRow(
-      box(
-        title = tagList(
-          tags$span(class = "ynow-bblab-chapter__num", "2b"),
-          icon("layer-group"),
-          tags$span(id = "ynow_bblab_struct_title", "Business & profitability structure")
-        ),
-        width = 12, status = "primary", solidHeader = TRUE,
-        `data-bblab-chapter` = "2b",
+    class = "ynow-bblab ynow-bblab--report ynow-full-only",
+    tags$article(
+      class = "ynow-bblab-report",
+      tags$header(
+        class = "ynow-bblab-report__cover",
         tags$p(
-          id = "ynow_bblab_struct_help",
-          class = "help-block",
+          id = "ynow_bblab_report_kicker",
+          class = "ynow-bblab-report__kicker",
+          "Company - Advance"
+        ),
+        tags$h1(
+          id = "ynow_bblab_page_title",
+          class = "ynow-bblab-report__title",
+          "Business Breakdown"
+        ),
+        tags$p(
+          id = "ynow_bblab_page_sub",
+          class = "ynow-bblab-report__deck",
           paste0(
-            "Main businesses come from the filer's reportable segments. ",
-            "Corporate, eliminations, reconciliation, non-operating, and accounting ",
-            "adjustments are kept separate and are never treated as operating businesses. ",
-            "Segment Operating Income is shown only when disclosed — never estimated."
+            "Investment-report view of the filer's business and profitability structure: ",
+            "reportable segments, revenue and operating-income mix, and accounting / ",
+            "consolidation adjustments kept separate. Uses the global Ticker / Stock Code field. ",
+            "Not a valuation engine."
           )
         ),
-        uiOutput(ns("structure_panel"))
-      )
-    ),
-
-    # 3 Revenue mix (current donut + five-year evolution)
-    fluidRow(
-      box(
-        title = tagList(
-          tags$span(class = "ynow-bblab-chapter__num", "3"),
-          icon("chart-pie"),
-          tags$span(id = "ynow_bblab_ch3_title", "Revenue mix")
+        tags$p(
+          id = "ynow_bblab_listed_only_notice",
+          class = "ynow-bblab__listed-notice",
+          role = "note",
+          "Listed stocks only (Taiwan and U.S. exchanges)."
         ),
-        width = 12, status = "info", solidHeader = TRUE, collapsible = TRUE,
-        `data-bblab-chapter` = "3",
-        tags$p(id = "ynow_bblab_ch3_help", class = "help-block",
-               "Current-period slices are shares of reported consolidated revenue."),
+        tags$div(
+          class = "ynow-bblab-report__meta",
+          tags$div(
+            class = "ynow-bblab-report__meta-item",
+            tags$span(id = "ynow_bblab_company_label", class = "ynow-bblab-report__meta-lab", "Company"),
+            uiOutput(ns("company_name"))
+          ),
+          tags$div(
+            class = "ynow-bblab-report__meta-item",
+            uiOutput(ns("statement_ccy"))
+          ),
+          tags$div(
+            class = "ynow-bblab-report__meta-item ynow-bblab-report__meta-item--grow",
+            uiOutput(ns("source_status"))
+          )
+        ),
+        uiOutput(ns("listed_scope"))
+      ),
+
+      tags$div(
+        class = "ynow-bblab-report__toolbar",
+        fluidRow(
+          column(
+            width = 3,
+            selectInput(
+              ns("frequency"),
+              label = tags$span(id = "ynow_bblab_period_label", "Period"),
+              choices = c("Annual" = "annual", "Quarter" = "quarter"),
+              selected = "annual"
+            )
+          ),
+          column(
+            width = 9,
+            tags$div(
+              class = "ynow-bblab-report__toolbar-check",
+              checkboxInput(
+                ns("use_gm_fallback"),
+                label = tags$span(
+                  id = "ynow_bblab_fallback_gm_label",
+                  "Use consolidated Gross Margin as low-confidence fallback"
+                ),
+                value = FALSE
+              )
+            )
+          )
+        ),
+        tags$p(
+          id = "ynow_bblab_shared_ticker_hint",
+          class = "ynow-bblab-report__hint",
+          paste0(
+            "Uses the header Ticker / Stock Code. Search there to load or refresh this report."
+          )
+        )
+      ),
+
+      uiOutput(ns("toasts_slot")),
+
+      .bblab_report_section(
+        "I", "ynow_bblab_ch1_title", "Consolidated statement snapshot",
+        "ynow_bblab_ch1_help",
+        paste0(
+          "Reported consolidated Income Statement totals in statement currency. ",
+          "Gross Profit = Revenue − Cost of Revenue. This is the whole firm, before any business split."
+        ),
+        chapter = "1",
+        uiOutput(ns("snapshot"))
+      ),
+
+      .bblab_report_section(
+        "II", "ynow_bblab_ch2_title", "How the statements split the business",
+        "ynow_bblab_ch2_help",
+        paste0(
+          "One primary reporting dimension is selected. Geography that only describes ",
+          "customer location is never the business split. Overlapping dimensions are never added together."
+        ),
+        chapter = "2",
+        uiOutput(ns("summary"))
+      ),
+
+      .bblab_report_section(
+        "III", "ynow_bblab_struct_title", "Business & profitability structure",
+        "ynow_bblab_struct_help",
+        paste0(
+          "Main businesses come from the filer's reportable segments. ",
+          "Corporate, eliminations, reconciliation, non-operating, and accounting ",
+          "adjustments are kept separate and are never treated as operating businesses. ",
+          "Segment Operating Income is shown only when disclosed — never estimated."
+        ),
+        chapter = "2b",
+        uiOutput(ns("structure_panel"))
+      ),
+
+      .bblab_report_section(
+        "IV", "ynow_bblab_ch3_title", "Revenue mix",
+        "ynow_bblab_ch3_help",
+        "Current-period slices are shares of reported consolidated revenue.",
+        chapter = "3",
         tags$h4(
           class = "ynow-bblab-subhead",
           id = "ynow_bblab_ch3_current_label",
@@ -421,63 +385,43 @@ business_breakdown_lab_ui <- function(id = "bblab") {
         uiOutput(ns("chart_status")),
         plotly::plotlyOutput(ns("donut"), height = "420px"),
         uiOutput(ns("history_panel"))
-      )
-    ),
+      ),
 
-    # 4 Business cards
-    fluidRow(
-      box(
-        title = tagList(
-          tags$span(class = "ynow-bblab-chapter__num", "4"),
-          icon("th-large"),
-          tags$span(id = "ynow_bblab_ch5_title", "Business cards")
-        ),
-        width = 12, status = "primary", solidHeader = TRUE,
-        `data-bblab-chapter` = "4",
+      .bblab_report_section(
+        "V", "ynow_bblab_ch5_title", "Business cards",
+        chapter = "4",
         uiOutput(ns("cards"))
-      )
-    ),
+      ),
 
-    # 5 Reconciliation
-    fluidRow(
-      box(
-        title = tagList(
-          tags$span(class = "ynow-bblab-chapter__num", "5"),
-          icon("balance-scale"),
-          tags$span(id = "ynow_bblab_ch6_title", "Reconciliation")
-        ),
-        width = 12, status = "warning", solidHeader = TRUE,
-        `data-bblab-chapter` = "5",
+      .bblab_report_section(
+        "VI", "ynow_bblab_ch6_title", "Reconciliation",
+        chapter = "5",
         uiOutput(ns("recon"))
-      )
-    ),
+      ),
 
-    # Shared / corporate (collapsed; not a numbered chapter)
-    fluidRow(
-      box(
-        title = tagList(icon("sitemap"), tags$span(id = "ynow_bblab_shared_title", "Shared and Corporate Items")),
-        width = 12, status = "info", solidHeader = TRUE, collapsible = TRUE, collapsed = TRUE,
-        uiOutput(ns("shared"))
-      )
-    ),
-
-    # 6 Sources — Notes collapsed; chapter header stays visible
-    fluidRow(
-      box(
-        title = tagList(
-          tags$span(class = "ynow-bblab-chapter__num", "6"),
-          icon("book"),
-          tags$span(id = "ynow_bblab_ch7_title", "Sources")
+      tags$section(
+        class = "ynow-bblab-report__section ynow-bblab-report__section--muted",
+        tags$header(
+          class = "ynow-bblab-report__section-head",
+          tags$h3(
+            id = "ynow_bblab_shared_title",
+            class = "ynow-bblab-report__section-title",
+            "Shared and Corporate Items"
+          )
         ),
-        width = 12, status = "info", solidHeader = TRUE,
-        `data-bblab-chapter` = "6",
+        tags$div(class = "ynow-bblab-report__section-body", uiOutput(ns("shared")))
+      ),
+
+      .bblab_report_section(
+        "VII", "ynow_bblab_ch7_title", "Sources",
+        chapter = "6",
         tags$p(
           id = "ynow_bblab_sources_chrome",
-          class = "help-block",
+          class = "ynow-bblab-report__section-help",
           paste0(
             "Disclosure priority: operating segments → segment notes → product/service revenue → ",
             "revenue disaggregation → MD&A → earnings → IR decks → official descriptions. ",
-            "Filed / audited sources are preferred. This page is experimental and does not write into valuation."
+            "Filed / audited sources are preferred. This page does not write into valuation."
           )
         ),
         uiOutput(ns("notes"))
@@ -560,27 +504,32 @@ business_breakdown_lab_server <- function(id = "bblab",
       msg
     }
 
-    observe({
-      if (is.reactive(current_ticker_rv)) {
-        tk <- tryCatch(current_ticker_rv(), error = function(e) NULL)
-        if (!is.null(tk) && nzchar(as.character(tk)[1]) &&
-            (is.null(isolate(input$ticker)) || !nzchar(isolate(input$ticker)))) {
-          tryCatch(updateTextInput(session, "ticker", value = as.character(tk)[1]), error = function(e) NULL)
-        }
+    # Shared global Ticker / Stock Code (current_ticker_rv) — no in-page Search.
+    observeEvent(
+      list(
+        if (is.reactive(current_ticker_rv)) current_ticker_rv() else NULL,
+        input$frequency
+      ),
+      {
+      raw <- if (is.reactive(current_ticker_rv)) {
+        trimws(as.character(tryCatch(current_ticker_rv(), error = function(e) "")[1]))
+      } else ""
+      if (!nzchar(raw)) {
+        lab_ticker(NULL)
+        lab_entity("")
+        lab_payload(NULL)
+        lab_result(NULL)
+        lab_codes(character(0))
+        source_status("idle")
+        listed_scope_on(FALSE)
+        return(invisible(NULL))
       }
-    })
-
-    # In-session only: Search updates reactives; do not remount the page.
-    observeEvent(input$search, {
-      raw <- trimws(as.character(input$ticker %||% "")[1])
-      req(nzchar(raw))
       mode <- if (is.reactive(market_mode_rv)) {
         tryCatch(market_mode_rv(), error = function(e) "US")
       } else "US"
       tk <- if (exists("normalize_ticker_for_market", mode = "function")) {
         normalize_ticker_for_market(raw, mode)
       } else raw
-      # Scoped notice only; never req-stop Search for valid TW/US listings.
       listed_scope_on(
         isTRUE(bblab_clearly_not_listed_tw_us(raw)) ||
           isTRUE(bblab_clearly_not_listed_tw_us(tk))
@@ -742,7 +691,7 @@ business_breakdown_lab_server <- function(id = "bblab",
           )
         }
       })
-    })
+    }, ignoreNULL = FALSE)
 
     observeEvent(list(input$use_gm_fallback, input$view_mode), {
       payload <- lab_payload()
@@ -763,15 +712,22 @@ business_breakdown_lab_server <- function(id = "bblab",
 
     output$company_name <- renderUI({
       nm <- lab_entity()
-      tags$div(class = "ynow-bblab-meta__val", if (nzchar(nm)) nm else "—")
+      tk <- lab_ticker()
+      label <- if (nzchar(nm)) nm else "—"
+      if (nzchar(.bblab_chr(tk)) && !identical(label, tk)) {
+        label <- paste0(label, "  ·  ", tk)
+      } else if (nzchar(.bblab_chr(tk)) && identical(label, "—")) {
+        label <- tk
+      }
+      tags$div(class = "ynow-bblab-report__meta-val", label)
     })
     output$statement_ccy <- renderUI({
       payload <- lab_payload()
       ccy <- payload$statement_currency %||% "—"
       tagList(
-        tags$label(id = "ynow_bblab_statement_ccy_label", class = "control-label",
-                   ui_msg("bblab_statement_ccy_label")),
-        tags$div(class = "ynow-bblab-meta__val", ccy)
+        tags$span(id = "ynow_bblab_statement_ccy_label", class = "ynow-bblab-report__meta-lab",
+                  ui_msg("bblab_statement_ccy_label")),
+        tags$div(class = "ynow-bblab-report__meta-val", ccy)
       )
     })
     output$source_status <- renderUI({
@@ -783,7 +739,11 @@ business_breakdown_lab_server <- function(id = "bblab",
                     statements_no_segment = "bblab_source_no_segment",
                     statements_unavailable = "bblab_source_unavailable",
                     "bblab_source_idle")
-      tags$p(class = "help-block", id = "ynow_bblab_source_status", ui_msg(key))
+      tags$div(
+        class = "ynow-bblab-report__meta-item",
+        tags$span(class = "ynow-bblab-report__meta-lab", ui_msg("bblab_source_status_label")),
+        tags$div(class = "ynow-bblab-report__meta-val", id = "ynow_bblab_source_status", ui_msg(key))
+      )
     })
     output$listed_scope <- renderUI({
       if (!isTRUE(listed_scope_on())) return(NULL)
