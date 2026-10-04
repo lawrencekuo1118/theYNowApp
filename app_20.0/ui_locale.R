@@ -625,6 +625,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Structural sum-of-the-parts; often the NAV cross-check for holdings / conglomerates ",
       "(needs multi-segment revenue)."
     ),
+    ms_card_jump_title = "Open {model} model page",
     hfv_replay_model_label = "Replay model",
     hfv_session_params_title = "Session parameters (now)",
     hfv_data_sources_label = "Fundamentals sources (this run)",
@@ -2660,6 +2661,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "結構型分部加總；控股／綜合常作 NAV 之交叉檢核",
       "（需多部門營收）。"
     ),
+    ms_card_jump_title = "開啟 {model} 模型分頁",
     hfv_replay_model_label = "復盤模型",
     hfv_session_params_title = "此刻參數（Session）",
     hfv_data_sources_label = "本次基本面資料來源",

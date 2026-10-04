@@ -6564,6 +6564,31 @@ ui <- dashboardPage(
                 try { a.click(); } catch (e) {}
               }
             }
+            window.ynowGotoTab = gotoTab;
+            function bindModelSelectorJump() {
+              if (document.documentElement.getAttribute('data-ynow-ms-jump') === '1') return;
+              document.documentElement.setAttribute('data-ynow-ms-jump', '1');
+              document.addEventListener('click', function (ev) {
+                var card = ev.target && ev.target.closest
+                  ? ev.target.closest('.ynow-model-card[data-tab]')
+                  : null;
+                if (!card) return;
+                ev.preventDefault();
+                var tab = card.getAttribute('data-tab');
+                if (tab) gotoTab(tab);
+              });
+              document.addEventListener('keydown', function (ev) {
+                var card = ev.target && ev.target.closest
+                  ? ev.target.closest('.ynow-model-card[data-tab]')
+                  : null;
+                if (!card) return;
+                if (ev.key !== 'Enter' && ev.key !== ' ') return;
+                ev.preventDefault();
+                var tab = card.getAttribute('data-tab');
+                if (tab) gotoTab(tab);
+              });
+            }
+            bindModelSelectorJump();
             function bindHeaderLogoHome() {
               if (document.documentElement.getAttribute('data-ynow-header-logo-home') === '1') return;
               document.documentElement.setAttribute('data-ynow-header-logo-home', '1');

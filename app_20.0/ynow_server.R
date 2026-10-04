@@ -1920,6 +1920,19 @@ server <- function(input, output, session) {
     prim <- as.character(rec$primary %||% "")
     sec <- as.character(rec$secondary %||% "")
     mark_roles <- nzchar(prim)
+    .ms_key_to_tab <- function(key) {
+      switch(
+        as.character(key %||% "")[1],
+        nav = "nav_calculator",
+        dcf = "dcf_calculator",
+        ddm = "ddm_calculator",
+        ri = "ri_calculator",
+        pb = "pb_calculator",
+        multiples = "rel_multiples_calculator",
+        sotp = "sotp_calculator",
+        NULL
+      )
+    }
     make_card <- function(title, key, icon_name, color, formula, notes) {
       # Only label 主模型／副模型; no「備選」chip on remaining cards
       role <- if (!mark_roles) {
@@ -1935,14 +1948,26 @@ server <- function(input, output, session) {
       border_col <- if (identical(role, "主模型")) color else if (identical(role, "副模型")) "#888" else "#ddd"
       bg <- if (identical(role, "主模型")) "#fffaf2" else if (identical(role, "副模型")) "#f7f9fc" else "#fff"
       badge_bg <- if (identical(role, "主模型")) color else if (identical(role, "副模型")) "#6c757d" else NULL
+      tab <- .ms_key_to_tab(key)
+      jump_title <- tryCatch({
+        tpl <- .ui_msg("ms_card_jump_title")
+        gsub("{model}", as.character(title)[1], tpl, fixed = TRUE)
+      }, error = function(e) paste0("Open ", title))
       tags$div(
         class = paste("ynow-model-card-col", if (isTRUE(active)) "ynow-model-rec-active" else ""),
         tags$div(
           class = "ynow-model-card",
+          role = "button",
+          tabindex = "0",
+          `data-tab` = tab,
+          `data-model-key` = key,
+          title = jump_title,
+          `aria-label` = jump_title,
           style = paste0(
             "border:1px solid ", border_col, ";",
             "border-radius:8px; padding:14px; min-height:170px; background:", bg,
-            "; box-shadow:0 2px 4px rgba(0,0,0,0.04); height:100%;"
+            "; box-shadow:0 2px 4px rgba(0,0,0,0.04); height:100%;",
+            "cursor:pointer;"
           ),
           tags$div(style = paste0("font-size:22px; color:", color, ";"), icon(icon_name)),
           tags$h4(style = "margin:8px 0 4px 0; font-weight:700;", title),
@@ -2010,7 +2035,7 @@ server <- function(input, output, session) {
           margin-bottom: 14px; padding: 10px 12px; border-left: 4px solid #222222;
           background: #f5f5f5; color: #333; font-size: 13px; line-height: 1.5;
         }
-        /* 七卡：桌面可換行，小螢幕兩欄／單欄 */
+        /* 七卡：桌面可換行，小螢幕兩欄／單欄；點擊跳模型分頁 */
         .ynow-model-selector-row {
           display: flex;
           flex-wrap: wrap;
@@ -2027,6 +2052,15 @@ server <- function(input, output, session) {
           padding-right: 7.5px;
           box-sizing: border-box;
           margin-bottom: 10px;
+        }
+        .ynow-model-card[data-tab] {
+          transition: box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+        }
+        .ynow-model-card[data-tab]:hover,
+        .ynow-model-card[data-tab]:focus-visible {
+          box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+          transform: translateY(-1px);
+          outline: none;
         }
         @media (max-width: 991px) {
           .ynow-model-selector-row > .ynow-model-card-col {
