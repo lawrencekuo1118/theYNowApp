@@ -120,6 +120,8 @@ for (k in c(
   "macro_industry_label", "macro_concept_label", "macro_none_option",
   "macro_plot_need_pick", "macro_series_industry", "macro_series_concept",
   "macro_series_rebased", "macro_bubble_theme_label",
+  "macro_bubble_shared_need_pick", "macro_bubble_shared_using_industry",
+  "macro_bubble_shared_using_concept", "macro_bubble_shared_using_industry_both",
   "macro_index_name_gspc", "macro_index_name_ixic", "macro_index_name_dji",
   "macro_index_name_sox", "macro_index_name_twii", "macro_index_name_twoii",
   "macro_index_name_0050",
@@ -315,10 +317,16 @@ check("industry vs benchmark first paint", grepl("Industry vs benchmark", txt, f
 check("concept vs benchmark first paint", grepl("Concept vs benchmark", txt, fixed = TRUE))
 check("industry defaults to technology", grepl('selected = "gics_xlk"', txt, fixed = TRUE))
 check("industry server default follows market", grepl("macro_industry_default_key(mode)", txt, fixed = TRUE))
-check("bubble Industry-or-concept defaults to technology", {
-  grepl("Default Industry-or-concept to Technology", txt, fixed = TRUE) &&
-    grepl("bubble_theme_key", txt, fixed = TRUE) &&
-    grepl("def_ind %in% unname(bub_ch)", txt, fixed = TRUE)
+check("bubble shares Industry/Concept picks", {
+  grepl(".bubble_theme_key", txt, fixed = TRUE) &&
+    grepl("bubble_shared_pick_status", txt, fixed = TRUE) &&
+    !grepl('ns("bubble_theme_key")', txt, fixed = TRUE) &&
+    !grepl("updateSelectInput(session, \"bubble_theme_key\"", txt, fixed = TRUE)
+})
+check("bubble chapter has no duplicate theme menu", {
+  bub_ui <- paste(readLines("macro_bubble_indicators.R", warn = FALSE), collapse = "\n")
+  !grepl('ns("bubble_theme_key")', bub_ui, fixed = TRUE) &&
+    grepl("bubble_shared_pick_status", bub_ui, fixed = TRUE)
 })
 check("no Lite-only combined menu", !grepl("ynow-lite-only", txt, fixed = TRUE))
 check("click specs helper", grepl("macro_click_index_specs", txt, fixed = TRUE))

@@ -1793,6 +1793,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     macro_theme_title = "Relative performance vs benchmark",
     macro_theme_help = paste0(
       "Pick Industry and Concept independently (either, both, or neither). ",
+      "The same picks drive Relative performance and Dynamic industry bubble below. ",
       "US industry uses GICS sector ETFs; Taiwan industry uses the industry-standard snapshot. ",
       "Concept uses the concept-stock universe. ",
       "Benchmark is gray dashed on the right axis (rebased = 100 at window start; native currency, no FX)."
@@ -1814,17 +1815,25 @@ locale_for_market <- function(mode = get_market_mode()) {
     macro_plot_need_bench = "Could not load benchmark prices",
     macro_bubble_title = "Dynamic industry bubble & weight concentration",
     macro_bubble_sub = paste0(
-      "Theme concentration uses market-cap weights on the selected industry or concept basket ",
-      "(GICS maps to S&P 500 sector peers). Buffett Indicator is market-level market-cap / GDP ",
+      "Uses the shared Industry vs benchmark and Concept vs benchmark picks above. ",
+      "Concentration uses market-cap weights on that basket (Industry when both are set; ",
+      "GICS maps to S&P 500 sector peers). Buffett Indicator is market-level market-cap / GDP ",
       "(research display only — never feeds CAPM / Ke / WACC)."
     ),
     macro_bubble_theme_label = "Industry or concept",
+    macro_bubble_shared_need_pick = "Select Industry vs benchmark and/or Concept vs benchmark above to compute concentration.",
+    macro_bubble_shared_using_industry = "Concentration basket: Industry — {industry}",
+    macro_bubble_shared_using_concept = "Concentration basket: Concept — {concept}",
+    macro_bubble_shared_using_industry_both = paste0(
+      "Concentration basket: Industry — {industry} ",
+      "(Concept — {concept} still plots in Relative performance above)."
+    ),
     macro_bubble_topn_label = "Top N by market cap",
     macro_bubble_attr_label = "Analysis window",
     macro_bubble_conc_title = "Market-cap concentration",
     macro_bubble_attr_title = "Return attribution",
     macro_bubble_rest = "Rest of basket",
-    macro_bubble_need_theme = "Select an industry or concept basket with resolvable constituents to compute concentration.",
+    macro_bubble_need_theme = "Select Industry vs benchmark and/or Concept vs benchmark above with resolvable constituents to compute concentration.",
     macro_bubble_conc_kpi = "Top %d share: %.1f%% of basket mcap · Largest name: %.1f%% · Pool n=%d",
     macro_bubble_conc_axis = "Share of basket mcap",
     macro_bubble_conc_topn_series = "Top %d share",
@@ -3811,7 +3820,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     macro_tw_signal_link = "開啟國發會景氣指標",
     macro_theme_title = "相對績效 vs 大盤",
     macro_theme_help = paste0(
-      "產業別與概念股別為兩個獨立選單，可單選、同時選、或不選。",
+      "產業別與概念股別為兩個獨立選單，可單選、同時選、或不選；",
+      "同一組選擇同時驅動下方「相對績效」與「動態產業泡沫」。",
       "美股產業別為 GICS 板塊 ETF；台股產業別與縱覽「目前產業標準快覽」相同。概念股別為既有概念股宇宙。大盤基準以灰虛線、右軸顯示",
       "（區間起點重設為 100；原始幣別，無 FX）。"
     ),
@@ -3832,16 +3842,24 @@ locale_for_market <- function(mode = get_market_mode()) {
     macro_plot_need_bench = "無法載入大盤價格",
     macro_bubble_title = "動態產業泡沫與權重集中度",
     macro_bubble_sub = paste0(
-      "產業集中度依所選產業別或概念股籃（市值加權）計算；GICS 對應至 S&P 500 同產業成分。",
+      "沿用上方共用的「產業別 vs 大盤」與「概念股別 vs 大盤」。",
+      "集中度以該籃市值加權（兩者皆選時以產業別為準；GICS 對應至 S&P 500 同產業成分）。",
       "巴菲特指標為大盤層級「總市值／GDP」（僅研究顯示，絕不寫入 CAPM／Ke／WACC）。"
     ),
     macro_bubble_theme_label = "產業別或概念股",
+    macro_bubble_shared_need_pick = "請先在上方選擇「產業別 vs 大盤」與／或「概念股別 vs 大盤」，才能計算集中度。",
+    macro_bubble_shared_using_industry = "集中度籃：產業別 — {industry}",
+    macro_bubble_shared_using_concept = "集中度籃：概念股別 — {concept}",
+    macro_bubble_shared_using_industry_both = paste0(
+      "集中度籃：產業別 — {industry}",
+      "（概念股別 — {concept} 仍繪於上方相對績效）。"
+    ),
     macro_bubble_topn_label = "市值前 N 大",
     macro_bubble_attr_label = "分析視窗",
     macro_bubble_conc_title = "市值權重集中度",
     macro_bubble_attr_title = "漲幅貢獻拆解",
     macro_bubble_rest = "其餘成分",
-    macro_bubble_need_theme = "請先選擇可解析成分的產業別或概念股，才能計算集中度。",
+    macro_bubble_need_theme = "請先在上方選擇可解析成分的「產業別 vs 大盤」與／或「概念股別 vs 大盤」，才能計算集中度。",
     macro_bubble_conc_kpi = "前 %d 大佔籃內市值 %.1f%% · 最大單一 %.1f%% · 計算池 n=%d",
     macro_bubble_conc_axis = "佔籃內市值比重",
     macro_bubble_conc_topn_series = "前 %d 大合計",

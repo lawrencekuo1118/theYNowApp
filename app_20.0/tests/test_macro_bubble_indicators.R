@@ -117,7 +117,15 @@ check("YNOW tab does not call bubble chapter", !grepl("macro_bubble_chapter_ui",
 check("ch2 notes still present", grepl("ynow_notes_block", dec_src, fixed = TRUE) &&
         grepl("ynow_funnel_ch2_lead", dec_src, fixed = TRUE))
 bt_src <- paste(readLines("macro_bubble_indicators.R", warn = FALSE), collapse = "\n")
-check("bubble theme first-paint Technology XLK", grepl('selected = "gics_xlk"', bt_src, fixed = TRUE))
+check("bubble shares Macro Industry/Concept picks", {
+  !grepl('ns("bubble_theme_key")', bt_src, fixed = TRUE) &&
+    grepl("bubble_shared_pick_status", bt_src, fixed = TRUE)
+})
+macro_src_for_default <- paste(readLines("macro_market_module.R", warn = FALSE), collapse = "\n")
+check("shared Industry first-paint Technology XLK", {
+  grepl('ns("industry_key")', macro_src_for_default, fixed = TRUE) &&
+    grepl('selected = "gics_xlk"', macro_src_for_default, fixed = TRUE)
+})
 check("conc history UI mounts table", {
   grepl("bubble_conc_table", bt_src, fixed = TRUE) &&
     grepl("ynow_macro_bubble_top_list_title", bt_src, fixed = TRUE) &&

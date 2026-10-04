@@ -2,7 +2,7 @@
 # macro_bubble_indicators.R — 動態產業泡沫與權重集中度
 #
 # 獨立於 CAPM／Ke／WACC／個股估值引擎。
-# 訂閱全域 market_mode 與 YNOW bubble_theme_key；不寫回任何折現率輸入。
+# 訂閱全域 market_mode 與 Macro 共用的 industry_key／concept_key；不寫回任何折現率輸入。
 # ==========================================
 
 if (!exists("%||%", mode = "function")) {
@@ -662,25 +662,16 @@ macro_bubble_buffett_light <- function(series) {
 macro_bubble_chapter_ui <- function(ns) {
   tags$div(
     class = "ynow-macro-bubble ynow-funnel-bubble-body",
+    # Basket comes from shared Industry / Concept picks in Relative performance (no duplicate theme menu).
+    uiOutput(ns("bubble_shared_pick_status")),
     tags$div(
       class = "ynow-funnel-toolbar",
       role = "group",
       `aria-label` = "Bubble and concentration controls",
       fluidRow(
         column(
-          width = 3,
-          class = "col-xs-12 col-sm-6 col-md-3",
-          selectInput(
-            ns("bubble_theme_key"),
-            label = tags$span(id = "ynow_macro_bubble_theme_label", "Industry or concept"),
-            choices = c("—" = ""),
-            # First paint: US Technology (XLK); server rewrites TW → sc.Foundry.
-            selected = "gics_xlk"
-          )
-        ),
-        column(
-          width = 3,
-          class = "col-xs-12 col-sm-6 col-md-3",
+          width = 4,
+          class = "col-xs-12 col-sm-4 col-md-4",
           selectInput(
             ns("bubble_top_n"),
             label = tags$span(id = "ynow_macro_bubble_topn_label", "Top N by market cap"),
@@ -689,8 +680,8 @@ macro_bubble_chapter_ui <- function(ns) {
           )
         ),
         column(
-          width = 3,
-          class = "col-xs-12 col-sm-6 col-md-3",
+          width = 4,
+          class = "col-xs-12 col-sm-4 col-md-4",
           selectInput(
             ns("bubble_attr_period"),
             label = tags$span(id = "ynow_macro_bubble_attr_label", "Analysis window"),
@@ -699,8 +690,8 @@ macro_bubble_chapter_ui <- function(ns) {
           )
         ),
         column(
-          width = 3,
-          class = "col-xs-12 col-sm-6 col-md-3",
+          width = 4,
+          class = "col-xs-12 col-sm-4 col-md-4",
           tags$div(
             style = "margin-top: 24px;",
             actionButton(

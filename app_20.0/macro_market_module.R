@@ -416,6 +416,7 @@ macro_market_ui <- function(id = "macro") {
         class = "ynow-macro-hint ynow-macro-chapter__lead",
         paste0(
           "Pick Industry and Concept independently (either, both, or neither). ",
+          "The same picks drive Relative performance and Dynamic industry bubble below. ",
           "US industry uses GICS sector ETFs; Taiwan industry uses the industry-standard snapshot. ",
           "Concept uses the concept-stock universe. ",
           "Benchmark is gray dashed on the right axis (rebased = 100 at window start; native currency, no FX)."
@@ -506,8 +507,9 @@ macro_market_ui <- function(id = "macro") {
         id = "ynow_macro_bubble_sub",
         class = "ynow-macro-hint ynow-macro-chapter__lead",
         paste0(
-          "Theme concentration uses market-cap weights on the selected industry or concept basket ",
-          "(GICS maps to S&P 500 sector peers). Buffett Indicator is market-level market-cap / GDP ",
+          "Uses the shared Industry vs benchmark and Concept vs benchmark picks above. ",
+          "Concentration uses market-cap weights on that basket (Industry when both are set; ",
+          "GICS maps to S&P 500 sector peers). Buffett Indicator is market-level market-cap / GDP ",
           "(research display only — never feeds CAPM / Ke / WACC)."
         )
       ),
@@ -624,15 +626,14 @@ macro_market_server <- function(id = "macro",
       industry_touched(TRUE)
     }, ignoreInit = TRUE)
 
-    # Industry + concept menus follow market + locale.
+    # Shared Industry + Concept menus (Relative performance + Dynamic bubble).
     # Default is Technology (XLK) on US, and the snapshot default (sc.Foundry) on TW.
-    # An explicit None stays None. Bubble keeps a combined catalog.
+    # An explicit None stays None.
     observe({
       mode <- .mode()
       loc <- .loc()
       ind_ch <- macro_choices_with_none(macro_industry_choices(mode, loc), loc)
       con_ch <- macro_choices_with_none(macro_concept_choices(mode, loc), loc)
-      bub_ch <- macro_choices_with_none(macro_theme_choices(mode, loc), loc)
 
       isel <- isolate(as.character(input$industry_key %||% "")[1])
       in_menu <- isel %in% unname(ind_ch)
@@ -640,21 +641,6 @@ macro_market_server <- function(id = "macro",
       if (!isTRUE(isolate(industry_touched())) || !in_menu) {
         isel <- if (def_ind %in% unname(ind_ch)) def_ind else ""
       }
-      # #region agent log
-      try({
-        line <- paste0(
-          "{\"sessionId\":\"ef0f33\",\"runId\":\"tw-industry\",\"hypothesisId\":\"TWDEF\",",
-          "\"location\":\"macro_market_module.R:industry_observe\",\"message\":\"industry default\",",
-          "\"data\":{\"mode\":\"", gsub("\"", "", as.character(mode)[1]),
-          "\",\"isel\":\"", gsub("\"", "", as.character(isel)[1]),
-          "\",\"def\":\"", def_ind,
-          "\",\"touched\":", if (isTRUE(isolate(industry_touched()))) "true" else "false",
-          ",\"in_menu\":", if (isTRUE(in_menu)) "true" else "false",
-          "},\"timestamp\":", format(as.numeric(Sys.time()) * 1000, scientific = FALSE, trim = TRUE), "}"
-        )
-        cat(line, "\n", file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-ef0f33.log", append = TRUE)
-      }, silent = TRUE)
-      # #endregion
       csel <- isolate(as.character(input$concept_key %||% "")[1])
       if (is.null(csel) || !nzchar(csel) || !(csel %in% unname(con_ch))) {
         csel <- ""
@@ -663,14 +649,30 @@ macro_market_server <- function(id = "macro",
       if (!identical(cur_ind, isel)) industry_programmatic(TRUE)
       updateSelectInput(session, "industry_key", choices = ind_ch, selected = isel)
       updateSelectInput(session, "concept_key", choices = con_ch, selected = csel)
-
-      bsel <- isolate(as.character(input$bubble_theme_key %||% "")[1])
-      # Default Industry-or-concept to Technology (US XLK / TW Foundry).
-      if (is.null(bsel) || !nzchar(bsel) || !(bsel %in% unname(bub_ch))) {
-        bsel <- if (def_ind %in% unname(bub_ch)) def_ind else ""
-      }
-      updateSelectInput(session, "bubble_theme_key", choices = bub_ch, selected = bsel)
     })
+
+    # Bubble concentration basket: Industry when set, else Concept (shared picks).
+    .bubble_theme_key <- function() {
+      ind <- as.character(input$industry_key %||% "")[1]
+      con <- as.character(input$concept_key %||% "")[1]
+      if (is.na(ind)) ind <- ""
+      if (is.na(con)) con <- ""
+      if (nzchar(ind)) return(ind)
+      if (nzchar(con)) return(con)
+      ""
+    }
+
+    .choice_label <- function(choices, key) {
+      key <- as.character(key %||% "")[1]
+      if (!nzchar(key)) return("")
+      labs <- names(choices)
+      vals <- unname(choices)
+      if (is.null(labs) || !length(vals)) return(key)
+      hit <- match(key, vals)
+      if (!is.finite(hit)) return(key)
+      lab <- as.character(labs[[hit]] %||% "")[1]
+      if (!nzchar(lab)) key else lab
+    }
 
     ynow_basket <- reactive({
       refresh_token()
@@ -1340,10 +1342,49 @@ macro_market_server <- function(id = "macro",
     # Macro-page theme-vs-benchmark β chart is no longer rendered.
     # Keep macro_rolling_beta_path() + estimate_rolling_beta() for CAPM / HFV / backtest.
 
-    # ---- Bubble & concentration (isolated; display-only) ----
+    # ---- Bubble & concentration (display-only; shares Industry/Concept picks) ----
+    output$bubble_shared_pick_status <- renderUI({
+      mode <- .mode()
+      loc <- .loc()
+      ind <- as.character(input$industry_key %||% "")[1]
+      con <- as.character(input$concept_key %||% "")[1]
+      if (is.na(ind)) ind <- ""
+      if (is.na(con)) con <- ""
+      ind_ch <- macro_choices_with_none(macro_industry_choices(mode, loc), loc)
+      con_ch <- macro_choices_with_none(macro_concept_choices(mode, loc), loc)
+      if (!nzchar(ind) && !nzchar(con)) {
+        return(tags$p(
+          id = "ynow_macro_bubble_shared_status",
+          class = "ynow-macro-hint",
+          .ui("macro_bubble_shared_need_pick")
+        ))
+      }
+      if (nzchar(ind) && nzchar(con)) {
+        msg <- gsub(
+          "{industry}", .choice_label(ind_ch, ind),
+          .ui("macro_bubble_shared_using_industry_both"),
+          fixed = TRUE
+        )
+        msg <- gsub("{concept}", .choice_label(con_ch, con), msg, fixed = TRUE)
+      } else if (nzchar(ind)) {
+        msg <- gsub(
+          "{industry}", .choice_label(ind_ch, ind),
+          .ui("macro_bubble_shared_using_industry"),
+          fixed = TRUE
+        )
+      } else {
+        msg <- gsub(
+          "{concept}", .choice_label(con_ch, con),
+          .ui("macro_bubble_shared_using_concept"),
+          fixed = TRUE
+        )
+      }
+      tags$p(id = "ynow_macro_bubble_shared_status", class = "ynow-macro-hint", msg)
+    })
+
     bubble_data <- reactive({
       refresh_token()
-      theme_key <- as.character(input$bubble_theme_key %||% "")[1]
+      theme_key <- .bubble_theme_key()
       req(nzchar(theme_key))
       top_n <- suppressWarnings(as.integer(input$bubble_top_n %||% 5L)[1])
       if (!is.finite(top_n)) top_n <- 5L
