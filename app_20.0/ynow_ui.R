@@ -2695,22 +2695,28 @@ ui <- dashboardPage(
         )
       )
     ),
-    # Language (zh-TW ↔ en-US) — former currency slot in the black header bar
+    # Language (zh-TW ↔ en-US) — custom buttons (same stability pattern as US/TW;
+    # avoid shinyWidgets radioGroupButtons re-render that displaces the control on mobile)
     tags$li(
       class = "dropdown ynow-lang-header ynow-hdr-toggle",
-      style = "height: 50px; display: flex; align-items: center; padding: 0 14px 0 4px; list-style: none;",
       tags$div(
-        class = "ynow-hdr-toggle-stack",
+        class = "ynow-lang-stack",
+        id = "ynow_lang_stack",
         role = "group",
         `aria-label` = "Language",
-        shinyWidgets::radioGroupButtons(
-          inputId = "ui_locale_pick",
-          label = NULL,
-          choices = c("繁中" = "zh-TW", "EN" = "en"),
-          selected = "en",
-          status = "default",
-          size = "xs",
-          individual = TRUE
+        tags$button(
+          type = "button",
+          class = "ynow-lang-btn",
+          id = "ynow_lang_btn_zh",
+          `data-value` = "zh-TW",
+          "繁中"
+        ),
+        tags$button(
+          type = "button",
+          class = "ynow-lang-btn active",
+          id = "ynow_lang_btn_en",
+          `data-value` = "en",
+          "EN"
         )
       )
     ),
@@ -4421,14 +4427,6 @@ ui <- dashboardPage(
           display: inline;
         }
         /* Header Language toggle (in black bar); Currency floats under logo */
-        .ynow-hdr-toggle-stack {
-          display: flex !important;
-          flex-direction: row;
-          align-items: center !important;
-          justify-content: center !important;
-          height: 100%;
-          line-height: 1;
-        }
         /* 繁中／EN 與小 logo 在頁首列垂直置中對齊 */
         .main-header .navbar-custom-menu {
           height: 50px !important;
@@ -4439,6 +4437,7 @@ ui <- dashboardPage(
           display: flex !important;
           flex-direction: row;
           align-items: center !important;
+          flex-wrap: nowrap !important;
           height: 50px !important;
           margin: 0 !important;
         }
@@ -4453,44 +4452,55 @@ ui <- dashboardPage(
           margin: 0 !important;
           padding-top: 0 !important;
           padding-bottom: 0 !important;
+          flex-shrink: 0 !important;
         }
-        .ynow-lang-header .form-group,
-        .ynow-lang-header .shiny-input-container {
-          margin: 0 !important;
-          padding: 0 !important;
-          display: flex !important;
-          align-items: center !important;
-          height: auto !important;
+        .main-header .navbar-custom-menu .navbar-nav > li.ynow-lang-header {
+          padding: 0 10px 0 4px !important;
+          list-style: none !important;
+          overflow: visible !important;
         }
-        .ynow-lang-header .btn-group,
-        .ynow-lang-header .btn-group-xs {
-          margin: 0 !important;
+        .ynow-lang-stack {
           display: inline-flex !important;
-          align-items: center !important;
-          vertical-align: middle;
-        }
-        .ynow-lang-header .btn-group-xs > .btn,
-        .ynow-lang-header .btn-xs {
-          background: rgba(255,255,255,0.12) !important;
-          border: 1px solid rgba(255,255,255,0.35) !important;
-          color: #fff !important;
-          font-weight: 700 !important;
-          min-width: 42px;
-          padding-top: 4px !important;
-          padding-bottom: 4px !important;
-          line-height: 1.2 !important;
-          display: inline-flex !important;
+          flex-direction: row !important;
+          flex-wrap: nowrap !important;
           align-items: center !important;
           justify-content: center !important;
+          height: 28px;
+          margin: 0;
+          padding: 0;
+          gap: 0;
+          flex-shrink: 0 !important;
+          white-space: nowrap !important;
         }
-        .ynow-lang-header .btn-group-xs > .btn.active,
-        .ynow-lang-header .btn-xs.active {
+        .ynow-lang-btn {
+          box-sizing: border-box;
+          flex: 0 0 auto;
+          min-width: 42px;
+          height: 28px;
+          margin: 0;
+          padding: 0 8px;
+          border: 1px solid rgba(255,255,255,0.35);
+          border-radius: 0;
+          background: rgba(255,255,255,0.12);
+          color: #fff !important;
+          font-size: 12px;
+          font-weight: 700;
+          line-height: 26px;
+          cursor: pointer;
+          white-space: nowrap !important;
+          text-shadow: none;
+        }
+        .ynow-lang-btn + .ynow-lang-btn {
+          border-left-width: 0;
+        }
+        .ynow-lang-btn.active {
           background: #fff !important;
           color: #222 !important;
           border-color: #fff !important;
-          box-shadow: none !important;
         }
-        .ynow-lang-header .radiobtn { margin: 0 !important; }
+        .ynow-lang-btn:focus {
+          outline: none;
+        }
 
         /* USD／TWD: under logo with modest gap below black header */
         .main-header,
@@ -5473,9 +5483,32 @@ ui <- dashboardPage(
             }
             pushInitial();
           }
+          /* Language: stable custom buttons (no shinyWidgets re-render / mobile drift).
+             Do not push an initial value — server + device_ui_locale own first paint;
+             a premature EN push can race and lock out device zh-TW. */
+          function bindLangModeButtons() {
+            var stack = document.getElementById('ynow_lang_stack') ||
+              document.querySelector('.ynow-lang-header .ynow-lang-stack');
+            if (!stack) return;
+            if (stack.getAttribute('data-ynow-bound') === '1') return;
+            stack.setAttribute('data-ynow-bound', '1');
+            stack.addEventListener('click', function (ev) {
+              var btn = ev.target && ev.target.closest ? ev.target.closest('.ynow-lang-btn') : null;
+              if (!btn || !stack.contains(btn)) return;
+              var val = btn.getAttribute('data-value');
+              if (!val) return;
+              stack.querySelectorAll('.ynow-lang-btn').forEach(function (b) {
+                b.classList.toggle('active', b === btn);
+              });
+              if (window.Shiny && Shiny.setInputValue) {
+                Shiny.setInputValue('ui_locale_pick', val, {priority: 'event'});
+              }
+            });
+          }
           function armMarketHeaderPlacement() {
             placeMarketHeaderByToggle();
             bindMarketModeButtons();
+            bindLangModeButtons();
             if (typeof MutationObserver !== 'undefined') {
               var hdrNav = document.querySelector('.main-header .navbar');
               if (hdrNav && !hdrNav.getAttribute('data-ynow-mkt-obs')) {
@@ -5483,7 +5516,8 @@ ui <- dashboardPage(
                 var mktObs = new MutationObserver(function () {
                   placeMarketHeaderByToggle();
                 });
-                mktObs.observe(hdrNav, { childList: true, subtree: true });
+                /* Only react to direct navbar child moves (market relocate), not lang label text. */
+                mktObs.observe(hdrNav, { childList: true, subtree: false });
               }
             }
           }
@@ -6307,8 +6341,17 @@ ui <- dashboardPage(
             if (mktTw && s.market_tw) mktTw.textContent = s.market_tw;
             var mktStack = document.querySelector('#ynow-market-header .ynow-market-stack');
             if (mktStack && s.market_hint) mktStack.setAttribute('aria-label', s.market_hint);
-            var langStack = document.querySelector('.ynow-lang-header .ynow-hdr-toggle-stack');
+            var langStack = document.getElementById('ynow_lang_stack') ||
+              document.querySelector('.ynow-lang-header .ynow-lang-stack');
             if (langStack && s.hdr_lang_label) langStack.setAttribute('aria-label', s.hdr_lang_label);
+            var langZh = document.getElementById('ynow_lang_btn_zh');
+            var langEn = document.getElementById('ynow_lang_btn_en');
+            if (langZh && s.hdr_lang_zh) langZh.textContent = s.hdr_lang_zh;
+            if (langEn && s.hdr_lang_en) langEn.textContent = s.hdr_lang_en;
+            var loc = (payload && payload.locale) ? String(payload.locale) : 'en';
+            document.querySelectorAll('.ynow-lang-stack .ynow-lang-btn').forEach(function (b) {
+              b.classList.toggle('active', b.getAttribute('data-value') === loc);
+            });
             var ccyFloat = document.querySelector('.ynow-ccy-float');
             if (ccyFloat && s.hdr_ccy_label) ccyFloat.setAttribute('aria-label', s.hdr_ccy_label);
             setBtText('ynow_hfv_rel_models_note', 'hfv_rel_models_note');
@@ -9183,14 +9226,16 @@ ui <- dashboardPage(
             z-index: 1062 !important;
           }
           /* Slightly compress 繁中／EN to free width for the centered title */
-          .ynow-lang-header .btn-group-xs > .btn,
-          .ynow-lang-header .btn-xs {
+          .ynow-lang-btn {
             min-width: 28px !important;
             padding-left: 4px !important;
             padding-right: 4px !important;
-            padding-top: 3px !important;
-            padding-bottom: 3px !important;
             font-size: 10px !important;
+            height: 26px !important;
+            line-height: 24px !important;
+          }
+          .ynow-lang-stack {
+            height: 26px !important;
           }
           .main-header .navbar-custom-menu .navbar-nav > li.ynow-lang-header {
             padding: 0 4px 0 0 !important;

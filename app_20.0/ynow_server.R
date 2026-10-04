@@ -255,21 +255,8 @@ server <- function(input, output, session) {
   .push_ui_locale <- function(locale, sync_picker = TRUE) {
     loc <- normalize_ui_locale(locale)
     ui_locale(loc)
-    # Keep Language control in sync (labels + selection); never touch currency
-    if (isTRUE(sync_picker)) {
-      tryCatch(
-        shinyWidgets::updateRadioGroupButtons(
-          session,
-          "ui_locale_pick",
-          choices = stats::setNames(
-            c("zh-TW", "en"),
-            c(ui_str("hdr_lang_zh", loc), ui_str("hdr_lang_en", loc))
-          ),
-          selected = loc
-        ),
-        error = function(e) NULL
-      )
-    }
+    # Language chrome is custom header buttons; labels/active state sync via ynowUiLocale
+    # (no shinyWidgets updateRadioGroupButtons — that re-render displaced the control on mobile).
     mode <- tryCatch(
       normalize_market_mode(isolate(market_mode())),
       error = function(e) get_market_mode()

@@ -61,6 +61,28 @@ check(
     identical(normalize_ui_locale("en-US"), "en")
 )
 
+ui_src <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+srv_src <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check("header uses stable lang buttons", {
+  grepl('id = "ynow_lang_stack"', ui_src, fixed = TRUE) &&
+    grepl('id = "ynow_lang_btn_zh"', ui_src, fixed = TRUE) &&
+    grepl('id = "ynow_lang_btn_en"', ui_src, fixed = TRUE) &&
+    grepl("bindLangModeButtons", ui_src, fixed = TRUE) &&
+    grepl("ynow-lang-btn", ui_src, fixed = TRUE)
+})
+check("header lang not shinyWidgets radioGroupButtons", {
+  !grepl('inputId = "ui_locale_pick"', ui_src, fixed = TRUE)
+})
+check("server does not re-render lang picker", {
+  !grepl('updateRadioGroupButtons(\n|.)*?"ui_locale_pick"', srv_src, perl = TRUE) &&
+    grepl("no shinyWidgets updateRadioGroupButtons", srv_src, fixed = TRUE)
+})
+check("applyUiLocale syncs lang active/labels", {
+  grepl("ynow_lang_btn_zh", ui_src, fixed = TRUE) &&
+    grepl("hdr_lang_zh", ui_src, fixed = TRUE) &&
+    grepl("ynow-lang-stack .ynow-lang-btn", ui_src, fixed = TRUE)
+})
+
 if (fail > 0L) {
   cat("FAILED: ", fail, " check(s)\n", sep = "")
   quit(status = 1L)
