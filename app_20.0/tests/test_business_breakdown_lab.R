@@ -19,6 +19,7 @@ source("setup.R", local = TRUE, encoding = "UTF-8")
 source("ui_locale.R", local = TRUE, encoding = "UTF-8")
 source("business_breakdown_schema.R", local = TRUE, encoding = "UTF-8")
 source("business_breakdown_engine.R", local = TRUE, encoding = "UTF-8")
+source("business_breakdown_structure.R", local = TRUE, encoding = "UTF-8")
 source("business_breakdown_module.R", local = TRUE, encoding = "UTF-8")
 
 fail <- 0L
@@ -560,6 +561,9 @@ for (k in c("menu_business_breakdown_lab", "bblab_experimental_badge", "bblab_pa
             "bblab_ch1_help", "bblab_ch2_help", "bblab_ch3_help", "bblab_ch3_current_label",
             "bblab_ch4_help",
             "bblab_ch4_limited", "bblab_geo_veto_why", "bblab_overlap_why",
+            "bblab_struct_title", "bblab_struct_help", "bblab_struct_biz_h",
+            "bblab_struct_adj_h", "bblab_struct_conc_h", "bblab_struct_not_disclosed",
+            "bblab_struct_c1", "bblab_struct_c2", "bblab_struct_c5",
             "bblab_history_yaxis", "bblab_kpi_revenue", "bblab_kpi_cor", "bblab_kpi_gp",
             "bblab_kpi_gm", "bblab_kpi_ni", "bblab_formula_gp", "bblab_formula_gm",
             "notif_bblab_required_fx_rate_missing", "notif_bblab_business_chart_single_component",
@@ -674,7 +678,8 @@ check("server remaps legacy BBL tab to Company",
         grepl('tab = "dashboard"', server_src, fixed = TRUE))
 
 parse_files <- c("business_breakdown_schema.R", "business_breakdown_engine.R",
-                 "business_breakdown_module.R", "global.R", "ui_locale.R",
+                 "business_breakdown_structure.R", "business_breakdown_module.R",
+                 "global.R", "ui_locale.R",
                  "ynow_ui.R", "ynow_server.R")
 for (pf in parse_files) {
   okp <- inherits(tryCatch(parse(pf, encoding = "UTF-8"), error = function(e) e), "expression")
@@ -1604,6 +1609,74 @@ check("column segments keep one card per business, not one per year",
         !any(duplicated(.bblab_norm_label(wide_names))))
 check("Shiny reconnects in-session instead of forcing Reload overlay",
       grepl('session$allowReconnect("force")', server_src, fixed = TRUE))
+
+# ---- Business & profitability structure (no invented Segment OI) ----
+check("economic role: Corporate / Eliminations are not BUSINESS",
+      identical(bblab_classify_economic_role("Corporate / Other", "MAJOR"), "CORPORATE") &&
+        identical(bblab_classify_economic_role("Intersegment Eliminations"), "ELIMINATION") &&
+        identical(bblab_classify_economic_role("Reconciling Items"), "RECONCILIATION") &&
+        identical(bblab_classify_economic_role("Investment Gains"), "NON_OPERATING") &&
+        identical(bblab_classify_economic_role(
+          "Platform Services", "MAJOR", is_reported_segment = TRUE), "BUSINESS"))
+struct_payload <- list(
+  ticker = "STRUCT", entity = list(name = "Structure fixture"),
+  statement_currency = "USD", period = "2024",
+  consolidated = bblab_consolidated(
+    revenue = 1000, cor = 400, gp = 600, currency = "USD", period = "2024",
+    operating_income = 250
+  ),
+  dimensions = list(bblab_dimension(
+    "opseg", "operating_segment",
+    list(
+      bblab_component("a", "Segment A", revenue = 600, operating_income = 200,
+                      is_reported_segment = TRUE, period = "2024", currency = "USD"),
+      bblab_component("b", "Segment B", revenue = 450, operating_income = 80,
+                      is_reported_segment = TRUE, period = "2024", currency = "USD"),
+      bblab_component("corp", "Corporate / Unallocated", revenue = 0,
+                      operating_income = -20, classification = "UNALLOCATED",
+                      period = "2024", currency = "USD"),
+      bblab_component("elim", "Intersegment Eliminations", revenue = -50,
+                      classification = "ELIMINATION",
+                      period = "2024", currency = "USD")
+    ),
+    mutually_exclusive = TRUE, filed_audited = TRUE,
+    flags = c("separate_revenue", "relevant", "mutually_exclusive", "filed_audited",
+              "distinct_economics", "management_major", "reconciles"),
+    period = "2024", currency = "USD"
+  ))
+)
+r_struct <- bblab_analyze(struct_payload)
+sa <- r_struct$structure_analysis
+sa_biz_names <- vapply(sa$businesses %||% list(), function(r) r$business, character(1))
+sa_adj_types <- vapply(sa$adjustments %||% list(), function(r) r$type, character(1))
+check("structure keeps only BUSINESS in main table",
+      isTRUE(sa$ok) &&
+        all(c("Segment A", "Segment B") %in% sa_biz_names) &&
+        !any(grepl("Corporate|Eliminat", sa_biz_names, ignore.case = TRUE)))
+check("structure separates Corporate / Eliminations as adjustments",
+      any(sa_adj_types == "CORPORATE") && any(sa_adj_types == "ELIMINATION"))
+check("structure uses disclosed OI and never invents missing OI", {
+  rev_only <- list(
+    businesses = list(
+      bblab_component("x", "Only Rev", revenue = 100, is_reported_segment = TRUE)
+    ),
+    consolidated = bblab_consolidated(100, NA, NA, "USD", "2024")
+  )
+  sa2 <- bblab_build_structure_analysis(rev_only)
+  identical(sa2$businesses[[1]]$profit_status, "NOT_DISCLOSED") &&
+    grepl("Segment profitability not disclosed", sa2$conclusions$primary_profit, fixed = TRUE) &&
+    grepl("not disclosed", paste(sa2$missing, collapse = " "), ignore.case = TRUE)
+})
+check("structure summary separates businesses from adjustments",
+      grepl("Segment A", sa$summary_sentence, fixed = TRUE) &&
+        grepl("accounting / consolidation", sa$summary_sentence, fixed = TRUE))
+check("structure UI chapter wired in module",
+      grepl("structure_panel", mod_src, fixed = TRUE) &&
+        grepl("ynow_bblab_struct_title", mod_src, fixed = TRUE) &&
+        grepl("bblab_build_structure_analysis", mod_src, fixed = TRUE))
+check("structure sourced from global.R",
+      grepl("business_breakdown_structure.R",
+            paste(readLines("global.R", warn = FALSE), collapse = "\n"), fixed = TRUE))
 
 if (fail > 0L) {
   cat("FAILED ", fail, " checks\n", sep = "")

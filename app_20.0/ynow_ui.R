@@ -5534,6 +5534,11 @@ ui <- dashboardPage(
             setBtText('ynow_bblab_ch1_help', 'bblab_ch1_help');
             setBtText('ynow_bblab_ch2_title', 'bblab_ch2_title');
             setBtText('ynow_bblab_ch2_help', 'bblab_ch2_help');
+            setBtText('ynow_bblab_struct_title', 'bblab_struct_title');
+            setBtText('ynow_bblab_struct_help', 'bblab_struct_help');
+            setBtText('ynow_bblab_struct_biz_h', 'bblab_struct_biz_h');
+            setBtText('ynow_bblab_struct_adj_h', 'bblab_struct_adj_h');
+            setBtText('ynow_bblab_struct_conc_h', 'bblab_struct_conc_h');
             setBtText('ynow_bblab_ch3_title', 'bblab_ch3_title');
             setBtText('ynow_bblab_ch3_help', 'bblab_ch3_help');
             setBtText('ynow_bblab_ch3_current_label', 'bblab_ch3_current_label');

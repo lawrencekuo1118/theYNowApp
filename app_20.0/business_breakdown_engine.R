@@ -137,7 +137,9 @@ bblab_identify_major <- function(components, consolidated, cfg = NULL) {
                 single = FALSE, fabricated = FALSE))
   }
   special <- vapply(comps, function(c) {
-    c$classification %in% c("UNALLOCATED", "ELIMINATION", "ROUNDING", "SHARED_CORPORATE", "RECONCILIATION")
+    role <- .bblab_chr(c$economic_role, "")
+    c$classification %in% c("UNALLOCATED", "ELIMINATION", "ROUNDING", "SHARED_CORPORATE", "RECONCILIATION") ||
+      role %in% c("CORPORATE", "ELIMINATION", "RECONCILIATION", "NON_OPERATING", "ACCOUNTING_ADJUSTMENT")
   }, logical(1))
   work <- comps[!special]
   leftover_special <- comps[special]
@@ -254,6 +256,10 @@ bblab_assign_revenue <- function(businesses, other_items, leftover, consolidated
   elim <- Filter(function(c) identical(c$classification, "ELIMINATION"), leftover)
   rnd_in <- Filter(function(c) identical(c$classification, "ROUNDING"), leftover)
   una_in <- Filter(function(c) identical(c$classification, "UNALLOCATED"), leftover)
+  recon_in <- Filter(function(c) {
+    identical(c$classification, "RECONCILIATION") ||
+      .bblab_chr(c$economic_role) %in% c("RECONCILIATION", "ACCOUNTING_ADJUSTMENT", "NON_OPERATING")
+  }, leftover)
   elim_rev <- if (length(elim)) sum(vapply(elim, function(c) .bblab_num(c$revenue, 0), numeric(1))) else 0
   una_rev <- if (length(una_in)) sum(vapply(una_in, function(c) .bblab_num(c$revenue, 0), numeric(1))) else NA_real_
   rounding_amt <- if (length(rnd_in)) {
@@ -302,10 +308,38 @@ bblab_assign_revenue <- function(businesses, other_items, leftover, consolidated
       "eliminations", "revenue", elim_rev, currency, period, "REPORTED", "HIGH",
       recon_role = "ELIMINATION"
     )
+    eliminations$economic_role <- "ELIMINATION"
+  }
+  if (!is.null(unallocated) && !nzchar(.bblab_chr(unallocated$economic_role))) {
+    unallocated$economic_role <- "CORPORATE"
+  }
+  # Preserve named recon / non-operating / accounting lines for structure analysis
+  # (not folded into a single opaque recon_amount when multiple labels exist).
+  recon_members <- recon_in
+  recon_amount <- NULL
+  if (length(recon_members) == 1L) {
+    recon_amount <- recon_members[[1]]
+    if (!nzchar(.bblab_chr(recon_amount$economic_role)) &&
+        exists("bblab_classify_economic_role", mode = "function")) {
+      recon_amount$economic_role <- bblab_classify_economic_role(
+        recon_amount$name, recon_amount$classification,
+        is_reported_segment = FALSE, source_type = recon_amount$source_type
+      )
+    }
+  } else if (length(recon_members) > 1L) {
+    recon_amt <- sum(vapply(recon_members, function(c) .bblab_num(c$revenue, 0), numeric(1)))
+    recon_amount <- bblab_component(
+      "reconciling_items", "Reconciling Items", "RECONCILIATION",
+      revenue = recon_amt, period = period, currency = currency
+    )
+    recon_amount$economic_role <- "RECONCILIATION"
+    recon_amount$members <- recon_members
   }
   list(
     businesses = businesses, other = other, unallocated = unallocated,
-    eliminations = eliminations, rounding = rounding
+    eliminations = eliminations, rounding = rounding,
+    recon_amount = recon_amount,
+    adjustment_members = recon_members
   )
 }
 
@@ -1887,18 +1921,31 @@ bblab_extract_dimension_from_income_statement <- function(d_is, consolidated = N
     if (id %in% seen) id <- paste0(id, "_", length(comps) + 1L)
     seen <<- c(seen, id)
     cls <- current$cls %||% "MAJOR"
+    is_seg <- identical(kind, "operating_segment") || identical(kind, "segment_note")
+    role <- if (exists("bblab_classify_economic_role", mode = "function")) {
+      bblab_classify_economic_role(
+        current$name, classification = cls,
+        is_reported_segment = is_seg, source_type = kind
+      )
+    } else NA_character_
+    if (identical(role, "ELIMINATION")) cls <- "ELIMINATION"
+    else if (identical(role, "CORPORATE")) cls <- "UNALLOCATED"
+    else if (identical(role, "RECONCILIATION")) cls <- "RECONCILIATION"
+    else if (identical(role, "ACCOUNTING_ADJUSTMENT")) cls <- "RECONCILIATION"
+    extra <- list()
+    if (.bblab_finite(current$operating_income)) {
+      extra$operating_income <- current$operating_income
+    }
+    if (nzchar(.bblab_chr(role))) extra$economic_role <- role
     comps[[length(comps) + 1L]] <<- bblab_component(
       id, current$name, cls,
       revenue = current$revenue, cor = current$cor, gp = current$gp,
-      is_reported_segment = identical(kind, "operating_segment") ||
-        identical(kind, "segment_note"),
+      is_reported_segment = is_seg && identical(role, "BUSINESS"),
       separately_disclosed_revenue = TRUE,
-      distinct_economics = TRUE,
+      distinct_economics = identical(role, "BUSINESS") || identical(role, "OTHER_OPERATING"),
       period = period, currency = currency,
       source_type = kind,
-      extra = if (.bblab_finite(current$operating_income)) {
-        list(operating_income = current$operating_income)
-      } else NULL
+      extra = if (length(extra)) extra else NULL
     )
   }
   for (k in seq_along(rows)) {
@@ -2380,6 +2427,34 @@ bblab_analyze <- function(payload, options = list(), cfg = NULL) {
   mark("identify_businesses")
   dim$components <- .bblab_align_component_units(dim$components, cons)
   dim$components <- .bblab_map_cor_from_disclosures(dim$components, dims, dim$id)
+  # Normalize economic role → disclosure class so Corporate / Eliminations
+  # never enter the main-business set.
+  if (exists("bblab_classify_economic_role", mode = "function")) {
+    dim$components <- lapply(dim$components %||% list(), function(comp) {
+      if (is.null(comp) || !is.list(comp)) return(comp)
+      role <- .bblab_chr(comp$economic_role, "")
+      if (!nzchar(role)) {
+        role <- bblab_classify_economic_role(
+          comp$name %||% comp$id,
+          classification = comp$classification,
+          is_reported_segment = isTRUE(comp$is_reported_segment),
+          source_type = comp$source_type
+        )
+        comp$economic_role <- role
+      }
+      if (identical(role, "ELIMINATION")) comp$classification <- "ELIMINATION"
+      else if (identical(role, "CORPORATE")) comp$classification <- "UNALLOCATED"
+      else if (role %in% c("RECONCILIATION", "ACCOUNTING_ADJUSTMENT")) {
+        comp$classification <- "RECONCILIATION"
+      }
+      else if (identical(role, "NON_OPERATING")) comp$classification <- "RECONCILIATION"
+      else if (identical(role, "OTHER_OPERATING") &&
+               !identical(comp$classification, "MAJOR")) {
+        comp$classification <- "OTHER"
+      }
+      comp
+    })
+  }
   ident <- bblab_identify_major(dim$components, cons, cfg)
   if (isTRUE(ident$single) || length(ident$major) <= 1L) {
     limitations <- unique(c(limitations, "no_multi_business_split"))
@@ -2439,6 +2514,51 @@ bblab_analyze <- function(payload, options = list(), cfg = NULL) {
     allocation_used = "rev_share_cost" %in% (pack$cost_notices %||% character(0)),
     chart_eligible = chart$eligible
   )
+  # Tag economic roles on components (Business vs accounting / consolidation).
+  if (exists("bblab_classify_economic_role", mode = "function")) {
+    tag_role <- function(comp) {
+      if (is.null(comp) || !is.list(comp)) return(comp)
+      if (!nzchar(.bblab_chr(comp$economic_role))) {
+        comp$economic_role <- bblab_classify_economic_role(
+          comp$name %||% comp$id,
+          classification = comp$classification,
+          is_reported_segment = isTRUE(comp$is_reported_segment),
+          source_type = comp$source_type
+        )
+      }
+      if (is.list(comp$members)) {
+        comp$members <- lapply(comp$members, tag_role)
+      }
+      comp
+    }
+    pack$businesses <- lapply(pack$businesses %||% list(), tag_role)
+    pack$other <- tag_role(pack$other)
+    pack$unallocated <- tag_role(pack$unallocated)
+    pack$eliminations <- tag_role(pack$eliminations)
+    pack$rounding <- tag_role(pack$rounding)
+    pack$recon_amount <- tag_role(pack$recon_amount)
+  }
+  structure_analysis <- if (exists("bblab_build_structure_analysis", mode = "function")) {
+    tryCatch(
+      bblab_build_structure_analysis(list(
+        businesses = pack$businesses,
+        other = pack$other,
+        unallocated = pack$unallocated,
+        eliminations = pack$eliminations,
+        rounding = pack$rounding,
+        recon_amount = pack$recon_amount,
+        adjustment_members = pack$adjustment_members,
+        shared_corporate = shared,
+        consolidated = cons
+      )),
+      error = function(e) list(ok = FALSE, missing = e$message, businesses = list(),
+                               adjustments = list(), conclusions = list(),
+                               summary_sentence = "")
+    )
+  } else {
+    list(ok = FALSE, businesses = list(), adjustments = list(),
+         conclusions = list(), summary_sentence = "", missing = character(0))
+  }
   list(
     ok = TRUE,
     level = level,
@@ -2454,6 +2574,7 @@ bblab_analyze <- function(payload, options = list(), cfg = NULL) {
     rounding = pack$rounding,
     recon_amount = pack$recon_amount,
     shared_corporate = shared,
+    structure_analysis = structure_analysis,
     reconciliation = pack$reconciliation,
     revaluation_available = isTRUE(pack$reval_any),
     chart = chart,
@@ -2529,8 +2650,11 @@ bblab_payload_from_statements <- function(d_is, ticker = "", entity_name = "",
   cor <- grab(c("^Cost Of Revenue$", "Cost of Revenue", "Cost Of Goods", "Cost of Goods Sold"))
   if (!.bblab_finite(cor) && .bblab_finite(rev) && .bblab_finite(gp)) cor <- rev - gp
   if (!.bblab_finite(gp) && .bblab_finite(rev) && .bblab_finite(cor)) gp <- rev - cor
+  oi <- grab(c("^Operating Income$", "Operating Income", "Operating Profit", "Operating Earnings"))
   ni <- grab(c("^Net Income$", "Net Income Common Stockholders", "Net Income"))
-  cons <- bblab_consolidated(rev, cor, gp, statement_currency, period, ni = ni)
+  cons <- bblab_consolidated(
+    rev, cor, gp, statement_currency, period, ni = ni, operating_income = oi
+  )
   dims <- list()
   if (is.list(disclosures) && length(disclosures)) {
     dims <- lapply(disclosures, function(d) {

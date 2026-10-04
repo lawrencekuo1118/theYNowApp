@@ -247,11 +247,12 @@ bblab_dimension <- function(id, kind, components = list(),
 
 bblab_consolidated <- function(revenue = NA_real_, cor = NA_real_, gp = NA_real_,
                                currency = NA_character_, period = NA_character_,
-                               ni = NA_real_) {
+                               ni = NA_real_, operating_income = NA_real_) {
   list(
     revenue = .bblab_num(revenue),
     cor = .bblab_num(cor),
     gp = .bblab_num(gp),
+    operating_income = .bblab_num(operating_income),
     ni = .bblab_num(ni),
     currency = .bblab_chr(currency, NA_character_),
     period = .bblab_chr(period, NA_character_)
@@ -271,6 +272,10 @@ bblab_empty_result <- function(codes = character(0), limitations = character(0))
     rounding = NULL,
     recon_amount = NULL,
     shared_corporate = list(),
+    structure_analysis = list(
+      ok = FALSE, businesses = list(), adjustments = list(),
+      conclusions = list(), summary_sentence = "", missing = character(0)
+    ),
     reconciliation = list(pass = FALSE, revenue = NULL, cor = NULL, gp = NULL),
     revaluation = list(),
     chart = list(eligible = FALSE, codes = character(0), slices = list()),

@@ -90,6 +90,108 @@ if (!exists("%||%", mode = "function")) {
   classification %in% c("OTHER", "UNALLOCATED", "RECONCILIATION", "ROUNDING")
 }
 
+.bblab_structure_panel_html <- function(sa, locale = "en") {
+  msg <- function(k) .bblab_ui(k, locale)
+  if (is.null(sa) || !is.list(sa)) {
+    return(tags$p(class = "help-block", msg("bblab_waiting")))
+  }
+  nd <- msg("bblab_struct_not_disclosed")
+  fmt_oi <- function(row) {
+    if (!isTRUE(row$operating_income_disclosed)) return(nd)
+    .bblab_fmt_amt(row$operating_income)
+  }
+  fmt_margin <- function(row) {
+    if (!isTRUE(row$operating_income_disclosed)) return(nd)
+    .bblab_fmt_pct(row$margin)
+  }
+  fmt_pc <- function(row) {
+    if (!isTRUE(row$operating_income_disclosed) || !.bblab_finite(row$profit_contribution)) {
+      return(nd)
+    }
+    .bblab_fmt_pct(row$profit_contribution)
+  }
+  biz_rows <- sa$businesses %||% list()
+  adj_rows <- sa$adjustments %||% list()
+  biz_table <- if (!length(biz_rows)) {
+    tags$p(class = "help-block", msg("bblab_struct_no_business"))
+  } else {
+    tags$table(
+      class = "table table-condensed table-striped ynow-bblab-struct-table",
+      tags$thead(tags$tr(
+        tags$th(msg("bblab_struct_col_business")),
+        tags$th(msg("bblab_struct_col_revenue")),
+        tags$th(msg("bblab_struct_col_rev_pct")),
+        tags$th(msg("bblab_struct_col_oi")),
+        tags$th(msg("bblab_struct_col_margin")),
+        tags$th(msg("bblab_struct_col_profit_pct"))
+      )),
+      tags$tbody(lapply(biz_rows, function(r) {
+        tags$tr(
+          tags$td(r$business),
+          tags$td(.bblab_fmt_amt(r$revenue)),
+          tags$td(.bblab_fmt_pct(r$revenue_pct)),
+          tags$td(fmt_oi(r)),
+          tags$td(fmt_margin(r)),
+          tags$td(fmt_pc(r))
+        )
+      }))
+    )
+  }
+  adj_table <- if (!length(adj_rows)) {
+    tags$p(class = "help-block", msg("bblab_struct_no_adjustments"))
+  } else {
+    tags$table(
+      class = "table table-condensed table-striped ynow-bblab-struct-table",
+      tags$thead(tags$tr(
+        tags$th(msg("bblab_struct_col_adjustment")),
+        tags$th(msg("bblab_struct_col_amount")),
+        tags$th(msg("bblab_struct_col_type")),
+        tags$th(msg("bblab_struct_col_expl"))
+      )),
+      tags$tbody(lapply(adj_rows, function(r) {
+        tags$tr(
+          tags$td(r$adjustment),
+          tags$td(.bblab_fmt_amt(r$amount)),
+          tags$td(r$type_label %||% r$type),
+          tags$td(r$explanation %||% "")
+        )
+      }))
+    )
+  }
+  conc <- sa$conclusions %||% list()
+  conc_list <- tags$ol(
+    class = "ynow-bblab-struct-conclusions",
+    tags$li(tags$b(msg("bblab_struct_c1")), " ", conc$primary_revenue %||% nd),
+    tags$li(tags$b(msg("bblab_struct_c2")), " ", conc$primary_profit %||% nd),
+    tags$li(tags$b(msg("bblab_struct_c3")), " ", conc$high_revenue_low_profit %||% nd),
+    tags$li(tags$b(msg("bblab_struct_c4")), " ", conc$high_profit_low_revenue %||% nd),
+    tags$li(tags$b(msg("bblab_struct_c5")), " ", conc$corporate_consolidation %||% nd),
+    tags$li(tags$b(msg("bblab_struct_c6")), " ", conc$non_operating %||% nd)
+  )
+  tags$div(
+    class = "ynow-bblab-struct",
+    tags$h4(id = "ynow_bblab_struct_biz_h", class = "ynow-bblab-subhead",
+            msg("bblab_struct_biz_h")),
+    biz_table,
+    tags$h4(id = "ynow_bblab_struct_adj_h", class = "ynow-bblab-subhead",
+            msg("bblab_struct_adj_h")),
+    adj_table,
+    if (!is.null(sa$bridge_note) && nzchar(.bblab_chr(sa$bridge_note))) {
+      tags$p(class = "help-block", sa$bridge_note)
+    } else NULL,
+    if (length(sa$missing)) {
+      tags$p(class = "help-block", paste(sa$missing, collapse = " "))
+    } else NULL,
+    tags$h4(id = "ynow_bblab_struct_conc_h", class = "ynow-bblab-subhead",
+            msg("bblab_struct_conc_h")),
+    conc_list,
+    tags$p(
+      class = "ynow-bblab-struct-summary",
+      tags$em(sa$summary_sentence %||% "")
+    )
+  )
+}
+
 #' TRUE only when Search input is clearly not a listed Taiwan or U.S. name.
 #' Ambiguous symbols stay FALSE so valid TW/US listings are never blocked.
 #' Company-agnostic: no ticker-specific formula branches.
@@ -256,6 +358,30 @@ business_breakdown_lab_ui <- function(id = "bblab") {
                  "customer location is never the business split. Overlapping dimensions are never added together."
                )),
         uiOutput(ns("summary"))
+      )
+    ),
+
+    # 2b Business & profitability structure (core economic read)
+    fluidRow(
+      box(
+        title = tagList(
+          tags$span(class = "ynow-bblab-chapter__num", "2b"),
+          icon("layer-group"),
+          tags$span(id = "ynow_bblab_struct_title", "Business & profitability structure")
+        ),
+        width = 12, status = "primary", solidHeader = TRUE,
+        `data-bblab-chapter` = "2b",
+        tags$p(
+          id = "ynow_bblab_struct_help",
+          class = "help-block",
+          paste0(
+            "Main businesses come from the filer's reportable segments. ",
+            "Corporate, eliminations, reconciliation, non-operating, and accounting ",
+            "adjustments are kept separate and are never treated as operating businesses. ",
+            "Segment Operating Income is shown only when disclosed — never estimated."
+          )
+        ),
+        uiOutput(ns("structure_panel"))
       )
     ),
 
@@ -722,6 +848,16 @@ business_breakdown_lab_server <- function(id = "bblab",
           tags$p(class = "help-block", ui_msg("bblab_single_business_note"))
         } else NULL
       )
+    })
+
+    output$structure_panel <- renderUI({
+      res <- lab_result()
+      if (is.null(res)) return(tags$p(class = "help-block", ui_msg("bblab_waiting")))
+      sa <- res$structure_analysis
+      if (is.null(sa) && exists("bblab_build_structure_analysis", mode = "function")) {
+        sa <- bblab_build_structure_analysis(res, locale = loc())
+      }
+      .bblab_structure_panel_html(sa, loc())
     })
 
     output$chart_status <- renderUI({
