@@ -66,7 +66,9 @@ When unsure: use the **English term** + brief Taiwan Chinese gloss on first ment
 
 ## Git & deploy
 
-See `.cursor/rules/auto-deploy-after-optimize.mdc` and `.cursor/rules/dual-workspace-sync.mdc` for ship workflow and workspace sync.
+See `.cursor/rules/auto-deploy-after-optimize.mdc`, `.cursor/rules/auto-cloud-push-authorized.mdc`, and `.cursor/rules/dual-workspace-sync.mdc` for ship workflow and workspace sync.
+
+**User-authorized auto push：** 使用者已明確啟用自動推送至雲端。對已驗證的活動線工作，agents 必須自動 commit → `git push` → shinyapps 部署 → 更新 baseline，無需再問；此授權覆寫一般「未經要求勿 push／commit」習慣（僅限本 repo 的 ship 流程）。
 
 **Auto deploy：** 每次在活動線 `app_19.0/` **完成開發並驗證後**，一律自動 commit → push → `Rscript scripts/deploy_app_19.R` → 更新 `DEPLOY_BASELINE.txt`，無需等候使用者再說「部署／推送」。僅文件／規則／未完成 WIP 或使用者明確要求不部署時略過。
 

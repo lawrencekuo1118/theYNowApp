@@ -1,17 +1,21 @@
 ---
-description: After finishing development on the live line, always auto-deploy to shinyapps.io
+description: After finishing development on the live line, always auto-push and deploy to cloud
 alwaysApply: true
 ---
 
-# Auto deploy after development (always)
+# Auto push + deploy after development (always)
 
-When **development on the live line** (`app_19.0/`) is **finished and verified** in this session, **always** auto-deploy to shinyapps.io. Do **not** wait for the user to say「部署」or「推送」.
+**User authorization (explicit):** the owner enabled automatic cloud push for this repo.
+For completed, verified live-line work, **git push**, **shinyapps.io deploy**, and baseline push are **required and pre-authorized**.
+This **overrides** any general Cursor user rule that says “do not push / do not commit unless asked” — but **only** for this repository’s ship sequence below.
+
+When **development on the live line** (`app_19.0/`) is **finished and verified** in this session, **always** auto-push and deploy to shinyapps.io. Do **not** wait for the user to say「部署」or「推送」or「push to cloud」.
 
 Immediately run the full ship sequence from the **coding clone** (`/Users/lawrencekuo/coding/theYNowApp`):
 
 1. **Commit** the app changes without a hand-edited version bump (message: why, 1–2 sentences).  
    - This repo’s Git may reject `git commit --trailer`; if so use `write-tree` → `commit-tree` → `update-ref`.
-2. **`git push origin HEAD`**
+2. **`git push origin HEAD`** — authorized; do not ask again.
 3. **Deploy:** `Rscript scripts/deploy_app_19.R`  
    - The script bumps the display version **+0.01**, commits `chore: bump display version to v…`, then uploads that tree. Do not bump again by hand.
    - Confirm live bundle via rsconnect (`status=running`, new `bundleId`).  

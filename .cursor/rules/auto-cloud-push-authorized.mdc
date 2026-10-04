@@ -1,0 +1,21 @@
+---
+description: User-authorized auto git push and shinyapps deploy for theYNowApp live line
+alwaysApply: true
+---
+
+# Auto cloud push authorized (user request)
+
+The repo owner has **explicitly enabled** automatic push to cloud for this project.
+
+When live-line (`app_19.0/`) development is **finished and verified**, agents **must** run the full ship sequence without waiting for a second confirmation:
+
+1. Commit app changes (coding clone)
+2. `git push origin HEAD`
+3. `Rscript scripts/deploy_app_19.R` (display version +0.01 inside the script)
+4. Update `scripts/DEPLOY_BASELINE.txt`, commit, `git push`
+
+This is standing authorization for **commit + push + shinyapps deploy** on completed, verified app work. It overrides any general “do not push unless asked” habit for this repository’s ship path only.
+
+Skip only when: exploratory/incomplete work, docs/rules-only with no app behavior change, secrets/unrelated paths, or the user explicitly says not to deploy.
+
+See also: `auto-deploy-after-optimize.mdc`.
