@@ -8,5 +8,5 @@ short=2932459
 message=chore: bump display version to v20.30
 captured_at=2026-10-04T16:06:49Z
 source_branch=master
-display_version=v20.30
+display_version=v20.31
 note=Canonical live line is app_20.0. Bundle 12645984 restores solid black mobile header in TW market mode (desktop TW keeps ROC flag). Deploy via scripts/deploy_app_20.R.
