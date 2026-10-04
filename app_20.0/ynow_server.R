@@ -1922,6 +1922,8 @@ server <- function(input, output, session) {
     }
     make_card <- function(title, key, icon_name, color, formula, notes) {
       # Only label 主模型／副模型; no「備選」chip on remaining cards
+      # Accent colors come from CSS vars (--ynow-model-*) via ynow-model-card--{key}
+      # so Model Selector cards stay aligned with each model tab theme.
       role <- if (!mark_roles) {
         NULL
       } else if (identical(key, prim)) {
@@ -1932,22 +1934,29 @@ server <- function(input, output, session) {
         NULL
       }
       active <- identical(role, "主模型")
-      border_col <- if (identical(role, "主模型")) color else if (identical(role, "副模型")) "#888" else "#ddd"
-      bg <- if (identical(role, "主模型")) "#fffaf2" else if (identical(role, "副模型")) "#f7f9fc" else "#fff"
-      badge_bg <- if (identical(role, "主模型")) color else if (identical(role, "副模型")) "#6c757d" else NULL
+      is_secondary <- identical(role, "副模型")
+      border_col <- if (isTRUE(active)) "var(--ynow-card-accent)" else if (is_secondary) "#888" else "#ddd"
+      bg <- if (isTRUE(active)) "#fffaf2" else if (is_secondary) "#f7f9fc" else "#fff"
       tab <- .ms_key_to_tab(key)
       jump_title <- tryCatch({
         tpl <- .ui_msg("ms_card_jump_title")
         gsub("{model}", as.character(title)[1], tpl, fixed = TRUE)
       }, error = function(e) paste0("Open ", title))
+      card_classes <- paste(
+        "ynow-model-card",
+        paste0("ynow-model-card--", key),
+        if (isTRUE(active)) "ynow-model-card--primary" else "",
+        if (is_secondary) "ynow-model-card--secondary" else ""
+      )
       tags$div(
         class = paste("ynow-model-card-col", if (isTRUE(active)) "ynow-model-rec-active" else ""),
         tags$div(
-          class = "ynow-model-card",
+          class = card_classes,
           role = "button",
           tabindex = "0",
           `data-tab` = tab,
           `data-model-key` = key,
+          `data-model-color` = color,
           title = jump_title,
           `aria-label` = jump_title,
           style = paste0(
@@ -1956,12 +1965,13 @@ server <- function(input, output, session) {
             "; box-shadow:0 2px 4px rgba(0,0,0,0.04); height:100%;",
             "cursor:pointer;"
           ),
-          tags$div(style = paste0("font-size:22px; color:", color, ";"), icon(icon_name)),
+          tags$div(class = "ynow-model-card__icon", style = "font-size:22px;", icon(icon_name)),
           tags$h4(style = "margin:8px 0 4px 0; font-weight:700;", title),
-          if (!is.null(role) && !is.null(badge_bg)) tags$span(
+          if (!is.null(role)) tags$span(
+            class = "ynow-model-card__badge",
             style = paste0(
-              "display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; color:#fff; background:",
-              badge_bg, ";"
+              "display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; color:#fff;",
+              if (is_secondary) " background:#6c757d;" else ""
             ),
             role
           ),

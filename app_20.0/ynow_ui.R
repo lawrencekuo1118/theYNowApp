@@ -2964,12 +2964,14 @@ ui <- dashboardPage(
             #1AA8B8 68%,
             #0C5484 100%
           );
-          /* Model Selector｜估值模型推薦 色系（各模型頁主題） */
+          /* Model Selector｜估值模型推薦 色系（各模型頁主題；與小卡 icon 色一致） */
           --ynow-model-nav: #d81b60;
           --ynow-model-dcf: #00a65a;
           --ynow-model-ddm: #f39c12;
           --ynow-model-ri: #605ca8;
           --ynow-model-pb: #3c8dbc;
+          --ynow-model-multiples: #17a2b8;
+          --ynow-model-sotp: #343a40;
           --ynow-gold-gradient: linear-gradient(
             105deg,
             #FFF6C8 0%,
@@ -3435,29 +3437,51 @@ ui <- dashboardPage(
           color: var(--ynow-ink) !important;
         }
 
-        /* --- 估值模型頁色系（對齊 Model Selector；不含 試算／回復預設 按鈕）--- */
+        /* --- 估值模型頁色系（對齊 Model Selector 七卡；不含 試算／回復預設 按鈕）--- */
         body.ynow-theme-nav { --ynow-model-accent: var(--ynow-model-nav); }
         body.ynow-theme-dcf { --ynow-model-accent: var(--ynow-model-dcf); }
         body.ynow-theme-ddm { --ynow-model-accent: var(--ynow-model-ddm); }
         body.ynow-theme-ri  { --ynow-model-accent: var(--ynow-model-ri); }
         body.ynow-theme-pb  { --ynow-model-accent: var(--ynow-model-pb); }
+        body.ynow-theme-multiples { --ynow-model-accent: var(--ynow-model-multiples); }
+        body.ynow-theme-sotp { --ynow-model-accent: var(--ynow-model-sotp); }
+
+        /* Model Selector cards — same accent tokens as page themes */
+        .ynow-model-card--nav { --ynow-card-accent: var(--ynow-model-nav); }
+        .ynow-model-card--dcf { --ynow-card-accent: var(--ynow-model-dcf); }
+        .ynow-model-card--ddm { --ynow-card-accent: var(--ynow-model-ddm); }
+        .ynow-model-card--ri { --ynow-card-accent: var(--ynow-model-ri); }
+        .ynow-model-card--pb { --ynow-card-accent: var(--ynow-model-pb); }
+        .ynow-model-card--multiples { --ynow-card-accent: var(--ynow-model-multiples); }
+        .ynow-model-card--sotp { --ynow-card-accent: var(--ynow-model-sotp); }
+        .ynow-model-card__icon { color: var(--ynow-card-accent, #333); }
+        .ynow-model-card--primary {
+          border-color: var(--ynow-card-accent) !important;
+          background: #fffaf2 !important;
+        }
+        .ynow-model-card--primary .ynow-model-card__badge {
+          background: var(--ynow-card-accent) !important;
+        }
 
         body.ynow-theme-model .content-wrapper .box.box-primary,
         body.ynow-theme-model .content-wrapper .box.box-info,
         body.ynow-theme-model .content-wrapper .box.box-success,
-        body.ynow-theme-model .content-wrapper .box.box-warning {
+        body.ynow-theme-model .content-wrapper .box.box-warning,
+        body.ynow-theme-model .content-wrapper .box.box-danger {
           border-top-color: var(--ynow-model-accent) !important;
         }
         body.ynow-theme-model .content-wrapper .box.box-solid.box-primary,
         body.ynow-theme-model .content-wrapper .box.box-solid.box-info,
         body.ynow-theme-model .content-wrapper .box.box-solid.box-success,
-        body.ynow-theme-model .content-wrapper .box.box-solid.box-warning {
+        body.ynow-theme-model .content-wrapper .box.box-solid.box-warning,
+        body.ynow-theme-model .content-wrapper .box.box-solid.box-danger {
           border: 1px solid var(--ynow-model-accent) !important;
         }
         body.ynow-theme-model .content-wrapper .box.box-solid.box-primary > .box-header,
         body.ynow-theme-model .content-wrapper .box.box-solid.box-info > .box-header,
         body.ynow-theme-model .content-wrapper .box.box-solid.box-success > .box-header,
-        body.ynow-theme-model .content-wrapper .box.box-solid.box-warning > .box-header {
+        body.ynow-theme-model .content-wrapper .box.box-solid.box-warning > .box-header,
+        body.ynow-theme-model .content-wrapper .box.box-solid.box-danger > .box-header {
           color: #fff !important;
           background: var(--ynow-model-accent) !important;
           background-color: var(--ynow-model-accent) !important;
@@ -3469,7 +3493,9 @@ ui <- dashboardPage(
         body.ynow-theme-model .content-wrapper .box.box-solid.box-success > .box-header a,
         body.ynow-theme-model .content-wrapper .box.box-solid.box-success > .box-header .btn,
         body.ynow-theme-model .content-wrapper .box.box-solid.box-warning > .box-header a,
-        body.ynow-theme-model .content-wrapper .box.box-solid.box-warning > .box-header .btn {
+        body.ynow-theme-model .content-wrapper .box.box-solid.box-warning > .box-header .btn,
+        body.ynow-theme-model .content-wrapper .box.box-solid.box-danger > .box-header a,
+        body.ynow-theme-model .content-wrapper .box.box-solid.box-danger > .box-header .btn {
           color: #fff !important;
         }
         body.ynow-theme-model .content-wrapper .nav-tabs-custom > .nav-tabs > li.active {
@@ -3478,6 +3504,20 @@ ui <- dashboardPage(
         body.ynow-theme-model .content-wrapper .nav-tabs-custom > .nav-tabs > li.active > a,
         body.ynow-theme-model .content-wrapper .nav-tabs-custom > .nav-tabs > li.active:hover > a {
           color: var(--ynow-model-accent) !important;
+        }
+        /* valueBox / infoBox follow the active model card color */
+        body.ynow-theme-model .content-wrapper .small-box,
+        body.ynow-theme-model .tab-content .small-box {
+          background-color: var(--ynow-model-accent) !important;
+        }
+        body.ynow-theme-model .content-wrapper .info-box .info-box-icon {
+          background-color: var(--ynow-model-accent) !important;
+        }
+        /* Sidebar active rail matches the open model tab */
+        body.ynow-theme-model.skin-black .main-sidebar .sidebar-menu > li.active > a,
+        body.ynow-theme-model.skin-black .main-sidebar .sidebar-menu > li.menu-open > a,
+        body.ynow-theme-model.skin-black .main-sidebar .sidebar-menu .treeview-menu > li.active > a {
+          border-left-color: var(--ynow-model-accent) !important;
         }
         /* 共用 Composite／years header：左側色條提示目前模型 */
         body.ynow-theme-model .ynow-header-composite-row,
@@ -6500,17 +6540,18 @@ ui <- dashboardPage(
             Shiny.addCustomMessageHandler('ynowDcLocale', applyDcLocale);
             Shiny.addCustomMessageHandler('ynowModelTheme', function (payload) {
               var tab = (payload && payload.tab) ? String(payload.tab) : '';
+              /* Keys match Model Selector card accents (NAV/DCF/DDM/RI/P/B/Multiples/SOTP). */
               var map = {
                 nav_calculator: 'nav',
                 dcf_calculator: 'dcf',
                 ddm_calculator: 'ddm',
                 ri_calculator: 'ri',
                 pb_calculator: 'pb',
-                rel_multiples_calculator: 'pb',
-                sotp_calculator: 'pb'
+                rel_multiples_calculator: 'multiples',
+                sotp_calculator: 'sotp'
               };
               var key = map[tab] || null;
-              ['nav', 'dcf', 'ddm', 'ri', 'pb'].forEach(function (k) {
+              ['nav', 'dcf', 'ddm', 'ri', 'pb', 'multiples', 'sotp'].forEach(function (k) {
                 document.body.classList.toggle('ynow-theme-' + k, k === key);
               });
               document.body.classList.toggle('ynow-theme-model', !!key);
