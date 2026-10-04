@@ -8,5 +8,5 @@ short=0297808
 message=chore: bump display version to v20.08
 captured_at=2026-10-04T07:40:56Z
 source_branch=master
-display_version=v20.08
+display_version=v20.09
 note=Canonical live line is app_20.0. Bundle 12644716 ships Business Breakdown structure+mix side-by-side with Business cards restored (plus concurrent header work). Deploy via scripts/deploy_app_20.R.
