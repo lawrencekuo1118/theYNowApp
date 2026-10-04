@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12644858
+bundleId=12644869
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=d819bb317945dee9984ede9ddfa52f941f14d848
 commit=d819bb317945dee9984ede9ddfa52f941f14d848
 short=d819bb3
 message=chore: bump display version to v20.10
-captured_at=2026-10-04T08:38:36Z
+captured_at=2026-10-04T08:43:41Z
 source_branch=master
 display_version=v20.10
-note=Canonical live line is app_20.0. Bundle 12644858 ships device/browser default UI language (en vs zh-TW). Deploy via scripts/deploy_app_20.R.
+note=Canonical live line is app_20.0. Bundle 12644869 ships device/browser default UI language (en vs zh-TW). Deploy via scripts/deploy_app_20.R.
