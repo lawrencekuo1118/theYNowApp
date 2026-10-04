@@ -156,7 +156,16 @@ check("own chart expands in shared hist panel", {
   pos_rf <- regexpr("rf_signal_row", macro, fixed = TRUE)[1]
   pos_hist <- regexpr("ynow_macro_index_hist", macro, fixed = TRUE)[1]
   pos_rf > 0 && pos_hist > pos_rf &&
-    grepl("same expand card as ^GSPC", macro, fixed = TRUE)
+    grepl("Rule + chart + constituents all live in the shared expand card", macro, fixed = TRUE)
+})
+check("rule above hist chart in expand", {
+  grepl('id = "ynow_index_rule"', macro, fixed = TRUE) &&
+    grepl("index_hist_panel", macro, fixed = TRUE) &&
+    grepl("rule above chart", macro, fixed = TRUE)
+})
+check("no mid-page YNOW rule chapter", {
+  grepl("output\\$own_index_block <- renderUI", macro) &&
+    grepl("Keep this output as NULL", macro, fixed = TRUE)
 })
 check("constituents under hist chart", {
   grepl(".own_index_constituents_ui", macro, fixed = TRUE) &&

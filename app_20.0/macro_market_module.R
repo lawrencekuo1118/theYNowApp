@@ -876,10 +876,11 @@ macro_market_server <- function(id = "macro",
       if (.is_lite()) return(NULL)
       sym <- as.character(selected_index() %||% "")[1]
       if (!nzchar(sym)) return(NULL)
-      # YNOW / TYNOW: same expand card as ^GSPC, with constituents under the chart.
+      # YNOW / TYNOW: same expand card as ^GSPC — rule above chart, constituents under it.
       own <- identical(sym, .own_index_symbol())
       dat <- index_hist_data()
       title <- if (own) .ui(.index_ui_key("title")) else .ui(macro_index_name_key(sym))
+      rule_key <- .index_ui_key("rule")
       body <- if (is.null(dat)) {
         tags$p(
           id = "ynow_macro_index_empty",
@@ -898,6 +899,16 @@ macro_market_server <- function(id = "macro",
       tags$div(
         class = "ynow-macro-card ynow-macro-index-hist__card",
         tags$h4(id = "ynow_macro_index_hist_title", title),
+        if (own) {
+          tags$p(
+            id = "ynow_index_rule",
+            `data-i18n` = rule_key,
+            class = "ynow-macro-hint ynow-macro-chapter__lead",
+            .ui(rule_key)
+          )
+        } else {
+          NULL
+        },
         body,
         if (own) .own_index_constituents_ui() else NULL
       )
@@ -1004,27 +1015,10 @@ macro_market_server <- function(id = "macro",
       )
     }
 
-    # Chapter (rule only). Chart + constituents expand together in index_hist_panel.
+    # Rule + chart + constituents all live in the shared expand card (index_hist_panel).
+    # Keep this output as NULL so the old mid-page YNOW chapter does not reappear.
     output$own_index_block <- renderUI({
-      .loc()
-      own <- .own_index_symbol()
-      if (!nzchar(own)) return(NULL)
-      title_key <- .index_ui_key("title")
-      rule_key <- .index_ui_key("rule")
-      tags$section(
-        class = "ynow-macro-chapter",
-        tags$h3(
-          id = "ynow_index_chapter_title",
-          `data-i18n` = title_key,
-          .ui(title_key)
-        ),
-        tags$p(
-          id = "ynow_index_rule",
-          `data-i18n` = rule_key,
-          class = "ynow-macro-hint ynow-macro-chapter__lead",
-          .ui(rule_key)
-        )
-      )
+      NULL
     })
 
     output$rf_box <- renderUI({
