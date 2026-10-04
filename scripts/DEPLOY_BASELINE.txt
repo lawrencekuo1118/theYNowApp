@@ -8,5 +8,5 @@ short=4a9305b
 message=chore: bump display version to v20.20
 captured_at=2026-10-04T12:29:14Z
 source_branch=master
-display_version=v20.20
+display_version=v20.21
 note=Canonical live line is app_20.0. Bundle 12645451 stabilizes mobile 繁中/EN with custom header buttons (no shinyWidgets re-render drift). Deploy via scripts/deploy_app_20.R.
