@@ -8,5 +8,5 @@ short=c6ea3a8
 message=chore: bump display version to v20.01
 captured_at=2026-10-04T04:57:00Z
 source_branch=master
-display_version=v20.01
+display_version=v20.02
 note=Canonical live line is app_20.0. Bundle 12644326 = v20.01 (includes YNOW/TYNOW Constituents Market Cap column). Deploy via scripts/deploy_app_20.R. Supersedes 12644304 / 12642899.
