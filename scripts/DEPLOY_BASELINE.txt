@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12644557
+bundleId=12644614
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=49395ea138948910c356b1a033c9bfa8f9a668a6
-commit=49395ea138948910c356b1a033c9bfa8f9a668a6
-short=49395ea
-message=chore: bump display version to v20.04
-captured_at=2026-10-04T06:47:36Z
+aligned_git=8289e59
+commit=8289e59
+short=8289e59
+message=chore: bump display version to v20.05
+captured_at=2026-10-04T07:05:00Z
 source_branch=master
 display_version=v20.05
-note=Canonical live line is app_20.0. Bundle 12644557 = v20.04 (Business Breakdown report UI; shared header ticker; no in-page Search). Deploy via scripts/deploy_app_20.R. Supersedes 12644529.
+note=Canonical live line is app_20.0. Bundle 12644614 = v20.05 (sidebar Business Breakdown rename; BBLab empty-ticker/tab-gate stability). Deploy via scripts/deploy_app_20.R. Supersedes 12644557.
