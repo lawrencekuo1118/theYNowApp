@@ -2944,7 +2944,7 @@ server <- function(input, output, session) {
     ui_locale = ui_locale
   )
 
-  # --- 決策檢核（獨立側邊 tab：通過／否決閘門）---
+  # --- 決策檢核（獨立側邊 tab：檢核摘要置頂 + 主題項目並排）---
   decision_checklist_server(
     input, output, session,
     ui_locale = ui_locale,

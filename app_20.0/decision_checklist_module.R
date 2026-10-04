@@ -1,7 +1,7 @@
 # =========================================================================
-# 投資決策通過檢核表（Decision Checklist）— 可自訂參數、通過／否決摘要
+# 投資決策通過檢核表（Decision Checklist）— 可自訂參數、檢核摘要
 # 啟發式預設；非學術標準。HFV 僅作否決工具，不作看漲依據。
-# 排版：投資人決策流程（體質 → 估值 → 模型 → 否決 → 紀律）。
+# 排版：檢核摘要滿版置頂；各主題項目左右並排；閘門順序體質 → 估值 → 模型 → 否決 → 紀律。
 # 僅 mandatory_suggest（預設勾選）項目開機預勾；其餘 opt-in。
 # Lite：側欄隱藏（ynow_ui.R body.ynow-lite）。
 # =========================================================================
@@ -156,7 +156,10 @@
           id = paste0("ynow_dc_section_", sec),
           sec
         ),
-        lapply(sec_items, .dc_item_block)
+        tags$div(
+          class = "ynow-dc-section-items",
+          lapply(sec_items, .dc_item_block)
+        )
       )
     })
   )
@@ -177,21 +180,26 @@ decision_checklist_tab_body_ui <- function() {
     ),
     fluidRow(
       column(
-        width = 7,
+        width = 12,
+        box(
+          width = 12, status = "success", solidHeader = TRUE,
+          title = tagList(icon("clipboard-check"), tags$span(id = "ynow_dc_box_summary", "Checklist Summary")),
+          tags$div(
+            class = "ynow-dc-summary-top",
+            uiOutput("dc_live_snapshot"),
+            tags$hr(style = "margin: 10px 0;"),
+            uiOutput("dc_summary_panel")
+          )
+        )
+      )
+    ),
+    fluidRow(
+      column(
+        width = 12,
         box(
           width = 12, status = "primary", solidHeader = TRUE,
           title = tagList(icon("tasks"), tags$span(id = "ynow_dc_box_checks", "Checklist & Conditions")),
           .dc_checks_ui()
-        )
-      ),
-      column(
-        width = 5,
-        box(
-          width = 12, status = "success", solidHeader = TRUE,
-          title = tagList(icon("clipboard-check"), tags$span(id = "ynow_dc_box_summary", "Pass / Fail Summary")),
-          uiOutput("dc_live_snapshot"),
-          tags$hr(style = "margin: 10px 0;"),
-          uiOutput("dc_summary_panel")
         )
       )
     )
@@ -604,10 +612,12 @@ decision_checklist_server <- function(
         )
       ),
       tags$div(
+        class = "ynow-dc-summary-grid",
         lapply(rows, function(r) {
           if (!isTRUE(r$on)) {
             return(tags$div(
               class = "ynow-dc-row ynow-dc-row-skip",
+              style = "margin:0;padding:8px 10px;background:#fafafa;border:1px dashed #e9ecef;border-radius:4px;",
               status_badge("skip"),
               tags$span(
                 style = "margin-left:8px;font-size:12.5px;color:#888;",
@@ -617,7 +627,7 @@ decision_checklist_server <- function(
           }
           tags$div(
             class = "ynow-dc-row",
-            style = "margin:0 0 10px 0;padding:8px 10px;background:#fff;border:1px solid #e9ecef;border-radius:4px;",
+            style = "margin:0;padding:8px 10px;background:#fff;border:1px solid #e9ecef;border-radius:4px;",
             tags$div(
               status_badge(r$status),
               tags$span(

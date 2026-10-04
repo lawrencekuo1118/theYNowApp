@@ -1352,7 +1352,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "HFV is a veto tool only — never a bullish buy signal."
     ),
     dc_box_checks = "Checklist & Conditions",
-    dc_box_summary = "Pass / Fail Summary",
+    dc_box_summary = "Checklist Summary",
     dc_panel_hint = paste0(
       "Only Default-ON items start checked. Opt in to include other gates. ",
       "Condition inputs appear only after the parent box is checked. ",
@@ -3366,7 +3366,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "預設值為工程啟發式（非學術標準）。HFV 嚴格定位為否決工具，不作看漲／下單依據。"
     ),
     dc_box_checks = "檢核項目與條件",
-    dc_box_summary = "通過／否決摘要",
+    dc_box_summary = "檢核摘要",
     dc_panel_hint = paste0(
       "僅「預設勾選」項目開機已勾；其餘自行加選後才納入閘門。",
       "條件數值僅在父項勾選後出現。本 Session 選擇由 Shiny inputs 保留（瀏覽器工作階段內）。"

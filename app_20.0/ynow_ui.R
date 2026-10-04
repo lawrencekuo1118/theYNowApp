@@ -9238,7 +9238,26 @@ ui <- dashboardPage(
           font-size: 12px;
         }
 
-        /* Decision Checklist — investor section layout */
+        /* Decision Checklist — summary on top; theme items side-by-side */
+        .ynow-dc-summary-top {
+          width: 100%;
+        }
+        .ynow-dc-summary-top .ynow-dc-live {
+          width: 100%;
+        }
+        .ynow-dc-summary-grid {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+          width: 100%;
+          align-items: stretch;
+        }
+        .ynow-dc-summary-grid > .ynow-dc-row,
+        .ynow-dc-summary-grid > .ynow-dc-row-skip {
+          flex: 1 1 calc(50% - 10px);
+          min-width: 260px;
+          box-sizing: border-box;
+        }
         .ynow-dc-section {
           margin: 0 0 18px 0;
         }
@@ -9254,12 +9273,22 @@ ui <- dashboardPage(
           color: #1a1a1a;
           letter-spacing: 0.02em;
         }
+        .ynow-dc-section-items {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 12px;
+          align-items: stretch;
+          width: 100%;
+        }
         .ynow-dc-item {
-          margin: 0 0 10px 0;
+          flex: 1 1 calc(50% - 12px);
+          min-width: 260px;
+          margin: 0;
           padding: 10px 12px;
           border: 1px solid #e9ecef;
           border-radius: 4px;
           background: #fff;
+          box-sizing: border-box;
         }
         .ynow-dc-item--default {
           border-color: #b8dae0;
@@ -9289,12 +9318,18 @@ ui <- dashboardPage(
         }
         .ynow-dc-conds {
           margin: 8px 0 0 26px;
-          max-width: 420px;
+          max-width: 100%;
         }
         .ynow-dc-label-wrap {
           display: inline;
         }
         @media (max-width: 767px) {
+          .ynow-dc-item,
+          .ynow-dc-summary-grid > .ynow-dc-row,
+          .ynow-dc-summary-grid > .ynow-dc-row-skip {
+            flex-basis: 100%;
+            min-width: 0;
+          }
           .ynow-dc-conds { margin-left: 0; max-width: 100%; }
           .ynow-dc-hint { margin-left: 0; }
         }
