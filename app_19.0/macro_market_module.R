@@ -792,7 +792,13 @@ macro_market_server <- function(id = "macro",
         tk <- as.character(m$ticker)[1]
         df <- tryCatch(fetch_price_history_df(tk, "5d"), error = function(e) NULL)
         q <- .px_last_chg(df)
-        list(ticker = tk, weight = m$weight, last = q$last, chg = q$chg)
+        list(
+          ticker = tk,
+          weight = m$weight,
+          market_cap = suppressWarnings(as.numeric(m$market_cap)[1]),
+          last = q$last,
+          chg = q$chg
+        )
       })
     })
 
@@ -801,6 +807,7 @@ macro_market_server <- function(id = "macro",
       if (!nzchar(own)) return(NULL)
       quotes <- own_member_quotes()
       mode <- if (identical(own, "TYNOW")) "TW" else "US"
+      mcap_ccy <- if (identical(mode, "TW")) "TWD" else "USD"
       names_v <- if (exists("ynow_index_lookup_names", mode = "function") && length(quotes)) {
         ynow_index_lookup_names(vapply(quotes, function(m) m$ticker, character(1)), mode)
       } else {
@@ -809,6 +816,14 @@ macro_market_server <- function(id = "macro",
       rows <- lapply(quotes, function(m) {
         w <- suppressWarnings(as.numeric(m$weight)[1])
         w_txt <- if (is.finite(w)) sprintf("%.2f%%", 100 * w) else "—"
+        mcap <- suppressWarnings(as.numeric(m$market_cap)[1])
+        mcap_txt <- if (is.finite(mcap) && mcap > 0 && exists("format_money_abbr", mode = "function")) {
+          format_money_abbr(mcap, mcap_ccy)
+        } else if (is.finite(mcap) && mcap > 0) {
+          format(mcap, big.mark = ",", scientific = FALSE)
+        } else {
+          "—"
+        }
         px_txt <- if (is.finite(m$last)) format(round(m$last, 2), big.mark = ",", nsmall = 2) else "—"
         px_chg <- if (is.finite(m$chg)) sprintf("%+.2f%%", m$chg) else "—"
         px_cls <- if (is.finite(m$chg) && m$chg >= 0) "ynow-macro-up" else "ynow-macro-down"
@@ -816,6 +831,7 @@ macro_market_server <- function(id = "macro",
         tags$tr(
           tags$td(m$ticker),
           tags$td(nm),
+          tags$td(mcap_txt),
           tags$td(w_txt),
           tags$td(px_txt),
           tags$td(class = px_cls, px_chg)
@@ -827,6 +843,7 @@ macro_market_server <- function(id = "macro",
           tags$thead(tags$tr(
             tags$th(id = "ynow_index_col_ticker", `data-i18n` = "ynow_index_col_ticker", .ui("ynow_index_col_ticker")),
             tags$th(id = "ynow_index_col_name", `data-i18n` = "ynow_index_col_name", .ui("ynow_index_col_name")),
+            tags$th(id = "ynow_index_col_mcap", `data-i18n` = "ynow_index_col_mcap", .ui("ynow_index_col_mcap")),
             tags$th(id = "ynow_index_col_weight", `data-i18n` = "ynow_index_col_weight", .ui("ynow_index_col_weight")),
             tags$th(id = "ynow_index_col_last", `data-i18n` = "ynow_index_col_last", .ui("ynow_index_col_last")),
             tags$th(id = "ynow_index_col_chg", `data-i18n` = "ynow_index_col_chg", .ui("ynow_index_col_chg"))

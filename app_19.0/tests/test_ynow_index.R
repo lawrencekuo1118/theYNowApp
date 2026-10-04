@@ -156,6 +156,14 @@ check("constituents under hist chart", {
     !grepl("own_index_detail", macro, fixed = TRUE)
 })
 check("expand constituents", grepl("ynow_index_constituents", macro, fixed = TRUE))
+check("mcap column after name", {
+  pos_name <- regexpr('ynow_index_col_name", `data-i18n` = "ynow_index_col_name"', macro, fixed = TRUE)[1]
+  pos_mcap <- regexpr('ynow_index_col_mcap", `data-i18n` = "ynow_index_col_mcap"', macro, fixed = TRUE)[1]
+  pos_weight <- regexpr('ynow_index_col_weight", `data-i18n` = "ynow_index_col_weight"', macro, fixed = TRUE)[1]
+  pos_name > 0 && pos_mcap > pos_name && pos_weight > pos_mcap &&
+    grepl("format_money_abbr(mcap, mcap_ccy)", macro, fixed = TRUE) &&
+    grepl("market_cap = suppressWarnings(as.numeric(m$market_cap)[1])", macro, fixed = TRUE)
+})
 check("weight percent", grepl('sprintf("%.2f%%", 100 * w)', macro, fixed = TRUE))
 check("price recalc", grepl("ynow_index_series", macro, fixed = TRUE))
 check("no live rescreen", !grepl("ynow_index_current(market = mode)", macro, fixed = TRUE))
