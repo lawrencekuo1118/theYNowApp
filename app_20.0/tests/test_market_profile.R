@@ -55,6 +55,8 @@ check(
   isTRUE(is_valuation_model_tab("dcf_calculator")) &&
     isTRUE(is_valuation_model_tab("get_started")) &&
     isTRUE(is_valuation_model_tab("dashboard")) &&
+    isTRUE(is_valuation_model_tab("company_advance")) &&
+    isTRUE(is_valuation_model_tab("business_breakdown_lab")) &&
     isTRUE(is_valuation_model_tab("smart_analysis")) &&
     isTRUE(is_valuation_model_tab("sensitivity"))
 )

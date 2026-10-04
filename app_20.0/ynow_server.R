@@ -165,8 +165,8 @@ server <- function(input, output, session) {
   observeEvent(input$sidebar_tabs, {
     tab <- as.character(input$sidebar_tabs %||% "")[1]
     if (identical(tab, "business_breakdown_lab")) {
-      session$sendCustomMessage("ynowGotoTab", list(tab = "dashboard"))
-      tab <- "dashboard"
+      session$sendCustomMessage("ynowGotoTab", list(tab = "company_advance"))
+      tab <- "company_advance"
     }
     session$sendCustomMessage("ynowModelTheme", list(tab = tab))
     .ynow_apply_pending_market_default_ticker(tab)
@@ -589,7 +589,7 @@ server <- function(input, output, session) {
     }
   )
 
-  # Business Breakdown Lab — mounted with Company (dashboard); not lazy Testing
+  # Business Breakdown Lab — Company - Advance sidebar tab (not lazy Testing)
   business_breakdown_lab_server(
     "bblab",
     market_mode_rv = market_mode,

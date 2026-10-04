@@ -46,7 +46,8 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
     "hccsi_index_health", "hccsi_index_stress",
     "hccsi_index_fragility", "hccsi_index_market",
     "hccsi_unavailable", "hccsi_dropped", "hccsi_dropped_none",
-    "menu_business_breakdown_lab", "bblab_experimental_badge", "bblab_page_sub",
+    "menu_business_breakdown_lab", "menu_company_advance",
+    "bblab_experimental_badge", "bblab_page_sub",
     "bblab_page_title", "bblab_gm_unestimable", "bblab_reval_unavailable",
     "bblab_listed_only_notice", "bblab_listed_only_scope",
     "bblab_ch1_title", "bblab_ch3_title", "bblab_ch3_current_label",
@@ -320,18 +321,20 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
     perl = TRUE
   ))
     testthat::expect_false(grepl('tabName = "business_breakdown_lab"', txt, fixed = TRUE))
-  testthat::expect_false(grepl("ynow_menu_bblab", txt, fixed = TRUE))
-  testthat::expect_true(grepl("ynow-company-bblab", txt, fixed = TRUE))
+  testthat::expect_true(grepl('tabName = "company_advance"', txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow_menu_company_advance", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-company-advance-bblab", txt, fixed = TRUE))
   testthat::expect_true(grepl("business_breakdown_lab_ui", txt, fixed = TRUE))
-  testthat::expect_true(grepl("body.ynow-lite .ynow-company-bblab", txt, fixed = TRUE))
+  testthat::expect_true(grepl("body.ynow-lite .ynow-company-advance-bblab", txt, fixed = TRUE))
+  testthat::expect_true(grepl('data-value="company_advance"', txt, fixed = TRUE))
   testthat::expect_true(grepl("body.ynow-lite .ynow-bblab", txt, fixed = TRUE))
   testthat::expect_true(grepl("input.sidebar_tabs != 'testing'", txt, fixed = TRUE))
   testthat::expect_true(grepl("remapLegacyTab", txt, fixed = TRUE))
-  testthat::expect_true(grepl("return 'dashboard'", txt, fixed = TRUE))
-  # Testing remains a lazy host; BBLab body lives at bottom of Company (dashboard)
+  testthat::expect_true(grepl("return 'company_advance'", txt, fixed = TRUE))
+  # Testing remains a lazy host; BBLab body lives on Company - Advance
   testthat::expect_true(grepl('uiOutput("ynow_lazy_host_testing")', txt, fixed = TRUE))
   testthat::expect_true(grepl(
-    'tabItem\\(tabName = "dashboard"[\\s\\S]*business_breakdown_lab_ui\\(\"bblab\"\\)[\\s\\S]*tabName = "smart_analysis"',
+    'tabItem\\(\\s*tabName = "company_advance"[\\s\\S]*business_breakdown_lab_ui\\(\"bblab\"\\)',
     txt,
     perl = TRUE
   ))

@@ -496,7 +496,7 @@ check("25 shared fabs not on GP cards",
 # =====================================================================
 dashboard_block <- {
   m <- regexpr(
-    'tabItem\\(tabName = "dashboard"[\\s\\S]*?tabName = "smart_analysis"',
+    'tabItem\\(tabName = "dashboard"[\\s\\S]*?tabName = "company_advance"',
     ui_src,
     perl = TRUE
   )
@@ -522,34 +522,45 @@ testing_fn_src <- {
     substr(ui_src, start, start + len - 1L)
   }
 }
-check("26 no sidebar menu for BBL",
-      !grepl('tabName = "business_breakdown_lab"', ui_src, fixed = TRUE) &&
-        !grepl("ynow_menu_bblab", ui_src, fixed = TRUE) &&
-        !grepl("menuItem(", paste(grep("Business Breakdown Lab",
-                                       strsplit(ui_src, "\n", fixed = TRUE)[[1]],
-                                       value = TRUE, fixed = TRUE), collapse = "\n"),
-              fixed = TRUE) &&
+advance_block <- {
+  m <- regexpr(
+    "tabItem\\(\\s*tabName\\s*=\\s*\"company_advance\"[\\s\\S]*?\\n\\s*\\),",
+    ui_src,
+    perl = TRUE
+  )
+  if (m < 1L) {
+    ""
+  } else {
+    start <- as.integer(m)
+    len <- as.integer(attr(m, "match.length"))
+    substr(ui_src, start, start + len - 1L)
+  }
+}
+check("26 Company - Advance sidebar hosts BBL",
+      grepl('tabName = "company_advance"', ui_src, fixed = TRUE) &&
+        grepl("ynow_menu_company_advance", ui_src, fixed = TRUE) &&
+        grepl("Company - Advance", ui_src, fixed = TRUE) &&
+        !grepl('tabName = "business_breakdown_lab"', ui_src, fixed = TRUE) &&
         grepl("Experimental Feature", mod_src, fixed = TRUE) &&
         grepl("business_breakdown_lab_ui", ui_src, fixed = TRUE))
-check("26 Lab markup lives under Company tab",
-      grepl('tabName = "dashboard"', ui_src, fixed = TRUE) &&
-        nzchar(dashboard_block) &&
-        grepl("ynow-company-bblab", dashboard_block, fixed = TRUE) &&
-        grepl("business_breakdown_lab_ui", dashboard_block, fixed = TRUE) &&
-        grepl('id = "ynow_company_bblab"', dashboard_block, fixed = TRUE) &&
+check("26 Lab markup lives under Company - Advance tab",
+      nzchar(advance_block) &&
+        grepl("ynow-company-advance-bblab", advance_block, fixed = TRUE) &&
+        grepl("business_breakdown_lab_ui", advance_block, fixed = TRUE) &&
+        grepl('id = "ynow_company_advance_bblab"', advance_block, fixed = TRUE) &&
+        !grepl("business_breakdown_lab_ui", dashboard_block, fixed = TRUE) &&
         !grepl("business_breakdown_lab_ui", testing_fn_src, fixed = TRUE) &&
         !grepl("ynow-testing-bblab", ui_src, fixed = TRUE) &&
         grepl("ynow_testing_page_title", testing_fn_src, fixed = TRUE))
-check("26 Lite CSS hide + remap to Company",
-      grepl("body.ynow-lite .ynow-company-bblab", ui_src, fixed = TRUE) &&
+check("26 Lite CSS hide + remap to Company - Advance",
+      grepl('data-value="company_advance"', ui_src, fixed = TRUE) &&
+        grepl("body.ynow-lite .ynow-company-advance-bblab", ui_src, fixed = TRUE) &&
         grepl("body.ynow-lite .ynow-bblab", ui_src, fixed = TRUE) &&
         grepl("ynow-sidebar-test-link", ui_src, fixed = TRUE) &&
-        grepl("'dashboard'", ui_src, fixed = TRUE) &&
         grepl("ynow-full-only", mod_src, fixed = TRUE) &&
         grepl("remapLegacyTab", ui_src, fixed = TRUE) &&
         grepl("business_breakdown_lab", ui_src, fixed = TRUE) &&
-        grepl("return 'dashboard'", ui_src, fixed = TRUE) &&
-        !grepl("body.ynow-lite .sidebar-menu a\\[data-value=\"business_breakdown_lab\"\\]", ui_src))
+        grepl("return 'company_advance'", ui_src, fixed = TRUE))
 
 # ---- extras: i18n, parse, valuation isolation, toast specificity ----
 for (k in c("menu_business_breakdown_lab", "bblab_experimental_badge", "bblab_page_sub",
@@ -672,10 +683,10 @@ check("valuation files unchanged (no bblab wiring)", !any(val_hit))
 check("server only mounts lab module",
       grepl("business_breakdown_lab_server", server_src, fixed = TRUE) &&
         !grepl("bblab_analyze\\(", server_src))
-check("server remaps legacy BBL tab to Company",
+check("server remaps legacy BBL tab to Company - Advance",
       grepl('identical(tab, "business_breakdown_lab")', server_src, fixed = TRUE) &&
         grepl("ynowGotoTab", server_src, fixed = TRUE) &&
-        grepl('tab = "dashboard"', server_src, fixed = TRUE))
+        grepl('tab = "company_advance"', server_src, fixed = TRUE))
 
 parse_files <- c("business_breakdown_schema.R", "business_breakdown_engine.R",
                  "business_breakdown_structure.R", "business_breakdown_module.R",
@@ -1584,7 +1595,7 @@ check("Lab keeps in-session Search; Testing sandbox still hides global chrome",
         grepl("input.sidebar_tabs != 'testing'", ui_src, fixed = TRUE) &&
         grepl("input.sidebar_tabs != 'about'", ui_src, fixed = TRUE) &&
         grepl("input.sidebar_tabs != 'macro_market'", ui_src, fixed = TRUE) &&
-        grepl("ynow-company-bblab", ui_src, fixed = TRUE))
+        grepl("ynow-company-advance-bblab", ui_src, fixed = TRUE))
 wide_year <- list(
   headers = c("2025"),
   rows = list(

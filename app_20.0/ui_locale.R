@@ -68,6 +68,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "HFV is a veto / risk screen, not a buy signal; F-Score is a quality screen, not a buy signal."
     ),
     menu_dashboard = "Company",
+    menu_company_advance = "Company - Advance",
     kpi_last_price = "Last Price",
     menu_macro_market = "Macro & Market Trends",
     menu_smart_analysis = "Smart Analysis",
@@ -372,7 +373,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     testing_page_title = "Testing",
     testing_page_sub = paste0(
       "Full-only sandbox for upcoming experiments and feature trials. ",
-      "Business Breakdown Lab lives at the bottom of Company. ",
+      "Business Breakdown Lab lives under Company - Advance. ",
       "Quant Backtest Lab remains on the main sidebar. Lite mode hides this entry."
     ),
     testing_box_title = "Sandbox",
@@ -2105,6 +2106,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "HFV 屬否決／風險提示，非買進訊號；F-Score 為品質檢核，非買進訊號。"
     ),
     menu_dashboard = "個股",
+    menu_company_advance = "個股 - 進階",
     kpi_last_price = "最新股價",
     menu_macro_market = "總體經濟與大盤趨勢",
     menu_smart_analysis = "智慧分析",
@@ -2402,7 +2404,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     testing_page_title = "Testing",
     testing_page_sub = paste0(
       "完整版專用實驗區，供後續功能試用與驗證。",
-      "業務拆解實驗室置於 Company 分頁最下方。",
+      "業務拆解實驗室置於「個股 - 進階」（Company - Advance）。",
       "量化回測實驗室仍在主選單；簡化版不顯示此入口。"
     ),
     testing_box_title = "實驗沙盒",

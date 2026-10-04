@@ -2632,7 +2632,7 @@ beta_rolling_section_ui <- function() {
                 id = "ynow_testing_page_sub",
                 paste0(
                   "Full-only sandbox for upcoming experiments and feature trials. ",
-                  "Business Breakdown Lab lives at the bottom of Company. ",
+                  "Business Breakdown Lab lives under Company - Advance. ",
                   "Quant Backtest Lab remains on the main sidebar. Lite mode hides this entry."
                 )
               ),
@@ -2775,6 +2775,11 @@ ui <- dashboardPage(
              ),
              menuItem("Blue Chip Leaderboard", tabName = "bluechip", icon = icon("star")),
              menuItem("Company", tabName = "dashboard", icon = icon("chart-line")),
+             menuItem(
+               text = tags$span(id = "ynow_menu_company_advance", "Company - Advance"),
+               tabName = "company_advance",
+               icon = icon("layer-group")
+             ),
              menuItem("YNOW", tabName = "sensitivity", icon = icon("sliders-h")),
              menuItem(
                text = tags$span(id = "ynow_menu_smart", "Smart Analysis"),
@@ -4054,13 +4059,15 @@ ui <- dashboardPage(
         }
         /* Lite: under Data Source keep Snapshot + Feedback only;
            Quant Backtest Lab + Testing foot link stay Full-only.
-           Business Breakdown Lab sits at bottom of Company (no sidebar item). */
+           Company - Advance (Business Breakdown Lab) is Full-only. */
         body.ynow-lite .sidebar-menu a[data-value="lab_notes"],
-        body.ynow-lite .sidebar-menu li:has(> a[data-value="lab_notes"]) {
+        body.ynow-lite .sidebar-menu li:has(> a[data-value="lab_notes"]),
+        body.ynow-lite .sidebar-menu a[data-value="company_advance"],
+        body.ynow-lite .sidebar-menu li:has(> a[data-value="company_advance"]) {
           display: none !important;
         }
         body.ynow-lite .ynow-sidebar-test-link,
-        body.ynow-lite .ynow-company-bblab,
+        body.ynow-lite .ynow-company-advance-bblab,
         body.ynow-lite .ynow-bblab {
           display: none !important;
         }
@@ -5495,6 +5502,7 @@ ui <- dashboardPage(
               home: s.menu_home,
               macro_market: s.menu_macro_market,
               dashboard: s.menu_dashboard,
+              company_advance: s.menu_company_advance,
               smart_analysis: s.menu_smart_analysis,
               get_started: s.menu_get_started,
               dcf_calculator: s.menu_dcf,
@@ -5516,6 +5524,10 @@ ui <- dashboardPage(
             });
             var menuMacro = document.getElementById('ynow_menu_macro');
             if (menuMacro && s.menu_macro_market) menuMacro.textContent = s.menu_macro_market;
+            var menuCompanyAdvance = document.getElementById('ynow_menu_company_advance');
+            if (menuCompanyAdvance && s.menu_company_advance) {
+              menuCompanyAdvance.textContent = s.menu_company_advance;
+            }
             var smartLab = document.getElementById('ynow_menu_smart');
             if (smartLab && s.menu_smart_analysis) smartLab.textContent = s.menu_smart_analysis;
             var menuBt = document.getElementById('ynow_menu_backtest');
@@ -6389,11 +6401,11 @@ ui <- dashboardPage(
             var FULL_ONLY_TABS = [
               'get_started', 'nav_calculator', 'dcf_calculator', 'ddm_calculator',
               'ri_calculator', 'pb_calculator', 'rel_multiples_calculator', 'sotp_calculator', 'hfv',
-              'decision_checklist', 'lab_notes', 'testing'
+              'decision_checklist', 'lab_notes', 'testing', 'company_advance'
             ];
             function remapLegacyTab(tab) {
               tab = String(tab || '');
-              if (tab === 'business_breakdown_lab') return 'dashboard';
+              if (tab === 'business_breakdown_lab') return 'company_advance';
               return tab;
             }
             window.ynowRemapLegacyTab = remapLegacyTab;
@@ -6428,8 +6440,8 @@ ui <- dashboardPage(
             function remapLegacyHash() {
               var h = String(location.hash || '');
               if (h === '#shiny-tab-business_breakdown_lab') {
-                gotoTab('dashboard');
-                try { history.replaceState(null, '', '#shiny-tab-dashboard'); } catch (eH) {}
+                gotoTab('company_advance');
+                try { history.replaceState(null, '', '#shiny-tab-company_advance'); } catch (eH) {}
               }
             }
             function registerGotoTabHandler() {
@@ -9243,7 +9255,7 @@ ui <- dashboardPage(
       )
     ),
     # Ticker search + Yahoo industry chrome: hide on Home, About, Macro, Blue Chip, Testing
-    # (Business Breakdown Lab on Company keeps its own in-session Search alongside global chrome;
+    # (Business Breakdown Lab on Company - Advance keeps its own in-session Search alongside global chrome;
     # Blue Chip uses its own universe Search, not the global ticker chrome).
     conditionalPanel(
       condition = "input.sidebar_tabs != 'about' && input.sidebar_tabs != 'macro_market' && input.sidebar_tabs != 'bluechip' && input.sidebar_tabs != 'testing' && input.sidebar_tabs != 'home'",
@@ -10108,12 +10120,18 @@ ui <- dashboardPage(
                        )
                      )
               ),
-              # Business Breakdown Lab — Full-only; graduated from Testing (v20.03)
-              tags$div(
-                class = "ynow-full-only ynow-company-bblab",
-                id = "ynow_company_bblab",
-                business_breakdown_lab_ui("bblab")
-              )
+      ),
+
+      # ==========================================
+      # Company - Advance：Business Breakdown Lab（Full-only）
+      # ==========================================
+      tabItem(
+        tabName = "company_advance",
+        tags$div(
+          class = "ynow-full-only ynow-company-advance-bblab",
+          id = "ynow_company_advance_bblab",
+          business_breakdown_lab_ui("bblab")
+        )
       ),
 
       # ==========================================

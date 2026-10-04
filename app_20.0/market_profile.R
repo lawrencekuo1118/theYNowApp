@@ -263,6 +263,7 @@ ynow_valuation_model_tabs <- function() {
     "smart_analysis",
     "snapshot",
     "dashboard",
+    "company_advance",
     "sensitivity",
     "dcf_calculator",
     "ddm_calculator",
@@ -280,7 +281,7 @@ ynow_valuation_model_tabs <- function() {
 is_valuation_model_tab <- function(tab) {
   t <- trimws(as.character(tab %||% "")[1])
   if (!nzchar(t) || identical(toupper(t), "NA")) return(FALSE)
-  if (identical(t, "business_breakdown_lab")) t <- "dashboard"
+  if (identical(t, "business_breakdown_lab")) t <- "company_advance"
   t %in% ynow_valuation_model_tabs()
 }
 

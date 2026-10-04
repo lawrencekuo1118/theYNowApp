@@ -4,7 +4,7 @@
 ## v20 重點
 
 - **整階 +1**：活動線目錄 `app_19.0/` → `app_20.0/`；顯示版號 **v20**
-- **Business Breakdown Lab**：自 Testing 小分頁移至 Company 分頁最下方（完整版）；Lite 仍隱藏
+- **Business Breakdown Lab**：側邊欄獨立分頁 **Company - Advance**（完整版；置於 Company 下方）；Lite 仍隱藏
 - **目錄**：`app_20.0/`；顯示版號 **v20**；部署腳本 `scripts/deploy_app_20.R`
 
 ## v19 重點
