@@ -8,5 +8,5 @@ short=a563285
 message=chore: bump display version to v20.26
 captured_at=2026-10-04T13:27:51Z
 source_branch=master
-display_version=v20.26
+display_version=v20.27
 note=Canonical live line is app_20.0. Bundle 12645608 wires SOTP sync to BB Lab segment notes and clarifies unavailable reasons. Deploy via scripts/deploy_app_20.R.
