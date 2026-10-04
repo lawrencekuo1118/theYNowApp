@@ -8,5 +8,5 @@ short=f368d58
 message=chore: bump display version to v20.12
 captured_at=2026-10-04T09:09:40Z
 source_branch=master
-display_version=v20.12
+display_version=v20.13
 note=Canonical live line is app_20.0. Bundle 12644942 ships sidebar rename Basic Setup → Model Dashboard. Deploy via scripts/deploy_app_20.R.
