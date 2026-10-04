@@ -535,6 +535,22 @@ testthat::test_that("mobile notification panel CSS stays visible", {
   testthat::expect_true(grepl("bottom: 12px", txt, fixed = TRUE))
 })
 
+testthat::test_that("mobile TW header uses black bar not flag", {
+  ui_path <- file.path("..", "ynow_ui.R")
+  txt <- paste(readLines(ui_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  # Desktop still references the ROC flag asset
+  testthat::expect_true(grepl("roc_flag.svg", txt, fixed = TRUE))
+  # Mobile block disables TW flag layers and keeps ink black header
+  testthat::expect_true(grepl(
+    "body\\.ynow-market-tw \\.main-header::before[\\s\\S]*?display:\\s*none\\s*!important",
+    txt
+  ))
+  testthat::expect_true(grepl(
+    "TW mobile: solid black bar|US \\+ TW mobile: solid black bar",
+    txt
+  ))
+})
+
 testthat::test_that("ynow_server wires Lite auto-calc and Smart Analysis outputs", {
   srv_path <- file.path("..", "ynow_server.R")
   txt <- paste(readLines(srv_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")

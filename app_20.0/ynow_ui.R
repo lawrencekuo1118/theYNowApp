@@ -3285,7 +3285,8 @@ ui <- dashboardPage(
           outline: none;
         }
 
-        /* 台股：dashboardHeader 改以中華民國國旗填滿；美股維持全黑 */
+        /* 台股（桌面）：dashboardHeader 以中華民國國旗填滿；美股維持全黑。
+           手機改回黑底（見下方 max-width: 767px 覆寫）。 */
         body.ynow-market-tw .main-header {
           position: relative;
           background-color: transparent !important;
@@ -9209,12 +9210,28 @@ ui <- dashboardPage(
             max-height: 50px !important;
             height: 50px !important;
           }
-          /* US: keep the black bar on .main-header so a transparent navbar
-             does not hide the centered title / progress fill underneath.
-             TW keeps its flag ::before (transparent header) unchanged. */
+          /* US + TW mobile: solid black bar so transparent navbar does not
+             hide the centered title / progress fill. Desktop TW keeps flag. */
           body:not(.ynow-market-tw) .main-header,
-          body:not(.ynow-market-tw).skin-black .main-header {
+          body:not(.ynow-market-tw).skin-black .main-header,
+          body.ynow-market-tw .main-header,
+          body.ynow-market-tw.skin-black .main-header {
             background-color: var(--ynow-ink) !important;
+          }
+          body.ynow-market-tw .main-header::before,
+          body.ynow-market-tw .main-header::after {
+            display: none !important;
+            content: none !important;
+            background: none !important;
+            background-image: none !important;
+          }
+          body.ynow-market-tw .main-header .logo .ynow-app-title-fill-inner {
+            text-shadow: none;
+          }
+          body.ynow-market-tw .main-header .navbar .nav > li > a,
+          body.ynow-market-tw .ynow-market-header,
+          body.ynow-market-tw .ynow-lang-header {
+            text-shadow: none;
           }
           /* Collapse AdminLTE stacked logo+navbar (was ~100px) into one 50px bar.
              Title is full-bleed + viewport-centered; JS only sets title max-width
