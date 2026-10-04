@@ -42,6 +42,8 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
     "macro_index_name_0050",
     "macro_index_chart_hint", "macro_index_chart_empty",
     "macro_index_chart_error",
+    "macro_own_index_overlay_label", "macro_own_index_overlay_hint",
+    "macro_own_index_overlay_yaxis",
     "hccsi_title", "hccsi_disclosure", "hccsi_click_hint",
     "hccsi_index_health", "hccsi_index_stress",
     "hccsi_index_fragility", "hccsi_index_market",

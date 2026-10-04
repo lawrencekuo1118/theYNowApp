@@ -152,6 +152,11 @@ check("flow numeral", grepl("ynow-hccsi-flow", macro, fixed = TRUE))
 check("YNOW KPI on Rf row", grepl(".own_index_kpi_card", macro, fixed = TRUE) &&
   grepl("ynow-macro-kpi--ynow", macro, fixed = TRUE) &&
   grepl("ynow_col", macro, fixed = TRUE))
+check("own chart overlay opt-in", {
+  grepl("own_index_overlay", macro, fixed = TRUE) &&
+    grepl("own_index_overlays <- reactiveVal(character(0))", macro, fixed = TRUE) &&
+    grepl("macro_align_rebase_100", macro, fixed = TRUE)
+})
 check("own chart expands in shared hist panel", {
   pos_rf <- regexpr("rf_signal_row", macro, fixed = TRUE)[1]
   pos_hist <- regexpr("ynow_macro_index_hist", macro, fixed = TRUE)[1]

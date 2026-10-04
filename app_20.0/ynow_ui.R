@@ -5783,6 +5783,8 @@ ui <- dashboardPage(
             setBtText('ynow_macro_hccsi_in_help', 'hccsi_in_composite_help');
             setBtText('ynow_macro_hccsi_method_title', 'hccsi_method_title');
             setBtText('ynow_macro_index_hint', 'macro_index_chart_hint');
+            setBtText('ynow_own_index_overlay_label', 'macro_own_index_overlay_label');
+            setBtText('ynow_own_index_overlay_hint', 'macro_own_index_overlay_hint');
             ['ynow_index_title', 'ynow_index_chapter_title', 'ynow_index_rule',
              'ynow_index_chart_note', 'ynow_index_constituents',
              'ynow_index_col_ticker', 'ynow_index_col_name', 'ynow_index_col_mcap',
@@ -8285,6 +8287,24 @@ ui <- dashboardPage(
         }
         .ynow-macro-index-hist__card:has(.ynow-index-detail-ready) .ynow-index-pending {
           display: none;
+        }
+        .ynow-own-index-overlay {
+          margin: 0 0 10px 0;
+          padding: 8px 10px;
+          background: #f7f9fc;
+          border: 1px solid #e4eaef;
+          border-radius: 4px;
+        }
+        .ynow-own-index-overlay .shiny-options-group {
+          margin-top: 2px;
+        }
+        .ynow-own-index-overlay .checkbox-inline,
+        .ynow-own-index-overlay .checkbox-inline + .checkbox-inline {
+          margin-left: 0;
+          margin-right: 14px;
+        }
+        .ynow-own-index-overlay .ynow-macro-hint {
+          margin: 4px 0 0 0;
         }
         .ynow-macro-kpi .ynow-macro-up,
         .ynow-macro-rf .ynow-macro-up { color: var(--ynow-macro-green); }

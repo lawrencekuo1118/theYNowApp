@@ -1787,6 +1787,13 @@ locale_for_market <- function(mode = get_market_mode()) {
     macro_index_chart_hint = "Click an index box to show its historical line chart.",
     macro_index_chart_empty = "No price history for this index.",
     macro_index_chart_error = "Could not load this index history.",
+    macro_own_index_overlay_label = "Overlay market indices",
+    macro_own_index_overlay_hint = paste0(
+      "Optional. Pick one or more major boards to overlay on YNOW / TYNOW. ",
+      "All series are rebased to 100 at the shared window start for comparison (native quotes, no FX). ",
+      "Default: no overlay."
+    ),
+    macro_own_index_overlay_yaxis = "Rebased level (start = 100)",
     macro_rf_source_fallback = "Rf source unavailable",
     macro_rf_src_live = "live",
     macro_rf_src_last = "last known live",
@@ -3822,6 +3829,13 @@ locale_for_market <- function(mode = get_market_mode()) {
     macro_index_chart_hint = "點選指數方塊即可顯示該指數的歷史走勢圖。",
     macro_index_chart_empty = "此指數沒有歷史價格資料。",
     macro_index_chart_error = "無法載入此指數的歷史走勢。",
+    macro_own_index_overlay_label = "疊加大盤指數",
+    macro_own_index_overlay_hint = paste0(
+      "選用。可勾選一項或多項大盤指數疊在 YNOW／TYNOW 折線上。",
+      "為便於比較，各序列皆以共同視窗起點＝100 重訂基期（原始報價幣別，不做匯率換算）。",
+      "預設不疊圖。"
+    ),
+    macro_own_index_overlay_yaxis = "重訂基期水位（起點＝100）",
     macro_rf_source_fallback = "無法取得 Rf 來源",
     macro_rf_src_live = "即時",
     macro_rf_src_last = "最近成功抓取",

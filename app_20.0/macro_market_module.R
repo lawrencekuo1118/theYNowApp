@@ -125,6 +125,78 @@ macro_index_name_key <- function(symbol) {
   "macro_index_chart_empty"
 }
 
+# Overlay line colors for major boards on YNOW / TYNOW charts (research display).
+.MACRO_OWN_OVERLAY_COLORS <- c(
+  "^GSPC" = "#c0392b",
+  "^IXIC" = "#8e44ad",
+  "^DJI" = "#16a085",
+  "^SOX" = "#d35400",
+  "^TWII" = "#c0392b",
+  "IX0043.TWO" = "#8e44ad",
+  "0050.TW" = "#16a085"
+)
+
+macro_own_overlay_color <- function(symbol) {
+  col <- .macro_named_pick(.MACRO_OWN_OVERLAY_COLORS, symbol)
+  if (length(col) && !is.na(col) && nzchar(col)) return(col)
+  "#7f8c8d"
+}
+
+#' Align Date rows across series and rebase each Close to 100 at the common start.
+#' Used so YNOW/TYNOW can overlay major boards on a comparable scale (no FX).
+macro_align_rebase_100 <- function(named_dfs) {
+  if (is.null(named_dfs) || !length(named_dfs)) return(NULL)
+  cleaned <- list()
+  for (nm in names(named_dfs)) {
+    d <- named_dfs[[nm]]
+    if (!is.data.frame(d) || !all(c("Date", "Close") %in% names(d)) || nrow(d) < 2L) next
+    dd <- data.frame(
+      Date = as.Date(d$Date),
+      Close = suppressWarnings(as.numeric(d$Close)),
+      stringsAsFactors = FALSE
+    )
+    dd <- dd[is.finite(dd$Close) & !is.na(dd$Date), , drop = FALSE]
+    if (nrow(dd) >= 2L) cleaned[[nm]] <- dd
+  }
+  if (!length(cleaned)) return(NULL)
+  dates <- as.Date(cleaned[[1]]$Date)
+  for (d in cleaned[-1]) dates <- intersect(dates, as.Date(d$Date))
+  dates <- sort(unique(dates))
+  if (length(dates) < 2L) return(NULL)
+  out <- list()
+  for (nm in names(cleaned)) {
+    d <- cleaned[[nm]]
+    y <- as.numeric(d$Close[match(dates, as.Date(d$Date))])
+    base <- y[is.finite(y)][1]
+    if (!is.finite(base) || base == 0) next
+    out[[nm]] <- data.frame(
+      Date = dates,
+      Close = 100 * y / base,
+      stringsAsFactors = FALSE
+    )
+  }
+  if (!length(out)) NULL else out
+}
+
+#' Localized choice vector for YNOW/TYNOW major-index overlays (current market boards).
+macro_own_overlay_choices <- function(mode = get_market_mode(), locale = "en") {
+  specs <- macro_index_specs(mode)
+  if (!length(specs)) return(character(0))
+  labs <- vapply(names(specs), function(sym) {
+    key <- macro_index_name_key(sym)
+    lab <- if (exists("ui_str", mode = "function")) {
+      tryCatch(ui_str(key, locale), error = function(e) unname(specs[[sym]]))
+    } else {
+      unname(specs[[sym]])
+    }
+    if (!nzchar(as.character(lab)[1]) || identical(lab, key)) {
+      lab <- unname(specs[[sym]])
+    }
+    as.character(lab)[1]
+  }, character(1))
+  stats::setNames(names(specs), labs)
+}
+
 macro_none_choice <- function(locale = "en") {
   loc <- if (exists("normalize_ui_locale", mode = "function")) {
     normalize_ui_locale(locale)
@@ -577,6 +649,8 @@ macro_market_server <- function(id = "macro",
     refresh_token <- reactiveVal(0L)
     selected_index <- reactiveVal("")
     hccsi_expanded <- reactiveVal(FALSE)
+    # YNOW / TYNOW chart overlays — default none (no major-index overlay).
+    own_index_overlays <- reactiveVal(character(0))
     # Until the user changes Industry vs benchmark, US opens on Technology (XLK).
     industry_touched <- reactiveVal(FALSE)
     industry_programmatic <- reactiveVal(FALSE)
@@ -613,7 +687,36 @@ macro_market_server <- function(id = "macro",
       if (nzchar(sel) && !(sel %in% names(specs)) && !identical(sel, own)) {
         selected_index("")
       }
+      # Drop overlays that are not in the new market's board list.
+      cur_ov <- isolate(as.character(own_index_overlays() %||% character(0)))
+      own_index_overlays(intersect(cur_ov, names(specs)))
     }, ignoreInit = TRUE)
+    observeEvent(input$own_index_overlay, {
+      specs <- macro_click_index_specs(.mode())
+      sel <- as.character(input$own_index_overlay %||% character(0))
+      sel <- sel[nzchar(sel) & sel %in% names(specs)]
+      own_index_overlays(sel)
+    }, ignoreNULL = FALSE, ignoreInit = TRUE)
+    # Keep overlay choice labels in sync with market + UI locale.
+    observe({
+      mode <- .mode()
+      loc <- .loc()
+      own <- .own_index_symbol()
+      sel_idx <- as.character(selected_index() %||% "")[1]
+      if (!nzchar(own) || !identical(sel_idx, own)) return()
+      specs <- macro_index_specs(mode)
+      cur <- intersect(as.character(isolate(own_index_overlays()) %||% character(0)), names(specs))
+      tryCatch(
+        updateCheckboxGroupInput(
+          session,
+          "own_index_overlay",
+          label = .ui("macro_own_index_overlay_label"),
+          choices = macro_own_overlay_choices(mode, loc),
+          selected = cur
+        ),
+        error = function(e) NULL
+      )
+    })
     observeEvent(input$bubble_refresh, {
       refresh_token(isolate(refresh_token()) + 1L)
     }, ignoreInit = TRUE)
@@ -881,6 +984,35 @@ macro_market_server <- function(id = "macro",
       dat <- index_hist_data()
       title <- if (own) .ui(.index_ui_key("title")) else .ui(macro_index_name_key(sym))
       rule_key <- .index_ui_key("rule")
+      overlay_ctrl <- if (own) {
+        ov_choices <- macro_own_overlay_choices(.mode(), .loc())
+        ov_sel <- intersect(
+          as.character(isolate(own_index_overlays()) %||% character(0)),
+          unname(ov_choices)
+        )
+        tags$div(
+          class = "ynow-own-index-overlay",
+          checkboxGroupInput(
+            ns("own_index_overlay"),
+            label = tags$span(
+              id = "ynow_own_index_overlay_label",
+              `data-i18n` = "macro_own_index_overlay_label",
+              .ui("macro_own_index_overlay_label")
+            ),
+            choices = ov_choices,
+            selected = ov_sel,
+            inline = TRUE
+          ),
+          tags$p(
+            id = "ynow_own_index_overlay_hint",
+            `data-i18n` = "macro_own_index_overlay_hint",
+            class = "ynow-macro-hint",
+            .ui("macro_own_index_overlay_hint")
+          )
+        )
+      } else {
+        NULL
+      }
       body <- if (is.null(dat)) {
         tags$p(
           id = "ynow_macro_index_empty",
@@ -909,6 +1041,7 @@ macro_market_server <- function(id = "macro",
         } else {
           NULL
         },
+        overlay_ctrl,
         body,
         if (own) .own_index_constituents_ui() else NULL
       )
@@ -926,13 +1059,59 @@ macro_market_server <- function(id = "macro",
       sym <- as.character(selected_index() %||% "")[1]
       own <- identical(sym, .own_index_symbol())
       title <- if (own) .ui(.index_ui_key("title")) else .ui(macro_index_name_key(sym))
-      ylab <- if (own) .ui("ynow_index_level") else title
+      overlays <- if (own) {
+        as.character(own_index_overlays() %||% character(0))
+      } else {
+        character(0)
+      }
+      overlays <- overlays[nzchar(overlays)]
+      period <- as.character(input$hist_period %||% "1y")[1]
+      if (!nzchar(period) || is.na(period)) period <- "1y"
+
+      plot_df <- dat
+      overlay_series <- list()
+      if (own && length(overlays)) {
+        named <- list(own = dat)
+        for (ov in overlays) {
+          raw <- tryCatch(fetch_price_history_df(ov, period), error = function(e) NULL)
+          if (is.data.frame(raw) && nrow(raw) >= 2L) named[[ov]] <- raw
+        }
+        aligned <- macro_align_rebase_100(named)
+        if (!is.null(aligned) && !is.null(aligned$own)) {
+          plot_df <- aligned$own
+          overlay_series <- aligned[setdiff(names(aligned), "own")]
+        }
+      }
+
+      ylab <- if (own && length(overlay_series)) {
+        .ui("macro_own_index_overlay_yaxis")
+      } else if (own) {
+        .ui("ynow_index_level")
+      } else {
+        title
+      }
       fig <- plotly::plot_ly(
-        dat, x = ~Date, y = ~Close,
+        plot_df, x = ~Date, y = ~Close,
         type = "scatter", mode = "lines",
         name = title,
-        line = list(color = "#0c5484", width = 2)
+        line = list(color = "#0c5484", width = 2.5)
       )
+      if (length(overlay_series)) {
+        for (ov in names(overlay_series)) {
+          od <- overlay_series[[ov]]
+          ov_lab <- .ui(macro_index_name_key(ov))
+          if (!nzchar(ov_lab) || identical(ov_lab, "macro_index_chart_empty")) {
+            ov_lab <- ov
+          }
+          fig <- plotly::add_trace(
+            fig,
+            data = od, x = ~Date, y = ~Close,
+            type = "scatter", mode = "lines",
+            name = ov_lab,
+            line = list(color = macro_own_overlay_color(ov), width = 1.6, dash = "dot")
+          )
+        }
+      }
       plotly::layout(
         fig,
         title = list(text = title, font = list(size = 14)),
@@ -940,7 +1119,8 @@ macro_market_server <- function(id = "macro",
         yaxis = list(title = ylab, showgrid = TRUE),
         margin = list(l = 50, r = 20, t = 50, b = 40),
         hovermode = "x unified",
-        showlegend = FALSE
+        showlegend = length(overlay_series) > 0L,
+        legend = list(orientation = "h", y = 1.12)
       )
     })
 

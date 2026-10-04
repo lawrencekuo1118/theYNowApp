@@ -127,6 +127,8 @@ for (k in c(
   "macro_index_name_0050",
   "macro_index_chart_hint", "macro_index_chart_empty",
   "macro_index_chart_error",
+  "macro_own_index_overlay_label", "macro_own_index_overlay_hint",
+  "macro_own_index_overlay_yaxis",
   "hccsi_title", "hccsi_disclosure", "hccsi_index_health",
   "hccsi_index_stress", "hccsi_index_fragility", "hccsi_index_market",
   "hccsi_unavailable", "notif_hccsi_history_missing"
@@ -359,6 +361,44 @@ check("own index chart uses shared hist panel", {
     grepl("if (own) .own_index_constituents_ui()", txt, fixed = TRUE) &&
     !grepl("identical(sym, .own_index_symbol())) return(NULL)", txt, fixed = TRUE)
 })
+check("YNOW/TYNOW overlay control exists", {
+  grepl("own_index_overlay", txt, fixed = TRUE) &&
+    grepl("macro_own_overlay_choices", txt, fixed = TRUE) &&
+    grepl("own_index_overlays <- reactiveVal(character(0))", txt, fixed = TRUE) &&
+    grepl("macro_align_rebase_100", txt, fixed = TRUE)
+})
+check("overlay default is empty", grepl("reactiveVal(character(0))", txt, fixed = TRUE))
+check("en overlay label", identical(ui_str("macro_own_index_overlay_label", "en"), "Overlay market indices"))
+check("zh overlay label", identical(ui_str("macro_own_index_overlay_label", "zh-TW"), "疊加大盤指數"))
+check("overlay hint says default off en", grepl("Default: no overlay", ui_str("macro_own_index_overlay_hint", "en"), fixed = TRUE))
+check("overlay hint says default off zh", grepl("預設不疊圖", ui_str("macro_own_index_overlay_hint", "zh-TW"), fixed = TRUE))
+
+# Align + rebase helper
+ov_a <- data.frame(
+  Date = as.Date("2024-01-01") + 0:4,
+  Close = c(200, 210, 220, 230, 240),
+  stringsAsFactors = FALSE
+)
+ov_b <- data.frame(
+  Date = as.Date("2024-01-01") + 1:5,
+  Close = c(50, 55, 60, 65, 70),
+  stringsAsFactors = FALSE
+)
+aligned <- macro_align_rebase_100(list(own = ov_a, "^GSPC" = ov_b))
+check("align rebase returns both", !is.null(aligned) && all(c("own", "^GSPC") %in% names(aligned)))
+check("align rebase start 100", {
+  isTRUE(abs(aligned$own$Close[1] - 100) < 1e-9) &&
+    isTRUE(abs(aligned[["^GSPC"]]$Close[1] - 100) < 1e-9)
+})
+check("align common dates only", {
+  identical(aligned$own$Date, aligned[["^GSPC"]]$Date) &&
+    length(aligned$own$Date) == 4L
+})
+us_ov <- macro_own_overlay_choices("US", "en")
+tw_ov <- macro_own_overlay_choices("TW", "zh-TW")
+check("US overlay choices", all(c("^GSPC", "^IXIC", "^DJI", "^SOX") %in% unname(us_ov)))
+check("TW overlay choices", all(c("^TWII", "IX0043.TWO", "0050.TW") %in% unname(tw_ov)))
+check("US overlay labels localized", identical(names(us_ov)[unname(us_ov) == "^GSPC"], "S&P 500"))
 check("hint above Rf", {
   pos_hint <- regexpr("ynow_macro_index_hint", txt, fixed = TRUE)[1]
   pos_rf <- regexpr("rf_signal_row", txt, fixed = TRUE)[1]
