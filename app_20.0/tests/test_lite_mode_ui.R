@@ -255,6 +255,18 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
     regexpr('tabName = "bluechip"', txt, fixed = TRUE)[1] <
       regexpr('tabName = "dashboard"', txt, fixed = TRUE)[1]
   )
+  # Blue Chip tab uses ocean palette (mode-agnostic; not logo green search CTA)
+  testthat::expect_true(grepl("ynow-theme-bluechip", txt, fixed = TRUE))
+  testthat::expect_true(grepl("--ynow-bluechip-deep: #0F5A90", txt, fixed = TRUE))
+  testthat::expect_true(grepl("--ynow-bluechip-ocean: #0A72AE", txt, fixed = TRUE))
+  testthat::expect_true(grepl("--ynow-bluechip-cyan: #33B1D2", txt, fixed = TRUE))
+  testthat::expect_true(grepl("--ynow-bluechip-sky: #65AEC7", txt, fixed = TRUE))
+  testthat::expect_true(grepl("--ynow-bluechip-light: #8CD0EB", txt, fixed = TRUE))
+  testthat::expect_true(grepl("TW／US 共用", txt, fixed = TRUE) ||
+                          grepl("不分市場", txt, fixed = TRUE) ||
+                          grepl("mode-agnostic|both markets", txt, ignore.case = TRUE))
+  testthat::expect_true(grepl("#lab_im_run_fscore", txt, fixed = TRUE))
+  testthat::expect_false(grepl("搜尋績優股維持 logo 綠", txt, fixed = TRUE))
   testthat::expect_true(
     regexpr('tabName = "dashboard"', txt, fixed = TRUE)[1] <
       regexpr('tabName = "sensitivity"', txt, fixed = TRUE)[1]
@@ -543,7 +555,8 @@ testthat::test_that("mobile TW header uses black bar not flag", {
   # Mobile block disables TW flag layers and keeps ink black header
   testthat::expect_true(grepl(
     "body\\.ynow-market-tw \\.main-header::before[\\s\\S]*?display:\\s*none\\s*!important",
-    txt
+    txt,
+    perl = TRUE
   ))
   testthat::expect_true(grepl(
     "TW mobile: solid black bar|US \\+ TW mobile: solid black bar",

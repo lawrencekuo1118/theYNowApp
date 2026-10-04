@@ -3581,9 +3581,35 @@ ui <- dashboardPage(
           color: #ffffff !important;
         }
 
-        /* --- Blue Chip Ranking：色系對齊 logo 藍 #0C5484 --- */
+        /* --- Blue Chip：藍海色系（TW／US 共用，不隨市場模式變色）---
+           Palette: #0F5A90 → #0A72AE → #33B1D2 → #65AEC7 → #8CD0EB */
         body.ynow-theme-bluechip {
-          --ynow-bluechip-accent: var(--ynow-logo-blue);
+          --ynow-bluechip-deep: #0F5A90;
+          --ynow-bluechip-ocean: #0A72AE;
+          --ynow-bluechip-cyan: #33B1D2;
+          --ynow-bluechip-sky: #65AEC7;
+          --ynow-bluechip-light: #8CD0EB;
+          --ynow-bluechip-accent: var(--ynow-bluechip-ocean);
+          --ynow-bluechip-accent-deep: var(--ynow-bluechip-deep);
+          --ynow-bluechip-gradient: linear-gradient(
+            105deg,
+            #0F5A90 0%,
+            #0A72AE 28%,
+            #33B1D2 55%,
+            #65AEC7 78%,
+            #8CD0EB 100%
+          );
+          --ynow-bluechip-wash: linear-gradient(
+            180deg,
+            rgba(15, 90, 144, 0.09) 0%,
+            rgba(51, 177, 210, 0.06) 42%,
+            rgba(140, 208, 235, 0.04) 100%
+          );
+          accent-color: var(--ynow-bluechip-ocean);
+        }
+        body.ynow-theme-bluechip .content-wrapper {
+          background-color: #f3f8fc !important;
+          background-image: var(--ynow-bluechip-wash) !important;
         }
         body.ynow-theme-bluechip .content-wrapper .box.box-primary,
         body.ynow-theme-bluechip .content-wrapper .box.box-info,
@@ -3602,8 +3628,9 @@ ui <- dashboardPage(
         body.ynow-theme-bluechip .content-wrapper .box.box-solid.box-success > .box-header,
         body.ynow-theme-bluechip .content-wrapper .box.box-solid.box-warning > .box-header {
           color: #fff !important;
-          background: var(--ynow-bluechip-accent) !important;
+          background: var(--ynow-bluechip-gradient) !important;
           background-color: var(--ynow-bluechip-accent) !important;
+          border-bottom-color: var(--ynow-bluechip-deep) !important;
         }
         body.ynow-theme-bluechip .content-wrapper .box.box-solid.box-primary > .box-header a,
         body.ynow-theme-bluechip .content-wrapper .box.box-solid.box-primary > .box-header .btn,
@@ -3616,21 +3643,136 @@ ui <- dashboardPage(
           color: #fff !important;
         }
         body.ynow-theme-bluechip .content-wrapper .nav-tabs-custom > .nav-tabs > li.active {
-          border-top-color: var(--ynow-bluechip-accent) !important;
+          border-top-color: var(--ynow-bluechip-cyan) !important;
         }
         body.ynow-theme-bluechip .content-wrapper .nav-tabs-custom > .nav-tabs > li.active > a,
         body.ynow-theme-bluechip .content-wrapper .nav-tabs-custom > .nav-tabs > li.active:hover > a {
-          color: var(--ynow-bluechip-accent) !important;
+          color: var(--ynow-bluechip-deep) !important;
         }
         body.ynow-theme-bluechip .content-wrapper .nav-tabs-custom > .nav-tabs > li > a > .fa,
         body.ynow-theme-bluechip .content-wrapper .nav-tabs-custom > .nav-tabs > li > a > .fas {
-          color: var(--ynow-bluechip-accent);
+          color: var(--ynow-bluechip-ocean);
+        }
+        body.ynow-theme-bluechip .content-wrapper .nav-tabs-custom > .nav-tabs > li.active > a > .fa,
+        body.ynow-theme-bluechip .content-wrapper .nav-tabs-custom > .nav-tabs > li.active > a > .fas {
+          color: var(--ynow-bluechip-deep);
+        }
+        /* tabBox title strip */
+        body.ynow-theme-bluechip .content-wrapper .nav-tabs-custom > .nav-tabs > li.header {
+          color: var(--ynow-bluechip-deep) !important;
         }
         body.ynow-theme-bluechip .content-wrapper .ynow-lab-im-pool-controls {
-          border-left: 4px solid var(--ynow-bluechip-accent);
-          padding-left: 10px;
+          border-left: 4px solid var(--ynow-bluechip-cyan);
+          padding: 10px 12px;
+          margin-bottom: 14px;
+          border-radius: 0 6px 6px 0;
+          background: linear-gradient(
+            90deg,
+            rgba(15, 90, 144, 0.08) 0%,
+            rgba(140, 208, 235, 0.12) 100%
+          );
         }
-        /* 搜尋績優股維持 logo 綠（與估值「試算」一致） */
+        /* Primary actions — ocean (incl. former green「搜尋績優股」) */
+        body.ynow-theme-bluechip .content-wrapper .btn-success,
+        body.ynow-theme-bluechip .content-wrapper .btn-success:focus,
+        body.ynow-theme-bluechip .content-wrapper .btn-success:active,
+        body.ynow-theme-bluechip .content-wrapper .btn-success.active,
+        body.ynow-theme-bluechip .content-wrapper #lab_im_run_fscore,
+        body.ynow-theme-bluechip .content-wrapper #lab_im_run_fscore:focus,
+        body.ynow-theme-bluechip .content-wrapper #lab_im_run_fscore:active {
+          background-color: var(--ynow-bluechip-ocean) !important;
+          border-color: var(--ynow-bluechip-deep) !important;
+          color: #fff !important;
+          background-image: none !important;
+        }
+        body.ynow-theme-bluechip .content-wrapper .btn-success:hover,
+        body.ynow-theme-bluechip .content-wrapper #lab_im_run_fscore:hover {
+          background-color: var(--ynow-bluechip-deep) !important;
+          border-color: var(--ynow-bluechip-deep) !important;
+          color: #fff !important;
+        }
+        body.ynow-theme-bluechip .content-wrapper .btn-primary,
+        body.ynow-theme-bluechip .content-wrapper .btn-info {
+          background-color: var(--ynow-bluechip-ocean) !important;
+          border-color: var(--ynow-bluechip-deep) !important;
+          color: #fff !important;
+        }
+        body.ynow-theme-bluechip .content-wrapper .btn-primary:hover,
+        body.ynow-theme-bluechip .content-wrapper .btn-info:hover {
+          background-color: var(--ynow-bluechip-deep) !important;
+          border-color: var(--ynow-bluechip-deep) !important;
+        }
+        body.ynow-theme-bluechip .content-wrapper .btn-default {
+          border-color: var(--ynow-bluechip-sky) !important;
+          color: var(--ynow-bluechip-deep) !important;
+        }
+        body.ynow-theme-bluechip .content-wrapper .btn-default:hover {
+          background-color: rgba(140, 208, 235, 0.25) !important;
+          border-color: var(--ynow-bluechip-cyan) !important;
+          color: var(--ynow-bluechip-deep) !important;
+        }
+        /* Form focus / selectize / radio */
+        body.ynow-theme-bluechip .content-wrapper .form-control:focus,
+        body.ynow-theme-bluechip .content-wrapper .selectize-input.focus {
+          border-color: var(--ynow-bluechip-cyan) !important;
+          box-shadow: 0 0 0 2px rgba(51, 177, 210, 0.25) !important;
+        }
+        body.ynow-theme-bluechip .content-wrapper .radio input[type="radio"],
+        body.ynow-theme-bluechip .content-wrapper .checkbox input[type="checkbox"] {
+          accent-color: var(--ynow-bluechip-ocean);
+        }
+        body.ynow-theme-bluechip .content-wrapper a:not(.btn) {
+          color: var(--ynow-bluechip-ocean);
+        }
+        body.ynow-theme-bluechip .content-wrapper a:not(.btn):hover {
+          color: var(--ynow-bluechip-deep);
+        }
+        body.ynow-theme-bluechip .content-wrapper .ynow-lab-im-eq-explain {
+          background: rgba(140, 208, 235, 0.18);
+          border-color: var(--ynow-bluechip-sky);
+          color: #2a4a5c;
+        }
+        body.ynow-theme-bluechip .content-wrapper .ynow-lab-im-eq-explain b {
+          color: var(--ynow-bluechip-deep);
+        }
+        body.ynow-theme-bluechip .content-wrapper .label-primary,
+        body.ynow-theme-bluechip .content-wrapper .badge-primary,
+        body.ynow-theme-bluechip .content-wrapper .label-info,
+        body.ynow-theme-bluechip .content-wrapper .badge-info {
+          background-color: var(--ynow-bluechip-ocean) !important;
+        }
+        body.ynow-theme-bluechip .content-wrapper .progress-bar,
+        body.ynow-theme-bluechip .content-wrapper .progress-bar-success,
+        body.ynow-theme-bluechip .content-wrapper .progress-bar-info {
+          background-color: var(--ynow-bluechip-cyan) !important;
+        }
+        body.ynow-theme-bluechip .content-wrapper .small-box,
+        body.ynow-theme-bluechip .content-wrapper .small-box.bg-aqua,
+        body.ynow-theme-bluechip .content-wrapper .small-box.bg-blue,
+        body.ynow-theme-bluechip .content-wrapper .small-box.bg-green {
+          background-color: var(--ynow-bluechip-ocean) !important;
+        }
+        /* Sidebar active rail stays ocean on Blue Chip (both markets) */
+        body.ynow-theme-bluechip.skin-black .main-sidebar .sidebar-menu > li.active > a,
+        body.ynow-theme-bluechip.skin-black .main-sidebar .sidebar-menu > li.menu-open > a {
+          border-left-color: var(--ynow-bluechip-cyan) !important;
+        }
+        /* DT / tables light ocean header tint */
+        body.ynow-theme-bluechip .content-wrapper .dataTables_wrapper .dataTables_paginate .paginate_button.current,
+        body.ynow-theme-bluechip .content-wrapper .dataTables_wrapper .dataTables_paginate .paginate_button.current:hover {
+          background: var(--ynow-bluechip-ocean) !important;
+          border-color: var(--ynow-bluechip-deep) !important;
+          color: #fff !important;
+        }
+        body.ynow-theme-bluechip .content-wrapper table.table > thead > tr > th {
+          border-bottom-color: var(--ynow-bluechip-sky) !important;
+          color: var(--ynow-bluechip-deep);
+        }
+        /* Spinner / loaders */
+        body.ynow-theme-bluechip .content-wrapper .load-container .loader,
+        body.ynow-theme-bluechip .content-wrapper .shiny-spinner-output-container .load-container {
+          color: var(--ynow-bluechip-cyan);
+        }
 
         /* Dashboard 損益表／現金流量表：圖標與選取頂條對齊 logo 金 */
         #dashboard_fin_report > .nav-tabs > li > a[data-value="Income Statement"] > .fa,
@@ -4337,6 +4479,23 @@ ui <- dashboardPage(
         .ynow-home-card:focus-visible {
           border-color: #2f9e6b;
           outline: none;
+        }
+        /* Home door → Blue Chip：藍海色系（與分頁主題一致，不分市場） */
+        .ynow-home-card[data-tab="bluechip"] {
+          border-color: #65AEC7;
+          background: linear-gradient(
+            135deg,
+            rgba(15, 90, 144, 0.06) 0%,
+            rgba(140, 208, 235, 0.14) 100%
+          );
+        }
+        .ynow-home-card[data-tab="bluechip"] .ynow-home-card-k {
+          color: #0F5A90;
+        }
+        .ynow-home-card[data-tab="bluechip"]:hover,
+        .ynow-home-card[data-tab="bluechip"]:focus-visible {
+          border-color: #0A72AE;
+          box-shadow: 0 0 0 2px rgba(51, 177, 210, 0.22);
         }
         .ynow-home-card-k {
           margin: 0 0 4px;
