@@ -1,13 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12645496
+bundleId=12645518
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=ac4fc748803af672f070fb94a4465e3ef1151a45
-commit=ac4fc748803af672f070fb94a4465e3ef1151a45
-short=ac4fc74
-message=chore: bump display version to v20.22
-captured_at=2026-10-04T12:43:37Z
+aligned_git=b2c46ef06af24ce91a8aecea0f6dc475f2fd9a03
+commit=b2c46ef06af24ce91a8aecea0f6dc475f2fd9a03
+short=b2c46ef
+message=chore: bump display version to v20.23
+captured_at=2026-10-04T12:51:36Z
 source_branch=master
 display_version=v20.23
-note=Canonical live line is app_20.0. Bundle 12645496 moves YNOW/TYNOW reconstitution rule into the expand card above the chart. Deploy via scripts/deploy_app_20.R.
-
+note=Canonical live line is app_20.0. Bundle 12645518 aligns each valuation model tab theme with Model Selector card colors (incl. Multiples/SOTP). Deploy via scripts/deploy_app_20.R.
