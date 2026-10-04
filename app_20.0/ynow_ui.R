@@ -8324,13 +8324,33 @@ ui <- dashboardPage(
           border: 1px solid #e4eaef;
           border-radius: 4px;
         }
+        /* Keep overlay index checkboxes on one row even after
+           updateCheckboxGroupInput (which drops Shiny's inline=TRUE). */
         .ynow-own-index-overlay .shiny-options-group {
+          display: flex;
+          flex-direction: row;
+          flex-wrap: nowrap;
+          align-items: center;
+          gap: 4px 16px;
           margin-top: 2px;
+          overflow-x: auto;
         }
-        .ynow-own-index-overlay .checkbox-inline,
-        .ynow-own-index-overlay .checkbox-inline + .checkbox-inline {
-          margin-left: 0;
-          margin-right: 14px;
+        .ynow-own-index-overlay .shiny-options-group .checkbox,
+        .ynow-own-index-overlay .shiny-options-group .checkbox-inline {
+          display: inline-flex;
+          align-items: center;
+          margin: 0 !important;
+          padding: 0;
+          float: none !important;
+        }
+        .ynow-own-index-overlay .shiny-options-group .checkbox + .checkbox,
+        .ynow-own-index-overlay .shiny-options-group .checkbox-inline + .checkbox-inline {
+          margin-left: 0 !important;
+        }
+        .ynow-own-index-overlay .shiny-options-group label {
+          margin: 0;
+          white-space: nowrap;
+          font-weight: normal;
         }
         .ynow-own-index-overlay .ynow-macro-hint {
           margin: 4px 0 0 0;

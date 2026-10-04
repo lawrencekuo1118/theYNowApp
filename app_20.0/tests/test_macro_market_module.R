@@ -368,6 +368,14 @@ check("YNOW/TYNOW overlay control exists", {
     grepl("macro_align_rebase_100", txt, fixed = TRUE)
 })
 check("overlay default is empty", grepl("reactiveVal(character(0))", txt, fixed = TRUE))
+check("overlay checkboxes forced single row", {
+  ui_css <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("ynow-own-index-overlay .shiny-options-group", ui_css, fixed = TRUE) &&
+    grepl("flex-wrap: nowrap", ui_css, fixed = TRUE) &&
+    grepl("inline = TRUE", txt, fixed = TRUE) &&
+    grepl("updateCheckboxGroupInput", txt, fixed = TRUE) &&
+    grepl("inline = TRUE", paste(readLines("macro_market_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n"), fixed = TRUE)
+})
 check("en overlay label", identical(ui_str("macro_own_index_overlay_label", "en"), "Overlay market indices"))
 check("zh overlay label", identical(ui_str("macro_own_index_overlay_label", "zh-TW"), "疊加大盤指數"))
 check("overlay hint says default off en", grepl("Default: no overlay", ui_str("macro_own_index_overlay_hint", "en"), fixed = TRUE))

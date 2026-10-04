@@ -712,7 +712,8 @@ macro_market_server <- function(id = "macro",
           "own_index_overlay",
           label = .ui("macro_own_index_overlay_label"),
           choices = macro_own_overlay_choices(mode, loc),
-          selected = cur
+          selected = cur,
+          inline = TRUE
         ),
         error = function(e) NULL
       )
