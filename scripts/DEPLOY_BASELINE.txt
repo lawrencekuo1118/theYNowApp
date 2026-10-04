@@ -8,5 +8,5 @@ short=ecf1452
 message=chore: bump display version to v20.24
 captured_at=2026-10-04T13:03:24Z
 source_branch=master
-display_version=v20.24
+display_version=v20.25
 note=Canonical live line is app_20.0. Bundle 12645548 adds investor-facing hints under Decision Checklist settings (no code-style param labels). Deploy via scripts/deploy_app_20.R.
