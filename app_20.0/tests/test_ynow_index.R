@@ -27,7 +27,11 @@ check <- function(label, cond) {
 check("pass 8 and zero alerts", isTRUE(ynow_index_passes(8, 0)))
 check("pass 9 and zero alerts", isTRUE(ynow_index_passes(9, 0)))
 check("reject 7", !isTRUE(ynow_index_passes(7, 0)))
-check("reject alert", !isTRUE(ynow_index_passes(8, 1)))
+check("reject alert US", !isTRUE(ynow_index_passes(8, 1, market = "US")))
+check("reject alert 8 TW", !isTRUE(ynow_index_passes(8, 1, market = "TW")))
+check("reject two alerts perfect TW", !isTRUE(ynow_index_passes(9, 2, market = "TW")))
+check("pass perfect + one alert TW", isTRUE(ynow_index_passes(9, 1, market = "TW")))
+check("reject perfect + one alert US", !isTRUE(ynow_index_passes(9, 1, market = "US")))
 check("reject unknown alert", !isTRUE(ynow_index_passes(8, NA)))
 tw_uni <- data.frame(
   ticker = c("2330.TW", "0050.TW", "6488.TWO", "3105.TWO"),
@@ -117,8 +121,12 @@ check("zh rule", grepl("等權重", ui_str("ynow_index_rule", "zh-TW"), fixed = 
 check("zh no simplified", !grepl("默认|参数|数据|用户", ui_str("ynow_index_rule", "zh-TW")))
 check("en TYNOW rule", grepl("TYNOW", ui_str("tynow_index_title", "en"), fixed = TRUE) &&
   grepl("8 or higher", ui_str("tynow_index_rule", "en"), fixed = TRUE) &&
+  grepl("perfect F-Score (9)", ui_str("tynow_index_rule", "en"), fixed = TRUE) &&
+  grepl("at most one statement alert", ui_str("tynow_index_rule", "en"), fixed = TRUE) &&
   grepl("emerging-board", ui_str("tynow_index_rule", "en"), fixed = TRUE))
 check("zh TYNOW rule", grepl("上市與上櫃", ui_str("tynow_index_rule", "zh-TW"), fixed = TRUE) &&
+  grepl("滿分（9）", ui_str("tynow_index_rule", "zh-TW"), fixed = TRUE) &&
+  grepl("至多一項", ui_str("tynow_index_rule", "zh-TW"), fixed = TRUE) &&
   grepl("興櫃", ui_str("tynow_index_rule", "zh-TW"), fixed = TRUE) &&
   !grepl("默认|参数|数据|用户", ui_str("tynow_index_rule", "zh-TW")))
 keys <- c("ynow_index_title", "ynow_index_rule", "ynow_index_chart_note", "ynow_index_waiting",

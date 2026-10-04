@@ -1,11 +1,12 @@
 # YNOW (US) and TYNOW (TW) — equal-weight 10
 #
-# Rank primary listings by market cap. Keep a name only when Piotroski F-Score
-# is 8 or higher and Schilit screening has zero 警示. Take the first 10.
-# Equal weight. The stored basket stays fixed until the next monthly
-# reconstitution (Asia/Taipei). The index level follows those prices.
-# No industry filter. Scan caps are engineering limits, not sector rules.
-# US symbol YNOW. TW (上市／上櫃, no ETFs, no 興櫃) symbol TYNOW.
+# Rank primary listings by market cap. Keep a name when Piotroski F-Score
+# is 8 or higher and Schilit screening has zero 警示.
+# TYNOW only: also keep a perfect F-Score (9) with at most one 警示.
+# Take the first 10. Equal weight. The stored basket stays fixed until the
+# next monthly reconstitution (Asia/Taipei). The index level follows those
+# prices. No industry filter. Scan caps are engineering limits, not sector
+# rules. US symbol YNOW. TW (上市／上櫃, no ETFs, no 興櫃) symbol TYNOW.
 
 if (!exists("%||%", mode = "function")) {
   `%||%` <- function(a, b) if (is.null(a)) b else a
@@ -13,6 +14,8 @@ if (!exists("%||%", mode = "function")) {
 
 YNOW_INDEX_N <- 10L
 YNOW_INDEX_MIN_FSCORE <- 8
+YNOW_INDEX_PERFECT_FSCORE <- 9
+YNOW_INDEX_MAX_ALERT_IF_PERFECT_TW <- 1L
 YNOW_INDEX_SCAN_CAP <- 80L
 YNOW_INDEX_SCAN_CAP_TW <- 200L
 YNOW_INDEX_SYMBOL <- "YNOW"
@@ -27,12 +30,21 @@ ynow_index_month_key <- function(as_of = Sys.time()) {
   format(as.POSIXlt(as_of, tz = "Asia/Taipei"), "%Y-%m")
 }
 
-ynow_index_passes <- function(f_score, n_alert, min_f = YNOW_INDEX_MIN_FSCORE) {
+ynow_index_passes <- function(f_score, n_alert, min_f = YNOW_INDEX_MIN_FSCORE,
+                              market = "US") {
   fs <- suppressWarnings(as.numeric(f_score)[1])
   na_n <- suppressWarnings(as.numeric(n_alert)[1])
   floor_f <- suppressWarnings(as.numeric(min_f)[1])
   if (!is.finite(floor_f)) floor_f <- 8
-  is.finite(fs) && fs >= floor_f - 1e-8 && is.finite(na_n) && na_n == 0
+  if (!is.finite(fs) || !is.finite(na_n) || na_n < 0) return(FALSE)
+  if (fs >= floor_f - 1e-8 && na_n == 0) return(TRUE)
+  # TYNOW reconstitution: perfect F-Score may carry at most one statement alert.
+  if (identical(ynow_index_normalize_market(market), "TW") &&
+      fs >= YNOW_INDEX_PERFECT_FSCORE - 1e-8 &&
+      na_n <= YNOW_INDEX_MAX_ALERT_IF_PERFECT_TW) {
+    return(TRUE)
+  }
+  FALSE
 }
 
 ynow_index_normalize_market <- function(market = "US") {
@@ -52,7 +64,8 @@ ynow_index_scan_cap <- function(market = "US") {
   }
 }
 
-ynow_index_screen_statements <- function(d_is, d_bs, d_cf, industry_key = NULL) {
+ynow_index_screen_statements <- function(d_is, d_bs, d_cf, industry_key = NULL,
+                                         market = "US") {
   fs <- if (exists("compute_report_f_score", mode = "function")) {
     tryCatch(compute_report_f_score(d_is, d_bs, d_cf), error = function(e) NULL)
   } else {
@@ -69,7 +82,7 @@ ynow_index_screen_statements <- function(d_is, d_bs, d_cf, industry_key = NULL) 
   }
   n_alert <- if (is.null(ev) || !isTRUE(ev$ok)) NA_real_ else suppressWarnings(as.numeric(ev$n_alert)[1])
   list(
-    pass = ynow_index_passes(total, n_alert),
+    pass = ynow_index_passes(total, n_alert, market = market),
     f_score = total,
     n_alert = n_alert
   )
@@ -100,7 +113,7 @@ ynow_index_select <- function(tickers, screen_fn, mcap = NULL, n = YNOW_INDEX_N,
       ticker = tk,
       market_cap = cap,
       f_score = suppressWarnings(as.numeric(res$f_score)[1]),
-      n_alert = 0
+      n_alert = suppressWarnings(as.numeric(res$n_alert)[1])
     )
     if (length(picked) >= n) break
   }
@@ -270,11 +283,16 @@ ynow_index_read_cache <- function(month, path = ynow_index_cache_path()) {
     ))
   }
   members <- lapply(seq_len(nrow(df)), function(i) {
+    na_i <- if ("n_alert" %in% names(df)) {
+      suppressWarnings(as.numeric(df$n_alert[i]))
+    } else {
+      0
+    }
     list(
       ticker = toupper(as.character(df$ticker[i])),
       market_cap = suppressWarnings(as.numeric(df$market_cap[i])),
       f_score = suppressWarnings(as.numeric(df$f_score[i])),
-      n_alert = 0,
+      n_alert = na_i,
       weight = suppressWarnings(as.numeric(df$weight[i]))
     )
   })
@@ -298,6 +316,7 @@ ynow_index_write_cache <- function(sel, path = ynow_index_cache_path()) {
         ticker = m$ticker,
         market_cap = m$market_cap %||% NA_real_,
         f_score = m$f_score %||% NA_real_,
+        n_alert = m$n_alert %||% NA_real_,
         weight = m$weight %||% NA_real_,
         scanned = sel$scanned %||% NA_integer_,
         hit_scan_cap = isTRUE(sel$hit_scan_cap),
@@ -311,6 +330,7 @@ ynow_index_write_cache <- function(sel, path = ynow_index_cache_path()) {
       ticker = "",
       market_cap = NA_real_,
       f_score = NA_real_,
+      n_alert = NA_real_,
       weight = NA_real_,
       scanned = sel$scanned %||% NA_integer_,
       hit_scan_cap = isTRUE(sel$hit_scan_cap),
@@ -326,7 +346,7 @@ ynow_index_write_cache <- function(sel, path = ynow_index_cache_path()) {
   invisible(ok)
 }
 
-ynow_index_live_screen <- function(ticker) {
+ynow_index_live_screen <- function(ticker, market = NULL) {
   empty <- list(pass = FALSE, f_score = NA_real_, n_alert = NA_real_)
   if (!exists("cached_scrape_financials", mode = "function")) return(empty)
   res <- tryCatch(cached_scrape_financials(ticker), error = function(e) NULL)
@@ -340,7 +360,17 @@ ynow_index_live_screen <- function(ticker) {
     df
   }
   ind <- ynow_index_industry_key(ticker)
-  ynow_index_screen_statements(pull("Income Statement"), pull("Balance Sheet"), pull("Cash Flow"), ind)
+  mkt <- if (!is.null(market)) {
+    ynow_index_normalize_market(market)
+  } else if (grepl("\\.(TW|TWO)$", toupper(trimws(as.character(ticker)[1])))) {
+    "TW"
+  } else {
+    "US"
+  }
+  ynow_index_screen_statements(
+    pull("Income Statement"), pull("Balance Sheet"), pull("Cash Flow"), ind,
+    market = mkt
+  )
 }
 
 ynow_index_industry_key <- function(ticker) {
@@ -385,7 +415,10 @@ ynow_index_current <- function(as_of = Sys.time(), rebuild = FALSE,
   if (is.data.frame(ranked) && "market_cap" %in% names(ranked)) {
     caps <- stats::setNames(suppressWarnings(as.numeric(ranked$market_cap)), toupper(ranked$ticker))
   }
-  fn <- screen_fn %||% ynow_index_live_screen
+  fn <- screen_fn
+  if (is.null(fn)) {
+    fn <- function(tk) ynow_index_live_screen(tk, market = market)
+  }
   sel <- ynow_index_select(tks, fn, mcap = caps, scan_cap = ynow_index_scan_cap(market))
   sel$month <- key
   sel$market <- market

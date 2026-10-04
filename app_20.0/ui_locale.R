@@ -1757,7 +1757,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     tynow_index_title = "TYNOW",
     tynow_index_rule = paste0(
       "Constituents stay fixed until the next monthly reconstitution (Asia/Taipei): ",
-      "the largest Taiwan listed and OTC common stocks with F-Score 8 or higher and zero statement alerts, equal weight. ",
+      "the largest Taiwan listed and OTC common stocks with F-Score 8 or higher and zero statement alerts, ",
+      "or a perfect F-Score (9) with at most one statement alert, equal weight. ",
       "ETFs and emerging-board names are excluded. ",
       "The index level is recalculated from those prices. The basket is not re-screened."
     ),
@@ -3762,7 +3763,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     tynow_index_title = "TYNOW",
     tynow_index_rule = paste0(
       "成分在下次月汰換（台北時間）前固定：",
-      "F-Score 8 分以上且無財報警示的上市與上櫃普通股市值前段，等權重。",
+      "F-Score 8 分以上且無財報警示，或 F-Score 滿分（9）且財報警示至多一項的上市與上櫃普通股市值前段，等權重。",
       "不含 ETF，也不含興櫃。",
       "指數水位依這些成分股的價格重算，不重新篩選成分。"
     ),
