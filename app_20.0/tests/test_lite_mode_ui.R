@@ -271,7 +271,7 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
     txt,
     perl = TRUE
   ))
-  testthat::expect_true(grepl("The YNow App v20.15", txt, fixed = TRUE))
+  testthat::expect_true(grepl("The YNow App v20.16", txt, fixed = TRUE))
   testthat::expect_true(grepl('title = "The YNow App"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-report", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-toolbar", txt, fixed = TRUE))
