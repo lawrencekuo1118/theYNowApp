@@ -8,5 +8,5 @@ short=43fd790
 message=Lay out BB tables full-width; pair revenue mix with conclusions.
 captured_at=2026-10-04T09:03:26Z
 source_branch=master
-display_version=v20.11
+display_version=v20.12
 note=Canonical live line is app_20.0. Bundle 12644917 ships TYNOW perfect-F-Score +1 alert rule and BB full-width tables with revenue mix beside conclusions. Deploy via scripts/deploy_app_20.R.
