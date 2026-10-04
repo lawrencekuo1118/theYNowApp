@@ -357,6 +357,18 @@ check("en stage not layer", identical(ui_str("hccsi_col_layer", "en"), "Stage"))
 check("en knock-on path", identical(ui_str("hccsi_contagion_paths", "en"), "Linked stages cooling together"))
 check("en term bridge", grepl("Same color", ui_str("hccsi_term_bridge", "en"), fixed = TRUE))
 check("zh term bridge", grepl("同色", ui_str("hccsi_term_bridge", "zh-TW"), fixed = TRUE))
+check("chain cooling bilingual", identical(ui_str("hccsi_chain_cooling", "en"), "Cooling") &&
+  identical(ui_str("hccsi_chain_cooling", "zh-TW"), "降溫中"))
+check("network above layers in expand source", {
+  exp_i <- grep("^hccsi_expand_ui <- function", mod_lines)
+  if (!length(exp_i)) return(FALSE)
+  exp_src <- paste(mod_lines[exp_i[[1]]:min(length(mod_lines), exp_i[[1]] + 40L)], collapse = "\n")
+  pos_net <- regexpr(".hccsi_network_ui", exp_src, fixed = TRUE)[1]
+  pos_ly <- regexpr(".hccsi_layer_table", exp_src, fixed = TRUE)[1]
+  pos_four <- regexpr(".hccsi_four_boxes", exp_src, fixed = TRUE)[1]
+  is.finite(pos_net) && is.finite(pos_ly) && is.finite(pos_four) &&
+    pos_four < pos_net && pos_net < pos_ly
+})
 check("term badges bilingual", {
   identical(ui_str("hccsi_term_stmt", "en"), "Stmt") &&
     identical(ui_str("hccsi_term_mkt", "zh-TW"), "Mkt") &&
@@ -401,8 +413,15 @@ if (requireNamespace("htmltools", quietly = TRUE) && requireNamespace("shiny", q
     if (!is.null(exp_path)) {
       html_path <- paste(as.character(exp_path), collapse = " ")
       check("expand zh shows path when lit", grepl("連鎖降溫路徑", html_path, fixed = TRUE) &&
-        grepl("連鎖降溫", html_path, fixed = TRUE))
+        grepl("連鎖降溫", html_path, fixed = TRUE) &&
+        grepl("ynow-hccsi-chain-grid", html_path, fixed = TRUE) &&
+        grepl("ynow-hccsi-chain-card", html_path, fixed = TRUE))
       check("expand zh path omits issuer list", !grepl("相對歷史仍在降溫", html_path, fixed = TRUE))
+      pos_net <- regexpr("ynow_macro_hccsi_network_title", html_path, fixed = TRUE)[1]
+      pos_ly <- regexpr("ynow_macro_hccsi_layer_title", html_path, fixed = TRUE)[1]
+      pos_four <- regexpr("ynow-hccsi-four", html_path, fixed = TRUE)[1]
+      check("cooling above Function stages", is.finite(pos_net) && is.finite(pos_ly) &&
+        is.finite(pos_four) && pos_four < pos_net && pos_net < pos_ly)
     } else check("expand zh shows path when lit", FALSE)
     check("expand zh uses 環節", grepl("環節", html_zh, fixed = TRUE))
     check("expand zh no raw enterprise_dbs cell", !grepl(">enterprise_dbs<", html_zh, fixed = TRUE))

@@ -1648,8 +1648,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     hccsi_empty = "HCCSI is not available.",
     hccsi_contagion_paths = "Linked stages cooling together",
     hccsi_contagion_none = "No linked stages cooling together",
+    hccsi_chain_cooling = "Cooling",
     hccsi_network_note = paste0(
-      "A path lights when enough linked stages are cooling at the same time ",
+      "Each card is one linked industry chain. A path lights when enough linked stages are cooling at the same time ",
       "(combined statement / market / trajectory reading below the cooling line). ",
       "One issuer down does not mean the whole stack is contracting."
     ),
@@ -3671,8 +3672,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     hccsi_empty = "目前無法計算 HCCSI。",
     hccsi_contagion_paths = "連鎖降溫路徑",
     hccsi_contagion_none = "沒有相鄰環節一起降溫",
+    hccsi_chain_cooling = "降溫中",
     hccsi_network_note = paste0(
-      "路徑在「綁在一起的環節裡，夠多家同時低於降溫線」時才會點亮。",
+      "每張卡片是一條綁在一起的產業鏈。路徑在「綁在一起的環節裡，夠多家同時低於降溫線」時才會點亮。",
       "單一發行人走弱，不代表整條鏈在收縮。"
     ),
     hccsi_col_layer = "環節",

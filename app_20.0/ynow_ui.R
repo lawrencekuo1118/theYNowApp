@@ -5698,6 +5698,8 @@ ui <- dashboardPage(
             setBtText('ynow_macro_hccsi_formula_parts', 'hccsi_formula_parts');
             setBtText('ynow_macro_hccsi_layer_title', 'hccsi_layer_title');
             setBtText('ynow_macro_hccsi_network_title', 'hccsi_network_title');
+            setBtText('ynow_macro_hccsi_contagion_paths', 'hccsi_contagion_paths');
+            setBtText('ynow_macro_hccsi_network_note', 'hccsi_network_note');
             setBtText('ynow_macro_hccsi_term_bridge', 'hccsi_term_bridge');
             setBtText('ynow_macro_hccsi_map_stmt', 'hccsi_term_map_stmt');
             setBtText('ynow_macro_hccsi_map_mkt', 'hccsi_term_map_mkt');
@@ -8312,6 +8314,91 @@ ui <- dashboardPage(
         }
         .ynow-macro-hccsi-expand { width: 100%; margin: 0 0 12px 0; }
         .ynow-hccsi-expand__card h4 { margin: 12px 0 6px 0; font-size: 14px; }
+        .ynow-hccsi-network { margin: 0 0 12px 0; }
+        .ynow-hccsi-network__lead {
+          margin: 0 0 4px 0;
+          font-size: 13px;
+          font-weight: 700;
+          color: #2c3e50;
+        }
+        .ynow-hccsi-chain-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+          gap: 10px;
+          margin: 8px 0 4px 0;
+        }
+        .ynow-hccsi-chain-card {
+          border: 1px solid #e0b56a;
+          background: linear-gradient(180deg, #fffaf0 0%, #ffffff 70%);
+          border-radius: 8px;
+          padding: 10px 12px;
+          box-shadow: 0 1px 0 rgba(44, 62, 80, 0.04);
+        }
+        .ynow-hccsi-chain-card__title {
+          font-size: 12px;
+          font-weight: 700;
+          color: #8a4b00;
+          margin: 0 0 8px 0;
+        }
+        .ynow-hccsi-chain-flow {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: stretch;
+          gap: 6px;
+        }
+        .ynow-hccsi-chain-arrow {
+          align-self: center;
+          color: #b07a2a;
+          font-weight: 700;
+          flex: 0 0 auto;
+        }
+        .ynow-hccsi-chain-node {
+          flex: 1 1 88px;
+          min-width: 88px;
+          max-width: 180px;
+          border-radius: 6px;
+          padding: 6px 8px;
+          border: 1px solid #d5dde5;
+          background: #f7f9fb;
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+        .ynow-hccsi-chain-node--cooling {
+          border-color: #e0a050;
+          background: #fff3e0;
+        }
+        .ynow-hccsi-chain-node--ok {
+          border-color: #c5d0da;
+          background: #f4f7fa;
+          opacity: 0.88;
+        }
+        .ynow-hccsi-chain-node--layer {
+          min-width: 110px;
+        }
+        .ynow-hccsi-chain-node__lab {
+          font-size: 12px;
+          font-weight: 700;
+          color: #2c3e50;
+          line-height: 1.25;
+        }
+        .ynow-hccsi-chain-node__state {
+          font-size: 10px;
+          font-weight: 700;
+          color: #b35c00;
+          letter-spacing: 0.02em;
+          text-transform: uppercase;
+        }
+        .ynow-hccsi-chain-node__mem {
+          font-size: 10px;
+          color: #5d6d7e;
+          line-height: 1.3;
+          word-break: break-word;
+        }
+        @media (max-width: 575px) {
+          .ynow-hccsi-chain-grid { grid-template-columns: 1fr; }
+          .ynow-hccsi-chain-node { max-width: none; }
+        }
         .ynow-hccsi-table-wrap { overflow-x: auto; margin: 0 0 10px 0; }
         .ynow-hccsi-table { font-size: 12px; margin-bottom: 0; }
         .ynow-hccsi-term-badge {

@@ -261,14 +261,113 @@ hccsi_kpi_box <- function(result, lite = FALSE, locale = "en", ns = NULL, select
   .hccsi_html_table(header, body, table_class = "ynow-hccsi-table--stages")
 }
 
+.hccsi_channel_def <- function(id, cfg = NULL) {
+  cfg <- hccsi_load_config(cfg)
+  for (ch in cfg$contagion_channels %||% list()) {
+    if (identical(as.character(ch$id %||% "")[1], as.character(id %||% "")[1])) return(ch)
+  }
+  NULL
+}
+
+.hccsi_channel_chain_nodes <- function(ch, cfg, locale, result) {
+  cooling_ids <- as.character(result$contagion$persistent_issuers %||% character(0))
+  rows <- result$issuers %||% list()
+  if (!is.null(ch$layers) && length(ch$layers)) {
+    lapply(as.character(ch$layers), function(ly) {
+      mem <- intersect(as.character(cfg$layers[[ly]] %||% character(0)), names(rows))
+      cool_mem <- intersect(mem, cooling_ids)
+      list(
+        kind = "layer",
+        id = ly,
+        label = .hccsi_named("ly", ly, locale),
+        cooling = length(cool_mem) > 0,
+        members = mem,
+        cool_members = cool_mem
+      )
+    })
+  } else {
+    ids <- as.character(ch$issuers %||% character(0))
+    lapply(ids, function(id) {
+      r <- rows[[id]]
+      list(
+        kind = "issuer",
+        id = id,
+        label = if (!is.null(r)) .hccsi_issuer_label(r) else id,
+        cooling = id %in% cooling_ids,
+        members = id,
+        cool_members = if (id %in% cooling_ids) id else character(0)
+      )
+    })
+  }
+}
+
+.hccsi_chain_node <- function(node, locale = "en") {
+  cool <- isTRUE(node$cooling)
+  cls <- c(
+    "ynow-hccsi-chain-node",
+    if (identical(node$kind, "layer")) "ynow-hccsi-chain-node--layer" else "ynow-hccsi-chain-node--issuer",
+    if (cool) "ynow-hccsi-chain-node--cooling" else "ynow-hccsi-chain-node--ok"
+  )
+  sub <- NULL
+  if (identical(node$kind, "layer") && length(node$members)) {
+    sub <- tags$span(
+      class = "ynow-hccsi-chain-node__mem",
+      paste(node$members, collapse = " · ")
+    )
+  }
+  tags$div(
+    class = paste(cls, collapse = " "),
+    `data-hccsi-node` = as.character(node$id %||% "")[1],
+    tags$span(class = "ynow-hccsi-chain-node__lab", node$label),
+    if (cool) {
+      tags$span(class = "ynow-hccsi-chain-node__state", .hccsi_ui("hccsi_chain_cooling", locale))
+    } else {
+      NULL
+    },
+    sub
+  )
+}
+
+.hccsi_chain_card <- function(ch_id, result, locale = "en") {
+  cfg <- hccsi_load_config()
+  ch <- .hccsi_channel_def(ch_id, cfg)
+  if (is.null(ch)) return(NULL)
+  nodes <- .hccsi_channel_chain_nodes(ch, cfg, locale, result)
+  if (!length(nodes)) return(NULL)
+  flow <- list()
+  for (i in seq_along(nodes)) {
+    flow <- c(flow, list(.hccsi_chain_node(nodes[[i]], locale)))
+    if (i < length(nodes)) {
+      flow <- c(flow, list(tags$span(class = "ynow-hccsi-chain-arrow", `aria-hidden` = "true", "→")))
+    }
+  }
+  tags$div(
+    class = "ynow-hccsi-chain-card ynow-hccsi-chain-card--lit",
+    `data-hccsi-channel` = as.character(ch_id)[1],
+    tags$div(class = "ynow-hccsi-chain-card__title", .hccsi_named("ch", ch_id, locale)),
+    tags$div(class = "ynow-hccsi-chain-flow", flow)
+  )
+}
+
 .hccsi_network_ui <- function(result, locale = "en") {
   ch <- result$contagion$channels %||% character(0)
-  sep <- if (identical(as.character(locale)[1], "zh-TW")) "；" else ", "
+  if (!length(ch)) {
+    return(tags$p(class = "ynow-macro-hint", .hccsi_ui("hccsi_contagion_none", locale)))
+  }
+  cards <- Filter(Negate(is.null), lapply(ch, function(id) .hccsi_chain_card(id, result, locale)))
   tags$div(
     class = "ynow-hccsi-network",
-    tags$p(tags$b(.hccsi_ui("hccsi_contagion_paths", locale)), ": ",
-           paste(vapply(ch, function(id) .hccsi_named("ch", id, locale), character(1)), collapse = sep)),
-    tags$p(class = "ynow-macro-hint", .hccsi_ui("hccsi_network_note", locale))
+    tags$p(
+      id = "ynow_macro_hccsi_contagion_paths",
+      class = "ynow-hccsi-network__lead",
+      .hccsi_ui("hccsi_contagion_paths", locale)
+    ),
+    tags$p(
+      id = "ynow_macro_hccsi_network_note",
+      class = "ynow-macro-hint",
+      .hccsi_ui("hccsi_network_note", locale)
+    ),
+    tags$div(class = "ynow-hccsi-chain-grid", cards)
   )
 }
 
@@ -371,12 +470,13 @@ hccsi_expand_ui <- function(result, locale = "en") {
            tags$b(.hccsi_ui("hccsi_top_contributors", locale)), ": ",
            paste(result$top_contributors %||% character(0), collapse = ", ")),
     .hccsi_four_boxes(result, locale),
-    tags$h4(id = "ynow_macro_hccsi_layer_title", .hccsi_ui("hccsi_layer_title", locale)),
-    .hccsi_layer_table(result, locale),
+    # Linked-stage cooling sits between the four indices and Function stages.
     if (length(ch)) htmltools::tagList(
       tags$h4(id = "ynow_macro_hccsi_network_title", .hccsi_ui("hccsi_network_title", locale)),
       .hccsi_network_ui(result, locale)
     ),
+    tags$h4(id = "ynow_macro_hccsi_layer_title", .hccsi_ui("hccsi_layer_title", locale)),
+    .hccsi_layer_table(result, locale),
     .hccsi_in_composite_block(result, locale),
     tags$h4(id = "ynow_macro_hccsi_method_title", .hccsi_ui("hccsi_method_title", locale)),
     hccsi_methodology_notes(locale)
