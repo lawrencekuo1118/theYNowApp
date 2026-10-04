@@ -1,12 +1,13 @@
 source=shinyapps.io TheYNowApp
-bundleId=12645479
+bundleId=12645496
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=ecf0ce7a4ad359744f2163efe9d139e444337b01
-commit=ecf0ce7a4ad359744f2163efe9d139e444337b01
-short=ecf0ce7
-message=chore: bump display version to v20.21
-captured_at=2026-10-04T12:36:59Z
+aligned_git=ac4fc748803af672f070fb94a4465e3ef1151a45
+commit=ac4fc748803af672f070fb94a4465e3ef1151a45
+short=ac4fc74
+message=chore: bump display version to v20.22
+captured_at=2026-10-04T12:43:37Z
 source_branch=master
 display_version=v20.22
-note=Canonical live line is app_20.0. Bundle 12645479 shares Macro Industry/Concept vs benchmark picks across Relative performance and Dynamic industry bubble. Deploy via scripts/deploy_app_20.R.
+note=Canonical live line is app_20.0. Bundle 12645496 moves YNOW/TYNOW reconstitution rule into the expand card above the chart. Deploy via scripts/deploy_app_20.R.
+
