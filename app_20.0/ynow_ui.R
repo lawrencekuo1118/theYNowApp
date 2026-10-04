@@ -1583,11 +1583,12 @@ beta_rolling_section_ui <- function() {
                     column(
                       width = 6,
                       class = "ynow-lab-im-filter-col",
-                      # 盈餘品質｜含 ADR 同列並排（Lite／Full 皆同）
+                      # 盈餘品質｜含 ADR 同列並排（Lite／Full 皆同；含 ADR 僅美股）
                       tags$div(
                         class = "row ynow-lab-im-eq-adr-row",
                         column(
                           width = 6,
+                          class = "ynow-lab-im-eq-col",
                           tags$div(
                             class = "ynow-lab-im-quality",
                             checkboxInput(
@@ -1607,6 +1608,7 @@ beta_rolling_section_ui <- function() {
                         ),
                         column(
                           width = 6,
+                          class = "ynow-lab-im-include-adr ynow-us-only",
                           tags$div(
                             class = "ynow-lab-im-quality",
                             checkboxInput(
@@ -8057,6 +8059,14 @@ ui <- dashboardPage(
         .ynow-lab-im-eq-adr-row > [class*='col-'] {
           padding-left: 8px;
           padding-right: 8px;
+        }
+        /* 台股：不含 ADR 選項（僅美股有意義） */
+        body.ynow-market-tw .ynow-us-only {
+          display: none !important;
+        }
+        body.ynow-market-tw .ynow-lab-im-eq-adr-row > .ynow-lab-im-eq-col {
+          width: 100% !important;
+          max-width: 100%;
         }
         .ynow-lab-im-eq-explain {
           margin: 2px 0 14px 0;

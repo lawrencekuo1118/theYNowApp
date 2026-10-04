@@ -71,6 +71,25 @@ check(
   identical(as.character(ranked$ticker), c("AAPL", "MSFT"))
 )
 
+# TW Blue Chip: Include ADR control is US-only (UI + server skip filter)
+ui_txt <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+srv_txt <- paste(readLines("ynow_server.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check(
+  "TW hides Include ADR via ynow-us-only",
+  grepl("ynow-lab-im-include-adr ynow-us-only", ui_txt, fixed = TRUE) &&
+    grepl("body.ynow-market-tw .ynow-us-only", ui_txt, fixed = TRUE)
+)
+check(
+  "server skips ADR filter in TW",
+  grepl('identical(mm0, "TW")', srv_txt, fixed = TRUE) &&
+    grepl("!identical(mm0, \"TW\") && exists(\"lab_filter_pool_adr\"", srv_txt, fixed = TRUE)
+)
+cl_txt <- paste(readLines("lab_clustering.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check(
+  "cluster pool skips ADR filter in TW",
+  grepl('normalize_market_mode(market_mode), "TW"', cl_txt, fixed = TRUE)
+)
+
 # Catalog attaches is_adr
 catlg <- lab_build_industry_method_catalog("US")
 check("catalog has is_adr", "is_adr" %in% names(catlg))

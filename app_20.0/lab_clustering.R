@@ -899,7 +899,9 @@ lab_cluster_build_pool <- function(catalog, industry_filter = NULL, method_filte
     gate_only = FALSE
   )
   pool <- lab_dedupe_eval_pool(pool)
-  if (exists("lab_filter_pool_adr", mode = "function")) {
+  # ADR filter applies only in US mode (TW has no Include-ADR control).
+  if (!identical(normalize_market_mode(market_mode), "TW") &&
+      exists("lab_filter_pool_adr", mode = "function")) {
     pool <- lab_filter_pool_adr(pool, include_adr = include_adr)
   }
   if (is.null(pool) || nrow(pool) == 0L) {

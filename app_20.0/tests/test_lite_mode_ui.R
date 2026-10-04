@@ -427,6 +427,8 @@ testthat::expect_true(grepl(
   testthat::expect_true(grepl("SOTP（分部加總）", txt, fixed = TRUE))
   testthat::expect_true(grepl('id = "ynow_method_section_title"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-lab-im-eq-adr-row", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-lab-im-include-adr ynow-us-only", txt, fixed = TRUE))
+  testthat::expect_true(grepl("body.ynow-market-tw .ynow-us-only", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_lab_im_eq_explain", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-lab-im-eq-explain ynow-lite-only", txt, fixed = TRUE))
 })

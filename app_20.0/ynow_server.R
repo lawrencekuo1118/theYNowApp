@@ -11470,8 +11470,14 @@ server <- function(input, output, session) {
       gate_only = FALSE
     )
     pool <- lab_dedupe_eval_pool(pool)
-    include_adr <- isTRUE(input$lab_im_include_adr %||% TRUE)
-    if (exists("lab_filter_pool_adr", mode = "function")) {
+    # ADR filter is US-only; TW universe has no ADR toggle.
+    mm0 <- tryCatch(normalize_market_mode(market_mode()), error = function(e) "US")
+    include_adr <- if (identical(mm0, "TW")) {
+      TRUE
+    } else {
+      isTRUE(input$lab_im_include_adr %||% TRUE)
+    }
+    if (!identical(mm0, "TW") && exists("lab_filter_pool_adr", mode = "function")) {
       pool <- lab_filter_pool_adr(pool, include_adr = include_adr)
     }
     if (is.null(pool) || nrow(pool) == 0L) {
@@ -11529,7 +11535,7 @@ server <- function(input, output, session) {
           if (grepl("fallback_mcap", note, fixed = TRUE)) {
             how <- paste0(how, "；概念股無交集時改市值")
           }
-          adr_note <- if (!isTRUE(include_adr)) "；已排除 ADR" else ""
+          adr_note <- if (!identical(mm0, "TW") && !isTRUE(include_adr)) "；已排除 ADR" else ""
           disp_note <- if (is.finite(display_n) && is.finite(eval_n) && eval_n > display_n) {
             paste0("（顯示上限 N＝", display_n, "；合格不足不湊滿）")
           } else {
@@ -12215,7 +12221,13 @@ server <- function(input, output, session) {
             rank_mode = rank_mode_run,
             concept_keys = isolate(input$lab_im_concepts),
             market_mode = tryCatch(isolate(market_mode()), error = function(e) "US"),
-            include_adr = isTRUE(isolate(input$lab_im_include_adr %||% TRUE))
+            include_adr = {
+              mm_cl <- tryCatch(
+                normalize_market_mode(isolate(market_mode())),
+                error = function(e) "US"
+              )
+              if (identical(mm_cl, "TW")) TRUE else isTRUE(isolate(input$lab_im_include_adr %||% TRUE))
+            }
           ),
           error = function(e) {
             showNotification(paste("Cluster pool failed:", e$message), type = "error")
