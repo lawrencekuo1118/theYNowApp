@@ -8,5 +8,5 @@ short=7453ef2
 message=chore: bump display version to v20.06
 captured_at=2026-10-04T07:22:48Z
 source_branch=master
-display_version=v20.06
+display_version=v20.07
 note=Canonical live line is app_20.0. Bundle 12644650 = v20.06 (Business Breakdown structure+mix layout; header title/progress fill; sidebar rename). Deploy via scripts/deploy_app_20.R. Supersedes 12644614.
