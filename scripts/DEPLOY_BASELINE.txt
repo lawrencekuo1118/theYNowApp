@@ -8,5 +8,5 @@ short=cdfc0f1
 message=chore: bump display version to v20.35
 captured_at=2026-10-04T16:48:00Z
 source_branch=master
-display_version=v20.35
+display_version=v20.36
 note=Canonical live line is app_20.0. Bundle 12646077 applies ocean blue palette to Blue Chip for both TW/US. Deploy via scripts/deploy_app_20.R.
