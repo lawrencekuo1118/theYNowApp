@@ -135,7 +135,7 @@
           "我們的核心方法論為：",
           tags$b("「先分類，再選模型；先推導，再校正；先給區間，再給單點。」"),
           " 完整「Valuation Methodology｜評價方法論」矩陣與公式說明見 ",
-          tags$b("Basic Setup"),
+          tags$b("Model Dashboard"),
           " 分頁最下方。"
         ),
         tags$h4(class = "ynow-about-feat-h", tags$b("核心功能亮點：")),
@@ -154,7 +154,7 @@
           "Our core methodology is: ",
           tags$b("\"Classify before selecting models; derive before calibrating; provide valuation ranges before absolute price targets.\""),
           " The full Valuation Methodology matrix and formulas sit at the bottom of ",
-          tags$b("Basic Setup"),
+          tags$b("Model Dashboard"),
           "."
         ),
         tags$h4(class = "ynow-about-feat-h", tags$b("Core Features:")),
@@ -2790,7 +2790,7 @@ ui <- dashboardPage(
                tabName = "smart_analysis",
                icon = icon("magic")
              ),
-             menuItem("Basic Setup", tabName = "get_started", icon = icon("play-circle")),
+             menuItem("Model Dashboard", tabName = "get_started", icon = icon("play-circle")),
              menuItem(
                text = tags$span(id = "ynow_menu_cat_asset", "Asset-Based Appr."),
                icon = icon("building"),

@@ -385,7 +385,7 @@ testthat::expect_true(grepl(
     txt,
     fixed = TRUE
   ))
-  # Methodology on Basic Setup bottom (Full); Lite hides get_started; About must not mount it
+  # Methodology on Model Dashboard bottom (Full); Lite hides get_started; About must not mount it
   testthat::expect_true(grepl(
     'tabName = "get_started"[\\s\\S]*\\.valuation_methodology_section_ui\\(',
     txt,

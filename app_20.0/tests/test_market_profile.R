@@ -51,7 +51,7 @@ check("TW bench 0050", identical(market_profile("TW")$beta_bench, "0050.TW"))
 
 # Market-switch preload gate: only valuation-model tabs auto-fetch default ticker
 check(
-  "valuation tabs include DCF / Basic Setup / Company",
+  "valuation tabs include DCF / Model Dashboard / Company",
   isTRUE(is_valuation_model_tab("dcf_calculator")) &&
     isTRUE(is_valuation_model_tab("get_started")) &&
     isTRUE(is_valuation_model_tab("dashboard")) &&
