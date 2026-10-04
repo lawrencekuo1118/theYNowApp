@@ -2632,7 +2632,7 @@ beta_rolling_section_ui <- function() {
                 id = "ynow_testing_page_sub",
                 paste0(
                   "Full-only sandbox for upcoming experiments and feature trials. ",
-                  "Business Breakdown lives under Company - Advance. ",
+                  "Business Breakdown is on the main sidebar. ",
                   "Quant Backtest Lab remains on the main sidebar. Lite mode hides this entry."
                 )
               ),
@@ -2776,7 +2776,7 @@ ui <- dashboardPage(
              menuItem("Blue Chip Leaderboard", tabName = "bluechip", icon = icon("star")),
              menuItem("Company", tabName = "dashboard", icon = icon("chart-line")),
              menuItem(
-               text = tags$span(id = "ynow_menu_company_advance", "Company - Advance"),
+               text = tags$span(id = "ynow_menu_company_advance", "Business Breakdown"),
                tabName = "company_advance",
                icon = icon("layer-group")
              ),
@@ -4147,7 +4147,7 @@ ui <- dashboardPage(
         }
         /* Lite: under Data Source keep Snapshot + Feedback only;
            Quant Backtest Lab + Testing foot link stay Full-only.
-           Company - Advance (Business Breakdown) is Full-only. */
+           Business Breakdown (tab company_advance) is Full-only. */
         body.ynow-lite .sidebar-menu a[data-value="lab_notes"],
         body.ynow-lite .sidebar-menu li:has(> a[data-value="lab_notes"]),
         body.ynow-lite .sidebar-menu a[data-value="company_advance"],
@@ -9337,7 +9337,7 @@ ui <- dashboardPage(
       )
     ),
     # Ticker search + Yahoo industry chrome: hide on Home, About, Macro, Blue Chip, Testing
-    # (Business Breakdown on Company - Advance shares global Ticker / Stock Code chrome;
+    # (Business Breakdown shares global Ticker / Stock Code chrome;
     # Blue Chip uses its own universe Search, not the global ticker chrome).
     conditionalPanel(
       condition = "input.sidebar_tabs != 'about' && input.sidebar_tabs != 'macro_market' && input.sidebar_tabs != 'bluechip' && input.sidebar_tabs != 'testing' && input.sidebar_tabs != 'home'",
@@ -10205,7 +10205,7 @@ ui <- dashboardPage(
       ),
 
       # ==========================================
-      # Company - Advance：Business Breakdown（Full-only）
+      # Business Breakdown（Full-only；tab id 仍為 company_advance）
       # ==========================================
       tabItem(
         tabName = "company_advance",

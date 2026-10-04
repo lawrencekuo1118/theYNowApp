@@ -68,7 +68,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "HFV is a veto / risk screen, not a buy signal; F-Score is a quality screen, not a buy signal."
     ),
     menu_dashboard = "Company",
-    menu_company_advance = "Company - Advance",
+    menu_company_advance = "Business Breakdown",
     kpi_last_price = "Last Price",
     menu_macro_market = "Macro & Market Trends",
     menu_smart_analysis = "Smart Analysis",
@@ -373,7 +373,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     testing_page_title = "Testing",
     testing_page_sub = paste0(
       "Full-only sandbox for upcoming experiments and feature trials. ",
-      "Business Breakdown lives under Company - Advance. ",
+      "Business Breakdown is on the main sidebar. ",
       "Quant Backtest Lab remains on the main sidebar. Lite mode hides this entry."
     ),
     testing_box_title = "Sandbox",
@@ -1817,7 +1817,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     macro_bubble_buffett_axis = "% of GDP",
     btn_macro_refresh = "Refresh",
     bblab_page_title = "Business Breakdown",
-    bblab_report_kicker = "Company - Advance",
+    bblab_report_kicker = "Business Breakdown",
     bblab_experimental_badge = "Report",
     bblab_page_sub = paste0(
       "Investment-report view of the filer's business and profitability structure: ",
@@ -2110,7 +2110,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "HFV 屬否決／風險提示，非買進訊號；F-Score 為品質檢核，非買進訊號。"
     ),
     menu_dashboard = "個股",
-    menu_company_advance = "個股 - 進階",
+    menu_company_advance = "業務拆解",
     kpi_last_price = "最新股價",
     menu_macro_market = "總體經濟與大盤趨勢",
     menu_smart_analysis = "智慧分析",
@@ -2408,7 +2408,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     testing_page_title = "Testing",
     testing_page_sub = paste0(
       "完整版專用實驗區，供後續功能試用與驗證。",
-      "業務拆解置於「個股 - 進階」（Company - Advance）。",
+      "業務拆解（Business Breakdown）在主選單。",
       "量化回測實驗室仍在主選單；簡化版不顯示此入口。"
     ),
     testing_box_title = "實驗沙盒",
@@ -3810,7 +3810,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     macro_bubble_buffett_axis = "佔 GDP %%",
     btn_macro_refresh = "重新整理",
     bblab_page_title = "業務拆解",
-    bblab_report_kicker = "個股 - 進階",
+    bblab_report_kicker = "業務拆解",
     bblab_experimental_badge = "報告",
     bblab_page_sub = paste0(
       "以投資報告樣式呈現公司業務與獲利結構：Reportable Segment、營收與營業利益組成，",

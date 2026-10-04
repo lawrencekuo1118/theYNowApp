@@ -4,7 +4,7 @@
 ## v20 重點
 
 - **整階 +1**：活動線目錄 `app_19.0/` → `app_20.0/`；顯示版號 **v20**
-- **Business Breakdown**：側邊欄 **Company - Advance**（完整版；投資報告樣式；共用頁首 Ticker／Stock Code）；Lite 仍隱藏
+- **Business Breakdown**：側邊欄 **Business Breakdown**（完整版；投資報告樣式；共用頁首 Ticker／Stock Code；內部 tab id 仍為 `company_advance`）；Lite 仍隱藏
 - **目錄**：`app_20.0/`；顯示版號 **v20**；部署腳本 `scripts/deploy_app_20.R`
 
 ## v19 重點

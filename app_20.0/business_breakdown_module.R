@@ -1,4 +1,4 @@
-# Business Breakdown — Company - Advance report module.
+# Business Breakdown — sidebar report module (tab id: company_advance).
 # Shares the global Ticker / Stock Code field; not a valuation engine.
 
 if (!exists("%||%", mode = "function")) {
@@ -241,7 +241,7 @@ business_breakdown_lab_ui <- function(id = "bblab") {
         tags$p(
           id = "ynow_bblab_report_kicker",
           class = "ynow-bblab-report__kicker",
-          "Company - Advance"
+          "Business Breakdown"
         ),
         tags$h1(
           id = "ynow_bblab_page_title",
@@ -505,15 +505,29 @@ business_breakdown_lab_server <- function(id = "bblab",
     }
 
     # Shared global Ticker / Stock Code (current_ticker_rv) — no in-page Search.
+    # Heavy scrape only while Business Breakdown tab is active (avoids Home/DCF double-load).
     observeEvent(
       list(
         if (is.reactive(current_ticker_rv)) current_ticker_rv() else NULL,
-        input$frequency
+        input$frequency,
+        tryCatch(session$rootScope()$input$sidebar_tabs, error = function(e) NULL)
       ),
       {
-      raw <- if (is.reactive(current_ticker_rv)) {
-        trimws(as.character(tryCatch(current_ticker_rv(), error = function(e) "")[1]))
-      } else ""
+      # NULL ticker → character(0); if (!nzchar(raw)) then crashes ("argument is of length zero").
+      raw <- tryCatch({
+        v <- if (is.reactive(current_ticker_rv)) current_ticker_rv() else NULL
+        if (is.null(v) || length(v) < 1L || (length(v) == 1L && is.na(v))) {
+          ""
+        } else {
+          trimws(as.character(v[[1]]))
+        }
+      }, error = function(e) "")
+      if (length(raw) != 1L || is.na(raw)) raw <- ""
+      tab_now <- tryCatch(
+        as.character(isolate(session$rootScope()$input$sidebar_tabs %||% ""))[1],
+        error = function(e) ""
+      )
+      if (length(tab_now) != 1L || is.na(tab_now)) tab_now <- ""
       if (!nzchar(raw)) {
         lab_ticker(NULL)
         lab_entity("")
@@ -522,6 +536,11 @@ business_breakdown_lab_server <- function(id = "bblab",
         lab_codes(character(0))
         source_status("idle")
         listed_scope_on(FALSE)
+        return(invisible(NULL))
+      }
+      # Defer Yahoo/SEC heavy path until the Business Breakdown tab is visible.
+      if (!identical(tab_now, "company_advance") &&
+          !identical(tab_now, "business_breakdown_lab")) {
         return(invisible(NULL))
       }
       mode <- if (is.reactive(market_mode_rv)) {
@@ -691,7 +710,7 @@ business_breakdown_lab_server <- function(id = "bblab",
           )
         }
       })
-    }, ignoreNULL = FALSE)
+    }, ignoreNULL = FALSE, ignoreInit = FALSE)
 
     observeEvent(list(input$use_gm_fallback, input$view_mode), {
       payload <- lab_payload()

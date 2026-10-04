@@ -536,10 +536,10 @@ advance_block <- {
     substr(ui_src, start, start + len - 1L)
   }
 }
-check("26 Company - Advance sidebar hosts BBL",
+check("26 Business Breakdown sidebar hosts BBL",
       grepl('tabName = "company_advance"', ui_src, fixed = TRUE) &&
         grepl("ynow_menu_company_advance", ui_src, fixed = TRUE) &&
-        grepl("Company - Advance", ui_src, fixed = TRUE) &&
+        grepl('ynow_menu_company_advance", "Business Breakdown"', ui_src, fixed = TRUE) &&
         !grepl('tabName = "business_breakdown_lab"', ui_src, fixed = TRUE) &&
         grepl("ynow-bblab--report", mod_src, fixed = TRUE) &&
         grepl("Business Breakdown", mod_src, fixed = TRUE) &&
@@ -1584,7 +1584,10 @@ check("shared ticker observeEvent never session$reload", {
     grepl("tryCatch", chunk, fixed = TRUE) &&
     grepl("cached_fetch_sec_segment_notes", chunk, fixed = TRUE) &&
     !grepl("cached_fetch_sec_report_notes", chunk, fixed = TRUE) &&
-    grepl("current_ticker_rv", chunk, fixed = TRUE)
+    grepl("current_ticker_rv", chunk, fixed = TRUE) &&
+    grepl("length(raw) != 1L", chunk, fixed = TRUE) &&
+    grepl("company_advance", chunk, fixed = TRUE) &&
+    grepl("Defer Yahoo/SEC heavy path", chunk, fixed = TRUE)
 })
 check("report UI has no native Search form",
       !grepl("ynow-bblab-search-controls", mod_src, fixed = TRUE) &&
