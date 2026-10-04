@@ -8767,6 +8767,13 @@ ui <- dashboardPage(
             max-height: 50px !important;
             height: 50px !important;
           }
+          /* US: keep the black bar on .main-header so a transparent navbar
+             does not hide the centered title / progress fill underneath.
+             TW keeps its flag ::before (transparent header) unchanged. */
+          body:not(.ynow-market-tw) .main-header,
+          body:not(.ynow-market-tw).skin-black .main-header {
+            background-color: var(--ynow-ink) !important;
+          }
           /* Collapse AdminLTE stacked logo+navbar (was ~100px) into one 50px bar.
              Title is full-bleed + viewport-centered; JS only sets title max-width
              so glyphs clear 美股／台股 and 繁中／EN (controls sit above via z-index). */
@@ -8792,7 +8799,7 @@ ui <- dashboardPage(
             text-align: center !important;
             background-color: transparent !important;
             background-image: none !important;
-            /* Below navbar chrome so hamburger / 美股台股 / 繁中EN / mark stay fully visible */
+            /* Under transparent navbar so hamburger / 美股台股 / 繁中EN / mark stay on top */
             z-index: 1040 !important;
             overflow: visible !important;
             visibility: visible !important;
@@ -8806,14 +8813,18 @@ ui <- dashboardPage(
             content: none !important;
             background: none !important;
           }
-          /* Navbar (toggle + market + lang + mark) must stack ABOVE the absolute title band */
+          /* Transparent navbar so title + gold progress fill show through the center gap.
+             Interactive chrome (toggle / market / lang / mark) stays above via child z-index. */
           .main-header .navbar,
           .skin-black .main-header .navbar {
             position: relative !important;
             z-index: 1060 !important;
+            background-color: transparent !important;
+            background-image: none !important;
           }
           .main-header .logo .ynow-app-title {
             /* JS scales font into the center gap; no ellipsis — full version string stays */
+            position: relative;
             font-size: 16px;
             line-height: 1.15 !important;
             white-space: nowrap;
@@ -8825,9 +8836,24 @@ ui <- dashboardPage(
             opacity: 1 !important;
           }
           .main-header .logo .ynow-app-title-base,
+          .main-header .logo .ynow-app-title-fill,
           .main-header .logo .ynow-app-title-fill-inner {
             font-size: inherit;
             line-height: inherit;
+            visibility: visible !important;
+            opacity: 1 !important;
+          }
+          /* Keep progress-fill clip layer aligned while font is JS-scaled */
+          .main-header .logo .ynow-app-title-fill {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: var(--ynow-load-pct, 0%);
+            max-width: 100%;
+            overflow: hidden;
+            white-space: nowrap;
+            pointer-events: none;
           }
           /* Keep 繁中／EN / mark / toggle above the absolute title band */
           .main-header .navbar-custom-menu .navbar-nav > li.ynow-lang-header {
