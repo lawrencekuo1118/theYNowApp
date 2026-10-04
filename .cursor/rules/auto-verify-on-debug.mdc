@@ -1,0 +1,34 @@
+---
+description: On any debug / bugfix, always run verification tests before reporting done
+alwaysApply: true
+---
+
+# Auto-verify on debug (always)
+
+**User authorization (explicit):** when debugging or fixing a bug, agents **must** run verification tests automatically. Do **not** wait for the user to say「測試」「驗證」or「跑一下」。
+
+## When this applies
+
+- Bug reports, regressions, “為什麼壞了”, blank/wrong UI or data, failed deploy/runtime errors
+- Any debug / fix session on the live line (`app_20.0/`) or related scripts/tests
+- Reproducing a failure and confirming a fix
+
+## Required verification (do not skip)
+
+1. **Targeted tests first** — run the relevant `app_20.0/tests/*.R` (or closest module tests) that cover the changed / suspected code.
+2. **Add or extend a test** when the bug has no coverage and a small regression check is practical.
+3. **Smoke / offline checks** when relevant:
+   - Valuation / FCF: `cd app_20.0/tests && Rscript test_valuation_formulas.R`
+   - Use `YNOW_DEBUG_SKIP_PY=1` when sourcing R helpers without reticulate.
+4. **UI / locale bugs** — exercise the affected path (test assertion and/or browser) enough to show the fix; keep en-US + zh-TW i18n intact.
+5. **Report evidence** — briefly state what was run and pass/fail before claiming fixed. If a test fails, keep debugging; do not ship a “fix” that still fails verification.
+
+## Does not replace ship rules
+
+Passing verification is a gate **before** the normal commit → push → deploy sequence (see `auto-deploy-after-optimize.mdc`). Rules/docs-only debug notes with no app behavior change still skip shinyapps deploy.
+
+## Skip only when
+
+- Pure Q&A / planning with no code change and no claimed fix
+- User explicitly says not to run tests
+- Environment truly cannot run the needed test (state the blocker; still run any runnable subset)
