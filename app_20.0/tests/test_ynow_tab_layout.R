@@ -204,6 +204,15 @@ check("click handler scrollIntoView", grepl("ynowOnFunnelKpiJump", ui, fixed = T
 check("Lite About YNOW keeps F-Score and 財報警訊", grepl("財報體質（F-Score）與財報警訊", ui, fixed = TRUE))
 check("Lite About EN uses statement quality", grepl("statement quality (F-Score) and statement alerts", ui, fixed = TRUE))
 check("first-paint F-Score list title zh", grepl("F-Score 品質檢核清單", dec, fixed = TRUE))
+check("KPI valueBox numbers stay one line", {
+  grepl("small-box .inner h3", ui, fixed = TRUE) &&
+    grepl("white-space: nowrap !important", ui, fixed = TRUE) &&
+    grepl("never orphan a trailing digit", ui, fixed = TRUE)
+})
+check("KPI valueBox equal row height", {
+  grepl('row:has(> [class*="col-"] .small-box)', ui, fixed = TRUE) &&
+    grepl("align-items: stretch", ui, fixed = TRUE)
+})
 
 macro <- paste(readLines("macro_market_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("bubble at Macro bottom", {

@@ -7104,20 +7104,63 @@ ui <- dashboardPage(
           box-sizing: border-box;
           overflow: hidden;
         }
+        /* Same-row KPI boxes stretch to equal height (valueBoxOutput nests col-sm-* on uiOutput). */
+        .content-wrapper .row:has(> [class*="col-"] .small-box),
+        .tab-content .row:has(> [class*="col-"] .small-box),
+        .tab-pane .row:has(> [class*="col-"] .small-box) {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: stretch;
+        }
+        .content-wrapper .row:has(> [class*="col-"] .small-box) > [class*="col-"],
+        .tab-content .row:has(> [class*="col-"] .small-box) > [class*="col-"],
+        .tab-pane .row:has(> [class*="col-"] .small-box) > [class*="col-"] {
+          display: flex;
+          flex-direction: column;
+          float: none;
+        }
+        .content-wrapper .row:has(> [class*="col-"] .small-box) > [class*="col-"] > .shiny-html-output,
+        .tab-content .row:has(> [class*="col-"] .small-box) > [class*="col-"] > .shiny-html-output,
+        .tab-pane .row:has(> [class*="col-"] .small-box) > [class*="col-"] > .shiny-html-output,
+        .content-wrapper .row:has(> [class*="col-"] .small-box) > [class*="col-"] > [class*="col-"],
+        .tab-content .row:has(> [class*="col-"] .small-box) > [class*="col-"] > [class*="col-"],
+        .tab-pane .row:has(> [class*="col-"] .small-box) > [class*="col-"] > [class*="col-"] {
+          flex: 1 1 auto;
+          width: 100%;
+          max-width: 100%;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          float: none;
+          padding-left: 0;
+          padding-right: 0;
+        }
+        .content-wrapper .row:has(> [class*="col-"] .small-box) .small-box,
+        .tab-content .row:has(> [class*="col-"] .small-box) .small-box,
+        .tab-pane .row:has(> [class*="col-"] .small-box) .small-box {
+          flex: 1 1 auto;
+          width: 100%;
+          height: 100%;
+        }
         .content-wrapper .small-box .inner {
           min-width: 0;
-          padding-right: 52px;
+          padding-right: 44px;
+          flex: 1 1 auto;
         }
         .content-wrapper .small-box .inner h3,
         .content-wrapper .small-box .inner h3 * {
-          font-size: clamp(15px, 2.6vw + 0.4rem, 38px) !important;
+          font-size: clamp(13px, 1.9vw + 0.35rem, 34px) !important;
           font-weight: 800;
           line-height: 1.15 !important;
           font-variant-numeric: tabular-nums;
           letter-spacing: -0.02em;
-          white-space: normal !important;
-          overflow-wrap: anywhere;
-          word-break: break-word;
+          /* Keep the whole figure on one line — never orphan a trailing digit. */
+          white-space: nowrap !important;
+          overflow-wrap: normal;
+          word-break: keep-all;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 100%;
         }
         .content-wrapper .small-box .inner p {
           white-space: normal;
@@ -7130,13 +7173,16 @@ ui <- dashboardPage(
         }
         .content-wrapper .info-box .info-box-number,
         .content-wrapper .info-box .info-box-number h3 {
-          font-size: clamp(14px, 2.2vw + 0.35rem, 28px) !important;
+          font-size: clamp(13px, 1.8vw + 0.3rem, 28px) !important;
           font-weight: 700;
           line-height: 1.15 !important;
           font-variant-numeric: tabular-nums;
-          white-space: normal !important;
-          overflow-wrap: anywhere;
-          word-break: break-word;
+          white-space: nowrap !important;
+          overflow-wrap: normal;
+          word-break: keep-all;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 100%;
         }
         .content-wrapper .info-box .info-box-text {
           white-space: normal;
