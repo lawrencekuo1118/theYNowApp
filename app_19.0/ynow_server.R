@@ -28,6 +28,9 @@ server <- function(input, output, session) {
   # Search must re-fetch even when the symbol is unchanged (Shiny skips
   # identical reactiveVal writes, so a second Search on TSM/NVDA was a no-op).
   ticker_search_gen <- reactiveVal(0L)
+  # Market switch off valuation tabs: remember default ticker (e.g. 2330.TW)
+  # and fetch only when the user later opens a valuation-model tab.
+  pending_market_default_ticker <- reactiveVal(NULL)
   # 首次按下 Search 前：不標示模型推薦／側邊欄「推薦」
   user_has_searched <- reactiveVal(FALSE)
 
@@ -129,6 +132,35 @@ server <- function(input, output, session) {
   # Lazy-mount nonce: bumped after each first-visit page mount (locale / input refresh)
   lazy_mount_nonce <- reactiveVal(0L)
 
+  # Apply deferred market-default ticker fetch (TW→2330 / US→TSM) on first
+  # visit to a valuation-model tab after a gated market switch.
+  .ynow_apply_pending_market_default_ticker <- function(tab = NULL) {
+    pending <- isolate(pending_market_default_ticker())
+    if (is.null(pending) || !nzchar(as.character(pending)[1])) {
+      return(invisible(FALSE))
+    }
+    tab_now <- if (!is.null(tab) && nzchar(as.character(tab)[1])) {
+      as.character(tab)[1]
+    } else {
+      tryCatch(as.character(isolate(input$sidebar_tabs) %||% "")[1], error = function(e) "")
+    }
+    if (!isTRUE(is_valuation_model_tab(tab_now))) return(invisible(FALSE))
+    pending_market_default_ticker(NULL)
+    user_has_searched(TRUE)
+    param_audit_baseline(NULL)
+    param_audit_baseline_at(NULL)
+    param_audit_baseline_ticker(NULL)
+    param_audit_capture_token(isolate(param_audit_capture_token()) + 1L)
+    current_ticker(as.character(pending)[1])
+    mode_now <- tryCatch(
+      normalize_market_mode(isolate(market_mode())),
+      error = function(e) get_market_mode()
+    )
+    disp <- display_ticker_for_market(pending, mode_now)
+    tryCatch(updateTextInput(session, "sc", value = disp), error = function(e) NULL)
+    invisible(TRUE)
+  }
+
   # Valuation-model / Blue Chip page accent; Basic Setup / other tabs clear theme
   observeEvent(input$sidebar_tabs, {
     tab <- as.character(input$sidebar_tabs %||% "")[1]
@@ -137,6 +169,7 @@ server <- function(input, output, session) {
       tab <- "testing"
     }
     session$sendCustomMessage("ynowModelTheme", list(tab = tab))
+    .ynow_apply_pending_market_default_ticker(tab)
   }, ignoreNULL = FALSE, ignoreInit = FALSE)
 
   # JS market buttons also pulse this tick so Clustering clears even if mode is unchanged.
@@ -172,6 +205,8 @@ server <- function(input, output, session) {
     # #endregion
     req(input$sc)
     user_has_searched(TRUE)
+    # Explicit Search supersedes any deferred market-default preload.
+    pending_market_default_ticker(NULL)
     # New Search: clear prior baseline until post-load capture settles
     param_audit_baseline(NULL)
     param_audit_baseline_at(NULL)
@@ -617,15 +652,40 @@ server <- function(input, output, session) {
       updateNumericInput(session, "capm_rf", value = round(as.numeric(rf_new), 2))
     }
 
-    # 切換預設標的並重抓（輸入框顯示乾淨代號）
-    user_has_searched(TRUE)
-    param_audit_baseline(NULL)
-    param_audit_baseline_at(NULL)
-    param_audit_baseline_ticker(NULL)
-    param_audit_capture_token(isolate(param_audit_capture_token()) + 1L)
-    current_ticker(prof$default_ticker)
+    # Default ticker (TW→2330 / US→TSM): show in the input always, but only
+    # preload / scrape when the active sidebar tab is valuation-model related.
+    # On Home / Macro / Blue Chip / Lab / About / etc., defer until that tab opens.
     disp <- display_ticker_for_market(prof$default_ticker, mode)
     tryCatch(updateTextInput(session, "sc", value = disp), error = function(e) NULL)
+    tab_now <- tryCatch(
+      as.character(isolate(input$sidebar_tabs) %||% "")[1],
+      error = function(e) ""
+    )
+    if (isTRUE(is_valuation_model_tab(tab_now))) {
+      pending_market_default_ticker(NULL)
+      user_has_searched(TRUE)
+      param_audit_baseline(NULL)
+      param_audit_baseline_at(NULL)
+      param_audit_baseline_ticker(NULL)
+      param_audit_capture_token(isolate(param_audit_capture_token()) + 1L)
+      current_ticker(prof$default_ticker)
+    } else {
+      pending_market_default_ticker(prof$default_ticker)
+      user_has_searched(FALSE)
+      param_audit_baseline(NULL)
+      param_audit_baseline_at(NULL)
+      param_audit_baseline_ticker(NULL)
+      # Drop prior market's ticker / statements so no cross-market scrape runs.
+      current_ticker(NULL)
+      summary_data(NULL)
+      scraped_financials(NULL)
+      fs_all_empty(FALSE)
+      tw_is_esb(FALSE)
+      tw_tpex_fs_fallback(FALSE)
+      corp_display_name("")
+      corp_display_name_en("")
+      corp_industry_text("等待搜尋...")
+    }
 
     # SEC 頁籤：僅美股
     if (isTRUE(prof$show_sec_lab)) {

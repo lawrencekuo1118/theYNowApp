@@ -253,6 +253,37 @@ display_tickers_for_market <- function(syms, mode = get_market_mode()) {
   )
 }
 
+#' Sidebar tabs that need company ticker / valuation-model resources.
+#' Market switch only auto-fetches the market default ticker (e.g. TW → 2330)
+#' when the active tab is one of these; otherwise the fetch is deferred until
+#' the user opens a valuation-related tab.
+ynow_valuation_model_tabs <- function() {
+  c(
+    "get_started",
+    "smart_analysis",
+    "snapshot",
+    "dashboard",
+    "sensitivity",
+    "dcf_calculator",
+    "ddm_calculator",
+    "ri_calculator",
+    "pb_calculator",
+    "nav_calculator",
+    "rel_multiples_calculator",
+    "sotp_calculator",
+    "hfv",
+    "decision_checklist"
+  )
+}
+
+#' TRUE when sidebar tab should preload market-default ticker on market switch.
+is_valuation_model_tab <- function(tab) {
+  t <- trimws(as.character(tab %||% "")[1])
+  if (!nzchar(t) || identical(toupper(t), "NA")) return(FALSE)
+  if (identical(t, "business_breakdown_lab")) t <- "testing"
+  t %in% ynow_valuation_model_tabs()
+}
+
 #' 查詢是否含中日韓漢字（CJK）
 query_has_cjk <- function(q) {
   grepl("[\u4e00-\u9fff]", as.character(q %||% "")[1])

@@ -49,6 +49,33 @@ check("TW hides SEC", isFALSE(market_profile("TW")$show_sec_lab))
 check("US shows SEC", isTRUE(market_profile("US")$show_sec_lab))
 check("TW bench 0050", identical(market_profile("TW")$beta_bench, "0050.TW"))
 
+# Market-switch preload gate: only valuation-model tabs auto-fetch default ticker
+check(
+  "valuation tabs include DCF / Basic Setup / Company",
+  isTRUE(is_valuation_model_tab("dcf_calculator")) &&
+    isTRUE(is_valuation_model_tab("get_started")) &&
+    isTRUE(is_valuation_model_tab("dashboard")) &&
+    isTRUE(is_valuation_model_tab("smart_analysis")) &&
+    isTRUE(is_valuation_model_tab("sensitivity"))
+)
+check(
+  "non-valuation tabs skip default preload",
+  isFALSE(is_valuation_model_tab("home")) &&
+    isFALSE(is_valuation_model_tab("macro_market")) &&
+    isFALSE(is_valuation_model_tab("bluechip")) &&
+    isFALSE(is_valuation_model_tab("testing")) &&
+    isFALSE(is_valuation_model_tab("lab_notes")) &&
+    isFALSE(is_valuation_model_tab("about")) &&
+    isFALSE(is_valuation_model_tab(""))
+)
+srv_txt <- paste(readLines(file.path(root, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check(
+  "market switch gates default ticker via is_valuation_model_tab",
+  grepl("is_valuation_model_tab\\(tab_now\\)", srv_txt, perl = TRUE) &&
+    grepl("pending_market_default_ticker", srv_txt, fixed = TRUE) &&
+    grepl("\\.ynow_apply_pending_market_default_ticker", srv_txt, perl = TRUE)
+)
+
 # Display vs fetch
 check("TW display strips .TW", identical(display_ticker_for_market("2330.TW", "TW"), "2330"))
 check("TW display strips .TWO", identical(display_ticker_for_market("3105.TWO", "TW"), "3105"))
