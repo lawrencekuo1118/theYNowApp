@@ -3,6 +3,10 @@
 #
 # US／TW 各一組；代號與宇宙對齊（台股用 .TW／.TWO）。
 # 「概念股」模式：所選群聯集 ∩ 目前篩選池；若仍 > N 再依市值截斷。
+#
+# TW 主題對齊常見台股產業／概念地圖（證交所板別粗類、CMoney 產業總覽、
+# 市場熱門概念題材），只補「與既有群不重複」的題材；不另建集團概念
+# （鴻海／台塑…）以免與產業籃高度重疊。同一檔可跨多群（供應鏈本質）。
 # ==========================================
 
 #' Concept-group catalog (labels are locale-neutral keys; UI maps via ui_locale)
@@ -51,21 +55,21 @@ LAB_CONCEPT_GROUPS <- list(
     # AI／先進製程／晶圓代工
     ai_foundry = c(
       "2330.TW", "2303.TW", "3711.TW", "2454.TW", "3034.TW", "2379.TW", "3443.TW",
-      "3661.TW", "3529.TW", "5274.TW", "4966.TW", "6488.TWO", "8299.TW"
+      "3661.TW", "3529.TWO", "5274.TWO", "4966.TWO", "6488.TWO", "8299.TWO"
     ),
     # IC 設計
     ic_design = c(
-      "2454.TW", "2379.TW", "3034.TW", "3443.TW", "3661.TW", "2408.TW", "4966.TW",
-      "5274.TW", "3529.TW", "6488.TWO", "3227.TW", "6415.TW", "8299.TW", "4919.TW"
+      "2454.TW", "2379.TW", "3034.TW", "3443.TW", "3661.TW", "2408.TW", "4966.TWO",
+      "5274.TWO", "3529.TWO", "6488.TWO", "3227.TWO", "6415.TW", "8299.TWO", "4919.TW"
     ),
     # 伺服器／散熱／電源
     server_thermal = c(
       "6669.TW", "3017.TW", "2383.TW", "2356.TW", "2357.TW", "3231.TW", "2376.TW",
-      "3653.TW", "3324.TW", "6239.TW", "2301.TW", "2404.TW", "6285.TW", "2393.TW"
+      "3653.TW", "3324.TWO", "6239.TW", "2301.TW", "2404.TW", "6285.TW", "2393.TW"
     ),
     # PCB／載板
     pcb = c(
-      "3037.TW", "8046.TW", "3189.TW", "2368.TW", "2313.TW", "5469.TW", "6274.TW",
+      "3037.TW", "8046.TW", "3189.TW", "2368.TW", "2313.TW", "5469.TW", "6274.TWO",
       "4958.TW", "8210.TW", "2355.TW"
     ),
     # 記憶體／封測
@@ -86,7 +90,7 @@ LAB_CONCEPT_GROUPS <- list(
     # 金融股
     banks_fin = c(
       "2881.TW", "2882.TW", "2884.TW", "2885.TW", "2886.TW", "2887.TW", "2890.TW",
-      "2891.TW", "2892.TW", "2880.TW", "2883.TW", "2801.TW", "2834.TW", "5880.TW"
+      "2891.TW", "2892.TW", "2880.TW", "2801.TW", "2834.TW", "5880.TW"
     ),
     # 高股息／電信／傳產防禦
     high_div_defensive = c(
@@ -95,7 +99,7 @@ LAB_CONCEPT_GROUPS <- list(
     ),
     # 生技醫療
     biotech = c(
-      "4743.TWO", "6541.TWO", "4162.TWO", "1786.TW", "1795.TW", "6491.TWO",
+      "4743.TWO", "6541.TW", "4162.TWO", "1786.TW", "1795.TW", "6491.TW",
       "4105.TWO", "4137.TW", "6467.TWO", "6709.TWO"
     ),
     # 航運
@@ -116,6 +120,31 @@ LAB_CONCEPT_GROUPS <- list(
     tourism_retail = c(
       "2707.TW", "2727.TW", "2723.TW", "2731.TW", "2912.TW", "5905.TWO", "8454.TW",
       "9941.TW", "2603.TW"
+    ),
+    # 光通訊／網通設備（≠ 面板光電；含高速傳輸／光模組／交換器供應鏈）
+    optical_comms = c(
+      "2345.TW", "5388.TW", "3704.TW", "4906.TW", "3363.TWO", "6451.TW", "4977.TW",
+      "6442.TW", "3694.TW", "3450.TW", "3715.TW", "3596.TW", "6285.TW", "8034.TWO"
+    ),
+    # 機器人／自動化／精密傳動（≠ 純車用電子）
+    robotics_auto = c(
+      "1590.TW", "2049.TW", "1597.TW", "4571.TW", "4562.TW", "8021.TW", "1560.TW",
+      "6438.TW", "2464.TW", "3376.TW", "2467.TW", "4555.TW", "2250.TW", "4551.TW"
+    ),
+    # 軍工／航太／衛星／無人機相關供應鏈
+    defense_sat = c(
+      "2634.TW", "8027.TWO", "6640.TWO", "3178.TWO", "3289.TWO", "4555.TW",
+      "3168.TW", "8034.TWO", "8048.TWO", "3131.TWO", "2239.TW", "4571.TW"
+    ),
+    # 被動元件（MLCC／電阻／電感／保護元件；CMoney「被動元件」板）
+    passive_components = c(
+      "2327.TW", "2492.TW", "3042.TW", "3090.TW", "2428.TW", "2483.TW", "3026.TW",
+      "2375.TW", "6175.TWO", "6173.TWO", "3092.TW", "2481.TW", "2455.TW", "3016.TW"
+    ),
+    # 工業電腦／嵌入式／自動化 IPC（CMoney「工業電腦」）
+    industrial_pc = c(
+      "2395.TW", "6166.TW", "6414.TW", "6277.TW", "2465.TW", "3022.TW", "2495.TW",
+      "8050.TWO", "6579.TW", "2464.TW", "2414.TW", "6916.TW"
     )
   )
 )
@@ -153,6 +182,11 @@ lab_concept_group_label <- function(key, market = c("US", "TW"), locale = "zh-TW
       server_thermal = "伺服器／散熱／電源",
       pcb = "PCB／載板",
       memory_osat = "記憶體／封測",
+      optical_comms = "光通訊／網通設備",
+      robotics_auto = "機器人／自動化",
+      defense_sat = "軍工／航太／衛星",
+      passive_components = "被動元件",
+      industrial_pc = "工業電腦",
       ev_auto = "電動車／車用電子",
       green_power = "綠能／重電／儲能",
       banks_fin = "金融股",
@@ -186,6 +220,11 @@ lab_concept_group_label <- function(key, market = c("US", "TW"), locale = "zh-TW
       server_thermal = "Servers / thermal / PSU",
       pcb = "PCB / substrates",
       memory_osat = "Memory / OSAT",
+      optical_comms = "Optical / networking gear",
+      robotics_auto = "Robotics / automation",
+      defense_sat = "Defense / aerospace / satellite",
+      passive_components = "Passive components",
+      industrial_pc = "Industrial PCs / embedded",
       ev_auto = "EV / auto electronics",
       green_power = "Green power / heavy electric",
       banks_fin = "Banks / financials",

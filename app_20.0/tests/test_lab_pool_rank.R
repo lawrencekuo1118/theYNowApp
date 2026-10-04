@@ -11,6 +11,7 @@ app_dir <- normalizePath(file.path(test_dir, ".."), mustWork = TRUE)
 setwd(app_dir)
 source(file.path(app_dir, "setup.R"), local = FALSE)
 source(file.path(app_dir, "industry_standards.R"), local = FALSE)
+source(file.path(app_dir, "lab_concept_groups.R"), local = FALSE)
 source(file.path(app_dir, "lab_industry_method.R"), local = FALSE)
 
 fail <- 0L
@@ -31,9 +32,34 @@ check("normalize random", identical(lab_normalize_pool_rank_mode("random"), "ran
 us_ch <- lab_concept_group_choices("US", "en")
 tw_ch <- lab_concept_group_choices("TW", "zh-TW")
 check("US concepts nonempty", length(us_ch) >= 8L)
-check("TW concepts nonempty", length(tw_ch) >= 8L)
+check("TW concepts nonempty", length(tw_ch) >= 14L)
 check("mag7 has NVDA", "NVDA" %in% lab_concept_tickers("mag7", "US"))
 check("TW ai has 2330.TW", "2330.TW" %in% lab_concept_tickers("ai_foundry", "TW"))
+# Supplements from TW industry/concept maps (no duplicate theme keys)
+tw_new <- c(
+  "optical_comms", "robotics_auto", "defense_sat",
+  "passive_components", "industrial_pc"
+)
+check("TW new concept keys present", all(tw_new %in% unname(tw_ch)))
+check("TW optical has 2345", "2345.TW" %in% lab_concept_tickers("optical_comms", "TW"))
+check("TW robotics has 1590", "1590.TW" %in% lab_concept_tickers("robotics_auto", "TW"))
+check("TW defense has 2634", "2634.TW" %in% lab_concept_tickers("defense_sat", "TW"))
+check("TW passive has 2327", "2327.TW" %in% lab_concept_tickers("passive_components", "TW"))
+check("TW IPC has 2395", "2395.TW" %in% lab_concept_tickers("industrial_pc", "TW"))
+check(
+  "TW zh labels for new keys",
+  identical(lab_concept_group_label("passive_components", "TW", "zh-TW"), "被動元件") &&
+    identical(lab_concept_group_label("optical_comms", "TW", "zh-TW"), "光通訊／網通設備")
+)
+# All TW concept tickers resolve in bundled universe (when available)
+u_path <- file.path(app_dir, "data", "tw_universe.csv")
+if (file.exists(u_path)) {
+  u <- utils::read.csv(u_path, stringsAsFactors = FALSE, fileEncoding = "UTF-8")
+  all_tw <- unique(unlist(LAB_CONCEPT_GROUPS$TW, use.names = FALSE))
+  miss <- setdiff(toupper(all_tw), toupper(as.character(u$ticker)))
+  check("TW concept tickers in universe", length(miss) == 0L)
+  if (length(miss)) cat("INFO missing concept tickers: ", paste(miss, collapse = ","), "\n", sep = "")
+}
 
 pool <- data.frame(
   ticker = c("AAA", "BBB", "CCC", "DDD", "EEE"),
