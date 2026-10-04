@@ -285,7 +285,10 @@ check("UI Lite no click", grepl("if (!isTRUE(lite))", mod_txt, fixed = TRUE))
 check("UI Lite CSS", grepl("body.ynow-lite #ynow_macro_hccsi_expand", ui_txt, fixed = TRUE))
 check("UI four indices", grepl("hccsi-four", mod_txt, fixed = TRUE))
 check("four-index uses flow span", grepl("hccsi_score_span(it$val)", mod_txt, fixed = TRUE))
-check("layer table uses flow span", grepl("hccsi_score_span(result$issuer_health[[id]])", mod_txt, fixed = TRUE))
+check("layer table uses flow span", grepl("hccsi_score_span(stmt_v)", mod_txt, fixed = TRUE) &&
+  grepl("hccsi_score_span(mkt_v)", mod_txt, fixed = TRUE) &&
+  grepl("hccsi_score_span(inf_v)", mod_txt, fixed = TRUE) &&
+  grepl("hccsi_score_span(traj_v)", mod_txt, fixed = TRUE))
 mod_lines <- strsplit(mod_txt, "\n", fixed = TRUE)[[1]]
 ly_i <- grep("^\\.hccsi_layer_table <- function", mod_lines)
 nw_i <- grep("^\\.hccsi_network_ui <- function", mod_lines)
@@ -302,6 +305,13 @@ check("issuer pair not single constituent table", grepl(".hccsi_in_composite_blo
 check("in-composite table has live inputs", grepl("hccsi_col_rev_yoy", mod_txt, fixed = TRUE) &&
   grepl("hccsi_col_gm_delta", mod_txt, fixed = TRUE) && grepl("hccsi_col_capex_own", mod_txt, fixed = TRUE) &&
   grepl("hccsi_col_price_hist", mod_txt, fixed = TRUE))
+check("stage/composite term bridge", grepl(".hccsi_term_bridge", mod_txt, fixed = TRUE) &&
+  grepl("ynow-hccsi-term-groups", mod_txt, fixed = TRUE) &&
+  grepl("hccsi_term_map_stmt", mod_txt, fixed = TRUE))
+check("stage table shows Stmt Mkt Inf Traj", grepl('.hccsi_term_th("stmt"', layer_src, fixed = TRUE) &&
+  grepl('.hccsi_term_th("mkt"', layer_src, fixed = TRUE) &&
+  grepl('.hccsi_term_th("inf"', layer_src, fixed = TRUE) &&
+  grepl('.hccsi_term_th("traj"', layer_src, fixed = TRUE))
 check("stage table carries issuer role", grepl("hccsi_col_function", layer_src, fixed = TRUE) &&
   grepl("hccsi_col_issuer", layer_src, fixed = TRUE))
 check("issuer tables drop cap theater", !grepl("hccsi_col_criticality", mod_txt, fixed = TRUE) &&
@@ -345,6 +355,14 @@ check("zh stage is 環節", identical(ui_str("hccsi_col_layer", "zh-TW"), "環�
 check("zh knock-on path", identical(ui_str("hccsi_contagion_paths", "zh-TW"), "連鎖降溫路徑"))
 check("en stage not layer", identical(ui_str("hccsi_col_layer", "en"), "Stage"))
 check("en knock-on path", identical(ui_str("hccsi_contagion_paths", "en"), "Linked stages cooling together"))
+check("en term bridge", grepl("Same color", ui_str("hccsi_term_bridge", "en"), fixed = TRUE))
+check("zh term bridge", grepl("同色", ui_str("hccsi_term_bridge", "zh-TW"), fixed = TRUE))
+check("term badges bilingual", {
+  identical(ui_str("hccsi_term_stmt", "en"), "Stmt") &&
+    identical(ui_str("hccsi_term_mkt", "zh-TW"), "Mkt") &&
+    nzchar(ui_str("hccsi_term_map_inf", "en")) &&
+    nzchar(ui_str("hccsi_in_composite_help", "zh-TW"))
+})
 check("zh expand avoids 傳染/濾鏡", {
   blob <- paste(vapply(
     c("hccsi_disclosure", "hccsi_index_stress_gloss", "hccsi_network_note",
@@ -408,6 +426,10 @@ if (requireNamespace("htmltools", quietly = TRUE) && requireNamespace("shiny", q
     check("layer HTML no rebuild col", !grepl("Years to rebuild", html_ly, fixed = TRUE))
     check("layer HTML has issuer", grepl("Issuer", html_ly, fixed = TRUE))
     check("layer HTML has role", grepl("Role in the chain", html_ly, fixed = TRUE))
+    check("layer HTML term badges", grepl("data-hccsi-term=\"stmt\"", html_ly, fixed = TRUE) &&
+      grepl("data-hccsi-term=\"mkt\"", html_ly, fixed = TRUE) &&
+      grepl("data-hccsi-term=\"inf\"", html_ly, fixed = TRUE) &&
+      grepl("data-hccsi-term=\"traj\"", html_ly, fixed = TRUE))
     check("layer HTML no spaced dup ticker", !grepl("ASML ASML", html_ly, fixed = TRUE) &&
       !grepl("GOOGL GOOGL", html_ly, fixed = TRUE))
   }
@@ -423,11 +445,23 @@ if (requireNamespace("htmltools", quietly = TRUE) && requireNamespace("shiny", q
     check("in-composite has Rev YoY", grepl("Rev YoY", html_in, fixed = TRUE))
     check("in-composite has ΔGM", grepl("ΔGM", html_in, fixed = TRUE))
     check("in-composite has CapEx vs own", grepl("CapEx vs own", html_in, fixed = TRUE))
+    check("in-composite grouped term headers", grepl("ynow-hccsi-term-groups", html_in, fixed = TRUE) &&
+      grepl("colspan=\"3\"", html_in, fixed = TRUE) &&
+      grepl("data-hccsi-term=\"stmt\"", html_in, fixed = TRUE) &&
+      grepl("data-hccsi-term=\"mkt\"", html_in, fixed = TRUE))
     check("in-composite no substitutes", !grepl("What can replace it", html_in, fixed = TRUE))
     check("in-composite no Uncapped", !grepl("Uncapped weight", html_in, fixed = TRUE))
     check("in-composite no Criticality", !grepl("Criticality", html_in, fixed = TRUE))
     check("in-composite no spaced dup ticker", !grepl("ASML ASML", html_in, fixed = TRUE) &&
       !grepl("GOOGL GOOGL", html_in, fixed = TRUE))
+  }
+  block_en <- tryCatch(.hccsi_in_composite_block(sc13, "en"), error = function(e) NULL)
+  if (!is.null(block_en)) {
+    html_blk <- paste(as.character(block_en), collapse = " ")
+    check("composite block has term bridge", grepl("ynow-hccsi-term-bridge", html_blk, fixed = TRUE) &&
+      grepl("Same color", html_blk, fixed = TRUE))
+  } else {
+    check("composite block has term bridge", FALSE)
   }
   if (!is.null(banner_en)) {
     html_bn <- paste(as.character(banner_en), collapse = " ")

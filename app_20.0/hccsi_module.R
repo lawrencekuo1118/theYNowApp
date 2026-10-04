@@ -69,9 +69,72 @@ hccsi_score_span <- function(x, digits = 1, extra_class = NULL) {
   paste(lys, collapse = sep)
 }
 
-.hccsi_html_table <- function(header, body) {
-  tags$div(class = "ynow-hccsi-table-wrap",
-           tags$table(class = "table table-condensed ynow-hccsi-table", tags$thead(header), tags$tbody(body)))
+.hccsi_html_table <- function(header, body, table_class = NULL) {
+  cls <- c("table", "table-condensed", "ynow-hccsi-table", table_class)
+  cls <- paste(Filter(function(x) !is.null(x) && nzchar(as.character(x)[1]), cls), collapse = " ")
+  tags$div(
+    class = "ynow-hccsi-table-wrap",
+    tags$table(class = cls, tags$thead(header), tags$tbody(body))
+  )
+}
+
+.hccsi_term_badge <- function(term, locale = "en", arrow = FALSE) {
+  term <- tolower(as.character(term %||% "")[1])
+  lab <- switch(
+    term,
+    stmt = .hccsi_ui("hccsi_term_stmt", locale),
+    mkt = .hccsi_ui("hccsi_term_mkt", locale),
+    inf = .hccsi_ui("hccsi_term_inf", locale),
+    traj = .hccsi_ui("hccsi_term_traj", locale),
+    term
+  )
+  tags$span(
+    class = paste("ynow-hccsi-term-badge", paste0("ynow-hccsi-term--", term)),
+    `data-hccsi-term` = term,
+    paste0(if (isTRUE(arrow)) "→ " else "", lab)
+  )
+}
+
+.hccsi_term_th <- function(term, locale = "en") {
+  tags$th(
+    class = paste("ynow-hccsi-term-col", paste0("ynow-hccsi-term--", term)),
+    `data-hccsi-term` = term,
+    .hccsi_term_badge(term, locale)
+  )
+}
+
+.hccsi_term_bridge <- function(locale = "en") {
+  tags$div(
+    class = "ynow-hccsi-term-bridge",
+    tags$p(
+      id = "ynow_macro_hccsi_term_bridge",
+      class = "ynow-hccsi-term-bridge__lead",
+      .hccsi_ui("hccsi_term_bridge", locale)
+    ),
+    tags$ul(
+      class = "ynow-hccsi-term-map",
+      tags$li(
+        .hccsi_term_badge("stmt", locale),
+        tags$span(class = "ynow-hccsi-term-map__arrow", "←"),
+        tags$span(id = "ynow_macro_hccsi_map_stmt", .hccsi_ui("hccsi_term_map_stmt", locale))
+      ),
+      tags$li(
+        .hccsi_term_badge("mkt", locale),
+        tags$span(class = "ynow-hccsi-term-map__arrow", "←"),
+        tags$span(id = "ynow_macro_hccsi_map_mkt", .hccsi_ui("hccsi_term_map_mkt", locale))
+      ),
+      tags$li(
+        .hccsi_term_badge("inf", locale),
+        tags$span(class = "ynow-hccsi-term-map__arrow", "←"),
+        tags$span(id = "ynow_macro_hccsi_map_inf", .hccsi_ui("hccsi_term_map_inf", locale))
+      ),
+      tags$li(
+        .hccsi_term_badge("traj", locale),
+        tags$span(class = "ynow-hccsi-term-map__arrow", "←"),
+        tags$span(id = "ynow_macro_hccsi_map_traj", .hccsi_ui("hccsi_term_map_traj", locale))
+      )
+    )
+  )
 }
 
 .hccsi_ui <- function(key, locale = "en") {
@@ -156,14 +219,16 @@ hccsi_kpi_box <- function(result, lite = FALSE, locale = "en", ns = NULL, select
   rows <- result$issuers
   if (is.null(rows) || !length(rows)) return(tags$p(class = "ynow-macro-hint", .hccsi_ui("hccsi_empty", locale)))
   cfg <- hccsi_load_config()
+  # Column order mirrors the formula banner: Stmt · Mkt · Inf · Traj.
   header <- tags$tr(
     tags$th(.hccsi_ui("hccsi_col_layer", locale)),
     tags$th(.hccsi_ui("hccsi_col_issuer", locale)),
     tags$th(.hccsi_ui("hccsi_col_function", locale)),
-    tags$th(.hccsi_ui("hccsi_col_health", locale)),
-    tags$th(.hccsi_ui("hccsi_col_stress", locale)),
-    tags$th(.hccsi_ui("hccsi_col_weight", locale)),
-    tags$th(.hccsi_ui("hccsi_col_concentration", locale)))
+    .hccsi_term_th("stmt", locale),
+    .hccsi_term_th("mkt", locale),
+    .hccsi_term_th("inf", locale),
+    .hccsi_term_th("traj", locale),
+    tags$th(.hccsi_ui("hccsi_col_weight", locale)))
   seen <- character(0)
   order_ids <- character(0)
   for (ly in names(cfg$layers %||% list())) {
@@ -179,16 +244,21 @@ hccsi_kpi_box <- function(result, lite = FALSE, locale = "en", ns = NULL, select
   body <- lapply(order_ids, function(id) {
     r <- rows[[id]]
     w <- suppressWarnings(as.numeric(r$weight)[1])
+    stmt_v <- result$issuer_health[[id]] %||% r$stmt_score
+    mkt_v <- r$mkt_score
+    inf_v <- r$inf_score
+    traj_v <- result$issuer_stress[[id]] %||% r$traj_score
     tags$tr(
       tags$td(.hccsi_issuer_stages(id, cfg, locale)),
       tags$td(.hccsi_issuer_label(r)),
       tags$td(.hccsi_named("fn", r$function_id, locale)),
-      tags$td(hccsi_score_span(result$issuer_health[[id]])),
-      tags$td(hccsi_score_span(result$issuer_stress[[id]])),
-      tags$td(if (is.finite(w)) sprintf("%.1f%%", 100 * w) else "—"),
-      tags$td(hccsi_score_span(r$inf_score)))
+      tags$td(class = "ynow-hccsi-term--stmt", hccsi_score_span(stmt_v)),
+      tags$td(class = "ynow-hccsi-term--mkt", hccsi_score_span(mkt_v)),
+      tags$td(class = "ynow-hccsi-term--inf", hccsi_score_span(inf_v)),
+      tags$td(class = "ynow-hccsi-term--traj", hccsi_score_span(traj_v)),
+      tags$td(if (is.finite(w)) sprintf("%.1f%%", 100 * w) else "—"))
   })
-  .hccsi_html_table(header, body)
+  .hccsi_html_table(header, body, table_class = "ynow-hccsi-table--stages")
 }
 
 .hccsi_network_ui <- function(result, locale = "en") {
@@ -205,36 +275,55 @@ hccsi_kpi_box <- function(result, lite = FALSE, locale = "en", ns = NULL, select
 .hccsi_in_composite_table <- function(result, locale = "en") {
   rows <- result$issuers
   if (is.null(rows) || !length(rows)) return(tags$p(class = "ynow-macro-hint", .hccsi_ui("hccsi_empty", locale)))
-  header <- tags$tr(
-    tags$th(.hccsi_ui("hccsi_col_issuer", locale)),
-    tags$th(.hccsi_ui("hccsi_col_rev_yoy", locale)),
-    tags$th(.hccsi_ui("hccsi_col_gm_delta", locale)),
-    tags$th(.hccsi_ui("hccsi_col_capex_own", locale)),
-    tags$th(.hccsi_ui("hccsi_col_dd", locale)),
-    tags$th(.hccsi_ui("hccsi_col_ret", locale)),
-    tags$th(.hccsi_ui("hccsi_col_beta", locale)),
-    tags$th(.hccsi_ui("hccsi_col_price_hist", locale)),
-    tags$th(.hccsi_ui("hccsi_col_rev_vs_own", locale)))
+  # Group live inputs under the same Stmt / Mkt / Inf / Traj terms shown in Function stages.
+  header <- htmltools::tagList(
+    tags$tr(
+      class = "ynow-hccsi-term-groups",
+      tags$th(rowspan = "2", .hccsi_ui("hccsi_col_issuer", locale)),
+      tags$th(colspan = "3", class = "ynow-hccsi-term--stmt", .hccsi_term_badge("stmt", locale, arrow = TRUE)),
+      tags$th(colspan = "2", class = "ynow-hccsi-term--mkt", .hccsi_term_badge("mkt", locale, arrow = TRUE)),
+      tags$th(colspan = "1", class = "ynow-hccsi-term--inf", .hccsi_term_badge("inf", locale, arrow = TRUE)),
+      tags$th(colspan = "2", class = "ynow-hccsi-term--traj", .hccsi_term_badge("traj", locale, arrow = TRUE))
+    ),
+    tags$tr(
+      class = "ynow-hccsi-term-metrics",
+      tags$th(class = "ynow-hccsi-term--stmt", .hccsi_ui("hccsi_col_rev_yoy", locale)),
+      tags$th(class = "ynow-hccsi-term--stmt", .hccsi_ui("hccsi_col_gm_delta", locale)),
+      tags$th(class = "ynow-hccsi-term--stmt", .hccsi_ui("hccsi_col_capex_own", locale)),
+      tags$th(class = "ynow-hccsi-term--mkt", .hccsi_ui("hccsi_col_dd", locale)),
+      tags$th(class = "ynow-hccsi-term--mkt", .hccsi_ui("hccsi_col_ret", locale)),
+      tags$th(class = "ynow-hccsi-term--inf", .hccsi_ui("hccsi_col_beta", locale)),
+      tags$th(class = "ynow-hccsi-term--traj", .hccsi_ui("hccsi_col_price_hist", locale)),
+      tags$th(class = "ynow-hccsi-term--traj", .hccsi_ui("hccsi_col_rev_vs_own", locale))
+    )
+  )
   body <- lapply(rows, function(r) {
     ret <- if (.finite1(r$ret_1y)) r$ret_1y else r$ret_1m
     ex <- if (.finite1(r$excess_1y)) r$excess_1y else r$abnormal_return
     tags$tr(
       tags$td(.hccsi_issuer_label(r)),
-      tags$td(.hccsi_fmt_signed_pct(r$rev_yoy)),
-      tags$td(.hccsi_fmt_signed_pct(r$gm_delta)),
-      tags$td(.hccsi_fmt_signed_pct(r$capex_vs_own)),
-      tags$td(.hccsi_fmt_signed_pct(ex)),
-      tags$td(.hccsi_fmt_signed_pct(ret)),
-      tags$td(hccsi_fmt_score(r$beta_60d)),
-      tags$td(.hccsi_fmt_signed_pct(r$price_vs_hist)),
-      tags$td(.hccsi_fmt_signed_pct(r$rev_yoy_vs_own)))
+      tags$td(class = "ynow-hccsi-term--stmt", .hccsi_fmt_signed_pct(r$rev_yoy)),
+      tags$td(class = "ynow-hccsi-term--stmt", .hccsi_fmt_signed_pct(r$gm_delta)),
+      tags$td(class = "ynow-hccsi-term--stmt", .hccsi_fmt_signed_pct(r$capex_vs_own)),
+      tags$td(class = "ynow-hccsi-term--mkt", .hccsi_fmt_signed_pct(ex)),
+      tags$td(class = "ynow-hccsi-term--mkt", .hccsi_fmt_signed_pct(ret)),
+      tags$td(class = "ynow-hccsi-term--inf", hccsi_fmt_score(r$beta_60d)),
+      tags$td(class = "ynow-hccsi-term--traj", .hccsi_fmt_signed_pct(r$price_vs_hist)),
+      tags$td(class = "ynow-hccsi-term--traj", .hccsi_fmt_signed_pct(r$rev_yoy_vs_own)))
   })
-  .hccsi_html_table(header, body)
+  .hccsi_html_table(header, body, table_class = "ynow-hccsi-table--inputs")
 }
 
 .hccsi_in_composite_block <- function(result, locale = "en") {
   tags$div(
+    class = "ynow-hccsi-in-composite",
+    .hccsi_term_bridge(locale),
     tags$h4(id = "ynow_macro_hccsi_in_title", .hccsi_ui("hccsi_in_composite_title", locale)),
+    tags$p(
+      id = "ynow_macro_hccsi_in_help",
+      class = "ynow-macro-hint",
+      .hccsi_ui("hccsi_in_composite_help", locale)
+    ),
     .hccsi_in_composite_table(result, locale)
   )
 }

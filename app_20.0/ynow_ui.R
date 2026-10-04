@@ -5698,7 +5698,13 @@ ui <- dashboardPage(
             setBtText('ynow_macro_hccsi_formula_parts', 'hccsi_formula_parts');
             setBtText('ynow_macro_hccsi_layer_title', 'hccsi_layer_title');
             setBtText('ynow_macro_hccsi_network_title', 'hccsi_network_title');
+            setBtText('ynow_macro_hccsi_term_bridge', 'hccsi_term_bridge');
+            setBtText('ynow_macro_hccsi_map_stmt', 'hccsi_term_map_stmt');
+            setBtText('ynow_macro_hccsi_map_mkt', 'hccsi_term_map_mkt');
+            setBtText('ynow_macro_hccsi_map_inf', 'hccsi_term_map_inf');
+            setBtText('ynow_macro_hccsi_map_traj', 'hccsi_term_map_traj');
             setBtText('ynow_macro_hccsi_in_title', 'hccsi_in_composite_title');
+            setBtText('ynow_macro_hccsi_in_help', 'hccsi_in_composite_help');
             setBtText('ynow_macro_hccsi_method_title', 'hccsi_method_title');
             setBtText('ynow_macro_index_hint', 'macro_index_chart_hint');
             ['ynow_index_title', 'ynow_index_chapter_title', 'ynow_index_rule',
@@ -8308,6 +8314,79 @@ ui <- dashboardPage(
         .ynow-hccsi-expand__card h4 { margin: 12px 0 6px 0; font-size: 14px; }
         .ynow-hccsi-table-wrap { overflow-x: auto; margin: 0 0 10px 0; }
         .ynow-hccsi-table { font-size: 12px; margin-bottom: 0; }
+        .ynow-hccsi-term-badge {
+          display: inline-block;
+          min-width: 2.6em;
+          padding: 1px 7px;
+          border-radius: 3px;
+          font-weight: 700;
+          font-size: 11px;
+          letter-spacing: 0.02em;
+          line-height: 1.5;
+          border: 1px solid transparent;
+        }
+        .ynow-hccsi-term--stmt .ynow-hccsi-term-badge,
+        .ynow-hccsi-term-badge.ynow-hccsi-term--stmt {
+          color: #0b4f6c; background: #d9eef7; border-color: #9ec9dc;
+        }
+        .ynow-hccsi-term--mkt .ynow-hccsi-term-badge,
+        .ynow-hccsi-term-badge.ynow-hccsi-term--mkt {
+          color: #1b5e20; background: #e3f2e5; border-color: #9cc7a2;
+        }
+        .ynow-hccsi-term--inf .ynow-hccsi-term-badge,
+        .ynow-hccsi-term-badge.ynow-hccsi-term--inf {
+          color: #8a4b00; background: #fff0d6; border-color: #e0b56a;
+        }
+        .ynow-hccsi-term--traj .ynow-hccsi-term-badge,
+        .ynow-hccsi-term-badge.ynow-hccsi-term--traj {
+          color: #4a148c; background: #f0e6f8; border-color: #c4a3de;
+        }
+        .ynow-hccsi-table th.ynow-hccsi-term--stmt,
+        .ynow-hccsi-table td.ynow-hccsi-term--stmt { background-color: rgba(217, 238, 247, 0.45); }
+        .ynow-hccsi-table th.ynow-hccsi-term--mkt,
+        .ynow-hccsi-table td.ynow-hccsi-term--mkt { background-color: rgba(227, 242, 229, 0.45); }
+        .ynow-hccsi-table th.ynow-hccsi-term--inf,
+        .ynow-hccsi-table td.ynow-hccsi-term--inf { background-color: rgba(255, 240, 214, 0.55); }
+        .ynow-hccsi-table th.ynow-hccsi-term--traj,
+        .ynow-hccsi-table td.ynow-hccsi-term--traj { background-color: rgba(240, 230, 248, 0.5); }
+        .ynow-hccsi-table--inputs tr.ynow-hccsi-term-groups th {
+          text-align: center; border-bottom: 0; padding-bottom: 4px;
+        }
+        .ynow-hccsi-table--inputs tr.ynow-hccsi-term-metrics th {
+          font-weight: 600; white-space: nowrap;
+        }
+        .ynow-hccsi-term-bridge {
+          margin: 12px 0 10px 0;
+          padding: 10px 12px;
+          background: #f7f9fb;
+          border: 1px solid #dce3ea;
+          border-radius: 6px;
+        }
+        .ynow-hccsi-term-bridge__lead {
+          margin: 0 0 8px 0;
+          font-size: 12px;
+          color: #34495e;
+        }
+        .ynow-hccsi-term-map {
+          list-style: none;
+          margin: 0;
+          padding: 0;
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 6px 14px;
+        }
+        .ynow-hccsi-term-map li {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 12px;
+          color: #2c3e50;
+          min-width: 0;
+        }
+        .ynow-hccsi-term-map__arrow { color: #7f8c8d; flex: 0 0 auto; }
+        @media (max-width: 767px) {
+          .ynow-hccsi-term-map { grid-template-columns: 1fr; }
+        }
         .ynow-hccsi-formula-banner { margin: 8px 0 14px 0; }
         .ynow-hccsi-formula-banner__eq {
           font-size: 18px; font-weight: bold; color: #2C3E50; text-align: center;
