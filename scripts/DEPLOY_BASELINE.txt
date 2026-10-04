@@ -8,5 +8,5 @@ short=2ac7f4b
 message=chore: bump display version to v20.14
 captured_at=2026-10-04T09:24:16Z
 source_branch=master
-display_version=v20.14
+display_version=v20.15
 note=Canonical live line is app_20.0. Bundle 12644972 ships Decision Checklist summary on top (Checklist Summary / 檢核摘要) and side-by-side theme items. Deploy via scripts/deploy_app_20.R.
