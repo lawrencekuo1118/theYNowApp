@@ -8,5 +8,5 @@ short=7224e05
 message=chore: bump display version to v20.13
 captured_at=2026-10-04T09:18:04Z
 source_branch=master
-display_version=v20.13
+display_version=v20.14
 note=Canonical live line is app_20.0. Bundle 12644957 ships sidebar Appr. prefix renames (Asset-based / Income-Cashflow / Relative Valuation). Deploy via scripts/deploy_app_20.R.
