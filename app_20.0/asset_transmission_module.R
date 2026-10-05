@@ -1472,13 +1472,46 @@ asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
 
 .asset_tx_parse_chart_text <- function(txt) {
   if (!nzchar(txt %||% "")) return(numeric())
-  # simplifyVector=TRUE is markedly faster for ~30 concurrent chart payloads.
-  j <- tryCatch(jsonlite::fromJSON(txt, simplifyVector = TRUE), error = function(e) NULL)
+  # IMPORTANT: simplifyVector=TRUE turns chart$result into a data.frame and
+  # breaks .asset_tx_parse_chart (returns empty → "empty Yahoo history").
+  # Always parse nested lists first; fall back only if that fails.
+  j <- tryCatch(jsonlite::fromJSON(txt, simplifyVector = FALSE), error = function(e) NULL)
+  path <- "false"
   if (is.null(j)) {
-    j <- tryCatch(jsonlite::fromJSON(txt, simplifyVector = FALSE), error = function(e) NULL)
+    j <- tryCatch(jsonlite::fromJSON(txt, simplifyVector = TRUE), error = function(e) NULL)
+    path <- "true_fallback"
   }
   if (is.null(j)) return(numeric())
-  .asset_tx_parse_chart(j)
+  # Data.frame result from simplifyVector=TRUE is unusable for this parser.
+  if (is.data.frame(j$chart$result)) {
+    j2 <- tryCatch(jsonlite::fromJSON(txt, simplifyVector = FALSE), error = function(e) NULL)
+    if (!is.null(j2)) {
+      j <- j2
+      path <- "false_after_df"
+    }
+  }
+  out <- .asset_tx_parse_chart(j)
+  # #region agent log
+  if (identical(Sys.getenv("YNOW_ATX_DEBUG"), "1") || file.exists("/Users/lawrencekuo/coding/theYNowApp/.cursor")) {
+    tryCatch({
+      line <- jsonlite::toJSON(list(
+        sessionId = "f77c57",
+        hypothesisId = "A",
+        location = "asset_transmission_module.R:parse_chart_text",
+        message = "yahoo chart parse",
+        data = list(
+          path = path,
+          result_is_df = is.data.frame(j$chart$result),
+          n_points = length(out),
+          txt_bytes = nchar(txt)
+        ),
+        timestamp = as.numeric(Sys.time()) * 1000
+      ), auto_unbox = TRUE)
+      cat(as.character(line), "\n", file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-f77c57.log", append = TRUE)
+    }, error = function(e) NULL)
+  }
+  # #endregion
+  out
 }
 
 .asset_tx_chart_one <- function(sym, range = "6mo") {
@@ -1527,6 +1560,20 @@ asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
     })
   }
   curl::multi_run(pool = pool)
+  # #region agent log
+  tryCatch({
+    n_ok <- sum(vapply(out, function(x) length(x) > 0, logical(1)))
+    line <- jsonlite::toJSON(list(
+      sessionId = "f77c57",
+      hypothesisId = "B",
+      location = "asset_transmission_module.R:curl_download",
+      message = "curl multi done",
+      data = list(n_sym = length(symbols), n_ok = n_ok),
+      timestamp = as.numeric(Sys.time()) * 1000
+    ), auto_unbox = TRUE)
+    cat(as.character(line), "\n", file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-f77c57.log", append = TRUE)
+  }, error = function(e) NULL)
+  # #endregion
   out
 }
 
@@ -1820,6 +1867,19 @@ asset_tx_fetch_panel <- function(catalog = NULL, period = "6mo", force = FALSE) 
     n_nodes = nrow(nodes)
   )
   .asset_tx_panel_cache_put(cache_key, out)
+  # #region agent log
+  tryCatch({
+    line <- jsonlite::toJSON(list(
+      sessionId = "f77c57",
+      hypothesisId = "E",
+      location = "asset_transmission_module.R:fetch_panel",
+      message = "fetch ok",
+      data = list(n_ok = out$n_ok, n_nodes = out$n_nodes, nrow = nrow(out$panel)),
+      timestamp = as.numeric(Sys.time()) * 1000
+    ), auto_unbox = TRUE)
+    cat(as.character(line), "\n", file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-f77c57.log", append = TRUE)
+  }, error = function(e) NULL)
+  # #endregion
   out
 }
 
@@ -2233,10 +2293,41 @@ asset_transmission_server <- function(id, ui_locale_rv = NULL, market_mode_rv = 
       fig <- tryCatch(
         asset_tx_figure(tape, locale(), market()),
         error = function(e) {
+          # #region agent log
+          tryCatch({
+            line <- jsonlite::toJSON(list(
+              sessionId = "f77c57",
+              hypothesisId = "C",
+              location = "asset_transmission_module.R:renderPlotly",
+              message = "figure error",
+              data = list(err = conditionMessage(e), tape_n = length(tape)),
+              timestamp = as.numeric(Sys.time()) * 1000
+            ), auto_unbox = TRUE)
+            cat(as.character(line), "\n", file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-f77c57.log", append = TRUE)
+          }, error = function(e2) NULL)
+          # #endregion
           err_rv(conditionMessage(e))
           NULL
         }
       )
+      # #region agent log
+      tryCatch({
+        line <- jsonlite::toJSON(list(
+          sessionId = "f77c57",
+          hypothesisId = "D",
+          location = "asset_transmission_module.R:renderPlotly",
+          message = "map render",
+          data = list(
+            tape_n = length(tape),
+            fig_null = is.null(fig),
+            n_data = if (!is.null(fig)) length(fig$x$data) else 0L,
+            n_frames = if (!is.null(fig)) length(fig$x$frames) else 0L
+          ),
+          timestamp = as.numeric(Sys.time()) * 1000
+        ), auto_unbox = TRUE)
+        cat(as.character(line), "\n", file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-f77c57.log", append = TRUE)
+      }, error = function(e2) NULL)
+      # #endregion
       shiny::validate(shiny::need(!is.null(fig), .asset_tx_label("atx_empty", locale())))
       fig
     })

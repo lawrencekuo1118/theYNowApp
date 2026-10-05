@@ -153,6 +153,20 @@ check(
   "chart parser keeps a finite close",
   length(chart_fix) == 1L && is.finite(unname(chart_fix)[[1]])
 )
+# Regression: simplifyVector=TRUE turns result into a data.frame and used to
+# yield empty series → "empty Yahoo history" → blank Testing map.
+yahoo_txt <- paste0(
+  '{"chart":{"result":[{"meta":{"exchangeTimezoneName":"UTC"},',
+  '"timestamp":[1704067200,1704153600],',
+  '"indicators":{"quote":[{"close":[100.5,101.25]}]}}]}}'
+)
+parsed_txt <- .asset_tx_parse_chart_text(yahoo_txt)
+check(
+  "parse_chart_text survives Yahoo JSON (not empty)",
+  length(parsed_txt) == 2L &&
+    isTRUE(all(is.finite(unname(parsed_txt)))) &&
+    grepl("simplifyVector = FALSE", paste(readLines("asset_transmission_module.R", warn = FALSE), collapse = "\n"), fixed = TRUE)
+)
 
 us_col <- asset_tx_move_colors("US")
 tw_col <- asset_tx_move_colors("TW")
