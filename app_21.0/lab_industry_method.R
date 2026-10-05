@@ -162,7 +162,14 @@ lab_fetch_summary_metrics <- function(ticker) {
   tk <- toupper(trimws(as.character(ticker)[1]))
   out <- list(market_cap = NA_real_, price = NA_real_, company_name = NA_character_)
   if (!nzchar(tk)) return(out)
-  sum_df <- tryCatch(get_summary_data(tk), error = function(e) NULL)
+  # Prefer fast-tier memoised summary (15m); fall back to uncached only if missing.
+  sum_df <- tryCatch({
+    if (exists("cached_get_summary_data", mode = "function")) {
+      cached_get_summary_data(tk)
+    } else {
+      get_summary_data(tk)
+    }
+  }, error = function(e) NULL)
   if (is.null(sum_df) || !is.data.frame(sum_df) || nrow(sum_df) == 0) {
     return(out)
   }

@@ -624,7 +624,9 @@ business_breakdown_lab_server <- function(id = "bblab",
         sum_df <- NULL
 
         incProgress(0.25, detail = ui_msg("bblab_stage_retrieve"))
-        if (exists("get_summary_data", mode = "function")) {
+        if (exists("cached_get_summary_data", mode = "function")) {
+          sum_df <- tryCatch(cached_get_summary_data(tk), error = function(e) NULL)
+        } else if (exists("get_summary_data", mode = "function")) {
           sum_df <- tryCatch(get_summary_data(tk), error = function(e) NULL)
         }
         if (is.data.frame(sum_df) && nrow(sum_df) > 0) {
@@ -634,7 +636,12 @@ business_breakdown_lab_server <- function(id = "bblab",
             f_ccy <- normalize_ccy(attr(sum_df, "financialCurrency") %||% "")
           }
         }
-        if (exists("get_yahoo_industry", mode = "function")) {
+        if (exists("cached_get_yahoo_industry", mode = "function")) {
+          inf <- tryCatch(cached_get_yahoo_industry(tk), error = function(e) NULL)
+          if (!is.null(inf) && nzchar(as.character(inf$company_name %||% "")[1])) {
+            entity_name <- as.character(inf$company_name)[1]
+          }
+        } else if (exists("get_yahoo_industry", mode = "function")) {
           inf <- tryCatch(get_yahoo_industry(tk), error = function(e) NULL)
           if (!is.null(inf) && nzchar(as.character(inf$company_name %||% "")[1])) {
             entity_name <- as.character(inf$company_name)[1]
@@ -642,10 +649,8 @@ business_breakdown_lab_server <- function(id = "bblab",
         }
         lab_entity(entity_name)
         if (exists("cached_scrape_financials", mode = "function")) {
-          res <- tryCatch({
-            raw_fs <- cached_scrape_financials(tk)
-            if (exists("normalize_all_financials", mode = "function")) normalize_all_financials(raw_fs) else raw_fs
-          }, error = function(e) NULL)
+          # cached_scrape_financials already normalizes — avoid double work on cache hits
+          res <- tryCatch(cached_scrape_financials(tk), error = function(e) NULL)
           if (!is.null(res) && !is.null(res[["Income Statement"]])) {
             d_is <- tryCatch({
               exp <- res[["Income Statement"]]$expanded

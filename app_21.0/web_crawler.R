@@ -25,27 +25,34 @@ if (!exists(".ynow_log", mode = "function")) {
 .YNOW_CACHE_SLOW_TTL_SEC <- 24L * 3600L    # 24 hours — statements / filings
 
 .ynow_slow_cache_dir <- function() {
-  d <- file.path(tempdir(), "ynow_cache_slow")
+  # Optional sticky dir (YNOW_SLOW_CACHE_DIR) survives short worker restarts better than
+  # a pure in-memory miss storm; default stays under tempdir for shinyapps safety.
+  override <- Sys.getenv("YNOW_SLOW_CACHE_DIR", unset = "")
+  d <- if (nzchar(override)) {
+    override
+  } else {
+    file.path(tempdir(), "ynow_cache_slow")
+  }
   dir.create(d, recursive = TRUE, showWarnings = FALSE)
   d
 }
 
 .ynow_fast_cache <- cachem::cache_mem(
-  max_size = 32 * 1024^2,
+  max_size = 48 * 1024^2,
   max_age = .YNOW_CACHE_FAST_TTL_SEC
 )
 
 .ynow_slow_cache <- tryCatch({
   cachem::cache_disk(
     dir = .ynow_slow_cache_dir(),
-    max_size = 256 * 1024^2,
+    max_size = 512 * 1024^2,
     max_age = .YNOW_CACHE_SLOW_TTL_SEC,
     destroy_on_finalize = FALSE
   )
 }, error = function(e) {
   .ynow_log("⚠️ slow cache_disk unavailable; falling back to cache_mem @ 24h: ", e$message)
   cachem::cache_mem(
-    max_size = 80 * 1024^2,
+    max_size = 128 * 1024^2,
     max_age = .YNOW_CACHE_SLOW_TTL_SEC
   )
 })

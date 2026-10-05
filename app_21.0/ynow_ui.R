@@ -11169,7 +11169,7 @@ ui <- dashboardPage(
                        ),
                        tags$hr(),
                        
-                       dataTableOutput("tbIncomeStatement"), 
+                       DT::dataTableOutput("tbIncomeStatement"), 
                        downloadButton('IS_download', "Download Income Statement")
                      ),
                      
@@ -11177,7 +11177,7 @@ ui <- dashboardPage(
                               p("This section imports Balance Sheets from Yahoo Finance"),
                               plotlyOutput("bs_plot", height = "380px"),
                               tags$hr(),
-                              dataTableOutput("tbBalanceSheet"),
+                              DT::dataTableOutput("tbBalanceSheet"),
                               downloadButton('BS_download', "Download Balance Sheet")
                      ),
                      
@@ -11195,7 +11195,7 @@ ui <- dashboardPage(
                          plotlyOutput("cf_plot", height = "460px") %>% withSpinner()
                        ),
                        tags$hr(),
-                       dataTableOutput("tbCashFlow"),
+                       DT::dataTableOutput("tbCashFlow"),
                        downloadButton('CF_download', "Download Cash Flow Data")
                      ),
 

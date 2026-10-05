@@ -1022,8 +1022,8 @@ server <- function(input, output, session) {
         )
 
         incProgress(0.5, detail = "正在抓取財報明細（yfinance）...")
+        # cached_scrape_financials already runs normalize_all_financials — do not re-normalize
         res <- cached_scrape_financials(stock_code)
-        res <- normalize_all_financials(res)
 
         # .TWO：Yahoo IS／BS／CF 全空 → 櫃買「財務資料簡報」摘要 fallback（上櫃 O_／興櫃 U_）
         tpex_used <- FALSE
@@ -2607,41 +2607,55 @@ server <- function(input, output, session) {
     )
   }
 
-  output$tbIncomeStatement <- renderDataTable({
+  # Shared DT options for large statement tables (server-side paging + deferRender).
+  .ynow_fs_dt_options <- list(
+    pageLength = 20,
+    scrollX = TRUE,
+    deferRender = TRUE,
+    autoWidth = FALSE,
+    processing = TRUE,
+    dom = "ltip",
+    language = list(processing = "…")
+  )
+
+  output$tbIncomeStatement <- DT::renderDT({
     req(scraped_financials())
     session_currency(); fx_usd_twd(); market_mode(); ui_locale()
     raw <- scraped_financials()[["Income Statement"]]$collapsed
     prep <- .prep_fs_statement_display(raw)
-    datatable(
+    DT::datatable(
       trim_financial_table(prep$df, "Tax Effect of Unusual Items"),
       caption = if (!is.null(prep$caption)) htmltools::tags$caption(style = "caption-side: top; text-align: left; color: #555;", prep$caption) else NULL,
-      options = list(pageLength = 20, scrollX = TRUE)
+      rownames = FALSE,
+      options = .ynow_fs_dt_options
     )
-  })
+  }, server = TRUE)
   
-  output$tbBalanceSheet <- renderDataTable({
+  output$tbBalanceSheet <- DT::renderDT({
     req(scraped_financials())
     session_currency(); fx_usd_twd(); market_mode(); ui_locale()
     raw <- scraped_financials()[["Balance Sheet"]]$collapsed
     prep <- .prep_fs_statement_display(raw)
-    datatable(
+    DT::datatable(
       trim_financial_table(prep$df, "Treasury Shares Number"),
       caption = if (!is.null(prep$caption)) htmltools::tags$caption(style = "caption-side: top; text-align: left; color: #555;", prep$caption) else NULL,
-      options = list(pageLength = 20, scrollX = TRUE)
+      rownames = FALSE,
+      options = .ynow_fs_dt_options
     )
-  })
+  }, server = TRUE)
   
-  output$tbCashFlow <- renderDataTable({
+  output$tbCashFlow <- DT::renderDT({
     req(scraped_financials())
     session_currency(); fx_usd_twd(); market_mode(); ui_locale()
     raw <- scraped_financials()[["Cash Flow"]]$collapsed
     prep <- .prep_fs_statement_display(raw)
-    datatable(
+    DT::datatable(
       trim_financial_table(prep$df, "Free Cash Flow"),
       caption = if (!is.null(prep$caption)) htmltools::tags$caption(style = "caption-side: top; text-align: left; color: #555;", prep$caption) else NULL,
-      options = list(pageLength = 20, scrollX = TRUE)
+      rownames = FALSE,
+      options = .ynow_fs_dt_options
     )
-  })
+  }, server = TRUE)
   
   output$IS_download <- downloadHandler(
     filename = function() paste0(current_ticker(), "_incomestatement_", Sys.Date(), ".csv"),
@@ -2910,7 +2924,7 @@ server <- function(input, output, session) {
         paper_bgcolor = "#FFFFFF",
         plot_bgcolor = "#FAFBFC"
       ) %>%
-      plotly::config(displayModeBar = TRUE, responsive = TRUE, displaylogo = FALSE)
+      plotly::config(displayModeBar = FALSE, responsive = TRUE, displaylogo = FALSE)
   })
 
 
@@ -2918,14 +2932,22 @@ server <- function(input, output, session) {
   # 🔌 4. 呼叫外部模組 (KPI, FCF, DDM)
   # ==========================================
   
-  # --- 新增 1：歷史股價抓取 (用於決策模組的動能分析) ---
-  # 優先 yfinance（雲端穩定）；quantmod 作後備。快取避免搜尋後重複阻塞 UI。
+  # --- 歷史股價：優先 yfinance；session cache + fast-tier TTL（與報價／Rf 對齊）
   .hist_price_cache <- new.env(parent = emptyenv())
+  .hist_price_cache_ttl_sec <- function() {
+    ttl <- tryCatch(as.integer(.YNOW_CACHE_FAST_TTL_SEC)[1], error = function(e) NA_integer_)
+    if (!is.finite(ttl) || ttl < 60L) 900L else ttl
+  }
   hist_stock_data <- reactive({
     req(current_ticker())
     tk <- toupper(trimws(current_ticker()))
+    now_ts <- as.numeric(Sys.time())
     if (exists(tk, envir = .hist_price_cache, inherits = FALSE)) {
-      return(get(tk, envir = .hist_price_cache, inherits = FALSE))
+      hit <- get(tk, envir = .hist_price_cache, inherits = FALSE)
+      fetched_at <- suppressWarnings(as.numeric(attr(hit, "fetched_at") %||% NA_real_)[1])
+      if (is.finite(fetched_at) && (now_ts - fetched_at) <= .hist_price_cache_ttl_sec()) {
+        return(hit)
+      }
     }
     df_final <- tryCatch({
       # 1y 足夠動能；與 backtest fetch 共用 yfinance-first 路徑
@@ -2946,7 +2968,10 @@ server <- function(input, output, session) {
       .ynow_log("無法取得歷史股價: ", e$message)
       NULL
     })
-    if (!is.null(df_final)) assign(tk, df_final, envir = .hist_price_cache)
+    if (!is.null(df_final)) {
+      attr(df_final, "fetched_at") <- now_ts
+      assign(tk, df_final, envir = .hist_price_cache)
+    }
     df_final
   })
   
@@ -9881,21 +9906,29 @@ server <- function(input, output, session) {
     res <- bt_result()
     shiny::validate(shiny::need(!is.null(res) && !is.null(res$equity_df), "請先回測"))
     df <- res$equity_df
-    df_long <- rbind(
-      data.frame(Date = df$Date, Exp = df$Exp_A, Series = "基本面部位 Exp_A", stringsAsFactors = FALSE),
-      data.frame(Date = df$Date, Exp = df$Exp_B, Series = "情緒部位 Exp_B", stringsAsFactors = FALSE)
-    )
-    p <- ggplot(df_long, aes(x = Date, y = Exp, color = Series)) +
-      geom_line(linewidth = 0.8) +
-      scale_y_continuous(labels = scales::percent_format(accuracy = 1), limits = c(0, 1)) +
-      scale_color_manual(values = c(
-        "基本面部位 Exp_A" = "#e67e22",
-        "情緒部位 Exp_B" = "#2980b9"
-      )) +
-      labs(y = "目標持股比例", x = NULL, color = NULL) +
-      theme_minimal(base_size = 11)
-    ggplotly(p, tooltip = c("x", "y", "colour")) %>%
-      layout(legend = list(orientation = "h", y = -0.3))
+    if (exists(".ynow_downsample_df", mode = "function")) {
+      df <- .ynow_downsample_df(df, max_n = 600L)
+    }
+    plotly::plot_ly() %>%
+      plotly::add_lines(
+        x = df$Date, y = df$Exp_A, name = "基本面部位 Exp_A",
+        line = list(color = "#e67e22", width = 1.6),
+        hovertemplate = "%{x|%Y-%m-%d}<br>Exp_A: %{y:.0%}<extra></extra>"
+      ) %>%
+      plotly::add_lines(
+        x = df$Date, y = df$Exp_B, name = "情緒部位 Exp_B",
+        line = list(color = "#2980b9", width = 1.6),
+        hovertemplate = "%{x|%Y-%m-%d}<br>Exp_B: %{y:.0%}<extra></extra>"
+      ) %>%
+      plotly::layout(
+        yaxis = list(title = "目標持股比例", tickformat = ".0%", range = c(0, 1)),
+        xaxis = list(title = ""),
+        legend = list(orientation = "h", y = -0.3),
+        margin = list(t = 24, b = 56),
+        paper_bgcolor = "#FFFFFF",
+        plot_bgcolor = "#FAFBFC"
+      ) %>%
+      plotly::config(displayModeBar = FALSE, responsive = TRUE, displaylogo = FALSE)
   })
 
   output$bt_bh_gap <- renderUI({
@@ -10053,40 +10086,45 @@ server <- function(input, output, session) {
     df_plot <- view$equity_df
     shiny::validate(shiny::need(nrow(df_plot) > 1, "此累積區間沒有足夠的交易日"))
     shiny::validate(shiny::need("Trade_A" %in% names(df_plot), "缺少基本面策略淨值 (Trade_A)"))
+    if (exists(".ynow_downsample_df", mode = "function")) {
+      df_plot <- .ynow_downsample_df(df_plot, max_n = 600L)
+    }
     eq_b <- if ("Trade_B" %in% names(df_plot)) df_plot$Trade_B else df_plot$Model_B
-    df_long <- rbind(
-      data.frame(Date = df_plot$Date, Value = df_plot$Trade_A, Series = "基本面策略淨值", stringsAsFactors = FALSE),
-      data.frame(Date = df_plot$Date, Value = eq_b, Series = "情緒策略淨值", stringsAsFactors = FALSE),
-      data.frame(Date = df_plot$Date, Value = df_plot$BuyHold, Series = "該股買進持有", stringsAsFactors = FALSE),
-      data.frame(Date = df_plot$Date, Value = df_plot$Benchmark, Series = "大盤基準", stringsAsFactors = FALSE)
-    )
-    df_long$Series <- factor(
-      df_long$Series,
-      levels = c("基本面策略淨值", "情緒策略淨值", "該股買進持有", "大盤基準")
-    )
     win_lab <- view$label %||% "全部"
-    p <- ggplot(df_long, aes(x = Date, y = Value, color = Series, group = Series, linetype = Series)) +
-      geom_line(linewidth = 0.85) +
-      scale_color_manual(values = c(
-        "基本面策略淨值" = "#e67e22",
-        "情緒策略淨值" = "#2980b9",
-        "該股買進持有" = "#28a745",
-        "大盤基準" = "#6c757d"
-      )) +
-      scale_linetype_manual(values = c(
-        "基本面策略淨值" = "solid",
-        "情緒策略淨值" = "solid",
-        "該股買進持有" = "solid",
-        "大盤基準" = "dashed"
-      )) +
-      scale_y_continuous(labels = label_chart_number()) +
-      labs(
-        title = paste0("策略淨值（累積財富，起始＝1 · ", win_lab, "）"),
-        y = "累積財富（區間起點＝1）", x = "日期", color = "序列", linetype = "序列"
-      ) +
-      theme_minimal()
-    ggplotly(p, tooltip = c("x", "y", "colour")) %>%
-      layout(legend = list(orientation = "h", y = -0.2))
+    plotly::plot_ly() %>%
+      plotly::add_lines(
+        x = df_plot$Date, y = df_plot$Trade_A, name = "基本面策略淨值",
+        line = list(color = "#e67e22", width = 1.8),
+        hovertemplate = "%{x|%Y-%m-%d}<br>基本面: %{y:.3f}<extra></extra>"
+      ) %>%
+      plotly::add_lines(
+        x = df_plot$Date, y = eq_b, name = "情緒策略淨值",
+        line = list(color = "#2980b9", width = 1.8),
+        hovertemplate = "%{x|%Y-%m-%d}<br>情緒: %{y:.3f}<extra></extra>"
+      ) %>%
+      plotly::add_lines(
+        x = df_plot$Date, y = df_plot$BuyHold, name = "該股買進持有",
+        line = list(color = "#28a745", width = 1.6),
+        hovertemplate = "%{x|%Y-%m-%d}<br>B&H: %{y:.3f}<extra></extra>"
+      ) %>%
+      plotly::add_lines(
+        x = df_plot$Date, y = df_plot$Benchmark, name = "大盤基準",
+        line = list(color = "#6c757d", width = 1.4, dash = "dash"),
+        hovertemplate = "%{x|%Y-%m-%d}<br>基準: %{y:.3f}<extra></extra>"
+      ) %>%
+      plotly::layout(
+        title = list(
+          text = paste0("策略淨值（累積財富，起始＝1 · ", win_lab, "）"),
+          font = list(size = 14)
+        ),
+        yaxis = list(title = "累積財富（區間起點＝1）"),
+        xaxis = list(title = "日期"),
+        legend = list(orientation = "h", y = -0.2),
+        margin = list(t = 48, b = 64),
+        paper_bgcolor = "#FFFFFF",
+        plot_bgcolor = "#FAFBFC"
+      ) %>%
+      plotly::config(displayModeBar = FALSE, responsive = TRUE, displaylogo = FALSE)
   })
 
   output$bt_mos_table <- renderTable({
@@ -12017,6 +12055,7 @@ server <- function(input, output, session) {
       options = list(
         pageLength = 20,
         scrollX = TRUE,
+        deferRender = TRUE,
         order = list()
       )
     ) %>%
@@ -12759,7 +12798,7 @@ server <- function(input, output, session) {
       out,
       rownames = FALSE,
       escape = if (is.finite(cov_idx)) -as.integer(cov_idx) else TRUE,
-      options = list(pageLength = 25, scrollX = TRUE, order = list())
+      options = list(pageLength = 25, scrollX = TRUE, deferRender = TRUE, order = list())
     )
     if (length(num_cols)) {
       dt <- DT::formatRound(dt, columns = num_cols, digits = 2)

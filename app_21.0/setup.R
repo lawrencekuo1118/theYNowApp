@@ -3877,14 +3877,28 @@ render_report_pdf <- function(html_path, pdf_path) {
 # =========================================================
 # 🌟 [共用繪圖引擎] 產生具有高度解讀意義的折現互動圖表 (Using Plotly)
 # =========================================================
-# 此函數會自動處理：大數字格式化 (B/M/K), 負值變紅,  ticker 注入標題, 資訊豐富的懸停提示
+# Native plot_ly (no ggplotly) — thinner JSON payload, faster dashboard IS plots.
+# Handles B/M/K formatting, negative point color, ticker title, rich hover text.
+#' Downsample a time-ordered data.frame for Plotly (keep endpoints).
+.ynow_downsample_df <- function(df, max_n = 600L) {
+  if (is.null(df) || !is.data.frame(df)) return(df)
+  n <- nrow(df)
+  max_n <- as.integer(max_n)[1]
+  if (!is.finite(n) || !is.finite(max_n) || n <= max_n || max_n < 3L) return(df)
+  idx <- unique(c(1L, as.integer(round(seq(1, n, length.out = max_n))), n))
+  df[idx, , drop = FALSE]
+}
+
 generate_safe_line_plot <- function(data, ticker_name, metric_name) {
+  empty_plot <- function(msg) {
+    plotly::plotly_empty() %>%
+      plotly::layout(title = list(
+        text = msg,
+        font = list(size = 15, color = "#856404", family = "Arial, sans-serif")
+      ))
+  }
   if (is.null(data) || !is.data.frame(data) || nrow(data) == 0) {
-    return(plotly::plotly_empty() %>%
-             plotly::layout(title = list(
-               text = paste0(ticker_name, " - ", metric_name, " (無資料)"),
-               font = list(size = 15, color = "#856404")
-             )))
+    return(empty_plot(paste0(ticker_name, " - ", metric_name, " (無資料)")))
   }
 
   # 多列命中時取第一列（呼叫端應已優先挑精確科目）
@@ -3894,11 +3908,7 @@ generate_safe_line_plot <- function(data, ticker_name, metric_name) {
   labels <- colnames(data)[-1]
   vals <- parse_financial_number(as.character(unlist(data[1, -1], use.names = FALSE)))
   if (length(labels) == 0 || length(vals) == 0) {
-    return(plotly::plotly_empty() %>%
-             plotly::layout(title = list(
-               text = paste0(ticker_name, " - ", metric_name, " (無資料)"),
-               font = list(size = 15, color = "#856404")
-             )))
+    return(empty_plot(paste0(ticker_name, " - ", metric_name, " (無資料)")))
   }
 
   # CAGR 僅用財年欄位（排除 TTM）；必須是有限正值才算，避免 if(NA)
@@ -3916,60 +3926,46 @@ generate_safe_line_plot <- function(data, ticker_name, metric_name) {
     }
   }
 
-  # 2. 建立繪圖專用 DataFrame，並設計「更有解讀意義」的懸停文字
   status_txt <- ifelse(
     is.na(vals), "N/A",
-    ifelse(vals < 0,
-           "<span style='color:red;'>Negative</span>",
-           "<span style='color:green;'>Positive</span>")
+    ifelse(vals < 0, "Negative", "Positive")
   )
-  plot_df <- data.frame(
-    Year = labels,
-    Value = vals,
-    HoverText = paste0(
-      "<b>", ticker_name, " - ", metric_name, "</b><br>",
-      "---------------------<br>",
-      "年份 (FY): <b>", labels, "</b><br>",
-      "數值: <b>", format_dollar_abbr(vals), "</b><br>",
-      "狀態: <b>", status_txt, "</b>"
-    ),
-    stringsAsFactors = FALSE
+  point_colors <- ifelse(!is.na(vals) & vals < 0, "#c0392b", "#0C5484")
+  hover <- paste0(
+    "<b>", ticker_name, " - ", metric_name, "</b><br>",
+    "---------------------<br>",
+    "年份 (FY): <b>", labels, "</b><br>",
+    "數值: <b>", format_dollar_abbr(vals), "</b><br>",
+    "狀態: <b>", status_txt, "</b>"
   )
-
-  # 點色：NA 當非負處理，避免 scale 斷裂
-  plot_df$is_neg <- !is.na(plot_df$Value) & plot_df$Value < 0
-
-  # 3. 繪製圖表 (使用 ggplot)
-  # 標題／正值點：對齊 app logo 金／墨（白底可讀的深金 #856404）
-  p <- ggplot(plot_df, aes(x = Year, y = Value, group = 1, text = HoverText)) +
-    geom_line(color = "#C9A227", linewidth = 1, na.rm = TRUE) +
-    geom_point(aes(color = is_neg), size = 2.5, na.rm = TRUE) +
-    scale_color_manual(values = c("FALSE" = "#0C5484", "TRUE" = "#c0392b"), guide = "none") +
-    scale_y_continuous(
-      labels = label_chart_number(prefix = money_prefix()),
-      expand = expansion(mult = c(0.1, 0.15))
-    ) +
-    theme_bw() +
-    labs(
-      title = paste0(ticker_name, " - ", metric_name, safe_cagr_msg),
-      x = "Fiscal Period",
-      y = ""
-    ) +
-    theme(
-      plot.title = element_text(face = "bold", size = 15, color = "#856404"),
-      axis.text.x = element_text(face = "bold")
-    )
-
-  # 4. 轉換為 plotly 並指定 tooltip；強制標題色（ggplotly 常丟掉 theme 色）
   title_txt <- paste0(ticker_name, " - ", metric_name, safe_cagr_msg)
-  ggplotly(p, tooltip = "text") %>%
+  y_prefix <- tryCatch(money_prefix(), error = function(e) "")
+
+  plotly::plot_ly() %>%
+    plotly::add_trace(
+      x = labels, y = vals, type = "scatter", mode = "lines+markers",
+      line = list(color = "#C9A227", width = 2),
+      marker = list(size = 8, color = point_colors),
+      hoverinfo = "text", text = hover,
+      name = metric_name, showlegend = FALSE
+    ) %>%
     plotly::layout(
       title = list(
         text = title_txt,
         font = list(size = 15, color = "#856404", family = "Arial, sans-serif")
       ),
-      margin = list(t = 48)
-    )
+      xaxis = list(title = "Fiscal Period", type = "category", tickangle = -30),
+      yaxis = list(
+        title = "",
+        tickprefix = if (nzchar(y_prefix)) y_prefix else NULL,
+        tickformat = "~s",
+        separatethousands = TRUE
+      ),
+      margin = list(t = 48, b = 64),
+      paper_bgcolor = "#FFFFFF",
+      plot_bgcolor = "#FAFBFC"
+    ) %>%
+    plotly::config(displayModeBar = FALSE, responsive = TRUE, displaylogo = FALSE)
 }
 
 # =========================================================
