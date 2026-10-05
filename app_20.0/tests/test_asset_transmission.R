@@ -443,6 +443,14 @@ check(
   grepl(".ynow_ensure_python", glb_src, fixed = TRUE) &&
     grepl("py_require(.ynow_py_pkgs)", glb_src, fixed = TRUE)
 )
+dbg_paths <- c(
+  "ynow_ui.R", "ynow_server.R", "macro_market_module.R", "backtest_module.R"
+)
+dbg_hit <- vapply(dbg_paths, function(fn) {
+  src <- paste(readLines(fn, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("debug-ef0f33\\.log", src) || grepl("127\\.0\\.0\\.1:7302/ingest", src)
+}, logical(1))
+check("no laptop debug log path left in app", !any(dbg_hit))
 mod_src <- paste(readLines("asset_transmission_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("regime card wired", grepl('ns("regime")', mod_src, fixed = TRUE) && grepl("asset_tx_regime(", mod_src, fixed = TRUE))
 

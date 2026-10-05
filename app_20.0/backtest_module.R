@@ -28,34 +28,9 @@ if (!exists(".ynow_log", mode = "function")) {
   .ynow_log <- function(...) invisible(NULL)
 }
 
-# #region agent log
-.ynow_dbg_ef0f33 <- function(hypothesisId, location, message, data = list()) {
-  parts <- character()
-  if (length(data)) {
-    parts <- vapply(names(data), function(k) {
-      v <- data[[k]]
-      val <- if (is.character(v)) {
-        paste0("\"", gsub("\"", "\\\\\"", as.character(v[1])), "\"")
-      } else if (is.logical(v)) {
-        if (is.na(v[1])) "null" else if (isTRUE(v[1])) "true" else "false"
-      } else if (is.null(v) || length(v) == 0L || is.na(v[1])) {
-        "null"
-      } else {
-        format(as.numeric(v)[1], scientific = FALSE, trim = TRUE)
-      }
-      paste0("\"", k, "\":", val)
-    }, character(1))
-  }
-  line <- paste0(
-    "{\"sessionId\":\"ef0f33\",\"runId\":\"pre-fix\",\"hypothesisId\":\"", hypothesisId,
-    "\",\"location\":\"", location, "\",\"message\":\"", gsub("\"", "'", message),
-    "\",\"data\":{", paste(parts, collapse = ","), "},\"timestamp\":",
-    format(as.numeric(Sys.time()) * 1000, scientific = FALSE, trim = TRUE), "}"
-  )
-  try(cat(line, "\n", file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-ef0f33.log", append = TRUE), silent = TRUE)
-  invisible(NULL)
-}
-# #endregion
+# Former debug NDJSON writer targeted a developer laptop path and flooded
+# shinyapps with file() warnings until the worker stopped responding.
+.ynow_dbg_ef0f33 <- function(...) invisible(NULL)
 
 # ---------- small helpers ----------
 

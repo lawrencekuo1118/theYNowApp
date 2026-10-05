@@ -317,15 +317,6 @@ macro_theme_tickers <- function(theme_key, mode = get_market_mode()) {
   if (identical(mode, "TW") && exists("industry_standards", inherits = TRUE) &&
       key %in% names(industry_standards)) {
     tks <- macro_tw_industry_tickers(key)
-    # #region agent log
-    try(cat(paste0(
-      "{\"sessionId\":\"ef0f33\",\"runId\":\"tw-ind-menu\",\"hypothesisId\":\"MENU\",",
-      "\"location\":\"macro_market_module.R:macro_theme_tickers\",\"message\":\"tw industry basket\",",
-      "\"data\":{\"key\":\"", gsub("\"", "", key), "\",\"n\":", length(tks),
-      ",\"has_2330\":", if ("2330.TW" %in% tks) "true" else "false", "},",
-      "\"timestamp\":", format(as.numeric(Sys.time()) * 1000, scientific = FALSE, trim = TRUE), "}\n"
-    ), file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-ef0f33.log", append = TRUE), silent = TRUE)
-    # #endregion
     return(tks)
   }
   cg_key <- sub("^(concept_|tw_)", "", key)
@@ -553,20 +544,7 @@ macro_market_ui <- function(id = "macro") {
       (function () {
         if (document.documentElement.getAttribute('data-ynow-idx-tap') === '1') return;
         document.documentElement.setAttribute('data-ynow-idx-tap', '1');
-        function ynowIdxLog(hid, message, ev) {
-          var t = ev.target;
-          var card = t && t.closest ? t.closest('[data-macro-index]') : null;
-          var cs = t ? getComputedStyle(t) : null;
-          var rect = card ? card.getBoundingClientRect() : null;
-          var mid = rect ? document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2) : null;
-          fetch('http://127.0.0.1:7302/ingest/e3a0dcdf-71e1-4bba-855e-f942118bd315',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ef0f33'},body:JSON.stringify({sessionId:'ef0f33',runId:'pre-fix',hypothesisId:hid,location:'macro_market_module.R:index-tap',message:message,data:{index:card?card.getAttribute('data-macro-index'):'',targetCls:t&&t.className?String(t.className).slice(0,120):'',clip:cs?cs.webkitBackgroundClip:'',pe:cs?cs.pointerEvents:'',vw:window.innerWidth,lite:!!(document.body&&document.body.classList.contains('ynow-lite')),midCls:mid&&mid.className?String(mid.className).slice(0,120):'',cardW:rect?Math.round(rect.width):0},timestamp:Date.now()})}).catch(function(){});
-        }
-        document.addEventListener('touchend', function (ev) {
-          if (ev.target && ev.target.closest && ev.target.closest('[data-macro-index]')) ynowIdxLog('A', 'touchend on index card', ev);
-        }, true);
-        document.addEventListener('click', function (ev) {
-          if (ev.target && ev.target.closest && ev.target.closest('[data-macro-index]')) ynowIdxLog('A', 'click on index card', ev);
-        }, true);
+        // Index-card tap logging removed (localhost ingest was debug-only).
       })();
     ")),
     tags$section(
@@ -1281,29 +1259,10 @@ macro_market_server <- function(id = "macro",
       mode <- isolate(.mode())
       job <- isolate(hccsi_job()) + 1L
       hccsi_job(job)
-      # #region agent log
-      try(cat(paste0(
-        "{\"sessionId\":\"ef0f33\",\"runId\":\"load\",\"hypothesisId\":\"HCCSI\",",
-        "\"location\":\"macro_market_module.R:queue_hccsi\",\"message\":\"hccsi queued after flush\",",
-        "\"data\":{\"job\":", job, ",\"mode\":\"", gsub("\"", "", as.character(mode)[1]), "\"},",
-        "\"timestamp\":", format(as.numeric(Sys.time()) * 1000, scientific = FALSE, trim = TRUE), "}\n"
-      ), file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-ef0f33.log", append = TRUE), silent = TRUE)
-      # #endregion
       run_job <- function() {
         if (!identical(isolate(hccsi_job()), job)) return()
-        t0 <- proc.time()[["elapsed"]]
         out <- tryCatch(.hccsi_compute(mode), error = function(e) list(res = NULL, n_iss = 0L, n_px = 0L, n_fs = 0L))
         if (!identical(isolate(hccsi_job()), job)) return()
-        # #region agent log
-        try(cat(paste0(
-          "{\"sessionId\":\"ef0f33\",\"runId\":\"load\",\"hypothesisId\":\"HCCSI\",",
-          "\"location\":\"macro_market_module.R:queue_hccsi\",\"message\":\"hccsi finished\",",
-          "\"data\":{\"job\":", job,
-          ",\"elapsed_s\":", format(proc.time()[["elapsed"]] - t0, scientific = FALSE, trim = TRUE, digits = 4),
-          ",\"n_iss\":", out$n_iss %||% 0L, ",\"n_px\":", out$n_px %||% 0L, ",\"n_fs\":", out$n_fs %||% 0L, "},",
-          "\"timestamp\":", format(as.numeric(Sys.time()) * 1000, scientific = FALSE, trim = TRUE), "}\n"
-        ), file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-ef0f33.log", append = TRUE), silent = TRUE)
-        # #endregion
         hccsi_val(out$res %||% list(availability = "unavailable"))
       }
       if (requireNamespace("later", quietly = TRUE)) {
