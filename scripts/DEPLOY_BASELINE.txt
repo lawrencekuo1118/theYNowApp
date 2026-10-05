@@ -8,5 +8,5 @@ short=5ea3a0f
 message=chore: bump display version to v20.63
 captured_at=2026-10-05T15:37:04Z
 source_branch=master
-display_version=v20.63
+display_version=v20.64
 note=Canonical live line is app_20.0. Bundle 12650167 ships v20.63: second click on YNOW/index KPI collapses expand panel. Deploy via scripts/deploy_app_20.R.
