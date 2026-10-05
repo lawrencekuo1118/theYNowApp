@@ -1252,17 +1252,24 @@ asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
   p <- plotly::layout(
     p,
     autosize = TRUE,
+    # Pan/zoom stay on so narrow viewports can explore without compressing cards.
+    dragmode = "pan",
     xaxis = list(
       visible = FALSE,
       range = c(min(nodes_xy$x) - 1.45, max(nodes_xy$x) + 1.75),
-      fixedrange = TRUE,
-      zeroline = FALSE
+      fixedrange = FALSE,
+      zeroline = FALSE,
+      constrain = "domain"
     ),
     yaxis = list(
       visible = FALSE,
       range = c(min(nodes_xy$y) - 2.45, max(nodes_xy$y) + 1.65),
-      fixedrange = TRUE,
-      zeroline = FALSE
+      fixedrange = FALSE,
+      zeroline = FALSE,
+      constrain = "domain",
+      # Keep card aspect when zooming so labels stay readable.
+      scaleanchor = "x",
+      scaleratio = 1
     ),
     margin = list(l = 2, r = 2, t = 8, b = 2),
     paper_bgcolor = "#0c1228",
@@ -1292,7 +1299,18 @@ asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
     )
     p <- .asset_tx_show_latest(p)
   }
-  plotly::config(p, displayModeBar = FALSE, responsive = TRUE)
+  plotly::config(
+    p,
+    displayModeBar = TRUE,
+    displaylogo = FALSE,
+    responsive = TRUE,
+    scrollZoom = TRUE,
+    doubleClick = "reset",
+    modeBarButtonsToRemove = c(
+      "select2d", "lasso2d", "autoScale2d", "hoverClosestCartesian",
+      "hoverCompareCartesian", "toggleSpikelines", "toImage"
+    )
+  )
 }
 
 # ---- Fetch -----------------------------------------------------------------
@@ -1707,8 +1725,10 @@ asset_transmission_ui <- function(id) {
       .ynow-atx-note { margin: 0 0 8px; font-size: 12px; color: #5c5346; }
       .ynow-atx-status { font-size: 12px; color: #5c5346; margin-top: 28px; }
       .ynow-atx-map {
-        overflow-x: hidden;
-        overflow-y: hidden;
+        overflow-x: auto;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
         width: 100%;
         max-width: 100%;
         background-color: #0c1228;
@@ -1716,19 +1736,26 @@ asset_transmission_ui <- function(id) {
         border-radius: 8px;
         padding: 2px 0 6px;
         box-sizing: border-box;
+        /* Keep the transmission canvas at a readable intrinsic width; swipe to explore. */
+        touch-action: pan-x pan-y;
       }
       .ynow-atx-map .plotly,
       .ynow-atx-map .html-widget {
-        width: 100% !important;
-        max-width: 100% !important;
-        min-width: 0 !important;
+        width: max(100%, 1560px) !important;
+        min-width: 1560px !important;
+        max-width: none !important;
         height: min(86vh, 980px) !important;
       }
       .ynow-atx-map .js-plotly-plot,
       .ynow-atx-map .plot-container,
       .ynow-atx-map .svg-container {
         width: 100% !important;
-        max-width: 100% !important;
+        min-width: 1560px !important;
+        max-width: none !important;
+      }
+      .ynow-atx-map .modebar {
+        top: 8px !important;
+        right: 8px !important;
       }
       .ynow-atx-path { margin: 8px 0 10px; padding: 8px 10px; background: #fff; border: 1px solid #e4dccb; border-radius: 6px; }
       .ynow-atx-path h4 { margin: 0 0 6px; font-size: 14px; }
@@ -2018,6 +2045,7 @@ asset_transmission_server <- function(id, ui_locale_rv = NULL, market_mode_rv = 
         ),
         htmltools::tags$p(class = "ynow-atx-note", .asset_tx_label("atx_arrow_note", loc)),
         htmltools::tags$p(class = "ynow-atx-note", .asset_tx_label(node_key, loc)),
+        htmltools::tags$p(class = "ynow-atx-note", .asset_tx_label("atx_pan_hint", loc)),
         htmltools::tags$p(class = "ynow-atx-note", .asset_tx_label("atx_play_hint", loc))
       )
     })

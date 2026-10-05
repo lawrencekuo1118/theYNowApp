@@ -479,6 +479,24 @@ if (requireNamespace("plotly", quietly = TRUE)) {
     grepl("min(86vh, 980px)", ui_mod, fixed = TRUE) &&
       grepl('height = "900px"', ui_mod, fixed = TRUE)
   )
+  check(
+    "map allows horizontal swipe scroll",
+    grepl("overflow-x: auto", ui_mod, fixed = TRUE) &&
+      grepl("min-width: 1560px", ui_mod, fixed = TRUE) &&
+      !grepl("overflow-x: hidden", ui_mod, fixed = TRUE)
+  )
+  check(
+    "figure enables pan and zoom",
+    isFALSE(isTRUE(built$x$layout$xaxis$fixedrange)) &&
+      isFALSE(isTRUE(built$x$layout$yaxis$fixedrange)) &&
+      identical(built$x$layout$dragmode, "pan")
+  )
+  cfg <- built$x$config
+  if (is.null(cfg)) cfg <- fig$x$config
+  check(
+    "plotly scrollZoom enabled",
+    isTRUE(cfg$scrollZoom) || isTRUE(cfg[["scrollZoom"]])
+  )
 } else {
   stop("FAIL: plotly namespace missing")
 }
@@ -586,6 +604,13 @@ dbg_hit <- vapply(dbg_paths, function(fn) {
 }, logical(1))
 check("no laptop debug log path left in app", !any(dbg_hit))
 check("regime card wired", grepl('ns("regime")', mod_src, fixed = TRUE) && grepl("asset_tx_regime(", mod_src, fixed = TRUE))
+loc_src <- paste(readLines("ui_locale.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check(
+  "pan hint localized en+zh-TW",
+  grepl("atx_pan_hint", loc_src, fixed = TRUE) &&
+    grepl("Swipe or drag to pan the map", loc_src, fixed = TRUE) &&
+    grepl("可左右滑動或拖曳平移圖表", loc_src, fixed = TRUE)
+)
 
 if (requireNamespace("shiny", quietly = TRUE)) {
   ui <- asset_transmission_ui("atx")
