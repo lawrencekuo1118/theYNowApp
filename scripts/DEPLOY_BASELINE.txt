@@ -8,5 +8,5 @@ short=9827caf
 message=chore: bump display version to v20.38
 captured_at=2026-10-05T04:09:41Z
 source_branch=cursor/asset-transmission-testing-9c4f
-display_version=v20.38
+display_version=v20.39
 note=Canonical live line is app_20.0. Bundle 12647682 ships Testing-map node labels (name, latest level, and 1D change) as v20.38. Deploy via scripts/deploy_app_20.R.
