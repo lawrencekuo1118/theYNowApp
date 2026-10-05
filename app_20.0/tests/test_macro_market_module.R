@@ -420,13 +420,20 @@ check("hint above Rf", {
 check("chart slot is full-only", grepl("ynow-macro-index-hist ynow-full-only", txt, fixed = TRUE))
 check("hint is full-only", grepl("ynow-macro-hint ynow-full-only", txt, fixed = TRUE))
 check("lite gate on click", grepl(".is_lite", txt, fixed = TRUE) && grepl("lite_mode_rv", txt, fixed = TRUE))
-check("click handler does not blank selection", {
+check("click handler toggles same index closed", {
   start <- regexpr("observeEvent(input$index_click", txt, fixed = TRUE)[1]
-  rest <- if (start > 0) substr(txt, start, start + 420L) else ""
+  rest <- if (start > 0) substr(txt, start, start + 1100L) else ""
   grepl("macro_click_index_specs(.mode())", rest, fixed = TRUE) &&
-    !grepl("selected_index(\"\")", rest, fixed = TRUE)
+    grepl("identical(cur, sym)", rest, fixed = TRUE) &&
+    grepl("selected_index(\"\")", rest, fixed = TRUE) &&
+    grepl("selected_index(sym)", rest, fixed = TRUE)
 })
-check("market switch clears foreign board", grepl("selected_index(\"\")", txt, fixed = TRUE))
+check("market switch clears foreign board", {
+  # Market-mode observer (not the click toggle) clears boards foreign to the new market.
+  start <- regexpr("Drop overlays that are not in the new market", txt, fixed = TRUE)[1]
+  chunk <- if (start > 0) substr(txt, max(1L, start - 280L), start + 80L) else ""
+  grepl("selected_index(\"\")", chunk, fixed = TRUE)
+})
 check("no Theme Rolling beta return", !grepl("Theme Rolling β vs benchmark", txt, fixed = TRUE))
 check("Rf CAPM note sentence gone", !grepl("Same live Rf path as CAPM", txt, fixed = TRUE))
 check("Rf note id gone", !grepl("ynow_macro_rf_note", txt, fixed = TRUE))

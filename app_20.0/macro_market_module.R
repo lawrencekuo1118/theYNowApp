@@ -656,7 +656,12 @@ macro_market_server <- function(id = "macro",
         ))
       }
       # #endregion
-      if (accepted) {
+      if (!accepted) return()
+      # Second click on the same board collapses the expand panel (same pattern as HCCSI).
+      cur <- isolate(as.character(selected_index() %||% "")[1])
+      if (identical(cur, sym)) {
+        selected_index("")
+      } else {
         selected_index(sym)
       }
     }, ignoreInit = TRUE)
