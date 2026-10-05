@@ -8,5 +8,5 @@ short=cb41825
 message=chore: bump display version to v20.37
 captured_at=2026-10-05T03:53:59Z
 source_branch=cursor/asset-transmission-testing-9c4f
-display_version=v20.37
+display_version=v20.38
 note=Canonical live line is app_20.0. Bundle 12647602 ships the Testing asset-transmission map (2s10s yield path and session regimes) as v20.37. Deploy via scripts/deploy_app_20.R.
