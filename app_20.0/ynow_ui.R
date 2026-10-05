@@ -2627,19 +2627,32 @@ beta_rolling_section_ui <- function() {
             )
           ),
           fluidRow(
-            box(
-              width = 12, status = "primary", solidHeader = TRUE,
-              title = tagList(icon("project-diagram"), tags$span(id = "ynow_testing_box_title", "Asset transmission")),
-              tags$p(
-                id = "ynow_testing_box_body",
-                style = "color:#555; line-height:1.5; margin:0 0 10px 0;",
-                paste0(
-                  "Inflation and the business cycle feed policy rates and the curve, then the dollar and liquidity, then bonds, commodities, precious metals, energy, equities, and crypto. ",
-                  "Arrows run upstream to downstream. Purple marks links that can flip by regime. ",
-                  "The regime card is a surveillance label for this session, not a trading signal and not an input to WACC."
+            column(
+              width = 12,
+              # Frameless panel: keep the solid header, drop the black box border.
+              tags$div(
+                class = "box box-solid box-primary ynow-atx-panel",
+                tags$div(
+                  class = "box-header",
+                  tags$h3(
+                    class = "box-title",
+                    tagList(icon("project-diagram"), tags$span(id = "ynow_testing_box_title", "Asset transmission"))
+                  )
+                ),
+                tags$div(
+                  class = "box-body",
+                  tags$p(
+                    id = "ynow_testing_box_body",
+                    style = "color:#555; line-height:1.5; margin:0 0 10px 0;",
+                    paste0(
+                      "Inflation and the business cycle feed policy rates and the curve, then the dollar and liquidity, then bonds, commodities, precious metals, energy, equities, and crypto. ",
+                      "Arrows run upstream to downstream. Purple marks links that can flip by regime. ",
+                      "The regime card is a surveillance label for this session, not a trading signal and not an input to WACC."
+                    )
+                  ),
+                  asset_transmission_ui("atx")
                 )
-              ),
-              asset_transmission_ui("atx")
+              )
             )
           )
   )
@@ -3379,6 +3392,13 @@ ui <- dashboardPage(
         }
         .box.box-solid.box-primary {
           border: 1px solid var(--ynow-ink) !important;
+        }
+        /* Asset transmission: no outer frame around the Testing panel. */
+        .box.box-solid.box-primary.ynow-atx-panel,
+        body.ynow-theme-model .content-wrapper .box.box-solid.box-primary.ynow-atx-panel,
+        body.ynow-theme-bluechip .content-wrapper .box.box-solid.box-primary.ynow-atx-panel {
+          border: none !important;
+          box-shadow: none !important;
         }
         .box.box-solid.box-primary > .box-header a,
         .box.box-solid.box-primary > .box-header .btn {

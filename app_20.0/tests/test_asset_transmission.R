@@ -512,6 +512,12 @@ srv_src <- paste(readLines("ynow_server.R", warn = FALSE, encoding = "UTF-8"), c
 glb_src <- paste(readLines("global.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("testing page mounts map", grepl('asset_transmission_ui("atx")', ui_src, fixed = TRUE))
 check("testing title id kept", grepl("ynow_testing_page_title", ui_src, fixed = TRUE))
+check(
+  "Asset transmission panel has no black box border",
+  grepl("ynow-atx-panel", ui_src, fixed = TRUE) &&
+    grepl("box.box-solid.box-primary.ynow-atx-panel", ui_src, fixed = TRUE) &&
+    grepl("border: none !important", ui_src, fixed = TRUE)
+)
 check("server mounts module", grepl('asset_transmission_server(', srv_src, fixed = TRUE))
 check("global sources module", grepl('source("asset_transmission_module.R"', glb_src, fixed = TRUE))
 check(
