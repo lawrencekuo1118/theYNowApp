@@ -386,6 +386,12 @@ check("zh mixed state", any(zh_edges[[ncol(zh_edges)]] == "視情境"))
 tape <- asset_tx_tape(panel, window = 60L, n = 12L)
 check("tape length 12", length(tape) == 12L)
 check("tape ends on last date", identical(tape[[length(tape)]]$as_of, max(panel$Date)))
+tape_month <- asset_tx_tape(panel, window = 60L, n = as.integer(.asset_tx_tape_frames))
+check(
+  "default play tape is ~1 trading month",
+  length(tape_month) == as.integer(.asset_tx_tape_frames) &&
+    as.integer(.asset_tx_tape_frames) >= 20L
+)
 tape24 <- asset_tx_tape(panel, window = 60L, n = 24L)
 check("tape can still request 24", length(tape24) == 24L)
 
@@ -662,10 +668,15 @@ check(
     grepl("正在載入 Asset transmission 圖表", loc_src, fixed = TRUE)
 )
 check(
-  "play hint matches 12-session tape",
-  grepl("last 12 sessions", loc_src, fixed = TRUE) &&
-    grepl("近 12 個交易日", loc_src, fixed = TRUE) &&
-    !grepl("last 24 sessions", loc_src, fixed = TRUE)
+  "play tape covers at least one trading month",
+  exists(".asset_tx_tape_frames") && isTRUE(as.integer(.asset_tx_tape_frames) >= 20L)
+)
+check(
+  "play hint matches 22-session (~1 month) tape",
+  grepl("last 22 sessions", loc_src, fixed = TRUE) &&
+    grepl("about one month", loc_src, fixed = TRUE) &&
+    grepl("近 22 個交易日", loc_src, fixed = TRUE) &&
+    grepl("約一個月", loc_src, fixed = TRUE)
 )
 
 if (requireNamespace("shiny", quietly = TRUE)) {

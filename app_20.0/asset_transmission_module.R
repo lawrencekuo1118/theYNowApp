@@ -443,7 +443,7 @@ asset_tx_snapshot <- function(panel, catalog = NULL, window = 60L, as_of = NULL)
   )
 }
 
-asset_tx_tape <- function(panel, catalog = NULL, window = 60L, n = 12L) {
+asset_tx_tape <- function(panel, catalog = NULL, window = 60L, n = 22L) {
   catalog <- catalog %||% asset_tx_catalog()
   prepared <- .asset_tx_prepare_panel(panel, catalog$nodes)
   if (is.null(prepared)) return(list())
@@ -1363,8 +1363,8 @@ asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
 # that interval so auto-refresh reuses the panel instead of re-hitting Yahoo.
 .asset_tx_panel_cache <- new.env(parent = emptyenv())
 .asset_tx_panel_cache_ttl_sec <- 105
-# Replay depth for Play. Progressive paint uses 1 frame first, then this full tape.
-.asset_tx_tape_frames <- 12L
+# Replay depth for Play (~1 trading month). Progressive paint: 1 frame, then full tape.
+.asset_tx_tape_frames <- 22L
 # Figure cache: same panel + window + locale + market should not rebuild Plotly.
 .asset_tx_fig_cache <- new.env(parent = emptyenv())
 .asset_tx_fig_cache_max <- 8L
