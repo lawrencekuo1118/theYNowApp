@@ -8,5 +8,5 @@ short=25686c5
 message=chore: bump display version to v20.66
 captured_at=2026-10-05T16:05:05Z
 source_branch=master
-display_version=v20.66
+display_version=v20.67
 note=Canonical live line is app_20.0. Bundle 12650282 ships v20.66: TPEx (IX0043.TWO) history falls back to official tradingIndex when Yahoo tape is empty. Deploy via scripts/deploy_app_20.R.
