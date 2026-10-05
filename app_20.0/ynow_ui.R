@@ -10168,6 +10168,34 @@ ui <- dashboardPage(
           font-size: 12px;
         }
 
+        /* Decision Checklist — institutional SOP wizard */
+        .ynow-dc-sop-intro {
+          font-size: 13px;
+          line-height: 1.55;
+          color: #444;
+          margin: 0 0 12px 0;
+        }
+        .ynow-dc-sop-steps {
+          margin: 0;
+          padding-left: 22px;
+        }
+        .ynow-dc-sop-step {
+          margin: 0 0 16px 0;
+          padding: 10px 12px;
+          background: #fffdf8;
+          border: 1px solid #f0e6d2;
+          border-radius: 6px;
+          list-style: decimal;
+        }
+        .ynow-dc-sop-step h5 {
+          margin: 0 0 8px 0;
+          font-size: 14px;
+          font-weight: 700;
+        }
+        .ynow-sop-verdict-locked {
+          border-left: 4px solid #6c757d;
+        }
+
         /* Decision Checklist — summary on top; theme items side-by-side */
         .ynow-dc-summary-top {
           width: 100%;

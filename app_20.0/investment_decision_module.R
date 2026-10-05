@@ -268,8 +268,14 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
                             active_model_key = reactive(NA_character_),
                             confidence = reactive(NULL),
                             industry_key = reactive(NULL),
-                            ui_locale = reactive("en")) {
+                            ui_locale = reactive("en"),
+                            sop_verdict_gate = reactive(list(unlocked = FALSE))) {
   moduleServer(id, function(input, output, session) {
+
+    .sop_unlocked <- function() {
+      g <- tryCatch(sop_verdict_gate(), error = function(e) NULL)
+      is.list(g) && isTRUE(g$unlocked)
+    }
 
     .pick_num <- function(x) {
       x <- suppressWarnings(as.numeric(x)[1])
@@ -632,6 +638,18 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
     })
 
     output$ui_recommendation <- renderUI({
+      .ui_loc()
+      if (!.sop_unlocked()) {
+        return(div(
+          class = "alert alert-secondary ynow-sop-verdict-locked",
+          h4(icon("lock"), " ", .str("funnel_sop_locked_title")),
+          p(.str("funnel_sop_locked_body")),
+          tags$p(
+            style = "font-size:12px;color:#666;margin:8px 0 0 0;",
+            .str("funnel_sop_locked_hint")
+          )
+        ))
+      }
       rec <- final_recommendation()
       if (is.null(rec) || !is.list(rec)) return(NULL)
       div(class = paste("alert", rec$class),
@@ -712,7 +730,13 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       pos_base_css <- if (is.na(pos_base)) 0 else pos_base
 
       # Assessment verdict only when primary Base is available (no cold-load Fair/Overvalued)
-      if (isTRUE(has_primary_base)) {
+      if (!.sop_unlocked()) {
+        status_color <- "#6c757d"
+        status_html <- paste0(
+          "<span style='color: ", status_color, ";'>",
+          htmltools::htmlEscape(str("composite_sop_locked")), "</span>"
+        )
+      } else if (isTRUE(has_primary_base)) {
         status_text <- str("composite_fair")
         status_color <- "#f39c12"
         if (p_curr < base * 0.8) {

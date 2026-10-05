@@ -2948,6 +2948,54 @@ server <- function(input, output, session) {
     df_final
   })
   
+  institutional_sop_gate <- reactiveVal(list(unlocked = FALSE, reason = "acks"))
+
+  sop_val_meta <- reactive({
+    w <- suppressWarnings(as.numeric(input$wacc_gordon)[1])
+    if (!is.finite(w) && identical(input$dcf_mode, "two_stage")) {
+      w <- suppressWarnings(as.numeric(input$wacc_stage2)[1])
+    }
+    sgr <- suppressWarnings(as.numeric(input$sgr)[1])
+    spread <- if (is.finite(w) && is.finite(sgr)) w - sgr else NA_real_
+    tv_pct <- NA_real_
+    tryCatch({
+      df_fcf <- fcf_results$df_fcf()
+      n_years <- as.numeric(input$years)
+      if (is.data.frame(df_fcf) && nrow(df_fcf) == n_years) {
+        future_fcfs <- extract_fcff_series(df_fcf)
+        r2 <- if (is.finite(w)) w / 100 else NA_real_
+        g <- if (is.finite(sgr)) sgr / 100 else NA_real_
+        if (is.finite(r2) && is.finite(g) && r2 > g) {
+          dfs <- cumprod(1 + rep(r2, n_years))
+          pv_fcf <- sum(future_fcfs / dfs)
+          tv <- (tail(future_fcfs, 1) * (1 + g)) / (r2 - g) / dfs[n_years]
+          if (is.finite(pv_fcf) && is.finite(tv) && (pv_fcf + tv) > 0) {
+            tv_pct <- tv / (pv_fcf + tv) * 100
+          }
+        }
+      }
+    }, error = function(e) NULL)
+    list(wacc_pct = w, sgr_pct = sgr, spread_pp = spread, tv_weight_pct = tv_pct)
+  })
+
+  sop_quality_snapshot <- reactive({
+    tryCatch({
+      is_df <- d_income_statement()
+      bs_df <- d_balance_sheet()
+      cf_df <- d_cash_flow()
+      fs <- compute_report_f_score(is_df, bs_df, cf_df)
+      eq <- evaluate_earnings_quality(is_df, bs_df, cf_df, f_score_pack = fs)
+      list(
+        fscore = suppressWarnings(as.numeric(fs$total)[1]),
+        qoe_grade = as.character(eq$grade %||% "")[1],
+        qoe_score = suppressWarnings(as.numeric(eq$score)[1]),
+        red_n = as.integer(length(eq$red_flags %||% list()))
+      )
+    }, error = function(e) {
+      list(fscore = NA_real_, qoe_grade = "", qoe_score = NA_real_, red_n = 0L)
+    })
+  })
+
   # --- 新增 2：掛載投資決策漏斗模組 (Decision Funnel; v13 區間＋可信度) ---
   # primary_band / secondary / confidence 於各估值模組掛載後定義（lazy 查找）
   decision_server(
@@ -2981,7 +3029,8 @@ server <- function(input, output, session) {
     active_model_key = reactive({ active_valuation_model_key() }),
     confidence = reactive({ valuation_confidence() }),
     industry_key = reactive(input$industry_choice),
-    ui_locale = ui_locale
+    ui_locale = ui_locale,
+    sop_verdict_gate = reactive({ institutional_sop_gate() })
   )
 
   # --- 決策檢核（獨立側邊 tab：檢核摘要置頂 + 主題項目並排）---
@@ -3027,7 +3076,11 @@ server <- function(input, output, session) {
         res <- compute_report_f_score(d_income_statement(), d_balance_sheet(), d_cash_flow())
         suppressWarnings(as.numeric(res$total)[1])
       }, error = function(e) NA_real_)
-    })
+    }),
+    quality_snapshot = sop_quality_snapshot,
+    val_meta = sop_val_meta,
+    sop_gate_out = institutional_sop_gate,
+    current_ticker = current_ticker
   )
 
   kpi_module_server(
