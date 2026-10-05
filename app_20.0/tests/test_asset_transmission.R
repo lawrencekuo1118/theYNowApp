@@ -23,23 +23,47 @@ check <- function(label, ok) {
 
 catg <- asset_tx_catalog()
 ids <- catg$nodes$id
-check("11 public nodes", length(ids) == 11L && !anyDuplicated(ids))
+n_nodes <- length(ids)
+check(
+  "node fields aligned",
+  n_nodes == length(catg$nodes$yahoo) &&
+    n_nodes == length(catg$nodes$x) &&
+    n_nodes == length(catg$nodes$y) &&
+    n_nodes == length(catg$nodes$kind) &&
+    n_nodes == length(catg$nodes$band) &&
+    n_nodes == length(catg$nodes$textposition)
+)
+check("29 public nodes", n_nodes == 29L && !anyDuplicated(ids))
 check("yahoo symbols unique", !anyDuplicated(catg$nodes$yahoo))
-check("18 channels", nrow(catg$edges) == 18L)
+check(
+  "36 channels",
+  nrow(catg$edges) == 36L &&
+    length(catg$edges$from) == length(catg$edges$to) &&
+    length(catg$edges$from) == length(catg$edges$prior)
+)
 check(
   "edge endpoints exist",
   all(catg$edges$from %in% ids) && all(catg$edges$to %in% ids)
 )
-check("priors are ±1", all(catg$edges$prior %in% c(-1L, 1L)))
+check("priors are -1, 0, or 1", all(catg$edges$prior %in% c(-1L, 0L, 1L)))
 prior_of <- function(from, to) {
   hit <- catg$edges$from == from & catg$edges$to == to
   catg$edges$prior[hit][1]
 }
 check("bill feeds 10Y same direction", identical(prior_of("us_bill", "us10y"), 1L))
 check("10Y pressures Nasdaq", identical(prior_of("us10y", "nasdaq"), -1L))
+check("10Y and dollar are regime-dependent", identical(prior_of("us10y", "dxy"), 0L))
+check("10Y and gold are regime-dependent", identical(prior_of("us10y", "gold"), 0L))
+check("10Y opposite long-bond price", identical(prior_of("us10y", "tlt"), -1L))
 check("DXY opposite gold", identical(prior_of("dxy", "gold"), -1L))
+check("DXY and USD/TWD same way", identical(prior_of("dxy", "usdtwd"), 1L))
 check("SOX feeds TAIEX", identical(prior_of("sox", "taiex"), 1L))
-check("USD/TWD opposite TAIEX", identical(prior_of("usdtwd", "taiex"), -1L))
+catalog_keys <- unique(c(catg$nodes$label_key, catg$nodes$gloss_key, catg$edges$channel_key))
+check(
+  "catalog keys in both locales",
+  all(catalog_keys %in% names(.UI_STRINGS$en)) &&
+    all(catalog_keys %in% names(.UI_STRINGS[["zh-TW"]]))
+)
 
 atx_keys <- grep("^atx_", names(.UI_STRINGS$en), value = TRUE)
 check("atx keys exist", length(atx_keys) >= 70L)
@@ -135,7 +159,7 @@ check("10Y-SPX corr negative", is.finite(eq$corr) && eq$corr < -0.85)
 check("10Y-SPX aligned", identical(eq$state, "aligned"))
 gld <- edge_state("us10y", "gold")
 check("10Y-gold corr positive", is.finite(gld$corr) && gld$corr > 0.85)
-check("10Y-gold diverged", identical(gld$state, "diverged"))
+check("10Y-gold mixed", identical(gld$state, "mixed"))
 semi <- edge_state("sox", "taiex")
 check("SOX-TAIEX aligned", is.finite(semi$corr) && semi$corr > 0.85 && identical(semi$state, "aligned"))
 
@@ -149,6 +173,18 @@ tiny_snap <- asset_tx_snapshot(tiny, window = 20L)
 us10 <- tiny_snap$nodes[tiny_snap$nodes$id == "us10y", , drop = FALSE]
 check("1D is 6.0 bp", identical(asset_tx_fmt_shock(us10$shock_1d, "yield"), "+6.0 bp"))
 check("5D is 10.0 bp", identical(asset_tx_fmt_shock(us10$shock_5d, "yield"), "+10.0 bp"))
+path_up <- asset_tx_yield_path(tiny_snap, "en")
+check("yield path bias up", identical(path_up$bias, "up") && grepl("+6.0 bp", path_up$title, fixed = TRUE))
+check("yield path has nine leans", nrow(path_up$rows) == 9L && any(path_up$rows$asset == "Gold"))
+quiet_panel <- tiny
+quiet_panel$us10y <- c(4, 4, 4, 4, 4, 4.002)
+quiet_snap <- asset_tx_snapshot(quiet_panel, window = 20L)
+path_quiet <- asset_tx_yield_path(quiet_snap, "en")
+check("quiet yield path stays unsigned", identical(path_quiet$bias, "quiet") && !nrow(path_quiet$rows))
+down_panel <- tiny
+down_panel$us10y <- c(4.10, 4.08, 4.06, 4.04, 4.02, 4.00)
+down_snap <- asset_tx_snapshot(down_panel, window = 20L)
+check("yield path bias down", identical(asset_tx_yield_path(down_snap, "zh-TW")$bias, "down"))
 check("missing oil stays NA", !is.finite(tiny_snap$nodes$level[tiny_snap$nodes$id == "oil"]))
 oil_edge <- tiny_snap$edges[tiny_snap$edges$from == "oil", , drop = FALSE]
 check("missing upstream is n/a", all(oil_edge$state == "na"))
@@ -174,9 +210,13 @@ zh_nodes <- asset_tx_node_table(snap, "zh-TW")
 check("en table header", "Asset" %in% names(en_nodes) && "1D" %in% names(en_nodes))
 check("zh table has TAIEX label", any(zh_nodes[[1]] == "台灣加權指數"))
 en_edges <- asset_tx_edge_table(snap, "en")
-check("en edge state words", any(en_edges$State == "Aligned") && any(en_edges$State == "Diverged"))
+check(
+  "en edge state words",
+  any(en_edges$State == "Aligned") && any(en_edges$State == "Diverged") && any(en_edges$State == "Regime")
+)
 zh_edges <- asset_tx_edge_table(snap, "zh-TW")
 check("zh edge state words", any(grepl("一致", zh_edges[[ncol(zh_edges)]], fixed = TRUE)))
+check("zh mixed state", any(zh_edges[[ncol(zh_edges)]] == "視情境"))
 
 tape <- asset_tx_tape(panel, window = 60L, n = 24L)
 check("tape length 24", length(tape) == 24L)

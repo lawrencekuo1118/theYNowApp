@@ -2634,7 +2634,7 @@ beta_rolling_section_ui <- function() {
                 id = "ynow_testing_page_sub",
                 paste0(
                   "Full-only Testing page. Lite mode hides this entry. ",
-                  "The diagram is a live asset-transmission map linked to public yields and indices."
+                  "The live map follows the global transmission poster: drivers, three hubs, and major assets."
                 )
               ),
               tags$hr()
@@ -2648,9 +2648,9 @@ beta_rolling_section_ui <- function() {
                 id = "ynow_testing_box_body",
                 style = "color:#555; line-height:1.5; margin:0 0 10px 0;",
                 paste0(
-                  "Each node is a public series. Arrows run upstream to downstream; ",
-                  "line width is the trailing correlation of daily changes; ",
-                  "color shows whether that correlation matches the structural channel."
+                  "Inflation and commodities feed three hubs — interest rates, the dollar and FX, and liquidity — then major assets. ",
+                  "Arrows run upstream to downstream. Line width is the trailing correlation; ",
+                  "teal, amber, and purple show whether that correlation matches the structural prior."
                 )
               ),
               asset_transmission_ui("atx")
