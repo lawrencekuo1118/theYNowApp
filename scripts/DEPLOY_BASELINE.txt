@@ -8,5 +8,5 @@ short=528b244
 message=chore: bump display version to v20.59
 captured_at=2026-10-05T15:01:14Z
 source_branch=master
-display_version=v20.59
+display_version=v20.60
 note=Canonical live line is app_20.0. Bundle 12649983 ships v20.59: fix blank ATX map — Yahoo JSON must use simplifyVector=FALSE. Deploy via scripts/deploy_app_20.R.
