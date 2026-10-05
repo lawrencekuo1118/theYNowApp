@@ -53,6 +53,7 @@ When unsure: use the **English term** + brief Taiwan Chinese gloss on first ment
 
 - **Debug = auto-verify (required):** on any bugfix / debug session, run targeted verification tests automatically before claiming done. Do not wait for the user to ask. See `.cursor/rules/auto-verify-on-debug.mdc`.
 - Run targeted tests under `app_21.0/tests/` when changing valuation or FCF logic, and when debugging related failures.
+- **Cache tiers (required):** keep **fast** (prices / Rf / FX — `cache_mem`, ≤15m) separate from **slow** (statements / SEC / industry — `cache_disk` ≥24h). Never park live quotes or Rf on the slow statement cache. See `web_crawler.R` / `tests/test_cache_tiers.R`.
 - Non-trivial UI changes: manual/browser verification when the environment supports it.
 - Offline valuation check (no network): `cd app_21.0/tests && Rscript test_valuation_formulas.R`
 - Set `YNOW_DEBUG_SKIP_PY=1` when a unit test should source R helpers without initializing reticulate.

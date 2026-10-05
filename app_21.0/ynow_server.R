@@ -863,7 +863,7 @@ server <- function(input, output, session) {
         }
 
         incProgress(0.2, detail = "正在讀取 Summary（yfinance）...")
-        sum_df <- tryCatch(get_summary_data(stock_code), error = function(e) e)
+        sum_df <- tryCatch(cached_get_summary_data(stock_code), error = function(e) e)
         # TWSE 後綴無資料／失敗 → 試上櫃 .TWO（僅一次）
         if ((inherits(sum_df, "error") || !is.data.frame(sum_df) || nrow(sum_df) < 1L) &&
             identical(market_mode(), "TW") &&
@@ -922,7 +922,7 @@ server <- function(input, output, session) {
           session, "session_ccy_pick", selected = sess
         )
 
-        ind_info <- get_yahoo_industry(stock_code)
+        ind_info <- cached_get_yahoo_industry(stock_code)
         if (!is.null(ind_info)) {
           disp <- as.character(ind_info$display_text %||% "")[1]
           # TW: if Yahoo Sector/Industry is empty, fall back to exchange industry label
@@ -1157,7 +1157,8 @@ server <- function(input, output, session) {
   # ==========================================
   # 💱 Session 幣別切換（USD ⇄ TWD）
   # ==========================================
-  .refresh_fx_if_stale <- function(max_age_sec = 3600) {
+  .refresh_fx_if_stale <- function(max_age_sec = .YNOW_CACHE_FAST_TTL_SEC) {
+    if (!exists(".YNOW_CACHE_FAST_TTL_SEC")) max_age_sec <- 15L * 60L
     ts <- fx_fetched_at()
     stale <- is.null(ts) || !inherits(ts, "POSIXt") ||
       (as.numeric(difftime(Sys.time(), ts, units = "secs")) > max_age_sec)

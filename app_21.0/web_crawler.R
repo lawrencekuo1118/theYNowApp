@@ -1,15 +1,69 @@
 # ==========================================
 # web_crawler.R - 資料抓取（純 yfinance；套件由 global.R 載入）
 # ==========================================
+#
+# Cache architecture (strict fast vs slow — do not mix TTLs):
+#
+#   SLOW (fundamentals): income / balance / cash flow, SEC notes, industry labels.
+#     Change cadence = quarter / year. Use cache_disk (fallback: cache_mem) with
+#     ≥24h TTL so statement pulls are stable and do not thrash Yahoo.
+#
+#   FAST (market / macro): live quotes, Rf (10Y), USD/TWD FX.
+#     High-frequency; drives CAPM Ke, MOS vs market, and sensitivity baselines.
+#     Use cache_mem with ≤15m TTL (or call uncached) so DCF is not priced off stale Rf.
+#
+# ==========================================
 
 if (!exists(".ynow_log", mode = "function")) {
   .ynow_log <- function(...) invisible(NULL)
 }
 
 # ==========================================
-# 🚀 1. 記憶體快取與 Python 爬蟲初始化
+# 🚀 1. Fast vs slow caches + Python scraper init
 # ==========================================
-my_cache <- cachem::cache_mem(max_size = 50 * 1024^2, max_age = 3600)
+.YNOW_CACHE_FAST_TTL_SEC <- 15L * 60L      # 15 minutes — prices / Rf / FX
+.YNOW_CACHE_SLOW_TTL_SEC <- 24L * 3600L    # 24 hours — statements / filings
+
+.ynow_slow_cache_dir <- function() {
+  d <- file.path(tempdir(), "ynow_cache_slow")
+  dir.create(d, recursive = TRUE, showWarnings = FALSE)
+  d
+}
+
+.ynow_fast_cache <- cachem::cache_mem(
+  max_size = 32 * 1024^2,
+  max_age = .YNOW_CACHE_FAST_TTL_SEC
+)
+
+.ynow_slow_cache <- tryCatch({
+  cachem::cache_disk(
+    dir = .ynow_slow_cache_dir(),
+    max_size = 256 * 1024^2,
+    max_age = .YNOW_CACHE_SLOW_TTL_SEC,
+    destroy_on_finalize = FALSE
+  )
+}, error = function(e) {
+  .ynow_log("⚠️ slow cache_disk unavailable; falling back to cache_mem @ 24h: ", e$message)
+  cachem::cache_mem(
+    max_size = 80 * 1024^2,
+    max_age = .YNOW_CACHE_SLOW_TTL_SEC
+  )
+})
+
+# Historical name `my_cache` = FAST tier only (Rf / FX / live quotes).
+# Fundamentals must use `.ynow_slow_cache` — never park statements here.
+my_cache <- .ynow_fast_cache
+
+#' Inspect cache tier TTLs (for tests / diagnostics).
+ynow_cache_tier_info <- function() {
+  list(
+    fast_ttl_sec = as.integer(.YNOW_CACHE_FAST_TTL_SEC),
+    slow_ttl_sec = as.integer(.YNOW_CACHE_SLOW_TTL_SEC),
+    fast_class = paste(class(.ynow_fast_cache), collapse = "/"),
+    slow_class = paste(class(.ynow_slow_cache), collapse = "/"),
+    slow_dir = tryCatch(.ynow_slow_cache_dir(), error = function(e) NA_character_)
+  )
+}
 
 # 勿在 source 時呼叫 py_available(initialize=TRUE)：可能直接 abort worker → shinyapps 500。
 # Persist reticulate exports here: source_python() defaults to envir=parent.frame();
@@ -64,13 +118,14 @@ my_cache <- cachem::cache_mem(max_size = 50 * 1024^2, max_age = 3600)
     as.character(company_name)
   }
   q_ccy <- if (grepl("\\.(TW|TWO)$", stock_code, ignore.case = TRUE)) "TWD" else "USD"
-  # Unknown reporting currency → NA (do not copy quote; ADR must not assume USD=USD).
+  # Unknown reporting currency → NA (do not copy quote — ADR must not assume USD=USD).
   f_ccy <- if (grepl("\\.(TW|TWO)$", stock_code, ignore.case = TRUE)) "TWD" else NA_character_
   attr(df, "currency") <- q_ccy
   attr(df, "financialCurrency") <- f_ccy
   df
 }
 
+# SLOW: quarterly/annual statements (24h disk)
 cached_scrape_financials <- memoise::memoise(
   function(stock_code) {
     .ynow_log(paste("🚀 正在啟動 Python 財報抓取:", stock_code))
@@ -79,7 +134,7 @@ cached_scrape_financials <- memoise::memoise(
     }
     normalize_all_financials(scrape_all_financials(stock_code))
   },
-  cache = my_cache
+  cache = .ynow_slow_cache
 )
 
 tryCatch(memoise::forget(cached_scrape_financials), error = function(e) NULL)
@@ -119,6 +174,10 @@ get_yahoo_industry <- function(stock_code) {
 
   result
 }
+
+# SLOW: sector / industry labels (rarely change within a day)
+cached_get_yahoo_industry <- memoise::memoise(get_yahoo_industry, cache = .ynow_slow_cache)
+tryCatch(memoise::forget(cached_get_yahoo_industry), error = function(e) NULL)
 
 # ==========================================
 # 🌐 3. Summary（僅 yfinance，shinyapps 無 Chrome）
@@ -183,6 +242,10 @@ get_summary_data <- function(stock_code) {
   })
 }
 
+# FAST: live quote / market cap / last price (≤15m) — never park on slow statement cache
+cached_get_summary_data <- memoise::memoise(get_summary_data, cache = .ynow_fast_cache)
+tryCatch(memoise::forget(cached_get_summary_data), error = function(e) NULL)
+
 # ==========================================
 # 💱 USD/TWD 即期匯率
 # ==========================================
@@ -201,7 +264,9 @@ get_usd_twd_fx <- function() {
   })
 }
 
-cached_get_usd_twd_fx <- memoise::memoise(get_usd_twd_fx, cache = my_cache)
+# FAST: FX
+cached_get_usd_twd_fx <- memoise::memoise(get_usd_twd_fx, cache = .ynow_fast_cache)
+tryCatch(memoise::forget(cached_get_usd_twd_fx), error = function(e) NULL)
 
 # ==========================================
 # 🇺🇸／🇹🇼 4. 無風險利率 Rf（US: Yahoo ^TNX；TW: TPEx Curve 10Y）
@@ -257,14 +322,17 @@ if (!exists("%||%", mode = "function")) {
   rf
 }
 
+# FAST: live Rf — short TTL so CAPM Ke / terminal g track market (not stale hour-old yields)
 .cached_fetch_rf_live_us <- memoise::memoise(
   function() .fetch_risk_free_rate_live("US"),
-  cache = my_cache
+  cache = .ynow_fast_cache
 )
 .cached_fetch_rf_live_tw <- memoise::memoise(
   function() .fetch_risk_free_rate_live("TW"),
-  cache = my_cache
+  cache = .ynow_fast_cache
 )
+tryCatch(memoise::forget(.cached_fetch_rf_live_us), error = function(e) NULL)
+tryCatch(memoise::forget(.cached_fetch_rf_live_tw), error = function(e) NULL)
 
 #' Resolve Rf with explicit source for Macro／CAPM UI.
 #' @return list(rf_pct, source, label, symbol, is_fallback)
@@ -670,7 +738,7 @@ fetch_sec_report_notes <- function(ticker, form = "10-K", max_chars = 1500L) {
 }
 
 cached_fetch_sec_report_notes <- memoise::memoise(
-  fetch_sec_report_notes, cache = my_cache
+  fetch_sec_report_notes, cache = .ynow_slow_cache
 )
 
 # Lab Search: segment / revenue-disaggregation notes only, wall-clock budget.
@@ -713,5 +781,5 @@ fetch_sec_segment_notes <- function(ticker, form = "10-K", max_chars = 1500L,
 }
 
 cached_fetch_sec_segment_notes <- memoise::memoise(
-  fetch_sec_segment_notes, cache = my_cache
+  fetch_sec_segment_notes, cache = .ynow_slow_cache
 )
