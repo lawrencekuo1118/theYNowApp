@@ -8,5 +8,5 @@ short=fec9197
 message=chore: bump display version to v20.56
 captured_at=2026-10-05T14:17:43Z
 source_branch=master
-display_version=v20.56
+display_version=v20.57
 note=Canonical live line is app_20.0. Bundle 12649771 ships v20.56: Asset transmission Play tape extended to 22 sessions (~1 trading month). Deploy via scripts/deploy_app_20.R.
