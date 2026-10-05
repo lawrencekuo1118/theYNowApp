@@ -8,5 +8,5 @@ short=1868f03
 message=chore: bump display version to v20.43
 captured_at=2026-10-05T05:33:59Z
 source_branch=cursor/asset-transmission-testing-9c4f
-display_version=v20.43
+display_version=v20.44
 note=Canonical live line is app_20.0. Bundle 12647962 ships v20.43: removes leftover agent debug writers that flooded shinyapps with failed writes to a laptop .cursor path (Safari server-stopped-responding). Also keeps deferred Python install. Deploy via scripts/deploy_app_20.R.
