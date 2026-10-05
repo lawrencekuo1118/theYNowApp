@@ -8737,7 +8737,7 @@ ui <- dashboardPage(
           font-weight: normal;
           line-height: 1.35;
         }
-        .ynow-own-index-overlay .shiny-options-group input[type="checkbox"] {
+        .ynow-own-index-overlay .shiny-options-group input[type='checkbox'] {
           position: static !important;
           margin: 0 !important;
           flex: 0 0 auto;

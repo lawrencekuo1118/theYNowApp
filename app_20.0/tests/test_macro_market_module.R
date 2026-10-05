@@ -379,6 +379,7 @@ check("overlay checkboxes spaced without overlap", {
     grepl("gap: 10px 28px", ui_css, fixed = TRUE) &&
     grepl("flex-wrap: wrap", ui_css, fixed = TRUE) &&
     grepl("position: static !important", ui_css, fixed = TRUE) &&
+    grepl("input[type='checkbox']", ui_css, fixed = TRUE) &&
     grepl("inline = TRUE", txt, fixed = TRUE) &&
     grepl("updateCheckboxGroupInput", txt, fixed = TRUE) &&
     grepl("inline = TRUE", paste(readLines("macro_market_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n"), fixed = TRUE)
