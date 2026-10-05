@@ -517,6 +517,26 @@ if (requireNamespace("plotly", quietly = TRUE)) {
       is.null(built$x$layout$yaxis$scaleratio) &&
       !grepl("scaleanchor\\s*=", ui_mod)
   )
+  xr <- as.numeric(unlist(built$x$layout$xaxis$range))
+  yr <- as.numeric(unlist(built$x$layout$yaxis$range))
+  nx <- as.numeric(catg$nodes$x)
+  ny <- as.numeric(catg$nodes$y)
+  x_mid <- mean(range(nx, na.rm = TRUE))
+  y_mid <- mean(range(ny, na.rm = TRUE))
+  check(
+    "axis ranges center nodes with equal pads",
+    length(xr) == 2L && length(yr) == 2L &&
+      all(is.finite(xr)) && all(is.finite(yr)) &&
+      isTRUE(all.equal(mean(xr), x_mid, tolerance = 1e-9)) &&
+      isTRUE(all.equal(mean(yr), y_mid, tolerance = 1e-9)) &&
+      isTRUE(all.equal((x_mid - xr[[1]]), (xr[[2]] - x_mid), tolerance = 1e-9)) &&
+      isTRUE(all.equal((y_mid - yr[[1]]), (yr[[2]] - y_mid), tolerance = 1e-9))
+  )
+  check(
+    "map scroll-center script present",
+    grepl("centerAtxMap", ui_mod, fixed = TRUE) &&
+      grepl("scrollLeft = maxX / 2", ui_mod, fixed = TRUE)
+  )
   cfg <- built$x$config
   if (is.null(cfg)) cfg <- fig$x$config
   check(

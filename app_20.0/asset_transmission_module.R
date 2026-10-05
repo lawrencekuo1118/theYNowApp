@@ -1337,11 +1337,49 @@ asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
   }
   nodes_xy <- last$catalog$nodes
   date_note <- format(last$as_of, "%Y-%m-%d")
+  # Equal pads so the graph sits centered on the black paper (L/R and T/B).
+  x_lo <- min(nodes_xy$x, na.rm = TRUE)
+  x_hi <- max(nodes_xy$x, na.rm = TRUE)
+  y_lo <- min(nodes_xy$y, na.rm = TRUE)
+  y_hi <- max(nodes_xy$y, na.rm = TRUE)
+  x_pad <- 1.60
+  y_pad <- 2.05
+  x_c <- (x_lo + x_hi) / 2
+  y_c <- (y_lo + y_hi) / 2
+  x_half <- (x_hi - x_lo) / 2 + x_pad
+  y_half <- (y_hi - y_lo) / 2 + y_pad
+  range_x <- c(x_c - x_half, x_c + x_half)
+  range_y <- c(y_c - y_half, y_c + y_half)
+  # #region agent log
+  tryCatch({
+    line <- jsonlite::toJSON(list(
+      sessionId = "f77c57",
+      runId = "center-pre",
+      hypothesisId = "H1-axis",
+      location = "asset_transmission_module.R:.asset_tx_build_figure",
+      message = "atx axis ranges centered",
+      data = list(
+        x_lo = x_lo, x_hi = x_hi, y_lo = y_lo, y_hi = y_hi,
+        x_c = x_c, y_c = y_c, x_pad = x_pad, y_pad = y_pad,
+        range_x0 = range_x[[1]], range_x1 = range_x[[2]],
+        range_y0 = range_y[[1]], range_y1 = range_y[[2]],
+        pad_left = x_lo - range_x[[1]],
+        pad_right = range_x[[2]] - x_hi,
+        pad_bottom = y_lo - range_y[[1]],
+        pad_top = range_y[[2]] - y_hi,
+        equal_x = isTRUE(all.equal(x_lo - range_x[[1]], range_x[[2]] - x_hi, tolerance = 1e-9)),
+        equal_y = isTRUE(all.equal(y_lo - range_y[[1]], range_y[[2]] - y_hi, tolerance = 1e-9))
+      ),
+      timestamp = as.numeric(Sys.time()) * 1000
+    ), auto_unbox = TRUE)
+    cat(as.character(line), "\n", file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-f77c57.log", append = TRUE)
+  }, error = function(e) invisible(NULL))
+  # #endregion
   anns <- c(
     .asset_tx_headers(locale),
     list(list(
-      x = min(nodes_xy$x) - 0.4,
-      y = min(nodes_xy$y) - 1.75,
+      x = x_lo - 0.4,
+      y = y_lo - 1.75,
       text = paste0("Yahoo Finance · ", date_note),
       showarrow = FALSE,
       xref = "x",
@@ -1359,14 +1397,14 @@ asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
     dragmode = "pan",
     xaxis = list(
       visible = FALSE,
-      range = c(min(nodes_xy$x) - 1.45, max(nodes_xy$x) + 1.75),
+      range = range_x,
       fixedrange = FALSE,
       zeroline = FALSE,
       constrain = "domain"
     ),
     yaxis = list(
       visible = FALSE,
-      range = c(min(nodes_xy$y) - 2.45, max(nodes_xy$y) + 1.65),
+      range = range_y,
       fixedrange = FALSE,
       zeroline = FALSE,
       constrain = "domain"
@@ -1912,7 +1950,7 @@ asset_transmission_ui <- function(id) {
         background-color: #000000;
         background-image: none;
         border-radius: 8px;
-        padding: 2px 0 6px;
+        padding: 0;
         box-sizing: border-box;
         /* Keep the transmission canvas at a readable intrinsic width; swipe to explore. */
         touch-action: pan-x pan-y;
@@ -2030,7 +2068,51 @@ asset_transmission_ui <- function(id) {
       shiny::uiOutput(ns("edges_title")),
       DT::DTOutput(ns("edges")),
       shiny::uiOutput(ns("method"))
-    )
+    ),
+    htmltools::tags$script(htmltools::HTML("
+      (function() {
+        function centerAtxMap(map) {
+          if (!map) return;
+          var plot = map.querySelector('.js-plotly-plot') || map.querySelector('.html-widget');
+          if (!plot) return;
+          var maxX = Math.max(0, plot.offsetWidth - map.clientWidth);
+          var maxY = Math.max(0, plot.offsetHeight - map.clientHeight);
+          map.scrollLeft = maxX / 2;
+          map.scrollTop = maxY / 2;
+          // #region agent log
+          fetch('http://127.0.0.1:7302/ingest/e3a0dcdf-71e1-4bba-855e-f942118bd315',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f77c57'},body:JSON.stringify({sessionId:'f77c57',runId:'center-pre',hypothesisId:'H-center',location:'asset_transmission_module.R:centerAtxMap',message:'atx map scroll center',data:{scrollLeft:map.scrollLeft,scrollTop:map.scrollTop,maxX:maxX,maxY:maxY,mapW:map.clientWidth,mapH:map.clientHeight,plotW:plot.offsetWidth,plotH:plot.offsetHeight},timestamp:Date.now()})}).catch(function(){});
+          // #endregion
+        }
+        function bind(map) {
+          if (!map || map.__ynowAtxCenterBound) return;
+          map.__ynowAtxCenterBound = true;
+          var attachPlot = function(plot) {
+            if (!plot || plot.__ynowAtxAfterPlot) return;
+            plot.__ynowAtxAfterPlot = true;
+            plot.on('plotly_afterplot', function() { centerAtxMap(map); });
+            centerAtxMap(map);
+          };
+          var existing = map.querySelector('.js-plotly-plot');
+          if (existing) attachPlot(existing);
+          var mo = new MutationObserver(function() {
+            var plot = map.querySelector('.js-plotly-plot');
+            if (plot) attachPlot(plot);
+          });
+          mo.observe(map, { childList: true, subtree: true });
+        }
+        function boot() {
+          document.querySelectorAll('.ynow-atx-map').forEach(bind);
+        }
+        if (window.jQuery) {
+          $(document).on('shiny:value shiny:visualchange', function() { boot(); });
+        }
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', boot);
+        } else {
+          boot();
+        }
+      })();
+    "))
   )
 }
 
