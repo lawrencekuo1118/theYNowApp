@@ -1373,6 +1373,9 @@ asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
 .asset_tx_py_download <- function(symbols, period = "6mo") {
   if (!requireNamespace("reticulate", quietly = TRUE)) stop("reticulate missing")
   if (identical(Sys.getenv("YNOW_DEBUG_SKIP_PY"), "1")) stop("Python skipped")
+  if (exists(".ynow_ensure_python", mode = "function")) {
+    if (!isTRUE(.ynow_ensure_python())) stop("Python unavailable")
+  }
   reticulate::py_run_string("
 def _ynow_atx_download(tickers, period):
     import math

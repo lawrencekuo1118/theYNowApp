@@ -438,6 +438,11 @@ check("testing page mounts map", grepl('asset_transmission_ui("atx")', ui_src, f
 check("testing title id kept", grepl("ynow_testing_page_title", ui_src, fixed = TRUE))
 check("server mounts module", grepl('asset_transmission_server(', srv_src, fixed = TRUE))
 check("global sources module", grepl('source("asset_transmission_module.R"', glb_src, fixed = TRUE))
+check(
+  "global defers shinyapps Python install",
+  grepl(".ynow_ensure_python", glb_src, fixed = TRUE) &&
+    grepl("py_require(.ynow_py_pkgs)", glb_src, fixed = TRUE)
+)
 mod_src <- paste(readLines("asset_transmission_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("regime card wired", grepl('ns("regime")', mod_src, fixed = TRUE) && grepl("asset_tx_regime(", mod_src, fixed = TRUE))
 

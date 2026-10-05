@@ -31,6 +31,9 @@ my_cache <- cachem::cache_mem(max_size = 50 * 1024^2, max_age = 3600)
   if (identical(Sys.getenv("YNOW_DEBUG_SKIP_PY"), "1")) return(FALSE)
   ok <- FALSE
   tryCatch({
+    if (exists(".ynow_ensure_python", mode = "function")) {
+      .ynow_ensure_python()
+    }
     ok <- isTRUE(reticulate::py_available(initialize = FALSE))
     if (!ok) {
       suppressMessages(reticulate::py_config())

@@ -48,28 +48,55 @@ validate <- shiny::validate
 need <- shiny::need
 
 # ==========================================
-# 🐍 綁定 Python
+# 🐍 綁定 Python（延遲初始化）
 # ==========================================
-# shinyapps.io：以 py_require 宣告依賴（reticulate/uv 會安裝；單靠 requirements.txt 曾只裝到 numpy）
-py_pkgs <- c(
+# Do NOT call reticulate::py_require() / py_config() synchronously here on
+# shinyapps.io. Each cold start was downloading uv + CPython (~33MiB) + packages
+# before Shiny could Listen, so Safari / curl saw "server stopped responding".
+# Install and bind Python on first real use via .ynow_ensure_python().
+.ynow_py_pkgs <- c(
   "pandas", "numpy", "yfinance", "requests", "beautifulsoup4", "lxml",
   "peewee", "platformdirs", "frozendict", "multitasking", "html5lib", "curl_cffi",
   "xlrd"
 )
+# Keep the old name for any callers that still read `py_pkgs`.
+py_pkgs <- .ynow_py_pkgs
+.ynow_python_ready <- FALSE
+
+.ynow_ensure_python <- function() {
+  if (identical(Sys.getenv("YNOW_DEBUG_SKIP_PY"), "1")) return(FALSE)
+  if (isTRUE(.ynow_python_ready)) {
+    return(isTRUE(tryCatch(
+      reticulate::py_available(initialize = FALSE),
+      error = function(e) FALSE
+    )))
+  }
+  ok <- FALSE
+  tryCatch({
+    if (file.exists(python_path) && !on_shinyapps) {
+      reticulate::use_virtualenv(env_dir, required = TRUE)
+    } else {
+      # shinyapps / other hosts without a local venv: install when first needed.
+      reticulate::py_require(.ynow_py_pkgs)
+    }
+    suppressMessages(reticulate::py_config())
+    ok <- isTRUE(reticulate::py_available(initialize = FALSE))
+  }, error = function(e) {
+    ok <<- FALSE
+  })
+  .ynow_python_ready <<- isTRUE(ok)
+  isTRUE(ok)
+}
+
 if (file.exists(python_path) && !on_shinyapps) {
-  reticulate::use_virtualenv(env_dir, required = TRUE)
+  tryCatch(
+    reticulate::use_virtualenv(env_dir, required = TRUE),
+    error = function(e) NULL
+  )
 } else if (identical(Sys.getenv("YNOW_DEBUG_SKIP_PY"), "1")) {
   # skip Python init (local parse / unit tests)
-} else {
-  tryCatch(
-    reticulate::py_require(py_pkgs),
-    error = function(e) NULL
-  )
-  tryCatch(
-    reticulate::py_config(),
-    error = function(e) NULL
-  )
 }
+# else: defer — .ynow_ensure_python() runs from scrapers / TPEx / Yahoo fallbacks
 
 # ==========================================
 # 應用程式進入點與全域設定

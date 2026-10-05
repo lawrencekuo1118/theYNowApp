@@ -33,6 +33,9 @@ YNOW_TPEX_FINANCIAL_SUMMARY_URL <-
   if (identical(Sys.getenv("YNOW_DEBUG_SKIP_PY"), "1")) return(FALSE)
   ok <- FALSE
   tryCatch({
+    if (exists(".ynow_ensure_python", mode = "function")) {
+      tryCatch(.ynow_ensure_python(), error = function(e) FALSE)
+    }
     if (exists(".ensure_python_scraper", mode = "function")) {
       # Prefer shared Python init; ignore failure and still load this module.
       tryCatch(.ensure_python_scraper(), error = function(e) FALSE)
