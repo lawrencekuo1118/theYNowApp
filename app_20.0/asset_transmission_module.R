@@ -55,8 +55,8 @@ asset_tx_catalog <- function() {
       c(9.2, 8.2, 7.2, 6.2, 5.2, 4.2),
       c(9.2, 8.0, 6.8, 5.6, 4.4),
       c(8.6, 6.5, 4.4),
-      rep(2.25, 8),
-      rep(0.20, 8)
+      rep(2.35, 8),
+      rep(-0.25, 8)
     ),
     textposition = c(
       rep("middle right", 5),
@@ -701,16 +701,17 @@ asset_tx_edge_table <- function(snap, locale = "en") {
     ),
     text = vapply(n_i, function(i) {
       meta <- nodes[nodes$id == snap$nodes$id[i], , drop = FALSE]
-      # The curve node shows the spread level (positive = upward sloping), not only the daily change.
-      line2 <- if (identical(meta$kind[1], "spread")) {
-        asset_tx_fmt_level(snap$nodes$level[i], "spread")
-      } else {
-        asset_tx_fmt_shock(snap$nodes$shock_1d[i], meta$kind[1])
-      }
-      paste0(.asset_tx_label(meta$label_key[1], locale), "<br>", line2)
+      kind <- meta$kind[1]
+      # Every node: locale name, latest level, then the 1D change.
+      # Spread level is the curve (positive = upward sloping); a missing print stays "—".
+      paste0(
+        .asset_tx_label(meta$label_key[1], locale), "<br>",
+        asset_tx_fmt_level(snap$nodes$level[i], kind), "<br>",
+        asset_tx_fmt_shock(snap$nodes$shock_1d[i], kind)
+      )
     }, character(1)),
     textposition = xy$textposition,
-    textfont = list(size = 11, color = "#1c1915", family = "Arial, sans-serif"),
+    textfont = list(size = 10, color = "#1c1915", family = "Arial, sans-serif"),
     hoverinfo = "text",
     hovertext = vapply(n_i, function(i) .asset_tx_node_hover(snap, i, locale), character(1)),
     cliponaxis = FALSE,
@@ -933,7 +934,7 @@ asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
     .asset_tx_headers(locale),
     list(list(
       x = min(nodes_xy$x) - 0.4,
-      y = min(nodes_xy$y) - 0.85,
+      y = min(nodes_xy$y) - 1.55,
       text = paste0("Yahoo Finance · ", date_note),
       showarrow = FALSE,
       xref = "x",
@@ -952,7 +953,7 @@ asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
     ),
     yaxis = list(
       visible = FALSE,
-      range = c(min(nodes_xy$y) - 1.25, max(nodes_xy$y) + 1.35),
+      range = c(min(nodes_xy$y) - 2.05, max(nodes_xy$y) + 1.35),
       fixedrange = TRUE,
       zeroline = FALSE
     ),
@@ -1245,7 +1246,7 @@ asset_transmission_ui <- function(id) {
       shiny::uiOutput(ns("summary")),
       shiny::uiOutput(ns("regime")),
       shiny::uiOutput(ns("path")),
-      htmltools::tags$div(class = "ynow-atx-map", plotly::plotlyOutput(ns("map"), height = "920px")),
+      htmltools::tags$div(class = "ynow-atx-map", plotly::plotlyOutput(ns("map"), height = "1040px")),
       shiny::uiOutput(ns("legend")),
       shiny::uiOutput(ns("nodes_title")),
       DT::DTOutput(ns("nodes")),

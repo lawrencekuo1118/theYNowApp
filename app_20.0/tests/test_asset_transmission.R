@@ -364,7 +364,29 @@ if (requireNamespace("plotly", quietly = TRUE)) {
   check("frame name is a date", grepl("^\\d{4}-\\d{2}-\\d{2}$", fig$x$frames[[1]]$name))
   built <- plotly::plotly_build(fig)
   blob <- paste(unlist(lapply(built$x$data, function(tr) c(tr$text, tr$hovertext))), collapse = "\n")
+  node_text <- unlist(lapply(built$x$data, function(tr) tr$text), use.names = FALSE)
+  node_text <- node_text[!is.na(node_text) & nzchar(node_text)]
   check("zh label on figure", grepl("台灣加權指數", blob, fixed = TRUE))
+  check(
+    "zh TAIEX node shows level and percent shock",
+    any(grepl("台灣加權指數<br>[0-9,]{3,}<br>[+-][0-9.]+%", node_text))
+  )
+  check(
+    "zh US 10Y node shows percent level and bp shock",
+    any(grepl("美國 10 年債<br>[0-9]+\\.[0-9]{2}%<br>[+-][0-9]+\\.[0-9] bp", node_text))
+  )
+  check(
+    "zh hover still has last, 1D, and 5D",
+    grepl("最新", blob, fixed = TRUE) &&
+      grepl("1 日", blob, fixed = TRUE) &&
+      grepl("5 日", blob, fixed = TRUE)
+  )
+  curve_fig <- plotly::plotly_build(asset_tx_figure(list(curve_snap), "zh-TW", "US"))
+  curve_text <- unlist(lapply(curve_fig$x$data, function(tr) tr$text), use.names = FALSE)
+  check(
+    "zh 2s10s node shows spread level and bp change",
+    any(grepl("2s10s<br>\\+70\\.0 bp<br>\\+20\\.0 bp", curve_text))
+  )
   check("play control present", !is.null(built$x$layout$updatemenus) || !is.null(fig$x$layout$updatemenus))
 } else {
   stop("FAIL: plotly namespace missing")
