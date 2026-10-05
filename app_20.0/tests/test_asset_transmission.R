@@ -579,6 +579,12 @@ check(
 )
 mod_src <- paste(readLines("asset_transmission_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check(
+  "figure avoids slow plotly animation_slider rebuild",
+  grepl(".asset_tx_attach_play_frames", mod_src, fixed = TRUE) &&
+    !grepl("plotly::animation_slider", mod_src, fixed = TRUE) &&
+    !grepl("plotly::animation_button", mod_src, fixed = TRUE)
+)
+check(
   "fetch skips Python on shinyapps",
   grepl(".asset_tx_on_shinyapps", mod_src, fixed = TRUE) &&
     grepl("!isTRUE(.asset_tx_on_shinyapps())", mod_src, fixed = TRUE) &&

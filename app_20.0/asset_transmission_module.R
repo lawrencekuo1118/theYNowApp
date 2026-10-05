@@ -447,7 +447,8 @@ asset_tx_tape <- function(panel, catalog = NULL, window = 60L, n = 22L) {
   catalog <- catalog %||% asset_tx_catalog()
   prepared <- .asset_tx_prepare_panel(panel, catalog$nodes)
   if (is.null(prepared)) return(list())
-  dts <- tail(sort(unique(prepared$Date)), max(2L, as.integer(n)[1]))
+  # Allow n=1 for progressive first paint; Play uses n>=2.
+  dts <- tail(sort(unique(prepared$Date)), max(1L, as.integer(n)[1]))
   snaps <- lapply(dts, function(d) {
     asset_tx_snapshot(prepared, catalog = catalog, window = window, as_of = d)
   })
@@ -1199,6 +1200,84 @@ asset_tx_yield_path <- function(snap, locale = "en") {
   p
 }
 
+# Name traces and drop helpers that must not ship in frame payloads.
+.asset_tx_named_traces <- function(snap, locale, market_mode) {
+  traces <- .asset_tx_traces(snap, locale, market_mode)
+  lapply(seq_along(traces), function(i) {
+    tr <- traces[[i]]
+    if (is.null(tr$name) || !nzchar(as.character(tr$name)[1])) {
+      tr$name <- if (i == length(traces)) "nodes" else sprintf("ch%02d", i)
+    }
+    tr$inherit <- NULL
+    tr
+  })
+}
+
+# Attach Play frames without plotly's frame= regroup (that path is ~15s for
+# 22 sessions × ~84 traces). Build the latest session as the base plot, then
+# hang precomputed frame payloads + slider / Play button on the built object.
+.asset_tx_attach_play_frames <- function(p, snaps, locale, market_mode) {
+  names_fr <- vapply(snaps, function(sn) format(sn$as_of, "%Y-%m-%d"), character(1))
+  trace_lists <- lapply(snaps, function(sn) .asset_tx_named_traces(sn, locale, market_mode))
+  n_tr <- length(trace_lists[[1]])
+  if (!n_tr) return(p)
+  idx <- as.list(as.integer(seq_len(n_tr) - 1L))
+  frames <- lapply(seq_along(snaps), function(i) {
+    list(name = names_fr[[i]], data = trace_lists[[i]], traces = idx)
+  })
+  anim_args <- list(
+    mode = "immediate",
+    transition = list(duration = 180, easing = "cubic-in-out"),
+    frame = list(duration = 420, redraw = FALSE)
+  )
+  steps <- lapply(names_fr, function(nm) {
+    list(
+      method = "animate",
+      args = list(list(nm), anim_args),
+      label = nm,
+      value = nm
+    )
+  })
+  p <- plotly::plotly_build(p)
+  p$x$frames <- frames
+  p$x$layout$sliders <- list(list(
+    active = length(names_fr) - 1L,
+    steps = steps,
+    currentvalue = list(
+      prefix = .asset_tx_label("atx_session_prefix", locale),
+      font = list(color = "#f4f6fb", size = 13)
+    ),
+    bgcolor = "#12182e",
+    bordercolor = "#3a4668",
+    tickcolor = "#f4f6fb",
+    font = list(color = "#d5dced", size = 10)
+  ))
+  p$x$layout$updatemenus <- list(structure(
+    list(
+      type = "buttons",
+      direction = "right",
+      showactive = FALSE,
+      y = 0,
+      x = 0,
+      yanchor = "top",
+      xanchor = "right",
+      pad = list(t = 60, r = 5),
+      bgcolor = "#3a6fe0",
+      font = list(color = "#ffffff", size = 12),
+      buttons = list(list(
+        label = .asset_tx_label("atx_play", locale),
+        method = "animate",
+        args = list(
+          NULL,
+          modifyList(anim_args, list(fromcurrent = FALSE), keep.null = TRUE)
+        )
+      ))
+    ),
+    class = "aniButton"
+  ))
+  p
+}
+
 .asset_tx_fig_cache_key <- function(snaps, locale, market_mode) {
   if (!length(snaps)) return("")
   last <- snaps[[length(snaps)]]
@@ -1247,31 +1326,14 @@ asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
   multi <- length(snaps) >= 2L
   # Rebuild arrow routes once per figure, not once per frame.
   rm(list = ls(envir = .asset_tx_route_cache, all.names = TRUE), envir = .asset_tx_route_cache)
+  # Base plot = latest session only. Play frames are attached afterward so we
+  # never pay plotly's O(frames × traces) frame= regroup (~15s at n=22).
   p <- plotly::plot_ly()
-  for (sn in snaps) {
-    traces <- .asset_tx_traces(sn, locale, market_mode)
-    for (i in seq_along(traces)) {
-      tr <- traces[[i]]
-      if (is.null(tr$name) || !nzchar(as.character(tr$name)[1])) {
-        tr$name <- if (i == length(traces)) "nodes" else sprintf("ch%02d", i)
-      }
-      if (multi) tr$frame <- format(sn$as_of, "%Y-%m-%d")
-      args <- tr
-      args$p <- p
-      args$inherit <- FALSE
-      p <- do.call(plotly::add_trace, args)
-    }
-    if (!multi) break
-  }
-  if (multi) {
-    # Lighter animation: shorter frames, no full redraw each step.
-    p <- plotly::animation_opts(
-      p,
-      frame = 420,
-      transition = 180,
-      easing = "cubic-in-out",
-      redraw = FALSE
-    )
+  for (tr in .asset_tx_named_traces(last, locale, market_mode)) {
+    args <- tr
+    args$p <- p
+    args$inherit <- FALSE
+    p <- do.call(plotly::add_trace, args)
   }
   nodes_xy <- last$catalog$nodes
   date_note <- format(last$as_of, "%Y-%m-%d")
@@ -1318,23 +1380,7 @@ asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
     showlegend = FALSE
   )
   if (multi) {
-    p <- plotly::animation_slider(
-      p,
-      currentvalue = list(
-        prefix = .asset_tx_label("atx_session_prefix", locale),
-        font = list(color = "#f4f6fb", size = 13)
-      ),
-      bgcolor = "#12182e",
-      bordercolor = "#3a4668",
-      tickcolor = "#f4f6fb",
-      font = list(color = "#d5dced", size = 10)
-    )
-    p <- plotly::animation_button(
-      p,
-      label = .asset_tx_label("atx_play", locale),
-      bgcolor = "#3a6fe0",
-      font = list(color = "#ffffff", size = 12)
-    )
+    p <- .asset_tx_attach_play_frames(p, snaps, locale, market_mode)
     p <- .asset_tx_show_latest(p)
   }
   out <- plotly::config(
