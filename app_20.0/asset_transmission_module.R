@@ -1818,10 +1818,13 @@ asset_transmission_server <- function(id, ui_locale_rv = NULL, market_mode_rv = 
       )
       if (inherits(res, "asset_tx_fetch_error")) {
         # Keep the last good panel so a failed refresh does not blank the map.
+        # Writes are safe outside a reactive consumer; reads are not.
         err_rv(res$message)
         return(invisible(NULL))
       }
-      old <- pack_rv()
+      # later::later() runs this off the reactive flush so the UI can paint while
+      # Yahoo downloads. Reading a reactiveVal there needs isolate().
+      old <- shiny::isolate(pack_rv())
       if (
         !isTRUE(force) &&
           !is.null(old) &&

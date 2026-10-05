@@ -533,6 +533,37 @@ check(
     grepl("!isTRUE(.asset_tx_on_shinyapps())", mod_src, fixed = TRUE) &&
     grepl("/srv/connect/apps", mod_src, fixed = TRUE)
 )
+check(
+  "panel load isolates reactiveVal reads for later()",
+  grepl("shiny::isolate(pack_rv())", mod_src, fixed = TRUE) &&
+    grepl("later::later(run, delay = 0)", mod_src, fixed = TRUE)
+)
+
+# Runtime: reading a reactiveVal inside later() without isolate() throws the
+# exact shinyapps error; with isolate() the deferred load path stays safe.
+if (requireNamespace("shiny", quietly = TRUE) && requireNamespace("later", quietly = TRUE)) {
+  pack_rv <- shiny::reactiveVal(list(fetched_at = Sys.time(), n_ok = 1L))
+  bad <- NULL
+  later::later(function() {
+    bad <<- tryCatch(pack_rv(), error = function(e) conditionMessage(e))
+  }, delay = 0)
+  later::run_now(timeoutSecs = 1)
+  check(
+    "later without isolate hits reactive-context error",
+    is.character(bad) && grepl("active reactive context", bad, fixed = TRUE)
+  )
+  good <- NULL
+  later::later(function() {
+    good <<- tryCatch(shiny::isolate(pack_rv()), error = function(e) conditionMessage(e))
+  }, delay = 0)
+  later::run_now(timeoutSecs = 1)
+  check(
+    "later with isolate can read pack_rv",
+    is.list(good) && identical(good$n_ok, 1L)
+  )
+} else {
+  check("later/shiny available for reactive-context check", FALSE)
+}
 # Hosted-connect detector must recognize Posit Connect paths (opaque hostnames).
 if (exists(".ynow_is_hosted_connect", mode = "function")) {
   old_wd <- getwd()
