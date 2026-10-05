@@ -8,5 +8,5 @@ short=c6049a1
 message=chore: bump display version to v20.41
 captured_at=2026-10-05T05:04:04Z
 source_branch=cursor/asset-transmission-testing-9c4f
-display_version=v20.41
+display_version=v20.42
 note=Canonical live line is app_20.0. Bundle 12647872 ships v20.41: Testing map uses rounded cards on a dark dotted canvas, fits the content width (no 1640px min-width overflow), and loads Yahoo prints via concurrent curl with a short TTL cache. Deploy via scripts/deploy_app_20.R.
