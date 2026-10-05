@@ -8,5 +8,5 @@ short=104bf19
 message=chore: bump display version to v20.57
 captured_at=2026-10-05T14:24:50Z
 source_branch=master
-display_version=v20.57
+display_version=v20.58
 note=Canonical live line is app_20.0. Bundle 12649808 ships v20.57: Testing tab forest theme (moss/sage/ivory/khaki/brown) via ynow-theme-testing, chart green-up/red-down unchanged. Deploy via scripts/deploy_app_20.R.
