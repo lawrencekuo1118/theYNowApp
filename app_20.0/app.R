@@ -56,4 +56,13 @@ if (!exists("server", inherits = FALSE) || !is.function(server)) {
   stop("ynow_server.R 未定義有效的 server 函式")
 }
 
-shiny::shinyApp(ui = ui, server = server)
+shiny::shinyApp(
+  ui = ui,
+  server = server,
+  onStart = function() {
+    # Listen has started; allow deferred reticulate/uv installs on first real use.
+    if (exists(".ynow_arm_python_install", mode = "function")) {
+      .ynow_arm_python_install()
+    }
+  }
+)

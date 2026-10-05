@@ -469,7 +469,8 @@ check(
     grepl("py_require(.ynow_py_pkgs)", glb_src, fixed = TRUE) &&
     grepl("UV_PYTHON_DOWNLOADS", glb_src, fixed = TRUE) &&
     grepl("RETICULATE_USE_MANAGED_VENV", glb_src, fixed = TRUE) &&
-    grepl(".ynow_is_hosted_connect", glb_src, fixed = TRUE)
+    grepl(".ynow_is_hosted_connect", glb_src, fixed = TRUE) &&
+    grepl(".ynow_python_install_armed", glb_src, fixed = TRUE)
 )
 app_src <- paste(readLines("app.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check(
@@ -478,7 +479,15 @@ check(
     grepl('Sys.setenv(', app_src, fixed = TRUE) &&
     grepl("RETICULATE_USE_MANAGED_VENV", app_src, fixed = TRUE) &&
     grepl(".ynow_is_hosted_connect", app_src, fixed = TRUE) &&
-    grepl("/srv/connect/apps", app_src, fixed = TRUE)
+    grepl("/srv/connect/apps", app_src, fixed = TRUE) &&
+    grepl("onStart", app_src, fixed = TRUE) &&
+    grepl(".ynow_arm_python_install", app_src, fixed = TRUE)
+)
+cfg_src <- paste(readLines("default_config.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check(
+  "default_config does not fetch live Rf at source",
+  !grepl("cached_get_risk_free_rate()", cfg_src, fixed = TRUE) &&
+    grepl("rf_fallback", cfg_src, fixed = TRUE)
 )
 rprofile <- if (file.exists(".Rprofile")) {
   paste(readLines(".Rprofile", warn = FALSE, encoding = "UTF-8"), collapse = "\n")

@@ -16,8 +16,17 @@ default_debt <- if (!is.null(ind_kpi$debt_ratio_avg)) ind_kpi$debt_ratio_avg els
 raw_g <- if (!is.null(ind_kpi$rev_growth)) mean(ind_kpi$rev_growth) else 6
 default_g <- round(max(2, min(raw_g, 10)), 2)
 
-# ---------- 利率／CAPM（與即時 Rf 連動；失敗才工程 fallback 5%）----------
-default_rf <- tryCatch(cached_get_risk_free_rate(), error = function(e) 5.0)
+# ---------- 利率／CAPM ----------
+# Boot must NOT call the live Rf helper (Python/yfinance): on shinyapps that was
+# downloading CPython before Shiny could Listen. Use the documented US fallback
+# here; the server refreshes live Rf after the session starts.
+default_rf <- tryCatch({
+  if (exists("market_profile", mode = "function")) {
+    as.numeric(market_profile("US")$rf_fallback)
+  } else {
+    5.0
+  }
+}, error = function(e) 5.0)
 if (is.null(default_rf) || is.na(default_rf) || default_rf <= 0) default_rf <- 5.0
 default_rf <- round(as.numeric(default_rf), 2)
 

@@ -82,6 +82,12 @@ need <- shiny::need
 # Keep the old name for any callers that still read `py_pkgs`.
 py_pkgs <- .ynow_py_pkgs
 .ynow_python_ready <- FALSE
+# Armed by shinyApp(onStart=...) after Listening. Until then, refuse uv installs.
+.ynow_python_install_armed <- FALSE
+.ynow_arm_python_install <- function() {
+  .ynow_python_install_armed <<- TRUE
+  invisible(TRUE)
+}
 
 .ynow_ensure_python <- function() {
   if (identical(Sys.getenv("YNOW_DEBUG_SKIP_PY"), "1")) return(FALSE)
@@ -91,11 +97,15 @@ py_pkgs <- .ynow_py_pkgs
       error = function(e) FALSE
     )))
   }
+  # Hosted / no-venv: never download CPython while the worker is still sourcing.
+  need_managed <- isTRUE(on_shinyapps) || !file.exists(python_path)
+  if (isTRUE(need_managed) && !isTRUE(.ynow_python_install_armed)) {
+    return(FALSE)
+  }
   ok <- FALSE
   old_uv <- Sys.getenv("UV_PYTHON_DOWNLOADS", unset = NA_character_)
   old_managed <- Sys.getenv("RETICULATE_USE_MANAGED_VENV", unset = NA_character_)
   # Boot blocks downloads; re-enable only for an on-demand install after Listen.
-  need_managed <- isTRUE(on_shinyapps) || !file.exists(python_path)
   if (isTRUE(need_managed)) {
     Sys.setenv(
       UV_PYTHON_DOWNLOADS = "auto",
