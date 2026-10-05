@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12651328
+bundleId=12651376
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=fe3a1f9b7993a217f38c25673478fa3e92149029
-commit=fe3a1f9b7993a217f38c25673478fa3e92149029
-short=fe3a1f9
-message=chore: bump display version to v21.01
-captured_at=2026-10-05T20:38:14Z
+aligned_git=418da6a767dba1712a67193f3507850e0b9d2c1e
+commit=418da6a767dba1712a67193f3507850e0b9d2c1e
+short=418da6a
+message=chore: bump display version to v21.02
+captured_at=2026-10-05T20:51:07Z
 source_branch=master
-display_version=v21.01
-note=Canonical live line is app_21.0. Bundle 12651328 ships v21.01: strict fast (15m cache_mem for Rf/FX/quotes) vs slow (>=24h cache_disk for statements/SEC/industry) so CAPM Ke and MOS track live market. Deploy via scripts/deploy_app_21.R.
+display_version=v21.02
+note=Canonical live line is app_21.0. Bundle 12651376 ships v21.02: lean Plotly (no ggplotly on IS/HFV), DT server+deferRender for statements, route Lab/BBLab through cached summary, skip double-normalize on financials cache hits, hist-price TTL aligned to fast tier. Deploy via scripts/deploy_app_21.R.
