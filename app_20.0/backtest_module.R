@@ -1423,6 +1423,120 @@ enrich_hfv_statements_multisource <- function(ticker, d_is, d_bs, d_cf) {
 
 # ---------- price fetching ----------
 
+# Yahoo lists TPEx as IX0043.TWO but ships almost no chart history (often 1 bar).
+# Official TPEx "日成交量值指數" API returns a full month of 櫃買指數 closes.
+.MACRO_TPEX_INDEX_YAHOO <- "IX0043.TWO"
+.TPEX_INDEX_HISTORY_URL <- "https://www.tpex.org.tw/www/zh-tw/afterTrading/tradingIndex"
+.tpex_index_hist_cache <- new.env(parent = emptyenv())
+.tpex_index_hist_cache_ttl_sec <- 6 * 3600
+
+.ynow_parse_tw_slash_date <- function(x) {
+  parts <- strsplit(trimws(as.character(x %||% "")[1]), "/", fixed = TRUE)[[1]]
+  if (length(parts) != 3L) return(as.Date(NA))
+  y <- suppressWarnings(as.integer(parts[[1]]))
+  m <- suppressWarnings(as.integer(parts[[2]]))
+  d <- suppressWarnings(as.integer(parts[[3]]))
+  if (!all(is.finite(c(y, m, d)))) return(as.Date(NA))
+  # ROC calendar years are < 1912 (e.g. 113/10/01 → 2024-10-01).
+  if (y < 1912L) y <- y + 1911L
+  tryCatch(as.Date(sprintf("%04d-%02d-%02d", y, m, d)), error = function(e) as.Date(NA))
+}
+
+.tpex_index_month_starts <- function(n_months) {
+  n_months <- max(1L, as.integer(n_months)[1])
+  today <- Sys.Date()
+  y <- as.integer(format(today, "%Y"))
+  m <- as.integer(format(today, "%m"))
+  out <- as.Date(rep(NA, n_months))
+  for (i in seq_len(n_months)) {
+    out[[i]] <- as.Date(sprintf("%04d-%02d-01", y, m))
+    m <- m - 1L
+    if (m < 1L) {
+      m <- 12L
+      y <- y - 1L
+    }
+  }
+  rev(out)
+}
+
+.tpex_index_period_months <- function(period = "1y") {
+  p <- tolower(trimws(as.character(period %||% "1y")[1]))
+  switch(
+    p,
+    "1d" = 1L, "5d" = 1L, "1wk" = 1L, "1mo" = 1L, "3mo" = 3L,
+    "6mo" = 6L, "1y" = 12L, "2y" = 24L, "3y" = 36L, "5y" = 60L,
+    12L
+  )
+}
+
+.tpex_index_fetch_month <- function(month_start, timeout_sec = 20) {
+  month_start <- as.Date(month_start)[1]
+  if (is.na(month_start)) return(NULL)
+  date_q <- format(month_start, "%Y/%m/%d")
+  url <- paste0(.TPEX_INDEX_HISTORY_URL, "?date=", utils::URLencode(date_q, reserved = TRUE))
+  resp <- tryCatch(
+    httr::GET(url, httr::user_agent("Mozilla/5.0"), httr::timeout(timeout_sec)),
+    error = function(e) NULL
+  )
+  if (is.null(resp) || httr::status_code(resp) >= 400L) return(NULL)
+  raw <- tryCatch(httr::content(resp, as = "text", encoding = "UTF-8"), error = function(e) "")
+  parsed <- tryCatch(jsonlite::fromJSON(raw, simplifyVector = FALSE), error = function(e) NULL)
+  if (!is.list(parsed)) return(NULL)
+  tables <- parsed$tables
+  if (!is.list(tables) || !length(tables)) return(NULL)
+  rows <- tables[[1]]$data
+  if (!is.list(rows) || !length(rows)) return(NULL)
+  dates <- as.Date(rep(NA, length(rows)))
+  closes <- rep(NA_real_, length(rows))
+  vols <- rep(NA_real_, length(rows))
+  for (i in seq_along(rows)) {
+    row <- rows[[i]]
+    if (!is.list(row) || length(row) < 5L) next
+    dates[[i]] <- .ynow_parse_tw_slash_date(row[[1]])
+    closes[[i]] <- suppressWarnings(as.numeric(row[[5]]))
+    # Trading unit (張) → approximate share volume.
+    vols[[i]] <- suppressWarnings(as.numeric(gsub(",", "", as.character(row[[2]]), fixed = TRUE))) * 1000
+  }
+  ok <- !is.na(dates) & is.finite(closes)
+  if (!any(ok)) return(NULL)
+  data.frame(
+    Date = dates[ok],
+    Close = closes[ok],
+    Volume = vols[ok],
+    stringsAsFactors = FALSE
+  )
+}
+
+#' TPEx capitalization-weighted index history from the official tradingIndex API.
+fetch_tpex_index_history_df <- function(period = "1y", timeout_sec = 20) {
+  n_months <- .tpex_index_period_months(period)
+  cache_key <- paste0("m", n_months)
+  hit <- .tpex_index_hist_cache[[cache_key]]
+  if (is.list(hit) && is.data.frame(hit$df) &&
+      is.finite(as.numeric(hit$at)) &&
+      (as.numeric(Sys.time()) - as.numeric(hit$at)) < .tpex_index_hist_cache_ttl_sec) {
+    return(hit$df)
+  }
+  months <- .tpex_index_month_starts(n_months)
+  chunks <- lapply(months, function(ms) {
+    tryCatch(.tpex_index_fetch_month(ms, timeout_sec = timeout_sec), error = function(e) NULL)
+  })
+  chunks <- Filter(function(x) is.data.frame(x) && nrow(x) > 0L, chunks)
+  if (!length(chunks)) return(NULL)
+  df <- do.call(rbind, chunks)
+  df <- df[is.finite(df$Close) & !is.na(df$Date), , drop = FALSE]
+  if (!nrow(df)) return(NULL)
+  df <- df[order(df$Date), , drop = FALSE]
+  df <- df[!duplicated(df$Date, fromLast = TRUE), , drop = FALSE]
+  .tpex_index_hist_cache[[cache_key]] <- list(df = df, at = Sys.time())
+  df
+}
+
+.is_tpex_index_symbol <- function(ticker) {
+  tk <- toupper(trimws(as.character(ticker %||% "")[1]))
+  identical(tk, .MACRO_TPEX_INDEX_YAHOO) || identical(tk, "IX0043")
+}
+
 fetch_price_history_df <- function(ticker, period = "5y") {
   raw_ticker <- as.character(ticker)[1]
   ticker <- toupper(trimws(raw_ticker))
@@ -1486,6 +1600,34 @@ fetch_price_history_df <- function(ticker, period = "5y") {
       return(df)
     }
     if (nrow(df) >= 1L) short_df <- df
+  }
+
+  # TPEx capitalization index: Yahoo often has a single live bar and no tape.
+  if (.is_tpex_index_symbol(ticker)) {
+    tpex_df <- tryCatch(fetch_tpex_index_history_df(period), error = function(e) NULL)
+    # #region agent log
+    tryCatch({
+      line <- jsonlite::toJSON(list(
+        sessionId = "f77c57",
+        runId = "tpex-hist",
+        hypothesisId = "H1-yahoo-thin",
+        location = "backtest_module.R:fetch_price_history_df",
+        message = "tpex index fallback",
+        data = list(
+          ticker = ticker,
+          period = as.character(period)[1],
+          yfin_nrow = yfin_nrow,
+          yfin_finite = yfin_finite,
+          tpex_nrow = if (is.data.frame(tpex_df)) nrow(tpex_df) else 0L,
+          tpex_finite = if (is.data.frame(tpex_df) && "Close" %in% names(tpex_df)) sum(is.finite(tpex_df$Close)) else 0L,
+          used_tpex = is.data.frame(tpex_df) && nrow(tpex_df) >= 2L
+        ),
+        timestamp = as.numeric(Sys.time()) * 1000
+      ), auto_unbox = TRUE)
+      cat(as.character(line), "\n", file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-f77c57.log", append = TRUE)
+    }, error = function(e) invisible(NULL))
+    # #endregion
+    if (is.data.frame(tpex_df) && nrow(tpex_df) >= 2L) return(tpex_df)
   }
 
   qm_err <- ""

@@ -20,7 +20,9 @@ if (!exists("%||%", mode = "function")) {
 )
 
 # Taiwan boards (Yahoo native TWD): TAIEX, TPEx, and Yuanta Taiwan 50 (0050.TW).
-# TPEx cap-weighted index is IX0043.TWO. ^TWOII is delisted on Yahoo (404, empty history).
+# TPEx cap-weighted index is IX0043.TWO. Yahoo chart history for that symbol is
+# effectively empty (often a single live bar; ^TWOII is delisted). Macro / price
+# fetch falls back to TPEx official tradingIndex (櫃買指數) via fetch_tpex_index_history_df().
 # Industry sub-indices (Electronics / Finance) are not Macro 大盤指標.
 .MACRO_TW_INDICES <- c(
   "^TWII" = "TAIEX",

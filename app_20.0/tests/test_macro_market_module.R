@@ -70,6 +70,16 @@ check("name key GSPC", identical(macro_index_name_key("^GSPC"), "macro_index_nam
 check("name key TWII", identical(macro_index_name_key("^TWII"), "macro_index_name_twii"))
 check("name key TWOII", identical(macro_index_name_key("IX0043.TWO"), "macro_index_name_twoii"))
 check("name key 0050", identical(macro_index_name_key("0050.TW"), "macro_index_name_0050"))
+bt_src <- paste(readLines("backtest_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check("TPEx index official history fallback wired", {
+  grepl("fetch_tpex_index_history_df", bt_src, fixed = TRUE) &&
+    grepl(".is_tpex_index_symbol", bt_src, fixed = TRUE) &&
+    grepl("afterTrading/tradingIndex", bt_src, fixed = TRUE) &&
+    grepl("IX0043.TWO", bt_src, fixed = TRUE)
+})
+check("macro notes Yahoo TPEx history gap", {
+  grepl("fetch_tpex_index_history_df", paste(readLines("macro_market_module.R", warn = FALSE), collapse = "\n"), fixed = TRUE)
+})
 for (sym in names(click_tw)) {
   check(
     paste("TW click maps", sym),
