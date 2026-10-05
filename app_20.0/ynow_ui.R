@@ -3396,7 +3396,8 @@ ui <- dashboardPage(
         /* Asset transmission: no outer frame around the Testing panel. */
         .box.box-solid.box-primary.ynow-atx-panel,
         body.ynow-theme-model .content-wrapper .box.box-solid.box-primary.ynow-atx-panel,
-        body.ynow-theme-bluechip .content-wrapper .box.box-solid.box-primary.ynow-atx-panel {
+        body.ynow-theme-bluechip .content-wrapper .box.box-solid.box-primary.ynow-atx-panel,
+        body.ynow-theme-testing .content-wrapper .box.box-solid.box-primary.ynow-atx-panel {
           border: none !important;
           box-shadow: none !important;
         }
@@ -3781,6 +3782,207 @@ ui <- dashboardPage(
         body.ynow-theme-bluechip .content-wrapper .load-container .loader,
         body.ynow-theme-bluechip .content-wrapper .shiny-spinner-output-container .load-container {
           color: var(--ynow-bluechip-cyan);
+        }
+
+        /* --- Testing / Asset transmission：森林色系（TW／US 共用；圖表綠漲紅跌不變）---
+           Palette: #464704 → #9CA889 → #F3F5E7 → #B7A78C → #423926 */
+        body.ynow-theme-testing {
+          --ynow-testing-moss: #464704;
+          --ynow-testing-sage: #9CA889;
+          --ynow-testing-ivory: #F3F5E7;
+          --ynow-testing-khaki: #B7A78C;
+          --ynow-testing-brown: #423926;
+          --ynow-testing-accent: var(--ynow-testing-moss);
+          --ynow-testing-accent-deep: var(--ynow-testing-brown);
+          --ynow-testing-gradient: linear-gradient(
+            105deg,
+            #423926 0%,
+            #464704 28%,
+            #6e7340 55%,
+            #9CA889 78%,
+            #B7A78C 100%
+          );
+          --ynow-testing-wash: linear-gradient(
+            180deg,
+            rgba(70, 71, 4, 0.08) 0%,
+            rgba(156, 168, 137, 0.10) 42%,
+            rgba(243, 245, 231, 0.55) 100%
+          );
+          accent-color: var(--ynow-testing-moss);
+        }
+        body.ynow-theme-testing .content-wrapper {
+          background-color: var(--ynow-testing-ivory) !important;
+          background-image: var(--ynow-testing-wash) !important;
+        }
+        body.ynow-theme-testing .content-wrapper h2,
+        body.ynow-theme-testing .content-wrapper h2 b,
+        body.ynow-theme-testing .content-wrapper #ynow_testing_page_title {
+          color: var(--ynow-testing-brown) !important;
+        }
+        body.ynow-theme-testing .content-wrapper #ynow_testing_page_sub,
+        body.ynow-theme-testing .content-wrapper #ynow_testing_box_body {
+          color: #5c5346 !important;
+        }
+        body.ynow-theme-testing .content-wrapper hr {
+          border-top-color: var(--ynow-testing-khaki) !important;
+        }
+        body.ynow-theme-testing .content-wrapper .box.box-primary,
+        body.ynow-theme-testing .content-wrapper .box.box-info,
+        body.ynow-theme-testing .content-wrapper .box.box-success,
+        body.ynow-theme-testing .content-wrapper .box.box-warning {
+          border-top-color: var(--ynow-testing-accent) !important;
+        }
+        body.ynow-theme-testing .content-wrapper .box.box-solid.box-primary,
+        body.ynow-theme-testing .content-wrapper .box.box-solid.box-info,
+        body.ynow-theme-testing .content-wrapper .box.box-solid.box-success,
+        body.ynow-theme-testing .content-wrapper .box.box-solid.box-warning {
+          border: 1px solid var(--ynow-testing-khaki) !important;
+        }
+        body.ynow-theme-testing .content-wrapper .box.box-solid.box-primary > .box-header,
+        body.ynow-theme-testing .content-wrapper .box.box-solid.box-info > .box-header,
+        body.ynow-theme-testing .content-wrapper .box.box-solid.box-success > .box-header,
+        body.ynow-theme-testing .content-wrapper .box.box-solid.box-warning > .box-header {
+          color: #fff !important;
+          background: var(--ynow-testing-gradient) !important;
+          background-color: var(--ynow-testing-accent) !important;
+          border-bottom-color: var(--ynow-testing-brown) !important;
+        }
+        body.ynow-theme-testing .content-wrapper .box.box-solid.box-primary > .box-header a,
+        body.ynow-theme-testing .content-wrapper .box.box-solid.box-primary > .box-header .btn,
+        body.ynow-theme-testing .content-wrapper .box.box-solid.box-info > .box-header a,
+        body.ynow-theme-testing .content-wrapper .box.box-solid.box-info > .box-header .btn,
+        body.ynow-theme-testing .content-wrapper .box.box-solid.box-success > .box-header a,
+        body.ynow-theme-testing .content-wrapper .box.box-solid.box-success > .box-header .btn,
+        body.ynow-theme-testing .content-wrapper .box.box-solid.box-warning > .box-header a,
+        body.ynow-theme-testing .content-wrapper .box.box-solid.box-warning > .box-header .btn {
+          color: #fff !important;
+        }
+        body.ynow-theme-testing .content-wrapper .nav-tabs-custom > .nav-tabs > li.active {
+          border-top-color: var(--ynow-testing-sage) !important;
+        }
+        body.ynow-theme-testing .content-wrapper .nav-tabs-custom > .nav-tabs > li.active > a,
+        body.ynow-theme-testing .content-wrapper .nav-tabs-custom > .nav-tabs > li.active:hover > a {
+          color: var(--ynow-testing-brown) !important;
+        }
+        body.ynow-theme-testing .content-wrapper .nav-tabs-custom > .nav-tabs > li > a > .fa,
+        body.ynow-theme-testing .content-wrapper .nav-tabs-custom > .nav-tabs > li > a > .fas {
+          color: var(--ynow-testing-moss);
+        }
+        body.ynow-theme-testing .content-wrapper .nav-tabs-custom > .nav-tabs > li.active > a > .fa,
+        body.ynow-theme-testing .content-wrapper .nav-tabs-custom > .nav-tabs > li.active > a > .fas {
+          color: var(--ynow-testing-brown);
+        }
+        body.ynow-theme-testing .content-wrapper .nav-tabs-custom > .nav-tabs > li.header {
+          color: var(--ynow-testing-brown) !important;
+        }
+        body.ynow-theme-testing .content-wrapper .btn-success,
+        body.ynow-theme-testing .content-wrapper .btn-success:focus,
+        body.ynow-theme-testing .content-wrapper .btn-success:active,
+        body.ynow-theme-testing .content-wrapper .btn-success.active,
+        body.ynow-theme-testing .content-wrapper .btn-primary,
+        body.ynow-theme-testing .content-wrapper .btn-info {
+          background-color: var(--ynow-testing-moss) !important;
+          border-color: var(--ynow-testing-brown) !important;
+          color: #fff !important;
+          background-image: none !important;
+        }
+        body.ynow-theme-testing .content-wrapper .btn-success:hover,
+        body.ynow-theme-testing .content-wrapper .btn-primary:hover,
+        body.ynow-theme-testing .content-wrapper .btn-info:hover {
+          background-color: var(--ynow-testing-brown) !important;
+          border-color: var(--ynow-testing-brown) !important;
+          color: #fff !important;
+        }
+        body.ynow-theme-testing .content-wrapper .btn-default {
+          border-color: var(--ynow-testing-khaki) !important;
+          color: var(--ynow-testing-brown) !important;
+          background-color: rgba(243, 245, 231, 0.85) !important;
+        }
+        body.ynow-theme-testing .content-wrapper .btn-default:hover {
+          background-color: rgba(156, 168, 137, 0.28) !important;
+          border-color: var(--ynow-testing-sage) !important;
+          color: var(--ynow-testing-brown) !important;
+        }
+        body.ynow-theme-testing .content-wrapper .form-control:focus,
+        body.ynow-theme-testing .content-wrapper .selectize-input.focus {
+          border-color: var(--ynow-testing-sage) !important;
+          box-shadow: 0 0 0 2px rgba(156, 168, 137, 0.35) !important;
+        }
+        body.ynow-theme-testing .content-wrapper .radio input[type="radio"],
+        body.ynow-theme-testing .content-wrapper .checkbox input[type="checkbox"] {
+          accent-color: var(--ynow-testing-moss);
+        }
+        body.ynow-theme-testing .content-wrapper a:not(.btn) {
+          color: var(--ynow-testing-moss);
+        }
+        body.ynow-theme-testing .content-wrapper a:not(.btn):hover {
+          color: var(--ynow-testing-brown);
+        }
+        body.ynow-theme-testing .content-wrapper .label-primary,
+        body.ynow-theme-testing .content-wrapper .badge-primary,
+        body.ynow-theme-testing .content-wrapper .label-info,
+        body.ynow-theme-testing .content-wrapper .badge-info {
+          background-color: var(--ynow-testing-moss) !important;
+        }
+        body.ynow-theme-testing .content-wrapper .progress-bar,
+        body.ynow-theme-testing .content-wrapper .progress-bar-success,
+        body.ynow-theme-testing .content-wrapper .progress-bar-info {
+          background-color: var(--ynow-testing-sage) !important;
+        }
+        body.ynow-theme-testing .content-wrapper .small-box,
+        body.ynow-theme-testing .content-wrapper .small-box.bg-aqua,
+        body.ynow-theme-testing .content-wrapper .small-box.bg-blue,
+        body.ynow-theme-testing .content-wrapper .small-box.bg-green {
+          background-color: var(--ynow-testing-moss) !important;
+        }
+        body.ynow-theme-testing.skin-black .main-sidebar .sidebar-menu > li.active > a,
+        body.ynow-theme-testing.skin-black .main-sidebar .sidebar-menu > li.menu-open > a {
+          border-left-color: var(--ynow-testing-sage) !important;
+        }
+        body.ynow-theme-testing .content-wrapper .dataTables_wrapper .dataTables_paginate .paginate_button.current,
+        body.ynow-theme-testing .content-wrapper .dataTables_wrapper .dataTables_paginate .paginate_button.current:hover {
+          background: var(--ynow-testing-moss) !important;
+          border-color: var(--ynow-testing-brown) !important;
+          color: #fff !important;
+        }
+        body.ynow-theme-testing .content-wrapper table.table > thead > tr > th {
+          border-bottom-color: var(--ynow-testing-khaki) !important;
+          color: var(--ynow-testing-brown);
+        }
+        body.ynow-theme-testing .content-wrapper .load-container .loader,
+        body.ynow-theme-testing .content-wrapper .shiny-spinner-output-container .load-container {
+          color: var(--ynow-testing-sage);
+        }
+        /* ATX chrome follows forest palette; map canvas + move colors stay as designed. */
+        body.ynow-theme-testing .content-wrapper .ynow-atx-summary,
+        body.ynow-theme-testing .content-wrapper .ynow-atx h4 {
+          color: var(--ynow-testing-brown);
+        }
+        body.ynow-theme-testing .content-wrapper .ynow-atx-legend,
+        body.ynow-theme-testing .content-wrapper .ynow-atx-note,
+        body.ynow-theme-testing .content-wrapper .ynow-atx-status {
+          color: #5c5346;
+        }
+        body.ynow-theme-testing .content-wrapper .ynow-atx-regime,
+        body.ynow-theme-testing .content-wrapper .ynow-atx-path {
+          background: rgba(243, 245, 231, 0.92);
+          border-color: var(--ynow-testing-khaki);
+        }
+        body.ynow-theme-testing .content-wrapper .ynow-atx-regime h4,
+        body.ynow-theme-testing .content-wrapper .ynow-atx-path h4 {
+          color: var(--ynow-testing-brown);
+        }
+        body.ynow-theme-testing .content-wrapper .ynow-atx-load-bar {
+          background: linear-gradient(
+            90deg,
+            var(--ynow-testing-moss) 0%,
+            var(--ynow-testing-sage) 55%,
+            var(--ynow-testing-khaki) 100%
+          );
+        }
+        body.ynow-theme-testing .content-wrapper .ynow-atx-load-track {
+          background: rgba(243, 245, 231, 0.22);
+          box-shadow: inset 0 0 0 1px rgba(183, 167, 140, 0.35);
         }
 
         /* Dashboard 損益表／現金流量表：圖標與選取頂條對齊 logo 金 */
@@ -6757,6 +6959,7 @@ ui <- dashboardPage(
               });
               document.body.classList.toggle('ynow-theme-model', !!key);
               document.body.classList.toggle('ynow-theme-bluechip', tab === 'bluechip');
+              document.body.classList.toggle('ynow-theme-testing', tab === 'testing');
             });
           }
           registerLocaleHandler();

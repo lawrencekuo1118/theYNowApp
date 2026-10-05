@@ -524,6 +524,21 @@ check(
     grepl("box.box-solid.box-primary.ynow-atx-panel", ui_src, fixed = TRUE) &&
     grepl("border: none !important", ui_src, fixed = TRUE)
 )
+check(
+  "Testing tab forest theme mirrors Blue Chip toggle",
+  grepl("ynow-theme-testing", ui_src, fixed = TRUE) &&
+    grepl("tab === 'testing'", ui_src, fixed = TRUE) &&
+    grepl("--ynow-testing-moss: #464704", ui_src, fixed = TRUE) &&
+    grepl("--ynow-testing-sage: #9CA889", ui_src, fixed = TRUE) &&
+    grepl("--ynow-testing-ivory: #F3F5E7", ui_src, fixed = TRUE) &&
+    grepl("--ynow-testing-khaki: #B7A78C", ui_src, fixed = TRUE) &&
+    grepl("--ynow-testing-brown: #423926", ui_src, fixed = TRUE)
+)
+check(
+  "ATX move colors stay green-up / red-down (US)",
+  identical(asset_tx_move_colors("US")$up, "#1e7a46") &&
+    identical(asset_tx_move_colors("US")$down, "#c0392b")
+)
 check("server mounts module", grepl('asset_transmission_server(', srv_src, fixed = TRUE))
 check("global sources module", grepl('source("asset_transmission_module.R"', glb_src, fixed = TRUE))
 check(

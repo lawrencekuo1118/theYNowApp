@@ -267,6 +267,15 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
                           grepl("mode-agnostic|both markets", txt, ignore.case = TRUE))
   testthat::expect_true(grepl("#lab_im_run_fscore", txt, fixed = TRUE))
   testthat::expect_false(grepl("搜尋績優股維持 logo 綠", txt, fixed = TRUE))
+  # Testing tab uses forest palette (same toggle pattern as Blue Chip)
+  testthat::expect_true(grepl("ynow-theme-testing", txt, fixed = TRUE))
+  testthat::expect_true(grepl("--ynow-testing-moss: #464704", txt, fixed = TRUE))
+  testthat::expect_true(grepl("--ynow-testing-sage: #9CA889", txt, fixed = TRUE))
+  testthat::expect_true(grepl("--ynow-testing-ivory: #F3F5E7", txt, fixed = TRUE))
+  testthat::expect_true(grepl("--ynow-testing-khaki: #B7A78C", txt, fixed = TRUE))
+  testthat::expect_true(grepl("--ynow-testing-brown: #423926", txt, fixed = TRUE))
+  testthat::expect_true(grepl("tab === 'testing'", txt, fixed = TRUE))
+  testthat::expect_true(grepl("圖表綠漲紅跌不變", txt, fixed = TRUE))
   testthat::expect_true(
     regexpr('tabName = "dashboard"', txt, fixed = TRUE)[1] <
       regexpr('tabName = "sensitivity"', txt, fixed = TRUE)[1]

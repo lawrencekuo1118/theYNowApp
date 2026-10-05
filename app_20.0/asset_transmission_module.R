@@ -1914,7 +1914,7 @@ asset_transmission_ui <- function(id) {
         shinycssloaders::withSpinner(
           plotly::plotlyOutput(ns("map"), height = "900px", width = "100%"),
           type = 4,
-          color = "#3a6fe0",
+          color = "#9CA889",
           proxy.height = "420px"
         )
       ),
