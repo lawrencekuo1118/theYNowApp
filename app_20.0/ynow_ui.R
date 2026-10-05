@@ -9484,6 +9484,113 @@ ui <- dashboardPage(
         .ynow-fscore-item { font-weight: 600; font-size: 12.5px; color: #222; line-height: 1.4; }
 
         /* YNOW：Quality of Earnings dashboard + automated risk matrix */
+        /* Beneish M-Score control-point widget */
+        .ynow-mscore-widget {
+          margin: 0 0 16px 0;
+          padding: 14px 16px;
+          border-radius: 8px;
+          border: 1px solid #dee2e6;
+          background: #f8f9fa;
+        }
+        .ynow-mscore-widget--danger {
+          border-color: #e0b4b0;
+          background: linear-gradient(180deg, #fdf4f3 0%, #fff 70%);
+          box-shadow: 0 0 0 1px rgba(192, 57, 43, 0.08);
+        }
+        .ynow-mscore-widget--watch {
+          border-color: #e6d6a8;
+          background: linear-gradient(180deg, #fffbf0 0%, #fff 70%);
+        }
+        .ynow-mscore-widget--pass {
+          border-color: #b8dfc8;
+          background: linear-gradient(180deg, #eef8f1 0%, #fff 70%);
+        }
+        .ynow-mscore-widget--na {
+          border-style: dashed;
+          color: #666;
+        }
+        .ynow-mscore-widget__head {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          margin: 0 0 10px 0;
+        }
+        .ynow-mscore-widget__title {
+          font-size: 14px;
+          font-weight: 700;
+          color: #1a1a1a;
+        }
+        .ynow-mscore-widget__badge {
+          display: inline-block;
+          padding: 2px 8px;
+          border-radius: 4px;
+          font-size: 11px;
+          font-weight: 700;
+          background: #f0f2f4;
+          color: #555;
+        }
+        .ynow-mscore-widget__badge--danger { background: #faf0ef; color: #c0392b; }
+        .ynow-mscore-widget__badge--watch { background: #fff6e0; color: #9a7b1a; }
+        .ynow-mscore-widget__badge--pass { background: #e8f6ee; color: #1e7a45; }
+        .ynow-mscore-widget__body {
+          display: grid;
+          grid-template-columns: minmax(88px, 120px) 1fr;
+          gap: 12px;
+          align-items: center;
+        }
+        @media (max-width: 640px) {
+          .ynow-mscore-widget__body { grid-template-columns: 1fr; }
+        }
+        .ynow-mscore-widget__value {
+          font-size: 34px;
+          font-weight: 800;
+          line-height: 1.05;
+          font-variant-numeric: tabular-nums;
+          color: #0C5484;
+        }
+        .ynow-mscore-widget--danger .ynow-mscore-widget__value { color: #c0392b; }
+        .ynow-mscore-widget--watch .ynow-mscore-widget__value { color: #9a7b1a; }
+        .ynow-mscore-widget--pass .ynow-mscore-widget__value { color: #1e7a45; }
+        .ynow-mscore-widget__msg {
+          margin: 0 0 4px 0;
+          font-size: 13.5px;
+          font-weight: 600;
+          line-height: 1.45;
+          color: #222;
+        }
+        .ynow-mscore-widget__hint {
+          margin: 0;
+          font-size: 12px;
+          color: #666;
+          line-height: 1.45;
+        }
+        .ynow-mscore-widget__nuance {
+          margin: 10px 0 0 0;
+          padding: 8px 10px;
+          border-left: 3px solid #d68910;
+          background: #fff8e8;
+          font-size: 12.5px;
+          line-height: 1.5;
+          color: #5c4a12;
+        }
+        .ynow-mscore-widget__details {
+          margin: 10px 0 0 0;
+          font-size: 12.5px;
+          color: #444;
+        }
+        .ynow-mscore-widget__details > summary {
+          cursor: pointer;
+          font-weight: 600;
+          color: #0C5484;
+        }
+        .ynow-mscore-widget__list {
+          margin: 8px 0 0 0;
+          padding-left: 18px;
+          line-height: 1.55;
+        }
+
         .ynow-eq-wrap, .ynow-eq-matrix-wrap { margin: 0 0 18px 0; }
         .ynow-eq-waiting { color: #777; font-size: 13px; margin: 0; }
         .ynow-eq-head { margin: 0 0 12px 0; }

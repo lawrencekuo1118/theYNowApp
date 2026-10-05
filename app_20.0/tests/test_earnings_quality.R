@@ -108,6 +108,54 @@ check("bad qoe below healthy", is.finite(pack_bad$qoe_score) && pack_bad$qoe_sco
 # Beneish components present
 check("DSRI in components", !is.null(pack_ok$m_components$DSRI))
 check("TATA in components", !is.null(pack_ok$m_components$TATA))
+check("LVGI in components", !is.null(pack_ok$m_components$LVGI))
+check("contributions present", length(pack_ok$m_contributions) >= 1L)
+
+# Public calculate_m_score API (wide t / t1 columns)
+fin_wide <- data.frame(
+  Sales_t = 100, Sales_t1 = 95,
+  Receivables_t = 12, Receivables_t1 = 11.5,
+  COGS_t = 60, COGS_t1 = 57,
+  Current_Assets_t = 30, Current_Assets_t1 = 29,
+  PPE_t = 20, PPE_t1 = 19.5,
+  Total_Assets_t = 80, Total_Assets_t1 = 78,
+  Depreciation_t = 4, Depreciation_t1 = 3.9,
+  SGA_t = 12, SGA_t1 = 11.5,
+  Current_Liabilities_t = 15, Current_Liabilities_t1 = 14.5,
+  Long_Term_Debt_t = 8, Long_Term_Debt_t1 = 8,
+  Net_Income_t = 12, OCF_t = 16,
+  stringsAsFactors = FALSE
+)
+ms <- calculate_m_score(fin_wide)
+check("calculate_m_score finite", is.finite(ms$M_Score[1]))
+check("calculate_m_score not risk by default healthy", isFALSE(ms$Risk_Flag[1]))
+check("calculate_m_score returns 8 comps", all(c("DSRI", "GMI", "AQI", "SGI", "DEPI", "SGAI", "LVGI", "TATA") %in% names(ms)))
+
+# Growth-only SGI spike: high SGI, calm DSRI → nuance when M > −1.78
+sgi_spike <- fin_wide
+sgi_spike$Sales_t <- 220
+sgi_spike$Receivables_t <- 24  # AR tracks sales → DSRI ~1
+ms_sgi <- calculate_m_score(sgi_spike)
+check("sgi spike can raise M", is.finite(ms_sgi$M_Score[1]) && ms_sgi$M_Score[1] > ms$M_Score[1])
+if (isTRUE(ms_sgi$Risk_Flag[1])) {
+  check("sgi nuance when alert + calm DSRI", isTRUE(ms_sgi$SGI_Nuance[1]))
+} else {
+  check("sgi nuance skipped when not alert", TRUE)
+}
+
+# LVGI uses CL + LTD
+ctx_lv <- list(
+  rev = c(100, 95), gp = c(40, 38), cogs = c(60, 57),
+  sga = c(12, 11.5), ni = c(12, 11), ocf = c(16, 15),
+  dep = c(4, 3.9), ar = c(12, 11.5), ca = c(30, 29),
+  ppe = c(20, 19.5), assets = c(80, 78),
+  cl = c(15, 14.5), ltd = c(8, 8), debt = c(10, 10)
+)
+comp_lv <- .eq_beneish_components(ctx_lv)
+lev_t <- (15 + 8) / 80
+lev_t1 <- (14.5 + 8) / 78
+expect_lvgi <- lev_t / lev_t1
+check("LVGI uses CL+LTD", is.finite(comp_lv$LVGI) && abs(comp_lv$LVGI - expect_lvgi) < 1e-6)
 
 # Warnings collector
 warns <- collect_earnings_quality_warnings(is_bad, bs_bad, cf_bad, f_score_pack = fs_bad)
@@ -125,6 +173,13 @@ check("matrix title", grepl("自動化風險矩陣", mx, fixed = TRUE))
 check("matrix has Beneish", grepl("Beneish", mx, fixed = TRUE))
 check("matrix red flags block", grepl("紅旗警示", mx, fixed = TRUE))
 
+mw <- as.character(beneish_m_score_widget_ui(pack_ok, locale = "zh-TW"))
+check("mscore widget title", grepl("Beneish M-Score", mw, fixed = TRUE))
+check("mscore widget value", grepl(sprintf("%.2f", pack_ok$m_score), mw, fixed = TRUE))
+check("mscore widget details", grepl("8 項指標細項", mw, fixed = TRUE))
+mw_en <- as.character(beneish_m_score_widget_ui(pack_ok, locale = "en"))
+check("mscore widget en", grepl("earnings-manipulation", mw_en, fixed = TRUE))
+
 # Locale helpers
 check("flag localize en", identical(.eq_localize_flag("警示", "en"), "Alert"))
 check("metric localize zh AR", grepl("應收", .eq_localize_metric("Production–Valuation Divergence", "zh-TW")))
@@ -133,6 +188,8 @@ check("metric localize zh AR", grepl("應收", .eq_localize_metric("Production�
 dec <- paste(readLines(file.path(app_dir, "investment_decision_module.R"), warn = FALSE), collapse = "\n")
 check("decision has qoe_dashboard", grepl("qoe_dashboard", dec, fixed = TRUE))
 check("decision has risk_matrix_panel", grepl("risk_matrix_panel", dec, fixed = TRUE))
+check("decision has mscore_widget", grepl("mscore_widget", dec, fixed = TRUE))
+check("decision mounts beneish widget", grepl("beneish_m_score_widget_ui", dec, fixed = TRUE))
 glob <- paste(readLines(file.path(app_dir, "global.R"), warn = FALSE), collapse = "\n")
 check("global sources earnings_quality_module", grepl("earnings_quality_module.R", glob, fixed = TRUE))
 

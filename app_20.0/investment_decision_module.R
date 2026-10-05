@@ -115,6 +115,11 @@ decision_ui <- function(id) {
           uiOutput(ns("ui_recommendation")),
           tags$div(
             class = "ynow-funnel-table-wrap",
+            id = "ynow_mscore_widget_anchor",
+            uiOutput(ns("mscore_widget"))
+          ),
+          tags$div(
+            class = "ynow-funnel-table-wrap",
             id = "ynow_eq_dashboard_anchor",
             uiOutput(ns("qoe_dashboard"))
           ),
@@ -565,6 +570,12 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
         color = if (n > 0L) "red" else "green",
         width = NULL
       )
+    })
+
+    output$mscore_widget <- renderUI({
+      loc <- .ui_loc()
+      pack <- tryCatch(eq_eval(), error = function(e) NULL)
+      beneish_m_score_widget_ui(pack, locale = loc)
     })
 
     output$qoe_dashboard <- renderUI({
