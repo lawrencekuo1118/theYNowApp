@@ -129,6 +129,20 @@ check(
   "missing print stays in place",
   identical(.asset_tx_num_vec(list(1, NULL, 3.5), 3), c(1, NA_real_, 3.5))
 )
+check("window choice null", identical(.asset_tx_window_choice(NULL), "60"))
+check("window choice empty", identical(.asset_tx_window_choice(character(0)), "60"))
+check("window choice 20", identical(.asset_tx_window_choice("20"), "20"))
+chart_fix <- .asset_tx_parse_chart(list(
+  chart = list(result = list(list(
+    timestamp = list(1725148800, 1725235200),
+    meta = list(exchangeTimezoneName = "America/New_York"),
+    indicators = list(quote = list(list(close = list(4.2, NULL))))
+  )))
+))
+check(
+  "chart parser keeps a finite close",
+  length(chart_fix) == 1L && is.finite(unname(chart_fix)[[1]])
+)
 
 us_col <- asset_tx_move_colors("US")
 tw_col <- asset_tx_move_colors("TW")

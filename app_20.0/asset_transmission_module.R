@@ -990,6 +990,89 @@ asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
 
 # ---- Fetch -----------------------------------------------------------------
 
+.asset_tx_yahoo_range <- function(period) {
+  switch(as.character(period %||% "1y")[1], "6mo" = "6mo", "2y" = "2y", "5y" = "5y", "1y")
+}
+
+.asset_tx_window_choice <- function(sel) {
+  sel <- as.character(sel %||% "")
+  sel <- if (length(sel) >= 1L) sel[[1]] else ""
+  if (!nzchar(sel) || !sel %in% c("20", "60", "120")) "60" else sel
+}
+
+# Yahoo chart JSON with simplifyVector = FALSE. Dates use the exchange timezone.
+.asset_tx_parse_chart <- function(j) {
+  empty <- numeric()
+  if (!is.list(j) || is.null(j$chart) || is.null(j$chart$result) || !length(j$chart$result)) {
+    return(empty)
+  }
+  res <- j$chart$result[[1]]
+  if (!is.list(res)) return(empty)
+  ts <- res$timestamp
+  quote <- res$indicators$quote
+  if (is.null(ts) || !length(ts) || is.null(quote) || !length(quote)) return(empty)
+  close <- quote[[1]]$close
+  n <- min(length(ts), length(close))
+  if (n < 1L) return(empty)
+  tz <- "UTC"
+  meta_tz <- res$meta$exchangeTimezoneName
+  if (is.character(meta_tz) && length(meta_tz) >= 1L && nzchar(meta_tz[[1]])) tz <- meta_tz[[1]]
+  keys <- tryCatch(
+    format(as.POSIXct(as.numeric(ts[seq_len(n)]), origin = "1970-01-01", tz = tz), "%Y-%m-%d"),
+    error = function(e) format(as.POSIXct(as.numeric(ts[seq_len(n)]), origin = "1970-01-01", tz = "UTC"), "%Y-%m-%d")
+  )
+  vals <- vapply(close[seq_len(n)], function(el) {
+    if (is.null(el) || length(el) < 1L) return(NA_real_)
+    out <- suppressWarnings(as.numeric(el[[1]]))
+    if (length(out) != 1L || !is.finite(out)) NA_real_ else out
+  }, numeric(1))
+  ok <- !is.na(keys) & nzchar(keys) & is.finite(vals)
+  if (!any(ok)) return(empty)
+  stats::setNames(vals[ok], keys[ok])
+}
+
+.asset_tx_chart_one <- function(sym, range = "1y") {
+  if (!requireNamespace("httr", quietly = TRUE) || !requireNamespace("jsonlite", quietly = TRUE)) {
+    return(numeric())
+  }
+  url <- paste0(
+    "https://query1.finance.yahoo.com/v8/finance/chart/",
+    utils::URLencode(as.character(sym)[1], reserved = TRUE),
+    "?interval=1d&range=", range
+  )
+  resp <- tryCatch(
+    httr::GET(url, httr::user_agent("Mozilla/5.0"), httr::timeout(20)),
+    error = function(e) NULL
+  )
+  if (is.null(resp) || httr::status_code(resp) >= 400L) return(numeric())
+  txt <- tryCatch(httr::content(resp, as = "text", encoding = "UTF-8"), error = function(e) "")
+  if (!nzchar(txt)) return(numeric())
+  j <- tryCatch(jsonlite::fromJSON(txt, simplifyVector = FALSE), error = function(e) NULL)
+  if (is.null(j)) return(numeric())
+  .asset_tx_parse_chart(j)
+}
+
+.asset_tx_r_download <- function(symbols, period = "1y") {
+  symbols <- unique(as.character(symbols))
+  symbols <- symbols[nzchar(symbols)]
+  if (!length(symbols)) stop("empty Yahoo history")
+  rng <- .asset_tx_yahoo_range(period)
+  series <- lapply(symbols, function(sym) .asset_tx_chart_one(sym, rng))
+  names(series) <- symbols
+  dates <- sort(unique(unlist(lapply(series, names), use.names = FALSE)))
+  if (!length(dates)) stop("empty Yahoo history")
+  values <- lapply(symbols, function(sym) {
+    m <- series[[sym]]
+    v <- rep(NA_real_, length(dates))
+    if (is.null(m) || !length(m)) return(v)
+    hit <- match(names(m), dates)
+    ok <- !is.na(hit)
+    v[hit[ok]] <- as.numeric(unname(m[ok]))
+    v
+  })
+  list(Date = dates, symbols = symbols, values = values)
+}
+
 .asset_tx_py_download <- function(symbols, period = "1y") {
   if (!requireNamespace("reticulate", quietly = TRUE)) stop("reticulate missing")
   if (identical(Sys.getenv("YNOW_DEBUG_SKIP_PY"), "1")) stop("Python skipped")
@@ -1141,7 +1224,15 @@ asset_tx_fetch_panel <- function(catalog = NULL, period = "1y") {
   nodes <- catalog$nodes
   syms <- unique(nodes$yahoo)
   syms <- syms[nzchar(syms)]
-  raw <- .asset_tx_py_download(syms, period)
+  # R chart API first. shinyapps.io has reticulate but no Python, so the
+  # Python downloader cannot be the only path.
+  raw <- tryCatch(.asset_tx_r_download(syms, period), error = function(e) NULL)
+  n_dates <- if (is.null(raw) || is.null(raw$Date)) 0L else length(raw$Date)
+  if (n_dates < 30L) {
+    py <- tryCatch(.asset_tx_py_download(syms, period), error = function(e) NULL)
+    if (!is.null(py) && length(py$Date) > n_dates) raw <- py
+  }
+  if (is.null(raw)) stop("empty Yahoo history")
   parsed <- .asset_tx_series_map(raw)
   panel <- .asset_tx_align(parsed$dates, parsed$series, nodes)
   if (is.null(panel)) stop("empty Yahoo history")
@@ -1311,8 +1402,7 @@ asset_transmission_server <- function(id, ui_locale_rv = NULL, market_mode_rv = 
 
     shiny::observe({
       loc <- locale()
-      sel <- shiny::isolate(input$window)
-      if (!sel %in% c("20", "60", "120")) sel <- "60"
+      sel <- .asset_tx_window_choice(shiny::isolate(input$window))
       shiny::updateSelectInput(
         session,
         "window",
