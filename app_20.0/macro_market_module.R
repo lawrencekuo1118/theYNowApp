@@ -526,7 +526,11 @@ macro_market_ui <- function(id = "macro") {
           )
         )
       ),
-      plotlyOutput(ns("overlay_plot"), height = "380px") %>% shinycssloaders::withSpinner(),
+      tags$div(
+        class = "ynow-macro-overlay-plot-wrap",
+        plotlyOutput(ns("overlay_plot"), height = "380px", width = "100%") %>%
+          shinycssloaders::withSpinner()
+      ),
       ynow_notes_block(
         tags$p(
           id = "ynow_macro_fx_lock",
@@ -1457,6 +1461,7 @@ macro_market_server <- function(id = "macro",
       )
       plotly::layout(
         fig,
+        autosize = TRUE,
         title = list(text = .ui("macro_overlay_title"), font = list(size = 14)),
         xaxis = list(title = ""),
         yaxis = list(title = left_lab, side = "left", showgrid = TRUE),
@@ -1470,7 +1475,8 @@ macro_market_server <- function(id = "macro",
         legend = list(orientation = "h", y = 1.12),
         margin = list(l = 50, r = 60, t = 50, b = 40),
         hovermode = "x unified"
-      )
+      ) %>%
+        plotly::config(responsive = TRUE, displayModeBar = FALSE)
     })
 
     # Macro-page theme-vs-benchmark β chart is no longer rendered.

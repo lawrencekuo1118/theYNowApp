@@ -313,6 +313,11 @@ if (requireNamespace("htmltools", quietly = TRUE) && exists("macro_market_ui", m
 }
 check("overlay industry input", grepl('ns("industry_key")', txt, fixed = TRUE))
 check("overlay concept input", grepl('ns("concept_key")', txt, fixed = TRUE))
+check("relative performance plot width 100%", {
+  grepl("ynow-macro-overlay-plot-wrap", txt, fixed = TRUE) &&
+    grepl('plotlyOutput(ns("overlay_plot"), height = "380px", width = "100%")', txt, fixed = TRUE) &&
+    grepl("ynow-macro-overlay-plot-wrap", ui_css <- paste(readLines("ynow_ui.R", warn = FALSE), collapse = "\n"), fixed = TRUE)
+})
 check("combined overlay theme_key gone", !grepl('ns("theme_key")', txt, fixed = TRUE))
 check("combined title gone", !grepl("Industry / concept vs benchmark", txt, fixed = TRUE))
 check("industry vs benchmark first paint", grepl("Industry vs benchmark", txt, fixed = TRUE))

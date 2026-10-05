@@ -8851,6 +8851,17 @@ ui <- dashboardPage(
           width: 100% !important;
           max-width: none !important;
         }
+        .ynow-macro-overlay-plot-wrap {
+          width: 100%;
+          max-width: none;
+          margin: 0 0 8px 0;
+        }
+        .ynow-macro-overlay-plot-wrap .plotly,
+        .ynow-macro-overlay-plot-wrap .js-plotly-plot,
+        .ynow-macro-overlay-plot-wrap .html-widget {
+          width: 100% !important;
+          max-width: none !important;
+        }
         /* Rf / alert 列也等高 */
         .ynow-macro-rf-row {
           display: flex;
