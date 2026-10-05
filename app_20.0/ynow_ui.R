@@ -8703,36 +8703,47 @@ ui <- dashboardPage(
           border: 1px solid #e4eaef;
           border-radius: 4px;
         }
-        /* Keep overlay index checkboxes on one row even after
-           updateCheckboxGroupInput (which drops Shiny's inline=TRUE). */
+        /* Overlay index checkboxes: keep readable spacing (labels were overlapping). */
         .ynow-own-index-overlay .shiny-options-group {
           display: flex;
           flex-direction: row;
-          flex-wrap: nowrap;
+          flex-wrap: wrap;
           align-items: center;
-          gap: 4px 16px;
-          margin-top: 2px;
-          overflow-x: auto;
+          gap: 10px 28px;
+          margin-top: 4px;
+          row-gap: 10px;
         }
         .ynow-own-index-overlay .shiny-options-group .checkbox,
         .ynow-own-index-overlay .shiny-options-group .checkbox-inline {
           display: inline-flex;
           align-items: center;
+          flex: 0 0 auto;
           margin: 0 !important;
-          padding: 0;
+          padding: 0 4px 0 0 !important;
           float: none !important;
+          min-width: 0;
         }
         .ynow-own-index-overlay .shiny-options-group .checkbox + .checkbox,
         .ynow-own-index-overlay .shiny-options-group .checkbox-inline + .checkbox-inline {
           margin-left: 0 !important;
         }
         .ynow-own-index-overlay .shiny-options-group label {
-          margin: 0;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          margin: 0 !important;
+          padding: 0 !important;
           white-space: nowrap;
           font-weight: normal;
+          line-height: 1.35;
+        }
+        .ynow-own-index-overlay .shiny-options-group input[type="checkbox"] {
+          position: static !important;
+          margin: 0 !important;
+          flex: 0 0 auto;
         }
         .ynow-own-index-overlay .ynow-macro-hint {
-          margin: 4px 0 0 0;
+          margin: 6px 0 0 0;
         }
         .ynow-macro-kpi .ynow-macro-up,
         .ynow-macro-rf .ynow-macro-up { color: var(--ynow-macro-green); }

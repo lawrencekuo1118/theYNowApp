@@ -373,10 +373,12 @@ check("YNOW/TYNOW overlay control exists", {
     grepl("macro_align_rebase_100", txt, fixed = TRUE)
 })
 check("overlay default is empty", grepl("reactiveVal(character(0))", txt, fixed = TRUE))
-check("overlay checkboxes forced single row", {
+check("overlay checkboxes spaced without overlap", {
   ui_css <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   grepl("ynow-own-index-overlay .shiny-options-group", ui_css, fixed = TRUE) &&
-    grepl("flex-wrap: nowrap", ui_css, fixed = TRUE) &&
+    grepl("gap: 10px 28px", ui_css, fixed = TRUE) &&
+    grepl("flex-wrap: wrap", ui_css, fixed = TRUE) &&
+    grepl("position: static !important", ui_css, fixed = TRUE) &&
     grepl("inline = TRUE", txt, fixed = TRUE) &&
     grepl("updateCheckboxGroupInput", txt, fixed = TRUE) &&
     grepl("inline = TRUE", paste(readLines("macro_market_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n"), fixed = TRUE)
