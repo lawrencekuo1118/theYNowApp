@@ -70,7 +70,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     home_company_k = "Company",
     home_company_d = "Industry-standard snapshot, KPIs, and financial statements.",
     home_ynow_k = "YNOW",
-    home_ynow_d = "F-Score and statement alerts. A quality screen, not a buy signal.",
+    home_ynow_d = "F-Score, Quality of Earnings, and statement alerts. A quality screen, not a buy signal.",
     home_value_k = "Fundamental Value",
     home_value_d = "Fair value and MOS across DCF, DDM, RI, and P/B.",
     home_value_k_lite = "Smart Analysis",
@@ -1366,8 +1366,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     funnel_page_title = "YNOW",
     funnel_page_sub = paste0(
       "Click MOS / Reliability, Quality screen (F-Score), and Statement alerts ",
-      "to scroll to each block. Two stacked screens: statement quality (F-Score) → ",
-      "statement alerts. Dynamic industry bubble and weight concentration sit at the ",
+      "to scroll to each block. Two stacked screens: Quality of Earnings / F-Score → ",
+      "risk matrix / statement alerts. Dynamic industry bubble and weight concentration sit at the ",
       "bottom of Macro & Market Trends. ",
       "This is a decision-support report—not an order ticket."
     ),
@@ -1377,15 +1377,19 @@ locale_for_market <- function(mode = get_market_mode()) {
     funnel_ch1_kicker = "Section I",
     funnel_ch1_title = "Statement quality",
     funnel_ch1_lead = paste0(
-      "Piotroski F-Score nine-item quality screen and related quality items; ",
-      "Pass / Fail is a quality screen only—not a standalone buy reason."
+      "Start with the Quality of Earnings (cash-earnings) score, then the Piotroski F-Score ",
+      "nine-item quality screen; Pass / Fail is a quality screen only—not a standalone buy reason."
     ),
     funnel_ch2_kicker = "Section II",
     funnel_ch2_title = "Statement alerts",
     funnel_ch2_lead = paste0(
-      "Schilit-style automatic statement screening: alerts/watch items expand first; ",
-      "passes and missing-data items stay collapsed. Veto / risk context only—not a buy signal."
+      "Automated risk matrix (Beneish M-Score, F-Score, AR–Revenue decoupling, accruals) ",
+      "plus Schilit-style screening: alerts/watch items expand first. ",
+      "Veto / risk context only—not a buy signal."
     ),
+    funnel_eq_skip = "Earnings-quality scan skipped.",
+    funnel_eq_title = "Quality of Earnings",
+    funnel_eq_risk_title = "Automated risk matrix",
     funnel_ch3_kicker = "Section III",
     funnel_ch3_title = "Dynamic industry bubble & weight concentration",
     funnel_ch3_lead = paste0(
@@ -2428,7 +2432,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     home_company_k = "個股",
     home_company_d = "產業標準快覽、KPI 與財報。",
     home_ynow_k = "YNOW",
-    home_ynow_d = "F-Score 與財報警訊。品質檢核，不是買進訊號。",
+    home_ynow_d = "F-Score、盈餘品質與財報警訊。品質檢核，不是買進訊號。",
     home_value_k = "基本面價值",
     home_value_d = "合理價與 MOS：DCF、DDM、RI、P/B。",
     home_value_k_lite = "智慧分析",
@@ -3695,7 +3699,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     funnel_page_title = "YNOW",
     funnel_page_sub = paste0(
       "點選 MOS／Reliability、品質檢核 (F-Score)、財報警訊框格可捲動至對應區塊。",
-      "兩個區塊由上而下：財報體質（F-Score）→ 財報警訊。",
+      "兩個區塊由上而下：盈餘品質／F-Score → 風險矩陣／財報警訊。",
       "動態產業泡沫與權重集中度在「總體經濟與大盤趨勢」分頁最下方。",
       "這是決策輔助報告，不是下單指令。"
     ),
@@ -3705,15 +3709,18 @@ locale_for_market <- function(mode = get_market_mode()) {
     funnel_ch1_kicker = "第一章",
     funnel_ch1_title = "財報體質",
     funnel_ch1_lead = paste0(
-      "Piotroski F-Score 九項品質檢核與相關品質項目；",
+      "先看盈餘品質 (Quality of Earnings) 獲利含金量評分，再對照 Piotroski F-Score 九項品質檢核；",
       "通過／未達標僅供品質檢核，不單獨構成買進理由。"
     ),
     funnel_ch2_kicker = "第二章",
     funnel_ch2_title = "財報警訊",
     funnel_ch2_lead = paste0(
-      "Schilit 財報詭計自動判讀：警示／觀察優先展開；通過與資料不足項摺疊。",
-      "屬否決／風險提示，非買進訊號。"
+      "自動化風險矩陣（Beneish M-Score、F-Score、應收／營收脫鉤、應計）與 Schilit 財報詭計自動判讀；",
+      "警示／觀察優先展開。屬否決／風險提示，非買進訊號。"
     ),
+    funnel_eq_skip = "盈餘品質掃描略過。",
+    funnel_eq_title = "盈餘品質 (Quality of Earnings)",
+    funnel_eq_risk_title = "自動化風險矩陣",
     funnel_ch3_kicker = "第三章",
     funnel_ch3_title = "動態產業泡沫與權重集中度",
     funnel_ch3_lead = paste0(

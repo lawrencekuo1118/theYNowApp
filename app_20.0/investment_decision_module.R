@@ -1,7 +1,9 @@
 # =========================================================================
 # Investment Decision Scorecard — YNOW page + composite valuation
 # Click-to-scroll KPI row (MOS | Reliability → F-Score → Statement alerts)
-# sits above two stacked blocks: statement quality → statement alerts.
+# sits above two stacked blocks:
+#   I. Statement quality — QoE dashboard → F-Score
+#   II. Statement alerts — risk matrix → Schilit
 # Dynamic industry bubble & weight concentration lives on Macro (page bottom).
 # Same markup for Lite/Full.
 # Copy: ui_str / funnel_* keys (en-US + zh-TW)
@@ -37,7 +39,7 @@ decision_ui <- function(id) {
           class = "ynow-funnel-report__lead",
           paste0(
             "點選 MOS／Reliability、品質檢核 (F-Score)、財報警訊框格可捲動至對應區塊。",
-            "兩個區塊由上而下：財報體質（F-Score）→ 財報警訊。",
+            "兩個區塊由上而下：盈餘品質／F-Score → 風險矩陣／財報警訊。",
             "動態產業泡沫與權重集中度在「總體經濟與大盤趨勢」分頁最下方。",
             "這是決策輔助報告，不是下單指令。"
           )
@@ -105,12 +107,17 @@ decision_ui <- function(id) {
               id = "ynow_funnel_ch1_lead",
               class = "ynow-funnel-chapter__lead",
               paste0(
-                "Piotroski F-Score 九項品質檢核與相關品質項目；",
+                "先看盈餘品質 (Quality of Earnings) 獲利含金量評分，再對照 Piotroski F-Score 九項品質檢核；",
                 "通過／未達標僅供品質檢核，不單獨構成買進理由。"
               )
             )
           ),
           uiOutput(ns("ui_recommendation")),
+          tags$div(
+            class = "ynow-funnel-table-wrap",
+            id = "ynow_eq_dashboard_anchor",
+            uiOutput(ns("qoe_dashboard"))
+          ),
           h4(
             style = "display:none;",
             tags$span(
@@ -150,10 +157,15 @@ decision_ui <- function(id) {
               id = "ynow_funnel_ch2_lead",
               class = "ynow-funnel-chapter__lead",
               paste0(
-                "Schilit 財報詭計自動判讀：警示／觀察優先展開；通過與資料不足項摺疊。",
-                "屬否決／風險提示，非買進訊號。"
+                "自動化風險矩陣（Beneish M-Score、F-Score、應收／營收脫鉤、應計）與 Schilit 財報詭計自動判讀；",
+                "警示／觀察優先展開。屬否決／風險提示，非買進訊號。"
               )
             )
+          ),
+          tags$div(
+            class = "ynow-funnel-table-wrap",
+            id = "ynow_eq_risk_anchor",
+            uiOutput(ns("risk_matrix_panel"))
           ),
           tags$div(
             class = "ynow-funnel-table-wrap",
@@ -502,10 +514,29 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       )
     })
 
+    eq_eval <- reactive({
+      .ui_loc()
+      is_df <- tryCatch(d_is(), error = function(e) NULL)
+      bs_df <- tryCatch(d_bs(), error = function(e) NULL)
+      cf_df <- tryCatch(d_cf(), error = function(e) NULL)
+      fs <- tryCatch(f_score_eval(), error = function(e) NULL)
+      tryCatch(
+        evaluate_earnings_quality(is_df, bs_df, cf_df, f_score_pack = fs),
+        error = function(e) .eq_empty(ok = FALSE, message = .str("funnel_eq_skip"))
+      )
+    })
+
     fraud_flag_n <- reactive({
-      ev <- tryCatch(shen_eval(), error = function(e) NULL)
-      if (is.null(ev) || !isTRUE(ev$ok)) return(NA_integer_)
-      as.integer(ev$n_alert)
+      n_shen <- {
+        ev <- tryCatch(shen_eval(), error = function(e) NULL)
+        if (is.null(ev) || !isTRUE(ev$ok)) NA_integer_ else as.integer(ev$n_alert)
+      }
+      n_eq <- {
+        eq <- tryCatch(eq_eval(), error = function(e) NULL)
+        if (is.null(eq) || !isTRUE(eq$ok)) 0L else as.integer(length(eq$red_flags))
+      }
+      if (!is.finite(n_shen)) return(NA_integer_)
+      as.integer(n_shen + n_eq)
     })
 
     output$vbox_fraud <- renderUI({
@@ -528,6 +559,18 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
         color = if (n > 0L) "red" else "green",
         width = NULL
       )
+    })
+
+    output$qoe_dashboard <- renderUI({
+      loc <- .ui_loc()
+      pack <- tryCatch(eq_eval(), error = function(e) NULL)
+      earnings_quality_dashboard_ui(pack, locale = loc)
+    })
+
+    output$risk_matrix_panel <- renderUI({
+      loc <- .ui_loc()
+      pack <- tryCatch(eq_eval(), error = function(e) NULL)
+      earnings_risk_matrix_ui(pack, locale = loc)
     })
 
     output$shenanigans_panel <- renderUI({

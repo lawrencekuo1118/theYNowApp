@@ -88,11 +88,15 @@ pos_fs <- regexpr("vbox_fscore", ui_fn, fixed = TRUE)[1]
 pos_fraud <- regexpr("vbox_fraud", ui_fn, fixed = TRUE)[1]
 pos_tbl <- regexpr("fscore_panel", ui_fn, fixed = TRUE)[1]
 pos_shen <- regexpr("shenanigans_panel", ui_fn, fixed = TRUE)[1]
+pos_qoe <- regexpr("qoe_dashboard", ui_fn, fixed = TRUE)[1]
+pos_risk <- regexpr("risk_matrix_panel", ui_fn, fixed = TRUE)[1]
 check("MOS card before F-Score", pos_mos > 0 && pos_fs > pos_mos)
 check("F-Score card before alerts", pos_fs > 0 && pos_fraud > pos_fs)
 check("KPI row before Section I heading", pos_fraud > 0 && pos_ch1_title > pos_fraud && pos_ch1_id > pos_fraud)
 check("Section I heading not in KPI row", pos_ch1_title > pos_ch1_id && pos_ch1_id > pos_fraud)
+check("QoE dashboard before F-Score panel", pos_qoe > pos_q && pos_qoe < pos_tbl)
 check("F-Score boxes still in Section I", pos_tbl > pos_q && pos_tbl < pos_a)
+check("risk matrix before shenanigans", pos_risk > pos_a && pos_risk < pos_shen)
 check("shenanigans still in Section II", pos_shen > pos_a)
 
 ch1_body <- if (pos_q > 0 && pos_a > pos_q) substr(ui_fn, pos_q, pos_a) else ""
@@ -201,8 +205,8 @@ check("applyUiLocale kpi jump aria", grepl("ynow_kpi_jump_mos", ui, fixed = TRUE
 check("click handler scrollIntoView", grepl("ynowOnFunnelKpiJump", ui, fixed = TRUE) &&
         grepl("ynowScrollFunnelAnchor", ui, fixed = TRUE) &&
         grepl("scrollIntoView", ui, fixed = TRUE))
-check("Lite About YNOW keeps F-Score and 財報警訊", grepl("財報體質（F-Score）與財報警訊", ui, fixed = TRUE))
-check("Lite About EN uses statement quality", grepl("statement quality (F-Score) and statement alerts", ui, fixed = TRUE))
+check("Lite About YNOW keeps QoE and 財報警訊", grepl("盈餘品質、F-Score 品質檢核、風險矩陣與財報警訊", ui, fixed = TRUE))
+check("Lite About EN uses Quality of Earnings", grepl("Quality of Earnings, F-Score screen, risk matrix, and statement alerts", ui, fixed = TRUE))
 check("first-paint F-Score list title zh", grepl("F-Score 品質檢核清單", dec, fixed = TRUE))
 check("KPI valueBox numbers stay one line", {
   grepl("small-box .inner h3", ui, fixed = TRUE) &&

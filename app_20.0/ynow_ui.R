@@ -204,7 +204,7 @@
     ),
     tags$li(
       tags$b("YNOW："),
-      "與完整版相同的財報體質（F-Score）與財報警訊；動態產業泡沫與權重集中度在「總體經濟與大盤趨勢」分頁最下方。"
+      "與完整版相同的盈餘品質、F-Score 品質檢核、風險矩陣與財報警訊；動態產業泡沫與權重集中度在「總體經濟與大盤趨勢」分頁最下方。"
     ),
     tags$li(
       tags$b("績優股排行榜（Blue Chip）："),
@@ -229,7 +229,7 @@
     ),
     tags$li(
       tags$b("YNOW: "),
-      "Same statement quality (F-Score) and statement alerts as Full. Dynamic industry bubble & weight concentration sit at the bottom of Macro & Market Trends."
+      "Same Quality of Earnings, F-Score screen, risk matrix, and statement alerts as Full. Dynamic industry bubble & weight concentration sit at the bottom of Macro & Market Trends."
     ),
     tags$li(
       tags$b("Blue Chip Leaderboard: "),
@@ -9482,6 +9482,113 @@ ui <- dashboardPage(
           gap: 8px;
         }
         .ynow-fscore-item { font-weight: 600; font-size: 12.5px; color: #222; line-height: 1.4; }
+
+        /* YNOW：Quality of Earnings dashboard + automated risk matrix */
+        .ynow-eq-wrap, .ynow-eq-matrix-wrap { margin: 0 0 18px 0; }
+        .ynow-eq-waiting { color: #777; font-size: 13px; margin: 0; }
+        .ynow-eq-head { margin: 0 0 12px 0; }
+        .ynow-eq-title { margin: 0 0 4px 0; font-size: 15px; font-weight: 700; color: #1a1a1a; }
+        .ynow-eq-sub { margin: 0; font-size: 12.5px; color: #666; line-height: 1.45; }
+        .ynow-eq-scorecard {
+          display: grid;
+          grid-template-columns: minmax(140px, 180px) 1fr;
+          gap: 12px;
+          margin: 0 0 12px 0;
+          align-items: stretch;
+        }
+        @media (max-width: 767px) {
+          .ynow-eq-scorecard { grid-template-columns: 1fr; }
+        }
+        .ynow-eq-score-pill {
+          border-radius: 8px; padding: 14px 12px; text-align: center;
+          border: 1px solid #d5e3ec; background: #f7fbf9;
+        }
+        .ynow-eq-score-pill.ynow-eq-alert { border-color: #e0b4b0; background: #fdf4f3; }
+        .ynow-eq-score-pill.ynow-eq-watch { border-color: #e6d6a8; background: #fffbf0; }
+        .ynow-eq-score-pill.ynow-eq-pass { border-color: #b8dfc8; background: #eef8f1; }
+        .ynow-eq-score-num {
+          font-size: 36px; font-weight: 800; line-height: 1.1;
+          color: #0C5484; letter-spacing: -0.02em;
+        }
+        .ynow-eq-score-meta {
+          display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;
+          margin-top: 6px; font-size: 12px;
+        }
+        .ynow-eq-grade { font-weight: 700; color: #333; }
+        .ynow-eq-flag {
+          display: inline-block; font-size: 11px; font-weight: 700;
+          padding: 1px 7px; border-radius: 3px;
+        }
+        .ynow-eq-flag.ynow-eq-alert { background: #faf0ef; color: #c0392b; }
+        .ynow-eq-flag.ynow-eq-watch { background: #fff6e0; color: #9a7b1a; }
+        .ynow-eq-flag.ynow-eq-pass { background: #e8f6ee; color: #1e7a45; }
+        .ynow-eq-flag.ynow-eq-na { background: #f0f2f4; color: #777; }
+        .ynow-eq-kpis {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 8px;
+        }
+        .ynow-eq-kpi {
+          border: 1px solid #e4e8ec; border-radius: 6px;
+          padding: 8px 10px; background: #fff;
+        }
+        .ynow-eq-kpi-k { display: block; font-size: 11px; color: #777; margin-bottom: 2px; }
+        .ynow-eq-kpi-v { display: block; font-size: 15px; font-weight: 700; color: #0C5484; }
+        .ynow-eq-bars { margin: 4px 0 0 0; }
+        .ynow-eq-bar-row {
+          display: grid;
+          grid-template-columns: minmax(90px, 140px) 1fr 42px;
+          gap: 8px; align-items: center;
+          margin: 0 0 6px 0; font-size: 12px;
+        }
+        .ynow-eq-bar-lab { color: #444; }
+        .ynow-eq-bar-track {
+          height: 8px; border-radius: 4px; background: #eef1f4; overflow: hidden;
+        }
+        .ynow-eq-bar-fill { height: 100%; border-radius: 4px; }
+        .ynow-eq-bar-pos { background: #249C60; }
+        .ynow-eq-bar-neg { background: #c0392b; }
+        .ynow-eq-bar-pts { text-align: right; font-weight: 700; color: #333; font-variant-numeric: tabular-nums; }
+        .ynow-eq-level {
+          display: inline-flex; align-items: center; gap: 8px;
+          margin-top: 8px; padding: 4px 10px; border-radius: 4px;
+          font-size: 12.5px; font-weight: 700;
+        }
+        .ynow-eq-level.ynow-eq-alert { background: #faf0ef; color: #c0392b; }
+        .ynow-eq-level.ynow-eq-watch { background: #fff6e0; color: #9a7b1a; }
+        .ynow-eq-level.ynow-eq-pass { background: #e8f6ee; color: #1e7a45; }
+        .ynow-eq-level.ynow-eq-na { background: #f0f2f4; color: #777; }
+        .ynow-eq-level-k { opacity: 0.85; font-weight: 600; }
+        .ynow-eq-matrix-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 8px;
+          margin: 0 0 12px 0;
+        }
+        @media (max-width: 767px) {
+          .ynow-eq-matrix-grid { grid-template-columns: 1fr; }
+        }
+        .ynow-eq-matrix-card {
+          border: 1px solid #e4e8ec; border-radius: 6px;
+          padding: 10px 12px; background: #fff;
+        }
+        .ynow-eq-matrix-card.ynow-eq-alert { border-left: 4px solid #c0392b; }
+        .ynow-eq-matrix-card.ynow-eq-watch { border-left: 4px solid #d4a017; }
+        .ynow-eq-matrix-card.ynow-eq-pass { border-left: 4px solid #27ae60; }
+        .ynow-eq-matrix-card.ynow-eq-na { border-left: 4px solid #adb5bd; }
+        .ynow-eq-matrix-h {
+          display: flex; justify-content: space-between; align-items: flex-start;
+          gap: 8px; margin-bottom: 4px;
+        }
+        .ynow-eq-matrix-metric { font-weight: 700; font-size: 12.5px; color: #222; }
+        .ynow-eq-matrix-val { font-size: 16px; font-weight: 800; color: #0C5484; margin: 2px 0 4px; }
+        .ynow-eq-matrix-note { margin: 0; font-size: 11.5px; color: #666; line-height: 1.4; }
+        .ynow-eq-redflags {
+          border: 1px solid #e0b4b0; border-radius: 6px;
+          background: #fdf6f5; padding: 10px 12px 6px;
+        }
+        .ynow-eq-redflags h5 { margin: 0 0 6px 0; color: #c0392b; font-size: 13px; }
+        .ynow-eq-redflags ul { margin: 0 0 6px 0; padding-left: 18px; font-size: 12.5px; color: #444; }
 
         /* Backtest：績效指標卡片（軟色調 + 左側色條，避免實心色塊） */
         .ynow-metric-grid {

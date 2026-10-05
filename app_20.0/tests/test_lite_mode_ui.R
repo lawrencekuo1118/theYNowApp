@@ -736,8 +736,8 @@ testthat::test_that("YNOW page title and two-block order are shared by Lite and 
   )
   testthat::expect_true(grepl('tabName = "sensitivity"', ui, fixed = TRUE))
   testthat::expect_true(grepl('decision_ui("main_decision")', ui, fixed = TRUE))
-  testthat::expect_true(grepl("財報體質（F-Score）與財報警訊", ui, fixed = TRUE))
-  testthat::expect_true(grepl("statement quality (F-Score) and statement alerts", ui, fixed = TRUE))
+  testthat::expect_true(grepl("盈餘品質、F-Score 品質檢核、風險矩陣與財報警訊", ui, fixed = TRUE))
+  testthat::expect_true(grepl("Quality of Earnings, F-Score screen, risk matrix, and statement alerts", ui, fixed = TRUE))
   testthat::expect_false(grepl("三區塊版面：品質檢核（F-Score）", ui, fixed = TRUE))
 
   macro <- paste(

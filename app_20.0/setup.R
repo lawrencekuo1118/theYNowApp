@@ -2032,21 +2032,29 @@ clamp_yr_stage1 <- function(n_years, yr_stage1, default_yr = 3L) {
 # 📄 投資意見報告書輔助函數（券商研究報告格式）
 # =========================================================
 
-# 蒐集財報警訊／體質警訊（與 YNOW 分頁 Schilit 自動判讀同一套；只列「警示」）
+# 蒐集財報警訊／體質警訊（Schilit + 盈餘品質紅旗；只列「警示」）
 collect_fraud_warnings <- function(d_cf, d_is, d_bs, industry_key = NULL) {
-  if (!exists("evaluate_shenanigans", mode = "function")) {
-    return(character(0))
+  out <- character(0)
+  if (exists("evaluate_shenanigans", mode = "function")) {
+    ev <- tryCatch(
+      evaluate_shenanigans(d_is, d_bs, d_cf, industry_key = industry_key),
+      error = function(e) NULL
+    )
+    if (!is.null(ev) && isTRUE(ev$ok) && !is.null(ev$items) && nrow(ev$items) >= 1L) {
+      al <- ev$items[ev$items$status == "警示", , drop = FALSE]
+      if (nrow(al) >= 1L) {
+        out <- c(out, paste0(al$code, " ", al$name, "：", al$reason))
+      }
+    }
   }
-  ev <- tryCatch(
-    evaluate_shenanigans(d_is, d_bs, d_cf, industry_key = industry_key),
-    error = function(e) NULL
-  )
-  if (is.null(ev) || !isTRUE(ev$ok) || is.null(ev$items) || nrow(ev$items) < 1L) {
-    return(character(0))
+  if (exists("collect_earnings_quality_warnings", mode = "function")) {
+    eq_flags <- tryCatch(
+      collect_earnings_quality_warnings(d_is, d_bs, d_cf),
+      error = function(e) character(0)
+    )
+    if (length(eq_flags) > 0L) out <- c(out, eq_flags)
   }
-  al <- ev$items[ev$items$status == "警示", , drop = FALSE]
-  if (nrow(al) < 1L) return(character(0))
-  paste0(al$code, " ", al$name, "：", al$reason)
+  unique(out)
 }
 
 # Piotroski F-Score（與決策看板 checklist 一致；供 PDF 報告）
