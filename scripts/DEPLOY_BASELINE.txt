@@ -8,5 +8,5 @@ short=3bad42f
 message=chore: bump display version to v20.42
 captured_at=2026-10-05T05:27:08Z
 source_branch=cursor/asset-transmission-testing-9c4f
-display_version=v20.42
+display_version=v20.43
 note=Canonical live line is app_20.0. Bundle 12647941 ships v20.42: cold start no longer runs reticulate::py_require before Shiny Listens (fixes Safari server-stopped-responding). Testing map cards/viewport/cache from prior commits remain. Deploy via scripts/deploy_app_20.R.
