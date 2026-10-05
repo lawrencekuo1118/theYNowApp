@@ -8,5 +8,5 @@ short=7cde78b
 message=chore: bump display version to v20.69
 captured_at=2026-10-05T16:45:50Z
 source_branch=master
-display_version=v20.69
+display_version=v20.70
 note=Canonical live line is app_20.0. Bundle 12650430 ships v20.69: YNOW Quality of Earnings dashboard + automated risk matrix (Beneish M-Score, F-Score, AR–Revenue decoupling, accruals). Deploy via scripts/deploy_app_20.R.
