@@ -8,5 +8,5 @@ short=f23d0a7
 message=chore: bump display version to v20.48
 captured_at=2026-10-05T07:05:30Z
 source_branch=cursor/asset-transmission-testing-9c4f
-display_version=v20.48
+display_version=v20.49
 note=Canonical live line is app_20.0. Bundle 12648196 ships v20.48: Listen-before-Python — default_config no longer fetches live Rf at source; .ynow_ensure_python gated until shinyApp onStart; Connect path detection; Testing map stays on R Yahoo path. Boot logs: Listening at +7s, CPython only after Listen. Deploy via scripts/deploy_app_20.R.
