@@ -7,10 +7,10 @@ scan_cap <- suppressWarnings(as.integer(args[1]))
 if (!is.finite(scan_cap) || scan_cap < 10L) scan_cap <- 500L
 
 root <- normalizePath(file.path(dirname(normalizePath(commandArgs(FALSE)[grep("^--file=", commandArgs(FALSE))][1], mustWork = FALSE)), ".."), mustWork = FALSE)
-if (!dir.exists(file.path(root, "app_20.0"))) {
+if (!dir.exists(file.path(root, "app_21.0"))) {
   root <- normalizePath(getwd())
 }
-app_dir <- file.path(root, "app_20.0")
+app_dir <- file.path(root, "app_21.0")
 stopifnot(dir.exists(app_dir))
 setwd(app_dir)
 Sys.setenv(YNOW_DEBUG_SKIP_PY = "")

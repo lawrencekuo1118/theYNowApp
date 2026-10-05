@@ -10,15 +10,15 @@ alwaysApply: true
 ## When this applies
 
 - Bug reports, regressions, “為什麼壞了”, blank/wrong UI or data, failed deploy/runtime errors
-- Any debug / fix session on the live line (`app_20.0/`) or related scripts/tests
+- Any debug / fix session on the live line (`app_21.0/`) or related scripts/tests
 - Reproducing a failure and confirming a fix
 
 ## Required verification (do not skip)
 
-1. **Targeted tests first** — run the relevant `app_20.0/tests/*.R` (or closest module tests) that cover the changed / suspected code.
+1. **Targeted tests first** — run the relevant `app_21.0/tests/*.R` (or closest module tests) that cover the changed / suspected code.
 2. **Add or extend a test** when the bug has no coverage and a small regression check is practical.
 3. **Smoke / offline checks** when relevant:
-   - Valuation / FCF: `cd app_20.0/tests && Rscript test_valuation_formulas.R`
+   - Valuation / FCF: `cd app_21.0/tests && Rscript test_valuation_formulas.R`
    - Use `YNOW_DEBUG_SKIP_PY=1` when sourcing R helpers without reticulate.
 4. **UI / locale bugs** — exercise the affected path (test assertion and/or browser) enough to show the fix; keep en-US + zh-TW i18n intact.
 5. **Report evidence** — briefly state what was run and pass/fail before claiming fixed. If a test fails, keep debugging; do not ship a “fix” that still fails verification.

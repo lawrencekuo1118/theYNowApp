@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Boot-time Shiny dev server for Cloud Agents (live line app_20.0).
+# Boot-time Shiny dev server for Cloud Agents (live line app_21.0).
 # Idempotent: exits 0 when port 3838 is already listening.
 set -euo pipefail
 
@@ -28,5 +28,5 @@ if port_open; then
   exit 0
 fi
 
-cd "${ROOT}/app_20.0"
+cd "${ROOT}/app_21.0"
 exec Rscript -e "shiny::runApp(host='0.0.0.0', port=${PORT}, launch.browser=FALSE)"

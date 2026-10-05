@@ -37,7 +37,7 @@ When unsure: use the **English term** + brief Taiwan Chinese gloss on first ment
 - HFV wording must stay a **veto tool**, never a bullish / buy signal.
 
 
-- Live app line: **`app_20.0/`** (see `scripts/DEPLOY_BASELINE.txt` for deployed baseline).
+- Live app line: **`app_21.0/`** (see `scripts/DEPLOY_BASELINE.txt` for deployed baseline).
 - Prefer existing labels in `ynow_ui.R` / module UI before inventing new terms.
 - CapEx spike smoothing UI: **暴衝倍數閾值**、**均值年數**、**週期**（勿用「周期」）。
 
@@ -46,24 +46,24 @@ When unsure: use the **English term** + brief Taiwan Chinese gloss on first ment
 **每次特定功能開發完成後**，自動補齊雙語，勿等使用者再說「翻譯」：
 
 1. 新 UI 文案同時提供 **en-US** 與 **zh-TW**（台灣繁體；勿用簡體／港式）。
-2. 字串必須進 `app_20.0/ui_locale.R` 的 `.UI_STRINGS$en` / `.UI_STRINGS$zh-TW`（同一 key），再經 `ui_str`、`.push_ui_locale`、市場→locale 推送，以及前端 `applyUiLocale` / `ynowUiLocale` 套用。
+2. 字串必須進 `app_21.0/ui_locale.R` 的 `.UI_STRINGS$en` / `.UI_STRINGS$zh-TW`（同一 key），再經 `ui_str`、`.push_ui_locale`、市場→locale 推送，以及前端 `applyUiLocale` / `ynowUiLocale` 套用。
 3. **禁止**只硬編碼單一語言；僅財經專有名詞維持正式英文（WACC、FCFF、MOS…）可例外。詳見 `.cursor/rules/i18n-after-feature.mdc`。
 
 ## Testing
 
 - **Debug = auto-verify (required):** on any bugfix / debug session, run targeted verification tests automatically before claiming done. Do not wait for the user to ask. See `.cursor/rules/auto-verify-on-debug.mdc`.
-- Run targeted tests under `app_20.0/tests/` when changing valuation or FCF logic, and when debugging related failures.
+- Run targeted tests under `app_21.0/tests/` when changing valuation or FCF logic, and when debugging related failures.
 - Non-trivial UI changes: manual/browser verification when the environment supports it.
-- Offline valuation check (no network): `cd app_20.0/tests && Rscript test_valuation_formulas.R`
+- Offline valuation check (no network): `cd app_21.0/tests && Rscript test_valuation_formulas.R`
 - Set `YNOW_DEBUG_SKIP_PY=1` when a unit test should source R helpers without initializing reticulate.
 
 ## Cursor Cloud specific instructions
 
 - Bootstrap (idempotent): `bash scripts/cloud-agent-install.sh`
-  - CRAN R (Ubuntu `noble-cran40`) plus [r2u](https://eddelbuettel.github.io/r2u/) binary packages for the `pacman::p_load` set in `app_20.0/global.R`, plus `httr`, `quantmod`, `testthat`, and `rsconnect`.
-  - Python virtualenv: `app_20.0/.ynow_venv` from `app_20.0/requirements.txt`. `global.R` uses this venv when it exists and the process is not on shinyapps.io.
-- Boot start (idempotent): `bash scripts/cloud-agent-start.sh` keeps the Shiny dev server in the foreground on `0.0.0.0:3838` from `app_20.0/`. If that port is already listening, the script exits without starting a second process.
-- Equivalent manual start (from `app_20.0/`): `Rscript -e 'shiny::runApp(host="0.0.0.0", port=3838, launch.browser=FALSE)'`
+  - CRAN R (Ubuntu `noble-cran40`) plus [r2u](https://eddelbuettel.github.io/r2u/) binary packages for the `pacman::p_load` set in `app_21.0/global.R`, plus `httr`, `quantmod`, `testthat`, and `rsconnect`.
+  - Python virtualenv: `app_21.0/.ynow_venv` from `app_21.0/requirements.txt`. `global.R` uses this venv when it exists and the process is not on shinyapps.io.
+- Boot start (idempotent): `bash scripts/cloud-agent-start.sh` keeps the Shiny dev server in the foreground on `0.0.0.0:3838` from `app_21.0/`. If that port is already listening, the script exits without starting a second process.
+- Equivalent manual start (from `app_21.0/`): `Rscript -e 'shiny::runApp(host="0.0.0.0", port=3838, launch.browser=FALSE)'`
 - This environment does not provision shinyapps.io credentials. Do not deploy from a Cloud Agent unless those secrets are present and a deploy was requested. Environment / docs-only commits do not bump the display version and do not deploy.
 
 ## Git & deploy
@@ -72,10 +72,10 @@ See `.cursor/rules/auto-deploy-after-optimize.mdc`, `.cursor/rules/auto-cloud-pu
 
 **User-authorized auto push：** 使用者已明確啟用自動推送至雲端。對已驗證的活動線工作，agents 必須自動 commit → `git push` → shinyapps 部署 → 更新 baseline，無需再問；此授權覆寫一般「未經要求勿 push／commit」習慣（僅限本 repo 的 ship 流程）。
 
-**Auto deploy：** 每次在活動線 `app_20.0/` **完成開發並驗證後**，一律自動 commit → push → `Rscript scripts/deploy_app_20.R` → 更新 `DEPLOY_BASELINE.txt`，無需等候使用者再說「部署／推送」。僅文件／規則／未完成 WIP 或使用者明確要求不部署時略過。
+**Auto deploy：** 每次在活動線 `app_21.0/` **完成開發並驗證後**，一律自動 commit → push → `Rscript scripts/deploy_app_21.R` → 更新 `DEPLOY_BASELINE.txt`，無需等候使用者再說「部署／推送」。僅文件／規則／未完成 WIP 或使用者明確要求不部署時略過。
 
-**部署完成自動 +0.01：** `scripts/deploy_app_20.R` 在上傳前把顯示版號 **+0.01**（`scripts/bump_display_version.R`）、commit，再部署該版。線上 bundle 就是加過的版號。工作區若已比 `DEPLOY_BASELINE.txt` 的 `display_version` 正好多 0.01，腳本不再加一次。不要在呼叫部署腳本前手動改版號。略過僅限 `--no-bump` 或 `YNOW_SKIP_VERSION_BUMP=1`。
+**部署完成自動 +0.01：** `scripts/deploy_app_21.R` 在上傳前把顯示版號 **+0.01**（`scripts/bump_display_version.R`）、commit，再部署該版。線上 bundle 就是加過的版號。工作區若已比 `DEPLOY_BASELINE.txt` 的 `display_version` 正好多 0.01，腳本不再加一次。不要在呼叫部署腳本前手動改版號。略過僅限 `--no-bump` 或 `YNOW_SKIP_VERSION_BUMP=1`。
 
 **i18n before ship：** 功能收尾時先完成 en-US + zh-TW（`ui_locale.R` + locale push）。**僅規則／AGENTS／文件**變更 → commit + push，**不** shinyapps 部署、**不**版號 +0.01。
 
-**Version bump：** 每次部署完成由 `scripts/deploy_app_20.R` 將 UI／header 等顯示版號 **+0.01**（如 `v20` → `v20.01`）；目錄可維持 `app_20.0/`，僅在使用者要求整階 **+1** 時才改名。詳見 `.cursor/rules/version-bump-on-merge.mdc`。
+**Version bump：** 每次部署完成由 `scripts/deploy_app_21.R` 將 UI／header 等顯示版號 **+0.01**（如 `v21` → `v21.01`）；目錄可維持 `app_21.0/`，僅在使用者要求整階 **+1** 時才改名。詳見 `.cursor/rules/version-bump-on-merge.mdc`。

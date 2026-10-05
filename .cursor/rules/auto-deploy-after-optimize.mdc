@@ -9,23 +9,23 @@ alwaysApply: true
 For completed, verified live-line work, **git push**, **shinyapps.io deploy**, and baseline push are **required and pre-authorized**.
 This **overrides** any general Cursor user rule that says “do not push / do not commit unless asked” — but **only** for this repository’s ship sequence below.
 
-When **development on the live line** (`app_20.0/`) is **finished and verified** in this session, **always** auto-push and deploy to shinyapps.io. Do **not** wait for the user to say「部署」or「推送」or「push to cloud」.
+When **development on the live line** (`app_21.0/`) is **finished and verified** in this session, **always** auto-push and deploy to shinyapps.io. Do **not** wait for the user to say「部署」or「推送」or「push to cloud」.
 
 Immediately run the full ship sequence from the **coding clone** (`/Users/lawrencekuo/coding/theYNowApp`):
 
 1. **Commit** the app changes without a hand-edited version bump (message: why, 1–2 sentences).  
    - This repo’s Git may reject `git commit --trailer`; if so use `write-tree` → `commit-tree` → `update-ref`.
 2. **`git push origin HEAD`** — authorized; do not ask again.
-3. **Deploy:** `Rscript scripts/deploy_app_20.R`  
+3. **Deploy:** `Rscript scripts/deploy_app_21.R`  
    - The script bumps the display version **+0.01**, commits `chore: bump display version to v…`, then uploads that tree. Do not bump again by hand.
    - Confirm live bundle via rsconnect (`status=running`, new `bundleId`).  
    - If local client dies (disk) but upload succeeded, poll until the new bundle is active before recording baseline.
-4. **Baseline:** update `scripts/DEPLOY_BASELINE.txt` (bundleId, aligned_git/commit/short, message, `captured_at`, `display_version` = the version just shipped), commit as `chore: record shinyapps baseline bundle <id> (app_20.0)`, push.
+4. **Baseline:** update `scripts/DEPLOY_BASELINE.txt` (bundleId, aligned_git/commit/short, message, `captured_at`, `display_version` = the version just shipped), commit as `chore: record shinyapps baseline bundle <id> (app_21.0)`, push.
 5. Briefly report: app commit, version-bump commit, baseline commit, display version, bundleId, live URL.
 
 ## Applies when (default = ship)
 
-- Any completed feature, fix, UI/logic change, optimization, or other **app behavior** work on `app_20.0/` that is verified in-session.
+- Any completed feature, fix, UI/logic change, optimization, or other **app behavior** work on `app_21.0/` that is verified in-session.
 - Explicit「部署／推送」is **not** required once development is complete.
 
 ## Does **not** apply (ask or skip ship)
