@@ -568,6 +568,14 @@ server <- function(input, output, session) {
           ui_locale_rv = ui_locale,
           lite_mode_rv = reactive(isTRUE(input$ynow_lite_mode))
         )
+      },
+      testing = function() {
+        asset_transmission_server(
+          "atx",
+          ui_locale_rv = ui_locale,
+          market_mode_rv = market_mode,
+          tab_active_rv = reactive(identical(as.character(input$sidebar_tabs %||% ""), "testing"))
+        )
       }
     ),
     after_mount = function(tab) {

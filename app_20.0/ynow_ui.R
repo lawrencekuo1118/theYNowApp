@@ -2633,9 +2633,8 @@ beta_rolling_section_ui <- function() {
               p(
                 id = "ynow_testing_page_sub",
                 paste0(
-                  "Full-only sandbox for upcoming experiments and feature trials. ",
-                  "Business Breakdown is on the main sidebar. ",
-                  "Quant Backtest Lab remains on the main sidebar. Lite mode hides this entry."
+                  "Full-only Testing page. Lite mode hides this entry. ",
+                  "The diagram is a live asset-transmission map linked to public yields and indices."
                 )
               ),
               tags$hr()
@@ -2643,16 +2642,18 @@ beta_rolling_section_ui <- function() {
           ),
           fluidRow(
             box(
-              width = 12, status = "info", solidHeader = TRUE,
-              title = tagList(icon("flask"), tags$span(id = "ynow_testing_box_title", "Sandbox")),
+              width = 12, status = "primary", solidHeader = TRUE,
+              title = tagList(icon("project-diagram"), tags$span(id = "ynow_testing_box_title", "Asset transmission")),
               tags$p(
                 id = "ynow_testing_box_body",
-                style = "color:#555; line-height:1.5; margin:0;",
+                style = "color:#555; line-height:1.5; margin:0 0 10px 0;",
                 paste0(
-                  "Reserved space for temporary UI / valuation experiments before they graduate ",
-                  "into Dashboard, Smart Analysis, or Quant Backtest Lab."
+                  "Each node is a public series. Arrows run upstream to downstream; ",
+                  "line width is the trailing correlation of daily changes; ",
+                  "color shows whether that correlation matches the structural channel."
                 )
-              )
+              ),
+              asset_transmission_ui("atx")
             )
           )
   )
