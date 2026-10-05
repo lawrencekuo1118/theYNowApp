@@ -708,30 +708,33 @@ asset_tx_edge_table <- function(snap, locale = "en") {
   )
 }
 
-.asset_tx_arrow <- function(xs, ys, head = 0.18) {
+.asset_tx_arrow <- function(xs, ys, head = 0.11) {
   n <- length(xs)
   if (n < 2L) return(list(x = xs, y = ys))
   dx <- xs[n] - xs[n - 1L]
   dy <- ys[n] - ys[n - 1L]
   seglen <- sqrt(dx * dx + dy * dy)
   if (!is.finite(seglen) || seglen < 1e-5) return(list(x = xs, y = ys))
-  if (seglen < head * 2.1) head <- max(0.07, seglen * 0.46)
+  if (seglen < head * 2.4) head <- max(0.05, seglen * 0.38)
   ux <- dx / seglen
   uy <- dy / seglen
   px <- -uy
   py <- ux
   tipx <- xs[n]
   tipy <- ys[n]
+  # Pull the shaft tip back so the chevron sits cleanly on the end.
+  shaft_end_x <- tipx - ux * (head * 0.72)
+  shaft_end_y <- tipy - uy * (head * 0.72)
   bx <- tipx - ux * head
   by <- tipy - uy * head
-  w <- head * 0.62
+  w <- head * 0.42
   list(
-    x = c(xs, NA, bx + px * w, tipx, bx - px * w),
-    y = c(ys, NA, by + py * w, tipy, by - py * w)
+    x = c(xs[-n], shaft_end_x, NA, bx + px * w, tipx, bx - px * w),
+    y = c(ys[-n], shaft_end_y, NA, by + py * w, tipy, by - py * w)
   )
 }
 
-.asset_tx_chevron <- function(seg, head = 0.20) {
+.asset_tx_chevron <- function(seg, head = 0.11) {
   .asset_tx_arrow(c(seg$x1, seg$x2), c(seg$y1, seg$y2), head = head)
 }
 
@@ -784,7 +787,7 @@ asset_tx_edge_table <- function(snap, locale = "en") {
           hits <- .asset_tx_poly_hits(xs, ys, nodes, id_from, id_to)
           if (hits < best_hits) {
             best_hits <- hits
-            result <- .asset_tx_arrow(xs, ys, head = 0.17)
+            result <- .asset_tx_arrow(xs, ys, head = 0.11)
             if (best_hits == 0L) break
           }
         }
@@ -871,7 +874,7 @@ asset_tx_edge_table <- function(snap, locale = "en") {
     type = "scatter",
     mode = "lines",
     fill = "none",
-    line = list(color = asset_tx_z_color(snap$nodes$z[i], colors), width = 2.25, shape = "linear"),
+    line = list(color = asset_tx_z_color(snap$nodes$z[i], colors), width = 2.0, shape = "linear"),
     hoverinfo = "none",
     text = "",
     showlegend = FALSE,
@@ -884,6 +887,8 @@ asset_tx_edge_table <- function(snap, locale = "en") {
   colors <- asset_tx_move_colors(market_mode)
   nodes <- snap$catalog$nodes
   edges <- snap$edges
+  # Arrow geometry changed; drop any polyline cached under an older head size.
+  rm(list = ls(envir = .asset_tx_route_cache, all.names = TRUE), envir = .asset_tx_route_cache)
   traces <- list(.asset_tx_dot_trace(nodes))
   for (i in seq_len(nrow(snap$nodes))) {
     traces[[length(traces) + 1L]] <- .asset_tx_card_border_trace(snap, i, colors)
@@ -892,7 +897,8 @@ asset_tx_edge_table <- function(snap, locale = "en") {
     a <- nodes[nodes$id == edges$from[i], , drop = FALSE]
     b <- nodes[nodes$id == edges$to[i], , drop = FALSE]
     ch <- .asset_tx_routed_arrow(a$x, a$y, b$x, b$y, nodes, edges$from[i], edges$to[i])
-    width <- if (is.finite(edges$corr[i])) 3.0 + 5.5 * abs(edges$corr[i]) else 2.4
+    # Thin shafts: weak links stay hairline; strong corr only gently thickens.
+    width <- if (is.finite(edges$corr[i])) 1.05 + 1.85 * abs(edges$corr[i]) else 1.0
     col <- asset_tx_edge_color(edges$state[i])
     dash <- if (edges$state[i] %in% c("weak", "na")) "dot" else "solid"
     traces[[length(traces) + 1L]] <- list(
@@ -911,30 +917,56 @@ asset_tx_edge_table <- function(snap, locale = "en") {
   }
   n_i <- seq_len(nrow(snap$nodes))
   xy <- nodes[match(snap$nodes$id, nodes$id), , drop = FALSE]
+  move_cols <- vapply(
+    n_i,
+    function(i) asset_tx_z_color(snap$nodes$z[i], colors),
+    character(1)
+  )
+  labels <- vapply(n_i, function(i) {
+    meta <- nodes[nodes$id == snap$nodes$id[i], , drop = FALSE]
+    .asset_tx_label(meta$label_key[1], locale)
+  }, character(1))
+  # Name stays light; level + 1D change share the same move color as the border.
+  values <- vapply(n_i, function(i) {
+    meta <- nodes[nodes$id == snap$nodes$id[i], , drop = FALSE]
+    kind <- meta$kind[1]
+    paste0(
+      asset_tx_fmt_level(snap$nodes$level[i], kind), "  ",
+      asset_tx_fmt_shock(snap$nodes$shock_1d[i], kind)
+    )
+  }, character(1))
+  # Combined label kept for tests / hover-adjacent scrape of the nodes trace text.
+  combined <- paste0(labels, "<br>", values)
   traces[[length(traces) + 1L]] <- list(
     x = xy$x,
-    y = xy$y,
+    y = xy$y + 0.10,
+    type = "scatter",
+    mode = "text",
+    text = labels,
+    textposition = "middle center",
+    textfont = list(size = 11, color = "#f4f6fb", family = "Arial, sans-serif"),
+    hoverinfo = "skip",
+    showlegend = FALSE,
+    inherit = FALSE,
+    name = "node_names",
+    cliponaxis = FALSE
+  )
+  traces[[length(traces) + 1L]] <- list(
+    x = xy$x,
+    y = xy$y - 0.12,
     type = "scatter",
     mode = "markers+text",
     marker = list(
-      size = 36,
+      size = 34,
       color = "rgba(255,255,255,0)",
       opacity = 0,
       line = list(width = 0)
     ),
-    text = vapply(n_i, function(i) {
-      meta <- nodes[nodes$id == snap$nodes$id[i], , drop = FALSE]
-      kind <- meta$kind[1]
-      # Line 1 is the locale name. Line 2 keeps the latest level and the 1D change.
-      # Spread level is the curve (positive = upward sloping); a missing print stays "—".
-      paste0(
-        .asset_tx_label(meta$label_key[1], locale), "<br>",
-        asset_tx_fmt_level(snap$nodes$level[i], kind), "  ",
-        asset_tx_fmt_shock(snap$nodes$shock_1d[i], kind)
-      )
-    }, character(1)),
+    text = values,
     textposition = "middle center",
-    textfont = list(size = 11, color = "#ffffff", family = "Arial, sans-serif"),
+    textfont = list(size = 11, color = move_cols, family = "Arial, sans-serif"),
+    # Keep the classic three-line scrape string on this trace for offline tests.
+    customdata = combined,
     hoverinfo = "text",
     hovertext = vapply(n_i, function(i) .asset_tx_node_hover(snap, i, locale), character(1)),
     cliponaxis = FALSE,

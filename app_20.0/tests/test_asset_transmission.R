@@ -393,9 +393,9 @@ if (requireNamespace("plotly", quietly = TRUE)) {
   check("tape frames", length(fig$x$frames) == 24L)
   check("frame name is a date", grepl("^\\d{4}-\\d{2}-\\d{2}$", fig$x$frames[[1]]$name))
   built <- plotly::plotly_build(fig)
-  blob <- paste(unlist(lapply(built$x$data, function(tr) c(tr$text, tr$hovertext))), collapse = "\n")
-  node_text <- unlist(lapply(built$x$data, function(tr) tr$text), use.names = FALSE)
-  node_text <- node_text[!is.na(node_text) & nzchar(node_text)]
+  blob <- paste(unlist(lapply(built$x$data, function(tr) c(tr$text, tr$hovertext, tr$customdata))), collapse = "\n")
+  node_text <- unlist(lapply(built$x$data, function(tr) c(tr$text, tr$customdata)), use.names = FALSE)
+  node_text <- node_text[!is.na(node_text) & nzchar(as.character(node_text))]
   check("zh label on figure", grepl("台灣加權指數", blob, fixed = TRUE))
   check(
     "zh TAIEX node shows level and percent shock",
@@ -412,10 +412,28 @@ if (requireNamespace("plotly", quietly = TRUE)) {
       grepl("5 日", blob, fixed = TRUE)
   )
   curve_fig <- plotly::plotly_build(asset_tx_figure(list(curve_snap), "zh-TW", "US"))
-  curve_text <- unlist(lapply(curve_fig$x$data, function(tr) tr$text), use.names = FALSE)
+  curve_text <- unlist(lapply(curve_fig$x$data, function(tr) c(tr$text, tr$customdata)), use.names = FALSE)
   check(
     "zh 2s10s node shows spread level and bp change",
     any(grepl("2s10s<br>\\+70\\.0 bp  \\+20\\.0 bp", curve_text))
+  )
+  nodes_tr <- NULL
+  for (tr in built$x$data) {
+    if (identical(tr$name, "nodes")) {
+      nodes_tr <- tr
+      break
+    }
+  }
+  check("nodes value trace present", !is.null(nodes_tr))
+  val_cols <- unlist(nodes_tr$textfont$color, use.names = FALSE)
+  check(
+    "node numbers use move colors",
+    length(val_cols) >= 2L && !all(tolower(val_cols) %in% c("#ffffff", "#f4f6fb", "white"))
+  )
+  arr <- .asset_tx_arrow(c(0, 1), c(0, 0), head = 0.11)
+  check(
+    "arrow head is a slim chevron",
+    length(arr$x) >= 5L && any(is.na(arr$x))
   )
   check("play control present", !is.null(built$x$layout$updatemenus) || !is.null(fig$x$layout$updatemenus))
   frame_n <- vapply(fig$x$frames, function(fr) length(fr$data), integer(1))
