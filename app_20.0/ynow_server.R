@@ -11042,10 +11042,13 @@ server <- function(input, output, session) {
   
   output$download_report <- downloadHandler(
     filename = function() {
-      tk <- tryCatch(current_ticker(), error = function(e) "NA")
+      tk <- tryCatch({
+        display_ticker_for_market(current_ticker(), market_mode())
+      }, error = function(e) "NA")
       if (is.null(tk) || !nzchar(as.character(tk))) tk <- "NA"
-      lite_tag <- if (isTRUE(tryCatch(isolate(lite_mode()), error = function(e) FALSE))) "_Lite" else ""
-      paste0("YNow_Report", lite_tag, "_", tk, "_", Sys.Date(), ".pdf")
+      mm <- tryCatch(normalize_market_mode(isolate(market_mode())), error = function(e) "US")
+      ed <- if (isTRUE(tryCatch(isolate(lite_mode()), error = function(e) FALSE))) "Lite" else "Full"
+      paste0("YNow_Report_", mm, "_", ed, "_", tk, "_", Sys.Date(), ".pdf")
     },
     content = function(file) {
       tryCatch({
@@ -11188,6 +11191,23 @@ server <- function(input, output, session) {
           NA_character_
         }
 
+        rep_mm <- tryCatch(
+          normalize_market_mode(isolate(market_mode())),
+          error = function(e) "US"
+        )
+        rep_lite <- isTRUE(isolate(lite_mode()))
+        app_ver <- tryCatch({
+          build_path <- file.path("www", "ynow_build.json")
+          if (!file.exists(build_path)) build_path <- "ynow_build.json"
+          raw <- paste(readLines(build_path, warn = FALSE), collapse = "\n")
+          m <- regmatches(raw, regexpr('"version"\\s*:\\s*"[^"]+"', raw))
+          if (length(m) == 1L && nzchar(m)) {
+            sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m)
+          } else {
+            "v20.66"
+          }
+        }, error = function(e) "v20.66")
+
         report_copy <- build_ticker_report_copy(
           locale = rep_loc,
           stock_code = display_ticker_for_market(
@@ -11229,7 +11249,9 @@ server <- function(input, output, session) {
           capex_avg_pct = capex_info$avg_pct,
           capex_n_years = capex_info$n_years,
           fscore_total = fscore_info$total,
-          money_prefix = px
+          money_prefix = px,
+          market_mode = rep_mm,
+          report_condensed = rep_lite
         )
 
         tmp_html <- tempfile(fileext = ".html")
@@ -11289,9 +11311,10 @@ server <- function(input, output, session) {
             fx_usd_twd = isolate(fx_usd_twd()),
             report_locale = rep_loc,
             report_copy = report_copy,
-            sensitivity_df = sens_df,
-            app_version = "v20",
-            report_condensed = isTRUE(isolate(lite_mode())),
+            sensitivity_df = if (rep_lite) NULL else sens_df,
+            app_version = app_ver,
+            report_condensed = rep_lite,
+            market_mode = rep_mm,
             summary_df = {
               sd <- sum_df
               if (!is.null(sd) && is.data.frame(sd) && nrow(sd) > 0) {

@@ -50,6 +50,7 @@ pack_zh <- build_ticker_report_copy(
   money_prefix = "$"
 )
 check("zh section1 title", identical(pack_zh$titles$section1, "壹、投資建議"))
+check("zh doc_kicker US default", identical(pack_zh$titles$doc_kicker, "美股個股報告"))
 check("MOS formula present", grepl("MOS", pack_zh$mos_formula, fixed = TRUE))
 check("target formula has 120", grepl("120", pack_zh$target_formula, fixed = TRUE))
 check("DCF bullet", any(grepl("DCF", pack_zh$investment_bullets)))
@@ -106,6 +107,7 @@ pack_en <- build_ticker_report_copy(
   money_prefix = "$"
 )
 check("en section1 title", identical(pack_en$titles$section1, "I. Investment view"))
+check("en doc_kicker US default", identical(pack_en$titles$doc_kicker, "US Company Report"))
 check("en disclaimer mentions peer exclusion", grepl("peer ranking|lab-universe", pack_en$titles$disclaimer, ignore.case = TRUE))
 check("en disclaimer self-risk", grepl("alone bear", pack_en$titles$disclaimer, ignore.case = TRUE))
 check("en disclaimer points to About", grepl("About page", pack_en$titles$disclaimer, fixed = TRUE))
@@ -155,6 +157,12 @@ check("template logo blue", grepl("#0C5484", txt, fixed = TRUE))
 check("template logo green", grepl("#249C60", txt, fixed = TRUE))
 check("template analysis-box", grepl("analysis-box", txt, fixed = TRUE))
 check("template report_condensed", grepl("report_condensed", txt, fixed = TRUE))
+check("template has market_mode", grepl("market_mode", txt, fixed = TRUE))
+check("template mode-badge", grepl("mode-badge", txt, fixed = TRUE))
+check("template gold accent", grepl("#C9A227", txt, fixed = TRUE) || grepl("ynow-gold", txt, fixed = TRUE))
+check("template black accent", grepl("#0b0d10", txt, fixed = TRUE) || grepl("ynow-black", txt, fixed = TRUE))
+check("template TW sector labels", grepl("次產業", txt, fixed = TRUE) && grepl("產業", txt, fixed = TRUE))
+check("template lite FCF gate", grepl("lite_fcf_note", txt, fixed = TRUE))
 check("locale keys download_report_about exist", {
   loc_path <- file.path(app_dir, "ui_locale.R")
   loc_txt <- paste(readLines(loc_path, warn = FALSE), collapse = "\n")
@@ -225,8 +233,9 @@ if (requireNamespace("rmarkdown", quietly = TRUE)) {
         report_locale = "zh-TW",
         report_copy = pack_zh,
         sensitivity_df = df,
-        app_version = "v17.92",
-        report_condensed = FALSE
+        app_version = "v20.66",
+        report_condensed = FALSE,
+        market_mode = "US"
       ),
       envir = new.env(parent = globalenv())
     )
@@ -235,6 +244,8 @@ if (requireNamespace("rmarkdown", quietly = TRUE)) {
     if (exists_ok) {
       html_body <- paste(readLines(if (file.exists(out_html)) out_html else tmp_html, warn = FALSE), collapse = "\n")
       check("rendered has logo blue", grepl("#0C5484", html_body, fixed = TRUE))
+      check("rendered has gold accent", grepl("#C9A227", html_body, fixed = TRUE) || grepl("ynow-gold", html_body))
+      check("rendered has mode badge US Full", grepl("US", html_body, fixed = TRUE) && grepl("Full", html_body, fixed = TRUE))
       check("rendered has analysis notes", grepl("分析說明|投資立場與目標價", html_body))
       check("rendered has analysis-box", grepl("analysis-box", html_body, fixed = TRUE))
     }
@@ -246,10 +257,29 @@ if (requireNamespace("rmarkdown", quietly = TRUE)) {
 }
 check("rmarkdown HTML smoke render", isTRUE(ok_render))
 
-# Condensed (Lite) smoke — appendix omitted
+# Condensed (Lite) smoke — appendix / FCF / sensitivity omitted
 tmp_html_lite <- tempfile(fileext = ".html")
 ok_lite <- FALSE
 if (requireNamespace("rmarkdown", quietly = TRUE)) {
+  pack_lite <- build_ticker_report_copy(
+    locale = "zh-TW",
+    stock_code = "AAPL",
+    company_name = "Apple Inc.",
+    current_price = 100,
+    target_price = 120,
+    primary_method = "DCF／FCFF",
+    margin_of_safety = (120 - 100) / 120 * 100,
+    upside_pct = 20,
+    primary_bear = 90,
+    primary_base = 120,
+    primary_bull = 150,
+    fscore_total = 7,
+    money_prefix = "$",
+    market_mode = "US",
+    report_condensed = TRUE
+  )
+  check("lite pack truncates analysis to <=4", length(pack_lite$analysis_paragraphs) <= 4L)
+  check("lite pack title marks Lite", grepl("Lite", pack_lite$titles$doc_title, fixed = TRUE))
   ok_lite <- tryCatch({
     rmarkdown::render(
       input = tpl,
@@ -299,8 +329,8 @@ if (requireNamespace("rmarkdown", quietly = TRUE)) {
         warnings = "",
         fscore_total = 7,
         fscore_quality = 1,
-        fscore_checklist = NULL,
-        investment_highlights = pack_zh$investment_bullets,
+        fscore_checklist = data.frame(`檢驗維度` = "ROA > 0", `得分` = "通過", check.names = FALSE),
+        investment_highlights = pack_lite$investment_bullets,
         summary_df = data.frame(Item = "Market Cap", Value = "3T", stringsAsFactors = FALSE),
         income_df = data.frame(Item = "Revenue", `2024` = "1", check.names = FALSE),
         balance_df = NULL,
@@ -308,10 +338,11 @@ if (requireNamespace("rmarkdown", quietly = TRUE)) {
         session_currency = "USD",
         fx_usd_twd = 32,
         report_locale = "zh-TW",
-        report_copy = pack_zh,
-        sensitivity_df = NULL,
-        app_version = "v17.92",
-        report_condensed = TRUE
+        report_copy = pack_lite,
+        sensitivity_df = df,
+        app_version = "v20.66",
+        report_condensed = TRUE,
+        market_mode = "US"
       ),
       envir = new.env(parent = globalenv())
     )
@@ -322,6 +353,9 @@ if (requireNamespace("rmarkdown", quietly = TRUE)) {
     check("lite badge present", grepl("Lite", body_l, fixed = TRUE) || grepl("lite-badge", body_l, fixed = TRUE))
     check("lite omits income appendix table", !grepl(">Revenue<", body_l, fixed = TRUE))
     check("lite appendix note", grepl("精簡版省略財報附錄|omits statement", body_l))
+    check("lite omits FCF chart lead", !grepl("FCFF path \\(ticker DCF only\\)", body_l))
+    check("lite omits sensitivity grid lead", !grepl("WACC × terminal g sensitivity", body_l, fixed = TRUE))
+    check("lite omits fscore checklist row", !grepl("ROA &gt; 0|ROA > 0", body_l))
     TRUE
   }, error = function(e) {
     cat("LITE_RENDER_ERR ", conditionMessage(e), "\n", sep = "")
@@ -329,6 +363,110 @@ if (requireNamespace("rmarkdown", quietly = TRUE)) {
   })
 }
 check("rmarkdown Lite condensed smoke render", isTRUE(ok_lite))
+
+# TW Full smoke — industry labels 產業／次產業
+tmp_html_tw <- tempfile(fileext = ".html")
+ok_tw <- FALSE
+if (requireNamespace("rmarkdown", quietly = TRUE)) {
+  pack_tw <- build_ticker_report_copy(
+    locale = "zh-TW",
+    stock_code = "2330",
+    company_name = "台積電",
+    current_price = 900,
+    target_price = 1000,
+    primary_method = "DCF／FCFF",
+    margin_of_safety = 10,
+    upside_pct = 11.1,
+    money_prefix = "NT$",
+    market_mode = "TW",
+    report_condensed = FALSE
+  )
+  check("tw pack doc_kicker", identical(pack_tw$titles$doc_kicker, "台股個股報告"))
+  ok_tw <- tryCatch({
+    rmarkdown::render(
+      input = tpl,
+      output_file = basename(tmp_html_tw),
+      output_dir = dirname(tmp_html_tw),
+      intermediates_dir = tempdir(),
+      clean = TRUE,
+      quiet = TRUE,
+      params = list(
+        stock_code = "2330",
+        company_name = "台積電",
+        sector = "半導體",
+        industry = "晶圓代工",
+        report_date = "2026/10/05",
+        rating = "NR",
+        rating_en = "NR",
+        rating_color = "#6c757d",
+        current_price = 900,
+        target_price = 1000,
+        upside_pct = 11.1,
+        dcf_price = 980,
+        ddm_value = NA_real_,
+        pb_value = NA_real_,
+        ri_value = NA_real_,
+        ev_value = NA_real_,
+        margin_of_safety = 10,
+        primary_method = "DCF／FCFF",
+        method_rationale = "FCF 穩健。",
+        primary_bear = 800,
+        primary_base = 1000,
+        primary_bull = 1200,
+        secondary_point = NA_real_,
+        confidence_level = "Medium",
+        confidence_score = 0.6,
+        wacc = "8%",
+        terminal_growth = "2.5%",
+        forecast_years = 5,
+        dcf_mode = "明確預測期 + Gordon 終值",
+        market_cap = "20T",
+        pe_ratio = "20",
+        beta = "1.0",
+        dividend_yield = "2%",
+        eps = 40,
+        bvps = 80,
+        kpi_df = NULL,
+        fcf_plot_path = NA_character_,
+        warnings = "",
+        fscore_total = 7,
+        fscore_quality = 1,
+        fscore_checklist = NULL,
+        investment_highlights = pack_tw$investment_bullets,
+        summary_df = NULL,
+        income_df = NULL,
+        balance_df = NULL,
+        cashflow_df = NULL,
+        session_currency = "TWD",
+        fx_usd_twd = 32,
+        report_locale = "zh-TW",
+        report_copy = pack_tw,
+        sensitivity_df = NULL,
+        app_version = "v20.66",
+        report_condensed = FALSE,
+        market_mode = "TW"
+      ),
+      envir = new.env(parent = globalenv())
+    )
+    out_t <- file.path(dirname(tmp_html_tw), basename(tmp_html_tw))
+    path_t <- if (file.exists(out_t)) out_t else tmp_html_tw
+    if (!file.exists(path_t)) return(FALSE)
+    body_t <- paste(readLines(path_t, warn = FALSE), collapse = "\n")
+    check("tw mode badge", grepl("TW", body_t, fixed = TRUE) && grepl("Full", body_t, fixed = TRUE))
+    check("tw industry labels", grepl("產業", body_t, fixed = TRUE) && grepl("次產業", body_t, fixed = TRUE))
+    TRUE
+  }, error = function(e) {
+    cat("TW_RENDER_ERR ", conditionMessage(e), "\n", sep = "")
+    FALSE
+  })
+}
+check("rmarkdown TW Full smoke render", isTRUE(ok_tw))
+
+# Server wiring smoke (static source checks)
+srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE), collapse = "\n")
+check("server passes market_mode to report", grepl("market_mode = rep_mm", srv, fixed = TRUE))
+check("server filename has market+edition", grepl("YNow_Report_", srv, fixed = TRUE) && grepl("\"Lite\"", srv, fixed = TRUE))
+check("server reads ynow_build version", grepl("ynow_build.json", srv, fixed = TRUE))
 
 if (fail > 0L) {
   cat("FAILED ", fail, " checks\n", sep = "")

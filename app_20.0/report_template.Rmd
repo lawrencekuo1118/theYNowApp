@@ -61,6 +61,7 @@ params:
   sensitivity_df: NA
   app_version: "v20.66"
   report_condensed: FALSE
+  market_mode: "US"
 ---
 
 ```{r setup, include=FALSE}
@@ -82,6 +83,14 @@ emit_html <- function(...) {
 )))
 if (!.ccy %in% c("USD", "TWD")) .ccy <- "USD"
 .money_px <- if (identical(.ccy, "TWD")) "NT$" else "$"
+
+.mm_raw <- params$market_mode
+.market <- toupper(trimws(as.character(
+  if (is.null(.mm_raw) || length(.mm_raw) < 1L || is.na(.mm_raw[[1]])) "US" else .mm_raw[[1]]
+)))
+if (!.market %in% c("US", "TW")) .market <- "US"
+.condensed <- isTRUE(params$report_condensed)
+.edition <- if (.condensed) "Lite" else "Full"
 
 fmt_price <- function(x) {
   n <- suppressWarnings(as.numeric(x))
@@ -144,20 +153,43 @@ if (!is.list(.rc) || is.null(.rc$titles)) {
     eps = params$eps,
     bvps = params$bvps,
     fscore_total = params$fscore_total,
-    money_prefix = .money_px
+    money_prefix = .money_px,
+    market_mode = .market,
+    report_condensed = .condensed
   )
 }
 .tt <- .rc$titles
+.en <- identical(safe_chr(params$report_locale), "en")
+.sector_lab <- if (.en) {
+  if (identical(.market, "TW")) "Industry" else "Sector"
+} else {
+  if (identical(.market, "TW")) "產業" else "Sector"
+}
+.industry_lab <- if (.en) {
+  if (identical(.market, "TW")) "Sub-industry" else "Industry"
+} else {
+  if (identical(.market, "TW")) "次產業" else "Industry"
+}
+.mode_badge <- paste0(
+  if (identical(.market, "TW")) "TW" else "US",
+  " · ",
+  .edition
+)
 ```
 
 ```{css, echo=FALSE}
-/* YNow logo palette: blue #0C5484 · green #249C60 */
+/* YNow report palette: logo blue/green + black/gold accents; key nums in blue-green */
 :root {
   --ynow-blue: #0C5484;
   --ynow-green: #249C60;
+  --ynow-cyan: #1AA8B8;
   --ynow-blue-soft: #e8f2f8;
   --ynow-green-soft: #eaf7f0;
-  --ynow-ink: #1a2430;
+  --ynow-ink: #12161c;
+  --ynow-black: #0b0d10;
+  --ynow-gold: #F5C518;
+  --ynow-gold-deep: #C9A227;
+  --ynow-accent: #0C5484;
 }
 @page { size: A4; margin: 12mm 11mm; }
 html, body {
@@ -178,11 +210,16 @@ h1 {
   page-break-before: avoid; break-before: avoid;
 }
 h2 {
-  font-size: 12.5pt; color: #0C5484; border-bottom: 1.5px solid #0C5484;
+  font-size: 12.5pt; color: var(--ynow-blue); border-bottom: 2px solid var(--ynow-gold-deep);
   padding-bottom: 3px; margin: 16px 0 8px 0; page-break-after: avoid;
 }
-h3 { font-size: 11pt; color: #0C5484; margin: 12px 0 6px 0; page-break-after: avoid; }
+h3 { font-size: 11pt; color: var(--ynow-blue); margin: 12px 0 6px 0; page-break-after: avoid; }
 p, li { orphans: 3; widows: 3; }
+.ynow-num, .price-table .value, .cover-side .side-value, .fscore-score {
+  color: var(--ynow-blue) !important;
+  font-weight: 700;
+}
+.ynow-num-pos { color: var(--ynow-green) !important; font-weight: 700; }
 .report-cover {
   display: grid;
   grid-template-columns: 1.35fr 1fr;
@@ -191,82 +228,92 @@ p, li { orphans: 3; widows: 3; }
   page-break-inside: avoid;
 }
 .cover-main {
-  background: #0C5484; color: #fff; padding: 14px 16px; border-radius: 3px;
-  border-bottom: 4px solid #249C60;
+  background: linear-gradient(135deg, #0C5484 0%, #1AA8B8 48%, #249C60 100%);
+  color: #fff; padding: 14px 16px; border-radius: 3px;
+  border-bottom: 4px solid var(--ynow-gold-deep);
+  box-shadow: inset 0 -2px 0 rgba(11, 13, 16, 0.35);
 }
-.cover-main .kicker { font-size: 9pt; opacity: 0.9; letter-spacing: 0.04em; }
-.cover-main .meta { font-size: 9pt; opacity: 0.9; margin: 4px 0 10px 0; }
+.cover-main .kicker { font-size: 9pt; opacity: 0.95; letter-spacing: 0.04em; }
+.cover-main .meta { font-size: 9pt; opacity: 0.92; margin: 4px 0 10px 0; }
+.mode-badge {
+  display: inline-block; background: var(--ynow-black); color: var(--ynow-gold);
+  font-size: 8pt; font-weight: 700; padding: 2px 8px; border-radius: 2px;
+  margin-left: 6px; vertical-align: middle; letter-spacing: 0.03em;
+}
 .rating-badge {
   display: inline-block; padding: 4px 12px; border-radius: 2px;
   font-size: 11pt; font-weight: 800; color: #fff; margin-right: 6px;
 }
 .cover-side {
-  border: 1.5px solid #0C5484; border-radius: 3px; padding: 10px 12px;
-  background: #e8f2f8; font-size: 9pt;
+  border: 1.5px solid var(--ynow-blue); border-radius: 3px; padding: 10px 12px;
+  background: linear-gradient(180deg, #e8f2f8 0%, #f7fbf9 100%);
+  font-size: 9pt;
+  border-top: 3px solid var(--ynow-gold-deep);
 }
 .cover-side .side-label { color: #5a6a78; font-size: 8pt; margin-top: 6px; }
-.cover-side .side-value { font-weight: 700; color: #0C5484; font-size: 11pt; }
+.cover-side .side-value { font-weight: 700; color: var(--ynow-blue); font-size: 11pt; }
 .cover-side .formula { color: #334; font-size: 8.5pt; margin-top: 2px; line-height: 1.35; }
 .price-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
 .price-table td {
-  width: 25%; background: rgba(255,255,255,0.14); color: #fff;
-  padding: 7px 8px; border: 2px solid #0C5484; vertical-align: top;
+  width: 25%; background: rgba(11, 13, 16, 0.28); color: #fff;
+  padding: 7px 8px; border: 2px solid rgba(201, 162, 39, 0.55); vertical-align: top;
 }
-.price-table .label { font-size: 8pt; opacity: 0.9; }
-.price-table .value { font-size: 12pt; font-weight: 700; margin-top: 2px; }
+.price-table .label { font-size: 8pt; opacity: 0.92; color: var(--ynow-gold); }
+.price-table .value { font-size: 12pt; font-weight: 700; margin-top: 2px; color: #fff !important; }
 .ynow-table { width: 100%; border-collapse: collapse; margin: 6px 0 10px 0; font-size: 9pt; }
 .ynow-table th {
-  background: #0C5484; color: #fff; text-align: left;
-  padding: 5px 7px; border: 1px solid #0C5484;
+  background: var(--ynow-black); color: var(--ynow-gold); text-align: left;
+  padding: 5px 7px; border: 1px solid var(--ynow-black);
 }
 .ynow-table td { padding: 4px 7px; border: 1px solid #d5e3ec; }
 .ynow-table tr:nth-child(even) td { background: #e8f2f8; }
+.ynow-table td:last-child { color: var(--ynow-blue); font-weight: 600; }
 .highlight-box, .risk-box-warn, .risk-box-ok, .fscore-box, .formula-box, .analysis-box {
   padding: 8px 10px; border-radius: 0 3px 3px 0; margin: 6px 0 10px 0;
   page-break-inside: avoid;
 }
-.highlight-box { background: #e8f2f8; border-left: 4px solid #0C5484; }
-.analysis-box { background: #f7fbf9; border-left: 4px solid #249C60; }
+.highlight-box { background: #e8f2f8; border-left: 4px solid var(--ynow-blue); }
+.analysis-box { background: #f7fbf9; border-left: 4px solid var(--ynow-green); }
 .analysis-box .para-title {
-  font-weight: 700; color: #0C5484; margin: 0 0 3px 0; font-size: 10pt;
+  font-weight: 700; color: var(--ynow-blue); margin: 0 0 3px 0; font-size: 10pt;
 }
 .analysis-box .para-body {
-  margin: 0 0 10px 0; font-size: 9.5pt; line-height: 1.45; color: #1a2430;
+  margin: 0 0 10px 0; font-size: 9.5pt; line-height: 1.45; color: var(--ynow-ink);
 }
 .analysis-box .para-body:last-child { margin-bottom: 0; }
-.formula-box { background: #eaf7f0; border-left: 4px solid #249C60; font-size: 9.5pt; }
+.formula-box { background: #eaf7f0; border-left: 4px solid var(--ynow-green); font-size: 9.5pt; }
+.formula-box strong { color: var(--ynow-blue); }
 .risk-box-warn { background: #fff5f5; border-left: 4px solid #c0392b; }
-.risk-box-ok { background: #eaf7f0; border-left: 4px solid #249C60; }
-.fscore-box { background: #e8f2f8; border-left: 4px solid #0C5484; }
-.fscore-score { font-size: 14pt; font-weight: 800; color: #0C5484; }
+.risk-box-ok { background: #eaf7f0; border-left: 4px solid var(--ynow-green); }
+.fscore-box { background: #e8f2f8; border-left: 4px solid var(--ynow-blue); }
+.fscore-score { font-size: 14pt; font-weight: 800; color: var(--ynow-blue); }
 .section-lead { color: #495057; font-size: 9pt; margin: 0 0 6px 0; }
 .lite-badge {
-  display: inline-block; background: #249C60; color: #fff;
+  display: inline-block; background: var(--ynow-green); color: #fff;
   font-size: 8pt; font-weight: 700; padding: 2px 7px; border-radius: 2px;
   margin-left: 6px; vertical-align: middle;
 }
 .disclaimer {
-  font-size: 7.5pt; color: #6c757d; border-top: 1px solid #d5e3ec;
+  font-size: 7.5pt; color: #6c757d; border-top: 2px solid var(--ynow-gold-deep);
   padding-top: 8px; margin-top: 14px; line-height: 1.45;
 }
 img { max-width: 100%; height: auto; }
 ```
 
 ```{r cover, results='asis'}
-.condensed <- isTRUE(params$report_condensed)
+.mode_pill <- sprintf("<span class='mode-badge'>%s</span>", htmlEscape(.mode_badge))
 .lite_badge <- if (.condensed) {
-  if (identical(safe_chr(params$report_locale), "en"))
-    "<span class='lite-badge'>LITE</span>"
-  else
-    "<span class='lite-badge'>Lite 精簡</span>"
-} else ""
+  if (.en) "<span class='lite-badge'>LITE</span>" else "<span class='lite-badge'>Lite 精簡</span>"
+} else {
+  ""
+}
 emit_html(sprintf(
 "<div class='report-cover'>
 <div class='cover-main'>
-<div class='kicker'>%s · The YNow App %s%s</div>
+<div class='kicker'>%s · The YNow App %s%s%s</div>
 <div class='meta'>%s | %s (%s)</div>
 <h1 style='color:#fff;font-size:15pt;margin:0 0 6px 0;'>%s — %s</h1>
-<div class='meta'>%s / %s</div>
+<div class='meta'>%s：%s · %s：%s</div>
 <div style='margin-top:8px;'>
 <span class='rating-badge' style='background:%s;'>%s</span>
 <span style='font-size:9pt;opacity:0.9;'>%s · %s</span>
@@ -295,11 +342,13 @@ emit_html(sprintf(
 <div class='side-value'>%s</div>
 </div>
 </div>",
-  htmlEscape(.tt$doc_kicker), htmlEscape(safe_chr(params$app_version, "v17")), .lite_badge,
+  htmlEscape(.tt$doc_kicker), htmlEscape(safe_chr(params$app_version, "v20")),
+  .mode_pill, .lite_badge,
   htmlEscape(safe_chr(params$report_date)),
   htmlEscape(safe_chr(params$stock_code)), htmlEscape(safe_chr(params$company_name)),
   htmlEscape(safe_chr(params$company_name)), htmlEscape(.tt$doc_title),
-  htmlEscape(safe_chr(params$sector)), htmlEscape(safe_chr(params$industry)),
+  htmlEscape(.sector_lab), htmlEscape(safe_chr(params$sector)),
+  htmlEscape(.industry_lab), htmlEscape(safe_chr(params$industry)),
   htmlEscape(safe_chr(params$rating_color, "#6c757d")),
   htmlEscape(safe_chr(params$rating, "NR")),
   htmlEscape(safe_chr(params$rating_en, "NR")),
@@ -332,6 +381,8 @@ emit_html(sprintf(
 ```{r section1-analysis, results='asis'}
 paras <- .rc$analysis_paragraphs
 if (is.null(paras) || !is.list(paras) || length(paras) < 1L) paras <- list()
+# Lite: keep the first four analysis notes for a shorter desk brief.
+if (.condensed && length(paras) > 4L) paras <- paras[seq_len(4L)]
 if (length(paras) > 0L) {
   parts <- c(sprintf("<div class='analysis-box'><p class='para-title'>%s</p>",
                      htmlEscape(safe_chr(.tt$analysis_heading, "Analysis notes"))))
@@ -371,24 +422,40 @@ emit_html(parts)
 ## `r .tt$multi_model`
 
 ```{r multi-model, results='asis'}
-val_df <- data.frame(
-  Item = c(
-    "Target (primary Base)", "Bear", "Bull", "Secondary check",
-    "DCF / share", "DDM / share", "RI / share", "P/B / share",
-    "EV (DCF)", "Last price", "Upside", "MOS"
-  ),
-  Value = c(
-    fmt_price(params$target_price),
-    fmt_price(params$primary_bear), fmt_price(params$primary_bull),
-    fmt_price(params$secondary_point),
-    fmt_price(params$dcf_price), fmt_price(params$ddm_value),
-    fmt_price(params$ri_value), fmt_price(params$pb_value),
-    fmt_ev(params$ev_value),
-    fmt_price(params$current_price),
-    fmt_pct(params$upside_pct), fmt_pct(params$margin_of_safety)
-  ),
-  stringsAsFactors = FALSE, check.names = FALSE
-)
+if (.condensed) {
+  val_df <- data.frame(
+    Item = c(
+      "Target (primary Base)", "Bear", "Bull",
+      "Last price", "Upside", "MOS"
+    ),
+    Value = c(
+      fmt_price(params$target_price),
+      fmt_price(params$primary_bear), fmt_price(params$primary_bull),
+      fmt_price(params$current_price),
+      fmt_pct(params$upside_pct), fmt_pct(params$margin_of_safety)
+    ),
+    stringsAsFactors = FALSE, check.names = FALSE
+  )
+} else {
+  val_df <- data.frame(
+    Item = c(
+      "Target (primary Base)", "Bear", "Bull", "Secondary check",
+      "DCF / share", "DDM / share", "RI / share", "P/B / share",
+      "EV (DCF)", "Last price", "Upside", "MOS"
+    ),
+    Value = c(
+      fmt_price(params$target_price),
+      fmt_price(params$primary_bear), fmt_price(params$primary_bull),
+      fmt_price(params$secondary_point),
+      fmt_price(params$dcf_price), fmt_price(params$ddm_value),
+      fmt_price(params$ri_value), fmt_price(params$pb_value),
+      fmt_ev(params$ev_value),
+      fmt_price(params$current_price),
+      fmt_pct(params$upside_pct), fmt_pct(params$margin_of_safety)
+    ),
+    stringsAsFactors = FALSE, check.names = FALSE
+  )
+}
 kable_safe(val_df)
 ```
 
@@ -398,11 +465,13 @@ kable_safe(val_df)
 
 ```{r company-intro, results='asis'}
 emit_html(sprintf(
-"<p class='section-lead'>%s (%s). Sector：%s · Industry：%s。</p>
+"<p class='section-lead'>%s (%s). %s：%s · %s：%s。</p>
 <div class='formula-box'>%s</div>",
   htmlEscape(safe_chr(params$company_name)),
   htmlEscape(safe_chr(params$stock_code)),
+  htmlEscape(.sector_lab),
   htmlEscape(safe_chr(params$sector)),
+  htmlEscape(.industry_lab),
   htmlEscape(safe_chr(params$industry)),
   htmlEscape(safe_chr(params$method_rationale, ""))
 ))
@@ -468,15 +537,21 @@ assump <- data.frame(
 kable_safe(assump)
 ```
 
-<p class="section-lead">FCFF path (ticker DCF only)</p>
-
 ```{r fcf-plot, results='asis', out.width='100%'}
-if (!is.null(params$fcf_plot_path) && !is.na(params$fcf_plot_path) &&
-    nzchar(as.character(params$fcf_plot_path)) &&
-    file.exists(as.character(params$fcf_plot_path))) {
-  knitr::include_graphics(as.character(params$fcf_plot_path))
+if (.condensed) {
+  emit_html(sprintf(
+    "<p class='section-lead'><em>%s</em></p>",
+    htmlEscape(safe_chr(.tt$lite_fcf_note, .tt$no_fcf))
+  ))
 } else {
-  emit_html(sprintf("<p class='section-lead'><em>%s</em></p>", htmlEscape(.tt$no_fcf)))
+  emit_html("<p class='section-lead'>FCFF path (ticker DCF only)</p>")
+  if (!is.null(params$fcf_plot_path) && !is.na(params$fcf_plot_path) &&
+      nzchar(as.character(params$fcf_plot_path)) &&
+      file.exists(as.character(params$fcf_plot_path))) {
+    knitr::include_graphics(as.character(params$fcf_plot_path))
+  } else {
+    emit_html(sprintf("<p class='section-lead'><em>%s</em></p>", htmlEscape(.tt$no_fcf)))
+  }
 }
 ```
 
@@ -496,8 +571,13 @@ band_df <- data.frame(
 )
 kable_safe(band_df)
 
-if (!is.null(params$sensitivity_df) && is.data.frame(params$sensitivity_df) &&
-    nrow(params$sensitivity_df) > 0) {
+if (.condensed) {
+  emit_html(sprintf(
+    "<p class='section-lead'>%s</p>",
+    htmlEscape(safe_chr(.tt$lite_sens_note, .tt$no_sens))
+  ))
+} else if (!is.null(params$sensitivity_df) && is.data.frame(params$sensitivity_df) &&
+           nrow(params$sensitivity_df) > 0) {
   emit_html("<p class='section-lead'>WACC × terminal g sensitivity (primary DCF／DDM path)</p>")
   kable_safe(params$sensitivity_df)
 } else {
@@ -540,9 +620,12 @@ if (is.finite(fs_n)) {
     htmlEscape(.tt$no_kpi)
   ))
 }
-cl <- params$fscore_checklist
-if (!is.null(cl) && is.data.frame(cl) && nrow(cl) > 0) {
-  kable_safe(cl)
+# Full only: detailed F-Score checklist rows
+if (!.condensed) {
+  cl <- params$fscore_checklist
+  if (!is.null(cl) && is.data.frame(cl) && nrow(cl) > 0) {
+    kable_safe(cl)
+  }
 }
 ```
 
