@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12650933
+bundleId=12651328
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=ad60d261e67d1c049150ed8b7129bd76a07dd5e6
-commit=ad60d261e67d1c049150ed8b7129bd76a07dd5e6
-short=ad60d26
-message=feat: cut live line to app_21.0 with Asset transmission sidebar tab
-captured_at=2026-10-05T18:52:08Z
+aligned_git=fe3a1f9b7993a217f38c25673478fa3e92149029
+commit=fe3a1f9b7993a217f38c25673478fa3e92149029
+short=fe3a1f9
+message=chore: bump display version to v21.01
+captured_at=2026-10-05T20:38:14Z
 source_branch=master
-display_version=v21
-note=Canonical live line is app_21.0. Bundle 12650933 ships v21: Asset transmission moved from Testing to its own sidebar tab after Macro (Lite + Full); Testing remains Full-only sandbox. Deploy via scripts/deploy_app_21.R --no-bump.
+display_version=v21.01
+note=Canonical live line is app_21.0. Bundle 12651328 ships v21.01: strict fast (15m cache_mem for Rf/FX/quotes) vs slow (>=24h cache_disk for statements/SEC/industry) so CAPM Ke and MOS track live market. Deploy via scripts/deploy_app_21.R.
