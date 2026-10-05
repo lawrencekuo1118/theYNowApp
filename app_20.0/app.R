@@ -13,14 +13,29 @@
 .ynow_app_dir <- normalizePath(".", mustWork = TRUE)
 setwd(.ynow_app_dir)
 
-# Block reticulate/uv from downloading CPython during cold start on shinyapps.
-# Listening must happen before any Python install; lazy path re-enables downloads.
-.ynow_boot_shinyapps <- nzchar(Sys.getenv("SHINY_SERVER_VERSION")) ||
-  grepl("shinyapps", Sys.getenv("HOSTNAME"), ignore.case = TRUE) ||
-  grepl("shinyapps", Sys.getenv("R_CONFIG_ACTIVE"), ignore.case = TRUE) ||
-  identical(Sys.getenv("FORCE_SHINYAPPS_PYTHON"), "1")
-if (isTRUE(.ynow_boot_shinyapps)) {
-  Sys.setenv(UV_PYTHON_DOWNLOADS = "never")
+# Hosted Posit Connect / shinyapps.io workers do not set SHINY_SERVER_VERSION and
+# use opaque hostnames (e.g. ef34b7e4d842), so path / user checks are required.
+.ynow_is_hosted_connect <- function() {
+  wd <- tryCatch(normalizePath(getwd(), mustWork = FALSE), error = function(e) getwd())
+  nzchar(Sys.getenv("SHINY_SERVER_VERSION")) ||
+    grepl("shinyapps", Sys.getenv("HOSTNAME"), ignore.case = TRUE) ||
+    grepl("shinyapps", Sys.getenv("R_CONFIG_ACTIVE"), ignore.case = TRUE) ||
+    identical(Sys.getenv("FORCE_SHINYAPPS_PYTHON"), "1") ||
+    grepl("/srv/connect/apps", wd, fixed = TRUE) ||
+    (identical(Sys.getenv("USER"), "shiny") && dir.exists("/srv/connect"))
+}
+
+# Block reticulate/uv from downloading CPython during cold start.
+# Do NOT gate only on hostname — Connect 2026 logs showed CPython still
+# downloading before Listen when detection missed. Prefer: no local venv ⇒ block.
+# Listening must happen first; .ynow_ensure_python() re-enables downloads lazily.
+.ynow_boot_shinyapps <- .ynow_is_hosted_connect()
+.ynow_venv_python <- file.path(.ynow_app_dir, ".ynow_venv", "bin", "python")
+if (isTRUE(.ynow_boot_shinyapps) || !file.exists(.ynow_venv_python)) {
+  Sys.setenv(
+    UV_PYTHON_DOWNLOADS = "never",
+    RETICULATE_USE_MANAGED_VENV = "false"
+  )
 }
 
 # R only auto-reads ~/.Renviron (RStudio also loads a project file locally).

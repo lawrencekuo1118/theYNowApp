@@ -1613,10 +1613,16 @@ def _ynow_atx_download(tickers, period):
     v <- get("on_shinyapps", inherits = TRUE)
     if (isTRUE(v)) return(TRUE)
   }
+  if (exists(".ynow_is_hosted_connect", mode = "function", inherits = TRUE)) {
+    return(isTRUE(.ynow_is_hosted_connect()))
+  }
+  wd <- tryCatch(normalizePath(getwd(), mustWork = FALSE), error = function(e) getwd())
   nzchar(Sys.getenv("SHINY_SERVER_VERSION")) ||
     grepl("shinyapps", Sys.getenv("HOSTNAME"), ignore.case = TRUE) ||
     grepl("shinyapps", Sys.getenv("R_CONFIG_ACTIVE"), ignore.case = TRUE) ||
-    identical(Sys.getenv("FORCE_SHINYAPPS_PYTHON"), "1")
+    identical(Sys.getenv("FORCE_SHINYAPPS_PYTHON"), "1") ||
+    grepl("/srv/connect/apps", wd, fixed = TRUE) ||
+    (identical(Sys.getenv("USER"), "shiny") && dir.exists("/srv/connect"))
 }
 
 asset_tx_fetch_panel <- function(catalog = NULL, period = "6mo", force = FALSE) {

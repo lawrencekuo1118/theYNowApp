@@ -2,25 +2,39 @@
 # global.R - 初始化與環境設定（app_20.0）
 # ==========================================
 
-# 🐍 Python：本機可選 .ynow_venv；shinyapps.io 用 requirements.txt 部署環境
+# 🐍 Python：本機可選 .ynow_venv；雲端延遲以 py_require / uv 安裝（Listen 之後）
 Sys.setenv(RETICULATE_PYTHON = "")
 env_dir <- "./.ynow_venv"
 python_path <- file.path(env_dir, "bin", "python")
-on_shinyapps <- nzchar(Sys.getenv("SHINY_SERVER_VERSION")) ||
-  grepl("shinyapps", Sys.getenv("HOSTNAME"), ignore.case = TRUE) ||
-  grepl("shinyapps", Sys.getenv("R_CONFIG_ACTIVE"), ignore.case = TRUE) ||
-  identical(Sys.getenv("FORCE_SHINYAPPS_PYTHON"), "1")
+
+# Shared hosted-connect detector (Posit Connect on shinyapps.io).
+if (!exists(".ynow_is_hosted_connect", mode = "function", inherits = FALSE)) {
+  .ynow_is_hosted_connect <- function() {
+    wd <- tryCatch(normalizePath(getwd(), mustWork = FALSE), error = function(e) getwd())
+    nzchar(Sys.getenv("SHINY_SERVER_VERSION")) ||
+      grepl("shinyapps", Sys.getenv("HOSTNAME"), ignore.case = TRUE) ||
+      grepl("shinyapps", Sys.getenv("R_CONFIG_ACTIVE"), ignore.case = TRUE) ||
+      identical(Sys.getenv("FORCE_SHINYAPPS_PYTHON"), "1") ||
+      grepl("/srv/connect/apps", wd, fixed = TRUE) ||
+      (identical(Sys.getenv("USER"), "shiny") && dir.exists("/srv/connect"))
+  }
+}
+on_shinyapps <- isTRUE(.ynow_is_hosted_connect())
 
 # Never let uv download a managed CPython while the worker is still booting.
 # Cold-start installs blocked Listening and timed out Safari / curl.
-if (isTRUE(on_shinyapps)) {
-  Sys.setenv(UV_PYTHON_DOWNLOADS = "never")
+# Also block when there is no local venv (hosted mis-detect / bare image).
+if (isTRUE(on_shinyapps) || !file.exists(python_path)) {
+  Sys.setenv(
+    UV_PYTHON_DOWNLOADS = "never",
+    RETICULATE_USE_MANAGED_VENV = "false"
+  )
 }
 
 if (file.exists(python_path) && !on_shinyapps) {
   Sys.setenv(RETICULATE_PYTHON = python_path)
 } else {
-  # 雲端：讓 reticulate 使用 Posit 依 requirements.txt 建立的環境
+  # 雲端：勿指向不存在的 Python；延遲到 .ynow_ensure_python()
   Sys.unsetenv("RETICULATE_PYTHON")
 }
 
@@ -79,12 +93,19 @@ py_pkgs <- .ynow_py_pkgs
   }
   ok <- FALSE
   old_uv <- Sys.getenv("UV_PYTHON_DOWNLOADS", unset = NA_character_)
+  old_managed <- Sys.getenv("RETICULATE_USE_MANAGED_VENV", unset = NA_character_)
   # Boot blocks downloads; re-enable only for an on-demand install after Listen.
-  if (isTRUE(on_shinyapps)) {
-    Sys.setenv(UV_PYTHON_DOWNLOADS = "auto")
+  need_managed <- isTRUE(on_shinyapps) || !file.exists(python_path)
+  if (isTRUE(need_managed)) {
+    Sys.setenv(
+      UV_PYTHON_DOWNLOADS = "auto",
+      RETICULATE_USE_MANAGED_VENV = "true"
+    )
     on.exit({
       if (is.na(old_uv)) Sys.setenv(UV_PYTHON_DOWNLOADS = "never")
       else Sys.setenv(UV_PYTHON_DOWNLOADS = old_uv)
+      if (is.na(old_managed)) Sys.setenv(RETICULATE_USE_MANAGED_VENV = "false")
+      else Sys.setenv(RETICULATE_USE_MANAGED_VENV = old_managed)
     }, add = TRUE)
   }
   tryCatch({

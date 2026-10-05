@@ -467,20 +467,49 @@ check(
   "global defers shinyapps Python install",
   grepl(".ynow_ensure_python", glb_src, fixed = TRUE) &&
     grepl("py_require(.ynow_py_pkgs)", glb_src, fixed = TRUE) &&
-    grepl("UV_PYTHON_DOWNLOADS", glb_src, fixed = TRUE)
+    grepl("UV_PYTHON_DOWNLOADS", glb_src, fixed = TRUE) &&
+    grepl("RETICULATE_USE_MANAGED_VENV", glb_src, fixed = TRUE) &&
+    grepl(".ynow_is_hosted_connect", glb_src, fixed = TRUE)
 )
 app_src <- paste(readLines("app.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check(
   "app blocks uv downloads before global.R",
   grepl("UV_PYTHON_DOWNLOADS", app_src, fixed = TRUE) &&
-    grepl('Sys.setenv(UV_PYTHON_DOWNLOADS = "never")', app_src, fixed = TRUE)
+    grepl('Sys.setenv(', app_src, fixed = TRUE) &&
+    grepl("RETICULATE_USE_MANAGED_VENV", app_src, fixed = TRUE) &&
+    grepl(".ynow_is_hosted_connect", app_src, fixed = TRUE) &&
+    grepl("/srv/connect/apps", app_src, fixed = TRUE)
+)
+rprofile <- if (file.exists(".Rprofile")) {
+  paste(readLines(".Rprofile", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+} else {
+  ""
+}
+check(
+  "Rprofile blocks managed uv before app.R",
+  grepl("UV_PYTHON_DOWNLOADS", rprofile, fixed = TRUE) &&
+    grepl("RETICULATE_USE_MANAGED_VENV", rprofile, fixed = TRUE)
 )
 mod_src <- paste(readLines("asset_transmission_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check(
   "fetch skips Python on shinyapps",
   grepl(".asset_tx_on_shinyapps", mod_src, fixed = TRUE) &&
-    grepl("!isTRUE(.asset_tx_on_shinyapps())", mod_src, fixed = TRUE)
+    grepl("!isTRUE(.asset_tx_on_shinyapps())", mod_src, fixed = TRUE) &&
+    grepl("/srv/connect/apps", mod_src, fixed = TRUE)
 )
+# Hosted-connect detector must recognize Posit Connect paths (opaque hostnames).
+if (exists(".ynow_is_hosted_connect", mode = "function")) {
+  old_wd <- getwd()
+  tmp_connect <- file.path(tempdir(), "srv", "connect", "apps", "TheYNowApp")
+  dir.create(tmp_connect, recursive = TRUE, showWarnings = FALSE)
+  on.exit(setwd(old_wd), add = TRUE)
+  setwd(tmp_connect)
+  check("connect path counts as hosted", isTRUE(.ynow_is_hosted_connect()))
+  setwd(old_wd)
+} else {
+  # Sourced module defines detector via global; fall back to source snippet check.
+  check("connect path detector present", grepl("/srv/connect/apps", glb_src, fixed = TRUE))
+}
 dbg_paths <- c(
   "ynow_ui.R", "ynow_server.R", "macro_market_module.R", "backtest_module.R"
 )
