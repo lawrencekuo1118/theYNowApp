@@ -4691,23 +4691,6 @@ ui <- dashboardPage(
           border-color: #2f9e6b;
           outline: none;
         }
-        /* Home door → Blue Chip：藍海色系（與分頁主題一致，不分市場） */
-        .ynow-home-card[data-tab="bluechip"] {
-          border-color: #65AEC7;
-          background: linear-gradient(
-            135deg,
-            rgba(15, 90, 144, 0.06) 0%,
-            rgba(140, 208, 235, 0.14) 100%
-          );
-        }
-        .ynow-home-card[data-tab="bluechip"] .ynow-home-card-k {
-          color: #0F5A90;
-        }
-        .ynow-home-card[data-tab="bluechip"]:hover,
-        .ynow-home-card[data-tab="bluechip"]:focus-visible {
-          border-color: #0A72AE;
-          box-shadow: 0 0 0 2px rgba(51, 177, 210, 0.22);
-        }
         .ynow-home-card-k {
           margin: 0 0 4px;
           font-size: 14px;
