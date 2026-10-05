@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12649911
+bundleId=12649983
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=fe83ae53ec8e0f5d964e83a76132068e49f5d418
-commit=fe83ae53ec8e0f5d964e83a76132068e49f5d418
-short=fe83ae5
-message=chore: bump display version to v20.58
-captured_at=2026-10-05T14:43:21Z
+aligned_git=528b24473a5c62449523c33e4d1647ae81364eeb
+commit=528b24473a5c62449523c33e4d1647ae81364eeb
+short=528b244
+message=chore: bump display version to v20.59
+captured_at=2026-10-05T15:01:14Z
 source_branch=master
 display_version=v20.59
-note=Canonical live line is app_20.0. Bundle 12649911 ships v20.58: ATX figure speedup — skip plotly animation_slider frame regroup (~18s→~2s). Deploy via scripts/deploy_app_20.R.
+note=Canonical live line is app_20.0. Bundle 12649983 ships v20.59: fix blank ATX map — Yahoo JSON must use simplifyVector=FALSE. Deploy via scripts/deploy_app_20.R.
