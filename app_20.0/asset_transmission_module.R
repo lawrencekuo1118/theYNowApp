@@ -181,7 +181,7 @@ asset_tx_z_color <- function(z, colors) {
 asset_tx_edge_color <- function(state) {
   switch(
     as.character(state %||% "na")[1],
-    aligned = "#0f6e6e",
+    aligned = "#2ec4c6",
     diverged = "#c47b14",
     mixed = "#6a5acd",
     weak = "#a7adb4",
@@ -592,7 +592,95 @@ asset_tx_edge_table <- function(snap, locale = "en") {
 
 # ---- Figure ----------------------------------------------------------------
 
-.asset_tx_segment <- function(x1, y1, x2, y2, inset_start = 0.46, inset_end = 0.52) {
+# Card size in data units. Half-width ~0.70 and half-height ~0.32 fit the
+# current spacing (asset x step 1.85, tightest hub step 1.0).
+.asset_tx_card_geom <- function() {
+  list(w = 1.40, h = 0.64, r = 0.12, hw = 0.70, hh = 0.32, pad = 0.06)
+}
+
+.asset_tx_band_fill <- function(band) {
+  if (as.character(band %||% "")[1] %in% c("rate", "fx", "liq")) "#3a6fe0" else "#2a3144"
+}
+
+# SVG path for a rounded rectangle centered at (x, y). Data y increases upward.
+.asset_tx_round_rect <- function(x, y, w, h, r) {
+  x <- as.numeric(x)[1]
+  y <- as.numeric(y)[1]
+  w <- abs(as.numeric(w)[1])
+  h <- abs(as.numeric(h)[1])
+  r <- as.numeric(r)[1]
+  if (!is.finite(x) || !is.finite(y) || !is.finite(w) || !is.finite(h)) return("")
+  if (!is.finite(r) || r < 0) r <- 0
+  hw <- w / 2
+  hh <- h / 2
+  r <- min(r, hw, hh)
+  x0 <- x - hw
+  x1 <- x + hw
+  y0 <- y - hh
+  y1 <- y + hh
+  sprintf(
+    paste0(
+      "M %.4f,%.4f L %.4f,%.4f Q %.4f,%.4f %.4f,%.4f ",
+      "L %.4f,%.4f Q %.4f,%.4f %.4f,%.4f ",
+      "L %.4f,%.4f Q %.4f,%.4f %.4f,%.4f ",
+      "L %.4f,%.4f Q %.4f,%.4f %.4f,%.4f Z"
+    ),
+    x0 + r, y1,
+    x1 - r, y1,
+    x1, y1, x1, y1 - r,
+    x1, y0 + r,
+    x1, y0, x1 - r, y0,
+    x0 + r, y0,
+    x0, y0, x0, y0 + r,
+    x0, y1 - r,
+    x0, y1, x0 + r, y1
+  )
+}
+
+# Points of the same rounded rect, so a per-frame border trace sits on the shape.
+.asset_tx_round_poly <- function(x, y, w, h, r, n_arc = 6L) {
+  x <- as.numeric(x)[1]
+  y <- as.numeric(y)[1]
+  w <- abs(as.numeric(w)[1])
+  h <- abs(as.numeric(h)[1])
+  r <- as.numeric(r)[1]
+  hw <- w / 2
+  hh <- h / 2
+  if (!is.finite(r) || r < 0) r <- 0
+  r <- min(r, hw, hh)
+  x0 <- x - hw
+  x1 <- x + hw
+  y0 <- y - hh
+  y1 <- y + hh
+  quad <- function(p0, p1, p2) {
+    t <- seq(0, 1, length.out = n_arc)
+    list(
+      x = (1 - t)^2 * p0[1] + 2 * (1 - t) * t * p1[1] + t^2 * p2[1],
+      y = (1 - t)^2 * p0[2] + 2 * (1 - t) * t * p1[2] + t^2 * p2[2]
+    )
+  }
+  corners <- list(
+    quad(c(x1 - r, y1), c(x1, y1), c(x1, y1 - r)),
+    quad(c(x1, y0 + r), c(x1, y0), c(x1 - r, y0)),
+    quad(c(x0 + r, y0), c(x0, y0), c(x0, y0 + r)),
+    quad(c(x0, y1 - r), c(x0, y1), c(x0 + r, y1))
+  )
+  xs <- unlist(lapply(corners, `[[`, "x"), use.names = FALSE)
+  ys <- unlist(lapply(corners, `[[`, "y"), use.names = FALSE)
+  list(x = c(xs, xs[1]), y = c(ys, ys[1]))
+}
+
+.asset_tx_rect_hit <- function(ux, uy, hw, hh, pad) {
+  ax <- abs(ux)
+  ay <- abs(uy)
+  tx <- if (ax < 1e-8) Inf else hw / ax
+  ty <- if (ay < 1e-8) Inf else hh / ay
+  d <- min(tx, ty)
+  if (!is.finite(d)) d <- max(hw, hh)
+  d + pad
+}
+
+.asset_tx_segment <- function(x1, y1, x2, y2, inset_start = NULL, inset_end = NULL) {
   dx <- x2 - x1
   dy <- y2 - y1
   len <- sqrt(dx * dx + dy * dy)
@@ -601,6 +689,15 @@ asset_tx_edge_table <- function(snap, locale = "en") {
   }
   ux <- dx / len
   uy <- dy / len
+  geom <- .asset_tx_card_geom()
+  if (is.null(inset_start)) inset_start <- .asset_tx_rect_hit(ux, uy, geom$hw, geom$hh, geom$pad)
+  if (is.null(inset_end)) inset_end <- .asset_tx_rect_hit(ux, uy, geom$hw, geom$hh, geom$pad)
+  # Keep a visible shaft when two cards are closer than the two insets.
+  if (inset_start + inset_end > len * 0.86) {
+    scale <- (len * 0.86) / (inset_start + inset_end)
+    inset_start <- inset_start * scale
+    inset_end <- inset_end * scale
+  }
   list(
     x1 = x1 + ux * inset_start,
     y1 = y1 + uy * inset_start,
@@ -611,18 +708,92 @@ asset_tx_edge_table <- function(snap, locale = "en") {
   )
 }
 
-.asset_tx_chevron <- function(seg, head = 0.18) {
-  px <- -seg$uy
-  py <- seg$ux
-  tipx <- seg$x2
-  tipy <- seg$y2
-  bx <- tipx - seg$ux * head
-  by <- tipy - seg$uy * head
+.asset_tx_arrow <- function(xs, ys, head = 0.18) {
+  n <- length(xs)
+  if (n < 2L) return(list(x = xs, y = ys))
+  dx <- xs[n] - xs[n - 1L]
+  dy <- ys[n] - ys[n - 1L]
+  seglen <- sqrt(dx * dx + dy * dy)
+  if (!is.finite(seglen) || seglen < 1e-5) return(list(x = xs, y = ys))
+  if (seglen < head * 2.1) head <- max(0.07, seglen * 0.46)
+  ux <- dx / seglen
+  uy <- dy / seglen
+  px <- -uy
+  py <- ux
+  tipx <- xs[n]
+  tipy <- ys[n]
+  bx <- tipx - ux * head
+  by <- tipy - uy * head
   w <- head * 0.62
   list(
-    x = c(seg$x1, tipx, NA, bx + px * w, tipx, bx - px * w),
-    y = c(seg$y1, tipy, NA, by + py * w, tipy, by - py * w)
+    x = c(xs, NA, bx + px * w, tipx, bx - px * w),
+    y = c(ys, NA, by + py * w, tipy, by - py * w)
   )
+}
+
+.asset_tx_chevron <- function(seg, head = 0.20) {
+  .asset_tx_arrow(c(seg$x1, seg$x2), c(seg$y1, seg$y2), head = head)
+}
+
+.asset_tx_poly_hits <- function(xs, ys, nodes, id_from, id_to) {
+  geom <- .asset_tx_card_geom()
+  others <- nodes[nodes$id != id_from & nodes$id != id_to, , drop = FALSE]
+  if (!nrow(others) || length(xs) < 2L) return(0L)
+  n <- 0L
+  for (k in seq_len(length(xs) - 1L)) {
+    ts <- seq(0.12, 0.88, length.out = 14L)
+    px <- xs[k] + (xs[k + 1L] - xs[k]) * ts
+    py <- ys[k] + (ys[k + 1L] - ys[k]) * ts
+    for (j in seq_len(nrow(others))) {
+      if (any(abs(px - others$x[j]) < geom$hw - 0.03 & abs(py - others$y[j]) < geom$hh - 0.03)) {
+        n <- n + 1L
+      }
+    }
+  }
+  n
+}
+
+# If the straight shaft would cross another card, slide it sideways and
+# reconnect to the inset points. Geometry is static, so cache the polyline.
+.asset_tx_route_cache <- new.env(parent = emptyenv())
+
+.asset_tx_routed_arrow <- function(x1, y1, x2, y2, nodes, id_from, id_to) {
+  key <- sprintf("%s|%s", id_from, id_to)
+  if (exists(key, envir = .asset_tx_route_cache, inherits = FALSE)) {
+    return(get(key, envir = .asset_tx_route_cache, inherits = FALSE))
+  }
+  seg <- .asset_tx_segment(x1, y1, x2, y2)
+  straight <- .asset_tx_chevron(seg)
+  dx <- x2 - x1
+  dy <- y2 - y1
+  len <- sqrt(dx * dx + dy * dy)
+  result <- straight
+  if (is.finite(len) && len > 1e-4) {
+    ux <- dx / len
+    uy <- dy / len
+    px <- -uy
+    py <- ux
+    base_hits <- .asset_tx_poly_hits(c(seg$x1, seg$x2), c(seg$y1, seg$y2), nodes, id_from, id_to)
+    best_hits <- base_hits
+    if (base_hits > 0L) {
+      for (step in seq(0.35, 1.55, by = 0.12)) {
+        for (sign in c(1, -1)) {
+          sh <- sign * step
+          xs <- c(seg$x1, seg$x1 + px * sh, seg$x2 + px * sh, seg$x2)
+          ys <- c(seg$y1, seg$y1 + py * sh, seg$y2 + py * sh, seg$y2)
+          hits <- .asset_tx_poly_hits(xs, ys, nodes, id_from, id_to)
+          if (hits < best_hits) {
+            best_hits <- hits
+            result <- .asset_tx_arrow(xs, ys, head = 0.17)
+            if (best_hits == 0L) break
+          }
+        }
+        if (best_hits == 0L) break
+      }
+    }
+  }
+  assign(key, result, envir = .asset_tx_route_cache)
+  result
 }
 
 .asset_tx_edge_hover <- function(snap, i, locale) {
@@ -660,20 +831,71 @@ asset_tx_edge_table <- function(snap, locale = "en") {
   )
 }
 
+.asset_tx_dot_trace <- function(nodes) {
+  geom <- .asset_tx_card_geom()
+  xr <- range(nodes$x) + c(-1.05, 1.25)
+  yr <- range(nodes$y) + c(-1.85, 1.20)
+  xs <- seq(xr[1], xr[2], by = 0.46)
+  ys <- seq(yr[1], yr[2], by = 0.40)
+  grid <- expand.grid(x = xs, y = ys)
+  keep <- rep(TRUE, nrow(grid))
+  hw <- geom$hw + 0.05
+  hh <- geom$hh + 0.05
+  for (i in seq_len(nrow(nodes))) {
+    keep <- keep & (abs(grid$x - nodes$x[i]) > hw | abs(grid$y - nodes$y[i]) > hh)
+  }
+  grid <- grid[keep, , drop = FALSE]
+  list(
+    x = grid$x,
+    y = grid$y,
+    type = "scatter",
+    mode = "markers",
+    marker = list(size = 2.5, color = "rgba(232,236,245,0.30)", line = list(width = 0)),
+    hoverinfo = "none",
+    text = "",
+    showlegend = FALSE,
+    inherit = FALSE,
+    name = "dots"
+  )
+}
+
+.asset_tx_card_border_trace <- function(snap, i, colors) {
+  geom <- .asset_tx_card_geom()
+  nodes <- snap$catalog$nodes
+  id <- snap$nodes$id[i]
+  meta <- nodes[nodes$id == id, , drop = FALSE]
+  poly <- .asset_tx_round_poly(meta$x[1], meta$y[1], geom$w, geom$h, geom$r)
+  list(
+    x = poly$x,
+    y = poly$y,
+    type = "scatter",
+    mode = "lines",
+    fill = "none",
+    line = list(color = asset_tx_z_color(snap$nodes$z[i], colors), width = 2.25, shape = "linear"),
+    hoverinfo = "none",
+    text = "",
+    showlegend = FALSE,
+    inherit = FALSE,
+    name = paste0("card_", id)
+  )
+}
+
 .asset_tx_traces <- function(snap, locale, market_mode) {
   colors <- asset_tx_move_colors(market_mode)
   nodes <- snap$catalog$nodes
   edges <- snap$edges
-  traces <- vector("list", nrow(edges) + 1L)
+  traces <- list(.asset_tx_dot_trace(nodes))
+  for (i in seq_len(nrow(snap$nodes))) {
+    traces[[length(traces) + 1L]] <- .asset_tx_card_border_trace(snap, i, colors)
+  }
   for (i in seq_len(nrow(edges))) {
     a <- nodes[nodes$id == edges$from[i], , drop = FALSE]
     b <- nodes[nodes$id == edges$to[i], , drop = FALSE]
-    seg <- .asset_tx_segment(a$x, a$y, b$x, b$y)
-    ch <- .asset_tx_chevron(seg)
-    width <- if (is.finite(edges$corr[i])) 1.4 + 7.5 * abs(edges$corr[i]) else 1.2
+    ch <- .asset_tx_routed_arrow(a$x, a$y, b$x, b$y, nodes, edges$from[i], edges$to[i])
+    width <- if (is.finite(edges$corr[i])) 3.0 + 5.5 * abs(edges$corr[i]) else 2.4
     col <- asset_tx_edge_color(edges$state[i])
     dash <- if (edges$state[i] %in% c("weak", "na")) "dot" else "solid"
-    traces[[i]] <- list(
+    traces[[length(traces) + 1L]] <- list(
       x = ch$x,
       y = ch$y,
       type = "scatter",
@@ -683,58 +905,60 @@ asset_tx_edge_table <- function(snap, locale = "en") {
       hovertext = .asset_tx_edge_hover(snap, i, locale),
       text = "",
       showlegend = FALSE,
-      inherit = FALSE
+      inherit = FALSE,
+      name = sprintf("ch%02d", i)
     )
   }
   n_i <- seq_len(nrow(snap$nodes))
   xy <- nodes[match(snap$nodes$id, nodes$id), , drop = FALSE]
-  traces[[length(traces)]] <- list(
+  traces[[length(traces) + 1L]] <- list(
     x = xy$x,
     y = xy$y,
     type = "scatter",
     mode = "markers+text",
     marker = list(
-      size = 22 + 8 * pmin(1.6, abs(ifelse(is.finite(snap$nodes$z), snap$nodes$z, 0))),
-      color = vapply(snap$nodes$z, asset_tx_z_color, character(1), colors = colors),
-      line = list(color = "#1c1915", width = 1.4),
-      opacity = 1
+      size = 36,
+      color = "rgba(255,255,255,0)",
+      opacity = 0,
+      line = list(width = 0)
     ),
     text = vapply(n_i, function(i) {
       meta <- nodes[nodes$id == snap$nodes$id[i], , drop = FALSE]
       kind <- meta$kind[1]
-      # Every node: locale name, latest level, then the 1D change.
+      # Line 1 is the locale name. Line 2 keeps the latest level and the 1D change.
       # Spread level is the curve (positive = upward sloping); a missing print stays "—".
       paste0(
         .asset_tx_label(meta$label_key[1], locale), "<br>",
-        asset_tx_fmt_level(snap$nodes$level[i], kind), "<br>",
+        asset_tx_fmt_level(snap$nodes$level[i], kind), "  ",
         asset_tx_fmt_shock(snap$nodes$shock_1d[i], kind)
       )
     }, character(1)),
-    textposition = xy$textposition,
-    textfont = list(size = 10, color = "#1c1915", family = "Arial, sans-serif"),
+    textposition = "middle center",
+    textfont = list(size = 11, color = "#ffffff", family = "Arial, sans-serif"),
     hoverinfo = "text",
     hovertext = vapply(n_i, function(i) .asset_tx_node_hover(snap, i, locale), character(1)),
     cliponaxis = FALSE,
     showlegend = FALSE,
-    inherit = FALSE
+    inherit = FALSE,
+    name = "nodes"
   )
   traces
 }
 
 .asset_tx_band_shapes <- function(nodes) {
   spec <- list(
-    driver = list(fill = "rgba(214, 236, 214, 0.85)"),
-    rate = list(fill = "rgba(226, 220, 242, 0.9)"),
-    fx = list(fill = "rgba(214, 230, 245, 0.9)"),
-    liq = list(fill = "rgba(255, 236, 210, 0.9)"),
-    asset = list(fill = "rgba(252, 228, 224, 0.72)")
+    driver = list(fill = "rgba(28, 42, 82, 0.28)"),
+    rate = list(fill = "rgba(36, 56, 108, 0.22)"),
+    fx = list(fill = "rgba(24, 44, 92, 0.22)"),
+    liq = list(fill = "rgba(32, 48, 96, 0.20)"),
+    asset = list(fill = "rgba(18, 32, 68, 0.18)")
   )
   shapes <- list()
   for (band in names(spec)) {
     sub <- nodes[nodes$band == band, , drop = FALSE]
     if (!nrow(sub)) next
-    pad_x <- if (band == "asset") 0.7 else 0.85
-    pad_y <- if (band == "asset") 0.7 else 0.55
+    pad_x <- if (band == "asset") 0.85 else 0.95
+    pad_y <- if (band == "asset") 0.55 else 0.48
     shapes[[length(shapes) + 1L]] <- list(
       type = "rect",
       xref = "x",
@@ -742,13 +966,32 @@ asset_tx_edge_table <- function(snap, locale = "en") {
       x0 = min(sub$x) - pad_x,
       x1 = max(sub$x) + pad_x,
       y0 = min(sub$y) - pad_y,
-      y1 = max(sub$y) + if (band == "fx") 0.45 else pad_y,
+      y1 = max(sub$y) + if (band == "fx") 0.42 else pad_y,
       fillcolor = spec[[band]]$fill,
-      line = list(color = "rgba(90, 80, 70, 0.18)", width = 1),
+      line = list(color = "rgba(244, 246, 251, 0.05)", width = 1),
       layer = "below"
     )
   }
   shapes
+}
+
+# Fill is static by band. The move-colored stroke is a per-frame line trace,
+# so Play can update the border; this shape only paints the card body.
+.asset_tx_card_shapes <- function(snap) {
+  geom <- .asset_tx_card_geom()
+  nodes <- snap$catalog$nodes
+  lapply(seq_len(nrow(snap$nodes)), function(i) {
+    meta <- nodes[nodes$id == snap$nodes$id[i], , drop = FALSE]
+    list(
+      type = "path",
+      xref = "x",
+      yref = "y",
+      path = .asset_tx_round_rect(meta$x[1], meta$y[1], geom$w, geom$h, geom$r),
+      fillcolor = .asset_tx_band_fill(meta$band[1]),
+      line = list(color = "rgba(0,0,0,0)", width = 0),
+      layer = "below"
+    )
+  })
 }
 
 .asset_tx_headers <- function(locale) {
@@ -771,7 +1014,7 @@ asset_tx_edge_table <- function(snap, locale = "en") {
       showarrow = FALSE,
       xref = "x",
       yref = "y",
-      font = list(size = 13, color = "#3f372d", family = "Arial, sans-serif")
+      font = list(size = 13, color = "#f4f6fb", family = "Arial, sans-serif")
     )
   })
 }
@@ -910,7 +1153,9 @@ asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
     traces <- .asset_tx_traces(sn, locale, market_mode)
     for (i in seq_along(traces)) {
       tr <- traces[[i]]
-      tr$name <- if (i == length(traces)) "nodes" else sprintf("ch%02d", i)
+      if (is.null(tr$name) || !nzchar(as.character(tr$name)[1])) {
+        tr$name <- if (i == length(traces)) "nodes" else sprintf("ch%02d", i)
+      }
       if (multi) tr$frame <- format(sn$as_of, "%Y-%m-%d")
       args <- tr
       args$p <- p
@@ -940,29 +1185,29 @@ asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
       xref = "x",
       yref = "y",
       xanchor = "left",
-      font = list(size = 11, color = "#8a8175")
+      font = list(size = 11, color = "#f4f6fb")
     ))
   )
   p <- plotly::layout(
     p,
     xaxis = list(
       visible = FALSE,
-      range = c(min(nodes_xy$x) - 1.15, max(nodes_xy$x) + 1.35),
+      range = c(min(nodes_xy$x) - 1.25, max(nodes_xy$x) + 1.55),
       fixedrange = TRUE,
       zeroline = FALSE
     ),
     yaxis = list(
       visible = FALSE,
-      range = c(min(nodes_xy$y) - 2.05, max(nodes_xy$y) + 1.35),
+      range = c(min(nodes_xy$y) - 2.15, max(nodes_xy$y) + 1.45),
       fixedrange = TRUE,
       zeroline = FALSE
     ),
     margin = list(l = 8, r = 8, t = 16, b = 4),
-    paper_bgcolor = "#f7f5f1",
-    plot_bgcolor = "#f7f5f1",
+    paper_bgcolor = "#0c1228",
+    plot_bgcolor = "#0c1228",
     hovermode = "closest",
     annotations = anns,
-    shapes = .asset_tx_band_shapes(nodes_xy),
+    shapes = c(.asset_tx_band_shapes(nodes_xy), .asset_tx_card_shapes(last)),
     showlegend = FALSE
   )
   if (multi) {
@@ -970,18 +1215,18 @@ asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
       p,
       currentvalue = list(
         prefix = .asset_tx_label("atx_session_prefix", locale),
-        font = list(color = "#1c1915", size = 13)
+        font = list(color = "#f4f6fb", size = 13)
       ),
-      bgcolor = "#f3efe6",
-      bordercolor = "#d9d1c3",
-      tickcolor = "#5c5346",
-      font = list(color = "#5c5346", size = 10)
+      bgcolor = "#12182e",
+      bordercolor = "#3a4668",
+      tickcolor = "#f4f6fb",
+      font = list(color = "#d5dced", size = 10)
     )
     p <- plotly::animation_button(
       p,
       label = .asset_tx_label("atx_play", locale),
-      bgcolor = "#1c1915",
-      font = list(color = "#f7f5f1", size = 12)
+      bgcolor = "#3a6fe0",
+      font = list(color = "#ffffff", size = 12)
     )
     p <- .asset_tx_show_latest(p)
   }
@@ -1296,9 +1541,17 @@ asset_transmission_ui <- function(id) {
       .ynow-atx-legend { display: flex; flex-wrap: wrap; gap: 10px 18px; margin: 6px 0 12px; font-size: 12px; color: #3f3a33; }
       .ynow-atx-legend span { display: inline-flex; align-items: center; gap: 6px; }
       .ynow-atx-swatch { width: 18px; height: 4px; border-radius: 2px; display: inline-block; }
+      .ynow-atx-cardswatch { width: 16px; height: 11px; border-radius: 3px; display: inline-block; border: 2px solid #1e7a46; box-sizing: border-box; }
       .ynow-atx-note { margin: 0 0 8px; font-size: 12px; color: #5c5346; }
       .ynow-atx-status { font-size: 12px; color: #5c5346; margin-top: 28px; }
-      .ynow-atx-map { overflow-x: auto; }
+      .ynow-atx-map {
+        overflow-x: auto;
+        background-color: #0c1228;
+        background-image: radial-gradient(rgba(244, 246, 251, 0.34) 1.15px, transparent 1.25px);
+        background-size: 18px 18px;
+        border-radius: 8px;
+        padding: 4px 0 8px;
+      }
       .ynow-atx-map .plotly, .ynow-atx-map .html-widget { min-width: 1640px; }
       .ynow-atx-path { margin: 8px 0 10px; padding: 8px 10px; background: #fff; border: 1px solid #e4dccb; border-radius: 6px; }
       .ynow-atx-path h4 { margin: 0 0 6px; font-size: 14px; }
@@ -1513,11 +1766,26 @@ asset_transmission_server <- function(id, ui_locale_rv = NULL, market_mode_rv = 
     output$legend <- shiny::renderUI({
       loc <- locale()
       node_key <- if (identical(market(), "TW")) "atx_legend_node_tw" else "atx_legend_node_us"
+      up_hex <- asset_tx_move_colors(market())$up
       htmltools::tagList(
         htmltools::tags$div(
           class = "ynow-atx-legend",
           htmltools::tags$span(
-            htmltools::tags$i(class = "ynow-atx-swatch", style = "background:#0f6e6e;"),
+            htmltools::tags$i(
+              class = "ynow-atx-cardswatch",
+              style = sprintf("background:#3a6fe0;border-color:%s;", up_hex)
+            ),
+            .asset_tx_label("atx_legend_fill_hub", loc)
+          ),
+          htmltools::tags$span(
+            htmltools::tags$i(
+              class = "ynow-atx-cardswatch",
+              style = sprintf("background:#2a3144;border-color:%s;", up_hex)
+            ),
+            .asset_tx_label("atx_legend_fill_other", loc)
+          ),
+          htmltools::tags$span(
+            htmltools::tags$i(class = "ynow-atx-swatch", style = "background:#2ec4c6;"),
             .asset_tx_label("atx_legend_align", loc)
           ),
           htmltools::tags$span(

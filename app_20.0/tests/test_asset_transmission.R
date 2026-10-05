@@ -152,8 +152,14 @@ check(
   "z color follows market",
   asset_tx_z_color(2.5, us_col) != asset_tx_z_color(2.5, tw_col)
 )
-check("aligned edge teal", identical(asset_tx_edge_color("aligned"), "#0f6e6e"))
+check("aligned edge teal", identical(asset_tx_edge_color("aligned"), "#2ec4c6"))
 check("diverged edge amber", identical(asset_tx_edge_color("diverged"), "#c47b14"))
+rr <- .asset_tx_round_rect(1, 2, 1.40, 0.64, 0.12)
+check("round rect is a closed SVG path", grepl("^M ", rr) && grepl("Z$", rr) && grepl("Q ", rr))
+seg_h <- .asset_tx_segment(0, 0, 2, 0)
+check("horizontal arrow clears the card", seg_h$x1 >= 0.62 && seg_h$x2 <= 2 - 0.62)
+seg_v <- .asset_tx_segment(0, 0, 0, 2)
+check("vertical arrow clears the card", seg_v$y1 >= 0.30 && seg_v$y2 <= 2 - 0.30)
 
 # Planted daily changes: bill → 10Y positive, 10Y → S&P negative, 10Y → gold positive
 # (gold prior is opposite, so that channel diverges), SOX → TAIEX positive.
@@ -383,11 +389,11 @@ if (requireNamespace("plotly", quietly = TRUE)) {
   check("zh label on figure", grepl("台灣加權指數", blob, fixed = TRUE))
   check(
     "zh TAIEX node shows level and percent shock",
-    any(grepl("台灣加權指數<br>[0-9,]{3,}<br>[+-][0-9.]+%", node_text))
+    any(grepl("台灣加權指數<br>[0-9,]{3,}  [+-][0-9.]+%", node_text))
   )
   check(
     "zh US 10Y node shows percent level and bp shock",
-    any(grepl("美國 10 年債<br>[0-9]+\\.[0-9]{2}%<br>[+-][0-9]+\\.[0-9] bp", node_text))
+    any(grepl("美國 10 年債<br>[0-9]+\\.[0-9]{2}%  [+-][0-9]+\\.[0-9] bp", node_text))
   )
   check(
     "zh hover still has last, 1D, and 5D",
@@ -399,9 +405,18 @@ if (requireNamespace("plotly", quietly = TRUE)) {
   curve_text <- unlist(lapply(curve_fig$x$data, function(tr) tr$text), use.names = FALSE)
   check(
     "zh 2s10s node shows spread level and bp change",
-    any(grepl("2s10s<br>\\+70\\.0 bp<br>\\+20\\.0 bp", curve_text))
+    any(grepl("2s10s<br>\\+70\\.0 bp  \\+20\\.0 bp", curve_text))
   )
   check("play control present", !is.null(built$x$layout$updatemenus) || !is.null(fig$x$layout$updatemenus))
+  frame_n <- vapply(fig$x$frames, function(fr) length(fr$data), integer(1))
+  check("frames share a trace count", length(unique(frame_n)) == 1L && frame_n[1] > 40L)
+  has_dots <- vapply(fig$x$frames, function(fr) {
+    any(vapply(fr$data, function(tr) identical(tr$name, "dots"), logical(1)))
+  }, logical(1))
+  check("dots ride every frame", all(has_dots))
+  paper <- fig$x$layout$paper_bgcolor
+  if (is.null(paper)) paper <- built$x$layout$paper$bgcolor
+  check("dark navy canvas", identical(paper, "#0c1228"))
 } else {
   stop("FAIL: plotly namespace missing")
 }
