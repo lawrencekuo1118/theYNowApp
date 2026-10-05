@@ -8,5 +8,5 @@ short=879e1b2
 message=chore: bump display version to v20.52
 captured_at=2026-10-05T11:16:38Z
 source_branch=cursor/atx-fix-letterbox-9c4f
-display_version=v20.52
+display_version=v20.53
 note=Canonical live line is app_20.0. Bundle 12649013 ships v20.52: remove Plotly scaleanchor letterbox that left an empty navy block covering half the Testing map. Deploy via scripts/deploy_app_20.R.
