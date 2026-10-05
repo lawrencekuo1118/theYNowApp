@@ -491,6 +491,12 @@ if (requireNamespace("plotly", quietly = TRUE)) {
       isFALSE(isTRUE(built$x$layout$yaxis$fixedrange)) &&
       identical(built$x$layout$dragmode, "pan")
   )
+  check(
+    "figure does not letterbox with scaleanchor",
+    is.null(built$x$layout$yaxis$scaleanchor) &&
+      is.null(built$x$layout$yaxis$scaleratio) &&
+      !grepl("scaleanchor\\s*=", ui_mod)
+  )
   cfg <- built$x$config
   if (is.null(cfg)) cfg <- fig$x$config
   check(

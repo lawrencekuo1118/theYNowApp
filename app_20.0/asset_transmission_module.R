@@ -1253,6 +1253,8 @@ asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
     p,
     autosize = TRUE,
     # Pan/zoom stay on so narrow viewports can explore without compressing cards.
+    # Do NOT set scaleanchor/scaleratio: a 1:1 lock letterboxes the plot domain
+    # inside the paper and leaves a large empty navy block on one side.
     dragmode = "pan",
     xaxis = list(
       visible = FALSE,
@@ -1266,10 +1268,7 @@ asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
       range = c(min(nodes_xy$y) - 2.45, max(nodes_xy$y) + 1.65),
       fixedrange = FALSE,
       zeroline = FALSE,
-      constrain = "domain",
-      # Keep card aspect when zooming so labels stay readable.
-      scaleanchor = "x",
-      scaleratio = 1
+      constrain = "domain"
     ),
     margin = list(l = 2, r = 2, t = 8, b = 2),
     paper_bgcolor = "#0c1228",
@@ -1738,6 +1737,9 @@ asset_transmission_ui <- function(id) {
         box-sizing: border-box;
         /* Keep the transmission canvas at a readable intrinsic width; swipe to explore. */
         touch-action: pan-x pan-y;
+        position: relative;
+        z-index: 1;
+        isolation: isolate;
       }
       .ynow-atx-map .plotly,
       .ynow-atx-map .html-widget {
