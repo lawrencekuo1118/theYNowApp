@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12649983
+bundleId=12650075
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=528b24473a5c62449523c33e4d1647ae81364eeb
-commit=528b24473a5c62449523c33e4d1647ae81364eeb
-short=528b244
-message=chore: bump display version to v20.59
-captured_at=2026-10-05T15:01:14Z
+aligned_git=0013474508d433bc472cdfebe6fa55f99dd70cc4
+commit=0013474508d433bc472cdfebe6fa55f99dd70cc4
+short=0013474
+message=chore: bump display version to v20.60
+captured_at=2026-10-05T15:16:45Z
 source_branch=master
 display_version=v20.60
-note=Canonical live line is app_20.0. Bundle 12649983 ships v20.59: fix blank ATX map — Yahoo JSON must use simplifyVector=FALSE. Deploy via scripts/deploy_app_20.R.
+note=Canonical live line is app_20.0. Bundle 12650075 ships v20.60: ATX map default-centered on black canvas (equal axis pads + scroll center). Deploy via scripts/deploy_app_20.R.
