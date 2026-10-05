@@ -8,5 +8,5 @@ short=112651d
 message=chore: bump display version to v20.39
 captured_at=2026-10-05T04:28:46Z
 source_branch=cursor/asset-transmission-testing-9c4f
-display_version=v20.40
+display_version=v20.41
 note=Canonical live line is app_20.0. Bundle 12647766 ships v20.39: Testing prints come from the Yahoo chart API in R, and the window observer no longer crashes when the select is empty. Deploy via scripts/deploy_app_20.R.
