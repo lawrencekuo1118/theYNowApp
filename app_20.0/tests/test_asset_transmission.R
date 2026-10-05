@@ -33,11 +33,11 @@ check(
     n_nodes == length(catg$nodes$band) &&
     n_nodes == length(catg$nodes$textposition)
 )
-check("29 public nodes", n_nodes == 29L && !anyDuplicated(ids))
+check("35 public nodes", n_nodes == 35L && !anyDuplicated(ids))
 check("yahoo symbols unique", !anyDuplicated(catg$nodes$yahoo))
 check(
-  "36 channels",
-  nrow(catg$edges) == 36L &&
+  "47 channels",
+  nrow(catg$edges) == 47L &&
     length(catg$edges$from) == length(catg$edges$to) &&
     length(catg$edges$from) == length(catg$edges$prior)
 )
@@ -58,6 +58,29 @@ check("10Y opposite long-bond price", identical(prior_of("us10y", "tlt"), -1L))
 check("DXY opposite gold", identical(prior_of("dxy", "gold"), -1L))
 check("DXY and USD/TWD same way", identical(prior_of("dxy", "usdtwd"), 1L))
 check("SOX feeds TAIEX", identical(prior_of("sox", "taiex"), 1L))
+check("2Y futures yield feeds the 10Y", identical(prior_of("us2y", "us10y"), 1L))
+check("Nasdaq still feeds Bitcoin", identical(prior_of("nasdaq", "btc"), 1L))
+check("Nasdaq-100 feeds SOX", identical(prior_of("ndx", "sox"), 1L))
+check("dollar vs oil is regime-dependent", identical(prior_of("dxy", "oil"), 0L))
+check("TIPS vs gold is regime-dependent", identical(prior_of("tip", "gold"), 0L))
+check("Henry Hub vs WTI is regime-dependent", identical(prior_of("ng", "oil"), 0L))
+check(
+  "curve is derived, not a Yahoo symbol",
+  identical(catg$nodes$yahoo[catg$nodes$id == "curve"], "") &&
+    identical(catg$nodes$kind[catg$nodes$id == "curve"], "spread") &&
+    identical(catg$nodes$transform[catg$nodes$id == "curve"], "diff")
+)
+check("US 2Y is the yield future", identical(catg$nodes$yahoo[catg$nodes$id == "us2y"], "2YY=F"))
+check("Henry Hub symbol", identical(catg$nodes$yahoo[catg$nodes$id == "ng"], "NG=F"))
+check("Brent symbol", identical(catg$nodes$yahoo[catg$nodes$id == "brent"], "BZ=F"))
+check("Nasdaq-100 symbol", identical(catg$nodes$yahoo[catg$nodes$id == "ndx"], "^NDX"))
+check(
+  "TIPS is an ETF price",
+  identical(catg$nodes$yahoo[catg$nodes$id == "tip"], "TIP") &&
+    identical(catg$nodes$kind[catg$nodes$id == "tip"], "etf")
+)
+check("TIPS gloss is not a real-yield percent", grepl("not a 10-year real-yield", ui_str("atx_gloss_tip", "en"), fixed = TRUE))
+check("gas gloss names Henry Hub and TTF", grepl("Henry Hub", ui_str("atx_gloss_ng", "zh-TW"), fixed = TRUE) && grepl("TTF", ui_str("atx_gloss_ng", "zh-TW"), fixed = TRUE))
 catalog_keys <- unique(c(catg$nodes$label_key, catg$nodes$gloss_key, catg$edges$channel_key))
 check(
   "catalog keys in both locales",
@@ -84,6 +107,9 @@ check("yield level", identical(asset_tx_fmt_level(4.2, "yield"), "4.20%"))
 check("yield bp", identical(asset_tx_fmt_shock(0.062, "yield"), "+6.2 bp"))
 check("yield bp down", identical(asset_tx_fmt_shock(-0.01, "yield"), "-1.0 bp"))
 check("ret pct", identical(asset_tx_fmt_shock(-0.01234, "index"), "-1.23%"))
+check("spread level", identical(asset_tx_fmt_level(0.50, "spread"), "+50.0 bp"))
+check("spread level inverted", identical(asset_tx_fmt_level(-0.25, "spread"), "-25.0 bp"))
+check("spread shock", identical(asset_tx_fmt_shock(0.02, "spread"), "+2.0 bp"))
 check("fx level", identical(asset_tx_fmt_level(32.1254, "fx"), "32.125"))
 check("missing level", identical(asset_tx_fmt_level(NA_real_, "index"), "—"))
 check(
@@ -175,7 +201,13 @@ check("1D is 6.0 bp", identical(asset_tx_fmt_shock(us10$shock_1d, "yield"), "+6.
 check("5D is 10.0 bp", identical(asset_tx_fmt_shock(us10$shock_5d, "yield"), "+10.0 bp"))
 path_up <- asset_tx_yield_path(tiny_snap, "en")
 check("yield path bias up", identical(path_up$bias, "up") && grepl("+6.0 bp", path_up$title, fixed = TRUE))
-check("yield path has nine leans", nrow(path_up$rows) == 9L && any(path_up$rows$asset == "Gold"))
+check(
+  "yield path has curve and TIPS leans",
+  nrow(path_up$rows) == 11L &&
+    any(path_up$rows$asset == "Gold") &&
+    any(path_up$rows$asset == "2s10s") &&
+    any(path_up$rows$asset == "TIPS")
+)
 quiet_panel <- tiny
 quiet_panel$us10y <- c(4, 4, 4, 4, 4, 4.002)
 quiet_snap <- asset_tx_snapshot(quiet_panel, window = 20L)
@@ -186,6 +218,96 @@ down_panel$us10y <- c(4.10, 4.08, 4.06, 4.04, 4.02, 4.00)
 down_snap <- asset_tx_snapshot(down_panel, window = 20L)
 check("yield path bias down", identical(asset_tx_yield_path(down_snap, "zh-TW")$bias, "down"))
 check("missing oil stays NA", !is.finite(tiny_snap$nodes$level[tiny_snap$nodes$id == "oil"]))
+check("quiet tape is an unsigned regime", identical(asset_tx_regime(quiet_snap, "en")$id, "quiet"))
+check("zh quiet regime", identical(asset_tx_regime(quiet_snap, "zh-TW")$title, "平靜"))
+
+curve_panel <- data.frame(
+  Date = as.Date("2025-06-01") + 0:5,
+  us10y = c(4, 4, 4, 4, 4, 4.10),
+  us2y = c(3.5, 3.5, 3.5, 3.5, 3.5, 3.40),
+  stringsAsFactors = FALSE
+)
+curve_snap <- asset_tx_snapshot(curve_panel, window = 20L)
+curve_row <- curve_snap$nodes[curve_snap$nodes$id == "curve", , drop = FALSE]
+check("curve level is 10Y minus 2Y", abs(curve_row$level - 0.70) < 1e-8)
+check("curve shock is the spread change", abs(curve_row$shock_1d - 0.20) < 1e-8)
+check("curve level prints in bp", identical(asset_tx_fmt_level(curve_row$level, "spread"), "+70.0 bp"))
+check("curve shock prints in bp", identical(asset_tx_fmt_shock(curve_row$shock_1d, "spread"), "+20.0 bp"))
+check(
+  "curve symbol is the formula",
+  identical(asset_tx_node_table(curve_snap, "en")[asset_tx_node_table(curve_snap, "en")[[1]] == "2s10s", 2][[1]], "10Y\u22122Y fut")
+)
+
+plant_move <- function(prev, last) {
+  n <- 6L
+  df <- data.frame(Date = as.Date("2025-07-01") + seq_len(n) - 1L, stringsAsFactors = FALSE)
+  ids <- union(names(prev), names(last))
+  for (id in ids) {
+    start <- if (id %in% names(prev)) prev[[id]] else last[[id]]
+    end <- if (id %in% names(last)) last[[id]] else start
+    v <- rep(start, n)
+    v[n] <- end
+    df[[id]] <- v
+  }
+  asset_tx_snapshot(df, window = 20L)
+}
+regime_id <- function(snap) asset_tx_regime(snap, "en")$id
+check(
+  "regime expansion",
+  identical(regime_id(plant_move(
+    list(copper = 100, oil = 80, spx = 5000, us10y = 4.20),
+    list(copper = 101, oil = 80.8, spx = 5050, us10y = 4.30)
+  )), "expansion")
+)
+check(
+  "inflationary expansion beats expansion",
+  identical(regime_id(plant_move(
+    list(copper = 100, oil = 80, spx = 5000, us10y = 4.20, dxy = 100, nasdaq = 100, btc = 100),
+    list(copper = 101, oil = 80.8, spx = 5050, us10y = 4.30, dxy = 101, nasdaq = 99, btc = 100)
+  )), "inflationary_expansion")
+)
+check(
+  "regime stagflation",
+  identical(regime_id(plant_move(
+    list(oil = 80, gold = 2000, copper = 100, spx = 5000),
+    list(oil = 81, gold = 2020, copper = 99, spx = 4950)
+  )), "stagflation")
+)
+check(
+  "stagflation allows flat copper",
+  identical(regime_id(plant_move(
+    list(oil = 80, gold = 2000, copper = 100, spx = 5000),
+    list(oil = 81, gold = 2020, copper = 100.02, spx = 4950)
+  )), "stagflation")
+)
+check(
+  "regime soft landing",
+  identical(regime_id(plant_move(
+    list(infl = 33, us2y = 4.50, tlt = 90, gold = 2000, nasdaq = 100, btc = 100),
+    list(infl = 32.5, us2y = 4.40, tlt = 91, gold = 2020, nasdaq = 100, btc = 100)
+  )), "soft_landing")
+)
+check(
+  "regime risk-off",
+  identical(regime_id(plant_move(
+    list(hyg = 75, spx = 5000, oil = 80, copper = 100, dxy = 100, tlt = 90),
+    list(hyg = 74, spx = 4950, oil = 79, copper = 100, dxy = 101, tlt = 90)
+  )), "risk_off")
+)
+check(
+  "regime mixed",
+  identical(regime_id(plant_move(
+    list(spx = 100, gold = 100, dxy = 100),
+    list(spx = 101, gold = 99, dxy = 99)
+  )), "mixed")
+)
+check(
+  "zh regime names the lean",
+  grepl("供給衝擊", asset_tx_regime(plant_move(
+    list(oil = 80, gold = 2000, copper = 100, spx = 5000),
+    list(oil = 81, gold = 2020, copper = 99, spx = 4950)
+  ), "zh-TW")$body, fixed = TRUE)
+)
 oil_edge <- tiny_snap$edges[tiny_snap$edges$from == "oil", , drop = FALSE]
 check("missing upstream is n/a", all(oil_edge$state == "na"))
 
@@ -242,6 +364,8 @@ check("testing page mounts map", grepl('asset_transmission_ui("atx")', ui_src, f
 check("testing title id kept", grepl("ynow_testing_page_title", ui_src, fixed = TRUE))
 check("server mounts module", grepl('asset_transmission_server(', srv_src, fixed = TRUE))
 check("global sources module", grepl('source("asset_transmission_module.R"', glb_src, fixed = TRUE))
+mod_src <- paste(readLines("asset_transmission_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check("regime card wired", grepl('ns("regime")', mod_src, fixed = TRUE) && grepl("asset_tx_regime(", mod_src, fixed = TRUE))
 
 if (requireNamespace("shiny", quietly = TRUE)) {
   ui <- asset_transmission_ui("atx")

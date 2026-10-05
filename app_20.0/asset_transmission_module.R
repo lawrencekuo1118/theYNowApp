@@ -1,14 +1,17 @@
 # ==========================================
 # asset_transmission_module.R — Testing tab
 #
-# Live intermarket transmission map, laid out like the global poster:
-# priced drivers → rate / dollar / liquidity hubs → major assets.
-# Nodes are Yahoo daily bars in native quotes. No session FX conversion.
+# Live intermarket transmission map.
+# Order: inflation and the cycle → policy rate and the curve → dollar and
+# liquidity → bonds, commodities, precious metals, energy, equities, crypto.
+# Nodes are Yahoo daily bars in native quotes, plus a curve computed in R.
+# No session FX conversion. The 2s10s level is not a Yahoo symbol.
 # Arrow = structural channel (upstream → downstream), not "both rise".
 # Width = |Pearson corr| of daily changes over the selected window.
 # Color = whether that corr matches the structural prior.
-# Yields use daily differences (percentage points); other nodes use % changes.
-# Priors are a surveillance map, not a forecast and not an input to WACC.
+# Yields and the curve use daily differences (percentage points, shown in bp).
+# Other nodes use % changes.
+# Priors and the regime card are surveillance, not a forecast and not WACC.
 # ==========================================
 
 if (!exists("%||%", mode = "function")) {
@@ -18,70 +21,71 @@ if (!exists("%||%", mode = "function")) {
 # ---- Graph ----------------------------------------------------------------
 
 asset_tx_catalog <- function() {
-  # Layout follows the global transmission poster:
-  # drivers → rate / dollar / liquidity hubs → asset classes.
-  # prior 0 = the poster marks that link as regime-dependent.
+  # Drivers → policy rate / curve → dollar → liquidity → asset classes.
+  # prior 0 = that link flips by regime (drawn purple once |corr| clears 0.15).
+  # `curve` has a blank Yahoo symbol: the level is US 10Y minus the 2Y futures yield.
+  asset_x <- c(0.40, 2.25, 4.10, 5.95, 7.80, 9.65, 11.50, 13.35)
   nodes <- data.frame(
     id = c(
-      "infl", "copper", "oil",
-      "us_bill", "us5y", "us10y", "us30y",
+      "infl", "copper", "oil", "brent", "ng",
+      "us2y", "us_bill", "us5y", "us10y", "us30y", "curve",
       "dxy", "eurusd", "usdjpy", "usdcny", "usdtwd",
       "move", "vix", "hyg",
-      "tlt", "ief", "spx", "nasdaq", "sox", "stoxx", "nikkei", "hsi",
-      "taiex", "gold", "silver", "btc", "vnq", "wheat"
+      "tlt", "ief", "tip", "spx", "nasdaq", "ndx", "sox", "stoxx",
+      "nikkei", "hsi", "taiex", "gold", "silver", "btc", "vnq", "wheat"
     ),
     yahoo = c(
-      "RINF", "HG=F", "CL=F",
-      "^IRX", "^FVX", "^TNX", "^TYX",
+      "RINF", "HG=F", "CL=F", "BZ=F", "NG=F",
+      "2YY=F", "^IRX", "^FVX", "^TNX", "^TYX", "",
       "DX-Y.NYB", "EURUSD=X", "JPY=X", "CNY=X", "TWD=X",
       "^MOVE", "^VIX", "HYG",
-      "TLT", "IEF", "^GSPC", "^IXIC", "^SOX", "^STOXX50E", "^N225", "^HSI",
-      "^TWII", "GC=F", "SI=F", "BTC-USD", "VNQ", "ZW=F"
+      "TLT", "IEF", "TIP", "^GSPC", "^IXIC", "^NDX", "^SOX", "^STOXX50E",
+      "^N225", "^HSI", "^TWII", "GC=F", "SI=F", "BTC-USD", "VNQ", "ZW=F"
     ),
     x = c(
-      0.7, 0.7, 0.7,
-      3.0, 3.0, 3.0, 3.0,
-      5.5, 5.5, 5.5, 5.5, 5.5,
-      8.0, 8.0, 8.0,
-      0.4, 2.15, 3.9, 5.65, 7.4, 9.15, 10.9, 12.65,
-      0.4, 2.85, 5.3, 7.75, 10.2, 12.65
+      rep(0.60, 5),
+      rep(3.25, 6),
+      rep(6.00, 5),
+      rep(8.70, 3),
+      asset_x,
+      asset_x
     ),
     y = c(
-      7.3, 6.0, 4.7,
-      7.5, 6.4, 5.3, 4.2,
-      7.5, 6.6, 5.7, 4.8, 3.9,
-      7.3, 6.0, 4.7,
-      2.45, 2.45, 2.45, 2.45, 2.45, 2.45, 2.45, 2.45,
-      0.25, 0.25, 0.25, 0.25, 0.25, 0.25
+      c(9.2, 8.0, 6.8, 5.6, 4.4),
+      c(9.2, 8.2, 7.2, 6.2, 5.2, 4.2),
+      c(9.2, 8.0, 6.8, 5.6, 4.4),
+      c(8.6, 6.5, 4.4),
+      rep(2.25, 8),
+      rep(0.20, 8)
     ),
     textposition = c(
-      "middle right", "middle right", "middle right",
-      "middle right", "middle right", "middle right", "middle right",
-      "middle right", "middle right", "middle right", "middle right", "middle right",
-      "middle left", "middle left", "middle left",
-      "top center", "bottom center", "top center", "bottom center",
-      "top center", "bottom center", "top center", "bottom center",
-      rep("bottom center", 6)
+      rep("middle right", 5),
+      rep("middle right", 6),
+      rep("middle right", 5),
+      rep("middle left", 3),
+      rep(c("top center", "bottom center"), 4),
+      rep("bottom center", 8)
     ),
     kind = c(
-      "etf", "commodity", "commodity",
-      "yield", "yield", "yield", "yield",
+      "etf", "commodity", "commodity", "commodity", "commodity",
+      "yield", "yield", "yield", "yield", "yield", "spread",
       "index", "fx", "fx", "fx", "fx",
       "vol", "vol", "etf",
-      "etf", "etf", "index", "index", "index", "index", "index", "index",
-      "index", "commodity", "commodity", "crypto", "etf", "commodity"
+      "etf", "etf", "etf", "index", "index", "index", "index", "index",
+      "index", "index", "index", "commodity", "commodity", "crypto", "etf", "commodity"
     ),
     band = c(
-      rep("driver", 3),
-      rep("rate", 4),
+      rep("driver", 5),
+      rep("rate", 6),
       rep("fx", 5),
       rep("liq", 3),
-      rep("asset", 14)
+      rep("asset", 16)
     ),
     stringsAsFactors = FALSE
   )
   nodes$yahoo_alt <- ""
-  nodes$transform <- ifelse(nodes$kind == "yield", "diff", "ret")
+  nodes$symbol_show <- ifelse(nodes$id == "curve", "10Y\u22122Y fut", "")
+  nodes$transform <- ifelse(nodes$kind %in% c("yield", "spread"), "diff", "ret")
   nodes$label_key <- paste0("atx_node_", nodes$id)
   nodes$gloss_key <- paste0("atx_gloss_", nodes$id)
 
@@ -89,29 +93,41 @@ asset_tx_catalog <- function() {
     from = c(
       "oil", "infl", "copper",
       "us_bill", "us5y", "us10y",
+      "us2y", "us2y",
       "us10y", "us10y", "us10y", "us10y", "us10y", "us10y", "us10y",
       "dxy", "dxy", "dxy", "dxy", "dxy", "dxy", "dxy", "dxy",
+      "dxy", "dxy",
       "vix", "vix", "vix", "vix", "vix", "move",
       "spx", "nasdaq", "sox", "spx", "nasdaq", "nasdaq", "nasdaq",
-      "spx", "gold"
+      "nasdaq", "ndx",
+      "spx", "gold",
+      "brent", "ng", "tip", "copper", "hyg"
     ),
     to = c(
       "us10y", "us10y", "spx",
       "us10y", "us10y", "us30y",
+      "us5y", "us10y",
       "dxy", "spx", "nasdaq", "gold", "tlt", "vnq", "btc",
       "eurusd", "usdjpy", "usdcny", "usdtwd", "gold", "hsi", "taiex", "btc",
+      "oil", "copper",
       "spx", "nasdaq", "taiex", "hyg", "gold", "vix",
       "nasdaq", "sox", "taiex", "stoxx", "nikkei", "hsi", "btc",
-      "tlt", "silver"
+      "ndx", "sox",
+      "tlt", "silver",
+      "us10y", "oil", "gold", "silver", "spx"
     ),
     prior = c(
       1, 1, 1,
       1, 1, 1,
+      1, 1,
       0, -1, -1, 0, -1, -1, -1,
       -1, 1, 1, 1, -1, -1, -1, -1,
+      0, -1,
       -1, -1, -1, -1, 0, 1,
       1, 1, 1, 1, 1, 1, 1,
-      -1, 1
+      1, 1,
+      -1, 1,
+      1, 0, 0, 1, 1
     ),
     stringsAsFactors = FALSE
   )
@@ -179,6 +195,8 @@ asset_tx_fmt_level <- function(level, kind = "index") {
   if (!is.finite(level)) return("—")
   kind <- as.character(kind %||% "index")[1]
   if (kind == "yield") return(sprintf("%.2f%%", level))
+  # Spread level is percentage points (10Y minus the short yield). Positive = upward sloping.
+  if (kind == "spread") return(sprintf("%+.1f bp", level * 100))
   if (kind == "fx") return(sprintf("%.3f", level))
   if (kind == "vol") return(sprintf("%.2f", level))
   if (kind %in% c("commodity", "etf")) {
@@ -193,7 +211,7 @@ asset_tx_fmt_level <- function(level, kind = "index") {
 asset_tx_fmt_shock <- function(shock, kind = "index") {
   if (!is.finite(shock)) return("—")
   kind <- as.character(kind %||% "index")[1]
-  if (kind == "yield") return(sprintf("%+.1f bp", shock * 100))
+  if (kind %in% c("yield", "spread")) return(sprintf("%+.1f bp", shock * 100))
   sprintf("%+.2f%%", shock * 100)
 }
 
@@ -208,6 +226,38 @@ asset_tx_fmt_corr <- function(corr) {
 }
 
 # ---- Snapshot --------------------------------------------------------------
+
+# Curve level = long yield minus the 2Y futures yield, in the same percentage-point units.
+# Recomputed even if the caller passed a column, so the node is never a fake Yahoo print.
+.asset_tx_apply_derived <- function(panel, nodes) {
+  if (is.null(panel) || !is.data.frame(panel)) return(panel)
+  if ("curve" %in% nodes$id && all(c("us10y", "us2y") %in% names(panel))) {
+    panel$curve <- panel$us10y - panel$us2y
+  }
+  panel
+}
+
+.asset_tx_symbol_label <- function(meta, sym_attr = NULL, id = NULL) {
+  if (!is.null(sym_attr) && !is.null(id) && id %in% names(sym_attr) && nzchar(sym_attr[[id]])) {
+    return(as.character(sym_attr[[id]])[1])
+  }
+  show <- if ("symbol_show" %in% names(meta)) as.character(meta$symbol_show[1]) else ""
+  if (nzchar(show)) return(show)
+  y <- as.character(meta$yahoo[1])
+  if (nzchar(y)) y else "\u2014"
+}
+
+.asset_tx_move_threshold <- function(kind) {
+  if (as.character(kind %||% "index")[1] %in% c("yield", "spread")) 0.005 else 0.0005
+}
+
+.asset_tx_dir <- function(snap, id) {
+  row <- snap$nodes[snap$nodes$id == id, , drop = FALSE]
+  if (!nrow(row) || !is.finite(row$shock_1d[1])) return("na")
+  thr <- .asset_tx_move_threshold(row$kind[1])
+  sh <- row$shock_1d[1]
+  if (sh >= thr) "up" else if (sh <= -thr) "down" else "flat"
+}
 
 .asset_tx_prepare_panel <- function(panel, nodes) {
   if (is.null(panel) || !is.data.frame(panel) || !nrow(panel) || !"Date" %in% names(panel)) {
@@ -226,6 +276,7 @@ asset_tx_fmt_corr <- function(corr) {
   out <- out[order(out$Date), , drop = FALSE]
   # Last print wins if a calendar day is repeated.
   out <- out[!duplicated(out$Date, fromLast = TRUE), , drop = FALSE]
+  out <- .asset_tx_apply_derived(out, nodes)
   value_cols <- setdiff(names(out), "Date")
   any_print <- Reduce(`|`, lapply(value_cols, function(col) is.finite(out[[col]])))
   if (!length(any_print) || !any(any_print)) return(NULL)
@@ -488,10 +539,7 @@ asset_tx_node_table <- function(snap, locale = "en") {
   rows <- lapply(seq_len(nrow(snap$nodes)), function(i) {
     id <- snap$nodes$id[i]
     meta <- nodes[nodes$id == id, , drop = FALSE]
-    sym <- meta$yahoo[1]
-    if (!is.null(sym_attr) && id %in% names(sym_attr) && nzchar(sym_attr[[id]])) {
-      sym <- sym_attr[[id]]
-    }
+    sym <- .asset_tx_symbol_label(meta, sym_attr, id)
     data.frame(
       a = .asset_tx_label(meta$label_key[1], loc),
       b = sym,
@@ -600,11 +648,8 @@ asset_tx_edge_table <- function(snap, locale = "en") {
 .asset_tx_node_hover <- function(snap, i, locale) {
   row <- snap$nodes[i, , drop = FALSE]
   meta <- snap$catalog$nodes[snap$catalog$nodes$id == row$id, , drop = FALSE]
-  sym <- meta$yahoo[1]
   sym_attr <- attr(snap, "symbols")
-  if (!is.null(sym_attr) && row$id %in% names(sym_attr) && nzchar(sym_attr[[row$id]])) {
-    sym <- sym_attr[[row$id]]
-  }
+  sym <- .asset_tx_symbol_label(meta, sym_attr, row$id)
   paste(
     sprintf("<b>%s</b> (%s)", .asset_tx_label(meta$label_key[1], locale), sym),
     .asset_tx_label(meta$gloss_key[1], locale),
@@ -656,11 +701,13 @@ asset_tx_edge_table <- function(snap, locale = "en") {
     ),
     text = vapply(n_i, function(i) {
       meta <- nodes[nodes$id == snap$nodes$id[i], , drop = FALSE]
-      paste0(
-        .asset_tx_label(meta$label_key[1], locale),
-        "<br>",
+      # The curve node shows the spread level (positive = upward sloping), not only the daily change.
+      line2 <- if (identical(meta$kind[1], "spread")) {
+        asset_tx_fmt_level(snap$nodes$level[i], "spread")
+      } else {
         asset_tx_fmt_shock(snap$nodes$shock_1d[i], meta$kind[1])
-      )
+      }
+      paste0(.asset_tx_label(meta$label_key[1], locale), "<br>", line2)
     }, character(1)),
     textposition = xy$textposition,
     textfont = list(size = 11, color = "#1c1915", family = "Arial, sans-serif"),
@@ -705,8 +752,8 @@ asset_tx_edge_table <- function(snap, locale = "en") {
 
 .asset_tx_headers <- function(locale) {
   heads <- data.frame(
-    x = c(0.7, 3.0, 5.5, 8.0, 0.15),
-    y = c(8.35, 8.35, 8.35, 8.35, 3.15),
+    x = c(0.60, 3.25, 6.00, 8.70, 0.15),
+    y = c(10.25, 10.25, 10.25, 10.25, 3.45),
     xanchor = c("center", "center", "center", "center", "left"),
     key = c(
       "atx_head_driver", "atx_head_rate", "atx_head_fxhub",
@@ -728,6 +775,56 @@ asset_tx_edge_table <- function(snap, locale = "en") {
   })
 }
 
+# Latest-session co-movement label. Surveillance only — not a forecast and not WACC.
+# Thresholds match the yield-path card: yields under 0.5 bp and prices under 0.05% are noise.
+# inflationary_expansion is checked before expansion so a dollar-up, growth-down tape
+# is not labeled a clean expansion.
+asset_tx_regime <- function(snap, locale = "en") {
+  loc <- locale
+  pack <- function(id) {
+    list(
+      id = id,
+      title = .asset_tx_label(paste0("atx_regime_", id), loc),
+      body = .asset_tx_label(paste0("atx_regime_", id, "_body"), loc),
+      note = .asset_tx_label("atx_regime_note", loc)
+    )
+  }
+  if (is.null(snap)) return(pack("quiet"))
+  watch <- c(
+    "oil", "copper", "gold", "spx", "nasdaq", "btc", "us10y", "dxy",
+    "hyg", "infl", "tlt", "us2y", "us_bill"
+  )
+  dirs <- stats::setNames(lapply(watch, function(id) .asset_tx_dir(snap, id)), watch)
+  active <- sum(vapply(dirs, function(d) d %in% c("up", "down"), logical(1)))
+  if (active < 3L) return(pack("quiet"))
+  up <- function(id) identical(dirs[[id]], "up")
+  down <- function(id) identical(dirs[[id]], "down")
+  not_up <- function(id) dirs[[id]] %in% c("down", "flat")
+  # Prefer the 2Y futures node when it actually printed; otherwise the T-bill.
+  short_down <- if (!identical(dirs[["us2y"]], "na")) down("us2y") else down("us_bill")
+  growth_down <- down("nasdaq") || down("btc")
+  soft_bids <- sum(c(up("tlt"), up("gold"), up("nasdaq"), up("btc")))
+  infl_exp <- up("oil") && up("copper") && up("us10y") && up("dxy") && growth_down
+  stag <- up("oil") && up("gold") && not_up("copper") && down("spx")
+  expansion <- up("copper") && up("oil") && up("spx") && up("us10y")
+  soft <- down("infl") && short_down && soft_bids >= 2L
+  risk <- down("hyg") && down("spx") && (down("oil") || down("copper")) && (up("dxy") || up("tlt"))
+  id <- if (infl_exp) {
+    "inflationary_expansion"
+  } else if (stag) {
+    "stagflation"
+  } else if (expansion) {
+    "expansion"
+  } else if (soft) {
+    "soft_landing"
+  } else if (risk) {
+    "risk_off"
+  } else {
+    "mixed"
+  }
+  pack(id)
+}
+
 asset_tx_yield_path <- function(snap, locale = "en") {
   quiet <- list(bias = "quiet", title = .asset_tx_label("atx_path_quiet", locale), rows = data.frame())
   if (is.null(snap)) return(quiet)
@@ -745,14 +842,19 @@ asset_tx_yield_path <- function(snap, locale = "en") {
   if (bias == "quiet") {
     return(list(bias = "quiet", title = title, rows = data.frame()))
   }
-  # Section 5 of the poster: what a yield move tends to do, next to the actual print.
+  # Textbook lean beside the actual print. Curve and TIPS rows state the real-rate point
+  # without inventing a cash real-yield level.
   lean_up <- c(
-    dxy = "atx_lean_dxy_up", gold = "atx_lean_gold_up", spx = "atx_lean_eq_up",
+    curve = "atx_lean_curve_up",
+    dxy = "atx_lean_dxy_up", gold = "atx_lean_gold_up", tip = "atx_lean_tip_up",
+    spx = "atx_lean_eq_up",
     nasdaq = "atx_lean_eq_up", tlt = "atx_lean_bond_up", hyg = "atx_lean_credit_up",
     btc = "atx_lean_crypto_up", taiex = "atx_lean_tw_up", vnq = "atx_lean_reit_up"
   )
   lean_down <- c(
-    dxy = "atx_lean_dxy_down", gold = "atx_lean_gold_down", spx = "atx_lean_eq_down",
+    curve = "atx_lean_curve_down",
+    dxy = "atx_lean_dxy_down", gold = "atx_lean_gold_down", tip = "atx_lean_tip_down",
+    spx = "atx_lean_eq_down",
     nasdaq = "atx_lean_eq_down", tlt = "atx_lean_bond_down", hyg = "atx_lean_credit_down",
     btc = "atx_lean_crypto_down", taiex = "atx_lean_tw_down", vnq = "atx_lean_reit_down"
   )
@@ -1036,7 +1138,9 @@ def _ynow_atx_download(tickers, period):
 asset_tx_fetch_panel <- function(catalog = NULL, period = "1y") {
   catalog <- catalog %||% asset_tx_catalog()
   nodes <- catalog$nodes
-  raw <- .asset_tx_py_download(unique(nodes$yahoo), period)
+  syms <- unique(nodes$yahoo)
+  syms <- syms[nzchar(syms)]
+  raw <- .asset_tx_py_download(syms, period)
   parsed <- .asset_tx_series_map(raw)
   panel <- .asset_tx_align(parsed$dates, parsed$series, nodes)
   if (is.null(panel)) stop("empty Yahoo history")
@@ -1067,6 +1171,10 @@ asset_tx_fetch_panel <- function(catalog = NULL, period = "1y") {
       panel <- rebuilt
       used[[id]] <- alt
     }
+  }
+  panel <- .asset_tx_apply_derived(panel, nodes)
+  if ("curve" %in% names(panel) && any(is.finite(panel$curve))) {
+    used[["curve"]] <- "10Y\u22122Y fut"
   }
   attr(panel, "symbols") <- used
   n_ok <- sum(nzchar(used))
@@ -1099,9 +1207,12 @@ asset_transmission_ui <- function(id) {
       .ynow-atx-note { margin: 0 0 8px; font-size: 12px; color: #5c5346; }
       .ynow-atx-status { font-size: 12px; color: #5c5346; margin-top: 28px; }
       .ynow-atx-map { overflow-x: auto; }
-      .ynow-atx-map .plotly, .ynow-atx-map .html-widget { min-width: 1480px; }
+      .ynow-atx-map .plotly, .ynow-atx-map .html-widget { min-width: 1640px; }
       .ynow-atx-path { margin: 8px 0 10px; padding: 8px 10px; background: #fff; border: 1px solid #e4dccb; border-radius: 6px; }
       .ynow-atx-path h4 { margin: 0 0 6px; font-size: 14px; }
+      .ynow-atx-regime { margin: 8px 0 10px; padding: 8px 10px; background: #f4f0e6; border: 1px solid #e4dccb; border-radius: 6px; }
+      .ynow-atx-regime h4 { margin: 0 0 4px; font-size: 14px; }
+      .ynow-atx-regime p { margin: 0 0 4px; font-size: 13px; line-height: 1.45; color: #1c1915; }
       .ynow-atx-path table { width: 100%; border-collapse: collapse; font-size: 12px; }
       .ynow-atx-path th, .ynow-atx-path td { text-align: left; padding: 3px 8px 3px 0; border-bottom: 1px solid #f0ebe3; }
       .ynow-atx h4 { margin: 14px 0 6px; font-size: 15px; }
@@ -1132,8 +1243,9 @@ asset_transmission_ui <- function(id) {
         )
       ),
       shiny::uiOutput(ns("summary")),
+      shiny::uiOutput(ns("regime")),
       shiny::uiOutput(ns("path")),
-      htmltools::tags$div(class = "ynow-atx-map", plotly::plotlyOutput(ns("map"), height = "820px")),
+      htmltools::tags$div(class = "ynow-atx-map", plotly::plotlyOutput(ns("map"), height = "920px")),
       shiny::uiOutput(ns("legend")),
       shiny::uiOutput(ns("nodes_title")),
       DT::DTOutput(ns("nodes")),
@@ -1252,13 +1364,27 @@ asset_transmission_server <- function(id, ui_locale_rv = NULL, market_mode_rv = 
       htmltools::tags$p(class = "ynow-atx-summary", asset_tx_summary_text(tape[[length(tape)]], locale()))
     })
 
+    output$regime <- shiny::renderUI({
+      tape <- snaps()
+      shiny::req(length(tape) > 0L)
+      loc <- locale()
+      reg <- asset_tx_regime(tape[[length(tape)]], loc)
+      htmltools::tags$div(
+        class = "ynow-atx-regime",
+        htmltools::tags$h4(paste0(.asset_tx_label("atx_regime_kicker", loc), " \u00b7 ", reg$title)),
+        htmltools::tags$p(reg$body),
+        htmltools::tags$p(class = "ynow-atx-note", style = "margin:0;", reg$note)
+      )
+    })
+
     output$path <- shiny::renderUI({
       tape <- snaps()
       shiny::req(length(tape) > 0L)
       loc <- locale()
       path <- asset_tx_yield_path(tape[[length(tape)]], loc)
+      real_note <- htmltools::tags$p(class = "ynow-atx-note", style = "margin:6px 0 0;", .asset_tx_label("atx_path_real_note", loc))
       if (!nrow(path$rows)) {
-        return(htmltools::tags$div(class = "ynow-atx-path", htmltools::tags$h4(path$title)))
+        return(htmltools::tags$div(class = "ynow-atx-path", htmltools::tags$h4(path$title), real_note))
       }
       htmltools::tags$div(
         class = "ynow-atx-path",
@@ -1280,7 +1406,8 @@ asset_transmission_server <- function(id, ui_locale_rv = NULL, market_mode_rv = 
               )
             })
           )
-        )
+        ),
+        real_note
       )
     })
 
