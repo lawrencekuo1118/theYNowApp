@@ -1664,28 +1664,51 @@ macro_market_server <- function(id = "macro",
       bd <- bubble_data()
       shiny::validate(shiny::need(nrow(bd$pool) >= 1L, .ui("macro_bubble_need_theme")))
       att <- bd$attribution
-      top_c <- if (is.finite(att$top_contrib)) att$top_contrib else 0
+      pool <- bd$pool
+      top_n <- as.integer(bd$top_n)[1]
+      top_idx <- seq_len(min(top_n, nrow(pool)))
+      labels <- character(0)
+      contribs <- numeric(0)
+      colors <- character(0)
+      pal <- c("#e67e22", "#2980b9", "#27ae60", "#8e44ad", "#c0392b", "#16a085", "#d35400")
+      for (i in top_idx) {
+        w <- suppressWarnings(as.numeric(pool$weight[[i]]))
+        r <- suppressWarnings(as.numeric(pool$ret[[i]]))
+        if (!is.finite(w) || !is.finite(r)) next
+        labels <- c(labels, as.character(pool$ticker[[i]]))
+        contribs <- c(contribs, w * r)
+        colors <- c(colors, pal[((i - 1L) %% length(pal)) + 1L])
+      }
       rest_c <- if (is.finite(att$rest_contrib)) att$rest_contrib else 0
-      df <- data.frame(
-        part = c(sprintf("Top %d", bd$top_n), .ui("macro_bubble_rest")),
-        contrib = c(top_c, rest_c) * 100,
-        stringsAsFactors = FALSE
-      )
+      labels <- c(labels, .ui("macro_bubble_rest"))
+      contribs <- c(contribs, rest_c)
+      colors <- c(colors, "#7f8c8d")
+      shiny::validate(shiny::need(length(contribs) >= 1L, .ui("macro_bubble_need_theme")))
+      # Pie slices need non-negative magnitudes; signed pp stay in text/hover.
+      mag <- abs(contribs)
+      if (!any(mag > 0)) mag <- rep(1, length(mag))
+      text_lbl <- sprintf("%s<br>%+.1f pp", labels, contribs * 100)
       fig <- plotly::plot_ly(
-        df,
-        x = ~contrib,
-        y = ~part,
-        type = "bar",
-        orientation = "h",
-        marker = list(color = c("#e67e22", "#7f8c8d"))
+        labels = labels,
+        values = mag,
+        type = "pie",
+        text = text_lbl,
+        textinfo = "label+percent",
+        hovertemplate = "%{text}<extra></extra>",
+        marker = list(colors = colors, line = list(color = "#ffffff", width = 1)),
+        sort = FALSE,
+        direction = "clockwise"
       )
       plotly::layout(
         fig,
-        xaxis = list(title = .ui("macro_bubble_attr_axis")),
-        yaxis = list(title = ""),
-        margin = list(l = 80, r = 20, t = 10, b = 40),
-        showlegend = FALSE
-      )
+        autosize = TRUE,
+        margin = list(l = 10, r = 10, t = 20, b = 10),
+        showlegend = TRUE,
+        legend = list(orientation = "h", y = -0.08),
+        paper_bgcolor = "rgba(0,0,0,0)",
+        plot_bgcolor = "rgba(0,0,0,0)"
+      ) %>%
+        plotly::config(responsive = TRUE, displayModeBar = FALSE)
     })
 
     buffett_series <- reactive({
@@ -1833,13 +1856,15 @@ macro_market_server <- function(id = "macro",
       }
       plotly::layout(
         fig,
+        autosize = TRUE,
         title = list(text = .ui("macro_bubble_buffett_chart"), font = list(size = 13)),
         xaxis = list(title = ""),
         yaxis = list(title = .ui("macro_bubble_buffett_axis")),
         legend = list(orientation = "h", y = 1.12),
         margin = list(l = 50, r = 20, t = 50, b = 40),
         hovermode = "x unified"
-      )
+      ) %>%
+        plotly::config(responsive = TRUE, displayModeBar = FALSE)
     })
   })
 }

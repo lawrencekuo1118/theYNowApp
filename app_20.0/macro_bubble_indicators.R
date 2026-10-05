@@ -939,38 +939,101 @@ macro_bubble_chapter_ui <- function(ns) {
     ),
     uiOutput(ns("bubble_alert_box")),
     fluidRow(
-      class = "ynow-macro-chart-row",
+      class = "ynow-macro-chart-row ynow-bubble-pair-row",
       column(
         width = 6,
-        class = "col-xs-12 col-sm-12 col-md-6",
+        class = "col-xs-12 col-sm-6 col-md-6 ynow-bubble-pair-col ynow-bubble-conc-col",
         tags$h4(id = "ynow_macro_bubble_conc_title", "Market-cap concentration"),
         uiOutput(ns("bubble_conc_kpi")),
-        plotlyOutput(ns("bubble_conc_plot"), height = "280px") %>%
-          shinycssloaders::withSpinner(),
-        tags$h5(
-          id = "ynow_macro_bubble_top_list_title",
-          style = "margin-top: 12px;",
-          "Top N by market cap"
-        ),
-        uiOutput(ns("bubble_conc_table")),
-        tags$p(
-          id = "ynow_macro_bubble_conc_note",
-          class = "ynow-macro-hint",
-          paste0(
-            "History uses current market cap × relative Close (research proxy); ",
-            "Top-N membership is re-ranked within today’s basket pool."
+        tags$div(
+          class = "ynow-bubble-conc-stack",
+          plotlyOutput(ns("bubble_conc_plot"), height = "280px") %>%
+            shinycssloaders::withSpinner(),
+          tags$h5(
+            id = "ynow_macro_bubble_top_list_title",
+            style = "margin-top: 12px;",
+            "Top N by market cap"
+          ),
+          uiOutput(ns("bubble_conc_table")),
+          tags$p(
+            id = "ynow_macro_bubble_conc_note",
+            class = "ynow-macro-hint",
+            paste0(
+              "History uses current market cap × relative Close (research proxy); ",
+              "Top-N membership is re-ranked within today’s basket pool."
+            )
           )
         )
       ),
       column(
         width = 6,
-        class = "col-xs-12 col-sm-12 col-md-6",
+        class = "col-xs-12 col-sm-6 col-md-6 ynow-bubble-pair-col ynow-bubble-attr-col",
         tags$h4(id = "ynow_macro_bubble_attr_title", "Return attribution"),
         uiOutput(ns("bubble_attr_kpi")),
-        plotlyOutput(ns("bubble_attr_plot"), height = "300px") %>%
-          shinycssloaders::withSpinner()
+        tags$div(
+          class = "ynow-bubble-attr-plot-host",
+          plotlyOutput(ns("bubble_attr_plot"), height = "520px", width = "100%") %>%
+            shinycssloaders::withSpinner()
+        )
       )
     ),
+    htmltools::tags$script(htmltools::HTML("
+      (function() {
+        function measureConcStack() {
+          var stack = document.querySelector('.ynow-bubble-conc-stack');
+          if (!stack) return 0;
+          var plot = stack.querySelector('.js-plotly-plot, .html-widget');
+          var table = stack.querySelector('.table-responsive, table');
+          var title = stack.querySelector('#ynow_macro_bubble_top_list_title, h5');
+          var h = 0;
+          if (plot) h += plot.offsetHeight || 0;
+          if (title) {
+            var cs = window.getComputedStyle(title);
+            h += title.offsetHeight || 0;
+            h += (parseFloat(cs.marginTop) || 0) + (parseFloat(cs.marginBottom) || 0);
+          }
+          if (table) h += table.offsetHeight || 0;
+          return h;
+        }
+        function syncAttrPieHeight() {
+          var host = document.querySelector('.ynow-bubble-attr-plot-host');
+          if (!host) return;
+          var h = measureConcStack();
+          if (!(h > 200)) return;
+          host.style.height = h + 'px';
+          host.style.minHeight = h + 'px';
+          var gd = host.querySelector('.js-plotly-plot');
+          if (gd) {
+            gd.style.height = h + 'px';
+            if (window.Plotly && Plotly.Plots && Plotly.Plots.resize) {
+              try { Plotly.Plots.resize(gd); } catch (e) {}
+            }
+          }
+        }
+        function boot() {
+          syncAttrPieHeight();
+          var stack = document.querySelector('.ynow-bubble-conc-stack');
+          if (stack && !stack.__ynowBubbleRo) {
+            stack.__ynowBubbleRo = true;
+            if (window.ResizeObserver) {
+              var ro = new ResizeObserver(function() { syncAttrPieHeight(); });
+              ro.observe(stack);
+            }
+          }
+        }
+        if (window.jQuery) {
+          $(document).on('shiny:value shiny:visualchange plotly_afterplot', function() {
+            boot();
+          });
+        }
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', boot);
+        } else {
+          boot();
+        }
+        window.addEventListener('resize', syncAttrPieHeight);
+      })();
+    ")),
     tags$hr(),
     tags$h4(id = "ynow_macro_bubble_buffett_title", "Buffett Indicator (market cap / GDP)"),
     fluidRow(
@@ -991,8 +1054,11 @@ macro_bubble_chapter_ui <- function(ns) {
         uiOutput(ns("bubble_buffett_gdp"))
       )
     ),
-    plotlyOutput(ns("bubble_buffett_plot"), height = "320px") %>%
-      shinycssloaders::withSpinner(),
+    tags$div(
+      class = "ynow-bubble-buffett-plot-wrap",
+      plotlyOutput(ns("bubble_buffett_plot"), height = "320px", width = "100%") %>%
+        shinycssloaders::withSpinner()
+    ),
     ynow_notes_block(
       tags$p(
         id = "ynow_macro_bubble_buffett_note",

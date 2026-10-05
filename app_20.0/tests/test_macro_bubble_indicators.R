@@ -131,6 +131,20 @@ check("conc history UI mounts table", {
     grepl("ynow_macro_bubble_top_list_title", bt_src, fixed = TRUE) &&
     grepl("ynow_macro_bubble_conc_note", bt_src, fixed = TRUE)
 })
+check("conc + attr side-by-side 1:1", {
+  grepl("ynow-bubble-pair-row", bt_src, fixed = TRUE) &&
+    grepl("col-sm-6 col-md-6 ynow-bubble-pair-col ynow-bubble-conc-col", bt_src, fixed = TRUE) &&
+    grepl("col-sm-6 col-md-6 ynow-bubble-pair-col ynow-bubble-attr-col", bt_src, fixed = TRUE)
+})
+check("attr pie height syncs to conc+table", {
+  grepl("ynow-bubble-attr-plot-host", bt_src, fixed = TRUE) &&
+    grepl("syncAttrPieHeight", bt_src, fixed = TRUE) &&
+    grepl("measureConcStack", bt_src, fixed = TRUE)
+})
+check("buffett history plot width 100%", {
+  grepl("ynow-bubble-buffett-plot-wrap", bt_src, fixed = TRUE) &&
+    grepl('plotlyOutput(ns("bubble_buffett_plot"), height = "320px", width = "100%")', bt_src, fixed = TRUE)
+})
 check("analysis window includes 2y", grepl('"2Y" = "2y"', bt_src, fixed = TRUE))
 check("buffett companion KPI outputs", {
   grepl("bubble_buffett_mcap", bt_src, fixed = TRUE) &&
@@ -236,6 +250,16 @@ check("tab layout still has KPI above conc plot", {
 check("no CAPM write in bubble file", {
   bt <- paste(readLines("macro_bubble_indicators.R", warn = FALSE), collapse = "\n")
   !grepl("updateNumericInput", bt, fixed = TRUE)
+})
+check("attr plot is pie chart", {
+  grepl("output$bubble_attr_plot", macro_src, fixed = TRUE) &&
+    grepl('type = "pie"', macro_src, fixed = TRUE)
+})
+ui_css <- paste(readLines("ynow_ui.R", warn = FALSE), collapse = "\n")
+check("bubble pair + buffett width CSS", {
+  grepl("ynow-bubble-attr-plot-host", ui_css, fixed = TRUE) &&
+    grepl("ynow-bubble-buffett-plot-wrap", ui_css, fixed = TRUE) &&
+    grepl(".ynow-bubble-buffett-plot-wrap .js-plotly-plot", ui_css, fixed = TRUE)
 })
 
 cat("PASS macro_bubble_indicators\n")

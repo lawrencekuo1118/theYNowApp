@@ -8822,6 +8822,35 @@ ui <- dashboardPage(
           padding-right: 8px;
           margin-bottom: 12px;
         }
+        .ynow-bubble-pair-row {
+          align-items: stretch;
+        }
+        .ynow-bubble-pair-col {
+          display: flex;
+          flex-direction: column;
+        }
+        .ynow-bubble-attr-plot-host {
+          flex: 1 1 auto;
+          width: 100%;
+          min-height: 420px;
+        }
+        .ynow-bubble-attr-plot-host .plotly,
+        .ynow-bubble-attr-plot-host .js-plotly-plot,
+        .ynow-bubble-attr-plot-host .html-widget {
+          width: 100% !important;
+          height: 100% !important;
+        }
+        .ynow-bubble-buffett-plot-wrap {
+          width: 100%;
+          max-width: none;
+          margin: 0 0 8px 0;
+        }
+        .ynow-bubble-buffett-plot-wrap .plotly,
+        .ynow-bubble-buffett-plot-wrap .js-plotly-plot,
+        .ynow-bubble-buffett-plot-wrap .html-widget {
+          width: 100% !important;
+          max-width: none !important;
+        }
         /* Rf / alert 列也等高 */
         .ynow-macro-rf-row {
           display: flex;
