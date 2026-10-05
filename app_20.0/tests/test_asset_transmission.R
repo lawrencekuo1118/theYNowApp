@@ -102,6 +102,19 @@ check("zh node TAIEX", identical(ui_str("atx_node_taiex", "zh-TW"), "台灣加�
 check("en node T-bill", identical(ui_str("atx_node_us_bill", "en"), "US T-bill"))
 check("testing title zh", identical(ui_str("testing_box_title", "zh-TW"), "資產傳導"))
 check("testing title en", identical(ui_str("testing_box_title", "en"), "Asset transmission"))
+check(
+  "zh curve up is bear steepening",
+  identical(ui_str("atx_lean_curve_up", "zh-TW"), "2s10s：長端升得比較快就是熊市陡峭化（bear steepener）")
+)
+check(
+  "zh curve down is bull steepening",
+  identical(ui_str("atx_lean_curve_down", "zh-TW"), "2s10s：前端掉得比較快就是牛市陡峭化（bull steepener）")
+)
+check(
+  "en curve leans stay American English",
+  identical(ui_str("atx_lean_curve_up", "en"), "2s10s: bear steepener if the long end leads") &&
+    identical(ui_str("atx_lean_curve_down", "en"), "2s10s: bull steepener if the front end falls faster")
+)
 
 check("yield level", identical(asset_tx_fmt_level(4.2, "yield"), "4.20%"))
 check("yield bp", identical(asset_tx_fmt_shock(0.062, "yield"), "+6.2 bp"))
