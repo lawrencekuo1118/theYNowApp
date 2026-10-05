@@ -8,5 +8,5 @@ short=86677b7
 message=chore: bump display version to v20.46
 captured_at=2026-10-05T06:46:49Z
 source_branch=cursor/asset-transmission-testing-9c4f
-display_version=v20.47
+display_version=v20.48
 note=Canonical live line is app_20.0. Bundle 12648150 ships v20.46: Testing-map stability — block uv CPython downloads before Listen, skip Python fallbacks for the map on shinyapps, keep last good panel, lighter 12-frame animation. Deploy via scripts/deploy_app_20.R.
