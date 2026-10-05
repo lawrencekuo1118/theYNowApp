@@ -8,5 +8,5 @@ short=6798066
 message=chore: bump display version to v20.44
 captured_at=2026-10-05T06:01:40Z
 source_branch=cursor/asset-transmission-testing-9c4f
-display_version=v20.44
+display_version=v20.45
 note=Canonical live line is app_20.0. Bundle 12648016 ships v20.44: Testing-map node level/1D numbers share the session move color with the card border; channel arrows are thinner. Deploy via scripts/deploy_app_20.R.
