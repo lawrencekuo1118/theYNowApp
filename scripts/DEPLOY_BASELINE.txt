@@ -8,5 +8,5 @@ short=aee4ef6
 message=chore: bump display version to v20.36
 captured_at=2026-10-04T16:56:00Z
 source_branch=master
-display_version=v20.36
+display_version=v20.37
 note=Canonical live line is app_20.0. Bundle 12646088 hides Include ADRs on Blue Chip in TW mode. Deploy via scripts/deploy_app_20.R.
