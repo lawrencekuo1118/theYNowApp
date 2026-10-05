@@ -1,15 +1,11 @@
 #!/usr/bin/env bash
-# Idempotent Cloud Agent bootstrap for theYNowApp (app_18.0).
+# Idempotent Cloud Agent bootstrap for theYNowApp (live line app_20.0).
 # Installs CRAN R, r2u binary packages, and the app Python virtualenv.
 set -euo pipefail
 
-# Cloud Agent runs this from the repository root (/workspace).
-# Also allow `bash scripts/cloud-agent-install.sh` from that root.
-if [[ -f app_18.0/requirements.txt ]]; then
-  ROOT="$(pwd)"
-else
-  ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-fi
+# Resolve the repo root from this script so the command is safe from any cwd.
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "${ROOT}"
 export DEBIAN_FRONTEND=noninteractive
 
 if [[ "$(id -u)" -eq 0 ]]; then
@@ -105,12 +101,17 @@ $SUDO apt-get install -y --no-install-recommends \
   r-cran-purrr \
   r-cran-ggplot2
 
-VENV="${ROOT}/app_18.0/.ynow_venv"
+VENV="${ROOT}/app_20.0/.ynow_venv"
+REQ="${ROOT}/app_20.0/requirements.txt"
+if [[ ! -f "${REQ}" ]]; then
+  echo "cloud-agent-install: missing ${REQ}" >&2
+  exit 1
+fi
 if [[ ! -x "${VENV}/bin/python" ]]; then
   python3 -m venv "${VENV}"
 fi
 "${VENV}/bin/pip" install --disable-pip-version-check --upgrade pip
-"${VENV}/bin/pip" install --disable-pip-version-check -r "${ROOT}/app_18.0/requirements.txt"
+"${VENV}/bin/pip" install --disable-pip-version-check -r "${REQ}"
 
 Rscript -e 'pkgs <- c("shiny","shinydashboard","tidyverse","reticulate","plotly","pacman","httr","quantmod","testthat","pagedown"); missing <- pkgs[!vapply(pkgs, requireNamespace, logical(1), quietly = TRUE)]; if (length(missing)) { message("Missing R packages: ", paste(missing, collapse = ", ")); quit(status = 1) }'
 "${VENV}/bin/python" -c 'import pandas, numpy, yfinance, requests, bs4, lxml, xlrd, curl_cffi'

@@ -62,7 +62,8 @@ When unsure: use the **English term** + brief Taiwan Chinese gloss on first ment
 - Bootstrap (idempotent): `bash scripts/cloud-agent-install.sh`
   - CRAN R (Ubuntu `noble-cran40`) plus [r2u](https://eddelbuettel.github.io/r2u/) binary packages for the `pacman::p_load` set in `app_20.0/global.R`, plus `httr`, `quantmod`, `testthat`, and `rsconnect`.
   - Python virtualenv: `app_20.0/.ynow_venv` from `app_20.0/requirements.txt`. `global.R` uses this venv when it exists and the process is not on shinyapps.io.
-- Shiny dev server (from `app_20.0/`): `Rscript -e 'shiny::runApp(host="0.0.0.0", port=3838, launch.browser=FALSE)'`
+- Boot start (idempotent): `bash scripts/cloud-agent-start.sh` keeps the Shiny dev server in the foreground on `0.0.0.0:3838` from `app_20.0/`. If that port is already listening, the script exits without starting a second process.
+- Equivalent manual start (from `app_20.0/`): `Rscript -e 'shiny::runApp(host="0.0.0.0", port=3838, launch.browser=FALSE)'`
 - This environment does not provision shinyapps.io credentials. Do not deploy from a Cloud Agent unless those secrets are present and a deploy was requested. Environment / docs-only commits do not bump the display version and do not deploy.
 
 ## Git & deploy
