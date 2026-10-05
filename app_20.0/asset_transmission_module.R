@@ -1199,11 +1199,50 @@ asset_tx_yield_path <- function(snap, locale = "en") {
   p
 }
 
+.asset_tx_fig_cache_key <- function(snaps, locale, market_mode) {
+  if (!length(snaps)) return("")
+  last <- snaps[[length(snaps)]]
+  fa <- attr(last, "fetched_at")
+  stamp <- if (!is.null(fa)) {
+    format(fa, "%Y-%m-%d %H:%M:%OS", tz = "UTC")
+  } else {
+    paste(vapply(snaps, function(s) format(s$as_of, "%Y-%m-%d"), character(1)), collapse = "|")
+  }
+  paste(
+    stamp,
+    length(snaps),
+    last$window %||% "",
+    as.character(locale %||% "en")[1],
+    toupper(as.character(market_mode %||% "US")[1]),
+    sep = "::"
+  )
+}
+
+.asset_tx_fig_cache_get <- function(key) {
+  if (!nzchar(key) || !exists(key, envir = .asset_tx_fig_cache, inherits = FALSE)) return(NULL)
+  get(key, envir = .asset_tx_fig_cache, inherits = FALSE)
+}
+
+.asset_tx_fig_cache_put <- function(key, value) {
+  if (!nzchar(key) || is.null(value)) return(invisible(NULL))
+  keys <- ls(envir = .asset_tx_fig_cache, all.names = TRUE)
+  if (length(keys) >= .asset_tx_fig_cache_max) {
+    # Drop oldest entries by insertion order (env listing order is fine enough).
+    drop_n <- max(1L, length(keys) - .asset_tx_fig_cache_max + 1L)
+    rm(list = keys[seq_len(drop_n)], envir = .asset_tx_fig_cache)
+  }
+  assign(key, value, envir = .asset_tx_fig_cache)
+  invisible(value)
+}
+
 asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
   snaps <- snaps[!vapply(snaps, is.null, logical(1))]
   if (!length(snaps)) return(NULL)
   if (!requireNamespace("plotly", quietly = TRUE)) return(NULL)
   locale <- if (exists("normalize_ui_locale", mode = "function")) normalize_ui_locale(locale) else locale
+  cache_key <- .asset_tx_fig_cache_key(snaps, locale, market_mode)
+  cached <- .asset_tx_fig_cache_get(cache_key)
+  if (!is.null(cached)) return(cached)
   last <- snaps[[length(snaps)]]
   multi <- length(snaps) >= 2L
   # Rebuild arrow routes once per figure, not once per frame.
@@ -1298,7 +1337,7 @@ asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
     )
     p <- .asset_tx_show_latest(p)
   }
-  plotly::config(
+  out <- plotly::config(
     p,
     displayModeBar = TRUE,
     displaylogo = FALSE,
@@ -1310,6 +1349,8 @@ asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
       "hoverCompareCartesian", "toggleSpikelines", "toImage"
     )
   )
+  .asset_tx_fig_cache_put(cache_key, out)
+  out
 }
 
 # ---- Fetch -----------------------------------------------------------------
@@ -1318,10 +1359,15 @@ asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
   switch(as.character(period %||% "6mo")[1], "1y" = "1y", "2y" = "2y", "5y" = "5y", "6mo")
 }
 
-# Process-level panel cache. The Testing tab polls every 90s; reuse a fresh
-# panel instead of re-hitting Yahoo for all symbols on every tick.
+# Process-level panel cache. The Testing tab polls every 90s; TTL must exceed
+# that interval so auto-refresh reuses the panel instead of re-hitting Yahoo.
 .asset_tx_panel_cache <- new.env(parent = emptyenv())
-.asset_tx_panel_cache_ttl_sec <- 75
+.asset_tx_panel_cache_ttl_sec <- 105
+# Replay depth for Play. Progressive paint uses 1 frame first, then this full tape.
+.asset_tx_tape_frames <- 12L
+# Figure cache: same panel + window + locale + market should not rebuild Plotly.
+.asset_tx_fig_cache <- new.env(parent = emptyenv())
+.asset_tx_fig_cache_max <- 8L
 
 .asset_tx_window_choice <- function(sel) {
   sel <- as.character(sel %||% "")
@@ -1329,7 +1375,8 @@ asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
   if (!nzchar(sel) || !sel %in% c("20", "60", "120")) "60" else sel
 }
 
-# Yahoo chart JSON with simplifyVector = FALSE. Dates use the exchange timezone.
+# Yahoo chart JSON. Prefer simplifyVector=TRUE payloads (faster parse); still
+# accept the nested simplifyVector=FALSE shape used by older call sites.
 .asset_tx_parse_chart <- function(j) {
   empty <- numeric()
   if (!is.list(j) || is.null(j$chart) || is.null(j$chart$result) || !length(j$chart$result)) {
@@ -1341,20 +1388,29 @@ asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
   quote <- res$indicators$quote
   if (is.null(ts) || !length(ts) || is.null(quote) || !length(quote)) return(empty)
   close <- quote[[1]]$close
-  n <- min(length(ts), length(close))
+  if (is.null(close)) return(empty)
+  ts <- suppressWarnings(as.numeric(unlist(ts, use.names = FALSE)))
+  # Nested lists (simplifyVector=FALSE) vs atomic vectors (TRUE).
+  if (is.list(close) && !is.data.frame(close)) {
+    vals <- vapply(close, function(el) {
+      if (is.null(el) || length(el) < 1L) return(NA_real_)
+      out <- suppressWarnings(as.numeric(el[[1]]))
+      if (length(out) != 1L || !is.finite(out)) NA_real_ else out
+    }, numeric(1))
+  } else {
+    vals <- suppressWarnings(as.numeric(unlist(close, use.names = FALSE)))
+  }
+  n <- min(length(ts), length(vals))
   if (n < 1L) return(empty)
+  ts <- ts[seq_len(n)]
+  vals <- vals[seq_len(n)]
   tz <- "UTC"
   meta_tz <- res$meta$exchangeTimezoneName
   if (is.character(meta_tz) && length(meta_tz) >= 1L && nzchar(meta_tz[[1]])) tz <- meta_tz[[1]]
   keys <- tryCatch(
-    format(as.POSIXct(as.numeric(ts[seq_len(n)]), origin = "1970-01-01", tz = tz), "%Y-%m-%d"),
-    error = function(e) format(as.POSIXct(as.numeric(ts[seq_len(n)]), origin = "1970-01-01", tz = "UTC"), "%Y-%m-%d")
+    format(as.POSIXct(ts, origin = "1970-01-01", tz = tz), "%Y-%m-%d"),
+    error = function(e) format(as.POSIXct(ts, origin = "1970-01-01", tz = "UTC"), "%Y-%m-%d")
   )
-  vals <- vapply(close[seq_len(n)], function(el) {
-    if (is.null(el) || length(el) < 1L) return(NA_real_)
-    out <- suppressWarnings(as.numeric(el[[1]]))
-    if (length(out) != 1L || !is.finite(out)) NA_real_ else out
-  }, numeric(1))
   ok <- !is.na(keys) & nzchar(keys) & is.finite(vals)
   if (!any(ok)) return(empty)
   stats::setNames(vals[ok], keys[ok])
@@ -1370,7 +1426,11 @@ asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
 
 .asset_tx_parse_chart_text <- function(txt) {
   if (!nzchar(txt %||% "")) return(numeric())
-  j <- tryCatch(jsonlite::fromJSON(txt, simplifyVector = FALSE), error = function(e) NULL)
+  # simplifyVector=TRUE is markedly faster for ~30 concurrent chart payloads.
+  j <- tryCatch(jsonlite::fromJSON(txt, simplifyVector = TRUE), error = function(e) NULL)
+  if (is.null(j)) {
+    j <- tryCatch(jsonlite::fromJSON(txt, simplifyVector = FALSE), error = function(e) NULL)
+  }
   if (is.null(j)) return(numeric())
   .asset_tx_parse_chart(j)
 }
@@ -1656,34 +1716,47 @@ asset_tx_fetch_panel <- function(catalog = NULL, period = "6mo", force = FALSE) 
   panel <- .asset_tx_align(parsed$dates, parsed$series, nodes)
   if (is.null(panel)) stop("empty Yahoo history")
   used <- attr(panel, "symbols")
+  # Collect short series once, then pull all alts in one concurrent curl pool
+  # instead of one Yahoo round-trip per node.
+  need_alt <- character(0)
+  need_ids <- character(0)
   for (i in seq_len(nrow(nodes))) {
     alt <- nodes$yahoo_alt[i]
     id <- nodes$id[i]
     if (!nzchar(alt)) next
     n_fin <- sum(is.finite(panel[[id]]))
     if (n_fin >= 30L) next
-    # Prefer R for alt symbols; Python only off shinyapps if R is short.
-    alt_raw <- tryCatch(.asset_tx_r_download(list(alt), period), error = function(e) NULL)
+    need_alt <- c(need_alt, alt)
+    need_ids <- c(need_ids, id)
+  }
+  if (length(need_alt)) {
+    uniq_alt <- unique(need_alt)
+    alt_raw <- tryCatch(.asset_tx_r_download(uniq_alt, period), error = function(e) NULL)
     alt_n <- if (is.null(alt_raw) || is.null(alt_raw$Date)) 0L else length(alt_raw$Date)
     if (alt_n < 30L && !isTRUE(.asset_tx_on_shinyapps())) {
-      py_alt <- tryCatch(.asset_tx_py_download(list(alt), period), error = function(e) NULL)
+      py_alt <- tryCatch(.asset_tx_py_download(uniq_alt, period), error = function(e) NULL)
       if (!is.null(py_alt) && length(py_alt$Date) > alt_n) alt_raw <- py_alt
     }
     alt_parsed <- .asset_tx_series_map(alt_raw)
-    if (!length(alt_parsed$dates)) next
-    v <- alt_parsed$series[[alt]]
-    if (is.null(v) || !any(is.finite(v))) next
-    extra <- data.frame(Date = alt_parsed$dates, v = as.numeric(v), stringsAsFactors = FALSE)
-    all_dates <- sort(unique(c(panel$Date, extra$Date)))
-    rebuilt <- data.frame(Date = all_dates, stringsAsFactors = FALSE)
-    for (col in setdiff(names(panel), "Date")) {
-      rebuilt[[col]] <- panel[[col]][match(all_dates, panel$Date)]
-    }
-    rebuilt[[id]] <- extra$v[match(all_dates, extra$Date)]
-    # Prefer alt only when it actually adds prints.
-    if (sum(is.finite(rebuilt[[id]])) > n_fin) {
-      panel <- rebuilt
-      used[[id]] <- alt
+    if (length(alt_parsed$dates)) {
+      for (j in seq_along(need_ids)) {
+        id <- need_ids[[j]]
+        alt <- need_alt[[j]]
+        n_fin <- sum(is.finite(panel[[id]]))
+        v <- alt_parsed$series[[alt]]
+        if (is.null(v) || !any(is.finite(v))) next
+        extra <- data.frame(Date = alt_parsed$dates, v = as.numeric(v), stringsAsFactors = FALSE)
+        all_dates <- sort(unique(c(panel$Date, extra$Date)))
+        rebuilt <- data.frame(Date = all_dates, stringsAsFactors = FALSE)
+        for (col in setdiff(names(panel), "Date")) {
+          rebuilt[[col]] <- panel[[col]][match(all_dates, panel$Date)]
+        }
+        rebuilt[[id]] <- extra$v[match(all_dates, extra$Date)]
+        if (sum(is.finite(rebuilt[[id]])) > n_fin) {
+          panel <- rebuilt
+          used[[id]] <- alt
+        }
+      }
     }
   }
   panel <- .asset_tx_apply_derived(panel, nodes)
@@ -1767,6 +1840,45 @@ asset_transmission_ui <- function(id) {
       .ynow-atx-path table { width: 100%; border-collapse: collapse; font-size: 12px; }
       .ynow-atx-path th, .ynow-atx-path td { text-align: left; padding: 3px 8px 3px 0; border-bottom: 1px solid #f0ebe3; }
       .ynow-atx h4 { margin: 14px 0 6px; font-size: 15px; }
+      .ynow-atx-load {
+        position: absolute;
+        inset: 0;
+        z-index: 6;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        background: rgba(12, 18, 40, 0.82);
+        border-radius: 8px;
+        pointer-events: none;
+      }
+      .ynow-atx-load[hidden] { display: none !important; }
+      .ynow-atx-load-label {
+        color: #f4f6fb;
+        font-size: 14px;
+        letter-spacing: 0.01em;
+        font-family: Arial, Helvetica, sans-serif;
+      }
+      .ynow-atx-load-track {
+        width: min(72%, 420px);
+        height: 8px;
+        border-radius: 999px;
+        background: rgba(244, 246, 251, 0.14);
+        overflow: hidden;
+        box-shadow: inset 0 0 0 1px rgba(244, 246, 251, 0.08);
+      }
+      .ynow-atx-load-bar {
+        height: 100%;
+        width: 38%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #2ec4c6 0%, #3a6fe0 55%, #6a5acd 100%);
+        animation: ynow-atx-load-slide 1.15s ease-in-out infinite;
+      }
+      @keyframes ynow-atx-load-slide {
+        0% { transform: translateX(-120%); }
+        100% { transform: translateX(320%); }
+      }
     ")),
     htmltools::tags$div(
       class = "ynow-atx",
@@ -1798,7 +1910,13 @@ asset_transmission_ui <- function(id) {
       shiny::uiOutput(ns("path")),
       htmltools::tags$div(
         class = "ynow-atx-map",
-        plotly::plotlyOutput(ns("map"), height = "900px", width = "100%")
+        shiny::uiOutput(ns("map_loading")),
+        shinycssloaders::withSpinner(
+          plotly::plotlyOutput(ns("map"), height = "900px", width = "100%"),
+          type = 4,
+          color = "#3a6fe0",
+          proxy.height = "420px"
+        )
       ),
       shiny::uiOutput(ns("legend")),
       shiny::uiOutput(ns("nodes_title")),
@@ -1835,48 +1953,98 @@ asset_transmission_server <- function(id, ui_locale_rv = NULL, market_mode_rv = 
 
     pack_rv <- shiny::reactiveVal(NULL)
     err_rv <- shiny::reactiveVal(NULL)
+    loading_rv <- shiny::reactiveVal(TRUE)
+    # Progressive paint: latest session first, then full Play tape.
+    tape_n_rv <- shiny::reactiveVal(1L)
     inflight <- FALSE
 
     load_panel <- function(force = FALSE) {
       if (isTRUE(inflight)) return(invisible(NULL))
       inflight <<- TRUE
       on.exit({ inflight <<- FALSE }, add = TRUE)
-      res <- tryCatch(
-        asset_tx_fetch_panel(force = isTRUE(force)),
-        error = function(e) structure(list(message = conditionMessage(e)), class = "asset_tx_fetch_error")
-      )
-      if (inherits(res, "asset_tx_fetch_error")) {
-        # Keep the last good panel so a failed refresh does not blank the map.
-        # Writes are safe outside a reactive consumer; reads are not.
-        err_rv(res$message)
-        return(invisible(NULL))
-      }
-      # later::later() runs this off the reactive flush so the UI can paint while
-      # Yahoo downloads. Reading a reactiveVal there needs isolate().
-      old <- shiny::isolate(pack_rv())
-      if (
-        !isTRUE(force) &&
-          !is.null(old) &&
-          identical(old$fetched_at, res$fetched_at) &&
-          identical(old$n_ok, res$n_ok)
-      ) {
+      loading_rv(TRUE)
+      loc <- tryCatch(shiny::isolate(locale()), error = function(e) "en")
+      run_fetch <- function() {
+        res <- tryCatch(
+          asset_tx_fetch_panel(force = isTRUE(force)),
+          error = function(e) structure(list(message = conditionMessage(e)), class = "asset_tx_fetch_error")
+        )
+        if (inherits(res, "asset_tx_fetch_error")) {
+          # Keep the last good panel so a failed refresh does not blank the map.
+          # Writes are safe outside a reactive consumer; reads are not.
+          err_rv(res$message)
+          loading_rv(FALSE)
+          return(invisible(NULL))
+        }
+        # later::later() runs this off the reactive flush so the UI can paint while
+        # Yahoo downloads. Reading a reactiveVal there needs isolate().
+        old <- shiny::isolate(pack_rv())
+        if (
+          !isTRUE(force) &&
+            !is.null(old) &&
+            identical(old$fetched_at, res$fetched_at) &&
+            identical(old$n_ok, res$n_ok)
+        ) {
+          err_rv(NULL)
+          loading_rv(FALSE)
+          return(invisible(res))
+        }
         err_rv(NULL)
-        return(invisible(res))
+        # Paint the latest session immediately, then expand to the Play tape.
+        tape_n_rv(1L)
+        pack_rv(res)
+        loading_rv(FALSE)
+        target_n <- as.integer(.asset_tx_tape_frames)
+        if (target_n > 1L) {
+          upgrade <- function() {
+            if (!identical(shiny::isolate(tape_n_rv()), target_n)) {
+              tape_n_rv(target_n)
+            }
+          }
+          if (requireNamespace("later", quietly = TRUE)) {
+            later::later(upgrade, delay = 0.05)
+          } else {
+            upgrade()
+          }
+        }
+        invisible(res)
       }
-      err_rv(NULL)
-      pack_rv(res)
-      invisible(res)
+      # Header progress fill tracks withProgress when a session is attached.
+      if (requireNamespace("shiny", quietly = TRUE)) {
+        tryCatch(
+          shiny::withProgress(
+            message = .asset_tx_label("atx_loading", loc),
+            value = 0.12,
+            session = session,
+            {
+              shiny::incProgress(0.35, detail = .asset_tx_label("atx_loading_bar", loc))
+              out <- run_fetch()
+              shiny::incProgress(0.95)
+              out
+            }
+          ),
+          error = function(e) run_fetch()
+        )
+      } else {
+        run_fetch()
+      }
     }
 
     shiny::observeEvent(input$refresh, {
-      tryCatch(load_panel(force = TRUE), error = function(e) err_rv(conditionMessage(e)))
+      tryCatch(load_panel(force = TRUE), error = function(e) {
+        err_rv(conditionMessage(e))
+        loading_rv(FALSE)
+      })
     }, ignoreInit = TRUE)
 
     shiny::observe({
       shiny::req(isTRUE(active()))
       shiny::invalidateLater(90000, session)
       run <- function() {
-        tryCatch(load_panel(force = FALSE), error = function(e) err_rv(conditionMessage(e)))
+        tryCatch(load_panel(force = FALSE), error = function(e) {
+          err_rv(conditionMessage(e))
+          loading_rv(FALSE)
+        })
       }
       # Defer off the reactive flush so the UI can paint while Yahoo downloads.
       if (requireNamespace("later", quietly = TRUE)) {
@@ -1911,12 +2079,32 @@ asset_transmission_server <- function(id, ui_locale_rv = NULL, market_mode_rv = 
       shiny::req(pack)
       tryCatch({
         window <- asset_tx_window(.asset_tx_window_choice(input$window))
-        tape <- asset_tx_tape(pack$panel, window = window, n = 12L)
-        lapply(tape, .asset_tx_with_symbols, symbols = pack$symbols)
+        n_fr <- as.integer(tape_n_rv() %||% 1L)
+        if (!is.finite(n_fr) || n_fr < 1L) n_fr <- 1L
+        tape <- asset_tx_tape(pack$panel, window = window, n = n_fr)
+        lapply(tape, function(sn) {
+          sn <- .asset_tx_with_symbols(sn, symbols = pack$symbols)
+          attr(sn, "fetched_at") <- pack$fetched_at
+          sn
+        })
       }, error = function(e) {
         err_rv(conditionMessage(e))
         list()
       })
+    })
+
+    output$map_loading <- shiny::renderUI({
+      loc <- locale()
+      show <- isTRUE(loading_rv()) || is.null(pack_rv())
+      if (!show) return(NULL)
+      htmltools::tags$div(
+        class = "ynow-atx-load",
+        role = "progressbar",
+        `aria-busy` = "true",
+        `aria-label` = .asset_tx_label("atx_loading_bar", loc),
+        htmltools::tags$div(class = "ynow-atx-load-track", htmltools::tags$div(class = "ynow-atx-load-bar")),
+        htmltools::tags$div(class = "ynow-atx-load-label", .asset_tx_label("atx_loading_bar", loc))
+      )
     })
 
     output$status <- shiny::renderUI({
@@ -1926,7 +2114,7 @@ asset_transmission_server <- function(id, ui_locale_rv = NULL, market_mode_rv = 
       if (!is.null(err) && is.null(pack)) {
         return(htmltools::tags$div(class = "ynow-atx-status", style = "color:#8a3b12;", err))
       }
-      if (is.null(pack)) {
+      if (is.null(pack) || isTRUE(loading_rv())) {
         return(htmltools::tags$div(class = "ynow-atx-status", .asset_tx_label("atx_loading", loc)))
       }
       stamp <- format(pack$fetched_at, "%Y-%m-%d %H:%M UTC", tz = "UTC")

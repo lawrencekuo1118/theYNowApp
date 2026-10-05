@@ -610,12 +610,56 @@ dbg_hit <- vapply(dbg_paths, function(fn) {
 }, logical(1))
 check("no laptop debug log path left in app", !any(dbg_hit))
 check("regime card wired", grepl('ns("regime")', mod_src, fixed = TRUE) && grepl("asset_tx_regime(", mod_src, fixed = TRUE))
+check(
+  "panel cache TTL exceeds 90s poll",
+  grepl("\\.asset_tx_panel_cache_ttl_sec\\s*<-\\s*105", mod_src) ||
+    (exists(".asset_tx_panel_cache_ttl_sec") && isTRUE(.asset_tx_panel_cache_ttl_sec >= 90))
+)
+check(
+  "map has loading bar overlay",
+  grepl("ynow-atx-load-bar", mod_src, fixed = TRUE) &&
+    grepl('ns("map_loading")', mod_src, fixed = TRUE) &&
+    grepl("atx_loading_bar", mod_src, fixed = TRUE)
+)
+check(
+  "map wraps plotly with spinner",
+  grepl("shinycssloaders::withSpinner", mod_src, fixed = TRUE) &&
+    grepl('plotlyOutput(ns("map")', mod_src, fixed = TRUE)
+)
+check(
+  "progressive tape then full frames",
+  grepl("tape_n_rv", mod_src, fixed = TRUE) &&
+    grepl("\\.asset_tx_tape_frames", mod_src) &&
+    grepl("loading_rv", mod_src, fixed = TRUE)
+)
+check(
+  "figure cache helpers present",
+  grepl(".asset_tx_fig_cache", mod_src, fixed = TRUE) &&
+    grepl(".asset_tx_fig_cache_get", mod_src, fixed = TRUE)
+)
+check(
+  "alt downloads batched",
+  grepl("need_alt", mod_src, fixed = TRUE) &&
+    grepl("uniq_alt", mod_src, fixed = TRUE)
+)
 loc_src <- paste(readLines("ui_locale.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check(
   "pan hint localized en+zh-TW",
   grepl("atx_pan_hint", loc_src, fixed = TRUE) &&
     grepl("Swipe or drag to pan the map", loc_src, fixed = TRUE) &&
     grepl("可左右滑動或拖曳平移圖表", loc_src, fixed = TRUE)
+)
+check(
+  "loading bar localized en+zh-TW",
+  grepl("atx_loading_bar", loc_src, fixed = TRUE) &&
+    grepl("Loading Asset transmission map", loc_src, fixed = TRUE) &&
+    grepl("正在載入 Asset transmission 圖表", loc_src, fixed = TRUE)
+)
+check(
+  "play hint matches 12-session tape",
+  grepl("last 12 sessions", loc_src, fixed = TRUE) &&
+    grepl("近 12 個交易日", loc_src, fixed = TRUE) &&
+    !grepl("last 24 sessions", loc_src, fixed = TRUE)
 )
 
 if (requireNamespace("shiny", quietly = TRUE)) {
