@@ -8,5 +8,5 @@ short=64ed59e
 message=chore: bump display version to v20.45
 captured_at=2026-10-05T06:31:12Z
 source_branch=cursor/asset-transmission-testing-9c4f
-display_version=v20.45
+display_version=v20.46
 note=Canonical live line is app_20.0. Bundle 12648103 ships v20.45: Testing-map channel arrows use densified fmm-spline shafts for smoother bends. Deploy via scripts/deploy_app_20.R.
