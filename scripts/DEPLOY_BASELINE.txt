@@ -8,5 +8,5 @@ short=a128f28
 message=chore: bump display version to v20.68
 captured_at=2026-10-05T16:35:00Z
 source_branch=master
-display_version=v20.68
+display_version=v20.69
 note=Canonical live line is app_20.0. Bundle 12650384 ships v20.68: homepage Blue Chip door uses default neutral card styling (ocean tint removed). Deploy via scripts/deploy_app_20.R.
