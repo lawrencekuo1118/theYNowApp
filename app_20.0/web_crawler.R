@@ -50,18 +50,7 @@ my_cache <- cachem::cache_mem(max_size = 50 * 1024^2, max_age = 3600)
   isTRUE(ok) && isTRUE(.py_scraper_fn_ready())
 }
 
-tryCatch({
-  if (!identical(Sys.getenv("YNOW_DEBUG_SKIP_PY"), "1") &&
-      isTRUE(reticulate::py_available(initialize = FALSE))) {
-    reticulate::source_python("deep_scraper.py", envir = .py_scraper_env)
-    .py_scraper_ready <- TRUE
-    .ynow_log("✅ Python 深度爬蟲腳本載入成功！")
-  } else {
-    .ynow_log("ℹ️ Python 爬蟲改為延遲載入（避免啟動期 initialize 導致 500）")
-  }
-}, error = function(e) {
-  .ynow_log("⚠️ Python 腳本載入失敗: ", e$message)
-})
+# Source-time reticulate probes removed: shinyapps must Listen before Python.
 
 .empty_summary <- function(stock_code, company_name = NULL) {
   df <- data.frame(

@@ -13,6 +13,16 @@
 .ynow_app_dir <- normalizePath(".", mustWork = TRUE)
 setwd(.ynow_app_dir)
 
+# Block reticulate/uv from downloading CPython during cold start on shinyapps.
+# Listening must happen before any Python install; lazy path re-enables downloads.
+.ynow_boot_shinyapps <- nzchar(Sys.getenv("SHINY_SERVER_VERSION")) ||
+  grepl("shinyapps", Sys.getenv("HOSTNAME"), ignore.case = TRUE) ||
+  grepl("shinyapps", Sys.getenv("R_CONFIG_ACTIVE"), ignore.case = TRUE) ||
+  identical(Sys.getenv("FORCE_SHINYAPPS_PYTHON"), "1")
+if (isTRUE(.ynow_boot_shinyapps)) {
+  Sys.setenv(UV_PYTHON_DOWNLOADS = "never")
+}
+
 # R only auto-reads ~/.Renviron (RStudio also loads a project file locally).
 # shinyapps.io needs an explicit load so bundled app_18.0/.Renviron is visible.
 .ynow_renviron <- file.path(.ynow_app_dir, ".Renviron")

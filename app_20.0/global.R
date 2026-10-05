@@ -11,6 +11,12 @@ on_shinyapps <- nzchar(Sys.getenv("SHINY_SERVER_VERSION")) ||
   grepl("shinyapps", Sys.getenv("R_CONFIG_ACTIVE"), ignore.case = TRUE) ||
   identical(Sys.getenv("FORCE_SHINYAPPS_PYTHON"), "1")
 
+# Never let uv download a managed CPython while the worker is still booting.
+# Cold-start installs blocked Listening and timed out Safari / curl.
+if (isTRUE(on_shinyapps)) {
+  Sys.setenv(UV_PYTHON_DOWNLOADS = "never")
+}
+
 if (file.exists(python_path) && !on_shinyapps) {
   Sys.setenv(RETICULATE_PYTHON = python_path)
 } else {
@@ -72,6 +78,15 @@ py_pkgs <- .ynow_py_pkgs
     )))
   }
   ok <- FALSE
+  old_uv <- Sys.getenv("UV_PYTHON_DOWNLOADS", unset = NA_character_)
+  # Boot blocks downloads; re-enable only for an on-demand install after Listen.
+  if (isTRUE(on_shinyapps)) {
+    Sys.setenv(UV_PYTHON_DOWNLOADS = "auto")
+    on.exit({
+      if (is.na(old_uv)) Sys.setenv(UV_PYTHON_DOWNLOADS = "never")
+      else Sys.setenv(UV_PYTHON_DOWNLOADS = old_uv)
+    }, add = TRUE)
+  }
   tryCatch({
     if (file.exists(python_path) && !on_shinyapps) {
       reticulate::use_virtualenv(env_dir, required = TRUE)

@@ -383,14 +383,16 @@ zh_edges <- asset_tx_edge_table(snap, "zh-TW")
 check("zh edge state words", any(grepl("一致", zh_edges[[ncol(zh_edges)]], fixed = TRUE)))
 check("zh mixed state", any(zh_edges[[ncol(zh_edges)]] == "視情境"))
 
-tape <- asset_tx_tape(panel, window = 60L, n = 24L)
-check("tape length 24", length(tape) == 24L)
+tape <- asset_tx_tape(panel, window = 60L, n = 12L)
+check("tape length 12", length(tape) == 12L)
 check("tape ends on last date", identical(tape[[length(tape)]]$as_of, max(panel$Date)))
+tape24 <- asset_tx_tape(panel, window = 60L, n = 24L)
+check("tape can still request 24", length(tape24) == 24L)
 
 if (requireNamespace("plotly", quietly = TRUE)) {
   fig <- asset_tx_figure(tape, "zh-TW", "TW")
   check("figure is plotly", inherits(fig, "plotly"))
-  check("tape frames", length(fig$x$frames) == 24L)
+  check("tape frames", length(fig$x$frames) == 12L)
   check("frame name is a date", grepl("^\\d{4}-\\d{2}-\\d{2}$", fig$x$frames[[1]]$name))
   built <- plotly::plotly_build(fig)
   blob <- paste(unlist(lapply(built$x$data, function(tr) c(tr$text, tr$hovertext, tr$customdata))), collapse = "\n")
@@ -464,7 +466,20 @@ check("global sources module", grepl('source("asset_transmission_module.R"', glb
 check(
   "global defers shinyapps Python install",
   grepl(".ynow_ensure_python", glb_src, fixed = TRUE) &&
-    grepl("py_require(.ynow_py_pkgs)", glb_src, fixed = TRUE)
+    grepl("py_require(.ynow_py_pkgs)", glb_src, fixed = TRUE) &&
+    grepl("UV_PYTHON_DOWNLOADS", glb_src, fixed = TRUE)
+)
+app_src <- paste(readLines("app.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check(
+  "app blocks uv downloads before global.R",
+  grepl("UV_PYTHON_DOWNLOADS", app_src, fixed = TRUE) &&
+    grepl('Sys.setenv(UV_PYTHON_DOWNLOADS = "never")', app_src, fixed = TRUE)
+)
+mod_src <- paste(readLines("asset_transmission_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check(
+  "fetch skips Python on shinyapps",
+  grepl(".asset_tx_on_shinyapps", mod_src, fixed = TRUE) &&
+    grepl("!isTRUE(.asset_tx_on_shinyapps())", mod_src, fixed = TRUE)
 )
 dbg_paths <- c(
   "ynow_ui.R", "ynow_server.R", "macro_market_module.R", "backtest_module.R"
@@ -474,7 +489,6 @@ dbg_hit <- vapply(dbg_paths, function(fn) {
   grepl("debug-ef0f33\\.log", src) || grepl("127\\.0\\.0\\.1:7302/ingest", src)
 }, logical(1))
 check("no laptop debug log path left in app", !any(dbg_hit))
-mod_src <- paste(readLines("asset_transmission_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("regime card wired", grepl('ns("regime")', mod_src, fixed = TRUE) && grepl("asset_tx_regime(", mod_src, fixed = TRUE))
 
 if (requireNamespace("shiny", quietly = TRUE)) {

@@ -443,7 +443,7 @@ asset_tx_snapshot <- function(panel, catalog = NULL, window = 60L, as_of = NULL)
   )
 }
 
-asset_tx_tape <- function(panel, catalog = NULL, window = 60L, n = 24L) {
+asset_tx_tape <- function(panel, catalog = NULL, window = 60L, n = 12L) {
   catalog <- catalog %||% asset_tx_catalog()
   prepared <- .asset_tx_prepare_panel(panel, catalog$nodes)
   if (is.null(prepared)) return(list())
@@ -925,8 +925,6 @@ asset_tx_edge_table <- function(snap, locale = "en") {
   colors <- asset_tx_move_colors(market_mode)
   nodes <- snap$catalog$nodes
   edges <- snap$edges
-  # Arrow geometry changed; drop any polyline cached under an older head size.
-  rm(list = ls(envir = .asset_tx_route_cache, all.names = TRUE), envir = .asset_tx_route_cache)
   traces <- list(.asset_tx_dot_trace(nodes))
   for (i in seq_len(nrow(snap$nodes))) {
     traces[[length(traces) + 1L]] <- .asset_tx_card_border_trace(snap, i, colors)
@@ -1218,6 +1216,8 @@ asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
   locale <- if (exists("normalize_ui_locale", mode = "function")) normalize_ui_locale(locale) else locale
   last <- snaps[[length(snaps)]]
   multi <- length(snaps) >= 2L
+  # Rebuild arrow routes once per figure, not once per frame.
+  rm(list = ls(envir = .asset_tx_route_cache, all.names = TRUE), envir = .asset_tx_route_cache)
   p <- plotly::plot_ly()
   for (sn in snaps) {
     traces <- .asset_tx_traces(sn, locale, market_mode)
@@ -1235,12 +1235,13 @@ asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
     if (!multi) break
   }
   if (multi) {
+    # Lighter animation: shorter frames, no full redraw each step.
     p <- plotly::animation_opts(
       p,
-      frame = 520,
-      transition = 280,
+      frame = 420,
+      transition = 180,
       easing = "cubic-in-out",
-      redraw = TRUE
+      redraw = FALSE
     )
   }
   nodes_xy <- last$catalog$nodes
@@ -1607,6 +1608,17 @@ def _ynow_atx_download(tickers, period):
   invisible(value)
 }
 
+.asset_tx_on_shinyapps <- function() {
+  if (exists("on_shinyapps", inherits = TRUE)) {
+    v <- get("on_shinyapps", inherits = TRUE)
+    if (isTRUE(v)) return(TRUE)
+  }
+  nzchar(Sys.getenv("SHINY_SERVER_VERSION")) ||
+    grepl("shinyapps", Sys.getenv("HOSTNAME"), ignore.case = TRUE) ||
+    grepl("shinyapps", Sys.getenv("R_CONFIG_ACTIVE"), ignore.case = TRUE) ||
+    identical(Sys.getenv("FORCE_SHINYAPPS_PYTHON"), "1")
+}
+
 asset_tx_fetch_panel <- function(catalog = NULL, period = "6mo", force = FALSE) {
   catalog <- catalog %||% asset_tx_catalog()
   nodes <- catalog$nodes
@@ -1618,10 +1630,11 @@ asset_tx_fetch_panel <- function(catalog = NULL, period = "6mo", force = FALSE) 
     if (!is.null(cached)) return(cached)
   }
   # R chart API first. shinyapps.io has reticulate but no Python, so the
-  # Python downloader cannot be the only path.
+  # Python downloader cannot be the only path — and on shinyapps we skip it
+  # entirely so a failed Python install cannot wedge the Testing map.
   raw <- tryCatch(.asset_tx_r_download(syms, period), error = function(e) NULL)
   n_dates <- if (is.null(raw) || is.null(raw$Date)) 0L else length(raw$Date)
-  if (n_dates < 30L) {
+  if (n_dates < 30L && !isTRUE(.asset_tx_on_shinyapps())) {
     py <- tryCatch(.asset_tx_py_download(syms, period), error = function(e) NULL)
     if (!is.null(py) && length(py$Date) > n_dates) raw <- py
   }
@@ -1636,10 +1649,10 @@ asset_tx_fetch_panel <- function(catalog = NULL, period = "6mo", force = FALSE) 
     if (!nzchar(alt)) next
     n_fin <- sum(is.finite(panel[[id]]))
     if (n_fin >= 30L) next
-    # Prefer R for alt symbols; Python only if R is short.
+    # Prefer R for alt symbols; Python only off shinyapps if R is short.
     alt_raw <- tryCatch(.asset_tx_r_download(list(alt), period), error = function(e) NULL)
     alt_n <- if (is.null(alt_raw) || is.null(alt_raw$Date)) 0L else length(alt_raw$Date)
-    if (alt_n < 30L) {
+    if (alt_n < 30L && !isTRUE(.asset_tx_on_shinyapps())) {
       py_alt <- tryCatch(.asset_tx_py_download(list(alt), period), error = function(e) NULL)
       if (!is.null(py_alt) && length(py_alt$Date) > alt_n) alt_raw <- py_alt
     }
@@ -1809,20 +1822,41 @@ asset_transmission_server <- function(id, ui_locale_rv = NULL, market_mode_rv = 
         error = function(e) structure(list(message = conditionMessage(e)), class = "asset_tx_fetch_error")
       )
       if (inherits(res, "asset_tx_fetch_error")) {
+        # Keep the last good panel so a failed refresh does not blank the map.
         err_rv(res$message)
         return(invisible(NULL))
+      }
+      old <- pack_rv()
+      if (
+        !isTRUE(force) &&
+          !is.null(old) &&
+          identical(old$fetched_at, res$fetched_at) &&
+          identical(old$n_ok, res$n_ok)
+      ) {
+        err_rv(NULL)
+        return(invisible(res))
       }
       err_rv(NULL)
       pack_rv(res)
       invisible(res)
     }
 
-    shiny::observeEvent(input$refresh, load_panel(force = TRUE), ignoreInit = TRUE)
+    shiny::observeEvent(input$refresh, {
+      tryCatch(load_panel(force = TRUE), error = function(e) err_rv(conditionMessage(e)))
+    }, ignoreInit = TRUE)
 
     shiny::observe({
       shiny::req(isTRUE(active()))
       shiny::invalidateLater(90000, session)
-      load_panel(force = FALSE)
+      run <- function() {
+        tryCatch(load_panel(force = FALSE), error = function(e) err_rv(conditionMessage(e)))
+      }
+      # Defer off the reactive flush so the UI can paint while Yahoo downloads.
+      if (requireNamespace("later", quietly = TRUE)) {
+        later::later(run, delay = 0)
+      } else {
+        run()
+      }
     })
 
     shiny::observe({
@@ -1848,9 +1882,14 @@ asset_transmission_server <- function(id, ui_locale_rv = NULL, market_mode_rv = 
     snaps <- shiny::reactive({
       pack <- pack_rv()
       shiny::req(pack)
-      window <- asset_tx_window(input$window)
-      tape <- asset_tx_tape(pack$panel, window = window, n = 24L)
-      lapply(tape, .asset_tx_with_symbols, symbols = pack$symbols)
+      tryCatch({
+        window <- asset_tx_window(.asset_tx_window_choice(input$window))
+        tape <- asset_tx_tape(pack$panel, window = window, n = 12L)
+        lapply(tape, .asset_tx_with_symbols, symbols = pack$symbols)
+      }, error = function(e) {
+        err_rv(conditionMessage(e))
+        list()
+      })
     })
 
     output$status <- shiny::renderUI({
@@ -1930,7 +1969,13 @@ asset_transmission_server <- function(id, ui_locale_rv = NULL, market_mode_rv = 
     output$map <- plotly::renderPlotly({
       tape <- snaps()
       shiny::req(length(tape) > 0L)
-      fig <- asset_tx_figure(tape, locale(), market())
+      fig <- tryCatch(
+        asset_tx_figure(tape, locale(), market()),
+        error = function(e) {
+          err_rv(conditionMessage(e))
+          NULL
+        }
+      )
       shiny::validate(shiny::need(!is.null(fig), .asset_tx_label("atx_empty", locale())))
       fig
     })
