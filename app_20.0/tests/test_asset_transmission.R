@@ -132,6 +132,16 @@ check(
 check("window choice null", identical(.asset_tx_window_choice(NULL), "60"))
 check("window choice empty", identical(.asset_tx_window_choice(character(0)), "60"))
 check("window choice 20", identical(.asset_tx_window_choice("20"), "20"))
+check("yahoo range defaults to 6mo", identical(.asset_tx_yahoo_range(NULL), "6mo"))
+check("yahoo range keeps 1y", identical(.asset_tx_yahoo_range("1y"), "1y"))
+cache_key <- .asset_tx_panel_cache_key(c("B", "A"), "6mo")
+check("panel cache key sorts symbols", identical(cache_key, "6mo::A|B"))
+.asset_tx_panel_cache_put(cache_key, list(fetched_at = Sys.time(), n_ok = 1L, marker = "hit"))
+cache_hit <- .asset_tx_panel_cache_get(cache_key)
+check("panel cache hit within TTL", is.list(cache_hit) && identical(cache_hit$marker, "hit"))
+.asset_tx_panel_cache_put(cache_key, list(fetched_at = Sys.time() - 120, n_ok = 1L, marker = "stale"))
+check("panel cache misses after TTL", is.null(.asset_tx_panel_cache_get(cache_key)))
+rm(list = cache_key, envir = .asset_tx_panel_cache)
 chart_fix <- .asset_tx_parse_chart(list(
   chart = list(result = list(list(
     timestamp = list(1725148800, 1725235200),

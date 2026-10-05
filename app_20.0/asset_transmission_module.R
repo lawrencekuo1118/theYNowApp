@@ -1190,6 +1190,7 @@ asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
   )
   p <- plotly::layout(
     p,
+    autosize = TRUE,
     xaxis = list(
       visible = FALSE,
       range = c(min(nodes_xy$x) - 1.25, max(nodes_xy$x) + 1.55),
@@ -1202,7 +1203,7 @@ asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
       fixedrange = TRUE,
       zeroline = FALSE
     ),
-    margin = list(l = 8, r = 8, t = 16, b = 4),
+    margin = list(l = 4, r = 4, t = 12, b = 4),
     paper_bgcolor = "#0c1228",
     plot_bgcolor = "#0c1228",
     hovermode = "closest",
@@ -1236,8 +1237,13 @@ asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
 # ---- Fetch -----------------------------------------------------------------
 
 .asset_tx_yahoo_range <- function(period) {
-  switch(as.character(period %||% "1y")[1], "6mo" = "6mo", "2y" = "2y", "5y" = "5y", "1y")
+  switch(as.character(period %||% "6mo")[1], "1y" = "1y", "2y" = "2y", "5y" = "5y", "6mo")
 }
+
+# Process-level panel cache. The Testing tab polls every 90s; reuse a fresh
+# panel instead of re-hitting Yahoo for all symbols on every tick.
+.asset_tx_panel_cache <- new.env(parent = emptyenv())
+.asset_tx_panel_cache_ttl_sec <- 75
 
 .asset_tx_window_choice <- function(sel) {
   sel <- as.character(sel %||% "")
@@ -1276,34 +1282,80 @@ asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
   stats::setNames(vals[ok], keys[ok])
 }
 
-.asset_tx_chart_one <- function(sym, range = "1y") {
-  if (!requireNamespace("httr", quietly = TRUE) || !requireNamespace("jsonlite", quietly = TRUE)) {
-    return(numeric())
-  }
-  url <- paste0(
+.asset_tx_chart_url <- function(sym, range = "6mo") {
+  paste0(
     "https://query1.finance.yahoo.com/v8/finance/chart/",
     utils::URLencode(as.character(sym)[1], reserved = TRUE),
     "?interval=1d&range=", range
   )
-  resp <- tryCatch(
-    httr::GET(url, httr::user_agent("Mozilla/5.0"), httr::timeout(20)),
-    error = function(e) NULL
-  )
-  if (is.null(resp) || httr::status_code(resp) >= 400L) return(numeric())
-  txt <- tryCatch(httr::content(resp, as = "text", encoding = "UTF-8"), error = function(e) "")
-  if (!nzchar(txt)) return(numeric())
+}
+
+.asset_tx_parse_chart_text <- function(txt) {
+  if (!nzchar(txt %||% "")) return(numeric())
   j <- tryCatch(jsonlite::fromJSON(txt, simplifyVector = FALSE), error = function(e) NULL)
   if (is.null(j)) return(numeric())
   .asset_tx_parse_chart(j)
 }
 
-.asset_tx_r_download <- function(symbols, period = "1y") {
+.asset_tx_chart_one <- function(sym, range = "6mo") {
+  if (!requireNamespace("httr", quietly = TRUE) || !requireNamespace("jsonlite", quietly = TRUE)) {
+    return(numeric())
+  }
+  resp <- tryCatch(
+    httr::GET(.asset_tx_chart_url(sym, range), httr::user_agent("Mozilla/5.0"), httr::timeout(20)),
+    error = function(e) NULL
+  )
+  if (is.null(resp) || httr::status_code(resp) >= 400L) return(numeric())
+  txt <- tryCatch(httr::content(resp, as = "text", encoding = "UTF-8"), error = function(e) "")
+  .asset_tx_parse_chart_text(txt)
+}
+
+# Concurrent Yahoo chart pulls via libcurl. Safe on shinyapps (no forking).
+.asset_tx_curl_download <- function(symbols, range = "6mo") {
+  out <- vector("list", length(symbols))
+  names(out) <- symbols
+  if (!length(symbols)) return(out)
+  if (!requireNamespace("curl", quietly = TRUE) || !requireNamespace("jsonlite", quietly = TRUE)) {
+    return(NULL)
+  }
+  pool <- curl::new_pool()
+  for (i in seq_along(symbols)) {
+    local({
+      sym <- symbols[[i]]
+      h <- curl::new_handle()
+      curl::handle_setopt(h, useragent = "Mozilla/5.0", timeout = 20, connecttimeout = 10)
+      curl::curl_fetch_multi(
+        .asset_tx_chart_url(sym, range),
+        done = function(res) {
+          out[[sym]] <<- tryCatch({
+            if (is.null(res) || isTRUE(res$status_code >= 400L)) return(numeric())
+            txt <- rawToChar(res$content)
+            Encoding(txt) <- "UTF-8"
+            .asset_tx_parse_chart_text(txt)
+          }, error = function(e) numeric())
+        },
+        fail = function(err) {
+          out[[sym]] <<- numeric()
+        },
+        pool = pool,
+        handle = h
+      )
+    })
+  }
+  curl::multi_run(pool = pool)
+  out
+}
+
+.asset_tx_r_download <- function(symbols, period = "6mo") {
   symbols <- unique(as.character(symbols))
   symbols <- symbols[nzchar(symbols)]
   if (!length(symbols)) stop("empty Yahoo history")
   rng <- .asset_tx_yahoo_range(period)
-  series <- lapply(symbols, function(sym) .asset_tx_chart_one(sym, rng))
-  names(series) <- symbols
+  series <- .asset_tx_curl_download(symbols, rng)
+  if (is.null(series)) {
+    series <- lapply(symbols, function(sym) .asset_tx_chart_one(sym, rng))
+    names(series) <- symbols
+  }
   dates <- sort(unique(unlist(lapply(series, names), use.names = FALSE)))
   if (!length(dates)) stop("empty Yahoo history")
   values <- lapply(symbols, function(sym) {
@@ -1318,7 +1370,7 @@ asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
   list(Date = dates, symbols = symbols, values = values)
 }
 
-.asset_tx_py_download <- function(symbols, period = "1y") {
+.asset_tx_py_download <- function(symbols, period = "6mo") {
   if (!requireNamespace("reticulate", quietly = TRUE)) stop("reticulate missing")
   if (identical(Sys.getenv("YNOW_DEBUG_SKIP_PY"), "1")) stop("Python skipped")
   reticulate::py_run_string("
@@ -1464,11 +1516,34 @@ def _ynow_atx_download(tickers, period):
   out
 }
 
-asset_tx_fetch_panel <- function(catalog = NULL, period = "1y") {
+.asset_tx_panel_cache_key <- function(syms, period) {
+  paste0(as.character(period %||% "6mo")[1], "::", paste(sort(unique(as.character(syms))), collapse = "|"))
+}
+
+.asset_tx_panel_cache_get <- function(key) {
+  if (!exists(key, envir = .asset_tx_panel_cache, inherits = FALSE)) return(NULL)
+  hit <- get(key, envir = .asset_tx_panel_cache, inherits = FALSE)
+  if (!is.list(hit) || is.null(hit$fetched_at)) return(NULL)
+  age <- as.numeric(difftime(Sys.time(), hit$fetched_at, units = "secs"))
+  if (!is.finite(age) || age > .asset_tx_panel_cache_ttl_sec) return(NULL)
+  hit
+}
+
+.asset_tx_panel_cache_put <- function(key, value) {
+  assign(key, value, envir = .asset_tx_panel_cache)
+  invisible(value)
+}
+
+asset_tx_fetch_panel <- function(catalog = NULL, period = "6mo", force = FALSE) {
   catalog <- catalog %||% asset_tx_catalog()
   nodes <- catalog$nodes
   syms <- unique(nodes$yahoo)
   syms <- syms[nzchar(syms)]
+  cache_key <- .asset_tx_panel_cache_key(syms, period)
+  if (!isTRUE(force)) {
+    cached <- .asset_tx_panel_cache_get(cache_key)
+    if (!is.null(cached)) return(cached)
+  }
   # R chart API first. shinyapps.io has reticulate but no Python, so the
   # Python downloader cannot be the only path.
   raw <- tryCatch(.asset_tx_r_download(syms, period), error = function(e) NULL)
@@ -1488,10 +1563,13 @@ asset_tx_fetch_panel <- function(catalog = NULL, period = "1y") {
     if (!nzchar(alt)) next
     n_fin <- sum(is.finite(panel[[id]]))
     if (n_fin >= 30L) next
-    alt_raw <- tryCatch(
-      .asset_tx_py_download(list(alt), period),
-      error = function(e) NULL
-    )
+    # Prefer R for alt symbols; Python only if R is short.
+    alt_raw <- tryCatch(.asset_tx_r_download(list(alt), period), error = function(e) NULL)
+    alt_n <- if (is.null(alt_raw) || is.null(alt_raw$Date)) 0L else length(alt_raw$Date)
+    if (alt_n < 30L) {
+      py_alt <- tryCatch(.asset_tx_py_download(list(alt), period), error = function(e) NULL)
+      if (!is.null(py_alt) && length(py_alt$Date) > alt_n) alt_raw <- py_alt
+    }
     alt_parsed <- .asset_tx_series_map(alt_raw)
     if (!length(alt_parsed$dates)) next
     v <- alt_parsed$series[[alt]]
@@ -1516,13 +1594,15 @@ asset_tx_fetch_panel <- function(catalog = NULL, period = "1y") {
   attr(panel, "symbols") <- used
   n_ok <- sum(nzchar(used))
   if (n_ok < 1L) stop("no public series returned")
-  list(
+  out <- list(
     panel = panel,
     symbols = used,
     fetched_at = Sys.time(),
     n_ok = as.integer(n_ok),
     n_nodes = nrow(nodes)
   )
+  .asset_tx_panel_cache_put(cache_key, out)
+  out
 }
 
 .asset_tx_with_symbols <- function(snap, symbols) {
@@ -1545,14 +1625,30 @@ asset_transmission_ui <- function(id) {
       .ynow-atx-note { margin: 0 0 8px; font-size: 12px; color: #5c5346; }
       .ynow-atx-status { font-size: 12px; color: #5c5346; margin-top: 28px; }
       .ynow-atx-map {
-        overflow-x: auto;
+        overflow-x: hidden;
+        overflow-y: hidden;
+        width: 100%;
+        max-width: 100%;
         background-color: #0c1228;
         background-image: radial-gradient(rgba(244, 246, 251, 0.34) 1.15px, transparent 1.25px);
         background-size: 18px 18px;
         border-radius: 8px;
         padding: 4px 0 8px;
+        box-sizing: border-box;
       }
-      .ynow-atx-map .plotly, .ynow-atx-map .html-widget { min-width: 1640px; }
+      .ynow-atx-map .plotly,
+      .ynow-atx-map .html-widget {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        height: min(72vh, 820px) !important;
+      }
+      .ynow-atx-map .js-plotly-plot,
+      .ynow-atx-map .plot-container,
+      .ynow-atx-map .svg-container {
+        width: 100% !important;
+        max-width: 100% !important;
+      }
       .ynow-atx-path { margin: 8px 0 10px; padding: 8px 10px; background: #fff; border: 1px solid #e4dccb; border-radius: 6px; }
       .ynow-atx-path h4 { margin: 0 0 6px; font-size: 14px; }
       .ynow-atx-regime { margin: 8px 0 10px; padding: 8px 10px; background: #f4f0e6; border: 1px solid #e4dccb; border-radius: 6px; }
@@ -1590,7 +1686,10 @@ asset_transmission_ui <- function(id) {
       shiny::uiOutput(ns("summary")),
       shiny::uiOutput(ns("regime")),
       shiny::uiOutput(ns("path")),
-      htmltools::tags$div(class = "ynow-atx-map", plotly::plotlyOutput(ns("map"), height = "1040px")),
+      htmltools::tags$div(
+        class = "ynow-atx-map",
+        plotly::plotlyOutput(ns("map"), height = "720px", width = "100%")
+      ),
       shiny::uiOutput(ns("legend")),
       shiny::uiOutput(ns("nodes_title")),
       DT::DTOutput(ns("nodes")),
@@ -1628,12 +1727,12 @@ asset_transmission_server <- function(id, ui_locale_rv = NULL, market_mode_rv = 
     err_rv <- shiny::reactiveVal(NULL)
     inflight <- FALSE
 
-    load_panel <- function() {
+    load_panel <- function(force = FALSE) {
       if (isTRUE(inflight)) return(invisible(NULL))
       inflight <<- TRUE
       on.exit({ inflight <<- FALSE }, add = TRUE)
       res <- tryCatch(
-        asset_tx_fetch_panel(),
+        asset_tx_fetch_panel(force = isTRUE(force)),
         error = function(e) structure(list(message = conditionMessage(e)), class = "asset_tx_fetch_error")
       )
       if (inherits(res, "asset_tx_fetch_error")) {
@@ -1645,12 +1744,12 @@ asset_transmission_server <- function(id, ui_locale_rv = NULL, market_mode_rv = 
       invisible(res)
     }
 
-    shiny::observeEvent(input$refresh, load_panel(), ignoreInit = TRUE)
+    shiny::observeEvent(input$refresh, load_panel(force = TRUE), ignoreInit = TRUE)
 
     shiny::observe({
       shiny::req(isTRUE(active()))
       shiny::invalidateLater(90000, session)
-      load_panel()
+      load_panel(force = FALSE)
     })
 
     shiny::observe({
