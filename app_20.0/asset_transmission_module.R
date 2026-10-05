@@ -708,7 +708,33 @@ asset_tx_edge_table <- function(snap, locale = "en") {
   )
 }
 
+# Densify a control polyline into a smooth shaft. Multi-bend routes lose the
+# sharp parallelogram corners; true two-point shafts stay straight.
+.asset_tx_smooth_poly <- function(xs, ys, n_per = 14L) {
+  xs <- as.numeric(xs)
+  ys <- as.numeric(ys)
+  ok <- is.finite(xs) & is.finite(ys)
+  xs <- xs[ok]
+  ys <- ys[ok]
+  n <- length(xs)
+  if (n < 2L) return(list(x = xs, y = ys))
+  if (n == 2L) return(list(x = xs, y = ys))
+  d <- c(0, cumsum(sqrt(diff(xs)^2 + diff(ys)^2)))
+  total <- d[length(d)]
+  if (!is.finite(total) || total < 1e-6) return(list(x = xs, y = ys))
+  # fmm spline rounds the corners without overshooting as hard as natural.
+  n_out <- max(18L, (n - 1L) * as.integer(n_per))
+  tt <- seq(0, total, length.out = n_out)
+  list(
+    x = stats::spline(d, xs, xout = tt, method = "fmm")$y,
+    y = stats::spline(d, ys, xout = tt, method = "fmm")$y
+  )
+}
+
 .asset_tx_arrow <- function(xs, ys, head = 0.11) {
+  sm <- .asset_tx_smooth_poly(xs, ys)
+  xs <- sm$x
+  ys <- sm$y
   n <- length(xs)
   if (n < 2L) return(list(x = xs, y = ys))
   dx <- xs[n] - xs[n - 1L]
@@ -782,8 +808,20 @@ asset_tx_edge_table <- function(snap, locale = "en") {
       for (step in seq(0.35, 1.55, by = 0.12)) {
         for (sign in c(1, -1)) {
           sh <- sign * step
-          xs <- c(seg$x1, seg$x1 + px * sh, seg$x2 + px * sh, seg$x2)
-          ys <- c(seg$y1, seg$y1 + py * sh, seg$y2 + py * sh, seg$y2)
+          # Soft control polygon: pull the mid handles toward the ends so the
+          # densified spline bends instead of drawing a hard parallelogram.
+          xs <- c(
+            seg$x1,
+            seg$x1 + (seg$x2 - seg$x1) * 0.28 + px * sh,
+            seg$x1 + (seg$x2 - seg$x1) * 0.72 + px * sh,
+            seg$x2
+          )
+          ys <- c(
+            seg$y1,
+            seg$y1 + (seg$y2 - seg$y1) * 0.28 + py * sh,
+            seg$y1 + (seg$y2 - seg$y1) * 0.72 + py * sh,
+            seg$y2
+          )
           hits <- .asset_tx_poly_hits(xs, ys, nodes, id_from, id_to)
           if (hits < best_hits) {
             best_hits <- hits

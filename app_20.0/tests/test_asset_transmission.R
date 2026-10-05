@@ -435,6 +435,11 @@ if (requireNamespace("plotly", quietly = TRUE)) {
     "arrow head is a slim chevron",
     length(arr$x) >= 5L && any(is.na(arr$x))
   )
+  bent <- .asset_tx_smooth_poly(c(0, 0, 1, 1), c(0, 1, 1, 0), n_per = 10L)
+  check(
+    "routed shaft is densified for smooth bends",
+    length(bent$x) > 8L && all(is.finite(bent$x)) && all(is.finite(bent$y))
+  )
   check("play control present", !is.null(built$x$layout$updatemenus) || !is.null(fig$x$layout$updatemenus))
   frame_n <- vapply(fig$x$frames, function(fr) length(fr$data), integer(1))
   check("frames share a trace count", length(unique(frame_n)) == 1L && frame_n[1] > 40L)
