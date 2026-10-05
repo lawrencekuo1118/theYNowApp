@@ -592,14 +592,16 @@ asset_tx_edge_table <- function(snap, locale = "en") {
 
 # ---- Figure ----------------------------------------------------------------
 
-# Card size in data units. Half-width ~0.70 and half-height ~0.32 fit the
-# current spacing (asset x step 1.85, tightest hub step 1.0).
+# Card size in data units. Slightly taller than the arrow-routing spacing so
+# name + print lines keep comfortable line gap inside the rounded body.
 .asset_tx_card_geom <- function() {
-  list(w = 1.40, h = 0.64, r = 0.12, hw = 0.70, hh = 0.32, pad = 0.06)
+  list(w = 1.48, h = 0.74, r = 0.13, hw = 0.74, hh = 0.37, pad = 0.06)
 }
 
+# Hub bands use a deeper blue; other cards stay charcoal. Both keep white names
+# and move-colored prints readable (avoid pale fills that wash out the type).
 .asset_tx_band_fill <- function(band) {
-  if (as.character(band %||% "")[1] %in% c("rate", "fx", "liq")) "#3a6fe0" else "#2a3144"
+  if (as.character(band %||% "")[1] %in% c("rate", "fx", "liq")) "#1f3f7a" else "#161c2e"
 }
 
 # SVG path for a rounded rectangle centered at (x, y). Data y increases upward.
@@ -873,31 +875,9 @@ asset_tx_edge_table <- function(snap, locale = "en") {
 }
 
 .asset_tx_dot_trace <- function(nodes) {
-  geom <- .asset_tx_card_geom()
-  xr <- range(nodes$x) + c(-1.05, 1.25)
-  yr <- range(nodes$y) + c(-1.85, 1.20)
-  xs <- seq(xr[1], xr[2], by = 0.46)
-  ys <- seq(yr[1], yr[2], by = 0.40)
-  grid <- expand.grid(x = xs, y = ys)
-  keep <- rep(TRUE, nrow(grid))
-  hw <- geom$hw + 0.05
-  hh <- geom$hh + 0.05
-  for (i in seq_len(nrow(nodes))) {
-    keep <- keep & (abs(grid$x - nodes$x[i]) > hw | abs(grid$y - nodes$y[i]) > hh)
-  }
-  grid <- grid[keep, , drop = FALSE]
-  list(
-    x = grid$x,
-    y = grid$y,
-    type = "scatter",
-    mode = "markers",
-    marker = list(size = 2.5, color = "rgba(232,236,245,0.30)", line = list(width = 0)),
-    hoverinfo = "none",
-    text = "",
-    showlegend = FALSE,
-    inherit = FALSE,
-    name = "dots"
-  )
+  # Intentionally empty: dotted canvas hurt readability. Kept as a named no-op
+  # so older call sites / tests that look for the helper still resolve.
+  invisible(NULL)
 }
 
 .asset_tx_card_border_trace <- function(snap, i, colors) {
@@ -912,7 +892,7 @@ asset_tx_edge_table <- function(snap, locale = "en") {
     type = "scatter",
     mode = "lines",
     fill = "none",
-    line = list(color = asset_tx_z_color(snap$nodes$z[i], colors), width = 2.0, shape = "linear"),
+    line = list(color = asset_tx_z_color(snap$nodes$z[i], colors), width = 2.2, shape = "linear"),
     hoverinfo = "none",
     text = "",
     showlegend = FALSE,
@@ -925,7 +905,8 @@ asset_tx_edge_table <- function(snap, locale = "en") {
   colors <- asset_tx_move_colors(market_mode)
   nodes <- snap$catalog$nodes
   edges <- snap$edges
-  traces <- list(.asset_tx_dot_trace(nodes))
+  # Solid navy canvas only — no dot grid behind the cards.
+  traces <- list()
   for (i in seq_len(nrow(snap$nodes))) {
     traces[[length(traces) + 1L]] <- .asset_tx_card_border_trace(snap, i, colors)
   }
@@ -973,14 +954,19 @@ asset_tx_edge_table <- function(snap, locale = "en") {
   }, character(1))
   # Combined label kept for tests / hover-adjacent scrape of the nodes trace text.
   combined <- paste0(labels, "<br>", values)
+  # Extra vertical gap between name and prints (= clearer line spacing inside the card).
   traces[[length(traces) + 1L]] <- list(
     x = xy$x,
-    y = xy$y + 0.10,
+    y = xy$y + 0.14,
     type = "scatter",
     mode = "text",
     text = labels,
     textposition = "middle center",
-    textfont = list(size = 11, color = "#f4f6fb", family = "Arial, sans-serif"),
+    textfont = list(
+      size = 12.5,
+      color = "#ffffff",
+      family = "Arial, Helvetica, sans-serif"
+    ),
     hoverinfo = "skip",
     showlegend = FALSE,
     inherit = FALSE,
@@ -989,18 +975,22 @@ asset_tx_edge_table <- function(snap, locale = "en") {
   )
   traces[[length(traces) + 1L]] <- list(
     x = xy$x,
-    y = xy$y - 0.12,
+    y = xy$y - 0.16,
     type = "scatter",
     mode = "markers+text",
     marker = list(
-      size = 34,
+      size = 36,
       color = "rgba(255,255,255,0)",
       opacity = 0,
       line = list(width = 0)
     ),
     text = values,
     textposition = "middle center",
-    textfont = list(size = 11, color = move_cols, family = "Arial, sans-serif"),
+    textfont = list(
+      size = 12,
+      color = move_cols,
+      family = "Arial, Helvetica, sans-serif"
+    ),
     # Keep the classic three-line scrape string on this trace for offline tests.
     customdata = combined,
     hoverinfo = "text",
@@ -1082,7 +1072,7 @@ asset_tx_edge_table <- function(snap, locale = "en") {
       showarrow = FALSE,
       xref = "x",
       yref = "y",
-      font = list(size = 13, color = "#f4f6fb", family = "Arial, sans-serif")
+      font = list(size = 14, color = "#ffffff", family = "Arial, Helvetica, sans-serif")
     )
   })
 }
@@ -1250,13 +1240,13 @@ asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
     .asset_tx_headers(locale),
     list(list(
       x = min(nodes_xy$x) - 0.4,
-      y = min(nodes_xy$y) - 1.55,
+      y = min(nodes_xy$y) - 1.75,
       text = paste0("Yahoo Finance · ", date_note),
       showarrow = FALSE,
       xref = "x",
       yref = "y",
       xanchor = "left",
-      font = list(size = 11, color = "#f4f6fb")
+      font = list(size = 11, color = "#c5cce0", family = "Arial, Helvetica, sans-serif")
     ))
   )
   p <- plotly::layout(
@@ -1264,17 +1254,17 @@ asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
     autosize = TRUE,
     xaxis = list(
       visible = FALSE,
-      range = c(min(nodes_xy$x) - 1.25, max(nodes_xy$x) + 1.55),
+      range = c(min(nodes_xy$x) - 1.45, max(nodes_xy$x) + 1.75),
       fixedrange = TRUE,
       zeroline = FALSE
     ),
     yaxis = list(
       visible = FALSE,
-      range = c(min(nodes_xy$y) - 2.15, max(nodes_xy$y) + 1.45),
+      range = c(min(nodes_xy$y) - 2.45, max(nodes_xy$y) + 1.65),
       fixedrange = TRUE,
       zeroline = FALSE
     ),
-    margin = list(l = 4, r = 4, t = 12, b = 4),
+    margin = list(l = 2, r = 2, t = 8, b = 2),
     paper_bgcolor = "#0c1228",
     plot_bgcolor = "#0c1228",
     hovermode = "closest",
@@ -1722,10 +1712,9 @@ asset_transmission_ui <- function(id) {
         width: 100%;
         max-width: 100%;
         background-color: #0c1228;
-        background-image: radial-gradient(rgba(244, 246, 251, 0.34) 1.15px, transparent 1.25px);
-        background-size: 18px 18px;
+        background-image: none;
         border-radius: 8px;
-        padding: 4px 0 8px;
+        padding: 2px 0 6px;
         box-sizing: border-box;
       }
       .ynow-atx-map .plotly,
@@ -1733,7 +1722,7 @@ asset_transmission_ui <- function(id) {
         width: 100% !important;
         max-width: 100% !important;
         min-width: 0 !important;
-        height: min(72vh, 820px) !important;
+        height: min(86vh, 980px) !important;
       }
       .ynow-atx-map .js-plotly-plot,
       .ynow-atx-map .plot-container,
@@ -1780,7 +1769,7 @@ asset_transmission_ui <- function(id) {
       shiny::uiOutput(ns("path")),
       htmltools::tags$div(
         class = "ynow-atx-map",
-        plotly::plotlyOutput(ns("map"), height = "720px", width = "100%")
+        plotly::plotlyOutput(ns("map"), height = "900px", width = "100%")
       ),
       shiny::uiOutput(ns("legend")),
       shiny::uiOutput(ns("nodes_title")),
@@ -1996,14 +1985,14 @@ asset_transmission_server <- function(id, ui_locale_rv = NULL, market_mode_rv = 
           htmltools::tags$span(
             htmltools::tags$i(
               class = "ynow-atx-cardswatch",
-              style = sprintf("background:#3a6fe0;border-color:%s;", up_hex)
+              style = sprintf("background:#1f3f7a;border-color:%s;", up_hex)
             ),
             .asset_tx_label("atx_legend_fill_hub", loc)
           ),
           htmltools::tags$span(
             htmltools::tags$i(
               class = "ynow-atx-cardswatch",
-              style = sprintf("background:#2a3144;border-color:%s;", up_hex)
+              style = sprintf("background:#161c2e;border-color:%s;", up_hex)
             ),
             .asset_tx_label("atx_legend_fill_other", loc)
           ),

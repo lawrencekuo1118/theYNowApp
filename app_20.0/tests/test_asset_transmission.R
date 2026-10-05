@@ -448,10 +448,37 @@ if (requireNamespace("plotly", quietly = TRUE)) {
   has_dots <- vapply(fig$x$frames, function(fr) {
     any(vapply(fr$data, function(tr) identical(tr$name, "dots"), logical(1)))
   }, logical(1))
-  check("dots ride every frame", all(has_dots))
+  check("no dotted canvas behind cards", !any(has_dots))
   paper <- fig$x$layout$paper_bgcolor
   if (is.null(paper)) paper <- built$x$layout$paper$bgcolor
   check("dark navy canvas", identical(paper, "#0c1228"))
+  # Card fills should stay deep enough for white names + move-colored prints.
+  card_fills <- character()
+  shapes <- built$x$layout$shapes
+  if (is.null(shapes)) shapes <- fig$x$layout$shapes
+  if (length(shapes)) {
+    card_fills <- vapply(shapes, function(sh) {
+      if (!identical(sh$type, "path")) return(NA_character_)
+      as.character(sh$fillcolor %||% NA_character_)[1]
+    }, character(1))
+    card_fills <- card_fills[!is.na(card_fills)]
+  }
+  check(
+    "card fills use deep hub/charcoal tones",
+    length(card_fills) >= 2L &&
+      all(card_fills %in% c("#1f3f7a", "#161c2e"))
+  )
+  ui_mod <- paste(readLines("asset_transmission_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  check(
+    "map CSS has no white-dot background",
+    grepl("background-image: none", ui_mod, fixed = TRUE) &&
+      !grepl("radial-gradient(rgba(244, 246, 251", ui_mod, fixed = TRUE)
+  )
+  check(
+    "map height is extended",
+    grepl("min(86vh, 980px)", ui_mod, fixed = TRUE) &&
+      grepl('height = "900px"', ui_mod, fixed = TRUE)
+  )
 } else {
   stop("FAIL: plotly namespace missing")
 }
