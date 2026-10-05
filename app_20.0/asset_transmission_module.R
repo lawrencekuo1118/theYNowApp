@@ -905,7 +905,7 @@ asset_tx_edge_table <- function(snap, locale = "en") {
   colors <- asset_tx_move_colors(market_mode)
   nodes <- snap$catalog$nodes
   edges <- snap$edges
-  # Solid navy canvas only — no dot grid behind the cards.
+  # Solid black canvas only — no dot grid behind the cards.
   traces <- list()
   for (i in seq_len(nrow(snap$nodes))) {
     traces[[length(traces) + 1L]] <- .asset_tx_card_border_trace(snap, i, colors)
@@ -1293,7 +1293,7 @@ asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
     autosize = TRUE,
     # Pan/zoom stay on so narrow viewports can explore without compressing cards.
     # Do NOT set scaleanchor/scaleratio: a 1:1 lock letterboxes the plot domain
-    # inside the paper and leaves a large empty navy block on one side.
+    # inside the paper and leaves a large empty block on one side.
     dragmode = "pan",
     xaxis = list(
       visible = FALSE,
@@ -1310,8 +1310,8 @@ asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
       constrain = "domain"
     ),
     margin = list(l = 2, r = 2, t = 8, b = 2),
-    paper_bgcolor = "#0c1228",
-    plot_bgcolor = "#0c1228",
+    paper_bgcolor = "#000000",
+    plot_bgcolor = "#000000",
     hovermode = "closest",
     annotations = anns,
     shapes = c(.asset_tx_band_shapes(nodes_xy), .asset_tx_card_shapes(last)),
@@ -1803,7 +1803,7 @@ asset_transmission_ui <- function(id) {
         overscroll-behavior: contain;
         width: 100%;
         max-width: 100%;
-        background-color: #0c1228;
+        background-color: #000000;
         background-image: none;
         border-radius: 8px;
         padding: 2px 0 6px;
@@ -1849,7 +1849,7 @@ asset_transmission_ui <- function(id) {
         align-items: center;
         justify-content: center;
         gap: 12px;
-        background: rgba(12, 18, 40, 0.82);
+        background: rgba(0, 0, 0, 0.82);
         border-radius: 8px;
         pointer-events: none;
       }

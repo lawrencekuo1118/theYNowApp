@@ -451,7 +451,7 @@ if (requireNamespace("plotly", quietly = TRUE)) {
   check("no dotted canvas behind cards", !any(has_dots))
   paper <- fig$x$layout$paper_bgcolor
   if (is.null(paper)) paper <- built$x$layout$paper$bgcolor
-  check("dark navy canvas", identical(paper, "#0c1228"))
+  check("black canvas", identical(paper, "#000000"))
   # Card fills should stay deep enough for white names + move-colored prints.
   card_fills <- character()
   shapes <- built$x$layout$shapes
