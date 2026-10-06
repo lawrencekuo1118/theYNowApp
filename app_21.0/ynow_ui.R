@@ -16,7 +16,7 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v21.18"
+  "v21.07"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
