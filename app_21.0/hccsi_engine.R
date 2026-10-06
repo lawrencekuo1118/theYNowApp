@@ -1,4 +1,5 @@
-# HCCSI scoring — tech-stack development expectation from statements and market vs history.
+# HCCSI scoring — Human Tech Civilization Destruction Index.
+# Oil index + critical-tech nodes from statements and market vs history.
 # Reuses setup.R FX / ADR classifiers. Missing optional data is excluded.
 
 if (!exists("%||%", mode = "function")) {
@@ -742,7 +743,7 @@ hccsi_score <- function(issuer_inputs = NULL, cfg = NULL, liquidity_adj = NULL) 
     contagion = contagion, highest_risk_layer = weakest_layer, layer_stress = layer_dev,
     top_contributors = top[seq_len(min(5L, length(top)))], failures = failures,
     formula = .hccsi_formula_text(comp),
-    role = "tech_development_expectation"
+    role = as.character(cfg$meta$role %||% "civilization_destruction_reading")[1]
   )
 }
 

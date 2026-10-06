@@ -34,9 +34,9 @@ if (!exists("%||%", mode = "function")) {
 HCCSI_DEFAULT_CONFIG <- list(
   meta = list(
     id = "HCCSI",
-    name = "Critical Tech Stack Index",
-    role = "tech_development_expectation",
-    not = c("buy_signal", "extinction_probability", "collapse_prediction", "ordinary_market_cap_index"),
+    name = "Human Tech Civilization Destruction Index",
+    role = "civilization_destruction_reading",
+    not = c("buy_signal", "literal_extinction_forecast", "ordinary_market_cap_index"),
     governance = list(
       rebalance = "quarterly", constituent_review = "annual",
       extraordinary_review = c("merger", "delist", "bankruptcy", "structural_split", "confirmed_critical_infra_disruption"),
@@ -52,7 +52,7 @@ HCCSI_DEFAULT_CONFIG <- list(
   ),
   weighting = list(
     method = "criticality", layer_cap = 0.25, issuer_cap = 0.12,
-    issuer_cap_exceptions = c(ASML = 0.15, TSM = 0.15),
+    issuer_cap_exceptions = c(ASML = 0.15, TSM = 0.15, OIL = 0.15),
     liquidity_adj_max = 0.20, normalize_to = 1.0
   ),
   composite = c(
@@ -69,13 +69,14 @@ HCCSI_DEFAULT_CONFIG <- list(
   alerts = list(expanding_min = 70, steady_min = 55, cooling_min = 40,
                 cooling_score = 45, persist_days = 20),
   layers = list(
-    lithography = "ASML", foundries = "TSM", eda = c("SNPS", "CDNS"),
+    energy_oil = "OIL", lithography = "ASML", foundries = "TSM", eda = c("SNPS", "CDNS"),
     semiconductors = c("TSM", "AVGO", "NVDA"), cloud = c("MSFT", "AMZN", "GOOGL"),
     enterprise_identity = "MSFT", consumer_os_ecosystems = c("AAPL", "MSFT"),
     payment_networks = c("V", "MA"), enterprise_dbs = "ORCL",
     dc_networking = "AVGO", ai_computing = "NVDA"
   ),
   contagion_channels = list(
+    list(id = "oil_litho", issuers = c("OIL", "ASML"), persist_days = 20, min_stressed = 2L),
     list(id = "litho_foundry", issuers = c("ASML", "TSM"), persist_days = 20, min_stressed = 2L),
     list(id = "foundry_eda", issuers = c("TSM", "SNPS", "CDNS"), persist_days = 20, min_stressed = 2L),
     list(id = "cloud_identity", issuers = c("MSFT", "AMZN", "GOOGL"), persist_days = 20, min_stressed = 2L),
@@ -84,6 +85,10 @@ HCCSI_DEFAULT_CONFIG <- list(
          persist_days = 20, min_stressed = 3L)
   ),
   issuers = list(
+    .HCCSI_ISSUER("OIL", "USO", "oil_index", "energy_oil", "energy_oil", 93, "USD", "USD",
+                  instrument_type = "etf",
+                  substitutes = "other crude benchmarks (WTI / Brent futures; limited)",
+                  replacement_time_years = 0, switching_difficulty = 95, buffer = 5, issuer_cap_override = 0.15),
     .HCCSI_ISSUER("ASML", "ASML", "asml", "semiconductor_equipment", "lithography", 95, "USD", "EUR",
                   substitutes = "limited trailing-edge lithography (Nikon / Canon)",
                   replacement_time_years = 8, switching_difficulty = 92, buffer = 8, issuer_cap_override = 0.15),

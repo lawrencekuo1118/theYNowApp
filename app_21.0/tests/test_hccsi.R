@@ -28,8 +28,15 @@ check <- function(label, cond) {
 
 cfg <- hccsi_load_config()
 ids <- hccsi_issuer_ids(cfg)
-check("universe 13", identical(length(ids), 13L))
+check("universe 14", identical(length(ids), 14L))
+check("OIL 93", identical(hccsi_find_issuer("OIL", cfg)$criticality_prior, 93))
+check("OIL ticker USO", identical(hccsi_find_issuer("OIL", cfg)$tickers[[1]], "USO"))
 check("ASML 95", identical(hccsi_find_issuer("ASML", cfg)$criticality_prior, 95))
+check("meta destruction name", identical(cfg$meta$name, "Human Tech Civilization Destruction Index"))
+check("oil litho channel", {
+  ch <- cfg$contagion_channels
+  any(vapply(ch, function(x) identical(x$id, "oil_litho"), logical(1)))
+})
 check("TSM 92", identical(hccsi_find_issuer("TSM", cfg)$criticality_prior, 92))
 check("NVDA 65", identical(hccsi_find_issuer("NVDA", cfg)$criticality_prior, 65))
 check("GOOG listed", "GOOG" %in% hccsi_find_issuer("GOOGL", cfg)$tickers)
@@ -146,7 +153,7 @@ check("14 sum 1", abs(sum(wt$constrained) - 1) < 1e-8)
 check("14 issuer cap", {
   ok <- TRUE
   for (id in names(wt$constrained)) {
-    cap <- if (id %in% c("ASML", "TSM")) 0.15 else 0.12
+    cap <- if (id %in% c("ASML", "TSM", "OIL")) 0.15 else 0.12
     if (wt$constrained[[id]] > cap + 1e-8) ok <- FALSE
   }
   ok
@@ -169,7 +176,7 @@ sc15a <- hccsi_score(.mk_px_bench(px_down), cfg); sc15b <- hccsi_score(.mk_px_be
 check("15 composite", identical(sc15a$composite, sc15b$composite))
 check("15 indices", identical(sc15a$indices, sc15b$indices))
 check("15 formula", grepl("0.30", sc15a$formula, fixed = TRUE) && grepl("Stmt", sc15a$formula, fixed = TRUE))
-check("15 role", identical(sc15a$role, "tech_development_expectation"))
+check("15 role", identical(sc15a$role, "civilization_destruction_reading"))
 
 check("stmt grows with revenue", {
   hi <- inp10; lo <- inp10
@@ -329,21 +336,28 @@ for (k in c("hccsi_title", "hccsi_title_full", "hccsi_disclosure", "hccsi_index_
   check(paste("en", k), nzchar(ui_str(k, "en")))
   check(paste("zh", k), nzchar(ui_str(k, "zh-TW")))
 }
-check("en full title shortened", {
-  identical(ui_str("hccsi_title_full", "en"), "Critical Tech Stack Index (HCCSI)") &&
+check("en full title destruction", {
+  identical(ui_str("hccsi_title_full", "en"), "Human Tech Civilization Destruction Index (HCCSI)") &&
     identical(ui_str("hccsi_title", "en"), "HCCSI")
 })
-check("zh full title shortened", {
-  identical(ui_str("hccsi_title_full", "zh-TW"), "關鍵科技堆疊指數（HCCSI）") &&
-    identical(ui_str("hccsi_title", "zh-TW"), "HCCSI")
+check("zh full title destruction", {
+  identical(ui_str("hccsi_title_full", "zh-TW"), "人類科技文明毀滅指數（HCCSI）") &&
+    identical(ui_str("hccsi_title", "zh-TW"), "人類科技文明毀滅指數")
 })
 check("config display name", {
   identical(HCCSI_DEFAULT_CONFIG$meta$id, "HCCSI") &&
-    identical(HCCSI_DEFAULT_CONFIG$meta$name, "Critical Tech Stack Index")
+    identical(HCCSI_DEFAULT_CONFIG$meta$name, "Human Tech Civilization Destruction Index")
 })
-check("no civilization full name left", {
-  !grepl("Human Civilization", ui_str("hccsi_title_full", "en"), fixed = TRUE) &&
-    !grepl("Human Civilization", HCCSI_DEFAULT_CONFIG$meta$name, fixed = TRUE)
+check("destruction framing retained", {
+  grepl("Destruction", ui_str("hccsi_title_full", "en"), fixed = TRUE) &&
+    grepl("人類科技文明毀滅指數", ui_str("hccsi_title_full", "zh-TW"), fixed = TRUE) &&
+    grepl("Destruction", HCCSI_DEFAULT_CONFIG$meta$name, fixed = TRUE)
+})
+check("oil layer labels", {
+  identical(ui_str("hccsi_ly_energy_oil", "en"), "Oil / energy") &&
+    identical(ui_str("hccsi_ly_energy_oil", "zh-TW"), "石油／能源") &&
+    identical(ui_str("hccsi_fn_energy_oil", "zh-TW"), "石油指數（USO）") &&
+    identical(.hccsi_named("fn", "energy_oil", "zh-TW"), "石油指數（USO）")
 })
 check("en name", identical(ui_str("hccsi_index_health", "en"), "Statement Development"))
 check("zh name EN", identical(ui_str("hccsi_index_health", "zh-TW"), "Statement Development"))

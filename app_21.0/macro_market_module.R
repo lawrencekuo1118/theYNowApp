@@ -1384,6 +1384,11 @@ macro_market_server <- function(id = "macro",
         for (iss in hccsi_issuers(cfg)) {
           tk <- as.character(iss$tickers[[1]] %||% "")[1]
           if (!nzchar(tk)) next
+# Skip statement scrape for ETFs / futures proxies (oil index) — market pillars only.
+          if (identical(tolower(as.character(iss$instrument_type %||% "")[1]), "etf") ||
+              identical(tolower(as.character(iss$instrument_type %||% "")[1]), "commodity")) {
+            next
+          }
           fs <- tryCatch(cached_scrape_financials(tk), error = function(e) NULL)
           if (!is.null(fs)) fs_map[[tk]] <- fs
         }

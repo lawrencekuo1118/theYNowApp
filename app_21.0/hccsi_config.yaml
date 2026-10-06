@@ -1,15 +1,15 @@
-# Critical Tech Stack Index (HCCSI)
-# Tech-stack development expectation from statements + market vs benchmark
-# and vs each name’s own history. Not a buy signal. Ticker stays HCCSI.
+# Human Tech Civilization Destruction Index (HCCSI)
+# Surveillance reading of civilization-critical energy + tech stack stress.
+# Not a buy signal. Ticker stays HCCSI.
+# Display name (zh-TW): 人類科技文明毀滅指數
 
 meta:
   id: HCCSI
-  name: Critical Tech Stack Index
-  role: tech_development_expectation
+  name: Human Tech Civilization Destruction Index
+  role: civilization_destruction_reading
   not:
     - buy_signal
-    - extinction_probability
-    - collapse_prediction
+    - literal_extinction_forecast
     - ordinary_market_cap_index
   governance:
     rebalance: quarterly
@@ -35,6 +35,7 @@ weighting:
   issuer_cap_exceptions:
     ASML: 0.15
     TSM: 0.15
+    OIL: 0.15
   liquidity_adj_max: 0.20
   normalize_to: 1.0
 
@@ -52,6 +53,7 @@ alerts:
   persist_days: 20
 
 layers:
+  energy_oil: [OIL]
   lithography: [ASML]
   foundries: [TSM]
   eda: [SNPS, CDNS]
@@ -65,6 +67,7 @@ layers:
   ai_computing: [NVDA]
 
 contagion_channels:
+  - {id: oil_litho, issuers: [OIL, ASML], persist_days: 20, min_stressed: 2}
   - {id: litho_foundry, issuers: [ASML, TSM], persist_days: 20, min_stressed: 2}
   - {id: foundry_eda, issuers: [TSM, SNPS, CDNS], persist_days: 20, min_stressed: 2}
   - {id: cloud_identity, issuers: [MSFT, AMZN, GOOGL], persist_days: 20, min_stressed: 2}
@@ -72,6 +75,7 @@ contagion_channels:
   - {id: semi_cloud_pay, layers: [semiconductors, cloud, payment_networks], persist_days: 20, min_stressed: 3}
 
 issuers:
+  - {id: OIL, tickers: [USO], economic_issuer: oil_index, function_id: energy_oil, layer: energy_oil, criticality_prior: 93, quote_currency: USD, statement_currency: USD, instrument_type: etf, underlying_share_comparison_required: false, substitutes: other crude benchmarks (WTI / Brent futures; limited), replacement_time_years: 0, switching_difficulty: 95, buffer: 5, issuer_cap_override: 0.15}
   - {id: ASML, tickers: [ASML], economic_issuer: asml, function_id: semiconductor_equipment, layer: lithography, criticality_prior: 95, quote_currency: USD, statement_currency: EUR, instrument_type: ordinary, underlying_share_comparison_required: false, substitutes: limited trailing-edge lithography (Nikon / Canon), replacement_time_years: 8, switching_difficulty: 92, buffer: 8, issuer_cap_override: 0.15}
   - {id: TSM, tickers: [TSM], local_ordinary_ticker: 2330.TW, economic_issuer: tsmc, function_id: advanced_foundry, layer: foundries, criticality_prior: 92, quote_currency: USD, statement_currency: TWD, instrument_type: ADR, adr_ratio: 5, underlying_share_comparison_required: false, substitutes: limited advanced-node capacity, replacement_time_years: 6, switching_difficulty: 90, buffer: 10, issuer_cap_override: 0.15}
   - {id: MSFT, tickers: [MSFT], economic_issuer: microsoft, function_id: enterprise_os_identity_cloud, layer: enterprise_identity, criticality_prior: 88, quote_currency: USD, statement_currency: USD, instrument_type: ordinary, underlying_share_comparison_required: false, substitutes: partial (Google Workspace / Linux / AWS IAM), replacement_time_years: 4, switching_difficulty: 85, buffer: 18}
