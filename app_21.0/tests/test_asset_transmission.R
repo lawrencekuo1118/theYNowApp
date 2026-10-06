@@ -465,6 +465,28 @@ if (requireNamespace("plotly", quietly = TRUE)) {
     length(bent$x) > 8L && all(is.finite(bent$x)) && all(is.finite(bent$y))
   )
   check("play control present", !is.null(built$x$layout$updatemenus) || !is.null(fig$x$layout$updatemenus))
+  play_menu <- built$x$layout$updatemenus[[1]]
+  if (is.null(play_menu)) play_menu <- fig$x$layout$updatemenus[[1]]
+  slider0 <- built$x$layout$sliders[[1]]
+  if (is.null(slider0)) slider0 <- fig$x$layout$sliders[[1]]
+  check(
+    "Play stays inside paper (left-anchored)",
+    !is.null(play_menu) &&
+      identical(as.character(play_menu$xanchor)[1], "left") &&
+      isTRUE(as.numeric(play_menu$x)[1] <= 0.05)
+  )
+  check(
+    "session slider spans nearly full width",
+    !is.null(slider0) &&
+      isTRUE(as.numeric(slider0$x)[1] <= 0.12) &&
+      isTRUE(as.numeric(slider0$len)[1] >= 0.85)
+  )
+  marg_b <- built$x$layout$margin$b
+  if (is.null(marg_b)) marg_b <- fig$x$layout$margin$b
+  check(
+    "bottom margin leaves room for slider/Play",
+    isTRUE(as.numeric(marg_b)[1] >= 80)
+  )
   frame_n <- vapply(fig$x$frames, function(fr) length(fr$data), integer(1))
   check("frames share a trace count", length(unique(frame_n)) == 1L && frame_n[1] > 40L)
   has_dots <- vapply(fig$x$frames, function(fr) {
@@ -502,9 +524,11 @@ if (requireNamespace("plotly", quietly = TRUE)) {
       grepl('height = "900px"', ui_mod, fixed = TRUE)
   )
   check(
-    "map allows horizontal swipe scroll",
+    "map fits panel width so timeline stays visible",
     grepl("overflow-x: auto", ui_mod, fixed = TRUE) &&
-      grepl("min-width: 1560px", ui_mod, fixed = TRUE) &&
+      grepl("min-width: 100%", ui_mod, fixed = TRUE) &&
+      grepl("max-width: 100%", ui_mod, fixed = TRUE) &&
+      !grepl("min-width: 1560px", ui_mod, fixed = TRUE) &&
       !grepl("overflow-x: hidden", ui_mod, fixed = TRUE)
   )
   check(
@@ -535,9 +559,10 @@ if (requireNamespace("plotly", quietly = TRUE)) {
       isTRUE(all.equal((y_mid - yr[[1]]), (yr[[2]] - y_mid), tolerance = 1e-9))
   )
   check(
-    "map scroll-center script present",
+    "map scroll keeps Play/timeline start visible",
     grepl("centerAtxMap", ui_mod, fixed = TRUE) &&
-      grepl("scrollLeft = maxX / 2", ui_mod, fixed = TRUE)
+      grepl("scrollLeft = 0", ui_mod, fixed = TRUE) &&
+      !grepl("scrollLeft = maxX / 2", ui_mod, fixed = TRUE)
   )
   cfg <- built$x$config
   if (is.null(cfg)) cfg <- fig$x$config

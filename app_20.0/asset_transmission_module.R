@@ -1240,9 +1240,17 @@ asset_tx_yield_path <- function(snap, locale = "en") {
   })
   p <- plotly::plotly_build(p)
   p$x$frames <- frames
+  # Room for the session slider + Play under the map (tight b-margin clips them).
+  p$x$layout$margin <- list(l = 10, r = 10, t = 12, b = 100)
+  # Full-width timeline inside the paper; Play sits left-inside so it never
+  # falls outside x=0 (xanchor=right) or gets scrolled off-screen.
   p$x$layout$sliders <- list(list(
     active = length(names_fr) - 1L,
     steps = steps,
+    x = 0.10,
+    len = 0.88,
+    y = 0,
+    pad = list(t = 48, b = 12),
     currentvalue = list(
       prefix = .asset_tx_label("atx_session_prefix", locale),
       font = list(color = "#f4f6fb", size = 13)
@@ -1260,8 +1268,8 @@ asset_tx_yield_path <- function(snap, locale = "en") {
       y = 0,
       x = 0,
       yanchor = "top",
-      xanchor = "right",
-      pad = list(t = 60, r = 5),
+      xanchor = "left",
+      pad = list(t = 70, l = 8),
       bgcolor = "#3a6fe0",
       font = list(color = "#ffffff", size = 12),
       buttons = list(list(
@@ -1960,17 +1968,18 @@ asset_transmission_ui <- function(id) {
       }
       .ynow-atx-map .plotly,
       .ynow-atx-map .html-widget {
-        width: max(100%, 1560px) !important;
-        min-width: 1560px !important;
-        max-width: none !important;
+        /* Fit the panel so the session slider + Play stay fully visible by default. */
+        width: 100% !important;
+        min-width: 100% !important;
+        max-width: 100% !important;
         height: min(86vh, 980px) !important;
       }
       .ynow-atx-map .js-plotly-plot,
       .ynow-atx-map .plot-container,
       .ynow-atx-map .svg-container {
         width: 100% !important;
-        min-width: 1560px !important;
-        max-width: none !important;
+        min-width: 100% !important;
+        max-width: 100% !important;
       }
       .ynow-atx-map .modebar {
         top: 8px !important;
@@ -2077,7 +2086,8 @@ asset_transmission_ui <- function(id) {
           if (!plot) return;
           var maxX = Math.max(0, plot.offsetWidth - map.clientWidth);
           var maxY = Math.max(0, plot.offsetHeight - map.clientHeight);
-          map.scrollLeft = maxX / 2;
+          // Keep scrollLeft at 0 so the Play control + timeline start stay visible.
+          map.scrollLeft = 0;
           map.scrollTop = maxY / 2;
           // #region agent log
           fetch('http://127.0.0.1:7302/ingest/e3a0dcdf-71e1-4bba-855e-f942118bd315',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f77c57'},body:JSON.stringify({sessionId:'f77c57',runId:'center-pre',hypothesisId:'H-center',location:'asset_transmission_module.R:centerAtxMap',message:'atx map scroll center',data:{scrollLeft:map.scrollLeft,scrollTop:map.scrollTop,maxX:maxX,maxY:maxY,mapW:map.clientWidth,mapH:map.clientHeight,plotW:plot.offsetWidth,plotH:plot.offsetHeight},timestamp:Date.now()})}).catch(function(){});
