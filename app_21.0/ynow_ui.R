@@ -2807,7 +2807,7 @@ ui <- dashboardPage(
   
   dashboardSidebar(
     width = 250,
-    collapsed = FALSE,
+    collapsed = TRUE,
     column(width = 12,
            column(width = 12, textOutput("today"),
                   hr()
