@@ -8,5 +8,5 @@ short=f2dc383
 message=chore: bump display version to v21.04
 captured_at=2026-10-06T12:13:11Z
 source_branch=master
-display_version=v21.04
+display_version=v21.05
 note=Canonical live line is app_21.0. Bundle 12654301 ships v21.04: Asset Transmission map aligned to reference §§1/2/4 (macro drivers → rate/FX/liquidity hubs → asset classes). Deploy via scripts/deploy_app_21.R.
