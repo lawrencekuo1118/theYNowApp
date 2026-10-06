@@ -605,13 +605,18 @@ testthat::test_that("Lite auto-calc includes Multiples when secondary is multipl
     txt,
     fixed = TRUE
   ))
-  # Ready + fire branches for multiples
+  # Ready + fire branches for multiples (readiness uses statements, not lagging inputs)
   testthat::expect_true(grepl('identical(prim, "multiples")', txt, fixed = TRUE))
+  testthat::expect_true(grepl("updateNumericInput is async", txt, fixed = TRUE))
   testthat::expect_true(grepl(
     "auto_calc_rel_pulse(isolate(auto_calc_rel_pulse()) + 1L)",
     txt,
     fixed = TRUE
   ))
+  # Multiples module: auto_calc syncs then run_calc(snap=…) (no input round-trip)
+  rel_txt <- paste(readLines(file.path("..", "relative_multiples_module.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  testthat::expect_true(grepl("run_calc(snap = snap)", rel_txt, fixed = TRUE))
+  testthat::expect_true(grepl("Lite auto-calc must not wait for input", rel_txt, fixed = TRUE))
   # Ticker clear resets multiples pulse with other models
   testthat::expect_true(grepl("auto_calc_rel_pulse(0L)", txt, fixed = TRUE))
   testthat::expect_true(grepl("auto_calc_sotp_pulse(0L)", txt, fixed = TRUE))

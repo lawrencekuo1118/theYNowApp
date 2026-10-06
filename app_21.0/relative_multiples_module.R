@@ -702,7 +702,25 @@ relative_multiples_module_server <- function(id,
       updateNumericInput(session, "cash", value = if (is.finite(cash)) round(cash, 2) else NA)
       updateNumericInput(session, "debt", value = if (is.finite(debt)) round(debt, 2) else NA)
       updateNumericInput(session, "shares", value = if (is.finite(shares)) round(shares, 0) else NA)
-      invisible(NULL)
+      # Return server-side snapshot: updateNumericInput is async to the browser,
+      # so Lite auto-calc must not wait for input$ round-trip before run_calc().
+      list(
+        trailing_eps = if (is.finite(teps)) round(teps, 4) else NA_real_,
+        pe_multiple = pe_def,
+        forward_eps = if (is.finite(feps)) round(feps, 4) else NA_real_,
+        fwd_pe_multiple = fpe_def,
+        peg_pe = pe_def,
+        peg_growth_pct = if (is.finite(g_pct)) round(g_pct, 2) else NA_real_,
+        fcff = if (is.finite(fcff)) round(fcff, 2) else NA_real_,
+        ebit = if (is.finite(ebit)) round(ebit, 2) else NA_real_,
+        ebitda = if (is.finite(ebitda)) round(ebitda, 2) else NA_real_,
+        revenue = if (is.finite(revenue)) round(revenue, 2) else NA_real_,
+        ps_revenue = if (is.finite(revenue)) round(revenue, 2) else NA_real_,
+        cash = if (is.finite(cash)) round(cash, 2) else NA_real_,
+        debt = if (is.finite(debt)) round(debt, 2) else NA_real_,
+        shares = if (is.finite(shares)) round(shares, 0) else NA_real_,
+        arr = NA_real_
+      )
     }
 
     observeEvent(
@@ -741,29 +759,48 @@ relative_multiples_module_server <- function(id,
       calc_token(0L)
     })
 
-    run_calc <- function() {
+    run_calc <- function(snap = NULL) {
+      .num <- function(key, fallback = NA_real_) {
+        if (is.list(snap) && !is.null(snap[[key]])) {
+          v <- suppressWarnings(as.numeric(snap[[key]])[1])
+          if (is.finite(v)) return(v)
+        }
+        suppressWarnings(as.numeric(input[[key]])[1])
+      }
       g_src <- as.character(input$peg_growth_src %||% "sgr")[1]
       g_def <- if (identical(g_src, "rev_cagr")) .str("rel_multiples_growth_rev_cagr") else .str("rel_multiples_growth_sgr")
       g_period <- if (identical(g_src, "rev_cagr")) .str("rel_multiples_period_hist_rev") else .str("rel_multiples_period_terminal_sgr")
-      pe <- calc_pe_implied_price(input$trailing_eps, input$pe_multiple)
-      fpe <- calc_pe_implied_price(input$forward_eps, input$fwd_pe_multiple)
+      pe_mult <- .num("pe_multiple")
+      if (!is.finite(pe_mult) || pe_mult <= 0) pe_mult <- APP_DEFAULTS$rel_pe_multiple %||% 18
+      fwd_pe_mult <- .num("fwd_pe_multiple")
+      if (!is.finite(fwd_pe_mult) || fwd_pe_mult <= 0) {
+        fwd_pe_mult <- APP_DEFAULTS$rel_fwd_pe_multiple %||% pe_mult
+      }
+      pe <- calc_pe_implied_price(.num("trailing_eps"), pe_mult)
+      fpe <- calc_pe_implied_price(.num("forward_eps"), fwd_pe_mult)
       if (identical(fpe$status, "unavailable") && identical(fpe$reason, "eps_nonpositive")) {
         fpe$reason <- "forward_eps_unavailable"
       }
-      peg_pe <- suppressWarnings(as.numeric(input$peg_pe)[1])
-      if (!is.finite(peg_pe) || peg_pe <= 0) peg_pe <- suppressWarnings(as.numeric(input$pe_multiple)[1])
-      peg <- calc_peg(peg_pe, input$peg_growth_pct, growth_definition = g_def, growth_period = g_period)
-      cash <- input$cash
-      debt <- input$debt
-      shares <- input$shares
-      evf <- calc_ev_fcf_implied_price(input$fcff, input$ev_fcf_multiple, cash, debt, shares)
-      eve <- calc_ev_metric_implied_price(input$ebit, input$ev_ebit_multiple, cash, debt, shares, "EBIT")
-      eveda <- calc_ev_metric_implied_price(input$ebitda, input$ev_ebitda_multiple, cash, debt, shares, "EBITDA")
-      evs <- calc_ev_metric_implied_price(input$revenue, input$ev_sales_multiple, cash, debt, shares, "Revenue")
-      ps_rev <- suppressWarnings(as.numeric(input$ps_revenue)[1])
-      if (!is.finite(ps_rev)) ps_rev <- suppressWarnings(as.numeric(input$revenue)[1])
-      ps <- calc_ps_implied_price(ps_rev, input$ps_multiple, shares)
-      evarr <- calc_ev_metric_implied_price(input$arr, input$ev_arr_multiple, cash, debt, shares, "ARR")
+      peg_pe <- .num("peg_pe")
+      if (!is.finite(peg_pe) || peg_pe <= 0) peg_pe <- pe_mult
+      peg <- calc_peg(peg_pe, .num("peg_growth_pct"), growth_definition = g_def, growth_period = g_period)
+      cash <- .num("cash")
+      debt <- .num("debt")
+      shares <- .num("shares")
+      ev_fcf_m <- .num("ev_fcf_multiple"); if (!is.finite(ev_fcf_m) || ev_fcf_m <= 0) ev_fcf_m <- APP_DEFAULTS$rel_ev_fcf_multiple %||% 15
+      ev_ebit_m <- .num("ev_ebit_multiple"); if (!is.finite(ev_ebit_m) || ev_ebit_m <= 0) ev_ebit_m <- APP_DEFAULTS$rel_ev_ebit_multiple %||% 12
+      ev_ebitda_m <- .num("ev_ebitda_multiple"); if (!is.finite(ev_ebitda_m) || ev_ebitda_m <= 0) ev_ebitda_m <- APP_DEFAULTS$rel_ev_ebitda_multiple %||% 10
+      ev_sales_m <- .num("ev_sales_multiple"); if (!is.finite(ev_sales_m) || ev_sales_m <= 0) ev_sales_m <- APP_DEFAULTS$rel_ev_sales_multiple %||% 3
+      ps_m <- .num("ps_multiple"); if (!is.finite(ps_m) || ps_m <= 0) ps_m <- APP_DEFAULTS$rel_ps_multiple %||% 3
+      ev_arr_m <- .num("ev_arr_multiple"); if (!is.finite(ev_arr_m) || ev_arr_m <= 0) ev_arr_m <- APP_DEFAULTS$rel_ev_arr_multiple %||% 10
+      evf <- calc_ev_fcf_implied_price(.num("fcff"), ev_fcf_m, cash, debt, shares)
+      eve <- calc_ev_metric_implied_price(.num("ebit"), ev_ebit_m, cash, debt, shares, "EBIT")
+      eveda <- calc_ev_metric_implied_price(.num("ebitda"), ev_ebitda_m, cash, debt, shares, "EBITDA")
+      evs <- calc_ev_metric_implied_price(.num("revenue"), ev_sales_m, cash, debt, shares, "Revenue")
+      ps_rev <- .num("ps_revenue")
+      if (!is.finite(ps_rev)) ps_rev <- .num("revenue")
+      ps <- calc_ps_implied_price(ps_rev, ps_m, shares)
+      evarr <- calc_ev_metric_implied_price(.num("arr"), ev_arr_m, cash, debt, shares, "ARR")
       if (identical(evarr$reason, "metric_nonpositive")) evarr$reason <- "arr_unavailable"
       list(
         pe = pe, forward_pe = fpe, peg = peg, ev_fcf = evf,
@@ -784,7 +821,8 @@ relative_multiples_module_server <- function(id,
         last_result(NULL)
         return()
       }
-      last_result(run_calc())
+      snap <- tryCatch(sync_from_statements(), error = function(e) NULL)
+      last_result(run_calc(snap = snap))
       calc_token(as.integer(calc_token()) + 1L)
     }, ignoreInit = TRUE)
     observeEvent(current_ticker(), {

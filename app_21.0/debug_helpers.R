@@ -14,39 +14,3 @@
   if (.ynow_debug_on()) message(...)
   invisible(NULL)
 }
-
-# #region agent log
-.ynow_dbg_lite_sec <- function(hypothesisId, location, message, data = list()) {
-  .coalesce <- function(x, d = "") {
-    if (is.null(x) || length(x) < 1L || (is.atomic(x) && is.na(x[1]))) d else x[1]
-  }
-  payload <- list(
-    id = paste0("log_", as.integer(as.numeric(Sys.time()) * 1000), "_", sample.int(1e6, 1)),
-    timestamp = as.numeric(Sys.time()) * 1000,
-    hypothesisId = as.character(.coalesce(hypothesisId, "")),
-    location = as.character(.coalesce(location, "")),
-    message = as.character(.coalesce(message, "")),
-    data = data,
-    runId = "lite-nvda-sec"
-  )
-  line <- tryCatch(
-    paste0(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null", Digits = 8), "\n"),
-    error = function(e) {
-      paste0('{"hypothesisId":"', as.character(hypothesisId)[1], '","location":"',
-             as.character(location)[1], '","message":"json_fail","timestamp":',
-             as.numeric(Sys.time()) * 1000, '}\n')
-    }
-  )
-  paths <- c(
-    "/workspace/.cursor/debug-lite-nvda-sec.ndjson",
-    "/opt/cursor/logs/debug.log"
-  )
-  for (p in paths) {
-    tryCatch({
-      dir.create(dirname(p), recursive = TRUE, showWarnings = FALSE)
-      cat(line, file = p, append = TRUE)
-    }, error = function(e) invisible(NULL))
-  }
-  invisible(NULL)
-}
-# #endregion
