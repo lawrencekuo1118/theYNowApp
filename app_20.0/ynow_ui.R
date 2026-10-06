@@ -2645,7 +2645,7 @@ beta_rolling_section_ui <- function() {
                     id = "ynow_testing_box_body",
                     style = "color:#555; line-height:1.5; margin:0 0 10px 0;",
                     paste0(
-                      "Inflation and the business cycle feed policy rates and the curve, then the dollar and liquidity, then bonds, commodities, precious metals, energy, equities, and crypto. ",
+                      "§1 Macro drivers feed §2 hubs (rates, dollar & FX, liquidity), then §4 asset classes: bonds, equities, precious metals, commodities, crypto, and other. ",
                       "Arrows run upstream to downstream. Purple marks links that can flip by regime. ",
                       "The regime card is a surveillance label for this session, not a trading signal and not an input to WACC."
                     )

@@ -36,6 +36,43 @@ check(
 check("35 public nodes", n_nodes == 35L && !anyDuplicated(ids))
 check("yahoo symbols unique", !anyDuplicated(catg$nodes$yahoo))
 check(
+  "§1 driver band is inflation only",
+  identical(as.character(catg$nodes$id[catg$nodes$band == "driver"]), "infl")
+)
+check(
+  "§2 hubs are rate / fx / liq",
+  identical(sort(unique(as.character(catg$nodes$band[catg$nodes$band %in% c("rate", "fx", "liq")]))), c("fx", "liq", "rate")) &&
+    identical(sort(as.character(catg$nodes$id[catg$nodes$band == "liq"])), c("move", "vix"))
+)
+check(
+  "§4 commodities sit in cmdty (not driver)",
+  all(c("oil", "brent", "ng", "copper", "wheat") %in% catg$nodes$id[catg$nodes$band == "cmdty"]) &&
+    !any(c("oil", "brent", "ng", "copper", "wheat") %in% catg$nodes$id[catg$nodes$band == "driver"])
+)
+check(
+  "§4 bonds include HYG (not liquidity)",
+  identical(as.character(catg$nodes$band[catg$nodes$id == "hyg"]), "bond") &&
+    all(c("tip", "ief", "tlt", "hyg") %in% catg$nodes$id[catg$nodes$band == "bond"])
+)
+check(
+  "§4 asset-class bands cover equities / metals / crypto / other",
+  all(c("spx", "taiex") %in% catg$nodes$id[catg$nodes$band == "equity"]) &&
+    all(c("gold", "silver") %in% catg$nodes$id[catg$nodes$band == "metal"]) &&
+    identical(as.character(catg$nodes$band[catg$nodes$id == "btc"]), "crypto") &&
+    identical(as.character(catg$nodes$band[catg$nodes$id == "vnq"]), "other")
+)
+check(
+  "§1/2/4 layer headers present",
+  all(c(
+    "atx_head_driver", "atx_head_rate", "atx_head_fxhub", "atx_head_liq",
+    "atx_head_bond", "atx_head_equity", "atx_head_metal",
+    "atx_head_cmdty", "atx_head_crypto", "atx_head_other"
+  ) %in% names(.UI_STRINGS$en)) &&
+    grepl("§1", ui_str("atx_head_driver", "en"), fixed = TRUE) &&
+    grepl("§2", ui_str("atx_head_rate", "zh-TW"), fixed = TRUE) &&
+    grepl("債券", ui_str("atx_head_bond", "zh-TW"), fixed = TRUE)
+)
+check(
   "47 channels",
   nrow(catg$edges) == 47L &&
     length(catg$edges$from) == length(catg$edges$to) &&

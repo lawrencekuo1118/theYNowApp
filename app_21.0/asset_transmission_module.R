@@ -2,8 +2,9 @@
 # asset_transmission_module.R — Asset transmission sidebar tab (Lite + Full)
 #
 # Live intermarket transmission map.
-# Order: inflation and the cycle → policy rate and the curve → dollar and
-# liquidity → bonds, commodities, precious metals, energy, equities, crypto.
+# Layers match the reference map §§1 / 2 / 4:
+#   §1 Macro drivers (upstream) → §2 hubs (rates, FX, liquidity) →
+#   §4 major asset classes (bonds, equities, metals, commodities, crypto, other).
 # Nodes are Yahoo daily bars in native quotes, plus a curve computed in R.
 # No session FX conversion. The 2s10s level is not a Yahoo symbol.
 # Arrow = structural channel (upstream → downstream), not "both rise".
@@ -21,65 +22,102 @@ if (!exists("%||%", mode = "function")) {
 # ---- Graph ----------------------------------------------------------------
 
 asset_tx_catalog <- function() {
-  # Drivers → policy rate / curve → dollar → liquidity → asset classes.
+  # §1 drivers → §2 hubs (rate / FX / liquidity) → §4 asset classes.
   # prior 0 = that link flips by regime (drawn purple once |corr| clears 0.15).
   # `curve` has a blank Yahoo symbol: the level is US 10Y minus the 2Y futures yield.
-  asset_x <- c(0.40, 2.25, 4.10, 5.95, 7.80, 9.65, 11.50, 13.35)
+  # Commodities live in §4 (not §1); HYG is a bond, not a liquidity card.
+  eq_x <- c(3.10, 4.40, 5.70, 7.00)
   nodes <- data.frame(
     id = c(
-      "infl", "copper", "oil", "brent", "ng",
+      # §1 Macro drivers (tradable inflation proxy)
+      "infl",
+      # §2 Interest-rate hub
       "us2y", "us_bill", "us5y", "us10y", "us30y", "curve",
+      # §2 Dollar & FX hub
       "dxy", "eurusd", "usdjpy", "usdcny", "usdtwd",
-      "move", "vix", "hyg",
-      "tlt", "ief", "tip", "spx", "nasdaq", "ndx", "sox", "stoxx",
-      "nikkei", "hsi", "taiex", "gold", "silver", "btc", "vnq", "wheat"
+      # §2 Liquidity / risk-appetite hub
+      "move", "vix",
+      # §4 Bonds
+      "tip", "ief", "tlt", "hyg",
+      # §4 Equities
+      "spx", "nasdaq", "ndx", "sox",
+      "stoxx", "nikkei", "hsi", "taiex",
+      # §4 Precious metals
+      "gold", "silver",
+      # §4 Commodities
+      "oil", "brent", "ng", "copper", "wheat",
+      # §4 Crypto + other
+      "btc", "vnq"
     ),
     yahoo = c(
-      "RINF", "HG=F", "CL=F", "BZ=F", "NG=F",
+      "RINF",
       "2YY=F", "^IRX", "^FVX", "^TNX", "^TYX", "",
       "DX-Y.NYB", "EURUSD=X", "JPY=X", "CNY=X", "TWD=X",
-      "^MOVE", "^VIX", "HYG",
-      "TLT", "IEF", "TIP", "^GSPC", "^IXIC", "^NDX", "^SOX", "^STOXX50E",
-      "^N225", "^HSI", "^TWII", "GC=F", "SI=F", "BTC-USD", "VNQ", "ZW=F"
+      "^MOVE", "^VIX",
+      "TIP", "IEF", "TLT", "HYG",
+      "^GSPC", "^IXIC", "^NDX", "^SOX",
+      "^STOXX50E", "^N225", "^HSI", "^TWII",
+      "GC=F", "SI=F",
+      "CL=F", "BZ=F", "NG=F", "HG=F", "ZW=F",
+      "BTC-USD", "VNQ"
     ),
     x = c(
-      rep(0.60, 5),
+      0.60,
       rep(3.25, 6),
       rep(6.00, 5),
-      rep(8.70, 3),
-      asset_x,
-      asset_x
+      rep(8.70, 2),
+      c(0.55, 1.55, 0.55, 1.55),
+      eq_x, eq_x,
+      rep(9.05, 2),
+      c(10.55, 11.75, 10.55, 11.75, 11.15),
+      13.05, 14.35
     ),
     y = c(
-      c(9.2, 8.0, 6.8, 5.6, 4.4),
+      9.5,
       c(9.2, 8.2, 7.2, 6.2, 5.2, 4.2),
       c(9.2, 8.0, 6.8, 5.6, 4.4),
-      c(8.6, 6.5, 4.4),
-      rep(2.35, 8),
-      rep(-0.25, 8)
+      c(7.8, 5.4),
+      c(2.35, 2.35, 0.85, 0.85),
+      rep(2.35, 4),
+      rep(-0.15, 4),
+      c(2.35, -0.15),
+      c(2.35, 2.35, 0.85, 0.85, -0.55),
+      1.10, 1.10
     ),
     textposition = c(
-      rep("middle right", 5),
+      "middle right",
       rep("middle right", 6),
       rep("middle right", 5),
-      rep("middle left", 3),
-      rep(c("top center", "bottom center"), 4),
-      rep("bottom center", 8)
+      rep("middle left", 2),
+      rep("top center", 4),
+      rep("top center", 4),
+      rep("bottom center", 4),
+      rep("top center", 2),
+      rep(c("top center", "top center"), 2), "bottom center",
+      "top center", "top center"
     ),
     kind = c(
-      "etf", "commodity", "commodity", "commodity", "commodity",
+      "etf",
       "yield", "yield", "yield", "yield", "yield", "spread",
       "index", "fx", "fx", "fx", "fx",
-      "vol", "vol", "etf",
-      "etf", "etf", "etf", "index", "index", "index", "index", "index",
-      "index", "index", "index", "commodity", "commodity", "crypto", "etf", "commodity"
+      "vol", "vol",
+      "etf", "etf", "etf", "etf",
+      "index", "index", "index", "index",
+      "index", "index", "index", "index",
+      "commodity", "commodity",
+      "commodity", "commodity", "commodity", "commodity", "commodity",
+      "crypto", "etf"
     ),
     band = c(
-      rep("driver", 5),
+      "driver",
       rep("rate", 6),
       rep("fx", 5),
-      rep("liq", 3),
-      rep("asset", 16)
+      rep("liq", 2),
+      rep("bond", 4),
+      rep("equity", 8),
+      rep("metal", 2),
+      rep("cmdty", 5),
+      "crypto", "other"
     ),
     stringsAsFactors = FALSE
   )
@@ -601,6 +639,7 @@ asset_tx_edge_table <- function(snap, locale = "en") {
 
 # Hub bands use a deeper blue; other cards stay charcoal. Both keep white names
 # and move-colored prints readable (avoid pale fills that wash out the type).
+# §2 hub bands use a deeper blue; §1 drivers and §4 assets stay charcoal.
 .asset_tx_band_fill <- function(band) {
   if (as.character(band %||% "")[1] %in% c("rate", "fx", "liq")) "#1f3f7a" else "#161c2e"
 }
@@ -1005,19 +1044,25 @@ asset_tx_edge_table <- function(snap, locale = "en") {
 }
 
 .asset_tx_band_shapes <- function(nodes) {
+  # Background panels: §1 driver, §2 hubs, then each §4 asset class.
   spec <- list(
-    driver = list(fill = "rgba(28, 42, 82, 0.28)"),
-    rate = list(fill = "rgba(36, 56, 108, 0.22)"),
-    fx = list(fill = "rgba(24, 44, 92, 0.22)"),
-    liq = list(fill = "rgba(32, 48, 96, 0.20)"),
-    asset = list(fill = "rgba(18, 32, 68, 0.18)")
+    driver = list(fill = "rgba(28, 42, 82, 0.28)", pad_x = 0.95, pad_y = 0.48),
+    rate = list(fill = "rgba(36, 56, 108, 0.22)", pad_x = 0.95, pad_y = 0.48),
+    fx = list(fill = "rgba(24, 44, 92, 0.22)", pad_x = 0.95, pad_y = 0.48),
+    liq = list(fill = "rgba(32, 48, 96, 0.20)", pad_x = 0.95, pad_y = 0.48),
+    bond = list(fill = "rgba(18, 32, 68, 0.18)", pad_x = 0.75, pad_y = 0.50),
+    equity = list(fill = "rgba(18, 32, 68, 0.18)", pad_x = 0.75, pad_y = 0.50),
+    metal = list(fill = "rgba(18, 32, 68, 0.18)", pad_x = 0.75, pad_y = 0.50),
+    cmdty = list(fill = "rgba(18, 32, 68, 0.18)", pad_x = 0.75, pad_y = 0.50),
+    crypto = list(fill = "rgba(18, 32, 68, 0.18)", pad_x = 0.70, pad_y = 0.50),
+    other = list(fill = "rgba(18, 32, 68, 0.18)", pad_x = 0.70, pad_y = 0.50)
   )
   shapes <- list()
   for (band in names(spec)) {
     sub <- nodes[nodes$band == band, , drop = FALSE]
     if (!nrow(sub)) next
-    pad_x <- if (band == "asset") 0.85 else 0.95
-    pad_y <- if (band == "asset") 0.55 else 0.48
+    pad_x <- spec[[band]]$pad_x
+    pad_y <- spec[[band]]$pad_y
     shapes[[length(shapes) + 1L]] <- list(
       type = "rect",
       xref = "x",
@@ -1054,14 +1099,23 @@ asset_tx_edge_table <- function(snap, locale = "en") {
 }
 
 .asset_tx_headers <- function(locale) {
+  # Layer titles: §1 driver, §2 hubs, §4 asset-class groups.
   heads <- data.frame(
-    x = c(0.60, 3.25, 6.00, 8.70, 0.15),
-    y = c(10.25, 10.25, 10.25, 10.25, 3.45),
-    xanchor = c("center", "center", "center", "center", "left"),
-    key = c(
-      "atx_head_driver", "atx_head_rate", "atx_head_fxhub",
-      "atx_head_liq", "atx_head_asset"
+    x = c(
+      0.60, 3.25, 6.00, 8.70,
+      1.05, 5.05, 9.05, 11.15, 13.05, 14.35
     ),
+    y = c(
+      10.55, 10.55, 10.55, 10.55,
+      3.45, 3.45, 3.45, 3.45, 3.45, 3.45
+    ),
+    xanchor = rep("center", 10),
+    key = c(
+      "atx_head_driver", "atx_head_rate", "atx_head_fxhub", "atx_head_liq",
+      "atx_head_bond", "atx_head_equity", "atx_head_metal",
+      "atx_head_cmdty", "atx_head_crypto", "atx_head_other"
+    ),
+    size = c(rep(14, 4), rep(12, 6)),
     stringsAsFactors = FALSE
   )
   lapply(seq_len(nrow(heads)), function(i) {
@@ -1073,7 +1127,11 @@ asset_tx_edge_table <- function(snap, locale = "en") {
       showarrow = FALSE,
       xref = "x",
       yref = "y",
-      font = list(size = 14, color = "#ffffff", family = "Arial, Helvetica, sans-serif")
+      font = list(
+        size = heads$size[i],
+        color = "#ffffff",
+        family = "Arial, Helvetica, sans-serif"
+      )
     )
   })
 }
