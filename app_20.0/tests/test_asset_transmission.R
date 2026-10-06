@@ -68,17 +68,29 @@ check(
     identical(as.character(catg$nodes$band[catg$nodes$id == "vnq"]), "other")
 )
 check(
-  "§1/2/4 layer headers present",
+  "root-map layer headers present (no § prefixes)",
   all(c(
     "atx_head_driver", "atx_head_rate", "atx_head_fxhub", "atx_head_liq",
     "atx_head_bond", "atx_head_equity", "atx_head_metal",
     "atx_head_cmdty", "atx_head_fxmkt", "atx_head_crypto", "atx_head_other"
   ) %in% names(.UI_STRINGS$en)) &&
-    grepl("§1", ui_str("atx_head_driver", "en"), fixed = TRUE) &&
-    grepl("§2", ui_str("atx_head_rate", "zh-TW"), fixed = TRUE) &&
-    grepl("債券", ui_str("atx_head_bond", "zh-TW"), fixed = TRUE) &&
-    grepl("外匯", ui_str("atx_head_fxmkt", "zh-TW"), fixed = TRUE)
+    identical(ui_str("atx_head_driver", "en"), "Macro drivers") &&
+    identical(ui_str("atx_head_driver", "zh-TW"), "總體驅動") &&
+    identical(ui_str("atx_head_bond", "zh-TW"), "債券市場") &&
+    identical(ui_str("atx_head_fxmkt", "zh-TW"), "外匯市場") &&
+    !grepl("§", ui_str("atx_head_rate", "en"), fixed = TRUE) &&
+    !grepl("§", ui_str("atx_head_fxhub", "zh-TW"), fixed = TRUE)
 )
+geom <- .asset_tx_card_geom()
+overlap_n <- 0L
+for (i in seq_len(n_nodes - 1L)) {
+  for (j in seq.int(i + 1L, n_nodes)) {
+    dx <- abs(catg$nodes$x[i] - catg$nodes$x[j])
+    dy <- abs(catg$nodes$y[i] - catg$nodes$y[j])
+    if (dx < geom$w && dy < geom$h) overlap_n <- overlap_n + 1L
+  }
+}
+check("map cards do not overlap", identical(overlap_n, 0L))
 check(
   "47 channels",
   nrow(catg$edges) == 47L &&

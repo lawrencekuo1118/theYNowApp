@@ -27,7 +27,8 @@ asset_tx_catalog <- function() {
   # `curve` has a blank Yahoo symbol: the level is US 10Y minus the 2Y futures yield.
   # Commodities live in §4 (not §1); HYG is a bond, not a liquidity card.
   # §2 FX hub is DXY only; major pairs sit in §4 FX market (reference §4).
-  eq_x <- c(2.90, 4.05, 5.20, 6.35)
+  # Card geom is w=1.48 × h=0.74 — keep center gaps ≥ 1.70 / 1.00 so cards never overlap.
+  eq_x <- c(4.50, 6.30, 8.10, 9.90)
   nodes <- data.frame(
     id = c(
       # §1 Macro drivers (tradable inflation proxy)
@@ -66,29 +67,29 @@ asset_tx_catalog <- function() {
       "BTC-USD", "VNQ"
     ),
     x = c(
-      0.60,
-      rep(3.25, 6),
-      6.00,
-      rep(8.70, 2),
-      c(0.55, 1.55, 0.55, 1.55),
+      0.80,
+      rep(3.40, 6),
+      6.40,
+      rep(9.20, 2),
+      c(0.80, 2.60, 0.80, 2.60),
       eq_x, eq_x,
-      rep(7.85, 2),
-      c(9.20, 10.30, 9.20, 10.30, 9.75),
-      c(11.55, 12.55, 11.55, 12.55),
-      13.85, 15.05
+      rep(11.80, 2),
+      c(13.60, 15.40, 13.60, 15.40, 14.50),
+      c(17.20, 19.00, 17.20, 19.00),
+      20.80, 22.60
     ),
     y = c(
-      9.5,
-      c(9.2, 8.2, 7.2, 6.2, 5.2, 4.2),
-      6.8,
-      c(7.8, 5.4),
-      c(2.35, 2.35, 0.85, 0.85),
-      rep(2.35, 4),
-      rep(-0.15, 4),
-      c(2.35, -0.15),
-      c(2.35, 2.35, 0.85, 0.85, -0.55),
-      c(2.35, 2.35, 0.85, 0.85),
-      1.10, 1.10
+      9.6,
+      c(9.6, 8.5, 7.4, 6.3, 5.2, 4.1),
+      6.85,
+      c(8.0, 5.6),
+      c(2.50, 2.50, 1.00, 1.00),
+      rep(2.50, 4),
+      rep(1.00, 4),
+      c(2.50, 1.00),
+      c(2.50, 2.50, 1.00, 1.00, -0.50),
+      c(2.50, 2.50, 1.00, 1.00),
+      1.75, 1.75
     ),
     textposition = c(
       "middle right",
@@ -1112,12 +1113,12 @@ asset_tx_edge_table <- function(snap, locale = "en") {
   # Layer titles: §1 driver, §2 hubs, §4 asset-class groups.
   heads <- data.frame(
     x = c(
-      0.60, 3.25, 6.00, 8.70,
-      1.05, 4.60, 7.85, 9.75, 12.05, 13.85, 15.05
+      0.80, 3.40, 6.40, 9.20,
+      1.70, 7.20, 11.80, 14.50, 18.10, 20.80, 22.60
     ),
     y = c(
-      10.55, 10.55, 10.55, 10.55,
-      3.45, 3.45, 3.45, 3.45, 3.45, 3.45, 3.45
+      10.75, 10.75, 10.75, 10.75,
+      3.70, 3.70, 3.70, 3.70, 3.70, 3.70, 3.70
     ),
     xanchor = rep("center", 11),
     key = c(
