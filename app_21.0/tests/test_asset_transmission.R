@@ -104,6 +104,8 @@ check("atx page title zh", identical(ui_str("atx_box_title", "zh-TW"), "資產�
 check("atx page title en", identical(ui_str("atx_box_title", "en"), "Asset transmission root map"))
 check("menu atx zh", identical(ui_str("menu_asset_transmission", "zh-TW"), "資產傳導根系圖"))
 check("menu atx en", identical(ui_str("menu_asset_transmission", "en"), "Asset transmission root map"))
+check("atx window zh", identical(ui_str("atx_window", "zh-TW"), "滾動相關視窗"))
+check("atx window en", identical(ui_str("atx_window", "en"), "Correlation window"))
 check(
   "zh curve up is bear steepening",
   identical(ui_str("atx_lean_curve_up", "zh-TW"), "2s10s：長端升得比較快就是熊市陡峭化（bear steepener）")
@@ -643,6 +645,13 @@ check(
     grepl("RETICULATE_USE_MANAGED_VENV", rprofile, fixed = TRUE)
 )
 mod_src <- paste(readLines("asset_transmission_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check("toolbar is locale-rendered", grepl('ns("toolbar")', mod_src, fixed = TRUE) &&
+  grepl("output\\$toolbar\\s*<-\\s*shiny::renderUI", mod_src) &&
+  !grepl('label = "Correlation window"', mod_src, fixed = TRUE) &&
+  !grepl('"Refresh prints"', mod_src, fixed = TRUE) &&
+  !grepl('"20 sessions"', mod_src, fixed = TRUE))
+check("no atx debug ingest left", !grepl("127\\.0\\.0\\.1:7302/ingest", mod_src) &&
+  !grepl("debug-f77c57\\.log", mod_src))
 check(
   "figure avoids slow plotly animation_slider rebuild",
   grepl(".asset_tx_attach_play_frames", mod_src, fixed = TRUE) &&
@@ -700,7 +709,8 @@ if (exists(".ynow_is_hosted_connect", mode = "function")) {
   check("connect path detector present", grepl("/srv/connect/apps", glb_src, fixed = TRUE))
 }
 dbg_paths <- c(
-  "ynow_ui.R", "ynow_server.R", "macro_market_module.R", "backtest_module.R"
+  "ynow_ui.R", "ynow_server.R", "macro_market_module.R", "backtest_module.R",
+  "asset_transmission_module.R"
 )
 dbg_hit <- vapply(dbg_paths, function(fn) {
   src <- paste(readLines(fn, warn = FALSE, encoding = "UTF-8"), collapse = "\n")

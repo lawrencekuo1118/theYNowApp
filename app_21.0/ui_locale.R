@@ -2869,7 +2869,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "箭頭由上游指向下游。紫線是會隨情境翻轉的連結。",
       "情境卡是這個交易日的監控標籤，不是交易訊號，也不寫入 WACC。"
     ),
-    atx_window = "相關視窗",
+    atx_window = "滾動相關視窗",
     atx_win_20 = "20 個交易日",
     atx_win_60 = "60 個交易日",
     atx_win_120 = "120 個交易日",
