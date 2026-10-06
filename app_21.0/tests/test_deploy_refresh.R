@@ -5,7 +5,14 @@
 Sys.setenv(YNOW_DEBUG_SKIP_PY = "1")
 options(warn = 1)
 
-.root <- normalizePath("..", mustWork = TRUE)
+.args <- commandArgs(trailingOnly = FALSE)
+.file_arg <- grep("^--file=", .args, value = TRUE)
+.script_dir <- if (length(.file_arg)) {
+  dirname(normalizePath(sub("^--file=", "", .file_arg[[1]]), mustWork = TRUE))
+} else {
+  normalizePath(getwd(), mustWork = TRUE)
+}
+.root <- normalizePath(file.path(.script_dir, ".."), mustWork = TRUE)
 .fail <- 0L
 check <- function(label, cond) {
   ok <- isTRUE(cond)
