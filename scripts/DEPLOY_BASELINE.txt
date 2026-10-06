@@ -8,5 +8,5 @@ short=418da6a
 message=chore: bump display version to v21.02
 captured_at=2026-10-05T20:51:07Z
 source_branch=master
-display_version=v21.02
+display_version=v21.03
 note=Canonical live line is app_21.0. Bundle 12651376 ships v21.02: lean Plotly (no ggplotly on IS/HFV), DT server+deferRender for statements, route Lab/BBLab through cached summary, skip double-normalize on financials cache hits, hist-price TTL aligned to fast tier. Deploy via scripts/deploy_app_21.R.
