@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12655583
+bundleId=12655663
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=eca78ea9384801aacdbc155674ebf61f53c7a1aa
 commit=eca78ea9384801aacdbc155674ebf61f53c7a1aa
 short=eca78ea
 message=chore: bump display version to v21.11
-captured_at=2026-10-06T17:15:33Z
+captured_at=2026-10-06T17:38:03Z
 source_branch=master
 display_version=v21.11
-note=Canonical live line is app_21.0. Bundle 12655583 ships v21.11: valuation Overview KPIs put primary fair value / Implied Price leftmost with model-accent family tones; result numeral uses blue-green ynow-htcdi-flow only. Deploy via scripts/deploy_app_21.R.
+note=Canonical live line is app_21.0. Bundle 12655663 ships v21.11: Model Selector collapsed 考慮維度 annotation + valuation model KPI result leftmost with family tones and blue-green flow numeral. Deploy via scripts/deploy_app_21.R.
