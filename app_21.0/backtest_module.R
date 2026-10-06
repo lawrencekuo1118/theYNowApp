@@ -30,7 +30,6 @@ if (!exists(".ynow_log", mode = "function")) {
 
 # Former debug NDJSON writer targeted a developer laptop path and flooded
 # shinyapps with file() warnings until the worker stopped responding.
-.ynow_dbg_ef0f33 <- function(...) invisible(NULL)
 
 # ---------- small helpers ----------
 
@@ -1541,11 +1540,6 @@ fetch_price_history_df <- function(ticker, period = "5y") {
   raw_ticker <- as.character(ticker)[1]
   ticker <- toupper(trimws(raw_ticker))
   if (!nzchar(ticker)) return(NULL)
-  # #region agent log
-  .ynow_dbg_ef0f33("C", "backtest_module.R:fetch_price_history_df", "ticker normalized", list(
-    raw = raw_ticker, ticker = ticker, period = as.character(period)[1]
-  ))
-  # #endregion
 
   yfin_err <- ""
   df <- tryCatch({
@@ -1570,12 +1564,6 @@ fetch_price_history_df <- function(ticker, period = "5y") {
 
   yfin_nrow <- if (is.data.frame(df)) nrow(df) else 0L
   yfin_finite <- if (is.data.frame(df) && "Close" %in% names(df)) sum(is.finite(df$Close)) else 0L
-  # #region agent log
-  .ynow_dbg_ef0f33("B", "backtest_module.R:fetch_price_history_df", "yfinance history result", list(
-    ticker = ticker, yfin_nrow = yfin_nrow, yfin_finite = yfin_finite,
-    yfin_err = yfin_err, passed_30 = isTRUE(yfin_finite >= 30)
-  ))
-  # #endregion
 
   short_df <- NULL
   period_s <- tolower(trimws(as.character(period)[1]))
@@ -1584,19 +1572,9 @@ fetch_price_history_df <- function(ticker, period = "5y") {
     df <- df[is.finite(df$Close) & !is.na(df$Date), , drop = FALSE]
     df <- df[order(df$Date), , drop = FALSE]
     if (nrow(df) >= 30) {
-      # #region agent log
-      .ynow_dbg_ef0f33("A", "backtest_module.R:fetch_price_history_df", "returned yfinance series", list(
-        ticker = ticker, nrow = nrow(df), last = tail(df$Close, 1)
-      ))
-      # #endregion
       return(df)
     }
     if (isTRUE(quote_window) && nrow(df) >= 2L) {
-      # #region agent log
-      .ynow_dbg_ef0f33("LOAD", "backtest_module.R:fetch_price_history_df", "returned quote window without quantmod", list(
-        ticker = ticker, period = period_s, nrow = nrow(df), last = tail(df$Close, 1)
-      ))
-      # #endregion
       return(df)
     }
     if (nrow(df) >= 1L) short_df <- df
@@ -1605,28 +1583,6 @@ fetch_price_history_df <- function(ticker, period = "5y") {
   # TPEx capitalization index: Yahoo often has a single live bar and no tape.
   if (.is_tpex_index_symbol(ticker)) {
     tpex_df <- tryCatch(fetch_tpex_index_history_df(period), error = function(e) NULL)
-    # #region agent log
-    tryCatch({
-      line <- jsonlite::toJSON(list(
-        sessionId = "f77c57",
-        runId = "tpex-hist",
-        hypothesisId = "H1-yahoo-thin",
-        location = "backtest_module.R:fetch_price_history_df",
-        message = "tpex index fallback",
-        data = list(
-          ticker = ticker,
-          period = as.character(period)[1],
-          yfin_nrow = yfin_nrow,
-          yfin_finite = yfin_finite,
-          tpex_nrow = if (is.data.frame(tpex_df)) nrow(tpex_df) else 0L,
-          tpex_finite = if (is.data.frame(tpex_df) && "Close" %in% names(tpex_df)) sum(is.finite(tpex_df$Close)) else 0L,
-          used_tpex = is.data.frame(tpex_df) && nrow(tpex_df) >= 2L
-        ),
-        timestamp = as.numeric(Sys.time()) * 1000
-      ), auto_unbox = TRUE)
-      cat(as.character(line), "\n", file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-f77c57.log", append = TRUE)
-    }, error = function(e) invisible(NULL))
-    # #endregion
     if (is.data.frame(tpex_df) && nrow(tpex_df) >= 2L) return(tpex_df)
   }
 
@@ -1646,18 +1602,7 @@ fetch_price_history_df <- function(ticker, period = "5y") {
   qm_nrow <- if (is.data.frame(out)) nrow(out) else 0L
   qm_finite <- if (is.data.frame(out) && "Close" %in% names(out)) sum(is.finite(out$Close)) else 0L
   qm_last <- if (qm_finite > 0L) tail(out$Close[is.finite(out$Close)], 1) else NA_real_
-  # #region agent log
-  .ynow_dbg_ef0f33("A", "backtest_module.R:fetch_price_history_df", "quantmod fallback result", list(
-    ticker = ticker, qm_have = qm_have, qm_nrow = qm_nrow, qm_finite = qm_finite,
-    qm_last = qm_last, qm_err = qm_err, returned_null = is.null(out)
-  ))
-  # #endregion
   if ((is.null(out) || qm_finite < 1L) && is.data.frame(short_df) && nrow(short_df) >= 1L) {
-    # #region agent log
-    .ynow_dbg_ef0f33("A", "backtest_module.R:fetch_price_history_df", "kept short yfinance series after quantmod miss", list(
-      ticker = ticker, nrow = nrow(short_df), last = tail(short_df$Close, 1)
-    ))
-    # #endregion
     return(short_df)
   }
   out

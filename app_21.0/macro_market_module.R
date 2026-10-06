@@ -748,13 +748,6 @@ macro_market_server <- function(id = "macro",
       specs <- macro_click_index_specs(.mode())
       own <- .own_index_symbol()
       accepted <- nzchar(sym) && (sym %in% names(specs) || identical(sym, own))
-      # #region agent log
-      if (exists(".ynow_dbg_ef0f33", mode = "function")) {
-        .ynow_dbg_ef0f33("D", "macro_market_module.R:index_click", "index click received", list(
-          sym = sym, own = own, accepted = accepted, lite = .is_lite()
-        ))
-      }
-      # #endregion
       if (!accepted) return()
       # Second click on the same board collapses the expand panel (same pattern as HTCDI).
       cur <- isolate(as.character(selected_index() %||% "")[1])
@@ -915,14 +908,6 @@ macro_market_server <- function(id = "macro",
       lapply(names(specs), function(sym) {
         df <- tryCatch(fetch_price_history_df(sym, "5d"), error = function(e) NULL)
         q <- .px_last_chg(df)
-        # #region agent log
-        if (exists(".ynow_dbg_ef0f33", mode = "function")) {
-          .ynow_dbg_ef0f33("E", "macro_market_module.R:index_quotes", "kpi quote", list(
-            symbol = sym, nrow = if (is.data.frame(df)) nrow(df) else 0L,
-            last = q$last, chg = q$chg, finite_last = is.finite(q$last)
-          ))
-        }
-        # #endregion
         list(symbol = sym, label = unname(specs[[sym]]), last = q$last, chg_pct = q$chg)
       })
     })

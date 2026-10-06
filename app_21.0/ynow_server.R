@@ -196,14 +196,6 @@ server <- function(input, output, session) {
   observeEvent(input$search, {
     sc_raw <- tryCatch(as.character(input$sc %||% "")[1], error = function(e) "")
     tab_now <- tryCatch(as.character(input$sidebar_tabs %||% "")[1], error = function(e) "")
-    # #region agent log
-    .ynow_dbg_ef0f33("A", "ynow_server.R:input$search", "search click received", list(
-      sc = sc_raw,
-      tab = tab_now,
-      n = suppressWarnings(as.numeric(input$search)[1]),
-      mkt = tryCatch(as.character(market_mode())[1], error = function(e) "")
-    ))
-    # #endregion
     req(input$sc)
     user_has_searched(TRUE)
     # Explicit Search supersedes any deferred market-default preload.
@@ -214,14 +206,6 @@ server <- function(input, output, session) {
     param_audit_baseline_ticker(NULL)
     param_audit_capture_token(isolate(param_audit_capture_token()) + 1L)
     tk <- normalize_ticker_for_market(input$sc, market_mode())
-    # #region agent log
-    .ynow_dbg_ef0f33("C", "ynow_server.R:input$search", "ticker after normalize", list(
-      sc = sc_raw,
-      tk = as.character(tk %||% "")[1],
-      ok = isTRUE(!is.na(tk) && nzchar(tk)),
-      gen = suppressWarnings(as.numeric(isolate(ticker_search_gen()))[1])
-    ))
-    # #endregion
     req(!is.na(tk), nzchar(tk))
     current_ticker(tk)
     ticker_search_gen(isolate(ticker_search_gen()) + 1L)
@@ -1461,16 +1445,6 @@ server <- function(input, output, session) {
       "N/A"
     }
     prev_raw <- if ("Previous Close" %in% items) as.character(df$Value[items == "Previous Close"][1])[1] else ""
-    # #region agent log
-    if (exists(".ynow_dbg_ef0f33", mode = "function")) {
-      .ynow_dbg_ef0f33("P", "ynow_server.R:ibx_stockprice", "header last price", list(
-        item = as.character(pick_nm %||% "")[1],
-        last = as.character(pick_raw %||% "")[1],
-        prev = as.character(prev_raw %||% "")[1],
-        shown = as.character(val %||% "")[1]
-      ))
-    }
-    # #endregion
     infoBox(
       ui_str("kpi_last_price", loc),
       val,
@@ -7497,21 +7471,6 @@ server <- function(input, output, session) {
     # 計算每股目標價並防呆（報價幣；拒絕 TWD／普通股標成 USD／ADR）
     sh_info <- tryCatch(.valuation_shares(), error = function(e) NULL)
     px <- if (!is.null(sh_info)) .dcf_per_share(equity_value, sh_info) else NA_real_
-    # #region agent log
-    .ynow_dbg_ef0f33("D", "ynow_server.R:execute_dcf", "dcf per-share result", list(
-      mode = dcf_mode_eff,
-      claim = claim,
-      last_fcf = suppressWarnings(as.numeric(future_fcfs[n])[1]),
-      g = suppressWarnings(as.numeric(g_terminal)[1]),
-      r = suppressWarnings(as.numeric(r2)[1]),
-      ev = suppressWarnings(as.numeric(dcf_value)[1]),
-      eq = suppressWarnings(as.numeric(equity_value)[1]),
-      px = suppressWarnings(as.numeric(px)[1]),
-      cleared = !is.finite(suppressWarnings(as.numeric(px)[1])),
-      hist_anchor = isTRUE(hist_anchor),
-      silent = isTRUE(silent)
-    ))
-    # #endregion
     if (is.finite(px)) {
       lite_dcf_block("")
       stock_price_estimate_val(px)
@@ -7587,13 +7546,6 @@ server <- function(input, output, session) {
   # 再對主／副模型試算——避免「參數假設錯誤無法計算」。
   observeEvent(list(current_ticker(), ticker_search_gen()), {
     # Clear prior-ticker DCF so Composite does not keep stale run-state overlays
-    # #region agent log
-    .ynow_dbg_ef0f33("B", "ynow_server.R:ticker_clear", "cleared valuation on ticker", list(
-      tk = as.character(current_ticker() %||% "")[1],
-      prev_px = suppressWarnings(as.numeric(isolate(stock_price_estimate_val()))[1]),
-      gen = suppressWarnings(as.numeric(isolate(ticker_search_gen()))[1])
-    ))
-    # #endregion
     stock_price_estimate_val(NULL)
     dcf_value_result(NULL)
     lite_dcf_block("")
@@ -8059,15 +8011,6 @@ server <- function(input, output, session) {
         sep = "|"
       )
       if (!identical(lite_scenario_applied_sig(), want_sig)) {
-        # #region agent log
-        .ynow_dbg_ef0f33("C", "ynow_server.R:lite_scenario", "applied lite scenario", list(
-          tk = tk,
-          two = isTRUE(des$two_stage),
-          method = as.character(des$method %||% "")[1],
-          claim = as.character(des$claim %||% "")[1],
-          prev = as.character(lite_scenario_applied_sig() %||% "")[1]
-        ))
-        # #endregion
         .apply_lite_recommended_scenario(rec)
         lite_scenario_applied_sig(want_sig)
         return()
@@ -8123,19 +8066,6 @@ server <- function(input, output, session) {
     )
     if (identical(auto_calc_primary_sig(), sig)) return()
 
-    # #region agent log
-    .ynow_dbg_ef0f33("A", "ynow_server.R:auto_calc", "firing auto calc", list(
-      sig = sig,
-      prim = prim,
-      sec = as.character(sec %||% "")[1],
-      mode = mode,
-      claim = claim,
-      w = if (is.finite(w_calc)) round(w_calc * 100, 2) else NA_real_,
-      sgr = if (is.finite(sgr)) round(sgr, 2) else NA_real_,
-      sh = as.character(sh_m %||% "")[1],
-      prev_px = suppressWarnings(as.numeric(isolate(stock_price_estimate_val()))[1])
-    ))
-    # #endregion
     auto_calc_primary_sig(sig)
     for (k in keys) .fire_auto_calc_primary(k)
   })
