@@ -8,5 +8,5 @@ short=a305609
 message=chore: record shipped display version v21.11
 captured_at=2026-10-06T08:56:51Z
 source_branch=cursor/htcdi-arinc-sita-911b
-display_version=v21.11
+display_version=v21.12
 note=Canonical live line is app_21.0. Bundle 12653633 ships v21.11: HTCDI adds ARINC (RTX) and SITA (AMADY proxy) under aviation_comms. Deploy via scripts/deploy_app_21.R.
