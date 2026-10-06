@@ -28,7 +28,7 @@ asset_tx_catalog <- function() {
   # Commodities live in §4 (not §1); HYG is a bond, not a liquidity card.
   # §2 FX hub is DXY only; major pairs sit in §4 FX market (reference §4).
   # Card geom is w=1.48 × h=0.74 — keep center gaps ≥ 1.70 / 1.00 so cards never overlap.
-  eq_x <- c(3.60, 5.40, 7.20, 9.00)
+  eq_x <- c(4.50, 6.30, 8.10, 9.90)
   nodes <- data.frame(
     id = c(
       # §1 Macro drivers (tradable inflation proxy)
@@ -73,10 +73,10 @@ asset_tx_catalog <- function() {
       rep(9.20, 2),
       c(0.80, 2.60, 0.80, 2.60),
       eq_x, eq_x,
-      rep(10.90, 2),
-      c(12.70, 14.50, 12.70, 14.50, 13.60),
-      c(16.30, 18.10, 16.30, 18.10),
-      19.90, 21.70
+      rep(11.80, 2),
+      c(13.60, 15.40, 13.60, 15.40, 14.50),
+      c(17.20, 19.00, 17.20, 19.00),
+      20.80, 22.60
     ),
     y = c(
       9.6,
@@ -1114,7 +1114,7 @@ asset_tx_edge_table <- function(snap, locale = "en") {
   heads <- data.frame(
     x = c(
       0.80, 3.40, 6.40, 9.20,
-      1.70, 6.30, 10.90, 13.60, 17.20, 19.90, 21.70
+      1.70, 7.20, 11.80, 14.50, 18.10, 20.80, 22.60
     ),
     y = c(
       10.75, 10.75, 10.75, 10.75,
