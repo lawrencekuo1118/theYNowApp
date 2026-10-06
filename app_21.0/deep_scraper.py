@@ -1,5 +1,9 @@
 """
 Cloud-compatible financials via yfinance HTTP (no headless Chrome).
+
+Yahoo commercial hardening: cross-process min-interval gate (_yahoo_gate_acquire)
+shares stamp/lock files with R (.ynow_yahoo_gate_acquire) under YNOW_CACHE_ROOT /
+YNOW_YAHOO_GATE_DIR so concurrent shinyapps workers do not burst into HTTP 429.
 """
 import os
 import time
@@ -11,6 +15,124 @@ def _dbg(*args, **kwargs):
     """Console traces only when YNOW_DEBUG=1 (inherited from R / the shell)."""
     if os.environ.get("YNOW_DEBUG", "").strip() in ("1", "true", "TRUE", "yes", "on"):
         print(*args, **kwargs)
+
+
+def _yahoo_gate_enabled():
+    v = (os.environ.get("YNOW_YAHOO_GATE", "1") or "1").strip().lower()
+    return v not in ("0", "false", "off", "no")
+
+
+def _yahoo_min_interval_sec():
+    try:
+        ms = float(os.environ.get("YNOW_YAHOO_MIN_INTERVAL_MS", "350") or "350")
+    except Exception:
+        ms = 350.0
+    if ms < 0:
+        ms = 350.0
+    return ms / 1000.0
+
+
+def _yahoo_cache_root():
+    override = (os.environ.get("YNOW_CACHE_ROOT") or "").strip()
+    if override:
+        root = override
+    else:
+        force = (os.environ.get("YNOW_FORCE_SHARED_CACHE") or "").strip()
+        hosted = (
+            force == "1"
+            or "shinyapps" in (os.environ.get("HOSTNAME") or "").lower()
+            or "shinyapps" in (os.environ.get("R_CONFIG_ACTIVE") or "").lower()
+            or (os.environ.get("FORCE_SHINYAPPS_PYTHON") or "") == "1"
+        )
+        if hosted:
+            root = os.path.join("/tmp", "ynow_cache")
+        else:
+            root = os.path.join(os.environ.get("TMPDIR") or "/tmp", "ynow_cache")
+    try:
+        os.makedirs(root, exist_ok=True)
+    except Exception:
+        pass
+    return root
+
+
+def _yahoo_gate_dir():
+    override = (os.environ.get("YNOW_YAHOO_GATE_DIR") or "").strip()
+    d = override if override else os.path.join(_yahoo_cache_root(), "yahoo_gate")
+    try:
+        os.makedirs(d, exist_ok=True)
+    except Exception:
+        pass
+    return d
+
+
+def _yahoo_gate_acquire(timeout_sec=30.0):
+    """Space live Yahoo HTTP across processes (mkdir lock + min interval).
+
+    Matches R `.ynow_yahoo_gate_acquire` stamp/lock layout so R Lab crumb
+    fetches and Python yfinance calls share one global cadence.
+    """
+    if not _yahoo_gate_enabled():
+        return False
+    min_gap = _yahoo_min_interval_sec()
+    if min_gap <= 0:
+        return True
+
+    gdir = _yahoo_gate_dir()
+    lock_dir = os.path.join(gdir, "yahoo_gate.lock.d")
+    stamp_path = os.path.join(gdir, "yahoo_gate.last")
+    deadline = time.time() + max(1.0, float(timeout_sec or 30.0))
+
+    got = False
+    while time.time() <= deadline:
+        try:
+            os.mkdir(lock_dir)
+            got = True
+            break
+        except FileExistsError:
+            try:
+                age = time.time() - os.path.getmtime(lock_dir)
+                if age > 60:
+                    import shutil
+
+                    shutil.rmtree(lock_dir, ignore_errors=True)
+            except Exception:
+                pass
+            time.sleep(0.05)
+        except Exception:
+            time.sleep(0.05)
+    if not got:
+        _dbg("⚠️ Yahoo gate lock timeout; proceeding without spacing")
+        return False
+
+    try:
+        last = None
+        try:
+            with open(stamp_path, "r", encoding="utf-8") as fh:
+                raw = (fh.readline() or "").strip()
+            last = float(raw) if raw else None
+        except Exception:
+            last = None
+        now = time.time()
+        if last is not None and last > 0:
+            wait = min_gap - (now - last)
+            if wait > 0:
+                time.sleep(wait)
+        try:
+            with open(stamp_path, "w", encoding="utf-8") as fh:
+                fh.write(f"{time.time():.6f}\n")
+        except Exception:
+            pass
+    finally:
+        try:
+            os.rmdir(lock_dir)
+        except Exception:
+            try:
+                import shutil
+
+                shutil.rmtree(lock_dir, ignore_errors=True)
+            except Exception:
+                pass
+    return True
 
 
 def _best_company_name(info, ticker=""):
@@ -37,6 +159,7 @@ def _best_company_name(info, ticker=""):
 def fast_get_company_info(ticker="AMZN"):
     """Yahoo Sector / Industry via yfinance (no browser). Used by UI 「industry info from Yahoo」."""
     _dbg(f"⚡ 使用高速 API 獲取 {ticker} 公司與產業資訊...")
+    _yahoo_gate_acquire()
     try:
         stock = yf.Ticker(ticker)
         info = {}
@@ -114,6 +237,7 @@ def _fmt_num(v, digits=2):
 def get_summary_quote(ticker="AMZN"):
     """Cloud-safe Yahoo summary metrics via yfinance (no Chromote/Chrome)."""
     _dbg(f"📊 yfinance summary quote: {ticker}")
+    _yahoo_gate_acquire()
     stock = yf.Ticker(ticker)
     info = {}
     try:
@@ -336,6 +460,7 @@ def get_market_caps_batch(tickers):
         url = "https://query2.finance.yahoo.com/v7/finance/quote"
         for i in range(0, len(cleaned), chunk_size):
             chunk = cleaned[i : i + chunk_size]
+            _yahoo_gate_acquire()
             try:
                 raw = yd.get(url, params={"symbols": ",".join(chunk)})
                 if hasattr(raw, "json") and not isinstance(raw, dict):
@@ -392,6 +517,7 @@ def get_returns_1y_batch(tickers):
     batch = 50
     for i in range(0, len(cleaned), batch):
         chunk = cleaned[i : i + batch]
+        _yahoo_gate_acquire()
         try:
             data = yf.download(
                 tickers=" ".join(chunk),
@@ -458,6 +584,7 @@ def get_returns_1y_batch(tickers):
 def get_usd_twd_rate():
     """USD→TWD spot via yfinance (TWD=X = TWD per 1 USD)."""
     _dbg("💱 yfinance FX TWD=X")
+    _yahoo_gate_acquire()
     for sym in ("TWD=X", "USDTWD=X"):
         try:
             t = yf.Ticker(sym)
@@ -484,6 +611,7 @@ def get_usd_twd_rate():
 def get_price_history(ticker="AMZN", period="5y"):
     """Daily OHLCV for backtests — plain lists for reticulate."""
     _dbg(f"📈 yfinance price history: {ticker} period={period}")
+    _yahoo_gate_acquire()
     stock = yf.Ticker(ticker)
     hist = stock.history(period=period, auto_adjust=True)
     if hist is None or hist.empty:
@@ -522,6 +650,7 @@ def get_last_quotes(tickers=None):
             continue
         last = None
         prev = None
+        _yahoo_gate_acquire()
         try:
             hist = yf.Ticker(sym).history(period="10d", auto_adjust=True)
             if hist is not None and not hist.empty and "Close" in hist.columns:
@@ -683,6 +812,7 @@ def get_risk_free_rate_yf(market="US"):
         _dbg("📊 TW Rf via TPEx 10Y Curve")
         return float(get_tw_10y_gov_bond_yield())
     _dbg("📊 yfinance Rf ^TNX")
+    _yahoo_gate_acquire()
     tnx = yf.Ticker("^TNX")
     # prefer fast_info / history last close
     try:
@@ -740,6 +870,7 @@ def get_beta_unlever_inputs(ticker="AAPL"):
         out["error"] = "empty ticker"
         return out
     _dbg(f"📐 beta unlever inputs: {tk}")
+    _yahoo_gate_acquire()
     try:
         stock = yf.Ticker(tk)
         info = {}
@@ -842,6 +973,7 @@ def _stmt_to_payload(df):
 def scrape_all_financials_yf(ticker="AMZN"):
     """Cloud-safe financials via Yahoo Finance API (no Chrome)."""
     _dbg(f"📊 使用 yfinance 獲取 {ticker} 財報（app_11.0）...")
+    _yahoo_gate_acquire()
     stock = yf.Ticker(ticker)
 
     def pick(*names):
@@ -948,6 +1080,7 @@ def search_tickers(query="", max_results=12):
     max_results = int(max_results) if max_results else 12
     max_results = max(1, min(max_results, 25))
     out = []
+    _yahoo_gate_acquire()
     try:
         s = yf.Search(q, max_results=max(max_results * 2, 12))
         quotes = getattr(s, "quotes", None) or []
@@ -1961,6 +2094,8 @@ def get_cluster_features_batch(tickers):
             cached["ticker"] = sym
             return cached
         row = _empty(sym)
+        # One gate slot per ticker (not per retry) — spaces Lab N=100 runs.
+        _yahoo_gate_acquire()
 
         def _fill_from_info(info):
             if not isinstance(info, dict):
@@ -2111,6 +2246,7 @@ def get_cluster_features_batch(tickers):
     try:
         from yfinance.data import YfData
 
+        _yahoo_gate_acquire()
         YfData().get(
             "https://query2.finance.yahoo.com/v7/finance/quote",
             params={"symbols": cleaned[0]},

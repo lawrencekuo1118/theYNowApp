@@ -10,7 +10,13 @@
 #
 #   FAST (market / macro): live quotes, Rf (10Y), USD/TWD FX.
 #     High-frequency; drives CAPM Ke, MOS vs market, and sensitivity baselines.
-#     Use cache_mem with ≤15m TTL (or call uncached) so DCF is not priced off stale Rf.
+#     Local/dev: cache_mem ≤15m. Hosted / YNOW_CACHE_ROOT / YNOW_FAST_CACHE_DIR:
+#     cache_disk ≤15m so workers on the same host share quote/Rf/FX hits.
+#
+# Yahoo commercial hardening:
+#   - Shared sticky dirs (YNOW_CACHE_ROOT or hosted /tmp/ynow_cache) cut miss storms.
+#   - Cross-process min-interval gate (see .ynow_yahoo_gate_acquire / deep_scraper)
+#     spaces live Yahoo HTTP so concurrent sessions do not burst into 429.
 #
 # ==========================================
 
@@ -24,23 +30,82 @@ if (!exists(".ynow_log", mode = "function")) {
 .YNOW_CACHE_FAST_TTL_SEC <- 15L * 60L      # 15 minutes — prices / Rf / FX
 .YNOW_CACHE_SLOW_TTL_SEC <- 24L * 3600L    # 24 hours — statements / filings
 
+#' Hosted / forced shared-cache mode (shinyapps workers share /tmp).
+.ynow_shared_cache_enabled <- function() {
+  if (identical(Sys.getenv("YNOW_FORCE_SHARED_CACHE"), "1")) return(TRUE)
+  if (identical(Sys.getenv("YNOW_FORCE_SHARED_CACHE"), "0")) return(FALSE)
+  if (exists(".ynow_is_hosted_connect", mode = "function")) {
+    return(isTRUE(.ynow_is_hosted_connect()))
+  }
+  grepl("shinyapps", Sys.getenv("HOSTNAME"), ignore.case = TRUE) ||
+    grepl("shinyapps", Sys.getenv("R_CONFIG_ACTIVE"), ignore.case = TRUE) ||
+    identical(Sys.getenv("FORCE_SHINYAPPS_PYTHON"), "1")
+}
+
+#' Optional shared root for fast + slow + Yahoo gate stamp files.
+.ynow_cache_root <- function() {
+  override <- Sys.getenv("YNOW_CACHE_ROOT", unset = "")
+  if (nzchar(override)) {
+    d <- override
+  } else if (isTRUE(.ynow_shared_cache_enabled())) {
+    d <- file.path("/tmp", "ynow_cache")
+  } else {
+    d <- file.path(tempdir(), "ynow_cache")
+  }
+  dir.create(d, recursive = TRUE, showWarnings = FALSE)
+  normalizePath(d, winslash = "/", mustWork = FALSE)
+}
+
 .ynow_slow_cache_dir <- function() {
-  # Optional sticky dir (YNOW_SLOW_CACHE_DIR) survives short worker restarts better than
-  # a pure in-memory miss storm; default stays under tempdir for shinyapps safety.
+  # YNOW_SLOW_CACHE_DIR wins; else shared root/slow (hosted sticky) or temp.
   override <- Sys.getenv("YNOW_SLOW_CACHE_DIR", unset = "")
   d <- if (nzchar(override)) {
     override
   } else {
-    file.path(tempdir(), "ynow_cache_slow")
+    file.path(.ynow_cache_root(), "slow")
   }
   dir.create(d, recursive = TRUE, showWarnings = FALSE)
   d
 }
 
-.ynow_fast_cache <- cachem::cache_mem(
-  max_size = 48 * 1024^2,
-  max_age = .YNOW_CACHE_FAST_TTL_SEC
-)
+.ynow_fast_cache_dir <- function() {
+  override <- Sys.getenv("YNOW_FAST_CACHE_DIR", unset = "")
+  d <- if (nzchar(override)) {
+    override
+  } else {
+    file.path(.ynow_cache_root(), "fast")
+  }
+  dir.create(d, recursive = TRUE, showWarnings = FALSE)
+  d
+}
+
+.ynow_use_shared_fast_disk <- function() {
+  nzchar(Sys.getenv("YNOW_FAST_CACHE_DIR", unset = "")) ||
+    nzchar(Sys.getenv("YNOW_CACHE_ROOT", unset = "")) ||
+    isTRUE(.ynow_shared_cache_enabled())
+}
+
+.ynow_fast_cache <- if (isTRUE(.ynow_use_shared_fast_disk())) {
+  tryCatch({
+    cachem::cache_disk(
+      dir = .ynow_fast_cache_dir(),
+      max_size = 96 * 1024^2,
+      max_age = .YNOW_CACHE_FAST_TTL_SEC,
+      destroy_on_finalize = FALSE
+    )
+  }, error = function(e) {
+    .ynow_log("⚠️ fast cache_disk unavailable; falling back to cache_mem @ 15m: ", e$message)
+    cachem::cache_mem(
+      max_size = 48 * 1024^2,
+      max_age = .YNOW_CACHE_FAST_TTL_SEC
+    )
+  })
+} else {
+  cachem::cache_mem(
+    max_size = 48 * 1024^2,
+    max_age = .YNOW_CACHE_FAST_TTL_SEC
+  )
+}
 
 .ynow_slow_cache <- tryCatch({
   cachem::cache_disk(
@@ -61,14 +126,95 @@ if (!exists(".ynow_log", mode = "function")) {
 # Fundamentals must use `.ynow_slow_cache` — never park statements here.
 my_cache <- .ynow_fast_cache
 
-#' Inspect cache tier TTLs (for tests / diagnostics).
+# ==========================================
+# Yahoo cross-process rate gate (R-native paths: Lab crumb / quoteSummary)
+# Python yfinance paths use the matching gate in deep_scraper.py.
+# ==========================================
+.ynow_yahoo_gate_dir <- function() {
+  override <- Sys.getenv("YNOW_YAHOO_GATE_DIR", unset = "")
+  d <- if (nzchar(override)) override else file.path(.ynow_cache_root(), "yahoo_gate")
+  dir.create(d, recursive = TRUE, showWarnings = FALSE)
+  d
+}
+
+.ynow_yahoo_min_interval_sec <- function() {
+  ms <- suppressWarnings(as.numeric(Sys.getenv("YNOW_YAHOO_MIN_INTERVAL_MS", unset = "350"))[1])
+  if (!is.finite(ms) || ms < 0) ms <- 350
+  ms / 1000
+}
+
+.ynow_yahoo_gate_enabled <- function() {
+  v <- tolower(trimws(Sys.getenv("YNOW_YAHOO_GATE", unset = "1")))
+  !v %in% c("0", "false", "off", "no")
+}
+
+#' Space live Yahoo HTTP across workers (dir lock + min interval).
+#' @return invisible TRUE when a slot was taken (or gate disabled).
+.ynow_yahoo_gate_acquire <- function(timeout_sec = 30) {
+  if (!isTRUE(.ynow_yahoo_gate_enabled())) return(invisible(FALSE))
+  min_gap <- .ynow_yahoo_min_interval_sec()
+  if (!is.finite(min_gap) || min_gap <= 0) return(invisible(TRUE))
+
+  gdir <- .ynow_yahoo_gate_dir()
+  lock_dir <- file.path(gdir, "yahoo_gate.lock.d")
+  stamp_path <- file.path(gdir, "yahoo_gate.last")
+  deadline <- Sys.time() + max(1, as.numeric(timeout_sec)[1])
+
+  got <- FALSE
+  while (Sys.time() <= deadline) {
+    # POSIX-atomic: mkdir succeeds for exactly one waiter.
+    if (isTRUE(dir.create(lock_dir, showWarnings = FALSE))) {
+      got <- TRUE
+      break
+    }
+    # Stale lock from a killed worker: drop after 60s so the gate cannot wedge.
+    info <- tryCatch(file.info(lock_dir), error = function(e) NULL)
+    mtime <- if (!is.null(info)) info$mtime[1] else NA
+    if (!is.na(mtime) && is.finite(as.numeric(difftime(Sys.time(), mtime, units = "secs"))) &&
+        as.numeric(difftime(Sys.time(), mtime, units = "secs")) > 60) {
+      try(unlink(lock_dir, recursive = TRUE), silent = TRUE)
+    }
+    Sys.sleep(0.05)
+  }
+  if (!isTRUE(got)) {
+    .ynow_log("⚠️ Yahoo gate lock timeout; proceeding without spacing")
+    return(invisible(FALSE))
+  }
+
+  on.exit(try(unlink(lock_dir, recursive = TRUE), silent = TRUE), add = FALSE)
+
+  last <- NA_real_
+  if (file.exists(stamp_path)) {
+    raw <- tryCatch(readLines(stamp_path, n = 1L, warn = FALSE), error = function(e) "")
+    last <- suppressWarnings(as.numeric(raw[1]))
+  }
+  now <- as.numeric(Sys.time())
+  if (is.finite(last) && last > 0) {
+    wait <- min_gap - (now - last)
+    if (is.finite(wait) && wait > 0) Sys.sleep(wait)
+  }
+  tryCatch(
+    writeLines(format(as.numeric(Sys.time()), scientific = FALSE), stamp_path),
+    error = function(e) NULL
+  )
+  invisible(TRUE)
+}
+
+#' Inspect cache tier TTLs / shared mode / Yahoo gate (tests / diagnostics).
 ynow_cache_tier_info <- function() {
   list(
     fast_ttl_sec = as.integer(.YNOW_CACHE_FAST_TTL_SEC),
     slow_ttl_sec = as.integer(.YNOW_CACHE_SLOW_TTL_SEC),
     fast_class = paste(class(.ynow_fast_cache), collapse = "/"),
     slow_class = paste(class(.ynow_slow_cache), collapse = "/"),
-    slow_dir = tryCatch(.ynow_slow_cache_dir(), error = function(e) NA_character_)
+    slow_dir = tryCatch(.ynow_slow_cache_dir(), error = function(e) NA_character_),
+    fast_dir = tryCatch(.ynow_fast_cache_dir(), error = function(e) NA_character_),
+    cache_root = tryCatch(.ynow_cache_root(), error = function(e) NA_character_),
+    fast_shared_disk = isTRUE(.ynow_use_shared_fast_disk()) &&
+      grepl("cache_disk", paste(class(.ynow_fast_cache), collapse = "/"), fixed = TRUE),
+    yahoo_gate_enabled = isTRUE(.ynow_yahoo_gate_enabled()),
+    yahoo_min_interval_ms = as.integer(round(.ynow_yahoo_min_interval_sec() * 1000)),
+    yahoo_gate_dir = tryCatch(.ynow_yahoo_gate_dir(), error = function(e) NA_character_)
   )
 }
 

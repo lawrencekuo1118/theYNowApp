@@ -239,6 +239,9 @@ lab_cluster_merge_feature_dfs <- function(primary, secondary) {
   max_attempts <- as.integer(max_attempts)[1]
   if (!is.finite(max_attempts) || max_attempts < 1L) max_attempts <- 3L
   for (attempt in seq_len(max_attempts)) {
+    if (exists(".ynow_yahoo_gate_acquire", mode = "function")) {
+      tryCatch(.ynow_yahoo_gate_acquire(), error = function(e) NULL)
+    }
     h <- httr::handle("https://finance.yahoo.com")
     to <- as.numeric(timeout_sec)[1]
     tryCatch(
@@ -348,6 +351,10 @@ lab_fetch_cluster_features_r <- function(tickers, timeout_sec = 12) {
 
   fetch_one <- function(sym) {
     row <- empty_row(sym)
+    # One gate slot per ticker (host/auth retries share the same slot).
+    if (exists(".ynow_yahoo_gate_acquire", mode = "function")) {
+      tryCatch(.ynow_yahoo_gate_acquire(), error = function(e) NULL)
+    }
     hosts <- c(
       "https://query2.finance.yahoo.com",
       "https://query1.finance.yahoo.com"
