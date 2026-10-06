@@ -28,7 +28,7 @@ check <- function(label, cond) {
 
 cfg <- htcdi_load_config()
 ids <- htcdi_issuer_ids(cfg)
-check("universe 19", identical(length(ids), 19L))
+check("universe 18", identical(length(ids), 18L))
 check("OIL 93", identical(htcdi_find_issuer("OIL", cfg)$criticality_prior, 93))
 check("OIL ticker USO", identical(htcdi_find_issuer("OIL", cfg)$tickers[[1]], "USO"))
 check("ASML 95", identical(htcdi_find_issuer("ASML", cfg)$criticality_prior, 95))
@@ -36,8 +36,8 @@ check("ASM via ASMIY", identical(htcdi_find_issuer("ASM", cfg)$tickers[[1]], "AS
   identical(htcdi_find_issuer("ASM", cfg)$criticality_prior, 90))
 check("ARM listed", identical(htcdi_find_issuer("ARM", cfg)$tickers[[1]], "ARM") &&
   identical(htcdi_find_issuer("ARM", cfg)$criticality_prior, 84))
-check("Shin-Etsu via SHECY", identical(htcdi_find_issuer("SHIN_ETSU", cfg)$tickers[[1]], "SHECY") &&
-  identical(htcdi_find_issuer("SHIN_ETSU", cfg)$local_ordinary_ticker, "4063.T"))
+check("Shin-Etsu removed", is.null(htcdi_find_issuer("SHIN_ETSU", cfg)) &&
+  is.null(htcdi_find_issuer("SHECY", cfg)))
 check("ARINC via RTX", identical(htcdi_find_issuer("ARINC", cfg)$tickers[[1]], "RTX") &&
   identical(htcdi_find_issuer("ARINC", cfg)$criticality_prior, 87))
 check("SITA via AMADY", identical(htcdi_find_issuer("SITA", cfg)$tickers[[1]], "AMADY") &&
@@ -50,6 +50,10 @@ check("arinc_sita channel", {
 check("asml_asm channel", {
   ch <- cfg$contagion_channels
   any(vapply(ch, function(x) identical(x$id, "asml_asm"), logical(1)))
+})
+check("no shin_foundry channel", {
+  ch <- cfg$contagion_channels
+  !any(vapply(ch, function(x) identical(x$id, "shin_foundry"), logical(1)))
 })
 check("meta destruction name", identical(cfg$meta$name, "Human Tech Civilization Destruction Index"))
 check("oil litho channel", {
@@ -391,11 +395,10 @@ check("aviation labels", {
     identical(ui_str("htcdi_fn_aviation_sita", "zh-TW"), "SITA 航空 IT（市場代理：Amadeus ADR）") &&
     identical(.htcdi_named("ch", "arinc_sita", "zh-TW"), "ARINC 與 SITA 綁在一起")
 })
-check("asm arm shinetsu labels", {
+check("asm arm labels", {
   identical(ui_str("htcdi_ly_wafer_process_equipment", "zh-TW"), "晶圓製程設備") &&
-    identical(ui_str("htcdi_ly_wafer_materials", "zh-TW"), "矽晶圓材料") &&
     identical(ui_str("htcdi_ly_chip_ip", "zh-TW"), "晶片設計 IP") &&
-    grepl("信越", ui_str("htcdi_fn_wafer_materials", "zh-TW"), fixed = TRUE) &&
+    is.null(.UI_STRINGS$en$htcdi_ly_wafer_materials) &&
     identical(.htcdi_named("ch", "asml_asm", "en"), "ASML tied to ASM")
 })
 check("en name", identical(ui_str("htcdi_index_health", "en"), "Statement Development"))
