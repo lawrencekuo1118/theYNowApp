@@ -652,6 +652,24 @@ search_ticker_choices <- function(query, max_results = 12L, market = NULL) {
     merged <- merge_named(out, cjk_hits, local_hits)
   }
 
+  # Exact ticker match first (AAPL before AAPU/AAPD leveraged ETFs; 2330 before peers).
+  if (length(merged)) {
+    q_sym <- if (exists("normalize_ticker_for_market", mode = "function")) {
+      tryCatch(normalize_ticker_for_market(query, mode), error = function(e) toupper(query))
+    } else {
+      toupper(gsub("\\s+", "", query))
+    }
+    q_sym <- toupper(trimws(as.character(q_sym %||% "")[1]))
+    q_bare <- sub("\\.(TW|TWO)$", "", q_sym, ignore.case = TRUE)
+    vals <- toupper(unname(merged))
+    bare_vals <- sub("\\.(TW|TWO)$", "", vals, ignore.case = TRUE)
+    exact_idx <- which(vals == q_sym | bare_vals == q_bare)
+    if (length(exact_idx)) {
+      merged <- c(merged[exact_idx], merged[-exact_idx])
+      merged <- merged[!duplicated(unname(merged))]
+    }
+  }
+
   if (!length(merged)) {
     q_norm <- if (exists("normalize_ticker_for_market", mode = "function")) {
       normalize_ticker_for_market(query, mode)
