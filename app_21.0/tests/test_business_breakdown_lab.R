@@ -765,9 +765,9 @@ check("engine does not gate chart on component count",
       !grepl("n_valid < 2", engine_src, fixed = TRUE) &&
         !grepl("if (n_valid < 2L)", engine_src, fixed = TRUE))
 check("notes helper used", grepl("ynow_notes_block", mod_src, fixed = TRUE))
-check("Lab numerals do not use HCCSI flow fill",
-      !grepl("ynow-hccsi-flow", mod_src, fixed = TRUE) &&
-        !grepl("ynow-hccsi-flow", engine_src, fixed = TRUE))
+check("Lab numerals do not use HTCDI flow fill",
+      !grepl("ynow-htcdi-flow", mod_src, fixed = TRUE) &&
+        !grepl("ynow-htcdi-flow", engine_src, fixed = TRUE))
 check("no invalid shinydashboard box status default",
       !grepl("status\\s*=\\s*[\"']default[\"']", mod_src))
 if (requireNamespace("shiny", quietly = TRUE) &&

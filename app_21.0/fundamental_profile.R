@@ -204,11 +204,11 @@ fs_item_to_focus_metric <- function(item) {
   identical(t, "fallback") || identical(t, "Data-limited") || identical(t, "資料受限")
 }
 
-#' Wrap Data-limited / 資料受限 in the shared HCCSI logo-flow class (no second animation).
+#' Wrap Data-limited / 資料受限 in the shared HTCDI logo-flow class (no second animation).
 .ynow_data_limited_flow_span <- function(lab, force = FALSE) {
   txt <- as.character(lab %||% "")[1]
   if (isTRUE(force) || .ynow_is_data_limited_token(txt)) {
-    tags$span(class = "ynow-hccsi-flow", txt)
+    tags$span(class = "ynow-htcdi-flow", txt)
   } else {
     txt
   }
@@ -232,8 +232,8 @@ fs_item_to_focus_metric <- function(item) {
     }
   }
   tip <- as.character(title %||% "")[1]
-  # Data-limited / 資料受限 uses HCCSI numeral teal flow fill; others stay gold-on-black.
-  inner_cls <- if (identical(pid, "fallback")) "ynow-hccsi-flow" else NULL
+  # Data-limited / 資料受限 uses HTCDI numeral teal flow fill; others stay gold-on-black.
+  inner_cls <- if (identical(pid, "fallback")) "ynow-htcdi-flow" else NULL
   tags$span(
     class = "ynow-fund-profile-badge",
     title = if (nzchar(tip)) tip else lab,

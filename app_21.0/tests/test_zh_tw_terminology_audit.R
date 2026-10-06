@@ -48,11 +48,11 @@ expect_zh <- list(
   lifecycle_opt_high_growth = "高成長",
   lifecycle_opt_declining = "衰退／有限存續",
   lifecycle_opt_financial = "金融機構",
-  hccsi_alert_normal = "擴張",
-  hccsi_alert_warning = "降溫",
-  hccsi_alert_critical = "收縮",
-  hccsi_alert_unavailable = "無法取得",
-  hccsi_col_criticality = "關鍵程度",
+  htcdi_alert_normal = "擴張",
+  htcdi_alert_warning = "降溫",
+  htcdi_alert_critical = "收縮",
+  htcdi_alert_unavailable = "無法取得",
+  htcdi_col_criticality = "關鍵程度",
   testing_page_title = "測試",
   bblab_ticker_label = "股票代號",
   bblab_gm_unestimable = "無法可靠估計",
@@ -60,7 +60,7 @@ expect_zh <- list(
   bblab_kpi_revenue = "營收",
   bblab_kpi_gp = "毛利",
   bblab_ch4_title = "五年結構佔比演進",
-  hccsi_ly_payment_networks = "支付網路"
+  htcdi_ly_payment_networks = "支付網路"
 )
 for (k in names(expect_zh)) {
   check(paste("zh label", k), identical(as.character(zh[[k]])[1], expect_zh[[k]]))
@@ -68,23 +68,23 @@ for (k in names(expect_zh)) {
 
 # Intentional English finance titles (kept with Chinese glosses elsewhere)
 check(
-  "HCCSI index title stays English by design",
-  identical(as.character(zh$hccsi_index_health)[1], "Statement Development") &&
-    grepl("財報發展", as.character(zh$hccsi_index_health_gloss)[1], fixed = TRUE)
+  "HTCDI index title stays English by design",
+  identical(as.character(zh$htcdi_index_health)[1], "Statement Development") &&
+    grepl("財報發展", as.character(zh$htcdi_index_health_gloss)[1], fixed = TRUE)
 )
 
 # Substantial English prose identical to en (exclude formulas / short finance terms)
 bad_ident <- character(0)
 allow_prefix <- c(
-  "hfv_scenario_cue_", "hccsi_index_", "bblab_formula_", "rel_formula_",
-  "sotp_formula_", "ms_card_multiples_formula", "hccsi_formula_"
+  "hfv_scenario_cue_", "htcdi_index_", "bblab_formula_", "rel_formula_",
+  "sotp_formula_", "ms_card_multiples_formula", "htcdi_formula_"
 )
 for (k in keys) {
   e <- as.character(en[[k]] %||% "")[1]
   z <- as.character(zh[[k]] %||% "")[1]
   if (!nzchar(e) || !identical(e, z)) next
   if (!grepl("[A-Za-z]{4,}", e) || !grepl(" ", e, fixed = TRUE) || nchar(e) <= 20L) next
-  if (grepl("[=×÷]|Implied |P/E|EV/|FCFF|FCFE|WACC|HCCSI|Beta|Yahoo|FV|Price", e)) next
+  if (grepl("[=×÷]|Implied |P/E|EV/|FCFF|FCFE|WACC|HTCDI|Beta|Yahoo|FV|Price", e)) next
   if (any(startsWith(k, allow_prefix))) next
   # allow ALL-CAPS finance banners
   if (identical(e, toupper(e)) && nchar(e) <= 40L) next

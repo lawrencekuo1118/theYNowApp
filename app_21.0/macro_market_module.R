@@ -555,9 +555,9 @@ macro_market_ui <- function(id = "macro") {
       uiOutput(ns("index_hist_panel"))
     ),
     tags$div(
-      id = "ynow_macro_hccsi_expand",
-      class = "ynow-macro-hccsi-expand ynow-full-only",
-      uiOutput(ns("hccsi_expand_panel"))
+      id = "ynow_macro_htcdi_expand",
+      class = "ynow-macro-htcdi-expand ynow-full-only",
+      uiOutput(ns("htcdi_expand_panel"))
     ),
     tags$section(
       class = "ynow-macro-chapter",
@@ -729,7 +729,7 @@ macro_market_server <- function(id = "macro",
 
     refresh_token <- reactiveVal(0L)
     selected_index <- reactiveVal("")
-    hccsi_expanded <- reactiveVal(FALSE)
+    htcdi_expanded <- reactiveVal(FALSE)
     # YNOW / TYNOW chart overlays — default none (no major-index overlay).
     own_index_overlays <- reactiveVal(character(0))
     # Until the user changes Industry vs benchmark, US opens on Technology (XLK).
@@ -738,9 +738,9 @@ macro_market_server <- function(id = "macro",
     observeEvent(input$refresh, {
       refresh_token(isolate(refresh_token()) + 1L)
     }, ignoreInit = TRUE)
-    observeEvent(input$hccsi_click, {
+    observeEvent(input$htcdi_click, {
       if (.is_lite()) return()
-      hccsi_expanded(!isolate(hccsi_expanded()))
+      htcdi_expanded(!isolate(htcdi_expanded()))
     }, ignoreInit = TRUE)
     observeEvent(input$index_click, {
       if (.is_lite()) return()
@@ -756,7 +756,7 @@ macro_market_server <- function(id = "macro",
       }
       # #endregion
       if (!accepted) return()
-      # Second click on the same board collapses the expand panel (same pattern as HCCSI).
+      # Second click on the same board collapses the expand panel (same pattern as HTCDI).
       cur <- isolate(as.character(selected_index() %||% "")[1])
       if (identical(cur, sym)) {
         selected_index("")
@@ -1066,7 +1066,7 @@ macro_market_server <- function(id = "macro",
       })
       table <- if (length(rows)) {
         tags$table(
-          class = "table table-condensed ynow-hccsi-table",
+          class = "table table-condensed ynow-htcdi-table",
           tags$thead(tags$tr(
             tags$th(id = "ynow_index_col_ticker", `data-i18n` = "ynow_index_col_ticker", .ui("ynow_index_col_ticker")),
             tags$th(id = "ynow_index_col_name", `data-i18n` = "ynow_index_col_name", .ui("ynow_index_col_name")),
@@ -1262,7 +1262,7 @@ macro_market_server <- function(id = "macro",
       list(members = mem, last = last, chg = chg)
     })
 
-    # YNOW / TYNOW KPI card (sits on Rf row at 2:1:1 with HCCSI).
+    # YNOW / TYNOW KPI card (sits on Rf row at 2:1:1 with HTCDI).
     .own_index_kpi_card <- function() {
       own <- .own_index_symbol()
       if (!nzchar(own)) return(NULL)
@@ -1308,7 +1308,7 @@ macro_market_server <- function(id = "macro",
               `data-i18n` = title_key,
               .ui(title_key)
             ),
-            tags$div(class = "ynow-macro-kpi__value ynow-hccsi-flow", last_txt),
+            tags$div(class = "ynow-macro-kpi__value ynow-htcdi-flow", last_txt),
             tags$div(class = paste("ynow-macro-kpi__chg", chg_cls), chg_txt),
             tags$div(class = "ynow-macro-kpi__sym", own)
           ),
@@ -1355,19 +1355,19 @@ macro_market_server <- function(id = "macro",
       )
     })
 
-    # HCCSI pulls 5y prices and statements for every issuer. That work used to
+    # HTCDI pulls 5y prices and statements for every issuer. That work used to
     # run inside the first paint. Queue it after the session flushes so the
     # index cards and the rest of the page can appear first.
-    hccsi_val <- reactiveVal(NULL)
-    hccsi_job <- reactiveVal(0L)
-    .hccsi_compute <- function(mode) {
+    htcdi_val <- reactiveVal(NULL)
+    htcdi_job <- reactiveVal(0L)
+    .htcdi_compute <- function(mode) {
       # Always attempt live Yahoo/history and statements. Never score from config placeholders.
-      cfg <- if (exists("hccsi_load_config", mode = "function")) hccsi_load_config() else NULL
+      cfg <- if (exists("htcdi_load_config", mode = "function")) htcdi_load_config() else NULL
       price_map <- list(); bench_df <- NULL
       n_iss <- 0L
       if (exists("fetch_price_history_df", mode = "function") &&
-          exists("hccsi_issuers", mode = "function")) {
-        issuers <- hccsi_issuers(cfg)
+          exists("htcdi_issuers", mode = "function")) {
+        issuers <- htcdi_issuers(cfg)
         n_iss <- length(issuers)
         for (iss in issuers) {
           tk <- as.character(iss$tickers[[1]] %||% "")[1]
@@ -1380,8 +1380,8 @@ macro_market_server <- function(id = "macro",
       }
       fs_map <- list()
       if (exists("cached_scrape_financials", mode = "function") &&
-          exists("hccsi_issuers", mode = "function")) {
-        for (iss in hccsi_issuers(cfg)) {
+          exists("htcdi_issuers", mode = "function")) {
+        for (iss in htcdi_issuers(cfg)) {
           tk <- as.character(iss$tickers[[1]] %||% "")[1]
           if (!nzchar(tk)) next
 # Skip statement scrape for ETFs / futures proxies (oil index) — market pillars only.
@@ -1393,25 +1393,25 @@ macro_market_server <- function(id = "macro",
           if (!is.null(fs)) fs_map[[tk]] <- fs
         }
       }
-      inputs <- if (exists("hccsi_live_inputs_from_prices", mode = "function")) {
-        hccsi_live_inputs_from_prices(price_map, bench_df, cfg, fs_map)
+      inputs <- if (exists("htcdi_live_inputs_from_prices", mode = "function")) {
+        htcdi_live_inputs_from_prices(price_map, bench_df, cfg, fs_map)
       } else NULL
-      res <- if (exists("hccsi_score", mode = "function")) {
-        tryCatch(hccsi_score(inputs, cfg), error = function(e) NULL)
+      res <- if (exists("htcdi_score", mode = "function")) {
+        tryCatch(htcdi_score(inputs, cfg), error = function(e) NULL)
       } else {
         NULL
       }
       list(res = res, n_iss = n_iss, n_px = length(price_map), n_fs = length(fs_map))
     }
-    .queue_hccsi <- function() {
+    .queue_htcdi <- function() {
       mode <- isolate(.mode())
-      job <- isolate(hccsi_job()) + 1L
-      hccsi_job(job)
+      job <- isolate(htcdi_job()) + 1L
+      htcdi_job(job)
       run_job <- function() {
-        if (!identical(isolate(hccsi_job()), job)) return()
-        out <- tryCatch(.hccsi_compute(mode), error = function(e) list(res = NULL, n_iss = 0L, n_px = 0L, n_fs = 0L))
-        if (!identical(isolate(hccsi_job()), job)) return()
-        hccsi_val(out$res %||% list(availability = "unavailable"))
+        if (!identical(isolate(htcdi_job()), job)) return()
+        out <- tryCatch(.htcdi_compute(mode), error = function(e) list(res = NULL, n_iss = 0L, n_px = 0L, n_fs = 0L))
+        if (!identical(isolate(htcdi_job()), job)) return()
+        htcdi_val(out$res %||% list(availability = "unavailable"))
       }
       if (requireNamespace("later", quietly = TRUE)) {
         later::later(run_job, delay = 0)
@@ -1419,27 +1419,27 @@ macro_market_server <- function(id = "macro",
         run_job()
       }
     }
-    session$onFlushed(function() .queue_hccsi(), once = TRUE)
+    session$onFlushed(function() .queue_htcdi(), once = TRUE)
     observeEvent(refresh_token(), {
-      hccsi_val(NULL)
-      .queue_hccsi()
+      htcdi_val(NULL)
+      .queue_htcdi()
     }, ignoreInit = TRUE)
-    hccsi_result <- reactive(hccsi_val())
+    htcdi_result <- reactive(htcdi_val())
 
-    output$hccsi_expand_panel <- renderUI({
-      if (.is_lite() || !isTRUE(hccsi_expanded())) return(NULL)
-      res <- hccsi_result()
-      if (exists("hccsi_expand_ui", mode = "function")) hccsi_expand_ui(res, .loc()) else NULL
+    output$htcdi_expand_panel <- renderUI({
+      if (.is_lite() || !isTRUE(htcdi_expanded())) return(NULL)
+      res <- htcdi_result()
+      if (exists("htcdi_expand_ui", mode = "function")) htcdi_expand_ui(res, .loc()) else NULL
     })
 
-    # Rf : YNOW/TYNOW : HCCSI = 2:1:1 (widths 6 / 3 / 3). TW NDC on the next row.
-    # HCCSI four-index expand stays Full-only, below this row.
+    # Rf : YNOW/TYNOW : HTCDI = 2:1:1 (widths 6 / 3 / 3). TW NDC on the next row.
+    # HTCDI four-index expand stays Full-only, below this row.
     output$rf_signal_row <- renderUI({
       .loc()
       mode <- .mode()
       lite <- .is_lite()
       is_tw <- identical(mode, "TW")
-      res <- tryCatch(hccsi_result(), error = function(e) NULL)
+      res <- tryCatch(htcdi_result(), error = function(e) NULL)
       if (is.null(res)) res <- list(availability = "loading")
       ynow_card <- .own_index_kpi_card()
       rf_col <- column(
@@ -1454,18 +1454,18 @@ macro_market_server <- function(id = "macro",
         width = 3, class = "col-xs-12 col-sm-3 col-md-3",
         if (!is.null(ynow_card)) ynow_card else tags$div(class = "ynow-macro-kpi ynow-macro-kpi--ynow", "—")
       )
-      hccsi_col <- column(
+      htcdi_col <- column(
         width = 3, class = "col-xs-12 col-sm-3 col-md-3",
-        if (exists("hccsi_kpi_box", mode = "function")) {
-          hccsi_kpi_box(res, lite = lite, locale = .loc(), ns = ns,
-                        selected = isTRUE(hccsi_expanded()) && !isTRUE(lite))
+        if (exists("htcdi_kpi_box", mode = "function")) {
+          htcdi_kpi_box(res, lite = lite, locale = .loc(), ns = ns,
+                        selected = isTRUE(htcdi_expanded()) && !isTRUE(lite))
         } else {
-          tags$div(class = "ynow-macro-kpi ynow-macro-kpi--hccsi", "HCCSI")
+          tags$div(class = "ynow-macro-kpi ynow-macro-kpi--htcdi", "HTCDI")
         }
       )
       main_row <- do.call(
         fluidRow,
-        list(class = "ynow-macro-rf-row ynow-macro-kpi-row", rf_col, ynow_col, hccsi_col)
+        list(class = "ynow-macro-rf-row ynow-macro-kpi-row", rf_col, ynow_col, htcdi_col)
       )
       if (!is_tw) return(main_row)
       ndc_row <- fluidRow(
@@ -1800,7 +1800,7 @@ macro_market_server <- function(id = "macro",
       tags$div(
         class = "table-responsive",
         tags$table(
-          class = "table table-condensed ynow-hccsi-table",
+          class = "table table-condensed ynow-htcdi-table",
           tags$thead(tags$tr(
             tags$th("#"),
             tags$th(.ui("macro_bubble_col_ticker")),

@@ -267,12 +267,12 @@ stopifnot(all(cov_ok == "OK"))
 stopifnot("n_finite" %in% names(res$data))
 
 flow_en <- lab_cluster_coverage_flow_html(c("Data-limited", "OK"))
-stopifnot(grepl("ynow-hccsi-flow", flow_en[[1]], fixed = TRUE))
+stopifnot(grepl("ynow-htcdi-flow", flow_en[[1]], fixed = TRUE))
 stopifnot(grepl("Data-limited", flow_en[[1]], fixed = TRUE))
-stopifnot(!grepl("ynow-hccsi-flow", flow_en[[2]], fixed = TRUE))
+stopifnot(!grepl("ynow-htcdi-flow", flow_en[[2]], fixed = TRUE))
 stopifnot(identical(flow_en[[2]], "OK"))
 flow_zh <- lab_cluster_coverage_flow_html("資料受限")
-stopifnot(grepl("ynow-hccsi-flow", flow_zh[[1]], fixed = TRUE))
+stopifnot(grepl("ynow-htcdi-flow", flow_zh[[1]], fixed = TRUE))
 stopifnot(grepl("資料受限", flow_zh[[1]], fixed = TRUE))
 
 parsed_cluster <- tryCatch({

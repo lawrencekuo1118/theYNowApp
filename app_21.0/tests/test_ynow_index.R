@@ -148,7 +148,7 @@ check("own index at page bottom", {
   pos_own <- regexpr("id = \"ynow_own_index\"", macro, fixed = TRUE)[1]
   pos_fx > 0 && pos_own > pos_fx
 })
-check("flow numeral", grepl("ynow-hccsi-flow", macro, fixed = TRUE))
+check("flow numeral", grepl("ynow-htcdi-flow", macro, fixed = TRUE))
 check("YNOW KPI on Rf row", grepl(".own_index_kpi_card", macro, fixed = TRUE) &&
   grepl("ynow-macro-kpi--ynow", macro, fixed = TRUE) &&
   grepl("ynow_col", macro, fixed = TRUE))

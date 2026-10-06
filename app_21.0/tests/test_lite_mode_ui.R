@@ -54,10 +54,10 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
     "macro_index_chart_error",
     "macro_own_index_overlay_label", "macro_own_index_overlay_hint",
     "macro_own_index_overlay_yaxis",
-    "hccsi_title", "hccsi_disclosure", "hccsi_click_hint",
-    "hccsi_index_health", "hccsi_index_stress",
-    "hccsi_index_fragility", "hccsi_index_market",
-    "hccsi_unavailable", "hccsi_dropped", "hccsi_dropped_none",
+    "htcdi_title", "htcdi_disclosure", "htcdi_click_hint",
+    "htcdi_index_health", "htcdi_index_stress",
+    "htcdi_index_fragility", "htcdi_index_market",
+    "htcdi_unavailable", "htcdi_dropped", "htcdi_dropped_none",
     "menu_business_breakdown_lab", "menu_company_advance",
     "bblab_page_sub", "bblab_report_kicker", "bblab_shared_ticker_hint",
     "bblab_page_title", "bblab_gm_unestimable", "bblab_reval_unavailable",
@@ -251,12 +251,12 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl("body.ynow-lite #ynow_macro_index_hist", txt, fixed = TRUE))
   testthat::expect_true(grepl("body.ynow-lite .ynow-macro-kpi--clickable", txt, fixed = TRUE))
   testthat::expect_true(grepl("body.ynow-lite #ynow_macro_index_hint", txt, fixed = TRUE))
-  testthat::expect_true(grepl("body.ynow-lite #ynow_macro_hccsi_expand", txt, fixed = TRUE))
-  testthat::expect_true(grepl("ynow-macro-kpi--hccsi", macro_txt, fixed = TRUE))
+  testthat::expect_true(grepl("body.ynow-lite #ynow_macro_htcdi_expand", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-macro-kpi--htcdi", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-macro-kpi--ynow", macro_txt, fixed = TRUE))
-  testthat::expect_true(grepl("rf_col, ynow_col, hccsi_col", macro_txt, fixed = TRUE))
-  testthat::expect_true(grepl("ynow-macro-hccsi-expand ynow-full-only", macro_txt, fixed = TRUE))
-  testthat::expect_false(grepl("ynow-macro-kpi--hccsi[^\\n]*ynow-full-only", macro_txt))
+  testthat::expect_true(grepl("rf_col, ynow_col, htcdi_col", macro_txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-macro-htcdi-expand ynow-full-only", macro_txt, fixed = TRUE))
+  testthat::expect_false(grepl("ynow-macro-kpi--htcdi[^\\n]*ynow-full-only", macro_txt))
   # Macro, then Blue Chip, then Company (dashboard), then YNOW
   testthat::expect_true(
     regexpr('tabName = "macro_market"', txt, fixed = TRUE)[1] <

@@ -1,10 +1,10 @@
-# Human Tech Civilization Destruction Index (HCCSI)
+# Human Tech Civilization Destruction Index (HTCDI)
 # Surveillance reading of civilization-critical energy + tech stack stress.
-# Not a buy signal. Ticker stays HCCSI.
+# Not a buy signal. Ticker stays HTCDI.
 # Display name (zh-TW): 人類科技文明毀滅指數
 
 meta:
-  id: HCCSI
+  id: HTCDI
   name: Human Tech Civilization Destruction Index
   role: civilization_destruction_reading
   not:

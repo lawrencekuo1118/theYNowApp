@@ -155,9 +155,9 @@ for (k in c(
   "macro_index_chart_error",
   "macro_own_index_overlay_label", "macro_own_index_overlay_hint",
   "macro_own_index_overlay_yaxis",
-  "hccsi_title", "hccsi_disclosure", "hccsi_index_health",
-  "hccsi_index_stress", "hccsi_index_fragility", "hccsi_index_market",
-  "hccsi_unavailable", "notif_hccsi_history_missing"
+  "htcdi_title", "htcdi_disclosure", "htcdi_index_health",
+  "htcdi_index_stress", "htcdi_index_fragility", "htcdi_index_market",
+  "htcdi_unavailable", "notif_htcdi_history_missing"
 )) {
   check(paste("en", k), nzchar(ui_str(k, "en")))
   check(paste("zh", k), nzchar(ui_str(k, "zh-TW")))
@@ -508,21 +508,22 @@ check("TW market red-up green-down CSS", {
     grepl("body.ynow-market-tw .ynow-macro-kpi .ynow-macro-up", ui_css, fixed = TRUE)
 })
 check("locale wires index hint", grepl("ynow_macro_index_hint", ui_css, fixed = TRUE))
-check("HCCSI box on Rf row", grepl("ynow-macro-kpi--hccsi", txt, fixed = TRUE))
+check("HTCDI box on Rf row", grepl("ynow-macro-kpi--htcdi", txt, fixed = TRUE))
 check("YNOW KPI on Rf row", grepl("ynow-macro-kpi--ynow", txt, fixed = TRUE) &&
   grepl(".own_index_kpi_card", txt, fixed = TRUE))
-check("HCCSI expand Full-only", grepl("ynow-macro-hccsi-expand ynow-full-only", txt, fixed = TRUE))
-check("HCCSI expand below Rf row", {
+check("HTCDI expand Full-only", grepl("ynow-macro-htcdi-expand ynow-full-only", txt, fixed = TRUE))
+check("HTCDI expand below Rf row", {
   pos_rf <- regexpr("rf_signal_row", txt, fixed = TRUE)[1]
-  pos_ex <- regexpr("ynow_macro_hccsi_expand", txt, fixed = TRUE)[1]
+  pos_ex <- regexpr("ynow_macro_htcdi_expand", txt, fixed = TRUE)[1]
   is.finite(pos_rf) && is.finite(pos_ex) && pos_ex > pos_rf
 })
-check("RF:YNOW:HCCSI 2:1:1 widths", grepl("width = 6, class = \"col-xs-12 col-sm-6 col-md-6\"", txt, fixed = TRUE) &&
+check("RF:YNOW:HTCDI 2:1:1 widths", grepl("width = 6, class = \"col-xs-12 col-sm-6 col-md-6\"", txt, fixed = TRUE) &&
   grepl("width = 3, class = \"col-xs-12 col-sm-3 col-md-3\"", txt, fixed = TRUE) &&
-  grepl("rf_col, ynow_col, hccsi_col", txt, fixed = TRUE))
+  grepl("rf_col, ynow_col, htcdi_col", txt, fixed = TRUE))
 check("TW NDC on next row", grepl("ynow-macro-ndc-row", txt, fixed = TRUE))
-check("lite CSS hides HCCSI expand", grepl("body.ynow-lite #ynow_macro_hccsi_expand", ui_css, fixed = TRUE))
-check("en HCCSI title", identical(ui_str("hccsi_title", "en"), "HCCSI"))
-check("zh HCCSI title stays English", identical(ui_str("hccsi_title", "zh-TW"), "HCCSI"))
+check("lite CSS hides HTCDI expand", grepl("body.ynow-lite #ynow_macro_htcdi_expand", ui_css, fixed = TRUE))
+check("en HTCDI title", identical(ui_str("htcdi_title", "en"), "HTCDI"))
+check("zh HTCDI title Chinese display", identical(ui_str("htcdi_title", "zh-TW"), "人類科技文明毀滅指數"))
+check("zh HTCDI full includes ticker", identical(ui_str("htcdi_title_full", "zh-TW"), "人類科技文明毀滅指數（HTCDI）"))
 
 cat("All macro market module checks passed.\n")
