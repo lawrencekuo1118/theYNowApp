@@ -302,6 +302,93 @@ macro_concept_choices <- function(mode = get_market_mode(), locale = "en") {
   out
 }
 
+#' Constituent count for one concept theme key (concept_* / tw_*).
+macro_concept_group_n <- function(theme_key, mode = get_market_mode()) {
+  key <- as.character(theme_key %||% "")[1]
+  if (!nzchar(key)) return(0L)
+  mode <- normalize_market_mode(mode)
+  bare <- sub("^(concept_|tw_)", "", key)
+  grp <- NULL
+  if (exists("LAB_CONCEPT_GROUPS", inherits = TRUE) &&
+      !is.null(LAB_CONCEPT_GROUPS[[mode]])) {
+    grp <- LAB_CONCEPT_GROUPS[[mode]][[bare]]
+  }
+  if (is.null(grp)) return(0L)
+  length(unique(as.character(grp[nzchar(as.character(grp))])))
+}
+
+#' Font sizes (px) for concept word-cloud chips, scaled by basket size.
+macro_concept_cloud_sizes <- function(choices, mode = get_market_mode(),
+                                      min_px = 12, max_px = 22) {
+  vals <- unname(as.character(choices %||% character(0)))
+  if (!length(vals)) return(numeric(0))
+  ns <- vapply(vals, function(k) macro_concept_group_n(k, mode), integer(1))
+  ns[!is.finite(ns) | ns < 1L] <- 1L
+  lo <- min(ns)
+  hi <- max(ns)
+  if (!is.finite(hi) || hi <= lo) {
+    return(rep((min_px + max_px) / 2, length(ns)))
+  }
+  min_px + (max_px - min_px) * (ns - lo) / (hi - lo)
+}
+
+.MACRO_CONCEPT_OVERLAY_COLORS <- c(
+  "#2980b9", "#8e44ad", "#16a085", "#c0392b",
+  "#d35400", "#2c3e50", "#27ae60", "#e67e22",
+  "#1abc9c", "#9b59b6"
+)
+
+macro_concept_overlay_color <- function(i) {
+  i <- as.integer(i)[1]
+  if (!is.finite(i) || i < 1L) i <- 1L
+  cols <- .MACRO_CONCEPT_OVERLAY_COLORS
+  cols[((i - 1L) %% length(cols)) + 1L]
+}
+
+#' Normalize multi-select concept keys from the word cloud.
+macro_selected_concept_keys <- function(raw) {
+  keys <- unique(as.character(raw %||% character(0)))
+  keys <- keys[!is.na(keys) & nzchar(keys)]
+  keys
+}
+
+#' Word-cloud checkbox group for concept multi-select overlays.
+macro_concept_cloud_input <- function(inputId, choices, selected = character(0),
+                                      mode = get_market_mode()) {
+  vals <- unname(as.character(choices %||% character(0)))
+  labs <- names(choices)
+  if (is.null(labs) || length(labs) != length(vals)) {
+    labs <- vals
+  }
+  if (!length(vals)) {
+    return(htmltools::tags$p(
+      class = "ynow-macro-hint",
+      id = "ynow_macro_concept_cloud_empty",
+      "—"
+    ))
+  }
+  sizes <- macro_concept_cloud_sizes(choices, mode = mode)
+  choice_names <- lapply(seq_along(vals), function(i) {
+    htmltools::tags$span(
+      class = "ynow-macro-cloud-word",
+      style = sprintf("font-size:%spx;", round(sizes[[i]])),
+      labs[[i]]
+    )
+  })
+  sel <- intersect(as.character(selected %||% character(0)), vals)
+  htmltools::tags$div(
+    class = "ynow-macro-concept-cloud",
+    shiny::checkboxGroupInput(
+      inputId = inputId,
+      label = NULL,
+      choiceNames = choice_names,
+      choiceValues = vals,
+      selected = sel,
+      inline = TRUE
+    )
+  )
+}
+
 #' Combined catalog (bubble / backward compat): industry then concept.
 macro_theme_choices <- function(mode = get_market_mode(), locale = "en") {
   c(macro_industry_choices(mode, locale), macro_concept_choices(mode, locale))
@@ -480,34 +567,29 @@ macro_market_ui <- function(id = "macro") {
         id = "ynow_macro_theme_help",
         class = "ynow-macro-hint ynow-macro-chapter__lead",
         paste0(
-          "Pick Industry and Concept independently (either, both, or neither). ",
+          "Pick Industry from the menu and Concept from the word cloud (either, both, or neither). ",
+          "Click one or more concept chips to overlay rebased series on the same chart. ",
           "The same picks drive Relative performance and Dynamic industry bubble below. ",
           "US industry uses GICS sector ETFs; Taiwan industry uses the industry-standard snapshot. ",
-          "Concept uses the concept-stock universe. ",
+          "Concept chips are the concept-stock universe (chip size reflects basket breadth). ",
           "Benchmark is gray dashed on the right axis (rebased = 100 at window start; native currency, no FX)."
         )
       ),
       fluidRow(
         column(
-          width = 3,
+          width = 4,
           selectInput(
             ns("industry_key"),
             label = tags$span(id = "ynow_macro_industry_label", "Industry vs benchmark"),
-            choices = c("—" = ""),
+            choices = tryCatch(
+              macro_choices_with_none(macro_industry_choices("US", "en"), "en"),
+              error = function(e) c("—" = "")
+            ),
             selected = "gics_xlk"
           )
         ),
         column(
           width = 3,
-          selectInput(
-            ns("concept_key"),
-            label = tags$span(id = "ynow_macro_concept_label", "Concept vs benchmark"),
-            choices = c("—" = ""),
-            selected = ""
-          )
-        ),
-        column(
-          width = 2,
           selectInput(
             ns("hist_period"),
             label = tags$span(id = "ynow_macro_period_label", "Window"),
@@ -516,7 +598,7 @@ macro_market_ui <- function(id = "macro") {
           )
         ),
         column(
-          width = 4,
+          width = 5,
           tags$div(
             style = "margin-top: 24px;",
             actionButton(
@@ -527,6 +609,20 @@ macro_market_ui <- function(id = "macro") {
             )
           )
         )
+      ),
+      tags$div(
+        class = "ynow-macro-concept-cloud-wrap",
+        tags$label(
+          id = "ynow_macro_concept_label",
+          class = "control-label",
+          "Concept vs benchmark"
+        ),
+        tags$p(
+          id = "ynow_macro_concept_cloud_hint",
+          class = "ynow-macro-hint",
+          "Click concepts in the word cloud to multi-select overlay series (rebased = 100)."
+        ),
+        uiOutput(ns("concept_cloud_ui"))
       ),
       tags$div(
         class = "ynow-macro-overlay-plot-wrap",
@@ -563,9 +659,10 @@ macro_market_ui <- function(id = "macro") {
         id = "ynow_macro_bubble_sub",
         class = "ynow-macro-hint ynow-macro-chapter__lead",
         paste0(
-          "Uses the shared Industry vs benchmark and Concept vs benchmark picks above. ",
-          "Concentration uses market-cap weights on that basket (Industry when both are set; ",
-          "GICS maps to S&P 500 sector peers). Buffett Indicator is market-level market-cap / GDP ",
+          "Uses the shared Industry menu and Concept word-cloud picks above. ",
+          "Concentration uses market-cap weights on that basket (Industry when set; ",
+          "otherwise the first selected concept; GICS maps to S&P 500 sector peers). ",
+          "Buffett Indicator is market-level market-cap / GDP ",
           "(research display only — never feeds CAPM / Ke / WACC)."
         )
       ),
@@ -719,14 +816,15 @@ macro_market_server <- function(id = "macro",
       industry_touched(TRUE)
     }, ignoreInit = TRUE)
 
-    # Shared Industry + Concept menus (Relative performance + Dynamic bubble).
+    # Shared Industry menu + Concept word cloud (Relative performance + Dynamic bubble).
     # Default is Technology (XLK) on US, and the snapshot default (sc.Foundry) on TW.
-    # An explicit None stays None.
+    # Lazy-tab race: gate Industry updates on hist_period after inputs bind.
     observe({
       mode <- .mode()
       loc <- .loc()
+      hist_ready <- input$hist_period
+      req(!is.null(hist_ready))
       ind_ch <- macro_choices_with_none(macro_industry_choices(mode, loc), loc)
-      con_ch <- macro_choices_with_none(macro_concept_choices(mode, loc), loc)
 
       isel <- isolate(as.character(input$industry_key %||% "")[1])
       in_menu <- isel %in% unname(ind_ch)
@@ -734,24 +832,58 @@ macro_market_server <- function(id = "macro",
       if (!isTRUE(isolate(industry_touched())) || !in_menu) {
         isel <- if (def_ind %in% unname(ind_ch)) def_ind else ""
       }
-      csel <- isolate(as.character(input$concept_key %||% "")[1])
-      if (is.null(csel) || !nzchar(csel) || !(csel %in% unname(con_ch))) {
-        csel <- ""
-      }
       cur_ind <- isolate(as.character(input$industry_key %||% "")[1])
       if (!identical(cur_ind, isel)) industry_programmatic(TRUE)
       updateSelectInput(session, "industry_key", choices = ind_ch, selected = isel)
-      updateSelectInput(session, "concept_key", choices = con_ch, selected = csel)
     })
 
-    # Bubble concentration basket: Industry when set, else Concept (shared picks).
+    concept_cloud_catalog <- reactive({
+      list(
+        mode = .mode(),
+        loc = .loc(),
+        choices = macro_concept_choices(.mode(), .loc()),
+        hist_ready = !is.null(input$hist_period)
+      )
+    })
+
+    output$concept_cloud_ui <- renderUI({
+      cat <- concept_cloud_catalog()
+      csel <- isolate(
+        intersect(
+          macro_selected_concept_keys(input$concept_keys),
+          unname(cat$choices)
+        )
+      )
+      tryCatch(
+        macro_concept_cloud_input(
+          session$ns("concept_keys"),
+          choices = cat$choices,
+          selected = csel,
+          mode = cat$mode
+        ),
+        error = function(e) {
+          htmltools::tags$p(
+            class = "ynow-macro-hint",
+            id = "ynow_macro_concept_cloud_error",
+            paste("Concept cloud unavailable:", conditionMessage(e))
+          )
+        }
+      )
+    })
+
+    .selected_concepts <- function() {
+      keys <- macro_selected_concept_keys(input$concept_keys)
+      mode <- .mode()
+      valid <- unname(macro_concept_choices(mode, .loc()))
+      intersect(keys, valid)
+    }
+
     .bubble_theme_key <- function() {
       ind <- as.character(input$industry_key %||% "")[1]
-      con <- as.character(input$concept_key %||% "")[1]
       if (is.na(ind)) ind <- ""
-      if (is.na(con)) con <- ""
       if (nzchar(ind)) return(ind)
-      if (nzchar(con)) return(con)
+      cons <- .selected_concepts()
+      if (length(cons)) return(cons[[1]])
       ""
     }
 
@@ -1357,28 +1489,32 @@ macro_market_server <- function(id = "macro",
       mode <- .mode()
       period <- as.character(input$hist_period %||% "1y")[1]
       industry_key <- as.character(input$industry_key %||% "")[1]
-      concept_key <- as.character(input$concept_key %||% "")[1]
+      concept_keys <- .selected_concepts()
       if (is.na(industry_key)) industry_key <- ""
-      if (is.na(concept_key)) concept_key <- ""
 
       industry <- NULL
-      concept <- NULL
+      concepts <- list()
       if (nzchar(industry_key)) {
         industry <- tryCatch(
           macro_rebased_theme_df(industry_key, mode, period),
           error = function(e) NULL
         )
       }
-      if (nzchar(concept_key)) {
-        concept <- tryCatch(
-          macro_rebased_theme_df(concept_key, mode, period),
-          error = function(e) NULL
-        )
+      if (length(concept_keys)) {
+        for (ck in concept_keys) {
+          df <- tryCatch(
+            macro_rebased_theme_df(ck, mode, period),
+            error = function(e) NULL
+          )
+          if (!is.null(df) && is.data.frame(df) && nrow(df) >= 2L) {
+            concepts[[ck]] <- df
+          }
+        }
       }
 
       bench_tk <- macro_bench_ticker(mode)
       bench <- NULL
-      if (nzchar(industry_key) || nzchar(concept_key)) {
+      if (nzchar(industry_key) || length(concept_keys)) {
         bench_raw <- tryCatch(fetch_price_history_df(bench_tk, period), error = function(e) NULL)
         if (!is.null(bench_raw) && nrow(bench_raw) >= 20L) {
           bench_raw <- bench_raw[order(bench_raw$Date), , drop = FALSE]
@@ -1395,24 +1531,24 @@ macro_market_server <- function(id = "macro",
       }
       list(
         industry = industry,
-        concept = concept,
+        concepts = concepts,
+        concept_keys = concept_keys,
         bench = bench,
         bench_ticker = bench_tk,
-        industry_key = industry_key,
-        concept_key = concept_key
+        industry_key = industry_key
       )
     })
 
     output$overlay_plot <- plotly::renderPlotly({
       od <- overlay_data()
       has_ind_key <- nzchar(od$industry_key %||% "")
-      has_con_key <- nzchar(od$concept_key %||% "")
+      has_con_key <- length(od$concept_keys %||% character(0)) > 0L
       shiny::validate(shiny::need(
         has_ind_key || has_con_key,
         .ui("macro_plot_need_pick")
       ))
       shiny::validate(shiny::need(
-        !is.null(od$industry) || !is.null(od$concept),
+        !is.null(od$industry) || length(od$concepts) > 0L,
         .ui("macro_plot_need_theme")
       ))
       shiny::validate(shiny::need(!is.null(od$bench), .ui("macro_plot_need_bench")))
@@ -1420,18 +1556,23 @@ macro_market_server <- function(id = "macro",
       bh <- od$bench
       common <- bh$Date
       if (!is.null(od$industry)) common <- intersect(common, od$industry$Date)
-      if (!is.null(od$concept)) common <- intersect(common, od$concept$Date)
+      for (ck in names(od$concepts)) {
+        common <- intersect(common, od$concepts[[ck]]$Date)
+      }
       shiny::validate(shiny::need(length(common) >= 5L, .ui("macro_plot_need_theme")))
       bh <- bh[bh$Date %in% common, , drop = FALSE]
 
       industry_lab <- .ui("macro_series_industry")
-      concept_lab <- .ui("macro_series_concept")
-      left_lab <- if (!is.null(od$industry) && !is.null(od$concept)) {
+      con_ch <- macro_concept_choices(.mode(), .loc())
+      n_con <- length(od$concepts)
+      left_lab <- if (!is.null(od$industry) && n_con > 0L) {
         .ui("macro_series_rebased")
       } else if (!is.null(od$industry)) {
         industry_lab
+      } else if (n_con > 1L) {
+        .ui("macro_series_concepts")
       } else {
-        concept_lab
+        .ui("macro_series_concept")
       }
       bench_lab <- paste0(.ui("macro_series_bench"), " (", od$bench_ticker, ")")
 
@@ -1447,16 +1588,22 @@ macro_market_server <- function(id = "macro",
           yaxis = "y"
         )
       }
-      if (!is.null(od$concept)) {
-        th <- od$concept[od$concept$Date %in% common, , drop = FALSE]
-        fig <- plotly::add_trace(
-          fig,
-          x = th$Date, y = th$Theme,
-          type = "scatter", mode = "lines",
-          name = concept_lab,
-          line = list(color = "#2980b9", width = 2),
-          yaxis = "y"
-        )
+      if (n_con > 0L) {
+        for (i in seq_along(od$concepts)) {
+          ck <- names(od$concepts)[[i]]
+          th <- od$concepts[[ck]]
+          th <- th[th$Date %in% common, , drop = FALSE]
+          lab <- .choice_label(con_ch, ck)
+          if (!nzchar(lab)) lab <- ck
+          fig <- plotly::add_trace(
+            fig,
+            x = th$Date, y = th$Theme,
+            type = "scatter", mode = "lines",
+            name = lab,
+            line = list(color = macro_concept_overlay_color(i), width = 2),
+            yaxis = "y"
+          )
+        }
       }
       fig <- plotly::add_trace(
         fig,
@@ -1494,25 +1641,29 @@ macro_market_server <- function(id = "macro",
       mode <- .mode()
       loc <- .loc()
       ind <- as.character(input$industry_key %||% "")[1]
-      con <- as.character(input$concept_key %||% "")[1]
+      cons <- .selected_concepts()
       if (is.na(ind)) ind <- ""
-      if (is.na(con)) con <- ""
       ind_ch <- macro_choices_with_none(macro_industry_choices(mode, loc), loc)
-      con_ch <- macro_choices_with_none(macro_concept_choices(mode, loc), loc)
-      if (!nzchar(ind) && !nzchar(con)) {
+      con_ch <- macro_concept_choices(mode, loc)
+      if (!nzchar(ind) && !length(cons)) {
         return(tags$p(
           id = "ynow_macro_bubble_shared_status",
           class = "ynow-macro-hint",
           .ui("macro_bubble_shared_need_pick")
         ))
       }
-      if (nzchar(ind) && nzchar(con)) {
+      con_lab <- if (length(cons)) {
+        paste(vapply(cons, function(k) .choice_label(con_ch, k), character(1)), collapse = " · ")
+      } else {
+        ""
+      }
+      if (nzchar(ind) && length(cons)) {
         msg <- gsub(
           "{industry}", .choice_label(ind_ch, ind),
           .ui("macro_bubble_shared_using_industry_both"),
           fixed = TRUE
         )
-        msg <- gsub("{concept}", .choice_label(con_ch, con), msg, fixed = TRUE)
+        msg <- gsub("{concept}", con_lab, msg, fixed = TRUE)
       } else if (nzchar(ind)) {
         msg <- gsub(
           "{industry}", .choice_label(ind_ch, ind),
@@ -1521,7 +1672,7 @@ macro_market_server <- function(id = "macro",
         )
       } else {
         msg <- gsub(
-          "{concept}", .choice_label(con_ch, con),
+          "{concept}", con_lab,
           .ui("macro_bubble_shared_using_concept"),
           fixed = TRUE
         )
