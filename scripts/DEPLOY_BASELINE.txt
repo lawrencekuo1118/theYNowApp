@@ -8,5 +8,5 @@ short=4bd9d8a
 message=chore: record shipped display version v21.16
 captured_at=2026-10-06T10:54:59Z
 source_branch=cursor/unify-tab-page-width-911b
-display_version=v21.16
+display_version=v21.17
 note=Canonical live line is app_21.0. Bundle 12654018 ships v21.16: all tabs share Macro 1200px page column with responsive full-bleed. Deploy via scripts/deploy_app_21.R.
