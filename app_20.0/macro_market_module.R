@@ -359,7 +359,7 @@ macro_concept_cloud_input <- function(inputId, choices, selected = character(0),
     labs <- vals
   }
   if (!length(vals)) {
-    return(tags$p(
+    return(htmltools::tags$p(
       class = "ynow-macro-hint",
       id = "ynow_macro_concept_cloud_empty",
       "—"
@@ -367,16 +367,16 @@ macro_concept_cloud_input <- function(inputId, choices, selected = character(0),
   }
   sizes <- macro_concept_cloud_sizes(choices, mode = mode)
   choice_names <- lapply(seq_along(vals), function(i) {
-    tags$span(
+    htmltools::tags$span(
       class = "ynow-macro-cloud-word",
       style = sprintf("font-size:%spx;", round(sizes[[i]])),
       labs[[i]]
     )
   })
   sel <- intersect(as.character(selected %||% character(0)), vals)
-  tags$div(
+  htmltools::tags$div(
     class = "ynow-macro-concept-cloud",
-    checkboxGroupInput(
+    shiny::checkboxGroupInput(
       inputId = inputId,
       label = NULL,
       choiceNames = choice_names,
@@ -820,13 +820,12 @@ macro_market_server <- function(id = "macro",
     # Concept word cloud: rebuild only when market/locale (catalog) changes so
     # multi-select clicks do not remount and wipe the selection.
     concept_cloud_catalog <- reactive({
-      req(!is.null(input$hist_period))
-      mode <- .mode()
-      loc <- .loc()
+      # Prefer waiting until Macro inputs bind, but still allow a seed render.
       list(
-        mode = mode,
-        loc = loc,
-        choices = macro_concept_choices(mode, loc)
+        mode = .mode(),
+        loc = .loc(),
+        choices = macro_concept_choices(.mode(), .loc()),
+        hist_ready = !is.null(input$hist_period)
       )
     })
 
@@ -838,11 +837,20 @@ macro_market_server <- function(id = "macro",
           unname(cat$choices)
         )
       )
-      macro_concept_cloud_input(
-        session$ns("concept_keys"),
-        choices = cat$choices,
-        selected = csel,
-        mode = cat$mode
+      tryCatch(
+        macro_concept_cloud_input(
+          session$ns("concept_keys"),
+          choices = cat$choices,
+          selected = csel,
+          mode = cat$mode
+        ),
+        error = function(e) {
+          htmltools::tags$p(
+            class = "ynow-macro-hint",
+            id = "ynow_macro_concept_cloud_error",
+            paste("Concept cloud unavailable:", conditionMessage(e))
+          )
+        }
       )
     })
 
