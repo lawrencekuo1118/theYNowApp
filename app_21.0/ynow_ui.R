@@ -3008,6 +3008,8 @@ ui <- dashboardPage(
           --ynow-logo-blue: #0C5484;
           --ynow-logo-green: #249C60;
           --ynow-logo-cyan: #1AA8B8;
+          /* Shared content column — same as Macro & Market Trends (.ynow-macro-report) */
+          --ynow-page-max: 1200px;
           --ynow-logo-flow-gradient: linear-gradient(
             105deg,
             #0C5484 0%,
@@ -3253,6 +3255,36 @@ ui <- dashboardPage(
         /* Reserve band under fixed header for credit (left) + USD/TWD (right) */
         .content-wrapper > .content {
           padding-top: 52px;
+        }
+        /* All sidebar tabs share Macro & Market Trends content width + center */
+        .content-wrapper > .content > .tab-content {
+          width: 100%;
+          max-width: 100%;
+        }
+        .content-wrapper > .content > .tab-content > .tab-pane {
+          max-width: var(--ynow-page-max, 1200px);
+          width: 100%;
+          margin-left: auto;
+          margin-right: auto;
+          box-sizing: border-box;
+        }
+        .content-wrapper > .content > .tab-content > .tab-pane .box,
+        .content-wrapper > .content > .tab-content > .tab-pane .nav-tabs-custom {
+          max-width: 100%;
+        }
+        /* Keep Plotly / DT / images fluid inside the shared column */
+        .content-wrapper > .content > .tab-content > .tab-pane .plotly,
+        .content-wrapper > .content > .tab-content > .tab-pane .html-widget,
+        .content-wrapper > .content > .tab-content > .tab-pane .dataTables_wrapper,
+        .content-wrapper > .content > .tab-content > .tab-pane img {
+          max-width: 100%;
+        }
+        @media (max-width: 767px) {
+          .content-wrapper > .content > .tab-content > .tab-pane {
+            max-width: 100%;
+            padding-left: 0;
+            padding-right: 0;
+          }
         }
         .skin-black .main-header .navbar {
           background-color: var(--ynow-ink) !important;
@@ -4404,9 +4436,11 @@ ui <- dashboardPage(
           display: inline-block;
         }
         .ynow-bblab--report {
-          max-width: 980px;
+          max-width: var(--ynow-page-max, 1200px);
           margin: 0 auto 36px;
           padding: 8px 4px 24px;
+          width: 100%;
+          box-sizing: border-box;
         }
         .ynow-bblab-report__cover {
           margin: 0 0 18px 0;
@@ -4736,13 +4770,15 @@ ui <- dashboardPage(
         }
         /* Brand home: sidebar-aligned doors (Macro → Blue Chip → Company → YNOW → Value → Action) */
         .ynow-home {
-          max-width: 760px;
+          max-width: var(--ynow-page-max, 1200px);
+          width: 100%;
           margin: 12px auto 28px;
           padding: 28px 8px 8px;
           background: transparent;
           color: #222;
           border-radius: 0;
           text-align: center;
+          box-sizing: border-box;
         }
         .ynow-home-logo-wrap {
           position: relative;
@@ -4825,8 +4861,14 @@ ui <- dashboardPage(
           color: #555;
         }
         @media (max-width: 720px) {
-          .ynow-home { padding: 24px 16px 18px; }
+          .ynow-home { padding: 24px 12px 18px; max-width: 100%; }
           .ynow-home-grid { grid-template-columns: 1fr; }
+        }
+        @media (min-width: 721px) and (max-width: 991px) {
+          .ynow-home-grid { grid-template-columns: 1fr 1fr; }
+        }
+        @media (min-width: 992px) {
+          .ynow-home-grid { grid-template-columns: 1fr 1fr 1fr; }
         }
         .ynow-home-legal {
           margin: 18px 0 0 0;
@@ -5384,8 +5426,10 @@ ui <- dashboardPage(
 
         /* HFV report shell: narrative chapters + responsive control toolbar */
         .ynow-hfv-report {
-          max-width: 1200px;
+          max-width: var(--ynow-page-max, 1200px);
+          width: 100%;
           margin: 0 auto 24px auto;
+          box-sizing: border-box;
         }
         .ynow-hfv-report__masthead {
           margin: 0 0 16px 0;
@@ -8600,8 +8644,10 @@ ui <- dashboardPage(
 
         /* YNOW page — three stacked blocks (same chapter chrome as HFV) */
         .ynow-funnel-report {
-          max-width: 1200px;
+          max-width: var(--ynow-page-max, 1200px);
+          width: 100%;
           margin: 0 auto 24px auto;
+          box-sizing: border-box;
         }
         .ynow-funnel-report__masthead {
           margin: 0 0 16px 0;
@@ -8813,9 +8859,11 @@ ui <- dashboardPage(
           --ynow-macro-gold: var(--ynow-gold, #F5C518);
           --ynow-macro-gold-deep: var(--ynow-gold-deep, #C9A227);
           --ynow-macro-ink: #0b1220;
-          max-width: 1200px;
+          max-width: var(--ynow-page-max, 1200px);
+          width: 100%;
           margin: 0 auto 24px auto;
           padding: 0 2px;
+          box-sizing: border-box;
         }
         .ynow-macro-report__masthead {
           margin: 0 0 14px 0;
@@ -9502,8 +9550,21 @@ ui <- dashboardPage(
           }
         }
         .ynow-backtest-report {
-          max-width: 1200px;
+          max-width: var(--ynow-page-max, 1200px);
+          width: 100%;
           margin: 0 auto 24px auto;
+          box-sizing: border-box;
+        }
+        /* After report-shell rules: force full bleed on small screens */
+        @media (max-width: 767px) {
+          .ynow-home,
+          .ynow-macro-report,
+          .ynow-hfv-report,
+          .ynow-funnel-report,
+          .ynow-backtest-report,
+          .ynow-bblab--report {
+            max-width: 100%;
+          }
         }
         .ynow-backtest-report__masthead {
           margin: 0 0 12px 0;
