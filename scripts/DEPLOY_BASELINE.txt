@@ -8,5 +8,5 @@ short=8cb0409
 message=chore: record shipped display version v21.13
 captured_at=2026-10-06T09:32:16Z
 source_branch=cursor/htcdi-remove-shinetsu-911b
-display_version=v21.13
+display_version=v21.14
 note=Canonical live line is app_21.0. Bundle 12653747 ships v21.13: HTCDI removes Shin-Etsu (SHECY / SHIN_ETSU). Deploy via scripts/deploy_app_21.R.
