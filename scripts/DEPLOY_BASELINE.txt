@@ -8,5 +8,5 @@ short=50d547b
 message=chore: record shipped display version v21.04
 captured_at=2026-10-06T02:46:47Z
 source_branch=cursor/macro-cloud-app21-911b
-display_version=v21.04
+display_version=v21.05
 note=Canonical live line is app_21.0. Bundle 12652412 ships v21.04: Macro Industry menu lazy-tab restore + Concept multi-select word cloud overlays on Relative performance vs benchmark. Deploy via scripts/deploy_app_21.R.
