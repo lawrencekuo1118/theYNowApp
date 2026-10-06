@@ -2,6 +2,24 @@
 # ui.R - 前端介面設計
 # ==========================================
 
+#' Display / deploy build id from www/ynow_build.json (baked at UI source time).
+.ynow_read_build_version <- function() {
+  paths <- c(
+    file.path("www", "ynow_build.json"),
+    "ynow_build.json"
+  )
+  for (p in paths) {
+    if (!file.exists(p)) next
+    raw <- paste(readLines(p, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+    m <- regmatches(raw, regexpr('"version"\\s*:\\s*"[^"]+"', raw))
+    if (length(m) == 1L && nzchar(m[[1]])) {
+      return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
+    }
+  }
+  "v21.13"
+}
+.YNOW_BUILD_VERSION <- .ynow_read_build_version()
+
 # Backtest Zone：欄位下方小字說明
 .bt_hint <- function(text) {
   tags$p(
@@ -2693,6 +2711,7 @@ ui <- dashboardPage(
   dashboardHeader(
                 title = HTML(paste0(
                   '<span class="ynow-app-title" id="ynow_app_title" ',
+                  'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
                   '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v21.13</span>',
@@ -3094,6 +3113,31 @@ ui <- dashboardPage(
           filter: none !important;
           line-height: 1.15;
           vertical-align: middle;
+        }
+        /* New deploy detected: keep page open until user clicks The YNow App title */
+        body.ynow-update-available .main-header .logo {
+          cursor: pointer;
+        }
+        body.ynow-update-available .main-header .logo .ynow-app-title {
+          cursor: pointer;
+        }
+        body.ynow-update-available .main-header .logo .ynow-app-title-base {
+          color: rgba(245, 197, 24, 0.55) !important;
+          -webkit-text-fill-color: rgba(245, 197, 24, 0.55);
+          animation: ynow-update-pulse 1.6s ease-in-out infinite;
+        }
+        body.ynow-update-available .main-header .logo .ynow-app-title-fill-inner {
+          text-decoration: underline;
+          text-underline-offset: 3px;
+        }
+        @keyframes ynow-update-pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.72; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          body.ynow-update-available .main-header .logo .ynow-app-title-base {
+            animation: none;
+          }
         }
         .main-header .logo .ynow-app-title-base {
           display: inline-block;
@@ -5923,6 +5967,152 @@ ui <- dashboardPage(
               });
             }
           })();
+
+          /* Deploy refresh: poll ynow_build.json; never auto-reload.
+             When a newer version is live, user must click The YNow App title to refresh. */
+          (function initYnowDeployRefresh() {
+            var POLL_MS = 45000;
+            var sessionBuild = null;
+            var remoteBuild = null;
+            var pollTimer = null;
+            var LAST_UPDATE_STRINGS = null;
+
+            function titleEl() {
+              return document.getElementById('ynow_app_title') ||
+                document.querySelector('.main-header .logo .ynow-app-title');
+            }
+            function logoEl() {
+              return document.querySelector('.main-header .logo');
+            }
+            function readSessionBuild() {
+              if (sessionBuild) return sessionBuild;
+              var el = titleEl();
+              var fromDom = el && el.getAttribute('data-ynow-build');
+              if (fromDom) {
+                sessionBuild = String(fromDom).trim();
+                return sessionBuild;
+              }
+              sessionBuild = '';
+              return sessionBuild;
+            }
+            function updateTipText() {
+              var s = LAST_UPDATE_STRINGS || {};
+              return s.update_available_click ||
+                'New version available — click The YNow App to refresh';
+            }
+            function applyUpdateChrome() {
+              var pending = !!(remoteBuild && sessionBuild && remoteBuild !== sessionBuild);
+              document.body.classList.toggle('ynow-update-available', pending);
+              var tip = updateTipText();
+              var title = titleEl();
+              var logo = logoEl();
+              if (title) {
+                if (pending) {
+                  title.setAttribute('title', tip);
+                  title.setAttribute('aria-label', tip);
+                  title.setAttribute('role', 'button');
+                  title.setAttribute('tabindex', '0');
+                } else {
+                  title.removeAttribute('title');
+                  if (title.getAttribute('role') === 'button') {
+                    title.setAttribute('role', 'progressbar');
+                  }
+                  title.removeAttribute('tabindex');
+                }
+              }
+              if (logo) {
+                if (pending) logo.setAttribute('title', tip);
+                else logo.removeAttribute('title');
+              }
+            }
+            window.ynowSetUpdateLocaleStrings = function (strings) {
+              LAST_UPDATE_STRINGS = strings || null;
+              applyUpdateChrome();
+            };
+            function markRemote(version) {
+              var v = String(version || '').trim();
+              if (!v) return;
+              remoteBuild = v;
+              applyUpdateChrome();
+            }
+            function fetchBuild() {
+              var url = 'ynow_build.json?_=' + Date.now();
+              return fetch(url, { cache: 'no-store', credentials: 'same-origin' })
+                .then(function (res) {
+                  if (!res || !res.ok) throw new Error('build fetch failed');
+                  return res.json();
+                })
+                .then(function (data) {
+                  if (data && data.version) markRemote(data.version);
+                })
+                .catch(function () { /* keep last known; no auto-reload */ });
+            }
+            function reloadForUpdate() {
+              /* Hard navigation so the browser loads the new Shiny bundle / assets. */
+              try {
+                var u = new URL(window.location.href);
+                u.searchParams.set('_ynow_refresh', String(Date.now()));
+                window.location.replace(u.toString());
+              } catch (eReload) {
+                window.location.reload();
+              }
+            }
+            function onTitleActivate(ev) {
+              if (!document.body.classList.contains('ynow-update-available')) return;
+              var hit = ev.target && ev.target.closest
+                ? ev.target.closest('#ynow_app_title, .main-header .logo')
+                : null;
+              if (!hit) return;
+              /* Do not steal clicks from market/lang chrome inside the navbar. */
+              if (ev.target.closest && ev.target.closest(
+                '.ynow-market-header, .ynow-lang-header, .navbar-custom-menu, .sidebar-toggle'
+              )) return;
+              ev.preventDefault();
+              ev.stopPropagation();
+              reloadForUpdate();
+            }
+            function bindClick() {
+              if (document.documentElement.getAttribute('data-ynow-deploy-refresh') === '1') return;
+              document.documentElement.setAttribute('data-ynow-deploy-refresh', '1');
+              document.addEventListener('click', onTitleActivate, true);
+              document.addEventListener('keydown', function (ev) {
+                if (!document.body.classList.contains('ynow-update-available')) return;
+                var t = ev.target;
+                if (!t || t.id !== 'ynow_app_title') return;
+                if (ev.key !== 'Enter' && ev.key !== ' ') return;
+                ev.preventDefault();
+                reloadForUpdate();
+              }, true);
+            }
+            function startPolling() {
+              readSessionBuild();
+              fetchBuild();
+              if (pollTimer) clearInterval(pollTimer);
+              pollTimer = setInterval(fetchBuild, POLL_MS);
+            }
+            bindClick();
+            if (document.readyState === 'loading') {
+              document.addEventListener('DOMContentLoaded', startPolling);
+            } else {
+              startPolling();
+            }
+            document.addEventListener('visibilitychange', function () {
+              if (!document.hidden) fetchBuild();
+            });
+            window.addEventListener('focus', function () { fetchBuild(); });
+            function bindShinyHooks() {
+              if (!window.jQuery) {
+                setTimeout(bindShinyHooks, 50);
+                return;
+              }
+              /* After reconnect (e.g. post-deploy), re-check build — still no auto-reload. */
+              jQuery(document).on('shiny:connected shiny:reconnected', function () {
+                fetchBuild();
+              });
+            }
+            bindShinyHooks();
+          })();
+
           function bindMarketModeButtons() {
             placeMarketHeaderByToggle();
             var stack = document.querySelector('#ynow-market-header .ynow-market-stack');
@@ -6106,6 +6296,9 @@ ui <- dashboardPage(
 
           function applyUiLocale(payload) {
             var s = (payload && payload.strings) || {};
+            if (typeof window.ynowSetUpdateLocaleStrings === 'function') {
+              window.ynowSetUpdateLocaleStrings(s);
+            }
             var menu = {
               home: s.menu_home,
               macro_market: s.menu_macro_market,
