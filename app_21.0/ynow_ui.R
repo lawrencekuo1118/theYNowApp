@@ -2998,6 +2998,19 @@ ui <- dashboardPage(
             #1AA8B8 68%,
             #0C5484 100%
           );
+          /* HTCDI numerals only — flame flow (not shared with YNOW / Data-limited logo fill) */
+          --ynow-htcdi-flame-gradient: linear-gradient(
+            105deg,
+            #4A0E0E 0%,
+            #8B1A1A 12%,
+            #C0392B 24%,
+            #E67E22 38%,
+            #F39C12 50%,
+            #F7CA18 62%,
+            #FFE66D 74%,
+            #E67E22 88%,
+            #922B21 100%
+          );
           /* Model Selector｜估值模型推薦 色系（各模型頁主題；與小卡 icon 色一致） */
           --ynow-model-nav: #d81b60;
           --ynow-model-dcf: #00a65a;
@@ -3022,6 +3035,10 @@ ui <- dashboardPage(
           50% { background-position: 100% 50%; }
         }
         @keyframes ynow-logo-flow {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+        @keyframes ynow-htcdi-flame-flow {
           0%, 100% { background-position: 0% 50%; }
           50% { background-position: 100% 50%; }
         }
@@ -7931,7 +7948,7 @@ ui <- dashboardPage(
           white-space: nowrap;
           line-height: 1.2;
         }
-        /* Data-limited / 資料受限: same logo-flow fill as HTCDI numerals (shared class). */
+        /* Data-limited / 資料受限: keep logo-flow fill (not HTCDI flame). */
         .ynow-fund-profile-badge .ynow-htcdi-flow {
           color: transparent !important;
           -webkit-text-fill-color: transparent !important;
@@ -8996,6 +9013,14 @@ ui <- dashboardPage(
           animation: ynow-logo-flow 2.6s ease-in-out infinite;
           font-weight: 700;
         }
+        /* HTCDI only: flame dynamic fill (KPI, four pillars, expand tables). */
+        .ynow-macro-kpi--htcdi .ynow-htcdi-flow,
+        .ynow-htcdi-sub .ynow-htcdi-flow,
+        .ynow-htcdi-table .ynow-htcdi-flow,
+        .ynow-htcdi-expand__card .ynow-htcdi-flow {
+          background-image: var(--ynow-htcdi-flame-gradient, linear-gradient(105deg, #8B1A1A 0%, #E67E22 40%, #FFE66D 70%, #C0392B 100%));
+          animation: ynow-htcdi-flame-flow 2.4s ease-in-out infinite;
+        }
         .ynow-macro-own-index .ynow-macro-kpi__value.ynow-htcdi-flow,
         .ynow-macro-kpi--ynow .ynow-macro-kpi__value.ynow-htcdi-flow {
           color: transparent;
@@ -9015,13 +9040,28 @@ ui <- dashboardPage(
         }
         @media (prefers-reduced-motion: reduce) {
           .ynow-htcdi-flow { animation: none; background-position: 0% 50%; }
+          .ynow-macro-kpi--htcdi .ynow-htcdi-flow,
+          .ynow-htcdi-sub .ynow-htcdi-flow,
+          .ynow-htcdi-table .ynow-htcdi-flow,
+          .ynow-htcdi-expand__card .ynow-htcdi-flow {
+            animation: none;
+            background-position: 0% 50%;
+          }
         }
         @supports not ((-webkit-background-clip: text) or (background-clip: text)) {
           .ynow-htcdi-flow,
           .ynow-fund-profile-badge .ynow-htcdi-flow {
-            background-image: none !important;
-            -webkit-text-fill-color: #0C5484 !important;
-            color: #0C5484 !important;
+            background-image: none;
+            -webkit-text-fill-color: #0C5484;
+            color: #0C5484;
+            animation: none;
+          }
+          .ynow-macro-kpi--htcdi .ynow-htcdi-flow,
+          .ynow-htcdi-sub .ynow-htcdi-flow,
+          .ynow-htcdi-table .ynow-htcdi-flow,
+          .ynow-htcdi-expand__card .ynow-htcdi-flow {
+            -webkit-text-fill-color: #E67E22;
+            color: #E67E22;
           }
         }
         .ynow-macro-htcdi-expand { width: 100%; margin: 0 0 12px 0; }

@@ -251,9 +251,16 @@ check("UI Rf not flow", grepl("ynow-macro-rf__value", macro_txt, fixed = TRUE) &
 check("CSS logo flow stops", grepl("ynow-logo-flow", ui_txt, fixed = TRUE) &&
   grepl("#0C5484", ui_txt, fixed = TRUE) && grepl("#249C60", ui_txt, fixed = TRUE) &&
   grepl("#1AA8B8", ui_txt, fixed = TRUE) && grepl("ynow-htcdi-flow", ui_txt, fixed = TRUE))
+check("CSS HTCDI flame flow", grepl("ynow-htcdi-flame-flow", ui_txt, fixed = TRUE) &&
+  grepl("--ynow-htcdi-flame-gradient", ui_txt, fixed = TRUE) &&
+  grepl("#E67E22", ui_txt, fixed = TRUE) && grepl("#FFE66D", ui_txt, fixed = TRUE) &&
+  grepl(".ynow-macro-kpi--htcdi .ynow-htcdi-flow", ui_txt, fixed = TRUE))
 kf <- gregexpr("@keyframes ynow-logo-flow", ui_txt, fixed = TRUE)[[1]]
 check("single logo-flow keyframes", length(kf) == 1L && kf[[1]] > 0)
+kf_flame <- gregexpr("@keyframes ynow-htcdi-flame-flow", ui_txt, fixed = TRUE)[[1]]
+check("single flame-flow keyframes", length(kf_flame) == 1L && kf_flame[[1]] > 0)
 check("Data-limited reuses flow class", grepl(".ynow-fund-profile-badge .ynow-htcdi-flow", ui_txt, fixed = TRUE))
+check("Data-limited stays logo not flame comment", grepl("keep logo-flow fill (not HTCDI flame)", ui_txt, fixed = TRUE))
 
 if (!exists("tags", inherits = TRUE) && requireNamespace("htmltools", quietly = TRUE)) {
   tags <- htmltools::tags
