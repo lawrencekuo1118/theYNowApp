@@ -10,37 +10,6 @@ if (!exists("%||%", mode = "function")) {
   `%||%` <- function(a, b) if (is.null(a)) b else a
 }
 
-# #region agent log
-.ynow_dbg_menu <- function(hypothesisId, location, message, data = list(),
-                           runId = "pre-fix") {
-  payload <- list(
-    id = paste0("log_", format(as.numeric(Sys.time()) * 1000, scientific = FALSE, trim = TRUE)),
-    timestamp = as.numeric(Sys.time()) * 1000,
-    location = as.character(location)[1],
-    message = as.character(message)[1],
-    data = data,
-    hypothesisId = as.character(hypothesisId)[1],
-    sessionId = "macro-menu",
-    runId = as.character(runId)[1]
-  )
-  line <- tryCatch({
-    if (requireNamespace("jsonlite", quietly = TRUE)) {
-      jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null", digits = NA)
-    } else {
-      sprintf(
-        '{"hypothesisId":"%s","location":"%s","message":"%s","timestamp":%s,"data":{}}',
-        hypothesisId, location, gsub("\"", "'", message),
-        format(as.numeric(Sys.time()) * 1000, scientific = FALSE, trim = TRUE)
-      )
-    }
-  }, error = function(e) NULL)
-  if (!is.null(line) && nzchar(line)) {
-    try(cat(line, "\n", file = "/opt/cursor/logs/debug.log", append = TRUE), silent = TRUE)
-  }
-  invisible(NULL)
-}
-# #endregion
-
 # ---- Catalogs (no FX; Yahoo native quotes) ----
 
 .MACRO_US_INDICES <- c(
@@ -348,15 +317,6 @@ macro_theme_tickers <- function(theme_key, mode = get_market_mode()) {
   if (identical(mode, "TW") && exists("industry_standards", inherits = TRUE) &&
       key %in% names(industry_standards)) {
     tks <- macro_tw_industry_tickers(key)
-    # #region agent log
-    try(cat(paste0(
-      "{\"sessionId\":\"ef0f33\",\"runId\":\"tw-ind-menu\",\"hypothesisId\":\"MENU\",",
-      "\"location\":\"macro_market_module.R:macro_theme_tickers\",\"message\":\"tw industry basket\",",
-      "\"data\":{\"key\":\"", gsub("\"", "", key), "\",\"n\":", length(tks),
-      ",\"has_2330\":", if ("2330.TW" %in% tks) "true" else "false", "},",
-      "\"timestamp\":", format(as.numeric(Sys.time()) * 1000, scientific = FALSE, trim = TRUE), "}\n"
-    ), file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-ef0f33.log", append = TRUE), silent = TRUE)
-    # #endregion
     return(tks)
   }
   cg_key <- sub("^(concept_|tw_)", "", key)
@@ -476,7 +436,7 @@ macro_rolling_beta_path <- function(theme_df, bench_df, lookback_months = 36L) {
 
 macro_market_ui <- function(id = "macro") {
   ns <- NS(id)
-  ui <- tags$div(
+  tags$div(
     class = "ynow-macro-report",
     tags$div(
       class = "ynow-macro-report__masthead",
@@ -587,115 +547,6 @@ macro_market_ui <- function(id = "macro") {
       class = "ynow-macro-own-index",
       uiOutput(ns("own_index_block"))
     ),
-    tags$script(HTML("
-      (function () {
-        if (document.documentElement.getAttribute('data-ynow-idx-tap') === '1') return;
-        document.documentElement.setAttribute('data-ynow-idx-tap', '1');
-        function ynowIdxLog(hid, message, ev) {
-          var t = ev.target;
-          var card = t && t.closest ? t.closest('[data-macro-index]') : null;
-          var cs = t ? getComputedStyle(t) : null;
-          var rect = card ? card.getBoundingClientRect() : null;
-          var mid = rect ? document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2) : null;
-          fetch('http://127.0.0.1:7302/ingest/e3a0dcdf-71e1-4bba-855e-f942118bd315',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ef0f33'},body:JSON.stringify({sessionId:'ef0f33',runId:'pre-fix',hypothesisId:hid,location:'macro_market_module.R:index-tap',message:message,data:{index:card?card.getAttribute('data-macro-index'):'',targetCls:t&&t.className?String(t.className).slice(0,120):'',clip:cs?cs.webkitBackgroundClip:'',pe:cs?cs.pointerEvents:'',vw:window.innerWidth,lite:!!(document.body&&document.body.classList.contains('ynow-lite')),midCls:mid&&mid.className?String(mid.className).slice(0,120):'',cardW:rect?Math.round(rect.width):0},timestamp:Date.now()})}).catch(function(){});
-        }
-        document.addEventListener('touchend', function (ev) {
-          if (ev.target && ev.target.closest && ev.target.closest('[data-macro-index]')) ynowIdxLog('A', 'touchend on index card', ev);
-        }, true);
-        document.addEventListener('click', function (ev) {
-          if (ev.target && ev.target.closest && ev.target.closest('[data-macro-index]')) ynowIdxLog('A', 'click on index card', ev);
-        }, true);
-      })();
-    ")),
-    # #region agent log
-    tags$script(HTML(sprintf("
-      (function () {
-        var probeInput = '%s';
-        var lastSig = '';
-        function snap(id) {
-          var el = document.getElementById(id);
-          if (!el) return {exists:false,id:id};
-          var cs = window.getComputedStyle(el);
-          var r = el.getBoundingClientRect();
-          var wrap = el.closest('.form-group, .shiny-input-container') || el.parentElement;
-          var wcs = wrap ? window.getComputedStyle(wrap) : null;
-          var wr = wrap ? wrap.getBoundingClientRect() : null;
-          var col = el.closest('[class*=\"col-\"]');
-          var cr = col ? col.getBoundingClientRect() : null;
-          var mid = (r.width > 0 && r.height > 0)
-            ? document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) : null;
-          var sel = el.tagName === 'SELECT' ? el : (wrap ? wrap.querySelector('select') : null);
-          var nOpt = sel && sel.options ? sel.options.length : 0;
-          var sz = wrap ? wrap.querySelector('.selectize-control, .selectize-input') : null;
-          var szCs = sz ? window.getComputedStyle(sz) : null;
-          var szR = sz ? sz.getBoundingClientRect() : null;
-          return {
-            exists: true, id: id, tag: el.tagName,
-            display: cs.display, visibility: cs.visibility, opacity: cs.opacity,
-            h: Math.round(r.height), w: Math.round(r.width),
-            wrapDisplay: wcs ? wcs.display : '', wrapH: wr ? Math.round(wr.height) : 0,
-            wrapW: wr ? Math.round(wr.width) : 0,
-            colW: cr ? Math.round(cr.width) : 0, colH: cr ? Math.round(cr.height) : 0,
-            nOpt: nOpt,
-            hasSelectize: !!sz,
-            szDisplay: szCs ? szCs.display : '',
-            szH: szR ? Math.round(szR.height) : 0, szW: szR ? Math.round(szR.width) : 0,
-            midCls: mid && mid.className ? String(mid.className).slice(0, 100) : '',
-            covered: !!(mid && el !== mid && !el.contains(mid) && !(wrap && wrap.contains(mid)))
-          };
-        }
-        function probe(reason) {
-          var title = document.getElementById('ynow_macro_theme_title');
-          var labI = document.getElementById('ynow_macro_industry_label');
-          var labC = document.getElementById('ynow_macro_concept_label');
-          var payload = {
-            reason: String(reason || ''),
-            lite: !!(document.body && document.body.classList.contains('ynow-lite')),
-            vw: window.innerWidth,
-            hasTitle: !!title,
-            titleText: title ? String(title.textContent || '').slice(0, 80) : '',
-            labI: labI ? String(labI.textContent || '').slice(0, 60) : '',
-            labC: labC ? String(labC.textContent || '').slice(0, 60) : '',
-            industry: snap('macro-industry_key'),
-            concept: snap('macro-concept_key'),
-            period: snap('macro-hist_period')
-          };
-          var sig = JSON.stringify(payload);
-          if (sig === lastSig && reason !== 'server-update') return;
-          lastSig = sig;
-          if (window.Shiny && Shiny.setInputValue) {
-            // Flat JSON string — nested objects were not reaching the server observe.
-            Shiny.setInputValue(probeInput, JSON.stringify(payload), {priority: 'event'});
-          }
-        }
-        function bind() {
-          if (window.Shiny && Shiny.addCustomMessageHandler) {
-            Shiny.addCustomMessageHandler('ynow_macro_probe_menus', function () {
-              probe('server-update');
-            });
-          }
-          if (window.jQuery) {
-            jQuery(document).on('shiny:value', function (e) {
-              if (e && e.name && String(e.name).indexOf('macro-') === 0) probe('shiny:value');
-            });
-          }
-          var mo = new MutationObserver(function () {
-            if (document.getElementById('macro-industry_key') ||
-                document.getElementById('ynow_macro_theme_title')) {
-              probe('dom-appear');
-            }
-          });
-          mo.observe(document.documentElement, {childList: true, subtree: true});
-          probe('script-init');
-        }
-        if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', bind);
-        } else {
-          bind();
-        }
-      })();
-    ", ns("dbg_menu_probe")))),
-    # #endregion
     tags$section(
       class = "ynow-macro-chapter ynow-macro-bubble-chapter",
       tags$h3(
@@ -715,19 +566,6 @@ macro_market_ui <- function(id = "macro") {
       macro_bubble_chapter_ui(ns)
     )
   )
-  # #region agent log
-  html <- paste(as.character(ui), collapse = "")
-  .ynow_dbg_menu("D", "macro_market_module.R:macro_market_ui", "macro UI built", list(
-    module_id = as.character(id)[1],
-    has_industry = grepl("industry_key", html, fixed = TRUE),
-    has_concept = grepl("concept_key", html, fixed = TRUE),
-    has_theme_title = grepl("ynow_macro_theme_title", html, fixed = TRUE),
-    has_hist_period = grepl("hist_period", html, fixed = TRUE),
-    has_probe_script = grepl("ynow_macro_probe_menus", html, fixed = TRUE),
-    html_len = nchar(html)
-  ))
-  # #endregion
-  ui
 }
 
 # ---- Server ----
@@ -807,13 +645,6 @@ macro_market_server <- function(id = "macro",
       specs <- macro_click_index_specs(.mode())
       own <- .own_index_symbol()
       accepted <- nzchar(sym) && (sym %in% names(specs) || identical(sym, own))
-      # #region agent log
-      if (exists(".ynow_dbg_ef0f33", mode = "function")) {
-        .ynow_dbg_ef0f33("D", "macro_market_module.R:index_click", "index click received", list(
-          sym = sym, own = own, accepted = accepted, lite = .is_lite()
-        ))
-      }
-      # #endregion
       if (accepted) {
         selected_index(sym)
       }
@@ -874,132 +705,32 @@ macro_market_server <- function(id = "macro",
     # Default is Technology (XLK) on US, and the snapshot default (sc.Foundry) on TW.
     # An explicit None stays None.
     # Lazy-tab race: on_first_mount runs moduleServer before renderUI sends the
-    # selectInputs. updateSelectInput / onFlushed in that first tick still miss
-    # the client widget. Gate on hist_period (mounted with the same row) so we
-    # only push choices after the browser has bound the inputs.
+    # selectInputs. Gate on hist_period (mounted with the same row) so we only
+    # push choices after the browser has bound the inputs.
     observe({
       mode <- .mode()
       loc <- .loc()
       # NULL until the lazy Macro page inputs are bound on the client.
       hist_ready <- input$hist_period
-      # #region agent log
-      .ynow_dbg_menu("C", "macro_market_module.R:menus_observe", "menus observe enter", list(
-        mode = as.character(mode)[1], loc = as.character(loc)[1], lite = .is_lite(),
-        hist_null = is.null(hist_ready),
-        hist = as.character(hist_ready %||% "")[1]
-      ), runId = "post-fix")
-      # #endregion
       req(!is.null(hist_ready))
-      ind_ch <- character(0)
-      con_ch <- character(0)
-      isel <- ""
-      csel <- ""
-      err <- ""
-      tryCatch({
-        ind_ch <- macro_choices_with_none(macro_industry_choices(mode, loc), loc)
-        con_ch <- macro_choices_with_none(macro_concept_choices(mode, loc), loc)
+      ind_ch <- macro_choices_with_none(macro_industry_choices(mode, loc), loc)
+      con_ch <- macro_choices_with_none(macro_concept_choices(mode, loc), loc)
 
-        isel <- isolate(as.character(input$industry_key %||% "")[1])
-        in_menu <- isel %in% unname(ind_ch)
-        def_ind <- macro_industry_default_key(mode)
-        if (!isTRUE(isolate(industry_touched())) || !in_menu) {
-          isel <- if (def_ind %in% unname(ind_ch)) def_ind else ""
-        }
-        csel <- isolate(as.character(input$concept_key %||% "")[1])
-        if (is.null(csel) || !nzchar(csel) || !(csel %in% unname(con_ch))) {
-          csel <- ""
-        }
-        cur_ind <- isolate(as.character(input$industry_key %||% "")[1])
-        if (!identical(cur_ind, isel)) industry_programmatic(TRUE)
-        updateSelectInput(session, "industry_key", choices = ind_ch, selected = isel)
-        updateSelectInput(session, "concept_key", choices = con_ch, selected = csel)
-      }, error = function(e) {
-        err <<- conditionMessage(e)
-      })
-      # #region agent log
-      .ynow_dbg_menu("B", "macro_market_module.R:menus_observe", "menus updated after input bind", list(
-        mode = as.character(mode)[1],
-        n_ind = length(ind_ch),
-        n_con = length(con_ch),
-        isel = as.character(isel %||% "")[1],
-        csel = as.character(csel %||% "")[1],
-        ind_touched = isTRUE(isolate(industry_touched())),
-        ok = !nzchar(err),
-        err = err,
-        hist = as.character(hist_ready %||% "")[1],
-        ind_head = paste(utils::head(unname(ind_ch), 3L), collapse = ","),
-        con_head = paste(utils::head(unname(con_ch), 3L), collapse = ",")
-      ), runId = "post-fix")
-      tryCatch(
-        session$sendCustomMessage("ynow_macro_probe_menus", list(t = as.numeric(Sys.time()))),
-        error = function(e) NULL
-      )
-      # #endregion
-    })
-
-    # #region agent log
-    observeEvent(input$dbg_menu_probe, {
-      raw <- input$dbg_menu_probe
-      if (is.null(raw)) return()
-      p <- if (is.character(raw) && length(raw) >= 1L) {
-        tryCatch(jsonlite::fromJSON(raw[[1]], simplifyVector = FALSE), error = function(e) NULL)
-      } else if (is.list(raw)) {
-        raw
-      } else {
-        NULL
+      isel <- isolate(as.character(input$industry_key %||% "")[1])
+      in_menu <- isel %in% unname(ind_ch)
+      def_ind <- macro_industry_default_key(mode)
+      if (!isTRUE(isolate(industry_touched())) || !in_menu) {
+        isel <- if (def_ind %in% unname(ind_ch)) def_ind else ""
       }
-      if (is.null(p)) return()
-      ind <- p$industry %||% list()
-      con <- p$concept %||% list()
-      per <- p$period %||% list()
-      .ynow_dbg_menu("A", "macro_market_module.R:dbg_menu_probe", "client menu probe", list(
-        reason = as.character(p$reason %||% "")[1],
-        lite = isTRUE(p$lite),
-        vw = suppressWarnings(as.numeric(p$vw %||% NA_real_)[1]),
-        hasTitle = isTRUE(p$hasTitle),
-        titleText = as.character(p$titleText %||% "")[1],
-        labI = as.character(p$labI %||% "")[1],
-        labC = as.character(p$labC %||% "")[1],
-        ind_exists = isTRUE(ind$exists),
-        ind_display = as.character(ind$display %||% "")[1],
-        ind_vis = as.character(ind$visibility %||% "")[1],
-        ind_h = suppressWarnings(as.numeric(ind$h %||% NA_real_)[1]),
-        ind_w = suppressWarnings(as.numeric(ind$w %||% NA_real_)[1]),
-        ind_wrapH = suppressWarnings(as.numeric(ind$wrapH %||% NA_real_)[1]),
-        ind_wrapW = suppressWarnings(as.numeric(ind$wrapW %||% NA_real_)[1]),
-        ind_colW = suppressWarnings(as.numeric(ind$colW %||% NA_real_)[1]),
-        ind_nOpt = suppressWarnings(as.numeric(ind$nOpt %||% NA_real_)[1]),
-        ind_szH = suppressWarnings(as.numeric(ind$szH %||% NA_real_)[1]),
-        ind_szW = suppressWarnings(as.numeric(ind$szW %||% NA_real_)[1]),
-        ind_covered = isTRUE(ind$covered),
-        con_exists = isTRUE(con$exists),
-        con_display = as.character(con$display %||% "")[1],
-        con_vis = as.character(con$visibility %||% "")[1],
-        con_h = suppressWarnings(as.numeric(con$h %||% NA_real_)[1]),
-        con_w = suppressWarnings(as.numeric(con$w %||% NA_real_)[1]),
-        con_wrapH = suppressWarnings(as.numeric(con$wrapH %||% NA_real_)[1]),
-        con_wrapW = suppressWarnings(as.numeric(con$wrapW %||% NA_real_)[1]),
-        con_colW = suppressWarnings(as.numeric(con$colW %||% NA_real_)[1]),
-        con_nOpt = suppressWarnings(as.numeric(con$nOpt %||% NA_real_)[1]),
-        con_szH = suppressWarnings(as.numeric(con$szH %||% NA_real_)[1]),
-        con_szW = suppressWarnings(as.numeric(con$szW %||% NA_real_)[1]),
-        con_covered = isTRUE(con$covered),
-        per_exists = isTRUE(per$exists),
-        per_nOpt = suppressWarnings(as.numeric(per$nOpt %||% NA_real_)[1]),
-        per_colW = suppressWarnings(as.numeric(per$colW %||% NA_real_)[1])
-      ), runId = "post-fix")
-      .ynow_dbg_menu("E", "macro_market_module.R:dbg_menu_probe", "client layout widths", list(
-        reason = as.character(p$reason %||% "")[1],
-        ind_colW = suppressWarnings(as.numeric(ind$colW %||% NA_real_)[1]),
-        con_colW = suppressWarnings(as.numeric(con$colW %||% NA_real_)[1]),
-        per_colW = suppressWarnings(as.numeric(per$colW %||% NA_real_)[1]),
-        ind_covered = isTRUE(ind$covered),
-        con_covered = isTRUE(con$covered),
-        ind_mid = as.character(ind$midCls %||% "")[1],
-        con_mid = as.character(con$midCls %||% "")[1]
-      ), runId = "post-fix")
-    }, ignoreNULL = TRUE, ignoreInit = TRUE)
-    # #endregion
+      csel <- isolate(as.character(input$concept_key %||% "")[1])
+      if (is.null(csel) || !nzchar(csel) || !(csel %in% unname(con_ch))) {
+        csel <- ""
+      }
+      cur_ind <- isolate(as.character(input$industry_key %||% "")[1])
+      if (!identical(cur_ind, isel)) industry_programmatic(TRUE)
+      updateSelectInput(session, "industry_key", choices = ind_ch, selected = isel)
+      updateSelectInput(session, "concept_key", choices = con_ch, selected = csel)
+    })
 
     # Bubble concentration basket: Industry when set, else Concept (shared picks).
     .bubble_theme_key <- function() {
@@ -1040,14 +771,6 @@ macro_market_server <- function(id = "macro",
       lapply(names(specs), function(sym) {
         df <- tryCatch(fetch_price_history_df(sym, "5d"), error = function(e) NULL)
         q <- .px_last_chg(df)
-        # #region agent log
-        if (exists(".ynow_dbg_ef0f33", mode = "function")) {
-          .ynow_dbg_ef0f33("E", "macro_market_module.R:index_quotes", "kpi quote", list(
-            symbol = sym, nrow = if (is.data.frame(df)) nrow(df) else 0L,
-            last = q$last, chg = q$chg, finite_last = is.finite(q$last)
-          ))
-        }
-        # #endregion
         list(symbol = sym, label = unname(specs[[sym]]), last = q$last, chg_pct = q$chg)
       })
     })
@@ -1527,29 +1250,10 @@ macro_market_server <- function(id = "macro",
       mode <- isolate(.mode())
       job <- isolate(hccsi_job()) + 1L
       hccsi_job(job)
-      # #region agent log
-      try(cat(paste0(
-        "{\"sessionId\":\"ef0f33\",\"runId\":\"load\",\"hypothesisId\":\"HCCSI\",",
-        "\"location\":\"macro_market_module.R:queue_hccsi\",\"message\":\"hccsi queued after flush\",",
-        "\"data\":{\"job\":", job, ",\"mode\":\"", gsub("\"", "", as.character(mode)[1]), "\"},",
-        "\"timestamp\":", format(as.numeric(Sys.time()) * 1000, scientific = FALSE, trim = TRUE), "}\n"
-      ), file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-ef0f33.log", append = TRUE), silent = TRUE)
-      # #endregion
       run_job <- function() {
         if (!identical(isolate(hccsi_job()), job)) return()
-        t0 <- proc.time()[["elapsed"]]
         out <- tryCatch(.hccsi_compute(mode), error = function(e) list(res = NULL, n_iss = 0L, n_px = 0L, n_fs = 0L))
         if (!identical(isolate(hccsi_job()), job)) return()
-        # #region agent log
-        try(cat(paste0(
-          "{\"sessionId\":\"ef0f33\",\"runId\":\"load\",\"hypothesisId\":\"HCCSI\",",
-          "\"location\":\"macro_market_module.R:queue_hccsi\",\"message\":\"hccsi finished\",",
-          "\"data\":{\"job\":", job,
-          ",\"elapsed_s\":", format(proc.time()[["elapsed"]] - t0, scientific = FALSE, trim = TRUE, digits = 4),
-          ",\"n_iss\":", out$n_iss %||% 0L, ",\"n_px\":", out$n_px %||% 0L, ",\"n_fs\":", out$n_fs %||% 0L, "},",
-          "\"timestamp\":", format(as.numeric(Sys.time()) * 1000, scientific = FALSE, trim = TRUE), "}\n"
-        ), file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-ef0f33.log", append = TRUE), silent = TRUE)
-        # #endregion
         hccsi_val(out$res %||% list(availability = "unavailable"))
       }
       if (requireNamespace("later", quietly = TRUE)) {
