@@ -1144,6 +1144,22 @@ server <- function(input, output, session) {
           nrow_sum = if (is.data.frame(sum_df)) nrow(sum_df) else -1,
           gen = suppressWarnings(as.numeric(isolate(ticker_search_gen()))[1])
         ))
+        if (exists(".ynow_dbg_mult", mode = "function")) {
+          is_exp <- tryCatch(res[["Income Statement"]]$expanded, error = function(e) NULL)
+          bs_exp <- tryCatch(res[["Balance Sheet"]]$expanded, error = function(e) NULL)
+          cf_exp <- tryCatch(res[["Cash Flow"]]$expanded, error = function(e) NULL)
+          .ynow_dbg_mult("A", "ynow_server.R:ticker_fetch", "fetch completed FS shapes", list(
+            tk = as.character(stock_code %||% "")[1],
+            nrow_sum = if (is.data.frame(sum_df)) nrow(sum_df) else -1L,
+            nrow_is = if (is.data.frame(is_exp)) nrow(is_exp) else -1L,
+            ncol_is = if (is.data.frame(is_exp)) ncol(is_exp) else -1L,
+            nrow_bs = if (is.data.frame(bs_exp)) nrow(bs_exp) else -1L,
+            nrow_cf = if (is.data.frame(cf_exp)) nrow(cf_exp) else -1L,
+            q_ccy = as.character(q_ccy %||% "")[1],
+            f_ccy = as.character(f_ccy %||% "")[1],
+            fs_all_empty = isTRUE(isolate(fs_all_empty()))
+          ))
+        }
         # #endregion
 
       }, error = function(e) {
@@ -1152,6 +1168,12 @@ server <- function(input, output, session) {
           tk = as.character(stock_code %||% "")[1],
           err = as.character(e$message %||% "")[1]
         ))
+        if (exists(".ynow_dbg_mult", mode = "function")) {
+          .ynow_dbg_mult("A", "ynow_server.R:ticker_fetch", "fetch failed", list(
+            tk = as.character(stock_code %||% "")[1],
+            err = substr(as.character(e$message %||% "")[1], 1L, 160L)
+          ))
+        }
         # #endregion
         fs_all_empty(FALSE)
         # 興櫃旗標若已偵測仍保留短註（Summary 失敗也可能是興櫃）
@@ -8782,6 +8804,21 @@ server <- function(input, output, session) {
       "Total Debt" = scraped_debt
     )
     
+    # #region agent log
+    if (exists(".ynow_dbg_mult", mode = "function")) {
+      dcf_est <- tryCatch(suppressWarnings(as.numeric(stock_price_estimate_val())[1]), error = function(e) NA_real_)
+      .ynow_dbg_mult("E", "ynow_server.R:ui_data_validation", "DCF core metrics", list(
+        tk = as.character(tryCatch(current_ticker(), error = function(e) "")[1]),
+        fcf = if (is.finite(scraped_fcf)) scraped_fcf else NA_real_,
+        cash = if (is.finite(val_cash)) val_cash else NA_real_,
+        debt = if (is.finite(scraped_debt)) scraped_debt else NA_real_,
+        missing_any = any(!is.finite(c(scraped_fcf, val_cash, scraped_debt))),
+        dcf_est = if (is.finite(dcf_est)) dcf_est else NA_real_,
+        lite = isTRUE(tryCatch(isolate(lite_mode()), error = function(e) FALSE))
+      ))
+    }
+    # #endregion
+
     alert_box <- ui_missing_data_alert(
       check_list = check_list,
       fallback_msg = "無法從財報抓取上述數值。請在下方手動輸入以確保企業估值 (DCF) 計算準確。"

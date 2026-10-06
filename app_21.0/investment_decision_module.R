@@ -701,8 +701,31 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       model_vals <- model_vals[is.finite(model_vals)]
       has_primary_base <- !is.na(base)
       has_any_model_fv <- length(model_vals) > 0L || !is.na(sec_pt)
+      sop_g <- tryCatch(sop_verdict_gate(), error = function(e) NULL)
+      sop_unlocked <- is.list(sop_g) && isTRUE(sop_g$unlocked)
+      # #region agent log
+      if (exists(".ynow_dbg_mult", mode = "function")) {
+        .ynow_dbg_mult("C", "investment_decision_module.R:ui_valuation_compare", "composite branch inputs", list(
+          p_curr = if (is.finite(p_curr)) p_curr else NA_real_,
+          prim = as.character(prim %||% "")[1],
+          has_primary_base = isTRUE(has_primary_base),
+          has_any_model_fv = isTRUE(has_any_model_fv),
+          n_model_vals = length(model_vals),
+          sop_unlocked = isTRUE(sop_unlocked),
+          sop_reason = as.character(if (is.list(sop_g)) sop_g$reason %||% "" else "")[1],
+          early_waiting = isTRUE(!has_primary_base && !has_any_model_fv)
+        ))
+      }
+      # #endregion
 
       if (!has_primary_base && !has_any_model_fv) {
+        # #region agent log
+        if (exists(".ynow_dbg_mult", mode = "function")) {
+          .ynow_dbg_mult("C", "investment_decision_module.R:ui_valuation_compare", "early return waiting_val (skips SOP locked)", list(
+            sop_unlocked = isTRUE(sop_unlocked)
+          ))
+        }
+        # #endregion
         return(div(class = "alert alert-info ynow-waiting-val", str("composite_waiting_val")))
       }
 
@@ -747,6 +770,13 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
           "<span style='color: ", status_color, ";'>",
           htmltools::htmlEscape(str("composite_sop_locked")), "</span>"
         )
+        # #region agent log
+        if (exists(".ynow_dbg_mult", mode = "function")) {
+          .ynow_dbg_mult("D", "investment_decision_module.R:ui_valuation_compare", "status SOP locked", list(
+            has_primary_base = isTRUE(has_primary_base)
+          ))
+        }
+        # #endregion
       } else if (isTRUE(has_primary_base)) {
         status_text <- str("composite_fair")
         status_color <- "#f39c12"
@@ -761,12 +791,26 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
           "<span style='color: ", status_color, ";'>",
           htmltools::htmlEscape(status_text), "</span>"
         )
+        # #region agent log
+        if (exists(".ynow_dbg_mult", mode = "function")) {
+          .ynow_dbg_mult("D", "investment_decision_module.R:ui_valuation_compare", "status valuation label", list(
+            status = as.character(status_text)[1], sop_unlocked = TRUE
+          ))
+        }
+        # #endregion
       } else {
         status_color <- "#bdc3c7"
         status_html <- paste0(
           "<span style='color: #95a5a6; font-weight: 500;'>",
           htmltools::htmlEscape(str("composite_status_pending")), "</span>"
         )
+        # #region agent log
+        if (exists(".ynow_dbg_mult", mode = "function")) {
+          .ynow_dbg_mult("D", "investment_decision_module.R:ui_valuation_compare", "status pending dash", list(
+            sop_unlocked = TRUE, has_primary_base = FALSE
+          ))
+        }
+        # #endregion
       }
 
       fmt <- function(x) if (is.na(x)) "—" else sprintf("$%.2f", x)

@@ -608,6 +608,19 @@ relative_multiples_module_server <- function(id,
       d_is <- tryCatch(d_income_statement(), error = function(e) NULL)
       d_bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
       d_cf <- tryCatch(d_cash_flow(), error = function(e) NULL)
+      # #region agent log
+      if (exists(".ynow_dbg_mult", mode = "function")) {
+        .ynow_dbg_mult("A", "relative_multiples_module.R:sync_from_statements", "sync enter", list(
+          tk = as.character(tryCatch(current_ticker(), error = function(e) "")[1]),
+          has_sum = is.data.frame(sum_df), nrow_sum = if (is.data.frame(sum_df)) nrow(sum_df) else -1L,
+          has_is = is.data.frame(d_is), nrow_is = if (is.data.frame(d_is)) nrow(d_is) else -1L,
+          has_bs = is.data.frame(d_bs), nrow_bs = if (is.data.frame(d_bs)) nrow(d_bs) else -1L,
+          has_cf = is.data.frame(d_cf), nrow_cf = if (is.data.frame(d_cf)) nrow(d_cf) else -1L,
+          q_ccy = as.character(tryCatch(quote_currency(), error = function(e) NA)[1]),
+          f_ccy = as.character(tryCatch(financial_currency(), error = function(e) NA)[1])
+        ))
+      }
+      # #endregion
 
       teps <- NA_real_
       if (exists("extract_summary_item", mode = "function")) {
@@ -702,6 +715,26 @@ relative_multiples_module_server <- function(id,
       updateNumericInput(session, "cash", value = if (is.finite(cash)) round(cash, 2) else NA)
       updateNumericInput(session, "debt", value = if (is.finite(debt)) round(debt, 2) else NA)
       updateNumericInput(session, "shares", value = if (is.finite(shares)) round(shares, 0) else NA)
+      # #region agent log
+      if (exists(".ynow_dbg_mult", mode = "function")) {
+        .ynow_dbg_mult("B", "relative_multiples_module.R:sync_from_statements", "sync metrics", list(
+          tk = as.character(tryCatch(current_ticker(), error = function(e) "")[1]),
+          teps = if (is.finite(teps)) teps else NA_real_,
+          feps = if (is.finite(feps)) feps else NA_real_,
+          fcff = if (is.finite(fcff)) fcff else NA_real_,
+          ebit = if (is.finite(ebit)) ebit else NA_real_,
+          ebitda = if (is.finite(ebitda)) ebitda else NA_real_,
+          revenue = if (is.finite(revenue)) revenue else NA_real_,
+          cash = if (is.finite(cash)) cash else NA_real_,
+          debt = if (is.finite(debt)) debt else NA_real_,
+          shares_bs = if (is.finite(shares_bs)) shares_bs else NA_real_,
+          shares = if (is.finite(shares)) shares else NA_real_,
+          sh_method = as.character(sh_adj$method %||% "")[1],
+          auto_adj = isTRUE(auto_adj),
+          note = substr(as.character(shares_resolve_note() %||% "")[1], 1L, 120L)
+        ))
+      }
+      # #endregion
       invisible(NULL)
     }
 
