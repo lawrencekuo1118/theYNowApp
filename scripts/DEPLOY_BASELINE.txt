@@ -8,5 +8,5 @@ short=b2f6645
 message=chore: bump display version to v21.03
 captured_at=2026-10-06T01:12:47Z
 source_branch=master
-display_version=v21.03
+display_version=v21.04
 note=Canonical live line is app_21.0. Bundle 12652174 ships v21.03: Asset Transmission session slider + Play stay fully visible (panel-fit width, left-anchored Play, bottom margin). Deploy via scripts/deploy_app_21.R.
