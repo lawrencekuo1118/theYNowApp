@@ -5990,6 +5990,7 @@ ui <- dashboardPage(
             setBtText('ynow_macro_theme_help', 'macro_theme_help');
             setBtText('ynow_macro_industry_label', 'macro_industry_label');
             setBtText('ynow_macro_concept_label', 'macro_concept_label');
+            setBtText('ynow_macro_concept_cloud_hint', 'macro_concept_cloud_hint');
             setBtText('ynow_macro_period_label', 'macro_period_label');
             setBtText('ynow_macro_fx_lock', 'macro_fx_lock');
             setBtText('ynow_macro_bubble_title', 'macro_bubble_title');
@@ -8390,6 +8391,62 @@ ui <- dashboardPage(
         .ynow-macro-chapter__lead {
           margin: 0 0 12px 0;
           max-width: 72em;
+        }
+        .ynow-macro-concept-cloud-wrap {
+          margin: 4px 0 14px 0;
+        }
+        .ynow-macro-concept-cloud-wrap > .control-label {
+          display: block;
+          margin-bottom: 4px;
+          font-weight: 700;
+          color: var(--ynow-macro-blue, #0C5484);
+        }
+        .ynow-macro-concept-cloud-wrap > .ynow-macro-hint {
+          margin: 0 0 8px 0;
+        }
+        .ynow-macro-concept-cloud .shiny-options-group {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px 10px;
+          align-items: center;
+          margin: 0;
+        }
+        .ynow-macro-concept-cloud .checkbox-inline,
+        .ynow-macro-concept-cloud label.checkbox-inline {
+          margin: 0 !important;
+          padding: 2px 10px !important;
+          border: 1px solid rgba(12, 84, 132, 0.28);
+          border-radius: 999px;
+          background: #f7fafc;
+          line-height: 1.25;
+          white-space: nowrap;
+          transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+        }
+        .ynow-macro-concept-cloud .checkbox-inline input[type='checkbox'] {
+          position: absolute;
+          opacity: 0;
+          width: 0;
+          height: 0;
+          margin: 0;
+          pointer-events: none;
+        }
+        .ynow-macro-concept-cloud .ynow-macro-cloud-word {
+          font-weight: 600;
+          color: #0b1220;
+          letter-spacing: 0.01em;
+        }
+        .ynow-macro-concept-cloud .checkbox-inline:hover {
+          border-color: rgba(12, 84, 132, 0.55);
+          background: #eef5fb;
+        }
+        .ynow-macro-concept-cloud .checkbox-inline:has(input:checked),
+        .ynow-macro-concept-cloud .checkbox-inline.active {
+          background: rgba(12, 84, 132, 0.12);
+          border-color: #0C5484;
+        }
+        .ynow-macro-concept-cloud .checkbox-inline:has(input:checked) .ynow-macro-cloud-word,
+        .ynow-macro-concept-cloud .checkbox-inline.active .ynow-macro-cloud-word {
+          color: #0C5484;
         }
         .ynow-macro-chapter > .ynow-notes {
           margin-top: 10px;

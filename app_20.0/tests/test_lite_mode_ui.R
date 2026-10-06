@@ -156,13 +156,15 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_false(grepl("output$beta_kpi", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("macro_rolling_beta_path", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl('ns("industry_key")', macro_txt, fixed = TRUE))
-  testthat::expect_true(grepl('ns("concept_key")', macro_txt, fixed = TRUE))
+  testthat::expect_true(grepl("concept_keys", macro_txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-macro-concept-cloud", macro_txt, fixed = TRUE))
+  testthat::expect_false(grepl('ns("concept_key")', macro_txt, fixed = TRUE))
   testthat::expect_false(grepl('ns("theme_key")', macro_txt, fixed = TRUE))
   testthat::expect_false(grepl("Industry / concept vs benchmark", macro_txt, fixed = TRUE))
   testthat::expect_false(grepl("ynow-lite-only", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_macro_theme_help", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-macro-chapter__lead", macro_txt, fixed = TRUE))
-  testthat::expect_true(grepl("Pick Industry and Concept independently", macro_txt, fixed = TRUE))
+  testthat::expect_true(grepl("Pick Industry from the menu and Concept from the word cloud", macro_txt, fixed = TRUE))
   .notes_calls <- function(src) {
     calls <- character(0)
     remaining <- src

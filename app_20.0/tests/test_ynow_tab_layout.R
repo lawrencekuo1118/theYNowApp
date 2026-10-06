@@ -221,7 +221,11 @@ check("bubble at Macro bottom", {
   is.finite(pos_own) && pos_own > 0 && is.finite(pos_bub) && pos_bub > pos_own
 })
 check("split industry picker", grepl('ns("industry_key")', macro, fixed = TRUE))
-check("split concept picker", grepl('ns("concept_key")', macro, fixed = TRUE))
+check("concept word cloud multi-select", {
+  grepl("concept_keys", macro, fixed = TRUE) &&
+    grepl("ynow-macro-concept-cloud", macro, fixed = TRUE) &&
+    !grepl('ns("concept_key")', macro, fixed = TRUE)
+})
 check("Macro first-paint bubble title", grepl("Dynamic industry bubble", macro, fixed = TRUE))
 
 if (fail > 0L) {

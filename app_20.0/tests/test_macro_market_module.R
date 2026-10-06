@@ -99,6 +99,22 @@ check("US industry default key", identical(macro_industry_default_key("US"), "gi
 check("US concept has mag7", "concept_mag7" %in% unname(con_us))
 check("US concept has no GICS keys", !any(startsWith(unname(con_us), "gics_")))
 check("TW concept has shipping", "tw_shipping" %in% unname(con_tw))
+check("concept cloud sizes scale with basket", {
+  sz <- macro_concept_cloud_sizes(con_us, "US")
+  length(sz) == length(con_us) &&
+    all(is.finite(sz)) &&
+    max(sz) >= min(sz)
+})
+check("selected concept keys dedupe", {
+  identical(
+    macro_selected_concept_keys(c("concept_mag7", "", "concept_mag7", "concept_semis")),
+    c("concept_mag7", "concept_semis")
+  )
+})
+check("concept overlay colors cycle", {
+  identical(macro_concept_overlay_color(1L), "#2980b9") &&
+    identical(macro_concept_overlay_color(11L), macro_concept_overlay_color(1L))
+})
 check("US has XLK gics", "gics_xlk" %in% unname(ch_us) && "gics_xlk" %in% unname(ind_us))
 check("XLK ticker", identical(macro_theme_tickers("gics_xlk", "US"), "XLK"))
 check("TW shipping has 2603", "2603.TW" %in% macro_theme_tickers("tw_shipping", "TW"))
@@ -117,8 +133,8 @@ check("none prepended", identical(unname(with_none)[1], "") && "gics_xlk" %in% u
 
 for (k in c(
   "menu_macro_market", "macro_fx_lock", "macro_page_title", "macro_theme_title",
-  "macro_industry_label", "macro_concept_label", "macro_none_option",
-  "macro_plot_need_pick", "macro_series_industry", "macro_series_concept",
+  "macro_industry_label", "macro_concept_label", "macro_concept_cloud_hint", "macro_none_option",
+  "macro_plot_need_pick", "macro_series_industry", "macro_series_concept", "macro_series_concepts",
   "macro_series_rebased", "macro_bubble_theme_label",
   "macro_bubble_shared_need_pick", "macro_bubble_shared_using_industry",
   "macro_bubble_shared_using_concept", "macro_bubble_shared_using_industry_both",
@@ -249,8 +265,12 @@ check("theme help present", grepl("ynow_macro_theme_help", theme_sec, fixed = TR
 check("theme help is chapter chrome", grepl("ynow-macro-chapter__lead", theme_sec, fixed = TRUE))
 check("theme help not in Notes", !any(grepl("ynow_macro_theme_help", theme_notes, fixed = TRUE)))
 check("theme help first-paint GICS", grepl("GICS sector ETFs", theme_sec, fixed = TRUE))
-check("theme help first-paint pick independently",
-      grepl("Pick Industry and Concept independently", theme_sec, fixed = TRUE))
+check("theme help first-paint word cloud",
+      grepl("word cloud", theme_sec, fixed = TRUE) &&
+        grepl("multi-select", theme_sec, ignore.case = TRUE))
+check("concept cloud wrap present", grepl("ynow-macro-concept-cloud-wrap", theme_sec, fixed = TRUE))
+check("concept cloud uiOutput", grepl('uiOutput(ns("concept_cloud_ui"))', theme_sec, fixed = TRUE))
+check("concept cloud hint id", grepl("ynow_macro_concept_cloud_hint", theme_sec, fixed = TRUE))
 check("no empty top Notes before pickers", {
   pos_help <- regexpr("ynow_macro_theme_help", theme_sec, fixed = TRUE)[1]
   pos_pick <- regexpr("industry_key", theme_sec, fixed = TRUE)[1]
@@ -277,9 +297,9 @@ check("pickers not inside leftover notes", !any(grepl("industry_key", theme_note
 check("theme help not lite-hidden", !grepl("ynow_macro_theme_help\"[^\n]*ynow-full-only", theme_sec))
 check("en theme help GICS", grepl("GICS", ui_str("macro_theme_help", "en"), fixed = TRUE))
 check("zh theme help GICS", grepl("GICS", ui_str("macro_theme_help", "zh-TW"), fixed = TRUE))
-check("en theme help Industry", grepl("Pick Industry and Concept independently",
+check("en theme help Industry", grepl("Pick Industry from the menu and Concept from the word cloud",
                                      ui_str("macro_theme_help", "en"), fixed = TRUE))
-check("zh theme help 獨立選單", grepl("獨立選單", ui_str("macro_theme_help", "zh-TW"), fixed = TRUE))
+check("zh theme help 文字雲", grepl("文字雲", ui_str("macro_theme_help", "zh-TW"), fixed = TRUE))
 check("zh theme help no simplified", !grepl("独立|菜单|数据", ui_str("macro_theme_help", "zh-TW")))
 if (requireNamespace("htmltools", quietly = TRUE) && exists("macro_market_ui", mode = "function")) {
   ui_html <- tryCatch({
@@ -312,7 +332,8 @@ if (requireNamespace("htmltools", quietly = TRUE) && exists("macro_market_ui", m
   }
 }
 check("overlay industry input", grepl('ns("industry_key")', txt, fixed = TRUE))
-check("overlay concept input", grepl('ns("concept_key")', txt, fixed = TRUE))
+check("overlay concept multi input", grepl("concept_keys", txt, fixed = TRUE))
+check("overlay concept select gone", !grepl('ns("concept_key")', txt, fixed = TRUE))
 check("combined overlay theme_key gone", !grepl('ns("theme_key")', txt, fixed = TRUE))
 check("combined title gone", !grepl("Industry / concept vs benchmark", txt, fixed = TRUE))
 check("industry vs benchmark first paint", grepl("Industry vs benchmark", txt, fixed = TRUE))
@@ -327,9 +348,18 @@ check("menu choices gated on lazy-bound hist_period", {
 check("UI seeds industry choices not placeholder-only", {
   grepl('macro_industry_choices("US", "en")', txt, fixed = TRUE)
 })
+check("concept cloud helper present", {
+  grepl("macro_concept_cloud_input", txt, fixed = TRUE) &&
+    grepl("macro_selected_concept_keys", txt, fixed = TRUE) &&
+    grepl("macro_concept_overlay_color", txt, fixed = TRUE)
+})
+check("overlay plots multiple concepts", {
+  grepl("od\\$concepts", txt) && grepl("macro_concept_overlay_color", txt, fixed = TRUE)
+})
 check("bubble shares Industry/Concept picks", {
   grepl(".bubble_theme_key", txt, fixed = TRUE) &&
     grepl("bubble_shared_pick_status", txt, fixed = TRUE) &&
+    grepl(".selected_concepts", txt, fixed = TRUE) &&
     !grepl('ns("bubble_theme_key")', txt, fixed = TRUE) &&
     !grepl("updateSelectInput(session, \"bubble_theme_key\"", txt, fixed = TRUE)
 })
