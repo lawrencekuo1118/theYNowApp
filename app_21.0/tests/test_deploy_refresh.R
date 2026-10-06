@@ -60,7 +60,8 @@ check("poll on shiny reconnect without auto-reload", {
     grepl("still no auto-reload", ui, fixed = TRUE)
 })
 check("update chrome uses flame flow", grepl("ynow-update-available", ui, fixed = TRUE) &&
-  grepl("body.ynow-update-available .main-header .logo .ynow-app-title-fill-inner", ui, fixed = TRUE) &&
+  grepl("Pending deploy: flame title must override gold", ui, fixed = TRUE) &&
+  grepl("body.ynow-update-available .main-header .logo .ynow-app-title.is-complete .ynow-app-title-fill-inner", ui, fixed = TRUE) &&
   grepl("--ynow-htcdi-flame-gradient", ui, fixed = TRUE) &&
   grepl("ynow-htcdi-flame-flow", ui, fixed = TRUE) &&
   !grepl("ynow-update-pulse", ui, fixed = TRUE))

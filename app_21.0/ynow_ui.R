@@ -3114,49 +3114,10 @@ ui <- dashboardPage(
           line-height: 1.15;
           vertical-align: middle;
         }
-        /* New deploy detected: flame title until user clicks The YNow App to refresh */
-        body.ynow-update-available .main-header .logo {
-          cursor: pointer;
-        }
+        /* Update-available: cursor only here; flame fill overrides come after gold title rules */
+        body.ynow-update-available .main-header .logo,
         body.ynow-update-available .main-header .logo .ynow-app-title {
           cursor: pointer;
-        }
-        body.ynow-update-available .main-header .logo .ynow-app-title-base {
-          color: rgba(192, 57, 43, 0.38) !important;
-          -webkit-text-fill-color: rgba(192, 57, 43, 0.38);
-          animation: none;
-        }
-        body.ynow-update-available .main-header .logo .ynow-app-title-fill {
-          width: 100% !important;
-        }
-        body.ynow-update-available .main-header .logo .ynow-app-title-fill-inner {
-          color: transparent !important;
-          background-image: var(--ynow-htcdi-flame-gradient) !important;
-          background-size: 220% 100% !important;
-          background-repeat: no-repeat !important;
-          -webkit-background-clip: text !important;
-          background-clip: text !important;
-          -webkit-text-fill-color: transparent !important;
-          animation: ynow-htcdi-flame-flow 2.4s ease-in-out infinite !important;
-          text-decoration: none;
-        }
-        @supports not ((-webkit-background-clip: text) or (background-clip: text)) {
-          body.ynow-update-available .main-header .logo .ynow-app-title-fill-inner {
-            -webkit-text-fill-color: #E67E22 !important;
-            color: #E67E22 !important;
-            background-image: none !important;
-            animation: none !important;
-            text-shadow:
-              0 0 6px rgba(255, 120, 40, 0.85),
-              0 0 14px rgba(192, 57, 43, 0.55),
-              0 1px 2px rgba(0, 0, 0, 0.85);
-          }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          body.ynow-update-available .main-header .logo .ynow-app-title-fill-inner {
-            animation: none !important;
-            background-position: 0% 50% !important;
-          }
         }
         .main-header .logo .ynow-app-title-base {
           display: inline-block;
@@ -3215,6 +3176,54 @@ ui <- dashboardPage(
           .main-header .logo .ynow-app-title-base {
             color: rgba(255, 215, 0, 0.35) !important;
             -webkit-text-fill-color: rgba(255, 215, 0, 0.35);
+          }
+        }
+        /* Pending deploy: flame title must override gold fill/shine (place after gold rules) */
+        body.ynow-update-available .main-header .logo .ynow-app-title-base {
+          color: rgba(192, 57, 43, 0.38) !important;
+          -webkit-text-fill-color: rgba(192, 57, 43, 0.38) !important;
+          animation: none !important;
+        }
+        body.ynow-update-available .main-header .logo .ynow-app-title.is-complete .ynow-app-title-fill,
+        body.ynow-update-available .main-header .logo .ynow-app-title-fill {
+          width: 100% !important;
+        }
+        body.ynow-update-available .main-header .logo .ynow-app-title.is-complete .ynow-app-title-fill-inner,
+        body.ynow-update-available .main-header .logo .ynow-app-title-fill-inner {
+          color: transparent !important;
+          background-color: transparent !important;
+          background-image: var(--ynow-htcdi-flame-gradient) !important;
+          background-size: 220% 100% !important;
+          background-repeat: no-repeat !important;
+          -webkit-background-clip: text !important;
+          background-clip: text !important;
+          -webkit-text-fill-color: transparent !important;
+          animation: ynow-htcdi-flame-flow 2.4s ease-in-out infinite !important;
+          text-decoration: none !important;
+          filter: none !important;
+        }
+        @supports not ((-webkit-background-clip: text) or (background-clip: text)) {
+          body.ynow-update-available .main-header .logo .ynow-app-title-fill-inner,
+          body.ynow-update-available .main-header .logo .ynow-app-title.is-complete .ynow-app-title-fill-inner {
+            -webkit-text-fill-color: #E67E22 !important;
+            color: #E67E22 !important;
+            background-image: none !important;
+            animation: none !important;
+            text-shadow:
+              0 0 6px rgba(255, 120, 40, 0.85),
+              0 0 14px rgba(192, 57, 43, 0.55),
+              0 1px 2px rgba(0, 0, 0, 0.85);
+          }
+          body.ynow-update-available .main-header .logo .ynow-app-title-base {
+            color: rgba(192, 57, 43, 0.45) !important;
+            -webkit-text-fill-color: rgba(192, 57, 43, 0.45) !important;
+          }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          body.ynow-update-available .main-header .logo .ynow-app-title-fill-inner,
+          body.ynow-update-available .main-header .logo .ynow-app-title.is-complete .ynow-app-title-fill-inner {
+            animation: none !important;
+            background-position: 0% 50% !important;
           }
         }
         /* 美股：logo 區塊黑底（容器層，不影響內層文字漸層） */
