@@ -1330,6 +1330,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     capm_beta_tag_synced = "[{src}]",
     capm_beta_tag_wacc_indep = "[WACC independent]",
     gs_model_selector_title = "Model Selector｜Valuation model recommendation",
+    gs_ms_dims_title = "Consideration dimensions",
+    gs_ms_dims_toggle_aria = "Show or hide consideration dimensions",
     gs_beta_overview_help = paste0(
       "Intrinsic-value path: Summary β is written into CAPM by default; ",
       "you can switch to industry / Bottom-Up / unlevered / manual. ",
@@ -3742,6 +3744,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     capm_beta_tag_synced = "[{src}]",
     capm_beta_tag_wacc_indep = "[WACC 獨立]",
     gs_model_selector_title = "Model Selector｜估值模型推薦",
+    gs_ms_dims_title = "考慮維度",
+    gs_ms_dims_toggle_aria = "展開或收合考慮維度",
     gs_beta_overview_help = paste0(
       "內在價值路徑：預設把 Summary β 寫入 CAPM；可改選產業／Bottom-Up／去槓桿化／手動。",
       "Rolling 估計僅供對照，不寫入 CAPM。"

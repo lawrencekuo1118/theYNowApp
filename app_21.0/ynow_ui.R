@@ -902,6 +902,104 @@ beta_rolling_section_ui <- function() {
   )
 }
 
+#' Consideration-dimensions comparison table (Model Selector annotation + shared HTML).
+.consideration_dimensions_table <- function() {
+  tags$div(
+    style = "overflow-x: auto;",
+    HTML("<table class='table table-striped table-hover table-bordered' style='background-color: white;'>
+                                 <thead style='background-color: #2C3E50; color: white;'>
+                                   <tr>
+                                     <th>考慮維度</th>
+                                     <th>DDM</th>
+                                     <th>DCF</th>
+                                     <th>RI</th>
+                                     <th>P/B</th>
+                                     <th>NAV</th>
+                                     <th>Multiples</th>
+                                     <th>SOTP</th>
+                                   </tr>
+                                 </thead>
+                                 <tbody>
+                                   <tr>
+                                     <td><b>主要資料來源</b></td>
+                                     <td>現金流量表（股利）</td>
+                                     <td>現金流量表（CFO／CapEx）</td>
+                                     <td>損益表＋資產負債表</td>
+                                     <td>資產負債表（權益／有形淨值）</td>
+                                     <td>資產負債表（權益／投資科目）</td>
+                                     <td>損益／現金流／營收；ARR 手動</td>
+                                     <td>多部門營收（BB Lab）＋Cash／Debt</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>投資人觀點</b></td>
+                                     <td>小股東（配息請求權）</td>
+                                     <td>控股／併購（造血能力）</td>
+                                     <td>皆可（尤其負 FCF）</td>
+                                     <td>金融／保險／帳面錨</td>
+                                     <td>控股／綜合企業</td>
+                                     <td>成長／無形資產交叉</td>
+                                     <td>多事業部結構交叉</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>典型適用</b></td>
+                                     <td>成熟穩健配息</td>
+                                     <td>成長／擴張、FCF 為正</td>
+                                     <td>資產密集、FCF 不穩</td>
+                                     <td>銀行、保險、REIT</td>
+                                     <td>控股／集團帳面</td>
+                                     <td>SaaS／平台／高成長</td>
+                                     <td>控股／綜合多部門</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>對配息依賴</b></td>
+                                     <td><span class='label label-danger'>極高</span></td>
+                                     <td><span class='label label-success'>低</span></td>
+                                     <td><span class='label label-success'>極低</span></td>
+                                     <td><span class='label label-success'>低</span></td>
+                                     <td><span class='label label-success'>低</span></td>
+                                     <td><span class='label label-success'>低</span></td>
+                                     <td><span class='label label-success'>低</span></td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>典型限制</b></td>
+                                     <td>不配息／配息波動大時失效</td>
+                                     <td>FCF 長期為負或高度循環時難估</td>
+                                     <td>帳面／ROE 失真時偏誤</td>
+                                     <td>無形資產主導時失準</td>
+                                     <td>非市場法 SOTP；無投資科目時＝權益</td>
+                                     <td>倍數隨市場情緒；非 Fair Value</td>
+                                     <td>需 ≥2 正值部門營收；非 EBIT SOTP</td>
+                                   </tr>
+                                 </tbody>
+                               </table>")
+  )
+}
+
+#' Collapsible Model Selector footnote: consideration dimensions (default closed).
+#' Reuses `.ynow-notes` chrome; title class is NOT `.ynow-notes__title` so
+#' applyUiLocale does not overwrite it with the generic Notes / 附註 string.
+.model_selector_dimensions_annotation_ui <- function() {
+  tags$details(
+    id = "ynow_ms_dims_details",
+    class = "ynow-notes ynow-ms-dims",
+    tags$summary(
+      class = "ynow-notes__summary",
+      id = "ynow_ms_dims_summary",
+      title = "Show or hide consideration dimensions",
+      `aria-label` = "Show or hide consideration dimensions",
+      tags$span(
+        class = "ynow-ms-dims__title",
+        id = "ynow_ms_dims_title",
+        "考慮維度"
+      )
+    ),
+    tags$div(
+      class = "ynow-notes__body",
+      .consideration_dimensions_table()
+    )
+  )
+}
+
 #' Valuation methodology guide (Decision Matrix + model tabs).
 #' Mounted at the bottom of Basic Setup (Full only; Lite hides Basic Setup).
 #' Title/lead use column(12); tabBox keeps width=12 (shinydashboard always emits col-sm-N).
@@ -1053,76 +1151,9 @@ beta_rolling_section_ui <- function() {
                                    </tr>
                                  </tbody>
                                </table>")
-          ),
-          tags$div(
-            style = "overflow-x: auto;",
-            HTML("<table class='table table-striped table-hover table-bordered' style='background-color: white;'>
-                                 <thead style='background-color: #2C3E50; color: white;'>
-                                   <tr>
-                                     <th>考慮維度</th>
-                                     <th>DDM</th>
-                                     <th>DCF</th>
-                                     <th>RI</th>
-                                     <th>P/B</th>
-                                     <th>NAV</th>
-                                     <th>Multiples</th>
-                                     <th>SOTP</th>
-                                   </tr>
-                                 </thead>
-                                 <tbody>
-                                   <tr>
-                                     <td><b>主要資料來源</b></td>
-                                     <td>現金流量表（股利）</td>
-                                     <td>現金流量表（CFO／CapEx）</td>
-                                     <td>損益表＋資產負債表</td>
-                                     <td>資產負債表（權益／有形淨值）</td>
-                                     <td>資產負債表（權益／投資科目）</td>
-                                     <td>損益／現金流／營收；ARR 手動</td>
-                                     <td>多部門營收（BB Lab）＋Cash／Debt</td>
-                                   </tr>
-                                   <tr>
-                                     <td><b>投資人觀點</b></td>
-                                     <td>小股東（配息請求權）</td>
-                                     <td>控股／併購（造血能力）</td>
-                                     <td>皆可（尤其負 FCF）</td>
-                                     <td>金融／保險／帳面錨</td>
-                                     <td>控股／綜合企業</td>
-                                     <td>成長／無形資產交叉</td>
-                                     <td>多事業部結構交叉</td>
-                                   </tr>
-                                   <tr>
-                                     <td><b>典型適用</b></td>
-                                     <td>成熟穩健配息</td>
-                                     <td>成長／擴張、FCF 為正</td>
-                                     <td>資產密集、FCF 不穩</td>
-                                     <td>銀行、保險、REIT</td>
-                                     <td>控股／集團帳面</td>
-                                     <td>SaaS／平台／高成長</td>
-                                     <td>控股／綜合多部門</td>
-                                   </tr>
-                                   <tr>
-                                     <td><b>對配息依賴</b></td>
-                                     <td><span class='label label-danger'>極高</span></td>
-                                     <td><span class='label label-success'>低</span></td>
-                                     <td><span class='label label-success'>極低</span></td>
-                                     <td><span class='label label-success'>低</span></td>
-                                     <td><span class='label label-success'>低</span></td>
-                                     <td><span class='label label-success'>低</span></td>
-                                     <td><span class='label label-success'>低</span></td>
-                                   </tr>
-                                   <tr>
-                                     <td><b>典型限制</b></td>
-                                     <td>不配息／配息波動大時失效</td>
-                                     <td>FCF 長期為負或高度循環時難估</td>
-                                     <td>帳面／ROE 失真時偏誤</td>
-                                     <td>無形資產主導時失準</td>
-                                     <td>非市場法 SOTP；無投資科目時＝權益</td>
-                                     <td>倍數隨市場情緒；非 Fair Value</td>
-                                     <td>需 ≥2 正值部門營收；非 EBIT SOTP</td>
-                                   </tr>
-                                 </tbody>
-                               </table>")
           )
+          # Consideration dimensions table lives under Model Selector as a
+          # collapsed annotation (see .model_selector_dimensions_annotation_ui).
         ),
 
         # Tab: DDM 模型解說
@@ -3699,13 +3730,69 @@ ui <- dashboardPage(
         body.ynow-theme-model .content-wrapper .nav-tabs-custom > .nav-tabs > li.active:hover > a {
           color: var(--ynow-model-accent) !important;
         }
-        /* valueBox / infoBox follow the active model card color */
+        /* Model KPI palette: result = full accent; siblings = same family, distinct mixes */
+        body.ynow-theme-model {
+          --ynow-model-kpi-result: var(--ynow-model-accent);
+          --ynow-model-kpi-s2: color-mix(in srgb, var(--ynow-model-accent) 72%, #000000);
+          --ynow-model-kpi-s3: color-mix(in srgb, var(--ynow-model-accent) 58%, #ffffff);
+          --ynow-model-kpi-s4: color-mix(in srgb, var(--ynow-model-accent) 82%, #4a5568);
+          --ynow-model-kpi-muted: color-mix(in srgb, var(--ynow-model-accent) 64%, #2c3e50);
+        }
         body.ynow-theme-model .content-wrapper .small-box,
         body.ynow-theme-model .tab-content .small-box {
-          background-color: var(--ynow-model-accent) !important;
+          background-color: var(--ynow-model-kpi-muted) !important;
+        }
+        body.ynow-theme-model .content-wrapper .info-box.bg-aqua,
+        body.ynow-theme-model .content-wrapper .info-box.bg-green,
+        body.ynow-theme-model .content-wrapper .info-box.bg-yellow,
+        body.ynow-theme-model .content-wrapper .info-box.bg-red,
+        body.ynow-theme-model .content-wrapper .info-box.bg-maroon,
+        body.ynow-theme-model .content-wrapper .info-box.bg-purple,
+        body.ynow-theme-model .content-wrapper .info-box.bg-navy,
+        body.ynow-theme-model .content-wrapper .info-box.bg-teal,
+        body.ynow-theme-model .content-wrapper .info-box.bg-olive,
+        body.ynow-theme-model .content-wrapper .info-box.bg-orange,
+        body.ynow-theme-model .content-wrapper .info-box.bg-light-blue,
+        body.ynow-theme-model .content-wrapper .info-box.bg-black,
+        body.ynow-theme-model .content-wrapper .info-box.bg-blue {
+          background-color: var(--ynow-model-kpi-muted) !important;
         }
         body.ynow-theme-model .content-wrapper .info-box .info-box-icon {
-          background-color: var(--ynow-model-accent) !important;
+          background-color: var(--ynow-model-kpi-muted) !important;
+        }
+        body.ynow-theme-model .ynow-model-kpi-result .small-box,
+        body.ynow-theme-model .ynow-model-kpi-result .info-box,
+        body.ynow-theme-model .ynow-model-kpi-result .info-box .info-box-icon {
+          background-color: var(--ynow-model-kpi-result) !important;
+        }
+        body.ynow-theme-model .ynow-model-kpi-tone-2 .small-box,
+        body.ynow-theme-model .ynow-model-kpi-tone-2 .info-box,
+        body.ynow-theme-model .ynow-model-kpi-tone-2 .info-box .info-box-icon {
+          background-color: var(--ynow-model-kpi-s2) !important;
+        }
+        body.ynow-theme-model .ynow-model-kpi-tone-3 .small-box,
+        body.ynow-theme-model .ynow-model-kpi-tone-3 .info-box,
+        body.ynow-theme-model .ynow-model-kpi-tone-3 .info-box .info-box-icon {
+          background-color: var(--ynow-model-kpi-s3) !important;
+        }
+        body.ynow-theme-model .ynow-model-kpi-tone-4 .small-box,
+        body.ynow-theme-model .ynow-model-kpi-tone-4 .info-box,
+        body.ynow-theme-model .ynow-model-kpi-tone-4 .info-box .info-box-icon {
+          background-color: var(--ynow-model-kpi-s4) !important;
+        }
+        body.ynow-theme-model .ynow-model-kpi-result-num.ynow-htcdi-flow {
+          background-image: var(--ynow-logo-flow-gradient, linear-gradient(105deg, #0C5484 0%, #1AA8B8 50%, #249C60 100%)) !important;
+          -webkit-background-clip: text !important;
+          background-clip: text !important;
+          -webkit-text-fill-color: transparent !important;
+          color: transparent !important;
+          animation: ynow-logo-flow 2.6s ease-in-out infinite;
+          font-weight: 800;
+        }
+        body.ynow-theme-model .small-box .inner h3 .ynow-model-kpi-result-num.ynow-htcdi-flow,
+        body.ynow-theme-model .info-box .info-box-number .ynow-model-kpi-result-num.ynow-htcdi-flow {
+          color: transparent !important;
+          -webkit-text-fill-color: transparent !important;
         }
         /* Sidebar active rail matches the open model tab */
         body.ynow-theme-model.skin-black .main-sidebar .sidebar-menu > li.active > a,
@@ -6950,9 +7037,17 @@ ui <- dashboardPage(
             }
             if (s.notes_toggle_aria) {
               document.querySelectorAll('.ynow-notes__summary').forEach(function (el) {
+                if (el.id === 'ynow_ms_dims_summary') return;
                 el.setAttribute('title', s.notes_toggle_aria);
                 el.setAttribute('aria-label', s.notes_toggle_aria);
               });
+            }
+            var msDimsTitle = document.getElementById('ynow_ms_dims_title');
+            if (msDimsTitle && s.gs_ms_dims_title) msDimsTitle.textContent = s.gs_ms_dims_title;
+            var msDimsSummary = document.getElementById('ynow_ms_dims_summary');
+            if (msDimsSummary && s.gs_ms_dims_toggle_aria) {
+              msDimsSummary.setAttribute('title', s.gs_ms_dims_toggle_aria);
+              msDimsSummary.setAttribute('aria-label', s.gs_ms_dims_toggle_aria);
             }
             var kpiJumpMos = document.getElementById('ynow_kpi_jump_mos');
             if (kpiJumpMos && s.funnel_kpi_jump_mos_aria) kpiJumpMos.setAttribute('aria-label', s.funnel_kpi_jump_mos_aria);
@@ -8716,6 +8811,10 @@ ui <- dashboardPage(
           border: 1px solid #ececec;
           border-radius: 6px;
           background: #fafafa;
+        }
+        /* Model Selector footnote: consideration dimensions (default collapsed) */
+        .ynow-ms-dims {
+          margin: 14px 0 0 0;
         }
         .ynow-notes > .ynow-notes__summary {
           cursor: pointer;
@@ -11245,7 +11344,8 @@ ui <- dashboardPage(
               tags$span(id = "ynow_gs_model_selector_title", "Model Selector｜Valuation model recommendation")
             ),
             width = 12, status = "primary", solidHeader = TRUE,
-            uiOutput("get_started_model_selector")
+            uiOutput("get_started_model_selector"),
+            .model_selector_dimensions_annotation_ui()
           )
         ),
         # SGR 與 BETA 同層、同 col-sm-12（勿只對 SGR 外包 fluidRow，否則欄寬會不一致）
@@ -11862,8 +11962,11 @@ ui <- dashboardPage(
                          column(
                            width = 12,
                            fluidRow(
-                             infoBoxOutput("mod_ddm-ibx_ddm_price", width = 6),
-                             infoBoxOutput("mod_ddm-ibx_ddm_d1", width = 6)
+                             class = "ynow-model-kpi-row",
+                             column(6, class = "ynow-model-kpi-result",
+                                    infoBoxOutput("mod_ddm-ibx_ddm_price", width = NULL)),
+                             column(6, class = "ynow-model-kpi-tone-2",
+                                    infoBoxOutput("mod_ddm-ibx_ddm_d1", width = NULL))
                            )
                          )
                        ),
@@ -12115,8 +12218,11 @@ ui <- dashboardPage(
                               fluidRow(
                                 column(width = 12,
                                        fluidRow(
-                                         infoBoxOutput("ibx_stock_value_dcf", width = 6),
-                                         infoBoxOutput("ibx_enterprise_value_dcf", width = 6)
+                                         class = "ynow-model-kpi-row",
+                                         column(6, class = "ynow-model-kpi-result",
+                                                infoBoxOutput("ibx_stock_value_dcf", width = NULL)),
+                                         column(6, class = "ynow-model-kpi-tone-2",
+                                                infoBoxOutput("ibx_enterprise_value_dcf", width = NULL))
                                        )
                                 )
                               ),
