@@ -55,8 +55,11 @@ alerts:
 layers:
   energy_oil: [OIL]
   lithography: [ASML]
+  wafer_process_equipment: [ASM]
+  wafer_materials: [SHIN_ETSU]
   foundries: [TSM]
   eda: [SNPS, CDNS]
+  chip_ip: [ARM]
   semiconductors: [TSM, AVGO, NVDA]
   cloud: [MSFT, AMZN, GOOGL]
   enterprise_identity: [MSFT]
@@ -69,8 +72,11 @@ layers:
 
 contagion_channels:
   - {id: oil_litho, issuers: [OIL, ASML], persist_days: 20, min_stressed: 2}
+  - {id: asml_asm, issuers: [ASML, ASM], persist_days: 20, min_stressed: 2}
   - {id: litho_foundry, issuers: [ASML, TSM], persist_days: 20, min_stressed: 2}
+  - {id: shin_foundry, issuers: [SHIN_ETSU, TSM], persist_days: 20, min_stressed: 2}
   - {id: foundry_eda, issuers: [TSM, SNPS, CDNS], persist_days: 20, min_stressed: 2}
+  - {id: arm_ai, issuers: [ARM, NVDA], persist_days: 20, min_stressed: 2}
   - {id: cloud_identity, issuers: [MSFT, AMZN, GOOGL], persist_days: 20, min_stressed: 2}
   - {id: payments, issuers: [V, MA], persist_days: 20, min_stressed: 2}
   - {id: arinc_sita, issuers: [ARINC, SITA], persist_days: 20, min_stressed: 2}
@@ -79,10 +85,13 @@ contagion_channels:
 issuers:
   - {id: OIL, tickers: [USO], economic_issuer: oil_index, function_id: energy_oil, layer: energy_oil, criticality_prior: 93, quote_currency: USD, statement_currency: USD, instrument_type: etf, underlying_share_comparison_required: false, substitutes: other crude benchmarks (WTI / Brent futures; limited), replacement_time_years: 0, switching_difficulty: 95, buffer: 5, issuer_cap_override: 0.15}
   - {id: ASML, tickers: [ASML], economic_issuer: asml, function_id: semiconductor_equipment, layer: lithography, criticality_prior: 95, quote_currency: USD, statement_currency: EUR, instrument_type: ordinary, underlying_share_comparison_required: false, substitutes: limited trailing-edge lithography (Nikon / Canon), replacement_time_years: 8, switching_difficulty: 92, buffer: 8, issuer_cap_override: 0.15}
+  - {id: ASM, tickers: [ASMIY], economic_issuer: asm_international, function_id: wafer_process_equipment, layer: wafer_process_equipment, criticality_prior: 90, quote_currency: USD, statement_currency: EUR, instrument_type: ADR, underlying_share_comparison_required: false, substitutes: partial ALD / epitaxial peers (Tokyo Electron / Lam; limited for leading-edge ALD), replacement_time_years: 6, switching_difficulty: 88, buffer: 12}
+  - {id: SHIN_ETSU, tickers: [SHECY], local_ordinary_ticker: 4063.T, economic_issuer: shin_etsu, function_id: wafer_materials, layer: wafer_materials, criticality_prior: 89, quote_currency: USD, statement_currency: JPY, instrument_type: ADR, underlying_share_comparison_required: false, substitutes: partial silicon-wafer peers (SUMCO / GlobalWafers; limited at leading edge), replacement_time_years: 5, switching_difficulty: 87, buffer: 12}
   - {id: TSM, tickers: [TSM], local_ordinary_ticker: 2330.TW, economic_issuer: tsmc, function_id: advanced_foundry, layer: foundries, criticality_prior: 92, quote_currency: USD, statement_currency: TWD, instrument_type: ADR, adr_ratio: 5, underlying_share_comparison_required: false, substitutes: limited advanced-node capacity, replacement_time_years: 6, switching_difficulty: 90, buffer: 10, issuer_cap_override: 0.15}
   - {id: MSFT, tickers: [MSFT], economic_issuer: microsoft, function_id: enterprise_os_identity_cloud, layer: enterprise_identity, criticality_prior: 88, quote_currency: USD, statement_currency: USD, instrument_type: ordinary, underlying_share_comparison_required: false, substitutes: partial (Google Workspace / Linux / AWS IAM), replacement_time_years: 4, switching_difficulty: 85, buffer: 18}
   - {id: ARINC, tickers: [RTX], economic_issuer: arinc, function_id: aviation_arinc, layer: aviation_comms, criticality_prior: 87, quote_currency: USD, statement_currency: USD, instrument_type: ordinary, underlying_share_comparison_required: false, substitutes: partial airline ACARS / other ground-air messaging (limited), replacement_time_years: 6, switching_difficulty: 90, buffer: 10}
   - {id: SITA, tickers: [AMADY], economic_issuer: sita, function_id: aviation_sita, layer: aviation_comms, criticality_prior: 86, quote_currency: USD, statement_currency: EUR, instrument_type: ADR, underlying_share_comparison_required: false, substitutes: partial airline/airport IT peers (SITA is private; Amadeus ADR AMADY is the listed market proxy), replacement_time_years: 5, switching_difficulty: 88, buffer: 12}
+  - {id: ARM, tickers: [ARM], economic_issuer: arm, function_id: chip_ip, layer: chip_ip, criticality_prior: 84, quote_currency: USD, statement_currency: USD, instrument_type: ordinary, underlying_share_comparison_required: false, substitutes: partial RISC-V / x86 design IP (long software ecosystem lock-in), replacement_time_years: 5, switching_difficulty: 86, buffer: 14}
   - {id: AMZN, tickers: [AMZN], economic_issuer: amazon, function_id: cloud_internet_infrastructure, layer: cloud, criticality_prior: 83, quote_currency: USD, statement_currency: USD, instrument_type: ordinary, underlying_share_comparison_required: false, substitutes: Azure / GCP (partial), replacement_time_years: 3, switching_difficulty: 80, buffer: 20}
   - {id: GOOGL, tickers: [GOOGL, GOOG], economic_issuer: alphabet, function_id: cloud_internet_infrastructure, layer: cloud, criticality_prior: 80, quote_currency: USD, statement_currency: USD, instrument_type: ordinary, underlying_share_comparison_required: false, substitutes: Bing / Azure / AWS (partial), replacement_time_years: 3, switching_difficulty: 78, buffer: 22}
   - {id: AAPL, tickers: [AAPL], economic_issuer: apple, function_id: consumer_digital_ecosystem, layer: consumer_os_ecosystems, criticality_prior: 79, quote_currency: USD, statement_currency: USD, instrument_type: ordinary, underlying_share_comparison_required: false, substitutes: Android / Windows (partial), replacement_time_years: 3, switching_difficulty: 82, buffer: 25}
