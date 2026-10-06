@@ -28,10 +28,19 @@ check <- function(label, cond) {
 
 cfg <- htcdi_load_config()
 ids <- htcdi_issuer_ids(cfg)
-check("universe 14", identical(length(ids), 14L))
+check("universe 16", identical(length(ids), 16L))
 check("OIL 93", identical(htcdi_find_issuer("OIL", cfg)$criticality_prior, 93))
 check("OIL ticker USO", identical(htcdi_find_issuer("OIL", cfg)$tickers[[1]], "USO"))
 check("ASML 95", identical(htcdi_find_issuer("ASML", cfg)$criticality_prior, 95))
+check("ARINC via RTX", identical(htcdi_find_issuer("ARINC", cfg)$tickers[[1]], "RTX") &&
+  identical(htcdi_find_issuer("ARINC", cfg)$criticality_prior, 87))
+check("SITA via AMADY", identical(htcdi_find_issuer("SITA", cfg)$tickers[[1]], "AMADY") &&
+  identical(htcdi_find_issuer("SITA", cfg)$criticality_prior, 86))
+check("aviation layer", identical(sort(as.character(cfg$layers$aviation_comms)), c("ARINC", "SITA")))
+check("arinc_sita channel", {
+  ch <- cfg$contagion_channels
+  any(vapply(ch, function(x) identical(x$id, "arinc_sita"), logical(1)))
+})
 check("meta destruction name", identical(cfg$meta$name, "Human Tech Civilization Destruction Index"))
 check("oil litho channel", {
   ch <- cfg$contagion_channels
@@ -365,6 +374,12 @@ check("oil layer labels", {
     identical(ui_str("htcdi_ly_energy_oil", "zh-TW"), "石油／能源") &&
     identical(ui_str("htcdi_fn_energy_oil", "zh-TW"), "石油指數（USO）") &&
     identical(.htcdi_named("fn", "energy_oil", "zh-TW"), "石油指數（USO）")
+})
+check("aviation labels", {
+  identical(ui_str("htcdi_ly_aviation_comms", "zh-TW"), "航空通訊") &&
+    identical(ui_str("htcdi_fn_aviation_arinc", "en"), "ARINC aviation messaging (RTX / Collins)") &&
+    identical(ui_str("htcdi_fn_aviation_sita", "zh-TW"), "SITA 航空 IT（市場代理：Amadeus ADR）") &&
+    identical(.htcdi_named("ch", "arinc_sita", "zh-TW"), "ARINC 與 SITA 綁在一起")
 })
 check("en name", identical(ui_str("htcdi_index_health", "en"), "Statement Development"))
 check("zh name EN", identical(ui_str("htcdi_index_health", "zh-TW"), "Statement Development"))

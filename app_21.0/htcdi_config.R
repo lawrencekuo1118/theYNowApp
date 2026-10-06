@@ -72,8 +72,8 @@ HTCDI_DEFAULT_CONFIG <- list(
     energy_oil = "OIL", lithography = "ASML", foundries = "TSM", eda = c("SNPS", "CDNS"),
     semiconductors = c("TSM", "AVGO", "NVDA"), cloud = c("MSFT", "AMZN", "GOOGL"),
     enterprise_identity = "MSFT", consumer_os_ecosystems = c("AAPL", "MSFT"),
-    payment_networks = c("V", "MA"), enterprise_dbs = "ORCL",
-    dc_networking = "AVGO", ai_computing = "NVDA"
+    payment_networks = c("V", "MA"), aviation_comms = c("ARINC", "SITA"),
+    enterprise_dbs = "ORCL", dc_networking = "AVGO", ai_computing = "NVDA"
   ),
   contagion_channels = list(
     list(id = "oil_litho", issuers = c("OIL", "ASML"), persist_days = 20, min_stressed = 2L),
@@ -81,6 +81,7 @@ HTCDI_DEFAULT_CONFIG <- list(
     list(id = "foundry_eda", issuers = c("TSM", "SNPS", "CDNS"), persist_days = 20, min_stressed = 2L),
     list(id = "cloud_identity", issuers = c("MSFT", "AMZN", "GOOGL"), persist_days = 20, min_stressed = 2L),
     list(id = "payments", issuers = c("V", "MA"), persist_days = 20, min_stressed = 2L),
+    list(id = "arinc_sita", issuers = c("ARINC", "SITA"), persist_days = 20, min_stressed = 2L),
     list(id = "semi_cloud_pay", layers = c("semiconductors", "cloud", "payment_networks"),
          persist_days = 20, min_stressed = 3L)
   ),
@@ -99,6 +100,13 @@ HTCDI_DEFAULT_CONFIG <- list(
     .HTCDI_ISSUER("MSFT", "MSFT", "microsoft", "enterprise_os_identity_cloud", "enterprise_identity",
                   88, "USD", "USD", substitutes = "partial (Google Workspace / Linux / AWS IAM)",
                   replacement_time_years = 4, switching_difficulty = 85, buffer = 18),
+    .HTCDI_ISSUER("ARINC", "RTX", "arinc", "aviation_arinc", "aviation_comms", 87, "USD", "USD",
+                  substitutes = "partial airline ACARS / other ground–air messaging (limited)",
+                  replacement_time_years = 6, switching_difficulty = 90, buffer = 10),
+    .HTCDI_ISSUER("SITA", "AMADY", "sita", "aviation_sita", "aviation_comms", 86, "USD", "EUR",
+                  instrument_type = "ADR",
+                  substitutes = "partial airline/airport IT peers (SITA itself is private; Amadeus ADR is the listed market proxy)",
+                  replacement_time_years = 5, switching_difficulty = 88, buffer = 12),
     .HTCDI_ISSUER("AMZN", "AMZN", "amazon", "cloud_internet_infrastructure", "cloud",
                   83, "USD", "USD", substitutes = "Azure / GCP (partial)",
                   replacement_time_years = 3, switching_difficulty = 80, buffer = 20),
