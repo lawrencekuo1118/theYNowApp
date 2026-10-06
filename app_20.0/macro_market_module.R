@@ -873,17 +873,23 @@ macro_market_server <- function(id = "macro",
     # Shared Industry + Concept menus (Relative performance + Dynamic bubble).
     # Default is Technology (XLK) on US, and the snapshot default (sc.Foundry) on TW.
     # An explicit None stays None.
-    # Lazy-tab race: on_first_mount runs moduleServer (and this observe) before
-    # renderUI flushes the selectInputs to the browser. Immediate updateSelectInput
-    # is ignored client-side; defer to onFlushed so selectize receives choices.
+    # Lazy-tab race: on_first_mount runs moduleServer before renderUI sends the
+    # selectInputs. updateSelectInput / onFlushed in that first tick still miss
+    # the client widget. Gate on hist_period (mounted with the same row) so we
+    # only push choices after the browser has bound the inputs.
     observe({
       mode <- .mode()
       loc <- .loc()
+      # NULL until the lazy Macro page inputs are bound on the client.
+      hist_ready <- input$hist_period
       # #region agent log
       .ynow_dbg_menu("C", "macro_market_module.R:menus_observe", "menus observe enter", list(
-        mode = as.character(mode)[1], loc = as.character(loc)[1], lite = .is_lite()
+        mode = as.character(mode)[1], loc = as.character(loc)[1], lite = .is_lite(),
+        hist_null = is.null(hist_ready),
+        hist = as.character(hist_ready %||% "")[1]
       ), runId = "post-fix")
       # #endregion
+      req(!is.null(hist_ready))
       ind_ch <- character(0)
       con_ch <- character(0)
       isel <- ""
@@ -905,40 +911,13 @@ macro_market_server <- function(id = "macro",
         }
         cur_ind <- isolate(as.character(input$industry_key %||% "")[1])
         if (!identical(cur_ind, isel)) industry_programmatic(TRUE)
-        # Capture for deferred flush (avoid stale reactive reads inside callback).
-        ind_ch_f <- ind_ch
-        con_ch_f <- con_ch
-        isel_f <- isel
-        csel_f <- csel
-        session$onFlushed(function() {
-          flush_err <- ""
-          tryCatch({
-            updateSelectInput(session, "industry_key", choices = ind_ch_f, selected = isel_f)
-            updateSelectInput(session, "concept_key", choices = con_ch_f, selected = csel_f)
-          }, error = function(e) {
-            flush_err <<- conditionMessage(e)
-          })
-          # #region agent log
-          .ynow_dbg_menu("B", "macro_market_module.R:menus_observe", "menus flushed to client", list(
-            mode = as.character(mode)[1],
-            n_ind = length(ind_ch_f),
-            n_con = length(con_ch_f),
-            isel = as.character(isel_f %||% "")[1],
-            csel = as.character(csel_f %||% "")[1],
-            ok = !nzchar(flush_err),
-            err = flush_err
-          ), runId = "post-fix")
-          tryCatch(
-            session$sendCustomMessage("ynow_macro_probe_menus", list(t = as.numeric(Sys.time()))),
-            error = function(e) NULL
-          )
-          # #endregion
-        }, once = TRUE)
+        updateSelectInput(session, "industry_key", choices = ind_ch, selected = isel)
+        updateSelectInput(session, "concept_key", choices = con_ch, selected = csel)
       }, error = function(e) {
         err <<- conditionMessage(e)
       })
       # #region agent log
-      .ynow_dbg_menu("B", "macro_market_module.R:menus_observe", "menus observe exit", list(
+      .ynow_dbg_menu("B", "macro_market_module.R:menus_observe", "menus updated after input bind", list(
         mode = as.character(mode)[1],
         n_ind = length(ind_ch),
         n_con = length(con_ch),
@@ -947,10 +926,14 @@ macro_market_server <- function(id = "macro",
         ind_touched = isTRUE(isolate(industry_touched())),
         ok = !nzchar(err),
         err = err,
-        deferred = TRUE,
+        hist = as.character(hist_ready %||% "")[1],
         ind_head = paste(utils::head(unname(ind_ch), 3L), collapse = ","),
         con_head = paste(utils::head(unname(con_ch), 3L), collapse = ",")
       ), runId = "post-fix")
+      tryCatch(
+        session$sendCustomMessage("ynow_macro_probe_menus", list(t = as.numeric(Sys.time()))),
+        error = function(e) NULL
+      )
       # #endregion
     })
 

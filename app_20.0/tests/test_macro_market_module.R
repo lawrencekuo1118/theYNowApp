@@ -319,8 +319,9 @@ check("industry vs benchmark first paint", grepl("Industry vs benchmark", txt, f
 check("concept vs benchmark first paint", grepl("Concept vs benchmark", txt, fixed = TRUE))
 check("industry defaults to technology", grepl('selected = "gics_xlk"', txt, fixed = TRUE))
 check("industry server default follows market", grepl("macro_industry_default_key(mode)", txt, fixed = TRUE))
-check("menu choices deferred onFlushed for lazy tabs", {
-  grepl("session$onFlushed", txt, fixed = TRUE) &&
+check("menu choices gated on lazy-bound hist_period", {
+  grepl("input$hist_period", txt, fixed = TRUE) &&
+    grepl("req(!is.null(hist_ready))", txt, fixed = TRUE) &&
     grepl('updateSelectInput(session, "industry_key"', txt, fixed = TRUE)
 })
 check("UI seeds industry choices not placeholder-only", {
