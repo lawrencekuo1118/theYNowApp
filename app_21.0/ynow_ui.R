@@ -2619,7 +2619,7 @@ beta_rolling_section_ui <- function() {
         p(
           id = "ynow_atx_page_sub",
           paste0(
-            "Same stack as the reference map: §1 macro drivers → §2 rate / FX / liquidity hubs → §4 major asset classes. ",
+            "Same stack as the reference map: §1 macro drivers → §2 rate / dollar / liquidity hubs → §4 major asset classes (incl. FX market). ",
             "Available in Lite and Full."
           )
         ),
@@ -2644,7 +2644,7 @@ beta_rolling_section_ui <- function() {
               id = "ynow_atx_box_body",
               style = "color:#555; line-height:1.5; margin:0 0 10px 0;",
               paste0(
-                "§1 Macro drivers feed §2 hubs (rates, dollar & FX, liquidity), then §4 asset classes: bonds, equities, precious metals, commodities, crypto, and other. ",
+                "§1 Macro drivers feed §2 hubs (rates, dollar / DXY, liquidity), then §4 asset classes: bonds, equities, precious metals, commodities, FX market, crypto, and other. ",
                 "Arrows run upstream to downstream. Purple marks links that can flip by regime. ",
                 "The regime card is a surveillance label for this session, not a trading signal and not an input to WACC."
               )

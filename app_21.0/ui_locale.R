@@ -437,12 +437,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     atx_page_title = "Asset transmission",
     atx_page_sub = paste0(
-      "Same stack as the reference map: §1 macro drivers → §2 rate / FX / liquidity hubs → §4 major asset classes. ",
+      "Same stack as the reference map: §1 macro drivers → §2 rate / dollar / liquidity hubs → §4 major asset classes (incl. FX market). ",
       "Available in Lite and Full."
     ),
     atx_box_title = "Asset transmission",
     atx_box_body = paste0(
-      "§1 Macro drivers (inflation expectations) feed §2 hubs — interest rates, the dollar & FX, and liquidity — then §4 asset classes: bonds, equities, precious metals, commodities, crypto, and other. ",
+      "§1 Macro drivers (inflation expectations) feed §2 hubs — interest rates, the dollar (DXY), and liquidity — then §4 asset classes: bonds, equities, precious metals, commodities, FX market, crypto, and other. ",
       "Arrows run upstream to downstream. Purple marks links that can flip by regime. ",
       "The regime card is a surveillance label for this session, not a trading signal and not an input to WACC."
     ),
@@ -627,13 +627,14 @@ locale_for_market <- function(mode = get_market_mode()) {
     atx_ch_hyg_spx = "High yield as the risk-off check on equities",
     atx_head_driver = "§1 Macro drivers",
     atx_head_rate = "§2 Interest rates",
-    atx_head_fxhub = "§2 Dollar & FX",
+    atx_head_fxhub = "§2 Dollar (DXY)",
     atx_head_liq = "§2 Liquidity",
     atx_head_asset = "§4 Major assets",
     atx_head_bond = "Bonds",
     atx_head_equity = "Equities",
     atx_head_metal = "Precious metals",
     atx_head_cmdty = "Commodities",
+    atx_head_fxmkt = "FX market",
     atx_head_crypto = "Crypto",
     atx_head_other = "Other",
     atx_state_mixed = "Regime",
@@ -683,8 +684,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     atx_regime_quiet_body = "Too many prints are missing, or the moves are inside the noise band, so the regime stays unsigned.",
     atx_regime_note = "Surveillance label from this session's co-movement. Not a trading signal and not an input to WACC.",
     atx_method_body = paste0(
-      "The map follows the reference stack: §1 macro drivers (inflation expectations), §2 hubs (interest rates and the curve, dollar & FX, liquidity / risk appetite), then §4 asset classes (bonds, equities, precious metals, commodities, crypto, other). ",
-      "Commodities sit with §4 assets, not with §1 drivers; HYG is a bond print, not a liquidity card. ",
+      "The map follows the reference stack: §1 macro drivers (inflation expectations), §2 hubs (interest rates and the curve, dollar / DXY, liquidity / risk appetite), then §4 asset classes (bonds, equities, precious metals, commodities, FX market, crypto, other). ",
+      "Commodities sit with §4 assets, not with §1 drivers; major FX pairs sit in §4 FX market while DXY stays the §2 dollar hub; HYG is a bond print, not a liquidity card. ",
       "Some links flip by regime: the dollar versus commodities (a war or energy cutoff can lift DXY, gold, and oil together), gold versus nominal yields (gold follows real yields; nominal yields can rise with gold when inflation expectations rise more), and oil as demand versus a supply shock. ",
       "Prints are Yahoo Finance daily bars in native quotes; the session USD/TWD toggle does not convert them. ",
       "Yields use daily differences in basis points. The 2s10s level is computed here as the US 10Y minus the 2-Year Yield Futures quote (positive means upward sloping) and is not a Yahoo symbol. ",
@@ -2844,12 +2845,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     atx_page_title = "資產傳導",
     atx_page_sub = paste0(
-      "與參考圖一致：§1 總體驅動 → §2 利率／匯率／流動性樞紐 → §4 主要資產類別。",
+      "與參考圖一致：§1 總體驅動 → §2 利率／美元／流動性樞紐 → §4 主要資產類別（含外匯市場）。",
       "簡化版與完整版皆可使用。"
     ),
     atx_box_title = "資產傳導",
     atx_box_body = paste0(
-      "§1 總體驅動（通膨預期）進入 §2 樞紐——利率、美元與匯率、流動性——再傳到 §4 資產類別：債券、股市、貴金屬、原物料、加密貨幣與其他。",
+      "§1 總體驅動（通膨預期）進入 §2 樞紐——利率、美元（DXY）、流動性——再傳到 §4 資產類別：債券、股市、貴金屬、原物料、外匯市場、加密貨幣與其他。",
       "箭頭由上游指向下游。紫線是會隨情境翻轉的連結。",
       "情境卡是這個交易日的監控標籤，不是交易訊號，也不寫入 WACC。"
     ),
@@ -3034,13 +3035,14 @@ locale_for_market <- function(mode = get_market_mode()) {
     atx_ch_hyg_spx = "高收益債是股市的風險趨避檢核",
     atx_head_driver = "§1 總體驅動",
     atx_head_rate = "§2 利率",
-    atx_head_fxhub = "§2 美元與匯率",
+    atx_head_fxhub = "§2 美元（DXY）",
     atx_head_liq = "§2 流動性",
     atx_head_asset = "§4 主要資產",
     atx_head_bond = "債券",
     atx_head_equity = "股市",
     atx_head_metal = "貴金屬",
     atx_head_cmdty = "原物料",
+    atx_head_fxmkt = "外匯市場",
     atx_head_crypto = "加密貨幣",
     atx_head_other = "其他",
     atx_state_mixed = "視情境",
@@ -3090,8 +3092,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     atx_regime_quiet_body = "太多報價缺失，或波動還在雜訊帶裡，情境先不標。",
     atx_regime_note = "依當日連動貼上的監控標籤。不是交易訊號，也不寫入 WACC。",
     atx_method_body = paste0(
-      "本圖與參考圖一致：§1 總體驅動（通膨預期）、§2 樞紐（利率與曲線、美元與匯率、流動性／風險偏好）、再來 §4 資產類別（債券、股市、貴金屬、原物料、加密貨幣、其他）。",
-      "原物料歸在 §4 資產，不放在 §1 驅動；HYG 是債券報價，不是流動性卡片。",
+      "本圖與參考圖一致：§1 總體驅動（通膨預期）、§2 樞紐（利率與曲線、美元／DXY、流動性／風險偏好）、再來 §4 資產類別（債券、股市、貴金屬、原物料、外匯市場、加密貨幣、其他）。",
+      "原物料歸在 §4 資產，不放在 §1 驅動；主要匯率對在 §4 外匯市場，DXY 留在 §2 美元樞紐；HYG 是債券報價，不是流動性卡片。",
       "有些連結會隨情境翻轉：美元對原物料（戰爭或能源中斷時，DXY、黃金、原油可以一起上）、黃金對名目殖利率（黃金主要看實質殖利率；名目殖利率上升而通膨預期升更多時，黃金仍可能上漲）、原油是需求擴張還是供給衝擊。",
       "報價是 Yahoo Finance 日資料，維持原始報價；工作階段的 USD／TWD 切換不會換匯。",
       "殖利率用每日差值（bp）。2s10s 水位是這裡用美國 10 年債減去 2 年期殖利率期貨算出來的（正值代表正斜率），不是 Yahoo 代碼。",

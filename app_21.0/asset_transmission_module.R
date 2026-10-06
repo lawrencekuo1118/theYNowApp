@@ -26,15 +26,16 @@ asset_tx_catalog <- function() {
   # prior 0 = that link flips by regime (drawn purple once |corr| clears 0.15).
   # `curve` has a blank Yahoo symbol: the level is US 10Y minus the 2Y futures yield.
   # Commodities live in §4 (not §1); HYG is a bond, not a liquidity card.
-  eq_x <- c(3.10, 4.40, 5.70, 7.00)
+  # §2 FX hub is DXY only; major pairs sit in §4 FX market (reference §4).
+  eq_x <- c(2.90, 4.05, 5.20, 6.35)
   nodes <- data.frame(
     id = c(
       # §1 Macro drivers (tradable inflation proxy)
       "infl",
       # §2 Interest-rate hub
       "us2y", "us_bill", "us5y", "us10y", "us30y", "curve",
-      # §2 Dollar & FX hub
-      "dxy", "eurusd", "usdjpy", "usdcny", "usdtwd",
+      # §2 Dollar hub (DXY)
+      "dxy",
       # §2 Liquidity / risk-appetite hub
       "move", "vix",
       # §4 Bonds
@@ -46,77 +47,85 @@ asset_tx_catalog <- function() {
       "gold", "silver",
       # §4 Commodities
       "oil", "brent", "ng", "copper", "wheat",
+      # §4 FX market
+      "eurusd", "usdjpy", "usdcny", "usdtwd",
       # §4 Crypto + other
       "btc", "vnq"
     ),
     yahoo = c(
       "RINF",
       "2YY=F", "^IRX", "^FVX", "^TNX", "^TYX", "",
-      "DX-Y.NYB", "EURUSD=X", "JPY=X", "CNY=X", "TWD=X",
+      "DX-Y.NYB",
       "^MOVE", "^VIX",
       "TIP", "IEF", "TLT", "HYG",
       "^GSPC", "^IXIC", "^NDX", "^SOX",
       "^STOXX50E", "^N225", "^HSI", "^TWII",
       "GC=F", "SI=F",
       "CL=F", "BZ=F", "NG=F", "HG=F", "ZW=F",
+      "EURUSD=X", "JPY=X", "CNY=X", "TWD=X",
       "BTC-USD", "VNQ"
     ),
     x = c(
       0.60,
       rep(3.25, 6),
-      rep(6.00, 5),
+      6.00,
       rep(8.70, 2),
       c(0.55, 1.55, 0.55, 1.55),
       eq_x, eq_x,
-      rep(9.05, 2),
-      c(10.55, 11.75, 10.55, 11.75, 11.15),
-      13.05, 14.35
+      rep(7.85, 2),
+      c(9.20, 10.30, 9.20, 10.30, 9.75),
+      c(11.55, 12.55, 11.55, 12.55),
+      13.85, 15.05
     ),
     y = c(
       9.5,
       c(9.2, 8.2, 7.2, 6.2, 5.2, 4.2),
-      c(9.2, 8.0, 6.8, 5.6, 4.4),
+      6.8,
       c(7.8, 5.4),
       c(2.35, 2.35, 0.85, 0.85),
       rep(2.35, 4),
       rep(-0.15, 4),
       c(2.35, -0.15),
       c(2.35, 2.35, 0.85, 0.85, -0.55),
+      c(2.35, 2.35, 0.85, 0.85),
       1.10, 1.10
     ),
     textposition = c(
       "middle right",
       rep("middle right", 6),
-      rep("middle right", 5),
+      "middle right",
       rep("middle left", 2),
       rep("top center", 4),
       rep("top center", 4),
       rep("bottom center", 4),
       rep("top center", 2),
       rep(c("top center", "top center"), 2), "bottom center",
+      rep("top center", 4),
       "top center", "top center"
     ),
     kind = c(
       "etf",
       "yield", "yield", "yield", "yield", "yield", "spread",
-      "index", "fx", "fx", "fx", "fx",
+      "index",
       "vol", "vol",
       "etf", "etf", "etf", "etf",
       "index", "index", "index", "index",
       "index", "index", "index", "index",
       "commodity", "commodity",
       "commodity", "commodity", "commodity", "commodity", "commodity",
+      "fx", "fx", "fx", "fx",
       "crypto", "etf"
     ),
     band = c(
       "driver",
       rep("rate", 6),
-      rep("fx", 5),
+      "fx",
       rep("liq", 2),
       rep("bond", 4),
       rep("equity", 8),
       rep("metal", 2),
       rep("cmdty", 5),
+      rep("fxmkt", 4),
       "crypto", "other"
     ),
     stringsAsFactors = FALSE
@@ -1054,6 +1063,7 @@ asset_tx_edge_table <- function(snap, locale = "en") {
     equity = list(fill = "rgba(18, 32, 68, 0.18)", pad_x = 0.75, pad_y = 0.50),
     metal = list(fill = "rgba(18, 32, 68, 0.18)", pad_x = 0.75, pad_y = 0.50),
     cmdty = list(fill = "rgba(18, 32, 68, 0.18)", pad_x = 0.75, pad_y = 0.50),
+    fxmkt = list(fill = "rgba(18, 32, 68, 0.18)", pad_x = 0.70, pad_y = 0.50),
     crypto = list(fill = "rgba(18, 32, 68, 0.18)", pad_x = 0.70, pad_y = 0.50),
     other = list(fill = "rgba(18, 32, 68, 0.18)", pad_x = 0.70, pad_y = 0.50)
   )
@@ -1103,19 +1113,19 @@ asset_tx_edge_table <- function(snap, locale = "en") {
   heads <- data.frame(
     x = c(
       0.60, 3.25, 6.00, 8.70,
-      1.05, 5.05, 9.05, 11.15, 13.05, 14.35
+      1.05, 4.60, 7.85, 9.75, 12.05, 13.85, 15.05
     ),
     y = c(
       10.55, 10.55, 10.55, 10.55,
-      3.45, 3.45, 3.45, 3.45, 3.45, 3.45
+      3.45, 3.45, 3.45, 3.45, 3.45, 3.45, 3.45
     ),
-    xanchor = rep("center", 10),
+    xanchor = rep("center", 11),
     key = c(
       "atx_head_driver", "atx_head_rate", "atx_head_fxhub", "atx_head_liq",
       "atx_head_bond", "atx_head_equity", "atx_head_metal",
-      "atx_head_cmdty", "atx_head_crypto", "atx_head_other"
+      "atx_head_cmdty", "atx_head_fxmkt", "atx_head_crypto", "atx_head_other"
     ),
-    size = c(rep(14, 4), rep(12, 6)),
+    size = c(rep(14, 4), rep(12, 7)),
     stringsAsFactors = FALSE
   )
   lapply(seq_len(nrow(heads)), function(i) {

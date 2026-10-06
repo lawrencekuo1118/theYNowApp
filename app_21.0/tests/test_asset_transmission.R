@@ -42,7 +42,13 @@ check(
 check(
   "§2 hubs are rate / fx / liq",
   identical(sort(unique(as.character(catg$nodes$band[catg$nodes$band %in% c("rate", "fx", "liq")]))), c("fx", "liq", "rate")) &&
-    identical(sort(as.character(catg$nodes$id[catg$nodes$band == "liq"])), c("move", "vix"))
+    identical(sort(as.character(catg$nodes$id[catg$nodes$band == "liq"])), c("move", "vix")) &&
+    identical(as.character(catg$nodes$id[catg$nodes$band == "fx"]), "dxy")
+)
+check(
+  "§4 FX market holds major pairs (not the DXY hub)",
+  all(c("eurusd", "usdjpy", "usdcny", "usdtwd") %in% catg$nodes$id[catg$nodes$band == "fxmkt"]) &&
+    !("dxy" %in% catg$nodes$id[catg$nodes$band == "fxmkt"])
 )
 check(
   "§4 commodities sit in cmdty (not driver)",
@@ -66,11 +72,12 @@ check(
   all(c(
     "atx_head_driver", "atx_head_rate", "atx_head_fxhub", "atx_head_liq",
     "atx_head_bond", "atx_head_equity", "atx_head_metal",
-    "atx_head_cmdty", "atx_head_crypto", "atx_head_other"
+    "atx_head_cmdty", "atx_head_fxmkt", "atx_head_crypto", "atx_head_other"
   ) %in% names(.UI_STRINGS$en)) &&
     grepl("§1", ui_str("atx_head_driver", "en"), fixed = TRUE) &&
     grepl("§2", ui_str("atx_head_rate", "zh-TW"), fixed = TRUE) &&
-    grepl("債券", ui_str("atx_head_bond", "zh-TW"), fixed = TRUE)
+    grepl("債券", ui_str("atx_head_bond", "zh-TW"), fixed = TRUE) &&
+    grepl("外匯", ui_str("atx_head_fxmkt", "zh-TW"), fixed = TRUE)
 )
 check(
   "47 channels",
