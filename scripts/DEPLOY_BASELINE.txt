@@ -8,5 +8,5 @@ short=3429456
 message=chore: record shipped display version v21.15
 captured_at=2026-10-06T10:35:25Z
 source_branch=cursor/click-title-refresh-deploy-911b
-display_version=v21.15
+display_version=v21.16
 note=Canonical live line is app_21.0. Bundle 12653952 ships v21.15: pending deploy paints The YNow App title with flame flow; click title to refresh. Deploy via scripts/deploy_app_21.R.
