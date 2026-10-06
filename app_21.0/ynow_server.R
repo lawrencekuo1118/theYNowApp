@@ -252,7 +252,6 @@ server <- function(input, output, session) {
     msg
   }
 
-
   .push_ui_locale <- function(locale, sync_picker = TRUE) {
     loc <- normalize_ui_locale(locale)
     ui_locale(loc)
@@ -1152,45 +1151,8 @@ server <- function(input, output, session) {
         }, error = function(e) NULL)
 
         incProgress(0.9, detail = "資料同步完成！✅")
-        # #region agent log
-        .ynow_dbg_ef0f33("E", "ynow_server.R:ticker_fetch", "fetch completed", list(
-          tk = as.character(stock_code %||% "")[1],
-          nrow_sum = if (is.data.frame(sum_df)) nrow(sum_df) else -1,
-          gen = suppressWarnings(as.numeric(isolate(ticker_search_gen()))[1])
-        ))
-        if (exists(".ynow_dbg_mult", mode = "function")) {
-          is_exp <- tryCatch(res[["Income Statement"]]$expanded, error = function(e) NULL)
-          bs_exp <- tryCatch(res[["Balance Sheet"]]$expanded, error = function(e) NULL)
-          cf_exp <- tryCatch(res[["Cash Flow"]]$expanded, error = function(e) NULL)
-          .ynow_dbg_mult("A", "ynow_server.R:ticker_fetch", "fetch completed FS shapes", list(
-            tk = as.character(stock_code %||% "")[1],
-            nrow_sum = if (is.data.frame(sum_df)) nrow(sum_df) else -1L,
-            nrow_is = if (is.data.frame(is_exp)) nrow(is_exp) else -1L,
-            ncol_is = if (is.data.frame(is_exp)) ncol(is_exp) else -1L,
-            nrow_bs = if (is.data.frame(bs_exp)) nrow(bs_exp) else -1L,
-            nrow_cf = if (is.data.frame(cf_exp)) nrow(cf_exp) else -1L,
-            q_ccy = as.character(q_ccy %||% "")[1],
-            f_ccy = as.character(isolate(statement_currency()) %||% f_ccy %||% "")[1],
-            fs_all_empty = isTRUE(isolate(fs_all_empty())),
-            stmt_fallback = as.character(attr(res, "statement_fallback") %||% "")[1],
-            stmt_source = as.character(attr(res, "statement_source_ticker") %||% "")[1]
-          ), runId = "post-fix")
-        }
-        # #endregion
 
       }, error = function(e) {
-        # #region agent log
-        .ynow_dbg_ef0f33("D", "ynow_server.R:ticker_fetch", "fetch failed", list(
-          tk = as.character(stock_code %||% "")[1],
-          err = as.character(e$message %||% "")[1]
-        ))
-        if (exists(".ynow_dbg_mult", mode = "function")) {
-          .ynow_dbg_mult("A", "ynow_server.R:ticker_fetch", "fetch failed", list(
-            tk = as.character(stock_code %||% "")[1],
-            err = substr(as.character(e$message %||% "")[1], 1L, 160L)
-          ))
-        }
-        # #endregion
         fs_all_empty(FALSE)
         # 興櫃旗標若已偵測仍保留短註（Summary 失敗也可能是興櫃）
         showNotification(
@@ -2974,7 +2936,6 @@ server <- function(input, output, session) {
       ) %>%
       plotly::config(displayModeBar = FALSE, responsive = TRUE, displaylogo = FALSE)
   })
-
 
   # ==========================================
   # 🔌 4. 呼叫外部模組 (KPI, FCF, DDM)
@@ -8820,20 +8781,6 @@ server <- function(input, output, session) {
       "Total Debt" = scraped_debt
     )
     
-    # #region agent log
-    if (exists(".ynow_dbg_mult", mode = "function")) {
-      dcf_est <- tryCatch(suppressWarnings(as.numeric(stock_price_estimate_val())[1]), error = function(e) NA_real_)
-      .ynow_dbg_mult("E", "ynow_server.R:ui_data_validation", "DCF core metrics", list(
-        tk = as.character(tryCatch(current_ticker(), error = function(e) "")[1]),
-        fcf = if (is.finite(scraped_fcf)) scraped_fcf else NA_real_,
-        cash = if (is.finite(val_cash)) val_cash else NA_real_,
-        debt = if (is.finite(scraped_debt)) scraped_debt else NA_real_,
-        missing_any = any(!is.finite(c(scraped_fcf, val_cash, scraped_debt))),
-        dcf_est = if (is.finite(dcf_est)) dcf_est else NA_real_,
-        lite = isTRUE(tryCatch(isolate(lite_mode()), error = function(e) FALSE))
-      ), runId = "post-fix")
-    }
-    # #endregion
 
     alert_box <- ui_missing_data_alert(
       check_list = check_list,
