@@ -223,11 +223,9 @@ pos_dash <- regexpr('tabName = "dashboard"', ui_src, fixed = TRUE)[1]
 check("macro before dashboard in UI", is.finite(pos_macro) && pos_macro > 0 && pos_macro < pos_dash)
 check(
   "hide ticker chrome on macro",
-  grepl(
-    "input.sidebar_tabs != 'about' && input.sidebar_tabs != 'macro_market' && input.sidebar_tabs != 'bluechip'",
-    ui_src,
-    fixed = TRUE
-  )
+  grepl("input.sidebar_tabs != 'macro_market'", ui_src, fixed = TRUE) &&
+    grepl("input.sidebar_tabs != 'bluechip'", ui_src, fixed = TRUE) &&
+    grepl("input.sidebar_tabs != 'about'", ui_src, fixed = TRUE)
 )
 check("locale wiring dropped beta title", !grepl("ynow_macro_beta_title", ui_src, fixed = TRUE))
 check("locale wiring dropped beta warn", !grepl("macro_beta_warn_title", ui_src, fixed = TRUE))
