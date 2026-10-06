@@ -1968,7 +1968,7 @@ asset_transmission_ui <- function(id) {
       }
       .ynow-atx-map .plotly,
       .ynow-atx-map .html-widget {
-        /* Fit the panel so the session slider + Play stay fully visible by default. */
+        /* Desktop: fit the panel so the session slider + Play stay visible. */
         width: 100% !important;
         min-width: 100% !important;
         max-width: 100% !important;
@@ -1980,6 +1980,22 @@ asset_transmission_ui <- function(id) {
         width: 100% !important;
         min-width: 100% !important;
         max-width: 100% !important;
+      }
+      /* Mobile: keep a readable canvas width so cards are not squeezed; swipe/pan to explore. */
+      @media (max-width: 767px) {
+        .ynow-atx-map .plotly,
+        .ynow-atx-map .html-widget {
+          width: max(100%, 1560px) !important;
+          min-width: 1560px !important;
+          max-width: none !important;
+        }
+        .ynow-atx-map .js-plotly-plot,
+        .ynow-atx-map .plot-container,
+        .ynow-atx-map .svg-container {
+          width: 100% !important;
+          min-width: 1560px !important;
+          max-width: none !important;
+        }
       }
       .ynow-atx-map .modebar {
         top: 8px !important;

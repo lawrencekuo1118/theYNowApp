@@ -524,11 +524,13 @@ if (requireNamespace("plotly", quietly = TRUE)) {
       grepl('height = "900px"', ui_mod, fixed = TRUE)
   )
   check(
-    "map fits panel width so timeline stays visible",
+    "map fits panel width on desktop; mobile keeps readable canvas",
     grepl("overflow-x: auto", ui_mod, fixed = TRUE) &&
       grepl("min-width: 100%", ui_mod, fixed = TRUE) &&
       grepl("max-width: 100%", ui_mod, fixed = TRUE) &&
-      !grepl("min-width: 1560px", ui_mod, fixed = TRUE) &&
+      grepl("@media (max-width: 767px)", ui_mod, fixed = TRUE) &&
+      grepl("min-width: 1560px", ui_mod, fixed = TRUE) &&
+      grepl("max-width: none", ui_mod, fixed = TRUE) &&
       !grepl("overflow-x: hidden", ui_mod, fixed = TRUE)
   )
   check(
