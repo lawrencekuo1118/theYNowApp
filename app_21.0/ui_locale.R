@@ -109,7 +109,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     menu_company_advance = "Business Breakdown",
     kpi_last_price = "Last Price",
     menu_macro_market = "Macro & Market Trends",
-    menu_asset_transmission = "Asset transmission",
+    menu_asset_transmission = "Asset transmission root map",
     menu_smart_analysis = "Smart Analysis",
     menu_get_started = "Model Dashboard",
     menu_dcf = "DCF-Model",
@@ -428,19 +428,19 @@ locale_for_market <- function(mode = get_market_mode()) {
     testing_page_title = "Testing",
     testing_page_sub = paste0(
       "Full-only sandbox for experiments. Lite mode hides this entry. ",
-      "Asset transmission now lives in its own sidebar tab (after Macro & Market Trends)."
+      "Asset transmission root map now lives in its own sidebar tab (after Macro & Market Trends)."
     ),
     testing_box_title = "Sandbox",
     testing_box_body = paste0(
-      "Use the sidebar entry Asset transmission for the inflation → rates → liquidity → asset map. ",
+      "Use the sidebar entry Asset transmission root map for the inflation → rates → liquidity → asset map. ",
       "This Testing page remains a Full-only placeholder for future lab hooks."
     ),
-    atx_page_title = "Asset transmission",
+    atx_page_title = "Asset transmission root map",
     atx_page_sub = paste0(
       "Track how inflation, the cycle, rates, the dollar, and liquidity transmit — not equities alone. ",
       "Available in Lite and Full."
     ),
-    atx_box_title = "Asset transmission",
+    atx_box_title = "Asset transmission root map",
     atx_box_body = paste0(
       "Inflation and the business cycle feed policy rates and the curve, then the dollar and liquidity, then bonds, commodities, precious metals, energy, equities, and crypto. ",
       "Arrows run upstream to downstream. Purple marks links that can flip by regime. ",
@@ -454,7 +454,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     atx_play = "Play",
     atx_session_prefix = "Session ",
     atx_loading = "Loading public prints…",
-    atx_loading_bar = "Loading Asset transmission map…",
+    atx_loading_bar = "Loading Asset transmission root map…",
     atx_status = "{n_ok}/{n_nodes} series · updated {stamp}",
     atx_empty = "Public prints are unavailable, so the map cannot be drawn.",
     atx_play_hint = "Press Play to replay the last 22 sessions (about one month). Card text and the border follow that session's move; line width is the trailing correlation.",
@@ -2520,7 +2520,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     menu_company_advance = "業務拆解",
     kpi_last_price = "最新股價",
     menu_macro_market = "總體經濟與大盤趨勢",
-    menu_asset_transmission = "資產傳導",
+    menu_asset_transmission = "資產傳導根系圖",
     menu_smart_analysis = "智慧分析",
     menu_get_started = "模型儀表板",
     menu_dcf = "DCF 模型",
@@ -2833,19 +2833,19 @@ locale_for_market <- function(mode = get_market_mode()) {
     testing_page_title = "測試",
     testing_page_sub = paste0(
       "完整版實驗沙盒；簡化版不顯示此入口。",
-      "資產傳導已獨立成側邊欄分頁（接在「總體經濟與大盤趨勢」之後）。"
+      "資產傳導根系圖已獨立成側邊欄分頁（接在「總體經濟與大盤趨勢」之後）。"
     ),
     testing_box_title = "沙盒",
     testing_box_body = paste0(
-      "通膨→利率→流動性→資產的傳導圖，請改用側邊欄「資產傳導」。",
+      "通膨→利率→流動性→資產的傳導圖，請改用側邊欄「資產傳導根系圖」。",
       "本 Testing 頁保留為完整版實驗入口佔位。"
     ),
-    atx_page_title = "資產傳導",
+    atx_page_title = "資產傳導根系圖",
     atx_page_sub = paste0(
       "看通膨、景氣、利率、美元與流動性怎麼傳，不要只看股市。",
       "簡化版與完整版皆可使用。"
     ),
-    atx_box_title = "資產傳導",
+    atx_box_title = "資產傳導根系圖",
     atx_box_body = paste0(
       "通膨與景氣先進入政策利率與殖利率曲線，再經美元與流動性，傳到債券、原物料、貴金屬、能源、股市與加密貨幣。",
       "箭頭由上游指向下游。紫線是會隨情境翻轉的連結。",
@@ -2859,7 +2859,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     atx_play = "播放",
     atx_session_prefix = "交易日 ",
     atx_loading = "正在讀取公開報價…",
-    atx_loading_bar = "正在載入 Asset transmission 圖表…",
+    atx_loading_bar = "正在載入資產傳導根系圖…",
     atx_status = "{n_ok}/{n_nodes} 條序列 · 更新於 {stamp}",
     atx_empty = "公開報價暫不可用，無法繪製傳導圖。",
     atx_play_hint = "按播放可重播近 22 個交易日（約一個月）。卡片文字與外框跟著該日漲跌；線寬是當時的滾動相關。",

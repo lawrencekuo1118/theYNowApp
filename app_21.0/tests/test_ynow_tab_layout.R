@@ -191,6 +191,15 @@ check(
   grepl('tabName = "sensitivity"', ui, fixed = TRUE) &&
     grepl('decision_ui("main_decision")', ui, fixed = TRUE)
 )
+check(
+  "YNOW sidebar uses clock icon",
+  grepl('menuItem("YNOW", tabName = "sensitivity", icon = icon("clock"))', ui, fixed = TRUE)
+)
+check(
+  "atx menu first-paint root map name",
+  grepl("Asset transmission root map", ui, fixed = TRUE) &&
+    !grepl('ynow_menu_asset_transmission", "Asset transmission")', ui, fixed = TRUE)
+)
 check("applyUiLocale ch1 lead", grepl("ynow_funnel_ch1_lead", ui, fixed = TRUE))
 check("applyUiLocale notes titles", grepl("ynow-notes__title", ui, fixed = TRUE) &&
         grepl("s.notes_title", ui, fixed = TRUE))

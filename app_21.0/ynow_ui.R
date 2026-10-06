@@ -2615,7 +2615,7 @@ beta_rolling_section_ui <- function() {
     fluidRow(
       column(
         width = 12,
-        h2(tags$b(id = "ynow_atx_page_title", "Asset transmission")),
+        h2(tags$b(id = "ynow_atx_page_title", "Asset transmission root map")),
         p(
           id = "ynow_atx_page_sub",
           paste0(
@@ -2635,7 +2635,7 @@ beta_rolling_section_ui <- function() {
             class = "box-header",
             tags$h3(
               class = "box-title",
-              tagList(icon("project-diagram"), tags$span(id = "ynow_atx_box_title", "Asset transmission"))
+              tagList(icon("project-diagram"), tags$span(id = "ynow_atx_box_title", "Asset transmission root map"))
             )
           ),
           tags$div(
@@ -2668,7 +2668,7 @@ beta_rolling_section_ui <- function() {
           id = "ynow_testing_page_sub",
           paste0(
             "Full-only sandbox for experiments. Lite mode hides this entry. ",
-            "Asset transmission now lives in its own sidebar tab (after Macro & Market Trends)."
+            "Asset transmission root map now lives in its own sidebar tab (after Macro & Market Trends)."
           )
         ),
         tags$hr(),
@@ -2676,7 +2676,7 @@ beta_rolling_section_ui <- function() {
           id = "ynow_testing_box_body",
           style = "color:#555; line-height:1.5;",
           paste0(
-            "Use the sidebar entry Asset transmission for the inflation → rates → liquidity → asset map. ",
+            "Use the sidebar entry Asset transmission root map for the inflation → rates → liquidity → asset map. ",
             "This Testing page remains a Full-only placeholder for future lab hooks."
           )
         )
@@ -2813,7 +2813,7 @@ ui <- dashboardPage(
                icon = icon("globe-asia")
              ),
              menuItem(
-               text = tags$span(id = "ynow_menu_asset_transmission", "Asset transmission"),
+               text = tags$span(id = "ynow_menu_asset_transmission", "Asset transmission root map"),
                tabName = "asset_transmission",
                icon = icon("project-diagram")
              ),
@@ -2824,7 +2824,7 @@ ui <- dashboardPage(
                tabName = "company_advance",
                icon = icon("layer-group")
              ),
-             menuItem("YNOW", tabName = "sensitivity", icon = icon("sliders-h")),
+             menuItem("YNOW", tabName = "sensitivity", icon = icon("clock")),
              menuItem(
                text = tags$span(id = "ynow_menu_smart", "Smart Analysis"),
                tabName = "smart_analysis",
