@@ -812,6 +812,20 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
         is_prim <- nzchar(prim) && identical(k, prim)
         is_sec <- nzchar(sec) && identical(k, sec)
         lab <- .model_label(k)
+        # #region agent log
+        if (exists(".ynow_dbg_lite_sec", mode = "function") &&
+            (identical(k, "nav") || identical(k, "multiples") || isTRUE(is_sec))) {
+          .ynow_dbg_lite_sec("F", "investment_decision_module.R:composite_overlay", "axis marker", list(
+            key = k,
+            label = lab,
+            value = v,
+            is_primary = isTRUE(is_prim),
+            is_secondary = isTRUE(is_sec),
+            rec_secondary = sec,
+            rec_primary = prim
+          ))
+        }
+        # #endregion
         z <- if (is_active) 12 else if (is_prim) 9 else 8
         role_tag <- if (is_prim) "★" else if (is_sec) "◇" else ""
         pill_label <- paste0(role_tag, lab)

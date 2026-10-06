@@ -1795,7 +1795,7 @@ server <- function(input, output, session) {
         company_type = "fallback"
       ))
     }
-    recommend_valuation_models(
+    rec_out <- recommend_valuation_models(
       cf,
       industry_text = ind,
       d_is = is,
@@ -1805,6 +1805,21 @@ server <- function(input, output, session) {
       lifecycle_result = tryCatch(central_lifecycle(), error = function(e) NULL),
       selected_stage = input$lifecycle_stage %||% "auto"
     )
+    # #region agent log
+    if (exists(".ynow_dbg_lite_sec", mode = "function")) {
+      .ynow_dbg_lite_sec("A", "ynow_server.R:model_sidebar_rec", "recommend result", list(
+        ticker = as.character(tryCatch(current_ticker(), error = function(e) "")[1]),
+        lite = isTRUE(tryCatch(isolate(lite_mode()), error = function(e) FALSE)),
+        primary = as.character(rec_out$primary %||% "")[1],
+        secondary = as.character(rec_out$secondary %||% "")[1],
+        secondary_role = as.character(rec_out$secondary_role %||% "")[1],
+        company_type = as.character(rec_out$company_type %||% "")[1],
+        industry = as.character(ind %||% "")[1],
+        industry_choice = as.character(input$industry_choice %||% "")[1]
+      ))
+    }
+    # #endregion
+    rec_out
     }
   })
 
@@ -4384,7 +4399,27 @@ server <- function(input, output, session) {
     rec <- model_sidebar_rec()
     sec <- as.character(rec$secondary %||% "")
     if (!nzchar(sec)) return(NA_real_)
-    .model_point(sec)
+    pt <- .model_point(sec)
+    # #region agent log
+    if (exists(".ynow_dbg_lite_sec", mode = "function")) {
+      .ynow_dbg_lite_sec("D", "ynow_server.R:secondary_valuation_point", "secondary point resolve", list(
+        ticker = as.character(tryCatch(current_ticker(), error = function(e) "")[1]),
+        sec = sec,
+        has_run = isTRUE(.model_has_run(sec)),
+        point = if (is.finite(suppressWarnings(as.numeric(pt)[1]))) as.numeric(pt)[1] else NA_real_,
+        run_flags = list(
+          dcf = isTRUE(.model_has_run("dcf")),
+          ddm = isTRUE(.model_has_run("ddm")),
+          ri = isTRUE(.model_has_run("ri")),
+          pb = isTRUE(.model_has_run("pb")),
+          nav = isTRUE(.model_has_run("nav")),
+          multiples = isTRUE(.model_has_run("multiples")),
+          sotp = isTRUE(.model_has_run("sotp"))
+        )
+      ))
+    }
+    # #endregion
+    pt
   })
 
   # All model Base/FV points for composite Current-price axis overlays
@@ -7966,6 +8001,15 @@ server <- function(input, output, session) {
 
   .fire_auto_calc_primary <- function(prim) {
     prim <- as.character(prim %||% "")[1]
+    # #region agent log
+    if (exists(".ynow_dbg_lite_sec", mode = "function")) {
+      .ynow_dbg_lite_sec("C", "ynow_server.R:.fire_auto_calc_primary", "fire auto_calc key", list(
+        key = prim,
+        lite = isTRUE(isolate(lite_mode())),
+        ticker = as.character(tryCatch(isolate(current_ticker()), error = function(e) "")[1])
+      ))
+    }
+    # #endregion
     if (identical(prim, "dcf")) {
       was_silent <- isTRUE(isolate(lite_dcf_silent()))
       if (isTRUE(isolate(lite_mode()))) {
@@ -8041,10 +8085,27 @@ server <- function(input, output, session) {
       return()
     }
     keys <- prim
-    if (isTRUE(lite_mode()) && nzchar(sec) && sec %in% c("dcf", "ddm", "pb", "ri", "nav") &&
-        !identical(sec, prim) && isTRUE(.auto_calc_primary_ready(sec))) {
+    sec_in_fv_allowlist <- nzchar(sec) && sec %in% c("dcf", "ddm", "pb", "ri", "nav")
+    sec_ready <- if (isTRUE(sec_in_fv_allowlist)) isTRUE(.auto_calc_primary_ready(sec)) else FALSE
+    if (isTRUE(lite_mode()) && isTRUE(sec_in_fv_allowlist) &&
+        !identical(sec, prim) && isTRUE(sec_ready)) {
       keys <- c(prim, sec)
     }
+    # #region agent log
+    if (exists(".ynow_dbg_lite_sec", mode = "function")) {
+      .ynow_dbg_lite_sec("B", "ynow_server.R:auto_calc_observe", "lite/full auto_calc keys", list(
+        ticker = tk,
+        lite = isTRUE(lite_mode()),
+        primary = prim,
+        secondary = sec,
+        sec_in_fv_allowlist = isTRUE(sec_in_fv_allowlist),
+        sec_is_multiples = identical(sec, "multiples"),
+        sec_ready = isTRUE(sec_ready),
+        keys = as.character(keys),
+        multiples_wired_pulse = FALSE
+      ))
+    }
+    # #endregion
     mode <- as.character(input$dcf_mode %||% "gordon")[1]
     claim <- as.character(input$dcf_claim %||% "fcff")[1]
     w_calc <- suppressWarnings(as.numeric(calculated_wacc())[1])
@@ -8086,6 +8147,20 @@ server <- function(input, output, session) {
     sec <- as.character(rec$secondary %||% "")[1]
     band <- tryCatch(primary_valuation_band(), error = function(e) NULL)
     sec_pt <- tryCatch(secondary_valuation_point(), error = function(e) NA_real_)
+    # #region agent log
+    if (exists(".ynow_dbg_lite_sec", mode = "function")) {
+      .ynow_dbg_lite_sec("A", "ynow_server.R:smart_analysis_summary", "summary cards", list(
+        ticker = as.character(tryCatch(current_ticker(), error = function(e) "")[1]),
+        primary = prim,
+        secondary = sec,
+        primary_label = .model_label(prim),
+        secondary_label = if (nzchar(sec)) .model_label(sec) else "",
+        sec_pt = if (is.finite(suppressWarnings(as.numeric(sec_pt)[1]))) as.numeric(sec_pt)[1] else NA_real_,
+        band_base = if (!is.null(band)) suppressWarnings(as.numeric(band$base)[1]) else NA_real_,
+        band_label = if (!is.null(band)) as.character(band$label %||% "")[1] else ""
+      ))
+    }
+    # #endregion
     cur <- tryCatch(scraped_market_cap()$price, error = function(e) NA_real_)
     cur <- suppressWarnings(as.numeric(cur)[1])
     base <- if (!is.null(band)) suppressWarnings(as.numeric(band$base)[1]) else NA_real_
@@ -8232,6 +8307,24 @@ server <- function(input, output, session) {
       vals <- c(vals, sec_pt)
       cols <- c(cols, "#888888")
     }
+    # #region agent log
+    if (exists(".ynow_dbg_lite_sec", mode = "function")) {
+      pts_all <- tryCatch(all_model_valuation_points(), error = function(e) NULL)
+      .ynow_dbg_lite_sec("E", "ynow_server.R:smart_analysis_chart", "chart series built", list(
+        ticker = as.character(tryCatch(current_ticker(), error = function(e) "")[1]),
+        primary = prim,
+        secondary = sec,
+        sec_pt = if (is.finite(sec_pt)) sec_pt else NA_real_,
+        chart_labs = as.character(labs),
+        chart_vals = suppressWarnings(as.numeric(vals)),
+        finite_mask = is.finite(vals),
+        all_model_pts = if (is.list(pts_all)) lapply(pts_all, function(x) {
+          x <- suppressWarnings(as.numeric(x)[1])
+          if (is.finite(x)) x else NA_real_
+        }) else list()
+      ))
+    }
+    # #endregion
     ok <- is.finite(vals)
     if (!any(ok)) return(empty)
     labs <- labs[ok]
