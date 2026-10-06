@@ -1073,6 +1073,13 @@ def search_tickers(query="", max_results=12):
     """
     Typeahead ticker suggestions via yfinance.Search.
     Returns plain list of dicts for reticulate: symbol, name, type, exchange, label.
+
+    Ranking (stable within tier):
+      1) exact symbol match (case-insensitive)
+      2) EQUITY
+      3) ETF / INDEX
+      4) everything else
+    So typing AAPL surfaces Apple Inc. before AAPU/AAPD leveraged ETFs.
     """
     q = (query or "").strip()
     if len(q) < 1:
@@ -1084,8 +1091,11 @@ def search_tickers(query="", max_results=12):
     try:
         s = yf.Search(q, max_results=max(max_results * 2, 12))
         quotes = getattr(s, "quotes", None) or []
-        preferred = []
+        exact = []
+        equity = []
+        etf_idx = []
         other = []
+        q_up = q.upper()
         for item in quotes:
             if not isinstance(item, dict):
                 continue
@@ -1114,11 +1124,26 @@ def search_tickers(query="", max_results=12):
                 "label": label,
             }
             qt = str(qtype).upper()
-            if qt in ("EQUITY", "ETF", "INDEX"):
-                preferred.append(row)
+            sym_up = str(sym).upper()
+            if sym_up == q_up or sym_up.split(".")[0] == q_up:
+                exact.append(row)
+            elif qt == "EQUITY":
+                equity.append(row)
+            elif qt in ("ETF", "INDEX"):
+                etf_idx.append(row)
             else:
                 other.append(row)
-        out = (preferred + other)[:max_results]
+        # De-dupe by symbol while preserving tier order (exact may also be equity).
+        seen = set()
+        ranked = []
+        for bucket in (exact, equity, etf_idx, other):
+            for row in bucket:
+                sym_u = row["symbol"].upper()
+                if sym_u in seen:
+                    continue
+                seen.add(sym_u)
+                ranked.append(row)
+        out = ranked[:max_results]
     except Exception as e:
         _dbg(f"⚠️ search_tickers failed ({q}): {e}")
         return []

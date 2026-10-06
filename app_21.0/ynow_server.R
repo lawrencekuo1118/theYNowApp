@@ -189,6 +189,8 @@ server <- function(input, output, session) {
   auto_calc_pb_pulse <- reactiveVal(0L)
   auto_calc_nav_pulse <- reactiveVal(0L)
   auto_calc_ri_pulse <- reactiveVal(0L)
+  auto_calc_rel_pulse <- reactiveVal(0L)
+  auto_calc_sotp_pulse <- reactiveVal(0L)
 
   # ==========================================
   # 🚀 股票代號：僅主區 Ticker / Stock Code（sc + Search）
@@ -196,14 +198,6 @@ server <- function(input, output, session) {
   observeEvent(input$search, {
     sc_raw <- tryCatch(as.character(input$sc %||% "")[1], error = function(e) "")
     tab_now <- tryCatch(as.character(input$sidebar_tabs %||% "")[1], error = function(e) "")
-    # #region agent log
-    .ynow_dbg_ef0f33("A", "ynow_server.R:input$search", "search click received", list(
-      sc = sc_raw,
-      tab = tab_now,
-      n = suppressWarnings(as.numeric(input$search)[1]),
-      mkt = tryCatch(as.character(market_mode())[1], error = function(e) "")
-    ))
-    # #endregion
     req(input$sc)
     user_has_searched(TRUE)
     # Explicit Search supersedes any deferred market-default preload.
@@ -214,14 +208,6 @@ server <- function(input, output, session) {
     param_audit_baseline_ticker(NULL)
     param_audit_capture_token(isolate(param_audit_capture_token()) + 1L)
     tk <- normalize_ticker_for_market(input$sc, market_mode())
-    # #region agent log
-    .ynow_dbg_ef0f33("C", "ynow_server.R:input$search", "ticker after normalize", list(
-      sc = sc_raw,
-      tk = as.character(tk %||% "")[1],
-      ok = isTRUE(!is.na(tk) && nzchar(tk)),
-      gen = suppressWarnings(as.numeric(isolate(ticker_search_gen()))[1])
-    ))
-    # #endregion
     req(!is.na(tk), nzchar(tk))
     current_ticker(tk)
     ticker_search_gen(isolate(ticker_search_gen()) + 1L)
@@ -251,7 +237,6 @@ server <- function(input, output, session) {
     }
     msg
   }
-
 
   .push_ui_locale <- function(locale, sync_picker = TRUE) {
     loc <- normalize_ui_locale(locale)
@@ -558,7 +543,9 @@ server <- function(input, output, session) {
       hfv = function() .ynow_page_ui_hfv(),
       lab_notes = function() .ynow_page_ui_lab_notes(),
       testing = function() .ynow_page_ui_testing(),
-      asset_transmission = function() .ynow_page_ui_asset_transmission(),
+      asset_transmission = function() {
+        .ynow_page_ui_asset_transmission(isolate(ui_locale()))
+      },
       decision_checklist = function() decision_checklist_tab_body_ui()
     ),
     on_first_mount = list(
@@ -581,10 +568,18 @@ server <- function(input, output, session) {
     ),
     after_mount = function(tab) {
       lazy_mount_nonce(isolate(as.integer(lazy_mount_nonce()) %||% 0L) + 1L)
-      tryCatch(
-        .push_ui_locale(isolate(ui_locale()), sync_picker = FALSE),
-        error = function(e) NULL
-      )
+      # Push once immediately and once after DOM paint so lazy-tab chrome
+      # (ATX titles etc.) receives applyUiLocale even if first message races.
+      push_loc <- function() {
+        tryCatch(
+          .push_ui_locale(isolate(ui_locale()), sync_picker = FALSE),
+          error = function(e) NULL
+        )
+      }
+      push_loc()
+      if (requireNamespace("later", quietly = TRUE)) {
+        later::later(push_loc, delay = 0.05)
+      }
       invisible(tab)
     }
   )
@@ -1025,6 +1020,20 @@ server <- function(input, output, session) {
         # cached_scrape_financials already runs normalize_all_financials — do not re-normalize
         res <- cached_scrape_financials(stock_code)
 
+        # Notify when ADR quoted ticker had empty Yahoo statements and we used
+        # the HTCDI local ordinary listing (config-driven, not ticker-hardcoded).
+        fb_src <- as.character(attr(res, "statement_source_ticker") %||% "")[1]
+        fb_why <- as.character(attr(res, "statement_fallback") %||% "")[1]
+        if (nzchar(fb_src) && grepl("local_ordinary", fb_why, fixed = TRUE)) {
+          showNotification(
+            paste0(
+              "Quoted ticker statements were empty; loaded filings from local ordinary ",
+              fb_src, "."
+            ),
+            type = "message", duration = 10, id = "ynow_fs_ordinary_fallback"
+          )
+        }
+
         # .TWO：Yahoo IS／BS／CF 全空 → 櫃買「財務資料簡報」摘要 fallback（上櫃 O_／興櫃 U_）
         tpex_used <- FALSE
         if (exists("apply_tpex_financial_fallback", mode = "function") &&
@@ -1128,21 +1137,8 @@ server <- function(input, output, session) {
         }, error = function(e) NULL)
 
         incProgress(0.9, detail = "資料同步完成！✅")
-        # #region agent log
-        .ynow_dbg_ef0f33("E", "ynow_server.R:ticker_fetch", "fetch completed", list(
-          tk = as.character(stock_code %||% "")[1],
-          nrow_sum = if (is.data.frame(sum_df)) nrow(sum_df) else -1,
-          gen = suppressWarnings(as.numeric(isolate(ticker_search_gen()))[1])
-        ))
-        # #endregion
 
       }, error = function(e) {
-        # #region agent log
-        .ynow_dbg_ef0f33("D", "ynow_server.R:ticker_fetch", "fetch failed", list(
-          tk = as.character(stock_code %||% "")[1],
-          err = as.character(e$message %||% "")[1]
-        ))
-        # #endregion
         fs_all_empty(FALSE)
         # 興櫃旗標若已偵測仍保留短註（Summary 失敗也可能是興櫃）
         showNotification(
@@ -1451,16 +1447,6 @@ server <- function(input, output, session) {
       "N/A"
     }
     prev_raw <- if ("Previous Close" %in% items) as.character(df$Value[items == "Previous Close"][1])[1] else ""
-    # #region agent log
-    if (exists(".ynow_dbg_ef0f33", mode = "function")) {
-      .ynow_dbg_ef0f33("P", "ynow_server.R:ibx_stockprice", "header last price", list(
-        item = as.character(pick_nm %||% "")[1],
-        last = as.character(pick_raw %||% "")[1],
-        prev = as.character(prev_raw %||% "")[1],
-        shown = as.character(val %||% "")[1]
-      ))
-    }
-    # #endregion
     infoBox(
       ui_str("kpi_last_price", loc),
       val,
@@ -2927,7 +2913,6 @@ server <- function(input, output, session) {
       plotly::config(displayModeBar = FALSE, responsive = TRUE, displaylogo = FALSE)
   })
 
-
   # ==========================================
   # 🔌 4. 呼叫外部模組 (KPI, FCF, DDM)
   # ==========================================
@@ -3831,6 +3816,7 @@ server <- function(input, output, session) {
   # ==========================================
   rel_results <- relative_multiples_module_server(
     id = "mod_rel",
+    auto_calc_pulse = reactive(auto_calc_rel_pulse()),
     summary_df = summary_data,
     d_income_statement = d_income_statement,
     d_balance_sheet = d_balance_sheet,
@@ -3862,6 +3848,7 @@ server <- function(input, output, session) {
   # ==========================================
   sotp_results <- sotp_module_server(
     id = "mod_sotp",
+    auto_calc_pulse = reactive(auto_calc_sotp_pulse()),
     d_income_statement = d_income_statement,
     d_balance_sheet = d_balance_sheet,
     current_price = reactive({
@@ -7488,21 +7475,6 @@ server <- function(input, output, session) {
     # 計算每股目標價並防呆（報價幣；拒絕 TWD／普通股標成 USD／ADR）
     sh_info <- tryCatch(.valuation_shares(), error = function(e) NULL)
     px <- if (!is.null(sh_info)) .dcf_per_share(equity_value, sh_info) else NA_real_
-    # #region agent log
-    .ynow_dbg_ef0f33("D", "ynow_server.R:execute_dcf", "dcf per-share result", list(
-      mode = dcf_mode_eff,
-      claim = claim,
-      last_fcf = suppressWarnings(as.numeric(future_fcfs[n])[1]),
-      g = suppressWarnings(as.numeric(g_terminal)[1]),
-      r = suppressWarnings(as.numeric(r2)[1]),
-      ev = suppressWarnings(as.numeric(dcf_value)[1]),
-      eq = suppressWarnings(as.numeric(equity_value)[1]),
-      px = suppressWarnings(as.numeric(px)[1]),
-      cleared = !is.finite(suppressWarnings(as.numeric(px)[1])),
-      hist_anchor = isTRUE(hist_anchor),
-      silent = isTRUE(silent)
-    ))
-    # #endregion
     if (is.finite(px)) {
       lite_dcf_block("")
       stock_price_estimate_val(px)
@@ -7578,13 +7550,6 @@ server <- function(input, output, session) {
   # 再對主／副模型試算——避免「參數假設錯誤無法計算」。
   observeEvent(list(current_ticker(), ticker_search_gen()), {
     # Clear prior-ticker DCF so Composite does not keep stale run-state overlays
-    # #region agent log
-    .ynow_dbg_ef0f33("B", "ynow_server.R:ticker_clear", "cleared valuation on ticker", list(
-      tk = as.character(current_ticker() %||% "")[1],
-      prev_px = suppressWarnings(as.numeric(isolate(stock_price_estimate_val()))[1]),
-      gen = suppressWarnings(as.numeric(isolate(ticker_search_gen()))[1])
-    ))
-    # #endregion
     stock_price_estimate_val(NULL)
     dcf_value_result(NULL)
     lite_dcf_block("")
@@ -7597,6 +7562,8 @@ server <- function(input, output, session) {
     auto_calc_pb_pulse(0L)
     auto_calc_nav_pulse(0L)
     auto_calc_ri_pulse(0L)
+    auto_calc_rel_pulse(0L)
+    auto_calc_sotp_pulse(0L)
   }, ignoreNULL = TRUE, ignoreInit = TRUE)
 
   lite_mode <- reactive({
@@ -8000,6 +7967,41 @@ server <- function(input, output, session) {
       if (!(is.finite(navps) && navps > 0 && is.finite(mid) && mid > 0)) return(FALSE)
       return(isTRUE(.auto_calc_shares_ready()))
     }
+    if (identical(prim, "multiples")) {
+      # Do not rely on mod_rel-* inputs: updateNumericInput is async, so Lite
+      # readiness must come from summary / statements (same sources as sync).
+      sum_df <- tryCatch(summary_data(), error = function(e) NULL)
+      d_is <- tryCatch(d_income_statement(), error = function(e) NULL)
+      d_bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
+      eps <- NA_real_
+      if (exists("extract_summary_item", mode = "function")) {
+        eps <- suppressWarnings(as.numeric(gsub("[^0-9eE.+-]", "", as.character(
+          extract_summary_item(sum_df, "EPS \\(TTM\\)|Trailing EPS|^EPS$", default = NA_character_)
+        )))[1])
+      }
+      if (!is.finite(eps) && exists(".report_eps_bvps", mode = "function")) {
+        eps <- tryCatch(.report_eps_bvps(sum_df, d_is = d_is, d_bs = d_bs)$eps, error = function(e) NA_real_)
+      }
+      if (is.finite(eps) && eps != 0) return(TRUE)
+      # EV / P/S path: need share bridge + at least one statement metric
+      if (!isTRUE(.auto_calc_shares_ready())) return(FALSE)
+      d_cf <- tryCatch(d_cash_flow(), error = function(e) NULL)
+      has_metric <- FALSE
+      if (exists(".rel_latest_fcff", mode = "function")) {
+        fcff <- tryCatch(.rel_latest_fcff(d_cf, d_is = d_is), error = function(e) NA_real_)
+        has_metric <- is.finite(fcff) && fcff != 0
+      }
+      if (!isTRUE(has_metric) && exists(".rel_is_metric", mode = "function")) {
+        rev <- tryCatch(.rel_is_metric(d_is, "Total Revenue|^Revenue$|Operating Revenue"), error = function(e) NA_real_)
+        has_metric <- is.finite(rev) && rev > 0
+      }
+      return(isTRUE(has_metric))
+    }
+    if (identical(prim, "sotp")) {
+      shares <- suppressWarnings(as.numeric(input[["mod_sotp-shares"]])[1])
+      if (!(is.finite(shares) && shares > 0)) return(FALSE)
+      return(isTRUE(.auto_calc_shares_ready()))
+    }
     FALSE
   }
 
@@ -8022,6 +8024,10 @@ server <- function(input, output, session) {
       auto_calc_nav_pulse(isolate(auto_calc_nav_pulse()) + 1L)
     } else if (identical(prim, "ri")) {
       auto_calc_ri_pulse(isolate(auto_calc_ri_pulse()) + 1L)
+    } else if (identical(prim, "multiples")) {
+      auto_calc_rel_pulse(isolate(auto_calc_rel_pulse()) + 1L)
+    } else if (identical(prim, "sotp")) {
+      auto_calc_sotp_pulse(isolate(auto_calc_sotp_pulse()) + 1L)
     }
     invisible(NULL)
   }
@@ -8050,15 +8056,6 @@ server <- function(input, output, session) {
         sep = "|"
       )
       if (!identical(lite_scenario_applied_sig(), want_sig)) {
-        # #region agent log
-        .ynow_dbg_ef0f33("C", "ynow_server.R:lite_scenario", "applied lite scenario", list(
-          tk = tk,
-          two = isTRUE(des$two_stage),
-          method = as.character(des$method %||% "")[1],
-          claim = as.character(des$claim %||% "")[1],
-          prev = as.character(lite_scenario_applied_sig() %||% "")[1]
-        ))
-        # #endregion
         .apply_lite_recommended_scenario(rec)
         lite_scenario_applied_sig(want_sig)
         return()
@@ -8089,8 +8086,13 @@ server <- function(input, output, session) {
       return()
     }
     keys <- prim
-    if (isTRUE(lite_mode()) && nzchar(sec) && sec %in% c("dcf", "ddm", "pb", "ri", "nav") &&
-        !identical(sec, prim) && isTRUE(.auto_calc_primary_ready(sec))) {
+    # Lite secondary auto-calc: Fair Value engines + Implied Price cross-checks
+    # (Multiples / SOTP) when recommended as secondary.
+    sec_auto_allowlist <- c("dcf", "ddm", "pb", "ri", "nav", "multiples", "sotp")
+    sec_in_auto_allowlist <- nzchar(sec) && sec %in% sec_auto_allowlist
+    sec_ready <- if (isTRUE(sec_in_auto_allowlist)) isTRUE(.auto_calc_primary_ready(sec)) else FALSE
+    if (isTRUE(lite_mode()) && isTRUE(sec_in_auto_allowlist) &&
+        !identical(sec, prim) && isTRUE(sec_ready)) {
       keys <- c(prim, sec)
     }
     mode <- as.character(input$dcf_mode %||% "gordon")[1]
@@ -8114,19 +8116,6 @@ server <- function(input, output, session) {
     )
     if (identical(auto_calc_primary_sig(), sig)) return()
 
-    # #region agent log
-    .ynow_dbg_ef0f33("A", "ynow_server.R:auto_calc", "firing auto calc", list(
-      sig = sig,
-      prim = prim,
-      sec = as.character(sec %||% "")[1],
-      mode = mode,
-      claim = claim,
-      w = if (is.finite(w_calc)) round(w_calc * 100, 2) else NA_real_,
-      sgr = if (is.finite(sgr)) round(sgr, 2) else NA_real_,
-      sh = as.character(sh_m %||% "")[1],
-      prev_px = suppressWarnings(as.numeric(isolate(stock_price_estimate_val()))[1])
-    ))
-    # #endregion
     auto_calc_primary_sig(sig)
     for (k in keys) .fire_auto_calc_primary(k)
   })
@@ -8772,6 +8761,7 @@ server <- function(input, output, session) {
       "Total Debt" = scraped_debt
     )
     
+
     alert_box <- ui_missing_data_alert(
       check_list = check_list,
       fallback_msg = "無法從財報抓取上述數值。請在下方手動輸入以確保企業估值 (DCF) 計算準確。"

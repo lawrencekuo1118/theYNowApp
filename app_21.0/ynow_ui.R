@@ -2,6 +2,24 @@
 # ui.R - 前端介面設計
 # ==========================================
 
+#' Display / deploy build id from www/ynow_build.json (baked at UI source time).
+.ynow_read_build_version <- function() {
+  paths <- c(
+    file.path("www", "ynow_build.json"),
+    "ynow_build.json"
+  )
+  for (p in paths) {
+    if (!file.exists(p)) next
+    raw <- paste(readLines(p, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+    m <- regmatches(raw, regexpr('"version"\\s*:\\s*"[^"]+"', raw))
+    if (length(m) == 1L && nzchar(m[[1]])) {
+      return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
+    }
+  }
+  "v21.18"
+}
+.YNOW_BUILD_VERSION <- .ynow_read_build_version()
+
 # Backtest Zone：欄位下方小字說明
 .bt_hint <- function(text) {
   tags$p(
@@ -2610,18 +2628,24 @@ beta_rolling_section_ui <- function() {
 }
 
 #' Lazy page body for tab `asset_transmission` (mounted once per session).
-.ynow_page_ui_asset_transmission <- function() {
+#' @param locale first-paint locale (`en` / `zh-TW`); language switches still update via applyUiLocale.
+.ynow_page_ui_asset_transmission <- function(locale = "en") {
+  loc <- if (exists("normalize_ui_locale", mode = "function")) {
+    normalize_ui_locale(locale)
+  } else {
+    "en"
+  }
+  .atx_s <- function(key) {
+    if (exists("ui_str", mode = "function")) ui_str(key, loc) else key
+  }
   tagList(
     fluidRow(
       column(
         width = 12,
-        h2(tags$b(id = "ynow_atx_page_title", "Asset transmission")),
+        h2(tags$b(id = "ynow_atx_page_title", .atx_s("atx_page_title"))),
         p(
           id = "ynow_atx_page_sub",
-          paste0(
-            "Same stack as the reference map: §1 macro drivers → §2 rate / dollar / liquidity hubs → §4 major asset classes (incl. FX market). ",
-            "Available in Lite and Full."
-          )
+          .atx_s("atx_page_sub")
         ),
         tags$hr()
       )
@@ -2635,7 +2659,7 @@ beta_rolling_section_ui <- function() {
             class = "box-header",
             tags$h3(
               class = "box-title",
-              tagList(icon("project-diagram"), tags$span(id = "ynow_atx_box_title", "Asset transmission"))
+              tagList(icon("project-diagram"), tags$span(id = "ynow_atx_box_title", .atx_s("atx_box_title")))
             )
           ),
           tags$div(
@@ -2643,11 +2667,7 @@ beta_rolling_section_ui <- function() {
             tags$p(
               id = "ynow_atx_box_body",
               style = "color:#555; line-height:1.5; margin:0 0 10px 0;",
-              paste0(
-                "§1 Macro drivers feed §2 hubs (rates, dollar / DXY, liquidity), then §4 asset classes: bonds, equities, precious metals, commodities, FX market, crypto, and other. ",
-                "Arrows run upstream to downstream. Purple marks links that can flip by regime. ",
-                "The regime card is a surveillance label for this session, not a trading signal and not an input to WACC."
-              )
+              .atx_s("atx_box_body")
             ),
             asset_transmission_ui("atx")
           )
@@ -2668,7 +2688,7 @@ beta_rolling_section_ui <- function() {
           id = "ynow_testing_page_sub",
           paste0(
             "Full-only sandbox for experiments. Lite mode hides this entry. ",
-            "Asset transmission now lives in its own sidebar tab (after Macro & Market Trends)."
+            "Asset transmission root map now lives in its own sidebar tab (after Macro & Market Trends)."
           )
         ),
         tags$hr(),
@@ -2676,7 +2696,7 @@ beta_rolling_section_ui <- function() {
           id = "ynow_testing_box_body",
           style = "color:#555; line-height:1.5;",
           paste0(
-            "Use the sidebar entry Asset transmission for the inflation → rates → liquidity → asset map. ",
+            "Use the sidebar entry Asset transmission root map for the inflation → rates → liquidity → asset map. ",
             "This Testing page remains a Full-only placeholder for future lab hooks."
           )
         )
@@ -2693,6 +2713,7 @@ ui <- dashboardPage(
   dashboardHeader(
                 title = HTML(paste0(
                   '<span class="ynow-app-title" id="ynow_app_title" ',
+                  'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
                   '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v21.07</span>',
@@ -2788,7 +2809,7 @@ ui <- dashboardPage(
   
   dashboardSidebar(
     width = 250,
-    collapsed = FALSE,
+    collapsed = TRUE,
     column(width = 12,
            column(width = 12, textOutput("today"),
                   hr()
@@ -2813,7 +2834,7 @@ ui <- dashboardPage(
                icon = icon("globe-asia")
              ),
              menuItem(
-               text = tags$span(id = "ynow_menu_asset_transmission", "Asset transmission"),
+               text = tags$span(id = "ynow_menu_asset_transmission", "Asset transmission root map"),
                tabName = "asset_transmission",
                icon = icon("project-diagram")
              ),
@@ -2824,7 +2845,7 @@ ui <- dashboardPage(
                tabName = "company_advance",
                icon = icon("layer-group")
              ),
-             menuItem("YNOW", tabName = "sensitivity", icon = icon("sliders-h")),
+             menuItem("YNOW", tabName = "sensitivity", icon = icon("clock")),
              menuItem(
                text = tags$span(id = "ynow_menu_smart", "Smart Analysis"),
                tabName = "smart_analysis",
@@ -2989,6 +3010,8 @@ ui <- dashboardPage(
           --ynow-logo-blue: #0C5484;
           --ynow-logo-green: #249C60;
           --ynow-logo-cyan: #1AA8B8;
+          /* Shared content column — same as Macro & Market Trends (.ynow-macro-report) */
+          --ynow-page-max: 1200px;
           --ynow-logo-flow-gradient: linear-gradient(
             105deg,
             #0C5484 0%,
@@ -2997,6 +3020,19 @@ ui <- dashboardPage(
             #249C60 50%,
             #1AA8B8 68%,
             #0C5484 100%
+          );
+          /* HTCDI numerals only — flame flow (not shared with YNOW / Data-limited logo fill) */
+          --ynow-htcdi-flame-gradient: linear-gradient(
+            105deg,
+            #4A0E0E 0%,
+            #8B1A1A 12%,
+            #C0392B 24%,
+            #E67E22 38%,
+            #F39C12 50%,
+            #F7CA18 62%,
+            #FFE66D 74%,
+            #E67E22 88%,
+            #922B21 100%
           );
           /* Model Selector｜估值模型推薦 色系（各模型頁主題；與小卡 icon 色一致） */
           --ynow-model-nav: #d81b60;
@@ -3022,6 +3058,10 @@ ui <- dashboardPage(
           50% { background-position: 100% 50%; }
         }
         @keyframes ynow-logo-flow {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+        @keyframes ynow-htcdi-flame-flow {
           0%, 100% { background-position: 0% 50%; }
           50% { background-position: 100% 50%; }
         }
@@ -3077,6 +3117,11 @@ ui <- dashboardPage(
           filter: none !important;
           line-height: 1.15;
           vertical-align: middle;
+        }
+        /* Update-available: cursor only here; flame fill overrides come after gold title rules */
+        body.ynow-update-available .main-header .logo,
+        body.ynow-update-available .main-header .logo .ynow-app-title {
+          cursor: pointer;
         }
         .main-header .logo .ynow-app-title-base {
           display: inline-block;
@@ -3137,6 +3182,54 @@ ui <- dashboardPage(
             -webkit-text-fill-color: rgba(255, 215, 0, 0.35);
           }
         }
+        /* Pending deploy: flame title must override gold fill/shine (place after gold rules) */
+        body.ynow-update-available .main-header .logo .ynow-app-title-base {
+          color: rgba(192, 57, 43, 0.38) !important;
+          -webkit-text-fill-color: rgba(192, 57, 43, 0.38) !important;
+          animation: none !important;
+        }
+        body.ynow-update-available .main-header .logo .ynow-app-title.is-complete .ynow-app-title-fill,
+        body.ynow-update-available .main-header .logo .ynow-app-title-fill {
+          width: 100% !important;
+        }
+        body.ynow-update-available .main-header .logo .ynow-app-title.is-complete .ynow-app-title-fill-inner,
+        body.ynow-update-available .main-header .logo .ynow-app-title-fill-inner {
+          color: transparent !important;
+          background-color: transparent !important;
+          background-image: var(--ynow-htcdi-flame-gradient) !important;
+          background-size: 220% 100% !important;
+          background-repeat: no-repeat !important;
+          -webkit-background-clip: text !important;
+          background-clip: text !important;
+          -webkit-text-fill-color: transparent !important;
+          animation: ynow-htcdi-flame-flow 2.4s ease-in-out infinite !important;
+          text-decoration: none !important;
+          filter: none !important;
+        }
+        @supports not ((-webkit-background-clip: text) or (background-clip: text)) {
+          body.ynow-update-available .main-header .logo .ynow-app-title-fill-inner,
+          body.ynow-update-available .main-header .logo .ynow-app-title.is-complete .ynow-app-title-fill-inner {
+            -webkit-text-fill-color: #E67E22 !important;
+            color: #E67E22 !important;
+            background-image: none !important;
+            animation: none !important;
+            text-shadow:
+              0 0 6px rgba(255, 120, 40, 0.85),
+              0 0 14px rgba(192, 57, 43, 0.55),
+              0 1px 2px rgba(0, 0, 0, 0.85);
+          }
+          body.ynow-update-available .main-header .logo .ynow-app-title-base {
+            color: rgba(192, 57, 43, 0.45) !important;
+            -webkit-text-fill-color: rgba(192, 57, 43, 0.45) !important;
+          }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          body.ynow-update-available .main-header .logo .ynow-app-title-fill-inner,
+          body.ynow-update-available .main-header .logo .ynow-app-title.is-complete .ynow-app-title-fill-inner {
+            animation: none !important;
+            background-position: 0% 50% !important;
+          }
+        }
         /* 美股：logo 區塊黑底（容器層，不影響內層文字漸層） */
         .skin-black .main-header .logo::before {
           content: "";
@@ -3164,6 +3257,36 @@ ui <- dashboardPage(
         /* Reserve band under fixed header for credit (left) + USD/TWD (right) */
         .content-wrapper > .content {
           padding-top: 52px;
+        }
+        /* All sidebar tabs share Macro & Market Trends content width + center */
+        .content-wrapper > .content > .tab-content {
+          width: 100%;
+          max-width: 100%;
+        }
+        .content-wrapper > .content > .tab-content > .tab-pane {
+          max-width: var(--ynow-page-max, 1200px);
+          width: 100%;
+          margin-left: auto;
+          margin-right: auto;
+          box-sizing: border-box;
+        }
+        .content-wrapper > .content > .tab-content > .tab-pane .box,
+        .content-wrapper > .content > .tab-content > .tab-pane .nav-tabs-custom {
+          max-width: 100%;
+        }
+        /* Keep Plotly / DT / images fluid inside the shared column */
+        .content-wrapper > .content > .tab-content > .tab-pane .plotly,
+        .content-wrapper > .content > .tab-content > .tab-pane .html-widget,
+        .content-wrapper > .content > .tab-content > .tab-pane .dataTables_wrapper,
+        .content-wrapper > .content > .tab-content > .tab-pane img {
+          max-width: 100%;
+        }
+        @media (max-width: 767px) {
+          .content-wrapper > .content > .tab-content > .tab-pane {
+            max-width: 100%;
+            padding-left: 0;
+            padding-right: 0;
+          }
         }
         .skin-black .main-header .navbar {
           background-color: var(--ynow-ink) !important;
@@ -4315,9 +4438,11 @@ ui <- dashboardPage(
           display: inline-block;
         }
         .ynow-bblab--report {
-          max-width: 980px;
+          max-width: var(--ynow-page-max, 1200px);
           margin: 0 auto 36px;
           padding: 8px 4px 24px;
+          width: 100%;
+          box-sizing: border-box;
         }
         .ynow-bblab-report__cover {
           margin: 0 0 18px 0;
@@ -4612,7 +4737,7 @@ ui <- dashboardPage(
         }
         body.ynow-lite #ynow_macro_index_hist,
         body.ynow-lite #ynow_macro_index_hint,
-        body.ynow-lite #ynow_macro_hccsi_expand {
+        body.ynow-lite #ynow_macro_htcdi_expand {
           display: none !important;
         }
         /* Prefer data-value: locale applyTabLabels may strip title span ids */
@@ -4647,13 +4772,15 @@ ui <- dashboardPage(
         }
         /* Brand home: sidebar-aligned doors (Macro → Blue Chip → Company → YNOW → Value → Action) */
         .ynow-home {
-          max-width: 760px;
+          max-width: var(--ynow-page-max, 1200px);
+          width: 100%;
           margin: 12px auto 28px;
           padding: 28px 8px 8px;
           background: transparent;
           color: #222;
           border-radius: 0;
           text-align: center;
+          box-sizing: border-box;
         }
         .ynow-home-logo-wrap {
           position: relative;
@@ -4736,8 +4863,14 @@ ui <- dashboardPage(
           color: #555;
         }
         @media (max-width: 720px) {
-          .ynow-home { padding: 24px 16px 18px; }
+          .ynow-home { padding: 24px 12px 18px; max-width: 100%; }
           .ynow-home-grid { grid-template-columns: 1fr; }
+        }
+        @media (min-width: 721px) and (max-width: 991px) {
+          .ynow-home-grid { grid-template-columns: 1fr 1fr; }
+        }
+        @media (min-width: 992px) {
+          .ynow-home-grid { grid-template-columns: 1fr 1fr 1fr; }
         }
         .ynow-home-legal {
           margin: 18px 0 0 0;
@@ -5295,8 +5428,10 @@ ui <- dashboardPage(
 
         /* HFV report shell: narrative chapters + responsive control toolbar */
         .ynow-hfv-report {
-          max-width: 1200px;
+          max-width: var(--ynow-page-max, 1200px);
+          width: 100%;
           margin: 0 auto 24px auto;
+          box-sizing: border-box;
         }
         .ynow-hfv-report__masthead {
           margin: 0 0 16px 0;
@@ -5906,6 +6041,154 @@ ui <- dashboardPage(
               });
             }
           })();
+
+          /* Deploy refresh: poll ynow_build.json; never auto-reload.
+             When a newer version is live, user must click The YNow App title to refresh. */
+          (function initYnowDeployRefresh() {
+            var POLL_MS = 45000;
+            var sessionBuild = null;
+            var remoteBuild = null;
+            var pollTimer = null;
+            var LAST_UPDATE_STRINGS = null;
+
+            function titleEl() {
+              return document.getElementById('ynow_app_title') ||
+                document.querySelector('.main-header .logo .ynow-app-title');
+            }
+            function logoEl() {
+              return document.querySelector('.main-header .logo');
+            }
+            function readSessionBuild() {
+              if (sessionBuild) return sessionBuild;
+              var el = titleEl();
+              var fromDom = el && el.getAttribute('data-ynow-build');
+              if (fromDom) {
+                sessionBuild = String(fromDom).trim();
+                return sessionBuild;
+              }
+              sessionBuild = '';
+              return sessionBuild;
+            }
+            function updateTipText() {
+              var s = LAST_UPDATE_STRINGS || {};
+              return s.update_available_click ||
+                'New version available — click The YNow App to refresh';
+            }
+            function applyUpdateChrome() {
+              var pending = !!(remoteBuild && sessionBuild && remoteBuild !== sessionBuild);
+              document.body.classList.toggle('ynow-update-available', pending);
+              var tip = updateTipText();
+              var title = titleEl();
+              var logo = logoEl();
+              if (title) {
+                if (pending) {
+                  title.setAttribute('title', tip);
+                  title.setAttribute('aria-label', tip);
+                  title.setAttribute('role', 'button');
+                  title.setAttribute('tabindex', '0');
+                } else {
+                  title.removeAttribute('title');
+                  if (title.getAttribute('role') === 'button') {
+                    title.setAttribute('role', 'progressbar');
+                  }
+                  title.removeAttribute('tabindex');
+                }
+              }
+              if (logo) {
+                if (pending) logo.setAttribute('title', tip);
+                else logo.removeAttribute('title');
+              }
+            }
+            window.ynowSetUpdateLocaleStrings = function (strings) {
+              LAST_UPDATE_STRINGS = strings || null;
+              applyUpdateChrome();
+            };
+            function markRemote(version) {
+              var v = String(version || '').trim();
+              if (!v) return;
+              remoteBuild = v;
+              applyUpdateChrome();
+            }
+            function fetchBuild() {
+              var url = 'ynow_build.json?_=' + Date.now();
+              return fetch(url, { cache: 'no-store', credentials: 'same-origin' })
+                .then(function (res) {
+                  if (!res || !res.ok) throw new Error('build fetch failed');
+                  return res.json();
+                })
+                .then(function (data) {
+                  if (data && data.version) markRemote(data.version);
+                })
+                .catch(function () { /* keep last known; no auto-reload */ });
+            }
+            function reloadForUpdate() {
+              /* Hard navigation so the browser loads the new Shiny bundle / assets. */
+              try {
+                var u = new URL(window.location.href);
+                u.searchParams.set('_ynow_refresh', String(Date.now()));
+                window.location.replace(u.toString());
+              } catch (eReload) {
+                window.location.reload();
+              }
+            }
+            function onTitleActivate(ev) {
+              if (!document.body.classList.contains('ynow-update-available')) return;
+              var hit = ev.target && ev.target.closest
+                ? ev.target.closest('#ynow_app_title, .main-header .logo')
+                : null;
+              if (!hit) return;
+              /* Do not steal clicks from market/lang chrome inside the navbar. */
+              if (ev.target.closest && ev.target.closest(
+                '.ynow-market-header, .ynow-lang-header, .navbar-custom-menu, .sidebar-toggle'
+              )) return;
+              ev.preventDefault();
+              ev.stopPropagation();
+              reloadForUpdate();
+            }
+            function bindClick() {
+              if (document.documentElement.getAttribute('data-ynow-deploy-refresh') === '1') return;
+              document.documentElement.setAttribute('data-ynow-deploy-refresh', '1');
+              document.addEventListener('click', onTitleActivate, true);
+              document.addEventListener('keydown', function (ev) {
+                if (!document.body.classList.contains('ynow-update-available')) return;
+                var t = ev.target;
+                if (!t || t.id !== 'ynow_app_title') return;
+                if (ev.key !== 'Enter' && ev.key !== ' ') return;
+                ev.preventDefault();
+                reloadForUpdate();
+              }, true);
+            }
+            function startPolling() {
+              readSessionBuild();
+              fetchBuild();
+              setTimeout(fetchBuild, 3000);
+              setTimeout(fetchBuild, 10000);
+              if (pollTimer) clearInterval(pollTimer);
+              pollTimer = setInterval(fetchBuild, POLL_MS);
+            }
+            bindClick();
+            if (document.readyState === 'loading') {
+              document.addEventListener('DOMContentLoaded', startPolling);
+            } else {
+              startPolling();
+            }
+            document.addEventListener('visibilitychange', function () {
+              if (!document.hidden) fetchBuild();
+            });
+            window.addEventListener('focus', function () { fetchBuild(); });
+            function bindShinyHooks() {
+              if (!window.jQuery) {
+                setTimeout(bindShinyHooks, 50);
+                return;
+              }
+              /* After reconnect (e.g. post-deploy), re-check build — still no auto-reload. */
+              jQuery(document).on('shiny:connected shiny:reconnected', function () {
+                fetchBuild();
+              });
+            }
+            bindShinyHooks();
+          })();
+
           function bindMarketModeButtons() {
             placeMarketHeaderByToggle();
             var stack = document.querySelector('#ynow-market-header .ynow-market-stack');
@@ -6089,6 +6372,9 @@ ui <- dashboardPage(
 
           function applyUiLocale(payload) {
             var s = (payload && payload.strings) || {};
+            if (typeof window.ynowSetUpdateLocaleStrings === 'function') {
+              window.ynowSetUpdateLocaleStrings(s);
+            }
             var menu = {
               home: s.menu_home,
               macro_market: s.menu_macro_market,
@@ -6173,32 +6459,32 @@ ui <- dashboardPage(
             setBtText('ynow_macro_page_title', 'macro_page_title');
             setBtText('ynow_macro_page_sub', 'macro_page_sub');
             setBtText('ynow_macro_rf_title', 'macro_rf_title');
-            setBtText('ynow_macro_hccsi_title', 'hccsi_title');
-            var hccsiBox = document.getElementById('ynow_macro_hccsi_box');
-            var hccsiAlert = hccsiBox ? String(hccsiBox.getAttribute('data-hccsi-alert') || '') : '';
-            if (hccsiAlert.toLowerCase() === 'unavailable') {
-              setBtText('ynow_macro_hccsi_hint', 'hccsi_unavailable');
+            setBtText('ynow_macro_htcdi_title', 'htcdi_title');
+            var htcdiBox = document.getElementById('ynow_macro_htcdi_box');
+            var htcdiAlert = htcdiBox ? String(htcdiBox.getAttribute('data-htcdi-alert') || '') : '';
+            if (htcdiAlert.toLowerCase() === 'unavailable') {
+              setBtText('ynow_macro_htcdi_hint', 'htcdi_unavailable');
             } else if (document.body && document.body.classList.contains('ynow-lite')) {
-              setBtText('ynow_macro_hccsi_hint', 'hccsi_disclosure_short');
+              setBtText('ynow_macro_htcdi_hint', 'htcdi_disclosure_short');
             } else {
-              setBtText('ynow_macro_hccsi_hint', 'hccsi_click_hint');
+              setBtText('ynow_macro_htcdi_hint', 'htcdi_click_hint');
             }
-            setBtText('ynow_macro_hccsi_disclosure', 'hccsi_disclosure');
-            setBtText('ynow_macro_hccsi_overview_title', 'hccsi_overview_title');
-            setBtText('ynow_macro_hccsi_formula', 'hccsi_formula_eq');
-            setBtText('ynow_macro_hccsi_formula_parts', 'hccsi_formula_parts');
-            setBtText('ynow_macro_hccsi_layer_title', 'hccsi_layer_title');
-            setBtText('ynow_macro_hccsi_network_title', 'hccsi_network_title');
-            setBtText('ynow_macro_hccsi_contagion_paths', 'hccsi_contagion_paths');
-            setBtText('ynow_macro_hccsi_network_note', 'hccsi_network_note');
-            setBtText('ynow_macro_hccsi_term_bridge', 'hccsi_term_bridge');
-            setBtText('ynow_macro_hccsi_map_stmt', 'hccsi_term_map_stmt');
-            setBtText('ynow_macro_hccsi_map_mkt', 'hccsi_term_map_mkt');
-            setBtText('ynow_macro_hccsi_map_inf', 'hccsi_term_map_inf');
-            setBtText('ynow_macro_hccsi_map_traj', 'hccsi_term_map_traj');
-            setBtText('ynow_macro_hccsi_in_title', 'hccsi_in_composite_title');
-            setBtText('ynow_macro_hccsi_in_help', 'hccsi_in_composite_help');
-            setBtText('ynow_macro_hccsi_method_title', 'hccsi_method_title');
+            setBtText('ynow_macro_htcdi_disclosure', 'htcdi_disclosure');
+            setBtText('ynow_macro_htcdi_overview_title', 'htcdi_overview_title');
+            setBtText('ynow_macro_htcdi_formula', 'htcdi_formula_eq');
+            setBtText('ynow_macro_htcdi_formula_parts', 'htcdi_formula_parts');
+            setBtText('ynow_macro_htcdi_layer_title', 'htcdi_layer_title');
+            setBtText('ynow_macro_htcdi_network_title', 'htcdi_network_title');
+            setBtText('ynow_macro_htcdi_contagion_paths', 'htcdi_contagion_paths');
+            setBtText('ynow_macro_htcdi_network_note', 'htcdi_network_note');
+            setBtText('ynow_macro_htcdi_term_bridge', 'htcdi_term_bridge');
+            setBtText('ynow_macro_htcdi_map_stmt', 'htcdi_term_map_stmt');
+            setBtText('ynow_macro_htcdi_map_mkt', 'htcdi_term_map_mkt');
+            setBtText('ynow_macro_htcdi_map_inf', 'htcdi_term_map_inf');
+            setBtText('ynow_macro_htcdi_map_traj', 'htcdi_term_map_traj');
+            setBtText('ynow_macro_htcdi_in_title', 'htcdi_in_composite_title');
+            setBtText('ynow_macro_htcdi_in_help', 'htcdi_in_composite_help');
+            setBtText('ynow_macro_htcdi_method_title', 'htcdi_method_title');
             setBtText('ynow_macro_index_hint', 'macro_index_chart_hint');
             setBtText('ynow_own_index_overlay_label', 'macro_own_index_overlay_label');
             setBtText('ynow_own_index_overlay_hint', 'macro_own_index_overlay_hint');
@@ -6216,6 +6502,7 @@ ui <- dashboardPage(
             setBtText('ynow_macro_theme_help', 'macro_theme_help');
             setBtText('ynow_macro_industry_label', 'macro_industry_label');
             setBtText('ynow_macro_concept_label', 'macro_concept_label');
+            setBtText('ynow_macro_concept_cloud_hint', 'macro_concept_cloud_hint');
             setBtText('ynow_macro_period_label', 'macro_period_label');
             setBtText('ynow_macro_fx_lock', 'macro_fx_lock');
             setBtText('ynow_macro_bubble_title', 'macro_bubble_title');
@@ -7930,8 +8217,8 @@ ui <- dashboardPage(
           white-space: nowrap;
           line-height: 1.2;
         }
-        /* Data-limited / 資料受限: same logo-flow fill as HCCSI numerals (shared class). */
-        .ynow-fund-profile-badge .ynow-hccsi-flow {
+        /* Data-limited / 資料受限: keep logo-flow fill (not HTCDI flame). */
+        .ynow-fund-profile-badge .ynow-htcdi-flow {
           color: transparent !important;
           -webkit-text-fill-color: transparent !important;
         }
@@ -8359,8 +8646,10 @@ ui <- dashboardPage(
 
         /* YNOW page — three stacked blocks (same chapter chrome as HFV) */
         .ynow-funnel-report {
-          max-width: 1200px;
+          max-width: var(--ynow-page-max, 1200px);
+          width: 100%;
           margin: 0 auto 24px auto;
+          box-sizing: border-box;
         }
         .ynow-funnel-report__masthead {
           margin: 0 0 16px 0;
@@ -8572,9 +8861,11 @@ ui <- dashboardPage(
           --ynow-macro-gold: var(--ynow-gold, #F5C518);
           --ynow-macro-gold-deep: var(--ynow-gold-deep, #C9A227);
           --ynow-macro-ink: #0b1220;
-          max-width: 1200px;
+          max-width: var(--ynow-page-max, 1200px);
+          width: 100%;
           margin: 0 auto 24px auto;
           padding: 0 2px;
+          box-sizing: border-box;
         }
         .ynow-macro-report__masthead {
           margin: 0 0 14px 0;
@@ -8623,6 +8914,62 @@ ui <- dashboardPage(
         .ynow-macro-chapter__lead {
           margin: 0 0 12px 0;
           max-width: 72em;
+        }
+        .ynow-macro-concept-cloud-wrap {
+          margin: 4px 0 14px 0;
+        }
+        .ynow-macro-concept-cloud-wrap > .control-label {
+          display: block;
+          margin-bottom: 4px;
+          font-weight: 700;
+          color: var(--ynow-macro-blue, #0C5484);
+        }
+        .ynow-macro-concept-cloud-wrap > .ynow-macro-hint {
+          margin: 0 0 8px 0;
+        }
+        .ynow-macro-concept-cloud .shiny-options-group {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px 10px;
+          align-items: center;
+          margin: 0;
+        }
+        .ynow-macro-concept-cloud .checkbox-inline,
+        .ynow-macro-concept-cloud label.checkbox-inline {
+          margin: 0 !important;
+          padding: 2px 10px !important;
+          border: 1px solid rgba(12, 84, 132, 0.28);
+          border-radius: 999px;
+          background: #f7fafc;
+          line-height: 1.25;
+          white-space: nowrap;
+          transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+        }
+        .ynow-macro-concept-cloud .checkbox-inline input[type='checkbox'] {
+          position: absolute;
+          opacity: 0;
+          width: 0;
+          height: 0;
+          margin: 0;
+          pointer-events: none;
+        }
+        .ynow-macro-concept-cloud .ynow-macro-cloud-word {
+          font-weight: 600;
+          color: #0b1220;
+          letter-spacing: 0.01em;
+        }
+        .ynow-macro-concept-cloud .checkbox-inline:hover {
+          border-color: rgba(12, 84, 132, 0.55);
+          background: #eef5fb;
+        }
+        .ynow-macro-concept-cloud .checkbox-inline:has(input:checked),
+        .ynow-macro-concept-cloud .checkbox-inline.active {
+          background: rgba(12, 84, 132, 0.12);
+          border-color: #0C5484;
+        }
+        .ynow-macro-concept-cloud .checkbox-inline:has(input:checked) .ynow-macro-cloud-word,
+        .ynow-macro-concept-cloud .checkbox-inline.active .ynow-macro-cloud-word {
+          color: #0C5484;
         }
         .ynow-macro-chapter > .ynow-notes {
           margin-top: 10px;
@@ -8915,20 +9262,20 @@ ui <- dashboardPage(
           flex: 1 1 auto;
           width: 100%;
         }
-        .ynow-macro-kpi--hccsi.ynow-hccsi-alert--watch {
+        .ynow-macro-kpi--htcdi.ynow-htcdi-alert--watch {
           border-color: rgba(230, 168, 23, 0.85);
         }
-        .ynow-macro-kpi--hccsi.ynow-hccsi-alert--warning {
+        .ynow-macro-kpi--htcdi.ynow-htcdi-alert--warning {
           border-color: rgba(211, 84, 0, 0.9);
         }
-        .ynow-macro-kpi--hccsi.ynow-hccsi-alert--critical {
+        .ynow-macro-kpi--htcdi.ynow-htcdi-alert--critical {
           border-color: rgba(192, 57, 43, 0.95);
           box-shadow: 0 0 0 2px rgba(192, 57, 43, 0.25);
         }
-        .ynow-macro-kpi--hccsi.ynow-hccsi-alert--unavailable {
+        .ynow-macro-kpi--htcdi.ynow-htcdi-alert--unavailable {
           border-color: rgba(12, 84, 132, 0.35);
         }
-        .ynow-hccsi-flow {
+        .ynow-htcdi-flow {
           background-image: var(--ynow-logo-flow-gradient, linear-gradient(105deg, #0C5484 0%, #1AA8B8 50%, #249C60 100%));
           background-size: 220% 100%;
           background-repeat: no-repeat;
@@ -8939,75 +9286,98 @@ ui <- dashboardPage(
           animation: ynow-logo-flow 2.6s ease-in-out infinite;
           font-weight: 700;
         }
-        .ynow-macro-own-index .ynow-macro-kpi__value.ynow-hccsi-flow,
-        .ynow-macro-kpi--ynow .ynow-macro-kpi__value.ynow-hccsi-flow {
+        /* HTCDI only: flame dynamic fill (KPI, four pillars, expand tables). */
+        .ynow-macro-kpi--htcdi .ynow-htcdi-flow,
+        .ynow-htcdi-sub .ynow-htcdi-flow,
+        .ynow-htcdi-table .ynow-htcdi-flow,
+        .ynow-htcdi-expand__card .ynow-htcdi-flow {
+          background-image: var(--ynow-htcdi-flame-gradient, linear-gradient(105deg, #8B1A1A 0%, #E67E22 40%, #FFE66D 70%, #C0392B 100%));
+          animation: ynow-htcdi-flame-flow 2.4s ease-in-out infinite;
+        }
+        .ynow-macro-own-index .ynow-macro-kpi__value.ynow-htcdi-flow,
+        .ynow-macro-kpi--ynow .ynow-macro-kpi__value.ynow-htcdi-flow {
           color: transparent;
           -webkit-text-fill-color: transparent;
         }
-        .ynow-hccsi-unavailable {
+        .ynow-htcdi-unavailable {
           color: #6b7c8a;
           -webkit-text-fill-color: #6b7c8a;
           font-weight: 600;
         }
-        .ynow-macro-kpi--rf .ynow-hccsi-flow,
-        .ynow-macro-rf__value.ynow-hccsi-flow {
+        .ynow-macro-kpi--rf .ynow-htcdi-flow,
+        .ynow-macro-rf__value.ynow-htcdi-flow {
           animation: none;
           background-image: none;
           -webkit-text-fill-color: inherit;
           color: inherit;
         }
         @media (prefers-reduced-motion: reduce) {
-          .ynow-hccsi-flow { animation: none; background-position: 0% 50%; }
-        }
-        @supports not ((-webkit-background-clip: text) or (background-clip: text)) {
-          .ynow-hccsi-flow,
-          .ynow-fund-profile-badge .ynow-hccsi-flow {
-            background-image: none !important;
-            -webkit-text-fill-color: #0C5484 !important;
-            color: #0C5484 !important;
+          .ynow-htcdi-flow { animation: none; background-position: 0% 50%; }
+          .ynow-macro-kpi--htcdi .ynow-htcdi-flow,
+          .ynow-htcdi-sub .ynow-htcdi-flow,
+          .ynow-htcdi-table .ynow-htcdi-flow,
+          .ynow-htcdi-expand__card .ynow-htcdi-flow {
+            animation: none;
+            background-position: 0% 50%;
           }
         }
-        .ynow-macro-hccsi-expand { width: 100%; margin: 0 0 12px 0; }
-        .ynow-hccsi-expand__card h4 { margin: 12px 0 6px 0; font-size: 14px; }
-        .ynow-hccsi-network { margin: 0 0 12px 0; }
-        .ynow-hccsi-network__lead {
+        @supports not ((-webkit-background-clip: text) or (background-clip: text)) {
+          .ynow-htcdi-flow,
+          .ynow-fund-profile-badge .ynow-htcdi-flow {
+            background-image: none;
+            -webkit-text-fill-color: #0C5484;
+            color: #0C5484;
+            animation: none;
+          }
+          .ynow-macro-kpi--htcdi .ynow-htcdi-flow,
+          .ynow-htcdi-sub .ynow-htcdi-flow,
+          .ynow-htcdi-table .ynow-htcdi-flow,
+          .ynow-htcdi-expand__card .ynow-htcdi-flow {
+            -webkit-text-fill-color: #E67E22;
+            color: #E67E22;
+          }
+        }
+        .ynow-macro-htcdi-expand { width: 100%; margin: 0 0 12px 0; }
+        .ynow-htcdi-expand__card h4 { margin: 12px 0 6px 0; font-size: 14px; }
+        .ynow-htcdi-network { margin: 0 0 12px 0; }
+        .ynow-htcdi-network__lead {
           margin: 0 0 4px 0;
           font-size: 13px;
           font-weight: 700;
           color: #2c3e50;
         }
-        .ynow-hccsi-chain-grid {
+        .ynow-htcdi-chain-grid {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
           gap: 10px;
           margin: 8px 0 4px 0;
         }
-        .ynow-hccsi-chain-card {
+        .ynow-htcdi-chain-card {
           border: 1px solid #e0b56a;
           background: linear-gradient(180deg, #fffaf0 0%, #ffffff 70%);
           border-radius: 8px;
           padding: 10px 12px;
           box-shadow: 0 1px 0 rgba(44, 62, 80, 0.04);
         }
-        .ynow-hccsi-chain-card__title {
+        .ynow-htcdi-chain-card__title {
           font-size: 12px;
           font-weight: 700;
           color: #8a4b00;
           margin: 0 0 8px 0;
         }
-        .ynow-hccsi-chain-flow {
+        .ynow-htcdi-chain-flow {
           display: flex;
           flex-wrap: wrap;
           align-items: stretch;
           gap: 6px;
         }
-        .ynow-hccsi-chain-arrow {
+        .ynow-htcdi-chain-arrow {
           align-self: center;
           color: #b07a2a;
           font-weight: 700;
           flex: 0 0 auto;
         }
-        .ynow-hccsi-chain-node {
+        .ynow-htcdi-chain-node {
           flex: 1 1 88px;
           min-width: 88px;
           max-width: 180px;
@@ -9019,44 +9389,44 @@ ui <- dashboardPage(
           flex-direction: column;
           gap: 2px;
         }
-        .ynow-hccsi-chain-node--cooling {
+        .ynow-htcdi-chain-node--cooling {
           border-color: #e0a050;
           background: #fff3e0;
         }
-        .ynow-hccsi-chain-node--ok {
+        .ynow-htcdi-chain-node--ok {
           border-color: #c5d0da;
           background: #f4f7fa;
           opacity: 0.88;
         }
-        .ynow-hccsi-chain-node--layer {
+        .ynow-htcdi-chain-node--layer {
           min-width: 110px;
         }
-        .ynow-hccsi-chain-node__lab {
+        .ynow-htcdi-chain-node__lab {
           font-size: 12px;
           font-weight: 700;
           color: #2c3e50;
           line-height: 1.25;
         }
-        .ynow-hccsi-chain-node__state {
+        .ynow-htcdi-chain-node__state {
           font-size: 10px;
           font-weight: 700;
           color: #b35c00;
           letter-spacing: 0.02em;
           text-transform: uppercase;
         }
-        .ynow-hccsi-chain-node__mem {
+        .ynow-htcdi-chain-node__mem {
           font-size: 10px;
           color: #5d6d7e;
           line-height: 1.3;
           word-break: break-word;
         }
         @media (max-width: 575px) {
-          .ynow-hccsi-chain-grid { grid-template-columns: 1fr; }
-          .ynow-hccsi-chain-node { max-width: none; }
+          .ynow-htcdi-chain-grid { grid-template-columns: 1fr; }
+          .ynow-htcdi-chain-node { max-width: none; }
         }
-        .ynow-hccsi-table-wrap { overflow-x: auto; margin: 0 0 10px 0; }
-        .ynow-hccsi-table { font-size: 12px; margin-bottom: 0; }
-        .ynow-hccsi-term-badge {
+        .ynow-htcdi-table-wrap { overflow-x: auto; margin: 0 0 10px 0; }
+        .ynow-htcdi-table { font-size: 12px; margin-bottom: 0; }
+        .ynow-htcdi-term-badge {
           display: inline-block;
           min-width: 2.6em;
           padding: 1px 7px;
@@ -9067,49 +9437,49 @@ ui <- dashboardPage(
           line-height: 1.5;
           border: 1px solid transparent;
         }
-        .ynow-hccsi-term--stmt .ynow-hccsi-term-badge,
-        .ynow-hccsi-term-badge.ynow-hccsi-term--stmt {
+        .ynow-htcdi-term--stmt .ynow-htcdi-term-badge,
+        .ynow-htcdi-term-badge.ynow-htcdi-term--stmt {
           color: #0b4f6c; background: #d9eef7; border-color: #9ec9dc;
         }
-        .ynow-hccsi-term--mkt .ynow-hccsi-term-badge,
-        .ynow-hccsi-term-badge.ynow-hccsi-term--mkt {
+        .ynow-htcdi-term--mkt .ynow-htcdi-term-badge,
+        .ynow-htcdi-term-badge.ynow-htcdi-term--mkt {
           color: #1b5e20; background: #e3f2e5; border-color: #9cc7a2;
         }
-        .ynow-hccsi-term--inf .ynow-hccsi-term-badge,
-        .ynow-hccsi-term-badge.ynow-hccsi-term--inf {
+        .ynow-htcdi-term--inf .ynow-htcdi-term-badge,
+        .ynow-htcdi-term-badge.ynow-htcdi-term--inf {
           color: #8a4b00; background: #fff0d6; border-color: #e0b56a;
         }
-        .ynow-hccsi-term--traj .ynow-hccsi-term-badge,
-        .ynow-hccsi-term-badge.ynow-hccsi-term--traj {
+        .ynow-htcdi-term--traj .ynow-htcdi-term-badge,
+        .ynow-htcdi-term-badge.ynow-htcdi-term--traj {
           color: #4a148c; background: #f0e6f8; border-color: #c4a3de;
         }
-        .ynow-hccsi-table th.ynow-hccsi-term--stmt,
-        .ynow-hccsi-table td.ynow-hccsi-term--stmt { background-color: rgba(217, 238, 247, 0.45); }
-        .ynow-hccsi-table th.ynow-hccsi-term--mkt,
-        .ynow-hccsi-table td.ynow-hccsi-term--mkt { background-color: rgba(227, 242, 229, 0.45); }
-        .ynow-hccsi-table th.ynow-hccsi-term--inf,
-        .ynow-hccsi-table td.ynow-hccsi-term--inf { background-color: rgba(255, 240, 214, 0.55); }
-        .ynow-hccsi-table th.ynow-hccsi-term--traj,
-        .ynow-hccsi-table td.ynow-hccsi-term--traj { background-color: rgba(240, 230, 248, 0.5); }
-        .ynow-hccsi-table--inputs tr.ynow-hccsi-term-groups th {
+        .ynow-htcdi-table th.ynow-htcdi-term--stmt,
+        .ynow-htcdi-table td.ynow-htcdi-term--stmt { background-color: rgba(217, 238, 247, 0.45); }
+        .ynow-htcdi-table th.ynow-htcdi-term--mkt,
+        .ynow-htcdi-table td.ynow-htcdi-term--mkt { background-color: rgba(227, 242, 229, 0.45); }
+        .ynow-htcdi-table th.ynow-htcdi-term--inf,
+        .ynow-htcdi-table td.ynow-htcdi-term--inf { background-color: rgba(255, 240, 214, 0.55); }
+        .ynow-htcdi-table th.ynow-htcdi-term--traj,
+        .ynow-htcdi-table td.ynow-htcdi-term--traj { background-color: rgba(240, 230, 248, 0.5); }
+        .ynow-htcdi-table--inputs tr.ynow-htcdi-term-groups th {
           text-align: center; border-bottom: 0; padding-bottom: 4px;
         }
-        .ynow-hccsi-table--inputs tr.ynow-hccsi-term-metrics th {
+        .ynow-htcdi-table--inputs tr.ynow-htcdi-term-metrics th {
           font-weight: 600; white-space: nowrap;
         }
-        .ynow-hccsi-term-bridge {
+        .ynow-htcdi-term-bridge {
           margin: 12px 0 10px 0;
           padding: 10px 12px;
           background: #f7f9fb;
           border: 1px solid #dce3ea;
           border-radius: 6px;
         }
-        .ynow-hccsi-term-bridge__lead {
+        .ynow-htcdi-term-bridge__lead {
           margin: 0 0 8px 0;
           font-size: 12px;
           color: #34495e;
         }
-        .ynow-hccsi-term-map {
+        .ynow-htcdi-term-map {
           list-style: none;
           margin: 0;
           padding: 0;
@@ -9117,7 +9487,7 @@ ui <- dashboardPage(
           grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 6px 14px;
         }
-        .ynow-hccsi-term-map li {
+        .ynow-htcdi-term-map li {
           display: flex;
           align-items: center;
           gap: 6px;
@@ -9125,26 +9495,26 @@ ui <- dashboardPage(
           color: #2c3e50;
           min-width: 0;
         }
-        .ynow-hccsi-term-map__arrow { color: #7f8c8d; flex: 0 0 auto; }
+        .ynow-htcdi-term-map__arrow { color: #7f8c8d; flex: 0 0 auto; }
         @media (max-width: 767px) {
-          .ynow-hccsi-term-map { grid-template-columns: 1fr; }
+          .ynow-htcdi-term-map { grid-template-columns: 1fr; }
         }
-        .ynow-hccsi-formula-banner { margin: 8px 0 14px 0; }
-        .ynow-hccsi-formula-banner__eq {
+        .ynow-htcdi-formula-banner { margin: 8px 0 14px 0; }
+        .ynow-htcdi-formula-banner__eq {
           font-size: 18px; font-weight: bold; color: #2C3E50; text-align: center;
           margin: 0 0 8px 0; padding: 10px; background-color: #F2F4F4; border-radius: 8px;
         }
-        .ynow-hccsi-formula-banner__parts {
+        .ynow-htcdi-formula-banner__parts {
           font-size: 13px; color: #555; text-align: center; margin: 0 0 8px 0;
         }
-        .ynow-hccsi-pair { margin: 0 0 10px 0; }
-        .ynow-hccsi-sub .ynow-macro-kpi__value { font-size: clamp(16px, 3.6vw, 22px); }
+        .ynow-htcdi-pair { margin: 0 0 10px 0; }
+        .ynow-htcdi-sub .ynow-macro-kpi__value { font-size: clamp(16px, 3.6vw, 22px); }
         @media (max-width: 991px) {
           .ynow-macro-kpi-row > [class*='col-'] {
             width: 50%;
             float: none;
           }
-          /* Rf : YNOW : HCCSI → stack as Rf full, then YNOW|HCCSI half-half */
+          /* Rf : YNOW : HTCDI → stack as Rf full, then YNOW|HTCDI half-half */
           .ynow-macro-rf-row > .col-md-6 {
             width: 100%;
           }
@@ -9182,8 +9552,21 @@ ui <- dashboardPage(
           }
         }
         .ynow-backtest-report {
-          max-width: 1200px;
+          max-width: var(--ynow-page-max, 1200px);
+          width: 100%;
           margin: 0 auto 24px auto;
+          box-sizing: border-box;
+        }
+        /* After report-shell rules: force full bleed on small screens */
+        @media (max-width: 767px) {
+          .ynow-home,
+          .ynow-macro-report,
+          .ynow-hfv-report,
+          .ynow-funnel-report,
+          .ynow-backtest-report,
+          .ynow-bblab--report {
+            max-width: 100%;
+          }
         }
         .ynow-backtest-report__masthead {
           margin: 0 0 12px 0;

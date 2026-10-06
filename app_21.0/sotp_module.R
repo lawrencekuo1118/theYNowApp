@@ -314,10 +314,17 @@ sotp_module_server <- function(id,
       calc_token(as.integer(calc_token()) + 1L)
     })
     observeEvent(auto_calc_pulse(), {
-      if (isTRUE(as.numeric(auto_calc_pulse())[1] > 0)) {
-        last_result(run_calc())
-        calc_token(as.integer(calc_token()) + 1L)
+      pulse <- suppressWarnings(as.numeric(auto_calc_pulse())[1])
+      if (!is.finite(pulse) || pulse <= 0) {
+        last_result(NULL)
+        return()
       }
+      last_result(run_calc())
+      calc_token(as.integer(calc_token()) + 1L)
+    }, ignoreInit = TRUE)
+    observeEvent(current_ticker(), {
+      last_result(NULL)
+      calc_token(0L)
     }, ignoreInit = TRUE)
 
     output$txt_shares_note <- renderUI({

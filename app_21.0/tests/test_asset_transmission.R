@@ -156,10 +156,12 @@ for (bad in c("默认", "参数", "数据", "用户", "信息", "软件", "网�
 }
 check("zh node TAIEX", identical(ui_str("atx_node_taiex", "zh-TW"), "台灣加權指數"))
 check("en node T-bill", identical(ui_str("atx_node_us_bill", "en"), "US T-bill"))
-check("atx page title zh", identical(ui_str("atx_box_title", "zh-TW"), "資產傳導"))
-check("atx page title en", identical(ui_str("atx_box_title", "en"), "Asset transmission"))
-check("menu atx zh", identical(ui_str("menu_asset_transmission", "zh-TW"), "資產傳導"))
-check("menu atx en", identical(ui_str("menu_asset_transmission", "en"), "Asset transmission"))
+check("atx page title zh", identical(ui_str("atx_box_title", "zh-TW"), "資產傳導根系圖"))
+check("atx page title en", identical(ui_str("atx_box_title", "en"), "Asset transmission root map"))
+check("menu atx zh", identical(ui_str("menu_asset_transmission", "zh-TW"), "資產傳導根系圖"))
+check("menu atx en", identical(ui_str("menu_asset_transmission", "en"), "Asset transmission root map"))
+check("atx window zh", identical(ui_str("atx_window", "zh-TW"), "滾動相關視窗"))
+check("atx window en", identical(ui_str("atx_window", "en"), "Correlation window"))
 check(
   "zh curve up is bear steepening",
   identical(ui_str("atx_lean_curve_up", "zh-TW"), "2s10s：長端升得比較快就是熊市陡峭化（bear steepener）")
@@ -580,11 +582,13 @@ if (requireNamespace("plotly", quietly = TRUE)) {
       grepl('height = "900px"', ui_mod, fixed = TRUE)
   )
   check(
-    "map fits panel width so timeline stays visible",
+    "map fits panel width on desktop; mobile keeps readable canvas",
     grepl("overflow-x: auto", ui_mod, fixed = TRUE) &&
       grepl("min-width: 100%", ui_mod, fixed = TRUE) &&
       grepl("max-width: 100%", ui_mod, fixed = TRUE) &&
-      !grepl("min-width: 1560px", ui_mod, fixed = TRUE) &&
+      grepl("@media (max-width: 767px)", ui_mod, fixed = TRUE) &&
+      grepl("min-width: 1560px", ui_mod, fixed = TRUE) &&
+      grepl("max-width: none", ui_mod, fixed = TRUE) &&
       !grepl("overflow-x: hidden", ui_mod, fixed = TRUE)
   )
   check(
@@ -697,6 +701,28 @@ check(
     grepl("RETICULATE_USE_MANAGED_VENV", rprofile, fixed = TRUE)
 )
 mod_src <- paste(readLines("asset_transmission_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check("toolbar is locale-rendered", grepl('ns("toolbar")', mod_src, fixed = TRUE) &&
+  grepl("output\\$toolbar\\s*<-\\s*shiny::renderUI", mod_src) &&
+  !grepl('label = "Correlation window"', mod_src, fixed = TRUE) &&
+  !grepl('"Refresh prints"', mod_src, fixed = TRUE) &&
+  !grepl('"20 sessions"', mod_src, fixed = TRUE))
+# Page chrome (title / sub / box) must paint from current locale on lazy mount,
+# not hardcoded English that races applyUiLocale.
+ui_src_atx <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+srv_src_atx <- paste(readLines("ynow_server.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check(
+  "atx page chrome is locale-first",
+  grepl("\\.ynow_page_ui_asset_transmission\\s*<-\\s*function\\s*\\(\\s*locale", ui_src_atx) &&
+    grepl('\\.atx_s\\("atx_page_title"\\)', ui_src_atx) &&
+    grepl('\\.atx_s\\("atx_box_title"\\)', ui_src_atx) &&
+    grepl('\\.atx_s\\("atx_box_body"\\)', ui_src_atx) &&
+    grepl(
+      "\\.ynow_page_ui_asset_transmission\\(isolate\\(ui_locale\\(\\)\\)\\)",
+      srv_src_atx
+    )
+)
+check("no atx debug ingest left", !grepl("127\\.0\\.0\\.1:7302/ingest", mod_src) &&
+  !grepl("debug-f77c57\\.log", mod_src))
 check(
   "figure avoids slow plotly animation_slider rebuild",
   grepl(".asset_tx_attach_play_frames", mod_src, fixed = TRUE) &&
@@ -754,7 +780,8 @@ if (exists(".ynow_is_hosted_connect", mode = "function")) {
   check("connect path detector present", grepl("/srv/connect/apps", glb_src, fixed = TRUE))
 }
 dbg_paths <- c(
-  "ynow_ui.R", "ynow_server.R", "macro_market_module.R", "backtest_module.R"
+  "ynow_ui.R", "ynow_server.R", "macro_market_module.R", "backtest_module.R",
+  "asset_transmission_module.R"
 )
 dbg_hit <- vapply(dbg_paths, function(fn) {
   src <- paste(readLines(fn, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
@@ -804,8 +831,8 @@ check(
 check(
   "loading bar localized en+zh-TW",
   grepl("atx_loading_bar", loc_src, fixed = TRUE) &&
-    grepl("Loading Asset transmission map", loc_src, fixed = TRUE) &&
-    grepl("正在載入 Asset transmission 圖表", loc_src, fixed = TRUE)
+    grepl("Loading Asset transmission root map", loc_src, fixed = TRUE) &&
+    grepl("正在載入資產傳導根系圖", loc_src, fixed = TRUE)
 )
 check(
   "play tape covers at least one trading month",

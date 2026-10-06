@@ -54,10 +54,10 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
     "macro_index_chart_error",
     "macro_own_index_overlay_label", "macro_own_index_overlay_hint",
     "macro_own_index_overlay_yaxis",
-    "hccsi_title", "hccsi_disclosure", "hccsi_click_hint",
-    "hccsi_index_health", "hccsi_index_stress",
-    "hccsi_index_fragility", "hccsi_index_market",
-    "hccsi_unavailable", "hccsi_dropped", "hccsi_dropped_none",
+    "htcdi_title", "htcdi_disclosure", "htcdi_click_hint",
+    "htcdi_index_health", "htcdi_index_stress",
+    "htcdi_index_fragility", "htcdi_index_market",
+    "htcdi_unavailable", "htcdi_dropped", "htcdi_dropped_none",
     "menu_business_breakdown_lab", "menu_company_advance",
     "bblab_page_sub", "bblab_report_kicker", "bblab_shared_ticker_hint",
     "bblab_page_title", "bblab_gm_unestimable", "bblab_reval_unavailable",
@@ -165,13 +165,15 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_false(grepl("output$beta_kpi", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("macro_rolling_beta_path", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl('ns("industry_key")', macro_txt, fixed = TRUE))
-  testthat::expect_true(grepl('ns("concept_key")', macro_txt, fixed = TRUE))
+  testthat::expect_true(grepl("concept_keys", macro_txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-macro-concept-cloud", macro_txt, fixed = TRUE))
+  testthat::expect_false(grepl('ns("concept_key")', macro_txt, fixed = TRUE))
   testthat::expect_false(grepl('ns("theme_key")', macro_txt, fixed = TRUE))
   testthat::expect_false(grepl("Industry / concept vs benchmark", macro_txt, fixed = TRUE))
   testthat::expect_false(grepl("ynow-lite-only", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_macro_theme_help", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-macro-chapter__lead", macro_txt, fixed = TRUE))
-  testthat::expect_true(grepl("Pick Industry and Concept independently", macro_txt, fixed = TRUE))
+  testthat::expect_true(grepl("Pick Industry from the menu and Concept from the word cloud", macro_txt, fixed = TRUE))
   .notes_calls <- function(src) {
     calls <- character(0)
     remaining <- src
@@ -249,12 +251,12 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl("body.ynow-lite #ynow_macro_index_hist", txt, fixed = TRUE))
   testthat::expect_true(grepl("body.ynow-lite .ynow-macro-kpi--clickable", txt, fixed = TRUE))
   testthat::expect_true(grepl("body.ynow-lite #ynow_macro_index_hint", txt, fixed = TRUE))
-  testthat::expect_true(grepl("body.ynow-lite #ynow_macro_hccsi_expand", txt, fixed = TRUE))
-  testthat::expect_true(grepl("ynow-macro-kpi--hccsi", macro_txt, fixed = TRUE))
+  testthat::expect_true(grepl("body.ynow-lite #ynow_macro_htcdi_expand", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-macro-kpi--htcdi", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-macro-kpi--ynow", macro_txt, fixed = TRUE))
-  testthat::expect_true(grepl("rf_col, ynow_col, hccsi_col", macro_txt, fixed = TRUE))
-  testthat::expect_true(grepl("ynow-macro-hccsi-expand ynow-full-only", macro_txt, fixed = TRUE))
-  testthat::expect_false(grepl("ynow-macro-kpi--hccsi[^\\n]*ynow-full-only", macro_txt))
+  testthat::expect_true(grepl("rf_col, ynow_col, htcdi_col", macro_txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-macro-htcdi-expand ynow-full-only", macro_txt, fixed = TRUE))
+  testthat::expect_false(grepl("ynow-macro-kpi--htcdi[^\\n]*ynow-full-only", macro_txt))
   # Macro, then Blue Chip, then Company (dashboard), then YNOW
   testthat::expect_true(
     regexpr('tabName = "macro_market"', txt, fixed = TRUE)[1] <
@@ -584,6 +586,47 @@ testthat::test_that("ynow_server wires Lite scenario apply before auto-calc", {
   testthat::expect_true(grepl("notif_ddm_no_d0", txt, fixed = TRUE))
   testthat::expect_true(grepl("smart_ddm_no_d0", txt, fixed = TRUE))
   testthat::expect_true(grepl("auto_calc_fail_sig", txt, fixed = TRUE))
+})
+
+testthat::test_that("Lite auto-calc includes Multiples when secondary is multiples", {
+  srv_path <- file.path("..", "ynow_server.R")
+  txt <- paste(readLines(srv_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  # Pulse wired into relative multiples module
+  testthat::expect_true(grepl("auto_calc_rel_pulse", txt, fixed = TRUE))
+  testthat::expect_true(grepl(
+    "auto_calc_pulse = reactive(auto_calc_rel_pulse())",
+    txt,
+    fixed = TRUE
+  ))
+  # Secondary allowlist includes multiples (and sotp)
+  testthat::expect_true(grepl('"multiples"', txt, fixed = TRUE))
+  testthat::expect_true(grepl(
+    'sec_auto_allowlist <- c("dcf", "ddm", "pb", "ri", "nav", "multiples", "sotp")',
+    txt,
+    fixed = TRUE
+  ))
+  # Ready + fire branches for multiples (readiness uses statements, not lagging inputs)
+  testthat::expect_true(grepl('identical(prim, "multiples")', txt, fixed = TRUE))
+  testthat::expect_true(grepl("updateNumericInput is async", txt, fixed = TRUE))
+  testthat::expect_true(grepl(
+    "auto_calc_rel_pulse(isolate(auto_calc_rel_pulse()) + 1L)",
+    txt,
+    fixed = TRUE
+  ))
+  # Multiples module: auto_calc syncs then run_calc(snap=…) (no input round-trip)
+  rel_txt <- paste(readLines(file.path("..", "relative_multiples_module.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  testthat::expect_true(grepl("run_calc(snap = snap)", rel_txt, fixed = TRUE))
+  testthat::expect_true(grepl("Lite auto-calc must not wait for input", rel_txt, fixed = TRUE))
+  # Ticker clear resets multiples pulse with other models
+  testthat::expect_true(grepl("auto_calc_rel_pulse(0L)", txt, fixed = TRUE))
+  testthat::expect_true(grepl("auto_calc_sotp_pulse(0L)", txt, fixed = TRUE))
+  # Same clear observer also nulls DCF run-state
+  clear_blk <- regmatches(txt, regexpr(
+    "Clear prior-ticker DCF[\\s\\S]*?auto_calc_sotp_pulse\\(0L\\)",
+    txt,
+    perl = TRUE
+  ))
+  testthat::expect_true(length(clear_blk) == 1L && nzchar(clear_blk))
 })
 
 testthat::test_that("mobile notification panel CSS stays visible", {

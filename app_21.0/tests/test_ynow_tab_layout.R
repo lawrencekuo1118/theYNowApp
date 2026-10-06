@@ -191,6 +191,15 @@ check(
   grepl('tabName = "sensitivity"', ui, fixed = TRUE) &&
     grepl('decision_ui("main_decision")', ui, fixed = TRUE)
 )
+check(
+  "YNOW sidebar uses clock icon",
+  grepl('menuItem("YNOW", tabName = "sensitivity", icon = icon("clock"))', ui, fixed = TRUE)
+)
+check(
+  "atx menu first-paint root map name",
+  grepl("Asset transmission root map", ui, fixed = TRUE) &&
+    !grepl('ynow_menu_asset_transmission", "Asset transmission")', ui, fixed = TRUE)
+)
 check("applyUiLocale ch1 lead", grepl("ynow_funnel_ch1_lead", ui, fixed = TRUE))
 check("applyUiLocale notes titles", grepl("ynow-notes__title", ui, fixed = TRUE) &&
         grepl("s.notes_title", ui, fixed = TRUE))
@@ -225,7 +234,11 @@ check("bubble at Macro bottom", {
   is.finite(pos_own) && pos_own > 0 && is.finite(pos_bub) && pos_bub > pos_own
 })
 check("split industry picker", grepl('ns("industry_key")', macro, fixed = TRUE))
-check("split concept picker", grepl('ns("concept_key")', macro, fixed = TRUE))
+check("concept word cloud multi-select", {
+  grepl("concept_keys", macro, fixed = TRUE) &&
+    grepl("ynow-macro-concept-cloud", macro, fixed = TRUE) &&
+    !grepl('ns("concept_key")', macro, fixed = TRUE)
+})
 check("Macro first-paint bubble title", grepl("Dynamic industry bubble", macro, fixed = TRUE))
 
 if (fail > 0L) {

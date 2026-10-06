@@ -1427,31 +1427,6 @@ asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
   y_half <- (y_hi - y_lo) / 2 + y_pad
   range_x <- c(x_c - x_half, x_c + x_half)
   range_y <- c(y_c - y_half, y_c + y_half)
-  # #region agent log
-  tryCatch({
-    line <- jsonlite::toJSON(list(
-      sessionId = "f77c57",
-      runId = "center-pre",
-      hypothesisId = "H1-axis",
-      location = "asset_transmission_module.R:.asset_tx_build_figure",
-      message = "atx axis ranges centered",
-      data = list(
-        x_lo = x_lo, x_hi = x_hi, y_lo = y_lo, y_hi = y_hi,
-        x_c = x_c, y_c = y_c, x_pad = x_pad, y_pad = y_pad,
-        range_x0 = range_x[[1]], range_x1 = range_x[[2]],
-        range_y0 = range_y[[1]], range_y1 = range_y[[2]],
-        pad_left = x_lo - range_x[[1]],
-        pad_right = range_x[[2]] - x_hi,
-        pad_bottom = y_lo - range_y[[1]],
-        pad_top = range_y[[2]] - y_hi,
-        equal_x = isTRUE(all.equal(x_lo - range_x[[1]], range_x[[2]] - x_hi, tolerance = 1e-9)),
-        equal_y = isTRUE(all.equal(y_lo - range_y[[1]], range_y[[2]] - y_hi, tolerance = 1e-9))
-      ),
-      timestamp = as.numeric(Sys.time()) * 1000
-    ), auto_unbox = TRUE)
-    cat(as.character(line), "\n", file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-f77c57.log", append = TRUE)
-  }, error = function(e) invisible(NULL))
-  # #endregion
   anns <- c(
     .asset_tx_headers(locale),
     list(list(
@@ -1606,26 +1581,6 @@ asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
     }
   }
   out <- .asset_tx_parse_chart(j)
-  # #region agent log
-  if (identical(Sys.getenv("YNOW_ATX_DEBUG"), "1") || file.exists("/Users/lawrencekuo/coding/theYNowApp/.cursor")) {
-    tryCatch({
-      line <- jsonlite::toJSON(list(
-        sessionId = "f77c57",
-        hypothesisId = "A",
-        location = "asset_transmission_module.R:parse_chart_text",
-        message = "yahoo chart parse",
-        data = list(
-          path = path,
-          result_is_df = is.data.frame(j$chart$result),
-          n_points = length(out),
-          txt_bytes = nchar(txt)
-        ),
-        timestamp = as.numeric(Sys.time()) * 1000
-      ), auto_unbox = TRUE)
-      cat(as.character(line), "\n", file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-f77c57.log", append = TRUE)
-    }, error = function(e) NULL)
-  }
-  # #endregion
   out
 }
 
@@ -1675,20 +1630,6 @@ asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
     })
   }
   curl::multi_run(pool = pool)
-  # #region agent log
-  tryCatch({
-    n_ok <- sum(vapply(out, function(x) length(x) > 0, logical(1)))
-    line <- jsonlite::toJSON(list(
-      sessionId = "f77c57",
-      hypothesisId = "B",
-      location = "asset_transmission_module.R:curl_download",
-      message = "curl multi done",
-      data = list(n_sym = length(symbols), n_ok = n_ok),
-      timestamp = as.numeric(Sys.time()) * 1000
-    ), auto_unbox = TRUE)
-    cat(as.character(line), "\n", file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-f77c57.log", append = TRUE)
-  }, error = function(e) NULL)
-  # #endregion
   out
 }
 
@@ -1982,19 +1923,6 @@ asset_tx_fetch_panel <- function(catalog = NULL, period = "6mo", force = FALSE) 
     n_nodes = nrow(nodes)
   )
   .asset_tx_panel_cache_put(cache_key, out)
-  # #region agent log
-  tryCatch({
-    line <- jsonlite::toJSON(list(
-      sessionId = "f77c57",
-      hypothesisId = "E",
-      location = "asset_transmission_module.R:fetch_panel",
-      message = "fetch ok",
-      data = list(n_ok = out$n_ok, n_nodes = out$n_nodes, nrow = nrow(out$panel)),
-      timestamp = as.numeric(Sys.time()) * 1000
-    ), auto_unbox = TRUE)
-    cat(as.character(line), "\n", file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-f77c57.log", append = TRUE)
-  }, error = function(e) NULL)
-  # #endregion
   out
 }
 
@@ -2037,7 +1965,7 @@ asset_transmission_ui <- function(id) {
       }
       .ynow-atx-map .plotly,
       .ynow-atx-map .html-widget {
-        /* Fit the panel so the session slider + Play stay fully visible by default. */
+        /* Desktop: fit the panel so the session slider + Play stay visible. */
         width: 100% !important;
         min-width: 100% !important;
         max-width: 100% !important;
@@ -2049,6 +1977,22 @@ asset_transmission_ui <- function(id) {
         width: 100% !important;
         min-width: 100% !important;
         max-width: 100% !important;
+      }
+      /* Mobile: keep a readable canvas width so cards are not squeezed; swipe/pan to explore. */
+      @media (max-width: 767px) {
+        .ynow-atx-map .plotly,
+        .ynow-atx-map .html-widget {
+          width: max(100%, 1560px) !important;
+          min-width: 1560px !important;
+          max-width: none !important;
+        }
+        .ynow-atx-map .js-plotly-plot,
+        .ynow-atx-map .plot-container,
+        .ynow-atx-map .svg-container {
+          width: 100% !important;
+          min-width: 1560px !important;
+          max-width: none !important;
+        }
       }
       .ynow-atx-map .modebar {
         top: 8px !important;
@@ -2104,29 +2048,7 @@ asset_transmission_ui <- function(id) {
     ")),
     htmltools::tags$div(
       class = "ynow-atx",
-      shiny::fluidRow(
-        shiny::column(
-          width = 4,
-          shiny::selectInput(
-            ns("window"),
-            label = "Correlation window",
-            choices = c("20 sessions" = "20", "60 sessions" = "60", "120 sessions" = "120"),
-            selected = "60",
-            width = "100%"
-          )
-        ),
-        shiny::column(
-          width = 3,
-          htmltools::tags$div(
-            style = "margin-top: 25px;",
-            shiny::actionButton(ns("refresh"), "Refresh prints", icon = shiny::icon("sync"), class = "btn-default")
-          )
-        ),
-        shiny::column(
-          width = 5,
-          shiny::uiOutput(ns("status"))
-        )
-      ),
+      shiny::uiOutput(ns("toolbar")),
       shiny::uiOutput(ns("summary")),
       shiny::uiOutput(ns("regime")),
       shiny::uiOutput(ns("path")),
@@ -2158,9 +2080,6 @@ asset_transmission_ui <- function(id) {
           // Keep scrollLeft at 0 so the Play control + timeline start stay visible.
           map.scrollLeft = 0;
           map.scrollTop = maxY / 2;
-          // #region agent log
-          fetch('http://127.0.0.1:7302/ingest/e3a0dcdf-71e1-4bba-855e-f942118bd315',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f77c57'},body:JSON.stringify({sessionId:'f77c57',runId:'center-pre',hypothesisId:'H-center',location:'asset_transmission_module.R:centerAtxMap',message:'atx map scroll center',data:{scrollLeft:map.scrollLeft,scrollTop:map.scrollTop,maxX:maxX,maxY:maxY,mapW:map.clientWidth,mapH:map.clientHeight,plotW:plot.offsetWidth,plotH:plot.offsetHeight},timestamp:Date.now()})}).catch(function(){});
-          // #endregion
         }
         function bind(map) {
           if (!map || map.__ynowAtxCenterBound) return;
@@ -2321,24 +2240,44 @@ asset_transmission_server <- function(id, ui_locale_rv = NULL, market_mode_rv = 
       }
     })
 
-    shiny::observe({
+    output$toolbar <- shiny::renderUI({
       loc <- locale()
       sel <- .asset_tx_window_choice(shiny::isolate(input$window))
-      shiny::updateSelectInput(
-        session,
-        "window",
-        label = .asset_tx_label("atx_window", loc),
-        choices = stats::setNames(
-          c("20", "60", "120"),
-          c(
-            .asset_tx_label("atx_win_20", loc),
-            .asset_tx_label("atx_win_60", loc),
-            .asset_tx_label("atx_win_120", loc)
+      shiny::fluidRow(
+        shiny::column(
+          width = 4,
+          shiny::selectInput(
+            session$ns("window"),
+            label = .asset_tx_label("atx_window", loc),
+            choices = stats::setNames(
+              c("20", "60", "120"),
+              c(
+                .asset_tx_label("atx_win_20", loc),
+                .asset_tx_label("atx_win_60", loc),
+                .asset_tx_label("atx_win_120", loc)
+              )
+            ),
+            selected = sel,
+            width = "100%"
           )
         ),
-        selected = sel
+        shiny::column(
+          width = 3,
+          htmltools::tags$div(
+            style = "margin-top: 25px;",
+            shiny::actionButton(
+              session$ns("refresh"),
+              .asset_tx_label("atx_refresh", loc),
+              icon = shiny::icon("sync"),
+              class = "btn-default"
+            )
+          )
+        ),
+        shiny::column(
+          width = 5,
+          shiny::uiOutput(session$ns("status"))
+        )
       )
-      shiny::updateActionButton(session, "refresh", label = .asset_tx_label("atx_refresh", loc))
     })
 
     snaps <- shiny::reactive({
@@ -2454,41 +2393,10 @@ asset_transmission_server <- function(id, ui_locale_rv = NULL, market_mode_rv = 
       fig <- tryCatch(
         asset_tx_figure(tape, locale(), market()),
         error = function(e) {
-          # #region agent log
-          tryCatch({
-            line <- jsonlite::toJSON(list(
-              sessionId = "f77c57",
-              hypothesisId = "C",
-              location = "asset_transmission_module.R:renderPlotly",
-              message = "figure error",
-              data = list(err = conditionMessage(e), tape_n = length(tape)),
-              timestamp = as.numeric(Sys.time()) * 1000
-            ), auto_unbox = TRUE)
-            cat(as.character(line), "\n", file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-f77c57.log", append = TRUE)
-          }, error = function(e2) NULL)
-          # #endregion
           err_rv(conditionMessage(e))
           NULL
         }
       )
-      # #region agent log
-      tryCatch({
-        line <- jsonlite::toJSON(list(
-          sessionId = "f77c57",
-          hypothesisId = "D",
-          location = "asset_transmission_module.R:renderPlotly",
-          message = "map render",
-          data = list(
-            tape_n = length(tape),
-            fig_null = is.null(fig),
-            n_data = if (!is.null(fig)) length(fig$x$data) else 0L,
-            n_frames = if (!is.null(fig)) length(fig$x$frames) else 0L
-          ),
-          timestamp = as.numeric(Sys.time()) * 1000
-        ), auto_unbox = TRUE)
-        cat(as.character(line), "\n", file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-f77c57.log", append = TRUE)
-      }, error = function(e2) NULL)
-      # #endregion
       shiny::validate(shiny::need(!is.null(fig), .asset_tx_label("atx_empty", locale())))
       fig
     })

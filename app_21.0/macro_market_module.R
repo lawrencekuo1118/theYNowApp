@@ -302,6 +302,93 @@ macro_concept_choices <- function(mode = get_market_mode(), locale = "en") {
   out
 }
 
+#' Constituent count for one concept theme key (concept_* / tw_*).
+macro_concept_group_n <- function(theme_key, mode = get_market_mode()) {
+  key <- as.character(theme_key %||% "")[1]
+  if (!nzchar(key)) return(0L)
+  mode <- normalize_market_mode(mode)
+  bare <- sub("^(concept_|tw_)", "", key)
+  grp <- NULL
+  if (exists("LAB_CONCEPT_GROUPS", inherits = TRUE) &&
+      !is.null(LAB_CONCEPT_GROUPS[[mode]])) {
+    grp <- LAB_CONCEPT_GROUPS[[mode]][[bare]]
+  }
+  if (is.null(grp)) return(0L)
+  length(unique(as.character(grp[nzchar(as.character(grp))])))
+}
+
+#' Font sizes (px) for concept word-cloud chips, scaled by basket size.
+macro_concept_cloud_sizes <- function(choices, mode = get_market_mode(),
+                                      min_px = 12, max_px = 22) {
+  vals <- unname(as.character(choices %||% character(0)))
+  if (!length(vals)) return(numeric(0))
+  ns <- vapply(vals, function(k) macro_concept_group_n(k, mode), integer(1))
+  ns[!is.finite(ns) | ns < 1L] <- 1L
+  lo <- min(ns)
+  hi <- max(ns)
+  if (!is.finite(hi) || hi <= lo) {
+    return(rep((min_px + max_px) / 2, length(ns)))
+  }
+  min_px + (max_px - min_px) * (ns - lo) / (hi - lo)
+}
+
+.MACRO_CONCEPT_OVERLAY_COLORS <- c(
+  "#2980b9", "#8e44ad", "#16a085", "#c0392b",
+  "#d35400", "#2c3e50", "#27ae60", "#e67e22",
+  "#1abc9c", "#9b59b6"
+)
+
+macro_concept_overlay_color <- function(i) {
+  i <- as.integer(i)[1]
+  if (!is.finite(i) || i < 1L) i <- 1L
+  cols <- .MACRO_CONCEPT_OVERLAY_COLORS
+  cols[((i - 1L) %% length(cols)) + 1L]
+}
+
+#' Normalize multi-select concept keys from the word cloud.
+macro_selected_concept_keys <- function(raw) {
+  keys <- unique(as.character(raw %||% character(0)))
+  keys <- keys[!is.na(keys) & nzchar(keys)]
+  keys
+}
+
+#' Word-cloud checkbox group for concept multi-select overlays.
+macro_concept_cloud_input <- function(inputId, choices, selected = character(0),
+                                      mode = get_market_mode()) {
+  vals <- unname(as.character(choices %||% character(0)))
+  labs <- names(choices)
+  if (is.null(labs) || length(labs) != length(vals)) {
+    labs <- vals
+  }
+  if (!length(vals)) {
+    return(htmltools::tags$p(
+      class = "ynow-macro-hint",
+      id = "ynow_macro_concept_cloud_empty",
+      "—"
+    ))
+  }
+  sizes <- macro_concept_cloud_sizes(choices, mode = mode)
+  choice_names <- lapply(seq_along(vals), function(i) {
+    htmltools::tags$span(
+      class = "ynow-macro-cloud-word",
+      style = sprintf("font-size:%spx;", round(sizes[[i]])),
+      labs[[i]]
+    )
+  })
+  sel <- intersect(as.character(selected %||% character(0)), vals)
+  htmltools::tags$div(
+    class = "ynow-macro-concept-cloud",
+    shiny::checkboxGroupInput(
+      inputId = inputId,
+      label = NULL,
+      choiceNames = choice_names,
+      choiceValues = vals,
+      selected = sel,
+      inline = TRUE
+    )
+  )
+}
+
 #' Combined catalog (bubble / backward compat): industry then concept.
 macro_theme_choices <- function(mode = get_market_mode(), locale = "en") {
   c(macro_industry_choices(mode, locale), macro_concept_choices(mode, locale))
@@ -468,9 +555,9 @@ macro_market_ui <- function(id = "macro") {
       uiOutput(ns("index_hist_panel"))
     ),
     tags$div(
-      id = "ynow_macro_hccsi_expand",
-      class = "ynow-macro-hccsi-expand ynow-full-only",
-      uiOutput(ns("hccsi_expand_panel"))
+      id = "ynow_macro_htcdi_expand",
+      class = "ynow-macro-htcdi-expand ynow-full-only",
+      uiOutput(ns("htcdi_expand_panel"))
     ),
     tags$section(
       class = "ynow-macro-chapter",
@@ -480,34 +567,29 @@ macro_market_ui <- function(id = "macro") {
         id = "ynow_macro_theme_help",
         class = "ynow-macro-hint ynow-macro-chapter__lead",
         paste0(
-          "Pick Industry and Concept independently (either, both, or neither). ",
+          "Pick Industry from the menu and Concept from the word cloud (either, both, or neither). ",
+          "Click one or more concept chips to overlay rebased series on the same chart. ",
           "The same picks drive Relative performance and Dynamic industry bubble below. ",
           "US industry uses GICS sector ETFs; Taiwan industry uses the industry-standard snapshot. ",
-          "Concept uses the concept-stock universe. ",
+          "Concept chips are the concept-stock universe (chip size reflects basket breadth). ",
           "Benchmark is gray dashed on the right axis (rebased = 100 at window start; native currency, no FX)."
         )
       ),
       fluidRow(
         column(
-          width = 3,
+          width = 4,
           selectInput(
             ns("industry_key"),
             label = tags$span(id = "ynow_macro_industry_label", "Industry vs benchmark"),
-            choices = c("—" = ""),
+            choices = tryCatch(
+              macro_choices_with_none(macro_industry_choices("US", "en"), "en"),
+              error = function(e) c("—" = "")
+            ),
             selected = "gics_xlk"
           )
         ),
         column(
           width = 3,
-          selectInput(
-            ns("concept_key"),
-            label = tags$span(id = "ynow_macro_concept_label", "Concept vs benchmark"),
-            choices = c("—" = ""),
-            selected = ""
-          )
-        ),
-        column(
-          width = 2,
           selectInput(
             ns("hist_period"),
             label = tags$span(id = "ynow_macro_period_label", "Window"),
@@ -516,7 +598,7 @@ macro_market_ui <- function(id = "macro") {
           )
         ),
         column(
-          width = 4,
+          width = 5,
           tags$div(
             style = "margin-top: 24px;",
             actionButton(
@@ -527,6 +609,20 @@ macro_market_ui <- function(id = "macro") {
             )
           )
         )
+      ),
+      tags$div(
+        class = "ynow-macro-concept-cloud-wrap",
+        tags$label(
+          id = "ynow_macro_concept_label",
+          class = "control-label",
+          "Concept vs benchmark"
+        ),
+        tags$p(
+          id = "ynow_macro_concept_cloud_hint",
+          class = "ynow-macro-hint",
+          "Click concepts in the word cloud to multi-select overlay series (rebased = 100)."
+        ),
+        uiOutput(ns("concept_cloud_ui"))
       ),
       tags$div(
         class = "ynow-macro-overlay-plot-wrap",
@@ -563,9 +659,10 @@ macro_market_ui <- function(id = "macro") {
         id = "ynow_macro_bubble_sub",
         class = "ynow-macro-hint ynow-macro-chapter__lead",
         paste0(
-          "Uses the shared Industry vs benchmark and Concept vs benchmark picks above. ",
-          "Concentration uses market-cap weights on that basket (Industry when both are set; ",
-          "GICS maps to S&P 500 sector peers). Buffett Indicator is market-level market-cap / GDP ",
+          "Uses the shared Industry menu and Concept word-cloud picks above. ",
+          "Concentration uses market-cap weights on that basket (Industry when set; ",
+          "otherwise the first selected concept; GICS maps to S&P 500 sector peers). ",
+          "Buffett Indicator is market-level market-cap / GDP ",
           "(research display only — never feeds CAPM / Ke / WACC)."
         )
       ),
@@ -632,7 +729,7 @@ macro_market_server <- function(id = "macro",
 
     refresh_token <- reactiveVal(0L)
     selected_index <- reactiveVal("")
-    hccsi_expanded <- reactiveVal(FALSE)
+    htcdi_expanded <- reactiveVal(FALSE)
     # YNOW / TYNOW chart overlays — default none (no major-index overlay).
     own_index_overlays <- reactiveVal(character(0))
     # Until the user changes Industry vs benchmark, US opens on Technology (XLK).
@@ -641,9 +738,9 @@ macro_market_server <- function(id = "macro",
     observeEvent(input$refresh, {
       refresh_token(isolate(refresh_token()) + 1L)
     }, ignoreInit = TRUE)
-    observeEvent(input$hccsi_click, {
+    observeEvent(input$htcdi_click, {
       if (.is_lite()) return()
-      hccsi_expanded(!isolate(hccsi_expanded()))
+      htcdi_expanded(!isolate(htcdi_expanded()))
     }, ignoreInit = TRUE)
     observeEvent(input$index_click, {
       if (.is_lite()) return()
@@ -651,15 +748,8 @@ macro_market_server <- function(id = "macro",
       specs <- macro_click_index_specs(.mode())
       own <- .own_index_symbol()
       accepted <- nzchar(sym) && (sym %in% names(specs) || identical(sym, own))
-      # #region agent log
-      if (exists(".ynow_dbg_ef0f33", mode = "function")) {
-        .ynow_dbg_ef0f33("D", "macro_market_module.R:index_click", "index click received", list(
-          sym = sym, own = own, accepted = accepted, lite = .is_lite()
-        ))
-      }
-      # #endregion
       if (!accepted) return()
-      # Second click on the same board collapses the expand panel (same pattern as HCCSI).
+      # Second click on the same board collapses the expand panel (same pattern as HTCDI).
       cur <- isolate(as.character(selected_index() %||% "")[1])
       if (identical(cur, sym)) {
         selected_index("")
@@ -719,14 +809,15 @@ macro_market_server <- function(id = "macro",
       industry_touched(TRUE)
     }, ignoreInit = TRUE)
 
-    # Shared Industry + Concept menus (Relative performance + Dynamic bubble).
+    # Shared Industry menu + Concept word cloud (Relative performance + Dynamic bubble).
     # Default is Technology (XLK) on US, and the snapshot default (sc.Foundry) on TW.
-    # An explicit None stays None.
+    # Lazy-tab race: gate Industry updates on hist_period after inputs bind.
     observe({
       mode <- .mode()
       loc <- .loc()
+      hist_ready <- input$hist_period
+      req(!is.null(hist_ready))
       ind_ch <- macro_choices_with_none(macro_industry_choices(mode, loc), loc)
-      con_ch <- macro_choices_with_none(macro_concept_choices(mode, loc), loc)
 
       isel <- isolate(as.character(input$industry_key %||% "")[1])
       in_menu <- isel %in% unname(ind_ch)
@@ -734,24 +825,58 @@ macro_market_server <- function(id = "macro",
       if (!isTRUE(isolate(industry_touched())) || !in_menu) {
         isel <- if (def_ind %in% unname(ind_ch)) def_ind else ""
       }
-      csel <- isolate(as.character(input$concept_key %||% "")[1])
-      if (is.null(csel) || !nzchar(csel) || !(csel %in% unname(con_ch))) {
-        csel <- ""
-      }
       cur_ind <- isolate(as.character(input$industry_key %||% "")[1])
       if (!identical(cur_ind, isel)) industry_programmatic(TRUE)
       updateSelectInput(session, "industry_key", choices = ind_ch, selected = isel)
-      updateSelectInput(session, "concept_key", choices = con_ch, selected = csel)
     })
 
-    # Bubble concentration basket: Industry when set, else Concept (shared picks).
+    concept_cloud_catalog <- reactive({
+      list(
+        mode = .mode(),
+        loc = .loc(),
+        choices = macro_concept_choices(.mode(), .loc()),
+        hist_ready = !is.null(input$hist_period)
+      )
+    })
+
+    output$concept_cloud_ui <- renderUI({
+      cat <- concept_cloud_catalog()
+      csel <- isolate(
+        intersect(
+          macro_selected_concept_keys(input$concept_keys),
+          unname(cat$choices)
+        )
+      )
+      tryCatch(
+        macro_concept_cloud_input(
+          session$ns("concept_keys"),
+          choices = cat$choices,
+          selected = csel,
+          mode = cat$mode
+        ),
+        error = function(e) {
+          htmltools::tags$p(
+            class = "ynow-macro-hint",
+            id = "ynow_macro_concept_cloud_error",
+            paste("Concept cloud unavailable:", conditionMessage(e))
+          )
+        }
+      )
+    })
+
+    .selected_concepts <- function() {
+      keys <- macro_selected_concept_keys(input$concept_keys)
+      mode <- .mode()
+      valid <- unname(macro_concept_choices(mode, .loc()))
+      intersect(keys, valid)
+    }
+
     .bubble_theme_key <- function() {
       ind <- as.character(input$industry_key %||% "")[1]
-      con <- as.character(input$concept_key %||% "")[1]
       if (is.na(ind)) ind <- ""
-      if (is.na(con)) con <- ""
       if (nzchar(ind)) return(ind)
-      if (nzchar(con)) return(con)
+      cons <- .selected_concepts()
+      if (length(cons)) return(cons[[1]])
       ""
     }
 
@@ -783,14 +908,6 @@ macro_market_server <- function(id = "macro",
       lapply(names(specs), function(sym) {
         df <- tryCatch(fetch_price_history_df(sym, "5d"), error = function(e) NULL)
         q <- .px_last_chg(df)
-        # #region agent log
-        if (exists(".ynow_dbg_ef0f33", mode = "function")) {
-          .ynow_dbg_ef0f33("E", "macro_market_module.R:index_quotes", "kpi quote", list(
-            symbol = sym, nrow = if (is.data.frame(df)) nrow(df) else 0L,
-            last = q$last, chg = q$chg, finite_last = is.finite(q$last)
-          ))
-        }
-        # #endregion
         list(symbol = sym, label = unname(specs[[sym]]), last = q$last, chg_pct = q$chg)
       })
     })
@@ -934,7 +1051,7 @@ macro_market_server <- function(id = "macro",
       })
       table <- if (length(rows)) {
         tags$table(
-          class = "table table-condensed ynow-hccsi-table",
+          class = "table table-condensed ynow-htcdi-table",
           tags$thead(tags$tr(
             tags$th(id = "ynow_index_col_ticker", `data-i18n` = "ynow_index_col_ticker", .ui("ynow_index_col_ticker")),
             tags$th(id = "ynow_index_col_name", `data-i18n` = "ynow_index_col_name", .ui("ynow_index_col_name")),
@@ -1130,7 +1247,7 @@ macro_market_server <- function(id = "macro",
       list(members = mem, last = last, chg = chg)
     })
 
-    # YNOW / TYNOW KPI card (sits on Rf row at 2:1:1 with HCCSI).
+    # YNOW / TYNOW KPI card (sits on Rf row at 2:1:1 with HTCDI).
     .own_index_kpi_card <- function() {
       own <- .own_index_symbol()
       if (!nzchar(own)) return(NULL)
@@ -1176,7 +1293,7 @@ macro_market_server <- function(id = "macro",
               `data-i18n` = title_key,
               .ui(title_key)
             ),
-            tags$div(class = "ynow-macro-kpi__value ynow-hccsi-flow", last_txt),
+            tags$div(class = "ynow-macro-kpi__value ynow-htcdi-flow", last_txt),
             tags$div(class = paste("ynow-macro-kpi__chg", chg_cls), chg_txt),
             tags$div(class = "ynow-macro-kpi__sym", own)
           ),
@@ -1223,19 +1340,19 @@ macro_market_server <- function(id = "macro",
       )
     })
 
-    # HCCSI pulls 5y prices and statements for every issuer. That work used to
+    # HTCDI pulls 5y prices and statements for every issuer. That work used to
     # run inside the first paint. Queue it after the session flushes so the
     # index cards and the rest of the page can appear first.
-    hccsi_val <- reactiveVal(NULL)
-    hccsi_job <- reactiveVal(0L)
-    .hccsi_compute <- function(mode) {
+    htcdi_val <- reactiveVal(NULL)
+    htcdi_job <- reactiveVal(0L)
+    .htcdi_compute <- function(mode) {
       # Always attempt live Yahoo/history and statements. Never score from config placeholders.
-      cfg <- if (exists("hccsi_load_config", mode = "function")) hccsi_load_config() else NULL
+      cfg <- if (exists("htcdi_load_config", mode = "function")) htcdi_load_config() else NULL
       price_map <- list(); bench_df <- NULL
       n_iss <- 0L
       if (exists("fetch_price_history_df", mode = "function") &&
-          exists("hccsi_issuers", mode = "function")) {
-        issuers <- hccsi_issuers(cfg)
+          exists("htcdi_issuers", mode = "function")) {
+        issuers <- htcdi_issuers(cfg)
         n_iss <- length(issuers)
         for (iss in issuers) {
           tk <- as.character(iss$tickers[[1]] %||% "")[1]
@@ -1248,33 +1365,38 @@ macro_market_server <- function(id = "macro",
       }
       fs_map <- list()
       if (exists("cached_scrape_financials", mode = "function") &&
-          exists("hccsi_issuers", mode = "function")) {
-        for (iss in hccsi_issuers(cfg)) {
+          exists("htcdi_issuers", mode = "function")) {
+        for (iss in htcdi_issuers(cfg)) {
           tk <- as.character(iss$tickers[[1]] %||% "")[1]
           if (!nzchar(tk)) next
+# Skip statement scrape for ETFs / futures proxies (oil index) — market pillars only.
+          if (identical(tolower(as.character(iss$instrument_type %||% "")[1]), "etf") ||
+              identical(tolower(as.character(iss$instrument_type %||% "")[1]), "commodity")) {
+            next
+          }
           fs <- tryCatch(cached_scrape_financials(tk), error = function(e) NULL)
           if (!is.null(fs)) fs_map[[tk]] <- fs
         }
       }
-      inputs <- if (exists("hccsi_live_inputs_from_prices", mode = "function")) {
-        hccsi_live_inputs_from_prices(price_map, bench_df, cfg, fs_map)
+      inputs <- if (exists("htcdi_live_inputs_from_prices", mode = "function")) {
+        htcdi_live_inputs_from_prices(price_map, bench_df, cfg, fs_map)
       } else NULL
-      res <- if (exists("hccsi_score", mode = "function")) {
-        tryCatch(hccsi_score(inputs, cfg), error = function(e) NULL)
+      res <- if (exists("htcdi_score", mode = "function")) {
+        tryCatch(htcdi_score(inputs, cfg), error = function(e) NULL)
       } else {
         NULL
       }
       list(res = res, n_iss = n_iss, n_px = length(price_map), n_fs = length(fs_map))
     }
-    .queue_hccsi <- function() {
+    .queue_htcdi <- function() {
       mode <- isolate(.mode())
-      job <- isolate(hccsi_job()) + 1L
-      hccsi_job(job)
+      job <- isolate(htcdi_job()) + 1L
+      htcdi_job(job)
       run_job <- function() {
-        if (!identical(isolate(hccsi_job()), job)) return()
-        out <- tryCatch(.hccsi_compute(mode), error = function(e) list(res = NULL, n_iss = 0L, n_px = 0L, n_fs = 0L))
-        if (!identical(isolate(hccsi_job()), job)) return()
-        hccsi_val(out$res %||% list(availability = "unavailable"))
+        if (!identical(isolate(htcdi_job()), job)) return()
+        out <- tryCatch(.htcdi_compute(mode), error = function(e) list(res = NULL, n_iss = 0L, n_px = 0L, n_fs = 0L))
+        if (!identical(isolate(htcdi_job()), job)) return()
+        htcdi_val(out$res %||% list(availability = "unavailable"))
       }
       if (requireNamespace("later", quietly = TRUE)) {
         later::later(run_job, delay = 0)
@@ -1282,27 +1404,27 @@ macro_market_server <- function(id = "macro",
         run_job()
       }
     }
-    session$onFlushed(function() .queue_hccsi(), once = TRUE)
+    session$onFlushed(function() .queue_htcdi(), once = TRUE)
     observeEvent(refresh_token(), {
-      hccsi_val(NULL)
-      .queue_hccsi()
+      htcdi_val(NULL)
+      .queue_htcdi()
     }, ignoreInit = TRUE)
-    hccsi_result <- reactive(hccsi_val())
+    htcdi_result <- reactive(htcdi_val())
 
-    output$hccsi_expand_panel <- renderUI({
-      if (.is_lite() || !isTRUE(hccsi_expanded())) return(NULL)
-      res <- hccsi_result()
-      if (exists("hccsi_expand_ui", mode = "function")) hccsi_expand_ui(res, .loc()) else NULL
+    output$htcdi_expand_panel <- renderUI({
+      if (.is_lite() || !isTRUE(htcdi_expanded())) return(NULL)
+      res <- htcdi_result()
+      if (exists("htcdi_expand_ui", mode = "function")) htcdi_expand_ui(res, .loc()) else NULL
     })
 
-    # Rf : YNOW/TYNOW : HCCSI = 2:1:1 (widths 6 / 3 / 3). TW NDC on the next row.
-    # HCCSI four-index expand stays Full-only, below this row.
+    # Rf : YNOW/TYNOW : HTCDI = 2:1:1 (widths 6 / 3 / 3). TW NDC on the next row.
+    # HTCDI four-index expand stays Full-only, below this row.
     output$rf_signal_row <- renderUI({
       .loc()
       mode <- .mode()
       lite <- .is_lite()
       is_tw <- identical(mode, "TW")
-      res <- tryCatch(hccsi_result(), error = function(e) NULL)
+      res <- tryCatch(htcdi_result(), error = function(e) NULL)
       if (is.null(res)) res <- list(availability = "loading")
       ynow_card <- .own_index_kpi_card()
       rf_col <- column(
@@ -1317,18 +1439,18 @@ macro_market_server <- function(id = "macro",
         width = 3, class = "col-xs-12 col-sm-3 col-md-3",
         if (!is.null(ynow_card)) ynow_card else tags$div(class = "ynow-macro-kpi ynow-macro-kpi--ynow", "—")
       )
-      hccsi_col <- column(
+      htcdi_col <- column(
         width = 3, class = "col-xs-12 col-sm-3 col-md-3",
-        if (exists("hccsi_kpi_box", mode = "function")) {
-          hccsi_kpi_box(res, lite = lite, locale = .loc(), ns = ns,
-                        selected = isTRUE(hccsi_expanded()) && !isTRUE(lite))
+        if (exists("htcdi_kpi_box", mode = "function")) {
+          htcdi_kpi_box(res, lite = lite, locale = .loc(), ns = ns,
+                        selected = isTRUE(htcdi_expanded()) && !isTRUE(lite))
         } else {
-          tags$div(class = "ynow-macro-kpi ynow-macro-kpi--hccsi", "HCCSI")
+          tags$div(class = "ynow-macro-kpi ynow-macro-kpi--htcdi", "HTCDI")
         }
       )
       main_row <- do.call(
         fluidRow,
-        list(class = "ynow-macro-rf-row ynow-macro-kpi-row", rf_col, ynow_col, hccsi_col)
+        list(class = "ynow-macro-rf-row ynow-macro-kpi-row", rf_col, ynow_col, htcdi_col)
       )
       if (!is_tw) return(main_row)
       ndc_row <- fluidRow(
@@ -1357,28 +1479,32 @@ macro_market_server <- function(id = "macro",
       mode <- .mode()
       period <- as.character(input$hist_period %||% "1y")[1]
       industry_key <- as.character(input$industry_key %||% "")[1]
-      concept_key <- as.character(input$concept_key %||% "")[1]
+      concept_keys <- .selected_concepts()
       if (is.na(industry_key)) industry_key <- ""
-      if (is.na(concept_key)) concept_key <- ""
 
       industry <- NULL
-      concept <- NULL
+      concepts <- list()
       if (nzchar(industry_key)) {
         industry <- tryCatch(
           macro_rebased_theme_df(industry_key, mode, period),
           error = function(e) NULL
         )
       }
-      if (nzchar(concept_key)) {
-        concept <- tryCatch(
-          macro_rebased_theme_df(concept_key, mode, period),
-          error = function(e) NULL
-        )
+      if (length(concept_keys)) {
+        for (ck in concept_keys) {
+          df <- tryCatch(
+            macro_rebased_theme_df(ck, mode, period),
+            error = function(e) NULL
+          )
+          if (!is.null(df) && is.data.frame(df) && nrow(df) >= 2L) {
+            concepts[[ck]] <- df
+          }
+        }
       }
 
       bench_tk <- macro_bench_ticker(mode)
       bench <- NULL
-      if (nzchar(industry_key) || nzchar(concept_key)) {
+      if (nzchar(industry_key) || length(concept_keys)) {
         bench_raw <- tryCatch(fetch_price_history_df(bench_tk, period), error = function(e) NULL)
         if (!is.null(bench_raw) && nrow(bench_raw) >= 20L) {
           bench_raw <- bench_raw[order(bench_raw$Date), , drop = FALSE]
@@ -1395,24 +1521,24 @@ macro_market_server <- function(id = "macro",
       }
       list(
         industry = industry,
-        concept = concept,
+        concepts = concepts,
+        concept_keys = concept_keys,
         bench = bench,
         bench_ticker = bench_tk,
-        industry_key = industry_key,
-        concept_key = concept_key
+        industry_key = industry_key
       )
     })
 
     output$overlay_plot <- plotly::renderPlotly({
       od <- overlay_data()
       has_ind_key <- nzchar(od$industry_key %||% "")
-      has_con_key <- nzchar(od$concept_key %||% "")
+      has_con_key <- length(od$concept_keys %||% character(0)) > 0L
       shiny::validate(shiny::need(
         has_ind_key || has_con_key,
         .ui("macro_plot_need_pick")
       ))
       shiny::validate(shiny::need(
-        !is.null(od$industry) || !is.null(od$concept),
+        !is.null(od$industry) || length(od$concepts) > 0L,
         .ui("macro_plot_need_theme")
       ))
       shiny::validate(shiny::need(!is.null(od$bench), .ui("macro_plot_need_bench")))
@@ -1420,18 +1546,23 @@ macro_market_server <- function(id = "macro",
       bh <- od$bench
       common <- bh$Date
       if (!is.null(od$industry)) common <- intersect(common, od$industry$Date)
-      if (!is.null(od$concept)) common <- intersect(common, od$concept$Date)
+      for (ck in names(od$concepts)) {
+        common <- intersect(common, od$concepts[[ck]]$Date)
+      }
       shiny::validate(shiny::need(length(common) >= 5L, .ui("macro_plot_need_theme")))
       bh <- bh[bh$Date %in% common, , drop = FALSE]
 
       industry_lab <- .ui("macro_series_industry")
-      concept_lab <- .ui("macro_series_concept")
-      left_lab <- if (!is.null(od$industry) && !is.null(od$concept)) {
+      con_ch <- macro_concept_choices(.mode(), .loc())
+      n_con <- length(od$concepts)
+      left_lab <- if (!is.null(od$industry) && n_con > 0L) {
         .ui("macro_series_rebased")
       } else if (!is.null(od$industry)) {
         industry_lab
+      } else if (n_con > 1L) {
+        .ui("macro_series_concepts")
       } else {
-        concept_lab
+        .ui("macro_series_concept")
       }
       bench_lab <- paste0(.ui("macro_series_bench"), " (", od$bench_ticker, ")")
 
@@ -1447,16 +1578,22 @@ macro_market_server <- function(id = "macro",
           yaxis = "y"
         )
       }
-      if (!is.null(od$concept)) {
-        th <- od$concept[od$concept$Date %in% common, , drop = FALSE]
-        fig <- plotly::add_trace(
-          fig,
-          x = th$Date, y = th$Theme,
-          type = "scatter", mode = "lines",
-          name = concept_lab,
-          line = list(color = "#2980b9", width = 2),
-          yaxis = "y"
-        )
+      if (n_con > 0L) {
+        for (i in seq_along(od$concepts)) {
+          ck <- names(od$concepts)[[i]]
+          th <- od$concepts[[ck]]
+          th <- th[th$Date %in% common, , drop = FALSE]
+          lab <- .choice_label(con_ch, ck)
+          if (!nzchar(lab)) lab <- ck
+          fig <- plotly::add_trace(
+            fig,
+            x = th$Date, y = th$Theme,
+            type = "scatter", mode = "lines",
+            name = lab,
+            line = list(color = macro_concept_overlay_color(i), width = 2),
+            yaxis = "y"
+          )
+        }
       }
       fig <- plotly::add_trace(
         fig,
@@ -1494,25 +1631,29 @@ macro_market_server <- function(id = "macro",
       mode <- .mode()
       loc <- .loc()
       ind <- as.character(input$industry_key %||% "")[1]
-      con <- as.character(input$concept_key %||% "")[1]
+      cons <- .selected_concepts()
       if (is.na(ind)) ind <- ""
-      if (is.na(con)) con <- ""
       ind_ch <- macro_choices_with_none(macro_industry_choices(mode, loc), loc)
-      con_ch <- macro_choices_with_none(macro_concept_choices(mode, loc), loc)
-      if (!nzchar(ind) && !nzchar(con)) {
+      con_ch <- macro_concept_choices(mode, loc)
+      if (!nzchar(ind) && !length(cons)) {
         return(tags$p(
           id = "ynow_macro_bubble_shared_status",
           class = "ynow-macro-hint",
           .ui("macro_bubble_shared_need_pick")
         ))
       }
-      if (nzchar(ind) && nzchar(con)) {
+      con_lab <- if (length(cons)) {
+        paste(vapply(cons, function(k) .choice_label(con_ch, k), character(1)), collapse = " · ")
+      } else {
+        ""
+      }
+      if (nzchar(ind) && length(cons)) {
         msg <- gsub(
           "{industry}", .choice_label(ind_ch, ind),
           .ui("macro_bubble_shared_using_industry_both"),
           fixed = TRUE
         )
-        msg <- gsub("{concept}", .choice_label(con_ch, con), msg, fixed = TRUE)
+        msg <- gsub("{concept}", con_lab, msg, fixed = TRUE)
       } else if (nzchar(ind)) {
         msg <- gsub(
           "{industry}", .choice_label(ind_ch, ind),
@@ -1521,7 +1662,7 @@ macro_market_server <- function(id = "macro",
         )
       } else {
         msg <- gsub(
-          "{concept}", .choice_label(con_ch, con),
+          "{concept}", con_lab,
           .ui("macro_bubble_shared_using_concept"),
           fixed = TRUE
         )
@@ -1644,7 +1785,7 @@ macro_market_server <- function(id = "macro",
       tags$div(
         class = "table-responsive",
         tags$table(
-          class = "table table-condensed ynow-hccsi-table",
+          class = "table table-condensed ynow-htcdi-table",
           tags$thead(tags$tr(
             tags$th("#"),
             tags$th(.ui("macro_bubble_col_ticker")),

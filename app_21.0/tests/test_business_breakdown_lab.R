@@ -596,7 +596,7 @@ check("i18n chapter titles en + zh-TW", {
     identical(.UI_STRINGS$en$bblab_ch3_current_label, "Current period") &&
     identical(.UI_STRINGS$`zh-TW`$bblab_ch3_current_label, "當期") &&
     identical(.UI_STRINGS$en$bblab_ch4_title, "Five-year mix evolution") &&
-    identical(.UI_STRINGS$`zh-TW`$bblab_ch4_title, "五年結構占比演進") &&
+    identical(.UI_STRINGS$`zh-TW`$bblab_ch4_title, "五年結構佔比演進") &&
     identical(.UI_STRINGS$en$bblab_ch5_title, "Business cards") &&
     identical(.UI_STRINGS$`zh-TW`$bblab_ch5_title, "各事業簡化財報") &&
     identical(.UI_STRINGS$en$bblab_ch6_title, "Reconciliation") &&
@@ -765,9 +765,9 @@ check("engine does not gate chart on component count",
       !grepl("n_valid < 2", engine_src, fixed = TRUE) &&
         !grepl("if (n_valid < 2L)", engine_src, fixed = TRUE))
 check("notes helper used", grepl("ynow_notes_block", mod_src, fixed = TRUE))
-check("Lab numerals do not use HCCSI flow fill",
-      !grepl("ynow-hccsi-flow", mod_src, fixed = TRUE) &&
-        !grepl("ynow-hccsi-flow", engine_src, fixed = TRUE))
+check("Lab numerals do not use HTCDI flow fill",
+      !grepl("ynow-htcdi-flow", mod_src, fixed = TRUE) &&
+        !grepl("ynow-htcdi-flow", engine_src, fixed = TRUE))
 check("no invalid shinydashboard box status default",
       !grepl("status\\s*=\\s*[\"']default[\"']", mod_src))
 if (requireNamespace("shiny", quietly = TRUE) &&
@@ -1493,7 +1493,7 @@ if (requireNamespace("shiny", quietly = TRUE)) {
   check("card HTML shows non-zero share and keeps OI when CoR unestimable",
         grepl("Revenue:", html200, fixed = TRUE) &&
           grepl("40.0%", html200, fixed = TRUE) &&
-          grepl("Operating income:", html200, fixed = TRUE) &&
+          grepl("Operating Income:", html200, fixed = TRUE) &&
           grepl("Not reliably estimable", html200, fixed = TRUE) &&
           grepl("Revaluation ratio unavailable", html200, fixed = TRUE))
 }

@@ -65,7 +65,7 @@ check("cache info exposes cache_root", is.character(info$cache_root) && nzchar(i
 src <- paste(readLines("web_crawler.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check(
   "financials memoised on slow cache",
-  grepl("cached_scrape_financials[\\s\\S]*cache\\s*=\\s*\\.ynow_slow_cache", src, perl = TRUE)
+  grepl("\\.cached_scrape_financials_memo[\\s\\S]*cache\\s*=\\s*\\.ynow_slow_cache", src, perl = TRUE)
 )
 check(
   "Rf memoised on fast cache",
@@ -101,18 +101,20 @@ check(
 )
 
 # Guard: financials must not share the fast memoise cache reference in source
-fin_block <- regmatches(
-  src,
-  regexpr(
-    "cached_scrape_financials\\s*<-\\s*memoise::memoise\\([\\s\\S]*?\\n\\)",
-    src,
-    perl = TRUE
-  )
-)
-check("financials block found", length(fin_block) == 1L && nzchar(fin_block))
 check(
-  "financials block does not use .ynow_fast_cache",
-  !grepl("\\.ynow_fast_cache", fin_block, fixed = TRUE)
+  "financials memo uses slow cache",
+  grepl("\\.cached_scrape_financials_memo\\s*<-\\s*memoise::memoise", src) &&
+    grepl("\\.cached_scrape_financials_memo[\\s\\S]{0,200}?cache\\s*=\\s*\\.ynow_slow_cache", src, perl = TRUE)
+)
+check(
+  "financials memo does not use .ynow_fast_cache",
+  !grepl("\\.cached_scrape_financials_memo[\\s\\S]{0,200}?\\.ynow_fast_cache", src, perl = TRUE)
+)
+check(
+  "empty financials are not left in memo (drop + wrapper)",
+  grepl("drop_financials_cache_key", src, fixed = TRUE) &&
+    grepl("lookup_statement_fallback_ticker", src, fixed = TRUE) &&
+    grepl("cached_scrape_financials\\s*<-\\s*function", src)
 )
 
 if (fail > 0L) {

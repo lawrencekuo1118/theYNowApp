@@ -1298,7 +1298,7 @@ lab_cluster_coverage_labels <- function(n_finite, tickers,
   as.character(out)
 }
 
-#' Wrap Coverage Data-limited / 資料受限 cells in the shared HCCSI logo-flow class.
+#' Wrap Coverage Data-limited / 資料受限 cells in the shared HTCDI logo-flow class.
 lab_cluster_coverage_flow_html <- function(labels) {
   labs <- as.character(labels)
   vapply(labs, function(lab) {
@@ -1309,7 +1309,7 @@ lab_cluster_coverage_flow_html <- function(labels) {
       gsub(">", "&gt;", gsub("<", "&lt;", gsub("&", "&amp;", lab, fixed = TRUE), fixed = TRUE), fixed = TRUE)
     }
     if (identical(lab, "Data-limited") || identical(lab, "資料受限")) {
-      sprintf('<span class="ynow-hccsi-flow">%s</span>', escaped)
+      sprintf('<span class="ynow-htcdi-flow">%s</span>', escaped)
     } else {
       escaped
     }

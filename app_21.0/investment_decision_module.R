@@ -701,8 +701,28 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       model_vals <- model_vals[is.finite(model_vals)]
       has_primary_base <- !is.na(base)
       has_any_model_fv <- length(model_vals) > 0L || !is.na(sec_pt)
+      sop_g <- tryCatch(sop_verdict_gate(), error = function(e) NULL)
+      sop_unlocked <- is.list(sop_g) && isTRUE(sop_g$unlocked)
 
       if (!has_primary_base && !has_any_model_fv) {
+        # SOP locked must remain visible even before any model Fair Value exists.
+        if (!isTRUE(sop_unlocked)) {
+          return(div(
+            class = "alert alert-secondary ynow-sop-verdict-locked",
+            tags$h4(
+              style = "margin:0;font-weight:700;",
+              htmltools::htmlEscape(str("composite_status_prefix")),
+              tags$span(
+                style = "color:#6c757d;",
+                htmltools::htmlEscape(str("composite_sop_locked"))
+              )
+            ),
+            tags$p(
+              style = "margin:8px 0 0 0;font-size:12px;color:#666;",
+              htmltools::htmlEscape(str("funnel_sop_locked_hint"))
+            )
+          ))
+        }
         return(div(class = "alert alert-info ynow-waiting-val", str("composite_waiting_val")))
       }
 
@@ -775,7 +795,8 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
 
       model_colors <- c(
         dcf = "#2980b9", ddm = "#8e44ad", ri = "#16a085",
-        pb = "#d35400", nav = "#d81b60"
+        pb = "#d35400", nav = "#d81b60",
+        multiples = "#7f8c8d", sotp = "#5d6d7e"
       )
       # Model FV markers: same visual stack as Current price (pill + circle + $),
       # same vertical baseline (top: -10px) — not staggered ticks below the axis.
