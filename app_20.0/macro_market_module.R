@@ -11,7 +11,8 @@ if (!exists("%||%", mode = "function")) {
 }
 
 # #region agent log
-.ynow_dbg_menu <- function(hypothesisId, location, message, data = list()) {
+.ynow_dbg_menu <- function(hypothesisId, location, message, data = list(),
+                           runId = "pre-fix") {
   payload <- list(
     id = paste0("log_", format(as.numeric(Sys.time()) * 1000, scientific = FALSE, trim = TRUE)),
     timestamp = as.numeric(Sys.time()) * 1000,
@@ -20,7 +21,7 @@ if (!exists("%||%", mode = "function")) {
     data = data,
     hypothesisId = as.character(hypothesisId)[1],
     sessionId = "macro-menu",
-    runId = "pre-fix"
+    runId = as.character(runId)[1]
   )
   line <- tryCatch({
     if (requireNamespace("jsonlite", quietly = TRUE)) {
@@ -530,7 +531,11 @@ macro_market_ui <- function(id = "macro") {
           selectInput(
             ns("industry_key"),
             label = tags$span(id = "ynow_macro_industry_label", "Industry vs benchmark"),
-            choices = c("—" = ""),
+            # Seed real choices for first paint; server onFlushed refreshes for mode/locale.
+            choices = tryCatch(
+              macro_choices_with_none(macro_industry_choices("US", "en"), "en"),
+              error = function(e) c("—" = "")
+            ),
             selected = "gics_xlk"
           )
         ),
@@ -539,7 +544,10 @@ macro_market_ui <- function(id = "macro") {
           selectInput(
             ns("concept_key"),
             label = tags$span(id = "ynow_macro_concept_label", "Concept vs benchmark"),
-            choices = c("—" = ""),
+            choices = tryCatch(
+              macro_choices_with_none(macro_concept_choices("US", "en"), "en"),
+              error = function(e) c("—" = "")
+            ),
             selected = ""
           )
         ),
@@ -656,7 +664,8 @@ macro_market_ui <- function(id = "macro") {
           if (sig === lastSig && reason !== 'server-update') return;
           lastSig = sig;
           if (window.Shiny && Shiny.setInputValue) {
-            Shiny.setInputValue(probeInput, payload, {priority: 'event'});
+            // Flat JSON string — nested objects were not reaching the server observe.
+            Shiny.setInputValue(probeInput, JSON.stringify(payload), {priority: 'event'});
           }
         }
         function bind() {
@@ -864,13 +873,16 @@ macro_market_server <- function(id = "macro",
     # Shared Industry + Concept menus (Relative performance + Dynamic bubble).
     # Default is Technology (XLK) on US, and the snapshot default (sc.Foundry) on TW.
     # An explicit None stays None.
+    # Lazy-tab race: on_first_mount runs moduleServer (and this observe) before
+    # renderUI flushes the selectInputs to the browser. Immediate updateSelectInput
+    # is ignored client-side; defer to onFlushed so selectize receives choices.
     observe({
       mode <- .mode()
       loc <- .loc()
       # #region agent log
       .ynow_dbg_menu("C", "macro_market_module.R:menus_observe", "menus observe enter", list(
         mode = as.character(mode)[1], loc = as.character(loc)[1], lite = .is_lite()
-      ))
+      ), runId = "post-fix")
       # #endregion
       ind_ch <- character(0)
       con_ch <- character(0)
@@ -893,8 +905,35 @@ macro_market_server <- function(id = "macro",
         }
         cur_ind <- isolate(as.character(input$industry_key %||% "")[1])
         if (!identical(cur_ind, isel)) industry_programmatic(TRUE)
-        updateSelectInput(session, "industry_key", choices = ind_ch, selected = isel)
-        updateSelectInput(session, "concept_key", choices = con_ch, selected = csel)
+        # Capture for deferred flush (avoid stale reactive reads inside callback).
+        ind_ch_f <- ind_ch
+        con_ch_f <- con_ch
+        isel_f <- isel
+        csel_f <- csel
+        session$onFlushed(function() {
+          flush_err <- ""
+          tryCatch({
+            updateSelectInput(session, "industry_key", choices = ind_ch_f, selected = isel_f)
+            updateSelectInput(session, "concept_key", choices = con_ch_f, selected = csel_f)
+          }, error = function(e) {
+            flush_err <<- conditionMessage(e)
+          })
+          # #region agent log
+          .ynow_dbg_menu("B", "macro_market_module.R:menus_observe", "menus flushed to client", list(
+            mode = as.character(mode)[1],
+            n_ind = length(ind_ch_f),
+            n_con = length(con_ch_f),
+            isel = as.character(isel_f %||% "")[1],
+            csel = as.character(csel_f %||% "")[1],
+            ok = !nzchar(flush_err),
+            err = flush_err
+          ), runId = "post-fix")
+          tryCatch(
+            session$sendCustomMessage("ynow_macro_probe_menus", list(t = as.numeric(Sys.time()))),
+            error = function(e) NULL
+          )
+          # #endregion
+        }, once = TRUE)
       }, error = function(e) {
         err <<- conditionMessage(e)
       })
@@ -908,19 +947,24 @@ macro_market_server <- function(id = "macro",
         ind_touched = isTRUE(isolate(industry_touched())),
         ok = !nzchar(err),
         err = err,
+        deferred = TRUE,
         ind_head = paste(utils::head(unname(ind_ch), 3L), collapse = ","),
         con_head = paste(utils::head(unname(con_ch), 3L), collapse = ",")
-      ))
-      tryCatch(
-        session$sendCustomMessage("ynow_macro_probe_menus", list(t = as.numeric(Sys.time()))),
-        error = function(e) NULL
-      )
+      ), runId = "post-fix")
       # #endregion
     })
 
     # #region agent log
     observeEvent(input$dbg_menu_probe, {
-      p <- input$dbg_menu_probe
+      raw <- input$dbg_menu_probe
+      if (is.null(raw)) return()
+      p <- if (is.character(raw) && length(raw) >= 1L) {
+        tryCatch(jsonlite::fromJSON(raw[[1]], simplifyVector = FALSE), error = function(e) NULL)
+      } else if (is.list(raw)) {
+        raw
+      } else {
+        NULL
+      }
       if (is.null(p)) return()
       ind <- p$industry %||% list()
       con <- p$concept %||% list()
@@ -960,7 +1004,7 @@ macro_market_server <- function(id = "macro",
         per_exists = isTRUE(per$exists),
         per_nOpt = suppressWarnings(as.numeric(per$nOpt %||% NA_real_)[1]),
         per_colW = suppressWarnings(as.numeric(per$colW %||% NA_real_)[1])
-      ))
+      ), runId = "post-fix")
       .ynow_dbg_menu("E", "macro_market_module.R:dbg_menu_probe", "client layout widths", list(
         reason = as.character(p$reason %||% "")[1],
         ind_colW = suppressWarnings(as.numeric(ind$colW %||% NA_real_)[1]),
@@ -970,7 +1014,7 @@ macro_market_server <- function(id = "macro",
         con_covered = isTRUE(con$covered),
         ind_mid = as.character(ind$midCls %||% "")[1],
         con_mid = as.character(con$midCls %||% "")[1]
-      ))
+      ), runId = "post-fix")
     }, ignoreNULL = TRUE, ignoreInit = TRUE)
     # #endregion
 

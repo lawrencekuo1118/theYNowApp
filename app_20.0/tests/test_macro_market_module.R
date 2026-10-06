@@ -319,6 +319,13 @@ check("industry vs benchmark first paint", grepl("Industry vs benchmark", txt, f
 check("concept vs benchmark first paint", grepl("Concept vs benchmark", txt, fixed = TRUE))
 check("industry defaults to technology", grepl('selected = "gics_xlk"', txt, fixed = TRUE))
 check("industry server default follows market", grepl("macro_industry_default_key(mode)", txt, fixed = TRUE))
+check("menu choices deferred onFlushed for lazy tabs", {
+  grepl("session$onFlushed", txt, fixed = TRUE) &&
+    grepl('updateSelectInput(session, "industry_key"', txt, fixed = TRUE)
+})
+check("UI seeds industry choices not placeholder-only", {
+  grepl('macro_industry_choices("US", "en")', txt, fixed = TRUE)
+})
 check("bubble shares Industry/Concept picks", {
   grepl(".bubble_theme_key", txt, fixed = TRUE) &&
     grepl("bubble_shared_pick_status", txt, fixed = TRUE) &&
