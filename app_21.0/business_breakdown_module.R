@@ -486,8 +486,14 @@ business_breakdown_lab_ui <- function(id = "bblab") {
   if (is.null(comp)) return(NULL)
   share <- if (.bblab_finite(comp$revenue_pct)) comp$revenue_pct else
     if (.bblab_finite(comp$revenue) && .bblab_finite(cons_rev) && cons_rev != 0) comp$revenue / cons_rev else NA_real_
-  gp_txt <- if (!is.null(comp$gp_display) && nzchar(comp$gp_display)) comp$gp_display else .bblab_fmt_amt(comp$gp)
-  gm_txt <- if (!is.null(comp$gm_display) && nzchar(comp$gm_display)) comp$gm_display else .bblab_fmt_pct(comp$gm)
+  unest <- .bblab_ui("bblab_gm_unestimable", locale)
+  gp_raw <- if (!is.null(comp$gp_display) && nzchar(comp$gp_display)) comp$gp_display else NULL
+  gm_raw <- if (!is.null(comp$gm_display) && nzchar(comp$gm_display)) comp$gm_display else NULL
+  # Engine stores an English sentinel; localize at render time.
+  if (identical(gp_raw, "Not reliably estimable")) gp_raw <- unest
+  if (identical(gm_raw, "Not reliably estimable")) gm_raw <- unest
+  gp_txt <- if (!is.null(gp_raw) && nzchar(gp_raw)) gp_raw else .bblab_fmt_amt(comp$gp)
+  gm_txt <- if (!is.null(gm_raw) && nzchar(gm_raw)) gm_raw else .bblab_fmt_pct(comp$gm)
   reval <- comp$revaluation
   reval_txt <- if (is.null(reval) || identical(reval$status, "UNAVAILABLE") || !is.finite(reval$revaluationRatio)) {
     .bblab_ui("bblab_reval_unavailable", locale)
@@ -505,16 +511,16 @@ business_breakdown_lab_ui <- function(id = "bblab") {
                                                    comp$revenue_evidence$confidence %||% "UNAVAILABLE")),
     tags$ul(
       class = "ynow-bblab-card__metrics",
-      tags$li(tags$b("Revenue: "), .bblab_fmt_amt(comp$revenue),
+      tags$li(tags$b(paste0(.bblab_ui("bblab_kpi_revenue", locale), ": ")), .bblab_fmt_amt(comp$revenue),
               "  ", tags$span(class = "muted", paste0("(", .bblab_fmt_pct(share), ")"))),
-      tags$li(tags$b("Cost of Revenue: "),
-              if (.bblab_finite(comp$cor)) .bblab_fmt_amt(comp$cor) else .bblab_ui("bblab_gm_unestimable", locale),
+      tags$li(tags$b(paste0(.bblab_ui("bblab_kpi_cor", locale), ": ")),
+              if (.bblab_finite(comp$cor)) .bblab_fmt_amt(comp$cor) else unest,
               if (!is.null(comp$cor_label) && !identical(comp$cor_label, "REPORTED"))
                 tags$span(class = "ynow-bblab-tag", comp$cor_label) else NULL),
-      tags$li(tags$b("Gross Profit: "), gp_txt),
-      tags$li(tags$b("Gross Margin: "), gm_txt),
+      tags$li(tags$b(paste0(.bblab_ui("bblab_kpi_gp", locale), ": ")), gp_txt),
+      tags$li(tags$b(paste0(.bblab_ui("bblab_kpi_gm", locale), ": ")), gm_txt),
       if (.bblab_finite(comp$operating_income)) {
-        tags$li(tags$b("Operating income: "), .bblab_fmt_amt(comp$operating_income))
+        tags$li(tags$b(paste0(.bblab_ui("bblab_struct_col_oi", locale), ": ")), .bblab_fmt_amt(comp$operating_income))
       } else NULL,
       tags$li(tags$b(.bblab_ui("bblab_reval_label", locale), ": "), reval_txt)
     ),
