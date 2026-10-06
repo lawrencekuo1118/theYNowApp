@@ -732,7 +732,7 @@ relative_multiples_module_server <- function(id,
           sh_method = as.character(sh_adj$method %||% "")[1],
           auto_adj = isTRUE(auto_adj),
           note = substr(as.character(shares_resolve_note() %||% "")[1], 1L, 120L)
-        ))
+        ), runId = "post-fix")
       }
       # #endregion
       invisible(NULL)

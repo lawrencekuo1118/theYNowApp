@@ -721,11 +721,30 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       if (!has_primary_base && !has_any_model_fv) {
         # #region agent log
         if (exists(".ynow_dbg_mult", mode = "function")) {
-          .ynow_dbg_mult("C", "investment_decision_module.R:ui_valuation_compare", "early return waiting_val (skips SOP locked)", list(
-            sop_unlocked = isTRUE(sop_unlocked)
-          ))
+          .ynow_dbg_mult("C", "investment_decision_module.R:ui_valuation_compare", "no model FV yet", list(
+            sop_unlocked = isTRUE(sop_unlocked),
+            prefer_sop_locked = !isTRUE(sop_unlocked)
+          ), runId = "post-fix")
         }
         # #endregion
+        # SOP locked must remain visible even before any model Fair Value exists.
+        if (!isTRUE(sop_unlocked)) {
+          return(div(
+            class = "alert alert-secondary ynow-sop-verdict-locked",
+            tags$h4(
+              style = "margin:0;font-weight:700;",
+              htmltools::htmlEscape(str("composite_status_prefix")),
+              tags$span(
+                style = "color:#6c757d;",
+                htmltools::htmlEscape(str("composite_sop_locked"))
+              )
+            ),
+            tags$p(
+              style = "margin:8px 0 0 0;font-size:12px;color:#666;",
+              htmltools::htmlEscape(str("funnel_sop_locked_hint"))
+            )
+          ))
+        }
         return(div(class = "alert alert-info ynow-waiting-val", str("composite_waiting_val")))
       }
 

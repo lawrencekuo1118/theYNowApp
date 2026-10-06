@@ -132,19 +132,109 @@ ynow_cache_tier_info <- function() {
   df
 }
 
-# SLOW: quarterly/annual statements (24h disk)
-cached_scrape_financials <- memoise::memoise(
-  function(stock_code) {
-    .ynow_log(paste("🚀 正在啟動 Python 財報抓取:", stock_code))
-    if (!isTRUE(.ensure_python_scraper())) {
-      stop("scrape_all_financials 未載入（Python / reticulate 失敗）")
-    }
-    normalize_all_financials(scrape_all_financials(stock_code))
-  },
+# SLOW: quarterly/annual statements (24h disk).
+# Important: never leave EMPTY frames in the slow cache — Yahoo rate-limits and
+# transient misses would otherwise poison Multiples / DCF for 24h.
+.scrape_financials_uncached <- function(stock_code) {
+  .ynow_log(paste("🚀 正在啟動 Python 財報抓取:", stock_code))
+  if (!isTRUE(.ensure_python_scraper())) {
+    stop("scrape_all_financials 未載入（Python / reticulate 失敗）")
+  }
+  normalize_all_financials(scrape_all_financials(stock_code))
+}
+
+.cached_scrape_financials_memo <- memoise::memoise(
+  .scrape_financials_uncached,
   cache = .ynow_slow_cache
 )
 
-tryCatch(memoise::forget(cached_scrape_financials), error = function(e) NULL)
+tryCatch(memoise::forget(.cached_scrape_financials_memo), error = function(e) NULL)
+
+#' Config-driven local ordinary share ticker for ADRs (HTCDI issuers).
+#' Not a valuation formula branch — only used when Yahoo returns empty statements
+#' for the quoted ticker and a local ordinary listing is known.
+lookup_statement_fallback_ticker <- function(stock_code) {
+  tk <- toupper(trimws(as.character(stock_code %||% "")[1]))
+  if (!nzchar(tk)) return("")
+  if (!exists("htcdi_find_issuer", mode = "function")) return("")
+  iss <- tryCatch(htcdi_find_issuer(tk), error = function(e) NULL)
+  if (is.null(iss)) return("")
+  itype <- toupper(as.character(iss$instrument_type %||% "")[1])
+  if (!identical(itype, "ADR")) return("")
+  loc <- as.character(iss$local_ordinary_ticker %||% "")[1]
+  loc <- toupper(trimws(loc))
+  if (!nzchar(loc) || identical(loc, tk)) return("")
+  loc
+}
+
+.drop_financials_cache_key <- function(stock_code) {
+  tryCatch(
+    memoise::drop_cache(.cached_scrape_financials_memo)(stock_code),
+    error = function(e) NULL
+  )
+  invisible(NULL)
+}
+
+.stamp_financials_fallback <- function(res, source_ticker, reason = "local_ordinary") {
+  if (is.null(res)) return(res)
+  attr(res, "statement_source_ticker") <- as.character(source_ticker)[1]
+  attr(res, "statement_fallback") <- as.character(reason)[1]
+  res
+}
+
+#' Public financials fetch: memoised when non-empty; empty results are not kept.
+#' When the quoted ticker yields empty IS/BS/CF, retry via ADR local ordinary
+#' ticker from HTCDI config (e.g. TSM → 2330.TW) — generic, not ticker-hardcoded.
+cached_scrape_financials <- function(stock_code) {
+  stock_code <- as.character(stock_code %||% "")[1]
+  if (!nzchar(stock_code)) stop("stock_code is empty")
+
+  res <- tryCatch(
+    .cached_scrape_financials_memo(stock_code),
+    error = function(e) e
+  )
+  if (inherits(res, "error")) stop(res)
+
+  empty_fn <- if (exists("financials_is_bs_cf_all_empty", mode = "function")) {
+    financials_is_bs_cf_all_empty
+  } else {
+    function(x) TRUE
+  }
+
+  if (!isTRUE(empty_fn(res))) {
+    return(res)
+  }
+
+  # Drop poisoned empty entry (rate-limit / transient miss).
+  .drop_financials_cache_key(stock_code)
+
+  alt <- lookup_statement_fallback_ticker(stock_code)
+  if (nzchar(alt)) {
+    .ynow_log(paste("↩️  quoted ticker statements empty; trying local ordinary:", alt))
+    res_alt <- tryCatch(
+      .cached_scrape_financials_memo(alt),
+      error = function(e) NULL
+    )
+    if (!is.null(res_alt) && !isTRUE(empty_fn(res_alt))) {
+      return(.stamp_financials_fallback(res_alt, alt, "local_ordinary"))
+    }
+    if (!is.null(res_alt) && isTRUE(empty_fn(res_alt))) {
+      .drop_financials_cache_key(alt)
+    }
+    # One uncached retry on ordinary (avoids serving a just-dropped empty memo).
+    res_alt2 <- tryCatch(.scrape_financials_uncached(alt), error = function(e) NULL)
+    if (!is.null(res_alt2) && !isTRUE(empty_fn(res_alt2))) {
+      return(.stamp_financials_fallback(res_alt2, alt, "local_ordinary_uncached"))
+    }
+  }
+
+  # Uncached retry on the quoted ticker itself (after dropping empty memo).
+  res2 <- tryCatch(.scrape_financials_uncached(stock_code), error = function(e) res)
+  if (!isTRUE(empty_fn(res2))) {
+    return(res2)
+  }
+  res2
+}
 
 # ==========================================
 # 🏭 2. 公司／產業資訊

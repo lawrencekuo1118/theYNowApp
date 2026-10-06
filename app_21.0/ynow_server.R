@@ -1035,6 +1035,20 @@ server <- function(input, output, session) {
         # cached_scrape_financials already runs normalize_all_financials — do not re-normalize
         res <- cached_scrape_financials(stock_code)
 
+        # Notify when ADR quoted ticker had empty Yahoo statements and we used
+        # the HTCDI local ordinary listing (config-driven, not ticker-hardcoded).
+        fb_src <- as.character(attr(res, "statement_source_ticker") %||% "")[1]
+        fb_why <- as.character(attr(res, "statement_fallback") %||% "")[1]
+        if (nzchar(fb_src) && grepl("local_ordinary", fb_why, fixed = TRUE)) {
+          showNotification(
+            paste0(
+              "Quoted ticker statements were empty; loaded filings from local ordinary ",
+              fb_src, "."
+            ),
+            type = "message", duration = 10, id = "ynow_fs_ordinary_fallback"
+          )
+        }
+
         # .TWO：Yahoo IS／BS／CF 全空 → 櫃買「財務資料簡報」摘要 fallback（上櫃 O_／興櫃 U_）
         tpex_used <- FALSE
         if (exists("apply_tpex_financial_fallback", mode = "function") &&
@@ -1156,9 +1170,11 @@ server <- function(input, output, session) {
             nrow_bs = if (is.data.frame(bs_exp)) nrow(bs_exp) else -1L,
             nrow_cf = if (is.data.frame(cf_exp)) nrow(cf_exp) else -1L,
             q_ccy = as.character(q_ccy %||% "")[1],
-            f_ccy = as.character(f_ccy %||% "")[1],
-            fs_all_empty = isTRUE(isolate(fs_all_empty()))
-          ))
+            f_ccy = as.character(isolate(statement_currency()) %||% f_ccy %||% "")[1],
+            fs_all_empty = isTRUE(isolate(fs_all_empty())),
+            stmt_fallback = as.character(attr(res, "statement_fallback") %||% "")[1],
+            stmt_source = as.character(attr(res, "statement_source_ticker") %||% "")[1]
+          ), runId = "post-fix")
         }
         # #endregion
 
@@ -8815,7 +8831,7 @@ server <- function(input, output, session) {
         missing_any = any(!is.finite(c(scraped_fcf, val_cash, scraped_debt))),
         dcf_est = if (is.finite(dcf_est)) dcf_est else NA_real_,
         lite = isTRUE(tryCatch(isolate(lite_mode()), error = function(e) FALSE))
-      ))
+      ), runId = "post-fix")
     }
     # #endregion
 
