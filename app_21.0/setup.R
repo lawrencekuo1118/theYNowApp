@@ -440,6 +440,14 @@ format_dollar_abbr <- function(x) {
   format_money_abbr(x, .ynow_ccy_ctx$session_currency)
 }
 
+#' Primary valuation KPI numeral: blue–green logo flow (only the model result value).
+#' Plain text for empty / N/A placeholders so siblings stay non-flow.
+ynow_model_result_num <- function(txt) {
+  s <- as.character(txt %||% "")[1]
+  if (!nzchar(s) || s %in% c("N/A", "NA", "—", "-", "–")) return(s)
+  tags$span(class = "ynow-htcdi-flow ynow-model-kpi-result-num", s)
+}
+
 # 解析含英文單位後綴的財報數字 (e.g. 122.15B, -3.2M, 450K, 1.2T)
 parse_financial_number <- function(x) {
   if (length(x) == 0) return(numeric(0))

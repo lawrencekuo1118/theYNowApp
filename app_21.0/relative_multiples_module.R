@@ -401,9 +401,10 @@ relative_multiples_module_ui <- function(id) {
             "Implied Price = EPS × P/E　｜　PEG = P/E ÷ growth(%)"
           ),
           fluidRow(
-            column(4, valueBoxOutput(ns("vbx_pe"), width = 12)),
-            column(4, valueBoxOutput(ns("vbx_fpe"), width = 12)),
-            column(4, valueBoxOutput(ns("vbx_peg"), width = 12))
+            class = "ynow-model-kpi-row",
+            column(4, class = "ynow-model-kpi-result", valueBoxOutput(ns("vbx_pe"), width = 12)),
+            column(4, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_fpe"), width = 12)),
+            column(4, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_peg"), width = 12))
           )
         ),
         conditionalPanel(
@@ -413,13 +414,15 @@ relative_multiples_module_ui <- function(id) {
             "Implied EV = Metric × Multiple　｜　Equity = EV + Cash − Debt　｜　Price = Equity ÷ Shares"
           ),
           fluidRow(
-            column(4, valueBoxOutput(ns("vbx_evfcf"), width = 12)),
-            column(4, valueBoxOutput(ns("vbx_evebit"), width = 12)),
-            column(4, valueBoxOutput(ns("vbx_evebitda"), width = 12))
+            class = "ynow-model-kpi-row",
+            column(4, class = "ynow-model-kpi-result", valueBoxOutput(ns("vbx_evfcf"), width = 12)),
+            column(4, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_evebit"), width = 12)),
+            column(4, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_evebitda"), width = 12))
           ),
           fluidRow(
-            column(4, valueBoxOutput(ns("vbx_evsales"), width = 12)),
-            column(4, valueBoxOutput(ns("vbx_evarr"), width = 12))
+            class = "ynow-model-kpi-row",
+            column(4, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_evsales"), width = 12)),
+            column(4, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_evarr"), width = 12))
           )
         ),
         conditionalPanel(
@@ -428,7 +431,10 @@ relative_multiples_module_ui <- function(id) {
             "ynow_rel_formula_ps",
             "Implied Equity = Revenue × P/S　｜　Implied Price = Equity ÷ Shares"
           ),
-          fluidRow(column(4, valueBoxOutput(ns("vbx_ps"), width = 12)))
+          fluidRow(
+            class = "ynow-model-kpi-row",
+            column(4, class = "ynow-model-kpi-result", valueBoxOutput(ns("vbx_ps"), width = 12))
+          )
         ),
         fluidRow(
           column(width = 4, ynow_calc_btn(ns("btn_calc_rel"), label = tags$span(id = "ynow_rel_multiples_btn_calc", "Run multiples"))),
@@ -840,7 +846,7 @@ relative_multiples_module_server <- function(id,
       if (!is.finite(x)) return("—")
       format(round(x, 2), big.mark = ",", nsmall = 2)
     }
-    .vbx <- function(res_key, label_key, color, icon_name, is_peg = FALSE) {
+    .vbx <- function(res_key, label_key, color, icon_name, is_peg = FALSE, is_result = FALSE) {
       renderValueBox({
         res <- last_result()
         node <- if (!is.null(res)) res[[res_key]] else NULL
@@ -849,17 +855,18 @@ relative_multiples_module_server <- function(id,
         } else {
           "—"
         }
-        valueBox(val, .str(label_key), icon = icon(icon_name), color = color)
+        disp <- if (isTRUE(is_result)) ynow_model_result_num(val) else val
+        valueBox(disp, .str(label_key), icon = icon(icon_name), color = color)
       })
     }
-    output$vbx_pe <- .vbx("pe", "rel_multiples_vbx_pe", "aqua", "chart-line")
+    output$vbx_pe <- .vbx("pe", "rel_multiples_vbx_pe", "aqua", "chart-line", is_result = TRUE)
     output$vbx_fpe <- .vbx("forward_pe", "rel_multiples_vbx_fpe", "light-blue", "binoculars")
     output$vbx_peg <- .vbx("peg", "rel_multiples_vbx_peg", "yellow", "balance-scale", is_peg = TRUE)
-    output$vbx_evfcf <- .vbx("ev_fcf", "rel_multiples_vbx_evfcf", "teal", "industry")
+    output$vbx_evfcf <- .vbx("ev_fcf", "rel_multiples_vbx_evfcf", "teal", "industry", is_result = TRUE)
     output$vbx_evebit <- .vbx("ev_ebit", "rel_multiples_vbx_evebit", "purple", "briefcase")
     output$vbx_evebitda <- .vbx("ev_ebitda", "rel_multiples_vbx_evebitda", "fuchsia", "cubes")
     output$vbx_evsales <- .vbx("ev_sales", "rel_multiples_vbx_evsales", "navy", "shopping-cart")
-    output$vbx_ps <- .vbx("ps", "rel_multiples_vbx_ps", "olive", "tag")
+    output$vbx_ps <- .vbx("ps", "rel_multiples_vbx_ps", "olive", "tag", is_result = TRUE)
     output$vbx_evarr <- .vbx("ev_arr", "rel_multiples_vbx_evarr", "maroon", "cloud")
 
     .st_label <- function(node, special = NULL) {

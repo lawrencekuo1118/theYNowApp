@@ -59,9 +59,10 @@ sotp_module_ui <- function(id) {
         title = tags$span(id = "ynow_sotp_tab_overview", "Overview"),
         icon = icon("puzzle-piece"),
         fluidRow(
-          column(4, valueBoxOutput(ns("vbx_sotp"), width = 12)),
-          column(4, valueBoxOutput(ns("vbx_sotp_ev"), width = 12)),
-          column(4, valueBoxOutput(ns("vbx_sotp_n"), width = 12))
+          class = "ynow-model-kpi-row",
+          column(4, class = "ynow-model-kpi-result", valueBoxOutput(ns("vbx_sotp"), width = 12)),
+          column(4, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_sotp_ev"), width = 12)),
+          column(4, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_sotp_n"), width = 12))
         ),
         .sotp_formula_banner(
           "ynow_sotp_formula_banner",
@@ -372,7 +373,12 @@ sotp_module_server <- function(id,
     output$vbx_sotp <- renderValueBox({
       res <- last_result()
       val <- if (!is.null(res) && identical(res$status, "ok")) .fmt_px(res$implied_price) else "—"
-      valueBox(val, .str("sotp_vbx_price"), icon = icon("puzzle-piece"), color = "black")
+      valueBox(
+        ynow_model_result_num(val),
+        .str("sotp_vbx_price"),
+        icon = icon("puzzle-piece"),
+        color = "black"
+      )
     })
     output$vbx_sotp_ev <- renderValueBox({
       res <- last_result()

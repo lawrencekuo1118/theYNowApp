@@ -200,6 +200,13 @@ ri_module_ui <- function(id) {
       tabPanel(
         "RI Overview", icon = icon("gem"),
         fluidRow(
+          class = "ynow-model-kpi-row",
+          column(3, class = "ynow-model-kpi-result", valueBoxOutput(ns("vbx_ri_fv"), width = 12)),
+          column(3, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_ri_b0"), width = 12)),
+          column(3, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_ri_pv"), width = 12)),
+          column(3, class = "ynow-model-kpi-tone-4", valueBoxOutput(ns("vbx_ri_tv"), width = 12))
+        ),
+        fluidRow(
           div(
             id = ns("ynow_ri_formula_banner"),
             "剩餘收益 RI = (ROE − Ke) × 期初每股帳面淨值 B0",
@@ -777,6 +784,48 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
 
       if (!length(tags_list)) return(NULL)
       do.call(tagList, tags_list)
+    })
+
+    # ----- Overview KPI valueBoxes -----
+    output$vbx_ri_fv <- renderValueBox({
+      res <- ri_calc()
+      raw <- if (!identical(res$status, "success") || !is.finite(res$intrinsic)) {
+        "N/A"
+      } else {
+        paste0(money_prefix(), sprintf("%.2f", res$intrinsic))
+      }
+      valueBox(
+        ynow_model_result_num(raw),
+        ui_str("ri_vbx_fv", .loc()),
+        icon = icon("gem"), color = "purple"
+      )
+    })
+    output$vbx_ri_b0 <- renderValueBox({
+      res <- ri_calc()
+      val <- if (!identical(res$status, "success") || !is.finite(res$b0)) {
+        "N/A"
+      } else {
+        paste0(money_prefix(), sprintf("%.2f", res$b0))
+      }
+      valueBox(val, ui_str("ri_vbx_b0", .loc()), icon = icon("book"), color = "aqua")
+    })
+    output$vbx_ri_pv <- renderValueBox({
+      res <- ri_calc()
+      val <- if (!identical(res$status, "success") || !is.finite(res$pv_ri)) {
+        "N/A"
+      } else {
+        paste0(money_prefix(), sprintf("%.2f", res$pv_ri))
+      }
+      valueBox(val, ui_str("ri_vbx_pv", .loc()), icon = icon("chart-line"), color = "green")
+    })
+    output$vbx_ri_tv <- renderValueBox({
+      res <- ri_calc()
+      val <- if (!identical(res$status, "success") || !is.finite(res$pv_terminal)) {
+        "N/A"
+      } else {
+        paste0(money_prefix(), sprintf("%.2f", res$pv_terminal))
+      }
+      valueBox(val, ui_str("ri_vbx_tv", .loc()), icon = icon("flag"), color = "maroon")
     })
 
     # ----- Breakdown cards -----

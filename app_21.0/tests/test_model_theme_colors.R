@@ -60,11 +60,28 @@ check(
     grepl("['nav', 'dcf', 'ddm', 'ri', 'pb', 'multiples', 'sotp']", ui_src, fixed = TRUE)
 )
 
-# valueBox / small-box follow model accent on themed pages
+# valueBox / small-box: muted family by default; primary result uses full accent
 check(
-  "small-box uses model accent",
+  "small-box uses muted model family by default",
   grepl("body.ynow-theme-model .content-wrapper .small-box", ui_src, fixed = TRUE) &&
-    grepl("background-color: var(--ynow-model-accent)", ui_src, fixed = TRUE)
+    grepl("--ynow-model-kpi-muted", ui_src, fixed = TRUE)
+)
+check(
+  "result KPI uses full model accent",
+  grepl("ynow-model-kpi-result", ui_src, fixed = TRUE) &&
+    grepl("background-color: var(--ynow-model-kpi-result)", ui_src, fixed = TRUE)
+)
+check(
+  "sibling KPI tones defined",
+  grepl("ynow-model-kpi-tone-2", ui_src, fixed = TRUE) &&
+    grepl("ynow-model-kpi-tone-3", ui_src, fixed = TRUE) &&
+    grepl("ynow-model-kpi-tone-4", ui_src, fixed = TRUE) &&
+    grepl("--ynow-model-kpi-s2", ui_src, fixed = TRUE)
+)
+check(
+  "result numeral uses blue-green flow",
+  grepl("ynow-model-kpi-result-num", ui_src, fixed = TRUE) &&
+    grepl("ynow-htcdi-flow", ui_src, fixed = TRUE)
 )
 
 # Cards use CSS accent classes (single source of truth with page themes)

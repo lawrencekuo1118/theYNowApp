@@ -8331,10 +8331,17 @@ server <- function(input, output, session) {
     return(msg)
   })
   
-  output$ibx_stock_value_dcf <- renderInfoBox({ 
-    infoBox("每股估值（DCF）", 
-            if(is.null(stock_price_estimate_val())) "N/A" else paste0(money_prefix(), round(stock_price_estimate_val(), 2)), 
-            icon = icon("money-bill-wave"), color = "maroon", fill = TRUE) 
+  output$ibx_stock_value_dcf <- renderInfoBox({
+    raw <- if (is.null(stock_price_estimate_val())) {
+      "N/A"
+    } else {
+      paste0(money_prefix(), round(stock_price_estimate_val(), 2))
+    }
+    infoBox(
+      "每股估值（DCF）",
+      ynow_model_result_num(raw),
+      icon = icon("money-bill-wave"), color = "maroon", fill = TRUE
+    )
   })
   
   output$ibx_enterprise_value_dcf <- renderInfoBox({

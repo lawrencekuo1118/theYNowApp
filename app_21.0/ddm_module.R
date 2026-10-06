@@ -262,7 +262,11 @@ ddm_module_server <- function(id, auto_calc_pulse = reactive(0L),
       } else {
         paste0(money_prefix(), res$value)
       }
-      infoBox("每股估值（DDM）", val, icon = icon("hand-holding-usd"), color = "yellow", fill = TRUE)
+      infoBox(
+        "每股估值（DDM）",
+        ynow_model_result_num(val),
+        icon = icon("hand-holding-usd"), color = "yellow", fill = TRUE
+      )
     })
 
     output$ibx_ddm_d1 <- renderInfoBox({

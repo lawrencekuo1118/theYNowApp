@@ -16,10 +16,11 @@ pb_asset_module_ui <- function(id) {
                  
                  tabPanel("P/B Overview", icon = icon("landmark"),
                           fluidRow(
-                            column(3, valueBoxOutput(ns("vbx_bvps"), width = 12)),
-                            column(3, valueBoxOutput(ns("vbx_tbvps"), width = 12)),
-                            column(3, valueBoxOutput(ns("vbx_navps"), width = 12)),
-                            column(3, valueBoxOutput(ns("vbx_mkt_pb"), width = 12))
+                            class = "ynow-model-kpi-row",
+                            column(3, class = "ynow-model-kpi-result", valueBoxOutput(ns("vbx_fair"), width = 12)),
+                            column(3, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_bvps"), width = 12)),
+                            column(3, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_tbvps"), width = 12)),
+                            column(3, class = "ynow-model-kpi-tone-4", valueBoxOutput(ns("vbx_mkt_pb"), width = 12))
                           ),
                           fluidRow(
                             div("Fair Price = (BVPS / TBVPS / NAVPS) × Target P/B",
@@ -567,6 +568,20 @@ pb_asset_module_server <- function(id,
       )
     })
     
+    output$vbx_fair <- renderValueBox({
+      live <- tryCatch(pb_live_band(), error = function(e) NULL)
+      raw <- if (is.null(live) || !is.finite(live$mid)) {
+        "N/A"
+      } else {
+        paste0(money_prefix(), round(live$mid, 2))
+      }
+      valueBox(
+        ynow_model_result_num(raw),
+        ui_str("pb_vbx_fair", .loc()),
+        icon = icon("balance-scale"), color = "aqua"
+      )
+    })
+
     output$vbx_bvps <- renderValueBox({
       val <- input$bvps
       valueBox(
@@ -580,14 +595,6 @@ pb_asset_module_server <- function(id,
       valueBox(
         if (is.null(val) || is.na(val)) "N/A" else paste0(money_prefix(), round(val, 2)),
         "有形每股淨值 TBVPS", icon = icon("cube"), color = "light-blue"
-      )
-    })
-    
-    output$vbx_navps <- renderValueBox({
-      val <- input$navps
-      valueBox(
-        if (is.null(val) || is.na(val)) "N/A" else paste0(money_prefix(), round(val, 2)),
-        "每股淨資產 NAVPS", icon = icon("sitemap"), color = "olive"
       )
     })
     

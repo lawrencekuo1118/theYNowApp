@@ -42,9 +42,10 @@ nav_module_ui <- function(id) {
       tabPanel(
         "NAV Overview", icon = icon("sitemap"),
         fluidRow(
-          column(4, valueBoxOutput(ns("vbx_navps"), width = 12)),
-          column(4, valueBoxOutput(ns("vbx_nav_mid"), width = 12)),
-          column(4, valueBoxOutput(ns("vbx_mkt"), width = 12))
+          class = "ynow-model-kpi-row",
+          column(4, class = "ynow-model-kpi-result", valueBoxOutput(ns("vbx_nav_mid"), width = 12)),
+          column(4, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_navps"), width = 12)),
+          column(4, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_mkt"), width = 12))
         ),
         fluidRow(
           div(
@@ -425,8 +426,13 @@ nav_module_server <- function(id,
     })
     output$vbx_nav_mid <- renderValueBox({
       live <- nav_live_band()
+      raw <- if (is.null(live) || !is.finite(live$mid)) {
+        "N/A"
+      } else {
+        paste0(money_prefix(), round(live$mid, 2))
+      }
       valueBox(
-        if (is.null(live) || !is.finite(live$mid)) "N/A" else paste0(money_prefix(), round(live$mid, 2)),
+        ynow_model_result_num(raw),
         "基準 NAV 合理價", icon = icon("balance-scale"), color = "aqua"
       )
     })
