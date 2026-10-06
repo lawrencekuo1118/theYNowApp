@@ -189,6 +189,8 @@ server <- function(input, output, session) {
   auto_calc_pb_pulse <- reactiveVal(0L)
   auto_calc_nav_pulse <- reactiveVal(0L)
   auto_calc_ri_pulse <- reactiveVal(0L)
+  auto_calc_rel_pulse <- reactiveVal(0L)
+  auto_calc_sotp_pulse <- reactiveVal(0L)
 
   # ==========================================
   # 🚀 股票代號：僅主區 Ticker / Stock Code（sc + Search）
@@ -3829,6 +3831,7 @@ server <- function(input, output, session) {
   # ==========================================
   rel_results <- relative_multiples_module_server(
     id = "mod_rel",
+    auto_calc_pulse = reactive(auto_calc_rel_pulse()),
     summary_df = summary_data,
     d_income_statement = d_income_statement,
     d_balance_sheet = d_balance_sheet,
@@ -3860,6 +3863,7 @@ server <- function(input, output, session) {
   # ==========================================
   sotp_results <- sotp_module_server(
     id = "mod_sotp",
+    auto_calc_pulse = reactive(auto_calc_sotp_pulse()),
     d_income_statement = d_income_statement,
     d_balance_sheet = d_balance_sheet,
     current_price = reactive({
@@ -7593,6 +7597,8 @@ server <- function(input, output, session) {
     auto_calc_pb_pulse(0L)
     auto_calc_nav_pulse(0L)
     auto_calc_ri_pulse(0L)
+    auto_calc_rel_pulse(0L)
+    auto_calc_sotp_pulse(0L)
   }, ignoreNULL = TRUE, ignoreInit = TRUE)
 
   lite_mode <- reactive({
@@ -7996,6 +8002,24 @@ server <- function(input, output, session) {
       if (!(is.finite(navps) && navps > 0 && is.finite(mid) && mid > 0)) return(FALSE)
       return(isTRUE(.auto_calc_shares_ready()))
     }
+    if (identical(prim, "multiples")) {
+      # P/E path needs EPS + multiple; EV / P/S paths need shares bridge.
+      eps <- suppressWarnings(as.numeric(input[["mod_rel-trailing_eps"]])[1])
+      pe <- suppressWarnings(as.numeric(input[["mod_rel-pe_multiple"]])[1])
+      feps <- suppressWarnings(as.numeric(input[["mod_rel-forward_eps"]])[1])
+      fpe <- suppressWarnings(as.numeric(input[["mod_rel-fwd_pe_multiple"]])[1])
+      pe_ok <- (is.finite(eps) && eps != 0 && is.finite(pe) && pe > 0) ||
+        (is.finite(feps) && feps != 0 && is.finite(fpe) && fpe > 0)
+      if (isTRUE(pe_ok)) return(TRUE)
+      shares <- suppressWarnings(as.numeric(input[["mod_rel-shares"]])[1])
+      if (!(is.finite(shares) && shares > 0)) return(FALSE)
+      return(isTRUE(.auto_calc_shares_ready()))
+    }
+    if (identical(prim, "sotp")) {
+      shares <- suppressWarnings(as.numeric(input[["mod_sotp-shares"]])[1])
+      if (!(is.finite(shares) && shares > 0)) return(FALSE)
+      return(isTRUE(.auto_calc_shares_ready()))
+    }
     FALSE
   }
 
@@ -8027,6 +8051,10 @@ server <- function(input, output, session) {
       auto_calc_nav_pulse(isolate(auto_calc_nav_pulse()) + 1L)
     } else if (identical(prim, "ri")) {
       auto_calc_ri_pulse(isolate(auto_calc_ri_pulse()) + 1L)
+    } else if (identical(prim, "multiples")) {
+      auto_calc_rel_pulse(isolate(auto_calc_rel_pulse()) + 1L)
+    } else if (identical(prim, "sotp")) {
+      auto_calc_sotp_pulse(isolate(auto_calc_sotp_pulse()) + 1L)
     }
     invisible(NULL)
   }
@@ -8085,9 +8113,12 @@ server <- function(input, output, session) {
       return()
     }
     keys <- prim
-    sec_in_fv_allowlist <- nzchar(sec) && sec %in% c("dcf", "ddm", "pb", "ri", "nav")
-    sec_ready <- if (isTRUE(sec_in_fv_allowlist)) isTRUE(.auto_calc_primary_ready(sec)) else FALSE
-    if (isTRUE(lite_mode()) && isTRUE(sec_in_fv_allowlist) &&
+    # Lite secondary auto-calc: Fair Value engines + Implied Price cross-checks
+    # (Multiples / SOTP) when recommended as secondary.
+    sec_auto_allowlist <- c("dcf", "ddm", "pb", "ri", "nav", "multiples", "sotp")
+    sec_in_auto_allowlist <- nzchar(sec) && sec %in% sec_auto_allowlist
+    sec_ready <- if (isTRUE(sec_in_auto_allowlist)) isTRUE(.auto_calc_primary_ready(sec)) else FALSE
+    if (isTRUE(lite_mode()) && isTRUE(sec_in_auto_allowlist) &&
         !identical(sec, prim) && isTRUE(sec_ready)) {
       keys <- c(prim, sec)
     }
@@ -8098,11 +8129,11 @@ server <- function(input, output, session) {
         lite = isTRUE(lite_mode()),
         primary = prim,
         secondary = sec,
-        sec_in_fv_allowlist = isTRUE(sec_in_fv_allowlist),
+        sec_in_fv_allowlist = isTRUE(sec_in_auto_allowlist),
         sec_is_multiples = identical(sec, "multiples"),
         sec_ready = isTRUE(sec_ready),
         keys = as.character(keys),
-        multiples_wired_pulse = FALSE
+        multiples_wired_pulse = TRUE
       ))
     }
     # #endregion

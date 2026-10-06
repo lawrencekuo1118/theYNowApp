@@ -588,6 +588,42 @@ testthat::test_that("ynow_server wires Lite scenario apply before auto-calc", {
   testthat::expect_true(grepl("auto_calc_fail_sig", txt, fixed = TRUE))
 })
 
+testthat::test_that("Lite auto-calc includes Multiples when secondary is multiples", {
+  srv_path <- file.path("..", "ynow_server.R")
+  txt <- paste(readLines(srv_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  # Pulse wired into relative multiples module
+  testthat::expect_true(grepl("auto_calc_rel_pulse", txt, fixed = TRUE))
+  testthat::expect_true(grepl(
+    "auto_calc_pulse = reactive(auto_calc_rel_pulse())",
+    txt,
+    fixed = TRUE
+  ))
+  # Secondary allowlist includes multiples (and sotp)
+  testthat::expect_true(grepl('"multiples"', txt, fixed = TRUE))
+  testthat::expect_true(grepl(
+    'sec_auto_allowlist <- c("dcf", "ddm", "pb", "ri", "nav", "multiples", "sotp")',
+    txt,
+    fixed = TRUE
+  ))
+  # Ready + fire branches for multiples
+  testthat::expect_true(grepl('identical(prim, "multiples")', txt, fixed = TRUE))
+  testthat::expect_true(grepl(
+    "auto_calc_rel_pulse(isolate(auto_calc_rel_pulse()) + 1L)",
+    txt,
+    fixed = TRUE
+  ))
+  # Ticker clear resets multiples pulse with other models
+  testthat::expect_true(grepl("auto_calc_rel_pulse(0L)", txt, fixed = TRUE))
+  testthat::expect_true(grepl("auto_calc_sotp_pulse(0L)", txt, fixed = TRUE))
+  # Same clear observer also nulls DCF run-state
+  clear_blk <- regmatches(txt, regexpr(
+    "Clear prior-ticker DCF[\\s\\S]*?auto_calc_sotp_pulse\\(0L\\)",
+    txt,
+    perl = TRUE
+  ))
+  testthat::expect_true(length(clear_blk) == 1L && nzchar(clear_blk))
+})
+
 testthat::test_that("mobile notification panel CSS stays visible", {
   ui_path <- file.path("..", "ynow_ui.R")
   txt <- paste(readLines(ui_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
