@@ -59,7 +59,11 @@ check("poll on shiny reconnect without auto-reload", {
   grepl("shiny:connected shiny:reconnected", ui, fixed = TRUE) &&
     grepl("still no auto-reload", ui, fixed = TRUE)
 })
-check("update chrome CSS present", grepl("ynow-update-pulse", ui, fixed = TRUE))
+check("update chrome uses flame flow", grepl("ynow-update-available", ui, fixed = TRUE) &&
+  grepl("body.ynow-update-available .main-header .logo .ynow-app-title-fill-inner", ui, fixed = TRUE) &&
+  grepl("--ynow-htcdi-flame-gradient", ui, fixed = TRUE) &&
+  grepl("ynow-htcdi-flame-flow", ui, fixed = TRUE) &&
+  !grepl("ynow-update-pulse", ui, fixed = TRUE))
 
 check("en update_available_click", grepl(
   'update_available_click = "New version available — click The YNow App to refresh"',

@@ -3114,7 +3114,7 @@ ui <- dashboardPage(
           line-height: 1.15;
           vertical-align: middle;
         }
-        /* New deploy detected: keep page open until user clicks The YNow App title */
+        /* New deploy detected: flame title until user clicks The YNow App to refresh */
         body.ynow-update-available .main-header .logo {
           cursor: pointer;
         }
@@ -3122,21 +3122,40 @@ ui <- dashboardPage(
           cursor: pointer;
         }
         body.ynow-update-available .main-header .logo .ynow-app-title-base {
-          color: rgba(245, 197, 24, 0.55) !important;
-          -webkit-text-fill-color: rgba(245, 197, 24, 0.55);
-          animation: ynow-update-pulse 1.6s ease-in-out infinite;
+          color: rgba(192, 57, 43, 0.38) !important;
+          -webkit-text-fill-color: rgba(192, 57, 43, 0.38);
+          animation: none;
+        }
+        body.ynow-update-available .main-header .logo .ynow-app-title-fill {
+          width: 100% !important;
         }
         body.ynow-update-available .main-header .logo .ynow-app-title-fill-inner {
-          text-decoration: underline;
-          text-underline-offset: 3px;
+          color: transparent !important;
+          background-image: var(--ynow-htcdi-flame-gradient) !important;
+          background-size: 220% 100% !important;
+          background-repeat: no-repeat !important;
+          -webkit-background-clip: text !important;
+          background-clip: text !important;
+          -webkit-text-fill-color: transparent !important;
+          animation: ynow-htcdi-flame-flow 2.4s ease-in-out infinite !important;
+          text-decoration: none;
         }
-        @keyframes ynow-update-pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.72; }
+        @supports not ((-webkit-background-clip: text) or (background-clip: text)) {
+          body.ynow-update-available .main-header .logo .ynow-app-title-fill-inner {
+            -webkit-text-fill-color: #E67E22 !important;
+            color: #E67E22 !important;
+            background-image: none !important;
+            animation: none !important;
+            text-shadow:
+              0 0 6px rgba(255, 120, 40, 0.85),
+              0 0 14px rgba(192, 57, 43, 0.55),
+              0 1px 2px rgba(0, 0, 0, 0.85);
+          }
         }
         @media (prefers-reduced-motion: reduce) {
-          body.ynow-update-available .main-header .logo .ynow-app-title-base {
-            animation: none;
+          body.ynow-update-available .main-header .logo .ynow-app-title-fill-inner {
+            animation: none !important;
+            background-position: 0% 50% !important;
           }
         }
         .main-header .logo .ynow-app-title-base {
