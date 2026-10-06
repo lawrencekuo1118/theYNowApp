@@ -44,7 +44,13 @@ check <- function(label, cond) {
 info <- ynow_cache_tier_info()
 check("fast TTL is 15 minutes", identical(as.integer(info$fast_ttl_sec), 900L))
 check("slow TTL is 24 hours", identical(as.integer(info$slow_ttl_sec), 86400L))
-check("fast cache is cache_mem", grepl("cache_mem", info$fast_class, fixed = TRUE))
+# Local/dev default: in-memory fast tier. Shared disk when YNOW_CACHE_ROOT /
+# YNOW_FAST_CACHE_DIR / hosted — covered by test_yahoo_rate_gate.R.
+check(
+  "fast cache is mem (local) or disk (shared)",
+  grepl("cache_mem", info$fast_class, fixed = TRUE) ||
+    grepl("cache_disk", info$fast_class, fixed = TRUE)
+)
 check(
   "slow cache is disk or mem fallback",
   grepl("cache_disk", info$slow_class, fixed = TRUE) ||
@@ -52,6 +58,9 @@ check(
 )
 check("my_cache aliases fast tier", identical(my_cache, .ynow_fast_cache))
 check("financials != fast cache object", !identical(.ynow_slow_cache, .ynow_fast_cache))
+check("cache info exposes yahoo gate fields", is.logical(info$yahoo_gate_enabled) &&
+  is.finite(as.numeric(info$yahoo_min_interval_ms)))
+check("cache info exposes cache_root", is.character(info$cache_root) && nzchar(info$cache_root))
 
 src <- paste(readLines("web_crawler.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check(
