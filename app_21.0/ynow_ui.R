@@ -6087,6 +6087,8 @@ ui <- dashboardPage(
             function startPolling() {
               readSessionBuild();
               fetchBuild();
+              setTimeout(fetchBuild, 3000);
+              setTimeout(fetchBuild, 10000);
               if (pollTimer) clearInterval(pollTimer);
               pollTimer = setInterval(fetchBuild, POLL_MS);
             }
