@@ -8,5 +8,5 @@ short=6739152
 message=chore: bump display version to v21.06
 captured_at=2026-10-06T12:47:19Z
 source_branch=master
-display_version=v21.06
+display_version=v21.07
 note=Canonical live line is app_21.0. Bundle 12654438 ships v21.06: ATX cards no longer overlap; layer headers restored to root-map names (no § prefixes). Deploy via scripts/deploy_app_21.R.
