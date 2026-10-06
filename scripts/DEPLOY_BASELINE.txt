@@ -8,5 +8,5 @@ short=26319d1
 message=chore: bump display version to v21.08
 captured_at=2026-10-06T16:24:13Z
 source_branch=master
-display_version=v21.08
+display_version=v21.09
 note=Canonical live line is app_21.0. Bundle 12655378 ships v21.08 after merging stacked agent branches onto master (Lite Multiples auto-calc, HTCDI, ATX i18n, sidebar/width/title refresh, Yahoo rate gate retained). Deploy via scripts/deploy_app_21.R.
