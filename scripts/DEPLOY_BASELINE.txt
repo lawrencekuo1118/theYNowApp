@@ -8,5 +8,5 @@ short=b1c31b0
 message=chore: record shipped display version v21.17
 captured_at=2026-10-06T11:07:24Z
 source_branch=cursor/sidebar-default-collapsed-911b
-display_version=v21.17
+display_version=v21.18
 note=Canonical live line is app_21.0. Bundle 12654069 ships v21.17: sidebar collapsed by default on first load. Deploy via scripts/deploy_app_21.R.
