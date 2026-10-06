@@ -650,6 +650,21 @@ check("toolbar is locale-rendered", grepl('ns("toolbar")', mod_src, fixed = TRUE
   !grepl('label = "Correlation window"', mod_src, fixed = TRUE) &&
   !grepl('"Refresh prints"', mod_src, fixed = TRUE) &&
   !grepl('"20 sessions"', mod_src, fixed = TRUE))
+# Page chrome (title / sub / box) must paint from current locale on lazy mount,
+# not hardcoded English that races applyUiLocale.
+ui_src_atx <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+srv_src_atx <- paste(readLines("ynow_server.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check(
+  "atx page chrome is locale-first",
+  grepl("\\.ynow_page_ui_asset_transmission\\s*<-\\s*function\\s*\\(\\s*locale", ui_src_atx) &&
+    grepl('\\.atx_s\\("atx_page_title"\\)', ui_src_atx) &&
+    grepl('\\.atx_s\\("atx_box_title"\\)', ui_src_atx) &&
+    grepl('\\.atx_s\\("atx_box_body"\\)', ui_src_atx) &&
+    grepl(
+      "\\.ynow_page_ui_asset_transmission\\(isolate\\(ui_locale\\(\\)\\)\\)",
+      srv_src_atx
+    )
+)
 check("no atx debug ingest left", !grepl("127\\.0\\.0\\.1:7302/ingest", mod_src) &&
   !grepl("debug-f77c57\\.log", mod_src))
 check(

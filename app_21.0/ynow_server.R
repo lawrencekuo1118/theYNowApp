@@ -558,7 +558,9 @@ server <- function(input, output, session) {
       hfv = function() .ynow_page_ui_hfv(),
       lab_notes = function() .ynow_page_ui_lab_notes(),
       testing = function() .ynow_page_ui_testing(),
-      asset_transmission = function() .ynow_page_ui_asset_transmission(),
+      asset_transmission = function() {
+        .ynow_page_ui_asset_transmission(isolate(ui_locale()))
+      },
       decision_checklist = function() decision_checklist_tab_body_ui()
     ),
     on_first_mount = list(
@@ -581,10 +583,18 @@ server <- function(input, output, session) {
     ),
     after_mount = function(tab) {
       lazy_mount_nonce(isolate(as.integer(lazy_mount_nonce()) %||% 0L) + 1L)
-      tryCatch(
-        .push_ui_locale(isolate(ui_locale()), sync_picker = FALSE),
-        error = function(e) NULL
-      )
+      # Push once immediately and once after DOM paint so lazy-tab chrome
+      # (ATX titles etc.) receives applyUiLocale even if first message races.
+      push_loc <- function() {
+        tryCatch(
+          .push_ui_locale(isolate(ui_locale()), sync_picker = FALSE),
+          error = function(e) NULL
+        )
+      }
+      push_loc()
+      if (requireNamespace("later", quietly = TRUE)) {
+        later::later(push_loc, delay = 0.05)
+      }
       invisible(tab)
     }
   )

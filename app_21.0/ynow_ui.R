@@ -2628,18 +2628,24 @@ beta_rolling_section_ui <- function() {
 }
 
 #' Lazy page body for tab `asset_transmission` (mounted once per session).
-.ynow_page_ui_asset_transmission <- function() {
+#' @param locale first-paint locale (`en` / `zh-TW`); language switches still update via applyUiLocale.
+.ynow_page_ui_asset_transmission <- function(locale = "en") {
+  loc <- if (exists("normalize_ui_locale", mode = "function")) {
+    normalize_ui_locale(locale)
+  } else {
+    "en"
+  }
+  .atx_s <- function(key) {
+    if (exists("ui_str", mode = "function")) ui_str(key, loc) else key
+  }
   tagList(
     fluidRow(
       column(
         width = 12,
-        h2(tags$b(id = "ynow_atx_page_title", "Asset transmission root map")),
+        h2(tags$b(id = "ynow_atx_page_title", .atx_s("atx_page_title"))),
         p(
           id = "ynow_atx_page_sub",
-          paste0(
-            "Track how inflation, the cycle, rates, the dollar, and liquidity transmit — not equities alone. ",
-            "Available in Lite and Full."
-          )
+          .atx_s("atx_page_sub")
         ),
         tags$hr()
       )
@@ -2653,7 +2659,7 @@ beta_rolling_section_ui <- function() {
             class = "box-header",
             tags$h3(
               class = "box-title",
-              tagList(icon("project-diagram"), tags$span(id = "ynow_atx_box_title", "Asset transmission root map"))
+              tagList(icon("project-diagram"), tags$span(id = "ynow_atx_box_title", .atx_s("atx_box_title")))
             )
           ),
           tags$div(
@@ -2661,11 +2667,7 @@ beta_rolling_section_ui <- function() {
             tags$p(
               id = "ynow_atx_box_body",
               style = "color:#555; line-height:1.5; margin:0 0 10px 0;",
-              paste0(
-                "Inflation and the business cycle feed policy rates and the curve, then the dollar and liquidity, then bonds, commodities, precious metals, energy, equities, and crypto. ",
-                "Arrows run upstream to downstream. Purple marks links that can flip by regime. ",
-                "The regime card is a surveillance label for this session, not a trading signal and not an input to WACC."
-              )
+              .atx_s("atx_box_body")
             ),
             asset_transmission_ui("atx")
           )
