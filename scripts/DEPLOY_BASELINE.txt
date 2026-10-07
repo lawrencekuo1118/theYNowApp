@@ -8,5 +8,5 @@ short=85967bd
 message=chore: bump display version to v21.26
 captured_at=2026-10-07T15:25:00Z
 source_branch=cursor/hfv-next-period-prob-911b
-display_version=v21.26
+display_version=v21.27
 note=Canonical live line is app_21.0. Bundle 12660088 ships v21.26: remove HFV masthead rule under page lead. Deploy via scripts/deploy_app_21.R.
