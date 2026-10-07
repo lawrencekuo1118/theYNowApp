@@ -8,5 +8,5 @@ short=2aa3c8e
 message=chore: bump display version to v21.14
 captured_at=2026-10-07T04:49:08Z
 source_branch=master
-display_version=v21.14
+display_version=v21.15
 note=Canonical live line is app_21.0. Bundle 12658009 ships v21.14: Multiples chart/composite show active method (P/E, EV/FCF, …). Deploy via scripts/deploy_app_21.R.
