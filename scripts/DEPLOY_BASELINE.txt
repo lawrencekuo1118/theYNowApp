@@ -8,5 +8,5 @@ short=80a5efa
 message=chore: bump display version to v21.33
 captured_at=2026-10-07T17:31:00Z
 source_branch=cursor/hfv-next-period-prob-911b
-display_version=v21.33
+display_version=v21.34
 note=Canonical live line is app_21.0. Bundle 12660639 re-ships v21.33 after layout revert+redo: pill chips kept, Ch2 3-col toolbar, overlay scenarios under chart. Deploy via scripts/deploy_app_21.R.
