@@ -69,6 +69,26 @@ check(
   "forward EPS missing growth stays NA (no 回推)",
   !is.finite(.rel_forward_eps_from_trailing(2, NA_real_))
 )
+# Chart method label (family-aware pick)
+fake_res <- list(
+  pe = list(status = "ok", implied_price = 100),
+  forward_pe = list(status = "ok", implied_price = 110),
+  ev_fcf = list(status = "ok", implied_price = 90),
+  ev_ebit = list(status = "unavailable", implied_price = NA_real_),
+  ev_ebitda = list(status = "ok", implied_price = 95),
+  ev_sales = list(status = "ok", implied_price = 80),
+  ps = list(status = "ok", implied_price = 70),
+  ev_arr = list(status = "unavailable", implied_price = NA_real_)
+)
+pick_e <- .rel_pick_active_implied(fake_res, "earnings")
+check("earnings family picks Trailing P/E first", identical(pick_e$key, "pe") && abs(pick_e$implied_price - 100) < 1e-9)
+pick_ent <- .rel_pick_active_implied(fake_res, "enterprise")
+check("enterprise family picks EV/FCF first", identical(pick_ent$key, "ev_fcf"))
+pick_ps <- .rel_pick_active_implied(fake_res, "ps")
+check("ps family picks P/S", identical(pick_ps$key, "ps"))
+check("chart label Multiples · P/E", identical(.rel_chart_label("pe"), "Multiples · P/E"))
+check("chart label Multiples · EV/EBITDA", identical(.rel_chart_label("ev_ebitda"), "Multiples · EV/EBITDA"))
+check("chart label bare Multiples when unknown", identical(.rel_chart_label(NA_character_), "Multiples"))
 check(
   "forward EPS nonpositive trailing NA",
   !is.finite(.rel_forward_eps_from_trailing(0, 10))
@@ -340,5 +360,11 @@ check("dcf_ev_to_equity bridge", abs(dcf_ev_to_equity(100, 10, 30) - 80) < 1e-9)
 
 srv <- paste(readLines("ynow_server.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("server locale-pushes rel_mode", grepl("mod_rel-rel_mode", srv, fixed = TRUE))
+check("server wires Multiples chart_label to composite", grepl("chart_label", srv, fixed = TRUE))
+check("server smart chart uses Multiples method suffix", grepl("smart_multiples_bar_suffix", srv, fixed = TRUE))
+check(
+  "decision module accepts model_point_labels",
+  grepl("model_point_labels", paste(readLines("investment_decision_module.R", warn = FALSE), collapse = "\n"), fixed = TRUE)
+)
 
 cat("PASS relative_multiples\n")
