@@ -16,7 +16,7 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v21.15"
+  "v21.16"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
@@ -146,7 +146,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v21.15) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報抓取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v21.16) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報抓取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -165,7 +165,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v21.15) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v21.16) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -267,7 +267,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v21.15）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v21.16）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -284,7 +284,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v21.15) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v21.16) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -1111,7 +1111,7 @@ beta_rolling_section_ui <- function() {
             id = "ynow_method_matrix_rel_note",
             class = "help-block",
             style = "margin:0 0 10px 0;",
-            "Implied Price relative engines — cross-check only; never Fair Value primary; not HFV overlays."
+            "Relative Valuation capital-claim map: Equity multiples & Enterprise Multiples / SOTP are Implied Price cross-checks; P/B is Equity-book Fair Value (same Shares assumption). Never HFV overlays for Multiples／SOTP."
           ),
           tags$div(
             style = "overflow-x: auto; margin-bottom: 18px;",
@@ -1119,34 +1119,46 @@ beta_rolling_section_ui <- function() {
                                  <thead style='background-color: #34495e; color: white;'>
                                    <tr>
                                      <th>對照項目</th>
-                                     <th>Multiples（市場倍數）</th>
-                                     <th>SOTP（分部加總）</th>
+                                     <th>Multiples（Equity／Enterprise）</th>
+                                     <th>P/B（Equity-book）</th>
+                                     <th>SOTP（Enterprise-structural）</th>
                                    </tr>
                                  </thead>
                                  <tbody>
                                    <tr>
+                                     <td><b>資本請求權</b></td>
+                                     <td>Equity（P/E·P/S）或 Enterprise（EV/*）</td>
+                                     <td>Equity-book（帳面淨值請求權）</td>
+                                     <td>Enterprise-structural（部門加總）</td>
+                                   </tr>
+                                   <tr>
                                      <td><b>錨定</b></td>
                                      <td>EPS／EBIT／EBITDA／FCFF／Revenue／ARR × 交易倍數</td>
+                                     <td>BVPS／TBVPS／控股 NAVPS × 目標 P/B</td>
                                      <td>≥2 部門營收 × 各部門 EV/Sales（＋非營業資產）</td>
                                    </tr>
                                    <tr>
-                                     <td><b>橋接</b></td>
-                                     <td>Enterprise：EV→Equity＝EV+Cash−Debt；P/S：股權面、無負債橋接</td>
+                                     <td><b>橋接／共用</b></td>
+                                     <td>Enterprise：EV→Equity＝EV+Cash−Debt；P/S：僅 Shares</td>
+                                     <td>僅 Shares（與 Multiples／SOTP 共用）；無 Cash−Debt</td>
                                      <td>Implied EV→Equity＝EV+Cash−Debt（同 DCF 橋接）</td>
                                    </tr>
                                    <tr>
                                      <td><b>成長／年數</b></td>
                                      <td>不涉及預測年數 n；PEG 用成長％作相對指標</td>
+                                     <td>Justified 需 g；產業／歷史倍數不強制 SGR</td>
                                      <td>不涉及預測年數 n</td>
                                    </tr>
                                    <tr>
                                      <td><b>核心公式</b></td>
                                      <td>Implied Price＝EPS×P/E；或 Equity＝(Metric×Multiple+Cash−Debt)÷Shares</td>
+                                     <td>P＝(BVPS／TBVPS／NAVPS)×Target P/B</td>
                                      <td>Implied EV＝Σ(Seg Rev×EV/Sales)+Non-op；Price＝Equity÷Shares</td>
                                    </tr>
                                    <tr>
                                      <td><b>輸出角色</b></td>
                                      <td>Implied Price 交叉檢核（非 Intrinsic Value）</td>
+                                     <td>Fair Value 區間（Bear／Base／Bull）</td>
                                      <td>結構型 Implied Price 交叉檢核（控股／綜合常配 NAV）</td>
                                    </tr>
                                  </tbody>
@@ -1215,15 +1227,15 @@ beta_rolling_section_ui <- function() {
         tabPanel(
           "Price-to-Book (P/B)",
           icon = icon("landmark"),
-          h4(tags$b("本淨比／相對估值 (P/B)")),
-          p("以每股帳面淨值、有形淨值或控股 NAVPS 乘上目標本淨比。目標倍數可來自產業／歷史（無需 SGR），或 Justified P/B（需 ROE、Ke、SGR／g）。純帳面 NAV（無倍數法 Justified）請用獨立「NAV」模型——兩者同屬資產／帳面家族，但路徑分開。"),
+          h4(tags$b("本淨比／相對估值 (P/B) — Equity-book")),
+          p("相對估值法側欄的 Equity-book Fair Value（Multiples→Equity 的姊妹引擎；非 Enterprise、非 SOTP）。以每股帳面淨值、有形淨值或控股 NAVPS 乘上目標本淨比。目標倍數可來自產業／歷史（無需 SGR），或 Justified P/B（需 ROE、Ke、SGR／g）。純帳面 NAV（無倍數）請用獨立「NAV」模型——同屬資產／帳面錨，但路徑分開。"),
           tags$ul(
             tags$li(tags$b("$$BVPS = \\frac{Common\\ Equity}{Shares}$$")),
             tags$li(tags$b("$$TBVPS = \\frac{Common\\ Equity - Goodwill - Intangibles}{Shares}$$")),
             tags$li(tags$b("$$P = (BVPS\\ /\\ TBVPS\\ /\\ NAVPS) \\times Target\\ P/B$$")),
             tags$li(tags$b("Justified\\ P/B \\approx \\frac{ROE - g}{K_e - g}"))
           ),
-          p("雙重股權／ADR 等「報價股數 ≠ 財報股數」時，與 DCF／RI／回測相同，一律自動約當股數（市值÷股價）。")
+          p("共用：Shares（與 Multiples／SOTP）。獨特：BVPS／TBVPS／NAVPS、控股折價、估值基礎、目標模式、pb_low／mid／high、產業本淨比、Justified ROE·Ke·g。雙重股權／ADR 等「報價股數 ≠ 財報股數」時，與 DCF／RI／回測相同，一律自動約當股數（市值÷股價）。")
         ),
         tabPanel(
           "Net Asset Value (NAV)",
@@ -1240,20 +1252,21 @@ beta_rolling_section_ui <- function() {
           "Multiples",
           icon = icon("percentage"),
           h4(tags$b("市場倍數法（Implied Price）")),
-          p("相對估值依資本請求權分為 Equity／Enterprise 兩族（非 Intrinsic Value／Fair Value 主模型）。不可與 DCF／DDM／RI／P/B／NAV 等權平均，亦不可作為 HFV 疊加。"),
+          p("相對估值依資本請求權分為 Equity／Enterprise 兩族（非 Intrinsic Value／Fair Value 主模型）。側欄另有 Equity-book 的 P/B（Fair Value）與 Enterprise-structural 的 SOTP。不可與 DCF／DDM／RI／P/B／NAV 等權平均，亦不可作為 HFV 疊加。"),
           tags$ul(
             tags$li(tags$b("Equity："), tags$b("$$Implied\\ Price = EPS \\times P/E$$"), "；", tags$b("$$Implied\\ Equity = Revenue \\times P/S$$"), "；PEG = P/E ÷ g(%)（相對指標）。"),
             tags$li(tags$b("Enterprise："), tags$b("$$Implied\\ EV = Metric \\times Multiple$$"), "；", tags$b("$$Equity = EV + Cash - Debt$$"), "；Price = Equity ÷ Shares（與 SOTP 共用橋接；EV/FCF 用 FCFF）。"),
+            tags$li(tags$b("P/B（側欄 Equity-book）："), "Fair Value — ", tags$b("$$P = (BVPS\\ /\\ TBVPS\\ /\\ NAVPS) \\times Target\\ P/B$$"), "；僅共用 Shares。"),
             tags$li(tags$b("SOTP（側欄）："), "Enterprise-structural — 部門營收 × EV/Sales 加總後再用同一 Cash−Debt 橋接。")
           ),
-          p("共用假設：Shares；Enterprise／SOTP 另共用 Cash、Debt、EV/Sales 預設層級。獨特假設見 Multiples Overview 參數矩陣。")
+          p("共用假設：Shares（含 P/B）；Enterprise／SOTP 另共用 Cash、Debt、EV/Sales 預設層級。獨特假設見 Multiples Overview 參數矩陣。")
         ),
 
         tabPanel(
           "SOTP",
           icon = icon("puzzle-piece"),
           h4(tags$b("分部加總 SOTP（Enterprise-structural Implied Price）")),
-          p("側欄獨立引擎，與 Multiples→Enterprise 同屬企業價值請求權：拆解 ≥2 筆部門營收 × 各段 EV/Sales，加總後共用 Cash−Debt×Shares 橋接。控股／綜合常作 NAV 副模型；非 Equity 的 P/E／P/S，亦非部門 EBIT SOTP。"),
+          p("側欄獨立引擎，與 Multiples→Enterprise 同屬企業價值請求權：拆解 ≥2 筆部門營收 × 各段 EV/Sales，加總後共用 Cash−Debt×Shares 橋接。控股／綜合常作 NAV 副模型；非 Equity 的 P/E／P/S，亦非 Equity-book 的 P/B，亦非部門 EBIT SOTP。"),
           tags$ul(
             tags$li(tags$b("$$Segment\\ EV = Segment\\ Revenue \\times EV/Sales$$")),
             tags$li(tags$b("$$Implied\\ EV = \\sum Segment\\ EV + Non\\text{-}operating$$")),
@@ -2747,9 +2760,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v21.15</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v21.16</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v21.15</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v21.16</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -6653,6 +6666,8 @@ ui <- dashboardPage(
             setBtText('ynow_rel_multiples_bridge_help', 'rel_multiples_bridge_help');
             setBtText('ynow_sotp_lead_title', 'sotp_lead_title');
             setBtText('ynow_sotp_lead_body', 'sotp_lead_body');
+            setBtText('ynow_pb_lead_title', 'pb_lead_title');
+            setBtText('ynow_pb_lead_body', 'pb_lead_body');
             setBtText('ynow_sotp_box_title', 'sotp_box_title');
             setBtText('ynow_sotp_tab_overview', 'sotp_tab_overview');
             setBtText('ynow_sotp_tab_segments', 'sotp_tab_segments');

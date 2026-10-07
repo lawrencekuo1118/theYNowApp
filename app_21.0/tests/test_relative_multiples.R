@@ -208,8 +208,10 @@ for (k in c(
   "rel_multiples_tab_equity", "rel_multiples_tab_enterprise",
   "rel_multiples_tab_bridge", "rel_formula_equity", "rel_formula_enterprise",
   "rel_param_matrix_title", "rel_param_shared_heading", "rel_param_equity_heading",
-  "rel_param_enterprise_heading", "rel_param_sotp_heading",
-  "rel_param_shared_body", "rel_param_equity_body", "rel_param_enterprise_body", "rel_param_sotp_body",
+  "rel_param_enterprise_heading", "rel_param_sotp_heading", "rel_param_pb_heading",
+  "rel_param_shared_body", "rel_param_equity_body", "rel_param_enterprise_body",
+  "rel_param_sotp_body", "rel_param_pb_body",
+  "pb_lead_title", "pb_lead_body",
   "sotp_lead_title", "sotp_need_segments", "sotp_vbx_price", "sotp_col_multiple",
   "sotp_tab_bridge", "sotp_formula_banner", "sotp_settings_seg_note",
   "sotp_status_shares_missing", "sotp_status_multiple_invalid",
@@ -228,6 +230,13 @@ check("menu SOTP en", identical(ui_str("menu_sotp", "en"), "SOTP"))
 check("no sotp in multiples radio choices en", !grepl("SOTP", ui_str("rel_mode_equity", "en"), fixed = TRUE))
 check("equity mode label mentions P/S", grepl("P/S", ui_str("rel_mode_equity", "en"), fixed = TRUE))
 check("sotp lead marks Enterprise-structural", grepl("Enterprise-structural", ui_str("sotp_lead_body", "en"), fixed = TRUE))
+check("sotp lead contrasts Equity-book P/B", grepl("Equity-book P/B", ui_str("sotp_lead_body", "en"), fixed = TRUE))
+check("multiples lead mentions Equity-book P/B", grepl("Equity-book", ui_str("rel_multiples_lead_body", "en"), fixed = TRUE))
+check("shared body includes P/B Shares", grepl("P/B", ui_str("rel_param_shared_body", "en"), fixed = TRUE))
+check("pb param marks Equity-book", grepl("Equity-book", ui_str("rel_param_pb_heading", "en"), fixed = TRUE))
+check("pb lead Equity-book", grepl("Equity-book", ui_str("pb_lead_body", "en"), fixed = TRUE))
+check("zh pb lead no simplified", !grepl("默认|参数|数据|用户", ui_str("pb_lead_body", "zh-TW")))
+check("zh pb param no simplified", !grepl("默认|参数|数据|用户", ui_str("rel_param_pb_body", "zh-TW")))
 
 # --- UI mounts / mode radio ---
 mod_src <- paste(readLines("relative_multiples_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
@@ -272,6 +281,8 @@ check("multiples bridge settings tab", grepl("ynow_rel_multiples_tab_bridge", mo
 check("multiples formula banners", grepl("ynow_rel_formula_equity", mod_src, fixed = TRUE) &&
         grepl("ynow_rel_formula_enterprise", mod_src, fixed = TRUE))
 check("multiples param matrix output", grepl("ui_rel_param_matrix", mod_src, fixed = TRUE))
+check("multiples param matrix includes P/B row", grepl("rel_param_pb_heading", mod_src, fixed = TRUE) &&
+        grepl("rel_param_pb_body", mod_src, fixed = TRUE))
 check("multiples equity params", grepl('ns("trailing_eps")', mod_src, fixed = TRUE) &&
         grepl('ns("pe_multiple")', mod_src, fixed = TRUE) &&
         grepl('ns("peg_growth_pct")', mod_src, fixed = TRUE) &&
@@ -282,6 +293,11 @@ check("multiples enterprise params", grepl('ns("fcff")', mod_src, fixed = TRUE) 
 check("multiples bridge params", grepl('ns("cash")', mod_src, fixed = TRUE) &&
         grepl('ns("debt")', mod_src, fixed = TRUE) &&
         grepl('ns("shares")', mod_src, fixed = TRUE))
+
+pb_src <- paste(readLines("pb_asset_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check("pb lead banner in module", grepl("ynow_pb_lead_title", pb_src, fixed = TRUE) &&
+        grepl("ynow_pb_lead_body", pb_src, fixed = TRUE))
+check("pb marks Equity-book", grepl("Equity-book", pb_src, fixed = TRUE))
 
 sotp_src <- paste(readLines("sotp_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("sotp module UI", grepl("sotp_module_ui", sotp_src, fixed = TRUE))
@@ -351,6 +367,11 @@ check("lite hides sotp", grepl('body.ynow-lite .sidebar-menu li:has(a[data-value
 check("applyUiLocale mode help", grepl("ynow_rel_mode_help", ui_src, fixed = TRUE))
 check("applyUiLocale equity tab", grepl("ynow_rel_multiples_tab_equity", ui_src, fixed = TRUE))
 check("applyUiLocale sotp lead", grepl("ynow_sotp_lead_title", ui_src, fixed = TRUE))
+check("applyUiLocale pb lead", grepl("ynow_pb_lead_title", ui_src, fixed = TRUE) &&
+        grepl("ynow_pb_lead_body", ui_src, fixed = TRUE))
+check("About Multiples lists Equity-book P/B", grepl("Equity-book", ui_src, fixed = TRUE) &&
+        grepl("P/B（側欄 Equity-book）", ui_src, fixed = TRUE))
+check("About matrix has P/B Equity-book column", grepl("P/B（Equity-book）", ui_src, fixed = TRUE))
 
 g_src <- paste(readLines("global.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("global sources module", grepl("relative_multiples_module.R", g_src, fixed = TRUE))
