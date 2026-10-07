@@ -8,5 +8,5 @@ short=68bb97a
 message=chore: bump display version to v21.30
 captured_at=2026-10-07T16:28:00Z
 source_branch=cursor/hfv-next-period-prob-911b
-display_version=v21.30
+display_version=v21.31
 note=Canonical live line is app_21.0. Bundle 12660360 ships v21.30: HFV scenario A–D cards in 2×2 grid. Deploy via scripts/deploy_app_21.R.
