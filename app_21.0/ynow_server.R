@@ -10884,7 +10884,7 @@ server <- function(input, output, session) {
       ),
       if (length(notes_ui) > 0) {
         tags$div(
-          style = "margin:8px 0 0 0;padding:8px 0 0 0;border-top:1px dashed #ccc;",
+          style = "margin:8px 0 0 0;padding:10px 12px;background:#fafafa;border:1px dashed #ccc;border-radius:6px;",
           tags$div(
             style = "font-size:12px;font-weight:700;color:#666;margin-bottom:4px;",
             ui_str("hfv_sum_notes", loc)
