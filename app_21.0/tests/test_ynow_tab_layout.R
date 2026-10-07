@@ -226,6 +226,13 @@ check("KPI valueBox equal row height", {
   grepl("row:has(> [class*='col-'] .small-box)", ui, fixed = TRUE) &&
     grepl("align-items: stretch", ui, fixed = TRUE)
 })
+check("stock KPI grid centers value text", {
+  grepl(".ynow-kpi-grid .small-box .inner", ui, fixed = TRUE) &&
+    grepl("padding-right: 9px !important", ui, fixed = TRUE) &&
+    grepl("justify-content: center !important", ui, fixed = TRUE) &&
+    grepl("align-items: center !important", ui, fixed = TRUE) &&
+    grepl("left-shifts numerals for the decorative icon", ui, fixed = TRUE)
+})
 
 macro <- paste(readLines("macro_market_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("bubble at Macro bottom", {
