@@ -10278,25 +10278,11 @@ server <- function(input, output, session) {
       insample = ui_str("hfv_oos_insample", loc),
       ui_str("hfv_oos_realized", loc)
     )
-    # Three-question map (not a single "conclusion" that duplicates Q1).
-    # Q1 = price direction R; Q2 = vs FV_t landing; Q3 = A–D taxonomy — independent.
+    # Two-question map (Q1 price direction; Q2 FV gap shrink/expand).
+    # Scenario taxonomy is shown below as a direct panel — not numbered as a question.
     conclusion_card <- {
       n_pairs <- as.integer(s$n %||% 0L)
-      if (n_pairs > 0L && (is.finite(s$p_up) || is.finite(s$p_above))) {
-        sc0 <- s$scenarios
-        lead0 <- if (!is.null(sc0)) as.character(sc0$most_frequent %||% NA_character_)[1] else NA_character_
-        latest0 <- if (!is.null(sc0)) as.character(sc0$latest %||% NA_character_)[1] else NA_character_
-        if (!nzchar(lead0 %||% "") || identical(lead0, "NA")) lead0 <- NA_character_
-        if (!nzchar(latest0 %||% "") || identical(latest0, "NA")) latest0 <- NA_character_
-        sc_lab0 <- function(code) {
-          key <- switch(
-            as.character(code)[1],
-            A = "hfv_scenario_A", B = "hfv_scenario_B",
-            C = "hfv_scenario_C", D = "hfv_scenario_D",
-            "hfv_scenario_other"
-          )
-          ui_str(key, loc)
-        }
+      if (n_pairs > 0L && (is.finite(s$p_up) || is.finite(s$p_above) || is.finite(s$p_toward))) {
         q1_line <- if (is.finite(s$p_up)) {
           sprintf(ui_str("hfv_sum_qmap_q1_fmt", loc), pct(s$p_up), n_pairs)
         } else {
@@ -10309,15 +10295,6 @@ server <- function(input, output, session) {
           )
         } else {
           ui_str("hfv_sum_qmap_q2_na", loc)
-        }
-        q3_line <- {
-          lead_txt <- if (!is.na(lead0) && lead0 %in% c("A", "B", "C", "D")) {
-            sc_lab0(lead0)
-          } else {
-            ui_str("hfv_scenario_other", loc)
-          }
-          latest_txt <- if (!is.na(latest0)) sc_lab0(latest0) else "—"
-          sprintf(ui_str("hfv_sum_qmap_q3_fmt", loc), lead_txt, latest_txt)
         }
         q12_n <- as.integer(s$q12_diverge_n %||% 0L)
         tags$div(
@@ -10334,8 +10311,7 @@ server <- function(input, output, session) {
           tags$ul(
             style = "margin:8px 0 0 0;padding-left:18px;",
             tags$li(tags$span(style = "font-weight:600;", q1_line)),
-            tags$li(tags$span(style = "font-weight:600;", q2_line)),
-            tags$li(tags$span(style = "font-weight:600;", q3_line))
+            tags$li(tags$span(style = "font-weight:600;", q2_line))
           ),
           tags$div(
             style = "margin:8px 0 0 0;color:#6c757d;font-size:11.5px;line-height:1.5;",
@@ -10350,12 +10326,6 @@ server <- function(input, output, session) {
                 as.integer(s$n_up_below %||% 0L),
                 as.integer(s$n_down_above %||% 0L)
               )
-            )
-          } else NULL,
-          if (!is.na(lead0) && !is.na(latest0) && !identical(lead0, latest0)) {
-            tags$div(
-              style = "margin:6px 0 0 0;color:#555;font-size:12px;line-height:1.5;",
-              ui_str("hfv_sum_q3_diverge", loc)
             )
           } else NULL,
           tags$div(

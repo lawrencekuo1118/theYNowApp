@@ -397,16 +397,17 @@ sum_fc <- summarize_fv_market_validation(vd, oos_mode = "insample", locale = "en
 check("summary attaches direction_tip", is.list(sum_fc$direction_tip) && is.finite(sum_fc$direction_tip$p_up_hat))
 check("summary attaches forecasts", is.data.frame(sum_fc$direction_forecasts) && nrow(sum_fc$direction_forecasts) >= 1L)
 
-# Locale keys for three-question map (en + zh-TW)
+# Locale keys for two-question map + direct scenario panel (en + zh-TW)
 loc_path <- file.path(app_dir, "ui_locale.R")
 if (file.exists(loc_path)) {
   source(loc_path, local = TRUE, encoding = "UTF-8")
   for (loc in c("en", "zh-TW")) {
     for (k in c(
       "hfv_sum_qmap_label", "hfv_sum_qmap_lead", "hfv_sum_qmap_relation",
-      "hfv_sum_qmap_q1_fmt", "hfv_sum_qmap_q2_fmt", "hfv_sum_qmap_q3_fmt",
-      "hfv_sum_q12_diverge_fmt", "hfv_sum_q3_diverge",
+      "hfv_sum_qmap_q1_fmt", "hfv_sum_qmap_q2_fmt",
+      "hfv_sum_q12_diverge_fmt",
       "hfv_sum_price_meaning", "hfv_sum_fv_meaning", "hfv_sum_scenario_meaning",
+      "hfv_sum_scenario_block",
       "hfv_scenario_concl_diverge",
       "hfv_toward_odds_fmt", "hfv_toward_read", "hfv_col_toward",
       "hfv_toward_toward", "hfv_toward_away",
@@ -416,6 +417,17 @@ if (file.exists(loc_path)) {
       v <- ui_str(k, loc)
       check(paste0("locale ", loc, " ", k), is.character(v) && nzchar(v) && !grepl("^\\[", v))
     }
+    # Scenario panel must NOT be labeled as Q3 / 問題三
+    sc_title <- ui_str("hfv_sum_scenario_block", loc)
+    check(
+      paste0("scenario title not Q3 ", loc),
+      !grepl("Q3|問題三", sc_title)
+    )
+    qmap <- ui_str("hfv_sum_qmap_label", loc)
+    check(
+      paste0("qmap is two-question ", loc),
+      grepl("Two-question|兩問題", qmap)
+    )
   }
   # Softened C emph must stay veto (not absolute buy order)
   check("C emph veto en", grepl("Veto|veto|buy signal", ui_str("hfv_scenario_concl_C_emph", "en"), ignore.case = TRUE))
