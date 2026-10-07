@@ -8,5 +8,5 @@ short=38ee4c9
 message=chore: bump display version to v21.13
 captured_at=2026-10-07T04:34:02Z
 source_branch=master
-display_version=v21.13
+display_version=v21.14
 note=Canonical live line is app_21.0. Bundle 12657970 ships v21.13: Multiples sync from latest statements + APP_DEFAULTS; no Yahoo market P/E or price÷P/E back-solve. Deploy via scripts/deploy_app_21.R.
