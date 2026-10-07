@@ -46,7 +46,7 @@ sotp_module_ui <- function(id) {
             id = "ynow_sotp_lead_body",
             "Enterprise-structural Implied Price (sidebar sibling of Multiples → Enterprise). ",
             "Decompose ≥2 segment revenues × per-segment EV/Sales, sum EV, then share the Cash − Debt × Shares bridge. ",
-            "Not a single-firm trading multiple; not Equity-claim P/E／P/S."
+            "Not a single-firm trading multiple; not Equity-claim P/E／P/S; not Equity-book P/B."
           )
         )
       )

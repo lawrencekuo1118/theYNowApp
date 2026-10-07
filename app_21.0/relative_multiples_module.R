@@ -471,7 +471,8 @@ calc_sotp_revenue_implied <- function(segments, ev_sales_multiple, cash, debt, s
 # ==========================================
 # Capital-claim families (radio): equity | enterprise
 # Equity = P/E · Fwd P/E · PEG · P/S; Enterprise = EV/* ; SOTP = sidebar Enterprise-structural.
-# Settings tabs: Overview + Equity + Enterprise + Bridge. P/B stays separate.
+# P/B = sidebar Equity-book Fair Value (assumption map only — not a Multiples radio family).
+# Settings tabs: Overview + Equity + Enterprise + Bridge.
 .rel_formula_banner <- function(id, text) {
   div(
     id = id,
@@ -514,7 +515,8 @@ relative_multiples_module_ui <- function(id) {
           tags$span(
             id = "ynow_rel_multiples_lead_body",
             "Implied Price by capital-claim family (Equity vs Enterprise) — not Intrinsic Value / Fair Value. ",
-            "P/S sits under Equity; SOTP is a separate sidebar Enterprise-structural engine. P/B stays separate."
+            "P/S sits under Equity; SOTP is the sidebar Enterprise-structural engine; ",
+            "P/B is the sidebar Equity-book Fair Value sibling (see assumption map)."
           )
         )
       )
@@ -543,7 +545,7 @@ relative_multiples_module_ui <- function(id) {
             tags$p(
               id = "ynow_rel_mode_help",
               class = "help-block",
-              "Equity: equity-claim multiples (EPS×P/E, Revenue×P/S; PEG is an indicator). Enterprise: EV×metric then Cash−Debt bridge. SOTP (sidebar) shares the Enterprise cash/debt/shares bridge with per-segment EV/Sales."
+              "Equity: equity-claim multiples (EPS×P/E, Revenue×P/S; PEG is an indicator). Enterprise: EV×metric then Cash−Debt bridge. SOTP (sidebar) shares the Enterprise cash/debt/shares bridge with per-segment EV/Sales. P/B (sidebar) is Equity-book Fair Value: (BVPS／TBVPS／NAVPS)×Target P/B — shares Shares only."
             ),
             uiOutput(ns("ui_rel_param_matrix"))
           )
@@ -1024,7 +1026,8 @@ relative_multiples_module_server <- function(id,
         tags$p(style = "margin:0 0 4px 0;", tags$b(.str("rel_param_shared_heading")), " ", .str("rel_param_shared_body")),
         tags$p(style = "margin:0 0 4px 0;", tags$b(.str("rel_param_equity_heading")), " ", .str("rel_param_equity_body")),
         tags$p(style = "margin:0 0 4px 0;", tags$b(.str("rel_param_enterprise_heading")), " ", .str("rel_param_enterprise_body")),
-        tags$p(style = "margin:0;", tags$b(.str("rel_param_sotp_heading")), " ", .str("rel_param_sotp_body"))
+        tags$p(style = "margin:0 0 4px 0;", tags$b(.str("rel_param_sotp_heading")), " ", .str("rel_param_sotp_body")),
+        tags$p(style = "margin:0;", tags$b(.str("rel_param_pb_heading")), " ", .str("rel_param_pb_body"))
       )
     })
 
