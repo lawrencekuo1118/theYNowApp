@@ -8,5 +8,5 @@ short=baf04f4
 message=chore: bump display version to v21.27
 captured_at=2026-10-07T15:40:00Z
 source_branch=cursor/hfv-next-period-prob-911b
-display_version=v21.27
+display_version=v21.28
 note=Canonical live line is app_21.0. Bundle 12660132 ships v21.27: HFV investor-report chapters II–VI. Deploy via scripts/deploy_app_21.R.
