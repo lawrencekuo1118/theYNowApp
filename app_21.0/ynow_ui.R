@@ -8484,6 +8484,7 @@ ui <- dashboardPage(
           display: flex !important;
           flex-direction: column !important;
           justify-content: center !important;
+          align-items: stretch !important;
           float: none !important;
           width: 100% !important;
           min-height: 74px !important;
@@ -8501,8 +8502,20 @@ ui <- dashboardPage(
         .ynow-kpi-grid .small-box.ynow-kpi-na .icon-large {
           color: rgba(0, 0, 0, 0.12);
         }
+        /* Value + label: true vertical & horizontal center.
+           Override global .small-box .inner { padding-right:44px; flex:1 } which
+           left-shifts numerals for the decorative icon and pins content to the top. */
         .ynow-kpi-grid .small-box .inner {
+          display: flex !important;
+          flex-direction: column !important;
+          justify-content: center !important;
+          align-items: center !important;
+          flex: 1 1 auto !important;
+          width: 100% !important;
+          height: 100% !important;
+          box-sizing: border-box !important;
           padding: 6px 9px !important;
+          padding-right: 9px !important;
           text-align: center !important;
         }
         .ynow-kpi-grid .small-box .inner h3 {
@@ -8511,6 +8524,9 @@ ui <- dashboardPage(
           margin: 0 0 5px 0 !important;
           white-space: normal !important;
           overflow-wrap: anywhere;
+          text-align: center !important;
+          width: 100% !important;
+          max-width: 100% !important;
         }
         .ynow-kpi-grid .small-box .inner p {
           font-size: clamp(10px, 0.75vw, 11px) !important;
@@ -8518,6 +8534,8 @@ ui <- dashboardPage(
           font-weight: 500 !important;
           margin: 0 !important;
           line-height: 1.2 !important;
+          text-align: center !important;
+          width: 100% !important;
         }
         .ynow-kpi-grid .small-box .icon-large {
           font-size: 37px !important;
