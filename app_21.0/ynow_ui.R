@@ -16,7 +16,7 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v21.33"
+  "v21.32"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
@@ -146,7 +146,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v21.33) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報抓取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v21.32) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報抓取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -165,7 +165,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v21.33) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v21.32) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -267,7 +267,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v21.33）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v21.32）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -284,7 +284,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v21.33) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v21.32) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -1901,10 +1901,11 @@ beta_rolling_section_ui <- function() {
                   id = "ynow_hfv_method_body",
                   style = "font-size:12.5px;color:#444;line-height:1.55;margin:0 0 8px 0;",
                   paste0(
-                    "Validation report — not a trading backtest or order ticket. Two control layers: ",
-                    "Chart Overlay Models (multi-select) drive chart FV lines and scenario taxonomy A–D ",
-                    "(average FV when several are checked; show only with an A–D conclusion); ",
-                    "Replay Model (single-select) drives odds, tip P(up), MOS outlook, gap-to-FV, and the pair table."
+                    "Validation report — not a trading backtest or order ticket. Same Replay sample, three layers: ",
+                    "(1) market-price move R and causal tip P(up) from Replay FV × price (MOS; Date_next≤tip); ",
+                    "(2) gap to FV shrink/expand plus landing; ",
+                    "(3) scenario taxonomy A–D from mispricing / FV momentum / price momentum. ",
+                    "Chart overlays may be multi-select; stats use the Replay model only."
                   )
                 ),
                 tags$p(
@@ -1984,21 +1985,10 @@ beta_rolling_section_ui <- function() {
                       "bt_hfv_show_bench",
                       tags$span(id = "ynow_hfv_show_bench_label", "Show benchmark"),
                       value = isTRUE(APP_DEFAULTS$bt_hfv_show_bench)
-                    ),
-                    tags$p(
-                      id = "ynow_hfv_overlay_vs_replay_note",
-                      class = "ynow-hfv-overlay-replay-note",
-                      paste0(
-                        "Chart Overlay Models: stack FV lines on the chart and classify scenarios A–D ",
-                        "(multi-select → average FV first). Replay Model (Section II): single model for ",
-                        "odds / tip P(up) / MOS / gap-to-FV / pair table — not the chart average."
-                      )
                     )
                   )
                 ),
                 plotlyOutput("bt_hfv_timeline", height = "420px") %>% withSpinner(),
-                # Historical scenarios A–D: under chart; Overlay only; hidden until A–D conclusion
-                uiOutput("bt_hfv_scenario_findings"),
                 uiOutput("bt_session_params")
               )
             ),
@@ -2150,7 +2140,7 @@ beta_rolling_section_ui <- function() {
               )
             ),
 
-            # --- Chapter V: Period detail appendix (scenarios live under Ch1 chart) ---
+            # --- Chapter V: Scenario taxonomy ---
             tags$section(
               class = "ynow-hfv-chapter",
               tags$div(
@@ -2159,19 +2149,42 @@ beta_rolling_section_ui <- function() {
                 tags$h3(
                   class = "ynow-hfv-chapter__title",
                   id = "ynow_hfv_ch5_title",
-                  "Period detail (appendix)"
+                  "Historical scenario taxonomy"
                 )
               ),
               tags$p(
                 class = "ynow-hfv-chapter__lead",
                 id = "ynow_hfv_ch5_lead",
+                "Joint FV–price patterns (A–D or other) — education / veto labels, not an order ticket."
+              ),
+              tags$div(
+                class = "ynow-hfv-chapter__body",
+                uiOutput("bt_hfv_scenario_findings")
+              )
+            ),
+
+            # --- Chapter VI: Period detail appendix ---
+            tags$section(
+              class = "ynow-hfv-chapter",
+              tags$div(
+                class = "ynow-hfv-chapter__head",
+                tags$span(class = "ynow-hfv-chapter__kicker", id = "ynow_hfv_ch6_kicker", "Section VI"),
+                tags$h3(
+                  class = "ynow-hfv-chapter__title",
+                  id = "ynow_hfv_ch6_title",
+                  "Period detail (appendix)"
+                )
+              ),
+              tags$p(
+                class = "ynow-hfv-chapter__lead",
+                id = "ynow_hfv_ch6_lead",
                 "Pair-by-pair outcomes for audit — not a buy/sell score."
               ),
               tags$div(
                 class = "ynow-hfv-chapter__body",
                 tags$div(
                   class = "ynow-hfv-findings-block",
-                  # Locale target; chapter V lead already names the pair table.
+                  # Locale target; chapter VI lead already names the pair table.
                   tags$span(id = "ynow_hfv_table_detail", style = "display:none;", "Pair table"),
                   tags$div(
                     style = "overflow-x:auto; width:100%;",
@@ -2828,9 +2841,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v21.33</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v21.32</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v21.33</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v21.32</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -5631,9 +5644,8 @@ ui <- dashboardPage(
         }
         .ynow-hfv-toolbar {
           display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: 14px 16px;
-          width: 100%;
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+          gap: 12px 14px;
           margin: 0 0 18px 0;
           padding: 14px 16px;
           background: #fafafa;
@@ -5643,14 +5655,12 @@ ui <- dashboardPage(
         }
         .ynow-hfv-toolbar--above-chart {
           margin: 8px 0 12px 0;
-          grid-template-columns: 1fr;
         }
         .ynow-hfv-toolbar--in-ch2 {
           margin: 0 0 16px 0;
         }
         .ynow-hfv-toolbar__group {
           min-width: 0;
-          width: 100%;
           display: flex;
           flex-direction: column;
           gap: 6px;
@@ -5660,7 +5670,6 @@ ui <- dashboardPage(
         }
         .ynow-hfv-toolbar__group .form-group {
           margin: 0;
-          width: 100%;
         }
         .ynow-hfv-toolbar__group > label.control-label,
         .ynow-hfv-toolbar .shiny-input-radiogroup > label.control-label,
@@ -5675,41 +5684,25 @@ ui <- dashboardPage(
           color: #666;
           line-height: 1.35;
         }
-        /* Options: equal cells, fill group width, at most two rows */
         .ynow-hfv-toolbar .shiny-options-group {
-          display: grid !important;
-          grid-auto-flow: row;
+          display: flex !important;
+          flex-wrap: wrap !important;
           align-items: stretch;
-          gap: 6px 8px;
+          gap: 6px;
           margin: 0;
           padding: 0;
           clear: none;
-          width: 100%;
-          box-sizing: border-box;
-        }
-        .ynow-hfv-toolbar #bt_fv_models .shiny-options-group,
-        .ynow-hfv-toolbar #bt_fv_replay_model .shiny-options-group,
-        .ynow-hfv-toolbar #bt_fv_conv_window .shiny-options-group {
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-        }
-        .ynow-hfv-toolbar #bt_fv_analysis_freq .shiny-options-group {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-        .ynow-hfv-toolbar #bt_fv_oos_mode .shiny-options-group {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
         }
         .ynow-hfv-toolbar .radio,
         .ynow-hfv-toolbar .radio-inline,
         .ynow-hfv-toolbar .checkbox,
         .ynow-hfv-toolbar .checkbox-inline {
           float: none !important;
-          display: flex !important;
-          align-items: stretch;
+          display: inline-flex !important;
+          align-items: center;
           margin: 0 !important;
           padding: 0 !important;
           min-height: 0;
-          width: 100%;
-          box-sizing: border-box;
         }
         .ynow-hfv-toolbar .radio > label,
         .ynow-hfv-toolbar .radio-inline,
@@ -5717,25 +5710,18 @@ ui <- dashboardPage(
         .ynow-hfv-toolbar .checkbox > label,
         .ynow-hfv-toolbar .checkbox-inline,
         .ynow-hfv-toolbar .checkbox-inline > label {
-          display: flex !important;
-          align-items: center;
-          justify-content: center;
-          width: 100%;
-          box-sizing: border-box;
           margin: 0 !important;
-          padding: 8px 10px 8px 28px !important;
+          padding: 7px 12px 7px 28px !important;
           border: 1px solid #d0d0d0;
-          border-radius: 8px;
+          border-radius: 999px;
           background: #fff;
           font-size: 12.5px;
           font-weight: 500;
-          line-height: 1.3;
+          line-height: 1.25;
           color: #222;
-          white-space: normal;
-          text-align: center;
+          white-space: nowrap;
           cursor: pointer;
           transition: border-color .12s ease, background .12s ease, box-shadow .12s ease;
-          min-height: 38px;
         }
         .ynow-hfv-toolbar .radio input[type="radio"],
         .ynow-hfv-toolbar .radio-inline input[type="radio"],
@@ -5825,58 +5811,6 @@ ui <- dashboardPage(
           font-weight: 700;
           color: #333;
         }
-        .ynow-hfv-kpi-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
-          gap: 10px;
-          align-items: stretch;
-          width: 100%;
-          margin: 0 0 10px 0;
-          box-sizing: border-box;
-        }
-        .ynow-hfv-kpi-cell {
-          display: flex;
-          flex-direction: column;
-          justify-content: flex-start;
-          gap: 4px;
-          min-height: 92px;
-          height: 100%;
-          padding: 10px 12px;
-          box-sizing: border-box;
-          border: 1px solid #e8e8e8;
-          border-radius: 4px;
-          background: #fff;
-        }
-        .ynow-hfv-scenario-under-chart__head {
-          display: flex;
-          flex-wrap: wrap;
-          align-items: baseline;
-          gap: 6px 10px;
-          margin: 0 0 4px 0;
-        }
-        .ynow-hfv-scenario-under-chart__title {
-          margin: 0;
-          font-size: 14px;
-          font-weight: 700;
-          color: #1a1a1a;
-          line-height: 1.35;
-        }
-        .ynow-hfv-scenario-under-chart__lead {
-          margin: 0 0 10px 0;
-          font-size: 12px;
-          line-height: 1.45;
-          color: #666;
-        }
-        .ynow-hfv-overlay-replay-note {
-          margin: 8px 0 0 0;
-          padding: 8px 10px;
-          background: #f5f7fa;
-          border: 1px dashed #c5cdd8;
-          border-radius: 4px;
-          font-size: 11.5px;
-          line-height: 1.45;
-          color: #555;
-        }
         @media (max-width: 767px) {
           .ynow-hfv-toolbar {
             grid-template-columns: 1fr;
@@ -5886,22 +5820,12 @@ ui <- dashboardPage(
           .ynow-hfv-toolbar__group--wide {
             grid-column: auto;
           }
-          .ynow-hfv-toolbar #bt_fv_models .shiny-options-group,
-          .ynow-hfv-toolbar #bt_fv_replay_model .shiny-options-group,
-          .ynow-hfv-toolbar #bt_fv_conv_window .shiny-options-group,
-          .ynow-hfv-toolbar #bt_fv_analysis_freq .shiny-options-group,
-          .ynow-hfv-toolbar #bt_fv_oos_mode .shiny-options-group {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-          }
           .ynow-hfv-toolbar .radio > label,
           .ynow-hfv-toolbar .radio-inline,
           .ynow-hfv-toolbar .checkbox > label,
           .ynow-hfv-toolbar .checkbox-inline {
             white-space: normal;
             max-width: 100%;
-          }
-          .ynow-hfv-kpi-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
           }
           .ynow-hfv-chapter__body {
             padding: 12px;
@@ -5935,8 +5859,8 @@ ui <- dashboardPage(
           padding-top: 0;
           padding-left: 0;
         }
-        /* 驗證樣本口徑：非 toolbar 舊直排；toolbar 內改由 .ynow-hfv-toolbar 網格覆蓋 */
-        .ynow-hfv-settings:not(.ynow-hfv-toolbar) #bt_fv_oos_mode .shiny-options-group {
+        /* 驗證樣本口徑：工具列內改為橫向 chip；舊直排規則僅保留於非 toolbar */
+        .ynow-hfv-settings #bt_fv_oos_mode .shiny-options-group {
           display: flex !important;
           flex-direction: column !important;
           flex-wrap: nowrap !important;
@@ -5945,7 +5869,7 @@ ui <- dashboardPage(
           row-gap: 4px;
           text-align: left;
         }
-        .ynow-hfv-settings:not(.ynow-hfv-toolbar) #bt_fv_oos_mode .radio {
+        .ynow-hfv-settings #bt_fv_oos_mode .radio {
           display: block !important;
           float: none !important;
           width: auto;
@@ -5956,7 +5880,7 @@ ui <- dashboardPage(
           padding-left: 0;
           text-align: left;
         }
-        .ynow-hfv-settings:not(.ynow-hfv-toolbar) #bt_fv_oos_mode .radio > label {
+        .ynow-hfv-settings #bt_fv_oos_mode .radio > label {
           display: inline-block;
           text-align: left;
           white-space: normal;
@@ -6924,14 +6848,12 @@ ui <- dashboardPage(
             if (hfvCh5T && s.hfv_ch5_title) hfvCh5T.textContent = s.hfv_ch5_title;
             var hfvCh5Lead = document.getElementById('ynow_hfv_ch5_lead');
             if (hfvCh5Lead && s.hfv_ch5_lead) hfvCh5Lead.textContent = s.hfv_ch5_lead;
-            var hfvScUnderK = document.getElementById('ynow_hfv_scenario_under_kicker');
-            if (hfvScUnderK && s.hfv_scenario_under_kicker) hfvScUnderK.textContent = s.hfv_scenario_under_kicker;
-            var hfvScUnderT = document.getElementById('ynow_hfv_scenario_under_title');
-            if (hfvScUnderT && s.hfv_scenario_under_title) hfvScUnderT.textContent = s.hfv_scenario_under_title;
-            var hfvScUnderL = document.getElementById('ynow_hfv_scenario_under_lead');
-            if (hfvScUnderL && s.hfv_scenario_under_lead) hfvScUnderL.textContent = s.hfv_scenario_under_lead;
-            var hfvOvNote = document.getElementById('ynow_hfv_overlay_vs_replay_note');
-            if (hfvOvNote && s.hfv_overlay_vs_replay_note) hfvOvNote.textContent = s.hfv_overlay_vs_replay_note;
+            var hfvCh6K = document.getElementById('ynow_hfv_ch6_kicker');
+            if (hfvCh6K && s.hfv_ch6_kicker) hfvCh6K.textContent = s.hfv_ch6_kicker;
+            var hfvCh6T = document.getElementById('ynow_hfv_ch6_title');
+            if (hfvCh6T && s.hfv_ch6_title) hfvCh6T.textContent = s.hfv_ch6_title;
+            var hfvCh6Lead = document.getElementById('ynow_hfv_ch6_lead');
+            if (hfvCh6Lead && s.hfv_ch6_lead) hfvCh6Lead.textContent = s.hfv_ch6_lead;
             var hfvParamInv = document.getElementById('ynow_hfv_param_inv_title');
             if (hfvParamInv && (s.hfv_param_inv_title || s.box_hfv_param_inventory)) {
               hfvParamInv.textContent = s.hfv_param_inv_title || s.box_hfv_param_inventory;

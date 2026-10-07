@@ -479,11 +479,7 @@ if (file.exists(loc_path)) {
       "hfv_fc_title", "hfv_fc_formula", "hfv_fc_tip_fmt", "hfv_fc_caveat",
       "hfv_col_p_up_hat", "hfv_fc_method_bucket",
       "hfv_ch2_title", "hfv_ch2_lead", "hfv_ch3_title", "hfv_ch4_title",
-      "hfv_ch5_title",
-      "hfv_scenario_under_title", "hfv_scenario_under_lead",
-      "hfv_overlay_vs_replay_note", "hfv_scenario_overlay_models_fmt",
-      "hfv_kpi_over_rate", "hfv_kpi_over_note",
-      "hfv_kpi_ch2_p_up", "hfv_kpi_ch3_p_up", "hfv_kpi_ch4_toward"
+      "hfv_ch5_title", "hfv_ch6_title"
     )) {
       v <- ui_str(k, loc)
       check(paste0("locale ", loc, " ", k), is.character(v) && nzchar(v) && !grepl("^\\[", v))
@@ -560,48 +556,6 @@ if (file.exists(loc_path)) {
   check("FV block names 縮小 zh", grepl("縮小", ui_str("hfv_sum_fv_block", "zh-TW")))
   check("FV meaning shrink en", grepl("shrink|toward", ui_str("hfv_sum_fv_meaning", "en"), ignore.case = TRUE))
   check("FV meaning 縮小 zh", grepl("縮小", ui_str("hfv_sum_fv_meaning", "zh-TW")))
-  check("ch5 is period detail en", grepl("Period detail|appendix", ui_str("hfv_ch5_title", "en"), ignore.case = TRUE))
-  check("ch5 is period detail zh", grepl("明細|附錄", ui_str("hfv_ch5_title", "zh-TW")))
-  check("overlay vs replay note mentions Overlay", grepl("Overlay|疊加", ui_str("hfv_overlay_vs_replay_note", "en")))
-}
-
-# Overlay multi-select → average FV (scenario driver)
-if (exists("overlay_avg_fair_value_df", mode = "function")) {
-  vd_ov <- data.frame(
-    Date = as.Date(c("2020-01-01", "2021-01-01", "2022-01-01")),
-    hist_price = c(100, 110, 90),
-    fv_dcf = c(120, 130, 100),
-    fv_ddm = c(80, 90, 80),
-    fv_ri = c(100, 110, 90),
-    fair_value = c(120, 130, 100),
-    mos = c(0.2, 0.15, 0.1),
-    signal = c("便宜", "便宜", "便宜"),
-    stringsAsFactors = FALSE
-  )
-  avg1 <- overlay_avg_fair_value_df(vd_ov, "dcf")
-  check("overlay single = that model", isTRUE(abs(avg1$fair_value[1] - 120) < 1e-9))
-  avg2 <- overlay_avg_fair_value_df(vd_ov, c("dcf", "ddm"))
-  check("overlay multi = mean", isTRUE(abs(avg2$fair_value[1] - 100) < 1e-9))
-  check("overlay empty models → NULL", is.null(overlay_avg_fair_value_df(vd_ov, character(0))))
-  # Majority underpricing metrics: under > over
-  m_und <- .compute_market_pricing_metrics(data.frame(
-    hist_price = c(80, 90, 70, 95),
-    fair_value = c(100, 100, 100, 100),
-    mos = c(0.2, 0.1, 0.3, 0.05),
-    signal = rep("便宜", 4),
-    stringsAsFactors = FALSE
-  ))
-  check("majority under pct", isTRUE(m_und$pct_market_under > m_und$pct_market_over))
-  check("dominant = under", isTRUE(is.finite(m_und$market_pricing_dominant_pct) &&
-    abs(m_und$market_pricing_dominant_pct - m_und$pct_market_under) < 1e-9))
-  m_ovr <- .compute_market_pricing_metrics(data.frame(
-    hist_price = c(120, 130, 140, 110),
-    fair_value = c(100, 100, 100, 100),
-    mos = c(-0.2, -0.3, -0.4, -0.1),
-    signal = rep("偏貴", 4),
-    stringsAsFactors = FALSE
-  ))
-  check("majority over pct", isTRUE(m_ovr$pct_market_over > m_ovr$pct_market_under))
 }
 
 message("ALL PASS")

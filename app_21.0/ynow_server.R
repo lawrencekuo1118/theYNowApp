@@ -9664,35 +9664,7 @@ server <- function(input, output, session) {
     } else {
       bias
     }
-    pct_under <- suppressWarnings(as.numeric(m$pct_market_under %||% m$pct_strategy_under %||% NA_real_)[1])
-    pct_over <- suppressWarnings(as.numeric(m$pct_market_over %||% m$pct_value_over %||% NA_real_)[1])
-    # Majority-only: show underpricing OR overpricing — whichever share is larger
-    maj_is_under <- if (is.finite(pct_under) && is.finite(pct_over)) {
-      pct_under >= pct_over
-    } else if (is.finite(pct_under)) {
-      TRUE
-    } else if (is.finite(pct_over)) {
-      FALSE
-    } else {
-      NA
-    }
-    maj_label <- if (isTRUE(maj_is_under)) {
-      ui_str("hfv_kpi_under_rate", loc)
-    } else if (identical(maj_is_under, FALSE)) {
-      ui_str("hfv_kpi_over_rate", loc)
-    } else {
-      ui_str("hfv_kpi_under_rate", loc)
-    }
-    maj_pct <- if (isTRUE(maj_is_under)) pct_under else if (identical(maj_is_under, FALSE)) pct_over else NA_real_
-    maj_col <- if (isTRUE(maj_is_under)) "#00a65a" else if (identical(maj_is_under, FALSE)) "#d9534f" else "#666"
-    maj_bg <- if (isTRUE(maj_is_under)) "#f7fbf8" else if (identical(maj_is_under, FALSE)) "#fdf7f7" else "#fafafa"
-    maj_note <- if (isTRUE(maj_is_under)) {
-      ui_str("hfv_kpi_under_note", loc)
-    } else if (identical(maj_is_under, FALSE)) {
-      ui_str("hfv_kpi_over_note", loc)
-    } else {
-      ui_str("hfv_kpi_under_note", loc)
-    }
+    pct_under <- m$pct_market_under %||% m$pct_value_over
     last_sig <- as.character(m$last_signal %||% "—")
     sig_col <- if (grepl("便宜", last_sig, fixed = TRUE) || grepl("Cheap", last_sig, fixed = TRUE)) {
       "#00a65a"
@@ -9710,25 +9682,26 @@ server <- function(input, output, session) {
     } else {
       last_sig
     }
-    .hfv_kpi_cell <- function(label, value, note = NULL, color = "#222", bg = "#fff", border = "#ddd") {
-      tags$div(
-        class = "ynow-hfv-kpi-cell",
-        style = paste0("background:", bg, ";border-left:4px solid ", border, ";"),
-        tags$div(class = "ynow-kpi-stat-label", label),
-        tags$div(class = "ynow-kpi-stat-value", style = paste0("color:", color, ";"), value),
-        if (!is.null(note) && nzchar(as.character(note)[1])) {
-          tags$div(class = "ynow-kpi-stat-note", note)
-        } else NULL
-      )
-    }
     tags$div(
-      class = "ynow-hfv-kpi-grid",
-      .hfv_kpi_cell(ui_str("hfv_kpi_hist_pricing", loc), bias_val, color = bias_col, bg = bias_bg, border = bias_col),
-      .hfv_kpi_cell(maj_label, .fmt_pct(maj_pct, 0), note = maj_note, color = maj_col, bg = maj_bg, border = maj_col),
-      .hfv_kpi_cell(ui_str("hfv_kpi_last_signal", loc), last_sig_disp,
-                    note = ui_str("hfv_kpi_signal_note", loc), color = sig_col, bg = "#fff", border = sig_col),
-      .hfv_kpi_cell(ui_str("hfv_kpi_mean_mos", loc), .fmt_pct(m$mean_hist_mos),
-                    color = "#222222", bg = "#f5f5f5", border = "#222222")
+      style = "display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px;",
+      tags$div(style = paste0("flex:1;min-width:120px;padding:8px 10px;background:", bias_bg,
+                              ";border-left:4px solid ", bias_col, ";"),
+               tags$div(class = "ynow-kpi-stat-label", ui_str("hfv_kpi_hist_pricing", loc)),
+               tags$div(class = "ynow-kpi-stat-value", style = paste0("color:", bias_col, ";"), bias_val)),
+      tags$div(style = "flex:1;min-width:120px;padding:8px 10px;background:#f7fbf8;border-left:4px solid #00a65a;",
+               tags$div(class = "ynow-kpi-stat-label", ui_str("hfv_kpi_under_rate", loc)),
+               tags$div(class = "ynow-kpi-stat-value", style = "color:#00a65a;",
+                        .fmt_pct(pct_under, 0)),
+               tags$div(class = "ynow-kpi-stat-note",
+                        ui_str("hfv_kpi_under_note", loc))),
+      tags$div(style = "flex:1;min-width:120px;padding:8px 10px;background:#fff;",
+               tags$div(class = "ynow-kpi-stat-label", ui_str("hfv_kpi_last_signal", loc)),
+               tags$div(class = "ynow-kpi-stat-value", style = paste0("color:", sig_col, ";"), last_sig_disp),
+               tags$div(class = "ynow-kpi-stat-note",
+                        ui_str("hfv_kpi_signal_note", loc))),
+      tags$div(style = "flex:1;min-width:120px;padding:8px 10px;background:#f5f5f5;border-left:4px solid #222222;",
+               tags$div(class = "ynow-kpi-stat-label", ui_str("hfv_kpi_mean_mos", loc)),
+               tags$div(class = "ynow-kpi-stat-value", style = "color:#222222;", .fmt_pct(m$mean_hist_mos)))
     )
   })
 
@@ -10237,7 +10210,7 @@ server <- function(input, output, session) {
     list(from = NULL, to = NULL)
   })
 
-  .bt_hfv_valuation_df <- function() {
+  bt_fv_conv <- reactive({
     freq <- .bt_selected_rebal_freq()
     res <- bt_result()
     fv_only <- bt_hfv_fv()
@@ -10254,15 +10227,6 @@ server <- function(input, output, session) {
         vd <- fv_only$valuation_df
       }
     }
-    vd
-  }
-
-  #' Replace fair_value with equal-weight mean of selected overlay model columns.
-  .bt_overlay_avg_valuation_df <- function(vd, models) {
-    overlay_avg_fair_value_df(vd, models)
-  }
-
-  .bt_run_fv_validation <- function(vd) {
     if (is.null(vd)) return(NULL)
     b <- .bt_fv_conv_bounds()
     mode <- as.character(input$bt_fv_oos_mode %||% "realized")[1]
@@ -10284,25 +10248,484 @@ server <- function(input, output, session) {
         )
       }
     )
-  }
-
-  # Replay-driven: odds / tip / MOS / gap / pair table
-  bt_fv_conv <- reactive({
-    .bt_run_fv_validation(.bt_hfv_valuation_df())
   })
 
-  # Overlay-driven: scenario taxonomy only (multi-select → average FV)
-  bt_fv_overlay_scenarios <- reactive({
-    models <- .bt_raw_fv_models()
-    if (length(models) < 1L) return(NULL)
-    vd_base <- .bt_hfv_valuation_df()
-    vd_avg <- .bt_overlay_avg_valuation_df(vd_base, models)
-    if (is.null(vd_avg)) return(NULL)
-    s <- .bt_run_fv_validation(vd_avg)
-    if (is.null(s)) return(NULL)
-    # Scenario taxonomy UI is built in output$bt_hfv_scenario_findings
-    # from Overlay models (average FV when multi-select); not Replay.
-    scenario_card <- NULL
+  # Investor-report findings: one reactive builds chapter parts (II–V)
+  bt_hfv_findings_parts <- reactive({
+    s <- bt_fv_conv()
+    loc <- tryCatch(isolate(ui_locale()), error = function(e) "zh-TW")
+    if (is.null(s)) {
+      empty <- tags$div(
+        style = "margin:0 0 8px 0;padding:12px 14px;background:#f7f7f7;border:1px solid #e6e6e6;border-radius:6px;font-size:13px;color:#666;",
+        ui_str("hfv_sum_empty", loc)
+      )
+      # Show the empty hint once (Section II only); later chapters keep leads only.
+      return(list(
+        empty = empty,
+        investor = empty,
+        price = NULL,
+        fv = NULL,
+        scenario = NULL
+      ))
+    }
+    pct <- function(x) if (is.finite(x)) sprintf("%.0f%%", 100 * x) else "—"
+    gap_pct <- function(x) if (is.finite(x)) sprintf("%+.1f%%", 100 * x) else "—"
+    border <- if (isTRUE(s$small_sample) || isTRUE(s$no_strategy_fv)) "#f39c12" else "#00a65a"
+    period_txt <- {
+      if (!is.null(s$from) || !is.null(s$to)) {
+        sprintf(
+          ui_str("hfv_period_range_fmt", loc),
+          if (is.null(s$from)) "…" else format(s$from, "%Y-%m-%d"),
+          if (is.null(s$to)) "…" else format(s$to, "%Y-%m-%d")
+        )
+      } else ui_str("hfv_period_all", loc)
+    }
+    oos_lab <- switch(
+      as.character(s$oos_mode %||% "realized")[1],
+      realized = ui_str("hfv_oos_realized", loc),
+      expanding = ui_str("hfv_oos_expanding", loc),
+      insample = ui_str("hfv_oos_insample", loc),
+      ui_str("hfv_oos_realized", loc)
+    )
+    # Sample snapshot: market-price direction + gap-to-FV shrink/expand (same Replay pairs).
+    # Scenario taxonomy lives in its own chapter — not numbered here.
+    conclusion_card <- {
+      n_pairs <- as.integer(s$n %||% 0L)
+      if (n_pairs > 0L && (is.finite(s$p_up) || is.finite(s$p_above) || is.finite(s$p_toward))) {
+        q1_line <- if (is.finite(s$p_up)) {
+          sprintf(ui_str("hfv_sum_qmap_q1_fmt", loc), pct(s$p_up), n_pairs)
+        } else {
+          ui_str("hfv_sum_qmap_q1_na", loc)
+        }
+        q2_line <- if (is.finite(s$p_toward)) {
+          sprintf(
+            ui_str("hfv_sum_qmap_q2_fmt", loc),
+            pct(s$p_toward), pct(s$p_away), n_pairs
+          )
+        } else {
+          ui_str("hfv_sum_qmap_q2_na", loc)
+        }
+        q12_n <- as.integer(s$q12_diverge_n %||% 0L)
+        tags$div(
+          style = paste0(
+            "margin:0 0 14px 0;padding:12px 14px;background:#eef7f1;",
+            "border:1px solid #b7dfc7;border-left:4px solid ", border, ";",
+            "border-radius:6px;font-size:13px;line-height:1.55;"
+          ),
+          tags$div(
+            style = "margin:0;color:#555;font-size:12px;",
+            ui_str("hfv_sum_qmap_lead", loc)
+          ),
+          tags$ul(
+            style = "margin:8px 0 0 0;padding-left:18px;",
+            tags$li(tags$span(style = "font-weight:600;", q1_line)),
+            tags$li(tags$span(style = "font-weight:600;", q2_line))
+          ),
+          if (q12_n > 0L) {
+            tags$div(
+              style = "margin:6px 0 0 0;color:#555;font-size:12px;line-height:1.5;",
+              sprintf(
+                ui_str("hfv_sum_q12_diverge_fmt", loc),
+                q12_n,
+                as.integer(s$n_up_below %||% 0L),
+                as.integer(s$n_down_above %||% 0L)
+              )
+            )
+          } else NULL,
+          tags$div(
+            style = "margin:6px 0 0 0;color:#888;font-size:11.5px;",
+            paste0(ui_str("hfv_oos_mode_label", loc), "：", oos_lab)
+          )
+        )
+      } else {
+        tags$div(
+          style = paste0(
+            "margin:0 0 14px 0;padding:12px 14px;background:#fafafa;",
+            "border:1px solid #ddd;border-left:4px solid ", border, ";",
+            "border-radius:6px;font-size:13px;line-height:1.55;color:#666;"
+          ),
+          ui_str("hfv_sum_conclusion_na", loc)
+        )
+      }
+    }
+
+    mo <- s$mos_outlook
+    mos_body <- {
+      if (!is.null(mo) && is.list(mo) && is.finite(mo$mos_now)) {
+        tags$ul(
+          style = "margin:6px 0 0 0;padding-left:18px;",
+          tags$li(sprintf(
+            ui_str("hfv_mos_now_fmt", loc),
+            100 * mo$mos_now,
+            mo$bucket %||% "—",
+            mo$n %||% 0L,
+            if (isTRUE(mo$small_sample)) ui_str("hfv_mos_small_sample", loc) else ""
+          )),
+          tags$li(sprintf(
+            ui_str("hfv_mos_bucket_hist_fmt", loc),
+            pct(mo$p_up), pct(mo$p_down),
+            gap_pct(mo$median_ret), gap_pct(mo$mean_ret)
+          ))
+        )
+      } else {
+        tags$div(style = "margin-top:6px;color:#888;font-size:12px;", ui_str("hfv_mos_outlook_empty", loc))
+      }
+    }
+
+    price_card <- tags$div(
+      style = paste0(
+        "margin:0;padding:12px 14px;background:#fff;",
+        "border:1px solid #d9e6f2;border-left:4px solid ", border, ";border-radius:6px;",
+        "font-size:13px;line-height:1.55;"
+      ),
+      # Chapter III lead covers meaning; keep formula + stats only.
+      tags$div(style = "margin:0;color:#6c757d;font-size:11.5px;", ui_str("hfv_sum_price_formula", loc)),
+      tags$p(style = "margin:6px 0 0 0;color:#555;font-size:12px;", period_txt),
+      tags$ul(
+        style = "margin:6px 0 0 0;padding-left:18px;",
+        tags$li(sprintf(ui_str("hfv_pair_n_fmt", loc), s$n %||% 0L)),
+        tags$li(sprintf(
+          ui_str("hfv_price_odds_fmt", loc),
+          pct(s$p_up), s$n_up %||% 0L,
+          pct(s$p_down), s$n_down %||% 0L,
+          pct(s$p_flat_price), s$n_flat_price %||% 0L
+        )),
+        tags$li(sprintf(
+          ui_str("hfv_next_ret_fmt", loc),
+          gap_pct(s$median_ret), gap_pct(s$mean_ret)
+        )),
+        if (identical(s$oos_mode, "expanding") && is.finite(s$oos_dir_hit_rate)) {
+          tags$li(sprintf(
+            ui_str("hfv_oos_dir_hit_fmt", loc),
+            pct(s$oos_dir_hit_rate), s$oos_dir_n %||% 0L
+          ))
+        } else NULL
+      ),
+      tags$hr(style = "margin:10px 0 8px 0;border-top:1px dashed #c5d4ef;"),
+      tags$div(tags$b(ui_str("hfv_sum_mos_block", loc))),
+      mos_body
+    )
+
+    fv_card <- tags$div(
+      style = paste0(
+        "margin:0;padding:12px 14px;background:#fff;",
+        "border:1px solid #e2e3e5;border-left:4px solid ", border, ";border-radius:6px;",
+        "font-size:13px;line-height:1.55;"
+      ),
+      # Chapter IV lead covers meaning; keep formula + stats only.
+      tags$div(style = "margin:0;color:#6c757d;font-size:11.5px;", ui_str("hfv_sum_fv_formula", loc)),
+      tags$p(style = "margin:6px 0 0 0;color:#555;font-size:12px;", period_txt),
+      tags$ul(
+        style = "margin:6px 0 0 0;padding-left:18px;",
+        tags$li(sprintf(ui_str("hfv_pair_n_fmt", loc), s$n %||% 0L)),
+        tags$li(sprintf(
+          ui_str("hfv_toward_odds_fmt", loc),
+          pct(s$p_toward), s$n_toward %||% 0L,
+          pct(s$p_away), s$n_away %||% 0L,
+          pct(s$p_flat), s$n_flat %||% 0L
+        )),
+        tags$li(style = "color:#555;font-size:12px;", ui_str("hfv_toward_read", loc)),
+        tags$li(sprintf(
+          ui_str("hfv_fv_odds_fmt", loc),
+          pct(s$p_above), s$n_above %||% 0L,
+          pct(s$p_below), s$n_below %||% 0L,
+          pct(s$p_flat_vs), s$n_flat_vs %||% 0L
+        )),
+        tags$li(sprintf(
+          ui_str("hfv_gap_stats_fmt", loc),
+          gap_pct(s$median_gap), gap_pct(s$mean_gap),
+          gap_pct(s$median_gap_above), gap_pct(s$median_gap_below),
+          gap_pct(s$median_abs_gap)
+        )),
+        if (identical(s$oos_mode, "expanding") && is.finite(s$oos_hit_rate)) {
+          tags$li(sprintf(
+            ui_str("hfv_oos_fv_hit_fmt", loc),
+            pct(s$oos_hit_rate), s$oos_n %||% 0L
+          ))
+        } else NULL
+      )
+    )
+
+    sc <- s$scenarios
+    sc_lab <- function(code) {
+      key <- switch(
+        as.character(code)[1],
+        A = "hfv_scenario_A",
+        B = "hfv_scenario_B",
+        C = "hfv_scenario_C",
+        D = "hfv_scenario_D",
+        "hfv_scenario_other"
+      )
+      ui_str(key, loc)
+    }
+    scenario_card <- {
+      if (!is.null(sc) && is.list(sc) && as.integer(sc$n %||% 0L) > 0L) {
+        cnt <- sc$counts
+        frq <- sc$freq
+        abcd <- c("A", "B", "C", "D")
+        n_abcd <- vapply(abcd, function(code) {
+          if (!is.null(cnt) && code %in% names(cnt)) as.integer(cnt[[code]]) else 0L
+        }, integer(1))
+        lead_code <- if (any(n_abcd > 0L)) abcd[which.max(n_abcd)] else NA_character_
+        n_other <- if (!is.null(cnt) && "other" %in% names(cnt)) {
+          as.integer(cnt[["other"]])
+        } else {
+          0L
+        }
+        p_other <- if (!is.null(frq) && "other" %in% names(frq)) {
+          as.numeric(frq[["other"]])
+        } else {
+          NA_real_
+        }
+        make_sc_card <- function(code, icon_name, color) {
+          n_c <- if (!is.null(cnt) && code %in% names(cnt)) {
+            as.integer(cnt[[code]])
+          } else {
+            0L
+          }
+          p_c <- if (!is.null(frq) && code %in% names(frq)) {
+            as.numeric(frq[[code]])
+          } else {
+            NA_real_
+          }
+          is_lead <- identical(code, lead_code) && n_c > 0L
+          border_col <- if (is_lead) color else "#ddd"
+          bg <- if (is_lead) "#fffaf2" else "#fff"
+          tags$div(
+            class = paste(
+              "ynow-hfv-scenario-card-col",
+              if (is_lead) "ynow-hfv-scenario-lead" else ""
+            ),
+            tags$div(
+              class = "ynow-hfv-scenario-card",
+              style = paste0(
+                "border:1px solid ", border_col, ";",
+                "border-radius:8px; padding:12px 12px 10px 12px; min-height:140px; background:", bg,
+                "; box-shadow:0 2px 4px rgba(0,0,0,0.04); height:100%;"
+              ),
+              tags$div(style = paste0("font-size:18px; color:", color, ";"), icon(icon_name)),
+              tags$h4(
+                style = "margin:6px 0 4px 0; font-weight:700; font-size:14px; line-height:1.3;",
+                sc_lab(code)
+              ),
+              if (is_lead) tags$span(
+                style = paste0(
+                  "display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; color:#fff; background:",
+                  color, ";"
+                ),
+                ui_str("hfv_scenario_lead_badge", loc)
+              ),
+              tags$p(
+                style = "margin:8px 0 4px 0; font-size:13px; font-weight:600; color:#333;",
+                sprintf(ui_str("hfv_scenario_stat_fmt", loc), pct(p_c), n_c)
+              ),
+              tags$p(
+                style = "margin:0; font-size:11.5px; color:#666; line-height:1.4;",
+                ui_str(paste0("hfv_scenario_cue_", code), loc)
+              )
+            )
+          )
+        }
+        tags$div(
+          style = paste0(
+            "margin:0 0 10px 0;padding:12px 14px;background:#fff;",
+            "border:1px solid #e8dfd0;border-left:4px solid ", border, ";border-radius:6px;",
+            "font-size:13px;line-height:1.55;"
+          ),
+          tags$style(HTML("
+            .ynow-hfv-scenario-lead { transform: translateY(-2px); }
+            .ynow-hfv-scenario-row {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 12px 14px;
+              align-items: stretch;
+              margin: 0 0 4px 0;
+            }
+            .ynow-hfv-scenario-row > .ynow-hfv-scenario-card-col {
+              min-width: 0;
+              width: auto;
+              float: none;
+              box-sizing: border-box;
+            }
+            @media (max-width: 575px) {
+              .ynow-hfv-scenario-row {
+                grid-template-columns: 1fr;
+              }
+            }
+          ")),
+          # Chapter V lead + method box cover formula/meaning; keep period + counts + cards.
+          tags$p(style = "margin:0 0 6px 0;color:#555;font-size:12px;", period_txt),
+          tags$div(
+            style = "margin:0 0 6px 0;color:#555;font-size:12px;",
+            sprintf(ui_str("hfv_pair_n_fmt", loc), sc$n %||% 0L)
+          ),
+          tags$div(
+            class = "ynow-hfv-scenario-row",
+            # 2×2: A B / C D
+            make_sc_card("A", "gem", "#c9a227"),
+            make_sc_card("B", "chart-line", "#00a65a"),
+            make_sc_card("C", "exclamation-triangle", "#f39c12"),
+            make_sc_card("D", "fire", "#dd4b39")
+          ),
+          {
+            sc_color <- function(code) {
+              switch(
+                as.character(code)[1],
+                A = "#c9a227",
+                B = "#00a65a",
+                C = "#f39c12",
+                D = "#dd4b39",
+                "#6c757d"
+              )
+            }
+            make_concl_body <- function(code) {
+              code <- as.character(code)[1]
+              if (identical(code, "A")) {
+                tagList(
+                  tags$b(ui_str("hfv_scenario_concl_A_lead", loc)), " ",
+                  ui_str("hfv_scenario_concl_A_body", loc)
+                )
+              } else if (identical(code, "B")) {
+                tagList(
+                  tags$b(ui_str("hfv_scenario_concl_B_lead", loc)), " ",
+                  ui_str("hfv_scenario_concl_B_body", loc)
+                )
+              } else if (identical(code, "C")) {
+                tagList(
+                  tags$b(ui_str("hfv_scenario_concl_C_lead", loc)), " ",
+                  ui_str("hfv_scenario_concl_C_body", loc), " ",
+                  tags$b(ui_str("hfv_scenario_concl_C_emph", loc))
+                )
+              } else if (identical(code, "D")) {
+                tagList(
+                  tags$b(ui_str("hfv_scenario_concl_D_lead", loc)), " ",
+                  ui_str("hfv_scenario_concl_D_body", loc)
+                )
+              } else {
+                ui_str("hfv_scenario_concl_other", loc)
+              }
+            }
+            make_concl_callout <- function(scope_label, code, accent_col) {
+              tags$div(
+                class = "ynow-hfv-scenario-concl",
+                style = paste0(
+                  "margin:10px 0 0 0;padding:10px 12px;background:#f5f5f5;",
+                  "border-left:4px solid ", accent_col, ";",
+                  "border-radius:0 4px 4px 0;font-size:13px;line-height:1.55;color:#333;"
+                ),
+                tags$div(
+                  style = "margin:0 0 4px 0;font-size:12px;color:#555;",
+                  tags$b(scope_label),
+                  tags$span(style = "margin:0 6px;color:#bbb;", "|"),
+                  tags$span(style = paste0("color:", accent_col, ";"), sc_lab(code))
+                ),
+                tags$div(make_concl_body(code))
+              )
+            }
+            lead_c <- as.character(sc$most_frequent %||% NA_character_)[1]
+            if (!nzchar(lead_c) || identical(lead_c, "NA")) lead_c <- NA_character_
+            # Fallback if older summarize payload lacks most_frequent
+            if (is.na(lead_c) && !is.null(lead_code) && !is.na(lead_code)) {
+              lead_c <- as.character(lead_code)[1]
+            }
+            latest_c <- as.character(sc$latest %||% NA_character_)[1]
+            if (!nzchar(latest_c) || identical(latest_c, "NA")) {
+              # Fallback: last pair in attached pairs frame
+              pp_sc <- sc$pairs
+              if (!is.null(pp_sc) && is.data.frame(pp_sc) && nrow(pp_sc) > 0L &&
+                  "scenario" %in% names(pp_sc)) {
+                latest_c <- as.character(pp_sc$scenario[nrow(pp_sc)])[1]
+              } else {
+                latest_c <- NA_character_
+              }
+            }
+            d0 <- tryCatch(as.Date(sc$latest_date), error = function(e) as.Date(NA))
+            d1 <- tryCatch(as.Date(sc$latest_date_next), error = function(e) as.Date(NA))
+            lead_n <- suppressWarnings(as.integer(sc$most_frequent_n %||% NA_integer_)[1])
+            if (!is.finite(lead_n) || lead_n < 1L) {
+              lead_n <- if (!is.na(lead_c) && lead_c %in% abcd) {
+                as.integer(n_abcd[match(lead_c, abcd)])
+              } else {
+                0L
+              }
+            }
+            lead_label <- if (!is.na(lead_c) && lead_c %in% abcd) {
+              sprintf(
+                ui_str("hfv_scenario_concl_lead_fmt", loc),
+                sc_lab(lead_c),
+                lead_n
+              )
+            } else {
+              ui_str("hfv_scenario_concl_scope_lead", loc)
+            }
+            latest_label <- if (is.finite(d0) && is.finite(d1)) {
+              sprintf(
+                ui_str("hfv_scenario_concl_latest_fmt", loc),
+                format(d0, "%Y-%m-%d"),
+                format(d1, "%Y-%m-%d")
+              )
+            } else {
+              ui_str("hfv_scenario_concl_latest_nodate", loc)
+            }
+            diverge_q3 <- !is.na(lead_c) && !is.na(latest_c) && !identical(lead_c, latest_c)
+            tagList(
+              if (!is.na(lead_c) && lead_c %in% abcd) {
+                make_concl_callout(lead_label, lead_c, sc_color(lead_c))
+              } else {
+                tags$div(
+                  class = "ynow-hfv-scenario-concl",
+                  style = paste0(
+                    "margin:10px 0 0 0;padding:10px 12px;background:#f5f5f5;",
+                    "border-left:4px solid #6c757d;",
+                    "border-radius:0 4px 4px 0;font-size:12.5px;line-height:1.5;color:#555;"
+                  ),
+                  tags$b(ui_str("hfv_scenario_concl_scope_lead", loc)),
+                  tags$span(style = "margin:0 6px;color:#bbb;", "|"),
+                  ui_str("hfv_scenario_concl_none_abcd", loc)
+                )
+              },
+              if (!is.na(latest_c)) {
+                make_concl_callout(latest_label, latest_c, sc_color(latest_c))
+              } else NULL,
+              if (isTRUE(diverge_q3)) {
+                tags$div(
+                  style = paste0(
+                    "margin:8px 0 0 0;padding:8px 10px;background:#fff8e8;",
+                    "border:1px solid #f0d78c;border-radius:4px;",
+                    "font-size:12px;line-height:1.5;color:#555;"
+                  ),
+                  ui_str("hfv_scenario_concl_diverge", loc)
+                )
+              } else NULL,
+              tags$div(
+                style = "margin:8px 0 0 0;color:#888;font-size:11.5px;line-height:1.45;",
+                ui_str("hfv_scenario_concl_note", loc)
+              )
+            )
+          },
+          if (n_other > 0L) {
+            tags$div(
+              style = "margin:8px 0 0 0;color:#666;font-size:12px;",
+              sprintf(
+                ui_str("hfv_scenario_other_line", loc),
+                pct(p_other),
+                n_other
+              )
+            )
+          } else NULL
+          # Method-block notes cover thresholds / FV quality; avoid a second caveat here.
+        )
+      } else {
+        tags$div(
+          style = paste0(
+            "margin:0 0 10px 0;padding:12px 14px;background:#fafafa;",
+            "border:1px solid #ddd;border-left:4px solid ", border, ";border-radius:6px;",
+            "font-size:13px;line-height:1.55;color:#666;"
+          ),
+          ui_str("hfv_sum_scenario_empty", loc)
+        )
+      }
+    }
 
     # 結果附註／fallback：全寬置於兩欄下方
     fb <- s$fallbacks
@@ -10497,237 +10920,8 @@ server <- function(input, output, session) {
     parts$fv
   })
   output$bt_hfv_scenario_findings <- renderUI({
-    # Overlay-only: compute when Chart overlay models selected; show only with A–D conclusion
-    ov <- bt_fv_overlay_scenarios()
-    if (is.null(ov)) return(NULL)
-    sc <- ov$scenarios
-    s <- ov$summary
-    loc <- tryCatch(isolate(ui_locale()), error = function(e) "zh-TW")
-    pct <- function(x) if (is.finite(x)) sprintf("%.0f%%", 100 * x) else "—"
-    border <- if (isTRUE(s$small_sample) || isTRUE(s$no_strategy_fv)) "#f39c12" else "#00a65a"
-    period_txt <- {
-      if (!is.null(s$from) || !is.null(s$to)) {
-        sprintf(
-          ui_str("hfv_period_range_fmt", loc),
-          if (is.null(s$from)) "…" else format(s$from, "%Y-%m-%d"),
-          if (is.null(s$to)) "…" else format(s$to, "%Y-%m-%d")
-        )
-      } else ui_str("hfv_period_all", loc)
-    }
-    models_lab <- paste(toupper(ov$models), collapse = "+")
-    sc_lab <- function(code) {
-      key <- switch(
-        as.character(code)[1],
-        A = "hfv_scenario_A",
-        B = "hfv_scenario_B",
-        C = "hfv_scenario_C",
-        D = "hfv_scenario_D",
-        "hfv_scenario_other"
-      )
-      ui_str(key, loc)
-    }
-    cnt <- sc$counts
-    frq <- sc$freq
-    abcd <- c("A", "B", "C", "D")
-    n_abcd <- vapply(abcd, function(code) {
-      if (!is.null(cnt) && code %in% names(cnt)) as.integer(cnt[[code]]) else 0L
-    }, integer(1))
-    lead_code <- if (any(n_abcd > 0L)) abcd[which.max(n_abcd)] else NA_character_
-    n_other <- if (!is.null(cnt) && "other" %in% names(cnt)) as.integer(cnt[["other"]]) else 0L
-    p_other <- if (!is.null(frq) && "other" %in% names(frq)) as.numeric(frq[["other"]]) else NA_real_
-    make_sc_card <- function(code, icon_name, color) {
-      n_c <- if (!is.null(cnt) && code %in% names(cnt)) as.integer(cnt[[code]]) else 0L
-      p_c <- if (!is.null(frq) && code %in% names(frq)) as.numeric(frq[[code]]) else NA_real_
-      is_lead <- identical(code, lead_code) && n_c > 0L
-      border_col <- if (is_lead) color else "#ddd"
-      bg <- if (is_lead) "#fffaf2" else "#fff"
-      tags$div(
-        class = paste("ynow-hfv-scenario-card-col", if (is_lead) "ynow-hfv-scenario-lead" else ""),
-        tags$div(
-          class = "ynow-hfv-scenario-card",
-          style = paste0(
-            "border:1px solid ", border_col, ";",
-            "border-radius:8px; padding:12px 12px 10px 12px; min-height:140px; background:", bg,
-            "; box-shadow:0 2px 4px rgba(0,0,0,0.04); height:100%;"
-          ),
-          tags$div(style = paste0("font-size:18px; color:", color, ";"), icon(icon_name)),
-          tags$h4(
-            style = "margin:6px 0 4px 0; font-weight:700; font-size:14px; line-height:1.3;",
-            sc_lab(code)
-          ),
-          if (is_lead) tags$span(
-            style = paste0(
-              "display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; color:#fff; background:",
-              color, ";"
-            ),
-            ui_str("hfv_scenario_lead_badge", loc)
-          ),
-          tags$p(
-            style = "margin:8px 0 4px 0; font-size:13px; font-weight:600; color:#333;",
-            sprintf(ui_str("hfv_scenario_stat_fmt", loc), pct(p_c), n_c)
-          ),
-          tags$p(
-            style = "margin:0; font-size:11.5px; color:#666; line-height:1.4;",
-            ui_str(paste0("hfv_scenario_cue_", code), loc)
-          )
-        )
-      )
-    }
-    sc_color <- function(code) {
-      switch(as.character(code)[1], A = "#c9a227", B = "#00a65a", C = "#f39c12", D = "#dd4b39", "#6c757d")
-    }
-    make_concl_body <- function(code) {
-      code <- as.character(code)[1]
-      if (identical(code, "A")) {
-        tagList(tags$b(ui_str("hfv_scenario_concl_A_lead", loc)), " ", ui_str("hfv_scenario_concl_A_body", loc))
-      } else if (identical(code, "B")) {
-        tagList(tags$b(ui_str("hfv_scenario_concl_B_lead", loc)), " ", ui_str("hfv_scenario_concl_B_body", loc))
-      } else if (identical(code, "C")) {
-        tagList(
-          tags$b(ui_str("hfv_scenario_concl_C_lead", loc)), " ",
-          ui_str("hfv_scenario_concl_C_body", loc), " ",
-          tags$b(ui_str("hfv_scenario_concl_C_emph", loc))
-        )
-      } else if (identical(code, "D")) {
-        tagList(tags$b(ui_str("hfv_scenario_concl_D_lead", loc)), " ", ui_str("hfv_scenario_concl_D_body", loc))
-      } else {
-        ui_str("hfv_scenario_concl_other", loc)
-      }
-    }
-    make_concl_callout <- function(scope_label, code, accent_col) {
-      tags$div(
-        class = "ynow-hfv-scenario-concl",
-        style = paste0(
-          "margin:10px 0 0 0;padding:10px 12px;background:#f5f5f5;",
-          "border-left:4px solid ", accent_col, ";",
-          "border-radius:0 4px 4px 0;font-size:13px;line-height:1.55;color:#333;"
-        ),
-        tags$div(
-          style = "margin:0 0 4px 0;font-size:12px;color:#555;",
-          tags$b(scope_label),
-          tags$span(style = "margin:0 6px;color:#bbb;", "|"),
-          tags$span(style = paste0("color:", accent_col, ";"), sc_lab(code))
-        ),
-        tags$div(make_concl_body(code))
-      )
-    }
-    lead_c <- as.character(sc$most_frequent %||% NA_character_)[1]
-    if (!nzchar(lead_c) || identical(lead_c, "NA")) lead_c <- NA_character_
-    if (is.na(lead_c) && !is.null(lead_code) && !is.na(lead_code)) lead_c <- as.character(lead_code)[1]
-    latest_c <- as.character(sc$latest %||% NA_character_)[1]
-    if (!nzchar(latest_c) || identical(latest_c, "NA")) {
-      pp_sc <- sc$pairs
-      if (!is.null(pp_sc) && is.data.frame(pp_sc) && nrow(pp_sc) > 0L && "scenario" %in% names(pp_sc)) {
-        latest_c <- as.character(pp_sc$scenario[nrow(pp_sc)])[1]
-      } else {
-        latest_c <- NA_character_
-      }
-    }
-    d0 <- tryCatch(as.Date(sc$latest_date), error = function(e) as.Date(NA))
-    d1 <- tryCatch(as.Date(sc$latest_date_next), error = function(e) as.Date(NA))
-    lead_n <- suppressWarnings(as.integer(sc$most_frequent_n %||% NA_integer_)[1])
-    if (!is.finite(lead_n) || lead_n < 1L) {
-      lead_n <- if (!is.na(lead_c) && lead_c %in% abcd) as.integer(n_abcd[match(lead_c, abcd)]) else 0L
-    }
-    lead_label <- if (!is.na(lead_c) && lead_c %in% abcd) {
-      sprintf(ui_str("hfv_scenario_concl_lead_fmt", loc), sc_lab(lead_c), lead_n)
-    } else {
-      ui_str("hfv_scenario_concl_scope_lead", loc)
-    }
-    latest_label <- if (is.finite(d0) && is.finite(d1)) {
-      sprintf(ui_str("hfv_scenario_concl_latest_fmt", loc), format(d0, "%Y-%m-%d"), format(d1, "%Y-%m-%d"))
-    } else {
-      ui_str("hfv_scenario_concl_latest_nodate", loc)
-    }
-    diverge_q3 <- !is.na(lead_c) && !is.na(latest_c) && !identical(lead_c, latest_c)
-    tags$div(
-      class = "ynow-hfv-findings-block ynow-hfv-scenario-under-chart",
-      style = "margin-top:14px;",
-      tags$div(
-        class = "ynow-hfv-scenario-under-chart__head",
-        tags$span(
-          class = "ynow-hfv-chapter__kicker",
-          id = "ynow_hfv_scenario_under_kicker",
-          ui_str("hfv_scenario_under_kicker", loc)
-        ),
-        tags$h4(
-          class = "ynow-hfv-scenario-under-chart__title",
-          id = "ynow_hfv_scenario_under_title",
-          ui_str("hfv_scenario_under_title", loc)
-        )
-      ),
-      tags$p(
-        class = "ynow-hfv-scenario-under-chart__lead",
-        id = "ynow_hfv_scenario_under_lead",
-        ui_str("hfv_scenario_under_lead", loc)
-      ),
-      tags$div(
-      style = paste0(
-        "margin:0 0 10px 0;padding:12px 14px;background:#fff;",
-        "border:1px solid #e8dfd0;border-left:4px solid ", border, ";border-radius:6px;",
-        "font-size:13px;line-height:1.55;"
-      ),
-      tags$style(HTML("
-        .ynow-hfv-scenario-lead { transform: translateY(-2px); }
-        .ynow-hfv-scenario-row {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 12px 14px;
-          align-items: stretch;
-          margin: 0 0 4px 0;
-        }
-        .ynow-hfv-scenario-row > .ynow-hfv-scenario-card-col {
-          min-width: 0;
-          width: auto;
-          float: none;
-          box-sizing: border-box;
-        }
-        @media (max-width: 575px) {
-          .ynow-hfv-scenario-row { grid-template-columns: 1fr; }
-        }
-      ")),
-      tags$p(style = "margin:0 0 4px 0;color:#555;font-size:12px;", period_txt),
-      tags$div(
-        style = "margin:0 0 8px 0;color:#555;font-size:12px;",
-        sprintf(ui_str("hfv_pair_n_fmt", loc), sc$n %||% 0L),
-        tags$span(style = "margin:0 6px;color:#bbb;", "·"),
-        sprintf(ui_str("hfv_scenario_overlay_models_fmt", loc), models_lab)
-      ),
-      tags$div(
-        class = "ynow-hfv-scenario-row",
-        make_sc_card("A", "gem", "#c9a227"),
-        make_sc_card("B", "chart-line", "#00a65a"),
-        make_sc_card("C", "exclamation-triangle", "#f39c12"),
-        make_sc_card("D", "fire", "#dd4b39")
-      ),
-      if (!is.na(lead_c) && lead_c %in% abcd) {
-        make_concl_callout(lead_label, lead_c, sc_color(lead_c))
-      } else NULL,
-      if (!is.na(latest_c) && latest_c %in% abcd) {
-        make_concl_callout(latest_label, latest_c, sc_color(latest_c))
-      } else NULL,
-      if (isTRUE(diverge_q3)) {
-        tags$div(
-          style = paste0(
-            "margin:8px 0 0 0;padding:8px 10px;background:#fff8e8;",
-            "border:1px solid #f0d78c;border-radius:4px;",
-            "font-size:12px;line-height:1.5;color:#555;"
-          ),
-          ui_str("hfv_scenario_concl_diverge", loc)
-        )
-      } else NULL,
-      tags$div(
-        style = "margin:8px 0 0 0;color:#888;font-size:11.5px;line-height:1.45;",
-        ui_str("hfv_scenario_concl_note", loc)
-      ),
-      if (n_other > 0L) {
-        tags$div(
-          style = "margin:8px 0 0 0;color:#666;font-size:12px;",
-          sprintf(ui_str("hfv_scenario_other_line", loc), pct(p_other), n_other)
-        )
-      } else NULL
-      ) # inner card
-    ) # outer under-chart block
+    parts <- bt_hfv_findings_parts()
+    parts$scenario
   })
 
   output$bt_fv_conv_table <- renderTable({

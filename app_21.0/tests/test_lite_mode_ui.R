@@ -315,7 +315,7 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
     txt,
     perl = TRUE
   ))
-  testthat::expect_true(grepl("The YNow App v21.33", txt, fixed = TRUE))
+  testthat::expect_true(grepl("The YNow App v21.32", txt, fixed = TRUE))
   testthat::expect_true(grepl('title = "The YNow App"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-report", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-toolbar", txt, fixed = TRUE))
@@ -345,32 +345,21 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(is.finite(pos_overlay) && pos_overlay > 0)
   testthat::expect_true(is.finite(pos_chart) && pos_chart > 0)
   testthat::expect_true(pos_overlay < pos_chart)
-  # Investor-report chapters II–V after Section I (scenarios live under Ch1 chart)
+  # Investor-report chapters II–VI after Section I
   for (id in c(
     "ynow_hfv_ch2_title", "ynow_hfv_ch3_title", "ynow_hfv_ch4_title",
-    "ynow_hfv_ch5_title"
+    "ynow_hfv_ch5_title", "ynow_hfv_ch6_title"
   )) {
     testthat::expect_true(grepl(id, txt, fixed = TRUE), info = id)
   }
-  testthat::expect_false(grepl("ynow_hfv_ch6_title", txt, fixed = TRUE))
   testthat::expect_true(grepl("bt_hfv_investor_summary", txt, fixed = TRUE))
   testthat::expect_true(grepl("bt_hfv_price_findings", txt, fixed = TRUE))
   testthat::expect_true(grepl("bt_hfv_fv_findings", txt, fixed = TRUE))
   testthat::expect_true(grepl("bt_hfv_scenario_findings", txt, fixed = TRUE))
-  # Scenarios sit under the Ch1 timeline chart (not a separate chapter)
-  pos_scenario_out <- regexpr('uiOutput\\(\"bt_hfv_scenario_findings\"\\)', txt, perl = TRUE)[1]
-  testthat::expect_true(is.finite(pos_scenario_out) && pos_scenario_out > 0)
-  testthat::expect_true(pos_chart < pos_scenario_out)
-  pos_ch2_early <- regexpr("ynow_hfv_ch2_title", txt, fixed = TRUE)[1]
-  testthat::expect_true(pos_scenario_out < pos_ch2_early)
-  # Scenario A–D cards use a 2×2 CSS grid; Overlay-driven average FV
+  # Scenario A–D cards use a 2×2 CSS grid (not a 4-across flex row)
   srv <- paste(readLines(file.path("..", "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   testthat::expect_true(grepl("ynow-hfv-scenario-row", srv, fixed = TRUE))
   testthat::expect_true(grepl("grid-template-columns:\\s*1fr\\s+1fr", srv, perl = TRUE))
-  testthat::expect_true(grepl("bt_fv_overlay_scenarios", srv, fixed = TRUE))
-  testthat::expect_true(grepl("\\.bt_overlay_avg_valuation_df", srv, perl = TRUE))
-  testthat::expect_true(grepl("ynow-hfv-kpi-grid", txt, fixed = TRUE))
-  testthat::expect_true(grepl("ynow_hfv_overlay_vs_replay_note", txt, fixed = TRUE))
   # Replay model / validation toolbar lives inside Section II (above sample snapshot)
   testthat::expect_true(grepl("ynow-hfv-toolbar--in-ch2", txt, fixed = TRUE))
   pos_ch2 <- regexpr("ynow_hfv_ch2_title", txt, fixed = TRUE)[1]
@@ -379,6 +368,7 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   pos_ch3 <- regexpr("ynow_hfv_ch3_title", txt, fixed = TRUE)[1]
   pos_ch4 <- regexpr("ynow_hfv_ch4_title", txt, fixed = TRUE)[1]
   pos_ch5 <- regexpr("ynow_hfv_ch5_title", txt, fixed = TRUE)[1]
+  pos_ch6 <- regexpr("ynow_hfv_ch6_title", txt, fixed = TRUE)[1]
   pos_gap_chart <- regexpr("bt_fv_conv_plot", txt, fixed = TRUE)[1]
   testthat::expect_true(is.finite(pos_ch2) && pos_ch2 > 0)
   testthat::expect_true(is.finite(pos_toolbar) && pos_toolbar > 0)
@@ -389,6 +379,7 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(pos_ch3 < pos_ch4)
   testthat::expect_true(pos_ch4 < pos_gap_chart)
   testthat::expect_true(pos_gap_chart < pos_ch5)
+  testthat::expect_true(pos_ch5 < pos_ch6)
   testthat::expect_true(grepl("bt_fv_replay_model", txt, fixed = TRUE))
   # Chart overlay models stay in Section I — not in the Section II validation toolbar
   ch2_toolbar_block <- regmatches(
@@ -402,9 +393,6 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(length(ch2_toolbar_block) == 1L && nzchar(ch2_toolbar_block))
   testthat::expect_true(grepl("bt_fv_replay_model", ch2_toolbar_block, fixed = TRUE))
   testthat::expect_false(grepl("bt_fv_models", ch2_toolbar_block, fixed = TRUE))
-  # Section II toolbar options fill width in a CSS grid (max two rows per group)
-  testthat::expect_true(grepl("grid-template-columns: repeat\\(3, minmax\\(0, 1fr\\)\\)", txt, perl = TRUE))
-  testthat::expect_true(grepl("#bt_fv_oos_mode .shiny-options-group", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-backtest-report", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-backtest-toolbar", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-backtest-zone-band", txt, fixed = TRUE))
