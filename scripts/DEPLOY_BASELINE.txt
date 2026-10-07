@@ -8,5 +8,5 @@ short=0b5a7b0
 message=chore: bump display version to v21.19
 captured_at=2026-10-07T13:20:00Z
 source_branch=cursor/hfv-three-conclusions-911b
-display_version=v21.19
+display_version=v21.20
 note=Canonical live line is app_21.0. Bundle 12659537 ships v21.19: HFV Q2 = PIT shrink/expand (趨近/遠離) primary. Deploy via scripts/deploy_app_21.R.
