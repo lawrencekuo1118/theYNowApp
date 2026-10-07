@@ -8,5 +8,5 @@ short=5646242
 message=chore: bump display version to v21.12
 captured_at=2026-10-07T02:26:37Z
 source_branch=master
-display_version=v21.12
+display_version=v21.13
 note=Canonical live line is app_21.0. Bundle 12657491 ships v21.12: restore vertical+horizontal centering of text inside Company stock KPI value boxes (.ynow-kpi-grid). Deploy via scripts/deploy_app_21.R.
