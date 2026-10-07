@@ -5522,8 +5522,9 @@ ui <- dashboardPage(
         }
         .ynow-hfv-report__masthead {
           margin: 0 0 16px 0;
-          padding: 4px 2px 14px 2px;
-          border-bottom: 2px solid #1a1a1a;
+          padding: 4px 2px 8px 2px;
+          /* No rule under the page lead — keep masthead flush into how-to-read / chapters */
+          border-bottom: none;
         }
         .ynow-hfv-report__masthead h2 {
           margin: 0 0 8px 0;
