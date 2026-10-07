@@ -8,5 +8,5 @@ short=d1ecadd
 message=chore: bump display version to v21.15
 captured_at=2026-10-07T05:08:04Z
 source_branch=master
-display_version=v21.16
+display_version=v21.17
 note=Canonical live line is app_21.0. Bundle 12658051 ships v21.15: Multiples Equity/Enterprise reclass + SOTP Enterprise-structural assumption map. Deploy via scripts/deploy_app_21.R.
