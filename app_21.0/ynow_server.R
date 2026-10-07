@@ -433,22 +433,21 @@ server <- function(input, output, session) {
         selected = ddm_sel
       )
     }, error = function(e) NULL)
-    # Relative multiples families: labels follow locale (values unchanged)
+    # Relative multiples capital-claim families: Equity | Enterprise (legacy earnings/ps → equity)
     tryCatch({
-      rel_sel <- isolate(input[["mod_rel-rel_mode"]])
-      if (is.null(rel_sel) || !rel_sel %in% c("earnings", "enterprise", "ps")) {
-        rel_sel <- APP_DEFAULTS$rel_mode %||% "earnings"
+      rel_sel <- .rel_normalize_mode(isolate(input[["mod_rel-rel_mode"]]))
+      if (!rel_sel %in% c("equity", "enterprise")) {
+        rel_sel <- .rel_normalize_mode(APP_DEFAULTS$rel_mode %||% "equity")
       }
       updateRadioButtons(
         session,
         "mod_rel-rel_mode",
         label = ui_str("rel_mode_label", loc),
         choices = stats::setNames(
-          c("earnings", "enterprise", "ps"),
+          c("equity", "enterprise"),
           c(
-            ui_str("rel_mode_earnings", loc),
-            ui_str("rel_mode_enterprise", loc),
-            ui_str("rel_mode_ps", loc)
+            ui_str("rel_mode_equity", loc),
+            ui_str("rel_mode_enterprise", loc)
           )
         ),
         selected = rel_sel

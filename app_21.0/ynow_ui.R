@@ -1240,26 +1240,26 @@ beta_rolling_section_ui <- function() {
           "Multiples",
           icon = icon("percentage"),
           h4(tags$b("市場倍數法（Implied Price）")),
-          p("相對估值：以交易倍數將盈餘／企業指標／營收換算為 Implied Price。屬交叉檢核，不是 Intrinsic Value／Fair Value 主模型；不可與 DCF／DDM／RI／P/B／NAV 等權平均，亦不可作為 HFV 歷史 Fair Value 疊加。"),
+          p("相對估值依資本請求權分為 Equity／Enterprise 兩族（非 Intrinsic Value／Fair Value 主模型）。不可與 DCF／DDM／RI／P/B／NAV 等權平均，亦不可作為 HFV 疊加。"),
           tags$ul(
-            tags$li(tags$b("Earnings："), tags$b("$$Implied\\ Price = EPS \\times P/E$$"), "；PEG = P/E ÷ growth(%)（相對指標，非買賣閾值）。"),
-            tags$li(tags$b("Enterprise："), tags$b("$$Implied\\ EV = Metric \\times Multiple$$"), "；", tags$b("$$Equity = EV + Cash - Debt$$"), "；Price = Equity ÷ Shares（同 DCF 橋接；EV/FCF 用 FCFF）。"),
-            tags$li(tags$b("P/S："), tags$b("$$Implied\\ Equity = Revenue \\times P/S$$"), "；Price = Equity ÷ Shares（無 Cash−Debt 橋接）。")
+            tags$li(tags$b("Equity："), tags$b("$$Implied\\ Price = EPS \\times P/E$$"), "；", tags$b("$$Implied\\ Equity = Revenue \\times P/S$$"), "；PEG = P/E ÷ g(%)（相對指標）。"),
+            tags$li(tags$b("Enterprise："), tags$b("$$Implied\\ EV = Metric \\times Multiple$$"), "；", tags$b("$$Equity = EV + Cash - Debt$$"), "；Price = Equity ÷ Shares（與 SOTP 共用橋接；EV/FCF 用 FCFF）。"),
+            tags$li(tags$b("SOTP（側欄）："), "Enterprise-structural — 部門營收 × EV/Sales 加總後再用同一 Cash−Debt 橋接。")
           ),
-          p("設定分頁對齊 P/B：Earnings／Enterprise／P/S／Bridge。不涉及預測年數 n。")
+          p("共用假設：Shares；Enterprise／SOTP 另共用 Cash、Debt、EV/Sales 預設層級。獨特假設見 Multiples Overview 參數矩陣。")
         ),
 
         tabPanel(
           "SOTP",
           icon = icon("puzzle-piece"),
-          h4(tags$b("分部加總 SOTP（結構型 Implied Price）")),
-          p("側欄獨立引擎：拆解 ≥2 筆部門營收，各自套用 EV/Sales，加總後再 Cash−Debt 橋接。結構交叉檢核——控股／綜合常作 NAV 之副模型；不是單一交易倍數，亦非部門 EBIT SOTP。"),
+          h4(tags$b("分部加總 SOTP（Enterprise-structural Implied Price）")),
+          p("側欄獨立引擎，與 Multiples→Enterprise 同屬企業價值請求權：拆解 ≥2 筆部門營收 × 各段 EV/Sales，加總後共用 Cash−Debt×Shares 橋接。控股／綜合常作 NAV 副模型；非 Equity 的 P/E／P/S，亦非部門 EBIT SOTP。"),
           tags$ul(
             tags$li(tags$b("$$Segment\\ EV = Segment\\ Revenue \\times EV/Sales$$")),
             tags$li(tags$b("$$Implied\\ EV = \\sum Segment\\ EV + Non\\text{-}operating$$")),
             tags$li(tags$b("$$Equity = Implied\\ EV + Cash - Debt$$"), "；", tags$b("$$Price = Equity \\div Shares$$"))
           ),
-          p("設定分頁：Segments（部門倍數／非營業資產）與 Bridge（Cash／Debt／Shares）。不涉及預測年數 n。")
+          p("共用：Cash／Debt／Shares、Default EV/Sales。獨特：部門營收、各段 EV/Sales、Non-operating assets。")
         )
       )
     )
@@ -6622,10 +6622,11 @@ ui <- dashboardPage(
             setBtText('ynow_rel_multiples_lead_body', 'rel_multiples_lead_body');
             setBtText('ynow_rel_multiples_box_title', 'rel_multiples_box_title');
             setBtText('ynow_rel_multiples_tab_overview', 'rel_multiples_tab_overview');
-            setBtText('ynow_rel_multiples_tab_earnings', 'rel_multiples_tab_earnings');
+            setBtText('ynow_rel_multiples_tab_equity', 'rel_multiples_tab_equity');
             setBtText('ynow_rel_multiples_tab_enterprise', 'rel_multiples_tab_enterprise');
-            setBtText('ynow_rel_multiples_tab_ps', 'rel_multiples_tab_ps');
             setBtText('ynow_rel_multiples_tab_bridge', 'rel_multiples_tab_bridge');
+            setBtText('ynow_rel_param_matrix_title', 'rel_param_matrix_title');
+            setBtText('ynow_rel_formula_equity', 'rel_formula_equity');
             setBtText('ynow_rel_multiples_btn_calc', 'rel_multiples_btn_calc');
             setBtText('ynow_rel_multiples_btn_sync', 'rel_multiples_btn_sync');
             setBtText('ynow_rel_mode_label', 'rel_mode_label');

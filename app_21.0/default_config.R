@@ -152,9 +152,10 @@ APP_DEFAULTS <- list(
   nav_high        = 1.05,
 
   # --- 7c. Relative multiples (Implied Price / PEG indicator; not Intrinsic Value) ---
-  # Mode families (DDM-style): earnings | enterprise | ps | sotp. P/B stays separate.
+  # Capital-claim families: equity | enterprise. P/S lives under equity; SOTP is a
+  # separate sidebar engine in the Enterprise-structural claim family (not a radio).
   # Selected multiples are App / industry assumptions — never Yahoo market P/E or price÷P/E 回推.
-  rel_mode = "earnings",
+  rel_mode = "equity",
   rel_pe_multiple = 18,
   rel_fwd_pe_multiple = 18,
   rel_ev_fcf_multiple = 15,
