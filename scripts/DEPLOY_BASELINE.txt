@@ -8,5 +8,5 @@ short=f8a5dc6
 message=chore: bump display version to v21.16
 captured_at=2026-10-07T05:35:00Z
 source_branch=cursor/pb-in-rel-taxonomy-911b
-display_version=v21.16
+display_version=v21.17
 note=Canonical live line is app_21.0. Bundle 12658121 ships v21.16: P/B folded into Equity-book capital-claim taxonomy (shared Shares + unique BVPS/target P/B map). Deploy via scripts/deploy_app_21.R.
