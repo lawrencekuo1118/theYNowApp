@@ -8,5 +8,5 @@ short=beac5ef
 message=chore: bump display version to v21.22
 captured_at=2026-10-07T14:00:00Z
 source_branch=cursor/hfv-next-period-prob-911b
-display_version=v21.22
+display_version=v21.23
 note=Canonical live line is app_21.0. Bundle 12659685 ships v21.22: tip next-period odds framed as actual market-price (not FV). Deploy via scripts/deploy_app_21.R.
