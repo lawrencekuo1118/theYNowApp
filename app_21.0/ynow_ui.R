@@ -2060,7 +2060,7 @@ beta_rolling_section_ui <- function() {
                   style = "font-size:12.5px;color:#444;line-height:1.55;margin:0 0 10px 0;",
                   paste0(
                     "Not a trading backtest or broker order ticket. Validation samples cover: ",
-                    "(1) next-period actual market-price return R and P(up) — not FV/valuation — plus MOS-bucket outlook; ",
+                    "(1) next-period actual market-price return R and causal tip P(up) from Replay FV × actual price (MOS; Date_next≤tip, no future backfill); ",
                     "(2) Replay-model FV gap shrink/expand (toward/away); ",
                     "plus a direct historical scenario taxonomy panel (not a numbered question: ",
                     "mispricing / fundamental momentum / price momentum → A–D or other). ",

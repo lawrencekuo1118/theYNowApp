@@ -215,13 +215,15 @@ check("p_away = 0.6", isTRUE(abs(sum_all$p_away - 0.6) < 1e-12))
 check("toward+away+flat = n",
       sum_all$n_toward + sum_all$n_away + sum_all$n_flat == sum_all$n)
 check("mos_outlook list", is.list(sum_all$mos_outlook))
-# tip MOS = penultimate finite mos (= 0.55) → 便宜 MOS≥50%
-check("mos_outlook bucket", identical(sum_all$mos_outlook$bucket, "便宜 MOS≥50%"))
-check("mos_outlook p_up matches stats", {
-  st <- sum_all$mos_stats
-  hit <- st[st$bucket == "便宜 MOS≥50%", , drop = FALSE]
-  nrow(hit) == 1L && is.finite(hit$p_up[1]) &&
-    isTRUE(abs(sum_all$mos_outlook$p_up - hit$p_up[1]) < 1e-12)
+# Causal tip = latest measurable date (mos=0.12) → 便宜 MOS[10%,30%); n_bucket=0 → unconditional prior
+check("mos_outlook is causal flag", isTRUE(sum_all$mos_outlook$causal))
+check("mos_outlook bucket", identical(sum_all$mos_outlook$bucket, "便宜 MOS[10%,30%)"))
+check("mos_outlook p_up matches causal tip (not full-sample stats)", {
+  tip <- sum_all$direction_tip
+  is.finite(tip$p_up_hat) &&
+    is.finite(sum_all$mos_outlook$p_up) &&
+    # Outlook shows bucket prior when n_bucket>0, else unconditional base (= tip base here)
+    isTRUE(abs(sum_all$mos_outlook$p_up - tip$p_up_base) < 1e-12)
 })
 
 sum_win <- summarize_fv_market_validation(
@@ -394,15 +396,15 @@ tip <- tip_hfv_direction_forecast(fc, locale = "en")
 check("tip has p_up_hat", is.finite(tip$p_up_hat) && tip$p_up_hat >= 0 && tip$p_up_hat <= 1)
 check("tip method set", tip$method %in% c("mos_bucket", "blend", "unconditional"))
 check(
-  "tip note frames actual market price not FV",
-  grepl("actual market price", tip$note, ignore.case = TRUE) &&
-    grepl("not FV", tip$note, ignore.case = TRUE)
+  "tip note frames Replay FV × actual price + no future backfill",
+  grepl("Replay FV|actual market", tip$note, ignore.case = TRUE) &&
+    grepl("no future|Causal", tip$note, ignore.case = TRUE)
 )
 tip_zh <- tip_hfv_direction_forecast(fc, locale = "zh-TW")
 check(
-  "tip zh note frames 實際市價 not 估值",
-  grepl("實際市價", tip_zh$note, fixed = TRUE) &&
-    grepl("非估值", tip_zh$note, fixed = TRUE)
+  "tip zh note frames 復盤估值×實際 + 禁止未來回推",
+  grepl("復盤估值", tip_zh$note, fixed = TRUE) &&
+    grepl("禁止未來", tip_zh$note, fixed = TRUE)
 )
 # Forecast target is hist_price return, not fair_value change
 check("ret_next from hist_price", {
@@ -410,9 +412,51 @@ check("ret_next from hist_price", {
   is.finite(i) &&
     isTRUE(abs(fc$ret_next[i] - (vd$hist_price[i + 1] / vd$hist_price[i] - 1)) < 1e-12)
 })
+# Strict no look-ahead: poisoning prices after tip must not change tip p_up_hat
+check("poison future prices leaves tip forecast unchanged", {
+  tip_i <- 4L
+  stopifnot(tip_i < nrow(vd))
+  vd_poison <- vd
+  vd_poison$hist_price[(tip_i + 1L):nrow(vd_poison)] <- c(1e-6, 1e6)[seq_len(nrow(vd_poison) - tip_i)]
+  # Also poison future MOS (as if FV were rebuilt with future info) — tip must ignore it
+  vd_poison$mos[(tip_i + 1L):nrow(vd_poison)] <- c(-0.99, 0.99)[seq_len(nrow(vd_poison) - tip_i)]
+  fc0 <- build_hfv_direction_forecasts(vd, min_bucket_n = 1L, min_base_n = 2L, prior_strength = 2)
+  fc1 <- build_hfv_direction_forecasts(vd_poison, min_bucket_n = 1L, min_base_n = 2L, prior_strength = 2)
+  is.finite(fc0$p_up_hat[tip_i]) &&
+    is.finite(fc1$p_up_hat[tip_i]) &&
+    abs(fc0$p_up_hat[tip_i] - fc1$p_up_hat[tip_i]) < 1e-12 &&
+    identical(fc0$n_prior[tip_i], fc1$n_prior[tip_i]) &&
+    identical(fc0$n_bucket[tip_i], fc1$n_bucket[tip_i])
+})
+# Causal outlook must not use full-sample leakage from future pairs
+check("causal fc at tip ignores future poison; full-sample outlook would leak", {
+  tip_i <- 4L
+  vd_poison <- vd
+  # Massively flip prices after tip so full-sample bucket stats change
+  vd_poison$hist_price[(tip_i + 1L):nrow(vd_poison)] <-
+    vd_poison$hist_price[(tip_i + 1L):nrow(vd_poison)] * c(0.01, 100)[seq_len(nrow(vd_poison) - tip_i)]
+  fc0 <- build_hfv_direction_forecasts(vd, min_bucket_n = 1L, min_base_n = 2L, prior_strength = 2)
+  fc1 <- build_hfv_direction_forecasts(vd_poison, min_bucket_n = 1L, min_base_n = 2L, prior_strength = 2)
+  # Full-sample lookup (legacy) may change — that is the leak we removed from tip outlook
+  leak0 <- lookup_mos_bucket_outlook(vd$mos[tip_i], summarize_mos_next_period_stats(vd))
+  leak1 <- lookup_mos_bucket_outlook(vd$mos[tip_i], summarize_mos_next_period_stats(vd_poison))
+  causal0 <- causal_mos_outlook_from_forecast(fc0[seq_len(tip_i), , drop = FALSE], locale = "en")
+  causal1 <- causal_mos_outlook_from_forecast(fc1[seq_len(tip_i), , drop = FALSE], locale = "en")
+  abs(fc0$p_up_hat[tip_i] - fc1$p_up_hat[tip_i]) < 1e-12 &&
+    isTRUE(causal0$causal) && isTRUE(causal1$causal) &&
+    abs(causal0$p_up - causal1$p_up) < 1e-12 &&
+    # Full-sample outlook can move under future poison (here mean_ret); causal tip does not
+    is.finite(leak0$mean_ret) && is.finite(leak1$mean_ret) &&
+    abs(leak0$mean_ret - leak1$mean_ret) > 1e-6
+})
 sum_fc <- summarize_fv_market_validation(vd, oos_mode = "insample", locale = "en")
 check("summary attaches direction_tip", is.list(sum_fc$direction_tip) && is.finite(sum_fc$direction_tip$p_up_hat))
 check("summary attaches forecasts", is.data.frame(sum_fc$direction_forecasts) && nrow(sum_fc$direction_forecasts) >= 1L)
+check("mos_outlook is causal", isTRUE(sum_fc$mos_outlook$causal))
+check(
+  "mos_outlook note forbids future backfill",
+  grepl("no future|Causal|Date_next", sum_fc$mos_outlook$note, ignore.case = TRUE)
+)
 
 # Locale keys for two-question map + direct scenario panel (en + zh-TW)
 loc_path <- file.path(app_dir, "ui_locale.R")
@@ -440,33 +484,37 @@ if (file.exists(loc_path)) {
     fc_caveat <- ui_str("hfv_fc_caveat", loc)
     if (identical(loc, "en")) {
       check(
-        "en tip title says market-price",
-        grepl("market-price|market price", fc_title, ignore.case = TRUE)
+        "en tip title says market-price + Replay",
+        grepl("market-price|market price", fc_title, ignore.case = TRUE) &&
+          grepl("Replay", fc_title, ignore.case = TRUE)
       )
       check(
-        "en tip formula targets hist_price R not FV",
+        "en tip formula causal hist_price + no look-ahead",
         grepl("hist_price", fc_formula, fixed = TRUE) &&
-          grepl("not FV", fc_formula, ignore.case = TRUE)
+          grepl("no look-ahead|Date_\\{j\\+1\\}≤t|Date_next", fc_formula) &&
+          grepl("MOS", fc_formula, fixed = TRUE)
       )
       check(
-        "en tip caveat says actual stock-price not FV",
-        grepl("actual stock-price|actual market", fc_caveat, ignore.case = TRUE) &&
-          grepl("not FV", fc_caveat, ignore.case = TRUE)
+        "en tip caveat Replay FV × price + no future backfill",
+        grepl("Replay FV", fc_caveat, fixed = TRUE) &&
+          grepl("no future", fc_caveat, ignore.case = TRUE)
       )
     } else {
       check(
-        "zh-TW tip title says 實際市價",
-        grepl("實際市價", fc_title, fixed = TRUE)
+        "zh-TW tip title says 實際市價 + 復盤",
+        grepl("實際市價", fc_title, fixed = TRUE) &&
+          grepl("復盤", fc_title, fixed = TRUE)
       )
       check(
-        "zh-TW tip formula targets 實際市價 not 估值",
+        "zh-TW tip formula causal 實際市價 + 禁止回推",
         grepl("實際市價", fc_formula, fixed = TRUE) &&
-          grepl("不是估值|非估值", fc_formula)
+          grepl("禁止", fc_formula, fixed = TRUE) &&
+          grepl("MOS", fc_formula, fixed = TRUE)
       )
       check(
-        "zh-TW tip caveat says 實際股價 not 估值",
-        grepl("實際股價", fc_caveat, fixed = TRUE) &&
-          grepl("不是估值", fc_caveat, fixed = TRUE)
+        "zh-TW tip caveat 復盤估值×股價 + 禁止未來回推",
+        grepl("復盤估值", fc_caveat, fixed = TRUE) &&
+          grepl("禁止未來", fc_caveat, fixed = TRUE)
       )
     }
     # Scenario panel must NOT be labeled as Q3 / 問題三
