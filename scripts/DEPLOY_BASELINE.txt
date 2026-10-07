@@ -8,5 +8,5 @@ short=0281f25
 message=chore: bump display version to v21.21
 captured_at=2026-10-07T13:45:00Z
 source_branch=cursor/hfv-next-period-prob-911b
-display_version=v21.21
+display_version=v21.22
 note=Canonical live line is app_21.0. Bundle 12659619 ships v21.21: HFV scenario taxonomy as direct panel (not Q3). Deploy via scripts/deploy_app_21.R.
