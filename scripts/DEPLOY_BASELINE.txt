@@ -8,5 +8,5 @@ short=f6fbff9
 message=chore: bump display version to v21.17
 captured_at=2026-10-07T12:45:00Z
 source_branch=cursor/simplify-sop-ynow-911b
-display_version=v21.17
+display_version=v21.18
 note=Canonical live line is app_21.0. Bundle 12659416 ships v21.17: compact Decision SOP on YNOW + composite notes under chart. Deploy via scripts/deploy_app_21.R.
