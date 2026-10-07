@@ -10278,32 +10278,89 @@ server <- function(input, output, session) {
       insample = ui_str("hfv_oos_insample", loc),
       ui_str("hfv_oos_realized", loc)
     )
+    # Three-question map (not a single "conclusion" that duplicates Q1).
+    # Q1 = price direction R; Q2 = vs FV_t landing; Q3 = A–D taxonomy — independent.
     conclusion_card <- {
-      if (is.finite(s$p_up) && as.integer(s$n %||% 0L) > 0L) {
+      n_pairs <- as.integer(s$n %||% 0L)
+      if (n_pairs > 0L && (is.finite(s$p_up) || is.finite(s$p_above))) {
+        sc0 <- s$scenarios
+        lead0 <- if (!is.null(sc0)) as.character(sc0$most_frequent %||% NA_character_)[1] else NA_character_
+        latest0 <- if (!is.null(sc0)) as.character(sc0$latest %||% NA_character_)[1] else NA_character_
+        if (!nzchar(lead0 %||% "") || identical(lead0, "NA")) lead0 <- NA_character_
+        if (!nzchar(latest0 %||% "") || identical(latest0, "NA")) latest0 <- NA_character_
+        sc_lab0 <- function(code) {
+          key <- switch(
+            as.character(code)[1],
+            A = "hfv_scenario_A", B = "hfv_scenario_B",
+            C = "hfv_scenario_C", D = "hfv_scenario_D",
+            "hfv_scenario_other"
+          )
+          ui_str(key, loc)
+        }
+        q1_line <- if (is.finite(s$p_up)) {
+          sprintf(ui_str("hfv_sum_qmap_q1_fmt", loc), pct(s$p_up), n_pairs)
+        } else {
+          ui_str("hfv_sum_qmap_q1_na", loc)
+        }
+        q2_line <- if (is.finite(s$p_above)) {
+          sprintf(
+            ui_str("hfv_sum_qmap_q2_fmt", loc),
+            pct(s$p_above), pct(s$p_below), gap_pct(s$median_gap)
+          )
+        } else {
+          ui_str("hfv_sum_qmap_q2_na", loc)
+        }
+        q3_line <- {
+          lead_txt <- if (!is.na(lead0) && lead0 %in% c("A", "B", "C", "D")) {
+            sc_lab0(lead0)
+          } else {
+            ui_str("hfv_scenario_other", loc)
+          }
+          latest_txt <- if (!is.na(latest0)) sc_lab0(latest0) else "—"
+          sprintf(ui_str("hfv_sum_qmap_q3_fmt", loc), lead_txt, latest_txt)
+        }
+        q12_n <- as.integer(s$q12_diverge_n %||% 0L)
         tags$div(
           style = paste0(
             "margin:0 0 12px 0;padding:12px 14px;background:#eef7f1;",
             "border:1px solid #b7dfc7;border-left:4px solid ", border, ";",
             "border-radius:4px;font-size:13px;line-height:1.55;"
           ),
-          tags$div(
-            tags$b(ui_str("hfv_sum_conclusion_label", loc)),
-            tags$span(
-              style = "margin-left:8px;font-size:16px;font-weight:700;",
-              sprintf(
-                ui_str("hfv_sum_conclusion_fmt", loc),
-                pct(s$p_up),
-                as.integer(s$n %||% 0L)
-              )
-            )
-          ),
+          tags$div(tags$b(ui_str("hfv_sum_qmap_label", loc))),
           tags$div(
             style = "margin:4px 0 0 0;color:#555;font-size:12px;",
-            paste0(ui_str("hfv_oos_mode_label", loc), "：", oos_lab)
+            ui_str("hfv_sum_qmap_lead", loc)
+          ),
+          tags$ul(
+            style = "margin:8px 0 0 0;padding-left:18px;",
+            tags$li(tags$span(style = "font-weight:600;", q1_line)),
+            tags$li(tags$span(style = "font-weight:600;", q2_line)),
+            tags$li(tags$span(style = "font-weight:600;", q3_line))
           ),
           tags$div(
-            style = "margin:4px 0 0 0;color:#6c757d;font-size:11.5px;",
-            ui_str("hfv_sum_conclusion_def", loc)
+            style = "margin:8px 0 0 0;color:#6c757d;font-size:11.5px;line-height:1.5;",
+            ui_str("hfv_sum_qmap_relation", loc)
+          ),
+          if (q12_n > 0L) {
+            tags$div(
+              style = "margin:6px 0 0 0;color:#555;font-size:12px;line-height:1.5;",
+              sprintf(
+                ui_str("hfv_sum_q12_diverge_fmt", loc),
+                q12_n,
+                as.integer(s$n_up_below %||% 0L),
+                as.integer(s$n_down_above %||% 0L)
+              )
+            )
+          } else NULL,
+          if (!is.na(lead0) && !is.na(latest0) && !identical(lead0, latest0)) {
+            tags$div(
+              style = "margin:6px 0 0 0;color:#555;font-size:12px;line-height:1.5;",
+              ui_str("hfv_sum_q3_diverge", loc)
+            )
+          } else NULL,
+          tags$div(
+            style = "margin:6px 0 0 0;color:#555;font-size:12px;",
+            paste0(ui_str("hfv_oos_mode_label", loc), "：", oos_lab)
           ),
           tags$div(
             style = "margin:4px 0 0 0;color:#888;font-size:11.5px;",
@@ -10317,7 +10374,7 @@ server <- function(input, output, session) {
             "border:1px solid #ddd;border-left:4px solid ", border, ";",
             "border-radius:4px;font-size:13px;line-height:1.55;color:#666;"
           ),
-          tags$div(tags$b(ui_str("hfv_sum_conclusion_label", loc))),
+          tags$div(tags$b(ui_str("hfv_sum_qmap_label", loc))),
           tags$div(
             style = "margin:4px 0 0 0;",
             ui_str("hfv_sum_conclusion_na", loc)
@@ -10357,6 +10414,10 @@ server <- function(input, output, session) {
       ),
       tags$div(tags$b(ui_str("hfv_sum_price_block", loc))),
       tags$div(style = "margin:4px 0 0 0;color:#6c757d;font-size:11.5px;", ui_str("hfv_sum_price_formula", loc)),
+      tags$div(
+        style = "margin:4px 0 0 0;color:#555;font-size:11.5px;line-height:1.45;",
+        ui_str("hfv_sum_price_meaning", loc)
+      ),
       tags$p(style = "margin:6px 0 0 0;color:#555;font-size:12px;", period_txt),
       tags$ul(
         style = "margin:6px 0 0 0;padding-left:18px;",
@@ -10391,6 +10452,10 @@ server <- function(input, output, session) {
       ),
       tags$div(tags$b(ui_str("hfv_sum_fv_block", loc))),
       tags$div(style = "margin:4px 0 0 0;color:#6c757d;font-size:11.5px;", ui_str("hfv_sum_fv_formula", loc)),
+      tags$div(
+        style = "margin:4px 0 0 0;color:#555;font-size:11.5px;line-height:1.45;",
+        ui_str("hfv_sum_fv_meaning", loc)
+      ),
       tags$p(style = "margin:6px 0 0 0;color:#555;font-size:12px;", period_txt),
       tags$ul(
         style = "margin:6px 0 0 0;padding-left:18px;",
@@ -10540,8 +10605,12 @@ server <- function(input, output, session) {
           ),
           tags$p(style = "margin:6px 0 8px 0;color:#555;font-size:12px;", period_txt),
           tags$div(
+            style = "margin:0 0 4px 0;color:#555;font-size:11.5px;line-height:1.45;",
+            ui_str("hfv_sum_scenario_meaning", loc)
+          ),
+          tags$div(
             style = "margin:0 0 6px 0;color:#555;font-size:12px;",
-            sprintf("配對數 n＝%d", sc$n %||% 0L)
+            sprintf(ui_str("hfv_pair_n_fmt", loc), sc$n %||% 0L)
           ),
           tags$div(
             class = "ynow-hfv-scenario-row",
@@ -10650,6 +10719,7 @@ server <- function(input, output, session) {
             } else {
               ui_str("hfv_scenario_concl_latest_nodate", loc)
             }
+            diverge_q3 <- !is.na(lead_c) && !is.na(latest_c) && !identical(lead_c, latest_c)
             tagList(
               if (!is.na(lead_c) && lead_c %in% abcd) {
                 make_concl_callout(lead_label, lead_c, sc_color(lead_c))
@@ -10668,6 +10738,16 @@ server <- function(input, output, session) {
               },
               if (!is.na(latest_c)) {
                 make_concl_callout(latest_label, latest_c, sc_color(latest_c))
+              } else NULL,
+              if (isTRUE(diverge_q3)) {
+                tags$div(
+                  style = paste0(
+                    "margin:8px 0 0 0;padding:8px 10px;background:#fff8e8;",
+                    "border:1px solid #f0d78c;border-radius:4px;",
+                    "font-size:12px;line-height:1.5;color:#555;"
+                  ),
+                  ui_str("hfv_scenario_concl_diverge", loc)
+                )
               } else NULL,
               tags$div(
                 style = "margin:8px 0 0 0;color:#888;font-size:11.5px;line-height:1.45;",

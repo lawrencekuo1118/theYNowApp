@@ -1102,6 +1102,9 @@ summarize_fv_market_validation <- function(valuation_df, from = NULL, to = NULL,
     median_gap_below = NA_real_,
     mean_abs_gap = NA_real_,
     median_abs_gap = NA_real_,
+    n_up_below = 0L,
+    n_down_above = 0L,
+    q12_diverge_n = 0L,
     oos_n = 0L,
     oos_hit_rate = NA_real_,
     oos_dir_n = 0L,
@@ -1181,6 +1184,11 @@ summarize_fv_market_validation <- function(valuation_df, from = NULL, to = NULL,
   n_down <- sum(rets_ok < 0)
   n_flat_price <- sum(rets_ok == 0)
   n_ret <- length(rets_ok)
+  # Q1 vs Q2 can diverge on the same pair: price rose but still below FV_t,
+  # or price fell but still above FV_t. These counts make the independence concrete.
+  n_up_below <- sum(pp$dir_price == "漲" & pp$vs_fv == "之下", na.rm = TRUE)
+  n_down_above <- sum(pp$dir_price == "跌" & pp$vs_fv == "之上", na.rm = TRUE)
+  q12_diverge_n <- as.integer(n_up_below + n_down_above)
 
   # Expanding-window OOS: FV side + price direction (separate)
   oos_hit_rate <- NA_real_
@@ -1274,6 +1282,9 @@ summarize_fv_market_validation <- function(valuation_df, from = NULL, to = NULL,
     median_gap_below = if (length(below_g)) stats::median(below_g) else NA_real_,
     mean_abs_gap = if (length(gaps_ok)) mean(abs(gaps_ok)) else NA_real_,
     median_abs_gap = if (length(gaps_ok)) stats::median(abs(gaps_ok)) else NA_real_,
+    n_up_below = as.integer(n_up_below),
+    n_down_above = as.integer(n_down_above),
+    q12_diverge_n = q12_diverge_n,
     oos_n = as.integer(oos_n),
     oos_hit_rate = oos_hit_rate,
     oos_dir_n = as.integer(oos_dir_n),

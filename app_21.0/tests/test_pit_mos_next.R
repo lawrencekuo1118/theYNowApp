@@ -200,6 +200,12 @@ check("p_up in [0,1]", is.finite(sum_all$p_up) && sum_all$p_up >= 0 && sum_all$p
 check("median_gap finite", is.finite(sum_all$median_gap))
 check("median_ret finite", is.finite(sum_all$median_ret))
 check("frame note", grepl("非策略回測", sum_all$frame))
+# Q1≠Q2 relation counts: pair1 漲+之下, pair5 漲+之下 → n_up_below=2
+check("n_up_below = 2", identical(as.integer(sum_all$n_up_below), 2L))
+check("n_down_above = 0", identical(as.integer(sum_all$n_down_above), 0L))
+check("q12_diverge_n = n_up_below + n_down_above",
+      identical(as.integer(sum_all$q12_diverge_n),
+                as.integer(sum_all$n_up_below + sum_all$n_down_above)))
 check("mos_outlook list", is.list(sum_all$mos_outlook))
 # tip MOS = penultimate finite mos (= 0.55) → 便宜 MOS≥50%
 check("mos_outlook bucket", identical(sum_all$mos_outlook$bucket, "便宜 MOS≥50%"))
@@ -335,6 +341,21 @@ check("scenario counts C=1", identical(as.integer(sum_sc$scenarios$counts[["C"]]
 check("most_frequent on tie → A", identical(sum_sc$scenarios$most_frequent, "A"))
 check("latest scenario → C", identical(sum_sc$scenarios$latest, "C"))
 check("latest Date_next", identical(as.character(sum_sc$scenarios$latest_date_next), "2020-12-31"))
+check("Q3 most≠latest on tie sample",
+      !identical(sum_sc$scenarios$most_frequent, sum_sc$scenarios$latest))
+
+# Q1≠Q2: construct down-but-above (跌 + 之上)
+vd_q12 <- data.frame(
+  Date = as.Date(c("2022-03-31", "2022-06-30")),
+  # t0 FV=80, P=100 → t1 P=95: 跌 but 95>80 之上
+  hist_price = c(100, 95),
+  fair_value = c(80, 90),
+  stringsAsFactors = FALSE
+)
+sum_q12 <- summarize_fv_market_validation(vd_q12, oos_mode = "insample")
+check("down_above pair", identical(as.integer(sum_q12$n_down_above), 1L))
+check("up_below zero on this sample", identical(as.integer(sum_q12$n_up_below), 0L))
+check("q12_diverge_n = 1", identical(as.integer(sum_q12$q12_diverge_n), 1L))
 
 # other: no A–D conclusion path
 vd_other <- data.frame(
@@ -346,5 +367,26 @@ vd_other <- data.frame(
 sum_ot <- summarize_hfv_scenarios(build_hfv_scenario_pairs(vd_other))
 check("other-only most_frequent NA", is.na(sum_ot$most_frequent))
 check("other-only latest other", identical(sum_ot$latest, "other"))
+
+# Locale keys for three-question map (en + zh-TW)
+loc_path <- file.path(app_dir, "ui_locale.R")
+if (file.exists(loc_path)) {
+  source(loc_path, local = TRUE, encoding = "UTF-8")
+  for (loc in c("en", "zh-TW")) {
+    for (k in c(
+      "hfv_sum_qmap_label", "hfv_sum_qmap_lead", "hfv_sum_qmap_relation",
+      "hfv_sum_qmap_q1_fmt", "hfv_sum_qmap_q2_fmt", "hfv_sum_qmap_q3_fmt",
+      "hfv_sum_q12_diverge_fmt", "hfv_sum_q3_diverge",
+      "hfv_sum_price_meaning", "hfv_sum_fv_meaning", "hfv_sum_scenario_meaning",
+      "hfv_scenario_concl_diverge"
+    )) {
+      v <- ui_str(k, loc)
+      check(paste0("locale ", loc, " ", k), is.character(v) && nzchar(v) && !grepl("^\\[", v))
+    }
+  }
+  # Softened C emph must stay veto (not absolute buy order)
+  check("C emph veto en", grepl("Veto|veto|buy signal", ui_str("hfv_scenario_concl_C_emph", "en"), ignore.case = TRUE))
+  check("C emph veto zh", grepl("否決", ui_str("hfv_scenario_concl_C_emph", "zh-TW")))
+}
 
 message("ALL PASS")
