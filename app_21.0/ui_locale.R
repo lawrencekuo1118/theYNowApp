@@ -880,7 +880,32 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_ch1_kicker = "Section I",
     hfv_ch1_title = "Fair value vs market price",
     hfv_ch2_kicker = "Section II",
-    hfv_ch2_title = "Validation findings",
+    hfv_ch2_title = "Investor summary",
+    hfv_ch2_lead = paste0(
+      "Set the Replay model and sample scope, then read the two-question map and the measurable-tip ",
+      "odds for next actual market-price direction — before drilling into evidence chapters."
+    ),
+    hfv_ch3_kicker = "Section III",
+    hfv_ch3_title = "Next-period market price & MOS",
+    hfv_ch3_lead = paste0(
+      "Question 1: between valuation dates, did the actual market price rise or fall? ",
+      "MOS outlook conditions those odds at the tip (causal expanding-window only)."
+    ),
+    hfv_ch4_kicker = "Section IV",
+    hfv_ch4_title = "Gap to theoretical FV",
+    hfv_ch4_lead = paste0(
+      "Question 2: when the next price arrived, did the absolute distance to then-available Replay FV ",
+      "shrink (toward) or expand (away)? The chart shows landing magnitude (P_next − FV) / FV."
+    ),
+    hfv_ch5_kicker = "Section V",
+    hfv_ch5_title = "Historical scenario taxonomy",
+    hfv_ch5_lead = paste0(
+      "Joint FV–price patterns on successive dates (A–D or other). ",
+      "Education / veto labels on the same Replay sample — not a numbered question and not an order ticket."
+    ),
+    hfv_ch6_kicker = "Section VI",
+    hfv_ch6_title = "Period detail (appendix)",
+    hfv_ch6_lead = "Pair-by-pair outcomes under the current validation sample scope — for audit, not a buy/sell score.",
     hfv_param_inv_title = "US Valuation Replay Inventory (Live vs Hist PIT)",
     hfv_param_inv_help = paste0(
       "Historical theoretical values are rebuilt from then-available data; ",
@@ -1172,9 +1197,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_sum_notes = "Result notes",
     hfv_sec_method = "How to read this report",
     hfv_sec_settings = "Report controls",
-    hfv_sec_results = "Executive summary",
-    hfv_chart_gap = "Magnitude (P_next − FV) / FV",
-    hfv_table_detail = "Period detail",
+    hfv_sec_results = "Key takeaways",
+    hfv_chart_gap = "Landing magnitude (P_next − FV) / FV",
+    hfv_table_detail = "Pair table",
     hfv_oos_mode_label = "Validation sample scope",
     hfv_oos_realized = "Realized next period only (default)",
     hfv_oos_expanding = "Expanding-window out-of-sample hits",
@@ -3417,7 +3442,32 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_ch1_kicker = "第一章",
     hfv_ch1_title = "合理價與市價",
     hfv_ch2_kicker = "第二章",
-    hfv_ch2_title = "驗證發現",
+    hfv_ch2_title = "投資人摘要",
+    hfv_ch2_lead = paste0(
+      "先設定復盤模型與樣本口徑，再讀兩問題對照與可衡量時刻的「下期實際市價」漲跌機率；",
+      "細節證據見後續章節。"
+    ),
+    hfv_ch3_kicker = "第三章",
+    hfv_ch3_title = "下期市價與安全邊際（MOS）",
+    hfv_ch3_lead = paste0(
+      "問題一：估值日間實際市價是漲還是跌？",
+      "MOS 分組展望以因果擴張窗條件化可衡量時刻的市價漲跌機率。"
+    ),
+    hfv_ch4_kicker = "第四章",
+    hfv_ch4_title = "相對理論 FV：縮小／擴大與幅度",
+    hfv_ch4_lead = paste0(
+      "問題二：下期市價到來時，相對當時可得復盤 FV 的絕對距離是縮小（趨近）還是擴大（遠離）？",
+      "圖表呈現落點幅度 (P下一期−FV)/FV。"
+    ),
+    hfv_ch5_kicker = "第五章",
+    hfv_ch5_title = "歷史情境分類",
+    hfv_ch5_lead = paste0(
+      "相鄰估值日的 FV–市價聯合型態（A–D 或 other）。",
+      "同一復盤樣本上的教育／否決標籤——不編號為問題，也不是下單指令。"
+    ),
+    hfv_ch6_kicker = "第六章",
+    hfv_ch6_title = "逐期明細（附錄）",
+    hfv_ch6_lead = "目前驗證樣本口徑下的逐筆配對結果——供覆核，不是買賣分數。",
     hfv_param_inv_title = "美股估值復盤參數盤點（Live vs Hist PIT）",
     hfv_param_inv_help = paste0(
       "歷史點理論估值使用當時可得資料重建；",
@@ -3703,9 +3753,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_sum_notes = "結果附註",
     hfv_sec_method = "如何閱讀本報告",
     hfv_sec_settings = "報告條件",
-    hfv_sec_results = "摘要結論",
-    hfv_chart_gap = "幅度 (P下一期 − FV) / FV",
-    hfv_table_detail = "逐期明細",
+    hfv_sec_results = "重點對照",
+    hfv_chart_gap = "落點幅度 (P下一期 − FV) / FV",
+    hfv_table_detail = "配對明細表",
     hfv_oos_mode_label = "驗證樣本口徑",
     hfv_oos_realized = "僅計已實現下期（預設）",
     hfv_oos_expanding = "擴張視窗樣本外命中",

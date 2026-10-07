@@ -1998,7 +1998,7 @@ beta_rolling_section_ui <- function() {
               )
             ),
 
-            # --- Chapter II: Findings ---
+            # --- Chapter II: Investor summary ---
             tags$section(
               class = "ynow-hfv-chapter",
               tags$div(
@@ -2007,12 +2007,19 @@ beta_rolling_section_ui <- function() {
                 tags$h3(
                   class = "ynow-hfv-chapter__title",
                   id = "ynow_hfv_ch2_title",
-                  "Validation findings"
+                  "Investor summary"
+                )
+              ),
+              tags$p(
+                class = "ynow-hfv-chapter__lead",
+                id = "ynow_hfv_ch2_lead",
+                paste0(
+                  "Set the Replay model and sample scope, then read the two-question map and the measurable-tip ",
+                  "odds for next actual market-price direction — before drilling into evidence chapters."
                 )
               ),
               tags$div(
                 class = "ynow-hfv-chapter__body",
-                # Replay model + sample scope drive Section II findings (sit above summary)
                 tags$div(
                   class = "ynow-hfv-toolbar ynow-hfv-toolbar--in-ch2",
                   role = "group",
@@ -2081,17 +2088,118 @@ beta_rolling_section_ui <- function() {
                 ),
                 tags$div(
                   class = "ynow-hfv-findings-block",
-                  tags$h5(id = "ynow_hfv_sec_results", "Executive summary"),
-                  uiOutput("bt_fv_conv_summary")
-                ),
+                  tags$h5(id = "ynow_hfv_sec_results", "Key takeaways"),
+                  uiOutput("bt_hfv_investor_summary")
+                )
+              )
+            ),
+
+            # --- Chapter III: Market price & MOS ---
+            tags$section(
+              class = "ynow-hfv-chapter",
+              tags$div(
+                class = "ynow-hfv-chapter__head",
+                tags$span(class = "ynow-hfv-chapter__kicker", id = "ynow_hfv_ch3_kicker", "Section III"),
+                tags$h3(
+                  class = "ynow-hfv-chapter__title",
+                  id = "ynow_hfv_ch3_title",
+                  "Next-period market price & MOS"
+                )
+              ),
+              tags$p(
+                class = "ynow-hfv-chapter__lead",
+                id = "ynow_hfv_ch3_lead",
+                paste0(
+                  "Question 1: between valuation dates, did the actual market price rise or fall? ",
+                  "MOS outlook conditions those odds at the tip (causal expanding-window only)."
+                )
+              ),
+              tags$div(
+                class = "ynow-hfv-chapter__body",
+                uiOutput("bt_hfv_price_findings")
+              )
+            ),
+
+            # --- Chapter IV: Gap to FV ---
+            tags$section(
+              class = "ynow-hfv-chapter",
+              tags$div(
+                class = "ynow-hfv-chapter__head",
+                tags$span(class = "ynow-hfv-chapter__kicker", id = "ynow_hfv_ch4_kicker", "Section IV"),
+                tags$h3(
+                  class = "ynow-hfv-chapter__title",
+                  id = "ynow_hfv_ch4_title",
+                  "Gap to theoretical FV"
+                )
+              ),
+              tags$p(
+                class = "ynow-hfv-chapter__lead",
+                id = "ynow_hfv_ch4_lead",
+                paste0(
+                  "Question 2: when the next price arrived, did the absolute distance to then-available Replay FV ",
+                  "shrink (toward) or expand (away)? The chart shows landing magnitude (P_next − FV) / FV."
+                )
+              ),
+              tags$div(
+                class = "ynow-hfv-chapter__body",
+                uiOutput("bt_hfv_fv_findings"),
                 tags$div(
                   class = "ynow-hfv-findings-block",
-                  tags$h5(id = "ynow_hfv_chart_gap", "Magnitude (P_next − FV) / FV"),
+                  style = "margin-top:14px;",
+                  tags$h5(id = "ynow_hfv_chart_gap", "Landing magnitude (P_next − FV) / FV"),
                   plotlyOutput("bt_fv_conv_plot", height = "280px") %>% withSpinner()
-                ),
+                )
+              )
+            ),
+
+            # --- Chapter V: Scenario taxonomy ---
+            tags$section(
+              class = "ynow-hfv-chapter",
+              tags$div(
+                class = "ynow-hfv-chapter__head",
+                tags$span(class = "ynow-hfv-chapter__kicker", id = "ynow_hfv_ch5_kicker", "Section V"),
+                tags$h3(
+                  class = "ynow-hfv-chapter__title",
+                  id = "ynow_hfv_ch5_title",
+                  "Historical scenario taxonomy"
+                )
+              ),
+              tags$p(
+                class = "ynow-hfv-chapter__lead",
+                id = "ynow_hfv_ch5_lead",
+                paste0(
+                  "Joint FV–price patterns on successive dates (A–D or other). ",
+                  "Education / veto labels on the same Replay sample — not a numbered question and not an order ticket."
+                )
+              ),
+              tags$div(
+                class = "ynow-hfv-chapter__body",
+                uiOutput("bt_hfv_scenario_findings")
+              )
+            ),
+
+            # --- Chapter VI: Period detail appendix ---
+            tags$section(
+              class = "ynow-hfv-chapter",
+              tags$div(
+                class = "ynow-hfv-chapter__head",
+                tags$span(class = "ynow-hfv-chapter__kicker", id = "ynow_hfv_ch6_kicker", "Section VI"),
+                tags$h3(
+                  class = "ynow-hfv-chapter__title",
+                  id = "ynow_hfv_ch6_title",
+                  "Period detail (appendix)"
+                )
+              ),
+              tags$p(
+                class = "ynow-hfv-chapter__lead",
+                id = "ynow_hfv_ch6_lead",
+                "Pair-by-pair outcomes under the current validation sample scope — for audit, not a buy/sell score."
+              ),
+              tags$div(
+                class = "ynow-hfv-chapter__body",
                 tags$div(
                   class = "ynow-hfv-findings-block",
-                  tags$h5(id = "ynow_hfv_table_detail", "Period detail"),
+                  tags$h5(id = "ynow_hfv_table_detail", "Pair table"),
                   tags$div(
                     style = "overflow-x:auto; width:100%;",
                     tags$style(HTML("#bt_fv_conv_table table { width: 100% !important; }")),
@@ -5540,6 +5648,13 @@ ui <- dashboardPage(
           line-height: 1.55;
           color: #555;
         }
+        .ynow-hfv-chapter__lead {
+          margin: 0 0 12px 0;
+          max-width: 58em;
+          font-size: 13px;
+          line-height: 1.5;
+          color: #555;
+        }
         .ynow-hfv-toolbar {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -6720,6 +6835,32 @@ ui <- dashboardPage(
             if (hfvCh2K && s.hfv_ch2_kicker) hfvCh2K.textContent = s.hfv_ch2_kicker;
             var hfvCh2T = document.getElementById('ynow_hfv_ch2_title');
             if (hfvCh2T && s.hfv_ch2_title) hfvCh2T.textContent = s.hfv_ch2_title;
+            var hfvCh2Lead = document.getElementById('ynow_hfv_ch2_lead');
+            if (hfvCh2Lead && s.hfv_ch2_lead) hfvCh2Lead.textContent = s.hfv_ch2_lead;
+            var hfvCh3K = document.getElementById('ynow_hfv_ch3_kicker');
+            if (hfvCh3K && s.hfv_ch3_kicker) hfvCh3K.textContent = s.hfv_ch3_kicker;
+            var hfvCh3T = document.getElementById('ynow_hfv_ch3_title');
+            if (hfvCh3T && s.hfv_ch3_title) hfvCh3T.textContent = s.hfv_ch3_title;
+            var hfvCh3Lead = document.getElementById('ynow_hfv_ch3_lead');
+            if (hfvCh3Lead && s.hfv_ch3_lead) hfvCh3Lead.textContent = s.hfv_ch3_lead;
+            var hfvCh4K = document.getElementById('ynow_hfv_ch4_kicker');
+            if (hfvCh4K && s.hfv_ch4_kicker) hfvCh4K.textContent = s.hfv_ch4_kicker;
+            var hfvCh4T = document.getElementById('ynow_hfv_ch4_title');
+            if (hfvCh4T && s.hfv_ch4_title) hfvCh4T.textContent = s.hfv_ch4_title;
+            var hfvCh4Lead = document.getElementById('ynow_hfv_ch4_lead');
+            if (hfvCh4Lead && s.hfv_ch4_lead) hfvCh4Lead.textContent = s.hfv_ch4_lead;
+            var hfvCh5K = document.getElementById('ynow_hfv_ch5_kicker');
+            if (hfvCh5K && s.hfv_ch5_kicker) hfvCh5K.textContent = s.hfv_ch5_kicker;
+            var hfvCh5T = document.getElementById('ynow_hfv_ch5_title');
+            if (hfvCh5T && s.hfv_ch5_title) hfvCh5T.textContent = s.hfv_ch5_title;
+            var hfvCh5Lead = document.getElementById('ynow_hfv_ch5_lead');
+            if (hfvCh5Lead && s.hfv_ch5_lead) hfvCh5Lead.textContent = s.hfv_ch5_lead;
+            var hfvCh6K = document.getElementById('ynow_hfv_ch6_kicker');
+            if (hfvCh6K && s.hfv_ch6_kicker) hfvCh6K.textContent = s.hfv_ch6_kicker;
+            var hfvCh6T = document.getElementById('ynow_hfv_ch6_title');
+            if (hfvCh6T && s.hfv_ch6_title) hfvCh6T.textContent = s.hfv_ch6_title;
+            var hfvCh6Lead = document.getElementById('ynow_hfv_ch6_lead');
+            if (hfvCh6Lead && s.hfv_ch6_lead) hfvCh6Lead.textContent = s.hfv_ch6_lead;
             var hfvParamInv = document.getElementById('ynow_hfv_param_inv_title');
             if (hfvParamInv && (s.hfv_param_inv_title || s.box_hfv_param_inventory)) {
               hfvParamInv.textContent = s.hfv_param_inv_title || s.box_hfv_param_inventory;

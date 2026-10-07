@@ -473,7 +473,9 @@ if (file.exists(loc_path)) {
       "hfv_toward_odds_fmt", "hfv_toward_read", "hfv_col_toward",
       "hfv_toward_toward", "hfv_toward_away",
       "hfv_fc_title", "hfv_fc_formula", "hfv_fc_tip_fmt", "hfv_fc_caveat",
-      "hfv_col_p_up_hat", "hfv_fc_method_bucket"
+      "hfv_col_p_up_hat", "hfv_fc_method_bucket",
+      "hfv_ch2_title", "hfv_ch2_lead", "hfv_ch3_title", "hfv_ch4_title",
+      "hfv_ch5_title", "hfv_ch6_title"
     )) {
       v <- ui_str(k, loc)
       check(paste0("locale ", loc, " ", k), is.character(v) && nzchar(v) && !grepl("^\\[", v))

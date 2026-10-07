@@ -10250,13 +10250,21 @@ server <- function(input, output, session) {
     )
   })
 
-  output$bt_fv_conv_summary <- renderUI({
+  # Investor-report findings: one reactive builds chapter parts (II–V)
+  bt_hfv_findings_parts <- reactive({
     s <- bt_fv_conv()
     loc <- tryCatch(isolate(ui_locale()), error = function(e) "zh-TW")
     if (is.null(s)) {
-      return(tags$div(
+      empty <- tags$div(
         style = "margin:0 0 8px 0;padding:12px;background:#f0f0f0;border-left:4px solid #999;font-size:13px;",
         ui_str("hfv_sum_empty", loc)
+      )
+      return(list(
+        empty = empty,
+        investor = empty,
+        price = empty,
+        fv = empty,
+        scenario = empty
       ))
     }
     pct <- function(x) if (is.finite(x)) sprintf("%.0f%%", 100 * x) else "—"
@@ -10905,7 +10913,7 @@ server <- function(input, output, session) {
       }
     }
 
-    tagList(
+    investor_block <- tagList(
       conclusion_card,
       forecast_card,
       tags$div(
@@ -10914,11 +10922,6 @@ server <- function(input, output, session) {
         if (isTRUE(s$small_sample)) tags$span(style = "color:#c27d0e;margin-left:8px;", ui_str("hfv_badge_small_sample", loc)),
         if (isTRUE(s$no_strategy_fv)) tags$span(style = "color:#c27d0e;margin-left:8px;", ui_str("hfv_badge_no_strategy_fv", loc))
       ),
-      fluidRow(
-        column(6, style = "margin-bottom:10px;", price_card),
-        column(6, style = "margin-bottom:10px;", fv_card)
-      ),
-      scenario_card,
       if (length(notes_ui) > 0) {
         tags$div(
           style = "margin:4px 0 0 0;padding:10px 12px;background:#fafafa;border:1px dashed #ccc;border-radius:4px;",
@@ -10930,6 +10933,35 @@ server <- function(input, output, session) {
         )
       } else NULL
     )
+    list(
+      empty = NULL,
+      investor = investor_block,
+      price = price_card,
+      fv = fv_card,
+      scenario = scenario_card
+    )
+  })
+
+  output$bt_hfv_investor_summary <- renderUI({
+    parts <- bt_hfv_findings_parts()
+    parts$investor
+  })
+  # Back-compat alias (older bookmarks / tests may still bind this id)
+  output$bt_fv_conv_summary <- renderUI({
+    parts <- bt_hfv_findings_parts()
+    parts$investor
+  })
+  output$bt_hfv_price_findings <- renderUI({
+    parts <- bt_hfv_findings_parts()
+    parts$price
+  })
+  output$bt_hfv_fv_findings <- renderUI({
+    parts <- bt_hfv_findings_parts()
+    parts$fv
+  })
+  output$bt_hfv_scenario_findings <- renderUI({
+    parts <- bt_hfv_findings_parts()
+    parts$scenario
   })
 
   output$bt_fv_conv_table <- renderTable({

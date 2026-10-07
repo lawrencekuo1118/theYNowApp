@@ -345,16 +345,37 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(is.finite(pos_overlay) && pos_overlay > 0)
   testthat::expect_true(is.finite(pos_chart) && pos_chart > 0)
   testthat::expect_true(pos_overlay < pos_chart)
-  # Replay model / validation toolbar lives inside Section II (above findings)
+  # Investor-report chapters II–VI after Section I
+  for (id in c(
+    "ynow_hfv_ch2_title", "ynow_hfv_ch3_title", "ynow_hfv_ch4_title",
+    "ynow_hfv_ch5_title", "ynow_hfv_ch6_title"
+  )) {
+    testthat::expect_true(grepl(id, txt, fixed = TRUE), info = id)
+  }
+  testthat::expect_true(grepl("bt_hfv_investor_summary", txt, fixed = TRUE))
+  testthat::expect_true(grepl("bt_hfv_price_findings", txt, fixed = TRUE))
+  testthat::expect_true(grepl("bt_hfv_fv_findings", txt, fixed = TRUE))
+  testthat::expect_true(grepl("bt_hfv_scenario_findings", txt, fixed = TRUE))
+  # Replay model / validation toolbar lives inside Section II (above key takeaways)
   testthat::expect_true(grepl("ynow-hfv-toolbar--in-ch2", txt, fixed = TRUE))
   pos_ch2 <- regexpr("ynow_hfv_ch2_title", txt, fixed = TRUE)[1]
   pos_toolbar <- regexpr('id = \"ynow_hfv_toolbar\"', txt, perl = TRUE)[1]
   pos_results <- regexpr("ynow_hfv_sec_results", txt, fixed = TRUE)[1]
+  pos_ch3 <- regexpr("ynow_hfv_ch3_title", txt, fixed = TRUE)[1]
+  pos_ch4 <- regexpr("ynow_hfv_ch4_title", txt, fixed = TRUE)[1]
+  pos_ch5 <- regexpr("ynow_hfv_ch5_title", txt, fixed = TRUE)[1]
+  pos_ch6 <- regexpr("ynow_hfv_ch6_title", txt, fixed = TRUE)[1]
+  pos_gap_chart <- regexpr("bt_fv_conv_plot", txt, fixed = TRUE)[1]
   testthat::expect_true(is.finite(pos_ch2) && pos_ch2 > 0)
   testthat::expect_true(is.finite(pos_toolbar) && pos_toolbar > 0)
   testthat::expect_true(is.finite(pos_results) && pos_results > 0)
   testthat::expect_true(pos_ch2 < pos_toolbar)
   testthat::expect_true(pos_toolbar < pos_results)
+  testthat::expect_true(pos_results < pos_ch3)
+  testthat::expect_true(pos_ch3 < pos_ch4)
+  testthat::expect_true(pos_ch4 < pos_gap_chart)
+  testthat::expect_true(pos_gap_chart < pos_ch5)
+  testthat::expect_true(pos_ch5 < pos_ch6)
   testthat::expect_true(grepl("bt_fv_replay_model", txt, fixed = TRUE))
   # Chart overlay models stay in Section I — not in the Section II validation toolbar
   ch2_toolbar_block <- regmatches(
