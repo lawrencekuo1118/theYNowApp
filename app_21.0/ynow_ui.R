@@ -2147,7 +2147,8 @@ beta_rolling_section_ui <- function() {
                 tags$div(
                   class = "ynow-hfv-findings-block",
                   style = "margin-top:14px;",
-                  tags$h5(id = "ynow_hfv_chart_gap", "Landing magnitude (P_next − FV) / FV"),
+                  # Locale target; chapter IV lead already names the chart.
+                  tags$span(id = "ynow_hfv_chart_gap", style = "display:none;", "Landing magnitude (P_next − FV) / FV"),
                   plotlyOutput("bt_fv_conv_plot", height = "280px") %>% withSpinner()
                 )
               )
@@ -2200,7 +2201,8 @@ beta_rolling_section_ui <- function() {
                 class = "ynow-hfv-chapter__body",
                 tags$div(
                   class = "ynow-hfv-findings-block",
-                  tags$h5(id = "ynow_hfv_table_detail", "Pair table"),
+                  # Locale target; chapter VI lead already names the pair table.
+                  tags$span(id = "ynow_hfv_table_detail", style = "display:none;", "Pair table"),
                   tags$div(
                     style = "overflow-x:auto; width:100%;",
                     tags$style(HTML("#bt_fv_conv_table table { width: 100% !important; }")),
