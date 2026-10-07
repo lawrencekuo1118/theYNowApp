@@ -345,17 +345,29 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(is.finite(pos_overlay) && pos_overlay > 0)
   testthat::expect_true(is.finite(pos_chart) && pos_chart > 0)
   testthat::expect_true(pos_overlay < pos_chart)
-  # Overlay controls are no longer in the main report toolbar block after Section I
-  toolbar_block <- regmatches(
+  # Replay model / validation toolbar lives inside Section II (above findings)
+  testthat::expect_true(grepl("ynow-hfv-toolbar--in-ch2", txt, fixed = TRUE))
+  pos_ch2 <- regexpr("ynow_hfv_ch2_title", txt, fixed = TRUE)[1]
+  pos_toolbar <- regexpr('id = \"ynow_hfv_toolbar\"', txt, perl = TRUE)[1]
+  pos_results <- regexpr("ynow_hfv_sec_results", txt, fixed = TRUE)[1]
+  testthat::expect_true(is.finite(pos_ch2) && pos_ch2 > 0)
+  testthat::expect_true(is.finite(pos_toolbar) && pos_toolbar > 0)
+  testthat::expect_true(is.finite(pos_results) && pos_results > 0)
+  testthat::expect_true(pos_ch2 < pos_toolbar)
+  testthat::expect_true(pos_toolbar < pos_results)
+  testthat::expect_true(grepl("bt_fv_replay_model", txt, fixed = TRUE))
+  # Chart overlay models stay in Section I — not in the Section II validation toolbar
+  ch2_toolbar_block <- regmatches(
     txt,
     regexpr(
-      'id = \"ynow_hfv_toolbar\"[\\s\\S]*?id = \"ynow_hfv_ch2_kicker\"',
+      'ynow-hfv-toolbar--in-ch2[\\s\\S]*?ynow_hfv_sec_results',
       txt,
       perl = TRUE
     )
   )
-  testthat::expect_true(length(toolbar_block) == 1L && nzchar(toolbar_block))
-  testthat::expect_false(grepl("bt_fv_models", toolbar_block, fixed = TRUE))
+  testthat::expect_true(length(ch2_toolbar_block) == 1L && nzchar(ch2_toolbar_block))
+  testthat::expect_true(grepl("bt_fv_replay_model", ch2_toolbar_block, fixed = TRUE))
+  testthat::expect_false(grepl("bt_fv_models", ch2_toolbar_block, fixed = TRUE))
   testthat::expect_true(grepl("ynow-backtest-report", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-backtest-toolbar", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-backtest-zone-band", txt, fixed = TRUE))

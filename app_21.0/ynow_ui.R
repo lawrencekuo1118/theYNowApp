@@ -1998,74 +1998,6 @@ beta_rolling_section_ui <- function() {
               )
             ),
 
-            # --- Report controls (toolbar) ---
-            tags$div(
-              class = "ynow-hfv-toolbar",
-              role = "group",
-              `aria-label` = "HFV report controls",
-              id = "ynow_hfv_toolbar",
-              tags$div(
-                class = "ynow-hfv-toolbar__group",
-                radioButtons(
-                  "bt_fv_replay_model",
-                  "Replay model",
-                  inline = TRUE,
-                  choices = c(
-                    "DCF" = "dcf",
-                    "DDM" = "ddm",
-                    "RI" = "ri",
-                    "P/B" = "pb",
-                    "NAV" = "nav"
-                  ),
-                  selected = APP_DEFAULTS$bt_fv_replay_model
-                )
-              ),
-              tags$div(
-                class = "ynow-hfv-toolbar__group",
-                radioButtons(
-                  "bt_fv_conv_window",
-                  "Sample window",
-                  inline = TRUE,
-                  choices = c(
-                    "All" = "all",
-                    "1Y" = "1y",
-                    "3Y" = "3y",
-                    "5Y" = "5y",
-                    "Custom" = "custom"
-                  ),
-                  selected = APP_DEFAULTS$bt_fv_conv_window
-                ),
-                conditionalPanel(
-                  condition = "input.bt_fv_conv_window == 'custom'",
-                  dateRangeInput(
-                    "bt_fv_conv_custom",
-                    NULL,
-                    start = Sys.Date() - 365 * 3,
-                    end = Sys.Date(),
-                    language = "zh-TW"
-                  )
-                )
-              ),
-              tags$div(
-                class = "ynow-hfv-toolbar__group",
-                uiOutput("bt_fv_analysis_freq_ui")
-              ),
-              tags$div(
-                class = "ynow-hfv-toolbar__group ynow-hfv-toolbar__group--wide",
-                radioButtons(
-                  "bt_fv_oos_mode",
-                  "Validation sample scope",
-                  inline = TRUE,
-                  choices = c(
-                    "Realized next period only (default)" = "realized",
-                    "Expanding-window out-of-sample hits" = "expanding",
-                    "Include unrealized next period (in-sample)" = "insample"
-                  ),
-                  selected = APP_DEFAULTS$bt_fv_oos_mode
-                )
-              )
-            ),
-
             # --- Chapter II: Findings ---
             tags$section(
               class = "ynow-hfv-chapter",
@@ -2080,6 +2012,73 @@ beta_rolling_section_ui <- function() {
               ),
               tags$div(
                 class = "ynow-hfv-chapter__body",
+                # Replay model + sample scope drive Section II findings (sit above summary)
+                tags$div(
+                  class = "ynow-hfv-toolbar ynow-hfv-toolbar--in-ch2",
+                  role = "group",
+                  `aria-label` = "HFV validation controls",
+                  id = "ynow_hfv_toolbar",
+                  tags$div(
+                    class = "ynow-hfv-toolbar__group",
+                    radioButtons(
+                      "bt_fv_replay_model",
+                      "Replay model",
+                      inline = TRUE,
+                      choices = c(
+                        "DCF" = "dcf",
+                        "DDM" = "ddm",
+                        "RI" = "ri",
+                        "P/B" = "pb",
+                        "NAV" = "nav"
+                      ),
+                      selected = APP_DEFAULTS$bt_fv_replay_model
+                    )
+                  ),
+                  tags$div(
+                    class = "ynow-hfv-toolbar__group",
+                    radioButtons(
+                      "bt_fv_conv_window",
+                      "Sample window",
+                      inline = TRUE,
+                      choices = c(
+                        "All" = "all",
+                        "1Y" = "1y",
+                        "3Y" = "3y",
+                        "5Y" = "5y",
+                        "Custom" = "custom"
+                      ),
+                      selected = APP_DEFAULTS$bt_fv_conv_window
+                    ),
+                    conditionalPanel(
+                      condition = "input.bt_fv_conv_window == 'custom'",
+                      dateRangeInput(
+                        "bt_fv_conv_custom",
+                        NULL,
+                        start = Sys.Date() - 365 * 3,
+                        end = Sys.Date(),
+                        language = "zh-TW"
+                      )
+                    )
+                  ),
+                  tags$div(
+                    class = "ynow-hfv-toolbar__group",
+                    uiOutput("bt_fv_analysis_freq_ui")
+                  ),
+                  tags$div(
+                    class = "ynow-hfv-toolbar__group ynow-hfv-toolbar__group--wide",
+                    radioButtons(
+                      "bt_fv_oos_mode",
+                      "Validation sample scope",
+                      inline = TRUE,
+                      choices = c(
+                        "Realized next period only (default)" = "realized",
+                        "Expanding-window out-of-sample hits" = "expanding",
+                        "Include unrealized next period (in-sample)" = "insample"
+                      ),
+                      selected = APP_DEFAULTS$bt_fv_oos_mode
+                    )
+                  )
+                ),
                 tags$div(
                   class = "ynow-hfv-findings-block",
                   tags$h5(id = "ynow_hfv_sec_results", "Executive summary"),
@@ -5553,6 +5552,9 @@ ui <- dashboardPage(
         }
         .ynow-hfv-toolbar--above-chart {
           margin: 8px 0 12px 0;
+        }
+        .ynow-hfv-toolbar--in-ch2 {
+          margin: 0 0 16px 0;
         }
         .ynow-hfv-toolbar__group {
           min-width: 0;
