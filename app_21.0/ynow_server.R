@@ -10510,31 +10510,21 @@ server <- function(input, output, session) {
           style = "margin:0 0 10px 0;padding:0;font-size:13px;line-height:1.55;",
           tags$style(HTML("
             .ynow-hfv-scenario-row {
-              display: flex;
-              flex-wrap: nowrap;
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 12px 16px;
               align-items: stretch;
-              margin-left: -7.5px;
-              margin-right: -7.5px;
+              margin: 0 0 4px 0;
             }
             .ynow-hfv-scenario-row > .ynow-hfv-scenario-card-col {
-              flex: 1 1 0;
               min-width: 0;
               width: auto;
               float: none;
-              padding-left: 7.5px;
-              padding-right: 7.5px;
               box-sizing: border-box;
             }
-            @media (max-width: 991px) {
-              .ynow-hfv-scenario-row { flex-wrap: wrap; }
-              .ynow-hfv-scenario-row > .ynow-hfv-scenario-card-col {
-                flex: 1 1 45%;
-                margin-bottom: 10px;
-              }
-            }
-            @media (max-width: 767px) {
-              .ynow-hfv-scenario-row > .ynow-hfv-scenario-card-col {
-                flex: 1 1 100%;
+            @media (max-width: 575px) {
+              .ynow-hfv-scenario-row {
+                grid-template-columns: 1fr;
               }
             }
           ")),
@@ -10546,6 +10536,7 @@ server <- function(input, output, session) {
           ),
           tags$div(
             class = "ynow-hfv-scenario-row",
+            # 2×2: A B / C D
             make_sc_card("A", "gem", "#c9a227"),
             make_sc_card("B", "chart-line", "#00a65a"),
             make_sc_card("C", "exclamation-triangle", "#f39c12"),

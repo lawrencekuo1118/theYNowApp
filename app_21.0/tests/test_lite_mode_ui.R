@@ -356,6 +356,10 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl("bt_hfv_price_findings", txt, fixed = TRUE))
   testthat::expect_true(grepl("bt_hfv_fv_findings", txt, fixed = TRUE))
   testthat::expect_true(grepl("bt_hfv_scenario_findings", txt, fixed = TRUE))
+  # Scenario A–D cards use a 2×2 CSS grid (not a 4-across flex row)
+  srv <- paste(readLines(file.path("..", "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  testthat::expect_true(grepl("ynow-hfv-scenario-row", srv, fixed = TRUE))
+  testthat::expect_true(grepl("grid-template-columns:\\s*1fr\\s+1fr", srv, perl = TRUE))
   # Replay model / validation toolbar lives inside Section II (above sample snapshot)
   testthat::expect_true(grepl("ynow-hfv-toolbar--in-ch2", txt, fixed = TRUE))
   pos_ch2 <- regexpr("ynow_hfv_ch2_title", txt, fixed = TRUE)[1]
