@@ -8,5 +8,5 @@ short=55ab679
 message=chore: bump display version to v21.29
 captured_at=2026-10-07T16:20:00Z
 source_branch=cursor/hfv-next-period-prob-911b
-display_version=v21.29
+display_version=v21.30
 note=Canonical live line is app_21.0. Bundle 12660331 ships v21.29: HFV annotation consolidation/shortening. Deploy via scripts/deploy_app_21.R.
