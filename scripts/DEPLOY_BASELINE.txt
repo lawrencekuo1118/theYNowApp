@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12659537
+bundleId=12659568
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=0b5a7b0
-commit=0b5a7b0
-short=0b5a7b0
-message=chore: bump display version to v21.19
-captured_at=2026-10-07T13:20:00Z
-source_branch=cursor/hfv-three-conclusions-911b
+aligned_git=1f65e5b
+commit=1f65e5b
+short=1f65e5b
+message=chore: bump display version to v21.20
+captured_at=2026-10-07T13:35:00Z
+source_branch=cursor/hfv-next-period-prob-911b
 display_version=v21.20
-note=Canonical live line is app_21.0. Bundle 12659537 ships v21.19: HFV Q2 = PIT shrink/expand (趨近/遠離) primary. Deploy via scripts/deploy_app_21.R.
+note=Canonical live line is app_21.0. Bundle 12659568 ships v21.20: HFV expanding-window next-period P(up)/P(down) from PIT MOS. Deploy via scripts/deploy_app_21.R.
