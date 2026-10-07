@@ -8,5 +8,5 @@ short=46b32b7
 message=chore: bump display version to v21.18
 captured_at=2026-10-07T13:05:00Z
 source_branch=cursor/hfv-three-conclusions-911b
-display_version=v21.18
+display_version=v21.19
 note=Canonical live line is app_21.0. Bundle 12659516 ships v21.18: HFV three-question map (Q1/Q2/Q3 relation + value meanings). Deploy via scripts/deploy_app_21.R.
