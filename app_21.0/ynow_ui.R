@@ -2088,7 +2088,8 @@ beta_rolling_section_ui <- function() {
                 ),
                 tags$div(
                   class = "ynow-hfv-findings-block",
-                  tags$h5(id = "ynow_hfv_sec_results", "Key takeaways"),
+                  # Locale target kept for applyUiLocale; chapter II title already names this block.
+                  tags$span(id = "ynow_hfv_sec_results", style = "display:none;", "Sample snapshot"),
                   uiOutput("bt_hfv_investor_summary")
                 )
               )
@@ -2110,7 +2111,7 @@ beta_rolling_section_ui <- function() {
                 class = "ynow-hfv-chapter__lead",
                 id = "ynow_hfv_ch3_lead",
                 paste0(
-                  "Question 1: between valuation dates, did the actual market price rise or fall? ",
+                  "Between valuation dates, did the actual market price rise or fall? ",
                   "MOS outlook conditions those odds at the tip (causal expanding-window only)."
                 )
               ),
@@ -2136,7 +2137,7 @@ beta_rolling_section_ui <- function() {
                 class = "ynow-hfv-chapter__lead",
                 id = "ynow_hfv_ch4_lead",
                 paste0(
-                  "Question 2: when the next price arrived, did the absolute distance to then-available Replay FV ",
+                  "When the next price arrived, did the absolute distance to then-available Replay FV ",
                   "shrink (toward) or expand (away)? The chart shows landing magnitude (P_next − FV) / FV."
                 )
               ),
@@ -2169,7 +2170,7 @@ beta_rolling_section_ui <- function() {
                 id = "ynow_hfv_ch5_lead",
                 paste0(
                   "Joint FV–price patterns on successive dates (A–D or other). ",
-                  "Education / veto labels on the same Replay sample — not a numbered question and not an order ticket."
+                  "Education / veto labels on the same Replay sample — not an order ticket."
                 )
               ),
               tags$div(

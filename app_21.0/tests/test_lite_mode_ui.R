@@ -356,7 +356,7 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl("bt_hfv_price_findings", txt, fixed = TRUE))
   testthat::expect_true(grepl("bt_hfv_fv_findings", txt, fixed = TRUE))
   testthat::expect_true(grepl("bt_hfv_scenario_findings", txt, fixed = TRUE))
-  # Replay model / validation toolbar lives inside Section II (above key takeaways)
+  # Replay model / validation toolbar lives inside Section II (above sample snapshot)
   testthat::expect_true(grepl("ynow-hfv-toolbar--in-ch2", txt, fixed = TRUE))
   pos_ch2 <- regexpr("ynow_hfv_ch2_title", txt, fixed = TRUE)[1]
   pos_toolbar <- regexpr('id = \"ynow_hfv_toolbar\"', txt, perl = TRUE)[1]

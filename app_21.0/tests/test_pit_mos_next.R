@@ -486,15 +486,15 @@ if (file.exists(loc_path)) {
     fc_caveat <- ui_str("hfv_fc_caveat", loc)
     if (identical(loc, "en")) {
       check(
-        "en tip title says market-price + Replay",
-        grepl("market-price|market price", fc_title, ignore.case = TRUE) &&
-          grepl("Replay", fc_title, ignore.case = TRUE)
+        "en tip title says market-price odds",
+        grepl("market-price|market price", fc_title, ignore.case = TRUE)
       )
       check(
         "en tip formula causal hist_price + no look-ahead",
         grepl("hist_price", fc_formula, fixed = TRUE) &&
           grepl("no look-ahead|Date_\\{j\\+1\\}≤t|Date_next", fc_formula) &&
-          grepl("MOS", fc_formula, fixed = TRUE)
+          grepl("MOS", fc_formula, fixed = TRUE) &&
+          grepl("Replay", fc_formula, ignore.case = TRUE)
       )
       check(
         "en tip caveat Replay FV × price + no future backfill",
@@ -503,15 +503,16 @@ if (file.exists(loc_path)) {
       )
     } else {
       check(
-        "zh-TW tip title says 實際市價 + 復盤",
-        grepl("實際市價", fc_title, fixed = TRUE) &&
-          grepl("復盤", fc_title, fixed = TRUE)
+        "zh-TW tip title says 市價漲跌機率",
+        grepl("市價", fc_title, fixed = TRUE) &&
+          grepl("機率", fc_title, fixed = TRUE)
       )
       check(
         "zh-TW tip formula causal 實際市價 + 禁止回推",
         grepl("實際市價", fc_formula, fixed = TRUE) &&
           grepl("禁止", fc_formula, fixed = TRUE) &&
-          grepl("MOS", fc_formula, fixed = TRUE)
+          grepl("MOS", fc_formula, fixed = TRUE) &&
+          grepl("復盤", fc_formula, fixed = TRUE)
       )
       check(
         "zh-TW tip caveat 復盤估值×股價 + 禁止未來回推",
@@ -527,18 +528,30 @@ if (file.exists(loc_path)) {
     )
     qmap <- ui_str("hfv_sum_qmap_label", loc)
     check(
-      paste0("qmap is two-question ", loc),
-      grepl("Two-question|兩問題", qmap)
+      paste0("qmap is sample snapshot ", loc),
+      grepl("Sample snapshot|本樣本對照", qmap)
     )
+    # User-facing copy must not say Q1/Q2 / 問題一／二
+    for (k in c(
+      "hfv_sum_qmap_label", "hfv_sum_qmap_lead", "hfv_sum_qmap_q1_fmt", "hfv_sum_qmap_q2_fmt",
+      "hfv_sum_qmap_relation", "hfv_sum_q12_diverge_fmt", "hfv_scenario_concl_diverge",
+      "hfv_ch3_lead", "hfv_ch4_lead", "hfv_sum_price_block", "hfv_sum_fv_block"
+    )) {
+      txt_k <- ui_str(k, loc)
+      check(
+        paste0("no Q1/Q2 wording ", loc, " ", k),
+        !grepl("Q1|Q2|問題一|問題二", txt_k)
+      )
+    }
   }
   # Softened C emph must stay veto (not absolute buy order)
   check("C emph veto en", grepl("Veto|veto|buy signal", ui_str("hfv_scenario_concl_C_emph", "en"), ignore.case = TRUE))
   check("C emph veto zh", grepl("否決", ui_str("hfv_scenario_concl_C_emph", "zh-TW")))
-  # Q2 copy must name shrink/expand (PIT method)
-  check("Q2 block names shrink en", grepl("shrink|toward", ui_str("hfv_sum_fv_block", "en"), ignore.case = TRUE))
-  check("Q2 block names 縮小 zh", grepl("縮小", ui_str("hfv_sum_fv_block", "zh-TW")))
-  check("Q2 meaning PIT en", grepl("PIT|shrink", ui_str("hfv_sum_fv_meaning", "en"), ignore.case = TRUE))
-  check("Q2 meaning PIT zh", grepl("PIT|縮小", ui_str("hfv_sum_fv_meaning", "zh-TW")))
+  # Gap-to-FV copy must name shrink/expand (PIT method)
+  check("FV block names shrink en", grepl("shrink|toward", ui_str("hfv_sum_fv_block", "en"), ignore.case = TRUE))
+  check("FV block names 縮小 zh", grepl("縮小", ui_str("hfv_sum_fv_block", "zh-TW")))
+  check("FV meaning shrink en", grepl("shrink|toward", ui_str("hfv_sum_fv_meaning", "en"), ignore.case = TRUE))
+  check("FV meaning 縮小 zh", grepl("縮小", ui_str("hfv_sum_fv_meaning", "zh-TW")))
 }
 
 message("ALL PASS")

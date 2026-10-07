@@ -10256,7 +10256,7 @@ server <- function(input, output, session) {
     loc <- tryCatch(isolate(ui_locale()), error = function(e) "zh-TW")
     if (is.null(s)) {
       empty <- tags$div(
-        style = "margin:0 0 8px 0;padding:12px;background:#f0f0f0;border-left:4px solid #999;font-size:13px;",
+        style = "margin:0 0 8px 0;padding:4px 0;font-size:13px;color:#666;",
         ui_str("hfv_sum_empty", loc)
       )
       return(list(
@@ -10269,7 +10269,6 @@ server <- function(input, output, session) {
     }
     pct <- function(x) if (is.finite(x)) sprintf("%.0f%%", 100 * x) else "—"
     gap_pct <- function(x) if (is.finite(x)) sprintf("%+.1f%%", 100 * x) else "—"
-    border <- if (isTRUE(s$small_sample) || isTRUE(s$no_strategy_fv)) "#f39c12" else "#00a65a"
     period_txt <- {
       if (!is.null(s$from) || !is.null(s$to)) {
         sprintf(
@@ -10286,8 +10285,8 @@ server <- function(input, output, session) {
       insample = ui_str("hfv_oos_insample", loc),
       ui_str("hfv_oos_realized", loc)
     )
-    # Two-question map (Q1 price direction; Q2 FV gap shrink/expand).
-    # Scenario taxonomy is shown below as a direct panel — not numbered as a question.
+    # Sample snapshot: market-price direction + gap-to-FV shrink/expand (same Replay pairs).
+    # Scenario taxonomy lives in its own chapter — not numbered here.
     conclusion_card <- {
       n_pairs <- as.integer(s$n %||% 0L)
       if (n_pairs > 0L && (is.finite(s$p_up) || is.finite(s$p_above) || is.finite(s$p_toward))) {
@@ -10306,14 +10305,9 @@ server <- function(input, output, session) {
         }
         q12_n <- as.integer(s$q12_diverge_n %||% 0L)
         tags$div(
-          style = paste0(
-            "margin:0 0 12px 0;padding:12px 14px;background:#eef7f1;",
-            "border:1px solid #b7dfc7;border-left:4px solid ", border, ";",
-            "border-radius:4px;font-size:13px;line-height:1.55;"
-          ),
-          tags$div(tags$b(ui_str("hfv_sum_qmap_label", loc))),
+          style = "margin:0 0 14px 0;padding:0;font-size:13px;line-height:1.55;",
           tags$div(
-            style = "margin:4px 0 0 0;color:#555;font-size:12px;",
+            style = "margin:0;color:#555;font-size:12px;",
             ui_str("hfv_sum_qmap_lead", loc)
           ),
           tags$ul(
@@ -10347,16 +10341,8 @@ server <- function(input, output, session) {
         )
       } else {
         tags$div(
-          style = paste0(
-            "margin:0 0 12px 0;padding:12px 14px;background:#fafafa;",
-            "border:1px solid #ddd;border-left:4px solid ", border, ";",
-            "border-radius:4px;font-size:13px;line-height:1.55;color:#666;"
-          ),
-          tags$div(tags$b(ui_str("hfv_sum_qmap_label", loc))),
-          tags$div(
-            style = "margin:4px 0 0 0;",
-            ui_str("hfv_sum_conclusion_na", loc)
-          )
+          style = "margin:0 0 14px 0;padding:0;font-size:13px;line-height:1.55;color:#666;",
+          ui_str("hfv_sum_conclusion_na", loc)
         )
       }
     }
@@ -10385,13 +10371,8 @@ server <- function(input, output, session) {
     }
 
     price_card <- tags$div(
-      style = paste0(
-        "height:100%;margin:0;padding:12px 14px;background:#fff;",
-        "border:1px solid #d9e6f2;border-left:4px solid ", border, ";border-radius:4px;",
-        "font-size:13px;line-height:1.55;"
-      ),
-      tags$div(tags$b(ui_str("hfv_sum_price_block", loc))),
-      tags$div(style = "margin:4px 0 0 0;color:#6c757d;font-size:11.5px;", ui_str("hfv_sum_price_formula", loc)),
+      style = "margin:0;padding:0;font-size:13px;line-height:1.55;",
+      tags$div(style = "margin:0;color:#6c757d;font-size:11.5px;", ui_str("hfv_sum_price_formula", loc)),
       tags$div(
         style = "margin:4px 0 0 0;color:#555;font-size:11.5px;line-height:1.45;",
         ui_str("hfv_sum_price_meaning", loc)
@@ -10417,19 +10398,14 @@ server <- function(input, output, session) {
           ))
         } else NULL
       ),
-      tags$hr(style = "margin:10px 0 8px 0;border-top:1px dashed #c5d4ef;"),
+      tags$hr(style = "margin:10px 0 8px 0;border-top:1px dashed #ddd;"),
       tags$div(tags$b(ui_str("hfv_sum_mos_block", loc))),
       mos_body
     )
 
     fv_card <- tags$div(
-      style = paste0(
-        "height:100%;margin:0;padding:12px 14px;background:#fff;",
-        "border:1px solid #e2e3e5;border-left:4px solid ", border, ";border-radius:4px;",
-        "font-size:13px;line-height:1.55;"
-      ),
-      tags$div(tags$b(ui_str("hfv_sum_fv_block", loc))),
-      tags$div(style = "margin:4px 0 0 0;color:#6c757d;font-size:11.5px;", ui_str("hfv_sum_fv_formula", loc)),
+      style = "margin:0;padding:0;font-size:13px;line-height:1.55;",
+      tags$div(style = "margin:0;color:#6c757d;font-size:11.5px;", ui_str("hfv_sum_fv_formula", loc)),
       tags$div(
         style = "margin:4px 0 0 0;color:#555;font-size:11.5px;line-height:1.45;",
         ui_str("hfv_sum_fv_meaning", loc)
@@ -10509,8 +10485,6 @@ server <- function(input, output, session) {
             NA_real_
           }
           is_lead <- identical(code, lead_code) && n_c > 0L
-          border_col <- if (is_lead) color else "#ddd"
-          bg <- if (is_lead) "#fffaf2" else "#fff"
           tags$div(
             class = paste(
               "ynow-hfv-scenario-card-col",
@@ -10519,18 +10493,17 @@ server <- function(input, output, session) {
             tags$div(
               class = "ynow-hfv-scenario-card",
               style = paste0(
-                "border:1px solid ", border_col, ";",
-                "border-radius:8px; padding:12px 12px 10px 12px; min-height:148px; background:", bg,
-                "; box-shadow:0 2px 4px rgba(0,0,0,0.04); height:100%;"
+                "padding:8px 4px 6px 0; min-height:120px; background:transparent; height:100%;",
+                if (is_lead) paste0("border-top:2px solid ", color, ";") else "border-top:2px solid transparent;"
               ),
-              tags$div(style = paste0("font-size:20px; color:", color, ";"), icon(icon_name)),
+              tags$div(style = paste0("font-size:18px; color:", color, ";"), icon(icon_name)),
               tags$h4(
                 style = "margin:6px 0 4px 0; font-weight:700; font-size:14px; line-height:1.3;",
                 sc_lab(code)
               ),
               if (is_lead) tags$span(
                 style = paste0(
-                  "display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; color:#fff; background:",
+                  "display:inline-block; padding:0; font-size:11px; font-weight:600; color:",
                   color, ";"
                 ),
                 ui_str("hfv_scenario_lead_badge", loc)
@@ -10547,13 +10520,8 @@ server <- function(input, output, session) {
           )
         }
         tags$div(
-          style = paste0(
-            "margin:0 0 10px 0;padding:12px 14px;background:#fff;",
-            "border:1px solid #e8dfd0;border-left:4px solid ", border, ";border-radius:4px;",
-            "font-size:13px;line-height:1.55;"
-          ),
+          style = "margin:0 0 10px 0;padding:0;font-size:13px;line-height:1.55;",
           tags$style(HTML("
-            .ynow-hfv-scenario-lead { transform: translateY(-2px); }
             .ynow-hfv-scenario-row {
               display: flex;
               flex-wrap: nowrap;
@@ -10583,9 +10551,8 @@ server <- function(input, output, session) {
               }
             }
           ")),
-          tags$div(tags$b(ui_str("hfv_sum_scenario_block", loc))),
           tags$div(
-            style = "margin:4px 0 0 0;color:#6c757d;font-size:11.5px;",
+            style = "margin:0;color:#6c757d;font-size:11.5px;",
             ui_str("hfv_sum_scenario_formula", loc)
           ),
           tags$p(style = "margin:6px 0 8px 0;color:#555;font-size:12px;", period_txt),
@@ -10642,19 +10609,18 @@ server <- function(input, output, session) {
                 ui_str("hfv_scenario_concl_other", loc)
               }
             }
-            make_concl_callout <- function(scope_label, code, border_col) {
+            make_concl_callout <- function(scope_label, code, accent_col) {
               tags$div(
                 class = "ynow-hfv-scenario-concl",
                 style = paste0(
-                  "margin:10px 0 0 0;padding:10px 12px;background:#f5f5f5;",
-                  "border-left:4px solid ", border_col, ";",
-                  "border-radius:0 4px 4px 0;font-size:13px;line-height:1.55;color:#333;"
+                  "margin:12px 0 0 0;padding:8px 0;font-size:13px;line-height:1.55;color:#333;",
+                  "border-top:1px solid #e8e8e8;"
                 ),
                 tags$div(
                   style = "margin:0 0 4px 0;font-size:12px;color:#555;",
                   tags$b(scope_label),
                   tags$span(style = "margin:0 6px;color:#bbb;", "|"),
-                  tags$span(sc_lab(code))
+                  tags$span(style = paste0("color:", accent_col, ";"), sc_lab(code))
                 ),
                 tags$div(make_concl_body(code))
               )
@@ -10712,9 +10678,8 @@ server <- function(input, output, session) {
                 tags$div(
                   class = "ynow-hfv-scenario-concl",
                   style = paste0(
-                    "margin:10px 0 0 0;padding:10px 12px;background:#f5f5f5;",
-                    "border-left:4px solid #6c757d;",
-                    "border-radius:0 4px 4px 0;font-size:12.5px;line-height:1.5;color:#555;"
+                    "margin:12px 0 0 0;padding:8px 0;font-size:12.5px;line-height:1.5;color:#555;",
+                    "border-top:1px solid #e8e8e8;"
                   ),
                   tags$b(ui_str("hfv_scenario_concl_scope_lead", loc)),
                   tags$span(style = "margin:0 6px;color:#bbb;", "|"),
@@ -10726,11 +10691,7 @@ server <- function(input, output, session) {
               } else NULL,
               if (isTRUE(diverge_q3)) {
                 tags$div(
-                  style = paste0(
-                    "margin:8px 0 0 0;padding:8px 10px;background:#fff8e8;",
-                    "border:1px solid #f0d78c;border-radius:4px;",
-                    "font-size:12px;line-height:1.5;color:#555;"
-                  ),
+                  style = "margin:8px 0 0 0;padding:0;font-size:12px;line-height:1.5;color:#555;",
                   ui_str("hfv_scenario_concl_diverge", loc)
                 )
               } else NULL,
@@ -10754,13 +10715,8 @@ server <- function(input, output, session) {
         )
       } else {
         tags$div(
-          style = paste0(
-            "margin:0 0 10px 0;padding:12px 14px;background:#fafafa;",
-            "border:1px solid #ddd;border-left:4px solid ", border, ";border-radius:4px;",
-            "font-size:13px;line-height:1.55;color:#666;"
-          ),
-          tags$div(tags$b(ui_str("hfv_sum_scenario_block", loc))),
-          tags$div(style = "margin:4px 0 0 0;", ui_str("hfv_sum_scenario_empty", loc)),
+          style = "margin:0 0 10px 0;padding:0;font-size:13px;line-height:1.55;color:#666;",
+          tags$div(ui_str("hfv_sum_scenario_empty", loc)),
           tags$div(
             style = "margin:6px 0 0 0;color:#888;font-size:11.5px;",
             ui_str("hfv_sum_scenario_caveat", loc)
@@ -10779,7 +10735,7 @@ server <- function(input, output, session) {
       notes_ui <- tagAppendChild(
         notes_ui,
         tags$div(
-          style = "margin:0 0 8px 0;padding:8px 10px;background:#eef4fb;border:1px solid #c5d4ef;border-radius:4px;font-size:12px;",
+          style = "margin:0 0 8px 0;padding:0;font-size:12px;",
           tags$div(tags$b(ui_str("hfv_data_sources_label", loc))),
           if (!is.null(srcs) && length(srcs) > 0) {
             tags$div(style = "margin-top:4px;", paste(srcs, collapse = " · "))
@@ -10810,7 +10766,7 @@ server <- function(input, output, session) {
       notes_ui <- tagAppendChild(
         notes_ui,
         tags$div(
-          style = "margin:8px 0 0 0;padding:10px 12px;background:#fff8e8;border:1px solid #f0d78c;border-radius:4px;font-size:12.5px;line-height:1.55;",
+          style = "margin:8px 0 0 0;padding:0;font-size:12.5px;line-height:1.55;",
           tags$div(tags$b(ui_str("hfv_fb_title", loc))),
           tags$ul(
             style = "margin:6px 0 0 0;padding-left:18px;",
@@ -10845,11 +10801,7 @@ server <- function(input, output, session) {
         d_tip <- tryCatch(as.Date(tip_fc$Date), error = function(e) as.Date(NA))
         date_txt <- if (is.finite(d_tip)) format(d_tip, "%Y-%m-%d") else "—"
         tags$div(
-          style = paste0(
-            "margin:0 0 12px 0;padding:12px 14px;background:#eef4fb;",
-            "border:1px solid #c5d4ef;border-left:4px solid #3c8dbc;",
-            "border-radius:4px;font-size:13px;line-height:1.55;"
-          ),
+          style = "margin:0 0 14px 0;padding:10px 0 0 0;border-top:1px solid #e8e8e8;font-size:13px;line-height:1.55;",
           tags$div(tags$b(ui_str("hfv_fc_title", loc))),
           tags$div(
             style = "margin:4px 0 0 0;color:#6c757d;font-size:11.5px;",
@@ -10895,11 +10847,7 @@ server <- function(input, output, session) {
         )
       } else {
         tags$div(
-          style = paste0(
-            "margin:0 0 12px 0;padding:12px 14px;background:#fafafa;",
-            "border:1px solid #ddd;border-left:4px solid #3c8dbc;",
-            "border-radius:4px;font-size:13px;line-height:1.55;color:#666;"
-          ),
+          style = "margin:0 0 14px 0;padding:10px 0 0 0;border-top:1px solid #e8e8e8;font-size:13px;line-height:1.55;color:#666;",
           tags$div(tags$b(ui_str("hfv_fc_title", loc))),
           tags$div(
             style = "margin:4px 0 0 0;",
@@ -10918,13 +10866,21 @@ server <- function(input, output, session) {
       forecast_card,
       tags$div(
         style = "margin:0 0 8px 0;font-size:13px;",
-        tags$b(ui_str("hfv_sum_title", loc)),
-        if (isTRUE(s$small_sample)) tags$span(style = "color:#c27d0e;margin-left:8px;", ui_str("hfv_badge_small_sample", loc)),
-        if (isTRUE(s$no_strategy_fv)) tags$span(style = "color:#c27d0e;margin-left:8px;", ui_str("hfv_badge_no_strategy_fv", loc))
+        if (isTRUE(s$small_sample) || isTRUE(s$no_strategy_fv)) {
+          tagList(
+            tags$b(ui_str("hfv_sum_title", loc)),
+            if (isTRUE(s$small_sample)) {
+              tags$span(style = "color:#c27d0e;margin-left:8px;", ui_str("hfv_badge_small_sample", loc))
+            } else NULL,
+            if (isTRUE(s$no_strategy_fv)) {
+              tags$span(style = "color:#c27d0e;margin-left:8px;", ui_str("hfv_badge_no_strategy_fv", loc))
+            } else NULL
+          )
+        } else NULL
       ),
       if (length(notes_ui) > 0) {
         tags$div(
-          style = "margin:4px 0 0 0;padding:10px 12px;background:#fafafa;border:1px dashed #ccc;border-radius:4px;",
+          style = "margin:8px 0 0 0;padding:8px 0 0 0;border-top:1px dashed #ccc;",
           tags$div(
             style = "font-size:12px;font-weight:700;color:#666;margin-bottom:4px;",
             ui_str("hfv_sum_notes", loc)
