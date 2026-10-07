@@ -112,6 +112,8 @@ decision_ui <- function(id) {
               )
             )
           ),
+          # Decision SOP sits next to the verdict it unlocks (not on Decision Checklist).
+          decision_sop_panel_ui(),
           uiOutput(ns("ui_recommendation")),
           tags$div(
             class = "ynow-funnel-table-wrap",
@@ -661,13 +663,12 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
     output$ui_recommendation <- renderUI({
       .ui_loc()
       if (!.sop_unlocked()) {
+        # SOP panel is mounted above — keep a short locked cue, no redirect away from YNOW.
         return(div(
           class = "alert alert-secondary ynow-sop-verdict-locked",
-          h4(icon("lock"), " ", .str("funnel_sop_locked_title")),
-          p(.str("funnel_sop_locked_body")),
           tags$p(
-            style = "font-size:12px;color:#666;margin:8px 0 0 0;",
-            .str("funnel_sop_locked_hint")
+            style = "margin:0;font-size:13px;line-height:1.5;",
+            icon("lock"), " ", .str("funnel_sop_locked_hint")
           )
         ))
       }

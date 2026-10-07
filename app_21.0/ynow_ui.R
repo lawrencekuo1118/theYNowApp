@@ -6698,6 +6698,12 @@ ui <- dashboardPage(
             if (dcBoxChecks && s.dc_box_checks) dcBoxChecks.textContent = s.dc_box_checks;
             var dcBoxSum = document.getElementById('ynow_dc_box_summary');
             if (dcBoxSum && s.dc_box_summary) dcBoxSum.textContent = s.dc_box_summary;
+            var dcBoxSop = document.getElementById('ynow_dc_box_sop');
+            if (dcBoxSop && s.dc_box_sop) dcBoxSop.textContent = s.dc_box_sop;
+            var dcSopIntro = document.getElementById('ynow_dc_sop_intro');
+            if (dcSopIntro && s.dc_sop_intro) dcSopIntro.textContent = s.dc_sop_intro;
+            var dcSopReloc = document.getElementById('ynow_dc_sop_reloc_note');
+            if (dcSopReloc && s.dc_sop_reloc_note) dcSopReloc.textContent = s.dc_sop_reloc_note;
             var hfvMethod = document.getElementById('ynow_hfv_sec_method');
             if (hfvMethod && s.hfv_sec_method) hfvMethod.textContent = s.hfv_sec_method;
             var hfvResults = document.getElementById('ynow_hfv_sec_results');
@@ -7348,6 +7354,22 @@ ui <- dashboardPage(
             }
             Shiny.addCustomMessageHandler('ynowUiLocale', applyUiLocale);
             Shiny.addCustomMessageHandler('ynowDcLocale', applyDcLocale);
+            Shiny.addCustomMessageHandler('ynowDcSopLocale', function (payload) {
+              if (!payload) return;
+              var set = function (id, val) {
+                var el = document.getElementById(id);
+                if (el && val) el.textContent = val;
+              };
+              set('ynow_dc_sop_intro', payload.intro);
+              set('ynow_dc_box_sop', payload.box_sop);
+              set('ynow_dc_sop_reloc_note', payload.reloc);
+              set('ynow_dc_sop_step1_title', payload.step1);
+              set('ynow_dc_sop_step2_title', payload.step2);
+              set('ynow_dc_sop_step3_title', payload.step3);
+              set('ynow_dc_sop_ack_sgr_label', payload.ack_sgr);
+              set('ynow_dc_sop_ack_sens_label', payload.ack_sens);
+              set('ynow_dc_sop_ack_qual_label', payload.ack_qual);
+            });
             Shiny.addCustomMessageHandler('ynowModelTheme', function (payload) {
               var tab = (payload && payload.tab) ? String(payload.tab) : '';
               /* Keys match Model Selector card accents (NAV/DCF/DDM/RI/P/B/Multiples/SOTP). */
@@ -10817,32 +10839,132 @@ ui <- dashboardPage(
           font-size: 12px;
         }
 
-        /* Decision Checklist — institutional SOP wizard */
+        /* Decision SOP — compact coach on YNOW (above verdict) */
+        .ynow-dc-sop--compact {
+          margin: 0 0 14px 0;
+          padding: 12px 14px;
+          background: #fafbfc;
+          border: 1px solid #e5e7eb;
+          border-radius: 8px;
+        }
+        .ynow-dc-sop-head {
+          margin: 0 0 10px 0;
+        }
+        .ynow-dc-sop-title {
+          margin: 0 0 4px 0;
+          font-size: 15px;
+          font-weight: 700;
+          color: #1f2937;
+        }
         .ynow-dc-sop-intro {
-          font-size: 13px;
-          line-height: 1.55;
-          color: #444;
-          margin: 0 0 12px 0;
+          font-size: 12.5px;
+          line-height: 1.45;
+          color: #6b7280;
+          margin: 0;
+        }
+        .ynow-dc-sop-reloc-note {
+          font-size: 12.5px;
+          line-height: 1.45;
+          color: #6b7280;
+          margin: 0 0 14px 0;
+          padding: 8px 10px;
+          background: #f8fafc;
+          border-left: 3px solid #94a3b8;
+          border-radius: 4px;
         }
         .ynow-dc-sop-steps {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 10px;
           margin: 0;
-          padding-left: 22px;
+          padding: 0;
+        }
+        @media (max-width: 991px) {
+          .ynow-dc-sop-steps {
+            grid-template-columns: 1fr;
+          }
         }
         .ynow-dc-sop-step {
-          margin: 0 0 16px 0;
+          margin: 0;
           padding: 10px 12px;
-          background: #fffdf8;
-          border: 1px solid #f0e6d2;
+          background: #fff;
+          border: 1px solid #e5e7eb;
           border-radius: 6px;
-          list-style: decimal;
+          list-style: none;
         }
-        .ynow-dc-sop-step h5 {
+        .ynow-dc-sop-step-top {
+          display: flex;
+          align-items: center;
+          gap: 8px;
           margin: 0 0 8px 0;
-          font-size: 14px;
+        }
+        .ynow-dc-sop-step-num {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          background: #1f2937;
+          color: #fff;
+          font-size: 11px;
           font-weight: 700;
+          flex: 0 0 auto;
+        }
+        .ynow-dc-sop-step-title {
+          font-size: 13px;
+          font-weight: 700;
+          color: #111827;
+          line-height: 1.3;
+        }
+        .ynow-dc-sop-step-body {
+          margin: 0 0 8px 0;
+        }
+        .ynow-dc-sop-chips {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+        }
+        .ynow-dc-sop-chip {
+          display: inline-block;
+          font-size: 11.5px;
+          line-height: 1.3;
+          color: #374151;
+          background: #f3f4f6;
+          border-radius: 999px;
+          padding: 3px 8px;
+        }
+        .ynow-dc-sop-step .checkbox {
+          margin: 0;
+        }
+        .ynow-dc-sop-step .checkbox label {
+          font-size: 12.5px;
+          font-weight: 500;
+          color: #1f2937;
+        }
+        .ynow-dc-sop-banner {
+          margin-top: 10px;
+          padding: 8px 10px;
+          border-radius: 6px;
+          font-size: 12.5px;
+          font-weight: 600;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .ynow-dc-sop-banner.is-locked {
+          background: #fef2f2;
+          color: #b91c1c;
+          border-left: 3px solid #b91c1c;
+        }
+        .ynow-dc-sop-banner.is-unlocked {
+          background: #ecfdf5;
+          color: #047857;
+          border-left: 3px solid #047857;
         }
         .ynow-sop-verdict-locked {
           border-left: 4px solid #6c757d;
+          margin-top: 0;
         }
 
         /* Decision Checklist — summary on top; theme items side-by-side */
