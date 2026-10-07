@@ -1,8 +1,10 @@
 # ==========================================
 # pb_asset_module.R - P/B 相對估值（倍數）
+# Equity-book Fair Value under Relative Valuation (sidebar sibling of Multiples → Equity).
 # 合理價 = (BVPS／TBVPS／NAVPS) × 目標本淨比
 # 目標來源：產業／歷史倍數，或 Justified P/B（需 ROE、Ke、SGR／g）
 # 純 NAV（無倍數）請用獨立 NAV 模型，勿與此混淆。
+# Shares are shared economically with Multiples／SOTP; book basis & target P/B are unique.
 # ==========================================
 
 # ==========================================
@@ -12,6 +14,26 @@ pb_asset_module_ui <- function(id) {
   ns <- NS(id)
   
   tabItem(tabName = "pb_calculator",
+          fluidRow(
+            column(
+              12,
+              div(
+                id = "ynow_pb_lead",
+                style = paste(
+                  "margin:0 0 12px 0; padding:10px 12px; background:#f8fafc;",
+                  "border:1px solid #e2e8f0; border-radius:8px; font-size:13px; color:#334155;"
+                ),
+                tags$b(id = "ynow_pb_lead_title", "P/B (Equity-book): "),
+                tags$span(
+                  id = "ynow_pb_lead_body",
+                  "Fair Value under Relative Valuation — Equity-book capital claim ",
+                  "(sibling of Multiples → Equity; not Enterprise, not SOTP). ",
+                  "P = (BVPS／TBVPS／NAVPS) × Target P/B. Shares shared with Multiples／SOTP; ",
+                  "book basis and target P/B are unique. Pure NAV (no multiple) uses the NAV model."
+                )
+              )
+            )
+          ),
           tabBox(title = "P/B & ASSET VALUE", width = "auto",
                  
                  tabPanel("P/B Overview", icon = icon("landmark"),
@@ -23,7 +45,8 @@ pb_asset_module_ui <- function(id) {
                             column(3, class = "ynow-model-kpi-tone-4", valueBoxOutput(ns("vbx_mkt_pb"), width = 12))
                           ),
                           fluidRow(
-                            div("Fair Price = (BVPS / TBVPS / NAVPS) × Target P/B",
+                            div(id = "ynow_pb_formula_banner",
+                                "Fair Price = (BVPS / TBVPS / NAVPS) × Target P/B",
                                 style = "font-size: 16px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;")
                           ),
                           fluidRow(

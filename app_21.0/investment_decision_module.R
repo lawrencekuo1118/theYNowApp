@@ -17,7 +17,8 @@ library(glue)
 # -------------------------------------------
 # 1. UI：YNOW two-block page + momentum panel
 # -------------------------------------------
-#' Shared composite valuation block (main/sub model, Bear–Base–Bull, status bar).
+#' Shared composite valuation block (Bear–Base–Bull, status bar, chart).
+#' Main/sub-model + confidence notes render under the chart footer note.
 #' Mount once in the model-page header — not on Basic Setup.
 decision_valuation_compare_ui <- function(id) {
   ns <- NS(id)
@@ -847,11 +848,6 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
 
       HTML(paste0(
         "<div class='ynow-composite-valuation' style='background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 12px; border-top: 3px solid ", status_color, ";'>",
-        "<div style='background: #1a1a1a15; border-left: 5px solid #222222; padding: 12px; border-radius: 4px; margin-bottom: 16px;'>",
-        "<h5 style='color: #222222; margin-top: 0; font-weight: bold;'>", htmltools::htmlEscape(rec_title), "</h5>",
-        "<p style='margin-bottom: 6px; font-size: 13px; color: #555;'>", htmltools::htmlEscape(rec_desc), "</p>",
-        "<p style='margin: 0; font-size: 12.5px; color: #333;'><b>", htmltools::htmlEscape(conf_txt), "</b></p>",
-        "</div>",
         "<div style='display:flex; gap:14px; flex-wrap:wrap; margin-bottom: 18px;'>",
         "<div style='flex:1; min-width:120px; padding:10px; background:#fdf2f2; border-radius:6px;'>",
         "<div style='font-size:12px; color:#888;'>Bear</div>",
@@ -885,8 +881,15 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
         "<div style='font-size: 15px; color: #2c3e50; font-weight: bold;'>$", round(p_curr, 2), "</div></div>",
         overlay_html,
         "</div>",
-        "<p style='margin: 8px 0 0 0; font-size: 12px; color: #888;'>",
+        "<div class='ynow-composite-chart-notes' style='margin-top: 8px;'>",
+        "<p class='ynow-composite-footer-note' style='margin: 0 0 10px 0; font-size: 12px; color: #888;'>",
         htmltools::htmlEscape(str("composite_footer_note")), "</p>",
+        "<div class='ynow-composite-model-notes' style='background: #1a1a1a15; border-left: 5px solid #222222; padding: 12px; border-radius: 4px;'>",
+        "<h5 style='color: #222222; margin-top: 0; margin-bottom: 6px; font-weight: bold;'>", htmltools::htmlEscape(rec_title), "</h5>",
+        "<p style='margin-bottom: 6px; font-size: 13px; color: #555;'>", htmltools::htmlEscape(rec_desc), "</p>",
+        "<p style='margin: 0; font-size: 12.5px; color: #333;'><b>", htmltools::htmlEscape(conf_txt), "</b></p>",
+        "</div>",
+        "</div>",
         "</div>"
       ))
     })

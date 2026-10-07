@@ -126,7 +126,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     rel_multiples_lead_title = "Relative valuation (multiples): ",
     rel_multiples_lead_body = paste0(
       "Implied Price by capital-claim family (Equity vs Enterprise) — not Intrinsic Value / Fair Value. ",
-      "P/S sits under Equity; SOTP is a separate sidebar Enterprise-structural engine. P/B stays separate."
+      "P/S sits under Equity; SOTP is the sidebar Enterprise-structural engine; ",
+      "P/B is the sidebar Equity-book Fair Value sibling (see assumption map)."
     ),
     rel_multiples_box_title = "Multiples",
     rel_multiples_tab_overview = "Overview",
@@ -172,16 +173,18 @@ locale_for_market <- function(mode = get_market_mode()) {
     rel_mode_help = paste0(
       "Equity: equity-claim multiples (EPS×P/E, Revenue×P/S; PEG is an indicator). ",
       "Enterprise: EV × metric then Cash−Debt bridge. ",
-      "SOTP (sidebar) shares the Enterprise cash/debt/shares bridge with per-segment EV/Sales."
+      "SOTP (sidebar) shares the Enterprise cash/debt/shares bridge with per-segment EV/Sales. ",
+      "P/B (sidebar) is Equity-book Fair Value: (BVPS／TBVPS／NAVPS)×Target P/B — shares Shares only."
     ),
     rel_param_matrix_title = "Assumption map (shared vs unique)",
     rel_param_shared_heading = "Shared:",
     rel_param_shared_body = paste0(
-      "Shares; Cash & Total Debt (Enterprise Multiples + SOTP bridge); ",
+      "Shares (Equity Multiples, Enterprise, SOTP, and P/B); ",
+      "Cash & Total Debt (Enterprise Multiples + SOTP bridge); ",
       "consolidated Revenue (P/S & EV/Sales); App default EV/Sales level; ",
       "no Yahoo market P/E / price÷P/E back-solve."
     ),
-    rel_param_equity_heading = "Equity-unique:",
+    rel_param_equity_heading = "Equity multiples-unique:",
     rel_param_equity_body = paste0(
       "Trailing EPS, Forward EPS, Selected P/E, Selected Forward P/E, ",
       "PEG growth definition / Growth (%), P/E for PEG, P/S multiple, P/S Revenue."
@@ -195,11 +198,24 @@ locale_for_market <- function(mode = get_market_mode()) {
       "≥2 segment revenues, per-segment EV/Sales, Default EV/Sales, Non-operating assets. ",
       "Reuses Cash / Debt / Shares with Enterprise."
     ),
+    rel_param_pb_heading = "P/B-unique (Equity-book Fair Value):",
+    rel_param_pb_body = paste0(
+      "BVPS／TBVPS／NAVPS, holdco discount, basis (bvps／tbvps／navps), ",
+      "target mode (industry／history vs Justified), pb_low／mid／high, use industry P/B, ",
+      "Justified ROE · Ke · g (session). Shares only with Multiples／SOTP — no Cash−Debt bridge."
+    ),
+    pb_lead_title = "P/B (Equity-book): ",
+    pb_lead_body = paste0(
+      "Fair Value under Relative Valuation — Equity-book capital claim ",
+      "(sibling of Multiples → Equity; not Enterprise, not SOTP). ",
+      "P = (BVPS／TBVPS／NAVPS) × Target P/B. Shares shared with Multiples／SOTP; ",
+      "book basis and target P/B are unique. Pure NAV (no multiple) uses the NAV model."
+    ),
     sotp_lead_title = "SOTP (Sum of the Parts): ",
     sotp_lead_body = paste0(
       "Enterprise-structural Implied Price (sidebar sibling of Multiples → Enterprise). ",
       "Decompose ≥2 segment revenues × per-segment EV/Sales, sum EV, then share the Cash − Debt × Shares bridge. ",
-      "Not a single-firm trading multiple; not Equity-claim P/E／P/S."
+      "Not a single-firm trading multiple; not Equity-claim P/E／P/S; not Equity-book P/B."
     ),
     sotp_box_title = "SOTP",
     sotp_tab_overview = "Overview",
@@ -2595,7 +2611,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     rel_multiples_lead_title = "相對估值（倍數法）：",
     rel_multiples_lead_body = paste0(
       "依資本請求權家族（Equity／Enterprise）得出 Implied Price——不是 Intrinsic Value／Fair Value。",
-      "P/S 歸 Equity；SOTP 為側欄 Enterprise-structural 引擎。P/B 仍為獨立側欄。"
+      "P/S 歸 Equity；SOTP 為側欄 Enterprise-structural 引擎；",
+      "P/B 為側欄 Equity-book Fair Value 姊妹引擎（見假設參數對照）。"
     ),
     rel_multiples_box_title = "倍數法",
     rel_multiples_tab_overview = "總覽",
@@ -2641,16 +2658,18 @@ locale_for_market <- function(mode = get_market_mode()) {
     rel_mode_help = paste0(
       "Equity：股權請求權倍數（EPS×P/E、Revenue×P/S；PEG 為相對指標）。",
       "Enterprise：EV × 指標後加 Cash−Debt 橋接。",
-      "SOTP（側欄）與 Enterprise 共用 Cash／Debt／Shares，並採部門 EV/Sales。"
+      "SOTP（側欄）與 Enterprise 共用 Cash／Debt／Shares，並採部門 EV/Sales。",
+      "P/B（側欄）為 Equity-book Fair Value：(BVPS／TBVPS／NAVPS)×Target P/B——僅共用 Shares。"
     ),
     rel_param_matrix_title = "假設參數對照（共用 vs 獨特）",
     rel_param_shared_heading = "共用：",
     rel_param_shared_body = paste0(
-      "Shares；Cash 與 Total Debt（Enterprise Multiples + SOTP 橋接）；",
+      "Shares（Equity Multiples、Enterprise、SOTP、P/B）；",
+      "Cash 與 Total Debt（Enterprise Multiples + SOTP 橋接）；",
       "合併營收 Revenue（P/S 與 EV/Sales）；App 預設 EV/Sales 層級；",
       "不採用 Yahoo 市場本益比或以股價÷P/E 回推。"
     ),
-    rel_param_equity_heading = "Equity 獨特：",
+    rel_param_equity_heading = "Equity 倍數獨特：",
     rel_param_equity_body = paste0(
       "Trailing EPS、Forward EPS、Selected P/E、Selected Forward P/E、",
       "PEG 成長定義／Growth (%)、P/E for PEG、P/S 倍數、P/S Revenue。"
@@ -2664,11 +2683,24 @@ locale_for_market <- function(mode = get_market_mode()) {
       "≥2 筆部門營收、各段 EV/Sales、Default EV/Sales、Non-operating assets。",
       "與 Enterprise 共用 Cash／Debt／Shares。"
     ),
+    rel_param_pb_heading = "P/B 獨特（Equity-book Fair Value）：",
+    rel_param_pb_body = paste0(
+      "BVPS／TBVPS／NAVPS、控股折價、估值基礎（bvps／tbvps／navps）、",
+      "目標模式（產業／歷史 vs Justified）、pb_low／mid／high、納入產業本淨比、",
+      "Justified 的 ROE · Ke · g（工作階段）。與 Multiples／SOTP 僅共用 Shares——無 Cash−Debt 橋接。"
+    ),
+    pb_lead_title = "P/B（Equity-book）：",
+    pb_lead_body = paste0(
+      "相對估值法下的 Fair Value——Equity-book 資本請求權",
+      "（Multiples→Equity 的側欄姊妹；非 Enterprise、非 SOTP）。",
+      "P = (BVPS／TBVPS／NAVPS) × Target P/B。與 Multiples／SOTP 共用 Shares；",
+      "帳面基礎與目標本淨比為獨特假設。純 NAV（無倍數）請用 NAV 模型。"
+    ),
     sotp_lead_title = "SOTP（分部加總）：",
     sotp_lead_body = paste0(
       "Enterprise-structural Implied Price（Multiples→Enterprise 的側欄姊妹引擎）。",
       "拆解 ≥2 筆部門營收 × 各段 EV/Sales，加總 EV 後共用 Cash − Debt × Shares 橋接。",
-      "不是單一公司交易倍數，也不是 Equity 的 P/E／P/S。"
+      "不是單一公司交易倍數，也不是 Equity 的 P/E／P/S，亦非 Equity-book 的 P/B。"
     ),
     sotp_box_title = "SOTP",
     sotp_tab_overview = "總覽",
