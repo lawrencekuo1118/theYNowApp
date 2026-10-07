@@ -897,8 +897,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     hfv_method_body = paste0(
       "Not a trading-strategy backtest or a brokerage order ticket. Three layers on the validation sample: ",
-      "(1) next-period price move R=(P_{t+1}-P_t)/P_t — the share with R>0 is next-period up frequency P(up), ",
-      "plus MOS-bucket conditional outlook; ",
+      "(1) next-period price move R=(P_{t+1}-P_t)/P_t — sample P(up), MOS-bucket outlook, and an expanding-window ",
+      "tip forecast P(up)/P(down) conditioned on PIT MOS (prior pairs only); ",
       "(2) PIT replay shrink method vs theoretical FV_t from the single Replay model (then-available data only): ",
       "whether |P−FV_t| shrinks (toward) or expands (away) by P_{t+1}; ",
       "secondary landing above/below and magnitude (P_{t+1}-FV_t)/FV_t; ",
@@ -1066,11 +1066,32 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Q3 most-frequent ≠ latest: sample history and the newest successive pair can disagree — ",
       "read both scopes; neither overrides Q1/Q2."
     ),
+    hfv_fc_title = "Next-period up/down probability (measurable tip)",
+    hfv_fc_formula = paste0(
+      "At each valuation date t: expanding-window empirical P(R_{t→t+1}>0 | history before t), ",
+      "conditioned on PIT MOS bucket when n_bucket is adequate; else blend / unconditional prior. ",
+      "MOS = (FV_t − P_t) / FV_t from the Replay model (then-available data only)."
+    ),
+    hfv_fc_tip_fmt = "Tip %s · P(up) ≈ %s · P(down) ≈ %s",
+    hfv_fc_mos_fmt = "MOS = %+.1f%% → bucket \"%s\" (bucket prior n=%d · all prior n=%d)",
+    hfv_fc_method_label = "Method",
+    hfv_fc_method_bucket = "MOS-bucket conditional odds",
+    hfv_fc_method_blend = "Blend (thin bucket + unconditional prior)",
+    hfv_fc_method_base = "Unconditional expanding-window odds",
+    hfv_fc_method_none = "Insufficient prior pairs",
+    hfv_fc_base_fmt = "Unconditional prior P(up) ≈ %s",
+    hfv_fc_caveat = paste0(
+      "Designed forecast from same-ticker fundamental history — not a brokerage order ticket ",
+      "and not a guarantee for the next period. Small samples are illustrative only."
+    ),
+    hfv_fc_empty = "No expandable prior pairs yet to form a next-period up/down probability at the tip.",
+    hfv_col_p_up_hat = "P(up) forecast",
     hfv_sum_price_block = "Q1 · Next-period price move",
     hfv_sum_price_formula = "R = (P_next − P) / P",
     hfv_sum_price_meaning = paste0(
       "Meaning: share of pairs where the market price rose vs fell vs flat between valuation dates. ",
-      "Median/mean return measure size of that move. Independent of whether P_next is above or below FV."
+      "Median/mean return measure size of that move. Independent of whether P_next is above or below FV. ",
+      "The tip forecast card above turns this into a per-date expanding-window conditional probability via MOS."
     ),
     hfv_sum_mos_block = "MOS group outlook (same-ticker history)",
     hfv_sum_fv_block = "Q2 · Gap to FV: shrink vs expand (PIT replay)",
@@ -3408,7 +3429,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     hfv_method_body = paste0(
       "不是交易策略回測，也不是券商下單指令。驗證樣本上有三層口徑：",
-      "（1）市價下期漲跌 R=(P_{t+1}-P_t)/P_t ——其中 R>0 的比例即下期上漲頻率 P(up)，並以目前安全邊際（MOS）分組之條件機率作為展望；",
+      "（1）市價下期漲跌 R=(P_{t+1}-P_t)/P_t ——樣本 P(up)、MOS 分組展望，以及擴張窗可衡量時刻預測 P(up)/P(down)",
+      "（僅用 t 之前配對、以 PIT MOS 條件化）；",
       "（2）PIT 復盤縮小法：相對理論 FV_t（＝「復盤模型」單選；僅用當時可得資料）的絕對距離 |P−FV_t|，",
       "在下期實際市價到來時是縮小（趨近）還是擴大（遠離）；之上／之下與幅度 (P_{t+1}-FV_t)/FV_t 為次要落點統計；",
       "（3）歷史情境分類：相鄰估值日的復盤 FV＋市價 → 三訊號（價值錯位＝當期FV−當期市價／MOS、基本面動能＝當期FV−前期FV、價格動能＝當期市價−前期市價）→ 情境 A–D",
@@ -3570,11 +3592,32 @@ locale_for_market <- function(mode = get_market_mode()) {
       "問題三「樣本最常見」≠「最近一期」：歷史眾數與最新相鄰配對可分歧——",
       "兩者都要讀；皆不覆寫問題一／二。"
     ),
+    hfv_fc_title = "下一期漲跌機率（可衡量時刻）",
+    hfv_fc_formula = paste0(
+      "每一估值日 t：僅用 t 之前已實現配對的擴張窗經驗機率 P(R_{t→t+1}>0)，",
+      "優先以 PIT MOS 分組條件化；同組樣本不足則與無條件先驗混合／退回無條件。",
+      "MOS＝(FV_t−P_t)/FV_t，FV 來自復盤模型（僅當時可得資料）。"
+    ),
+    hfv_fc_tip_fmt = "時刻 %s · 上漲機率 ≈ %s · 下跌機率 ≈ %s",
+    hfv_fc_mos_fmt = "MOS＝%+.1f%% → 分組「%s」（同組先驗 n＝%d · 總先驗 n＝%d）",
+    hfv_fc_method_label = "方法",
+    hfv_fc_method_bucket = "MOS 分組條件機率",
+    hfv_fc_method_blend = "混合（同組偏薄＋無條件先驗）",
+    hfv_fc_method_base = "擴張窗無條件上漲頻率",
+    hfv_fc_method_none = "先驗配對不足",
+    hfv_fc_base_fmt = "無條件先驗上漲頻率 ≈ %s",
+    hfv_fc_caveat = paste0(
+      "此為該股自身基本面歷史設計的機率預測——不是券商下單指令，",
+      "亦非對下期的保證。小樣本僅供參考。"
+    ),
+    hfv_fc_empty = "尚無可擴張的先驗配對，無法在可衡量時刻給出下一期漲跌機率。",
+    hfv_col_p_up_hat = "預測上漲機率",
     hfv_sum_price_block = "問題一・市價下期漲跌",
     hfv_sum_price_formula = "R = (P下一期 − P) / P",
     hfv_sum_price_meaning = paste0(
       "意義：估值日間市價上漲／下跌／持平的配對占比；中位／平均報酬衡量漲跌幅度。",
-      "與下期市價是否高於或低於 FV 無關。"
+      "與下期市價是否高於或低於 FV 無關。",
+      "上方「下一期漲跌機率」卡片把此口徑改為逐日擴張窗、以 MOS 條件化的預測機率。"
     ),
     hfv_sum_mos_block = "安全邊際（MOS）分組展望（該股自身歷史）",
     hfv_sum_fv_block = "問題二・相對理論 FV：縮小 vs 擴大（PIT 復盤）",

@@ -13,6 +13,7 @@
 #   build_fv_convergence_pairs(valuation_df)  # alias retained
 #   summarize_fv_convergence(...)            # alias → summarize_fv_market_validation
 #   classify_hfv_scenario(...) / build_hfv_scenario_pairs(...) / summarize_hfv_scenarios(...)
+#   build_hfv_direction_forecasts(...) / tip_hfv_direction_forecast(...)
 #   pit_param_inventory_table()
 # ==========================================
 
@@ -605,6 +606,236 @@ lookup_mos_bucket_outlook <- function(mos_now, stats_df) {
   )
 }
 
+#' Expanding-window next-period up/down probability at each measurable date.
+#'
+#' At valuation date t_i (with MOS_i from PIT Replay FV), uses **only prior
+#' realized pairs** (j → j+1 with j < i) from the same ticker:
+#' - unconditional P(up) on that history
+#' - MOS-bucket conditional P(up) when enough bucket hits exist
+#' - otherwise a sample-size blend toward the unconditional prior
+#'
+#' This is the designed Q1-linked **forecast**: empirical conditional odds from
+#' fundamental MOS, not a brokerage order ticket and not a guarantee.
+#'
+#' @param valuation_df rows with Date, hist_price, mos (fair_value optional)
+#' @param min_bucket_n minimum prior pairs in the same MOS bucket to use pure bucket odds
+#' @param min_base_n minimum prior pairs to trust unconditional odds
+#' @param prior_strength pseudo-count weight for blending bucket → base when bucket n is thin
+#' @return data.frame one row per valuation date (incl. terminal tip without next return)
+build_hfv_direction_forecasts <- function(valuation_df,
+                                          min_bucket_n = 3L,
+                                          min_base_n = 5L,
+                                          prior_strength = 3) {
+  min_bucket_n <- max(1L, as.integer(min_bucket_n)[1])
+  min_base_n <- max(1L, as.integer(min_base_n)[1])
+  prior_strength <- max(0, as.numeric(prior_strength)[1])
+  empty <- data.frame(
+    Date = as.Date(character()),
+    mos = numeric(),
+    bucket = character(),
+    n_prior = integer(),
+    n_bucket = integer(),
+    p_up_base = numeric(),
+    p_down_base = numeric(),
+    p_up_bucket = numeric(),
+    p_down_bucket = numeric(),
+    p_up_hat = numeric(),
+    p_down_hat = numeric(),
+    method = character(),
+    small_sample = logical(),
+    has_next = logical(),
+    ret_next = numeric(),
+    realized_up = logical(),
+    stringsAsFactors = FALSE
+  )
+  if (is.null(valuation_df) || !is.data.frame(valuation_df) || nrow(valuation_df) < 1) {
+    return(empty)
+  }
+  need <- c("Date", "hist_price", "mos")
+  if (!all(need %in% names(valuation_df))) return(empty)
+  vd <- valuation_df[order(valuation_df$Date), , drop = FALSE]
+  vd <- vd[is.finite(vd$mos) & is.finite(vd$hist_price) & vd$hist_price > 0, , drop = FALSE]
+  if (nrow(vd) < 1) return(empty)
+
+  n <- nrow(vd)
+  next_ret <- rep(NA_real_, n)
+  if (n >= 2L) {
+    next_ret[seq_len(n - 1L)] <- vd$hist_price[seq_len(n - 1L) + 1L] / vd$hist_price[seq_len(n - 1L)] - 1
+  }
+  buckets <- .mos_bucket_label(vd$mos)
+
+  out_rows <- vector("list", n)
+  for (i in seq_len(n)) {
+    # Prior realized pairs known at date i: j=1..(i-1), each with return to j+1
+    prior_j <- if (i >= 2L) seq_len(i - 1L) else integer(0)
+    r_prior <- next_ret[prior_j]
+    ok_prior <- is.finite(r_prior)
+    n_prior <- sum(ok_prior)
+    p_up_base <- NA_real_
+    p_down_base <- NA_real_
+    if (n_prior > 0L) {
+      rp <- r_prior[ok_prior]
+      p_up_base <- mean(rp > 0)
+      p_down_base <- mean(rp < 0)
+    }
+
+    b_i <- buckets[i]
+    n_bucket <- 0L
+    p_up_bucket <- NA_real_
+    p_down_bucket <- NA_real_
+    if (n_prior > 0L && !is.na(b_i)) {
+      b_prior <- buckets[prior_j][ok_prior]
+      hit <- which(b_prior == b_i)
+      n_bucket <- length(hit)
+      if (n_bucket > 0L) {
+        rh <- r_prior[ok_prior][hit]
+        p_up_bucket <- mean(rh > 0)
+        p_down_bucket <- mean(rh < 0)
+      }
+    }
+
+    method <- "none"
+    p_up_hat <- NA_real_
+    p_down_hat <- NA_real_
+    if (n_bucket >= min_bucket_n && is.finite(p_up_bucket)) {
+      p_up_hat <- p_up_bucket
+      p_down_hat <- p_down_bucket
+      method <- "mos_bucket"
+    } else if (n_bucket > 0L && n_prior >= min_base_n &&
+               is.finite(p_up_bucket) && is.finite(p_up_base)) {
+      w <- n_bucket + prior_strength
+      p_up_hat <- (n_bucket * p_up_bucket + prior_strength * p_up_base) / w
+      p_down_hat <- (n_bucket * p_down_bucket + prior_strength * p_down_base) / w
+      method <- "blend"
+    } else if (n_prior >= min_base_n && is.finite(p_up_base)) {
+      p_up_hat <- p_up_base
+      p_down_hat <- p_down_base
+      method <- "unconditional"
+    }
+
+    # Renormalize up/down to sum ≤ 1 if both finite (flat mass = residual)
+    if (is.finite(p_up_hat) && is.finite(p_down_hat)) {
+      s2 <- p_up_hat + p_down_hat
+      if (is.finite(s2) && s2 > 1) {
+        p_up_hat <- p_up_hat / s2
+        p_down_hat <- p_down_hat / s2
+      }
+    }
+
+    r_i <- next_ret[i]
+    out_rows[[i]] <- data.frame(
+      Date = vd$Date[i],
+      mos = as.numeric(vd$mos[i]),
+      bucket = if (is.na(b_i)) NA_character_ else b_i,
+      n_prior = as.integer(n_prior),
+      n_bucket = as.integer(n_bucket),
+      p_up_base = p_up_base,
+      p_down_base = p_down_base,
+      p_up_bucket = p_up_bucket,
+      p_down_bucket = p_down_bucket,
+      p_up_hat = p_up_hat,
+      p_down_hat = p_down_hat,
+      method = method,
+      small_sample = isTRUE(n_prior < min_base_n) || isTRUE(n_bucket < min_bucket_n),
+      has_next = is.finite(r_i),
+      ret_next = r_i,
+      realized_up = if (is.finite(r_i)) isTRUE(r_i > 0) else NA,
+      stringsAsFactors = FALSE
+    )
+  }
+  do.call(rbind, out_rows)
+}
+
+#' Tip (latest measurable) next-period direction forecast from [build_hfv_direction_forecasts].
+#'
+#' @param locale `"en"` or `"zh-TW"` for tip note wording
+tip_hfv_direction_forecast <- function(forecast_df, locale = "zh-TW") {
+  loc <- if (exists("normalize_ui_locale", mode = "function")) {
+    normalize_ui_locale(locale)
+  } else {
+    loc0 <- tolower(trimws(as.character(locale %||% "zh-TW")[1]))
+    if (loc0 %in% c("en", "en-us", "english")) "en" else "zh-TW"
+  }
+  empty <- list(
+    Date = as.Date(NA),
+    mos = NA_real_,
+    bucket = NA_character_,
+    n_prior = 0L,
+    n_bucket = 0L,
+    p_up_hat = NA_real_,
+    p_down_hat = NA_real_,
+    p_up_base = NA_real_,
+    method = "none",
+    small_sample = TRUE,
+    note = if (identical(loc, "en")) {
+      "Insufficient data."
+    } else {
+      "資料不足"
+    }
+  )
+  if (is.null(forecast_df) || !is.data.frame(forecast_df) || nrow(forecast_df) < 1) {
+    return(empty)
+  }
+  # Prefer latest row with a finite forecast; else last row
+  ok <- is.finite(forecast_df$p_up_hat)
+  tip <- if (any(ok)) {
+    forecast_df[ok, , drop = FALSE][sum(ok), , drop = FALSE]
+  } else {
+    forecast_df[nrow(forecast_df), , drop = FALSE]
+  }
+  method <- as.character(tip$method[1])
+  nb <- as.integer(tip$n_bucket[1])
+  np <- as.integer(tip$n_prior[1])
+  note <- if (identical(loc, "en")) {
+    switch(
+      method,
+      mos_bucket = sprintf(
+        "Expanding-window MOS-bucket conditional odds (bucket prior n=%d; all prior n=%d).",
+        nb, np
+      ),
+      blend = sprintf(
+        "Thin MOS-bucket sample (n=%d); blended with unconditional prior (n=%d).",
+        nb, np
+      ),
+      unconditional = sprintf(
+        "Bucket prior too thin; using expanding-window unconditional P(up) (n=%d).",
+        np
+      ),
+      "No prior pairs at a measurable tip yet — cannot form next-period odds."
+    )
+  } else {
+    switch(
+      method,
+      mos_bucket = sprintf(
+        "擴張窗 MOS 分組條件機率（同組先驗 n＝%d；總先驗 n＝%d）。",
+        nb, np
+      ),
+      blend = sprintf(
+        "MOS 分組樣本偏薄（n＝%d），已與無條件先驗（n＝%d）混合。",
+        nb, np
+      ),
+      unconditional = sprintf(
+        "同組先驗不足，改用擴張窗無條件上漲頻率（n＝%d）。",
+        np
+      ),
+      "尚無可衡量時刻的先驗配對，無法給出下一期漲跌機率。"
+    )
+  }
+  list(
+    Date = tip$Date[1],
+    mos = .bv_safe_num(tip$mos[1], NA_real_),
+    bucket = as.character(tip$bucket[1]),
+    n_prior = np,
+    n_bucket = nb,
+    p_up_hat = .bv_safe_num(tip$p_up_hat[1], NA_real_),
+    p_down_hat = .bv_safe_num(tip$p_down_hat[1], NA_real_),
+    p_up_base = .bv_safe_num(tip$p_up_base[1], NA_real_),
+    method = method,
+    small_sample = isTRUE(tip$small_sample[1]),
+    note = note
+  )
+}
+
 # ==========================================
 # 6) Price vs FV_t: next-period converge / diverge (no return framing)
 # ==========================================
@@ -1121,6 +1352,8 @@ summarize_fv_market_validation <- function(valuation_df, from = NULL, to = NULL,
     no_strategy_fv = FALSE,
     mos_stats = summarize_mos_next_period_stats(valuation_df),
     mos_outlook = .empty_outlook,
+    direction_forecasts = build_hfv_direction_forecasts(NULL),
+    direction_tip = tip_hfv_direction_forecast(NULL, locale = locale),
     scenarios = summarize_hfv_scenarios(NULL)
   )
   # 無復盤模型 FV → valuation 無有限 fair_value → 無配對
@@ -1138,6 +1371,9 @@ summarize_fv_market_validation <- function(valuation_df, from = NULL, to = NULL,
         "請於「復盤模型」單選 DCF／DDM／RI／P/B／NAV 後再驗證；復盤結果僅依單選模型，不暗設平均。"
       )
     }
+    fc0 <- build_hfv_direction_forecasts(valuation_df)
+    empty$direction_forecasts <- fc0
+    empty$direction_tip <- tip_hfv_direction_forecast(fc0, locale = locale)
     return(empty)
   }
 
@@ -1166,6 +1402,9 @@ summarize_fv_market_validation <- function(valuation_df, from = NULL, to = NULL,
     empty$pairs <- pp
     empty$scenarios <- scenarios
     empty$note <- "選定期間內無已實現下期配對"
+    fc0 <- build_hfv_direction_forecasts(valuation_df)
+    empty$direction_forecasts <- fc0
+    empty$direction_tip <- tip_hfv_direction_forecast(fc0, locale = locale)
     return(empty)
   }
   n_above <- sum(pp$vs_fv == "之上", na.rm = TRUE)
@@ -1240,6 +1479,18 @@ summarize_fv_market_validation <- function(valuation_df, from = NULL, to = NULL,
   }
   mos_outlook <- lookup_mos_bucket_outlook(mos_tip, mos_stats)
 
+  # Expanding-window next-period direction forecast (PIT MOS → P(up)/P(down))
+  direction_forecasts <- build_hfv_direction_forecasts(valuation_df)
+  if ((!is.null(from) || !is.null(to)) && nrow(direction_forecasts) > 0L) {
+    keep_fc <- rep(TRUE, nrow(direction_forecasts))
+    if (!is.null(from)) keep_fc <- keep_fc & direction_forecasts$Date >= from
+    if (!is.null(to)) keep_fc <- keep_fc & direction_forecasts$Date <= to
+    direction_forecasts_view <- direction_forecasts[keep_fc, , drop = FALSE]
+  } else {
+    direction_forecasts_view <- direction_forecasts
+  }
+  direction_tip <- tip_hfv_direction_forecast(direction_forecasts, locale = locale)
+
   small <- n < 5L
   note <- if (small) {
     sprintf(
@@ -1248,7 +1499,7 @@ summarize_fv_market_validation <- function(valuation_df, from = NULL, to = NULL,
     )
   } else {
     sprintf(
-      "樣本 n=%d：同時報告市價下期漲跌 R=(P下一期−P)/P 與相對 FV 之上／之下（非交易策略回測；非預測保證）。",
+      "樣本 n=%d：同時報告市價下期漲跌 R=(P下一期−P)/P、相對 FV 縮小／擴大，以及擴張窗 MOS 條件下一期漲跌機率（非交易策略回測；非預測保證）。",
       n
     )
   }
@@ -1301,6 +1552,8 @@ summarize_fv_market_validation <- function(valuation_df, from = NULL, to = NULL,
     no_strategy_fv = FALSE,
     mos_stats = mos_stats,
     mos_outlook = mos_outlook,
+    direction_forecasts = direction_forecasts_view,
+    direction_tip = direction_tip,
     scenarios = scenarios
   )
 }

@@ -10853,8 +10853,91 @@ server <- function(input, output, session) {
       )
     }
 
+    # Expanding-window next-period direction forecast (MOS → P(up)/P(down))
+    tip_fc <- s$direction_tip
+    forecast_card <- {
+      if (!is.null(tip_fc) && is.list(tip_fc) && is.finite(tip_fc$p_up_hat)) {
+        method_lab <- switch(
+          as.character(tip_fc$method %||% "none")[1],
+          mos_bucket = ui_str("hfv_fc_method_bucket", loc),
+          blend = ui_str("hfv_fc_method_blend", loc),
+          unconditional = ui_str("hfv_fc_method_base", loc),
+          ui_str("hfv_fc_method_none", loc)
+        )
+        d_tip <- tryCatch(as.Date(tip_fc$Date), error = function(e) as.Date(NA))
+        date_txt <- if (is.finite(d_tip)) format(d_tip, "%Y-%m-%d") else "—"
+        tags$div(
+          style = paste0(
+            "margin:0 0 12px 0;padding:12px 14px;background:#eef4fb;",
+            "border:1px solid #c5d4ef;border-left:4px solid #3c8dbc;",
+            "border-radius:4px;font-size:13px;line-height:1.55;"
+          ),
+          tags$div(tags$b(ui_str("hfv_fc_title", loc))),
+          tags$div(
+            style = "margin:4px 0 0 0;color:#6c757d;font-size:11.5px;",
+            ui_str("hfv_fc_formula", loc)
+          ),
+          tags$div(
+            style = "margin:6px 0 0 0;font-size:15px;font-weight:700;",
+            sprintf(
+              ui_str("hfv_fc_tip_fmt", loc),
+              date_txt,
+              pct(tip_fc$p_up_hat),
+              pct(tip_fc$p_down_hat)
+            )
+          ),
+          tags$ul(
+            style = "margin:6px 0 0 0;padding-left:18px;font-size:12.5px;",
+            tags$li(sprintf(
+              ui_str("hfv_fc_mos_fmt", loc),
+              if (is.finite(tip_fc$mos)) 100 * tip_fc$mos else NA_real_,
+              tip_fc$bucket %||% "—",
+              as.integer(tip_fc$n_bucket %||% 0L),
+              as.integer(tip_fc$n_prior %||% 0L)
+            )),
+            tags$li(paste0(ui_str("hfv_fc_method_label", loc), "：", method_lab)),
+            if (is.finite(tip_fc$p_up_base)) {
+              tags$li(sprintf(ui_str("hfv_fc_base_fmt", loc), pct(tip_fc$p_up_base)))
+            } else NULL
+          ),
+          tags$div(
+            style = "margin:6px 0 0 0;color:#555;font-size:11.5px;line-height:1.45;",
+            tip_fc$note %||% ""
+          ),
+          tags$div(
+            style = "margin:4px 0 0 0;color:#888;font-size:11.5px;line-height:1.45;",
+            ui_str("hfv_fc_caveat", loc)
+          ),
+          if (isTRUE(tip_fc$small_sample)) {
+            tags$div(
+              style = "margin:4px 0 0 0;color:#c27d0e;font-size:11.5px;",
+              ui_str("hfv_badge_small_sample", loc)
+            )
+          } else NULL
+        )
+      } else {
+        tags$div(
+          style = paste0(
+            "margin:0 0 12px 0;padding:12px 14px;background:#fafafa;",
+            "border:1px solid #ddd;border-left:4px solid #3c8dbc;",
+            "border-radius:4px;font-size:13px;line-height:1.55;color:#666;"
+          ),
+          tags$div(tags$b(ui_str("hfv_fc_title", loc))),
+          tags$div(
+            style = "margin:4px 0 0 0;",
+            ui_str("hfv_fc_empty", loc)
+          ),
+          tags$div(
+            style = "margin:6px 0 0 0;color:#888;font-size:11.5px;",
+            ui_str("hfv_fc_formula", loc)
+          )
+        )
+      }
+    }
+
     tagList(
       conclusion_card,
+      forecast_card,
       tags$div(
         style = "margin:0 0 8px 0;font-size:13px;",
         tags$b(ui_str("hfv_sum_title", loc)),
@@ -10959,6 +11042,18 @@ server <- function(input, output, session) {
       if (identical(x, "持平")) return(ui_str("hfv_toward_flat", loc))
       x
     }, character(1))
+    fc_df <- s$direction_forecasts
+    p_up_hat_disp <- rep("—", nrow(pp))
+    if (!is.null(fc_df) && is.data.frame(fc_df) && nrow(fc_df) > 0L &&
+        all(c("Date", "p_up_hat") %in% names(fc_df))) {
+      ix_fc <- match(pp$Date, fc_df$Date)
+      p_hat <- fc_df$p_up_hat[ix_fc]
+      p_up_hat_disp <- ifelse(
+        is.finite(p_hat),
+        paste0(sprintf("%.0f", 100 * p_hat), "%"),
+        "—"
+      )
+    }
     out <- data.frame(
       col1 = format(pp$Date, "%Y-%m-%d"),
       col2 = format(pp$Date_next, "%Y-%m-%d"),
@@ -10967,11 +11062,12 @@ server <- function(input, output, session) {
       col5 = round(pp$price_next, 2),
       col6 = paste0(sprintf("%+.1f", 100 * retv), "%"),
       col7 = dir_disp,
-      col8 = toward_disp,
-      col9 = paste0(sprintf("%+.1f", 100 * gapv), "%"),
-      col10 = vs_disp,
-      col11 = sc_lab,
-      col12 = fb_lab,
+      col8 = p_up_hat_disp,
+      col9 = toward_disp,
+      col10 = paste0(sprintf("%+.1f", 100 * gapv), "%"),
+      col11 = vs_disp,
+      col12 = sc_lab,
+      col13 = fb_lab,
       stringsAsFactors = FALSE,
       check.names = FALSE
     )
@@ -10983,6 +11079,7 @@ server <- function(input, output, session) {
       ui_str("hfv_col_next_price", loc),
       ui_str("hfv_col_next_ret", loc),
       ui_str("hfv_col_dir", loc),
+      ui_str("hfv_col_p_up_hat", loc),
       ui_str("hfv_col_toward", loc),
       ui_str("hfv_col_gap", loc),
       ui_str("hfv_col_vs_fv", loc),

@@ -376,6 +376,27 @@ sum_ot <- summarize_hfv_scenarios(build_hfv_scenario_pairs(vd_other))
 check("other-only most_frequent NA", is.na(sum_ot$most_frequent))
 check("other-only latest other", identical(sum_ot$latest, "other"))
 
+# --- Expanding-window next-period direction forecast (MOS → P(up)) ---
+fc <- build_hfv_direction_forecasts(vd, min_bucket_n = 1L, min_base_n = 2L, prior_strength = 2)
+check("forecast rows = valuation rows", nrow(fc) == nrow(vd))
+check("first forecast NA (no prior)", !is.finite(fc$p_up_hat[1]))
+check("later forecast finite", any(is.finite(fc$p_up_hat)))
+# No look-ahead: forecast at i uses only returns with j < i
+check("no look-ahead on tip with next", {
+  # At row 3, prior pairs are 1→2 and 2→3 only (indices 1,2)
+  i <- 3L
+  prior_rets <- vd$hist_price[2:i] / vd$hist_price[1:(i - 1)] - 1
+  # unconditional from those priors
+  p_base <- mean(prior_rets > 0)
+  is.finite(fc$p_up_hat[i]) && fc$n_prior[i] == (i - 1L)
+})
+tip <- tip_hfv_direction_forecast(fc, locale = "en")
+check("tip has p_up_hat", is.finite(tip$p_up_hat) && tip$p_up_hat >= 0 && tip$p_up_hat <= 1)
+check("tip method set", tip$method %in% c("mos_bucket", "blend", "unconditional"))
+sum_fc <- summarize_fv_market_validation(vd, oos_mode = "insample", locale = "en")
+check("summary attaches direction_tip", is.list(sum_fc$direction_tip) && is.finite(sum_fc$direction_tip$p_up_hat))
+check("summary attaches forecasts", is.data.frame(sum_fc$direction_forecasts) && nrow(sum_fc$direction_forecasts) >= 1L)
+
 # Locale keys for three-question map (en + zh-TW)
 loc_path <- file.path(app_dir, "ui_locale.R")
 if (file.exists(loc_path)) {
@@ -388,7 +409,9 @@ if (file.exists(loc_path)) {
       "hfv_sum_price_meaning", "hfv_sum_fv_meaning", "hfv_sum_scenario_meaning",
       "hfv_scenario_concl_diverge",
       "hfv_toward_odds_fmt", "hfv_toward_read", "hfv_col_toward",
-      "hfv_toward_toward", "hfv_toward_away"
+      "hfv_toward_toward", "hfv_toward_away",
+      "hfv_fc_title", "hfv_fc_formula", "hfv_fc_tip_fmt", "hfv_fc_caveat",
+      "hfv_col_p_up_hat", "hfv_fc_method_bucket"
     )) {
       v <- ui_str(k, loc)
       check(paste0("locale ", loc, " ", k), is.character(v) && nzchar(v) && !grepl("^\\[", v))
