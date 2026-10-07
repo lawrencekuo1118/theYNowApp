@@ -321,6 +321,22 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl("ynow-hfv-toolbar", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-chapter", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_hfv_ch1_title", txt, fixed = TRUE))
+  # 「如何閱讀本報告」 sits under masthead, before Section I, collapsed by default
+  testthat::expect_true(grepl("ynow_hfv_sec_method", txt, fixed = TRUE))
+  pos_method <- regexpr("ynow_hfv_sec_method", txt, fixed = TRUE)[1]
+  pos_ch1 <- regexpr("ynow_hfv_ch1_title", txt, fixed = TRUE)[1]
+  testthat::expect_true(is.finite(pos_method) && pos_method > 0)
+  testthat::expect_true(is.finite(pos_ch1) && pos_ch1 > 0)
+  testthat::expect_true(pos_method < pos_ch1)
+  method_box <- regmatches(
+    txt,
+    regexpr(
+      'How to read \\(top of page[\\s\\S]*?ynow_hfv_sec_method[\\s\\S]*?ynow-hfv-method',
+      txt,
+      perl = TRUE
+    )
+  )
+  testthat::expect_true(length(method_box) == 1L && grepl("collapsed = TRUE", method_box, fixed = TRUE))
   # Chart overlay models sit in Section I body immediately above the timeline chart
   testthat::expect_true(grepl("ynow_hfv_chart_overlay_controls", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-toolbar--above-chart", txt, fixed = TRUE))

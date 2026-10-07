@@ -1884,6 +1884,66 @@ beta_rolling_section_ui <- function() {
               )
             ),
 
+            # --- How to read (top of page, collapsed by default) ---
+            box(
+              title = tagList(
+                icon("book-open"),
+                tags$span(id = "ynow_hfv_sec_method", "How to read this report")
+              ),
+              width = NULL,
+              status = "primary",
+              solidHeader = FALSE,
+              collapsible = TRUE,
+              collapsed = TRUE,
+              tags$div(
+                class = "ynow-hfv-method",
+                tags$p(
+                  id = "ynow_hfv_method_body",
+                  style = "font-size:12.5px;color:#444;line-height:1.55;margin:0 0 10px 0;",
+                  paste0(
+                    "Not a trading backtest or broker order ticket. Validation samples cover: ",
+                    "(1) next-period actual market-price return R and causal tip P(up) from Replay FV × actual price (MOS; Date_next≤tip, no future backfill); ",
+                    "(2) Replay-model FV gap shrink/expand (toward/away); ",
+                    "plus a direct historical scenario taxonomy panel (not a numbered question: ",
+                    "mispricing / fundamental momentum / price momentum → A–D or other). ",
+                    "Charts allow multi-select overlay; market-price odds / shrink-expand / scenarios use the Replay model only."
+                  )
+                ),
+                tags$p(
+                  id = "ynow_hfv_sum_scenario_matrix",
+                  style = "font-size:12px;color:#555;line-height:1.5;margin:0 0 8px 0;",
+                  paste0(
+                    "A Golden pit: FV↑, Price↓, Price ≪ FV · ",
+                    "B Davis double: FV↑, Price↑, Price ≈ FV · ",
+                    "C Value trap: FV↓, Price↓, Price < FV · ",
+                    "D Bubble hype: FV≤flat, Price strong↑, Price ≫ FV · ",
+                    "other = unmatched (no A–D conclusion applied)."
+                  )
+                ),
+                tags$p(
+                  id = "ynow_hfv_scenario_thresh_note",
+                  style = "font-size:11.5px;color:#666;line-height:1.45;margin:0 0 8px 0;",
+                  paste0(
+                    "Scenario bandwidth heuristics (engineering defaults, not academic standards): ",
+                    "flat momentum |Δ|/prior ≤ 2%; Price ≈ FV when |MOS| ≤ 10%; Price ≪ FV when MOS ≥ 20%; ",
+                    "Price ≫ FV when MOS ≤ −20%; scenario D also requires price momentum ≥ +5%. ",
+                    "Garbage-in FV misclassifies; markets can stay irrational and still need a catalyst."
+                  )
+                ),
+                tags$p(
+                  style = "font-size:11.5px;color:#888;line-height:1.45;margin:0;",
+                  id = "ynow_hfv_method_data_note",
+                  paste0(
+                    "Data note: Yahoo annuals may be restated; PIT uses a strict filing lag ",
+                    "(fiscal period end + ~90 days; rows without period end are dropped, no soft bypass). ",
+                    "Near-term g and terminal SGR are separate; missing CapEx/ΔNWC is not invented as 0. ",
+                    "TW TPEx/emerging may backfill TPEx financial summaries (IS/BS; CF not invented). ",
+                    "Small samples (n<5) are illustrative only — not a forecast guarantee."
+                  )
+                )
+              )
+            ),
+
             # --- Chapter I: FV vs market ---
             tags$section(
               class = "ynow-hfv-chapter",
@@ -2037,66 +2097,6 @@ beta_rolling_section_ui <- function() {
                     style = "overflow-x:auto; width:100%;",
                     tags$style(HTML("#bt_fv_conv_table table { width: 100% !important; }")),
                     tableOutput("bt_fv_conv_table")
-                  )
-                )
-              )
-            ),
-
-            # --- Appendix: method notes ---
-            box(
-              title = tagList(
-                icon("book-open"),
-                tags$span(id = "ynow_hfv_sec_method", "How to read this report")
-              ),
-              width = NULL,
-              status = "primary",
-              solidHeader = FALSE,
-              collapsible = TRUE,
-              collapsed = TRUE,
-              tags$div(
-                class = "ynow-hfv-method",
-                tags$p(
-                  id = "ynow_hfv_method_body",
-                  style = "font-size:12.5px;color:#444;line-height:1.55;margin:0 0 10px 0;",
-                  paste0(
-                    "Not a trading backtest or broker order ticket. Validation samples cover: ",
-                    "(1) next-period actual market-price return R and causal tip P(up) from Replay FV × actual price (MOS; Date_next≤tip, no future backfill); ",
-                    "(2) Replay-model FV gap shrink/expand (toward/away); ",
-                    "plus a direct historical scenario taxonomy panel (not a numbered question: ",
-                    "mispricing / fundamental momentum / price momentum → A–D or other). ",
-                    "Charts allow multi-select overlay; market-price odds / shrink-expand / scenarios use the Replay model only."
-                  )
-                ),
-                tags$p(
-                  id = "ynow_hfv_sum_scenario_matrix",
-                  style = "font-size:12px;color:#555;line-height:1.5;margin:0 0 8px 0;",
-                  paste0(
-                    "A Golden pit: FV↑, Price↓, Price ≪ FV · ",
-                    "B Davis double: FV↑, Price↑, Price ≈ FV · ",
-                    "C Value trap: FV↓, Price↓, Price < FV · ",
-                    "D Bubble hype: FV≤flat, Price strong↑, Price ≫ FV · ",
-                    "other = unmatched (no A–D conclusion applied)."
-                  )
-                ),
-                tags$p(
-                  id = "ynow_hfv_scenario_thresh_note",
-                  style = "font-size:11.5px;color:#666;line-height:1.45;margin:0 0 8px 0;",
-                  paste0(
-                    "Scenario bandwidth heuristics (engineering defaults, not academic standards): ",
-                    "flat momentum |Δ|/prior ≤ 2%; Price ≈ FV when |MOS| ≤ 10%; Price ≪ FV when MOS ≥ 20%; ",
-                    "Price ≫ FV when MOS ≤ −20%; scenario D also requires price momentum ≥ +5%. ",
-                    "Garbage-in FV misclassifies; markets can stay irrational and still need a catalyst."
-                  )
-                ),
-                tags$p(
-                  style = "font-size:11.5px;color:#888;line-height:1.45;margin:0;",
-                  id = "ynow_hfv_method_data_note",
-                  paste0(
-                    "Data note: Yahoo annuals may be restated; PIT uses a strict filing lag ",
-                    "(fiscal period end + ~90 days; rows without period end are dropped, no soft bypass). ",
-                    "Near-term g and terminal SGR are separate; missing CapEx/ΔNWC is not invented as 0. ",
-                    "TW TPEx/emerging may backfill TPEx financial summaries (IS/BS; CF not invented). ",
-                    "Small samples (n<5) are illustrative only — not a forecast guarantee."
                   )
                 )
               )
