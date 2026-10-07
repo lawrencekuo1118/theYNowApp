@@ -8,5 +8,5 @@ short=9da0041
 message=chore: bump display version to v21.25
 captured_at=2026-10-07T14:40:00Z
 source_branch=cursor/hfv-next-period-prob-911b
-display_version=v21.25
+display_version=v21.26
 note=Canonical live line is app_21.0. Bundle 12659830 ships v21.25: HFV Replay model toolbar inside Section II. Deploy via scripts/deploy_app_21.R.
