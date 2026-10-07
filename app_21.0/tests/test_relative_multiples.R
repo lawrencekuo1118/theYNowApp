@@ -52,10 +52,52 @@ check("PE neg EPS N/A", identical(neg$status, "unavailable"))
 na_eps <- calc_pe_implied_price(NA_real_, 15)
 check("PE missing EPS N/A", identical(na_eps$status, "unavailable"))
 
-# --- Forward EPS invert ---
+# --- Forward EPS invert (deprecated pure math; sync must NOT call this) ---
 feps <- calc_forward_eps_from_price_pe(150, 25)
-check("forward EPS invert", abs(feps - 6) < 1e-9)
+check("forward EPS invert math", abs(feps - 6) < 1e-9)
 check("forward EPS invert bad", !is.finite(calc_forward_eps_from_price_pe(150, NA_real_)))
+
+# --- Sync policy: statements + App defaults; no market PE / price back-solve ---
+mults <- .rel_app_default_multiples(APP_DEFAULTS)
+check("default PE from APP_DEFAULTS", abs(mults$pe_multiple - 18) < 1e-9)
+check("default Fwd PE from APP_DEFAULTS", abs(mults$fwd_pe_multiple - 18) < 1e-9)
+check(
+  "forward EPS from trailing×g not price",
+  abs(.rel_forward_eps_from_trailing(2, 10) - 2.2) < 1e-9
+)
+check(
+  "forward EPS missing growth stays NA (no 回推)",
+  !is.finite(.rel_forward_eps_from_trailing(2, NA_real_))
+)
+check(
+  "forward EPS nonpositive trailing NA",
+  !is.finite(.rel_forward_eps_from_trailing(0, 10))
+)
+# Statement-first EPS: NI / shares when IS+BS present
+d_is_eps <- data.frame(
+  Breakdown = c("Net Income Common Stockholders", "Total Revenue"),
+  `12/31/2024` = c("200", "1000"),
+  check.names = FALSE, stringsAsFactors = FALSE
+)
+d_bs_eps <- data.frame(
+  Breakdown = c("Ordinary Shares Number", "Cash And Cash Equivalents"),
+  `12/31/2024` = c("100", "50"),
+  check.names = FALSE, stringsAsFactors = FALSE
+)
+# Stubs if setup helpers absent in offline test
+if (!exists("select_current_metric", mode = "function")) {
+  select_current_metric <<- function(df, pattern, kind = NULL) {
+    if (is.null(df) || !is.data.frame(df) || !nrow(df)) return(NA_real_)
+    hit <- grepl(pattern, df[[1]], ignore.case = TRUE, perl = TRUE)
+    if (!any(hit)) return(NA_real_)
+    suppressWarnings(as.numeric(df[which(hit)[1], 2]))
+  }
+}
+teps_stmt <- .rel_trailing_eps_from_statements(
+  sum_df = data.frame(Item = "Trailing P/E", Value = "99", stringsAsFactors = FALSE),
+  d_is = d_is_eps, d_bs = d_bs_eps
+)
+check("trailing EPS prefers NI/shares over summary", abs(teps_stmt - 2) < 1e-9)
 
 # --- PEG ---
 peg_ok <- calc_peg(30, 15, growth_definition = "SGR", growth_period = "terminal")
@@ -158,6 +200,36 @@ check("no sotp in multiples radio choices en", !grepl("SOTP", ui_str("rel_mode_e
 
 # --- UI mounts / mode radio ---
 mod_src <- paste(readLines("relative_multiples_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check("sync omits Yahoo market P/E seed", !grepl("mkt_pe", mod_src, fixed = TRUE))
+check("sync omits Forward P/E market seed", !grepl("fpe_mkt", mod_src, fixed = TRUE))
+check(
+  "sync never calls price÷P/E back-solve",
+  !grepl("calc_forward_eps_from_price_pe\\(", mod_src) ||
+    grepl("@deprecated[\\s\\S]*?calc_forward_eps_from_price_pe", mod_src)
+)
+# Ensure the only calc_forward_eps_from_price_pe occurrence is the function definition, not a call site in sync
+check(
+  "no back-solve call in sync_from_statements",
+  {
+    # Strip the function definition body roughly; fail if .quote_px() feeds forward EPS
+    !grepl("feps <- calc_forward_eps_from_price_pe", mod_src, fixed = TRUE) &&
+      !grepl("calc_forward_eps_from_price_pe\\(\\.quote_px", mod_src) &&
+      grepl(".rel_forward_eps_from_trailing", mod_src, fixed = TRUE) &&
+      grepl(".rel_app_default_multiples", mod_src, fixed = TRUE) &&
+      grepl(".rel_trailing_eps_from_statements", mod_src, fixed = TRUE)
+  }
+)
+check(
+  "locale pe_help rejects back-solve",
+  {
+    en <- ui_str("rel_multiples_pe_help", "en")
+    zh <- ui_str("rel_multiples_pe_help", "zh-TW")
+    grepl("back-solve|industry defaults", en, ignore.case = TRUE) &&
+      grepl("回推|產業預設", zh) &&
+      !grepl("price ÷ Forward P/E|股價 ÷ Forward P/E", en) &&
+      !grepl("股價 ÷ Forward P/E 反推", zh)
+  }
+)
 check("mode radio in module", grepl('ns("rel_mode")', mod_src, fixed = TRUE))
 check("mode earnings family", grepl("earnings", mod_src, fixed = TRUE) && grepl("enterprise", mod_src, fixed = TRUE))
 check("mode conditional panels", grepl("mod_rel-rel_mode", mod_src, fixed = TRUE))

@@ -46,11 +46,102 @@ calc_pe_implied_price <- function(eps, pe_multiple) {
   )
 }
 
+#' @deprecated Do not use for valuation sync — inverts market price into EPS (回推).
+#' Kept only for offline regression of the pure math; Multiples sync must not call this.
 calc_forward_eps_from_price_pe <- function(price, forward_pe) {
   px <- suppressWarnings(as.numeric(price)[1])
   fpe <- suppressWarnings(as.numeric(forward_pe)[1])
   if (!is.finite(px) || px <= 0 || !is.finite(fpe) || fpe <= 0) return(NA_real_)
   px / fpe
+}
+
+#' App / industry-assumption multiples (never Yahoo Trailing／Forward P/E or target price).
+.rel_app_default_multiples <- function(defaults = NULL) {
+  d <- defaults
+  if (is.null(d) && exists("APP_DEFAULTS", inherits = TRUE)) {
+    d <- get("APP_DEFAULTS", inherits = TRUE)
+  }
+  if (!is.list(d)) d <- list()
+  pe <- suppressWarnings(as.numeric(d$rel_pe_multiple %||% 18)[1])
+  if (!is.finite(pe) || pe <= 0) pe <- 18
+  fpe <- suppressWarnings(as.numeric(d$rel_fwd_pe_multiple %||% pe)[1])
+  if (!is.finite(fpe) || fpe <= 0) fpe <- pe
+  list(
+    pe_multiple = pe,
+    fwd_pe_multiple = fpe,
+    ev_fcf_multiple = {
+      v <- suppressWarnings(as.numeric(d$rel_ev_fcf_multiple %||% 15)[1])
+      if (is.finite(v) && v > 0) v else 15
+    },
+    ev_ebit_multiple = {
+      v <- suppressWarnings(as.numeric(d$rel_ev_ebit_multiple %||% 12)[1])
+      if (is.finite(v) && v > 0) v else 12
+    },
+    ev_ebitda_multiple = {
+      v <- suppressWarnings(as.numeric(d$rel_ev_ebitda_multiple %||% 10)[1])
+      if (is.finite(v) && v > 0) v else 10
+    },
+    ev_sales_multiple = {
+      v <- suppressWarnings(as.numeric(d$rel_ev_sales_multiple %||% 3)[1])
+      if (is.finite(v) && v > 0) v else 3
+    },
+    ps_multiple = {
+      v <- suppressWarnings(as.numeric(d$rel_ps_multiple %||% 3)[1])
+      if (is.finite(v) && v > 0) v else 3
+    },
+    ev_arr_multiple = {
+      v <- suppressWarnings(as.numeric(d$rel_ev_arr_multiple %||% 10)[1])
+      if (is.finite(v) && v > 0) v else 10
+    }
+  )
+}
+
+#' Trailing EPS from latest statements first; Yahoo EPS (TTM) only as reported earnings fallback.
+#' Never derives EPS from price ÷ P/E.
+.rel_trailing_eps_from_statements <- function(sum_df = NULL, d_is = NULL, d_bs = NULL) {
+  # 1) Net Income ÷ shares from IS / BS
+  if (!is.null(d_is) && is.data.frame(d_is) && nrow(d_is) > 0 &&
+      exists("select_current_metric", mode = "function")) {
+    ni <- tryCatch(
+      select_current_metric(d_is, "Net Income Common Stockholders|Net Income$", "flow"),
+      error = function(e) NA_real_
+    )
+    sh <- NA_real_
+    if (!is.null(d_bs) && is.data.frame(d_bs) && nrow(d_bs) > 0) {
+      sh <- tryCatch(
+        select_current_metric(
+          d_bs, "Ordinary Shares Number|Share Issued|Total Shares Outstanding", "stock"
+        ),
+        error = function(e) NA_real_
+      )
+    }
+    if (is.finite(ni) && is.finite(sh) && sh > 0) return(as.numeric(ni / sh)[1])
+  }
+  # 2) Shared report helper (may still read Yahoo EPS TTM as earnings figure)
+  if (exists(".report_eps_bvps", mode = "function")) {
+    eps <- tryCatch(
+      .report_eps_bvps(sum_df, d_is = d_is, d_bs = d_bs)$eps,
+      error = function(e) NA_real_
+    )
+    if (is.finite(eps)) return(as.numeric(eps)[1])
+  }
+  # 3) Yahoo EPS (TTM) label only — reported earnings, not a valuation multiple
+  if (exists("extract_summary_item", mode = "function")) {
+    teps <- .parse_summary_num(extract_summary_item(
+      sum_df, "EPS \\(TTM\\)|Trailing EPS|^EPS$", default = NA_character_
+    ))
+    if (is.finite(teps)) return(teps)
+  }
+  NA_real_
+}
+
+#' Forward EPS from trailing × (1 + g/100). No price, no Yahoo Forward P/E, no 回推.
+.rel_forward_eps_from_trailing <- function(trailing_eps, growth_pct) {
+  teps <- suppressWarnings(as.numeric(trailing_eps)[1])
+  g <- suppressWarnings(as.numeric(growth_pct)[1])
+  if (!is.finite(teps) || teps <= 0) return(NA_real_)
+  if (!is.finite(g)) return(NA_real_)
+  teps * (1 + g / 100)
 }
 
 calc_peg <- function(pe, growth_pct,
@@ -470,7 +561,7 @@ relative_multiples_module_ui <- function(id) {
         ),
         tags$p(
           id = "ynow_rel_multiples_pe_help", class = "help-block",
-          "Forward EPS from Yahoo when available, else price ÷ Forward P/E. No forecasted EPS. EPS ≤ 0 → N/A."
+          "Trailing EPS from latest statements; Forward EPS = Trailing × (1+g) using SGR／revenue CAGR. Selected P/E from App industry defaults — not Yahoo market P/E or price÷P/E back-solve. EPS ≤ 0 → N/A."
         ),
         hr(style = "border-top:1px solid #BDC3C7;"),
         h4(tags$b(id = "ynow_rel_multiples_peg_heading", "PEG (relative indicator)")),
@@ -615,37 +706,27 @@ relative_multiples_module_server <- function(id,
       d_bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
       d_cf <- tryCatch(d_cash_flow(), error = function(e) NULL)
 
-      teps <- NA_real_
-      if (exists("extract_summary_item", mode = "function")) {
-        teps <- .parse_summary_num(extract_summary_item(
-          sum_df, "EPS \\(TTM\\)|Trailing EPS|^EPS$", default = NA_character_
-        ))
-      }
-      if (!is.finite(teps) && exists(".report_eps_bvps", mode = "function")) {
-        teps <- tryCatch(.report_eps_bvps(sum_df, d_is = d_is, d_bs = d_bs)$eps, error = function(e) NA_real_)
-      }
-      mkt_pe <- if (exists("extract_summary_item", mode = "function")) {
-        .parse_summary_num(extract_summary_item(sum_df, "PE Ratio|Trailing P/E|P/E", default = NA_character_))
-      } else NA_real_
-      fpe_mkt <- if (exists("extract_summary_item", mode = "function")) {
-        .parse_summary_num(extract_summary_item(sum_df, "Forward P/E|Forward PE|forwardPE", default = NA_character_))
-      } else NA_real_
-      feps <- if (exists("extract_summary_item", mode = "function")) {
-        .parse_summary_num(extract_summary_item(sum_df, "Forward EPS|Fwd EPS|forwardEps", default = NA_character_))
-      } else NA_real_
-      if (!is.finite(feps)) feps <- calc_forward_eps_from_price_pe(.quote_px(), fpe_mkt)
+      # Metrics from latest statements; multiples from App defaults (industry assumptions).
+      # Never seed Selected P/E from Yahoo Trailing／Forward P/E, target price, or price÷P/E 回推.
+      mults <- .rel_app_default_multiples()
+      pe_def <- round(mults$pe_multiple, 2)
+      fpe_def <- round(mults$fwd_pe_multiple, 2)
 
-      pe_def <- if (is.finite(mkt_pe) && mkt_pe > 0) round(mkt_pe, 2) else APP_DEFAULTS$rel_pe_multiple %||% 18
-      fpe_def <- if (is.finite(fpe_mkt) && fpe_mkt > 0) round(fpe_mkt, 2) else APP_DEFAULTS$rel_fwd_pe_multiple %||% pe_def
+      teps <- .rel_trailing_eps_from_statements(sum_df, d_is = d_is, d_bs = d_bs)
+
+      g_src <- as.character(input$peg_growth_src %||% "sgr")[1]
+      g_pct <- if (identical(g_src, "rev_cagr")) {
+        .rel_rev_cagr_pct(d_is)
+      } else {
+        suppressWarnings(as.numeric(central_sgr_pct())[1])
+      }
+      feps <- .rel_forward_eps_from_trailing(teps, g_pct)
 
       updateNumericInput(session, "trailing_eps", value = if (is.finite(teps)) round(teps, 4) else NA)
       updateNumericInput(session, "pe_multiple", value = pe_def)
       updateNumericInput(session, "forward_eps", value = if (is.finite(feps)) round(feps, 4) else NA)
       updateNumericInput(session, "fwd_pe_multiple", value = fpe_def)
       updateNumericInput(session, "peg_pe", value = pe_def)
-
-      g_src <- as.character(input$peg_growth_src %||% "sgr")[1]
-      g_pct <- if (identical(g_src, "rev_cagr")) .rel_rev_cagr_pct(d_is) else suppressWarnings(as.numeric(central_sgr_pct())[1])
       updateNumericInput(session, "peg_growth_pct", value = if (is.finite(g_pct)) round(g_pct, 2) else NA)
 
       fcff <- .rel_latest_fcff(d_cf, d_is = d_is)

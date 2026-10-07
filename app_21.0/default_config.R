@@ -153,6 +153,7 @@ APP_DEFAULTS <- list(
 
   # --- 7c. Relative multiples (Implied Price / PEG indicator; not Intrinsic Value) ---
   # Mode families (DDM-style): earnings | enterprise | ps | sotp. P/B stays separate.
+  # Selected multiples are App / industry assumptions — never Yahoo market P/E or price÷P/E 回推.
   rel_mode = "earnings",
   rel_pe_multiple = 18,
   rel_fwd_pe_multiple = 18,
