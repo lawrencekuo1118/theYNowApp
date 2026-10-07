@@ -5759,6 +5759,8 @@ ui <- dashboardPage(
           box-sizing: border-box;
           justify-content: center;
           text-align: center;
+          /* No left gutter for native radio/checkbox — those are visually hidden below */
+          padding: 8px 12px !important;
         }
         .ynow-hfv-toolbar--in-ch2 #bt_fv_oos_mode .radio > label,
         .ynow-hfv-toolbar--in-ch2 #bt_fv_oos_mode .radio-inline,
@@ -5767,6 +5769,7 @@ ui <- dashboardPage(
           min-height: 40px;
           align-items: center;
         }
+        /* Default: radio/checkbox sit in the label left padding */
         .ynow-hfv-toolbar .radio input[type="radio"],
         .ynow-hfv-toolbar .radio-inline input[type="radio"],
         .ynow-hfv-toolbar .checkbox input[type="checkbox"],
@@ -5775,21 +5778,63 @@ ui <- dashboardPage(
           margin-left: -20px;
           margin-top: 1px;
         }
-        .ynow-hfv-toolbar .radio > label:hover,
-        .ynow-hfv-toolbar .radio-inline:hover,
-        .ynow-hfv-toolbar .checkbox > label:hover,
-        .ynow-hfv-toolbar .checkbox-inline:hover {
+        /* Chip option groups: hide native dots so they never cover centered label text.
+           Selection is shown by the dark filled chip (input:checked). */
+        .ynow-hfv-toolbar .shiny-options-group input[type="radio"],
+        .ynow-hfv-toolbar .shiny-options-group input[type="checkbox"] {
+          position: absolute !important;
+          left: 0 !important;
+          top: 0 !important;
+          width: 1px !important;
+          height: 1px !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          opacity: 0 !important;
+          clip: rect(0, 0, 0, 0);
+          pointer-events: none;
+        }
+        .ynow-hfv-toolbar .shiny-options-group .radio > label:hover,
+        .ynow-hfv-toolbar .shiny-options-group .radio-inline:hover,
+        .ynow-hfv-toolbar .shiny-options-group .checkbox > label:hover,
+        .ynow-hfv-toolbar .shiny-options-group .checkbox-inline:hover {
           border-color: #999;
           background: #fff;
         }
-        .ynow-hfv-toolbar .radio:has(input:checked) > label,
-        .ynow-hfv-toolbar .radio-inline:has(input:checked),
-        .ynow-hfv-toolbar .checkbox:has(input:checked) > label,
-        .ynow-hfv-toolbar .checkbox-inline:has(input:checked) {
+        .ynow-hfv-toolbar .shiny-options-group .radio:has(input:checked) > label,
+        .ynow-hfv-toolbar .shiny-options-group .radio-inline:has(input:checked),
+        .ynow-hfv-toolbar .shiny-options-group .checkbox:has(input:checked) > label,
+        .ynow-hfv-toolbar .shiny-options-group .checkbox-inline:has(input:checked) {
           border-color: #1a1a1a;
           background: #1a1a1a;
           color: #fff;
           box-shadow: 0 1px 2px rgba(0,0,0,0.12);
+        }
+        /* Standalone checkbox (Show benchmark): plain flex row, never a filled chip */
+        .ynow-hfv-toolbar .checkbox:not(.checkbox-inline) > label {
+          display: inline-flex !important;
+          align-items: center !important;
+          gap: 8px;
+          border: none !important;
+          background: transparent !important;
+          box-shadow: none !important;
+          border-radius: 0 !important;
+          padding: 2px 0 !important;
+          color: #333 !important;
+          width: auto !important;
+          justify-content: flex-start !important;
+          text-align: left !important;
+          white-space: normal !important;
+          min-height: 0 !important;
+        }
+        .ynow-hfv-toolbar .checkbox:not(.checkbox-inline) input[type="checkbox"] {
+          position: static !important;
+          margin: 0 !important;
+          opacity: 1 !important;
+          width: auto !important;
+          height: auto !important;
+          clip: auto !important;
+          pointer-events: auto !important;
+          flex: 0 0 auto;
         }
         .ynow-hfv-toolbar__hint {
           margin: 2px 0 0 0;
