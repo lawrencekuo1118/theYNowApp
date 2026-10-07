@@ -2014,7 +2014,7 @@ beta_rolling_section_ui <- function() {
                 class = "ynow-hfv-chapter__lead",
                 id = "ynow_hfv_ch2_lead",
                 paste0(
-                  "Set the Replay model and sample scope, then read the two-question map and the measurable-tip ",
+                  "Set the Replay model and sample scope, then read the sample snapshot and measurable-tip ",
                   "odds for next actual market-price direction — before drilling into evidence chapters."
                 )
               ),
@@ -5768,21 +5768,26 @@ ui <- dashboardPage(
           color: #888;
         }
         .ynow-hfv-chapter {
-          margin: 0 0 18px 0;
-          padding: 0;
-          background: #fff;
-          border: 1px solid #e6e6e6;
-          border-radius: 8px;
-          overflow: hidden;
+          margin: 0 0 22px 0;
+          padding: 0 0 18px 0;
+          background: transparent;
+          border: 0;
+          border-bottom: 1px solid #ececec;
+          border-radius: 0;
+          overflow: visible;
+        }
+        .ynow-hfv-chapter:last-of-type {
+          border-bottom: 0;
+          padding-bottom: 0;
         }
         .ynow-hfv-chapter__head {
           display: flex;
           flex-wrap: wrap;
           align-items: baseline;
           gap: 6px 12px;
-          padding: 12px 16px;
-          background: #fff;
-          border-bottom: 1px solid #ececec;
+          padding: 0 0 6px 0;
+          background: transparent;
+          border-bottom: 0;
         }
         .ynow-hfv-chapter__kicker {
           font-size: 11px;
@@ -5799,10 +5804,10 @@ ui <- dashboardPage(
           line-height: 1.35;
         }
         .ynow-hfv-chapter__body {
-          padding: 14px 16px 16px 16px;
+          padding: 8px 0 0 0;
         }
         .ynow-hfv-chapter--appendix .ynow-hfv-chapter__body {
-          background: #fafafa;
+          background: transparent;
         }
         .ynow-hfv-report > .box {
           margin-bottom: 14px;
@@ -5842,7 +5847,7 @@ ui <- dashboardPage(
             max-width: 100%;
           }
           .ynow-hfv-chapter__body {
-            padding: 12px;
+            padding: 8px 0 0 0;
           }
           .ynow-hfv-report__masthead {
             padding-bottom: 12px;

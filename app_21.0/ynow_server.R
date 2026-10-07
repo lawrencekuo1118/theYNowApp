@@ -10259,12 +10259,13 @@ server <- function(input, output, session) {
         style = "margin:0 0 8px 0;padding:4px 0;font-size:13px;color:#666;",
         ui_str("hfv_sum_empty", loc)
       )
+      # Show the empty hint once (Section II only); later chapters keep leads only.
       return(list(
         empty = empty,
         investor = empty,
-        price = empty,
-        fv = empty,
-        scenario = empty
+        price = NULL,
+        fv = NULL,
+        scenario = NULL
       ))
     }
     pct <- function(x) if (is.finite(x)) sprintf("%.0f%%", 100 * x) else "—"
