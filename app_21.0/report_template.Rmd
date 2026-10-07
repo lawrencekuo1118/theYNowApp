@@ -59,7 +59,7 @@ params:
   report_locale: "zh-TW"
   report_copy: NA
   sensitivity_df: NA
-  app_version: "v21.28"
+  app_version: "v21.29"
   report_condensed: FALSE
   market_mode: "US"
 ---
