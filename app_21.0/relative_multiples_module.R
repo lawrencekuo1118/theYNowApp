@@ -144,19 +144,26 @@ calc_forward_eps_from_price_pe <- function(price, forward_pe) {
   teps * (1 + g / 100)
 }
 
+#' Normalize legacy radio values: earnings／ps → equity; enterprise unchanged.
+.rel_normalize_mode <- function(mode = "equity") {
+  m <- as.character(mode %||% "equity")[1]
+  if (identical(m, "enterprise")) "enterprise" else "equity"
+}
+
 #' Method keys that can produce Implied Price within a Multiples family.
-.rel_method_order <- function(mode = "earnings") {
+#' Taxonomy: Equity (P/E · Fwd P/E · P/S) vs Enterprise (EV/*). PEG is indicator-only.
+#' SOTP is a separate sidebar engine in the Enterprise-structural claim family.
+.rel_method_order <- function(mode = "equity") {
   switch(
-    as.character(mode %||% "earnings")[1],
+    .rel_normalize_mode(mode),
     "enterprise" = c("ev_fcf", "ev_ebit", "ev_ebitda", "ev_sales", "ev_arr"),
-    "ps" = "ps",
-    # earnings (default): PEG is a relative indicator, not an Implied Price
-    c("pe", "forward_pe")
+    # equity (default): PEG has no Implied Price
+    c("pe", "forward_pe", "ps")
   )
 }
 
 #' First successful Implied Price in the selected family (respects rel_mode).
-.rel_pick_active_implied <- function(res, mode = "earnings") {
+.rel_pick_active_implied <- function(res, mode = "equity") {
   empty <- list(key = NA_character_, implied_price = NA_real_)
   if (is.null(res) || !is.list(res)) return(empty)
   for (k in .rel_method_order(mode)) {
@@ -462,9 +469,9 @@ calc_sotp_revenue_implied <- function(segments, ev_sales_multiple, cash, debt, s
 # ==========================================
 # UI
 # ==========================================
-# Mode families (DDM-style radio): earnings | enterprise | ps
-# Settings tabs mirror P/B: Overview + same-nature parameter pages.
-# P/B and SOTP are separate sidebar engines.
+# Capital-claim families (radio): equity | enterprise
+# Equity = P/E · Fwd P/E · PEG · P/S; Enterprise = EV/* ; SOTP = sidebar Enterprise-structural.
+# Settings tabs: Overview + Equity + Enterprise + Bridge. P/B stays separate.
 .rel_formula_banner <- function(id, text) {
   div(
     id = id,
@@ -506,8 +513,8 @@ relative_multiples_module_ui <- function(id) {
           tags$b(id = "ynow_rel_multiples_lead_title", "Relative valuation (multiples): "),
           tags$span(
             id = "ynow_rel_multiples_lead_body",
-            "Implied Price by trading-multiple family — not Intrinsic Value / Fair Value. ",
-            "Switch Earnings / Enterprise / P/S like DDM modes. P/B and SOTP are separate sidebar engines."
+            "Implied Price by capital-claim family (Equity vs Enterprise) — not Intrinsic Value / Fair Value. ",
+            "P/S sits under Equity; SOTP is a separate sidebar Enterprise-structural engine. P/B stays separate."
           )
         )
       )
@@ -525,33 +532,34 @@ relative_multiples_module_ui <- function(id) {
             12,
             radioButtons(
               ns("rel_mode"),
-              label = tags$span(id = "ynow_rel_mode_label", "Select multiples family:"),
+              label = tags$span(id = "ynow_rel_mode_label", "Select capital-claim family:"),
               choices = list(
-                "Earnings (P/E · Fwd P/E · PEG)" = "earnings",
-                "Enterprise (EV/FCF · EV/EBIT · EV/EBITDA · EV/Sales · EV/ARR)" = "enterprise",
-                "P/S (equity sales)" = "ps"
+                "Equity (P/E · Fwd P/E · PEG · P/S)" = "equity",
+                "Enterprise (EV/FCF · EV/EBIT · EV/EBITDA · EV/Sales · EV/ARR)" = "enterprise"
               ),
-              selected = APP_DEFAULTS$rel_mode %||% "earnings",
+              selected = .rel_normalize_mode(APP_DEFAULTS$rel_mode %||% "equity"),
               inline = FALSE
             ),
             tags$p(
               id = "ynow_rel_mode_help",
               class = "help-block",
-              "Earnings: equity EPS multiples (+ PEG indicator). Enterprise: EV × metric then Cash−Debt bridge. P/S: equity-side revenue (no debt bridge). SOTP is a separate sidebar framework."
-            )
+              "Equity: equity-claim multiples (EPS×P/E, Revenue×P/S; PEG is an indicator). Enterprise: EV×metric then Cash−Debt bridge. SOTP (sidebar) shares the Enterprise cash/debt/shares bridge with per-segment EV/Sales."
+            ),
+            uiOutput(ns("ui_rel_param_matrix"))
           )
         ),
         conditionalPanel(
-          condition = .mode("earnings"),
+          condition = .mode("equity"),
           .rel_formula_banner(
-            "ynow_rel_formula_earnings",
-            "Implied Price = EPS × P/E　｜　PEG = P/E ÷ growth(%)"
+            "ynow_rel_formula_equity",
+            "Equity: Implied Price = EPS × P/E　｜　Implied Equity = Revenue × P/S　｜　PEG = P/E ÷ g(%)"
           ),
           fluidRow(
             class = "ynow-model-kpi-row",
-            column(4, class = "ynow-model-kpi-result", valueBoxOutput(ns("vbx_pe"), width = 12)),
-            column(4, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_fpe"), width = 12)),
-            column(4, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_peg"), width = 12))
+            column(3, class = "ynow-model-kpi-result", valueBoxOutput(ns("vbx_pe"), width = 12)),
+            column(3, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_fpe"), width = 12)),
+            column(3, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_peg"), width = 12)),
+            column(3, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_ps"), width = 12))
           )
         ),
         conditionalPanel(
@@ -572,17 +580,6 @@ relative_multiples_module_ui <- function(id) {
             column(4, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_evarr"), width = 12))
           )
         ),
-        conditionalPanel(
-          condition = .mode("ps"),
-          .rel_formula_banner(
-            "ynow_rel_formula_ps",
-            "Implied Equity = Revenue × P/S　｜　Implied Price = Equity ÷ Shares"
-          ),
-          fluidRow(
-            class = "ynow-model-kpi-row",
-            column(4, class = "ynow-model-kpi-result", valueBoxOutput(ns("vbx_ps"), width = 12))
-          )
-        ),
         fluidRow(
           column(width = 4, ynow_calc_btn(ns("btn_calc_rel"), label = tags$span(id = "ynow_rel_multiples_btn_calc", "Run multiples"))),
           column(width = 4, ynow_reset_defaults_btn(ns("btn_reset_rel"))),
@@ -600,9 +597,9 @@ relative_multiples_module_ui <- function(id) {
         fluidRow(column(12, uiOutput(ns("ui_rel_result"))))
       ),
 
-      # --- Earnings settings (P/E · Fwd · PEG) ---
+      # --- Equity settings (P/E · Fwd · PEG · P/S) ---
       tabPanel(
-        title = tags$span(id = "ynow_rel_multiples_tab_earnings", "Earnings"),
+        title = tags$span(id = "ynow_rel_multiples_tab_equity", "Equity"),
         icon = icon("chart-line"),
         h4(tags$b(id = "ynow_rel_multiples_pe_heading", "P/E & Forward P/E")),
         .rel_settings_note(
@@ -644,6 +641,24 @@ relative_multiples_module_ui <- function(id) {
         tags$p(
           id = "ynow_rel_multiples_peg_help", class = "help-block",
           "PEG = P/E ÷ growth(%). Not a buy/sell threshold."
+        ),
+        hr(style = "border-top:1px solid #BDC3C7;"),
+        h4(tags$b(id = "ynow_rel_multiples_ps_heading", "P/S (equity sales)")),
+        .rel_settings_note(
+          "ynow_rel_settings_ps_note",
+          "Implied Equity = Revenue × P/S; Implied Price = Equity ÷ Shares (no Cash−Debt bridge). Set Shares on the Bridge tab."
+        ),
+        fluidRow(
+          column(4, numericInput(ns("ps_revenue"), tags$span(id = "ynow_rel_lbl_ps_revenue", "Revenue"), value = NA, step = 1)),
+          column(4, numericInput(ns("ps_multiple"), tags$span(id = "ynow_rel_lbl_ps_mult", "P/S"), value = APP_DEFAULTS$rel_ps_multiple %||% 3, min = 0.01, step = 0.1))
+        ),
+        tags$p(
+          id = "ynow_rel_multiples_ps_help", class = "help-block",
+          "Equity-side: Implied Equity = Revenue × P/S; Implied Price = Equity ÷ shares. No Cash−Debt bridge (unlike EV/Sales)."
+        ),
+        tags$p(
+          id = "ynow_rel_multiples_ps_rev_note", class = "help-block",
+          "P/S Revenue syncs with Enterprise Revenue when you Sync from statements; you may override either field."
         )
       ),
 
@@ -654,7 +669,7 @@ relative_multiples_module_ui <- function(id) {
         h4(tags$b(id = "ynow_rel_multiples_ev_heading", "Enterprise multiples")),
         .rel_settings_note(
           "ynow_rel_settings_ev_note",
-          "Implied EV = Metric × Multiple; Equity = EV + Cash − Debt; Implied Price = Equity ÷ Shares. Set Cash / Debt / Shares on the Bridge tab."
+          "Implied EV = Metric × Multiple; Equity = EV + Cash − Debt; Implied Price = Equity ÷ Shares. Set Cash / Debt / Shares on the Bridge tab. SOTP (sidebar) reuses the same bridge with per-segment EV/Sales."
         ),
         fluidRow(
           column(3, numericInput(ns("fcff"), tags$span(id = "ynow_rel_lbl_fcff", "FCFF"), value = NA, step = 1)),
@@ -679,29 +694,6 @@ relative_multiples_module_ui <- function(id) {
         )
       ),
 
-      # --- P/S settings ---
-      tabPanel(
-        title = tags$span(id = "ynow_rel_multiples_tab_ps", "P/S"),
-        icon = icon("tags"),
-        h4(tags$b(id = "ynow_rel_multiples_ps_heading", "P/S (equity sales)")),
-        .rel_settings_note(
-          "ynow_rel_settings_ps_note",
-          "Implied Equity = Revenue × P/S; Implied Price = Equity ÷ Shares (no Cash−Debt bridge). Set Shares on the Bridge tab."
-        ),
-        fluidRow(
-          column(4, numericInput(ns("ps_revenue"), tags$span(id = "ynow_rel_lbl_ps_revenue", "Revenue"), value = NA, step = 1)),
-          column(4, numericInput(ns("ps_multiple"), tags$span(id = "ynow_rel_lbl_ps_mult", "P/S"), value = APP_DEFAULTS$rel_ps_multiple %||% 3, min = 0.01, step = 0.1))
-        ),
-        tags$p(
-          id = "ynow_rel_multiples_ps_help", class = "help-block",
-          "Equity-side: Implied Equity = Revenue × P/S; Implied Price = Equity ÷ shares. No Cash−Debt bridge (unlike EV/Sales)."
-        ),
-        tags$p(
-          id = "ynow_rel_multiples_ps_rev_note", class = "help-block",
-          "P/S Revenue syncs with Enterprise Revenue when you Sync from statements; you may override either field."
-        )
-      ),
-
       # --- Bridge (Cash / Debt / Shares) ---
       tabPanel(
         title = tags$span(id = "ynow_rel_multiples_tab_bridge", "Bridge"),
@@ -709,7 +701,7 @@ relative_multiples_module_ui <- function(id) {
         h4(tags$b(id = "ynow_rel_multiples_bridge_heading", "Capital bridge & shares")),
         .rel_settings_note(
           "ynow_rel_settings_bridge_note",
-          "Enterprise: Equity = EV + Cash − Debt; Implied Price = Equity ÷ Shares. P/S uses Shares only."
+          "Shared with Enterprise Multiples and SOTP: Equity = EV + Cash − Debt; Price = Equity ÷ Shares. Equity P/E／P/S use Shares only."
         ),
         uiOutput(ns("txt_shares_note")),
         fluidRow(
@@ -719,7 +711,7 @@ relative_multiples_module_ui <- function(id) {
         ),
         tags$p(
           id = "ynow_rel_multiples_bridge_help", class = "help-block",
-          "Cash / Debt used for EV→Equity bridge (Enterprise). P/S uses shares only."
+          "Cash / Debt used for EV→Equity bridge (Enterprise Multiples + SOTP). Equity P/S and P/E use shares only."
         )
       )
     )
@@ -887,7 +879,7 @@ relative_multiples_module_server <- function(id,
     }, ignoreInit = TRUE)
 
     observeEvent(input$btn_reset_rel, {
-      updateRadioButtons(session, "rel_mode", selected = APP_DEFAULTS$rel_mode %||% "earnings")
+      updateRadioButtons(session, "rel_mode", selected = .rel_normalize_mode(APP_DEFAULTS$rel_mode %||% "equity"))
       updateNumericInput(session, "pe_multiple", value = APP_DEFAULTS$rel_pe_multiple %||% 18)
       updateNumericInput(session, "fwd_pe_multiple", value = APP_DEFAULTS$rel_fwd_pe_multiple %||% 18)
       updateNumericInput(session, "ev_fcf_multiple", value = APP_DEFAULTS$rel_ev_fcf_multiple %||% 15)
@@ -1024,6 +1016,18 @@ relative_multiples_module_server <- function(id,
       .str("rel_multiples_status_na")
     }
 
+    output$ui_rel_param_matrix <- renderUI({
+      tags$div(
+        class = "ynow-rel-param-matrix",
+        style = "margin:10px 0 14px 0; padding:10px 12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; font-size:12.5px; color:#334155; line-height:1.45;",
+        tags$p(style = "margin:0 0 6px 0;", tags$b(id = "ynow_rel_param_matrix_title", .str("rel_param_matrix_title"))),
+        tags$p(style = "margin:0 0 4px 0;", tags$b(.str("rel_param_shared_heading")), " ", .str("rel_param_shared_body")),
+        tags$p(style = "margin:0 0 4px 0;", tags$b(.str("rel_param_equity_heading")), " ", .str("rel_param_equity_body")),
+        tags$p(style = "margin:0 0 4px 0;", tags$b(.str("rel_param_enterprise_heading")), " ", .str("rel_param_enterprise_body")),
+        tags$p(style = "margin:0;", tags$b(.str("rel_param_sotp_heading")), " ", .str("rel_param_sotp_body"))
+      )
+    })
+
     output$ui_rel_result <- renderUI({
       calc_token()
       input$rel_mode
@@ -1031,7 +1035,7 @@ relative_multiples_module_server <- function(id,
       if (is.null(res)) {
         return(tags$p(class = "ynow-macro-hint", .str("rel_multiples_need_run")))
       }
-      mode <- as.character(input$rel_mode %||% "earnings")[1]
+      mode <- .rel_normalize_mode(input$rel_mode %||% "equity")
       .row <- function(model, status, detail) {
         tags$tr(tags$td(tags$b(model)), tags$td(status), tags$td(detail))
       }
@@ -1047,24 +1051,16 @@ relative_multiples_module_server <- function(id,
           if (is.finite(node$multiple)) node$multiple else NA_real_
         )
       }
-      rows <- switch(
-        mode,
-        "enterprise" = tagList(
+      rows <- if (identical(mode, "enterprise")) {
+        tagList(
           .row(.str("rel_multiples_model_evfcf"), .st_label(res$ev_fcf), .ev_detail(res$ev_fcf, "FCFF")),
           .row(.str("rel_multiples_model_evebit"), .st_label(res$ev_ebit), .ev_detail(res$ev_ebit, "EBIT")),
           .row(.str("rel_multiples_model_evebitda"), .st_label(res$ev_ebitda), .ev_detail(res$ev_ebitda, "EBITDA")),
           .row(.str("rel_multiples_model_evsales"), .st_label(res$ev_sales), .ev_detail(res$ev_sales, "Rev")),
           .row(.str("rel_multiples_model_evarr"), .st_label(res$ev_arr), .ev_detail(res$ev_arr, "ARR"))
-        ),
-        "ps" = tagList(
-          .row(.str("rel_multiples_model_ps"), .st_label(res$ps),
-               sprintf("%s: %s · Equity %s · Rev %s · P/S %.2f×",
-                       .str("rel_multiples_implied_price"),
-                       .fmt_px(res$ps$implied_price), .fmt_px(res$ps$equity_value),
-                       if (is.finite(res$ps$revenue)) format(round(res$ps$revenue, 0), big.mark = ",") else "—",
-                       if (is.finite(res$ps$multiple)) res$ps$multiple else NA_real_))
-        ),
-        # earnings (default)
+        )
+      } else {
+        # equity (default): P/E · Fwd P/E · PEG · P/S
         tagList(
           .row(.str("rel_multiples_model_pe"), .st_label(res$pe),
                sprintf("%s: %s · P/E %.2f× · EPS %s", .str("rel_multiples_implied_price"),
@@ -1081,9 +1077,15 @@ relative_multiples_module_server <- function(id,
                        if (is.finite(res$peg$peg)) sprintf("%.2f", res$peg$peg) else "—",
                        if (is.finite(res$peg$pe)) res$peg$pe else NA_real_,
                        if (is.finite(res$peg$growth_pct)) res$peg$growth_pct else NA_real_,
-                       res$peg$growth_definition %||% "—", res$peg$growth_period %||% "—"))
+                       res$peg$growth_definition %||% "—", res$peg$growth_period %||% "—")),
+          .row(.str("rel_multiples_model_ps"), .st_label(res$ps),
+               sprintf("%s: %s · Equity %s · Rev %s · P/S %.2f×",
+                       .str("rel_multiples_implied_price"),
+                       .fmt_px(res$ps$implied_price), .fmt_px(res$ps$equity_value),
+                       if (is.finite(res$ps$revenue)) format(round(res$ps$revenue, 0), big.mark = ",") else "—",
+                       if (is.finite(res$ps$multiple)) res$ps$multiple else NA_real_))
         )
-      )
+      }
       tags$div(
         class = "table-responsive",
         tags$table(
@@ -1101,7 +1103,7 @@ relative_multiples_module_server <- function(id,
 
     .active_pick <- reactive({
       # Depend on mode so chart label / price refresh when family changes
-      mode <- as.character(input$rel_mode %||% "earnings")[1]
+      mode <- .rel_normalize_mode(input$rel_mode %||% "equity")
       .rel_pick_active_implied(last_result(), mode = mode)
     })
 

@@ -25,7 +25,7 @@ dcf_ev_to_equity <- function(ev, cash = 0, debt = 0) {
 
 source("ui_locale.R", local = TRUE, encoding = "UTF-8")
 APP_DEFAULTS <- list(
-  rel_mode = "earnings",
+  rel_mode = "equity",
   rel_pe_multiple = 18,
   rel_fwd_pe_multiple = 18,
   rel_ev_fcf_multiple = 15,
@@ -80,12 +80,18 @@ fake_res <- list(
   ps = list(status = "ok", implied_price = 70),
   ev_arr = list(status = "unavailable", implied_price = NA_real_)
 )
-pick_e <- .rel_pick_active_implied(fake_res, "earnings")
-check("earnings family picks Trailing P/E first", identical(pick_e$key, "pe") && abs(pick_e$implied_price - 100) < 1e-9)
+pick_e <- .rel_pick_active_implied(fake_res, "equity")
+check("equity family picks Trailing P/E first", identical(pick_e$key, "pe") && abs(pick_e$implied_price - 100) < 1e-9)
 pick_ent <- .rel_pick_active_implied(fake_res, "enterprise")
 check("enterprise family picks EV/FCF first", identical(pick_ent$key, "ev_fcf"))
-pick_ps <- .rel_pick_active_implied(fake_res, "ps")
-check("ps family picks P/S", identical(pick_ps$key, "ps"))
+# Legacy aliases normalize into equity / enterprise
+check("normalize earnings→equity", identical(.rel_normalize_mode("earnings"), "equity"))
+check("normalize ps→equity", identical(.rel_normalize_mode("ps"), "equity"))
+fake_no_pe <- fake_res
+fake_no_pe$pe <- list(status = "unavailable", implied_price = NA_real_)
+fake_no_pe$forward_pe <- list(status = "unavailable", implied_price = NA_real_)
+pick_ps_via_equity <- .rel_pick_active_implied(fake_no_pe, "equity")
+check("equity falls through to P/S", identical(pick_ps_via_equity$key, "ps"))
 check("chart label Multiples · P/E", identical(.rel_chart_label("pe"), "Multiples · P/E"))
 check("chart label Multiples · EV/EBITDA", identical(.rel_chart_label("ev_ebitda"), "Multiples · EV/EBITDA"))
 check("chart label bare Multiples when unknown", identical(.rel_chart_label(NA_character_), "Multiples"))
@@ -197,10 +203,13 @@ check("SOTP per-segment EV", abs(sotp_pm$implied_ev - 1000) < 1e-9) # 100*2 + 20
 for (k in c(
   "menu_rel_multiples", "menu_sotp", "rel_multiples_implied_price", "rel_multiples_disclaimer",
   "rel_multiples_growth_sgr", "rel_multiples_vbx_pe", "rel_multiples_vbx_evebit",
-  "rel_multiples_status_arr", "rel_mode_label", "rel_mode_earnings", "rel_mode_enterprise",
-  "rel_mode_ps", "rel_multiples_ev_heading", "rel_multiples_ps_heading",
-  "rel_multiples_tab_earnings", "rel_multiples_tab_enterprise", "rel_multiples_tab_ps",
-  "rel_multiples_tab_bridge", "rel_formula_earnings", "rel_formula_enterprise", "rel_formula_ps",
+  "rel_multiples_status_arr", "rel_mode_label", "rel_mode_equity", "rel_mode_enterprise",
+  "rel_multiples_ev_heading", "rel_multiples_ps_heading",
+  "rel_multiples_tab_equity", "rel_multiples_tab_enterprise",
+  "rel_multiples_tab_bridge", "rel_formula_equity", "rel_formula_enterprise",
+  "rel_param_matrix_title", "rel_param_shared_heading", "rel_param_equity_heading",
+  "rel_param_enterprise_heading", "rel_param_sotp_heading",
+  "rel_param_shared_body", "rel_param_equity_body", "rel_param_enterprise_body", "rel_param_sotp_body",
   "sotp_lead_title", "sotp_need_segments", "sotp_vbx_price", "sotp_col_multiple",
   "sotp_tab_bridge", "sotp_formula_banner", "sotp_settings_seg_note",
   "sotp_status_shares_missing", "sotp_status_multiple_invalid",
@@ -216,7 +225,9 @@ check("shares missing not bare N/A", {
 check("zh no simplified", !grepl("默认|参数|数据|用户", ui_str("rel_multiples_lead_body", "zh-TW")))
 check("menu Multiples en", identical(ui_str("menu_rel_multiples", "en"), "Multiples"))
 check("menu SOTP en", identical(ui_str("menu_sotp", "en"), "SOTP"))
-check("no sotp in multiples radio choices en", !grepl("SOTP", ui_str("rel_mode_earnings", "en"), fixed = TRUE))
+check("no sotp in multiples radio choices en", !grepl("SOTP", ui_str("rel_mode_equity", "en"), fixed = TRUE))
+check("equity mode label mentions P/S", grepl("P/S", ui_str("rel_mode_equity", "en"), fixed = TRUE))
+check("sotp lead marks Enterprise-structural", grepl("Enterprise-structural", ui_str("sotp_lead_body", "en"), fixed = TRUE))
 
 # --- UI mounts / mode radio ---
 mod_src <- paste(readLines("relative_multiples_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
@@ -251,19 +262,20 @@ check(
   }
 )
 check("mode radio in module", grepl('ns("rel_mode")', mod_src, fixed = TRUE))
-check("mode earnings family", grepl("earnings", mod_src, fixed = TRUE) && grepl("enterprise", mod_src, fixed = TRUE))
+check("mode equity/enterprise families", grepl('"equity"', mod_src, fixed = TRUE) && grepl('"enterprise"', mod_src, fixed = TRUE))
 check("mode conditional panels", grepl("mod_rel-rel_mode", mod_src, fixed = TRUE))
 check("multiples radio omits sotp choice", !grepl('= "sotp"', mod_src, fixed = TRUE))
-check("multiples earnings settings tab", grepl("ynow_rel_multiples_tab_earnings", mod_src, fixed = TRUE))
+check("multiples equity settings tab", grepl("ynow_rel_multiples_tab_equity", mod_src, fixed = TRUE))
 check("multiples enterprise settings tab", grepl("ynow_rel_multiples_tab_enterprise", mod_src, fixed = TRUE))
-check("multiples ps settings tab", grepl("ynow_rel_multiples_tab_ps", mod_src, fixed = TRUE))
+check("multiples no standalone P/S tab", !grepl("ynow_rel_multiples_tab_ps", mod_src, fixed = TRUE))
 check("multiples bridge settings tab", grepl("ynow_rel_multiples_tab_bridge", mod_src, fixed = TRUE))
-check("multiples formula banners", grepl("ynow_rel_formula_earnings", mod_src, fixed = TRUE) &&
-        grepl("ynow_rel_formula_enterprise", mod_src, fixed = TRUE) &&
-        grepl("ynow_rel_formula_ps", mod_src, fixed = TRUE))
-check("multiples earnings params", grepl('ns("trailing_eps")', mod_src, fixed = TRUE) &&
+check("multiples formula banners", grepl("ynow_rel_formula_equity", mod_src, fixed = TRUE) &&
+        grepl("ynow_rel_formula_enterprise", mod_src, fixed = TRUE))
+check("multiples param matrix output", grepl("ui_rel_param_matrix", mod_src, fixed = TRUE))
+check("multiples equity params", grepl('ns("trailing_eps")', mod_src, fixed = TRUE) &&
         grepl('ns("pe_multiple")', mod_src, fixed = TRUE) &&
-        grepl('ns("peg_growth_pct")', mod_src, fixed = TRUE))
+        grepl('ns("peg_growth_pct")', mod_src, fixed = TRUE) &&
+        grepl('ns("ps_multiple")', mod_src, fixed = TRUE))
 check("multiples enterprise params", grepl('ns("fcff")', mod_src, fixed = TRUE) &&
         grepl('ns("ev_fcf_multiple")', mod_src, fixed = TRUE) &&
         grepl('ns("ev_arr_multiple")', mod_src, fixed = TRUE))
@@ -337,6 +349,7 @@ check("lite hides rel multiples", grepl("rel_multiples_calculator", ui_src, fixe
         grepl("body.ynow-lite .sidebar-menu li:has(a[data-value=\"rel_multiples_calculator\"])", ui_src, fixed = TRUE))
 check("lite hides sotp", grepl('body.ynow-lite .sidebar-menu li:has(a[data-value="sotp_calculator"])', ui_src, fixed = TRUE))
 check("applyUiLocale mode help", grepl("ynow_rel_mode_help", ui_src, fixed = TRUE))
+check("applyUiLocale equity tab", grepl("ynow_rel_multiples_tab_equity", ui_src, fixed = TRUE))
 check("applyUiLocale sotp lead", grepl("ynow_sotp_lead_title", ui_src, fixed = TRUE))
 
 g_src <- paste(readLines("global.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
