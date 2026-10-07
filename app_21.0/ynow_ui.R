@@ -5635,8 +5635,9 @@ ui <- dashboardPage(
           color: #555;
         }
         .ynow-hfv-chapter__lead {
-          margin: 0 0 12px 0;
-          max-width: 58em;
+          margin: 0;
+          padding: 10px 16px 0 16px;
+          max-width: none;
           font-size: 13px;
           line-height: 1.5;
           color: #555;
@@ -5753,26 +5754,21 @@ ui <- dashboardPage(
           color: #888;
         }
         .ynow-hfv-chapter {
-          margin: 0 0 22px 0;
-          padding: 0 0 18px 0;
-          background: transparent;
-          border: 0;
-          border-bottom: 1px solid #ececec;
-          border-radius: 0;
-          overflow: visible;
-        }
-        .ynow-hfv-chapter:last-of-type {
-          border-bottom: 0;
-          padding-bottom: 0;
+          margin: 0 0 18px 0;
+          padding: 0;
+          background: #fff;
+          border: 1px solid #e6e6e6;
+          border-radius: 8px;
+          overflow: hidden;
         }
         .ynow-hfv-chapter__head {
           display: flex;
           flex-wrap: wrap;
           align-items: baseline;
           gap: 6px 12px;
-          padding: 0 0 6px 0;
-          background: transparent;
-          border-bottom: 0;
+          padding: 12px 16px;
+          background: #fff;
+          border-bottom: 1px solid #ececec;
         }
         .ynow-hfv-chapter__kicker {
           font-size: 11px;
@@ -5789,10 +5785,10 @@ ui <- dashboardPage(
           line-height: 1.35;
         }
         .ynow-hfv-chapter__body {
-          padding: 8px 0 0 0;
+          padding: 12px 16px 16px 16px;
         }
         .ynow-hfv-chapter--appendix .ynow-hfv-chapter__body {
-          background: transparent;
+          background: #fafafa;
         }
         .ynow-hfv-report > .box {
           margin-bottom: 14px;
@@ -5832,7 +5828,13 @@ ui <- dashboardPage(
             max-width: 100%;
           }
           .ynow-hfv-chapter__body {
-            padding: 8px 0 0 0;
+            padding: 12px;
+          }
+          .ynow-hfv-chapter__head {
+            padding: 10px 12px;
+          }
+          .ynow-hfv-chapter__lead {
+            padding: 8px 12px 0 12px;
           }
           .ynow-hfv-report__masthead {
             padding-bottom: 12px;

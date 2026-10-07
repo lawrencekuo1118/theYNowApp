@@ -10256,7 +10256,7 @@ server <- function(input, output, session) {
     loc <- tryCatch(isolate(ui_locale()), error = function(e) "zh-TW")
     if (is.null(s)) {
       empty <- tags$div(
-        style = "margin:0 0 8px 0;padding:4px 0;font-size:13px;color:#666;",
+        style = "margin:0 0 8px 0;padding:12px 14px;background:#f7f7f7;border:1px solid #e6e6e6;border-radius:6px;font-size:13px;color:#666;",
         ui_str("hfv_sum_empty", loc)
       )
       # Show the empty hint once (Section II only); later chapters keep leads only.
@@ -10270,6 +10270,7 @@ server <- function(input, output, session) {
     }
     pct <- function(x) if (is.finite(x)) sprintf("%.0f%%", 100 * x) else "—"
     gap_pct <- function(x) if (is.finite(x)) sprintf("%+.1f%%", 100 * x) else "—"
+    border <- if (isTRUE(s$small_sample) || isTRUE(s$no_strategy_fv)) "#f39c12" else "#00a65a"
     period_txt <- {
       if (!is.null(s$from) || !is.null(s$to)) {
         sprintf(
@@ -10306,7 +10307,11 @@ server <- function(input, output, session) {
         }
         q12_n <- as.integer(s$q12_diverge_n %||% 0L)
         tags$div(
-          style = "margin:0 0 14px 0;padding:0;font-size:13px;line-height:1.55;",
+          style = paste0(
+            "margin:0 0 14px 0;padding:12px 14px;background:#eef7f1;",
+            "border:1px solid #b7dfc7;border-left:4px solid ", border, ";",
+            "border-radius:6px;font-size:13px;line-height:1.55;"
+          ),
           tags$div(
             style = "margin:0;color:#555;font-size:12px;",
             ui_str("hfv_sum_qmap_lead", loc)
@@ -10334,7 +10339,11 @@ server <- function(input, output, session) {
         )
       } else {
         tags$div(
-          style = "margin:0 0 14px 0;padding:0;font-size:13px;line-height:1.55;color:#666;",
+          style = paste0(
+            "margin:0 0 14px 0;padding:12px 14px;background:#fafafa;",
+            "border:1px solid #ddd;border-left:4px solid ", border, ";",
+            "border-radius:6px;font-size:13px;line-height:1.55;color:#666;"
+          ),
           ui_str("hfv_sum_conclusion_na", loc)
         )
       }
@@ -10364,7 +10373,11 @@ server <- function(input, output, session) {
     }
 
     price_card <- tags$div(
-      style = "margin:0;padding:0;font-size:13px;line-height:1.55;",
+      style = paste0(
+        "margin:0;padding:12px 14px;background:#fff;",
+        "border:1px solid #d9e6f2;border-left:4px solid ", border, ";border-radius:6px;",
+        "font-size:13px;line-height:1.55;"
+      ),
       # Chapter III lead covers meaning; keep formula + stats only.
       tags$div(style = "margin:0;color:#6c757d;font-size:11.5px;", ui_str("hfv_sum_price_formula", loc)),
       tags$p(style = "margin:6px 0 0 0;color:#555;font-size:12px;", period_txt),
@@ -10388,13 +10401,17 @@ server <- function(input, output, session) {
           ))
         } else NULL
       ),
-      tags$hr(style = "margin:10px 0 8px 0;border-top:1px dashed #ddd;"),
+      tags$hr(style = "margin:10px 0 8px 0;border-top:1px dashed #c5d4ef;"),
       tags$div(tags$b(ui_str("hfv_sum_mos_block", loc))),
       mos_body
     )
 
     fv_card <- tags$div(
-      style = "margin:0;padding:0;font-size:13px;line-height:1.55;",
+      style = paste0(
+        "margin:0;padding:12px 14px;background:#fff;",
+        "border:1px solid #e2e3e5;border-left:4px solid ", border, ";border-radius:6px;",
+        "font-size:13px;line-height:1.55;"
+      ),
       # Chapter IV lead covers meaning; keep formula + stats only.
       tags$div(style = "margin:0;color:#6c757d;font-size:11.5px;", ui_str("hfv_sum_fv_formula", loc)),
       tags$p(style = "margin:6px 0 0 0;color:#555;font-size:12px;", period_txt),
@@ -10472,6 +10489,8 @@ server <- function(input, output, session) {
             NA_real_
           }
           is_lead <- identical(code, lead_code) && n_c > 0L
+          border_col <- if (is_lead) color else "#ddd"
+          bg <- if (is_lead) "#fffaf2" else "#fff"
           tags$div(
             class = paste(
               "ynow-hfv-scenario-card-col",
@@ -10480,8 +10499,9 @@ server <- function(input, output, session) {
             tags$div(
               class = "ynow-hfv-scenario-card",
               style = paste0(
-                "padding:8px 4px 6px 0; min-height:120px; background:transparent; height:100%;",
-                if (is_lead) paste0("border-top:2px solid ", color, ";") else "border-top:2px solid transparent;"
+                "border:1px solid ", border_col, ";",
+                "border-radius:8px; padding:12px 12px 10px 12px; min-height:140px; background:", bg,
+                "; box-shadow:0 2px 4px rgba(0,0,0,0.04); height:100%;"
               ),
               tags$div(style = paste0("font-size:18px; color:", color, ";"), icon(icon_name)),
               tags$h4(
@@ -10490,7 +10510,7 @@ server <- function(input, output, session) {
               ),
               if (is_lead) tags$span(
                 style = paste0(
-                  "display:inline-block; padding:0; font-size:11px; font-weight:600; color:",
+                  "display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; color:#fff; background:",
                   color, ";"
                 ),
                 ui_str("hfv_scenario_lead_badge", loc)
@@ -10507,12 +10527,17 @@ server <- function(input, output, session) {
           )
         }
         tags$div(
-          style = "margin:0 0 10px 0;padding:0;font-size:13px;line-height:1.55;",
+          style = paste0(
+            "margin:0 0 10px 0;padding:12px 14px;background:#fff;",
+            "border:1px solid #e8dfd0;border-left:4px solid ", border, ";border-radius:6px;",
+            "font-size:13px;line-height:1.55;"
+          ),
           tags$style(HTML("
+            .ynow-hfv-scenario-lead { transform: translateY(-2px); }
             .ynow-hfv-scenario-row {
               display: grid;
               grid-template-columns: 1fr 1fr;
-              gap: 12px 16px;
+              gap: 12px 14px;
               align-items: stretch;
               margin: 0 0 4px 0;
             }
@@ -10584,8 +10609,9 @@ server <- function(input, output, session) {
               tags$div(
                 class = "ynow-hfv-scenario-concl",
                 style = paste0(
-                  "margin:12px 0 0 0;padding:8px 0;font-size:13px;line-height:1.55;color:#333;",
-                  "border-top:1px solid #e8e8e8;"
+                  "margin:10px 0 0 0;padding:10px 12px;background:#f5f5f5;",
+                  "border-left:4px solid ", accent_col, ";",
+                  "border-radius:0 4px 4px 0;font-size:13px;line-height:1.55;color:#333;"
                 ),
                 tags$div(
                   style = "margin:0 0 4px 0;font-size:12px;color:#555;",
@@ -10649,8 +10675,9 @@ server <- function(input, output, session) {
                 tags$div(
                   class = "ynow-hfv-scenario-concl",
                   style = paste0(
-                    "margin:12px 0 0 0;padding:8px 0;font-size:12.5px;line-height:1.5;color:#555;",
-                    "border-top:1px solid #e8e8e8;"
+                    "margin:10px 0 0 0;padding:10px 12px;background:#f5f5f5;",
+                    "border-left:4px solid #6c757d;",
+                    "border-radius:0 4px 4px 0;font-size:12.5px;line-height:1.5;color:#555;"
                   ),
                   tags$b(ui_str("hfv_scenario_concl_scope_lead", loc)),
                   tags$span(style = "margin:0 6px;color:#bbb;", "|"),
@@ -10662,7 +10689,11 @@ server <- function(input, output, session) {
               } else NULL,
               if (isTRUE(diverge_q3)) {
                 tags$div(
-                  style = "margin:8px 0 0 0;padding:0;font-size:12px;line-height:1.5;color:#555;",
+                  style = paste0(
+                    "margin:8px 0 0 0;padding:8px 10px;background:#fff8e8;",
+                    "border:1px solid #f0d78c;border-radius:4px;",
+                    "font-size:12px;line-height:1.5;color:#555;"
+                  ),
                   ui_str("hfv_scenario_concl_diverge", loc)
                 )
               } else NULL,
@@ -10686,7 +10717,11 @@ server <- function(input, output, session) {
         )
       } else {
         tags$div(
-          style = "margin:0 0 10px 0;padding:0;font-size:13px;line-height:1.55;color:#666;",
+          style = paste0(
+            "margin:0 0 10px 0;padding:12px 14px;background:#fafafa;",
+            "border:1px solid #ddd;border-left:4px solid ", border, ";border-radius:6px;",
+            "font-size:13px;line-height:1.55;color:#666;"
+          ),
           ui_str("hfv_sum_scenario_empty", loc)
         )
       }
@@ -10768,7 +10803,11 @@ server <- function(input, output, session) {
         d_tip <- tryCatch(as.Date(tip_fc$Date), error = function(e) as.Date(NA))
         date_txt <- if (is.finite(d_tip)) format(d_tip, "%Y-%m-%d") else "—"
         tags$div(
-          style = "margin:0 0 14px 0;padding:10px 0 0 0;border-top:1px solid #e8e8e8;font-size:13px;line-height:1.55;",
+          style = paste0(
+            "margin:0 0 14px 0;padding:12px 14px;background:#eef4fb;",
+            "border:1px solid #c5d4ef;border-left:4px solid #3c8dbc;",
+            "border-radius:6px;font-size:13px;line-height:1.55;"
+          ),
           tags$div(tags$b(ui_str("hfv_fc_title", loc))),
           tags$div(
             style = "margin:4px 0 0 0;color:#6c757d;font-size:11.5px;",
@@ -10812,7 +10851,11 @@ server <- function(input, output, session) {
         )
       } else {
         tags$div(
-          style = "margin:0 0 14px 0;padding:10px 0 0 0;border-top:1px solid #e8e8e8;font-size:13px;line-height:1.55;color:#666;",
+          style = paste0(
+            "margin:0 0 14px 0;padding:12px 14px;background:#fafafa;",
+            "border:1px solid #ddd;border-left:4px solid #3c8dbc;",
+            "border-radius:6px;font-size:13px;line-height:1.55;color:#666;"
+          ),
           tags$div(tags$b(ui_str("hfv_fc_title", loc))),
           tags$div(
             style = "margin:4px 0 0 0;",
