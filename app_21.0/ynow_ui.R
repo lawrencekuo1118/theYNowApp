@@ -1899,46 +1899,41 @@ beta_rolling_section_ui <- function() {
                 class = "ynow-hfv-method",
                 tags$p(
                   id = "ynow_hfv_method_body",
-                  style = "font-size:12.5px;color:#444;line-height:1.55;margin:0 0 10px 0;",
+                  style = "font-size:12.5px;color:#444;line-height:1.55;margin:0 0 8px 0;",
                   paste0(
-                    "Not a trading backtest or broker order ticket. Validation samples cover: ",
-                    "(1) next-period actual market-price return R and causal tip P(up) from Replay FV × actual price (MOS; Date_next≤tip, no future backfill); ",
-                    "(2) Replay-model FV gap shrink/expand (toward/away); ",
-                    "plus a direct historical scenario taxonomy panel (not a numbered question: ",
-                    "mispricing / fundamental momentum / price momentum → A–D or other). ",
-                    "Charts allow multi-select overlay; market-price odds / shrink-expand / scenarios use the Replay model only."
+                    "Validation report — not a trading backtest or order ticket. Same Replay sample, three layers: ",
+                    "(1) market-price move R and causal tip P(up) from Replay FV × price (MOS; Date_next≤tip); ",
+                    "(2) gap to FV shrink/expand plus landing; ",
+                    "(3) scenario taxonomy A–D from mispricing / FV momentum / price momentum. ",
+                    "Chart overlays may be multi-select; stats use the Replay model only."
                   )
                 ),
                 tags$p(
                   id = "ynow_hfv_sum_scenario_matrix",
-                  style = "font-size:12px;color:#555;line-height:1.5;margin:0 0 8px 0;",
+                  style = "font-size:12px;color:#555;line-height:1.5;margin:0 0 6px 0;",
                   paste0(
                     "A Golden pit: FV↑, Price↓, Price ≪ FV · ",
                     "B Davis double: FV↑, Price↑, Price ≈ FV · ",
                     "C Value trap: FV↓, Price↓, Price < FV · ",
                     "D Bubble hype: FV≤flat, Price strong↑, Price ≫ FV · ",
-                    "other = unmatched (no A–D conclusion applied)."
+                    "other = unmatched."
                   )
                 ),
                 tags$p(
                   id = "ynow_hfv_scenario_thresh_note",
-                  style = "font-size:11.5px;color:#666;line-height:1.45;margin:0 0 8px 0;",
+                  style = "font-size:11.5px;color:#666;line-height:1.45;margin:0 0 4px 0;",
                   paste0(
-                    "Scenario bandwidth heuristics (engineering defaults, not academic standards): ",
-                    "flat momentum |Δ|/prior ≤ 2%; Price ≈ FV when |MOS| ≤ 10%; Price ≪ FV when MOS ≥ 20%; ",
-                    "Price ≫ FV when MOS ≤ −20%; scenario D also requires price momentum ≥ +5%. ",
-                    "Garbage-in FV misclassifies; markets can stay irrational and still need a catalyst."
+                    "Scenario bands (engineering defaults): flat |Δ|/prev ≤ 2%; |MOS| ≤ 10% ≈ FV; ",
+                    "MOS ≥ 20% ≪ FV; MOS ≤ −20% ≫ FV; D also needs price momentum ≥ +5%."
                   )
                 ),
                 tags$p(
                   style = "font-size:11.5px;color:#888;line-height:1.45;margin:0;",
                   id = "ynow_hfv_method_data_note",
                   paste0(
-                    "Data note: Yahoo annuals may be restated; PIT uses a strict filing lag ",
-                    "(fiscal period end + ~90 days; rows without period end are dropped, no soft bypass). ",
-                    "Near-term g and terminal SGR are separate; missing CapEx/ΔNWC is not invented as 0. ",
-                    "TW TPEx/emerging may backfill TPEx financial summaries (IS/BS; CF not invented). ",
-                    "Small samples (n<5) are illustrative only — not a forecast guarantee."
+                    "Data: Yahoo annuals may be restated; PIT = period_end + ~90d (no soft bypass). ",
+                    "g ≠ terminal SGR; missing CapEx/ΔNWC not invented as 0. ",
+                    "TW OTC/ESB may use TPEx IS/BS fill (CF never invented). n<5 illustrative only."
                   )
                 )
               )
@@ -2013,10 +2008,7 @@ beta_rolling_section_ui <- function() {
               tags$p(
                 class = "ynow-hfv-chapter__lead",
                 id = "ynow_hfv_ch2_lead",
-                paste0(
-                  "Set the Replay model and sample scope, then read the sample snapshot and measurable-tip ",
-                  "odds for next actual market-price direction — before drilling into evidence chapters."
-                )
+                "Set Replay model and sample scope, then read the sample snapshot and tip market-price odds."
               ),
               tags$div(
                 class = "ynow-hfv-chapter__body",
@@ -2110,10 +2102,7 @@ beta_rolling_section_ui <- function() {
               tags$p(
                 class = "ynow-hfv-chapter__lead",
                 id = "ynow_hfv_ch3_lead",
-                paste0(
-                  "Between valuation dates, did the actual market price rise or fall? ",
-                  "MOS outlook conditions those odds at the tip (causal expanding-window only)."
-                )
+                "Did market price rise or fall between valuation dates? MOS outlook conditions tip odds (causal expanding-window)."
               ),
               tags$div(
                 class = "ynow-hfv-chapter__body",
@@ -2136,10 +2125,7 @@ beta_rolling_section_ui <- function() {
               tags$p(
                 class = "ynow-hfv-chapter__lead",
                 id = "ynow_hfv_ch4_lead",
-                paste0(
-                  "When the next price arrived, did the absolute distance to then-available Replay FV ",
-                  "shrink (toward) or expand (away)? The chart shows landing magnitude (P_next − FV) / FV."
-                )
+                "Did |P−FV_t| shrink or expand when P_next arrived? Chart = landing (P_next − FV) / FV."
               ),
               tags$div(
                 class = "ynow-hfv-chapter__body",
@@ -2169,10 +2155,7 @@ beta_rolling_section_ui <- function() {
               tags$p(
                 class = "ynow-hfv-chapter__lead",
                 id = "ynow_hfv_ch5_lead",
-                paste0(
-                  "Joint FV–price patterns on successive dates (A–D or other). ",
-                  "Education / veto labels on the same Replay sample — not an order ticket."
-                )
+                "Joint FV–price patterns (A–D or other) — education / veto labels, not an order ticket."
               ),
               tags$div(
                 class = "ynow-hfv-chapter__body",
@@ -2195,7 +2178,7 @@ beta_rolling_section_ui <- function() {
               tags$p(
                 class = "ynow-hfv-chapter__lead",
                 id = "ynow_hfv_ch6_lead",
-                "Pair-by-pair outcomes under the current validation sample scope — for audit, not a buy/sell score."
+                "Pair-by-pair outcomes for audit — not a buy/sell score."
               ),
               tags$div(
                 class = "ynow-hfv-chapter__body",

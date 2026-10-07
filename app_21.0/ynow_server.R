@@ -10316,10 +10316,6 @@ server <- function(input, output, session) {
             tags$li(tags$span(style = "font-weight:600;", q1_line)),
             tags$li(tags$span(style = "font-weight:600;", q2_line))
           ),
-          tags$div(
-            style = "margin:8px 0 0 0;color:#6c757d;font-size:11.5px;line-height:1.5;",
-            ui_str("hfv_sum_qmap_relation", loc)
-          ),
           if (q12_n > 0L) {
             tags$div(
               style = "margin:6px 0 0 0;color:#555;font-size:12px;line-height:1.5;",
@@ -10332,12 +10328,8 @@ server <- function(input, output, session) {
             )
           } else NULL,
           tags$div(
-            style = "margin:6px 0 0 0;color:#555;font-size:12px;",
+            style = "margin:6px 0 0 0;color:#888;font-size:11.5px;",
             paste0(ui_str("hfv_oos_mode_label", loc), "：", oos_lab)
-          ),
-          tags$div(
-            style = "margin:4px 0 0 0;color:#888;font-size:11.5px;",
-            ui_str("hfv_sum_conclusion_caveat", loc)
           )
         )
       } else {
@@ -10373,11 +10365,8 @@ server <- function(input, output, session) {
 
     price_card <- tags$div(
       style = "margin:0;padding:0;font-size:13px;line-height:1.55;",
+      # Chapter III lead covers meaning; keep formula + stats only.
       tags$div(style = "margin:0;color:#6c757d;font-size:11.5px;", ui_str("hfv_sum_price_formula", loc)),
-      tags$div(
-        style = "margin:4px 0 0 0;color:#555;font-size:11.5px;line-height:1.45;",
-        ui_str("hfv_sum_price_meaning", loc)
-      ),
       tags$p(style = "margin:6px 0 0 0;color:#555;font-size:12px;", period_txt),
       tags$ul(
         style = "margin:6px 0 0 0;padding-left:18px;",
@@ -10406,11 +10395,8 @@ server <- function(input, output, session) {
 
     fv_card <- tags$div(
       style = "margin:0;padding:0;font-size:13px;line-height:1.55;",
+      # Chapter IV lead covers meaning; keep formula + stats only.
       tags$div(style = "margin:0;color:#6c757d;font-size:11.5px;", ui_str("hfv_sum_fv_formula", loc)),
-      tags$div(
-        style = "margin:4px 0 0 0;color:#555;font-size:11.5px;line-height:1.45;",
-        ui_str("hfv_sum_fv_meaning", loc)
-      ),
       tags$p(style = "margin:6px 0 0 0;color:#555;font-size:12px;", period_txt),
       tags$ul(
         style = "margin:6px 0 0 0;padding-left:18px;",
@@ -10552,15 +10538,8 @@ server <- function(input, output, session) {
               }
             }
           ")),
-          tags$div(
-            style = "margin:0;color:#6c757d;font-size:11.5px;",
-            ui_str("hfv_sum_scenario_formula", loc)
-          ),
-          tags$p(style = "margin:6px 0 8px 0;color:#555;font-size:12px;", period_txt),
-          tags$div(
-            style = "margin:0 0 4px 0;color:#555;font-size:11.5px;line-height:1.45;",
-            ui_str("hfv_sum_scenario_meaning", loc)
-          ),
+          # Chapter V lead + method box cover formula/meaning; keep period + counts + cards.
+          tags$p(style = "margin:0 0 6px 0;color:#555;font-size:12px;", period_txt),
           tags$div(
             style = "margin:0 0 6px 0;color:#555;font-size:12px;",
             sprintf(ui_str("hfv_pair_n_fmt", loc), sc$n %||% 0L)
@@ -10717,11 +10696,7 @@ server <- function(input, output, session) {
       } else {
         tags$div(
           style = "margin:0 0 10px 0;padding:0;font-size:13px;line-height:1.55;color:#666;",
-          tags$div(ui_str("hfv_sum_scenario_empty", loc)),
-          tags$div(
-            style = "margin:6px 0 0 0;color:#888;font-size:11.5px;",
-            ui_str("hfv_sum_scenario_caveat", loc)
-          )
+          ui_str("hfv_sum_scenario_empty", loc)
         )
       }
     }
@@ -10806,7 +10781,7 @@ server <- function(input, output, session) {
           tags$div(tags$b(ui_str("hfv_fc_title", loc))),
           tags$div(
             style = "margin:4px 0 0 0;color:#6c757d;font-size:11.5px;",
-            ui_str("hfv_fc_formula", loc)
+            paste(ui_str("hfv_fc_formula", loc), ui_str("hfv_fc_caveat", loc), sep = " ")
           ),
           tags$div(
             style = "margin:6px 0 0 0;font-size:15px;font-weight:700;",
@@ -10831,14 +10806,12 @@ server <- function(input, output, session) {
               tags$li(sprintf(ui_str("hfv_fc_base_fmt", loc), pct(tip_fc$p_up_base)))
             } else NULL
           ),
-          tags$div(
-            style = "margin:6px 0 0 0;color:#555;font-size:11.5px;line-height:1.45;",
-            tip_fc$note %||% ""
-          ),
-          tags$div(
-            style = "margin:4px 0 0 0;color:#888;font-size:11.5px;line-height:1.45;",
-            ui_str("hfv_fc_caveat", loc)
-          ),
+          if (nzchar(tip_fc$note %||% "")) {
+            tags$div(
+              style = "margin:6px 0 0 0;color:#555;font-size:11.5px;line-height:1.45;",
+              tip_fc$note
+            )
+          } else NULL,
           if (isTRUE(tip_fc$small_sample)) {
             tags$div(
               style = "margin:4px 0 0 0;color:#c27d0e;font-size:11.5px;",
@@ -10853,10 +10826,6 @@ server <- function(input, output, session) {
           tags$div(
             style = "margin:4px 0 0 0;",
             ui_str("hfv_fc_empty", loc)
-          ),
-          tags$div(
-            style = "margin:6px 0 0 0;color:#888;font-size:11.5px;",
-            ui_str("hfv_fc_formula", loc)
           )
         )
       }
