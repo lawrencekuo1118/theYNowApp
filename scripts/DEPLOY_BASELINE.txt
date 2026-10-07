@@ -8,5 +8,5 @@ short=226e41c
 message=chore: bump display version to v21.31
 captured_at=2026-10-07T16:38:00Z
 source_branch=cursor/hfv-next-period-prob-911b
-display_version=v21.31
+display_version=v21.32
 note=Canonical live line is app_21.0. Bundle 12660408 ships v21.31: restore HFV chapter/findings/scenario block chrome (2×2 cards). Deploy via scripts/deploy_app_21.R.
