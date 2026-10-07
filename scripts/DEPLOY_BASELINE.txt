@@ -8,5 +8,5 @@ short=1f65e5b
 message=chore: bump display version to v21.20
 captured_at=2026-10-07T13:35:00Z
 source_branch=cursor/hfv-next-period-prob-911b
-display_version=v21.20
+display_version=v21.21
 note=Canonical live line is app_21.0. Bundle 12659568 ships v21.20: HFV expanding-window next-period P(up)/P(down) from PIT MOS. Deploy via scripts/deploy_app_21.R.
