@@ -479,7 +479,9 @@ if (file.exists(loc_path)) {
       "hfv_fc_title", "hfv_fc_formula", "hfv_fc_tip_fmt", "hfv_fc_caveat",
       "hfv_col_p_up_hat", "hfv_fc_method_bucket",
       "hfv_ch2_title", "hfv_ch2_lead", "hfv_ch3_title", "hfv_ch4_title",
-      "hfv_ch5_title", "hfv_ch6_title"
+      "hfv_ch5_title",
+      "hfv_scenario_under_title", "hfv_overlay_vs_replay_note",
+      "hfv_kpi_over_rate", "hfv_kpi_ch2_p_up", "hfv_kpi_ch3_p_up"
     )) {
       v <- ui_str(k, loc)
       check(paste0("locale ", loc, " ", k), is.character(v) && nzchar(v) && !grepl("^\\[", v))
@@ -556,6 +558,22 @@ if (file.exists(loc_path)) {
   check("FV block names 縮小 zh", grepl("縮小", ui_str("hfv_sum_fv_block", "zh-TW")))
   check("FV meaning shrink en", grepl("shrink|toward", ui_str("hfv_sum_fv_meaning", "en"), ignore.case = TRUE))
   check("FV meaning 縮小 zh", grepl("縮小", ui_str("hfv_sum_fv_meaning", "zh-TW")))
+  check("ch5 period detail en", grepl("Period detail|appendix", ui_str("hfv_ch5_title", "en"), ignore.case = TRUE))
+}
+
+if (exists("overlay_avg_fair_value_df", mode = "function")) {
+  vd_ov <- data.frame(
+    Date = as.Date(c("2020-01-01", "2021-01-01")),
+    hist_price = c(100, 110),
+    fv_dcf = c(120, 130),
+    fv_ddm = c(80, 90),
+    fair_value = c(120, 130),
+    mos = c(0.2, 0.15),
+    signal = c("便宜", "便宜"),
+    stringsAsFactors = FALSE
+  )
+  check("overlay multi = mean", isTRUE(abs(overlay_avg_fair_value_df(vd_ov, c("dcf", "ddm"))$fair_value[1] - 100) < 1e-9))
+  check("overlay empty → NULL", is.null(overlay_avg_fair_value_df(vd_ov, character(0))))
 }
 
 message("ALL PASS")

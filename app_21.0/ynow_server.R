@@ -9664,7 +9664,35 @@ server <- function(input, output, session) {
     } else {
       bias
     }
-    pct_under <- m$pct_market_under %||% m$pct_value_over
+    pct_under <- suppressWarnings(as.numeric(m$pct_market_under %||% m$pct_strategy_under %||% NA_real_)[1])
+    pct_over <- suppressWarnings(as.numeric(m$pct_market_over %||% m$pct_value_over %||% NA_real_)[1])
+    # Majority only: underpricing OR overpricing — whichever share is larger
+    maj_is_under <- if (is.finite(pct_under) && is.finite(pct_over)) {
+      pct_under >= pct_over
+    } else if (is.finite(pct_under)) {
+      TRUE
+    } else if (is.finite(pct_over)) {
+      FALSE
+    } else {
+      NA
+    }
+    maj_label <- if (isTRUE(maj_is_under)) {
+      ui_str("hfv_kpi_under_rate", loc)
+    } else if (identical(maj_is_under, FALSE)) {
+      ui_str("hfv_kpi_over_rate", loc)
+    } else {
+      ui_str("hfv_kpi_under_rate", loc)
+    }
+    maj_pct <- if (isTRUE(maj_is_under)) pct_under else if (identical(maj_is_under, FALSE)) pct_over else NA_real_
+    maj_col <- if (isTRUE(maj_is_under)) "#00a65a" else if (identical(maj_is_under, FALSE)) "#d9534f" else "#666"
+    maj_bg <- if (isTRUE(maj_is_under)) "#f7fbf8" else if (identical(maj_is_under, FALSE)) "#fdf7f7" else "#fafafa"
+    maj_note <- if (isTRUE(maj_is_under)) {
+      ui_str("hfv_kpi_under_note", loc)
+    } else if (identical(maj_is_under, FALSE)) {
+      ui_str("hfv_kpi_over_note", loc)
+    } else {
+      ui_str("hfv_kpi_under_note", loc)
+    }
     last_sig <- as.character(m$last_signal %||% "—")
     sig_col <- if (grepl("便宜", last_sig, fixed = TRUE) || grepl("Cheap", last_sig, fixed = TRUE)) {
       "#00a65a"
@@ -9682,26 +9710,25 @@ server <- function(input, output, session) {
     } else {
       last_sig
     }
+    .kpi <- function(label, value, note = NULL, color = "#222", bg = "#fff", border = "#ddd") {
+      tags$div(
+        class = "ynow-hfv-kpi-cell",
+        style = paste0("background:", bg, ";border-left:4px solid ", border, ";"),
+        tags$div(class = "ynow-kpi-stat-label", label),
+        tags$div(class = "ynow-kpi-stat-value", style = paste0("color:", color, ";"), value),
+        if (!is.null(note) && nzchar(as.character(note)[1])) {
+          tags$div(class = "ynow-kpi-stat-note", note)
+        } else NULL
+      )
+    }
     tags$div(
-      style = "display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px;",
-      tags$div(style = paste0("flex:1;min-width:120px;padding:8px 10px;background:", bias_bg,
-                              ";border-left:4px solid ", bias_col, ";"),
-               tags$div(class = "ynow-kpi-stat-label", ui_str("hfv_kpi_hist_pricing", loc)),
-               tags$div(class = "ynow-kpi-stat-value", style = paste0("color:", bias_col, ";"), bias_val)),
-      tags$div(style = "flex:1;min-width:120px;padding:8px 10px;background:#f7fbf8;border-left:4px solid #00a65a;",
-               tags$div(class = "ynow-kpi-stat-label", ui_str("hfv_kpi_under_rate", loc)),
-               tags$div(class = "ynow-kpi-stat-value", style = "color:#00a65a;",
-                        .fmt_pct(pct_under, 0)),
-               tags$div(class = "ynow-kpi-stat-note",
-                        ui_str("hfv_kpi_under_note", loc))),
-      tags$div(style = "flex:1;min-width:120px;padding:8px 10px;background:#fff;",
-               tags$div(class = "ynow-kpi-stat-label", ui_str("hfv_kpi_last_signal", loc)),
-               tags$div(class = "ynow-kpi-stat-value", style = paste0("color:", sig_col, ";"), last_sig_disp),
-               tags$div(class = "ynow-kpi-stat-note",
-                        ui_str("hfv_kpi_signal_note", loc))),
-      tags$div(style = "flex:1;min-width:120px;padding:8px 10px;background:#f5f5f5;border-left:4px solid #222222;",
-               tags$div(class = "ynow-kpi-stat-label", ui_str("hfv_kpi_mean_mos", loc)),
-               tags$div(class = "ynow-kpi-stat-value", style = "color:#222222;", .fmt_pct(m$mean_hist_mos)))
+      class = "ynow-hfv-kpi-grid",
+      .kpi(ui_str("hfv_kpi_hist_pricing", loc), bias_val, color = bias_col, bg = bias_bg, border = bias_col),
+      .kpi(maj_label, .fmt_pct(maj_pct, 0), note = maj_note, color = maj_col, bg = maj_bg, border = maj_col),
+      .kpi(ui_str("hfv_kpi_last_signal", loc), last_sig_disp,
+           note = ui_str("hfv_kpi_signal_note", loc), color = sig_col, bg = "#fff", border = sig_col),
+      .kpi(ui_str("hfv_kpi_mean_mos", loc), .fmt_pct(m$mean_hist_mos),
+           color = "#222222", bg = "#f5f5f5", border = "#222222")
     )
   })
 
@@ -10210,7 +10237,7 @@ server <- function(input, output, session) {
     list(from = NULL, to = NULL)
   })
 
-  bt_fv_conv <- reactive({
+  .bt_hfv_valuation_df <- function() {
     freq <- .bt_selected_rebal_freq()
     res <- bt_result()
     fv_only <- bt_hfv_fv()
@@ -10227,6 +10254,10 @@ server <- function(input, output, session) {
         vd <- fv_only$valuation_df
       }
     }
+    vd
+  }
+
+  .bt_run_fv_validation <- function(vd) {
     if (is.null(vd)) return(NULL)
     b <- .bt_fv_conv_bounds()
     mode <- as.character(input$bt_fv_oos_mode %||% "realized")[1]
@@ -10248,6 +10279,25 @@ server <- function(input, output, session) {
         )
       }
     )
+  }
+
+  # Replay-driven: odds / tip / MOS / gap / pair table
+  bt_fv_conv <- reactive({
+    .bt_run_fv_validation(.bt_hfv_valuation_df())
+  })
+
+  # Overlay-driven scenarios (multi-select → average FV); NULL unless A–D conclusion
+  bt_fv_overlay_scenarios <- reactive({
+    models <- .bt_raw_fv_models()
+    if (length(models) < 1L) return(NULL)
+    vd_avg <- overlay_avg_fair_value_df(.bt_hfv_valuation_df(), models)
+    if (is.null(vd_avg)) return(NULL)
+    s <- .bt_run_fv_validation(vd_avg)
+    if (is.null(s) || is.null(s$scenarios) || !is.list(s$scenarios)) return(NULL)
+    lead_c <- as.character(s$scenarios$most_frequent %||% NA_character_)[1]
+    if (!nzchar(lead_c) || identical(lead_c, "NA")) lead_c <- NA_character_
+    if (is.na(lead_c) || !(lead_c %in% c("A", "B", "C", "D"))) return(NULL)
+    list(summary = s, scenarios = s$scenarios, models = models)
   })
 
   # Investor-report findings: one reactive builds chapter parts (II–V)
@@ -10287,43 +10337,55 @@ server <- function(input, output, session) {
       insample = ui_str("hfv_oos_insample", loc),
       ui_str("hfv_oos_realized", loc)
     )
-    # Sample snapshot: market-price direction + gap-to-FV shrink/expand (same Replay pairs).
-    # Scenario taxonomy lives in its own chapter — not numbered here.
+    # Sample snapshot KPIs (Replay). Scenarios sit under Ch1 chart (Overlay).
     conclusion_card <- {
       n_pairs <- as.integer(s$n %||% 0L)
       if (n_pairs > 0L && (is.finite(s$p_up) || is.finite(s$p_above) || is.finite(s$p_toward))) {
-        q1_line <- if (is.finite(s$p_up)) {
-          sprintf(ui_str("hfv_sum_qmap_q1_fmt", loc), pct(s$p_up), n_pairs)
-        } else {
-          ui_str("hfv_sum_qmap_q1_na", loc)
-        }
-        q2_line <- if (is.finite(s$p_toward)) {
-          sprintf(
-            ui_str("hfv_sum_qmap_q2_fmt", loc),
-            pct(s$p_toward), pct(s$p_away), n_pairs
-          )
-        } else {
-          ui_str("hfv_sum_qmap_q2_na", loc)
-        }
         q12_n <- as.integer(s$q12_diverge_n %||% 0L)
         tags$div(
-          style = paste0(
-            "margin:0 0 14px 0;padding:12px 14px;background:#eef7f1;",
-            "border:1px solid #b7dfc7;border-left:4px solid ", border, ";",
-            "border-radius:6px;font-size:13px;line-height:1.55;"
-          ),
+          style = "margin:0 0 14px 0;",
           tags$div(
-            style = "margin:0;color:#555;font-size:12px;",
+            style = "margin:0 0 8px 0;color:#555;font-size:12px;",
             ui_str("hfv_sum_qmap_lead", loc)
           ),
-          tags$ul(
-            style = "margin:8px 0 0 0;padding-left:18px;",
-            tags$li(tags$span(style = "font-weight:600;", q1_line)),
-            tags$li(tags$span(style = "font-weight:600;", q2_line))
+          tags$div(
+            class = "ynow-hfv-kpi-grid ynow-hfv-kpi-grid--3",
+            tags$div(
+              class = "ynow-hfv-kpi-cell",
+              style = "background:#f7fbf8;border-left:4px solid #00a65a;",
+              tags$div(class = "ynow-kpi-stat-label", ui_str("hfv_kpi_ch2_p_up", loc)),
+              tags$div(
+                class = "ynow-kpi-stat-value", style = "color:#00a65a;",
+                if (is.finite(s$p_up)) pct(s$p_up) else "—"
+              ),
+              tags$div(class = "ynow-kpi-stat-note", sprintf(ui_str("hfv_pair_n_fmt", loc), n_pairs))
+            ),
+            tags$div(
+              class = "ynow-hfv-kpi-cell",
+              style = "background:#f5f9fc;border-left:4px solid #3c8dbc;",
+              tags$div(class = "ynow-kpi-stat-label", ui_str("hfv_kpi_ch2_p_toward", loc)),
+              tags$div(
+                class = "ynow-kpi-stat-value", style = "color:#3c8dbc;",
+                if (is.finite(s$p_toward)) pct(s$p_toward) else "—"
+              ),
+              tags$div(
+                class = "ynow-kpi-stat-note",
+                if (is.finite(s$p_away)) {
+                  sprintf(ui_str("hfv_kpi_ch2_p_away_note", loc), pct(s$p_away))
+                } else "—"
+              )
+            ),
+            tags$div(
+              class = "ynow-hfv-kpi-cell",
+              style = paste0("background:#fafafa;border-left:4px solid ", border, ";"),
+              tags$div(class = "ynow-kpi-stat-label", ui_str("hfv_oos_mode_label", loc)),
+              tags$div(class = "ynow-kpi-stat-value", style = "color:#555;font-size:14px !important;", oos_lab),
+              tags$div(class = "ynow-kpi-stat-note", period_txt)
+            )
           ),
           if (q12_n > 0L) {
             tags$div(
-              style = "margin:6px 0 0 0;color:#555;font-size:12px;line-height:1.5;",
+              style = "margin:8px 0 0 0;color:#555;font-size:12px;line-height:1.5;",
               sprintf(
                 ui_str("hfv_sum_q12_diverge_fmt", loc),
                 q12_n,
@@ -10331,11 +10393,7 @@ server <- function(input, output, session) {
                 as.integer(s$n_down_above %||% 0L)
               )
             )
-          } else NULL,
-          tags$div(
-            style = "margin:6px 0 0 0;color:#888;font-size:11.5px;",
-            paste0(ui_str("hfv_oos_mode_label", loc), "：", oos_lab)
-          )
+          } else NULL
         )
       } else {
         tags$div(
@@ -10372,77 +10430,83 @@ server <- function(input, output, session) {
       }
     }
 
-    price_card <- tags$div(
-      style = paste0(
-        "margin:0;padding:12px 14px;background:#fff;",
-        "border:1px solid #d9e6f2;border-left:4px solid ", border, ";border-radius:6px;",
-        "font-size:13px;line-height:1.55;"
-      ),
-      # Chapter III lead covers meaning; keep formula + stats only.
-      tags$div(style = "margin:0;color:#6c757d;font-size:11.5px;", ui_str("hfv_sum_price_formula", loc)),
-      tags$p(style = "margin:6px 0 0 0;color:#555;font-size:12px;", period_txt),
-      tags$ul(
-        style = "margin:6px 0 0 0;padding-left:18px;",
-        tags$li(sprintf(ui_str("hfv_pair_n_fmt", loc), s$n %||% 0L)),
-        tags$li(sprintf(
-          ui_str("hfv_price_odds_fmt", loc),
-          pct(s$p_up), s$n_up %||% 0L,
-          pct(s$p_down), s$n_down %||% 0L,
-          pct(s$p_flat_price), s$n_flat_price %||% 0L
-        )),
-        tags$li(sprintf(
-          ui_str("hfv_next_ret_fmt", loc),
-          gap_pct(s$median_ret), gap_pct(s$mean_ret)
-        )),
-        if (identical(s$oos_mode, "expanding") && is.finite(s$oos_dir_hit_rate)) {
-          tags$li(sprintf(
-            ui_str("hfv_oos_dir_hit_fmt", loc),
-            pct(s$oos_dir_hit_rate), s$oos_dir_n %||% 0L
-          ))
+    .hfv_kpi <- function(label, value, note = NULL, color = "#222", bg = "#fff", border_col = "#ddd") {
+      tags$div(
+        class = "ynow-hfv-kpi-cell",
+        style = paste0("background:", bg, ";border-left:4px solid ", border_col, ";"),
+        tags$div(class = "ynow-kpi-stat-label", label),
+        tags$div(class = "ynow-kpi-stat-value", style = paste0("color:", color, ";"), value),
+        if (!is.null(note) && nzchar(as.character(note)[1])) {
+          tags$div(class = "ynow-kpi-stat-note", note)
         } else NULL
+      )
+    }
+
+    price_card <- tags$div(
+      style = "margin:0;",
+      tags$div(style = "margin:0 0 8px 0;color:#6c757d;font-size:11.5px;", ui_str("hfv_sum_price_formula", loc)),
+      tags$p(style = "margin:0 0 8px 0;color:#555;font-size:12px;", period_txt),
+      tags$div(
+        class = "ynow-hfv-kpi-grid",
+        .hfv_kpi(ui_str("hfv_kpi_ch3_n", loc), as.character(s$n %||% 0L), border_col = border),
+        .hfv_kpi(
+          ui_str("hfv_kpi_ch3_p_up", loc),
+          if (is.finite(s$p_up)) pct(s$p_up) else "—",
+          note = sprintf(ui_str("hfv_kpi_ch3_n_up_note", loc), s$n_up %||% 0L),
+          color = "#00a65a", bg = "#f7fbf8", border_col = "#00a65a"
+        ),
+        .hfv_kpi(
+          ui_str("hfv_kpi_ch3_p_down", loc),
+          if (is.finite(s$p_down)) pct(s$p_down) else "—",
+          note = sprintf(ui_str("hfv_kpi_ch3_n_down_note", loc), s$n_down %||% 0L),
+          color = "#d9534f", bg = "#fdf7f7", border_col = "#d9534f"
+        ),
+        .hfv_kpi(
+          ui_str("hfv_kpi_ch3_med_ret", loc),
+          gap_pct(s$median_ret),
+          note = sprintf(ui_str("hfv_kpi_ch3_mean_ret_note", loc), gap_pct(s$mean_ret)),
+          color = "#3c8dbc", bg = "#f5f9fc", border_col = "#3c8dbc"
+        )
       ),
-      tags$hr(style = "margin:10px 0 8px 0;border-top:1px dashed #c5d4ef;"),
-      tags$div(tags$b(ui_str("hfv_sum_mos_block", loc))),
-      mos_body
+      tags$div(
+        style = paste0(
+          "margin:12px 0 0 0;padding:12px 14px;background:#fff;",
+          "border:1px solid #d9e6f2;border-left:4px solid ", border, ";border-radius:6px;"
+        ),
+        tags$div(tags$b(ui_str("hfv_sum_mos_block", loc))),
+        mos_body
+      )
     )
 
     fv_card <- tags$div(
-      style = paste0(
-        "margin:0;padding:12px 14px;background:#fff;",
-        "border:1px solid #e2e3e5;border-left:4px solid ", border, ";border-radius:6px;",
-        "font-size:13px;line-height:1.55;"
+      style = "margin:0;",
+      tags$div(style = "margin:0 0 8px 0;color:#6c757d;font-size:11.5px;", ui_str("hfv_sum_fv_formula", loc)),
+      tags$p(style = "margin:0 0 8px 0;color:#555;font-size:12px;", period_txt),
+      tags$div(
+        class = "ynow-hfv-kpi-grid",
+        .hfv_kpi(ui_str("hfv_kpi_ch4_n", loc), as.character(s$n %||% 0L), border_col = border),
+        .hfv_kpi(
+          ui_str("hfv_kpi_ch4_toward", loc),
+          if (is.finite(s$p_toward)) pct(s$p_toward) else "—",
+          note = sprintf(ui_str("hfv_kpi_ch4_toward_note", loc), s$n_toward %||% 0L),
+          color = "#00a65a", bg = "#f7fbf8", border_col = "#00a65a"
+        ),
+        .hfv_kpi(
+          ui_str("hfv_kpi_ch4_away", loc),
+          if (is.finite(s$p_away)) pct(s$p_away) else "—",
+          note = sprintf(ui_str("hfv_kpi_ch4_away_note", loc), s$n_away %||% 0L),
+          color = "#d9534f", bg = "#fdf7f7", border_col = "#d9534f"
+        ),
+        .hfv_kpi(
+          ui_str("hfv_kpi_ch4_med_gap", loc),
+          gap_pct(s$median_gap),
+          note = sprintf(ui_str("hfv_kpi_ch4_mean_gap_note", loc), gap_pct(s$mean_gap)),
+          color = "#3c8dbc", bg = "#f5f9fc", border_col = "#3c8dbc"
+        )
       ),
-      # Chapter IV lead covers meaning; keep formula + stats only.
-      tags$div(style = "margin:0;color:#6c757d;font-size:11.5px;", ui_str("hfv_sum_fv_formula", loc)),
-      tags$p(style = "margin:6px 0 0 0;color:#555;font-size:12px;", period_txt),
-      tags$ul(
-        style = "margin:6px 0 0 0;padding-left:18px;",
-        tags$li(sprintf(ui_str("hfv_pair_n_fmt", loc), s$n %||% 0L)),
-        tags$li(sprintf(
-          ui_str("hfv_toward_odds_fmt", loc),
-          pct(s$p_toward), s$n_toward %||% 0L,
-          pct(s$p_away), s$n_away %||% 0L,
-          pct(s$p_flat), s$n_flat %||% 0L
-        )),
-        tags$li(style = "color:#555;font-size:12px;", ui_str("hfv_toward_read", loc)),
-        tags$li(sprintf(
-          ui_str("hfv_fv_odds_fmt", loc),
-          pct(s$p_above), s$n_above %||% 0L,
-          pct(s$p_below), s$n_below %||% 0L,
-          pct(s$p_flat_vs), s$n_flat_vs %||% 0L
-        )),
-        tags$li(sprintf(
-          ui_str("hfv_gap_stats_fmt", loc),
-          gap_pct(s$median_gap), gap_pct(s$mean_gap),
-          gap_pct(s$median_gap_above), gap_pct(s$median_gap_below),
-          gap_pct(s$median_abs_gap)
-        )),
-        if (identical(s$oos_mode, "expanding") && is.finite(s$oos_hit_rate)) {
-          tags$li(sprintf(
-            ui_str("hfv_oos_fv_hit_fmt", loc),
-            pct(s$oos_hit_rate), s$oos_n %||% 0L
-          ))
-        } else NULL
+      tags$p(
+        style = "margin:8px 0 0 0;color:#555;font-size:12px;line-height:1.45;",
+        ui_str("hfv_toward_read", loc)
       )
     )
 

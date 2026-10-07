@@ -1901,11 +1901,10 @@ beta_rolling_section_ui <- function() {
                   id = "ynow_hfv_method_body",
                   style = "font-size:12.5px;color:#444;line-height:1.55;margin:0 0 8px 0;",
                   paste0(
-                    "Validation report — not a trading backtest or order ticket. Same Replay sample, three layers: ",
-                    "(1) market-price move R and causal tip P(up) from Replay FV × price (MOS; Date_next≤tip); ",
-                    "(2) gap to FV shrink/expand plus landing; ",
-                    "(3) scenario taxonomy A–D from mispricing / FV momentum / price momentum. ",
-                    "Chart overlays may be multi-select; stats use the Replay model only."
+                    "Validation report — not a trading backtest or order ticket. ",
+                    "Chart Overlay Models (multi) drive chart FV lines and scenario A–D ",
+                    "(average FV when several; show only with an A–D conclusion). ",
+                    "Replay Model (single) drives odds, tip P(up), MOS, gap-to-FV, and the pair table."
                   )
                 ),
                 tags$p(
@@ -1985,10 +1984,20 @@ beta_rolling_section_ui <- function() {
                       "bt_hfv_show_bench",
                       tags$span(id = "ynow_hfv_show_bench_label", "Show benchmark"),
                       value = isTRUE(APP_DEFAULTS$bt_hfv_show_bench)
+                    ),
+                    tags$p(
+                      id = "ynow_hfv_overlay_vs_replay_note",
+                      class = "help-block ynow-hfv-overlay-replay-note",
+                      paste0(
+                        "Overlay (multi): chart FV lines + scenario A–D (average FV when several). ",
+                        "Replay (Section II, single): odds / tip P(up) / MOS / gap / pair table."
+                      )
                     )
                   )
                 ),
                 plotlyOutput("bt_hfv_timeline", height = "420px") %>% withSpinner(),
+                # Scenarios under chart; Overlay-only; hidden until A–D conclusion
+                uiOutput("bt_hfv_scenario_findings"),
                 uiOutput("bt_session_params")
               )
             ),
@@ -2140,7 +2149,7 @@ beta_rolling_section_ui <- function() {
               )
             ),
 
-            # --- Chapter V: Scenario taxonomy ---
+            # --- Chapter V: Period detail appendix (scenarios live under Ch1 chart) ---
             tags$section(
               class = "ynow-hfv-chapter",
               tags$div(
@@ -2149,42 +2158,18 @@ beta_rolling_section_ui <- function() {
                 tags$h3(
                   class = "ynow-hfv-chapter__title",
                   id = "ynow_hfv_ch5_title",
-                  "Historical scenario taxonomy"
-                )
-              ),
-              tags$p(
-                class = "ynow-hfv-chapter__lead",
-                id = "ynow_hfv_ch5_lead",
-                "Joint FV–price patterns (A–D or other) — education / veto labels, not an order ticket."
-              ),
-              tags$div(
-                class = "ynow-hfv-chapter__body",
-                uiOutput("bt_hfv_scenario_findings")
-              )
-            ),
-
-            # --- Chapter VI: Period detail appendix ---
-            tags$section(
-              class = "ynow-hfv-chapter",
-              tags$div(
-                class = "ynow-hfv-chapter__head",
-                tags$span(class = "ynow-hfv-chapter__kicker", id = "ynow_hfv_ch6_kicker", "Section VI"),
-                tags$h3(
-                  class = "ynow-hfv-chapter__title",
-                  id = "ynow_hfv_ch6_title",
                   "Period detail (appendix)"
                 )
               ),
               tags$p(
                 class = "ynow-hfv-chapter__lead",
-                id = "ynow_hfv_ch6_lead",
+                id = "ynow_hfv_ch5_lead",
                 "Pair-by-pair outcomes for audit — not a buy/sell score."
               ),
               tags$div(
                 class = "ynow-hfv-chapter__body",
                 tags$div(
                   class = "ynow-hfv-findings-block",
-                  # Locale target; chapter VI lead already names the pair table.
                   tags$span(id = "ynow_hfv_table_detail", style = "display:none;", "Pair table"),
                   tags$div(
                     style = "overflow-x:auto; width:100%;",
@@ -5646,6 +5631,7 @@ ui <- dashboardPage(
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
           gap: 12px 14px;
+          width: 100%;
           margin: 0 0 18px 0;
           padding: 14px 16px;
           background: #fafafa;
@@ -5655,12 +5641,16 @@ ui <- dashboardPage(
         }
         .ynow-hfv-toolbar--above-chart {
           margin: 8px 0 12px 0;
+          grid-template-columns: 1fr;
         }
+        /* Section II: three equal columns + full-width OOS row; options fill each group */
         .ynow-hfv-toolbar--in-ch2 {
           margin: 0 0 16px 0;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
         }
         .ynow-hfv-toolbar__group {
           min-width: 0;
+          width: 100%;
           display: flex;
           flex-direction: column;
           gap: 6px;
@@ -5670,6 +5660,7 @@ ui <- dashboardPage(
         }
         .ynow-hfv-toolbar__group .form-group {
           margin: 0;
+          width: 100%;
         }
         .ynow-hfv-toolbar__group > label.control-label,
         .ynow-hfv-toolbar .shiny-input-radiogroup > label.control-label,
@@ -5692,6 +5683,29 @@ ui <- dashboardPage(
           margin: 0;
           padding: 0;
           clear: none;
+          width: 100%;
+        }
+        /* Ch2: equal cells, at most two rows, fill group width (keep pill chips) */
+        .ynow-hfv-toolbar--in-ch2 #bt_fv_replay_model .shiny-options-group,
+        .ynow-hfv-toolbar--in-ch2 #bt_fv_conv_window .shiny-options-group {
+          display: grid !important;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 6px 8px;
+        }
+        .ynow-hfv-toolbar--in-ch2 #bt_fv_analysis_freq .shiny-options-group {
+          display: grid !important;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 6px 8px;
+        }
+        .ynow-hfv-toolbar--in-ch2 #bt_fv_oos_mode .shiny-options-group {
+          display: grid !important;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 6px 8px;
+        }
+        .ynow-hfv-toolbar--above-chart #bt_fv_models .shiny-options-group {
+          display: grid !important;
+          grid-template-columns: repeat(5, minmax(0, 1fr));
+          gap: 6px 8px;
         }
         .ynow-hfv-toolbar .radio,
         .ynow-hfv-toolbar .radio-inline,
@@ -5703,6 +5717,15 @@ ui <- dashboardPage(
           margin: 0 !important;
           padding: 0 !important;
           min-height: 0;
+        }
+        .ynow-hfv-toolbar--in-ch2 .radio,
+        .ynow-hfv-toolbar--in-ch2 .radio-inline,
+        .ynow-hfv-toolbar--in-ch2 .checkbox,
+        .ynow-hfv-toolbar--in-ch2 .checkbox-inline,
+        .ynow-hfv-toolbar--above-chart #bt_fv_models .checkbox,
+        .ynow-hfv-toolbar--above-chart #bt_fv_models .checkbox-inline {
+          width: 100%;
+          display: flex !important;
         }
         .ynow-hfv-toolbar .radio > label,
         .ynow-hfv-toolbar .radio-inline,
@@ -5722,6 +5745,27 @@ ui <- dashboardPage(
           white-space: nowrap;
           cursor: pointer;
           transition: border-color .12s ease, background .12s ease, box-shadow .12s ease;
+        }
+        .ynow-hfv-toolbar--in-ch2 .radio > label,
+        .ynow-hfv-toolbar--in-ch2 .radio-inline,
+        .ynow-hfv-toolbar--in-ch2 .radio-inline > label,
+        .ynow-hfv-toolbar--in-ch2 .checkbox > label,
+        .ynow-hfv-toolbar--in-ch2 .checkbox-inline,
+        .ynow-hfv-toolbar--in-ch2 .checkbox-inline > label,
+        .ynow-hfv-toolbar--above-chart #bt_fv_models .checkbox > label,
+        .ynow-hfv-toolbar--above-chart #bt_fv_models .checkbox-inline,
+        .ynow-hfv-toolbar--above-chart #bt_fv_models .checkbox-inline > label {
+          width: 100%;
+          box-sizing: border-box;
+          justify-content: center;
+          text-align: center;
+        }
+        .ynow-hfv-toolbar--in-ch2 #bt_fv_oos_mode .radio > label,
+        .ynow-hfv-toolbar--in-ch2 #bt_fv_oos_mode .radio-inline,
+        .ynow-hfv-toolbar--in-ch2 #bt_fv_oos_mode .radio-inline > label {
+          white-space: normal;
+          min-height: 40px;
+          align-items: center;
         }
         .ynow-hfv-toolbar .radio input[type="radio"],
         .ynow-hfv-toolbar .radio-inline input[type="radio"],
@@ -5811,8 +5855,48 @@ ui <- dashboardPage(
           font-weight: 700;
           color: #333;
         }
+        .ynow-hfv-kpi-grid {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 10px;
+          align-items: stretch;
+          width: 100%;
+          margin: 0 0 10px 0;
+          box-sizing: border-box;
+        }
+        .ynow-hfv-kpi-grid--3 {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+        .ynow-hfv-kpi-cell {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          min-height: 88px;
+          height: 100%;
+          padding: 10px 12px;
+          box-sizing: border-box;
+          border: 1px solid #e8e8e8;
+          border-radius: 4px;
+          background: #fff;
+        }
+        .ynow-hfv-overlay-replay-note {
+          margin: 8px 0 0 0 !important;
+          font-size: 11.5px !important;
+          line-height: 1.45;
+          color: #666;
+        }
+        .ynow-hfv-scenario-under-chart {
+          margin-top: 14px;
+        }
+        @media (max-width: 991px) {
+          .ynow-hfv-kpi-grid,
+          .ynow-hfv-kpi-grid--3 {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+        }
         @media (max-width: 767px) {
-          .ynow-hfv-toolbar {
+          .ynow-hfv-toolbar,
+          .ynow-hfv-toolbar--in-ch2 {
             grid-template-columns: 1fr;
             padding: 12px;
             gap: 14px;
@@ -5820,12 +5904,23 @@ ui <- dashboardPage(
           .ynow-hfv-toolbar__group--wide {
             grid-column: auto;
           }
+          .ynow-hfv-toolbar--in-ch2 #bt_fv_replay_model .shiny-options-group,
+          .ynow-hfv-toolbar--in-ch2 #bt_fv_conv_window .shiny-options-group,
+          .ynow-hfv-toolbar--in-ch2 #bt_fv_analysis_freq .shiny-options-group,
+          .ynow-hfv-toolbar--in-ch2 #bt_fv_oos_mode .shiny-options-group,
+          .ynow-hfv-toolbar--above-chart #bt_fv_models .shiny-options-group {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
           .ynow-hfv-toolbar .radio > label,
           .ynow-hfv-toolbar .radio-inline,
           .ynow-hfv-toolbar .checkbox > label,
           .ynow-hfv-toolbar .checkbox-inline {
             white-space: normal;
             max-width: 100%;
+          }
+          .ynow-hfv-kpi-grid,
+          .ynow-hfv-kpi-grid--3 {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
           }
           .ynow-hfv-chapter__body {
             padding: 12px;
@@ -6848,12 +6943,8 @@ ui <- dashboardPage(
             if (hfvCh5T && s.hfv_ch5_title) hfvCh5T.textContent = s.hfv_ch5_title;
             var hfvCh5Lead = document.getElementById('ynow_hfv_ch5_lead');
             if (hfvCh5Lead && s.hfv_ch5_lead) hfvCh5Lead.textContent = s.hfv_ch5_lead;
-            var hfvCh6K = document.getElementById('ynow_hfv_ch6_kicker');
-            if (hfvCh6K && s.hfv_ch6_kicker) hfvCh6K.textContent = s.hfv_ch6_kicker;
-            var hfvCh6T = document.getElementById('ynow_hfv_ch6_title');
-            if (hfvCh6T && s.hfv_ch6_title) hfvCh6T.textContent = s.hfv_ch6_title;
-            var hfvCh6Lead = document.getElementById('ynow_hfv_ch6_lead');
-            if (hfvCh6Lead && s.hfv_ch6_lead) hfvCh6Lead.textContent = s.hfv_ch6_lead;
+            var hfvOvNote = document.getElementById('ynow_hfv_overlay_vs_replay_note');
+            if (hfvOvNote && s.hfv_overlay_vs_replay_note) hfvOvNote.textContent = s.hfv_overlay_vs_replay_note;
             var hfvParamInv = document.getElementById('ynow_hfv_param_inv_title');
             if (hfvParamInv && (s.hfv_param_inv_title || s.box_hfv_param_inventory)) {
               hfvParamInv.textContent = s.hfv_param_inv_title || s.box_hfv_param_inventory;
