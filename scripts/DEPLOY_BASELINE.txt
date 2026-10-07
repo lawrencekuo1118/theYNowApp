@@ -8,5 +8,5 @@ short=dc1006d
 message=chore: bump display version to v21.28
 captured_at=2026-10-07T16:06:34Z
 source_branch=cursor/hfv-next-period-prob-911b
-display_version=v21.28
+display_version=v21.29
 note=Canonical live line is app_21.0. Bundle 12660283 ships v21.28: HFV cleanup — remove Q1/Q2 wording, duplicate titles, excess chapter box chrome. Deploy via scripts/deploy_app_21.R.
