@@ -144,6 +144,62 @@ calc_forward_eps_from_price_pe <- function(price, forward_pe) {
   teps * (1 + g / 100)
 }
 
+#' Method keys that can produce Implied Price within a Multiples family.
+.rel_method_order <- function(mode = "earnings") {
+  switch(
+    as.character(mode %||% "earnings")[1],
+    "enterprise" = c("ev_fcf", "ev_ebit", "ev_ebitda", "ev_sales", "ev_arr"),
+    "ps" = "ps",
+    # earnings (default): PEG is a relative indicator, not an Implied Price
+    c("pe", "forward_pe")
+  )
+}
+
+#' First successful Implied Price in the selected family (respects rel_mode).
+.rel_pick_active_implied <- function(res, mode = "earnings") {
+  empty <- list(key = NA_character_, implied_price = NA_real_)
+  if (is.null(res) || !is.list(res)) return(empty)
+  for (k in .rel_method_order(mode)) {
+    node <- res[[k]]
+    if (!is.null(node) && identical(node$status, "ok") &&
+        is.finite(suppressWarnings(as.numeric(node$implied_price)[1]))) {
+      return(list(
+        key = as.character(k)[1],
+        implied_price = suppressWarnings(as.numeric(node$implied_price)[1])
+      ))
+    }
+  }
+  empty
+}
+
+#' Short finance-term tag for chart / composite pills (en-US formal terms).
+.rel_method_chart_tag <- function(key) {
+  k <- as.character(key %||% "")[1]
+  if (!nzchar(k) || identical(k, "NA") || is.na(key)) return(NA_character_)
+  out <- switch(
+    k,
+    "pe" = "P/E",
+    "forward_pe" = "Fwd P/E",
+    "ev_fcf" = "EV/FCF",
+    "ev_ebit" = "EV/EBIT",
+    "ev_ebitda" = "EV/EBITDA",
+    "ev_sales" = "EV/Sales",
+    "ev_arr" = "EV/ARR",
+    "ps" = "P/S",
+    NA_character_
+  )
+  if (is.null(out) || is.na(out) || !nzchar(out)) NA_character_ else out
+}
+
+#' Chart / composite label: "Multiples · P/E" when a method is active.
+.rel_chart_label <- function(method_key, base = "Multiples") {
+  base_lab <- as.character(base %||% "Multiples")[1]
+  if (!nzchar(base_lab)) base_lab <- "Multiples"
+  tag <- .rel_method_chart_tag(method_key)
+  if (is.null(tag) || length(tag) < 1L || is.na(tag) || !nzchar(tag)) return(base_lab)
+  paste0(base_lab, " · ", tag)
+}
+
 calc_peg <- function(pe, growth_pct,
                      growth_definition = NA_character_,
                      growth_period = NA_character_) {
@@ -1043,20 +1099,26 @@ relative_multiples_module_server <- function(id,
       )
     })
 
+    .active_pick <- reactive({
+      # Depend on mode so chart label / price refresh when family changes
+      mode <- as.character(input$rel_mode %||% "earnings")[1]
+      .rel_pick_active_implied(last_result(), mode = mode)
+    })
+
     return(list(
       pe_price = reactive({
         res <- last_result(); if (!is.null(res) && identical(res$pe$status, "ok")) res$pe$implied_price else NA_real_
       }),
+      active_method_key = reactive({
+        pick <- .active_pick()
+        as.character(pick$key %||% NA_character_)[1]
+      }),
+      chart_label = reactive({
+        .rel_chart_label(.active_pick()$key, base = "Multiples")
+      }),
       any_implied_price = reactive({
-        res <- last_result()
-        if (is.null(res)) return(NA_real_)
-        for (k in c("pe", "forward_pe", "ev_fcf", "ev_ebit", "ev_ebitda", "ev_sales", "ps", "ev_arr")) {
-          node <- res[[k]]
-          if (!is.null(node) && identical(node$status, "ok") && is.finite(node$implied_price)) {
-            return(node$implied_price)
-          }
-        }
-        NA_real_
+        pick <- .active_pick()
+        suppressWarnings(as.numeric(pick$implied_price)[1])
       })
     ))
   })

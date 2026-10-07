@@ -298,6 +298,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     rel_multiples_model_evarr = "EV/ARR",
     rel_multiples_model_sotp = "SOTP (revenue)",
     rel_multiples_implied_price = "Implied Price",
+    smart_multiples_method_prefix = "Method: ",
+    smart_multiples_bar_suffix = "Implied",
     rel_multiples_disclaimer = paste0(
       "Relative valuation only — do not treat these Implied Prices as Intrinsic Value, ",
       "and do not average them with DCF / DDM / RI / P/B."
@@ -2742,6 +2744,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     rel_multiples_model_evarr = "EV/ARR",
     rel_multiples_model_sotp = "SOTP（營收）",
     rel_multiples_implied_price = "Implied Price",
+    smart_multiples_method_prefix = "方法：",
+    smart_multiples_bar_suffix = "Implied",
     rel_multiples_disclaimer = paste0(
       "僅為相對估值——請勿將 Implied Price 視為 Intrinsic Value，",
       "亦勿與 DCF／DDM／RI／P/B 直接平均。"

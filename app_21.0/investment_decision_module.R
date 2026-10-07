@@ -270,6 +270,7 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
                             primary_band = reactive(NULL),
                             secondary_point = reactive(NA),
                             model_points = reactive(NULL),
+                            model_point_labels = reactive(NULL),
                             active_model_key = reactive(NA_character_),
                             confidence = reactive(NULL),
                             industry_key = reactive(NULL),
@@ -325,6 +326,15 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
         pb  = .pick_num(tryCatch(intrinsic_val_pb(), error = function(e) NA)),
         nav = .pick_num(tryCatch(intrinsic_val_nav(), error = function(e) NA))
       )
+    }
+
+    .point_label <- function(key) {
+      labs <- tryCatch(model_point_labels(), error = function(e) NULL)
+      if (is.list(labs)) {
+        lab <- labs[[as.character(key)[1]]]
+        if (nzchar(as.character(lab %||% "")[1])) return(as.character(lab)[1])
+      }
+      .model_label(key)
     }
 
     f_score_eval <- reactive({
@@ -727,8 +737,8 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       }
 
       rec_title <- paste0(
-        str("composite_main_model"), " ", .model_label(prim),
-        if (nzchar(sec)) paste0(" ｜ ", str("composite_sub_model"), " ", .model_label(sec)) else ""
+        str("composite_main_model"), " ", .point_label(prim),
+        if (nzchar(sec)) paste0(" ｜ ", str("composite_sub_model"), " ", .point_label(sec)) else ""
       )
       rec_desc <- as.character(rec$reason %||% "")
       conf_txt <- if (is.list(conf) && !is.null(conf$level)) {
@@ -812,7 +822,7 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
         is_active <- nzchar(active_key) && identical(k, active_key)
         is_prim <- nzchar(prim) && identical(k, prim)
         is_sec <- nzchar(sec) && identical(k, sec)
-        lab <- .model_label(k)
+        lab <- .point_label(k)
         z <- if (is_active) 12 else if (is_prim) 9 else 8
         role_tag <- if (is_prim) "★" else if (is_sec) "◇" else ""
         pill_label <- paste0(role_tag, lab)
@@ -856,7 +866,7 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
         "<div style='flex:1; min-width:120px; padding:10px; background:#f4f6f7; border-radius:6px;'>",
         "<div style='font-size:12px; color:#888;'>", htmltools::htmlEscape(str("composite_secondary_check")), "</div>",
         "<div style='font-size:18px; font-weight:700; color:#566573;'>", fmt(sec_pt), "</div>",
-        "<div style='font-size:12px; color:#777;'>", htmltools::htmlEscape(.model_label(sec)), "</div></div>",
+        "<div style='font-size:12px; color:#777;'>", htmltools::htmlEscape(.point_label(sec)), "</div></div>",
         "</div>",
         "<h4 style='margin-top: 0; font-weight: bold;'><i class='fa fa-balance-scale'></i> ",
         htmltools::htmlEscape(str("composite_status_prefix")),

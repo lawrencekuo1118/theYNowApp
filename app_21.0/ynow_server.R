@@ -3038,6 +3038,19 @@ server <- function(input, output, session) {
     primary_band = reactive({ primary_valuation_band() }),
     secondary_point = reactive({ secondary_valuation_point() }),
     model_points = reactive({ all_model_valuation_points() }),
+    model_point_labels = reactive({
+      labs <- lapply(
+        c("dcf", "ddm", "ri", "pb", "nav", "multiples", "sotp"),
+        function(k) .model_label(k)
+      )
+      names(labs) <- c("dcf", "ddm", "ri", "pb", "nav", "multiples", "sotp")
+      # Multiples chart / composite: show active method (P/E · EV/EBITDA · …)
+      if (exists("rel_results", inherits = TRUE) && !is.null(rel_results$chart_label)) {
+        ml <- tryCatch(rel_results$chart_label(), error = function(e) NULL)
+        if (nzchar(as.character(ml %||% "")[1])) labs$multiples <- as.character(ml)[1]
+      }
+      labs
+    }),
     active_model_key = reactive({ active_valuation_model_key() }),
     confidence = reactive({ valuation_confidence() }),
     industry_key = reactive(input$industry_choice),
@@ -8186,10 +8199,37 @@ server <- function(input, output, session) {
         tags$p(class = "ynow-smart-card-kicker", ui_str("smart_secondary_kicker", loc)),
         tags$p(
           class = "ynow-smart-card-title",
-          if (nzchar(sec)) .model_label(sec) else "—"
+          if (nzchar(sec)) {
+            if (identical(sec, "multiples") && !is.null(rel_results$chart_label)) {
+              tryCatch(rel_results$chart_label(), error = function(e) .model_label(sec))
+            } else {
+              .model_label(sec)
+            }
+          } else {
+            "—"
+          }
         ),
         tags$p(class = "ynow-smart-card-value", if (nzchar(sec)) fmt_px(sec_pt) else "—"),
-        tags$p(class = "ynow-smart-card-meta", if (nzchar(sec)) ui_str("composite_secondary_check", loc) else "")
+        tags$p(
+          class = "ynow-smart-card-meta",
+          if (nzchar(sec) && identical(sec, "multiples") && !is.null(rel_results$active_method_key)) {
+            mk <- tryCatch(rel_results$active_method_key(), error = function(e) NA_character_)
+            tag <- if (exists(".rel_method_chart_tag", mode = "function")) {
+              .rel_method_chart_tag(mk)
+            } else {
+              NA_character_
+            }
+            if (nzchar(tag %||% "")) {
+              paste0(ui_str("smart_multiples_method_prefix", loc), tag)
+            } else {
+              ui_str("composite_secondary_check", loc)
+            }
+          } else if (nzchar(sec)) {
+            ui_str("composite_secondary_check", loc)
+          } else {
+            ""
+          }
+        )
       ),
       tags$div(
         class = "ynow-smart-card",
@@ -8278,7 +8318,18 @@ server <- function(input, output, session) {
     vals <- c(cur, bear, base, bull)
     cols <- c("#333333", "#9aa0a6", "#0C5484", "#5b8def")
     if (nzchar(sec) && is.finite(sec_pt)) {
-      labs <- c(labs, paste0(.model_label(sec), " FV"))
+      sec_lab <- if (identical(sec, "multiples") && !is.null(rel_results$chart_label)) {
+        tryCatch(rel_results$chart_label(), error = function(e) .model_label(sec))
+      } else {
+        .model_label(sec)
+      }
+      # Multiples is Implied Price (not Fair Value); keep method visible on the bar
+      sec_suffix <- if (identical(sec, "multiples")) {
+        paste0(" ", ui_str("smart_multiples_bar_suffix", loc))
+      } else {
+        " FV"
+      }
+      labs <- c(labs, paste0(sec_lab, sec_suffix))
       vals <- c(vals, sec_pt)
       cols <- c(cols, "#888888")
     }
