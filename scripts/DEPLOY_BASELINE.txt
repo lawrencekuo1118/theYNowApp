@@ -8,5 +8,5 @@ short=47b76ee
 message=chore: bump display version to v21.24
 captured_at=2026-10-07T14:30:00Z
 source_branch=cursor/hfv-next-period-prob-911b
-display_version=v21.24
+display_version=v21.25
 note=Canonical live line is app_21.0. Bundle 12659803 ships v21.24: HFV How-to-read box at page top, collapsed by default. Deploy via scripts/deploy_app_21.R.
