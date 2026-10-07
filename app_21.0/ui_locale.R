@@ -245,8 +245,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     rel_multiples_ps_heading = "P/S (equity sales)",
     rel_multiples_sotp_heading = "SOTP (revenue segments)",
     rel_multiples_pe_help = paste0(
-      "Forward EPS is taken from Yahoo when available, else inverted from price ÷ Forward P/E. ",
-      "No forecasted EPS is invented. EPS ≤ 0 → P/E N/A."
+      "Trailing EPS from the latest statements; Forward EPS = Trailing × (1+g) using SGR or historical revenue CAGR. ",
+      "Selected P/E／Forward P/E come from App industry defaults — not Yahoo market P/E, target price, or price÷P/E back-solve. ",
+      "EPS ≤ 0 → P/E N/A."
     ),
     rel_multiples_peg_help = paste0(
       "PEG = P/E ÷ growth(%). Growth period/definition are shown in results. ",
@@ -2688,8 +2689,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     rel_multiples_ps_heading = "P/S（股權營收倍數）",
     rel_multiples_sotp_heading = "SOTP（部門營收）",
     rel_multiples_pe_help = paste0(
-      "Forward EPS 優先取 Yahoo；若無則以股價 ÷ Forward P/E 反推。",
-      "不自行預測 EPS。EPS ≤ 0 → P/E 為 N/A。"
+      "Trailing EPS 取自最新財報；Forward EPS = Trailing × (1+g)（SGR 或歷史營收 CAGR）。",
+      "選定 P/E／Forward P/E 採 App 產業預設參數，不採用 Yahoo 市場本益比、目標價，也不以股價 ÷ P/E 回推。",
+      "EPS ≤ 0 → P/E 為 N/A。"
     ),
     rel_multiples_peg_help = paste0(
       "PEG = P/E ÷ 成長率（%）。結果會標示成長定義與期間。",
