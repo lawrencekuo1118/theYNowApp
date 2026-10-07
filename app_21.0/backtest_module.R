@@ -764,6 +764,40 @@ valuation_signal_label <- function(fv, price) {
   unique(intersect(known, x))
 }
 
+#' Equal-weight mean of selected overlay model FV columns → `fair_value` / `mos`.
+#' Used by HFV scenario taxonomy under the chart (Chart Overlay Models multi-select).
+#' Empty / missing models → NULL. Rows with no finite positive model FVs → NA fair_value.
+overlay_avg_fair_value_df <- function(valuation_df, models) {
+  if (is.null(valuation_df) || !is.data.frame(valuation_df) || nrow(valuation_df) < 1L) {
+    return(NULL)
+  }
+  models <- intersect(c("dcf", "ddm", "ri", "pb", "nav"), as.character(models %||% character(0)))
+  if (length(models) < 1L) return(NULL)
+  colmap <- c(dcf = "fv_dcf", ddm = "fv_ddm", ri = "fv_ri", pb = "fv_pb", nav = "fv_nav")
+  cols <- unname(colmap[models])
+  cols <- cols[cols %in% names(valuation_df)]
+  if (length(cols) < 1L) return(NULL)
+  mat <- as.matrix(valuation_df[, cols, drop = FALSE])
+  storage.mode(mat) <- "numeric"
+  n_ok <- rowSums(is.finite(mat) & mat > 0, na.rm = TRUE)
+  avg <- rowMeans(mat, na.rm = TRUE)
+  avg[!is.finite(avg) | avg <= 0 | n_ok < 1L] <- NA_real_
+  out <- valuation_df
+  out$fair_value <- avg
+  px <- suppressWarnings(as.numeric(out$hist_price))
+  out$mos <- ifelse(
+    is.finite(avg) & avg > 0 & is.finite(px) & px > 0,
+    (avg - px) / avg,
+    NA_real_
+  )
+  if ("signal" %in% names(out) && exists("valuation_signal_label", mode = "function")) {
+    out$signal <- vapply(seq_len(nrow(out)), function(i) {
+      valuation_signal_label(out$fair_value[i], px[i])
+    }, character(1))
+  }
+  out
+}
+
 #' Point-in-time fair-value reconstruction for a single fundamentals row.
 #'
 #' Historical points (`use_session_assumptions = FALSE`): then-available

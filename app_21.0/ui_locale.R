@@ -888,11 +888,23 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_ch4_title = "Gap to theoretical FV",
     hfv_ch4_lead = "Did |P−FV_t| shrink or expand when P_next arrived? Chart = landing (P_next − FV) / FV.",
     hfv_ch5_kicker = "Section V",
-    hfv_ch5_title = "Historical scenario taxonomy",
-    hfv_ch5_lead = "Joint FV–price patterns (A–D or other) — education / veto labels, not an order ticket.",
+    hfv_ch5_title = "Period detail (appendix)",
+    hfv_ch5_lead = "Pair-by-pair outcomes for audit — not a buy/sell score.",
     hfv_ch6_kicker = "Section VI",
     hfv_ch6_title = "Period detail (appendix)",
     hfv_ch6_lead = "Pair-by-pair outcomes for audit — not a buy/sell score.",
+    hfv_scenario_under_kicker = "Scenarios",
+    hfv_scenario_under_title = "Historical scenario taxonomy",
+    hfv_scenario_under_lead = paste0(
+      "Shown only when Chart overlay models are selected and an A–D conclusion exists ",
+      "(multi-select averages FV first)."
+    ),
+    hfv_overlay_vs_replay_note = paste0(
+      "Chart Overlay Models: stack FV lines on the chart and classify scenarios A–D ",
+      "(multi-select → average FV first). Replay Model (Section II): single model for ",
+      "odds / tip P(up) / MOS / gap-to-FV / pair table — not the chart average."
+    ),
+    hfv_scenario_overlay_models_fmt = "Overlay FV = mean(%s)",
     hfv_param_inv_title = "US Valuation Replay Inventory (Live vs Hist PIT)",
     hfv_param_inv_help = paste0(
       "Historical theoretical values are rebuilt from then-available data; ",
@@ -906,11 +918,10 @@ locale_for_market <- function(mode = get_market_mode()) {
       "TW OTC/ESB may use TPEx IS/BS fill (CF never invented). n<5 illustrative only."
     ),
     hfv_method_body = paste0(
-      "Validation report — not a trading backtest or order ticket. Same Replay sample, three layers: ",
-      "(1) market-price move R=(P_{t+1}−P_t)/P_t and causal tip P(up) from Replay FV × price (MOS; Date_next≤tip); ",
-      "(2) gap to FV_t shrink/expand (|P−FV| toward/away) plus landing (P_{t+1}−FV)/FV; ",
-      "(3) scenario taxonomy A–D from mispricing / FV momentum / price momentum. ",
-      "Chart overlays may be multi-select; stats use the Replay model only."
+      "Validation report — not a trading backtest or order ticket. Two control layers: ",
+      "Chart Overlay Models (multi-select) drive chart FV lines and scenario taxonomy A–D ",
+      "(average FV when several are checked; show only with an A–D conclusion); ",
+      "Replay Model (single-select) drives odds, tip P(up), MOS outlook, gap-to-FV, and the pair table."
     ),
     hfv_scenario_thresh_note = paste0(
       "Scenario bands (engineering defaults): flat |Δ|/prev ≤ 2%; |MOS| ≤ 10% ≈ FV; ",
@@ -1083,7 +1094,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_sum_fv_formula = "|P_next − FV_t| vs |P_t − FV_t| — shrink = toward · expand = away",
     hfv_sum_fv_meaning = "Replay FV (then-available only): does |P−FV| shrink or expand by P_next? Landing above/below is secondary.",
     hfv_sum_scenario_block = "Historical scenario taxonomy",
-    hfv_sum_scenario_formula = "Signals: mispricing; FV momentum; price momentum — Replay model only",
+    hfv_sum_scenario_formula = "Signals: mispricing; FV momentum; price momentum — Chart Overlay Models (multi → avg FV)",
     hfv_sum_scenario_meaning = "A–D (or other) from three signals. Most-frequent = sample mode; latest = newest pair.",
     hfv_sum_scenario_matrix = paste0(
       "A Golden pit: FV↑, Price↓, Price ≪ FV · ",
@@ -1124,7 +1135,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_scenario_concl_none_abcd = "No A–D scenario dominated the sample — no most-frequent A–D conclusion.",
     hfv_scenario_concl_diverge = "Most-frequent ≠ latest — read both; neither overrides market-price or gap-to-FV stats.",
     hfv_scenario_concl_note = "Taxonomy reading only — not an order ticket (see method notes for bands / FV quality).",
-    hfv_sum_empty = "Search a ticker and select a Replay model to show odds, vs-FV stats, and scenarios (Replay model only — not chart multi-select).",
+    hfv_sum_empty = "Search a ticker and select a Replay model to show odds and vs-FV stats. Scenario taxonomy needs Chart overlay models (and an A–D conclusion).",
     hfv_sum_notes = "Result notes",
     hfv_sec_method = "How to read this report",
     hfv_sec_settings = "Report controls",
@@ -1139,19 +1150,44 @@ locale_for_market <- function(mode = get_market_mode()) {
     # --- HFV report body (chapter I/II findings) ---
     hfv_val_hint_search = paste0(
       "After you search a ticker, price and benchmark appear first. ",
-      "Check Chart overlay models to stack fair-value lines; Replay model (single-select) drives validation stats and strategy FV/MOS."
+      "Check Chart overlay models to stack FV lines and run scenario taxonomy; ",
+      "Replay model (single-select) drives odds / tip / MOS / gap stats."
     ),
     hfv_val_hint_price_only = paste0(
-      "Actual price and benchmark are shown. Check Chart overlay models to stack fair-value lines; ",
+      "Actual price and benchmark are shown. Check Chart overlay models to stack FV lines and scenarios; ",
       "odds / magnitude follow the Replay model only (not the chart average)."
     ),
     hfv_val_hint_no_summary = "No valuation summary yet.",
     hfv_kpi_hist_pricing = "Historical market pricing",
     hfv_kpi_under_rate = "Market underpricing rate",
-    hfv_kpi_under_note = "Share of rebalance dates where price < model fair value",
+    hfv_kpi_under_note = "Majority share: rebalance dates where price < model fair value",
+    hfv_kpi_over_rate = "Market overpricing rate",
+    hfv_kpi_over_note = "Majority share: rebalance dates where price > model fair value",
     hfv_kpi_last_signal = "Latest signal",
     hfv_kpi_signal_note = "Cheap (P<FV) = price below model; Rich (P>FV) = price above model",
     hfv_kpi_mean_mos = "Mean MOS",
+    hfv_kpi_ch2_p_up = "Next-period up rate",
+    hfv_kpi_ch2_p_toward = "Gap shrink rate",
+    hfv_kpi_ch2_p_away_note = "Expand rate %s",
+    hfv_kpi_ch2_q12 = "Divergent pairs",
+    hfv_kpi_ch3_n = "Pairs",
+    hfv_kpi_ch3_p_up = "Up rate",
+    hfv_kpi_ch3_n_up_note = "n_up = %d",
+    hfv_kpi_ch3_p_down = "Down rate",
+    hfv_kpi_ch3_n_down_note = "n_down = %d",
+    hfv_kpi_ch3_med_ret = "Median next return",
+    hfv_kpi_ch3_mean_ret_note = "Mean %s",
+    hfv_kpi_ch3_oos_hit = "OOS direction hit",
+    hfv_kpi_ch4_n = "Pairs",
+    hfv_kpi_ch4_toward = "Shrink rate",
+    hfv_kpi_ch4_toward_note = "n_toward = %d",
+    hfv_kpi_ch4_away = "Expand rate",
+    hfv_kpi_ch4_away_note = "n_away = %d",
+    hfv_kpi_ch4_med_gap = "Median landing",
+    hfv_kpi_ch4_mean_gap_note = "Mean %s",
+    hfv_kpi_ch4_above = "Above FV rate",
+    hfv_kpi_ch4_below_note = "Below %s",
+    hfv_kpi_ch4_oos_hit = "OOS vs-FV hit",
     hfv_bias_undervalued = "Value undervalued",
     hfv_bias_overvalued = "Value overvalued",
     hfv_bias_na = "Insufficient data",
@@ -3382,11 +3418,22 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_ch4_title = "相對理論 FV：縮小／擴大與幅度",
     hfv_ch4_lead = "下期市價到來時，|P−FV_t| 是縮小還是擴大？圖表＝落點 (P下一期−FV)/FV。",
     hfv_ch5_kicker = "第五章",
-    hfv_ch5_title = "歷史情境分類",
-    hfv_ch5_lead = "相鄰估值日 FV–市價型態（A–D 或 other）——教育／否決標籤，不是下單指令。",
+    hfv_ch5_title = "逐期明細（附錄）",
+    hfv_ch5_lead = "逐筆配對結果供覆核——不是買賣分數。",
     hfv_ch6_kicker = "第六章",
     hfv_ch6_title = "逐期明細（附錄）",
     hfv_ch6_lead = "逐筆配對結果供覆核——不是買賣分數。",
+    hfv_scenario_under_kicker = "情境",
+    hfv_scenario_under_title = "歷史情境分類",
+    hfv_scenario_under_lead = paste0(
+      "僅在已勾選「圖表疊加模型」且得出 A–D 結論時顯示",
+      "（複選時先平均 FV 再分類）。"
+    ),
+    hfv_overlay_vs_replay_note = paste0(
+      "圖表疊加模型：在圖上疊合理價線，並做情境分類 A–D（複選→先平均 FV）。",
+      "復盤模型（第二章）：單選，驅動機率／tip 上漲機率／MOS／相對 FV／配對表——不是圖表平均。"
+    ),
+    hfv_scenario_overlay_models_fmt = "疊加 FV＝平均（%s）",
     hfv_param_inv_title = "美股估值復盤參數盤點（Live vs Hist PIT）",
     hfv_param_inv_help = paste0(
       "歷史點理論估值使用當時可得資料重建；",
@@ -3400,11 +3447,10 @@ locale_for_market <- function(mode = get_market_mode()) {
       "上櫃／興櫃可補櫃買 IS／BS（不捏造 CF）。n＜5 僅供參考。"
     ),
     hfv_method_body = paste0(
-      "驗證報告——不是交易回測，也不是下單指令。同一復盤樣本三層：",
-      "（1）市價漲跌 R=(P_{t+1}−P_t)/P_t，以及復盤估值×市價（MOS）的因果 tip 上漲機率（Date下一期≤tip）；",
-      "（2）相對 FV_t 的距離縮小／擴大，以及落點 (P_{t+1}−FV)/FV；",
-      "（3）情境分類 A–D（價值錯位／FV 動能／價格動能）。",
-      "圖表可複選疊線；統計僅依復盤模型單選。"
+      "驗證報告——不是交易回測，也不是下單指令。兩層控制：",
+      "「圖表疊加模型」（可複選）驅動圖上合理價線與情境分類 A–D",
+      "（複選時先平均 FV；僅在有 A–D 結論時顯示）；",
+      "「復盤模型」（單選）驅動機率、tip 上漲機率、MOS 展望、相對 FV 與配對表。"
     ),
     hfv_scenario_thresh_note = paste0(
       "情境帶寬（工程預設）：持平 |Δ|/前期 ≤ 2%；|MOS| ≤ 10% ≈ FV；",
@@ -3572,7 +3618,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_sum_fv_formula = "|P下一期 − FV_t| vs |P_t − FV_t| — 縮小＝趨近 · 擴大＝遠離",
     hfv_sum_fv_meaning = "復盤 FV（僅當時可得）：|P−FV| 在下期市價到來時是縮小還是擴大？之上／之下為次要落點。",
     hfv_sum_scenario_block = "歷史情境分類",
-    hfv_sum_scenario_formula = "三訊號：價值錯位；基本面動能；價格動能 — 僅復盤模型",
+    hfv_sum_scenario_formula = "三訊號：價值錯位；基本面動能；價格動能 — 依圖表疊加模型（複選→平均 FV）",
     hfv_sum_scenario_meaning = "以三訊號歸入 A–D（或 other）。樣本最常見＝眾數；最近一期＝最新配對。",
     hfv_sum_scenario_matrix = paste0(
       "A 錯殺黃金坑：FV↑、Price↓、Price ≪ FV · ",
@@ -3613,7 +3659,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_scenario_concl_none_abcd = "樣本無主導的 A–D 情境——不顯示「樣本最常見」結論。",
     hfv_scenario_concl_diverge = "「樣本最常見」≠「最近一期」——兩者都要讀；皆不覆寫市價或相對 FV 統計。",
     hfv_scenario_concl_note = "分類學解讀——不是下單指令（帶寬／FV 品質見方法說明）。",
-    hfv_sum_empty = "搜尋標的並選擇復盤模型後，顯示漲跌機率、相對 FV 與情境（僅復盤模型，非圖表複選）。",
+    hfv_sum_empty = "搜尋標的並選擇復盤模型後，顯示漲跌機率與相對 FV。情境分類需勾選圖表疊加模型（且須有 A–D 結論）。",
     hfv_sum_notes = "結果附註",
     hfv_sec_method = "如何閱讀本報告",
     hfv_sec_settings = "報告條件",
@@ -3627,20 +3673,44 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_win_custom = "自訂",
     # --- HFV 報告內文（第一／二章發現） ---
     hfv_val_hint_search = paste0(
-      "搜尋股票後將預先顯示股價與大盤；勾選「圖表模型」可疊合理價線；",
-      "「復盤模型」單選驅動下方驗證統計與策略 FV／MOS。"
+      "搜尋股票後將預先顯示股價與大盤；勾選「圖表疊加模型」可疊合理價線並做情境分類；",
+      "「復盤模型」單選驅動機率／tip／MOS／相對 FV 統計。"
     ),
     hfv_val_hint_price_only = paste0(
-      "已顯示實際股價與大盤。勾選「圖表模型」以疊合理價線；",
+      "已顯示實際股價與大盤。勾選「圖表疊加模型」以疊合理價線與情境；",
       "驗證機率／幅度依「復盤模型」單選（非圖表平均）。"
     ),
     hfv_val_hint_no_summary = "尚無估值摘要。",
     hfv_kpi_hist_pricing = "歷史市場定價",
     hfv_kpi_under_rate = "市場低估率",
-    hfv_kpi_under_note = "股價低於模型合理價的再平衡日佔比",
+    hfv_kpi_under_note = "多數結論：股價低於模型合理價的再平衡日佔比",
+    hfv_kpi_over_rate = "市場高估率",
+    hfv_kpi_over_note = "多數結論：股價高於模型合理價的再平衡日佔比",
     hfv_kpi_last_signal = "最近訊號",
     hfv_kpi_signal_note = "便宜（P<FV）＝市價低於模型；偏貴（P>FV）＝市價高於模型",
     hfv_kpi_mean_mos = "平均 MOS",
+    hfv_kpi_ch2_p_up = "下期上漲率",
+    hfv_kpi_ch2_p_toward = "距離縮小率",
+    hfv_kpi_ch2_p_away_note = "擴大率 %s",
+    hfv_kpi_ch2_q12 = "分歧配對數",
+    hfv_kpi_ch3_n = "配對數",
+    hfv_kpi_ch3_p_up = "上漲率",
+    hfv_kpi_ch3_n_up_note = "n_up＝%d",
+    hfv_kpi_ch3_p_down = "下跌率",
+    hfv_kpi_ch3_n_down_note = "n_down＝%d",
+    hfv_kpi_ch3_med_ret = "下期報酬中位",
+    hfv_kpi_ch3_mean_ret_note = "平均 %s",
+    hfv_kpi_ch3_oos_hit = "樣本外方向命中",
+    hfv_kpi_ch4_n = "配對數",
+    hfv_kpi_ch4_toward = "縮小率",
+    hfv_kpi_ch4_toward_note = "n_toward＝%d",
+    hfv_kpi_ch4_away = "擴大率",
+    hfv_kpi_ch4_away_note = "n_away＝%d",
+    hfv_kpi_ch4_med_gap = "落點中位",
+    hfv_kpi_ch4_mean_gap_note = "平均 %s",
+    hfv_kpi_ch4_above = "落在 FV 之上率",
+    hfv_kpi_ch4_below_note = "之下 %s",
+    hfv_kpi_ch4_oos_hit = "樣本外相對 FV 命中",
     hfv_bias_undervalued = "價值被低估",
     hfv_bias_overvalued = "價值被高估",
     hfv_bias_na = "資料不足",
