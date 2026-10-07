@@ -248,6 +248,28 @@ check("concept word cloud multi-select", {
 })
 check("Macro first-paint bubble title", grepl("Dynamic industry bubble", macro, fixed = TRUE))
 
+# Composite valuation: model notes sit under chart footer note (same block)
+cmp_start <- regexpr("output\\$ui_valuation_compare", dec)[1]
+cmp_src <- if (is.finite(cmp_start) && cmp_start > 0) substr(dec, cmp_start, nchar(dec)) else ""
+pos_footer <- regexpr("ynow-composite-footer-note", cmp_src, fixed = TRUE)[1]
+pos_model_notes <- regexpr("ynow-composite-model-notes", cmp_src, fixed = TRUE)[1]
+pos_chart_notes <- regexpr("ynow-composite-chart-notes", cmp_src, fixed = TRUE)[1]
+pos_axis <- regexpr("ynow-composite-model-mark", cmp_src, fixed = TRUE)[1]
+check("composite chart-notes wrapper", is.finite(pos_chart_notes) && pos_chart_notes > 0)
+check("composite footer before model notes", {
+  is.finite(pos_footer) && pos_footer > 0 &&
+    is.finite(pos_model_notes) && pos_model_notes > pos_footer
+})
+check("composite axis before chart notes", {
+  is.finite(pos_axis) && pos_axis > 0 &&
+    is.finite(pos_chart_notes) && pos_chart_notes > pos_axis
+})
+check("composite model notes not above Bear cards", {
+  # First Bear KPI row must appear before chart-notes (notes no longer lead the card)
+  pos_bear <- regexpr(">Bear<", cmp_src, fixed = TRUE)[1]
+  is.finite(pos_bear) && pos_bear > 0 && pos_bear < pos_chart_notes
+})
+
 if (fail > 0L) {
   stop(sprintf("%d YNOW layout check(s) failed", fail), call. = FALSE)
 }
