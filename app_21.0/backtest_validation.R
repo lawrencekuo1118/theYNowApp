@@ -612,9 +612,10 @@ lookup_mos_bucket_outlook <- function(mos_now, stats_df) {
 #' Pair each valuation date t with next realized market price vs theoretical FV_t.
 #'
 #' This is **historical fundamental vs market validation**, not a trading backtest.
-#' Primary: P_{t+1} vs FV_t → 之上／之下／持平.
-#' Magnitude: gap_next = (P_{t+1} − FV_t) / FV_t.
-#' Secondary: distance change |P−FV_t| → 趨近／遠離／持平.
+#' Primary (Q2 / PIT replay shrink method): distance change
+#'   |P_t−FV_t| vs |P_{t+1}−FV_t| → 趨近（縮小）／遠離（擴大）／持平.
+#'   Higher 趨近 rate ⇒ model FV and next price more often close the gap in-sample.
+#' Secondary: P_{t+1} vs FV_t → 之上／之下／持平; gap_next = (P_{t+1}−FV_t)/FV_t.
 build_fv_convergence_pairs <- function(valuation_df) {
   empty <- data.frame(
     Date = as.Date(character()),

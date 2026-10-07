@@ -206,6 +206,14 @@ check("n_down_above = 0", identical(as.integer(sum_all$n_down_above), 0L))
 check("q12_diverge_n = n_up_below + n_down_above",
       identical(as.integer(sum_all$q12_diverge_n),
                 as.integer(sum_all$n_up_below + sum_all$n_down_above)))
+# Q2 PIT shrink method: toward/away on |P−FV|
+# pairs: 趨近,遠離,遠離,遠離,趨近 → n_toward=2, n_away=3
+check("n_toward = 2", identical(as.integer(sum_all$n_toward), 2L))
+check("n_away = 3", identical(as.integer(sum_all$n_away), 3L))
+check("p_toward = 0.4", isTRUE(abs(sum_all$p_toward - 0.4) < 1e-12))
+check("p_away = 0.6", isTRUE(abs(sum_all$p_away - 0.6) < 1e-12))
+check("toward+away+flat = n",
+      sum_all$n_toward + sum_all$n_away + sum_all$n_flat == sum_all$n)
 check("mos_outlook list", is.list(sum_all$mos_outlook))
 # tip MOS = penultimate finite mos (= 0.55) → 便宜 MOS≥50%
 check("mos_outlook bucket", identical(sum_all$mos_outlook$bucket, "便宜 MOS≥50%"))
@@ -378,7 +386,9 @@ if (file.exists(loc_path)) {
       "hfv_sum_qmap_q1_fmt", "hfv_sum_qmap_q2_fmt", "hfv_sum_qmap_q3_fmt",
       "hfv_sum_q12_diverge_fmt", "hfv_sum_q3_diverge",
       "hfv_sum_price_meaning", "hfv_sum_fv_meaning", "hfv_sum_scenario_meaning",
-      "hfv_scenario_concl_diverge"
+      "hfv_scenario_concl_diverge",
+      "hfv_toward_odds_fmt", "hfv_toward_read", "hfv_col_toward",
+      "hfv_toward_toward", "hfv_toward_away"
     )) {
       v <- ui_str(k, loc)
       check(paste0("locale ", loc, " ", k), is.character(v) && nzchar(v) && !grepl("^\\[", v))
@@ -387,6 +397,11 @@ if (file.exists(loc_path)) {
   # Softened C emph must stay veto (not absolute buy order)
   check("C emph veto en", grepl("Veto|veto|buy signal", ui_str("hfv_scenario_concl_C_emph", "en"), ignore.case = TRUE))
   check("C emph veto zh", grepl("否決", ui_str("hfv_scenario_concl_C_emph", "zh-TW")))
+  # Q2 copy must name shrink/expand (PIT method)
+  check("Q2 block names shrink en", grepl("shrink|toward", ui_str("hfv_sum_fv_block", "en"), ignore.case = TRUE))
+  check("Q2 block names 縮小 zh", grepl("縮小", ui_str("hfv_sum_fv_block", "zh-TW")))
+  check("Q2 meaning PIT en", grepl("PIT|shrink", ui_str("hfv_sum_fv_meaning", "en"), ignore.case = TRUE))
+  check("Q2 meaning PIT zh", grepl("PIT|縮小", ui_str("hfv_sum_fv_meaning", "zh-TW")))
 }
 
 message("ALL PASS")

@@ -10302,10 +10302,10 @@ server <- function(input, output, session) {
         } else {
           ui_str("hfv_sum_qmap_q1_na", loc)
         }
-        q2_line <- if (is.finite(s$p_above)) {
+        q2_line <- if (is.finite(s$p_toward)) {
           sprintf(
             ui_str("hfv_sum_qmap_q2_fmt", loc),
-            pct(s$p_above), pct(s$p_below), gap_pct(s$median_gap)
+            pct(s$p_toward), pct(s$p_away), n_pairs
           )
         } else {
           ui_str("hfv_sum_qmap_q2_na", loc)
@@ -10460,6 +10460,13 @@ server <- function(input, output, session) {
       tags$ul(
         style = "margin:6px 0 0 0;padding-left:18px;",
         tags$li(sprintf(ui_str("hfv_pair_n_fmt", loc), s$n %||% 0L)),
+        tags$li(sprintf(
+          ui_str("hfv_toward_odds_fmt", loc),
+          pct(s$p_toward), s$n_toward %||% 0L,
+          pct(s$p_away), s$n_away %||% 0L,
+          pct(s$p_flat), s$n_flat %||% 0L
+        )),
+        tags$li(style = "color:#555;font-size:12px;", ui_str("hfv_toward_read", loc)),
         tags$li(sprintf(
           ui_str("hfv_fv_odds_fmt", loc),
           pct(s$p_above), s$n_above %||% 0L,
@@ -10940,6 +10947,18 @@ server <- function(input, output, session) {
       if (identical(x, "持平")) return(ui_str("hfv_vs_flat", loc))
       x
     }, character(1))
+    toward_raw <- if ("outcome" %in% names(pp)) {
+      as.character(pp$outcome)
+    } else {
+      rep(NA_character_, nrow(pp))
+    }
+    toward_disp <- vapply(toward_raw, function(x) {
+      if (is.na(x) || !nzchar(x)) return("—")
+      if (identical(x, "趨近")) return(ui_str("hfv_toward_toward", loc))
+      if (identical(x, "遠離")) return(ui_str("hfv_toward_away", loc))
+      if (identical(x, "持平")) return(ui_str("hfv_toward_flat", loc))
+      x
+    }, character(1))
     out <- data.frame(
       col1 = format(pp$Date, "%Y-%m-%d"),
       col2 = format(pp$Date_next, "%Y-%m-%d"),
@@ -10948,10 +10967,11 @@ server <- function(input, output, session) {
       col5 = round(pp$price_next, 2),
       col6 = paste0(sprintf("%+.1f", 100 * retv), "%"),
       col7 = dir_disp,
-      col8 = paste0(sprintf("%+.1f", 100 * gapv), "%"),
-      col9 = vs_disp,
-      col10 = sc_lab,
-      col11 = fb_lab,
+      col8 = toward_disp,
+      col9 = paste0(sprintf("%+.1f", 100 * gapv), "%"),
+      col10 = vs_disp,
+      col11 = sc_lab,
+      col12 = fb_lab,
       stringsAsFactors = FALSE,
       check.names = FALSE
     )
@@ -10963,6 +10983,7 @@ server <- function(input, output, session) {
       ui_str("hfv_col_next_price", loc),
       ui_str("hfv_col_next_ret", loc),
       ui_str("hfv_col_dir", loc),
+      ui_str("hfv_col_toward", loc),
       ui_str("hfv_col_gap", loc),
       ui_str("hfv_col_vs_fv", loc),
       ui_str("hfv_col_scenario", loc),

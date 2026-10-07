@@ -899,12 +899,13 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Not a trading-strategy backtest or a brokerage order ticket. Three layers on the validation sample: ",
       "(1) next-period price move R=(P_{t+1}-P_t)/P_t — the share with R>0 is next-period up frequency P(up), ",
       "plus MOS-bucket conditional outlook; ",
-      "(2) position vs theoretical FV_t from the single Replay model (not the chart multi-select average), ",
-      "plus magnitude (P_{t+1}-FV_t)/FV_t; ",
+      "(2) PIT replay shrink method vs theoretical FV_t from the single Replay model (then-available data only): ",
+      "whether |P−FV_t| shrinks (toward) or expands (away) by P_{t+1}; ",
+      "secondary landing above/below and magnitude (P_{t+1}-FV_t)/FV_t; ",
       "(3) historical scenario taxonomy on successive dates using Replay FV + prices — three signals: ",
       "mispricing = FV_curr−Price_curr (MOS), FV momentum = FV_curr−FV_prev, ",
       "price momentum = Price_curr−Price_prev → scenarios A–D (or other if unmatched). ",
-      "Chart models may overlay multiple series; odds / magnitude / scenarios / P(up) use the Replay model only."
+      "Chart models may overlay multiple series; odds / shrink-expand / scenarios / P(up) use the Replay model only."
     ),
     hfv_scenario_thresh_note = paste0(
       "Scenario band heuristics (engineering defaults, not academic standards): ",
@@ -1048,12 +1049,13 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     hfv_sum_qmap_q1_fmt = "Q1 · Price move: next-period up frequency ≈ %s (n=%d) · R=(P_next−P)/P",
     hfv_sum_qmap_q1_na = "Q1 · Price move: no direction stats yet",
-    hfv_sum_qmap_q2_fmt = "Q2 · vs FV: above %s · below %s · median gap %s · (P_next−FV_t)/FV_t",
-    hfv_sum_qmap_q2_na = "Q2 · vs FV: no landing stats yet",
+    hfv_sum_qmap_q2_fmt = "Q2 · Shrink-rate ≈ %s · expand-rate ≈ %s (n=%d) · |P−FV_t| toward/away",
+    hfv_sum_qmap_q2_na = "Q2 · Shrink/expand vs FV: no toward/away stats yet",
     hfv_sum_qmap_q3_fmt = "Q3 · Scenario taxonomy: most frequent %s · latest %s (A–D signals ≠ Q1/Q2)",
     hfv_sum_qmap_relation = paste0(
-      "Relation: Q1 = market price direction only; Q2 = where P_next lands relative to theoretical FV_t ",
-      "(sign of gap ≠ sign of R); Q3 = joint mispricing + FV/price momentum bands on successive dates. ",
+      "Relation: Q1 = market price direction only; ",
+      "Q2 = PIT replay shrink method — whether |P−FV_t| shrinks (toward) or expands (away) by P_next ",
+      "(not the same as up/down); Q3 = joint mispricing + FV/price momentum bands on successive dates. ",
       "HFV is a veto / education layer — not an order ticket."
     ),
     hfv_sum_q12_diverge_fmt = paste0(
@@ -1071,11 +1073,13 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Median/mean return measure size of that move. Independent of whether P_next is above or below FV."
     ),
     hfv_sum_mos_block = "MOS group outlook (same-ticker history)",
-    hfv_sum_fv_block = "Q2 · Position vs theoretical FV",
-    hfv_sum_fv_formula = "(P_next − FV) / FV — not the same as up/down",
+    hfv_sum_fv_block = "Q2 · Gap to FV: shrink vs expand (PIT replay)",
+    hfv_sum_fv_formula = "|P_next − FV_t| vs |P_t − FV_t| — shrink = toward · expand = away",
     hfv_sum_fv_meaning = paste0(
-      "Meaning: share of pairs where next price lands above / below / flat vs FV at t; ",
-      "gap magnitude is (P_next−FV_t)/FV_t. A positive gap means overshoot vs theory, not “price went up.”"
+      "Meaning (this is the PIT replay shrink method): with Replay-model FV built from then-available data only, ",
+      "count whether the absolute gap to that FV shrinks or expands when the next realized price arrives. ",
+      "Higher shrink-rate ⇒ model and next price more often close the gap in this window; higher expand-rate ⇒ the opposite. ",
+      "Above/below and (P_next−FV)/FV below are secondary landing stats — not the same as shrink/expand."
     ),
     hfv_sum_scenario_block = "Q3 · Historical scenario taxonomy",
     hfv_sum_scenario_formula = "Signals: mispricing = FV_curr−Price_curr; FV momentum; price momentum — Replay model only",
@@ -1198,7 +1202,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_price_odds_fmt = "Up %s (%d) · down %s (%d) · flat %s (%d)",
     hfv_next_ret_fmt = "Next-period return: median %s, mean %s",
     hfv_oos_dir_hit_fmt = "Expanding-window direction hit rate %s (n=%d)",
-    hfv_fv_odds_fmt = "Above %s (%d) · below %s (%d) · flat %s (%d)",
+    hfv_toward_odds_fmt = "Shrink (toward) %s (%d) · expand (away) %s (%d) · flat %s (%d)",
+    hfv_toward_read = paste0(
+      "Reading: higher shrink-rate ⇒ Replay FV and next price more often close |P−FV| in this window; ",
+      "higher expand-rate ⇒ the opposite. Descriptive on this sample only — not a forecast."
+    ),
+    hfv_fv_odds_fmt = "Landing (secondary): above %s (%d) · below %s (%d) · flat %s (%d)",
     hfv_gap_stats_fmt = paste0(
       "Magnitude (P−FV)/FV: overall median %s, mean %s; ",
       "above median %s; below median %s; |magnitude| median %s"
@@ -1215,6 +1224,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_col_next_price = "Price (t+1)",
     hfv_col_next_ret = "Next return",
     hfv_col_dir = "Price move",
+    hfv_col_toward = "Toward / away",
     hfv_col_gap = "Magnitude (P−FV)/FV",
     hfv_col_vs_fv = "vs FV",
     hfv_col_scenario = "Scenario",
@@ -1222,6 +1232,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_dir_up = "Up",
     hfv_dir_down = "Down",
     hfv_dir_flat = "Flat",
+    hfv_toward_toward = "Toward (shrink)",
+    hfv_toward_away = "Away (expand)",
+    hfv_toward_flat = "Flat",
     hfv_vs_above = "Above",
     hfv_vs_below = "Below",
     hfv_vs_flat = "Flat",
@@ -3396,10 +3409,11 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_method_body = paste0(
       "不是交易策略回測，也不是券商下單指令。驗證樣本上有三層口徑：",
       "（1）市價下期漲跌 R=(P_{t+1}-P_t)/P_t ——其中 R>0 的比例即下期上漲頻率 P(up)，並以目前安全邊際（MOS）分組之條件機率作為展望；",
-      "（2）相對理論 FV_t（＝下方「復盤模型」單選之一；非圖表複選平均）落在之上／之下與幅度 (P_{t+1}-FV_t)/FV_t；",
+      "（2）PIT 復盤縮小法：相對理論 FV_t（＝「復盤模型」單選；僅用當時可得資料）的絕對距離 |P−FV_t|，",
+      "在下期實際市價到來時是縮小（趨近）還是擴大（遠離）；之上／之下與幅度 (P_{t+1}-FV_t)/FV_t 為次要落點統計；",
       "（3）歷史情境分類：相鄰估值日的復盤 FV＋市價 → 三訊號（價值錯位＝當期FV−當期市價／MOS、基本面動能＝當期FV−前期FV、價格動能＝當期市價−前期市價）→ 情境 A–D",
       "（錯殺黃金坑／戴維斯雙擊／價值陷阱／泡沫炒作；未符合帶寬則為 other）。",
-      "圖表可複選疊多條模型線；機率／幅度／情境／P(up) 僅依復盤模型單選。"
+      "圖表可複選疊多條模型線；機率／縮小擴大／情境／P(up) 僅依復盤模型單選。"
     ),
     hfv_scenario_thresh_note = paste0(
       "情境帶寬啟發式（工程預設，非學術標準）：動能持平 |Δ|/前期 ≤ 2%；",
@@ -3539,12 +3553,13 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     hfv_sum_qmap_q1_fmt = "問題一・市價漲跌：下期上漲頻率 ≈ %s（n＝%d）· R=(P下一期−P)/P",
     hfv_sum_qmap_q1_na = "問題一・市價漲跌：尚無方向統計",
-    hfv_sum_qmap_q2_fmt = "問題二・相對 FV：之上 %s · 之下 %s · 幅度中位 %s · (P下一期−FV_t)/FV_t",
-    hfv_sum_qmap_q2_na = "問題二・相對 FV：尚無落點統計",
+    hfv_sum_qmap_q2_fmt = "問題二・縮小率 ≈ %s · 擴大率 ≈ %s（n＝%d）· |P−FV_t| 趨近／遠離",
+    hfv_sum_qmap_q2_na = "問題二・相對 FV 縮小／擴大：尚無趨近／遠離統計",
     hfv_sum_qmap_q3_fmt = "問題三・情境分類：樣本最常見 %s · 最近一期 %s（A–D 訊號 ≠ 問題一／二）",
     hfv_sum_qmap_relation = paste0(
-      "關聯：問題一＝僅市價方向；問題二＝下期市價相對當期理論 FV_t 的落點",
-      "（幅度正負 ≠ R 正負）；問題三＝相鄰估值日的價值錯位＋FV／價格動能帶寬。",
+      "關聯：問題一＝僅市價方向；",
+      "問題二＝PIT 復盤縮小法——下期市價相對當期理論 FV_t 的絕對距離是縮小（趨近）還是擴大（遠離）",
+      "（≠ 漲跌）；問題三＝相鄰估值日的價值錯位＋FV／價格動能帶寬。",
       "HFV 是否決／教育層，不是下單指令。"
     ),
     hfv_sum_q12_diverge_fmt = paste0(
@@ -3562,11 +3577,13 @@ locale_for_market <- function(mode = get_market_mode()) {
       "與下期市價是否高於或低於 FV 無關。"
     ),
     hfv_sum_mos_block = "安全邊際（MOS）分組展望（該股自身歷史）",
-    hfv_sum_fv_block = "問題二・相對理論 FV",
-    hfv_sum_fv_formula = "(P下一期 − FV) / FV — 與漲跌不同口徑",
+    hfv_sum_fv_block = "問題二・相對理論 FV：縮小 vs 擴大（PIT 復盤）",
+    hfv_sum_fv_formula = "|P下一期 − FV_t| vs |P_t − FV_t| — 縮小＝趨近 · 擴大＝遠離",
     hfv_sum_fv_meaning = paste0(
-      "意義：下期市價落在當期理論 FV 之上／之下／持平的占比；",
-      "幅度＝(P下一期−FV_t)/FV_t。幅度為正＝相對理論偏貴落點，不是「股價上漲」。"
+      "意義（即 PIT 復盤縮小法）：復盤模型 FV 僅用當時可得資料計算，",
+      "統計下期實際市價到來時，相對該 FV 的絕對距離是縮小還是擴大。",
+      "縮小率較高 ⇒ 本期間模型與下期市價較常收斂；擴大率較高 ⇒ 反之。",
+      "下方之上／之下與 (P下一期−FV)/FV 為次要落點統計，≠ 縮小／擴大。"
     ),
     hfv_sum_scenario_block = "問題三・歷史情境分類",
     hfv_sum_scenario_formula = "三訊號：價值錯位＝當期FV−當期市價；基本面動能；價格動能 — 僅復盤模型",
@@ -3689,7 +3706,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_price_odds_fmt = "上漲機率 %s（%d）· 下跌 %s（%d）· 持平 %s（%d）",
     hfv_next_ret_fmt = "下期報酬：中位 %s、平均 %s",
     hfv_oos_dir_hit_fmt = "擴張窗漲跌方向命中率 %s（n＝%d）",
-    hfv_fv_odds_fmt = "之上機率 %s（%d）· 之下 %s（%d）· 持平 %s（%d）",
+    hfv_toward_odds_fmt = "縮小率（趨近）%s（%d）· 擴大率（遠離）%s（%d）· 持平 %s（%d）",
+    hfv_toward_read = paste0(
+      "解讀：縮小率較高 ⇒ 本期間復盤 FV 與下期市價較常收斂 |P−FV|；",
+      "擴大率較高 ⇒ 反之。僅為本樣本描述性頻率，非預測保證。"
+    ),
+    hfv_fv_odds_fmt = "落點（次要）：之上 %s（%d）· 之下 %s（%d）· 持平 %s（%d）",
     hfv_gap_stats_fmt = paste0(
       "幅度 (P−FV)/FV：全體中位 %s、平均 %s；",
       "之上中位 %s；之下中位 %s；|幅度|中位 %s"
@@ -3706,6 +3728,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_col_next_price = "下期市價",
     hfv_col_next_ret = "下期報酬",
     hfv_col_dir = "市價漲跌",
+    hfv_col_toward = "趨近／遠離",
     hfv_col_gap = "幅度(P−FV)/FV",
     hfv_col_vs_fv = "相對FV",
     hfv_col_scenario = "歷史情境",
@@ -3713,6 +3736,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_dir_up = "漲",
     hfv_dir_down = "跌",
     hfv_dir_flat = "平",
+    hfv_toward_toward = "趨近（縮小）",
+    hfv_toward_away = "遠離（擴大）",
+    hfv_toward_flat = "持平",
     hfv_vs_above = "之上",
     hfv_vs_below = "之下",
     hfv_vs_flat = "持平",
