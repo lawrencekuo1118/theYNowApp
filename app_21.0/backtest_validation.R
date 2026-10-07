@@ -606,16 +606,17 @@ lookup_mos_bucket_outlook <- function(mos_now, stats_df) {
   )
 }
 
-#' Expanding-window next-period up/down probability at each measurable date.
+#' Expanding-window next-period **actual market-price** up/down probability.
 #'
-#' At valuation date t_i (with MOS_i from PIT Replay FV), uses **only prior
+#' Forecast target is Q1 price return R = (P_{t+1}−P_t)/P_t on `hist_price`
+#' (actual stock price), **not** FV or valuation level. At date t_i, MOS_i from
+#' PIT Replay FV is only the **conditioning feature**. Uses **only prior
 #' realized pairs** (j → j+1 with j < i) from the same ticker:
-#' - unconditional P(up) on that history
-#' - MOS-bucket conditional P(up) when enough bucket hits exist
+#' - unconditional P(market up) on that history
+#' - MOS-bucket conditional P(market up) when enough bucket hits exist
 #' - otherwise a sample-size blend toward the unconditional prior
 #'
-#' This is the designed Q1-linked **forecast**: empirical conditional odds from
-#' fundamental MOS, not a brokerage order ticket and not a guarantee.
+#' Designed Q1-linked forecast — not a brokerage order ticket and not a guarantee.
 #'
 #' @param valuation_df rows with Date, hist_price, mos (fair_value optional)
 #' @param min_bucket_n minimum prior pairs in the same MOS bucket to use pure bucket odds
@@ -790,35 +791,35 @@ tip_hfv_direction_forecast <- function(forecast_df, locale = "zh-TW") {
     switch(
       method,
       mos_bucket = sprintf(
-        "Expanding-window MOS-bucket conditional odds (bucket prior n=%d; all prior n=%d).",
+        "Target = next actual market price (R on hist_price), not FV. Expanding-window MOS-bucket conditional market odds (bucket prior n=%d; all prior n=%d).",
         nb, np
       ),
       blend = sprintf(
-        "Thin MOS-bucket sample (n=%d); blended with unconditional prior (n=%d).",
+        "Target = next actual market price, not FV. Thin MOS-bucket sample (n=%d); blended with unconditional market prior (n=%d).",
         nb, np
       ),
       unconditional = sprintf(
-        "Bucket prior too thin; using expanding-window unconditional P(up) (n=%d).",
+        "Target = next actual market price, not FV. Bucket prior too thin; using expanding-window unconditional market P(up) (n=%d).",
         np
       ),
-      "No prior pairs at a measurable tip yet — cannot form next-period odds."
+      "No prior pairs at a measurable tip yet — cannot form next actual market-price odds."
     )
   } else {
     switch(
       method,
       mos_bucket = sprintf(
-        "擴張窗 MOS 分組條件機率（同組先驗 n＝%d；總先驗 n＝%d）。",
+        "目標＝下一期實際市價漲跌（hist_price 的 R），非估值／FV。擴張窗 MOS 分組條件市價機率（同組先驗 n＝%d；總先驗 n＝%d）。",
         nb, np
       ),
       blend = sprintf(
-        "MOS 分組樣本偏薄（n＝%d），已與無條件先驗（n＝%d）混合。",
+        "目標＝下一期實際市價漲跌，非估值／FV。MOS 分組樣本偏薄（n＝%d），已與無條件市價先驗（n＝%d）混合。",
         nb, np
       ),
       unconditional = sprintf(
-        "同組先驗不足，改用擴張窗無條件上漲頻率（n＝%d）。",
+        "目標＝下一期實際市價漲跌，非估值／FV。同組先驗不足，改用擴張窗無條件市價上漲頻率（n＝%d）。",
         np
       ),
-      "尚無可衡量時刻的先驗配對，無法給出下一期漲跌機率。"
+      "尚無可衡量時刻的先驗配對，無法給出下一期實際市價漲跌機率。"
     )
   }
   list(
@@ -1499,7 +1500,7 @@ summarize_fv_market_validation <- function(valuation_df, from = NULL, to = NULL,
     )
   } else {
     sprintf(
-      "樣本 n=%d：同時報告市價下期漲跌 R=(P下一期−P)/P、相對 FV 縮小／擴大，以及擴張窗 MOS 條件下一期漲跌機率（非交易策略回測；非預測保證）。",
+      "樣本 n=%d：同時報告實際市價下期漲跌 R=(P下一期−P)/P、相對 FV 縮小／擴大，以及擴張窗 MOS 條件之「下一期實際市價」漲跌機率（非預測估值；非交易策略回測；非預測保證）。",
       n
     )
   }

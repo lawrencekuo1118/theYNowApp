@@ -10823,7 +10823,7 @@ server <- function(input, output, session) {
       )
     }
 
-    # Expanding-window next-period direction forecast (MOS → P(up)/P(down))
+    # Expanding-window next actual market-price direction forecast (MOS conditions P(up)/P(down) on hist_price R)
     tip_fc <- s$direction_tip
     forecast_card <- {
       if (!is.null(tip_fc) && is.list(tip_fc) && is.finite(tip_fc$p_up_hat)) {
@@ -11267,10 +11267,10 @@ server <- function(input, output, session) {
         tags$li(tags$b("策略 MOS／部位："), "用「復盤模型」單選之合理價，不是圖表複選平均。未選復盤模型＝不套用策略 FV／MOS（不暗設 DCF）。"),
         tags$li(
           tags$b("歷史基本面驗證（非策略回測）："),
-          "同時報告（1）市價下期漲跌 ", tags$code("R=(P_{t+1}-P_t)/P_t"),
-          " 經驗頻率，以及依目前安全邊際（MOS）分組的條件上漲／下跌機率；",
-          "（2）相對復盤理論估值 FV_t（＝復盤模型單選；結果隨復盤模型而變）之上／之下與幅度 (P−FV)/FV。",
-          "兩口徑不同，不可混稱。預設只計已實現下期，可選擴張窗樣本外命中率。",
+          "同時報告（1）實際市價下期漲跌 ", tags$code("R=(P_{t+1}-P_t)/P_t"),
+          " 經驗頻率，以及依目前安全邊際（MOS）分組條件化的「下一期實際市價」上漲／下跌機率（非預測估值／FV）；",
+          "（2）相對復盤理論估值 FV_t（＝復盤模型單選；結果隨復盤模型而變）縮小／擴大與幅度 (P−FV)/FV。",
+          "市價漲跌與估值落點兩口徑不同，不可混稱。預設只計已實現下期，可選擴張窗樣本外命中率。",
           "若歷史點套用 APP_DEFAULTS／Session／法定稅率，摘要會列出預設／fallback 與對應分頁。",
           "此區塊在側邊「歷史基本面驗證」，與本頁策略淨值交易回測分開閱讀。"
         ),

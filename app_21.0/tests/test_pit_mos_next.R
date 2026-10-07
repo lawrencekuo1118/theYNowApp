@@ -393,6 +393,23 @@ check("no look-ahead on tip with next", {
 tip <- tip_hfv_direction_forecast(fc, locale = "en")
 check("tip has p_up_hat", is.finite(tip$p_up_hat) && tip$p_up_hat >= 0 && tip$p_up_hat <= 1)
 check("tip method set", tip$method %in% c("mos_bucket", "blend", "unconditional"))
+check(
+  "tip note frames actual market price not FV",
+  grepl("actual market price", tip$note, ignore.case = TRUE) &&
+    grepl("not FV", tip$note, ignore.case = TRUE)
+)
+tip_zh <- tip_hfv_direction_forecast(fc, locale = "zh-TW")
+check(
+  "tip zh note frames 實際市價 not 估值",
+  grepl("實際市價", tip_zh$note, fixed = TRUE) &&
+    grepl("非估值", tip_zh$note, fixed = TRUE)
+)
+# Forecast target is hist_price return, not fair_value change
+check("ret_next from hist_price", {
+  i <- which(is.finite(fc$ret_next))[1]
+  is.finite(i) &&
+    isTRUE(abs(fc$ret_next[i] - (vd$hist_price[i + 1] / vd$hist_price[i] - 1)) < 1e-12)
+})
 sum_fc <- summarize_fv_market_validation(vd, oos_mode = "insample", locale = "en")
 check("summary attaches direction_tip", is.list(sum_fc$direction_tip) && is.finite(sum_fc$direction_tip$p_up_hat))
 check("summary attaches forecasts", is.data.frame(sum_fc$direction_forecasts) && nrow(sum_fc$direction_forecasts) >= 1L)
@@ -416,6 +433,41 @@ if (file.exists(loc_path)) {
     )) {
       v <- ui_str(k, loc)
       check(paste0("locale ", loc, " ", k), is.character(v) && nzchar(v) && !grepl("^\\[", v))
+    }
+    # Tip forecast must frame target as actual market price, not valuation/FV
+    fc_title <- ui_str("hfv_fc_title", loc)
+    fc_formula <- ui_str("hfv_fc_formula", loc)
+    fc_caveat <- ui_str("hfv_fc_caveat", loc)
+    if (identical(loc, "en")) {
+      check(
+        "en tip title says market-price",
+        grepl("market-price|market price", fc_title, ignore.case = TRUE)
+      )
+      check(
+        "en tip formula targets hist_price R not FV",
+        grepl("hist_price", fc_formula, fixed = TRUE) &&
+          grepl("not FV", fc_formula, ignore.case = TRUE)
+      )
+      check(
+        "en tip caveat says actual stock-price not FV",
+        grepl("actual stock-price|actual market", fc_caveat, ignore.case = TRUE) &&
+          grepl("not FV", fc_caveat, ignore.case = TRUE)
+      )
+    } else {
+      check(
+        "zh-TW tip title says 實際市價",
+        grepl("實際市價", fc_title, fixed = TRUE)
+      )
+      check(
+        "zh-TW tip formula targets 實際市價 not 估值",
+        grepl("實際市價", fc_formula, fixed = TRUE) &&
+          grepl("不是估值|非估值", fc_formula)
+      )
+      check(
+        "zh-TW tip caveat says 實際股價 not 估值",
+        grepl("實際股價", fc_caveat, fixed = TRUE) &&
+          grepl("不是估值", fc_caveat, fixed = TRUE)
+      )
     }
     # Scenario panel must NOT be labeled as Q3 / 問題三
     sc_title <- ui_str("hfv_sum_scenario_block", loc)
