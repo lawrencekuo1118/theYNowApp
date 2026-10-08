@@ -679,6 +679,17 @@ lab_cluster_match_ticker <- function(tickers, focus) {
   tks2 <- gsub("\\.", "-", tks)
   hit <- which(tks2 == foc2)
   if (length(hit)) return(tks[[hit[[1]]]])
+  # #region agent log
+  if (exists(".ynow_dbg_radar_focus", mode = "function") &&
+      nzchar(foc) && !grepl("^2330(\\.TW)?$", foc, ignore.case = TRUE)) {
+    .ynow_dbg_radar_focus("B", "lab_clustering.R:lab_cluster_match_ticker", "no match for non-2330 focus", list(
+      focus = foc,
+      n_tickers = length(tks),
+      tickers_head = utils::head(tks, 10),
+      bare_focus = bare(foc)
+    ))
+  }
+  # #endregion
   NA_character_
 }
 
