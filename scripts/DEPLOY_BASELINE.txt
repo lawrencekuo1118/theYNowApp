@@ -8,5 +8,5 @@ short=df08926
 message=chore: bump display version to v21.40
 captured_at=2026-10-08T10:15:00Z
 source_branch=cursor/zh-tw-mainland-audit-911b
-display_version=v21.40
+display_version=v21.41
 note=Canonical live line is app_21.0. Bundle 12663946 ships v21.40: zh-TW Mainland-trad audit (帶寬→區間、點擊→點選、一鍵→一次產出、可替代對象→可替代標的、風險提示→風險警語、抓取→擷取). Deploy via scripts/deploy_app_21.R.
