@@ -1,12 +1,12 @@
 source=shinyapps.io TheYNowApp
-bundleId=12660704
+bundleId=12662218
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=6092cb5
-commit=6092cb5
-short=6092cb5
-message=chore: bump display version to v21.34
-captured_at=2026-10-07T17:45:00Z
+aligned_git=78c200f
+commit=78c200f
+short=78c200f
+message=chore: bump display version to v21.35
+captured_at=2026-10-08T01:02:23Z
 source_branch=cursor/hfv-next-period-prob-911b
 display_version=v21.35
-note=Canonical live line is app_21.0. Bundle 12660704 ships v21.34: HFV toolbar chips hide native radio/checkbox so dots no longer cover labels; Show benchmark is a plain flex checkbox. Deploy via scripts/deploy_app_21.R.
+note=Canonical live line is app_21.0. Bundle 12662218 ships v21.35: HFV findings merge up/down and shrink/expand into paired KPI cells; TW mode inverts bullish=red / bearish=green; strip order-ticket disclaimer copy outside About legal page. Deploy via scripts/deploy_app_21.R.
