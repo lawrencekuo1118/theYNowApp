@@ -8,5 +8,5 @@ short=5072884
 message=chore: bump display version to v21.38
 captured_at=2026-10-08T05:28:00Z
 source_branch=cursor/hfv-oos-labels-tw-911b
-display_version=v21.38
+display_version=v21.39
 note=Canonical live line is app_21.0. Bundle 12663009 ships v21.38: naturalize HFV OOS radio labels (擴張窗樣本外命中率 / Expanding-window OOS hit rates). Deploy via scripts/deploy_app_21.R.
