@@ -8,5 +8,5 @@ short=d8b9824
 message=chore: bump display version to v21.45
 captured_at=2026-10-08T15:55:00Z
 source_branch=cursor/bluechip-filter-layout-911b
-display_version=v21.45
+display_version=v21.46
 note=Canonical live line is app_21.0. Bundle 12665085 ships v21.45: Blue Chip EQ/Piotroski 1:1 row; US Listed+ADR row; TW boards unchanged in left column. Deploy via scripts/deploy_app_21.R.
