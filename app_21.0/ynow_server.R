@@ -8931,7 +8931,7 @@ server <- function(input, output, session) {
     }
     if (length(choices) < 1L) {
       return(tags$p(
-        class = "ynow-hfv-toolbar__hint",
+        class = "ynow-hfv-page-controls__hint",
         ui_str("bt_freq_insufficient", loc)
       ))
     }
@@ -8940,18 +8940,13 @@ server <- function(input, output, session) {
       pref <- as.character(APP_DEFAULTS$bt_fv_analysis_freq %||% "quarterly")[1]
       cur <- if (pref %in% unname(choices)) pref else if ("quarterly" %in% unname(choices)) "quarterly" else unname(choices)[[1]]
     }
-    tagList(
-      radioButtons(
-        "bt_fv_analysis_freq",
-        ui_str("hfv_analysis_freq_label", loc),
-        inline = TRUE,
-        choices = choices,
-        selected = cur
-      ),
-      tags$p(
-        class = "ynow-hfv-toolbar__hint",
-        ui_str("bt_freq_hint", loc)
-      )
+    # Compact page-level control (under How-to-read); no long hint block
+    radioButtons(
+      "bt_fv_analysis_freq",
+      ui_str("hfv_analysis_freq_label", loc),
+      inline = TRUE,
+      choices = choices,
+      selected = cur
     )
   })
 

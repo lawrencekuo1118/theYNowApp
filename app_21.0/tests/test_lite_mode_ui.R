@@ -369,6 +369,12 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl("ynow-hfv-kpi-grid", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_hfv_overlay_vs_replay_note", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-toolbar--in-ch2", txt, fixed = TRUE))
+  # Analysis frequency is page-level under How-to-read (not inside Ch2 toolbar)
+  testthat::expect_true(grepl("ynow_hfv_page_controls", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-hfv-page-controls", txt, fixed = TRUE))
+  pos_method_end <- regexpr("ynow_hfv_page_controls", txt, fixed = TRUE)[1]
+  pos_ch1_after_freq <- regexpr("ynow_hfv_ch1_title", txt, fixed = TRUE)[1]
+  testthat::expect_true(pos_method < pos_method_end && pos_method_end < pos_ch1_after_freq)
   pos_ch2 <- regexpr("ynow_hfv_ch2_title", txt, fixed = TRUE)[1]
   pos_toolbar <- regexpr('id = \"ynow_hfv_toolbar\"', txt, perl = TRUE)[1]
   pos_results <- regexpr("ynow_hfv_sec_results", txt, fixed = TRUE)[1]
@@ -391,8 +397,9 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(length(ch2_toolbar_block) == 1L && nzchar(ch2_toolbar_block))
   testthat::expect_true(grepl("bt_fv_replay_model", ch2_toolbar_block, fixed = TRUE))
   testthat::expect_false(grepl("bt_fv_models", ch2_toolbar_block, fixed = TRUE))
-  # Ch2 toolbar: 3 equal columns; options stay pill-shaped (border-radius 999px)
-  testthat::expect_true(grepl("ynow-hfv-toolbar--in-ch2[\\s\\S]*?repeat\\(3, minmax\\(0, 1fr\\)\\)", txt, perl = TRUE))
+  testthat::expect_false(grepl("bt_fv_analysis_freq", ch2_toolbar_block, fixed = TRUE))
+  # Ch2 toolbar: 2 equal columns; options stay pill-shaped (border-radius 999px)
+  testthat::expect_true(grepl("ynow-hfv-toolbar--in-ch2[\\s\\S]*?repeat\\(2, minmax\\(0, 1fr\\)\\)", txt, perl = TRUE))
   testthat::expect_true(grepl("border-radius: 999px", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-backtest-report", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-backtest-toolbar", txt, fixed = TRUE))

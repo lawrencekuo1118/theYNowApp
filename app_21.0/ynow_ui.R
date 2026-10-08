@@ -1938,6 +1938,18 @@ beta_rolling_section_ui <- function() {
               )
             ),
 
+            # Page-level common control (under How-to-read): analysis frequency
+            tags$div(
+              class = "ynow-hfv-page-controls",
+              role = "group",
+              `aria-label` = "HFV page controls",
+              id = "ynow_hfv_page_controls",
+              tags$div(
+                class = "ynow-hfv-page-controls__freq",
+                uiOutput("bt_fv_analysis_freq_ui")
+              )
+            ),
+
             # --- Chapter I: FV vs market ---
             tags$section(
               class = "ynow-hfv-chapter",
@@ -2067,10 +2079,6 @@ beta_rolling_section_ui <- function() {
                         language = "zh-TW"
                       )
                     )
-                  ),
-                  tags$div(
-                    class = "ynow-hfv-toolbar__group",
-                    uiOutput("bt_fv_analysis_freq_ui")
                   ),
                   tags$div(
                     class = "ynow-hfv-toolbar__group ynow-hfv-toolbar__group--wide",
@@ -5643,10 +5651,103 @@ ui <- dashboardPage(
           margin: 8px 0 12px 0;
           grid-template-columns: 1fr;
         }
-        /* Section II: three equal columns + full-width OOS row; options fill each group */
+        /* Page-level common controls (under How-to-read): compact analysis frequency */
+        .ynow-hfv-page-controls {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 8px 16px;
+          width: 100%;
+          margin: 0 0 16px 0;
+          padding: 8px 12px;
+          background: #f7f8fa;
+          border: 1px solid #e6e8eb;
+          border-radius: 6px;
+          box-sizing: border-box;
+        }
+        .ynow-hfv-page-controls__freq {
+          flex: 1 1 auto;
+          min-width: 0;
+        }
+        .ynow-hfv-page-controls .form-group {
+          margin: 0 !important;
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 8px 12px;
+        }
+        .ynow-hfv-page-controls .shiny-input-radiogroup > label.control-label {
+          display: inline-block;
+          margin: 0;
+          padding: 0;
+          font-size: 12px;
+          font-weight: 700;
+          letter-spacing: 0.02em;
+          text-transform: none;
+          color: #555;
+          line-height: 1.3;
+          white-space: nowrap;
+        }
+        .ynow-hfv-page-controls .shiny-options-group {
+          display: inline-flex !important;
+          flex-wrap: wrap !important;
+          align-items: center;
+          gap: 6px;
+          margin: 0 !important;
+          padding: 0 !important;
+          clear: none;
+        }
+        .ynow-hfv-page-controls .radio,
+        .ynow-hfv-page-controls .radio-inline {
+          float: none !important;
+          display: inline-flex !important;
+          align-items: center;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+        .ynow-hfv-page-controls .radio > label,
+        .ynow-hfv-page-controls .radio-inline,
+        .ynow-hfv-page-controls .radio-inline > label {
+          display: inline-flex !important;
+          align-items: center;
+          justify-content: center;
+          margin: 0 !important;
+          padding: 4px 10px !important;
+          min-height: 28px;
+          font-size: 12px;
+          font-weight: 600;
+          line-height: 1.2;
+          color: #444;
+          background: #fff;
+          border: 1px solid #d0d5dd;
+          border-radius: 999px;
+          cursor: pointer;
+          white-space: nowrap;
+        }
+        .ynow-hfv-page-controls .shiny-options-group input[type="radio"] {
+          position: absolute !important;
+          opacity: 0 !important;
+          width: 0 !important;
+          height: 0 !important;
+          margin: 0 !important;
+          pointer-events: none;
+        }
+        .ynow-hfv-page-controls .shiny-options-group .radio:has(input:checked) > label,
+        .ynow-hfv-page-controls .shiny-options-group .radio-inline:has(input:checked) {
+          color: #0c5484;
+          background: #e8f2f8;
+          border-color: #0c5484;
+        }
+        .ynow-hfv-page-controls .ynow-hfv-page-controls__hint {
+          margin: 0;
+          font-size: 11px;
+          line-height: 1.35;
+          color: #888;
+        }
+        /* Section II: two equal columns + full-width OOS row; options fill each group */
         .ynow-hfv-toolbar--in-ch2 {
           margin: 0 0 16px 0;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
+          grid-template-columns: repeat(2, minmax(0, 1fr));
         }
         .ynow-hfv-toolbar__group {
           min-width: 0;
@@ -5690,11 +5791,6 @@ ui <- dashboardPage(
         .ynow-hfv-toolbar--in-ch2 #bt_fv_conv_window .shiny-options-group {
           display: grid !important;
           grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: 6px 8px;
-        }
-        .ynow-hfv-toolbar--in-ch2 #bt_fv_analysis_freq .shiny-options-group {
-          display: grid !important;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 6px 8px;
         }
         .ynow-hfv-toolbar--in-ch2 #bt_fv_oos_mode .shiny-options-group {
@@ -5987,10 +6083,13 @@ ui <- dashboardPage(
           }
           .ynow-hfv-toolbar--in-ch2 #bt_fv_replay_model .shiny-options-group,
           .ynow-hfv-toolbar--in-ch2 #bt_fv_conv_window .shiny-options-group,
-          .ynow-hfv-toolbar--in-ch2 #bt_fv_analysis_freq .shiny-options-group,
           .ynow-hfv-toolbar--in-ch2 #bt_fv_oos_mode .shiny-options-group,
           .ynow-hfv-toolbar--above-chart #bt_fv_models .shiny-options-group {
             grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+          .ynow-hfv-page-controls .form-group {
+            flex-direction: column;
+            align-items: flex-start;
           }
           .ynow-hfv-toolbar .radio > label,
           .ynow-hfv-toolbar .radio-inline,
@@ -7052,6 +7151,8 @@ ui <- dashboardPage(
             if (hfvSessTitle && s.hfv_session_params_title) hfvSessTitle.textContent = s.hfv_session_params_title;
             var hfvToolbar = document.getElementById('ynow_hfv_toolbar') || document.querySelector('.ynow-hfv-toolbar');
             if (hfvToolbar && s.hfv_toolbar_aria) hfvToolbar.setAttribute('aria-label', s.hfv_toolbar_aria);
+            var hfvPageCtl = document.getElementById('ynow_hfv_page_controls');
+            if (hfvPageCtl && s.hfv_page_controls_aria) hfvPageCtl.setAttribute('aria-label', s.hfv_page_controls_aria);
             var hfvOverlayCtl = document.getElementById('ynow_hfv_chart_overlay_controls');
             if (hfvOverlayCtl && s.hfv_chart_overlay_aria) hfvOverlayCtl.setAttribute('aria-label', s.hfv_chart_overlay_aria);
             var chartModelsLab = document.querySelector('label[for=\"bt_fv_models\"]');

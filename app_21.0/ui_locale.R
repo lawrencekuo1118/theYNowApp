@@ -1258,6 +1258,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_freq_rebuild_progress = "Rebuilding fundamental value at %s frequency…",
     hfv_toolbar_aria = "HFV report controls",
     hfv_chart_overlay_aria = "HFV chart overlay controls",
+    hfv_page_controls_aria = "HFV page controls",
     funnel_mom_cond1_label = "Cond1: ",
     funnel_mom_cond2_label = "Cond2: ",
 
@@ -3776,6 +3777,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_freq_rebuild_progress = "以%s頻率重建基本面價值…",
     hfv_toolbar_aria = "HFV 報告條件",
     hfv_chart_overlay_aria = "HFV 圖表疊加控制",
+    hfv_page_controls_aria = "HFV 分頁通用控制",
     funnel_mom_cond1_label = "Cond1：",
     funnel_mom_cond2_label = "Cond2：",
 
