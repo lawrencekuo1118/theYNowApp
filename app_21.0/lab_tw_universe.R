@@ -782,13 +782,52 @@ is_tw_esb_ticker <- function(ticker) {
   is_tw_esb_exchange(lookup_tw_universe_exchange(ticker))
 }
 
-#' 台股績優候選：industry_key → tickers（僅上市＋上櫃；不含興櫃）
-lab_tw_quality_candidates <- function() {
+#' Normalize TW board filter codes → TWSE / TPEX / ESB
+#' Accepts English codes or 上市／上櫃／興櫃 labels.
+lab_normalize_tw_boards <- function(boards = c("TWSE", "TPEX")) {
+  b <- toupper(trimws(as.character(boards %||% character(0))))
+  b <- b[nzchar(b) & !is.na(b)]
+  out <- character(0)
+  if (any(b %in% c("TWSE", "TSE", "LISTED", "上市"))) out <- c(out, "TWSE")
+  if (any(b %in% c("TPEX", "TWO", "OTC", "ROTC", "上櫃"))) out <- c(out, "TPEX")
+  if (any(b %in% c("ESB", "EMERGING", "TPEX_ESB", "興櫃"))) out <- c(out, "ESB")
+  unique(out)
+}
+
+#' Whether an exchange string belongs to selected TW boards
+lab_tw_exchange_in_boards <- function(exchange, boards = c("TWSE", "TPEX")) {
+  boards <- lab_normalize_tw_boards(boards)
+  if (!length(boards)) return(FALSE)
+  ex <- toupper(trimws(as.character(exchange %||% "")[1]))
+  if (!nzchar(ex)) return(FALSE)
+  if ("TWSE" %in% boards && ex %in% c("TWSE", "TSE", "LISTED")) return(TRUE)
+  if ("TPEX" %in% boards && ex %in% c("TPEX", "TWO", "OTC", "ROTC")) return(TRUE)
+  if ("ESB" %in% boards && ex %in% c("ESB", "EMERGING", "TPEX_ESB")) return(TRUE)
+  FALSE
+}
+
+#' Canonical board code for a universe exchange (TWSE／TPEX／ESB／"")
+lab_tw_exchange_to_board <- function(exchange) {
+  ex <- toupper(trimws(as.character(exchange %||% "")[1]))
+  if (ex %in% c("TWSE", "TSE", "LISTED")) return("TWSE")
+  if (ex %in% c("TPEX", "TWO", "OTC", "ROTC")) return("TPEX")
+  if (ex %in% c("ESB", "EMERGING", "TPEX_ESB")) return("ESB")
+  ""
+}
+
+#' 台股績優候選：industry_key → tickers
+#' @param boards TWSE／TPEX／ESB（預設上市＋上櫃；可含興櫃）
+lab_tw_quality_candidates <- function(boards = c("TWSE", "TPEX")) {
   u <- tryCatch(lab_get_tw_universe(FALSE), error = function(e) NULL)
   if (is.null(u) || !is.data.frame(u) || nrow(u) == 0L) return(list())
+  boards <- lab_normalize_tw_boards(boards)
+  if (!length(boards)) boards <- c("TWSE", "TPEX")
   if ("exchange" %in% names(u)) {
-    ex <- toupper(as.character(u$exchange))
-    keep_board <- ex %in% c("TWSE", "TSE", "LISTED", "TPEX", "TWO", "OTC", "ROTC")
+    keep_board <- vapply(
+      as.character(u$exchange),
+      function(ex) isTRUE(lab_tw_exchange_in_boards(ex, boards)),
+      logical(1)
+    )
     u <- u[keep_board, , drop = FALSE]
   }
   if (nrow(u) == 0L) return(list())

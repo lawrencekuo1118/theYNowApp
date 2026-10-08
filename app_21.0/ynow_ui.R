@@ -1540,9 +1540,10 @@ beta_rolling_section_ui <- function() {
                       tags$span(id = "ynow_lab_im_lb_mode_label", "排行視角"),
                       choiceNames = list(
                         tags$span(id = "ynow_lab_im_lb_mode_overall", "整體前十名"),
-                        tags$span(id = "ynow_lab_im_lb_mode_by_ind", "選定產業前十名")
+                        tags$span(id = "ynow_lab_im_lb_mode_by_ind", "選定產業前十名"),
+                        tags$span(id = "ynow_lab_im_lb_mode_ind_avg", "產業市值加權漲幅")
                       ),
-                      choiceValues = list("overall", "by_industry"),
+                      choiceValues = list("overall", "by_industry", "industry_avg"),
                       selected = APP_DEFAULTS$lab_im_lb_mode,
                       inline = TRUE
                     ),
@@ -1551,7 +1552,8 @@ beta_rolling_section_ui <- function() {
                       style = "color:#888; font-size:12px; line-height:1.45; margin:-4px 0 8px 0;",
                       paste0(
                         "整體前十名：跨本次已評估產業依年化估值漲幅取 Top 10，並顯示產業欄。",
-                        "選定產業前十名：僅在查詢條件所選產業內取 Top 10（單一榜，非每個產業各一表）。",
+                        "選定產業前十名：所選產業內單一 Top 10；產業內排名自該產業第 1 名起算（非跨產業流水號）。",
+                        "產業市值加權漲幅：各產業以 Σ(市值×年化估值漲幅)/Σ(市值) 排名（每元市值加權）。",
                         "前十名只從合格者取最多 10 檔；合格不足 10 時不會湊滿。"
                       )
                     )
@@ -1593,6 +1595,28 @@ beta_rolling_section_ui <- function() {
                           size = 10,
                           container = "body",
                           dropupAuto = TRUE
+                        )
+                      ),
+                      tags$div(
+                        class = "ynow-lab-im-boards ynow-tw-only",
+                        style = "margin:8px 0 4px 0;",
+                        checkboxGroupInput(
+                          "lab_im_boards",
+                          tags$span(id = "ynow_lab_im_boards_label", "板別"),
+                          choiceNames = list(
+                            tags$span(id = "ynow_lab_im_board_twse", "上市"),
+                            tags$span(id = "ynow_lab_im_board_tpex", "上櫃"),
+                            tags$span(id = "ynow_lab_im_board_esb", "興櫃")
+                          ),
+                          choiceValues = list("TWSE", "TPEX", "ESB"),
+                          selected = APP_DEFAULTS$lab_im_boards,
+                          inline = TRUE
+                        ),
+                        tags$span(
+                          id = "ynow_lab_im_boards_hint",
+                          class = "ynow-lab-im-quality-hint ynow-full-only",
+                          style = "display:block; color:#888; font-size:12px; margin-top:-4px;",
+                          "複選上市／上櫃／興櫃；預設上市＋上櫃。興櫃資料覆蓋較不穩，勾選後才納入績優評估池。"
                         )
                       ),
                       tags$div(
@@ -7681,6 +7705,18 @@ ui <- dashboardPage(
             if (labLbOverall && s.lab_im_lb_mode_overall) labLbOverall.textContent = s.lab_im_lb_mode_overall;
             var labLbByInd = document.getElementById('ynow_lab_im_lb_mode_by_ind');
             if (labLbByInd && s.lab_im_lb_mode_by_industry) labLbByInd.textContent = s.lab_im_lb_mode_by_industry;
+            var labLbIndAvg = document.getElementById('ynow_lab_im_lb_mode_ind_avg');
+            if (labLbIndAvg && s.lab_im_lb_mode_industry_avg) labLbIndAvg.textContent = s.lab_im_lb_mode_industry_avg;
+            var labBoardsLabel = document.getElementById('ynow_lab_im_boards_label');
+            if (labBoardsLabel && s.lab_im_boards_label) labBoardsLabel.textContent = s.lab_im_boards_label;
+            var labBoardTwse = document.getElementById('ynow_lab_im_board_twse');
+            if (labBoardTwse && s.lab_im_board_twse) labBoardTwse.textContent = s.lab_im_board_twse;
+            var labBoardTpex = document.getElementById('ynow_lab_im_board_tpex');
+            if (labBoardTpex && s.lab_im_board_tpex) labBoardTpex.textContent = s.lab_im_board_tpex;
+            var labBoardEsb = document.getElementById('ynow_lab_im_board_esb');
+            if (labBoardEsb && s.lab_im_board_esb) labBoardEsb.textContent = s.lab_im_board_esb;
+            var labBoardsHint = document.getElementById('ynow_lab_im_boards_hint');
+            if (labBoardsHint && s.lab_im_boards_hint) labBoardsHint.textContent = s.lab_im_boards_hint;
             var labLbHelp = document.getElementById('ynow_lab_im_lb_scope_help');
             if (labLbHelp && s.lab_im_lb_scope_help) labLbHelp.textContent = s.lab_im_lb_scope_help;
             var labGateLabel = document.getElementById('ynow_lab_im_gate_label');

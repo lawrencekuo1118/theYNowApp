@@ -2414,7 +2414,8 @@ server <- function(input, output, session) {
       bt_nav_window = c("Backtest", "NAV window", "Strategy NAV 視窗"),
       lab_im_pool_rank = c("Lab", "候選截斷邏輯", "市值／概念股／近一年漲幅／隨機"),
       lab_im_concepts = c("Lab", "概念股群", "pool = concept 時"),
-      lab_im_lb_mode = c("Lab", "Leaderboard mode", "overall / by_industry"),
+      lab_im_lb_mode = c("Lab", "Leaderboard mode", "overall / by_industry / industry_avg"),
+      lab_im_boards = c("Lab", "TW boards", "TWSE / TPEX / ESB"),
       lab_im_max_n = c("Lab", "Universe size N", "顯示上限"),
       lab_im_max_n_custom = c("Lab", "Custom universe N", "N = custom 時"),
       lab_im_eq_only = c("Lab", "Earnings quality only", "僅盈餘品質通過"),
@@ -2433,7 +2434,7 @@ server <- function(input, output, session) {
     lite_default_keys <- c(
       "stock_code", "industry_choice", "session_ccy",
       "lab_im_pool_rank", "lab_im_concepts",
-      "lab_im_lb_mode", "lab_im_max_n", "lab_im_max_n_custom",
+      "lab_im_lb_mode", "lab_im_boards", "lab_im_max_n", "lab_im_max_n_custom",
       "lab_im_eq_only", "lab_im_include_adr",
       "lab_cluster_k", "lab_cluster_x", "lab_cluster_y"
     )
@@ -11781,13 +11782,30 @@ server <- function(input, output, session) {
   # ------------------------------------------
   # Lab：產業×模型複選；Piotroski 高門檻（F-Score≥7）後依年化估值漲幅排序
   # ------------------------------------------
+  .lab_im_boards <- reactive({
+    mode <- tryCatch(normalize_market_mode(market_mode()), error = function(e) "US")
+    if (!identical(mode, "TW")) return(character(0))
+    raw <- input$lab_im_boards
+    boards <- if (exists("lab_normalize_tw_boards", mode = "function")) {
+      lab_normalize_tw_boards(raw %||% APP_DEFAULTS$lab_im_boards)
+    } else {
+      as.character(raw %||% c("TWSE", "TPEX"))
+    }
+    if (!length(boards)) boards <- c("TWSE", "TPEX")
+    boards
+  })
+
   lab_im_catalog <- reactive({
     lab_im_catalog_nonce()
     mode <- market_mode()
-    tryCatch(lab_build_industry_method_catalog(market_mode = mode), error = function(e) {
-      showNotification(.ui_msg("notif_industry_catalog_fail", err = e$message), type = "error")
-      data.frame()
-    })
+    boards <- tryCatch(.lab_im_boards(), error = function(e) c("TWSE", "TPEX"))
+    tryCatch(
+      lab_build_industry_method_catalog(market_mode = mode, boards = boards),
+      error = function(e) {
+        showNotification(.ui_msg("notif_industry_catalog_fail", err = e$message), type = "error")
+        data.frame()
+      }
+    )
   })
 
   output$lab_im_bluechip_blurb <- renderUI({
@@ -11811,13 +11829,13 @@ server <- function(input, output, session) {
       n_twse <- if (is.null(meta)) 0L else as.integer(meta$n_twse %||% 0L)
       n_tpex <- if (is.null(meta)) 0L else as.integer(meta$n_tpex %||% 0L)
       n_esb <- if (is.null(meta)) 0L else as.integer(meta$n_esb %||% 0L)
-      label <- sprintf("上市／上櫃／興櫃（搜尋全納；績優僅上市＋上櫃 %d＋%d）", n_twse, n_tpex)
-      if (n_esb > 0L) {
-        label <- sprintf(
-          "上市 %d／上櫃 %d／興櫃 %d（搜尋全納；Blue Chip 不含興櫃）",
-          n_twse, n_tpex, n_esb
-        )
-      }
+      boards_sel <- tryCatch(.lab_im_boards(), error = function(e) c("TWSE", "TPEX"))
+      board_txt <- paste(boards_sel, collapse = "+")
+      if (!nzchar(board_txt)) board_txt <- "TWSE+TPEX"
+      label <- sprintf(
+        "上市 %d／上櫃 %d／興櫃 %d（搜尋全納；績優板別＝%s）",
+        n_twse, n_tpex, n_esb, board_txt
+      )
     } else {
       meta <- tryCatch(lab_us_universe_meta(), error = function(e) NULL)
       if (is.null(meta) || as.integer(meta$n %||% 0L) < 1L) {
@@ -12082,8 +12100,10 @@ server <- function(input, output, session) {
     scope <- as.character(input$lab_im_lb_mode %||% "overall")[1]
     gate_on <- isTRUE(input$lab_im_gate_only)
     eq_on <- isTRUE(input$lab_im_eq_only)
-    scope_txt <- if (identical(scope, "by_industry")) {
-      "選定產業內 Top 10"
+    scope_txt <- if (identical(scope, "industry_avg")) {
+      "產業市值加權漲幅"
+    } else if (identical(scope, "by_industry")) {
+      "選定產業內 Top 10（產業內排名自第 1 名起算）"
     } else {
       "整體 Top 10（跨本次已評估產業）"
     }
@@ -12163,9 +12183,10 @@ server <- function(input, output, session) {
       ))
     }
     scope <- as.character(input$lab_im_lb_mode %||% "overall")[1]
-    if (!scope %in% c("overall", "by_industry")) scope <- "overall"
+    if (!scope %in% c("overall", "by_industry", "industry_avg")) scope <- "overall"
     # overall = Top 10 across all evaluated industries;
-    # by_industry = Top 10 within currently selected industries (one list)
+    # by_industry = Top 10 within selected industries (Industry rank from 1 within each industry);
+    # industry_avg = industries ranked by mcap-weighted average annualized upside
     lb_src <- merged
     ind_filter <- character(0)
     if (identical(scope, "overall")) {
@@ -12231,7 +12252,7 @@ server <- function(input, output, session) {
     gate_on <- isTRUE(input$lab_im_gate_only)
     eq_on <- isTRUE(input$lab_im_eq_only)
     scope <- as.character(input$lab_im_lb_mode %||% "overall")[1]
-    if (!scope %in% c("overall", "by_industry")) scope <- "overall"
+    if (!scope %in% c("overall", "by_industry", "industry_avg")) scope <- "overall"
     lb_src <- merged
     ind_filter <- character(0)
     if (identical(scope, "overall")) {
@@ -12262,23 +12283,34 @@ server <- function(input, output, session) {
     )
     pool <- tryCatch(
       lab_leaderboard_pool(
-        if (identical(scope, "by_industry")) merged else lb_src,
+        if (scope %in% c("by_industry", "industry_avg")) merged else lb_src,
         eq_only = eq_on, gate_only = gate_on
       ),
       error = function(e) NULL
     )
     n_show <- if (is.data.frame(lb)) nrow(lb) else 0L
     n_qual <- if (is.data.frame(pool)) nrow(pool) else 0L
-    n_eval <- nrow(if (identical(scope, "by_industry")) merged else lb_src)
+    n_eval <- nrow(if (scope %in% c("by_industry", "industry_avg")) merged else lb_src)
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
-    if (identical(scope, "by_industry")) {
+    if (identical(scope, "industry_avg")) {
+      txt <- tryCatch(
+        sprintf(
+          ui_str("lab_im_lb_status_ind_avg", loc),
+          as.integer(n_show), 10L, as.integer(n_qual), as.integer(n_eval)
+        ),
+        error = function(e) sprintf(
+          "產業市值加權漲幅顯示 %d／10（合格檔 %d／已評估 %d）。每一列為一產業；權重＝該產業內市值占比。",
+          as.integer(n_show), as.integer(n_qual), as.integer(n_eval)
+        )
+      )
+    } else if (identical(scope, "by_industry")) {
       txt <- tryCatch(
         sprintf(
           ui_str("lab_im_lb_status_by_ind", loc),
           as.integer(n_show), as.integer(n_qual), as.integer(n_eval)
         ),
         error = function(e) sprintf(
-          "選定產業內前十名顯示 %d／10（合格 %d／已評估 %d）。僅在查詢條件所選產業內取最多 10 檔；不足不湊滿。",
+          "選定產業內前十名顯示 %d／10（合格 %d／已評估 %d）。產業內排名自該產業第 1 名起算；不足不湊滿。",
           as.integer(n_show), as.integer(n_qual), as.integer(n_eval)
         )
       )
@@ -12515,7 +12547,7 @@ server <- function(input, output, session) {
         merged_lb <- tryCatch(lab_im_merged(), error = function(e) NULL)
         if (is.data.frame(merged_lb) && nrow(merged_lb) > 0) {
           lb_scope <- as.character(isolate(input$lab_im_lb_mode) %||% "overall")[1]
-          if (!lb_scope %in% c("overall", "by_industry")) lb_scope <- "overall"
+          if (!lb_scope %in% c("overall", "by_industry", "industry_avg")) lb_scope <- "overall"
           lb_src <- merged_lb
           ind_filter <- character(0)
           if (identical(lb_scope, "overall")) {

@@ -834,7 +834,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     lab_im_lb_status_by_ind = paste0(
       "Top 10 in selected industries shows %d/10 (qualified %d / evaluated %d). ",
-      "Ranks only within industries chosen in Rankings filters; shortfalls are not padded."
+      "Industry rank starts at 1 within each industry; shortfalls are not padded."
     ),
     lab_im_lb_empty = paste0(
       "Top 10 has no rows. Evaluated %d; annualized upside available %d; F-Score≥7 pass %d; ",
@@ -850,10 +850,24 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_lb_mode_label = "Ranking view",
     lab_im_lb_mode_overall = "Overall Top 10",
     lab_im_lb_mode_by_industry = "Top 10 in selected industries",
+    lab_im_lb_mode_industry_avg = "Industry mcap-weighted upside",
     lab_im_lb_scope_help = paste0(
       "Overall Top 10: across industries from this evaluation run, by annualized valuation appreciation (Industry column shown). ",
-      "Top 10 in selected industries: one Top 10 list within the industries chosen in Rankings filters—not a separate Top 10 per industry. ",
+      "Top 10 in selected industries: one Top 10 within chosen industries; Industry rank starts at 1 within each industry (not a cross-industry serial). ",
+      "Industry mcap-weighted upside: rank industries by Σ(market cap × annualized upside) / Σ(market cap) (per-dollar market-cap weight). ",
       "Top 10 takes at most 10 qualified names; shortfalls are not padded."
+    ),
+    lab_im_lb_status_ind_avg = paste0(
+      "Industry mcap-weighted upside shows %d/%d (qualified names %d / evaluated %d). ",
+      "Each row is one industry; weight = market cap share within that industry."
+    ),
+    lab_im_boards_label = "Listing board",
+    lab_im_board_twse = "TWSE (listed)",
+    lab_im_board_tpex = "TPEx (OTC)",
+    lab_im_board_esb = "ESB (emerging)",
+    lab_im_boards_hint = paste0(
+      "Multi-select TWSE / TPEx / ESB. Default: TWSE + TPEx. ",
+      "ESB coverage is less stable—include it only when checked."
     ),
     lab_im_gate_label = "Piotroski high gate",
     lab_im_gate_hint = paste0(
@@ -3363,7 +3377,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     lab_im_lb_status_by_ind = paste0(
       "選定產業內前十名顯示 %d／10（合格 %d／已評估 %d）。",
-      "僅在查詢條件所選產業內取最多 10 檔；不足不湊滿。"
+      "產業內排名自該產業第 1 名起算；不足不湊滿。"
     ),
     lab_im_lb_empty = paste0(
       "前十名尚無列可顯示。已評估 %d 檔；能量到年化漲幅 %d；F-Score≥7 通過 %d；目前勾選條件下合格 %d。",
@@ -3379,10 +3393,24 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_lb_mode_label = "排行視角",
     lab_im_lb_mode_overall = "整體前十名",
     lab_im_lb_mode_by_industry = "選定產業前十名",
+    lab_im_lb_mode_industry_avg = "產業市值加權漲幅",
     lab_im_lb_scope_help = paste0(
       "整體前十名：跨本次已評估產業依年化估值漲幅取 Top 10，並顯示產業欄。",
-      "選定產業前十名：僅在查詢條件所選產業內取 Top 10（單一榜，非每個產業各一表）。",
+      "選定產業前十名：所選產業內單一 Top 10；產業內排名自該產業第 1 名起算（非跨產業流水號）。",
+      "產業市值加權漲幅：各產業以 Σ(市值×年化估值漲幅)/Σ(市值) 排名（每元市值加權）。",
       "前十名只從合格者取最多 10 檔；合格不足 10 時不會湊滿。"
+    ),
+    lab_im_lb_status_ind_avg = paste0(
+      "產業市值加權漲幅顯示 %d／%d（合格檔 %d／已評估 %d）。",
+      "每一列為一產業；權重＝該產業內市值占比。"
+    ),
+    lab_im_boards_label = "板別",
+    lab_im_board_twse = "上市",
+    lab_im_board_tpex = "上櫃",
+    lab_im_board_esb = "興櫃",
+    lab_im_boards_hint = paste0(
+      "複選上市／上櫃／興櫃；預設上市＋上櫃。",
+      "興櫃資料覆蓋較不穩，勾選後才納入績優評估池。"
     ),
     lab_im_gate_label = "Piotroski 高門檻",
     lab_im_gate_hint = paste0(

@@ -216,6 +216,8 @@ APP_DEFAULTS <- list(
   lab_im_pool_rank = "mcap",
   lab_im_concepts = character(0),
   lab_im_lb_mode = "overall",
+  # TW Blue Chip board filter: 上市／上櫃／興櫃 (TWSE／TPEX／ESB)
+  lab_im_boards = c("TWSE", "TPEX"),
   lab_im_max_n = "25",
   lab_im_max_n_custom = 25L,
   lab_im_eq_only = TRUE,
