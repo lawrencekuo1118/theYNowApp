@@ -8,5 +8,5 @@ short=ec41b76
 message=chore: bump display version to v21.36
 captured_at=2026-10-08T01:30:00Z
 source_branch=cursor/hfv-next-period-prob-911b
-display_version=v21.36
+display_version=v21.37
 note=Canonical live line is app_21.0. Bundle 12662281 ships v21.36: HFV analysis frequency moved under How-to-read as compact page-level control; Ch2 toolbar is Replay + Sample window + OOS only. Deploy via scripts/deploy_app_21.R.
