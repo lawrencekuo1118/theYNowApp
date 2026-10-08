@@ -8,5 +8,5 @@ short=d7ed5a3
 message=chore: bump display version to v21.47
 captured_at=2026-10-08T16:22:00Z
 source_branch=cursor/mobile-multiselect-wrap-911b
-display_version=v21.47
+display_version=v21.48
 note=Canonical live line is app_21.0. Bundle 12665195 ships v21.47: mobile inline multi-option wrap left-align (flex-wrap + margin reset). Deploy via scripts/deploy_app_21.R.
