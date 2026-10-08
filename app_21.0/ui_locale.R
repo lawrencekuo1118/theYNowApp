@@ -876,6 +876,14 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Default on: Top 10 and Detail keep only Piotroski F-Score≥7 (quality screen). ",
       "Uncheck to drop the F-Score gate. Shortfalls are not padded to N or to 10."
     ),
+    lab_im_no_alert_label = "No FS alerts",
+    lab_im_no_alert_hint = paste0(
+      "Default on: Top 10 and Detail keep only names with zero financial-statement alerts ",
+      "(Schilit warnings + earnings-quality red flags — same definition as YNOW FS alerts). ",
+      "Uncheck to skip that filter. Shortfalls are not padded to N."
+    ),
+    lab_im_no_alert_on = "No FS alerts",
+    lab_im_no_alert_off = "FS alerts not filtered",
     lab_im_run_title = "Piotroski high gate (F-Score≥7) + rank by annualized valuation appreciation",
     lab_im_progress = "Evaluating (Piotroski high gate + {n}-year annualized valuation appreciation)…",
     lab_im_done_gate = "Evaluated {n} names; Piotroski high gate pass {q}",
@@ -3421,6 +3429,13 @@ locale_for_market <- function(mode = get_market_mode()) {
       "預設勾選：前十名與明細只列 Piotroski F-Score≥7（品質檢核）者；",
       "取消勾選則不設 F-Score 門檻。合格不足 N 或不足 10 時不會湊滿。"
     ),
+    lab_im_no_alert_label = "無財報警訊",
+    lab_im_no_alert_hint = paste0(
+      "預設勾選：排行榜／明細只列財報警訊為 0 者（Schilit 警示＋盈餘品質紅旗，",
+      "與 YNOW「財報警訊」同一套定義）；取消勾選則不過濾。合格不足 N 時不湊滿。"
+    ),
+    lab_im_no_alert_on = "無財報警訊",
+    lab_im_no_alert_off = "不過濾財報警訊",
     lab_im_run_title = "Piotroski 高門檻（F-Score≥7）＋年化估值漲幅排序",
     lab_im_progress = "評估中（Piotroski 高門檻＋{n} 年年化估值漲幅）…",
     lab_im_done_gate = "完成評估 {n} 檔；Piotroski 高門檻通過 {q} 檔",

@@ -2419,6 +2419,7 @@ server <- function(input, output, session) {
       lab_im_max_n = c("Lab", "Universe size N", "顯示上限"),
       lab_im_max_n_custom = c("Lab", "Custom universe N", "N = custom 時"),
       lab_im_eq_only = c("Lab", "Earnings quality only", "僅盈餘品質通過"),
+      lab_im_no_alert = c("Lab", "No FS alerts", "無財報警訊"),
       lab_im_include_adr = c("Lab", "Include ADRs", "含 ADR"),
       lab_im_gate_only = c("Lab", "Gate only", "Piotroski 高門檻"),
       lab_im_methods = c("Lab", "Valuation models", "Lab 計分模型"),
@@ -2435,7 +2436,7 @@ server <- function(input, output, session) {
       "stock_code", "industry_choice", "session_ccy",
       "lab_im_pool_rank", "lab_im_concepts",
       "lab_im_lb_mode", "lab_im_boards", "lab_im_max_n", "lab_im_max_n_custom",
-      "lab_im_eq_only", "lab_im_include_adr",
+      "lab_im_eq_only", "lab_im_no_alert", "lab_im_include_adr",
       "lab_cluster_k", "lab_cluster_x", "lab_cluster_y"
     )
     # Lite has no module extras outside APP_DEFAULTS (RI industry ROE is Full-only).
@@ -12100,6 +12101,7 @@ server <- function(input, output, session) {
     scope <- as.character(input$lab_im_lb_mode %||% "overall")[1]
     gate_on <- isTRUE(input$lab_im_gate_only)
     eq_on <- isTRUE(input$lab_im_eq_only)
+    no_alert_on <- isTRUE(input$lab_im_no_alert)
     scope_txt <- if (identical(scope, "industry_avg")) {
       "產業市值加權漲幅"
     } else if (identical(scope, "by_industry")) {
@@ -12107,10 +12109,17 @@ server <- function(input, output, session) {
     } else {
       "整體 Top 10（跨本次已評估產業）"
     }
+    loc_note <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "zh-TW")
     gate_txt <- paste0(
-      if (gate_on) tryCatch(ui_str("lab_im_gate_on", isolate(ui_locale())), error = function(e) "F-Score≥7") else tryCatch(ui_str("lab_im_gate_off", isolate(ui_locale())), error = function(e) "不設 F-Score 門檻"),
+      if (gate_on) tryCatch(ui_str("lab_im_gate_on", loc_note), error = function(e) "F-Score≥7") else tryCatch(ui_str("lab_im_gate_off", loc_note), error = function(e) "不設 F-Score 門檻"),
       "／",
-      if (eq_on) "盈餘品質通過" else "不過濾盈餘品質"
+      if (eq_on) "盈餘品質通過" else "不過濾盈餘品質",
+      "／",
+      if (no_alert_on) {
+        tryCatch(ui_str("lab_im_no_alert_on", loc_note), error = function(e) "無財報警訊")
+      } else {
+        tryCatch(ui_str("lab_im_no_alert_off", loc_note), error = function(e) "不過濾財報警訊")
+      }
     )
     if (n_eval == 0L) {
       cap_txt <- if (is.finite(display_n)) {
@@ -12213,6 +12222,7 @@ server <- function(input, output, session) {
       top_n = 10L,
       eq_only = isTRUE(input$lab_im_eq_only),
       gate_only = isTRUE(input$lab_im_gate_only),
+      no_alert = isTRUE(input$lab_im_no_alert),
       scope = scope,
       industry_filter = ind_filter
     )
@@ -12220,7 +12230,8 @@ server <- function(input, output, session) {
       pool <- lab_leaderboard_pool(
         if (identical(scope, "by_industry")) merged else lb_src,
         eq_only = isTRUE(input$lab_im_eq_only),
-        gate_only = isTRUE(input$lab_im_gate_only)
+        gate_only = isTRUE(input$lab_im_gate_only),
+        no_alert = isTRUE(input$lab_im_no_alert)
       )
       fs_m <- suppressWarnings(as.numeric(merged$f_score))
       n_f7 <- sum(is.finite(fs_m) & fs_m >= 7, na.rm = TRUE)
@@ -12251,6 +12262,7 @@ server <- function(input, output, session) {
     if (is.null(merged) || nrow(merged) == 0) return(NULL)
     gate_on <- isTRUE(input$lab_im_gate_only)
     eq_on <- isTRUE(input$lab_im_eq_only)
+    no_alert_on <- isTRUE(input$lab_im_no_alert)
     scope <- as.character(input$lab_im_lb_mode %||% "overall")[1]
     if (!scope %in% c("overall", "by_industry", "industry_avg")) scope <- "overall"
     lb_src <- merged
@@ -12277,6 +12289,7 @@ server <- function(input, output, session) {
     lb <- tryCatch(
       lab_quality_leaderboard(
         lb_src, top_n = 10L, eq_only = eq_on, gate_only = gate_on,
+        no_alert = no_alert_on,
         scope = scope, industry_filter = ind_filter
       ),
       error = function(e) NULL
@@ -12284,7 +12297,7 @@ server <- function(input, output, session) {
     pool <- tryCatch(
       lab_leaderboard_pool(
         if (scope %in% c("by_industry", "industry_avg")) merged else lb_src,
-        eq_only = eq_on, gate_only = gate_on
+        eq_only = eq_on, gate_only = gate_on, no_alert = no_alert_on
       ),
       error = function(e) NULL
     )
@@ -12346,6 +12359,7 @@ server <- function(input, output, session) {
     display_n <- lab_resolve_im_max_n(input$lab_im_max_n, input$lab_im_max_n_custom)
     eq_on <- isTRUE(input$lab_im_eq_only)
     gate_on <- isTRUE(input$lab_im_gate_only)
+    no_alert_on <- isTRUE(input$lab_im_no_alert)
     if (nrow(merged) == 0) {
       scores <- lab_im_scores()
       msg <- if (is.null(scores) || !is.data.frame(scores) || nrow(scores) == 0) {
@@ -12362,12 +12376,13 @@ server <- function(input, output, session) {
       merged,
       display_n = display_n,
       eq_only = eq_on,
-      gate_only = gate_on
+      gate_only = gate_on,
+      no_alert = no_alert_on
     )
     if (is.null(merged) || nrow(merged) == 0L) {
       return(DT::datatable(
         data.frame(
-          訊息 = "目前勾選條件下尚無合格列可顯示（不會為湊滿 N 而另抽樣）。可取消「盈餘品質」或「Piotroski 高門檻」，或提高 N／放寬產業後再搜尋。"
+          訊息 = "目前勾選條件下尚無合格列可顯示（不會為湊滿 N 而另抽樣）。可取消「盈餘品質」、「Piotroski 高門檻」或「無財報警訊」，或提高 N／放寬產業後再搜尋。"
         ),
         rownames = FALSE, options = list(dom = "t")
       ))
@@ -12443,7 +12458,8 @@ server <- function(input, output, session) {
       merged,
       display_n = display_n,
       eq_only = isTRUE(isolate(input$lab_im_eq_only)),
-      gate_only = isTRUE(isolate(input$lab_im_gate_only))
+      gate_only = isTRUE(isolate(input$lab_im_gate_only)),
+      no_alert = isTRUE(isolate(input$lab_im_no_alert))
     )
     if (is.null(merged) || nrow(merged) == 0L) {
       return(data.frame(訊息 = "目前勾選條件下尚無合格明細列（不足不湊滿）"))
@@ -12516,6 +12532,7 @@ server <- function(input, output, session) {
       }
       eq_on <- isTRUE(isolate(input$lab_im_eq_only))
       gate_on <- isTRUE(isolate(input$lab_im_gate_only))
+      no_alert_on <- isTRUE(isolate(input$lab_im_no_alert))
       max_n <- lab_resolve_im_max_n(isolate(input$lab_im_max_n), isolate(input$lab_im_max_n_custom))
       max_n_label <- lab_resolve_im_max_n_label(isolate(input$lab_im_max_n), isolate(input$lab_im_max_n_custom))
       eval_n <- lab_resolve_im_eval_n(max_n)
@@ -12569,6 +12586,7 @@ server <- function(input, output, session) {
           lb <- lab_quality_leaderboard(
             lb_src, top_n = 10L, eq_only = eq_on,
             gate_only = isTRUE(isolate(input$lab_im_gate_only)),
+            no_alert = no_alert_on,
             scope = lb_scope, industry_filter = ind_filter
           )
         }
@@ -12597,6 +12615,7 @@ server <- function(input, output, session) {
         sprintf("- 模型：%s", meth_txt),
         sprintf("- 盈餘品質過濾：%s", if (eq_on) "開" else "關"),
         sprintf("- Piotroski 高門檻過濾（F-Score≥7）：%s", if (gate_on) "開" else "關"),
+        sprintf("- 無財報警訊過濾：%s", if (no_alert_on) "開" else "關"),
         sprintf("- 候選截斷邏輯 lab_im_pool_rank：%s", rank_mode_label %||% rank_mode),
         sprintf("- 宇宙檔數（N／顯示上限）lab_im_max_n：%s", max_n_label),
         sprintf(

@@ -288,14 +288,16 @@ lab_resolve_im_eval_n <- function(display_n, lo = 1L, hi = 500L) {
 
 #' Cap detail rows from the qualified pool — never pad to fill display_n
 #'
-#' Qualified = lab_leaderboard_pool (finite annualized upside; optional F≥7 / EQ).
+#' Qualified = lab_leaderboard_pool (finite annualized upside; optional F≥7 / EQ / no FS alerts).
 #' Returns at most display_n rows; if fewer qualify, returns that shorter set.
 lab_cap_detail_display <- function(merged_df, display_n,
-                                   eq_only = FALSE, gate_only = TRUE) {
+                                   eq_only = FALSE, gate_only = TRUE,
+                                   no_alert = FALSE) {
   pool <- lab_leaderboard_pool(
     merged_df,
     eq_only = eq_only,
-    gate_only = gate_only
+    gate_only = gate_only,
+    no_alert = no_alert
   )
   if (is.null(pool) || !is.data.frame(pool) || nrow(pool) == 0L) {
     return(pool)
@@ -1357,6 +1359,7 @@ lab_evaluate_ticker_fscore <- function(ticker, industry_key = NULL, method = NUL
     ok = FALSE,
     f_score = NA_real_,
     quality_flag = NA_real_,
+    n_fs_alerts = NA_integer_,
     is_quality = FALSE,
     market_cap = NA_real_,
     price = NA_real_,
@@ -1405,6 +1408,16 @@ lab_evaluate_ticker_fscore <- function(ticker, industry_key = NULL, method = NUL
   out$is_quality <- lab_is_quality_stock(out$f_score, out$quality_flag)
 
   ind_key <- as.character(industry_key %||% "")[1]
+  # 財報警訊：與 YNOW 漏斗相同定義（Schilit 警示 + 盈餘品質紅旗）
+  if (exists("collect_fraud_warnings", mode = "function")) {
+    warns <- tryCatch(
+      collect_fraud_warnings(d_cf, d_is, d_bs, industry_key = ind_key),
+      error = function(e) character(0)
+    )
+    out$n_fs_alerts <- as.integer(length(warns))
+  } else {
+    out$n_fs_alerts <- NA_integer_
+  }
   meth <- as.character(method %||% "")[1]
   if (!nzchar(meth)) meth <- "dcf"
 
@@ -1498,6 +1511,7 @@ lab_screen_tickers_fscore <- function(tickers, progress_cb = NULL, max_n = Inf,
       ok = isTRUE(ev$ok),
       f_score = ev$f_score,
       quality_flag = ev$quality_flag,
+      n_fs_alerts = as.integer(ev$n_fs_alerts %||% NA_integer_),
       is_quality = isTRUE(ev$is_quality),
       is_quality_upside = isTRUE(ev$is_quality_upside),
       market_cap = ev$market_cap,
@@ -1517,7 +1531,8 @@ lab_screen_tickers_fscore <- function(tickers, progress_cb = NULL, max_n = Inf,
   }
   empty <- data.frame(
     ticker = character(0), ok = logical(0), f_score = numeric(0),
-    quality_flag = numeric(0), is_quality = logical(0),
+    quality_flag = numeric(0), n_fs_alerts = integer(0),
+    is_quality = logical(0),
     is_quality_upside = logical(0),
     market_cap = numeric(0),
     price = numeric(0), fv = numeric(0),
@@ -1539,6 +1554,7 @@ lab_merge_catalog_scores <- function(catalog, scores = NULL,
                                      industry_filter = character(0),
                                      eq_only = FALSE,
                                      gate_only = FALSE,
+                                     no_alert = FALSE,
                                      quality_only = FALSE,
                                      evaluated_only = FALSE) {
   # quality_only：舊「只看通過」別名 → Piotroski 高門檻（F-Score≥7；不含盈餘品質）
@@ -1548,6 +1564,7 @@ lab_merge_catalog_scores <- function(catalog, scores = NULL,
     d$ok <- NA
     d$f_score <- NA_real_
     d$quality_flag <- NA_real_
+    d$n_fs_alerts <- NA_integer_
     d$is_quality <- NA
     d$is_quality_upside <- NA
     d$market_cap <- NA_real_
@@ -1616,6 +1633,11 @@ lab_merge_catalog_scores <- function(catalog, scores = NULL,
     fs <- suppressWarnings(as.numeric(df$f_score))
     df <- df[is.finite(fs) & fs >= 7, , drop = FALSE]
   }
+  if (isTRUE(no_alert) && "n_fs_alerts" %in% names(df)) {
+    # 無財報警訊：Schilit／盈餘品質紅旗合計為 0（與 YNOW 財報警訊一致）
+    na_n <- suppressWarnings(as.numeric(df$n_fs_alerts))
+    df <- df[is.finite(na_n) & na_n <= 0, , drop = FALSE]
+  }
   if (nrow(df) == 0L) return(df)
   # 年化估值漲幅由大到小（NA 置後）— 即「未來期間漲幅最大者」優先
   ind_lab <- if ("industry_label" %in% names(df)) df$industry_label else rep("", nrow(df))
@@ -1624,9 +1646,11 @@ lab_merge_catalog_scores <- function(catalog, scores = NULL,
   df[o, , drop = FALSE]
 }
 
-#' 排行榜候選池：有年化漲幅；可選 F-Score≥7；同一代碼只留最高 CAGR 一列
+#' 排行榜候選池：有年化漲幅；可選 F-Score≥7／無財報警訊；同一代碼只留最高 CAGR 一列
 #' @param gate_only 若 TRUE（預設），只保留 F-Score≥7；FALSE＝不設 F 門檻（仍須有年化漲幅）
-lab_leaderboard_pool <- function(merged_df, eq_only = FALSE, gate_only = TRUE) {
+#' @param no_alert 若 TRUE，只保留財報警訊數＝0（Schilit＋盈餘品質紅旗）
+lab_leaderboard_pool <- function(merged_df, eq_only = FALSE, gate_only = TRUE,
+                                 no_alert = FALSE) {
   empty <- merged_df[0, , drop = FALSE]
   if (is.null(merged_df) || !is.data.frame(merged_df) || nrow(merged_df) == 0) {
     return(empty)
@@ -1640,6 +1664,10 @@ lab_leaderboard_pool <- function(merged_df, eq_only = FALSE, gate_only = TRUE) {
   if (isTRUE(gate_only)) {
     keep <- keep & is.finite(fs) & fs >= 7
   }
+  if (isTRUE(no_alert) && "n_fs_alerts" %in% names(df)) {
+    na_n <- suppressWarnings(as.numeric(df$n_fs_alerts))
+    keep <- keep & is.finite(na_n) & na_n <= 0
+  }
   df <- df[keep, , drop = FALSE]
   if (nrow(df) == 0) return(df)
   df <- df[order(-df$upside_cagr_pct, df$ticker), , drop = FALSE]
@@ -1650,8 +1678,11 @@ lab_leaderboard_pool <- function(merged_df, eq_only = FALSE, gate_only = TRUE) {
 #' @return named character vector（顯示名 = 值；`__all__` 為全部）
 lab_leaderboard_industry_choices <- function(merged_df, eq_only = FALSE,
                                             gate_only = TRUE,
+                                            no_alert = FALSE,
                                             all_label = "全部產業") {
-  pool <- lab_leaderboard_pool(merged_df, eq_only = eq_only, gate_only = gate_only)
+  pool <- lab_leaderboard_pool(
+    merged_df, eq_only = eq_only, gate_only = gate_only, no_alert = no_alert
+  )
   labs <- if (nrow(pool) > 0 && "industry_label" %in% names(pool)) {
     unique(as.character(pool$industry_label))
   } else {
@@ -1670,20 +1701,21 @@ lab_leaderboard_industry_choices <- function(merged_df, eq_only = FALSE,
 #' （只截斷顯示，不另抽樣；輸入應已是本次評估的 N 檔。）
 #' @param eq_only 若 TRUE，再只保留盈餘品質通過者（與 Piotroski 高門檻獨立）
 #' @param gate_only 若 TRUE，只列 F-Score≥7；FALSE＝不設 F 門檻
+#' @param no_alert 若 TRUE，只列財報警訊數＝0者
 #' @param scope `"overall"`＝整體前十（跨產業、含產業欄）；
 #'   `"by_industry"`＝選定產業內前十（單一 Top-K；產業內排名自該產業第 1 名起算）；
 #'   `"industry_avg"`＝產業市值加權年化估值漲幅排名（每元市值加權平均）
 #' @param industry_filter 選定產業：`industry_key` 或 `industry_label` 字串向量；
 #'   `NULL`／空／`"__all__"`＝不另限產業（由呼叫端決定是否已篩過）
 lab_quality_leaderboard <- function(merged_df, top_n = 10L, eq_only = FALSE,
-                                    gate_only = TRUE,
+                                    gate_only = TRUE, no_alert = FALSE,
                                     scope = c("overall", "by_industry", "industry_avg"),
                                     industry_filter = NULL) {
   scope <- match.arg(scope)
   if (identical(scope, "industry_avg")) {
     return(lab_industry_mcap_upside_leaderboard(
       merged_df, top_n = top_n, eq_only = eq_only, gate_only = gate_only,
-      industry_filter = industry_filter
+      no_alert = no_alert, industry_filter = industry_filter
     ))
   }
   empty <- data.frame(
@@ -1693,7 +1725,9 @@ lab_quality_leaderboard <- function(merged_df, top_n = 10L, eq_only = FALSE,
     估值方法 = character(0), `F-Score` = numeric(0),
     stringsAsFactors = FALSE, check.names = FALSE
   )
-  df <- lab_leaderboard_pool(merged_df, eq_only = eq_only, gate_only = gate_only)
+  df <- lab_leaderboard_pool(
+    merged_df, eq_only = eq_only, gate_only = gate_only, no_alert = no_alert
+  )
   if (nrow(df) == 0) return(empty)
 
   indf <- as.character(industry_filter %||% character(0))
@@ -1801,6 +1835,7 @@ lab_quality_leaderboard <- function(merged_df, top_n = 10L, eq_only = FALSE,
 #' (每元市值加權：Σ(mcap × upside) / Σ(mcap)；缺市值列不計入權重)
 lab_industry_mcap_upside_leaderboard <- function(merged_df, top_n = 10L,
                                                 eq_only = FALSE, gate_only = TRUE,
+                                                no_alert = FALSE,
                                                 industry_filter = NULL) {
   empty <- data.frame(
     排名 = integer(0),
@@ -1810,7 +1845,9 @@ lab_industry_mcap_upside_leaderboard <- function(merged_df, top_n = 10L,
     總市值 = character(0),
     stringsAsFactors = FALSE, check.names = FALSE
   )
-  df <- lab_leaderboard_pool(merged_df, eq_only = eq_only, gate_only = gate_only)
+  df <- lab_leaderboard_pool(
+    merged_df, eq_only = eq_only, gate_only = gate_only, no_alert = no_alert
+  )
   if (nrow(df) == 0) return(empty)
 
   indf <- as.character(industry_filter %||% character(0))

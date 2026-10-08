@@ -1642,11 +1642,11 @@ beta_rolling_section_ui <- function() {
                     column(
                       width = 6,
                       class = "ynow-lab-im-filter-col",
-                      # 盈餘品質｜Piotroski 高門檻：美／台股皆 1:1 同列並排（Lite／Full 皆同）
+                      # 盈餘品質｜Piotroski 高門檻｜無財報警訊：美／台股皆同列（Lite／Full 皆同）
                       tags$div(
                         class = "row ynow-lab-im-eq-gate-row",
                         column(
-                          width = 6,
+                          width = 4,
                           class = "ynow-lab-im-eq-col",
                           tags$div(
                             class = "ynow-lab-im-quality",
@@ -1666,7 +1666,7 @@ beta_rolling_section_ui <- function() {
                           )
                         ),
                         column(
-                          width = 6,
+                          width = 4,
                           class = "ynow-lab-im-gate-col",
                           tags$div(
                             class = "ynow-lab-im-quality",
@@ -1681,6 +1681,26 @@ beta_rolling_section_ui <- function() {
                               paste0(
                                 "預設勾選：前十名與明細只列 Piotroski F-Score≥7（品質檢核）者；",
                                 "取消勾選則不設 F-Score 門檻。合格不足 N 或不足 10 時不會湊滿。"
+                              )
+                            )
+                          )
+                        ),
+                        column(
+                          width = 4,
+                          class = "ynow-lab-im-no-alert-col",
+                          tags$div(
+                            class = "ynow-lab-im-quality",
+                            checkboxInput(
+                              "lab_im_no_alert",
+                              tags$span(id = "ynow_lab_im_no_alert_label", "無財報警訊"),
+                              value = isTRUE(APP_DEFAULTS$lab_im_no_alert)
+                            ),
+                            tags$span(
+                              id = "ynow_lab_im_no_alert_hint",
+                              class = "ynow-lab-im-quality-hint ynow-full-only",
+                              paste0(
+                                "預設勾選：排行榜／明細只列財報警訊為 0 者（Schilit 警示＋盈餘品質紅旗，",
+                                "與 YNOW「財報警訊」同一套定義）；取消勾選則不過濾。合格不足 N 時不湊滿。"
                               )
                             )
                           )
@@ -7793,6 +7813,10 @@ ui <- dashboardPage(
             if (labGateLabel && s.lab_im_gate_label) labGateLabel.textContent = s.lab_im_gate_label;
             var labGateHint = document.getElementById('ynow_lab_im_gate_hint');
             if (labGateHint && s.lab_im_gate_hint) labGateHint.textContent = s.lab_im_gate_hint;
+            var labNoAlertLabel = document.getElementById('ynow_lab_im_no_alert_label');
+            if (labNoAlertLabel && s.lab_im_no_alert_label) labNoAlertLabel.textContent = s.lab_im_no_alert_label;
+            var labNoAlertHint = document.getElementById('ynow_lab_im_no_alert_hint');
+            if (labNoAlertHint && s.lab_im_no_alert_hint) labNoAlertHint.textContent = s.lab_im_no_alert_hint;
             var labImRunTitle = document.getElementById('lab_im_run_fscore');
             if (labImRunTitle && s.lab_im_run_title) labImRunTitle.setAttribute('title', s.lab_im_run_title);
             var annFs = document.getElementById('ynow_ann_fscore_crossref');

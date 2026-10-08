@@ -37,6 +37,7 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
     "ddm_formula_gordon", "ddm_d0_label", "ddm_r_ke_label",
     "lab_im_eq_label", "lab_im_eq_hint",
     "lab_im_eq_explain_title", "lab_im_eq_explain_body",
+    "lab_im_no_alert_label", "lab_im_no_alert_hint",
     "lab_im_us_listed_label", "lab_im_us_listed_hint",
     "lab_im_include_adr_label", "lab_im_include_adr_hint",
     "lite_toggle_title", "lite_toggle_aria",
@@ -92,6 +93,8 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
   testthat::expect_identical(.UI_STRINGS$`zh-TW`$smart_scenario_title, "已套用參數情境：")
   testthat::expect_identical(.UI_STRINGS$`zh-TW`$lab_im_eq_label, "盈餘品質")
   testthat::expect_identical(.UI_STRINGS$en$lab_im_eq_label, "Earnings quality")
+  testthat::expect_identical(.UI_STRINGS$`zh-TW`$lab_im_no_alert_label, "無財報警訊")
+  testthat::expect_identical(.UI_STRINGS$en$lab_im_no_alert_label, "No FS alerts")
   testthat::expect_identical(.UI_STRINGS$`zh-TW`$lab_im_eq_explain_title, "盈餘品質：")
   testthat::expect_true(grepl("OCF", .UI_STRINGS$`zh-TW`$lab_im_eq_explain_body, fixed = TRUE))
   testthat::expect_null(.UI_STRINGS$en$macro_rf_note)
@@ -772,6 +775,8 @@ testthat::test_that("ynow_server wires Lite auto-calc and Smart Analysis outputs
   testthat::expect_true(grepl("output$smart_analysis_reason", txt, fixed = TRUE))
   # Lite defaults allowlist = UI-configurable only (not Smart Analysis engines)
   testthat::expect_true(grepl('"lab_im_eq_only"', txt, fixed = TRUE))
+  testthat::expect_true(grepl('"lab_im_no_alert"', txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow_lab_im_no_alert_label", txt, fixed = TRUE))
   testthat::expect_true(grepl('"lab_im_pool_rank"', txt, fixed = TRUE))
   testthat::expect_true(grepl('"lab_cluster_k"', txt, fixed = TRUE))
   # Extract lite_default_keys vector body and assert engines are excluded

@@ -158,6 +158,7 @@ ynow_tracked_param_registry <- function() {
     c("lab_im_industries", "Lab", "Industries", "bluechip_lab", "picker", "TRUE", "Industry filter (Full)"),
     c("lab_im_methods", "Lab", "Valuation models", "bluechip_lab", "checkboxGroup", "TRUE", "Models included in Lab scoring"),
     c("lab_im_eq_only", "Lab", "Earnings quality only", "bluechip_lab", "checkbox", "FALSE", "Filter to earnings-quality pass"),
+    c("lab_im_no_alert", "Lab", "No FS alerts", "bluechip_lab", "checkbox", "FALSE", "Filter to zero financial-statement alerts"),
     c("lab_im_include_adr", "Lab", "Include ADRs", "bluechip_lab", "checkbox", "FALSE", "Include ADR tickers"),
     c("lab_im_gate_only", "Lab", "Gate only", "bluechip_lab", "checkbox", "TRUE", "Show only gate-pass names"),
     c("lab_im_lb_mode", "Lab", "Leaderboard mode", "bluechip_lab", "radio", "FALSE", "overall / by_industry"),
