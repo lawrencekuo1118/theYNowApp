@@ -152,6 +152,22 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
     txt,
     perl = TRUE
   ))
+  # Radar plotly host must not remount on every focus edit; suggest prefers cluster set
+  srv_path <- file.path("..", "ynow_server.R")
+  srv_lines <- readLines(srv_path, warn = FALSE, encoding = "UTF-8")
+  i_radar <- grep("output\\$lab_cluster_radar_ui <- renderUI", srv_lines)[1]
+  testthat::expect_true(is.finite(i_radar))
+  radar_blk <- srv_lines[i_radar:min(length(srv_lines), i_radar + 30L)]
+  testthat::expect_true(any(grepl("Do NOT read input\\$lab_cluster_focus here", radar_blk)))
+  testthat::expect_false(any(grepl(
+    "as\\.character\\(input\\$lab_cluster_focus",
+    radar_blk
+  )))
+  srv_txt <- paste(srv_lines, collapse = "\n")
+  testthat::expect_true(grepl("from_cluster", srv_txt, fixed = TRUE))
+  testthat::expect_true(grepl("lab_cluster_focus_not_in_cluster", srv_txt, fixed = TRUE))
+  loc_txt <- paste(readLines(file.path("..", "ui_locale.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  testthat::expect_true(grepl("lab_cluster_focus_not_in_cluster", loc_txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_menu_macro", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-macro-report", txt, fixed = TRUE))
   # Theme Rolling β vs benchmark is removed from Macro (Full and Lite)

@@ -1929,6 +1929,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_cluster_idle_radar = "Run clustering to see the radar.",
     lab_cluster_idle_table = "Run clustering to see assignments.",
     lab_cluster_idle_focus = "Pick a focus ticker for the radar.",
+    lab_cluster_focus_not_in_cluster = paste0(
+      "Focus ticker is not in this clustered set. ",
+      "Pick a name from the assignments table or the focus suggestions."
+    ),
     lab_cluster_focus_missing = paste0(
       "Search ticker was not in the clustered set; radar focus fell back to the first name."
     ),
@@ -4428,6 +4432,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_cluster_idle_radar = "請執行分群以顯示雷達圖。",
     lab_cluster_idle_table = "請執行分群以顯示分群結果。",
     lab_cluster_idle_focus = "請選擇雷達焦點代號。",
+    lab_cluster_focus_not_in_cluster = paste0(
+      "焦點代號不在本次分群結果中。",
+      "請改選分群結果表或焦點建議清單中的代號。"
+    ),
     lab_cluster_focus_missing = paste0(
       "Search 代號未進入分群結果，雷達焦點已改為清單第一檔。"
     ),
