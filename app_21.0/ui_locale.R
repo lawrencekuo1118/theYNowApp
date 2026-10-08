@@ -812,6 +812,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_pool_rank_label = "Candidate truncate rule",
     lab_im_concepts_label = "Concept groups",
     lab_im_concepts_placeholder = "Select one or more concept groups…",
+    lab_im_us_listed_label = "Listed",
+    lab_im_us_listed_hint = "Blue Chip US pool is primary listings only (Nasdaq / NYSE / NYSE American).",
     lab_im_include_adr_label = "Include ADRs",
     lab_im_include_adr_hint = paste0(
       "Checked by default: keep US-listed ADRs / foreign issuers in the evaluation pool. ",
@@ -3355,6 +3357,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_pool_rank_label = "候選截斷邏輯",
     lab_im_concepts_label = "概念股群",
     lab_im_concepts_placeholder = "選擇一或多個概念股群…",
+    lab_im_us_listed_label = "上市",
+    lab_im_us_listed_hint = "美股績優池僅含主要上市（Nasdaq／NYSE／NYSE American）。",
     lab_im_include_adr_label = "含 ADR",
     lab_im_include_adr_hint = paste0(
       "預設勾選：評估池含美股上市 ADR／外國發行人；",

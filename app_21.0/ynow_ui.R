@@ -1642,9 +1642,9 @@ beta_rolling_section_ui <- function() {
                     column(
                       width = 6,
                       class = "ynow-lab-im-filter-col",
-                      # 盈餘品質｜含 ADR 同列並排（Lite／Full 皆同；含 ADR 僅美股）
+                      # 盈餘品質｜Piotroski 高門檻：美／台股皆 1:1 同列並排（Lite／Full 皆同）
                       tags$div(
-                        class = "row ynow-lab-im-eq-adr-row",
+                        class = "row ynow-lab-im-eq-gate-row",
                         column(
                           width = 6,
                           class = "ynow-lab-im-eq-col",
@@ -1667,7 +1667,57 @@ beta_rolling_section_ui <- function() {
                         ),
                         column(
                           width = 6,
-                          class = "ynow-lab-im-include-adr ynow-us-only",
+                          class = "ynow-lab-im-gate-col",
+                          tags$div(
+                            class = "ynow-lab-im-quality",
+                            checkboxInput(
+                              "lab_im_gate_only",
+                              tags$span(id = "ynow_lab_im_gate_label", "Piotroski 高門檻"),
+                              value = isTRUE(APP_DEFAULTS$lab_im_gate_only)
+                            ),
+                            tags$span(
+                              id = "ynow_lab_im_gate_hint",
+                              class = "ynow-lab-im-quality-hint ynow-full-only",
+                              paste0(
+                                "預設勾選：前十名與明細只列 Piotroski F-Score≥7（品質檢核）者；",
+                                "取消勾選則不設 F-Score 門檻。合格不足 N 或不足 10 時不會湊滿。"
+                              )
+                            )
+                          )
+                        )
+                      ),
+                      # 美股：僅「上市」＋含 ADR 同列並排（台股板別在左欄）
+                      tags$div(
+                        class = "row ynow-lab-im-us-listed-adr-row ynow-us-only",
+                        style = "margin-top:12px;",
+                        column(
+                          width = 6,
+                          class = "ynow-lab-im-us-listed-col",
+                          tags$div(
+                            class = "ynow-lab-im-quality ynow-lab-im-us-listed",
+                            # Fixed listed-only scope for US (primary listings); not user-togglable
+                            tags$div(
+                              class = "checkbox",
+                              tags$label(
+                                tags$input(
+                                  id = "lab_im_us_listed_display",
+                                  type = "checkbox",
+                                  checked = "checked",
+                                  disabled = "disabled"
+                                ),
+                                tags$span(id = "ynow_lab_im_us_listed_label", "上市")
+                              )
+                            ),
+                            tags$span(
+                              id = "ynow_lab_im_us_listed_hint",
+                              class = "ynow-lab-im-quality-hint ynow-full-only",
+                              "美股績優池僅含主要上市（Nasdaq／NYSE／NYSE American）。"
+                            )
+                          )
+                        ),
+                        column(
+                          width = 6,
+                          class = "ynow-lab-im-include-adr",
                           tags$div(
                             class = "ynow-lab-im-quality",
                             checkboxInput(
@@ -1684,20 +1734,6 @@ beta_rolling_section_ui <- function() {
                               )
                             )
                           )
-                        )
-                      ),
-                      tags$div(
-                        class = "ynow-lab-im-quality ynow-full-only",
-                        style = "margin-top:12px;",
-                        checkboxInput(
-                          "lab_im_gate_only",
-                          tags$span(id = "ynow_lab_im_gate_label", "Piotroski 高門檻"),
-                          value = isTRUE(APP_DEFAULTS$lab_im_gate_only)
-                        ),
-                        tags$span(
-                          id = "ynow_lab_im_gate_hint",
-                          class = "ynow-lab-im-quality-hint",
-                          "預設勾選：前十名與明細只列 Piotroski F-Score≥7（品質檢核）者；取消勾選則不設 F-Score 門檻。合格不足 N 或不足 10 時不會湊滿。"
                         )
                       )
                     )
@@ -7727,6 +7763,10 @@ ui <- dashboardPage(
             if (labImRunTitle && s.lab_im_run_title) labImRunTitle.setAttribute('title', s.lab_im_run_title);
             var annFs = document.getElementById('ynow_ann_fscore_crossref');
             if (annFs && s.ann_fscore_crossref) annFs.textContent = s.ann_fscore_crossref;
+            var labUsListedLabel = document.getElementById('ynow_lab_im_us_listed_label');
+            if (labUsListedLabel && s.lab_im_us_listed_label) labUsListedLabel.textContent = s.lab_im_us_listed_label;
+            var labUsListedHint = document.getElementById('ynow_lab_im_us_listed_hint');
+            if (labUsListedHint && s.lab_im_us_listed_hint) labUsListedHint.textContent = s.lab_im_us_listed_hint;
             var labAdrLabel = document.getElementById('ynow_lab_im_include_adr_label');
             if (labAdrLabel && s.lab_im_include_adr_label) labAdrLabel.textContent = s.lab_im_include_adr_label;
             var labAdrHint = document.getElementById('ynow_lab_im_include_adr_hint');

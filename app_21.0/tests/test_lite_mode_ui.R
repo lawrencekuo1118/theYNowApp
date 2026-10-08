@@ -37,6 +37,7 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
     "ddm_formula_gordon", "ddm_d0_label", "ddm_r_ke_label",
     "lab_im_eq_label", "lab_im_eq_hint",
     "lab_im_eq_explain_title", "lab_im_eq_explain_body",
+    "lab_im_us_listed_label", "lab_im_us_listed_hint",
     "lab_im_include_adr_label", "lab_im_include_adr_hint",
     "lite_toggle_title", "lite_toggle_aria",
     "snapshot_page_help_lite", "snapshot_defaults_help_lite",
@@ -576,8 +577,9 @@ testthat::expect_true(grepl(
   testthat::expect_true(grepl("Multiples（市場倍數）", txt, fixed = TRUE))
   testthat::expect_true(grepl("SOTP（分部加總）", txt, fixed = TRUE))
   testthat::expect_true(grepl('id = "ynow_method_section_title"', txt, fixed = TRUE))
-  testthat::expect_true(grepl("ynow-lab-im-eq-adr-row", txt, fixed = TRUE))
-  testthat::expect_true(grepl("ynow-lab-im-include-adr ynow-us-only", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-lab-im-eq-gate-row", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-lab-im-us-listed-adr-row ynow-us-only", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow_lab_im_us_listed_label", txt, fixed = TRUE))
   testthat::expect_true(grepl("body.ynow-market-tw .ynow-us-only", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_lab_im_eq_explain", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-lab-im-eq-explain ynow-lite-only", txt, fixed = TRUE))
