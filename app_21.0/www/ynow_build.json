@@ -1,4 +1,4 @@
 {
-  "version": "v21.45",
+  "version": "v21.46",
   "note": "Bumped with display version on each ship. Clients poll this file; when the version differs from the page's data-ynow-build, the UI prompts a click on The YNow App title to refresh — never auto-reloads. Pending update uses flame title color. Live baseline also includes Yahoo rate gate + shared fast cache."
 }
