@@ -11667,6 +11667,7 @@ ui <- dashboardPage(
         .ynow-bt-hfv-controls .checkbox-inline {
           margin-top: 0;
           margin-bottom: 0;
+          margin-left: 0 !important;
           min-height: 18px;
           padding-left: 0;
         }
