@@ -3,6 +3,8 @@
 
 root <- if (file.exists("decision_checklist_module.R")) {
   getwd()
+} else if (file.exists(file.path("..", "decision_checklist_module.R"))) {
+  normalizePath(file.path(".."))
 } else if (file.exists("app_21.0/decision_checklist_module.R")) {
   file.path(getwd(), "app_21.0")
 } else {
@@ -39,31 +41,43 @@ check(
   identical(.DC_SOP_MANDATORY_ITEMS, c("g_sgr", "fscore", "bear_base", "hfv_veto"))
 )
 
-# Placement: compact SOP on YNOW; Decision Checklist only points there
+# Placement: Decision SOP on Decision Checklist; YNOW only shows locked hint
 source("ui_locale.R", local = TRUE, encoding = "UTF-8")
 source("investment_decision_module.R", local = TRUE, encoding = "UTF-8")
 dec <- paste(readLines("investment_decision_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 dc <- paste(readLines("decision_checklist_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("SOP mount helper exported", exists("decision_sop_panel_ui", mode = "function"))
-check("YNOW mounts SOP panel", grepl("decision_sop_panel_ui\\(\\)", dec))
-check("YNOW SOP before recommendation", {
-  p_sop <- regexpr("decision_sop_panel_ui", dec, fixed = TRUE)[1]
-  p_rec <- regexpr('uiOutput\\(ns\\("ui_recommendation"\\)\\)', dec)[1]
-  is.finite(p_sop) && p_sop > 0 && is.finite(p_rec) && p_rec > p_sop
+check("YNOW no longer mounts SOP panel", !grepl("decision_sop_panel_ui\\(\\)", dec))
+check("Checklist hosts SOP panel", {
+  body_start <- regexpr("decision_checklist_tab_body_ui", dc, fixed = TRUE)[1]
+  body_end <- regexpr("decision_checklist_tab_ui", dc, fixed = TRUE)[1]
+  chunk <- if (body_start > 0 && body_end > body_start) substr(dc, body_start, body_end) else ""
+  grepl("decision_sop_panel_ui()", chunk, fixed = TRUE) &&
+    grepl('id = "ynow_dc_sop_panel"', dc, fixed = TRUE)
 })
-check("Checklist no longer hosts SOP wizard box", {
-  !grepl('id = "ynow_dc_box_sop"', substr(
-    dc,
-    regexpr("decision_checklist_tab_body_ui", dc, fixed = TRUE)[1],
-    regexpr("decision_checklist_tab_ui", dc, fixed = TRUE)[1]
-  ), fixed = TRUE)
+check("Checklist SOP before summary box", {
+  body_start <- regexpr("decision_checklist_tab_body_ui", dc, fixed = TRUE)[1]
+  body_end <- regexpr("decision_checklist_tab_ui", dc, fixed = TRUE)[1]
+  chunk <- if (body_start > 0 && body_end > body_start) substr(dc, body_start, body_end) else ""
+  p_sop <- regexpr("decision_sop_panel_ui", chunk, fixed = TRUE)[1]
+  p_sum <- regexpr("ynow_dc_box_summary", chunk, fixed = TRUE)[1]
+  is.finite(p_sop) && p_sop > 0 && is.finite(p_sum) && p_sum > p_sop
 })
-check("Checklist has reloc note", grepl("ynow_dc_sop_reloc_note", dc, fixed = TRUE))
+check("Checklist dropped reloc note", !grepl("ynow_dc_sop_reloc_note", dc, fixed = TRUE))
+check("reloc locale key removed", is.null(.UI_STRINGS$en$dc_sop_reloc_note) &&
+        is.null(.UI_STRINGS$`zh-TW`$dc_sop_reloc_note))
 check("compact SOP class", grepl("ynow-dc-sop--compact", dc, fixed = TRUE))
 check("en title simplified", identical(ui_str("dc_box_sop", "en"), "Decision SOP"))
 check("zh title simplified", identical(ui_str("dc_box_sop", "zh-TW"), "決策 SOP"))
-check("zh reloc no simplified", !grepl("默认|参数|数据|用户", ui_str("dc_sop_reloc_note", "zh-TW")))
-check("locked hint points to SOP above", grepl("above|上方", ui_str("funnel_sop_locked_hint", "en")) ||
-        grepl("上方", ui_str("funnel_sop_locked_hint", "zh-TW")))
+check(
+  "locked hint points to Decision Checklist",
+  grepl("Decision Checklist", ui_str("funnel_sop_locked_hint", "en"), fixed = TRUE) &&
+    grepl("決策檢核", ui_str("funnel_sop_locked_hint", "zh-TW"), fixed = TRUE)
+)
+check(
+  "locked body points to Decision Checklist",
+  grepl("Decision Checklist", ui_str("funnel_sop_locked_body", "en"), fixed = TRUE) &&
+    grepl("決策檢核", ui_str("funnel_sop_locked_body", "zh-TW"), fixed = TRUE)
+)
 
 cat("\nAll institutional SOP tests passed.\n")

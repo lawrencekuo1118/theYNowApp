@@ -112,8 +112,6 @@ decision_ui <- function(id) {
               )
             )
           ),
-          # Decision SOP sits next to the verdict it unlocks (not on Decision Checklist).
-          decision_sop_panel_ui(),
           uiOutput(ns("ui_recommendation")),
           tags$div(
             class = "ynow-funnel-table-wrap",

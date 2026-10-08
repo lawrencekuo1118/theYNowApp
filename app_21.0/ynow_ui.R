@@ -7090,8 +7090,6 @@ ui <- dashboardPage(
             if (dcBoxSop && s.dc_box_sop) dcBoxSop.textContent = s.dc_box_sop;
             var dcSopIntro = document.getElementById('ynow_dc_sop_intro');
             if (dcSopIntro && s.dc_sop_intro) dcSopIntro.textContent = s.dc_sop_intro;
-            var dcSopReloc = document.getElementById('ynow_dc_sop_reloc_note');
-            if (dcSopReloc && s.dc_sop_reloc_note) dcSopReloc.textContent = s.dc_sop_reloc_note;
             var hfvMethod = document.getElementById('ynow_hfv_sec_method');
             if (hfvMethod && s.hfv_sec_method) hfvMethod.textContent = s.hfv_sec_method;
             var hfvResults = document.getElementById('ynow_hfv_sec_results');
@@ -7774,7 +7772,6 @@ ui <- dashboardPage(
               };
               set('ynow_dc_sop_intro', payload.intro);
               set('ynow_dc_box_sop', payload.box_sop);
-              set('ynow_dc_sop_reloc_note', payload.reloc);
               set('ynow_dc_sop_step1_title', payload.step1);
               set('ynow_dc_sop_step2_title', payload.step2);
               set('ynow_dc_sop_step3_title', payload.step3);
@@ -11251,7 +11248,7 @@ ui <- dashboardPage(
           font-size: 12px;
         }
 
-        /* Decision SOP — compact coach on YNOW (above verdict) */
+        /* Decision SOP — compact coach on Decision Checklist */
         .ynow-dc-sop--compact {
           margin: 0 0 14px 0;
           padding: 12px 14px;

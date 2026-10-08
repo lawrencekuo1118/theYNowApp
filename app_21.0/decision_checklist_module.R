@@ -4,7 +4,7 @@
 # 排版：檢核摘要滿版置頂；各主題項目左右並排；閘門順序體質 → 估值 → 模型 → 否決 → 紀律。
 # 僅 mandatory_suggest（預設勾選）項目開機預勾；其餘 opt-in。
 # Decision SOP：精簡三勾確認（SGR／敏感度／品質）+ 強制閘門通過後解鎖 YNOW 結論。
-# SOP 面板掛在 YNOW 分頁（結論旁），決策檢核頁只保留閘門細項。
+# SOP 面板掛在決策檢核頁頂部；YNOW 結論依 SOP／強制閘門解鎖。
 # Lite：側欄隱藏（ynow_ui.R body.ynow-lite）。
 # =========================================================================
 
@@ -229,7 +229,7 @@
   )
 }
 
-#' Compact Decision SOP panel (mounted on YNOW, above the verdict).
+#' Compact Decision SOP panel (mounted on Decision Checklist).
 .dc_sop_wizard_ui <- function() {
   tags$div(
     class = "ynow-dc-sop ynow-dc-sop--compact",
@@ -301,7 +301,7 @@
   )
 }
 
-#' Public mount point for YNOW page.
+#' Public mount point for Decision Checklist.
 decision_sop_panel_ui <- function() {
   .dc_sop_wizard_ui()
 }
@@ -322,11 +322,8 @@ decision_checklist_tab_body_ui <- function() {
     fluidRow(
       column(
         width = 12,
-        tags$p(
-          id = "ynow_dc_sop_reloc_note",
-          class = "ynow-dc-sop-reloc-note",
-          .dc_str("dc_sop_reloc_note", "en")
-        ),
+        # Decision SOP returns here — unlocks YNOW verdict after three acks + gates.
+        decision_sop_panel_ui(),
         box(
           width = 12, status = "success", solidHeader = TRUE,
           title = tagList(
@@ -592,7 +589,6 @@ decision_checklist_server <- function(
       locale = loc,
       intro = ui_str("dc_sop_intro", loc),
       box_sop = ui_str("dc_box_sop", loc),
-      reloc = ui_str("dc_sop_reloc_note", loc),
       step1 = ui_str("dc_sop_step1_title", loc),
       step2 = ui_str("dc_sop_step2_title", loc),
       step3 = ui_str("dc_sop_step3_title", loc),
