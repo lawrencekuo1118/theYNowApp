@@ -3272,6 +3272,40 @@ ui <- dashboardPage(
           }
         }
 
+        /*
+         * Mobile inline multi-option wrap (checkboxGroup / radioButtons inline=TRUE).
+         * Bootstrap3 sets .checkbox-inline+.checkbox-inline / .radio-inline+.radio-inline
+         * { margin-left: 10px }, so wrapped items indent as if still on the first row.
+         * Flex + gap + zero sibling margin keeps every new row left-aligned and
+         * vertically centered. Specialized toolbars (HFV grid chips, etc.) keep
+         * their own display:!important rules.
+         */
+        @media (max-width: 767px) {
+          .shiny-input-checkboxgroup .shiny-options-group:has(> .checkbox-inline),
+          .shiny-input-checkboxgroup .shiny-options-group:has(> label.checkbox-inline),
+          .shiny-input-radiogroup .shiny-options-group:has(> .radio-inline),
+          .shiny-input-radiogroup .shiny-options-group:has(> label.radio-inline) {
+            display: flex;
+            flex-wrap: wrap;
+            flex-direction: row;
+            align-items: center;
+            align-content: flex-start;
+            justify-content: flex-start;
+            column-gap: 12px;
+            row-gap: 8px;
+            clear: none;
+          }
+          .shiny-options-group > .checkbox-inline,
+          .shiny-options-group > .radio-inline,
+          .shiny-options-group > label.checkbox-inline,
+          .shiny-options-group > label.radio-inline {
+            float: none;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            vertical-align: middle;
+          }
+        }
+
         /* 標題＝載入進度條：底層淡金軌道 + 金色填滿層（隨 --ynow-load-pct） */
         .main-header .logo,
         .main-header .logo:hover {
@@ -9167,17 +9201,25 @@ ui <- dashboardPage(
           padding: 6px 14px;
           font-weight: 700;
         }
-        .ynow-lab-im-methods .shiny-options-group {
+        .ynow-lab-im-methods .shiny-options-group,
+        .ynow-lab-im-boards .shiny-options-group,
+        .ynow-lab-im-lb-scope .shiny-options-group {
           display: inline-flex;
           flex-wrap: wrap;
           flex-direction: row;
           align-items: center;
+          align-content: flex-start;
+          justify-content: flex-start;
           column-gap: 12px;
+          row-gap: 8px;
         }
-        .ynow-lab-im-methods .checkbox-inline {
+        .ynow-lab-im-methods .checkbox-inline,
+        .ynow-lab-im-boards .checkbox-inline,
+        .ynow-lab-im-lb-scope .radio-inline {
           margin-left: 0 !important;
           margin-right: 0 !important;
           padding-left: 18px;
+          vertical-align: middle;
         }
         .ynow-lab-im-quality .form-group {
           margin-bottom: 4px;
