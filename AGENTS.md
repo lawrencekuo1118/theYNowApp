@@ -24,7 +24,9 @@ All **user-facing copy**, **commit/PR descriptions to the user**, and **in-app U
 
 ### Avoid (Mainland / simplified / non-TW)
 
-`默认` `参数` `数据` `用户` `勾选` `周期` `阈值` `软件` `网络` `信息` `门限` `质量` `账户` `报表` `视频` `内存` 以及任何简体字。
+`默认` `参数` `数据` `用户` `勾选` `周期` `阈值` `软件` `网络` `信息` `门限` `质量` `账户` `报表` `视频` `内存` `口徑` `統計口徑` 以及任何简体字。
+
+**繁體 ≠ 台灣用語：** 不得只因字形是繁體就認定為台灣投資界用語。常見陷阱是把中國大陸財經／統計用語（如「口徑」「統計口徑」）轉成繁體後直接上架；應改用台灣習慣的「範圍／定義／基準」等。
 
 When unsure: use the **English term** + brief Taiwan Chinese gloss on first mention.
 

@@ -28,11 +28,17 @@ mainland <- c(
   "默认", "参数", "数据", "用户", "勾选", "周期", "阈值", "软件", "网络",
   "信息", "门限", "质量", "账户", "报表", "视频", "内存", "独立", "菜单"
 )
+# Traditional orthography but Mainland finance/stats jargon (not Taiwan usage)
+mainland_trad_traps <- c("口徑", "統計口徑")
 zh_blob <- paste(vapply(keys, function(k) as.character(zh[[k]] %||% "")[1], character(1)),
                  collapse = "\n")
 for (w in mainland) {
   check(paste("no simplified/Mainland", w), !grepl(w, zh_blob, fixed = TRUE))
 }
+for (w in mainland_trad_traps) {
+  check(paste("no Mainland-trad trap", w), !grepl(w, zh_blob, fixed = TRUE))
+}
+check("oos label uses 範圍 not 口徑", identical(as.character(zh$hfv_oos_mode_label)[1], "驗證樣本範圍"))
 
 # Taiwan prefers 佔比 / 網路 (not 占比 / 網絡)
 check("uses 佔比 not 占比", grepl("佔比", zh_blob, fixed = TRUE) && !grepl("占比", zh_blob, fixed = TRUE))

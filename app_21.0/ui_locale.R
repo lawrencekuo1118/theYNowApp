@@ -3405,7 +3405,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_ch1_title = "合理價與市價",
     hfv_ch2_kicker = "第二章",
     hfv_ch2_title = "投資人摘要",
-    hfv_ch2_lead = "先設定復盤模型與樣本口徑，再讀本樣本對照與 tip 市價漲跌機率。",
+    hfv_ch2_lead = "先設定復盤模型與樣本範圍，再讀本樣本對照與 tip 市價漲跌機率。",
     hfv_ch3_kicker = "第三章",
     hfv_ch3_title = "下期市價與安全邊際（MOS）",
     hfv_ch3_lead = "估值日間市價是漲還是跌？MOS 展望以因果擴張窗條件化 tip 機率。",
@@ -3567,7 +3567,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_sum_conclusion_fmt = "下期上漲頻率 ≈ %s（n＝%d）",
     hfv_sum_conclusion_def = paste0(
       "定義：歷史配對中 P_{t+1} > P_t 的比例，即 R=(P下一期−P)/P > 0；",
-      "口徑＝目前驗證樣本。不是趨近 FV，也不是落在 FV 之上。"
+      "範圍＝目前驗證樣本。不是趨近 FV，也不是落在 FV 之上。"
     ),
     hfv_sum_conclusion_caveat = "僅本樣本描述性頻率——非下期預測保證。",
     hfv_sum_conclusion_na = "尚無對照：需已實現下期配對並選擇復盤模型。",
@@ -3582,7 +3582,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_sum_qmap_q2_na = "相對 FV：尚無趨近／遠離統計",
     hfv_sum_qmap_q3_fmt = "情境分類：樣本最常見 %s · 最近一期 %s",
     hfv_sum_qmap_relation = "市價漲跌 ≠ 相對 FV 縮小／擴大。HFV 是否決／教育層。",
-    hfv_sum_q12_diverge_fmt = "市價與 FV 口徑分歧共 %d 筆：上漲但仍在 FV 之下（%d）；下跌但仍在 FV 之上（%d）。",
+    hfv_sum_q12_diverge_fmt = "市價與相對 FV 判斷分歧共 %d 筆：上漲但仍在 FV 之下（%d）；下跌但仍在 FV 之上（%d）。",
     hfv_sum_q3_diverge = "情境分類：「樣本最常見」≠「最近一期」——兩者都要讀；皆不覆寫市價或相對 FV 統計。",
     hfv_fc_title = "可衡量時刻・市價漲跌機率",
     hfv_fc_formula = paste0(
@@ -3602,7 +3602,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_col_p_up_hat = "市價上漲機率（預測）",
     hfv_sum_price_block = "市價下期漲跌",
     hfv_sum_price_formula = "R = (P下一期 − P) / P",
-    hfv_sum_price_meaning = "市價上漲／下跌／持平占比；與相對 FV 落點無關。",
+    hfv_sum_price_meaning = "市價上漲／下跌／持平佔比；與相對 FV 落點無關。",
     hfv_sum_mos_block = "MOS 展望（可衡量時刻之因果擴張窗）",
     hfv_sum_fv_block = "相對理論 FV：縮小 vs 擴大",
     hfv_sum_fv_formula = "|P下一期 − FV_t| vs |P_t − FV_t| — 縮小＝趨近 · 擴大＝遠離",
@@ -3618,7 +3618,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "other＝未歸類。"
     ),
     hfv_sum_scenario_caveat = "分類學標籤——不是 Strong Buy／Strong Sell。",
-    hfv_sum_scenario_empty = "目前驗證樣本口徑下無可分類的相鄰估值日配對。",
+    hfv_sum_scenario_empty = "目前驗證樣本範圍下無可分類的相鄰估值日配對。",
     hfv_scenario_A = "A · 錯殺黃金坑",
     hfv_scenario_B = "B · 戴維斯雙擊",
     hfv_scenario_C = "C · 價值陷阱",
@@ -3656,7 +3656,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_sec_results = "本樣本對照",
     hfv_chart_gap = "落點幅度 (P下一期 − FV) / FV",
     hfv_table_detail = "配對明細表",
-    hfv_oos_mode_label = "驗證樣本口徑",
+    hfv_oos_mode_label = "驗證樣本範圍",
     hfv_oos_realized = "僅計已實現下期（預設）",
     hfv_oos_expanding = "擴張視窗樣本外命中",
     hfv_oos_insample = "含未實現下期（樣本內）",

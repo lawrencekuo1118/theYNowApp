@@ -34,6 +34,9 @@ In replies to the user and in any **UI / help text / notifications** you add or 
 | 质量 | 品質 |
 | 账户 | 帳戶 |
 | 报表 | 報表 |
+| 口徑 / 統計口徑 | 範圍／定義／基準（台灣不用「統計口徑」） |
+
+**Dangerous false positive:** Traditional Chinese orthography ≠ Taiwan usage. Before adopting a zh phrase, check whether it is Mainland finance/stats jargon that merely got converted to 繁體 (e.g. 「口徑」「統計口徑」). Prefer Taiwan investment-desk wording.
 
 ## Valuation copy (theYNowApp)
 

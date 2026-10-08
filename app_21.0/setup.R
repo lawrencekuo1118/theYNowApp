@@ -1991,7 +1991,7 @@ extract_fcff_series <- function(df) {
   rep(NA_real_, nrow(df))
 }
 
-# 依現金流口徑取出展示／折現序列：FCFF 原樣；FCFE 走既有 fcff_to_fcfe
+# 依現金流定義取出展示／折現序列：FCFF 原樣；FCFE 走既有 fcff_to_fcfe
 extract_dcf_claim_series <- function(df, claim = "fcff",
                                      interest_after_tax = 0, debt0 = 0, g_path = 0) {
   fcff <- extract_fcff_series(df)

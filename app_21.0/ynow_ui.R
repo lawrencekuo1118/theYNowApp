@@ -6116,7 +6116,7 @@ ui <- dashboardPage(
           }
         }
 
-        /* HFV 設定：統計期間／驗證樣本口徑共用 label→選項間距與區塊節奏 */
+        /* HFV 設定：統計期間／驗證樣本範圍共用 label→選項間距與區塊節奏 */
         .ynow-hfv-settings .shiny-input-radiogroup {
           margin-top: 0;
           margin-bottom: 12px;
@@ -6134,7 +6134,7 @@ ui <- dashboardPage(
           padding-top: 0;
           padding-left: 0;
         }
-        /* 驗證樣本口徑：工具列內改為橫向 chip；舊直排規則僅保留於非 toolbar */
+        /* 驗證樣本範圍：工具列內改為橫向 chip；舊直排規則僅保留於非 toolbar */
         .ynow-hfv-settings #bt_fv_oos_mode .shiny-options-group {
           display: flex !important;
           flex-direction: column !important;

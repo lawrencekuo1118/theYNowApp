@@ -309,7 +309,7 @@ server <- function(input, output, session) {
         selected = life_sel
       )
     }, error = function(e) NULL)
-    # HFV 驗證樣本口徑：標籤／三選項隨 locale 更新（值不變）
+    # HFV 驗證樣本範圍：標籤／三選項隨 locale 更新（值不變）
     tryCatch({
       oos_sel <- isolate(input$bt_fv_oos_mode)
       if (is.null(oos_sel) || !oos_sel %in% c("realized", "expanding", "insample")) {
@@ -11348,7 +11348,7 @@ server <- function(input, output, session) {
           " 經驗頻率，以及以復盤估值×歷史實際股價（MOS）做成的可衡量時刻「下期實際市價」漲跌機率",
           "（擴張窗因果：僅 Date下一期≤tip，嚴格禁止未來資料回推；非預測估值／FV）；",
           "（2）相對復盤理論估值 FV_t（＝復盤模型單選；結果隨復盤模型而變）縮小／擴大與幅度 (P−FV)/FV。",
-          "市價漲跌與估值落點兩口徑不同，不可混稱。預設只計已實現下期，可選擴張窗樣本外命中率。",
+          "市價漲跌與估值落點是兩套定義，不可混稱。預設只計已實現下期，可選擴張窗樣本外命中率。",
           "若歷史點套用 APP_DEFAULTS／Session／法定稅率，摘要會列出預設／fallback 與對應分頁。",
           "此區塊在側邊「歷史基本面驗證」，與本頁策略淨值交易回測分開閱讀。"
         ),
