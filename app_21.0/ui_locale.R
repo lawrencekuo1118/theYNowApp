@@ -787,8 +787,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     btn_run_bt = "Run Backtest",
     btn_lab_im_run = "Search Blue Chips",
     bluechip_blurb_tw = paste0(
-      "Screen Taiwan blue-chip candidates from TWSE and TPEx public listings ",
-      "(listed and OTC only; emerging/ESB names are excluded because liquidity and Yahoo data coverage are less stable). ",
+      "Screen Taiwan blue-chip candidates from TWSE / TPEx / ESB public listings ",
+      "(Listing board multi-select; default TWSE + TPEx; ESB is optional because liquidity and Yahoo coverage are less stable). ",
       "Search Blue Chips: industry × model filters → Candidate truncate → evaluate a larger ordered pool → ",
       "show at most Universe size (N) qualified names (shortfalls are not padded). ",
       "Leaderboard uses a high Piotroski threshold (F-Score≥7; unrelated to earnings-quality metrics) ",
@@ -3336,7 +3336,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     btn_run_bt = "執行回測",
     btn_lab_im_run = "搜尋績優股",
     bluechip_blurb_tw = paste0(
-      "依據臺灣證券交易所與櫃買中心公開名單，篩選台股績優候選標的（範圍僅含上市與上櫃；不含興櫃，因其流動性與 Yahoo 資料覆蓋相對不穩）。",
+      "依據臺灣證券交易所與櫃買中心公開名單，篩選台股績優候選標的（板別可複選上市／上櫃／興櫃；預設上市＋上櫃；興櫃因流動性與 Yahoo 資料覆蓋相對不穩，需勾選才納入）。",
       "「搜尋績優股」先依產業與適用評價模型篩選，再以候選截斷邏輯取較大評估池後評分，",
       "明細／排行最多顯示宇宙檔數 N 檔合格列（條件不足時不湊滿）。",
       "排行榜另以 Piotroski 高門檻（F-Score≥7；與盈餘品質指標無涉）過濾，",
