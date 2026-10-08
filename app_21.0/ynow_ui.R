@@ -1901,7 +1901,7 @@ beta_rolling_section_ui <- function() {
                   id = "ynow_hfv_method_body",
                   style = "font-size:12.5px;color:#444;line-height:1.55;margin:0 0 8px 0;",
                   paste0(
-                    "Validation report — not a trading backtest or order ticket. ",
+                    "Validation report — not a trading backtest. ",
                     "Chart Overlay Models (multi) drive chart FV lines and scenario A–D ",
                     "(average FV when several; show only with an A–D conclusion). ",
                     "Replay Model (single) drives odds, tip P(up), MOS, gap-to-FV, and the pair table."

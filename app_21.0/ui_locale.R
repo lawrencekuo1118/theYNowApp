@@ -913,7 +913,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "TW OTC/ESB may use TPEx IS/BS fill (CF never invented). n<5 illustrative only."
     ),
     hfv_method_body = paste0(
-      "Validation report — not a trading backtest or order ticket. ",
+      "Validation report — not a trading backtest. ",
       "Chart Overlay Models (multi) drive chart FV lines and scenario A–D ",
       "(average FV when several; show only with an A–D conclusion). ",
       "Replay Model (single) drives odds, tip P(up), MOS, gap-to-FV, and the pair table."
@@ -1060,7 +1060,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_sum_qmap_q2_fmt = "Gap to FV: shrink-rate ≈ %s · expand-rate ≈ %s (n=%d) · |P−FV_t| toward/away",
     hfv_sum_qmap_q2_na = "Gap to FV: no shrink/expand stats yet",
     hfv_sum_qmap_q3_fmt = "Scenario taxonomy: most frequent %s · latest %s",
-    hfv_sum_qmap_relation = "Market-price move ≠ gap shrink/expand. HFV is a veto / education layer — not an order ticket.",
+    hfv_sum_qmap_relation = "Market-price move ≠ gap shrink/expand. HFV is a veto / education layer.",
     hfv_sum_q12_diverge_fmt = paste0(
       "Price vs FV diverge on %d pair(s): up but still below FV (%d); down but still above FV (%d)."
     ),
@@ -1078,7 +1078,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_fc_method_base = "Causal unconditional expanding-window market-price odds",
     hfv_fc_method_none = "Insufficient causal prior pairs",
     hfv_fc_base_fmt = "Causal unconditional prior market P(up) ≈ %s",
-    hfv_fc_caveat = "Replay FV × hist_price (MOS) only; Date_next ≤ tip — no future backfill. Not an order ticket; small-n illustrative.",
+    hfv_fc_caveat = "Replay FV × hist_price (MOS) only; Date_next ≤ tip — no future backfill. Small-n illustrative only.",
     hfv_fc_empty = "No causal prior pairs yet (Date_next ≤ tip) to form next actual market-price odds.",
     hfv_col_p_up_hat = "Market P(up) forecast",
     hfv_sum_price_block = "Next-period price move",
@@ -1118,7 +1118,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_scenario_concl_latest_fmt = "Latest successive pair (%s → %s)",
     hfv_scenario_concl_latest_nodate = "Latest successive pair",
     hfv_scenario_concl_A_lead = "Golden-pit pattern (taxonomy).",
-    hfv_scenario_concl_A_body = "FV↑, price↓, deep-cheap MOS — educational left-side label; not a buy order.",
+    hfv_scenario_concl_A_body = "FV↑, price↓, deep-cheap MOS — educational left-side label.",
     hfv_scenario_concl_B_lead = "Davis-double pattern (taxonomy).",
     hfv_scenario_concl_B_body = "FV↑ and price↑ near FV — descriptive price discovery; not a hold ticket.",
     hfv_scenario_concl_C_lead = "Value-trap pattern (taxonomy).",
@@ -1129,7 +1129,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_scenario_concl_other = "Unmatched A–D bands — no A–D conclusion; check mispricing / FV / price momentum vs method thresholds.",
     hfv_scenario_concl_none_abcd = "No A–D scenario dominated the sample — no most-frequent A–D conclusion.",
     hfv_scenario_concl_diverge = "Most-frequent ≠ latest — read both; neither overrides market-price or gap-to-FV stats.",
-    hfv_scenario_concl_note = "Taxonomy reading only — not an order ticket (see method notes for bands / FV quality).",
+    hfv_scenario_concl_note = "Taxonomy reading only (see method notes for bands / FV quality).",
     hfv_sum_empty = "Search a ticker and select a Replay model to show odds, vs-FV stats, and scenarios (Replay model only — not chart multi-select).",
     hfv_sum_notes = "Result notes",
     hfv_sec_method = "How to read this report",
@@ -1491,8 +1491,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Click MOS / Reliability, Quality screen (F-Score), and Statement alerts ",
       "to scroll to each block. Two stacked screens: Quality of Earnings / F-Score → ",
       "risk matrix / statement alerts. Dynamic industry bubble and weight concentration sit at the ",
-      "bottom of Macro & Market Trends. ",
-      "This is a decision-support report—not an order ticket."
+      "bottom of Macro & Market Trends."
     ),
     funnel_kpi_jump_mos_aria = "Jump to Section I Statement quality (MOS and Reliability)",
     funnel_kpi_jump_fscore_aria = "Jump to Quality screen (F-Score) checklist",
@@ -1530,7 +1529,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Trend momentum (Timing) lives under Quant Backtest Lab and does not set fair value."
     ),
     funnel_method_caveat = paste0(
-      "Labels and scores are research / decision support only—not brokerage order tickets. ",
+      "Labels and scores are research / decision support only. ",
       "HFV scenarios are veto context only, never a bullish cue."
     ),
     funnel_fscore_list_title = "F-Score quality screen",
@@ -1771,7 +1770,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     dc_label_fscore = "F-Score quality-screen floor",
     dc_hint_fscore = "Piotroski F-Score must clear your minimum — weak fundamentals fail even if MOS looks cheap.",
     dc_label_no_rank_chase = "Do not order solely on ranking annualized upside",
-    dc_hint_no_rank_chase = "Discipline reminder: Blue Chip ranking upside alone is not an order ticket.",
+    dc_hint_no_rank_chase = "Discipline reminder: Blue Chip ranking upside alone should not drive the decision.",
     dc_cond_bear_mos_floor = "Bear-case MOS floor (%)",
     dc_cond_base_mos_floor = "Base-case MOS floor (%)",
     dc_cond_g_sgr_gap_min = "Near-term growth vs SGR gap (pp)",
@@ -1819,7 +1818,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     dc_detail_hfv_c_freq_fail = "HFV veto: C share %.0f%% ≥ max %.0f%%.",
     dc_detail_fscore_pass = "F-Score %.0f ≥ min %.0f.",
     dc_detail_fscore_fail = "F-Score %.0f < min %.0f.",
-    dc_detail_no_rank_pass = "Reminder active: ranking annualized upside alone is not an order ticket.",
+    dc_detail_no_rank_pass = "Reminder active: ranking annualized upside alone should not drive the decision.",
     dc_badge_pass = "PASS",
     dc_badge_fail = "FAIL",
     dc_badge_na = "N/A",
@@ -3438,7 +3437,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "上櫃／興櫃可補櫃買 IS／BS（不捏造 CF）。n＜5 僅供參考。"
     ),
     hfv_method_body = paste0(
-      "驗證報告——不是交易回測，也不是下單指令。",
+      "驗證報告——不是交易回測。",
       "圖表疊加模型（可複選）驅動圖上合理價線與情境 A–D（複選先平均 FV；僅在有 A–D 結論時顯示）。",
       "復盤模型（單選）驅動機率、tip 上漲機率、MOS、相對 FV 與配對表。"
     ),
@@ -3581,7 +3580,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_sum_qmap_q2_fmt = "相對 FV：縮小率 ≈ %s · 擴大率 ≈ %s（n＝%d）· |P−FV_t| 趨近／遠離",
     hfv_sum_qmap_q2_na = "相對 FV：尚無趨近／遠離統計",
     hfv_sum_qmap_q3_fmt = "情境分類：樣本最常見 %s · 最近一期 %s",
-    hfv_sum_qmap_relation = "市價漲跌 ≠ 相對 FV 縮小／擴大。HFV 是否決／教育層，不是下單指令。",
+    hfv_sum_qmap_relation = "市價漲跌 ≠ 相對 FV 縮小／擴大。HFV 是否決／教育層。",
     hfv_sum_q12_diverge_fmt = "市價與 FV 口徑分歧共 %d 筆：上漲但仍在 FV 之下（%d）；下跌但仍在 FV 之上（%d）。",
     hfv_sum_q3_diverge = "情境分類：「樣本最常見」≠「最近一期」——兩者都要讀；皆不覆寫市價或相對 FV 統計。",
     hfv_fc_title = "可衡量時刻・市價漲跌機率",
@@ -3597,7 +3596,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_fc_method_base = "因果擴張窗無條件實際市價上漲頻率",
     hfv_fc_method_none = "因果先驗配對不足",
     hfv_fc_base_fmt = "因果無條件先驗市價上漲頻率 ≈ %s",
-    hfv_fc_caveat = "僅復盤估值×實際股價（MOS）；Date下一期≤tip——禁止未來回推。非下單指令；小樣本僅供參考。",
+    hfv_fc_caveat = "僅復盤估值×實際股價（MOS）；Date下一期≤tip——禁止未來回推。小樣本僅供參考。",
     hfv_fc_empty = "尚無 Date下一期≤可衡量時刻的因果先驗配對，無法給出下期實際市價漲跌機率。",
     hfv_col_p_up_hat = "市價上漲機率（預測）",
     hfv_sum_price_block = "市價下期漲跌",
@@ -3637,7 +3636,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_scenario_concl_latest_fmt = "最近一期情境（%s → %s）",
     hfv_scenario_concl_latest_nodate = "最近一期情境",
     hfv_scenario_concl_A_lead = "錯殺黃金坑型態（分類學）。",
-    hfv_scenario_concl_A_body = "FV↑、市價↓、MOS 深度便宜——教育用左側標籤；不是買進指令。",
+    hfv_scenario_concl_A_body = "FV↑、市價↓、MOS 深度便宜——教育用左側標籤。",
     hfv_scenario_concl_B_lead = "戴維斯雙擊型態（分類學）。",
     hfv_scenario_concl_B_body = "FV↑ 與市價↑ 且貼近 FV——描述性價格發現；不是持有指令。",
     hfv_scenario_concl_C_lead = "價值陷阱型態（分類學）。",
@@ -3648,7 +3647,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_scenario_concl_other = "未歸入 A–D 帶寬——不硬套結論；請對照方法閾值檢視三訊號。",
     hfv_scenario_concl_none_abcd = "樣本無主導的 A–D 情境——不顯示「樣本最常見」結論。",
     hfv_scenario_concl_diverge = "「樣本最常見」≠「最近一期」——兩者都要讀；皆不覆寫市價或相對 FV 統計。",
-    hfv_scenario_concl_note = "分類學解讀——不是下單指令（帶寬／FV 品質見方法說明）。",
+    hfv_scenario_concl_note = "分類學解讀（帶寬／FV 品質見方法說明）。",
     hfv_sum_empty = "搜尋標的並選擇復盤模型後，顯示漲跌機率、相對 FV 與情境（僅復盤模型，非圖表複選）。",
     hfv_sum_notes = "結果附註",
     hfv_sec_method = "如何閱讀本報告",
@@ -4004,8 +4003,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     funnel_page_sub = paste0(
       "點選 MOS／Reliability、品質檢核 (F-Score)、財報警訊框格可捲動至對應區塊。",
       "兩個區塊由上而下：盈餘品質／F-Score → 風險矩陣／財報警訊。",
-      "動態產業泡沫與權重集中度在「總體經濟與大盤趨勢」分頁最下方。",
-      "這是決策輔助報告，不是下單指令。"
+      "動態產業泡沫與權重集中度在「總體經濟與大盤趨勢」分頁最下方。"
     ),
     funnel_kpi_jump_mos_aria = "跳至第一章財報體質（MOS 與 Reliability）",
     funnel_kpi_jump_fscore_aria = "跳至品質檢核 (F-Score) 清單",
@@ -4040,7 +4038,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "動態產業泡沫與權重集中度在「總體經濟與大盤趨勢」分頁最下方。",
       "趨勢動能（Timing）輔助在「量化回測實驗室」分頁，不決定合理價。"
     ),
-    funnel_method_caveat = "標籤與分數僅供研究／決策輔助，不是券商下單指令；HFV 情境僅作否決語境，不作看漲依據。",
+    funnel_method_caveat = "標籤與分數僅供研究／決策輔助；HFV 情境僅作否決語境，不作看漲依據。",
     funnel_fscore_list_title = "F-Score 品質檢核清單",
     funnel_vbox_fscore = "品質檢核 (F-Score)",
     fscore_col_item = "檢驗維度",
@@ -4270,7 +4268,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     dc_label_fscore = "F-Score 品質檢核下限",
     dc_hint_fscore = "Piotroski F-Score 須達下限——財報體質偏弱即使 MOS 看似便宜也不通過。",
     dc_label_no_rank_chase = "不得僅因排行年化漲幅而下單",
-    dc_hint_no_rank_chase = "紀律提醒：績優股排行榜的年化上漲空間本身不是下單單據。",
+    dc_hint_no_rank_chase = "紀律提醒：勿僅因績優股排行榜的年化上漲空間就下決定。",
     dc_cond_bear_mos_floor = "Bear 情境安全邊際下限（%）",
     dc_cond_base_mos_floor = "Base 情境安全邊際下限（%）",
     dc_cond_g_sgr_gap_min = "近端成長與 SGR 最小差距（百分點）",
