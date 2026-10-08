@@ -8,5 +8,5 @@ short=c0ba357
 message=chore: bump display version to v21.44
 captured_at=2026-10-08T15:00:00Z
 source_branch=cursor/ranking-ind-board-911b
-display_version=v21.44
+display_version=v21.45
 note=Canonical live line is app_21.0. Bundle 12664871 ships v21.44: within-industry Top 10 ranks, industry mcap-weighted upside Ranking view, TW listing-board multi-select (TWSE/TPEx/ESB), bluechip blurb sync. Deploy via scripts/deploy_app_21.R.
