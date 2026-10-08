@@ -5924,6 +5924,42 @@ ui <- dashboardPage(
           border-radius: 4px;
           background: #fff;
         }
+        /* HFV bullish/bearish tones: US green-up / red-down; TW inverts via body.ynow-market-tw */
+        .ynow-hfv-bull { color: #00a65a !important; }
+        .ynow-hfv-bear { color: #d9534f !important; }
+        .ynow-hfv-kpi-cell--bull {
+          background: #f7fbf8;
+          border-left: 4px solid #00a65a;
+        }
+        .ynow-hfv-kpi-cell--bear {
+          background: #fdf7f7;
+          border-left: 4px solid #d9534f;
+        }
+        .ynow-hfv-kpi-cell--pair {
+          background: #fafafa;
+          border-left: 4px solid #adb5bd;
+        }
+        .ynow-hfv-kpi-pair-vals {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: baseline;
+          gap: 2px 4px;
+          line-height: 1.2;
+        }
+        .ynow-hfv-kpi-pair-sep {
+          color: #999 !important;
+          font-weight: 500;
+        }
+        body.ynow-market-tw .ynow-hfv-bull { color: #c0392b !important; }
+        body.ynow-market-tw .ynow-hfv-bear { color: #00a65a !important; }
+        body.ynow-market-tw .ynow-hfv-kpi-cell--bull {
+          background: #fdf7f7;
+          border-left-color: #c0392b;
+        }
+        body.ynow-market-tw .ynow-hfv-kpi-cell--bear {
+          background: #f7fbf8;
+          border-left-color: #00a65a;
+        }
         .ynow-hfv-overlay-replay-note {
           margin: 8px 0 0 0 !important;
           font-size: 11.5px !important;

@@ -9641,19 +9641,12 @@ server <- function(input, output, session) {
       return(tags$p(style = "color:#888;font-size:12.5px;", ui_str("hfv_val_hint_no_summary", loc)))
     }
     bias <- as.character(m$market_pricing_bias %||% "—")
-    bias_col <- if (grepl("低估", bias, fixed = TRUE)) {
-      "#00a65a"
+    bias_tone <- if (grepl("低估", bias, fixed = TRUE)) {
+      "bull"
     } else if (grepl("高估", bias, fixed = TRUE)) {
-      "#d9534f"
+      "bear"
     } else {
-      "#666"
-    }
-    bias_bg <- if (grepl("低估", bias, fixed = TRUE)) {
-      "#f7fbf8"
-    } else if (grepl("高估", bias, fixed = TRUE)) {
-      "#fdf7f7"
-    } else {
-      "#fafafa"
+      NULL
     }
     bias_val <- if (grepl("低估", bias, fixed = TRUE)) {
       ui_str("hfv_bias_undervalued", loc)
@@ -9684,8 +9677,7 @@ server <- function(input, output, session) {
       ui_str("hfv_kpi_under_rate", loc)
     }
     maj_pct <- if (isTRUE(maj_is_under)) pct_under else if (identical(maj_is_under, FALSE)) pct_over else NA_real_
-    maj_col <- if (isTRUE(maj_is_under)) "#00a65a" else if (identical(maj_is_under, FALSE)) "#d9534f" else "#666"
-    maj_bg <- if (isTRUE(maj_is_under)) "#f7fbf8" else if (identical(maj_is_under, FALSE)) "#fdf7f7" else "#fafafa"
+    maj_tone <- if (isTRUE(maj_is_under)) "bull" else if (identical(maj_is_under, FALSE)) "bear" else NULL
     maj_note <- if (isTRUE(maj_is_under)) {
       ui_str("hfv_kpi_under_note", loc)
     } else if (identical(maj_is_under, FALSE)) {
@@ -9694,12 +9686,12 @@ server <- function(input, output, session) {
       ui_str("hfv_kpi_under_note", loc)
     }
     last_sig <- as.character(m$last_signal %||% "—")
-    sig_col <- if (grepl("便宜", last_sig, fixed = TRUE) || grepl("Cheap", last_sig, fixed = TRUE)) {
-      "#00a65a"
+    sig_tone <- if (grepl("便宜", last_sig, fixed = TRUE) || grepl("Cheap", last_sig, fixed = TRUE)) {
+      "bull"
     } else if (grepl("偏貴", last_sig, fixed = TRUE) || grepl("Rich", last_sig, fixed = TRUE)) {
-      "#d9534f"
+      "bear"
     } else {
-      "#666"
+      NULL
     }
     last_sig_disp <- if (grepl("便宜", last_sig, fixed = TRUE) || grepl("Cheap", last_sig, fixed = TRUE)) {
       ui_str("hfv_sig_cheap", loc)
@@ -9710,12 +9702,32 @@ server <- function(input, output, session) {
     } else {
       last_sig
     }
-    .kpi <- function(label, value, note = NULL, color = "#222", bg = "#fff", border = "#ddd") {
+    # tone: bull=利多 (US green / TW red), bear=利空 (US red / TW green) via CSS
+    .kpi <- function(label, value, note = NULL, tone = NULL, color = NULL, bg = NULL, border = NULL) {
+      cell_cls <- "ynow-hfv-kpi-cell"
+      val_cls <- "ynow-kpi-stat-value"
+      sty <- NULL
+      if (identical(tone, "bull")) {
+        cell_cls <- paste(cell_cls, "ynow-hfv-kpi-cell--bull")
+        val_cls <- paste(val_cls, "ynow-hfv-bull")
+      } else if (identical(tone, "bear")) {
+        cell_cls <- paste(cell_cls, "ynow-hfv-kpi-cell--bear")
+        val_cls <- paste(val_cls, "ynow-hfv-bear")
+      } else {
+        bg <- bg %||% "#fff"
+        border <- border %||% "#ddd"
+        color <- color %||% "#222"
+        sty <- paste0("background:", bg, ";border-left:4px solid ", border, ";")
+      }
       tags$div(
-        class = "ynow-hfv-kpi-cell",
-        style = paste0("background:", bg, ";border-left:4px solid ", border, ";"),
+        class = cell_cls,
+        style = sty,
         tags$div(class = "ynow-kpi-stat-label", label),
-        tags$div(class = "ynow-kpi-stat-value", style = paste0("color:", color, ";"), value),
+        tags$div(
+          class = val_cls,
+          style = if (!is.null(tone)) NULL else paste0("color:", color, ";"),
+          value
+        ),
         if (!is.null(note) && nzchar(as.character(note)[1])) {
           tags$div(class = "ynow-kpi-stat-note", note)
         } else NULL
@@ -9723,10 +9735,10 @@ server <- function(input, output, session) {
     }
     tags$div(
       class = "ynow-hfv-kpi-grid",
-      .kpi(ui_str("hfv_kpi_hist_pricing", loc), bias_val, color = bias_col, bg = bias_bg, border = bias_col),
-      .kpi(maj_label, .fmt_pct(maj_pct, 0), note = maj_note, color = maj_col, bg = maj_bg, border = maj_col),
+      .kpi(ui_str("hfv_kpi_hist_pricing", loc), bias_val, tone = bias_tone),
+      .kpi(maj_label, .fmt_pct(maj_pct, 0), note = maj_note, tone = maj_tone),
       .kpi(ui_str("hfv_kpi_last_signal", loc), last_sig_disp,
-           note = ui_str("hfv_kpi_signal_note", loc), color = sig_col, bg = "#fff", border = sig_col),
+           note = ui_str("hfv_kpi_signal_note", loc), tone = sig_tone),
       .kpi(ui_str("hfv_kpi_mean_mos", loc), .fmt_pct(m$mean_hist_mos),
            color = "#222222", bg = "#f5f5f5", border = "#222222")
     )
@@ -10338,6 +10350,22 @@ server <- function(input, output, session) {
       ui_str("hfv_oos_realized", loc)
     )
     # Sample snapshot KPIs (Replay). Scenarios sit under Ch1 chart (Overlay).
+    # Up+down and shrink+expand share one cell each; bull/bear colors flip in TW via CSS.
+    .hfv_kpi_pair <- function(label, v_bull, v_bear, note = NULL) {
+      tags$div(
+        class = "ynow-hfv-kpi-cell ynow-hfv-kpi-cell--pair",
+        tags$div(class = "ynow-kpi-stat-label", label),
+        tags$div(
+          class = "ynow-kpi-stat-value ynow-hfv-kpi-pair-vals",
+          tags$span(class = "ynow-hfv-bull", v_bull),
+          tags$span(class = "ynow-hfv-kpi-pair-sep", " / "),
+          tags$span(class = "ynow-hfv-bear", v_bear)
+        ),
+        if (!is.null(note) && nzchar(as.character(note)[1])) {
+          tags$div(class = "ynow-kpi-stat-note", note)
+        } else NULL
+      )
+    }
     conclusion_card <- {
       n_pairs <- as.integer(s$n %||% 0L)
       if (n_pairs > 0L && (is.finite(s$p_up) || is.finite(s$p_above) || is.finite(s$p_toward))) {
@@ -10350,30 +10378,17 @@ server <- function(input, output, session) {
           ),
           tags$div(
             class = "ynow-hfv-kpi-grid ynow-hfv-kpi-grid--3",
-            tags$div(
-              class = "ynow-hfv-kpi-cell",
-              style = "background:#f7fbf8;border-left:4px solid #00a65a;",
-              tags$div(class = "ynow-kpi-stat-label", ui_str("hfv_kpi_ch2_p_up", loc)),
-              tags$div(
-                class = "ynow-kpi-stat-value", style = "color:#00a65a;",
-                if (is.finite(s$p_up)) pct(s$p_up) else "—"
-              ),
-              tags$div(class = "ynow-kpi-stat-note", sprintf(ui_str("hfv_pair_n_fmt", loc), n_pairs))
+            .hfv_kpi_pair(
+              ui_str("hfv_kpi_ch2_up_down", loc),
+              if (is.finite(s$p_up)) pct(s$p_up) else "—",
+              if (is.finite(s$p_down)) pct(s$p_down) else "—",
+              note = sprintf(ui_str("hfv_pair_n_fmt", loc), n_pairs)
             ),
-            tags$div(
-              class = "ynow-hfv-kpi-cell",
-              style = "background:#f5f9fc;border-left:4px solid #3c8dbc;",
-              tags$div(class = "ynow-kpi-stat-label", ui_str("hfv_kpi_ch2_p_toward", loc)),
-              tags$div(
-                class = "ynow-kpi-stat-value", style = "color:#3c8dbc;",
-                if (is.finite(s$p_toward)) pct(s$p_toward) else "—"
-              ),
-              tags$div(
-                class = "ynow-kpi-stat-note",
-                if (is.finite(s$p_away)) {
-                  sprintf(ui_str("hfv_kpi_ch2_p_away_note", loc), pct(s$p_away))
-                } else "—"
-              )
+            .hfv_kpi_pair(
+              ui_str("hfv_kpi_ch2_toward_away", loc),
+              if (is.finite(s$p_toward)) pct(s$p_toward) else "—",
+              if (is.finite(s$p_away)) pct(s$p_away) else "—",
+              note = sprintf(ui_str("hfv_pair_n_fmt", loc), n_pairs)
             ),
             tags$div(
               class = "ynow-hfv-kpi-cell",
@@ -10430,12 +10445,29 @@ server <- function(input, output, session) {
       }
     }
 
-    .hfv_kpi <- function(label, value, note = NULL, color = "#222", bg = "#fff", border_col = "#ddd") {
+    .hfv_kpi <- function(label, value, note = NULL, color = "#222", bg = "#fff", border_col = "#ddd",
+                         tone = NULL) {
+      cell_cls <- "ynow-hfv-kpi-cell"
+      val_cls <- "ynow-kpi-stat-value"
+      sty <- NULL
+      if (identical(tone, "bull")) {
+        cell_cls <- paste(cell_cls, "ynow-hfv-kpi-cell--bull")
+        val_cls <- paste(val_cls, "ynow-hfv-bull")
+      } else if (identical(tone, "bear")) {
+        cell_cls <- paste(cell_cls, "ynow-hfv-kpi-cell--bear")
+        val_cls <- paste(val_cls, "ynow-hfv-bear")
+      } else {
+        sty <- paste0("background:", bg, ";border-left:4px solid ", border_col, ";")
+      }
       tags$div(
-        class = "ynow-hfv-kpi-cell",
-        style = paste0("background:", bg, ";border-left:4px solid ", border_col, ";"),
+        class = cell_cls,
+        style = sty,
         tags$div(class = "ynow-kpi-stat-label", label),
-        tags$div(class = "ynow-kpi-stat-value", style = paste0("color:", color, ";"), value),
+        tags$div(
+          class = val_cls,
+          style = if (!is.null(tone)) NULL else paste0("color:", color, ";"),
+          value
+        ),
         if (!is.null(note) && nzchar(as.character(note)[1])) {
           tags$div(class = "ynow-kpi-stat-note", note)
         } else NULL
@@ -10447,19 +10479,16 @@ server <- function(input, output, session) {
       tags$div(style = "margin:0 0 8px 0;color:#6c757d;font-size:11.5px;", ui_str("hfv_sum_price_formula", loc)),
       tags$p(style = "margin:0 0 8px 0;color:#555;font-size:12px;", period_txt),
       tags$div(
-        class = "ynow-hfv-kpi-grid",
+        class = "ynow-hfv-kpi-grid ynow-hfv-kpi-grid--3",
         .hfv_kpi(ui_str("hfv_kpi_ch3_n", loc), as.character(s$n %||% 0L), border_col = border),
-        .hfv_kpi(
-          ui_str("hfv_kpi_ch3_p_up", loc),
+        .hfv_kpi_pair(
+          ui_str("hfv_kpi_ch3_up_down", loc),
           if (is.finite(s$p_up)) pct(s$p_up) else "—",
-          note = sprintf(ui_str("hfv_kpi_ch3_n_up_note", loc), s$n_up %||% 0L),
-          color = "#00a65a", bg = "#f7fbf8", border_col = "#00a65a"
-        ),
-        .hfv_kpi(
-          ui_str("hfv_kpi_ch3_p_down", loc),
           if (is.finite(s$p_down)) pct(s$p_down) else "—",
-          note = sprintf(ui_str("hfv_kpi_ch3_n_down_note", loc), s$n_down %||% 0L),
-          color = "#d9534f", bg = "#fdf7f7", border_col = "#d9534f"
+          note = sprintf(
+            ui_str("hfv_kpi_ch3_up_down_note", loc),
+            s$n_up %||% 0L, s$n_down %||% 0L
+          )
         ),
         .hfv_kpi(
           ui_str("hfv_kpi_ch3_med_ret", loc),
@@ -10483,19 +10512,16 @@ server <- function(input, output, session) {
       tags$div(style = "margin:0 0 8px 0;color:#6c757d;font-size:11.5px;", ui_str("hfv_sum_fv_formula", loc)),
       tags$p(style = "margin:0 0 8px 0;color:#555;font-size:12px;", period_txt),
       tags$div(
-        class = "ynow-hfv-kpi-grid",
+        class = "ynow-hfv-kpi-grid ynow-hfv-kpi-grid--3",
         .hfv_kpi(ui_str("hfv_kpi_ch4_n", loc), as.character(s$n %||% 0L), border_col = border),
-        .hfv_kpi(
-          ui_str("hfv_kpi_ch4_toward", loc),
+        .hfv_kpi_pair(
+          ui_str("hfv_kpi_ch4_toward_away", loc),
           if (is.finite(s$p_toward)) pct(s$p_toward) else "—",
-          note = sprintf(ui_str("hfv_kpi_ch4_toward_note", loc), s$n_toward %||% 0L),
-          color = "#00a65a", bg = "#f7fbf8", border_col = "#00a65a"
-        ),
-        .hfv_kpi(
-          ui_str("hfv_kpi_ch4_away", loc),
           if (is.finite(s$p_away)) pct(s$p_away) else "—",
-          note = sprintf(ui_str("hfv_kpi_ch4_away_note", loc), s$n_away %||% 0L),
-          color = "#d9534f", bg = "#fdf7f7", border_col = "#d9534f"
+          note = sprintf(
+            ui_str("hfv_kpi_ch4_toward_away_note", loc),
+            s$n_toward %||% 0L, s$n_away %||% 0L
+          )
         ),
         .hfv_kpi(
           ui_str("hfv_kpi_ch4_med_gap", loc),

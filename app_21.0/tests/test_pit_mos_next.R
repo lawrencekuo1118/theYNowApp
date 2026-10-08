@@ -481,7 +481,10 @@ if (file.exists(loc_path)) {
       "hfv_ch2_title", "hfv_ch2_lead", "hfv_ch3_title", "hfv_ch4_title",
       "hfv_ch5_title",
       "hfv_scenario_under_title", "hfv_overlay_vs_replay_note",
-      "hfv_kpi_over_rate", "hfv_kpi_ch2_p_up", "hfv_kpi_ch3_p_up"
+      "hfv_kpi_over_rate", "hfv_kpi_ch2_p_up", "hfv_kpi_ch3_p_up",
+      "hfv_kpi_ch2_up_down", "hfv_kpi_ch2_toward_away",
+      "hfv_kpi_ch3_up_down", "hfv_kpi_ch3_up_down_note",
+      "hfv_kpi_ch4_toward_away", "hfv_kpi_ch4_toward_away_note"
     )) {
       v <- ui_str(k, loc)
       check(paste0("locale ", loc, " ", k), is.character(v) && nzchar(v) && !grepl("^\\[", v))
@@ -559,6 +562,27 @@ if (file.exists(loc_path)) {
   check("FV meaning shrink en", grepl("shrink|toward", ui_str("hfv_sum_fv_meaning", "en"), ignore.case = TRUE))
   check("FV meaning 縮小 zh", grepl("縮小", ui_str("hfv_sum_fv_meaning", "zh-TW")))
   check("ch5 period detail en", grepl("Period detail|appendix", ui_str("hfv_ch5_title", "en"), ignore.case = TRUE))
+  check("ch2 up/down pair en", grepl("up.*/.*down", ui_str("hfv_kpi_ch2_up_down", "en"), ignore.case = TRUE))
+  check("ch2 up/down pair zh", grepl("上漲.*下跌", ui_str("hfv_kpi_ch2_up_down", "zh-TW")))
+  check("ch4 toward/away pair zh", grepl("縮小.*擴大", ui_str("hfv_kpi_ch4_toward_away", "zh-TW")))
+}
+
+# HFV KPI bull/bear CSS: US green-up; TW red-up / green-down
+ui_path <- file.path(app_dir, "ynow_ui.R")
+if (file.exists(ui_path)) {
+  ui_txt <- paste(readLines(ui_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  check("HFV bull CSS class", grepl("\\.ynow-hfv-bull\\s*\\{", ui_txt))
+  check("HFV bear CSS class", grepl("\\.ynow-hfv-bear\\s*\\{", ui_txt))
+  check("HFV TW invert bull", grepl("body\\.ynow-market-tw \\.ynow-hfv-bull", ui_txt))
+  check("HFV TW invert bear", grepl("body\\.ynow-market-tw \\.ynow-hfv-bear", ui_txt))
+  check("HFV pair cell class", grepl("ynow-hfv-kpi-cell--pair", ui_txt, fixed = TRUE))
+  srv_path <- file.path(app_dir, "ynow_server.R")
+  if (file.exists(srv_path)) {
+    srv_txt <- paste(readLines(srv_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+    check("server merges up/down KPI", grepl("hfv_kpi_ch3_up_down", srv_txt, fixed = TRUE))
+    check("server merges toward/away KPI", grepl("hfv_kpi_ch4_toward_away", srv_txt, fixed = TRUE))
+    check("server uses hfv_kpi_pair", grepl("\\.hfv_kpi_pair\\s*<-", srv_txt))
+  }
 }
 
 if (exists("overlay_avg_fair_value_df", mode = "function")) {
