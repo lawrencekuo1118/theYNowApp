@@ -8,5 +8,5 @@ short=78c200f
 message=chore: bump display version to v21.35
 captured_at=2026-10-08T01:02:23Z
 source_branch=cursor/hfv-next-period-prob-911b
-display_version=v21.35
+display_version=v21.36
 note=Canonical live line is app_21.0. Bundle 12662218 ships v21.35: HFV findings merge up/down and shrink/expand into paired KPI cells; TW mode inverts bullish=red / bearish=green; strip order-ticket disclaimer copy outside About legal page. Deploy via scripts/deploy_app_21.R.
