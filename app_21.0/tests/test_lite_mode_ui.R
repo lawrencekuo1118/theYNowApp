@@ -171,7 +171,10 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_false(grepl('ns("concept_key")', macro_txt, fixed = TRUE))
   testthat::expect_false(grepl('ns("theme_key")', macro_txt, fixed = TRUE))
   testthat::expect_false(grepl("Industry / concept vs benchmark", macro_txt, fixed = TRUE))
-  testthat::expect_false(grepl("ynow-lite-only", macro_txt, fixed = TRUE))
+  # Lite-only YNOW expand hint is intentional; no Lite-only combined theme menu.
+  testthat::expect_true(grepl("ynow_macro_ynow_index_hint", macro_txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-macro-hint ynow-lite-only", macro_txt, fixed = TRUE))
+  testthat::expect_false(grepl("Industry / concept[^\n]*ynow-lite-only", macro_txt))
   testthat::expect_true(grepl("ynow_macro_theme_help", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-macro-chapter__lead", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("Pick Industry from the menu and Concept from the word cloud", macro_txt, fixed = TRUE))

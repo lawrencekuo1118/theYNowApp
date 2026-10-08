@@ -390,7 +390,12 @@ check("bubble chapter has no duplicate theme menu", {
   !grepl('ns("bubble_theme_key")', bub_ui, fixed = TRUE) &&
     grepl("bubble_shared_pick_status", bub_ui, fixed = TRUE)
 })
-check("no Lite-only combined menu", !grepl("ynow-lite-only", txt, fixed = TRUE))
+check("no Lite-only combined Industry/Concept menu", {
+  !grepl("ynow-lite-only[^\n]*Industry / concept", txt) &&
+    !grepl("Industry / concept[^\n]*ynow-lite-only", txt) &&
+    grepl("ynow_macro_ynow_index_hint", txt, fixed = TRUE) &&
+    grepl("ynow-lite-only", txt, fixed = TRUE)
+})
 check("click specs helper", grepl("macro_click_index_specs", txt, fixed = TRUE))
 check("KPI uses click specs by market", grepl("macro_click_index_specs(.mode())", txt, fixed = TRUE))
 check("click validates against market catalog", grepl("macro_click_index_specs(.mode())", txt, fixed = TRUE))
@@ -475,8 +480,14 @@ check("hint above Rf", {
   pos_rf <- regexpr("rf_signal_row", txt, fixed = TRUE)[1]
   is.finite(pos_hint) && pos_hint > 0 && pos_hint < pos_rf
 })
-check("chart slot is full-only", grepl("ynow-macro-index-hist ynow-full-only", txt, fixed = TRUE))
-check("hint is full-only", grepl("ynow-macro-hint ynow-full-only", txt, fixed = TRUE))
+check("chart slot shared with Lite YNOW expand", {
+  pos <- regexpr('id = "ynow_macro_index_hist"', txt, fixed = TRUE)[1]
+  chunk <- if (pos > 0) substr(txt, pos, min(nchar(txt), pos + 180)) else ""
+  grepl("ynow-macro-index-hist", chunk, fixed = TRUE) &&
+    !grepl("ynow-full-only", chunk, fixed = TRUE)
+})
+check("board hint is full-only", grepl('id = "ynow_macro_index_hint"', txt, fixed = TRUE) &&
+  grepl("ynow-macro-hint ynow-full-only", txt, fixed = TRUE))
 check("lite gate on click", grepl(".is_lite", txt, fixed = TRUE) && grepl("lite_mode_rv", txt, fixed = TRUE))
 check("click handler toggles same index closed", {
   start <- regexpr("observeEvent(input$index_click", txt, fixed = TRUE)[1]
