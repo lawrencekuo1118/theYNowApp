@@ -8,5 +8,5 @@ short=7f87827
 message=chore: bump display version to v21.48
 captured_at=2026-10-08T18:05:00Z
 source_branch=cursor/bluechip-no-fs-alert-911b
-display_version=v21.48
+display_version=v21.49
 note=Canonical live line is app_21.0. Bundle 12665611 ships v21.48: Blue Chip 無財報警訊 / No FS alerts filter. Deploy via scripts/deploy_app_21.R.
