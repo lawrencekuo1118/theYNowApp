@@ -581,6 +581,8 @@ testthat::expect_true(grepl(
   testthat::expect_true(grepl("ynow-lab-im-us-listed-adr-row ynow-us-only", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_lab_im_us_listed_label", txt, fixed = TRUE))
   testthat::expect_true(grepl("body.ynow-market-tw .ynow-us-only", txt, fixed = TRUE))
+  testthat::expect_true(grepl("body:not(.ynow-market-tw) .ynow-tw-only", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-lab-im-boards ynow-tw-only", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_lab_im_eq_explain", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-lab-im-eq-explain ynow-lite-only", txt, fixed = TRUE))
 })

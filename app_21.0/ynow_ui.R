@@ -9194,21 +9194,23 @@ ui <- dashboardPage(
           width: 100% !important;
           max-width: 100%;
         }
-        .ynow-lab-im-eq-adr-row {
+        .ynow-lab-im-eq-gate-row,
+        .ynow-lab-im-us-listed-adr-row {
           margin-left: -8px;
           margin-right: -8px;
         }
-        .ynow-lab-im-eq-adr-row > [class*='col-'] {
+        .ynow-lab-im-eq-gate-row > [class*='col-'],
+        .ynow-lab-im-us-listed-adr-row > [class*='col-'] {
           padding-left: 8px;
           padding-right: 8px;
         }
-        /* 台股：不含 ADR 選項（僅美股有意義） */
+        /* 台股：隱藏美股專用列（上市固定＋含 ADR） */
         body.ynow-market-tw .ynow-us-only {
           display: none !important;
         }
-        body.ynow-market-tw .ynow-lab-im-eq-adr-row > .ynow-lab-im-eq-col {
-          width: 100% !important;
-          max-width: 100%;
+        /* 美股：隱藏台股板別（上市／上櫃／興櫃） */
+        body:not(.ynow-market-tw) .ynow-tw-only {
+          display: none !important;
         }
         .ynow-lab-im-eq-explain {
           margin: 2px 0 14px 0;
