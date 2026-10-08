@@ -103,6 +103,27 @@ testthat::test_that("industry_avg ranks by mcap-weighted average upside", {
   testthat::expect_true(grepl("\\+42\\.0%", lb[["市值加權年化估值漲幅"]][[2]]))
 })
 
+testthat::test_that("undervalued ranks by total FV–price gap, not CAGR", {
+  # Same CAGR order would put C1 first (60); total gap order differs when horizon differs.
+  uv <- rbind(
+    .mk_row("X1", "semi", "Semiconductors", 20, mcap = 10),  # total 100
+    .mk_row("X2", "soft", "Software", 40, mcap = 10),         # total 200
+    .mk_row("X3", "bank", "Banks", 50, mcap = 10),            # total 250
+    .mk_row("X4", "semi", "Semiconductors", -5, mcap = 10)    # overvalued — excluded
+  )
+  # Override totals so ranking ≠ CAGR order: X1 total largest despite lower CAGR
+  uv$upside_total_pct <- c(300, 150, 100, -25)
+  lb <- lab_quality_leaderboard(
+    uv, top_n = 10L, eq_only = FALSE, gate_only = FALSE,
+    scope = "undervalued",
+    industry_filter = character(0)
+  )
+  testthat::expect_equal(nrow(lb), 3L)
+  testthat::expect_identical(as.character(lb$代號), c("X1", "X2", "X3"))
+  testthat::expect_true(grepl("\\+300\\.0%", lb[["總潛在漲幅"]][[1]], fixed = FALSE))
+  testthat::expect_false("X4" %in% as.character(lb$代號))
+})
+
 testthat::test_that("TW board normalizer maps 上市／上櫃／興櫃", {
   testthat::skip_if_not(exists("lab_normalize_tw_boards", mode = "function"))
   testthat::expect_identical(

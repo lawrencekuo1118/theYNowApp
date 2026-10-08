@@ -1541,9 +1541,10 @@ beta_rolling_section_ui <- function() {
                       choiceNames = list(
                         tags$span(id = "ynow_lab_im_lb_mode_overall", "整體前十名"),
                         tags$span(id = "ynow_lab_im_lb_mode_by_ind", "選定產業前十名"),
-                        tags$span(id = "ynow_lab_im_lb_mode_ind_avg", "產業市值加權漲幅")
+                        tags$span(id = "ynow_lab_im_lb_mode_ind_avg", "產業市值加權漲幅"),
+                        tags$span(id = "ynow_lab_im_lb_mode_undervalued", "價值低估前十名")
                       ),
-                      choiceValues = list("overall", "by_industry", "industry_avg"),
+                      choiceValues = list("overall", "by_industry", "industry_avg", "undervalued"),
                       selected = APP_DEFAULTS$lab_im_lb_mode,
                       inline = TRUE
                     ),
@@ -1554,6 +1555,7 @@ beta_rolling_section_ui <- function() {
                         "整體前十名：跨本次已評估產業依年化估值漲幅取 Top 10，並顯示產業欄。",
                         "選定產業前十名：所選產業內單一 Top 10；產業內排名自該產業第 1 名起算（非跨產業流水號）。",
                         "產業市值加權漲幅：各產業以 Σ(市值×年化估值漲幅)/Σ(市值) 排名（每元市值加權）。",
+                        "價值低估前十名：跨產業依推薦主模型合理價相對市價的總潛在漲幅（非年化）由大到小；只列仍被低估者。",
                         "前十名只從合格者取最多 10 檔；合格不足 10 時不會湊滿。"
                       )
                     )
@@ -7797,6 +7799,8 @@ ui <- dashboardPage(
             if (labLbByInd && s.lab_im_lb_mode_by_industry) labLbByInd.textContent = s.lab_im_lb_mode_by_industry;
             var labLbIndAvg = document.getElementById('ynow_lab_im_lb_mode_ind_avg');
             if (labLbIndAvg && s.lab_im_lb_mode_industry_avg) labLbIndAvg.textContent = s.lab_im_lb_mode_industry_avg;
+            var labLbUndervalued = document.getElementById('ynow_lab_im_lb_mode_undervalued');
+            if (labLbUndervalued && s.lab_im_lb_mode_undervalued) labLbUndervalued.textContent = s.lab_im_lb_mode_undervalued;
             var labBoardsLabel = document.getElementById('ynow_lab_im_boards_label');
             if (labBoardsLabel && s.lab_im_boards_label) labBoardsLabel.textContent = s.lab_im_boards_label;
             var labBoardTwse = document.getElementById('ynow_lab_im_board_twse');

@@ -1702,14 +1702,16 @@ lab_leaderboard_industry_choices <- function(merged_df, eq_only = FALSE,
 #' @param eq_only 若 TRUE，再只保留盈餘品質通過者（與 Piotroski 高門檻獨立）
 #' @param gate_only 若 TRUE，只列 F-Score≥7；FALSE＝不設 F 門檻
 #' @param no_alert 若 TRUE，只列財報警訊數＝0者
-#' @param scope `"overall"`＝整體前十（跨產業、含產業欄）；
+#' @param scope `"overall"`＝整體前十（跨產業、含產業欄；依年化估值漲幅）；
 #'   `"by_industry"`＝選定產業內前十（單一 Top-K；產業內排名自該產業第 1 名起算）；
-#'   `"industry_avg"`＝產業市值加權年化估值漲幅排名（每元市值加權平均）
+#'   `"industry_avg"`＝產業市值加權年化估值漲幅排名（每元市值加權平均）；
+#'   `"undervalued"`＝價值低估前十（跨產業；依推薦主模型總潛在漲幅＝FV vs 市價差距，非年化）
 #' @param industry_filter 選定產業：`industry_key` 或 `industry_label` 字串向量；
 #'   `NULL`／空／`"__all__"`＝不另限產業（由呼叫端決定是否已篩過）
 lab_quality_leaderboard <- function(merged_df, top_n = 10L, eq_only = FALSE,
                                     gate_only = TRUE, no_alert = FALSE,
-                                    scope = c("overall", "by_industry", "industry_avg"),
+                                    scope = c("overall", "by_industry", "industry_avg",
+                                              "undervalued"),
                                     industry_filter = NULL) {
   scope <- match.arg(scope)
   if (identical(scope, "industry_avg")) {
@@ -1806,6 +1808,21 @@ lab_quality_leaderboard <- function(merged_df, top_n = 10L, eq_only = FALSE,
   df_ind <- df[o_ind, , drop = FALSE]
   ind_key_sorted <- ind_key_vec[o_ind]
   df_ind$.ind_rank <- ave(seq_len(nrow(df_ind)), ind_key_sorted, FUN = seq_along)
+
+  if (identical(scope, "undervalued")) {
+    # 價值低估前十：推薦主模型總潛在漲幅（FV vs 市價，非年化）由大到小；只列仍被低估者
+    tot <- suppressWarnings(as.numeric(df_ind$upside_total_pct))
+    keep_uv <- is.finite(tot) & tot > 0
+    df_uv <- df_ind[keep_uv, , drop = FALSE]
+    tot <- tot[keep_uv]
+    if (nrow(df_uv) == 0L) return(empty)
+    o_uv <- order(-tot, df_uv$ticker, na.last = TRUE)
+    df_uv <- df_uv[o_uv, , drop = FALSE]
+    df_uv <- head(df_uv, top_n)
+    out <- .fmt_lb_rows(df_uv, rank_values = seq_len(nrow(df_uv)), rank_col = "排名")
+    if (is.null(out) || nrow(out) == 0) return(empty)
+    return(out)
+  }
 
   # Cross-industry Top-K still by global CAGR (single list)
   o_glob <- order(

@@ -2414,7 +2414,7 @@ server <- function(input, output, session) {
       bt_nav_window = c("Backtest", "NAV window", "Strategy NAV 視窗"),
       lab_im_pool_rank = c("Lab", "候選截斷邏輯", "市值／概念股／近一年漲幅／隨機"),
       lab_im_concepts = c("Lab", "概念股群", "pool = concept 時"),
-      lab_im_lb_mode = c("Lab", "Leaderboard mode", "overall / by_industry / industry_avg"),
+      lab_im_lb_mode = c("Lab", "Leaderboard mode", "overall / by_industry / industry_avg / undervalued"),
       lab_im_boards = c("Lab", "TW boards", "TWSE / TPEX / ESB"),
       lab_im_max_n = c("Lab", "Universe size N", "顯示上限"),
       lab_im_max_n_custom = c("Lab", "Custom universe N", "N = custom 時"),
@@ -12106,8 +12106,10 @@ server <- function(input, output, session) {
       "產業市值加權漲幅"
     } else if (identical(scope, "by_industry")) {
       "選定產業內 Top 10（產業內排名自第 1 名起算）"
+    } else if (identical(scope, "undervalued")) {
+      "價值低估 Top 10（總潛在漲幅＝主模型 FV vs 市價）"
     } else {
-      "整體 Top 10（跨本次已評估產業）"
+      "整體 Top 10（跨本次已評估產業；年化估值漲幅）"
     }
     loc_note <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "zh-TW")
     gate_txt <- paste0(
@@ -12137,11 +12139,16 @@ server <- function(input, output, session) {
         scope_txt, "；與明細同一批、同一排序鍵；合格不足 10 時不會湊滿）。"
       ))
     }
+    sort_key_txt <- if (identical(scope, "undervalued")) {
+      "排序鍵＝推薦主模型合理價相對市價之總潛在漲幅（非年化；只列仍被低估者）"
+    } else {
+      sprintf("排序鍵＝模型合理價相對現價，於 %d 年預測期換算之年化漲幅", n)
+    }
     tags$p(
       style = "color:#555; font-size:12.5px;",
       sprintf(
-        "本次已評估 %d 檔；顯示上限 N＝%s（合格不足不湊滿）。排序鍵＝模型合理價相對現價，於 %d 年預測期換算之年化漲幅；前十名門檻＝%s；目前排行視角＝%s。",
-        n_eval, max_n_label, n, gate_txt, scope_txt
+        "本次已評估 %d 檔；顯示上限 N＝%s（合格不足不湊滿）。%s；前十名門檻＝%s；目前排行視角＝%s。",
+        n_eval, max_n_label, sort_key_txt, gate_txt, scope_txt
       )
     )
   })
@@ -12192,13 +12199,14 @@ server <- function(input, output, session) {
       ))
     }
     scope <- as.character(input$lab_im_lb_mode %||% "overall")[1]
-    if (!scope %in% c("overall", "by_industry", "industry_avg")) scope <- "overall"
-    # overall = Top 10 across all evaluated industries;
+    if (!scope %in% c("overall", "by_industry", "industry_avg", "undervalued")) scope <- "overall"
+    # overall = Top 10 across all evaluated industries (annualized upside);
     # by_industry = Top 10 within selected industries (Industry rank from 1 within each industry);
-    # industry_avg = industries ranked by mcap-weighted average annualized upside
+    # industry_avg = industries ranked by mcap-weighted average annualized upside;
+    # undervalued = Top 10 by total FV–price gap (primary model; still undervalued only)
     lb_src <- merged
     ind_filter <- character(0)
-    if (identical(scope, "overall")) {
+    if (scope %in% c("overall", "undervalued")) {
       catlg <- tryCatch(lab_im_catalog(), error = function(e) NULL)
       if (is.data.frame(catlg) && nrow(catlg) > 0) {
         lb_src <- tryCatch(
@@ -12264,10 +12272,10 @@ server <- function(input, output, session) {
     eq_on <- isTRUE(input$lab_im_eq_only)
     no_alert_on <- isTRUE(input$lab_im_no_alert)
     scope <- as.character(input$lab_im_lb_mode %||% "overall")[1]
-    if (!scope %in% c("overall", "by_industry", "industry_avg")) scope <- "overall"
+    if (!scope %in% c("overall", "by_industry", "industry_avg", "undervalued")) scope <- "overall"
     lb_src <- merged
     ind_filter <- character(0)
-    if (identical(scope, "overall")) {
+    if (scope %in% c("overall", "undervalued")) {
       catlg <- tryCatch(lab_im_catalog(), error = function(e) NULL)
       if (is.data.frame(catlg) && nrow(catlg) > 0) {
         lb_src <- tryCatch(
@@ -12324,6 +12332,17 @@ server <- function(input, output, session) {
         ),
         error = function(e) sprintf(
           "選定產業內前十名顯示 %d／10（合格 %d／已評估 %d）。產業內排名自該產業第 1 名起算；不足不湊滿。",
+          as.integer(n_show), as.integer(n_qual), as.integer(n_eval)
+        )
+      )
+    } else if (identical(scope, "undervalued")) {
+      txt <- tryCatch(
+        sprintf(
+          ui_str("lab_im_lb_status_undervalued", loc),
+          as.integer(n_show), as.integer(n_qual), as.integer(n_eval)
+        ),
+        error = function(e) sprintf(
+          "價值低估前十名顯示 %d／10（合格 %d／已評估 %d）。依推薦主模型總潛在漲幅（FV vs 市價）排序；年化漲幅僅供對照。",
           as.integer(n_show), as.integer(n_qual), as.integer(n_eval)
         )
       )
@@ -12564,10 +12583,10 @@ server <- function(input, output, session) {
         merged_lb <- tryCatch(lab_im_merged(), error = function(e) NULL)
         if (is.data.frame(merged_lb) && nrow(merged_lb) > 0) {
           lb_scope <- as.character(isolate(input$lab_im_lb_mode) %||% "overall")[1]
-          if (!lb_scope %in% c("overall", "by_industry", "industry_avg")) lb_scope <- "overall"
+          if (!lb_scope %in% c("overall", "by_industry", "industry_avg", "undervalued")) lb_scope <- "overall"
           lb_src <- merged_lb
           ind_filter <- character(0)
-          if (identical(lb_scope, "overall")) {
+          if (lb_scope %in% c("overall", "undervalued")) {
             lb_src <- tryCatch(
               lab_merge_catalog_scores(
                 catlg,
