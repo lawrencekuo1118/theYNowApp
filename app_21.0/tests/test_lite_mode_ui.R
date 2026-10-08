@@ -581,6 +581,8 @@ testthat::expect_true(grepl(
   testthat::expect_true(grepl("SOTP（分部加總）", txt, fixed = TRUE))
   testthat::expect_true(grepl('id = "ynow_method_section_title"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-lab-im-eq-gate-row", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow_lab_im_no_alert_label", txt, fixed = TRUE))
+  testthat::expect_true(grepl('"lab_im_no_alert"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-lab-im-us-listed-adr-row ynow-us-only", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_lab_im_us_listed_label", txt, fixed = TRUE))
   testthat::expect_true(grepl("body.ynow-market-tw .ynow-us-only", txt, fixed = TRUE))
@@ -776,7 +778,6 @@ testthat::test_that("ynow_server wires Lite auto-calc and Smart Analysis outputs
   # Lite defaults allowlist = UI-configurable only (not Smart Analysis engines)
   testthat::expect_true(grepl('"lab_im_eq_only"', txt, fixed = TRUE))
   testthat::expect_true(grepl('"lab_im_no_alert"', txt, fixed = TRUE))
-  testthat::expect_true(grepl("ynow_lab_im_no_alert_label", txt, fixed = TRUE))
   testthat::expect_true(grepl('"lab_im_pool_rank"', txt, fixed = TRUE))
   testthat::expect_true(grepl('"lab_cluster_k"', txt, fixed = TRUE))
   # Extract lite_default_keys vector body and assert engines are excluded
