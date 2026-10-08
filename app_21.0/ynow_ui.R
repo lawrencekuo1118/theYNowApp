@@ -4905,11 +4905,11 @@ ui <- dashboardPage(
         body.ynow-lite .ynow-full-only {
           display: none !important;
         }
-        body.ynow-lite .ynow-macro-kpi--clickable {
+        /* Lite: board KPIs stay non-clickable; YNOW／TYNOW keeps expand/collapse. */
+        body.ynow-lite .ynow-macro-kpi--clickable:not(.ynow-macro-kpi--ynow) {
           cursor: default !important;
           pointer-events: none;
         }
-        body.ynow-lite #ynow_macro_index_hist,
         body.ynow-lite #ynow_macro_index_hint,
         body.ynow-lite #ynow_macro_htcdi_expand {
           display: none !important;
@@ -6960,6 +6960,7 @@ ui <- dashboardPage(
             setBtText('ynow_macro_htcdi_in_help', 'htcdi_in_composite_help');
             setBtText('ynow_macro_htcdi_method_title', 'htcdi_method_title');
             setBtText('ynow_macro_index_hint', 'macro_index_chart_hint');
+            setBtText('ynow_macro_ynow_index_hint', 'macro_ynow_index_chart_hint');
             setBtText('ynow_own_index_overlay_label', 'macro_own_index_overlay_label');
             setBtText('ynow_own_index_overlay_hint', 'macro_own_index_overlay_hint');
             ['ynow_index_title', 'ynow_index_chapter_title', 'ynow_index_rule',

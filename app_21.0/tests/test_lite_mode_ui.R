@@ -50,7 +50,8 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
     "macro_index_name_gspc", "macro_index_name_ixic", "macro_index_name_dji",
     "macro_index_name_sox", "macro_index_name_twii", "macro_index_name_twoii",
     "macro_index_name_0050",
-    "macro_index_chart_hint", "macro_index_chart_empty",
+    "macro_index_chart_hint", "macro_ynow_index_chart_hint",
+    "macro_index_chart_empty",
     "macro_index_chart_error",
     "macro_own_index_overlay_label", "macro_own_index_overlay_hint",
     "macro_own_index_overlay_yaxis",
@@ -248,15 +249,33 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_false(grepl("ynow-macro-kpi--rf[^\\n]*ynow-full-only", macro_txt))
   testthat::expect_true(grepl("macro_click_index_specs", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("lite_mode_rv", macro_txt, fixed = TRUE))
-  testthat::expect_true(grepl("body.ynow-lite #ynow_macro_index_hist", txt, fixed = TRUE))
-  testthat::expect_true(grepl("body.ynow-lite .ynow-macro-kpi--clickable", txt, fixed = TRUE))
+  # Lite keeps YNOW／TYNOW expand; only board clickables + HTCDI expand stay gated.
+  testthat::expect_false(grepl("body.ynow-lite #ynow_macro_index_hist", txt, fixed = TRUE))
+  testthat::expect_true(grepl(
+    "body.ynow-lite .ynow-macro-kpi--clickable:not(.ynow-macro-kpi--ynow)",
+    txt,
+    fixed = TRUE
+  ))
   testthat::expect_true(grepl("body.ynow-lite #ynow_macro_index_hint", txt, fixed = TRUE))
   testthat::expect_true(grepl("body.ynow-lite #ynow_macro_htcdi_expand", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow_macro_ynow_index_hint", macro_txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-macro-hint ynow-lite-only", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-macro-kpi--htcdi", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-macro-kpi--ynow", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("rf_col, ynow_col, htcdi_col", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-macro-htcdi-expand ynow-full-only", macro_txt, fixed = TRUE))
   testthat::expect_false(grepl("ynow-macro-kpi--htcdi[^\\n]*ynow-full-only", macro_txt))
+  # Own-index KPI is clickable in Lite (no lite early-return on onclick).
+  testthat::expect_true(grepl("ynow-macro-kpi--ynow ynow-macro-kpi--clickable", macro_txt, fixed = TRUE))
+  testthat::expect_false(grepl(
+    "document.body.classList.contains\\('ynow-lite'\\)\\) return;[\\s\\S]*own",
+    macro_txt
+  ))
+  testthat::expect_true(grepl(
+    "Lite: only YNOW / TYNOW expands",
+    macro_txt,
+    fixed = TRUE
+  ))
   # Macro, then Blue Chip, then Company (dashboard), then YNOW
   testthat::expect_true(
     regexpr('tabName = "macro_market"', txt, fixed = TRUE)[1] <
