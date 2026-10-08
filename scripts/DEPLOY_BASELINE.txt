@@ -8,5 +8,5 @@ short=56ce708
 message=chore: bump display version to v21.37
 captured_at=2026-10-08T05:00:00Z
 source_branch=cursor/hfv-next-period-prob-911b
-display_version=v21.37
+display_version=v21.38
 note=Canonical live line is app_21.0. Bundle 12662948 ships v21.37: replace Mainland「口徑」with Taiwan「範圍／定義」(HFV 驗證樣本範圍). Deploy via scripts/deploy_app_21.R.
