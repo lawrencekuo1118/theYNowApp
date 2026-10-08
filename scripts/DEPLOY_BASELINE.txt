@@ -8,5 +8,5 @@ short=6092cb5
 message=chore: bump display version to v21.34
 captured_at=2026-10-07T17:45:00Z
 source_branch=cursor/hfv-next-period-prob-911b
-display_version=v21.34
+display_version=v21.35
 note=Canonical live line is app_21.0. Bundle 12660704 ships v21.34: HFV toolbar chips hide native radio/checkbox so dots no longer cover labels; Show benchmark is a plain flex checkbox. Deploy via scripts/deploy_app_21.R.
