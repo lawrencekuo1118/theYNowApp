@@ -8,5 +8,5 @@ short=edeadc2
 message=chore: bump display version to v21.41
 captured_at=2026-10-08T10:30:00Z
 source_branch=cursor/sop-back-to-checklist-911b
-display_version=v21.41
+display_version=v21.42
 note=Canonical live line is app_21.0. Bundle 12663988 ships v21.41: move Decision SOP back onto Decision Checklist; YNOW locked hint points to 決策檢核. Deploy via scripts/deploy_app_21.R.
