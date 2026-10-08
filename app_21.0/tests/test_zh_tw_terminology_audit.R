@@ -1,6 +1,9 @@
 #!/usr/bin/env Rscript
 # Audit zh-TW locale: Taiwan Traditional terminology (not Mainland / Simplified),
 # and user-facing labels that must not remain English-only (except finance terms).
+#
+# Dangerous false positive: Traditional orthography ≠ Taiwan usage.
+# Reject Mainland finance/stats/UI jargon that was merely converted to 繁體.
 
 fail <- 0L
 check <- function(label, cond) {
@@ -28,8 +31,22 @@ mainland <- c(
   "默认", "参数", "数据", "用户", "勾选", "周期", "阈值", "软件", "网络",
   "信息", "门限", "质量", "账户", "报表", "视频", "内存", "独立", "菜单"
 )
-# Traditional orthography but Mainland finance/stats jargon (not Taiwan usage)
-mainland_trad_traps <- c("口徑", "統計口徑")
+# Traditional orthography but Mainland finance/stats/UI jargon (not Taiwan usage)
+mainland_trad_traps <- c(
+  "口徑", "統計口徑",
+  "帶寬",           # IT bandwidth; TW finance uses 區間 for scenario bands
+  "點擊",           # TW UI prefers 點選
+  "可替代對象",     # CS「對象」; TW finance uses 可替代標的
+  "一鍵",           # CN product-marketing; TW: 一次產出／快速套用
+  "風險提示",       # CN broker boilerplate; TW securities: 風險警語
+  "爬取", "抓取",   # TW desk/UI: 擷取／取得
+  "同比", "環比",
+  "市盈率", "市淨率",
+  "倉位", "止損", "止盈",
+  "杠桿",
+  "投資者",         # TW: 投資人
+  "賦能", "抓手", "閉環", "賽道", "顆粒度", "底層邏輯"
+)
 zh_blob <- paste(vapply(keys, function(k) as.character(zh[[k]] %||% "")[1], character(1)),
                  collapse = "\n")
 for (w in mainland) {
@@ -57,14 +74,47 @@ check(
   identical(as.character(en$hfv_oos_expanding)[1], "Expanding-window OOS hit rates")
 )
 
+# Scenario bands → 區間 (not 帶寬)
+check(
+  "scenario bands use 區間",
+  grepl("情境區間", as.character(zh$hfv_scenario_thresh_note)[1], fixed = TRUE) &&
+    grepl("A–D 區間", as.character(zh$hfv_scenario_concl_other)[1], fixed = TRUE)
+)
+
+# Lite toggle / report / risk copy
+check(
+  "lite toggle uses 點選",
+  identical(as.character(zh$lite_toggle_title)[1], "點選即可切換簡化版／完整版")
+)
+check(
+  "download report uses 一次產出",
+  grepl("一次產出投資意見報告", as.character(zh$download_report_about)[1], fixed = TRUE)
+)
+check(
+  "legal risk uses 風險警語",
+  grepl("風險警語", as.character(zh$legal_risk_body)[1], fixed = TRUE)
+)
+check(
+  "HTCDI substitutes use 可替代標的",
+  identical(as.character(zh$htcdi_col_substitutes)[1], "可替代標的")
+)
+check(
+  "macro Rf last-known uses 擷取",
+  identical(as.character(zh$macro_rf_src_last)[1], "最近成功擷取")
+)
+check(
+  "locale prefers 擷取 over 抓取",
+  grepl("擷取", zh_blob, fixed = TRUE) && !grepl("抓取", zh_blob, fixed = TRUE)
+)
+
 # Taiwan prefers 佔比 / 網路 (not 占比 / 網絡)
 check("uses 佔比 not 占比", grepl("佔比", zh_blob, fixed = TRUE) && !grepl("占比", zh_blob, fixed = TRUE))
 check("uses 網路 not 網絡", !grepl("網絡", zh_blob, fixed = TRUE))
 
-# 干擾 must use 幹 (U+5E79), not 干 (U+5E72)
-gan_wrong <- grepl("\u5e72\u64fe", zh_blob, fixed = TRUE)
-gan_right <- grepl("\u5e79\u64fe", zh_blob, fixed = TRUE)
-check("干擾 uses traditional 幹", isTRUE(gan_right) && !isTRUE(gan_wrong))
+# 干擾: Taiwan MoE uses 干 (U+5E72), not 幹 (U+5E79)
+gan_tw <- grepl("\u5e72\u64fe", zh_blob, fixed = TRUE)
+gan_wrong_gan <- grepl("\u5e79\u64fe", zh_blob, fixed = TRUE)
+check("干擾 uses Taiwan 干 (not 幹)", isTRUE(gan_tw) && !isTRUE(gan_wrong_gan))
 
 # Previously English-only UI labels now have Taiwan Chinese
 expect_zh <- list(

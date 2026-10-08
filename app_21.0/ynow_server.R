@@ -1015,7 +1015,7 @@ server <- function(input, output, session) {
           error = function(e) NULL
         )
 
-        incProgress(0.5, detail = "正在抓取財報明細（yfinance）...")
+        incProgress(0.5, detail = "正在擷取財報明細（yfinance）...")
         # cached_scrape_financials already runs normalize_all_financials — do not re-normalize
         res <- cached_scrape_financials(stock_code)
 
@@ -5456,7 +5456,7 @@ server <- function(input, output, session) {
       return(invisible(NULL))
     }
 
-    withProgress(message = "抓取同業 β／D/E…", value = 0.2, {
+    withProgress(message = "擷取同業 β／D/E…", value = 0.2, {
       raw <- tryCatch(fetch_beta_unlever_inputs_batch(peers), error = function(e) list())
       incProgress(0.7)
     })
@@ -5466,7 +5466,7 @@ server <- function(input, output, session) {
       if (is.null(x)) {
         return(data.frame(
           代號 = peers[i], β_L = NA_real_, D_E = NA_real_, β_u = NA_real_,
-          狀態 = "抓取失敗", stringsAsFactors = FALSE
+          狀態 = "擷取失敗", stringsAsFactors = FALSE
         ))
       }
       # reticulate may return named list
@@ -8821,7 +8821,7 @@ server <- function(input, output, session) {
 
     alert_box <- ui_missing_data_alert(
       check_list = check_list,
-      fallback_msg = "無法從財報抓取上述數值。請在下方手動輸入以確保企業估值 (DCF) 計算準確。"
+      fallback_msg = "無法從財報擷取上述數值。請在下方手動輸入以確保企業估值 (DCF) 計算準確。"
     )
     
     if (!is.null(alert_box)) {
@@ -12628,7 +12628,7 @@ server <- function(input, output, session) {
 
     result <- withProgress(
       message = if (identical(normalize_ui_locale(loc), "zh-TW")) {
-        "分群中（抓取比率特徵 → K-Means）…"
+        "分群中（擷取比率特徵 → K-Means）…"
       } else {
         "Clustering (fetch ratios → K-Means)…"
       },
@@ -13180,7 +13180,7 @@ server <- function(input, output, session) {
   output$lab_sec_meta <- renderUI({
     res <- lab_sec_result()
     if (is.null(res)) {
-      return(div(style = "color:#888;", "尚未查詢。按「抓取財報附註」以擷取主頁代號的最新財報附註。"))
+      return(div(style = "color:#888;", "尚未查詢。按「擷取財報附註」以取得主頁代號的最新財報附註。"))
     }
     if (!isTRUE(res$ok)) {
       return(div(

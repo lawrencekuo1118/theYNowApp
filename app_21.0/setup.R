@@ -3122,8 +3122,8 @@ estimate_perpetual_g <- function(method = "macro",
         )
       } else {
         paste0(
-          "Macroeconomic Anchoring：即時公債抓取失敗，工程 fallback Rf=", g_txt,
-          "%（非即時殖利率；優先應使用 Yahoo 抓取的 ", lab, "）。"
+          "Macroeconomic Anchoring：即時公債擷取失敗，工程 fallback Rf=", g_txt,
+          "%（非即時殖利率；優先應使用 Yahoo 擷取的 ", lab, "）。"
         )
       }
     } else if (identical(rf_source, "last_known")) {
@@ -3134,7 +3134,7 @@ estimate_perpetual_g <- function(method = "macro",
         )
       } else {
         paste0(
-          "Macroeconomic Anchoring：本次即時抓取失敗，改用最近一次成功的 ",
+          "Macroeconomic Anchoring：本次即時擷取失敗，改用最近一次成功的 ",
           lab, " Rf=", g_txt, "%（非固定預設）。"
         )
       }
@@ -3152,9 +3152,9 @@ estimate_perpetual_g <- function(method = "macro",
         paste0(
           "Macroeconomic Anchoring：採用", lab, " Rf=", g_txt, "%",
           if (identical(rf_source, "session")) {
-            "（與 CAPM Rf 同步；來源為即時抓取或使用者覆寫）。"
+            "（與 CAPM Rf 同步；來源為即時擷取或使用者覆寫）。"
           } else {
-            "（即時抓取）。"
+            "（即時擷取）。"
           }
         )
       }

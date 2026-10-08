@@ -2616,7 +2616,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     home_value_k = "基本面價值",
     home_value_d = "合理價與 MOS：DCF、DDM、RI、P/B。",
     home_value_k_lite = "智慧分析",
-    home_value_d_lite = "依推薦模型給出合理價與 MOS。",
+    home_value_d_lite = "依推薦模型產出合理價與 MOS。",
     home_decide_k = "行動",
     home_decide_d = "F-Score、財報警訊與決策檢核。",
     home_legal = paste0(
@@ -2636,13 +2636,13 @@ locale_for_market <- function(mode = get_market_mode()) {
     legal_ip_body = paste0(
       "The YNow App 之軟體、使用者介面、文件、標誌與原創分析架構，除另有註明外，權利歸專案作者所有。",
       "第三方資料、商標與函式庫之權利仍屬其各自權利人。",
-      "未經書面許可，不得重製、爬取、再散布或商業轉售本 App 及其品牌識別。"
+      "未經書面許可，不得重製、擷取、再散布或商業轉售本 App 及其品牌識別。"
     ),
     legal_risk_title = "投資自負風險聲明",
     legal_risk_body = paste0(
       "所有輸出僅供研究與教育參考，不構成投資建議、要約或勸誘買賣任何有價證券。",
       "過往績效與模型結果不保證未來表現。投資決策與損益一律由使用者自行承擔。",
-      "HFV 屬否決／風險提示，非買進訊號；F-Score 為品質檢核，非買進訊號。"
+      "HFV 屬否決／風險警語，非買進訊號；F-Score 為品質檢核，非買進訊號。"
     ),
     menu_dashboard = "個股",
     menu_company_advance = "業務拆解",
@@ -2663,7 +2663,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     menu_cat_relative = "法｜相對估值",
     rel_multiples_lead_title = "相對估值（倍數法）：",
     rel_multiples_lead_body = paste0(
-      "依資本請求權家族（Equity／Enterprise）得出 Implied Price——不是 Intrinsic Value／Fair Value。",
+      "依資本請求權家族（Equity／Enterprise）推得 Implied Price——不是 Intrinsic Value／Fair Value。",
       "P/S 歸 Equity；SOTP 為側欄 Enterprise-structural 引擎。P/B 仍為獨立側欄。"
     ),
     rel_multiples_box_title = "倍數法",
@@ -2895,7 +2895,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     download_report = "下載報告 (PDF)",
     download_report_about = paste0(
-      "一鍵投資意見報告：彙整個股估值（DCF／DDM／RI／P/B）、KPI、MOS、F-Score ",
+      "一次產出投資意見報告：彙整個股估值（DCF／DDM／RI／P/B）、KPI、MOS、F-Score ",
       "與 WACC×g 敏感度為券商風格 PDF——不含同業排名或 Lab 宇宙敘事。"
     ),
     snapshot_link = " 快照",
@@ -3420,7 +3420,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_ch6_title = "逐期明細（附錄）",
     hfv_ch6_lead = "逐筆配對結果供覆核——不是買賣分數。",
     hfv_scenario_under_title = "歷史情境分類",
-    hfv_scenario_under_lead = "僅在已勾選圖表疊加模型且得出 A–D 結論時顯示（複選時先平均 FV）。",
+    hfv_scenario_under_lead = "僅在已勾選圖表疊加模型且已有 A–D 結論時顯示（複選時先平均 FV）。",
     hfv_overlay_vs_replay_note = paste0(
       "疊加（可複選）：圖上合理價線＋情境 A–D（複選先平均 FV）。",
       "復盤（第二章、單選）：機率／tip／MOS／相對 FV／配對表。"
@@ -3444,7 +3444,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "復盤模型（單選）驅動機率、tip 上漲機率、MOS、相對 FV 與配對表。"
     ),
     hfv_scenario_thresh_note = paste0(
-      "情境帶寬（工程預設）：持平 |Δ|/前期 ≤ 2%；|MOS| ≤ 10% ≈ FV；",
+      "情境區間（工程預設）：持平 |Δ|/前期 ≤ 2%；|MOS| ≤ 10% ≈ FV；",
       "MOS ≥ 20% ≪ FV；MOS ≤ −20% ≫ FV；D 另需價格動能 ≥ +5%。"
     ),
     hfv_chart_models_label = "圖表疊加模型",
@@ -3556,7 +3556,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     bt_min_exp_label = "通過條件後最低持股",
     bt_min_exp_hint = "持倉條件通過且非極度高估時的地板部位。",
     btn_bt_fit_bh = "貼近買進持有",
-    bt_fit_bh_hint = "一鍵：最大持股=100%、最低持股=40%、w_vg=0.35（弱化減碼）。會關閉自動同步。",
+    bt_fit_bh_hint = "快速套用：最大持股=100%、最低持股=40%、w_vg=0.35（弱化減碼）。會關閉自動同步。",
     bt_sec_methodology = "資料來源與方法論註解",
     box_hfv_discount = "折現比較（合理價 vs 實際股價）",
     box_hfv_validation = "歷史基本面驗證：漲跌機率、相對 FV 與情境分類",
@@ -3599,7 +3599,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_fc_method_none = "因果先驗配對不足",
     hfv_fc_base_fmt = "因果無條件先驗市價上漲頻率 ≈ %s",
     hfv_fc_caveat = "僅復盤估值×實際股價（MOS）；Date下一期≤tip——禁止未來回推。小樣本僅供參考。",
-    hfv_fc_empty = "尚無 Date下一期≤可衡量時刻的因果先驗配對，無法給出下期實際市價漲跌機率。",
+    hfv_fc_empty = "尚無 Date下一期≤可衡量時刻的因果先驗配對，無法估計下期實際市價漲跌機率。",
     hfv_col_p_up_hat = "市價上漲機率（預測）",
     hfv_sum_price_block = "市價下期漲跌",
     hfv_sum_price_formula = "R = (P下一期 − P) / P",
@@ -3646,10 +3646,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_scenario_concl_C_emph = "否決：勿把「看起來便宜」的 MOS 當買進訊號。",
     hfv_scenario_concl_D_lead = "泡沫炒作型態（分類學）。",
     hfv_scenario_concl_D_body = "市價強升、FV 持平／下行且 MOS 偏貴——否決追高；本身不是放空指令。",
-    hfv_scenario_concl_other = "未歸入 A–D 帶寬——不硬套結論；請對照方法閾值檢視三訊號。",
+    hfv_scenario_concl_other = "未歸入 A–D 區間——不硬套結論；請對照方法閾值檢視三訊號。",
     hfv_scenario_concl_none_abcd = "樣本無主導的 A–D 情境——不顯示「樣本最常見」結論。",
     hfv_scenario_concl_diverge = "「樣本最常見」≠「最近一期」——兩者都要讀；皆不覆寫市價或相對 FV 統計。",
-    hfv_scenario_concl_note = "分類學解讀（帶寬／FV 品質見方法說明）。",
+    hfv_scenario_concl_note = "分類學解讀（區間／FV 品質見方法說明）。",
     hfv_sum_empty = "搜尋標的並選擇復盤模型後，顯示漲跌機率、相對 FV 與情境（僅復盤模型，非圖表複選）。",
     hfv_sum_notes = "結果附註",
     hfv_sec_method = "如何閱讀本報告",
@@ -3804,7 +3804,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "手動選擇不會被覆寫。選項名稱不含固定終值 g。"
     ),
     sgr_method_help = paste0(
-      "Macro：採用即時抓取的市場 10 年期公債 Rf",
+      "Macro：採用即時擷取的市場 10 年期公債 Rf",
       "（美股 Yahoo ^TNX；台股櫃買 TPEx 公債殖利率曲線 10 年期；",
       "失敗則最近成功值，再失敗才工程 fallback 並標明）。",
       "Fundamental：Retention×ROE（僅適合成熟穩健企業）。",
@@ -3867,7 +3867,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     smart_scenario_gordon = "Gordon DCF",
     smart_scenario_sgr = "SGR 估計法＝",
     smart_scenario_claim = "現金流＝",
-    lite_toggle_title = "點擊切換簡化版／完整版",
+    lite_toggle_title = "點選即可切換簡化版／完整版",
     lite_toggle_aria = "切換簡化版",
     composite_status_prefix = "綜合估值狀態：",
     composite_main_model = "主模型：",
@@ -4021,7 +4021,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     funnel_ch2_title = "財報警訊",
     funnel_ch2_lead = paste0(
       "自動化風險矩陣（Beneish M-Score、F-Score、應收／營收脫鉤、應計）與 Schilit 財報詭計自動判讀；",
-      "警示／觀察優先展開。屬否決／風險提示，非買進訊號。"
+      "警示／觀察優先展開。屬否決／風險警語，非買進訊號。"
     ),
     funnel_eq_skip = "盈餘品質掃描略過。",
     funnel_eq_title = "盈餘品質 (Quality of Earnings)",
@@ -4187,7 +4187,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     notif_dcf_claim_fcff = "FCFF／WACC",
     notif_dcf_neg_fcff_skip_tv = "終值年度 FCFF 為負 — 已略過 Gordon 永續（否則會把現金流失放大成無意義的負企業價值）。若淨利仍為正，建議改用剩餘收益模型 (RI)。",
     notif_dcf_hist_fcff_anchor = "NOPAT 推算的終值年度 FCFF 為負，本次 DCF 改以 trailing FCFF（CFO + 稅後利息 − CapEx）計價。",
-    notif_dcf_neg_equity = "經過 EV→股權橋接（EV＋現金−負債）後股權價值為負，不顯示為每股合理價；建議改看 RI。",
+    notif_dcf_neg_equity = "經過 EV→股權橋接（EV＋現金−負債）後股權價值為負，故不顯示每股合理價；建議改看 RI。",
     notif_params_recalc_ok = "✅ 已依目前公司重算一次（門檻／權重）",
     notif_params_recalc_fail = "參數重算失敗：{err}",
     notif_fv_fail = "❌ 基本面價值計算失敗：{err}",
@@ -4403,7 +4403,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     tab_bt_sentiment = "情緒策略",
     lab_cluster_blurb = paste0(
       "研究用分群 Lab：僅以比率／成長率做 K-Means（不把金額放入模型），",
-      "降低公司規模對距離的幹擾。流程為 Winsorize（1%／99%）→ 標準化 → 分群。",
+      "降低公司規模對距離的干擾。流程為 Winsorize（1%／99%）→ 標準化 → 分群。",
       "語意標籤為描述性啟發式，非買進／賣出訊號。"
     ),
     lab_cluster_k_label = "群數（k）",
@@ -4419,7 +4419,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "（市值／概念股／近一年漲幅／隨機；市值缺值則改依代號排序），",
       "再依所選「宇宙檔數（N）」作分群分析（非固定預設檔數）。",
       "Search 後的代號一律強制納入宇宙（N），並作為雷達焦點預設。",
-      "抓取 Yahoo 比率特徵；若 Yahoo 受限則改用內建離線快照",
+      "擷取 Yahoo 比率特徵；若 Yahoo 受限則改用內建離線快照",
       "（快照涵蓋 S&P 500＋台股上市／上櫃；其他美股主要上市檔以即時 Yahoo 為主）。"
     ),
     lab_cluster_map_title = "分群星團圖",
@@ -4461,7 +4461,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     pb_note_no_blend = "沒有合成後的 P/B 倍數。Justified、產業與歷史分開列示。",
     pb_note_multiples = "P/B 來源：產業中位 %s｜歷史中位 %s（不含 Justified／SGR）→ Bear/Base/Bull = %s / %s / %s",
     pb_note_justified = "P/B 來源：Justified %s（ROE/Ke/g）｜產業中位 %s｜歷史中位 %s → Bear/Base/Bull = %s / %s / %s",
-    val_diag_wacc_na = "計算出的 WACC 為 NA，不沿用先前的手動值或前一檔參數。",
+    val_diag_wacc_na = "算出的 WACC 為 NA，不沿用先前的手動值或前一檔參數。",
     val_diag_wacc_tax = "稅率必須是 0 到 1 的比率。",
     val_diag_wacc_weights = "股權與負債權重合計須接近 100%。",
     val_diag_wacc_bounds = "只有股權與負債時，WACC 必須落在 Re 與稅後 Rd 之間。",
@@ -4534,7 +4534,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     htcdi_unavailable = "目前無法計算 HTCDI：缺少即時市場歷史，因此不顯示預設分數。",
     htcdi_loading = "計算中",
     htcdi_dropped = "以下項目算不出來，已用剩下項目重新分配權重：{terms}",
-    htcdi_dropped_none = "財報、相對大盤、影響力與相對歷史四項都算得出來。",
+    htcdi_dropped_none = "財報、相對大盤、影響力與相對歷史四項皆可計分。",
     htcdi_index_health = "Statement Development",
     htcdi_index_health_gloss = "財報發展：營收 YoY、Gross Margin 變動、CapEx 強度相對該發行人自己的過去。高於 50 為擴張，低於 50 為收縮。",
     htcdi_index_stress = "Trajectory vs History",
@@ -4560,7 +4560,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     htcdi_term_map_traj = "股價 vs 歷史 · 營收 YoY vs 自身",
     htcdi_out_composite_title = "不進入複合分數",
     htcdi_out_composite_note = paste0(
-      "沒有財報或公開文獻依據的設定檔假設——Criticality、重建年數、可替代對象、權重上限、序列完整度——不予顯示。",
+      "沒有財報或公開文獻依據的設定檔假設——Criticality、重建年數、可替代標的、權重上限、序列完整度——不予顯示。",
       "那些是工程啟發式，不是觀測值。"
     ),
     htcdi_formula_eq = "HTCDI = 0.30·Stmt + 0.25·Mkt + 0.25·Inf + 0.20·Traj",
@@ -4587,7 +4587,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     htcdi_col_stress = "Traj",
     htcdi_col_weight = "權重",
     htcdi_col_concentration = "影響力",
-    htcdi_col_substitutes = "可替代對象",
+    htcdi_col_substitutes = "可替代標的",
     htcdi_col_replacement = "重建年數",
     htcdi_col_issuer = "發行人",
     htcdi_col_function = "在鏈上的角色",
@@ -4617,7 +4617,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     htcdi_method_weighting = paste0(
       "各發行人的即時讀數再平均成 Stmt／Mkt／Inf／Traj。",
       "影響力本身由 Rolling β 與超額報酬計分。",
-      "Criticality、重建年數、可替代對象與發行人／環節上限是沒有財報依據的工程啟發式，",
+      "Criticality、重建年數、可替代標的與發行人／環節上限是沒有財報依據的工程啟發式，",
       "因此不當作觀測值列出。"
     ),
     htcdi_method_rebalance = paste0(
@@ -4728,7 +4728,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     macro_own_index_overlay_yaxis = "重訂基期水位（起點＝100）",
     macro_rf_source_fallback = "無法取得 Rf 來源",
     macro_rf_src_live = "即時",
-    macro_rf_src_last = "最近成功抓取",
+    macro_rf_src_last = "最近成功擷取",
     macro_rf_src_fallback = "工程 fallback",
     macro_tw_signal_title = "台灣景氣對策信號",
     macro_tw_signal_body = paste0(

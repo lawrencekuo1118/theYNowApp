@@ -91,7 +91,7 @@
     class = "ynow-about-feat",
     tags$li(
       tags$b("自動化資料與防雷機制："),
-      "即時抓取三大報表，並內建「財報警訊」（三表對照），交叉比對現金流與獲利品質，自動偵測潛在地雷股與價值陷阱；支援美股與台股市場切換。"
+      "即時擷取三大報表，並內建「財報警訊」（三表對照），交叉比對現金流與獲利品質，自動偵測潛在地雷股與價值陷阱；支援美股與台股市場切換。"
     ),
     tags$li(
       tags$b("估值引擎："),
@@ -106,7 +106,7 @@
       "產業×方法評估池、Clustering（比率特徵／離線快照備援）、候選截斷邏輯（市值／概念股／近一年漲幅／隨機），輔助同業比較與研究分群（非買進訊號）。"
     ),
     tags$li(
-      tags$b("一鍵投資報告："),
+      tags$b("一次產出投資報告："),
       "自動彙整估值圖表、KPI 與分析結果，產出可下載的專業 PDF 投資意見報告。"
     )
   )
@@ -146,7 +146,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v21.39) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報抓取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v21.39) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -208,7 +208,7 @@
     class = "ynow-about-feat",
     tags$li(
       tags$b("簡化版切換："),
-      "點擊首頁或側邊欄底部 logo 即可在 Lite／完整版之間切換；Lite 時兩處 logo 右下角都顯示 LITE 角標。"
+      "點選首頁或側邊欄底部 logo 即可在 Lite／完整版之間切換；Lite 時兩處 logo 右下角都顯示 LITE 角標。"
     ),
     tags$li(
       tags$b("個股："),
@@ -1320,7 +1320,7 @@ beta_rolling_section_ui <- function() {
       ),
       helpText(
         id = "ynow_sgr_method_help",
-        "Macro：採用即時抓取的市場 10 年期公債 Rf（美股 Yahoo ^TNX；台股櫃買 TPEx 公債殖利率曲線 10 年期；失敗則最近成功值，再失敗才工程 fallback 並標明）。",
+        "Macro：採用即時擷取的市場 10 年期公債 Rf（美股 Yahoo ^TNX；台股櫃買 TPEx 公債殖利率曲線 10 年期；失敗則最近成功值，再失敗才工程 fallback 並標明）。",
         "Fundamental：Retention×ROE（僅適合成熟穩健企業）。",
         "Lifecycle：以經濟錨定估計終值 g，生命週期檔位不寫入固定百分比。"
       ),
@@ -1572,7 +1572,7 @@ beta_rolling_section_ui <- function() {
                       "lab_im_refresh_universe", "更新名單",
                       icon = icon("sync"),
                       class = "btn-default btn-sm",
-                      title = "重新抓取目前市場的成分／上市／上櫃／興櫃名單"
+                      title = "重新擷取目前市場的成分／上市／上櫃／興櫃名單"
                     )
                   ),
                   fluidRow(
@@ -1834,7 +1834,7 @@ beta_rolling_section_ui <- function() {
                   "流程：宇宙池先依「候選截斷邏輯」全市排序／篩選（市值／概念股／近一年漲幅／隨機），",
                   "再依所選「宇宙檔數（N）」作分群分析（非固定預設檔數）。",
                   "Search 後的代號一律強制納入宇宙（N），並作為雷達焦點預設。",
-                  "抓取 Yahoo 比率特徵；若 Yahoo 受限則改用內建離線快照。"
+                  "擷取 Yahoo 比率特徵；若 Yahoo 受限則改用內建離線快照。"
                 )
               ),
               fluidRow(
@@ -12289,14 +12289,14 @@ ui <- dashboardPage(
                                "比對附註標題、重點摘要與全文（不區分大小寫）；空白＝顯示全部。"
                              ),
                              actionButton(
-                               "lab_sec_fetch", "抓取財報附註",
+                               "lab_sec_fetch", "擷取財報附註",
                                class = "btn-success btn-block",
                                icon = icon("download"),
                                style = "font-weight:bold;"
                              ),
                              tags$p(
                                style = "margin-top:10px; color:#888; font-size:12px;",
-                               "提示：擷取需向 SEC 逐條抓取附註，約需數秒。"
+                               "提示：需向 SEC 逐條擷取附註，約需數秒。"
                              )
                            ),
                            uiOutput("lab_sec_meta")
@@ -12625,8 +12625,8 @@ ui <- dashboardPage(
                          ),
                          box(
                            h4(tags$b("方法 2：景氣循環平滑法")),
-                           p(helpText("適用於航運、原物料等景氣循環股。系統將自動從現金流量表抓取歷史配息來平均。")),
-                           numericInput("mod_ddm-cycle_years", "抓取過去幾年平均？", value = 5, min = 1, max = 10, step = 0.01),
+                           p(helpText("適用於航運、原物料等景氣循環股。系統將自動從現金流量表擷取歷史配息來平均。")),
+                           numericInput("mod_ddm-cycle_years", "擷取過去幾年平均？", value = 5, min = 1, max = 10, step = 0.01),
                            actionButton("mod_ddm-calc_d0_average", "計算並套用平均 D0", class = "btn-primary"),
                            tags$br(),
                            htmlOutput("mod_ddm-txt_d0_avg_res")

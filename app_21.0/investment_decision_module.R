@@ -165,7 +165,7 @@ decision_ui <- function(id) {
               class = "ynow-funnel-chapter__lead",
               paste0(
                 "自動化風險矩陣（Beneish M-Score、F-Score、應收／營收脫鉤、應計）與 Schilit 財報詭計自動判讀；",
-                "警示／觀察優先展開。屬否決／風險提示，非買進訊號。"
+                "警示／觀察優先展開。屬否決／風險警語，非買進訊號。"
               )
             )
           ),
