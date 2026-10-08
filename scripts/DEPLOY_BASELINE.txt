@@ -8,5 +8,5 @@ short=cf8bb9a
 message=chore: bump display version to v21.39
 captured_at=2026-10-08T09:50:00Z
 source_branch=cursor/lite-ynow-tynow-expand-911b
-display_version=v21.39
+display_version=v21.40
 note=Canonical live line is app_21.0. Bundle 12663848 ships v21.39: Lite Macro can click YNOW/TYNOW to expand/collapse chart + constituents (boards + HTCDI stay Full-only). Deploy via scripts/deploy_app_21.R.
