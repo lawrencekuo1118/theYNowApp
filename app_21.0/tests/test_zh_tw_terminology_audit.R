@@ -39,6 +39,23 @@ for (w in mainland_trad_traps) {
   check(paste("no Mainland-trad trap", w), !grepl(w, zh_blob, fixed = TRUE))
 }
 check("oos label uses 範圍 not 口徑", identical(as.character(zh$hfv_oos_mode_label)[1], "驗證樣本範圍"))
+check(
+  "oos realized label is natural TW",
+  identical(as.character(zh$hfv_oos_realized)[1], "僅已實現下期（預設）")
+)
+check(
+  "oos expanding label uses 擴張窗…命中率",
+  identical(as.character(zh$hfv_oos_expanding)[1], "擴張窗樣本外命中率") &&
+    !grepl("擴張視窗樣本外命中$", as.character(zh$hfv_oos_expanding)[1])
+)
+check(
+  "oos insample label is natural TW",
+  identical(as.character(zh$hfv_oos_insample)[1], "含未實現下期（樣本內）")
+)
+check(
+  "en oos expanding uses hit rates",
+  identical(as.character(en$hfv_oos_expanding)[1], "Expanding-window OOS hit rates")
+)
 
 # Taiwan prefers 佔比 / 網路 (not 占比 / 網絡)
 check("uses 佔比 not 占比", grepl("佔比", zh_blob, fixed = TRUE) && !grepl("占比", zh_blob, fixed = TRUE))

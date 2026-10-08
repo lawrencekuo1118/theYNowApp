@@ -1139,7 +1139,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_table_detail = "Pair table",
     hfv_oos_mode_label = "Validation sample scope",
     hfv_oos_realized = "Realized next period only (default)",
-    hfv_oos_expanding = "Expanding-window out-of-sample hits",
+    hfv_oos_expanding = "Expanding-window OOS hit rates",
     hfv_oos_insample = "Include unrealized next period (in-sample)",
     hfv_win_custom = "Custom",
     # --- HFV report body (chapter I/II findings) ---
@@ -3657,8 +3657,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_chart_gap = "落點幅度 (P下一期 − FV) / FV",
     hfv_table_detail = "配對明細表",
     hfv_oos_mode_label = "驗證樣本範圍",
-    hfv_oos_realized = "僅計已實現下期（預設）",
-    hfv_oos_expanding = "擴張視窗樣本外命中",
+    hfv_oos_realized = "僅已實現下期（預設）",
+    hfv_oos_expanding = "擴張窗樣本外命中率",
     hfv_oos_insample = "含未實現下期（樣本內）",
     hfv_win_custom = "自訂",
     # --- HFV 報告內文（第一／二章發現） ---

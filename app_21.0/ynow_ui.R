@@ -2088,7 +2088,7 @@ beta_rolling_section_ui <- function() {
                       inline = TRUE,
                       choices = c(
                         "Realized next period only (default)" = "realized",
-                        "Expanding-window out-of-sample hits" = "expanding",
+                        "Expanding-window OOS hit rates" = "expanding",
                         "Include unrealized next period (in-sample)" = "insample"
                       ),
                       selected = APP_DEFAULTS$bt_fv_oos_mode
