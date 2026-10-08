@@ -8,5 +8,5 @@ short=4ddf41a
 message=chore: bump display version to v21.42
 captured_at=2026-10-08T13:10:48Z
 source_branch=cursor/radar-focus-cluster-17b2
-display_version=v21.42
+display_version=v21.43
 note=Canonical live line is app_21.0. Bundle 12664485 ships v21.42: stop remounting Blue Chip cluster radar on focus edits; focus suggestions scoped to clustered set; preserve valid manual radar focus. Deploy via scripts/deploy_app_21.R.
