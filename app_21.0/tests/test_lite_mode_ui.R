@@ -164,7 +164,11 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
     radar_blk
   )))
   srv_txt <- paste(srv_lines, collapse = "\n")
-  testthat::expect_true(grepl("from_cluster", srv_txt, fixed = TRUE))
+  testthat::expect_true(grepl(
+    "suggest only names in the clustered set",
+    srv_txt,
+    fixed = TRUE
+  ))
   testthat::expect_true(grepl("lab_cluster_focus_not_in_cluster", srv_txt, fixed = TRUE))
   loc_txt <- paste(readLines(file.path("..", "ui_locale.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   testthat::expect_true(grepl("lab_cluster_focus_not_in_cluster", loc_txt, fixed = TRUE))

@@ -772,7 +772,6 @@ server <- function(input, output, session) {
     # After a cluster run, suggest only names in the clustered set — market-wide
     # presets (e.g. 2881) are not radar-usable and made focus look "2330-only".
     ch <- NULL
-    from_cluster <- FALSE
     if (isTRUE(tryCatch(lab_cluster_has_result(res), error = function(e) FALSE))) {
       tks <- as.character(res$data$ticker)
       disp <- tryCatch(
@@ -793,21 +792,8 @@ server <- function(input, output, session) {
           grepl(q, nm, ignore.case = TRUE)
         ch <- ch[keep]
       }
-      from_cluster <- TRUE
     }
     if (is.null(ch) || !length(ch)) ch <- sc_datalist_choices()
-    # #region agent log
-    if (exists(".ynow_dbg_radar_focus", mode = "function")) {
-      vals <- unname(as.character(ch))
-      .ynow_dbg_radar_focus("C", "ynow_server.R:lab_cluster_focus_suggest_ui", "suggest choices", list(
-        market = as.character(mode %||% "")[1],
-        from_cluster = isTRUE(from_cluster),
-        n_choices = length(vals),
-        vals_head = utils::head(vals, 8),
-        only_2330 = length(vals) > 0L && all(grepl("^2330(\\.TW)?$", vals, ignore.case = TRUE))
-      ))
-    }
-    # #endregion
     .ynow_ticker_suggest_div("lab_cluster_focus_suggest", ch, mode)
   })
 
@@ -12921,22 +12907,6 @@ server <- function(input, output, session) {
       display_ticker_for_market(focus_default, market_mode()),
       error = function(e) as.character(focus_default)[1]
     )
-    # #region agent log
-    if (exists(".ynow_dbg_radar_focus", mode = "function")) {
-      tks <- as.character(result$data$ticker %||% character(0))
-      .ynow_dbg_radar_focus("D", "ynow_server.R:lab_cluster_run", "cluster done; set default focus", list(
-        session_tk = as.character(session_tk %||% "")[1],
-        matched_focus = as.character(matched_focus %||% NA_character_)[1],
-        focus_default = as.character(focus_default %||% "")[1],
-        focus_disp = as.character(focus_disp %||% "")[1],
-        n = as.integer(result$n %||% nrow(result$data)),
-        k = as.integer(result$k %||% NA_integer_),
-        n_tickers = length(tks),
-        tickers_head = utils::head(tks, 12),
-        has_non_2330 = any(!grepl("^2330(\\.TW)?$", tks, ignore.case = TRUE))
-      ))
-    }
-    # #endregion
     updateTextInput(session, "lab_cluster_focus", value = focus_disp)
     showNotification(
       sprintf("Clustered %d names into %d groups.", result$n, result$k),
@@ -12959,31 +12929,12 @@ server <- function(input, output, session) {
     disp <- tryCatch(display_ticker_for_market(tk, mode), error = function(e) tk)
     res <- lab_cluster_result()
     if (!isTRUE(tryCatch(lab_cluster_has_result(res), error = function(e) FALSE))) {
-      # #region agent log
-      if (exists(".ynow_dbg_radar_focus", mode = "function")) {
-        .ynow_dbg_radar_focus("A", "ynow_server.R:observe_current_ticker_focus", "pre-seed focus (no cluster)", list(
-          search_tk = tk, disp = disp,
-          prev_focus = as.character(isolate(input$lab_cluster_focus) %||% "")[1]
-        ))
-      }
-      # #endregion
       # Pre-seed focus text field to Search ticker before the first clustering run
       updateTextInput(session, "lab_cluster_focus", value = disp)
       return()
     }
     matched <- lab_cluster_match_ticker(res$data$ticker, tk)
-    if (is.na(matched) || !nzchar(matched)) {
-      # #region agent log
-      if (exists(".ynow_dbg_radar_focus", mode = "function")) {
-        .ynow_dbg_radar_focus("B", "ynow_server.R:observe_current_ticker_focus", "search not in cluster; skip overwrite", list(
-          search_tk = tk, matched = NA_character_,
-          cur_focus = as.character(isolate(input$lab_cluster_focus) %||% "")[1],
-          n = nrow(res$data)
-        ))
-      }
-      # #endregion
-      return()
-    }
+    if (is.na(matched) || !nzchar(matched)) return()
     cur_focus <- as.character(isolate(input$lab_cluster_focus) %||% "")[1]
     matched_disp <- tryCatch(
       display_ticker_for_market(matched, mode),
@@ -12991,13 +12942,6 @@ server <- function(input, output, session) {
     )
     if (identical(toupper(trimws(cur_focus)), toupper(trimws(matched_disp))) ||
         identical(toupper(trimws(cur_focus)), toupper(trimws(matched)))) {
-      # #region agent log
-      if (exists(".ynow_dbg_radar_focus", mode = "function")) {
-        .ynow_dbg_radar_focus("A", "ynow_server.R:observe_current_ticker_focus", "focus already search; no-op", list(
-          search_tk = tk, cur_focus = cur_focus, matched_disp = matched_disp
-        ))
-      }
-      # #endregion
       return()
     }
     # Adopt Search as focus only when current focus is empty or not in this cluster.
@@ -13007,59 +12951,9 @@ server <- function(input, output, session) {
     } else {
       NA_character_
     }
-    if (!is.na(cur_in_cluster) && nzchar(cur_in_cluster)) {
-      # #region agent log
-      if (exists(".ynow_dbg_radar_focus", mode = "function")) {
-        .ynow_dbg_radar_focus("A", "ynow_server.R:observe_current_ticker_focus", "keep valid manual focus", list(
-          search_tk = tk, cur_focus = cur_focus, cur_in_cluster = cur_in_cluster,
-          will_overwrite = FALSE
-        ))
-      }
-      # #endregion
-      return()
-    }
-    # #region agent log
-    if (exists(".ynow_dbg_radar_focus", mode = "function")) {
-      .ynow_dbg_radar_focus("A", "ynow_server.R:observe_current_ticker_focus", "FORCE overwrite focus to Search", list(
-        search_tk = tk,
-        cur_focus = cur_focus,
-        matched = matched,
-        matched_disp = matched_disp,
-        will_overwrite = TRUE
-      ))
-    }
-    # #endregion
+    if (!is.na(cur_in_cluster) && nzchar(cur_in_cluster)) return()
     updateTextInput(session, "lab_cluster_focus", value = matched_disp)
   }, ignoreInit = TRUE)
-
-  # #region agent log
-  observeEvent(input$lab_cluster_focus, {
-    if (!exists(".ynow_dbg_radar_focus", mode = "function")) return()
-    foc <- as.character(input$lab_cluster_focus %||% "")[1]
-    res <- tryCatch(isolate(lab_cluster_result()), error = function(e) NULL)
-    tks <- if (isTRUE(tryCatch(lab_cluster_has_result(res), error = function(e) FALSE))) {
-      as.character(res$data$ticker)
-    } else {
-      character(0)
-    }
-    matched <- if (length(tks)) lab_cluster_match_ticker(tks, foc) else NA_character_
-    search_tk <- tryCatch({
-      raw <- isolate(current_ticker())
-      if (is.null(raw) || !nzchar(trimws(as.character(raw)[1]))) raw <- isolate(input$sc)
-      normalize_ticker_for_market(raw, isolate(market_mode()))
-    }, error = function(e) "")
-    .ynow_dbg_radar_focus("A", "ynow_server.R:observe_lab_cluster_focus", "focus input changed", list(
-      focus = foc,
-      matched_in_cluster = as.character(matched %||% NA_character_)[1],
-      search_tk = as.character(search_tk %||% "")[1],
-      n_cluster = length(tks),
-      focus_eq_search = identical(
-        toupper(sub("\\.(TW|TWO)$", "", trimws(foc), ignore.case = TRUE)),
-        toupper(sub("\\.(TW|TWO)$", "", trimws(as.character(search_tk)[1]), ignore.case = TRUE))
-      )
-    ))
-  }, ignoreInit = TRUE, ignoreNULL = FALSE)
-  # #endregion
 
   # Dynamic hosts: idle → placeholder (no plotly/DT node); live → recreate outputs
   output$lab_cluster_scatter_ui <- renderUI({
@@ -13079,15 +12973,6 @@ server <- function(input, output, session) {
     # Do NOT read input$lab_cluster_focus here. Gating / remounting plotlyOutput on
     # every focus edit destroyed the widget and made non-default focus look broken
     # (Search/2330 worked because it was set once at cluster time).
-    # #region agent log
-    if (exists(".ynow_dbg_radar_focus", mode = "function")) {
-      .ynow_dbg_radar_focus("E", "ynow_server.R:lab_cluster_radar_ui", "radar UI render", list(
-        panel_mode = as.character(mode %||% "")[1],
-        branch = if (identical(mode, "idle")) "idle" else "plotly",
-        remount_on_focus = FALSE
-      ))
-    }
-    # #endregion
     if (identical(mode, "idle")) {
       return(lab_cluster_idle_placeholder(.lab_cluster_idle_msg("radar"), min_height = "420px"))
     }
@@ -13099,15 +12984,6 @@ server <- function(input, output, session) {
   output$lab_cluster_table_ui <- renderUI({
     res <- lab_cluster_result()
     mode <- lab_cluster_panel_mode(res)
-    # #region agent log
-    if (exists(".ynow_dbg_radar_focus", mode = "function")) {
-      .ynow_dbg_radar_focus("E", "ynow_server.R:lab_cluster_table_ui", "table UI render", list(
-        panel_mode = as.character(mode %||% "")[1],
-        branch = if (identical(mode, "idle")) "idle" else "datatable",
-        n = if (identical(mode, "live")) nrow(res$data) else 0L
-      ))
-    }
-    # #endregion
     if (identical(mode, "idle")) {
       return(lab_cluster_idle_placeholder(.lab_cluster_idle_msg("table"), min_height = "120px"))
     }
@@ -13215,16 +13091,6 @@ server <- function(input, output, session) {
       )))
     }
     matched <- lab_cluster_match_ticker(res$data$ticker, focus)
-    # #region agent log
-    if (exists(".ynow_dbg_radar_focus", mode = "function")) {
-      .ynow_dbg_radar_focus("E", "ynow_server.R:lab_cluster_radar", "radar plotly render", list(
-        focus = focus,
-        matched = as.character(matched %||% NA_character_)[1],
-        match_ok = !is.na(matched) && nzchar(matched),
-        n = nrow(res$data)
-      ))
-    }
-    # #endregion
     if (is.na(matched) || !nzchar(matched)) {
       return(empty_msg(tryCatch(
         ui_str("lab_cluster_focus_not_in_cluster", loc),
