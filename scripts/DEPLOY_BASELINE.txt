@@ -8,5 +8,5 @@ short=a231cb6
 message=chore: bump display version to v21.49
 captured_at=2026-10-08T18:20:00Z
 source_branch=cursor/bluechip-undervalued-top10-911b
-display_version=v21.49
+display_version=v21.50
 note=Canonical live line is app_21.0. Bundle 12665658 ships v21.49: Ranking view Most undervalued Top 10 (primary-model total FV–price gap). Deploy via scripts/deploy_app_21.R.
