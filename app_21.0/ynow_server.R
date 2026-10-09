@@ -11812,14 +11812,12 @@ server <- function(input, output, session) {
   output$lab_im_bluechip_blurb <- renderUI({
     loc <- ui_locale()
     mode <- market_mode()
-    n_yrs <- as.integer(APP_DEFAULTS$years %||% 5L)[1]
-    if (!is.finite(n_yrs) || n_yrs < 1L) n_yrs <- 5L
     key <- if (identical(normalize_market_mode(mode), "TW")) {
       "bluechip_blurb_tw"
     } else {
       "bluechip_blurb_us"
     }
-    tags$p(sprintf(ui_str(key, loc), as.integer(n_yrs)))
+    tags$p(ui_str(key, loc))
   })
 
   output$lab_im_universe_meta <- renderUI({
@@ -11957,9 +11955,8 @@ server <- function(input, output, session) {
     rank_mode <- lab_normalize_pool_rank_mode(input$lab_im_pool_rank %||% "mcap")
     concept_keys <- input$lab_im_concepts
     mm <- tryCatch(market_mode(), error = function(e) "US")
-    n_yrs <- lab_model_horizon_years()
     scores <- withProgress(
-      message = .ui_msg("lab_im_progress", n = n_yrs),
+      message = .ui_msg("lab_im_progress"),
       value = 0, {
         n_raw <- nrow(pool)
         if (is.finite(eval_n) && n_raw > eval_n) {
@@ -12093,7 +12090,6 @@ server <- function(input, output, session) {
 
   output$lab_im_leader_note <- renderUI({
     scores <- lab_im_scores()
-    n <- lab_model_horizon_years()
     display_n <- lab_resolve_im_max_n(input$lab_im_max_n, input$lab_im_max_n_custom)
     max_n_label <- lab_resolve_im_max_n_label(input$lab_im_max_n, input$lab_im_max_n_custom)
     eval_n <- lab_resolve_im_eval_n(display_n)
@@ -12142,7 +12138,7 @@ server <- function(input, output, session) {
     sort_key_txt <- if (identical(scope, "undervalued")) {
       "排序鍵＝推薦主模型合理價相對市價之總潛在漲幅（非年化；只列仍被低估者）"
     } else {
-      sprintf("排序鍵＝模型合理價相對現價，於 %d 年預測期換算之年化漲幅", n)
+      "排序鍵＝模型合理價相對現價，依各標的自身預測年數 n（財報＋生命週期）換算之年化漲幅"
     }
     tags$p(
       style = "color:#555; font-size:12.5px;",

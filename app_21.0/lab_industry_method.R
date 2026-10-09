@@ -3,7 +3,7 @@
 #
 # 宇宙依市場模式：美股＝Nasdaq／NYSE 主要上市（lab_us_universe.R；S&P GICS 疊加）；台股＝上市／上櫃／興櫃（lab_tw_universe.R；績優候選不含興櫃）。
 # 績優原則：在 Piotroski 高門檻（F-Score≥7；不含盈餘品質）後，選「模型合理價相對現價」、
-# 並依 App 預設預測年數 n（APP_DEFAULTS$years）換算年化漲幅最大者。
+# 並依各標的財報推算之預測年數 n（生命週期建議；非一體適用 APP_DEFAULTS$years）換算年化漲幅最大者。
 # 「宇宙檔數（N）」（lab_im_max_n；預設 25）＝分析後明細／排行最終顯示上限（非 Yahoo 撈取檔數）。
 # 撈取／評估檔數＝lab_resolve_im_eval_n(N)（通常大於 N）；明細＝合格池取前 N，不足不湊滿。
 # 盈餘品質／Piotroski 高門檻勾選套用於排行榜與明細顯示池（同一合格定義）。
@@ -138,7 +138,7 @@ lab_company_display_name <- function(ticker, yahoo_name = NULL) {
   "—"
 }
 
-#' 模型預測年數（與 App DCF／預設 n 對齊）
+#' App 預設預測年數（僅作缺財報／缺生命週期時的後備）
 lab_model_horizon_years <- function() {
   n <- tryCatch(
     suppressWarnings(as.integer(APP_DEFAULTS$years %||% 5L)[1]),
@@ -157,10 +157,13 @@ lab_annualized_upside_pct <- function(fv, price, n_years = NULL) {
   ((fv / px)^(1 / n) - 1) * 100
 }
 
-#' 自 Yahoo Summary 取市值、現價與公司全稱
+#' 自 Yahoo Summary 取市值、現價、β 與公司全稱
 lab_fetch_summary_metrics <- function(ticker) {
   tk <- toupper(trimws(as.character(ticker)[1]))
-  out <- list(market_cap = NA_real_, price = NA_real_, company_name = NA_character_)
+  out <- list(
+    market_cap = NA_real_, price = NA_real_, beta = NA_real_,
+    company_name = NA_character_
+  )
   if (!nzchar(tk)) return(out)
   # Prefer fast-tier memoised summary (15m); fall back to uncached only if missing.
   sum_df <- tryCatch({
@@ -181,10 +184,165 @@ lab_fetch_summary_metrics <- function(ticker) {
   if (length(idx_p) > 0) {
     out$price <- parse_financial_number(sum_df$Value[idx_p[1]])[1]
   }
+  idx_b <- grep("^Beta \\(5Y Monthly\\)$|^Beta$", sum_df$Item, ignore.case = TRUE)
+  if (length(idx_b) > 0) {
+    out$beta <- parse_financial_number(sum_df$Value[idx_b[1]])[1]
+  }
   cname <- tryCatch(attr(sum_df, "company_name"), error = function(e) NULL)
   cname <- trimws(as.character(cname %||% "")[1])
   if (nzchar(cname)) out$company_name <- cname
   out
+}
+
+#' 依個股最新財報／β／生命週期推算實驗區 n、Ke、終值 g、近端 g1（勿一體適用 App 預設）
+#' @return list(n_years, ke_pct, g_pct, g1_pct, beta, beta_source, rf_pct, rm_pct,
+#'   lifecycle_stage, fund_sgr_pct, rev_cagr_pct)
+lab_resolve_ticker_params <- function(d_is, d_bs, d_cf,
+                                      industry_key = "",
+                                      beta = NA_real_,
+                                      rf_pct = NA_real_,
+                                      rm_pct = NA_real_,
+                                      ticker = "") {
+  key <- as.character(industry_key %||% "")[1]
+  tk <- toupper(trimws(as.character(ticker %||% "")[1]))
+  fallback_n <- lab_model_horizon_years()
+  fallback_ke <- tryCatch(lab_industry_ke_pct(key), error = function(e) 9)
+  if (!is.finite(fallback_ke) || fallback_ke <= 0) fallback_ke <- 9
+  fallback_g <- suppressWarnings(as.numeric(APP_DEFAULTS$sgr %||% 4)[1])
+  if (!is.finite(fallback_g)) fallback_g <- 4
+  fallback_g1 <- suppressWarnings(as.numeric(APP_DEFAULTS$custom_g %||% fallback_g)[1])
+  if (!is.finite(fallback_g1)) fallback_g1 <- fallback_g
+
+  rf <- suppressWarnings(as.numeric(rf_pct)[1])
+  if (!is.finite(rf)) {
+    rf <- tryCatch({
+      if (exists("cached_get_risk_free_rate", mode = "function")) {
+        suppressWarnings(as.numeric(cached_get_risk_free_rate())[1])
+      } else {
+        NA_real_
+      }
+    }, error = function(e) NA_real_)
+  }
+  if (!is.finite(rf)) {
+    rf <- suppressWarnings(as.numeric(APP_DEFAULTS$capm_rf %||% 4)[1])
+  }
+  if (!is.finite(rf)) rf <- 4
+
+  b <- suppressWarnings(as.numeric(beta)[1])
+  beta_src <- "ticker"
+  if (!is.finite(b) || b <= 0) {
+    ind <- tryCatch(industry_standards[[key]], error = function(e) NULL)
+    b <- if (!is.null(ind) && !is.null(ind$beta_avg)) {
+      suppressWarnings(as.numeric(ind$beta_avg)[1])
+    } else {
+      NA_real_
+    }
+    beta_src <- "industry"
+  }
+  if (!is.finite(b) || b <= 0) {
+    b <- suppressWarnings(as.numeric(APP_DEFAULTS$capm_beta %||% 1)[1])
+    beta_src <- "default"
+  }
+  if (!is.finite(b) || b <= 0) {
+    b <- 1
+    beta_src <- "default"
+  }
+
+  rm <- suppressWarnings(as.numeric(rm_pct)[1])
+  if (!is.finite(rm)) {
+    ind <- tryCatch(industry_standards[[key]], error = function(e) NULL)
+    rm <- if (!is.null(ind) && !is.null(ind$rm_avg)) {
+      suppressWarnings(as.numeric(ind$rm_avg)[1])
+    } else {
+      NA_real_
+    }
+  }
+  if (!is.finite(rm) || rm < rf + 2) {
+    rm <- suppressWarnings(as.numeric(APP_DEFAULTS$capm_rm %||% (rf + 5))[1])
+  }
+  if (!is.finite(rm) || rm < rf + 2) rm <- rf + 5
+
+  ke_pct <- rf + b * (rm - rf)
+  if (!is.finite(ke_pct) || ke_pct <= 0) ke_pct <- fallback_ke
+
+  life <- tryCatch({
+    if (exists("classify_lifecycle_result", mode = "function")) {
+      classify_lifecycle_result(
+        industry_key = key,
+        ticker = tk,
+        d_is = d_is,
+        d_bs = d_bs,
+        d_cf = d_cf,
+        wacc_pct = ke_pct,
+        selected_stage = "auto",
+        locale = "zh-TW"
+      )
+    } else {
+      NULL
+    }
+  }, error = function(e) NULL)
+  stage <- if (!is.null(life)) {
+    as.character(life$autoDetectedStage %||% NA_character_)[1]
+  } else {
+    NA_character_
+  }
+  n <- if (!is.null(life) && is.finite(suppressWarnings(as.numeric(life$recommendedForecastYears)[1]))) {
+    as.integer(life$recommendedForecastYears)[1]
+  } else if (exists("recommended_forecast_years_for_stage", mode = "function")) {
+    suppressWarnings(as.integer(recommended_forecast_years_for_stage(stage))[1])
+  } else {
+    NA_integer_
+  }
+  if (!is.finite(n) || n < 1L) n <- fallback_n
+  n <- as.integer(max(3L, min(15L, n)))
+
+  fund_sgr <- tryCatch({
+    if (exists("calc_fundamental_sgr_pct", mode = "function")) {
+      calc_fundamental_sgr_pct(d_is, d_bs, d_cf)
+    } else {
+      NA_real_
+    }
+  }, error = function(e) NA_real_)
+  long_cap <- tryCatch({
+    if (exists("LIFECYCLE_CONFIG", inherits = TRUE)) {
+      suppressWarnings(as.numeric(LIFECYCLE_CONFIG$terminal$long_run_nominal_g_cap_pct %||% 4.5)[1])
+    } else {
+      4.5
+    }
+  }, error = function(e) 4.5)
+  if (!is.finite(long_cap) || long_cap <= 0) long_cap <- 4.5
+  g_pct <- if (is.finite(fund_sgr)) fund_sgr else fallback_g
+  g_ceil <- min(long_cap, ke_pct - 1.5)
+  if (!is.finite(g_ceil) || g_ceil < 0.5) g_ceil <- 0.5
+  g_pct <- max(0.5, min(g_pct, g_ceil))
+  if (!is.finite(g_pct)) g_pct <- min(fallback_g, g_ceil)
+
+  rev_cagr <- tryCatch({
+    if (exists("get_avg_growth", mode = "function") &&
+        exists("select_clean_metric_row", mode = "function") &&
+        !is.null(d_is) && is.data.frame(d_is)) {
+      get_avg_growth(select_clean_metric_row(d_is, "Total Revenue", include_ttm = FALSE))
+    } else {
+      NA_real_
+    }
+  }, error = function(e) NA_real_)
+  g1_pct <- if (is.finite(rev_cagr)) rev_cagr else fallback_g1
+  g1_pct <- max(1, min(g1_pct, 15))
+  if (!is.finite(g1_pct)) g1_pct <- fallback_g1
+
+  list(
+    n_years = as.integer(n),
+    ke_pct = round(as.numeric(ke_pct)[1], 2),
+    g_pct = round(as.numeric(g_pct)[1], 2),
+    g1_pct = round(as.numeric(g1_pct)[1], 2),
+    beta = round(as.numeric(b)[1], 3),
+    beta_source = as.character(beta_src)[1],
+    rf_pct = round(as.numeric(rf)[1], 2),
+    rm_pct = round(as.numeric(rm)[1], 2),
+    lifecycle_stage = if (is.na(stage) || !nzchar(stage)) NA_character_ else stage,
+    fund_sgr_pct = if (is.finite(fund_sgr)) round(fund_sgr, 2) else NA_real_,
+    rev_cagr_pct = if (is.finite(rev_cagr)) round(rev_cagr, 2) else NA_real_
+  )
 }
 
 #' 宇宙檔數 N："all"／"全部" → 不設上限；空／自訂未填 → 預設 25
@@ -789,17 +947,33 @@ lab_industry_ke_pct <- function(industry_key) {
 }
 
 #' 實驗區簡化合理價／股（對齊產業主方法；非完整 UI 估值引擎）
+#' n／Ke／g／g1 預設由個股財報＋β＋生命週期推算（lab_resolve_ticker_params）；
+#' 僅在缺財報時退回 App／產業預設。可傳 n_years／ke_pct／g_pct／g1_pct／beta 覆寫。
 lab_estimate_fv_per_share <- function(method, industry_key, d_is, d_bs, d_cf,
-                                      price = NA_real_, market_cap = NA_real_) {
+                                      price = NA_real_, market_cap = NA_real_,
+                                      beta = NA_real_, ticker = "",
+                                      n_years = NULL, ke_pct = NULL,
+                                      g_pct = NULL, g1_pct = NULL) {
   method <- as.character(method %||% "pb")[1]
   key <- as.character(industry_key %||% "")[1]
-  n <- lab_model_horizon_years()
-  ke_pct <- lab_industry_ke_pct(key)
+  params <- tryCatch(
+    lab_resolve_ticker_params(
+      d_is, d_bs, d_cf,
+      industry_key = key,
+      beta = beta,
+      ticker = ticker
+    ),
+    error = function(e) NULL
+  )
+  n <- suppressWarnings(as.integer(n_years %||% params$n_years %||% lab_model_horizon_years())[1])
+  if (!is.finite(n) || n < 1L) n <- lab_model_horizon_years()
+  ke_pct <- suppressWarnings(as.numeric(ke_pct %||% params$ke_pct %||% lab_industry_ke_pct(key))[1])
+  if (!is.finite(ke_pct) || ke_pct <= 0) ke_pct <- lab_industry_ke_pct(key)
   ke <- ke_pct / 100
-  g_pct <- suppressWarnings(as.numeric(APP_DEFAULTS$sgr %||% 4)[1])
+  g_pct <- suppressWarnings(as.numeric(g_pct %||% params$g_pct %||% APP_DEFAULTS$sgr %||% 4)[1])
   if (!is.finite(g_pct)) g_pct <- 4
   g <- max(0.005, min(g_pct / 100, ke - 0.015))
-  g1_pct <- suppressWarnings(as.numeric(APP_DEFAULTS$custom_g %||% g_pct)[1])
+  g1_pct <- suppressWarnings(as.numeric(g1_pct %||% params$g1_pct %||% APP_DEFAULTS$custom_g %||% g_pct)[1])
   if (!is.finite(g1_pct)) g1_pct <- g_pct
   g1 <- max(0.01, min(g1_pct / 100, 0.15))
 
@@ -1009,9 +1183,16 @@ lab_estimate_fv_per_share <- function(method, industry_key, d_is, d_bs, d_cf,
   list(
     fv = suppressWarnings(as.numeric(fv)[1]),
     method = method,
-    n_years = n,
+    n_years = as.integer(n),
     note = note,
-    ke_pct = ke_pct
+    ke_pct = ke_pct,
+    g_pct = g_pct,
+    g1_pct = g1_pct,
+    beta = if (!is.null(params)) params$beta else NA_real_,
+    beta_source = if (!is.null(params)) params$beta_source else NA_character_,
+    lifecycle_stage = if (!is.null(params)) params$lifecycle_stage else NA_character_,
+    fund_sgr_pct = if (!is.null(params)) params$fund_sgr_pct else NA_real_,
+    rev_cagr_pct = if (!is.null(params)) params$rev_cagr_pct else NA_real_
   )
 }
 
@@ -1350,7 +1531,7 @@ lab_is_quality_stock <- function(f_score, quality_flag, min_score = 7L) {
   isTRUE(is.finite(fs) && fs >= as.numeric(min_score) && isTRUE(qf == 1))
 }
 
-#' 評估單一美股：F-Score 門檻＋產業主方法簡化合理價＋n 年年化漲幅
+#' 評估單一標的：F-Score 門檻＋產業主方法簡化合理價＋個股 n 年年化漲幅
 lab_evaluate_ticker_fscore <- function(ticker, industry_key = NULL, method = NULL) {
   tk <- toupper(trimws(as.character(ticker)[1]))
   n_yrs <- lab_model_horizon_years()
@@ -1363,10 +1544,15 @@ lab_evaluate_ticker_fscore <- function(ticker, industry_key = NULL, method = NUL
     is_quality = FALSE,
     market_cap = NA_real_,
     price = NA_real_,
+    beta = NA_real_,
     fv = NA_real_,
     upside_total_pct = NA_real_,
     upside_cagr_pct = NA_real_,
     n_years = n_yrs,
+    ke_pct = NA_real_,
+    g_pct = NA_real_,
+    g1_pct = NA_real_,
+    lifecycle_stage = NA_character_,
     fv_note = NA_character_,
     company_type = NA_character_,
     company_name = NA_character_,
@@ -1381,10 +1567,11 @@ lab_evaluate_ticker_fscore <- function(ticker, industry_key = NULL, method = NUL
   }
 
   sm <- tryCatch(lab_fetch_summary_metrics(tk), error = function(e) {
-    list(market_cap = NA_real_, price = NA_real_, company_name = NA_character_)
+    list(market_cap = NA_real_, price = NA_real_, beta = NA_real_, company_name = NA_character_)
   })
   out$market_cap <- suppressWarnings(as.numeric(sm$market_cap)[1])
   out$price <- suppressWarnings(as.numeric(sm$price)[1])
+  out$beta <- suppressWarnings(as.numeric(sm$beta)[1])
   out$company_name <- lab_company_display_name(tk, sm$company_name)
 
   res <- tryCatch(cached_scrape_financials(tk), error = function(e) e)
@@ -1442,12 +1629,17 @@ lab_evaluate_ticker_fscore <- function(ticker, industry_key = NULL, method = NUL
   fv_res <- tryCatch(
     lab_estimate_fv_per_share(
       meth_fv, ind_key, d_is, d_bs, d_cf,
-      price = out$price, market_cap = out$market_cap
+      price = out$price, market_cap = out$market_cap,
+      beta = out$beta, ticker = tk
     ),
     error = function(e) list(fv = NA_real_, n_years = n_yrs, note = e$message)
   )
   out$fv <- suppressWarnings(as.numeric(fv_res$fv)[1])
   out$n_years <- suppressWarnings(as.integer(fv_res$n_years %||% n_yrs)[1])
+  out$ke_pct <- suppressWarnings(as.numeric(fv_res$ke_pct)[1])
+  out$g_pct <- suppressWarnings(as.numeric(fv_res$g_pct)[1])
+  out$g1_pct <- suppressWarnings(as.numeric(fv_res$g1_pct)[1])
+  out$lifecycle_stage <- as.character(fv_res$lifecycle_stage %||% NA_character_)[1]
   out$fv_note <- as.character(fv_res$note %||% "")[1]
   out$method_used <- meth_fv
   if (is.finite(out$fv) && is.finite(out$price) && out$price > 0) {
