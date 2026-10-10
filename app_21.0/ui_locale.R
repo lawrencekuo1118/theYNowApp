@@ -1907,8 +1907,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     dc_sop_locked_gates_fail = "Mandatory gates failed — fix inputs or accept the veto first.",
     dc_sop_locked_gates_na = "Mandatory gates lack data — load statements, run DCF/HFV if needed.",
     dc_sop_locked_default = "SOP incomplete — verdict locked.",
-    funnel_sop_locked_title = "Verdict locked",
-    funnel_sop_locked_body = "Complete Decision SOP on Decision Checklist (SGR, sensitivity, quality) and pass mandatory gates.",
+    # YNOW verdict gate only (not on Smart Analysis / model composite headers).
     funnel_sop_locked_hint = "Open Decision Checklist and complete Decision SOP to unlock the YNOW verdict.",
     composite_sop_locked = "SOP locked",
     # --- nested / small tabs (keyed for JS; data-value match) ---
@@ -4458,8 +4457,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     dc_sop_locked_gates_fail = "強制閘門未通過 — 請先修正參數或接受否決。",
     dc_sop_locked_gates_na = "強制閘門缺資料 — 請載入財報，必要時試算 DCF／HFV。",
     dc_sop_locked_default = "SOP 未完成 — 結論鎖定。",
-    funnel_sop_locked_title = "結論已鎖定",
-    funnel_sop_locked_body = "請先至「決策檢核」完成決策 SOP（SGR、敏感度、品質）並通過強制閘門。",
+    # YNOW 結論閘門專用（不出現在智慧分析／模型頁 composite 標頭）。
     funnel_sop_locked_hint = "請至「決策檢核」完成決策 SOP，再解鎖 YNOW 結論。",
     composite_sop_locked = "SOP 未解鎖",
     # --- nested / small tabs ---

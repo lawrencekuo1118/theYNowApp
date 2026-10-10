@@ -661,7 +661,7 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
     output$ui_recommendation <- renderUI({
       .ui_loc()
       if (!.sop_unlocked()) {
-        # SOP panel is mounted above — keep a short locked cue, no redirect away from YNOW.
+        # Decision SOP lives on Decision Checklist — point YNOW verdict here only.
         return(div(
           class = "alert alert-secondary ynow-sop-verdict-locked",
           tags$p(
@@ -714,7 +714,8 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       sop_unlocked <- is.list(sop_g) && isTRUE(sop_g$unlocked)
 
       if (!has_primary_base && !has_any_model_fv) {
-        # SOP locked must remain visible even before any model Fair Value exists.
+        # Model / Smart Analysis composite: show SOP-locked status only.
+        # Do not redirect to Decision Checklist / YNOW unlock here (that cue stays on YNOW).
         if (!isTRUE(sop_unlocked)) {
           return(div(
             class = "alert alert-secondary ynow-sop-verdict-locked",
@@ -725,10 +726,6 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
                 style = "color:#6c757d;",
                 htmltools::htmlEscape(str("composite_sop_locked"))
               )
-            ),
-            tags$p(
-              style = "margin:8px 0 0 0;font-size:12px;color:#666;",
-              htmltools::htmlEscape(str("funnel_sop_locked_hint"))
             )
           ))
         }

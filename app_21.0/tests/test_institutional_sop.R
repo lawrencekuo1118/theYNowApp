@@ -41,7 +41,7 @@ check(
   identical(.DC_SOP_MANDATORY_ITEMS, c("g_sgr", "fscore", "bear_base", "hfv_veto"))
 )
 
-# Placement: Decision SOP on Decision Checklist; YNOW only shows locked hint
+# Placement: Decision SOP on Decision Checklist; YNOW recommendation shows locked hint only
 source("ui_locale.R", local = TRUE, encoding = "UTF-8")
 source("investment_decision_module.R", local = TRUE, encoding = "UTF-8")
 dec <- paste(readLines("investment_decision_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
@@ -75,9 +75,32 @@ check(
     grepl("決策檢核", ui_str("funnel_sop_locked_hint", "zh-TW"), fixed = TRUE)
 )
 check(
-  "locked body points to Decision Checklist",
-  grepl("Decision Checklist", ui_str("funnel_sop_locked_body", "en"), fixed = TRUE) &&
-    grepl("決策檢核", ui_str("funnel_sop_locked_body", "zh-TW"), fixed = TRUE)
+  "unused locked title/body keys removed",
+  is.null(.UI_STRINGS$en$funnel_sop_locked_title) &&
+    is.null(.UI_STRINGS$en$funnel_sop_locked_body) &&
+    is.null(.UI_STRINGS$`zh-TW`$funnel_sop_locked_title) &&
+    is.null(.UI_STRINGS$`zh-TW`$funnel_sop_locked_body)
+)
+# Hint is for YNOW recommendation only — not the shared composite header on model pages.
+rec_start <- regexpr("output\\$ui_recommendation", dec)[1]
+cmp_start <- regexpr("output\\$ui_valuation_compare", dec)[1]
+rec_chunk <- if (is.finite(rec_start) && rec_start > 0 && is.finite(cmp_start) && cmp_start > rec_start) {
+  substr(dec, rec_start, cmp_start - 1L)
+} else {
+  ""
+}
+cmp_chunk <- if (is.finite(cmp_start) && cmp_start > 0) substr(dec, cmp_start, nchar(dec)) else ""
+check(
+  "YNOW recommendation uses locked hint",
+  grepl("funnel_sop_locked_hint", rec_chunk, fixed = TRUE)
+)
+check(
+  "composite valuation omits YNOW unlock hint",
+  !grepl("funnel_sop_locked_hint", cmp_chunk, fixed = TRUE)
+)
+check(
+  "composite still shows SOP locked status",
+  grepl("composite_sop_locked", cmp_chunk, fixed = TRUE)
 )
 
 cat("\nAll institutional SOP tests passed.\n")
