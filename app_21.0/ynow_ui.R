@@ -1459,6 +1459,42 @@ beta_rolling_section_ui <- function() {
 #' Lazy page body for tab `bluechip` (mounted once per session).
 .ynow_page_ui_bluechip <- function() {
   tagList(
+  # Industry mcap-weighted upside board (auto; above Candidate truncate)
+          fluidRow(
+            column(
+              width = 12,
+              tags$div(
+                class = "ynow-lab-im-ind-mcap-block",
+                style = "margin: 0 0 16px 0; padding: 12px 14px; border: 1px solid #e5e5e5; border-radius: 4px; background: #fafafa;",
+                tags$div(
+                  style = "display:flex; flex-wrap:wrap; align-items:baseline; gap:8px; margin:0 0 6px 0;",
+                  tags$h4(
+                    id = "ynow_lab_im_ind_mcap_title",
+                    style = "margin:0; font-size:15px; font-weight:600;",
+                    "產業市值加權漲幅"
+                  ),
+                  tags$span(
+                    id = "ynow_lab_im_ind_mcap_badge",
+                    style = "font-size:11px; color:#888;",
+                    "自動運算"
+                  )
+                ),
+                tags$div(
+                  id = "ynow_lab_im_ind_mcap_help",
+                  style = "color:#888; font-size:12px; line-height:1.45; margin:0 0 8px 0;",
+                  paste0(
+                    "搜尋績優股後自動依本次已評估結果，以 Σ(市值×年化估值漲幅)/Σ(市值) ",
+                    "列出產業排序（每元市值加權；套用上方／查詢條件之 Piotroski、盈餘品質、無財報警訊門檻）。"
+                  )
+                ),
+                uiOutput("lab_im_ind_mcap_status"),
+                tags$div(
+                  style = "overflow-x:auto;",
+                  tableOutput("lab_im_ind_mcap_table")
+                )
+              )
+            )
+          ),
   # Shared pool controls above BLUE CHIP (semantic: truncate rule → then take N)
           # Concept groups appear beside truncate when mode is concept.
           fluidRow(
@@ -1541,11 +1577,13 @@ beta_rolling_section_ui <- function() {
                       choiceNames = list(
                         tags$span(id = "ynow_lab_im_lb_mode_overall", "整體前十名"),
                         tags$span(id = "ynow_lab_im_lb_mode_by_ind", "選定產業前十名"),
-                        tags$span(id = "ynow_lab_im_lb_mode_ind_avg", "產業市值加權漲幅"),
                         tags$span(id = "ynow_lab_im_lb_mode_undervalued", "價值低估前十名")
                       ),
-                      choiceValues = list("overall", "by_industry", "industry_avg", "undervalued"),
-                      selected = APP_DEFAULTS$lab_im_lb_mode,
+                      choiceValues = list("overall", "by_industry", "undervalued"),
+                      selected = {
+                        m0 <- as.character(APP_DEFAULTS$lab_im_lb_mode %||% "overall")[1]
+                        if (m0 %in% c("overall", "by_industry", "undervalued")) m0 else "overall"
+                      },
                       inline = TRUE
                     ),
                     tags$div(
@@ -1554,8 +1592,8 @@ beta_rolling_section_ui <- function() {
                       paste0(
                         "整體前十名：跨本次已評估產業依年化估值漲幅取 Top 10，並顯示產業欄。",
                         "選定產業前十名：所選產業內單一 Top 10；產業內排名自該產業第 1 名起算（非跨產業流水號）。",
-                        "產業市值加權漲幅：各產業以 Σ(市值×年化估值漲幅)/Σ(市值) 排名（每元市值加權）。",
                         "價值低估前十名：跨產業依推薦主模型合理價相對市價的總潛在漲幅（非年化）由大到小；只列仍被低估者。",
+                        "產業市值加權漲幅已移至上方獨立區塊（搜尋後自動運算）。",
                         "前十名只從合格者取最多 10 檔；合格不足 10 時不會湊滿。"
                       )
                     )
@@ -7797,10 +7835,14 @@ ui <- dashboardPage(
             if (labLbOverall && s.lab_im_lb_mode_overall) labLbOverall.textContent = s.lab_im_lb_mode_overall;
             var labLbByInd = document.getElementById('ynow_lab_im_lb_mode_by_ind');
             if (labLbByInd && s.lab_im_lb_mode_by_industry) labLbByInd.textContent = s.lab_im_lb_mode_by_industry;
-            var labLbIndAvg = document.getElementById('ynow_lab_im_lb_mode_ind_avg');
-            if (labLbIndAvg && s.lab_im_lb_mode_industry_avg) labLbIndAvg.textContent = s.lab_im_lb_mode_industry_avg;
             var labLbUndervalued = document.getElementById('ynow_lab_im_lb_mode_undervalued');
             if (labLbUndervalued && s.lab_im_lb_mode_undervalued) labLbUndervalued.textContent = s.lab_im_lb_mode_undervalued;
+            var labIndMcapTitle = document.getElementById('ynow_lab_im_ind_mcap_title');
+            if (labIndMcapTitle && s.lab_im_ind_mcap_title) labIndMcapTitle.textContent = s.lab_im_ind_mcap_title;
+            var labIndMcapBadge = document.getElementById('ynow_lab_im_ind_mcap_badge');
+            if (labIndMcapBadge && s.lab_im_ind_mcap_badge) labIndMcapBadge.textContent = s.lab_im_ind_mcap_badge;
+            var labIndMcapHelp = document.getElementById('ynow_lab_im_ind_mcap_help');
+            if (labIndMcapHelp && s.lab_im_ind_mcap_help) labIndMcapHelp.textContent = s.lab_im_ind_mcap_help;
             var labBoardsLabel = document.getElementById('ynow_lab_im_boards_label');
             if (labBoardsLabel && s.lab_im_boards_label) labBoardsLabel.textContent = s.lab_im_boards_label;
             var labBoardTwse = document.getElementById('ynow_lab_im_board_twse');

@@ -2414,7 +2414,7 @@ server <- function(input, output, session) {
       bt_nav_window = c("Backtest", "NAV window", "Strategy NAV 視窗"),
       lab_im_pool_rank = c("Lab", "候選截斷邏輯", "市值／概念股／近一年漲幅／隨機"),
       lab_im_concepts = c("Lab", "概念股群", "pool = concept 時"),
-      lab_im_lb_mode = c("Lab", "Leaderboard mode", "overall / by_industry / industry_avg / undervalued"),
+      lab_im_lb_mode = c("Lab", "Leaderboard mode", "overall / by_industry / undervalued"),
       lab_im_boards = c("Lab", "TW boards", "TWSE / TPEX / ESB"),
       lab_im_max_n = c("Lab", "Universe size N", "顯示上限"),
       lab_im_max_n_custom = c("Lab", "Custom universe N", "N = custom 時"),
@@ -12095,12 +12095,11 @@ server <- function(input, output, session) {
     eval_n <- lab_resolve_im_eval_n(display_n)
     n_eval <- if (is.data.frame(scores) && nrow(scores) > 0) nrow(scores) else 0L
     scope <- as.character(input$lab_im_lb_mode %||% "overall")[1]
+    if (!scope %in% c("overall", "by_industry", "undervalued")) scope <- "overall"
     gate_on <- isTRUE(input$lab_im_gate_only)
     eq_on <- isTRUE(input$lab_im_eq_only)
     no_alert_on <- isTRUE(input$lab_im_no_alert)
-    scope_txt <- if (identical(scope, "industry_avg")) {
-      "產業市值加權漲幅"
-    } else if (identical(scope, "by_industry")) {
+    scope_txt <- if (identical(scope, "by_industry")) {
       "選定產業內 Top 10（產業內排名自第 1 名起算）"
     } else if (identical(scope, "undervalued")) {
       "價值低估 Top 10（總潛在漲幅＝主模型 FV vs 市價）"
@@ -12176,6 +12175,138 @@ server <- function(input, output, session) {
     )
   })
 
+  # Legacy Ranking view value moved to dedicated board above Candidate truncate
+  observeEvent(input$lab_im_lb_mode, {
+    if (identical(as.character(input$lab_im_lb_mode %||% "")[1], "industry_avg")) {
+      updateRadioButtons(session, "lab_im_lb_mode", selected = "overall")
+    }
+  }, ignoreInit = FALSE)
+
+  # Dedicated industry mcap-weighted board (above Candidate truncate; auto after search)
+  .lab_im_ind_mcap_board <- reactive({
+    scores <- lab_im_scores()
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    empty <- list(
+      table = NULL,
+      n_show = 0L,
+      n_qual = 0L,
+      n_eval = 0L,
+      waiting = TRUE,
+      loc = loc
+    )
+    if (is.null(scores) || !is.data.frame(scores) || nrow(scores) == 0) {
+      return(empty)
+    }
+    catlg <- tryCatch(lab_im_catalog(), error = function(e) NULL)
+    lb_src <- tryCatch({
+      if (is.data.frame(catlg) && nrow(catlg) > 0) {
+        lab_merge_catalog_scores(
+          catlg,
+          scores = scores,
+          method_filter = input$lab_im_methods,
+          industry_filter = character(0),
+          eq_only = FALSE,
+          gate_only = FALSE,
+          evaluated_only = TRUE
+        )
+      } else {
+        lab_im_merged()
+      }
+    }, error = function(e) NULL)
+    if (is.null(lb_src) || !is.data.frame(lb_src) || nrow(lb_src) == 0) {
+      empty$waiting <- FALSE
+      empty$n_eval <- nrow(scores)
+      return(empty)
+    }
+    gate_on <- isTRUE(input$lab_im_gate_only)
+    eq_on <- isTRUE(input$lab_im_eq_only)
+    no_alert_on <- isTRUE(input$lab_im_no_alert)
+    pool <- tryCatch(
+      lab_leaderboard_pool(
+        lb_src, eq_only = eq_on, gate_only = gate_on, no_alert = no_alert_on
+      ),
+      error = function(e) NULL
+    )
+    tbl <- tryCatch(
+      lab_industry_mcap_upside_leaderboard(
+        lb_src,
+        top_n = 500L,
+        eq_only = eq_on,
+        gate_only = gate_on,
+        no_alert = no_alert_on,
+        industry_filter = character(0)
+      ),
+      error = function(e) NULL
+    )
+    list(
+      table = tbl,
+      n_show = if (is.data.frame(tbl)) nrow(tbl) else 0L,
+      n_qual = if (is.data.frame(pool)) nrow(pool) else 0L,
+      n_eval = nrow(lb_src),
+      waiting = FALSE,
+      loc = loc
+    )
+  })
+
+  output$lab_im_ind_mcap_status <- renderUI({
+    board <- .lab_im_ind_mcap_board()
+    loc <- board$loc %||% "zh-TW"
+    if (isTRUE(board$waiting)) {
+      return(tags$p(
+        style = "color:#888; font-size:12.5px; margin:0 0 8px 0;",
+        tryCatch(ui_str("lab_im_ind_mcap_waiting", loc),
+                 error = function(e) "尚未評估。請按「搜尋績優股」後自動產生產業排序清單。")
+      ))
+    }
+    if (!is.finite(board$n_show) || board$n_show < 1L) {
+      txt <- tryCatch(
+        sprintf(
+          ui_str("lab_im_ind_mcap_empty", loc),
+          as.integer(board$n_qual), as.integer(board$n_eval)
+        ),
+        error = function(e) sprintf(
+          "尚無產業列可顯示（合格檔 %d／已評估 %d）。",
+          as.integer(board$n_qual), as.integer(board$n_eval)
+        )
+      )
+      return(tags$p(style = "color:#888; font-size:12.5px; margin:0 0 8px 0;", txt))
+    }
+    txt <- tryCatch(
+      sprintf(
+        ui_str("lab_im_ind_mcap_status", loc),
+        as.integer(board$n_show), as.integer(board$n_qual), as.integer(board$n_eval)
+      ),
+      error = function(e) sprintf(
+        "顯示 %d 個產業（合格檔 %d／已評估 %d）。",
+        as.integer(board$n_show), as.integer(board$n_qual), as.integer(board$n_eval)
+      )
+    )
+    tags$p(style = "color:#555; font-size:12.5px; margin:0 0 8px 0;", txt)
+  })
+
+  output$lab_im_ind_mcap_table <- renderTable({
+    board <- .lab_im_ind_mcap_board()
+    loc <- board$loc %||% "zh-TW"
+    if (isTRUE(board$waiting)) {
+      return(data.frame(
+        訊息 = tryCatch(ui_str("lab_im_ind_mcap_waiting", loc),
+                        error = function(e) "尚未評估。請按「搜尋績優股」後自動產生產業排序清單。")
+      ))
+    }
+    tbl <- board$table
+    if (is.null(tbl) || !is.data.frame(tbl) || nrow(tbl) == 0) {
+      msg <- tryCatch(
+        sprintf(
+          ui_str("lab_im_ind_mcap_empty", loc),
+          as.integer(board$n_qual), as.integer(board$n_eval)
+        ),
+        error = function(e) "尚無產業列可顯示。"
+      )
+      return(data.frame(訊息 = msg))
+    }
+    tbl
+  }, striped = TRUE, bordered = TRUE, hover = TRUE, spacing = "s", width = "100%")
+
   output$lab_im_leaderboard <- renderTable({
     scores <- lab_im_scores()
     if (is.null(scores) || !is.data.frame(scores) || nrow(scores) == 0) {
@@ -12195,11 +12326,11 @@ server <- function(input, output, session) {
       ))
     }
     scope <- as.character(input$lab_im_lb_mode %||% "overall")[1]
-    if (!scope %in% c("overall", "by_industry", "industry_avg", "undervalued")) scope <- "overall"
+    if (!scope %in% c("overall", "by_industry", "undervalued")) scope <- "overall"
     # overall = Top 10 across all evaluated industries (annualized upside);
     # by_industry = Top 10 within selected industries (Industry rank from 1 within each industry);
-    # industry_avg = industries ranked by mcap-weighted average annualized upside;
     # undervalued = Top 10 by total FV–price gap (primary model; still undervalued only)
+    # (industry mcap-weighted board is a dedicated auto block above Candidate truncate)
     lb_src <- merged
     ind_filter <- character(0)
     if (scope %in% c("overall", "undervalued")) {
@@ -12268,7 +12399,7 @@ server <- function(input, output, session) {
     eq_on <- isTRUE(input$lab_im_eq_only)
     no_alert_on <- isTRUE(input$lab_im_no_alert)
     scope <- as.character(input$lab_im_lb_mode %||% "overall")[1]
-    if (!scope %in% c("overall", "by_industry", "industry_avg", "undervalued")) scope <- "overall"
+    if (!scope %in% c("overall", "by_industry", "undervalued")) scope <- "overall"
     lb_src <- merged
     ind_filter <- character(0)
     if (scope %in% c("overall", "undervalued")) {
@@ -12300,27 +12431,16 @@ server <- function(input, output, session) {
     )
     pool <- tryCatch(
       lab_leaderboard_pool(
-        if (scope %in% c("by_industry", "industry_avg")) merged else lb_src,
+        if (identical(scope, "by_industry")) merged else lb_src,
         eq_only = eq_on, gate_only = gate_on, no_alert = no_alert_on
       ),
       error = function(e) NULL
     )
     n_show <- if (is.data.frame(lb)) nrow(lb) else 0L
     n_qual <- if (is.data.frame(pool)) nrow(pool) else 0L
-    n_eval <- nrow(if (scope %in% c("by_industry", "industry_avg")) merged else lb_src)
+    n_eval <- nrow(if (identical(scope, "by_industry")) merged else lb_src)
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
-    if (identical(scope, "industry_avg")) {
-      txt <- tryCatch(
-        sprintf(
-          ui_str("lab_im_lb_status_ind_avg", loc),
-          as.integer(n_show), 10L, as.integer(n_qual), as.integer(n_eval)
-        ),
-        error = function(e) sprintf(
-          "產業市值加權漲幅顯示 %d／10（合格檔 %d／已評估 %d）。每一列為一產業；權重＝該產業內市值占比。",
-          as.integer(n_show), as.integer(n_qual), as.integer(n_eval)
-        )
-      )
-    } else if (identical(scope, "by_industry")) {
+    if (identical(scope, "by_industry")) {
       txt <- tryCatch(
         sprintf(
           ui_str("lab_im_lb_status_by_ind", loc),
@@ -12579,7 +12699,7 @@ server <- function(input, output, session) {
         merged_lb <- tryCatch(lab_im_merged(), error = function(e) NULL)
         if (is.data.frame(merged_lb) && nrow(merged_lb) > 0) {
           lb_scope <- as.character(isolate(input$lab_im_lb_mode) %||% "overall")[1]
-          if (!lb_scope %in% c("overall", "by_industry", "industry_avg", "undervalued")) lb_scope <- "overall"
+          if (!lb_scope %in% c("overall", "by_industry", "undervalued")) lb_scope <- "overall"
           lb_src <- merged_lb
           ind_filter <- character(0)
           if (lb_scope %in% c("overall", "undervalued")) {

@@ -103,6 +103,16 @@ testthat::test_that("industry_avg ranks by mcap-weighted average upside", {
   testthat::expect_true(grepl("\\+42\\.0%", lb[["市值加權年化估值漲幅"]][[2]]))
 })
 
+testthat::test_that("dedicated industry board helper lists all industries (top_n large)", {
+  lb <- lab_industry_mcap_upside_leaderboard(
+    df, top_n = 500L, eq_only = FALSE, gate_only = FALSE, no_alert = FALSE,
+    industry_filter = character(0)
+  )
+  testthat::expect_equal(nrow(lb), 3L)
+  testthat::expect_identical(as.character(lb$產業), c("Banks", "Software", "Semiconductors"))
+  testthat::expect_identical(as.integer(lb$檔數), c(1L, 2L, 3L))
+})
+
 testthat::test_that("undervalued ranks by total FV–price gap, not CAGR", {
   # Same CAGR order would put C1 first (60); total gap order differs when horizon differs.
   uv <- rbind(
