@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# YNOW tab: title, KPI jump row above Section I, two-block order, Lite=Full
+# YNOW tab: masthead → KPI → verdict → risk matrix → Ch.1 quality → Ch.2 alerts
 # Run: cd app_21.0 && Rscript tests/test_ynow_tab_layout.R
 
 root <- if (file.exists("investment_decision_module.R")) {
@@ -55,6 +55,12 @@ check("no Decision Funnel title", !grepl("Decision Funnel", .UI_STRINGS$en$funne
 check("no 決策漏斗 title", !grepl("決策漏斗", .UI_STRINGS$`zh-TW`$funnel_page_title, fixed = TRUE))
 check("page_sub click MOS", grepl("Click MOS / Reliability", .UI_STRINGS$en$funnel_page_sub, fixed = TRUE))
 check("page_sub zh 點選", grepl("點選 MOS／Reliability", .UI_STRINGS$`zh-TW`$funnel_page_sub, fixed = TRUE))
+check("page_sub mentions verdict unlock", grepl("Decision SOP", .UI_STRINGS$en$funnel_page_sub, fixed = TRUE))
+check("page_sub zh Decision SOP", grepl("Decision SOP", .UI_STRINGS$`zh-TW`$funnel_page_sub, fixed = TRUE))
+check("verdict locale keys", nzchar(ui_str("funnel_verdict_title", "en")) &&
+        nzchar(ui_str("funnel_verdict_title", "zh-TW")))
+check("risk locale keys", nzchar(ui_str("funnel_risk_title", "en")) &&
+        identical(ui_str("funnel_risk_title", "zh-TW"), "自動化風險矩陣"))
 check(
   "jump aria keys",
   nzchar(ui_str("funnel_kpi_jump_mos_aria", "en")) &&
@@ -66,7 +72,10 @@ check(
 )
 check("en aria keeps F-Score", grepl("F-Score", ui_str("funnel_kpi_jump_fscore_aria", "en"), fixed = TRUE))
 check("zh aria keeps F-Score", grepl("F-Score", ui_str("funnel_kpi_jump_fscore_aria", "zh-TW"), fixed = TRUE))
-check("zh aria keeps MOS", grepl("MOS", ui_str("funnel_kpi_jump_mos_aria", "zh-TW"), fixed = TRUE))
+check("zh aria MOS → verdict", grepl("情境結論", ui_str("funnel_kpi_jump_mos_aria", "zh-TW"), fixed = TRUE))
+check("en aria MOS → verdict", grepl("verdict", ui_str("funnel_kpi_jump_mos_aria", "en"), ignore.case = TRUE))
+check("alerts aria mentions M-Score", grepl("M-Score", ui_str("funnel_kpi_jump_alerts_aria", "en"), fixed = TRUE))
+check("fraud KPI label mentions M-Score", grepl("M-Score", ui_str("funnel_vbox_fraud", "en"), fixed = TRUE))
 
 dec <- paste(readLines("investment_decision_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 ui_start <- regexpr("decision_ui <- function", dec, fixed = TRUE)[1]
@@ -74,11 +83,16 @@ ui_end <- regexpr("decision_momentum_panel_ui", dec, fixed = TRUE)[1]
 check("decision_ui slice", is.finite(ui_start) && ui_start > 0 && ui_end > ui_start)
 ui_fn <- if (ui_start > 0 && ui_end > ui_start) substr(dec, ui_start, ui_end) else dec
 
+pos_v <- regexpr('`data-ynow-block` = "verdict"', ui_fn, fixed = TRUE)[1]
+pos_r <- regexpr('`data-ynow-block` = "risk_matrix"', ui_fn, fixed = TRUE)[1]
 pos_q <- regexpr('`data-ynow-block` = "quality"', ui_fn, fixed = TRUE)[1]
 pos_a <- regexpr('`data-ynow-block` = "alerts"', ui_fn, fixed = TRUE)[1]
 pos_b <- regexpr('`data-ynow-block` = "bubble"', ui_fn, fixed = TRUE)[1]
+check("verdict block present", is.finite(pos_v) && pos_v > 0)
+check("risk matrix block present", is.finite(pos_r) && pos_r > 0)
 check("quality block present", is.finite(pos_q) && pos_q > 0)
-check("order 體質 → 警訊", is.finite(pos_a) && pos_a > pos_q)
+check("order verdict → risk → 體質 → 警訊",
+      pos_v > 0 && pos_r > pos_v && pos_q > pos_r && pos_a > pos_q)
 check("bubble not on YNOW", !is.finite(pos_b) || pos_b < 1)
 
 pos_ch1_id <- regexpr('id = "ynow_funnel_ch1"', ui_fn, fixed = TRUE)[1]
@@ -90,25 +104,42 @@ pos_tbl <- regexpr("fscore_panel", ui_fn, fixed = TRUE)[1]
 pos_shen <- regexpr("shenanigans_panel", ui_fn, fixed = TRUE)[1]
 pos_qoe <- regexpr("qoe_dashboard", ui_fn, fixed = TRUE)[1]
 pos_risk <- regexpr("risk_matrix_panel", ui_fn, fixed = TRUE)[1]
+pos_mscore <- regexpr("mscore_widget", ui_fn, fixed = TRUE)[1]
+pos_rec <- regexpr("ui_recommendation", ui_fn, fixed = TRUE)[1]
 check("MOS card before F-Score", pos_mos > 0 && pos_fs > pos_mos)
 check("F-Score card before alerts", pos_fs > 0 && pos_fraud > pos_fs)
-check("KPI row before Section I heading", pos_fraud > 0 && pos_ch1_title > pos_fraud && pos_ch1_id > pos_fraud)
-check("Section I heading not in KPI row", pos_ch1_title > pos_ch1_id && pos_ch1_id > pos_fraud)
+check("KPI row before verdict", pos_fraud > 0 && pos_v > pos_fraud)
+check("recommendation in verdict block", pos_rec > pos_v && pos_rec < pos_r)
+check("risk panel in risk block", pos_risk > pos_r && pos_risk < pos_q)
 check("QoE dashboard before F-Score panel", pos_qoe > pos_q && pos_qoe < pos_tbl)
 check("F-Score boxes still in Section I", pos_tbl > pos_q && pos_tbl < pos_a)
-check("risk matrix before shenanigans", pos_risk > pos_a && pos_risk < pos_shen)
+check("M-Score in Section II (alerts)", pos_mscore > pos_a && pos_mscore < pos_shen)
 check("shenanigans still in Section II", pos_shen > pos_a)
+check("ch1 notes after F-Score panel", {
+  pos_ch1_lead <- regexpr("ynow_funnel_ch1_lead", ui_fn, fixed = TRUE)[1]
+  pos_ch1_lead > pos_tbl && pos_ch1_lead < pos_a
+})
+check("ch2 notes after shenanigans", {
+  pos_ch2_lead <- regexpr("ynow_funnel_ch2_lead", ui_fn, fixed = TRUE)[1]
+  pos_ch2_lead > pos_shen
+})
 
 ch1_body <- if (pos_q > 0 && pos_a > pos_q) substr(ui_fn, pos_q, pos_a) else ""
 ch2_body <- if (pos_a > 0) substr(ui_fn, pos_a, nchar(ui_fn)) else ""
+risk_body <- if (pos_r > 0 && pos_q > pos_r) substr(ui_fn, pos_r, pos_q) else ""
 check("no vbox_mos inside ch1", !grepl("vbox_mos", ch1_body, fixed = TRUE))
 check("no vbox_fscore inside ch1", !grepl("vbox_fscore", ch1_body, fixed = TRUE))
 check("no vbox_fraud inside ch1", !grepl("vbox_fraud", ch1_body, fixed = TRUE))
 check("no vbox_fraud inside ch2", !grepl("vbox_fraud", ch2_body, fixed = TRUE))
 check("no vbox_fscore inside ch2", !grepl("vbox_fscore", ch2_body, fixed = TRUE))
-check("href MOS → ch1", grepl('href = "#ynow_funnel_ch1"', ui_fn, fixed = TRUE))
+check("no mscore in ch1", !grepl("mscore_widget", ch1_body, fixed = TRUE))
+check("no risk matrix in ch2", !grepl("risk_matrix_panel", ch2_body, fixed = TRUE))
+check("risk matrix not in ch1", !grepl("risk_matrix_panel", ch1_body, fixed = TRUE))
+check("risk body has matrix", grepl("risk_matrix_panel", risk_body, fixed = TRUE))
+check("href MOS → verdict", grepl('href = "#ynow_funnel_verdict"', ui_fn, fixed = TRUE))
 check("href F-Score → fscore", grepl('href = "#ynow_funnel_fscore"', ui_fn, fixed = TRUE))
 check("href alerts → ch2", grepl('href = "#ynow_funnel_ch2"', ui_fn, fixed = TRUE))
+check("no MOS href to ch1", !grepl('ynow_kpi_jump_mos"[\\s\\S]*?#ynow_funnel_ch1', ui_fn, perl = TRUE))
 check("jump id MOS", grepl("ynow_kpi_jump_mos", ui_fn, fixed = TRUE))
 check("jump id F-Score", grepl("ynow_kpi_jump_fscore", ui_fn, fixed = TRUE))
 check("jump id alerts", grepl("ynow_kpi_jump_alerts", ui_fn, fixed = TRUE))

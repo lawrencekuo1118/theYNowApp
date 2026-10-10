@@ -7583,6 +7583,18 @@ ui <- dashboardPage(
             if (funnelPageTitle && s.funnel_page_title) funnelPageTitle.textContent = s.funnel_page_title;
             var funnelPageSub = document.getElementById('ynow_funnel_page_sub');
             if (funnelPageSub && s.funnel_page_sub) funnelPageSub.textContent = s.funnel_page_sub;
+            var funnelVerdictK = document.getElementById('ynow_funnel_verdict_kicker');
+            if (funnelVerdictK && s.funnel_verdict_kicker) funnelVerdictK.textContent = s.funnel_verdict_kicker;
+            var funnelVerdictT = document.getElementById('ynow_funnel_verdict_title');
+            if (funnelVerdictT && s.funnel_verdict_title) funnelVerdictT.textContent = s.funnel_verdict_title;
+            var funnelVerdictLead = document.getElementById('ynow_funnel_verdict_lead');
+            if (funnelVerdictLead && s.funnel_verdict_lead) funnelVerdictLead.textContent = s.funnel_verdict_lead;
+            var funnelRiskK = document.getElementById('ynow_funnel_risk_kicker');
+            if (funnelRiskK && s.funnel_risk_kicker) funnelRiskK.textContent = s.funnel_risk_kicker;
+            var funnelRiskT = document.getElementById('ynow_funnel_risk_title');
+            if (funnelRiskT && s.funnel_risk_title) funnelRiskT.textContent = s.funnel_risk_title;
+            var funnelRiskLead = document.getElementById('ynow_funnel_risk_lead');
+            if (funnelRiskLead && s.funnel_risk_lead) funnelRiskLead.textContent = s.funnel_risk_lead;
             var funnelCh1K = document.getElementById('ynow_funnel_ch1_kicker');
             if (funnelCh1K && s.funnel_ch1_kicker) funnelCh1K.textContent = s.funnel_ch1_kicker;
             var funnelCh1T = document.getElementById('ynow_funnel_ch1_title');
@@ -9558,6 +9570,8 @@ ui <- dashboardPage(
           min-height: 108px;
           cursor: pointer;
         }
+        #ynow_funnel_verdict,
+        #ynow_funnel_risk,
         #ynow_funnel_ch1,
         #ynow_funnel_ch2,
         #ynow_funnel_ch3,

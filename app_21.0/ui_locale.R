@@ -1538,29 +1538,46 @@ locale_for_market <- function(mode = get_market_mode()) {
       "After selecting \"Manual βe\" as β source, this value writes into CAPM; ",
       "editing here also switches the source to manual and syncs."
     ),
-    # --- YNOW page (three stacked blocks) ---
+    # --- YNOW page (verdict → risk matrix → quality → alerts) ---
     funnel_page_title = "YNOW",
     funnel_page_sub = paste0(
-      "Click MOS / Reliability, Quality screen (F-Score), and Statement alerts ",
-      "to scroll to each block. Two stacked screens: Quality of Earnings / F-Score → ",
-      "risk matrix / statement alerts. Dynamic industry bubble and weight concentration sit at the ",
-      "bottom of Macro & Market Trends."
+      "Click MOS / Reliability (jumps to the scenario verdict), Quality screen (F-Score), ",
+      "or Statement alerts (includes Beneish M-Score) to scroll. ",
+      "Reading order: scenario verdict → automated risk matrix → statement quality (QoE / F-Score) → ",
+      "statement alerts (M-Score / Schilit). ",
+      "The verdict unlocks only after Decision Checklist → Decision SOP; ",
+      "the risk matrix is a composite overview, not the unlock gate. ",
+      "Dynamic industry bubble and weight concentration sit at the bottom of Macro & Market Trends."
     ),
-    funnel_kpi_jump_mos_aria = "Jump to Section I Statement quality (MOS and Reliability)",
+    funnel_kpi_jump_mos_aria = "Jump to YNOW scenario verdict (MOS and Reliability are inputs to that verdict)",
     funnel_kpi_jump_fscore_aria = "Jump to Quality screen (F-Score) checklist",
-    funnel_kpi_jump_alerts_aria = "Jump to Section II Statement alerts",
+    funnel_kpi_jump_alerts_aria = "Jump to Section II Statement alerts (includes Beneish M-Score)",
+    funnel_verdict_kicker = "Verdict",
+    funnel_verdict_title = "YNOW scenario verdict",
+    funnel_verdict_lead = paste0(
+      "Research scenario label from MOS, F-Score / earnings quality, and trend momentum ",
+      "(not a trade ticket). In Full mode, unlock via Decision Checklist → Decision SOP ",
+      "(including hard gates). The automated risk matrix below is parallel context—not the unlock condition."
+    ),
+    funnel_risk_kicker = "Overview",
+    funnel_risk_title = "Automated risk matrix",
+    funnel_risk_lead = paste0(
+      "Crosses F-Score, Beneish M-Score, AR–Revenue decoupling, and accruals into composite risk flags. ",
+      "Veto / risk context only—not a buy signal. Detail lives in Section I (quality) and Section II (fraud / shenanigans)."
+    ),
     funnel_ch1_kicker = "Section I",
     funnel_ch1_title = "Statement quality",
     funnel_ch1_lead = paste0(
       "Start with the Quality of Earnings (cash-earnings) score, then the Piotroski F-Score ",
-      "nine-item quality screen; Pass / Fail is a quality screen only—not a standalone buy reason."
+      "nine-item quality screen; Pass / Fail is a quality screen only—not a standalone buy reason. ",
+      "Manipulation / fraud risk is in Section II (Beneish M-Score)."
     ),
     funnel_ch2_kicker = "Section II",
     funnel_ch2_title = "Statement alerts",
     funnel_ch2_lead = paste0(
-      "Automated risk matrix (Beneish M-Score, F-Score, AR–Revenue decoupling, accruals) ",
-      "plus Schilit-style screening: alerts/watch items expand first. ",
-      "Veto / risk context only—not a buy signal."
+      "Beneish M-Score (earnings-manipulation / fraud risk) plus Schilit-style screening; ",
+      "alerts/watch items expand first. Veto / risk context only—not a buy signal. ",
+      "The automated risk matrix above is the composite cross-check that also includes F-Score."
     ),
     funnel_eq_skip = "Earnings-quality scan skipped.",
     funnel_eq_title = "Quality of Earnings",
@@ -1576,8 +1593,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     notes_toggle_aria = "Show or hide notes",
     funnel_sec_method = "How to read this report",
     funnel_method_body = paste0(
-      "Reading order: click MOS / Reliability, Quality screen (F-Score), then Statement alerts, ",
-      "then statement quality (F-Score) → statement alerts. ",
+      "Reading order: scenario verdict → automated risk matrix → statement quality (QoE / F-Score) → ",
+      "statement alerts (M-Score / Schilit). ",
+      "Click MOS / Reliability to jump to the verdict; F-Score and Statement alerts jump to their sections. ",
       "Dynamic industry bubble and weight concentration sit at the bottom of Macro & Market Trends. ",
       "Trend momentum (Timing) lives under Quant Backtest Lab and does not set fair value."
     ),
@@ -1611,7 +1629,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_gate_off = "No F-Score gate",
     funnel_vbox_mos = "Margin of Safety (vs Base)",
     funnel_vbox_mos_conf = "｜Reliability {level}",
-    funnel_vbox_fraud = "Statement alerts",
+    funnel_vbox_fraud = "Statement alerts (Schilit + M-Score)",
     funnel_fraud_items = "{n} item(s)",
     funnel_pass = "✅ Pass",
     funnel_fail = "❌ Fail",
@@ -4103,27 +4121,42 @@ locale_for_market <- function(mode = get_market_mode()) {
       "於 β 來源選「手動定義 βe」後，此值會直接寫入 CAPM；",
       "在此修改數值時也會自動改選手動來源並同步。"
     ),
-    # --- YNOW 頁（三個直向區塊） ---
+    # --- YNOW 頁（結論 → 風險矩陣 → 體質 → 警訊） ---
     funnel_page_title = "YNOW",
     funnel_page_sub = paste0(
-      "點選 MOS／Reliability、品質檢核 (F-Score)、財報警訊框格可捲動至對應區塊。",
-      "兩個區塊由上而下：盈餘品質／F-Score → 風險矩陣／財報警訊。",
+      "點選 MOS／Reliability（跳至情境結論）、品質檢核 (F-Score)、財報警訊（含 Beneish M-Score）可捲動至對應區塊。",
+      "閱讀順序：情境結論 → 自動化風險矩陣 → 財報體質（QoE／F-Score）→ 財報警訊（M-Score／Schilit）。",
+      "情境結論須先完成「決策檢核」Decision SOP 才解鎖；風險矩陣為綜合概覽、非解鎖條件。",
       "動態產業泡沫與權重集中度在「總體經濟與大盤趨勢」分頁最下方。"
     ),
-    funnel_kpi_jump_mos_aria = "跳至第一章財報體質（MOS 與 Reliability）",
+    funnel_kpi_jump_mos_aria = "跳至 YNOW 情境結論（MOS 與 Reliability 為此結論輸入）",
     funnel_kpi_jump_fscore_aria = "跳至品質檢核 (F-Score) 清單",
-    funnel_kpi_jump_alerts_aria = "跳至第二章財報警訊",
+    funnel_kpi_jump_alerts_aria = "跳至第二章財報警訊（含 Beneish M-Score）",
+    funnel_verdict_kicker = "情境結論",
+    funnel_verdict_title = "YNOW 情境結論",
+    funnel_verdict_lead = paste0(
+      "綜合 MOS、F-Score／盈餘品質與趨勢動能的研究情境標籤（非下單指令）。",
+      "Full 模式須先至「決策檢核」完成 Decision SOP（含強制閘門）才解鎖；",
+      "與下方自動化風險矩陣並列參考——矩陣不是解鎖條件。"
+    ),
+    funnel_risk_kicker = "綜合概覽",
+    funnel_risk_title = "自動化風險矩陣",
+    funnel_risk_lead = paste0(
+      "將 F-Score、Beneish M-Score、應收／營收脫鉤與應計交叉成綜合風險旗標；",
+      "屬否決／風險警語，非買進訊號。細節分見下方第一章（品質）與第二章（舞弊／詭計）。"
+    ),
     funnel_ch1_kicker = "第一章",
     funnel_ch1_title = "財報體質",
     funnel_ch1_lead = paste0(
       "先看盈餘品質 (Quality of Earnings) 獲利含金量評分，再對照 Piotroski F-Score 九項品質檢核；",
-      "通過／未達標僅供品質檢核，不單獨構成買進理由。"
+      "通過／未達標僅供品質檢核，不單獨構成買進理由。舞弊／操弄風險見第二章 Beneish M-Score。"
     ),
     funnel_ch2_kicker = "第二章",
     funnel_ch2_title = "財報警訊",
     funnel_ch2_lead = paste0(
-      "自動化風險矩陣（Beneish M-Score、F-Score、應收／營收脫鉤、應計）與 Schilit 財報詭計自動判讀；",
-      "警示／觀察優先展開。屬否決／風險警語，非買進訊號。"
+      "Beneish M-Score（盈餘操弄／舞弊風險）與 Schilit 財報詭計自動判讀；",
+      "警示／觀察優先展開。屬否決／風險警語，非買進訊號。",
+      "上方「自動化風險矩陣」為含 F-Score 的綜合交叉總覽。"
     ),
     funnel_eq_skip = "盈餘品質掃描略過。",
     funnel_eq_title = "盈餘品質 (Quality of Earnings)",
@@ -4138,8 +4171,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     notes_toggle_aria = "展開或收合附註",
     funnel_sec_method = "如何閱讀本報告",
     funnel_method_body = paste0(
-      "閱讀順序：先點 MOS／Reliability、品質檢核 (F-Score)、財報警訊框格，",
-      "再依財報體質（F-Score）→ 財報警訊。",
+      "閱讀順序：情境結論 → 自動化風險矩陣 → 財報體質（QoE／F-Score）→ 財報警訊（M-Score／Schilit）。",
+      "點選 MOS／Reliability 跳至情境結論；F-Score 與財報警訊跳至對應章節。",
       "動態產業泡沫與權重集中度在「總體經濟與大盤趨勢」分頁最下方。",
       "趨勢動能（Timing）輔助在「量化回測實驗室」分頁，不決定合理價。"
     ),
@@ -4169,7 +4202,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_gate_off = "不設 F-Score 門檻",
     funnel_vbox_mos = "安全邊際 (vs Base)",
     funnel_vbox_mos_conf = "｜可信度{level}",
-    funnel_vbox_fraud = "財報警訊",
+    funnel_vbox_fraud = "財報警訊（Schilit＋M-Score）",
     funnel_fraud_items = "{n} 項",
     funnel_pass = "✅ 通過",
     funnel_fail = "❌ 未達標",
