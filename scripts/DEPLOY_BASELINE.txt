@@ -8,5 +8,5 @@ short=d2083c0
 message=chore: bump display version to v21.51
 captured_at=2026-10-10T11:40:00Z
 source_branch=cursor/industry-mcap-block-911b
-display_version=v21.51
+display_version=v21.52
 note=Canonical live line is app_21.0. Bundle 12672731 ships v21.51: Industry mcap-weighted upside is a dedicated auto board above Candidate truncate (removed from Ranking view). Deploy via scripts/deploy_app_21.R.
