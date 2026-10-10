@@ -5341,6 +5341,25 @@ ui <- dashboardPage(
         .ynow-corpname .ynow-corpname-single {
           display: inline;
         }
+        /* Search 後：官方 logo 主色（至多兩色）動態套用到公司全稱 */
+        .ynow-corpname .ynow-corpname-logo-solid {
+          color: var(--ynow-corp-c1, #333333);
+        }
+        .ynow-corpname .ynow-corpname-logo-grad {
+          background-image: linear-gradient(
+            90deg,
+            var(--ynow-corp-c1, #333333) 0%,
+            var(--ynow-corp-c2, #555555) 100%
+          );
+          -webkit-background-clip: text;
+          background-clip: text;
+          color: transparent;
+          -webkit-text-fill-color: transparent;
+        }
+        .ynow-corpname .ynow-corpname-zh[style*="color:"],
+        .ynow-corpname .ynow-corpname-en[style*="color:"] {
+          -webkit-text-fill-color: currentColor;
+        }
         /* Header Language toggle (in black bar); Currency floats under logo */
         /* 繁中／EN 與小 logo 在頁首列垂直置中對齊 */
         .main-header .navbar-custom-menu {

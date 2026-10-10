@@ -22,6 +22,8 @@ server <- function(input, output, session) {
   corp_display_name <- reactiveVal("")
   # 台股雙語：英文全稱（中文在 corp_display_name）；美股維持空字串
   corp_display_name_en <- reactiveVal("")
+  # Search 後公司全稱字體色：官方 logo 主色（至多 2 色，#RRGGBB）
+  corp_name_logo_colors <- reactiveVal(character(0))
   
   # 初始值設為 NULL，避免一開啟 App 就自動執行爬蟲
   current_ticker <- reactiveVal(NULL)
@@ -691,6 +693,7 @@ server <- function(input, output, session) {
       tw_tpex_fs_fallback(FALSE)
       corp_display_name("")
       corp_display_name_en("")
+      corp_name_logo_colors(character(0))
       corp_industry_text("等待搜尋...")
     }
 
@@ -875,6 +878,7 @@ server <- function(input, output, session) {
         fs_all_empty(FALSE)
         tw_is_esb(FALSE)
         tw_tpex_fs_fallback(FALSE)
+        corp_name_logo_colors(character(0))
 
         # 興櫃：宇宙板別（ESB）；可估但 Summary β／Blue Chip 有限制
         if (identical(market_mode(), "TW") &&
@@ -1029,6 +1033,13 @@ server <- function(input, output, session) {
           corp_display_name(.pick_company_name(yahoo_cname, ind_cname, ticker = stock_code))
           corp_display_name_en("")
         }
+
+        # 公司全稱字體色：自官方 logo 擷取至多兩色（失敗則維持預設灰黑）
+        logo_cols <- tryCatch(
+          cached_get_corp_logo_colors(stock_code),
+          error = function(e) character(0)
+        )
+        corp_name_logo_colors(.normalize_logo_hex(logo_cols))
 
         if (!(stock_code %in% values$recentsearch)) {
           values$recentsearch <- head(c(stock_code, values$recentsearch), 5)
@@ -1247,6 +1258,24 @@ server <- function(input, output, session) {
   # ==========================================
   # 📊 1. 基本資訊與 Summary 介面輸出
   # ==========================================
+  .corpname_logo_style <- function(cols, which = 1L) {
+    cols <- tryCatch(.normalize_logo_hex(cols), error = function(e) character(0))
+    if (!length(cols)) return(NULL)
+    c1 <- cols[[1]]
+    c2 <- if (length(cols) >= 2L) cols[[2]] else c1
+    if (identical(as.integer(which)[1], 2L)) {
+      return(sprintf("color:%s;", c2))
+    }
+    if (length(cols) >= 2L) {
+      # 單行全稱：雙主色水平漸層字
+      return(paste0(
+        "--ynow-corp-c1:", c1, ";",
+        "--ynow-corp-c2:", c2, ";"
+      ))
+    }
+    sprintf("color:%s;", c1)
+  }
+
   render_corpname_ui <- function() {
     mode <- tryCatch(
       normalize_market_mode(market_mode()),
@@ -1254,6 +1283,10 @@ server <- function(input, output, session) {
     )
     nm <- trimws(as.character(corp_display_name() %||% "")[1])
     en <- trimws(as.character(corp_display_name_en() %||% "")[1])
+    logo_cols <- tryCatch(
+      .normalize_logo_hex(corp_name_logo_colors()),
+      error = function(e) character(0)
+    )
     if (!nzchar(nm)) {
       if (!is.null(summary_data())) {
         name <- attr(summary_data(), "company_name")
@@ -1270,17 +1303,44 @@ server <- function(input, output, session) {
     }
     if (!nzchar(nm) && !nzchar(en)) return(NULL)
 
-    # 台股：中文上、英文下；英文靠右對齊上方中文區塊
+    # 台股：中文上、英文下；雙 logo 色時中／英各取一色
     if (identical(mode, "TW") && nzchar(nm) && nzchar(en) &&
         isTRUE(query_has_cjk(nm)) && !isTRUE(query_has_cjk(en))) {
+      zh_style <- if (length(logo_cols)) sprintf("color:%s;", logo_cols[[1]]) else NULL
+      en_style <- if (length(logo_cols) >= 2L) {
+        sprintf("color:%s;", logo_cols[[2]])
+      } else if (length(logo_cols) == 1L) {
+        sprintf("color:%s;", logo_cols[[1]])
+      } else {
+        NULL
+      }
       return(tags$span(
         class = "ynow-corpname-stack",
-        tags$span(class = "ynow-corpname-zh", htmltools::htmlEscape(nm)),
-        tags$span(class = "ynow-corpname-en", htmltools::htmlEscape(en))
+        tags$span(
+          class = "ynow-corpname-zh",
+          style = zh_style,
+          htmltools::htmlEscape(nm)
+        ),
+        tags$span(
+          class = "ynow-corpname-en",
+          style = en_style,
+          htmltools::htmlEscape(en)
+        )
       ))
     }
+
+    single_cls <- "ynow-corpname-single"
+    single_style <- NULL
+    if (length(logo_cols) >= 2L) {
+      single_cls <- paste(single_cls, "ynow-corpname-logo-grad")
+      single_style <- .corpname_logo_style(logo_cols, which = 1L)
+    } else if (length(logo_cols) == 1L) {
+      single_cls <- paste(single_cls, "ynow-corpname-logo-solid")
+      single_style <- .corpname_logo_style(logo_cols, which = 1L)
+    }
     tags$span(
-      class = "ynow-corpname-single",
+      class = single_cls,
+      style = single_style,
       htmltools::htmlEscape(if (nzchar(nm)) nm else en)
     )
   }
