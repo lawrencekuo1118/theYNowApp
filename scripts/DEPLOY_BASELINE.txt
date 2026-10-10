@@ -8,5 +8,5 @@ short=a8b2f6b
 message=chore: bump display version to v21.53
 captured_at=2026-10-10T17:50:00Z
 source_branch=cursor/ynow-block-reorder-911b
-display_version=v21.53
+display_version=v21.54
 note=Canonical live line is app_21.0. Bundle 12673696 ships v21.53: YNOW page order verdict → risk matrix → quality (QoE/F-Score) → alerts (M-Score/Schilit); MOS KPI jumps to verdict. Deploy via scripts/deploy_app_21.R.
