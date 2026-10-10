@@ -123,17 +123,19 @@ stopifnot(nrow(snap) == nrow(reg) + 1L)
 stopifnot("CapEx spike smooth" %in% snap$Parameter)
 snap_lite <- ynow_snapshot_registry_rows(inp_obj, lite = TRUE)
 stopifnot(nrow(snap_lite) == sum(!reg$full_only))
-stopifnot(sum(!reg$full_only) == 13L)
+stopifnot(sum(!reg$full_only) == 19L)
 stopifnot(!"Gate: HFV veto" %in% snap_lite$Parameter)
 stopifnot(!"CapEx spike smooth" %in% snap_lite$Parameter)
 stopifnot(!"SGR / terminal g (%)" %in% snap_lite$Parameter)
 stopifnot("Earnings quality only" %in% snap_lite$Parameter)
+stopifnot("No FS alerts" %in% snap_lite$Parameter)
 stopifnot("Pool rank logic" %in% snap_lite$Parameter)
 stopifnot("Session Currency" %in% snap_lite$Parameter)
 stopifnot(all(reg$input_id[!reg$full_only] %in% c(
   "session_ccy_pick", "industry_choice",
+  "chk_base_mos", "chk_g_sgr", "chk_model_align", "chk_fscore", "chk_no_rank_chase",
   "lab_im_pool_rank", "lab_im_concepts", "lab_im_max_n", "lab_im_max_n_custom",
-  "lab_im_eq_only", "lab_im_include_adr", "lab_im_lb_mode",
+  "lab_im_eq_only", "lab_im_no_alert", "lab_im_include_adr", "lab_im_lb_mode",
   "lab_cluster_k", "lab_cluster_x", "lab_cluster_y", "lab_cluster_focus"
 )))
 

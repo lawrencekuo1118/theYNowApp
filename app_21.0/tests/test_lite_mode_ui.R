@@ -37,6 +37,8 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
     "ddm_formula_gordon", "ddm_d0_label", "ddm_r_ke_label",
     "lab_im_eq_label", "lab_im_eq_hint",
     "lab_im_eq_explain_title", "lab_im_eq_explain_body",
+    "lab_im_no_alert_label", "lab_im_no_alert_hint",
+    "lab_im_us_listed_label", "lab_im_us_listed_hint",
     "lab_im_include_adr_label", "lab_im_include_adr_hint",
     "lite_toggle_title", "lite_toggle_aria",
     "snapshot_page_help_lite", "snapshot_defaults_help_lite",
@@ -50,7 +52,8 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
     "macro_index_name_gspc", "macro_index_name_ixic", "macro_index_name_dji",
     "macro_index_name_sox", "macro_index_name_twii", "macro_index_name_twoii",
     "macro_index_name_0050",
-    "macro_index_chart_hint", "macro_index_chart_empty",
+    "macro_index_chart_hint", "macro_ynow_index_chart_hint",
+    "macro_index_chart_empty",
     "macro_index_chart_error",
     "macro_own_index_overlay_label", "macro_own_index_overlay_hint",
     "macro_own_index_overlay_yaxis",
@@ -90,6 +93,8 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
   testthat::expect_identical(.UI_STRINGS$`zh-TW`$smart_scenario_title, "已套用參數情境：")
   testthat::expect_identical(.UI_STRINGS$`zh-TW`$lab_im_eq_label, "盈餘品質")
   testthat::expect_identical(.UI_STRINGS$en$lab_im_eq_label, "Earnings quality")
+  testthat::expect_identical(.UI_STRINGS$`zh-TW`$lab_im_no_alert_label, "無財報警訊")
+  testthat::expect_identical(.UI_STRINGS$en$lab_im_no_alert_label, "No FS alerts")
   testthat::expect_identical(.UI_STRINGS$`zh-TW`$lab_im_eq_explain_title, "盈餘品質：")
   testthat::expect_true(grepl("OCF", .UI_STRINGS$`zh-TW`$lab_im_eq_explain_body, fixed = TRUE))
   testthat::expect_null(.UI_STRINGS$en$macro_rf_note)
@@ -151,6 +156,26 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
     txt,
     perl = TRUE
   ))
+  # Radar plotly host must not remount on every focus edit; suggest prefers cluster set
+  srv_path <- file.path("..", "ynow_server.R")
+  srv_lines <- readLines(srv_path, warn = FALSE, encoding = "UTF-8")
+  i_radar <- grep("output\\$lab_cluster_radar_ui <- renderUI", srv_lines)[1]
+  testthat::expect_true(is.finite(i_radar))
+  radar_blk <- srv_lines[i_radar:min(length(srv_lines), i_radar + 30L)]
+  testthat::expect_true(any(grepl("Do NOT read input\\$lab_cluster_focus here", radar_blk)))
+  testthat::expect_false(any(grepl(
+    "as\\.character\\(input\\$lab_cluster_focus",
+    radar_blk
+  )))
+  srv_txt <- paste(srv_lines, collapse = "\n")
+  testthat::expect_true(grepl(
+    "suggest only names in the clustered set",
+    srv_txt,
+    fixed = TRUE
+  ))
+  testthat::expect_true(grepl("lab_cluster_focus_not_in_cluster", srv_txt, fixed = TRUE))
+  loc_txt <- paste(readLines(file.path("..", "ui_locale.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  testthat::expect_true(grepl("lab_cluster_focus_not_in_cluster", loc_txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_menu_macro", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-macro-report", txt, fixed = TRUE))
   # Theme Rolling β vs benchmark is removed from Macro (Full and Lite)
@@ -170,7 +195,10 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_false(grepl('ns("concept_key")', macro_txt, fixed = TRUE))
   testthat::expect_false(grepl('ns("theme_key")', macro_txt, fixed = TRUE))
   testthat::expect_false(grepl("Industry / concept vs benchmark", macro_txt, fixed = TRUE))
-  testthat::expect_false(grepl("ynow-lite-only", macro_txt, fixed = TRUE))
+  # Lite-only YNOW expand hint is intentional; no Lite-only combined theme menu.
+  testthat::expect_true(grepl("ynow_macro_ynow_index_hint", macro_txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-macro-hint ynow-lite-only", macro_txt, fixed = TRUE))
+  testthat::expect_false(grepl("Industry / concept[^\n]*ynow-lite-only", macro_txt))
   testthat::expect_true(grepl("ynow_macro_theme_help", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-macro-chapter__lead", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("Pick Industry from the menu and Concept from the word cloud", macro_txt, fixed = TRUE))
@@ -248,15 +276,33 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_false(grepl("ynow-macro-kpi--rf[^\\n]*ynow-full-only", macro_txt))
   testthat::expect_true(grepl("macro_click_index_specs", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("lite_mode_rv", macro_txt, fixed = TRUE))
-  testthat::expect_true(grepl("body.ynow-lite #ynow_macro_index_hist", txt, fixed = TRUE))
-  testthat::expect_true(grepl("body.ynow-lite .ynow-macro-kpi--clickable", txt, fixed = TRUE))
+  # Lite keeps YNOW／TYNOW expand; only board clickables + HTCDI expand stay gated.
+  testthat::expect_false(grepl("body.ynow-lite #ynow_macro_index_hist", txt, fixed = TRUE))
+  testthat::expect_true(grepl(
+    "body.ynow-lite .ynow-macro-kpi--clickable:not(.ynow-macro-kpi--ynow)",
+    txt,
+    fixed = TRUE
+  ))
   testthat::expect_true(grepl("body.ynow-lite #ynow_macro_index_hint", txt, fixed = TRUE))
   testthat::expect_true(grepl("body.ynow-lite #ynow_macro_htcdi_expand", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow_macro_ynow_index_hint", macro_txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-macro-hint ynow-lite-only", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-macro-kpi--htcdi", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-macro-kpi--ynow", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("rf_col, ynow_col, htcdi_col", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-macro-htcdi-expand ynow-full-only", macro_txt, fixed = TRUE))
   testthat::expect_false(grepl("ynow-macro-kpi--htcdi[^\\n]*ynow-full-only", macro_txt))
+  # Own-index KPI is clickable in Lite (no lite early-return on onclick).
+  testthat::expect_true(grepl("ynow-macro-kpi--ynow ynow-macro-kpi--clickable", macro_txt, fixed = TRUE))
+  testthat::expect_false(grepl(
+    "document.body.classList.contains\\('ynow-lite'\\)\\) return;[\\s\\S]*own",
+    macro_txt
+  ))
+  testthat::expect_true(grepl(
+    "Lite: only YNOW / TYNOW expands",
+    macro_txt,
+    fixed = TRUE
+  ))
   # Macro, then Blue Chip, then Company (dashboard), then YNOW
   testthat::expect_true(
     regexpr('tabName = "macro_market"', txt, fixed = TRUE)[1] <
@@ -315,12 +361,28 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
     txt,
     perl = TRUE
   ))
-  testthat::expect_true(grepl("The YNow App v21.15", txt, fixed = TRUE))
+  testthat::expect_true(grepl("The YNow App v21.53", txt, fixed = TRUE))
   testthat::expect_true(grepl('title = "The YNow App"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-report", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-toolbar", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-chapter", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_hfv_ch1_title", txt, fixed = TRUE))
+  # 「如何閱讀本報告」 sits under masthead, before Section I, collapsed by default
+  testthat::expect_true(grepl("ynow_hfv_sec_method", txt, fixed = TRUE))
+  pos_method <- regexpr("ynow_hfv_sec_method", txt, fixed = TRUE)[1]
+  pos_ch1 <- regexpr("ynow_hfv_ch1_title", txt, fixed = TRUE)[1]
+  testthat::expect_true(is.finite(pos_method) && pos_method > 0)
+  testthat::expect_true(is.finite(pos_ch1) && pos_ch1 > 0)
+  testthat::expect_true(pos_method < pos_ch1)
+  method_box <- regmatches(
+    txt,
+    regexpr(
+      'How to read \\(top of page[\\s\\S]*?ynow_hfv_sec_method[\\s\\S]*?ynow-hfv-method',
+      txt,
+      perl = TRUE
+    )
+  )
+  testthat::expect_true(length(method_box) == 1L && grepl("collapsed = TRUE", method_box, fixed = TRUE))
   # Chart overlay models sit in Section I body immediately above the timeline chart
   testthat::expect_true(grepl("ynow_hfv_chart_overlay_controls", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-toolbar--above-chart", txt, fixed = TRUE))
@@ -329,17 +391,62 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(is.finite(pos_overlay) && pos_overlay > 0)
   testthat::expect_true(is.finite(pos_chart) && pos_chart > 0)
   testthat::expect_true(pos_overlay < pos_chart)
-  # Overlay controls are no longer in the main report toolbar block after Section I
-  toolbar_block <- regmatches(
+  # Investor-report chapters II–V (scenarios under Ch1 chart)
+  for (id in c(
+    "ynow_hfv_ch2_title", "ynow_hfv_ch3_title", "ynow_hfv_ch4_title",
+    "ynow_hfv_ch5_title"
+  )) {
+    testthat::expect_true(grepl(id, txt, fixed = TRUE), info = id)
+  }
+  testthat::expect_false(grepl("ynow_hfv_ch6_title", txt, fixed = TRUE))
+  testthat::expect_true(grepl("bt_hfv_investor_summary", txt, fixed = TRUE))
+  testthat::expect_true(grepl("bt_hfv_price_findings", txt, fixed = TRUE))
+  testthat::expect_true(grepl("bt_hfv_fv_findings", txt, fixed = TRUE))
+  testthat::expect_true(grepl("bt_hfv_scenario_findings", txt, fixed = TRUE))
+  pos_scenario_out <- regexpr('uiOutput\\(\"bt_hfv_scenario_findings\"\\)', txt, perl = TRUE)[1]
+  testthat::expect_true(is.finite(pos_scenario_out) && pos_chart < pos_scenario_out)
+  pos_ch2_early <- regexpr("ynow_hfv_ch2_title", txt, fixed = TRUE)[1]
+  testthat::expect_true(pos_scenario_out < pos_ch2_early)
+  srv <- paste(readLines(file.path("..", "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  testthat::expect_true(grepl("ynow-hfv-scenario-row", srv, fixed = TRUE))
+  testthat::expect_true(grepl("grid-template-columns:\\s*1fr\\s+1fr", srv, perl = TRUE))
+  testthat::expect_true(grepl("bt_fv_overlay_scenarios", srv, fixed = TRUE))
+  testthat::expect_true(grepl("overlay_avg_fair_value_df", srv, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-hfv-kpi-grid", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow_hfv_overlay_vs_replay_note", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-hfv-toolbar--in-ch2", txt, fixed = TRUE))
+  # Analysis frequency is page-level under How-to-read (not inside Ch2 toolbar)
+  testthat::expect_true(grepl("ynow_hfv_page_controls", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-hfv-page-controls", txt, fixed = TRUE))
+  pos_method_end <- regexpr("ynow_hfv_page_controls", txt, fixed = TRUE)[1]
+  pos_ch1_after_freq <- regexpr("ynow_hfv_ch1_title", txt, fixed = TRUE)[1]
+  testthat::expect_true(pos_method < pos_method_end && pos_method_end < pos_ch1_after_freq)
+  pos_ch2 <- regexpr("ynow_hfv_ch2_title", txt, fixed = TRUE)[1]
+  pos_toolbar <- regexpr('id = \"ynow_hfv_toolbar\"', txt, perl = TRUE)[1]
+  pos_results <- regexpr("ynow_hfv_sec_results", txt, fixed = TRUE)[1]
+  pos_ch3 <- regexpr("ynow_hfv_ch3_title", txt, fixed = TRUE)[1]
+  pos_ch4 <- regexpr("ynow_hfv_ch4_title", txt, fixed = TRUE)[1]
+  pos_ch5 <- regexpr("ynow_hfv_ch5_title", txt, fixed = TRUE)[1]
+  pos_gap_chart <- regexpr("bt_fv_conv_plot", txt, fixed = TRUE)[1]
+  testthat::expect_true(pos_ch2 < pos_toolbar && pos_toolbar < pos_results)
+  testthat::expect_true(pos_results < pos_ch3 && pos_ch3 < pos_ch4)
+  testthat::expect_true(pos_ch4 < pos_gap_chart && pos_gap_chart < pos_ch5)
+  testthat::expect_true(grepl("bt_fv_replay_model", txt, fixed = TRUE))
+  ch2_toolbar_block <- regmatches(
     txt,
     regexpr(
-      'id = \"ynow_hfv_toolbar\"[\\s\\S]*?id = \"ynow_hfv_ch2_kicker\"',
+      'ynow-hfv-toolbar--in-ch2[\\s\\S]*?ynow_hfv_sec_results',
       txt,
       perl = TRUE
     )
   )
-  testthat::expect_true(length(toolbar_block) == 1L && nzchar(toolbar_block))
-  testthat::expect_false(grepl("bt_fv_models", toolbar_block, fixed = TRUE))
+  testthat::expect_true(length(ch2_toolbar_block) == 1L && nzchar(ch2_toolbar_block))
+  testthat::expect_true(grepl("bt_fv_replay_model", ch2_toolbar_block, fixed = TRUE))
+  testthat::expect_false(grepl("bt_fv_models", ch2_toolbar_block, fixed = TRUE))
+  testthat::expect_false(grepl("bt_fv_analysis_freq", ch2_toolbar_block, fixed = TRUE))
+  # Ch2 toolbar: 2 equal columns; options stay pill-shaped (border-radius 999px)
+  testthat::expect_true(grepl("ynow-hfv-toolbar--in-ch2[\\s\\S]*?repeat\\(2, minmax\\(0, 1fr\\)\\)", txt, perl = TRUE))
+  testthat::expect_true(grepl("border-radius: 999px", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-backtest-report", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-backtest-toolbar", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-backtest-zone-band", txt, fixed = TRUE))
@@ -473,9 +580,14 @@ testthat::expect_true(grepl(
   testthat::expect_true(grepl("Multiples（市場倍數）", txt, fixed = TRUE))
   testthat::expect_true(grepl("SOTP（分部加總）", txt, fixed = TRUE))
   testthat::expect_true(grepl('id = "ynow_method_section_title"', txt, fixed = TRUE))
-  testthat::expect_true(grepl("ynow-lab-im-eq-adr-row", txt, fixed = TRUE))
-  testthat::expect_true(grepl("ynow-lab-im-include-adr ynow-us-only", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-lab-im-eq-gate-row", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow_lab_im_no_alert_label", txt, fixed = TRUE))
+  testthat::expect_true(grepl('"lab_im_no_alert"', txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-lab-im-us-listed-adr-row ynow-us-only", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow_lab_im_us_listed_label", txt, fixed = TRUE))
   testthat::expect_true(grepl("body.ynow-market-tw .ynow-us-only", txt, fixed = TRUE))
+  testthat::expect_true(grepl("body:not(.ynow-market-tw) .ynow-tw-only", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-lab-im-boards ynow-tw-only", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_lab_im_eq_explain", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-lab-im-eq-explain ynow-lite-only", txt, fixed = TRUE))
 })
@@ -665,6 +777,7 @@ testthat::test_that("ynow_server wires Lite auto-calc and Smart Analysis outputs
   testthat::expect_true(grepl("output$smart_analysis_reason", txt, fixed = TRUE))
   # Lite defaults allowlist = UI-configurable only (not Smart Analysis engines)
   testthat::expect_true(grepl('"lab_im_eq_only"', txt, fixed = TRUE))
+  testthat::expect_true(grepl('"lab_im_no_alert"', txt, fixed = TRUE))
   testthat::expect_true(grepl('"lab_im_pool_rank"', txt, fixed = TRUE))
   testthat::expect_true(grepl('"lab_cluster_k"', txt, fixed = TRUE))
   # Extract lite_default_keys vector body and assert engines are excluded
@@ -749,22 +862,28 @@ testthat::test_that("YNOW page title and two-block order are shared by Lite and 
   testthat::expect_true(is.finite(pos_a) && pos_a > pos_q)
   testthat::expect_true(!is.finite(pos_b) || pos_b < 1)
 
+  pos_v <- regexpr('`data-ynow-block` = "verdict"', ui_fn, fixed = TRUE)[1]
+  pos_r <- regexpr('`data-ynow-block` = "risk_matrix"', ui_fn, fixed = TRUE)[1]
   pos_mos <- regexpr("vbox_mos", ui_fn, fixed = TRUE)[1]
   pos_fs <- regexpr("vbox_fscore", ui_fn, fixed = TRUE)[1]
   pos_fraud <- regexpr("vbox_fraud", ui_fn, fixed = TRUE)[1]
   pos_ch1_title <- regexpr("ynow_funnel_ch1_title", ui_fn, fixed = TRUE)[1]
   pos_tbl <- regexpr("fscore_panel", ui_fn, fixed = TRUE)[1]
   pos_shen <- regexpr("shenanigans_panel", ui_fn, fixed = TRUE)[1]
+  pos_mscore <- regexpr("mscore_widget", ui_fn, fixed = TRUE)[1]
   testthat::expect_true(pos_mos > 0 && pos_fs > pos_mos && pos_fraud > pos_fs)
+  testthat::expect_true(pos_v > pos_fraud && pos_r > pos_v && pos_q > pos_r)
   testthat::expect_true(pos_ch1_title > pos_fraud)
   testthat::expect_true(pos_tbl > pos_q && pos_tbl < pos_a)
-  testthat::expect_true(pos_shen > pos_a)
+  testthat::expect_true(pos_shen > pos_a && pos_mscore > pos_a)
   ch1_body <- substr(ui_fn, pos_q, pos_a)
   ch2_body <- substr(ui_fn, pos_a, nchar(ui_fn))
   testthat::expect_false(grepl("vbox_fscore", ch1_body, fixed = TRUE))
   testthat::expect_false(grepl("vbox_mos", ch1_body, fixed = TRUE))
   testthat::expect_false(grepl("vbox_fraud", ch2_body, fixed = TRUE))
-  testthat::expect_true(grepl('href = "#ynow_funnel_ch1"', ui_fn, fixed = TRUE))
+  testthat::expect_false(grepl("mscore_widget", ch1_body, fixed = TRUE))
+  testthat::expect_false(grepl("risk_matrix_panel", ch2_body, fixed = TRUE))
+  testthat::expect_true(grepl('href = "#ynow_funnel_verdict"', ui_fn, fixed = TRUE))
   testthat::expect_true(grepl('href = "#ynow_funnel_ch2"', ui_fn, fixed = TRUE))
   testthat::expect_true(grepl("ynow-funnel-kpi-jump-row", ui_fn, fixed = TRUE))
   testthat::expect_identical(.UI_STRINGS$en$notes_title, "Notes")

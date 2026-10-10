@@ -1,9 +1,13 @@
 # =========================================================================
 # Investment Decision Scorecard — YNOW page + composite valuation
-# Click-to-scroll KPI row (MOS | Reliability → F-Score → Statement alerts)
-# sits above two stacked blocks:
-#   I. Statement quality — QoE dashboard → F-Score
-#   II. Statement alerts — risk matrix → Schilit
+# Top → bottom:
+#   Masthead → KPI jump row (MOS｜Reliability → F-Score → Statement alerts)
+#   → YNOW scenario verdict (SOP-gated)
+#   → Automated risk matrix (independent composite overview)
+#   → I. Statement quality — QoE → F-Score
+#   → II. Statement alerts — Beneish M-Score → Schilit
+# MOS KPI jumps to the verdict (MOS feeds the scenario label, not Ch.1).
+# Alerts KPI counts Schilit + QoE red flags (incl. Beneish M-Score alerts).
 # Dynamic industry bubble & weight concentration lives on Macro (page bottom).
 # Same markup for Lite/Full.
 # Copy: ui_str / funnel_* keys (en-US + zh-TW)
@@ -17,7 +21,8 @@ library(glue)
 # -------------------------------------------
 # 1. UI：YNOW two-block page + momentum panel
 # -------------------------------------------
-#' Shared composite valuation block (main/sub model, Bear–Base–Bull, status bar).
+#' Shared composite valuation block (Bear–Base–Bull, status bar, chart).
+#' Main/sub-model + confidence notes render under the chart footer note.
 #' Mount once in the model-page header — not on Basic Setup.
 decision_valuation_compare_ui <- function(id) {
   ns <- NS(id)
@@ -38,10 +43,10 @@ decision_ui <- function(id) {
           id = "ynow_funnel_page_sub",
           class = "ynow-funnel-report__lead",
           paste0(
-            "點選 MOS／Reliability、品質檢核 (F-Score)、財報警訊框格可捲動至對應區塊。",
-            "兩個區塊由上而下：盈餘品質／F-Score → 風險矩陣／財報警訊。",
-            "動態產業泡沫與權重集中度在「總體經濟與大盤趨勢」分頁最下方。",
-            "這是決策輔助報告，不是下單指令。"
+            "點選 MOS／Reliability（跳至情境結論）、品質檢核 (F-Score)、財報警訊（含 Beneish M-Score）可捲動至對應區塊。",
+            "閱讀順序：情境結論 → 自動化風險矩陣 → 財報體質（QoE／F-Score）→ 財報警訊（M-Score／Schilit）。",
+            "情境結論須先完成「決策檢核」Decision SOP 才解鎖；風險矩陣為綜合概覽、非解鎖條件。",
+            "動態產業泡沫與權重集中度在「總體經濟與大盤趨勢」分頁最下方。"
           )
         )
       ),
@@ -51,11 +56,11 @@ decision_ui <- function(id) {
         column(
           width = 4,
           tags$a(
-            href = "#ynow_funnel_ch1",
+            href = "#ynow_funnel_verdict",
             class = "ynow-funnel-kpi-jump",
             id = "ynow_kpi_jump_mos",
             role = "button",
-            `aria-label` = "跳至第一章財報體質（MOS 與 Reliability）",
+            `aria-label` = "跳至 YNOW 情境結論（MOS 與 Reliability 為此結論輸入）",
             uiOutput(ns("vbox_mos"))
           )
         ),
@@ -77,8 +82,81 @@ decision_ui <- function(id) {
             class = "ynow-funnel-kpi-jump",
             id = "ynow_kpi_jump_alerts",
             role = "button",
-            `aria-label` = "跳至第二章財報警訊",
+            `aria-label` = "跳至第二章財報警訊（含 Beneish M-Score）",
             uiOutput(ns("vbox_fraud"))
+          )
+        )
+      ),
+
+      # Scenario verdict — MOS / F-Score / momentum inputs; SOP-gated unlock
+      tags$section(
+        class = "ynow-funnel-chapter ynow-funnel-verdict",
+        id = "ynow_funnel_verdict",
+        `data-ynow-block` = "verdict",
+        tags$div(
+          class = "ynow-funnel-chapter__head",
+          tags$span(
+            class = "ynow-funnel-chapter__kicker",
+            id = "ynow_funnel_verdict_kicker",
+            "情境結論"
+          ),
+          tags$h3(
+            class = "ynow-funnel-chapter__title",
+            id = "ynow_funnel_verdict_title",
+            "YNOW 情境結論"
+          )
+        ),
+        tags$div(
+          class = "ynow-funnel-chapter__body",
+          ynow_notes_block(
+            tags$p(
+              id = "ynow_funnel_verdict_lead",
+              class = "ynow-funnel-chapter__lead",
+              paste0(
+                "綜合 MOS、F-Score／盈餘品質與趨勢動能的研究情境標籤（非下單指令）。",
+                "Full 模式須先至「決策檢核」完成 Decision SOP（含強制閘門）才解鎖；",
+                "與下方自動化風險矩陣並列參考——矩陣不是解鎖條件。"
+              )
+            )
+          ),
+          uiOutput(ns("ui_recommendation"))
+        )
+      ),
+
+      # Independent composite risk overview (F-Score × M-Score × AR–Rev × Accruals)
+      tags$section(
+        class = "ynow-funnel-chapter ynow-funnel-risk",
+        id = "ynow_funnel_risk",
+        `data-ynow-block` = "risk_matrix",
+        tags$div(
+          class = "ynow-funnel-chapter__head",
+          tags$span(
+            class = "ynow-funnel-chapter__kicker",
+            id = "ynow_funnel_risk_kicker",
+            "綜合概覽"
+          ),
+          tags$h3(
+            class = "ynow-funnel-chapter__title",
+            id = "ynow_funnel_risk_title",
+            "自動化風險矩陣"
+          )
+        ),
+        tags$div(
+          class = "ynow-funnel-chapter__body",
+          ynow_notes_block(
+            tags$p(
+              id = "ynow_funnel_risk_lead",
+              class = "ynow-funnel-chapter__lead",
+              paste0(
+                "將 F-Score、Beneish M-Score、應收／營收脫鉤與應計交叉成綜合風險旗標；",
+                "屬否決／風險警語，非買進訊號。細節分見下方第一章（品質）與第二章（舞弊／詭計）。"
+              )
+            )
+          ),
+          tags$div(
+            class = "ynow-funnel-table-wrap",
+            id = "ynow_eq_risk_anchor",
+            uiOutput(ns("risk_matrix_panel"))
           )
         )
       ),
@@ -102,22 +180,6 @@ decision_ui <- function(id) {
         ),
         tags$div(
           class = "ynow-funnel-chapter__body",
-          ynow_notes_block(
-            tags$p(
-              id = "ynow_funnel_ch1_lead",
-              class = "ynow-funnel-chapter__lead",
-              paste0(
-                "先看盈餘品質 (Quality of Earnings) 獲利含金量評分，再對照 Piotroski F-Score 九項品質檢核；",
-                "通過／未達標僅供品質檢核，不單獨構成買進理由。"
-              )
-            )
-          ),
-          uiOutput(ns("ui_recommendation")),
-          tags$div(
-            class = "ynow-funnel-table-wrap",
-            id = "ynow_mscore_widget_anchor",
-            uiOutput(ns("mscore_widget"))
-          ),
           tags$div(
             class = "ynow-funnel-table-wrap",
             id = "ynow_eq_dashboard_anchor",
@@ -134,6 +196,16 @@ decision_ui <- function(id) {
             class = "ynow-funnel-table-wrap",
             id = "ynow_funnel_fscore",
             uiOutput(ns("fscore_panel"))
+          ),
+          ynow_notes_block(
+            tags$p(
+              id = "ynow_funnel_ch1_lead",
+              class = "ynow-funnel-chapter__lead",
+              paste0(
+                "先看盈餘品質 (Quality of Earnings) 獲利含金量評分，再對照 Piotroski F-Score 九項品質檢核；",
+                "通過／未達標僅供品質檢核，不單獨構成買進理由。舞弊／操弄風險見第二章 Beneish M-Score。"
+              )
+            )
           )
         )
       ),
@@ -157,24 +229,25 @@ decision_ui <- function(id) {
         ),
         tags$div(
           class = "ynow-funnel-chapter__body",
+          tags$div(
+            class = "ynow-funnel-table-wrap",
+            id = "ynow_mscore_widget_anchor",
+            uiOutput(ns("mscore_widget"))
+          ),
+          tags$div(
+            class = "ynow-funnel-table-wrap",
+            uiOutput(ns("shenanigans_panel"))
+          ),
           ynow_notes_block(
             tags$p(
               id = "ynow_funnel_ch2_lead",
               class = "ynow-funnel-chapter__lead",
               paste0(
-                "自動化風險矩陣（Beneish M-Score、F-Score、應收／營收脫鉤、應計）與 Schilit 財報詭計自動判讀；",
-                "警示／觀察優先展開。屬否決／風險提示，非買進訊號。"
+                "Beneish M-Score（盈餘操弄／舞弊風險）與 Schilit 財報詭計自動判讀；",
+                "警示／觀察優先展開。屬否決／風險警語，非買進訊號。",
+                "上方「自動化風險矩陣」為含 F-Score 的綜合交叉總覽。"
               )
             )
-          ),
-          tags$div(
-            class = "ynow-funnel-table-wrap",
-            id = "ynow_eq_risk_anchor",
-            uiOutput(ns("risk_matrix_panel"))
-          ),
-          tags$div(
-            class = "ynow-funnel-table-wrap",
-            uiOutput(ns("shenanigans_panel"))
           )
         )
       )
@@ -547,6 +620,8 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       )
     })
 
+    # Statement-alerts KPI: Schilit n_alert + QoE red_flags
+    # (red_flags already includes Beneish M-Score alert when m_flag == 警示).
     fraud_flag_n <- reactive({
       n_shen <- {
         ev <- tryCatch(shen_eval(), error = function(e) NULL)
@@ -661,13 +736,12 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
     output$ui_recommendation <- renderUI({
       .ui_loc()
       if (!.sop_unlocked()) {
+        # Decision SOP lives on Decision Checklist — point YNOW verdict here only.
         return(div(
           class = "alert alert-secondary ynow-sop-verdict-locked",
-          h4(icon("lock"), " ", .str("funnel_sop_locked_title")),
-          p(.str("funnel_sop_locked_body")),
           tags$p(
-            style = "font-size:12px;color:#666;margin:8px 0 0 0;",
-            .str("funnel_sop_locked_hint")
+            style = "margin:0;font-size:13px;line-height:1.5;",
+            icon("lock"), " ", .str("funnel_sop_locked_hint")
           )
         ))
       }
@@ -715,7 +789,8 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       sop_unlocked <- is.list(sop_g) && isTRUE(sop_g$unlocked)
 
       if (!has_primary_base && !has_any_model_fv) {
-        # SOP locked must remain visible even before any model Fair Value exists.
+        # Model / Smart Analysis composite: show SOP-locked status only.
+        # Do not redirect to Decision Checklist / YNOW unlock here (that cue stays on YNOW).
         if (!isTRUE(sop_unlocked)) {
           return(div(
             class = "alert alert-secondary ynow-sop-verdict-locked",
@@ -726,10 +801,6 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
                 style = "color:#6c757d;",
                 htmltools::htmlEscape(str("composite_sop_locked"))
               )
-            ),
-            tags$p(
-              style = "margin:8px 0 0 0;font-size:12px;color:#666;",
-              htmltools::htmlEscape(str("funnel_sop_locked_hint"))
             )
           ))
         }
@@ -847,11 +918,6 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
 
       HTML(paste0(
         "<div class='ynow-composite-valuation' style='background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 12px; border-top: 3px solid ", status_color, ";'>",
-        "<div style='background: #1a1a1a15; border-left: 5px solid #222222; padding: 12px; border-radius: 4px; margin-bottom: 16px;'>",
-        "<h5 style='color: #222222; margin-top: 0; font-weight: bold;'>", htmltools::htmlEscape(rec_title), "</h5>",
-        "<p style='margin-bottom: 6px; font-size: 13px; color: #555;'>", htmltools::htmlEscape(rec_desc), "</p>",
-        "<p style='margin: 0; font-size: 12.5px; color: #333;'><b>", htmltools::htmlEscape(conf_txt), "</b></p>",
-        "</div>",
         "<div style='display:flex; gap:14px; flex-wrap:wrap; margin-bottom: 18px;'>",
         "<div style='flex:1; min-width:120px; padding:10px; background:#fdf2f2; border-radius:6px;'>",
         "<div style='font-size:12px; color:#888;'>Bear</div>",
@@ -885,8 +951,15 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
         "<div style='font-size: 15px; color: #2c3e50; font-weight: bold;'>$", round(p_curr, 2), "</div></div>",
         overlay_html,
         "</div>",
-        "<p style='margin: 8px 0 0 0; font-size: 12px; color: #888;'>",
+        "<div class='ynow-composite-chart-notes' style='margin-top: 8px;'>",
+        "<p class='ynow-composite-footer-note' style='margin: 0 0 10px 0; font-size: 12px; color: #888;'>",
         htmltools::htmlEscape(str("composite_footer_note")), "</p>",
+        "<div class='ynow-composite-model-notes' style='background: #1a1a1a15; border-left: 5px solid #222222; padding: 12px; border-radius: 4px;'>",
+        "<h5 style='color: #222222; margin-top: 0; margin-bottom: 6px; font-weight: bold;'>", htmltools::htmlEscape(rec_title), "</h5>",
+        "<p style='margin-bottom: 6px; font-size: 13px; color: #555;'>", htmltools::htmlEscape(rec_desc), "</p>",
+        "<p style='margin: 0; font-size: 12.5px; color: #333;'><b>", htmltools::htmlEscape(conf_txt), "</b></p>",
+        "</div>",
+        "</div>",
         "</div>"
       ))
     })

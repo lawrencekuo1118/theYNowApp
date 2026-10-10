@@ -16,7 +16,7 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v21.15"
+  "v21.53"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
@@ -91,7 +91,7 @@
     class = "ynow-about-feat",
     tags$li(
       tags$b("自動化資料與防雷機制："),
-      "即時抓取三大報表，並內建「財報警訊」（三表對照），交叉比對現金流與獲利品質，自動偵測潛在地雷股與價值陷阱；支援美股與台股市場切換。"
+      "即時擷取三大報表，並內建「財報警訊」（三表對照），交叉比對現金流與獲利品質，自動偵測潛在地雷股與價值陷阱；支援美股與台股市場切換。"
     ),
     tags$li(
       tags$b("估值引擎："),
@@ -106,7 +106,7 @@
       "產業×方法評估池、Clustering（比率特徵／離線快照備援）、候選截斷邏輯（市值／概念股／近一年漲幅／隨機），輔助同業比較與研究分群（非買進訊號）。"
     ),
     tags$li(
-      tags$b("一鍵投資報告："),
+      tags$b("一次產出投資報告："),
       "自動彙整估值圖表、KPI 與分析結果，產出可下載的專業 PDF 投資意見報告。"
     )
   )
@@ -146,7 +146,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v21.15) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報抓取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v21.53) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -165,7 +165,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v21.15) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v21.53) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -208,7 +208,7 @@
     class = "ynow-about-feat",
     tags$li(
       tags$b("簡化版切換："),
-      "點擊首頁或側邊欄底部 logo 即可在 Lite／完整版之間切換；Lite 時兩處 logo 右下角都顯示 LITE 角標。"
+      "點選首頁或側邊欄底部 logo 即可在 Lite／完整版之間切換；Lite 時兩處 logo 右下角都顯示 LITE 角標。"
     ),
     tags$li(
       tags$b("個股："),
@@ -267,7 +267,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v21.15）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v21.53）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -284,7 +284,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v21.15) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v21.53) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -1320,7 +1320,7 @@ beta_rolling_section_ui <- function() {
       ),
       helpText(
         id = "ynow_sgr_method_help",
-        "Macro：採用即時抓取的市場 10 年期公債 Rf（美股 Yahoo ^TNX；台股櫃買 TPEx 公債殖利率曲線 10 年期；失敗則最近成功值，再失敗才工程 fallback 並標明）。",
+        "Macro：採用即時擷取的市場 10 年期公債 Rf（美股 Yahoo ^TNX；台股櫃買 TPEx 公債殖利率曲線 10 年期；失敗則最近成功值，再失敗才工程 fallback 並標明）。",
         "Fundamental：Retention×ROE（僅適合成熟穩健企業）。",
         "Lifecycle：以經濟錨定估計終值 g，生命週期檔位不寫入固定百分比。"
       ),
@@ -1459,6 +1459,42 @@ beta_rolling_section_ui <- function() {
 #' Lazy page body for tab `bluechip` (mounted once per session).
 .ynow_page_ui_bluechip <- function() {
   tagList(
+  # Industry mcap-weighted upside board (auto; above Candidate truncate)
+          fluidRow(
+            column(
+              width = 12,
+              tags$div(
+                class = "ynow-lab-im-ind-mcap-block",
+                style = "margin: 0 0 16px 0; padding: 12px 14px; border: 1px solid #e5e5e5; border-radius: 4px; background: #fafafa;",
+                tags$div(
+                  style = "display:flex; flex-wrap:wrap; align-items:baseline; gap:8px; margin:0 0 6px 0;",
+                  tags$h4(
+                    id = "ynow_lab_im_ind_mcap_title",
+                    style = "margin:0; font-size:15px; font-weight:600;",
+                    "產業市值加權漲幅"
+                  ),
+                  tags$span(
+                    id = "ynow_lab_im_ind_mcap_badge",
+                    style = "font-size:11px; color:#888;",
+                    "自動運算"
+                  )
+                ),
+                tags$div(
+                  id = "ynow_lab_im_ind_mcap_help",
+                  style = "color:#888; font-size:12px; line-height:1.45; margin:0 0 8px 0;",
+                  paste0(
+                    "搜尋績優股後自動依本次已評估結果，以 Σ(市值×年化估值漲幅)/Σ(市值) ",
+                    "列出產業排序（每元市值加權；套用上方／查詢條件之 Piotroski、盈餘品質、無財報警訊門檻）。"
+                  )
+                ),
+                uiOutput("lab_im_ind_mcap_status"),
+                tags$div(
+                  style = "overflow-x:auto;",
+                  tableOutput("lab_im_ind_mcap_table")
+                )
+              )
+            )
+          ),
   # Shared pool controls above BLUE CHIP (semantic: truncate rule → then take N)
           # Concept groups appear beside truncate when mode is concept.
           fluidRow(
@@ -1540,10 +1576,14 @@ beta_rolling_section_ui <- function() {
                       tags$span(id = "ynow_lab_im_lb_mode_label", "排行視角"),
                       choiceNames = list(
                         tags$span(id = "ynow_lab_im_lb_mode_overall", "整體前十名"),
-                        tags$span(id = "ynow_lab_im_lb_mode_by_ind", "選定產業前十名")
+                        tags$span(id = "ynow_lab_im_lb_mode_by_ind", "選定產業前十名"),
+                        tags$span(id = "ynow_lab_im_lb_mode_undervalued", "價值低估前十名")
                       ),
-                      choiceValues = list("overall", "by_industry"),
-                      selected = APP_DEFAULTS$lab_im_lb_mode,
+                      choiceValues = list("overall", "by_industry", "undervalued"),
+                      selected = {
+                        m0 <- as.character(APP_DEFAULTS$lab_im_lb_mode %||% "overall")[1]
+                        if (m0 %in% c("overall", "by_industry", "undervalued")) m0 else "overall"
+                      },
                       inline = TRUE
                     ),
                     tags$div(
@@ -1551,7 +1591,9 @@ beta_rolling_section_ui <- function() {
                       style = "color:#888; font-size:12px; line-height:1.45; margin:-4px 0 8px 0;",
                       paste0(
                         "整體前十名：跨本次已評估產業依年化估值漲幅取 Top 10，並顯示產業欄。",
-                        "選定產業前十名：僅在查詢條件所選產業內取 Top 10（單一榜，非每個產業各一表）。",
+                        "選定產業前十名：所選產業內單一 Top 10；產業內排名自該產業第 1 名起算（非跨產業流水號）。",
+                        "價值低估前十名：跨產業依推薦主模型合理價相對市價的總潛在漲幅（非年化）由大到小；只列仍被低估者。",
+                        "產業市值加權漲幅已移至上方獨立區塊（搜尋後自動運算）。",
                         "前十名只從合格者取最多 10 檔；合格不足 10 時不會湊滿。"
                       )
                     )
@@ -1572,7 +1614,7 @@ beta_rolling_section_ui <- function() {
                       "lab_im_refresh_universe", "更新名單",
                       icon = icon("sync"),
                       class = "btn-default btn-sm",
-                      title = "重新抓取目前市場的成分／上市／上櫃／興櫃名單"
+                      title = "重新擷取目前市場的成分／上市／上櫃／興櫃名單"
                     )
                   ),
                   fluidRow(
@@ -1593,6 +1635,28 @@ beta_rolling_section_ui <- function() {
                           size = 10,
                           container = "body",
                           dropupAuto = TRUE
+                        )
+                      ),
+                      tags$div(
+                        class = "ynow-lab-im-boards ynow-tw-only",
+                        style = "margin:8px 0 4px 0;",
+                        checkboxGroupInput(
+                          "lab_im_boards",
+                          tags$span(id = "ynow_lab_im_boards_label", "板別"),
+                          choiceNames = list(
+                            tags$span(id = "ynow_lab_im_board_twse", "上市"),
+                            tags$span(id = "ynow_lab_im_board_tpex", "上櫃"),
+                            tags$span(id = "ynow_lab_im_board_esb", "興櫃")
+                          ),
+                          choiceValues = list("TWSE", "TPEX", "ESB"),
+                          selected = APP_DEFAULTS$lab_im_boards,
+                          inline = TRUE
+                        ),
+                        tags$span(
+                          id = "ynow_lab_im_boards_hint",
+                          class = "ynow-lab-im-quality-hint ynow-full-only",
+                          style = "display:block; color:#888; font-size:12px; margin-top:-4px;",
+                          "複選上市／上櫃／興櫃；預設上市＋上櫃。興櫃資料覆蓋較不穩，勾選後才納入績優評估池。"
                         )
                       ),
                       tags$div(
@@ -1618,11 +1682,11 @@ beta_rolling_section_ui <- function() {
                     column(
                       width = 6,
                       class = "ynow-lab-im-filter-col",
-                      # 盈餘品質｜含 ADR 同列並排（Lite／Full 皆同；含 ADR 僅美股）
+                      # 盈餘品質｜Piotroski 高門檻｜無財報警訊：美／台股皆同列（Lite／Full 皆同）
                       tags$div(
-                        class = "row ynow-lab-im-eq-adr-row",
+                        class = "row ynow-lab-im-eq-gate-row",
                         column(
-                          width = 6,
+                          width = 4,
                           class = "ynow-lab-im-eq-col",
                           tags$div(
                             class = "ynow-lab-im-quality",
@@ -1642,8 +1706,78 @@ beta_rolling_section_ui <- function() {
                           )
                         ),
                         column(
+                          width = 4,
+                          class = "ynow-lab-im-gate-col",
+                          tags$div(
+                            class = "ynow-lab-im-quality",
+                            checkboxInput(
+                              "lab_im_gate_only",
+                              tags$span(id = "ynow_lab_im_gate_label", "Piotroski 高門檻"),
+                              value = isTRUE(APP_DEFAULTS$lab_im_gate_only)
+                            ),
+                            tags$span(
+                              id = "ynow_lab_im_gate_hint",
+                              class = "ynow-lab-im-quality-hint ynow-full-only",
+                              paste0(
+                                "預設勾選：前十名與明細只列 Piotroski F-Score≥7（品質檢核）者；",
+                                "取消勾選則不設 F-Score 門檻。合格不足 N 或不足 10 時不會湊滿。"
+                              )
+                            )
+                          )
+                        ),
+                        column(
+                          width = 4,
+                          class = "ynow-lab-im-no-alert-col",
+                          tags$div(
+                            class = "ynow-lab-im-quality",
+                            checkboxInput(
+                              "lab_im_no_alert",
+                              tags$span(id = "ynow_lab_im_no_alert_label", "無財報警訊"),
+                              value = isTRUE(APP_DEFAULTS$lab_im_no_alert)
+                            ),
+                            tags$span(
+                              id = "ynow_lab_im_no_alert_hint",
+                              class = "ynow-lab-im-quality-hint ynow-full-only",
+                              paste0(
+                                "預設勾選：排行榜／明細只列財報警訊為 0 者（Schilit 警示＋盈餘品質紅旗，",
+                                "與 YNOW「財報警訊」同一套定義）；取消勾選則不過濾。合格不足 N 時不湊滿。"
+                              )
+                            )
+                          )
+                        )
+                      ),
+                      # 美股：僅「上市」＋含 ADR 同列並排（台股板別在左欄）
+                      tags$div(
+                        class = "row ynow-lab-im-us-listed-adr-row ynow-us-only",
+                        style = "margin-top:12px;",
+                        column(
                           width = 6,
-                          class = "ynow-lab-im-include-adr ynow-us-only",
+                          class = "ynow-lab-im-us-listed-col",
+                          tags$div(
+                            class = "ynow-lab-im-quality ynow-lab-im-us-listed",
+                            # Fixed listed-only scope for US (primary listings); not user-togglable
+                            tags$div(
+                              class = "checkbox",
+                              tags$label(
+                                tags$input(
+                                  id = "lab_im_us_listed_display",
+                                  type = "checkbox",
+                                  checked = "checked",
+                                  disabled = "disabled"
+                                ),
+                                tags$span(id = "ynow_lab_im_us_listed_label", "上市")
+                              )
+                            ),
+                            tags$span(
+                              id = "ynow_lab_im_us_listed_hint",
+                              class = "ynow-lab-im-quality-hint ynow-full-only",
+                              "美股績優池僅含主要上市（Nasdaq／NYSE／NYSE American）。"
+                            )
+                          )
+                        ),
+                        column(
+                          width = 6,
+                          class = "ynow-lab-im-include-adr",
                           tags$div(
                             class = "ynow-lab-im-quality",
                             checkboxInput(
@@ -1660,20 +1794,6 @@ beta_rolling_section_ui <- function() {
                               )
                             )
                           )
-                        )
-                      ),
-                      tags$div(
-                        class = "ynow-lab-im-quality ynow-full-only",
-                        style = "margin-top:12px;",
-                        checkboxInput(
-                          "lab_im_gate_only",
-                          tags$span(id = "ynow_lab_im_gate_label", "Piotroski 高門檻"),
-                          value = isTRUE(APP_DEFAULTS$lab_im_gate_only)
-                        ),
-                        tags$span(
-                          id = "ynow_lab_im_gate_hint",
-                          class = "ynow-lab-im-quality-hint",
-                          "預設勾選：前十名與明細只列 Piotroski F-Score≥7（品質檢核）者；取消勾選則不設 F-Score 門檻。合格不足 N 或不足 10 時不會湊滿。"
                         )
                       )
                     )
@@ -1834,7 +1954,7 @@ beta_rolling_section_ui <- function() {
                   "流程：宇宙池先依「候選截斷邏輯」全市排序／篩選（市值／概念股／近一年漲幅／隨機），",
                   "再依所選「宇宙檔數（N）」作分群分析（非固定預設檔數）。",
                   "Search 後的代號一律強制納入宇宙（N），並作為雷達焦點預設。",
-                  "抓取 Yahoo 比率特徵；若 Yahoo 受限則改用內建離線快照。"
+                  "擷取 Yahoo 比率特徵；若 Yahoo 受限則改用內建離線快照。"
                 )
               ),
               fluidRow(
@@ -1884,6 +2004,72 @@ beta_rolling_section_ui <- function() {
               )
             ),
 
+            # --- How to read (top of page, collapsed by default) ---
+            box(
+              title = tagList(
+                icon("book-open"),
+                tags$span(id = "ynow_hfv_sec_method", "How to read this report")
+              ),
+              width = NULL,
+              status = "primary",
+              solidHeader = FALSE,
+              collapsible = TRUE,
+              collapsed = TRUE,
+              tags$div(
+                class = "ynow-hfv-method",
+                tags$p(
+                  id = "ynow_hfv_method_body",
+                  style = "font-size:12.5px;color:#444;line-height:1.55;margin:0 0 8px 0;",
+                  paste0(
+                    "Validation report — not a trading backtest. ",
+                    "Chart Overlay Models (multi) drive chart FV lines and scenario A–D ",
+                    "(average FV when several; show only with an A–D conclusion). ",
+                    "Replay Model (single) drives odds, tip P(up), MOS, gap-to-FV, and the pair table."
+                  )
+                ),
+                tags$p(
+                  id = "ynow_hfv_sum_scenario_matrix",
+                  style = "font-size:12px;color:#555;line-height:1.5;margin:0 0 6px 0;",
+                  paste0(
+                    "A Golden pit: FV↑, Price↓, Price ≪ FV · ",
+                    "B Davis double: FV↑, Price↑, Price ≈ FV · ",
+                    "C Value trap: FV↓, Price↓, Price < FV · ",
+                    "D Bubble hype: FV≤flat, Price strong↑, Price ≫ FV · ",
+                    "other = unmatched."
+                  )
+                ),
+                tags$p(
+                  id = "ynow_hfv_scenario_thresh_note",
+                  style = "font-size:11.5px;color:#666;line-height:1.45;margin:0 0 4px 0;",
+                  paste0(
+                    "Scenario bands (engineering defaults): flat |Δ|/prev ≤ 2%; |MOS| ≤ 10% ≈ FV; ",
+                    "MOS ≥ 20% ≪ FV; MOS ≤ −20% ≫ FV; D also needs price momentum ≥ +5%."
+                  )
+                ),
+                tags$p(
+                  style = "font-size:11.5px;color:#888;line-height:1.45;margin:0;",
+                  id = "ynow_hfv_method_data_note",
+                  paste0(
+                    "Data: Yahoo annuals may be restated; PIT = period_end + ~90d (no soft bypass). ",
+                    "g ≠ terminal SGR; missing CapEx/ΔNWC not invented as 0. ",
+                    "TW OTC/ESB may use TPEx IS/BS fill (CF never invented). n<5 illustrative only."
+                  )
+                )
+              )
+            ),
+
+            # Page-level common control (under How-to-read): analysis frequency
+            tags$div(
+              class = "ynow-hfv-page-controls",
+              role = "group",
+              `aria-label` = "HFV page controls",
+              id = "ynow_hfv_page_controls",
+              tags$div(
+                class = "ynow-hfv-page-controls__freq",
+                uiOutput("bt_fv_analysis_freq_ui")
+              )
+            ),
+
             # --- Chapter I: FV vs market ---
             tags$section(
               class = "ynow-hfv-chapter",
@@ -1930,83 +2116,25 @@ beta_rolling_section_ui <- function() {
                       "bt_hfv_show_bench",
                       tags$span(id = "ynow_hfv_show_bench_label", "Show benchmark"),
                       value = isTRUE(APP_DEFAULTS$bt_hfv_show_bench)
+                    ),
+                    tags$p(
+                      id = "ynow_hfv_overlay_vs_replay_note",
+                      class = "help-block ynow-hfv-overlay-replay-note",
+                      paste0(
+                        "Overlay (multi): chart FV lines + scenario A–D (average FV when several). ",
+                        "Replay (Section II, single): odds / tip P(up) / MOS / gap / pair table."
+                      )
                     )
                   )
                 ),
                 plotlyOutput("bt_hfv_timeline", height = "420px") %>% withSpinner(),
+                # Scenarios under chart; Overlay-only; hidden until A–D conclusion
+                uiOutput("bt_hfv_scenario_findings"),
                 uiOutput("bt_session_params")
               )
             ),
 
-            # --- Report controls (toolbar) ---
-            tags$div(
-              class = "ynow-hfv-toolbar",
-              role = "group",
-              `aria-label` = "HFV report controls",
-              id = "ynow_hfv_toolbar",
-              tags$div(
-                class = "ynow-hfv-toolbar__group",
-                radioButtons(
-                  "bt_fv_replay_model",
-                  "Replay model",
-                  inline = TRUE,
-                  choices = c(
-                    "DCF" = "dcf",
-                    "DDM" = "ddm",
-                    "RI" = "ri",
-                    "P/B" = "pb",
-                    "NAV" = "nav"
-                  ),
-                  selected = APP_DEFAULTS$bt_fv_replay_model
-                )
-              ),
-              tags$div(
-                class = "ynow-hfv-toolbar__group",
-                radioButtons(
-                  "bt_fv_conv_window",
-                  "Sample window",
-                  inline = TRUE,
-                  choices = c(
-                    "All" = "all",
-                    "1Y" = "1y",
-                    "3Y" = "3y",
-                    "5Y" = "5y",
-                    "Custom" = "custom"
-                  ),
-                  selected = APP_DEFAULTS$bt_fv_conv_window
-                ),
-                conditionalPanel(
-                  condition = "input.bt_fv_conv_window == 'custom'",
-                  dateRangeInput(
-                    "bt_fv_conv_custom",
-                    NULL,
-                    start = Sys.Date() - 365 * 3,
-                    end = Sys.Date(),
-                    language = "zh-TW"
-                  )
-                )
-              ),
-              tags$div(
-                class = "ynow-hfv-toolbar__group",
-                uiOutput("bt_fv_analysis_freq_ui")
-              ),
-              tags$div(
-                class = "ynow-hfv-toolbar__group ynow-hfv-toolbar__group--wide",
-                radioButtons(
-                  "bt_fv_oos_mode",
-                  "Validation sample scope",
-                  inline = TRUE,
-                  choices = c(
-                    "Realized next period only (default)" = "realized",
-                    "Expanding-window out-of-sample hits" = "expanding",
-                    "Include unrealized next period (in-sample)" = "insample"
-                  ),
-                  selected = APP_DEFAULTS$bt_fv_oos_mode
-                )
-              )
-            ),
-
-            # --- Chapter II: Findings ---
+            # --- Chapter II: Investor summary ---
             tags$section(
               class = "ynow-hfv-chapter",
               tags$div(
@@ -2015,87 +2143,166 @@ beta_rolling_section_ui <- function() {
                 tags$h3(
                   class = "ynow-hfv-chapter__title",
                   id = "ynow_hfv_ch2_title",
-                  "Validation findings"
+                  "Investor summary"
                 )
+              ),
+              tags$p(
+                class = "ynow-hfv-chapter__lead",
+                id = "ynow_hfv_ch2_lead",
+                "Set Replay model and sample scope, then read the sample snapshot and tip market-price odds."
+              ),
+              tags$div(
+                class = "ynow-hfv-chapter__body",
+                tags$div(
+                  class = "ynow-hfv-toolbar ynow-hfv-toolbar--in-ch2",
+                  role = "group",
+                  `aria-label` = "HFV validation controls",
+                  id = "ynow_hfv_toolbar",
+                  tags$div(
+                    class = "ynow-hfv-toolbar__group",
+                    radioButtons(
+                      "bt_fv_replay_model",
+                      "Replay model",
+                      inline = TRUE,
+                      choices = c(
+                        "DCF" = "dcf",
+                        "DDM" = "ddm",
+                        "RI" = "ri",
+                        "P/B" = "pb",
+                        "NAV" = "nav"
+                      ),
+                      selected = APP_DEFAULTS$bt_fv_replay_model
+                    )
+                  ),
+                  tags$div(
+                    class = "ynow-hfv-toolbar__group",
+                    radioButtons(
+                      "bt_fv_conv_window",
+                      "Sample window",
+                      inline = TRUE,
+                      choices = c(
+                        "All" = "all",
+                        "1Y" = "1y",
+                        "3Y" = "3y",
+                        "5Y" = "5y",
+                        "Custom" = "custom"
+                      ),
+                      selected = APP_DEFAULTS$bt_fv_conv_window
+                    ),
+                    conditionalPanel(
+                      condition = "input.bt_fv_conv_window == 'custom'",
+                      dateRangeInput(
+                        "bt_fv_conv_custom",
+                        NULL,
+                        start = Sys.Date() - 365 * 3,
+                        end = Sys.Date(),
+                        language = "zh-TW"
+                      )
+                    )
+                  ),
+                  tags$div(
+                    class = "ynow-hfv-toolbar__group ynow-hfv-toolbar__group--wide",
+                    radioButtons(
+                      "bt_fv_oos_mode",
+                      "Validation sample scope",
+                      inline = TRUE,
+                      choices = c(
+                        "Realized next period only (default)" = "realized",
+                        "Expanding-window OOS hit rates" = "expanding",
+                        "Include unrealized next period (in-sample)" = "insample"
+                      ),
+                      selected = APP_DEFAULTS$bt_fv_oos_mode
+                    )
+                  )
+                ),
+                tags$div(
+                  class = "ynow-hfv-findings-block",
+                  # Locale target kept for applyUiLocale; chapter II title already names this block.
+                  tags$span(id = "ynow_hfv_sec_results", style = "display:none;", "Sample snapshot"),
+                  uiOutput("bt_hfv_investor_summary")
+                )
+              )
+            ),
+
+            # --- Chapter III: Market price & MOS ---
+            tags$section(
+              class = "ynow-hfv-chapter",
+              tags$div(
+                class = "ynow-hfv-chapter__head",
+                tags$span(class = "ynow-hfv-chapter__kicker", id = "ynow_hfv_ch3_kicker", "Section III"),
+                tags$h3(
+                  class = "ynow-hfv-chapter__title",
+                  id = "ynow_hfv_ch3_title",
+                  "Next-period market price & MOS"
+                )
+              ),
+              tags$p(
+                class = "ynow-hfv-chapter__lead",
+                id = "ynow_hfv_ch3_lead",
+                "Did market price rise or fall between valuation dates? MOS outlook conditions tip odds (causal expanding-window)."
+              ),
+              tags$div(
+                class = "ynow-hfv-chapter__body",
+                uiOutput("bt_hfv_price_findings")
+              )
+            ),
+
+            # --- Chapter IV: Gap to FV ---
+            tags$section(
+              class = "ynow-hfv-chapter",
+              tags$div(
+                class = "ynow-hfv-chapter__head",
+                tags$span(class = "ynow-hfv-chapter__kicker", id = "ynow_hfv_ch4_kicker", "Section IV"),
+                tags$h3(
+                  class = "ynow-hfv-chapter__title",
+                  id = "ynow_hfv_ch4_title",
+                  "Gap to theoretical FV"
+                )
+              ),
+              tags$p(
+                class = "ynow-hfv-chapter__lead",
+                id = "ynow_hfv_ch4_lead",
+                "Did |P−FV_t| shrink or expand when P_next arrived? Chart = landing (P_next − FV) / FV."
+              ),
+              tags$div(
+                class = "ynow-hfv-chapter__body",
+                uiOutput("bt_hfv_fv_findings"),
+                tags$div(
+                  class = "ynow-hfv-findings-block",
+                  style = "margin-top:14px;",
+                  # Locale target; chapter IV lead already names the chart.
+                  tags$span(id = "ynow_hfv_chart_gap", style = "display:none;", "Landing magnitude (P_next − FV) / FV"),
+                  plotlyOutput("bt_fv_conv_plot", height = "280px") %>% withSpinner()
+                )
+              )
+            ),
+
+            # --- Chapter V: Period detail appendix (scenarios live under Ch1 chart) ---
+            tags$section(
+              class = "ynow-hfv-chapter",
+              tags$div(
+                class = "ynow-hfv-chapter__head",
+                tags$span(class = "ynow-hfv-chapter__kicker", id = "ynow_hfv_ch5_kicker", "Section V"),
+                tags$h3(
+                  class = "ynow-hfv-chapter__title",
+                  id = "ynow_hfv_ch5_title",
+                  "Period detail (appendix)"
+                )
+              ),
+              tags$p(
+                class = "ynow-hfv-chapter__lead",
+                id = "ynow_hfv_ch5_lead",
+                "Pair-by-pair outcomes for audit — not a buy/sell score."
               ),
               tags$div(
                 class = "ynow-hfv-chapter__body",
                 tags$div(
                   class = "ynow-hfv-findings-block",
-                  tags$h5(id = "ynow_hfv_sec_results", "Executive summary"),
-                  uiOutput("bt_fv_conv_summary")
-                ),
-                tags$div(
-                  class = "ynow-hfv-findings-block",
-                  tags$h5(id = "ynow_hfv_chart_gap", "Magnitude (P_next − FV) / FV"),
-                  plotlyOutput("bt_fv_conv_plot", height = "280px") %>% withSpinner()
-                ),
-                tags$div(
-                  class = "ynow-hfv-findings-block",
-                  tags$h5(id = "ynow_hfv_table_detail", "Period detail"),
+                  tags$span(id = "ynow_hfv_table_detail", style = "display:none;", "Pair table"),
                   tags$div(
                     style = "overflow-x:auto; width:100%;",
                     tags$style(HTML("#bt_fv_conv_table table { width: 100% !important; }")),
                     tableOutput("bt_fv_conv_table")
-                  )
-                )
-              )
-            ),
-
-            # --- Appendix: method notes ---
-            box(
-              title = tagList(
-                icon("book-open"),
-                tags$span(id = "ynow_hfv_sec_method", "How to read this report")
-              ),
-              width = NULL,
-              status = "primary",
-              solidHeader = FALSE,
-              collapsible = TRUE,
-              collapsed = TRUE,
-              tags$div(
-                class = "ynow-hfv-method",
-                tags$p(
-                  id = "ynow_hfv_method_body",
-                  style = "font-size:12.5px;color:#444;line-height:1.55;margin:0 0 10px 0;",
-                  paste0(
-                    "Not a trading backtest or broker order ticket. Validation samples have three scopes: ",
-                    "(1) next-period return R and P(up), plus MOS-bucket outlook; ",
-                    "(2) above/below Replay-model FV and magnitude; ",
-                    "(3) historical scenario taxonomy (mispricing / fundamental momentum / price momentum → A–D or other). ",
-                    "Charts allow multi-select overlay; odds / magnitude / scenarios / P(up) use the Replay model only."
-                  )
-                ),
-                tags$p(
-                  id = "ynow_hfv_sum_scenario_matrix",
-                  style = "font-size:12px;color:#555;line-height:1.5;margin:0 0 8px 0;",
-                  paste0(
-                    "A Golden pit: FV↑, Price↓, Price ≪ FV · ",
-                    "B Davis double: FV↑, Price↑, Price ≈ FV · ",
-                    "C Value trap: FV↓, Price↓, Price < FV · ",
-                    "D Bubble hype: FV≤flat, Price strong↑, Price ≫ FV · ",
-                    "other = unmatched (no A–D conclusion applied)."
-                  )
-                ),
-                tags$p(
-                  id = "ynow_hfv_scenario_thresh_note",
-                  style = "font-size:11.5px;color:#666;line-height:1.45;margin:0 0 8px 0;",
-                  paste0(
-                    "Scenario bandwidth heuristics (engineering defaults, not academic standards): ",
-                    "flat momentum |Δ|/prior ≤ 2%; Price ≈ FV when |MOS| ≤ 10%; Price ≪ FV when MOS ≥ 20%; ",
-                    "Price ≫ FV when MOS ≤ −20%; scenario D also requires price momentum ≥ +5%. ",
-                    "Garbage-in FV misclassifies; markets can stay irrational and still need a catalyst."
-                  )
-                ),
-                tags$p(
-                  style = "font-size:11.5px;color:#888;line-height:1.45;margin:0;",
-                  id = "ynow_hfv_method_data_note",
-                  paste0(
-                    "Data note: Yahoo annuals may be restated; PIT uses a strict filing lag ",
-                    "(fiscal period end + ~90 days; rows without period end are dropped, no soft bypass). ",
-                    "Near-term g and terminal SGR are separate; missing CapEx/ΔNWC is not invented as 0. ",
-                    "TW TPEx/emerging may backfill TPEx financial summaries (IS/BS; CF not invented). ",
-                    "Small samples (n<5) are illustrative only — not a forecast guarantee."
                   )
                 )
               )
@@ -2747,9 +2954,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v21.15</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v21.53</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v21.15</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v21.53</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -3122,6 +3329,40 @@ ui <- dashboardPage(
             font-size: 13px;
             line-height: 1.4;
             margin: 0 0 8px 0 !important;
+          }
+        }
+
+        /*
+         * Mobile inline multi-option wrap (checkboxGroup / radioButtons inline=TRUE).
+         * Bootstrap3 sets .checkbox-inline+.checkbox-inline / .radio-inline+.radio-inline
+         * { margin-left: 10px }, so wrapped items indent as if still on the first row.
+         * Flex + gap + zero sibling margin keeps every new row left-aligned and
+         * vertically centered. Specialized toolbars (HFV grid chips, etc.) keep
+         * their own display:!important rules.
+         */
+        @media (max-width: 767px) {
+          .shiny-input-checkboxgroup .shiny-options-group:has(> .checkbox-inline),
+          .shiny-input-checkboxgroup .shiny-options-group:has(> label.checkbox-inline),
+          .shiny-input-radiogroup .shiny-options-group:has(> .radio-inline),
+          .shiny-input-radiogroup .shiny-options-group:has(> label.radio-inline) {
+            display: flex;
+            flex-wrap: wrap;
+            flex-direction: row;
+            align-items: center;
+            align-content: flex-start;
+            justify-content: flex-start;
+            column-gap: 12px;
+            row-gap: 8px;
+            clear: none;
+          }
+          .shiny-options-group > .checkbox-inline,
+          .shiny-options-group > .radio-inline,
+          .shiny-options-group > label.checkbox-inline,
+          .shiny-options-group > label.radio-inline {
+            float: none;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            vertical-align: middle;
           }
         }
 
@@ -4818,11 +5059,11 @@ ui <- dashboardPage(
         body.ynow-lite .ynow-full-only {
           display: none !important;
         }
-        body.ynow-lite .ynow-macro-kpi--clickable {
+        /* Lite: board KPIs stay non-clickable; YNOW／TYNOW keeps expand/collapse. */
+        body.ynow-lite .ynow-macro-kpi--clickable:not(.ynow-macro-kpi--ynow) {
           cursor: default !important;
           pointer-events: none;
         }
-        body.ynow-lite #ynow_macro_index_hist,
         body.ynow-lite #ynow_macro_index_hint,
         body.ynow-lite #ynow_macro_htcdi_expand {
           display: none !important;
@@ -5522,8 +5763,9 @@ ui <- dashboardPage(
         }
         .ynow-hfv-report__masthead {
           margin: 0 0 16px 0;
-          padding: 4px 2px 14px 2px;
-          border-bottom: 2px solid #1a1a1a;
+          padding: 4px 2px 8px 2px;
+          /* No rule under the page lead — keep masthead flush into how-to-read / chapters */
+          border-bottom: none;
         }
         .ynow-hfv-report__masthead h2 {
           margin: 0 0 8px 0;
@@ -5539,10 +5781,19 @@ ui <- dashboardPage(
           line-height: 1.55;
           color: #555;
         }
+        .ynow-hfv-chapter__lead {
+          margin: 0;
+          padding: 10px 16px 0 16px;
+          max-width: none;
+          font-size: 13px;
+          line-height: 1.5;
+          color: #555;
+        }
         .ynow-hfv-toolbar {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
           gap: 12px 14px;
+          width: 100%;
           margin: 0 0 18px 0;
           padding: 14px 16px;
           background: #fafafa;
@@ -5552,9 +5803,109 @@ ui <- dashboardPage(
         }
         .ynow-hfv-toolbar--above-chart {
           margin: 8px 0 12px 0;
+          grid-template-columns: 1fr;
+        }
+        /* Page-level common controls (under How-to-read): compact analysis frequency */
+        .ynow-hfv-page-controls {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 8px 16px;
+          width: 100%;
+          margin: 0 0 16px 0;
+          padding: 8px 12px;
+          background: #f7f8fa;
+          border: 1px solid #e6e8eb;
+          border-radius: 6px;
+          box-sizing: border-box;
+        }
+        .ynow-hfv-page-controls__freq {
+          flex: 1 1 auto;
+          min-width: 0;
+        }
+        .ynow-hfv-page-controls .form-group {
+          margin: 0 !important;
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 8px 12px;
+        }
+        .ynow-hfv-page-controls .shiny-input-radiogroup > label.control-label {
+          display: inline-block;
+          margin: 0;
+          padding: 0;
+          font-size: 12px;
+          font-weight: 700;
+          letter-spacing: 0.02em;
+          text-transform: none;
+          color: #555;
+          line-height: 1.3;
+          white-space: nowrap;
+        }
+        .ynow-hfv-page-controls .shiny-options-group {
+          display: inline-flex !important;
+          flex-wrap: wrap !important;
+          align-items: center;
+          gap: 6px;
+          margin: 0 !important;
+          padding: 0 !important;
+          clear: none;
+        }
+        .ynow-hfv-page-controls .radio,
+        .ynow-hfv-page-controls .radio-inline {
+          float: none !important;
+          display: inline-flex !important;
+          align-items: center;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+        .ynow-hfv-page-controls .radio > label,
+        .ynow-hfv-page-controls .radio-inline,
+        .ynow-hfv-page-controls .radio-inline > label {
+          display: inline-flex !important;
+          align-items: center;
+          justify-content: center;
+          margin: 0 !important;
+          padding: 4px 10px !important;
+          min-height: 28px;
+          font-size: 12px;
+          font-weight: 600;
+          line-height: 1.2;
+          color: #444;
+          background: #fff;
+          border: 1px solid #d0d5dd;
+          border-radius: 999px;
+          cursor: pointer;
+          white-space: nowrap;
+        }
+        .ynow-hfv-page-controls .shiny-options-group input[type="radio"] {
+          position: absolute !important;
+          opacity: 0 !important;
+          width: 0 !important;
+          height: 0 !important;
+          margin: 0 !important;
+          pointer-events: none;
+        }
+        .ynow-hfv-page-controls .shiny-options-group .radio:has(input:checked) > label,
+        .ynow-hfv-page-controls .shiny-options-group .radio-inline:has(input:checked) {
+          color: #0c5484;
+          background: #e8f2f8;
+          border-color: #0c5484;
+        }
+        .ynow-hfv-page-controls .ynow-hfv-page-controls__hint {
+          margin: 0;
+          font-size: 11px;
+          line-height: 1.35;
+          color: #888;
+        }
+        /* Section II: two equal columns + full-width OOS row; options fill each group */
+        .ynow-hfv-toolbar--in-ch2 {
+          margin: 0 0 16px 0;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
         }
         .ynow-hfv-toolbar__group {
           min-width: 0;
+          width: 100%;
           display: flex;
           flex-direction: column;
           gap: 6px;
@@ -5564,6 +5915,7 @@ ui <- dashboardPage(
         }
         .ynow-hfv-toolbar__group .form-group {
           margin: 0;
+          width: 100%;
         }
         .ynow-hfv-toolbar__group > label.control-label,
         .ynow-hfv-toolbar .shiny-input-radiogroup > label.control-label,
@@ -5586,6 +5938,24 @@ ui <- dashboardPage(
           margin: 0;
           padding: 0;
           clear: none;
+          width: 100%;
+        }
+        /* Ch2: equal cells, at most two rows, fill group width (keep pill chips) */
+        .ynow-hfv-toolbar--in-ch2 #bt_fv_replay_model .shiny-options-group,
+        .ynow-hfv-toolbar--in-ch2 #bt_fv_conv_window .shiny-options-group {
+          display: grid !important;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 6px 8px;
+        }
+        .ynow-hfv-toolbar--in-ch2 #bt_fv_oos_mode .shiny-options-group {
+          display: grid !important;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 6px 8px;
+        }
+        .ynow-hfv-toolbar--above-chart #bt_fv_models .shiny-options-group {
+          display: grid !important;
+          grid-template-columns: repeat(5, minmax(0, 1fr));
+          gap: 6px 8px;
         }
         .ynow-hfv-toolbar .radio,
         .ynow-hfv-toolbar .radio-inline,
@@ -5597,6 +5967,15 @@ ui <- dashboardPage(
           margin: 0 !important;
           padding: 0 !important;
           min-height: 0;
+        }
+        .ynow-hfv-toolbar--in-ch2 .radio,
+        .ynow-hfv-toolbar--in-ch2 .radio-inline,
+        .ynow-hfv-toolbar--in-ch2 .checkbox,
+        .ynow-hfv-toolbar--in-ch2 .checkbox-inline,
+        .ynow-hfv-toolbar--above-chart #bt_fv_models .checkbox,
+        .ynow-hfv-toolbar--above-chart #bt_fv_models .checkbox-inline {
+          width: 100%;
+          display: flex !important;
         }
         .ynow-hfv-toolbar .radio > label,
         .ynow-hfv-toolbar .radio-inline,
@@ -5617,6 +5996,30 @@ ui <- dashboardPage(
           cursor: pointer;
           transition: border-color .12s ease, background .12s ease, box-shadow .12s ease;
         }
+        .ynow-hfv-toolbar--in-ch2 .radio > label,
+        .ynow-hfv-toolbar--in-ch2 .radio-inline,
+        .ynow-hfv-toolbar--in-ch2 .radio-inline > label,
+        .ynow-hfv-toolbar--in-ch2 .checkbox > label,
+        .ynow-hfv-toolbar--in-ch2 .checkbox-inline,
+        .ynow-hfv-toolbar--in-ch2 .checkbox-inline > label,
+        .ynow-hfv-toolbar--above-chart #bt_fv_models .checkbox > label,
+        .ynow-hfv-toolbar--above-chart #bt_fv_models .checkbox-inline,
+        .ynow-hfv-toolbar--above-chart #bt_fv_models .checkbox-inline > label {
+          width: 100%;
+          box-sizing: border-box;
+          justify-content: center;
+          text-align: center;
+          /* No left gutter for native radio/checkbox — those are visually hidden below */
+          padding: 8px 12px !important;
+        }
+        .ynow-hfv-toolbar--in-ch2 #bt_fv_oos_mode .radio > label,
+        .ynow-hfv-toolbar--in-ch2 #bt_fv_oos_mode .radio-inline,
+        .ynow-hfv-toolbar--in-ch2 #bt_fv_oos_mode .radio-inline > label {
+          white-space: normal;
+          min-height: 40px;
+          align-items: center;
+        }
+        /* Default: radio/checkbox sit in the label left padding */
         .ynow-hfv-toolbar .radio input[type="radio"],
         .ynow-hfv-toolbar .radio-inline input[type="radio"],
         .ynow-hfv-toolbar .checkbox input[type="checkbox"],
@@ -5625,21 +6028,63 @@ ui <- dashboardPage(
           margin-left: -20px;
           margin-top: 1px;
         }
-        .ynow-hfv-toolbar .radio > label:hover,
-        .ynow-hfv-toolbar .radio-inline:hover,
-        .ynow-hfv-toolbar .checkbox > label:hover,
-        .ynow-hfv-toolbar .checkbox-inline:hover {
+        /* Chip option groups: hide native dots so they never cover centered label text.
+           Selection is shown by the dark filled chip (input:checked). */
+        .ynow-hfv-toolbar .shiny-options-group input[type="radio"],
+        .ynow-hfv-toolbar .shiny-options-group input[type="checkbox"] {
+          position: absolute !important;
+          left: 0 !important;
+          top: 0 !important;
+          width: 1px !important;
+          height: 1px !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          opacity: 0 !important;
+          clip: rect(0, 0, 0, 0);
+          pointer-events: none;
+        }
+        .ynow-hfv-toolbar .shiny-options-group .radio > label:hover,
+        .ynow-hfv-toolbar .shiny-options-group .radio-inline:hover,
+        .ynow-hfv-toolbar .shiny-options-group .checkbox > label:hover,
+        .ynow-hfv-toolbar .shiny-options-group .checkbox-inline:hover {
           border-color: #999;
           background: #fff;
         }
-        .ynow-hfv-toolbar .radio:has(input:checked) > label,
-        .ynow-hfv-toolbar .radio-inline:has(input:checked),
-        .ynow-hfv-toolbar .checkbox:has(input:checked) > label,
-        .ynow-hfv-toolbar .checkbox-inline:has(input:checked) {
+        .ynow-hfv-toolbar .shiny-options-group .radio:has(input:checked) > label,
+        .ynow-hfv-toolbar .shiny-options-group .radio-inline:has(input:checked),
+        .ynow-hfv-toolbar .shiny-options-group .checkbox:has(input:checked) > label,
+        .ynow-hfv-toolbar .shiny-options-group .checkbox-inline:has(input:checked) {
           border-color: #1a1a1a;
           background: #1a1a1a;
           color: #fff;
           box-shadow: 0 1px 2px rgba(0,0,0,0.12);
+        }
+        /* Standalone checkbox (Show benchmark): plain flex row, never a filled chip */
+        .ynow-hfv-toolbar .checkbox:not(.checkbox-inline) > label {
+          display: inline-flex !important;
+          align-items: center !important;
+          gap: 8px;
+          border: none !important;
+          background: transparent !important;
+          box-shadow: none !important;
+          border-radius: 0 !important;
+          padding: 2px 0 !important;
+          color: #333 !important;
+          width: auto !important;
+          justify-content: flex-start !important;
+          text-align: left !important;
+          white-space: normal !important;
+          min-height: 0 !important;
+        }
+        .ynow-hfv-toolbar .checkbox:not(.checkbox-inline) input[type="checkbox"] {
+          position: static !important;
+          margin: 0 !important;
+          opacity: 1 !important;
+          width: auto !important;
+          height: auto !important;
+          clip: auto !important;
+          pointer-events: auto !important;
+          flex: 0 0 auto;
         }
         .ynow-hfv-toolbar__hint {
           margin: 2px 0 0 0;
@@ -5679,7 +6124,7 @@ ui <- dashboardPage(
           line-height: 1.35;
         }
         .ynow-hfv-chapter__body {
-          padding: 14px 16px 16px 16px;
+          padding: 12px 16px 16px 16px;
         }
         .ynow-hfv-chapter--appendix .ynow-hfv-chapter__body {
           background: #fafafa;
@@ -5705,14 +6150,100 @@ ui <- dashboardPage(
           font-weight: 700;
           color: #333;
         }
+        .ynow-hfv-kpi-grid {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 10px;
+          align-items: stretch;
+          width: 100%;
+          margin: 0 0 10px 0;
+          box-sizing: border-box;
+        }
+        .ynow-hfv-kpi-grid--3 {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+        .ynow-hfv-kpi-cell {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          min-height: 88px;
+          height: 100%;
+          padding: 10px 12px;
+          box-sizing: border-box;
+          border: 1px solid #e8e8e8;
+          border-radius: 4px;
+          background: #fff;
+        }
+        /* HFV bullish/bearish tones: US green-up / red-down; TW inverts via body.ynow-market-tw */
+        .ynow-hfv-bull { color: #00a65a !important; }
+        .ynow-hfv-bear { color: #d9534f !important; }
+        .ynow-hfv-kpi-cell--bull {
+          background: #f7fbf8;
+          border-left: 4px solid #00a65a;
+        }
+        .ynow-hfv-kpi-cell--bear {
+          background: #fdf7f7;
+          border-left: 4px solid #d9534f;
+        }
+        .ynow-hfv-kpi-cell--pair {
+          background: #fafafa;
+          border-left: 4px solid #adb5bd;
+        }
+        .ynow-hfv-kpi-pair-vals {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: baseline;
+          gap: 2px 4px;
+          line-height: 1.2;
+        }
+        .ynow-hfv-kpi-pair-sep {
+          color: #999 !important;
+          font-weight: 500;
+        }
+        body.ynow-market-tw .ynow-hfv-bull { color: #c0392b !important; }
+        body.ynow-market-tw .ynow-hfv-bear { color: #00a65a !important; }
+        body.ynow-market-tw .ynow-hfv-kpi-cell--bull {
+          background: #fdf7f7;
+          border-left-color: #c0392b;
+        }
+        body.ynow-market-tw .ynow-hfv-kpi-cell--bear {
+          background: #f7fbf8;
+          border-left-color: #00a65a;
+        }
+        .ynow-hfv-overlay-replay-note {
+          margin: 8px 0 0 0 !important;
+          font-size: 11.5px !important;
+          line-height: 1.45;
+          color: #666;
+        }
+        .ynow-hfv-scenario-under-chart {
+          margin-top: 14px;
+        }
+        @media (max-width: 991px) {
+          .ynow-hfv-kpi-grid,
+          .ynow-hfv-kpi-grid--3 {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+        }
         @media (max-width: 767px) {
-          .ynow-hfv-toolbar {
+          .ynow-hfv-toolbar,
+          .ynow-hfv-toolbar--in-ch2 {
             grid-template-columns: 1fr;
             padding: 12px;
             gap: 14px;
           }
           .ynow-hfv-toolbar__group--wide {
             grid-column: auto;
+          }
+          .ynow-hfv-toolbar--in-ch2 #bt_fv_replay_model .shiny-options-group,
+          .ynow-hfv-toolbar--in-ch2 #bt_fv_conv_window .shiny-options-group,
+          .ynow-hfv-toolbar--in-ch2 #bt_fv_oos_mode .shiny-options-group,
+          .ynow-hfv-toolbar--above-chart #bt_fv_models .shiny-options-group {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+          .ynow-hfv-page-controls .form-group {
+            flex-direction: column;
+            align-items: flex-start;
           }
           .ynow-hfv-toolbar .radio > label,
           .ynow-hfv-toolbar .radio-inline,
@@ -5721,15 +6252,25 @@ ui <- dashboardPage(
             white-space: normal;
             max-width: 100%;
           }
+          .ynow-hfv-kpi-grid,
+          .ynow-hfv-kpi-grid--3 {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
           .ynow-hfv-chapter__body {
             padding: 12px;
+          }
+          .ynow-hfv-chapter__head {
+            padding: 10px 12px;
+          }
+          .ynow-hfv-chapter__lead {
+            padding: 8px 12px 0 12px;
           }
           .ynow-hfv-report__masthead {
             padding-bottom: 12px;
           }
         }
 
-        /* HFV 設定：統計期間／驗證樣本口徑共用 label→選項間距與區塊節奏 */
+        /* HFV 設定：統計期間／驗證樣本範圍共用 label→選項間距與區塊節奏 */
         .ynow-hfv-settings .shiny-input-radiogroup {
           margin-top: 0;
           margin-bottom: 12px;
@@ -5747,7 +6288,7 @@ ui <- dashboardPage(
           padding-top: 0;
           padding-left: 0;
         }
-        /* 驗證樣本口徑：工具列內改為橫向 chip；舊直排規則僅保留於非 toolbar */
+        /* 驗證樣本範圍：工具列內改為橫向 chip；舊直排規則僅保留於非 toolbar */
         .ynow-hfv-settings #bt_fv_oos_mode .shiny-options-group {
           display: flex !important;
           flex-direction: column !important;
@@ -6573,6 +7114,7 @@ ui <- dashboardPage(
             setBtText('ynow_macro_htcdi_in_help', 'htcdi_in_composite_help');
             setBtText('ynow_macro_htcdi_method_title', 'htcdi_method_title');
             setBtText('ynow_macro_index_hint', 'macro_index_chart_hint');
+            setBtText('ynow_macro_ynow_index_hint', 'macro_ynow_index_chart_hint');
             setBtText('ynow_own_index_overlay_label', 'macro_own_index_overlay_label');
             setBtText('ynow_own_index_overlay_hint', 'macro_own_index_overlay_hint');
             ['ynow_index_title', 'ynow_index_chapter_title', 'ynow_index_rule',
@@ -6698,6 +7240,10 @@ ui <- dashboardPage(
             if (dcBoxChecks && s.dc_box_checks) dcBoxChecks.textContent = s.dc_box_checks;
             var dcBoxSum = document.getElementById('ynow_dc_box_summary');
             if (dcBoxSum && s.dc_box_summary) dcBoxSum.textContent = s.dc_box_summary;
+            var dcBoxSop = document.getElementById('ynow_dc_box_sop');
+            if (dcBoxSop && s.dc_box_sop) dcBoxSop.textContent = s.dc_box_sop;
+            var dcSopIntro = document.getElementById('ynow_dc_sop_intro');
+            if (dcSopIntro && s.dc_sop_intro) dcSopIntro.textContent = s.dc_sop_intro;
             var hfvMethod = document.getElementById('ynow_hfv_sec_method');
             if (hfvMethod && s.hfv_sec_method) hfvMethod.textContent = s.hfv_sec_method;
             var hfvResults = document.getElementById('ynow_hfv_sec_results');
@@ -6710,6 +7256,28 @@ ui <- dashboardPage(
             if (hfvCh2K && s.hfv_ch2_kicker) hfvCh2K.textContent = s.hfv_ch2_kicker;
             var hfvCh2T = document.getElementById('ynow_hfv_ch2_title');
             if (hfvCh2T && s.hfv_ch2_title) hfvCh2T.textContent = s.hfv_ch2_title;
+            var hfvCh2Lead = document.getElementById('ynow_hfv_ch2_lead');
+            if (hfvCh2Lead && s.hfv_ch2_lead) hfvCh2Lead.textContent = s.hfv_ch2_lead;
+            var hfvCh3K = document.getElementById('ynow_hfv_ch3_kicker');
+            if (hfvCh3K && s.hfv_ch3_kicker) hfvCh3K.textContent = s.hfv_ch3_kicker;
+            var hfvCh3T = document.getElementById('ynow_hfv_ch3_title');
+            if (hfvCh3T && s.hfv_ch3_title) hfvCh3T.textContent = s.hfv_ch3_title;
+            var hfvCh3Lead = document.getElementById('ynow_hfv_ch3_lead');
+            if (hfvCh3Lead && s.hfv_ch3_lead) hfvCh3Lead.textContent = s.hfv_ch3_lead;
+            var hfvCh4K = document.getElementById('ynow_hfv_ch4_kicker');
+            if (hfvCh4K && s.hfv_ch4_kicker) hfvCh4K.textContent = s.hfv_ch4_kicker;
+            var hfvCh4T = document.getElementById('ynow_hfv_ch4_title');
+            if (hfvCh4T && s.hfv_ch4_title) hfvCh4T.textContent = s.hfv_ch4_title;
+            var hfvCh4Lead = document.getElementById('ynow_hfv_ch4_lead');
+            if (hfvCh4Lead && s.hfv_ch4_lead) hfvCh4Lead.textContent = s.hfv_ch4_lead;
+            var hfvCh5K = document.getElementById('ynow_hfv_ch5_kicker');
+            if (hfvCh5K && s.hfv_ch5_kicker) hfvCh5K.textContent = s.hfv_ch5_kicker;
+            var hfvCh5T = document.getElementById('ynow_hfv_ch5_title');
+            if (hfvCh5T && s.hfv_ch5_title) hfvCh5T.textContent = s.hfv_ch5_title;
+            var hfvCh5Lead = document.getElementById('ynow_hfv_ch5_lead');
+            if (hfvCh5Lead && s.hfv_ch5_lead) hfvCh5Lead.textContent = s.hfv_ch5_lead;
+            var hfvOvNote = document.getElementById('ynow_hfv_overlay_vs_replay_note');
+            if (hfvOvNote && s.hfv_overlay_vs_replay_note) hfvOvNote.textContent = s.hfv_overlay_vs_replay_note;
             var hfvParamInv = document.getElementById('ynow_hfv_param_inv_title');
             if (hfvParamInv && (s.hfv_param_inv_title || s.box_hfv_param_inventory)) {
               hfvParamInv.textContent = s.hfv_param_inv_title || s.box_hfv_param_inventory;
@@ -6736,6 +7304,8 @@ ui <- dashboardPage(
             if (hfvSessTitle && s.hfv_session_params_title) hfvSessTitle.textContent = s.hfv_session_params_title;
             var hfvToolbar = document.getElementById('ynow_hfv_toolbar') || document.querySelector('.ynow-hfv-toolbar');
             if (hfvToolbar && s.hfv_toolbar_aria) hfvToolbar.setAttribute('aria-label', s.hfv_toolbar_aria);
+            var hfvPageCtl = document.getElementById('ynow_hfv_page_controls');
+            if (hfvPageCtl && s.hfv_page_controls_aria) hfvPageCtl.setAttribute('aria-label', s.hfv_page_controls_aria);
             var hfvOverlayCtl = document.getElementById('ynow_hfv_chart_overlay_controls');
             if (hfvOverlayCtl && s.hfv_chart_overlay_aria) hfvOverlayCtl.setAttribute('aria-label', s.hfv_chart_overlay_aria);
             var chartModelsLab = document.querySelector('label[for=\"bt_fv_models\"]');
@@ -7013,6 +7583,18 @@ ui <- dashboardPage(
             if (funnelPageTitle && s.funnel_page_title) funnelPageTitle.textContent = s.funnel_page_title;
             var funnelPageSub = document.getElementById('ynow_funnel_page_sub');
             if (funnelPageSub && s.funnel_page_sub) funnelPageSub.textContent = s.funnel_page_sub;
+            var funnelVerdictK = document.getElementById('ynow_funnel_verdict_kicker');
+            if (funnelVerdictK && s.funnel_verdict_kicker) funnelVerdictK.textContent = s.funnel_verdict_kicker;
+            var funnelVerdictT = document.getElementById('ynow_funnel_verdict_title');
+            if (funnelVerdictT && s.funnel_verdict_title) funnelVerdictT.textContent = s.funnel_verdict_title;
+            var funnelVerdictLead = document.getElementById('ynow_funnel_verdict_lead');
+            if (funnelVerdictLead && s.funnel_verdict_lead) funnelVerdictLead.textContent = s.funnel_verdict_lead;
+            var funnelRiskK = document.getElementById('ynow_funnel_risk_kicker');
+            if (funnelRiskK && s.funnel_risk_kicker) funnelRiskK.textContent = s.funnel_risk_kicker;
+            var funnelRiskT = document.getElementById('ynow_funnel_risk_title');
+            if (funnelRiskT && s.funnel_risk_title) funnelRiskT.textContent = s.funnel_risk_title;
+            var funnelRiskLead = document.getElementById('ynow_funnel_risk_lead');
+            if (funnelRiskLead && s.funnel_risk_lead) funnelRiskLead.textContent = s.funnel_risk_lead;
             var funnelCh1K = document.getElementById('ynow_funnel_ch1_kicker');
             if (funnelCh1K && s.funnel_ch1_kicker) funnelCh1K.textContent = s.funnel_ch1_kicker;
             var funnelCh1T = document.getElementById('ynow_funnel_ch1_title');
@@ -7265,16 +7847,42 @@ ui <- dashboardPage(
             if (labLbOverall && s.lab_im_lb_mode_overall) labLbOverall.textContent = s.lab_im_lb_mode_overall;
             var labLbByInd = document.getElementById('ynow_lab_im_lb_mode_by_ind');
             if (labLbByInd && s.lab_im_lb_mode_by_industry) labLbByInd.textContent = s.lab_im_lb_mode_by_industry;
+            var labLbUndervalued = document.getElementById('ynow_lab_im_lb_mode_undervalued');
+            if (labLbUndervalued && s.lab_im_lb_mode_undervalued) labLbUndervalued.textContent = s.lab_im_lb_mode_undervalued;
+            var labIndMcapTitle = document.getElementById('ynow_lab_im_ind_mcap_title');
+            if (labIndMcapTitle && s.lab_im_ind_mcap_title) labIndMcapTitle.textContent = s.lab_im_ind_mcap_title;
+            var labIndMcapBadge = document.getElementById('ynow_lab_im_ind_mcap_badge');
+            if (labIndMcapBadge && s.lab_im_ind_mcap_badge) labIndMcapBadge.textContent = s.lab_im_ind_mcap_badge;
+            var labIndMcapHelp = document.getElementById('ynow_lab_im_ind_mcap_help');
+            if (labIndMcapHelp && s.lab_im_ind_mcap_help) labIndMcapHelp.textContent = s.lab_im_ind_mcap_help;
+            var labBoardsLabel = document.getElementById('ynow_lab_im_boards_label');
+            if (labBoardsLabel && s.lab_im_boards_label) labBoardsLabel.textContent = s.lab_im_boards_label;
+            var labBoardTwse = document.getElementById('ynow_lab_im_board_twse');
+            if (labBoardTwse && s.lab_im_board_twse) labBoardTwse.textContent = s.lab_im_board_twse;
+            var labBoardTpex = document.getElementById('ynow_lab_im_board_tpex');
+            if (labBoardTpex && s.lab_im_board_tpex) labBoardTpex.textContent = s.lab_im_board_tpex;
+            var labBoardEsb = document.getElementById('ynow_lab_im_board_esb');
+            if (labBoardEsb && s.lab_im_board_esb) labBoardEsb.textContent = s.lab_im_board_esb;
+            var labBoardsHint = document.getElementById('ynow_lab_im_boards_hint');
+            if (labBoardsHint && s.lab_im_boards_hint) labBoardsHint.textContent = s.lab_im_boards_hint;
             var labLbHelp = document.getElementById('ynow_lab_im_lb_scope_help');
             if (labLbHelp && s.lab_im_lb_scope_help) labLbHelp.textContent = s.lab_im_lb_scope_help;
             var labGateLabel = document.getElementById('ynow_lab_im_gate_label');
             if (labGateLabel && s.lab_im_gate_label) labGateLabel.textContent = s.lab_im_gate_label;
             var labGateHint = document.getElementById('ynow_lab_im_gate_hint');
             if (labGateHint && s.lab_im_gate_hint) labGateHint.textContent = s.lab_im_gate_hint;
+            var labNoAlertLabel = document.getElementById('ynow_lab_im_no_alert_label');
+            if (labNoAlertLabel && s.lab_im_no_alert_label) labNoAlertLabel.textContent = s.lab_im_no_alert_label;
+            var labNoAlertHint = document.getElementById('ynow_lab_im_no_alert_hint');
+            if (labNoAlertHint && s.lab_im_no_alert_hint) labNoAlertHint.textContent = s.lab_im_no_alert_hint;
             var labImRunTitle = document.getElementById('lab_im_run_fscore');
             if (labImRunTitle && s.lab_im_run_title) labImRunTitle.setAttribute('title', s.lab_im_run_title);
             var annFs = document.getElementById('ynow_ann_fscore_crossref');
             if (annFs && s.ann_fscore_crossref) annFs.textContent = s.ann_fscore_crossref;
+            var labUsListedLabel = document.getElementById('ynow_lab_im_us_listed_label');
+            if (labUsListedLabel && s.lab_im_us_listed_label) labUsListedLabel.textContent = s.lab_im_us_listed_label;
+            var labUsListedHint = document.getElementById('ynow_lab_im_us_listed_hint');
+            if (labUsListedHint && s.lab_im_us_listed_hint) labUsListedHint.textContent = s.lab_im_us_listed_hint;
             var labAdrLabel = document.getElementById('ynow_lab_im_include_adr_label');
             if (labAdrLabel && s.lab_im_include_adr_label) labAdrLabel.textContent = s.lab_im_include_adr_label;
             var labAdrHint = document.getElementById('ynow_lab_im_include_adr_hint');
@@ -7348,6 +7956,21 @@ ui <- dashboardPage(
             }
             Shiny.addCustomMessageHandler('ynowUiLocale', applyUiLocale);
             Shiny.addCustomMessageHandler('ynowDcLocale', applyDcLocale);
+            Shiny.addCustomMessageHandler('ynowDcSopLocale', function (payload) {
+              if (!payload) return;
+              var set = function (id, val) {
+                var el = document.getElementById(id);
+                if (el && val) el.textContent = val;
+              };
+              set('ynow_dc_sop_intro', payload.intro);
+              set('ynow_dc_box_sop', payload.box_sop);
+              set('ynow_dc_sop_step1_title', payload.step1);
+              set('ynow_dc_sop_step2_title', payload.step2);
+              set('ynow_dc_sop_step3_title', payload.step3);
+              set('ynow_dc_sop_ack_sgr_label', payload.ack_sgr);
+              set('ynow_dc_sop_ack_sens_label', payload.ack_sens);
+              set('ynow_dc_sop_ack_qual_label', payload.ack_qual);
+            });
             Shiny.addCustomMessageHandler('ynowModelTheme', function (payload) {
               var tab = (payload && payload.tab) ? String(payload.tab) : '';
               /* Keys match Model Selector card accents (NAV/DCF/DDM/RI/P/B/Multiples/SOTP). */
@@ -8660,17 +9283,25 @@ ui <- dashboardPage(
           padding: 6px 14px;
           font-weight: 700;
         }
-        .ynow-lab-im-methods .shiny-options-group {
+        .ynow-lab-im-methods .shiny-options-group,
+        .ynow-lab-im-boards .shiny-options-group,
+        .ynow-lab-im-lb-scope .shiny-options-group {
           display: inline-flex;
           flex-wrap: wrap;
           flex-direction: row;
           align-items: center;
+          align-content: flex-start;
+          justify-content: flex-start;
           column-gap: 12px;
+          row-gap: 8px;
         }
-        .ynow-lab-im-methods .checkbox-inline {
+        .ynow-lab-im-methods .checkbox-inline,
+        .ynow-lab-im-boards .checkbox-inline,
+        .ynow-lab-im-lb-scope .radio-inline {
           margin-left: 0 !important;
           margin-right: 0 !important;
           padding-left: 18px;
+          vertical-align: middle;
         }
         .ynow-lab-im-quality .form-group {
           margin-bottom: 4px;
@@ -8687,21 +9318,23 @@ ui <- dashboardPage(
           width: 100% !important;
           max-width: 100%;
         }
-        .ynow-lab-im-eq-adr-row {
+        .ynow-lab-im-eq-gate-row,
+        .ynow-lab-im-us-listed-adr-row {
           margin-left: -8px;
           margin-right: -8px;
         }
-        .ynow-lab-im-eq-adr-row > [class*='col-'] {
+        .ynow-lab-im-eq-gate-row > [class*='col-'],
+        .ynow-lab-im-us-listed-adr-row > [class*='col-'] {
           padding-left: 8px;
           padding-right: 8px;
         }
-        /* 台股：不含 ADR 選項（僅美股有意義） */
+        /* 台股：隱藏美股專用列（上市固定＋含 ADR） */
         body.ynow-market-tw .ynow-us-only {
           display: none !important;
         }
-        body.ynow-market-tw .ynow-lab-im-eq-adr-row > .ynow-lab-im-eq-col {
-          width: 100% !important;
-          max-width: 100%;
+        /* 美股：隱藏台股板別（上市／上櫃／興櫃） */
+        body:not(.ynow-market-tw) .ynow-tw-only {
+          display: none !important;
         }
         .ynow-lab-im-eq-explain {
           margin: 2px 0 14px 0;
@@ -8937,6 +9570,8 @@ ui <- dashboardPage(
           min-height: 108px;
           cursor: pointer;
         }
+        #ynow_funnel_verdict,
+        #ynow_funnel_risk,
         #ynow_funnel_ch1,
         #ynow_funnel_ch2,
         #ynow_funnel_ch3,
@@ -10817,32 +11452,132 @@ ui <- dashboardPage(
           font-size: 12px;
         }
 
-        /* Decision Checklist — institutional SOP wizard */
+        /* Decision SOP — compact coach on Decision Checklist */
+        .ynow-dc-sop--compact {
+          margin: 0 0 14px 0;
+          padding: 12px 14px;
+          background: #fafbfc;
+          border: 1px solid #e5e7eb;
+          border-radius: 8px;
+        }
+        .ynow-dc-sop-head {
+          margin: 0 0 10px 0;
+        }
+        .ynow-dc-sop-title {
+          margin: 0 0 4px 0;
+          font-size: 15px;
+          font-weight: 700;
+          color: #1f2937;
+        }
         .ynow-dc-sop-intro {
-          font-size: 13px;
-          line-height: 1.55;
-          color: #444;
-          margin: 0 0 12px 0;
+          font-size: 12.5px;
+          line-height: 1.45;
+          color: #6b7280;
+          margin: 0;
+        }
+        .ynow-dc-sop-reloc-note {
+          font-size: 12.5px;
+          line-height: 1.45;
+          color: #6b7280;
+          margin: 0 0 14px 0;
+          padding: 8px 10px;
+          background: #f8fafc;
+          border-left: 3px solid #94a3b8;
+          border-radius: 4px;
         }
         .ynow-dc-sop-steps {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 10px;
           margin: 0;
-          padding-left: 22px;
+          padding: 0;
+        }
+        @media (max-width: 991px) {
+          .ynow-dc-sop-steps {
+            grid-template-columns: 1fr;
+          }
         }
         .ynow-dc-sop-step {
-          margin: 0 0 16px 0;
+          margin: 0;
           padding: 10px 12px;
-          background: #fffdf8;
-          border: 1px solid #f0e6d2;
+          background: #fff;
+          border: 1px solid #e5e7eb;
           border-radius: 6px;
-          list-style: decimal;
+          list-style: none;
         }
-        .ynow-dc-sop-step h5 {
+        .ynow-dc-sop-step-top {
+          display: flex;
+          align-items: center;
+          gap: 8px;
           margin: 0 0 8px 0;
-          font-size: 14px;
+        }
+        .ynow-dc-sop-step-num {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          background: #1f2937;
+          color: #fff;
+          font-size: 11px;
           font-weight: 700;
+          flex: 0 0 auto;
+        }
+        .ynow-dc-sop-step-title {
+          font-size: 13px;
+          font-weight: 700;
+          color: #111827;
+          line-height: 1.3;
+        }
+        .ynow-dc-sop-step-body {
+          margin: 0 0 8px 0;
+        }
+        .ynow-dc-sop-chips {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+        }
+        .ynow-dc-sop-chip {
+          display: inline-block;
+          font-size: 11.5px;
+          line-height: 1.3;
+          color: #374151;
+          background: #f3f4f6;
+          border-radius: 999px;
+          padding: 3px 8px;
+        }
+        .ynow-dc-sop-step .checkbox {
+          margin: 0;
+        }
+        .ynow-dc-sop-step .checkbox label {
+          font-size: 12.5px;
+          font-weight: 500;
+          color: #1f2937;
+        }
+        .ynow-dc-sop-banner {
+          margin-top: 10px;
+          padding: 8px 10px;
+          border-radius: 6px;
+          font-size: 12.5px;
+          font-weight: 600;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .ynow-dc-sop-banner.is-locked {
+          background: #fef2f2;
+          color: #b91c1c;
+          border-left: 3px solid #b91c1c;
+        }
+        .ynow-dc-sop-banner.is-unlocked {
+          background: #ecfdf5;
+          color: #047857;
+          border-left: 3px solid #047857;
         }
         .ynow-sop-verdict-locked {
           border-left: 4px solid #6c757d;
+          margin-top: 0;
         }
 
         /* Decision Checklist — summary on top; theme items side-by-side */
@@ -11016,6 +11751,7 @@ ui <- dashboardPage(
         .ynow-bt-hfv-controls .checkbox-inline {
           margin-top: 0;
           margin-bottom: 0;
+          margin-left: 0 !important;
           min-height: 18px;
           padding-left: 0;
         }
@@ -11755,14 +12491,14 @@ ui <- dashboardPage(
                                "比對附註標題、重點摘要與全文（不區分大小寫）；空白＝顯示全部。"
                              ),
                              actionButton(
-                               "lab_sec_fetch", "抓取財報附註",
+                               "lab_sec_fetch", "擷取財報附註",
                                class = "btn-success btn-block",
                                icon = icon("download"),
                                style = "font-weight:bold;"
                              ),
                              tags$p(
                                style = "margin-top:10px; color:#888; font-size:12px;",
-                               "提示：擷取需向 SEC 逐條抓取附註，約需數秒。"
+                               "提示：需向 SEC 逐條擷取附註，約需數秒。"
                              )
                            ),
                            uiOutput("lab_sec_meta")
@@ -12091,8 +12827,8 @@ ui <- dashboardPage(
                          ),
                          box(
                            h4(tags$b("方法 2：景氣循環平滑法")),
-                           p(helpText("適用於航運、原物料等景氣循環股。系統將自動從現金流量表抓取歷史配息來平均。")),
-                           numericInput("mod_ddm-cycle_years", "抓取過去幾年平均？", value = 5, min = 1, max = 10, step = 0.01),
+                           p(helpText("適用於航運、原物料等景氣循環股。系統將自動從現金流量表擷取歷史配息來平均。")),
+                           numericInput("mod_ddm-cycle_years", "擷取過去幾年平均？", value = 5, min = 1, max = 10, step = 0.01),
                            actionButton("mod_ddm-calc_d0_average", "計算並套用平均 D0", class = "btn-primary"),
                            tags$br(),
                            htmlOutput("mod_ddm-txt_d0_avg_res")

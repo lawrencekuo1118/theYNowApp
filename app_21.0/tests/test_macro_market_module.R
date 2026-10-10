@@ -151,7 +151,8 @@ for (k in c(
   "macro_index_name_gspc", "macro_index_name_ixic", "macro_index_name_dji",
   "macro_index_name_sox", "macro_index_name_twii", "macro_index_name_twoii",
   "macro_index_name_0050",
-  "macro_index_chart_hint", "macro_index_chart_empty",
+  "macro_index_chart_hint", "macro_ynow_index_chart_hint",
+  "macro_index_chart_empty",
   "macro_index_chart_error",
   "macro_own_index_overlay_label", "macro_own_index_overlay_hint",
   "macro_own_index_overlay_yaxis",
@@ -195,6 +196,14 @@ check("zh TW labels no simplified", {
 })
 check("en chart hint", grepl("Click an index box", ui_str("macro_index_chart_hint", "en"), fixed = TRUE))
 check("zh chart hint", grepl("點選指數方塊", ui_str("macro_index_chart_hint", "zh-TW"), fixed = TRUE))
+check(
+  "en lite YNOW hint",
+  grepl("Click YNOW / TYNOW", ui_str("macro_ynow_index_chart_hint", "en"), fixed = TRUE)
+)
+check(
+  "zh lite YNOW hint",
+  grepl("點選 YNOW／TYNOW", ui_str("macro_ynow_index_chart_hint", "zh-TW"), fixed = TRUE)
+)
 
 for (k in c(
   "macro_beta_title", "macro_beta_warn_title", "macro_beta_warn_body",
@@ -381,7 +390,12 @@ check("bubble chapter has no duplicate theme menu", {
   !grepl('ns("bubble_theme_key")', bub_ui, fixed = TRUE) &&
     grepl("bubble_shared_pick_status", bub_ui, fixed = TRUE)
 })
-check("no Lite-only combined menu", !grepl("ynow-lite-only", txt, fixed = TRUE))
+check("no Lite-only combined Industry/Concept menu", {
+  !grepl("ynow-lite-only[^\n]*Industry / concept", txt) &&
+    !grepl("Industry / concept[^\n]*ynow-lite-only", txt) &&
+    grepl("ynow_macro_ynow_index_hint", txt, fixed = TRUE) &&
+    grepl("ynow-lite-only", txt, fixed = TRUE)
+})
 check("click specs helper", grepl("macro_click_index_specs", txt, fixed = TRUE))
 check("KPI uses click specs by market", grepl("macro_click_index_specs(.mode())", txt, fixed = TRUE))
 check("click validates against market catalog", grepl("macro_click_index_specs(.mode())", txt, fixed = TRUE))
@@ -466,8 +480,14 @@ check("hint above Rf", {
   pos_rf <- regexpr("rf_signal_row", txt, fixed = TRUE)[1]
   is.finite(pos_hint) && pos_hint > 0 && pos_hint < pos_rf
 })
-check("chart slot is full-only", grepl("ynow-macro-index-hist ynow-full-only", txt, fixed = TRUE))
-check("hint is full-only", grepl("ynow-macro-hint ynow-full-only", txt, fixed = TRUE))
+check("chart slot shared with Lite YNOW expand", {
+  pos <- regexpr('id = "ynow_macro_index_hist"', txt, fixed = TRUE)[1]
+  chunk <- if (pos > 0) substr(txt, pos, min(nchar(txt), pos + 180)) else ""
+  grepl("ynow-macro-index-hist", chunk, fixed = TRUE) &&
+    !grepl("ynow-full-only", chunk, fixed = TRUE)
+})
+check("board hint is full-only", grepl('id = "ynow_macro_index_hint"', txt, fixed = TRUE) &&
+  grepl("ynow-macro-hint ynow-full-only", txt, fixed = TRUE))
 check("lite gate on click", grepl(".is_lite", txt, fixed = TRUE) && grepl("lite_mode_rv", txt, fixed = TRUE))
 check("click handler toggles same index closed", {
   start <- regexpr("observeEvent(input$index_click", txt, fixed = TRUE)[1]
@@ -500,8 +520,21 @@ check("locale dropped rf note wiring", !grepl("ynow_macro_rf_note", ui_src, fixe
 check("locale dropped rf note sentence", !grepl("Same live Rf path as CAPM", ui_src, fixed = TRUE))
 
 ui_css <- ui_src
-check("lite CSS hides chart slot", grepl("body.ynow-lite #ynow_macro_index_hist", ui_css, fixed = TRUE))
-check("lite CSS disables clickable boxes", grepl("body.ynow-lite .ynow-macro-kpi--clickable", ui_css, fixed = TRUE))
+check("lite CSS keeps chart slot for YNOW expand", !grepl("body.ynow-lite #ynow_macro_index_hist", ui_css, fixed = TRUE))
+check(
+  "lite CSS disables board clickables only",
+  grepl("body.ynow-lite .ynow-macro-kpi--clickable:not(.ynow-macro-kpi--ynow)", ui_css, fixed = TRUE)
+)
+check("hist panel not Full-only", {
+  pos <- regexpr('id = "ynow_macro_index_hist"', txt, fixed = TRUE)[1]
+  chunk <- if (pos > 0) substr(txt, pos, min(nchar(txt), pos + 180)) else ""
+  grepl("ynow-macro-index-hist", chunk, fixed = TRUE) &&
+    !grepl("ynow-full-only", chunk, fixed = TRUE)
+})
+check("lite YNOW hint present", grepl("ynow_macro_ynow_index_hint", txt, fixed = TRUE) &&
+  grepl("ynow-lite-only", txt, fixed = TRUE))
+check("own KPI clickable in Lite", grepl("ynow-macro-kpi--ynow ynow-macro-kpi--clickable", txt, fixed = TRUE))
+check("lite index_click accepts own only", grepl("Lite: only YNOW / TYNOW expands", txt, fixed = TRUE))
 check("TW market red-up green-down CSS", {
   grepl("body.ynow-market-tw .ynow-macro-up", ui_css, fixed = TRUE) &&
     grepl("body.ynow-market-tw .ynow-macro-down", ui_css, fixed = TRUE) &&

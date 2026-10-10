@@ -3,7 +3,8 @@
 # 啟發式預設；非學術標準。HFV 僅作否決工具，不作看漲依據。
 # 排版：檢核摘要滿版置頂；各主題項目左右並排；閘門順序體質 → 估值 → 模型 → 否決 → 紀律。
 # 僅 mandatory_suggest（預設勾選）項目開機預勾；其餘 opt-in。
-# 機構級 SOP：三步確認（SGR／敏感度／財報品質）+ 強制閘門通過後，才解鎖 YNOW Buy/Sell/Hold。
+# Decision SOP：精簡三勾確認（SGR／敏感度／品質）+ 強制閘門通過後解鎖 YNOW 結論。
+# SOP 面板掛在決策檢核頁頂部；YNOW 結論依 SOP／強制閘門解鎖。
 # Lite：側欄隱藏（ynow_ui.R body.ynow-lite）。
 # =========================================================================
 
@@ -228,54 +229,81 @@
   )
 }
 
+#' Compact Decision SOP panel (mounted on Decision Checklist).
 .dc_sop_wizard_ui <- function() {
-  tagList(
+  tags$div(
+    class = "ynow-dc-sop ynow-dc-sop--compact",
+    id = "ynow_dc_sop_panel",
     tags$div(
-      class = "ynow-dc-sop",
+      class = "ynow-dc-sop-head",
+      tags$h4(
+        class = "ynow-dc-sop-title",
+        tags$span(id = "ynow_dc_box_sop", .dc_str("dc_box_sop", "en"))
+      ),
       tags$p(
         id = "ynow_dc_sop_intro",
         class = "ynow-dc-sop-intro",
         .dc_str("dc_sop_intro", "en")
-      ),
-      tags$ol(
-        class = "ynow-dc-sop-steps",
-        tags$li(
-          class = "ynow-dc-sop-step",
-          `data-sop-step` = "sgr",
-          tags$h5(tags$span(id = "ynow_dc_sop_step1_title", .dc_str("dc_sop_step1_title", "en"))),
-          uiOutput("dc_sop_step_sgr_body"),
-          checkboxInput(
-            "sop_ack_sgr",
-            label = tags$span(id = "ynow_dc_sop_ack_sgr_label", .dc_str("dc_sop_ack_sgr", "en")),
-            value = FALSE
-          )
+      )
+    ),
+    tags$div(
+      class = "ynow-dc-sop-steps",
+      tags$div(
+        class = "ynow-dc-sop-step",
+        `data-sop-step` = "sgr",
+        tags$div(
+          class = "ynow-dc-sop-step-top",
+          tags$span(class = "ynow-dc-sop-step-num", "1"),
+          tags$span(id = "ynow_dc_sop_step1_title", class = "ynow-dc-sop-step-title",
+                    .dc_str("dc_sop_step1_title", "en"))
         ),
-        tags$li(
-          class = "ynow-dc-sop-step",
-          `data-sop-step` = "sensitivity",
-          tags$h5(tags$span(id = "ynow_dc_sop_step2_title", .dc_str("dc_sop_step2_title", "en"))),
-          uiOutput("dc_sop_step_sens_body"),
-          checkboxInput(
-            "sop_ack_sensitivity",
-            label = tags$span(id = "ynow_dc_sop_ack_sens_label", .dc_str("dc_sop_ack_sensitivity", "en")),
-            value = FALSE
-          )
-        ),
-        tags$li(
-          class = "ynow-dc-sop-step",
-          `data-sop-step` = "quality",
-          tags$h5(tags$span(id = "ynow_dc_sop_step3_title", .dc_str("dc_sop_step3_title", "en"))),
-          uiOutput("dc_sop_step_quality_body"),
-          checkboxInput(
-            "sop_ack_quality",
-            label = tags$span(id = "ynow_dc_sop_ack_qual_label", .dc_str("dc_sop_ack_quality", "en")),
-            value = FALSE
-          )
+        uiOutput("dc_sop_step_sgr_body"),
+        checkboxInput(
+          "sop_ack_sgr",
+          label = tags$span(id = "ynow_dc_sop_ack_sgr_label", .dc_str("dc_sop_ack_sgr", "en")),
+          value = FALSE
         )
       ),
-      uiOutput("dc_sop_unlock_banner")
-    )
+      tags$div(
+        class = "ynow-dc-sop-step",
+        `data-sop-step` = "sensitivity",
+        tags$div(
+          class = "ynow-dc-sop-step-top",
+          tags$span(class = "ynow-dc-sop-step-num", "2"),
+          tags$span(id = "ynow_dc_sop_step2_title", class = "ynow-dc-sop-step-title",
+                    .dc_str("dc_sop_step2_title", "en"))
+        ),
+        uiOutput("dc_sop_step_sens_body"),
+        checkboxInput(
+          "sop_ack_sensitivity",
+          label = tags$span(id = "ynow_dc_sop_ack_sens_label", .dc_str("dc_sop_ack_sensitivity", "en")),
+          value = FALSE
+        )
+      ),
+      tags$div(
+        class = "ynow-dc-sop-step",
+        `data-sop-step` = "quality",
+        tags$div(
+          class = "ynow-dc-sop-step-top",
+          tags$span(class = "ynow-dc-sop-step-num", "3"),
+          tags$span(id = "ynow_dc_sop_step3_title", class = "ynow-dc-sop-step-title",
+                    .dc_str("dc_sop_step3_title", "en"))
+        ),
+        uiOutput("dc_sop_step_quality_body"),
+        checkboxInput(
+          "sop_ack_quality",
+          label = tags$span(id = "ynow_dc_sop_ack_qual_label", .dc_str("dc_sop_ack_quality", "en")),
+          value = FALSE
+        )
+      )
+    ),
+    uiOutput("dc_sop_unlock_banner")
   )
+}
+
+#' Public mount point for Decision Checklist.
+decision_sop_panel_ui <- function() {
+  .dc_sop_wizard_ui()
 }
 
 decision_checklist_tab_body_ui <- function() {
@@ -294,19 +322,8 @@ decision_checklist_tab_body_ui <- function() {
     fluidRow(
       column(
         width = 12,
-        box(
-          width = 12, status = "warning", solidHeader = TRUE,
-          title = tagList(
-            icon("user-shield"),
-            tags$span(id = "ynow_dc_box_sop", .dc_str("dc_box_sop", "en"))
-          ),
-          .dc_sop_wizard_ui()
-        )
-      )
-    ),
-    fluidRow(
-      column(
-        width = 12,
+        # Decision SOP returns here — unlocks YNOW verdict after three acks + gates.
+        decision_sop_panel_ui(),
         box(
           width = 12, status = "success", solidHeader = TRUE,
           title = tagList(
@@ -709,6 +726,10 @@ decision_checklist_server <- function(
     })
   }
 
+  .sop_chip <- function(label) {
+    tags$span(class = "ynow-dc-sop-chip", label)
+  }
+
   output$dc_sop_step_sgr_body <- renderUI({
     loc <- tryCatch(ui_locale(), error = function(e) "en")
     ctx <- live_ctx()
@@ -718,15 +739,11 @@ decision_checklist_server <- function(
     }
     tags$div(
       class = "ynow-dc-sop-step-body",
-      tags$p(
-        style = "font-size:13px;line-height:1.55;margin:0 0 8px 0;",
-        ui_str("dc_sop_step1_lead", loc)
-      ),
-      tags$ul(
-        style = "margin:0;padding-left:18px;font-size:13px;line-height:1.55;",
-        tags$li(sprintf(ui_str("dc_sop_live_g_near", loc), fmt(ctx$g_near_pct))),
-        tags$li(sprintf(ui_str("dc_sop_live_sgr", loc), fmt(ctx$sgr_pct))),
-        tags$li(sprintf(ui_str("dc_sop_live_wacc", loc), fmt(ctx$wacc_pct)))
+      tags$div(
+        class = "ynow-dc-sop-chips",
+        .sop_chip(sprintf(ui_str("dc_sop_live_g_near", loc), fmt(ctx$g_near_pct))),
+        .sop_chip(sprintf(ui_str("dc_sop_live_sgr", loc), fmt(ctx$sgr_pct))),
+        .sop_chip(sprintf(ui_str("dc_sop_live_wacc", loc), fmt(ctx$wacc_pct)))
       )
     )
   })
@@ -744,24 +761,16 @@ decision_checklist_server <- function(
     }
     tags$div(
       class = "ynow-dc-sop-step-body",
-      tags$p(
-        style = "font-size:13px;line-height:1.55;margin:0 0 8px 0;",
-        ui_str("dc_sop_step2_lead", loc)
-      ),
-      tags$ul(
-        style = "margin:0;padding-left:18px;font-size:13px;line-height:1.55;",
-        tags$li(sprintf(
+      tags$div(
+        class = "ynow-dc-sop-chips",
+        .sop_chip(sprintf(
           ui_str("dc_sop_live_spread", loc),
           fmt_pp(suppressWarnings(as.numeric(meta$spread_pp)[1]))
         )),
-        tags$li(sprintf(
+        .sop_chip(sprintf(
           ui_str("dc_sop_live_tv_weight", loc),
           fmt_pct(suppressWarnings(as.numeric(meta$tv_weight_pct)[1]))
         ))
-      ),
-      tags$p(
-        style = "font-size:12px;color:#6c757d;margin:8px 0 0 0;",
-        ui_str("dc_sop_step2_matrix_hint", loc)
       )
     )
   })
@@ -778,15 +787,11 @@ decision_checklist_server <- function(
     fmt_qsc <- if (is.finite(qsc)) sprintf("%.0f", qsc) else "—"
     tags$div(
       class = "ynow-dc-sop-step-body",
-      tags$p(
-        style = "font-size:13px;line-height:1.55;margin:0 0 8px 0;",
-        ui_str("dc_sop_step3_lead", loc)
-      ),
-      tags$ul(
-        style = "margin:0;padding-left:18px;font-size:13px;line-height:1.55;",
-        tags$li(sprintf(ui_str("dc_sop_live_fscore", loc), fmt_fs)),
-        tags$li(sprintf(ui_str("dc_sop_live_qoe", loc), fmt_qoe, fmt_qsc)),
-        tags$li(sprintf(ui_str("dc_sop_live_red_flags", loc), if (is.finite(red_n)) red_n else "—"))
+      tags$div(
+        class = "ynow-dc-sop-chips",
+        .sop_chip(sprintf(ui_str("dc_sop_live_fscore", loc), fmt_fs)),
+        .sop_chip(sprintf(ui_str("dc_sop_live_qoe", loc), fmt_qoe, fmt_qsc)),
+        .sop_chip(sprintf(ui_str("dc_sop_live_red_flags", loc), if (is.finite(red_n)) red_n else "—"))
       )
     )
   })
@@ -794,9 +799,8 @@ decision_checklist_server <- function(
   output$dc_sop_unlock_banner <- renderUI({
     loc <- tryCatch(ui_locale(), error = function(e) "en")
     st <- sop_state()
-    col <- if (isTRUE(st$unlocked)) "#1e7e34" else "#c0392b"
-    bg <- if (isTRUE(st$unlocked)) "#eafaf1" else "#fdecea"
-    msg <- if (isTRUE(st$unlocked)) {
+    unlocked <- isTRUE(st$unlocked)
+    msg <- if (unlocked) {
       ui_str("dc_sop_unlocked", loc)
     } else {
       switch(
@@ -808,14 +812,9 @@ decision_checklist_server <- function(
       )
     }
     tags$div(
-      class = "ynow-dc-sop-banner",
-      style = paste0(
-        "margin-top:12px;padding:10px 12px;border-left:4px solid ", col,
-        ";background:", bg, ";font-size:13px;font-weight:600;color:", col, ";"
-      ),
-      icon(if (isTRUE(st$unlocked)) "lock-open" else "lock"),
-      " ",
-      msg
+      class = paste("ynow-dc-sop-banner", if (unlocked) "is-unlocked" else "is-locked"),
+      icon(if (unlocked) "lock-open" else "lock"),
+      tags$span(msg)
     )
   })
 

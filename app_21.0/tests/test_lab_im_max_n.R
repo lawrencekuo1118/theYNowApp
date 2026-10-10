@@ -90,6 +90,7 @@ scored <- data.frame(
   upside_cagr_pct = c(40, 30, 20, NA, 10),
   f_score = c(8, 7, 5, 9, 8),
   quality_flag = c(1, 1, 1, 1, 0),
+  n_fs_alerts = c(0L, 2L, 0L, 0L, 0L),
   industry_label = rep("Tech", 5),
   stringsAsFactors = FALSE
 )
@@ -104,6 +105,11 @@ check("no pad tickers", identical(cap10$ticker, c("A", "B", "E")))
 # eq_only drops E (quality_flag 0)
 cap_eq <- lab_cap_detail_display(scored, display_n = 10L, eq_only = TRUE, gate_only = TRUE)
 check("eq gate drops E", identical(cap_eq$ticker, c("A", "B")))
+# no_alert drops B (n_fs_alerts > 0)
+cap_na <- lab_cap_detail_display(
+  scored, display_n = 10L, eq_only = FALSE, gate_only = TRUE, no_alert = TRUE
+)
+check("no_alert drops B", identical(cap_na$ticker, c("A", "E")))
 
 ch <- lab_im_max_n_select_choices()
 check(

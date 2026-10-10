@@ -3,7 +3,7 @@
 #
 # 宇宙依市場模式：美股＝Nasdaq／NYSE 主要上市（lab_us_universe.R；S&P GICS 疊加）；台股＝上市／上櫃／興櫃（lab_tw_universe.R；績優候選不含興櫃）。
 # 績優原則：在 Piotroski 高門檻（F-Score≥7；不含盈餘品質）後，選「模型合理價相對現價」、
-# 並依 App 預設預測年數 n（APP_DEFAULTS$years）換算年化漲幅最大者。
+# 並依各標的財報推算之預測年數 n（生命週期建議；非一體適用 APP_DEFAULTS$years）換算年化漲幅最大者。
 # 「宇宙檔數（N）」（lab_im_max_n；預設 25）＝分析後明細／排行最終顯示上限（非 Yahoo 撈取檔數）。
 # 撈取／評估檔數＝lab_resolve_im_eval_n(N)（通常大於 N）；明細＝合格池取前 N，不足不湊滿。
 # 盈餘品質／Piotroski 高門檻勾選套用於排行榜與明細顯示池（同一合格定義）。
@@ -138,7 +138,7 @@ lab_company_display_name <- function(ticker, yahoo_name = NULL) {
   "—"
 }
 
-#' 模型預測年數（與 App DCF／預設 n 對齊）
+#' App 預設預測年數（僅作缺財報／缺生命週期時的後備）
 lab_model_horizon_years <- function() {
   n <- tryCatch(
     suppressWarnings(as.integer(APP_DEFAULTS$years %||% 5L)[1]),
@@ -157,10 +157,13 @@ lab_annualized_upside_pct <- function(fv, price, n_years = NULL) {
   ((fv / px)^(1 / n) - 1) * 100
 }
 
-#' 自 Yahoo Summary 取市值、現價與公司全稱
+#' 自 Yahoo Summary 取市值、現價、β 與公司全稱
 lab_fetch_summary_metrics <- function(ticker) {
   tk <- toupper(trimws(as.character(ticker)[1]))
-  out <- list(market_cap = NA_real_, price = NA_real_, company_name = NA_character_)
+  out <- list(
+    market_cap = NA_real_, price = NA_real_, beta = NA_real_,
+    company_name = NA_character_
+  )
   if (!nzchar(tk)) return(out)
   # Prefer fast-tier memoised summary (15m); fall back to uncached only if missing.
   sum_df <- tryCatch({
@@ -181,10 +184,165 @@ lab_fetch_summary_metrics <- function(ticker) {
   if (length(idx_p) > 0) {
     out$price <- parse_financial_number(sum_df$Value[idx_p[1]])[1]
   }
+  idx_b <- grep("^Beta \\(5Y Monthly\\)$|^Beta$", sum_df$Item, ignore.case = TRUE)
+  if (length(idx_b) > 0) {
+    out$beta <- parse_financial_number(sum_df$Value[idx_b[1]])[1]
+  }
   cname <- tryCatch(attr(sum_df, "company_name"), error = function(e) NULL)
   cname <- trimws(as.character(cname %||% "")[1])
   if (nzchar(cname)) out$company_name <- cname
   out
+}
+
+#' 依個股最新財報／β／生命週期推算實驗區 n、Ke、終值 g、近端 g1（勿一體適用 App 預設）
+#' @return list(n_years, ke_pct, g_pct, g1_pct, beta, beta_source, rf_pct, rm_pct,
+#'   lifecycle_stage, fund_sgr_pct, rev_cagr_pct)
+lab_resolve_ticker_params <- function(d_is, d_bs, d_cf,
+                                      industry_key = "",
+                                      beta = NA_real_,
+                                      rf_pct = NA_real_,
+                                      rm_pct = NA_real_,
+                                      ticker = "") {
+  key <- as.character(industry_key %||% "")[1]
+  tk <- toupper(trimws(as.character(ticker %||% "")[1]))
+  fallback_n <- lab_model_horizon_years()
+  fallback_ke <- tryCatch(lab_industry_ke_pct(key), error = function(e) 9)
+  if (!is.finite(fallback_ke) || fallback_ke <= 0) fallback_ke <- 9
+  fallback_g <- suppressWarnings(as.numeric(APP_DEFAULTS$sgr %||% 4)[1])
+  if (!is.finite(fallback_g)) fallback_g <- 4
+  fallback_g1 <- suppressWarnings(as.numeric(APP_DEFAULTS$custom_g %||% fallback_g)[1])
+  if (!is.finite(fallback_g1)) fallback_g1 <- fallback_g
+
+  rf <- suppressWarnings(as.numeric(rf_pct)[1])
+  if (!is.finite(rf)) {
+    rf <- tryCatch({
+      if (exists("cached_get_risk_free_rate", mode = "function")) {
+        suppressWarnings(as.numeric(cached_get_risk_free_rate())[1])
+      } else {
+        NA_real_
+      }
+    }, error = function(e) NA_real_)
+  }
+  if (!is.finite(rf)) {
+    rf <- suppressWarnings(as.numeric(APP_DEFAULTS$capm_rf %||% 4)[1])
+  }
+  if (!is.finite(rf)) rf <- 4
+
+  b <- suppressWarnings(as.numeric(beta)[1])
+  beta_src <- "ticker"
+  if (!is.finite(b) || b <= 0) {
+    ind <- tryCatch(industry_standards[[key]], error = function(e) NULL)
+    b <- if (!is.null(ind) && !is.null(ind$beta_avg)) {
+      suppressWarnings(as.numeric(ind$beta_avg)[1])
+    } else {
+      NA_real_
+    }
+    beta_src <- "industry"
+  }
+  if (!is.finite(b) || b <= 0) {
+    b <- suppressWarnings(as.numeric(APP_DEFAULTS$capm_beta %||% 1)[1])
+    beta_src <- "default"
+  }
+  if (!is.finite(b) || b <= 0) {
+    b <- 1
+    beta_src <- "default"
+  }
+
+  rm <- suppressWarnings(as.numeric(rm_pct)[1])
+  if (!is.finite(rm)) {
+    ind <- tryCatch(industry_standards[[key]], error = function(e) NULL)
+    rm <- if (!is.null(ind) && !is.null(ind$rm_avg)) {
+      suppressWarnings(as.numeric(ind$rm_avg)[1])
+    } else {
+      NA_real_
+    }
+  }
+  if (!is.finite(rm) || rm < rf + 2) {
+    rm <- suppressWarnings(as.numeric(APP_DEFAULTS$capm_rm %||% (rf + 5))[1])
+  }
+  if (!is.finite(rm) || rm < rf + 2) rm <- rf + 5
+
+  ke_pct <- rf + b * (rm - rf)
+  if (!is.finite(ke_pct) || ke_pct <= 0) ke_pct <- fallback_ke
+
+  life <- tryCatch({
+    if (exists("classify_lifecycle_result", mode = "function")) {
+      classify_lifecycle_result(
+        industry_key = key,
+        ticker = tk,
+        d_is = d_is,
+        d_bs = d_bs,
+        d_cf = d_cf,
+        wacc_pct = ke_pct,
+        selected_stage = "auto",
+        locale = "zh-TW"
+      )
+    } else {
+      NULL
+    }
+  }, error = function(e) NULL)
+  stage <- if (!is.null(life)) {
+    as.character(life$autoDetectedStage %||% NA_character_)[1]
+  } else {
+    NA_character_
+  }
+  n <- if (!is.null(life) && is.finite(suppressWarnings(as.numeric(life$recommendedForecastYears)[1]))) {
+    as.integer(life$recommendedForecastYears)[1]
+  } else if (exists("recommended_forecast_years_for_stage", mode = "function")) {
+    suppressWarnings(as.integer(recommended_forecast_years_for_stage(stage))[1])
+  } else {
+    NA_integer_
+  }
+  if (!is.finite(n) || n < 1L) n <- fallback_n
+  n <- as.integer(max(3L, min(15L, n)))
+
+  fund_sgr <- tryCatch({
+    if (exists("calc_fundamental_sgr_pct", mode = "function")) {
+      calc_fundamental_sgr_pct(d_is, d_bs, d_cf)
+    } else {
+      NA_real_
+    }
+  }, error = function(e) NA_real_)
+  long_cap <- tryCatch({
+    if (exists("LIFECYCLE_CONFIG", inherits = TRUE)) {
+      suppressWarnings(as.numeric(LIFECYCLE_CONFIG$terminal$long_run_nominal_g_cap_pct %||% 4.5)[1])
+    } else {
+      4.5
+    }
+  }, error = function(e) 4.5)
+  if (!is.finite(long_cap) || long_cap <= 0) long_cap <- 4.5
+  g_pct <- if (is.finite(fund_sgr)) fund_sgr else fallback_g
+  g_ceil <- min(long_cap, ke_pct - 1.5)
+  if (!is.finite(g_ceil) || g_ceil < 0.5) g_ceil <- 0.5
+  g_pct <- max(0.5, min(g_pct, g_ceil))
+  if (!is.finite(g_pct)) g_pct <- min(fallback_g, g_ceil)
+
+  rev_cagr <- tryCatch({
+    if (exists("get_avg_growth", mode = "function") &&
+        exists("select_clean_metric_row", mode = "function") &&
+        !is.null(d_is) && is.data.frame(d_is)) {
+      get_avg_growth(select_clean_metric_row(d_is, "Total Revenue", include_ttm = FALSE))
+    } else {
+      NA_real_
+    }
+  }, error = function(e) NA_real_)
+  g1_pct <- if (is.finite(rev_cagr)) rev_cagr else fallback_g1
+  g1_pct <- max(1, min(g1_pct, 15))
+  if (!is.finite(g1_pct)) g1_pct <- fallback_g1
+
+  list(
+    n_years = as.integer(n),
+    ke_pct = round(as.numeric(ke_pct)[1], 2),
+    g_pct = round(as.numeric(g_pct)[1], 2),
+    g1_pct = round(as.numeric(g1_pct)[1], 2),
+    beta = round(as.numeric(b)[1], 3),
+    beta_source = as.character(beta_src)[1],
+    rf_pct = round(as.numeric(rf)[1], 2),
+    rm_pct = round(as.numeric(rm)[1], 2),
+    lifecycle_stage = if (is.na(stage) || !nzchar(stage)) NA_character_ else stage,
+    fund_sgr_pct = if (is.finite(fund_sgr)) round(fund_sgr, 2) else NA_real_,
+    rev_cagr_pct = if (is.finite(rev_cagr)) round(rev_cagr, 2) else NA_real_
+  )
 }
 
 #' 宇宙檔數 N："all"／"全部" → 不設上限；空／自訂未填 → 預設 25
@@ -288,14 +446,16 @@ lab_resolve_im_eval_n <- function(display_n, lo = 1L, hi = 500L) {
 
 #' Cap detail rows from the qualified pool — never pad to fill display_n
 #'
-#' Qualified = lab_leaderboard_pool (finite annualized upside; optional F≥7 / EQ).
+#' Qualified = lab_leaderboard_pool (finite annualized upside; optional F≥7 / EQ / no FS alerts).
 #' Returns at most display_n rows; if fewer qualify, returns that shorter set.
 lab_cap_detail_display <- function(merged_df, display_n,
-                                   eq_only = FALSE, gate_only = TRUE) {
+                                   eq_only = FALSE, gate_only = TRUE,
+                                   no_alert = FALSE) {
   pool <- lab_leaderboard_pool(
     merged_df,
     eq_only = eq_only,
-    gate_only = gate_only
+    gate_only = gate_only,
+    no_alert = no_alert
   )
   if (is.null(pool) || !is.data.frame(pool) || nrow(pool) == 0L) {
     return(pool)
@@ -787,17 +947,33 @@ lab_industry_ke_pct <- function(industry_key) {
 }
 
 #' 實驗區簡化合理價／股（對齊產業主方法；非完整 UI 估值引擎）
+#' n／Ke／g／g1 預設由個股財報＋β＋生命週期推算（lab_resolve_ticker_params）；
+#' 僅在缺財報時退回 App／產業預設。可傳 n_years／ke_pct／g_pct／g1_pct／beta 覆寫。
 lab_estimate_fv_per_share <- function(method, industry_key, d_is, d_bs, d_cf,
-                                      price = NA_real_, market_cap = NA_real_) {
+                                      price = NA_real_, market_cap = NA_real_,
+                                      beta = NA_real_, ticker = "",
+                                      n_years = NULL, ke_pct = NULL,
+                                      g_pct = NULL, g1_pct = NULL) {
   method <- as.character(method %||% "pb")[1]
   key <- as.character(industry_key %||% "")[1]
-  n <- lab_model_horizon_years()
-  ke_pct <- lab_industry_ke_pct(key)
+  params <- tryCatch(
+    lab_resolve_ticker_params(
+      d_is, d_bs, d_cf,
+      industry_key = key,
+      beta = beta,
+      ticker = ticker
+    ),
+    error = function(e) NULL
+  )
+  n <- suppressWarnings(as.integer(n_years %||% params$n_years %||% lab_model_horizon_years())[1])
+  if (!is.finite(n) || n < 1L) n <- lab_model_horizon_years()
+  ke_pct <- suppressWarnings(as.numeric(ke_pct %||% params$ke_pct %||% lab_industry_ke_pct(key))[1])
+  if (!is.finite(ke_pct) || ke_pct <= 0) ke_pct <- lab_industry_ke_pct(key)
   ke <- ke_pct / 100
-  g_pct <- suppressWarnings(as.numeric(APP_DEFAULTS$sgr %||% 4)[1])
+  g_pct <- suppressWarnings(as.numeric(g_pct %||% params$g_pct %||% APP_DEFAULTS$sgr %||% 4)[1])
   if (!is.finite(g_pct)) g_pct <- 4
   g <- max(0.005, min(g_pct / 100, ke - 0.015))
-  g1_pct <- suppressWarnings(as.numeric(APP_DEFAULTS$custom_g %||% g_pct)[1])
+  g1_pct <- suppressWarnings(as.numeric(g1_pct %||% params$g1_pct %||% APP_DEFAULTS$custom_g %||% g_pct)[1])
   if (!is.finite(g1_pct)) g1_pct <- g_pct
   g1 <- max(0.01, min(g1_pct / 100, 0.15))
 
@@ -1007,9 +1183,16 @@ lab_estimate_fv_per_share <- function(method, industry_key, d_is, d_bs, d_cf,
   list(
     fv = suppressWarnings(as.numeric(fv)[1]),
     method = method,
-    n_years = n,
+    n_years = as.integer(n),
     note = note,
-    ke_pct = ke_pct
+    ke_pct = ke_pct,
+    g_pct = g_pct,
+    g1_pct = g1_pct,
+    beta = if (!is.null(params)) params$beta else NA_real_,
+    beta_source = if (!is.null(params)) params$beta_source else NA_character_,
+    lifecycle_stage = if (!is.null(params)) params$lifecycle_stage else NA_character_,
+    fund_sgr_pct = if (!is.null(params)) params$fund_sgr_pct else NA_real_,
+    rev_cagr_pct = if (!is.null(params)) params$rev_cagr_pct else NA_real_
   )
 }
 
@@ -1179,8 +1362,10 @@ lab_us_quality_candidates <- function() {
   split(tks, keys)
 }
 
-#' 依市場模式回傳績優候選（美股主要上市／台股上市＋上櫃；不含興櫃）
-lab_quality_candidates_for_market <- function(mode = get_market_mode()) {
+#' 依市場模式回傳績優候選（美股主要上市／台股依 boards）
+#' @param boards TW only：TWSE／TPEX／ESB（預設上市＋上櫃）
+lab_quality_candidates_for_market <- function(mode = get_market_mode(),
+                                              boards = c("TWSE", "TPEX")) {
   mode <- if (exists("normalize_market_mode", mode = "function")) {
     normalize_market_mode(mode)
   } else {
@@ -1188,14 +1373,64 @@ lab_quality_candidates_for_market <- function(mode = get_market_mode()) {
     if (identical(m, "TW") || identical(m, "TWN") || identical(m, "TAIWAN")) "TW" else "US"
   }
   if (identical(mode, "TW") && exists("lab_tw_quality_candidates", mode = "function")) {
-    return(lab_tw_quality_candidates())
+    return(lab_tw_quality_candidates(boards = boards))
   }
   lab_us_quality_candidates()
 }
 
+#' Attach TW exchange／board columns onto a ticker frame (no-op for US)
+lab_attach_tw_exchange <- function(df) {
+  if (is.null(df) || !is.data.frame(df) || nrow(df) == 0L || !"ticker" %in% names(df)) {
+    return(df)
+  }
+  if (!exists("lookup_tw_universe_exchange", mode = "function")) return(df)
+  if (!"exchange" %in% names(df)) df$exchange <- NA_character_
+  miss <- is.na(df$exchange) | !nzchar(trimws(as.character(df$exchange)))
+  if (any(miss)) {
+    df$exchange[miss] <- vapply(
+      as.character(df$ticker[miss]),
+      function(tk) {
+        ex <- tryCatch(lookup_tw_universe_exchange(tk), error = function(e) "")
+        if (!nzchar(ex)) "" else ex
+      },
+      character(1)
+    )
+  }
+  if (exists("lab_tw_exchange_to_board", mode = "function")) {
+    df$board <- vapply(
+      as.character(df$exchange),
+      function(ex) lab_tw_exchange_to_board(ex),
+      character(1)
+    )
+  }
+  df
+}
+
+#' Filter a ticker frame by TW boards (TWSE／TPEX／ESB). Empty boards → empty frame.
+lab_filter_df_by_tw_boards <- function(df, boards = c("TWSE", "TPEX")) {
+  if (is.null(df) || !is.data.frame(df) || nrow(df) == 0L) return(df)
+  if (!exists("lab_normalize_tw_boards", mode = "function")) return(df)
+  boards <- lab_normalize_tw_boards(boards)
+  if (!length(boards)) return(df[0, , drop = FALSE])
+  df <- lab_attach_tw_exchange(df)
+  if (!"exchange" %in% names(df) && !"board" %in% names(df)) return(df)
+  keep <- if ("board" %in% names(df)) {
+    as.character(df$board) %in% boards
+  } else {
+    vapply(
+      as.character(df$exchange),
+      function(ex) isTRUE(lab_tw_exchange_in_boards(ex, boards)),
+      logical(1)
+    )
+  }
+  df[keep, , drop = FALSE]
+}
+
 #' 展開為一列一檔的產業×方法×候選表
 #' @param market_mode "US" | "TW"（預設讀取 get_market_mode）
-lab_build_industry_method_catalog <- function(market_mode = NULL) {
+#' @param boards TW only：TWSE／TPEX／ESB（預設上市＋上櫃）
+lab_build_industry_method_catalog <- function(market_mode = NULL,
+                                             boards = c("TWSE", "TPEX")) {
   mode <- if (!is.null(market_mode)) {
     if (exists("normalize_market_mode", mode = "function")) {
       normalize_market_mode(market_mode)
@@ -1209,7 +1444,7 @@ lab_build_industry_method_catalog <- function(market_mode = NULL) {
     "US"
   }
   defaults <- lab_industry_method_defaults()
-  cands <- lab_quality_candidates_for_market(mode)
+  cands <- lab_quality_candidates_for_market(mode, boards = boards)
   rows <- list()
   for (i in seq_len(nrow(defaults))) {
     key <- defaults$industry_key[[i]]
@@ -1282,6 +1517,10 @@ lab_build_industry_method_catalog <- function(market_mode = NULL) {
   } else if (is.data.frame(out) && nrow(out) > 0L) {
     out$is_adr <- FALSE
   }
+  # TW: attach exchange／board for 上市／上櫃／興櫃 filters
+  if (identical(mode, "TW") && is.data.frame(out) && nrow(out) > 0L) {
+    out <- lab_attach_tw_exchange(out)
+  }
   out
 }
 
@@ -1292,7 +1531,7 @@ lab_is_quality_stock <- function(f_score, quality_flag, min_score = 7L) {
   isTRUE(is.finite(fs) && fs >= as.numeric(min_score) && isTRUE(qf == 1))
 }
 
-#' 評估單一美股：F-Score 門檻＋產業主方法簡化合理價＋n 年年化漲幅
+#' 評估單一標的：F-Score 門檻＋產業主方法簡化合理價＋個股 n 年年化漲幅
 lab_evaluate_ticker_fscore <- function(ticker, industry_key = NULL, method = NULL) {
   tk <- toupper(trimws(as.character(ticker)[1]))
   n_yrs <- lab_model_horizon_years()
@@ -1301,13 +1540,19 @@ lab_evaluate_ticker_fscore <- function(ticker, industry_key = NULL, method = NUL
     ok = FALSE,
     f_score = NA_real_,
     quality_flag = NA_real_,
+    n_fs_alerts = NA_integer_,
     is_quality = FALSE,
     market_cap = NA_real_,
     price = NA_real_,
+    beta = NA_real_,
     fv = NA_real_,
     upside_total_pct = NA_real_,
     upside_cagr_pct = NA_real_,
     n_years = n_yrs,
+    ke_pct = NA_real_,
+    g_pct = NA_real_,
+    g1_pct = NA_real_,
+    lifecycle_stage = NA_character_,
     fv_note = NA_character_,
     company_type = NA_character_,
     company_name = NA_character_,
@@ -1322,10 +1567,11 @@ lab_evaluate_ticker_fscore <- function(ticker, industry_key = NULL, method = NUL
   }
 
   sm <- tryCatch(lab_fetch_summary_metrics(tk), error = function(e) {
-    list(market_cap = NA_real_, price = NA_real_, company_name = NA_character_)
+    list(market_cap = NA_real_, price = NA_real_, beta = NA_real_, company_name = NA_character_)
   })
   out$market_cap <- suppressWarnings(as.numeric(sm$market_cap)[1])
   out$price <- suppressWarnings(as.numeric(sm$price)[1])
+  out$beta <- suppressWarnings(as.numeric(sm$beta)[1])
   out$company_name <- lab_company_display_name(tk, sm$company_name)
 
   res <- tryCatch(cached_scrape_financials(tk), error = function(e) e)
@@ -1349,6 +1595,16 @@ lab_evaluate_ticker_fscore <- function(ticker, industry_key = NULL, method = NUL
   out$is_quality <- lab_is_quality_stock(out$f_score, out$quality_flag)
 
   ind_key <- as.character(industry_key %||% "")[1]
+  # 財報警訊：與 YNOW 漏斗相同定義（Schilit 警示 + 盈餘品質紅旗）
+  if (exists("collect_fraud_warnings", mode = "function")) {
+    warns <- tryCatch(
+      collect_fraud_warnings(d_cf, d_is, d_bs, industry_key = ind_key),
+      error = function(e) character(0)
+    )
+    out$n_fs_alerts <- as.integer(length(warns))
+  } else {
+    out$n_fs_alerts <- NA_integer_
+  }
   meth <- as.character(method %||% "")[1]
   if (!nzchar(meth)) meth <- "dcf"
 
@@ -1373,12 +1629,17 @@ lab_evaluate_ticker_fscore <- function(ticker, industry_key = NULL, method = NUL
   fv_res <- tryCatch(
     lab_estimate_fv_per_share(
       meth_fv, ind_key, d_is, d_bs, d_cf,
-      price = out$price, market_cap = out$market_cap
+      price = out$price, market_cap = out$market_cap,
+      beta = out$beta, ticker = tk
     ),
     error = function(e) list(fv = NA_real_, n_years = n_yrs, note = e$message)
   )
   out$fv <- suppressWarnings(as.numeric(fv_res$fv)[1])
   out$n_years <- suppressWarnings(as.integer(fv_res$n_years %||% n_yrs)[1])
+  out$ke_pct <- suppressWarnings(as.numeric(fv_res$ke_pct)[1])
+  out$g_pct <- suppressWarnings(as.numeric(fv_res$g_pct)[1])
+  out$g1_pct <- suppressWarnings(as.numeric(fv_res$g1_pct)[1])
+  out$lifecycle_stage <- as.character(fv_res$lifecycle_stage %||% NA_character_)[1]
   out$fv_note <- as.character(fv_res$note %||% "")[1]
   out$method_used <- meth_fv
   if (is.finite(out$fv) && is.finite(out$price) && out$price > 0) {
@@ -1442,6 +1703,7 @@ lab_screen_tickers_fscore <- function(tickers, progress_cb = NULL, max_n = Inf,
       ok = isTRUE(ev$ok),
       f_score = ev$f_score,
       quality_flag = ev$quality_flag,
+      n_fs_alerts = as.integer(ev$n_fs_alerts %||% NA_integer_),
       is_quality = isTRUE(ev$is_quality),
       is_quality_upside = isTRUE(ev$is_quality_upside),
       market_cap = ev$market_cap,
@@ -1461,7 +1723,8 @@ lab_screen_tickers_fscore <- function(tickers, progress_cb = NULL, max_n = Inf,
   }
   empty <- data.frame(
     ticker = character(0), ok = logical(0), f_score = numeric(0),
-    quality_flag = numeric(0), is_quality = logical(0),
+    quality_flag = numeric(0), n_fs_alerts = integer(0),
+    is_quality = logical(0),
     is_quality_upside = logical(0),
     market_cap = numeric(0),
     price = numeric(0), fv = numeric(0),
@@ -1483,6 +1746,7 @@ lab_merge_catalog_scores <- function(catalog, scores = NULL,
                                      industry_filter = character(0),
                                      eq_only = FALSE,
                                      gate_only = FALSE,
+                                     no_alert = FALSE,
                                      quality_only = FALSE,
                                      evaluated_only = FALSE) {
   # quality_only：舊「只看通過」別名 → Piotroski 高門檻（F-Score≥7；不含盈餘品質）
@@ -1492,6 +1756,7 @@ lab_merge_catalog_scores <- function(catalog, scores = NULL,
     d$ok <- NA
     d$f_score <- NA_real_
     d$quality_flag <- NA_real_
+    d$n_fs_alerts <- NA_integer_
     d$is_quality <- NA
     d$is_quality_upside <- NA
     d$market_cap <- NA_real_
@@ -1509,6 +1774,25 @@ lab_merge_catalog_scores <- function(catalog, scores = NULL,
     d
   }
   has_scores <- !is.null(scores) && is.data.frame(scores) && nrow(scores) > 0
+  .coalesce_merge_mcap <- function(d) {
+    if ("market_cap" %in% names(d)) return(d)
+    if ("market_cap.y" %in% names(d) || "market_cap.x" %in% names(d)) {
+      my <- if ("market_cap.y" %in% names(d)) {
+        suppressWarnings(as.numeric(d$market_cap.y))
+      } else {
+        rep(NA_real_, nrow(d))
+      }
+      mx <- if ("market_cap.x" %in% names(d)) {
+        suppressWarnings(as.numeric(d$market_cap.x))
+      } else {
+        rep(NA_real_, nrow(d))
+      }
+      d$market_cap <- ifelse(is.finite(my) & my > 0, my, mx)
+      drop <- intersect(c("market_cap.x", "market_cap.y"), names(d))
+      if (length(drop)) d[drop] <- NULL
+    }
+    d
+  }
   if (isTRUE(evaluated_only)) {
     if (!has_scores) {
       df <- score_cols_na(df)
@@ -1517,8 +1801,10 @@ lab_merge_catalog_scores <- function(catalog, scores = NULL,
     df <- merge(df, scores, by = "ticker", all.x = FALSE, all.y = FALSE, sort = FALSE)
     df <- df[!is.na(df$ticker) & nzchar(as.character(df$ticker)), , drop = FALSE]
     df <- df[!duplicated(df$ticker), , drop = FALSE]
+    df <- .coalesce_merge_mcap(df)
   } else if (has_scores) {
     df <- merge(df, scores, by = "ticker", all.x = TRUE, sort = FALSE)
+    df <- .coalesce_merge_mcap(df)
   } else {
     df <- score_cols_na(df)
   }
@@ -1539,6 +1825,11 @@ lab_merge_catalog_scores <- function(catalog, scores = NULL,
     fs <- suppressWarnings(as.numeric(df$f_score))
     df <- df[is.finite(fs) & fs >= 7, , drop = FALSE]
   }
+  if (isTRUE(no_alert) && "n_fs_alerts" %in% names(df)) {
+    # 無財報警訊：Schilit／盈餘品質紅旗合計為 0（與 YNOW 財報警訊一致）
+    na_n <- suppressWarnings(as.numeric(df$n_fs_alerts))
+    df <- df[is.finite(na_n) & na_n <= 0, , drop = FALSE]
+  }
   if (nrow(df) == 0L) return(df)
   # 年化估值漲幅由大到小（NA 置後）— 即「未來期間漲幅最大者」優先
   ind_lab <- if ("industry_label" %in% names(df)) df$industry_label else rep("", nrow(df))
@@ -1547,9 +1838,11 @@ lab_merge_catalog_scores <- function(catalog, scores = NULL,
   df[o, , drop = FALSE]
 }
 
-#' 排行榜候選池：有年化漲幅；可選 F-Score≥7；同一代碼只留最高 CAGR 一列
+#' 排行榜候選池：有年化漲幅；可選 F-Score≥7／無財報警訊；同一代碼只留最高 CAGR 一列
 #' @param gate_only 若 TRUE（預設），只保留 F-Score≥7；FALSE＝不設 F 門檻（仍須有年化漲幅）
-lab_leaderboard_pool <- function(merged_df, eq_only = FALSE, gate_only = TRUE) {
+#' @param no_alert 若 TRUE，只保留財報警訊數＝0（Schilit＋盈餘品質紅旗）
+lab_leaderboard_pool <- function(merged_df, eq_only = FALSE, gate_only = TRUE,
+                                 no_alert = FALSE) {
   empty <- merged_df[0, , drop = FALSE]
   if (is.null(merged_df) || !is.data.frame(merged_df) || nrow(merged_df) == 0) {
     return(empty)
@@ -1563,6 +1856,10 @@ lab_leaderboard_pool <- function(merged_df, eq_only = FALSE, gate_only = TRUE) {
   if (isTRUE(gate_only)) {
     keep <- keep & is.finite(fs) & fs >= 7
   }
+  if (isTRUE(no_alert) && "n_fs_alerts" %in% names(df)) {
+    na_n <- suppressWarnings(as.numeric(df$n_fs_alerts))
+    keep <- keep & is.finite(na_n) & na_n <= 0
+  }
   df <- df[keep, , drop = FALSE]
   if (nrow(df) == 0) return(df)
   df <- df[order(-df$upside_cagr_pct, df$ticker), , drop = FALSE]
@@ -1573,8 +1870,11 @@ lab_leaderboard_pool <- function(merged_df, eq_only = FALSE, gate_only = TRUE) {
 #' @return named character vector（顯示名 = 值；`__all__` 為全部）
 lab_leaderboard_industry_choices <- function(merged_df, eq_only = FALSE,
                                             gate_only = TRUE,
+                                            no_alert = FALSE,
                                             all_label = "全部產業") {
-  pool <- lab_leaderboard_pool(merged_df, eq_only = eq_only, gate_only = gate_only)
+  pool <- lab_leaderboard_pool(
+    merged_df, eq_only = eq_only, gate_only = gate_only, no_alert = no_alert
+  )
   labs <- if (nrow(pool) > 0 && "industry_label" %in% names(pool)) {
     unique(as.character(pool$industry_label))
   } else {
@@ -1593,15 +1893,25 @@ lab_leaderboard_industry_choices <- function(merged_df, eq_only = FALSE,
 #' （只截斷顯示，不另抽樣；輸入應已是本次評估的 N 檔。）
 #' @param eq_only 若 TRUE，再只保留盈餘品質通過者（與 Piotroski 高門檻獨立）
 #' @param gate_only 若 TRUE，只列 F-Score≥7；FALSE＝不設 F 門檻
-#' @param scope `"overall"`＝整體前十（跨產業、含產業欄）；
-#'   `"by_industry"`＝選定產業內前十（單一 Top-K，非每個產業各自一表）
+#' @param no_alert 若 TRUE，只列財報警訊數＝0者
+#' @param scope `"overall"`＝整體前十（跨產業、含產業欄；依年化估值漲幅）；
+#'   `"by_industry"`＝選定產業內前十（單一 Top-K；產業內排名自該產業第 1 名起算）；
+#'   `"industry_avg"`＝產業市值加權年化估值漲幅排名（每元市值加權平均）；
+#'   `"undervalued"`＝價值低估前十（跨產業；依推薦主模型總潛在漲幅＝FV vs 市價差距，非年化）
 #' @param industry_filter 選定產業：`industry_key` 或 `industry_label` 字串向量；
 #'   `NULL`／空／`"__all__"`＝不另限產業（由呼叫端決定是否已篩過）
 lab_quality_leaderboard <- function(merged_df, top_n = 10L, eq_only = FALSE,
-                                    gate_only = TRUE,
-                                    scope = c("overall", "by_industry"),
+                                    gate_only = TRUE, no_alert = FALSE,
+                                    scope = c("overall", "by_industry", "industry_avg",
+                                              "undervalued"),
                                     industry_filter = NULL) {
   scope <- match.arg(scope)
+  if (identical(scope, "industry_avg")) {
+    return(lab_industry_mcap_upside_leaderboard(
+      merged_df, top_n = top_n, eq_only = eq_only, gate_only = gate_only,
+      no_alert = no_alert, industry_filter = industry_filter
+    ))
+  }
   empty <- data.frame(
     排名 = integer(0), 產業 = character(0), 代號 = character(0), 公司名稱 = character(0),
     年化估值漲幅 = character(0),
@@ -1609,7 +1919,9 @@ lab_quality_leaderboard <- function(merged_df, top_n = 10L, eq_only = FALSE,
     估值方法 = character(0), `F-Score` = numeric(0),
     stringsAsFactors = FALSE, check.names = FALSE
   )
-  df <- lab_leaderboard_pool(merged_df, eq_only = eq_only, gate_only = gate_only)
+  df <- lab_leaderboard_pool(
+    merged_df, eq_only = eq_only, gate_only = gate_only, no_alert = no_alert
+  )
   if (nrow(df) == 0) return(empty)
 
   indf <- as.character(industry_filter %||% character(0))
@@ -1624,7 +1936,7 @@ lab_quality_leaderboard <- function(merged_df, top_n = 10L, eq_only = FALSE,
   if (nrow(df) == 0) return(empty)
 
   top_n <- max(1L, as.integer(top_n)[1])
-  .fmt_lb_rows <- function(sub, rank_col = "排名") {
+  .fmt_lb_rows <- function(sub, rank_values = NULL, rank_col = "排名") {
     if (nrow(sub) == 0) return(NULL)
     meth <- as.character(sub$method_used)
     prim <- as.character(sub$primary)
@@ -1643,8 +1955,13 @@ lab_quality_leaderboard <- function(merged_df, top_n = 10L, eq_only = FALSE,
       rep("—", nrow(sub))
     }
     ind_lab[is.na(ind_lab) | !nzchar(ind_lab)] <- "—"
+    ranks <- if (!is.null(rank_values) && length(rank_values) == nrow(sub)) {
+      as.integer(rank_values)
+    } else {
+      seq_len(nrow(sub))
+    }
     out <- data.frame(
-      排名 = seq_len(nrow(sub)),
+      排名 = ranks,
       產業 = ind_lab,
       代號 = if (exists("display_tickers_for_market", mode = "function")) {
         display_tickers_for_market(sub$ticker, tryCatch(get_market_mode(), error = function(e) "US"))
@@ -1667,17 +1984,162 @@ lab_quality_leaderboard <- function(merged_df, top_n = 10L, eq_only = FALSE,
     out
   }
 
-  # overall／by_industry 皆為單一 Top-K（不再「每個產業各自一表」）
-  df <- head(df, top_n)
-  rank_col <- if (identical(scope, "by_industry")) "產業內排名" else "排名"
-  out <- .fmt_lb_rows(df, rank_col = rank_col)
-  if (is.null(out) || nrow(out) == 0) return(empty)
-  if (identical(scope, "by_industry") && "產業內排名" %in% names(out)) {
+  # Within-industry rank: sort by industry then CAGR so each industry starts at 1
+  ind_key_vec <- if ("industry_key" %in% names(df)) {
+    as.character(df$industry_key)
+  } else if ("industry_label" %in% names(df)) {
+    as.character(df$industry_label)
+  } else {
+    rep("", nrow(df))
+  }
+  ind_key_vec[is.na(ind_key_vec) | !nzchar(ind_key_vec)] <- "—"
+  o_ind <- order(
+    is.na(df$upside_cagr_pct), ind_key_vec, -df$upside_cagr_pct, df$ticker,
+    na.last = TRUE
+  )
+  df_ind <- df[o_ind, , drop = FALSE]
+  ind_key_sorted <- ind_key_vec[o_ind]
+  df_ind$.ind_rank <- ave(seq_len(nrow(df_ind)), ind_key_sorted, FUN = seq_along)
+
+  if (identical(scope, "undervalued")) {
+    # 價值低估前十：推薦主模型總潛在漲幅（FV vs 市價，非年化）由大到小；只列仍被低估者
+    tot <- suppressWarnings(as.numeric(df_ind$upside_total_pct))
+    keep_uv <- is.finite(tot) & tot > 0
+    df_uv <- df_ind[keep_uv, , drop = FALSE]
+    tot <- tot[keep_uv]
+    if (nrow(df_uv) == 0L) return(empty)
+    o_uv <- order(-tot, df_uv$ticker, na.last = TRUE)
+    df_uv <- df_uv[o_uv, , drop = FALSE]
+    df_uv <- head(df_uv, top_n)
+    out <- .fmt_lb_rows(df_uv, rank_values = seq_len(nrow(df_uv)), rank_col = "排名")
+    if (is.null(out) || nrow(out) == 0) return(empty)
+    return(out)
+  }
+
+  # Cross-industry Top-K still by global CAGR (single list)
+  o_glob <- order(
+    is.na(df_ind$upside_cagr_pct), -df_ind$upside_cagr_pct, df_ind$ticker,
+    na.last = TRUE
+  )
+  df_glob <- df_ind[o_glob, , drop = FALSE]
+  df_glob <- head(df_glob, top_n)
+
+  if (identical(scope, "by_industry")) {
+    # 產業內排名 = that name's rank within its industry (1 = best in industry),
+    # not its place in the cross-industry Top 10.
+    out <- .fmt_lb_rows(df_glob, rank_values = df_glob$.ind_rank, rank_col = "產業內排名")
+    if (is.null(out) || nrow(out) == 0) return(empty)
     pref <- c("產業", "產業內排名")
     rest <- setdiff(names(out), pref)
     out <- out[, c(pref[pref %in% names(out)], rest), drop = FALSE]
+    return(out)
   }
+
+  out <- .fmt_lb_rows(df_glob, rank_values = seq_len(nrow(df_glob)), rank_col = "排名")
+  if (is.null(out) || nrow(out) == 0) return(empty)
   out
+}
+
+#' Industry ranking by market-cap-weighted average annualized valuation upside
+#' (每元市值加權：Σ(mcap × upside) / Σ(mcap)；缺市值列不計入權重)
+lab_industry_mcap_upside_leaderboard <- function(merged_df, top_n = 10L,
+                                                eq_only = FALSE, gate_only = TRUE,
+                                                no_alert = FALSE,
+                                                industry_filter = NULL) {
+  empty <- data.frame(
+    排名 = integer(0),
+    產業 = character(0),
+    市值加權年化估值漲幅 = character(0),
+    檔數 = integer(0),
+    總市值 = character(0),
+    stringsAsFactors = FALSE, check.names = FALSE
+  )
+  df <- lab_leaderboard_pool(
+    merged_df, eq_only = eq_only, gate_only = gate_only, no_alert = no_alert
+  )
+  if (nrow(df) == 0) return(empty)
+
+  indf <- as.character(industry_filter %||% character(0))
+  indf <- indf[!is.na(indf) & nzchar(indf)]
+  indf <- indf[!indf %in% c("__all__", "NULL", "null")]
+  if (length(indf) > 0L) {
+    ind_lab <- if ("industry_label" %in% names(df)) as.character(df$industry_label) else rep("", nrow(df))
+    ind_key <- if ("industry_key" %in% names(df)) as.character(df$industry_key) else rep("", nrow(df))
+    keep <- (ind_key %in% indf) | (ind_lab %in% indf)
+    df <- df[keep, , drop = FALSE]
+  }
+  if (nrow(df) == 0) return(empty)
+
+  # Ensure market_cap when missing (best-effort; offline snapshot / Yahoo)
+  if (!"market_cap" %in% names(df) ||
+      !any(is.finite(suppressWarnings(as.numeric(df$market_cap))) &
+             suppressWarnings(as.numeric(df$market_cap)) > 0, na.rm = TRUE)) {
+    if (exists("lab_attach_market_caps", mode = "function")) {
+      df <- tryCatch(lab_attach_market_caps(df), error = function(e) df)
+    }
+  }
+  mcap <- suppressWarnings(as.numeric(df$market_cap))
+  ups <- suppressWarnings(as.numeric(df$upside_cagr_pct))
+  ok <- is.finite(mcap) & mcap > 0 & is.finite(ups)
+  df <- df[ok, , drop = FALSE]
+  mcap <- mcap[ok]
+  ups <- ups[ok]
+  if (nrow(df) == 0) return(empty)
+
+  ind_lab <- if ("industry_label" %in% names(df)) {
+    as.character(df$industry_label)
+  } else if ("industry_key" %in% names(df)) {
+    as.character(df$industry_key)
+  } else {
+    rep("—", nrow(df))
+  }
+  ind_lab[is.na(ind_lab) | !nzchar(ind_lab)] <- "—"
+  ind_key <- if ("industry_key" %in% names(df)) {
+    as.character(df$industry_key)
+  } else {
+    ind_lab
+  }
+  ind_key[is.na(ind_key) | !nzchar(ind_key)] <- ind_lab[is.na(ind_key) | !nzchar(ind_key)]
+
+  keys <- unique(ind_key)
+  rows <- lapply(keys, function(k) {
+    hit <- which(ind_key == k)
+    w <- mcap[hit]
+    u <- ups[hit]
+    wavg <- sum(w * u) / sum(w)
+    lab <- ind_lab[hit][[1]]
+    data.frame(
+      industry_key = k,
+      industry_label = lab,
+      wavg_cagr = wavg,
+      n_names = length(hit),
+      total_mcap = sum(w),
+      stringsAsFactors = FALSE
+    )
+  })
+  agg <- do.call(rbind, rows)
+  agg <- agg[order(-agg$wavg_cagr, agg$industry_label), , drop = FALSE]
+  top_n <- max(1L, as.integer(top_n)[1])
+  agg <- head(agg, top_n)
+  if (nrow(agg) == 0) return(empty)
+
+  .fmt_mcap <- function(x) {
+    x <- suppressWarnings(as.numeric(x)[1])
+    if (!is.finite(x) || x <= 0) return("—")
+    if (x >= 1e12) sprintf("%.2fT", x / 1e12)
+    else if (x >= 1e9) sprintf("%.2fB", x / 1e9)
+    else if (x >= 1e6) sprintf("%.2fM", x / 1e6)
+    else sprintf("%.0f", x)
+  }
+  data.frame(
+    排名 = seq_len(nrow(agg)),
+    產業 = agg$industry_label,
+    市值加權年化估值漲幅 = sprintf("%+.1f%%", agg$wavg_cagr),
+    檔數 = as.integer(agg$n_names),
+    總市值 = vapply(agg$total_mcap, .fmt_mcap, character(1)),
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
 }
 
 #' 顯示用摘要：依主方法分組的產業數／候選檔數
