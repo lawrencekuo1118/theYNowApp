@@ -891,6 +891,18 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Most undervalued Top 10 shows %d/10 (qualified %d / evaluated %d). ",
       "Sorted by total FV–price gap (primary model); annualized upside is shown for reference."
     ),
+    lab_im_chains_label = "Industry chain",
+    lab_im_chains_hint = paste0(
+      "Top level: Semiconductors / Tech / Financials / …. ",
+      "None selected = all industry chains."
+    ),
+    lab_im_industries_label = "Sub-industry",
+    lab_im_industries_hint = paste0(
+      "Second level: sub-industries under the selected chains (e.g. IC Design, Foundry). ",
+      "None selected = all sub-industries in those chains."
+    ),
+    lab_im_industries_none = "All sub-industries",
+    lab_im_chains_none = "All industry chains",
     lab_im_boards_label = "Listing board",
     lab_im_board_twse = "TWSE (listed)",
     lab_im_board_tpex = "TPEx (OTC)",
@@ -915,7 +927,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_filter_count_label = "Names in pool under current filters",
     lab_im_filter_count_unit = "names",
     lab_im_filter_count_hint = paste0(
-      "Live count after industry × model (and Listing board / Include ADR when applicable), ",
+      "Live count after industry chain × sub-industry × model ",
+      "(and Listing board / Include ADR when applicable), ",
       "before Candidate truncate and Search Blue Chips evaluation."
     ),
     lab_im_filter_count_qualified = "Qualified after last Search (quality gates): {n} names",
@@ -3493,6 +3506,16 @@ locale_for_market <- function(mode = get_market_mode()) {
       "價值低估前十名顯示 %d／10（合格 %d／已評估 %d）。",
       "依推薦主模型總潛在漲幅（FV vs 市價）排序；年化漲幅僅供對照。"
     ),
+    lab_im_chains_label = "產業鏈",
+    lab_im_chains_hint = paste0(
+      "上層：半導體／科技／金融…；未選＝全部產業鏈。"
+    ),
+    lab_im_industries_label = "子產業",
+    lab_im_industries_hint = paste0(
+      "下層：依所選產業鏈列出子產業（如 IC 設計、晶圓代工）；未選＝該產業鏈下全部子產業。"
+    ),
+    lab_im_industries_none = "全部子產業",
+    lab_im_chains_none = "全部產業鏈",
     lab_im_boards_label = "板別",
     lab_im_board_twse = "上市",
     lab_im_board_tpex = "上櫃",
@@ -3516,7 +3539,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_filter_count_label = "目前篩選條件下池內股票數",
     lab_im_filter_count_unit = "檔",
     lab_im_filter_count_hint = paste0(
-      "即時統計：產業×模型（及板別／含 ADR，視市場）篩選後、",
+      "即時統計：產業鏈×子產業×模型（及板別／含 ADR，視市場）篩選後、",
       "候選截斷與「搜尋績優股」評估前的池內檔數。"
     ),
     lab_im_filter_count_qualified = "上次搜尋後合格（含品質門檻）：{n} 檔",

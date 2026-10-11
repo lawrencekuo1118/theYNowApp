@@ -177,6 +177,134 @@ industry_picker_choices <- function(locale = "zh-TW") {
   stats::setNames(keys[ord], labs[ord])
 }
 
+#' Split "產業鏈｜子產業" / "Chain | Sub" display labels.
+.industry_split_label <- function(lab) {
+  lab <- as.character(lab %||% "")[1]
+  if (!nzchar(lab)) return(c(chain = "", sub = ""))
+  parts <- if (grepl("｜", lab, fixed = TRUE)) {
+    strsplit(lab, "｜", fixed = TRUE)[[1]]
+  } else if (grepl(" | ", lab, fixed = TRUE)) {
+    strsplit(lab, " | ", fixed = TRUE)[[1]]
+  } else {
+    return(c(chain = lab, sub = lab))
+  }
+  chain <- trimws(parts[[1]])
+  sub <- trimws(paste(parts[-1], collapse = "｜"))
+  if (!nzchar(sub)) sub <- chain
+  c(chain = chain, sub = sub)
+}
+
+#' Stable industry-chain id (zh-TW left label). Unmapped → 「未對應」.
+industry_chain_id <- function(key) {
+  k <- as.character(key %||% "")[1]
+  if (!nzchar(k)) return("")
+  if (exists("LAB_UNMAPPED_KEY", inherits = TRUE) && identical(k, LAB_UNMAPPED_KEY)) {
+    return("未對應")
+  }
+  lab <- industry_label(k, locale = "zh-TW")
+  as.character(.industry_split_label(lab)[["chain"]])[1]
+}
+
+#' Localized industry-chain display label for a stable chain id.
+industry_chain_label <- function(chain_id, locale = "zh-TW") {
+  cid <- as.character(chain_id %||% "")[1]
+  if (!nzchar(cid)) return("")
+  loc <- if (exists("normalize_ui_locale", mode = "function")) {
+    normalize_ui_locale(locale)
+  } else {
+    "zh-TW"
+  }
+  if (identical(cid, "未對應")) {
+    if (identical(loc, "en")) return("Unmapped")
+    return("未對應")
+  }
+  keys <- names(industry_standards)
+  hit <- keys[vapply(keys, function(k) identical(industry_chain_id(k), cid), logical(1))]
+  if (!length(hit)) return(cid)
+  lab <- industry_label(hit[[1]], locale = loc)
+  as.character(.industry_split_label(lab)[["chain"]])[1]
+}
+
+#' Localized sub-industry label (right of ｜ / |).
+industry_sub_label <- function(key, locale = "zh-TW") {
+  k <- as.character(key %||% "")[1]
+  if (!nzchar(k)) return("")
+  if (exists("LAB_UNMAPPED_KEY", inherits = TRUE) && identical(k, LAB_UNMAPPED_KEY)) {
+    loc <- if (exists("normalize_ui_locale", mode = "function")) {
+      normalize_ui_locale(locale)
+    } else {
+      "zh-TW"
+    }
+    return(if (identical(loc, "en")) "Unmapped industry" else "未對應產業")
+  }
+  lab <- industry_label(k, locale = locale)
+  as.character(.industry_split_label(lab)[["sub"]])[1]
+}
+
+#' Picker choices for industry chains: named vector label → chain_id.
+industry_chain_picker_choices <- function(locale = "zh-TW") {
+  keys <- names(industry_standards)
+  ids <- unique(vapply(keys, industry_chain_id, character(1)))
+  ids <- ids[nzchar(ids)]
+  labs <- vapply(ids, function(id) industry_chain_label(id, locale = locale), character(1))
+  Encoding(labs) <- "UTF-8"
+  ord <- order(unname(labs), method = "radix")
+  stats::setNames(ids[ord], labs[ord])
+}
+
+#' Sub-industry picker choices, optionally limited to selected chain ids.
+#' Display names are sub-industry only; values remain industry_key.
+industry_sub_picker_choices <- function(chain_ids = character(0), locale = "zh-TW") {
+  keys <- names(industry_standards)
+  chain_ids <- unique(as.character(chain_ids %||% character(0)))
+  chain_ids <- chain_ids[nzchar(chain_ids) & !is.na(chain_ids)]
+  if (length(chain_ids)) {
+    keep <- vapply(keys, function(k) industry_chain_id(k) %in% chain_ids, logical(1))
+    keys <- keys[keep]
+  }
+  if (!length(keys)) return(stats::setNames(character(0), character(0)))
+  labs <- vapply(keys, function(k) industry_sub_label(k, locale = locale), character(1))
+  # Disambiguate duplicate sub labels across chains
+  dup <- duplicated(labs) | duplicated(labs, fromLast = TRUE)
+  if (any(dup)) {
+    labs[dup] <- paste0(
+      labs[dup], "（",
+      vapply(keys[dup], function(k) industry_chain_label(industry_chain_id(k), locale), character(1)),
+      "）"
+    )
+  }
+  Encoding(labs) <- "UTF-8"
+  ord <- order(unname(labs), method = "radix")
+  stats::setNames(keys[ord], labs[ord])
+}
+
+#' Resolve Blue Chip industry filter from chain + sub-industry pickers.
+#' @return character(0) = unrestricted; "__none__" = no matching keys; else industry_key vector
+resolve_industry_filter_keys <- function(chain_ids = character(0),
+                                         sub_keys = character(0),
+                                         all_keys = NULL) {
+  if (is.null(all_keys)) all_keys <- names(industry_standards)
+  all_keys <- unique(as.character(all_keys %||% character(0)))
+  all_keys <- all_keys[nzchar(all_keys) & !is.na(all_keys)]
+  chain_ids <- unique(as.character(chain_ids %||% character(0)))
+  chain_ids <- chain_ids[nzchar(chain_ids) & !is.na(chain_ids)]
+  sub_keys <- unique(as.character(sub_keys %||% character(0)))
+  sub_keys <- sub_keys[nzchar(sub_keys) & !is.na(sub_keys)]
+  if (!length(chain_ids) && !length(sub_keys)) return(character(0))
+
+  key_chain <- vapply(all_keys, industry_chain_id, character(1))
+  names(key_chain) <- all_keys
+  cand <- all_keys
+  if (length(chain_ids)) {
+    cand <- cand[key_chain[cand] %in% chain_ids]
+  }
+  if (length(sub_keys)) {
+    cand <- intersect(cand, sub_keys)
+  }
+  if (!length(cand)) return("__none__")
+  as.character(cand)
+}
+
 # 內部：組裝產業基準（缺省欄位給合理 NA／預設）
 .ind <- function(eqt = NULL, rev_g, gpm = NULL, npm = NULL, opex = NULL,
                  roa = NULL, roe = NULL, beta, rm, debt = NULL, pb = NULL) {

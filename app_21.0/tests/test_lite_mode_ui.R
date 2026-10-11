@@ -40,6 +40,9 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
     "lab_im_no_alert_label", "lab_im_no_alert_hint",
     "lab_im_filter_count_label", "lab_im_filter_count_unit",
     "lab_im_filter_count_hint", "lab_im_filter_count_qualified",
+    "lab_im_chains_label", "lab_im_chains_hint",
+    "lab_im_industries_label", "lab_im_industries_hint",
+    "lab_im_chains_none", "lab_im_industries_none",
     "lab_im_us_listed_label", "lab_im_us_listed_hint",
     "lab_im_include_adr_label", "lab_im_include_adr_hint",
     "lite_toggle_title", "lite_toggle_aria",
@@ -107,6 +110,10 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
   )
   testthat::expect_identical(.UI_STRINGS$`zh-TW`$lab_im_filter_count_unit, "檔")
   testthat::expect_identical(.UI_STRINGS$en$lab_im_filter_count_unit, "names")
+  testthat::expect_identical(.UI_STRINGS$`zh-TW`$lab_im_chains_label, "產業鏈")
+  testthat::expect_identical(.UI_STRINGS$en$lab_im_chains_label, "Industry chain")
+  testthat::expect_identical(.UI_STRINGS$`zh-TW`$lab_im_industries_label, "子產業")
+  testthat::expect_identical(.UI_STRINGS$en$lab_im_industries_label, "Sub-industry")
   testthat::expect_identical(.UI_STRINGS$`zh-TW`$lab_im_eq_explain_title, "盈餘品質：")
   testthat::expect_true(grepl("OCF", .UI_STRINGS$`zh-TW`$lab_im_eq_explain_body, fixed = TRUE))
   testthat::expect_null(.UI_STRINGS$en$macro_rf_note)
@@ -597,6 +604,10 @@ testthat::expect_true(grepl(
   testthat::expect_true(grepl('"lab_im_no_alert"', txt, fixed = TRUE))
   testthat::expect_true(grepl('uiOutput("lab_im_filter_count")', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-lab-im-filter-count", txt, fixed = TRUE))
+  testthat::expect_true(grepl('"lab_im_chains"', txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow_lab_im_chains_label", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow_lab_im_industries_label", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-lab-im-industry-filters", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-lab-im-us-listed-adr-row ynow-us-only", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_lab_im_us_listed_label", txt, fixed = TRUE))
   testthat::expect_true(grepl("body.ynow-market-tw .ynow-us-only", txt, fixed = TRUE))

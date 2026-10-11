@@ -569,11 +569,67 @@ lab_format_fetched_at <- function(x) {
   format(t, "%Y-%m-%d")
 }
 
+.lab_locale_is_en <- function(locale = "zh-TW") {
+  loc <- if (exists("normalize_ui_locale", mode = "function")) {
+    normalize_ui_locale(locale)
+  } else {
+    loc0 <- tolower(as.character(locale %||% "zh-TW")[1])
+    if (identical(loc0, "en") || startsWith(loc0, "en")) "en" else "zh-TW"
+  }
+  identical(loc, "en")
+}
+
 #' Lab 產業 picker：App 產業＋未對應桶（不污染基礎設定）
-lab_industry_picker_choices <- function() {
-  base <- industry_picker_choices()
-  extra <- stats::setNames(LAB_UNMAPPED_KEY, LAB_UNMAPPED_LABEL)
+lab_industry_picker_choices <- function(locale = "zh-TW") {
+  base <- industry_picker_choices(locale = locale)
+  unmapped_lab <- if (.lab_locale_is_en(locale)) {
+    "Unmapped industry"
+  } else {
+    LAB_UNMAPPED_LABEL
+  }
+  extra <- stats::setNames(LAB_UNMAPPED_KEY, unmapped_lab)
   c(base, extra)
+}
+
+#' Lab 產業鏈 picker（含未對應）
+lab_industry_chain_picker_choices <- function(locale = "zh-TW") {
+  base <- industry_chain_picker_choices(locale = locale)
+  cid <- "未對應"
+  lab <- industry_chain_label(cid, locale = locale)
+  extra <- stats::setNames(cid, lab)
+  if (cid %in% unname(base)) return(base)
+  c(base, extra)
+}
+
+#' Lab 子產業 picker（可依產業鏈縮小；含未對應）
+lab_industry_sub_picker_choices <- function(chain_ids = character(0), locale = "zh-TW") {
+  chain_ids <- unique(as.character(chain_ids %||% character(0)))
+  chain_ids <- chain_ids[nzchar(chain_ids) & !is.na(chain_ids)]
+  mapped_chains <- setdiff(chain_ids, "未對應")
+  want_unmapped <- !length(chain_ids) || ("未對應" %in% chain_ids)
+
+  base <- if (!length(chain_ids)) {
+    industry_sub_picker_choices(character(0), locale = locale)
+  } else if (length(mapped_chains)) {
+    industry_sub_picker_choices(mapped_chains, locale = locale)
+  } else {
+    stats::setNames(character(0), character(0))
+  }
+  if (!want_unmapped) return(base)
+  unmapped_lab <- industry_sub_label(LAB_UNMAPPED_KEY, locale = locale)
+  extra <- stats::setNames(LAB_UNMAPPED_KEY, unmapped_lab)
+  c(base, extra)
+}
+
+#' Lab：由產業鏈＋子產業解析 industry_key（含未對應桶）
+lab_resolve_industry_filter_keys <- function(chain_ids = character(0),
+                                            sub_keys = character(0)) {
+  all_keys <- unname(lab_industry_picker_choices())
+  resolve_industry_filter_keys(
+    chain_ids = chain_ids,
+    sub_keys = sub_keys,
+    all_keys = all_keys
+  )
 }
 
 # 啟動只讀快取，不打網路

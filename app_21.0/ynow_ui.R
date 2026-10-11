@@ -1621,20 +1621,53 @@ beta_rolling_section_ui <- function() {
                     column(
                       width = 6,
                       class = "ynow-full-only",
-                      shinyWidgets::pickerInput(
-                        "lab_im_industries", "產業",
-                        choices = lab_industry_picker_choices(),
-                        selected = unname(lab_industry_picker_choices()),
-                        multiple = TRUE,
-                        width = "100%",
-                        options = shinyWidgets::pickerOptions(
-                          actionsBox = TRUE,
-                          liveSearch = TRUE,
-                          selectedTextFormat = "count > 2",
-                          noneSelectedText = "全部產業",
-                          size = 10,
-                          container = "body",
-                          dropupAuto = TRUE
+                      tags$div(
+                        class = "ynow-lab-im-industry-filters",
+                        shinyWidgets::pickerInput(
+                          "lab_im_chains",
+                          tags$span(id = "ynow_lab_im_chains_label", "產業鏈"),
+                          choices = lab_industry_chain_picker_choices(),
+                          selected = unname(lab_industry_chain_picker_choices()),
+                          multiple = TRUE,
+                          width = "100%",
+                          options = shinyWidgets::pickerOptions(
+                            actionsBox = TRUE,
+                            liveSearch = TRUE,
+                            selectedTextFormat = "count > 2",
+                            noneSelectedText = "全部產業鏈",
+                            size = 10,
+                            container = "body",
+                            dropupAuto = TRUE
+                          )
+                        ),
+                        tags$span(
+                          id = "ynow_lab_im_chains_hint",
+                          class = "ynow-lab-im-quality-hint",
+                          style = "display:block; color:#888; font-size:12px; margin:-2px 0 8px 0;",
+                          "上層：半導體／科技／金融…；未選＝全部產業鏈。"
+                        ),
+                        shinyWidgets::pickerInput(
+                          "lab_im_industries",
+                          tags$span(id = "ynow_lab_im_industries_label", "子產業"),
+                          choices = lab_industry_sub_picker_choices(),
+                          selected = unname(lab_industry_sub_picker_choices()),
+                          multiple = TRUE,
+                          width = "100%",
+                          options = shinyWidgets::pickerOptions(
+                            actionsBox = TRUE,
+                            liveSearch = TRUE,
+                            selectedTextFormat = "count > 2",
+                            noneSelectedText = "全部子產業",
+                            size = 10,
+                            container = "body",
+                            dropupAuto = TRUE
+                          )
+                        ),
+                        tags$span(
+                          id = "ynow_lab_im_industries_hint",
+                          class = "ynow-lab-im-quality-hint",
+                          style = "display:block; color:#888; font-size:12px; margin:-2px 0 8px 0;",
+                          "下層：依所選產業鏈列出子產業（如 IC 設計、晶圓代工）；未選＝該產業鏈下全部子產業。"
                         )
                       ),
                       tags$div(
@@ -7799,6 +7832,10 @@ ui <- dashboardPage(
             if (ccyFloat && s.hdr_ccy_label) ccyFloat.setAttribute('aria-label', s.hdr_ccy_label);
             setBtText('ynow_hfv_rel_models_note', 'hfv_rel_models_note');
             setBtText('ynow_lab_im_methods_label', 'lab_im_methods_label');
+            setBtText('ynow_lab_im_chains_label', 'lab_im_chains_label');
+            setBtText('ynow_lab_im_chains_hint', 'lab_im_chains_hint');
+            setBtText('ynow_lab_im_industries_label', 'lab_im_industries_label');
+            setBtText('ynow_lab_im_industries_hint', 'lab_im_industries_hint');
             var hfvBenchLab = document.getElementById('ynow_hfv_show_bench_label');
             if (hfvBenchLab && s.hfv_show_bench) hfvBenchLab.textContent = s.hfv_show_bench;
             var convLab = document.querySelector('label[for=\"bt_fv_conv_window\"]');

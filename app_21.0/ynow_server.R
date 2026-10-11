@@ -11866,6 +11866,62 @@ server <- function(input, output, session) {
     )
   })
 
+  # Industry chain × sub-industry → industry_key filter for Blue Chip Lab
+  lab_im_industry_filter <- reactive({
+    lab_resolve_industry_filter_keys(
+      chain_ids = input$lab_im_chains,
+      sub_keys = input$lab_im_industries
+    )
+  })
+
+  # Refresh chain / sub-industry pickers on locale + chain selection
+  observeEvent(
+    list(ui_locale(), lazy_mount_nonce()),
+    {
+      loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+      chain_choices <- lab_industry_chain_picker_choices(loc)
+      cur_ch <- as.character(isolate(input$lab_im_chains) %||% character(0))
+      cur_ch <- cur_ch[cur_ch %in% unname(chain_choices)]
+      shinyWidgets::updatePickerInput(
+        session,
+        "lab_im_chains",
+        choices = chain_choices,
+        selected = if (length(cur_ch)) cur_ch else unname(chain_choices),
+        options = list(
+          noneSelectedText = tryCatch(
+            ui_str("lab_im_chains_none", loc),
+            error = function(e) "全部產業鏈"
+          )
+        )
+      )
+    },
+    ignoreNULL = FALSE
+  )
+
+  observeEvent(
+    list(input$lab_im_chains, ui_locale(), lazy_mount_nonce()),
+    {
+      loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+      chains <- as.character(input$lab_im_chains %||% character(0))
+      sub_choices <- lab_industry_sub_picker_choices(chains, loc)
+      cur_sub <- as.character(isolate(input$lab_im_industries) %||% character(0))
+      cur_sub <- cur_sub[cur_sub %in% unname(sub_choices)]
+      shinyWidgets::updatePickerInput(
+        session,
+        "lab_im_industries",
+        choices = sub_choices,
+        selected = if (length(cur_sub)) cur_sub else unname(sub_choices),
+        options = list(
+          noneSelectedText = tryCatch(
+            ui_str("lab_im_industries_none", loc),
+            error = function(e) "全部子產業"
+          )
+        )
+      )
+    },
+    ignoreNULL = FALSE
+  )
+
   output$lab_im_bluechip_blurb <- renderUI({
     loc <- ui_locale()
     mode <- market_mode()
@@ -11974,7 +12030,7 @@ server <- function(input, output, session) {
       catlg,
       scores = lab_im_scores(),
       method_filter = input$lab_im_methods,
-      industry_filter = input$lab_im_industries,
+      industry_filter = lab_im_industry_filter(),
       eq_only = FALSE,
       gate_only = FALSE
     )
@@ -11988,7 +12044,7 @@ server <- function(input, output, session) {
       catlg,
       scores = NULL,
       method_filter = input$lab_im_methods,
-      industry_filter = input$lab_im_industries,
+      industry_filter = lab_im_industry_filter(),
       eq_only = FALSE,
       gate_only = FALSE
     )
@@ -12120,7 +12176,7 @@ server <- function(input, output, session) {
       catlg,
       scores = NULL,
       method_filter = input$lab_im_methods,
-      industry_filter = input$lab_im_industries,
+      industry_filter = lab_im_industry_filter(),
       eq_only = FALSE,
       gate_only = FALSE
     )
@@ -12145,7 +12201,7 @@ server <- function(input, output, session) {
       lab_count_filter_pool_tickers(
         catlg,
         method_filter = input$lab_im_methods,
-        industry_filter = input$lab_im_industries,
+        industry_filter = lab_im_industry_filter(),
         include_adr = include_adr,
         market_mode = mm
       )
@@ -12162,7 +12218,7 @@ server <- function(input, output, session) {
         catlg,
         scores = scores,
         method_filter = input$lab_im_methods,
-        industry_filter = input$lab_im_industries,
+        industry_filter = lab_im_industry_filter(),
         eq_only = FALSE,
         gate_only = FALSE,
         evaluated_only = TRUE
@@ -12238,7 +12294,7 @@ server <- function(input, output, session) {
       catlg,
       scores = lab_im_scores(),
       method_filter = input$lab_im_methods,
-      industry_filter = input$lab_im_industries,
+      industry_filter = lab_im_industry_filter(),
       eq_only = FALSE,
       gate_only = FALSE,
       evaluated_only = TRUE
@@ -12507,7 +12563,7 @@ server <- function(input, output, session) {
         )
       }
     } else {
-      ind_filter <- as.character(input$lab_im_industries %||% character(0))
+      ind_filter <- as.character(lab_im_industry_filter() %||% character(0))
     }
     lb <- lab_quality_leaderboard(
       lb_src,
@@ -12576,7 +12632,7 @@ server <- function(input, output, session) {
         )
       }
     } else {
-      ind_filter <- as.character(input$lab_im_industries %||% character(0))
+      ind_filter <- as.character(lab_im_industry_filter() %||% character(0))
     }
     lb <- tryCatch(
       lab_quality_leaderboard(
@@ -12643,7 +12699,7 @@ server <- function(input, output, session) {
       catlg,
       scores = lab_im_scores(),
       method_filter = input$lab_im_methods,
-      industry_filter = input$lab_im_industries,
+      industry_filter = lab_im_industry_filter(),
       eq_only = FALSE,
       gate_only = FALSE,
       evaluated_only = TRUE
@@ -12734,7 +12790,7 @@ server <- function(input, output, session) {
       catlg,
       scores = lab_im_scores(),
       method_filter = isolate(input$lab_im_methods),
-      industry_filter = isolate(input$lab_im_industries),
+      industry_filter = isolate(lab_im_industry_filter()),
       eq_only = FALSE,
       gate_only = FALSE,
       evaluated_only = TRUE
@@ -12804,7 +12860,7 @@ server <- function(input, output, session) {
       src <- if (is.null(meta)) "" else as.character(meta$source %||% "")[1]
       n_un <- if (is.null(meta)) 0L else as.integer(meta$n_unmapped %||% 0L)
       all_ind <- unname(lab_industry_picker_choices())
-      ind_sel <- lab_normalize_multi_filter(isolate(input$lab_im_industries))
+      ind_sel <- lab_normalize_multi_filter(isolate(lab_im_industry_filter()))
       ind_txt <- if (!length(ind_sel) || (length(all_ind) > 0 && setequal(ind_sel, all_ind))) {
         sprintf("全部產業（%d）", length(all_ind))
       } else {
@@ -12841,7 +12897,7 @@ server <- function(input, output, session) {
         lab_merge_catalog_scores(
           catlg, scores = NULL,
           method_filter = isolate(input$lab_im_methods),
-          industry_filter = isolate(input$lab_im_industries),
+          industry_filter = isolate(lab_im_industry_filter()),
           eq_only = FALSE, gate_only = FALSE
         )
       } else {
@@ -12873,7 +12929,7 @@ server <- function(input, output, session) {
               error = function(e) merged_lb
             )
           } else {
-            ind_filter <- as.character(isolate(input$lab_im_industries) %||% character(0))
+            ind_filter <- as.character(isolate(lab_im_industry_filter()) %||% character(0))
           }
           lb <- lab_quality_leaderboard(
             lb_src, top_n = 10L, eq_only = eq_on,
@@ -13007,7 +13063,7 @@ server <- function(input, output, session) {
         pool <- tryCatch(
           lab_cluster_build_pool(
             catlg,
-            industry_filter = input$lab_im_industries,
+            industry_filter = lab_im_industry_filter(),
             method_filter = input$lab_im_methods,
             max_n = max_n,
             ensure_ticker = session_tk,
