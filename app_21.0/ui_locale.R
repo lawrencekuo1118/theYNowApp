@@ -863,11 +863,14 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_ind_mcap_title = "Industry mcap-weighted upside",
     lab_im_ind_mcap_badge = "Auto",
     lab_im_ind_mcap_help = paste0(
-      "After Search Blue Chips, automatically ranks industries from this evaluation by ",
+      "Opening Blue Chip Leaderboard (or Search Blue Chips) runs the evaluation, then ranks industries by ",
       "Σ(market cap × annualized upside) / Σ(market cap) (per-dollar market-cap weight). ",
       "Applies the Piotroski, earnings-quality, and No FS alerts gates from the query filters."
     ),
-    lab_im_ind_mcap_waiting = "No evaluation yet. Run Search Blue Chips to auto-build the industry ranking.",
+    lab_im_ind_mcap_waiting = paste0(
+      "No evaluation yet. Opening Blue Chip Leaderboard starts Search Blue Chips ",
+      "and builds the industry ranking automatically."
+    ),
     lab_im_ind_mcap_empty = paste0(
       "No industry row yet (qualified names %d / evaluated %d). ",
       "Relax gates or widen filters, then search again."
@@ -880,7 +883,8 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Overall Top 10: across industries from this evaluation run, by annualized valuation appreciation (Industry column shown). ",
       "Top 10 in selected industries: one Top 10 within chosen industries; Industry rank starts at 1 within each industry (not a cross-industry serial). ",
       "Most undervalued Top 10: across industries, by total valuation gap (primary-model FV vs price, not annualized); only names still undervalued (gap > 0). ",
-      "Industry mcap-weighted upside lives in the dedicated board above Candidate truncate (auto after search). ",
+      "Industry mcap-weighted upside lives in the dedicated board above Candidate truncate ",
+      "(auto when you open Blue Chip Leaderboard or press Search Blue Chips). ",
       "Top 10 takes at most 10 qualified names; shortfalls are not padded."
     ),
     lab_im_lb_status_ind_avg = paste0(
@@ -3505,10 +3509,13 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_ind_mcap_title = "產業市值加權漲幅",
     lab_im_ind_mcap_badge = "自動運算",
     lab_im_ind_mcap_help = paste0(
-      "搜尋績優股後自動依本次已評估結果，以 Σ(市值×年化估值漲幅)/Σ(市值) ",
-      "列出產業排序（每元市值加權；套用查詢條件之 Piotroski、盈餘品質、無財報警訊門檻）。"
+      "開啟側邊欄「績優股排行榜」（或按「搜尋績優股」）即開始評估，",
+      "再依本次結果以 Σ(市值×年化估值漲幅)/Σ(市值) 列出產業排序",
+      "（每元市值加權；套用查詢條件之 Piotroski、盈餘品質、無財報警訊門檻）。"
     ),
-    lab_im_ind_mcap_waiting = "尚未評估。請按「搜尋績優股」後自動產生產業排序清單。",
+    lab_im_ind_mcap_waiting = paste0(
+      "尚未評估。開啟側邊欄「績優股排行榜」即會自動執行「搜尋績優股」並產生產業排序清單。"
+    ),
     lab_im_ind_mcap_empty = paste0(
       "尚無產業列可顯示（合格檔 %d／已評估 %d）。",
       "請放寬門檻或篩選後再搜尋。"
@@ -3521,7 +3528,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "整體前十名：跨本次已評估產業依年化估值漲幅取 Top 10，並顯示產業欄。",
       "選定產業前十名：所選產業內單一 Top 10；產業內排名自該產業第 1 名起算（非跨產業流水號）。",
       "價值低估前十名：跨產業依推薦主模型合理價相對市價的總潛在漲幅（非年化）由大到小；只列仍被低估者。",
-      "產業市值加權漲幅已移至上方獨立區塊（搜尋後自動運算）。",
+      "產業市值加權漲幅已移至上方獨立區塊（開啟績優股排行榜或按搜尋績優股後自動運算）。",
       "前十名只從合格者取最多 10 檔；合格不足 10 時不會湊滿。"
     ),
     lab_im_lb_status_ind_avg = paste0(

@@ -104,6 +104,9 @@ server <- function(input, output, session) {
   sc_datalist_choices <- reactiveVal(ticker_presets_for_market("US"))
   lab_im_catalog_nonce <- reactiveVal(0L)
   lab_im_scores <- reactiveVal(NULL)
+  # Pulse + busy flag: Search Blue Chips button and Blue Chip Leaderboard tab share one runner.
+  lab_im_run_pulse <- reactiveVal(0L)
+  lab_im_eval_busy <- reactiveVal(FALSE)
   lab_cluster_result <- reactiveVal(NULL)
   # Destroy Plotly/DT via renderUI idle placeholders on market switch
   # (empty plotly/validate leave stale htmlwidgets in the DOM).
@@ -12031,9 +12034,45 @@ server <- function(input, output, session) {
     )
   })
 
+  # Explicit Search Blue Chips button
   observeEvent(input$lab_im_run_fscore, {
-    catlg <- lab_im_catalog()
-    req(is.data.frame(catlg), nrow(catlg) > 0)
+    lab_im_run_pulse(isolate(as.integer(lab_im_run_pulse()) %||% 0L) + 1L)
+  }, ignoreInit = TRUE)
+
+  # Opening sidebar「Blue Chip Leaderboard」auto-starts evaluation when none yet
+  # (same runner as Search Blue Chips). Wait for lazy mount so filter inputs exist.
+  observeEvent(
+    list(input$sidebar_tabs, lazy_mount_nonce()),
+    {
+      tab <- as.character(input$sidebar_tabs %||% "")[1]
+      if (!identical(tab, "bluechip")) return()
+      mounted <- tryCatch(
+        isTRUE(.ynow_lazy_tab_ctrl$mounted("bluechip")),
+        error = function(e) FALSE
+      )
+      if (!isTRUE(mounted)) return()
+      scores <- isolate(lab_im_scores())
+      if (is.data.frame(scores) && nrow(scores) > 0L) return()
+      if (isTRUE(isolate(lab_im_eval_busy()))) return()
+      session$onFlushed(function() {
+        if (!identical(as.character(isolate(input$sidebar_tabs) %||% "")[1], "bluechip")) {
+          return()
+        }
+        sc2 <- isolate(lab_im_scores())
+        if (is.data.frame(sc2) && nrow(sc2) > 0L) return()
+        if (isTRUE(isolate(lab_im_eval_busy()))) return()
+        lab_im_run_pulse(isolate(as.integer(lab_im_run_pulse()) %||% 0L) + 1L)
+      }, once = TRUE)
+    },
+    ignoreInit = TRUE
+  )
+
+  observeEvent(lab_im_run_pulse(), {
+    if (isTRUE(isolate(lab_im_eval_busy()))) return()
+    catlg <- tryCatch(lab_im_catalog(), error = function(e) NULL)
+    if (!is.data.frame(catlg) || nrow(catlg) == 0L) return()
+    lab_im_eval_busy(TRUE)
+    on.exit(tryCatch(lab_im_eval_busy(FALSE), error = function(e) NULL), add = TRUE)
     # 評估池：產業／模型複選 →（可選）排除 ADR → 候選截斷邏輯排序／篩選 → 取 eval_n（≥ 顯示 N）
     pool <- lab_merge_catalog_scores(
       catlg,
@@ -12162,7 +12201,7 @@ server <- function(input, output, session) {
       "；明細最多顯示 ", disp_cap, " 檔合格列（不足不湊滿）。"
     )
     showNotification(msg, type = "message", duration = 10)
-  })
+  }, ignoreInit = TRUE)
 
   output$lab_im_summary <- renderTable({
     catlg <- lab_im_catalog()
