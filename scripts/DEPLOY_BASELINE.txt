@@ -7,4 +7,4 @@ commit=ee1323f02af49dbdb44c866bed9c8cb80bafa0a7
 short=ee1323f
 message=chore: record shipped display version v21.66
 captured_at=2026-10-11T07:19:47Z
-display_version=v21.66
+display_version=v21.67
