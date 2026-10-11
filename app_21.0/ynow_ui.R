@@ -3903,7 +3903,7 @@ ui <- dashboardPage(
           color: var(--ynow-ink) !important;
         }
 
-        /* --- 估值模型頁色系（對齊 Model Selector 七卡；不含 試算／回復預設 按鈕）--- */
+        /* --- 估值模型頁色系（對齊 Model Selector 七卡；試算 Run＝模型主色白字）--- */
         body.ynow-theme-nav { --ynow-model-accent: var(--ynow-model-nav); }
         body.ynow-theme-dcf { --ynow-model-accent: var(--ynow-model-dcf); }
         body.ynow-theme-ddm { --ynow-model-accent: var(--ynow-model-ddm); }
@@ -3971,18 +3971,16 @@ ui <- dashboardPage(
         body.ynow-theme-model .content-wrapper .nav-tabs-custom > .nav-tabs > li.active:hover > a {
           color: var(--ynow-model-accent) !important;
         }
-        /* Model KPI palette: result = full accent; siblings = same family, distinct mixes */
+        /* Model KPI：白底＋模型主色框線／文字（NAV／DCF／DDM／RI／P/B／Multiples／SOTP） */
         body.ynow-theme-model {
           --ynow-model-kpi-result: var(--ynow-model-accent);
-          --ynow-model-kpi-s2: color-mix(in srgb, var(--ynow-model-accent) 72%, #000000);
-          --ynow-model-kpi-s3: color-mix(in srgb, var(--ynow-model-accent) 58%, #ffffff);
-          --ynow-model-kpi-s4: color-mix(in srgb, var(--ynow-model-accent) 82%, #4a5568);
-          --ynow-model-kpi-muted: color-mix(in srgb, var(--ynow-model-accent) 64%, #2c3e50);
+          --ynow-model-kpi-s2: var(--ynow-model-accent);
+          --ynow-model-kpi-s3: var(--ynow-model-accent);
+          --ynow-model-kpi-s4: var(--ynow-model-accent);
+          --ynow-model-kpi-muted: var(--ynow-model-accent);
         }
         body.ynow-theme-model .content-wrapper .small-box,
-        body.ynow-theme-model .tab-content .small-box {
-          background-color: var(--ynow-model-kpi-muted) !important;
-        }
+        body.ynow-theme-model .tab-content .small-box,
         body.ynow-theme-model .content-wrapper .info-box.bg-aqua,
         body.ynow-theme-model .content-wrapper .info-box.bg-green,
         body.ynow-theme-model .content-wrapper .info-box.bg-yellow,
@@ -3995,45 +3993,56 @@ ui <- dashboardPage(
         body.ynow-theme-model .content-wrapper .info-box.bg-orange,
         body.ynow-theme-model .content-wrapper .info-box.bg-light-blue,
         body.ynow-theme-model .content-wrapper .info-box.bg-black,
-        body.ynow-theme-model .content-wrapper .info-box.bg-blue {
-          background-color: var(--ynow-model-kpi-muted) !important;
-        }
-        body.ynow-theme-model .content-wrapper .info-box .info-box-icon {
-          background-color: var(--ynow-model-kpi-muted) !important;
-        }
+        body.ynow-theme-model .content-wrapper .info-box.bg-blue,
         body.ynow-theme-model .ynow-model-kpi-result .small-box,
         body.ynow-theme-model .ynow-model-kpi-result .info-box,
-        body.ynow-theme-model .ynow-model-kpi-result .info-box .info-box-icon {
-          background-color: var(--ynow-model-kpi-result) !important;
-        }
         body.ynow-theme-model .ynow-model-kpi-tone-2 .small-box,
         body.ynow-theme-model .ynow-model-kpi-tone-2 .info-box,
-        body.ynow-theme-model .ynow-model-kpi-tone-2 .info-box .info-box-icon {
-          background-color: var(--ynow-model-kpi-s2) !important;
-        }
         body.ynow-theme-model .ynow-model-kpi-tone-3 .small-box,
         body.ynow-theme-model .ynow-model-kpi-tone-3 .info-box,
-        body.ynow-theme-model .ynow-model-kpi-tone-3 .info-box .info-box-icon {
-          background-color: var(--ynow-model-kpi-s3) !important;
-        }
         body.ynow-theme-model .ynow-model-kpi-tone-4 .small-box,
-        body.ynow-theme-model .ynow-model-kpi-tone-4 .info-box,
+        body.ynow-theme-model .ynow-model-kpi-tone-4 .info-box {
+          background-color: #ffffff !important;
+          background-image: none !important;
+          border: 2px solid var(--ynow-model-accent) !important;
+          color: var(--ynow-model-accent) !important;
+          box-shadow: none !important;
+        }
+        body.ynow-theme-model .content-wrapper .small-box .inner h3,
+        body.ynow-theme-model .content-wrapper .small-box .inner h3 *,
+        body.ynow-theme-model .content-wrapper .small-box .inner p,
+        body.ynow-theme-model .content-wrapper .small-box .inner p *,
+        body.ynow-theme-model .content-wrapper .info-box .info-box-number,
+        body.ynow-theme-model .content-wrapper .info-box .info-box-number *,
+        body.ynow-theme-model .content-wrapper .info-box .info-box-text,
+        body.ynow-theme-model .content-wrapper .info-box .info-box-text * {
+          color: var(--ynow-model-accent) !important;
+        }
+        body.ynow-theme-model .content-wrapper .small-box .icon,
+        body.ynow-theme-model .content-wrapper .small-box .icon > i,
+        body.ynow-theme-model .content-wrapper .info-box .info-box-icon,
+        body.ynow-theme-model .content-wrapper .info-box .info-box-icon > i,
+        body.ynow-theme-model .ynow-model-kpi-result .info-box .info-box-icon,
+        body.ynow-theme-model .ynow-model-kpi-tone-2 .info-box .info-box-icon,
+        body.ynow-theme-model .ynow-model-kpi-tone-3 .info-box .info-box-icon,
         body.ynow-theme-model .ynow-model-kpi-tone-4 .info-box .info-box-icon {
-          background-color: var(--ynow-model-kpi-s4) !important;
+          background-color: transparent !important;
+          color: var(--ynow-model-accent) !important;
         }
-        body.ynow-theme-model .ynow-model-kpi-result-num.ynow-htcdi-flow {
-          background-image: var(--ynow-logo-flow-gradient, linear-gradient(105deg, #0C5484 0%, #1AA8B8 50%, #249C60 100%)) !important;
-          -webkit-background-clip: text !important;
-          background-clip: text !important;
-          -webkit-text-fill-color: transparent !important;
-          color: transparent !important;
-          animation: ynow-logo-flow 2.6s ease-in-out infinite;
-          font-weight: 800;
-        }
+        /* Result numeral：模型主色實心字（不再用藍綠 flow 填色） */
+        body.ynow-theme-model .ynow-model-kpi-result-num,
+        body.ynow-theme-model .ynow-model-kpi-result-num.ynow-htcdi-flow,
+        body.ynow-theme-model .small-box .inner h3 .ynow-model-kpi-result-num,
         body.ynow-theme-model .small-box .inner h3 .ynow-model-kpi-result-num.ynow-htcdi-flow,
+        body.ynow-theme-model .info-box .info-box-number .ynow-model-kpi-result-num,
         body.ynow-theme-model .info-box .info-box-number .ynow-model-kpi-result-num.ynow-htcdi-flow {
-          color: transparent !important;
-          -webkit-text-fill-color: transparent !important;
+          background-image: none !important;
+          -webkit-background-clip: border-box !important;
+          background-clip: border-box !important;
+          -webkit-text-fill-color: var(--ynow-model-accent) !important;
+          color: var(--ynow-model-accent) !important;
+          animation: none !important;
+          font-weight: 800;
         }
         /* Sidebar active rail matches the open model tab */
         body.ynow-theme-model.skin-black .main-sidebar .sidebar-menu > li.active > a,
@@ -4055,14 +4064,26 @@ ui <- dashboardPage(
           border-color: var(--ynow-model-accent) !important;
           color: #ffffff !important;
         }
-        /* 明確排除：試算／回復預設按鈕色不變 */
+        /* Run／試算主按鈕：估值模型主色底＋白字；回復預設維持灰 */
         body.ynow-theme-model .btn.ynow-btn-calc,
-        body.ynow-theme-model .btn.ynow-btn-calc:hover,
         body.ynow-theme-model .btn.ynow-btn-calc:focus,
         body.ynow-theme-model .btn.ynow-btn-calc:active,
-        body.ynow-theme-model .btn.ynow-btn-calc.active {
-          background-color: var(--ynow-logo-green) !important;
-          border-color: #1e7a4c !important;
+        body.ynow-theme-model .btn.ynow-btn-calc.active,
+        body.ynow-theme-model .btn.ynow-btn-calc:visited {
+          background-color: var(--ynow-model-accent) !important;
+          background-image: none !important;
+          border-color: var(--ynow-model-accent) !important;
+          color: #ffffff !important;
+          text-shadow: none !important;
+        }
+        body.ynow-theme-model .btn.ynow-btn-calc:hover {
+          background-color: color-mix(in srgb, var(--ynow-model-accent) 82%, #000000) !important;
+          background-image: none !important;
+          border-color: color-mix(in srgb, var(--ynow-model-accent) 82%, #000000) !important;
+          color: #ffffff !important;
+        }
+        body.ynow-theme-model .btn.ynow-btn-calc .fa,
+        body.ynow-theme-model .btn.ynow-btn-calc .fas {
           color: #ffffff !important;
         }
         body.ynow-theme-model .btn.ynow-btn-reset,

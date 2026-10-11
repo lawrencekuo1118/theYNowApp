@@ -4139,7 +4139,8 @@ ynow_reset_defaults_btn <- function(input_id, label = "回復預設", block = TR
 }
 
 #' Companion green「試算」block button (pair with ynow_reset_defaults_btn).
-#' Color: logo green (--ynow-logo-green / #249C60) via .ynow-btn-calc in ynow_ui.R.
+#' Color: logo green by default; on model tabs body.ynow-theme-model overrides
+#' to that model’s accent (--ynow-model-*) with white text (see ynow_ui.R).
 ynow_calc_btn <- function(input_id, label, block = TRUE) {
   actionButton(
     input_id,

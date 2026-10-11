@@ -60,16 +60,20 @@ check(
     grepl("['nav', 'dcf', 'ddm', 'ri', 'pb', 'multiples', 'sotp']", ui_src, fixed = TRUE)
 )
 
-# valueBox / small-box: muted family by default; primary result uses full accent
+# valueBox / small-box: white fill + model-accent border/text
 check(
-  "small-box uses muted model family by default",
+  "small-box outline uses white fill",
   grepl("body.ynow-theme-model .content-wrapper .small-box", ui_src, fixed = TRUE) &&
-    grepl("--ynow-model-kpi-muted", ui_src, fixed = TRUE)
+    grepl("background-color: #ffffff !important;", ui_src, fixed = TRUE) &&
+    grepl("border: 2px solid var(--ynow-model-accent)", ui_src, fixed = TRUE)
 )
 check(
-  "result KPI uses full model accent",
-  grepl("ynow-model-kpi-result", ui_src, fixed = TRUE) &&
-    grepl("background-color: var(--ynow-model-kpi-result)", ui_src, fixed = TRUE)
+  "KPI text uses model accent",
+  grepl("color: var(--ynow-model-accent) !important;", ui_src, fixed = TRUE)
+)
+check(
+  "result KPI class retained",
+  grepl("ynow-model-kpi-result", ui_src, fixed = TRUE)
 )
 check(
   "sibling KPI tones defined",
@@ -79,9 +83,26 @@ check(
     grepl("--ynow-model-kpi-s2", ui_src, fixed = TRUE)
 )
 check(
-  "result numeral uses blue-green flow",
+  "result numeral uses solid model accent",
   grepl("ynow-model-kpi-result-num", ui_src, fixed = TRUE) &&
-    grepl("ynow-htcdi-flow", ui_src, fixed = TRUE)
+    grepl(
+      "-webkit-text-fill-color: var(--ynow-model-accent) !important;",
+      ui_src,
+      fixed = TRUE
+    )
+)
+check(
+  "Run/calc button uses model accent on themed pages",
+  grepl(
+    "body.ynow-theme-model .btn.ynow-btn-calc",
+    ui_src,
+    fixed = TRUE
+  ) &&
+    grepl(
+      "background-color: var(--ynow-model-accent) !important;",
+      ui_src,
+      fixed = TRUE
+    )
 )
 
 # Cards use CSS accent classes (single source of truth with page themes)
