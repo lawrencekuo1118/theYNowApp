@@ -7,4 +7,4 @@ commit=edd24406b6a5a915ce44c5cda381afa3deb4ad77
 short=edd2440
 message=chore: record shipped display version v21.64
 captured_at=2026-10-11T06:58:13Z
-display_version=v21.64
+display_version=v21.65
