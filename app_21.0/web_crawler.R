@@ -439,8 +439,17 @@ tryCatch(memoise::forget(cached_get_yahoo_industry), error = function(e) NULL)
   unique(toupper(head(cols, 2L)))
 }
 
+#' Brand palette must be 0 or 2 colors: if only one logo color, pad with white.
+.ensure_logo_color_pair <- function(cols) {
+  cols <- .normalize_logo_hex(cols)
+  if (length(cols) == 1L) {
+    return(c(cols[[1]], "#FFFFFF"))
+  }
+  cols
+}
+
 #' Resolve up to two primary logo colors for a ticker (Search corp-name tint).
-#' @return character vector length 0–2 of "#RRGGBB"
+#' @return character vector length 0 or 2 of "#RRGGBB" (single brand padded with white)
 get_corp_logo_colors <- function(stock_code, website = NULL) {
   tk <- trimws(as.character(stock_code %||% "")[1])
   if (!nzchar(tk)) return(character(0))
@@ -464,7 +473,7 @@ get_corp_logo_colors <- function(stock_code, website = NULL) {
   cols <- tryCatch({
     if (is.list(res) && !is.null(res$colors)) res$colors else res
   }, error = function(e) NULL)
-  .normalize_logo_hex(cols)
+  .ensure_logo_color_pair(cols)
 }
 
 # Brand colors change rarely — share the slow (disk) cache with industry labels.

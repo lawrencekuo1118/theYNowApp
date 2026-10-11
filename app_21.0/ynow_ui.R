@@ -5341,7 +5341,7 @@ ui <- dashboardPage(
         .ynow-corpname .ynow-corpname-single {
           display: inline;
         }
-        /* Search 後：官方 logo 主色（至多兩色）動態套用到公司全稱 */
+        /* Search 後：官方 logo 主色（固定兩色；缺則第二色為白）套用到公司全稱 */
         .ynow-corpname .ynow-corpname-logo-solid {
           color: var(--ynow-corp-c1, #333333);
         }
@@ -5349,7 +5349,7 @@ ui <- dashboardPage(
           background-image: linear-gradient(
             90deg,
             var(--ynow-corp-c1, #333333) 0%,
-            var(--ynow-corp-c2, #555555) 100%
+            var(--ynow-corp-c2, #FFFFFF) 100%
           );
           -webkit-background-clip: text;
           background-clip: text;
@@ -5359,6 +5359,12 @@ ui <- dashboardPage(
         .ynow-corpname .ynow-corpname-zh[style*="color:"],
         .ynow-corpname .ynow-corpname-en[style*="color:"] {
           -webkit-text-fill-color: currentColor;
+        }
+        /* 台股英文列若第二品牌色為白：淺描邊／陰影避免溶進白底 */
+        .ynow-corpname .ynow-corpname-en-on-white {
+          text-shadow:
+            0 0 1px rgba(51, 51, 51, 0.55),
+            0 1px 0 rgba(51, 51, 51, 0.35);
         }
         /* Header Language toggle (in black bar); Currency floats under logo */
         /* 繁中／EN 與小 logo 在頁首列垂直置中對齊 */
