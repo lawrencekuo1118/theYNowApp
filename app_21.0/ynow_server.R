@@ -12135,6 +12135,106 @@ server <- function(input, output, session) {
     sm[, c("建議評價方法", "產業數", "候選檔數"), drop = FALSE]
   }, striped = TRUE, bordered = TRUE, hover = TRUE, width = "100%")
 
+  # Live pool size under current query filters (industry × model × board × ADR)
+  output$lab_im_filter_count <- renderUI({
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    catlg <- tryCatch(lab_im_catalog(), error = function(e) NULL)
+    mm <- tryCatch(normalize_market_mode(market_mode()), error = function(e) "US")
+    include_adr <- if (identical(mm, "TW")) {
+      TRUE
+    } else {
+      isTRUE(input$lab_im_include_adr %||% TRUE)
+    }
+    n_pool <- if (is.data.frame(catlg) && nrow(catlg) > 0L) {
+      lab_count_filter_pool_tickers(
+        catlg,
+        method_filter = input$lab_im_methods,
+        industry_filter = input$lab_im_industries,
+        include_adr = include_adr,
+        market_mode = mm
+      )
+    } else {
+      0L
+    }
+    n_pool <- as.integer(n_pool %||% 0L)[1]
+    if (!is.finite(n_pool) || n_pool < 0L) n_pool <- 0L
+
+    scores <- tryCatch(lab_im_scores(), error = function(e) NULL)
+    qual_ui <- NULL
+    if (is.data.frame(scores) && nrow(scores) > 0L && is.data.frame(catlg) && nrow(catlg) > 0L) {
+      merged <- lab_merge_catalog_scores(
+        catlg,
+        scores = scores,
+        method_filter = input$lab_im_methods,
+        industry_filter = input$lab_im_industries,
+        eq_only = FALSE,
+        gate_only = FALSE,
+        evaluated_only = TRUE
+      )
+      if (!identical(mm, "TW") &&
+          exists("lab_filter_pool_adr", mode = "function") &&
+          !isTRUE(include_adr)) {
+        merged <- lab_filter_pool_adr(merged, include_adr = FALSE)
+      }
+      pool_q <- lab_leaderboard_pool(
+        merged,
+        eq_only = isTRUE(input$lab_im_eq_only),
+        gate_only = isTRUE(input$lab_im_gate_only),
+        no_alert = isTRUE(input$lab_im_no_alert)
+      )
+      n_q <- if (is.null(pool_q) || !nrow(pool_q)) {
+        0L
+      } else {
+        length(unique(as.character(pool_q$ticker)))
+      }
+      qual_txt <- tryCatch(
+        .ui_msg("lab_im_filter_count_qualified", n = as.integer(n_q), loc = loc),
+        error = function(e) sprintf("Qualified after last Search: %d names", as.integer(n_q))
+      )
+      qual_ui <- tags$span(
+        id = "ynow_lab_im_filter_count_qualified",
+        class = "ynow-lab-im-filter-count-hint",
+        qual_txt
+      )
+    }
+
+    tags$div(
+      class = "ynow-lab-im-filter-count",
+      role = "status",
+      `aria-live` = "polite",
+      tags$span(
+        id = "ynow_lab_im_filter_count_label",
+        class = "ynow-lab-im-filter-count-label",
+        tryCatch(
+          ui_str("lab_im_filter_count_label", loc),
+          error = function(e) "目前篩選條件下池內股票數"
+        )
+      ),
+      tags$span(
+        id = "ynow_lab_im_filter_count_n",
+        class = "ynow-lab-im-filter-count-n",
+        format(n_pool, big.mark = ",", scientific = FALSE)
+      ),
+      tags$span(
+        id = "ynow_lab_im_filter_count_unit",
+        class = "ynow-lab-im-filter-count-unit",
+        tryCatch(
+          ui_str("lab_im_filter_count_unit", loc),
+          error = function(e) "檔"
+        )
+      ),
+      tags$span(
+        id = "ynow_lab_im_filter_count_hint",
+        class = "ynow-lab-im-filter-count-hint",
+        tryCatch(
+          ui_str("lab_im_filter_count_hint", loc),
+          error = function(e) ""
+        )
+      ),
+      qual_ui
+    )
+  })
+
   lab_im_merged <- reactive({
     catlg <- lab_im_catalog()
     req(is.data.frame(catlg), nrow(catlg) > 0)
