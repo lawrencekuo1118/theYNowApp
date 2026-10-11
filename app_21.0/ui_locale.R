@@ -912,6 +912,13 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     lab_im_no_alert_on = "No FS alerts",
     lab_im_no_alert_off = "FS alerts not filtered",
+    lab_im_filter_count_label = "Names in pool under current filters",
+    lab_im_filter_count_unit = "names",
+    lab_im_filter_count_hint = paste0(
+      "Live count after industry × model (and Listing board / Include ADR when applicable), ",
+      "before Candidate truncate and Search Blue Chips evaluation."
+    ),
+    lab_im_filter_count_qualified = "Qualified after last Search (quality gates): {n} names",
     lab_im_run_title = "Piotroski high gate (F-Score≥7) + rank by annualized valuation appreciation",
     lab_im_progress = "Evaluating (Piotroski high gate + per-ticker n-year annualized valuation appreciation)…",
     lab_im_done_gate = "Evaluated {n} names; Piotroski high gate pass {q}",
@@ -3506,6 +3513,13 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     lab_im_no_alert_on = "無財報警訊",
     lab_im_no_alert_off = "不過濾財報警訊",
+    lab_im_filter_count_label = "目前篩選條件下池內股票數",
+    lab_im_filter_count_unit = "檔",
+    lab_im_filter_count_hint = paste0(
+      "即時統計：產業×模型（及板別／含 ADR，視市場）篩選後、",
+      "候選截斷與「搜尋績優股」評估前的池內檔數。"
+    ),
+    lab_im_filter_count_qualified = "上次搜尋後合格（含品質門檻）：{n} 檔",
     lab_im_run_title = "Piotroski 高門檻（F-Score≥7）＋年化估值漲幅排序",
     lab_im_progress = "評估中（Piotroski 高門檻＋各標的自身 n 年年化估值漲幅）…",
     lab_im_done_gate = "完成評估 {n} 檔；Piotroski 高門檻通過 {q} 檔",

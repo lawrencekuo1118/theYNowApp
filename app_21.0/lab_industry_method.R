@@ -1838,6 +1838,41 @@ lab_merge_catalog_scores <- function(catalog, scores = NULL,
   df[o, , drop = FALSE]
 }
 
+#' Count unique tickers in the Blue Chip query-filter pool (pre-truncate).
+#' Industry × model filters, then optional US ADR exclude. Board filter is
+#' assumed already applied when building `catalog`.
+#' @return integer count (≥ 0)
+lab_count_filter_pool_tickers <- function(catalog,
+                                          method_filter = character(0),
+                                          industry_filter = character(0),
+                                          include_adr = TRUE,
+                                          market_mode = "US") {
+  if (is.null(catalog) || !is.data.frame(catalog) || nrow(catalog) < 1L) {
+    return(0L)
+  }
+  pool <- lab_merge_catalog_scores(
+    catalog,
+    scores = NULL,
+    method_filter = method_filter,
+    industry_filter = industry_filter,
+    eq_only = FALSE,
+    gate_only = FALSE
+  )
+  mm <- tryCatch(
+    normalize_market_mode(market_mode),
+    error = function(e) as.character(market_mode %||% "US")[1]
+  )
+  if (!identical(mm, "TW") &&
+      exists("lab_filter_pool_adr", mode = "function") &&
+      !isTRUE(include_adr)) {
+    pool <- lab_filter_pool_adr(pool, include_adr = FALSE)
+  }
+  if (is.null(pool) || !is.data.frame(pool) || nrow(pool) < 1L) return(0L)
+  tickers <- unique(as.character(pool$ticker))
+  tickers <- tickers[!is.na(tickers) & nzchar(tickers)]
+  as.integer(length(tickers))
+}
+
 #' 排行榜候選池：有年化漲幅；可選 F-Score≥7／無財報警訊；同一代碼只留最高 CAGR 一列
 #' @param gate_only 若 TRUE（預設），只保留 F-Score≥7；FALSE＝不設 F 門檻（仍須有年化漲幅）
 #' @param no_alert 若 TRUE，只保留財報警訊數＝0（Schilit＋盈餘品質紅旗）

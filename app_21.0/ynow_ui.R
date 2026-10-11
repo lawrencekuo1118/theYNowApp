@@ -1803,6 +1803,7 @@ beta_rolling_section_ui <- function() {
                     style = "margin: 0 0 12px 0;",
                     tableOutput("lab_im_summary")
                   ),
+                  uiOutput("lab_im_filter_count"),
                   tags$div(
                     class = "ynow-lab-im-actions",
                     actionButton(
@@ -9289,6 +9290,40 @@ ui <- dashboardPage(
         .ynow-lab-im-muted {
           color: #888;
           font-size: 11.5px;
+        }
+        .ynow-lab-im-filter-count {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: baseline;
+          gap: 8px 12px;
+          margin: 4px 0 10px 0;
+          padding: 8px 12px;
+          border: 1px solid #c5d4e8;
+          border-radius: 6px;
+          background: #f4f8fc;
+          color: #243447;
+          font-size: 13px;
+          line-height: 1.35;
+        }
+        .ynow-lab-im-filter-count .ynow-lab-im-filter-count-label {
+          color: #4a5a6a;
+          font-weight: 600;
+        }
+        .ynow-lab-im-filter-count .ynow-lab-im-filter-count-n {
+          font-size: 1.35em;
+          font-weight: 800;
+          color: #0b5cab;
+          font-variant-numeric: tabular-nums;
+        }
+        .ynow-lab-im-filter-count .ynow-lab-im-filter-count-unit {
+          color: #4a5a6a;
+          font-weight: 600;
+        }
+        .ynow-lab-im-filter-count .ynow-lab-im-filter-count-hint {
+          flex: 1 1 100%;
+          color: #6a7a8a;
+          font-size: 11.5px;
+          font-weight: 400;
         }
         .ynow-lab-im-actions {
           display: flex;
