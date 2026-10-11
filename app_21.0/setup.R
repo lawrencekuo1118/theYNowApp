@@ -2908,6 +2908,95 @@ sotp_implied_price <- function(segment_value, cash, debt, shares, non_operating 
   )
 }
 
+#' Present value of terminal value / (explicit PV + terminal PV).
+#' `heavy` uses the same 80% soft warning as valuation_guard.
+tv_ev_share <- function(explicit_pv, pv_tv, warn = 0.80) {
+  ex <- suppressWarnings(as.numeric(explicit_pv)[1])
+  tv <- suppressWarnings(as.numeric(pv_tv)[1])
+  ev <- if (is.finite(ex) && is.finite(tv)) ex + tv else NA_real_
+  share <- if (is.finite(ev) && abs(ev) > 1e-8) tv / ev else NA_real_
+  list(
+    enterprise_value = ev,
+    tv_share = share,
+    explicit_share = if (is.finite(share)) 1 - share else NA_real_,
+    heavy = is.finite(share) && share > warn
+  )
+}
+
+#' Linear NOPAT margin from the first forecast year to the last.
+#' A missing terminal margin keeps the starting margin flat.
+nopat_margin_path <- function(start_margin, terminal_margin, n) {
+  n <- suppressWarnings(as.integer(n)[1])
+  if (!is.finite(n) || n < 1L) return(numeric(0))
+  start <- suppressWarnings(as.numeric(start_margin)[1])
+  term <- suppressWarnings(as.numeric(terminal_margin)[1])
+  if (!is.finite(start)) return(rep(NA_real_, n))
+  if (!is.finite(term) || n == 1L) return(rep(start, n))
+  seq(start, term, length.out = n)
+}
+
+#' Reverse DCF: terminal g implied by the market price, holding explicit-period
+#' cash flows fixed. `equity_claim=TRUE` means the DCF value is already equity
+#' (FCFE); otherwise price × shares = EV + cash − debt.
+dcf_implied_terminal_g <- function(pv_explicit, last_fcf, discount, df_terminal,
+                                   price, shares, cash = 0, debt = 0,
+                                   equity_claim = FALSE) {
+  pv <- suppressWarnings(as.numeric(pv_explicit)[1])
+  last <- suppressWarnings(as.numeric(last_fcf)[1])
+  r <- suppressWarnings(as.numeric(discount)[1])
+  df <- suppressWarnings(as.numeric(df_terminal)[1])
+  px <- suppressWarnings(as.numeric(price)[1])
+  sh <- suppressWarnings(as.numeric(shares)[1])
+  cash <- suppressWarnings(as.numeric(cash)[1])
+  debt <- suppressWarnings(as.numeric(debt)[1])
+  if (!is.finite(cash)) cash <- 0
+  if (!is.finite(debt)) debt <- 0
+  na <- list(g = NA_real_, pv_tv = NA_real_, ok = FALSE, reason = "missing")
+  if (!is.finite(pv) || !is.finite(last) || last <= 0 || !is.finite(r) || r <= 0 ||
+      !is.finite(df) || df <= 0 || !is.finite(px) || !is.finite(sh) || sh <= 0) {
+    return(na)
+  }
+  equity <- px * sh
+  ev <- if (isTRUE(equity_claim)) equity else equity - cash + debt
+  pv_tv <- ev - pv
+  if (!is.finite(pv_tv) || pv_tv <= 0) {
+    return(list(g = NA_real_, pv_tv = pv_tv, ok = FALSE, reason = "price_below_explicit"))
+  }
+  k <- pv_tv * df / last
+  if (!is.finite(k) || k <= -1) {
+    return(list(g = NA_real_, pv_tv = pv_tv, ok = FALSE, reason = "no_gordon_root"))
+  }
+  g <- (k * r - 1) / (1 + k)
+  if (!is.finite(g) || g >= r) {
+    return(list(g = NA_real_, pv_tv = pv_tv, ok = FALSE, reason = "g_not_below_discount"))
+  }
+  list(g = g, pv_tv = pv_tv, ok = TRUE, reason = "terminal_g")
+}
+
+#' One-stage Gordon implied g: V = FCF1 / (r − g). Not the app's multi-year DCF.
+single_stage_implied_g <- function(fcf1, value, discount) {
+  f <- suppressWarnings(as.numeric(fcf1)[1])
+  v <- suppressWarnings(as.numeric(value)[1])
+  r <- suppressWarnings(as.numeric(discount)[1])
+  if (!is.finite(f) || f <= 0 || !is.finite(v) || v <= 0 || !is.finite(r)) {
+    return(list(g = NA_real_, ok = FALSE))
+  }
+  g <- r - f / v
+  list(g = g, ok = is.finite(g) && g < r)
+}
+
+#' Gap between a DCF per-share value and a DDM per-share value.
+dcf_ddm_crosscheck <- function(dcf_px, ddm_px) {
+  a <- suppressWarnings(as.numeric(dcf_px)[1])
+  b <- suppressWarnings(as.numeric(ddm_px)[1])
+  gap <- if (is.finite(a) && is.finite(b) && abs(b) > 1e-8) (a - b) / b else NA_real_
+  list(
+    dcf = a, ddm = b, gap = gap,
+    wide = is.finite(gap) && abs(gap) > 0.25,
+    ok = is.finite(a) && is.finite(b)
+  )
+}
+
 #' 建議永續成長率估計法（不改寫演算法數值；僅推薦 macro／fundamental／lifecycle）
 #' Lifecycle stage is one input. It never writes a fixed terminal g.
 #' @return list(method, label, reason, fund_sgr_pct, auto_lifecycle, lifecycle_evidence, lifecycle_rule, lifecycle_result)

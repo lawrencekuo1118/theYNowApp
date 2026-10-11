@@ -47,5 +47,26 @@ check("EV identity (80+5-25)/10 = 6", isTRUE(evpx$ok) && abs(evpx$price - 6) < 1
 sotp <- sotp_implied_price(c(100, 50), cash = 20, debt = 50, shares = 10)
 check("SOTP (150+20-50)/10 = 12", isTRUE(sotp$ok) && abs(sotp$price - 12) < 1e-9)
 
+tv <- tv_ev_share(20, 80)
+check("TV 80% is not above the warning", isTRUE(!tv$heavy) && abs(tv$tv_share - 0.8) < 1e-9)
+tv2 <- tv_ev_share(19, 81)
+check("TV 81% is heavy", isTRUE(tv2$heavy))
+
+path <- nopat_margin_path(0.40, 0.12, 5)
+check("NOPAT fade ends at terminal", abs(path[1] - 0.40) < 1e-9 && abs(path[5] - 0.12) < 1e-9)
+check("NOPAT flat when terminal missing", all(abs(nopat_margin_path(0.25, NA, 4) - 0.25) < 1e-9))
+
+pv <- 40; last <- 12; r <- 0.09; df <- (1.09)^5; g0 <- 0.03
+pv_tv <- (last * (1 + g0) / (r - g0)) / df
+ev <- pv + pv_tv
+price <- (ev + 10 - 4) / 2
+got <- dcf_implied_terminal_g(pv, last, r, df, price, 2, cash = 10, debt = 4, equity_claim = FALSE)
+check("reverse terminal g round trip", isTRUE(got$ok) && abs(got$g - g0) < 1e-8)
+stg <- single_stage_implied_g(8, 100, 0.10)
+check("one-stage implied g 2%", isTRUE(stg$ok) && abs(stg$g - 0.02) < 1e-9)
+gap <- dcf_ddm_crosscheck(100, 70)
+check("DCF vs DDM gap is wide", isTRUE(gap$wide) && abs(gap$gap - (30/70)) < 1e-9)
+check("DCF vs DDM within 25% is not wide", isTRUE(!dcf_ddm_crosscheck(100, 90)$wide))
+
 if (fail > 0L) quit(status = 1)
 cat("ALL PASS\n")

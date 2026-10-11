@@ -14046,7 +14046,8 @@ ui <- dashboardPage(
               .model_param_sensitivity_box(
                 "DCF 公式參數：每股估值貢獻與敏感度",
                 "dcf_param_sensitivity_table"
-              )
+              ),
+              uiOutput("txt_dcf_investment_checks")
       ),
       
       # 🌟 呼叫 RI 模型分頁介面

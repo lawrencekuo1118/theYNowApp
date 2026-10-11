@@ -92,6 +92,7 @@ server <- function(input, output, session) {
   calculated_wacc <- reactiveVal(NULL)
   dcf_value_result <- reactiveVal(NULL)
   stock_price_estimate_val <- reactiveVal(NULL)
+  dcf_audit_snap <- reactiveVal(NULL)
 
   # CAPM Beta：WACC「與基礎設定同步」（預設開）時跟隨基礎設定套用來源
   # driver: gs（基礎設定選定來源）| rolling | industry | manual（WACC 獨立）
@@ -7858,6 +7859,11 @@ server <- function(input, output, session) {
 
     proj_df <- fcf_results$df_fcf()
     future_fcfs <- extract_fcff_series(proj_df)
+    nopat_ends <- c(NA_real_, NA_real_)
+    if (is.data.frame(proj_df) && all(c("NOPAT", "Revenue") %in% names(proj_df)) && nrow(proj_df) > 0) {
+      nm <- suppressWarnings(as.numeric(proj_df$NOPAT) / as.numeric(proj_df$Revenue))
+      nopat_ends <- c(nm[1], nm[length(nm)])
+    }
 
     if (length(future_fcfs) != n) {
       if (!silent) showNotification(.ui_msg("notif_dcf_n_mismatch"), type = "error")
@@ -8047,6 +8053,22 @@ server <- function(input, output, session) {
     if (is.finite(px)) {
       lite_dcf_block("")
       stock_price_estimate_val(px)
+      dcf_audit_snap(list(
+        pv_explicit = pv_forecast,
+        pv_tv = pv_tv,
+        last_fcf = last_fcf,
+        discount = if (identical(claim, "fcfe")) ke else r2,
+        df_terminal = if (identical(claim, "fcfe")) ke_dfs[n] else discount_factors[n],
+        cash = latest_cash,
+        debt = latest_debt,
+        shares = suppressWarnings(as.numeric(sh_info$shares)[1]),
+        price = px,
+        equity_claim = identical(claim, "fcfe"),
+        g = g_terminal,
+        nopat_y1 = nopat_ends[1],
+        nopat_yn = nopat_ends[2],
+        fcf1 = future_fcfs[1]
+      ))
       sh_note <- sh_info$note
       if (show_toast && !is.null(sh_note) && nzchar(sh_note)) {
         showNotification(.ui_msg("notif_dcf_shares_note", note = sh_note), type = "message", duration = 6)
@@ -8056,6 +8078,7 @@ server <- function(input, output, session) {
         lite_dcf_block("neg_terminal")
       }
       stock_price_estimate_val(NULL)
+      dcf_audit_snap(NULL)
       if (show_toast) {
         eq_now <- suppressWarnings(as.numeric(equity_value)[1])
         msg <- if (is.finite(eq_now) && eq_now < 0) {
@@ -8120,6 +8143,7 @@ server <- function(input, output, session) {
   observeEvent(list(current_ticker(), ticker_search_gen()), {
     # Clear prior-ticker DCF so Composite does not keep stale run-state overlays
     stock_price_estimate_val(NULL)
+    dcf_audit_snap(NULL)
     dcf_value_result(NULL)
     lite_dcf_block("")
     auto_calc_primary_sig("")
@@ -9291,6 +9315,110 @@ server <- function(input, output, session) {
         style = "margin-bottom:0; color:#555;",
         tags$b("適用提醒："),
         "本矩陣適用絕對估值情境（DCF／DDM）；觀察 WACC（或 Ke）與 g 鄰近組合對每股內在價值的敏感度。"
+      )
+    )
+  })
+
+  output$txt_dcf_investment_checks <- renderUI({
+    loc <- tryCatch(ui_locale(), error = function(e) "zh-TW")
+    snap <- tryCatch(dcf_audit_snap(), error = function(e) NULL)
+    if (is.null(snap) || !is.finite(suppressWarnings(as.numeric(snap$price)[1]))) {
+      return(tags$p(class = "help-block", ui_str("dcf_checks_need_run", loc)))
+    }
+    pct <- function(x) {
+      x <- suppressWarnings(as.numeric(x)[1])
+      if (!is.finite(x)) return("—")
+      paste0(format(round(x * 100, 2), nsmall = 2), "%")
+    }
+    pxf <- function(x) {
+      x <- suppressWarnings(as.numeric(x)[1])
+      if (!is.finite(x)) return("—")
+      format(round(x, 2), nsmall = 2)
+    }
+    tv <- tv_ev_share(snap$pv_explicit, snap$pv_tv)
+    mkt <- tryCatch(suppressWarnings(as.numeric(scraped_market_cap()$price)[1]), error = function(e) NA_real_)
+    rev <- dcf_implied_terminal_g(
+      snap$pv_explicit, snap$last_fcf, snap$discount, snap$df_terminal,
+      price = mkt, shares = snap$shares, cash = snap$cash, debt = snap$debt,
+      equity_claim = isTRUE(snap$equity_claim)
+    )
+    ev_for_gordon <- if (isTRUE(snap$equity_claim)) {
+      if (is.finite(mkt) && is.finite(snap$shares)) mkt * snap$shares else NA_real_
+    } else if (is.finite(mkt) && is.finite(snap$shares)) {
+      mkt * snap$shares - (if (is.finite(snap$cash)) snap$cash else 0) + (if (is.finite(snap$debt)) snap$debt else 0)
+    } else {
+      NA_real_
+    }
+    gordon <- single_stage_implied_g(snap$fcf1, ev_for_gordon, snap$discount)
+    flat <- is.finite(snap$nopat_y1) && is.finite(snap$nopat_yn) && abs(snap$nopat_y1 - snap$nopat_yn) < 1e-6
+    ddm_px <- tryCatch(.ddm_price_at(0, 0), error = function(e) NA_real_)
+    cross <- dcf_ddm_crosscheck(snap$price, ddm_px)
+    ke_up <- tryCatch(.ddm_price_at(1, 0), error = function(e) NA_real_)
+    ke_dn <- tryCatch(.ddm_price_at(-1, 0), error = function(e) NA_real_)
+    g_up <- tryCatch(.ddm_price_at(0, 0.5), error = function(e) NA_real_)
+    g_dn <- tryCatch(.ddm_price_at(0, -0.5), error = function(e) NA_real_)
+    band <- tryCatch(dcf_scenario_band(), error = function(e) NULL)
+    row <- function(title, body) {
+      tags$div(
+        style = "margin:0 0 8px 0;",
+        tags$div(style = "font-weight:700;", title),
+        tags$div(body)
+      )
+    }
+    tags$div(
+      style = "background:#f4f8fb; border:1px solid #d6e2ea; padding:12px 14px; margin:12px 0; font-size:13px; line-height:1.55; color:#333;",
+      tags$div(style = "font-weight:700; margin-bottom:8px;", ui_str("dcf_checks_title", loc)),
+      row(
+        ui_str("dcf_checks_tv", loc),
+        tagList(
+          pct(tv$tv_share),
+          " · ",
+          if (isTRUE(tv$heavy)) ui_str("dcf_checks_tv_heavy", loc) else ui_str("dcf_checks_tv_ok", loc)
+        )
+      ),
+      row(
+        ui_str("dcf_checks_margin", loc),
+        tagList(
+          pct(snap$nopat_y1), " → ", pct(snap$nopat_yn), ". ",
+          if (flat) ui_str("dcf_checks_margin_flat", loc) else ui_str("dcf_checks_margin_fade", loc)
+        )
+      ),
+      row(
+        ui_str("dcf_checks_gk", loc),
+        tagList(
+          "Ke −1 pp ", pxf(ke_dn), " · base ", pxf(ddm_px), " · Ke +1 pp ", pxf(ke_up),
+          ". g −0.5 pp ", pxf(g_dn), " · g +0.5 pp ", pxf(g_up), "."
+        )
+      ),
+      row(
+        ui_str("dcf_checks_reverse", loc),
+        tagList(
+          ui_str("dcf_checks_reverse_g", loc), ": ",
+          if (isTRUE(rev$ok)) pct(rev$g) else ui_str("dcf_checks_reverse_na", loc),
+          ". ",
+          ui_str("dcf_checks_reverse_gordon", loc), ": ",
+          if (isTRUE(gordon$ok)) pct(gordon$g) else "—"
+        )
+      ),
+      row(
+        ui_str("dcf_checks_scenario", loc),
+        if (is.null(band)) "—" else tagList(
+          "Bear ", pxf(band$bear), " · Base ", pxf(band$base), " · Bull ", pxf(band$bull), "."
+        )
+      ),
+      row(
+        ui_str("dcf_checks_cross", loc),
+        tagList(
+          "DCF ", pxf(cross$dcf), " · DDM ", pxf(cross$ddm),
+          if (isTRUE(cross$ok)) paste0(" · ", pct(cross$gap), ". ") else ". ",
+          if (!isTRUE(cross$ok)) {
+            ui_str("dcf_checks_cross_na", loc)
+          } else if (isTRUE(cross$wide)) {
+            ui_str("dcf_checks_cross_wide", loc)
+          } else {
+            ui_str("dcf_checks_cross_close", loc)
+          }
+        )
       )
     )
   })

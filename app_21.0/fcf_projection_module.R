@@ -159,7 +159,39 @@ fcf_projection_module_ui <- function(id) {
                    h4(tags$b("ΔNWC 預估營運資本佔營收變動比")),
                    numericInput(ns("proj_nwc_rate"), "ΔNWC / ΔRevenue (%)", value = NA, step = 0.01),
                    uiOutput(ns("txt_hist_nwc")),
-                   h6(helpText("註：空白＝套用當期金額推算（並顯示歷史 ΔNWC／ΔRevenue 參考值）。"))
+                   h6(helpText("註：空白＝套用當期金額推算（並顯示歷史 ΔNWC／ΔRevenue 參考值）。")),
+                   tags$div(
+                     style = "margin-top:10px;",
+                     checkboxInput(
+                       ns("nopat_fade_on"),
+                       tagList(
+                         tags$span(class = "ynow-loc-en", "Fade NOPAT margin to a terminal rate"),
+                         tags$span(class = "ynow-loc-zh", "將 NOPAT margin 收斂至終值利潤率")
+                       ),
+                       value = FALSE
+                     ),
+                     conditionalPanel(
+                       condition = "input['mod_fcf-nopat_fade_on'] == true",
+                       numericInput(
+                         ns("nopat_fade_terminal"),
+                         tagList(
+                           tags$span(class = "ynow-loc-en", "Terminal NOPAT margin (%)"),
+                           tags$span(class = "ynow-loc-zh", "終值 NOPAT margin (%)")
+                         ),
+                         value = NA, step = 0.1
+                       )
+                     ),
+                     tags$p(
+                       class = "ynow-loc-en",
+                       style = "font-size:12px; color:#7f8c8d; margin-top:0;",
+                       "Off: the current NOPAT margin is held flat, so today's profitability runs through the terminal year. On: linear fade from the current margin to the terminal rate. RI already fades ROE on its own page."
+                     ),
+                     tags$p(
+                       class = "ynow-loc-zh",
+                       style = "font-size:12px; color:#7f8c8d; margin-top:0;",
+                       "未勾選：目前 NOPAT margin 全程不變，現在的獲利能力會延伸到終值年。勾選後由目前利潤率線性收斂到終值利潤率。RI 分頁另有 ROE 收斂。"
+                     )
+                   )
                  )
                )
              )
@@ -729,7 +761,14 @@ fcf_projection_module_server <- function(
       )
       
       g_path <- vapply(seq_len(n_years), growth_pct_for_year, numeric(1))
-      
+      fade_on <- isTRUE(input$nopat_fade_on)
+      fade_term <- suppressWarnings(as.numeric(input$nopat_fade_terminal)[1]) / 100
+      margin_path <- if (isTRUE(fade_on) && is.finite(fade_term)) {
+        nopat_margin_path(nopat_margin, fade_term, n_years)
+      } else {
+        rep(nopat_margin, n_years)
+      }
+
       for(i in 1:n_years) {
         g_rev_rate <- g_path[i] / 100
         if (i == 1) {
@@ -737,7 +776,7 @@ fcf_projection_module_server <- function(
         } else {
           df$Revenue[i] <- df$Revenue[i - 1] * (1 + g_rev_rate)
         }
-        df$NOPAT[i]        <- df$Revenue[i] * nopat_margin
+        df$NOPAT[i]        <- df$Revenue[i] * margin_path[i]
         df$Depreciation[i] <- df$Revenue[i] * depre_margin
         df$CapEx[i]        <- df$Revenue[i] * capex_margin
         if (i == 1) {
