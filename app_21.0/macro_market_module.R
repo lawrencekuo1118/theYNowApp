@@ -1762,8 +1762,8 @@ macro_market_server <- function(id = "macro",
           ticksuffix = "%",
           rangemode = "tozero"
         ),
-        legend = list(orientation = "h", y = 1.12),
-        margin = list(l = 50, r = 20, t = 30, b = 40),
+        legend = list(orientation = "h", y = -0.2, x = 0),
+        margin = list(l = 48, r = 12, t = 8, b = 56),
         hovermode = "x unified"
       )
     })
@@ -1856,6 +1856,8 @@ macro_market_server <- function(id = "macro",
         type = "pie",
         text = text_lbl,
         textinfo = "label+percent",
+        textposition = "inside",
+        insidetextorientation = "horizontal",
         hovertemplate = "%{text}<extra></extra>",
         marker = list(colors = colors, line = list(color = "#ffffff", width = 1)),
         sort = FALSE,
@@ -1864,9 +1866,8 @@ macro_market_server <- function(id = "macro",
       plotly::layout(
         fig,
         autosize = TRUE,
-        margin = list(l = 10, r = 10, t = 20, b = 10),
-        showlegend = TRUE,
-        legend = list(orientation = "h", y = -0.08),
+        margin = list(l = 8, r = 8, t = 8, b = 8),
+        showlegend = FALSE,
         paper_bgcolor = "rgba(0,0,0,0)",
         plot_bgcolor = "rgba(0,0,0,0)"
       ) %>%

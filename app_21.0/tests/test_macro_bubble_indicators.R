@@ -136,10 +136,10 @@ check("conc + attr side-by-side 1:1", {
     grepl("col-sm-6 col-md-6 ynow-bubble-pair-col ynow-bubble-conc-col", bt_src, fixed = TRUE) &&
     grepl("col-sm-6 col-md-6 ynow-bubble-pair-col ynow-bubble-attr-col", bt_src, fixed = TRUE)
 })
-check("attr pie height syncs to conc+table", {
+check("attr pie is not stretched to the concentration stack", {
   grepl("ynow-bubble-attr-plot-host", bt_src, fixed = TRUE) &&
-    grepl("syncAttrPieHeight", bt_src, fixed = TRUE) &&
-    grepl("measureConcStack", bt_src, fixed = TRUE)
+    grepl('plotlyOutput(ns("bubble_attr_plot"), height = "320px", width = "100%")', bt_src, fixed = TRUE) &&
+    !grepl("syncAttrPieHeight", bt_src, fixed = TRUE)
 })
 check("buffett history plot width 100%", {
   grepl("ynow-bubble-buffett-plot-wrap", bt_src, fixed = TRUE) &&
@@ -253,13 +253,16 @@ check("no CAPM write in bubble file", {
 })
 check("attr plot is pie chart", {
   grepl("output$bubble_attr_plot", macro_src, fixed = TRUE) &&
-    grepl('type = "pie"', macro_src, fixed = TRUE)
+    grepl('type = "pie"', macro_src, fixed = TRUE) &&
+    grepl('textposition = "inside"', macro_src, fixed = TRUE)
 })
 ui_css <- paste(readLines("ynow_ui.R", warn = FALSE), collapse = "\n")
 check("bubble pair + buffett width CSS", {
   grepl("ynow-bubble-attr-plot-host", ui_css, fixed = TRUE) &&
     grepl("ynow-bubble-buffett-plot-wrap", ui_css, fixed = TRUE) &&
-    grepl(".ynow-bubble-buffett-plot-wrap .js-plotly-plot", ui_css, fixed = TRUE)
+    grepl(".ynow-bubble-buffett-plot-wrap .js-plotly-plot", ui_css, fixed = TRUE) &&
+    grepl("min-width: 0", ui_css, fixed = TRUE) &&
+    grepl("max-width: 50%", ui_css, fixed = TRUE)
 })
 
 cat("PASS macro_bubble_indicators\n")

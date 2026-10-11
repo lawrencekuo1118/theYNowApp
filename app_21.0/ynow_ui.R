@@ -10764,22 +10764,37 @@ ui <- dashboardPage(
           margin-bottom: 12px;
         }
         .ynow-bubble-pair-row {
-          align-items: stretch;
+          align-items: flex-start;
         }
         .ynow-bubble-pair-col {
           display: flex;
           flex-direction: column;
+          float: none;
+          min-width: 0;
+          max-width: 100%;
+          overflow: hidden;
+          box-sizing: border-box;
         }
-        .ynow-bubble-attr-plot-host {
-          flex: 1 1 auto;
+        @media (min-width: 768px) {
+          .ynow-bubble-pair-row > .ynow-bubble-pair-col {
+            flex: 0 0 50%;
+            width: 50%;
+            max-width: 50%;
+          }
+        }
+        .ynow-bubble-attr-plot-host,
+        .ynow-bubble-conc-stack {
           width: 100%;
-          min-height: 420px;
+          max-width: 100%;
+          min-width: 0;
+          overflow: hidden;
         }
-        .ynow-bubble-attr-plot-host .plotly,
-        .ynow-bubble-attr-plot-host .js-plotly-plot,
-        .ynow-bubble-attr-plot-host .html-widget {
+        .ynow-bubble-pair-col .shiny-spinner-output-container,
+        .ynow-bubble-pair-col .plotly,
+        .ynow-bubble-pair-col .js-plotly-plot,
+        .ynow-bubble-pair-col .html-widget {
           width: 100% !important;
-          height: 100% !important;
+          max-width: 100% !important;
         }
         .ynow-bubble-buffett-plot-wrap {
           width: 100%;
