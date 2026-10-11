@@ -12143,12 +12143,16 @@ server <- function(input, output, session) {
       value = 0, {
         n_raw <- nrow(pool)
         if (is.finite(eval_n) && n_raw > eval_n) {
+          loc_prog <- tryCatch(
+            normalize_ui_locale(isolate(ui_locale())),
+            error = function(e) "zh-TW"
+          )
           detail <- switch(
             rank_mode,
-            ret_1y = "取近一年漲幅（評估池排序）…",
-            random = "系統隨機抽樣…",
-            concept = "套用概念股群…",
-            "取市值（評估池排序）…"
+            ret_1y = ui_str("lab_im_prog_detail_ret_1y", loc_prog),
+            random = ui_str("lab_im_prog_detail_random", loc_prog),
+            concept = ui_str("lab_im_prog_detail_concept", loc_prog),
+            ui_str("lab_im_prog_detail_mcap", loc_prog)
           )
           incProgress(0.08, detail = detail)
           if (identical(rank_mode, "mcap") || identical(rank_mode, "concept")) {
@@ -12173,26 +12177,39 @@ server <- function(input, output, session) {
           return(NULL)
         }
         if (is.finite(eval_n) && n_filtered > nrow(pool)) {
+          loc_run <- tryCatch(
+            normalize_ui_locale(isolate(ui_locale())),
+            error = function(e) "zh-TW"
+          )
           how <- switch(
             mode_used,
-            ret_1y = "依近一年股價漲幅",
-            random = "系統隨機",
-            concept = "所選概念股（必要時再依市值）",
-            if (used_mcap) "依市值由大到小" else "市值暫不可用，維持原宇宙順序"
+            ret_1y = ui_str("lab_im_rank_how_ret_1y", loc_run),
+            random = ui_str("lab_im_rank_how_random", loc_run),
+            concept = ui_str("lab_im_rank_how_concept", loc_run),
+            if (used_mcap) {
+              ui_str("lab_im_rank_how_mcap", loc_run)
+            } else {
+              ui_str("lab_im_rank_how_mcap_fallback", loc_run)
+            }
           )
           if (grepl("fallback_mcap", note, fixed = TRUE)) {
-            how <- paste0(how, "；概念股無交集時改市值")
+            how <- paste0(how, ui_str("lab_im_rank_how_concept_fallback", loc_run))
           }
-          adr_note <- if (!identical(mm0, "TW") && !isTRUE(include_adr)) "；已排除 ADR" else ""
+          adr_note <- if (!identical(mm0, "TW") && !isTRUE(include_adr)) {
+            ui_str("lab_im_rank_adr_excluded", loc_run)
+          } else {
+            ""
+          }
           disp_note <- if (is.finite(display_n) && is.finite(eval_n) && eval_n > display_n) {
-            paste0("（顯示上限 N＝", display_n, "；合格不足不湊滿）")
+            .ynow_fmt_str(ui_str("lab_im_rank_disp_note", loc_run), n = display_n)
           } else {
             ""
           }
           showNotification(
-            paste0(
-              "篩選後 ", n_filtered, " 檔，", how, "評估 ", nrow(pool), " 檔",
-              adr_note, disp_note, "。"
+            .ynow_fmt_str(
+              ui_str("lab_im_rank_pool_note", loc_run),
+              n_filtered = n_filtered, how = how, n_eval = nrow(pool),
+              adr = adr_note, disp = disp_note
             ),
             type = "message", duration = 6
           )
@@ -12226,15 +12243,32 @@ server <- function(input, output, session) {
                      abs(scores$upside_cagr_pct - best) < 1e-9)
       if (length(hit) > 0) top_tk <- scores$ticker[hit[1]]
     }
-    disp_cap <- if (is.finite(display_n)) as.character(display_n) else "全部"
+    loc_done <- tryCatch(
+      normalize_ui_locale(isolate(ui_locale())),
+      error = function(e) "zh-TW"
+    )
+    n_yrs <- tryCatch({
+      yr <- suppressWarnings(as.numeric(scores$n_years[pass_idx][1]))
+      if (!is.finite(yr)) yr <- suppressWarnings(as.numeric(scores$years[pass_idx][1]))
+      if (!is.finite(yr)) 1L else as.integer(round(yr))
+    }, error = function(e) 1L)
+    top_part <- if (is.finite(best) && nzchar(top_tk %||% "")) {
+      .ynow_fmt_str(
+        ui_str("lab_im_done_top", loc_done),
+        ticker = top_tk, n = n_yrs, pct = sprintf("%+.1f%%", best)
+      )
+    } else {
+      ""
+    }
+    cap_part <- if (is.finite(display_n)) {
+      .ynow_fmt_str(ui_str("lab_im_done_detail_cap", loc_done), n = as.character(display_n))
+    } else {
+      ui_str("lab_im_done_detail_cap_all", loc_done)
+    }
     msg <- paste0(
       .ui_msg("lab_im_done_gate", n = nrow(scores), q = n_q),
-      if (is.finite(best) && nzchar(top_tk %||% "")) {
-        sprintf("；績優首選 %s（%d 年年化估值漲幅 %+.1f%%）", top_tk, n_yrs, best)
-      } else {
-        ""
-      },
-      "；明細最多顯示 ", disp_cap, " 檔合格列（不足不湊滿）。"
+      top_part,
+      cap_part
     )
     showNotification(msg, type = "message", duration = 10)
   }, ignoreInit = TRUE)
