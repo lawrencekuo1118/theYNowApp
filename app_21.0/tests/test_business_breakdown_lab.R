@@ -578,6 +578,10 @@ for (k in c("menu_business_breakdown_lab", "bblab_page_sub", "bblab_report_kicke
             "bblab_struct_title", "bblab_struct_help", "bblab_struct_biz_h",
             "bblab_struct_adj_h", "bblab_struct_conc_h", "bblab_struct_not_disclosed",
             "bblab_struct_c1", "bblab_struct_c2", "bblab_struct_c5",
+            "bblab_bcg_title", "bblab_bcg_help", "bblab_bcg_need_history",
+            "bblab_bcg_xaxis", "bblab_bcg_yaxis", "bblab_bcg_q_star",
+            "bblab_bcg_q_cash_cow", "bblab_bcg_q_question_mark", "bblab_bcg_q_dog",
+            "bblab_bcg_col_business", "bblab_bcg_col_quadrant", "bblab_bcg_midline",
             "bblab_history_yaxis", "bblab_kpi_revenue", "bblab_kpi_cor", "bblab_kpi_gp",
             "bblab_kpi_gm", "bblab_kpi_ni", "bblab_formula_gp", "bblab_formula_gm",
             "notif_bblab_required_fx_rate_missing", "notif_bblab_business_chart_single_component",
@@ -796,6 +800,7 @@ if (requireNamespace("shiny", quietly = TRUE) &&
           grepl("ynow_bblab_struct_title", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_ch3_title", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_ch3_current_label", lab_ui_html, fixed = TRUE) &&
+          grepl("bcg_panel", lab_ui_html, fixed = TRUE) &&
           grepl("history_panel", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_ch5_title", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_ch5_help", lab_ui_html, fixed = TRUE) &&
@@ -807,6 +812,8 @@ if (requireNamespace("shiny", quietly = TRUE) &&
       grepl("ynow-bblab-struct-mix__chart", lab_ui_html, fixed = TRUE) &&
       grepl("structure_panel", lab_ui_html, fixed = TRUE) &&
       grepl("structure_conclusions", lab_ui_html, fixed = TRUE) &&
+      grepl("bcg_panel", lab_ui_html, fixed = TRUE) &&
+      grepl("ynow-bblab-bcg", lab_ui_html, fixed = TRUE) &&
       grepl("ynow-bblab-subhead", lab_ui_html, fixed = TRUE) &&
       grepl(">Revenue mix<", lab_ui_html, fixed = TRUE) &&
       grepl(">Current period<", lab_ui_html, fixed = TRUE) &&
@@ -1238,6 +1245,92 @@ check("five-year mix panel shows only when a series is eligible", {
     grepl(".bblab_history_visible", mod_src, fixed = TRUE) &&
     grepl("history_panel", mod_src, fixed = TRUE) &&
     !grepl("history_status", mod_src, fixed = TRUE)
+})
+
+# ---- BCG matrix from structure + history ----
+k10_sa <- bblab_build_structure_analysis(rk10, locale = "en")
+k10_bcg <- bblab_build_bcg_analysis(k10_sa, history = rk10$history)
+check("10-K BCG eligible with classic quadrants", {
+  isTRUE(k10_sa$ok) &&
+    length(k10_sa$businesses) >= 2L &&
+    isTRUE(k10_bcg$ok) &&
+    isTRUE(k10_bcg$eligible) &&
+    length(k10_bcg$points) >= 3L &&
+    all(vapply(k10_bcg$points, function(p) {
+      is.finite(p$relative_share) && is.finite(p$growth) &&
+        !is.na(p$quadrant) && p$quadrant %in% c("star", "cash_cow", "question_mark", "dog")
+    }, logical(1))) &&
+    max(vapply(k10_bcg$points, function(p) p$relative_share, numeric(1))) >= 0.999
+})
+check("10-K BCG leader is North America (largest revenue)", {
+  leader <- Filter(function(p) isTRUE(abs(p$relative_share - 1) < 1e-9), k10_bcg$points)
+  length(leader) == 1L && identical(leader[[1]]$business, "North America")
+})
+check("10-K BCG AWS growth above North America (cloud CAGR)", {
+  get_g <- function(nm) {
+    hit <- Filter(function(p) identical(p$business, nm), k10_bcg$points)
+    if (!length(hit)) return(NA_real_)
+    hit[[1]]$growth
+  }
+  is.finite(get_g("AWS")) && is.finite(get_g("North America")) &&
+    get_g("AWS") > get_g("North America")
+})
+check("BCG plotly builds without error for 10-K", {
+  fig <- bblab_bcg_plotly(k10_bcg, labels = list(
+    x_axis = "Relative share", y_axis = "Revenue CAGR (%)",
+    star = "Stars", cash_cow = "Cash cows",
+    question_mark = "Question marks", dog = "Dogs"
+  ))
+  inherits(fig, "plotly") || inherits(fig, "htmlwidget")
+})
+check("BCG classic layout: high share left; Stars top-left label", {
+  fig <- bblab_bcg_plotly(k10_bcg, labels = list(
+    star = "Stars", cash_cow = "Cash cows",
+    question_mark = "Question marks", dog = "Dogs"
+  ))
+  built <- plotly::plotly_build(fig)
+  anns <- built$x$layout$annotations
+  get_ann <- function(lab) {
+    hit <- Filter(function(a) identical(as.character(a$text), lab), anns)
+    if (!length(hit)) return(NULL)
+    hit[[1]]
+  }
+  star <- get_ann("Stars")
+  qm <- get_ann("Question marks")
+  cow <- get_ann("Cash cows")
+  dog <- get_ann("Dogs")
+  xr <- built$x$layout$xaxis$range
+  !is.null(star) && !is.null(qm) && !is.null(cow) && !is.null(dog) &&
+    isTRUE(as.numeric(xr[[1]]) > as.numeric(xr[[2]])) &&
+    as.numeric(star$x) > as.numeric(qm$x) &&
+    as.numeric(cow$x) > as.numeric(dog$x) &&
+    as.numeric(star$y) > as.numeric(cow$y)
+})
+check("single-period structure does not fabricate BCG growth axis", {
+  r2 <- bblab_analyze(two_seg_level_a())
+  sa2 <- bblab_build_structure_analysis(r2, locale = "en")
+  bcg2 <- bblab_build_bcg_analysis(sa2, history = r2$history)
+  isTRUE(bcg2$ok) &&
+    !isTRUE(bcg2$eligible) &&
+    identical(bcg2$method_note, "bcg_need_history")
+})
+check("BCG UI wired under structure chapter", {
+  grepl("bcg_panel", mod_src, fixed = TRUE) &&
+    grepl("bcg_plot", mod_src, fixed = TRUE) &&
+    grepl("bblab_build_bcg_analysis", mod_src, fixed = TRUE) &&
+    grepl("bblab_bcg_plotly", mod_src, fixed = TRUE) &&
+    grepl("ynow_bblab_bcg_title", mod_src, fixed = TRUE) &&
+    grepl("ynow_bblab_bcg_title", paste(readLines("ynow_ui.R", warn = FALSE), collapse = "\n"), fixed = TRUE)
+})
+check("BCG i18n keeps Stars/Cash cows English finance terms in zh-TW", {
+  identical(.UI_STRINGS$`zh-TW`$bblab_bcg_q_star, "Stars") &&
+    identical(.UI_STRINGS$`zh-TW`$bblab_bcg_q_cash_cow, "Cash cows") &&
+    identical(.UI_STRINGS$en$bblab_bcg_title, "BCG matrix (business portfolio)") &&
+    grepl("BCG", .UI_STRINGS$`zh-TW`$bblab_bcg_title, fixed = TRUE) &&
+    !grepl("默认|参数|数据|用户", paste(
+      .UI_STRINGS$`zh-TW`$bblab_bcg_help,
+      .UI_STRINGS$`zh-TW`$bblab_bcg_need_history
+    ))
 })
 check("history insufficient toast does not block cards or donut", {
   t <- bblab_toast_payload("BUSINESS_HISTORY_INSUFFICIENT_YEARS", recon_pass = TRUE,

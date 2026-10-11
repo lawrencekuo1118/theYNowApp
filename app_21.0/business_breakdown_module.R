@@ -286,6 +286,17 @@ business_breakdown_lab_ui <- function(id = "bblab") {
           ".ynow-bblab-struct-mix__controls .shiny-input-container{margin-bottom:6px;}",
           ".ynow-bblab-struct-mix__exports{margin-top:4px;}",
           ".ynow-bblab-struct-mix__exports .btn{margin:0 6px 6px 0;}",
+          ".ynow-bblab-bcg{width:100%;margin:18px 0 8px 0;padding:12px 14px;",
+          "border:1px solid #e5e5e5;border-radius:6px;background:#fff;}",
+          ".ynow-bblab-bcg__grid{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start;}",
+          ".ynow-bblab-bcg__chart{flex:1 1 56%;min-width:300px;}",
+          ".ynow-bblab-bcg__list{flex:1 1 36%;min-width:240px;}",
+          ".ynow-bblab-bcg__table{width:100%;font-size:12px;}",
+          ".ynow-bblab-bcg__table th,.ynow-bblab-bcg__table td{padding:4px 6px;vertical-align:top;}",
+          ".ynow-bblab-bcg__q-star{color:#C9A227;font-weight:700;}",
+          ".ynow-bblab-bcg__q-cash_cow{color:#249C60;font-weight:700;}",
+          ".ynow-bblab-bcg__q-question_mark{color:#1AA8B8;font-weight:700;}",
+          ".ynow-bblab-bcg__q-dog{color:#666;font-weight:700;}",
           sep = ""
         ))),
         tags$p(
@@ -431,6 +442,7 @@ business_breakdown_lab_ui <- function(id = "bblab") {
             plotly::plotlyOutput(ns("donut"), height = "360px")
           )
         ),
+        uiOutput(ns("bcg_panel")),
         uiOutput(ns("history_panel"))
       ),
 
@@ -912,6 +924,121 @@ business_breakdown_lab_server <- function(id = "bblab",
       res <- lab_result()
       if (is.null(res)) return(NULL)
       .bblab_structure_conclusions_html(.structure_analysis_sa(), loc())
+    })
+
+    .bcg_analysis <- function() {
+      sa <- .structure_analysis_sa()
+      res <- lab_result()
+      hist <- if (!is.null(res)) res$history else NULL
+      if (!exists("bblab_build_bcg_analysis", mode = "function")) return(NULL)
+      bblab_build_bcg_analysis(sa, history = hist)
+    }
+
+    .bcg_plot_labels <- function() {
+      list(
+        x_axis = ui_msg("bblab_bcg_xaxis"),
+        y_axis = ui_msg("bblab_bcg_yaxis"),
+        x_axis_short = ui_msg("bblab_bcg_xaxis_short"),
+        y_axis_short = ui_msg("bblab_bcg_yaxis_short"),
+        quadrant = ui_msg("bblab_bcg_col_quadrant"),
+        star = ui_msg("bblab_bcg_q_star"),
+        cash_cow = ui_msg("bblab_bcg_q_cash_cow"),
+        question_mark = ui_msg("bblab_bcg_q_question_mark"),
+        dog = ui_msg("bblab_bcg_q_dog")
+      )
+    }
+
+    output$bcg_panel <- renderUI({
+      res <- lab_result()
+      if (is.null(res)) return(NULL)
+      sa <- .structure_analysis_sa()
+      if (is.null(sa) || !isTRUE(sa$ok) || !length(sa$businesses)) return(NULL)
+      bcg <- .bcg_analysis()
+      if (is.null(bcg) || !isTRUE(bcg$ok)) return(NULL)
+
+      q_name <- function(q) {
+        switch(
+          as.character(q %||% "")[1],
+          star = ui_msg("bblab_bcg_q_star"),
+          cash_cow = ui_msg("bblab_bcg_q_cash_cow"),
+          question_mark = ui_msg("bblab_bcg_q_question_mark"),
+          dog = ui_msg("bblab_bcg_q_dog"),
+          "—"
+        )
+      }
+
+      body <- if (isTRUE(bcg$eligible) && length(bcg$points)) {
+        rows <- lapply(bcg$points, function(p) {
+          q <- as.character(p$quadrant %||% "")[1]
+          tags$tr(
+            tags$td(p$business),
+            tags$td(sprintf("%.2f×", p$relative_share)),
+            tags$td(
+              if (is.finite(p$growth)) sprintf("%.1f%%", p$growth * 100) else "—"
+            ),
+            tags$td(
+              class = paste0("ynow-bblab-bcg__q-", if (nzchar(q)) q else "dog"),
+              q_name(q)
+            )
+          )
+        })
+        tags$div(
+          class = "ynow-bblab-bcg__grid",
+          tags$div(
+            class = "ynow-bblab-bcg__chart",
+            plotly::plotlyOutput(ns("bcg_plot"), height = "420px")
+          ),
+          tags$div(
+            class = "ynow-bblab-bcg__list",
+            tags$table(
+              class = "table table-condensed ynow-bblab-bcg__table",
+              tags$thead(tags$tr(
+                tags$th(ui_msg("bblab_bcg_col_business")),
+                tags$th(ui_msg("bblab_bcg_col_rel_share")),
+                tags$th(ui_msg("bblab_bcg_col_growth")),
+                tags$th(ui_msg("bblab_bcg_col_quadrant"))
+              )),
+              tags$tbody(rows)
+            ),
+            tags$p(
+              class = "help-block",
+              sprintf(
+                ui_msg("bblab_bcg_midline"),
+                sprintf("%.2f", bcg$x_mid),
+                sprintf("%.1f%%", bcg$y_mid * 100)
+              )
+            )
+          )
+        )
+      } else {
+        tags$p(class = "help-block", ui_msg("bblab_bcg_need_history"))
+      }
+
+      tags$div(
+        class = "ynow-bblab-bcg",
+        tags$h4(
+          id = "ynow_bblab_bcg_title",
+          class = "ynow-bblab-subhead",
+          ui_msg("bblab_bcg_title")
+        ),
+        tags$p(
+          id = "ynow_bblab_bcg_help",
+          class = "help-block",
+          ui_msg("bblab_bcg_help")
+        ),
+        body
+      )
+    })
+
+    output$bcg_plot <- plotly::renderPlotly({
+      empty <- plotly::layout(
+        plotly::plot_ly(type = "scatter", mode = "markers"),
+        showlegend = FALSE
+      )
+      bcg <- .bcg_analysis()
+      if (is.null(bcg) || !isTRUE(bcg$eligible)) return(empty)
+      if (!exists("bblab_bcg_plotly", mode = "function")) return(empty)
+      bblab_bcg_plotly(bcg, labels = .bcg_plot_labels())
     })
 
     output$chart_status <- renderUI({
