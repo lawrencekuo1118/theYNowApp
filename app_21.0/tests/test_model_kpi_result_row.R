@@ -74,6 +74,40 @@ check("SOTP price leftmost + flow", grepl("ynow-model-kpi-result", sotp_src, fix
         grepl("ynow_model_result_num(val)", sotp_src, fixed = TRUE))
 check("Multiples PE/EVFCF/PS marked result", grepl("is_result = TRUE", rel_src, fixed = TRUE))
 
+# White-outline class only on listed primary KPIs (not P/B; Multiples = P/E only)
+check(
+  "NAV mid has outline class",
+  grepl('ynow-model-kpi-result ynow-model-kpi-outline", valueBoxOutput(ns("vbx_nav_mid")', nav_src, fixed = TRUE) ||
+    grepl("ynow-model-kpi-result ynow-model-kpi-outline\", valueBoxOutput(ns(\"vbx_nav_mid\")", nav_src, fixed = TRUE) ||
+    grepl('class = "ynow-model-kpi-result ynow-model-kpi-outline", valueBoxOutput(ns("vbx_nav_mid")', nav_src, fixed = TRUE)
+)
+check(
+  "RI FV has outline class",
+  grepl('ynow-model-kpi-result ynow-model-kpi-outline", valueBoxOutput(ns("vbx_ri_fv")', ri_src, fixed = TRUE)
+)
+check(
+  "SOTP has outline class",
+  grepl('ynow-model-kpi-result ynow-model-kpi-outline", valueBoxOutput(ns("vbx_sotp")', sotp_src, fixed = TRUE)
+)
+check(
+  "Multiples P/E has outline; EVFCF does not",
+  grepl('ynow-model-kpi-result ynow-model-kpi-outline", valueBoxOutput(ns("vbx_pe")', rel_src, fixed = TRUE) &&
+    grepl('ynow-model-kpi-result", valueBoxOutput(ns("vbx_evfcf")', rel_src, fixed = TRUE) &&
+    !grepl("ynow-model-kpi-outline\", valueBoxOutput(ns(\"vbx_evfcf\")", rel_src, fixed = TRUE) &&
+    !grepl('ynow-model-kpi-outline", valueBoxOutput(ns("vbx_evfcf")', rel_src, fixed = TRUE)
+)
+check(
+  "P/B fair has no outline class",
+  grepl('ynow-model-kpi-result", valueBoxOutput(ns("vbx_fair")', pb_src, fixed = TRUE) &&
+    !grepl("ynow-model-kpi-outline", pb_src, fixed = TRUE)
+)
+check(
+  "DCF/DDM result columns have outline",
+  grepl("ynow-model-kpi-result ynow-model-kpi-outline", ui_src, fixed = TRUE) &&
+    grepl("ibx_stock_value_dcf", ui_src, fixed = TRUE) &&
+    grepl("ibx_ddm_price", ui_src, fixed = TRUE)
+)
+
 # i18n keys both locales
 for (k in c("pb_vbx_fair", "ri_vbx_fv", "ri_vbx_b0", "ri_vbx_pv", "ri_vbx_tv")) {
   check(paste("locale key", k), length(gregexpr(paste0(k, " ="), loc_src, fixed = TRUE)[[1]]) >= 2L)

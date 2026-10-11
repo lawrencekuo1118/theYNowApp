@@ -556,7 +556,7 @@ relative_multiples_module_ui <- function(id) {
           ),
           fluidRow(
             class = "ynow-model-kpi-row",
-            column(3, class = "ynow-model-kpi-result", valueBoxOutput(ns("vbx_pe"), width = 12)),
+            column(3, class = "ynow-model-kpi-result ynow-model-kpi-outline", valueBoxOutput(ns("vbx_pe"), width = 12)),
             column(3, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_fpe"), width = 12)),
             column(3, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_peg"), width = 12)),
             column(3, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_ps"), width = 12))

@@ -4040,6 +4040,39 @@ ui <- dashboardPage(
         body.ynow-theme-model .ynow-model-kpi-result .info-box .info-box-icon {
           background-color: var(--ynow-model-kpi-result) !important;
         }
+        /* Listed primary KPIs only: white fill + model-accent border / text
+           (NAV fair, DCF/DDM per-share, RI FV, P/E Implied, SOTP Implied).
+           Other result / sibling KPIs keep filled family tones above. */
+        body.ynow-theme-model .ynow-model-kpi-outline .small-box,
+        body.ynow-theme-model .ynow-model-kpi-outline .info-box {
+          background-color: #ffffff !important;
+          border: 2px solid var(--ynow-model-accent) !important;
+          color: var(--ynow-model-accent) !important;
+          box-shadow: none !important;
+        }
+        body.ynow-theme-model .ynow-model-kpi-outline .info-box .info-box-icon {
+          background-color: #ffffff !important;
+          color: var(--ynow-model-accent) !important;
+        }
+        body.ynow-theme-model .ynow-model-kpi-outline .small-box .inner h3,
+        body.ynow-theme-model .ynow-model-kpi-outline .small-box .inner p,
+        body.ynow-theme-model .ynow-model-kpi-outline .info-box .info-box-number,
+        body.ynow-theme-model .ynow-model-kpi-outline .info-box .info-box-text {
+          color: var(--ynow-model-accent) !important;
+        }
+        body.ynow-theme-model .ynow-model-kpi-outline .small-box .icon,
+        body.ynow-theme-model .ynow-model-kpi-outline .small-box .icon > i,
+        body.ynow-theme-model .ynow-model-kpi-outline .info-box .info-box-icon > i {
+          color: var(--ynow-model-accent) !important;
+        }
+        body.ynow-theme-model .ynow-model-kpi-outline .ynow-model-kpi-result-num.ynow-htcdi-flow {
+          background-image: none !important;
+          -webkit-background-clip: border-box !important;
+          background-clip: border-box !important;
+          -webkit-text-fill-color: var(--ynow-model-accent) !important;
+          color: var(--ynow-model-accent) !important;
+          animation: none !important;
+        }
         body.ynow-theme-model .ynow-model-kpi-tone-2 .small-box,
         body.ynow-theme-model .ynow-model-kpi-tone-2 .info-box,
         body.ynow-theme-model .ynow-model-kpi-tone-2 .info-box .info-box-icon {
@@ -4089,7 +4122,7 @@ ui <- dashboardPage(
           border-color: var(--ynow-model-accent) !important;
           color: #ffffff !important;
         }
-        /* 明確排除：試算／回復預設按鈕色不變 */
+        /* 試算／Run：P/B 等未列項目維持 logo 綠；下列模型改模型主色白字 */
         body.ynow-theme-model .btn.ynow-btn-calc,
         body.ynow-theme-model .btn.ynow-btn-calc:hover,
         body.ynow-theme-model .btn.ynow-btn-calc:focus,
@@ -4097,6 +4130,55 @@ ui <- dashboardPage(
         body.ynow-theme-model .btn.ynow-btn-calc.active {
           background-color: var(--ynow-logo-green) !important;
           border-color: #1e7a4c !important;
+          color: #ffffff !important;
+        }
+        body.ynow-theme-nav .btn.ynow-btn-calc,
+        body.ynow-theme-nav .btn.ynow-btn-calc:hover,
+        body.ynow-theme-nav .btn.ynow-btn-calc:focus,
+        body.ynow-theme-nav .btn.ynow-btn-calc:active,
+        body.ynow-theme-nav .btn.ynow-btn-calc.active,
+        body.ynow-theme-dcf .btn.ynow-btn-calc,
+        body.ynow-theme-dcf .btn.ynow-btn-calc:hover,
+        body.ynow-theme-dcf .btn.ynow-btn-calc:focus,
+        body.ynow-theme-dcf .btn.ynow-btn-calc:active,
+        body.ynow-theme-dcf .btn.ynow-btn-calc.active,
+        body.ynow-theme-ddm .btn.ynow-btn-calc,
+        body.ynow-theme-ddm .btn.ynow-btn-calc:hover,
+        body.ynow-theme-ddm .btn.ynow-btn-calc:focus,
+        body.ynow-theme-ddm .btn.ynow-btn-calc:active,
+        body.ynow-theme-ddm .btn.ynow-btn-calc.active,
+        body.ynow-theme-ri .btn.ynow-btn-calc,
+        body.ynow-theme-ri .btn.ynow-btn-calc:hover,
+        body.ynow-theme-ri .btn.ynow-btn-calc:focus,
+        body.ynow-theme-ri .btn.ynow-btn-calc:active,
+        body.ynow-theme-ri .btn.ynow-btn-calc.active,
+        body.ynow-theme-multiples .btn.ynow-btn-calc,
+        body.ynow-theme-multiples .btn.ynow-btn-calc:hover,
+        body.ynow-theme-multiples .btn.ynow-btn-calc:focus,
+        body.ynow-theme-multiples .btn.ynow-btn-calc:active,
+        body.ynow-theme-multiples .btn.ynow-btn-calc.active,
+        body.ynow-theme-sotp .btn.ynow-btn-calc,
+        body.ynow-theme-sotp .btn.ynow-btn-calc:hover,
+        body.ynow-theme-sotp .btn.ynow-btn-calc:focus,
+        body.ynow-theme-sotp .btn.ynow-btn-calc:active,
+        body.ynow-theme-sotp .btn.ynow-btn-calc.active {
+          background-color: var(--ynow-model-accent) !important;
+          background-image: none !important;
+          border-color: var(--ynow-model-accent) !important;
+          color: #ffffff !important;
+        }
+        body.ynow-theme-nav .btn.ynow-btn-calc .fa,
+        body.ynow-theme-nav .btn.ynow-btn-calc .fas,
+        body.ynow-theme-dcf .btn.ynow-btn-calc .fa,
+        body.ynow-theme-dcf .btn.ynow-btn-calc .fas,
+        body.ynow-theme-ddm .btn.ynow-btn-calc .fa,
+        body.ynow-theme-ddm .btn.ynow-btn-calc .fas,
+        body.ynow-theme-ri .btn.ynow-btn-calc .fa,
+        body.ynow-theme-ri .btn.ynow-btn-calc .fas,
+        body.ynow-theme-multiples .btn.ynow-btn-calc .fa,
+        body.ynow-theme-multiples .btn.ynow-btn-calc .fas,
+        body.ynow-theme-sotp .btn.ynow-btn-calc .fa,
+        body.ynow-theme-sotp .btn.ynow-btn-calc .fas {
           color: #ffffff !important;
         }
         body.ynow-theme-model .btn.ynow-btn-reset,
@@ -12809,7 +12891,7 @@ ui <- dashboardPage(
                            width = 12,
                            fluidRow(
                              class = "ynow-model-kpi-row",
-                             column(6, class = "ynow-model-kpi-result",
+                             column(6, class = "ynow-model-kpi-result ynow-model-kpi-outline",
                                     infoBoxOutput("mod_ddm-ibx_ddm_price", width = NULL)),
                              column(6, class = "ynow-model-kpi-tone-2",
                                     infoBoxOutput("mod_ddm-ibx_ddm_d1", width = NULL))
@@ -13065,7 +13147,7 @@ ui <- dashboardPage(
                                 column(width = 12,
                                        fluidRow(
                                          class = "ynow-model-kpi-row",
-                                         column(6, class = "ynow-model-kpi-result",
+                                         column(6, class = "ynow-model-kpi-result ynow-model-kpi-outline",
                                                 infoBoxOutput("ibx_stock_value_dcf", width = NULL)),
                                          column(6, class = "ynow-model-kpi-tone-2",
                                                 infoBoxOutput("ibx_enterprise_value_dcf", width = NULL))

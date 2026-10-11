@@ -60,16 +60,31 @@ check(
     grepl("['nav', 'dcf', 'ddm', 'ri', 'pb', 'multiples', 'sotp']", ui_src, fixed = TRUE)
 )
 
-# valueBox / small-box: muted family by default; primary result uses full accent
+# valueBox / small-box: muted family by default; non-outline result keeps filled accent
 check(
   "small-box uses muted model family by default",
   grepl("body.ynow-theme-model .content-wrapper .small-box", ui_src, fixed = TRUE) &&
     grepl("--ynow-model-kpi-muted", ui_src, fixed = TRUE)
 )
 check(
-  "result KPI uses full model accent",
+  "result KPI filled accent remains for non-outline",
   grepl("ynow-model-kpi-result", ui_src, fixed = TRUE) &&
     grepl("background-color: var(--ynow-model-kpi-result)", ui_src, fixed = TRUE)
+)
+check(
+  "listed primary KPIs use white outline + accent text",
+  grepl("ynow-model-kpi-outline", ui_src, fixed = TRUE) &&
+    grepl("body.ynow-theme-model .ynow-model-kpi-outline .small-box", ui_src, fixed = TRUE) &&
+    grepl("background-color: #ffffff", ui_src, fixed = TRUE) &&
+    grepl("border: 2px solid var(--ynow-model-accent)", ui_src, fixed = TRUE)
+)
+check(
+  "Run accent on listed model themes only (not generic model green override alone)",
+  grepl("body.ynow-theme-dcf .btn.ynow-btn-calc", ui_src, fixed = TRUE) &&
+    grepl("body.ynow-theme-nav .btn.ynow-btn-calc", ui_src, fixed = TRUE) &&
+    grepl("body.ynow-theme-sotp .btn.ynow-btn-calc", ui_src, fixed = TRUE) &&
+    grepl("body.ynow-theme-multiples .btn.ynow-btn-calc", ui_src, fixed = TRUE) &&
+    !grepl("body.ynow-theme-pb .btn.ynow-btn-calc", ui_src, fixed = TRUE)
 )
 check(
   "sibling KPI tones defined",
