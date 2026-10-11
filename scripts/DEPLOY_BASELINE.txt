@@ -7,4 +7,4 @@ commit=28f5a4f46ae1520fd4803dbd062ef7bbd24e0105
 short=28f5a4f
 message=chore: record shipped display version v21.69
 captured_at=2026-10-11T07:53:25Z
-display_version=v21.69
+display_version=v21.70
