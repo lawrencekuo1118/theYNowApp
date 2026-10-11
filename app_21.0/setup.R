@@ -700,6 +700,34 @@ OPEX_PATTERNS <- c(
   "^Operating Expenses$"
 )
 
+# 三大現金流合計。yfinance 有時只有 Continuing Activities、沒有 Operating/Investing Cash Flow 列。
+CASHFLOW_OCF_PATTERNS <- c(
+  "^Operating Cash Flow$",
+  "^Cash Flow From Continuing Operating Activities$",
+  "^Cash Flow From Operating Activities$"
+)
+CASHFLOW_ICF_PATTERNS <- c(
+  "^Investing Cash Flow$",
+  "^Cash Flow From Continuing Investing Activities$",
+  "^Cash Flow From Investing Activities$"
+)
+CASHFLOW_FIN_PATTERNS <- c(
+  "^Financing Cash Flow$",
+  "^Cash Flow From Continuing Financing Activities$",
+  "^Cash Flow From Financing Activities$"
+)
+
+cashflow_total_row <- function(df, kind = c("ocf", "icf", "fin"), include_ttm = FALSE) {
+  kind <- match.arg(kind)
+  pats <- switch(
+    kind,
+    ocf = CASHFLOW_OCF_PATTERNS,
+    icf = CASHFLOW_ICF_PATTERNS,
+    fin = CASHFLOW_FIN_PATTERNS
+  )
+  select_clean_metric_row_any(df, pats, include_ttm = include_ttm)
+}
+
 # 投資證券未實現損益（用於 OCF vs 營運利潤之現金轉換品質檢查）
 UNREALIZED_INVESTMENT_GL_PATTERNS <- c(
   "Unrealized Gain.?Loss On Investment Securities",
@@ -1680,7 +1708,7 @@ reconstruct_hist_fcff <- function(d_cf, d_is = NULL, tax = NULL) {
     effective_tax_ratio_from_is(d_is, fallback = statutory_tax_ratio())
   }
   cfo <- tryCatch(
-    select_clean_metric_row(d_cf, "Operating Cash Flow", include_ttm = FALSE),
+    cashflow_total_row(d_cf, "ocf", include_ttm = FALSE),
     error = function(e) NA_real_
   )
   cap <- tryCatch(
@@ -2105,7 +2133,7 @@ compute_report_f_score <- function(d_is, d_bs, d_cf) {
     cur_ast  <- get_row2_any(d_bs, c("^Total Current Assets$", "^Current Assets$"))
     cur_liab <- get_row2_any(d_bs, c("^Total Current Liabilities$", "^Current Liabilities$"))
     shares   <- get_row2(d_bs, "Ordinary Shares Number")
-    ocf      <- get_row2(d_cf, "Operating Cash Flow")
+    ocf      <- get_row2_any(d_cf, CASHFLOW_OCF_PATTERNS)
     oe_row   <- get_operating_earnings_row(d_is, include_ttm = FALSE)
     op_earn  <- {
       v <- suppressWarnings(as.numeric(oe_row))

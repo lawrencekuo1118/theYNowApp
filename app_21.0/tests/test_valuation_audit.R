@@ -68,5 +68,24 @@ gap <- dcf_ddm_crosscheck(100, 70)
 check("DCF vs DDM gap is wide", isTRUE(gap$wide) && abs(gap$gap - (30/70)) < 1e-9)
 check("DCF vs DDM within 25% is not wide", isTRUE(!dcf_ddm_crosscheck(100, 90)$wide))
 
+# ASML live cash flow has Continuing Activities totals and no "Operating Cash Flow" row.
+cf_asml <- data.frame(
+  Breakdown = c(
+    "Cash Flow From Continuing Operating Activities",
+    "Cash Flow From Continuing Investing Activities",
+    "Cash Flow From Continuing Financing Activities",
+    "Financing Cash Flow"
+  ),
+  Y2025 = c(12658500000, -3777800000, -8670500000, -8670500000),
+  Y2024 = c(11166200000, -2609300000, -2832100000, -2832100000),
+  stringsAsFactors = FALSE
+)
+ocf <- cashflow_total_row(cf_asml, "ocf")
+icf <- cashflow_total_row(cf_asml, "icf")
+fin <- cashflow_total_row(cf_asml, "fin")
+check("ASML OCF alias is finite", is.finite(get_avg_growth(ocf)) && abs(get_avg_growth(ocf) - (12658500000 - 11166200000) / 11166200000 * 100) < 1e-6)
+check("ASML ICF alias is finite", is.finite(get_avg_growth(icf)))
+check("ASML financing prefers Financing Cash Flow", is.finite(fin[1]) && abs(fin[1] - -8670500000) < 1)
+
 if (fail > 0L) quit(status = 1)
 cat("ALL PASS\n")

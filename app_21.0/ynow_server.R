@@ -3284,9 +3284,9 @@ server <- function(input, output, session) {
 
     # 序列色對齊 logo 藍／金／綠（勿用紫系 AI 預設）
     spec <- list(
-      ocf = list(key = "Operating Cash Flow", label = "營業現金流 OCF", color = "#0C5484", symbol = "circle"),
-      icf = list(key = "Investing Cash Flow", label = "投資現金流 ICF", color = "#C9A227", symbol = "diamond"),
-      fcf = list(key = "Financing Cash Flow", label = "籌資現金流 FCF", color = "#249C60", symbol = "square")
+      ocf = list(keys = CASHFLOW_OCF_PATTERNS, label = "營業現金流 OCF", color = "#0C5484", symbol = "circle"),
+      icf = list(keys = CASHFLOW_ICF_PATTERNS, label = "投資現金流 ICF", color = "#C9A227", symbol = "diamond"),
+      fcf = list(keys = CASHFLOW_FIN_PATTERNS, label = "籌資現金流 FCF", color = "#249C60", symbol = "square")
     )
 
     cf <- d_cash_flow()
@@ -3295,7 +3295,12 @@ server <- function(input, output, session) {
     for (id in c("ocf", "icf", "fcf")) {
       if (!(id %in% series_sel)) next
       sp <- spec[[id]]
-      df <- .cf_row_series(cf, sp$key)
+      df <- NULL
+      for (kw in sp$keys) {
+        df <- .cf_row_series(cf, kw)
+        if (!is.null(df) && nrow(df) > 0 && any(is.finite(df$Value))) break
+        df <- NULL
+      }
       if (is.null(df) || nrow(df) < 1) next
       df$Series <- sp$label
       df$SeriesId <- id
@@ -5002,7 +5007,7 @@ server <- function(input, output, session) {
       )
       if (!is.finite(unreal)) unreal <- 0
       op_earn <- if (is.finite(ni)) ni - unreal else NA_real_
-      ocf <- select_current_metric(d_cash_flow(), "Operating Cash Flow", "flow")
+      ocf <- select_current_metric_any(d_cash_flow(), CASHFLOW_OCF_PATTERNS, "flow")
       assets <- select_current_metric(d_balance_sheet(), "Total Assets", "stock")
       s <- 0
       if (is.finite(ni) && is.finite(assets) && assets > 0 && ni / assets > 0) s <- s + 1

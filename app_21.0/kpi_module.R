@@ -119,7 +119,7 @@ kpi_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_fl
     # --- Cash Flow ---
     # 營運現金成長率 = 年均 YoY(Operating Cash Flow)
     output$vbx_op_cash_flow_growth <- renderValueBox({
-      val <- get_avg_growth(select_clean_metric_row(d_cash_flow(), "Operating Cash Flow", include_ttm = FALSE))
+      val <- get_avg_growth(cashflow_total_row(d_cash_flow(), "ocf", include_ttm = FALSE))
       color <- get_box_color(industry_choice(), "rev_growth", val)
       .box(
         value = if (!is.na(val)) paste0(sprintf("%.2f", val), "%") else "N/A",
@@ -131,7 +131,7 @@ kpi_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_fl
     
     # 投資現金成長率 = 年均 YoY(Investing Cash Flow)；負值為常態（流出）
     output$vbx_inv_cash_flow_growth <- renderValueBox({
-      val <- get_avg_growth(select_clean_metric_row(d_cash_flow(), "Investing Cash Flow", include_ttm = FALSE))
+      val <- get_avg_growth(cashflow_total_row(d_cash_flow(), "icf", include_ttm = FALSE))
       color <- get_box_color(industry_choice(), "rev_growth", val)
       .box(
         value = if (!is.na(val)) paste0(sprintf("%.2f", val), "%") else "N/A",
@@ -143,7 +143,7 @@ kpi_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_fl
     
     # 融資現金成長率 = 年均 YoY(Financing Cash Flow)
     output$vbx_fin_cash_flow_growth <- renderValueBox({
-      val <- get_avg_growth(select_clean_metric_row(d_cash_flow(), "Financing Cash Flow", include_ttm = FALSE))
+      val <- get_avg_growth(cashflow_total_row(d_cash_flow(), "fin", include_ttm = FALSE))
       color <- get_box_color(industry_choice(), "rev_growth", val)
       .box(
         value = if (!is.na(val)) paste0(sprintf("%.2f", val), "%") else "N/A",
@@ -197,7 +197,7 @@ kpi_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_fl
     
     # 現金流與淨利比 = Operating Cash Flow / Net Income（無產業區間 → 白／無色）
     output$vbx_ocf_net_income <- renderValueBox({
-      ocf <- get_avg(select_clean_metric_row(d_cash_flow(), "Operating Cash Flow", include_ttm = FALSE))
+      ocf <- get_avg(cashflow_total_row(d_cash_flow(), "ocf", include_ttm = FALSE))
       net <- get_avg(select_clean_metric_row_any(d_income_statement(), NET_INCOME_PATTERNS, include_ttm = FALSE))
       ratio <- if (!is.na(ocf) && !is.na(net) && net != 0) ocf / net else NA_real_
       .box(
