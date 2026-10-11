@@ -7,4 +7,4 @@ commit=cfe63af
 short=cfe63af
 message=chore: record shipped display version v21.57
 captured_at=2026-10-11T05:11:53Z
-display_version=v21.57
+display_version=v21.58
