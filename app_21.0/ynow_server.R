@@ -12546,7 +12546,7 @@ server <- function(input, output, session) {
     ignoreInit = FALSE
   )
 
-  output$lab_im_summary <- renderTable({
+  output$lab_im_summary <- DT::renderDT({
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
     empty_msg <- tryCatch(
       ui_str("lab_im_summary_empty", loc),
@@ -12555,19 +12555,23 @@ server <- function(input, output, session) {
     msg_col <- if (identical(loc, "en")) "Message" else "訊息"
     scope <- .lab_im_method_scope_catalog()
     if (!is.data.frame(scope) || nrow(scope) == 0L) {
-      return(stats::setNames(data.frame(empty_msg, stringsAsFactors = FALSE), msg_col))
+      return(ynow_sortable_datatable(
+        stats::setNames(data.frame(empty_msg, stringsAsFactors = FALSE), msg_col)
+      ))
     }
     sm <- lab_method_group_summary(scope, include_all = TRUE, locale = loc)
     if (is.null(sm) || nrow(sm) == 0) {
-      return(stats::setNames(data.frame(empty_msg, stringsAsFactors = FALSE), msg_col))
+      return(ynow_sortable_datatable(
+        stats::setNames(data.frame(empty_msg, stringsAsFactors = FALSE), msg_col)
+      ))
     }
     want <- if (identical(loc, "en")) {
       c("Suggested valuation method", "Industries", "Candidates")
     } else {
       c("建議評價方法", "產業數", "候選檔數")
     }
-    sm[, want, drop = FALSE]
-  }, striped = TRUE, bordered = TRUE, hover = TRUE, width = "100%")
+    ynow_sortable_datatable(sm[, want, drop = FALSE])
+  }, server = FALSE)
 
   # Live pool size under current query filters (industry × model × board × ADR)
   output$lab_im_filter_count <- renderUI({
@@ -12911,14 +12915,16 @@ server <- function(input, output, session) {
     tags$p(style = "color:#555; font-size:12.5px; margin:0 0 8px 0;", txt)
   })
 
-  output$lab_im_ind_mcap_table <- renderTable({
+  output$lab_im_ind_mcap_table <- DT::renderDT({
     board <- .lab_im_ind_mcap_board()
     loc <- board$loc %||% "zh-TW"
     msg_col <- if (identical(loc, "en")) "Message" else "訊息"
     if (isTRUE(board$waiting)) {
       msg <- tryCatch(ui_str("lab_im_ind_mcap_waiting", loc),
                       error = function(e) "尚未評估。請按「搜尋績優股」後自動產生產業排序清單。")
-      return(stats::setNames(data.frame(msg, stringsAsFactors = FALSE), msg_col))
+      return(ynow_sortable_datatable(
+        stats::setNames(data.frame(msg, stringsAsFactors = FALSE), msg_col)
+      ))
     }
     tbl <- board$table
     if (is.null(tbl) || !is.data.frame(tbl) || nrow(tbl) == 0) {
@@ -12929,19 +12935,23 @@ server <- function(input, output, session) {
         ),
         error = function(e) "尚無產業列可顯示。"
       )
-      return(stats::setNames(data.frame(msg, stringsAsFactors = FALSE), msg_col))
+      return(ynow_sortable_datatable(
+        stats::setNames(data.frame(msg, stringsAsFactors = FALSE), msg_col)
+      ))
     }
-    lab_localize_im_colnames(tbl, loc)
-  }, striped = TRUE, bordered = TRUE, hover = TRUE, spacing = "s", width = "100%")
+    ynow_sortable_datatable(lab_localize_im_colnames(tbl, loc))
+  }, server = FALSE)
 
-  output$lab_im_leaderboard <- renderTable({
+  output$lab_im_leaderboard <- DT::renderDT({
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
     msg_col <- if (identical(loc, "en")) "Message" else "訊息"
     scores <- lab_im_scores()
     if (is.null(scores) || !is.data.frame(scores) || nrow(scores) == 0) {
       msg <- tryCatch(ui_str("lab_im_lb_none", loc),
                       error = function(e) "（尚無績優排行 — 請先按「搜尋績優股」）")
-      return(stats::setNames(data.frame(msg, stringsAsFactors = FALSE), msg_col))
+      return(ynow_sortable_datatable(
+        stats::setNames(data.frame(msg, stringsAsFactors = FALSE), msg_col)
+      ))
     }
     merged <- tryCatch(lab_im_merged(), error = function(e) NULL)
     if (is.null(merged) || nrow(merged) == 0) {
@@ -12958,7 +12968,9 @@ server <- function(input, output, session) {
           "但目前複選條件下明細為空。"
         )
       )
-      return(stats::setNames(data.frame(msg, stringsAsFactors = FALSE), msg_col))
+      return(ynow_sortable_datatable(
+        stats::setNames(data.frame(msg, stringsAsFactors = FALSE), msg_col)
+      ))
     }
     scope <- as.character(input$lab_im_lb_mode %||% "overall")[1]
     if (!scope %in% c("overall", "by_industry", "undervalued")) scope <- "overall"
@@ -13020,7 +13032,9 @@ server <- function(input, output, session) {
           "。說明：N 是分析後顯示上限；前十名只從「合格者」取最多 10 檔，不會補足到 10。"
         )
       )
-      return(stats::setNames(data.frame(msg, stringsAsFactors = FALSE), msg_col))
+      return(ynow_sortable_datatable(
+        stats::setNames(data.frame(msg, stringsAsFactors = FALSE), msg_col)
+      ))
     }
     if ("產業" %in% names(lb) && "industry_key" %in% names(lb_src) &&
         exists("industry_label", mode = "function")) {
@@ -13045,8 +13059,8 @@ server <- function(input, output, session) {
         )
       }
     }
-    lab_localize_im_colnames(lb, loc)
-  }, striped = TRUE, bordered = TRUE, hover = TRUE, spacing = "m", width = "100%")
+    ynow_sortable_datatable(lab_localize_im_colnames(lb, loc))
+  }, server = FALSE)
 
   output$lab_im_leaderboard_status <- renderUI({
     scores <- lab_im_scores()
@@ -13136,7 +13150,7 @@ server <- function(input, output, session) {
     )
   })
 
-  output$lab_im_table <- DT::renderDataTable({
+  output$lab_im_table <- DT::renderDT({
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
     msg_col <- if (identical(loc, "en")) "Message" else "訊息"
     catlg <- lab_im_catalog()
@@ -13164,9 +13178,8 @@ server <- function(input, output, session) {
         tryCatch(ui_str("lab_im_detail_no_match", loc),
                  error = function(e) "沒有符合篩選的已評估列。可放寬產業／模型，或重新評估。")
       }
-      return(DT::datatable(
-        stats::setNames(data.frame(msg, stringsAsFactors = FALSE), msg_col),
-        rownames = FALSE, options = list(dom = "t")
+      return(ynow_sortable_datatable(
+        stats::setNames(data.frame(msg, stringsAsFactors = FALSE), msg_col)
       ))
     }
     merged <- lab_cap_detail_display(
@@ -13177,7 +13190,7 @@ server <- function(input, output, session) {
       no_alert = no_alert_on
     )
     if (is.null(merged) || nrow(merged) == 0L) {
-      return(DT::datatable(
+      return(ynow_sortable_datatable(
         stats::setNames(
           data.frame(
             tryCatch(ui_str("lab_im_detail_no_qual", loc),
@@ -13185,8 +13198,7 @@ server <- function(input, output, session) {
             stringsAsFactors = FALSE
           ),
           msg_col
-        ),
-        rownames = FALSE, options = list(dom = "t")
+        )
       ))
     }
     yahoo_nm <- if ("company_name" %in% names(merged)) merged$company_name else NA_character_
@@ -13228,24 +13240,18 @@ server <- function(input, output, session) {
       ),
       loc
     )
-    DT::datatable(
+    ynow_sortable_datatable(
       show_df,
-      rownames = FALSE,
-      filter = "top",
       escape = FALSE,
-      options = list(
-        pageLength = 20,
-        scrollX = TRUE,
-        deferRender = TRUE,
-        order = list()
-      )
+      page_length = 20L,
+      filter = "top"
     ) %>%
       DT::formatStyle(
         "F-Score",
         backgroundColor = "#f3f6fb",
         fontWeight = "700"
       )
-  })
+  }, server = FALSE)
 
   lab_im_detail_export_df <- function() {
     catlg <- tryCatch(lab_im_catalog(), error = function(e) NULL)
@@ -13970,7 +13976,7 @@ server <- function(input, output, session) {
     lab_cluster_radar_plotly(res, focus_ticker = focus, locale = loc)
   })
 
-  output$lab_cluster_table <- DT::renderDataTable({
+  output$lab_cluster_table <- DT::renderDT({
     res <- lab_cluster_result()
     req(lab_cluster_has_result(res))
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
@@ -14010,17 +14016,16 @@ server <- function(input, output, session) {
     }
     num_cols <- names(out)[vapply(out, is.numeric, logical(1)) & names(out) != "Cluster_ID"]
     # Default row order already: Radar focus first, then truncate-logic sort
-    dt <- DT::datatable(
+    dt <- ynow_sortable_datatable(
       out,
-      rownames = FALSE,
       escape = if (is.finite(cov_idx)) -as.integer(cov_idx) else TRUE,
-      options = list(pageLength = 25, scrollX = TRUE, deferRender = TRUE, order = list())
+      page_length = 25L
     )
     if (length(num_cols)) {
       dt <- DT::formatRound(dt, columns = num_cols, digits = 2)
     }
     dt
-  })
+  }, server = FALSE)
 
   # 沿用主頁 Ticker / Stock Code：優先用已搜尋的代碼，否則用主頁輸入框
   lab_ticker <- reactive({

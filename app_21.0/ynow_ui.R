@@ -1777,7 +1777,7 @@ beta_rolling_section_ui <- function() {
                 uiOutput("lab_im_ind_mcap_status"),
                 tags$div(
                   style = "overflow-x:auto;",
-                  tableOutput("lab_im_ind_mcap_table")
+                  DT::dataTableOutput("lab_im_ind_mcap_table")
                 )
               )
             )
@@ -1887,7 +1887,7 @@ beta_rolling_section_ui <- function() {
                   ),
                   uiOutput("lab_im_leader_note"),
                   uiOutput("lab_im_leaderboard_status"),
-                  tableOutput("lab_im_leaderboard")
+                  DT::dataTableOutput("lab_im_leaderboard")
                 )
               ),
               fluidRow(
@@ -2132,7 +2132,7 @@ beta_rolling_section_ui <- function() {
                   tags$div(
                     class = "ynow-lab-im-method-summary ynow-full-only",
                     style = "margin: 0 0 12px 0;",
-                    tableOutput("lab_im_summary")
+                    DT::dataTableOutput("lab_im_summary")
                   ),
                   uiOutput("lab_im_filter_count"),
                   tags$div(
@@ -4716,6 +4716,9 @@ ui <- dashboardPage(
         body.ynow-theme-bluechip .content-wrapper table.table > thead > tr > th {
           border-bottom-color: var(--ynow-bluechip-sky) !important;
           color: var(--ynow-bluechip-deep);
+        }
+        body.ynow-theme-bluechip .content-wrapper table.ynow-sortable-dt thead th {
+          cursor: pointer;
         }
         /* Spinner / loaders */
         body.ynow-theme-bluechip .content-wrapper .load-container .loader,

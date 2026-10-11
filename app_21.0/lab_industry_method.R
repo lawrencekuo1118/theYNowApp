@@ -48,6 +48,67 @@ lab_method_labels <- function(locale = "zh-TW") {
   if (identical(loc, "en")) LAB_METHOD_LABELS_EN else LAB_METHOD_LABELS
 }
 
+#' DataTables column render: header clicks sort percents, market-cap suffixes,
+#' and plain numbers numerically; em dashes sort as missing.
+ynow_dt_sort_column_def <- function() {
+  list(
+    targets = "_all",
+    render = DT::JS(
+      "function(data, type) {",
+      "  if (type !== 'sort' && type !== 'type' && type !== 'filter') return data;",
+      "  var s = data == null ? '' : String(data);",
+      "  s = s.replace(/<[^>]*>/g, '').replace(/&nbsp;/gi, ' ').replace(/\\s+/g, ' ').trim();",
+      "  if (type === 'filter') return s;",
+      "  if (!s || s === '\\u2014' || s === '\\u2013' || s === '-') return null;",
+      "  var pct = s.match(/^([+-]?\\d+(?:\\.\\d+)?)%$/);",
+      "  if (pct) return parseFloat(pct[1]);",
+      "  var mag = s.match(/^([+-]?\\d+(?:\\.\\d+)?)([TBMK])$/i);",
+      "  if (mag) {",
+      "    var mul = {K:1e3, M:1e6, B:1e9, T:1e12}[mag[2].toUpperCase()];",
+      "    return parseFloat(mag[1]) * mul;",
+      "  }",
+      "  var sci = s.replace(/,/g, '');",
+      "  if (/^[+-]?\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$/.test(sci)) return parseFloat(sci);",
+      "  return s.toLowerCase();",
+      "}"
+    )
+  )
+}
+
+#' Blue Chip table with clickable headers. Initial row order is unchanged
+#' until the user sorts a column.
+ynow_sortable_datatable <- function(data, escape = TRUE, page_length = NULL,
+                                    filter = "none", extra_options = list()) {
+  if (is.null(data) || !is.data.frame(data)) {
+    data <- data.frame(Message = character(0), stringsAsFactors = FALSE)
+  }
+  n <- nrow(data)
+  plen <- if (is.null(page_length)) max(as.integer(n), 1L) else as.integer(page_length)[1]
+  if (!is.finite(plen) || plen < 1L) plen <- 1L
+  base <- list(
+    paging = isTRUE(n > plen),
+    pageLength = plen,
+    scrollX = TRUE,
+    ordering = TRUE,
+    order = list(),
+    orderClasses = TRUE,
+    deferRender = TRUE,
+    dom = "t"
+  )
+  opts <- if (length(extra_options)) utils::modifyList(base, extra_options) else base
+  opts$ordering <- TRUE
+  prev_defs <- opts$columnDefs
+  opts$columnDefs <- c(list(ynow_dt_sort_column_def()), prev_defs)
+  DT::datatable(
+    data,
+    rownames = FALSE,
+    escape = escape,
+    filter = filter,
+    class = "stripe hover cell-border ynow-sortable-dt",
+    options = opts
+  )
+}
+
 #' Rename Blue Chip table column headers for the active UI locale.
 lab_localize_im_colnames <- function(df, locale = "zh-TW") {
   if (is.null(df) || !is.data.frame(df)) return(df)
