@@ -227,9 +227,8 @@ check(
   grepl('menuItem("YNOW", tabName = "sensitivity", icon = icon("clock"))', ui, fixed = TRUE)
 )
 check(
-  "atx menu first-paint root map name",
-  grepl("Asset transmission root map", ui, fixed = TRUE) &&
-    !grepl('ynow_menu_asset_transmission", "Asset transmission")', ui, fixed = TRUE)
+  "atx menu first-paint name",
+  grepl('ynow_menu_asset_transmission", "Asset Transmission Root"', ui, fixed = TRUE)
 )
 check("applyUiLocale ch1 lead", grepl("ynow_funnel_ch1_lead", ui, fixed = TRUE))
 check("applyUiLocale notes titles", grepl("ynow-notes__title", ui, fixed = TRUE) &&

@@ -3277,7 +3277,7 @@ beta_rolling_section_ui <- function() {
           id = "ynow_testing_box_body",
           style = "color:#555; line-height:1.5;",
           paste0(
-            "Use the sidebar entry Asset transmission root map for the inflation → rates → liquidity → asset map. ",
+            "Use the sidebar entry Asset Transmission Root for the inflation → rates → liquidity → asset map. ",
             "This Testing page remains a Full-only placeholder for future lab hooks."
           )
         )
@@ -3432,7 +3432,7 @@ ui <- dashboardPage(
                icon = icon("globe-asia")
              ),
              menuItem(
-               text = tags$span(id = "ynow_menu_asset_transmission", "Asset transmission root map"),
+               text = tags$span(id = "ynow_menu_asset_transmission", "Asset Transmission Root"),
                tabName = "asset_transmission",
                icon = icon("project-diagram")
              ),

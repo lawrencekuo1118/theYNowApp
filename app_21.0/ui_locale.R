@@ -110,7 +110,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     menu_company_advance = "Business Breakdown",
     kpi_last_price = "Last Price",
     menu_macro_market = "Macro & Market Trends",
-    menu_asset_transmission = "Asset transmission root map",
+    menu_asset_transmission = "Asset Transmission Root",
     menu_smart_analysis = "Smart Analysis",
     menu_get_started = "Model Dashboard",
     menu_dcf = "DCF-Model",
@@ -468,7 +468,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     testing_box_title = "Sandbox",
     testing_box_body = paste0(
-      "Use the sidebar entry Asset transmission root map for the inflation → rates → liquidity → asset map. ",
+      "Use the sidebar entry Asset Transmission Root for the inflation → rates → liquidity → asset map. ",
       "This Testing page remains a Full-only placeholder for future lab hooks."
     ),
     atx_page_title = "Asset transmission root map",
