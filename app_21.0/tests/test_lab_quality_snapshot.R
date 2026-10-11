@@ -77,7 +77,7 @@ check("snapshot older than 24h is stale", isTRUE(old$stale))
 
 for (loc in c("en", "zh-TW")) {
   for (k in c(
-    "btn_lab_im_update_quality", "lab_im_quality_snap_none", "lab_im_quality_snap_status",
+    "btn_lab_im_refresh", "lab_im_refresh_title", "lab_im_quality_snap_none", "lab_im_quality_snap_status",
     "lab_im_quality_snap_stale", "lab_im_quality_snap_missing", "lab_im_quality_done"
   )) {
     check(paste(loc, k), nzchar(ui_str(k, loc)))
@@ -88,8 +88,14 @@ check("zh uses 檔", grepl("檔", ui_str("lab_im_quality_snap_status", "zh-TW"),
 
 ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-check("button mounted", grepl("lab_im_update_quality", ui, fixed = TRUE))
-check("server refreshes snapshot", grepl("lab_refresh_quality_snapshot", srv, fixed = TRUE))
+check("quality button removed", !grepl("lab_im_update_quality", ui, fixed = TRUE))
+check("refresh list still mounted", grepl("lab_im_refresh_universe", ui, fixed = TRUE))
+check("refresh list runs the quality snapshot", {
+  i <- regexpr("observeEvent\\(input\\$lab_im_refresh_universe", srv)
+  tail <- if (i > 0L) substr(srv, i, i + 12000L) else ""
+  grepl("lab_refresh_quality_snapshot", tail, fixed = TRUE) &&
+    !grepl("observeEvent\\(input\\$lab_im_update_quality", srv)
+})
 check("count reads snapshot", grepl("lab_apply_quality_snapshot", srv, fixed = TRUE))
 check("search upserts snapshot", grepl("lab_upsert_quality_from_scores", srv, fixed = TRUE) ||
   grepl("lab_upsert_quality_rows", srv, fixed = TRUE))

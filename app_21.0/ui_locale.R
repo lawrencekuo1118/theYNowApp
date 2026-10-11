@@ -1061,7 +1061,11 @@ locale_for_market <- function(mode = get_market_mode()) {
     btn_lab_im_download = "Download page report",
     lab_im_download_title = "Download current filters, summary, and detail (no re-evaluation)",
     btn_lab_im_refresh = "Refresh list",
-    lab_im_refresh_title = "Re-fetch the current market listing universe",
+    lab_im_refresh_title = paste0(
+      "Re-fetch the current market listing universe, then write earnings quality, ",
+      "Piotroski F-Score, and FS alert counts for the current filter pool. ",
+      "Names updated within 24 hours are kept."
+    ),
     lab_im_eval_hint = "Tip: evaluation fetches Yahoo statements and valuation per name — larger N takes longer.",
     lab_im_summary_empty = "No industries / candidates under the current multi-select.",
     lab_im_eq_on = "Earnings quality pass",
@@ -3859,7 +3863,11 @@ locale_for_market <- function(mode = get_market_mode()) {
     btn_lab_im_download = "下載本頁報告",
     lab_im_download_title = "下載目前篩選、摘要與明細（不必重新評估）",
     btn_lab_im_refresh = "更新名單",
-    lab_im_refresh_title = "重新擷取目前市場的成分／上市／上櫃／興櫃名單",
+    lab_im_refresh_title = paste0(
+      "重新擷取目前市場的成分／上市／上櫃／興櫃名單，",
+      "並為目前篩選池寫入盈餘品質、Piotroski F-Score 與財報警訊數。",
+      "24 小時內已更新的代號沿用既有快照。"
+    ),
     lab_im_eval_hint = "提示：評估需逐檔抓 Yahoo 財報與估值，檔數愈多愈久。",
     lab_im_summary_empty = "目前複選下無產業／候選",
     lab_im_eq_on = "盈餘品質通過",

@@ -12369,8 +12369,15 @@ server <- function(input, output, session) {
   })
 
   observeEvent(input$lab_im_refresh_universe, {
+    if (isTRUE(isolate(lab_im_eval_busy()))) {
+      showNotification(.ui_msg("lab_im_quality_busy"), type = "warning", duration = 5)
+      return()
+    }
     mode <- market_mode()
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
     msg <- if (identical(mode, "TW")) "更新台股上市／上櫃／興櫃名單…" else "更新美股主要上市名單…"
+    lab_im_eval_busy(TRUE)
+    on.exit(tryCatch(lab_im_eval_busy(FALSE), error = function(e) NULL), add = TRUE)
     fetched <- withProgress(
       message = msg,
       value = 0.4, {
@@ -12383,15 +12390,65 @@ server <- function(input, output, session) {
         out
       }
     )
-    if (is.data.frame(fetched) && nrow(fetched) > 0) {
-      lab_im_catalog_nonce(isolate(lab_im_catalog_nonce()) + 1L)
-      showNotification(
-        sprintf("已更新名單：%d 檔。", length(unique(fetched$ticker))),
-        type = "message", duration = 6
+    if (!is.data.frame(fetched) || nrow(fetched) < 1L) {
+      showNotification(.ui_msg("notif_update_cache_fallback"), type = "warning", duration = 8)
+      return()
+    }
+    lab_im_catalog_nonce(isolate(lab_im_catalog_nonce()) + 1L)
+    showNotification(
+      sprintf("已更新名單：%d 檔。", length(unique(fetched$ticker))),
+      type = "message", duration = 6
+    )
+    mm <- tryCatch(normalize_market_mode(mode), error = function(e) "US")
+    boards <- tryCatch(isolate(.lab_im_boards()), error = function(e) c("TWSE", "TPEX"))
+    catlg <- tryCatch(
+      lab_build_industry_method_catalog(market_mode = mode, boards = boards),
+      error = function(e) NULL
+    )
+    include_adr <- if (identical(mm, "TW")) TRUE else isTRUE(isolate(input$lab_im_include_adr) %||% TRUE)
+    pool <- if (is.data.frame(catlg) && nrow(catlg) > 0L) {
+      tryCatch(
+        lab_structural_filter_pool(
+          catlg,
+          method_filter = isolate(input$lab_im_methods),
+          industry_filter = isolate(lab_im_industry_filter()),
+          include_adr = include_adr,
+          market_mode = mm
+        ),
+        error = function(e) NULL
       )
     } else {
-      showNotification(.ui_msg("notif_update_cache_fallback"), type = "warning", duration = 8)
+      NULL
     }
+    if (!is.data.frame(pool) || !nrow(pool)) {
+      showNotification(.ui_msg("notif_no_candidates_ind_model"), type = "warning")
+      return()
+    }
+    result <- withProgress(
+      message = tryCatch(ui_str("lab_im_quality_progress", loc), error = function(e) "Updating quality snapshot…"),
+      value = 0,
+      {
+        lab_refresh_quality_snapshot(
+          pool,
+          market = mm,
+          force = FALSE,
+          progress_cb = function(i, n, tk) {
+            incProgress(1 / max(n, 1), detail = paste0(tk, " (", i, "/", n, ")"))
+          }
+        )
+      }
+    )
+    lab_quality_snap_nonce(isolate(lab_quality_snap_nonce()) + 1L)
+    showNotification(
+      .ui_msg(
+        "lab_im_quality_done",
+        run = as.integer(result$n_run %||% 0L),
+        skip = as.integer(result$n_skip %||% 0L),
+        loc = loc
+      ),
+      type = "message",
+      duration = 6
+    )
   })
 
   # 首屏用快取；畫完後若名單超過約 7 天才嘗試網路更新（失敗不擋）
@@ -12425,62 +12482,6 @@ server <- function(input, output, session) {
       gate_only = FALSE
     )
   })
-
-  observeEvent(input$lab_im_update_quality, {
-    if (isTRUE(isolate(lab_im_eval_busy()))) {
-      showNotification(.ui_msg("lab_im_quality_busy"), type = "warning", duration = 5)
-      return()
-    }
-    mm <- tryCatch(normalize_market_mode(market_mode()), error = function(e) "US")
-    include_adr <- if (identical(mm, "TW")) TRUE else isTRUE(isolate(input$lab_im_include_adr) %||% TRUE)
-    catlg <- tryCatch(lab_im_catalog(), error = function(e) NULL)
-    pool <- if (is.data.frame(catlg) && nrow(catlg) > 0L) {
-      tryCatch(
-        lab_structural_filter_pool(
-          catlg,
-          method_filter = isolate(input$lab_im_methods),
-          industry_filter = isolate(lab_im_industry_filter()),
-          include_adr = include_adr,
-          market_mode = mm
-        ),
-        error = function(e) NULL
-      )
-    } else {
-      NULL
-    }
-    if (!is.data.frame(pool) || !nrow(pool)) {
-      showNotification(.ui_msg("notif_no_candidates_ind_model"), type = "warning")
-      return()
-    }
-    lab_im_eval_busy(TRUE)
-    on.exit(tryCatch(lab_im_eval_busy(FALSE), error = function(e) NULL), add = TRUE)
-    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
-    result <- withProgress(
-      message = tryCatch(ui_str("lab_im_quality_progress", loc), error = function(e) "Updating quality snapshot…"),
-      value = 0,
-      {
-        lab_refresh_quality_snapshot(
-          pool,
-          market = mm,
-          force = FALSE,
-          progress_cb = function(i, n, tk) {
-            incProgress(1 / max(n, 1), detail = paste0(tk, " (", i, "/", n, ")"))
-          }
-        )
-      }
-    )
-    lab_quality_snap_nonce(isolate(lab_quality_snap_nonce()) + 1L)
-    showNotification(
-      .ui_msg(
-        "lab_im_quality_done",
-        run = as.integer(result$n_run %||% 0L),
-        skip = as.integer(result$n_skip %||% 0L),
-        loc = loc
-      ),
-      type = "message",
-      duration = 6
-    )
-  }, ignoreInit = TRUE)
 
   # Explicit Search Blue Chips button
   observeEvent(input$lab_im_run_fscore, {
