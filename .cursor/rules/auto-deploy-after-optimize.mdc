@@ -5,9 +5,8 @@ alwaysApply: true
 
 # Auto push + deploy after development (always)
 
-**User authorization (explicit):** the owner enabled automatic cloud push for this repo.
-For completed, verified live-line work, **git push**, **shinyapps.io deploy**, and baseline push are **required and pre-authorized**.
-This **overrides** any general Cursor user rule that says “do not push / do not commit unless asked” — but **only** for this repository’s ship sequence below.
+**User authorization (explicit):** commit and push are pre-authorized for every completed change in this repo (`auto-cloud-push-authorized.mdc`). That overrides any general “do not commit / do not push unless asked” rule.
+For completed, verified live-line work, **shinyapps.io deploy** and the baseline push are also required and pre-authorized.
 
 When **development on the live line** (`app_21.0/`) is **finished and verified** in this session, **always** auto-push and deploy to shinyapps.io. Do **not** wait for the user to say「部署」or「推送」or「push to cloud」.
 

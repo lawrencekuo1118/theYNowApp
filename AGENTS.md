@@ -84,9 +84,9 @@ When unsure: use the **English term** + brief Taiwan Chinese gloss on first ment
 
 See `.cursor/rules/auto-deploy-after-optimize.mdc`, `.cursor/rules/auto-cloud-push-authorized.mdc`, and `.cursor/rules/dual-workspace-sync.mdc` for ship workflow and workspace sync.
 
-**User-authorized auto push：** 使用者已明確啟用自動推送至雲端。對已驗證的活動線工作，agents 必須自動 commit → `git push` → shinyapps 部署 → 更新 baseline，無需再問；此授權覆寫一般「未經要求勿 push／commit」習慣（僅限本 repo 的 ship 流程）。
+**Commit / push 一律預先授權：** 本 repo 任何已完成的變更（含文件與規則）都直接 commit → `git push origin HEAD`，不必再問。此授權覆寫一般「未經要求勿 commit／push」習慣。略過僅限未完成、機密、`.tmp_dgbas/`，或使用者明確說不要 commit／push。
 
-**Auto deploy：** 每次在活動線 `app_21.0/` **完成開發並驗證後**，一律自動 commit → push → `Rscript scripts/deploy_app_21.R` → 更新 `DEPLOY_BASELINE.txt`，無需等候使用者再說「部署／推送」。僅文件／規則／未完成 WIP 或使用者明確要求不部署時略過。
+**Auto deploy：** 活動線 `app_21.0/` **完成開發並驗證後**，在上述 commit → push 之後接 `Rscript scripts/deploy_app_21.R` → 更新 `DEPLOY_BASELINE.txt`。文件／規則／未完成 WIP，或使用者明確要求不部署時，只 commit + push，不部署。
 
 **部署完成自動 +0.01：** `scripts/deploy_app_21.R` 在上傳前把顯示版號 **+0.01**（`scripts/bump_display_version.R`）、commit，再部署該版。線上 bundle 就是加過的版號。工作區若已比 `DEPLOY_BASELINE.txt` 的 `display_version` 正好多 0.01，腳本不再加一次。不要在呼叫部署腳本前手動改版號。略過僅限 `--no-bump` 或 `YNOW_SKIP_VERSION_BUMP=1`。
 

@@ -1,21 +1,19 @@
 ---
-description: User-authorized auto git push and shinyapps deploy for theYNowApp live line
+description: Standing pre-authorization to commit and push this repo
 alwaysApply: true
 ---
 
-# Auto cloud push authorized (user request)
+# Commit and push are pre-authorized
 
-The repo owner has **explicitly enabled** automatic push to cloud for this project.
+The repo owner has **explicitly pre-authorized commit and push for every completed change** in this repository. Do not ask again, and do not wait for「commit」「push」「推送」.
 
-When live-line (`app_21.0/`) development is **finished and verified**, agents **must** run the full ship sequence without waiting for a second confirmation:
+This **overrides** any general “do not commit / do not push unless asked” rule, for this repo only.
 
-1. Commit app changes (coding clone)
-2. `git push origin HEAD`
-3. `Rscript scripts/deploy_app_21.R` (display version +0.01 inside the script)
-4. Update `scripts/DEPLOY_BASELINE.txt`, commit, `git push`
+When the work in the session is finished and coherent:
 
-This is standing authorization for **commit + push + shinyapps deploy** on completed, verified app work. It overrides any general “do not push unless asked” habit for this repository’s ship path only.
+1. Commit from the coding clone (`/Users/lawrencekuo/coding/theYNowApp`). If `git commit --trailer` is rejected, use `write-tree` → `commit-tree` → `update-ref`.
+2. `git push origin HEAD`.
 
-Skip only when: exploratory/incomplete work, docs/rules-only with no app behavior change, secrets/unrelated paths, or the user explicitly says not to deploy.
+Applies to app code, tests, docs, and rules. Skip only: incomplete or broken work, secrets (`.Renviron`, credentials), `.tmp_dgbas/`, or the user saying not to commit or not to push.
 
-See also: `auto-deploy-after-optimize.mdc`.
+Shinyapps deploy is a separate step. Run it only for verified live-line app behavior (`auto-deploy-after-optimize.mdc`). Docs-only and rules-only changes are commit + push, not deploy.
