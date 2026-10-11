@@ -8905,6 +8905,78 @@ ui <- dashboardPage(
               setTimeout(function () { box.classList.remove('ynow-param-highlight'); }, 4500);
             }, 350);
           }
+          window.ynowGotoAndHighlight = ynowGotoAndHighlight;
+
+          /* g ≥ WACC／Ke: expand sidebar, pulse Model Dashboard, jump to SGR */
+          function ynowEnsureSidebarOpen() {
+            var body = document.body;
+            if (!body) return;
+            if (!body.classList.contains('sidebar-collapse')) return;
+            var toggle = document.querySelector('.main-header .sidebar-toggle') ||
+                         document.querySelector('a.sidebar-toggle') ||
+                         document.querySelector('[data-toggle=\"push-menu\"]');
+            if (toggle) {
+              try { toggle.click(); } catch (e0) {}
+            }
+            // Fallback if AdminLTE click handler did not expand
+            setTimeout(function () {
+              if (body.classList.contains('sidebar-collapse')) {
+                body.classList.remove('sidebar-collapse');
+                try {
+                  if (window.jQuery) {
+                    jQuery('body').trigger('expanded.pushMenu');
+                  }
+                } catch (e1) {}
+              }
+            }, 80);
+          }
+          function ynowClearSidebarGuide() {
+            document.querySelectorAll('.ynow-sidebar-guide-pulse').forEach(function (el) {
+              el.classList.remove('ynow-sidebar-guide-pulse');
+            });
+            document.querySelectorAll('.ynow-sidebar-guide-hint').forEach(function (el) {
+              el.remove();
+            });
+          }
+          function ynowPulseSidebarMenu(tab, hintText) {
+            ynowClearSidebarGuide();
+            tab = window.ynowRemapLegacyTab ? window.ynowRemapLegacyTab(tab) : tab;
+            var a = document.querySelector('.main-sidebar .sidebar-menu a[data-value=\"' + tab + '\"]') ||
+                    document.querySelector('.sidebar-menu a[data-value=\"' + tab + '\"]');
+            if (!a) return;
+            var li = a.closest('li') || a;
+            li.classList.add('ynow-sidebar-guide-pulse');
+            if (hintText) {
+              var hint = document.createElement('small');
+              hint.className = 'ynow-sidebar-guide-hint';
+              hint.textContent = String(hintText);
+              a.appendChild(hint);
+            }
+            try { li.scrollIntoView({behavior: 'smooth', block: 'nearest'}); } catch (e2) {}
+            setTimeout(ynowClearSidebarGuide, 10000);
+          }
+          function ynowGuideModelDashboard(payload) {
+            payload = payload || {};
+            var tab = payload.tab || 'get_started';
+            var inputId = payload.inputId || 'sgr';
+            var lite = document.body && document.body.classList.contains('ynow-lite');
+            // Lite hides Model Dashboard; keep toast-only (silent heal covers Lite calc).
+            if (lite && tab === 'get_started') return;
+            if (payload.openSidebar !== false) ynowEnsureSidebarOpen();
+            setTimeout(function () {
+              ynowPulseSidebarMenu(tab, payload.menuHint || '');
+              ynowGotoAndHighlight(tab, inputId);
+            }, 220);
+          }
+          window.ynowGuideModelDashboard = ynowGuideModelDashboard;
+          (function registerGuideModelDashboard() {
+            if (!window.Shiny || !Shiny.addCustomMessageHandler) {
+              setTimeout(registerGuideModelDashboard, 50);
+              return;
+            }
+            Shiny.addCustomMessageHandler('ynowGuideModelDashboard', ynowGuideModelDashboard);
+          })();
+
           document.addEventListener('click', function (ev) {
             var btn = ev.target && ev.target.closest ? ev.target.closest('.ynow-param-goto') : null;
             if (!btn) return;
@@ -9112,6 +9184,27 @@ ui <- dashboardPage(
           box-shadow: 0 0 0 4px rgba(243, 156, 18, 0.35) !important;
           border-radius: 4px;
           transition: box-shadow 0.2s ease;
+        }
+
+        /* g ≥ WACC／Ke: pulse Model Dashboard in the sidebar */
+        .sidebar-menu > li.ynow-sidebar-guide-pulse > a {
+          outline: 2px solid #f39c12 !important;
+          outline-offset: -2px;
+          box-shadow: inset 0 0 0 9999px rgba(243, 156, 18, 0.18) !important;
+          animation: ynow-sidebar-guide-pulse 1.1s ease-in-out 3;
+        }
+        .sidebar-menu > li.ynow-sidebar-guide-pulse > a .ynow-sidebar-guide-hint {
+          display: block;
+          margin-top: 2px;
+          font-size: 10.5px;
+          font-weight: 700;
+          color: #f39c12;
+          line-height: 1.25;
+          white-space: normal;
+        }
+        @keyframes ynow-sidebar-guide-pulse {
+          0%, 100% { box-shadow: inset 0 0 0 9999px rgba(243, 156, 18, 0.12); }
+          50% { box-shadow: inset 0 0 0 9999px rgba(243, 156, 18, 0.32); }
         }
 
         /* Ticker typeahead suggest (Ticker/Stock Code + Radar focus): 黑字白底 */

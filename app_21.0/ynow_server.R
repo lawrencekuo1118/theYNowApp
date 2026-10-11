@@ -245,6 +245,30 @@ server <- function(input, output, session) {
     msg
   }
 
+  # g ≥ WACC／Ke gate: toast + open sidebar + pulse Model Dashboard + jump to SGR
+  .notify_g_discount_and_guide <- function(msg_key, input_id = "sgr") {
+    showNotification(
+      .ui_msg(msg_key),
+      type = "error",
+      duration = 12,
+      id = "ynow_g_discount_gate"
+    )
+    loc <- tryCatch(isolate(ui_locale()), error = function(e) "en")
+    tryCatch(
+      session$sendCustomMessage(
+        "ynowGuideModelDashboard",
+        list(
+          tab = "get_started",
+          inputId = as.character(input_id %||% "sgr")[1],
+          openSidebar = TRUE,
+          menuHint = ui_str("notif_g_discount_guide_menu", loc)
+        )
+      ),
+      error = function(e) NULL
+    )
+    invisible(TRUE)
+  }
+
   .push_ui_locale <- function(locale, sync_picker = TRUE) {
     loc <- normalize_ui_locale(locale)
     ui_locale(loc)
@@ -7602,7 +7626,7 @@ server <- function(input, output, session) {
         if (silent) {
           g_terminal <- .heal_g_vs_rate(g_terminal, r2)
         } else {
-          showNotification(.ui_msg("notif_g_ge_wacc"), type = "error")
+          .notify_g_discount_and_guide("notif_g_ge_wacc", input_id = "sgr")
           return(NULL)
         }
       }
@@ -7624,7 +7648,7 @@ server <- function(input, output, session) {
         if (silent) {
           g_terminal <- .heal_g_vs_rate(g_terminal, r2)
         } else {
-          showNotification(.ui_msg("notif_g2_ge_wacc2"), type = "error")
+          .notify_g_discount_and_guide("notif_g2_ge_wacc2", input_id = "sgr")
           return(NULL)
         }
       }
@@ -7701,7 +7725,7 @@ server <- function(input, output, session) {
         if (silent && is.finite(ke) && ke > 0) {
           g_terminal <- .heal_g_vs_rate(g_terminal, ke)
         } else {
-          if (!silent) showNotification(.ui_msg("notif_fcfe_g_ge_ke"), type = "error")
+          if (!silent) .notify_g_discount_and_guide("notif_fcfe_g_ge_ke", input_id = "sgr")
           return(NULL)
         }
       }

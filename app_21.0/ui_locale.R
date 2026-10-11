@@ -1835,10 +1835,20 @@ locale_for_market <- function(mode = get_market_mode()) {
     notif_re_estimated = "📌 Estimated rₑ = {re}%",
     notif_wacc_auto = "📌 Auto-estimated and applied WACC {wacc}% (includes CAPM rₑ)",
     notif_dcf_n_mismatch = "⚠️ Forecast years do not match the FCFF table — please recalculate",
-    notif_g_ge_wacc = "❌ Growth g must be strictly below discount rate WACC",
-    notif_g2_ge_wacc2 = "❌ Terminal growth g2 must be below stage-2 discount rate WACC2",
+    notif_g_ge_wacc = paste0(
+      "❌ Growth g must be strictly below discount rate WACC. ",
+      "Opening the sidebar — go to Model Dashboard to lower SGR (g) or raise WACC."
+    ),
+    notif_g2_ge_wacc2 = paste0(
+      "❌ Terminal growth g2 must be below stage-2 discount rate WACC2. ",
+      "Opening the sidebar — go to Model Dashboard to lower SGR (g2)."
+    ),
     notif_yr1_invalid = "⚠️ Stage-1 years invalid (must be > 0 and < total forecast years n)",
-    notif_fcfe_g_ge_ke = "❌ FCFE: terminal g must be strictly below Ke",
+    notif_fcfe_g_ge_ke = paste0(
+      "❌ FCFE: terminal g must be strictly below Ke. ",
+      "Opening the sidebar — go to Model Dashboard to lower SGR (g) or raise Ke."
+    ),
+    notif_g_discount_guide_menu = "Adjust SGR / discount here",
     notif_dcf_shares_note = "DCF shares: {note}",
     notif_dcf_no_per_share = "Cannot compute per-share fair value: missing FX / ADR share bridge, or statement vs quote currency not aligned.",
     notif_dcf_statement_ccy_unavailable = "Cannot compute per-share fair value: FX conversion is required, but the reporting/statement currency is N/A or cannot be determined.",
@@ -4527,10 +4537,20 @@ locale_for_market <- function(mode = get_market_mode()) {
     notif_re_estimated = "📌 已估算 rₑ = {re}%",
     notif_wacc_auto = "📌 已自動估算並套用 WACC {wacc}%（含 CAPM rₑ）",
     notif_dcf_n_mismatch = "⚠️ 預測年數與 FCFF 表格不符，請重新計算",
-    notif_g_ge_wacc = "❌ 成長率 g 必須嚴格小於折現率 WACC",
-    notif_g2_ge_wacc2 = "❌ 永續成長率 g2 必須小於第二階段折現率 WACC2",
+    notif_g_ge_wacc = paste0(
+      "❌ 成長率 g 必須嚴格小於折現率 WACC。",
+      "已開啟側邊欄——請至 Model Dashboard 調降 SGR（g）或調升 WACC。"
+    ),
+    notif_g2_ge_wacc2 = paste0(
+      "❌ 永續成長率 g2 必須小於第二階段折現率 WACC2。",
+      "已開啟側邊欄——請至 Model Dashboard 調降 SGR（g2）。"
+    ),
     notif_yr1_invalid = "⚠️ 第一階段年數無效 (需大於 0 且小於預測總年數 n)",
-    notif_fcfe_g_ge_ke = "❌ FCFE：永續 g 必須嚴格小於 Ke",
+    notif_fcfe_g_ge_ke = paste0(
+      "❌ FCFE：永續 g 必須嚴格小於 Ke。",
+      "已開啟側邊欄——請至 Model Dashboard 調降 SGR（g）或調升 Ke。"
+    ),
+    notif_g_discount_guide_menu = "請在此調整 SGR／折現率",
     notif_dcf_shares_note = "DCF 股數：{note}",
     notif_dcf_no_per_share = "無法計算每股合理價：缺少匯率／ADR 約當股數，或財報幣與報價幣未對齊。",
     notif_dcf_statement_ccy_unavailable = "無法計算每股合理價：此次比較需要匯率換算，但財報／來源幣別為 N/A 或無法判定。",
