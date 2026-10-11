@@ -266,9 +266,9 @@ def resolve_corp_logo_colors(
         return {**empty, "domain": domain}
 
     colors = extract_logo_colors_from_bytes(data, max_colors=max_colors)
-    # Brand palette must be two slots: if logo yields only one, pad with white.
+    # Brand palette must be two slots: if logo yields only one, pad with black.
     if len(colors) == 1:
-        colors = [colors[0], "#FFFFFF"]
+        colors = [colors[0], "#000000"]
     return {
         "colors": colors,
         "source": src or "",

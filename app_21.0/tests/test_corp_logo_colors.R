@@ -27,7 +27,7 @@ check <- function(label, cond) {
 .ensure_logo_color_pair <- function(cols) {
   cols <- .normalize_logo_hex(cols)
   if (length(cols) == 1L) {
-    return(c(cols[[1]], "#FFFFFF"))
+    return(c(cols[[1]], "#000000"))
   }
   cols
 }
@@ -41,9 +41,9 @@ check("normalize drops junk", identical(
   "#112233"
 ))
 check("normalize empty", identical(.normalize_logo_hex(NULL), character(0)))
-check("pair pads single with white", identical(
+check("pair pads single with black", identical(
   .ensure_logo_color_pair("#e60a1e"),
-  c("#E60A1E", "#FFFFFF")
+  c("#E60A1E", "#000000")
 ))
 check("pair keeps two brands", identical(
   .ensure_logo_color_pair(c("#fab400", "#00a0e6")),
@@ -94,10 +94,10 @@ if (nzchar(py) && file.exists(fixture)) {
       r > 150 && g < 80 && b < 100
     }
   })
-  check("fixture secondary is blue-ish or white pad", {
+  check("fixture secondary is blue-ish or black pad", {
     if (length(cols) < 2L) FALSE else {
       h <- cols[[2]]
-      if (identical(h, "#FFFFFF")) TRUE else {
+      if (identical(h, "#000000")) TRUE else {
         r <- strtoi(substr(h, 2, 3), 16L)
         g <- strtoi(substr(h, 4, 5), 16L)
         b <- strtoi(substr(h, 6, 7), 16L)
@@ -109,7 +109,7 @@ if (nzchar(py) && file.exists(fixture)) {
   cat("NOTE: skip python fixture extract (no venv python or fixture)\n")
 }
 
-# Python resolve pads single-brand logos with white (offline synthetic)
+# Python resolve pads single-brand logos with black (offline synthetic)
 if (nzchar(py)) {
   py_script <- tempfile(fileext = ".py")
   .py_str <- function(x) {
@@ -120,15 +120,14 @@ if (nzchar(py)) {
       "import sys, io",
       paste0("sys.path.insert(0, ", .py_str(app_dir), ")"),
       "from PIL import Image",
-      "from corp_logo_colors import extract_logo_colors_from_bytes, resolve_corp_logo_colors",
+      "from corp_logo_colors import extract_logo_colors_from_bytes",
       "# single-color red logo",
       "im = Image.new('RGBA', (48, 48), (230, 10, 30, 255))",
       "buf = io.BytesIO(); im.save(buf, format='PNG')",
       "raw = extract_logo_colors_from_bytes(buf.getvalue(), max_colors=2)",
       "print('RAW', ','.join(raw))",
-      "# mimic resolve pad",
       "cols = list(raw)",
-      "if len(cols) == 1: cols = [cols[0], '#FFFFFF']",
+      "if len(cols) == 1: cols = [cols[0], '#000000']",
       "print('PAD', ','.join(cols))"
     ),
     py_script
@@ -145,8 +144,8 @@ if (nzchar(py)) {
     character(0)
   }
   pad_cols <- toupper(pad_cols)
-  check("single-brand pad ends with white", {
-    length(pad_cols) == 2L && identical(pad_cols[[2]], "#FFFFFF")
+  check("single-brand pad ends with black", {
+    length(pad_cols) == 2L && identical(pad_cols[[2]], "#000000")
   })
 } else {
   cat("NOTE: skip python single-brand pad check\n")
@@ -155,7 +154,7 @@ if (nzchar(py)) {
 # UI CSS hooks present
 ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE), collapse = "\n")
 check("css logo-grad present", grepl("ynow-corpname-logo-grad", ui, fixed = TRUE))
-check("css white-en helper present", grepl("ynow-corpname-en-on-white", ui, fixed = TRUE))
+check("css default c2 is black", grepl("--ynow-corp-c2, #000000", ui, fixed = TRUE))
 
 srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE), collapse = "\n")
 check("server stores logo colors", grepl("corp_name_logo_colors", srv, fixed = TRUE))

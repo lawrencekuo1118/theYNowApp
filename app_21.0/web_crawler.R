@@ -439,17 +439,17 @@ tryCatch(memoise::forget(cached_get_yahoo_industry), error = function(e) NULL)
   unique(toupper(head(cols, 2L)))
 }
 
-#' Brand palette must be 0 or 2 colors: if only one logo color, pad with white.
+#' Brand palette must be 0 or 2 colors: if only one logo color, pad with black.
 .ensure_logo_color_pair <- function(cols) {
   cols <- .normalize_logo_hex(cols)
   if (length(cols) == 1L) {
-    return(c(cols[[1]], "#FFFFFF"))
+    return(c(cols[[1]], "#000000"))
   }
   cols
 }
 
 #' Resolve up to two primary logo colors for a ticker (Search corp-name tint).
-#' @return character vector length 0 or 2 of "#RRGGBB" (single brand padded with white)
+#' @return character vector length 0 or 2 of "#RRGGBB" (single brand padded with black)
 get_corp_logo_colors <- function(stock_code, website = NULL) {
   tk <- trimws(as.character(stock_code %||% "")[1])
   if (!nzchar(tk)) return(character(0))

@@ -1039,7 +1039,7 @@ server <- function(input, output, session) {
           cached_get_corp_logo_colors(stock_code),
           error = function(e) character(0)
         )
-        # Always store a 2-color pair (single brand → pad white)
+        # Always store a 2-color pair (single brand → pad black)
         corp_name_logo_colors(.ensure_logo_color_pair(logo_cols))
 
         if (!(stock_code %in% values$recentsearch)) {
@@ -1267,7 +1267,7 @@ server <- function(input, output, session) {
     if (identical(as.integer(which)[1], 2L)) {
       return(sprintf("color:%s;", c2))
     }
-    # 單行全稱：雙色水平漸層（僅一品牌色時 c2 = 白）
+    # 單行全稱：雙色水平漸層（僅一品牌色時 c2 = 黑）
     paste0(
       "--ynow-corp-c1:", c1, ";",
       "--ynow-corp-c2:", c2, ";"
@@ -1301,7 +1301,7 @@ server <- function(input, output, session) {
     }
     if (!nzchar(nm) && !nzchar(en)) return(NULL)
 
-    # 台股：中文上、英文下；品牌色系固定兩色（缺則白）分給中／英
+    # 台股：中文上、英文下；品牌色系固定兩色（缺則黑）分給中／英
     if (identical(mode, "TW") && nzchar(nm) && nzchar(en) &&
         isTRUE(query_has_cjk(nm)) && !isTRUE(query_has_cjk(en))) {
       zh_style <- if (length(logo_cols) >= 2L) {
@@ -1309,13 +1309,10 @@ server <- function(input, output, session) {
       } else {
         NULL
       }
-      en_cls <- "ynow-corpname-en"
-      en_style <- NULL
-      if (length(logo_cols) >= 2L) {
-        en_style <- sprintf("color:%s;", logo_cols[[2]])
-        if (identical(logo_cols[[2]], "#FFFFFF")) {
-          en_cls <- paste(en_cls, "ynow-corpname-en-on-white")
-        }
+      en_style <- if (length(logo_cols) >= 2L) {
+        sprintf("color:%s;", logo_cols[[2]])
+      } else {
+        NULL
       }
       return(tags$span(
         class = "ynow-corpname-stack",
@@ -1325,7 +1322,7 @@ server <- function(input, output, session) {
           htmltools::htmlEscape(nm)
         ),
         tags$span(
-          class = en_cls,
+          class = "ynow-corpname-en",
           style = en_style,
           htmltools::htmlEscape(en)
         )
