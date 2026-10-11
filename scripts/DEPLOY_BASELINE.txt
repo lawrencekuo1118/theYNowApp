@@ -8,5 +8,5 @@ short=533a389
 message=chore: bump display version to v21.55
 captured_at=2026-10-11T04:25:00Z
 source_branch=cursor/corpname-logo-two-colors-911b
-display_version=v21.55
+display_version=v21.56
 note=Canonical live line is app_21.0. Bundle 12674969 ships v21.55: Search corp-name brand palette always two colors — single logo color pads second slot with #FFFFFF. Deploy via scripts/deploy_app_21.R.
