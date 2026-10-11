@@ -248,6 +248,13 @@ ynow_cache_tier_info <- function() {
     }
     if (ok) {
       reticulate::source_python("deep_scraper.py", envir = .py_scraper_env)
+      # Optional: company-name logo tint (Pillow). Fail soft if missing.
+      tryCatch(
+        reticulate::source_python("corp_logo_colors.py", envir = .py_scraper_env),
+        error = function(e) {
+          .ynow_log("⚠️ corp_logo_colors.py 載入失敗: ", e$message)
+        }
+      )
       .py_scraper_ready <<- TRUE
     }
   }, error = function(e) {
@@ -421,6 +428,60 @@ get_yahoo_industry <- function(stock_code) {
 # SLOW: sector / industry labels (rarely change within a day)
 cached_get_yahoo_industry <- memoise::memoise(get_yahoo_industry, cache = .ynow_slow_cache)
 tryCatch(memoise::forget(cached_get_yahoo_industry), error = function(e) NULL)
+
+# ==========================================
+# 🎨 Company full-name tint from official logo (≤2 primary colors)
+# ==========================================
+.normalize_logo_hex <- function(cols) {
+  cols <- trimws(as.character(unlist(cols, use.names = FALSE)))
+  cols <- cols[!is.na(cols) & nzchar(cols)]
+  cols <- cols[grepl("^#[0-9A-Fa-f]{6}$", cols)]
+  unique(toupper(head(cols, 2L)))
+}
+
+#' Brand palette must be 0 or 2 colors: if only one logo color, pad with black.
+.ensure_logo_color_pair <- function(cols) {
+  cols <- .normalize_logo_hex(cols)
+  if (length(cols) == 1L) {
+    return(c(cols[[1]], "#000000"))
+  }
+  cols
+}
+
+#' Resolve up to two primary logo colors for a ticker (Search corp-name tint).
+#' @return character vector length 0 or 2 of "#RRGGBB" (single brand padded with black)
+get_corp_logo_colors <- function(stock_code, website = NULL) {
+  tk <- trimws(as.character(stock_code %||% "")[1])
+  if (!nzchar(tk)) return(character(0))
+  if (!isTRUE(.ensure_python_scraper()) ||
+      !exists("resolve_corp_logo_colors", envir = .py_scraper_env,
+              inherits = FALSE, mode = "function")) {
+    return(character(0))
+  }
+  py_fn <- get("resolve_corp_logo_colors", envir = .py_scraper_env, inherits = FALSE)
+  web <- trimws(as.character(website %||% "")[1])
+  res <- tryCatch(
+    {
+      if (nzchar(web)) py_fn(tk, website = web, max_colors = 2L) else py_fn(tk, max_colors = 2L)
+    },
+    error = function(e) {
+      .ynow_log("⚠️ logo colors failed for ", tk, ": ", e$message)
+      NULL
+    }
+  )
+  if (is.null(res)) return(character(0))
+  cols <- tryCatch({
+    if (is.list(res) && !is.null(res$colors)) res$colors else res
+  }, error = function(e) NULL)
+  .ensure_logo_color_pair(cols)
+}
+
+# Brand colors change rarely — share the slow (disk) cache with industry labels.
+cached_get_corp_logo_colors <- memoise::memoise(
+  get_corp_logo_colors,
+  cache = .ynow_slow_cache
+)
+tryCatch(memoise::forget(cached_get_corp_logo_colors), error = function(e) NULL)
 
 # ==========================================
 # 🌐 3. Summary（僅 yfinance，shinyapps 無 Chrome）

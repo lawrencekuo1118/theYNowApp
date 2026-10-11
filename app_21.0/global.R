@@ -77,7 +77,7 @@ need <- shiny::need
 .ynow_py_pkgs <- c(
   "pandas", "numpy", "yfinance", "requests", "beautifulsoup4", "lxml",
   "peewee", "platformdirs", "frozendict", "multitasking", "html5lib", "curl_cffi",
-  "xlrd"
+  "xlrd", "Pillow"
 )
 # Keep the old name for any callers that still read `py_pkgs`.
 py_pkgs <- .ynow_py_pkgs
