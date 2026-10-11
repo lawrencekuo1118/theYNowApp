@@ -2005,8 +2005,15 @@ asset_tx_fetch_panel <- function(catalog = NULL, period = "6mo", force = FALSE) 
 
 # ---- Shiny -----------------------------------------------------------------
 
-asset_transmission_ui <- function(id) {
+asset_transmission_ui <- function(id, locale = "en") {
   ns <- shiny::NS(id)
+  loc <- if (exists("normalize_ui_locale", mode = "function")) {
+    normalize_ui_locale(locale)
+  } else {
+    "en"
+  }
+  pane_nodes <- ns("atx_pane_nodes")
+  pane_edges <- ns("atx_pane_edges")
   htmltools::tagList(
     htmltools::tags$style(htmltools::HTML("
       .ynow-atx-summary { margin: 8px 0 4px; font-size: 14px; line-height: 1.45; color: #1c1915; }
@@ -2077,6 +2084,22 @@ asset_transmission_ui <- function(id) {
       .ynow-atx-path table { width: 100%; border-collapse: collapse; font-size: 12px; }
       .ynow-atx-path th, .ynow-atx-path td { text-align: left; padding: 3px 8px 3px 0; border-bottom: 1px solid #f0ebe3; }
       .ynow-atx h4 { margin: 14px 0 6px; font-size: 15px; }
+      /* Public prints / Channels: one PERFORMANCE-style tab strip, body collapsed. */
+      .ynow-atx-tables.box {
+        border-top: none;
+        margin-top: 12px;
+      }
+      .ynow-atx-tables > .nav-tabs > li.atx-collapse {
+        float: right;
+        border-top: 3px solid transparent;
+        margin-bottom: -2px;
+      }
+      .ynow-atx-tables > .nav-tabs > li.atx-collapse > .btn-box-tool {
+        background: transparent;
+        border: 0;
+        color: #423926;
+        padding: 8px 12px;
+      }
       .ynow-atx-load {
         position: absolute;
         inset: 0;
@@ -2134,10 +2157,55 @@ asset_transmission_ui <- function(id) {
         )
       ),
       shiny::uiOutput(ns("legend")),
-      shiny::uiOutput(ns("nodes_title")),
-      DT::DTOutput(ns("nodes")),
-      shiny::uiOutput(ns("edges_title")),
-      DT::DTOutput(ns("edges")),
+      htmltools::tags$div(
+        class = "box nav-tabs-custom ynow-atx-tables collapsed-box",
+        htmltools::tags$ul(
+          class = "nav nav-tabs",
+          htmltools::tags$li(
+            class = "active",
+            htmltools::tags$a(
+              href = paste0("#", pane_nodes),
+              `data-toggle` = "tab",
+              htmltools::tags$span(
+                id = "ynow_atx_nodes_tab",
+                .asset_tx_label("atx_nodes_title", loc)
+              )
+            )
+          ),
+          htmltools::tags$li(
+            htmltools::tags$a(
+              href = paste0("#", pane_edges),
+              `data-toggle` = "tab",
+              htmltools::tags$span(
+                id = "ynow_atx_edges_tab",
+                .asset_tx_label("atx_edges_title", loc)
+              )
+            )
+          ),
+          htmltools::tags$li(
+            class = "atx-collapse",
+            htmltools::tags$button(
+              type = "button",
+              class = "btn btn-box-tool",
+              `data-widget` = "collapse",
+              shiny::icon("plus")
+            )
+          )
+        ),
+        htmltools::tags$div(
+          class = "tab-content box-body",
+          htmltools::tags$div(
+            id = pane_nodes,
+            class = "tab-pane active",
+            DT::DTOutput(ns("nodes"))
+          ),
+          htmltools::tags$div(
+            id = pane_edges,
+            class = "tab-pane",
+            DT::DTOutput(ns("edges"))
+          )
+        )
+      ),
       shiny::uiOutput(ns("method"))
     ),
     htmltools::tags$script(htmltools::HTML("
@@ -2179,6 +2247,30 @@ asset_transmission_ui <- function(id) {
           document.addEventListener('DOMContentLoaded', boot);
         } else {
           boot();
+        }
+        function adjustAtxTables(root) {
+          if (!window.jQuery || !$.fn.dataTable) return;
+          $(root).find('table.dataTable').each(function () {
+            if ($.fn.dataTable.isDataTable(this)) $(this).DataTable().columns.adjust();
+          });
+        }
+        if (window.jQuery) {
+          $(document).on('click', '.ynow-atx-tables > .nav-tabs a[data-toggle=\'tab\']', function () {
+            var box = $(this).closest('.ynow-atx-tables');
+            if (box.hasClass('collapsed-box')) {
+              box.find('[data-widget=\'collapse\']').trigger('click');
+            }
+          });
+          $(document).on('shown.bs.tab', '.ynow-atx-tables > .nav-tabs a[data-toggle=\'tab\']', function (e) {
+            var pane = $(e.target.getAttribute('href'));
+            window.setTimeout(function () { adjustAtxTables(pane); }, 50);
+          });
+          $(document).on('shown.bs.collapse', '.ynow-atx-tables', function () {
+            var box = $(this);
+            window.setTimeout(function () {
+              adjustAtxTables(box.find('.tab-pane.active'));
+            }, 400);
+          });
         }
       })();
     "))
@@ -2658,13 +2750,6 @@ asset_transmission_server <- function(id, ui_locale_rv = NULL, market_mode_rv = 
           replay_note_rv() %||% .asset_tx_label("atx_play_hint", loc)
         )
       )
-    })
-
-    output$nodes_title <- shiny::renderUI({
-      htmltools::tags$h4(.asset_tx_label("atx_nodes_title", locale()))
-    })
-    output$edges_title <- shiny::renderUI({
-      htmltools::tags$h4(.asset_tx_label("atx_edges_title", locale()))
     })
 
     output$nodes <- DT::renderDT({

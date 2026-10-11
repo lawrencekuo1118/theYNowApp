@@ -686,7 +686,7 @@ if (requireNamespace("plotly", quietly = TRUE)) {
 ui_src <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 srv_src <- paste(readLines("ynow_server.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 glb_src <- paste(readLines("global.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-check("asset_transmission page mounts map", grepl('asset_transmission_ui("atx")', ui_src, fixed = TRUE))
+check("asset_transmission page mounts map", grepl('asset_transmission_ui("atx", locale = loc)', ui_src, fixed = TRUE))
 check("asset_transmission sidebar tab", grepl('tabName = "asset_transmission"', ui_src, fixed = TRUE))
 check("atx page title id", grepl("ynow_atx_page_title", ui_src, fixed = TRUE))
 check("testing title id kept", grepl("ynow_testing_page_title", ui_src, fixed = TRUE))
@@ -769,6 +769,19 @@ check(
       "\\.ynow_page_ui_asset_transmission\\(isolate\\(ui_locale\\(\\)\\)\\)",
       srv_src_atx
     )
+)
+check(
+  "prints and channels share a collapsed tab strip",
+  grepl("ynow-atx-tables collapsed-box", mod_src, fixed = TRUE) &&
+    grepl('id = "ynow_atx_nodes_tab"', mod_src, fixed = TRUE) &&
+    grepl('id = "ynow_atx_edges_tab"', mod_src, fixed = TRUE) &&
+    grepl('DT::DTOutput(ns("nodes"))', mod_src, fixed = TRUE) &&
+    grepl('DT::DTOutput(ns("edges"))', mod_src, fixed = TRUE) &&
+    !grepl("output$nodes_title", mod_src, fixed = TRUE) &&
+    !grepl("output$edges_title", mod_src, fixed = TRUE) &&
+    grepl("ynow_atx_nodes_tab", ui_src_atx, fixed = TRUE) &&
+    grepl("ynow_atx_edges_tab", ui_src_atx, fixed = TRUE) &&
+    grepl('asset_transmission_ui("atx", locale = loc)', ui_src_atx, fixed = TRUE)
 )
 check("no atx debug ingest left", !grepl("127\\.0\\.0\\.1:7302/ingest", mod_src) &&
   !grepl("debug-f77c57\\.log", mod_src))

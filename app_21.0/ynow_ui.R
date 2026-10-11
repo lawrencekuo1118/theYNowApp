@@ -3250,7 +3250,7 @@ beta_rolling_section_ui <- function() {
               style = "color:#555; line-height:1.5; margin:0 0 10px 0;",
               .atx_s("atx_box_body")
             ),
-            asset_transmission_ui("atx")
+            asset_transmission_ui("atx", locale = loc)
           )
         )
       )
@@ -8485,6 +8485,10 @@ ui <- dashboardPage(
             if (atxBoxTitle && s.atx_box_title) atxBoxTitle.textContent = s.atx_box_title;
             var atxBoxBody = document.getElementById('ynow_atx_box_body');
             if (atxBoxBody && s.atx_box_body) atxBoxBody.textContent = s.atx_box_body;
+            var atxNodesTab = document.getElementById('ynow_atx_nodes_tab');
+            if (atxNodesTab && s.atx_nodes_title) atxNodesTab.textContent = s.atx_nodes_title;
+            var atxEdgesTab = document.getElementById('ynow_atx_edges_tab');
+            if (atxEdgesTab && s.atx_edges_title) atxEdgesTab.textContent = s.atx_edges_title;
             var runBt = document.getElementById('run_bt');
             if (runBt && s.btn_run_bt) {
               var runIcon = runBt.querySelector('i');
