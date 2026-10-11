@@ -1053,7 +1053,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     lab_im_methods_label = "Models",
     lab_im_methods_locked_hint = paste0(
-      "Models with no names using them as the primary valuation model stay unchecked and locked ",
+      "Models with no names using them as the primary valuation model stay unchecked and locked. ",
+      "Enterprise value, Earnings, Revenue, and Book value unlock only when that family is the Multiples reference ",
       "(same disabled style as Listed). Rows in Suggested valuation methods match this filter."
     ),
     lab_im_query_title = "Query filters",
@@ -3850,7 +3851,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     lab_im_methods_label = "模型",
     lab_im_methods_locked_hint = paste0(
-      "若某評價模型未被任何個股列為主模型，則維持不勾選並鎖定",
+      "若某評價模型未被任何個股列為主模型，則維持不勾選並鎖定。",
+      "相對估值的企業價值、盈餘、營收、淨值，在該類被當成 Multiples 參照時才可勾選",
       "（樣式同美股 Listed）。「建議評價方法」表格列與此篩選列一致。"
     ),
     lab_im_query_title = "查詢條件",

@@ -12710,7 +12710,7 @@ server <- function(input, output, session) {
     showNotification(msg, type = "message", duration = 10)
   }, ignoreInit = TRUE)
 
-  # Models filter ↔ 建議評價方法 table: same seven methods; lock ones with no primary.
+  # Models filter ↔ 建議評價方法 table: same sidebar order; lock ones with no primary / reference family.
   .lab_im_method_scope_catalog <- reactive({
     catlg <- tryCatch(lab_im_catalog(), error = function(e) NULL)
     if (!is.data.frame(catlg) || nrow(catlg) == 0L) {

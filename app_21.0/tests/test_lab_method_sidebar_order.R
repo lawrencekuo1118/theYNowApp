@@ -23,12 +23,14 @@ check <- function(label, cond) {
   }
 }
 
-want <- c("nav", "dcf", "ddm", "ri", "pb", "multiples", "sotp")
+want <- c("nav", "dcf", "ddm", "ri", "enterprise", "earnings", "revenue", "book", "sotp")
 check("LAB_SIDEBAR_METHOD_ORDER", identical(LAB_SIDEBAR_METHOD_ORDER, want))
 check(
   "lab_order shuffles to sidebar",
   identical(
-    lab_order_methods_like_sidebar(c("sotp", "pb", "multiples", "dcf", "nav", "ri", "ddm")),
+    lab_order_methods_like_sidebar(c(
+      "sotp", "book", "revenue", "earnings", "enterprise", "dcf", "nav", "ri", "ddm"
+    )),
     want
   )
 )
@@ -39,8 +41,8 @@ check(
 check(
   "lab_order unknown last",
   identical(
-    lab_order_methods_like_sidebar(c("zzz", "pb", "nav")),
-    c("nav", "pb", "zzz")
+    lab_order_methods_like_sidebar(c("zzz", "book", "nav")),
+    c("nav", "book", "zzz")
   )
 )
 
@@ -51,10 +53,13 @@ catlg <- data.frame(
   stringsAsFactors = FALSE
 )
 sm <- lab_method_group_summary(catlg)
-check("summary method_key order", identical(sm$method_key, want))
+check(
+  "summary method_key order",
+  identical(sm$method_key, c("nav", "dcf", "ddm", "ri", "sotp", "multiples", "pb"))
+)
 check(
   "summary labels follow keys",
-  identical(sm[["建議評價方法"]], unname(LAB_METHOD_LABELS[want]))
+  identical(sm[["建議評價方法"]], unname(LAB_METHOD_LABELS[sm$method_key]))
 )
 
 sm2 <- lab_method_group_summary(
@@ -66,7 +71,7 @@ sm_all <- lab_method_group_summary(
   catlg[catlg$primary %in% c("dcf", "nav"), , drop = FALSE],
   include_all = TRUE
 )
-check("include_all has seven rows", identical(sm_all$method_key, want))
+check("include_all has sidebar rows", identical(sm_all$method_key, want))
 check(
   "include_all zeros for missing primaries",
   isTRUE(sm_all$候選檔數[sm_all$method_key == "dcf"] > 0L) &&
@@ -78,7 +83,7 @@ check(
   "available primary methods helper",
   identical(
     lab_im_available_primary_methods(catlg[catlg$primary %in% c("pb", "dcf"), , drop = FALSE]),
-    c("dcf", "pb")
+    c("dcf", "book")
   )
 )
 
@@ -110,6 +115,22 @@ staples <- defaults[defaults$industry_key %in% c("fmcg.Food_Beverages", "fmcg.Ho
 check(
   "lab staples not forced to P/B",
   nrow(staples) == 2L && !any(staples$primary == "pb" | staples$secondary == "pb")
+)
+check(
+  "lab bank relative family is book",
+  identical(defaults$rel_family[defaults$industry_key == "fn.Banking"][1], "book")
+)
+check(
+  "lab staples relative family is earnings",
+  identical(defaults$rel_family[defaults$industry_key == "fmcg.Food_Beverages"][1], "earnings")
+)
+check(
+  "lab foundry relative family is enterprise",
+  identical(defaults$rel_family[defaults$industry_key == "sc.Foundry"][1], "enterprise")
+)
+check(
+  "lab biotech relative family is revenue",
+  identical(defaults$rel_family[defaults$industry_key == "hc.Biotech"][1], "revenue")
 )
 
 if (fail > 0L) {

@@ -15,15 +15,21 @@
 # ==========================================
 
 # Canonical sidebar valuation order (top → bottom in ynow_ui.R):
-# Asset-Based NAV → Income/Cashflow DCF → DDM → RI → Relative P/B → Multiples → SOTP
-LAB_SIDEBAR_METHOD_ORDER <- c("nav", "dcf", "ddm", "ri", "pb", "multiples", "sotp")
+# NAV → DCF → DDM → RI → Enterprise value → Earnings → Revenue → Book value → SOTP
+LAB_SIDEBAR_METHOD_ORDER <- c(
+  "nav", "dcf", "ddm", "ri", "enterprise", "earnings", "revenue", "book", "sotp"
+)
 
 LAB_METHOD_LABELS <- c(
   nav = "NAV（帳面控股淨資產）",
   dcf = "DCF（現金流折現）",
   ddm = "DDM（股利折現）",
   ri  = "RI（剩餘收益）",
-  pb  = "P/B（相對估值／倍數）",
+  pb  = "淨值乘數（P/B）",
+  book = "淨值乘數（P/B）",
+  enterprise = "企業價值乘數（EV/EBITDA · EV/EBIT · EV/FCF）",
+  earnings = "盈餘乘數（P/E · Forward P/E · PEG）",
+  revenue = "營收乘數（P/S · EV/Sales · EV/ARR）",
   multiples = "Multiples（市場倍數 Implied Price）",
   sotp = "SOTP（分部加總）"
 )
@@ -33,10 +39,34 @@ LAB_METHOD_LABELS_EN <- c(
   dcf = "DCF (discounted cash flow)",
   ddm = "DDM (dividend discount)",
   ri  = "RI (residual income)",
-  pb  = "P/B (relative / multiples)",
+  pb  = "Book value (P/B)",
+  book = "Book value (P/B)",
+  enterprise = "Enterprise value (EV/EBITDA · EV/EBIT · EV/FCF)",
+  earnings = "Earnings (P/E · Forward P/E · PEG)",
+  revenue = "Revenue (P/S · EV/Sales · EV/ARR)",
   multiples = "Multiples (market Implied Price)",
   sotp = "SOTP (sum of the parts)"
 )
+
+#' Industry-level Multiples reference family (no per-name statements).
+#' Book businesses stay on P/B. Cyclical / capital-intensive names use enterprise
+#' value. Pre-profit growth uses revenue. Everything else uses earnings.
+lab_default_rel_family <- function(industry_key, primary = NA_character_) {
+  k <- as.character(industry_key %||% "")[1]
+  p <- as.character(primary %||% "")[1]
+  if (identical(p, "pb") || grepl("^fn\\.", k) || k %in% c("re.REIT", "en.Utilities")) {
+    return("book")
+  }
+  if (k %in% c("hc.Biotech", "auto.EV_Startups", "auto.Automotive_EV")) return("revenue")
+  if (exists("is_cyclical_industry", mode = "function") &&
+      isTRUE(is_cyclical_industry(k, ""))) {
+    return("enterprise")
+  }
+  if (k %in% c("sc.Foundry", "sc.Equipment", "ind.Construction", "tel.Telecom")) {
+    return("enterprise")
+  }
+  "earnings"
+}
 
 #' Localized primary-method display labels (sidebar order keys).
 lab_method_labels <- function(locale = "zh-TW") {
@@ -1466,6 +1496,9 @@ lab_industry_method_defaults <- function() {
     LAB_UNMAPPED_LABEL,
     as.character(industry_labels[df$industry_key])
   )
+  df$rel_family <- vapply(seq_len(nrow(df)), function(i) {
+    lab_default_rel_family(df$industry_key[[i]], df$primary[[i]])
+  }, character(1))
   df$primary_label <- as.character(LAB_METHOD_LABELS[df$primary])
   df$secondary_label <- ifelse(
     is.na(df$secondary) | !nzchar(df$secondary),
@@ -1602,6 +1635,7 @@ lab_build_industry_method_catalog <- function(market_mode = NULL,
         secondary_label = defaults$secondary_label[[i]],
         suggest_two_stage = defaults$suggest_two_stage[[i]],
         rationale = defaults$rationale[[i]],
+        rel_family = defaults$rel_family[[i]],
         ticker = NA_character_,
         stringsAsFactors = FALSE
       )
@@ -1616,6 +1650,7 @@ lab_build_industry_method_catalog <- function(market_mode = NULL,
           secondary_label = defaults$secondary_label[[i]],
           suggest_two_stage = defaults$suggest_two_stage[[i]],
           rationale = defaults$rationale[[i]],
+          rel_family = defaults$rel_family[[i]],
           ticker = tk,
           stringsAsFactors = FALSE
         )
@@ -1873,6 +1908,35 @@ lab_screen_tickers_fscore <- function(tickers, progress_cb = NULL, max_n = Inf,
   do.call(rbind, rows)
 }
 
+#' Query-filter keys → row hit. `book` matches primary/secondary P/B.
+#' Enterprise / earnings / revenue match the industry Multiples reference family.
+#' Legacy `pb` and `multiples` still match.
+lab_method_filter_hits <- function(df, method_filter) {
+  n <- if (is.data.frame(df)) nrow(df) else 0L
+  if (n < 1L) return(logical(0))
+  mf <- lab_normalize_multi_filter(method_filter)
+  if (!length(mf)) return(rep(TRUE, n))
+  if ("pb" %in% mf) mf <- unique(c(setdiff(mf, "pb"), "book"))
+  legacy_mult <- "multiples" %in% mf
+  mf <- setdiff(mf, "multiples")
+  fv <- mf
+  fv[fv == "book"] <- "pb"
+  fv <- intersect(fv, c("nav", "dcf", "ddm", "ri", "pb", "sotp"))
+  fam <- intersect(mf, c("enterprise", "earnings", "revenue", "book"))
+  hit <- rep(FALSE, n)
+  if (length(fv)) {
+    hit <- hit | as.character(df$primary) %in% fv | as.character(df$secondary) %in% fv
+  }
+  if ("rel_family" %in% names(df)) {
+    rel <- as.character(df$rel_family)
+    if (length(fam)) hit <- hit | rel %in% fam
+    if (legacy_mult) {
+      hit <- hit | rel %in% c("enterprise", "earnings", "revenue", "book")
+    }
+  }
+  hit
+}
+
 #' 合併目錄與評估結果，複選篩選後依年化估值漲幅排序
 #' @param evaluated_only TRUE：只保留已評估代碼（明細／排行榜與評估檔數 N 對齊）
 lab_merge_catalog_scores <- function(catalog, scores = NULL,
@@ -1945,7 +2009,7 @@ lab_merge_catalog_scores <- function(catalog, scores = NULL,
 
   mf <- lab_normalize_multi_filter(method_filter)
   if (length(mf) > 0) {
-    df <- df[df$primary %in% mf | df$secondary %in% mf, , drop = FALSE]
+    df <- df[lab_method_filter_hits(df, mf), , drop = FALSE]
   }
   indf <- lab_normalize_multi_filter(industry_filter)
   if (length(indf) > 0) {
@@ -2654,17 +2718,33 @@ lab_industry_mcap_upside_leaderboard <- function(merged_df, top_n = 10L,
   )
 }
 
-#' Primary methods present in a catalog (sidebar order).
+#' Models the query filter can unlock (sidebar order).
+#' Fair Value keys come from primary (`pb` shows as book). Relative families
+#' unlock when that family is the industry Multiples reference.
 lab_im_available_primary_methods <- function(catalog) {
   if (is.null(catalog) || !is.data.frame(catalog) || !nrow(catalog)) {
     return(character(0))
   }
-  if (!"primary" %in% names(catalog)) return(character(0))
-  lab_order_methods_like_sidebar(unique(as.character(catalog$primary)))
+  keys <- character(0)
+  if ("primary" %in% names(catalog)) {
+    p <- unique(as.character(catalog$primary))
+    p <- p[nzchar(p) & !is.na(p)]
+    p[p == "pb"] <- "book"
+    p <- intersect(p, c("nav", "dcf", "ddm", "ri", "book", "sotp"))
+    keys <- c(keys, p)
+  }
+  if ("rel_family" %in% names(catalog)) {
+    f <- unique(as.character(catalog$rel_family))
+    f <- f[nzchar(f) & !is.na(f)]
+    f <- intersect(f, c("enterprise", "earnings", "revenue", "book"))
+    keys <- c(keys, f)
+  }
+  lab_order_methods_like_sidebar(unique(keys))
 }
 
 #' 顯示用摘要：依主方法分組的產業數／候選檔數
-#' Row order follows sidebar model order (NAV → DCF → DDM → RI → P/B → Multiples → SOTP).
+#' Row order follows sidebar model order
+#' (NAV → DCF → DDM → RI → Enterprise → Earnings → Revenue → Book → SOTP).
 #' @param include_all TRUE：七個評價模型列都顯示（無主模型者產業數／候選檔數為 0）
 #' @param locale UI locale (`en` / `zh-TW`); display labels and column headers follow locale.
 lab_method_group_summary <- function(catalog, include_all = FALSE, locale = "zh-TW") {
@@ -2699,7 +2779,17 @@ lab_method_group_summary <- function(catalog, include_all = FALSE, locale = "zh-
       lab_order_methods_like_sidebar(catalog$primary)
     }
     do.call(rbind, lapply(methods, function(m) {
-      sub <- catalog[catalog$primary == m, , drop = FALSE]
+      sub <- if (identical(m, "book")) {
+        catalog[as.character(catalog$primary) == "pb", , drop = FALSE]
+      } else if (m %in% c("enterprise", "earnings", "revenue")) {
+        if (!"rel_family" %in% names(catalog)) {
+          catalog[0, , drop = FALSE]
+        } else {
+          catalog[as.character(catalog$rel_family) == m, , drop = FALSE]
+        }
+      } else {
+        catalog[as.character(catalog$primary) == m, , drop = FALSE]
+      }
       n_tk <- length(unique(stats::na.omit(sub$ticker)))
       data.frame(
         建議評價方法 = as.character(labels[[m]] %||% m),

@@ -48,19 +48,20 @@ check("applyUiLocale wires hint",
       grepl("ynow_lab_im_methods_locked_hint", ui, fixed = TRUE) &&
         grepl("lab_im_methods_locked_hint", ui, fixed = TRUE))
 
-# Runtime: US catalog → RI/Multiples/SOTP not primary → locked set
+# Runtime: US catalog → RI/SOTP not primary → locked; relative families follow the reference lens.
 catlg <- lab_build_industry_method_catalog(market_mode = "US", boards = c("TWSE", "TPEX"))
 avail <- lab_im_available_primary_methods(catlg)
 sm <- lab_method_group_summary(catlg, include_all = TRUE)
-check("US summary seven rows", nrow(sm) == 7L && identical(sm$method_key, LAB_SIDEBAR_METHOD_ORDER))
+check("US summary matches sidebar order", nrow(sm) == length(LAB_SIDEBAR_METHOD_ORDER) &&
+        identical(sm$method_key, LAB_SIDEBAR_METHOD_ORDER))
 check("US available excludes unused primaries",
-      all(c("dcf", "pb") %in% avail) &&
+      all(c("dcf", "book") %in% avail) &&
         !("ri" %in% avail) &&
-        !("multiples" %in% avail) &&
-        !("sotp" %in% avail))
+        !("sotp" %in% avail) &&
+        all(c("enterprise", "earnings", "revenue") %in% avail))
 check("US table zeros for locked methods",
-      all(sm$候選檔數[sm$method_key %in% c("ri", "multiples", "sotp")] == 0L) &&
-        all(!sm$has_primary[sm$method_key %in% c("ri", "multiples", "sotp")]))
+      all(sm$候選檔數[sm$method_key %in% c("ri", "sotp")] == 0L) &&
+        all(!sm$has_primary[sm$method_key %in% c("ri", "sotp")]))
 check("US table positive for DCF",
       isTRUE(sm$候選檔數[sm$method_key == "dcf"][1] > 0L))
 

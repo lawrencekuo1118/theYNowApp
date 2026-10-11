@@ -1985,16 +1985,21 @@ beta_rolling_section_ui <- function() {
                         checkboxGroupInput(
                           "lab_im_methods",
                           tags$span(id = "ynow_lab_im_methods_label", "模型"),
-                          # Same top→bottom order as sidebar valuation menus /
-                          # 「建議評價方法」table (locked when never a primary).
-                          choices = c(
-                            "NAV" = "nav",
-                            "DCF" = "dcf",
-                            "DDM" = "ddm",
-                            "RI" = "ri",
-                            "P/B" = "pb",
-                            "Multiples" = "multiples",
-                            "SOTP" = "sotp"
+                          # Same top→bottom order as the sidebar valuation menus.
+                          choiceNames = list(
+                            tags$span(id = "ynow_lab_im_method_nav", "NAV"),
+                            tags$span(id = "ynow_lab_im_method_dcf", "DCF"),
+                            tags$span(id = "ynow_lab_im_method_ddm", "DDM"),
+                            tags$span(id = "ynow_lab_im_method_ri", "RI"),
+                            tags$span(id = "ynow_lab_im_method_enterprise", "Enterprise value"),
+                            tags$span(id = "ynow_lab_im_method_earnings", "Earnings"),
+                            tags$span(id = "ynow_lab_im_method_revenue", "Revenue"),
+                            tags$span(id = "ynow_lab_im_method_book", "Book value"),
+                            tags$span(id = "ynow_lab_im_method_sotp", "SOTP")
+                          ),
+                          choiceValues = list(
+                            "nav", "dcf", "ddm", "ri",
+                            "enterprise", "earnings", "revenue", "book", "sotp"
                           ),
                           selected = APP_DEFAULTS$lab_im_methods,
                           inline = TRUE
@@ -2004,7 +2009,8 @@ beta_rolling_section_ui <- function() {
                           class = "ynow-lab-im-quality-hint ynow-full-only",
                           style = "display:block; color:#888; font-size:12px; margin-top:2px;",
                           paste0(
-                            "若某評價模型未被任何個股列為主模型，則維持不勾選並鎖定",
+                            "若某評價模型未被任何個股列為主模型，則維持不勾選並鎖定。",
+                            "相對估值的企業價值、盈餘、營收、淨值，在該類被當成 Multiples 參照時才可勾選",
                             "（樣式同美股 Listed）。「建議評價方法」表格列與此篩選列一致。"
                           )
                         )
@@ -8436,6 +8442,15 @@ ui <- dashboardPage(
             setBtText('ynow_hfv_rel_models_note', 'hfv_rel_models_note');
             setBtText('ynow_lab_im_methods_label', 'lab_im_methods_label');
             setBtText('ynow_lab_im_methods_locked_hint', 'lab_im_methods_locked_hint');
+            setBtText('ynow_lab_im_method_nav', 'menu_nav');
+            setBtText('ynow_lab_im_method_dcf', 'menu_dcf');
+            setBtText('ynow_lab_im_method_ddm', 'menu_ddm');
+            setBtText('ynow_lab_im_method_ri', 'menu_ri');
+            setBtText('ynow_lab_im_method_enterprise', 'menu_rel_ev');
+            setBtText('ynow_lab_im_method_earnings', 'menu_rel_earn');
+            setBtText('ynow_lab_im_method_revenue', 'menu_rel_rev');
+            setBtText('ynow_lab_im_method_book', 'menu_pb');
+            setBtText('ynow_lab_im_method_sotp', 'menu_sotp');
             setBtText('ynow_lab_im_chains_label', 'lab_im_chains_label');
             setBtText('ynow_lab_im_chains_hint', 'lab_im_chains_hint');
             setBtText('ynow_lab_im_industries_label', 'lab_im_industries_label');
