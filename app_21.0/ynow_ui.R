@@ -5341,7 +5341,7 @@ ui <- dashboardPage(
         .ynow-corpname .ynow-corpname-single {
           display: inline;
         }
-        /* Search 後：官方 logo 主色（固定兩色；缺則第二色為黑）套用到公司全稱 */
+        /* Search 後：官方 logo 主色（固定兩色；缺→黑；純黑單色→白） */
         .ynow-corpname .ynow-corpname-logo-solid {
           color: var(--ynow-corp-c1, #333333);
         }
@@ -5359,6 +5359,12 @@ ui <- dashboardPage(
         .ynow-corpname .ynow-corpname-zh[style*="color:"],
         .ynow-corpname .ynow-corpname-en[style*="color:"] {
           -webkit-text-fill-color: currentColor;
+        }
+        /* 台股英文列第二色為白時：淺陰影避免溶進白底 */
+        .ynow-corpname .ynow-corpname-en-on-white {
+          text-shadow:
+            0 0 1px rgba(51, 51, 51, 0.55),
+            0 1px 0 rgba(51, 51, 51, 0.35);
         }
         /* Header Language toggle (in black bar); Currency floats under logo */
         /* 繁中／EN 與小 logo 在頁首列垂直置中對齊 */

@@ -439,17 +439,31 @@ tryCatch(memoise::forget(cached_get_yahoo_industry), error = function(e) NULL)
   unique(toupper(head(cols, 2L)))
 }
 
-#' Brand palette must be 0 or 2 colors: if only one logo color, pad with black.
+#' Near-black brand swatch? (single-color black logos pad with white, not black.)
+.is_near_black_hex <- function(hex) {
+  hex <- toupper(trimws(as.character(hex %||% "")[1]))
+  if (!grepl("^#[0-9A-F]{6}$", hex)) return(FALSE)
+  r <- strtoi(substr(hex, 2L, 3L), 16L)
+  g <- strtoi(substr(hex, 4L, 5L), 16L)
+  b <- strtoi(substr(hex, 6L, 7L), 16L)
+  # luminance-ish: treat very dark greys / pure black as "black logo"
+  isTRUE(max(r, g, b, na.rm = TRUE) <= 40L)
+}
+
+#' Brand palette must be 0 or 2 colors.
+#' Single brand → pad black; single near-black brand → pad white.
 .ensure_logo_color_pair <- function(cols) {
   cols <- .normalize_logo_hex(cols)
   if (length(cols) == 1L) {
-    return(c(cols[[1]], "#000000"))
+    pad <- if (isTRUE(.is_near_black_hex(cols[[1]]))) "#FFFFFF" else "#000000"
+    return(c(cols[[1]], pad))
   }
   cols
 }
 
 #' Resolve up to two primary logo colors for a ticker (Search corp-name tint).
-#' @return character vector length 0 or 2 of "#RRGGBB" (single brand padded with black)
+#' @return character vector length 0 or 2 of "#RRGGBB"
+#'   (single brand padded with black, or white when the sole brand is black)
 get_corp_logo_colors <- function(stock_code, website = NULL) {
   tk <- trimws(as.character(stock_code %||% "")[1])
   if (!nzchar(tk)) return(character(0))
