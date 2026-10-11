@@ -90,11 +90,11 @@ check(
   grepl('ynow-model-kpi-result ynow-model-kpi-outline", valueBoxOutput(ns("vbx_sotp")', sotp_src, fixed = TRUE)
 )
 check(
-  "Multiples P/E has outline; EVFCF does not",
-  grepl('ynow-model-kpi-result ynow-model-kpi-outline", valueBoxOutput(ns("vbx_pe")', rel_src, fixed = TRUE) &&
-    grepl('ynow-model-kpi-result", valueBoxOutput(ns("vbx_evfcf")', rel_src, fixed = TRUE) &&
-    !grepl("ynow-model-kpi-outline\", valueBoxOutput(ns(\"vbx_evfcf\")", rel_src, fixed = TRUE) &&
-    !grepl('ynow-model-kpi-outline", valueBoxOutput(ns("vbx_evfcf")', rel_src, fixed = TRUE)
+  "Multiples family result columns stay filled, not white outline",
+  grepl('class = "ynow-model-kpi-result", valueBoxOutput(ns("vbx_pe")', rel_src, fixed = TRUE) &&
+    grepl('class = "ynow-model-kpi-result", valueBoxOutput(ns("vbx_evebitda")', rel_src, fixed = TRUE) &&
+    grepl('class = "ynow-model-kpi-result", valueBoxOutput(ns("vbx_ps")', rel_src, fixed = TRUE) &&
+    !grepl("ynow-model-kpi-outline", rel_src, fixed = TRUE)
 )
 check(
   "P/B fair has no outline class",

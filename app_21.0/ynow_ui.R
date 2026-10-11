@@ -4446,13 +4446,27 @@ ui <- dashboardPage(
         body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .info-box .info-box-icon > i {
           color: var(--ynow-model-accent) !important;
         }
-        body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .ynow-model-kpi-result-num.ynow-htcdi-flow {
+        /* Final valuation numeral: filled KPI stays white; white box uses logo blue–green flow. */
+        body.ynow-theme-model .ynow-model-kpi-result-num.ynow-htcdi-flow {
           background-image: none !important;
           -webkit-background-clip: border-box !important;
           background-clip: border-box !important;
-          -webkit-text-fill-color: var(--ynow-model-accent) !important;
-          color: var(--ynow-model-accent) !important;
+          -webkit-text-fill-color: #ffffff !important;
+          color: #ffffff !important;
           animation: none !important;
+          font-weight: 800;
+        }
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .small-box .inner h3 .ynow-model-kpi-result-num.ynow-htcdi-flow,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .info-box .info-box-number .ynow-model-kpi-result-num.ynow-htcdi-flow,
+        body.ynow-theme-model .ynow-model-kpi-result.ynow-model-kpi-outline .small-box .inner h3 .ynow-model-kpi-result-num.ynow-htcdi-flow,
+        body.ynow-theme-model .ynow-model-kpi-result.ynow-model-kpi-outline .info-box .info-box-number .ynow-model-kpi-result-num.ynow-htcdi-flow {
+          background-image: var(--ynow-logo-flow-gradient, linear-gradient(105deg, #0C5484 0%, #1AA8B8 50%, #249C60 100%)) !important;
+          background-size: 220% 100% !important;
+          -webkit-background-clip: text !important;
+          background-clip: text !important;
+          -webkit-text-fill-color: transparent !important;
+          color: transparent !important;
+          animation: ynow-logo-flow 2.6s ease-in-out infinite !important;
         }
         body.ynow-theme-model .ynow-model-kpi-tone-2 .small-box,
         body.ynow-theme-model .ynow-model-kpi-tone-2 .info-box,
@@ -4468,20 +4482,6 @@ ui <- dashboardPage(
         body.ynow-theme-model .ynow-model-kpi-tone-4 .info-box,
         body.ynow-theme-model .ynow-model-kpi-tone-4 .info-box .info-box-icon {
           background-color: var(--ynow-model-kpi-s4) !important;
-        }
-        body.ynow-theme-model .ynow-model-kpi-result-num.ynow-htcdi-flow {
-          background-image: var(--ynow-logo-flow-gradient, linear-gradient(105deg, #0C5484 0%, #1AA8B8 50%, #249C60 100%)) !important;
-          -webkit-background-clip: text !important;
-          background-clip: text !important;
-          -webkit-text-fill-color: transparent !important;
-          color: transparent !important;
-          animation: ynow-logo-flow 2.6s ease-in-out infinite;
-          font-weight: 800;
-        }
-        body.ynow-theme-model .small-box .inner h3 .ynow-model-kpi-result-num.ynow-htcdi-flow,
-        body.ynow-theme-model .info-box .info-box-number .ynow-model-kpi-result-num.ynow-htcdi-flow {
-          color: transparent !important;
-          -webkit-text-fill-color: transparent !important;
         }
         /* Sidebar active rail matches the open model tab */
         body.ynow-theme-model.skin-black .main-sidebar .sidebar-menu > li.active > a,

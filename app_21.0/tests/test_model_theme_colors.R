@@ -94,9 +94,14 @@ check(
     grepl("--ynow-model-kpi-s2", ui_src, fixed = TRUE)
 )
 check(
-  "result numeral uses blue-green flow",
-  grepl("ynow-model-kpi-result-num", ui_src, fixed = TRUE) &&
-    grepl("ynow-htcdi-flow", ui_src, fixed = TRUE)
+  "white result numeral uses logo blue-green flow",
+  grepl("ynow-model-kpi-outline .small-box .inner h3 .ynow-model-kpi-result-num.ynow-htcdi-flow", ui_src, fixed = TRUE) &&
+    grepl("animation: ynow-logo-flow 2.6s ease-in-out infinite !important;", ui_src, fixed = TRUE)
+)
+check(
+  "filled result numeral stays white",
+  grepl("body.ynow-theme-model .ynow-model-kpi-result-num.ynow-htcdi-flow", ui_src, fixed = TRUE) &&
+    grepl("-webkit-text-fill-color: #ffffff !important;", ui_src, fixed = TRUE)
 )
 
 # Cards use CSS accent classes (single source of truth with page themes)

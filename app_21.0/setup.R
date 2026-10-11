@@ -440,7 +440,8 @@ format_dollar_abbr <- function(x) {
   format_money_abbr(x, .ynow_ccy_ctx$session_currency)
 }
 
-#' Primary valuation KPI numeral: blue–green logo flow (only the model result value).
+#' Primary valuation KPI numeral. White result boxes use the logo blue–green flow;
+#' filled result boxes keep the numeral white (CSS).
 #' Plain text for empty / N/A placeholders so siblings stay non-flow.
 ynow_model_result_num <- function(txt) {
   s <- as.character(txt %||% "")[1]
