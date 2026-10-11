@@ -12677,7 +12677,7 @@ ui <- dashboardPage(
           box(
             title = tagList(
               icon("route"),
-              tags$span(id = "ynow_gs_model_selector_title", "Model Selector｜Valuation model recommendation")
+              tags$span(id = "ynow_gs_model_selector_title", "基本面評價模型")
             ),
             width = 12, status = "primary", solidHeader = TRUE,
             uiOutput("get_started_model_selector"),
