@@ -8180,7 +8180,7 @@ ui <- dashboardPage(
               var avail = (payload && payload.available) ? payload.available.map(String) : [];
               var root = document.getElementById('lab_im_methods');
               if (!root) return;
-              var inputs = root.querySelectorAll('input[type="checkbox"]');
+              var inputs = root.querySelectorAll('input[type=checkbox]');
               var changed = false;
               inputs.forEach(function (el) {
                 var ok = avail.indexOf(String(el.value)) >= 0;
@@ -9566,7 +9566,7 @@ ui <- dashboardPage(
           opacity: 0.55;
           color: #888;
         }
-        .ynow-lab-im-methods .checkbox-inline.ynow-lab-im-method--locked input[type="checkbox"] {
+        .ynow-lab-im-methods .checkbox-inline.ynow-lab-im-method--locked input[type=checkbox] {
           cursor: not-allowed;
           pointer-events: none;
         }
