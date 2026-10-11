@@ -1107,6 +1107,19 @@ relative_multiples_module_server <- function(id,
               " multiple × EPS."
             )
           }
+          if (identical(res$ev_ebitda$status, "ok")) {
+            ev_chk <- enterprise_implied_price(
+              res$ev_ebitda$metric, res$ev_ebitda$multiple,
+              res$ev_ebitda$cash, res$ev_ebitda$debt, res$ev_ebitda$shares
+            )
+            ev_ok <- isTRUE(ev_chk$ok) && is.finite(res$ev_ebitda$implied_price) &&
+              abs(ev_chk$price - res$ev_ebitda$implied_price) < 0.05
+            lines[[length(lines) + 1L]] <- tags$p(
+              class = "help-block", style = "margin:0;",
+              "EV/EBITDA: ", .str(if (ev_ok) "audit_formula_match" else "audit_formula_mismatch"),
+              " ", ev_chk$identity, "."
+            )
+          }
           if (identical(res$forward_pe$status, "ok")) {
             fpe_chk <- multiple_implied_price(res$forward_pe$pe_multiple, res$forward_pe$eps, 1)
             fpe_ok <- isTRUE(fpe_chk$ok) && is.finite(res$forward_pe$implied_price) &&

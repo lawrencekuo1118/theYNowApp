@@ -2872,6 +2872,23 @@ multiple_implied_price <- function(multiple, metric, shares) {
   )
 }
 
+#' Enterprise multiple: (metric × multiple + cash − debt) / shares.
+enterprise_implied_price <- function(metric, multiple, cash, debt, shares) {
+  m <- suppressWarnings(as.numeric(metric)[1])
+  mult <- suppressWarnings(as.numeric(multiple)[1])
+  s <- suppressWarnings(as.numeric(shares)[1])
+  ev <- if (is.finite(m) && is.finite(mult)) m * mult else NA_real_
+  eq <- dcf_ev_to_equity(ev, cash = cash, debt = debt)
+  px <- if (is.finite(eq) && is.finite(s) && s > 0) eq / s else NA_real_
+  list(
+    implied_ev = ev,
+    equity = eq,
+    price = px,
+    identity = "(metric * multiple + cash - debt) / shares",
+    ok = is.finite(px)
+  )
+}
+
 #' SOTP equity bridge: (sum of segment values + non-operating + cash − debt) / shares.
 sotp_implied_price <- function(segment_value, cash, debt, shares, non_operating = 0) {
   parts <- sum(suppressWarnings(as.numeric(segment_value)), na.rm = TRUE)

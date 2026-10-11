@@ -42,6 +42,8 @@ check("zh audit same shocks", identical(audit$shock, zh$shock) && !identical(aud
 
 px <- multiple_implied_price(12, 4, 2)
 check("P/E identity 12 * 4 / 2 = 24", isTRUE(px$ok) && abs(px$price - 24) < 1e-9)
+evpx <- enterprise_implied_price(10, 8, cash = 5, debt = 25, shares = 10)
+check("EV identity (80+5-25)/10 = 6", isTRUE(evpx$ok) && abs(evpx$price - 6) < 1e-9)
 sotp <- sotp_implied_price(c(100, 50), cash = 20, debt = 50, shares = 10)
 check("SOTP (150+20-50)/10 = 12", isTRUE(sotp$ok) && abs(sotp$price - 12) < 1e-9)
 
