@@ -61,14 +61,6 @@
       if (!nzchar(tab) || !tab %in% names(builders)) return()
       if (isTRUE(mounted[[tab]])) return()
       mounted[[tab]] <- TRUE
-      # #region agent log
-      tryCatch({
-        cat(sprintf(
-          '{"hypothesisId":"H3","location":"lazy_tabs.R:first_mount","message":"lazy first mount mark","data":{"tab":"%s","flags_set":false},"timestamp":%.0f}\n',
-          tab, as.numeric(Sys.time()) * 1000
-        ), file = "/opt/cursor/logs/debug.log", append = TRUE)
-      }, error = function(e) NULL)
-      # #endregion
       hook <- on_first_mount[[tab]]
       if (is.function(hook)) {
         tryCatch(hook(), error = function(e) {
@@ -76,24 +68,8 @@
         })
       }
       flags[[tab]] <- TRUE
-      # #region agent log
-      tryCatch({
-        cat(sprintf(
-          '{"hypothesisId":"H3","location":"lazy_tabs.R:flags_true","message":"lazy flags TRUE (renderUI queued)","data":{"tab":"%s"},"timestamp":%.0f}\n',
-          tab, as.numeric(Sys.time()) * 1000
-        ), file = "/opt/cursor/logs/debug.log", append = TRUE)
-      }, error = function(e) NULL)
-      # #endregion
       if (is.function(after_mount)) {
         session$onFlushed(function() {
-          # #region agent log
-          tryCatch({
-            cat(sprintf(
-              '{"hypothesisId":"H3","location":"lazy_tabs.R:after_mount_flushed","message":"after_mount onFlushed firing","data":{"tab":"%s"},"timestamp":%.0f}\n',
-              tab, as.numeric(Sys.time()) * 1000
-            ), file = "/opt/cursor/logs/debug.log", append = TRUE)
-          }, error = function(e) NULL)
-          # #endregion
           tryCatch(after_mount(tab), error = function(e) NULL)
         }, once = TRUE)
       }
