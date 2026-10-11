@@ -7,4 +7,4 @@ commit=e37aa33
 short=e37aa33
 message=chore: record shipped display version v21.71
 captured_at=2026-10-11T08:15:00Z
-display_version=v21.71
+display_version=v21.72
