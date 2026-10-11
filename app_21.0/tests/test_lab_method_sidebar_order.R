@@ -62,6 +62,26 @@ sm2 <- lab_method_group_summary(
 )
 check("partial summary order", identical(sm2$method_key, c("nav", "ri", "pb")))
 
+sm_all <- lab_method_group_summary(
+  catlg[catlg$primary %in% c("dcf", "nav"), , drop = FALSE],
+  include_all = TRUE
+)
+check("include_all has seven rows", identical(sm_all$method_key, want))
+check(
+  "include_all zeros for missing primaries",
+  isTRUE(sm_all$候選檔數[sm_all$method_key == "dcf"] > 0L) &&
+    isTRUE(sm_all$候選檔數[sm_all$method_key == "ri"] == 0L) &&
+    isTRUE(sm_all$has_primary[sm_all$method_key == "dcf"]) &&
+    !isTRUE(sm_all$has_primary[sm_all$method_key == "ri"])
+)
+check(
+  "available primary methods helper",
+  identical(
+    lab_im_available_primary_methods(catlg[catlg$primary %in% c("pb", "dcf"), , drop = FALSE]),
+    c("dcf", "pb")
+  )
+)
+
 defaults <- lab_industry_method_defaults()
 hold_def <- defaults[defaults$industry_key == "fn.Conglomerate_Holding", , drop = FALSE]
 check(

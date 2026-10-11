@@ -1,0 +1,71 @@
+#!/usr/bin/env Rscript
+# Models filter locks methods with no primary; summary table lists all seven.
+# Run: cd app_21.0/tests && Rscript test_lab_im_methods_lock.R
+
+args <- commandArgs(trailingOnly = FALSE)
+file_arg <- sub("^--file=", "", args[grep("^--file=", args)])
+test_dir <- if (length(file_arg) == 1L && nzchar(file_arg)) {
+  dirname(normalizePath(file_arg))
+} else {
+  getwd()
+}
+app_dir <- normalizePath(file.path(test_dir, ".."), mustWork = TRUE)
+setwd(app_dir)
+
+fail <- 0L
+check <- function(label, cond) {
+  if (isTRUE(cond)) {
+    cat("OK ", label, "\n", sep = "")
+  } else {
+    cat("FAIL ", label, "\n", sep = "")
+    fail <<- fail + 1L
+  }
+}
+
+source(file.path(app_dir, "ui_locale.R"), local = FALSE)
+source(file.path(app_dir, "setup.R"), local = FALSE)
+source(file.path(app_dir, "industry_standards.R"), local = FALSE)
+source(file.path(app_dir, "lab_industry_method.R"), local = FALSE)
+
+ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+
+check("JS lock handler", grepl("ynowLabImMethodsLock", ui, fixed = TRUE))
+check("locked CSS class", grepl("ynow-lab-im-method--locked", ui, fixed = TRUE))
+check("server sends lock message", grepl('ynowLabImMethodsLock', srv, fixed = TRUE))
+check("server uses include_all summary", grepl("include_all = TRUE", srv, fixed = TRUE))
+check("server scope catalog ignores method filter",
+      grepl("\\.lab_im_method_scope_catalog", srv) &&
+        grepl("method_filter = character\\(0\\)", srv))
+check("methods hint locale en",
+      nzchar(ui_str("lab_im_methods_locked_hint", "en")) &&
+        grepl("Locked|locked|Listed", ui_str("lab_im_methods_locked_hint", "en")))
+check("methods hint locale zh-TW",
+      grepl("主模型", ui_str("lab_im_methods_locked_hint", "zh-TW"), fixed = TRUE) &&
+        !grepl("默认|参数|数据", ui_str("lab_im_methods_locked_hint", "zh-TW")))
+check("hint wired in UI", grepl("ynow_lab_im_methods_locked_hint", ui, fixed = TRUE))
+check("applyUiLocale wires hint",
+      grepl("ynow_lab_im_methods_locked_hint", ui, fixed = TRUE) &&
+        grepl("lab_im_methods_locked_hint", ui, fixed = TRUE))
+
+# Runtime: US catalog → RI/Multiples/SOTP not primary → locked set
+catlg <- lab_build_industry_method_catalog(market_mode = "US", boards = c("TWSE", "TPEX"))
+avail <- lab_im_available_primary_methods(catlg)
+sm <- lab_method_group_summary(catlg, include_all = TRUE)
+check("US summary seven rows", nrow(sm) == 7L && identical(sm$method_key, LAB_SIDEBAR_METHOD_ORDER))
+check("US available excludes unused primaries",
+      all(c("dcf", "pb") %in% avail) &&
+        !("ri" %in% avail) &&
+        !("multiples" %in% avail) &&
+        !("sotp" %in% avail))
+check("US table zeros for locked methods",
+      all(sm$候選檔數[sm$method_key %in% c("ri", "multiples", "sotp")] == 0L) &&
+        all(!sm$has_primary[sm$method_key %in% c("ri", "multiples", "sotp")]))
+check("US table positive for DCF",
+      isTRUE(sm$候選檔數[sm$method_key == "dcf"][1] > 0L))
+
+if (fail > 0L) {
+  cat("FAILED ", fail, " check(s)\n", sep = "")
+  quit(status = 1L)
+}
+cat("PASS lab_im_methods_lock\n")

@@ -12203,18 +12203,62 @@ server <- function(input, output, session) {
     showNotification(msg, type = "message", duration = 10)
   }, ignoreInit = TRUE)
 
-  output$lab_im_summary <- renderTable({
-    catlg <- lab_im_catalog()
-    req(is.data.frame(catlg), nrow(catlg) > 0)
-    filtered <- lab_merge_catalog_scores(
+  # Models filter ↔ 建議評價方法 table: same seven methods; lock ones with no primary.
+  .lab_im_method_scope_catalog <- reactive({
+    catlg <- tryCatch(lab_im_catalog(), error = function(e) NULL)
+    if (!is.data.frame(catlg) || nrow(catlg) == 0L) {
+      return(data.frame())
+    }
+    # Industry / board scope only — do not apply Models filter (that is what we are driving).
+    lab_merge_catalog_scores(
       catlg,
       scores = NULL,
-      method_filter = input$lab_im_methods,
+      method_filter = character(0),
       industry_filter = lab_im_industry_filter(),
       eq_only = FALSE,
       gate_only = FALSE
     )
-    sm <- lab_method_group_summary(filtered)
+  })
+
+  observeEvent(
+    list(.lab_im_method_scope_catalog(), lazy_mount_nonce()),
+    {
+      scope <- tryCatch(.lab_im_method_scope_catalog(), error = function(e) data.frame())
+      available <- tryCatch(
+        lab_im_available_primary_methods(scope),
+        error = function(e) character(0)
+      )
+      available <- intersect(as.character(LAB_SIDEBAR_METHOD_ORDER), as.character(available))
+      cur <- isolate(as.character(input$lab_im_methods %||% character(0)))
+      cur <- cur[nzchar(cur)]
+      # Keep user picks among still-available methods; default = all available.
+      new_sel <- if (length(cur)) {
+        intersect(cur, available)
+      } else {
+        available
+      }
+      if (!length(new_sel) && length(available)) new_sel <- available
+      tryCatch(
+        updateCheckboxGroupInput(session, "lab_im_methods", selected = new_sel),
+        error = function(e) NULL
+      )
+      session$sendCustomMessage(
+        "ynowLabImMethodsLock",
+        list(
+          available = as.character(available),
+          all = as.character(LAB_SIDEBAR_METHOD_ORDER)
+        )
+      )
+    },
+    ignoreInit = FALSE
+  )
+
+  output$lab_im_summary <- renderTable({
+    scope <- .lab_im_method_scope_catalog()
+    if (!is.data.frame(scope) || nrow(scope) == 0L) {
+      return(data.frame(訊息 = "目前複選下無產業／候選"))
+    }
+    sm <- lab_method_group_summary(scope, include_all = TRUE)
     if (is.null(sm) || nrow(sm) == 0) {
       return(data.frame(訊息 = "目前複選下無產業／候選"))
     }
@@ -12930,14 +12974,17 @@ server <- function(input, output, session) {
       filtered <- if (is.data.frame(catlg) && nrow(catlg) > 0) {
         lab_merge_catalog_scores(
           catlg, scores = NULL,
-          method_filter = isolate(input$lab_im_methods),
+          method_filter = character(0),
           industry_filter = isolate(lab_im_industry_filter()),
           eq_only = FALSE, gate_only = FALSE
         )
       } else {
         data.frame()
       }
-      sm <- tryCatch(lab_method_group_summary(filtered), error = function(e) NULL)
+      sm <- tryCatch(
+        lab_method_group_summary(filtered, include_all = TRUE),
+        error = function(e) NULL
+      )
       if (!is.null(sm) && nrow(sm) > 0 && "method_key" %in% names(sm)) {
         sm <- sm[, c("建議評價方法", "產業數", "候選檔數"), drop = FALSE]
       }

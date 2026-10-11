@@ -2177,26 +2177,56 @@ lab_industry_mcap_upside_leaderboard <- function(merged_df, top_n = 10L,
   )
 }
 
+#' Primary methods present in a catalog (sidebar order).
+lab_im_available_primary_methods <- function(catalog) {
+  if (is.null(catalog) || !is.data.frame(catalog) || !nrow(catalog)) {
+    return(character(0))
+  }
+  if (!"primary" %in% names(catalog)) return(character(0))
+  lab_order_methods_like_sidebar(unique(as.character(catalog$primary)))
+}
+
 #' 顯示用摘要：依主方法分組的產業數／候選檔數
-#' Row order follows sidebar model order (NAV → DCF → DDM → RI → P/B), not catalog appearance.
-lab_method_group_summary <- function(catalog) {
+#' Row order follows sidebar model order (NAV → DCF → DDM → RI → P/B → Multiples → SOTP).
+#' @param include_all TRUE：七個評價模型列都顯示（無主模型者產業數／候選檔數為 0）
+lab_method_group_summary <- function(catalog, include_all = FALSE) {
+  empty_row <- function(m) {
+    data.frame(
+      建議評價方法 = as.character(LAB_METHOD_LABELS[[m]] %||% m),
+      產業數 = 0L,
+      候選檔數 = 0L,
+      method_key = m,
+      has_primary = FALSE,
+      stringsAsFactors = FALSE
+    )
+  }
   if (is.null(catalog) || !nrow(catalog)) {
+    if (isTRUE(include_all)) {
+      return(do.call(rbind, lapply(LAB_SIDEBAR_METHOD_ORDER, empty_row)))
+    }
     return(data.frame(
       建議評價方法 = character(0),
       產業數 = integer(0),
       候選檔數 = integer(0),
       method_key = character(0),
+      has_primary = logical(0),
       stringsAsFactors = FALSE
     ))
   }
-  methods <- lab_order_methods_like_sidebar(catalog$primary)
+  methods <- if (isTRUE(include_all)) {
+    as.character(LAB_SIDEBAR_METHOD_ORDER)
+  } else {
+    lab_order_methods_like_sidebar(catalog$primary)
+  }
   do.call(rbind, lapply(methods, function(m) {
     sub <- catalog[catalog$primary == m, , drop = FALSE]
+    n_tk <- length(unique(stats::na.omit(sub$ticker)))
     data.frame(
       建議評價方法 = as.character(LAB_METHOD_LABELS[[m]] %||% m),
-      產業數 = length(unique(sub$industry_key)),
-      候選檔數 = length(unique(stats::na.omit(sub$ticker))),
+      產業數 = if (n_tk > 0L) length(unique(sub$industry_key)) else 0L,
+      候選檔數 = as.integer(n_tk),
       method_key = m,
+      has_primary = n_tk > 0L,
       stringsAsFactors = FALSE
     )
   }))

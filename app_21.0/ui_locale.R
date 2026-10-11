@@ -1004,6 +1004,10 @@ locale_for_market <- function(mode = get_market_mode()) {
       "they are not available as HFV chart overlays."
     ),
     lab_im_methods_label = "Models",
+    lab_im_methods_locked_hint = paste0(
+      "Models with no names using them as the primary valuation model stay unchecked and locked ",
+      "(same disabled style as Listed). Rows in Suggested valuation methods match this filter."
+    ),
     ms_card_multiples_formula = "Implied Price: P/E · EV/* · P/S",
     ms_card_multiples_notes = paste0(
       "Market-multiple cross-check (not Intrinsic Value); ",
@@ -3643,6 +3647,10 @@ locale_for_market <- function(mode = get_market_mode()) {
       "無法作為 HFV 圖表疊加。"
     ),
     lab_im_methods_label = "模型",
+    lab_im_methods_locked_hint = paste0(
+      "若某評價模型未被任何個股列為主模型，則維持不勾選並鎖定",
+      "（樣式同美股 Listed）。「建議評價方法」表格列與此篩選列一致。"
+    ),
     ms_card_multiples_formula = "Implied Price：P/E · EV/* · P/S",
     ms_card_multiples_notes = paste0(
       "市場倍數交叉檢核（非 Intrinsic Value）；",

@@ -1697,7 +1697,8 @@ beta_rolling_section_ui <- function() {
                         checkboxGroupInput(
                           "lab_im_methods",
                           tags$span(id = "ynow_lab_im_methods_label", "模型"),
-                          # Same top→bottom order as sidebar valuation menus
+                          # Same top→bottom order as sidebar valuation menus /
+                          # 「建議評價方法」table (locked when never a primary).
                           choices = c(
                             "NAV" = "nav",
                             "DCF" = "dcf",
@@ -1709,6 +1710,15 @@ beta_rolling_section_ui <- function() {
                           ),
                           selected = APP_DEFAULTS$lab_im_methods,
                           inline = TRUE
+                        ),
+                        tags$span(
+                          id = "ynow_lab_im_methods_locked_hint",
+                          class = "ynow-lab-im-quality-hint ynow-full-only",
+                          style = "display:block; color:#888; font-size:12px; margin-top:2px;",
+                          paste0(
+                            "若某評價模型未被任何個股列為主模型，則維持不勾選並鎖定",
+                            "（樣式同美股 Listed）。「建議評價方法」表格列與此篩選列一致。"
+                          )
                         )
                       )
                     ),
@@ -7948,6 +7958,7 @@ ui <- dashboardPage(
             if (ccyFloat && s.hdr_ccy_label) ccyFloat.setAttribute('aria-label', s.hdr_ccy_label);
             setBtText('ynow_hfv_rel_models_note', 'hfv_rel_models_note');
             setBtText('ynow_lab_im_methods_label', 'lab_im_methods_label');
+            setBtText('ynow_lab_im_methods_locked_hint', 'lab_im_methods_locked_hint');
             setBtText('ynow_lab_im_chains_label', 'lab_im_chains_label');
             setBtText('ynow_lab_im_chains_hint', 'lab_im_chains_hint');
             setBtText('ynow_lab_im_industries_label', 'lab_im_industries_label');
@@ -8163,6 +8174,33 @@ ui <- dashboardPage(
               document.body.classList.toggle('ynow-theme-model', !!key);
               document.body.classList.toggle('ynow-theme-bluechip', tab === 'bluechip');
               document.body.classList.toggle('ynow-theme-atx', tab === 'asset_transmission');
+            });
+            /* Models filter: lock methods with no primary names (Listed-style disabled, unchecked). */
+            Shiny.addCustomMessageHandler('ynowLabImMethodsLock', function (payload) {
+              var avail = (payload && payload.available) ? payload.available.map(String) : [];
+              var root = document.getElementById('lab_im_methods');
+              if (!root) return;
+              var inputs = root.querySelectorAll('input[type="checkbox"]');
+              var changed = false;
+              inputs.forEach(function (el) {
+                var ok = avail.indexOf(String(el.value)) >= 0;
+                var label = el.closest('label');
+                if (label) label.classList.toggle('ynow-lab-im-method--locked', !ok);
+                if (!ok) {
+                  if (el.checked) {
+                    el.checked = false;
+                    changed = true;
+                  }
+                  el.disabled = true;
+                  el.setAttribute('aria-disabled', 'true');
+                } else {
+                  el.disabled = false;
+                  el.removeAttribute('aria-disabled');
+                }
+              });
+              if (changed && window.Shiny && Shiny.inputBindings) {
+                $(root).trigger('change');
+              }
             });
           }
           registerLocaleHandler();
@@ -9518,6 +9556,19 @@ ui <- dashboardPage(
           margin-right: 0 !important;
           padding-left: 18px;
           vertical-align: middle;
+        }
+        /* Unused primary model: Listed-style locked checkbox (unchecked, not clickable) */
+        .ynow-lab-im-methods .checkbox-inline.ynow-lab-im-method--locked,
+        .ynow-lab-im-us-listed input[disabled] {
+          cursor: not-allowed;
+        }
+        .ynow-lab-im-methods .checkbox-inline.ynow-lab-im-method--locked {
+          opacity: 0.55;
+          color: #888;
+        }
+        .ynow-lab-im-methods .checkbox-inline.ynow-lab-im-method--locked input[type="checkbox"] {
+          cursor: not-allowed;
+          pointer-events: none;
         }
         .ynow-lab-im-quality .form-group {
           margin-bottom: 4px;
