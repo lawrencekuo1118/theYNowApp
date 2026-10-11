@@ -74,7 +74,7 @@ check(
 check(
   "listed primary KPIs use white outline + accent text",
   grepl("ynow-model-kpi-outline", ui_src, fixed = TRUE) &&
-    grepl("body.ynow-theme-model .ynow-model-kpi-outline .small-box", ui_src, fixed = TRUE) &&
+    grepl("body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .small-box", ui_src, fixed = TRUE) &&
     grepl("background-color: #ffffff", ui_src, fixed = TRUE) &&
     grepl("border: 2px solid var(--ynow-model-accent)", ui_src, fixed = TRUE)
 )

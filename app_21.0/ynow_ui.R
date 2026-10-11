@@ -4042,30 +4042,62 @@ ui <- dashboardPage(
         }
         /* Listed primary KPIs only: white fill + model-accent border / text
            (NAV fair, DCF/DDM per-share, RI FV, P/E Implied, SOTP Implied).
-           Other result / sibling KPIs keep filled family tones above. */
-        body.ynow-theme-model .ynow-model-kpi-outline .small-box,
-        body.ynow-theme-model .ynow-model-kpi-outline .info-box {
+           Other result / sibling KPIs keep filled family tones above.
+           Specificity must beat .content-wrapper .info-box.bg-* muted fills. */
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .small-box,
+        body.ynow-theme-model .tab-content .ynow-model-kpi-outline .small-box,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .info-box,
+        body.ynow-theme-model .tab-content .ynow-model-kpi-outline .info-box,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .info-box.bg-aqua,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .info-box.bg-green,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .info-box.bg-yellow,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .info-box.bg-red,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .info-box.bg-maroon,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .info-box.bg-purple,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .info-box.bg-navy,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .info-box.bg-teal,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .info-box.bg-olive,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .info-box.bg-orange,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .info-box.bg-light-blue,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .info-box.bg-black,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .info-box.bg-blue,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .small-box.bg-aqua,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .small-box.bg-green,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .small-box.bg-yellow,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .small-box.bg-red,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .small-box.bg-maroon,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .small-box.bg-purple,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .small-box.bg-navy,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .small-box.bg-teal,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .small-box.bg-olive,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .small-box.bg-orange,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .small-box.bg-light-blue,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .small-box.bg-blue,
+        body.ynow-theme-model .ynow-model-kpi-result.ynow-model-kpi-outline .small-box,
+        body.ynow-theme-model .ynow-model-kpi-result.ynow-model-kpi-outline .info-box {
           background-color: #ffffff !important;
+          background-image: none !important;
           border: 2px solid var(--ynow-model-accent) !important;
           color: var(--ynow-model-accent) !important;
           box-shadow: none !important;
         }
-        body.ynow-theme-model .ynow-model-kpi-outline .info-box .info-box-icon {
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .info-box .info-box-icon,
+        body.ynow-theme-model .ynow-model-kpi-result.ynow-model-kpi-outline .info-box .info-box-icon {
           background-color: #ffffff !important;
           color: var(--ynow-model-accent) !important;
         }
-        body.ynow-theme-model .ynow-model-kpi-outline .small-box .inner h3,
-        body.ynow-theme-model .ynow-model-kpi-outline .small-box .inner p,
-        body.ynow-theme-model .ynow-model-kpi-outline .info-box .info-box-number,
-        body.ynow-theme-model .ynow-model-kpi-outline .info-box .info-box-text {
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .small-box .inner h3,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .small-box .inner p,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .info-box .info-box-number,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .info-box .info-box-text {
           color: var(--ynow-model-accent) !important;
         }
-        body.ynow-theme-model .ynow-model-kpi-outline .small-box .icon,
-        body.ynow-theme-model .ynow-model-kpi-outline .small-box .icon > i,
-        body.ynow-theme-model .ynow-model-kpi-outline .info-box .info-box-icon > i {
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .small-box .icon,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .small-box .icon > i,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .info-box .info-box-icon > i {
           color: var(--ynow-model-accent) !important;
         }
-        body.ynow-theme-model .ynow-model-kpi-outline .ynow-model-kpi-result-num.ynow-htcdi-flow {
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .ynow-model-kpi-result-num.ynow-htcdi-flow {
           background-image: none !important;
           -webkit-background-clip: border-box !important;
           background-clip: border-box !important;
