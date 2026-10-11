@@ -61,6 +61,27 @@ check("scope help mentions dedicated board (en)",
 check("scope help mentions 上方獨立區塊 (zh-TW)",
       grepl("上方獨立區塊", ui_str("lab_im_lb_scope_help", "zh-TW"), fixed = TRUE))
 
+# Opening Blue Chip Leaderboard auto-starts the same runner as Search Blue Chips
+check("server has lab_im_run_pulse", grepl("lab_im_run_pulse", srv, fixed = TRUE))
+check("server has lab_im_eval_busy", grepl("lab_im_eval_busy", srv, fixed = TRUE))
+check("button pulses shared runner",
+      grepl("observeEvent(input$lab_im_run_fscore", srv, fixed = TRUE) &&
+        grepl("lab_im_run_pulse(", srv, fixed = TRUE))
+check("sidebar bluechip auto-triggers when empty",
+      grepl('identical(tab, "bluechip")', srv, fixed = TRUE) &&
+        grepl("lazy_mount_nonce()", srv, fixed = TRUE) &&
+        grepl('mounted("bluechip")', srv, fixed = TRUE))
+check("waiting copy mentions opening Leaderboard (en)",
+      grepl("Opening Blue Chip Leaderboard", ui_str("lab_im_ind_mcap_waiting", "en"), fixed = TRUE) &&
+        !grepl("Run Search Blue Chips to auto-build", ui_str("lab_im_ind_mcap_waiting", "en"), fixed = TRUE))
+check("waiting copy mentions 側邊欄 (zh-TW)",
+      grepl("側邊欄「績優股排行榜」", ui_str("lab_im_ind_mcap_waiting", "zh-TW"), fixed = TRUE) &&
+        !grepl("请按", ui_str("lab_im_ind_mcap_waiting", "zh-TW"), fixed = TRUE))
+check("help mentions open Leaderboard (en)",
+      grepl("Opening Blue Chip Leaderboard", ui_str("lab_im_ind_mcap_help", "en"), fixed = TRUE))
+check("help mentions 開啟側邊欄 (zh-TW)",
+      grepl("開啟側邊欄「績優股排行榜」", ui_str("lab_im_ind_mcap_help", "zh-TW"), fixed = TRUE))
+
 cat("\nPASS ", pass, "  FAIL ", fail, "\n", sep = "")
 if (fail > 0L) quit(status = 1L)
 cat("ALL PASS\n")
