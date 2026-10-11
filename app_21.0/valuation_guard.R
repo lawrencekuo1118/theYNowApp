@@ -1175,22 +1175,28 @@ assemble_model_recommendation <- function(data_missing = FALSE,
                    suggest_two_stage = FALSE, scores = empty_scores,
                    secondary_role = "none", weight_primary = NA_real_,
                    weight_secondary = NA_real_, inapplicable = character(0),
-                   reason_en = NULL) {
+                   reason_en = NULL, reference = NULL) {
     flags <- list(
       ddm = FALSE, dcf = FALSE, pb = FALSE, ri = FALSE, nav = FALSE,
       multiples = FALSE, sotp = FALSE
     )
     if (!is.null(primary) && nzchar(as.character(primary))) flags[[as.character(primary)]] <- TRUE
     if (!is.null(secondary) && nzchar(as.character(secondary))) flags[[as.character(secondary)]] <- TRUE
+    # Multiples is a universal Reference companion — flag even when not primary/secondary.
+    if (!is.null(reference) && nzchar(as.character(reference))) {
+      flags[[as.character(reference)]] <- TRUE
+    }
     tags <- unique(c(
       if (!is.null(primary)) as.character(primary),
-      if (!is.null(secondary)) as.character(secondary)
+      if (!is.null(secondary)) as.character(secondary),
+      if (!is.null(reference)) as.character(reference)
     ))
     tags <- tags[nzchar(tags)]
     list(
       company_type = company_type,
       primary = if (is.null(primary) || !nzchar(as.character(primary))) NULL else as.character(primary),
       secondary = if (is.null(secondary) || !nzchar(as.character(secondary))) NULL else as.character(secondary),
+      reference = if (is.null(reference) || !nzchar(as.character(reference %||% ""))) NULL else as.character(reference),
       secondary_role = secondary_role,
       secondary_label = if (is.null(secondary) || !nzchar(as.character(secondary %||% ""))) "無適用副模型" else as.character(secondary),
       weight_primary = weight_primary,
@@ -1208,7 +1214,8 @@ assemble_model_recommendation <- function(data_missing = FALSE,
       inapplicable = inapplicable,
       dependency_note = paste0(
         "RI, DDM, and NAV formulas are unchanged; only selection scores are attached. ",
-        "Multiples / SOTP are Implied Price relative engines (cross-check only), not Fair Value primaries."
+        "Multiples is a universal Implied Price Reference (not a Fair Value secondary). ",
+        "SOTP remains a structural Implied Price engine (e.g. NAV companion for holdings)."
       ),
       lifecycle_result = lifecycle_result
     )
@@ -1362,7 +1369,7 @@ assemble_model_recommendation <- function(data_missing = FALSE,
     accounting = if (is_intang || isTRUE(is_growth_ind)) 40 else 55,
     forecast = if (is.finite(rev_g)) 50 else 25,
     industry = if (is_intang || isTRUE(is_growth_ind)) 80 else if (is_book) 25 else 55,
-    notes = "Implied Price multiples (P/E·EV/*·P/S); cross-check only, not Intrinsic Value"
+    notes = "Implied Price multiples (P/E·EV/*·P/S); universal market-pricing Reference, not a Fair Value secondary"
   )
   # SOTP: structural revenue-segment framework. Preferred secondary for holdings / conglomerates.
   sotp_app <- 15
@@ -1403,11 +1410,12 @@ assemble_model_recommendation <- function(data_missing = FALSE,
   eligible <- eligible[order(-eligible$overall, -eligible$applicability, eligible$model), , drop = FALSE]
   primary <- as.character(eligible$model[1])
   primary_row <- scores[scores$model == primary, , drop = FALSE]
+  # Multiples is never a secondary candidate — it is a universal Reference companion.
+  # SOTP may still be secondary (e.g. holdings NAV + SOTP structural cross-check).
   rest <- scores[
     scores$lens != primary_row$lens[1] &
       scores$applicability >= .VG_CROSS_APP &
-      # Prefer a Fair Value secondary when available; relative engines may still win by score
-      TRUE,
+      scores$model != "multiples",
     , drop = FALSE
   ]
   secondary <- NULL
@@ -1530,39 +1538,25 @@ assemble_model_recommendation <- function(data_missing = FALSE,
       }
     }
   }
-  # Intangible / high-growth / SaaS-like: Multiples is the market Implied Price
-  # cross-check (not an equal-weight FV band). Prefer it over same-family FV
-  # secondaries (RI / DDM / P/B) when Multiples clears the applicability floor.
-  if ((isTRUE(is_intang) || isTRUE(is_growth_ind) || (is.finite(rev_g) && rev_g > 12)) &&
-      !identical(primary, "multiples") &&
-      !identical(as.character(secondary %||% ""), "multiples") &&
-      !identical(as.character(secondary %||% ""), "sotp") &&
-      !isTRUE(is_cyc) &&
-      !isTRUE(is_holding)) {
-    mult_row <- scores[scores$model == "multiples", , drop = FALSE]
-    if (nrow(mult_row) == 1L && mult_row$applicability[1] >= .VG_CROSS_APP) {
-      sec <- as.character(secondary %||% "")[1]
-      sec_ok <- !nzchar(sec) || sec %in% c("pb", "ri", "ddm")
-      if (isTRUE(sec_ok)) {
-        secondary <- "multiples"
-        role <- "cross_check"
-        sp <- scores$overall[scores$model == primary][1]
-        ss <- mult_row$overall[1]
+  # Relative engines as secondary (SOTP only — Multiples is Reference, never secondary)
+  # are always cross-checks (never equal-weight Fair Value bands).
+  if (.vg_is_relative_model(secondary)) {
+    if (identical(as.character(secondary)[1], "multiples")) {
+      # Harden: never keep Multiples in the secondary slot.
+      secondary <- NULL
+      role <- "none"
+      wp <- 1
+      ws <- 0
+    } else {
+      role <- "cross_check"
+      sp <- scores$overall[scores$model == primary][1]
+      ss <- scores$overall[scores$model == secondary][1]
+      if (is.finite(sp) && is.finite(ss) && (sp + ss) > 0) {
         ws <- min(0.25, ss / (sp + ss))
         wp <- 1 - ws
+      } else {
+        wp <- 1; ws <- 0
       }
-    }
-  }
-  # Relative engines are always cross-checks (never equal-weight Fair Value bands).
-  if (.vg_is_relative_model(secondary)) {
-    role <- "cross_check"
-    sp <- scores$overall[scores$model == primary][1]
-    ss <- scores$overall[scores$model == secondary][1]
-    if (is.finite(sp) && is.finite(ss) && (sp + ss) > 0) {
-      ws <- min(0.25, ss / (sp + ss))
-      wp <- 1 - ws
-    } else {
-      wp <- 1; ws <- 0
     }
   }
   # Safety: Multiples / SOTP must never be primary (Implied Price ≠ Fair Value).
@@ -1575,13 +1569,36 @@ assemble_model_recommendation <- function(data_missing = FALSE,
       alt <- alt[order(-alt$overall, -alt$applicability), , drop = FALSE]
       demoted <- primary
       primary <- as.character(alt$model[1])
-      if (is.null(secondary) || identical(secondary, primary)) secondary <- demoted
-      role <- "cross_check"
+      # Demoted Multiples becomes Reference (handled below), never secondary.
+      if (identical(demoted, "multiples")) {
+        if (is.null(secondary) || identical(secondary, primary) ||
+            identical(as.character(secondary)[1], "multiples")) {
+          fv_sec <- alt[alt$model != primary, , drop = FALSE]
+          secondary <- if (nrow(fv_sec)) as.character(fv_sec$model[1]) else NULL
+          role <- if (is.null(secondary)) "none" else "valuation"
+        }
+      } else if (is.null(secondary) || identical(secondary, primary) ||
+                 identical(as.character(secondary)[1], "multiples")) {
+        secondary <- demoted
+        role <- "cross_check"
+      }
       sp <- scores$overall[scores$model == primary][1]
-      ss <- scores$overall[scores$model == secondary][1]
-      ws <- min(0.25, ss / (sp + ss))
-      wp <- 1 - ws
+      ss <- if (!is.null(secondary)) scores$overall[scores$model == secondary][1] else NA_real_
+      if (!is.finite(ss)) {
+        wp <- 1; ws <- 0
+      } else {
+        ws <- min(0.25, ss / (sp + ss))
+        wp <- 1 - ws
+      }
     }
+  }
+  # Universal Reference: Multiples accompanies every Fair Value primary when applicable.
+  reference <- NULL
+  mult_row <- scores[scores$model == "multiples", , drop = FALSE]
+  if (nrow(mult_row) == 1L &&
+      mult_row$applicability[1] >= .VG_CROSS_APP &&
+      !identical(as.character(primary %||% "")[1], "multiples")) {
+    reference <- "multiples"
   }
   suggest_two <- identical(primary, "dcf") && (
     (is.finite(rev_g) && rev_g > 8) ||
@@ -1627,13 +1644,23 @@ assemble_model_recommendation <- function(data_missing = FALSE,
   } else {
     ""
   }
-  rel_note <- if (.vg_is_relative_model(secondary)) {
-    " Multiples／SOTP 為 Implied Price，不與 Fair Value 等權合成。"
+  rel_note <- if (identical(as.character(secondary %||% "")[1], "sotp")) {
+    " SOTP 為 Implied Price，不與 Fair Value 等權合成。"
   } else {
     ""
   }
-  rel_note_en <- if (.vg_is_relative_model(secondary)) {
-    " Multiples / SOTP are Implied Price engines and are not equal-weighted with Fair Value."
+  rel_note_en <- if (identical(as.character(secondary %||% "")[1], "sotp")) {
+    " SOTP is an Implied Price engine and is not equal-weighted with Fair Value."
+  } else {
+    ""
+  }
+  ref_note <- if (identical(as.character(reference %||% "")[1], "multiples")) {
+    " Multiples 為所有基本面主模型的市場定價參照（Reference），不作副模型候選、不與 Fair Value 等權合成。"
+  } else {
+    ""
+  }
+  ref_note_en <- if (identical(as.character(reference %||% "")[1], "multiples")) {
+    " Multiples is a market-pricing Reference for every Fair Value primary — not a secondary candidate and not equal-weighted with Fair Value."
   } else {
     ""
   }
@@ -1647,6 +1674,7 @@ assemble_model_recommendation <- function(data_missing = FALSE,
     cyc_note,
     hold_note,
     rel_note,
+    ref_note,
     life_note
   )
   reason_en <- paste0(
@@ -1659,11 +1687,19 @@ assemble_model_recommendation <- function(data_missing = FALSE,
     cyc_note_en,
     hold_note_en,
     rel_note_en,
+    ref_note_en,
     life_note
   )
+  sum_bits <- .model_label(primary)
+  if (!is.null(secondary)) {
+    sum_bits <- paste0(sum_bits, " / ", .model_label(secondary), " (", role, ")")
+  }
+  if (identical(as.character(reference %||% "")[1], "multiples")) {
+    sum_bits <- paste0(sum_bits, " + Multiples (Reference)")
+  }
   pack(
     ctype, primary, secondary,
-    summary_method = paste0(.model_label(primary), if (!is.null(secondary)) paste0(" / ", .model_label(secondary), " (", role, ")") else ""),
+    summary_method = sum_bits,
     reason = reason,
     reason_en = reason_en,
     suggest_two_stage = suggest_two,
@@ -1671,6 +1707,7 @@ assemble_model_recommendation <- function(data_missing = FALSE,
     secondary_role = role,
     weight_primary = wp,
     weight_secondary = if (is.null(secondary)) NA_real_ else ws,
-    inapplicable = as.character(inapplicable)
+    inapplicable = as.character(inapplicable),
+    reference = reference
   )
 }

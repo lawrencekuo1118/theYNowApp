@@ -216,7 +216,7 @@
     ),
     tags$li(
       tags$b("智慧分析："),
-      "依股票性質自動判別主／副估值模型（DCF、DDM、RI、P/B、NAV；Multiples／SOTP 僅作 Implied Price 交叉檢核），",
+      "依股票性質自動判別主／副 Fair Value 模型（DCF、DDM、RI、P/B、NAV）；Multiples 恆為市場定價參照（Reference），SOTP 於控股等情境作結構型 Implied Price 搭配。",
       "辨識參數情境（Two-Stage／Gordon、SGR 法、claim）並套用最合理預設後試算，",
       "顯示合理價比較圖與 MOS；不開放手動模型設定。"
     ),
@@ -241,7 +241,7 @@
     ),
     tags$li(
       tags$b("Smart Analysis: "),
-      "Auto-selects primary and secondary valuation models (DCF, DDM, RI, P/B, NAV; Multiples / SOTP as Implied Price cross-checks only) from the ticker profile, ",
+      "Auto-selects primary and secondary Fair Value models (DCF, DDM, RI, P/B, NAV) from the ticker profile; Multiples is always a market-pricing Reference, and SOTP is a structural Implied Price companion when relevant. ",
       "detects the best parameter scenario (Two-Stage vs Gordon, SGR method, claim), applies those defaults, ",
       "and shows fair-value comparison charts plus MOS—no manual model settings."
     ),
@@ -5072,6 +5072,10 @@ ui <- dashboardPage(
           background-color: #6c757d !important;
           color: #ffffff !important;
         }
+        .sidebar-menu small.ynow-sidebar-badge.ynow-rec-reference {
+          background-color: #17a2b8 !important;
+          color: #ffffff !important;
+        }
         .sidebar-menu .treeview-menu {
           overflow: visible !important;
         }
@@ -6953,13 +6957,18 @@ ui <- dashboardPage(
             if (!role) return;
             ensureShrinkableLabel(a);
             var lab = labels || {};
-            var isPrimary = role === 'primary';
             var badge = document.createElement('small');
-            badge.className = 'ynow-sidebar-badge ' +
-              (isPrimary ? 'ynow-rec-primary' : 'ynow-rec-secondary');
-            badge.textContent = isPrimary
-              ? (lab.primary || 'Recommend')
-              : (lab.secondary || 'Secondary');
+            var cls = 'ynow-rec-secondary';
+            var text = lab.secondary || 'Secondary';
+            if (role === 'primary') {
+              cls = 'ynow-rec-primary';
+              text = lab.primary || 'Recommend';
+            } else if (role === 'reference') {
+              cls = 'ynow-rec-reference';
+              text = lab.reference || 'Reference';
+            }
+            badge.className = 'ynow-sidebar-badge ' + cls;
+            badge.textContent = text;
             var slot = document.createElement('span');
             slot.className = 'ynow-rec-slot';
             slot.appendChild(badge);
@@ -6994,6 +7003,7 @@ ui <- dashboardPage(
               var parentRole = '';
               if (roles.indexOf('primary') >= 0) parentRole = 'primary';
               else if (roles.indexOf('secondary') >= 0) parentRole = 'secondary';
+              else if (roles.indexOf('reference') >= 0) parentRole = 'reference';
               setRecBadgeOnAnchor(a, parentRole, labels);
             });
           }
@@ -7798,7 +7808,8 @@ ui <- dashboardPage(
             if (LAST_BADGE_MAP) {
               LAST_BADGE_MAP.labels = {
                 primary: s.menu_badge_primary || (LAST_BADGE_MAP.labels && LAST_BADGE_MAP.labels.primary) || '推薦',
-                secondary: s.menu_badge_secondary || (LAST_BADGE_MAP.labels && LAST_BADGE_MAP.labels.secondary) || '備選'
+                secondary: s.menu_badge_secondary || (LAST_BADGE_MAP.labels && LAST_BADGE_MAP.labels.secondary) || '備選',
+                reference: s.menu_badge_reference || (LAST_BADGE_MAP.labels && LAST_BADGE_MAP.labels.reference) || '參照'
               };
               applySidebarBadges(LAST_BADGE_MAP);
             }

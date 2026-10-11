@@ -92,10 +92,11 @@ check(
 )
 saas_def <- defaults[defaults$industry_key == "saas.SaaS_Cloud", , drop = FALSE]
 check(
-  "lab SaaS defaults DCF + Multiples",
+  "lab SaaS defaults DCF + RI (Multiples is Reference, not secondary)",
   nrow(saas_def) == 1L &&
     identical(saas_def$primary[1], "dcf") &&
-    identical(saas_def$secondary[1], "multiples")
+    identical(saas_def$secondary[1], "ri") &&
+    !identical(saas_def$secondary[1], "multiples")
 )
 cyc_keys <- intersect(CYCLICAL_INDUSTRY_KEYS, defaults$industry_key)
 check("lab defaults cover cyclical keys", length(cyc_keys) == length(CYCLICAL_INDUSTRY_KEYS))

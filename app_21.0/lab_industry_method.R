@@ -1299,9 +1299,10 @@ lab_industry_method_defaults <- function() {
     list("en.Utilities", "pb", "ddm", FALSE, "公用事業簿價／管制資產 → P/B；高配息輔 DDM"),
 
     # 高成長科技／生技／EV → DCF two-stage
-    list("saas.SaaS_Cloud", "dcf", "multiples", TRUE, "SaaS／雲端成長 → 兩階段 DCF；Multiples 交叉"),
-    list("tech.Internet_Platform", "dcf", "multiples", TRUE, "網路平台成長 → 兩階段 DCF；Multiples 交叉"),
-    list("tech.Software", "dcf", "ri", TRUE, "軟體成長／穩健 FCF → DCF"),
+    # Multiples is a universal Reference (not a secondary candidate) — pair FV secondaries instead.
+    list("saas.SaaS_Cloud", "dcf", "ri", TRUE, "SaaS／雲端成長 → 兩階段 DCF；副選 RI；Multiples 為參照"),
+    list("tech.Internet_Platform", "dcf", "ri", TRUE, "網路平台成長 → 兩階段 DCF；副選 RI；Multiples 為參照"),
+    list("tech.Software", "dcf", "ri", TRUE, "軟體成長／穩健 FCF → DCF；副選 RI；Multiples 為參照"),
     list("hc.Biotech", "dcf", "pb", TRUE, "生技早期成長 → 兩階段 DCF（風險高）"),
     list("auto.Automotive_EV", "dcf", "pb", TRUE, "電動車成長 → 兩階段 DCF"),
     list("auto.EV_Startups", "dcf", "pb", TRUE, "新創 EV → 兩階段 DCF"),

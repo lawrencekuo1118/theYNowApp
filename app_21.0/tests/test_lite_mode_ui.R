@@ -725,7 +725,7 @@ testthat::test_that("ynow_server wires Lite scenario apply before auto-calc", {
   testthat::expect_true(grepl("auto_calc_fail_sig", txt, fixed = TRUE))
 })
 
-testthat::test_that("Lite auto-calc includes Multiples when secondary is multiples", {
+testthat::test_that("Lite auto-calc runs Multiples as Reference (not secondary)", {
   srv_path <- file.path("..", "ynow_server.R")
   txt <- paste(readLines(srv_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   # Pulse wired into relative multiples module
@@ -735,13 +735,15 @@ testthat::test_that("Lite auto-calc includes Multiples when secondary is multipl
     txt,
     fixed = TRUE
   ))
-  # Secondary allowlist includes multiples (and sotp)
-  testthat::expect_true(grepl('"multiples"', txt, fixed = TRUE))
+  # Secondary allowlist excludes Multiples; Reference companion-run remains
   testthat::expect_true(grepl(
-    'sec_auto_allowlist <- c("dcf", "ddm", "pb", "ri", "nav", "multiples", "sotp")',
+    'sec_auto_allowlist <- c("dcf", "ddm", "pb", "ri", "nav", "sotp")',
     txt,
     fixed = TRUE
   ))
+  testthat::expect_true(grepl('identical(ref, "multiples")', txt, fixed = TRUE))
+  testthat::expect_true(grepl("unique(c(keys, \"multiples\"))", txt, fixed = TRUE) ||
+                          grepl("unique\\(c\\(keys, \"multiples\"\\)\\)", txt))
   # Ready + fire branches for multiples (readiness uses statements, not lagging inputs)
   testthat::expect_true(grepl('identical(prim, "multiples")', txt, fixed = TRUE))
   testthat::expect_true(grepl("updateNumericInput is async", txt, fixed = TRUE))

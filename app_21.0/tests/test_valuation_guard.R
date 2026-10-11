@@ -399,10 +399,14 @@ rec_saas <- recommend_valuation_models(
 )
 check("saas not cyclical", !isTRUE(rec_saas$confidence_inputs$cyclical_industry))
 check("saas not forced to P/B", !.has_pb_slot(rec_saas))
-check("saas secondary Multiples", identical(as.character(rec_saas$secondary %||% ""), "multiples"))
+check(
+  "saas secondary is Fair Value (not Multiples)",
+  as.character(rec_saas$secondary %||% "") %in% c("ri", "pb", "ddm", "dcf", "nav", "")
+)
+check("saas secondary never Multiples", !identical(as.character(rec_saas$secondary %||% ""), "multiples"))
+check("saas Multiples is Reference", identical(as.character(rec_saas$reference %||% ""), "multiples"))
 check("saas never primary multiples", !identical(as.character(rec_saas$primary %||% ""), "multiples"))
 check("saas never primary sotp", !identical(as.character(rec_saas$primary %||% ""), "sotp"))
-check("saas multiples role cross_check", identical(as.character(rec_saas$secondary_role %||% ""), "cross_check"))
 
 rec_hold <- recommend_valuation_models(
   base_cf(), "Conglomerate", base_is(), base_bs(),

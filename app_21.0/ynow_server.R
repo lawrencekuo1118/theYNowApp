@@ -1989,7 +1989,7 @@ server <- function(input, output, session) {
   # ==========================================
   .empty_model_rec <- function(summary_method, reason, company_type = "pending") {
     list(
-      company_type = company_type, primary = "", secondary = NULL,
+      company_type = company_type, primary = "", secondary = NULL, reference = NULL,
       ddm = FALSE, dcf = FALSE, pb = FALSE, ri = FALSE, nav = FALSE, tags = character(0),
       summary_method = summary_method, reason = reason,
       suggest_two_stage = FALSE,
@@ -2032,6 +2032,7 @@ server <- function(input, output, session) {
         company_type = "fallback",
         primary = if (isTRUE(has_roe)) "ri" else "pb",
         secondary = if (isTRUE(has_roe) && isTRUE(has_bv)) "pb" else NULL,
+        reference = NULL,
         ddm = FALSE, dcf = FALSE,
         pb = TRUE,
         ri = isTRUE(has_roe),
@@ -2103,7 +2104,7 @@ server <- function(input, output, session) {
     )
   })
 
-  # Dynamic 「推薦」／「備選」— primary + secondary; bubble to parent Appr. tabs
+  # Dynamic 「推薦」／「備選」／「參照」— primary + secondary + Multiples Reference
   sidebar_badge_sig <- reactiveVal("")
   .push_sidebar_badges <- function(force = FALSE) {
     rec <- tryCatch(model_sidebar_rec(), error = function(e) NULL)
@@ -2111,20 +2112,26 @@ server <- function(input, output, session) {
     loc <- tryCatch(ui_locale(), error = function(e) "en")
     prim <- as.character(rec$primary %||% "")[1]
     sec <- as.character(rec$secondary %||% "")[1]
+    ref <- as.character(rec$reference %||% "")[1]
     if (is.na(prim)) prim <- ""
     if (is.na(sec)) sec <- ""
-    sig <- paste(prim, sec, loc, rec$company_type %||% "", sep = "|")
+    if (is.na(ref)) ref <- ""
+    # Harden: Multiples never wears the secondary badge
+    if (identical(sec, "multiples")) sec <- ""
+    sig <- paste(prim, sec, ref, loc, rec$company_type %||% "", sep = "|")
     if (!isTRUE(force) && identical(sidebar_badge_sig(), sig)) return(invisible(FALSE))
     sidebar_badge_sig(sig)
     role_of <- function(key) {
       if (nzchar(prim) && identical(prim, key)) return("primary")
       if (nzchar(sec) && identical(sec, key)) return("secondary")
+      if (nzchar(ref) && identical(ref, key)) return("reference")
       ""
     }
     payload <- list(
       labels = list(
         primary = ui_str("menu_badge_primary", loc),
-        secondary = ui_str("menu_badge_secondary", loc)
+        secondary = ui_str("menu_badge_secondary", loc),
+        reference = ui_str("menu_badge_reference", loc)
       ),
       dcf_calculator = list(role = role_of("dcf")),
       ddm_calculator = list(role = role_of("ddm")),
@@ -8372,14 +8379,19 @@ server <- function(input, output, session) {
       return()
     }
     keys <- prim
-    # Lite secondary auto-calc: Fair Value engines + Implied Price cross-checks
-    # (Multiples / SOTP) when recommended as secondary.
-    sec_auto_allowlist <- c("dcf", "ddm", "pb", "ri", "nav", "multiples", "sotp")
-    sec_in_auto_allowlist <- nzchar(sec) && sec %in% sec_auto_allowlist
+    # Lite secondary auto-calc: Fair Value engines + SOTP structural cross-check.
+    # Multiples is a universal Reference (not a secondary) — always companion-run when ready.
+    sec_auto_allowlist <- c("dcf", "ddm", "pb", "ri", "nav", "sotp")
+    sec_in_auto_allowlist <- nzchar(sec) && sec %in% sec_auto_allowlist && !identical(sec, "multiples")
     sec_ready <- if (isTRUE(sec_in_auto_allowlist)) isTRUE(.auto_calc_primary_ready(sec)) else FALSE
     if (isTRUE(lite_mode()) && isTRUE(sec_in_auto_allowlist) &&
         !identical(sec, prim) && isTRUE(sec_ready)) {
       keys <- c(prim, sec)
+    }
+    ref <- as.character(rec$reference %||% "")[1]
+    if (isTRUE(lite_mode()) && identical(ref, "multiples") &&
+        isTRUE(.auto_calc_primary_ready("multiples"))) {
+      keys <- unique(c(keys, "multiples"))
     }
     mode <- as.character(input$dcf_mode %||% "gordon")[1]
     claim <- as.character(input$dcf_claim %||% "fcff")[1]
@@ -8472,35 +8484,24 @@ server <- function(input, output, session) {
         tags$p(class = "ynow-smart-card-kicker", ui_str("smart_secondary_kicker", loc)),
         tags$p(
           class = "ynow-smart-card-title",
-          if (nzchar(sec)) {
-            if (identical(sec, "multiples") && !is.null(rel_results$chart_label)) {
-              tryCatch(rel_results$chart_label(), error = function(e) .model_label(sec))
-            } else {
-              .model_label(sec)
-            }
-          } else {
-            "—"
-          }
+          if (nzchar(sec) && !identical(sec, "multiples")) .model_label(sec) else "—"
         ),
-        tags$p(class = "ynow-smart-card-value", if (nzchar(sec)) fmt_px(sec_pt) else "—"),
+        tags$p(
+          class = "ynow-smart-card-value",
+          if (nzchar(sec) && !identical(sec, "multiples")) fmt_px(sec_pt) else "—"
+        ),
         tags$p(
           class = "ynow-smart-card-meta",
-          if (nzchar(sec) && identical(sec, "multiples") && !is.null(rel_results$active_method_key)) {
-            mk <- tryCatch(rel_results$active_method_key(), error = function(e) NA_character_)
-            tag <- if (exists(".rel_method_chart_tag", mode = "function")) {
-              .rel_method_chart_tag(mk)
-            } else {
-              NA_character_
+          {
+            ref <- as.character(rec$reference %||% "")[1]
+            bits <- character(0)
+            if (nzchar(sec) && !identical(sec, "multiples")) {
+              bits <- c(bits, ui_str("composite_secondary_check", loc))
             }
-            if (nzchar(tag %||% "")) {
-              paste0(ui_str("smart_multiples_method_prefix", loc), tag)
-            } else {
-              ui_str("composite_secondary_check", loc)
+            if (identical(ref, "multiples")) {
+              bits <- c(bits, ui_str("smart_reference_kicker", loc))
             }
-          } else if (nzchar(sec)) {
-            ui_str("composite_secondary_check", loc)
-          } else {
-            ""
+            paste(bits, collapse = " · ")
           }
         )
       ),
@@ -8590,21 +8591,33 @@ server <- function(input, output, session) {
     )
     vals <- c(cur, bear, base, bull)
     cols <- c("#333333", "#9aa0a6", "#0C5484", "#5b8def")
-    if (nzchar(sec) && is.finite(sec_pt)) {
-      sec_lab <- if (identical(sec, "multiples") && !is.null(rel_results$chart_label)) {
-        tryCatch(rel_results$chart_label(), error = function(e) .model_label(sec))
-      } else {
-        .model_label(sec)
-      }
-      # Multiples is Implied Price (not Fair Value); keep method visible on the bar
-      sec_suffix <- if (identical(sec, "multiples")) {
-        paste0(" ", ui_str("smart_multiples_bar_suffix", loc))
-      } else {
-        " FV"
-      }
-      labs <- c(labs, paste0(sec_lab, sec_suffix))
+    if (nzchar(sec) && !identical(sec, "multiples") && is.finite(sec_pt)) {
+      labs <- c(labs, paste0(.model_label(sec), " FV"))
       vals <- c(vals, sec_pt)
       cols <- c(cols, "#888888")
+    }
+    # Multiples as universal Reference overlay (not a Fair Value secondary bar)
+    ref <- as.character(rec$reference %||% "")[1]
+    if (identical(ref, "multiples")) {
+      ref_pt <- tryCatch({
+        if (!is.null(rel_results$any_implied_price)) {
+          suppressWarnings(as.numeric(rel_results$any_implied_price())[1])
+        } else if (!is.null(rel_results$pe_price)) {
+          suppressWarnings(as.numeric(rel_results$pe_price())[1])
+        } else {
+          NA_real_
+        }
+      }, error = function(e) NA_real_)
+      if (is.finite(ref_pt)) {
+        ref_lab <- if (!is.null(rel_results$chart_label)) {
+          tryCatch(rel_results$chart_label(), error = function(e) .model_label("multiples"))
+        } else {
+          .model_label("multiples")
+        }
+        labs <- c(labs, paste0(ref_lab, " ", ui_str("smart_multiples_bar_suffix", loc)))
+        vals <- c(vals, ref_pt)
+        cols <- c(cols, "#17a2b8")
+      }
     }
     ok <- is.finite(vals)
     if (!any(ok)) return(empty)

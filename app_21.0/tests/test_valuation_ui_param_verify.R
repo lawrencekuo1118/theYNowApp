@@ -202,7 +202,7 @@ samples <- list(
        tag = "reit"),
   list(key = "en.Utilities", text = "Utilities - Regulated Electric", prim = "pb", sec = "ddm",
        tag = "utility"),
-  list(key = "saas.SaaS_Cloud", text = "Software - Application", prim = "dcf", sec = "multiples",
+  list(key = "saas.SaaS_Cloud", text = "Software - Application", prim = "dcf", sec = "ri",
        tag = "saas", two_stage = TRUE),
   list(key = "sc.Foundry", text = "Semiconductors", prim = "dcf", sec = "pb",
        tag = "cyclical_foundry"),
@@ -253,7 +253,8 @@ live_cases <- list(
     d_is = base_is(ni = c(40, 20), rev = c(500, 350)),
     d_bs = base_bs(equity = c(400, 300), goodwill = c(150, 140)),
     d_cf = base_cf(cfo = c(120, 80), capex = c(-25, -20)),
-    expect_prim = "dcf", expect_sec_in = c("multiples", "ri", "pb")
+    expect_prim = "dcf", expect_sec_in = c("ri", "pb", "ddm", "nav"),
+    expect_ref = "multiples"
   ),
   list(
     tag = "cyclical_steel_live",
@@ -306,13 +307,19 @@ for (lc in live_cases) {
     check(paste0("live secondary [", lc$tag, "] in allowed set"),
           as.character(rec$secondary) %in% lc[["expect_sec_in"]])
   }
+  if ("expect_ref" %in% names(lc)) {
+    check(paste0("live reference [", lc$tag, "] = ", lc[["expect_ref"]]),
+          identical(as.character(rec$reference %||% ""), lc[["expect_ref"]]))
+  }
   if (isTRUE(lc$expect_not_forced_pb)) {
     check(paste0("live [", lc$tag, "] not forced PB primary"),
           !identical(as.character(rec$primary), "pb"))
   }
-  # Multiples/SOTP never primary
+  # Multiples/SOTP never primary; Multiples never secondary
   check(paste0("live [", lc$tag, "] never primary multiples/sotp"),
         !as.character(rec$primary) %in% c("multiples", "sotp"))
+  check(paste0("live [", lc$tag, "] never secondary Multiples"),
+        !identical(as.character(rec$secondary %||% ""), "multiples"))
 }
 
 # Cyclical PB slot across all cyclical keys in defaults
@@ -394,7 +401,7 @@ for (s in samples[c(1, 2, 5, 6, 9)]) {
         is.finite(est$fv) && est$fv > 0)
 }
 
-# Growth revenue > 12% → Multiples secondary preference (live)
+# Growth revenue > 12% → Multiples is Reference (not secondary)
 rec_growth <- recommend_valuation_models(
   base_cf(cfo = c(100, 60), capex = c(-20, -15)),
   "Software - Application",
@@ -403,8 +410,13 @@ rec_growth <- recommend_valuation_models(
   industry_choice = "saas.SaaS_Cloud"
 )
 check("high-growth SaaS keeps DCF primary", identical(rec_growth$primary, "dcf"))
-check("high-growth SaaS secondary is Multiples (or RI)",
-      as.character(rec_growth$secondary) %in% c("multiples", "ri", "pb"))
+check("high-growth SaaS secondary is Fair Value (not Multiples)",
+      as.character(rec_growth$secondary) %in% c("ri", "pb", "ddm", "nav") ||
+        is.null(rec_growth$secondary))
+check("high-growth SaaS Multiples is Reference",
+      identical(as.character(rec_growth$reference %||% ""), "multiples"))
+check("high-growth SaaS secondary never Multiples",
+      !identical(as.character(rec_growth$secondary %||% ""), "multiples"))
 
 cat("\n=== Summary ===\n")
 cat("PASS ", pass, "  FAIL ", fail, "\n", sep = "")
