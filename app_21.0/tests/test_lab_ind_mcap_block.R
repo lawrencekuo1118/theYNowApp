@@ -71,6 +71,10 @@ check("sidebar bluechip auto-triggers when empty",
       grepl('identical(tab, "bluechip")', srv, fixed = TRUE) &&
         grepl("lazy_mount_nonce()", srv, fixed = TRUE) &&
         grepl('mounted("bluechip")', srv, fixed = TRUE))
+check("sidebar bluechip auto-start defers via later after flush",
+      grepl("later::later(start_eval", srv, fixed = TRUE) &&
+        grepl("lab_im_auto_start_armed", srv, fixed = TRUE) &&
+        grepl("onFlushed+later pulse bump", srv, fixed = TRUE))
 check("waiting copy mentions opening Leaderboard (en)",
       grepl("Opening Blue Chip Leaderboard", ui_str("lab_im_ind_mcap_waiting", "en"), fixed = TRUE) &&
         !grepl("Run Search Blue Chips to auto-build", ui_str("lab_im_ind_mcap_waiting", "en"), fixed = TRUE))

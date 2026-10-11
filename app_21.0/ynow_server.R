@@ -109,6 +109,9 @@ server <- function(input, output, session) {
   # Pulse + busy flag: Search Blue Chips button and Blue Chip Leaderboard tab share one runner.
   lab_im_run_pulse <- reactiveVal(0L)
   lab_im_eval_busy <- reactiveVal(FALSE)
+  # Armed once when sidebar auto-start schedules deferred eval (avoids double
+  # schedule when after_mount bumps lazy_mount_nonce).
+  lab_im_auto_start_armed <- reactiveVal(FALSE)
   lab_cluster_result <- reactiveVal(NULL)
   # Destroy Plotly/DT via renderUI idle placeholders on market switch
   # (empty plotly/validate leave stale htmlwidgets in the DOM).
@@ -689,6 +692,7 @@ server <- function(input, output, session) {
 
     sc_datalist_choices(ticker_presets_for_market(mode))
     lab_im_scores(NULL)
+    lab_im_auto_start_armed(FALSE)
     .clear_lab_cluster_result()
     lab_im_catalog_nonce(isolate(lab_im_catalog_nonce()) + 1L)
 
@@ -12272,6 +12276,8 @@ server <- function(input, output, session) {
 
   # Opening sidebar「Blue Chip Leaderboard」auto-starts evaluation when none yet
   # (same runner as Search Blue Chips). Wait for lazy mount so filter inputs exist.
+  # Defer pulse via onFlushed + later::later so lazy bluechip UI can paint before
+  # synchronous withProgress blocks the R event loop (ATX load_panel pattern).
   observeEvent(
     list(input$sidebar_tabs, lazy_mount_nonce()),
     {
@@ -12293,13 +12299,15 @@ server <- function(input, output, session) {
       )
       scores <- isolate(lab_im_scores())
       busy <- isTRUE(isolate(lab_im_eval_busy()))
+      armed <- isTRUE(isolate(lab_im_auto_start_armed()))
       # #region agent log
       tryCatch({
         cat(sprintf(
-          '{"hypothesisId":"H1","location":"ynow_server.R:auto_start_gate","message":"auto-start gates","data":{"mounted":%s,"scores_nrow":%s,"busy":%s},"timestamp":%.0f}\n',
+          '{"hypothesisId":"H1","location":"ynow_server.R:auto_start_gate","message":"auto-start gates","data":{"mounted":%s,"scores_nrow":%s,"busy":%s,"armed":%s},"timestamp":%.0f}\n',
           if (isTRUE(mounted)) "true" else "false",
           if (is.data.frame(scores)) nrow(scores) else -1L,
           if (isTRUE(busy)) "true" else "false",
+          if (isTRUE(armed)) "true" else "false",
           as.numeric(Sys.time()) * 1000
         ), file = "/opt/cursor/logs/debug.log", append = TRUE)
       }, error = function(e) NULL)
@@ -12307,10 +12315,12 @@ server <- function(input, output, session) {
       if (!isTRUE(mounted)) return()
       if (is.data.frame(scores) && nrow(scores) > 0L) return()
       if (isTRUE(busy)) return()
+      if (isTRUE(armed)) return()
+      lab_im_auto_start_armed(TRUE)
       # #region agent log
       tryCatch({
         cat(sprintf(
-          '{"hypothesisId":"H4","location":"ynow_server.R:auto_start_schedule_flush","message":"scheduling onFlushed pulse bump","data":{},"timestamp":%.0f}\n',
+          '{"hypothesisId":"H4","location":"ynow_server.R:auto_start_schedule_flush","message":"scheduling onFlushed+later pulse bump","data":{"delay_s":0.05},"timestamp":%.0f}\n',
           as.numeric(Sys.time()) * 1000
         ), file = "/opt/cursor/logs/debug.log", append = TRUE)
       }, error = function(e) NULL)
@@ -12319,20 +12329,46 @@ server <- function(input, output, session) {
         # #region agent log
         tryCatch({
           cat(sprintf(
-            '{"hypothesisId":"H4","location":"ynow_server.R:auto_start_flushed","message":"onFlushed pulse callback","data":{"tab":"%s","busy":%s},"timestamp":%.0f}\n',
+            '{"hypothesisId":"H4","location":"ynow_server.R:auto_start_flushed","message":"onFlushed; deferring pulse via later","data":{"tab":"%s","busy":%s},"timestamp":%.0f}\n',
             as.character(isolate(input$sidebar_tabs) %||% "")[1],
             if (isTRUE(isolate(lab_im_eval_busy()))) "true" else "false",
             as.numeric(Sys.time()) * 1000
           ), file = "/opt/cursor/logs/debug.log", append = TRUE)
         }, error = function(e) NULL)
         # #endregion
-        if (!identical(as.character(isolate(input$sidebar_tabs) %||% "")[1], "bluechip")) {
-          return()
+        start_eval <- function() {
+          # #region agent log
+          tryCatch({
+            cat(sprintf(
+              '{"hypothesisId":"H4","location":"ynow_server.R:auto_start_later","message":"later callback; bumping pulse","data":{"tab":"%s","busy":%s},"timestamp":%.0f}\n',
+              as.character(isolate(input$sidebar_tabs) %||% "")[1],
+              if (isTRUE(isolate(lab_im_eval_busy()))) "true" else "false",
+              as.numeric(Sys.time()) * 1000
+            ), file = "/opt/cursor/logs/debug.log", append = TRUE)
+          }, error = function(e) NULL)
+          # #endregion
+          if (!identical(as.character(isolate(input$sidebar_tabs) %||% "")[1], "bluechip")) {
+            tryCatch(lab_im_auto_start_armed(FALSE), error = function(e) NULL)
+            return()
+          }
+          sc2 <- isolate(lab_im_scores())
+          if (is.data.frame(sc2) && nrow(sc2) > 0L) {
+            tryCatch(lab_im_auto_start_armed(FALSE), error = function(e) NULL)
+            return()
+          }
+          if (isTRUE(isolate(lab_im_eval_busy()))) {
+            tryCatch(lab_im_auto_start_armed(FALSE), error = function(e) NULL)
+            return()
+          }
+          lab_im_run_pulse(isolate(as.integer(lab_im_run_pulse()) %||% 0L) + 1L)
         }
-        sc2 <- isolate(lab_im_scores())
-        if (is.data.frame(sc2) && nrow(sc2) > 0L) return()
-        if (isTRUE(isolate(lab_im_eval_busy()))) return()
-        lab_im_run_pulse(isolate(as.integer(lab_im_run_pulse()) %||% 0L) + 1L)
+        # later::later runs off the reactive flush so lazy tab HTML can paint
+        # before withProgress blocks the R event loop.
+        if (requireNamespace("later", quietly = TRUE)) {
+          later::later(start_eval, delay = 0.05)
+        } else {
+          start_eval()
+        }
       }, once = TRUE)
     },
     ignoreInit = TRUE
