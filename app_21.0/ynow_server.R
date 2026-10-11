@@ -12276,16 +12276,56 @@ server <- function(input, output, session) {
     list(input$sidebar_tabs, lazy_mount_nonce()),
     {
       tab <- as.character(input$sidebar_tabs %||% "")[1]
+      # #region agent log
+      tryCatch({
+        cat(sprintf(
+          '{"hypothesisId":"H1","location":"ynow_server.R:auto_start_enter","message":"bluechip auto-start observer","data":{"tab":"%s","nonce":%s},"timestamp":%.0f}\n',
+          tab,
+          as.integer(isolate(lazy_mount_nonce()) %||% 0L),
+          as.numeric(Sys.time()) * 1000
+        ), file = "/opt/cursor/logs/debug.log", append = TRUE)
+      }, error = function(e) NULL)
+      # #endregion
       if (!identical(tab, "bluechip")) return()
       mounted <- tryCatch(
         isTRUE(.ynow_lazy_tab_ctrl$mounted("bluechip")),
         error = function(e) FALSE
       )
-      if (!isTRUE(mounted)) return()
       scores <- isolate(lab_im_scores())
+      busy <- isTRUE(isolate(lab_im_eval_busy()))
+      # #region agent log
+      tryCatch({
+        cat(sprintf(
+          '{"hypothesisId":"H1","location":"ynow_server.R:auto_start_gate","message":"auto-start gates","data":{"mounted":%s,"scores_nrow":%s,"busy":%s},"timestamp":%.0f}\n',
+          if (isTRUE(mounted)) "true" else "false",
+          if (is.data.frame(scores)) nrow(scores) else -1L,
+          if (isTRUE(busy)) "true" else "false",
+          as.numeric(Sys.time()) * 1000
+        ), file = "/opt/cursor/logs/debug.log", append = TRUE)
+      }, error = function(e) NULL)
+      # #endregion
+      if (!isTRUE(mounted)) return()
       if (is.data.frame(scores) && nrow(scores) > 0L) return()
-      if (isTRUE(isolate(lab_im_eval_busy()))) return()
+      if (isTRUE(busy)) return()
+      # #region agent log
+      tryCatch({
+        cat(sprintf(
+          '{"hypothesisId":"H4","location":"ynow_server.R:auto_start_schedule_flush","message":"scheduling onFlushed pulse bump","data":{},"timestamp":%.0f}\n',
+          as.numeric(Sys.time()) * 1000
+        ), file = "/opt/cursor/logs/debug.log", append = TRUE)
+      }, error = function(e) NULL)
+      # #endregion
       session$onFlushed(function() {
+        # #region agent log
+        tryCatch({
+          cat(sprintf(
+            '{"hypothesisId":"H4","location":"ynow_server.R:auto_start_flushed","message":"onFlushed pulse callback","data":{"tab":"%s","busy":%s},"timestamp":%.0f}\n',
+            as.character(isolate(input$sidebar_tabs) %||% "")[1],
+            if (isTRUE(isolate(lab_im_eval_busy()))) "true" else "false",
+            as.numeric(Sys.time()) * 1000
+          ), file = "/opt/cursor/logs/debug.log", append = TRUE)
+        }, error = function(e) NULL)
+        # #endregion
         if (!identical(as.character(isolate(input$sidebar_tabs) %||% "")[1], "bluechip")) {
           return()
         }
@@ -12299,6 +12339,16 @@ server <- function(input, output, session) {
   )
 
   observeEvent(lab_im_run_pulse(), {
+    # #region agent log
+    tryCatch({
+      cat(sprintf(
+        '{"hypothesisId":"H1","location":"ynow_server.R:run_pulse_enter","message":"lab_im_run_pulse observer","data":{"pulse":%s,"busy":%s},"timestamp":%.0f}\n',
+        as.integer(isolate(lab_im_run_pulse()) %||% 0L),
+        if (isTRUE(isolate(lab_im_eval_busy()))) "true" else "false",
+        as.numeric(Sys.time()) * 1000
+      ), file = "/opt/cursor/logs/debug.log", append = TRUE)
+    }, error = function(e) NULL)
+    # #endregion
     if (isTRUE(isolate(lab_im_eval_busy()))) return()
     catlg <- tryCatch(lab_im_catalog(), error = function(e) NULL)
     if (!is.data.frame(catlg) || nrow(catlg) == 0L) return()
@@ -12333,9 +12383,27 @@ server <- function(input, output, session) {
     rank_mode <- lab_normalize_pool_rank_mode(input$lab_im_pool_rank %||% "mcap")
     concept_keys <- input$lab_im_concepts
     mm <- tryCatch(market_mode(), error = function(e) "US")
+    # #region agent log
+    tryCatch({
+      cat(sprintf(
+        '{"hypothesisId":"H2","location":"ynow_server.R:before_withProgress","message":"about to enter withProgress lab_im_progress","data":{"pool_nrow":%s,"eval_n":%s},"timestamp":%.0f}\n',
+        if (is.data.frame(pool)) nrow(pool) else -1L,
+        if (is.finite(eval_n)) as.integer(eval_n) else -1L,
+        as.numeric(Sys.time()) * 1000
+      ), file = "/opt/cursor/logs/debug.log", append = TRUE)
+    }, error = function(e) NULL)
+    # #endregion
     scores <- withProgress(
       message = .ui_msg("lab_im_progress"),
       value = 0, {
+        # #region agent log
+        tryCatch({
+          cat(sprintf(
+            '{"hypothesisId":"H2","location":"ynow_server.R:inside_withProgress","message":"inside withProgress body (UI may be blocked)","data":{},"timestamp":%.0f}\n',
+            as.numeric(Sys.time()) * 1000
+          ), file = "/opt/cursor/logs/debug.log", append = TRUE)
+        }, error = function(e) NULL)
+        # #endregion
         n_raw <- nrow(pool)
         if (is.finite(eval_n) && n_raw > eval_n) {
           loc_prog <- tryCatch(
