@@ -227,7 +227,7 @@ check("menu Multiples en", identical(ui_str("menu_rel_multiples", "en"), "Multip
 check("menu SOTP en", identical(ui_str("menu_sotp", "en"), "SOTP"))
 check("no sotp in multiples radio choices en", !grepl("SOTP", ui_str("rel_mode_equity", "en"), fixed = TRUE))
 check("equity mode label mentions P/S", grepl("P/S", ui_str("rel_mode_equity", "en"), fixed = TRUE))
-check("sotp lead marks Enterprise-structural", grepl("Enterprise-structural", ui_str("sotp_lead_body", "en"), fixed = TRUE))
+check("sotp lead marks Meta-Framework", grepl("Meta-Framework", ui_str("sotp_lead_body", "en"), fixed = TRUE))
 
 # --- UI mounts / mode radio ---
 mod_src <- paste(readLines("relative_multiples_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
