@@ -128,7 +128,11 @@ testthat::test_that("dedicated industry board helper lists all industries (top_n
   )
   testthat::expect_equal(nrow(lb), 3L)
   testthat::expect_identical(as.character(lb$產業), c("Banks", "Software", "Semiconductors"))
-  testthat::expect_identical(as.integer(lb$檔數), c(1L, 2L, 3L))
+  testthat::expect_false("檔數" %in% names(lb))
+  testthat::expect_identical(
+    names(lb),
+    c("排名", "產業", "市值加權年化估值漲幅", "總市值")
+  )
 })
 
 testthat::test_that("undervalued ranks by total FV–price gap, not CAGR", {

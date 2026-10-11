@@ -127,7 +127,6 @@ lab_localize_im_colnames <- function(df, locale = "zh-TW") {
     "產業內排名" = "Industry rank",
     "產業" = "Industry",
     "市值加權年化估值漲幅" = "Mcap-weighted annualized upside",
-    "檔數" = "Names",
     "總市值" = "Total market cap",
     "代號" = "Ticker",
     "公司名稱" = "Company",
@@ -2232,7 +2231,6 @@ lab_industry_mcap_upside_leaderboard <- function(merged_df, top_n = 10L,
     排名 = integer(0),
     產業 = character(0),
     市值加權年化估值漲幅 = character(0),
-    檔數 = integer(0),
     總市值 = character(0),
     stringsAsFactors = FALSE, check.names = FALSE
   )
@@ -2294,7 +2292,6 @@ lab_industry_mcap_upside_leaderboard <- function(merged_df, top_n = 10L,
       industry_key = k,
       industry_label = lab,
       wavg_cagr = wavg,
-      n_names = length(hit),
       total_mcap = sum(w),
       stringsAsFactors = FALSE
     )
@@ -2333,7 +2330,6 @@ lab_industry_mcap_upside_leaderboard <- function(merged_df, top_n = 10L,
       排名 = seq_len(nrow(agg)),
       產業 = ind_disp,
       市值加權年化估值漲幅 = sprintf("%+.1f%%", agg$wavg_cagr),
-      檔數 = as.integer(agg$n_names),
       總市值 = vapply(agg$total_mcap, .fmt_mcap, character(1)),
       stringsAsFactors = FALSE,
       check.names = FALSE
