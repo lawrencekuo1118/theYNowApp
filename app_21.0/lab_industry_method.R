@@ -28,6 +28,62 @@ LAB_METHOD_LABELS <- c(
   sotp = "SOTP（分部加總）"
 )
 
+LAB_METHOD_LABELS_EN <- c(
+  nav = "NAV (book HoldCo net assets)",
+  dcf = "DCF (discounted cash flow)",
+  ddm = "DDM (dividend discount)",
+  ri  = "RI (residual income)",
+  pb  = "P/B (relative / multiples)",
+  multiples = "Multiples (market Implied Price)",
+  sotp = "SOTP (sum of the parts)"
+)
+
+#' Localized primary-method display labels (sidebar order keys).
+lab_method_labels <- function(locale = "zh-TW") {
+  loc <- if (exists("normalize_ui_locale", mode = "function")) {
+    normalize_ui_locale(locale)
+  } else {
+    as.character(locale %||% "zh-TW")[1]
+  }
+  if (identical(loc, "en")) LAB_METHOD_LABELS_EN else LAB_METHOD_LABELS
+}
+
+#' Rename Blue Chip table column headers for the active UI locale.
+lab_localize_im_colnames <- function(df, locale = "zh-TW") {
+  if (is.null(df) || !is.data.frame(df)) return(df)
+  loc <- if (exists("normalize_ui_locale", mode = "function")) {
+    normalize_ui_locale(locale)
+  } else {
+    as.character(locale %||% "zh-TW")[1]
+  }
+  if (!identical(loc, "en")) return(df)
+  map <- c(
+    "訊息" = "Message",
+    "建議評價方法" = "Suggested valuation method",
+    "產業數" = "Industries",
+    "候選檔數" = "Candidates",
+    "排名" = "Rank",
+    "產業內排名" = "Industry rank",
+    "產業" = "Industry",
+    "市值加權年化估值漲幅" = "Mcap-weighted annualized upside",
+    "檔數" = "Names",
+    "總市值" = "Total market cap",
+    "代號" = "Ticker",
+    "公司名稱" = "Company",
+    "年化估值漲幅" = "Annualized upside",
+    "總潛在漲幅" = "Total upside",
+    "實際估值方法" = "Model used",
+    "估值方法" = "Model",
+    "現價" = "Price",
+    "合理價" = "Fair value"
+  )
+  nm <- names(df)
+  hit <- nm %in% names(map)
+  if (any(hit)) nm[hit] <- unname(map[nm[hit]])
+  names(df) <- nm
+  df
+}
+
 #' Sort method keys to sidebar top→bottom order; unknown keys last (stable by name).
 lab_order_methods_like_sidebar <- function(methods) {
   methods <- unique(as.character(methods %||% character(0)))
@@ -394,16 +450,33 @@ lab_clamp_im_max_n <- function(x, default = 25L, lo = 1L, hi = NULL) {
 }
 
 #' Shared Evaluation count / Universe size (N) choices for Detail + Clustering
-lab_im_max_n_select_choices <- function() {
-  c(
-    "25 檔" = "25",
-    "50 檔" = "50",
-    "100 檔" = "100",
-    "200 檔" = "200",
-    "500 檔" = "500",
-    "全部" = "all",
-    "自訂…" = "custom"
-  )
+lab_im_max_n_select_choices <- function(locale = "zh-TW") {
+  loc <- if (exists("normalize_ui_locale", mode = "function")) {
+    normalize_ui_locale(locale)
+  } else {
+    as.character(locale %||% "zh-TW")[1]
+  }
+  if (identical(loc, "en")) {
+    c(
+      "25 names" = "25",
+      "50 names" = "50",
+      "100 names" = "100",
+      "200 names" = "200",
+      "500 names" = "500",
+      "All" = "all",
+      "Custom…" = "custom"
+    )
+  } else {
+    c(
+      "25 檔" = "25",
+      "50 檔" = "50",
+      "100 檔" = "100",
+      "200 檔" = "200",
+      "500 檔" = "500",
+      "全部" = "all",
+      "自訂…" = "custom"
+    )
+  }
 }
 
 #' Resolve select + optional custom numeric into clampable max_n
@@ -2080,7 +2153,8 @@ lab_quality_leaderboard <- function(merged_df, top_n = 10L, eq_only = FALSE,
 lab_industry_mcap_upside_leaderboard <- function(merged_df, top_n = 10L,
                                                 eq_only = FALSE, gate_only = TRUE,
                                                 no_alert = FALSE,
-                                                industry_filter = NULL) {
+                                                industry_filter = NULL,
+                                                locale = "zh-TW") {
   empty <- data.frame(
     排名 = integer(0),
     產業 = character(0),
@@ -2166,14 +2240,32 @@ lab_industry_mcap_upside_leaderboard <- function(merged_df, top_n = 10L,
     else if (x >= 1e6) sprintf("%.2fM", x / 1e6)
     else sprintf("%.0f", x)
   }
-  data.frame(
-    排名 = seq_len(nrow(agg)),
-    產業 = agg$industry_label,
-    市值加權年化估值漲幅 = sprintf("%+.1f%%", agg$wavg_cagr),
-    檔數 = as.integer(agg$n_names),
-    總市值 = vapply(agg$total_mcap, .fmt_mcap, character(1)),
-    stringsAsFactors = FALSE,
-    check.names = FALSE
+  loc <- if (exists("normalize_ui_locale", mode = "function")) {
+    normalize_ui_locale(locale)
+  } else {
+    as.character(locale %||% "zh-TW")[1]
+  }
+  ind_disp <- vapply(seq_len(nrow(agg)), function(i) {
+    k <- as.character(agg$industry_key[[i]] %||% "")[1]
+    if (nzchar(k) && exists("industry_label", mode = "function")) {
+      lab <- tryCatch(industry_label(k, locale = loc), error = function(e) NA_character_)
+      if (is.character(lab) && length(lab) && nzchar(lab[[1]]) && !is.na(lab[[1]])) {
+        return(as.character(lab[[1]]))
+      }
+    }
+    as.character(agg$industry_label[[i]] %||% k)[1]
+  }, character(1))
+  lab_localize_im_colnames(
+    data.frame(
+      排名 = seq_len(nrow(agg)),
+      產業 = ind_disp,
+      市值加權年化估值漲幅 = sprintf("%+.1f%%", agg$wavg_cagr),
+      檔數 = as.integer(agg$n_names),
+      總市值 = vapply(agg$total_mcap, .fmt_mcap, character(1)),
+      stringsAsFactors = FALSE,
+      check.names = FALSE
+    ),
+    loc
   )
 }
 
@@ -2189,10 +2281,12 @@ lab_im_available_primary_methods <- function(catalog) {
 #' 顯示用摘要：依主方法分組的產業數／候選檔數
 #' Row order follows sidebar model order (NAV → DCF → DDM → RI → P/B → Multiples → SOTP).
 #' @param include_all TRUE：七個評價模型列都顯示（無主模型者產業數／候選檔數為 0）
-lab_method_group_summary <- function(catalog, include_all = FALSE) {
+#' @param locale UI locale (`en` / `zh-TW`); display labels and column headers follow locale.
+lab_method_group_summary <- function(catalog, include_all = FALSE, locale = "zh-TW") {
+  labels <- lab_method_labels(locale)
   empty_row <- function(m) {
     data.frame(
-      建議評價方法 = as.character(LAB_METHOD_LABELS[[m]] %||% m),
+      建議評價方法 = as.character(labels[[m]] %||% m),
       產業數 = 0L,
       候選檔數 = 0L,
       method_key = m,
@@ -2200,36 +2294,39 @@ lab_method_group_summary <- function(catalog, include_all = FALSE) {
       stringsAsFactors = FALSE
     )
   }
-  if (is.null(catalog) || !nrow(catalog)) {
+  out <- if (is.null(catalog) || !nrow(catalog)) {
     if (isTRUE(include_all)) {
-      return(do.call(rbind, lapply(LAB_SIDEBAR_METHOD_ORDER, empty_row)))
+      do.call(rbind, lapply(LAB_SIDEBAR_METHOD_ORDER, empty_row))
+    } else {
+      data.frame(
+        建議評價方法 = character(0),
+        產業數 = integer(0),
+        候選檔數 = integer(0),
+        method_key = character(0),
+        has_primary = logical(0),
+        stringsAsFactors = FALSE
+      )
     }
-    return(data.frame(
-      建議評價方法 = character(0),
-      產業數 = integer(0),
-      候選檔數 = integer(0),
-      method_key = character(0),
-      has_primary = logical(0),
-      stringsAsFactors = FALSE
-    ))
-  }
-  methods <- if (isTRUE(include_all)) {
-    as.character(LAB_SIDEBAR_METHOD_ORDER)
   } else {
-    lab_order_methods_like_sidebar(catalog$primary)
+    methods <- if (isTRUE(include_all)) {
+      as.character(LAB_SIDEBAR_METHOD_ORDER)
+    } else {
+      lab_order_methods_like_sidebar(catalog$primary)
+    }
+    do.call(rbind, lapply(methods, function(m) {
+      sub <- catalog[catalog$primary == m, , drop = FALSE]
+      n_tk <- length(unique(stats::na.omit(sub$ticker)))
+      data.frame(
+        建議評價方法 = as.character(labels[[m]] %||% m),
+        產業數 = if (n_tk > 0L) length(unique(sub$industry_key)) else 0L,
+        候選檔數 = as.integer(n_tk),
+        method_key = m,
+        has_primary = n_tk > 0L,
+        stringsAsFactors = FALSE
+      )
+    }))
   }
-  do.call(rbind, lapply(methods, function(m) {
-    sub <- catalog[catalog$primary == m, , drop = FALSE]
-    n_tk <- length(unique(stats::na.omit(sub$ticker)))
-    data.frame(
-      建議評價方法 = as.character(LAB_METHOD_LABELS[[m]] %||% m),
-      產業數 = if (n_tk > 0L) length(unique(sub$industry_key)) else 0L,
-      候選檔數 = as.integer(n_tk),
-      method_key = m,
-      has_primary = n_tk > 0L,
-      stringsAsFactors = FALSE
-    )
-  }))
+  lab_localize_im_colnames(out, locale)
 }
 
 #' 明細表：F-Score 著色膠囊（盈餘品質／Piotroski 高門檻改由工具列勾選過濾）

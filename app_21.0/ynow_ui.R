@@ -1606,12 +1606,13 @@ beta_rolling_section_ui <- function() {
               fluidRow(
                 box(
                   width = 12, status = "primary", solidHeader = TRUE,
-                  title = "查詢條件",
+                  title = tags$span(id = "ynow_lab_im_query_title", "查詢條件"),
                   tags$div(
                     class = "ynow-lab-im-universe-row",
                     uiOutput("lab_im_universe_meta"),
                     actionButton(
-                      "lab_im_refresh_universe", "更新名單",
+                      "lab_im_refresh_universe",
+                      tags$span(id = "ynow_lab_im_refresh_label", "更新名單"),
                       icon = icon("sync"),
                       class = "btn-default btn-sm",
                       title = "重新擷取目前市場的成分／上市／上櫃／興櫃名單"
@@ -1863,6 +1864,7 @@ beta_rolling_section_ui <- function() {
                     )
                   ),
                   tags$p(
+                    id = "ynow_lab_im_eval_hint",
                     style = "margin-top:10px; color:#888; font-size:12px;",
                     "提示：評估需逐檔抓 Yahoo 財報與估值，檔數愈多愈久。"
                   )
@@ -8079,6 +8081,21 @@ ui <- dashboardPage(
             if (labEqExplainTitle && s.lab_im_eq_explain_title) labEqExplainTitle.textContent = s.lab_im_eq_explain_title;
             var labEqExplainBody = document.getElementById('ynow_lab_im_eq_explain_body');
             if (labEqExplainBody && s.lab_im_eq_explain_body) labEqExplainBody.textContent = s.lab_im_eq_explain_body;
+            var labQueryTitle = document.getElementById('ynow_lab_im_query_title');
+            if (labQueryTitle && s.lab_im_query_title) labQueryTitle.textContent = s.lab_im_query_title;
+            var labEvalHint = document.getElementById('ynow_lab_im_eval_hint');
+            if (labEvalHint && s.lab_im_eval_hint) labEvalHint.textContent = s.lab_im_eval_hint;
+            var labRefreshLabel = document.getElementById('ynow_lab_im_refresh_label');
+            if (labRefreshLabel && s.btn_lab_im_refresh) labRefreshLabel.textContent = s.btn_lab_im_refresh;
+            var labRefreshBtn = document.getElementById('lab_im_refresh_universe');
+            if (labRefreshBtn && s.lab_im_refresh_title) labRefreshBtn.setAttribute('title', s.lab_im_refresh_title);
+            var labDl = document.getElementById('lab_im_download_report');
+            if (labDl && s.btn_lab_im_download) {
+              var dlIcon = labDl.querySelector('i');
+              var dlIconHtml = dlIcon ? dlIcon.outerHTML + ' ' : '';
+              labDl.innerHTML = dlIconHtml + s.btn_lab_im_download;
+              if (s.lab_im_download_title) labDl.setAttribute('title', s.lab_im_download_title);
+            }
             var clusterBlurb = document.getElementById('ynow_lab_cluster_blurb');
             if (clusterBlurb && s.lab_cluster_blurb) clusterBlurb.textContent = s.lab_cluster_blurb;
             var clusterDisc = document.getElementById('ynow_lab_cluster_disclaimer');

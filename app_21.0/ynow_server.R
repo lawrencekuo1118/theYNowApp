@@ -574,6 +574,8 @@ server <- function(input, output, session) {
       lazy_mount_nonce(isolate(as.integer(lazy_mount_nonce()) %||% 0L) + 1L)
       # Push once immediately and once after DOM paint so lazy-tab chrome
       # (ATX titles etc.) receives applyUiLocale even if first message races.
+      # A second nonce bump after paint re-applies select/picker choice labels
+      # (update* can no-op if inputs are not bound yet on first mount tick).
       push_loc <- function() {
         tryCatch(
           .push_ui_locale(isolate(ui_locale()), sync_picker = FALSE),
@@ -583,6 +585,12 @@ server <- function(input, output, session) {
       push_loc()
       if (requireNamespace("later", quietly = TRUE)) {
         later::later(push_loc, delay = 0.05)
+        later::later(function() {
+          tryCatch({
+            lazy_mount_nonce(isolate(as.integer(lazy_mount_nonce()) %||% 0L) + 1L)
+            push_loc()
+          }, error = function(e) NULL)
+        }, delay = 0.25)
       }
       invisible(tab)
     }
@@ -11933,6 +11941,7 @@ server <- function(input, output, session) {
 
   output$lab_im_universe_meta <- renderUI({
     lab_im_catalog_nonce()
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
     mode <- market_mode()
     if (identical(mode, "TW")) {
       meta <- tryCatch(lab_tw_universe_meta(), error = function(e) NULL)
@@ -11942,9 +11951,15 @@ server <- function(input, output, session) {
       boards_sel <- tryCatch(.lab_im_boards(), error = function(e) c("TWSE", "TPEX"))
       board_txt <- paste(boards_sel, collapse = "+")
       if (!nzchar(board_txt)) board_txt <- "TWSE+TPEX"
-      label <- sprintf(
-        "上市 %d／上櫃 %d／興櫃 %d（搜尋全納；績優板別＝%s）",
-        n_twse, n_tpex, n_esb, board_txt
+      label <- tryCatch(
+        .ynow_fmt_str(
+          ui_str("lab_im_universe_tw", loc),
+          n_twse = n_twse, n_tpex = n_tpex, n_esb = n_esb, boards = board_txt
+        ),
+        error = function(e) sprintf(
+          "上市 %d／上櫃 %d／興櫃 %d（搜尋全納；績優板別＝%s）",
+          n_twse, n_tpex, n_esb, board_txt
+        )
       )
     } else {
       meta <- tryCatch(lab_us_universe_meta(), error = function(e) NULL)
@@ -11954,9 +11969,17 @@ server <- function(input, output, session) {
       n_nas <- if (is.null(meta)) 0L else as.integer(meta$n_nasdaq %||% 0L)
       n_ny <- if (is.null(meta)) 0L else as.integer(meta$n_nyse %||% 0L)
       if (n_nas > 0L || n_ny > 0L) {
-        label <- sprintf("美股主要上市（Nasdaq %d／NYSE %d；含 NYSE American）", n_nas, n_ny)
+        label <- tryCatch(
+          .ynow_fmt_str(ui_str("lab_im_universe_us", loc), n_nas = n_nas, n_ny = n_ny),
+          error = function(e) sprintf(
+            "美股主要上市（Nasdaq %d／NYSE %d；含 NYSE American）", n_nas, n_ny
+          )
+        )
       } else {
-        label <- "美股主要上市（Nasdaq＋NYSE＋NYSE American）"
+        label <- tryCatch(
+          ui_str("lab_im_universe_us_fallback", loc),
+          error = function(e) "美股主要上市（Nasdaq＋NYSE＋NYSE American）"
+        )
       }
     }
     n <- if (is.null(meta)) 0L else as.integer(meta$n %||% 0L)
@@ -11964,14 +11987,27 @@ server <- function(input, output, session) {
     n_un <- if (is.null(meta)) 0L else as.integer(meta$n_unmapped %||% 0L)
     src <- if (is.null(meta) || !nzchar(as.character(meta$source %||% ""))) "" else
       as.character(meta$source)[1]
+    count_txt <- tryCatch(
+      .ynow_fmt_str(ui_str("lab_im_universe_count", loc), label = label, n = n),
+      error = function(e) sprintf("%s · %d 檔", label, n)
+    )
     tags$div(
       class = "ynow-lab-im-universe-meta",
-      tags$b(sprintf("%s · %d 檔", label, n)),
-      tags$span(sprintf(" · 更新於 %s", fetched)),
-      if (n_un > 0L) tags$span(sprintf(" · 未對應產業 %d 檔", n_un)) else NULL,
+      tags$b(count_txt),
+      tags$span(tryCatch(
+        .ynow_fmt_str(ui_str("lab_im_universe_updated", loc), fetched = fetched),
+        error = function(e) sprintf(" · 更新於 %s", fetched)
+      )),
+      if (n_un > 0L) tags$span(tryCatch(
+        .ynow_fmt_str(ui_str("lab_im_universe_unmapped", loc), n = n_un),
+        error = function(e) sprintf(" · 未對應產業 %d 檔", n_un)
+      )) else NULL,
       if (nzchar(src)) tags$span(
         class = "ynow-lab-im-muted",
-        sprintf(" · 來源 %s", src)
+        tryCatch(
+          .ynow_fmt_str(ui_str("lab_im_universe_source", loc), src = src),
+          error = function(e) sprintf(" · 來源 %s", src)
+        )
       ) else NULL
     )
   })
@@ -12254,15 +12290,26 @@ server <- function(input, output, session) {
   )
 
   output$lab_im_summary <- renderTable({
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    empty_msg <- tryCatch(
+      ui_str("lab_im_summary_empty", loc),
+      error = function(e) "目前複選下無產業／候選"
+    )
+    msg_col <- if (identical(loc, "en")) "Message" else "訊息"
     scope <- .lab_im_method_scope_catalog()
     if (!is.data.frame(scope) || nrow(scope) == 0L) {
-      return(data.frame(訊息 = "目前複選下無產業／候選"))
+      return(stats::setNames(data.frame(empty_msg, stringsAsFactors = FALSE), msg_col))
     }
-    sm <- lab_method_group_summary(scope, include_all = TRUE)
+    sm <- lab_method_group_summary(scope, include_all = TRUE, locale = loc)
     if (is.null(sm) || nrow(sm) == 0) {
-      return(data.frame(訊息 = "目前複選下無產業／候選"))
+      return(stats::setNames(data.frame(empty_msg, stringsAsFactors = FALSE), msg_col))
     }
-    sm[, c("建議評價方法", "產業數", "候選檔數"), drop = FALSE]
+    want <- if (identical(loc, "en")) {
+      c("Suggested valuation method", "Industries", "Candidates")
+    } else {
+      c("建議評價方法", "產業數", "候選檔數")
+    }
+    sm[, want, drop = FALSE]
   }, striped = TRUE, bordered = TRUE, hover = TRUE, width = "100%")
 
   # Live pool size under current query filters (industry × model × board × ADR)
@@ -12390,19 +12437,30 @@ server <- function(input, output, session) {
     gate_on <- isTRUE(input$lab_im_gate_only)
     eq_on <- isTRUE(input$lab_im_eq_only)
     no_alert_on <- isTRUE(input$lab_im_no_alert)
-    scope_txt <- if (identical(scope, "by_industry")) {
-      "選定產業內 Top 10（產業內排名自第 1 名起算）"
-    } else if (identical(scope, "undervalued")) {
-      "價值低估 Top 10（總潛在漲幅＝主模型 FV vs 市價）"
-    } else {
-      "整體 Top 10（跨本次已評估產業；年化估值漲幅）"
-    }
-    loc_note <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "zh-TW")
+    loc_note <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    sep <- if (identical(loc_note, "en")) " / " else "／"
+    scope_txt <- tryCatch(
+      ui_str(
+        if (identical(scope, "by_industry")) "lab_im_scope_by_ind"
+        else if (identical(scope, "undervalued")) "lab_im_scope_undervalued"
+        else "lab_im_scope_overall",
+        loc_note
+      ),
+      error = function(e) scope
+    )
     gate_txt <- paste0(
-      if (gate_on) tryCatch(ui_str("lab_im_gate_on", loc_note), error = function(e) "F-Score≥7") else tryCatch(ui_str("lab_im_gate_off", loc_note), error = function(e) "不設 F-Score 門檻"),
-      "／",
-      if (eq_on) "盈餘品質通過" else "不過濾盈餘品質",
-      "／",
+      if (gate_on) {
+        tryCatch(ui_str("lab_im_gate_on", loc_note), error = function(e) "F-Score≥7")
+      } else {
+        tryCatch(ui_str("lab_im_gate_off", loc_note), error = function(e) "不設 F-Score 門檻")
+      },
+      sep,
+      if (eq_on) {
+        tryCatch(ui_str("lab_im_eq_on", loc_note), error = function(e) "盈餘品質通過")
+      } else {
+        tryCatch(ui_str("lab_im_eq_off", loc_note), error = function(e) "不過濾盈餘品質")
+      },
+      sep,
       if (no_alert_on) {
         tryCatch(ui_str("lab_im_no_alert_on", loc_note), error = function(e) "無財報警訊")
       } else {
@@ -12411,35 +12469,50 @@ server <- function(input, output, session) {
     )
     if (n_eval == 0L) {
       cap_txt <- if (is.finite(display_n)) {
-        paste0(
-          "將評估約 ", tags$b(as.character(eval_n)), " 檔；明細最多顯示 ",
-          tags$b(max_n_label), " 檔合格列（不足不湊滿）"
+        tryCatch(
+          .ynow_fmt_str(
+            ui_str("lab_im_leader_note_cap_finite", loc_note),
+            eval_n = as.character(eval_n), max_n = max_n_label
+          ),
+          error = function(e) paste0("will evaluate about ", eval_n, "; Detail cap ", max_n_label)
         )
       } else {
-        paste0("將評估篩選後 ", tags$b("全部"), " 候選；明細顯示全部合格列（不足不湊滿）")
+        tryCatch(
+          ui_str("lab_im_leader_note_cap_all", loc_note),
+          error = function(e) "will evaluate all filtered candidates"
+        )
       }
-      return(tags$p(
-        style = "color:#888; font-size:12.5px;",
-        "尚未評估。請按下方「搜尋績優股」；", cap_txt, "，並從前十名合格池（",
-        gate_txt, "，且能量到年化估值漲幅）取最多 10 檔（",
-        scope_txt, "；與明細同一批、同一排序鍵；合格不足 10 時不會湊滿）。"
-      ))
+      txt <- tryCatch(
+        .ynow_fmt_str(
+          ui_str("lab_im_leader_note_waiting", loc_note),
+          cap = cap_txt, gate = gate_txt, scope = scope_txt
+        ),
+        error = function(e) paste("No evaluation yet.", cap_txt)
+      )
+      return(tags$p(style = "color:#888; font-size:12.5px;", txt))
     }
-    sort_key_txt <- if (identical(scope, "undervalued")) {
-      "排序鍵＝推薦主模型合理價相對市價之總潛在漲幅（非年化；只列仍被低估者）"
-    } else {
-      "排序鍵＝模型合理價相對現價，依各標的自身預測年數 n（財報＋生命週期）換算之年化漲幅"
-    }
-    tags$p(
-      style = "color:#555; font-size:12.5px;",
-      sprintf(
-        "本次已評估 %d 檔；顯示上限 N＝%s（合格不足不湊滿）。%s；前十名門檻＝%s；目前排行視角＝%s。",
+    sort_key_txt <- tryCatch(
+      ui_str(
+        if (identical(scope, "undervalued")) "lab_im_sort_key_total" else "lab_im_sort_key_cagr",
+        loc_note
+      ),
+      error = function(e) ""
+    )
+    txt <- tryCatch(
+      .ynow_fmt_str(
+        ui_str("lab_im_leader_note_ready", loc_note),
+        n = as.integer(n_eval), max_n = max_n_label,
+        sort_key = sort_key_txt, gate = gate_txt, scope = scope_txt
+      ),
+      error = function(e) sprintf(
+        "Evaluated %d; N=%s. %s; gate=%s; view=%s.",
         n_eval, max_n_label, sort_key_txt, gate_txt, scope_txt
       )
     )
+    tags$p(style = "color:#555; font-size:12.5px;", txt)
   })
 
-  # Refresh truncate-rule labels + concept groups when market / locale changes
+  # Refresh truncate-rule / N / concept labels when market / locale changes
   # (also after Blue Chip lazy mount so newly created inputs get locale choices)
   observe({
     lazy_mount_nonce()
@@ -12449,6 +12522,11 @@ server <- function(input, output, session) {
     rank_choices <- lab_im_pool_rank_choices(loc)
     if (!rank_cur %in% unname(rank_choices)) rank_cur <- "mcap"
     updateSelectInput(session, "lab_im_pool_rank", choices = rank_choices, selected = rank_cur)
+
+    max_n_cur <- as.character(isolate(input$lab_im_max_n) %||% "25")[1]
+    max_n_choices <- lab_im_max_n_select_choices(loc)
+    if (!max_n_cur %in% unname(max_n_choices)) max_n_cur <- "25"
+    updateSelectInput(session, "lab_im_max_n", choices = max_n_choices, selected = max_n_cur)
 
     concept_choices <- lab_concept_group_choices(mm, loc)
     concept_cur <- isolate(input$lab_im_concepts)
@@ -12525,7 +12603,8 @@ server <- function(input, output, session) {
         eq_only = eq_on,
         gate_only = gate_on,
         no_alert = no_alert_on,
-        industry_filter = character(0)
+        industry_filter = character(0),
+        locale = loc
       ),
       error = function(e) NULL
     )
@@ -12578,11 +12657,11 @@ server <- function(input, output, session) {
   output$lab_im_ind_mcap_table <- renderTable({
     board <- .lab_im_ind_mcap_board()
     loc <- board$loc %||% "zh-TW"
+    msg_col <- if (identical(loc, "en")) "Message" else "訊息"
     if (isTRUE(board$waiting)) {
-      return(data.frame(
-        訊息 = tryCatch(ui_str("lab_im_ind_mcap_waiting", loc),
-                        error = function(e) "尚未評估。請按「搜尋績優股」後自動產生產業排序清單。")
-      ))
+      msg <- tryCatch(ui_str("lab_im_ind_mcap_waiting", loc),
+                      error = function(e) "尚未評估。請按「搜尋績優股」後自動產生產業排序清單。")
+      return(stats::setNames(data.frame(msg, stringsAsFactors = FALSE), msg_col))
     }
     tbl <- board$table
     if (is.null(tbl) || !is.data.frame(tbl) || nrow(tbl) == 0) {
@@ -12593,28 +12672,36 @@ server <- function(input, output, session) {
         ),
         error = function(e) "尚無產業列可顯示。"
       )
-      return(data.frame(訊息 = msg))
+      return(stats::setNames(data.frame(msg, stringsAsFactors = FALSE), msg_col))
     }
-    tbl
+    lab_localize_im_colnames(tbl, loc)
   }, striped = TRUE, bordered = TRUE, hover = TRUE, spacing = "s", width = "100%")
 
   output$lab_im_leaderboard <- renderTable({
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    msg_col <- if (identical(loc, "en")) "Message" else "訊息"
     scores <- lab_im_scores()
     if (is.null(scores) || !is.data.frame(scores) || nrow(scores) == 0) {
-      return(data.frame(訊息 = "（尚無績優排行 — 請先按「搜尋績優股」）"))
+      msg <- tryCatch(ui_str("lab_im_lb_none", loc),
+                      error = function(e) "（尚無績優排行 — 請先按「搜尋績優股」）")
+      return(stats::setNames(data.frame(msg, stringsAsFactors = FALSE), msg_col))
     }
     merged <- tryCatch(lab_im_merged(), error = function(e) NULL)
     if (is.null(merged) || nrow(merged) == 0) {
       n_scored <- nrow(scores)
       n_pass <- sum(is.finite(suppressWarnings(as.numeric(scores$f_score))) &
                       suppressWarnings(as.numeric(scores$f_score)) >= 7, na.rm = TRUE)
-      return(data.frame(
-        訊息 = paste0(
+      msg <- tryCatch(
+        .ynow_fmt_str(
+          ui_str("lab_im_lb_filter_empty", loc),
+          n = as.integer(n_scored), pass = as.integer(n_pass)
+        ),
+        error = function(e) paste0(
           "評估有 ", n_scored, " 檔（F-Score≥7 通過 ", n_pass, "），",
-          "但目前複選條件下明細為空。",
-          "常見原因：產業／模型過窄。請放寬產業或模型後再看排行榜。"
+          "但目前複選條件下明細為空。"
         )
-      ))
+      )
+      return(stats::setNames(data.frame(msg, stringsAsFactors = FALSE), msg_col))
     }
     scope <- as.character(input$lab_im_lb_mode %||% "overall")[1]
     if (!scope %in% c("overall", "by_industry", "undervalued")) scope <- "overall"
@@ -12676,9 +12763,32 @@ server <- function(input, output, session) {
           "。說明：N 是分析後顯示上限；前十名只從「合格者」取最多 10 檔，不會補足到 10。"
         )
       )
-      return(data.frame(訊息 = msg))
+      return(stats::setNames(data.frame(msg, stringsAsFactors = FALSE), msg_col))
     }
-    lb
+    if ("產業" %in% names(lb) && "industry_key" %in% names(lb_src) &&
+        exists("industry_label", mode = "function")) {
+      tk <- as.character(lb[["代號"]] %||% character(0))
+      src_tk <- if (exists("display_tickers_for_market", mode = "function")) {
+        display_tickers_for_market(lb_src$ticker, tryCatch(market_mode(), error = function(e) "US"))
+      } else {
+        as.character(lb_src$ticker)
+      }
+      idx <- match(tk, src_tk)
+      keys <- ifelse(
+        is.na(idx),
+        NA_character_,
+        as.character(lb_src$industry_key[idx])
+      )
+      ok <- !is.na(keys) & nzchar(keys)
+      if (any(ok)) {
+        lb$產業[ok] <- vapply(
+          keys[ok],
+          function(k) tryCatch(industry_label(k, locale = loc), error = function(e) k),
+          character(1)
+        )
+      }
+    }
+    lab_localize_im_colnames(lb, loc)
   }, striped = TRUE, bordered = TRUE, hover = TRUE, spacing = "m", width = "100%")
 
   output$lab_im_leaderboard_status <- renderUI({
@@ -12770,6 +12880,8 @@ server <- function(input, output, session) {
   })
 
   output$lab_im_table <- DT::renderDataTable({
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    msg_col <- if (identical(loc, "en")) "Message" else "訊息"
     catlg <- lab_im_catalog()
     req(is.data.frame(catlg), nrow(catlg) > 0)
     # 明細＝合格池取前 display_n（不足不湊滿）；品質勾選與排行榜同一合格定義
@@ -12789,12 +12901,14 @@ server <- function(input, output, session) {
     if (nrow(merged) == 0) {
       scores <- lab_im_scores()
       msg <- if (is.null(scores) || !is.data.frame(scores) || nrow(scores) == 0) {
-        "尚未評估。請按「搜尋績優股」；明細最多顯示宇宙檔數 N 檔合格列（條件不足時不湊滿）。"
+        tryCatch(ui_str("lab_im_detail_waiting", loc),
+                 error = function(e) "尚未評估。請按「搜尋績優股」；明細最多顯示宇宙檔數 N 檔合格列（條件不足時不湊滿）。")
       } else {
-        "沒有符合篩選的已評估列。可放寬產業／模型，或重新評估。"
+        tryCatch(ui_str("lab_im_detail_no_match", loc),
+                 error = function(e) "沒有符合篩選的已評估列。可放寬產業／模型，或重新評估。")
       }
       return(DT::datatable(
-        data.frame(訊息 = msg),
+        stats::setNames(data.frame(msg, stringsAsFactors = FALSE), msg_col),
         rownames = FALSE, options = list(dom = "t")
       ))
     }
@@ -12807,38 +12921,55 @@ server <- function(input, output, session) {
     )
     if (is.null(merged) || nrow(merged) == 0L) {
       return(DT::datatable(
-        data.frame(
-          訊息 = "目前勾選條件下尚無合格列可顯示（不會為湊滿 N 而另抽樣）。可取消「盈餘品質」、「Piotroski 高門檻」或「無財報警訊」，或提高 N／放寬產業後再搜尋。"
+        stats::setNames(
+          data.frame(
+            tryCatch(ui_str("lab_im_detail_no_qual", loc),
+                     error = function(e) "目前勾選條件下尚無合格列可顯示（不會為湊滿 N 而另抽樣）。"),
+            stringsAsFactors = FALSE
+          ),
+          msg_col
         ),
         rownames = FALSE, options = list(dom = "t")
       ))
     }
     yahoo_nm <- if ("company_name" %in% names(merged)) merged$company_name else NA_character_
-    show_df <- data.frame(
-      代號 = display_tickers_for_market(merged$ticker, market_mode()),
-      公司名稱 = vapply(
-        seq_len(nrow(merged)),
-        function(i) lab_company_display_name(merged$ticker[[i]], yahoo_nm[[i]]),
+    ind_disp <- if ("industry_key" %in% names(merged) && exists("industry_label", mode = "function")) {
+      vapply(
+        as.character(merged$industry_key),
+        function(k) tryCatch(industry_label(k, locale = loc), error = function(e) k),
         character(1)
+      )
+    } else {
+      merged$industry_label
+    }
+    show_df <- lab_localize_im_colnames(
+      data.frame(
+        代號 = display_tickers_for_market(merged$ticker, market_mode()),
+        公司名稱 = vapply(
+          seq_len(nrow(merged)),
+          function(i) lab_company_display_name(merged$ticker[[i]], yahoo_nm[[i]]),
+          character(1)
+        ),
+        年化估值漲幅 = ifelse(
+          is.na(merged$upside_cagr_pct), "—",
+          sprintf("%+.1f%%", merged$upside_cagr_pct)
+        ),
+        總潛在漲幅 = ifelse(
+          is.na(merged$upside_total_pct), "",
+          sprintf("%+.1f%%", merged$upside_total_pct)
+        ),
+        實際估值方法 = ifelse(
+          is.na(merged$method_used) | !nzchar(as.character(merged$method_used)),
+          "", toupper(as.character(merged$method_used))
+        ),
+        產業 = ind_disp,
+        現價 = ifelse(is.na(merged$price), "", signif(merged$price, 4)),
+        合理價 = ifelse(is.na(merged$fv), "", signif(merged$fv, 4)),
+        `F-Score` = lab_html_fscore_pill(merged$f_score),
+        stringsAsFactors = FALSE,
+        check.names = FALSE
       ),
-      年化估值漲幅 = ifelse(
-        is.na(merged$upside_cagr_pct), "—",
-        sprintf("%+.1f%%", merged$upside_cagr_pct)
-      ),
-      總潛在漲幅 = ifelse(
-        is.na(merged$upside_total_pct), "",
-        sprintf("%+.1f%%", merged$upside_total_pct)
-      ),
-      實際估值方法 = ifelse(
-        is.na(merged$method_used) | !nzchar(as.character(merged$method_used)),
-        "", toupper(as.character(merged$method_used))
-      ),
-      產業 = merged$industry_label,
-      現價 = ifelse(is.na(merged$price), "", signif(merged$price, 4)),
-      合理價 = ifelse(is.na(merged$fv), "", signif(merged$fv, 4)),
-      `F-Score` = lab_html_fscore_pill(merged$f_score),
-      stringsAsFactors = FALSE,
-      check.names = FALSE
+      loc
     )
     DT::datatable(
       show_df,

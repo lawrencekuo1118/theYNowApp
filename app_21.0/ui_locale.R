@@ -1008,6 +1008,61 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Models with no names using them as the primary valuation model stay unchecked and locked ",
       "(same disabled style as Listed). Rows in Suggested valuation methods match this filter."
     ),
+    lab_im_query_title = "Query filters",
+    btn_lab_im_download = "Download page report",
+    lab_im_download_title = "Download current filters, summary, and detail (no re-evaluation)",
+    btn_lab_im_refresh = "Refresh list",
+    lab_im_refresh_title = "Re-fetch the current market listing universe",
+    lab_im_eval_hint = "Tip: evaluation fetches Yahoo statements and valuation per name — larger N takes longer.",
+    lab_im_summary_empty = "No industries / candidates under the current multi-select.",
+    lab_im_eq_on = "Earnings quality pass",
+    lab_im_eq_off = "Earnings quality not filtered",
+    lab_im_scope_overall = "Overall Top 10 (across industries in this run; annualized upside)",
+    lab_im_scope_by_ind = "Top 10 within selected industries (Industry rank starts at 1)",
+    lab_im_scope_undervalued = "Most undervalued Top 10 (total gap = primary-model FV vs price)",
+    lab_im_sort_key_cagr = paste0(
+      "Sort key = model fair value vs price, annualized over each name’s own forecast horizon n ",
+      "(statements + lifecycle)"
+    ),
+    lab_im_sort_key_total = paste0(
+      "Sort key = total upside of primary-model fair value vs price ",
+      "(not annualized; still-undervalued names only)"
+    ),
+    lab_im_leader_note_waiting = paste0(
+      "No evaluation yet. Press Search Blue Chips below; {cap}; then take at most 10 from the Top-10 qualified pool ",
+      "({gate}, and annualized upside available) ({scope}; same batch and sort key as Detail; shortfalls are not padded)."
+    ),
+    lab_im_leader_note_cap_finite = paste0(
+      "will evaluate about {eval_n} names; Detail shows at most {max_n} qualified rows (shortfalls not padded)"
+    ),
+    lab_im_leader_note_cap_all = paste0(
+      "will evaluate all filtered candidates; Detail shows all qualified rows (shortfalls not padded)"
+    ),
+    lab_im_leader_note_ready = paste0(
+      "Evaluated {n} names this run; display cap N = {max_n} (shortfalls not padded). {sort_key}; ",
+      "Top-10 gate = {gate}; Ranking view = {scope}."
+    ),
+    lab_im_universe_us = "US primary listings (Nasdaq {n_nas} / NYSE {n_ny}; incl. NYSE American)",
+    lab_im_universe_us_fallback = "US primary listings (Nasdaq + NYSE + NYSE American)",
+    lab_im_universe_tw = "TWSE {n_twse} / TPEx {n_tpex} / ESB {n_esb} (search covers all; Blue Chip boards = {boards})",
+    lab_im_universe_count = "{label} · {n} names",
+    lab_im_universe_updated = " · Updated {fetched}",
+    lab_im_universe_unmapped = " · Unmapped industry {n} names",
+    lab_im_universe_source = " · Source {src}",
+    lab_im_lb_none = "(No Blue Chip ranking yet — open Blue Chip Leaderboard or press Search Blue Chips)",
+    lab_im_lb_filter_empty = paste0(
+      "Evaluated {n} names (F-Score≥7 pass {pass}), but Detail is empty under current filters. ",
+      "Common cause: industry / model filters too narrow. Widen filters, then re-check the leaderboard."
+    ),
+    lab_im_detail_waiting = paste0(
+      "No evaluation yet. Press Search Blue Chips; Detail shows at most Universe size (N) qualified rows ",
+      "(shortfalls are not padded)."
+    ),
+    lab_im_detail_no_match = "No evaluated rows match the filters. Widen industry / model filters, or re-run Search.",
+    lab_im_detail_no_qual = paste0(
+      "No qualified rows under current checks (N is not padded). ",
+      "Uncheck Earnings quality, Piotroski high gate, or No FS alerts, raise N, or widen industries, then search again."
+    ),
     ms_card_multiples_formula = "Implied Price: P/E · EV/* · P/S",
     ms_card_multiples_notes = paste0(
       "Market-multiple cross-check (not Intrinsic Value); ",
@@ -3650,6 +3705,48 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_methods_locked_hint = paste0(
       "若某評價模型未被任何個股列為主模型，則維持不勾選並鎖定",
       "（樣式同美股 Listed）。「建議評價方法」表格列與此篩選列一致。"
+    ),
+    lab_im_query_title = "查詢條件",
+    btn_lab_im_download = "下載本頁報告",
+    lab_im_download_title = "下載目前篩選、摘要與明細（不必重新評估）",
+    btn_lab_im_refresh = "更新名單",
+    lab_im_refresh_title = "重新擷取目前市場的成分／上市／上櫃／興櫃名單",
+    lab_im_eval_hint = "提示：評估需逐檔抓 Yahoo 財報與估值，檔數愈多愈久。",
+    lab_im_summary_empty = "目前複選下無產業／候選",
+    lab_im_eq_on = "盈餘品質通過",
+    lab_im_eq_off = "不過濾盈餘品質",
+    lab_im_scope_overall = "整體 Top 10（跨本次已評估產業；年化估值漲幅）",
+    lab_im_scope_by_ind = "選定產業內 Top 10（產業內排名自第 1 名起算）",
+    lab_im_scope_undervalued = "價值低估 Top 10（總潛在漲幅＝主模型 FV vs 市價）",
+    lab_im_sort_key_cagr = "排序鍵＝模型合理價相對現價，依各標的自身預測年數 n（財報＋生命週期）換算之年化漲幅",
+    lab_im_sort_key_total = "排序鍵＝推薦主模型合理價相對市價之總潛在漲幅（非年化；只列仍被低估者）",
+    lab_im_leader_note_waiting = paste0(
+      "尚未評估。請按下方「搜尋績優股」；{cap}，並從前十名合格池（{gate}，且能量到年化估值漲幅）取最多 10 檔（",
+      "{scope}；與明細同一批、同一排序鍵；合格不足 10 時不會湊滿）。"
+    ),
+    lab_im_leader_note_cap_finite = "將評估約 {eval_n} 檔；明細最多顯示 {max_n} 檔合格列（不足不湊滿）",
+    lab_im_leader_note_cap_all = "將評估篩選後全部候選；明細顯示全部合格列（不足不湊滿）",
+    lab_im_leader_note_ready = paste0(
+      "本次已評估 {n} 檔；顯示上限 N＝{max_n}（合格不足不湊滿）。{sort_key}；",
+      "前十名門檻＝{gate}；目前排行視角＝{scope}。"
+    ),
+    lab_im_universe_us = "美股主要上市（Nasdaq {n_nas}／NYSE {n_ny}；含 NYSE American）",
+    lab_im_universe_us_fallback = "美股主要上市（Nasdaq＋NYSE＋NYSE American）",
+    lab_im_universe_tw = "上市 {n_twse}／上櫃 {n_tpex}／興櫃 {n_esb}（搜尋全納；績優板別＝{boards}）",
+    lab_im_universe_count = "{label} · {n} 檔",
+    lab_im_universe_updated = " · 更新於 {fetched}",
+    lab_im_universe_unmapped = " · 未對應產業 {n} 檔",
+    lab_im_universe_source = " · 來源 {src}",
+    lab_im_lb_none = "（尚無績優排行 — 請先按「搜尋績優股」）",
+    lab_im_lb_filter_empty = paste0(
+      "評估有 {n} 檔（F-Score≥7 通過 {pass}），但目前複選條件下明細為空。",
+      "常見原因：產業／模型過窄。請放寬產業或模型後再看排行榜。"
+    ),
+    lab_im_detail_waiting = "尚未評估。請按「搜尋績優股」；明細最多顯示宇宙檔數 N 檔合格列（條件不足時不湊滿）。",
+    lab_im_detail_no_match = "沒有符合篩選的已評估列。可放寬產業／模型，或重新評估。",
+    lab_im_detail_no_qual = paste0(
+      "目前勾選條件下尚無合格列可顯示（不會為湊滿 N 而另抽樣）。",
+      "可取消「盈餘品質」、「Piotroski 高門檻」或「無財報警訊」，或提高 N／放寬產業後再搜尋。"
     ),
     ms_card_multiples_formula = "Implied Price：P/E · EV/* · P/S",
     ms_card_multiples_notes = paste0(
